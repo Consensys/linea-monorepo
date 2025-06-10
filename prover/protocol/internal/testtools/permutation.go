@@ -265,11 +265,7 @@ func (p *PermutationTestcase) Define(comp *wizard.CompiledIOP) {
 
 	}
 
-	p.Q = query.Permutation{
-		A:  a,
-		B:  b,
-		ID: formatName[ifaces.QueryID]("Permutation", p.NameStr),
-	}
+	p.Q = query.NewPermutation(formatName[ifaces.QueryID]("Permutation", p.NameStr), a, b)
 
 	comp.QueriesNoParams.AddToRound(0, p.Q.ID, p.Q)
 }

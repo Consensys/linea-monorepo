@@ -103,3 +103,9 @@ func (n Natural) SetPragma(pragma string, data any) {
 func (n Natural) GetPragma(pragma string) (any, bool) {
 	return n.store.GetPragma(n.ID, pragma)
 }
+
+// GetStoreUnsafe returns the internal store pointer of the column. It is unsafe to
+// use.
+func (n Natural) GetStoreUnsafe() *Store {
+	return n.store
+}

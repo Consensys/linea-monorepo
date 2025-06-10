@@ -21,7 +21,8 @@ type Settings struct {
 // Sha2SingleProviderInput stores the inputs for [newSha2SingleProvider]
 type Sha2SingleProviderInput struct {
 	Settings
-	Provider generic.GenericByteModule
+	Provider         generic.GenericByteModule
+	IsHashLoAssigner *dedicated.ManuallyShifted
 }
 
 // Sha2SingleProvider stores the hash result and [wizard.ProverAction] of the submodules.
@@ -33,8 +34,8 @@ type Sha2SingleProvider struct {
 	MaxNumSha2F int
 
 	// prover actions for  internal modules
-	pa_importPad, pa_packing wizard.ProverAction
-	pa_cSha2                 *sha2BlockModule
+	Pa_importPad, Pa_packing wizard.ProverAction
+	Pa_cSha2                 *sha2BlockModule
 }
 
 // NewSha2ZkEvm constructs the Sha2 module as used in Linea's zkEVM.
@@ -62,11 +63,9 @@ func NewSha2ZkEvm(comp *wizard.CompiledIOP, s Settings) *Sha2SingleProvider {
 		},
 	}
 
-	sha2ProviderInput.Provider.Info.IsHashLo = dedicated.ManuallyShift(
-		comp,
-		sha2ProviderInput.Provider.Info.IsHashHi,
-		-1,
-	)
+	man := dedicated.ManuallyShift(comp, sha2ProviderInput.Provider.Info.IsHashHi, -1)
+	sha2ProviderInput.Provider.Info.IsHashLo = man.Natural
+	sha2ProviderInput.IsHashLoAssigner = man
 
 	return newSha2SingleProvider(comp, sha2ProviderInput)
 }
@@ -130,7 +129,7 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 		query.ProjectionInput{ColumnA: []ifaces.Column{cSha2.HashLo},
 			ColumnB: []ifaces.Column{inp.Provider.Info.HashLo},
 			FilterA: cSha2.IsEffFirstLaneOfNewHash,
-			FilterB: inp.Provider.Info.IsHashLo.(*dedicated.ManuallyShifted).Natural})
+			FilterB: inp.Provider.Info.IsHashLo})
 
 	// set the module
 	m := &Sha2SingleProvider{
@@ -139,9 +138,9 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 		HashHi:       cSha2.HashHi,
 		HashLo:       cSha2.HashLo,
 		IsActive:     cSha2.IsActive,
-		pa_importPad: imported,
-		pa_packing:   packing,
-		pa_cSha2:     cSha2,
+		Pa_importPad: imported,
+		Pa_packing:   packing,
+		Pa_cSha2:     cSha2,
 	}
 
 	return m
@@ -150,11 +149,11 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 // It implements [wizard.ProverAction] for sha2.
 func (m *Sha2SingleProvider) Run(run *wizard.ProverRuntime) {
 
-	m.Inputs.Provider.Info.IsHashLo.(*dedicated.ManuallyShifted).Assign(run)
+	m.Inputs.IsHashLoAssigner.Assign(run)
 
 	// assign ImportAndPad module
-	m.pa_importPad.Run(run)
+	m.Pa_importPad.Run(run)
 	// assign packing module
-	m.pa_packing.Run(run)
-	m.pa_cSha2.Run(run)
+	m.Pa_packing.Run(run)
+	m.Pa_cSha2.Run(run)
 }

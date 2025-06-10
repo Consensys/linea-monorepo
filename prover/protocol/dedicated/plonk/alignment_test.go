@@ -29,6 +29,14 @@ func TestAlignment(t *testing.T) {
 	// plonk in wizard is deferred, so we need to capture the runtime to be able
 	// to verify concatenated PI column assignment
 	var runLeaked *wizard.ProverRuntime
+	var inputFillerKey = "alignment-test-input-filler"
+
+	RegisterInputFiller(
+		inputFillerKey,
+		func(circuitInstance, inputIndex int) field.Element {
+			return field.NewElement(uint64(inputIndex + 1))
+		})
+
 	cmp := wizard.Compile(func(build *wizard.Builder) {
 		toAlign = &CircuitAlignmentInput{
 			Name:               "ALIGNMENT_TEST",
@@ -36,7 +44,7 @@ func TestAlignment(t *testing.T) {
 			DataToCircuit:      ct.GetCommit(build, "DATA"),
 			DataToCircuitMask:  ct.GetCommit(build, "DATA_MASK"),
 			NbCircuitInstances: nbCircuitInstances,
-			InputFiller:        func(circuitInstance, inputIndex int) field.Element { return field.NewElement(uint64(inputIndex + 1)) },
+			InputFillerKey:     inputFillerKey,
 		}
 		alignment = DefineAlignment(build.CompiledIOP, toAlign)
 	}, dummy.Compile)

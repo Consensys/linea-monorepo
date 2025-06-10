@@ -135,7 +135,7 @@ func verifyWithRuntimeUntilRound(comp *CompiledIOP, proof Proof, stopRound int) 
 
 		runtime.GenerateCoinsFromRound(round)
 
-		verifierSteps := runtime.Spec.subVerifiers.MustGet(round)
+		verifierSteps := runtime.Spec.SubVerifiers.MustGet(round)
 		for _, step := range verifierSteps {
 			if err := step.Run(&runtime); err != nil {
 				errs = append(errs, err)

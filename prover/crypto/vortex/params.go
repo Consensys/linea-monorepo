@@ -14,7 +14,7 @@ import (
 type Params struct {
 	// Key stores the public parameters of the ring-SIS instance in use to
 	// hash the columns.
-	Key ringsis.Key
+	Key *ringsis.Key
 	// BlowUpFactor corresponds to the inverse-rate of the Reed-Solomon code
 	// in use to encode the rows of the committed matrices. This is a power of
 	// two and

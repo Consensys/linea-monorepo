@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
@@ -37,27 +36,6 @@ const (
 	// on the columns of the round matrix
 	IsSISApplied
 )
-
-type vortexProverAction struct {
-	ctx Ctx
-	fn  func(*wizard.ProverRuntime)
-}
-
-func (a *vortexProverAction) Run(run *wizard.ProverRuntime) {
-	a.fn(run)
-}
-
-type vortexVerifierAction struct {
-	ctx Ctx
-}
-
-func (a *vortexVerifierAction) Run(run wizard.Runtime) error {
-	return a.ctx.explicitPublicEvaluation(run) // Adjust based on context; see note below
-}
-
-func (a *vortexVerifierAction) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
-	a.ctx.gnarkExplicitPublicEvaluation(api, c) // Adjust based on context; see note below
-}
 
 /*
 Applies the Vortex compiler over the current polynomial-IOP
@@ -101,7 +79,7 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		lastRound := comp.NumRounds() - 1
 
 		// Stores a pointer to the cryptographic compiler of Vortex
-		comp.PcsCtxs = &ctx
+		comp.PcsCtxs = ctx
 
 		// Process the precomputed columns
 		ctx.processStatusPrecomputed()
@@ -109,36 +87,34 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		// registers all the commitments
 		for round := 0; round <= lastRound; round++ {
 			ctx.compileRound(round)
-			comp.RegisterProverAction(round, &vortexProverAction{
-				ctx: ctx,
-				fn:  ctx.AssignColumn(round),
+			comp.RegisterProverAction(round, &ColumnAssignmentProverAction{
+				Ctx:   ctx,
+				Round: round,
 			})
 		}
 
 		ctx.generateVortexParams()
-		// Commit to precomputed columns
+		// Commit to precomputed columnsù
 		if ctx.IsNonEmptyPrecomputed() {
 			ctx.commitPrecomputeds()
 		}
 		ctx.registerOpeningProof(lastRound)
 
 		// Registers the prover and verifier steps
-		comp.RegisterProverAction(lastRound+1, &vortexProverAction{
-			ctx: ctx,
-			fn:  ctx.ComputeLinearComb,
+		comp.RegisterProverAction(lastRound+1, &LinearCombinationComputationProverAction{
+			Ctx: ctx,
 		})
-		comp.RegisterProverAction(lastRound+2, &vortexProverAction{
-			ctx: ctx,
-			fn:  ctx.OpenSelectedColumns,
+		comp.RegisterProverAction(lastRound+2, &OpenSelectedColumnsProverAction{
+			Ctx: ctx,
 		})
 		// This is separated from GnarkVerify because, when doing full-recursion
 		// , we want to recurse this verifier step but not [ctx.Verify] which is
 		// already handled by the self-recursion mechanism.
-		comp.RegisterVerifierAction(lastRound, &vortexVerifierAction{
-			ctx: ctx,
+		comp.RegisterVerifierAction(lastRound, &ExplicitPolynomialEval{
+			Ctx: ctx,
 		})
-		comp.RegisterVerifierAction(lastRound+2, &vortexVerifierAction{
-			ctx: ctx,
+		comp.RegisterVerifierAction(lastRound+2, &VortexVerifierAction{
+			Ctx: ctx,
 		})
 
 		if ctx.AddMerkleRootToPublicInputsOpt.Enabled {
@@ -159,13 +135,13 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 
 			var (
 				merkleRootColumn = ctx.Items.Precomputeds.MerkleRoot
-				merkleRootValue  = ctx.comp.Precomputed.MustGet(merkleRootColumn.GetColID())
+				merkleRootValue  = ctx.Comp.Precomputed.MustGet(merkleRootColumn.GetColID())
 			)
 
 			ctx.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedValue = merkleRootValue.Get(0)
-			ctx.comp.Columns.SetStatus(merkleRootColumn.GetColID(), column.Proof)
-			ctx.comp.Precomputed.Del(merkleRootColumn.GetColID())
-			ctx.comp.ExtraData[ctx.AddPrecomputedMerkleRootToPublicInputsOpt.Name] = merkleRootValue.Get(0)
+			ctx.Comp.Columns.SetStatus(merkleRootColumn.GetColID(), column.Proof)
+			ctx.Comp.Precomputed.Del(merkleRootColumn.GetColID())
+			ctx.Comp.ExtraData[ctx.AddPrecomputedMerkleRootToPublicInputsOpt.Name] = merkleRootValue.Get(0)
 
 			comp.RegisterProverAction(0, &ReassignPrecomputedRootAction{
 				Ctx: ctx,
@@ -185,7 +161,7 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 // Placeholder for variable commonly used within the vortex compilation
 type Ctx struct {
 	// The underlying compiled IOP protocol
-	comp *wizard.CompiledIOP
+	Comp *wizard.CompiledIOP
 	// snapshot the self-recursion count immediately
 	// when the context is created
 	SelfRecursionCount int
@@ -283,9 +259,9 @@ type Ctx struct {
 }
 
 // Construct a new compilation context
-func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor int, options ...VortexOp) Ctx {
-	ctx := Ctx{
-		comp:                         comp,
+func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor int, options ...VortexOp) *Ctx {
+	ctx := &Ctx{
+		Comp:                         comp,
 		SelfRecursionCount:           comp.SelfRecursionCount,
 		Query:                        univQ,
 		PolynomialsTouchedByTheQuery: map[ifaces.ColID]struct{}{},
@@ -321,7 +297,7 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 	}
 
 	for _, op := range options {
-		op(&ctx)
+		op(ctx)
 	}
 
 	// Preallocate all the merkle roots for all rounds
@@ -337,7 +313,7 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 func (ctx *Ctx) compileRound(round int) {
 
 	// List all of the commitments
-	allComs := ctx.comp.Columns.AllKeysCommittedAt(round)
+	allComs := ctx.Comp.Columns.AllKeysCommittedAt(round)
 
 	// edge-case : no commitment for the round = nothing to do
 	if len(allComs) == 0 {
@@ -401,14 +377,14 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 		return
 	}
 
-	targetSize := ctx.comp.Columns.GetSize(coms[0])
+	targetSize := ctx.Comp.Columns.GetSize(coms[0])
 
 	for i := range coms {
-		ctx.comp.Columns.MarkAsIgnored(coms[i])
+		ctx.Comp.Columns.MarkAsIgnored(coms[i])
 	}
 
 	for i := range comUnconstrained {
-		ctx.comp.Columns.MarkAsIgnored(comUnconstrained[i])
+		ctx.Comp.Columns.MarkAsIgnored(comUnconstrained[i])
 	}
 
 	// Note: the above "if-clause" ensures that the fillUpTo >= len(coms), so
@@ -430,9 +406,9 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 	numShadowRows := fillUpTo - len(coms)
 
 	for shadowID := 0; shadowID < numShadowRows; shadowID++ {
-		shadowCol := autoAssignedShadowRow(ctx.comp, targetSize, round, shadowID)
+		shadowCol := autoAssignedShadowRow(ctx.Comp, targetSize, round, shadowID)
 		ctx.ShadowCols[shadowCol.GetColID()] = struct{}{}
-		ctx.comp.Columns.MarkAsIgnored(shadowCol.GetColID())
+		ctx.Comp.Columns.MarkAsIgnored(shadowCol.GetColID())
 		coms = append(coms, shadowCol.GetColID())
 	}
 
@@ -462,7 +438,7 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 
 	// Instead, we send Merkle roots that are symbolized with 1-sized
 	// columns.
-	ctx.Items.MerkleRoots[round] = ctx.comp.InsertProof(
+	ctx.Items.MerkleRoots[round] = ctx.Comp.InsertProof(
 		round,
 		ifaces.ColID(ctx.MerkleRootName(round)),
 		1,
@@ -507,7 +483,7 @@ func extractTargetQuery(comp *wizard.CompiledIOP) (res query.UnivariateEval, fou
 // numcols. Also implictly set the value of ctx.numCols.
 func (ctx *Ctx) assertPolynomialHaveSameLength(coms []ifaces.ColID) {
 	for _, com := range coms {
-		handle := ctx.comp.Columns.GetHandle(com)
+		handle := ctx.Comp.Columns.GetHandle(com)
 		length := handle.Size()
 
 		// if the numCols has not been set (e.g. it is zero), set it
@@ -581,21 +557,21 @@ func (ctx *Ctx) NbColsToOpen() int {
 func (ctx *Ctx) registerOpeningProof(lastRound int) {
 
 	// register the linear combination randomness
-	ctx.Items.Alpha = ctx.comp.InsertCoin(
+	ctx.Items.Alpha = ctx.Comp.InsertCoin(
 		lastRound+1,
 		ctx.LinCombRandCoinName(),
 		coin.Field,
 	)
 
 	// registers the linear combination claimed by the prover
-	ctx.Items.Ualpha = ctx.comp.InsertProof(
+	ctx.Items.Ualpha = ctx.Comp.InsertProof(
 		lastRound+1,
 		ctx.LinCombName(),
 		ctx.NumEncodedCols(),
 	)
 
 	// registers the random's verifier column selection
-	ctx.Items.Q = ctx.comp.InsertCoin(
+	ctx.Items.Q = ctx.Comp.InsertCoin(
 		lastRound+2,
 		ctx.RandColSelectionName(),
 		coin.IntegerVec,
@@ -606,7 +582,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 	// and registers the opened columns
 	numRows := utils.NextPowerOfTwo(ctx.CommittedRowsCount)
 	for col := 0; col < ctx.NbColsToOpen(); col++ {
-		openedCol := ctx.comp.InsertProof(
+		openedCol := ctx.Comp.InsertProof(
 			lastRound+2,
 			ctx.SelectedColName(col),
 			numRows,
@@ -618,7 +594,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 	// column that will contain the Merkle proofs altogether. But
 	// first, we need to evaluate its size. The proof size needs to
 	// be padded up to a power of two. Otherwise, we can't use PeriodicSampling.
-	ctx.Items.MerkleProofs = ctx.comp.InsertProof(
+	ctx.Items.MerkleProofs = ctx.Comp.InsertProof(
 		lastRound+2,
 		ifaces.ColID(ctx.MerkleProofName()),
 		ctx.MerkleProofSize(),
@@ -672,7 +648,7 @@ func (ctx *Ctx) IsSISAppliedToPrecomputed() bool {
 func (ctx *Ctx) processStatusPrecomputed() {
 
 	var (
-		comp = ctx.comp
+		comp = ctx.Comp
 	)
 
 	// This captures the precomputed column.  It is essential to do it this
@@ -760,7 +736,7 @@ func (ctx *Ctx) processStatusPrecomputed() {
 		ctx.ShadowCols[shadowCol.GetColID()] = struct{}{}
 		precomputedColNames = append(precomputedColNames, shadowCol.GetColID())
 		precomputedCols = append(precomputedCols, shadowCol)
-		ctx.comp.Columns.MarkAsIgnored(shadowCol.GetColID())
+		ctx.Comp.Columns.MarkAsIgnored(shadowCol.GetColID())
 	}
 
 	ctx.Items.Precomputeds.PrecomputedColums = precomputedCols
@@ -846,7 +822,7 @@ func (ctx *Ctx) commitPrecomputeds() {
 			pols[i] = smartvectors.NewConstant(field.Zero(), ctx.NumCols)
 			continue
 		}
-		pols[i] = ctx.comp.Precomputed.MustGet(precomputed.GetColID())
+		pols[i] = ctx.Comp.Precomputed.MustGet(precomputed.GetColID())
 	}
 
 	// Increase the number of committed rows
@@ -867,7 +843,7 @@ func (ctx *Ctx) commitPrecomputeds() {
 	// And assign the 1-sized column to contain the root
 	var root field.Element
 	root.SetBytes(tree.Root[:])
-	ctx.Items.Precomputeds.MerkleRoot = ctx.comp.RegisterVerifyingKey(ctx.PrecomputedMerkleRootName(), smartvectors.NewConstant(root, 1))
+	ctx.Items.Precomputeds.MerkleRoot = ctx.Comp.RegisterVerifyingKey(ctx.PrecomputedMerkleRootName(), smartvectors.NewConstant(root, 1))
 
 }
 
@@ -880,7 +856,7 @@ func (ctx *Ctx) startingRound() int {
 
 	startingRound := math.MaxInt
 	for _, p := range ctx.Query.Pols {
-		if ctx.comp.Precomputed.Exists(p.GetColID()) {
+		if ctx.Comp.Precomputed.Exists(p.GetColID()) {
 			continue
 		}
 
@@ -907,7 +883,7 @@ func (ctx *Ctx) commitmentsAtRoundFromQuery(round int) []ifaces.ColID {
 			continue
 		}
 
-		if ctx.comp.Precomputed.Exists(p.GetColID()) {
+		if ctx.Comp.Precomputed.Exists(p.GetColID()) {
 			continue
 		}
 
@@ -933,7 +909,7 @@ func (ctx *Ctx) commitmentsAtRoundFromQueryPrecomputed() []ifaces.ColID {
 
 	for _, p := range ctx.Query.Pols {
 
-		if !ctx.comp.Precomputed.Exists(p.GetColID()) {
+		if !ctx.Comp.Precomputed.Exists(p.GetColID()) {
 			continue
 		}
 

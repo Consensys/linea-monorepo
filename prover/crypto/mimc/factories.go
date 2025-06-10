@@ -42,9 +42,9 @@ type ExternalHasher struct {
 	state frontend.Variable
 }
 
-// externalHasherBuilder is an implementation of the [frontend.Builder]
+// ExternalHasherBuilder is an implementation of the [frontend.Builder]
 // interface.
-type externalHasherBuilder struct {
+type ExternalHasherBuilder struct {
 	storeCommitBuilder
 	// claimTriplets stores the tripled [oldState, block, newState]
 	claimTriplets [][3]frontend.Variable
@@ -177,7 +177,7 @@ func NewExternalHasherBuilder(addGateForHashCheck bool) (frontend.NewBuilder, fu
 			if !ok {
 				return nil, fmt.Errorf("native builder doesn't implement committer or kvstore")
 			}
-			return &externalHasherBuilder{
+			return &ExternalHasherBuilder{
 				storeCommitBuilder:  scb,
 				rcCols:              rcCols,
 				addGateForHashCheck: addGateForHashCheck,
@@ -188,13 +188,13 @@ func NewExternalHasherBuilder(addGateForHashCheck bool) (frontend.NewBuilder, fu
 }
 
 // CheckHashExternally tags a MiMC hasher claim in the circuit
-func (f *externalHasherBuilder) CheckHashExternally(oldState, block, newState frontend.Variable) {
+func (f *ExternalHasherBuilder) CheckHashExternally(oldState, block, newState frontend.Variable) {
 	f.claimTriplets = append(f.claimTriplets, [3]frontend.Variable{oldState, block, newState})
 }
 
 // Compile processes range checked variables and then calls Compile method of
 // the underlying builder.
-func (builder *externalHasherBuilder) Compile() (constraint.ConstraintSystem, error) {
+func (builder *ExternalHasherBuilder) Compile() (constraint.ConstraintSystem, error) {
 
 	// As [GetWireConstraints] requires a list of variables and can only be
 	// called once, we have to pack all the claims in a single slice and unpack
@@ -232,7 +232,7 @@ func (builder *externalHasherBuilder) Compile() (constraint.ConstraintSystem, er
 }
 
 // Compiler returns the compiler of the underlying builder.
-func (builder *externalHasherBuilder) Compiler() frontend.Compiler {
+func (builder *ExternalHasherBuilder) Compiler() frontend.Compiler {
 	return builder.storeCommitBuilder.Compiler()
 }
 

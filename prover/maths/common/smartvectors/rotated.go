@@ -222,9 +222,9 @@ func SoftRotate(v SmartVector, offset int) SmartVector {
 		return NewRotated(casted.v.Regular, utils.PositiveMod(offset+casted.offset, v.Len()))
 	case *PaddedCircularWindow:
 		return NewPaddedCircularWindow(
-			casted.window,
-			casted.paddingVal,
-			utils.PositiveMod(casted.offset+offset, casted.Len()),
+			casted.Window_,
+			casted.PaddingVal_,
+			utils.PositiveMod(casted.Offset_+offset, casted.Len()),
 			casted.Len(),
 		)
 	case *Constant:

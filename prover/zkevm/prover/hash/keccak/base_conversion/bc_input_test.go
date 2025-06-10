@@ -19,7 +19,7 @@ func makeTestCaseBaseConversionInput() (
 	prover wizard.MainProverStep,
 ) {
 	numBlocks := 15
-	b := &blockBaseConversion{}
+	b := &BlockBaseConversion{}
 	define = func(build *wizard.Builder) {
 		var (
 			comp      = build.CompiledIOP
@@ -52,7 +52,7 @@ func TestBaseConversionInput(t *testing.T) {
 	assert.NoErrorf(t, wizard.Verify(comp, proof), "invalid proof")
 }
 
-func (b *blockBaseConversion) assignInputs(run *wizard.ProverRuntime, numBlocks int) {
+func (b *BlockBaseConversion) assignInputs(run *wizard.ProverRuntime, numBlocks int) {
 	var (
 		lane              = common.NewVectorBuilder(b.Inputs.Lane)
 		isFirst           = common.NewVectorBuilder(b.Inputs.IsFirstLaneOfNewHash)

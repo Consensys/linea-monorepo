@@ -15,7 +15,7 @@ import (
 // It checks that the assignment of the hash column is consistent with the
 // LRO columns using a lookup and then it uses a MiMC query to enforce the
 // hash.
-func (ctx *CompilationCtx) addHashConstraint() {
+func (ctx *compilationCtx) addHashConstraint() {
 
 	var (
 		numRowLRO = ctx.DomainSize()
@@ -36,11 +36,11 @@ func (ctx *CompilationCtx) addHashConstraint() {
 	eho.PosOldState = ctx.comp.InsertPrecomputed(ctx.colIDf("HashCheckPositionOS"), posOsSv)
 	eho.PosBlock = ctx.comp.InsertPrecomputed(ctx.colIDf("HashCheckPositionBL"), posBlSv)
 	eho.PosNewState = ctx.comp.InsertPrecomputed(ctx.colIDf("HashCheckPositionNS"), posNsSv)
-	eho.OldStates = make([]ifaces.Column, ctx.maxNbInstances)
-	eho.Blocks = make([]ifaces.Column, ctx.maxNbInstances)
-	eho.NewStates = make([]ifaces.Column, ctx.maxNbInstances)
+	eho.OldStates = make([]ifaces.Column, ctx.MaxNbInstances)
+	eho.Blocks = make([]ifaces.Column, ctx.MaxNbInstances)
+	eho.NewStates = make([]ifaces.Column, ctx.MaxNbInstances)
 
-	for i := 0; i < ctx.maxNbInstances; i++ {
+	for i := 0; i < ctx.MaxNbInstances; i++ {
 
 		var (
 			selector = verifiercol.NewRepeatedAccessor(
@@ -119,7 +119,7 @@ func (ctx *CompilationCtx) addHashConstraint() {
 }
 
 // assignHashColumns assigns the hash c olumns.
-func (ctx *CompilationCtx) assignHashColumns(run *wizard.ProverRuntime) {
+func (ctx *GenericPlonkProverAction) assignHashColumns(run *wizard.ProverRuntime) {
 
 	var (
 		eho         = &ctx.ExternalHasherOption
@@ -129,7 +129,7 @@ func (ctx *CompilationCtx) assignHashColumns(run *wizard.ProverRuntime) {
 		sizeHashing = len(posOs)
 	)
 
-	for i := 0; i < ctx.maxNbInstances; i++ {
+	for i := 0; i < ctx.MaxNbInstances; i++ {
 
 		var (
 			src = []smartvectors.SmartVector{
@@ -167,10 +167,10 @@ func (ctx *CompilationCtx) assignHashColumns(run *wizard.ProverRuntime) {
 
 // getHashCheckedPositionSV returns the smartvectors containing the position
 // of the hash claims in the LRO columns.
-func (ctx *CompilationCtx) getHashCheckedPositionSV() (posOS, posBl, posNS smartvectors.SmartVector) {
+func (ctx *compilationCtx) getHashCheckedPositionSV() (posOS, posBl, posNS smartvectors.SmartVector) {
 
 	var (
-		sls         = ctx.Plonk.HashedGetter()
+		sls         = ctx.Plonk.hashedGetter()
 		size        = utils.NextPowerOfTwo(len(sls))
 		numRowPlonk = ctx.DomainSize()
 	)

@@ -15,41 +15,41 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-type subsampleProverAction struct {
-	large        []ifaces.Column
-	small        []ifaces.Column
-	accLarge     ifaces.Column
-	accSmall     ifaces.Column
-	accLargeLast ifaces.QueryID
-	accSmallLast ifaces.QueryID
-	gamma        coin.Info
-	alpha        coin.Info
-	lenSmall     int
-	period       int
-	offset       int
-	needGamma    bool
+type SubsampleProverAction struct {
+	Large        []ifaces.Column
+	Small        []ifaces.Column
+	AccLarge     ifaces.Column
+	AccSmall     ifaces.Column
+	AccLargeLast ifaces.QueryID
+	AccSmallLast ifaces.QueryID
+	Gamma        coin.Info
+	Alpha        coin.Info
+	LenSmall     int
+	Period       int
+	Offset       int
+	NeedGamma    bool
 }
 
-func (a *subsampleProverAction) Run(run *wizard.ProverRuntime) {
-	r := a.large[0].GetColAssignment(run)
-	if a.needGamma {
-		largeWit := make([]smartvectors.SmartVector, len(a.large))
+func (a *SubsampleProverAction) Run(run *wizard.ProverRuntime) {
+	r := a.Large[0].GetColAssignment(run)
+	if a.NeedGamma {
+		largeWit := make([]smartvectors.SmartVector, len(a.Large))
 		largeWit[0] = r
-		for i := 1; i < len(a.large); i++ {
-			largeWit[i] = a.large[i].GetColAssignment(run)
+		for i := 1; i < len(a.Large); i++ {
+			largeWit[i] = a.Large[i].GetColAssignment(run)
 		}
-		gamma := run.GetRandomCoinField(a.gamma.Name)
+		gamma := run.GetRandomCoinField(a.Gamma.Name)
 		r = smartvectors.PolyEval(largeWit, gamma)
 	}
 
 	prev := field.Zero()
-	accLargeWit := make([]field.Element, a.period*a.lenSmall)
-	alpha_ := run.GetRandomCoinField(a.alpha.Name)
+	accLargeWit := make([]field.Element, a.Period*a.LenSmall)
+	alpha_ := run.GetRandomCoinField(a.Alpha.Name)
 
-	for hashID := 0; hashID < a.lenSmall; hashID++ {
-		for i := 0; i < a.period; i++ {
-			pos := hashID*a.period + i
-			if i != a.offset {
+	for hashID := 0; hashID < a.LenSmall; hashID++ {
+		for i := 0; i < a.Period; i++ {
+			pos := hashID*a.Period + i
+			if i != a.Offset {
 				accLargeWit[pos] = prev
 				continue
 			}
@@ -60,51 +60,51 @@ func (a *subsampleProverAction) Run(run *wizard.ProverRuntime) {
 		}
 	}
 
-	run.AssignColumn(a.accLarge.GetColID(), smartvectors.NewRegular(accLargeWit))
-	run.AssignLocalPoint(a.accLargeLast, prev)
+	run.AssignColumn(a.AccLarge.GetColID(), smartvectors.NewRegular(accLargeWit))
+	run.AssignLocalPoint(a.AccLargeLast, prev)
 
-	rPrime := a.small[0].GetColAssignment(run)
-	if a.needGamma {
-		smallWit := make([]smartvectors.SmartVector, len(a.small))
+	rPrime := a.Small[0].GetColAssignment(run)
+	if a.NeedGamma {
+		smallWit := make([]smartvectors.SmartVector, len(a.Small))
 		smallWit[0] = rPrime
-		for i := 1; i < len(a.small); i++ {
-			smallWit[i] = a.small[i].GetColAssignment(run)
+		for i := 1; i < len(a.Small); i++ {
+			smallWit[i] = a.Small[i].GetColAssignment(run)
 		}
-		gamma := run.GetRandomCoinField(a.gamma.Name)
+		gamma := run.GetRandomCoinField(a.Gamma.Name)
 		rPrime = smartvectors.PolyEval(smallWit, gamma)
 	}
 
-	accSmallWit := make([]field.Element, a.lenSmall)
+	accSmallWit := make([]field.Element, a.LenSmall)
 	prev = field.Zero()
 
-	for hashID := 0; hashID < a.lenSmall; hashID++ {
+	for hashID := 0; hashID < a.LenSmall; hashID++ {
 		currExpectedHash := rPrime.Get(hashID)
 		accSmallWit[hashID].Mul(&alpha_, &prev)
 		accSmallWit[hashID].Add(&accSmallWit[hashID], &currExpectedHash)
 		prev = accSmallWit[hashID]
 	}
 
-	run.AssignColumn(a.accSmall.GetColID(), smartvectors.NewRegular(accSmallWit))
-	run.AssignLocalPoint(a.accSmallLast, prev)
+	run.AssignColumn(a.AccSmall.GetColID(), smartvectors.NewRegular(accSmallWit))
+	run.AssignLocalPoint(a.AccSmallLast, prev)
 }
 
-type subsampleVerifierAction struct {
-	accLargeLast ifaces.QueryID
-	accSmallLast ifaces.QueryID
+type SubsampleVerifierAction struct {
+	AccLargeLast ifaces.QueryID
+	AccSmallLast ifaces.QueryID
 }
 
-func (a *subsampleVerifierAction) Run(run wizard.Runtime) error {
-	resAccLast := run.GetLocalPointEvalParams(a.accLargeLast)
-	expectedResAccLast := run.GetLocalPointEvalParams(a.accSmallLast)
+func (a *SubsampleVerifierAction) Run(run wizard.Runtime) error {
+	resAccLast := run.GetLocalPointEvalParams(a.AccLargeLast)
+	expectedResAccLast := run.GetLocalPointEvalParams(a.AccSmallLast)
 	if resAccLast.Y != expectedResAccLast.Y {
 		return fmt.Errorf("linear hashing failed : the ResAcc and ExpectedResAcc do not match on their last inputs %v, %v", resAccLast.Y.String(), expectedResAccLast.Y.String())
 	}
 	return nil
 }
 
-func (a *subsampleVerifierAction) RunGnark(frontend frontend.API, run wizard.GnarkRuntime) {
-	resAccLast := run.GetLocalPointEvalParams(a.accLargeLast)
-	expectedResAccLast := run.GetLocalPointEvalParams(a.accSmallLast)
+func (a *SubsampleVerifierAction) RunGnark(frontend frontend.API, run wizard.GnarkRuntime) {
+	resAccLast := run.GetLocalPointEvalParams(a.AccLargeLast)
+	expectedResAccLast := run.GetLocalPointEvalParams(a.AccSmallLast)
 	frontend.AssertIsEqual(resAccLast.Y, expectedResAccLast.Y)
 }
 
@@ -251,23 +251,23 @@ func CheckSubsample(comp *wizard.CompiledIOP, name string, large, small []ifaces
 	)
 
 	// And assign them
-	comp.RegisterProverAction(round+1, &subsampleProverAction{
-		large:        large,
-		small:        small,
-		accLarge:     accLarge,
-		accSmall:     accSmall,
-		accLargeLast: accLargeLast.ID,
-		accSmallLast: accSmallLast.ID,
-		gamma:        gamma,
-		alpha:        alpha,
-		lenSmall:     lenSmall,
-		period:       period,
-		offset:       offset,
-		needGamma:    needGamma,
+	comp.RegisterProverAction(round+1, &SubsampleProverAction{
+		Large:        large,
+		Small:        small,
+		AccLarge:     accLarge,
+		AccSmall:     accSmall,
+		AccLargeLast: accLargeLast.ID,
+		AccSmallLast: accSmallLast.ID,
+		Gamma:        gamma,
+		Alpha:        alpha,
+		LenSmall:     lenSmall,
+		Period:       period,
+		Offset:       offset,
+		NeedGamma:    needGamma,
 	})
 
-	comp.RegisterVerifierAction(round+1, &subsampleVerifierAction{
-		accLargeLast: accLargeLast.ID,
-		accSmallLast: accSmallLast.ID,
+	comp.RegisterVerifierAction(round+1, &SubsampleVerifierAction{
+		AccLargeLast: accLargeLast.ID,
+		AccSmallLast: accSmallLast.ID,
 	})
 }

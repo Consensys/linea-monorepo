@@ -19,7 +19,7 @@ import (
 // arithmetization.
 type arithmetizationLink struct {
 	Acp, Scp    HubColumnSet
-	scpSelector scpSelector
+	ScpSelector scpSelector
 }
 
 // ConnectToHub generates all the constraints attesting that the state-summary
@@ -29,23 +29,23 @@ func (ss *Module) ConnectToHub(comp *wizard.CompiledIOP, acp, scp HubColumnSet) 
 	al := &arithmetizationLink{
 		Acp:         acp,
 		Scp:         scp,
-		scpSelector: newScpSelector(comp, scp),
+		ScpSelector: newScpSelector(comp, scp),
 	}
 
-	storageIntegrationDefineInitial(comp, *ss, scp, al.scpSelector)
-	storageIntegrationDefineFinal(comp, *ss, scp, al.scpSelector)
+	storageIntegrationDefineInitial(comp, *ss, scp, al.ScpSelector)
+	storageIntegrationDefineFinal(comp, *ss, scp, al.ScpSelector)
 	accountIntegrationDefineInitial(comp, *ss, acp)
 	accountIntegrationDefineFinal(comp, *ss, acp)
 
-	ss.arithmetizationLink = al
+	ss.ArithmetizationLink = al
 }
 
 func (ss *Module) assignArithmetizationLink(run *wizard.ProverRuntime) {
 
-	storageIntegrationAssignInitial(run, *ss, ss.arithmetizationLink.Scp)
-	storageIntegrationAssignFinal(run, *ss, ss.arithmetizationLink.Scp)
-	accountIntegrationAssignInitial(run, *ss, ss.arithmetizationLink.Acp)
-	accountIntegrationAssignFinal(run, *ss, ss.arithmetizationLink.Acp)
+	storageIntegrationAssignInitial(run, *ss, ss.ArithmetizationLink.Scp)
+	storageIntegrationAssignFinal(run, *ss, ss.ArithmetizationLink.Scp)
+	accountIntegrationAssignInitial(run, *ss, ss.ArithmetizationLink.Acp)
+	accountIntegrationAssignFinal(run, *ss, ss.ArithmetizationLink.Acp)
 
 	// @alex: this should be commonized utility or should be simplified to not
 	// use a closure because the closure is used only once.
@@ -63,15 +63,15 @@ func (ss *Module) assignArithmetizationLink(run *wizard.ProverRuntime) {
 	}
 
 	runConcurrent([]wizard.ProverAction{
-		ss.arithmetizationLink.scpSelector.ComputeSelectorMinDeplBlock,
-		ss.arithmetizationLink.scpSelector.ComputeSelectorMaxDeplBlock,
-		ss.arithmetizationLink.scpSelector.ComputeSelectorEmptySTValueHi,
-		ss.arithmetizationLink.scpSelector.ComputeSelectorEmptySTValueLo,
-		ss.arithmetizationLink.scpSelector.ComputeSelectorEmptySTValueNextHi,
-		ss.arithmetizationLink.scpSelector.ComputeSelectorEmptySTValueNextLo,
-		ss.arithmetizationLink.scpSelector.ComputeSelectorSTKeyDiffHi,
-		ss.arithmetizationLink.scpSelector.ComputeSelectorSTKeyDiffLo,
-		ss.arithmetizationLink.scpSelector.ComputeSelectorBlockNoDiff,
+		ss.ArithmetizationLink.ScpSelector.ComputeSelectorMinDeplBlock,
+		ss.ArithmetizationLink.ScpSelector.ComputeSelectorMaxDeplBlock,
+		ss.ArithmetizationLink.ScpSelector.ComputeSelectorEmptySTValueHi,
+		ss.ArithmetizationLink.ScpSelector.ComputeSelectorEmptySTValueLo,
+		ss.ArithmetizationLink.ScpSelector.ComputeSelectorEmptySTValueNextHi,
+		ss.ArithmetizationLink.ScpSelector.ComputeSelectorEmptySTValueNextLo,
+		ss.ArithmetizationLink.ScpSelector.ComputeSelectorSTKeyDiffHi,
+		ss.ArithmetizationLink.ScpSelector.ComputeSelectorSTKeyDiffLo,
+		ss.ArithmetizationLink.ScpSelector.ComputeSelectorBlockNoDiff,
 	})
 
 }
