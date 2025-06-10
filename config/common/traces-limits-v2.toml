@@ -33,11 +33,11 @@ TRM                 = 32768
 TXN_DATA            = 8192
 WCP                 = 262144
 #
-# Reference table limits, set to UInt.MAX_VALUE
+# Reference table limits, set to Integer.MAX_VALUE
 #
-BIN_REFERENCE_TABLE = 4294967295
-SHF_REFERENCE_TABLE = 4294967295
-INSTRUCTION_DECODER = 4294967295
+BIN_REFERENCE_TABLE = 2147483647
+SHF_REFERENCE_TABLE = 2147483647
+INSTRUCTION_DECODER = 2147483647
 #
 # Precompiles limits
 #
