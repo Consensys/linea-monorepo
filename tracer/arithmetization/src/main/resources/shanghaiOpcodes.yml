@@ -418,7 +418,7 @@ opcodes:
       alpha: 1
       delta: 0
       staticGas: G_BASE
-  - mnemonic: DIFFICULTY
+  - mnemonic: PREVRANDAO
     value: 0x44
     instructionFamily: BATCH
     stackSettings:

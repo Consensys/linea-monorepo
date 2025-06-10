@@ -38,46 +38,44 @@ class ExceptionsTest extends TracerTestBase {
   @EnumSource(OpCode.class)
   void notStaticContextNoFault(OpCode opCode) {
     loadOpcodes(LONDON);
-    try {
-      // Creating a frame object which simulates a non-static frame.
-      MessageFrame frame = Mockito.mock(MessageFrame.class);
-      Mockito.when(frame.isStatic()).thenReturn(false);
-      Assertions.assertFalse(Exceptions.isStaticFault(frame, OpCodes.of(opCode)));
-    } catch (Exception exception) {
-      checkArgument(exception.toString().contains("No OpCode of mnemonic PUSH0 is defined."));
+    if (opCode.isNotInLondon()) {
+      return;
     }
+    // Creating a frame object which simulates a non-static frame.
+    MessageFrame frame = Mockito.mock(MessageFrame.class);
+    Mockito.when(frame.isStatic()).thenReturn(false);
+    Assertions.assertFalse(Exceptions.isStaticFault(frame, OpCodes.of(opCode)));
   }
 
   @ParameterizedTest
   @EnumSource(OpCode.class)
   void staticContextNoFaultOnCall(OpCode opCode) {
     loadOpcodes(LONDON);
-    try {
-      // Creating a frame object which simulates a static frame with stack size of 7
-      // and with the second item in the stack representing 0.
-      MessageFrame frame = Mockito.mock(MessageFrame.class);
-      // when isStatic is called on the mocked frame object, return true
-      Mockito.when(frame.isStatic()).thenReturn(true);
-      // when stackSize is called on the mocked frame object, return 7
-      Mockito.when(frame.stackSize()).thenReturn(7);
-      // when retrieving the second item of the stack, get bytes representing 0
-      Mockito.when(frame.getStackItem(2)).thenReturn(Bytes.ofUnsignedShort(0));
-      Assertions.assertEquals(
-          Set.of(
-                  OpCode.SSTORE,
-                  OpCode.LOG0,
-                  OpCode.LOG1,
-                  OpCode.LOG2,
-                  OpCode.LOG3,
-                  OpCode.LOG4,
-                  OpCode.CREATE,
-                  OpCode.CREATE2,
-                  OpCode.SELFDESTRUCT)
-              .contains(opCode),
-          Exceptions.isStaticFault(frame, OpCodes.of(opCode)));
-    } catch (Exception exception) {
-      checkArgument(exception.toString().contains("No OpCode of mnemonic PUSH0 is defined."));
+    if (opCode.isNotInLondon()) {
+      return;
     }
+    // Creating a frame object which simulates a static frame with stack size of 7
+    // and with the second item in the stack representing 0.
+    MessageFrame frame = Mockito.mock(MessageFrame.class);
+    // when isStatic is called on the mocked frame object, return true
+    Mockito.when(frame.isStatic()).thenReturn(true);
+    // when stackSize is called on the mocked frame object, return 7
+    Mockito.when(frame.stackSize()).thenReturn(7);
+    // when retrieving the second item of the stack, get bytes representing 0
+    Mockito.when(frame.getStackItem(2)).thenReturn(Bytes.ofUnsignedShort(0));
+    Assertions.assertEquals(
+        Set.of(
+                OpCode.SSTORE,
+                OpCode.LOG0,
+                OpCode.LOG1,
+                OpCode.LOG2,
+                OpCode.LOG3,
+                OpCode.LOG4,
+                OpCode.CREATE,
+                OpCode.CREATE2,
+                OpCode.SELFDESTRUCT)
+            .contains(opCode),
+        Exceptions.isStaticFault(frame, OpCodes.of(opCode)));
   }
 
   @ParameterizedTest
@@ -85,7 +83,7 @@ class ExceptionsTest extends TracerTestBase {
   void staticContextFaultOnCall(OpCode opCode) {
     loadOpcodes(LONDON);
     try {
-      if (opCode.isPushZero()) {
+      if (opCode.isNotInLondon()) {
         return;
       }
       // Creating a frame object which simulates a static frame with stack size of 7

@@ -15,27 +15,32 @@
 
 package net.consensys.linea.zktracer.module.blockdata.module;
 
-import static net.consensys.linea.zktracer.TraceLondon.Blockdata.*;
+import static net.consensys.linea.zktracer.TraceCancun.Blockdata.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
+import static net.consensys.linea.zktracer.opcode.OpCode.BASEFEE;
+import static net.consensys.linea.zktracer.opcode.OpCode.CHAINID;
+import static net.consensys.linea.zktracer.opcode.OpCode.GASLIMIT;
+import static net.consensys.linea.zktracer.opcode.OpCode.PREVRANDAO;
 
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.module.blockdata.moduleOperation.BlockdataOperation;
-import net.consensys.linea.zktracer.module.blockdata.moduleOperation.LondonBlockDataOperation;
+import net.consensys.linea.zktracer.module.blockdata.moduleOperation.CancunBlockDataOperation;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
-public class LondonBlockData extends Blockdata {
-
-  public LondonBlockData(Hub hub, Wcp wcp, Euc euc, ChainConfig chain) {
+public class CancunBlockData extends ParisBlockData {
+  public CancunBlockData(Hub hub, Wcp wcp, Euc euc, ChainConfig chain) {
     super(hub, wcp, euc, chain);
   }
 
   @Override
   protected OpCode[] setOpCodes() {
-    return new OpCode[] {COINBASE, TIMESTAMP, NUMBER, DIFFICULTY, GASLIMIT, CHAINID, BASEFEE};
+    return new OpCode[] {
+      COINBASE, TIMESTAMP, NUMBER, PREVRANDAO, GASLIMIT, CHAINID, BASEFEE, BLOBBASEFEE
+    };
   }
 
   @Override
@@ -54,7 +59,7 @@ public class LondonBlockData extends Blockdata {
       ChainConfig chain,
       OpCode opCode,
       long firstBlockNumber) {
-    return new LondonBlockDataOperation(
+    return new CancunBlockDataOperation(
         hub,
         blockHeader,
         previousBlockHeader,

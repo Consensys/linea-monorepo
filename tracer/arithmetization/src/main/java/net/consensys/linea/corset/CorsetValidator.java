@@ -172,7 +172,7 @@ public class CorsetValidator extends AbstractExecutable {
     final int fork =
         switch (chain.fork) {
           case LONDON -> EVM_LONDON;
-            // case PARIS -> EVM_PARIS;
+          case PARIS -> EVM_PARIS;
           case SHANGHAI -> EVM_SHANGHAI;
           case CANCUN -> EVM_CANCUN;
           case PRAGUE -> EVM_PRAGUE;

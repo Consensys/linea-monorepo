@@ -402,6 +402,7 @@ opcodes:
       alpha: 1
       delta: 0
       staticGas: G_BASE
+      flag2: true
   - mnemonic: TIMESTAMP
     value: 0x42
     instructionFamily: BATCH
@@ -410,6 +411,7 @@ opcodes:
       alpha: 1
       delta: 0
       staticGas: G_BASE
+      flag2: true
   - mnemonic: NUMBER
     value: 0x43
     instructionFamily: BATCH
@@ -418,6 +420,7 @@ opcodes:
       alpha: 1
       delta: 0
       staticGas: G_BASE
+      flag2: true
   - mnemonic: PREVRANDAO
     value: 0x44
     instructionFamily: BATCH
@@ -426,6 +429,7 @@ opcodes:
       alpha: 1
       delta: 0
       staticGas: G_BASE
+      flag2: true
   - mnemonic: GASLIMIT
     value: 0x45
     instructionFamily: BATCH
@@ -434,6 +438,7 @@ opcodes:
       alpha: 1
       delta: 0
       staticGas: G_BASE
+      flag2: true
   - mnemonic: CHAINID
     value: 0x46
     instructionFamily: BATCH
@@ -442,6 +447,7 @@ opcodes:
       alpha: 1
       delta: 0
       staticGas: G_BASE
+      flag2: true
   - mnemonic: SELFBALANCE
     value: 0x47
     instructionFamily: ACCOUNT
@@ -458,6 +464,25 @@ opcodes:
       alpha: 1
       delta: 0
       staticGas: G_BASE
+      flag2: true
+  - mnemonic: BLOBHASH
+    value: 0x49
+    instructionFamily: BATCH
+    stackSettings:
+      pattern: ONE_ONE
+      alpha: 1
+      delta: 1
+      staticGas: G_VERY_LOW
+      flag3: true
+  - mnemonic: BLOBBASEFEE
+    value: 0x4a
+    instructionFamily: BATCH
+    stackSettings:
+      pattern: ZERO_ONE
+      alpha: 1
+      delta: 0
+      staticGas: G_BASE
+      flag2: true
   - mnemonic: POP
     value: 0x50
     instructionFamily: PUSH_POP
@@ -579,6 +604,15 @@ opcodes:
       delta: 0
       staticGas: G_JUMP_DEST
       flag4: true
+  - mnemonic: PUSH0
+    value: 0x5f
+    instructionFamily: PUSH_POP
+    stackSettings:
+      pattern: ZERO_ONE
+      alpha: 1
+      delta: 0
+      staticGas: G_BASE
+      flag3: true
   - mnemonic: PUSH1
     value: 0x60
     instructionFamily: PUSH_POP
@@ -1209,9 +1243,9 @@ opcodes:
       forbiddenInStatic: true
       flag1: true
     billing:
-      byMxp:
+      byWord:
         type: TYPE_4
-        wordPrice: G_KECCAK_256_WORD
+        wordPrice: G_CONST_INIT_CODE_WORD
   - mnemonic: CALL
     value: 0xf1
     instructionFamily: CALL
@@ -1279,7 +1313,7 @@ opcodes:
     billing:
       byWord:
         type: TYPE_4
-        wordPrice: G_KECCAK_256_WORD
+        wordPrice: G_CONST_INIT_CODE_WORD_CREATE2
   - mnemonic: STATICCALL
     value: 0xfa
     instructionFamily: CALL
