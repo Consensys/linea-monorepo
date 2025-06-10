@@ -5,7 +5,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/algebra/emulated/sw_bls12381"
-	"github.com/consensys/gnark/std/algebra/emulated/sw_emulated"
+	"github.com/consensys/gnark/std/evmprecompiles"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -126,50 +126,29 @@ func (c *MultiMulCircuit[C, T]) Define(api frontend.API) error {
 		return fmt.Errorf("new field: %w", err)
 	}
 	nbInstances := len(c.Instances)
-	Cs, Ps, Ns := make([]T, nbInstances), make([]T, nbInstances), make([]T, nbInstances)
-	// TODO: move this part into the main loop below. Then we don't need to type assert
-	for i := range c.Instances {
-		Cs[i] = c.Instances[i].CurrentAccumulator.ToElement(api, f)
-		Ps[i] = c.Instances[i].Point.ToElement(api, f)
-		Ns[i] = c.Instances[i].NextAccumulator.ToElement(api, f)
-	}
-	var t T
-	switch any(t).(type) {
-	case sw_bls12381.G1Affine:
-		g1, err := sw_bls12381.NewG1(api)
-		if err != nil {
-			return fmt.Errorf("new G1: %w", err)
-		}
-		curve, err := sw_emulated.New[sw_bls12381.BaseField, sw_bls12381.ScalarField](api, sw_emulated.GetBLS12381Params())
-		if err != nil {
-			return fmt.Errorf("new curve curve: %w", err)
-		}
+	switch vv := any(c.Instances).(type) {
+	case []MulInstance[g1ElementWizard, sw_bls12381.G1Affine]:
 		for i := 0; i < nbInstances; i++ {
-			tCsi := any(&Cs[i]).(*sw_bls12381.G1Affine)
-			tPsi := any(&Ps[i]).(*sw_bls12381.G1Affine)
-			tNsi := any(&Ns[i]).(*sw_bls12381.G1Affine)
-			// we only assert that the given inputs is on the curve. As we work
-			// in the MSM context, then the Current and Next accumulators are always on G1.
-			g1.AssertIsOnG1(tPsi)
-			res := curve.ScalarMul(tPsi, &c.Instances[i].Scalar)
-			accumulated := curve.AddUnified(tCsi, res)
-			curve.AssertIsEqual(accumulated, tNsi)
+			tCurrent := vv[i].CurrentAccumulator.ToElement(api, f)
+			tScalar := &c.Instances[i].Scalar
+			tPoint := vv[i].Point.ToElement(api, f)
+			tNext := vv[i].NextAccumulator.ToElement(api, f)
+			if err := evmprecompiles.ECG1ScalarMulSumBLS(api, &tCurrent, &tPoint, tScalar, &tNext); err != nil {
+				return fmt.Errorf("instance %d scalar mul sum: %w", i, err)
+			}
 		}
-	case sw_bls12381.G2Affine:
-		g2 := sw_bls12381.NewG2(api)
+	case []MulInstance[g2ElementWizard, sw_bls12381.G2Affine]:
 		for i := 0; i < nbInstances; i++ {
-			tCsi := any(&Cs[i]).(*sw_bls12381.G2Affine)
-			tPsi := any(&Ps[i]).(*sw_bls12381.G2Affine)
-			tNsi := any(&Ns[i]).(*sw_bls12381.G2Affine)
-			// we only assert that the given inputs is on the twist. As we work
-			// in the MSM context, then the Current and Next accumulators are always on G2.
-			g2.AssertIsOnG2(tPsi)
-			res := g2.ScalarMul(tPsi, &c.Instances[i].Scalar)
-			accumulated := g2.AddUnified(tCsi, res)
-			g2.AssertIsEqual(accumulated, tNsi)
+			tCurrent := vv[i].CurrentAccumulator.ToElement(api, f)
+			tScalar := &c.Instances[i].Scalar
+			tPoint := vv[i].Point.ToElement(api, f)
+			tNext := vv[i].NextAccumulator.ToElement(api, f)
+			if err := evmprecompiles.ECG2ScalarMulSumBLS(api, &tCurrent, &tPoint, tScalar, &tNext); err != nil {
+				return fmt.Errorf("instance %d scalar mul sum: %w", i, err)
+			}
 		}
 	default:
-		return fmt.Errorf("unknown group %T for bls msm circuit", t)
+		return fmt.Errorf("unknown group %T for bls msm circuit", vv)
 	}
 	return nil
 }

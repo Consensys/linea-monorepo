@@ -49,7 +49,7 @@ func (c *MillerLoopMulInstance) Check(api frontend.API, fp *emulated.Field[sw_bl
 	q := c.Q.ToElement(api, fp)
 	current := c.Current.ToElement(api, fp)
 
-	return evmprecompiles.ECPairBLSMillerLoopAndMul(api, prev, p, q, current)
+	return evmprecompiles.ECPairBLSMillerLoopAndMul(api, &prev, &p, &q, &current)
 }
 
 type MultiMillerLoopFinalExpCircuit struct {
@@ -92,5 +92,5 @@ func (c *MillerLoopFinalExpInstance) Check(api frontend.API, fp *emulated.Field[
 	q := c.Q.ToElement(api, fp)
 
 	api.AssertIsEqual(c.Expected[0], 0)
-	return evmprecompiles.ECPairBLSMillerLoopAndFinalExpCheck(api, prev, p, q, c.Expected[1])
+	return evmprecompiles.ECPairBLSMillerLoopAndFinalExpCheck(api, &prev, &p, &q, c.Expected[1])
 }

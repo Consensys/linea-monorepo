@@ -5,7 +5,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/algebra/emulated/sw_bls12381"
-	"github.com/consensys/gnark/std/algebra/emulated/sw_emulated"
+	"github.com/consensys/gnark/std/evmprecompiles"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -125,44 +125,23 @@ func (c *MultiAddCircuit[C, T]) Define(api frontend.API) error {
 		return fmt.Errorf("new field: %w", err)
 	}
 	nbInstances := len(c.Instances)
-	As, Bs, Rs := make([]T, nbInstances), make([]T, nbInstances), make([]T, nbInstances)
-	// TODO: move this part into the main loop below. Then we don't need to type assert
-	for i := range c.Instances {
-		As[i] = c.Instances[i].InputLeft.ToElement(api, f)
-		Bs[i] = c.Instances[i].InputRight.ToElement(api, f)
-		Rs[i] = c.Instances[i].Res.ToElement(api, f)
-	}
-	var t T
-	switch any(t).(type) {
-	case sw_bls12381.G1Affine:
-		// TODO: update evmprecompiles to take the result as input and then use that
-		curve, err := sw_emulated.New[emulated.BLS12381Fp, emulated.BLS12381Fr](api, sw_emulated.GetBLS12381Params())
-		if err != nil {
-			return fmt.Errorf("get curve: %w", err)
-		}
+	switch vv := any(c.Instances).(type) {
+	case []AddInstance[g1ElementWizard, sw_bls12381.G1Affine]:
 		for i := 0; i < nbInstances; i++ {
-			tAsi := any(&As[i]).(*sw_bls12381.G1Affine)
-			tBsi := any(&Bs[i]).(*sw_bls12381.G1Affine)
-			tRsi := any(&Rs[i]).(*sw_bls12381.G1Affine)
-			curve.AssertIsOnCurve(tAsi)
-			curve.AssertIsOnCurve(tBsi)
-			res := curve.AddUnified(any(&As[i]).(*sw_bls12381.G1Affine), any(&Bs[i]).(*sw_bls12381.G1Affine))
-			curve.AssertIsEqual(res, tRsi)
+			left := vv[i].InputLeft.ToElement(api, f)
+			right := vv[i].InputRight.ToElement(api, f)
+			expected := vv[i].Res.ToElement(api, f)
+			evmprecompiles.ECAddG1BLS(api, &left, &right, &expected)
 		}
-	case sw_bls12381.G2Affine:
-		// TODO: update evmprecompiles to take the result as input and then use that
-		g2 := sw_bls12381.NewG2(api)
+	case []AddInstance[g2ElementWizard, sw_bls12381.G2Affine]:
 		for i := 0; i < nbInstances; i++ {
-			tAsi := any(&As[i]).(*sw_bls12381.G2Affine)
-			tBsi := any(&Bs[i]).(*sw_bls12381.G2Affine)
-			tRsi := any(&Rs[i]).(*sw_bls12381.G2Affine)
-			g2.AssertIsOnTwist(tAsi)
-			g2.AssertIsOnTwist(tBsi)
-			res := g2.AddUnified(tAsi, tBsi)
-			g2.AssertIsEqual(res, tRsi)
+			left := vv[i].InputLeft.ToElement(api, f)
+			right := vv[i].InputRight.ToElement(api, f)
+			expected := vv[i].Res.ToElement(api, f)
+			evmprecompiles.ECAddG2BLS(api, &left, &right, &expected)
 		}
 	default:
-		return fmt.Errorf("unknown element type %T for bls add circuit", t)
+		return fmt.Errorf("unknown element type %T for bls add circuit", vv)
 	}
 
 	return nil

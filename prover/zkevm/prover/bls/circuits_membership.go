@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/algebra/emulated/sw_bls12381"
+	"github.com/consensys/gnark/std/evmprecompiles"
 	"github.com/consensys/gnark/std/math/emulated"
 )
 
@@ -21,7 +22,6 @@ func (c C1IsOnCurveInstance) Check(api frontend.API, fp *emulated.Field[sw_bls12
 	P := c.P.ToElement(api, fp)
 	res := pairing.IsOnCurve(&P)
 	api.AssertIsEqual(res, c.IsSuccess)
-
 	return nil
 }
 
@@ -34,8 +34,7 @@ type G1NonMembershipInstance struct {
 
 func (c G1NonMembershipInstance) Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error {
 	P := c.P.ToElement(api, fp)
-	pairing.AssertIsNotOnG1(&P)
-	return nil
+	return evmprecompiles.ECPairBLSIsOnG1(api, &P, 0) // 0 means we expect it to be not on G1
 }
 
 // -- checks for being on twist
@@ -49,9 +48,8 @@ type C2IsOnCurveInstance struct {
 
 func (c C2IsOnCurveInstance) Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error {
 	Q := c.Q.ToElement(api, fp)
-	res := pairing.IsOnG2(&Q)
+	res := pairing.IsOnTwist(&Q)
 	api.AssertIsEqual(res, c.IsSuccess)
-
 	return nil
 }
 
@@ -65,8 +63,7 @@ type G2NonMembershipInstance struct {
 
 func (c G2NonMembershipInstance) Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error {
 	Q := c.Q.ToElement(api, fp)
-	pairing.AssertIsNotOnG2(&Q)
-	return nil
+	return evmprecompiles.ECPairBLSIsOnG2(api, &Q, 0) // 0 means we expect it to be not on G2
 }
 
 // -- circuit which performs multiple checks

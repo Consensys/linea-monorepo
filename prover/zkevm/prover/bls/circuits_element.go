@@ -29,14 +29,12 @@ type scalarElementWizard struct {
 	S [nbFpLimbs]frontend.Variable
 }
 
-func (c scalarElementWizard) ToElement(api frontend.API) sw_bls12381.Scalar {
+func (c scalarElementWizard) ToElement(api frontend.API, fr *emulated.Field[sw_bls12381.ScalarField]) sw_bls12381.Scalar {
 	// gnark represents the BLS12-381 Fp element on 2 limbs of 128 bits.
 	// Arithmetization uses 2 limbs of 128 bits, but the MSB limb is always 0.
 	Slimbs := make([]frontend.Variable, fpParams.NbLimbs())
 	Slimbs[len(Slimbs)-2], Slimbs[len(Slimbs)-1] = bitslice.Partition(api, c.S[1], 64, bitslice.WithNbDigits(128))
-	return sw_bls12381.Scalar{
-		A0: *fpParams.NewElement(Slimbs),
-	}
+	return *fr.NewElement(Slimbs)
 }
 
 type g1ElementWizard struct {
