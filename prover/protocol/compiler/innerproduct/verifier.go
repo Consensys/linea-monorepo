@@ -34,7 +34,7 @@ func (v *verifierForSize) Run(run wizard.Runtime) error {
 		expected field.Element
 		// actual stores the opening value of the last entry of Summation. The
 		// verifier checks the equality between it and `expected`.
-		actual = run.GetLocalPointEvalParams(v.SummationOpening.ID).Y
+		actual = run.GetLocalPointEvalParams(v.SummationOpening.ID).BaseY
 	)
 
 	for _, q := range v.Queries {
@@ -69,7 +69,7 @@ func (v *verifierForSize) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		expected frontend.Variable
 		// actual stores the opening value of the last entry of Summation. The
 		// verifier checks the equality between it and `expected`.
-		actual = run.GetLocalPointEvalParams(v.SummationOpening.ID).Y
+		actual = run.GetLocalPointEvalParams(v.SummationOpening.ID).BaseY
 	)
 
 	for _, q := range v.Queries {

@@ -367,7 +367,8 @@ func TryReduceSize(v SmartVector) (new SmartVector, totalSaving int) {
 		}
 
 		return v, 0
-
+	case *RegularExt:
+		return v, 0
 	default:
 		panic(fmt.Sprintf("unexpected type %T", v))
 	}

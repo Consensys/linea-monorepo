@@ -276,3 +276,11 @@ func (e *GenericFieldElem) SetInt64(v int64) *GenericFieldElem {
 	e.isBase = true
 	return e
 }
+
+func (e *GenericFieldElem) Text(base int) string {
+	if e.isBase {
+		return e.base.Text(base)
+	} else {
+		return e.ext.Text(base)
+	}
+}

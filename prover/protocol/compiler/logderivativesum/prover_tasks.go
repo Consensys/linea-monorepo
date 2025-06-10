@@ -1,6 +1,8 @@
 package logderivativesum
 
 import (
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"runtime/debug"
 	"sync"
 
@@ -333,29 +335,57 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 
 			var (
 				numeratorMetadata = z.ZNumeratorBoarded[frag].ListVariableMetadata()
-				denominator       = column.EvalExprColumn(run, z.ZDenominatorBoarded[frag]).IntoRegVecSaveAlloc()
-				numerator         []field.Element
-				packedZ           = field.BatchInvert(denominator)
 			)
 
-			if len(numeratorMetadata) == 0 {
-				numerator = vector.Repeat(field.One(), z.Size)
-			}
-
-			if len(numeratorMetadata) > 0 {
-				evalResult := column.EvalExprColumn(run, z.ZNumeratorBoarded[frag])
-				numerator, _ = evalResult.IntoRegVecSaveAllocBase()
-			}
-
-			for k := range packedZ {
-				packedZ[k].Mul(&numerator[k], &packedZ[k])
-				if k > 0 {
-					packedZ[k].Add(&packedZ[k], &packedZ[k-1])
+			svDenominator := column.EvalExprColumn(run, z.ZDenominatorBoarded[frag])
+			if sv.IsBase(svDenominator) {
+				var numerator []field.Element
+				denominator := svDenominator.IntoRegVecSaveAlloc()
+				packedZ := field.BatchInvert(denominator)
+				if len(numeratorMetadata) == 0 {
+					numerator = vector.Repeat(field.One(), z.Size)
 				}
+
+				if len(numeratorMetadata) > 0 {
+					evalResult := column.EvalExprColumn(run, z.ZNumeratorBoarded[frag])
+					numerator, _ = evalResult.IntoRegVecSaveAllocBase()
+				}
+
+				for k := range packedZ {
+					packedZ[k].Mul(&numerator[k], &packedZ[k])
+					if k > 0 {
+						packedZ[k].Add(&packedZ[k], &packedZ[k-1])
+					}
+				}
+
+				run.AssignColumn(z.Zs[frag].GetColID(), sv.NewRegular(packedZ))
+				run.AssignLocalPoint(z.ZOpenings[frag].ID, packedZ[len(packedZ)-1])
+			} else {
+				// we are dealing with extension denominators
+				var numerator []fext.Element
+				denominator := svDenominator.IntoRegVecSaveAllocExt()
+				packedZ := fext.BatchInvert(denominator)
+				if len(numeratorMetadata) == 0 {
+					numerator = vectorext.Repeat(fext.One(), z.Size)
+				}
+
+				if len(numeratorMetadata) > 0 {
+					evalResult := column.EvalExprColumn(run, z.ZNumeratorBoarded[frag])
+					numerator = evalResult.IntoRegVecSaveAllocExt()
+				}
+
+				for k := range packedZ {
+					packedZ[k].Mul(&packedZ[k], &numerator[k])
+					if k > 0 {
+						packedZ[k].Add(&packedZ[k], &packedZ[k-1])
+					}
+				}
+
+				run.AssignColumn(z.Zs[frag].GetColID(), sv.NewRegularExt(packedZ))
+				run.AssignLocalPointExt(z.ZOpenings[frag].ID, packedZ[len(packedZ)-1])
 			}
 
-			run.AssignColumn(z.Zs[frag].GetColID(), sv.NewRegular(packedZ))
-			run.AssignLocalPoint(z.ZOpenings[frag].ID, packedZ[len(packedZ)-1])
 		}
-	})
+	}) // end parallel execution
+
 }

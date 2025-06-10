@@ -846,6 +846,20 @@ func (run *ProverRuntime) AssignLocalPoint(name ifaces.QueryID, y field.Element)
 	run.QueriesParams.InsertNew(name, params)
 }
 
+func (run *ProverRuntime) AssignLocalPointExt(name ifaces.QueryID, y fext.Element) {
+
+	// Global prover locks for accessing the maps
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	// Make sure, it is done at the right round
+	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
+
+	// Adds it to the assignments
+	params := query.NewLocalOpeningParamsExt(y)
+	run.QueriesParams.InsertNew(name, params)
+}
+
 // GetLocalPointEval gets the metadata of a [query.LocalOpening] query. Panic if not found.
 // Deprecated, use `comp.Spec.GetLocalPointEval` instead since it does exactly
 // the same thing.

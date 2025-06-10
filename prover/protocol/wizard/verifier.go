@@ -201,7 +201,7 @@ func (proof Proof) GetPublicInput(comp *CompiledIOP, name string) field.Element 
 			return proof.Messages.MustGet(a.Col.ID).Get(a.Pos)
 		}
 	case *accessors.FromLocalOpeningYAccessor:
-		return proof.QueriesParams.MustGet(a.Q.ID).(query.LocalOpeningParams).Y
+		return proof.QueriesParams.MustGet(a.Q.ID).(query.LocalOpeningParams).BaseY
 	}
 
 	// This generically returns the value of a public input by extracting

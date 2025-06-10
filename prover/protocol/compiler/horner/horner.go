@@ -308,7 +308,7 @@ func (c *checkHornerResult) Run(run wizard.Runtime) error {
 	for i, lo := range c.LocOpenings {
 
 		var (
-			tmp = run.GetLocalPointEvalParams(lo.ID).Y
+			tmp = run.GetLocalPointEvalParams(lo.ID).BaseY
 			n0  = hornerParams.Parts[i].N0
 			x   = hornerQuery.Parts[i].X.GetVal(run)
 		)
@@ -360,7 +360,7 @@ func (c *checkHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 	for i, lo := range c.LocOpenings {
 
 		var (
-			tmp = run.GetLocalPointEvalParams(lo.ID).Y
+			tmp = run.GetLocalPointEvalParams(lo.ID).BaseY
 			n0  = hornerParams.Parts[i].N0
 			x   = hornerQuery.Parts[i].X.GetFrontendVariable(api, run)
 		)

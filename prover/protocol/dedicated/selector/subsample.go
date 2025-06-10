@@ -96,8 +96,8 @@ type subsampleVerifierAction struct {
 func (a *subsampleVerifierAction) Run(run wizard.Runtime) error {
 	resAccLast := run.GetLocalPointEvalParams(a.accLargeLast)
 	expectedResAccLast := run.GetLocalPointEvalParams(a.accSmallLast)
-	if resAccLast.Y != expectedResAccLast.Y {
-		return fmt.Errorf("linear hashing failed : the ResAcc and ExpectedResAcc do not match on their last inputs %v, %v", resAccLast.Y.String(), expectedResAccLast.Y.String())
+	if resAccLast.BaseY != expectedResAccLast.BaseY {
+		return fmt.Errorf("linear hashing failed : the ResAcc and ExpectedResAcc do not match on their last inputs %v, %v", resAccLast.BaseY.String(), expectedResAccLast.BaseY.String())
 	}
 	return nil
 }
@@ -105,7 +105,7 @@ func (a *subsampleVerifierAction) Run(run wizard.Runtime) error {
 func (a *subsampleVerifierAction) RunGnark(frontend frontend.API, run wizard.GnarkRuntime) {
 	resAccLast := run.GetLocalPointEvalParams(a.accLargeLast)
 	expectedResAccLast := run.GetLocalPointEvalParams(a.accSmallLast)
-	frontend.AssertIsEqual(resAccLast.Y, expectedResAccLast.Y)
+	frontend.AssertIsEqual(resAccLast.BaseY, expectedResAccLast.BaseY)
 }
 
 // Tests that a small table is obtained from subsampling a larger column with a given offset

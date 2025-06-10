@@ -65,13 +65,13 @@ func (l *FromLocalOpeningYAccessor) String() string {
 // GetVal implements [ifaces.Accessor]
 func (l *FromLocalOpeningYAccessor) GetVal(run ifaces.Runtime) field.Element {
 	params := run.GetParams(l.Q.ID).(query.LocalOpeningParams)
-	return params.Y
+	return params.BaseY
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
 func (l *FromLocalOpeningYAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
 	params := circ.GetParams(l.Q.ID).(query.GnarkLocalOpeningParams)
-	return params.Y
+	return params.BaseY
 }
 
 // AsVariable implements the [ifaces.Accessor] interface

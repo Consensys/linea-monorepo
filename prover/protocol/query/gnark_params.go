@@ -4,15 +4,22 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 )
 
 // A gnark circuit version of the LocalOpeningResult
 type GnarkLocalOpeningParams struct {
-	Y frontend.Variable
+	BaseY  frontend.Variable
+	ExtY   gnarkfext.Variable
+	IsBase bool
 }
 
 func (p LocalOpeningParams) GnarkAssign() GnarkLocalOpeningParams {
-	return GnarkLocalOpeningParams{Y: p.Y}
+	return GnarkLocalOpeningParams{
+		BaseY:  p.BaseY,
+		ExtY:   gnarkfext.ExtToVariable(p.ExtY),
+		IsBase: p.IsBase,
+	}
 }
 
 // A gnark circuit version of LogDerivSumParams
@@ -107,7 +114,7 @@ func (p GnarkInnerProductParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkLocalOpeningParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
-	fs.Update(p.Y)
+	fs.Update(p.BaseY)
 }
 
 // Update the fiat-shamir state with the the present parameters

@@ -93,10 +93,20 @@ func (cs LocalConstraint) Check(run ifaces.Runtime) error {
 					- should be between 0 and N-1 (included)
 						where N is the size of the polynomials
 			*/
-			val := metadata.GetColAssignmentAt(run, 0)
-			inputs[i] = sv.NewConstant(val, 1)
+			if metadata.IsBase() {
+				val, _ := metadata.GetColAssignmentAtBase(run, 0)
+				inputs[i] = sv.NewConstant(val, 1)
+			} else {
+				val := metadata.GetColAssignmentAtExt(run, 0)
+				inputs[i] = sv.NewConstantExt(val, 1)
+			}
 		case coin.Info:
-			inputs[i] = sv.NewConstant(run.GetRandomCoinField(metadata.Name), 1)
+			if metadata.IsBase() {
+				inputs[i] = sv.NewConstant(run.GetRandomCoinField(metadata.Name), 1)
+			} else {
+				inputs[i] = sv.NewConstantExt(run.GetRandomCoinFieldExt(metadata.Name), 1)
+			}
+
 		case variables.PeriodicSample:
 			v := field.One()
 			if metadata.Offset != 0 {
@@ -106,7 +116,13 @@ func (cs LocalConstraint) Check(run ifaces.Runtime) error {
 		case variables.X:
 			utils.Panic("In local constraint %v, Local constraints using X are not handled so far", cs.ID)
 		case ifaces.Accessor:
-			inputs[i] = sv.NewConstant(metadata.GetVal(run), 1)
+			if metadata.IsBase() {
+				val, _ := metadata.GetValBase(run)
+				inputs[i] = sv.NewConstant(val, 1)
+			} else {
+				inputs[i] = sv.NewConstantExt(metadata.GetValExt(run), 1)
+			}
+
 		default:
 			utils.Panic("Unknown variable type %v in local constraint %v", reflect.TypeOf(metadataInterface), cs.ID)
 		}
@@ -115,7 +131,8 @@ func (cs LocalConstraint) Check(run ifaces.Runtime) error {
 		Sanity-check : n (the number of element used for the evaluation)
 		should be equal to the length of metadata
 	*/
-	res := board.Evaluate(inputs).(*sv.Constant).Val()
+	evalRes := board.EvaluateMixed(inputs)
+	res := sv.GetGenericElemOfSmartvector(evalRes, 0)
 	/*
 		If the query is satisfied, the result should be zero. In
 		this case, we pretty print an error.
@@ -124,7 +141,7 @@ func (cs LocalConstraint) Check(run ifaces.Runtime) error {
 		debugMap := make(map[string]string)
 
 		for k, metadataInterface := range metadatas {
-			inpx := inputs[k].Get(0)
+			inpx := sv.GetGenericElemOfSmartvector(inputs[k], 0)
 			debugMap[string(metadataInterface.String())] = fmt.Sprintf("%v", inpx.String())
 		}
 

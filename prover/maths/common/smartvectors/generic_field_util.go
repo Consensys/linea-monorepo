@@ -13,12 +13,12 @@ func ToConstantSmartvector(e *fext.GenericFieldElem, length int) SmartVector {
 	}
 }
 
-func GetFirstElemOfSmartvector(vector SmartVector) *fext.GenericFieldElem {
+func GetGenericElemOfSmartvector(vector SmartVector, index int) *fext.GenericFieldElem {
 	if IsBase(vector) {
-		elem, _ := vector.GetBase(0)
+		elem, _ := vector.GetBase(index)
 		return fext.NewESHashFromBase(&elem)
 	}
 	// If the vector is not over base elements, we assume it is over extensions
-	elem := vector.GetExt(0)
+	elem := vector.GetExt(index)
 	return fext.NewESHashFromExt(&elem)
 }

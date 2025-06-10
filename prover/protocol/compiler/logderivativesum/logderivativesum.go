@@ -97,7 +97,7 @@ func (f *FinalEvaluationCheck) Run(run wizard.Runtime) error {
 	// in the protocol via the local opening queries.
 	zSum := field.Zero()
 	for k := range f.ZOpenings {
-		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).Y
+		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).BaseY
 		tmps = append(tmps, temp)
 		zSum.Add(&zSum, &temp)
 	}
@@ -122,7 +122,7 @@ func (f *FinalEvaluationCheck) RunGnark(api frontend.API, run wizard.GnarkRuntim
 	// in the protocol via the
 	zSum := frontend.Variable(field.Zero())
 	for k := range f.ZOpenings {
-		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).Y
+		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).BaseY
 		zSum = api.Add(zSum, temp)
 	}
 

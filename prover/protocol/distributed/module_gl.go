@@ -660,7 +660,7 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 
 	for i := range a.SentValuesGlobal {
 		v := run.GetLocalPointEvalParams(a.SentValuesGlobal[i].ID)
-		yBytes := v.Y.Bytes()
+		yBytes := v.BaseY.Bytes()
 		hsh.Write(yBytes[:])
 	}
 
@@ -717,7 +717,7 @@ func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.G
 
 	for i := range a.SentValuesGlobal {
 		v := run.GetLocalPointEvalParams(a.SentValuesGlobal[i].ID)
-		hsh.Write(v.Y)
+		hsh.Write(v.BaseY)
 	}
 
 	hashSendComputed := hsh.Sum()

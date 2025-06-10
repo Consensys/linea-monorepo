@@ -29,7 +29,7 @@ func (v *VerifierCtx) Run(run wizard.Runtime) error {
 
 	for _, zCtx := range v.Ctxs {
 		for _, opening := range zCtx.ZOpenings {
-			y := run.GetLocalPointEvalParams(opening.ID).Y
+			y := run.GetLocalPointEvalParams(opening.ID).BaseY
 			mustBeOne.Mul(&mustBeOne, &y)
 		}
 	}
@@ -49,7 +49,7 @@ func (v *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	for _, zCtx := range v.Ctxs {
 		for _, opening := range zCtx.ZOpenings {
-			y := run.GetLocalPointEvalParams(opening.ID).Y
+			y := run.GetLocalPointEvalParams(opening.ID).BaseY
 			mustBeOne = api.Mul(mustBeOne, y)
 		}
 	}
@@ -187,7 +187,7 @@ func (f *FinalProductCheck) Run(run wizard.Runtime) error {
 	// in the protocol via the local opening queries.
 	zProd := field.One()
 	for k := range f.ZOpenings {
-		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).Y
+		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).BaseY
 		zProd.Mul(&zProd, &temp)
 	}
 
@@ -216,7 +216,7 @@ func (f *FinalProductCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 	// zProd stores the product of the ending values of the z columns
 	zProd := frontend.Variable(field.One())
 	for k := range f.ZOpenings {
-		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).Y
+		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).BaseY
 		zProd = api.Mul(zProd, temp)
 	}
 
