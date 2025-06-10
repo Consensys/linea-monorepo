@@ -79,6 +79,10 @@ func newAdd(comp *wizard.CompiledIOP, g group, limits *Limits, src *BlsAddDataSo
 	}
 }
 
+func (ba *BlsAdd) Assign(run *wizard.ProverRuntime) {
+	ba.AlignedGnarkData.Assign(run)
+}
+
 func NewG1AddZkEvm(comp *wizard.CompiledIOP, limits *Limits) *BlsAdd {
 	return newAdd(
 		comp,

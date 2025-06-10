@@ -78,6 +78,10 @@ func newMsm(comp *wizard.CompiledIOP, g group, limits *Limits, src *BlsMsmDataSo
 	}
 }
 
+func (bm *BlsMsm) Assign(run *wizard.ProverRuntime) {
+	bm.AlignedGnarkData.Assign(run)
+}
+
 func NewG1MsmZkEvm(comp *wizard.CompiledIOP, limits *Limits) *BlsMsm {
 	return newMsm(
 		comp,
