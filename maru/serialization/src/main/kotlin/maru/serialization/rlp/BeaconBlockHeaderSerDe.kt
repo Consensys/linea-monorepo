@@ -11,16 +11,16 @@ package maru.serialization.rlp
 import maru.core.BeaconBlockHeader
 import maru.core.Hasher
 import maru.core.HeaderHashFunction
-import maru.serialization.Serializer
+import maru.serialization.SerDe
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
-class BeaconBlockHeaderSerializer(
-  private val validatorSerializer: ValidatorSerializer,
+class BeaconBlockHeaderSerDe(
+  private val validatorSerializer: ValidatorSerDe,
   private val hasher: Hasher,
-  private val headerHashFunction: (Serializer<BeaconBlockHeader>, Hasher) -> HeaderHashFunction,
-) : RLPSerializer<BeaconBlockHeader> {
+  private val headerHashFunction: (SerDe<BeaconBlockHeader>, Hasher) -> HeaderHashFunction,
+) : RLPSerDe<BeaconBlockHeader> {
   override fun writeTo(
     value: BeaconBlockHeader,
     rlpOutput: RLPOutput,

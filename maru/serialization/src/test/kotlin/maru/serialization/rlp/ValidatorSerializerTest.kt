@@ -14,7 +14,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class ValidatorSerializerTest {
-  private val serializer = ValidatorSerializer()
+  private val serializer = ValidatorSerDe()
 
   @Test
   fun `can serialize and deserialize same value`() {

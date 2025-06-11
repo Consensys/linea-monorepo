@@ -14,7 +14,7 @@ import maru.p2p.LINEA_DOMAIN
 import maru.p2p.MaruPreparedGossipMessage
 import maru.p2p.SubscriptionManager
 import maru.p2p.ValidationResultCode
-import maru.serialization.Serializer
+import maru.serialization.SerDe
 import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
@@ -24,7 +24,7 @@ import io.libp2p.core.pubsub.ValidationResult as Libp2pValidationResult
 
 class SealedBlocksTopicHandler(
   val subscriptionManager: SubscriptionManager<SealedBeaconBlock>,
-  val sealedBeaconBlockSerializer: Serializer<SealedBeaconBlock>,
+  val sealedBeaconBlockSerDe: SerDe<SealedBeaconBlock>,
   val topicId: String,
 ) : TopicHandler {
   companion object {
@@ -50,7 +50,7 @@ class SealedBlocksTopicHandler(
     )
 
   override fun handleMessage(message: PreparedGossipMessage): SafeFuture<Libp2pValidationResult> {
-    val deserializaedMessage = sealedBeaconBlockSerializer.deserialize(message.originalMessage.toArray())
+    val deserializaedMessage = sealedBeaconBlockSerDe.deserialize(message.originalMessage.toArray())
     return subscriptionManager.handleEvent(deserializaedMessage).thenApply { it.code.toLibP2P() }
   }
 

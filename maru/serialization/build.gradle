@@ -19,11 +19,11 @@ plugins {
 
 dependencies {
   implementation(project(":core"))
+  implementation(project(":config"))
   implementation(project(":crypto"))
   implementation(project(":jvm-libs:extensions"))
   implementation "io.tmio:tuweni-bytes"
   implementation "org.hyperledger.besu.internal:rlp"
   implementation "org.hyperledger.besu:besu-datatypes"
-  testImplementation(project(":core"))
   testImplementation(testFixtures(project(":core")))
 }

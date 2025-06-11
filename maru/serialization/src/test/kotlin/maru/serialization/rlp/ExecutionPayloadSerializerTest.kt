@@ -13,7 +13,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class ExecutionPayloadSerializerTest {
-  private val serializer = ExecutionPayloadSerializer()
+  private val serializer = ExecutionPayloadSerDe()
 
   @Test
   fun `can serialize and deserialize same value`() {

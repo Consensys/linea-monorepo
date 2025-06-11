@@ -9,37 +9,38 @@
 package maru.serialization.rlp
 
 import maru.core.HashUtil
+import maru.crypto.Hashing
 
 object RLPSerializers {
-  val ValidatorSerializer = ValidatorSerializer()
+  val ValidatorSerializer = ValidatorSerDe()
 
   val BeaconBlockHeaderSerializer =
-    BeaconBlockHeaderSerializer(
+    BeaconBlockHeaderSerDe(
       validatorSerializer = ValidatorSerializer,
-      hasher = KeccakHasher,
+      hasher = Hashing::keccak,
       headerHashFunction = HashUtil::headerHash,
     )
-  val SealSerializer = SealSerializer()
-  val ExecutionPayloadSerializer = ExecutionPayloadSerializer()
+  val SealSerializer = SealSerDe()
+  val ExecutionPayloadSerializer = ExecutionPayloadSerDe()
   val BeaconBlockBodySerializer =
-    BeaconBlockBodySerializer(
+    BeaconBlockBodySerDe(
       sealSerializer = SealSerializer,
       executionPayloadSerializer = ExecutionPayloadSerializer,
     )
   val BeaconBlockSerializer =
-    BeaconBlockSerializer(
+    BeaconBlockSerDe(
       beaconBlockHeaderSerializer = BeaconBlockHeaderSerializer,
       beaconBlockBodySerializer = BeaconBlockBodySerializer,
     )
   val SealedBeaconBlockSerializer =
-    SealedBeaconBlockSerializer(
+    SealedBeaconBlockSerDe(
       beaconBlockSerializer = BeaconBlockSerializer,
       sealSerializer = SealSerializer,
     )
   val BeaconStateSerializer =
-    BeaconStateSerializer(
+    BeaconStateSerDe(
       beaconBlockHeaderSerializer = BeaconBlockHeaderSerializer,
       validatorSerializer = ValidatorSerializer,
     )
-  val DefaultHeaderHashFunction = HashUtil.headerHash(BeaconBlockHeaderSerializer, KeccakHasher)
+  val DefaultHeaderHashFunction = HashUtil.headerHash(BeaconBlockHeaderSerializer, Hashing::keccak)
 }

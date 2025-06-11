@@ -14,7 +14,7 @@ import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
-class ExecutionPayloadSerializer : RLPSerializer<ExecutionPayload> {
+class ExecutionPayloadSerDe : RLPSerDe<ExecutionPayload> {
   override fun writeTo(
     value: ExecutionPayload,
     rlpOutput: RLPOutput,

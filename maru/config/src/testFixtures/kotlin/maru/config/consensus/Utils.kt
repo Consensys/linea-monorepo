@@ -6,11 +6,13 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.consensus.config
+package maru.config.consensus
 
 import com.sksamuel.hoplite.ConfigLoaderBuilder
 import com.sksamuel.hoplite.ExperimentalHoplite
 import com.sksamuel.hoplite.json.JsonPropertySource
+import maru.config.consensus.ForkConfigDecoder
+import maru.config.consensus.JsonFriendlyForksSchedule
 
 @OptIn(ExperimentalHoplite::class)
 object Utils {

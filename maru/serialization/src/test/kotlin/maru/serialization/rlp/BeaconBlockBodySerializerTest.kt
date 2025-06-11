@@ -17,9 +17,9 @@ import org.junit.jupiter.api.Test
 
 class BeaconBlockBodySerializerTest {
   private val serializer =
-    BeaconBlockBodySerializer(
-      sealSerializer = SealSerializer(),
-      executionPayloadSerializer = ExecutionPayloadSerializer(),
+    BeaconBlockBodySerDe(
+      sealSerializer = SealSerDe(),
+      executionPayloadSerializer = ExecutionPayloadSerDe(),
     )
 
   @Test

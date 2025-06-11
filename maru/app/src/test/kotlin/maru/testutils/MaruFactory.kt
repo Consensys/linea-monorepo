@@ -25,8 +25,8 @@ import maru.config.P2P
 import maru.config.Persistence
 import maru.config.QbftOptions
 import maru.config.ValidatorElNode
+import maru.config.consensus.Utils
 import maru.consensus.ForksSchedule
-import maru.consensus.config.Utils
 import maru.crypto.Crypto
 import maru.extensions.encodeHex
 import maru.extensions.fromHexToByteArray

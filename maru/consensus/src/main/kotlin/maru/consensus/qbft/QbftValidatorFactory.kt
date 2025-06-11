@@ -12,6 +12,7 @@ import java.time.Clock
 import java.util.concurrent.Executors
 import kotlin.time.toJavaDuration
 import maru.config.QbftOptions
+import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.ProtocolFactory

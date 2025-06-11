@@ -14,19 +14,20 @@ import maru.core.BeaconState
 import maru.core.HashUtil
 import maru.core.Validator
 import maru.core.ext.DataGenerators
+import maru.crypto.Hashing
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class BeaconStateSerializerTest {
-  private val validatorSerializer = ValidatorSerializer()
+  private val validatorSerializer = ValidatorSerDe()
   private val beaconBlockHeaderSerializer =
-    BeaconBlockHeaderSerializer(
+    BeaconBlockHeaderSerDe(
       validatorSerializer = validatorSerializer,
-      hasher = KeccakHasher,
+      hasher = Hashing::keccak,
       headerHashFunction = HashUtil::headerHash,
     )
   private val serializer =
-    BeaconStateSerializer(
+    BeaconStateSerDe(
       beaconBlockHeaderSerializer = beaconBlockHeaderSerializer,
       validatorSerializer = validatorSerializer,
     )

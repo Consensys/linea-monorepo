@@ -14,7 +14,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class SealSerializerTest {
-  private val serializer = SealSerializer()
+  private val serializer = SealSerDe()
 
   @Test
   fun `can serialize and deserialize same value`() {

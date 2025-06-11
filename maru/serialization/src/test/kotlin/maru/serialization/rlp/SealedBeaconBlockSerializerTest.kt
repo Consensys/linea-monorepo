@@ -17,29 +17,30 @@ import maru.core.Seal
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
 import maru.core.ext.DataGenerators.randomExecutionPayload
+import maru.crypto.Hashing
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class SealedBeaconBlockSerializerTest {
   private val blockHeaderSerializer =
-    BeaconBlockHeaderSerializer(
-      validatorSerializer = ValidatorSerializer(),
-      hasher = KeccakHasher,
+    BeaconBlockHeaderSerDe(
+      validatorSerializer = ValidatorSerDe(),
+      hasher = Hashing::keccak,
       headerHashFunction = HashUtil::headerHash,
     )
-  private val sealSerializer = SealSerializer()
+  private val sealSerializer = SealSerDe()
   private val blockSerializer =
-    BeaconBlockSerializer(
+    BeaconBlockSerDe(
       beaconBlockHeaderSerializer =
       blockHeaderSerializer,
       beaconBlockBodySerializer =
-        BeaconBlockBodySerializer(
+        BeaconBlockBodySerDe(
           sealSerializer = sealSerializer,
-          executionPayloadSerializer = ExecutionPayloadSerializer(),
+          executionPayloadSerializer = ExecutionPayloadSerDe(),
         ),
     )
   private val sealedBlockSerializer =
-    SealedBeaconBlockSerializer(
+    SealedBeaconBlockSerDe(
       beaconBlockSerializer = blockSerializer,
       sealSerializer = sealSerializer,
     )
