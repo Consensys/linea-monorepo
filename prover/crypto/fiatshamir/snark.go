@@ -5,8 +5,6 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
-	"github.com/consensys/gnark/std/hash/mimc"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -25,27 +23,10 @@ type GnarkFiatShamir struct {
 	api frontend.API
 }
 
-// NewGnarkFiatShamir creates a [GnarkFiatShamir] object. The function accepts
-// an optional [gkrmimc.HasherFactory] object as input. This is expected to be
+// NewGnarkFiatShamir creates a [GnarkFiatShamir] object. The function takes
+// a [hash.StateStorer] object as input. This is expected to be
 // used in the scope of a [frontend.Define] function.
-func NewGnarkFiatShamir(api frontend.API, factory *gkrmimc.HasherFactory) *GnarkFiatShamir {
-
-	var hasher hash.StateStorer
-	if factory != nil {
-		h := factory.NewHasher()
-		hasher = h
-	} else {
-		h, err := mimc.NewMiMC(api)
-		if err != nil {
-			// There is no real case where this can happen. The only case I
-			// can think of is when the function is called outside of the scope
-			// of a Define function and `api == nil` but then, there is no way
-			// the user can do anything useful with this function anyway.
-			panic(err)
-		}
-		hasher = &h
-	}
-
+func NewGnarkFiatShamir(api frontend.API, hasher hash.StateStorer) *GnarkFiatShamir {
 	return &GnarkFiatShamir{
 		hasher: hasher,
 		api:    api,

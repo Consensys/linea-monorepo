@@ -2,8 +2,8 @@ package wizard
 
 import (
 	"github.com/consensys/gnark/frontend"
+	gkr_mimc "github.com/consensys/gnark/std/hash/mimc/gkr-mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -76,12 +76,6 @@ type WizardVerifierCircuit struct {
 	// works.
 	Coins collection.Mapping[coin.Name, interface{}] `gnark:"-"`
 
-	// HasherFactory is a custom hasher that we use for all the MiMC hashing
-	// in the circuit. It is used for efficiently computing the Fiat-Shamir
-	// hashes but also the MiMC Vortex column hashes that we use for the
-	// last round of the self-recursion.
-	HasherFactory *gkrmimc.HasherFactory `gnark:"-"`
-
 	// FiatShamirHistory tracks the fiat-shamir state at the beginning of every
 	// round. The first entry is the initial state, the final entry is the final
 	// state.
@@ -149,8 +143,11 @@ func AllocateWizardCircuit(comp *CompiledIOP) (*WizardVerifierCircuit, error) {
 // transcript. This function has to be called in the context of a
 // [frontend.Define] function. Its work mirrors the [Verify] function.
 func (c *WizardVerifierCircuit) Verify(api frontend.API) {
-	c.HasherFactory = gkrmimc.NewHasherFactory(api)
-	c.FS = fiatshamir.NewGnarkFiatShamir(api, c.HasherFactory)
+	hasher, err := gkr_mimc.New(api)
+	if err != nil {
+		panic(err)
+	}
+	c.FS = fiatshamir.NewGnarkFiatShamir(api, hasher)
 	c.FS.Update(c.Spec.fiatShamirSetup)
 	c.FiatShamirHistory = make([][2][]frontend.Variable, c.Spec.NumRounds())
 	c.generateAllRandomCoins(api)

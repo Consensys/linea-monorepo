@@ -7,6 +7,7 @@ import (
 	"hash"
 	"math/big"
 
+	gkr_mimc "github.com/consensys/gnark/std/hash/mimc/gkr-mimc"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 
@@ -22,7 +23,6 @@ import (
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/rangecheck"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 
@@ -191,9 +191,14 @@ func (i *FunctionalPublicInputSnark) Sum(api frontend.API, hsh snarkHash.FieldHa
 }
 
 func (c Circuit) Define(api frontend.API) error {
-	var hsh snarkHash.FieldHasher
+	var (
+		hsh snarkHash.FieldHasher
+		err error
+	)
 	if c.UseGkrMiMC {
-		hsh = gkrmimc.NewHasherFactory(api).NewHasher()
+		if hsh, err = gkr_mimc.New(api); err != nil {
+			return err
+		}
 	} else {
 		if h, err := mimc.NewMiMC(api); err != nil {
 			return err

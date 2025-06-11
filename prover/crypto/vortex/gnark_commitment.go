@@ -3,9 +3,9 @@ package vortex
 import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
+	gkr_mimc "github.com/consensys/gnark/std/hash/mimc/gkr-mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
 )
@@ -135,10 +135,6 @@ func GnarkVerifyOpeningWithMerkleProof(
 	entryList []frontend.Variable,
 ) error {
 
-	if !params.HasNoSisHasher() {
-		utils.Panic("the verifier circuit can only be instantiated using a NoSisHasher")
-	}
-
 	logrus.Infof("Verifying the vortex proof")
 	// Generic checks
 	selectedColsHashes, err := GnarkVerifyCommon(
@@ -154,8 +150,10 @@ func GnarkVerifyOpeningWithMerkleProof(
 		return err
 	}
 
-	hasher, _ := params.HasherFunc(api)
-	hasher.Reset()
+	hasher, err := gkr_mimc.New(api)
+	if err != nil {
+		return err
+	}
 
 	logrus.Infof("Checking the merkle proofs for %v proofs", len(roots))
 	for i, root := range roots {

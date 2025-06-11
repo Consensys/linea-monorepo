@@ -375,16 +375,12 @@ func TestGnarkVortexNCommitmentsWithMerkleNoSis(t *testing.T) {
 	AssignCicuitVariablesWithMerkleTree(&witness, *proof, ys, entryList, commitments)
 	witness.RandomCoin = randomCoin.String()
 	witness.X = x.String()
-	witness.Params.HasherFunc = makeMimcHasherfunc
-	witness.Params.NoSisHasher = makeMimcHasherfunc
 
 	// compile the circuit
 	var circuit VerifyOpeningCircuitMerkleTree
 	circuit.Proof.LinearCombination = make([]frontend.Variable, rsSize)
 	circuit.Proof.Rate = uint64(blowUpFactor)
 	circuit.Proof.RsDomain = rsDomain
-	circuit.Params.HasherFunc = makeMimcHasherfunc
-	circuit.Params.NoSisHasher = makeMimcHasherfunc
 
 	AllocateCircuitVariablesWithMerkleTree(&circuit, *proof, ys, entryList, commitments)
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())

@@ -3,7 +3,6 @@ package vortex
 import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/std/hash"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
@@ -59,25 +58,16 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr *wizard.WizardVerifierCircuit) 
 	proof.Columns = ctx.GnarkRecoverSelectedColumns(api, vr)
 	x := vr.GetUnivariateParams(ctx.Query.QueryID).X
 
-	// function that will defer the hashing to gkr
-	factoryHasherFunc := func(_ frontend.API) (hash.FieldHasher, error) {
-		h := vr.HasherFactory.NewHasher()
-		return h, nil
-	}
-
 	packedMProofs := vr.GetColumn(ctx.MerkleProofName())
 	proof.MerkleProofs = ctx.unpackMerkleProofsGnark(packedMProofs, entryList)
 
 	// pass the parameters for a merkle-mode sis verification
-	params := vortex.GParams{}
-	params.HasherFunc = factoryHasherFunc
-	if ctx.ReplaceSisByMimc {
-		params.NoSisHasher = factoryHasherFunc
-	} else {
+	var params vortex.GParams
+	if !ctx.ReplaceSisByMimc {
 		params.Key = ctx.VortexParams.Key
 	}
 
-	vortex.GnarkVerifyOpeningWithMerkleProof(
+	if err := vortex.GnarkVerifyOpeningWithMerkleProof(
 		api,
 		params,
 		roots,
@@ -86,7 +76,9 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr *wizard.WizardVerifierCircuit) 
 		ctx.gnarkGetYs(api, vr),
 		randomCoin,
 		entryList,
-	)
+	); err != nil {
+		panic(err)
+	}
 
 }
 

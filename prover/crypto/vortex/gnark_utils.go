@@ -9,7 +9,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/std/hash"
+	gkr_mimc "github.com/consensys/gnark/std/hash/mimc/gkr-mimc"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/gnark/std/multicommit"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
@@ -211,13 +211,7 @@ type GProof struct {
 
 // Gnark params
 type GParams struct {
-	Key         ringsis.Key
-	HasherFunc  func(frontend.API) (hash.FieldHasher, error)
-	NoSisHasher func(frontend.API) (hash.FieldHasher, error)
-}
-
-func (p *GParams) HasNoSisHasher() bool {
-	return p.NoSisHasher != nil
+	Key ringsis.Key
 }
 
 func GnarkVerifyCommon(
@@ -277,12 +271,10 @@ func GnarkVerifyCommon(
 			selectedSubCol := proof.Columns[i][j]
 			fullCol = append(fullCol, selectedSubCol...)
 
-			// Check consistency between the opened column and the commitment
-			if !params.HasNoSisHasher() {
-				panic("the vortex verifier circuit only supports a no-SIS hasher")
+			hasher, err := gkr_mimc.New(api)
+			if err != nil {
+				return nil, err
 			}
-
-			hasher, _ := params.NoSisHasher(api)
 			hasher.Reset()
 			hasher.Write(selectedSubCol...)
 			digest := hasher.Sum()

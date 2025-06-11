@@ -8,8 +8,8 @@ import (
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	gkr_mimc "github.com/consensys/gnark/std/hash/mimc/gkr-mimc"
 	"github.com/consensys/gnark/std/math/emulated"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 )
 
 type hashAnyTestCircuit struct {
@@ -21,7 +21,10 @@ type hashAnyTestCircuit struct {
 }
 
 func (h *hashAnyTestCircuit) Define(api frontend.API) error {
-	hf := gkrmimc.NewHasherFactory(api)
+	hf, err := gkr_mimc.New(api)
+	if err != nil {
+		return err
+	}
 	x := mimcHashAnyGnark(api, hf, h.A, h.B, h.C, h.D)
 	api.AssertIsEqual(x, h.Out)
 	return nil
