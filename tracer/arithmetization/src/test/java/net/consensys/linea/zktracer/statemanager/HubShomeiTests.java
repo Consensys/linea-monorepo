@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import net.consensys.linea.reporting.TestInfoWithChainConfig;
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -52,11 +53,13 @@ public class HubShomeiTests extends TracerTestBase {
   private static final Address DEFAULT =
       Address.fromHexString("0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef");
 
-  private final Bytes SSLOAD1 =
-      newProgram(testInfo).push(key1).op(OpCode.SLOAD).op(OpCode.POP).compile();
+  private final Bytes SSLOAD1(TestInfoWithChainConfig testInfo) {
+    return newProgram(testInfo).push(key1).op(OpCode.SLOAD).op(OpCode.POP).compile();
+  }
 
-  private final Bytes SSTORE1 =
-      newProgram(testInfo).push(value).push(key1).op(OpCode.SSTORE).compile();
+  private Bytes SSTORE1(TestInfoWithChainConfig testInfo) {
+    return newProgram(testInfo).push(value).push(key1).op(OpCode.SSTORE).compile();
+  }
 
   /**
    * In this test we have two transactions. In the first one we prewarm a storage key, we SSTORE or
@@ -75,8 +78,8 @@ public class HubShomeiTests extends TracerTestBase {
 
     final Bytes code =
         switch (opcode) {
-          case SSTORE -> Bytes.concatenate(SSTORE1);
-          case SLOAD -> Bytes.concatenate(SSLOAD1);
+          case SSTORE -> Bytes.concatenate(SSTORE1(testInfo));
+          case SLOAD -> Bytes.concatenate(SSLOAD1(testInfo));
           default -> throw new IllegalStateException("Unexpected value: " + opcode);
         };
 
@@ -148,8 +151,8 @@ public class HubShomeiTests extends TracerTestBase {
 
     final Bytes code =
         switch (opcode) {
-          case SSTORE -> Bytes.concatenate(SSTORE1);
-          case SLOAD -> Bytes.concatenate(SSLOAD1);
+          case SSTORE -> Bytes.concatenate(SSTORE1(testInfo));
+          case SLOAD -> Bytes.concatenate(SSLOAD1(testInfo));
           default -> throw new IllegalStateException("Unexpected value: " + opcode);
         };
 

@@ -27,7 +27,7 @@ public class TracerTestBase {
   @BeforeEach
   public void init(TestInfo testInfo) {
       TracerTestBase.testInfo.chainConfig =
-            switch (System.getProperty("unit.replay.tests.fork")) {
+            switch (getForkOrDefault("LONDON")) {
               case "LONDON" -> ChainConfig.MAINNET_TESTCONFIG(Fork.LONDON);
               case "PARIS" -> ChainConfig.MAINNET_TESTCONFIG(Fork.PARIS);
               case "SHANGHAI" -> ChainConfig.MAINNET_TESTCONFIG(Fork.SHANGHAI);
@@ -37,5 +37,14 @@ public class TracerTestBase {
                   "Unknown fork: " + System.getProperty("unit.replay.tests.fork"));
             };
     TracerTestBase.testInfo.testInfo = testInfo;
+  }
+
+  private static String getForkOrDefault(String defaultFork) {
+    String fork = System.getenv("ZKEVM_FORK");
+    if(fork != null) {
+      return fork;
+    }
+    //
+    return defaultFork;
   }
 }
