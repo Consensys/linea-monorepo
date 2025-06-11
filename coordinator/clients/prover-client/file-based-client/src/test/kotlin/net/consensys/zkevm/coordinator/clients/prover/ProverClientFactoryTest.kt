@@ -139,9 +139,9 @@ class ProverClientFactoryTest {
     kotlin.runCatching { proverClientI2.requestProof(request2).get() }
     kotlin.runCatching { proverClientI1.requestProof(request3).get() }
 
-    assertThat(meterRegistry.find("linea.batch.prover.waiting").gauge()!!).isNotNull
-    assertThat(meterRegistry.find("linea.blob.prover.waiting").gauge()!!).isNotNull
-    assertThat(meterRegistry.find("linea.aggregation.prover.waiting").gauge()!!).isNotNull
+    assertThat(meterRegistry.find("linea.batch.prover.waiting").gauge()).isNotNull
+    assertThat(meterRegistry.find("linea.blob.prover.waiting").gauge()).isNotNull
+    assertThat(meterRegistry.find("linea.aggregation.prover.waiting").gauge()).isNotNull
 
     assertThat(meterRegistry.find("linea.batch.prover.waiting").gauge()!!.value()).isEqualTo(0.0)
     assertThat(meterRegistry.find("linea.blob.prover.waiting").gauge()!!.value()).isEqualTo(0.0)
