@@ -41,7 +41,7 @@ make pnpm-install
 The coordinator can be built using Gradle:
 
 ```bash
-./gradlew :coordinator:build
+./gradlew :coordinator:app:build
 ```
 
 This will generate the coordinator JAR file in the `coordinator/app/build/libs` directory.
@@ -52,10 +52,10 @@ To build a local Docker image of the coordinator:
 
 ```bash
 # First build the coordinator JAR
-./gradlew :coordinator:build
+./gradlew coordinator:app:installDist
 
 # Then build the Docker image
-docker build -t linea-coordinator-local -f coordinator/Dockerfile --build-arg VERSION=$(git rev-parse --short HEAD) .
+docker buildx build --file coordinator/Dockerfile --build-context libs=./coordinator/app/build/install/coordinator/lib --platform linux/amd64 --tag consensys/linea-coordinator:local .
 ```
 
 ## Running the Coordinator Locally
@@ -67,14 +67,14 @@ There are two main ways to run the coordinator:
 The recommended way to run the coordinator is as part of the complete Linea stack:
 
 ```bash
-# Start the entire stack with tracing v2
-make start-env-with-tracing-v2
+# Start the entire stack with tracing v2 using your local coordinator image
+COORDINATOR_TAG=local make start-env-with-tracing-v2
 ```
 
 This command:
 1. Starts all necessary services (L1 node, L2 node, sequencer, etc.)
 2. Deploys the required smart contracts
-3. Starts the coordinator service
+3. Starts the coordinator service with your locally built image
 
 ### 2. Running the Coordinator Standalone
 
@@ -95,40 +95,16 @@ java -Dvertx.configurationFile=config/coordinator/vertx-options.json \
      --traces-limits-v2 config/common/traces-limits-v2.toml \
      --smart-contract-errors config/common/smart-contract-errors.toml \
      --gas-price-cap-time-of-day-multipliers config/common/gas-price-cap-time-of-day-multipliers.toml \
-     config/coordinator/coordinator-docker.config.toml \
-     config/coordinator/coordinator-docker-traces-v2-override.config.toml
+     "config/coordinator/coordinator-config-v2.toml"
 ```
 
 Note: When running the coordinator standalone, you'll need to ensure that all its dependencies (such as L1 and L2 nodes) are properly configured and running.
-
-## Using Your Locally Built Coordinator Image
-
-To use your locally built coordinator image with the existing setup:
-
-1. Build the local image as shown above
-2. Edit the `docker/compose-spec-l2-services.yml` file to use your local image:
-
-```yaml
-coordinator:
-  hostname: coordinator
-  container_name: coordinator
-  image: linea-coordinator-local  # Use your local image
-  # ... rest of the configuration remains the same
-```
-
-3. Start the environment with your custom image:
-
-```bash
-make start-env-with-tracing-v2
-```
 
 ## Configuration
 
 The coordinator uses several configuration files:
 
-- `config/coordinator/coordinator-docker.config.toml`: Main configuration file
-- `config/coordinator/coordinator-docker-traces-v2-override.config.toml`: Overrides for traces v2
-- `config/coordinator/coordinator-docker-web3signer-override.config.toml`: Overrides for web3signer
+- `config/coordinator/coordinator-config-v2.toml`: Main configuration file
 - `config/common/traces-limits-v2.toml`: Traces limits configuration
 - `config/common/smart-contract-errors.toml`: Smart contract errors configuration
 - `config/common/gas-price-cap-time-of-day-multipliers.toml`: Gas price cap multipliers
@@ -136,7 +112,8 @@ The coordinator uses several configuration files:
 For development, you may want to modify the following parameters in the coordinator configuration:
 
 - `conflation.conflation-deadline`: Controls how long the coordinator waits before conflating blocks (default is 6 seconds)
-- `l1.rpc-endpoint` and `l2.rpc-endpoint`: Configure the connections to the L1 and L2 nodes
+- `l1.rpc-endpoint`: Configure the connection to the L1 node (defaults to default.l1-endpoint)
+- `l2.rpc-endpoint`: Configure the connection to the L2 node (defaults to default.l2-endpoint)
 - `prover` section: Configure the paths for prover requests and responses
 
 ## Troubleshooting
@@ -178,8 +155,8 @@ If the coordinator has trouble connecting to other services:
 When developing the coordinator:
 
 1. Make your code changes
-2. Run tests: `./gradlew :coordinator:test`
-3. Build the coordinator: `./gradlew :coordinator:build`
+2. Run tests: `./gradlew :coordinator:app:test`
+3. Build the coordinator: `./gradlew :coordinator:app:build`
 4. Build a local Docker image (as shown above)
 5. Start the environment with your local image
 6. Test your changes
