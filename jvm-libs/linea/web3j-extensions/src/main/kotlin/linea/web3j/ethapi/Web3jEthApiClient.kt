@@ -5,6 +5,7 @@ import linea.domain.BlockParameter
 import linea.domain.BlockWithTxHashes
 import linea.domain.EthLog
 import linea.ethapi.EthApiClient
+import linea.kotlin.toULong
 import linea.web3j.domain.toDomain
 import linea.web3j.domain.toWeb3j
 import linea.web3j.mapToDomainWithTxHashes
@@ -20,8 +21,16 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
  * Request retries is responsibility of another class
  */
 class Web3jEthApiClient(
-  val web3jClient: Web3j
+  val web3jClient: Web3j,
 ) : EthApiClient {
+
+  override fun getChainId(): SafeFuture<ULong> {
+    return web3jClient
+      .ethChainId()
+      .requestAsync { resp ->
+        resp.chainId?.toULong() ?: throw IllegalStateException("Chain ID not found in response")
+      }
+  }
 
   override fun findBlockByNumber(blockParameter: BlockParameter): SafeFuture<Block?> {
     return web3jClient
@@ -30,7 +39,7 @@ class Web3jEthApiClient(
   }
 
   override fun findBlockByNumberWithoutTransactionsData(
-    blockParameter: BlockParameter
+    blockParameter: BlockParameter,
   ): SafeFuture<BlockWithTxHashes?> {
     return web3jClient
       .ethGetBlockByNumber(blockParameter.toWeb3j(), false)
@@ -41,12 +50,15 @@ class Web3jEthApiClient(
     fromBlock: BlockParameter,
     toBlock: BlockParameter,
     address: String,
-    topics: List<String?>
+    topics: List<String?>,
   ): SafeFuture<List<EthLog>> {
     val ethFilter = EthFilter(
-      /*fromBlock*/ fromBlock.toWeb3j(),
-      /*toBlock*/ toBlock.toWeb3j(),
-      /*address*/ address
+      /*fromBlock*/
+      fromBlock.toWeb3j(),
+      /*toBlock*/
+      toBlock.toWeb3j(),
+      /*address*/
+      address,
     ).apply {
       topics.forEach { addSingleTopic(it) }
     }
