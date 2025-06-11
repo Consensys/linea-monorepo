@@ -660,6 +660,7 @@ class L1DependentApp(
 
   override fun stop(): CompletableFuture<Unit> {
     return SafeFuture.allOf(
+      conflationApp.stop(),
       l1FinalizationMonitor.stop(),
       l1FinalizationHandlerForShomeiRpc.stop(),
       blobSubmissionCoordinator.stop(),
