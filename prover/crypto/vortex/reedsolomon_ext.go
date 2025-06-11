@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 )
 
@@ -16,7 +16,7 @@ import (
 // the Lagrange basis Omega_{n * blow-up} where blow-up corresponds to the
 // inverse-rate of the code. The code is systematic as the original vector is
 // interleaved within the encoded vector.
-func (p *Params) rsEncodeExt(v smartvectors.SmartVector, pool mempoolext.MemPool) smartvectors.SmartVector {
+func (p *Params) rsEncodeExt(v smartvectors.SmartVector, pool mempool.MemPool) smartvectors.SmartVector {
 
 	// Short path, v is a constant vector. It's encoding is also a constant vector
 	// with the same value.
@@ -26,10 +26,10 @@ func (p *Params) rsEncodeExt(v smartvectors.SmartVector, pool mempoolext.MemPool
 
 	// Interpret the smart-vectors as a polynomial in Lagrange form
 	// and returns a vector of coefficients.
-	asCoeffs := smartvectorsext.FFTInverse(v, fft.DIT, true, 0, 0, pool)
+	asCoeffs := smartvectors.FFTInverse(v, fft.DIT, true, 0, 0, pool)
 	if pool != nil {
 		defer func() {
-			if pooled, ok := asCoeffs.(*smartvectorsext.PooledExt); ok {
+			if pooled, ok := asCoeffs.(*smartvectors.PooledExt); ok {
 				pooled.Free(pool)
 			}
 		}()
@@ -40,13 +40,13 @@ func (p *Params) rsEncodeExt(v smartvectors.SmartVector, pool mempoolext.MemPool
 	asCoeffs.WriteInSliceExt(expandedCoeffs[:asCoeffs.Len()])
 
 	// This is not memory that will be recycled easily
-	return smartvectorsext.FFT(smartvectors.NewRegularExt(expandedCoeffs), fft.DIT, true, 0, 0, nil)
+	return smartvectors.FFT(smartvectors.NewRegularExt(expandedCoeffs), fft.DIT, true, 0, 0, nil)
 }
 
 // IsCodeword returns nil iff the argument `v` is a correct codeword and an
 // error is returned otherwise.
 func (p *Params) isCodewordExt(v smartvectors.SmartVector) error {
-	coeffs := smartvectorsext.FFTInverse(v, fft.DIT, true, 0, 0, nil)
+	coeffs := smartvectors.FFTInverse(v, fft.DIT, true, 0, 0, nil)
 	for i := p.NbColumns; i < p.NumEncodedCols(); i++ {
 		c := coeffs.GetExt(i)
 		if !c.IsZero() {

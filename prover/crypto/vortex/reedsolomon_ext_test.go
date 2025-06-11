@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/stretchr/testify/require"
 )
@@ -27,8 +26,8 @@ func TestReedSolomonExtDoesNotChangeEvaluation(t *testing.T) {
 	err := params.isCodewordExt(rsEncoded)
 	require.NoError(t, err)
 
-	y0 := smartvectorsext.EvaluateLagrange(vec, x)
-	y1 := smartvectorsext.EvaluateLagrange(rsEncoded, x)
+	y0 := smartvectors.EvaluateLagrangeFullFext(vec, x)
+	y1 := smartvectors.EvaluateLagrangeFullFext(rsEncoded, x)
 
 	require.Equal(t, y0.String(), y1.String())
 }
@@ -49,8 +48,8 @@ func TestReedSolomonExtConstant(t *testing.T) {
 	err := params.isCodewordExt(rsEncoded)
 	require.NoError(t, err)
 
-	y0 := smartvectorsext.EvaluateLagrange(vec, x)
-	y1 := smartvectorsext.EvaluateLagrange(rsEncoded, x)
+	y0 := smartvectors.EvaluateLagrangeFullFext(vec, x)
+	y1 := smartvectors.EvaluateLagrangeFullFext(rsEncoded, x)
 
 	require.Equal(t, y0.String(), y1.String())
 
