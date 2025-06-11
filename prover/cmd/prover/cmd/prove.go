@@ -1,12 +1,10 @@
 package cmd
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"path"
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
@@ -14,11 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
-	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/zkevm"
-	"github.com/sirupsen/logrus"
 )
 
 type ProverArgs struct {
@@ -117,54 +110,4 @@ func writeResponse(path string, from any) error {
 	}
 
 	return nil
-}
-
-type LimlessAssest struct {
-	Zkevm      *zkevm.ZkEvm
-	Disc       *distributed.StandardModuleDiscoverer
-	DistWizard *distributed.DistributedWizard
-}
-
-// ReadAndDeser reads and deserializes limitless prover assets from files.
-func ReadAndDeser(config *config.Config) (*LimlessAssest, error) {
-	if config == nil {
-		return nil, fmt.Errorf("config is nil")
-	}
-
-	filePath := config.PathforLimitlessProverAssets()
-	var readBuf bytes.Buffer
-
-	// Initialize result struct
-	assets := &LimlessAssest{
-		Zkevm:      &zkevm.ZkEvm{},
-		Disc:       &distributed.StandardModuleDiscoverer{},
-		DistWizard: &distributed.DistributedWizard{},
-	}
-
-	// Define files to read and deserialize
-	files := []struct {
-		name   string
-		target interface{}
-	}{
-		// {name: "zkevm.bin", target: &assets.Zkevm},
-		// {name: "disc.bin", target: &assets.Disc},
-		{name: "dw.bin", target: &assets.DistWizard},
-	}
-
-	// Read and deserialize each file
-	var readFiles []string
-	for _, file := range files {
-		readBuf.Reset()
-		assetPath := path.Join(filePath, file.name)
-		if err := utils.ReadFromFile(assetPath, &readBuf); err != nil {
-			return nil, fmt.Errorf("failed to read %s: %w", assetPath, err)
-		}
-		if err := serialization.Deserialize(readBuf.Bytes(), file.target); err != nil {
-			return nil, fmt.Errorf("failed to deserialize %s: %w", file.name, err)
-		}
-		readFiles = append(readFiles, assetPath)
-	}
-
-	logrus.Infof("Read and deserialized limitless prover assets from %v", readFiles)
-	return assets, nil
 }

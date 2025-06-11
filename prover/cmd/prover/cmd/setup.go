@@ -1,21 +1,16 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
-	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 
 	blob_v0 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
 	blob_v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
@@ -329,58 +324,4 @@ func listOfChecksums[T io.WriterTo](assets []T) []string {
 		res[i] = utils.HexEncodeToString(digest)
 	}
 	return res
-}
-
-// SerAssestAndWrite serializes and writes prover assets to files.
-func SerAssestAndWrite(config *config.Config) error {
-	if config == nil {
-		return fmt.Errorf("config is nil")
-	}
-
-	filePath := config.PathforLimitlessProverAssets()
-	if err := os.MkdirAll(filePath, 0755); err != nil {
-		return fmt.Errorf("failed to create directory %s: %w", filePath, err)
-	}
-
-	var (
-		zkevm = test_utils.GetZkEVM()
-		disc  = &distributed.StandardModuleDiscoverer{
-			TargetWeight: 1 << 28,
-			Affinities:   test_utils.GetAffinities(zkevm),
-			Predivision:  1,
-		}
-
-		distWizard = distributed.DistributeWizard(zkevm.WizardIOP, disc).
-				CompileSegments().
-				Conglomerate(20)
-	)
-
-	// Define assets to serialize and write
-	assets := []struct {
-		name   string
-		object interface{}
-	}{
-		// {name: "zkevm.bin", object: zkevm},
-		// {name: "disc.bin", object: disc},
-		{name: "dw.bin", object: distWizard},
-	}
-
-	// Serialize and write each asset
-	reader := bytes.NewReader(nil) // Initialize with nil slice
-	var writtenFiles []string
-	for _, asset := range assets {
-		data, err := serialization.Serialize(asset.object)
-		if err != nil {
-			return fmt.Errorf("failed to serialize %s: %w", asset.name, err)
-		}
-		reader.Reset(data)
-		assetPath := path.Join(filePath, asset.name)
-		if err := utils.WriteToFile(assetPath, reader); err != nil {
-			return fmt.Errorf("failed to write %s: %w", assetPath, err)
-		}
-		writtenFiles = append(writtenFiles, assetPath)
-	}
-
-	logrus.Infof("Written limitless prover assets to %v", writtenFiles)
-	return nil
 }
