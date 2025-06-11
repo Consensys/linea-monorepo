@@ -28,6 +28,7 @@ type StackedColumn struct {
 func StackColumn(comp *wizard.CompiledIOP, srcs []ifaces.Column) StackedColumn {
 
 	var (
+		srcs_length = srcs[0].Size()
 		// s is the identity permutation to be computed
 		s = make([]smartvectors.SmartVector, 0, len(srcs))
 		// count is the total number of elements in the stacked column
@@ -41,9 +42,16 @@ func StackColumn(comp *wizard.CompiledIOP, srcs []ifaces.Column) StackedColumn {
 		s_padded     []smartvectors.SmartVector
 	)
 
+	// Sanity check: all source columns should have the same size
+	for i := 1; i < len(srcs); i++ {
+		if srcs[i].Size() != srcs_length {
+			utils.Panic("All source columns should have the same size, but got %v and %v", srcs_length, srcs[i].Size())
+		}
+	}
+
 	for i := range srcs {
 		round = max(round, srcs[i].Round())
-		p := make([]field.Element, srcs[i].Size())
+		p := make([]field.Element, srcs_length)
 		for j := range p {
 			p[j].SetInt64(int64(count))
 			count++
@@ -54,20 +62,26 @@ func StackColumn(comp *wizard.CompiledIOP, srcs []ifaces.Column) StackedColumn {
 	if !utils.IsPowerOfTwo(count) {
 		logrus.Printf("We enter non power of two mode")
 		count_padded = utils.NextPowerOfTwo(count)
-		padding_col := verifiercol.NewConstantCol(field.Zero(), count_padded-count)
-		srcs_padded = make([]ifaces.Column, 0, len(srcs)+1)
+		padding_col := verifiercol.NewConstantCol(field.Zero(), srcs_length)
+		srcs_padded = make([]ifaces.Column, 0, len(srcs)+(count_padded-count)/srcs_length)
 		srcs_padded = append(srcs_padded, srcs...)
-		srcs_padded = append(srcs_padded, padding_col)
+		for i := 0; i < (count_padded-count)/srcs_length; i++ {
+			srcs_padded = append(srcs_padded, padding_col)
+		}
+		
 		
 		// Next we compute the padded identity permutation
-		p := make([]field.Element, count_padded - count)
-		logrus.Printf("Padding with %v elements", count_padded - count)
-		for i := range p {
-			p[i].SetInt64(int64(i+count))
-		}
-		s_padded = make([]smartvectors.SmartVector, 0, len(s)+1)
+		s_padded = make([]smartvectors.SmartVector, 0, len(s)+(count_padded-count)/srcs_length)
 		s_padded = append(s_padded, s...)
-		s_padded = append(s_padded, smartvectors.NewRegular(p))
+		padding_count := 0
+		for i := 0; i < (count_padded-count)/srcs_length; i++ {
+			p := make([]field.Element, srcs_length)
+			for j := range p {
+				p[j].SetInt64(int64(count + padding_count))
+				padding_count++
+			}
+			s_padded = append(s_padded, smartvectors.NewRegular(p))
+		}
 	} else {
 		count_padded = count
 		srcs_padded = srcs
