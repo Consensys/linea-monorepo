@@ -18,10 +18,10 @@ func ForTestFromVect(xs ...[fext.ExtensionDegree]int) SmartVector {
 	return NewRegularExt(vectorext.ForTestFromVect(xs...))
 }
 
-// ForTestFromPairs groups the inputs into pairs and computes a regular smartvector of
+// ForTestFromQuads groups the inputs into pairs and computes a regular smartvector of
 // field extensions, where each field extension has only the first two coordinates populated.
-func ForTestFromPairs(xs ...int) SmartVector {
-	return NewRegularExt(vectorext.ForTestFromPairs(xs...))
+func ForTestFromQuads(xs ...int) SmartVector {
+	return NewRegularExt(vectorext.ForTestFromQuads(xs...))
 }
 
 // LeftPadded creates a new padded vector (padded on the left)

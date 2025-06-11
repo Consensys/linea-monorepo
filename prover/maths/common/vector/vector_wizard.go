@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	fr "github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -187,8 +187,10 @@ func Fill(v []field.Element, val field.Element) {
 // powers of x, starting from x^0 = 1 and ending on x^{n-1}. The function panics
 // if given x=0 and returns an empty vector if n=0.
 func PowerVec(x field.Element, n int) []field.Element {
+	var zero field.Element
+	zero.SetZero()
 
-	if x == field.Zero() {
+	if x == zero {
 		utils.Panic("cannot build a power vec for x=0")
 	}
 

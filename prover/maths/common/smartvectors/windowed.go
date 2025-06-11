@@ -78,7 +78,9 @@ func (p *PaddedCircularWindow) GetBase(n int) (field.Element, error) {
 
 func (p *PaddedCircularWindow) GetExt(n int) fext.Element {
 	elem, _ := p.GetBase(n)
-	return *new(fext.Element).SetFromBase(&elem)
+	var res fext.Element
+	fext.FromBase(&res, &elem)
+	return res
 }
 
 func (r *PaddedCircularWindow) Get(n int) field.Element {
@@ -215,7 +217,7 @@ func (p *PaddedCircularWindow) WriteInSliceExt(buff []fext.Element) {
 	p.WriteInSlice(temp)
 	for i := 0; i < len(buff); i++ {
 		elem := temp[i]
-		buff[i].SetFromBase(&elem)
+		fext.FromBase(&buff[i], &elem)
 	}
 
 }
@@ -414,7 +416,7 @@ func (w *PaddedCircularWindow) IntoRegVecSaveAllocExt() []fext.Element {
 	res := make([]fext.Element, len(temp))
 	for i := 0; i < len(temp); i++ {
 		elem := temp[i]
-		res[i].SetFromBase(&elem)
+		fext.FromBase(&res[i], &elem)
 	}
 	return res
 }

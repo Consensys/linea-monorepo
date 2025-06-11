@@ -209,3 +209,11 @@ func (e *Element) Select(api frontend.API, b frontend.Variable, r1, r2 Element) 
 
 	return e
 }
+
+func NewFromBase(e frontend.Variable) Element {
+	return Element{
+		B0: E2{A0: e, A1: 0},
+
+		B1: E2{A0: 0, A1: 0},
+	}
+}

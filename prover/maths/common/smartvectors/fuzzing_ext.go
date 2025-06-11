@@ -191,7 +191,7 @@ func (gen *testCaseGenExt) NewTestCaseForLinCombExt() (tcase testCaseExt) {
 
 		// Update the expected res value
 		var tmp, coeffField fext.Element
-		coeffField.SetInt64(int64(tcase.coeffs[i]))
+		fext.SetInt64(&coeffField, int64(tcase.coeffs[i]))
 		tmp.Mul(&val, &coeffField)
 		resVal.Add(&resVal, &tmp)
 
@@ -371,7 +371,7 @@ func (gen *testCaseGenExt) genValue() fext.Element {
 	case 1:
 		return fext.One()
 	default:
-		return fext.NewElement(uint64(gen.gen.Uint64()), fieldPaddingInt())
+		return fext.NewElement(uint64(gen.gen.Uint64()), 0, 0, 0)
 	}
 
 }

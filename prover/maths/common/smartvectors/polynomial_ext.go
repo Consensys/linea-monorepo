@@ -1,13 +1,14 @@
 package smartvectors
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
-	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpolyext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math/big"
 
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
+	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
@@ -92,7 +93,7 @@ func RuffiniQuoRemExt(p SmartVector, q fext.Element) (quo SmartVector, rem fext.
 }
 
 // Evaluate a polynomial in Lagrange basis
-func InterpolateExt(v SmartVector, x fext.Element, oncoset ...bool) fext.Element {
+func EvaluateLagrangeFullFext(v SmartVector, x fext.Element, oncoset ...bool) fext.Element {
 	switch con := v.(type) {
 	case *ConstantExt:
 		return con.val
@@ -101,7 +102,7 @@ func InterpolateExt(v SmartVector, x fext.Element, oncoset ...bool) fext.Element
 	// Maybe there is an optim for windowed here
 	res := make([]fext.Element, v.Len())
 	v.WriteInSliceExt(res)
-	return fastpolyext.Interpolate(res, x, oncoset...)
+	return fastpolyext.EvaluateLagrange(res, x, oncoset...)
 }
 
 // Batch-evaluate polynomials in Lagrange basis
@@ -161,13 +162,13 @@ func batchInterpolateSVExt(results []fext.Element, computed []bool, polys [][]fe
 		utils.Panic("only support powers of two but poly has length %v", len(polys))
 	}
 
-	domain := fft.NewDomain(n)
+	domain := fft.NewDomain(uint64(n))
 	denominator := make([]fext.Element, n)
 
 	one := fext.One()
 
 	if len(oncoset) > 0 && oncoset[0] {
-		x.MulByBase(&x, &domain.FrMultiplicativeGenInv)
+		x.MulByElement(&x, &domain.FrMultiplicativeGenInv)
 	}
 
 	/*
@@ -179,7 +180,7 @@ func batchInterpolateSVExt(results []fext.Element, computed []bool, polys [][]fe
 	*/
 	denominator[0] = x
 	for i := 1; i < n; i++ {
-		denominator[i].MulByBase(&denominator[i-1], &domain.GeneratorInv)
+		denominator[i].MulByElement(&denominator[i-1], &domain.GeneratorInv)
 	}
 
 	for i := 0; i < n; i++ {
@@ -216,7 +217,7 @@ func batchInterpolateSVExt(results []fext.Element, computed []bool, polys [][]fe
 
 	// Compute factor as (x^n - 1) * (1 / domain.Cardinality).
 	factor := new(fext.Element).Sub(xN, &one)
-	factor.MulByBase(factor, cardinalityInv)
+	factor.MulByElement(factor, cardinalityInv)
 
 	parallel.Execute(len(polys), func(start, stop int) {
 		for k := start; k < stop; k++ {
@@ -243,7 +244,7 @@ func EvalCoeffExt(v SmartVector, x fext.Element) fext.Element {
 	// Maybe there is an optim for windowed here
 	res := make([]fext.Element, v.Len())
 	v.WriteInSliceExt(res)
-	return polyext.EvalUnivariate(res, x)
+	return polyext.Eval(res, x)
 }
 
 func EvalCoeffBivariateExt(v SmartVector, x fext.Element, numCoeffX int, y fext.Element) fext.Element {
@@ -258,8 +259,8 @@ func EvalCoeffBivariateExt(v SmartVector, x fext.Element, numCoeffX int, y fext.
 
 	foldOnX := make([]fext.Element, len(slice)/numCoeffX)
 	for i := 0; i < len(slice); i += numCoeffX {
-		foldOnX[i/numCoeffX] = polyext.EvalUnivariate(slice[i:i+numCoeffX], x)
+		foldOnX[i/numCoeffX] = polyext.Eval(slice[i:i+numCoeffX], x)
 	}
 
-	return polyext.EvalUnivariate(foldOnX, y)
+	return polyext.Eval(foldOnX, y)
 }

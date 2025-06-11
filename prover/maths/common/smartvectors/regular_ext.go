@@ -2,8 +2,9 @@ package smartvectors
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"iter"
+
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -171,7 +172,7 @@ func (r *RegularExt) IntoRegVecSaveAllocExt() []fext.Element {
 	temp := make([]fext.Element, r.Len())
 	for i := 0; i < r.Len(); i++ {
 		elem, _ := r.GetBase(i)
-		temp[i].SetFromBase(&elem)
+		fext.SetFromBase(&temp[i], &elem)
 	}
 	return temp
 }
