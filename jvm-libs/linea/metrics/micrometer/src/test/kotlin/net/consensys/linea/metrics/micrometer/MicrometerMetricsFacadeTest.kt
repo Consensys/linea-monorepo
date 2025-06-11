@@ -42,9 +42,7 @@ class MicrometerMetricsFacadeTest {
       tags = expectedTags,
     )
     metricMeasureValue = 13L
-
     val createdGauge = meterRegistry.find("linea.test.test.category.some.metric").gauge()
-
     assertThat(createdGauge).isNotNull
     assertThat(createdGauge!!.value()).isEqualTo(13.0)
     metricMeasureValue = 2L
@@ -66,9 +64,7 @@ class MicrometerMetricsFacadeTest {
       description = "This is a test metric",
       tags = expectedTags,
     )
-
     val createdCounter = meterRegistry.find("linea.test.test.category.some.metric").counter()
-
     assertThat(createdCounter!!.count()).isEqualTo(0.0)
     assertThat(createdCounter).isNotNull
     counter.increment(13.0)
@@ -99,9 +95,7 @@ class MicrometerMetricsFacadeTest {
       baseUnit = "seconds",
     )
 
-
     val createdHistogram = meterRegistry.find("linea.test.test.category.some.metric").summary()
-
     assertThat(createdHistogram).isNotNull
     assertThat(createdHistogram!!.id.description).isEqualTo("This is a test metric")
     assertThat(
@@ -144,9 +138,7 @@ class MicrometerMetricsFacadeTest {
     )
 
     timer.captureTime(::mockTimer)
-
     val createdTimer = meterRegistry.find("linea.test.test.category.some.timer.metric").timer()
-
     assertThat(createdTimer).isNotNull
     assertThat(createdTimer!!.id.description).isEqualTo("This is a test metric")
     assertThat(
@@ -201,9 +193,7 @@ class MicrometerMetricsFacadeTest {
       measurementSupplier = { metricMeasureValue },
       tags = listOf(Tag("key1", "value1"), Tag("key2", "value2")),
     )
-
     val createdGauge = meterRegistry.find("test.category.some.gauge.metric").gauge()
-
     assertThat(createdGauge).isNotNull
   }
 
@@ -217,9 +207,7 @@ class MicrometerMetricsFacadeTest {
       description = "This is a test metric",
       tags = listOf(Tag("key1", "value1"), Tag("key2", "value2")),
     )
-
     val createdCounter = meterRegistry.find("test.category.some.counter.metric").counter()
-
     assertThat(createdCounter).isNotNull
   }
 
@@ -234,9 +222,7 @@ class MicrometerMetricsFacadeTest {
       tags = listOf(Tag("key1", "value1"), Tag("key2", "value2")),
       baseUnit = "seconds",
     )
-
     val createdHistogram = meterRegistry.find("test.category.some.histogram.metric").summary()
-
     assertThat(createdHistogram).isNotNull
   }
 
@@ -251,9 +237,7 @@ class MicrometerMetricsFacadeTest {
       tags = listOf(Tag("key1", "value1"), Tag("key2", "value2")),
     )
     timer.captureTime {}
-
     val createdTimer = meterRegistry.find("test.category.some.timer.metric").timer()
-
     assertThat(createdTimer).isNotNull
   }
 
