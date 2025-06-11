@@ -7,18 +7,22 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// EvalUnivariate evaluates a univariate polynomial `pol` given as a vector of
-// coefficients. Coefficients are for increasing degree monomials: meaning that
-// pol[0] is the constant term and pol[len(pol) - 1] is the highest degree term.
-// The evaluation is done using the Horner method.
-//
-// If the empty slice is provided, it is understood as the zero polynomial and
-// the function returns zero.
+// EvalUnivariate returns sum_i pol[i]x^{i}
 func EvalUnivariate(pol []fext.Element, x fext.Element) fext.Element {
 	var res fext.Element
 	for i := len(pol) - 1; i >= 0; i-- {
 		res.Mul(&res, &x)
 		res.Add(&res, &pol[i])
+	}
+	return res
+}
+
+// EvalUnivariate returns sum_i pol[i]x^{i}
+func EvalUnivariateMixedTmp(pol []field.Element, x fext.Element) fext.Element {
+	var res fext.Element
+	for i := len(pol) - 1; i >= 0; i-- {
+		res.Mul(&res, &x)
+		res.B0.A0.Add(&res.B0.A0, &pol[i])
 	}
 	return res
 }
@@ -33,7 +37,8 @@ func EvalUnivariateMixed(pol []fext.GenericFieldElem, x fext.GenericFieldElem) f
 }
 
 func EvalUnivariateBase(pol []fext.Element, x field.Element) fext.Element {
-	wrappedX := fext.Element{x, field.Zero()}
+	var wrappedX fext.Element
+	wrappedX.B0.A0.Set(&x)
 	return EvalUnivariate(pol, wrappedX)
 }
 
