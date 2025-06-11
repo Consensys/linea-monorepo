@@ -4,16 +4,14 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/sis"
+	"github.com/consensys/gnark-crypto/field/koalabear/sis"
+
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
-
-	"github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_32_8"
-	"github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_16"
-	"github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_8"
 )
 
 const (
@@ -27,9 +25,9 @@ type Key struct {
 	// lock guards the access to the SIS key and prevents the user from hashing
 	// concurrently with the same SIS key.
 	lock *sync.Mutex
-	// gnarkInternal stores the SIS key itself and some precomputed domain
+	// GnarkInternal stores the SIS key itself and some precomputed domain
 	// twiddles.
-	gnarkInternal *sis.RSis
+	GnarkInternal *sis.RSis
 	// Params provides the parameters of the ring-SIS instance (logTwoBound,
 	// degree etc)
 	Params
@@ -58,38 +56,12 @@ func GenerateKey(params Params, maxNumFieldToHash int) Key {
 
 	res := Key{
 		lock:          &sync.Mutex{},
-		gnarkInternal: rsis,
+		GnarkInternal: rsis,
 		Params:        params,
+		twiddleCosets: nil,
 	}
-
-	// Optimization for these specific parameters
-	if params.LogTwoBound == 8 && 1<<params.LogTwoDegree == 64 {
-		res.twiddleCosets = ringsis_64_8.PrecomputeTwiddlesCoset(
-			rsis.Domain.Generator,
-			rsis.Domain.FrMultiplicativeGen,
-		)
-	}
-
-	if params.LogTwoBound == 16 && 1<<params.LogTwoDegree == 64 {
-		res.twiddleCosets = ringsis_64_16.PrecomputeTwiddlesCoset(
-			rsis.Domain.Generator,
-			rsis.Domain.FrMultiplicativeGen,
-		)
-	}
-
-	if params.LogTwoBound == 8 && 1<<params.LogTwoDegree == 32 {
-		res.twiddleCosets = ringsis_32_8.PrecomputeTwiddlesCoset(
-			rsis.Domain.Generator,
-			rsis.Domain.FrMultiplicativeGen,
-		)
-	}
-
+	//TODO@yao: check if PrecomputeTwiddlesCoset does the same as the coset computation in fft?
 	return res
-}
-
-// Ag returns the SIS key
-func (s *Key) Ag() [][]field.Element {
-	return s.gnarkInternal.Ag
 }
 
 // Hash interprets the input vector as a sequence of coefficients of size
@@ -104,12 +76,14 @@ func (s *Key) Hash(v []field.Element) []field.Element {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	res := make([]field.Element, s.OutputSize())
-	if err := s.gnarkInternal.Hash(v, res); err != nil {
+	result := make([]field.Element, s.GnarkInternal.Degree)
+	err := s.GnarkInternal.Hash(v, result)
+
+	if err != nil {
 		panic(err)
 	}
 
-	return res
+	return result
 }
 
 // LimbSplit breaks down the entries of `v` into short limbs representing
@@ -117,26 +91,21 @@ func (s *Key) Hash(v []field.Element) []field.Element {
 // vector, casted as field elements in Montgommery form.
 func (s *Key) LimbSplit(vReg []field.Element) []field.Element {
 
-	it := sis.NewLimbIterator(sis.NewVectorIterator(vReg), s.LogTwoBound/8)
-
-	var (
-		numLimbs = len(vReg) * field.Bytes * 8 / s.LogTwoBound
-		res      = make([]field.Element, 0, numLimbs)
-	)
-
-	for i := 0; i < numLimbs; i++ {
-
-		limb, ok := it.NextLimb()
+	vr := sis.NewLimbIterator(sis.NewVectorIterator(vReg), s.LogTwoBound/8)
+	m := make([]field.Element, len(vReg)*s.NumLimbs())
+	var ok bool
+	for i := 0; i < len(m); i++ {
+		m[i][0], ok = vr.NextLimb()
 		if !ok {
-			break
+			utils.Panic("LimbSplit panic")
 		}
-
-		var v field.Element
-		v.SetUint64(limb)
-		res = append(res, v)
 	}
-
-	return res
+	// The limbs are in regular form, we reconvert them back into montgommery
+	// form
+	for i := 0; i < len(m); i++ {
+		m[i] = field.MulR(m[i])
+	}
+	return m
 }
 
 // HashModXnMinus1 applies the SIS hash modulo X^n - 1, (instead of X^n + 1).
@@ -170,13 +139,13 @@ func (s Key) HashModXnMinus1(limbs []field.Element) []field.Element {
 		r <- FFTInv(r)
 	*/
 
-	domain := s.gnarkInternal.Domain
+	domain := s.GnarkInternal.Domain
 	k := make([]field.Element, s.modulusDegree())
 	a := make([]field.Element, s.modulusDegree())
 	r := make([]field.Element, s.OutputSize())
 
 	for i := 0; i < nbPolyUsed; i++ {
-		copy(a, s.gnarkInternal.A[i])
+		copy(a, s.GnarkInternal.A[i])
 		copy(k, inputReader)
 
 		// consume the "reader"
@@ -227,9 +196,9 @@ func (s Key) HashModXnMinus1(limbs []field.Element) []field.Element {
 // See [Key.Hash] for more details.
 func (s *Key) FlattenedKey() []field.Element {
 	res := make([]field.Element, 0, s.maxNumLimbsHashable())
-	for i := range s.gnarkInternal.A {
-		for j := range s.gnarkInternal.A[i] {
-			t := s.gnarkInternal.A[i][j]
+	for i := range s.GnarkInternal.A {
+		for j := range s.GnarkInternal.A[i] {
+			t := s.GnarkInternal.A[i][j]
 			t = field.MulRInv(t)
 			res = append(res, t)
 		}
@@ -275,34 +244,6 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 				numCols, i, v[i].Len())
 		}
 	}
-
-	if s.LogTwoBound == 8 && s.LogTwoDegree == 6 {
-		return ringsis_64_8.TransversalHash(
-			s.gnarkInternal.Ag,
-			v,
-			s.twiddleCosets,
-			s.gnarkInternal.Domain,
-		)
-	}
-
-	if s.LogTwoBound == 16 && s.LogTwoDegree == 6 {
-		return ringsis_64_16.TransversalHash(
-			s.gnarkInternal.Ag,
-			v,
-			s.twiddleCosets,
-			s.gnarkInternal.Domain,
-		)
-	}
-
-	if s.LogTwoBound == 8 && s.LogTwoDegree == 5 {
-		return ringsis_32_8.TransversalHash(
-			s.gnarkInternal.Ag,
-			v,
-			s.twiddleCosets,
-			s.gnarkInternal.Domain,
-		)
-	}
-
 	res := make([]field.Element, numCols*s.OutputSize())
 
 	// Will contain keys per threads

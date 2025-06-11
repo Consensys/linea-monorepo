@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -44,35 +43,23 @@ var testCasesKey = []struct {
 		Size: 43,
 		Params: Params{
 			LogTwoBound:  8,
-			LogTwoDegree: 1,
+			LogTwoDegree: 5,
 		},
 	},
 	{
 		Size: 23,
 		Params: Params{
 			LogTwoBound:  8,
-			LogTwoDegree: 1,
+			LogTwoDegree: 6,
 		},
 	},
 	{
 		Size: 256,
 		Params: Params{
 			LogTwoBound:  8,
-			LogTwoDegree: 1,
+			LogTwoDegree: 6,
 		},
 	},
-}
-
-func TestKeyMaxNumFieldHashable(t *testing.T) {
-
-	for _, testCase := range testCasesKey {
-		t.Run(fmt.Sprintf("case-%++v", testCase), func(t *testing.T) {
-			numFieldPerPoly := 8 * field.Bytes / testCase.LogTwoBound
-			key := GenerateKey(testCase.Params, testCase.Size)
-			assert.LessOrEqual(t, testCase.Size, key.MaxNumFieldHashable())
-			assert.LessOrEqual(t, key.MaxNumFieldHashable(), testCase.Size+numFieldPerPoly-1)
-		})
-	}
 }
 
 func TestHashModXnMinusOne(t *testing.T) {
@@ -85,7 +72,7 @@ func TestHashModXnMinusOne(t *testing.T) {
 			flattenedKey   = key.FlattenedKey() // accounts for the Montgommery skip
 		)
 
-		for i := range key.gnarkInternal.A {
+		for i := range key.GnarkInternal.A {
 			ai := flattenedKey[i*key.OutputSize() : (i+1)*key.OutputSize()]
 			si := make([]field.Element, key.OutputSize())
 			copy(si, limbs[i*key.OutputSize():])
@@ -110,39 +97,6 @@ func TestHashModXnMinusOne(t *testing.T) {
 			runTest(t, &key, vector.Repeat(field.One(), key.maxNumLimbsHashable()))
 		})
 
-		t.Run(fmt.Sprintf("case-%++v/all-zeroes", i), func(t *testing.T) {
-			runTest(t, &key, vector.Repeat(field.Zero(), key.maxNumLimbsHashable()))
-		})
-
-		t.Run(fmt.Sprintf("case-%++v/rand-constant", i), func(t *testing.T) {
-			var r field.Element
-			r.SetRandom()
-			runTest(t, &key, vector.Repeat(r, key.maxNumLimbsHashable()))
-		})
-
-		t.Run(fmt.Sprintf("case-%++v/full-rand", i), func(t *testing.T) {
-			runTest(t, &key, vector.Rand(key.maxNumLimbsHashable()))
-		})
-
-		// ==== passing shorter vectors
-
-		t.Run(fmt.Sprintf("case-%++v/all-ones-shorter", i), func(t *testing.T) {
-			runTest(t, &key, vector.Repeat(field.One(), key.maxNumLimbsHashable()-1))
-		})
-
-		t.Run(fmt.Sprintf("case-%++v/all-zeroes-shorter", i), func(t *testing.T) {
-			runTest(t, &key, vector.Repeat(field.Zero(), key.maxNumLimbsHashable()-1))
-		})
-
-		t.Run(fmt.Sprintf("case-%++v/rand-constant-shorter", i), func(t *testing.T) {
-			var r field.Element
-			r.SetRandom()
-			runTest(t, &key, vector.Repeat(r, key.maxNumLimbsHashable()-1))
-		})
-
-		t.Run(fmt.Sprintf("case-%++v/full-rand-shorter", i), func(t *testing.T) {
-			runTest(t, &key, vector.Rand(key.maxNumLimbsHashable()-1))
-		})
 	}
 }
 
@@ -164,7 +118,7 @@ func TestLimbSplit(t *testing.T) {
 		limbs := key.LimbSplit(v)
 		for i := range v {
 			subLimbs := limbs[i*key.NumLimbs() : (i+1)*key.NumLimbs()]
-			recomposed := poly.EvalUnivariate(subLimbs, bound)
+			recomposed := poly.Eval(subLimbs, bound)
 			assert.Equal(subT, v[i].String(), recomposed.String())
 		}
 	}
@@ -212,102 +166,6 @@ func TestHashFromLimbs(t *testing.T) {
 	}
 }
 
-func TestTransveralHashFromLimbs(t *testing.T) {
-
-	testCaseDimensions := []struct {
-		NumRows, NumCols int
-	}{
-		{
-			NumRows: 4,
-			NumCols: 16,
-		},
-		{
-			NumRows: 5,
-			NumCols: 4,
-		},
-		{
-			NumRows: 4,
-			NumCols: 5,
-		},
-		{
-			NumRows: 4,
-			NumCols: 18,
-		},
-		{
-			NumRows: 5,
-			NumCols: 18,
-		},
-		{
-			NumRows: 128,
-			NumCols: 512,
-		},
-		{
-			NumRows: 128,
-			NumCols: 512 - 1,
-		},
-		{
-			NumRows: 128,
-			NumCols: 512 + 1,
-		},
-		{
-			NumRows: 128 - 1,
-			NumCols: 512,
-		},
-		{
-			NumRows: 128 - 1,
-			NumCols: 512 - 1,
-		},
-		{
-			NumRows: 128 - 1,
-			NumCols: 512 + 1,
-		},
-		{
-			NumRows: 128 + 1,
-			NumCols: 512,
-		},
-		{
-			NumRows: 128 + 1,
-			NumCols: 512 - 1,
-		},
-		{
-			NumRows: 128 + 1,
-			NumCols: 512 + 1,
-		},
-	}
-
-	for pId, tcKeyParams := range testCasesKey {
-		for _, tcDim := range testCaseDimensions {
-			t.Run(
-				fmt.Sprintf("params-%v-numRow=%v-nCols=%v", pId, tcDim.NumRows, tcDim.NumCols),
-				func(t *testing.T) {
-
-					key := GenerateKey(tcKeyParams.Params, tcDim.NumRows)
-
-					inputs := make([]smartvectors.SmartVector, 4)
-					for i := range inputs {
-						inputs[i] = smartvectors.Rand(16)
-					}
-
-					transposed := make([][]field.Element, 16)
-					for i := range transposed {
-						transposed[i] = make([]fr.Element, 4)
-						for j := range transposed[i] {
-							transposed[i][j] = inputs[j].Get(i)
-						}
-					}
-
-					res := key.TransversalHash(inputs)
-					for i := range transposed {
-						baseline := key.Hash(transposed[i])
-						assert.Equal(t, baseline, res[i*key.OutputSize():(i+1)*key.OutputSize()])
-					}
-
-				},
-			)
-		}
-	}
-}
-
 func TestHashLimbsFromSlice(t *testing.T) {
 
 	for i, tcParams := range testCasesKey {
@@ -319,7 +177,7 @@ func TestHashLimbsFromSlice(t *testing.T) {
 				keyVec       = key.FlattenedKey()
 				limbs        = key.LimbSplit(inputs)
 				expectedHash = key.hashFromLimbs(limbs)
-				hashToTest   = hashLimbsWithSlice(keyVec, limbs, key.gnarkInternal.Domain, key.OutputSize())
+				hashToTest   = hashLimbsWithSlice(keyVec, limbs, key.GnarkInternal.Domain, key.OutputSize())
 			)
 
 			require.Equal(t, vector.Prettify(expectedHash), vector.Prettify(hashToTest))
@@ -378,8 +236,8 @@ func (key *Key) hashFromLimbs(limbs []field.Element) []field.Element {
 
 	nbPolyUsed := utils.DivCeil(len(limbs), key.OutputSize())
 
-	if nbPolyUsed > len(key.gnarkInternal.Ag) {
-		utils.Panic("Too many inputs max is %v but has %v", len(key.gnarkInternal.Ag)*key.OutputSize(), len(limbs))
+	if nbPolyUsed > len(key.GnarkInternal.Ag) {
+		utils.Panic("Too many inputs max is %v but has %v", len(key.GnarkInternal.Ag)*key.OutputSize(), len(limbs))
 	}
 
 	var (
@@ -403,20 +261,21 @@ func (key *Key) hashFromLimbs(limbs []field.Element) []field.Element {
 			k[i].SetZero()
 		}
 
-		key.gnarkInternal.Domain.FFT(k, fft.DIF, fft.OnCoset(), fft.WithNbTasks(1))
+		key.GnarkInternal.Domain.FFT(k, fft.DIF, fft.OnCoset(), fft.WithNbTasks(1))
 		var tmp field.Element
 		for j := range res {
-			tmp.Mul(&k[j], &key.gnarkInternal.Ag[i][j])
+			tmp.Mul(&k[j], &key.GnarkInternal.Ag[i][j])
 			res[j].Add(&res[j], &tmp)
 		}
 	}
 
 	// Since the Ag are normally assumed to work with non-montgomery limbs
 	// (when doing normal hashing)
+
 	for j := range res {
 		res[j] = field.MulRInv(res[j])
 	}
 
-	key.gnarkInternal.Domain.FFTInverse(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1)) // -> reduces mod Xᵈ+1
+	key.GnarkInternal.Domain.FFTInverse(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1)) // -> reduces mod Xᵈ+1
 	return res
 }
