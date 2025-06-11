@@ -6,13 +6,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/stretchr/testify/require"
 )
 
 // Evaluating a polynomial or its LDE yields the same result
-func TestReedSolomonDoesNotChangeEvaluation(t *testing.T) {
+func TestReedSolomonExtDoesNotChangeEvaluation(t *testing.T) {
 
 	polySize := 1 << 10
 	_nPolys := 15
@@ -21,20 +21,20 @@ func TestReedSolomonDoesNotChangeEvaluation(t *testing.T) {
 	x := fext.RandomElement()
 
 	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, mimc.NewMiMC, nil)
-	vec := smartvectors.Rand(1 << 10)
-	rsEncoded := params.rsEncode(vec, nil)
+	vec := smartvectors.RandExt(1 << 10)
+	rsEncoded := params.rsEncodeExt(vec, nil)
 
-	err := params.isCodeword(rsEncoded)
+	err := params.isCodewordExt(rsEncoded)
 	require.NoError(t, err)
 
-	y0 := smartvectors.EvaluateLagrangeOnFext(vec, x)
-	y1 := smartvectors.EvaluateLagrangeOnFext(rsEncoded, x)
+	y0 := smartvectorsext.EvaluateLagrange(vec, x)
+	y1 := smartvectorsext.EvaluateLagrange(rsEncoded, x)
 
 	require.Equal(t, y0.String(), y1.String())
 }
 
 // Evaluating and testing for constants
-func TestReedSolomonConstant(t *testing.T) {
+func TestReedSolomonExtConstant(t *testing.T) {
 
 	polySize := 1 << 10
 	_nPolys := 15
@@ -43,14 +43,14 @@ func TestReedSolomonConstant(t *testing.T) {
 	x := fext.RandomElement()
 
 	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, mimc.NewMiMC, nil)
-	vec := smartvectors.NewConstant(field.NewElement(42), polySize)
-	rsEncoded := params.rsEncode(vec, nil)
+	vec := smartvectors.NewConstantExt(fext.RandomElement(), polySize)
+	rsEncoded := params.rsEncodeExt(vec, nil)
 
-	err := params.isCodeword(rsEncoded)
+	err := params.isCodewordExt(rsEncoded)
 	require.NoError(t, err)
 
-	y0 := smartvectors.EvaluateLagrangeOnFext(vec, x)
-	y1 := smartvectors.EvaluateLagrangeOnFext(rsEncoded, x)
+	y0 := smartvectorsext.EvaluateLagrange(vec, x)
+	y1 := smartvectorsext.EvaluateLagrange(rsEncoded, x)
 
 	require.Equal(t, y0.String(), y1.String())
 

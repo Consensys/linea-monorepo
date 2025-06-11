@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-	"reflect"
 
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -44,15 +44,33 @@ func (f *Bytes32) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// Returns true if the receiver is a valid field element
-func (f *Bytes32) IsBn254Fr() bool {
-	var (
-		x            field.Element
-		reserialized [32]byte
-	)
-	x.SetBytes(f[:])
-	reserialized = x.Bytes()
-	return reflect.DeepEqual([32]byte(*f), reserialized)
+// HashToBytes32 converts [8]koalabear.Element to Bytes32.
+func HashToBytes32(hash [8]koalabear.Element) Bytes32 {
+	var result Bytes32
+
+	for i := 0; i < 8; i++ {
+		startIndex := i * 4
+		valBytes := hash[i].Bytes()
+		copy(result[startIndex:startIndex+4], valBytes[:])
+	}
+
+	return result
+}
+
+// Bytes32ToHash converts Bytes32 to [8]koalabear.Element
+func Bytes32ToHash(input Bytes32) [8]koalabear.Element { // Changed koalabear.Element to Element
+	var result [8]koalabear.Element // Array to store the 8 reconstructed Elements
+
+	for i := 0; i < 8; i++ {
+		startIndex := i * 4
+		segment := input[startIndex : startIndex+4]
+
+		var newElement koalabear.Element
+		newElement.SetBytes(segment)
+		result[i] = newElement
+	}
+
+	return result
 }
 
 // Writes the bytes32 into the given write.
@@ -142,18 +160,4 @@ func Bytes32FromHex(s string) Bytes32 {
 func DummyDigest(i int) (d Bytes32) {
 	d[31] = byte(i) // on the last one to not create overflows
 	return d
-}
-
-// SetField sets the bytes32 from a field.Element
-func (b *Bytes32) SetField(f field.Element) {
-	*b = Bytes32(f.Bytes())
-}
-
-// ToField returns the bytes32 as a field.Element
-func (b Bytes32) ToField() field.Element {
-	var f field.Element
-	if err := f.SetBytesCanonical(b[:]); err != nil {
-		panic(err)
-	}
-	return f
 }

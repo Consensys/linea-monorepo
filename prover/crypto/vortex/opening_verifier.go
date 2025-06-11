@@ -7,8 +7,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
+	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
@@ -35,20 +38,16 @@ type VerifierInputs struct {
 	// MerkleRoots are the commitment to verify the opening for
 	MerkleRoots []types.Bytes32
 	// X is the univariate evaluation point
-	X field.Element
+	X fext.Element
 	// Ys are the alleged evaluation at point X
-	Ys [][]field.Element
+	Ys [][]fext.Element
 	// OpeningProof contains the messages of the prover
 	OpeningProof OpeningProof
 	// RandomCoin is the random coin sampled by the verifier to be used to
 	// construct the linear combination of the columns.
-	RandomCoin field.Element
+	RandomCoin fext.Element
 	// EntryList is the random coin representing the columns to open.
 	EntryList []int
-	// Flag indicating if the SIS hash is replaced for the particular round
-	// the default behavior is to use the SIS hash function along with the
-	// MiMC hash function
-	IsSISReplacedByMiMC []bool
 }
 
 // VerifyOpening verifies a Vortex opening proof, see [VerifierInputs] for
@@ -92,7 +91,7 @@ func VerifyOpening(v *VerifierInputs) error {
 		}
 	}
 
-	if err := v.Params.isCodeword(v.OpeningProof.LinearCombination); err != nil {
+	if err := v.Params.isCodewordExt(v.OpeningProof.LinearCombination); err != nil {
 		return err
 	}
 
@@ -107,7 +106,6 @@ func VerifyOpening(v *VerifierInputs) error {
 	if err := v.checkColumnInclusion(); err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -129,14 +127,15 @@ func (v *VerifierInputs) checkColLinCombination() (err error) {
 		}
 
 		// Check the linear combination is consistent with the opened column
-		y := poly.EvalUnivariate(fullCol, v.RandomCoin)
+
+		y := poly.EvalOnExtField(fullCol, v.RandomCoin)
 
 		if selectedColID > linearCombination.Len() {
 			return fmt.Errorf("entry overflows the size of the linear combination")
 		}
 
-		if y != linearCombination.Get(selectedColID) {
-			other := linearCombination.Get(selectedColID)
+		if y != linearCombination.GetExt(selectedColID) {
+			other := linearCombination.GetExt(selectedColID)
 			return fmt.Errorf("the linear combination is inconsistent %v : %v", y.String(), other.String())
 		}
 	}
@@ -148,14 +147,14 @@ func (v *VerifierInputs) checkColLinCombination() (err error) {
 // with the statement. The function returns an error if the check fails.
 func (v *VerifierInputs) checkStatement() (err error) {
 
-	// Check the consistency of Ys and proof.Linear combination
-	var (
-		Yjoined     = utils.Join(v.Ys...)
-		alphaY      = smartvectors.Interpolate(v.OpeningProof.LinearCombination, v.X)
-		alphaYProme = poly.EvalUnivariate(Yjoined, v.RandomCoin)
-	)
+	smartvectors_mixed.IsBase(v.OpeningProof.LinearCombination)
 
-	if alphaY != alphaYProme {
+	// Check the consistency of Ys and proof.Linear combination
+	Yjoined := utils.Join(v.Ys...)
+	alphaY := smartvectors.EvaluateLagrangeFullFext(v.OpeningProof.LinearCombination, v.X)
+	alphaYPrime := polyext.Eval(Yjoined, v.RandomCoin)
+
+	if alphaY != alphaYPrime {
 		return fmt.Errorf("RowLincomb and Y are inconsistent")
 	}
 
@@ -170,57 +169,24 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 	var (
 		mTreeHashConfig = &smt.Config{
 			HashFunc: func() hashtypes.Hasher {
-				return hashtypes.Hasher{Hash: v.Params.MerkleHashFunc()}
+				return hashtypes.Hasher{Hash: v.Params.MerkleHasher()}
 			},
 			Depth: utils.Log2Ceil(v.Params.NumEncodedCols()),
 		}
 	)
 
-	// If IsSISReplacedByMiMC is not assigned, we assign them with default false values
-	if v.IsSISReplacedByMiMC == nil {
-		v.IsSISReplacedByMiMC = make([]bool, len(v.MerkleRoots))
-	}
-
 	for i := 0; i < len(v.MerkleRoots); i++ {
 		for j := 0; j < len(v.EntryList); j++ {
 
-			var (
-				// Selected columns #j contained in the commitment #i.
-				selectedSubCol = v.OpeningProof.Columns[i][j]
-				leaf           types.Bytes32
-				entry          = v.EntryList[j]
-				root           = v.MerkleRoots[i]
-				mProof         = v.OpeningProof.MerkleProofs[i][j]
-			)
-			// We verify the SIS hash of the current sub-column
-			// only if the SIS hash is applied for the current round.
-			if !v.IsSISReplacedByMiMC[i] {
-				var (
-					// SIS hash of the current sub-column
-					sisHash = v.Params.Key.Hash(selectedSubCol)
-					// hasher used to hash the SIS hash (and thus not a hasher
-					// based on SIS)
-					hasher = v.Params.LeafHashFunc()
-				)
+			var leaf types.Bytes32
+			var hleaf []field.Element
+			selectedSubCol := v.OpeningProof.Columns[i][j]
+			entry := v.EntryList[j]
+			root := v.MerkleRoots[i]
+			mProof := v.OpeningProof.MerkleProofs[i][j]
 
-				hasher.Reset()
-				for _, x := range sisHash {
-					xBytes := x.Bytes()
-					hasher.Write(xBytes[:])
-				}
-				copy(leaf[:], hasher.Sum(nil))
-
-			} else {
-				// We assume that HashFunc (to be used for Merkle Tree) and NoSisHashFunc()
-				// (to be used for in place of SIS hash) are the same i.e. the MiMC hash function
-				hasher := v.Params.LeafHashFunc()
-				hasher.Reset()
-				for k := range selectedSubCol {
-					xBytes := selectedSubCol[k].Bytes()
-					hasher.Write(xBytes[:])
-				}
-				copy(leaf[:], hasher.Sum(nil))
-			}
+			hleaf = v.Params.hashColumn(selectedSubCol)
+			leaf = v.Params.computeLeaf(hleaf)
 
 			// Check the Merkle-proof for the obtained leaf
 			ok := mProof.Verify(mTreeHashConfig, leaf, root)
@@ -230,7 +196,7 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 
 			// And check that the Merkle proof is related to the correct entry
 			if mProof.Path != entry {
-				return fmt.Errorf("expected the Merkle proof to hold for position %v but was %v", entry, mProof.Path)
+				return fmt.Errorf("expected the Merkle proof to hold for position %v but was %v", entry, entry)
 			}
 		}
 	}
