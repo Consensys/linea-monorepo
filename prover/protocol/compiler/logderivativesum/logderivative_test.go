@@ -117,9 +117,9 @@ func TestLogDerivativeSumMixed(t *testing.T) {
 		run.AssignColumn("Num_1", smartvectors.ForTest(2, 3, 7, 9))
 		run.AssignColumn("Num_2", smartvectors.ForTest(5, 6, 1, 1))
 
-		run.AssignColumn("Den_0", smartvectors.ForTestFromPairs(1, 2, 3, 4, 5, 6, 7, 8))
-		run.AssignColumn("Den_1", smartvectors.ForTestFromPairs(2, 3, 7, 9, 11, 13, 17, 19))
-		run.AssignColumn("Den_2", smartvectors.ForTestFromPairs(5, 6, 1, 1, 2, 3, 4, 5))
+		run.AssignColumn("Den_0", smartvectors.ForTestFromQuads(1, 2, 3, 4, 5, 6, 7, 8))
+		run.AssignColumn("Den_1", smartvectors.ForTestFromQuads(2, 3, 7, 9, 11, 13, 17, 19))
+		run.AssignColumn("Den_2", smartvectors.ForTestFromQuads(5, 6, 1, 1, 2, 3, 4, 5))
 
 		run.AssignLogDerivSum("LogDerivSum_Test", field.NewElement(8))
 

@@ -3,10 +3,11 @@ package smartvectors
 import (
 	"errors"
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 	"iter"
 	"math/rand/v2"
+
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
@@ -159,8 +160,8 @@ func IntoGnarkAssignment(sv SmartVector) []frontend.Variable {
 }
 
 // IntoGnarkAssignment converts an extension smart-vector into a gnark assignment
-func IntoGnarkAssignmentExt(sv SmartVector) []gnarkfext.Variable {
-	res := make([]gnarkfext.Variable, sv.Len())
+func IntoGnarkAssignmentExt(sv SmartVector) []gnarkfext.Element {
+	res := make([]gnarkfext.Element, sv.Len())
 	_, err := sv.GetBase(0)
 	if err == nil {
 		for i := range res {
@@ -170,7 +171,7 @@ func IntoGnarkAssignmentExt(sv SmartVector) []gnarkfext.Variable {
 	} else {
 		for i := range res {
 			elem := sv.GetExt(i)
-			res[i] = gnarkfext.ExtToVariable(elem)
+			res[i].Assign(elem)
 		}
 	}
 	return res
@@ -308,14 +309,14 @@ func WindowExt(v SmartVector) []fext.Element {
 		temp := make([]fext.Element, len(w.window))
 		for i := 0; i < len(w.window); i++ {
 			elem := w.window[i]
-			temp[i].SetFromBase(&elem)
+			fext.FromBase(&temp[i], &elem)
 		}
 		return temp
 	case *Regular:
 		temp := make([]fext.Element, len(*w))
 		for i := 0; i < len(*w); i++ {
 			elem, _ := w.GetBase(i)
-			temp[i].SetFromBase(&elem)
+			fext.FromBase(&temp[i], &elem)
 		}
 		return temp
 	case *Rotated:

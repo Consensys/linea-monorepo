@@ -11,6 +11,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
+const ExtensionDegree int = 4
+
 // Embedding
 type Element = extensions.E4
 
