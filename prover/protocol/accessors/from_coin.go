@@ -68,7 +68,7 @@ func (c *FromCoinAccessor) GetFrontendVariableBase(_ frontend.API, circ ifaces.G
 	return circ.GetRandomCoinField(c.Info.Name), nil
 }
 
-func (c *FromCoinAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Variable {
+func (c *FromCoinAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Element {
 	return circ.GetRandomCoinFieldExt(c.Info.Name)
 }
 

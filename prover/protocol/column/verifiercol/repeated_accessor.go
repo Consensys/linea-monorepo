@@ -38,7 +38,7 @@ func (f RepeatedAccessor) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]
 	panic("implement me")
 }
 
-func (f RepeatedAccessor) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Variable {
+func (f RepeatedAccessor) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Element {
 	//TODO implement me
 	panic("implement me")
 }
@@ -48,7 +48,7 @@ func (f RepeatedAccessor) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, p
 	panic("implement me")
 }
 
-func (f RepeatedAccessor) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Variable {
+func (f RepeatedAccessor) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Element {
 	//TODO implement me
 	panic("implement me")
 }

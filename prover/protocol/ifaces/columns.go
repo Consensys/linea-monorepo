@@ -110,7 +110,7 @@ type Column interface {
 	// column is tagged as committed.
 	GetColAssignmentGnark(run GnarkRuntime) []frontend.Variable
 	GetColAssignmentGnarkBase(run GnarkRuntime) ([]frontend.Variable, error)
-	GetColAssignmentGnarkExt(run GnarkRuntime) []gnarkfext.Variable
+	GetColAssignmentGnarkExt(run GnarkRuntime) []gnarkfext.Element
 	// GetColAssignmentGnarkAt recovers the assignment of the column at a
 	// particular position. This will panic if the column is not yet assigned or if the
 	// column is not visible by the verifier. For instance, it will panic if the
@@ -124,7 +124,7 @@ type Column interface {
 	// be a composite column itself)
 	IsComposite() bool
 	GetColAssignmentGnarkAtBase(run GnarkRuntime, pos int) (frontend.Variable, error)
-	GetColAssignmentGnarkAtExt(run GnarkRuntime, pos int) gnarkfext.Variable
+	GetColAssignmentGnarkAtExt(run GnarkRuntime, pos int) gnarkfext.Element
 }
 
 // ColumnAsVariable instantiates a [symbolic.Variable] from a column. The [symbolic.Variable]

@@ -10,7 +10,7 @@ import (
 // A gnark circuit version of the LocalOpeningResult
 type GnarkLocalOpeningParams struct {
 	BaseY  frontend.Variable
-	ExtY   gnarkfext.Variable
+	ExtY   gnarkfext.Element
 	IsBase bool
 }
 

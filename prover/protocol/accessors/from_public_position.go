@@ -47,7 +47,7 @@ func (c *FromPublicColumn) GetFrontendVariableBase(api frontend.API, circ ifaces
 	panic("implement me")
 }
 
-func (c *FromPublicColumn) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Variable {
+func (c *FromPublicColumn) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Element {
 	//TODO implement me
 	panic("implement me")
 }

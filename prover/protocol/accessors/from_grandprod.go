@@ -44,7 +44,7 @@ func (l *FromGrandProductAccessor) GetFrontendVariableBase(api frontend.API, c i
 	panic("implement me")
 }
 
-func (l *FromGrandProductAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Variable {
+func (l *FromGrandProductAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Element {
 	//TODO implement me
 	panic("implement me")
 }

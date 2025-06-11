@@ -106,7 +106,7 @@ func (PolyEval) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend
 EvaluateExt the expression in a gnark circuit
 Does not support vector evaluation
 */
-func (PolyEval) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Variable) gnarkfext.Variable {
+func (PolyEval) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gnarkfext.Element {
 	/*
 		We use the Horner method
 	*/

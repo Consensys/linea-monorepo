@@ -99,7 +99,7 @@ func (n Natural) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.
 	}
 }
 
-func (n Natural) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Variable {
+func (n Natural) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Element {
 	return run.GetColumnExt(n.ID)
 }
 
@@ -117,7 +117,7 @@ func (n Natural) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (
 
 }
 
-func (n Natural) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Variable {
+func (n Natural) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Element {
 	return run.GetColumnAtExt(n.ID, utils.PositiveMod(pos, n.Size()))
 }
 

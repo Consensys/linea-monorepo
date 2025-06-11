@@ -88,7 +88,7 @@ func (c *FromConstAccessor) GetFrontendVariableBase(_ frontend.API, _ ifaces.Gna
 	}
 }
 
-func (c *FromConstAccessor) GetFrontendVariableExt(_ frontend.API, _ ifaces.GnarkRuntime) gnarkfext.Variable {
+func (c *FromConstAccessor) GetFrontendVariableExt(_ frontend.API, _ ifaces.GnarkRuntime) gnarkfext.Element {
 	return gnarkfext.ExtToVariable(c.Ext)
 }
 

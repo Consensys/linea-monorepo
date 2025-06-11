@@ -26,7 +26,7 @@ type Accessor interface {
 	// GetFrontendVariable is as [Accessor.GetVal] but in a gnark circuit.
 	GetFrontendVariable(api frontend.API, c GnarkRuntime) frontend.Variable
 	GetFrontendVariableBase(api frontend.API, c GnarkRuntime) (frontend.Variable, error)
-	GetFrontendVariableExt(api frontend.API, c GnarkRuntime) gnarkfext.Variable
+	GetFrontendVariableExt(api frontend.API, c GnarkRuntime) gnarkfext.Element
 	// Round returns the definition round of the accessor.
 	Round() int
 	// AsVariable converts the accessor to a variable object.

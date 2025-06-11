@@ -148,7 +148,7 @@ func (lc LinComb) GnarkEval(api frontend.API, inputs []frontend.Variable) fronte
 }
 
 // GnarkEval implements the [GnarkEvalExt] interface
-func (lc LinComb) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Variable) gnarkfext.Variable {
+func (lc LinComb) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gnarkfext.Element {
 
 	res := gnarkfext.NewZero()
 

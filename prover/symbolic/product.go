@@ -185,7 +185,7 @@ func (prod Product) GnarkEval(api frontend.API, inputs []frontend.Variable) fron
 }
 
 // GnarkEval implements the [Operator] interface.
-func (prod Product) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Variable) gnarkfext.Variable {
+func (prod Product) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gnarkfext.Element {
 
 	res := gnarkfext.NewFromBase(1)
 

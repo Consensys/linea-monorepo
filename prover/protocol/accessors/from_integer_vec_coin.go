@@ -42,7 +42,7 @@ func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableBase(api frontend.AP
 	panic("implement me")
 }
 
-func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Variable {
+func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Element {
 	//TODO implement me
 	panic("implement me")
 }

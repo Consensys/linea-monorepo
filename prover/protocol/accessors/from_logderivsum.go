@@ -44,7 +44,7 @@ func (l *FromLogDerivSumAccessor) GetFrontendVariableBase(api frontend.API, c if
 	panic("implement me")
 }
 
-func (l *FromLogDerivSumAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Variable {
+func (l *FromLogDerivSumAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Element {
 	//TODO implement me
 	panic("implement me")
 }

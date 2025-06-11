@@ -210,13 +210,13 @@ func (e *FromExprAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces
 	}
 }
 
-func (e *FromExprAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Variable {
+func (e *FromExprAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Element {
 	if e.IsBase() {
 		baseElem, _ := e.GetFrontendVariableBase(api, circ)
 		return gnarkfext.NewFromBase(baseElem)
 	} else {
 		metadata := e.Boarded.ListVariableMetadata()
-		inputs := make([]gnarkfext.Variable, len(metadata))
+		inputs := make([]gnarkfext.Element, len(metadata))
 
 		for i, m := range metadata {
 			switch castedMetadata := m.(type) {

@@ -40,7 +40,7 @@ func (c Constant) GnarkEval(api frontend.API, inputs []frontend.Variable) fronte
 }
 
 // GnarkEvalExt implements the [Operator] interface.
-func (c Constant) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Variable) gnarkfext.Variable {
+func (c Constant) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gnarkfext.Element {
 	panic("we never call it for a constant")
 }
 

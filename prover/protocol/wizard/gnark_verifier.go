@@ -100,7 +100,7 @@ type VerifierCircuit struct {
 	// Columns stores the gnark witness part corresponding to the columns
 	// provided in the proof and in the VerifyingKey.
 	Columns    [][]frontend.Variable  `gnark:",secret"`
-	ColumnsExt [][]gnarkfext.Variable `gnark:",secret"`
+	ColumnsExt [][]gnarkfext.Element `gnark:",secret"`
 	// UnivariateParams stores an assignment for each [query.UnivariateParams]
 	// from the proof. This is part of the witness of the gnark circuit.
 	UnivariateParams []query.GnarkUnivariateEvalParams `gnark:",secret"`
@@ -162,7 +162,7 @@ func NewVerifierCircuit(comp *CompiledIOP, numRound int) *VerifierCircuit {
 		hornerIDs:           collection.NewMapping[ifaces.QueryID, int](),
 
 		Columns:            [][]frontend.Variable{},
-		ColumnsExt:         [][]gnarkfext.Variable{},
+		ColumnsExt:         [][]gnarkfext.Element{},
 		UnivariateParams:   make([]query.GnarkUnivariateEvalParams, 0),
 		InnerProductParams: make([]query.GnarkInnerProductParams, 0),
 		LocalOpeningParams: make([]query.GnarkLocalOpeningParams, 0),
@@ -459,7 +459,7 @@ func (c *VerifierCircuit) GetRandomCoinIntegerVec(name coin.Name) []frontend.Var
 	return c.Coins.MustGet(name).([]frontend.Variable)
 }
 
-func (c *VerifierCircuit) GetRandomCoinFieldExt(name coin.Name) gnarkfext.Variable {
+func (c *VerifierCircuit) GetRandomCoinFieldExt(name coin.Name) gnarkfext.Element {
 	/*
 		Early check, ensures the coin has been registered at all
 		and that it has the correct type
@@ -476,7 +476,7 @@ func (c *VerifierCircuit) GetRandomCoinFieldExt(name coin.Name) gnarkfext.Variab
 		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.FieldExt)
 	}
 	// If this panics, it means we generate the coins wrongly
-	return c.Coins.MustGet(name).(gnarkfext.Variable)
+	return c.Coins.MustGet(name).(gnarkfext.Element)
 }
 
 // GetUnivariateParams returns the parameters of a univariate evaluation (i.e:
@@ -600,7 +600,7 @@ func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]frontend.Variable,
 
 }
 
-func (c *VerifierCircuit) GetColumnExt(name ifaces.ColID) []gnarkfext.Variable {
+func (c *VerifierCircuit) GetColumnExt(name ifaces.ColID) []gnarkfext.Element {
 	// case where the column is part of the verification key
 	if c.Spec.Columns.Status(name) == column.VerifyingKey {
 		val := smartvectors.IntoRegVecExt(c.Spec.Precomputed.MustGet(name))
@@ -639,7 +639,7 @@ func (c *VerifierCircuit) GetColumnAtBase(name ifaces.ColID, pos int) (frontend.
 	}
 }
 
-func (c *VerifierCircuit) GetColumnAtExt(name ifaces.ColID, pos int) gnarkfext.Variable {
+func (c *VerifierCircuit) GetColumnAtExt(name ifaces.ColID, pos int) gnarkfext.Element {
 	if c.Spec.Columns.GetHandle(name).IsBase() {
 		retrievedCol, _ := c.GetColumnBase(name)
 		return gnarkfext.NewFromBase(retrievedCol[pos])
@@ -680,8 +680,8 @@ func (c *VerifierCircuit) AllocColumn(id ifaces.ColID, size int) []frontend.Vari
 	return column
 }
 
-func (c *VerifierCircuit) AllocColumnExt(id ifaces.ColID, size int) []gnarkfext.Variable {
-	column := make([]gnarkfext.Variable, size)
+func (c *VerifierCircuit) AllocColumnExt(id ifaces.ColID, size int) []gnarkfext.Element {
+	column := make([]gnarkfext.Element, size)
 	columnIndex := len(c.ColumnsExt)
 	c.columnsExtIDs.InsertNew(id, columnIndex)
 	c.ColumnsExt = append(c.ColumnsExt, column)

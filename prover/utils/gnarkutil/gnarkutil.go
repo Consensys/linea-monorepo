@@ -17,8 +17,8 @@ func AllocateSlice(n int) []frontend.Variable {
 /*
 AllocateSliceExt allocates a slice of field extension elements
 */
-func AllocateSliceExt(n int) []gnarkfext.Variable {
-	return make([]gnarkfext.Variable, n)
+func AllocateSliceExt(n int) []gnarkfext.Element {
+	return make([]gnarkfext.Element, n)
 }
 
 // AsWitness converts a slice of field elements to a slice of witness variables

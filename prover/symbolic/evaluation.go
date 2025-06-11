@@ -316,14 +316,14 @@ func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []frontend.Variable
 /*
 GnarkEvalExt evaluates the expression in a gnark circuit
 */
-func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Variable) gnarkfext.Variable {
+func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gnarkfext.Element {
 
 	/*
 		First, build a buffer to store the intermediate results
 	*/
-	intermediateRes := make([][]gnarkfext.Variable, len(b.Nodes))
+	intermediateRes := make([][]gnarkfext.Element, len(b.Nodes))
 	for level := range b.Nodes {
-		intermediateRes[level] = make([]gnarkfext.Variable, len(b.Nodes[level]))
+		intermediateRes[level] = make([]gnarkfext.Element, len(b.Nodes[level]))
 	}
 
 	/*
@@ -349,7 +349,7 @@ func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Vari
 			/*
 				Collect the inputs of the current node from the intermediateRes
 			*/
-			nodeInputs := make([]gnarkfext.Variable, len(node.Children))
+			nodeInputs := make([]gnarkfext.Element, len(node.Children))
 			for i, childID := range node.Children {
 				nodeInputs[i] = intermediateRes[childID.level()][childID.posInLevel()]
 			}

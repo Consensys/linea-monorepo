@@ -159,8 +159,8 @@ func IntoGnarkAssignment(sv SmartVector) []frontend.Variable {
 }
 
 // IntoGnarkAssignment converts an extension smart-vector into a gnark assignment
-func IntoGnarkAssignmentExt(sv SmartVector) []gnarkfext.Variable {
-	res := make([]gnarkfext.Variable, sv.Len())
+func IntoGnarkAssignmentExt(sv SmartVector) []gnarkfext.Element {
+	res := make([]gnarkfext.Element, sv.Len())
 	_, err := sv.GetBase(0)
 	if err == nil {
 		for i := range res {

@@ -48,7 +48,7 @@ func (fys FromYs) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend
 	panic("implement me")
 }
 
-func (fys FromYs) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Variable {
+func (fys FromYs) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Element {
 	//TODO implement me
 	panic("implement me")
 }
@@ -58,7 +58,7 @@ func (fys FromYs) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) 
 	panic("implement me")
 }
 
-func (fys FromYs) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Variable {
+func (fys FromYs) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Element {
 	//TODO implement me
 	panic("implement me")
 }

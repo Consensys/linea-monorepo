@@ -139,9 +139,9 @@ func (s Shifted) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.
 	}
 }
 
-func (s Shifted) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Variable {
+func (s Shifted) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Element {
 	parent := s.Parent.GetColAssignmentGnarkExt(run) // [a b c d e f g h]
-	res := make([]gnarkfext.Variable, len(parent))
+	res := make([]gnarkfext.Element, len(parent))
 	for i := range res {
 		posParent := utils.PositiveMod(i+s.Offset, len(parent))
 		res[i] = parent[posParent]
@@ -174,7 +174,7 @@ func (s Shifted) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (
 	return s.Parent.GetColAssignmentGnarkAtBase(run, utils.PositiveMod(pos+s.Offset, s.Parent.Size()))
 }
 
-func (s Shifted) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Variable {
+func (s Shifted) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Element {
 	return s.Parent.GetColAssignmentGnarkAtExt(run, utils.PositiveMod(pos+s.Offset, s.Parent.Size()))
 }
 

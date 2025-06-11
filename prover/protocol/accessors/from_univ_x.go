@@ -43,7 +43,7 @@ func (u *FromUnivXAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.G
 	panic("implement me")
 }
 
-func (u *FromUnivXAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Variable {
+func (u *FromUnivXAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Element {
 	//TODO implement me
 	panic("implement me")
 }

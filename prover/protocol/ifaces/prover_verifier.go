@@ -33,14 +33,14 @@ type GnarkRuntime interface {
 	// GetColumn is as [Runtime.GetColumn] but in a gnark circuit
 	GetColumn(ColID) []frontend.Variable
 	GetColumnBase(ColID) ([]frontend.Variable, error)
-	GetColumnExt(ColID) []gnarkfext.Variable
+	GetColumnExt(ColID) []gnarkfext.Element
 	// GetColumnAt is as [Runtime.GetColumnAt] but in a gnark circuit
 	GetColumnAt(ColID, int) frontend.Variable
 	GetColumnAtBase(ColID, int) (frontend.Variable, error)
-	GetColumnAtExt(ColID, int) gnarkfext.Variable
+	GetColumnAtExt(ColID, int) gnarkfext.Element
 	// GetRandomCoinField is as [Runtime.GetRandomCoinField] but in a gnark circuit
 	GetRandomCoinField(name coin.Name) frontend.Variable
-	GetRandomCoinFieldExt(name coin.Name) gnarkfext.Variable
+	GetRandomCoinFieldExt(name coin.Name) gnarkfext.Element
 	// GetRandomCoinIntegerVec is as [Runtime.GetRandomCoinIntegerVec] but in a gnark circuit
 	GetRandomCoinIntegerVec(name coin.Name) []frontend.Variable
 	// GetParams is as [Runtime.GetParams] but in a gnark circuit

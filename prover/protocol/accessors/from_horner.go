@@ -70,7 +70,7 @@ func (l *FromHornerAccessorFinalValue) GetFrontendVariableBase(api frontend.API,
 	panic("implement me")
 }
 
-func (l *FromHornerAccessorFinalValue) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Variable {
+func (l *FromHornerAccessorFinalValue) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Element {
 	//TODO implement me
 	panic("implement me")
 }
