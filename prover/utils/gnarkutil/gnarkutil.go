@@ -4,7 +4,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 )
 
 /*

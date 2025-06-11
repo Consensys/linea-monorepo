@@ -2,8 +2,9 @@ package accessors
 
 import (
 	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -89,7 +90,9 @@ func (c *FromConstAccessor) GetFrontendVariableBase(_ frontend.API, _ ifaces.Gna
 }
 
 func (c *FromConstAccessor) GetFrontendVariableExt(_ frontend.API, _ ifaces.GnarkRuntime) gnarkfext.Element {
-	return gnarkfext.ExtToVariable(c.Ext)
+	var e gnarkfext.Element
+	e.Assign(c.Ext)
+	return e
 }
 
 // AsVariable implements the [ifaces.Accessor] interface

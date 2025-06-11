@@ -2,11 +2,12 @@ package verifiercol
 
 import (
 	"fmt"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -104,7 +105,9 @@ func (cc ConstCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]fronten
 func (cc ConstCol) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Element {
 	res := make([]gnarkfext.Element, cc.Size_)
 	for i := range res {
-		res[i] = gnarkfext.NewFromExtension(cc.Ext)
+		var temp gnarkfext.Element
+		temp.Assign(cc.Ext)
+		res[i] = temp
 	}
 	return res
 }
@@ -134,7 +137,9 @@ func (cc ConstCol) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int)
 
 // Returns a particular position of the coin value
 func (cc ConstCol) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Element {
-	return gnarkfext.ExtToVariable(cc.Ext)
+	var temp gnarkfext.Element
+	temp.Assign(cc.Ext)
+	return temp
 }
 
 // Since the column is directly defined from the

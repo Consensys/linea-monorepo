@@ -2,9 +2,10 @@ package symbolic
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 	"reflect"
+
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
@@ -48,7 +49,7 @@ func (c Constant) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gna
 // that is either: field.Element, int, uint or decimal string.
 func NewConstant(val interface{}) *Expression {
 	var x fext.Element
-	if _, err := x.SetInterface(val); err != nil {
+	if _, err := fext.SetInterface(&x, val); err != nil {
 		panic(err)
 	}
 
@@ -58,7 +59,7 @@ func NewConstant(val interface{}) *Expression {
 		Operator: Constant{Val: *newHash},
 		Children: []*Expression{},
 		ESHash:   *new(fext.GenericFieldElem).Set(newHash),
-		IsBase:   x.IsBase(),
+		IsBase:   fext.IsBase(&x),
 	}
 	return res
 }

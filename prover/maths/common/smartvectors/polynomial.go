@@ -103,8 +103,8 @@ func EvaluateLagrange(v SmartVector, x field.Element, oncoset ...bool) field.Ele
 	return res
 }
 
-// EvaluateLagrangeOnFext a polynomial in Lagrange basis at an E4 point
-func EvaluateLagrangeOnFext(v SmartVector, x fext.Element, oncoset ...bool) fext.Element {
+// EvaluateLagrangeMixed a polynomial in Lagrange basis at an E4 point
+func EvaluateLagrangeMixed(v SmartVector, x fext.Element, oncoset ...bool) fext.Element {
 	switch con := v.(type) {
 	case *Constant:
 		var res fext.Element

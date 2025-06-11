@@ -4,7 +4,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 )
 
 // A gnark circuit version of the LocalOpeningResult
@@ -15,9 +15,11 @@ type GnarkLocalOpeningParams struct {
 }
 
 func (p LocalOpeningParams) GnarkAssign() GnarkLocalOpeningParams {
+	var exty gnarkfext.Element
+	exty.Assign(p.ExtY)
 	return GnarkLocalOpeningParams{
 		BaseY:  p.BaseY,
-		ExtY:   gnarkfext.ExtToVariable(p.ExtY),
+		ExtY:   exty,
 		IsBase: p.IsBase,
 	}
 }

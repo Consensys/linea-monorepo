@@ -30,7 +30,7 @@ func TestProver(t *testing.T) {
 		ys := make([]fext.Element, NbPolysPerCommitment[i])
 		for j := range polys {
 			polys[j] = smartvectors.Rand(polySize)
-			ys[j] = smartvectors.EvaluateLagrangeOnFext(polys[j], x)
+			ys[j] = smartvectors.EvaluateLagrangeMixed(polys[j], x)
 		}
 		polyLists[i] = polys
 		yLists[i] = ys

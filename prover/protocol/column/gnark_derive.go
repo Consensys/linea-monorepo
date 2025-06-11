@@ -3,8 +3,8 @@ package column
 import (
 	"reflect"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
@@ -40,7 +40,11 @@ func GnarkDeriveEvaluationPoint(
 		} else {
 			// If not, compute the shift on x and cache the result
 			n := h.Size()
-			omegaN := frontend.Variable(fft.GetOmega(n))
+			generator, err := fft.Generator(uint64(n))
+			if err != nil {
+				panic(err)
+			}
+			omegaN := frontend.Variable(generator)
 			omegaN = gnarkutil.Exp(api, omegaN, inner.Offset)
 			derivedX = api.Mul(x, omegaN)
 			cachedXs.InsertNew(newUpstream, derivedX)

@@ -1,12 +1,13 @@
 package polyext_test
 
 import (
+	"math/rand/v2"
+	"testing"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"math/rand/v2"
-	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 

@@ -2,8 +2,9 @@ package symbolic
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 	"sync"
+
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
 
@@ -334,7 +335,7 @@ func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Elem
 	for i := range b.Nodes[0] {
 		switch op := b.Nodes[0][i].Operator.(type) {
 		case Constant:
-			intermediateRes[0][i] = gnarkfext.ExtToVariable(op.Val.GetExt())
+			intermediateRes[0][i].Assign(op.Val.GetExt())
 		case Variable:
 			intermediateRes[0][i] = inputs[inputCursor]
 			inputCursor++

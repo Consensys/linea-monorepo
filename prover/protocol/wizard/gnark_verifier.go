@@ -3,12 +3,13 @@ package wizard
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -99,7 +100,7 @@ type VerifierCircuit struct {
 
 	// Columns stores the gnark witness part corresponding to the columns
 	// provided in the proof and in the VerifyingKey.
-	Columns    [][]frontend.Variable  `gnark:",secret"`
+	Columns    [][]frontend.Variable `gnark:",secret"`
 	ColumnsExt [][]gnarkfext.Element `gnark:",secret"`
 	// UnivariateParams stores an assignment for each [query.UnivariateParams]
 	// from the proof. This is part of the witness of the gnark circuit.
@@ -607,7 +608,7 @@ func (c *VerifierCircuit) GetColumnExt(name ifaces.ColID) []gnarkfext.Element {
 		res := gnarkutil.AllocateSliceExt(len(val))
 		// Return the column as an array of constants
 		for i := range val {
-			res[i] = gnarkfext.ExtToVariable(val[i])
+			res[i].Assign(val[i])
 		}
 		return res
 	}
