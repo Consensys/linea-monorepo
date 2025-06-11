@@ -70,7 +70,7 @@ func (PolyEval) Evaluate(inputs []sv.SmartVector, p ...mempool.MemPool) sv.Smart
 	// Get the constant value. We use Get(0) to get the value, but any integer would
 	// also work provided it is also in range. 0 ensures that.
 	x := inputs[0].(*sv.Constant).Get(0)
-	return sv.PolyEval(inputs[1:], x, p...)
+	return sv.LinearCombination(inputs[1:], x, p...)
 }
 
 /*

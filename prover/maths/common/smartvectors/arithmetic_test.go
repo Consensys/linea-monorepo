@@ -62,11 +62,11 @@ func TestFuzzPolyEval(t *testing.T) {
 
 		success := t.Run(tcase.name, func(t *testing.T) {
 
-			actualRes := PolyEval(tcase.svecs, tcase.evaluationPoint)
+			actualRes := LinearCombination(tcase.svecs, tcase.evaluationPoint)
 			require.Equal(t, tcase.expectedValue.Pretty(), actualRes.Pretty(), "linear combination failed")
 
 			// and a second time to ensure idempotency
-			actualRes = PolyEval(tcase.svecs, tcase.evaluationPoint)
+			actualRes = LinearCombination(tcase.svecs, tcase.evaluationPoint)
 			require.Equal(t, tcase.expectedValue.Pretty(), actualRes.Pretty(), "linear combination failed")
 
 		})
@@ -293,11 +293,11 @@ func TestFuzzPolyEvalWithPool(t *testing.T) {
 			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
 
 			// PolyEval() with pool
-			polyEvalWithPool := PolyEval(tcase.svecs, tcase.evaluationPoint, pool)
+			polyEvalWithPool := LinearCombination(tcase.svecs, tcase.evaluationPoint, pool)
 			require.Equal(t, tcase.expectedValue.Pretty(), polyEvalWithPool.Pretty(), "linear combination with pool failed")
 
 			// and a second time to ensure idempotency
-			polyEvalWithPool = PolyEval(tcase.svecs, tcase.evaluationPoint, pool)
+			polyEvalWithPool = LinearCombination(tcase.svecs, tcase.evaluationPoint, pool)
 			require.Equal(t, tcase.expectedValue.Pretty(), polyEvalWithPool.Pretty(), "linear combination with pool failed")
 
 		})
@@ -318,11 +318,11 @@ func TestFuzzPolyEvalWithPoolCompare(t *testing.T) {
 			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
 
 			// PolyEval() with pool
-			polyEvalWithPool := PolyEval(tcase.svecs, tcase.evaluationPoint, pool)
+			polyEvalWithPool := LinearCombination(tcase.svecs, tcase.evaluationPoint, pool)
 			require.Equal(t, tcase.expectedValue.Pretty(), polyEvalWithPool.Pretty(), "PolyEval() with pool failed")
 
 			// PolyEval() without pool
-			polyEval := PolyEval(tcase.svecs, tcase.evaluationPoint)
+			polyEval := LinearCombination(tcase.svecs, tcase.evaluationPoint)
 
 			// check if PolyEval() with pool = PolyEval() without pool
 			require.Equal(t, polyEvalWithPool.Pretty(), polyEval.Pretty(), "PolyEval() w/ and w/o pool are different")

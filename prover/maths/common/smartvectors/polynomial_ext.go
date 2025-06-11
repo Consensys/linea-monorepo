@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -100,7 +101,7 @@ func EvaluateLagrangeFullFext(v SmartVector, x fext.Element, oncoset ...bool) fe
 	// Maybe there is an optim for windowed here
 	res := make([]fext.Element, v.Len())
 	v.WriteInSliceExt(res)
-	return fastpoly.EvaluateLagrange(res, x, oncoset...)
+	return fastpolyext.EvaluateLagrange(res, x, oncoset...)
 }
 
 // Batch-evaluate polynomials in Lagrange basis

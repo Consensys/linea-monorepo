@@ -1,14 +1,14 @@
 package polyext
 
 import (
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// EvalUnivariate returns sum_i pol[i]x^{i}
-func EvalUnivariate(pol []fext.Element, x fext.Element) fext.Element {
+// Eval evalutes P := \sum_{i<n}pol[i]X^i at x.
+func Eval(pol []fext.Element, x fext.Element) fext.Element {
 	var res fext.Element
 	for i := len(pol) - 1; i >= 0; i-- {
 		res.Mul(&res, &x)
@@ -17,29 +17,14 @@ func EvalUnivariate(pol []fext.Element, x fext.Element) fext.Element {
 	return res
 }
 
-// EvalUnivariate returns sum_i pol[i]x^{i}
-func EvalUnivariateMixedTmp(pol []field.Element, x fext.Element) fext.Element {
+func EvalOnBaseField(pol []fext.Element, x koalabear.Element) fext.Element {
 	var res fext.Element
+
 	for i := len(pol) - 1; i >= 0; i-- {
-		res.Mul(&res, &x)
-		res.B0.A0.Add(&res.B0.A0, &pol[i])
+		res.B0.A0.Mul(&res.B0.A0, &x)
+		res.Add(&res, &pol[i])
 	}
 	return res
-}
-
-func EvalUnivariateMixed(pol []fext.GenericFieldElem, x fext.GenericFieldElem) fext.GenericFieldElem {
-	res := fext.GenericFieldZero()
-	for i := len(pol) - 1; i >= 0; i-- {
-		res.Mul(&x)
-		res.Add(&pol[i])
-	}
-	return *res
-}
-
-func EvalUnivariateBase(pol []fext.Element, x field.Element) fext.Element {
-	var wrappedX fext.Element
-	wrappedX.B0.A0.Set(&x)
-	return EvalUnivariate(pol, wrappedX)
 }
 
 // Mul multiplies two polynomials expressed by their coefficients using the

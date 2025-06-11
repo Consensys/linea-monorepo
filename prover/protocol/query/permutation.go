@@ -100,7 +100,7 @@ func (r Permutation) Check(run ifaces.Runtime) error {
 				tab[col] = aOrB[frag][col].GetColAssignment(run)
 			}
 
-			collapsed := smartvectors.PolyEval(append(tab, gamma), randAlpha)
+			collapsed := smartvectors.LinearCombination(append(tab, gamma), randAlpha)
 
 			for row := 0; row < collapsed.Len(); row++ {
 				tmp := collapsed.Get(row)

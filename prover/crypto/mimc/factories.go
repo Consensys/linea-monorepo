@@ -1,5 +1,6 @@
 package mimc
 
+/*
 import (
 	"errors"
 	"fmt"
@@ -281,3 +282,4 @@ func intoBigInts(res []*big.Int, arr ...field.Element) []*big.Int {
 	}
 	return res
 }
+*/

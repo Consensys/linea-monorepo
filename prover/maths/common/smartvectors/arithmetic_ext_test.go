@@ -58,11 +58,11 @@ func TestFuzzLinearCombinationBase(t *testing.T) {
 		fmt.Printf("TEST CASE %v\n", tcase.svecs[0].Pretty())
 		success := t.Run(tcase.name, func(t *testing.T) {
 
-			actualRes := PolyEval(tcase.svecs, tcase.evaluationPoint)
+			actualRes := LinearCombination(tcase.svecs, tcase.evaluationPoint)
 			require.Equal(t, tcase.expectedValue.Pretty(), actualRes.Pretty(), "polynomial evaluation failed")
 
 			// and a second time to ensure idempotency
-			actualRes = PolyEval(tcase.svecs, tcase.evaluationPoint)
+			actualRes = LinearCombination(tcase.svecs, tcase.evaluationPoint)
 			require.Equal(t, tcase.expectedValue.Pretty(), actualRes.Pretty(), "polynomial evaluation failed")
 
 		})

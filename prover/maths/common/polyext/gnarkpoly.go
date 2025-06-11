@@ -1,5 +1,6 @@
 package polyext
 
+/*
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -46,3 +47,4 @@ func EvaluateUnivariateGnark(api frontend.API, pol []gnarkfext.Element, x gnarkf
 	}
 	return res
 }
+*/
