@@ -92,7 +92,12 @@ class ConflationApp(
     lastFinalizedBlock,
   ).get()
 
-  private val deadlineConflationCalculatorRunner = createDeadlineConflationCalculatorRunner()
+  val l2Web3jClient: Web3j = createWeb3jHttpClient(
+    rpcUrl = configs.conflation.l2Endpoint.toString(),
+    log = LogManager.getLogger("clients.l2.eth.conflation"),
+  )
+
+  private val deadlineConflationCalculatorRunner = createDeadlineConflationCalculatorRunner(l2Web3jClient)
 
   private val conflationCalculator: TracesConflationCalculator = run {
     val logger = LogManager.getLogger(GlobalBlockConflationCalculator::class.java)
@@ -142,10 +147,6 @@ class ConflationApp(
     metricsFacade = metricsFacade,
   )
 
-  val l2Web3jClient: Web3j = createWeb3jHttpClient(
-    rpcUrl = configs.conflation.l2Endpoint.toString(),
-    log = LogManager.getLogger("clients.l2.eth.conflation"),
-  )
 
   private val blobCompressionProofCoordinator = run {
     val maxProvenBlobCache = run {
@@ -226,11 +227,6 @@ class ConflationApp(
       name = "proven.highest.block.number",
       description = "Highest proven aggregation block number",
       measurementSupplier = highestAggregationTracker,
-    )
-
-    val l2Web3jClient = createWeb3jHttpClient(
-      rpcUrl = configs.conflation.l2Endpoint.toString(),
-      log = LogManager.getLogger("clients.l2.eth.conflation"),
     )
 
     ProofAggregationCoordinatorService.Companion
@@ -447,7 +443,9 @@ class ConflationApp(
     return lastProvenBlockNumberProvider.updateLatestL1FinalizedBlock(blockNumber)
   }
 
-  private fun createDeadlineConflationCalculatorRunner(): DeadlineConflationCalculatorRunner? {
+  private fun createDeadlineConflationCalculatorRunner(
+    l2Web3jClient: Web3j,
+  ): DeadlineConflationCalculatorRunner? {
     if (configs.conflation.isDisabled() || configs.conflation.conflationDeadline == null) {
       log.info("Conflation deadline calculator is disabled")
       return null
@@ -459,7 +457,7 @@ class ConflationApp(
         config = ConflationCalculatorByTimeDeadline.Config(
           conflationDeadline = configs.conflation.conflationDeadline,
           conflationDeadlineLastBlockConfirmationDelay =
-          configs.conflation.conflationDeadlineLastBlockConfirmationDelay,
+            configs.conflation.conflationDeadlineLastBlockConfirmationDelay,
         ),
         lastBlockNumber = lastProcessedBlockNumber,
         clock = Clock.System,
