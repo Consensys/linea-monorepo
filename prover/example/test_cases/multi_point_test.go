@@ -27,15 +27,15 @@ func proverProveMultiPoint(run *wizard.ProverRuntime) {
 	p1 := smartvectors.ForTest(1, 2, 3, 4)
 
 	run.AssignColumn(P1, p1)
-	c1 := run.GetRandomCoinField(COIN1)
+	c1 := run.GetRandomCoinFieldExt(COIN1)
 
 	p2 := smartvectors.ForTest(2, 4, 6, 8)
 
 	run.AssignColumn(P2, p2)
-	c2 := run.GetRandomCoinField(COIN2)
+	c2 := run.GetRandomCoinFieldExt(COIN2)
 
-	y1 := smartvectors.Interpolate(p1, c1)
-	y2 := smartvectors.Interpolate(p2, c2)
+	y1 := smartvectors.EvaluateLagrangeOnFext(p1, c1)
+	y2 := smartvectors.EvaluateLagrangeOnFext(p2, c2)
 
 	run.AssignUnivariate(UNIV1, c1, y1)
 	run.AssignUnivariate(UNIV2, c2, y2)

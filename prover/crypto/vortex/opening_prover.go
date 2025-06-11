@@ -48,7 +48,7 @@ func (params *Params) Open(committedSV []smartvectors.SmartVector, randomCoin fe
 	}
 
 	// TODO parallelise ?
-	linComb := smartvectors.LinearCombinationExt(committedSV, randomCoin)
+	linComb := smartvectors.LinearCombinationMixed(committedSV, randomCoin)
 
 	proof.LinearCombination = params.rsEncodeExt(linComb, nil)
 

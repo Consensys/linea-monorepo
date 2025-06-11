@@ -66,7 +66,6 @@ func InnerProductExt(a, b SmartVector) fext.Element {
 //	result = vecs[0] + vecs[1] * x + vecs[2] * x^2 + vecs[3] * x^3 + ...
 //
 // where `x` is a scalar and `vecs[i]` are [SmartVector]
-// TODO@yao how to optimize the mixed case?
 func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPool) (result SmartVector) {
 
 	if len(vecs) == 0 {
