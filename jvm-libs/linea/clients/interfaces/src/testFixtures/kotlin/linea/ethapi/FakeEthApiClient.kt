@@ -17,6 +17,7 @@ import kotlin.time.Duration.Companion.seconds
 
 class FakeEthApiClient(
   initialLogsDb: Set<EthLog> = emptySet(),
+  val chainId: ULong = 101UL,
   val genesisTimestamp: Instant = Instant.parse("2025-04-01T00:00:00Z"),
   val blockTime: Duration = 1.seconds,
   initialTagsBlocks: Map<BlockParameter.Tag, ULong> = mapOf(
@@ -24,10 +25,10 @@ class FakeEthApiClient(
     BlockParameter.Tag.LATEST to 0UL,
     BlockParameter.Tag.SAFE to 0UL,
     BlockParameter.Tag.FINALIZED to 0UL,
-    BlockParameter.Tag.PENDING to 0UL
+    BlockParameter.Tag.PENDING to 0UL,
   ),
   private val topicsTranslation: Map<String, String> = emptyMap(),
-  private val log: Logger = LogManager.getLogger(FakeEthApiClient::class.java)
+  private val log: Logger = LogManager.getLogger(FakeEthApiClient::class.java),
 ) : EthApiClient {
   private val blockTags: MutableMap<BlockParameter.Tag, ULong> = initialTagsBlocks.toMutableMap()
   private val logsDb: MutableList<EthLog> = mutableListOf()
@@ -66,7 +67,7 @@ class FakeEthApiClient(
     blockTags[BlockParameter.Tag.LATEST] = blockNumber
     coerceTagsAtMostTo(
       listOf(BlockParameter.Tag.FINALIZED, BlockParameter.Tag.SAFE, BlockParameter.Tag.PENDING),
-      blockNumber
+      blockNumber,
     )
   }
 
@@ -76,11 +77,11 @@ class FakeEthApiClient(
 
     coerceTagsAtLeastTo(
       listOf(BlockParameter.Tag.LATEST, BlockParameter.Tag.PENDING),
-      blockNumber
+      blockNumber,
     )
     coerceTagsAtMostTo(
       listOf(BlockParameter.Tag.FINALIZED),
-      blockNumber
+      blockNumber,
     )
   }
 
@@ -90,7 +91,7 @@ class FakeEthApiClient(
 
     coerceTagsAtLeastTo(
       listOf(BlockParameter.Tag.SAFE, BlockParameter.Tag.LATEST, BlockParameter.Tag.PENDING),
-      blockNumber
+      blockNumber,
     )
   }
 
@@ -112,6 +113,10 @@ class FakeEthApiClient(
     }
   }
 
+  override fun getChainId(): SafeFuture<ULong> {
+    return SafeFuture.completedFuture(chainId)
+  }
+
   override fun findBlockByNumber(blockParameter: BlockParameter): SafeFuture<Block?> {
     val blockNumber = blockParameterToBlockNumber(blockParameter)
     if (isAfterHead(blockNumber)) {
@@ -126,7 +131,7 @@ class FakeEthApiClient(
   }
 
   override fun findBlockByNumberWithoutTransactionsData(
-    blockParameter: BlockParameter
+    blockParameter: BlockParameter,
   ): SafeFuture<BlockWithTxHashes?> {
     return findBlockByNumber(blockParameter).thenApply { block -> block?.toBlockWithRandomTxHashes() }
   }
@@ -136,14 +141,14 @@ class FakeEthApiClient(
   }
 
   private fun generateFakeBlock(
-    blockNumber: ULong
+    blockNumber: ULong,
   ): Block {
     val parentBlock = blocksDb[blockNumber - 1UL]
     val timestamp = genesisTimestamp + (blockTime * blockNumber.toInt())
     return createBlock(
       number = blockNumber,
       parentHash = parentBlock?.hash ?: Random.nextBytes(32),
-      timestamp = timestamp
+      timestamp = timestamp,
     )
   }
 
@@ -152,7 +157,7 @@ class FakeEthApiClient(
     fromBlock: BlockParameter,
     toBlock: BlockParameter,
     address: String,
-    topics: List<String?>
+    topics: List<String?>,
   ): SafeFuture<List<EthLog>> {
     val addressBytes = address.decodeHex()
     val topicsFilter = topics.map { it?.decodeHex() }
@@ -167,7 +172,7 @@ class FakeEthApiClient(
       .let { logsMatching ->
         log.trace(
           "logDb: {}",
-          logsDb.joinToString(prefix = "\n   ", separator = "\n   ") { log -> log.toString() }
+          logsDb.joinToString(prefix = "\n   ", separator = "\n   ") { log -> log.toString() },
         )
         log.debug(
           "getLogs: {}..{} address={} topics={} logsSize={} logs={}",
@@ -176,7 +181,7 @@ class FakeEthApiClient(
           address,
           topics.joinToString(", ") { t -> t?.let { topicsTranslation[t] ?: t } ?: "null" },
           logsMatching.size,
-          logsMatching.joinToString(prefix = "\n   ", separator = "\n   ") { log -> log.toString() }
+          logsMatching.joinToString(prefix = "\n   ", separator = "\n   ") { log -> log.toString() },
         )
         SafeFuture.completedFuture(logsMatching)
       }
@@ -184,7 +189,7 @@ class FakeEthApiClient(
 
   private fun findLogsInRange(
     fromBlock: BlockParameter,
-    toBlock: BlockParameter
+    toBlock: BlockParameter,
   ): List<EthLog> {
     return logsDb.filter { isInRange(it.blockNumber, fromBlock, toBlock) }
   }
@@ -192,7 +197,7 @@ class FakeEthApiClient(
   private fun isInRange(
     blockNumber: ULong,
     fromBlock: BlockParameter,
-    toBlock: BlockParameter
+    toBlock: BlockParameter,
   ): Boolean {
     val fromBlockNumber: ULong = blockParameterToBlockNumber(fromBlock)
     val toBlockNumber: ULong = blockParameterToBlockNumber(toBlock)
@@ -201,7 +206,7 @@ class FakeEthApiClient(
   }
 
   private fun blockParameterToBlockNumber(
-    blockParameter: BlockParameter
+    blockParameter: BlockParameter,
   ): ULong {
     return when (blockParameter) {
       is BlockParameter.Tag -> blockTags[blockParameter]
@@ -214,7 +219,7 @@ class FakeEthApiClient(
   companion object {
     fun matchesTopicFilter(
       logTopics: List<ByteArray>,
-      topicsFilter: List<ByteArray?>
+      topicsFilter: List<ByteArray?>,
     ): Boolean {
       if (topicsFilter.size > logTopics.size) return false
 

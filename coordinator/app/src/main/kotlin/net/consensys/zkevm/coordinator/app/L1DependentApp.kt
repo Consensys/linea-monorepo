@@ -3,18 +3,26 @@ package net.consensys.zkevm.coordinator.app
 import build.linea.clients.StateManagerClientV1
 import build.linea.clients.StateManagerV1JsonRpcClient
 import io.vertx.core.Vertx
+import io.vertx.sqlclient.SqlClient
 import kotlinx.datetime.Clock
 import linea.anchoring.MessageAnchoringApp
 import linea.blob.ShnarfCalculatorVersion
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.contract.l2.Web3JL2MessageServiceSmartContractClient
+import linea.coordinator.config.toJsonRpcRetry
+import linea.coordinator.config.v2.CoordinatorConfig
+import linea.coordinator.config.v2.isDisabled
+import linea.coordinator.config.v2.isEnabled
 import linea.domain.BlockNumberAndHash
+import linea.domain.RetryConfig
 import linea.encoding.BlockRLPEncoder
+import linea.kotlin.toKWeiUInt
 import linea.web3j.ExtendedWeb3JImpl
 import linea.web3j.SmartContractErrors
 import linea.web3j.Web3jBlobExtended
 import linea.web3j.createWeb3jHttpClient
+import linea.web3j.createWeb3jHttpService
 import linea.web3j.ethapi.createEthApiClient
 import net.consensys.linea.contract.l1.GenesisStateProvider
 import net.consensys.linea.ethereum.gaspricing.BoundableFeeCalculator
@@ -22,23 +30,23 @@ import net.consensys.linea.ethereum.gaspricing.FeesCalculator
 import net.consensys.linea.ethereum.gaspricing.FeesFetcher
 import net.consensys.linea.ethereum.gaspricing.WMAFeesCalculator
 import net.consensys.linea.ethereum.gaspricing.WMAGasProvider
-import net.consensys.linea.ethereum.gaspricing.dynamiccap.FeeHistoriesRepositoryWithCache
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.FeeHistoryCachingService
-import net.consensys.linea.ethereum.gaspricing.dynamiccap.GasPriceCapCalculator
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.GasPriceCapCalculatorImpl
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.GasPriceCapFeeHistoryFetcher
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.GasPriceCapFeeHistoryFetcherImpl
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.GasPriceCapProviderForDataSubmission
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.GasPriceCapProviderForFinalization
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.GasPriceCapProviderImpl
+import net.consensys.linea.ethereum.gaspricing.staticcap.ExtraDataV1UpdaterImpl
 import net.consensys.linea.ethereum.gaspricing.staticcap.FeeHistoryFetcherImpl
+import net.consensys.linea.ethereum.gaspricing.staticcap.MinerExtraDataV1CalculatorImpl
+import net.consensys.linea.ethereum.gaspricing.staticcap.TransactionCostCalculator
+import net.consensys.linea.ethereum.gaspricing.staticcap.VariableFeesCalculator
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.zkevm.LongRunningService
-import net.consensys.zkevm.coordinator.app.config.CoordinatorConfig
-import net.consensys.zkevm.coordinator.app.config.Type2StateProofProviderConfig
 import net.consensys.zkevm.coordinator.blockcreation.BatchesRepoBasedLastProvenBlockNumberProvider
 import net.consensys.zkevm.coordinator.blockcreation.BlockCreationMonitor
 import net.consensys.zkevm.coordinator.blockcreation.GethCliqueSafeBlockProvider
@@ -96,189 +104,236 @@ import net.consensys.zkevm.persistence.BatchesRepository
 import net.consensys.zkevm.persistence.BlobsRepository
 import net.consensys.zkevm.persistence.dao.aggregation.RecordsCleanupFinalizationHandler
 import net.consensys.zkevm.persistence.dao.batch.persistence.BatchProofHandlerImpl
+import net.consensys.zkevm.persistence.dao.feehistory.FeeHistoriesPostgresDao
+import net.consensys.zkevm.persistence.dao.feehistory.FeeHistoriesRepositoryImpl
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.web3j.protocol.Web3j
-import org.web3j.protocol.http.HttpService
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CompletableFuture
 import java.util.function.Consumer
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toKotlinDuration
 
 class L1DependentApp(
   private val configs: CoordinatorConfig,
   private val vertx: Vertx,
-  private val l2Web3jClient: Web3j,
   private val httpJsonRpcClientFactory: VertxHttpJsonRpcClientFactory,
   private val batchesRepository: BatchesRepository,
   private val blobsRepository: BlobsRepository,
   private val aggregationsRepository: AggregationsRepository,
-  l1FeeHistoriesRepository: FeeHistoriesRepositoryWithCache,
+  private val sqlClient: SqlClient,
   private val smartContractErrors: SmartContractErrors,
-  private val metricsFacade: MetricsFacade
+  private val metricsFacade: MetricsFacade,
 ) : LongRunningService {
   private val log = LogManager.getLogger(this::class.java)
 
   init {
-    if (configs.messageAnchoring.disabled) {
-      log.warn("Message anchoring service is disabled")
+    if (configs.l1Submission.isDisabled()) {
+      log.warn("L1 submission disabled for blobs and aggregations")
+    } else {
+      if (configs.l1Submission!!.blob.isDisabled()) {
+        log.warn("L1 submission disabled for blobs")
+      }
+      if (configs.l1Submission.aggregation.isDisabled()) {
+        log.warn("L1 submission disabled for aggregations")
+      }
     }
-    if (configs.l2NetworkGasPricingService == null) {
-      log.warn("Dynamic gas price service is disabled")
+
+    if (configs.messageAnchoring.isDisabled()) {
+      log.warn("Message anchoring is disabled")
+    }
+    if (configs.l2NetworkGasPricing.isDisabled()) {
+      log.warn("L2 Network dynamic gas pricing is disabled")
     }
   }
 
-  private val l2TransactionManager = createTransactionManager(
-    vertx,
-    configs.l2Signer,
-    l2Web3jClient
-  )
-
-  private val l1Web3jClient = createWeb3jHttpClient(
-    rpcUrl = configs.l1.rpcEndpoint.toString(),
-    log = LogManager.getLogger("clients.l1.eth-api"),
-    pollingInterval = 1.seconds
-  )
-  private val l1Web3jService = Web3jBlobExtended(HttpService(configs.l1.ethFeeHistoryEndpoint.toString()))
-
-  private val l1ChainId = l1Web3jClient.ethChainId().send().chainId.toLong()
+  private val l1ChainId = run {
+    createEthApiClient(
+      rpcUrl = configs.l1FinalizationMonitor.l1Endpoint.toString(),
+      log = LogManager.getLogger("clients.l1.eth"),
+      vertx = vertx,
+      requestRetryConfig = RetryConfig.endlessRetry(
+        backoffDelay = 1.seconds,
+        failuresWarningThreshold = 3u,
+      ),
+    ).getChainId().get()
+  }
 
   private val proverClientFactory = ProverClientFactory(
     vertx = vertx,
     config = configs.proversConfig,
-    metricsFacade = metricsFacade
+    metricsFacade = metricsFacade,
   )
 
-  private val l2ExtendedWeb3j = ExtendedWeb3JImpl(l2Web3jClient)
-
   private val finalizationTransactionManager = createTransactionManager(
-    vertx,
-    configs.finalizationSigner,
-    l1Web3jClient
+    vertx = vertx,
+    signerConfig = configs.l1Submission!!.aggregation.signer,
+    client = createWeb3jHttpClient(
+      rpcUrl = configs.l1Submission.aggregation.l1Endpoint.toString(),
+      log = LogManager.getLogger("clients.l1.eth.finalization"),
+    ),
   )
 
   private val l1MinPriorityFeeCalculator: FeesCalculator = WMAFeesCalculator(
     WMAFeesCalculator.Config(
       baseFeeCoefficient = 0.0,
-      priorityFeeWmaCoefficient = 1.0
-    )
+      priorityFeeWmaCoefficient = 1.0,
+    ),
   )
 
   private val l1DataSubmissionPriorityFeeCalculator: FeesCalculator = BoundableFeeCalculator(
     BoundableFeeCalculator.Config(
-      feeUpperBound = configs.blobSubmission.priorityFeePerGasUpperBound.toDouble(),
-      feeLowerBound = configs.blobSubmission.priorityFeePerGasLowerBound.toDouble(),
-      feeMargin = 0.0
+      feeUpperBound = configs.l1Submission!!.blob.gas.fallback.priorityFeePerGasUpperBound.toDouble(),
+      feeLowerBound = configs.l1Submission.blob.gas.fallback.priorityFeePerGasLowerBound.toDouble(),
+      feeMargin = 0.0,
     ),
-    l1MinPriorityFeeCalculator
+    l1MinPriorityFeeCalculator,
   )
 
   private val l1FinalizationPriorityFeeCalculator: FeesCalculator = BoundableFeeCalculator(
     BoundableFeeCalculator.Config(
-      feeUpperBound = configs.l1.maxPriorityFeePerGasCap.toDouble() * configs.l1.gasPriceCapMultiplierForFinalization,
-      feeLowerBound = 0.0,
-      feeMargin = 0.0
+      feeUpperBound = configs.l1Submission!!.aggregation.gas.fallback.priorityFeePerGasUpperBound.toDouble(),
+      feeLowerBound = configs.l1Submission.aggregation.gas.fallback.priorityFeePerGasUpperBound.toDouble(),
+      feeMargin = 0.0,
     ),
-    l1MinPriorityFeeCalculator
+    l1MinPriorityFeeCalculator,
   )
 
-  private val feesFetcher: FeesFetcher = FeeHistoryFetcherImpl(
-    l1Web3jClient,
-    l1Web3jService,
-    FeeHistoryFetcherImpl.Config(
-      configs.l1.feeHistoryBlockCount.toUInt(),
-      configs.l1.feeHistoryRewardPercentile
+  private val feesFetcher: FeesFetcher = run {
+    val httpService = createWeb3jHttpService(
+      configs.l1Submission!!.dynamicGasPriceCap.feeHistoryFetcher.l1Endpoint.toString(),
+      log = LogManager.getLogger("clients.l1.eth.fees-fetcher"),
     )
-  )
+    val l1Web3jClient = createWeb3jHttpClient(httpService)
+    FeeHistoryFetcherImpl(
+      web3jClient = l1Web3jClient,
+      web3jService = Web3jBlobExtended(httpService),
+      config = FeeHistoryFetcherImpl.Config(
+        feeHistoryBlockCount = configs.l1Submission.fallbackGasPrice.feeHistoryBlockCount,
+        feeHistoryRewardPercentile = configs.l1Submission.fallbackGasPrice.feeHistoryRewardPercentile.toDouble(),
+      ),
+    )
+  }
 
-  private val lineaRollupClient: LineaRollupSmartContractClientReadOnly = Web3JLineaRollupSmartContractClientReadOnly(
-    contractAddress = configs.l1.zkEvmContractAddress,
-    web3j = l1Web3jClient
-  )
+  val lineaRollupClientForFinalizationMonitor: LineaRollupSmartContractClientReadOnly =
+    Web3JLineaRollupSmartContractClientReadOnly(
+      contractAddress = configs.protocol.l1.contractAddress,
+      web3j = createWeb3jHttpClient(
+        rpcUrl = configs.l1FinalizationMonitor.l1Endpoint.toString(),
+        log = LogManager.getLogger("clients.l1.eth.finalization-monitor"),
+      ),
+    )
 
   private val l1FinalizationMonitor = run {
     FinalizationMonitorImpl(
       config =
       FinalizationMonitorImpl.Config(
-        pollingInterval = configs.l1.finalizationPollingInterval.toKotlinDuration(),
-        l1QueryBlockTag = configs.l1.l1QueryBlockTag
+        pollingInterval = configs.l1FinalizationMonitor.l1PollingInterval,
+        l1QueryBlockTag = configs.l1FinalizationMonitor.l1QueryBlockTag,
       ),
-      contract = lineaRollupClient,
-      l2Client = l2Web3jClient,
-      vertx = vertx
+      contract = lineaRollupClientForFinalizationMonitor,
+      l2Client = createWeb3jHttpClient(
+        rpcUrl = configs.l1FinalizationMonitor.l2Endpoint.toString(),
+        log = LogManager.getLogger("clients.l2.eth.finalization-monitor"),
+      ),
+      vertx = vertx,
     )
   }
 
-  private val l1FinalizationHandlerForShomeiRpc: LongRunningService = setupL1FinalizationMonitorForShomeiFrontend(
-    type2StateProofProviderConfig = configs.type2StateProofProvider,
-    httpJsonRpcClientFactory = httpJsonRpcClientFactory,
-    lineaRollupClient = lineaRollupClient,
-    l2Web3jClient = l2Web3jClient,
-    vertx = vertx
-  )
+  private val l1FinalizationHandlerForShomeiRpc: LongRunningService = run {
+    val l2Web3jClient: Web3j = createWeb3jHttpClient(
+      rpcUrl = configs.l1FinalizationMonitor.l2Endpoint.toString(),
+      log = LogManager.getLogger("clients.l2.eth.shomei-frontend"),
+    )
+    setupL1FinalizationMonitorForShomeiFrontend(
+      type2StateProofProviderConfig = configs.type2StateProofProvider,
+      httpJsonRpcClientFactory = httpJsonRpcClientFactory,
+      lineaRollupClient = lineaRollupClientForFinalizationMonitor,
+      l2Web3jClient = l2Web3jClient,
+      vertx = vertx,
+    )
+  }
+
+  private val l1FeeHistoriesRepository =
+    FeeHistoriesRepositoryImpl(
+      FeeHistoriesRepositoryImpl.Config(
+        rewardPercentiles = configs.l1Submission!!.dynamicGasPriceCap.feeHistoryFetcher
+          .rewardPercentiles.map { it.toDouble() },
+        minBaseFeePerBlobGasToCache = configs.l1Submission.dynamicGasPriceCap
+          .gasPriceCapCalculation.historicBaseFeePerBlobGasLowerBound,
+        fixedAverageRewardToCache = configs.l1Submission.dynamicGasPriceCap
+          .gasPriceCapCalculation.historicAvgRewardConstant,
+      ),
+      FeeHistoriesPostgresDao(
+        sqlClient,
+      ),
+    )
 
   private val gasPriceCapProvider =
-    if (configs.l1DynamicGasPriceCapService.enabled) {
+    if (configs.l1Submission.isEnabled() && configs.l1Submission!!.dynamicGasPriceCap.isEnabled()) {
       val feeHistoryPercentileWindowInBlocks =
-        configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.gasFeePercentileWindow
-          .toKotlinDuration().inWholeSeconds.div(configs.l1.blockTime.seconds).toUInt()
+        configs.l1Submission.dynamicGasPriceCap.gasPriceCapCalculation.baseFeePerGasPercentileWindow
+          .div(configs.protocol.l1.blockTime).toUInt()
 
       val feeHistoryPercentileWindowLeewayInBlocks =
-        configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.gasFeePercentileWindowLeeway
-          .toKotlinDuration().inWholeSeconds.div(configs.l1.blockTime.seconds).toUInt()
+        configs.l1Submission.dynamicGasPriceCap.gasPriceCapCalculation.baseFeePerGasPercentileWindowLeeway
+          .div(configs.protocol.l1.blockTime).toUInt()
 
-      val l1GasPriceCapCalculator: GasPriceCapCalculator = GasPriceCapCalculatorImpl()
+      val l2Web3jClient: Web3j =
+        createWeb3jHttpClient(
+          rpcUrl = configs.l1FinalizationMonitor.l2Endpoint.toString(),
+          log = LogManager.getLogger("clients.l2.eth.gascap-provider"),
+        )
 
       GasPriceCapProviderImpl(
         config = GasPriceCapProviderImpl.Config(
-          enabled = configs.l1DynamicGasPriceCapService.enabled,
+          enabled = configs.l1Submission.dynamicGasPriceCap.isEnabled(),
           gasFeePercentile =
-          configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.gasFeePercentile,
+          configs.l1Submission.dynamicGasPriceCap.gasPriceCapCalculation.baseFeePerGasPercentile.toDouble(),
           gasFeePercentileWindowInBlocks = feeHistoryPercentileWindowInBlocks,
           gasFeePercentileWindowLeewayInBlocks = feeHistoryPercentileWindowLeewayInBlocks,
           timeOfDayMultipliers =
-          configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.timeOfDayMultipliers!!,
+          configs.l1Submission.dynamicGasPriceCap.gasPriceCapCalculation.timeOfTheDayMultipliers,
           adjustmentConstant =
-          configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.adjustmentConstant,
+          configs.l1Submission.dynamicGasPriceCap.gasPriceCapCalculation.adjustmentConstant,
           blobAdjustmentConstant =
-          configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.blobAdjustmentConstant,
+          configs.l1Submission.dynamicGasPriceCap.gasPriceCapCalculation.blobAdjustmentConstant,
           finalizationTargetMaxDelay =
-          configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.finalizationTargetMaxDelay.toKotlinDuration(),
+          configs.l1Submission.dynamicGasPriceCap.gasPriceCapCalculation.finalizationTargetMaxDelay,
           gasPriceCapsCoefficient =
-          configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.gasPriceCapsCheckCoefficient
+          configs.l1Submission.dynamicGasPriceCap.gasPriceCapCalculation.gasPriceCapsCheckCoefficient,
         ),
-        l2ExtendedWeb3JClient = l2ExtendedWeb3j,
+        l2ExtendedWeb3JClient = ExtendedWeb3JImpl(l2Web3jClient),
         feeHistoriesRepository = l1FeeHistoriesRepository,
-        gasPriceCapCalculator = l1GasPriceCapCalculator
+        gasPriceCapCalculator = GasPriceCapCalculatorImpl(),
       )
     } else {
       null
     }
 
-  private val gasPriceCapProviderForDataSubmission = if (configs.l1DynamicGasPriceCapService.enabled) {
+  private val gasPriceCapProviderForDataSubmission = if (configs.l1Submission!!.dynamicGasPriceCap.isEnabled()) {
     GasPriceCapProviderForDataSubmission(
       config = GasPriceCapProviderForDataSubmission.Config(
-        maxPriorityFeePerGasCap = configs.l1.maxPriorityFeePerGasCap,
-        maxFeePerGasCap = configs.l1.maxFeePerGasCap,
-        maxFeePerBlobGasCap = configs.l1.maxFeePerBlobGasCap
+        maxPriorityFeePerGasCap = configs.l1Submission.blob.gas.maxPriorityFeePerGasCap,
+        maxFeePerGasCap = configs.l1Submission.blob.gas.maxFeePerGasCap,
+        maxFeePerBlobGasCap = configs.l1Submission.blob.gas.maxFeePerBlobGasCap!!,
       ),
       gasPriceCapProvider = gasPriceCapProvider!!,
-      metricsFacade = metricsFacade
+      metricsFacade = metricsFacade,
     )
   } else {
     null
   }
 
-  private val gasPriceCapProviderForFinalization = if (configs.l1DynamicGasPriceCapService.enabled) {
+  private val gasPriceCapProviderForFinalization = if (configs.l1Submission!!.dynamicGasPriceCap.isEnabled()) {
     GasPriceCapProviderForFinalization(
       config = GasPriceCapProviderForFinalization.Config(
-        maxPriorityFeePerGasCap = configs.l1.maxPriorityFeePerGasCap,
-        maxFeePerGasCap = configs.l1.maxFeePerGasCap,
-        gasPriceCapMultiplier = configs.l1.gasPriceCapMultiplierForFinalization
+        maxPriorityFeePerGasCap = configs.l1Submission.aggregation.gas.maxPriorityFeePerGasCap,
+        maxFeePerGasCap = configs.l1Submission.aggregation.gas.maxFeePerGasCap,
       ),
       gasPriceCapProvider = gasPriceCapProvider!!,
-      metricsFacade = metricsFacade
+      metricsFacade = metricsFacade,
     )
   } else {
     null
@@ -287,58 +342,67 @@ class L1DependentApp(
   private val lastFinalizedBlock = lastFinalizedBlock().get()
   private val lastProcessedBlockNumber = resumeConflationFrom(
     aggregationsRepository,
-    lastFinalizedBlock
+    lastFinalizedBlock,
   ).get()
   private val lastConsecutiveAggregatedBlockNumber = resumeAggregationFrom(
     aggregationsRepository,
-    lastFinalizedBlock
+    lastFinalizedBlock,
   ).get()
 
-  private fun createDeadlineConflationCalculatorRunner(): DeadlineConflationCalculatorRunner {
+  val l2Web3jClientForBlockCreation: Web3j = createWeb3jHttpClient(
+    rpcUrl = configs.conflation.l2Endpoint.toString(),
+    log = LogManager.getLogger("clients.l2.eth.conflation"),
+  )
+
+  private fun createDeadlineConflationCalculatorRunner(): DeadlineConflationCalculatorRunner? {
+    if (configs.conflation.isDisabled() || configs.conflation.conflationDeadline == null) {
+      log.info("Conflation deadline calculator is disabled")
+      return null
+    }
+
     return DeadlineConflationCalculatorRunner(
-      conflationDeadlineCheckInterval = configs.conflation.conflationDeadlineCheckInterval.toKotlinDuration(),
+      conflationDeadlineCheckInterval = configs.conflation.conflationDeadlineCheckInterval,
       delegate = ConflationCalculatorByTimeDeadline(
         config = ConflationCalculatorByTimeDeadline.Config(
-          conflationDeadline = configs.conflation.conflationDeadline.toKotlinDuration(),
+          conflationDeadline = configs.conflation.conflationDeadline,
           conflationDeadlineLastBlockConfirmationDelay =
-          configs.conflation.conflationDeadlineLastBlockConfirmationDelay.toKotlinDuration()
+          configs.conflation.conflationDeadlineLastBlockConfirmationDelay,
         ),
         lastBlockNumber = lastProcessedBlockNumber,
         clock = Clock.System,
         latestBlockProvider = GethCliqueSafeBlockProvider(
-          l2ExtendedWeb3j.web3jClient,
-          GethCliqueSafeBlockProvider.Config(configs.l2.blocksToFinalization.toLong())
-        )
-      )
+          l2Web3jClientForBlockCreation,
+          GethCliqueSafeBlockProvider.Config(blocksToFinalization = 0),
+        ),
+      ),
     )
   }
 
-  private val deadlineConflationCalculatorRunnerOld = createDeadlineConflationCalculatorRunner()
-  private val deadlineConflationCalculatorRunnerNew = createDeadlineConflationCalculatorRunner()
+  private val deadlineConflationCalculatorRunner = createDeadlineConflationCalculatorRunner()
 
   private fun addBlocksLimitCalculatorIfDefined(calculators: MutableList<ConflationCalculator>) {
     if (configs.conflation.blocksLimit != null) {
       calculators.add(
         ConflationCalculatorByBlockLimit(
-          blockLimit = configs.conflation.blocksLimit.toUInt()
-        )
+          blockLimit = configs.conflation.blocksLimit,
+        ),
       )
     }
   }
 
   private fun addTargetEndBlockConflationCalculatorIfDefined(calculators: MutableList<ConflationCalculator>) {
-    if (configs.conflation.conflationTargetEndBlockNumbers.isNotEmpty()) {
+    if (configs.conflation.proofAggregation.targetEndBlocks?.isNotEmpty() ?: false) {
       calculators.add(
         ConflationCalculatorByTargetBlockNumbers(
-          targetEndBlockNumbers = configs.conflation.conflationTargetEndBlockNumbers
-        )
+          targetEndBlockNumbers = configs.conflation.proofAggregation.targetEndBlocks!!.toSet(),
+        ),
       )
     }
   }
 
   private fun createCalculatorsForBlobsAndConflation(
     logger: Logger,
-    compressedBlobCalculator: ConflationCalculatorByDataCompressed
+    compressedBlobCalculator: ConflationCalculatorByDataCompressed,
   ): List<ConflationCalculator> {
     val calculators: MutableList<ConflationCalculator> =
       mutableListOf(
@@ -346,9 +410,9 @@ class L1DependentApp(
           tracesCountersLimit = configs.conflation.tracesLimitsV2,
           emptyTracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT,
           metricsFacade = metricsFacade,
-          log = logger
+          log = logger,
         ),
-        compressedBlobCalculator
+        compressedBlobCalculator,
       )
     addBlocksLimitCalculatorIfDefined(calculators)
     addTargetEndBlockConflationCalculatorIfDefined(calculators)
@@ -359,32 +423,30 @@ class L1DependentApp(
     val logger = LogManager.getLogger(GlobalBlockConflationCalculator::class.java)
 
     // To fail faster for JNA reasons
-    val compressorVersion = configs.traces.blobCompressorVersion
     val blobCompressor = GoBackedBlobCompressor.getInstance(
-      compressorVersion = compressorVersion,
-      dataLimit = configs.blobCompression.blobSizeLimit.toUInt(),
-      metricsFacade = metricsFacade
+      compressorVersion = configs.conflation.blobCompression.blobCompressorVersion,
+      dataLimit = configs.conflation.blobCompression.blobSizeLimit,
+      metricsFacade = metricsFacade,
     )
 
     val compressedBlobCalculator = ConflationCalculatorByDataCompressed(
-      blobCompressor = blobCompressor
+      blobCompressor = blobCompressor,
     )
     val globalCalculator = GlobalBlockConflationCalculator(
       lastBlockNumber = lastProcessedBlockNumber,
       syncCalculators = createCalculatorsForBlobsAndConflation(logger, compressedBlobCalculator),
-      deferredTriggerConflationCalculators = listOf(deadlineConflationCalculatorRunnerNew),
+      deferredTriggerConflationCalculators = listOfNotNull(deadlineConflationCalculatorRunner),
       emptyTracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT,
-      log = logger
+      log = logger,
     )
 
-    val batchesLimit =
-      configs.blobCompression.batchesLimit ?: (configs.proofAggregation.aggregationProofsLimit.toUInt() - 1U)
-
+    val batchesLimit = configs.conflation.blobCompression.batchesLimit
+      ?: (configs.conflation.proofAggregation.proofsLimit - 1U)
     GlobalBlobAwareConflationCalculator(
       conflationCalculator = globalCalculator,
       blobCalculator = compressedBlobCalculator,
       metricsFacade = metricsFacade,
-      batchesLimit = batchesLimit
+      batchesLimit = batchesLimit,
     )
   }
   private val conflationService: ConflationService =
@@ -394,9 +456,9 @@ class L1DependentApp(
     rpcClientFactory = httpJsonRpcClientFactory,
     endpoints = configs.stateManager.endpoints.map { it.toURI() },
     maxInflightRequestsPerClient = configs.stateManager.requestLimitPerEndpoint,
-    requestRetry = configs.stateManager.requestRetryConfig,
+    requestRetry = configs.stateManager.requestRetries.toJsonRpcRetry(),
     zkStateManagerVersion = configs.stateManager.version,
-    logger = LogManager.getLogger("clients.StateManagerShomeiClient")
+    logger = LogManager.getLogger("clients.StateManagerShomeiClient"),
   )
 
   private val lineaSmartContractClientForDataSubmission: LineaRollupSmartContractClient = run {
@@ -404,33 +466,39 @@ class L1DependentApp(
     // dynamic gas pricing is disabled and will act as a fallback gas provider
     // if L1 dynamic gas pricing is enabled
     val primaryOrFallbackGasProvider = WMAGasProvider(
-      chainId = l1ChainId,
+      chainId = l1ChainId.toLong(),
       feesFetcher = feesFetcher,
       priorityFeeCalculator = l1DataSubmissionPriorityFeeCalculator,
       config = WMAGasProvider.Config(
-        gasLimit = configs.l1.gasLimit,
-        maxFeePerGasCap = configs.l1.maxFeePerGasCap,
-        maxPriorityFeePerGasCap = configs.l1.maxPriorityFeePerGasCap,
-        maxFeePerBlobGasCap = configs.l1.maxFeePerBlobGasCap
-      )
+        gasLimit = configs.l1Submission!!.blob.gas.gasLimit,
+        maxFeePerGasCap = configs.l1Submission.blob.gas.maxFeePerGasCap,
+        maxPriorityFeePerGasCap = configs.l1Submission.blob.gas.maxPriorityFeePerGasCap,
+        maxFeePerBlobGasCap = configs.l1Submission.blob.gas.maxFeePerBlobGasCap!!,
+      ),
+    )
+    val l1Web3jClient = createWeb3jHttpClient(
+      rpcUrl = configs.l1Submission.blob.l1Endpoint.toString(),
+      log = LogManager.getLogger("clients.l1.eth.data-submission"),
     )
     createLineaRollupContractClient(
-      l1Config = configs.l1,
+      contractAddress = configs.protocol.l1.contractAddress,
       transactionManager = createTransactionManager(
         vertx,
-        configs.dataSubmissionSigner,
-        l1Web3jClient
+        signerConfig = configs.l1Submission.blob.signer,
+        client = l1Web3jClient,
       ),
       contractGasProvider = primaryOrFallbackGasProvider,
       web3jClient = l1Web3jClient,
       smartContractErrors = smartContractErrors,
-      useEthEstimateGas = configs.blobSubmission.useEthEstimateGas
+      // eth_estimateGas would fail because we submit multiple blob tx
+      // and 2nd would fail with revert reason
+      useEthEstimateGas = false,
     )
   }
 
   private val genesisStateProvider = GenesisStateProvider(
-    configs.l1.genesisStateRootHash,
-    configs.l1.genesisShnarfV6
+    stateRootHash = configs.protocol.genesis.genesisStateRootHash,
+    shnarf = configs.protocol.genesis.genesisShnarf,
   )
 
   private val blobCompressionProofCoordinator = run {
@@ -440,14 +508,14 @@ class L1DependentApp(
         category = LineaMetricsCategory.BLOB,
         name = "proven.highest.block.number",
         description = "Highest proven blob compression block number",
-        measurementSupplier = highestProvenBlobTracker
+        measurementSupplier = highestProvenBlobTracker,
       )
       highestProvenBlobTracker
     }
     val blobCompressionProofHandler: (BlobCompressionProofUpdate) -> SafeFuture<*> = SimpleCompositeSafeFutureHandler(
       listOf(
-        maxProvenBlobCache
-      )
+        maxProvenBlobCache,
+      ),
     )
 
     val blobCompressionProofCoordinator = BlobCompressionProofCoordinator(
@@ -457,33 +525,33 @@ class L1DependentApp(
       rollingBlobShnarfCalculator = RollingBlobShnarfCalculator(
         blobShnarfCalculator = GoBackedBlobShnarfCalculator(
           version = ShnarfCalculatorVersion.V1_2,
-          metricsFacade = metricsFacade
+          metricsFacade = metricsFacade,
         ),
         blobsRepository = blobsRepository,
-        genesisShnarf = genesisStateProvider.shnarf
+        genesisShnarf = genesisStateProvider.shnarf,
       ),
       blobZkStateProvider = BlobZkStateProviderImpl(
-        zkStateClient = zkStateClient
+        zkStateClient = zkStateClient,
       ),
       config = BlobCompressionProofCoordinator.Config(
-        pollingInterval = configs.blobCompression.handlerPollingInterval.toKotlinDuration()
+        pollingInterval = configs.conflation.blobCompression.handlerPollingInterval,
       ),
       blobCompressionProofHandler = blobCompressionProofHandler,
-      metricsFacade = metricsFacade
+      metricsFacade = metricsFacade,
     )
     val highestUnprovenBlobTracker = HighestUnprovenBlobTracker(lastProcessedBlockNumber)
     metricsFacade.createGauge(
       category = LineaMetricsCategory.BLOB,
       name = "unproven.highest.block.number",
       description = "Block number of highest unproven blob produced",
-      measurementSupplier = highestUnprovenBlobTracker
+      measurementSupplier = highestUnprovenBlobTracker,
     )
 
     val compositeSafeFutureHandler = SimpleCompositeSafeFutureHandler(
       listOf(
         blobCompressionProofCoordinator::handleBlob,
-        highestUnprovenBlobTracker
-      )
+        highestUnprovenBlobTracker,
+      ),
     )
     conflationCalculator.onBlobCreation(compositeSafeFutureHandler)
     blobCompressionProofCoordinator
@@ -494,33 +562,33 @@ class L1DependentApp(
       category = LineaMetricsCategory.BLOB,
       name = "highest.accepted.block.number",
       description = "Highest accepted blob end block number",
-      measurementSupplier = it
+      measurementSupplier = it,
     )
   }
 
   private val alreadySubmittedBlobsFilter =
     L1ShnarfBasedAlreadySubmittedBlobsFilter(
       lineaRollup = lineaSmartContractClientForDataSubmission,
-      acceptedBlobEndBlockNumberConsumer = { highestAcceptedBlobTracker(it) }
+      acceptedBlobEndBlockNumberConsumer = { highestAcceptedBlobTracker(it) },
     )
 
   private val latestBlobSubmittedBlockNumberTracker = LatestBlobSubmittedBlockNumberTracker(0UL)
   private val blobSubmissionCoordinator = run {
-    if (!configs.blobSubmission.enabled) {
+    if (configs.l1Submission.isDisabled() || configs.l1Submission!!.blob.isDisabled()) {
       DisabledLongRunningService
     } else {
       metricsFacade.createGauge(
         category = LineaMetricsCategory.BLOB,
         name = "highest.submitted.on.l1",
         description = "Highest submitted blob end block number on l1",
-        measurementSupplier = { latestBlobSubmittedBlockNumberTracker.get() }
+        measurementSupplier = { latestBlobSubmittedBlockNumberTracker.get() },
       )
 
       val blobSubmissionDelayHistogram = metricsFacade.createHistogram(
         category = LineaMetricsCategory.BLOB,
         name = "submission.delay",
         description = "Delay between blob submission and end block timestamps",
-        baseUnit = "seconds"
+        baseUnit = "seconds",
       )
 
       val blobSubmittedEventConsumers: Map<Consumer<BlobSubmittedEvent>, String> = mapOf(
@@ -529,15 +597,17 @@ class L1DependentApp(
         } to "Submitted Blob Tracker Consumer",
         Consumer<BlobSubmittedEvent> { blobSubmission ->
           blobSubmissionDelayHistogram.record(blobSubmission.getSubmissionDelay().toDouble())
-        } to "Blob Submission Delay Consumer"
+        } to "Blob Submission Delay Consumer",
       )
 
       BlobSubmissionCoordinator.create(
         config = BlobSubmissionCoordinator.Config(
-          configs.blobSubmission.dbPollingInterval.toKotlinDuration(),
-          configs.blobSubmission.proofSubmissionDelay.toKotlinDuration(),
-          configs.blobSubmission.maxBlobsToSubmitPerTick.toUInt(),
-          configs.blobSubmission.targetBlobsToSendPerTransaction.toUInt()
+          pollingInterval = configs.l1Submission.blob.submissionTickInterval,
+          proofSubmissionDelay = configs.l1Submission.blob.submissionDelay,
+          maxBlobsToSubmitPerTick =
+          configs.l1Submission.blob.maxSubmissionTransactionsPerTick *
+            configs.l1Submission.blob.targetBlobsPerTransaction,
+          targetBlobsToSubmitPerTx = configs.l1Submission.blob.targetBlobsPerTransaction,
         ),
         blobsRepository = blobsRepository,
         aggregationsRepository = aggregationsRepository,
@@ -546,7 +616,7 @@ class L1DependentApp(
         alreadySubmittedBlobsFilter = alreadySubmittedBlobsFilter,
         blobSubmittedEventDispatcher = EventDispatcher(blobSubmittedEventConsumers),
         vertx = vertx,
-        clock = Clock.System
+        clock = Clock.System,
       )
     }
   }
@@ -554,36 +624,40 @@ class L1DependentApp(
   private val proofAggregationCoordinatorService: LongRunningService = run {
     val maxBlobEndBlockNumberTracker = ConsecutiveProvenBlobsProviderWithLastEndBlockNumberTracker(
       aggregationsRepository,
-      lastProcessedBlockNumber
+      lastProcessedBlockNumber,
     )
 
     metricsFacade.createGauge(
       category = LineaMetricsCategory.BLOB,
       name = "proven.highest.consecutive.block.number",
       description = "Highest consecutive proven blob compression block number",
-      measurementSupplier = maxBlobEndBlockNumberTracker
+      measurementSupplier = maxBlobEndBlockNumberTracker,
     )
 
-    val highestAggregationTracker = HighestULongTracker(lastProcessedBlockNumber)
+    val highestAggregationTracker = HighestULongTracker(lastConsecutiveAggregatedBlockNumber)
     metricsFacade.createGauge(
       category = LineaMetricsCategory.AGGREGATION,
       name = "proven.highest.block.number",
       description = "Highest proven aggregation block number",
-      measurementSupplier = highestAggregationTracker
+      measurementSupplier = highestAggregationTracker,
+    )
+
+    val l2Web3jClient = createWeb3jHttpClient(
+      rpcUrl = configs.conflation.l2Endpoint.toString(),
+      log = LogManager.getLogger("clients.l2.eth.conflation"),
     )
 
     ProofAggregationCoordinatorService
       .create(
         vertx = vertx,
-        aggregationCoordinatorPollingInterval =
-        configs.proofAggregation.aggregationCoordinatorPollingInterval.toKotlinDuration(),
-        deadlineCheckInterval = configs.proofAggregation.deadlineCheckInterval.toKotlinDuration(),
-        aggregationDeadline = configs.proofAggregation.aggregationDeadline.toKotlinDuration(),
+        aggregationCoordinatorPollingInterval = configs.conflation.proofAggregation.coordinatorPollingInterval,
+        deadlineCheckInterval = configs.conflation.proofAggregation.deadlineCheckInterval,
+        aggregationDeadline = configs.conflation.proofAggregation.deadline,
         latestBlockProvider = GethCliqueSafeBlockProvider(
-          l2ExtendedWeb3j.web3jClient,
-          GethCliqueSafeBlockProvider.Config(configs.l2.blocksToFinalization.toLong())
+          web3j = l2Web3jClient,
+          config = GethCliqueSafeBlockProvider.Config(0),
         ),
-        maxProofsPerAggregation = configs.proofAggregation.aggregationProofsLimit.toUInt(),
+        maxProofsPerAggregation = configs.conflation.proofAggregation.proofsLimit,
         startBlockNumberInclusive = lastConsecutiveAggregatedBlockNumber + 1u,
         aggregationsRepository = aggregationsRepository,
         consecutiveProvenBlobsProvider = maxBlobEndBlockNumberTracker,
@@ -592,60 +666,55 @@ class L1DependentApp(
           l2Web3jClient,
           requestRetryConfig = linea.domain.RetryConfig(
             backoffDelay = 1.seconds,
-            failuresWarningThreshold = 3u
+            failuresWarningThreshold = 3u,
           ),
-          vertx = vertx
+          vertx = vertx,
         ),
-        l2MessageService = Web3JL2MessageServiceSmartContractClient.create(
+        l2MessageService = Web3JL2MessageServiceSmartContractClient.createReadOnly(
           web3jClient = l2Web3jClient,
-          contractAddress = configs.l2.messageServiceAddress,
-          gasLimit = configs.l2.gasLimit,
-          maxFeePerGasCap = configs.l2.maxFeePerGasCap,
-          feeHistoryBlockCount = configs.l2.feeHistoryBlockCount,
-          feeHistoryRewardPercentile = configs.l2.feeHistoryRewardPercentile,
-          transactionManager = l2TransactionManager,
+          contractAddress = configs.protocol.l2.contractAddress,
           smartContractErrors = smartContractErrors,
-          smartContractDeploymentBlockNumber = configs.l2.messageServiceDeploymentBlockNumber
+          smartContractDeploymentBlockNumber = configs.protocol.l2.contractDeploymentBlockNumber?.getNumber(),
         ),
-        aggregationDeadlineDelay = configs.conflation.conflationDeadlineLastBlockConfirmationDelay.toKotlinDuration(),
-        targetEndBlockNumbers = configs.proofAggregation.targetEndBlocks,
+        aggregationDeadlineDelay = configs.conflation.conflationDeadlineLastBlockConfirmationDelay,
+        targetEndBlockNumbers = configs.conflation.proofAggregation.targetEndBlocks ?: emptyList(),
         metricsFacade = metricsFacade,
-        provenAggregationEndBlockNumberConsumer = { highestAggregationTracker(it) },
-        aggregationSizeMultipleOf = configs.proofAggregation.aggregationSizeMultipleOf.toUInt()
+        provenAggregationEndBlockNumberConsumer = { aggEndBlockNumber -> highestAggregationTracker(aggEndBlockNumber) },
+        aggregationSizeMultipleOf = configs.conflation.proofAggregation.aggregationSizeMultipleOf,
       )
   }
 
   private val aggregationFinalizationCoordinator = run {
-    if (!configs.aggregationFinalization.enabled) {
+    if (configs.l1Submission.isDisabled() || configs.l1Submission?.aggregation.isDisabled()) {
       DisabledLongRunningService
     } else {
+      configs.l1Submission!!
+
+      val l1Web3jClient = createWeb3jHttpClient(
+        rpcUrl = configs.l1FinalizationMonitor.l1Endpoint.toString(),
+        log = LogManager.getLogger("clients.l1.eth.finalization"),
+      )
       // The below gas provider will act as the primary gas provider if L1
       // dynamic gas pricing is disabled and will act as a fallback gas provider
       // if L1 dynamic gas pricing is enabled
       val primaryOrFallbackGasProvider = WMAGasProvider(
-        chainId = l1ChainId,
+        chainId = l1ChainId.toLong(),
         feesFetcher = feesFetcher,
         priorityFeeCalculator = l1FinalizationPriorityFeeCalculator,
         config = WMAGasProvider.Config(
-          gasLimit = configs.l1.gasLimit,
-          maxFeePerGasCap = (
-            configs.l1.maxFeePerGasCap.toDouble() *
-              configs.l1.gasPriceCapMultiplierForFinalization
-            ).toULong(),
-          maxPriorityFeePerGasCap = (
-            configs.l1.maxPriorityFeePerGasCap.toDouble() *
-              configs.l1.gasPriceCapMultiplierForFinalization
-            ).toULong(),
-          maxFeePerBlobGasCap = configs.l1.maxFeePerBlobGasCap
-        )
+          gasLimit = configs.l1Submission.aggregation.gas.gasLimit,
+          maxFeePerGasCap = configs.l1Submission.aggregation.gas.maxFeePerGasCap,
+          maxPriorityFeePerGasCap = configs.l1Submission.aggregation.gas.maxPriorityFeePerGasCap,
+          maxFeePerBlobGasCap = 0UL, // we do not submit blobs in finalization tx
+        ),
       )
       val lineaSmartContractClientForFinalization: LineaRollupSmartContractClient = createLineaRollupContractClient(
-        l1Config = configs.l1,
+        contractAddress = configs.protocol.l1.contractAddress,
         transactionManager = finalizationTransactionManager,
         contractGasProvider = primaryOrFallbackGasProvider,
         web3jClient = l1Web3jClient,
         smartContractErrors = smartContractErrors,
-        useEthEstimateGas = configs.aggregationFinalization.useEthEstimateGas
+        useEthEstimateGas = true,
       )
 
       val latestFinalizationSubmittedBlockNumberTracker = LatestFinalizationSubmittedBlockNumberTracker(0UL)
@@ -653,14 +722,14 @@ class L1DependentApp(
         category = LineaMetricsCategory.AGGREGATION,
         name = "highest.submitted.on.l1",
         description = "Highest submitted finalization end block number on l1",
-        measurementSupplier = { latestFinalizationSubmittedBlockNumberTracker.get() }
+        measurementSupplier = { latestFinalizationSubmittedBlockNumberTracker.get() },
       )
 
       val finalizationSubmissionDelayHistogram = metricsFacade.createHistogram(
         category = LineaMetricsCategory.AGGREGATION,
         name = "submission.delay",
         description = "Delay between finalization submission and end block timestamps",
-        baseUnit = "seconds"
+        baseUnit = "seconds",
       )
 
       val submittedFinalizationConsumers: Map<Consumer<FinalizationSubmittedEvent>, String> = mapOf(
@@ -669,13 +738,13 @@ class L1DependentApp(
         } to "Finalization Submission Consumer",
         Consumer<FinalizationSubmittedEvent> { finalizationSubmission ->
           finalizationSubmissionDelayHistogram.record(finalizationSubmission.getSubmissionDelay().toDouble())
-        } to "Finalization Submission Delay Consumer"
+        } to "Finalization Submission Delay Consumer",
       )
 
       AggregationFinalizationCoordinator.create(
         config = AggregationFinalizationCoordinator.Config(
-          configs.aggregationFinalization.dbPollingInterval.toKotlinDuration(),
-          configs.aggregationFinalization.proofSubmissionDelay.toKotlinDuration()
+          pollingInterval = configs.l1Submission.aggregation.submissionTickInterval,
+          proofSubmissionDelay = configs.l1Submission.aggregation.submissionDelay,
         ),
         aggregationsRepository = aggregationsRepository,
         blobsRepository = blobsRepository,
@@ -684,50 +753,46 @@ class L1DependentApp(
         aggregationSubmitter = AggregationSubmitterImpl(
           lineaRollup = lineaSmartContractClientForFinalization,
           gasPriceCapProvider = gasPriceCapProviderForFinalization,
-          aggregationSubmittedEventConsumer = EventDispatcher(submittedFinalizationConsumers)
+          aggregationSubmittedEventConsumer = EventDispatcher(submittedFinalizationConsumers),
         ),
         vertx = vertx,
-        clock = Clock.System
+        clock = Clock.System,
       )
     }
   }
 
   private val block2BatchCoordinator = run {
-    val tracesCountersLog = LogManager.getLogger("clients.TracesCounters")
     val tracesCountersClient = run {
-      val tracesCounterV2Config = configs.traces.countersV2
-      val expectedTracesApiVersionV2 = configs.traces.expectedTracesApiVersionV2
+      val tracesCountersLog = LogManager.getLogger("clients.traces.counters")
       TracesGeneratorJsonRpcClientV2(
         vertx = vertx,
         rpcClient = httpJsonRpcClientFactory.createWithLoadBalancing(
-          endpoints = tracesCounterV2Config.endpoints.toSet(),
-          maxInflightRequestsPerClient = tracesCounterV2Config.requestLimitPerEndpoint,
-          log = tracesCountersLog
+          endpoints = configs.traces.counters.endpoints.toSet(),
+          maxInflightRequestsPerClient = configs.traces.counters.requestLimitPerEndpoint,
+          log = tracesCountersLog,
         ),
         config = TracesGeneratorJsonRpcClientV2.Config(
-          expectedTracesApiVersion = expectedTracesApiVersionV2
+          expectedTracesApiVersion = configs.traces.expectedTracesApiVersion,
         ),
-        retryConfig = tracesCounterV2Config.requestRetryConfig,
-        log = tracesCountersLog
+        retryConfig = configs.traces.counters.requestRetries.toJsonRpcRetry(),
+        log = tracesCountersLog,
       )
     }
 
-    val tracesConflationLog = LogManager.getLogger("clients.TracesConflation")
     val tracesConflationClient = run {
-      val tracesConflationConfigV2 = configs.traces.conflationV2
-      val expectedTracesApiVersionV2 = configs.traces.expectedTracesApiVersionV2
+      val tracesConflationLog = LogManager.getLogger("clients.traces.conflation")
       TracesGeneratorJsonRpcClientV2(
         vertx = vertx,
         rpcClient = httpJsonRpcClientFactory.createWithLoadBalancing(
-          endpoints = tracesConflationConfigV2.endpoints.toSet(),
-          maxInflightRequestsPerClient = tracesConflationConfigV2.requestLimitPerEndpoint,
-          log = tracesConflationLog
+          endpoints = configs.traces.conflation.endpoints.toSet(),
+          maxInflightRequestsPerClient = configs.traces.conflation.requestLimitPerEndpoint,
+          log = tracesConflationLog,
         ),
         config = TracesGeneratorJsonRpcClientV2.Config(
-          expectedTracesApiVersion = expectedTracesApiVersionV2
+          expectedTracesApiVersion = configs.traces.expectedTracesApiVersion,
         ),
-        retryConfig = tracesConflationConfigV2.requestRetryConfig,
-        log = tracesConflationLog
+        retryConfig = configs.traces.conflation.requestRetries.toJsonRpcRetry(),
+        log = tracesConflationLog,
       )
     }
 
@@ -738,7 +803,7 @@ class L1DependentApp(
           category = LineaMetricsCategory.BATCH,
           name = "proven.highest.block.number",
           description = "Highest proven batch execution block number",
-          measurementSupplier = highestProvenBatchTracker
+          measurementSupplier = highestProvenBatchTracker,
         )
         highestProvenBatchTracker
       }
@@ -746,12 +811,13 @@ class L1DependentApp(
       val batchProofHandler = SimpleCompositeSafeFutureHandler(
         listOf(
           maxProvenBatchCache,
-          BatchProofHandlerImpl(batchesRepository)::acceptNewBatch
-        )
+          BatchProofHandlerImpl(batchesRepository)::acceptNewBatch,
+        ),
       )
       val executionProverClient: ExecutionProverClientV2 = proverClientFactory.executionProverClient(
-        tracesVersion = configs.traces.rawExecutionTracesVersion,
-        stateManagerVersion = configs.stateManager.version
+        // we cannot use configs.traces.expectedTracesApiVersion because it breaks prover expected version pattern
+        tracesVersion = "2.1.0",
+        stateManagerVersion = configs.stateManager.version,
       )
 
       val proofGeneratingConflationHandlerImpl = ProofGeneratingConflationHandlerImpl(
@@ -759,18 +825,16 @@ class L1DependentApp(
         zkProofProductionCoordinator = ZkProofCreationCoordinatorImpl(
           executionProverClient = executionProverClient,
           l2EthApiClient = createEthApiClient(
-            web3jClient = l2Web3jClient,
-            requestRetryConfig = linea.domain.RetryConfig(
-              backoffDelay = 1.seconds,
-              failuresWarningThreshold = 3u
-            ),
-            vertx = vertx
+            rpcUrl = configs.conflation.l2Endpoint.toString(),
+            log = LogManager.getLogger("clients.l2.eth.conflation"),
+            requestRetryConfig = configs.conflation.l2RequestRetries,
+            vertx = vertx,
           ),
-          messageServiceAddress = configs.l2.messageServiceAddress
+          messageServiceAddress = configs.protocol.l2.contractAddress,
         ),
         batchProofHandler = batchProofHandler,
         vertx = vertx,
-        config = ProofGeneratingConflationHandlerImpl.Config(5.seconds)
+        config = ProofGeneratingConflationHandlerImpl.Config(5.seconds),
       )
 
       val highestConflationTracker = HighestConflationTracker(lastProcessedBlockNumber)
@@ -778,12 +842,12 @@ class L1DependentApp(
         category = LineaMetricsCategory.CONFLATION,
         name = "last.block.number",
         description = "Last conflated block number",
-        measurementSupplier = highestConflationTracker
+        measurementSupplier = highestConflationTracker,
       )
       val conflationsCounter = metricsFacade.createCounter(
         category = LineaMetricsCategory.CONFLATION,
         name = "counter",
-        description = "Counter of new conflations"
+        description = "Counter of new conflations",
       )
 
       SimpleCompositeSafeFutureHandler(
@@ -793,8 +857,8 @@ class L1DependentApp(
           {
             conflationsCounter.increment()
             SafeFuture.COMPLETE
-          }
-        )
+          },
+        ),
       )
     }
 
@@ -804,20 +868,20 @@ class L1DependentApp(
       conflationService = conflationService,
       tracesCountersClient = tracesCountersClient,
       vertx = vertx,
-      encoder = BlockRLPEncoder
+      encoder = BlockRLPEncoder,
     )
   }
 
   private val lastProvenBlockNumberProvider = run {
     val lastProvenConsecutiveBatchBlockNumberProvider = BatchesRepoBasedLastProvenBlockNumberProvider(
       lastProcessedBlockNumber.toLong(),
-      batchesRepository
+      batchesRepository,
     )
     metricsFacade.createGauge(
       category = LineaMetricsCategory.BATCH,
       name = "proven.highest.consecutive.block.number",
       description = "Highest proven consecutive execution batch block number",
-      measurementSupplier = { lastProvenConsecutiveBatchBlockNumberProvider.getLastKnownProvenBlockNumber() }
+      measurementSupplier = { lastProvenConsecutiveBatchBlockNumberProvider.getLastKnownProvenBlockNumber() },
     )
     lastProvenConsecutiveBatchBlockNumberProvider
   }
@@ -826,19 +890,19 @@ class L1DependentApp(
     log.info("Resuming conflation from block={} inclusive", lastProcessedBlockNumber + 1UL)
     val blockCreationMonitor = BlockCreationMonitor(
       vertx = vertx,
-      web3j = l2ExtendedWeb3j,
+      web3j = ExtendedWeb3JImpl(l2Web3jClientForBlockCreation),
       startingBlockNumberExclusive = lastProcessedBlockNumber.toLong(),
       blockCreationListener = block2BatchCoordinator,
       lastProvenBlockNumberProviderAsync = lastProvenBlockNumberProvider,
       config = BlockCreationMonitor.Config(
-        pollingInterval = configs.l2.newBlockPollingInterval.toKotlinDuration(),
-        blocksToFinalization = configs.l2.blocksToFinalization.toLong(),
-        blocksFetchLimit = configs.conflation.fetchBlocksLimit.toLong(),
-        // We need to add 1 to l2InclusiveBlockNumberToStopAndFlushAggregation because conflation calculator requires
-        // block_number = l2InclusiveBlockNumberToStopAndFlushAggregation + 1 to trigger conflation at
-        // l2InclusiveBlockNumberToStopAndFlushAggregation
-        lastL2BlockNumberToProcessInclusive = configs.l2InclusiveBlockNumberToStopAndFlushAggregation?.let { it + 1uL }
-      )
+        pollingInterval = configs.conflation.blocksPollingInterval,
+        blocksToFinalization = 0L,
+        blocksFetchLimit = configs.conflation.l2FetchBlocksLimit.toLong(),
+        // We need to add 1 to forceStopConflationAtBlockInclusive because conflation calculator requires
+        // block_number = forceStopConflationAtBlockInclusive + 1 to trigger conflation at
+        // forceStopConflationAtBlockInclusive
+        lastL2BlockNumberToProcessInclusive = configs.conflation.forceStopConflationAtBlockInclusive?.inc(),
+      ),
     )
     blockCreationMonitor
   }
@@ -846,105 +910,182 @@ class L1DependentApp(
   private fun lastFinalizedBlock(): SafeFuture<ULong> {
     val l1BasedLastFinalizedBlockProvider = L1BasedLastFinalizedBlockProvider(
       vertx,
-      lineaRollupClient,
-      configs.conflation.consistentNumberOfBlocksOnL1ToWait.toUInt()
+      lineaRollupSmartContractClient = lineaRollupClientForFinalizationMonitor,
+      consistentNumberOfBlocksOnL1 = configs.conflation.consistentNumberOfBlocksOnL1ToWait,
     )
     return l1BasedLastFinalizedBlockProvider.getLastFinalizedBlock()
   }
 
-  private val messageAnchoringApp: LongRunningService = if (configs.messageAnchoring.enabled
-  ) {
+  private val messageAnchoringApp: LongRunningService = if (configs.messageAnchoring.isEnabled()) {
+    configs.messageAnchoring!!
+    val l1Web3jClient = createWeb3jHttpClient(
+      rpcUrl = configs.messageAnchoring.l1Endpoint.toString(),
+      log = LogManager.getLogger("clients.l1.eth.message-anchoring"),
+    )
+    val l2Web3jClient = createWeb3jHttpClient(
+      rpcUrl = configs.messageAnchoring.l2Endpoint.toString(),
+      log = LogManager.getLogger("clients.l2.eth.message-anchoring"),
+    )
+    val l2TransactionManager = createTransactionManager(
+      vertx = vertx,
+      signerConfig = configs.messageAnchoring.signer,
+      client = l2Web3jClient,
+    )
     MessageAnchoringApp(
       vertx = vertx,
       config = MessageAnchoringApp.Config(
-        l1RequestRetryConfig = configs.messageAnchoring.l1RequestRetryConfig,
-        l1PollingInterval = configs.messageAnchoring.l1EventPollingInterval,
-        l1SuccessBackoffDelay = configs.messageAnchoring.l1SuccessBackoffDelay,
-        l1ContractAddress = configs.l1.zkEvmContractAddress,
-        l1EventPollingTimeout = configs.messageAnchoring.l1EventPollingTimeout,
-        l1EventSearchBlockChunk = configs.messageAnchoring.l1EventSearchBlockChunk,
+        l1RequestRetryConfig = configs.messageAnchoring.l1RequestRetries,
+        l1PollingInterval = configs.messageAnchoring.l1EventScrapping.pollingInterval,
+        l1SuccessBackoffDelay = configs.messageAnchoring.l1EventScrapping.ethLogsSearchSuccessBackoffDelay,
+        l1ContractAddress = configs.protocol.l1.contractAddress,
+        l1EventPollingTimeout = configs.messageAnchoring.l1EventScrapping.pollingTimeout,
+        l1EventSearchBlockChunk = configs.messageAnchoring.l1EventScrapping.ethLogsSearchBlockChunkSize,
         l1HighestBlockTag = configs.messageAnchoring.l1HighestBlockTag,
         l2HighestBlockTag = configs.messageAnchoring.l2HighestBlockTag,
         anchoringTickInterval = configs.messageAnchoring.anchoringTickInterval,
         messageQueueCapacity = configs.messageAnchoring.messageQueueCapacity,
-        maxMessagesToAnchorPerL2Transaction = configs.messageAnchoring.maxMessagesToAnchorPerL2Transaction
+        maxMessagesToAnchorPerL2Transaction = configs.messageAnchoring.maxMessagesToAnchorPerL2Transaction,
       ),
       l1EthApiClient = createEthApiClient(
         web3jClient = l1Web3jClient,
         requestRetryConfig = null,
-        vertx = vertx
+        vertx = vertx,
       ),
       l2MessageService = Web3JL2MessageServiceSmartContractClient.create(
         web3jClient = l2Web3jClient,
-        contractAddress = configs.l2.messageServiceAddress,
-        gasLimit = configs.l2.gasLimit,
-        maxFeePerGasCap = configs.l2.maxFeePerGasCap,
-        feeHistoryBlockCount = configs.l2.feeHistoryBlockCount,
-        feeHistoryRewardPercentile = configs.l2.feeHistoryRewardPercentile,
+        contractAddress = configs.protocol.l2.contractAddress,
+        gasLimit = configs.messageAnchoring.gas.gasLimit,
+        maxFeePerGasCap = configs.messageAnchoring.gas.maxFeePerGasCap,
+        feeHistoryBlockCount = configs.messageAnchoring.gas.feeHistoryBlockCount,
+        feeHistoryRewardPercentile = configs.messageAnchoring.gas.feeHistoryRewardPercentile.toDouble(),
         transactionManager = l2TransactionManager,
         smartContractErrors = smartContractErrors,
-        smartContractDeploymentBlockNumber = configs.l2.messageServiceDeploymentBlockNumber
-      )
+        smartContractDeploymentBlockNumber = configs.protocol.l2.contractDeploymentBlockNumber?.getNumber(),
+      ),
     )
   } else {
     DisabledLongRunningService
   }
 
   private val l2NetworkGasPricingService: L2NetworkGasPricingService? =
-    if (configs.l2NetworkGasPricingService != null) {
+    if (configs.l2NetworkGasPricing.isEnabled()) {
+      configs.l2NetworkGasPricing!!
+
+      val legacyConfig = L2NetworkGasPricingService.LegacyGasPricingCalculatorConfig(
+        transactionCostCalculatorConfig = TransactionCostCalculator.Config(
+          sampleTransactionCostMultiplier = configs.l2NetworkGasPricing.flatRateGasPricing.plainTransferCostMultiplier,
+          fixedCostWei = configs.l2NetworkGasPricing.gasPriceFixedCost,
+          compressedTxSize = configs.l2NetworkGasPricing.flatRateGasPricing.compressedTxSize.toInt(),
+          expectedGas = configs.l2NetworkGasPricing.flatRateGasPricing.expectedGas.toInt(),
+        ),
+        naiveGasPricingCalculatorConfig = null,
+        legacyGasPricingCalculatorBounds = BoundableFeeCalculator.Config(
+          feeUpperBound = configs.l2NetworkGasPricing.flatRateGasPricing.gasPriceUpperBound.toDouble(),
+          feeLowerBound = configs.l2NetworkGasPricing.flatRateGasPricing.gasPriceLowerBound.toDouble(),
+          feeMargin = 0.0,
+        ),
+      )
+
+      val config = L2NetworkGasPricingService.Config(
+        feeHistoryFetcherConfig = FeeHistoryFetcherImpl.Config(
+          feeHistoryBlockCount = configs.l2NetworkGasPricing.feeHistoryBlockCount,
+          feeHistoryRewardPercentile = configs.l2NetworkGasPricing.feeHistoryRewardPercentile.toDouble(),
+        ),
+        legacy = legacyConfig,
+        jsonRpcGasPriceUpdaterConfig = null,
+        // we do not use miner_setGasPrice RPC method, so we set it to infinite
+        jsonRpcPriceUpdateInterval = Duration.INFINITE,
+        // there no other way to work now without setting extra data into sequencer node
+        extraDataPricingPropagationEnabled = true,
+        extraDataUpdateInterval = configs.l2NetworkGasPricing.priceUpdateInterval,
+        variableFeesCalculatorConfig = VariableFeesCalculator.Config(
+          blobSubmissionExpectedExecutionGas = configs.l2NetworkGasPricing.dynamicGasPricing
+            .blobSubmissionExpectedExecutionGas.toUInt(),
+          bytesPerDataSubmission = configs.l2NetworkGasPricing.dynamicGasPricing.l1BlobGas.toUInt(),
+          expectedBlobGas = configs.l2NetworkGasPricing.dynamicGasPricing.l1BlobGas.toUInt(),
+          margin = configs.l2NetworkGasPricing.dynamicGasPricing.margin,
+        ),
+        variableFeesCalculatorBounds = BoundableFeeCalculator.Config(
+          feeUpperBound = configs.l2NetworkGasPricing.dynamicGasPricing.variableCostUpperBound.toDouble(),
+          feeLowerBound = configs.l2NetworkGasPricing.dynamicGasPricing.variableCostLowerBound.toDouble(),
+          feeMargin = 0.0,
+        ),
+        extraDataCalculatorConfig = MinerExtraDataV1CalculatorImpl.Config(
+          fixedCostInKWei = configs.l2NetworkGasPricing.gasPriceFixedCost.toKWeiUInt(),
+          ethGasPriceMultiplier = 1.0,
+        ),
+        extraDataUpdaterConfig = ExtraDataV1UpdaterImpl.Config(
+          sequencerEndpoint = configs.l2NetworkGasPricing.extraDataUpdateEndpoint,
+          retryConfig = configs.l2NetworkGasPricing.extraDataUpdateRequestRetries.toJsonRpcRetry(),
+        ),
+      )
+      val l1Web3jClient = createWeb3jHttpClient(
+        rpcUrl = configs.l2NetworkGasPricing.l1Endpoint.toString(),
+        log = LogManager.getLogger("clients.l1.eth.l2pricing"),
+      )
       L2NetworkGasPricingService(
         vertx = vertx,
         httpJsonRpcClientFactory = httpJsonRpcClientFactory,
         l1Web3jClient = l1Web3jClient,
-        l1Web3jService = l1Web3jService,
-        config = configs.l2NetworkGasPricingService
+        l1Web3jService = Web3jBlobExtended(
+          createWeb3jHttpService(
+            rpcUrl = configs.l2NetworkGasPricing.l1Endpoint.toString(),
+            log = LogManager.getLogger("clients.l1.eth.l2pricing"),
+          ),
+        ),
+        config = config,
       )
     } else {
       null
     }
 
   private val l1FeeHistoryCachingService: LongRunningService =
-    if (configs.l1DynamicGasPriceCapService.enabled) {
+    if (configs.l1Submission.isEnabled() && configs.l1Submission!!.dynamicGasPriceCap.isEnabled()) {
       val feeHistoryPercentileWindowInBlocks =
-        configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.gasFeePercentileWindow
-          .toKotlinDuration().inWholeSeconds.div(configs.l1.blockTime.seconds).toUInt()
-
+        configs.l1Submission.dynamicGasPriceCap.gasPriceCapCalculation.baseFeePerGasPercentileWindow
+          .div(configs.protocol.l1.blockTime).toUInt()
       val feeHistoryStoragePeriodInBlocks =
-        configs.l1DynamicGasPriceCapService.feeHistoryStorage.storagePeriod
-          .toKotlinDuration().inWholeSeconds.div(configs.l1.blockTime.seconds).toUInt()
+        configs.l1Submission.dynamicGasPriceCap.feeHistoryFetcher.storagePeriod
+          .div(configs.protocol.l1.blockTime).toUInt()
 
       val l1FeeHistoryWeb3jBlobExtClient = Web3jBlobExtended(
-        HttpService(
-          configs.l1DynamicGasPriceCapService.feeHistoryFetcher.endpoint?.toString()
-            ?: configs.l1.ethFeeHistoryEndpoint.toString()
-        )
+        createWeb3jHttpService(
+          rpcUrl = configs.l1Submission.aggregation.l1Endpoint.toString(),
+          log = LogManager.getLogger("clients.l1.eth.feehistory-cache"),
+        ),
       )
 
       val l1FeeHistoryFetcher: GasPriceCapFeeHistoryFetcher = GasPriceCapFeeHistoryFetcherImpl(
         web3jService = l1FeeHistoryWeb3jBlobExtClient,
         config = GasPriceCapFeeHistoryFetcherImpl.Config(
-          maxBlockCount = configs.l1DynamicGasPriceCapService.feeHistoryFetcher.maxBlockCount,
-          rewardPercentiles = configs.l1DynamicGasPriceCapService.feeHistoryFetcher.rewardPercentiles
-        )
+          maxBlockCount = configs.l1Submission.dynamicGasPriceCap.feeHistoryFetcher.maxBlockCount,
+          rewardPercentiles = configs.l1Submission.dynamicGasPriceCap.feeHistoryFetcher.rewardPercentiles
+            .map { it.toDouble() },
+        ),
+      )
+
+      val l1Web3jClient = createWeb3jHttpClient(
+        rpcUrl = configs.l1Submission.dynamicGasPriceCap.feeHistoryFetcher.l1Endpoint.toString(),
+        log = LogManager.getLogger("clients.l1.eth.feehistory-cache"),
       )
 
       FeeHistoryCachingService(
         config = FeeHistoryCachingService.Config(
           pollingInterval =
-          configs.l1DynamicGasPriceCapService.feeHistoryFetcher.fetchInterval.toKotlinDuration(),
+          configs.l1Submission.dynamicGasPriceCap.feeHistoryFetcher.fetchInterval,
           feeHistoryMaxBlockCount =
-          configs.l1DynamicGasPriceCapService.feeHistoryFetcher.maxBlockCount,
+          configs.l1Submission.dynamicGasPriceCap.feeHistoryFetcher.maxBlockCount,
           gasFeePercentile =
-          configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.gasFeePercentile,
+          configs.l1Submission.dynamicGasPriceCap.gasPriceCapCalculation.baseFeePerGasPercentile.toDouble(),
           feeHistoryStoragePeriodInBlocks = feeHistoryStoragePeriodInBlocks,
           feeHistoryWindowInBlocks = feeHistoryPercentileWindowInBlocks,
           numOfBlocksBeforeLatest =
-          configs.l1DynamicGasPriceCapService.feeHistoryFetcher.numOfBlocksBeforeLatest
+          configs.l1Submission.dynamicGasPriceCap.feeHistoryFetcher.numOfBlocksBeforeLatest,
         ),
         vertx = vertx,
         web3jClient = l1Web3jClient,
         feeHistoryFetcher = l1FeeHistoryFetcher,
-        feeHistoriesRepository = l1FeeHistoriesRepository
+        feeHistoriesRepository = l1FeeHistoriesRepository,
       )
     } else {
       DisabledLongRunningService
@@ -955,7 +1096,7 @@ class L1DependentApp(
       category = LineaMetricsCategory.AGGREGATION,
       name = "highest.accepted.block.number",
       description = "Highest finalized accepted end block number",
-      measurementSupplier = it
+      measurementSupplier = it,
     )
   }
 
@@ -967,11 +1108,11 @@ class L1DependentApp(
       "finalized records cleanup" to RecordsCleanupFinalizationHandler(
         batchesRepository = batchesRepository,
         blobsRepository = blobsRepository,
-        aggregationsRepository = aggregationsRepository
+        aggregationsRepository = aggregationsRepository,
       ),
       "highest_accepted_finalization_on_l1" to FinalizationHandler { update: FinalizationMonitor.FinalizationUpdate ->
         highestAcceptedFinalizationTracker(update.blockNumber)
-      }
+      },
     )
       .forEach { (handlerName, handler) ->
         l1FinalizationMonitor.addFinalizationHandler(handlerName, handler)
@@ -984,7 +1125,7 @@ class L1DependentApp(
       lastConsecutiveAggregatedBlockNumber = lastConsecutiveAggregatedBlockNumber,
       batchesRepository = batchesRepository,
       blobsRepository = blobsRepository,
-      aggregationsRepository = aggregationsRepository
+      aggregationsRepository = aggregationsRepository,
     )
       .thenCompose { l1FinalizationMonitor.start() }
       .thenCompose { l1FinalizationHandlerForShomeiRpc.start() }
@@ -994,8 +1135,7 @@ class L1DependentApp(
       .thenCompose { messageAnchoringApp.start() }
       .thenCompose { l2NetworkGasPricingService?.start() ?: SafeFuture.completedFuture(Unit) }
       .thenCompose { l1FeeHistoryCachingService.start() }
-      .thenCompose { deadlineConflationCalculatorRunnerOld.start() }
-      .thenCompose { deadlineConflationCalculatorRunnerNew.start() }
+      .thenCompose { deadlineConflationCalculatorRunner?.start() ?: SafeFuture.completedFuture(Unit) }
       .thenCompose { blockCreationMonitor.start() }
       .thenCompose { blobCompressionProofCoordinator.start() }
       .thenPeek {
@@ -1014,11 +1154,9 @@ class L1DependentApp(
       l2NetworkGasPricingService?.stop() ?: SafeFuture.completedFuture(Unit),
       l1FeeHistoryCachingService.stop(),
       blockCreationMonitor.stop(),
-      deadlineConflationCalculatorRunnerOld.stop(),
-      deadlineConflationCalculatorRunnerNew.stop(),
-      blobCompressionProofCoordinator.stop()
+      deadlineConflationCalculatorRunner?.stop() ?: SafeFuture.completedFuture(Unit),
+      blobCompressionProofCoordinator.stop(),
     )
-      .thenCompose { SafeFuture.fromRunnable { l1Web3jClient.shutdown() } }
       .thenApply { log.info("L1App Stopped") }
   }
 
@@ -1029,7 +1167,7 @@ class L1DependentApp(
       lastConsecutiveAggregatedBlockNumber: ULong,
       batchesRepository: BatchesRepository,
       blobsRepository: BlobsRepository,
-      aggregationsRepository: AggregationsRepository
+      aggregationsRepository: AggregationsRepository,
     ): SafeFuture<*> {
       val blockNumberInclusiveToDeleteFrom = lastProcessedBlockNumber + 1u
       val cleanupBatches = batchesRepository.deleteBatchesAfterBlockNumber(blockNumberInclusiveToDeleteFrom.toLong())
@@ -1046,7 +1184,7 @@ class L1DependentApp(
      */
     fun resumeConflationFrom(
       aggregationsRepository: AggregationsRepository,
-      lastFinalizedBlock: ULong
+      lastFinalizedBlock: ULong,
     ): SafeFuture<ULong> {
       return aggregationsRepository
         .findConsecutiveProvenBlobs(lastFinalizedBlock.toLong() + 1)
@@ -1061,7 +1199,7 @@ class L1DependentApp(
 
     fun resumeAggregationFrom(
       aggregationsRepository: AggregationsRepository,
-      lastFinalizedBlock: ULong
+      lastFinalizedBlock: ULong,
     ): SafeFuture<ULong> {
       return aggregationsRepository
         .findHighestConsecutiveEndBlockNumber(lastFinalizedBlock.toLong() + 1)
@@ -1071,16 +1209,13 @@ class L1DependentApp(
     }
 
     fun setupL1FinalizationMonitorForShomeiFrontend(
-      type2StateProofProviderConfig: Type2StateProofProviderConfig?,
+      type2StateProofProviderConfig: linea.coordinator.config.v2.Type2StateProofManagerConfig,
       httpJsonRpcClientFactory: VertxHttpJsonRpcClientFactory,
       lineaRollupClient: LineaRollupSmartContractClientReadOnly,
       l2Web3jClient: Web3j,
-      vertx: Vertx
+      vertx: Vertx,
     ): LongRunningService {
-      if (type2StateProofProviderConfig == null ||
-        type2StateProofProviderConfig.disabled ||
-        type2StateProofProviderConfig.endpoints.isEmpty()
-      ) {
+      if (type2StateProofProviderConfig.isDisabled()) {
         return DisabledLongRunningService
       }
 
@@ -1090,8 +1225,8 @@ class L1DependentApp(
           ShomeiClient(
             vertx = vertx,
             rpcClient = httpJsonRpcClientFactory.create(it, log = log),
-            retryConfig = type2StateProofProviderConfig.requestRetryConfig,
-            log = log
+            retryConfig = type2StateProofProviderConfig.requestRetries.toJsonRpcRetry(),
+            log = log,
           )
         }
 
@@ -1102,31 +1237,21 @@ class L1DependentApp(
         FinalizationMonitorImpl(
           config =
           FinalizationMonitorImpl.Config(
-            pollingInterval = type2StateProofProviderConfig.l1PollingInterval.toKotlinDuration(),
-            l1QueryBlockTag = type2StateProofProviderConfig.l1QueryBlockTag
+            pollingInterval = type2StateProofProviderConfig.l1PollingInterval,
+            l1QueryBlockTag = type2StateProofProviderConfig.l1QueryBlockTag,
           ),
           contract = lineaRollupClient,
           l2Client = l2Web3jClient,
-          vertx = vertx
+          vertx = vertx,
         )
 
       l1FinalizationMonitor.addFinalizationHandler("type 2 state proof provider finalization updates", {
         finalizedBlockNotifier.updateFinalizedBlock(
-          BlockNumberAndHash(it.blockNumber, it.blockHash.toArray())
+          BlockNumberAndHash(it.blockNumber, it.blockHash.toArray()),
         )
       })
 
       return l1FinalizationMonitor
     }
-  }
-}
-
-private object DisabledLongRunningService : LongRunningService {
-  override fun start(): CompletableFuture<Unit> {
-    return SafeFuture.completedFuture(Unit)
-  }
-
-  override fun stop(): CompletableFuture<Unit> {
-    return SafeFuture.completedFuture(Unit)
   }
 }

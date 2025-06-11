@@ -4,6 +4,7 @@ import linea.kotlin.toBigInteger
 import linea.kotlin.toIntervalString
 import linea.web3j.domain.blocksRange
 import linea.web3j.domain.toLineaDomain
+import linea.web3j.requestAsync
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.web3j.protocol.Web3j
@@ -19,8 +20,14 @@ class EIP1559GasProvider(private val web3jClient: Web3j, private val config: Con
     val gasLimit: ULong,
     val maxFeePerGasCap: ULong,
     val feeHistoryBlockCount: UInt,
-    val feeHistoryRewardPercentile: Double
-  )
+    val feeHistoryRewardPercentile: Double,
+  ) {
+    init {
+      require(feeHistoryBlockCount > 0u) {
+        "feeHistoryBlockCount=$feeHistoryBlockCount must be greater than 0."
+      }
+    }
+  }
 
   private val chainId: Long = web3jClient.ethChainId().send().chainId.toLong()
   private var cacheIsValidForBlockNumber: BigInteger = BigInteger.ZERO
@@ -34,11 +41,9 @@ class EIP1559GasProvider(private val web3jClient: Web3j, private val config: Con
         .ethFeeHistory(
           config.feeHistoryBlockCount.toInt(),
           DefaultBlockParameterName.LATEST,
-          listOf(config.feeHistoryRewardPercentile)
+          listOf(config.feeHistoryRewardPercentile),
         )
-        .sendAsync()
-        .thenApply {
-            feeHistoryResponse ->
+        .requestAsync { feeHistoryResponse ->
           val feeHistory = feeHistoryResponse.feeHistory.toLineaDomain()
           var maxPriorityFeePerGas = feeHistory.reward.sumOf { it[0] } / feeHistory.reward.size.toUInt()
 
@@ -46,7 +51,7 @@ class EIP1559GasProvider(private val web3jClient: Web3j, private val config: Con
             maxPriorityFeePerGas = config.maxFeePerGasCap
             log.warn(
               "Estimated miner tip of $maxPriorityFeePerGas exceeds configured max " +
-                "fee per gas of ${config.maxFeePerGasCap} returning cap instead!"
+                "fee per gas of ${config.maxFeePerGasCap} returning cap instead!",
             )
           }
 
@@ -57,17 +62,17 @@ class EIP1559GasProvider(private val web3jClient: Web3j, private val config: Con
           if (maxFeePerGas > 0uL && maxPriorityFeePerGas > 0uL) {
             feesCache = EIP1559GasFees(
               maxPriorityFeePerGas = maxPriorityFeePerGas,
-              maxFeePerGas = min(maxFeePerGas, config.maxFeePerGasCap)
+              maxFeePerGas = min(maxFeePerGas, config.maxFeePerGasCap),
             )
             log.debug(
               "New fees estimation: fees={} l2Blocks={}",
               feeHistoryResponse.feeHistory.blocksRange().toIntervalString(),
-              feesCache
+              feesCache,
             )
           } else {
             feesCache = EIP1559GasFees(
               maxPriorityFeePerGas = 0uL,
-              maxFeePerGas = config.maxFeePerGasCap
+              maxFeePerGas = config.maxFeePerGasCap,
             )
           }
         }

@@ -113,9 +113,19 @@ allprojects {
         }
         // spotless check applied to build.gradle (groovy) files
         groovyGradle {
+          target '*.gradle'
           greclipse()
           indentWithSpaces(2)
           endWithNewline()
+        }
+
+        java {
+          target 'src/**/*.java'
+          // Do not use 'targetExclude' with wildcard patterns, it will add minutes to the build
+          removeUnusedImports()
+          trimTrailingWhitespace()
+          endWithNewline()
+          googleJavaFormat(libs.versions.googleJavaFormat.get())
         }
       }
     }
