@@ -3,10 +3,10 @@ package mpts
 import (
 	"sync"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -282,9 +282,14 @@ func (qa quotientAccumulation) computeZetas(run *wizard.ProverRuntime) [][]field
 func getPowersOfOmega(n int) []field.Element {
 
 	var (
-		omega = fft.GetOmega(n)
+		omega field.Element
 		res   = make([]field.Element, n)
+		err   error
 	)
+	omega, err = fft.Generator(uint64(n))
+	if err != nil {
+		panic(err)
+	}
 
 	res[0] = field.One()
 
@@ -301,8 +306,8 @@ func ldeOf(v []field.Element, pool mempool.MemPool) *[]field.Element {
 
 	var (
 		sizeLarge   = pool.Size()
-		domainSmall = fft.NewDomain(len(v))
-		domainLarge = fft.NewDomain(sizeLarge)
+		domainSmall = fft.NewDomain(uint64(len(v)))
+		domainLarge = fft.NewDomain(uint64(sizeLarge))
 		resPtr      = pool.Alloc()
 		res         = *resPtr
 	)

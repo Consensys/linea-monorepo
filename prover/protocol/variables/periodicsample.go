@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
@@ -65,7 +66,7 @@ func (t PeriodicSample) EvalAtOnDomain(pos int) field.Element {
 }
 
 // Evaluates the expression outside of the domain
-func (t PeriodicSample) EvalAtOutOfDomain(size int, x field.Element) field.Element {
+func (t PeriodicSample) EvalAtOutOfDomain(size int, x fext.Element) fext.Element {
 	n := size
 	l := n / t.T
 	one := field.One()
@@ -76,7 +77,11 @@ func (t PeriodicSample) EvalAtOutOfDomain(size int, x field.Element) field.Eleme
 	// If there is an offset in the sample we also adjust here
 	if t.Offset > 0 {
 		var shift field.Element
-		evalPoint.Mul(&evalPoint, shift.Exp(fft.GetOmega(n), big.NewInt(int64(-t.Offset))))
+		omegaN, err := fft.Generator(uint64(n))
+		if err != nil {
+			panic(err)
+		}
+		evalPoint.MulByElement(&evalPoint, shift.Exp(omegaN, big.NewInt(int64(-t.Offset))))
 	}
 
 	var denominator, numerator field.Element
@@ -110,7 +115,11 @@ func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x fro
 
 	// If there is an offset in the sample we also adjust here
 	if t.Offset > 0 {
-		x = api.Mul(x, gnarkutil.Exp(api, fft.GetOmega(n), -t.Offset))
+		omegaN, err := fft.Generator(uint64(n))
+		if err != nil {
+			panic(err)
+		}
+		x = api.Mul(x, gnarkutil.Exp(api, omegaN, -t.Offset))
 	}
 
 	denominator := gnarkutil.Exp(api, x, l)
@@ -175,14 +184,20 @@ func (t PeriodicSample) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) 
 
 	// Skip if there is no coset ratio
 	if cosetRatio > 0 {
-		omegaN := fft.GetOmega(n * cosetRatio)
+		omegaN, err := fft.Generator(uint64(n * cosetRatio))
+		if err != nil {
+			panic(err)
+		}
 		omegaN.Exp(omegaN, big.NewInt(int64(cosetId)))
 		a.Mul(&a, &omegaN)
 	}
 
 	// If there is an offset in the sample we also adjust here
 	if t.Offset > 0 {
-		omegalInv := fft.GetOmega(n)
+		omegalInv, err := fft.Generator(uint64(n))
+		if err != nil {
+			panic(err)
+		}
 		omegalInv.Exp(omegalInv, big.NewInt(int64(-t.Offset)))
 		a.Mul(&a, &omegalInv)
 	}
@@ -191,7 +206,10 @@ func (t PeriodicSample) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) 
 	var al, an field.Element
 	al.Exp(a, big.NewInt(int64(l)))
 	an.Exp(a, big.NewInt(int64(n)))
-	omegal := fft.GetOmega(t.T) // It's the canonical t-root of unity
+	omegal, err := fft.Generator(uint64(t.T)) // It's the canonical t-root of unity
+	if err != nil {
+		panic(err)
+	}
 
 	// Denominator
 	denominator := make([]field.Element, t.T)

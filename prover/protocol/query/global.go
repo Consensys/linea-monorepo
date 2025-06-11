@@ -5,9 +5,9 @@ import (
 	"math"
 	"reflect"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -120,7 +120,10 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 		of the constraint. Its size coincide with the size of the domain
 		of evaluation. For each value of `i`, X will evaluate to omega^i.
 	*/
-	omega := fft.GetOmega(cs.DomainSize)
+	omega, err := fft.Generator(uint64(cs.DomainSize))
+	if err != nil {
+		panic(err)
+	}
 	omegaI := field.One()
 
 	// precomputations of the powers of omega, can be optimized if useful
@@ -334,7 +337,10 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 		of the constraint. Its size coincide with the size of the domain
 		of evaluation. For each value of `i`, X will evaluate to omega^i.
 	*/
-	omega := fft.GetOmega(cs.DomainSize)
+	omega, err := fft.Generator(uint64(cs.DomainSize))
+	if err != nil {
+		panic(err)
+	}
 	omegaI := field.One()
 
 	// precomputations of the powers of omega, can be optimized if useful

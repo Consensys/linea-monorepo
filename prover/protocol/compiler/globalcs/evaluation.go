@@ -6,10 +6,11 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -98,7 +99,7 @@ func (pa evaluationProver) Run(run *wizard.ProverRuntime) {
 
 	var (
 		stoptimer = profiling.LogTimer("Evaluate the queries for the global constraints")
-		r         = run.GetRandomCoinField(pa.EvalCoin.Name)
+		r         = run.GetRandomCoinFieldExt(pa.EvalCoin.Name)
 		witnesses = make([]sv.SmartVector, len(pa.AllInvolvedColumns))
 	)
 
@@ -115,7 +116,7 @@ func (pa evaluationProver) Run(run *wizard.ProverRuntime) {
 		}
 	})
 
-	ys := sv.BatchEvaluateLagrange(witnesses, r)
+	ys := sv.BatchEvaluateLagrangeMixed(witnesses, r)
 	run.AssignUnivariate(pa.WitnessEval.QueryID, r, ys...)
 
 	/*
@@ -125,34 +126,37 @@ func (pa evaluationProver) Run(run *wizard.ProverRuntime) {
 
 	var (
 		maxRatio          = utils.Max(pa.Ratios...)
-		mulGenInv         = fft.NewDomain(maxRatio * pa.DomainSize).FrMultiplicativeGenInv
-		rootInv           = fft.GetOmega(maxRatio * pa.DomainSize)
-		quotientEvalPoint field.Element
+		mulGenInv         = fft.NewDomain(uint64(maxRatio * pa.DomainSize)).FrMultiplicativeGenInv
+		rootInv           field.Element
+		quotientEvalPoint fext.Element
 		wg                = &sync.WaitGroup{}
 	)
-
+	rootInv, err := fft.Generator(uint64(maxRatio * pa.DomainSize))
+	if err != nil {
+		panic(err)
+	}
 	rootInv.Inverse(&rootInv)
-	quotientEvalPoint.Mul(&mulGenInv, &r)
+	quotientEvalPoint.MulByElement(&r, &mulGenInv)
 
 	for i := range pa.QuotientEvals {
 		wg.Add(1)
-		go func(i int, evalPoint field.Element) {
+		go func(i int, evalPoint fext.Element) {
 			var (
 				q  = pa.QuotientEvals[i]
-				ys = make([]field.Element, len(q.Pols))
+				ys = make([]fext.Element, len(q.Pols))
 			)
 
 			parallel.Execute(len(q.Pols), func(start, stop int) {
 				for i := start; i < stop; i++ {
 					c := q.Pols[i].GetColAssignment(run)
-					ys[i] = sv.EvaluateLagrange(c, evalPoint)
+					ys[i] = sv.EvaluateLagrangeMixed(c, evalPoint)
 				}
 			})
 
 			run.AssignUnivariate(q.Name(), evalPoint, ys...)
 			wg.Done()
 		}(i, quotientEvalPoint)
-		quotientEvalPoint.Mul(&quotientEvalPoint, &rootInv)
+		quotientEvalPoint.MulByElement(&quotientEvalPoint, &rootInv)
 	}
 
 	wg.Wait()
@@ -169,9 +173,9 @@ func (ctx *evaluationVerifier) Run(run wizard.Runtime) error {
 
 	var (
 		// Will be assigned to "X", the random point at which we check the constraint.
-		r = run.GetRandomCoinField(ctx.EvalCoin.Name)
+		r = run.GetRandomCoinFieldExt(ctx.EvalCoin.Name)
 		// Map all the evaluations and checks the evaluations points
-		mapYs = make(map[ifaces.ColID]field.Element)
+		mapYs = make(map[ifaces.ColID]fext.Element)
 		// Get the parameters
 		params           = run.GetUnivariateParams(ctx.WitnessEval.QueryID)
 		univQuery        = run.GetUnivariateEval(ctx.WitnessEval.QueryID)
@@ -194,7 +198,7 @@ func (ctx *evaluationVerifier) Run(run wizard.Runtime) error {
 	}
 
 	// Annulator = X^n - 1, common for all ratios
-	one := field.One()
+	one := fext.One()
 	annulator := r
 	annulator.Exp(annulator, big.NewInt(int64(ctx.DomainSize)))
 	annulator.Sub(&annulator, &one)
@@ -209,25 +213,25 @@ func (ctx *evaluationVerifier) Run(run wizard.Runtime) error {
 		for k, metadataInterface := range metadatas {
 			switch metadata := metadataInterface.(type) {
 			case ifaces.Column:
-				evalInputs[k] = sv.NewConstant(mapYs[metadata.GetColID()], 1)
+				evalInputs[k] = sv.NewConstantExt(mapYs[metadata.GetColID()], 1)
 			case coin.Info:
-				evalInputs[k] = sv.NewConstant(run.GetRandomCoinField(metadata.Name), 1)
+				evalInputs[k] = sv.NewConstantExt(run.GetRandomCoinFieldExt(metadata.Name), 1)
 			case variables.X:
-				evalInputs[k] = sv.NewConstant(r, 1)
+				evalInputs[k] = sv.NewConstantExt(r, 1)
 			case variables.PeriodicSample:
-				evalInputs[k] = sv.NewConstant(metadata.EvalAtOutOfDomain(ctx.DomainSize, r), 1)
+				evalInputs[k] = sv.NewConstantExt(metadata.EvalAtOutOfDomain(ctx.DomainSize, r), 1)
 			case ifaces.Accessor:
-				evalInputs[k] = sv.NewConstant(metadata.GetVal(run), 1)
+				evalInputs[k] = sv.NewConstantExt(metadata.GetValExt(run), 1)
 			default:
 				utils.Panic("Not a variable type %v in global query (ratio %v)", reflect.TypeOf(metadataInterface), ratio)
 			}
 		}
 
-		left := board.Evaluate(evalInputs).Get(0)
+		left := board.Evaluate(evalInputs).GetExt(0)
 
 		// right : r^{n}-1 Q(r)
 		qr := quotientYs[i]
-		var right field.Element
+		var right fext.Element
 		right.Mul(&annulator, &qr)
 
 		if left != right {
@@ -299,25 +303,29 @@ func (ctx *evaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 
 // recombineQuotientSharesEvaluation returns the evaluations of the quotients
 // on point r
-func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runtime, r field.Element) ([]field.Element, error) {
+func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runtime, r fext.Element) ([]fext.Element, error) {
 
 	var (
 		// res stores the list of the recombined quotient evaluations for each
 		// combination.
-		recombinedYs = make([]field.Element, len(ctx.Ratios))
+		recombinedYs = make([]fext.Element, len(ctx.Ratios))
 		// ys stores the values of the quotient shares ordered by ratio
-		qYs      = make([][]field.Element, utils.Max(ctx.Ratios...))
+		qYs      = make([][]fext.Element, utils.Max(ctx.Ratios...))
 		maxRatio = utils.Max(ctx.Ratios...)
 		// shiftedR = r / g where g is the generator of the multiplicative group
-		shiftedR field.Element
+		shiftedR fext.Element
 		// mulGen is the generator of the multiplicative group
-		mulGenInv = fft.NewDomain(maxRatio * ctx.DomainSize).FrMultiplicativeGenInv
+		mulGenInv = fft.NewDomain(uint64(maxRatio * ctx.DomainSize)).FrMultiplicativeGenInv
 		// omegaN is a root of unity generating the domain of size `domainSize
 		// * maxRatio`
-		omegaN = fft.GetOmega(ctx.DomainSize * maxRatio)
+		omegaN field.Element
 	)
-
-	shiftedR.Mul(&r, &mulGenInv)
+	omegaN, err := fft.Generator(uint64(ctx.DomainSize * maxRatio))
+	if err != nil {
+		panic(err)
+	}
+	omegaN.Inverse(&omegaN)
+	shiftedR.MulByElement(&r, &mulGenInv)
 
 	for i, q := range ctx.QuotientEvals {
 		params := run.GetUnivariateParams(q.Name())
@@ -325,10 +333,11 @@ func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 
 		// Check that the provided value for x is the right one
 		providedX := params.X
-		var expectedX field.Element
-		expectedX.Inverse(&omegaN)
-		expectedX.Exp(expectedX, big.NewInt(int64(i)))
-		expectedX.Mul(&expectedX, &shiftedR)
+		var expectedXinit field.Element
+		var expectedX fext.Element
+		expectedXinit.Inverse(&omegaN)
+		expectedXinit.Exp(expectedXinit, big.NewInt(int64(i)))
+		expectedX.MulByElement(&shiftedR, &expectedXinit)
 		if providedX != expectedX {
 			return nil, fmt.Errorf("bad X value")
 		}
@@ -337,7 +346,7 @@ func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 	for i, ratio := range ctx.Ratios {
 		var (
 			jumpBy = maxRatio / ratio
-			ys     = make([]field.Element, ratio)
+			ys     = make([]fext.Element, ratio)
 		)
 
 		for j := range ctx.QuotientShares[i] {
@@ -348,15 +357,20 @@ func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 		var (
 			m          = ctx.DomainSize
 			n          = ctx.DomainSize * ratio
-			omegaRatio = fft.GetOmega(ratio)
-			rPowM      field.Element
+			omegaRatio field.Element
+			rPowM      fext.Element
 			// outerFactor stores m/n*(r^n - 1)
 			outerFactor   = shiftedR
-			one           = field.One()
+			one           = fext.One()
 			omegaRatioInv field.Element
-			res           field.Element
+			res           fext.Element
 			ratioInvField = field.NewElement(uint64(ratio))
 		)
+		omegaRatio, err := fft.Generator(uint64(ratio))
+
+		if err != nil {
+			return nil, err
+		}
 
 		rPowM.Exp(shiftedR, big.NewInt(int64(m)))
 		ratioInvField.Inverse(&ratioInvField)
@@ -365,9 +379,11 @@ func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 		for k := range ys {
 
 			// tmp stores ys[k] / ((r^m / omegaRatio^k) - 1)
-			var tmp field.Element
-			tmp.Exp(omegaRatioInv, big.NewInt(int64(k)))
-			tmp.Mul(&tmp, &rPowM)
+			var tmpinit field.Element
+			var tmp fext.Element
+
+			tmpinit.Exp(omegaRatioInv, big.NewInt(int64(k)))
+			tmp.MulByElement(&rPowM, &tmpinit)
 			tmp.Sub(&tmp, &one)
 			tmp.Div(&ys[k], &tmp)
 
@@ -376,7 +392,7 @@ func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 
 		outerFactor.Exp(shiftedR, big.NewInt(int64(n)))
 		outerFactor.Sub(&outerFactor, &one)
-		outerFactor.Mul(&outerFactor, &ratioInvField)
+		outerFactor.MulByElement(&outerFactor, &ratioInvField)
 		res.Mul(&res, &outerFactor)
 		recombinedYs[i] = res
 	}
@@ -398,11 +414,15 @@ func (ctx evaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 		// shiftedR = r / g where g is the generator of the multiplicative group
 		shiftedR frontend.Variable
 		// mulGen is the generator of the multiplicative group
-		mulGenInv = fft.NewDomain(maxRatio * ctx.DomainSize).FrMultiplicativeGenInv
+		mulGenInv = fft.NewDomain(uint64(maxRatio * ctx.DomainSize)).FrMultiplicativeGenInv
 		// omegaN is a root of unity generating the domain of size `domainSize
 		// * maxRatio`
-		omegaN = fft.GetOmega(ctx.DomainSize * maxRatio)
+		omegaN field.Element
 	)
+	omegaN, err := fft.Generator(uint64(ctx.DomainSize * maxRatio))
+	if err != nil {
+		panic(err)
+	}
 
 	shiftedR = api.Mul(r, mulGenInv)
 
@@ -433,14 +453,17 @@ func (ctx evaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 		var (
 			m          = ctx.DomainSize
 			n          = ctx.DomainSize * ratio
-			omegaRatio = fft.GetOmega(ratio)
+			omegaRatio field.Element
 			// outerFactor stores m/n*(r^n - 1)
 			one           = field.One()
 			omegaRatioInv field.Element
 			res           = frontend.Variable(0)
 			ratioInvField = field.NewElement(uint64(ratio))
 		)
-
+		omegaRatio, err := fft.Generator(uint64(ratio))
+		if err != nil {
+			panic(err)
+		}
 		rPowM := gnarkutil.Exp(api, shiftedR, m)
 		ratioInvField.Inverse(&ratioInvField)
 		omegaRatioInv.Inverse(&omegaRatio)

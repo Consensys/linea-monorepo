@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -29,7 +29,10 @@ type bigRangeProverAction struct {
 func (a *bigRangeProverAction) Run(run *wizard.ProverRuntime) {
 	metadatas := a.boarded.ListVariableMetadata()
 	evalInputs := make([]sv.SmartVector, len(metadatas))
-	omega := fft.GetOmega(a.size)
+	omega, err := fft.Generator(uint64(a.size))
+	if err != nil {
+		panic(err)
+	}
 	omegaI := field.One()
 	omegas := make([]field.Element, a.size)
 	for i := 0; i < a.size; i++ {

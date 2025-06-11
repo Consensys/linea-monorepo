@@ -12,10 +12,10 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -269,10 +269,19 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 			// For each value of `i`, X will evaluate to gen*omegaQ^numCoset*omega^i.
 			// Gen is a generator of F^*
 			var (
-				omega        = fft.GetOmega(ctx.DomainSize)
-				omegaQNumCos = fft.GetOmega(ctx.DomainSize * maxRatio)
+				omega        field.Element
+				omegaQNumCos field.Element
 				omegaI       = field.NewElement(field.MultiplicativeGen)
 			)
+
+			omega, err := fft.Generator(uint64(ctx.DomainSize))
+			if err != nil {
+				panic(err)
+			}
+			omegaQNumCos, err2 := fft.Generator(uint64(ctx.DomainSize * maxRatio))
+			if err2 != nil {
+				panic(err2)
+			}
 
 			omegaQNumCos.Exp(omegaQNumCos, big.NewInt(int64(i)))
 			omegaI.Mul(&omegaI, &omegaQNumCos)

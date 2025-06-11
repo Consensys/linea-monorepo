@@ -3,11 +3,12 @@ package mpts
 import (
 	"testing"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -95,7 +96,7 @@ func TestWithVerifierCol(t *testing.T) {
 				comp.InsertUnivariate(0, "U", []ifaces.Column{u})
 			},
 			AssignFunc: func(run *wizard.ProverRuntime) {
-				run.AssignUnivariate("U", field.Zero(), field.Zero())
+				run.AssignUnivariate("U", fext.Zero(), fext.Zero())
 			},
 		},
 		{
@@ -105,7 +106,7 @@ func TestWithVerifierCol(t *testing.T) {
 				comp.InsertUnivariate(0, "U", []ifaces.Column{u})
 			},
 			AssignFunc: func(run *wizard.ProverRuntime) {
-				run.AssignUnivariate("U", field.Zero(), field.NewElement(42))
+				run.AssignUnivariate("U", fext.Zero(), fext.NewElement(42, 0, 0, 0))
 			},
 		},
 	}
@@ -119,6 +120,15 @@ func TestWithVerifierCol(t *testing.T) {
 
 func TestLdeOf(t *testing.T) {
 
+	gen_8, err := fft.Generator(8)
+	if err != nil {
+		panic(err)
+	}
+
+	gen_4, err1 := fft.Generator(4)
+	if err1 != nil {
+		panic(err1)
+	}
 	testcases := []struct {
 		Name string
 		Poly []field.Element
@@ -132,12 +142,12 @@ func TestLdeOf(t *testing.T) {
 		{
 			Name: "x-poly",
 			Poly: vector.ForTest(1, -1),
-			LDE:  vector.PowerVec(fft.GetOmega(8), 8),
+			LDE:  vector.PowerVec(gen_8, 8),
 		},
 		{
 			Name: "x-poly-2",
-			Poly: vector.PowerVec(fft.GetOmega(4), 4),
-			LDE:  vector.PowerVec(fft.GetOmega(8), 8),
+			Poly: vector.PowerVec(gen_4, 4),
+			LDE:  vector.PowerVec(gen_8, 8),
 		},
 	}
 

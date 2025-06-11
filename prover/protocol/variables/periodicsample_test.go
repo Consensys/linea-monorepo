@@ -4,8 +4,8 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -217,7 +217,10 @@ func TestPeriodicSampleEvalAtOnDomain(t *testing.T) {
 					// Eval at should not work
 					if pos == offset {
 						require.Panics(t, func() {
-							x := fft.GetOmega(domain)
+							x, err := fft.Generator(uint64(domain))
+							if err != nil {
+								panic(err)
+							}
 							x.Exp(x, big.NewInt(int64(pos)))
 
 							// This should equates 0/1

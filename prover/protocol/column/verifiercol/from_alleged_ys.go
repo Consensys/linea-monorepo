@@ -121,18 +121,18 @@ func (fys FromYs) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 	queryParams := run.GetParams(fys.Query.QueryID).(query.UnivariateEvalParams)
 
 	// Map the alleged evaluations to their respective commitment names
-	yMap := map[ifaces.ColID]field.Element{}
+	yMap := map[ifaces.ColID]fext.Element{}
 	for i, polName := range fys.Query.Pols {
 		yMap[polName.GetColID()] = queryParams.Ys[i]
 	}
 
 	// This will leaves the columns missing from the query to zero.
-	res := make([]field.Element, len(fys.Ranges))
+	res := make([]fext.Element, len(fys.Ranges))
 	for i, name := range fys.Ranges {
 		res[i] = yMap[name]
 	}
 
-	return smartvectors.NewRegular(res)
+	return smartvectors.NewRegularExt(res)
 }
 
 // Returns the coin's value as a column assignment

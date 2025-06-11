@@ -3,9 +3,10 @@ package wizard
 import (
 	"encoding/csv"
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"os"
 	"path"
+
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"strconv"
 	"sync"
@@ -787,7 +788,7 @@ func (run *ProverRuntime) AssignInnerProduct(name ifaces.QueryID, ys ...field.El
 //   - no query with the name `name` are found in the [CompiledIOP] object.
 //   - parameters for this query have already been assigned
 //   - the assignment round is not the correct one
-func (run *ProverRuntime) AssignUnivariate(name ifaces.QueryID, x field.Element, ys ...field.Element) {
+func (run *ProverRuntime) AssignUnivariate(name ifaces.QueryID, x fext.Element, ys ...fext.Element) {
 
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
