@@ -30,7 +30,7 @@ func LiftToExt(vec sv.SmartVector) sv.SmartVector {
 	case *sv.PaddedCircularWindow:
 		windowExt := make([]fext.Element, len(v.Window()))
 		for i := range v.Window() {
-			windowExt[i].SetFromBase(&v.Window()[i])
+			fext.SetFromBase(&windowExt[i], &v.Window()[i])
 		}
 		res := sv.NewPaddedCircularWindowExt(
 			windowExt,

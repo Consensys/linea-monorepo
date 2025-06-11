@@ -1,0 +1,134 @@
+package field
+
+import (
+	"math/big"
+	"math/bits"
+	"math/rand/v2"
+	"unsafe"
+
+	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/linea-monorepo/prover/utils"
+)
+
+type Element = koalabear.Element
+
+const (
+	// RmaxOrderRoot
+	MaxOrderRoot uint64 = 24
+
+	// MultiplicativeGen generator of 𝔽ᵣ*
+	MultiplicativeGen uint64 = 3
+	// number of 32 bits words needed to represent a Element
+	Limbs = 1
+	// Bits is the number of bits needed to represent a field element.
+	Bits = koalabear.Bits
+	// Bytes is the number of bytes needed to represent a field element.
+	Bytes = koalabear.Bytes
+)
+
+var (
+	RootOfUnity = NewFromString("1791270792")
+	Modulus     = koalabear.Modulus
+	Butterfly   = koalabear.Butterfly
+	NewElement  = koalabear.NewElement
+	BatchInvert = koalabear.BatchInvert
+	One         = koalabear.One
+)
+
+var montConstant = NewFromString("33554430")
+var montConstantInv = NewFromString("1057030144")
+
+// MulR multiplies by montConstant, where montConstant is the Montgommery constant
+func MulR(x Element) Element {
+	var res Element
+	res.Mul(&x, &montConstant)
+	return res
+}
+
+// MulRInv multiplies the field element by R^-1, where R is the Montgommery constant
+func MulRInv(x Element) Element {
+	var res Element
+	res.Mul(&x, &montConstantInv)
+	return res
+}
+
+// Zero returns the zero field element
+func Zero() Element {
+	var res Element
+	return res
+}
+
+// NewFromString constructs a new field element from a string. The rules to
+// determine how the string is casted into a field elements are the one of
+// [fr.Element.SetString]
+func NewFromString(s string) (res Element) {
+	_, err := res.SetString(s)
+	if err != nil {
+		panic(err)
+	}
+	return res
+}
+
+// ExpToInt sets z to x**k
+func ExpToInt(z *Element, x Element, k int) *Element {
+	if k == 0 {
+		return z.SetOne()
+	}
+
+	if k < 0 {
+		x.Inverse(&x)
+		k = -k
+	}
+
+	z.Set(&x)
+
+	for i := bits.Len(uint(k)) - 2; i >= 0; i-- {
+		z.Square(z)
+		if (k>>i)&1 == 1 {
+			z.Mul(z, &x)
+		}
+	}
+
+	return z
+}
+
+// RandomElement returns a random element
+func RandomElement() Element {
+	var res Element
+	res.SetRandom()
+	return res
+}
+
+// PseudoRand generates a field using a pseudo-random number generator
+func PseudoRand(rng *rand.Rand) Element {
+
+	var (
+		bigInt    = &big.Int{}
+		res       = Element{}
+		bareU32   = [1]uint32{rng.Uint32()}
+		bareBytes = *(*[4]byte)(unsafe.Pointer(&bareU32))
+	)
+
+	bigInt.SetBytes(bareBytes[:]).Mod(bigInt, Modulus())
+	res.SetBigInt(bigInt)
+	return res
+}
+
+// PseudoRandTruncated generates a field using a pseudo-random number generator
+func PseudoRandTruncated(rng *rand.Rand, sizeByte int) Element {
+
+	if sizeByte > 4 {
+		utils.Panic("supplied a byteSize larger than 4 (%v), this must be a mistake. Please check that the supplied value is not instead a BIT-size.", sizeByte)
+	}
+
+	var (
+		bigInt    = &big.Int{}
+		res       = Element{}
+		bareU32   = [1]uint32{rng.Uint32()}
+		bareBytes = *(*[4]byte)(unsafe.Pointer(&bareU32))
+	)
+
+	bigInt.SetBytes(bareBytes[:sizeByte]).Mod(bigInt, Modulus())
+	res.SetBigInt(bigInt)
+	return res
+}

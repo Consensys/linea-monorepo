@@ -2,8 +2,9 @@ package fext
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"math/big"
+
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
 /*
@@ -18,9 +19,11 @@ type GenericFieldElem struct {
 }
 
 func NewESHashFromBase(base *field.Element) *GenericFieldElem {
+	var ext Element
+	FromBase(&ext, base)
 	return &GenericFieldElem{
 		base:   *new(field.Element).Set(base),
-		ext:    NewFromBase(*base),
+		ext:    ext,
 		isBase: true,
 	}
 }
@@ -35,7 +38,7 @@ func (e *GenericFieldElem) GetBase() (field.Element, error) {
 
 func (e *GenericFieldElem) GetExt() Element {
 	if e.isBase {
-		e.ext.SetFromBase(&e.base)
+		FromBase(&e.ext, &e.base)
 		return e.ext
 	} else {
 		return e.ext
@@ -50,8 +53,8 @@ func NewESHashFromExt(ext *Element) *GenericFieldElem {
 }
 
 func NewMinimalESHashFromExt(ext *Element) *GenericFieldElem {
-	if ext.IsBase() {
-		baseElem, _ := ext.GetBase()
+	if IsBase(ext) {
+		baseElem, _ := GetBase(ext)
 		return &GenericFieldElem{
 			base:   *new(field.Element).Set(&baseElem),
 			ext:    *new(Element).Set(ext),
@@ -73,8 +76,8 @@ func (e *GenericFieldElem) IsBase() bool {
 
 func (e *GenericFieldElem) IsEqual(inp *GenericFieldElem) bool {
 	// first check if both are actual base elements
-	if e.ext.IsBase() && inp.ext.IsBase() {
-		return e.ext.A0.Equal(&inp.ext.A0)
+	if IsBase(&e.ext) && IsBase(&inp.ext) {
+		return e.ext.B0.A0.Equal(&inp.ext.B0.A0)
 	} else {
 		return e.ext.Equal(&inp.ext)
 	}
@@ -84,8 +87,8 @@ func (e *GenericFieldElem) IsEqualBase(inp *field.Element) bool {
 	if e.isBase {
 		return e.base.Equal(inp)
 	}
-	if e.ext.IsBase() {
-		actualBase, _ := e.ext.GetBase()
+	if IsBase(&e.ext) {
+		actualBase, _ := GetBase(&e.ext)
 		return actualBase.Equal(inp)
 	}
 	return false
@@ -106,15 +109,15 @@ func (e *GenericFieldElem) Mul(inp *GenericFieldElem) *GenericFieldElem {
 	if e.isBase && inp.isBase {
 		e.base.Mul(&e.base, &inp.base)
 		e.isBase = true
-		e.ext.SetFromBase(&e.base)
+		FromBase(&e.ext, &e.base)
 		return e
 	} else {
 		// not both are base elements
 		if e.isBase {
-			e.ext.MulByBase(&inp.ext, &e.base)
+			e.ext.MulByElement(&inp.ext, &e.base)
 		}
 		if inp.isBase {
-			e.ext.MulByBase(&e.ext, &inp.base)
+			e.ext.MulByElement(&e.ext, &inp.base)
 		}
 		if !e.isBase && !inp.isBase {
 			// both are extensions
@@ -122,8 +125,8 @@ func (e *GenericFieldElem) Mul(inp *GenericFieldElem) *GenericFieldElem {
 		}
 
 		// Check if the final result is a base element
-		if e.ext.IsBase() {
-			actualBase, _ := e.ext.GetBase()
+		if IsBase(&e.ext) {
+			actualBase, _ := GetBase(&e.ext)
 			e.base.Set(&actualBase)
 			e.isBase = true
 		} else {
@@ -137,15 +140,15 @@ func (e *GenericFieldElem) Mul(inp *GenericFieldElem) *GenericFieldElem {
 func (e *GenericFieldElem) Add(inp *GenericFieldElem) *GenericFieldElem {
 	if e.isBase && inp.isBase {
 		e.base.Add(&e.base, &inp.base)
-		e.ext.SetFromBase(&e.base)
+		FromBase(&e.ext, &e.base)
 		e.isBase = true
 	} else {
 		// not both are base elements
 		if e.isBase {
-			e.ext.AddByBase(&inp.ext, &e.base)
+			AddByBase(&e.ext, &inp.ext, &e.base)
 		}
 		if inp.isBase {
-			e.ext.AddByBase(&e.ext, &inp.base)
+			AddByBase(&e.ext, &e.ext, &inp.base)
 		}
 		if !e.isBase && !inp.isBase {
 			// both are extensions
@@ -153,8 +156,8 @@ func (e *GenericFieldElem) Add(inp *GenericFieldElem) *GenericFieldElem {
 		}
 
 		// Check if the final result is a base element
-		if e.ext.IsBase() {
-			actualBase, _ := e.ext.GetBase()
+		if IsBase(&e.ext) {
+			actualBase, _ := GetBase(&e.ext)
 			e.base.Set(&actualBase)
 			e.isBase = true
 		} else {
@@ -168,15 +171,15 @@ func (e *GenericFieldElem) Add(inp *GenericFieldElem) *GenericFieldElem {
 func (e *GenericFieldElem) Div(inp *GenericFieldElem) *GenericFieldElem {
 	if e.isBase && inp.isBase {
 		e.base.Div(&e.base, &inp.base)
-		e.ext.SetFromBase(&e.base)
+		FromBase(&e.ext, &e.base)
 		e.isBase = true
 	} else {
 		// not both are base elements
 		if e.isBase {
-			e.ext.DivByBase(&inp.ext, &e.base)
+			DivByBase(&e.ext, &inp.ext, &e.base)
 		}
 		if inp.isBase {
-			e.ext.DivByBase(&e.ext, &inp.base)
+			DivByBase(&e.ext, &e.ext, &inp.base)
 		}
 		if !e.isBase && !inp.isBase {
 			// both are extensions
@@ -184,8 +187,8 @@ func (e *GenericFieldElem) Div(inp *GenericFieldElem) *GenericFieldElem {
 		}
 
 		// Check if the final result is a base element
-		if e.ext.IsBase() {
-			actualBase, _ := e.ext.GetBase()
+		if IsBase(&e.ext) {
+			actualBase, _ := GetBase(&e.ext)
 			e.base.Set(&actualBase)
 			e.isBase = true
 		} else {
@@ -233,14 +236,14 @@ func (e *GenericFieldElem) Square(inp *GenericFieldElem) *GenericFieldElem {
 	if inp.isBase {
 		// inp is a base element
 		e.base.Square(&inp.base)
-		e.ext.SetFromBase(&e.base)
+		FromBase(&e.ext, &e.base)
 		e.isBase = true
 		return e
 	} else {
 		// inp is an extension
 		e.ext.Square(&inp.ext)
-		if e.ext.IsBase() {
-			actualBase, _ := e.ext.GetBase()
+		if IsBase(&e.ext) {
+			actualBase, _ := GetBase(&e.ext)
 			e.base.Set(&actualBase)
 			e.isBase = true
 		} else {
@@ -254,12 +257,12 @@ func (e *GenericFieldElem) Square(inp *GenericFieldElem) *GenericFieldElem {
 func (e *GenericFieldElem) Exp(inp *GenericFieldElem, exponent *big.Int) *GenericFieldElem {
 	if inp.isBase {
 		e.base.Exp(inp.base, exponent)
-		e.ext.SetFromBase(&e.base)
+		FromBase(&e.ext, &e.base)
 		return e
 	} else {
 		e.ext.Exp(inp.ext, exponent)
-		if e.ext.IsBase() {
-			actualBase, _ := e.ext.GetBase()
+		if IsBase(&e.ext) {
+			actualBase, _ := GetBase(&e.ext)
 			e.base.Set(&actualBase)
 			e.isBase = true
 		} else {
@@ -272,15 +275,7 @@ func (e *GenericFieldElem) Exp(inp *GenericFieldElem, exponent *big.Int) *Generi
 
 func (e *GenericFieldElem) SetInt64(v int64) *GenericFieldElem {
 	e.base.SetInt64(v)
-	e.ext.SetFromBase(&e.base)
+	FromBase(&e.ext, &e.base)
 	e.isBase = true
 	return e
-}
-
-func (e *GenericFieldElem) Text(base int) string {
-	if e.isBase {
-		return e.base.Text(base)
-	} else {
-		return e.ext.Text(base)
-	}
 }
