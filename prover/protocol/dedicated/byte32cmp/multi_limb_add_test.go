@@ -169,7 +169,7 @@ func TestAddColToLimbs(t *testing.T) {
 		{
 			name:        "overflow_multilimb_not_allowed",
 			aVals:       [][]int{{max16}, {max16}, {max16}, {max16}},
-			bVals:       [][]int{{1}},
+			bVals:       [][]int{{1}, {0}, {0}, {0}},
 			expectError: true,
 			isAddition:  true,
 		},
