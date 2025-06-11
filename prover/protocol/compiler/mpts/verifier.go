@@ -171,7 +171,7 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMap(run wizard.Runti
 	for i, c := range ctx.ExplicitlyEvaluated {
 		colID := ctx.ExplicitlyEvaluated[i].GetColID()
 		poly := c.GetColAssignment(run)
-		evaluationMap[colID] = smartvectors.Interpolate(poly, x)
+		evaluationMap[colID] = smartvectors.EvaluateLagrange(poly, x)
 	}
 
 	return evaluationMap
@@ -197,7 +197,7 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api fronten
 		polys = append(polys, poly)
 	}
 
-	ys := fastpoly.BatchInterpolateGnark(api, polys, x)
+	ys := fastpoly.BatchEvaluateLagrangeGnark(api, polys, x)
 
 	for i := range ctx.ExplicitlyEvaluated {
 		colID := ctx.ExplicitlyEvaluated[i].GetColID()

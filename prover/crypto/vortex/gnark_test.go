@@ -231,25 +231,25 @@ func TestAssertIsCodeWord(t *testing.T) {
 }
 
 // ------------------------------------------------------------
-// Interpolate
+// EvaluateLagrange
 
-type InterpolateCircuit struct {
+type EvaluateLagrangeCircuit struct {
 	P []frontend.Variable
 	X frontend.Variable `gnark:",public"`
 	R frontend.Variable
 	d *fft.Domain
 }
 
-func (circuit *InterpolateCircuit) Define(api frontend.API) error {
+func (circuit *EvaluateLagrangeCircuit) Define(api frontend.API) error {
 
-	res := gnarkInterpolate(api, circuit.P, circuit.X, circuit.d.Generator, circuit.d.Cardinality)
+	res := gnarkEvaluateLagrange(api, circuit.P, circuit.X, circuit.d.Generator, circuit.d.Cardinality)
 
 	api.AssertIsEqual(res, circuit.R)
 
 	return nil
 }
 
-func TestInterpolateCircuit(t *testing.T) {
+func TestEvaluateLagrangeCircuit(t *testing.T) {
 
 	// generate witness
 	size := 16
@@ -271,7 +271,7 @@ func TestInterpolateCircuit(t *testing.T) {
 	d.FFT(p, fft.DIF)
 	fft.BitReverse(p)
 
-	var witness InterpolateCircuit
+	var witness EvaluateLagrangeCircuit
 	witness.P = make([]frontend.Variable, size)
 	for i := 0; i < size; i++ {
 		witness.P[i] = p[i].String()
@@ -280,7 +280,7 @@ func TestInterpolateCircuit(t *testing.T) {
 	witness.R = r
 
 	// compile the circuit
-	var circuit InterpolateCircuit
+	var circuit EvaluateLagrangeCircuit
 	circuit.P = make([]frontend.Variable, size)
 	circuit.d = d
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)

@@ -238,7 +238,7 @@ func (gen *testCaseGen) NewTestCaseForLinComb() (tcase testCase) {
 	return tcase
 }
 
-func (gen *testCaseGen) NewTestCaseForPolyEval() (tcase testCase) {
+func (gen *testCaseGen) NewTestCaseForLinearCombination() (tcase testCase) {
 
 	tcase.name = fmt.Sprintf("fuzzy-with-seed-%v-poly-eval", gen.seed)
 	tcase.svecs = make([]SmartVector, gen.numVec)

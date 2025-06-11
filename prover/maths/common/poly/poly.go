@@ -17,7 +17,7 @@ func Eval(pol []field.Element, x field.Element) field.Element {
 	return res
 }
 
-func EvalOnExtField(p []field.Element, x fext.Element) fext.Element {
+func EvalMixed(p []field.Element, x fext.Element) fext.Element {
 	var res fext.Element
 
 	randpolyext := make([]fext.Element, len(p))

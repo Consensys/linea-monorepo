@@ -12,8 +12,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
-// EvaluateLagrangeOnFext computes ∑_i L_i(x), i.e. evaluates p interpreted as a polynomial in Lagrange form, and x lives in the extension
-func EvaluateLagrangeOnFext(poly []field.Element, x fext.Element, oncoset ...bool) fext.Element {
+// EvaluateLagrangeMixed computes ∑_i L_i(x), i.e. evaluates p interpreted as a polynomial in Lagrange form, and x lives in the extension
+func EvaluateLagrangeMixed(poly []field.Element, x fext.Element, oncoset ...bool) fext.Element {
 
 	if !utils.IsPowerOfTwo(len(poly)) {
 		utils.Panic("only support powers of two but poly has length %v", len(poly))
@@ -62,12 +62,12 @@ func EvaluateLagrangeOnFext(poly []field.Element, x fext.Element, oncoset ...boo
 func EvaluateLagrange(poly []field.Element, x field.Element, oncoset ...bool) field.Element {
 	var xExt fext.Element
 	fext.FromBase(&xExt, &x)
-	res := EvaluateLagrangeOnFext(poly, xExt, oncoset...)
+	res := EvaluateLagrangeMixed(poly, xExt, oncoset...)
 	return res.B0.A0
 }
 
-// BatchEvaluateLagrangeOnFext batch version of EvaluateLagrangeOnFext
-func BatchEvaluateLagrangeOnFext(polys [][]field.Element, x fext.Element, oncoset ...bool) []fext.Element {
+// BatchEvaluateLagrangeMixed batch version of EvaluateLagrangeOnFext
+func BatchEvaluateLagrangeMixed(polys [][]field.Element, x fext.Element, oncoset ...bool) []fext.Element {
 
 	// TODO should we check that the polynomials are of the same size ??
 	results := make([]fext.Element, len(polys))
@@ -126,7 +126,7 @@ func BatchEvaluateLagrangeOnFext(polys [][]field.Element, x fext.Element, oncose
 func BatchEvaluateLagrange(polys [][]field.Element, x field.Element, oncoset ...bool) []field.Element {
 	var xExt fext.Element
 	fext.FromBase(&xExt, &x)
-	resExt := BatchEvaluateLagrangeOnFext(polys, xExt, oncoset...)
+	resExt := BatchEvaluateLagrangeMixed(polys, xExt, oncoset...)
 	res := make([]field.Element, len(polys))
 	for i := 0; i < len(resExt); i++ {
 		res[i].Set(&resExt[i].B0.A0)

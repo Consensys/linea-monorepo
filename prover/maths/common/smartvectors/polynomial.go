@@ -117,12 +117,12 @@ func EvaluateLagrangeMixed(v SmartVector, x fext.Element, oncoset ...bool) fext.
 	// Maybe there is an optim for windowed here
 	poly := make([]field.Element, v.Len())
 	v.WriteInSlice(poly)
-	res := fastpoly.EvaluateLagrangeOnFext(poly, x, oncoset...)
+	res := fastpoly.EvaluateLagrangeMixed(poly, x, oncoset...)
 	return res
 }
 
-// BatchEvaluateLagrangeOnFext polynomials in Lagrange basis at an E4 point
-func BatchEvaluateLagrangeOnFext(vs []SmartVector, x fext.Element, oncoset ...bool) []fext.Element {
+// BatchEvaluateLagrangeMixed polynomials in Lagrange basis at an E4 point
+func BatchEvaluateLagrangeMixed(vs []SmartVector, x fext.Element, oncoset ...bool) []fext.Element {
 
 	var (
 		polys    = make([][]field.Element, len(vs))
@@ -161,7 +161,7 @@ func BatchEvaluateLagrangeOnFext(vs []SmartVector, x fext.Element, oncoset ...bo
 	}
 
 	// batch evaluate, and replace already computed values from constant vectors
-	tmp := fastpoly.BatchEvaluateLagrangeOnFext(polys, x, oncoset...)
+	tmp := fastpoly.BatchEvaluateLagrangeMixed(polys, x, oncoset...)
 	for i := 0; i < len(polys); i++ {
 		if !computed[i] {
 			results[i].Set(&tmp[i])
@@ -181,11 +181,11 @@ func EvalCoeff(v SmartVector, x field.Element) field.Element {
 }
 
 // Evaluate a polynomial in coefficient basis at an E4 point
-func EvalCoeffOnFext(v SmartVector, x fext.Element) fext.Element {
+func EvalCoeffMixed(v SmartVector, x fext.Element) fext.Element {
 	// Maybe there is an optim for windowed here
 	res := make([]field.Element, v.Len())
 	v.WriteInSlice(res)
-	return poly.EvalOnExtField(res, x)
+	return poly.EvalMixed(res, x)
 }
 
 func EvalCoeffBivariate(v SmartVector, x field.Element, numCoeffX int, y field.Element) field.Element {

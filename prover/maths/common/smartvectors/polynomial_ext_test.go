@@ -215,7 +215,7 @@ func TestBatchInterpolationWithConstantVectorExt(t *testing.T) {
 
 }
 
-func TestBatchInterpolateOnlyConstantVector(t *testing.T) {
+func TestBatchEvaluateLagrangeOnlyConstantVector(t *testing.T) {
 	n := 4
 	randPoly := vectorext.ForTest(1, 1, 1, 1)
 	randPoly2 := vectorext.ForTest(2, 2, 2, 2)

@@ -132,7 +132,7 @@ func (gen *testCaseGen) NewTestCaseForLinearCombinationMixed() (tcase testCaseMi
 	if winMaxStop-winMinStart > gen.windowWithLen {
 		utils.Panic("inconsistent window dimension %v %v with gen %++v", winMinStart, winMaxStop, gen)
 	}
-	resVal := poly.EvalOnExtField(vals, x)
+	resVal := poly.EvalMixed(vals, x)
 
 	switch {
 	case maxType == constantT:

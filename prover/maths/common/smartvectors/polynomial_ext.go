@@ -105,7 +105,7 @@ func EvaluateLagrangeFullFext(v SmartVector, x fext.Element, oncoset ...bool) fe
 }
 
 // Batch-evaluate polynomials in Lagrange basis
-func BatchInterpolateExt(vs []SmartVector, x fext.Element, oncoset ...bool) []fext.Element {
+func BatchEvaluateLagrangeExt(vs []SmartVector, x fext.Element, oncoset ...bool) []fext.Element {
 
 	var (
 		polys         = make([][]fext.Element, len(vs))
@@ -135,13 +135,13 @@ func BatchInterpolateExt(vs []SmartVector, x fext.Element, oncoset ...bool) []fe
 		return results
 	}
 
-	return batchInterpolateSVExt(results, computed, polys, x, oncoset...)
+	return BatchEvaluateLagrangeSVExt(results, computed, polys, x, oncoset...)
 }
 
-// Optimized batch interpolate for smart vectors.
+// Optimized batch EvaluateLagrange for smart vectors.
 // This reduces the number of computation by pre-processing
-// constant vectors in advance in BatchInterpolate()
-func batchInterpolateSVExt(results []fext.Element, computed []bool, polys [][]fext.Element, x fext.Element, oncoset ...bool) []fext.Element {
+// constant vectors in advance in BatchEvaluateLagrange()
+func BatchEvaluateLagrangeSVExt(results []fext.Element, computed []bool, polys [][]fext.Element, x fext.Element, oncoset ...bool) []fext.Element {
 
 	n := 0
 	for i := range polys {

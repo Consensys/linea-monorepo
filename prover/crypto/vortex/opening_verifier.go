@@ -128,7 +128,7 @@ func (v *VerifierInputs) checkColLinCombination() (err error) {
 
 		// Check the linear combination is consistent with the opened column
 
-		y := poly.EvalOnExtField(fullCol, v.RandomCoin)
+		y := poly.EvalMixed(fullCol, v.RandomCoin)
 
 		if selectedColID > linearCombination.Len() {
 			return fmt.Errorf("entry overflows the size of the linear combination")

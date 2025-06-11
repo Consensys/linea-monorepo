@@ -223,7 +223,7 @@ func (re randomPointEvaluation) Run(run *wizard.ProverRuntime) {
 
 	ys := make([]field.Element, len(polyVals))
 	for i := range ys {
-		ys[i] = smartvectors.Interpolate(polyVals[i], r)
+		ys[i] = smartvectors.EvaluateLagrange(polyVals[i], r)
 	}
 
 	run.AssignUnivariate(re.NewQuery.QueryID, r, ys...)

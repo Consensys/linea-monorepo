@@ -101,7 +101,7 @@ func gnarkEvalCanonical(api frontend.API, p []frontend.Variable, z frontend.Vari
 	return res
 }
 
-func gnarkInterpolate(api frontend.API, p []frontend.Variable, z frontend.Variable, gen field.Element, cardinality uint64) frontend.Variable {
+func gnarkEvaluateLagrange(api frontend.API, p []frontend.Variable, z frontend.Variable, gen field.Element, cardinality uint64) frontend.Variable {
 
 	var res frontend.Variable
 	res = 0
@@ -242,7 +242,7 @@ func GnarkVerifyCommon(
 	// Check the consistency of Ys and proof.Linearcombination
 	logrus.Infof("Checking the consistency between ys and the linear combination")
 	yjoined := utils.Join(ys...)
-	alphaY := gnarkInterpolate(
+	alphaY := gnarkEvaluateLagrange(
 		api,
 		proof.LinearCombination,
 		x,

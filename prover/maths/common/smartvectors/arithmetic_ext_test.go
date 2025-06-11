@@ -53,7 +53,7 @@ func TestFuzzLinCombExt(t *testing.T) {
 
 func TestFuzzLinearCombinationBase(t *testing.T) {
 	for i := 0; i < FuzzIteration; i++ {
-		tcase := newTestBuilder(i).NewTestCaseForPolyEval()
+		tcase := newTestBuilder(i).NewTestCaseForLinearCombination()
 
 		fmt.Printf("TEST CASE %v\n", tcase.svecs[0].Pretty())
 		success := t.Run(tcase.name, func(t *testing.T) {
@@ -206,7 +206,7 @@ func TestFuzzLinCombWithPoolCompareExt(t *testing.T) {
 	}
 }
 
-func TestFuzzPolyEvalWithPoolExt(t *testing.T) {
+func TestFuzzLinearCombinationWithPoolExt(t *testing.T) {
 	for i := 0; i < FuzzIteration; i++ {
 		tcase := newTestBuilderExt(i).NewTestCaseForLinearCombinationExt()
 
@@ -215,12 +215,12 @@ func TestFuzzPolyEvalWithPoolExt(t *testing.T) {
 			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
 
 			// LinearCombinationExt() with pool
-			polyEvalWithPool := LinearCombinationMixed(tcase.svecs, tcase.evaluationPoint, pool)
-			require.Equal(t, tcase.expectedValue.Pretty(), polyEvalWithPool.Pretty(), "linear combination with pool failed")
+			LinearCombinationWithPool := LinearCombinationMixed(tcase.svecs, tcase.evaluationPoint, pool)
+			require.Equal(t, tcase.expectedValue.Pretty(), LinearCombinationWithPool.Pretty(), "linear combination with pool failed")
 
 			// and a second time to ensure idempotency
-			polyEvalWithPool = LinearCombinationMixed(tcase.svecs, tcase.evaluationPoint, pool)
-			require.Equal(t, tcase.expectedValue.Pretty(), polyEvalWithPool.Pretty(), "linear combination with pool failed")
+			LinearCombinationWithPool = LinearCombinationMixed(tcase.svecs, tcase.evaluationPoint, pool)
+			require.Equal(t, tcase.expectedValue.Pretty(), LinearCombinationWithPool.Pretty(), "linear combination with pool failed")
 
 		})
 
@@ -231,7 +231,7 @@ func TestFuzzPolyEvalWithPoolExt(t *testing.T) {
 	}
 }
 
-func TestFuzzPolyEvalWithPoolCompareExt(t *testing.T) {
+func TestFuzzLinearCombinationWithPoolCompareExt(t *testing.T) {
 	for i := 0; i < FuzzIteration; i++ {
 		tcase := newTestBuilderExt(i).NewTestCaseForLinearCombinationExt()
 
@@ -240,15 +240,15 @@ func TestFuzzPolyEvalWithPoolCompareExt(t *testing.T) {
 			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
 
 			// LinearCombinationExt() with pool
-			polyEvalWithPool := LinearCombinationMixed(tcase.svecs, tcase.evaluationPoint, pool)
-			require.Equal(t, tcase.expectedValue.Pretty(), polyEvalWithPool.Pretty(), "LinearCombinationExt() with pool failed")
+			LinearCombinationWithPool := LinearCombinationMixed(tcase.svecs, tcase.evaluationPoint, pool)
+			require.Equal(t, tcase.expectedValue.Pretty(), LinearCombinationWithPool.Pretty(), "LinearCombinationExt() with pool failed")
 
 			// LinearCombinationExt() without pool
-			polyEval := LinearCombinationMixed(tcase.svecs, tcase.evaluationPoint)
+			LinearCombination := LinearCombinationMixed(tcase.svecs, tcase.evaluationPoint)
 
 			fmt.Printf("tcase.svecs=%s", tcase.svecs)
 			// check if LinearCombinationExt() with pool = LinearCombinationExt() without pool
-			require.Equal(t, polyEvalWithPool.Pretty(), polyEval.Pretty(), "LinearCombinationExt() w/ and w/o pool are different")
+			require.Equal(t, LinearCombinationWithPool.Pretty(), LinearCombination.Pretty(), "LinearCombinationExt() w/ and w/o pool are different")
 
 		})
 
