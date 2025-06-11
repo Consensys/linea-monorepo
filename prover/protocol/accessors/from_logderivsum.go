@@ -68,7 +68,11 @@ func (l *FromLogDerivSumAccessor) String() string {
 // GetVal implements [ifaces.Accessor]
 func (l *FromLogDerivSumAccessor) GetVal(run ifaces.Runtime) field.Element {
 	params := run.GetParams(l.Q.ID).(query.LogDerivSumParams)
-	return params.Sum
+	res, err := params.Sum.GetBase()
+	if err != nil {
+		panic(err)
+	}
+	return res
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]

@@ -36,6 +36,14 @@ func (lop LocalOpeningParams) UpdateFS(fs *fiatshamir.State) {
 	}
 }
 
+func (lop LocalOpeningParams) ToGenericGroupElement() *fext.GenericFieldElem {
+	if lop.IsBase {
+		return fext.NewESHashFromBase(&lop.BaseY)
+	} else {
+		return fext.NewESHashFromExt(&lop.ExtY)
+	}
+}
+
 // Constructs a new local opening query
 func NewLocalOpening(id ifaces.QueryID, pol ifaces.Column) LocalOpening {
 

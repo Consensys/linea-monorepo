@@ -147,9 +147,9 @@ func TestLogDerivativeSumBogdan(t *testing.T) {
 		q2 := b.RegisterCommit("Den_2", 2)
 
 		numerators := []*symbolic.Expression{
-			symbolic.Mul(p0, -1),
-			ifaces.ColumnAsVariable(p1),
-			symbolic.Mul(p2, p0, 2),
+			symbolic.Mul(p0, -1),        // -p0    -2
+			ifaces.ColumnAsVariable(p1), // p1      + 2
+			symbolic.Mul(p2, p0, 2),     // p2*p0*2			will lead to 2+2
 		}
 
 		denominators := []*symbolic.Expression{
@@ -179,7 +179,65 @@ func TestLogDerivativeSumBogdan(t *testing.T) {
 		run.AssignColumn("Den_1", smartvectors.ForTest(2, 3))
 		run.AssignColumn("Den_2", smartvectors.ForTest(5, 6))
 
-		run.AssignLogDerivSum("LogDerivSum_Test", field.NewElement(8))
+		run.AssignLogDerivSum("LogDerivSum_Test", field.NewElement(4))
+
+	}
+
+	compiled := wizard.Compile(define, logderiv.CompileLogDerivativeSum, dummy.Compile)
+	proof := wizard.Prove(compiled, prover)
+	valid := wizard.Verify(compiled, proof)
+	require.NoError(t, valid)
+}
+
+func TestLogDerivativeSumBogdan2(t *testing.T) {
+
+	define := func(b *wizard.Builder) {
+		var (
+			comp = b.CompiledIOP
+		)
+
+		p0 := b.RegisterCommit("Num_0", 2)
+		p1 := b.RegisterCommit("Num_1", 2)
+		p2 := b.RegisterCommit("Num_2", 2)
+
+		q0 := b.RegisterCommit("Den_0", 2)
+		q1 := b.RegisterCommit("Den_1", 2)
+		q2 := b.RegisterCommit("Den_2", 2)
+
+		numerators := []*symbolic.Expression{
+			symbolic.Mul(p0, -1),        // -p0    -2
+			ifaces.ColumnAsVariable(p1), // p1      + 2
+			symbolic.Mul(p2, p0, 2),     // p2*p0*2			will lead to 2+2
+		}
+
+		denominators := []*symbolic.Expression{
+			ifaces.ColumnAsVariable(q0),
+			ifaces.ColumnAsVariable(q1),
+			ifaces.ColumnAsVariable(q2),
+		}
+
+		size := 2
+		zCat1 := map[int]*query.LogDerivativeSumInput{}
+		zCat1[size] = &query.LogDerivativeSumInput{
+			Size:        size,
+			Numerator:   numerators,
+			Denominator: denominators,
+		}
+		comp.InsertLogDerivativeSum(0, "LogDerivSum_Test", zCat1)
+
+	}
+
+	prover := func(run *wizard.ProverRuntime) {
+
+		run.AssignColumn("Num_0", smartvectors.ForTest(1, 1))
+		run.AssignColumn("Num_1", smartvectors.ForTest(2, 3))
+		run.AssignColumn("Num_2", smartvectors.ForTest(5, 6))
+
+		run.AssignColumn("Den_0", smartvectors.ForTestFromPairs(1, 0, 1, 0))
+		run.AssignColumn("Den_1", smartvectors.ForTestFromPairs(2, 0, 3, 0))
+		run.AssignColumn("Den_2", smartvectors.ForTestFromPairs(5, 0, 6, 0))
+
+		run.AssignLogDerivSum("LogDerivSum_Test", field.NewElement(4))
 
 	}
 

@@ -2,9 +2,10 @@ package logderivativesum
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -91,23 +92,25 @@ type FinalEvaluationCheck struct {
 // Run implements the [wizard.VerifierAction]
 func (f *FinalEvaluationCheck) Run(run wizard.Runtime) error {
 
-	tmps := make([]field.Element, 0)
+	tmps := make([]fext.GenericFieldElem, 0)
 
 	// zSum stores the sum of the ending values of the zs as queried
 	// in the protocol via the local opening queries.
-	zSum := field.Zero()
+	zSum := fext.GenericFieldZero()
 	for k := range f.ZOpenings {
-		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).BaseY
-		tmps = append(tmps, temp)
-		zSum.Add(&zSum, &temp)
+		zOpening := run.GetLocalPointEvalParams(f.ZOpenings[k].ID)
+		temp := zOpening.ToGenericGroupElement()
+		tmps = append(tmps, *temp)
+		zSum.Add(temp)
 	}
 
-	claimedSum := run.GetLogDerivSumParams(f.LogDerivSumID).Sum
-	if zSum != claimedSum {
+	logDerivSumParam := run.GetLogDerivSumParams(f.LogDerivSumID)
+	claimedSum := logDerivSumParam.Sum
+	if !zSum.IsEqual(&claimedSum) {
 		return fmt.Errorf("log-derivate-sum; the final evaluation check failed for %v\n"+
 			"given %v but calculated %v\n"+
 			"partial-sums=(len %v) %v",
-			f.LogDerivSumID, claimedSum.String(), zSum.String(), len(tmps), vector.Prettify(tmps),
+			f.LogDerivSumID, claimedSum.String(), zSum.String(), len(tmps), vectorext.PrettifyGeneric(tmps),
 		)
 	}
 

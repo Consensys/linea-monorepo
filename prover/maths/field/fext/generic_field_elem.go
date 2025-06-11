@@ -284,3 +284,25 @@ func (e *GenericFieldElem) Text(base int) string {
 		return e.ext.Text(base)
 	}
 }
+
+func (z *GenericFieldElem) Bytes() []byte {
+	if z.IsBase() {
+		res := z.base.Bytes()
+		return res[:]
+	} else {
+		res := z.ext.Bytes()
+		return res[:]
+	}
+}
+
+func (z *GenericFieldElem) Inverse(x *GenericFieldElem) *GenericFieldElem {
+	if x.IsBase() {
+		var resBase field.Element
+		resBase.Inverse(&x.base)
+		return NewESHashFromBase(&resBase)
+	} else {
+		var resExt Element
+		resExt.Inverse(&x.ext)
+		return NewESHashFromExt(&resExt)
+	}
+}

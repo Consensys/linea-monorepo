@@ -78,6 +78,22 @@ func Prettify(a []fext.Element) string {
 	return res
 }
 
+func PrettifyGeneric(a []fext.GenericFieldElem) string {
+	res := "["
+
+	for i := range a {
+		// Discards the case first element when adding a comma
+		if i > 0 {
+			res += ", "
+		}
+
+		res += fmt.Sprintf("%v", a[i].String())
+	}
+	res += "]"
+
+	return res
+}
+
 // Reverse the elements of a vector inplace
 func Reverse(v []fext.Element) {
 	n := len(v) - 1

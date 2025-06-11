@@ -151,7 +151,7 @@ func (a *assignLogDerivativeSumProverAction) Run(run *wizard.ProverRuntime) {
 		panic("panic here" + err.Error())
 	}
 
-	run.AssignLogDerivSum(a.QName, v)
+	run.AssignLogDerivSumGeneric(a.QName, v)
 }
 
 // pushToZCatalog constructs the numerators and denominators for the collapsed S and T

@@ -270,6 +270,28 @@ func (fs *State) UpdateExt(vec ...fext.Element) {
 	fs.TranscriptSize += len(vec)
 }
 
+func (fs *State) UpdateGeneric(vec ...fext.GenericFieldElem) {
+	if len(vec) == 0 {
+		return
+	}
+
+	// Marshal the elements in a vector of bytes
+	for _, f := range vec {
+		bytes := f.Bytes()
+		_, err := fs.hasher.Write(bytes)
+		if err != nil {
+			// This normally happens if the bytes that we provide do not represent
+			// a field element. In our case, the bytes are computed by ourselves
+			// from the caller's field element so the error is not possible. Hence,
+			// the assertion.
+			panic("Hashing is not supposed to fail")
+		}
+	}
+
+	// Increase the transcript counter
+	fs.TranscriptSize += len(vec)
+}
+
 func (fs *State) UpdateMixed(vec ...interface{}) {
 	if len(vec) == 0 {
 		return
