@@ -26,7 +26,7 @@ func (p *Params) rsEncodeExt(v smartvectors.SmartVector, pool mempool.MemPool) s
 
 	// Interpret the smart-vectors as a polynomial in Lagrange form
 	// and returns a vector of coefficients.
-	asCoeffs := smartvectors.FFTInverse(v, fft.DIT, true, 0, 0, pool)
+	asCoeffs := smartvectors.FFTInverseExt(v, fft.DIT, true, 0, 0, pool)
 	if pool != nil {
 		defer func() {
 			if pooled, ok := asCoeffs.(*smartvectors.PooledExt); ok {
@@ -40,13 +40,13 @@ func (p *Params) rsEncodeExt(v smartvectors.SmartVector, pool mempool.MemPool) s
 	asCoeffs.WriteInSliceExt(expandedCoeffs[:asCoeffs.Len()])
 
 	// This is not memory that will be recycled easily
-	return smartvectors.FFT(smartvectors.NewRegularExt(expandedCoeffs), fft.DIT, true, 0, 0, nil)
+	return smartvectors.FFTExt(smartvectors.NewRegularExt(expandedCoeffs), fft.DIT, true, 0, 0, nil)
 }
 
 // IsCodeword returns nil iff the argument `v` is a correct codeword and an
 // error is returned otherwise.
 func (p *Params) isCodewordExt(v smartvectors.SmartVector) error {
-	coeffs := smartvectors.FFTInverse(v, fft.DIT, true, 0, 0, nil)
+	coeffs := smartvectors.FFTInverseExt(v, fft.DIT, true, 0, 0, nil)
 	for i := p.NbColumns; i < p.NumEncodedCols(); i++ {
 		c := coeffs.GetExt(i)
 		if !c.IsZero() {
