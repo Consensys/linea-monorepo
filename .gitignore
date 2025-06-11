@@ -144,3 +144,4 @@ __pycache__/
 !prover/**/utils/profiling
 !prover/**/verifying_key.bin
 !/sdk/src/lib/compressor/bin
+*.DS_Store

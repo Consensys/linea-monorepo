@@ -191,20 +191,13 @@ func (i *FunctionalPublicInputSnark) Sum(api frontend.API, hsh snarkHash.FieldHa
 }
 
 func (c Circuit) Define(api frontend.API) error {
-	var (
-		hsh snarkHash.FieldHasher
-		err error
-	)
+	newHash := mimc.New
 	if c.UseGkrMiMC {
-		if hsh, err = gkr_mimc.New(api); err != nil {
-			return err
-		}
-	} else {
-		if h, err := mimc.NewMiMC(api); err != nil {
-			return err
-		} else {
-			hsh = &h
-		}
+		newHash = gkr_mimc.New
+	}
+	hsh, err := newHash(api)
+	if err != nil {
+		return err
 	}
 
 	batchSums := internal.VarSlice{
