@@ -44,7 +44,7 @@ func (v *verifierForSize) Run(run wizard.Runtime) error {
 
 	if len(ys) > 1 {
 		batchingCoin := run.GetRandomCoinField(v.BatchOpening.Name)
-		expected = poly.EvalUnivariate(ys, batchingCoin)
+		expected = poly.Eval(ys, batchingCoin) //TODO@yao: check type
 	}
 
 	if len(ys) <= 1 {

@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -155,10 +156,10 @@ func (va verifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 // cptEvaluationMap returns an evaluation map [Column] -> [Y] for all the
 // polynomials handled by [ctx]. This includes the columns of the new query
 // but also the explictly evaluated columns.
-func (ctx *MultipointToSinglepointCompilation) cptEvaluationMap(run wizard.Runtime) map[ifaces.ColID]field.Element {
+func (ctx *MultipointToSinglepointCompilation) cptEvaluationMap(run wizard.Runtime) map[ifaces.ColID]fext.Element {
 
 	var (
-		evaluationMap = make(map[ifaces.ColID]field.Element)
+		evaluationMap = make(map[ifaces.ColID]fext.Element)
 		univParams    = run.GetParams(ctx.NewQuery.QueryID).(query.UnivariateEvalParams)
 		x             = univParams.X
 	)
@@ -171,7 +172,7 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMap(run wizard.Runti
 	for i, c := range ctx.ExplicitlyEvaluated {
 		colID := ctx.ExplicitlyEvaluated[i].GetColID()
 		poly := c.GetColAssignment(run)
-		evaluationMap[colID] = smartvectors.EvaluateLagrange(poly, x)
+		evaluationMap[colID] = smartvectors.EvaluateLagrangeMixed(poly, x)
 	}
 
 	return evaluationMap

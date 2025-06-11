@@ -258,7 +258,7 @@ func (ctx *Ctx) explicitPublicEvaluation(vr wizard.Runtime) error {
 
 		val := pol.GetColAssignment(vr)
 
-		y := smartvectors.Interpolate(val, params.X)
+		y := smartvectors.EvaluateLagrangeMixed(val, params.X)
 		if y != params.Ys[i] {
 			return fmt.Errorf("inconsistent evaluation")
 		}

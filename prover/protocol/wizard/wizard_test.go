@@ -49,7 +49,7 @@ func TestCompiler(t *testing.T) {
 		p := smartvectors.ForTest(1, 2, 3, 3)
 		run.AssignColumn(P, p)
 		u := run.GetRandomCoinField(COIN)
-		y := smartvectors.Interpolate(p, u)
+		y := smartvectors.EvaluateLagrangeMixed(p, u)
 		run.AssignUnivariate(U, u, y)
 	}
 

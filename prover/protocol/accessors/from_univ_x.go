@@ -35,8 +35,8 @@ func (u *FromUnivXAccessor) GetValBase(run ifaces.Runtime) (field.Element, error
 }
 
 func (u *FromUnivXAccessor) GetValExt(run ifaces.Runtime) fext.Element {
-	//TODO implement me
-	panic("implement me")
+	params := run.GetParams(u.Q.QueryID).(query.UnivariateEvalParams)
+	return params.X
 }
 
 func (u *FromUnivXAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {
@@ -71,8 +71,8 @@ func (u *FromUnivXAccessor) String() string {
 
 // GetVal implements [ifaces.Accessor]
 func (u *FromUnivXAccessor) GetVal(run ifaces.Runtime) field.Element {
-	params := run.GetParams(u.Q.QueryID).(query.UnivariateEvalParams)
-	return params.X
+	//TODO implement me
+	panic("implement me")
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]

@@ -49,7 +49,7 @@ func TestCompiler(t *testing.T) {
 				// assign the rows with random polynomials and collect the ys
 				for i, row := range rows {
 					p := smartvectors.Rand(polSize)
-					ys[i] = smartvectors.Interpolate(p, x)
+					ys[i] = smartvectors.EvaluateLagrangeMixed(p, x)
 					pr.AssignColumn(row.GetColID(), p)
 				}
 
@@ -102,7 +102,7 @@ func TestCompiler(t *testing.T) {
 
 					for i, row := range rowsMultiRound[round] {
 						p := smartvectors.Rand(polSize)
-						ys[offsetIndex+i] = smartvectors.Interpolate(p, x)
+						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
 				}
@@ -169,11 +169,11 @@ func TestCompiler(t *testing.T) {
 						// assigned in the define phase
 						if i < numPrecomputedsNoSIS && round == 0 {
 							p := pr.Spec.Precomputed.MustGet(row.GetColID())
-							ys[i] = smartvectors.Interpolate(p, x)
+							ys[i] = smartvectors.EvaluateLagrangeMixed(p, x)
 							continue
 						}
 						p := smartvectors.Rand(polSize)
-						ys[offsetIndex+i] = smartvectors.Interpolate(p, x)
+						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
 				}
@@ -240,11 +240,11 @@ func TestCompiler(t *testing.T) {
 						// assigned in the define phase
 						if i < numPrecomputedsSIS && round == 0 {
 							p := pr.Spec.Precomputed.MustGet(row.GetColID())
-							ys[i] = smartvectors.Interpolate(p, x)
+							ys[i] = smartvectors.EvaluateLagrangeMixed(p, x)
 							continue
 						}
 						p := smartvectors.Rand(polSize)
-						ys[offsetIndex+i] = smartvectors.Interpolate(p, x)
+						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
 				}

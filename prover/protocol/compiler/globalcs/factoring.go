@@ -36,12 +36,15 @@ func factorExpressionList(comp *wizard.CompiledIOP, exprList []*symbolic.Express
 // resulting factored expression is cached in the file system as this is a
 // compute intensive operation.
 func factorExpression(comp *wizard.CompiledIOP, expr *symbolic.Expression) *symbolic.Expression {
-
+	flattenedExpr := flattenExpr(expr)
+	val, err := flattenedExpr.ESHash.GetBase()
+	if err != nil {
+		panic(err)
+	}
 	var (
-		flattenedExpr = flattenExpr(expr)
-		eshStr        = flattenedExpr.ESHash.Text(16)
-		cacheKey      = "global-cs-" + eshStr
-		wrapper       = &serializableExpr{Comp: comp}
+		eshStr   = val.Text(16)
+		cacheKey = "global-cs-" + eshStr
+		wrapper  = &serializableExpr{Comp: comp}
 	)
 
 	found, err := comp.Artefacts.TryLoad(cacheKey, wrapper)

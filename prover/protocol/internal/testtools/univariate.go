@@ -318,7 +318,7 @@ func (u *UnivariateTestcase) assignUnivariate(run *wizard.ProverRuntime, i int) 
 
 	for j := range q.Pols {
 		p := q.Pols[j].GetColAssignment(run)
-		ys[j] = smartvectors.Interpolate(p, x)
+		ys[j] = smartvectors.EvaluateLagrangeMixed(p, x)
 	}
 
 	run.AssignUnivariate(q.QueryID, x, ys...)

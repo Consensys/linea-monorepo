@@ -7,7 +7,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -165,7 +167,7 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 			// The first step is to compute the \sum_k \rho^k y_{i,k}. This is
 			// pure scalar operation.
 			var (
-				sumRhoKYik = field.Zero()
+				sumRhoKYik = fext.Zero()
 				zetaI      = zetas[i]
 			)
 
@@ -186,13 +188,13 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 
 				// This reuses the memory slot of yik to compute the temporary
 				// rho^k y_ik
-				yik.Mul(&yik, &powersOfRho[k])
+				yik.MulByElement(&yik, &powersOfRho[k])
 				sumRhoKYik.Add(&sumRhoKYik, &yik)
 			}
 
 			// The second step is to multiply and accumulate the result by zetaI
 			// and sumRhoKYik. This part "comsumes" the value of zetaI.
-			vector.ScalarMul(zetaI, zetaI, sumRhoKYik)
+			vectorext.ScalarMul(zetaI, zetaI, sumRhoKYik)
 
 			if len(localResult) != len(zetaI) {
 				utils.Panic("len(localResult) = %v len(zetaI) = %v", len(localResult), len(zetaI))
@@ -212,7 +214,7 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 func (re randomPointEvaluation) Run(run *wizard.ProverRuntime) {
 
 	var (
-		r        = run.GetRandomCoinField(re.EvaluationPoint.Name)
+		r        = run.GetRandomCoinFieldExt(re.EvaluationPoint.Name)
 		polys    = re.NewQuery.Pols
 		polyVals = make([]smartvectors.SmartVector, len(polys))
 	)
@@ -221,9 +223,9 @@ func (re randomPointEvaluation) Run(run *wizard.ProverRuntime) {
 		polyVals[i] = polys[i].GetColAssignment(run)
 	}
 
-	ys := make([]field.Element, len(polyVals))
+	ys := make([]fext.Element, len(polyVals))
 	for i := range ys {
-		ys[i] = smartvectors.EvaluateLagrange(polyVals[i], r)
+		ys[i] = smartvectors.EvaluateLagrangeMixed(polyVals[i], r)
 	}
 
 	run.AssignUnivariate(re.NewQuery.QueryID, r, ys...)
@@ -232,16 +234,16 @@ func (re randomPointEvaluation) Run(run *wizard.ProverRuntime) {
 // computeZetas returns the values of zeta_i = lambda^i / (X - xi)
 // for each query. And returns an evaluation vector for each query for all powers
 // of omega.
-func (qa quotientAccumulation) computeZetas(run *wizard.ProverRuntime) [][]field.Element {
+func (qa quotientAccumulation) computeZetas(run *wizard.ProverRuntime) [][]fext.Element {
 
 	var (
 		// powersOfOmega is the list of the powers of omega starting from 0.
 		powersOfOmega = getPowersOfOmega(qa.getNumRow())
-		zetaI         = make([][]field.Element, len(qa.Queries))
-		lambda        = run.GetRandomCoinField(qa.LinCombCoeffLambda.Name)
+		zetaI         = make([][]fext.Element, len(qa.Queries))
+		lambda        = run.GetRandomCoinFieldExt(qa.LinCombCoeffLambda.Name)
 		// powersOfLambda are precomputed outside of the loop to allow for
 		// parallization.
-		powersOfLambda = vector.PowerVec(lambda, len(qa.Queries))
+		powersOfLambda = vectorext.PowerVec(lambda, len(qa.Queries))
 	)
 
 	parallel.Execute(len(qa.Queries), func(start, stop int) {
@@ -260,17 +262,19 @@ func (qa quotientAccumulation) computeZetas(run *wizard.ProverRuntime) [][]field
 				l = append([]field.Element{}, powersOfOmega...)
 			)
 
+			lext := make([]fext.Element, len(l))
 			for j := range l {
-				l[j].Sub(&l[j], &xi)
+				lext[j] = fext.NewFromBase(l[j])
+				lext[j].Sub(&lext[j], &xi)
 			}
 
-			l = field.BatchInvert(l)
+			lext = fext.BatchInvert(lext)
 
 			for j := range l {
-				l[j].Mul(&l[j], &powersOfLambda[i])
+				lext[j].Mul(&lext[j], &powersOfLambda[i])
 			}
 
-			zetaI[i] = l
+			zetaI[i] = lext
 		}
 	})
 
