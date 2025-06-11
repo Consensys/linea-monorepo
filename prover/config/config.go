@@ -74,6 +74,11 @@ func NewConfigFromFile(path string) (*Config, error) {
 		return nil, fmt.Errorf("kzgsrs directory (%s) does not exist: %w", srsDir, err)
 	}
 
+	limitlessDir := cfg.PathforLimitlessProverAssets()
+	if _, err := os.Stat(limitlessDir); os.IsNotExist(err) {
+		return nil, fmt.Errorf("limitless directory (%s) does not exist: %w", limitlessDir, err)
+	}
+
 	// duplicate L2 hardcoded values for PI
 	cfg.PublicInputInterconnection.ChainID = uint64(cfg.Layer2.ChainID)
 	cfg.PublicInputInterconnection.L2MsgServiceAddr = cfg.Layer2.MsgSvcContract
@@ -141,6 +146,7 @@ type Config struct {
 	Aggregation                Aggregation
 	PublicInputInterconnection PublicInput `mapstructure:"public_input_interconnection"` // TODO add wizard compilation params
 	Debug                      Debug       `mapstructure:"debug"`
+	//LimitlessParams            LimitlessParams `mapstructure:"limitless_params"`
 
 	Layer2 struct {
 		// ChainID stores the ID of the Linea L2 network to consider.
@@ -174,6 +180,10 @@ func (cfg *Config) PathForSetup(circuitID string) string {
 // PathForSRS returns the path to the SRS directory.
 func (cfg *Config) PathForSRS() string {
 	return path.Join(cfg.AssetsDir, "kzgsrs")
+}
+
+func (cfg *Config) PathforLimitlessProverAssets() string {
+	return path.Join(cfg.AssetsDir, "limitless")
 }
 
 type Controller struct {
@@ -219,6 +229,12 @@ type Prometheus struct {
 	// assign it.
 	Route string
 }
+
+// type LimitlessParams struct {
+// 	DiscTargetWeight  int `mapstructure:"disc_target_weight"`
+// 	DiscPreDivision   int `mapstructure:"disc_pre_division"`
+// 	CongloMaxSegments int `mapstructure:"conglo_max_segments"`
+// }
 
 type Execution struct {
 	WithRequestDir `mapstructure:",squash"`
