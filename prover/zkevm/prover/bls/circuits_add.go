@@ -30,21 +30,12 @@ type BlsAddDataSource struct {
 }
 
 func newAddDataSource(comp *wizard.CompiledIOP, g group) *BlsAddDataSource {
-	var selectorCs ifaces.Column
-	switch g {
-	case G1:
-		selectorCs = comp.Columns.GetHandle("bls.CIRCUIT_SELECTOR_BLS_G1_ADD")
-	case G2:
-		selectorCs = comp.Columns.GetHandle("bls.CIRCUIT_SELECTOR_BLS_G2_ADD")
-	default:
-		panic("unknown group for bls add data source")
-	}
 	return &BlsAddDataSource{
-		CsAdd:  selectorCs,
+		CsAdd:  comp.Columns.GetHandle(ifaces.ColIDf("bls.CIRCUIT_SELECTOR_%s_ADD", g.String())),
 		Limb:   comp.Columns.GetHandle("bls.LIMB"),
 		Index:  comp.Columns.GetHandle("bls.INDEX"),
-		IsData: comp.Columns.GetHandle("bls.IS_BLS_ADD_DATA"),
-		IsRes:  comp.Columns.GetHandle("bls.IS_BLS_ADD_RESULT"),
+		IsData: comp.Columns.GetHandle(ifaces.ColIDf("bls.DATA_%s_ADD", g.String())),
+		IsRes:  comp.Columns.GetHandle(ifaces.ColIDf("bls.RSLT_%s_ADD", g.String())),
 	}
 }
 
