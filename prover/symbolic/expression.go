@@ -265,7 +265,7 @@ func (e *Expression) Replay(translationMap collection.Mapping[string, *Expressio
 		}
 		res := NewProduct(children, op.Exponents)
 		return res
-	// PolyEvalExt
+	// LinearCombinationExt
 	case PolyEval:
 		children := make([]*Expression, len(e.Children))
 		for i, c := range e.Children {
@@ -291,7 +291,7 @@ func (e *Expression) ReconstructBottomUp(
 	// applies the mutator and returns.
 	case Constant, Variable:
 		return constructor(e, []*Expression{})
-	// LinCombExt or ProductExt or PolyEvalExt. This is an intermediate expression.
+	// LinCombExt or ProductExt or LinearCombinationExt. This is an intermediate expression.
 	case LinComb, Product, PolyEval:
 		children := make([]*Expression, len(e.Children))
 		var wg sync.WaitGroup
@@ -326,7 +326,7 @@ func (e *Expression) ReconstructBottomUpSingleThreaded(
 			panic(x)
 		}
 		return x
-	// LinCombExt or ProductExt or PolyEvalExt. This is an intermediate expression.
+	// LinCombExt or ProductExt or LinearCombinationExt. This is an intermediate expression.
 	case LinComb, Product, PolyEval:
 		children := make([]*Expression, len(e.Children))
 		for i, c := range e.Children {
@@ -361,7 +361,7 @@ func (e *Expression) SameWithNewChildren(newChildren []*Expression) *Expression 
 	// ProductExt
 	case Product:
 		return NewProduct(newChildren, op.Exponents)
-	// PolyEvalExt
+	// LinearCombinationExt
 	case PolyEval:
 		return NewPolyEval(newChildren[0], newChildren[1:])
 	default:

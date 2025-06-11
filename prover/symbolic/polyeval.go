@@ -129,7 +129,7 @@ func (PolyEval) EvaluateExt(inputs []sv.SmartVector, p ...mempool.MemPool) sv.Sm
 	// Get the constant value. We use Get(0) to get the value, but any integer would
 	// also work provided it is also in range. 0 ensures that.
 	x := inputs[0].(*sv.ConstantExt).GetExt(0)
-	return sv.PolyEvalExt(inputs[1:], x, p...)
+	return sv.LinearCombinationExt(inputs[1:], x, p...)
 }
 
 func (PolyEval) EvaluateMixed(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
