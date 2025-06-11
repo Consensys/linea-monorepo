@@ -147,7 +147,6 @@ class ConflationApp(
     metricsFacade = metricsFacade,
   )
 
-
   private val blobCompressionProofCoordinator = run {
     val maxProvenBlobCache = run {
       val highestProvenBlobTracker = HighestProvenBlobTracker(lastProcessedBlockNumber)
@@ -457,7 +456,7 @@ class ConflationApp(
         config = ConflationCalculatorByTimeDeadline.Config(
           conflationDeadline = configs.conflation.conflationDeadline,
           conflationDeadlineLastBlockConfirmationDelay =
-            configs.conflation.conflationDeadlineLastBlockConfirmationDelay,
+          configs.conflation.conflationDeadlineLastBlockConfirmationDelay,
         ),
         lastBlockNumber = lastProcessedBlockNumber,
         clock = Clock.System,
