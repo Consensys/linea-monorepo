@@ -168,9 +168,7 @@ class MicrometerMetricsFacadeTest {
     )
 
     timer.captureTime(::mockTimer)
-
     val createdTimer = meterRegistry.find("linea.test.test.category.some.dynamictag.timer.metric").timer()
-
     assertThat(createdTimer).isNotNull
     assertThat(createdTimer!!.id.description).isEqualTo("This is a test metric")
     assertThat(createdTimer.id.tags).containsAll(listOf(ImmutableTag("version", "1.0.1"), ImmutableTag("key", "value")))
@@ -253,9 +251,7 @@ class MicrometerMetricsFacadeTest {
       tagValueExtractor = { listOf(Tag("key", "value")) },
     )
     timer.captureTime {}
-
     val createdTimer = meterRegistry.find("test.category.some.dynamictag.timer.metric").timer()
-
     assertThat(createdTimer).isNotNull
   }
 
