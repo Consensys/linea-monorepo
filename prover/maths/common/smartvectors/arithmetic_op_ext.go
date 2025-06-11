@@ -1,9 +1,10 @@
 package smartvectors
 
 import (
+	"math/big"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"math/big"
 )
 
 func (linCombOp) constExtIntoConstExt(res, x *fext.Element, coeff int) {
@@ -18,7 +19,7 @@ func (linCombOp) constExtIntoConstExt(res, x *fext.Element, coeff int) {
 		res.Sub(res, x).Sub(res, x)
 	default:
 		var c fext.Element
-		c.SetInt64(int64(coeff))
+		fext.SetInt64(&c, int64(coeff))
 		c.Mul(&c, x)
 		res.Add(res, &c)
 	}
@@ -42,7 +43,7 @@ func (linCombOp) vecExtIntoVecExt(res, x []fext.Element, coeff int) {
 		}
 	default:
 		var c, tmp fext.Element
-		c.SetInt64(int64(coeff))
+		fext.SetInt64(&c, int64(coeff))
 		for i := range res {
 			tmp.Mul(&c, &x[i])
 			res[i].Add(&res[i], &tmp)
@@ -72,7 +73,7 @@ func (linCombOp) vecExtIntoTermExt(term, x []fext.Element, coeff int) {
 		}
 	default:
 		var c fext.Element
-		c.SetInt64(int64(coeff))
+		fext.SetInt64(&c, int64(coeff))
 		for i := range term {
 			term[i].Mul(&c, &x[i])
 		}
@@ -91,7 +92,7 @@ func (linCombOp) constExtIntoTermExt(term, x *fext.Element, coeff int) {
 		term.Add(x, x).Neg(term)
 	default:
 		var c fext.Element
-		c.SetInt64(int64(coeff))
+		fext.SetInt64(&c, int64(coeff))
 		term.Mul(&c, x)
 	}
 }

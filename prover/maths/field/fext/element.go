@@ -14,12 +14,12 @@ import (
 // Embedding
 type Element = extensions.E4
 
-func NewElement(v1, v2, v3, v4 int64) Element {
+func NewElement(v1, v2, v3, v4 uint64) Element {
 	var z Element
-	z.B0.A0.SetInt64(int64(v1))
-	z.B0.A1.SetInt64(int64(v2))
-	z.B1.A0.SetInt64(int64(v3))
-	z.B1.A1.SetInt64(int64(v4))
+	z.B0.A0.SetUint64(v1)
+	z.B0.A1.SetUint64(v2)
+	z.B1.A0.SetUint64(v3)
+	z.B1.A1.SetUint64(v4)
 	return z
 }
 

@@ -7,8 +7,9 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -198,11 +199,17 @@ func TestFFTFuzzyEvaluation(t *testing.T) {
 				i := builder.gen.IntN(coeffs.Len())
 				t.Logf("Parameters are (vec %v - ratio %v - cosetID %v - evalAt %v", coeffs.Pretty(), ratio, cosetID, i)
 
-				x := fft.GetOmega(evals.Len())
+				x, err := fft.Generator(uint64(evals.Len()))
+				if err != nil {
+					panic(err)
+				}
 				x.Exp(x, big.NewInt(int64(i)))
 
 				if oncoset {
-					omegacoset := fft.GetOmega(evals.Len() * ratio)
+					omegacoset, err := fft.Generator(uint64(evals.Len() * ratio))
+					if err != nil {
+						panic(err)
+					}
 					omegacoset.Exp(omegacoset, big.NewInt(int64(cosetID)))
 					mulGen := field.NewElement(field.MultiplicativeGen)
 					omegacoset.Mul(&omegacoset, &mulGen)
@@ -256,7 +263,10 @@ func TestFFTFuzzyConsistWithInterpolation(t *testing.T) {
 				xVal := xCoeff
 
 				if oncoset {
-					omegacoset := fft.GetOmega(evals.Len() * ratio)
+					omegacoset, err := fft.Generator(uint64(evals.Len() * ratio))
+					if err != nil {
+						panic(err)
+					}
 					omegacoset.Exp(omegacoset, big.NewInt(int64(cosetID)))
 					mulGen := field.NewElement(field.MultiplicativeGen)
 					omegacoset.Mul(&omegacoset, &mulGen)
@@ -266,7 +276,9 @@ func TestFFTFuzzyConsistWithInterpolation(t *testing.T) {
 				yCoeff := EvalCoeff(coeffs, xCoeff)
 				// We already multiplied xVal by the multiplicative generator in the
 				// important case.
-				yFFT := Interpolate(evals, xVal, false)
+				var xValExt fext.Element
+				fext.FromBase(&xValExt, &xVal)
+				yFFT := EvaluateLagrangeOnFext(evals, xValExt, false)
 
 				require.Equal(t, yCoeff.String(), yFFT.String())
 

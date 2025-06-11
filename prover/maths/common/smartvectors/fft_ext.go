@@ -1,8 +1,8 @@
 package smartvectors
 
 import (
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -41,7 +41,7 @@ func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRati
 		if cosetID == 0 && cosetRatio == 0 {
 			// The FFT is a (c*N, 0, 0, ...), no matter the bitReverse or decimation
 			// It's a multiple of the first Lagrange polynomial.
-			constTerm := fext.NewElement(uint64(x.length), 0)
+			constTerm := fext.NewElement(uint64(x.length), 0, 0, 0)
 			constTerm.Mul(&constTerm, &x.val)
 			return NewPaddedCircularWindowExt([]fext.Element{constTerm}, fext.Zero(), 0, x.length)
 		}
@@ -65,25 +65,19 @@ func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRati
 
 	v.WriteInSliceExt(res.RegularExt)
 
-	domain := fft.NewDomain(v.Len())
-	opt := fft.EmptyOption()
-
-	if cosetID != 0 || cosetRatio != 0 {
-		opt = fft.OnCoset()
-		domain = domain.WithCustomCoset(cosetRatio, cosetID)
-	}
+	domain := fft.NewDomain(uint64(v.Len()))
 
 	if decimation == fft.DIT {
 		// Optionally, bitReverse the input
 		if bitReverse {
-			fft.BitReverseExt(res.RegularExt)
+			fft.BitReverse(res.RegularExt)
 		}
-		domain.FFTExt(res.RegularExt, fft.DIT, opt)
+		domain.FFTExt(res.RegularExt, fft.DIT, fft.OnCoset())
 	} else {
 		// Likewise, the optionally rearrange the input in correct order
-		domain.FFTExt(res.RegularExt, fft.DIF, opt)
+		domain.FFTExt(res.RegularExt, fft.DIF, fft.OnCoset())
 		if bitReverse {
-			fft.BitReverseExt(res.RegularExt)
+			fft.BitReverse(res.RegularExt)
 		}
 	}
 
@@ -131,7 +125,7 @@ func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, co
 		// The response is (c) = (c/N, c/N, c/N, ...)
 		interval := x.interval()
 		if interval.IntervalLen == 1 && interval.Start() == 0 && x.paddingVal.IsZero() {
-			constTerm := fext.NewElement(uint64(x.Len()), 0)
+			constTerm := fext.NewElement(uint64(x.Len()), 0, 0, 0)
 			constTerm.Inverse(&constTerm)
 			constTerm.Mul(&constTerm, &x.window[0])
 			// In this case, the response is a constant vector
@@ -139,7 +133,7 @@ func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, co
 		}
 	}
 
-	// Else : we run the FFTInverseExt directly
+	// Else : we run the FFTInverse directly
 	var res *PooledExt
 	if pool != nil {
 		res = AllocFromPoolExt(pool)
@@ -147,28 +141,22 @@ func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, co
 		res = &PooledExt{RegularExt: make([]fext.Element, v.Len())}
 	}
 
-	opt := fft.EmptyOption()
 	v.WriteInSliceExt(res.RegularExt)
 
-	domain := fft.NewDomain(v.Len())
-	if cosetID != 0 || cosetRatio != 0 {
-		// Optionally equip the domain with a coset
-		opt = fft.OnCoset()
-		domain = domain.WithCustomCoset(cosetRatio, cosetID)
-	}
+	domain := fft.NewDomain(uint64(v.Len()))
 
 	if decimation == fft.DIF {
 		// Optionally, bitReverse the output
-		domain.FFTInverseExt(res.RegularExt, fft.DIF, opt)
+		domain.FFTInverseExt(res.RegularExt, fft.DIF, fft.OnCoset())
 		if bitReverse {
-			fft.BitReverseExt(res.RegularExt)
+			fft.BitReverse(res.RegularExt)
 		}
 	} else {
 		// Likewise, the optionally rearrange the input in correct order
 		if bitReverse {
-			fft.BitReverseExt(res.RegularExt)
+			fft.BitReverse(res.RegularExt)
 		}
-		domain.FFTInverseExt(res.RegularExt, fft.DIT, opt)
+		domain.FFTInverseExt(res.RegularExt, fft.DIT, fft.OnCoset())
 	}
 	return res
 }

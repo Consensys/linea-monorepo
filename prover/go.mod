@@ -4,10 +4,10 @@ go 1.23.0
 
 require (
 	github.com/bits-and-blooms/bitset v1.20.0
-	github.com/consensys/bavard v0.1.31-0.20250314194434-b30d4344e6d4
+	github.com/consensys/bavard v0.1.31-0.20250406004941-2db259e4b582
 	github.com/consensys/compress v0.2.5
-	github.com/consensys/gnark v0.12.1-0.20250501002417-facdd9882b80
-	github.com/consensys/gnark-crypto v0.17.1-0.20250326164229-5fd6610ac2a1
+	github.com/consensys/gnark v0.12.1-0.20250606194417-57a79c2edad5
+	github.com/consensys/gnark-crypto v0.17.1-0.20250609131457-f8ab23ad7283
 	github.com/consensys/go-corset v1.0.3
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.11.2
@@ -26,7 +26,7 @@ require (
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/crypto v0.33.0
+	golang.org/x/crypto v0.35.0
 	golang.org/x/net v0.27.0
 	golang.org/x/sync v0.11.0
 	golang.org/x/time v0.5.0

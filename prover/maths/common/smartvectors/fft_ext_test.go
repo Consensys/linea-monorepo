@@ -4,17 +4,18 @@ package smartvectors
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math/big"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestFFTFuzzyDIFDITExt(t *testing.T) {
+func TestFFTExtFuzzyDIFDIT(t *testing.T) {
 
 	for i := 0; i < FuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
@@ -53,7 +54,7 @@ func TestFFTFuzzyDIFDITExt(t *testing.T) {
 	}
 }
 
-func TestFFTFuzzyDITDIFExt(t *testing.T) {
+func TestFFTExtFuzzyDITDIF(t *testing.T) {
 
 	for i := 0; i < FuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
@@ -92,7 +93,7 @@ func TestFFTFuzzyDITDIFExt(t *testing.T) {
 	}
 }
 
-func TestFFTFuzzyDIFDITBitReverseExt(t *testing.T) {
+func TestFFTExtFuzzyDIFDITBitReverse(t *testing.T) {
 
 	for i := 0; i < FuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
@@ -131,7 +132,7 @@ func TestFFTFuzzyDIFDITBitReverseExt(t *testing.T) {
 	}
 }
 
-func TestFFTFuzzyDITDIFBitReverseExt(t *testing.T) {
+func TestFFTExtFuzzyDITDIFBitReverse(t *testing.T) {
 
 	for i := 0; i < FuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
@@ -170,7 +171,8 @@ func TestFFTFuzzyDITDIFBitReverseExt(t *testing.T) {
 	}
 }
 
-func TestFFTFuzzyEvaluationExt(t *testing.T) {
+// TODO@yao: fix the test
+func TestFFTExtFuzzyEvaluation(t *testing.T) {
 
 	for i := 0; i < FuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
@@ -199,18 +201,25 @@ func TestFFTFuzzyEvaluationExt(t *testing.T) {
 				i := builder.gen.IntN(coeffs.Len())
 				t.Logf("Parameters are (vec %v - ratio %v - cosetID %v - evalAt %v", coeffs.Pretty(), ratio, cosetID, i)
 
-				x := fft.GetOmega(evals.Len())
+				x, err := fft.Generator(uint64(evals.Len()))
+				if err != nil {
+					panic(err)
+				}
 				x.Exp(x, big.NewInt(int64(i)))
 
 				if oncoset {
-					omegacoset := fft.GetOmega(evals.Len() * ratio)
+					omegacoset, err := fft.Generator(uint64(evals.Len() * ratio))
+					if err != nil {
+						panic(err)
+					}
 					omegacoset.Exp(omegacoset, big.NewInt(int64(cosetID)))
 					mulGen := field.NewElement(field.MultiplicativeGen)
 					omegacoset.Mul(&omegacoset, &mulGen)
 					x.Mul(&omegacoset, &x)
 				}
 
-				wrappedX := fext.Element{x, field.Zero()}
+				var wrappedX fext.Element
+				wrappedX.B0.A0 = x
 				yCoeff := EvalCoeffExt(coeffs, wrappedX)
 				yFFT := evals.GetExt(i)
 
@@ -223,7 +232,8 @@ func TestFFTFuzzyEvaluationExt(t *testing.T) {
 	}
 }
 
-func TestFFTFuzzyConsistWithInterpolatioExt(t *testing.T) {
+// TODO@yao: fix the test
+func TestFFTExtFuzzyConsistWithInterpolation(t *testing.T) {
 
 	for i := 0; i < FuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
@@ -253,16 +263,23 @@ func TestFFTFuzzyConsistWithInterpolatioExt(t *testing.T) {
 				t.Logf("Parameters are (vec %v - ratio %v - cosetID %v - evalAt %v", coeffs.Pretty(), ratio, cosetID, i)
 
 				var xCoeff fext.Element
-				xCoeff.SetInt64(2)
+				fext.SetInt64(&xCoeff, 2)
 
 				xVal := xCoeff
 
 				if oncoset {
-					omegacoset := fft.GetOmega(evals.Len() * ratio)
+					omegacoset, err := fft.Generator(uint64(evals.Len() * ratio))
+					if err != nil {
+						panic(err)
+					}
 					omegacoset.Exp(omegacoset, big.NewInt(int64(cosetID)))
 					mulGen := field.NewElement(field.MultiplicativeGen)
 					omegacoset.Mul(&omegacoset, &mulGen)
-					xVal.DivByBase(&xVal, &omegacoset)
+					xVal.B0.A0.Div(&xVal.B0.A0, &omegacoset)
+					xVal.B0.A1.Div(&xVal.B0.A1, &omegacoset)
+					xVal.B1.A0.Div(&xVal.B1.A0, &omegacoset)
+					xVal.B1.A1.Div(&xVal.B1.A1, &omegacoset)
+
 				}
 
 				yCoeff := EvalCoeffExt(coeffs, xCoeff)
@@ -279,7 +296,7 @@ func TestFFTFuzzyConsistWithInterpolatioExt(t *testing.T) {
 	}
 }
 
-func TestFFTBackAndForthExt(t *testing.T) {
+func TestFFTExtFuzzyBackAndForth(t *testing.T) {
 
 	// This test case is not covered from the above
 	v := NewConstantExt(fext.NewFromString("18761351033005093047639776353077664361612883771785172294598460731350692996243"), 1<<18)

@@ -2,56 +2,56 @@ package smartvectors
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBatchInvert(t *testing.T) {
+func TestBatchInvertExt(t *testing.T) {
 
 	testCases := []SmartVector{
-		NewConstantExt(fext.Zero(), 4),
-		NewConstantExt(fext.One(), 4),
-		ForTestExt(0, 1, 2, 3, 0, 0, 4, 4),
-		ForTestExt(0, 0, 0, 0),
-		ForTestExt(12, 13, 14, 15),
-		NewRotatedExt(RegularExt(vectorext.ForTest(0, 0, 2, 2)), 0),
-		NewRotatedExt(RegularExt(vectorext.ForTest(0, 0, 2, 2)), 1),
-		NewRotatedExt(RegularExt(vectorext.ForTest(1, 1, 2, 2)), 0),
-		NewRotatedExt(RegularExt(vectorext.ForTest(3, 3, 2, 2)), 1),
-		NewRotatedExt(RegularExt(vectorext.ForTest(0, 0, 0, 0)), 0),
-		NewRotatedExt(RegularExt(vectorext.ForTest(0, 0, 0, 0)), 1),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 0, 0), fext.Zero(), 0, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 1, 1), fext.Zero(), 0, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(1, 1, 2, 2), fext.Zero(), 0, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 0, 0), fext.NewElement(42, 43), 0, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 1, 1), fext.NewElement(42, 43), 0, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(1, 1, 2, 2), fext.NewElement(42, 43), 0, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 0, 0), fext.Zero(), 2, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 1, 1), fext.Zero(), 2, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(1, 1, 2, 2), fext.Zero(), 2, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 0, 0), fext.NewElement(42, 43), 2, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 1, 1), fext.NewElement(42, 43), 2, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(1, 1, 2, 2), fext.NewElement(42, 43), 2, 8),
+		NewConstant(field.Zero(), 4),
+		NewConstant(field.One(), 4),
+		ForTest(0, 1, 2, 3, 0, 0, 4, 4),
+		ForTest(0, 0, 0, 0),
+		ForTest(12, 13, 14, 15),
+		NewRotated(Regular(vector.ForTest(0, 0, 2, 2)), 0),
+		NewRotated(Regular(vector.ForTest(0, 0, 2, 2)), 1),
+		NewRotated(Regular(vector.ForTest(1, 1, 2, 2)), 0),
+		NewRotated(Regular(vector.ForTest(3, 3, 2, 2)), 1),
+		NewRotated(Regular(vector.ForTest(0, 0, 0, 0)), 0),
+		NewRotated(Regular(vector.ForTest(0, 0, 0, 0)), 1),
+		NewPaddedCircularWindow(vector.ForTest(0, 0, 0, 0), field.Zero(), 0, 8),
+		NewPaddedCircularWindow(vector.ForTest(0, 0, 1, 1), field.Zero(), 0, 8),
+		NewPaddedCircularWindow(vector.ForTest(1, 1, 2, 2), field.Zero(), 0, 8),
+		NewPaddedCircularWindow(vector.ForTest(0, 0, 0, 0), field.NewElement(42), 0, 8),
+		NewPaddedCircularWindow(vector.ForTest(0, 0, 1, 1), field.NewElement(42), 0, 8),
+		NewPaddedCircularWindow(vector.ForTest(1, 1, 2, 2), field.NewElement(42), 0, 8),
+		NewPaddedCircularWindow(vector.ForTest(0, 0, 0, 0), field.Zero(), 2, 8),
+		NewPaddedCircularWindow(vector.ForTest(0, 0, 1, 1), field.Zero(), 2, 8),
+		NewPaddedCircularWindow(vector.ForTest(1, 1, 2, 2), field.Zero(), 2, 8),
+		NewPaddedCircularWindow(vector.ForTest(0, 0, 0, 0), field.NewElement(42), 2, 8),
+		NewPaddedCircularWindow(vector.ForTest(0, 0, 1, 1), field.NewElement(42), 2, 8),
+		NewPaddedCircularWindow(vector.ForTest(1, 1, 2, 2), field.NewElement(42), 2, 8),
 	}
 
 	for i := range testCases {
 		t.Run(fmt.Sprintf("testcase-%v", i), func(t *testing.T) {
 
-			bi := BatchInvertExt(testCases[i])
+			bi := BatchInvert(testCases[i])
 
 			assert.Equal(t, bi.Len(), testCases[i].Len())
 
 			for k := 0; k < bi.Len(); k++ {
 				var (
-					x = bi.GetExt(k)
-					y = testCases[i].GetExt(k)
+					x = bi.Get(k)
+					y = testCases[i].Get(k)
 				)
 
-				if y == fext.Zero() {
-					assert.Equal(t, fext.Zero(), x)
+				if y == field.Zero() {
+					assert.Equal(t, field.Zero(), x)
 					continue
 				}
 
@@ -62,57 +62,53 @@ func TestBatchInvert(t *testing.T) {
 	}
 }
 
-func TestIsZero(t *testing.T) {
+func TestIsZeroExt(t *testing.T) {
 
 	testCases := []SmartVector{
-		NewConstantExt(fext.Zero(), 4),
-		NewConstantExt(fext.One(), 4),
-		ForTestExt(0, 1, 2, 3, 0, 0, 4, 4),
-		ForTestExt(0, 0, 0, 0),
-		ForTestExt(12, 13, 14, 15),
-		NewRotatedExt(RegularExt(vectorext.ForTest(0, 0, 2, 2)), 0),
-		NewRotatedExt(RegularExt(vectorext.ForTest(0, 0, 2, 2)), 1),
-		NewRotatedExt(RegularExt(vectorext.ForTest(1, 1, 2, 2)), 0),
-		NewRotatedExt(RegularExt(vectorext.ForTest(3, 3, 2, 2)), 1),
-		NewRotatedExt(RegularExt(vectorext.ForTest(0, 0, 0, 0)), 0),
-		NewRotatedExt(RegularExt(vectorext.ForTest(0, 0, 0, 0)), 1),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 0, 0), fext.Zero(), 0, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 1, 1), fext.Zero(), 0, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(1, 1, 2, 2), fext.Zero(), 0, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 0, 0), fext.NewElement(42, 43), 0, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 1, 1), fext.NewElement(42, 43), 0, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(1, 1, 2, 2), fext.NewElement(42, 43), 0, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 0, 0), fext.Zero(), 2, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 1, 1), fext.Zero(), 2, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(1, 1, 2, 2), fext.Zero(), 2, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 0, 0), fext.NewElement(42, 43), 2, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 1, 1), fext.NewElement(42, 43), 2, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(1, 1, 2, 2), fext.NewElement(42, 43), 2, 8),
+		NewConstant(field.Zero(), 4),
+		NewConstant(field.One(), 4),
+		ForTest(0, 1, 2, 3, 0, 0, 4, 4),
+		ForTest(0, 0, 0, 0),
+		ForTest(12, 13, 14, 15),
+		NewRotated(Regular(vector.ForTest(0, 0, 2, 2)), 0),
+		NewRotated(Regular(vector.ForTest(0, 0, 2, 2)), 1),
+		NewRotated(Regular(vector.ForTest(1, 1, 2, 2)), 0),
+		NewRotated(Regular(vector.ForTest(3, 3, 2, 2)), 1),
+		NewRotated(Regular(vector.ForTest(0, 0, 0, 0)), 0),
+		NewRotated(Regular(vector.ForTest(0, 0, 0, 0)), 1),
+		NewPaddedCircularWindow(vector.ForTest(0, 0, 0, 0), field.Zero(), 0, 8),
+		NewPaddedCircularWindow(vector.ForTest(0, 0, 1, 1), field.Zero(), 0, 8),
+		NewPaddedCircularWindow(vector.ForTest(1, 1, 2, 2), field.Zero(), 0, 8),
+		NewPaddedCircularWindow(vector.ForTest(0, 0, 0, 0), field.NewElement(42), 0, 8),
+		NewPaddedCircularWindow(vector.ForTest(0, 0, 1, 1), field.NewElement(42), 0, 8),
+		NewPaddedCircularWindow(vector.ForTest(1, 1, 2, 2), field.NewElement(42), 0, 8),
+		NewPaddedCircularWindow(vector.ForTest(0, 0, 0, 0), field.Zero(), 2, 8),
+		NewPaddedCircularWindow(vector.ForTest(0, 0, 1, 1), field.Zero(), 2, 8),
+		NewPaddedCircularWindow(vector.ForTest(1, 1, 2, 2), field.Zero(), 2, 8),
+		NewPaddedCircularWindow(vector.ForTest(0, 0, 0, 0), field.NewElement(42), 2, 8),
+		NewPaddedCircularWindow(vector.ForTest(0, 0, 1, 1), field.NewElement(42), 2, 8),
+		NewPaddedCircularWindow(vector.ForTest(1, 1, 2, 2), field.NewElement(42), 2, 8),
 	}
 
 	for i := range testCases {
 		t.Run(fmt.Sprintf("testcase-%v", i), func(t *testing.T) {
 
-			iz := IsZeroExt(testCases[i])
+			iz := IsZero(testCases[i])
 
 			assert.Equal(t, iz.Len(), testCases[i].Len())
 
 			for k := 0; k < iz.Len(); k++ {
 				var (
-					x = iz.GetExt(k)
-					y = testCases[i].GetExt(k)
+					x = iz.Get(k)
+					y = testCases[i].Get(k)
 				)
 
-				if y == fext.Zero() {
-					a, b := x.Uint64()
-					assert.Equal(t, uint64(1), a)
-					assert.Equal(t, uint64(0), b)
+				if y == field.Zero() {
+					assert.Equal(t, uint64(1), x.Uint64())
 				}
 
-				if y != fext.Zero() {
-					a, b := x.Uint64()
-					assert.Equal(t, uint64(0), a)
-					assert.Equal(t, uint64(0), b)
+				if y != field.Zero() {
+					assert.Equal(t, uint64(0), x.Uint64())
 				}
 
 				if t.Failed() {

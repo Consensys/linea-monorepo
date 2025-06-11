@@ -301,6 +301,67 @@ func (gen *testCaseGenExt) NewTestCaseForPolyEvalExt() (tcase testCaseExt) {
 	return tcase
 }
 
+func (gen *testCaseGenExt) NewTestCaseForLinearCombinationExt() (tcase testCaseExt) {
+
+	tcase.name = fmt.Sprintf("fuzzy-with-seed-%v-poly-eval", gen.seed)
+	tcase.svecs = make([]SmartVector, gen.numVec)
+	tcase.coeffs = make([]int, gen.numVec)
+	tcase.evaluationPoint.SetRandom()
+	x := tcase.evaluationPoint
+	vals := []fext.Element{}
+
+	// MaxType is used to determine what type should the result be
+	maxType := constantExtT
+
+	// For the windows, we need to track the dimension of the windows
+	winMinStart := gen.fullLen
+	winMaxStop := 0
+
+	for i := 0; i < gen.numVec; i++ {
+		// Generate one by one the different vectors
+		val := gen.genValue()
+		vals = append(vals, val)
+		tcase.coeffs[i] = gen.gen.IntN(10) - 5
+		chosenType := gen.allowedTypes[gen.gen.IntN(len(gen.allowedTypes))]
+		maxType = utils.Max(maxType, chosenType)
+
+		switch chosenType {
+		case constantExtT:
+			tcase.svecs[i] = NewConstantExt(val, gen.fullLen)
+		case windowExtT:
+			v := gen.genWindow(val, val)
+			tcase.svecs[i] = v
+			start := normalize(v.interval().Start(), gen.windowMustStartAfter, gen.fullLen)
+			winMinStart = utils.Min(winMinStart, start)
+
+			stop := normalize(v.interval().Stop(), gen.windowMustStartAfter, gen.fullLen)
+			if stop < start {
+				stop += gen.fullLen
+			}
+			winMaxStop = utils.Max(winMaxStop, stop)
+		case RegularExtT:
+			tcase.svecs[i] = gen.genRegularExt(val)
+		case RotatedExtT:
+			tcase.svecs[i] = gen.genRotatedExt(val)
+		}
+	}
+
+	// If there are no windows, then the initial condition that we use
+	// do pass this sanity-check
+	if winMaxStop-winMinStart > gen.windowWithLen {
+		utils.Panic("inconsistent window dimension %v %v with gen %++v", winMinStart, winMaxStop, gen)
+	}
+	resVal := polyext.Eval(vals, x)
+
+	switch {
+	case maxType == constantExtT:
+		tcase.expectedValue = NewConstantExt(resVal, gen.fullLen)
+	case maxType == RegularExtT || maxType == windowExtT || maxType == RotatedExtT:
+		tcase.expectedValue = NewRegularExt(vectorext.Repeat(resVal, gen.fullLen))
+	}
+
+	return tcase
+}
 func (gen *testCaseGenExt) genValue() fext.Element {
 	// May increase the ceil of the generator to increase the probability to pick
 	// an actually random value.
