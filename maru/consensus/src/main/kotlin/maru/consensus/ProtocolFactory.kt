@@ -8,8 +8,8 @@
  */
 package maru.consensus
 
-import maru.consensus.delegated.ElDelegatedConsensus
-import maru.consensus.qbft.QbftConsensusConfig
+import maru.config.consensus.delegated.ElDelegatedConfig
+import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.core.Protocol
 
 interface ProtocolFactory {
@@ -26,7 +26,7 @@ class OmniProtocolFactory(
         qbftConsensusFactory.create(forkSpec)
       }
 
-      is ElDelegatedConsensus.ElDelegatedConfig -> {
+      is ElDelegatedConfig -> {
         elDelegatedConsensusFactory.create(forkSpec)
       }
 

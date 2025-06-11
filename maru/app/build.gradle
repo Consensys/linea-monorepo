@@ -23,7 +23,7 @@ dependencies {
 
   testImplementation(project(":jvm-libs:test-utils"))
   testImplementation(testFixtures(project(":core")))
-  testImplementation(testFixtures(project(":consensus")))
+  testImplementation(testFixtures(project(":config")))
   testImplementation(project(":crypto"))
   testImplementation "org.hyperledger.besu.internal:api"
   testImplementation(group: 'org.hyperledger.besu.internal', name: 'core', classifier: 'test-support')

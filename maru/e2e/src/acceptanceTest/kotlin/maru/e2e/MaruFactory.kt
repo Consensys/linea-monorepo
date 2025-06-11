@@ -13,7 +13,7 @@ import java.nio.file.Files
 import maru.app.MaruApp
 import maru.app.MaruAppCli.Companion.loadConfig
 import maru.config.MaruConfigDtoToml
-import maru.consensus.config.JsonFriendlyForksSchedule
+import maru.config.consensus.JsonFriendlyForksSchedule
 
 const val VALIDATOR_PRIVATE_KEY_WITH_PREFIX =
   "0x080212201dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"

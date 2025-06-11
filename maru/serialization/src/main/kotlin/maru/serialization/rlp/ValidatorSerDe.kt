@@ -8,25 +8,25 @@
  */
 package maru.serialization.rlp
 
-import maru.core.Seal
+import maru.core.Validator
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
-class SealSerializer : RLPSerializer<Seal> {
+class ValidatorSerDe : RLPSerDe<Validator> {
   override fun writeTo(
-    value: Seal,
+    value: Validator,
     rlpOutput: RLPOutput,
   ) {
     rlpOutput.startList()
-    rlpOutput.writeBytes(Bytes.wrap(value.signature))
+    rlpOutput.writeBytes(Bytes.wrap(value.address))
     rlpOutput.endList()
   }
 
-  override fun readFrom(rlpInput: RLPInput): Seal {
+  override fun readFrom(rlpInput: RLPInput): Validator {
     rlpInput.enterList()
-    val signature = rlpInput.readBytes().toArray()
+    val address: ByteArray = rlpInput.readBytes().toArray()
     rlpInput.leaveList()
-    return Seal(signature)
+    return Validator(address)
   }
 }

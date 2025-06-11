@@ -25,7 +25,7 @@ import kotlin.time.toJavaDuration
 import maru.app.Helpers
 import maru.app.MaruApp
 import maru.config.ApiEndpointConfig
-import maru.consensus.ElFork
+import maru.config.consensus.ElFork
 import maru.consensus.NewBlockHandler
 import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.core.BeaconBlock

@@ -6,13 +6,15 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.consensus.qbft
+package maru.p2p
 
-import maru.consensus.ConsensusConfig
-import maru.consensus.ElFork
-import maru.core.Validator
+import maru.consensus.ForkIdHasher
+import maru.crypto.Hashing
+import maru.serialization.ForkIdSerializers
 
-data class QbftConsensusConfig(
-  val validatorSet: Set<Validator>,
-  val elFork: ElFork,
-) : ConsensusConfig
+val ForkIdComputer: ForkIdHasher =
+  ForkIdHasher(
+    ForkIdSerializers
+      .ForkIdSerializer,
+    Hashing::shortShaHash,
+  )

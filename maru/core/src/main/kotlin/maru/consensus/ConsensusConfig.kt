@@ -6,10 +6,6 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.serialization
+package maru.consensus
 
-interface Serializer<T> {
-  fun serialize(value: T): ByteArray
-
-  fun deserialize(bytes: ByteArray): T
-}
+interface ConsensusConfig

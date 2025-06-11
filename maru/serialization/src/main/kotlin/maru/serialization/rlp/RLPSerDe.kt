@@ -8,25 +8,21 @@
  */
 package maru.serialization.rlp
 
-import maru.core.Validator
+import maru.serialization.SerDe
 import org.apache.tuweni.bytes.Bytes
+import org.hyperledger.besu.ethereum.rlp.RLP
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
-class ValidatorSerializer : RLPSerializer<Validator> {
-  override fun writeTo(
-    value: Validator,
+interface RLPSerDe<T> : SerDe<T> {
+  fun writeTo(
+    value: T,
     rlpOutput: RLPOutput,
-  ) {
-    rlpOutput.startList()
-    rlpOutput.writeBytes(Bytes.wrap(value.address))
-    rlpOutput.endList()
-  }
+  )
 
-  override fun readFrom(rlpInput: RLPInput): Validator {
-    rlpInput.enterList()
-    val address: ByteArray = rlpInput.readBytes().toArray()
-    rlpInput.leaveList()
-    return Validator(address)
-  }
+  fun readFrom(rlpInput: RLPInput): T
+
+  override fun serialize(value: T): ByteArray = RLP.encode { rlpOutput -> this.writeTo(value, rlpOutput) }.toArray()
+
+  override fun deserialize(bytes: ByteArray): T = this.readFrom(RLP.input(Bytes.wrap(bytes)))
 }

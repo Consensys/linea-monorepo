@@ -9,6 +9,7 @@
 package maru.app
 
 import maru.config.ValidatorElNode
+import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.NewBlockHandler
 import maru.consensus.ProtocolFactory
@@ -16,7 +17,6 @@ import maru.consensus.StaticValidatorProvider
 import maru.consensus.blockimport.TransactionalSealedBeaconBlockImporter
 import maru.consensus.blockimport.ValidatingSealedBeaconBlockImporter
 import maru.consensus.qbft.ProposerSelectorImpl
-import maru.consensus.qbft.QbftConsensusConfig
 import maru.consensus.qbft.QbftConsensusFollower
 import maru.consensus.state.StateTransitionImpl
 import maru.consensus.validation.BeaconBlockValidatorFactoryImpl

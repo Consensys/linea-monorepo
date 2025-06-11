@@ -12,10 +12,10 @@ import maru.core.BeaconBlock
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
-class BeaconBlockSerializer(
-  private val beaconBlockHeaderSerializer: BeaconBlockHeaderSerializer,
-  private val beaconBlockBodySerializer: BeaconBlockBodySerializer,
-) : RLPSerializer<BeaconBlock> {
+class BeaconBlockSerDe(
+  private val beaconBlockHeaderSerializer: BeaconBlockHeaderSerDe,
+  private val beaconBlockBodySerializer: BeaconBlockBodySerDe,
+) : RLPSerDe<BeaconBlock> {
   override fun writeTo(
     value: BeaconBlock,
     rlpOutput: RLPOutput,

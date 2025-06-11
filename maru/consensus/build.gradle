@@ -35,9 +35,6 @@ dependencies {
     because "because of protocol builders"
   }
 
-  implementation "com.sksamuel.hoplite:hoplite-json"
-  implementation "com.sksamuel.hoplite:hoplite-core"
-
   api("org.hyperledger.besu.internal:common") {
     because("API of the BftEventHandler interface")
   }

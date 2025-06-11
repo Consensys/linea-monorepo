@@ -14,7 +14,7 @@ import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 import maru.config.ApiEndpointConfig
-import maru.consensus.ElFork
+import maru.config.consensus.ElFork
 import maru.executionlayer.client.ExecutionLayerEngineApiClient
 import maru.executionlayer.client.PragueWeb3JJsonRpcExecutionLayerEngineApiClient
 import tech.pegasys.teku.ethereum.executionclient.auth.JwtConfig

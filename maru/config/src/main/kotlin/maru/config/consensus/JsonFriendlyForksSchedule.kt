@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.consensus.config
+package maru.config.consensus
 
 import com.sksamuel.hoplite.ArrayNode
 import com.sksamuel.hoplite.ConfigFailure
@@ -24,12 +24,11 @@ import kotlin.collections.component2
 import kotlin.collections.map
 import kotlin.collections.toSet
 import kotlin.reflect.KType
+import maru.config.consensus.delegated.ElDelegatedConfig
+import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ConsensusConfig
-import maru.consensus.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
-import maru.consensus.delegated.ElDelegatedConsensus
-import maru.consensus.qbft.QbftConsensusConfig
 import maru.core.Validator
 import maru.extensions.fromHexToByteArray
 
@@ -68,7 +67,7 @@ object ForkConfigDecoder : Decoder<JsonFriendlyForksSchedule> {
     obj: Node,
   ): ConfigResult<ConsensusConfig> =
     when (type) {
-      "delegated" -> ElDelegatedConsensus.ElDelegatedConfig.valid()
+      "delegated" -> ElDelegatedConfig.valid()
       "qbft" ->
         QbftConsensusConfig(
           validatorSet =

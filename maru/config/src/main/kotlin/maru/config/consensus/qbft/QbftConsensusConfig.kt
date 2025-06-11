@@ -6,11 +6,13 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.serialization.rlp
+package maru.config.consensus.qbft
 
-import maru.core.Hasher
-import maru.crypto.Hashing
+import maru.config.consensus.ElFork
+import maru.consensus.ConsensusConfig
+import maru.core.Validator
 
-object KeccakHasher : Hasher {
-  override fun hash(serializedBytes: ByteArray): ByteArray = Hashing.keccak(serializedBytes)
-}
+data class QbftConsensusConfig(
+  val validatorSet: Set<Validator>,
+  val elFork: ElFork,
+) : ConsensusConfig

@@ -8,13 +8,13 @@
  */
 package maru.database.kv
 
-import maru.serialization.Serializer
+import maru.serialization.SerDe
 import tech.pegasys.teku.storage.server.kvstore.serialization.KvStoreSerializer
 
 class KvStoreSerializerAdapter<T>(
-  private val serializer: Serializer<T>,
+  private val serDe: SerDe<T>,
 ) : KvStoreSerializer<T> {
-  override fun deserialize(bytes: ByteArray): T = serializer.deserialize(bytes)
+  override fun deserialize(bytes: ByteArray): T = serDe.deserialize(bytes)
 
-  override fun serialize(value: T): ByteArray = serializer.serialize(value)
+  override fun serialize(value: T): ByteArray = serDe.serialize(value)
 }

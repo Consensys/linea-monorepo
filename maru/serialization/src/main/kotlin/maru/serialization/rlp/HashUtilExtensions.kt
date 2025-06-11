@@ -12,12 +12,14 @@ import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
 import maru.core.HashUtil
+import maru.crypto.Hashing
+import maru.crypto.Hashing.keccak
 
 fun HashUtil.headerHash(beaconBlockHeader: BeaconBlockHeader): ByteArray =
-  rootHash(beaconBlockHeader, RLPSerializers.BeaconBlockHeaderSerializer, KeccakHasher)
+  rootHash(beaconBlockHeader, RLPSerializers.BeaconBlockHeaderSerializer, Hashing::keccak)
 
 fun HashUtil.bodyRoot(beaconBlockBody: BeaconBlockBody): ByteArray =
-  rootHash(beaconBlockBody, RLPSerializers.BeaconBlockBodySerializer, KeccakHasher)
+  rootHash(beaconBlockBody, RLPSerializers.BeaconBlockBodySerializer, Hashing::keccak)
 
 fun HashUtil.stateRoot(beaconState: BeaconState): ByteArray =
-  rootHash(beaconState, RLPSerializers.BeaconStateSerializer, KeccakHasher)
+  rootHash(beaconState, RLPSerializers.BeaconStateSerializer, Hashing::keccak)

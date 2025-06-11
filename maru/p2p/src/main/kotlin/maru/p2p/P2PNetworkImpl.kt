@@ -16,7 +16,7 @@ import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
 import maru.core.SealedBeaconBlock
 import maru.p2p.topics.SealedBlocksTopicHandler
-import maru.serialization.Serializer
+import maru.serialization.SerDe
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
@@ -34,13 +34,13 @@ class P2PNetworkImpl(
   privateKeyBytes: ByteArray,
   private val p2pConfig: P2P,
   chainId: UInt,
-  private val serializer: Serializer<SealedBeaconBlock>,
+  private val serDe: SerDe<SealedBeaconBlock>,
 ) : P2PNetwork {
   private val topicIdGenerator = LineaTopicIdGenerator(chainId)
   private val sealedBlocksTopicId = topicIdGenerator.topicId(MessageType.BEACON_BLOCK, Version.V1)
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
   private val sealedBlocksTopicHandler =
-    SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serializer, sealedBlocksTopicId)
+    SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serDe, sealedBlocksTopicId)
 
   private fun buildP2PNetwork(
     privateKeyBytes: ByteArray,
@@ -88,7 +88,7 @@ class P2PNetworkImpl(
       MessageType.QBFT -> SafeFuture.completedFuture(Unit) // TODO: Add QBFT messages support later
       MessageType.BEACON_BLOCK -> {
         require(message.payload is SealedBeaconBlock)
-        val serializedSealedBeaconBlock = Bytes.wrap(serializer.serialize(message.payload as SealedBeaconBlock))
+        val serializedSealedBeaconBlock = Bytes.wrap(serDe.serialize(message.payload as SealedBeaconBlock))
         p2pNetwork.gossip(topicIdGenerator.topicId(message.type, message.version), serializedSealedBeaconBlock)
       }
     }
