@@ -8,7 +8,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkutilext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
@@ -195,13 +194,13 @@ func (prod Product) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) g
 		utils.Panic("%v inputs but %v coeffs", len(inputs), len(prod.Exponents))
 	}
 
-	outerApi := gnarkfext.NewExtApi(api)
+	// outerApi := gnarkfext.NewExtApi(api)
 	/*
 		Accumulate the scalars
 	*/
 	for i, input := range inputs {
-		term := gnarkutilext.Exp(outerApi, input, prod.Exponents[i])
-		res = outerApi.Mul(res, term)
+		term := gnarkfext.Exp(api, input, prod.Exponents[i])
+		res.Mul(api, res, term)
 	}
 
 	return res
