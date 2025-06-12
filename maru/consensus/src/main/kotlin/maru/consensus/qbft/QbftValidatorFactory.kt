@@ -32,6 +32,7 @@ import maru.consensus.qbft.adapters.QbftProtocolScheduleAdapter
 import maru.consensus.qbft.adapters.QbftValidatorModeTransitionLoggerAdapter
 import maru.consensus.qbft.adapters.QbftValidatorProviderAdapter
 import maru.consensus.qbft.adapters.toSealedBeaconBlock
+import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.FinalizationState
 import maru.consensus.state.StateTransition
 import maru.consensus.state.StateTransitionImpl
@@ -74,7 +75,7 @@ class QbftValidatorFactory(
   private val privateKeyBytes: ByteArray,
   private val qbftOptions: QbftOptions,
   private val metricsSystem: MetricsSystem,
-  private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
+  private val finalizationStateProvider: FinalizationProvider,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val newBlockHandler: SealedBeaconBlockHandler<*>,
   private val executionLayerManager: JsonRpcExecutionLayerManager,

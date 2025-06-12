@@ -12,6 +12,7 @@ import java.io.File
 import java.nio.file.Files
 import maru.app.MaruApp
 import maru.app.MaruAppCli.Companion.loadConfig
+import maru.app.MaruAppFactory
 import maru.config.MaruConfigDtoToml
 import maru.config.consensus.JsonFriendlyForksSchedule
 
@@ -41,7 +42,10 @@ object MaruFactory {
     val beaconGenesisConfig =
       loadConfig<JsonFriendlyForksSchedule>(listOf(maruGenesisFile))
 
-    return MaruApp(maruConfig.getUnsafe().domainFriendly(), beaconGenesisConfig.getUnsafe().domainFriendly())
+    return MaruAppFactory().create(
+      config = maruConfig.getUnsafe().domainFriendly(),
+      beaconGenesisConfig = beaconGenesisConfig.getUnsafe().domainFriendly(),
+    )
   }
 
   private fun renderTemplate(

@@ -8,6 +8,29 @@
  */
 package maru.consensus.state
 
+import maru.core.BeaconBlockBody
+import maru.extensions.encodeHex
+import org.apache.logging.log4j.LogManager
+
+typealias FinalizationProvider = (BeaconBlockBody) -> FinalizationState
+
+object InstantFinalizationProvider : FinalizationProvider {
+  private val log = LogManager.getLogger(InstantFinalizationProvider::class.java)
+
+  override fun invoke(beaconBlockBody: BeaconBlockBody): FinalizationState {
+    log.debug(
+      "instant finalization: blockNumber={} blockHash={}",
+      beaconBlockBody.executionPayload.blockNumber,
+      beaconBlockBody.executionPayload.blockHash.encodeHex(),
+    )
+
+    return FinalizationState(
+      safeBlockHash = beaconBlockBody.executionPayload.blockHash,
+      finalizedBlockHash = beaconBlockBody.executionPayload.blockHash,
+    )
+  }
+}
+
 data class FinalizationState(
   val safeBlockHash: ByteArray,
   val finalizedBlockHash: ByteArray,

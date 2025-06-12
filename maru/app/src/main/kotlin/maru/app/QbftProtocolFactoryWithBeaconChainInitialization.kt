@@ -16,8 +16,7 @@ import maru.consensus.ForkSpec
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.ProtocolFactory
 import maru.consensus.qbft.QbftValidatorFactory
-import maru.consensus.state.FinalizationState
-import maru.core.BeaconBlockBody
+import maru.consensus.state.FinalizationProvider
 import maru.core.Protocol
 import maru.database.BeaconChain
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
@@ -30,7 +29,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
   private val privateKeyBytes: ByteArray,
   private val validatorElNodeConfig: ValidatorElNode,
   private val metricsSystem: MetricsSystem,
-  private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
+  private val finalizationStateProvider: FinalizationProvider,
   private val beaconChain: BeaconChain,
   private val nextTargetBlockTimestampProvider: NextBlockTimestampProvider,
   private val newBlockHandler: SealedBeaconBlockHandler<*>,

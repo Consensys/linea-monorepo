@@ -10,9 +10,9 @@ package maru.consensus.blockimport
 
 import maru.consensus.NewBlockHandler
 import maru.consensus.NextBlockTimestampProvider
-import maru.consensus.state.FinalizationState
+import maru.consensus.state.FinalizationProvider
+import maru.consensus.state.InstantFinalizationProvider
 import maru.core.BeaconBlock
-import maru.core.BeaconBlockBody
 import maru.core.BeaconState
 import maru.core.Validator
 import maru.executionlayer.client.ExecutionLayerEngineApiClient
@@ -34,22 +34,20 @@ fun interface BeaconBlockImporter {
 
 class FollowerBeaconBlockImporter(
   private val executionLayerManager: ExecutionLayerManager,
-  private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
+  private val finalizationStateProvider: FinalizationProvider,
 ) : NewBlockHandler<ValidationResult> {
   companion object {
-    fun create(executionLayerEngineApiClient: ExecutionLayerEngineApiClient): NewBlockHandler<ValidationResult> {
+    fun create(
+      executionLayerEngineApiClient: ExecutionLayerEngineApiClient,
+      finalizationStateProvider: FinalizationProvider = InstantFinalizationProvider,
+    ): NewBlockHandler<ValidationResult> {
       val executionLayerManager =
         JsonRpcExecutionLayerManager(
           executionLayerEngineApiClient = executionLayerEngineApiClient,
         )
       return FollowerBeaconBlockImporter(
         executionLayerManager = executionLayerManager,
-        finalizationStateProvider = {
-          FinalizationState(
-            it.executionPayload.blockHash,
-            it.executionPayload.blockHash,
-          )
-        },
+        finalizationStateProvider = finalizationStateProvider,
       )
     }
   }
@@ -81,7 +79,7 @@ class FollowerBeaconBlockImporter(
 
 class BlockBuildingBeaconBlockImporter(
   private val executionLayerManager: ExecutionLayerManager,
-  private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
+  private val finalizationStateProvider: FinalizationProvider,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val shouldBuildNextBlock: (BeaconState, ConsensusRoundIdentifier) -> Boolean,
   private val blockBuilderIdentity: Validator,
