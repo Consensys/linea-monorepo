@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -26,14 +27,14 @@ func SerAssestAndWrite(config *config.Config) error {
 	}
 
 	var (
-	// zkevm = test_utils.GetZkEVM()
-	// disc  = &distributed.StandardModuleDiscoverer{
-	// 	TargetWeight: 1 << 28,
-	// 	Affinities:   test_utils.GetAffinities(zkevm),
-	// 	Predivision:  1,
-	// }
+		zkevm = test_utils.GetZkEVM()
+		disc  = &distributed.StandardModuleDiscoverer{
+			TargetWeight: 1 << 28,
+			Affinities:   test_utils.GetAffinities(zkevm),
+			Predivision:  1,
+		}
 
-	// distWizardRaw = distributed.DistributeWizard(zkevm.WizardIOP, disc)
+		distWizardRaw = distributed.DistributeWizard(zkevm.WizardIOP, disc)
 	// distWizardCompiled = distWizardRaw.CompileSegments()
 	// distWizard         = distWizardCompiled.Conglomerate(20)
 	)
@@ -43,11 +44,9 @@ func SerAssestAndWrite(config *config.Config) error {
 		name   string
 		object interface{}
 	}{
-		// {name: "zkevm.bin", object: zkevm},
-		// {name: "disc.bin", object: disc},
-		// {name: "dw-raw.bin", object: distWizardRaw},
-		{name: "dw-compiled.bin"},
-		{name: "dw.bin"},
+		{name: "zkevm.bin", object: zkevm},
+		{name: "disc.bin", object: disc},
+		{name: "dw-raw.bin", object: distWizardRaw},
 	}
 
 	// Serialize and write each asset
