@@ -68,6 +68,9 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 	// Collect all the roots: rounds by rounds
 	// and append them to the sis or no sis roots
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		if ctx.RoundStatus[round] == IsEmpty {
+			continue // skip empty rounds
+		}
 		rootSv := run.GetColumn(ctx.Items.MerkleRoots[round].GetColID()) // len 1 smart vector
 		rootF := rootSv.Get(0)                                           // root as a field element
 		// Append the isSISApplied flag
