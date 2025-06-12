@@ -18,6 +18,17 @@ func TestSerAndWriteAssets(t *testing.T) {
 	}
 }
 
+func TestSerAndWriteCompiledSeg(t *testing.T) {
+	cfg, err := config.NewConfigFromFile("/home/ubuntu/linea-monorepo/prover/config/config-sepolia-full.toml")
+	if err != nil {
+		t.Errorf("could not get the config : %v", err)
+	}
+
+	err = SerAndWriteCompiledSeg(cfg)
+	if err != nil {
+		t.Errorf("could not write the assets : %v", err)
+	}
+}
 func TestDeserAndReadAssets(t *testing.T) {
 	cfg, err := config.NewConfigFromFile("/home/ubuntu/linea-monorepo/prover/config/config-sepolia-full.toml")
 	if err != nil {
