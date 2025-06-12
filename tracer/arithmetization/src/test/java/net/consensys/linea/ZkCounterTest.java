@@ -20,6 +20,8 @@ import static net.consensys.linea.zktracer.Utils.call;
 import static net.consensys.linea.zktracer.Utils.delegateCall;
 import static net.consensys.linea.zktracer.ZkCounter.*;
 import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.*;
+import static org.hyperledger.besu.datatypes.Address.BLAKE2B_F_COMPRESSION;
+import static org.hyperledger.besu.datatypes.Address.RIPEMD160;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -269,13 +271,9 @@ public class ZkCounterTest extends TracerTestBase {
 
     // no precompile call, but a PRC:
     assertEquals(0, lineCountMap.get(MODEXP));
-    final int expectedRIP =
-        (prc.equals(Address.RIPEMD160) && !exceptional && !emptyCds) ? Integer.MAX_VALUE : 0;
+    final int expectedRIP = prc.equals(RIPEMD160) ? Integer.MAX_VALUE : 0;
     assertEquals(expectedRIP, lineCountMap.get(RIP));
-    final int expectedBlake =
-        (prc.equals(Address.BLAKE2B_F_COMPRESSION) && !exceptional && !emptyCds)
-            ? Integer.MAX_VALUE
-            : 0;
+    final int expectedBlake = prc.equals(BLAKE2B_F_COMPRESSION) ? Integer.MAX_VALUE : 0;
     assertEquals(expectedBlake, lineCountMap.get(BLAKE));
 
     // L1 block size > 0
@@ -284,7 +282,7 @@ public class ZkCounterTest extends TracerTestBase {
 
   private static Stream<Arguments> ripBlakeInput() {
     final List<Arguments> arguments = new ArrayList<>();
-    for (Address address : List.of(Address.RIPEMD160, Address.BLAKE2B_F_COMPRESSION)) {
+    for (Address address : List.of(RIPEMD160, BLAKE2B_F_COMPRESSION)) {
       for (int k = 0; k <= 1; k++) {
         for (int j = 0; j <= 1; j++) {
           arguments.add(Arguments.of(address, k == 1, j == 1));
