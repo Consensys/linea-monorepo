@@ -70,6 +70,13 @@ func NewFromBase(base field.Element) Element {
 	z.B1.A1.SetZero()
 	return z
 }
+
+func NewFromBaseInteger(b uint64) Element {
+	var res Element
+	res.B0.A0.SetUint64(b)
+	return res
+}
+
 func SetFromBase(z *Element, x *field.Element) *Element {
 	z.B0.A0.Set(x)
 	z.B0.A1.SetZero()
