@@ -9,7 +9,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -78,8 +78,8 @@ func TestVortexGnarkVerifier(t *testing.T) {
 	}
 
 	prove := func(pr *wizard.ProverRuntime) {
-		ys := make([]field.Element, len(rows)*len(rows[0]))
-		x := field.NewElement(57) // the evaluation point
+		ys := make([]fext.Element, len(rows)*len(rows[0]))
+		x := fext.RandomElement() // the evaluation point
 
 		// assign the rows with random polynomials and collect the ys
 		for round := range rows {

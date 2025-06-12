@@ -42,7 +42,7 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 
 		// quotient stores the assignment of the quotient polynomial as it is
 		// being computed.
-		quotient = make([]field.Element, qa.getNumRow())
+		quotient = make([]fext.Element, qa.getNumRow())
 
 		// powersOfRho lists all the powers of rho and are precomputed to help
 		// parallelization.
@@ -91,7 +91,7 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 				poly                    = polySV.IntoRegVecSaveAlloc()
 				polyPtr                 *[]field.Element
 				pointsOfPoly            = qa.EvalPointOfPolys[polyID]
-				localPartialQuotientPtr = memPool.Alloc()
+				localPartialQuotientPtr = memPool.AllocExt()
 				localPartialQuotient    = *localPartialQuotientPtr
 			)
 
@@ -117,8 +117,8 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 			}
 
 			for k := range localPartialQuotient {
-				localPartialQuotient[k].Mul(&localPartialQuotient[k], &poly[k])
-				localPartialQuotient[k].Mul(&localPartialQuotient[k], &powersOfRho[polyID])
+				localPartialQuotient[k].MulByElement(&localPartialQuotient[k], &poly[k])
+				localPartialQuotient[k].MulByElement(&localPartialQuotient[k], &powersOfRho[polyID])
 			}
 
 			// This part of the algorithm cannot be parallelized or there
@@ -126,13 +126,13 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 			// small part of the computation.
 			{
 				quotientLock.Lock()
-				vector.Add(quotient, quotient, localPartialQuotient)
+				vectorext.Add(quotient, quotient, localPartialQuotient)
 				quotientLock.Unlock()
 			}
 
 			// Since the pool is "manual", we need to free the memory allocated
 			// manually.
-			memPool.Free(localPartialQuotientPtr)
+			memPool.FreeExt(localPartialQuotientPtr)
 
 			if polyPtr != nil {
 				memPool.Free(polyPtr)
@@ -158,7 +158,7 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 	parallel.Execute(len(qa.Queries), func(start, stop int) {
 
 		var (
-			localResultPtr = memPool.Alloc()
+			localResultPtr = memPool.AllocExt()
 			localResult    = *localResultPtr
 		)
 
@@ -200,15 +200,15 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 				utils.Panic("len(localResult) = %v len(zetaI) = %v", len(localResult), len(zetaI))
 			}
 
-			vector.Add(localResult, localResult, zetaI)
+			vectorext.Add(localResult, localResult, zetaI)
 		}
 
 		quotientLock.Lock()
-		vector.Sub(quotient, quotient, localResult)
+		vectorext.Sub(quotient, quotient, localResult)
 		quotientLock.Unlock()
 	})
 
-	run.AssignColumn(qa.Quotient.GetColID(), smartvectors.NewRegular(quotient))
+	run.AssignColumn(qa.Quotient.GetColID(), smartvectors.NewRegularExt(quotient))
 }
 
 func (re randomPointEvaluation) Run(run *wizard.ProverRuntime) {

@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -33,14 +32,14 @@ func (va verifierAction) Run(run wizard.Runtime) error {
 		qr       = queryParams.Ys[len(va.NewQuery.Pols)-1]
 		polysAtR = va.cptEvaluationMap(run)
 		r        = queryParams.X
-		rCoin    = run.GetRandomCoinField(va.EvaluationPoint.Name)
+		rCoin    = run.GetRandomCoinFieldExt(va.EvaluationPoint.Name)
 
 		// zetasOfR stores the values zetas[i] = lambda^i / (r - xi).
 		// These values are precomputed for efficiency.
-		zetasOfR = make([]field.Element, len(va.Queries))
+		zetasOfR = make([]fext.Element, len(va.Queries))
 
-		lambda = run.GetRandomCoinField(va.LinCombCoeffLambda.Name)
-		rho    = run.GetRandomCoinField(va.LinCombCoeffRho.Name)
+		lambda = run.GetRandomCoinFieldExt(va.LinCombCoeffLambda.Name)
+		rho    = run.GetRandomCoinFieldExt(va.LinCombCoeffRho.Name)
 	)
 
 	if r != rCoin {
@@ -49,11 +48,11 @@ func (va verifierAction) Run(run wizard.Runtime) error {
 	}
 
 	var (
-		lambdaPowI = field.One()
-		rhoK       = field.One()
+		lambdaPowI = fext.One()
+		rhoK       = fext.One()
 		// res stores the right-hand of the equality check. Namely,
 		// sum_{i,k \in claim} [\lambda^i \rho^k (Pk(r) - y_{ik})] / (r - xi).
-		res = field.Zero()
+		res = fext.Zero()
 	)
 
 	for i, q := range va.Queries {
@@ -198,7 +197,7 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api fronten
 		polys = append(polys, poly)
 	}
 
-	ys := fastpoly.BatchEvaluateLagrangeGnark(api, polys, x)
+	ys := fastpoly.BatchEvaluateLagrangeGnarkMixed(api, polys, x) // TODO@yao@thomas implement BatchEvaluateLagrangeGnarkMixed
 
 	for i := range ctx.ExplicitlyEvaluated {
 		colID := ctx.ExplicitlyEvaluated[i].GetColID()

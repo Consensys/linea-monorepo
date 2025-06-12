@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
@@ -30,9 +30,9 @@ import (
 func DeriveEvaluationPoint(
 	h ifaces.Column,
 	upstream string,
-	cachedXs collection.Mapping[string, field.Element],
-	x field.Element,
-) (xRes field.Element) {
+	cachedXs collection.Mapping[string, fext.Element],
+	x fext.Element,
+) (xRes fext.Element) {
 
 	if !h.IsComposite() {
 		// Just return x and cache it if necessary
@@ -48,7 +48,7 @@ func DeriveEvaluationPoint(
 	switch inner := h.(type) {
 	case Shifted:
 		newUpstream := appendNodeToUpstream(upstream, inner)
-		var derivedX field.Element
+		var derivedX fext.Element
 		// Early return if the result is cached
 		if cachedXs.Exists(newUpstream) {
 			derivedX = cachedXs.MustGet(newUpstream)
@@ -60,7 +60,7 @@ func DeriveEvaluationPoint(
 				panic(err)
 			}
 			omegaN.Exp(omegaN, big.NewInt(int64(inner.Offset)))
-			derivedX.Mul(&x, &omegaN)
+			derivedX.MulByElement(&x, &omegaN)
 			cachedXs.InsertNew(newUpstream, derivedX)
 		}
 		return DeriveEvaluationPoint(inner.Parent, newUpstream, cachedXs, derivedX)
@@ -83,9 +83,9 @@ engineer it, None of the name or comment in this function make sense to me.
 */
 func VerifyYConsistency(
 	h ifaces.Column, upstream string,
-	cachedXs collection.Mapping[string, field.Element],
-	finalYs collection.Mapping[string, field.Element],
-) (y field.Element) {
+	cachedXs collection.Mapping[string, fext.Element],
+	finalYs collection.Mapping[string, fext.Element],
+) (y fext.Element) {
 
 	if !h.IsComposite() {
 		// Get the Y from the map. An absence from this map is unexpected at

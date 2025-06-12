@@ -8,7 +8,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
@@ -135,12 +135,12 @@ func generateProtocol(tc TestCase) (define func(*wizard.Builder), prove func(*wi
 	// and the columns with random values
 	prove = func(run *wizard.ProverRuntime) {
 		// the evaluation point
-		x := field.NewElement(42)
-		var ys []field.Element
+		x := fext.RandomElement()
+		var ys []fext.Element
 		if tc.IsCommitPrecomp {
-			ys = make([]field.Element, (tc.Numpoly + tc.NumPrecomp))
+			ys = make([]fext.Element, (tc.Numpoly + tc.NumPrecomp))
 		} else {
-			ys = make([]field.Element, tc.Numpoly)
+			ys = make([]fext.Element, tc.Numpoly)
 		}
 		numColPerRound := tc.Numpoly / tc.NumRound
 

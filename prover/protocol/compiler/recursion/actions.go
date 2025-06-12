@@ -106,6 +106,7 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 		params := run.GetUnivariateParams(pcsCtx.Query.QueryID)
 		pcsMRoot := pcsCtx.Items.MerkleRoots
 
+		//TODO@yao fix SplitPublicInputs first
 		if circX != params.X {
 			return fmt.Errorf("proof no=%v, x value does not match %v != %v", i, circX.String(), params.X.String())
 		}

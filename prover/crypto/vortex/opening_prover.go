@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 // OpeningProof represents an opening proof for a Vortex commitment. The proof
@@ -53,6 +54,37 @@ func (params *Params) Open(committedSV []smartvectors.SmartVector, randomCoin fe
 	proof.LinearCombination = params.rsEncodeExt(linComb, nil)
 
 	return &proof
+}
+
+// InitOpeningFromAlreadyEncodedLC initiates the construction of a Vortex proof
+// by returning the encoding of the linear combinations of the committed
+// row-vectors contained in committedSV by the successive powers of randomCoin.
+//
+// The returned proof is partially assigned and must be completed using
+// [WithEntryList] to conclude the opening protocol.
+func (params *Params) InitOpeningFromAlreadyEncodedLC(rsCommittedSV EncodedMatrix, randomCoin fext.Element) *OpeningProof {
+
+	if len(rsCommittedSV) == 0 {
+		utils.Panic("attempted to open an empty witness")
+	}
+
+	// Compute the linear combination
+	linComb := make([]field.Element, params.NumEncodedCols())
+
+	parallel.ExecuteChunky(len(linComb), func(start, stop int) {
+		subTask := make([]smartvectors.SmartVector, 0, len(rsCommittedSV))
+		for i := range rsCommittedSV {
+			subTask = append(subTask, rsCommittedSV[i].SubVector(start, stop))
+		}
+
+		// Collect the result in the larger slice at the end
+		subResult := smartvectors.LinearCombinationMixed(subTask, randomCoin)
+		subResult.WriteInSlice(linComb[start:stop])
+	})
+
+	return &OpeningProof{
+		LinearCombination: smartvectors.NewRegular(linComb),
+	}
 }
 
 // Complete completes the proof adding the columns pointed by entryList

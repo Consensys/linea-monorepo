@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -51,7 +51,7 @@ func TestNaturalize(t *testing.T) {
 		assi.AssignColumn(P3, p3)
 		assi.AssignColumn(P4, p4)
 
-		x := field.NewElement(5)
+		x := fext.RandomElement()
 
 		y1 := smartvectors.EvaluateLagrangeMixed(p1, x)
 		y2 := smartvectors.EvaluateLagrangeMixed(p2, x)

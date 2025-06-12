@@ -5,7 +5,7 @@ import (
 	"reflect"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -234,8 +234,8 @@ func (ctx *naturalizationCtx) prove(run *wizard.ProverRuntime) {
 		newYs[i] contains then alleged evaluations
 	*/
 
-	newXs := []field.Element{}
-	newYs := [][]field.Element{}
+	newXs := []fext.Element{}
+	newYs := [][]fext.Element{}
 
 	alreadySeenPolyX := make(map[string]struct{})
 	alreadySeenX := make(map[string]struct{})
@@ -244,7 +244,7 @@ func (ctx *naturalizationCtx) prove(run *wizard.ProverRuntime) {
 		repr := column.DownStreamBranch(pol)
 		rootsAll := column.RootParents(pol)
 
-		cachedXs := collection.NewMapping[string, field.Element]()
+		cachedXs := collection.NewMapping[string, fext.Element]()
 		cachedXs.InsertNew("", originalQuery.X)
 		derivedXs := column.DeriveEvaluationPoint(pol, "", cachedXs, originalQuery.X)
 
@@ -263,7 +263,7 @@ func (ctx *naturalizationCtx) prove(run *wizard.ProverRuntime) {
 				)
 			}
 			newXs = append(newXs, derivedXs)
-			newYs = append(newYs, []field.Element{})
+			newYs = append(newYs, []fext.Element{})
 			alreadySeenX[repr] = struct{}{}
 		}
 
@@ -301,7 +301,7 @@ func (ctx naturalizationCtx) Verify(run wizard.Runtime) error {
 	// Collect the subqueries and the collection in finalYs evaluations
 	subQueries := []query.UnivariateEval{}
 	subQueriesParams := []query.UnivariateEvalParams{}
-	finalYs := collection.NewMapping[string, field.Element]()
+	finalYs := collection.NewMapping[string, fext.Element]()
 
 	for qID, qName := range ctx.subQueriesNames {
 		subQueries = append(subQueries, run.GetUnivariateEval(qName))
@@ -313,7 +313,7 @@ func (ctx naturalizationCtx) Verify(run wizard.Runtime) error {
 	}
 
 	// For each subqueries verifies the values for xs
-	cachedXs := collection.NewMapping[string, field.Element]()
+	cachedXs := collection.NewMapping[string, fext.Element]()
 	cachedXs.InsertNew("", originalQueryParams.X)
 	alreadyCheckedReprs := collection.NewSet[string]()
 

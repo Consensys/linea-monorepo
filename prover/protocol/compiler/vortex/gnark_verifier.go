@@ -1,7 +1,7 @@
 package vortex
 
 import (
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/hash/mimc"
@@ -234,7 +234,7 @@ func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkR
 		expectedYs = append(expectedYs, params.Ys[i])
 	}
 
-	ys := fastpoly.BatchEvaluateLagrangeMixed(api, polys, params.X)
+	ys := fastpoly.BatchEvaluateLagrangeGnarkMixed(api, polys, params.X)
 
 	for i := range polys {
 		api.AssertIsEqual(ys[i], expectedYs[i])

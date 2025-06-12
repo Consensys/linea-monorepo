@@ -50,11 +50,8 @@ func (ctx *Ctx) AssignColumn(round int) func(*wizard.ProverRuntime) {
 		}
 		// We commit to the polynomials with SIS hashing if the number of polynomials
 		// is greater than the [ApplyToSISThreshold].
-		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
-			committedMatrix, tree, sisDigest = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
-		} else if ctx.RoundStatus[round] == IsSISApplied {
-			committedMatrix, tree, sisDigest = ctx.VortexParams.CommitMerkleWithSIS(pols)
-		}
+		committedMatrix, tree, sisDigest = ctx.VortexParams.Commit(pols)
+
 		pr.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
 		pr.State.InsertNew(ctx.MerkleTreeName(round), tree)
 
@@ -113,10 +110,10 @@ func (ctx *Ctx) ComputeLinearComb(pr *wizard.ProverRuntime) {
 	committedSV := append(committedSVNoSIS, committedSVSIS...)
 
 	// And get the randomness
-	randomCoinLC := pr.GetRandomCoinField(ctx.Items.Alpha.Name)
+	randomCoinLC := pr.GetRandomCoinFieldExt(ctx.Items.Alpha.Name)
 
 	// and compute and assign the random linear combination of the rows
-	proof := ctx.VortexParams.InitOpeningWithLC(committedSV, randomCoinLC)
+	proof := ctx.VortexParams.Open(committedSV, randomCoinLC)
 	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
 }
 
@@ -146,7 +143,7 @@ func (ctx *Ctx) ComputeLinearCombFromRsMatrix(pr *wizard.ProverRuntime) {
 	}
 
 	// And get the randomness
-	randomCoinLC := pr.GetRandomCoinField(ctx.Items.Alpha.Name)
+	randomCoinLC := pr.GetRandomCoinFieldExt(ctx.Items.Alpha.Name)
 
 	// and compute and assign the random linear combination of the rows
 	proof := ctx.VortexParams.InitOpeningFromAlreadyEncodedLC(committedSV, randomCoinLC)

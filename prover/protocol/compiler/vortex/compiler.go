@@ -853,13 +853,8 @@ func (ctx *Ctx) commitPrecomputeds() {
 	ctx.CommittedRowsCount += numPrecomputeds
 
 	// Committing to the precomputed columns with SIS or without SIS.
-	if ctx.IsSISAppliedToPrecomputed() {
-		logrus.Infof("committing to precomputed columns with SIS")
-		committedMatrix, tree, colHashes = ctx.VortexParams.CommitMerkleWithSIS(pols)
-	} else {
-		logrus.Infof("committing to precomputed columns without SIS")
-		committedMatrix, tree, colHashes = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
-	}
+	committedMatrix, tree, colHashes = ctx.VortexParams.Commit(pols)
+
 	ctx.Items.Precomputeds.DhWithMerkle = colHashes
 	ctx.Items.Precomputeds.CommittedMatrix = committedMatrix
 	ctx.Items.Precomputeds.Tree = tree

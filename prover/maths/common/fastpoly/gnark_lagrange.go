@@ -54,3 +54,6 @@ func EvaluateLagrangeGnark(api frontend.API, poly []frontend.Variable, x fronten
 	return res
 
 }
+
+// TODO@yao@thomas BatchEvaluateLagrangeGnark
+// TODO@yao@thomas BatchEvaluateLagrangeGnarkMixed

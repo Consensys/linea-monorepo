@@ -55,3 +55,5 @@ func EvaluateLagrangeGnark(api frontend.API, poly []gnarkfext.Element, x gnarkfe
 	return res
 
 }
+
+// TODO BatchEvaluateLagrangeGnark

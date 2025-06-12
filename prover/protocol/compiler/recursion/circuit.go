@@ -79,7 +79,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	}
 
 	if r.withExternalHasher {
-		w.HasherFactory = &mimc.ExternalHasherFactory{Api: api}
+		w.HasherFactory = &mimc.ExternalHasherFactory{Api: api} // TODO: fix in crypto/mimc/factories.go
 	}
 
 	w.Verify(api)
@@ -141,6 +141,7 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 
 // SplitPublicInputs parses a vector of field elements and returns the
 // parsed arguments.
+// TODO@yao check the type, x, ys in fext, mRoots in field?
 func SplitPublicInputs[T any](r *Recursion, allPubs []T) (x T, ys, mRoots, pubs []T) {
 
 	var (
