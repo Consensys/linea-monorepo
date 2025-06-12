@@ -41,6 +41,20 @@ func One() Element {
 	}
 }
 
+// Zero returns 0
+func Zero() Element {
+	return Element{
+		B0: E2{
+			A0: 0,
+			A1: 0,
+		},
+		B1: E2{
+			A0: 0,
+			A1: 0,
+		},
+	}
+}
+
 // Exp exponentiation in gnark circuit, using the fast exponentiation
 func Exp(api frontend.API, x Element, n int) Element {
 
