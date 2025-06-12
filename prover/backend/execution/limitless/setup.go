@@ -27,81 +27,99 @@ func SerializeAndWrite(config *config.Config) error {
 		return fmt.Errorf("config is nil")
 	}
 
+	// Create directory for assets
 	filePath := config.PathforLimitlessProverAssets()
 	if err := os.MkdirAll(filePath, 0755); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", filePath, err)
 	}
 
 	// Shared initialization for zkevm and disc
-	var (
-		zkevm = test_utils.GetZkEVM()
-		disc  = &distributed.StandardModuleDiscoverer{
-			TargetWeight: 1 << 28,
-			Affinities:   test_utils.GetAffinities(zkevm),
-			Predivision:  1,
-		}
+	zkevm := test_utils.GetZkEVM()
+	disc := &distributed.StandardModuleDiscoverer{
+		TargetWeight: 1 << 28,
+		Affinities:   test_utils.GetAffinities(zkevm),
+		Predivision:  1,
+	}
+	dwRaw := distributed.DistributeWizard(zkevm.WizardIOP, disc)
 
-		dwRaw = distributed.DistributeWizard(zkevm.WizardIOP, disc)
-	)
-
-	// Define all assets to serialize and write
-	assets := []SerAsset{
+	// Serialize and write initial assets
+	initialAssets := []SerAsset{
 		{Name: "zkevm.bin", Object: zkevm},
 		{Name: "disc.bin", Object: disc},
 		{Name: "dw-raw.bin", Object: dwRaw},
 	}
+	if err := serializeAssets(filePath, initialAssets); err != nil {
+		return err
+	}
+
+	// Clean up memory
+	zkevm = nil
+	disc = nil
 
 	// Compile distributed wizard
 	logrus.Info("Starting to compile distributed wizard")
 	dw := dwRaw.CompileSegments().Conglomerate(20)
 	logrus.Info("Finished compiling distributed wizard")
 
-	compiledDefault := dw.CompiledDefault
-	compiledGLs := dw.CompiledGLs
-	compiledLPPs := dw.CompiledLPPs
-	congo := dw.CompiledConglomeration
-	dw = nil
+	dwRaw = nil
 
+	// Serialize and write compiled default module
+	defaultAsset := []SerAsset{
+		{Name: "dw-compiled-default.bin", Object: dw.CompiledDefault},
+	}
+	if err := serializeAssets(filePath, defaultAsset); err != nil {
+		return err
+	}
+	dw.CompiledDefault = nil
 	runtime.GC()
 
-	// Add compiled default module to assets
-	assets = append(assets, SerAsset{
-		Name:   "dw-compiled-default.bin",
-		Object: compiledDefault,
-	})
-
-	// Add compiled GL modules to assets
-	for i, compiledGL := range compiledGLs {
-		assets = append(assets, SerAsset{
+	// Serialize and write compiled GL modules
+	glAssets := make([]SerAsset, len(dw.CompiledGLs))
+	for i, compiledGL := range dw.CompiledGLs {
+		glAssets[i] = SerAsset{
 			Name:   fmt.Sprintf("dw-compiled-gl-%d.bin", i),
 			Object: compiledGL,
-		})
+		}
 	}
+	if err := serializeAssets(filePath, glAssets); err != nil {
+		return err
+	}
+	dw.CompiledGLs = nil
+	runtime.GC()
 
-	// Add compiled LPP modules to assets
-	for i, compiledLPP := range compiledLPPs {
-		assets = append(assets, SerAsset{
+	// Serialize and write compiled LPP modules
+	lppAssets := make([]SerAsset, len(dw.CompiledLPPs))
+	for i, compiledLPP := range dw.CompiledLPPs {
+		lppAssets[i] = SerAsset{
 			Name:   fmt.Sprintf("dw-compiled-lpp-%d.bin", i),
 			Object: compiledLPP,
-		})
+		}
 	}
+	if err := serializeAssets(filePath, lppAssets); err != nil {
+		return err
+	}
+	dw.CompiledLPPs = nil
+	runtime.GC()
 
-	// Add conglomeration compilation to assets
-	assets = append(assets, SerAsset{
-		Name:   "dw-compiled-conglomeration.bin",
-		Object: congo,
-	})
+	// Serialize and write conglomeration compilation
+	conglomerationAsset := []SerAsset{
+		{Name: "dw-compiled-conglomeration.bin", Object: dw.CompiledConglomeration},
+	}
+	if err := serializeAssets(filePath, conglomerationAsset); err != nil {
+		return err
+	}
+	dw.CompiledConglomeration = nil
+	return nil
+}
 
-	// Initialize with nil slice
+// Helper function to serialize and write assets
+func serializeAssets(filePath string, assets []SerAsset) error {
 	reader := bytes.NewReader(nil)
-
-	// Serialize and write each asset
 	for _, asset := range assets {
 		if err := serializeAndWrite(filePath, asset.Name, asset.Object, reader); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
