@@ -114,7 +114,9 @@ For development, you may want to modify the following parameters in the coordina
 - `conflation.conflation-deadline`: Controls how long the coordinator waits before conflating blocks (default is 6 seconds)
 - `l1-submission.blob.l1-endpoint`: Configure the connection to the L1 node for submitting blob tx (defaults to default.l1-endpoint)
 - `l1-submission.aggregation.l1-endpoint`: Configure the connection to the L1 node for submitting aggregation tx (defaults to default.l1-endpoint)
-- `l2.rpc-endpoint`: Configure the connection to the L2 node (defaults to default.l2-endpoint)
+- `conflation.l2-endpoint`: Configure the connection to the L2 node for conflation (defaults to default.l2-endpoint)
+- `l1-finalization-monitor.l2-endpoint`: Configure the connection to the L2 node for retrieving L2 block data (defaults to default.l2-endpoint)
+- `message-anchoring.l2-endpoint`: Configure the connection to the L2 node for submitting message anchoring tx (defaults to default.l2-endpoint)
 - `prover` section: Configure the paths for prover requests and responses
 
 ## Troubleshooting
