@@ -55,7 +55,7 @@ To build a local Docker image of the coordinator:
 ./gradlew coordinator:app:installDist
 
 # Then build the Docker image
-docker buildx build --file coordinator/Dockerfile --build-context libs=./coordinator/app/build/install/coordinator/lib --platform linux/amd64 --tag consensys/linea-coordinator:local .
+docker buildx build --file coordinator/Dockerfile --build-context libs=./coordinator/app/build/install/coordinator/lib --tag consensys/linea-coordinator:local .
 ```
 
 ## Running the Coordinator Locally
