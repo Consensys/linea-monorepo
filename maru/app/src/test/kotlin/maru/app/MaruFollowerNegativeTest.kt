@@ -53,7 +53,7 @@ class MaruFollowerNegativeTest {
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,
           dataDir = tmpDir,
-          p2pNetwork = spyingP2PNetwork,
+          overridingP2PNetwork = spyingP2PNetwork,
         )
       }
     validatorStack.maruApp.start()

@@ -65,7 +65,7 @@ class MaruQbftValidatorTest {
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,
           dataDir = tmpDir,
-          p2pNetwork = spyingP2pNetwork,
+          overridingP2PNetwork = spyingP2pNetwork,
         )
       }
     networkParticipantStack.maruApp.start()

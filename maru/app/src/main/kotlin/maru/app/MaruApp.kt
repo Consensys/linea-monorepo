@@ -27,50 +27,31 @@ import maru.consensus.Web3jMetadataProvider
 import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.blockimport.NewSealedBeaconBlockHandlerMultiplexer
 import maru.consensus.delegated.ElDelegatedConsensusFactory
-import maru.consensus.state.FinalizationState
-import maru.core.BeaconBlockBody
+import maru.consensus.state.FinalizationProvider
+import maru.consensus.state.InstantFinalizationProvider
 import maru.core.Protocol
 import maru.crypto.Crypto
 import maru.database.kv.KvDatabaseFactory
-import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
-import maru.p2p.P2PNetworkImpl
 import maru.p2p.SealedBeaconBlockBroadcaster
 import maru.p2p.ValidationResult
-import maru.serialization.rlp.RLPSerializers
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 
 class MaruApp(
   config: MaruConfig,
   beaconGenesisConfig: ForksSchedule,
   clock: Clock = Clock.systemUTC(),
   // This will only be used if config.p2pConfig is undefined
-  private var p2pNetwork: P2PNetwork = NoOpP2PNetwork,
+  private var p2pNetwork: P2PNetwork,
+  private val privateKeyProvider: () -> ByteArray,
+  private val finalizationProvider: FinalizationProvider = InstantFinalizationProvider,
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::javaClass)
 
-  private var privateKeyBytes: ByteArray =
-    GeneratingFilePrivateKeySource(
-      config.persistence.privateKeyPath.toString(),
-    ).privateKeyBytes.toArray()
-
   init {
-    if (!config.persistence.privateKeyPath
-        .toFile()
-        .exists()
-    ) {
-      log.info(
-        "Private key file ${config.persistence.privateKeyPath} does not exist. A new private key will be generated and stored in that location.",
-      )
-    } else {
-      log.info(
-        "Private key file ${config.persistence.privateKeyPath} already exists. Maru will use the existing private key.",
-      )
-    }
     if (config.qbftOptions == null) {
       log.info("Qbft options are not defined. Maru is running in follower-only node")
     }
@@ -78,16 +59,6 @@ class MaruApp(
       log.info("P2PManager is not defined.")
     }
     log.info(config.toString())
-
-    config.p2pConfig?.let {
-      p2pNetwork =
-        P2PNetworkImpl(
-          privateKeyBytes = privateKeyBytes,
-          p2pConfig = config.p2pConfig!!,
-          chainId = beaconGenesisConfig.chainId,
-          serDe = RLPSerializers.SealedBeaconBlockSerializer,
-        )
-    }
   }
 
   fun p2pPort(): UInt = p2pNetwork.port
@@ -112,12 +83,7 @@ class MaruApp(
       clock = clock,
       forksSchedule = beaconGenesisConfig,
     )
-
   private val metricsSystem = NoOpMetricsSystem()
-  private val finalizationStateProviderStub = { it: BeaconBlockBody ->
-    LogManager.getLogger("FinalizationStateProvider").debug("fetching the latest finalized state")
-    FinalizationState(it.executionPayload.blockHash, it.executionPayload.blockHash)
-  }
 
   private val beaconChain =
     KvDatabaseFactory
@@ -132,7 +98,7 @@ class MaruApp(
     followers.followers
       .mapValues {
         val engineApiClient = Helpers.buildExecutionEngineClient(it.value, ElFork.Prague)
-        FollowerBeaconBlockImporter.create(engineApiClient) as NewBlockHandler<Unit>
+        FollowerBeaconBlockImporter.create(engineApiClient, finalizationProvider) as NewBlockHandler<Unit>
       }
 
   fun start() {
@@ -194,10 +160,10 @@ class MaruApp(
           )
         QbftProtocolFactoryWithBeaconChainInitialization(
           qbftOptions = config.qbftOptions!!,
-          privateKeyBytes = Crypto.privateKeyBytesWithoutPrefix(privateKeyBytes),
+          privateKeyBytes = Crypto.privateKeyBytesWithoutPrefix(privateKeyProvider()),
           validatorElNodeConfig = config.validatorElNode,
           metricsSystem = metricsSystem,
-          finalizationStateProvider = finalizationStateProviderStub,
+          finalizationStateProvider = finalizationProvider,
           nextTargetBlockTimestampProvider = nextTargetBlockTimestampProvider,
           newBlockHandler = sealedBlockHandlerMultiplexer,
           beaconChain = beaconChain,

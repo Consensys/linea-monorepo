@@ -48,3 +48,5 @@ out/
 
 # Generated files
 docker/initialization/*.json
+
+.java-version
