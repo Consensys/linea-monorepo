@@ -28,7 +28,7 @@ func TestEvaluateLagrangeFext(t *testing.T) {
 
 	var x fext.Element
 	x.SetRandom()
-	u := poly.EvalOnExtField(p, x)
+	u := poly.EvalMixed(p, x)
 
 	/*
 		Test without coset
@@ -36,7 +36,7 @@ func TestEvaluateLagrangeFext(t *testing.T) {
 	copy(pLagrange, p)
 	domain.FFT(pLagrange, fft.DIF)
 	fft.BitReverse(pLagrange)
-	v := EvaluateLagrangeOnFext(pLagrange, x)
+	v := EvaluateLagrangeMixed(pLagrange, x)
 	require.Equal(t, u.String(), v.String())
 
 	/*
@@ -45,7 +45,7 @@ func TestEvaluateLagrangeFext(t *testing.T) {
 	copy(pLagrange, p)
 	domain.FFT(pLagrange, fft.DIF, fft.OnCoset())
 	fft.BitReverse(pLagrange)
-	vOnCoset := EvaluateLagrangeOnFext(pLagrange, x, true)
+	vOnCoset := EvaluateLagrangeMixed(pLagrange, x, true)
 	require.Equal(t, u.String(), vOnCoset.String())
 }
 
@@ -65,7 +65,7 @@ func TestBatchEvaluateLagrangeOnFext(t *testing.T) {
 
 	Eval := make([]fext.Element, nbPoly)
 	for i := 0; i < nbPoly; i++ {
-		Eval[i] = poly.EvalOnExtField(polys[i], x)
+		Eval[i] = poly.EvalMixed(polys[i], x)
 	}
 	d := fft.NewDomain(uint64(sizePoly))
 
@@ -82,7 +82,7 @@ func TestBatchEvaluateLagrangeOnFext(t *testing.T) {
 	}
 
 	// compute lagrange eval
-	lagEvalExt := BatchEvaluateLagrangeOnFext(onRoots, x)
+	lagEvalExt := BatchEvaluateLagrangeMixed(onRoots, x)
 
 	// check the result
 	for i := 0; i < nbPoly; i++ {
@@ -102,7 +102,7 @@ func TestBatchEvaluateLagrangeOnFext(t *testing.T) {
 	}
 
 	// compute lagrange eval
-	lagEvalExtcoset := BatchEvaluateLagrangeOnFext(onCosets, x, true)
+	lagEvalExtcoset := BatchEvaluateLagrangeMixed(onCosets, x, true)
 
 	// check the result
 	for i := 0; i < nbPoly; i++ {
