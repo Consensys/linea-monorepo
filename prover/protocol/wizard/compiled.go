@@ -5,6 +5,7 @@ import (
 
 	"slices"
 
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -768,7 +769,7 @@ func (c *CompiledIOP) InsertPlonkInWizard(q *query.PlonkInWizard) {
 
 	var (
 		round           = q.GetRound()
-		nbPub, nbSecret = gnarkutil.CountVariables(q.Circuit)
+		nbPub, nbSecret = gnarkutil.CountVariables(ecc.BLS12_377.ScalarField(), q.Circuit)
 	)
 
 	if q.Data.Size() != q.Selector.Size() {

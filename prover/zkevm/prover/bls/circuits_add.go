@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
@@ -48,7 +49,7 @@ type BlsAdd struct {
 	group
 }
 
-func newAdd(comp *wizard.CompiledIOP, g group, limits *Limits, src *BlsAddDataSource, plonkOptions []plonk.Option) *BlsAdd {
+func newAdd(comp *wizard.CompiledIOP, g group, limits *Limits, src *BlsAddDataSource, plonkOptions []query.PlonkOption) *BlsAdd {
 	size := limits.sizeAddIntegration(g)
 
 	toAlign := &plonk.CircuitAlignmentInput{
@@ -80,7 +81,7 @@ func NewG1AddZkEvm(comp *wizard.CompiledIOP, limits *Limits) *BlsAdd {
 		G1,
 		limits,
 		newAddDataSource(comp, G1),
-		[]plonk.Option{plonk.WithRangecheck(16, 6, true)},
+		[]query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)},
 	)
 }
 
@@ -90,7 +91,7 @@ func NewG2AddZkEvm(comp *wizard.CompiledIOP, limits *Limits) *BlsAdd {
 		G2,
 		limits,
 		newAddDataSource(comp, G2),
-		[]plonk.Option{plonk.WithRangecheck(16, 6, true)},
+		[]query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)},
 	)
 }
 

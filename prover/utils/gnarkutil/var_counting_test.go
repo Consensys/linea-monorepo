@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 )
 
@@ -53,7 +54,7 @@ func TestCountVariables(t *testing.T) {
 
 		t.Run(testcaseName, func(t *testing.T) {
 
-			nbPub, nbSec := CountVariables(testcases[i].Circ)
+			nbPub, nbSec := CountVariables(ecc.BLS12_377.ScalarField(), testcases[i].Circ)
 			if nbPub != testcases[i].NbPub {
 				t.Errorf("nbPub: %d != %d", nbPub, testcases[i].NbPub)
 			}

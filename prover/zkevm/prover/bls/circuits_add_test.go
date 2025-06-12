@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 )
@@ -26,7 +26,7 @@ func TestBlsG1Add(t *testing.T) {
 				IsData: ct.GetCommit(b, "DATA_G1_ADD"),
 				IsRes:  ct.GetCommit(b, "RSLT_G1_ADD"),
 			}
-			blsAdd = newAdd(b.CompiledIOP, G1, limits, blsAddSource, []plonk.Option{plonk.WithRangecheck(16, 6, true)})
+			blsAdd = newAdd(b.CompiledIOP, G1, limits, blsAddSource, []query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)})
 		},
 		dummy.Compile,
 	)
@@ -60,7 +60,7 @@ func TestBlsG2Add(t *testing.T) {
 				IsData: ct.GetCommit(b, "DATA_G2_ADD"),
 				IsRes:  ct.GetCommit(b, "RSLT_G2_ADD"),
 			}
-			blsAdd = newAdd(b.CompiledIOP, G2, limits, blsAddSource, []plonk.Option{plonk.WithRangecheck(16, 6, true)})
+			blsAdd = newAdd(b.CompiledIOP, G2, limits, blsAddSource, []query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)})
 		},
 		dummy.Compile,
 	)

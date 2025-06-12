@@ -124,7 +124,7 @@ func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 		return
 	}
 
-	nbPublicInputs, _ := gnarkutil.CountVariables(ci.Circuit)
+	nbPublicInputs, _ := gnarkutil.CountVariables(ecc.BLS12_377.ScalarField(), ci.Circuit)
 
 	if err := ci.checkNbCircuitInvocation(run); err != nil {
 		// Don't use the fatal level here because we want to control the exit code
@@ -241,7 +241,7 @@ func (ci *CircuitAlignmentInput) checkNbCircuitInvocation(run *wizard.ProverRunt
 	var (
 		mask              = ci.DataToCircuitMask.GetColAssignment(run).IntoRegVecSaveAlloc()
 		count             = 0
-		nbPublicInputs, _ = gnarkutil.CountVariables(ci.Circuit)
+		nbPublicInputs, _ = gnarkutil.CountVariables(ecc.BLS12_377.ScalarField(), ci.Circuit)
 	)
 
 	for i := range mask {
@@ -284,7 +284,7 @@ type Alignment struct {
 func DefineAlignment(comp *wizard.CompiledIOP, toAlign *CircuitAlignmentInput) *Alignment {
 
 	// compute the constant mask
-	nbPublicInputs, _ := gnarkutil.CountVariables(toAlign.Circuit)
+	nbPublicInputs, _ := gnarkutil.CountVariables(ecc.BLS12_377.ScalarField(), toAlign.Circuit)
 	if nbPublicInputs == 0 {
 		utils.Panic("cannot connect a circuit with no public inputs: %v", nbPublicInputs)
 	}
@@ -349,7 +349,7 @@ func (a *Alignment) assignMasks(run *wizard.ProverRuntime) {
 		// in the alignement module.
 		totalAligned         = 0
 		isActiveAssignment   = make([]field.Element, totalSize)
-		nbPublicInputs, _    = gnarkutil.CountVariables(a.Circuit)
+		nbPublicInputs, _    = gnarkutil.CountVariables(ecc.BLS12_377.ScalarField(), a.Circuit)
 		nbPublicInputsPadded = utils.NextPowerOfTwo(nbPublicInputs)
 	)
 
