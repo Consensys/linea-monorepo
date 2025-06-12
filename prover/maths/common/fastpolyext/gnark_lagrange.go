@@ -56,4 +56,4 @@ func EvaluateLagrangeGnark(api frontend.API, poly []gnarkfext.Element, x gnarkfe
 
 }
 
-// TODO BatchEvaluateLagrangeGnark
+// TODO@yao@thomas BatchEvaluateLagrangeGnark

@@ -35,24 +35,6 @@ func (p *Params) Commit(ps []smartvectors.SmartVector) (encodedMatrix EncodedMat
 		leaves[i] = p.computeLeaf(colHashes[i*sizeChunk : (i+1)*sizeChunk])
 	}
 
-	if p.MerkleHasher == nil { // by default, we use poseidon2
-		for i := 0; i < nbColumns; i++ {
-			h := vortex.HashPoseidon2(colHashes[i*sizeChunk : (i+1)*sizeChunk])
-			leaves[i] = types.HashToBytes32(h)
-		}
-
-	} else {
-		merkleHasher := p.MerkleHasher()
-		for i := 0; i < nbColumns; i++ {
-			merkleHasher.Reset()
-			for j := 0; j < sizeChunk; j++ {
-				merkleHasher.Write(colHashes[i*sizeChunk+j].Marshal())
-			}
-			h := merkleHasher.Sum(nil)
-			copy(leaves[i][:], h)
-		}
-	}
-
 	tree = smt.BuildComplete(
 		leaves,
 		func() hashtypes.Hasher {
