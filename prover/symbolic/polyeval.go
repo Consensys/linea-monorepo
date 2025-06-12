@@ -114,12 +114,12 @@ func (PolyEval) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gnark
 	x := inputs[0]
 	res := inputs[len(inputs)-1]
 
-	outerApi := gnarkfext.NewExtApi(api)
+	// outerApi := gnarkfext.NewExtApi(api)
 
 	for i := len(inputs) - 2; i >= 1; i-- {
-		res = outerApi.Mul(res, x)
+		res.Mul(api, res, x)
 		c := inputs[i]
-		res = outerApi.Add(res, c)
+		res.Add(api, res, c)
 	}
 
 	return res
