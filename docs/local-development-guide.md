@@ -95,7 +95,7 @@ java -Dvertx.configurationFile=config/coordinator/vertx-options.json \
      --traces-limits-v2 config/common/traces-limits-v2.toml \
      --smart-contract-errors config/common/smart-contract-errors.toml \
      --gas-price-cap-time-of-day-multipliers config/common/gas-price-cap-time-of-day-multipliers.toml \
-     "config/coordinator/coordinator-config-v2.toml"
+     config/coordinator/coordinator-config-v2.toml
 ```
 
 Note: When running the coordinator standalone, you'll need to ensure that all its dependencies (such as L1 and L2 nodes) are properly configured and running.
