@@ -7,6 +7,8 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -25,19 +27,52 @@ type Asset struct {
 }
 
 // Prove function for the Assest struct
-func (asset *Asset) Prove(cfg *config.Config, req *execution.Request) error {
+func (asset *Asset) Prove(cfg *config.Config, req *execution.Request) {
 	// Set MonitorParams before any proving happens
 	profiling.SetMonitorParams(cfg)
 
 	logrus.Info("Starting to run the bootstrapper")
 	var (
-		witness     = test_utils.GetZkevmWitness(req, cfg)
-		runtimeBoot = wizard.RunProver(asset.DistWizard.Bootstrapper, asset.Zkevm.GetMainProverStep(witness))
-		_, _        = distributed.SegmentRuntime(runtimeBoot, asset.DistWizard)
+		witness                 = test_utils.GetZkevmWitness(req, cfg)
+		runtimeBoot             = wizard.RunProver(asset.DistWizard.Bootstrapper, asset.Zkevm.GetMainProverStep(witness))
+		witnessGLs, witnessLPPs = distributed.SegmentRuntime(runtimeBoot, asset.DistWizard)
 	)
 	logrus.Info("Finished running the bootstrapper")
 
-	return nil
+	logrus.Info("Starting to run GL Prover")
+	runGLs := RunProverGLs(asset.DistWizard, witnessGLs)
+	SanityCheckProvers(asset.DistWizard, runGLs)
+	logrus.Info("Finished running GL Prover")
+
+	logrus.Info("Starting to generate shared Randomness")
+	sharedRandomness := GetSharedRandomness(runGLs)
+	logrus.Info("Finished generating shared Randomness")
+
+	logrus.Info("Starting to run LPP Prover")
+	runLPPs := RunProverLPPs(asset.DistWizard, sharedRandomness, witnessLPPs)
+	SanityCheckProvers(asset.DistWizard, runLPPs)
+	logrus.Info("Finished running LPP Prover")
+
+	RunConglomerationProver(asset.DistWizard.CompiledConglomeration, runGLs, runLPPs)
+}
+
+func SanityCheckProvers(distWizard *distributed.DistributedWizard, runs []*wizard.ProverRuntime) {
+	for i := range runs {
+		SanityCheckConglomeration(distWizard.CompiledConglomeration, runs[i])
+	}
+}
+
+func GetSharedRandomness(runs []*wizard.ProverRuntime) field.Element {
+	witnesses := make([]recursion.Witness, len(runs))
+	for i := range runs {
+		witnesses[i] = recursion.ExtractWitness(runs[i])
+	}
+
+	comps := make([]*wizard.CompiledIOP, len(runs))
+	for i := range runs {
+		comps[i] = runs[i].Spec
+	}
+	return distributed.GetSharedRandomnessFromWitnesses(comps, witnesses)
 }
 
 // Unified function to read and deserialize all assets and compiled files
