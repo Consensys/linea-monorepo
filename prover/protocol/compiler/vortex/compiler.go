@@ -611,7 +611,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 		)
 		ctx.Items.OpenedColumns = append(ctx.Items.OpenedColumns, openedCol)
 		if numRowsSIS != 0 {
-			openedColSIS := ctx.comp.InsertProof(
+			openedColSIS := ctx.Comp.InsertProof(
 				lastRound+2,
 				ctx.SelectedColSISName(col),
 				numRowsSIS,
@@ -619,7 +619,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 			ctx.Items.OpenedSISColumns = append(ctx.Items.OpenedSISColumns, openedColSIS)
 		}
 		if numRowsNonSIS != 0 {
-			openedColNonSIS := ctx.comp.InsertProof(
+			openedColNonSIS := ctx.Comp.InsertProof(
 				lastRound+2,
 				ctx.SelectedColNonSISName(col),
 				numRowsNonSIS,
