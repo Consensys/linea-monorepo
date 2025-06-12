@@ -48,7 +48,7 @@ func TestCompiler(t *testing.T) {
 	prover := func(run *wizard.ProverRuntime) {
 		p := smartvectors.ForTest(1, 2, 3, 3)
 		run.AssignColumn(P, p)
-		u := run.GetRandomCoinField(COIN)
+		u := run.GetRandomCoinFieldExt(COIN)
 		y := smartvectors.EvaluateLagrangeMixed(p, u)
 		run.AssignUnivariate(U, u, y)
 	}

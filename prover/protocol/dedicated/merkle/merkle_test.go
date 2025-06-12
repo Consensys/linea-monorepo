@@ -48,9 +48,11 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 	leaves := make([]types.Bytes32, 1<<depth)
 	for i := range leaves {
 		// #nosec G404 -- no need for a cryptographically strong PRNG for testing purposes
-		var x field.Element
-		x.SetRandom()
-		leaves[i] = x.Bytes()
+		var x [8]field.Element
+		for i := 0; i < 8; i++ {
+			x[i].SetRandom()
+		}
+		leaves[i] = types.HashToBytes32(x)
 	}
 	tree := smt.BuildComplete(leaves, hashtypes.MiMC)
 	root := tree.Root

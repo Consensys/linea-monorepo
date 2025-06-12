@@ -58,8 +58,8 @@ func HashToBytes32(hash [8]koalabear.Element) Bytes32 {
 }
 
 // Bytes32ToHash converts Bytes32 to [8]koalabear.Element
-func Bytes32ToHash(input Bytes32) [8]koalabear.Element { // Changed koalabear.Element to Element
-	var result [8]koalabear.Element // Array to store the 8 reconstructed Elements
+func Bytes32ToHash(input Bytes32) []koalabear.Element { // Changed koalabear.Element to Element
+	var result []koalabear.Element // Array to store the 8 reconstructed Elements
 
 	for i := 0; i < 8; i++ {
 		startIndex := i * 4

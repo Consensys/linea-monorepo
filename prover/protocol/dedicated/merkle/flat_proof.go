@@ -89,7 +89,7 @@ func (p *FlatProof) Unpack(run ifaces.Runtime, pos smartvectors.SmartVector) []s
 
 		for n := range p.Nodes {
 			node := p.Nodes[n].GetColAssignmentAt(run, i)
-			newProof.Siblings[n].SetField(node)
+			newProof.Siblings[n] = types.HashToBytes32(node)
 		}
 
 		proofs = append(proofs, newProof)

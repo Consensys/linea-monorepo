@@ -323,9 +323,13 @@ func (ctx *Ctx) unpackMerkleProofs(sv smartvectors.SmartVector, entryList []int)
 			// parse the siblings accounting for the fact that we
 			// are inversing the order.
 			for k := range proof.Siblings {
-				v := sv.Get(curr)
-				proof.Siblings[depth-k-1] = types.Bytes32(v.Bytes())
-				curr++
+				var v [8]field.Element
+				for i := 0; i < 8; i++ {
+					v[i] = sv.Get(curr)
+					curr++
+				}
+				proof.Siblings[depth-k-1] = types.Bytes32(types.HashToBytes32(v))
+
 			}
 
 			proofs[i][j] = proof

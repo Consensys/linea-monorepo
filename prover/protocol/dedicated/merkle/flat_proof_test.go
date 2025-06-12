@@ -184,8 +184,8 @@ func (mt *merkleTestBuilder) pushRow(row merkleTestBuilderRow) {
 	mt.counter = append(mt.counter, field.NewElement(uint64(len(mt.counter))))
 	mt.proofs = append(mt.proofs, row.proof)
 	mt.pos = append(mt.pos, field.NewElement(uint64(row.pos)))
-	mt.leaves = append(mt.leaves, row.leaf.ToField())
-	mt.roots = append(mt.roots, row.root.ToField())
+	mt.leaves = append(mt.leaves, types.Bytes32ToHash(row.leaf)...)
+	mt.roots = append(mt.roots, types.Bytes32ToHash(row.root)...)
 	mt.useNextMerkleProof = append(mt.useNextMerkleProof, field.FromBool(row.useNextMerkleProof))
 	mt.isActive = append(mt.isActive, field.One())
 }

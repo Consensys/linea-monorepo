@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -68,7 +69,7 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 	isSISReplacedByMiMC := append(flagForNoSISRounds, flagForSISRounds...)
 
 	proof := &vortex.OpeningProof{}
-	randomCoin := vr.GetRandomCoinField(ctx.LinCombRandCoinName())
+	randomCoin := vr.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
 
 	// Collect the linear combination
 	proof.LinearCombination = vr.GetColumn(ctx.LinCombName())
@@ -91,7 +92,7 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 		OpeningProof:        *proof,
 		RandomCoin:          randomCoin,
 		EntryList:           entryList,
-		IsSISReplacedByMiMC: isSISReplacedByMiMC,
+		IsSISReplacedByMiMC: isSISReplacedByMiMC, //TODO@yao@thomas: how to set the flag?
 	})
 }
 
@@ -102,18 +103,18 @@ func (ctx *Ctx) getNbCommittedRows(round int) int {
 }
 
 // returns the Ys as a vector
-func (ctx *Ctx) getYs(vr wizard.Runtime) (ys [][]field.Element) {
+func (ctx *Ctx) getYs(vr wizard.Runtime) (ys [][]fext.Element) {
 
 	var (
 		query   = ctx.Query
 		params  = vr.GetUnivariateParams(ctx.Query.QueryID)
-		ysNoSIS = [][]field.Element{}
-		ysSIS   = [][]field.Element{}
+		ysNoSIS = [][]fext.Element{}
+		ysSIS   = [][]fext.Element{}
 	)
 
 	// Build an index table to efficiently lookup an alleged
 	// prover evaluation from its colID.
-	ysMap := make(map[ifaces.ColID]field.Element, len(params.Ys))
+	ysMap := make(map[ifaces.ColID]fext.Element, len(params.Ys))
 	for i := range query.Pols {
 		ysMap[query.Pols[i].GetColID()] = params.Ys[i]
 	}
@@ -128,7 +129,7 @@ func (ctx *Ctx) getYs(vr wizard.Runtime) (ys [][]field.Element) {
 	})
 
 	for _, shadowID := range shadowIDs {
-		ysMap[shadowID] = field.Zero()
+		ysMap[shadowID] = fext.Zero()
 	}
 
 	// add ys for precomputed
@@ -137,7 +138,7 @@ func (ctx *Ctx) getYs(vr wizard.Runtime) (ys [][]field.Element) {
 		for i, poly := range ctx.Items.Precomputeds.PrecomputedColums {
 			names[i] = poly.GetColID()
 		}
-		ysPrecomputed := make([]field.Element, len(names))
+		ysPrecomputed := make([]fext.Element, len(names))
 		for i, name := range names {
 			ysPrecomputed[i] = ysMap[name]
 		}
@@ -153,7 +154,7 @@ func (ctx *Ctx) getYs(vr wizard.Runtime) (ys [][]field.Element) {
 	// and append them to the sis or no sis lists
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
 		names := ctx.CommitmentsByRounds.MustGet(round)
-		ysRounds := make([]field.Element, len(names))
+		ysRounds := make([]fext.Element, len(names))
 		for i, name := range names {
 			ysRounds[i] = ysMap[name]
 		}

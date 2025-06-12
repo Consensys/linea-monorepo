@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -43,8 +43,8 @@ func TestCompiler(t *testing.T) {
 				b.UnivariateEval("EVAL", rows...)
 			},
 			Prove: func(pr *wizard.ProverRuntime) {
-				ys := make([]field.Element, len(rows))
-				x := field.NewElement(57) // the evaluation point
+				ys := make([]fext.Element, len(rows))
+				x := fext.RandomElement() // the evaluation point
 
 				// assign the rows with random polynomials and collect the ys
 				for i, row := range rows {
@@ -84,8 +84,8 @@ func TestCompiler(t *testing.T) {
 				for i := range nPolsMultiRound {
 					numPolys += nPolsMultiRound[i]
 				}
-				ys := make([]field.Element, numPolys)
-				x := field.NewElement(57) // the evaluation point
+				ys := make([]fext.Element, numPolys)
+				x := fext.RandomElement() // the evaluation point
 
 				// assign the rows with random polynomials and collect the ys
 				for round := range rowsMultiRound {
@@ -101,7 +101,7 @@ func TestCompiler(t *testing.T) {
 					}
 
 					for i, row := range rowsMultiRound[round] {
-						p := smartvectors.Rand(polSize)
+						p := smartvectors.RandExt(polSize)
 						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
@@ -148,8 +148,8 @@ func TestCompiler(t *testing.T) {
 				for i := range nPolsMultiRound {
 					numPolys += nPolsMultiRound[i]
 				}
-				ys := make([]field.Element, numPolys)
-				x := field.NewElement(57) // the evaluation point
+				ys := make([]fext.Element, numPolys)
+				x := fext.RandomElement() // the evaluation point
 
 				// assign the rows with random polynomials and collect the ys
 				for round := range rowsMultiRound {
@@ -219,8 +219,8 @@ func TestCompiler(t *testing.T) {
 				for i := range nPolsMultiRound {
 					numPolys += nPolsMultiRound[i]
 				}
-				ys := make([]field.Element, numPolys)
-				x := field.NewElement(57) // the evaluation point
+				ys := make([]fext.Element, numPolys)
+				x := fext.RandomElement() // the evaluation point
 
 				// assign the rows with random polynomials and collect the ys
 				for round := range rowsMultiRound {
