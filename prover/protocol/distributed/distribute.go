@@ -4,18 +4,36 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	cmimc "github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/reedsolomon"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/selector"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 // lppGroupingArity indicates how many GL modules an LPP module relates to.
@@ -48,6 +66,10 @@ type DistributedWizard struct {
 	// each module.
 	Disc ModuleDiscoverer
 
+	// CompiledDefault stores the compiled default module and is set by calling
+	// [DistributedWizard.Compile]
+	CompiledDefault *RecursedSegmentCompilation
+
 	// CompiledGLs stores the compiled GL modules and is set by calling
 	// [DistributedWizard.Compile]
 	CompiledGLs []*RecursedSegmentCompilation
@@ -56,13 +78,124 @@ type DistributedWizard struct {
 	// [DistributedWizard.Compile]
 	CompiledLPPs []*RecursedSegmentCompilation
 
-	// CompiledDefault stores the compiled default module and is set by calling
-	// [DistributedWizard.Compile]
-	CompiledDefault *RecursedSegmentCompilation
-
 	// CompiledConglomeration stores the compilation context of the
 	// conglomeration wizard.
 	CompiledConglomeration *ConglomeratorCompilation
+}
+
+func init() {
+
+	serialization.RegisterImplementation(AssignLPPQueries{})
+	serialization.RegisterImplementation(SetInitialFSHash{})
+	serialization.RegisterImplementation(CheckNxHash{})
+	serialization.RegisterImplementation(StandardModuleDiscoverer{})
+	serialization.RegisterImplementation(LppWitnessAssignment{})
+	serialization.RegisterImplementation(ModuleGLAssignGL{})
+	serialization.RegisterImplementation(ModuleGLAssignSendReceiveGlobal{})
+	serialization.RegisterImplementation(ModuleGLCheckSendReceiveGlobal{})
+	serialization.RegisterImplementation(LPPSegmentBoundaryCalculator{})
+	serialization.RegisterImplementation(ConglomerateHolisticCheck{})
+	serialization.RegisterImplementation(ConglomerationAssignHolisticCheckColumn{})
+
+	serialization.RegisterImplementation(cleanup.CleanupProverAction{})
+	serialization.RegisterImplementation(dummy.DummyVerifierAction{})
+	serialization.RegisterImplementation(dummy.DummyProverAction{})
+
+	serialization.RegisterImplementation(globalcs.EvaluationProver{})
+	serialization.RegisterImplementation(globalcs.EvaluationVerifier{})
+	serialization.RegisterImplementation(globalcs.QuotientCtx{})
+
+	serialization.RegisterImplementation(horner.AssignHornerCtx{})
+	serialization.RegisterImplementation(horner.AssignHornerIP{})
+	serialization.RegisterImplementation(horner.AssignHornerQuery{})
+	serialization.RegisterImplementation(horner.CheckHornerQuery{})
+	serialization.RegisterImplementation(horner.CheckHornerResult{})
+
+	serialization.RegisterImplementation(innerproduct.ProverTask{})
+	serialization.RegisterImplementation(innerproduct.VerifierForSize{})
+
+	serialization.RegisterImplementation(logderivativesum.AssignLogDerivativeSumProverAction{})
+	serialization.RegisterImplementation(logderivativesum.CheckLogDerivativeSumMustBeZero{})
+	serialization.RegisterImplementation(logderivativesum.ProverTaskAtRound{})
+	serialization.RegisterImplementation(logderivativesum.FinalEvaluationCheck{})
+
+	serialization.RegisterImplementation(mimc.MimcContext{})
+	serialization.RegisterImplementation(mpts.QuotientAccumulation{})
+	serialization.RegisterImplementation(mpts.RandomPointEvaluation{})
+	serialization.RegisterImplementation(mpts.ShadowRowProverAction{})
+	serialization.RegisterImplementation(mpts.VerifierAction{})
+
+	serialization.RegisterImplementation(permutation.ProverTaskAtRound{})
+	serialization.RegisterImplementation(permutation.AssignPermutationGrandProduct{})
+	serialization.RegisterImplementation(permutation.FinalProductCheck{})
+	serialization.RegisterImplementation(permutation.CheckGrandProductIsOne{})
+
+	serialization.RegisterImplementation(plonkinwizard.AssignSelOpening{})
+	serialization.RegisterImplementation(plonkinwizard.CheckActivatorAndMask{})
+	serialization.RegisterImplementation(plonkinwizard.CircAssignment{})
+
+	serialization.RegisterImplementation(recursion.RecursionCircuit{})
+	serialization.RegisterImplementation(recursion.AssignVortexOpenedCols{})
+	serialization.RegisterImplementation(recursion.AssignVortexUAlpha{})
+	serialization.RegisterImplementation(recursion.ConsistencyCheck{})
+
+	serialization.RegisterImplementation(selfrecursion.ColSelectionProverAction{})
+	serialization.RegisterImplementation(selfrecursion.CollapsingProverAction{})
+	serialization.RegisterImplementation(selfrecursion.CollapsingVerifierAction{})
+	serialization.RegisterImplementation(selfrecursion.ConsistencyYsUalphaVerifierAction{})
+	serialization.RegisterImplementation(selfrecursion.FoldPhaseProverAction{})
+	serialization.RegisterImplementation(selfrecursion.FoldPhaseVerifierAction{})
+	serialization.RegisterImplementation(selfrecursion.LinearHashMerkleProverAction{})
+	serialization.RegisterImplementation(selfrecursion.PreimageLimbsProverAction{})
+
+	serialization.RegisterImplementation(stitchsplit.AssignLocalPointProverAction{})
+	serialization.RegisterImplementation(stitchsplit.ProveRoundProverAction{})
+	serialization.RegisterImplementation(stitchsplit.QueryVerifierAction{})
+	serialization.RegisterImplementation(stitchsplit.SplitProverAction{})
+	serialization.RegisterImplementation(stitchsplit.StitchColumnsProverAction{})
+	serialization.RegisterImplementation(stitchsplit.StitchSubColumnsProverAction{})
+
+	serialization.RegisterImplementation(univariates.NaturalizeProverAction{})
+	serialization.RegisterImplementation(univariates.NaturalizeVerifierAction{})
+
+	serialization.RegisterImplementation(vortex.Ctx{})
+	serialization.RegisterImplementation(vortex.ColumnAssignmentProverAction{})
+	serialization.RegisterImplementation(vortex.OpenSelectedColumnsProverAction{})
+	serialization.RegisterImplementation(vortex.LinearCombinationComputationProverAction{})
+	serialization.RegisterImplementation(vortex.VortexVerifierAction{})
+	serialization.RegisterImplementation(vortex.ExplicitPolynomialEval{})
+	serialization.RegisterImplementation(vortex.ShadowRowProverAction{})
+	serialization.RegisterImplementation(vortex.ReassignPrecomputedRootAction{})
+
+	serialization.RegisterImplementation(functionals.CoeffEvalProverAction{})
+	serialization.RegisterImplementation(functionals.InterpolationProverAction{})
+	serialization.RegisterImplementation(functionals.EvalBivariateProverAction{})
+	serialization.RegisterImplementation(functionals.FoldProverAction{})
+	serialization.RegisterImplementation(functionals.FoldOuterProverAction{})
+	serialization.RegisterImplementation(functionals.FoldOuterVerifierAction{})
+	serialization.RegisterImplementation(functionals.FoldVerifierAction{})
+
+	serialization.RegisterImplementation(reedsolomon.ReedSolomonProverAction{})
+	serialization.RegisterImplementation(reedsolomon.ReedSolomonVerifierAction{})
+
+	serialization.RegisterImplementation(column.FakeColumn{})
+
+	serialization.RegisterImplementation(selector.SubsampleProverAction{})
+	serialization.RegisterImplementation(selector.SubsampleVerifierAction{})
+
+	serialization.RegisterImplementation(expr_handle.ExprHandleProverAction{})
+
+	serialization.RegisterImplementation(plonkinternal.CheckingActivators{})
+
+	serialization.RegisterImplementation(cmimc.ExternalHasherBuilder{})
+	serialization.RegisterImplementation(cmimc.ExternalHasherFactory{})
+
+	serialization.RegisterImplementation(plonkinternal.CheckingActivators{})
+	serialization.RegisterImplementation(plonkinternal.InitialBBSProverAction{})
+	serialization.RegisterImplementation(plonkinternal.PlonkNoCommitProverAction{})
+	serialization.RegisterImplementation(plonkinternal.LROCommitProverAction{})
+
+	serialization.RegisterImplementation(fr.Element{})
 }
 
 // DistributeWizard returns a [DistributedWizard] from a [wizard.CompiledIOP]. It
@@ -76,6 +209,7 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *Distribu
 
 	distributedWizard := &DistributedWizard{
 		Bootstrapper: precompileInitialWizard(comp, disc),
+		Disc:         disc,
 	}
 
 	disc.Analyze(distributedWizard.Bootstrapper)
@@ -126,16 +260,28 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *Distribu
 
 // CompileModules applies the compilation steps to each modules identically.
 func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
-
+	logrus.Infoln("Compiling distributed wizard default module")
 	dist.CompiledDefault = CompileSegment(dist.DefaultModule)
-	dist.CompiledGLs = make([]*RecursedSegmentCompilation, len(dist.GLs))
-	dist.CompiledLPPs = make([]*RecursedSegmentCompilation, len(dist.LPPs))
 
+	logrus.Infof("Number of GL modules to compile:%d\n", len(dist.GLs))
+	dist.CompiledGLs = make([]*RecursedSegmentCompilation, len(dist.GLs))
 	for i := range dist.GLs {
+		logrus.
+			WithField("module-name", dist.GLs[i].DefinitionInput.ModuleName).
+			WithField("module-type", "GL").
+			Info("compiling module")
+
 		dist.CompiledGLs[i] = CompileSegment(dist.GLs[i])
 	}
 
+	logrus.Infof("Number of LPP modules to compile:%d\n", len(dist.LPPs))
+	dist.CompiledLPPs = make([]*RecursedSegmentCompilation, len(dist.LPPs))
 	for i := range dist.LPPs {
+		logrus.
+			WithField("module-name", dist.LPPs[i].ModuleNames()).
+			WithField("module-type", "LPP").
+			Info("compiling module")
+
 		dist.CompiledLPPs[i] = CompileSegment(dist.LPPs[i])
 	}
 
@@ -169,14 +315,14 @@ func GetSharedRandomness(lppCommitments []field.Element) field.Element {
 //
 // The result of this function is to be used as the shared randomness for
 // the LPP provers.
-func GetSharedRandomnessFromWitnesses(gLWitnesses []recursion.Witness) field.Element {
-	sharedRandomness := field.Element{}
+func GetSharedRandomnessFromWitnesses(comp []*wizard.CompiledIOP, gLWitnesses []recursion.Witness) field.Element {
+	lppCommitments := []field.Element{}
 	for i := range gLWitnesses {
 		name := fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, 0)
-		lpp := gLWitnesses[i].Proof.GetPublicInput(nil, preRecursionPrefix+name)
-		sharedRandomness = cmimc.BlockCompression(sharedRandomness, lpp)
+		lpp := gLWitnesses[i].Proof.GetPublicInput(comp[i], preRecursionPrefix+name)
+		lppCommitments = append(lppCommitments, lpp)
 	}
-	return sharedRandomness
+	return GetSharedRandomness(lppCommitments)
 }
 
 // precompileInitialWizard pre-compiles the initial wizard protocol by applying all the
@@ -187,7 +333,12 @@ func precompileInitialWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *w
 	mimc.CompileMiMC(comp)
 	// specialqueries.RangeProof(comp)
 	// specialqueries.CompileFixedPermutations(comp)
-	logderivativesum.LookupIntoLogDerivativeSumWithSegmenter(disc)(comp)
+	logderivativesum.LookupIntoLogDerivativeSumWithSegmenter(
+		&LPPSegmentBoundaryCalculator{
+			Disc:     disc.(*StandardModuleDiscoverer),
+			LPPArity: lppGroupingArity,
+		},
+	)(comp)
 	permutation.CompileIntoGdProduct(comp)
 	horner.ProjectionToHorner(comp)
 	return comp

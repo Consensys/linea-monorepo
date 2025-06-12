@@ -1,12 +1,11 @@
 package distributed
 
 import (
-	"strings"
-
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -79,7 +78,7 @@ func SegmentRuntime(runtime *wizard.ProverRuntime, distributedWizard *Distribute
 func SegmentModuleGL(runtime *wizard.ProverRuntime, moduleGL *ModuleGL) (witnessesGL []*ModuleWitnessGL) {
 
 	var (
-		fmi                  = moduleGL.definitionInput
+		fmi                  = moduleGL.DefinitionInput
 		cols                 = runtime.Spec.Columns.AllKeys()
 		nbSegmentModule      = NbSegmentOfModule(runtime, fmi.Disc, []ModuleName{fmi.ModuleName})
 		receivedValuesGlobal = make([]field.Element, len(moduleGL.ReceivedValuesGlobalAccs))
@@ -121,7 +120,7 @@ func SegmentModuleGL(runtime *wizard.ProverRuntime, moduleGL *ModuleGL) (witness
 func SegmentModuleLPP(runtime *wizard.ProverRuntime, moduleLPP *ModuleLPP) (witnessesLPP []*ModuleWitnessLPP) {
 
 	var (
-		fmis          = moduleLPP.definitionInputs
+		fmis          = moduleLPP.DefinitionInputs
 		cols          = runtime.Spec.Columns.AllKeys()
 		_, _, hArgs   = getQueryArgs(fmis)
 		n0            = make([]int, len(hArgs))
@@ -130,7 +129,7 @@ func SegmentModuleLPP(runtime *wizard.ProverRuntime, moduleLPP *ModuleLPP) (witn
 		columnsLPPSet = make(map[ifaces.ColID]struct{})
 	)
 
-	for _, fmi := range moduleLPP.definitionInputs {
+	for _, fmi := range moduleLPP.DefinitionInputs {
 		moduleNames = append(moduleNames, fmi.ModuleName)
 		moduleNameSet[fmi.ModuleName] = struct{}{}
 		for col := range fmi.ColumnsLPPSet {
@@ -159,7 +158,6 @@ func SegmentModuleLPP(runtime *wizard.ProverRuntime, moduleLPP *ModuleLPP) (witn
 			}
 
 			col := runtime.Spec.Columns.GetHandle(col)
-
 			segment := SegmentOfColumn(runtime, moduleLPP.Disc, col, moduleIndex, nbSegmentModule)
 			moduleWitnessLPP.Columns[col.GetColID()] = segment
 		}
@@ -216,8 +214,7 @@ func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, mod
 
 // SegmentColumn returns the segment of a given column for given index. The
 // function also takes a maxNbSegment value which is useful in case
-func SegmentOfColumn(runtime *wizard.ProverRuntime, disc ModuleDiscoverer,
-	col ifaces.Column, index, totalNbSegment int) smartvectors.SmartVector {
+func SegmentOfColumn(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, col ifaces.Column, index, totalNbSegment int) smartvectors.SmartVector {
 
 	if status := col.(column.Natural).Status(); status == column.Precomputed || status == column.VerifyingKey {
 		return col.GetColAssignment(runtime)
@@ -237,9 +234,10 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc ModuleDiscoverer,
 	}
 
 	var (
-		start      = startSeg + index*newSize
-		end        = start + newSize
-		assignment = col.GetColAssignment(runtime)
+		start               = startSeg + index*newSize
+		end                 = start + newSize
+		assignment          = col.GetColAssignment(runtime)
+		padding, isPaddable = pragmas.IsPaddable(col)
 	)
 
 	isOOB := end > col.Size() || start < 0
@@ -249,8 +247,8 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc ModuleDiscoverer,
 	// splitter and they will go OOB if they are used for more than 1 segment. When,
 	// this happens we "pad" it on the fly with zeroes to signify that they corresponds
 	// to unmatched lookup value.
-	if isOOB && strings.HasSuffix(string(col.GetColID()), "_LOGDERIVATIVE_M") {
-		return smartvectors.NewConstant(field.Zero(), newSize)
+	if isOOB && isPaddable {
+		return smartvectors.NewConstant(padding, newSize)
 	}
 
 	if isOOB {
@@ -269,37 +267,40 @@ func (mw *ModuleWitnessLPP) NextN0s(moduleLPP *ModuleLPP) []int {
 
 	for i := range newN0s {
 
-		// Note: the selector might be a non-natural column. Possibly a const-col.
-		selCol := args[i].Selector
+		for k := range args[i].Selectors {
 
-		if constCol, isConstCol := selCol.(verifiercol.ConstCol); isConstCol {
+			// Note: the selector might be a non-natural column. Possibly a const-col.
+			selCol := args[i].Selectors[k]
 
-			if constCol.F.IsZero() {
-				continue
+			if constCol, isConstCol := selCol.(verifiercol.ConstCol); isConstCol {
+
+				if constCol.F.IsZero() {
+					continue
+				}
+
+				if constCol.F.IsOne() {
+					newN0s[i] += constCol.Size()
+					continue
+				}
+
+				utils.Panic("the selector column has non-zero values: %v", constCol.F.String())
 			}
 
-			if constCol.F.IsOne() {
-				newN0s[i] += constCol.Size()
-				continue
+			// Expectedly, at this point. The column must be a natural column. We can't support
+			// shifted selector columns.
+			_ = selCol.(column.Natural)
+
+			selSV, ok := mw.Columns[selCol.GetColID()]
+			if !ok {
+				utils.Panic("selector: %v is missing from witness columns for module: %v index: %v", selCol, mw.ModuleNames, mw.ModuleIndex)
 			}
 
-			utils.Panic("the selector column has non-zero values: %v", constCol.F.String())
-		}
+			sel := selSV.IntoRegVecSaveAlloc()
 
-		// Expectedly, at this point. The column must be a natural column. We can't support
-		// shifted selector columns.
-		_ = selCol.(column.Natural)
-
-		selSV, ok := mw.Columns[selCol.GetColID()]
-		if !ok {
-			utils.Panic("selector: %v is missing from witness columns for module: %v index: %v", selCol, mw.ModuleNames, mw.ModuleIndex)
-		}
-
-		sel := selSV.IntoRegVecSaveAlloc()
-
-		for j := range sel {
-			if sel[j].IsOne() {
-				newN0s[i]++
+			for j := range sel[k] {
+				if sel[j].IsOne() {
+					newN0s[i]++
+				}
 			}
 		}
 	}

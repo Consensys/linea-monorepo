@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
+	"github.com/google/uuid"
 )
 
 // Store registers [Natural] for structs that can return the infos given a name
@@ -20,8 +21,8 @@ type Store struct {
 }
 
 // NewStore constructs an empty Store object
-func NewStore() Store {
-	return Store{
+func NewStore() *Store {
+	return &Store{
 		indicesByNames: collection.NewMapping[ifaces.ColID, columnPosition](),
 		byRounds:       collection.NewVecVec[*storedColumnInfo](),
 	}
@@ -39,22 +40,29 @@ type columnPosition struct {
 // of the [Natural] column.
 type storedColumnInfo struct {
 	// Size of the commitment
-	Size int
+	Size int `cbor:"s"`
 	// ifaces.ColID of the column stored
-	ID ifaces.ColID
+	ID ifaces.ColID `cbor:"i"`
 	// Status of the commitment
-	Status Status
+	Status Status `cbor:"t"`
 	// IncludeInProverFS states the prover should include the column in his FS
 	// transcript. This is used for columns that are recursed using
 	// FullRecursion. This field is only meaningfull for [Ignored] columns as
 	// they are excluded by default.
-	IncludeInProverFS bool
+	IncludeInProverFS bool `cbor:"f"`
 	// ExcludeFromProverFS states the prover should not include the column in
 	// his FS transcript. This overrides [IncludeInProverFS], meaning that if
 	// [IncludeInProverFS] is true but ExcludeFromProverFS is true, the column
 	// will still be excluded from the transcript. This is used explicit FS
 	// compilation.
-	ExcludeFromProverFS bool
+	ExcludeFromProverFS bool `cbor:"e"`
+	// Pragmas is a free map that users can use to store whatever they want,
+	// it can be used to store compile-time information.
+	Pragmas map[string]interface{} `cbor:"g,omitempty"`
+
+	// uuid is a unique identifier for the stored column. It is used for
+	// serialization.
+	uuid uuid.UUID `serde:"omit"`
 }
 
 // AddToRound constructs a [Natural], registers it in the [Store] and returns
@@ -80,7 +88,7 @@ func (s *Store) AddToRound(round int, name ifaces.ColID, size int, status Status
 
 	// Constructing at the beginning does the validation early on
 	nat := newNatural(name, position, s)
-	infos := &storedColumnInfo{Size: size, ID: name, Status: status}
+	infos := &storedColumnInfo{Size: size, ID: name, Status: status, uuid: uuid.New(), Pragmas: make(map[string]interface{})}
 
 	// Panic if the entry already exist
 	s.indicesByNames.InsertNew(name, position)
@@ -317,11 +325,11 @@ func (s *Store) AllHandlesAtRound(round int) []ifaces.Column {
 	roundInfos := s.byRounds.GetOrEmpty(round)
 	res := make([]ifaces.Column, len(roundInfos))
 	for posInRound, info := range roundInfos {
-		res[posInRound] = Natural{
-			ID:       info.ID,
-			position: columnPosition{round: round, posInRound: posInRound},
-			store:    s,
-		}
+		res[posInRound] = newNatural(
+			info.ID,
+			columnPosition{round: round, posInRound: posInRound},
+			s,
+		)
 	}
 	return res
 }
@@ -338,11 +346,11 @@ func (s *Store) AllHandlesAtRoundUnignored(round int) []ifaces.Column {
 			continue
 		}
 
-		res = append(res, Natural{
-			ID:       info.ID,
-			position: columnPosition{round: round, posInRound: posInRound},
-			store:    s,
-		})
+		res = append(res, newNatural(
+			info.ID,
+			columnPosition{round: round, posInRound: posInRound},
+			s,
+		))
 	}
 	return res
 }
@@ -354,11 +362,7 @@ Panic if not found.
 func (s *Store) GetHandle(name ifaces.ColID) ifaces.Column {
 	// Note that this panics if the entry is not present
 	position := s.indicesByNames.MustGet(name)
-	return Natural{
-		ID:       name,
-		position: position,
-		store:    s,
-	}
+	return newNatural(name, position, s)
 }
 
 // Panics if the store does not have the name registered
@@ -496,4 +500,15 @@ func (s *Store) AllKeysInProverTranscript(round int) []ifaces.ColID {
 	}
 
 	return res
+}
+
+// SetPragma sets the pragma for a given column name.
+func (s *Store) SetPragma(name ifaces.ColID, pragma string, data any) {
+	s.info(name).Pragmas[pragma] = data
+}
+
+// GetPragma returns the pragma for a given column name.
+func (s *Store) GetPragma(name ifaces.ColID, pragma string) (any, bool) {
+	res, ok := s.info(name).Pragmas[pragma]
+	return res, ok
 }

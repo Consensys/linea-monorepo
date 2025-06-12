@@ -7,23 +7,23 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// circAssignment is the prover step responsible for assigning the plonk circuit
-type circAssignment struct{ *context }
+// CircAssignment is the prover step responsible for assigning the plonk circuit
+type CircAssignment struct{ *Context }
 
-// assignSelOpening is the prover step responsible for assigning the selector opening
-type assignSelOpening struct{ *context }
+// AssignSelOpening is the prover step responsible for assigning the selector opening
+type AssignSelOpening struct{ *Context }
 
-func (a *circAssignment) Run(run *wizard.ProverRuntime) {
-	a.PlonkCtx.GetPlonkProverAction().Run(run, a.getWitnesses(run))
+func (a *CircAssignment) Run(run *wizard.ProverRuntime) {
+	a.PlonkProverAction.Run(run, a.getWitnesses(run))
 	a.StackedCircuitData.Run(run)
 }
 
-func (a circAssignment) getWitnesses(run *wizard.ProverRuntime) []witness.Witness {
+func (a CircAssignment) getWitnesses(run *wizard.ProverRuntime) []witness.Witness {
 
 	var (
 		data           = a.Q.Data.GetColAssignment(run).IntoRegVecSaveAlloc()
 		sel            = a.Q.Selector.GetColAssignment(run).IntoRegVecSaveAlloc()
-		nbPublic       = a.PlonkCtx.Plonk.SPR.GetNbPublicVariables()
+		nbPublic       = a.NbPublicVariable
 		nbPublicPadded = utils.NextPowerOfTwo(nbPublic)
 		witnesses      = make([]witness.Witness, 0, a.Q.Data.Size()/nbPublicPadded)
 	)
@@ -54,7 +54,7 @@ func (a circAssignment) getWitnesses(run *wizard.ProverRuntime) []witness.Witnes
 	return witnesses
 }
 
-func (a assignSelOpening) Run(run *wizard.ProverRuntime) {
+func (a AssignSelOpening) Run(run *wizard.ProverRuntime) {
 
 	var (
 		maxNbInstances    = len(a.SelOpenings)

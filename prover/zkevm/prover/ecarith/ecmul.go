@@ -29,7 +29,7 @@ type EcMul struct {
 	*EcDataMulSource
 	AlignedGnarkData *plonk.Alignment
 
-	size int
+	Size int
 	*Limits
 }
 
@@ -60,12 +60,15 @@ func newEcMul(comp *wizard.CompiledIOP, limits *Limits, src *EcDataMulSource, pl
 		Circuit:            NewECMulCircuit(limits),
 		NbCircuitInstances: limits.NbCircuitInstances,
 		PlonkOptions:       plonkOptions,
-		InputFiller:        nil, // not necessary: 0 * (0,0) = (0,0) with complete arithmetic
+		// not necessary: 0 * (0,0) = (0,0) with complete arithmetic since (0, 0)
+		// encodes the point at infinity.
+		InputFillerKey: "",
 	}
+
 	res := &EcMul{
 		EcDataMulSource:  src,
 		AlignedGnarkData: plonk.DefineAlignment(comp, toAlign),
-		size:             size,
+		Size:             size,
 	}
 
 	return res

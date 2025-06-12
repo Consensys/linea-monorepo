@@ -28,7 +28,7 @@ func (mod *Module) Assign(run *wizard.ProverRuntime) {
 	var (
 		modexpCountSmall int = 0
 		modexpCountLarge int = 0
-		isModexp             = mod.Input.isModExp.GetColAssignment(run).IntoRegVecSaveAlloc()
+		isModexp             = mod.Input.IsModExp.GetColAssignment(run).IntoRegVecSaveAlloc()
 		limbs                = mod.Input.Limbs.GetColAssignment(run).IntoRegVecSaveAlloc()
 		settings             = mod.Input.Settings
 		builder              = antichamberAssignment{
@@ -105,7 +105,7 @@ func (mod *Module) Assign(run *wizard.ProverRuntime) {
 
 	// It is possible to not declare the circuit (for testing purpose) in that
 	// case we skip the corresponding assignment part.
-	if mod.hasCircuit {
+	if mod.HasCircuit {
 		mod.GnarkCircuitConnector256Bits.Assign(run)
 		mod.GnarkCircuitConnector4096Bits.Assign(run)
 	}

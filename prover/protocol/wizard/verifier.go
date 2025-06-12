@@ -135,7 +135,7 @@ func verifyWithRuntimeUntilRound(comp *CompiledIOP, proof Proof, stopRound int) 
 
 		runtime.GenerateCoinsFromRound(round)
 
-		verifierSteps := runtime.Spec.subVerifiers.MustGet(round)
+		verifierSteps := runtime.Spec.SubVerifiers.MustGet(round)
 		for _, step := range verifierSteps {
 			if err := step.Run(&runtime); err != nil {
 				errs = append(errs, err)
@@ -192,7 +192,7 @@ func (proof Proof) GetPublicInput(comp *CompiledIOP, name string) field.Element 
 		return a.F
 	case *accessors.FromPublicColumn:
 		if a.Col.Status() == column.Proof {
-			return proof.Messages.MustGet(a.Col.ID).Get(0)
+			return proof.Messages.MustGet(a.Col.ID).Get(a.Pos)
 		}
 	case *accessors.FromLocalOpeningYAccessor:
 		return proof.QueriesParams.MustGet(a.Q.ID).(query.LocalOpeningParams).Y

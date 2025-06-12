@@ -13,9 +13,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// moduleTranslator is a utily struct wrapping a [wizard.CompiledIOP] and
+// ModuleTranslator is a utily struct wrapping a [wizard.CompiledIOP] and
 // implements the logic to build it and to translate it.
-type moduleTranslator struct {
+type ModuleTranslator struct {
 	Disc ModuleDiscoverer
 	Wiop *wizard.CompiledIOP
 }
@@ -31,7 +31,7 @@ type moduleTranslator struct {
 //
 // IsLPP indicates if the column is part of the LPP part of the module and is
 // inserted at round 1. Otherwise, it is inserted at round 0.
-func (mt *moduleTranslator) InsertColumn(col column.Natural, atRound int) ifaces.Column {
+func (mt *ModuleTranslator) InsertColumn(col column.Natural, atRound int) ifaces.Column {
 
 	if col.Round() != 0 {
 		utils.Panic("cannot translate a column with non-zero round %v", col.Round())
@@ -51,7 +51,7 @@ func (mt *moduleTranslator) InsertColumn(col column.Natural, atRound int) ifaces
 
 // InsertPrecomputed is as [InsertColumn] but specificially works for precomputed
 // columns.
-func (mt *moduleTranslator) InsertPrecomputed(col column.Natural, data smartvectors.SmartVector) ifaces.Column {
+func (mt *ModuleTranslator) InsertPrecomputed(col column.Natural, data smartvectors.SmartVector) ifaces.Column {
 
 	if col.Round() != 0 {
 		utils.Panic("cannot translate a column with non-zero round %v", col.Round())
@@ -75,18 +75,18 @@ func (mt *moduleTranslator) InsertPrecomputed(col column.Natural, data smartvect
 //
 // The sizeHint argument is meant to deduce what the size of a translated
 // [verifiercol.ConstCol]
-func (mt *moduleTranslator) TranslateColumn(col ifaces.Column, sizeHint int) ifaces.Column {
+func (mt *ModuleTranslator) TranslateColumn(col ifaces.Column) ifaces.Column {
 
 	switch c := col.(type) {
 	case column.Natural:
 		return mt.Wiop.Columns.GetHandle(c.ID)
 	case column.Shifted:
 		return column.Shifted{
-			Parent: mt.TranslateColumn(c.Parent, sizeHint),
+			Parent: mt.TranslateColumn(c.Parent),
 			Offset: c.Offset,
 		}
 	case verifiercol.ConstCol:
-		return verifiercol.NewConstantCol(c.F, sizeHint)
+		return verifiercol.NewConstantCol(c.F, c.Size())
 	default:
 		utils.Panic("unexpected type of column: type: %T, name: %v", col, col.GetColID())
 	}
@@ -94,14 +94,23 @@ func (mt *moduleTranslator) TranslateColumn(col ifaces.Column, sizeHint int) ifa
 	return nil
 }
 
+// TranslateColumnList returns a list of equivalent columns from the new module.
+// The function panics if the column cannot be resolved. It will happen if the
+// column has an expected type or is defined from not resolvable items.
+func (mt *ModuleTranslator) TranslateColumnList(cols []ifaces.Column) []ifaces.Column {
+	res := make([]ifaces.Column, len(cols))
+	for i := range res {
+		res[i] = mt.TranslateColumn(cols[i])
+	}
+	return res
+}
+
 // TranslateExpression returns an expression corresponding to the provided
 // expression but in term of the input module. When the function encounters
 // a [verifiercol.Constcol] as part of the expression, it converts it into
 // a [symbolic.Constant] directly as this simplifies the later steps in the
 // process and is strictly equivalent.
-func (mt *moduleTranslator) TranslateExpression(expr *symbolic.Expression) *symbolic.Expression {
-
-	sizeHint := NewSizeOfExpr(mt.Disc, expr)
+func (mt *ModuleTranslator) TranslateExpression(expr *symbolic.Expression) *symbolic.Expression {
 
 	return expr.ReconstructBottomUpSingleThreaded(
 		func(e *symbolic.Expression, children []*symbolic.Expression) *symbolic.Expression {
@@ -121,7 +130,7 @@ func (mt *moduleTranslator) TranslateExpression(expr *symbolic.Expression) *symb
 					if constcol, isconst := root.(verifiercol.ConstCol); isconst {
 						return symbolic.NewConstant(constcol.F)
 					}
-					newCol := mt.TranslateColumn(m, sizeHint)
+					newCol := mt.TranslateColumn(m)
 					return symbolic.NewVariable(newCol)
 				case coin.Info:
 					newCoin := mt.TranslateCoin(m)
@@ -136,10 +145,20 @@ func (mt *moduleTranslator) TranslateExpression(expr *symbolic.Expression) *symb
 	)
 }
 
+// TranslateExpressionList returns a list of equivalent expressions from the new
+// module.
+func (mt *ModuleTranslator) TranslateExpressionList(exprs []*symbolic.Expression) []*symbolic.Expression {
+	res := make([]*symbolic.Expression, len(exprs))
+	for i := range res {
+		res[i] = mt.TranslateExpression(exprs[i])
+	}
+	return res
+}
+
 // TranslateCoin returns the equivalent coin from the new module.
 // The function looks for a coin with the same name and inserts it
 // as a [coin.FieldFromSeed] if it is not found.
-func (mt *moduleTranslator) TranslateCoin(info coin.Info) coin.Info {
+func (mt *ModuleTranslator) TranslateCoin(info coin.Info) coin.Info {
 	if !mt.Wiop.Coins.Exists(info.Name) {
 		mt.Wiop.InsertCoin(1, info.Name, coin.FieldFromSeed)
 	}
@@ -147,7 +166,7 @@ func (mt *moduleTranslator) TranslateCoin(info coin.Info) coin.Info {
 }
 
 // TranslateAccessor returns an equivalent from the new module.
-func (mt *moduleTranslator) TranslateAccessor(acc ifaces.Accessor) ifaces.Accessor {
+func (mt *ModuleTranslator) TranslateAccessor(acc ifaces.Accessor) ifaces.Accessor {
 
 	switch a := acc.(type) {
 
@@ -165,7 +184,7 @@ func (mt *moduleTranslator) TranslateAccessor(acc ifaces.Accessor) ifaces.Access
 		return accessors.NewFromCoin(newCoin)
 
 	case *accessors.FromPublicColumn:
-		newCol := mt.TranslateColumn(a.Col, 1)
+		newCol := mt.TranslateColumn(a.Col)
 		return accessors.NewFromPublicColumn(newCol, a.Pos)
 
 	case *accessors.FromLocalOpeningYAccessor:
@@ -181,21 +200,21 @@ func (mt *moduleTranslator) TranslateAccessor(acc ifaces.Accessor) ifaces.Access
 
 // TranslateQueryParam returns an equivalent query from the new module.
 // The function will only look for queries with the same name.
-func (mt *moduleTranslator) TranslateQueryParam(query ifaces.Query) ifaces.Query {
+func (mt *ModuleTranslator) TranslateQueryParam(query ifaces.Query) ifaces.Query {
 	return mt.Wiop.QueriesParams.Data(query.Name())
 }
 
 // InsertPlonkInWizard inserts a new PlonkInWizard query in the target compiled IOP
 // by translating all the related columns
-func (mt *moduleTranslator) InsertPlonkInWizard(oldQuery *query.PlonkInWizard) *query.PlonkInWizard {
+func (mt *ModuleTranslator) InsertPlonkInWizard(oldQuery *query.PlonkInWizard) *query.PlonkInWizard {
 
-	newQuery := &query.PlonkInWizard{
-		ID:           oldQuery.ID,
-		Data:         mt.TranslateColumn(oldQuery.Data, 0),
-		Selector:     mt.TranslateColumn(oldQuery.Selector, 0),
-		Circuit:      oldQuery.Circuit,
-		PlonkOptions: oldQuery.PlonkOptions,
-	}
+	newQuery := query.NewPlonkInWizard(
+		oldQuery.ID,
+		mt.TranslateColumn(oldQuery.Data),
+		mt.TranslateColumn(oldQuery.Selector),
+		oldQuery.Circuit,
+		oldQuery.PlonkOptions,
+	)
 
 	mt.Wiop.InsertPlonkInWizard(newQuery)
 	return newQuery
@@ -209,11 +228,7 @@ func (mt *ModuleLPP) InsertLogDerivative(
 	logDerivativeArgs [][2]*symbolic.Expression,
 ) query.LogDerivativeSum {
 
-	res := query.LogDerivativeSum{
-		Round:  round,
-		ID:     id,
-		Inputs: map[int]*query.LogDerivativeSumInput{},
-	}
+	resInputs := map[int]*query.LogDerivativeSumInput{}
 
 	for _, numDenPair := range logDerivativeArgs {
 
@@ -226,18 +241,18 @@ func (mt *ModuleLPP) InsertLogDerivative(
 		mt.addCoinFromExpression(num)
 		mt.addCoinFromExpression(den)
 
-		if _, hasSize := res.Inputs[size]; !hasSize {
-			res.Inputs[size] = &query.LogDerivativeSumInput{
+		if _, hasSize := resInputs[size]; !hasSize {
+			resInputs[size] = &query.LogDerivativeSumInput{
 				Size: size,
 			}
 		}
 
-		newInp := res.Inputs[size]
+		newInp := resInputs[size]
 		newInp.Numerator = append(newInp.Numerator, mt.TranslateExpression(num))
 		newInp.Denominator = append(newInp.Denominator, mt.TranslateExpression(den))
 	}
 
-	return mt.Wiop.InsertLogDerivativeSum(res.Round, res.ID, res.Inputs)
+	return mt.Wiop.InsertLogDerivativeSum(round, id, resInputs)
 }
 
 // InsertGrandProduct inserts a new GrandProduct query in the target compiled IOP
@@ -248,11 +263,7 @@ func (mt *ModuleLPP) InsertGrandProduct(
 	args [][2]*symbolic.Expression,
 ) query.GrandProduct {
 
-	res := query.GrandProduct{
-		ID:     id,
-		Round:  round,
-		Inputs: make(map[int]*query.GrandProductInput),
-	}
+	resInputs := make(map[int]*query.GrandProductInput)
 
 	for _, numDenPair := range args {
 
@@ -265,18 +276,18 @@ func (mt *ModuleLPP) InsertGrandProduct(
 		mt.addCoinFromExpression(num)
 		mt.addCoinFromExpression(den)
 
-		if _, hasSize := res.Inputs[size]; !hasSize {
-			res.Inputs[size] = &query.GrandProductInput{
+		if _, hasSize := resInputs[size]; !hasSize {
+			resInputs[size] = &query.GrandProductInput{
 				Size: size,
 			}
 		}
 
-		newInp := res.Inputs[size]
+		newInp := resInputs[size]
 		newInp.Numerators = append(newInp.Numerators, mt.TranslateExpression(num))
 		newInp.Denominators = append(newInp.Denominators, mt.TranslateExpression(den))
 	}
 
-	return mt.Wiop.InsertGrandProduct(res.Round, res.ID, res.Inputs)
+	return mt.Wiop.InsertGrandProduct(round, id, resInputs)
 }
 
 // InsertHorner inserts a new Horner query in the target compiled IOP
@@ -287,40 +298,31 @@ func (mt *ModuleLPP) InsertHorner(
 	parts []query.HornerPart,
 ) query.Horner {
 
-	res := query.Horner{
-		Round: round,
-		ID:    id,
-	}
+	newParts := []query.HornerPart{}
 
 	for _, oldPart := range parts {
 
 		newPart := query.HornerPart{
-			Coefficient:  mt.TranslateExpression(oldPart.Coefficient),
+			Coefficients: mt.TranslateExpressionList(oldPart.Coefficients),
 			SignNegative: oldPart.SignNegative,
-			Selector:     mt.TranslateColumn(oldPart.Selector, 0),
+			Selectors:    mt.TranslateColumnList(oldPart.Selectors),
 			X:            mt.TranslateAccessor(oldPart.X),
 		}
 
-		mt.addCoinFromExpression(newPart.Coefficient)
+		mt.addCoinFromExpression(newPart.Coefficients...)
 		mt.addCoinFromAccessor(newPart.X)
-
-		res.Parts = append(res.Parts, newPart)
+		newParts = append(newParts, newPart)
 	}
 
-	return mt.Wiop.InsertHornerQuery(res.Round, res.ID, res.Parts)
+	return mt.Wiop.InsertHornerQuery(round, id, newParts)
 }
 
-func (mt *moduleTranslator) InsertCoin(name coin.Name, round int) {
+func (mt *ModuleTranslator) InsertCoin(name coin.Name, round int) {
 
 	if mt.Wiop.Coins.Exists(name) {
 		return
 	}
 
-	newInfo := coin.Info{
-		Name:  name,
-		Type:  coin.FieldFromSeed,
-		Round: round,
-	}
-
+	newInfo := coin.NewInfo(name, coin.FieldFromSeed, round)
 	mt.Wiop.Coins.AddToRound(round, name, newInfo)
 }

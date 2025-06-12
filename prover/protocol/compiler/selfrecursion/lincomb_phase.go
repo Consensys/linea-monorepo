@@ -26,7 +26,7 @@ func (ctx *SelfRecursionCtx) RowLinearCombinationPhase() {
 
 	// The reed-solomon check
 	reedsolomon.CheckReedSolomon(
-		ctx.comp,
+		ctx.Comp,
 		ctx.VortexCtx.BlowUpFactor,
 		ctx.Columns.Ualpha)
 
@@ -58,38 +58,38 @@ func (ctx *SelfRecursionCtx) defineYs() {
 		}
 	}
 	// Collect the SIS round commitments
-	for _, colIDs := range ctx.VortexCtx.CommitmentsByRoundsSIS.Inner() {
+	for _, colIDs := range ctx.VortexCtx.CommitmentsByRoundsSIS.GetInner() {
 		rangesSis = append(rangesSis, colIDs...)
 	}
 	// Collect the non-SIS round commitments
-	for _, colIDs := range ctx.VortexCtx.CommitmentsByRoundsNonSIS.Inner() {
+	for _, colIDs := range ctx.VortexCtx.CommitmentsByRoundsNonSIS.GetInner() {
 		rangesNonSis = append(rangesNonSis, colIDs...)
 	}
 	// append the ranges
 	ranges := append(rangesNonSis, rangesSis...)
-	ctx.Columns.Ys = verifiercol.NewFromYs(ctx.comp, ctx.VortexCtx.Query, ranges)
+	ctx.Columns.Ys = verifiercol.NewFromYs(ctx.Comp, ctx.VortexCtx.Query, ranges)
 }
 
-type consistencyYsUalphaVerifierAction struct {
-	ctx                *SelfRecursionCtx
-	interpolateUalphaX ifaces.Accessor
+type ConsistencyYsUalphaVerifierAction struct {
+	Ctx                *SelfRecursionCtx
+	InterpolateUalphaX ifaces.Accessor
 }
 
-func (a *consistencyYsUalphaVerifierAction) Run(run wizard.Runtime) error {
-	ys := a.ctx.Columns.Ys.GetColAssignment(run)
-	alpha := run.GetRandomCoinField(a.ctx.Coins.Alpha.Name)
+func (a *ConsistencyYsUalphaVerifierAction) Run(run wizard.Runtime) error {
+	ys := a.Ctx.Columns.Ys.GetColAssignment(run)
+	alpha := run.GetRandomCoinField(a.Ctx.Coins.Alpha.Name)
 	ysAlpha := smartvectors.EvalCoeff(ys, alpha)
-	uAlphaX := a.interpolateUalphaX.GetVal(run)
+	uAlphaX := a.InterpolateUalphaX.GetVal(run)
 	if uAlphaX != ysAlpha {
 		return fmt.Errorf("ConsistencyBetweenYsAndUalpha did not pass, ysAlphaX=%v uAlphaX=%v", ysAlpha.String(), uAlphaX.String())
 	}
 	return nil
 }
 
-func (a *consistencyYsUalphaVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	ys := a.ctx.Columns.Ys.GetColAssignmentGnark(run)
-	alpha := run.GetRandomCoinField(a.ctx.Coins.Alpha.Name)
-	uAlphaX := a.interpolateUalphaX.GetFrontendVariable(api, run)
+func (a *ConsistencyYsUalphaVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	ys := a.Ctx.Columns.Ys.GetColAssignmentGnark(run)
+	alpha := run.GetRandomCoinField(a.Ctx.Coins.Alpha.Name)
+	uAlphaX := a.InterpolateUalphaX.GetFrontendVariable(api, run)
 	ysAlpha := poly.EvaluateUnivariateGnark(api, ys, alpha)
 	api.AssertIsEqual(uAlphaX, ysAlpha)
 }
@@ -99,17 +99,17 @@ func (ctx *SelfRecursionCtx) consistencyBetweenYsAndUalpha() {
 
 	// Defer the interpolation of Ualpha to a dedicated wizard
 	ctx.Accessors.InterpolateUalphaX = functionals.Interpolation(
-		ctx.comp,
+		ctx.Comp,
 		ctx.interpolateUAlphaX(),
-		accessors.NewUnivariateX(ctx.VortexCtx.Query, ctx.comp.QueriesParams.Round(ctx.VortexCtx.Query.QueryID)),
+		accessors.NewUnivariateX(ctx.VortexCtx.Query, ctx.Comp.QueriesParams.Round(ctx.VortexCtx.Query.QueryID)),
 		ctx.Columns.Ualpha,
 	)
 
 	round := ctx.Accessors.InterpolateUalphaX.Round()
 
 	// And let the verifier check that they should be both equal
-	ctx.comp.RegisterVerifierAction(round, &consistencyYsUalphaVerifierAction{
-		ctx:                ctx,
-		interpolateUalphaX: ctx.Accessors.InterpolateUalphaX,
+	ctx.Comp.RegisterVerifierAction(round, &ConsistencyYsUalphaVerifierAction{
+		Ctx:                ctx,
+		InterpolateUalphaX: ctx.Accessors.InterpolateUalphaX,
 	})
 }

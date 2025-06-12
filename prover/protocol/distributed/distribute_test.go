@@ -13,32 +13,31 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/zkevm"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 )
 
 // TestDistributedWizard attempts to compiler the wizard distribution.
 func TestDistributedWizard(t *testing.T) {
 
 	var (
-		zkevm      = GetZkEVM()
-		affinities = GetAffinities(zkevm)
+		zkevm      = test_utils.GetZkEVM()
+		affinities = test_utils.GetAffinities(zkevm)
 		discoverer = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
 			Affinities:   affinities,
-			Predivision:  16,
+			Predivision:  1,
 		}
 	)
 
 	// This dumps a CSV with the list of all the columns in the original wizard
 	logdata.GenCSV(
 		files.MustOverwrite("./base-data/main.csv"),
-		logdata.IncludeColumnCSVFilter,
+		logdata.IncludeAllFilter,
 	)(zkevm.WizardIOP)
 
 	distributed := DistributeWizard(zkevm.WizardIOP, discoverer)
@@ -47,7 +46,7 @@ func TestDistributedWizard(t *testing.T) {
 
 		logdata.GenCSV(
 			files.MustOverwrite(fmt.Sprintf("./module-data/module-%v-gl.csv", i)),
-			logdata.IncludeColumnCSVFilter,
+			logdata.IncludeAllFilter,
 		)(modGL.Wiop)
 	}
 
@@ -55,7 +54,7 @@ func TestDistributedWizard(t *testing.T) {
 
 		logdata.GenCSV(
 			files.MustOverwrite(fmt.Sprintf("./module-data/module-%v-lpp.csv", i)),
-			logdata.IncludeColumnCSVFilter,
+			logdata.IncludeAllFilter,
 		)(modLPP.Wiop)
 	}
 }
@@ -64,17 +63,17 @@ func TestDistributedWizard(t *testing.T) {
 // dummy mode. Meaning without actual compilation.
 func TestDistributedWizardLogic(t *testing.T) {
 
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
 	var (
 		// #nosec G404 --we don't need a cryptographic RNG for testing purpose
 		// rng              = rand.New(utils.NewRandSource(0))
 		// sharedRandomness = field.PseudoRand(rng)
-		zkevm = GetZkEVM()
+		zkevm = test_utils.GetZkEVM()
 		disc  = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
-			Affinities:   GetAffinities(zkevm),
-			Predivision:  16,
+			Affinities:   test_utils.GetAffinities(zkevm),
+			Predivision:  1,
 		}
 
 		// This tests the compilation of the compiled-IOP
@@ -110,7 +109,7 @@ func TestDistributedWizardLogic(t *testing.T) {
 
 	t.Logf("Checking the initial bootstrapper - wizard")
 	var (
-		witness     = GetZkevmWitness(req, cfg)
+		witness     = test_utils.GetZkevmWitness(req, cfg)
 		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, zkevm.GetMainProverStep(witness))
 		proof       = runtimeBoot.ExtractProof()
 		verBootErr  = wizard.Verify(distWizard.Bootstrapper, proof)
@@ -199,6 +198,10 @@ func TestDistributedWizardLogic(t *testing.T) {
 			moduleLPP   *ModuleLPP
 		)
 
+		witnessLPP.InitialFiatShamirState = field.NewFromString("6861409415040334196327676756394403519979367936044773323994693747743991500772")
+
+		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleNames, witnessLPP.ModuleIndex)
+
 		for k := range distWizard.LPPs {
 			if !reflect.DeepEqual(distWizard.LPPs[k].ModuleNames(), moduleNames) {
 				continue
@@ -236,6 +239,8 @@ func TestDistributedWizardLogic(t *testing.T) {
 			t.Error("horner-n0-hash mismatch: " + errMsg)
 		}
 
+		t.Logf("log-derivative-sum=%v grand-product=%v horner-sum=%v", logDerivativeSum.String(), grandProduct.String(), hornerSum.String())
+
 		prevHornerN1Hash = hornerN1Hash
 		allGrandProduct.Mul(&allGrandProduct, &grandProduct)
 		allHornerSum.Add(&allHornerSum, &hornerSum)
@@ -261,11 +266,11 @@ func TestBenchDistributedWizard(t *testing.T) {
 	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
 	var (
-		zkevm = GetZkEVM()
+		zkevm = test_utils.GetZkEVM()
 		disc  = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
-			Affinities:   GetAffinities(zkevm),
-			Predivision:  16,
+			Affinities:   test_utils.GetAffinities(zkevm),
+			Predivision:  1,
 		}
 
 		// This tests the compilation of the compiled-IOP
@@ -293,7 +298,7 @@ func TestBenchDistributedWizard(t *testing.T) {
 	t.Logf("[%v] running the bootstrapper\n", time.Now())
 
 	var (
-		witness     = GetZkevmWitness(req, cfg)
+		witness     = test_utils.GetZkevmWitness(req, cfg)
 		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, zkevm.GetMainProverStep(witness))
 	)
 
@@ -305,128 +310,6 @@ func TestBenchDistributedWizard(t *testing.T) {
 		sharedRandomness        = getSharedRandomness(runGLs)
 		_                       = runProverLPPs(t, distWizard, sharedRandomness, witnessLPPs)
 	)
-}
-
-// GetZkevmWitness returns a [zkevm.Witness]
-func GetZkevmWitness(req *execution.Request, cfg *config.Config) *zkevm.Witness {
-	out := execution.CraftProverOutput(cfg, req)
-	witness := execution.NewWitness(cfg, req, &out)
-	return witness.ZkEVM
-}
-
-// GetZKEVM returns a [zkevm.ZkEvm] with its trace limits inflated so that it
-// can be used as input for the package functions. The zkevm is returned
-// without any compilation.
-func GetZkEVM() *zkevm.ZkEvm {
-
-	// This are the config trace-limits from sepolia. All multiplied by 16.
-	traceLimits := config.TracesLimits{
-		Add:                                  1 << 23,
-		Bin:                                  1 << 22,
-		Blake2Fmodexpdata:                    1 << 18,
-		Blockdata:                            1 << 16,
-		Blockhash:                            1 << 16,
-		Ecdata:                               1 << 22,
-		Euc:                                  1 << 20,
-		Exp:                                  1 << 18,
-		Ext:                                  1 << 24,
-		Gas:                                  1 << 20,
-		Hub:                                  1 << 25,
-		Logdata:                              1 << 20,
-		Loginfo:                              1 << 16,
-		Mmio:                                 1 << 25,
-		Mmu:                                  1 << 25,
-		Mod:                                  1 << 21,
-		Mul:                                  1 << 20,
-		Mxp:                                  1 << 23,
-		Oob:                                  1 << 22,
-		Rlpaddr:                              1 << 16,
-		Rlptxn:                               1 << 21,
-		Rlptxrcpt:                            1 << 21,
-		Rom:                                  1 << 26,
-		Romlex:                               1 << 16,
-		Shakiradata:                          1 << 19,
-		Shf:                                  1 << 20,
-		Stp:                                  1 << 18,
-		Trm:                                  1 << 19,
-		Txndata:                              1 << 18,
-		Wcp:                                  1 << 22,
-		Binreftable:                          1 << 24,
-		Shfreftable:                          1 << 16,
-		Instdecoder:                          1 << 13,
-		PrecompileEcrecoverEffectiveCalls:    1 << 13,
-		PrecompileSha2Blocks:                 1 << 13,
-		PrecompileRipemdBlocks:               0,
-		PrecompileModexpEffectiveCalls:       1 << 10,
-		PrecompileModexpEffectiveCalls4096:   1 << 4,
-		PrecompileEcaddEffectiveCalls:        1 << 12,
-		PrecompileEcmulEffectiveCalls:        1 << 9,
-		PrecompileEcpairingEffectiveCalls:    1 << 9,
-		PrecompileEcpairingMillerLoops:       1 << 10,
-		PrecompileEcpairingG2MembershipCalls: 1 << 10,
-		PrecompileBlakeEffectiveCalls:        0,
-		PrecompileBlakeRounds:                0,
-		BlockKeccak:                          1 << 17,
-		BlockL1Size:                          100_000,
-		BlockL2L1Logs:                        16,
-		BlockTransactions:                    1 << 12,
-		ShomeiMerkleProofs:                   1 << 18,
-	}
-
-	return zkevm.FullZKEVMWithSuite(&traceLimits, zkevm.CompilationSuite{}, &config.Config{})
-}
-
-// GetAffinities returns a list of affinities for the following modules. This
-// affinities regroup how the modules are grouped.
-//
-//	ecadd / ecmul / ecpairing
-//	hub / hub.scp / hub.acp
-//	everything related to keccak
-func GetAffinities(z *zkevm.ZkEvm) [][]column.Natural {
-
-	return [][]column.Natural{
-		{
-			z.Ecmul.AlignedGnarkData.IsActive.(column.Natural),
-			z.Ecadd.AlignedGnarkData.IsActive.(column.Natural),
-			z.Ecpair.AlignedFinalExpCircuit.IsActive.(column.Natural),
-			z.Ecpair.AlignedG2MembershipData.IsActive.(column.Natural),
-			z.Ecpair.AlignedMillerLoopCircuit.IsActive.(column.Natural),
-		},
-		{
-			z.WizardIOP.Columns.GetHandle("hub.HUB_STAMP").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("hub.scp_ADDRESS_HI").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("hub.acp_ADDRESS_HI").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("hub.ccp_HUB_STAMP").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("hub.envcp_HUB_STAMP").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("hub.stkcp_PEEK_AT_STACK_POW_4").(column.Natural),
-		},
-		{
-			z.WizardIOP.Columns.GetHandle("KECCAK_IMPORT_PAD_HASH_NUM").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("CLEANING_KECCAK_CleanLimb").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("DECOMPOSITION_KECCAK_Decomposed_Len_0").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("KECCAK_FILTERS_SPAGHETTI").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("LANE_KECCAK_Lane").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("KECCAKF_IS_ACTIVE_").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("KECCAKF_BLOCK_BASE_2_0").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("KECCAK_OVER_BLOCKS_TAGS_0").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("HASH_OUTPUT_Hash_Lo").(column.Natural),
-		},
-		{
-			z.WizardIOP.Columns.GetHandle("SHA2_IMPORT_PAD_HASH_NUM").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("DECOMPOSITION_SHA2_Decomposed_Len_0").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("LENGTH_CONSISTENCY_SHA2_BYTE_LEN_0_0").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("SHA2_FILTERS_SPAGHETTI").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("LANE_SHA2_Lane").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("Coefficient_SHA2").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("SHA2_OVER_BLOCK_IS_ACTIVE").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("SHA2_OVER_BLOCK_SHA2_COMPRESSION_CIRCUIT_IS_ACTIVE").(column.Natural),
-		},
-		{
-			z.WizardIOP.Columns.GetHandle("mmio.CN_ABC").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("mmio.MMIO_STAMP").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("mmu.STAMP").(column.Natural),
-		},
-	}
 }
 
 // DistributeTestCase is an implementation of the testcase interface. The

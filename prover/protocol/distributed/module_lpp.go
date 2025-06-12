@@ -32,14 +32,14 @@ var (
 // of the LPP part of a module.
 type ModuleLPP struct {
 
-	// moduleTranslator is the translator for the GL part of the module
+	// ModuleTranslator is the translator for the GL part of the module
 	// it also has the ownership of the [wizard.Compiled] IOP built for
 	// this module.
-	moduleTranslator
+	ModuleTranslator
 
-	// definitionInputs stores the [FilteredModuleInputs] that was used
+	// DefinitionInputs stores the [FilteredModuleInputs] that was used
 	// to generate the module.
-	definitionInputs []FilteredModuleInputs
+	DefinitionInputs []FilteredModuleInputs
 
 	// InitialFiatShamirState is the state at which to start the FiatShamir
 	// computation
@@ -64,7 +64,7 @@ type ModuleLPP struct {
 // SetInitialFSHash sets the initial FiatShamir state
 type SetInitialFSHash struct {
 	ModuleLPP
-	skipped bool
+	skipped bool `serde:"omit"`
 }
 
 // AssignLPPQueries is a [wizard.ProverAction] responsible for assigning the LPP
@@ -77,14 +77,14 @@ type AssignLPPQueries struct {
 // and N1Hash values.
 type CheckNxHash struct {
 	ModuleLPP
-	skipped bool
+	skipped bool `serde:"omit"`
 }
 
 // LppWitnessAssignment is a [wizard.ProverAction] responsible for assigning the
 // LPP witness values at round "round".
 type LppWitnessAssignment struct {
 	ModuleLPP
-	round int
+	Round int
 }
 
 // BuildModuleLPP builds a [ModuleLPP] from scratch from a [FilteredModuleInputs].
@@ -112,11 +112,11 @@ func BuildModuleLPP(moduleInput []FilteredModuleInputs) *ModuleLPP {
 func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) *ModuleLPP {
 
 	moduleLPP := &ModuleLPP{
-		moduleTranslator: moduleTranslator{
+		ModuleTranslator: ModuleTranslator{
 			Wiop: builder.CompiledIOP,
 			Disc: moduleInputs[0].Disc,
 		},
-		definitionInputs:       moduleInputs,
+		DefinitionInputs:       moduleInputs,
 		InitialFiatShamirState: builder.InsertProof(0, "INITIAL_FIATSHAMIR_STATE", 1),
 	}
 
@@ -128,11 +128,15 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 	// moduleGL and moduleLPP have identical set of public inputs. The order
 	// of declaration is also important. Namely, these needs to be declared before
 	// the non-dummy ones.
+	for _, pi := range moduleInputs[0].PublicInputs {
+		moduleLPP.Wiop.InsertPublicInput(pi.Name, accessors.NewConstant(field.Zero()))
+	}
+
 	moduleLPP.Wiop.InsertPublicInput(initialRandomnessPublicInput, accessors.NewFromPublicColumn(moduleLPP.InitialFiatShamirState, 0))
 	moduleLPP.Wiop.InsertPublicInput(isFirstPublicInput, accessors.NewConstant(field.Zero()))
 	moduleLPP.Wiop.InsertPublicInput(isLastPublicInput, accessors.NewConstant(field.Zero()))
-	moduleLPP.Wiop.InsertPublicInput(globalReceiverPublicInput, accessors.NewConstant(field.Zero()))
 	moduleLPP.Wiop.InsertPublicInput(globalSenderPublicInput, accessors.NewConstant(field.Zero()))
+	moduleLPP.Wiop.InsertPublicInput(globalReceiverPublicInput, accessors.NewConstant(field.Zero()))
 
 	for round, moduleInput := range moduleInputs {
 		for _, col := range moduleInput.Columns {
@@ -246,10 +250,6 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 		)
 	}
 
-	for _, pi := range moduleInputs[0].PublicInputs {
-		moduleLPP.Wiop.InsertPublicInput(pi.Name, accessors.NewConstant(field.Zero()))
-	}
-
 	moduleLPP.Wiop.InsertPublicInput(isGlPublicInput, accessors.NewConstant(field.Zero()))
 	moduleLPP.Wiop.InsertPublicInput(isLppPublicInput, accessors.NewConstant(field.One()))
 	moduleLPP.Wiop.InsertPublicInput(nbActualLppPublicInput, accessors.NewConstant(field.NewElement(uint64(len(moduleInputs)))))
@@ -262,7 +262,7 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 	}
 
 	for round := 1; round < len(moduleInputs); round++ {
-		moduleLPP.Wiop.RegisterProverAction(round, LppWitnessAssignment{ModuleLPP: *moduleLPP, round: round})
+		moduleLPP.Wiop.RegisterProverAction(round, LppWitnessAssignment{ModuleLPP: *moduleLPP, Round: round})
 	}
 
 	moduleLPP.Wiop.RegisterProverAction(startingRound, &AssignLPPQueries{*moduleLPP})
@@ -274,11 +274,21 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 // ModuleNames returns the list of the module names of the [ModuleLPP].
 func (m *ModuleLPP) ModuleNames() []ModuleName {
 	res := make([]ModuleName, 0)
-	for _, definitionInput := range m.definitionInputs {
+	for _, definitionInput := range m.DefinitionInputs {
 		res = append(res, definitionInput.ModuleName)
 	}
 	return res
 }
+
+/*
+func (m *ModuleLPP) GetModuleTranslator() moduleTranslator {
+	return m.moduleTranslator
+}
+
+func (m *ModuleLPP) SetModuleTranslator(comp *wizard.CompiledIOP, disc ModuleDiscoverer) {
+	m.moduleTranslator.Wiop = comp
+	m.moduleTranslator.Disc = disc
+} */
 
 // GetMainProverStep returns a [wizard.ProverStep] running [Assign] passing
 // the provided [ModuleWitness] argument.
@@ -304,7 +314,7 @@ func (m *ModuleLPP) Assign(run *wizard.ProverRuntime, witness *ModuleWitnessLPP)
 		smartvectors.NewConstant(witness.InitialFiatShamirState, 1),
 	)
 
-	a := LppWitnessAssignment{ModuleLPP: *m, round: 0}
+	a := LppWitnessAssignment{ModuleLPP: *m, Round: 0}
 	a.Run(run)
 }
 
@@ -313,12 +323,12 @@ func (a LppWitnessAssignment) Run(run *wizard.ProverRuntime) {
 	var (
 		witness = run.State.MustGet(moduleWitnessKey).(*ModuleWitnessLPP)
 		m       = a.ModuleLPP
-		round   = a.round
+		round   = a.Round
 	)
 
 	// Note @alex: It should be fine to look only at m.definitionInputs[round]
 	// instead of scanning through all the definitionInputs.
-	for _, definitionInput := range m.definitionInputs {
+	for _, definitionInput := range m.DefinitionInputs {
 
 		// [definitionInput.Columns] stores the list of columns to assign.
 		// Though, it stores the columns as in the origin CompiledIOP so we
@@ -356,26 +366,29 @@ func (a LppWitnessAssignment) Run(run *wizard.ProverRuntime) {
 
 // addCoinFromExpression scans the metadata of the expression looking
 // for coins and adds them to the [ModuleLPP] as [coin.FieldFromSeed].
-func (m *ModuleLPP) addCoinFromExpression(expr *symbolic.Expression) {
+func (m *ModuleLPP) addCoinFromExpression(exprs ...*symbolic.Expression) {
 
-	var (
-		board    = expr.Board()
-		metadata = board.ListVariableMetadata()
-	)
+	for _, expr := range exprs {
 
-	for i := range metadata {
+		var (
+			board    = expr.Board()
+			metadata = board.ListVariableMetadata()
+		)
 
-		switch meta := metadata[i].(type) {
+		for i := range metadata {
 
-		case coin.Info:
+			switch meta := metadata[i].(type) {
 
-			m.InsertCoin(meta.Name, meta.Round)
-			return
+			case coin.Info:
 
-		case ifaces.Accessor:
+				m.InsertCoin(meta.Name, meta.Round)
+				continue
 
-			m.addCoinFromAccessor(meta)
-			return
+			case ifaces.Accessor:
+
+				m.addCoinFromAccessor(meta)
+				continue
+			}
 		}
 	}
 }
@@ -401,7 +414,7 @@ func (a AssignLPPQueries) Run(run *wizard.ProverRuntime) {
 	moduleWitness := run.State.MustGet(moduleWitnessKey).(*ModuleWitnessLPP)
 	run.State.Del(moduleWitnessKey)
 
-	logDerivativeArgs, grandProductArgs, hornerArgs := getQueryArgs(a.definitionInputs)
+	logDerivativeArgs, grandProductArgs, hornerArgs := getQueryArgs(a.DefinitionInputs)
 
 	if len(hornerArgs) > 0 {
 		hornerParams := a.getHornerParams(run, moduleWitness.N0Values)

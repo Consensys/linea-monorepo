@@ -52,7 +52,7 @@ type Recursion struct {
 	// PlonkCtx is the [PlonkInWizard] context that we use to verify the
 	// non-vortex part of the input wizard proof. Namely, it runs all its
 	// verifier actions and the corresponding circuit assignments.
-	PlonkCtx *plonkinternal.CompilationCtx
+	PlonkCtx plonkinternal.PlonkInWizardProverAction
 
 	// PcsCtx represents the compilation context to pass to the self-recursion
 	// context. For clarity, this is not the compilation context of the
@@ -187,11 +187,11 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 	rec := &Recursion{
 		Name:             params.Name,
 		PcsCtx:           vortexCtxs,
-		PlonkCtx:         plonkCtx,
+		PlonkCtx:         plonkCtx.GetPlonkProverAction(),
 		InputCompiledIOP: inputComp,
 	}
 
-	comp.RegisterVerifierAction(0, &ConsistencyCheck{Ctx: rec})
+	comp.RegisterVerifierAction(0, &ConsistencyCheck{Ctx: rec, PIs: plonkCtx.Columns.PI})
 	comp.RegisterProverAction(1, AssignVortexUAlpha{Ctxs: rec})
 	comp.RegisterProverAction(2, AssignVortexOpenedCols{Ctxs: rec})
 
@@ -293,13 +293,20 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 		}
 	}
 
-	r.PlonkCtx.GetPlonkProverAction().Run(run, fullWitnesses)
+	r.PlonkCtx.Run(run, fullWitnesses)
 }
 
 // GetPublicInputOfInstance relative to one recursed module.
 func (rec *Recursion) GetPublicInputOfInstance(run wizard.Runtime, name string, inst int) field.Element {
 	name = addPrefixToID(rec.Name+"-"+strconv.Itoa(inst), name)
 	return run.GetPublicInput(name)
+}
+
+// GetPublicInputOfInstanceGnark returns the requested public input in a
+// gnark circuit context.
+func (rec *Recursion) GetPublicInputOfInstanceGnark(api frontend.API, run wizard.GnarkRuntime, name string, inst int) frontend.Variable {
+	name = addPrefixToID(rec.Name+"-"+strconv.Itoa(inst), name)
+	return run.GetPublicInput(api, name)
 }
 
 // GetPublicInputAccessorOfInstance returns the accessor of a public input

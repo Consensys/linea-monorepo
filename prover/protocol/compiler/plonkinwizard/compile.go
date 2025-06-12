@@ -11,13 +11,21 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// context stores the compilation context for a single PlonkInWizard query
-type context struct {
+// Context stores the compilation Context for a single PlonkInWizard query
+type Context struct {
 	// Q is the query handled by the current compilation context
 	Q *query.PlonkInWizard
-	// PlonkCtx is the compilation context relative to the plonk
-	// circuit satisfaction.
-	PlonkCtx *plonkinternal.CompilationCtx
+	// TinyPIs are the columns containing the public inputs of the plonk
+	// instances
+	TinyPIs []ifaces.Column
+	// Activators are the binary length-1 columns that are used to indicate the
+	// activation of a particular plonk instance.
+	Activators []ifaces.Column
+	// PlonkProverAction is the prover action running the plonk circuit solver
+	PlonkProverAction plonkinternal.PlonkInWizardProverAction
+	// NbPublicVariable stores the number of public variables in the Plonk
+	// circuit.
+	NbPublicVariable int
 	// SelOpenings are the local constraints responsible for
 	// checking the activators are well-set w.r.t to the circuit mask
 	SelOpenings []query.LocalOpening
@@ -93,24 +101,28 @@ func compileQuery(comp *wizard.CompiledIOP, q *query.PlonkInWizard, minimalRound
 	var (
 		round          = max(q.Data.Round(), q.Selector.Round(), minimalRound)
 		maxNbInstances = q.GetMaxNbCircuitInstances()
-		ctx            = &context{
-			Q:            q,
-			PlonkCtx:     plonkinternal.PlonkCheck(comp, string(q.ID), round, q.Circuit, maxNbInstances, plonkOptions...),
-			MinimalRound: round,
+		plonkCtx       = plonkinternal.PlonkCheck(comp, string(q.ID), round, q.Circuit, maxNbInstances, plonkOptions...)
+		ctx            = &Context{
+			Q:                 q,
+			MinimalRound:      round,
+			TinyPIs:           plonkCtx.Columns.TinyPI,
+			Activators:        plonkCtx.Columns.Activators,
+			PlonkProverAction: plonkCtx.GetPlonkProverAction(),
+			NbPublicVariable:  plonkCtx.Plonk.SPR.GetNbPublicVariables(),
 		}
 	)
 
-	ctx.StackedCircuitData = dedicated.StackColumn(comp, ctx.PlonkCtx.Columns.TinyPI)
+	ctx.StackedCircuitData = dedicated.StackColumn(comp, ctx.TinyPIs)
 
 	checkActivators(comp, ctx)
 	checkPublicInputs(comp, ctx)
 
-	comp.RegisterProverAction(round, &circAssignment{context: ctx})
+	comp.RegisterProverAction(round, &CircAssignment{Context: ctx})
 }
 
 // checkPublicInputs adds the constraints ensuring that the public inputs are
 // consistent with the one of the PlonkCtx.
-func checkPublicInputs(comp *wizard.CompiledIOP, ctx *context) {
+func checkPublicInputs(comp *wizard.CompiledIOP, ctx *Context) {
 	comp.InsertGlobal(
 		max(ctx.MinimalRound, ctx.Q.GetRound()),
 		ifaces.QueryIDf("%v_PUBLIC_INPUTS", ctx.Q.ID),
@@ -120,13 +132,13 @@ func checkPublicInputs(comp *wizard.CompiledIOP, ctx *context) {
 
 // checkActivators adds the constraints checking the activators are well-set w.r.t
 // to the circuit mask column. See [compilationCtx.Columns.Activators].
-func checkActivators(comp *wizard.CompiledIOP, ctx *context) {
+func checkActivators(comp *wizard.CompiledIOP, ctx *Context) {
 
 	var (
 		openings   = make([]query.LocalOpening, ctx.Q.GetMaxNbCircuitInstances())
 		mask       = ctx.Q.Selector
 		offset     = utils.NextPowerOfTwo(ctx.Q.GetNbPublicInputs())
-		activators = ctx.PlonkCtx.Columns.Activators
+		activators = ctx.Activators
 		round      = max(activators[0].Round(), ctx.MinimalRound)
 	)
 
@@ -138,7 +150,7 @@ func checkActivators(comp *wizard.CompiledIOP, ctx *context) {
 		)
 	}
 
-	comp.RegisterProverAction(round, &assignSelOpening{context: ctx})
-	comp.RegisterVerifierAction(round, &checkActivatorAndMask{context: ctx})
+	comp.RegisterProverAction(round, &AssignSelOpening{Context: ctx})
+	comp.RegisterVerifierAction(round, &CheckActivatorAndMask{Context: ctx})
 	ctx.SelOpenings = openings
 }

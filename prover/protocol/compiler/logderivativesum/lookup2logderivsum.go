@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -66,7 +67,7 @@ func compileLookupIntoLogDerivativeSum(comp *wizard.CompiledIOP, seg ColumnSegme
 		// which Z context should be used to handle a part of a given inclusion
 		// query.
 		zCatalog    = map[int]*query.LogDerivativeSumInput{}
-		proverTasks = make([]proverTaskAtRound, comp.NumRounds())
+		proverTasks = make([]ProverTaskAtRound, comp.NumRounds())
 	)
 
 	// Skip the compilation phase if no lookup constraint is being used. Otherwise
@@ -114,7 +115,7 @@ func compileLookupIntoLogDerivativeSum(comp *wizard.CompiledIOP, seg ColumnSegme
 	qName := ifaces.QueryIDf("GlobalLogDerivativeSum_%v", comp.SelfRecursionCount)
 	q := comp.InsertLogDerivativeSum(lastRound+1, qName, zCatalog)
 
-	comp.RegisterProverAction(lastRound+1, &assignLogDerivativeSumProverAction{
+	comp.RegisterProverAction(lastRound+1, &AssignLogDerivativeSumProverAction{
 		QName:     qName,
 		Q:         q,
 		Segmenter: seg,
@@ -132,14 +133,14 @@ func compileLookupIntoLogDerivativeSum(comp *wizard.CompiledIOP, seg ColumnSegme
 
 // assignLogDerivativeSumProverAction is the action to assign the log-derivative sum result.
 // It implements the [wizard.ProverAction] interface.
-type assignLogDerivativeSumProverAction struct {
+type AssignLogDerivativeSumProverAction struct {
 	QName     ifaces.QueryID
 	Q         query.LogDerivativeSum
 	Segmenter ColumnSegmenter
 }
 
 // Run executes the assignment of the log-derivative sum result.
-func (a *assignLogDerivativeSumProverAction) Run(run *wizard.ProverRuntime) {
+func (a *AssignLogDerivativeSumProverAction) Run(run *wizard.ProverRuntime) {
 	if a.Segmenter == nil {
 		run.AssignLogDerivSum(a.QName, field.Zero())
 		return
@@ -202,7 +203,7 @@ func pushToZCatalog(stc SingleTableCtx, zCatalog map[int]*query.LogDerivativeSum
 // It checks that the log-derivative sum result is zero.
 type CheckLogDerivativeSumMustBeZero struct {
 	Q       query.LogDerivativeSum
-	skipped bool
+	skipped bool `serde:"omit"`
 }
 
 func (c *CheckLogDerivativeSumMustBeZero) Run(run wizard.Runtime) error {
@@ -353,7 +354,6 @@ func compileLookupTable(
 				DeriveTableNameWithIndex[ifaces.ColID](LogDerivativePrefix, lookupTable, frag, "M"),
 				lookupTable[frag][0].Size(),
 			)
-
 		}
 
 		for i := range ctx.S {
@@ -378,6 +378,11 @@ func compileLookupTable(
 				DeriveTableNameWithIndex[ifaces.ColID](LogDerivativePrefix, lookupTable, frag, "M"),
 				lookupTable[frag][0].Size(),
 			)
+
+			// This is to tell the limitless prover that the column should be extended
+			// by zero padding in case it needs to be extended during the segmentation
+			// in modules.
+			pragmas.MarkPaddable(ctx.M[frag], field.Zero())
 		}
 
 		for i := range ctx.S {

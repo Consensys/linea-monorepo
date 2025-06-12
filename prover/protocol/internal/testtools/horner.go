@@ -21,10 +21,10 @@ type HornerTestcase struct {
 	SignNegativeParts []bool
 
 	// Coefficients are the coefficients for each parts of the query
-	Coefficients []smartvectors.SmartVector
+	Coefficients [][]smartvectors.SmartVector
 
 	// Selectors are the selectors for each parts of the query
-	Selectors []smartvectors.SmartVector
+	Selectors [][]smartvectors.SmartVector
 
 	// N0s are the N0 values for each parts of the query
 	N0s []int
@@ -50,12 +50,12 @@ var ListOfHornerTestcasePositive = []*HornerTestcase{
 	{
 		NameStr:           "positive/none-selected-single",
 		SignNegativeParts: []bool{false},
-		Coefficients: []smartvectors.SmartVector{
+		Coefficients: [][]smartvectors.SmartVector{{
 			smartvectors.NewConstant(field.One(), 8),
-		},
-		Selectors: []smartvectors.SmartVector{
+		}},
+		Selectors: [][]smartvectors.SmartVector{{
 			smartvectors.NewConstant(field.Zero(), 8),
-		},
+		}},
 		N0s:         []int{0},
 		N1s:         []int{0},
 		Xs:          []field.Element{field.One()},
@@ -65,13 +65,21 @@ var ListOfHornerTestcasePositive = []*HornerTestcase{
 	{
 		NameStr:           "positive/two-parts-cancelling",
 		SignNegativeParts: []bool{false, true},
-		Coefficients: []smartvectors.SmartVector{
-			RandomFromSeed(8, 1),
-			RandomFromSeed(8, 1),
+		Coefficients: [][]smartvectors.SmartVector{
+			{
+				RandomFromSeed(8, 1),
+			},
+			{
+				RandomFromSeed(8, 1),
+			},
 		},
-		Selectors: []smartvectors.SmartVector{
-			smartvectors.NewConstant(field.One(), 8),
-			smartvectors.NewConstant(field.One(), 8),
+		Selectors: [][]smartvectors.SmartVector{
+			{
+				smartvectors.NewConstant(field.One(), 8),
+			},
+			{
+				smartvectors.NewConstant(field.One(), 8),
+			},
 		},
 		N0s:         []int{0, 0},
 		N1s:         []int{8, 8},
@@ -82,12 +90,12 @@ var ListOfHornerTestcasePositive = []*HornerTestcase{
 	{
 		NameStr:           "positive/just-counting",
 		SignNegativeParts: []bool{false},
-		Coefficients: []smartvectors.SmartVector{
+		Coefficients: [][]smartvectors.SmartVector{{
 			smartvectors.NewConstant(field.One(), 8),
-		},
-		Selectors: []smartvectors.SmartVector{
+		}},
+		Selectors: [][]smartvectors.SmartVector{{
 			smartvectors.NewConstant(field.One(), 8),
-		},
+		}},
 		N0s:         []int{0},
 		N1s:         []int{8},
 		Xs:          []field.Element{field.One()},
@@ -97,12 +105,12 @@ var ListOfHornerTestcasePositive = []*HornerTestcase{
 	{
 		NameStr:           "positive/just-counting",
 		SignNegativeParts: []bool{false},
-		Coefficients: []smartvectors.SmartVector{
+		Coefficients: [][]smartvectors.SmartVector{{
 			smartvectors.NewConstant(field.One(), 8),
-		},
-		Selectors: []smartvectors.SmartVector{
+		}},
+		Selectors: [][]smartvectors.SmartVector{{
 			smartvectors.NewConstant(field.One(), 8),
-		},
+		}},
 		N0s:         []int{0},
 		N1s:         []int{8},
 		Xs:          []field.Element{field.NewElement(2)},
@@ -112,16 +120,37 @@ var ListOfHornerTestcasePositive = []*HornerTestcase{
 	{
 		NameStr:           "positive/12345..7",
 		SignNegativeParts: []bool{false},
-		Coefficients: []smartvectors.SmartVector{
+		Coefficients: [][]smartvectors.SmartVector{{
 			smartvectors.ForTest(0, 1, 2, 3, 4, 5, 6, 7),
-		},
-		Selectors: []smartvectors.SmartVector{
+		}},
+		Selectors: [][]smartvectors.SmartVector{{
 			smartvectors.NewConstant(field.One(), 8),
-		},
+		}},
 		N0s:         []int{0},
 		N1s:         []int{8},
 		Xs:          []field.Element{field.NewElement(2)},
 		FinalResult: field.NewElement(1538),
+	},
+
+	{
+		NameStr:           "positive/multi-ary",
+		SignNegativeParts: []bool{false},
+		Coefficients: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(1, 3, 5, 7, 9, 11, 13, 15),
+				smartvectors.ForTest(0, 2, 4, 6, 8, 10, 12, 14),
+			},
+		},
+		Selectors: [][]smartvectors.SmartVector{
+			{
+				smartvectors.NewConstant(field.One(), 8),
+				smartvectors.NewConstant(field.One(), 8),
+			},
+		},
+		N0s:         []int{0},
+		N1s:         []int{16},
+		Xs:          []field.Element{field.NewElement(2)},
+		FinalResult: field.NewElement(917506),
 	},
 }
 
@@ -130,12 +159,12 @@ var ListOfHornerTestcaseNegative = []*HornerTestcase{
 	{
 		NameStr:           "negative/none-selected-single/bad-count",
 		SignNegativeParts: []bool{false},
-		Coefficients: []smartvectors.SmartVector{
+		Coefficients: [][]smartvectors.SmartVector{{
 			smartvectors.NewConstant(field.One(), 8),
-		},
-		Selectors: []smartvectors.SmartVector{
+		}},
+		Selectors: [][]smartvectors.SmartVector{{
 			smartvectors.NewConstant(field.Zero(), 8),
-		},
+		}},
 		N0s:          []int{0},
 		N1s:          []int{1},
 		Xs:           []field.Element{field.One()},
@@ -146,12 +175,12 @@ var ListOfHornerTestcaseNegative = []*HornerTestcase{
 	{
 		NameStr:           "negative/none-selected-single/bad-result",
 		SignNegativeParts: []bool{false},
-		Coefficients: []smartvectors.SmartVector{
+		Coefficients: [][]smartvectors.SmartVector{{
 			smartvectors.NewConstant(field.One(), 8),
-		},
-		Selectors: []smartvectors.SmartVector{
+		}},
+		Selectors: [][]smartvectors.SmartVector{{
 			smartvectors.NewConstant(field.Zero(), 8),
-		},
+		}},
 		N0s:          []int{0},
 		N1s:          []int{0},
 		Xs:           []field.Element{field.One()},
@@ -162,14 +191,14 @@ var ListOfHornerTestcaseNegative = []*HornerTestcase{
 	{
 		NameStr:           "negative/two-parts-should-be-expected-to-cancel",
 		SignNegativeParts: []bool{false, true},
-		Coefficients: []smartvectors.SmartVector{
+		Coefficients: [][]smartvectors.SmartVector{{
 			RandomFromSeed(8, 1),
 			RandomFromSeed(8, 1),
-		},
-		Selectors: []smartvectors.SmartVector{
+		}},
+		Selectors: [][]smartvectors.SmartVector{{
 			smartvectors.NewConstant(field.One(), 8),
 			smartvectors.NewConstant(field.One(), 8),
-		},
+		}},
 		N0s:          []int{0, 0},
 		N1s:          []int{8, 8},
 		Xs:           []field.Element{field.One(), field.One()},
@@ -180,14 +209,14 @@ var ListOfHornerTestcaseNegative = []*HornerTestcase{
 	{
 		NameStr:           "negative/two-parts-should-be-expected-to-cancel",
 		SignNegativeParts: []bool{false, true},
-		Coefficients: []smartvectors.SmartVector{
+		Coefficients: [][]smartvectors.SmartVector{{
 			RandomFromSeed(8, 1),
 			RandomFromSeed(8, 1),
-		},
-		Selectors: []smartvectors.SmartVector{
+		}},
+		Selectors: [][]smartvectors.SmartVector{{
 			smartvectors.NewConstant(field.One(), 8),
 			smartvectors.NewConstant(field.One(), 8),
-		},
+		}},
 		N0s:          []int{0, 0},
 		N1s:          []int{8, 7},
 		Xs:           []field.Element{field.One(), field.One()},
@@ -198,12 +227,12 @@ var ListOfHornerTestcaseNegative = []*HornerTestcase{
 	{
 		NameStr:           "negative/just-counting/bad-n0",
 		SignNegativeParts: []bool{false},
-		Coefficients: []smartvectors.SmartVector{
+		Coefficients: [][]smartvectors.SmartVector{{
 			smartvectors.NewConstant(field.One(), 8),
-		},
-		Selectors: []smartvectors.SmartVector{
+		}},
+		Selectors: [][]smartvectors.SmartVector{{
 			smartvectors.NewConstant(field.One(), 8),
-		},
+		}},
 		N0s:          []int{1},
 		N1s:          []int{8},
 		Xs:           []field.Element{field.One()},
@@ -214,12 +243,12 @@ var ListOfHornerTestcaseNegative = []*HornerTestcase{
 	{
 		NameStr:           "negative/just-counting-x=2/bad-result",
 		SignNegativeParts: []bool{false},
-		Coefficients: []smartvectors.SmartVector{
+		Coefficients: [][]smartvectors.SmartVector{{
 			smartvectors.NewConstant(field.One(), 8),
-		},
-		Selectors: []smartvectors.SmartVector{
+		}},
+		Selectors: [][]smartvectors.SmartVector{{
 			smartvectors.NewConstant(field.One(), 8),
-		},
+		}},
 		N0s:          []int{0},
 		N1s:          []int{8},
 		Xs:           []field.Element{field.NewElement(2)},
@@ -234,17 +263,23 @@ func (t *HornerTestcase) Define(comp *wizard.CompiledIOP) {
 	for i := range parts {
 		parts[i] = query.HornerPart{
 			SignNegative: t.SignNegativeParts[i],
-			Coefficient: sym.NewVariable(comp.InsertCommit(
+			Coefficients: make([]*sym.Expression, len(t.Coefficients[i])),
+			Selectors:    make([]ifaces.Column, len(t.Selectors[i])),
+			X:            accessors.NewConstant(t.Xs[i]),
+		}
+
+		for j := range parts[i].Coefficients {
+			parts[i].Coefficients[j] = sym.NewVariable(comp.InsertCommit(
 				0,
-				formatName[ifaces.ColID]("Horner", t.NameStr, "Coefficient", i),
-				t.Coefficients[i].Len(),
-			)),
-			Selector: comp.InsertCommit(
+				formatName[ifaces.ColID]("Horner", t.NameStr, "Coefficient", i, j),
+				t.Coefficients[i][j].Len(),
+			))
+
+			parts[i].Selectors[j] = comp.InsertCommit(
 				0,
-				formatName[ifaces.ColID]("Horner", t.NameStr, "Selector", i),
-				t.Selectors[i].Len(),
-			),
-			X: accessors.NewConstant(t.Xs[i]),
+				formatName[ifaces.ColID]("Horner", t.NameStr, "Selector", i, j),
+				t.Selectors[i][j].Len(),
+			)
 		}
 	}
 
@@ -266,15 +301,18 @@ func (t *HornerTestcase) Assign(run *wizard.ProverRuntime) {
 			N1: t.N1s[i],
 		}
 
-		run.AssignColumn(
-			formatName[ifaces.ColID]("Horner", t.NameStr, "Coefficient", i),
-			t.Coefficients[i],
-		)
+		for j := range t.Coefficients[i] {
 
-		run.AssignColumn(
-			formatName[ifaces.ColID]("Horner", t.NameStr, "Selector", i),
-			t.Selectors[i],
-		)
+			run.AssignColumn(
+				formatName[ifaces.ColID]("Horner", t.NameStr, "Coefficient", i, j),
+				t.Coefficients[i][j],
+			)
+
+			run.AssignColumn(
+				formatName[ifaces.ColID]("Horner", t.NameStr, "Selector", i, j),
+				t.Selectors[i][j],
+			)
+		}
 	}
 
 	run.AssignHornerParams(

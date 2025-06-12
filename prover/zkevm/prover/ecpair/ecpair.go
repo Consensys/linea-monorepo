@@ -130,10 +130,11 @@ func (ec *ECPair) WithPairingCircuit(comp *wizard.CompiledIOP, options ...query.
 		DataToCircuit:      ec.UnalignedPairingData.Limb,
 		DataToCircuitMask:  ec.UnalignedPairingData.ToMillerLoopCircuitMask,
 		Circuit:            newMultiMillerLoopMulCircuit(ec.NbMillerLoopInputInstances),
-		InputFiller:        inputFillerMillerLoop,
+		InputFillerKey:     inputFillerMillerLoopKey,
 		PlonkOptions:       options,
 		NbCircuitInstances: ec.NbMillerLoopCircuits,
 	}
+
 	ec.AlignedMillerLoopCircuit = plonk.DefineAlignment(comp, alignInputMillerLoop)
 
 	alignInputFinalExp := &plonk.CircuitAlignmentInput{
@@ -142,12 +143,12 @@ func (ec *ECPair) WithPairingCircuit(comp *wizard.CompiledIOP, options ...query.
 		DataToCircuit:      ec.UnalignedPairingData.Limb,
 		DataToCircuitMask:  ec.UnalignedPairingData.ToFinalExpCircuitMask,
 		Circuit:            newMultiMillerLoopFinalExpCircuit(ec.NbFinalExpInputInstances),
-		InputFiller:        inputFillerFinalExp,
+		InputFillerKey:     inputFillerFinalExpKey,
 		PlonkOptions:       options,
 		NbCircuitInstances: ec.NbFinalExpCircuits,
 	}
-	ec.AlignedFinalExpCircuit = plonk.DefineAlignment(comp, alignInputFinalExp)
 
+	ec.AlignedFinalExpCircuit = plonk.DefineAlignment(comp, alignInputFinalExp)
 	return ec
 }
 
@@ -160,12 +161,12 @@ func (ec *ECPair) WithG2MembershipCircuit(comp *wizard.CompiledIOP, options ...q
 		DataToCircuit:      ec.UnalignedG2MembershipData.Limb,
 		DataToCircuitMask:  ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask,
 		Circuit:            newMultiG2GroupcheckCircuit(ec.NbG2MembershipInputInstances),
-		InputFiller:        inputFillerG2Membership,
+		InputFillerKey:     inputFillerG2MembershipKey,
 		PlonkOptions:       options,
 		NbCircuitInstances: ec.NbG2MembershipCircuits,
 	}
-	ec.AlignedG2MembershipData = plonk.DefineAlignment(comp, alignInputG2Membership)
 
+	ec.AlignedG2MembershipData = plonk.DefineAlignment(comp, alignInputG2Membership)
 	return ec
 }
 

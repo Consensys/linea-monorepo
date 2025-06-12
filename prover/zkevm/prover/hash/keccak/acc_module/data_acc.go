@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -35,20 +36,20 @@ type GenericDataAccumulator struct {
 	Provider generic.GenDataModule
 
 	// filter indicating where each original module is located over the stitched one
-	sFilters []ifaces.Column
+	SFilters []ifaces.Column
 
 	// the active part of the stitching module
 	IsActive ifaces.Column
 
 	// max number of rows for the stitched module
-	size int
+	Size int
 }
 
 // It declares the new columns and the constraints among them
 func NewGenericDataAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorInputs) *GenericDataAccumulator {
 
 	d := &GenericDataAccumulator{
-		size:   utils.NextPowerOfTwo(inp.MaxNumKeccakF * blockSize),
+		Size:   utils.NextPowerOfTwo(inp.MaxNumKeccakF * blockSize),
 		Inputs: &inp,
 	}
 	// declare the new columns per gbm
@@ -56,9 +57,9 @@ func NewGenericDataAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorI
 
 	// sFilter[i] starts immediately after sFilters[i-1].
 	s := sym.NewConstant(0)
-	for i := 0; i < len(d.sFilters); i++ {
-		commonconstraints.MustBeActivationColumns(comp, d.sFilters[i], sym.Sub(1, s))
-		s = sym.Add(s, d.sFilters[i])
+	for i := 0; i < len(d.SFilters); i++ {
+		commonconstraints.MustBeActivationColumns(comp, d.SFilters[i], sym.Sub(1, s))
+		s = sym.Add(s, d.SFilters[i])
 	}
 
 	comp.InsertGlobal(0, ifaces.QueryIDf("ADDs_UP_TO_IS_ACTIVE_DATA"),
@@ -74,7 +75,7 @@ func NewGenericDataAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorI
 			query.ProjectionInput{ColumnA: []ifaces.Column{gbm.HashNum, gbm.Limb, gbm.NBytes, gbm.Index},
 				ColumnB: []ifaces.Column{d.Provider.HashNum, d.Provider.Limb, d.Provider.NBytes, d.Provider.Index},
 				FilterA: gbm.ToHash,
-				FilterB: d.sFilters[i]})
+				FilterB: d.SFilters[i]})
 
 	}
 
@@ -83,11 +84,11 @@ func NewGenericDataAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorI
 
 // It declares the columns specific to the DataModule
 func (d *GenericDataAccumulator) declareColumns(comp *wizard.CompiledIOP, nbProviders int) {
-	createCol := common.CreateColFn(comp, GENERIC_ACCUMULATOR, d.size)
+	createCol := common.CreateColFn(comp, GENERIC_ACCUMULATOR, d.Size, pragmas.RightPadded)
 
-	d.sFilters = make([]ifaces.Column, nbProviders)
+	d.SFilters = make([]ifaces.Column, nbProviders)
 	for i := 0; i < nbProviders; i++ {
-		d.sFilters[i] = createCol("sFilter_%v", i)
+		d.SFilters[i] = createCol("sFilter_%v", i)
 	}
 
 	d.IsActive = createCol("IsActive")
@@ -133,12 +134,12 @@ func (d *GenericDataAccumulator) Run(run *wizard.ProverRuntime) {
 
 	//assign sFilters
 	for i := range providers {
-		run.AssignColumn(d.sFilters[i].GetColID(), smartvectors.RightZeroPadded(sFilters[i], d.size))
+		run.AssignColumn(d.SFilters[i].GetColID(), smartvectors.RightZeroPadded(sFilters[i], d.Size))
 	}
 
 	// populate and assign isActive
 	isActive := vector.Repeat(field.One(), len(sFilters[0]))
-	run.AssignColumn(d.IsActive.GetColID(), smartvectors.RightZeroPadded(isActive, d.size))
+	run.AssignColumn(d.IsActive.GetColID(), smartvectors.RightZeroPadded(isActive, d.Size))
 
 	// populate Provider
 	var sHashNum, sLimb, sNBytes, sIndex []field.Element
@@ -159,10 +160,10 @@ func (d *GenericDataAccumulator) Run(run *wizard.ProverRuntime) {
 		}
 	}
 
-	run.AssignColumn(d.Provider.HashNum.GetColID(), smartvectors.RightZeroPadded(sHashNum, d.size))
-	run.AssignColumn(d.Provider.Limb.GetColID(), smartvectors.RightZeroPadded(sLimb, d.size))
-	run.AssignColumn(d.Provider.NBytes.GetColID(), smartvectors.RightZeroPadded(sNBytes, d.size))
-	run.AssignColumn(d.Provider.Index.GetColID(), smartvectors.RightZeroPadded(sIndex, d.size))
+	run.AssignColumn(d.Provider.HashNum.GetColID(), smartvectors.RightZeroPadded(sHashNum, d.Size))
+	run.AssignColumn(d.Provider.Limb.GetColID(), smartvectors.RightZeroPadded(sLimb, d.Size))
+	run.AssignColumn(d.Provider.NBytes.GetColID(), smartvectors.RightZeroPadded(sNBytes, d.Size))
+	run.AssignColumn(d.Provider.Index.GetColID(), smartvectors.RightZeroPadded(sIndex, d.Size))
 
 }
 

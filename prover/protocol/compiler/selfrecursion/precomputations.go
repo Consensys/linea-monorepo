@@ -41,7 +41,7 @@ func (ctx *SelfRecursionCtx) RegistersI() {
 	for k := range i {
 		i[k].SetUint64(uint64(k))
 	}
-	ctx.Columns.I = ctx.comp.InsertPrecomputed(ctx.iName(nBColEncoded), smartvectors.NewRegular(i))
+	ctx.Columns.I = ctx.Comp.InsertPrecomputed(ctx.iName(nBColEncoded), smartvectors.NewRegular(i))
 }
 
 // Registers the key shards, since some rounds are dried, some of the
@@ -68,7 +68,7 @@ func (ctx *SelfRecursionCtx) RegistersAh() {
 
 		// Sanity-check : if coms in precomputeds have length zero then the
 		// associated Dh should be nil
-		if (numPrecomputeds == 0) != (ctx.Columns.precompRoot == nil) {
+		if (numPrecomputeds == 0) != (ctx.Columns.PrecompRoot == nil) {
 			panic("nilness mismatch for precomputeds")
 		}
 
@@ -82,7 +82,7 @@ func (ctx *SelfRecursionCtx) RegistersAh() {
 
 		// Registers the commitment key, if this matches an existing key
 		// then the preexisting precomputed key is reused.
-		ah = append(ah, ctx.comp.InsertPrecomputed(
+		ah = append(ah, ctx.Comp.InsertPrecomputed(
 			ctx.ahName(ctx.SisKey(), roundStartAt, numPrecomputeds, maxSize),
 			flattenedKeyChunk(ctx.SisKey(), roundStartAt, numPrecomputeds, maxSize),
 		))
@@ -91,7 +91,7 @@ func (ctx *SelfRecursionCtx) RegistersAh() {
 		roundStartAt += numPrecomputeds
 	}
 
-	for i, comsInRoundsI := range ctx.VortexCtx.CommitmentsByRounds.Inner() {
+	for i, comsInRoundsI := range ctx.VortexCtx.CommitmentsByRounds.GetInner() {
 		// We need to consider only the SIS rounds
 		if ctx.VortexCtx.RoundStatus[i] == VortexCompiler.IsSISApplied {
 			// Sanity-check : if coms in rounds has length zero then the
@@ -117,7 +117,7 @@ func (ctx *SelfRecursionCtx) RegistersAh() {
 
 			// Registers the commitment key (if this matches an existing key
 			// then the preexisting precomputed key is reused).
-			ah = append(ah, ctx.comp.InsertPrecomputed(
+			ah = append(ah, ctx.Comp.InsertPrecomputed(
 				ctx.ahName(ctx.SisKey(), roundStartAt, len(comsInRoundsI), maxSize),
 				flattenedKeyChunk(ctx.SisKey(), roundStartAt, len(comsInRoundsI), maxSize),
 			))

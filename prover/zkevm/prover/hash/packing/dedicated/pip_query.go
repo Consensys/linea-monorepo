@@ -66,33 +66,33 @@ func InsertPartitionedIP(
 		),
 	)
 
-	comp.RegisterProverAction(0, &assignPIPProverAction{
-		colA:      colA,
-		colB:      colB,
-		partition: partition,
-		ipTracker: ipTracker,
+	comp.RegisterProverAction(0, &AssignPIPProverAction{
+		ColA:      colA,
+		ColB:      colB,
+		Partition: partition,
+		IpTracker: ipTracker,
 	})
 	return ipTracker
 }
 
-// assignPIPProverAction is the action to assign the IPTracker columns for PIP.
+// AssignPIPProverAction is the action to assign the IPTracker columns for PIP.
 // It implements the [wizard.ProverAction] interface.
-type assignPIPProverAction struct {
-	colA      ifaces.Column
-	colB      ifaces.Column
-	partition ifaces.Column
-	ipTracker ifaces.Column
+type AssignPIPProverAction struct {
+	ColA      ifaces.Column
+	ColB      ifaces.Column
+	Partition ifaces.Column
+	IpTracker ifaces.Column
 }
 
 // It assigns IPTracker for PIP.
-func (a *assignPIPProverAction) Run(run *wizard.ProverRuntime) {
+func (a *AssignPIPProverAction) Run(run *wizard.ProverRuntime) {
 
 	var (
-		cola         = a.colA.GetColAssignment(run).IntoRegVecSaveAlloc()
-		colb         = a.colB.GetColAssignment(run).IntoRegVecSaveAlloc()
-		partitionWit = a.partition.GetColAssignment(run).IntoRegVecSaveAlloc()
+		cola         = a.ColA.GetColAssignment(run).IntoRegVecSaveAlloc()
+		colb         = a.ColB.GetColAssignment(run).IntoRegVecSaveAlloc()
+		partitionWit = a.Partition.GetColAssignment(run).IntoRegVecSaveAlloc()
 		one          = field.One()
-		size         = a.colA.Size()
+		size         = a.ColA.Size()
 	)
 	var notPartition field.Element
 
@@ -108,6 +108,6 @@ func (a *assignPIPProverAction) Run(run *wizard.ProverRuntime) {
 		ipTrackerWit[i].Add(&u, &v)
 	}
 
-	run.AssignColumn(a.ipTracker.GetColID(), smartvectors.RightZeroPadded(ipTrackerWit, a.colA.Size()))
+	run.AssignColumn(a.IpTracker.GetColID(), smartvectors.RightZeroPadded(ipTrackerWit, a.ColA.Size()))
 
 }

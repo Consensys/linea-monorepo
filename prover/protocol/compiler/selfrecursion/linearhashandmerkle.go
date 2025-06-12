@@ -51,16 +51,16 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	// The leaves size for non SIS rounds
 	nonSisRoundLeavesSizeUnpadded := ctx.VortexCtx.NbColsToOpen() * numRoundNonSis
 
-	ctx.Columns.MerkleProofsLeaves = ctx.comp.InsertCommit(roundQ, ctx.merkleLeavesName(), leavesSize)
-	ctx.Columns.MerkleProofPositions = ctx.comp.InsertCommit(roundQ, ctx.merklePositionsName(), leavesSize)
-	ctx.Columns.MerkleRoots = ctx.comp.InsertCommit(roundQ, ctx.merkleRootsName(), leavesSize)
+	ctx.Columns.MerkleProofsLeaves = ctx.Comp.InsertCommit(roundQ, ctx.merkleLeavesName(), leavesSize)
+	ctx.Columns.MerkleProofPositions = ctx.Comp.InsertCommit(roundQ, ctx.merklePositionsName(), leavesSize)
+	ctx.Columns.MerkleRoots = ctx.Comp.InsertCommit(roundQ, ctx.merkleRootsName(), leavesSize)
 	// We commit to the below columns only if SIS is applied to any of the rounds including precomputed
 	if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || ctx.VortexCtx.IsSISAppliedToPrecomputed() {
-		ctx.Columns.ConcatenatedDhQ = ctx.comp.InsertCommit(roundQ, ctx.concatenatedDhQ(), concatDhQSize)
+		ctx.Columns.ConcatenatedDhQ = ctx.Comp.InsertCommit(roundQ, ctx.concatenatedDhQ(), concatDhQSize)
 		ctx.Columns.SisRoundLeaves = make([]ifaces.Column, 0, numRoundSis)
 		for i := 0; i < numRoundSis; i++ {
 			// Register the SIS round leaves
-			ctx.Columns.SisRoundLeaves = append(ctx.Columns.SisRoundLeaves, ctx.comp.InsertCommit(roundQ, ctx.sisRoundLeavesName(i), ctx.VortexCtx.NbColsToOpen()))
+			ctx.Columns.SisRoundLeaves = append(ctx.Columns.SisRoundLeaves, ctx.Comp.InsertCommit(roundQ, ctx.sisRoundLeavesName(i), ctx.VortexCtx.NbColsToOpen()))
 		}
 	}
 
@@ -79,7 +79,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 		mimcHashColumnSize, mimcPreimageColumnsSize = ctx.registerMiMCMetaDataForNonSisRounds(numRoundNonSis, roundQ)
 	}
 
-	ctx.comp.RegisterProverAction(roundQ, &linearHashMerkleProverAction{
+	ctx.Comp.RegisterProverAction(roundQ, &LinearHashMerkleProverAction{
 		ctx:                           ctx,
 		concatDhQSize:                 concatDhQSize,
 		leavesSize:                    leavesSize,
@@ -96,7 +96,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	depth := utils.Log2Ceil(ctx.VortexCtx.NumEncodedCols())
 
 	// The Merkle proof verification is for both sis and non sis rounds
-	merkle.MerkleProofCheck(ctx.comp, ctx.merkleProofVerificationName(), depth, leavesSizeUnpadded,
+	merkle.MerkleProofCheck(ctx.Comp, ctx.merkleProofVerificationName(), depth, leavesSizeUnpadded,
 		ctx.Columns.MerkleProofs, ctx.Columns.MerkleRoots, ctx.Columns.MerkleProofsLeaves, ctx.Columns.MerkleProofPositions)
 
 	// The below linear hash verification is for only sis rounds
@@ -106,19 +106,19 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 			cleanSisLeaves = append(cleanSisLeaves, ctx.Columns.SisRoundLeaves[i])
 		}
 		// We stack the sis round leaves
-		stackedSisLeaves := dedicated.StackColumn(ctx.comp, cleanSisLeaves)
+		stackedSisLeaves := dedicated.StackColumn(ctx.Comp, cleanSisLeaves)
 		// Register the prover action for the stacked column
-		ctx.comp.RegisterProverAction(roundQ, &dedicated.StackedColumn{
+		ctx.Comp.RegisterProverAction(roundQ, &dedicated.StackedColumn{
 			Column: stackedSisLeaves.Column,
 			Source: cleanSisLeaves,
 		})
-		mimcW.CheckLinearHash(ctx.comp, ctx.linearHashVerificationName(), ctx.Columns.ConcatenatedDhQ,
+		mimcW.CheckLinearHash(ctx.Comp, ctx.linearHashVerificationName(), ctx.Columns.ConcatenatedDhQ,
 			ctx.VortexCtx.SisParams.OutputSize(), sisRoundLeavesSizeUnpadded, stackedSisLeaves.Column)
 	}
 
 	// Register the linear hash verification for the non sis rounds
 	for i := 0; i < numRoundNonSis; i++ {
-		mimcW.CheckLinearHash(ctx.comp, ctx.nonSisRoundLinearHashVerificationName(i), ctx.MIMCMetaData.ConcatenatedHashPreimages[i],
+		mimcW.CheckLinearHash(ctx.Comp, ctx.nonSisRoundLinearHashVerificationName(i), ctx.MIMCMetaData.ConcatenatedHashPreimages[i],
 			ctx.MIMCMetaData.ToHashSizes[i], ctx.VortexCtx.NbColsToOpen(), ctx.MIMCMetaData.NonSisLeaves[i])
 	}
 
@@ -146,14 +146,14 @@ func (ctx *SelfRecursionCtx) registerMiMCMetaDataForNonSisRounds(
 				len(ctx.VortexCtx.Items.Precomputeds.PrecomputedColums))
 
 		ctx.MIMCMetaData.NonSisLeaves = append(ctx.MIMCMetaData.NonSisLeaves,
-			ctx.comp.InsertCommit(
+			ctx.Comp.InsertCommit(
 				round,
 				ctx.concatenatedPrecomputedHashes(),
 				mimcHashColumnSize,
 			))
 
 		ctx.MIMCMetaData.ConcatenatedHashPreimages = append(ctx.MIMCMetaData.ConcatenatedHashPreimages,
-			ctx.comp.InsertCommit(
+			ctx.Comp.InsertCommit(
 				round,
 				ctx.concatenatedPrecomputedPreimages(),
 				precompPreimageSize,
@@ -171,13 +171,13 @@ func (ctx *SelfRecursionCtx) registerMiMCMetaDataForNonSisRounds(
 
 			ctx.MIMCMetaData.NonSisLeaves = append(
 				ctx.MIMCMetaData.NonSisLeaves,
-				ctx.comp.InsertCommit(
+				ctx.Comp.InsertCommit(
 					round,
 					ctx.nonSisLeaves(i),
 					mimcHashColumnSize,
 				))
 
-			ctx.MIMCMetaData.ConcatenatedHashPreimages = append(ctx.MIMCMetaData.ConcatenatedHashPreimages, ctx.comp.InsertCommit(
+			ctx.MIMCMetaData.ConcatenatedHashPreimages = append(ctx.MIMCMetaData.ConcatenatedHashPreimages, ctx.Comp.InsertCommit(
 				round,
 				ctx.concatenatedMIMCPreimages(i),
 				roundPreimageSize,
@@ -204,10 +204,10 @@ func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 	if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 		cleanLeaves = append(cleanLeaves, ctx.Columns.SisRoundLeaves...)
 	}
-	stackedCleanLeaves := dedicated.StackColumn(ctx.comp, cleanLeaves)
+	stackedCleanLeaves := dedicated.StackColumn(ctx.Comp, cleanLeaves)
 
 	// Register prover action for the stacked column
-	ctx.comp.RegisterProverAction(round, &dedicated.StackedColumn{
+	ctx.Comp.RegisterProverAction(round, &dedicated.StackedColumn{
 		Column: stackedCleanLeaves.Column,
 		Source: cleanLeaves,
 	})
@@ -223,7 +223,7 @@ func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 	// Here we assume that the number of opened columns for Vortex
 	// is a power of two. If that is not the case, the below
 	// constraint is supposed to fail
-	ctx.comp.InsertFixedPermutation(
+	ctx.Comp.InsertFixedPermutation(
 		round,
 		ctx.leafConsistencyName(),
 		[]smartvectors.SmartVector{s_smart},
@@ -234,7 +234,7 @@ func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 }
 
 // Implements the prover action interface
-type linearHashMerkleProverAction struct {
+type LinearHashMerkleProverAction struct {
 	ctx                           *SelfRecursionCtx
 	concatDhQSize                 int
 	leavesSize                    int
@@ -294,7 +294,7 @@ type linearHashMerkleProverActionBuilder struct {
 
 // newLinearHashMerkleProverActionBuilder returns an empty
 // linearHashMerkleProverActionBuilder
-func newLinearHashMerkleProverActionBuilder(a *linearHashMerkleProverAction) *linearHashMerkleProverActionBuilder {
+func newLinearHashMerkleProverActionBuilder(a *LinearHashMerkleProverAction) *linearHashMerkleProverActionBuilder {
 	lmp := linearHashMerkleProverActionBuilder{}
 	lmp.concatDhQ = make([]field.Element, a.sisRoundLeavesSizeUnpadded*a.ctx.VortexCtx.SisParams.OutputSize())
 	lmp.merkleLeaves = make([]field.Element, 0, a.leavesSizeUnpadded)
@@ -317,7 +317,7 @@ func newLinearHashMerkleProverActionBuilder(a *linearHashMerkleProverAction) *li
 }
 
 // Run implements the prover action for the linear hash and merkle
-func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
+func (a *LinearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 	openingIndices := run.GetRandomCoinIntegerVec(a.ctx.Coins.Q.Name)
 	lmp := newLinearHashMerkleProverActionBuilder(a)
 
@@ -367,13 +367,13 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 // processPrecomputedRound processes the precomputed polynomials
 // assignments for the linear hash and merkle tree prover action
 func processPrecomputedRound(
-	a *linearHashMerkleProverAction,
+	a *LinearHashMerkleProverAction,
 	lmp *linearHashMerkleProverActionBuilder,
 	run *wizard.ProverRuntime,
 	openingIndices []int,
 ) {
 	// The merkle root for the precomputed round
-	rootPrecomp := a.ctx.Columns.precompRoot.GetColAssignment(run).Get(0)
+	rootPrecomp := a.ctx.Columns.PrecompRoot.GetColAssignment(run).Get(0)
 	if a.ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 		precompColSisHash := a.ctx.VortexCtx.Items.Precomputeds.DhWithMerkle
 		precompSisLeaves := make([]field.Element, 0, len(openingIndices))
@@ -424,7 +424,7 @@ func processPrecomputedRound(
 // processRound processes the round assignements
 // for the linear hash and merkle tree prover action
 func processRound(
-	a *linearHashMerkleProverAction,
+	a *LinearHashMerkleProverAction,
 	lmp *linearHashMerkleProverActionBuilder,
 	run *wizard.ProverRuntime,
 	openingIndices []int,

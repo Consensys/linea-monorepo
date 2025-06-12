@@ -14,10 +14,9 @@ require (
 	github.com/fxamacker/cbor/v2 v2.7.0
 	github.com/go-playground/assert/v2 v2.2.0
 	github.com/go-playground/validator/v10 v10.22.0
-	github.com/iancoleman/strcase v0.3.0
+	github.com/google/uuid v1.6.0
 	github.com/icza/bitio v1.1.0
 	github.com/leanovate/gopter v0.2.11
-	github.com/pierrec/lz4/v4 v4.1.21
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.19.1
 	github.com/rs/zerolog v1.33.0

@@ -12,8 +12,8 @@ import (
 // a column. The struct implements the [wizard.ProverAction] interface
 // to self-assign itself.
 type BitDecomposed struct {
-	// packed is the input of the bit-decomposition
-	packed ifaces.Column
+	// Packed is the input of the bit-decomposition
+	Packed ifaces.Column
 	// Bits lists the decomposed bits of the "packed" column in LSbit
 	// order.
 	Bits []ifaces.Column
@@ -28,7 +28,7 @@ func BitDecompose(comp *wizard.CompiledIOP, packed ifaces.Column, numBits int) *
 		round   = packed.Round()
 		bitExpr = []*symbolic.Expression{}
 		bd      = &BitDecomposed{
-			packed: packed,
+			Packed: packed,
 			Bits:   make([]ifaces.Column, numBits),
 		}
 	)
@@ -57,7 +57,7 @@ func BitDecompose(comp *wizard.CompiledIOP, packed ifaces.Column, numBits int) *
 // columns
 func (bd *BitDecomposed) Run(run *wizard.ProverRuntime) {
 
-	v := bd.packed.GetColAssignment(run)
+	v := bd.Packed.GetColAssignment(run)
 	bits := make([][]field.Element, len(bd.Bits))
 
 	for x := range v.IterateCompact() {

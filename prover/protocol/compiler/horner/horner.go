@@ -18,19 +18,16 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
 
-// hornerCtx is a compilation artefact generated during the execution of the
+// HornerCtx is a compilation artefact generated during the execution of the
 // [CompileHorner] compiler.
-type hornerCtx struct {
+type HornerCtx struct {
 	// Column is the accumulating column used to check the computation of a
 	// horner value for one [HornerPart].
-	AccumulatingCols []ifaces.Column
-
-	// Selectors are the list of the selectors for each columns, sorted by
-	// size.
-	Selectors map[int]*[]ifaces.Column
+	AccumulatingCols [][]ifaces.Column
 
 	// CountingInnerProduct is the inner-product query used to check the
-	// counting for each selector.
+	// counting for each selector. Each entry of the inner-product query
+	// maps to a selector.
 	CountingInnerProducts []query.InnerProduct
 
 	// LocOpenings are the local openings used to check the first value of
@@ -41,26 +38,26 @@ type hornerCtx struct {
 	Q *query.Horner
 }
 
-// assignHornerCtx is a [wizard.ProverAction] assigning the local openings of
+// AssignHornerCtx is a [wizard.ProverAction] assigning the local openings of
 // the Horner accumulating columns and the accumulating columns themselves.
 // The function also sanity-checks the parameters assignment.
-type assignHornerCtx struct {
-	hornerCtx
+type AssignHornerCtx struct {
+	HornerCtx
 }
 
-// assignHornerIP is a [wizard.ProverAction] assigning the inner-products of
+// AssignHornerIP is a [wizard.ProverAction] assigning the inner-products of
 // the Horner compilation.
-type assignHornerIP struct {
-	hornerCtx
+type AssignHornerIP struct {
+	HornerCtx
 }
 
-// checkHornerResult is [wizard.VerifierAction] responsible for checking that
+// CheckHornerResult is [wizard.VerifierAction] responsible for checking that
 // the values of n1 are correct (by checking the consistency with the IP queries)
 // and checking that the final result is correctly computed by inspecting the
 // local openings.
-type checkHornerResult struct {
-	hornerCtx
-	skipped bool
+type CheckHornerResult struct {
+	HornerCtx
+	skipped bool `serde:"omit"`
 }
 
 // CompileHoner compiles the [query.Horner] queries one by one by "transforming"
@@ -87,43 +84,54 @@ func compileHornerQuery(comp *wizard.CompiledIOP, q *query.Horner) {
 
 	var (
 		round = q.Round
-		ctx   = hornerCtx{
-			Selectors: make(map[int]*[]ifaces.Column),
-			Q:         q,
+		ctx   = HornerCtx{
+			Q: q,
 		}
 		iPRound = 0
 	)
 
-	for i := range q.Parts {
+	for i, part := range q.Parts {
 
-		col := comp.InsertCommit(
-			round,
-			ifaces.ColIDf("HORNER_%v_PART_%v_COLUMN", q.ID, i),
-			q.Parts[i].Size(),
+		var (
+			numList      = len(q.Parts[i].Coefficients)
+			accumulators = make([]ifaces.Column, numList)
 		)
+
+		for j := 0; j < numList; j++ {
+
+			accumulators[j] = comp.InsertCommit(
+				round,
+				ifaces.ColIDf("HORNER_%v_PART_%v_COLUMN_%v", q.ID, i, j),
+				part.Size(),
+			)
+		}
+
+		for j := 0; j < numList-1; j++ {
+
+			prevAcc := column.Shift(accumulators[numList-1], 1)
+			if j > 0 {
+				prevAcc = accumulators[j-1]
+			}
+
+			comp.InsertGlobal(
+				round,
+				ifaces.QueryIDf("HORNER_%v_PART_%v_GLOBAL_%v", q.ID, i, j),
+				sym.Sub(
+					accumulators[j],
+					microAccumulate(
+						part.Selectors[j],
+						prevAcc,
+						part.X,
+						part.Coefficients[j],
+					),
+				),
+			)
+		}
 
 		loc := comp.InsertLocalOpening(
 			round,
 			ifaces.QueryIDf("HORNER_%v_PART_%v_LOCAL_OPENING", q.ID, i),
-			col,
-		)
-
-		comp.InsertGlobal(
-			round,
-			ifaces.QueryIDf("HORNER_%v_PART_%v_GLOBAL", q.ID, i),
-			sym.Sub(
-				col,
-				sym.Mul(
-					sym.Sub(1, q.Parts[i].Selector),
-					column.Shift(col, 1),
-				),
-				sym.Mul(
-					q.Parts[i].Selector,
-					sym.Add(
-						sym.Mul(q.Parts[i].X, column.Shift(col, 1)),
-						q.Parts[i].Coefficient),
-				),
-			),
+			accumulators[numList-1],
 		)
 
 		// This query takes care of checking the initial value of the column
@@ -131,100 +139,94 @@ func compileHornerQuery(comp *wizard.CompiledIOP, q *query.Horner) {
 			round,
 			ifaces.QueryIDf("HORNER_%v_PART_%v_LOCAL", q.ID, i),
 			sym.Sub(
-				column.Shift(col, -1),
+				column.Shift(accumulators[0], -1),
 				sym.Mul(
-					column.Shift(q.Parts[i].Selector, -1),
-					column.ShiftExpr(q.Parts[i].Coefficient, -1),
+					column.Shift(q.Parts[i].Selectors[0], -1),
+					column.ShiftExpr(q.Parts[i].Coefficients[0], -1),
 				),
 			),
 		)
 
-		partSize := q.Parts[i].Size()
-
-		if _, ok := ctx.Selectors[partSize]; !ok {
-			ctx.Selectors[partSize] = &[]ifaces.Column{}
-		}
-
-		selectorsForSize := ctx.Selectors[partSize]
-		*selectorsForSize = append(*selectorsForSize, q.Parts[i].Selector)
-		ctx.AccumulatingCols = append(ctx.AccumulatingCols, col)
+		ctx.AccumulatingCols = append(ctx.AccumulatingCols, accumulators)
 		ctx.LocOpenings = append(ctx.LocOpenings, loc)
-		iPRound = max(iPRound, q.Parts[i].Selector.Round())
+		iPRound = max(iPRound, q.Parts[i].Selectors[0].Round())
 	}
 
-	sizes := utils.SortedKeysOf(ctx.Selectors, func(a, b int) bool {
-		return a < b
-	})
+	for i, part := range q.Parts {
 
-	for _, size := range sizes {
+		size := part.Size()
 
-		selectors := ctx.Selectors[size]
-
-		ctx.CountingInnerProducts = append(
-			ctx.CountingInnerProducts,
-			comp.InsertInnerProduct(
-				iPRound,
-				ifaces.QueryIDf("HORNER_%v_COUNTING_%v_SRCNT_%v", q.ID, size, comp.SelfRecursionCount),
-				verifiercol.NewConstantCol(field.One(), size),
-				*selectors,
-			),
+		// In theory, it would be more efficient to batch everything in a single
+		// inner-product by size. But that would make the code harder to understand
+		// and would require backtracking which result of the query corresponds to
+		// which part of the Horner query.
+		ip := comp.InsertInnerProduct(
+			iPRound,
+			ifaces.QueryIDf("HORNER_%v_COUNTING_%v_SRCNT_%v_%v", q.ID, size, comp.SelfRecursionCount, i),
+			verifiercol.NewConstantCol(field.One(), size),
+			ctx.Q.Parts[i].Selectors,
 		)
+
+		ctx.CountingInnerProducts = append(ctx.CountingInnerProducts, ip)
 	}
 
-	comp.RegisterProverAction(iPRound, assignHornerIP{ctx})
-	comp.RegisterProverAction(q.Round, assignHornerCtx{ctx})
-	comp.RegisterVerifierAction(q.Round, &checkHornerResult{hornerCtx: ctx})
+	comp.RegisterProverAction(iPRound, AssignHornerIP{ctx})
+	comp.RegisterProverAction(q.Round, AssignHornerCtx{ctx})
+	comp.RegisterVerifierAction(q.Round, &CheckHornerResult{HornerCtx: ctx})
 }
 
-func (a assignHornerCtx) Run(run *wizard.ProverRuntime) {
+func (a AssignHornerCtx) Run(run *wizard.ProverRuntime) {
 
 	var (
 		params = run.GetHornerParams(a.Q.ID)
 		res    = field.Zero()
 	)
 
-	for i, lo := range a.LocOpenings {
+	for i, part := range a.Q.Parts {
 
 		var (
-			col        = make([]field.Element, a.AccumulatingCols[i].Size())
-			coeffBoard = a.Q.Parts[i].Coefficient.Board()
-			selector   = a.Q.Parts[i].Selector.GetColAssignment(run).IntoRegVecSaveAlloc()
-			data       = column.EvalExprColumn(run, coeffBoard).IntoRegVecSaveAlloc()
-			x          = a.Q.Parts[i].X.GetVal(run)
-			n0         = params.Parts[i].N0
-			count      = 0
+			arity        = len(part.Selectors)
+			datas        = make([]smartvectors.SmartVector, arity)
+			selectors    = make([]smartvectors.SmartVector, arity)
+			x            = part.X.GetVal(run)
+			n0           = params.Parts[i].N0
+			count        = 0
+			numRow       = part.Size()
+			acc          = field.Zero()
+			accumulators = make([][]field.Element, arity)
 		)
 
-		col[len(col)-1].Mul(&selector[len(col)-1], &data[len(col)-1])
-		if selector[len(col)-1].IsOne() {
-			count++
+		for k := 0; k < arity; k++ {
+			board := part.Coefficients[k].Board()
+			datas[k] = column.EvalExprColumn(run, board)
+			selectors[k] = part.Selectors[k].GetColAssignment(run)
+			accumulators[k] = make([]field.Element, numRow)
 		}
 
-		for j := len(col) - 2; j >= 0; j-- {
+		for row := numRow - 1; row >= 0; row-- {
+			for k := 0; k < arity; k++ {
 
-			if selector[j].IsZero() {
-				col[j].Set(&col[j+1])
-				continue
+				sel := selectors[k].Get(row)
+				if sel.IsOne() {
+					count++
+				}
+
+				acc = computeMicroAccumulate(selectors[k].Get(row), acc, x, datas[k].Get(row))
+				accumulators[k][row] = acc
 			}
-
-			if selector[j].IsOne() {
-				col[j].Mul(&col[j+1], &x)
-				col[j].Add(&col[j], &data[j])
-				count++
-				continue
-			}
-
-			utils.Panic("selector should be a binary column (and this should be enforced by the caller). If this is failing, then the circuit has a soundness error")
 		}
 
 		if n0+count != params.Parts[i].N1 {
+			// To update once we merge with the "code 78" branch as it means that a constraint is not satisfied.
 			utils.Panic("the counting of the 1s in the filter does not match the one in the local-opening: (%v-%v) != %v", params.Parts[i].N1, n0, count)
 		}
 
-		run.AssignColumn(a.AccumulatingCols[i].GetColID(), smartvectors.NewRegular(col))
-		run.AssignLocalPoint(lo.ID, col[0])
+		for k := 0; k < arity; k++ {
+			run.AssignColumn(a.AccumulatingCols[i][k].GetColID(), smartvectors.NewRegular(accumulators[k]))
+		}
 
-		tmp := col[0]
+		tmp := accumulators[arity-1][0]
+		run.AssignLocalPoint(a.LocOpenings[i].ID, tmp)
 
 		if n0 > 0 {
 			xN0 := new(field.Element).Exp(x, big.NewInt(int64(n0)))
@@ -243,21 +245,17 @@ func (a assignHornerCtx) Run(run *wizard.ProverRuntime) {
 	}
 }
 
-func (a assignHornerIP) Run(run *wizard.ProverRuntime) {
+func (a AssignHornerIP) Run(run *wizard.ProverRuntime) {
 
-	sizes := utils.SortedKeysOf(a.Selectors, func(a, b int) bool {
-		return a < b
-	})
-
-	for i, size := range sizes {
+	for i := range a.Q.Parts {
 
 		var (
 			ip        = a.CountingInnerProducts[i]
-			selectors = a.Selectors[size]
-			res       = make([]field.Element, len(*selectors))
+			selectors = a.Q.Parts[i].Selectors
+			res       = make([]field.Element, len(selectors))
 		)
 
-		for i, selector := range *selectors {
+		for i, selector := range selectors {
 			sel := selector.GetColAssignment(run).IntoRegVecSaveAlloc()
 			for j := range sel {
 				res[i].Add(&res[i], &sel[j])
@@ -266,9 +264,10 @@ func (a assignHornerIP) Run(run *wizard.ProverRuntime) {
 
 		run.AssignInnerProduct(ip.ID, res...)
 	}
+
 }
 
-func (c *checkHornerResult) Run(run wizard.Runtime) error {
+func (c *CheckHornerResult) Run(run wizard.Runtime) error {
 
 	var (
 		hornerQuery  = c.Q
@@ -276,48 +275,31 @@ func (c *checkHornerResult) Run(run wizard.Runtime) error {
 		res          = field.Zero()
 	)
 
-	sizes := utils.SortedKeysOf(c.Selectors, func(a, b int) bool {
-		return a < b
-	})
-
-	// This loop is responsible for checking the consistency of the IP queries
-	// with the N1-N0 difference from the Horner params.
-	for i := range sizes {
+	for i := range c.Q.Parts {
 
 		var (
 			ipQuery  = c.CountingInnerProducts[i]
 			ipParams = run.GetInnerProductParams(c.CountingInnerProducts[i].ID)
-			found    = false
+			ipCount  = 0
 		)
 
 		for k := range ipQuery.Bs {
 
+			// Note: this check is not purely necessary from the verifier viewpoint. If
+			// the result is not a uint64, then it means the query was malformed: the
+			// result of the inner-product is the inner-product of two binary vectors
+			// and there is no way they are big enough to overflow the 2**64.
+			//
+			// Still, it is useful information as it indicates the protocol is malformed.
 			if !ipParams.Ys[k].IsUint64() {
 				return errors.New("ip result does not fit on a uint64")
 			}
 
-			ipCount := int(ipParams.Ys[k].Uint64())
+			ipCount += int(ipParams.Ys[k].Uint64())
+		}
 
-			for j, c := range hornerQuery.Parts {
-
-				if c.Selector.GetColID() != ipQuery.Bs[k].GetColID() {
-					continue
-				}
-
-				found = true
-				params := hornerParams.Parts[j]
-				n0, n1 := params.N0, params.N1
-
-				if n1-n0 != ipCount {
-					return fmt.Errorf("inner-product and horner params do not match: %v - %v (%v) != %v", n1, n0, n1-n0, ipCount)
-				}
-
-				break
-			}
-
-			if !found {
-				utils.Panic("could not find selector %v from the Horner query", ipQuery.Bs[k].String())
-			}
+		if hornerParams.Parts[i].N0+ipCount != hornerParams.Parts[i].N1 {
+			return fmt.Errorf("the counting of the 1s in the filter does not match the one in the local-opening: (%v-%v) != %v", hornerParams.Parts[i].N1, hornerParams.Parts[i].N0, ipCount)
 		}
 	}
 
@@ -350,7 +332,7 @@ func (c *checkHornerResult) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (c *checkHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	var (
 		hornerQuery  = c.Q
@@ -358,42 +340,19 @@ func (c *checkHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 		res          = frontend.Variable(0)
 	)
 
-	sizes := utils.SortedKeysOf(c.Selectors, func(a, b int) bool {
-		return a < b
-	})
-
-	// This loop is responsible for checking the consistency of the IP queries
-	// with the N1-N0 difference from the Horner params.
-	for i := range sizes {
+	for i := range c.Q.Parts {
 
 		var (
 			ipQuery  = c.CountingInnerProducts[i]
 			ipParams = run.GetInnerProductParams(c.CountingInnerProducts[i].ID)
-			found    = false
+			ipCount  = frontend.Variable(0)
 		)
 
 		for k := range ipQuery.Bs {
-
-			ipCount := ipParams.Ys[k]
-
-			for j, c := range hornerQuery.Parts {
-
-				if c.Selector.GetColID() != ipQuery.Bs[k].GetColID() {
-					continue
-				}
-
-				found = true
-				params := hornerParams.Parts[j]
-				n0, n1 := params.N0, params.N1
-
-				api.AssertIsEqual(n1, api.Add(n0, ipCount))
-				break
-			}
-
-			if !found {
-				utils.Panic("could not find selector %v from the Horner query", ipQuery.Bs[k].String())
-			}
+			ipCount = api.Add(ipCount, ipParams.Ys[k])
 		}
+
+		api.AssertIsEqual(api.Add(hornerParams.Parts[i].N0, ipCount), hornerParams.Parts[i].N1)
 	}
 
 	// This loop is responsible for checking that the final result is correctly
@@ -419,10 +378,49 @@ func (c *checkHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 	api.AssertIsEqual(res, hornerParams.FinalResult)
 }
 
-func (c *checkHornerResult) Skip() {
+func (c *CheckHornerResult) Skip() {
 	c.skipped = true
 }
 
-func (c *checkHornerResult) IsSkipped() bool {
+func (c *CheckHornerResult) IsSkipped() bool {
 	return c.skipped
+}
+
+// microAccumulate returns an atomic accumulator update expression.
+//
+// the returned expression evaluates to:
+//
+// ```
+//
+//	sel == 1 => acc.X + p
+//	sel == 0 => acc
+//
+// ```
+func microAccumulate(sel, acc, x, p any) *sym.Expression {
+	return sym.Add(
+		sym.Mul(
+			sel,
+			sym.Add(p, sym.Mul(x, acc)),
+		),
+		sym.Mul(
+			sym.Sub(1, sel),
+			acc,
+		),
+	)
+}
+
+func computeMicroAccumulate(sel, acc, x, p field.Element) field.Element {
+
+	if sel.IsZero() {
+		return acc
+	}
+
+	if sel.IsOne() {
+		var tmp field.Element
+		tmp.Mul(&x, &acc)
+		tmp.Add(&tmp, &p)
+		return tmp
+	}
+
+	panic("selector is non-binary")
 }

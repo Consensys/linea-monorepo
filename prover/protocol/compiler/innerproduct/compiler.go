@@ -63,7 +63,7 @@ func compile(comp *wizard.CompiledIOP, options ...Option) {
 		// in the same order as `sizes`.
 		// proverTaskCollaps indicates when we have more than one pair of inner-product with the same size
 		// and thus collapsing all pairs to a single column is required.
-		proverTaskNoCollaps, proverTaskCollpas proverTask
+		proverTaskNoCollaps, proverTaskCollpas ProverTask
 	)
 
 	for _, qName := range comp.QueriesParams.AllUnignoredKeys() {
@@ -93,13 +93,13 @@ func compile(comp *wizard.CompiledIOP, options ...Option) {
 
 	for _, size := range sizes {
 		ctx := compileForSize(comp, round, queryMap[size])
-		switch ctx.round {
+		switch ctx.Round {
 		case round:
 			proverTaskNoCollaps = append(proverTaskNoCollaps, ctx)
 		case round + 1:
 			proverTaskCollpas = append(proverTaskCollpas, ctx)
 		default:
-			utils.Panic("round before compilation was  %v and after compilation %v", round, ctx.round)
+			utils.Panic("round before compilation was  %v and after compilation %v", round, ctx.Round)
 		}
 
 	}

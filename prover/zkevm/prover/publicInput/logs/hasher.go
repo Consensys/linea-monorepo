@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -27,9 +28,9 @@ import (
 // The final value of the chained hash can be retrieved as ---> hashSecond[ctMax[any index]]
 type LogHasher struct {
 	// the hash value after each step, as explained in the description of LogHasher
-	hashFirst, hashSecond ifaces.Column
-	// L2L1 logs: inter is a shifted version of hashSecond, necessary due to how the MiMC constraints operate
-	inter ifaces.Column
+	HashFirst, HashSecond ifaces.Column
+	// L2L1 logs: Inter is a shifted version of hashSecond, necessary due to how the MiMC constraints operate
+	Inter ifaces.Column
 	// the relevant value of the hash (the last value when isActive ends)
 	HashFinal ifaces.Column
 }
@@ -37,9 +38,9 @@ type LogHasher struct {
 // NewLogHasher returns a new LogHasher with initialized columns that are not constrained.
 func NewLogHasher(comp *wizard.CompiledIOP, size int, name string) LogHasher {
 	return LogHasher{
-		hashFirst:  util.CreateCol(name, "HASH_FIRST", size, comp),
-		hashSecond: util.CreateCol(name, "HASH_SECOND", size, comp),
-		inter:      util.CreateCol(name, "INTER", size, comp),
+		HashFirst:  util.CreateCol(name, "HASH_FIRST", size, comp),
+		HashSecond: util.CreateCol(name, "HASH_SECOND", size, comp),
+		Inter:      util.CreateCol(name, "INTER", size, comp),
 		HashFinal:  util.CreateCol(name, "HASH_FINAL", size, comp),
 	}
 }
@@ -47,23 +48,29 @@ func NewLogHasher(comp *wizard.CompiledIOP, size int, name string) LogHasher {
 // DefineHasher specifies the constraints of the LogHasher with respect to the ExtractedData fetched from the arithmetization
 func DefineHasher(comp *wizard.CompiledIOP, hasher LogHasher, name string, fetched ExtractedData) {
 
+	// Needed for the limitless prover to understand that the columns are
+	// not just empty with just padding and suboptimal representation.
+	pragmas.MarkFullColumn(hasher.Inter)
+	pragmas.MarkFullColumn(hasher.HashFirst)
+	pragmas.MarkFullColumn(hasher.HashSecond)
+
 	// MiMC constraints
-	comp.InsertMiMC(0, ifaces.QueryIDf("%s_%s", name, "MIMC_CONSTRAINT"), fetched.Hi, hasher.inter, hasher.hashFirst, nil)
-	comp.InsertMiMC(0, ifaces.QueryIDf("%s_%s", name, "MIMC_CONSTRAINT_SECOND"), fetched.Lo, hasher.hashFirst, hasher.hashSecond, nil)
+	comp.InsertMiMC(0, ifaces.QueryIDf("%s_%s", name, "MIMC_CONSTRAINT"), fetched.Hi, hasher.Inter, hasher.HashFirst, nil)
+	comp.InsertMiMC(0, ifaces.QueryIDf("%s_%s", name, "MIMC_CONSTRAINT_SECOND"), fetched.Lo, hasher.HashFirst, hasher.HashSecond, nil)
 
 	// intermediary state integrity
 	comp.InsertGlobal(0, ifaces.QueryIDf("%s_%s", name, "CONSISTENCY_INTER_AND_HASH_LAST"), // LAST is either hashSecond or hashThird
-		sym.Sub(hasher.hashSecond,
-			column.Shift(hasher.inter, 1),
+		sym.Sub(hasher.HashSecond,
+			column.Shift(hasher.Inter, 1),
 		),
 	)
 
 	// inter, the old state column, is initially zero
-	comp.InsertLocal(0, ifaces.QueryIDf("%s_%s", name, "INTER_LOCAL"), ifaces.ColumnAsVariable(hasher.inter))
+	comp.InsertLocal(0, ifaces.QueryIDf("%s_%s", name, "INTER_LOCAL"), ifaces.ColumnAsVariable(hasher.Inter))
 
 	// constrain HashFinal
 	commonconstraints.MustBeConstant(comp, hasher.HashFinal)
-	util.CheckLastELemConsistency(comp, fetched.filterFetched, hasher.hashSecond, hasher.HashFinal, name)
+	util.CheckLastELemConsistency(comp, fetched.FilterFetched, hasher.HashSecond, hasher.HashFinal, name)
 }
 
 // AssignHasher assigns the data in the LogHasher using the ExtractedData fetched from the arithmetization
@@ -92,7 +99,7 @@ func AssignHasher(run *wizard.ProverRuntime, hasher LogHasher, fetched Extracted
 			inter[i+1] = hashSecond[i]
 		}
 
-		isActive := fetched.filterFetched.GetColAssignmentAt(run, i)
+		isActive := fetched.FilterFetched.GetColAssignmentAt(run, i)
 		// continuously update HashFinal
 		if isActive.IsOne() {
 			hashFinal.Set(&hashSecond[i])
@@ -100,8 +107,8 @@ func AssignHasher(run *wizard.ProverRuntime, hasher LogHasher, fetched Extracted
 	}
 
 	// assign the hasher columns
-	run.AssignColumn(hasher.hashFirst.GetColID(), smartvectors.NewRegular(hashFirst))
-	run.AssignColumn(hasher.hashSecond.GetColID(), smartvectors.NewRegular(hashSecond))
-	run.AssignColumn(hasher.inter.GetColID(), smartvectors.NewRegular(inter))
+	run.AssignColumn(hasher.HashFirst.GetColID(), smartvectors.NewRegular(hashFirst))
+	run.AssignColumn(hasher.HashSecond.GetColID(), smartvectors.NewRegular(hashSecond))
+	run.AssignColumn(hasher.Inter.GetColID(), smartvectors.NewRegular(inter))
 	run.AssignColumn(hasher.HashFinal.GetColID(), smartvectors.NewConstant(hashFinal, size))
 }

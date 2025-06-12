@@ -21,7 +21,7 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 		rootHashesClean = []ifaces.Column{}
 	)
 	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
-		precompRoots := ctx.Columns.precompRoot
+		precompRoots := ctx.Columns.PrecompRoot
 		if precompRoots == nil {
 			utils.Panic("Precomputed root should not be nil! That's because, we are in commit to precomputed mode.")
 		}
@@ -79,7 +79,7 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 	)
 
 	rootHashVec := verifiercol.NewConcatTinyColumns(
-		ctx.comp,
+		ctx.Comp,
 		len(rootHashVecParts),
 		field.Element{}, // note: that this will be ditched by the function
 		rootHashVecParts...,
@@ -129,7 +129,7 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 
 	// And from that, we get s1 and s2 and declare the corresponding
 	// copy constraint.
-	ctx.comp.InsertFixedPermutation(
+	ctx.Comp.InsertFixedPermutation(
 		ctx.Columns.MerkleRoots.Round(),
 		ctx.rootHasGlue(),
 		[]smartvectors.SmartVector{
@@ -152,7 +152,7 @@ func (ctx SelfRecursionCtx) GluePositions() {
 
 	// The vector that the verifier trusts
 	positionVec := verifiercol.NewFromIntVecCoin(
-		ctx.comp,
+		ctx.Comp,
 		ctx.Coins.Q,
 		verifiercol.RightPadZeroToNextPowerOfTwo,
 	)
@@ -222,7 +222,7 @@ func (ctx SelfRecursionCtx) GluePositions() {
 
 	// And from that, we get s1 and s2 and declare the corresponding
 	// copy constraint.
-	ctx.comp.InsertFixedPermutation(
+	ctx.Comp.InsertFixedPermutation(
 		ctx.Columns.MerkleProofPositions.Round(),
 		ctx.positionGlue(),
 		[]smartvectors.SmartVector{

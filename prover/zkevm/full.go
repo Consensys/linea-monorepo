@@ -30,7 +30,7 @@ const (
 	NbInputPerInstancesEcMul           = 6
 	NbInputPerInstanceEcPairMillerLoop = 1
 	NbInputPerInstanceEcPairFinalExp   = 1
-	NbInputPerInstanceEcPairG2Check    = 6
+	NbInputPerInstanceEcPairG2Check    = 1
 	NbInputPerInstanceSha2Block        = 3
 	NbInputPerInstanceModexp256        = 10
 	NbInputPerInstanceModexp4096       = 1
