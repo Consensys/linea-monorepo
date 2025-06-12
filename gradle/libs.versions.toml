@@ -49,7 +49,6 @@ teku = "23.1.1"
 tuweni = "2.4.2"
 vertx = "4.5.14"
 web3j = "4.12.2"
-kotlin = "2.1.21"
 
 # Other
 googleJavaFormat = "1.27.0"
