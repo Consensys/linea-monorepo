@@ -4,6 +4,8 @@
 * feat: Report rejected transactions only due to trace limit overflows to an external service.
 * feat: Report rejected transactions to an external service for validators used by LineaTransactionPoolValidatorPlugin [#85](https://github.com/Consensys/linea-sequencer/pull/85)
 * feat: Report rejected transactions to an external service for LineaTransactionSelector used by LineaTransactionSelectorPlugin [#69](https://github.com/Consensys/linea-sequencer/pull/69)
+* feat: Create LineaPermissioningPlugin to filter transactions using Besu's PermissioningService (currently rejecting BLOB transactions)
+* feat: Add CLI option `--plugin-linea-blob-tx-enabled` to control BLOB transaction acceptance in LineaPermissioningPlugin
 
 ## 0.6.0-rc1.1
 * bump linea-arithmetization version to 0.6.0-rc1 [#71](https://github.com/Consensys/linea-sequencer/pull/71)
