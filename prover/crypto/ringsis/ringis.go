@@ -15,12 +15,17 @@ const (
 // Key encapsulates the public parameters of an instance of the ring-SIS hash
 // instance.
 type Key struct {
+	// Params provides the parameters of the ring-SIS instance (logTwoBound,
+	// degree etc)
+	*KeyGen
 	// gnarkInternal stores the SIS key itself and some precomputed domain
 	// twiddles.
 	gnarkInternal *sis.RSis
-	// Params provides the parameters of the ring-SIS instance (logTwoBound,
-	// degree etc)
-	Params
+}
+
+type KeyGen struct {
+	*Params
+	MaxNumFieldToHash int
 }
 
 // GenerateKey generates a ring-SIS key from a set of a [Params] and a max
@@ -40,7 +45,10 @@ func GenerateKey(params Params, maxNumFieldToHash int) *Key {
 
 	res := Key{
 		gnarkInternal: rsis,
-		Params:        params,
+		KeyGen: &KeyGen{
+			Params:            &params,
+			MaxNumFieldToHash: maxNumFieldToHash,
+		},
 	}
 
 	return &res

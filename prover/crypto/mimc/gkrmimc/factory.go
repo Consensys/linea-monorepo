@@ -95,7 +95,7 @@ func (h *Hasher) Reset() {
 
 // Sum returns the hash of what was appended to the hasher so far. Calling it
 // multiple time without updating returns the same result. This function
-// implements [hash.FieldHasher] interface.
+// implements [hash.FieldHasher] interfae
 func (h *Hasher) Sum() frontend.Variable {
 	// 1 - Call the compression function in a loop
 	curr := h.state

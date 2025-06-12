@@ -180,7 +180,7 @@ func unmarshalArrayOfFieldElement(_ *Deserializer, val any, t reflect.Type) (ref
 		buffer = bytes.NewReader(val.([]byte))
 	)
 
-	v, _, err := unsafe.ReadSlice[[]field.Element, field.Element](buffer)
+	v, _, err := unsafe.ReadSlice[[]field.Element](buffer)
 	if err != nil {
 		return reflect.Value{}, newSerdeErrorf("could not unmarshal array of field element: %w", err)
 	}
