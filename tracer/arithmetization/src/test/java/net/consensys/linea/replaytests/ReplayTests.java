@@ -17,8 +17,7 @@ package net.consensys.linea.replaytests;
 import static net.consensys.linea.replaytests.ReplayTestTools.BLOCK_NUMBERS;
 import static net.consensys.linea.replaytests.ReplayTestTools.add;
 import static net.consensys.linea.replaytests.ReplayTestTools.replay;
-import static net.consensys.linea.zktracer.ChainConfig.OLD_MAINNET_TESTCONFIG;
-import static net.consensys.linea.zktracer.ChainConfig.OLD_SEPOLIA_TESTCONFIG;
+import static net.consensys.linea.zktracer.ChainConfig.*;
 
 import java.io.File;
 import java.io.IOException;
