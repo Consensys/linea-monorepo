@@ -1,5 +1,7 @@
 # Linea zkEVM
 
+Chnage from an external contributor
+
 <a href="https://twitter.com/LineaBuild">
   <img src="https://img.shields.io/twitter/follow/LineaBuild?style=for-the-badge" alt="Twitter Follow" height="20">
 </a>
