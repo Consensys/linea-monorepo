@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
@@ -188,7 +189,7 @@ func TestPeriodicSampleEvalAtConsistentWithEval(t *testing.T) {
 
 				vanillaEval := sampling.EvalCoset(domain, 0, 1, false)
 
-				x := field.NewElement(420691966156)
+				x := fext.NewFromBaseInteger(420691966156)
 				yExpected := smartvectors.EvaluateLagrangeMixed(vanillaEval, x)
 				yActual := sampling.EvalAtOutOfDomain(domain, x)
 
@@ -217,10 +218,12 @@ func TestPeriodicSampleEvalAtOnDomain(t *testing.T) {
 					// Eval at should not work
 					if pos == offset {
 						require.Panics(t, func() {
-							x, err := fft.Generator(uint64(domain))
+							_x, err := fft.Generator(uint64(domain))
 							if err != nil {
 								panic(err)
 							}
+							var x fext.Element
+							fext.FromBase(&x, &_x)
 							x.Exp(x, big.NewInt(int64(pos)))
 
 							// This should equates 0/1
