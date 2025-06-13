@@ -8,6 +8,7 @@
  */
 package net.consensys.linea.sequencer.txvalidation;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -15,12 +16,17 @@ import static org.mockito.Mockito.when;
 
 import java.util.Optional;
 import net.consensys.linea.config.LineaTransactionValidatorConfiguration;
+import net.consensys.linea.sequencer.txvalidation.LineaTransactionValidatorPlugin.LineaTransactionValidatorError;
+
+import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.TransactionValidatorService;
+import org.hyperledger.besu.plugin.services.txvalidator.TransactionValidationRule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -80,23 +86,22 @@ public class LineaTransactionValidatorPluginTest {
     verify(transactionValidatorService).registerTransactionValidatorRule(any());
   }
 
-  // @Test
-  // public void shouldRejectBlobTransactionsByDefault() {
-  //   // Arrange
-  //   when(lineaTransactionValidatorConfiguration.blobTxEnabled()).thenReturn(false);
-  //   plugin.doRegister(serviceManager);
-  //   plugin.doStart();
-  //   final TransactionValidatorService.TransactionValidatorRule validatorRule =
-  // getTransactionValidatorRule();
+  @Test
+  public void shouldRejectBlobTransactionsByDefault() {
+    // Arrange
+    when(lineaTransactionValidatorConfiguration.blobTxEnabled()).thenReturn(false);
+    plugin.doRegister(serviceManager);
+    plugin.doStart();
+    final TransactionValidationRule validatorRule = this.getTransactionValidatorRule();
 
-  //   // Act - BLOB transaction
-  //   when(transaction.getType()).thenReturn(TransactionType.BLOB);
-  //   Optional<String> result = validatorRule.validate(transaction);
+    // Act - BLOB transaction
+    when(transaction.getType()).thenReturn(TransactionType.BLOB);
+    Optional<String> result = validatorRule.validate(transaction);
 
-  //   // Assert
-  //   assertThat(result).isPresent();
-  //   assertThat(result.get()).isEqualTo("Blob transactions not allowed");
-  // }
+    // Assert
+    assertThat(result).isPresent();
+    assertThat(result.get()).isEqualTo(LineaTransactionValidatorError.BLOB_TX_NOT_ALLOWED.toString());
+  }
 
   // @Test
   // public void shouldPermitEIP7702Transactions() {
@@ -104,8 +109,7 @@ public class LineaTransactionValidatorPluginTest {
   //   when(lineaTransactionValidatorConfiguration.blobTxEnabled()).thenReturn(false);
   //   plugin.doRegister(serviceManager);
   //   plugin.doStart();
-  //   final TransactionValidatorService.TransactionValidatorRule validatorRule =
-  // getTransactionValidatorRule();
+  //   final TransactionValidationRule validatorRule = this.getTransactionValidatorRule();
 
   //   // Act - EIP7702 transaction
   //   when(transaction.getType()).thenReturn(TransactionType.DELEGATE_CODE);
@@ -121,8 +125,7 @@ public class LineaTransactionValidatorPluginTest {
   //   when(lineaTransactionValidatorConfiguration.blobTxEnabled()).thenReturn(false);
   //   plugin.doRegister(serviceManager);
   //   plugin.doStart();
-  //   final TransactionValidatorService.TransactionValidatorRule validatorRule =
-  // getTransactionValidatorRule();
+  //   final TransactionValidationRule validatorRule = this.getTransactionValidatorRule();
 
   //   // Act - LEGACY/FRONTIER transaction
   //   when(transaction.getType()).thenReturn(TransactionType.FRONTIER);
@@ -138,8 +141,7 @@ public class LineaTransactionValidatorPluginTest {
   //   when(lineaTransactionValidatorConfiguration.blobTxEnabled()).thenReturn(false);
   //   plugin.doRegister(serviceManager);
   //   plugin.doStart();
-  //   final TransactionValidatorService.TransactionValidatorRule validatorRule =
-  // getTransactionValidatorRule();
+  //   final TransactionValidationRule validatorRule = this.getTransactionValidatorRule();
 
   //   // Act - ACCESS_LIST transaction
   //   when(transaction.getType()).thenReturn(TransactionType.ACCESS_LIST);
@@ -155,8 +157,7 @@ public class LineaTransactionValidatorPluginTest {
   //   when(lineaTransactionValidatorConfiguration.blobTxEnabled()).thenReturn(false);
   //   plugin.doRegister(serviceManager);
   //   plugin.doStart();
-  //   final TransactionValidatorService.TransactionValidatorRule validatorRule =
-  // getTransactionValidatorRule();
+  //   final TransactionValidationRule validatorRule = this.getTransactionValidatorRule();
 
   //   // Act - EIP1559 transaction
   //   when(transaction.getType()).thenReturn(TransactionType.EIP1559);
@@ -172,8 +173,7 @@ public class LineaTransactionValidatorPluginTest {
   //   when(lineaTransactionValidatorConfiguration.blobTxEnabled()).thenReturn(true);
   //   plugin.doRegister(serviceManager);
   //   plugin.doStart();
-  //   final TransactionValidatorService.TransactionValidatorRule validatorRule =
-  // getTransactionValidatorRule();
+  //   final TransactionValidationRule validatorRule = this.getTransactionValidatorRule();
 
   //   // Act - BLOB transaction
   //   when(transaction.getType()).thenReturn(TransactionType.BLOB);
@@ -183,10 +183,10 @@ public class LineaTransactionValidatorPluginTest {
   //   assertThat(result).isEmpty();
   // }
 
-  // private TransactionValidatorService.TransactionValidatorRule getTransactionValidatorRule() {
-  //   ArgumentCaptor<TransactionValidatorService.TransactionValidatorRule> ruleCaptor =
-  //       ArgumentCaptor.forClass(TransactionValidatorService.TransactionValidatorRule.class);
-  //   verify(transactionValidatorService).registerTransactionValidatorRule(ruleCaptor.capture());
-  //   return ruleCaptor.getValue();
-  // }
+  private TransactionValidationRule getTransactionValidatorRule() {
+    ArgumentCaptor<TransactionValidationRule> ruleCaptor =
+        ArgumentCaptor.forClass(TransactionValidationRule.class);
+    verify(transactionValidatorService).registerTransactionValidatorRule(ruleCaptor.capture());
+    return ruleCaptor.getValue();
+  }
 }

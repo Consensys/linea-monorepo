@@ -31,6 +31,15 @@ public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin
   private ServiceManager serviceManager;
   private TransactionValidatorService transactionValidatorService;
 
+  public enum LineaTransactionValidatorError {
+    BLOB_TX_NOT_ALLOWED;
+
+    @Override
+    public String toString() {
+      return "LineaTransactionValidatorPlugin - " + name();
+    }
+  }
+
   @Override
   public void doRegister(final ServiceManager serviceManager) {
     this.serviceManager = serviceManager;
@@ -52,7 +61,7 @@ public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin
     transactionValidatorService.registerTransactionValidatorRule(
         (tx) -> {
           if (tx.getType() == TransactionType.BLOB && !config.blobTxEnabled())
-            return Optional.of("Blob transactions not allowed");
+            return Optional.of(LineaTransactionValidatorError.BLOB_TX_NOT_ALLOWED.toString());
           return Optional.empty();
         });
   }
