@@ -9,67 +9,55 @@ import (
 	"github.com/consensys/gnark/std/math/emulated"
 )
 
-// -- checks for being on curve
-
-type C1IsOnCurveInstance struct {
-	// P is the purported C1 element
-	P g1ElementWizard
+type OnCurveInstance[C convertable[T], T element] struct {
+	// P is the purported element
+	P C
 	// IsSuccess is 1 if the check is successful, 0 otherwise
 	IsSuccess frontend.Variable
 }
 
-func (c C1IsOnCurveInstance) Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error {
-	P := c.P.ToElement(api, fp)
-	res := pairing.IsOnCurve(&P)
-	api.AssertIsEqual(res, c.IsSuccess)
-	return nil
+func (c OnCurveInstance[C, T]) Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error {
+	switch v := any(c.P).(type) {
+	case g1ElementWizard:
+		P := v.ToElement(api, fp)
+		res := pairing.IsOnCurve(&P)
+		api.AssertIsEqual(res, c.IsSuccess)
+		return nil
+	case g2ElementWizard:
+		Q := v.ToElement(api, fp)
+		res := pairing.IsOnTwist(&Q)
+		api.AssertIsEqual(res, c.IsSuccess)
+		return nil
+	default:
+		return fmt.Errorf("unsupported element type %T for on-curve check", c.P)
+	}
 }
 
-// -- checks for small group non-membership. We perform membership checks inside the main circuits. This is only for asserting invalid inputs for MSM and PAIRING.
-
-type G1NonMembershipInstance struct {
-	// P is the purported G1 element
-	P g1ElementWizard
+type NonGroupMembershipInstance[C convertable[T], T element] struct {
+	// P is the purported element
+	P C
 }
 
-func (c G1NonMembershipInstance) Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error {
-	P := c.P.ToElement(api, fp)
-	return evmprecompiles.ECPairBLSIsOnG1(api, &P, 0) // 0 means we expect it to be not on G1
-}
-
-// -- checks for being on twist
-
-type C2IsOnCurveInstance struct {
-	// Q is the purported C2 element
-	Q g2ElementWizard
-	// IsSuccess is 1 if the check is successful, 0 otherwise
-	IsSuccess frontend.Variable
-}
-
-func (c C2IsOnCurveInstance) Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error {
-	Q := c.Q.ToElement(api, fp)
-	res := pairing.IsOnTwist(&Q)
-	api.AssertIsEqual(res, c.IsSuccess)
-	return nil
-}
-
-// -- checks for large group non-membership.
-type G2NonMembershipInstance struct {
-	// Q is the purported G2 element
-	Q g2ElementWizard
-	// IsSuccess is 1 if the check is successful, 0 otherwise
-	IsSuccess frontend.Variable
-}
-
-func (c G2NonMembershipInstance) Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error {
-	Q := c.Q.ToElement(api, fp)
-	return evmprecompiles.ECPairBLSIsOnG2(api, &Q, 0) // 0 means we expect it to be not on G2
+func (c NonGroupMembershipInstance[C, T]) Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error {
+	switch v := any(c.P).(type) {
+	case g1ElementWizard:
+		P := v.ToElement(api, fp)
+		// We expect the element to be not on G1
+		return evmprecompiles.ECPairBLSIsOnG1(api, &P, 0) // 0 means we expect it to be not on G1
+	case g2ElementWizard:
+		Q := v.ToElement(api, fp)
+		// We expect the element to be not on G2
+		return evmprecompiles.ECPairBLSIsOnG2(api, &Q, 0) // 0 means we expect it to be not on G2
+	default:
+		return fmt.Errorf("unsupported element type %T for non-group membership check", c.P)
+	}
 }
 
 // -- circuit which performs multiple checks
 
 type checkableInstance interface {
-	C1IsOnCurveInstance | G2NonMembershipInstance | C2IsOnCurveInstance | G1NonMembershipInstance
+	OnCurveInstance[g1ElementWizard, sw_bls12381.G1Affine] | OnCurveInstance[g2ElementWizard, sw_bls12381.G2Affine] |
+		NonGroupMembershipInstance[g1ElementWizard, sw_bls12381.G1Affine] | NonGroupMembershipInstance[g2ElementWizard, sw_bls12381.G2Affine]
 	Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error
 }
 
