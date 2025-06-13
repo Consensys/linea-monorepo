@@ -65,7 +65,7 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
   public void setup() throws Exception {
     minerNode =
         createCliqueNodeWithExtraCliOptionsAndRpcApis(
-            "miner1", getCliqueOptions(), getTestCliOptions(), Set.of("LINEA", "MINER"), true);
+            "miner1", getCliqueOptions(), getTestCliOptions(), Set.of("LINEA", "MINER"), true, DEFAULT_REQUESTED_PLUGINS);
     minerNode.setTransactionPoolConfiguration(
         ImmutableTransactionPoolConfiguration.builder()
             .from(TransactionPoolConfiguration.DEFAULT)
