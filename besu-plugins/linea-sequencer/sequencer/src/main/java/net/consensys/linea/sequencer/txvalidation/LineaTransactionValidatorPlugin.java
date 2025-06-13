@@ -48,6 +48,7 @@ public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin
   public void doStart() {
     LineaTransactionValidatorConfiguration config = transactionValidatorConfiguration();
 
+    // Rule to reject blob transactions
     transactionValidatorService.registerTransactionValidatorRule(
         (tx) -> {
           if (tx.getType() == TransactionType.BLOB && !config.blobTxEnabled())
