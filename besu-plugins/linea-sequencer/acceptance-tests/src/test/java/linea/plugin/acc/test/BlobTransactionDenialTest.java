@@ -81,14 +81,9 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
         .contains("Plugin has marked the transaction as invalid");
   }
 
-  // Not currently able to test scenario of block import
-  // How we thought of constructing this scenario was as follows:
+  // TODO - Consider test scenario of block import as follows:
   // 1. Create a premade block containing a blob tx
   // 2. Import the premade block using 'engine_newPayloadV4' Engine API call
-  // However we cannot achieve step 1 currently, as attempting to create a block with a blob tx
-  // currently fails
-  // due to LineaTracer error - 'Transaction type not supported' at
-  // net.consensys.linea.zktracer.types.TransactionProcessingMetadata.computeEffectiveGasPrice(TransactionProcessingMetadata.java:255)
 
   private EthSendTransaction sendRawBlobTransaction() throws IOException {
     BigInteger nonce =
