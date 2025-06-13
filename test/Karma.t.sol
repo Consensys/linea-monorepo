@@ -387,6 +387,9 @@ contract SlashAmountOfTest is KarmaTest {
         vm.assume(distributor1Balance < 1e30);
         vm.assume(distributor2Balance < 1e30);
 
+        // Ensure Alice has at least some balance to slash
+        vm.assume(accountBalance + distributor1Balance + distributor2Balance > 0);
+
         _mintKarmaToAccount(alice, accountBalance);
         vm.startPrank(owner);
         distributor1.setUserKarmaShare(alice, distributor1Balance);
