@@ -31,6 +31,8 @@ import net.consensys.linea.config.LineaTransactionPoolValidatorCliOptions;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorCliOptions;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
+import net.consensys.linea.config.LineaTransactionValidatorCliOptions;
+import net.consensys.linea.config.LineaTransactionValidatorConfiguration;
 import net.consensys.linea.plugins.AbstractLineaSharedOptionsPlugin;
 import net.consensys.linea.plugins.LineaOptionsPluginConfiguration;
 import net.consensys.linea.utils.Compressor;
@@ -100,6 +102,9 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
     configMap.put(
         LineaPermissioningCliOptions.CONFIG_KEY,
         LineaPermissioningCliOptions.create().asPluginConfig());
+    configMap.put(
+        LineaTransactionValidatorCliOptions.CONFIG_KEY,
+        LineaTransactionValidatorCliOptions.create().asPluginConfig());
     return configMap;
   }
 
@@ -141,6 +146,11 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   public LineaPermissioningConfiguration permissioningConfiguration() {
     return (LineaPermissioningConfiguration)
         getConfigurationByKey(LineaPermissioningCliOptions.CONFIG_KEY).optionsConfig();
+  }
+
+  public LineaTransactionValidatorConfiguration transactionValidatorConfiguration() {
+    return (LineaTransactionValidatorConfiguration)
+        getConfigurationByKey(LineaTransactionValidatorCliOptions.CONFIG_KEY).optionsConfig();
   }
 
   @Override
