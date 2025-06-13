@@ -28,8 +28,8 @@ import org.hyperledger.besu.plugin.services.TransactionValidatorService;
 @Slf4j
 @AutoService(BesuPlugin.class)
 public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin {
-  private ServiceManager serviceManager;
   private TransactionValidatorService transactionValidatorService;
+  private LineaTransactionValidatorConfiguration config;
 
   public enum LineaTransactionValidatorError {
     BLOB_TX_NOT_ALLOWED;
@@ -42,17 +42,23 @@ public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin
 
   @Override
   public void doRegister(final ServiceManager serviceManager) {
-    this.serviceManager = serviceManager;
-    LineaTransactionValidatorConfiguration config = transactionValidatorConfiguration();
-
     transactionValidatorService =
-        this.serviceManager
+        serviceManager
             .getService(TransactionValidatorService.class)
             .orElseThrow(
                 () ->
                     new RuntimeException(
                         "Failed to obtain TransactionValidatorService from the ServiceManager."));
 
+  }
+
+  // CLI config is not available in doRegister
+  // 'registerTransactionValidatorRule' does not do anything if done in doStart
+  // Therefore we must use beforeExternalServices hook
+  @Override
+  public void beforeExternalServices() {
+    super.beforeExternalServices();
+    this.config = transactionValidatorConfiguration();
     // Register rule to reject blob transactions
     this.transactionValidatorService.registerTransactionValidatorRule(
         (tx) -> {
@@ -63,7 +69,8 @@ public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin
   }
 
   @Override
-  public void doStart() {}
+  public void doStart() {
+  }
 
   @Override
   public void stop() {

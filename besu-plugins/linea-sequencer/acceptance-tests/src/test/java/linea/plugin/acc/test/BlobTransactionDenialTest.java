@@ -33,13 +33,20 @@ import org.web3j.tx.gas.DefaultGasProvider;
 import org.web3j.utils.Numeric;
 
 /**
- * Tests that verify the LineaTransactionValidationPlugin correctly rejects BLOB transactions while allowing
- * other transaction types.
+ * Tests that verify the LineaTransactionValidationPlugin correctly rejects BLOB transactions while
+ * allowing other transaction types.
  */
 public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
   @Override
   protected String getGenesisFileTemplatePath() {
     return "/clique/clique-prague-one-blob.json.tpl";
+  }
+
+  @Override
+  public List<String> getTestCliOptions() {
+    return new TestCommandLineOptionsBuilder()
+        .set("--plugin-linea-blob-tx-enabled=", "false")
+        .build();
   }
 
   private static final BigInteger GAS_PRICE = DefaultGasProvider.GAS_PRICE;
@@ -61,14 +68,14 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
   }
 
   @Test
-  public void blobTransactionsAreRejected() throws Exception {
+  public void blobTransactionsIsRejectedFromTransactionPool() throws Exception {
     // Act - Send a blob transaction
     EthSendTransaction response = sendRawBlobTransaction();
     this.buildNewBlock();
 
     // Assert
-    assertThat(response.hasError()).isFalse();
-    // assertThat(response.getError().getMessage()).contains("Invalid transaction type");
+    assertThat(response.hasError()).isTrue();
+    assertThat(response.getError().getMessage()).contains("Plugin has marked the transaction as invalid");
   }
 
   // TODO - Test that block import from one node to another fails for blob tx
