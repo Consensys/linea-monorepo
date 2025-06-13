@@ -26,6 +26,7 @@ import maru.core.HashUtil
 import maru.core.SealedBeaconBlock
 import maru.core.Validator
 import maru.core.ext.DataGenerators
+import maru.core.ext.metrics.TestMetrics
 import maru.database.BeaconChain
 import maru.executionlayer.client.PragueWeb3JJsonRpcExecutionLayerEngineApiClient
 import maru.executionlayer.manager.ExecutionLayerManager
@@ -56,7 +57,6 @@ import org.mockito.kotlin.reset
 import org.mockito.kotlin.whenever
 import org.web3j.protocol.core.DefaultBlockParameter
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
-import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.async.SafeFuture.completedFuture
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
@@ -263,7 +263,8 @@ class EagerQbftBlockCreatorTest {
         .build()
     return JsonRpcExecutionLayerManager(
       PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
-        Web3JExecutionEngineClient(engineApiClient),
+        web3jClient = engineApiClient,
+        metricsFacade = TestMetrics.TestMetricsFacade,
       ),
     )
   }

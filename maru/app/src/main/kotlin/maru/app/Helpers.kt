@@ -17,9 +17,9 @@ import maru.config.ApiEndpointConfig
 import maru.config.consensus.ElFork
 import maru.executionlayer.client.ExecutionLayerEngineApiClient
 import maru.executionlayer.client.PragueWeb3JJsonRpcExecutionLayerEngineApiClient
+import net.consensys.linea.metrics.MetricsFacade
 import tech.pegasys.teku.ethereum.executionclient.auth.JwtConfig
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
-import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 
@@ -46,11 +46,15 @@ object Helpers {
   fun buildExecutionEngineClient(
     endpoint: ApiEndpointConfig,
     elFork: ElFork,
+    metricsFacade: MetricsFacade,
   ): ExecutionLayerEngineApiClient {
     val web3JEngineApiClient: Web3JClient = createWeb3jClient(endpoint)
-    val web3jExecutionLayerClient = Web3JExecutionEngineClient(web3JEngineApiClient)
     return when (elFork) {
-      ElFork.Prague -> PragueWeb3JJsonRpcExecutionLayerEngineApiClient(web3jExecutionLayerClient)
+      ElFork.Prague ->
+        PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
+          web3jClient = web3JEngineApiClient,
+          metricsFacade = metricsFacade,
+        )
     }
   }
 }

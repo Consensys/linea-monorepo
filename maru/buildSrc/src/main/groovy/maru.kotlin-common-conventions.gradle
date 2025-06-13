@@ -14,6 +14,7 @@ dependencies {
   } because("We are using Teku's SafeFuture, an improved/extension of CompletableFuture.")
 
   implementation "com.michael-bull.kotlin-result:kotlin-result"
+  implementation "build.linea.internal:metrics"
 
   //<logging>
   implementation "org.apache.logging.log4j:log4j-api"

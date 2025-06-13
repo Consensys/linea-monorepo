@@ -22,6 +22,7 @@ import maru.app.MaruAppFactory
 import maru.config.ApiEndpointConfig
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
+import maru.config.ObservabilityOptions
 import maru.config.P2P
 import maru.config.Persistence
 import maru.config.QbftOptions
@@ -83,6 +84,8 @@ class MaruFactory {
     p2pConfig: P2P? = null,
     followers: FollowersConfig = FollowersConfig(emptyMap()),
     qbftOptions: QbftOptions? = null,
+    observabilityOptions: ObservabilityOptions =
+      ObservabilityOptions(port = 0u, prometheusMetricsEnabled = true, jvmMetricsEnabled = true),
   ): MaruConfig =
     MaruConfig(
       persistence = Persistence(dataPath = dataDir),
@@ -94,6 +97,7 @@ class MaruFactory {
         ),
       p2pConfig = p2pConfig,
       followers = followers,
+      observabilityOptions = observabilityOptions,
     )
 
   private fun writeValidatorPrivateKey(config: MaruConfig) {

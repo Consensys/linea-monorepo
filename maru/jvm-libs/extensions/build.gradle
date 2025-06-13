@@ -16,3 +16,8 @@
 plugins {
   id 'maru.kotlin-library-conventions'
 }
+
+dependencies {
+  api "build.linea.internal:futures"
+  api "tech.pegasys.teku.internal:executionclient"
+}

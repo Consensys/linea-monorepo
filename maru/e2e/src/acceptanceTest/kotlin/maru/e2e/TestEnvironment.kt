@@ -8,6 +8,7 @@
  */
 package maru.e2e
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import java.net.URI
 import java.util.Optional
 import java.util.UUID
@@ -15,6 +16,7 @@ import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 import maru.config.ApiEndpointConfig
+import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import org.web3j.protocol.Web3j
 import tech.pegasys.teku.ethereum.executionclient.auth.JwtConfig
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
@@ -22,6 +24,11 @@ import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 
 object TestEnvironment {
+  val testMetricsFacade =
+    MicrometerMetricsFacade(
+      registry = SimpleMeterRegistry(),
+      metricsPrefix = "maru.e2e",
+    )
   private val jwtConfigPath = "../docker/jwt"
   private val jwtConfig: Optional<JwtConfig> =
     JwtConfig.createIfNeeded(
