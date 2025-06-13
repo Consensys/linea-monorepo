@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
+	utils_limitless "github.com/consensys/linea-monorepo/prover/utils/limitless"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 )
 
@@ -19,7 +20,7 @@ func GetDistributed() *distributed.DistributedWizard {
 		zkevm = test_utils.GetZkEVM()
 		disc  = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
-			Affinities:   test_utils.GetAffinities(zkevm),
+			Affinities:   utils_limitless.GetAffinities(zkevm),
 			Predivision:  1,
 		}
 

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	utils_limitless "github.com/consensys/linea-monorepo/prover/utils/limitless"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 )
 
@@ -84,7 +85,7 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 		zkevm = test_utils.GetZkEVM()
 		disc  = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
-			Affinities:   test_utils.GetAffinities(zkevm),
+			Affinities:   utils_limitless.GetAffinities(zkevm),
 			Predivision:  16,
 		}
 	)
