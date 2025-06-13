@@ -99,8 +99,7 @@ func TestAssignInsert(t *testing.T) {
 
 	assertCorrectMerkleProof(t, builder)
 	// Verify the Merkle proofs along with the reuse in the wizard
-	// TODO (nazarevsky): uncomment when FlatProof is done
-	//assertCorrectMerkleProofsUsingWizard(t, builder)
+	assertCorrectMerkleProofsUsingWizard(t, builder)
 }
 
 func TestAssignUpdate(t *testing.T) {
@@ -138,8 +137,7 @@ func TestAssignUpdate(t *testing.T) {
 	assert.Equal(t, getLimbsFromRow(builder.positions[:], 0), getLimbsFromRow(builder.positions[:], 1))
 	assertCorrectMerkleProof(t, builder)
 	// Verify the Merkle proofs along with the reuse in the wizard
-	// TODO (nazarevsky): uncomment when FlatProof is done
-	//assertCorrectMerkleProofsUsingWizard(t, builder)
+	assertCorrectMerkleProofsUsingWizard(t, builder)
 }
 
 func TestAssignDelete(t *testing.T) {
@@ -181,8 +179,7 @@ func TestAssignDelete(t *testing.T) {
 	assert.Equal(t, getLimbsFromRow(builder.positions[:], 4), getLimbsFromRow(builder.positions[:], 5))
 	assertCorrectMerkleProof(t, builder)
 	// Verify the Merkle proofs along with the reuse in the wizard
-	// TODO (nazarevsky): uncomment when FlatProof is done
-	//assertCorrectMerkleProofsUsingWizard(t, builder)
+	assertCorrectMerkleProofsUsingWizard(t, builder)
 }
 
 func TestAssignReadZero(t *testing.T) {
@@ -219,8 +216,7 @@ func TestAssignReadZero(t *testing.T) {
 
 	assertCorrectMerkleProof(t, builder)
 	// Verify the Merkle proofs along with the reuse in the wizard
-	// TODO (nazarevsky): uncomment when FlatProof is done
-	//assertCorrectMerkleProofsUsingWizard(t, builder)
+	assertCorrectMerkleProofsUsingWizard(t, builder)
 }
 
 func TestAssignReadNonZero(t *testing.T) {
@@ -249,8 +245,7 @@ func TestAssignReadNonZero(t *testing.T) {
 
 	assertCorrectMerkleProof(t, builder)
 	// Verify the Merkle proofs along with the reuse in the wizard
-	// TODO (nazarevsky): uncomment when FlatProof is done
-	//assertCorrectMerkleProofsUsingWizard(t, builder)
+	assertCorrectMerkleProofsUsingWizard(t, builder)
 }
 
 func assertCorrectMerkleProof(t *testing.T, builder *assignmentBuilder) {
@@ -276,18 +271,25 @@ func assertCorrectMerkleProofsUsingWizard(t *testing.T, builder *assignmentBuild
 		merkleVerification    *merkle.FlatMerkleProofVerification
 		size                  = utils.NextPowerOfTwo(builder.MaxNumProofs)
 		proofcol              *merkle.FlatProof
-		rootscol              ifaces.Column
-		leavescol             ifaces.Column
-		poscol                ifaces.Column
+		rootscol              [common.NbLimbU256]ifaces.Column
+		leavescol             [common.NbLimbU256]ifaces.Column
+		poscol                [common.NbLimbU64]ifaces.Column
 		useNextMerkleProofCol ifaces.Column
 		isActiveCol           ifaces.Column
 	)
 
 	define := func(b *wizard.Builder) {
 		proofcol = merkle.NewProof(b.CompiledIOP, 0, "PROOF", builder.MerkleTreeDepth, size)
-		rootscol = b.RegisterCommit("ROOTS", size)
-		leavescol = b.RegisterCommit("LEAVES", size)
-		poscol = b.RegisterCommit("POS", size)
+
+		for i := 0; i < common.NbLimbU256; i++ {
+			rootscol[i] = b.RegisterCommit(ifaces.ColIDf("ROOTS_%d", i), size)
+			leavescol[i] = b.RegisterCommit(ifaces.ColIDf("LEAVES_%d", i), size)
+		}
+
+		for i := 0; i < common.NbLimbU64; i++ {
+			poscol[i] = b.RegisterCommit(ifaces.ColIDf("POS_%d", i), size)
+		}
+
 		useNextMerkleProofCol = b.RegisterCommit("REUSE_NEXT_PROOF", size)
 		isActiveCol = b.RegisterCommit("IS_ACTIVE", size)
 

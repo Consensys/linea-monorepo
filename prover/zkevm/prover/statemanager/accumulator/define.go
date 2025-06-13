@@ -336,9 +336,9 @@ func (am *Module) define(comp *wizard.CompiledIOP, s Settings) {
 		merkle.FlatProofVerificationInputs{
 			Name:     "ACCUMULATOR_MERKLE_PROOFS",
 			Proof:    *am.Cols.Proofs,
-			Roots:    am.Cols.Roots[0],
-			Leaf:     am.Cols.Leaves[0],
-			Position: am.Cols.Positions[0],
+			Roots:    am.Cols.Roots,
+			Leaf:     am.Cols.Leaves,
+			Position: am.Cols.Positions,
 			IsActive: am.Cols.IsActiveAccumulator,
 		},
 	)

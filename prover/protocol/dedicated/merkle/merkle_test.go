@@ -1,4 +1,4 @@
-package merkle_test
+statpackage merkle_test
 
 import (
 	"testing"

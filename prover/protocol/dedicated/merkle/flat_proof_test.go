@@ -2,6 +2,8 @@ package merkle
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
@@ -68,10 +70,16 @@ func (ctx *merkleTestRunnerFlat) Define(b *wizard.Builder) {
 	mpvInputs := FlatProofVerificationInputs{
 		Name:     "test",
 		Proof:    *NewProof(b.CompiledIOP, 0, "test", merkleTestDepth, merkleTestNumRow),
-		Leaf:     b.RegisterCommit("LEAF", merkleTestNumRow),
-		Roots:    b.RegisterCommit("ROOTS", merkleTestNumRow),
-		Position: b.RegisterCommit("POS", merkleTestNumRow),
 		IsActive: b.RegisterCommit("ACTIVE", merkleTestNumRow),
+	}
+
+	for i := range mpvInputs.Leaf {
+		mpvInputs.Leaf[i] = b.RegisterCommit(ifaces.ColIDf("LEAF_%d", i), merkleTestNumRow)
+		mpvInputs.Roots[i] = b.RegisterCommit(ifaces.ColIDf("ROOTS_%d", i), merkleTestNumRow)
+	}
+
+	for i := range mpvInputs.Position {
+		mpvInputs.Position[i] = b.RegisterCommit(ifaces.ColIDf("POS_%d", i), merkleTestNumRow)
 	}
 
 	ctx.ctx = CheckFlatMerkleProofs(b.CompiledIOP, mpvInputs)
@@ -80,9 +88,16 @@ func (ctx *merkleTestRunnerFlat) Define(b *wizard.Builder) {
 // Assign assigns the merkle tree test-cases at runtime
 func (ctx *merkleTestRunnerFlat) Assign(run *wizard.ProverRuntime, data *merkleTestBuilder) {
 
-	run.AssignColumn("LEAF", smartvectors.RightZeroPadded(data.leaves, merkleTestNumRow))
-	run.AssignColumn("ROOTS", smartvectors.RightZeroPadded(data.roots, merkleTestNumRow))
-	run.AssignColumn("POS", smartvectors.RightZeroPadded(data.pos, merkleTestNumRow))
+	for i := range data.leaves {
+		run.AssignColumn(ifaces.ColIDf("LEAF_%d", i), smartvectors.RightZeroPadded(data.leaves[i], merkleTestNumRow))
+
+		run.AssignColumn(ifaces.ColIDf("ROOTS_%d", i), smartvectors.RightZeroPadded(data.roots[i], merkleTestNumRow))
+	}
+
+	for i := range data.pos {
+		run.AssignColumn(ifaces.ColIDf("POS_%d", i), smartvectors.RightZeroPadded(data.pos[i], merkleTestNumRow))
+	}
+
 	run.AssignColumn("ACTIVE", smartvectors.RightZeroPadded(data.isActive, merkleTestNumRow))
 
 	ctx.ctx.Proof.Assign(run, data.proofs)
@@ -94,10 +109,13 @@ func (ctx *merkleTestRunnerFlat) Assign(run *wizard.ProverRuntime, data *merkleT
 			var (
 				left  = ctx.ctx.Lefts[l].Result.GetColAssignmentAt(run, i)
 				right = ctx.ctx.Rights[l].Result.GetColAssignmentAt(run, i)
-				node  = ctx.ctx.Nodes[l].Result().GetColAssignmentAt(run, i)
 			)
 
-			fmt.Printf("proof=%v level=%v left=%v right=%v node=%v\n", i, l, left.Text(16), right.Text(16), node.Text(16))
+			for j := range data.leaves {
+				node := ctx.ctx.Nodes[l].Result()[j].GetColAssignmentAt(run, i)
+
+				fmt.Printf("proof=%v level=%v left=%v right=%v node=%v\n", i, l, left.Text(16), right.Text(16), node.Text(16))
+			}
 		}
 	}
 }
@@ -115,12 +133,12 @@ type merkleTestCaseInstance struct {
 // and is implemented like a writer.
 type merkleTestBuilder struct {
 	proofs             []smt.Proof
-	pos                []field.Element
-	roots              []field.Element
-	leaves             []field.Element
+	pos                [common.NbLimbU64][]field.Element
+	roots              [common.NbLimbU256][]field.Element
+	leaves             [common.NbLimbU256][]field.Element
 	useNextMerkleProof []field.Element
 	isActive           []field.Element
-	counter            []field.Element
+	counter            [common.NbLimbU64][]field.Element
 	tree               smt.Tree
 }
 
@@ -179,13 +197,34 @@ func (mt *merkleTestBuilder) AddWrite(pos int, newLeaf types.Bytes32) {
 	})
 }
 
+func valueToLimbs(limbsNb int, value uint64) (res []field.Element) {
+	res = make([]field.Element, limbsNb)
+	for i := range limbsNb - 1 {
+		res[i] = field.Zero()
+	}
+
+	res[limbsNb-1] = field.NewElement(value)
+	return res
+}
+
 // pushRow adds a row to the builder
 func (mt *merkleTestBuilder) pushRow(row merkleTestBuilderRow) {
-	mt.counter = append(mt.counter, field.NewElement(uint64(len(mt.counter))))
+	counterLimbs := valueToLimbs(4, uint64(len(mt.counter)))
+	posLimbs := valueToLimbs(4, uint64(row.pos))
+	for i := range counterLimbs {
+		mt.counter[i] = append(mt.counter[i], counterLimbs[i])
+		mt.pos[i] = append(mt.pos[i], posLimbs[i])
+	}
+
 	mt.proofs = append(mt.proofs, row.proof)
-	mt.pos = append(mt.pos, field.NewElement(uint64(row.pos)))
-	mt.leaves = append(mt.leaves, row.leaf.ToField())
-	mt.roots = append(mt.roots, row.root.ToField())
+
+	leafs := common.SplitElement(row.leaf.ToField())
+	roots := common.SplitElement(row.root.ToField())
+	for i := range leafs {
+		mt.leaves[i] = append(mt.leaves[i], leafs[i])
+		mt.roots[i] = append(mt.roots[i], roots[i])
+	}
+
 	mt.useNextMerkleProof = append(mt.useNextMerkleProof, field.FromBool(row.useNextMerkleProof))
 	mt.isActive = append(mt.isActive, field.One())
 }

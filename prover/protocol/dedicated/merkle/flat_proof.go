@@ -1,7 +1,6 @@
 package merkle
 
 import (
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -9,30 +8,33 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 // FlatProof is a collection of columns representing a Merkle proof in a flat
 // manner.
 type FlatProof struct {
-	Nodes []ifaces.Column
+	Nodes [common.NbLimbU256][]ifaces.Column
 }
 
 // Depth returns the depth of the tree represented by the proof
 func (p *FlatProof) Depth() int {
-	return len(p.Nodes)
+	return len(p.Nodes[0])
 }
 
 // NumRow returns the number of rows of the [FlatProof]
 func (p *FlatProof) NumRow() int {
-	return p.Nodes[0].Size()
+	return p.Nodes[0][0].Size()
 }
 
 // NewProof instantiates a new [FlatProof] object in the wizard
 func NewProof(comp *wizard.CompiledIOP, round int, name string, depth, numRows int) *FlatProof {
 	proof := &FlatProof{}
 	for i := 0; i < depth; i++ {
-		node := comp.InsertCommit(round, ifaces.ColIDf("%v_NODE_%v", name, i), numRows)
-		proof.Nodes = append(proof.Nodes, node)
+		for j := range proof.Nodes {
+			node := comp.InsertCommit(round, ifaces.ColIDf("%v_NODE_%v_%v", name, i, j), numRows)
+			proof.Nodes[j] = append(proof.Nodes[j], node)
+		}
 	}
 	return proof
 }
@@ -40,8 +42,10 @@ func NewProof(comp *wizard.CompiledIOP, round int, name string, depth, numRows i
 // WithStatus changes the status of all the columns of the [FlatProof] to
 // "status" and returns a pointer to the receiver.
 func (p *FlatProof) WithStatus(comp *wizard.CompiledIOP, status column.Status) *FlatProof {
-	for i := range p.Nodes {
-		comp.Columns.SetStatus(p.Nodes[i].GetColID(), status)
+	for _, nodeLimbs := range p.Nodes {
+		for _, limb := range nodeLimbs {
+			comp.Columns.SetStatus(limb.GetColID(), status)
+		}
 	}
 	return p
 }
@@ -50,18 +54,29 @@ func (p *FlatProof) WithStatus(comp *wizard.CompiledIOP, status column.Status) *
 // [merkletree.Proof] objects. The columns are zero-padded on the right.
 func (p *FlatProof) Assign(run *wizard.ProverRuntime, proofs []smt.Proof) {
 
-	assignment := make([][]field.Element, p.Depth())
+	assignment := make([][][]field.Element, p.Depth())
 
 	for i := range proofs {
 		for j := range proofs[i].Siblings {
 			var nodeAsFr field.Element
 			nodeAsFr.SetBytes(proofs[i].Siblings[j][:])
-			assignment[j] = append(assignment[j], nodeAsFr)
+			nodeAsFrLimbs := common.SplitElement(nodeAsFr)
+
+			if len(assignment[j]) == 0 {
+				assignment[j] = make([][]field.Element, len(nodeAsFrLimbs))
+			}
+
+			for k, limb := range nodeAsFrLimbs {
+				assignment[j][k] = append(assignment[j][k], limb)
+			}
 		}
 	}
 
-	for i := range p.Nodes {
-		run.AssignColumn(p.Nodes[i].GetColID(), smartvectors.RightZeroPadded(assignment[i], p.NumRow()))
+	for i := range p.Nodes[0] {
+		for j := range p.Nodes {
+			run.AssignColumn(p.Nodes[j][i].GetColID(),
+				smartvectors.RightZeroPadded(assignment[i][j], p.NumRow()))
+		}
 	}
 }
 
@@ -76,8 +91,11 @@ func (p *FlatProof) Unpack(run ifaces.Runtime, pos smartvectors.SmartVector) []s
 	var (
 		proofs = make([]smt.Proof, 0)
 		// The assumption here is two-fold: first, this relies on the
-		// fact that we know all the columns are structured and padded the same
-		start, stop = smartvectors.CoWindowRange(p.Nodes[0].GetColAssignment(run))
+		// fact that we know all the columns are structured and padded the same.
+		//
+		// Since every column of Nodes limbs has the same size, the window range can
+		// be retrieved from the first limb column.
+		start, stop = smartvectors.CoWindowRange(p.Nodes[0][0].GetColAssignment(run))
 	)
 
 	for i := start; i <= stop; i++ {
@@ -87,37 +105,14 @@ func (p *FlatProof) Unpack(run ifaces.Runtime, pos smartvectors.SmartVector) []s
 			Siblings: make([]types.Bytes32, len(p.Nodes)),
 		}
 
-		for n := range p.Nodes {
-			node := p.Nodes[n].GetColAssignmentAt(run, i)
-			newProof.Siblings[n].SetField(node)
-		}
+		for n := range len(p.Nodes[0]) {
+			siblingLimbs := make([]field.Element, len(p.Nodes))
 
-		proofs = append(proofs, newProof)
-	}
+			for k, limbCol := range p.Nodes {
+				siblingLimbs[k] = limbCol[n].GetColAssignmentAt(run, i)
+			}
 
-	return proofs
-}
-
-// UnpackGnark unpacks the proof into a list of [smt.GnarkProof] objects. The
-// function also takes a list of positions to use to fill the [Path] field
-// of the proof.
-func (p *FlatProof) UnpackGnark(run ifaces.GnarkRuntime, entryList []frontend.Variable) []smt.GnarkProof {
-
-	var (
-		proofs   = make([]smt.GnarkProof, 0)
-		nbProofs = len(entryList)
-	)
-
-	for i := 0; i < nbProofs; i++ {
-
-		newProof := smt.GnarkProof{
-			Path:     entryList[i],
-			Siblings: make([]frontend.Variable, len(p.Nodes)),
-		}
-
-		for j := range p.Nodes {
-			node := p.Nodes[i].GetColAssignmentGnarkAt(run, i)
-			newProof.Siblings[j] = node
+			newProof.Siblings[n].SetField(common.CombineElements(siblingLimbs))
 		}
 
 		proofs = append(proofs, newProof)
