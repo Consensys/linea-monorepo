@@ -33,7 +33,7 @@ import org.junit.jupiter.api.BeforeEach;
 public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
   private EngineAPIService engineApiService;
   private ObjectMapper mapper;
-  private final String GENESIS_FILE_TEMPLATE_PATH = "/clique/clique-prague.json.tpl";
+  private final String GENESIS_FILE_TEMPLATE_PATH = "/clique/clique-prague-no-blobs.json.tpl";
 
   @BeforeEach
   @Override
