@@ -33,6 +33,7 @@ import org.junit.jupiter.api.BeforeEach;
 public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
   private EngineAPIService engineApiService;
   private ObjectMapper mapper;
+
   // Override this in subclasses to use a different genesis file template
   protected String getGenesisFileTemplatePath() {
     return "/clique/clique-prague-no-blobs.json.tpl";

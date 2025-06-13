@@ -43,6 +43,7 @@ public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin
   @Override
   public void doRegister(final ServiceManager serviceManager) {
     this.serviceManager = serviceManager;
+    LineaTransactionValidatorConfiguration config = transactionValidatorConfiguration();
 
     transactionValidatorService =
         this.serviceManager
@@ -51,20 +52,18 @@ public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin
                 () ->
                     new RuntimeException(
                         "Failed to obtain TransactionValidatorService from the ServiceManager."));
-  }
 
-  @Override
-  public void doStart() {
-    LineaTransactionValidatorConfiguration config = transactionValidatorConfiguration();
-
-    // Rule to reject blob transactions
-    transactionValidatorService.registerTransactionValidatorRule(
+    // Register rule to reject blob transactions
+    this.transactionValidatorService.registerTransactionValidatorRule(
         (tx) -> {
           if (tx.getType() == TransactionType.BLOB && !config.blobTxEnabled())
             return Optional.of(LineaTransactionValidatorError.BLOB_TX_NOT_ALLOWED.toString());
           return Optional.empty();
         });
   }
+
+  @Override
+  public void doStart() {}
 
   @Override
   public void stop() {
