@@ -17,3 +17,8 @@ eth-api-endpoint = { endpoint = "http://localhost:8545" }
 "follower-erigon" = { endpoint = "http://localhost:11551", jwt-secret-path = "../docker/jwt" }
 "follower-nethermind" = { endpoint = "http://localhost:10550", jwt-secret-path = "../docker/jwt" }
 "follower-geth" = { endpoint = "http://localhost:8561", jwt-secret-path = "../docker/jwt" }
+
+[observability-options]
+port = 8080
+jvm-metrics-enabled = true
+prometheus-metrics-enabled = true

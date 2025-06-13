@@ -9,3 +9,8 @@ plugins {
     // Apply the application plugin to add support for building a CLI application in Java.
     id 'application'
 }
+
+dependencies {
+  implementation "build.linea.internal:micrometer"
+  implementation "build.linea.internal:vertx-helper"
+}

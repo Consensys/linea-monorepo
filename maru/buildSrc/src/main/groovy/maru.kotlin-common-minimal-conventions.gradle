@@ -11,6 +11,7 @@ java {
 }
 
 repositories {
+  mavenLocal()
   mavenCentral()
   maven {
     url 'https://artifacts.consensys.net/public/teku/maven/'
@@ -49,6 +50,7 @@ dependencies {
   // check later on if this may raise incompatibilities
   testImplementation 'org.mockito.kotlin:mockito-kotlin'
   testImplementation 'org.awaitility:awaitility-kotlin'
+  testImplementation 'build.linea.internal:micrometer'
   //</testing>
 }
 

@@ -26,5 +26,6 @@ dependencies {
   testFixturesImplementation("org.hyperledger.besu:besu-datatypes")
   testFixturesImplementation("org.hyperledger.besu:plugin-api")
   testFixturesImplementation("org.hyperledger.besu.internal:algorithms")
+  testFixturesImplementation("build.linea.internal:micrometer")
   testFixturesImplementation(project(":serialization"))
 }

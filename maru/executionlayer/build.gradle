@@ -20,6 +20,7 @@ plugins {
 dependencies {
   implementation(project(":core"))
   implementation(project(":jvm-libs:mappers"))
+  implementation(project(":jvm-libs:extensions"))
 
   api "tech.pegasys.teku.internal:executionclient"
 

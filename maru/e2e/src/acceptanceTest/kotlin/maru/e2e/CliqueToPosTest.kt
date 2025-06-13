@@ -238,7 +238,13 @@ class CliqueToPosTest {
   }
 
   private fun buildBlockImportHandler(engineApiConfig: ApiEndpointConfig): NewBlockHandler<*> =
-    FollowerBeaconBlockImporter.create(Helpers.buildExecutionEngineClient(engineApiConfig, ElFork.Prague))
+    FollowerBeaconBlockImporter.create(
+      Helpers.buildExecutionEngineClient(
+        engineApiConfig,
+        ElFork.Prague,
+        TestEnvironment.testMetricsFacade,
+      ),
+    )
 
   private fun waitTillTimestamp(timestamp: Long) {
     await.timeout(1.minutes.toJavaDuration()).pollInterval(500.milliseconds.toJavaDuration()).untilAsserted {
