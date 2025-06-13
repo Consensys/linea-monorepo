@@ -79,7 +79,7 @@ public class LineaTransactionValidatorPluginTest {
     plugin.doRegister(serviceManager);
 
     // Act
-    plugin.doStart();
+    plugin.beforeExternalServices();
 
     // Assert
     verify(transactionValidatorService).registerTransactionValidatorRule(any());
@@ -90,7 +90,7 @@ public class LineaTransactionValidatorPluginTest {
     // Arrange
     when(lineaTransactionValidatorConfiguration.blobTxEnabled()).thenReturn(false);
     plugin.doRegister(serviceManager);
-    plugin.doStart();
+    plugin.beforeExternalServices();
     final TransactionValidationRule validatorRule = this.getTransactionValidatorRule();
 
     // Act - BLOB transaction
@@ -107,7 +107,7 @@ public class LineaTransactionValidatorPluginTest {
   public void shouldPermitEIP7702Transactions() {
     // Arrange
     plugin.doRegister(serviceManager);
-    plugin.doStart();
+    plugin.beforeExternalServices();
     final TransactionValidationRule validatorRule = this.getTransactionValidatorRule();
 
     // Act - EIP7702 transaction
@@ -122,7 +122,7 @@ public class LineaTransactionValidatorPluginTest {
   public void shouldPermitLegacyTransactions() {
     // Arrange
     plugin.doRegister(serviceManager);
-    plugin.doStart();
+    plugin.beforeExternalServices();
     final TransactionValidationRule validatorRule = this.getTransactionValidatorRule();
 
     // Act - LEGACY/FRONTIER transaction
@@ -137,7 +137,7 @@ public class LineaTransactionValidatorPluginTest {
   public void shouldPermitAccessListTransactions() {
     // Arrange
     plugin.doRegister(serviceManager);
-    plugin.doStart();
+    plugin.beforeExternalServices();
     final TransactionValidationRule validatorRule = this.getTransactionValidatorRule();
 
     // Act - ACCESS_LIST transaction
@@ -152,7 +152,7 @@ public class LineaTransactionValidatorPluginTest {
   public void shouldPermitEIP1559Transactions() {
     // Arrange
     plugin.doRegister(serviceManager);
-    plugin.doStart();
+    plugin.beforeExternalServices();
     final TransactionValidationRule validatorRule = this.getTransactionValidatorRule();
 
     // Act - EIP1559 transaction
@@ -168,7 +168,7 @@ public class LineaTransactionValidatorPluginTest {
     // Arrange
     when(lineaTransactionValidatorConfiguration.blobTxEnabled()).thenReturn(true);
     plugin.doRegister(serviceManager);
-    plugin.doStart();
+    plugin.beforeExternalServices();
     final TransactionValidationRule validatorRule = this.getTransactionValidatorRule();
 
     // Act - BLOB transaction
