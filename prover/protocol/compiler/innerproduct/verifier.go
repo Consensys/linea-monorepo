@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -63,7 +64,7 @@ func (v *verifierForSize) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	var (
 		// ys stores the list of all the inner-product openings
-		ys = []frontend.Variable{}
+		ys = []gnarkfext.Element{}
 		// expected stores the random linear combinations of the ys by batching
 		// coin
 		expected frontend.Variable
@@ -78,8 +79,8 @@ func (v *verifierForSize) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	}
 
 	if len(ys) > 1 {
-		batchingCoin := run.GetRandomCoinField(v.BatchOpening.Name)
-		expected = poly.EvaluateUnivariateGnark(api, ys, batchingCoin)
+		batchingCoin := run.GetRandomCoinFieldExt(v.BatchOpening.Name)
+		expected = poly.EvaluateUnivariateGnarkMixed(api, ys, batchingCoin)
 	}
 
 	if len(ys) <= 1 {

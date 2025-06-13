@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/stretchr/testify/require"
 )
@@ -19,9 +20,9 @@ func TestGnarkEval(t *testing.T) {
 				pol      = vector.IntoGnarkAssignment(vector.ForTest(1, 2, 3, 4))
 				x        = 2
 				expected = 49
-				res      = EvaluateUnivariateGnark(api, pol, x)
+				res      = EvaluateUnivariateGnarkMixed(api, pol, gnarkfext.NewFromBase(x))
 			)
-			api.AssertIsEqual(expected, res)
+			api.AssertIsEqual(expected, res.B0.A0)
 			return nil
 		}
 
@@ -34,9 +35,9 @@ func TestGnarkEval(t *testing.T) {
 				pol      = vector.IntoGnarkAssignment([]field.Element{})
 				x        = 2
 				expected = 0
-				res      = EvaluateUnivariateGnark(api, pol, x)
+				res      = EvaluateUnivariateGnarkMixed(api, pol, gnarkfext.NewFromBase(x))
 			)
-			api.AssertIsEqual(expected, res)
+			api.AssertIsEqual(expected, res.B0.A0)
 			return nil
 		}
 		gnarkutil.AssertCircuitSolved(t, def)

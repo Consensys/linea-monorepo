@@ -3,6 +3,7 @@ package testtools
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -19,7 +20,7 @@ type InnerProductTestcase struct {
 	Bs []smartvectors.SmartVector
 	// Values are the values to assign to the query. nil tells the assign
 	// function to compute it itself. And thus, having the correct value.
-	Values []field.Element
+	Values []fext.Element
 	// Q is the query to define.
 	Q query.InnerProduct
 	// MustFailFlag is true if the testcase must fail.

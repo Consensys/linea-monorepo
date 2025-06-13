@@ -765,7 +765,7 @@ func (run *ProverRuntime) GetInnerProductParams(name ifaces.QueryID) query.Inner
 //   - no query with the name `name` are found in the [CompiledIOP] object.
 //   - parameters for this query have already been assigned
 //   - the assignment round is not the correct one
-func (run *ProverRuntime) AssignInnerProduct(name ifaces.QueryID, ys ...field.Element) query.InnerProductParams {
+func (run *ProverRuntime) AssignInnerProduct(name ifaces.QueryID, ys ...fext.Element) query.InnerProductParams {
 	q := run.GetInnerProduct(name)
 	if len(q.Bs) != len(ys) {
 		utils.Panic("Inner-product query %v has %v bs but assigned for %v", name, len(q.Bs), len(ys))

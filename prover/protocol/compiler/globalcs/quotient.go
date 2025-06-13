@@ -269,19 +269,10 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 			// For each value of `i`, X will evaluate to gen*omegaQ^numCoset*omega^i.
 			// Gen is a generator of F^*
 			var (
-				omega        field.Element
-				omegaQNumCos field.Element
-				omegaI       = field.NewElement(field.MultiplicativeGen)
+				omega, _        = fft.Generator(uint64(ctx.DomainSize))
+				omegaQNumCos, _ = fft.Generator(uint64(ctx.DomainSize * maxRatio))
+				omegaI          = field.NewElement(field.MultiplicativeGen)
 			)
-
-			omega, err := fft.Generator(uint64(ctx.DomainSize))
-			if err != nil {
-				panic(err)
-			}
-			omegaQNumCos, err2 := fft.Generator(uint64(ctx.DomainSize * maxRatio))
-			if err2 != nil {
-				panic(err2)
-			}
 
 			omegaQNumCos.Exp(omegaQNumCos, big.NewInt(int64(i)))
 			omegaI.Mul(&omegaI, &omegaQNumCos)

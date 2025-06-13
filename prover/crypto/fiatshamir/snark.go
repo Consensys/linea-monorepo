@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"golang.org/x/crypto/blake2b"
 )
@@ -97,6 +98,26 @@ func (fs *GnarkFiatShamir) Update(vec ...frontend.Variable) {
 func (fs *GnarkFiatShamir) UpdateVec(mat ...[]frontend.Variable) {
 	for i := range mat {
 		fs.Update(mat[i]...)
+	}
+}
+
+// Update updates the Fiat-Shamir state with a vector of frontend.Variable
+// representing field element each.
+func (fs *GnarkFiatShamir) UpdateExt(vec ...gnarkfext.Element) {
+	// Safeguard against nil
+	for i := range vec {
+		fs.Update(vec[i].B0.A0)
+		fs.Update(vec[i].B0.A1)
+		fs.Update(vec[i].B1.A0)
+		fs.Update(vec[i].B1.A1)
+
+	}
+}
+
+// UpdateVec updates the Fiat-Shamir state with a matrix of field element.
+func (fs *GnarkFiatShamir) UpdateVecExt(mat ...[]gnarkfext.Element) {
+	for i := range mat {
+		fs.UpdateExt(mat[i]...)
 	}
 }
 

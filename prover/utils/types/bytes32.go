@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -44,8 +45,8 @@ func (f *Bytes32) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// HashToBytes32 converts [8]koalabear.Element to Bytes32.
-func HashToBytes32(hash [8]koalabear.Element) Bytes32 {
+// HashToBytes32 converts vortex.Hash to Bytes32.
+func HashToBytes32(hash vortex.Hash) Bytes32 {
 	var result Bytes32
 
 	for i := 0; i < 8; i++ {
@@ -57,7 +58,7 @@ func HashToBytes32(hash [8]koalabear.Element) Bytes32 {
 	return result
 }
 
-// Bytes32ToHash converts Bytes32 to [8]koalabear.Element
+// Bytes32ToHash converts Bytes32 to []koalabear.Element
 func Bytes32ToHash(input Bytes32) []koalabear.Element { // Changed koalabear.Element to Element
 	var result []koalabear.Element // Array to store the 8 reconstructed Elements
 

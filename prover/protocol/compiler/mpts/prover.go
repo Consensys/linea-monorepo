@@ -286,14 +286,9 @@ func (qa quotientAccumulation) computeZetas(run *wizard.ProverRuntime) [][]fext.
 func getPowersOfOmega(n int) []field.Element {
 
 	var (
-		omega field.Element
-		res   = make([]field.Element, n)
-		err   error
+		omega, _ = fft.Generator(uint64(n))
+		res      = make([]field.Element, n)
 	)
-	omega, err = fft.Generator(uint64(n))
-	if err != nil {
-		panic(err)
-	}
 
 	res[0] = field.One()
 

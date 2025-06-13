@@ -122,6 +122,18 @@ func (fs *State) UpdateVec(vecs ...[]field.Element) {
 	}
 }
 
+// UpdateVec updates the Fiat-Shamir state by passing one of more slices of
+// field elements.
+func (fs *State) UpdateVecExt(vecs ...[]fext.Element) {
+	if len(vecs) == 0 {
+		return
+	}
+
+	for i := range vecs {
+		fs.UpdateExt(vecs[i]...)
+	}
+}
+
 // UpdateSV updates the FS state with a smart-vector. No-op if the smart-vector
 // has a length of zero.
 func (fs *State) UpdateSV(sv smartvectors.SmartVector) {

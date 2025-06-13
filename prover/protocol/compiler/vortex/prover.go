@@ -1,6 +1,7 @@
 package vortex
 
 import (
+	gnarkvortex "github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -323,8 +324,8 @@ func (ctx *Ctx) unpackMerkleProofs(sv smartvectors.SmartVector, entryList []int)
 			// parse the siblings accounting for the fact that we
 			// are inversing the order.
 			for k := range proof.Siblings {
-				var v [8]field.Element
-				for i := 0; i < 8; i++ {
+				var v gnarkvortex.Hash
+				for i := 0; i < len(v); i++ {
 					v[i] = sv.Get(curr)
 					curr++
 				}

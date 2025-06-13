@@ -69,6 +69,12 @@ func (e *Element) Add(api frontend.API, e1, e2 Element) *Element {
 	return e
 }
 
+// e = e1+e2
+func (e *Element) AddByBase(api frontend.API, e1 Element, e2 frontend.Variable) *Element {
+	e.B0.A0 = api.Add(e1.B0.A0, e2)
+	return e
+}
+
 // Double Element elmt
 func (e *Element) Double(api frontend.API, e1 Element) *Element {
 	e.B0.Double(api, e1.B0)
@@ -83,7 +89,7 @@ func (e *Element) Sub(api frontend.API, e1, e2 Element) *Element {
 	return e
 }
 
-// Mul e2 elmts
+// Mul e2 elmts, e = e1*e2
 func (e *Element) Mul(api frontend.API, e1, e2 Element, in ...Element) *Element {
 
 	var l1, l2 E2

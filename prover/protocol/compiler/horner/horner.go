@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -252,13 +253,13 @@ func (a assignHornerIP) Run(run *wizard.ProverRuntime) {
 		var (
 			ip        = a.CountingInnerProducts[i]
 			selectors = a.Q.Parts[i].Selectors
-			res       = make([]field.Element, len(selectors))
+			res       = make([]fext.Element, len(selectors))
 		)
 
 		for i, selector := range selectors {
 			sel := selector.GetColAssignment(run).IntoRegVecSaveAlloc()
 			for j := range sel {
-				res[i].Add(&res[i], &sel[j])
+				fext.AddByBase(&res[i], &res[i], &sel[j])
 			}
 		}
 

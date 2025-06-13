@@ -3,6 +3,7 @@ package query
 import (
 	"fmt"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 
@@ -32,8 +33,7 @@ func (lop LocalOpeningParams) UpdateFS(fs *fiatshamir.State) {
 		fs.Update(lop.BaseY)
 	} else {
 		// Change this for the actual extension!
-		fs.Update(lop.ExtY.A0)
-		fs.Update(lop.ExtY.A1)
+		fs.UpdateExt(lop.ExtY)
 	}
 }
 
@@ -56,7 +56,7 @@ func (r LocalOpening) Name() ifaces.QueryID {
 func NewLocalOpeningParams(y field.Element) LocalOpeningParams {
 	return LocalOpeningParams{
 		BaseY:  y,
-		ExtY:   fext.Element{A0: y, A1: field.Zero()},
+		ExtY:   fext.Element{B0: extensions.E2{A0: y, A1: field.Zero()}, B1: extensions.E2{A0: field.Zero(), A1: field.Zero()}},
 		IsBase: true,
 	}
 }

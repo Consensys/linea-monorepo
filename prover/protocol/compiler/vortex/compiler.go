@@ -249,7 +249,7 @@ type Ctx struct {
 		// We represents all the Merkle proof as specfied here:
 		MerkleProofs ifaces.Column
 		// The Merkle roots are represented by a size 1 column
-		// in the wizard.
+		// in the wizard.//TODO@yao: size 8?
 		MerkleRoots []ifaces.Column
 	}
 

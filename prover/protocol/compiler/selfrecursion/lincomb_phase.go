@@ -72,9 +72,9 @@ func (a *consistencyYsUalphaVerifierAction) Run(run wizard.Runtime) error {
 
 func (a *consistencyYsUalphaVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	ys := a.ctx.Columns.Ys.GetColAssignmentGnark(run)
-	alpha := run.GetRandomCoinField(a.ctx.Coins.Alpha.Name)
+	alpha := run.GetRandomCoinFieldExt(a.ctx.Coins.Alpha.Name)
 	uAlphaX := a.interpolateUalphaX.GetFrontendVariable(api, run)
-	ysAlpha := poly.EvaluateUnivariateGnark(api, ys, alpha)
+	ysAlpha := poly.EvaluateUnivariateGnarkMixed(api, ys, alpha)
 	api.AssertIsEqual(uAlphaX, ysAlpha)
 }
 

@@ -3,6 +3,7 @@ package merkle_test
 import (
 	"testing"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -48,7 +49,7 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 	leaves := make([]types.Bytes32, 1<<depth)
 	for i := range leaves {
 		// #nosec G404 -- no need for a cryptographically strong PRNG for testing purposes
-		var x [8]field.Element
+		var x vortex.Hash
 		for i := 0; i < 8; i++ {
 			x[i].SetRandom()
 		}

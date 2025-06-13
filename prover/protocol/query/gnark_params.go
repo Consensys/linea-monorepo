@@ -3,7 +3,7 @@ package query
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 )
 
@@ -58,31 +58,31 @@ func (p LogDerivSumParams) GnarkAssign() GnarkLogDerivSumParams {
 
 // A gnark circuit version of InnerProductParams
 type GnarkInnerProductParams struct {
-	Ys []frontend.Variable
+	Ys []gnarkfext.Element
 }
 
 func (p InnerProduct) GnarkAllocate() GnarkInnerProductParams {
-	return GnarkInnerProductParams{Ys: make([]frontend.Variable, len(p.Bs))}
+	return GnarkInnerProductParams{Ys: make([]gnarkfext.Element, len(p.Bs))}
 }
 
 func (p InnerProductParams) GnarkAssign() GnarkInnerProductParams {
-	return GnarkInnerProductParams{Ys: vector.IntoGnarkAssignment(p.Ys)}
+	return GnarkInnerProductParams{Ys: vectorext.IntoGnarkAssignment(p.Ys)}
 }
 
 // A gnark circuit version of univariate eval params
 type GnarkUnivariateEvalParams struct {
-	X  frontend.Variable
-	Ys []frontend.Variable
+	X  gnarkfext.Element
+	Ys []gnarkfext.Element
 }
 
 func (p UnivariateEval) GnarkAllocate() GnarkUnivariateEvalParams {
 	// no need to preallocate the x because its size is already known
-	return GnarkUnivariateEvalParams{Ys: make([]frontend.Variable, len(p.Pols))}
+	return GnarkUnivariateEvalParams{Ys: make([]gnarkfext.Element, len(p.Pols))}
 }
 
 // Returns a gnark assignment for the present parameters
 func (p UnivariateEvalParams) GnarkAssign() GnarkUnivariateEvalParams {
-	return GnarkUnivariateEvalParams{Ys: vector.IntoGnarkAssignment(p.Ys), X: p.X}
+	return GnarkUnivariateEvalParams{Ys: vectorext.IntoGnarkAssignment.IntoGnarkAssignment(p.Ys), X: p.X}
 }
 
 // GnarkAllocate allocates a [GnarkHornerParams] with the right dimensions
@@ -111,7 +111,7 @@ func (p HornerParams) GnarkAssign() GnarkHornerParams {
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkInnerProductParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
-	fs.Update(p.Ys...)
+	fs.UpdateExt(p.Ys...)
 }
 
 // Update the fiat-shamir state with the the present parameters
