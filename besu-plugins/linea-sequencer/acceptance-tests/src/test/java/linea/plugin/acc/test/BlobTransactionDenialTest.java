@@ -33,7 +33,7 @@ import org.web3j.tx.gas.DefaultGasProvider;
 import org.web3j.utils.Numeric;
 
 /**
- * Tests that verify the LineaPermissioningPlugin correctly rejects BLOB transactions while allowing
+ * Tests that verify the LineaTransactionValidationPlugin correctly rejects BLOB transactions while allowing
  * other transaction types.
  */
 public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {

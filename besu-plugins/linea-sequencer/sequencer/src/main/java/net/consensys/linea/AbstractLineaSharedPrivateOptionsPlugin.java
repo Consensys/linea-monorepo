@@ -17,8 +17,6 @@ import net.consensys.linea.bundles.BundlePoolService;
 import net.consensys.linea.bundles.LineaLimitedBundlePool;
 import net.consensys.linea.config.LineaBundleCliOptions;
 import net.consensys.linea.config.LineaBundleConfiguration;
-import net.consensys.linea.config.LineaPermissioningCliOptions;
-import net.consensys.linea.config.LineaPermissioningConfiguration;
 import net.consensys.linea.config.LineaProfitabilityCliOptions;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaRejectedTxReportingCliOptions;
@@ -99,9 +97,6 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
         LineaRejectedTxReportingCliOptions.create().asPluginConfig());
     configMap.put(
         LineaBundleCliOptions.CONFIG_KEY, LineaBundleCliOptions.create().asPluginConfig());
-    // configMap.put(
-    //     LineaPermissioningCliOptions.CONFIG_KEY,
-    //     LineaPermissioningCliOptions.create().asPluginConfig());
     configMap.put(
         LineaTransactionValidatorCliOptions.CONFIG_KEY,
         LineaTransactionValidatorCliOptions.create().asPluginConfig());
@@ -141,11 +136,6 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   public LineaBundleConfiguration bundleConfiguration() {
     return (LineaBundleConfiguration)
         getConfigurationByKey(LineaBundleCliOptions.CONFIG_KEY).optionsConfig();
-  }
-
-  public LineaPermissioningConfiguration permissioningConfiguration() {
-    return (LineaPermissioningConfiguration)
-        getConfigurationByKey(LineaPermissioningCliOptions.CONFIG_KEY).optionsConfig();
   }
 
   public LineaTransactionValidatorConfiguration transactionValidatorConfiguration() {
