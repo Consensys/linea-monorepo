@@ -99,9 +99,9 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
         LineaRejectedTxReportingCliOptions.create().asPluginConfig());
     configMap.put(
         LineaBundleCliOptions.CONFIG_KEY, LineaBundleCliOptions.create().asPluginConfig());
-    configMap.put(
-        LineaPermissioningCliOptions.CONFIG_KEY,
-        LineaPermissioningCliOptions.create().asPluginConfig());
+    // configMap.put(
+    //     LineaPermissioningCliOptions.CONFIG_KEY,
+    //     LineaPermissioningCliOptions.create().asPluginConfig());
     configMap.put(
         LineaTransactionValidatorCliOptions.CONFIG_KEY,
         LineaTransactionValidatorCliOptions.create().asPluginConfig());

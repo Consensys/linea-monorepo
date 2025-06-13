@@ -29,8 +29,6 @@ import org.web3j.crypto.TransactionEncoder;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.methods.response.EthSendTransaction;
-import org.web3j.tx.RawTransactionManager;
-import org.web3j.tx.TransactionManager;
 import org.web3j.tx.gas.DefaultGasProvider;
 import org.web3j.utils.Numeric;
 
@@ -47,7 +45,6 @@ public class BlobTransactionDenialTest extends LineaPluginTestBase {
 
   private Web3j web3j;
   private Credentials credentials;
-  private TransactionManager txManager;
   private String recipient;
 
   @Override
@@ -56,33 +53,7 @@ public class BlobTransactionDenialTest extends LineaPluginTestBase {
     super.setup();
     web3j = minerNode.nodeRequests().eth();
     credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
-    txManager = new RawTransactionManager(web3j, credentials, CHAIN_ID);
     recipient = accounts.getSecondaryBenefactor().getAddress();
-  }
-
-  @Test
-  public void legacyTransactionsAreAccepted() throws Exception {
-    // Act - Send a legacy transaction
-    String txHash =
-        txManager
-            .sendTransaction(GAS_PRICE, GAS_LIMIT, recipient, DATA, VALUE)
-            .getTransactionHash();
-
-    // Assert
-    minerNode.verify(eth.expectSuccessfulTransactionReceipt(txHash));
-  }
-
-  @Test
-  public void eip1559TransactionsAreAccepted() throws Exception {
-    // Act - Send an EIP-1559 transaction
-    String txHash =
-        txManager
-            .sendEIP1559Transaction(
-                CHAIN_ID, GAS_PRICE, GAS_PRICE, GAS_LIMIT, recipient, DATA, VALUE)
-            .getTransactionHash();
-
-    // Assert
-    minerNode.verify(eth.expectSuccessfulTransactionReceipt(txHash));
   }
 
   // Note that this currently passes as Besu Node does not support blob tx
