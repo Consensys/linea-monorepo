@@ -122,8 +122,8 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
 
   /**
    * Creates and sends a blob transaction. This method is designed to be stateless and should not
-   * rely on any class properties or instance methods. All required data should be passed as parameters.
-   * This makes it easier to test and reuse in different contexts.
+   * rely on any class properties or instance methods. All required data should be passed as
+   * parameters. This makes it easier to test and reuse in different contexts.
    */
   protected EthSendTransaction sendRawBlobTransaction(
       Web3j web3j, Credentials credentials, String recipient) throws IOException {
