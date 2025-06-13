@@ -82,6 +82,14 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
   }
 
   // TODO - Consider test scenario of block import as follows:
+  // 1. Start an additional minimal node with Prague config
+  // 2. Ensure additional node is peered to minerNode
+  // 3. Send blob tx to additional node
+  // 4. Construct block on additional node
+  // 5. Send 'debug_getBadBlocks' RPC request to minerNode, confirm that block is rejected from
+  // import
+  //
+  // If the above is not possible, we can try the following:
   // 1. Create a premade block containing a blob tx
   // 2. Import the premade block using 'engine_newPayloadV4' Engine API call
 
