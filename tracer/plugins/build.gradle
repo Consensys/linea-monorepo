@@ -43,13 +43,13 @@ dependencies {
   compileOnly 'com.google.auto.service:auto-service'
 
   implementation "${besuArtifactGroup}:besu-datatypes"
-  implementation "${besuArtifactGroup}:evm"
-  implementation "${besuArtifactGroup}:plugin-api"
-  implementation "${besuArtifactGroup}.internal:algorithms"
-  implementation "${besuArtifactGroup}.internal:api"
-  implementation "${besuArtifactGroup}.internal:clique"
-  implementation "${besuArtifactGroup}.internal:core"
-  implementation "${besuArtifactGroup}.internal:rlp"
+  implementation "${besuArtifactGroup}:besu-evm"
+  implementation "${besuArtifactGroup}:besu-plugin-api"
+  implementation "${besuArtifactGroup}.internal:besu-consensus-clique"
+  implementation "${besuArtifactGroup}.internal:besu-crypto-algorithms"
+  implementation "${besuArtifactGroup}.internal:besu-ethereum-api"
+  implementation "${besuArtifactGroup}.internal:besu-ethereum-core"
+  implementation "${besuArtifactGroup}.internal:besu-ethereum-rlp"
 
   implementation 'info.picocli:picocli'
 

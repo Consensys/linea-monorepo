@@ -293,7 +293,6 @@ public class GeneralStateReferenceTestTools {
             blockHeader.getCoinbase(),
             zkTracer,
             new BlockchainBasedBlockHashLookup(blockHeader, blockchain),
-            false,
             TransactionValidationParams.processingBlock(),
             blobGasPrice);
     if (result.isInvalid()) {
