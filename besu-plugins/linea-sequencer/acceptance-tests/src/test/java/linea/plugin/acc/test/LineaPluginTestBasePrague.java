@@ -33,7 +33,10 @@ import org.junit.jupiter.api.BeforeEach;
 public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
   private EngineAPIService engineApiService;
   private ObjectMapper mapper;
-  private final String GENESIS_FILE_TEMPLATE_PATH = "/clique/clique-prague-no-blobs.json.tpl";
+  // Override this in subclasses to use a different genesis file template
+  protected String getGenesisFileTemplatePath() {
+    return "/clique/clique-prague-no-blobs.json.tpl";
+  }
 
   @BeforeEach
   @Override
@@ -59,7 +62,7 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
       final Collection<? extends RunnableNode> validators, final CliqueOptions cliqueOptions) {
     // Target state
     final String genesisTemplate =
-        GenesisConfigurationFactory.readGenesisFile(GENESIS_FILE_TEMPLATE_PATH);
+        GenesisConfigurationFactory.readGenesisFile(getGenesisFileTemplatePath());
     final String hydratedGenesisTemplate =
         genesisTemplate
             .replace("%blockperiodseconds%", String.valueOf(cliqueOptions.blockPeriodSeconds()))

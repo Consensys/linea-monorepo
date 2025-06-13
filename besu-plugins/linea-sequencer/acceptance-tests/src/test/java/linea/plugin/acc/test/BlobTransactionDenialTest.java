@@ -37,6 +37,10 @@ import org.web3j.utils.Numeric;
  * other transaction types.
  */
 public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
+  @Override
+  protected String getGenesisFileTemplatePath() {
+    return "/clique/clique-prague-one-blob.json.tpl";
+  }
 
   private static final BigInteger GAS_PRICE = DefaultGasProvider.GAS_PRICE;
   private static final BigInteger GAS_LIMIT = DefaultGasProvider.GAS_LIMIT;
