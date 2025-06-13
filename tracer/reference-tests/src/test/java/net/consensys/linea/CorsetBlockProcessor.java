@@ -36,7 +36,6 @@ import org.hyperledger.besu.ethereum.core.MutableWorldState;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.core.TransactionReceipt;
 import org.hyperledger.besu.ethereum.mainnet.*;
-import org.hyperledger.besu.ethereum.privacy.storage.PrivateMetadataUpdater;
 import org.hyperledger.besu.ethereum.processing.TransactionProcessingResult;
 import org.hyperledger.besu.ethereum.trie.pathbased.bonsai.worldview.BonsaiWorldState;
 import org.hyperledger.besu.ethereum.trie.pathbased.bonsai.worldview.BonsaiWorldStateUpdateAccumulator;
@@ -74,7 +73,6 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
       final Blockchain blockchain,
       final MutableWorldState worldState,
       final Block block,
-      final Optional<PrivateMetadataUpdater> privateMetadataUpdater,
       final PreprocessingFunction preprocessingBlockFunction) {
 
     var blockHeader = block.getHeader();
@@ -127,9 +125,7 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
               miningBeneficiary,
               zkTracer,
               blockHashLookup,
-              true,
               TransactionValidationParams.processingBlock(),
-              privateMetadataUpdater,
               blobGasPrice);
 
       if (result.isInvalid()) {

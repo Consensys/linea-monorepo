@@ -115,7 +115,6 @@ public class ToyExecutionTools {
               blockHeader.getCoinbase(),
               tracer,
               new BlockchainBasedBlockHashLookup(blockHeader, blockchain),
-              false,
               TransactionValidationParams.processingBlock(),
               blobGasPrice);
 

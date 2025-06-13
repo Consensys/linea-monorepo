@@ -47,7 +47,6 @@ import org.hyperledger.besu.ethereum.core.BlockHeader;
 import org.hyperledger.besu.ethereum.core.BlockHeaderBuilder;
 import org.hyperledger.besu.ethereum.core.Difficulty;
 import org.hyperledger.besu.ethereum.core.MiningConfiguration;
-import org.hyperledger.besu.ethereum.core.PrivacyParameters;
 import org.hyperledger.besu.ethereum.mainnet.MainnetProtocolSpecFactory;
 import org.hyperledger.besu.ethereum.mainnet.ProtocolSchedule;
 import org.hyperledger.besu.ethereum.mainnet.ProtocolSpec;
@@ -146,7 +145,6 @@ public class ExecutionEnvironment {
             genesisConfigOptions,
             CliqueForksSchedulesFactory.create(genesisConfigOptions),
             createNodeKey(),
-            PrivacyParameters.DEFAULT,
             false,
             EvmConfiguration.DEFAULT,
             MiningConfiguration.MINING_DISABLED,
@@ -173,10 +171,7 @@ public class ExecutionEnvironment {
           default -> throw new IllegalArgumentException("Unexpected fork value: " + fork);
         };
 
-    return builder
-        .privacyParameters(PrivacyParameters.DEFAULT)
-        .badBlocksManager(badBlockManager)
-        .build(schedule);
+    return builder.badBlocksManager(badBlockManager).build(schedule);
   }
 
   private static NodeKey createNodeKey() {

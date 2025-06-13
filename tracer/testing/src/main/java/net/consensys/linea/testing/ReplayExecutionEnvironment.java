@@ -279,7 +279,6 @@ public class ReplayExecutionEnvironment {
                 miningBeneficiary,
                 buildOperationTracer(tx, txs.getOutcome(), tracer, txResultChecking),
                 blockHashLookup,
-                false,
                 Wei.ZERO);
         resultValidator.accept(tx, outcome);
         // Commit transaction
