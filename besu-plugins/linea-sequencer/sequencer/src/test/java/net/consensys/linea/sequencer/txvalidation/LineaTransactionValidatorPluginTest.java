@@ -17,7 +17,6 @@ import static org.mockito.Mockito.when;
 import java.util.Optional;
 import net.consensys.linea.config.LineaTransactionValidatorConfiguration;
 import net.consensys.linea.sequencer.txvalidation.LineaTransactionValidatorPlugin.LineaTransactionValidatorError;
-
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.plugin.ServiceManager;
@@ -100,7 +99,8 @@ public class LineaTransactionValidatorPluginTest {
 
     // Assert
     assertThat(result).isPresent();
-    assertThat(result.get()).isEqualTo(LineaTransactionValidatorError.BLOB_TX_NOT_ALLOWED.toString());
+    assertThat(result.get())
+        .isEqualTo(LineaTransactionValidatorError.BLOB_TX_NOT_ALLOWED.toString());
   }
 
   @Test
