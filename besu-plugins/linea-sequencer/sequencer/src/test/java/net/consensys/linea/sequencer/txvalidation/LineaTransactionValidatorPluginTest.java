@@ -163,21 +163,21 @@ public class LineaTransactionValidatorPluginTest {
     assertThat(result).isEmpty();
   }
 
-  // @Test
-  // public void shouldPermitBlobTransactionsWhenEnabled() {
-  //   // Arrange
-  //   when(lineaTransactionValidatorConfiguration.blobTxEnabled()).thenReturn(true);
-  //   plugin.doRegister(serviceManager);
-  //   plugin.doStart();
-  //   final TransactionValidationRule validatorRule = this.getTransactionValidatorRule();
+  @Test
+  public void shouldPermitBlobTransactionsWhenEnabled() {
+    // Arrange
+    when(lineaTransactionValidatorConfiguration.blobTxEnabled()).thenReturn(true);
+    plugin.doRegister(serviceManager);
+    plugin.doStart();
+    final TransactionValidationRule validatorRule = this.getTransactionValidatorRule();
 
-  //   // Act - BLOB transaction
-  //   when(transaction.getType()).thenReturn(TransactionType.BLOB);
-  //   Optional<String> result = validatorRule.validate(transaction);
+    // Act - BLOB transaction
+    when(transaction.getType()).thenReturn(TransactionType.BLOB);
+    Optional<String> result = validatorRule.validate(transaction);
 
-  //   // Assert
-  //   assertThat(result).isEmpty();
-  // }
+    // Assert
+    assertThat(result).isEmpty();
+  }
 
   private TransactionValidationRule getTransactionValidatorRule() {
     ArgumentCaptor<TransactionValidationRule> ruleCaptor =
