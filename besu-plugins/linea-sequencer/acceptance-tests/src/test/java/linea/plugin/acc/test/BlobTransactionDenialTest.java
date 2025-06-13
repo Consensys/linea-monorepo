@@ -10,55 +10,28 @@ package linea.plugin.acc.test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.google.common.io.Resources;
-import java.io.File;
-import java.io.IOException;
-import java.math.BigInteger;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.web3j.crypto.Blob;
-import org.web3j.crypto.BlobUtils;
 import org.web3j.crypto.Credentials;
-import org.web3j.crypto.RawTransaction;
-import org.web3j.crypto.TransactionEncoder;
 import org.web3j.protocol.Web3j;
-import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.methods.response.EthSendTransaction;
-import org.web3j.tx.gas.DefaultGasProvider;
-import org.web3j.utils.Numeric;
 
 /**
- * Tests that verify the LineaTransactionValidationPlugin correctly rejects BLOB transactions while
- * allowing other transaction types.
+ * Tests that verify the LineaTransactionValidationPlugin correctly rejects BLOB transactions from
+ * being executed
  */
 public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
+  private Web3j web3j;
+  private Credentials credentials;
+  private String recipient;
+
   @Override
   protected String getGenesisFileTemplatePath() {
     // We cannot use clique-prague-zero-blobs because `config.blobSchedule.prague.max = 0` will
     // block all blob txs
     return "/clique/clique-prague-one-blob.json.tpl";
   }
-
-  @Override
-  public List<String> getTestCliOptions() {
-    return new TestCommandLineOptionsBuilder()
-        .set("--plugin-linea-blob-tx-enabled=", "false")
-        .build();
-  }
-
-  private static final BigInteger GAS_PRICE = DefaultGasProvider.GAS_PRICE;
-  private static final BigInteger GAS_LIMIT = DefaultGasProvider.GAS_LIMIT;
-  private static final BigInteger VALUE = BigInteger.ZERO;
-  private static final String DATA = "0x";
-
-  private Web3j web3j;
-  private Credentials credentials;
-  private String recipient;
 
   @Override
   @BeforeEach
@@ -72,7 +45,7 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
   @Test
   public void blobTransactionsIsRejectedFromTransactionPool() throws Exception {
     // Act - Send a blob transaction to transaction pool
-    EthSendTransaction response = sendRawBlobTransaction();
+    EthSendTransaction response = sendRawBlobTransaction(web3j, credentials, recipient);
     this.buildNewBlock();
 
     // Assert
@@ -92,37 +65,4 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
   // If the above is not possible, we can try the following:
   // 1. Create a premade block containing a blob tx
   // 2. Import the premade block using 'engine_newPayloadV4' Engine API call
-
-  private EthSendTransaction sendRawBlobTransaction() throws IOException {
-    BigInteger nonce =
-        web3j
-            .ethGetTransactionCount(credentials.getAddress(), DefaultBlockParameterName.PENDING)
-            .send()
-            .getTransactionCount();
-
-    URL blobUrl = new File(getResourcePath("/blob.txt")).toURI().toURL();
-    final var blobHexString = Resources.toString(blobUrl, StandardCharsets.UTF_8);
-    final Blob blob = new Blob(Numeric.hexStringToByteArray(blobHexString));
-    final Bytes kzgCommitment = BlobUtils.getCommitment(blob);
-    final Bytes kzgProof = BlobUtils.getProof(blob, kzgCommitment);
-    final Bytes versionedHash = BlobUtils.kzgToVersionedHash(kzgCommitment);
-    final RawTransaction rawTransaction =
-        RawTransaction.createTransaction(
-            List.of(blob),
-            List.of(kzgCommitment),
-            List.of(kzgProof),
-            CHAIN_ID,
-            nonce,
-            GAS_PRICE,
-            GAS_PRICE,
-            GAS_LIMIT,
-            recipient,
-            VALUE,
-            DATA,
-            BigInteger.ONE,
-            List.of(versionedHash));
-    byte[] signedMessage = TransactionEncoder.signMessage(rawTransaction, credentials);
-    String hexValue = Numeric.toHexString(signedMessage);
-    return web3j.ethSendRawTransaction(hexValue).send();
-  }
 }

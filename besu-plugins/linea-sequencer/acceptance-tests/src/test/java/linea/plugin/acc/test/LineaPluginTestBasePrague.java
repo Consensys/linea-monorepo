@@ -11,12 +11,18 @@ package linea.plugin.acc.test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.io.Resources;
+import java.io.File;
 import java.io.IOException;
+import java.math.BigInteger;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.consensus.clique.CliqueExtraData;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.ethereum.eth.transactions.ImmutableTransactionPoolConfiguration;
@@ -26,6 +32,16 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.RunnableNode;
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory;
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory.CliqueOptions;
 import org.junit.jupiter.api.BeforeEach;
+import org.web3j.crypto.Blob;
+import org.web3j.crypto.BlobUtils;
+import org.web3j.crypto.Credentials;
+import org.web3j.crypto.RawTransaction;
+import org.web3j.crypto.TransactionEncoder;
+import org.web3j.protocol.Web3j;
+import org.web3j.protocol.core.DefaultBlockParameterName;
+import org.web3j.protocol.core.methods.response.EthSendTransaction;
+import org.web3j.tx.gas.DefaultGasProvider;
+import org.web3j.utils.Numeric;
 
 // This file initializes a Besu node configured for the Prague fork and makes it available to
 // acceptance tests.
@@ -33,6 +49,11 @@ import org.junit.jupiter.api.BeforeEach;
 public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
   private EngineAPIService engineApiService;
   private ObjectMapper mapper;
+
+  private static final BigInteger GAS_PRICE = DefaultGasProvider.GAS_PRICE;
+  private static final BigInteger GAS_LIMIT = DefaultGasProvider.GAS_LIMIT;
+  private static final BigInteger VALUE = BigInteger.ZERO;
+  private static final String DATA = "0x";
 
   // Override this in subclasses to use a different genesis file template
   protected String getGenesisFileTemplatePath() {
@@ -97,5 +118,44 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
   protected void buildNewBlock(long blockTimestampSeconds, long blockBuildingTimeMs)
       throws IOException, InterruptedException {
     this.engineApiService.buildNewBlock(blockTimestampSeconds, blockBuildingTimeMs);
+  }
+
+  /**
+   * Creates and sends a blob transaction. This method is designed to be stateless and should not
+   * rely on any class properties or instance methods. All required data should be passed as parameters.
+   * This makes it easier to test and reuse in different contexts.
+   */
+  protected EthSendTransaction sendRawBlobTransaction(
+      Web3j web3j, Credentials credentials, String recipient) throws IOException {
+    BigInteger nonce =
+        web3j
+            .ethGetTransactionCount(credentials.getAddress(), DefaultBlockParameterName.PENDING)
+            .send()
+            .getTransactionCount();
+
+    URL blobUrl = new File(getResourcePath("/blob.txt")).toURI().toURL();
+    final var blobHexString = Resources.toString(blobUrl, StandardCharsets.UTF_8);
+    final Blob blob = new Blob(Numeric.hexStringToByteArray(blobHexString));
+    final Bytes kzgCommitment = BlobUtils.getCommitment(blob);
+    final Bytes kzgProof = BlobUtils.getProof(blob, kzgCommitment);
+    final Bytes versionedHash = BlobUtils.kzgToVersionedHash(kzgCommitment);
+    final RawTransaction rawTransaction =
+        RawTransaction.createTransaction(
+            List.of(blob),
+            List.of(kzgCommitment),
+            List.of(kzgProof),
+            CHAIN_ID,
+            nonce,
+            GAS_PRICE,
+            GAS_PRICE,
+            GAS_LIMIT,
+            recipient,
+            VALUE,
+            DATA,
+            BigInteger.ONE,
+            List.of(versionedHash));
+    byte[] signedMessage = TransactionEncoder.signMessage(rawTransaction, credentials);
+    String hexValue = Numeric.toHexString(signedMessage);
+    return web3j.ethSendRawTransaction(hexValue).send();
   }
 }
