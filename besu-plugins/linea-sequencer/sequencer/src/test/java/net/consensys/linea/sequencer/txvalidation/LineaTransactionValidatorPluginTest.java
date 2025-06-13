@@ -103,69 +103,65 @@ public class LineaTransactionValidatorPluginTest {
     assertThat(result.get()).isEqualTo(LineaTransactionValidatorError.BLOB_TX_NOT_ALLOWED.toString());
   }
 
-  // @Test
-  // public void shouldPermitEIP7702Transactions() {
-  //   // Arrange
-  //   when(lineaTransactionValidatorConfiguration.blobTxEnabled()).thenReturn(false);
-  //   plugin.doRegister(serviceManager);
-  //   plugin.doStart();
-  //   final TransactionValidationRule validatorRule = this.getTransactionValidatorRule();
+  @Test
+  public void shouldPermitEIP7702Transactions() {
+    // Arrange
+    plugin.doRegister(serviceManager);
+    plugin.doStart();
+    final TransactionValidationRule validatorRule = this.getTransactionValidatorRule();
 
-  //   // Act - EIP7702 transaction
-  //   when(transaction.getType()).thenReturn(TransactionType.DELEGATE_CODE);
-  //   Optional<String> result = validatorRule.validate(transaction);
+    // Act - EIP7702 transaction
+    when(transaction.getType()).thenReturn(TransactionType.DELEGATE_CODE);
+    Optional<String> result = validatorRule.validate(transaction);
 
-  //   // Assert
-  //   assertThat(result).isEmpty();
-  // }
+    // Assert
+    assertThat(result).isEmpty();
+  }
 
-  // @Test
-  // public void shouldPermitLegacyTransactions() {
-  //   // Arrange
-  //   when(lineaTransactionValidatorConfiguration.blobTxEnabled()).thenReturn(false);
-  //   plugin.doRegister(serviceManager);
-  //   plugin.doStart();
-  //   final TransactionValidationRule validatorRule = this.getTransactionValidatorRule();
+  @Test
+  public void shouldPermitLegacyTransactions() {
+    // Arrange
+    plugin.doRegister(serviceManager);
+    plugin.doStart();
+    final TransactionValidationRule validatorRule = this.getTransactionValidatorRule();
 
-  //   // Act - LEGACY/FRONTIER transaction
-  //   when(transaction.getType()).thenReturn(TransactionType.FRONTIER);
-  //   Optional<String> result = validatorRule.validate(transaction);
+    // Act - LEGACY/FRONTIER transaction
+    when(transaction.getType()).thenReturn(TransactionType.FRONTIER);
+    Optional<String> result = validatorRule.validate(transaction);
 
-  //   // Assert
-  //   assertThat(result).isEmpty();
-  // }
+    // Assert
+    assertThat(result).isEmpty();
+  }
 
-  // @Test
-  // public void shouldPermitAccessListTransactions() {
-  //   // Arrange
-  //   when(lineaTransactionValidatorConfiguration.blobTxEnabled()).thenReturn(false);
-  //   plugin.doRegister(serviceManager);
-  //   plugin.doStart();
-  //   final TransactionValidationRule validatorRule = this.getTransactionValidatorRule();
+  @Test
+  public void shouldPermitAccessListTransactions() {
+    // Arrange
+    plugin.doRegister(serviceManager);
+    plugin.doStart();
+    final TransactionValidationRule validatorRule = this.getTransactionValidatorRule();
 
-  //   // Act - ACCESS_LIST transaction
-  //   when(transaction.getType()).thenReturn(TransactionType.ACCESS_LIST);
-  //   Optional<String> result = validatorRule.validate(transaction);
+    // Act - ACCESS_LIST transaction
+    when(transaction.getType()).thenReturn(TransactionType.ACCESS_LIST);
+    Optional<String> result = validatorRule.validate(transaction);
 
-  //   // Assert
-  //   assertThat(result).isEmpty();
-  // }
+    // Assert
+    assertThat(result).isEmpty();
+  }
 
-  // @Test
-  // public void shouldPermitEIP1559Transactions() {
-  //   // Arrange
-  //   when(lineaTransactionValidatorConfiguration.blobTxEnabled()).thenReturn(false);
-  //   plugin.doRegister(serviceManager);
-  //   plugin.doStart();
-  //   final TransactionValidationRule validatorRule = this.getTransactionValidatorRule();
+  @Test
+  public void shouldPermitEIP1559Transactions() {
+    // Arrange
+    plugin.doRegister(serviceManager);
+    plugin.doStart();
+    final TransactionValidationRule validatorRule = this.getTransactionValidatorRule();
 
-  //   // Act - EIP1559 transaction
-  //   when(transaction.getType()).thenReturn(TransactionType.EIP1559);
-  //   Optional<String> result = validatorRule.validate(transaction);
+    // Act - EIP1559 transaction
+    when(transaction.getType()).thenReturn(TransactionType.EIP1559);
+    Optional<String> result = validatorRule.validate(transaction);
 
-  //   // Assert
-  //   assertThat(result).isEmpty();
-  // }
+    // Assert
+    assertThat(result).isEmpty();
+  }
 
   // @Test
   // public void shouldPermitBlobTransactionsWhenEnabled() {
