@@ -39,6 +39,7 @@ import org.web3j.utils.Numeric;
 public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
   @Override
   protected String getGenesisFileTemplatePath() {
+    // We cannot use clique-prague-zero-blobs because `config.blobSchedule.prague.max = 0` will block all blob txs
     return "/clique/clique-prague-one-blob.json.tpl";
   }
 
@@ -69,7 +70,7 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
 
   @Test
   public void blobTransactionsIsRejectedFromTransactionPool() throws Exception {
-    // Act - Send a blob transaction
+    // Act - Send a blob transaction to transaction pool
     EthSendTransaction response = sendRawBlobTransaction();
     this.buildNewBlock();
 
@@ -79,6 +80,7 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
   }
 
   // TODO - Test that block import from one node to another fails for blob tx
+  // TODO - Create EngineApiHelper method to import a premade block with blob tx
 
   private EthSendTransaction sendRawBlobTransaction() throws IOException {
     BigInteger nonce =
