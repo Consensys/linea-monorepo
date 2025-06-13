@@ -49,7 +49,6 @@ public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin
                 () ->
                     new RuntimeException(
                         "Failed to obtain TransactionValidatorService from the ServiceManager."));
-
   }
 
   // CLI config is not available in doRegister
@@ -69,8 +68,7 @@ public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin
   }
 
   @Override
-  public void doStart() {
-  }
+  public void doStart() {}
 
   @Override
   public void stop() {

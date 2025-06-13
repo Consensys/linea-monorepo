@@ -39,7 +39,8 @@ import org.web3j.utils.Numeric;
 public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
   @Override
   protected String getGenesisFileTemplatePath() {
-    // We cannot use clique-prague-zero-blobs because `config.blobSchedule.prague.max = 0` will block all blob txs
+    // We cannot use clique-prague-zero-blobs because `config.blobSchedule.prague.max = 0` will
+    // block all blob txs
     return "/clique/clique-prague-one-blob.json.tpl";
   }
 
@@ -76,7 +77,8 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
 
     // Assert
     assertThat(response.hasError()).isTrue();
-    assertThat(response.getError().getMessage()).contains("Plugin has marked the transaction as invalid");
+    assertThat(response.getError().getMessage())
+        .contains("Plugin has marked the transaction as invalid");
   }
 
   // TODO - Test that block import from one node to another fails for blob tx
