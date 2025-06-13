@@ -18,6 +18,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	utils_limitless "github.com/consensys/linea-monorepo/prover/utils/limitless"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 )
 
@@ -26,7 +27,7 @@ func TestDistributedWizard(t *testing.T) {
 
 	var (
 		zkevm      = test_utils.GetZkEVM()
-		affinities = test_utils.GetAffinities(zkevm)
+		affinities = utils_limitless.GetAffinities(zkevm)
 		discoverer = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
 			Affinities:   affinities,
@@ -72,7 +73,7 @@ func TestDistributedWizardLogic(t *testing.T) {
 		zkevm = test_utils.GetZkEVM()
 		disc  = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
-			Affinities:   test_utils.GetAffinities(zkevm),
+			Affinities:   utils_limitless.GetAffinities(zkevm),
 			Predivision:  1,
 		}
 
@@ -109,7 +110,7 @@ func TestDistributedWizardLogic(t *testing.T) {
 
 	t.Logf("Checking the initial bootstrapper - wizard")
 	var (
-		witness     = test_utils.GetZkevmWitness(req, cfg)
+		witness     = utils_limitless.GetZkevmWitness(req, cfg)
 		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, zkevm.GetMainProverStep(witness))
 		proof       = runtimeBoot.ExtractProof()
 		verBootErr  = wizard.Verify(distWizard.Bootstrapper, proof)
@@ -269,7 +270,7 @@ func TestBenchDistributedWizard(t *testing.T) {
 		zkevm = test_utils.GetZkEVM()
 		disc  = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
-			Affinities:   test_utils.GetAffinities(zkevm),
+			Affinities:   utils_limitless.GetAffinities(zkevm),
 			Predivision:  1,
 		}
 
@@ -298,7 +299,7 @@ func TestBenchDistributedWizard(t *testing.T) {
 	t.Logf("[%v] running the bootstrapper\n", time.Now())
 
 	var (
-		witness     = test_utils.GetZkevmWitness(req, cfg)
+		witness     = utils_limitless.GetZkevmWitness(req, cfg)
 		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, zkevm.GetMainProverStep(witness))
 	)
 
