@@ -3,6 +3,7 @@ package v0
 import (
 	"fmt"
 
+	gkr_mimc "github.com/consensys/gnark/std/hash/mimc/gkr-mimc"
 	"github.com/consensys/gnark/std/rangecheck"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -14,7 +15,6 @@ import (
 	"github.com/consensys/gnark/std/math/emulated"
 	public_input "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/public-input"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
 )
@@ -186,10 +186,12 @@ func (c *Circuit) Define(api frontend.API) error {
 
 func mimcHashAnyGnark(
 	api frontend.API,
-	hasherFactory *gkrmimc.HasherFactory,
 	fs ...any,
 ) frontend.Variable {
-	h := hasherFactory.NewHasher()
+	h, err := gkr_mimc.New(api)
+	if err != nil {
+		panic(err)
+	}
 
 	for i := range fs {
 		switch f := fs[i].(type) {

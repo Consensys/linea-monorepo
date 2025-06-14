@@ -5,8 +5,8 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/profile"
+	gkr_mimc "github.com/consensys/gnark/std/hash/mimc/gkr-mimc"
 	v1 "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 )
 
@@ -27,6 +27,9 @@ type circuit struct {
 }
 
 func (c *circuit) Define(api frontend.API) error {
-	hsh := gkrmimc.NewHasherFactory(api).NewHasher()
+	hsh, err := gkr_mimc.New(api)
+	if err != nil {
+		return err
+	}
 	return v1.CheckBatchesSums(api, hsh, c.NbBatches, c.BlobPayload[:], c.BatchEnds[:], c.ExpectedSums[:])
 }
