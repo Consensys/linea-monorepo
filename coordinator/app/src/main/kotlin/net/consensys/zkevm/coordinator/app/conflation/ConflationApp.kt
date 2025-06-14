@@ -292,7 +292,7 @@ class ConflationApp(
         rpcClient = httpJsonRpcClientFactory.createWithLoadBalancing(
           endpoints = configs.traces.conflation.endpoints.toSet(),
           maxInflightRequestsPerClient = configs.traces.conflation.requestLimitPerEndpoint,
-          requestTimeout = configs.traces.counters.requestTimeout?.inWholeMilliseconds,
+          requestTimeout = configs.traces.conflation.requestTimeout?.inWholeMilliseconds,
           log = tracesConflationLog,
         ),
         config = TracesGeneratorJsonRpcClientV2.Config(
