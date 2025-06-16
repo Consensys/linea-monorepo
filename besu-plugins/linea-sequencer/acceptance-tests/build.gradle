@@ -60,11 +60,11 @@ dependencies {
   testImplementation project("${lineaSequencerProjectPath}:sequencer")
 
   testImplementation "${besuArtifactGroup}:besu-datatypes"
+  testImplementation "${besuArtifactGroup}:besu-evm"
   testImplementation "${besuArtifactGroup}.internal:besu-consensus-clique"
   testImplementation "${besuArtifactGroup}.internal:besu-ethereum-api"
   testImplementation "${besuArtifactGroup}.internal:besu-ethereum-core"
   testImplementation "${besuArtifactGroup}.internal:besu-ethereum-eth"
-  testImplementation "${besuArtifactGroup}.internal:besu-ethereum-rlp"
   testImplementation "${besuArtifactGroup}.internal:besu-acceptance-tests-dsl"
   testImplementation "${besuArtifactGroup}.internal:besu-metrics-core"
   testImplementation "${besuArtifactGroup}.internal:besu-crypto-services"

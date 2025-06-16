@@ -20,26 +20,30 @@ import java.util.Optional;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import org.hyperledger.besu.datatypes.BlobGas;
 import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.datatypes.RequestType;
+
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.parameters.EnginePayloadParameter;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.parameters.WithdrawalParameter;
 import org.hyperledger.besu.ethereum.core.BlockHeader;
 import org.hyperledger.besu.ethereum.core.BlockHeaderFunctions;
 import org.hyperledger.besu.ethereum.core.Difficulty;
+import org.hyperledger.besu.ethereum.core.Request;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.core.Withdrawal;
 import org.hyperledger.besu.ethereum.core.encoding.EncodingContext;
 import org.hyperledger.besu.ethereum.core.encoding.TransactionDecoder;
+
 import org.hyperledger.besu.ethereum.mainnet.BodyValidation;
 import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions;
-import org.hyperledger.besu.ethereum.rlp.BytesValueRLPInput;
-import org.hyperledger.besu.ethereum.rlp.RLP;
-import org.hyperledger.besu.ethereum.rlp.RLPInput;
+
+// import org.hyperledger.besu.evm.log.LogsBloomFilter;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -75,13 +79,22 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
   }
 
   @Test
-//   @Disabled("Disabled for dev workflow")
+  @Disabled("Disabled for dev workflow")
   public void blobTransactionsIsRejectedFromTransactionPool() throws Exception {
 
     // Act - Send a blob transaction to transaction pool
     EthSendTransaction response = sendRawBlobTransaction(web3j, credentials, recipient);
     this.buildNewBlock();
 
+    Block newBlock = web3j
+            .ethGetBlockByNumber(org.web3j.protocol.core.DefaultBlockParameterName.LATEST, false)
+            .send()
+            .getBlock();
+    System.out.println("newBlock transactionsRoot: " + newBlock.getTransactionsRoot());
+    System.out.println("newBlock withdrawalsRoot: " + newBlock.getWithdrawalsRoot());
+    System.out.println("newBlock blobGasUsed: " + newBlock.getBlobGasUsed());
+    System.out.println("newBlock excessBlobGas: " + newBlock.getExcessBlobGasRaw());
+    
     // Assert
     assertThat(response.hasError()).isTrue();
     assertThat(response.getError().getMessage())
@@ -103,7 +116,7 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
   // 2. Import the premade block using 'engine_newPayloadV4' Engine API call
 
   @Test
-  @Disabled("Disabled for dev workflow")
+  // @Disabled("Disabled for dev workflow")
   public void blobTransactionsIsRejectedFromNodeImport() throws Exception {
 
     // Arrange
@@ -113,6 +126,8 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
             .send()
             .getBlock()
             .getHash();
+    Hash transactionsRoot = Hash.fromHexString("0x7a430a1c9da1f6e25ff8e6e96217c359784f3438dc1d983b4695355d66437f8f");
+    Hash withdrawalsRoot = Hash.fromHexString("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421");
 
     final ObjectMapper mapper = new ObjectMapper();
     // We obtained the below values by running the test `blobTransactionsIsRejectedFromTransactionPool` with the following plugins removed - LineaTransactionPoolValidatorPlugin, LineaTransactionSelectorPlugin, LineaTransactionValidatorPlugin
@@ -140,72 +155,70 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
             .put("blockNumber", "0x1");
     final ArrayNode transactions = mapper.createArrayNode();
     transactions.add(
-        "0x03f8908205398084f461090084f46109008389544094627306090abab3a6e1400e9345bc60c78a8bef578080c001e1a0010657f37554c781402a22917dee2f75def7ab966d7b770905398eba3c44401480a029e016f013bc577f372d54f84c371ae40e34fc05bb6c9968072ccca75a1f4cc4a0527d03cc62de8137e565254fd1169afe38133fb6ac7dac7134479a99f9a2d309");
+        "0x03f8908205398084f461090084f46109008389544094627306090abab3a6e1400e9345bc60c78a8bef578080c001e1a0018ef96865998238a5e1783b6cafbc1253235d636f15d318f1fb50ef6a5b8f6a80a0576a95756f32ab705a22b591ab464d5affc8c1c7fcd14d777bac24d83bc44821a01f93b26f4f9989c3fe764f4a58d264bcd71b9deab72d6852f5dcdf19d55494f1");
     executionPayloadWithoutBlockHash.set("transactions", transactions);
     final ArrayNode withdrawals = mapper.createArrayNode();
     executionPayloadWithoutBlockHash.set("withdrawals", withdrawals);
     
+    final ArrayNode expectedBlobVersionedHashes = mapper.createArrayNode();
+    expectedBlobVersionedHashes.add("0x018ef96865998238a5e1783b6cafbc1253235d636f15d318f1fb50ef6a5b8f6a");
     final String parentBeaconBlockRoot =
         "0x0000000000000000000000000000000000000000000000000000000000000000";
-    final ArrayNode executionRequests = mapper.createArrayNode();
-    executionRequests.add(
-        "0x01a4664c40aacebd82a2db79f0ea36c06bc6a19adbb10a4a15bf67b328c9b101d09e5c6ee6672978fdad9ef0d9e2ceffaee99223555d8601f0cb3bcc4ce1af9864779a416e0000000000000000");
     
+    String executionRequestString = "0x01a4664c40aacebd82a2db79f0ea36c06bc6a19adbb10a4a15bf67b328c9b101d09e5c6ee6672978fdad9ef0d9e2ceffaee99223555d8601f0cb3bcc4ce1af9864779a416e0000000000000000";
+        final ArrayNode executionRequests = mapper.createArrayNode();
+    executionRequests.add(executionRequestString);
+    final Bytes executionRequestBytes = Bytes.fromHexString(executionRequestString);
+    final Bytes executionRequestBytesData = executionRequestBytes.slice(1);
+    final Request executionRequest = new Request(RequestType.of(executionRequestBytes.get(0)), executionRequestBytesData);
+    Optional<List<Request>> maybeRequests = Optional.of(List.of(executionRequest));
+
+        
     // We must compute the blockhash manually, as the genesis block hash changes each run
     String executionPayloadWithoutBlockHashStringified = executionPayloadWithoutBlockHash.toString();
     EnginePayloadParameter blockParam = mapper.readValue(executionPayloadWithoutBlockHashStringified, EnginePayloadParameter.class);
 
-    final Optional<List<Withdrawal>> maybeWithdrawals =
-        Optional.ofNullable(blockParam.getWithdrawals())
-            .map(ws -> ws.stream().map(WithdrawalParameter::toWithdrawal).collect(toList()));
-
-
     // From AbstractEngineNewPayload.syncResponse method in Besu
-    // final BlockHeader blockHeader = new BlockHeader(
-    //   blockParam.getParentHash(),
-    //   Hash.ZERO,
-    //   blockParam.getFeeRecipient(),
-    //   blockParam.getStateRoot(),
-    //   BodyValidation.transactionsRoot(transactions),
-    //   blockParam.getReceiptsRoot(),
-    //   blockParam.getLogsBloom(),
-    //   Difficulty.ZERO,
-    //   blockParam.getBlockNumber(),
-    //   blockParam.getGasLimit(),
-    //   blockParam.getGasUsed(),
-    //   blockParam.getTimestamp(),
-    //   Bytes.fromHexString(blockParam.getExtraData()),
-    //   blockParam.getBaseFeePerGas(),
-    //   blockParam.getPrevRandao(),
-    //   0,
-    //   maybeWithdrawals.map(BodyValidation::withdrawalsRoot).orElse(null),
-    //   blockParam.getBlobGasUsed(),
-    //   BlobGas.fromHexString(blockParam.getExcessBlobGas()),
-    //   Bytes32.fromHexString(parentBeaconBlockRoot),
-    //   maybeRequests.map(BodyValidation::requestsHash).orElse(null),
-    //   new MainnetBlockHeaderFunctions()
-    // );
+    final BlockHeader blockHeader = new BlockHeader(
+      blockParam.getParentHash(),
+      Hash.ZERO,
+      blockParam.getFeeRecipient(),
+      blockParam.getStateRoot(),
+      transactionsRoot,
+      blockParam.getReceiptsRoot(),
+      blockParam.getLogsBloom(),
+      Difficulty.ZERO,
+      blockParam.getBlockNumber(),
+      blockParam.getGasLimit(),
+      blockParam.getGasUsed(),
+      blockParam.getTimestamp(),
+      Bytes.fromHexString(blockParam.getExtraData()),
+      blockParam.getBaseFeePerGas(),
+      blockParam.getPrevRandao(),
+      0,
+      withdrawalsRoot,
+      blockParam.getBlobGasUsed(),
+      BlobGas.fromHexString(blockParam.getExcessBlobGas()),
+      Bytes32.fromHexString(parentBeaconBlockRoot),
+      maybeRequests.map(BodyValidation::requestsHash).orElse(null),
+      new MainnetBlockHeaderFunctions()
+    );
 
-
+    // Act
     // this.importPremadeBlock(executionPayload, parentBeaconBlockRoot, executionRequests);
 
     EthSendTransaction response = sendRawBlobTransaction(web3j, credentials, recipient);
-    System.out.println("Supdog1");
-
     this.buildNewBlock();
-    System.out.println("Supdog2");
 
     Block nextBlock =
     web3j
         .ethGetBlockByNumber(org.web3j.protocol.core.DefaultBlockParameterName.LATEST, false)
         .send()
         .getBlock();
-    System.out.println("nextBlock.tranasctionRoot: " + nextBlock.getTransactionsRoot());
-    System.out.println("nextBlock: " + nextBlock.toString());
+    // System.out.println("nextBlock.tranasctionRoot: " + nextBlock.getTransactionsRoot());
+    System.out.println("Computed new blockHash: " + blockHeader.getBlockHash());
+    System.out.println("Actual nextBlock hash: " + nextBlock.getHash());
     assertThat(false).isTrue();
-
-    // Act
-    // TODO: Use these values to create and send engine_newPayloadV4 request
 
     // Assert
     // TODO: Verify the response indicates rejection of blob transactions
