@@ -94,7 +94,7 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
   // TODO - Re-enable LineaTransactionSelectorPlugin once we have worked out block import test
   protected static final List<String> DEFAULT_REQUESTED_PLUGINS =
       List.of(
-          "LineaExtraDataPlugin",
+          // "LineaExtraDataPlugin",
           "LineaEstimateGasEndpointPlugin",
           "LineaSetExtraDataEndpointPlugin",
           "LineaTransactionPoolValidatorPlugin",

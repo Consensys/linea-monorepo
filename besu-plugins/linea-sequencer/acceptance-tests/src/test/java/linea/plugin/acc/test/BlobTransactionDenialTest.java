@@ -135,8 +135,8 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
         mapper
             .createObjectNode()
             .put("parentHash", genesisBlockHash)
-            .put("feeRecipient", "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b")
-            .put("stateRoot", "0xdb034dcfd5b2a16f1691772acf8107f19d505a50351dcbeec01af71a49fc3ff1")
+            .put("feeRecipient", "0x0000000000000000000000000000000000000000")
+            .put("stateRoot", "0x2c1457760c057cf42f2d509648d725ec1f557b9d8729a5361e517952f91d050e")
             .put(
                 "logsBloom",
                 "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
@@ -147,19 +147,17 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
             .put("extraData", "0x626573752032352e362e302d6c696e656131")
             .put("baseFeePerGas", "0x7")
             .put("excessBlobGas", "0x0")
-            .put("blobGasUsed", "0x20000")
-            .put("blockHash", "0x1234567890abecef1234567890abecef1234567890abecef1234567890abecef")
-            .put(
-                "receiptsRoot",
-                "0xeaa8c40899a61ae59615cf9985f5e2194f8fd2b57d273be63bde6733e89b12ab")
-            .put("blockNumber", "0x1");
-    final ArrayNode transactions = mapper.createArrayNode();
-    transactions.add(
-        "0x03f8908205398084f461090084f46109008389544094627306090abab3a6e1400e9345bc60c78a8bef578080c001e1a0018ef96865998238a5e1783b6cafbc1253235d636f15d318f1fb50ef6a5b8f6a80a0576a95756f32ab705a22b591ab464d5affc8c1c7fcd14d777bac24d83bc44821a01f93b26f4f9989c3fe764f4a58d264bcd71b9deab72d6852f5dcdf19d55494f1");
-    executionPayloadWithoutBlockHash.set("transactions", transactions);
-    final ArrayNode withdrawals = mapper.createArrayNode();
-    executionPayloadWithoutBlockHash.set("withdrawals", withdrawals);
-    
+            .put("blobGasUsed", "0x20000");
+            final ArrayNode transactions = mapper.createArrayNode();
+            transactions.add(
+                "0x03f8908205398084f461090084f46109008389544094627306090abab3a6e1400e9345bc60c78a8bef578080c001e1a0018ef96865998238a5e1783b6cafbc1253235d636f15d318f1fb50ef6a5b8f6a80a0576a95756f32ab705a22b591ab464d5affc8c1c7fcd14d777bac24d83bc44821a01f93b26f4f9989c3fe764f4a58d264bcd71b9deab72d6852f5dcdf19d55494f1");
+            executionPayloadWithoutBlockHash.set("transactions", transactions);
+            final ArrayNode withdrawals = mapper.createArrayNode();
+            executionPayloadWithoutBlockHash.set("withdrawals", withdrawals);
+            executionPayloadWithoutBlockHash.put("receiptsRoot", "0xeaa8c40899a61ae59615cf9985f5e2194f8fd2b57d273be63bde6733e89b12ab");
+            executionPayloadWithoutBlockHash.put("blockHash", "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef");
+            executionPayloadWithoutBlockHash.put("blockNumber", "0x1");
+            
     final ArrayNode expectedBlobVersionedHashes = mapper.createArrayNode();
     expectedBlobVersionedHashes.add("0x018ef96865998238a5e1783b6cafbc1253235d636f15d318f1fb50ef6a5b8f6a");
     final String parentBeaconBlockRoot =
@@ -172,7 +170,6 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
     final Bytes executionRequestBytesData = executionRequestBytes.slice(1);
     final Request executionRequest = new Request(RequestType.of(executionRequestBytes.get(0)), executionRequestBytesData);
     Optional<List<Request>> maybeRequests = Optional.of(List.of(executionRequest));
-
         
     // We must compute the blockhash manually, as the genesis block hash changes each run
     String executionPayloadWithoutBlockHashStringified = executionPayloadWithoutBlockHash.toString();
@@ -203,9 +200,18 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
       maybeRequests.map(BodyValidation::requestsHash).orElse(null),
       new MainnetBlockHeaderFunctions()
     );
+    executionPayloadWithoutBlockHash.set("transactions", transactions);
+
+    // Create new executionPayload with computed block hash
+    ObjectNode executionPayload = mapper.createObjectNode();
+    executionPayloadWithoutBlockHash.fields().forEachRemaining(entry -> {
+        executionPayload.set(entry.getKey(), entry.getValue());
+    });
+    executionPayload.put("blockHash", blockHeader.getBlockHash().toHexString());
+    executionPayload.put("blockNumber", "0x1");
 
     // Act
-    // this.importPremadeBlock(executionPayload, parentBeaconBlockRoot, executionRequests);
+    // this.importPremadeBlock(executionPayload, expectedBlobVersionedHashes, parentBeaconBlockRoot, executionRequests);
 
     EthSendTransaction response = sendRawBlobTransaction(web3j, credentials, recipient);
     this.buildNewBlock();
@@ -215,9 +221,34 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
         .ethGetBlockByNumber(org.web3j.protocol.core.DefaultBlockParameterName.LATEST, false)
         .send()
         .getBlock();
-    // System.out.println("nextBlock.tranasctionRoot: " + nextBlock.getTransactionsRoot());
-    System.out.println("Computed new blockHash: " + blockHeader.getBlockHash());
-    System.out.println("Actual nextBlock hash: " + nextBlock.getHash());
+    
+    // Print all properties of the Block object
+    System.out.println("Block Properties:");
+    System.out.println("Parent Hash: " + nextBlock.getParentHash());
+
+    System.out.println("Miner: " + nextBlock.getMiner());
+    System.out.println("StateRoot: " + nextBlock.getStateRoot());
+    System.out.println("TransactionsRoot: " + nextBlock.getTransactionsRoot());
+    System.out.println("ReceiptsRoot: " + nextBlock.getReceiptsRoot());
+    System.out.println("LogsBloom: " + nextBlock.getLogsBloom());
+    System.out.println("Difficulty: " + nextBlock.getDifficulty());
+    System.out.println("Number: " + nextBlock.getNumber());
+    System.out.println("GasLimit: " + nextBlock.getGasLimit());
+    System.out.println("GasUsed: " + nextBlock.getGasUsed());
+    System.out.println("Timestamp: " + nextBlock.getTimestamp());
+    System.out.println("ExtraData: " + nextBlock.getExtraData());
+    System.out.println("BaseFeePerGas: " + nextBlock.getBaseFeePerGas());
+    System.out.println("MixHash: " + nextBlock.getMixHash());
+    System.out.println("Nonce: " + nextBlock.getNonce());
+    System.out.println("WithdrawalsRoot: " + nextBlock.getWithdrawalsRoot());
+    System.out.println("BlobGasUsed: " + nextBlock.getBlobGasUsed());
+    System.out.println("ExcessBlobGas: " + nextBlock.getExcessBlobGas());
+    System.out.println("ParentBeaconBlockRoot: " + nextBlock.getParentBeaconBlockRoot());
+
+    System.out.println("-------");
+    System.out.println("computed blockHeader: " + blockHeader.toString());
+    // System.out.println("Actual nextBlock: " + nextBlock.toString());
+
     assertThat(false).isTrue();
 
     // Assert

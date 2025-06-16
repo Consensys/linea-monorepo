@@ -23,6 +23,8 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.eth.EthTransactions;
@@ -42,8 +44,6 @@ public class EngineAPIService {
 
   private static final String JSONRPC_VERSION = "2.0";
   private static final long JSONRPC_REQUEST_ID = 67;
-  private static final String SUGGESTED_BLOCK_FEE_RECIPIENT =
-      "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b";
 
   public EngineAPIService(BesuNode node, EthTransactions ethTransactions, ObjectMapper mapper) {
     httpClient = new OkHttpClient();
@@ -185,7 +185,7 @@ public class EngineAPIService {
       ObjectNode payloadAttributes = mapper.createObjectNode();
       payloadAttributes.put("timestamp", blockTimestamp);
       payloadAttributes.put("prevRandao", Hash.ZERO.toString());
-      payloadAttributes.put("suggestedFeeRecipient", SUGGESTED_BLOCK_FEE_RECIPIENT);
+      payloadAttributes.put("suggestedFeeRecipient", Address.ZERO.toString());
       payloadAttributes.set("withdrawals", mapper.createArrayNode());
       payloadAttributes.put("parentBeaconBlockRoot", Hash.ZERO.toString());
       params.add(payloadAttributes);

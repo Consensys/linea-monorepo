@@ -115,6 +115,9 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
     JsonNode genesisConfig = mapper.readTree(genesisConfigSerialized);
     long defaultSlotTimeSeconds =
         genesisConfig.path("config").path("clique").path("blockperiodseconds").asLong();
+
+    // TODO: Remove this for PR
+    // long defaultSlotTimeSeconds = 2;
     this.engineApiService.buildNewBlock(
         latestTimestamp.longValue() + defaultSlotTimeSeconds, defaultSlotTimeSeconds * 1000);
   }
