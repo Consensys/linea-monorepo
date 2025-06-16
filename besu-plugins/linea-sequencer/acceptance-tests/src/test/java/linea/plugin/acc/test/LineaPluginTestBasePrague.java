@@ -11,6 +11,8 @@ package linea.plugin.acc.test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.io.Resources;
 import java.io.File;
 import java.io.IOException;
@@ -65,7 +67,12 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
   public void setup() throws Exception {
     minerNode =
         createCliqueNodeWithExtraCliOptionsAndRpcApis(
-            "miner1", getCliqueOptions(), getTestCliOptions(), Set.of("LINEA", "MINER"), true, DEFAULT_REQUESTED_PLUGINS);
+            "miner1",
+            getCliqueOptions(),
+            getTestCliOptions(),
+            Set.of("LINEA", "MINER"),
+            true,
+            DEFAULT_REQUESTED_PLUGINS);
     minerNode.setTransactionPoolConfiguration(
         ImmutableTransactionPoolConfiguration.builder()
             .from(TransactionPoolConfiguration.DEFAULT)
@@ -157,5 +164,14 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
     byte[] signedMessage = TransactionEncoder.signMessage(rawTransaction, credentials);
     String hexValue = Numeric.toHexString(signedMessage);
     return web3j.ethSendRawTransaction(hexValue).send();
+  }
+
+  protected void importPremadeBlock(
+      final ObjectNode executionPayload,
+      final String parentBeaconBlockRoot,
+      final ArrayNode executionRequests)
+      throws IOException, InterruptedException {
+    this.engineApiService.importPremadeBlock(
+        executionPayload, parentBeaconBlockRoot, executionRequests);
   }
 }

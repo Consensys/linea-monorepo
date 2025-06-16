@@ -121,6 +121,10 @@ public class EngineAPIService {
       assertThat(newBlockHash).isNotEmpty();
     }
 
+    System.out.println("Execution Payload: " + executionPayload.toPrettyString());
+    System.out.println("Parent Beacon Block Root: " + parentBeaconBlockRoot);
+    System.out.println("Execution Requests: " + executionRequests.toPrettyString());
+
     final Call newPayloadRequest =
         createNewPayloadRequest(executionPayload, parentBeaconBlockRoot, executionRequests);
 
@@ -136,6 +140,17 @@ public class EngineAPIService {
     try (final Response moveChainAheadResponse = moveChainAheadRequest.execute()) {
       assertThat(moveChainAheadResponse.code()).isEqualTo(200);
     }
+  }
+
+  public Response importPremadeBlock(
+      final ObjectNode executionPayload,
+      final String parentBeaconBlockRoot,
+      final ArrayNode executionRequests)
+      throws IOException, InterruptedException {
+    final Call newPayloadRequest =
+        createNewPayloadRequest(executionPayload, parentBeaconBlockRoot, executionRequests);
+
+    return newPayloadRequest.execute();
   }
 
   private Call createForkChoiceRequest(final String blockHash) {
