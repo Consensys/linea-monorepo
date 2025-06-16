@@ -25,19 +25,23 @@ var testSetting = Settings{
 
 // valueToLimbs creates a list of field.Element where the last element of the list is a value provided
 // to the function. The number of limbs is defined by limbsNb argument.
-func valueToLimbs(limbsNb int, value uint64) (res []field.Element) {
+//
+// Note: this is a test function and presumed that the function is used only in tests.
+func valueToLimbs(limbsNb int, value uint32) (res []field.Element) {
 	res = make([]field.Element, limbsNb)
 	for i := range limbsNb - 1 {
 		res[i] = field.Zero()
 	}
 
-	res[limbsNb-1] = field.NewElement(value)
+	res[limbsNb-1] = field.NewElement(uint64(value))
 	return res
 }
 
 // valuesToLimbRows creates a list of []field.Element where each []field.Element is a column within a limb.
 // The last limb of each row is a value defined by the values argument of the function.
-func valuesToLimbRows(limbsNb int, values ...uint64) (res [][]field.Element) {
+//
+// Note: this is a test function and presumed that the function is used only in tests.
+func valuesToLimbRows(limbsNb int, values ...uint32) (res [][]field.Element) {
 	res = make([][]field.Element, limbsNb)
 
 	for _, value := range values {

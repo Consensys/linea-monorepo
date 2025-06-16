@@ -52,7 +52,7 @@ func HashOf(comp *wizard.CompiledIOP, inputCols [][]ifaces.Column) *HashingCtx {
 			)
 		}
 
-		panic("add insert poseidon here")
+		panic("add insert poseidon here, instead of MiMC")
 
 		//comp.InsertMiMC(
 		//	round,
@@ -141,6 +141,11 @@ func (ctx *HashingCtx) Run(run *wizard.ProverRuntime) {
 	}
 }
 
+// transform3DArray transposes a 3D array of field.Element type.
+// Specifically, it transforms an input array with dimensions [dim1][dim2][dim3] into
+// an output array with dimensions [dim1][dim3][dim2].
+//
+// Note: this function is used for 'moving' the limb dimension higher.
 func transform3DArray(input [][][]field.Element) [][][]field.Element {
 	if len(input) == 0 || len(input[0]) == 0 || len(input[0][0]) == 0 {
 		return nil
