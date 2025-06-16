@@ -1,6 +1,7 @@
 package bits
 
 import (
+	"encoding/binary"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -101,18 +102,17 @@ func (bd *BitDecomposed) Run(run *wizard.ProverRuntime) {
 	}
 
 	for i := range elements[0] {
-		var el []field.Element
+		var elementBytes []byte
 		for j := range elements {
-			el = append(el, elements[j][i])
+			limbBytes := elements[j][i].Bytes()
+			elementBytes = append(elementBytes, limbBytes[32-common.LimbBytes:]...)
 		}
 
-		x := common.CombineElements(el)
-
-		if !x.IsUint64() {
+		if len(elementBytes) > 8 {
 			panic("can handle 64 bits at most")
 		}
 
-		xNum := x.Uint64()
+		xNum := binary.BigEndian.Uint64(elementBytes)
 		for j := range len(bd.Bits) {
 			if xNum>>j&1 == 1 {
 				bits[j] = append(bits[j], field.One())

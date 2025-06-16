@@ -120,7 +120,7 @@ type Module struct {
 		Leaves    [common.NbLimbU256]ifaces.Column
 		Roots     [common.NbLimbU256]ifaces.Column
 		Positions [common.NbLimbU64]ifaces.Column
-		Proofs    *merkle.FlatProof // TODO (nazarevsky): split on limbs
+		Proofs    *merkle.FlatProof
 		// Column to verify reuse of Merkle proofs in INSERT, DELETE, and UPDATE operations
 		UseNextMerkleProof ifaces.Column
 		// Column denoting the active area of the accumulator module

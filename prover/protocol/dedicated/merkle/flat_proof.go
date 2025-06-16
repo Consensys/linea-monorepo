@@ -58,9 +58,15 @@ func (p *FlatProof) Assign(run *wizard.ProverRuntime, proofs []smt.Proof) {
 
 	for i := range proofs {
 		for j := range proofs[i].Siblings {
-			var nodeAsFr field.Element
-			nodeAsFr.SetBytes(proofs[i].Siblings[j][:])
-			nodeAsFrLimbs := common.SplitElement(nodeAsFr)
+			siblingsLimbsBytes := common.SplitBytes(proofs[i].Siblings[j][:])
+
+			var nodeAsFrLimbs []field.Element
+			for _, limbBytes := range siblingsLimbsBytes {
+				var limb field.Element
+				limb.SetBytes(limbBytes)
+
+				nodeAsFrLimbs = append(nodeAsFrLimbs, limb)
+			}
 
 			if len(assignment[j]) == 0 {
 				assignment[j] = make([][]field.Element, len(nodeAsFrLimbs))
@@ -106,13 +112,15 @@ func (p *FlatProof) Unpack(run ifaces.Runtime, pos smartvectors.SmartVector) []s
 		}
 
 		for n := range len(p.Nodes[0]) {
-			siblingLimbs := make([]field.Element, len(p.Nodes))
+			siblingLimbBytes := make([]byte, len(p.Nodes))
 
-			for k, limbCol := range p.Nodes {
-				siblingLimbs[k] = limbCol[n].GetColAssignmentAt(run, i)
+			for _, limbCol := range p.Nodes {
+				element := limbCol[n].GetColAssignmentAt(run, i)
+				elementBytes := element.Bytes()
+				siblingLimbBytes = append(siblingLimbBytes, elementBytes[field.Bytes-common.LimbBytes:]...)
 			}
 
-			newProof.Siblings[n].SetField(common.CombineElements(siblingLimbs))
+			copy(newProof.Siblings[n][:], siblingLimbBytes)
 		}
 
 		proofs = append(proofs, newProof)
