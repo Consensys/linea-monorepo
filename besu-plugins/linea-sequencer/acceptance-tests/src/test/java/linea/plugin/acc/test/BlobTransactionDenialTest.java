@@ -208,10 +208,9 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
         executionPayload.set(entry.getKey(), entry.getValue());
     });
     executionPayload.put("blockHash", blockHeader.getBlockHash().toHexString());
-    executionPayload.put("blockNumber", "0x1");
 
     // Act
-    // this.importPremadeBlock(executionPayload, expectedBlobVersionedHashes, parentBeaconBlockRoot, executionRequests);
+    this.importPremadeBlock(executionPayload, expectedBlobVersionedHashes, parentBeaconBlockRoot, executionRequests);
 
     EthSendTransaction response = sendRawBlobTransaction(web3j, credentials, recipient);
     this.buildNewBlock();
