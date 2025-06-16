@@ -58,7 +58,6 @@ func EvaluateLagrangeMixed(poly []field.Element, x fext.Element, oncoset ...bool
 	return res
 }
 
-// TODO@yao: remove?
 // EvaluateLagrange computes ∑_i L_i(x), i.e. evaluates p interpreted as a polynomial in Lagrange form, and x lives in the extension
 func EvaluateLagrange(poly []field.Element, x field.Element, oncoset ...bool) field.Element {
 	var xExt fext.Element

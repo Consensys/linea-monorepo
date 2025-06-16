@@ -82,7 +82,7 @@ func NewParams(
 		BlowUpFactor: blowUpFactor,
 		Key:          ringsis.GenerateKey(sisParams, maxNbRows),
 		MerkleHasher: merkleHashFunc,
-		ColumnHasher: columnHashFunc, //TODO@yao: check if this is correct, we simply use the Merkle hash function as the leaf hash function now
+		ColumnHasher: columnHashFunc,
 	}
 
 	return res

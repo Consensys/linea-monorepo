@@ -1,7 +1,6 @@
 package horner
 
 import (
-	"errors"
 	"fmt"
 	"math/big"
 
@@ -275,34 +274,6 @@ func (c *checkHornerResult) Run(run wizard.Runtime) error {
 		hornerParams = run.GetHornerParams(hornerQuery.ID)
 		res          = field.Zero()
 	)
-
-	for i := range c.Q.Parts {
-
-		var (
-			ipQuery  = c.CountingInnerProducts[i]
-			ipParams = run.GetInnerProductParams(c.CountingInnerProducts[i].ID)
-			ipCount  = 0
-		)
-
-		for k := range ipQuery.Bs {
-
-			// Note: this check is not purely necessary from the verifier viewpoint. If
-			// the result is not a uint64, then it means the query was malformed: the
-			// result of the inner-product is the inner-product of two binary vectors
-			// and there is no way they are big enough to overflow the 2**64.
-			//
-			// Still, it is useful information as it indicates the protocol is malformed.
-			if !ipParams.Ys[k].IsUint64() {
-				return errors.New("ip result does not fit on a uint64")
-			}
-
-			ipCount += int(ipParams.Ys[k].Uint64())
-		}
-
-		if hornerParams.Parts[i].N0+ipCount != hornerParams.Parts[i].N1 {
-			return fmt.Errorf("the counting of the 1s in the filter does not match the one in the local-opening: (%v-%v) != %v", hornerParams.Parts[i].N1, hornerParams.Parts[i].N0, ipCount)
-		}
-	}
 
 	// This loop is responsible for checking that the final result is correctly
 	// computed by inspecting the local openings.

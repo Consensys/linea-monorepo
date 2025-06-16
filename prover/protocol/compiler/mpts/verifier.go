@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -102,35 +103,38 @@ func (va verifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		qr       = queryParams.Ys[len(va.NewQuery.Pols)-1]
 		polysAtR = va.cptEvaluationMapGnark(api, run)
 		r        = queryParams.X
-		rCoin    = run.GetRandomCoinField(va.EvaluationPoint.Name)
+		rCoin    = run.GetRandomCoinFieldExt(va.EvaluationPoint.Name)
 
 		// zetasOfR stores the values zetas[i] = lambda^i / (r - xi).
 		// These values are precomputed for efficiency.
-		zetasOfR = make([]frontend.Variable, len(va.Queries))
+		zetasOfR = make([]gnarkfext.Element, len(va.Queries))
 
-		lambda = run.GetRandomCoinField(va.LinCombCoeffLambda.Name)
-		rho    = run.GetRandomCoinField(va.LinCombCoeffRho.Name)
+		lambda = run.GetRandomCoinFieldExt(va.LinCombCoeffLambda.Name)
+		rho    = run.GetRandomCoinFieldExt(va.LinCombCoeffRho.Name)
 	)
 
 	api.AssertIsEqual(r, rCoin)
 
 	var (
-		lambdaPowI = frontend.Variable(1)
-		rhoK       = frontend.Variable(1)
+		lambdaPowI gnarkfext.Element
+		rhoK       gnarkfext.Element
 		// res stores the right-hand of the equality check. Namely,
 		// sum_{i,k \in claim} [\lambda^i \rho^k (Pk(r) - y_{ik})] / (r - xi).
-		res = frontend.Variable(0)
+		res gnarkfext.Element
 	)
+	lambdaPowI.SetOne()
+	rhoK.SetOne()
+	res.SetZero()
 
 	for i, q := range va.Queries {
 
 		xi := run.GetUnivariateParams(q.Name()).X
-		zetasOfR[i] = api.Sub(r, xi)
+		zetasOfR[i].Sub(api, r, xi)
 		// NB: this is very sub-optimal. We should use a batch-inverse instead
 		// but the native verifier time is not very important in this context.
-		zetasOfR[i] = api.Inverse(zetasOfR[i])
-		zetasOfR[i] = api.Mul(zetasOfR[i], lambdaPowI)
-		lambdaPowI = api.Mul(lambdaPowI, lambda)
+		zetasOfR[i].Inverse(api, zetasOfR[i])
+		zetasOfR[i].Mul(api, zetasOfR[i], lambdaPowI)
+		lambdaPowI.Mul(api, lambdaPowI, lambda)
 	}
 
 	// This loop computes the value of [res]
@@ -140,13 +144,13 @@ func (va verifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 			// This sets tmp with the value of yik
 			posOfYik := getPositionOfPolyInQueryYs(va.Queries[i], va.Polys[k])
 			tmp := run.GetUnivariateParams(va.Queries[i].Name()).Ys[posOfYik]
-			tmp = api.Sub(pr, tmp) // Pk(r) - y_{ik}
-			tmp = api.Mul(tmp, zetasOfR[i])
-			tmp = api.Mul(tmp, rhoK)
-			res = api.Add(res, tmp)
+			tmp.Sub(api, pr, tmp) // Pk(r) - y_{ik}
+			tmp.Mul(api, tmp, zetasOfR[i])
+			tmp.Mul(api, tmp, rhoK)
+			res.Add(api, res, tmp)
 		}
 
-		rhoK = api.Mul(rhoK, rho)
+		rhoK.Mul(api, rhoK, rho)
 	}
 
 	api.AssertIsEqual(res, qr)
@@ -178,10 +182,10 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMap(run wizard.Runti
 }
 
 // cptEvaluationMapGnark is the same as [cptEvaluationMap] but for a gnark circuit.
-func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api frontend.API, run wizard.GnarkRuntime) map[ifaces.ColID]frontend.Variable {
+func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api frontend.API, run wizard.GnarkRuntime) map[ifaces.ColID]gnarkfext.Element {
 
 	var (
-		evaluationMap = make(map[ifaces.ColID]frontend.Variable)
+		evaluationMap = make(map[ifaces.ColID]gnarkfext.Element)
 		univParams    = run.GetUnivariateParams(ctx.NewQuery.QueryID)
 		x             = univParams.X
 		polys         = make([][]frontend.Variable, 0)

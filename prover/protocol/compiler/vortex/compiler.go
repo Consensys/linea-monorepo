@@ -27,13 +27,14 @@ import (
 type roundStatus int
 
 // Declare enum values using iota
+// TODO@yao: cleanup the flags
 const (
 	// Denotes a round with no polynomials to commit to
 	IsEmpty roundStatus = iota
-	// Denotes a round when we apply only MiMC hashing
+	// Denotes a round when we apply only Poseidon2 hashing
 	// on the columns of the round matrix
-	IsOnlyMiMCApplied
-	// Denotes a round when we apply SIS+MiMC hashing
+	IsOnlyPoseidon2Applied
+	// Denotes a round when we apply SIS+Poseidon2 hashing
 	// on the columns of the round matrix
 	IsSISApplied
 )
@@ -197,11 +198,12 @@ type Ctx struct {
 
 	// Public parameters of the commitment scheme
 	BlowUpFactor int
+	// TODO@yao: check if the implementation matches with the below description
 	// Parameters for the optional SIS hashing feature
 	// If the number of commitments for a given round
 	// is more than this threshold, we apply SIS hashing
-	//  and then MiMC hashing for computing the leaves of the Merkle tree.
-	// Otherwise, we replace SIS and directly apply MiMC hashing
+	//  and then Poseidon2 hashing for computing the leaves of the Merkle tree.
+	// Otherwise, we replace SIS by a ColumnHasher and then apply Poseidon2 hashing
 	// for computing the leaves of the Merkle tree.
 	ApplySISHashThreshold int
 	RoundStatus           []roundStatus
@@ -446,7 +448,7 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 		Info("Compiled Vortex round")
 
 	if onlyMiMCApplied {
-		ctx.RoundStatus = append(ctx.RoundStatus, IsOnlyMiMCApplied)
+		ctx.RoundStatus = append(ctx.RoundStatus, IsOnlyPoseidon2Applied)
 	} else {
 		ctx.RoundStatus = append(ctx.RoundStatus, IsSISApplied)
 	}

@@ -100,7 +100,7 @@ func (ctx *Ctx) ComputeLinearComb(pr *wizard.ProverRuntime) {
 		}
 		pols := ctx.getPols(pr, round)
 		// Push pols to the right stack
-		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
+		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
 			committedSVNoSIS = append(committedSVNoSIS, pols...)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
 			committedSVSIS = append(committedSVSIS, pols...)
@@ -192,7 +192,7 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 
 		// conditionally stack the matrix and tree
 		// to SIS or no SIS matrices and trees
-		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
+		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
 			committedMatricesNoSIS = append(committedMatricesNoSIS, committedMatrix)
 			treesNoSIS = append(treesNoSIS, tree)
 		} else if ctx.RoundStatus[round] == IsSISApplied {

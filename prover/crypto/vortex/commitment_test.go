@@ -75,7 +75,7 @@ func TestProver(t *testing.T) {
 // 			{3, 1, 15},
 // 		}
 // 		params = []*Params{
-// 			NewParams(2, 8, 17, ringsis.StdParams, mimc.NewMiMC), //TODO@yao change to poseidon2
+// 			NewParams(2, 8, 17, ringsis.StdParams, mimc.NewMiMC),
 // 			NewParams(2, 8, 17, ringsis.StdParams, mimc.NewMiMC).RemoveSis(mimc.NewMiMC),
 // 		}
 

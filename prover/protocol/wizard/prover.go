@@ -31,7 +31,7 @@ import (
 // methods of the [wizard.ProverRuntime] struct. These are used to
 // enable/disable some of the optimization that are done by the prover
 // internally.
-type ProverRuntimeOption uint64
+type ProverRuntimeOption uint32
 
 const (
 	// DisableAssignmentSizeReduction is used to disable the

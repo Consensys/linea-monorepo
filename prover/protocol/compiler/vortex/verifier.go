@@ -40,7 +40,7 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 	// Append the precomputed roots and the corresponding flag
 	if ctx.IsNonEmptyPrecomputed() {
 		precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID()) // len 1 smart vector
-		precompRootF := precompRootSv.Get(0)                                        // root as a field element
+		precompRootF := precompRootSv.Get(0)                                        // root as a field element?? fext element?? shoud root be mapped to 8 field elements?
 
 		if ctx.IsSISAppliedToPrecomputed() {
 			sisRoots = append(sisRoots, types.Bytes32(precompRootF.Bytes()))
@@ -56,7 +56,7 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 		rootSv := vr.GetColumn(ctx.Items.MerkleRoots[round].GetColID()) // len 1 smart vector
 		rootF := rootSv.Get(0)                                          // root as a field element
 		// Append the isSISApplied flag
-		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
+		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
 			noSisRoots = append(noSisRoots, types.Bytes32(rootF.Bytes()))
 			flagForNoSISRounds = append(flagForNoSISRounds, true)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
@@ -64,9 +64,9 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 			flagForSISRounds = append(flagForSISRounds, false)
 		}
 	}
-	// assign the roots and the isSisReplacedByMiMC flags
+	// assign the roots and the IsSISReplaced flags
 	roots := append(noSisRoots, sisRoots...)
-	isSISReplacedByMiMC := append(flagForNoSISRounds, flagForSISRounds...)
+	//IsSISReplaced := append(flagForNoSISRounds, flagForSISRounds...)
 
 	proof := &vortex.OpeningProof{}
 	randomCoin := vr.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
@@ -85,14 +85,14 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 	proof.MerkleProofs = ctx.unpackMerkleProofs(packedMProofs, entryList)
 
 	return vortex.VerifyOpening(&vortex.VerifierInputs{
-		Params:              *ctx.VortexParams,
-		MerkleRoots:         roots,
-		X:                   x,
-		Ys:                  ctx.getYs(vr),
-		OpeningProof:        *proof,
-		RandomCoin:          randomCoin,
-		EntryList:           entryList,
-		IsSISReplacedByMiMC: isSISReplacedByMiMC, //TODO@yao@thomas: how to set the flag?
+		Params:       *ctx.VortexParams,
+		MerkleRoots:  roots,
+		X:            x,
+		Ys:           ctx.getYs(vr),
+		OpeningProof: *proof,
+		RandomCoin:   randomCoin,
+		EntryList:    entryList,
+		//IsSISReplaced: IsSISReplaced, //TODO@yao@thomas: how to remove this flag without breaking the code?
 	})
 }
 
@@ -159,7 +159,7 @@ func (ctx *Ctx) getYs(vr wizard.Runtime) (ys [][]fext.Element) {
 			ysRounds[i] = ysMap[name]
 		}
 		// conditionally append ysRounds to the SIS or no SIS list
-		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
+		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
 			ysNoSIS = append(ysNoSIS, ysRounds)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
 			ysSIS = append(ysSIS, ysRounds)
@@ -221,7 +221,7 @@ func (ctx *Ctx) RecoverSelectedColumns(vr wizard.Runtime, entryList []int) [][][
 		roundStartAt += numRowsForRound
 		// conditionally append the opened columns
 		// to the SIS or no SIS list
-		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
+		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
 			openedSubColumnsNoSIS = append(openedSubColumnsNoSIS, openedSubColumnsForRound)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
 			openedSubColumnsSIS = append(openedSubColumnsSIS, openedSubColumnsForRound)
