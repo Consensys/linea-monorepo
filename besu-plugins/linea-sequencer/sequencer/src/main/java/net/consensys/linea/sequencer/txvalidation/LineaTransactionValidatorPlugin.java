@@ -13,6 +13,10 @@ import com.google.auto.service.AutoService;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
 import net.consensys.linea.config.LineaTransactionValidatorConfiguration;
+
+import java.util.Optional;
+
+import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.TransactionValidatorService;
@@ -57,12 +61,12 @@ public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin
     super.beforeExternalServices();
     this.config = transactionValidatorConfiguration();
     // Register rule to reject blob transactions
-    // this.transactionValidatorService.registerTransactionValidatorRule(
-    //     (tx) -> {
-    //       if (tx.getType() == TransactionType.BLOB && !config.blobTxEnabled())
-    //         return Optional.of(LineaTransactionValidatorError.BLOB_TX_NOT_ALLOWED.toString());
-    //       return Optional.empty();
-    //     });
+    this.transactionValidatorService.registerTransactionValidatorRule(
+        (tx) -> {
+          if (tx.getType() == TransactionType.BLOB && !config.blobTxEnabled())
+            return Optional.of(LineaTransactionValidatorError.BLOB_TX_NOT_ALLOWED.toString());
+          return Optional.empty();
+        });
   }
 
   @Override
