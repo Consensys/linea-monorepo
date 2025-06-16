@@ -27,6 +27,8 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.eth.EthTransactions;
 import org.web3j.protocol.core.methods.response.EthBlock;
+import org.apache.tuweni.bytes.Bytes;
+import org.web3j.crypto.BlobUtils;
 
 /*
  * Inspired by PragueAcceptanceTestHelper class in Besu codebase. We use this class to
@@ -108,25 +110,34 @@ public class EngineAPIService {
     final Call getPayloadRequest = createGetPayloadRequest(payloadId);
 
     final ObjectNode executionPayload;
+    final ObjectNode blobsBundle;
     final ArrayNode executionRequests;
     final String newBlockHash;
     final String parentBeaconBlockRoot;
+    ArrayNode expectedBlobVersionedHashes = mapper.createArrayNode();
     try (final Response getPayloadResponse = getPayloadRequest.execute()) {
       assertThat(getPayloadResponse.code()).isEqualTo(200);
       JsonNode result = mapper.readTree(getPayloadResponse.body().string()).get("result");
       executionPayload = (ObjectNode) result.get("executionPayload");
+      blobsBundle = (ObjectNode) result.get("blobsBundle");
       executionRequests = (ArrayNode) result.get("executionRequests");
       newBlockHash = executionPayload.get("blockHash").asText();
       parentBeaconBlockRoot = executionPayload.remove("parentBeaconBlockRoot").asText();
+      // Transform KZG commitments to versioned hashes
+      for (JsonNode kzgCommitment : blobsBundle.get("commitments")) {
+          Bytes kzgBytes = Bytes.fromHexString(kzgCommitment.asText());
+          expectedBlobVersionedHashes.add( BlobUtils.kzgToVersionedHash(kzgBytes).toString());
+      }
       assertThat(newBlockHash).isNotEmpty();
     }
 
-    System.out.println("Execution Payload: " + executionPayload.toPrettyString());
-    System.out.println("Parent Beacon Block Root: " + parentBeaconBlockRoot);
-    System.out.println("Execution Requests: " + executionRequests.toPrettyString());
+    System.out.println("executionPayload: " + executionPayload.toPrettyString());
+    System.out.println("expectedBlobVersionedHashes: " + expectedBlobVersionedHashes.toPrettyString());
+    System.out.println("parentBeaconBlockRoot: " + parentBeaconBlockRoot);
+    System.out.println("executionRequests: " + executionRequests.toPrettyString());
 
     final Call newPayloadRequest =
-        createNewPayloadRequest(executionPayload, parentBeaconBlockRoot, executionRequests);
+        createNewPayloadRequest(executionPayload, expectedBlobVersionedHashes ,parentBeaconBlockRoot, executionRequests);
 
     try (final Response newPayloadResponse = newPayloadRequest.execute()) {
       assertThat(newPayloadResponse.code()).isEqualTo(200);
@@ -144,11 +155,12 @@ public class EngineAPIService {
 
   public Response importPremadeBlock(
       final ObjectNode executionPayload,
+      final ArrayNode expectedBlobVersionedHashes,
       final String parentBeaconBlockRoot,
       final ArrayNode executionRequests)
       throws IOException, InterruptedException {
     final Call newPayloadRequest =
-        createNewPayloadRequest(executionPayload, parentBeaconBlockRoot, executionRequests);
+        createNewPayloadRequest(executionPayload, expectedBlobVersionedHashes, parentBeaconBlockRoot, executionRequests);
 
     return newPayloadRequest.execute();
   }
@@ -189,11 +201,12 @@ public class EngineAPIService {
 
   private Call createNewPayloadRequest(
       final ObjectNode executionPayload,
+      final ArrayNode expectedBlobVersionedHashes,
       final String parentBeaconBlockRoot,
       final ArrayNode executionRequests) {
     ArrayNode params = mapper.createArrayNode();
     params.add(executionPayload);
-    params.add(mapper.createArrayNode()); // empty withdrawals
+    params.add(expectedBlobVersionedHashes);
     params.add(parentBeaconBlockRoot);
     params.add(executionRequests);
 

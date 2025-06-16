@@ -140,6 +140,7 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
             .send()
             .getTransactionCount();
 
+    // Take blob file from public reference so we can sanity check values - https://github.com/LFDT-web3j/web3j/blob/9dbd2f90468538408eeb9a1e87e8e73a9f3dda3b/crypto/src/test/java/org/web3j/crypto/BlobUtilsTest.java#L63-L83
     URL blobUrl = new File(getResourcePath("/blob.txt")).toURI().toURL();
     final var blobHexString = Resources.toString(blobUrl, StandardCharsets.UTF_8);
     final Blob blob = new Blob(Numeric.hexStringToByteArray(blobHexString));
@@ -168,10 +169,11 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
 
   protected void importPremadeBlock(
       final ObjectNode executionPayload,
+      final ArrayNode expectedBlobVersionedHashes,
       final String parentBeaconBlockRoot,
       final ArrayNode executionRequests)
       throws IOException, InterruptedException {
     this.engineApiService.importPremadeBlock(
-        executionPayload, parentBeaconBlockRoot, executionRequests);
+        executionPayload, expectedBlobVersionedHashes, parentBeaconBlockRoot, executionRequests);
   }
 }

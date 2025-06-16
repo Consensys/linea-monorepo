@@ -91,14 +91,14 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
   public static final int BLOCK_PERIOD_SECONDS = 5;
   public static final CliqueOptions DEFAULT_LINEA_CLIQUE_OPTIONS =
       new CliqueOptions(BLOCK_PERIOD_SECONDS, CliqueOptions.DEFAULT.epochLength(), false);
-  // TODO - Re-enable plugins once we have worked out block import test
+  // TODO - Re-enable LineaTransactionSelectorPlugin once we have worked out block import test
   protected static final List<String> DEFAULT_REQUESTED_PLUGINS =
       List.of(
           "LineaExtraDataPlugin",
           "LineaEstimateGasEndpointPlugin",
           "LineaSetExtraDataEndpointPlugin",
           "LineaTransactionPoolValidatorPlugin",
-          "LineaTransactionSelectorPlugin",
+          // "LineaTransactionSelectorPlugin",
           "LineaBundleEndpointsPlugin",
           "ForwardBundlesPlugin",
           "LineaTransactionValidatorPlugin");
