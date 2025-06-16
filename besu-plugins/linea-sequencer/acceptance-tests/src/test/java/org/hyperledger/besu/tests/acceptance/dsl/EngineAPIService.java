@@ -23,14 +23,13 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.eth.EthTransactions;
-import org.web3j.protocol.core.methods.response.EthBlock;
-import org.apache.tuweni.bytes.Bytes;
 import org.web3j.crypto.BlobUtils;
+import org.web3j.protocol.core.methods.response.EthBlock;
 
 /*
  * Inspired by PragueAcceptanceTestHelper class in Besu codebase. We use this class to
@@ -125,19 +124,18 @@ public class EngineAPIService {
       parentBeaconBlockRoot = executionPayload.remove("parentBeaconBlockRoot").asText();
       // Transform KZG commitments to versioned hashes
       for (JsonNode kzgCommitment : blobsBundle.get("commitments")) {
-          Bytes kzgBytes = Bytes.fromHexString(kzgCommitment.asText());
-          expectedBlobVersionedHashes.add( BlobUtils.kzgToVersionedHash(kzgBytes).toString());
+        Bytes kzgBytes = Bytes.fromHexString(kzgCommitment.asText());
+        expectedBlobVersionedHashes.add(BlobUtils.kzgToVersionedHash(kzgBytes).toString());
       }
       assertThat(newBlockHash).isNotEmpty();
     }
 
-    System.out.println("executionPayload: " + executionPayload.toPrettyString());
-    System.out.println("expectedBlobVersionedHashes: " + expectedBlobVersionedHashes.toPrettyString());
-    System.out.println("parentBeaconBlockRoot: " + parentBeaconBlockRoot);
-    System.out.println("executionRequests: " + executionRequests.toPrettyString());
-
     final Call newPayloadRequest =
-        createNewPayloadRequest(executionPayload, expectedBlobVersionedHashes ,parentBeaconBlockRoot, executionRequests);
+        createNewPayloadRequest(
+            executionPayload,
+            expectedBlobVersionedHashes,
+            parentBeaconBlockRoot,
+            executionRequests);
 
     try (final Response newPayloadResponse = newPayloadRequest.execute()) {
       assertThat(newPayloadResponse.code()).isEqualTo(200);
@@ -160,7 +158,11 @@ public class EngineAPIService {
       final ArrayNode executionRequests)
       throws IOException, InterruptedException {
     final Call newPayloadRequest =
-        createNewPayloadRequest(executionPayload, expectedBlobVersionedHashes, parentBeaconBlockRoot, executionRequests);
+        createNewPayloadRequest(
+            executionPayload,
+            expectedBlobVersionedHashes,
+            parentBeaconBlockRoot,
+            executionRequests);
 
     return newPayloadRequest.execute();
   }

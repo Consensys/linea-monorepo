@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.Response;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.consensus.clique.CliqueExtraData;
 import org.hyperledger.besu.datatypes.Address;
@@ -143,7 +144,8 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
             .send()
             .getTransactionCount();
 
-    // Take blob file from public reference so we can sanity check values - https://github.com/LFDT-web3j/web3j/blob/9dbd2f90468538408eeb9a1e87e8e73a9f3dda3b/crypto/src/test/java/org/web3j/crypto/BlobUtilsTest.java#L63-L83
+    // Take blob file from public reference so we can sanity check values -
+    // https://github.com/LFDT-web3j/web3j/blob/9dbd2f90468538408eeb9a1e87e8e73a9f3dda3b/crypto/src/test/java/org/web3j/crypto/BlobUtilsTest.java#L63-L83
     URL blobUrl = new File(getResourcePath("/blob.txt")).toURI().toURL();
     final var blobHexString = Resources.toString(blobUrl, StandardCharsets.UTF_8);
     final Blob blob = new Blob(Numeric.hexStringToByteArray(blobHexString));
@@ -170,13 +172,13 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
     return web3j.ethSendRawTransaction(hexValue).send();
   }
 
-  protected void importPremadeBlock(
+  protected Response importPremadeBlock(
       final ObjectNode executionPayload,
       final ArrayNode expectedBlobVersionedHashes,
       final String parentBeaconBlockRoot,
       final ArrayNode executionRequests)
       throws IOException, InterruptedException {
-    this.engineApiService.importPremadeBlock(
+    return this.engineApiService.importPremadeBlock(
         executionPayload, expectedBlobVersionedHashes, parentBeaconBlockRoot, executionRequests);
   }
 }
