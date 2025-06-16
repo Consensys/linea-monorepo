@@ -223,3 +223,17 @@ func NewFromBase(e frontend.Variable) Element {
 		B1: E2{A0: 0, A1: 0},
 	}
 }
+
+// Sub Element elmts
+func (e *Element) Div(api frontend.API, e1, e2 Element) *Element {
+	e.B0.Div(api, e1.B0, e2.B0)
+	e.B1.Div(api, e1.B1, e2.B1)
+	return e
+}
+
+// Sub Element elmts
+func (e *Element) DivByBase(api frontend.API, e1 Element, e2 frontend.Variable) *Element {
+	e.B0.DivByBase(api, e1.B0, e2)
+	e.B1.DivByBase(api, e1.B1, e2)
+	return e
+}

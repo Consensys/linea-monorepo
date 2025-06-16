@@ -166,3 +166,17 @@ func (e *E2) Select(api frontend.API, b frontend.Variable, r1, r2 E2) *E2 {
 
 	return e
 }
+
+// Sub e2 elmts
+func (e *E2) Div(api frontend.API, e1, e2 E2) *E2 {
+	e.A0 = api.Div(e1.A0, e2.A0)
+	e.A1 = api.Div(e1.A1, e2.A1)
+	return e
+}
+
+// Sub Element elmts
+func (e *E2) DivByBase(api frontend.API, e1 E2, e2 frontend.Variable) *E2 {
+	e.A0 = api.Div(e1.A0, e2)
+	e.A1 = api.Div(e1.A1, e2)
+	return e
+}

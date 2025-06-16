@@ -201,8 +201,7 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api fronten
 		polys = append(polys, poly)
 	}
 
-	ys := fastpoly.BatchEvaluateLagrangeGnarkMixed(api, polys, x) // TODO@yao@thomas implement BatchEvaluateLagrangeGnarkMixed
-
+	ys := fastpoly.BatchEvaluateLagrangeGnarkMixed(api, polys, x)
 	for i := range ctx.ExplicitlyEvaluated {
 		colID := ctx.ExplicitlyEvaluated[i].GetColID()
 		evaluationMap[colID] = ys[i]
