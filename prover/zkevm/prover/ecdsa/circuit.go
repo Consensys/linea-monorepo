@@ -100,7 +100,7 @@ func (c *EcRecoverInstance) splitInputs(api frontend.API) (PK *sw_emulated.Affin
 
 	// SUCCESS_BIT indicates if the input is a valid signature (1 for valid, 0
 	// for invalid). Recall that we also allow to verify invalid signatures (for
-	// the ECRECOVER preocompile call).
+	// the ECRECOVER precompile call).
 	isFailure = api.Sub(1, c.SUCCESS_BIT)
 	// ECRECOVERBIT indicates if the input comes from the ECRECOVER precompile
 	// or not (1 for ECRECOVER, 0 for TX).
