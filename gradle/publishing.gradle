@@ -87,6 +87,7 @@ jreleaserRelease.dependsOn(createJreleaserOutputDir)
 // JRelease DSL does not have access to project properties, so we need to define them here
 def _releaseName = "Maven package: $project.group:$_artifactId:${project.version}"
 def _tagName = "maven-${_artifactId}-v${project.version}"
+def _project = project
 
 jreleaser {
   gitRootSearch = true
@@ -127,7 +128,7 @@ jreleaser {
       testFixtures {
         enabled = true
         artifact {
-          path = "${project.buildDir}/libs/${project.name}-test-fixtures.jar"
+          path = "${_project.layout.buildDirectory}/libs/${_project.name}-test-fixtures.jar"
           active = "ALWAYS"
           extraProperties.put("classifier", "test-fixtures")
         }
