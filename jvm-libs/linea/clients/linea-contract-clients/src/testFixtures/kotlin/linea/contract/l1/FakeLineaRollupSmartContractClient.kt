@@ -40,12 +40,11 @@ data class FinalizedBlock(
 
 class FakeLineaRollupSmartContractClient(
   val contractAddress: String = Random.nextBytes(20).encodeHex(),
+  @get:Synchronized @set:Synchronized
+  var contractVersion: LineaContractVersion = LineaContractVersion.V6,
   _finalizedBlocks: List<FinalizedBlock> = listOf(FinalizedBlock(0uL, Clock.System.now(), Random.nextBytes(32))),
   _messageRollingHashes: Map<ULong, ByteArray> = emptyMap(),
 ) : LineaRollupSmartContractClientReadOnly {
-  @get:Synchronized @set:Synchronized
-  var contractVersion: LineaContractVersion = LineaContractVersion.V6
-
   val messageRollingHashes: MutableMap<ULong, ByteArray> = ConcurrentHashMap(_messageRollingHashes)
   val finalizedBlocks: MutableMap<ULong, FinalizedBlock> = ConcurrentHashMap()
 
