@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	plonkKOALABEAR "github.com/consensys/gnark/backend/plonk/koalabear"
+	plonkKoalabear "github.com/consensys/gnark/backend/plonk/koalabear"
+	"github.com/consensys/gnark/constraint"
 	cs "github.com/consensys/gnark/constraint/koalabear"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
@@ -51,7 +51,7 @@ type CompilationCtx struct {
 		// The plonk circuit being integrated
 		Circuit frontend.Circuit
 		// The compiled circuit
-		Trace *plonkKOALABEAR.Trace
+		Trace *plonkKoalabear.Trace
 		// The sparse constrained system
 		SPR *cs.SparseR1CS
 		// Domain to gets the polynomials in lagrange form
@@ -204,7 +204,7 @@ func createCtx(
 		utils.Panic("plonk-in-wizard: the number of constraints of the circuit outweight the fixed number of rows. fixed-nb-row=%v domain-size=%v", ctx.FixedNbRowsOption.NbRow, ctx.DomainSizePlonk())
 	}
 
-	ctx.Plonk.Trace = plonkKOALABEAR.NewTrace(ctx.Plonk.SPR, ctx.Plonk.Domain)
+	ctx.Plonk.Trace = plonkKoalabear.NewTrace(ctx.Plonk.SPR, ctx.Plonk.Domain)
 
 	ctx.buildPermutation(ctx.Plonk.SPR, ctx.Plonk.Trace) // no part of BuildTrace
 
@@ -250,12 +250,12 @@ func CompileCircuitWithExternalHasher(circ frontend.Circuit, addGates bool) (*cs
 
 	gnarkBuilder, hshGetter := mimc.NewExternalHasherBuilder(addGates)
 
-	ccsIface, err := frontend.Compile(ecc.BLS12_377.ScalarField(), gnarkBuilder, circ)
+	ccs, err := frontend.CompileGeneric[constraint.U32](koalabear.Modulus(), gnarkBuilder, circ)
 	if err != nil {
 		return nil, nil, fmt.Errorf("frontend.Compile returned an err=%v", err)
 	}
 
-	return ccsIface.(*cs.SparseR1CS), hshGetter, err
+	return ccs.(*cs.SparseR1CS), hshGetter, err
 }
 
 // DomainSize returns the size of the domain. Meaning the size of the columns
@@ -301,7 +301,7 @@ func (ctx *CompilationCtx) TinyPISize() int {
 // The permutation is encoded as a slice s of size 3*size(l), where the
 // i-th entry of l∥r∥o is sent to the s[i]-th entry, so it acts on a tab
 // like this: for i in tab: tab[i] = tab[permutation[i]]
-func (ctx *CompilationCtx) buildPermutation(spr *cs.SparseR1CS, pt *plonkKOALABEAR.Trace) {
+func (ctx *CompilationCtx) buildPermutation(spr *cs.SparseR1CS, pt *plonkKoalabear.Trace) {
 
 	// nbVariables counts the number of variables occuring in the Plonk circuit. The
 	// +1 is to account for a "special" variable that we use for padding. It is
