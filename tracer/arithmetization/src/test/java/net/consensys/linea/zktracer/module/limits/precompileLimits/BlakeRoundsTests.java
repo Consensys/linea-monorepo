@@ -16,7 +16,6 @@
 package net.consensys.linea.zktracer.module.limits.precompileLimits;
 
 import static java.lang.Integer.MAX_VALUE;
-import static net.consensys.linea.zktracer.ChainConfig.MAINNET_LONDON_TESTCONFIG;
 import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.BLAKE2f_R_SIZE;
 import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -39,7 +38,7 @@ public class BlakeRoundsTests extends TracerTestBase {
 
   @Test
   void checkWoCommit() {
-    final ZkTracer state = new ZkTracer(MAINNET_LONDON_TESTCONFIG);
+    final ZkTracer state = new ZkTracer(testInfo.chainConfig);
     final BlakeRounds blakeRounds = state.getHub().blakeModexpData().blakeRounds();
 
     blakeRounds.addPrecompileLimit(ONE);
@@ -69,7 +68,7 @@ public class BlakeRoundsTests extends TracerTestBase {
 
   @Test
   void checkWithCommit() {
-    final ZkTracer state = new ZkTracer(MAINNET_LONDON_TESTCONFIG);
+    final ZkTracer state = new ZkTracer(testInfo.chainConfig);
     final BlakeRounds blakeRounds = state.getHub().blakeModexpData().blakeRounds();
 
     blakeRounds.addPrecompileLimit(ONE);

@@ -15,7 +15,6 @@
 
 package net.consensys.linea.zktracer;
 
-import static net.consensys.linea.zktracer.ChainConfig.MAINNET_LONDON_TESTCONFIG;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import net.consensys.linea.UnitTestWatcher;
@@ -28,7 +27,7 @@ public class ZkTracerTest extends TracerTestBase {
 
   @Test
   public void createNewTracer() {
-    final ZkTracer zkTracer = new ZkTracer(MAINNET_LONDON_TESTCONFIG);
+    final ZkTracer zkTracer = new ZkTracer(testInfo.chainConfig);
     assertThat(zkTracer.isExtendedTracing()).isTrue();
   }
 }

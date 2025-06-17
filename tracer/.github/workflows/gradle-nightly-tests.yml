@@ -11,6 +11,9 @@ concurrency:
 
 jobs:
   nightly-tests:
+    strategy:
+      matrix:
+        zkevm_fork: [LONDON, SHANGHAI]
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
     steps:
       - name: Checkout repository
@@ -28,27 +31,27 @@ jobs:
           CORSET_FLAGS: disable
           GOCORSET_FLAGS: -v --ansi-escapes=false --report --mir
           NIGHTLY_TESTS_PARALLELISM: 2
-          ZKEVM_FORK: LONDON
+          ZKEVM_FORK: ${{ matrix.zkevm_fork }}
 
       - name: Upload test report
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: nightly-tests-report
+          name: nightly-tests-report-${{ matrix.zkevm_fork }}
           path: arithmetization/build/reports/tests/**/*
 
       - name: Upload jacoco nightly tests coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jacoco-nightly-tests-coverage-report
+          name: jacoco-nightly-tests-coverage-report-${{ matrix.zkevm_fork }}
           path: arithmetization/build/reports/jacoco/jacocoNightlyTestsReport/**/*
 
       - name: Upload jacoco nightly tests exec file
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jacoco-nightly-tests-exec-file
+          name: jacoco-nightly-tests-exec-file-${{ matrix.zkevm_fork }}
           path: arithmetization/build/jacoco/nightlyTests.exec
 
       - name: Failure Notification
