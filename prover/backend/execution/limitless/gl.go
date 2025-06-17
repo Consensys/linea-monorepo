@@ -49,8 +49,6 @@ func RunProverGLs(cfg *config.Config,
 		// | 12          | C             | 2             |
 		// | 13          | C             | 3             |
 
-		logrus.Infof("segment(total)=%v module=%v segment.index=%v", i, witnessGL.ModuleName, witnessGL.ModuleIndex)
-
 		for k := range distWizard.ModuleNames {
 			if distWizard.ModuleNames[k] != witnessGLs[i].ModuleName {
 				continue
@@ -62,39 +60,32 @@ func RunProverGLs(cfg *config.Config,
 			utils.Panic("module GL does not exists")
 		}
 
-		modSegID := &ModSegID{
-			SegmentID:  i,
-			ModuleName: string(witnessGL.ModuleName),
-			ModuleIdx:  witnessGL.ModuleIndex,
-		}
-
-		run, err := modSegID.RunGLProver(cfg, moduleGL, witnessGL)
+		logrus.Infof("RUNNING the GL-prover for segment(total)=%v module=%v segment.index=%v", i, witnessGL.ModuleName, witnessGL.ModuleIndex)
+		fileName := fmt.Sprintf("%v-%v-%v", i, witnessGL.ModuleName, witnessGL.ModuleIndex)
+		run, err := RunGLProver(cfg, moduleGL, witnessGL, fileName)
 		if err != nil {
 			return nil, err
 		}
 		runs[i] = run
-
+		logrus.Infof("Finished running the GL prover")
 	}
 	return runs, nil
 }
 
 // RunGLProver executes the prover for a single GL module segment and writes the `recursion.Witness`
-// needed for Conglomeration to a file.
-func (ms *ModSegID) RunGLProver(cfg *config.Config,
+// needed for Conglomeration to the fileName .
+func RunGLProver(cfg *config.Config,
 	moduleGL *distributed.RecursedSegmentCompilation,
-	witnessGL *distributed.ModuleWitnessGL) (*wizard.ProverRuntime, error) {
+	witnessGL *distributed.ModuleWitnessGL, fileName string,
+) (*wizard.ProverRuntime, error) {
 
-	logrus.Infof("RUNNING the GL prover for segment(total)=%v module=%v segment.index=%v", ms.SegmentID, ms.ModuleName, ms.ModuleIdx)
 	runtimeGL := moduleGL.ProveSegment(witnessGL)
-	logrus.Infof("Finished running the GL prover")
-
-	logrus.Infof("Extracting GL-recursion witness and writing it to disk")
+	logrus.Info("Extracting GL-recursion witness and writing it to disk")
 	recursionGLWitness := recursion.ExtractWitness(runtimeGL)
-	moduleName := fmt.Sprintf("%v-%v-%v", ms.SegmentID, ms.ModuleName, ms.ModuleIdx)
-
-	err := SerializeAndWriteRecursionWitness(cfg, moduleName, &recursionGLWitness, false)
+	err := serializeAndWriteRecursionWitness(cfg, fileName, &recursionGLWitness, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to serialize and write GL-recursion witness: %w", err)
 	}
+	logrus.Infof("Finished extracting GL-recursion witness and writing it to disk")
 	return runtimeGL, nil
 }
