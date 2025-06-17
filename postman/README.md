@@ -24,7 +24,15 @@ All messages are stored in a configurable Postgres DB.
 - `L1_CONTRACT_ADDRESS`: Address of the LineaRollup contract on L1
 - `L1_SIGNER_PRIVATE_KEY`: Private key for L1 transactions
 - `L1_LISTENER_INTERVAL`: Block listening interval (ms)
-- `L1_LISTENER_INITIAL_FROM_BLOCK`: Starting block for event listening (optional)
+- `L1_LISTENER_INITIAL_FROM_BLOCK`: (optional) Starting block for event listening. This configuration option controls from which block the Postman service starts fetching events when it first starts up or when there are no previously processed messages in the database.
+  - **Default behavior**: If not specified or set to `-1` (default), the service will start from the current latest block on the chain
+  - **Custom block number**: Set to a specific block number (e.g., `12345678`) to start fetching events from that block
+  - **From genesis**: Set to `0` to fetch all historical events from the beginning of the chain
+  - **Priority order**: The service determines the starting block using the following priority:
+    1. If there are previously processed messages in the database, resume from the last processed block
+    2. If `L1_LISTENER_INITIAL_FROM_BLOCK` is set to a value greater than `-1`, use that block number
+    3. Otherwise, start from the current latest block on the chain
+  - **⚠️ Performance Note**: Setting this to `0` or a very low block number may result in long initial sync times as the service will process all historical events
 - `L1_LISTENER_BLOCK_CONFIRMATION`: Required block confirmations
 - `L1_MAX_BLOCKS_TO_FETCH_LOGS`: Maximum blocks to fetch in one request
 - `L1_MAX_GAS_FEE_ENFORCED`: Enable/disable gas fee enforcement
@@ -44,7 +52,15 @@ All messages are stored in a configurable Postgres DB.
 - `L2_CONTRACT_ADDRESS`: Address of the L2MessageService contract on L2
 - `L2_SIGNER_PRIVATE_KEY`: Private key for L2 transactions
 - `L2_LISTENER_INTERVAL`: Block listening interval (ms)
-- `L2_LISTENER_INITIAL_FROM_BLOCK`: Starting block for event listening (optional)
+- `L2_LISTENER_INITIAL_FROM_BLOCK`: (optional) Starting block for event listening. This configuration option controls from which block the Postman service starts fetching events when it first starts up or when there are no previously processed messages in the database.
+  - **Default behavior**: If not specified or set to `-1` (default), the service will start from the current latest block on the chain
+  - **Custom block number**: Set to a specific block number (e.g., `5432100`) to start fetching events from that block
+  - **From genesis**: Set to `0` to fetch all historical events from the beginning of the chain
+  - **Priority order**: The service determines the starting block using the following priority:
+    1. If there are previously processed messages in the database, resume from the last processed block
+    2. If `L2_LISTENER_INITIAL_FROM_BLOCK` is set to a value greater than `-1`, use that block number
+    3. Otherwise, start from the current latest block on the chain
+  - **⚠️ Performance Note**: Setting this to `0` or a very low block number may result in long initial sync times as the service will process all historical events
 - `L2_LISTENER_BLOCK_CONFIRMATION`: Required block confirmations
 - `L2_MAX_BLOCKS_TO_FETCH_LOGS`: Maximum blocks to fetch in one request
 - `L2_MAX_GAS_FEE_ENFORCED`: Enable/disable gas fee enforcement
@@ -94,6 +110,48 @@ All messages are stored in a configurable Postgres DB.
 - `POSTGRES_USER`: Database user
 - `POSTGRES_PASSWORD`: Database password
 - `POSTGRES_DB`: Database name
+
+### Starting Block Configuration Examples
+
+The `L1_LISTENER_INITIAL_FROM_BLOCK` and `L2_LISTENER_INITIAL_FROM_BLOCK` configuration options are crucial for controlling event fetching behavior. Here are practical examples:
+
+#### Example 1: Development Setup (Default Behavior)
+```bash
+# For development, start from current block to avoid processing historical data
+L1_LISTENER_INITIAL_FROM_BLOCK=-1  # Default value
+L2_LISTENER_INITIAL_FROM_BLOCK=-1  # Default value
+```
+
+#### Example 2: Fresh Production Deployment from Genesis
+```bash
+# Process all historical events from the beginning of the chains
+L1_LISTENER_INITIAL_FROM_BLOCK=0
+L2_LISTENER_INITIAL_FROM_BLOCK=0
+```
+
+#### Example 3: Production Deployment from Specific Block Heights
+```bash
+# Start from specific block numbers to avoid processing unnecessary historical data
+L1_LISTENER_INITIAL_FROM_BLOCK=18500000  # Ethereum block number
+L2_LISTENER_INITIAL_FROM_BLOCK=1000000   # Linea block number
+```
+
+#### Example 4: Recovery from Known Good State
+```bash
+# After database restoration, resume from known block heights
+L1_LISTENER_INITIAL_FROM_BLOCK=18550000
+L2_LISTENER_INITIAL_FROM_BLOCK=1050000
+```
+
+#### Use Case Guidelines:
+
+- **New Development Environment**: Use default values (`-1`) to start fresh from current block
+- **Production Mainnet**: Set to specific block numbers where message bridge was deployed or activated
+- **Testing Historical Data**: Set to `0` or specific historical blocks (expect longer sync times)
+- **Database Recovery**: Set to last known good block numbers after database restoration
+- **Performance Optimization**: Use higher block numbers to skip irrelevant historical events
+
+**Note**: The configuration only takes effect when there are no existing messages in the database. If the database contains previously processed messages, the service will automatically resume from the last processed block regardless of these configuration values.
 
 ## Development
 
