@@ -23,26 +23,32 @@ const (
 )
 
 type BlsAddDataSource struct {
-	CsAdd  ifaces.Column
-	Limb   ifaces.Column
-	Index  ifaces.Column
-	IsData ifaces.Column
-	IsRes  ifaces.Column
+	CsAdd             ifaces.Column
+	CsCurveMembership ifaces.Column
+	Limb              ifaces.Column
+	Index             ifaces.Column
+	Counter           ifaces.Column
+	IsData            ifaces.Column
+	IsRes             ifaces.Column
 }
 
 func newAddDataSource(comp *wizard.CompiledIOP, g group) *BlsAddDataSource {
 	return &BlsAddDataSource{
-		CsAdd:  comp.Columns.GetHandle(ifaces.ColIDf("bls.CIRCUIT_SELECTOR_%s_ADD", g.String())),
-		Limb:   comp.Columns.GetHandle("bls.LIMB"),
-		Index:  comp.Columns.GetHandle("bls.INDEX"),
-		IsData: comp.Columns.GetHandle(ifaces.ColIDf("bls.DATA_%s_ADD", g.String())),
-		IsRes:  comp.Columns.GetHandle(ifaces.ColIDf("bls.RSLT_%s_ADD", g.String())),
+		CsAdd:             comp.Columns.GetHandle(ifaces.ColIDf("bls.CIRCUIT_SELECTOR_%s_ADD", g.String())),
+		CsCurveMembership: comp.Columns.GetHandle(ifaces.ColIDf("bls.CURVE_MEMBERSHIP_%s_ADD", g.StringCurve())),
+		Limb:              comp.Columns.GetHandle("bls.LIMB"),
+		Index:             comp.Columns.GetHandle("bls.INDEX"),
+		Counter:           comp.Columns.GetHandle("bls.CT"),
+		IsData:            comp.Columns.GetHandle(ifaces.ColIDf("bls.DATA_%s_ADD", g.String())),
+		IsRes:             comp.Columns.GetHandle(ifaces.ColIDf("bls.RSLT_%s_ADD", g.String())),
 	}
 }
 
 type BlsAdd struct {
 	*BlsAddDataSource
-	AlignedGnarkData *plonk.Alignment
+	*UnalignedCurveMembershipData
+	AlignedAddGnarkData             *plonk.Alignment
+	AlignedCurveMembershipGnarkData *plonk.Alignment
 
 	size int
 	*Limits
@@ -51,8 +57,13 @@ type BlsAdd struct {
 
 func newAdd(comp *wizard.CompiledIOP, g group, limits *Limits, src *BlsAddDataSource, plonkOptions []query.PlonkOption) *BlsAdd {
 	size := limits.sizeAddIntegration(g)
+	ucmd := newUnalignedCurveMembershipData(comp, g, size, &UnalignedCurveMembershipDataSource{
+		Limb:              src.Limb,
+		CsCurveMembership: src.CsCurveMembership,
+		Counter:           src.Counter,
+	})
 
-	toAlign := &plonk.CircuitAlignmentInput{
+	toAlignAdd := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_%s_ALIGNMENT", NAME_BLS_ADD, g.String()),
 		Round:              ROUND_NR,
 		DataToCircuitMask:  src.CsAdd,
@@ -61,18 +72,33 @@ func newAdd(comp *wizard.CompiledIOP, g group, limits *Limits, src *BlsAddDataSo
 		NbCircuitInstances: limits.nbAddCircuitInstances(g),
 		PlonkOptions:       plonkOptions,
 	}
-
-	return &BlsAdd{
-		BlsAddDataSource: src,
-		AlignedGnarkData: plonk.DefineAlignment(comp, toAlign),
-		size:             size,
-		Limits:           limits,
-		group:            g,
+	toAlignCurveMembership := &plonk.CircuitAlignmentInput{
+		Name:               fmt.Sprintf("%s_%s_CURVE_MEMBERSHIP_ALIGNMENT", NAME_BLS_ADD, g.StringCurve()),
+		Round:              ROUND_NR,
+		DataToCircuitMask:  ucmd.IsActive,
+		DataToCircuit:      ucmd.GnarkData,
+		Circuit:            NewCheckCircuit(g, CURVE, limits),
+		NbCircuitInstances: limits.nbCurveMembershipCircuitInstances(g),
+		PlonkOptions:       plonkOptions,
 	}
+
+	res := &BlsAdd{
+		BlsAddDataSource:                src,
+		UnalignedCurveMembershipData:    ucmd,
+		AlignedAddGnarkData:             plonk.DefineAlignment(comp, toAlignAdd),
+		AlignedCurveMembershipGnarkData: plonk.DefineAlignment(comp, toAlignCurveMembership),
+		size:                            size,
+		Limits:                          limits,
+		group:                           g,
+	}
+
+	return res
 }
 
 func (ba *BlsAdd) Assign(run *wizard.ProverRuntime) {
-	ba.AlignedGnarkData.Assign(run)
+	ba.UnalignedCurveMembershipData.Assign(run)
+	ba.AlignedAddGnarkData.Assign(run)
+	ba.AlignedCurveMembershipGnarkData.Assign(run)
 }
 
 func NewG1AddZkEvm(comp *wizard.CompiledIOP, limits *Limits) *BlsAdd {

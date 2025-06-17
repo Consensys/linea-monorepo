@@ -40,6 +40,11 @@ type Limits struct {
 
 	NbG2MapToInputInstances   int
 	NbG2MapToCircuitInstances int
+
+	NbC1MembershipInputInstances   int
+	NbC1MembershipCircuitInstances int
+	NbC2MembershipInputInstances   int
+	NbC2MembershipCircuitInstances int
 }
 
 func (l *Limits) sizeAddIntegration(g group) int {
@@ -83,6 +88,17 @@ func (l *Limits) nbMulCircuitInstances(g group) int {
 		return l.NbG2MulCircuitInstances
 	default:
 		panic("unknown group for bls mul circuit instances")
+	}
+}
+
+func (l *Limits) nbCurveMembershipCircuitInstances(g group) int {
+	switch g {
+	case G1:
+		return l.NbC1MembershipCircuitInstances
+	case G2:
+		return l.NbC2MembershipCircuitInstances
+	default:
+		panic("unknown group for bls curve membership instances")
 	}
 }
 

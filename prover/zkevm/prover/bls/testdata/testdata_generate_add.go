@@ -136,12 +136,14 @@ func (a addInputCase[T]) WriteCSV(w *csv.Writer, id int) error {
 }
 
 func headersAdd[T affine]() []string {
-	var t string
+	var t, tt string
 	switch any(new(T)).(type) {
 	case *bls12381.G1Affine:
 		t = "G1"
+		tt = "C1"
 	case *bls12381.G2Affine:
 		t = "G2"
+		tt = "C2"
 	default:
 		panic(fmt.Sprintf("unknown type for headersAdd: %T", new(T)))
 	}
@@ -154,7 +156,7 @@ func headersAdd[T affine]() []string {
 		"IS_FIRST_INPUT",
 		"IS_SECOND_INPUT",
 		fmt.Sprintf("CIRCUIT_SELECTOR_%s_ADD", t),
-		"CIRCUIT_SELECTOR_MEMBERSHIP",
+		fmt.Sprintf("CIRCUIT_SELECTOR_%s_MEMBERSHIP", tt),
 		"LIMB",
 	}
 }
