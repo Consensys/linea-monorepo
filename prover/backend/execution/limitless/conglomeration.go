@@ -1,8 +1,10 @@
 package limitless
 
 import (
+	"bytes"
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -10,22 +12,42 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func RunConglomerationProver(cong *distributed.ConglomeratorCompilation, runGLs, runLPPs []*wizard.ProverRuntime) (*wizard.Proof, error) {
+func RunConglomerationProver(cfg *config.Config,
+	cong *distributed.ConglomeratorCompilation, witnessGLs []*distributed.ModuleWitnessGL,
+	witnessLPPs []*distributed.ModuleWitnessLPP,
+) (*wizard.Proof, error) {
+
 	var (
-		witLPPs = make([]recursion.Witness, len(runLPPs))
-		witGLs  = make([]recursion.Witness, len(runGLs))
+		filePath     = cfg.PathforLimitlessProverAssets()
+		recurWitGLs  = make([]recursion.Witness, len(witnessGLs))
+		recurWitLPPs = make([]recursion.Witness, len(witnessLPPs))
 	)
 
-	for i := range runLPPs {
-		witLPPs[i] = recursion.ExtractWitness(runLPPs[i])
+	var readBuf *bytes.Buffer
+	for i, witnessLPP := range witnessLPPs {
+		var recurWitLPP *recursion.Witness
+
+		fileName := fmt.Sprintf("%v-%v-%v", i, witnessLPP.ModuleName, witnessLPP.ModuleIndex)
+		err := readAndDeserialize(filePath, fileName, &recurWitLPP, readBuf)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read and deserialize LPP recursion witness: %w", err)
+		}
+		recurWitLPPs[i] = *recurWitLPP
 	}
 
-	for i := range runGLs {
-		witGLs[i] = recursion.ExtractWitness(runGLs[i])
+	for i, witnessGL := range witnessGLs {
+		var recurWitGL *recursion.Witness
+
+		fileName := fmt.Sprintf("%v-%v-%v", i, witnessGL.ModuleName, witnessGL.ModuleIndex)
+		err := readAndDeserialize(filePath, fileName, &recurWitGL, readBuf)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read and deserialize GL recursion witness: %w", err)
+		}
+		recurWitGLs[i] = *recurWitGL
 	}
 
 	logrus.Info("Starting to prove conglomerator")
-	proof := cong.Prove(witGLs, witLPPs)
+	proof := cong.Prove(recurWitGLs, recurWitLPPs)
 	logrus.Info("Finished proving conglomerator")
 
 	logrus.Info("Start sanity-checking conglomeration proof")

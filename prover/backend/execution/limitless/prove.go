@@ -3,6 +3,7 @@ package limitless
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"path"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
@@ -27,16 +28,16 @@ type Asset struct {
 	DistWizard *distributed.DistributedWizard
 }
 
-type ModSegID struct {
-	SegmentID  int
-	ModuleName string
-	ModuleIdx  int
-}
-
 // Prove function for the Assest struct
 func (asset *Asset) Prove(cfg *config.Config, req *execution.Request) (*execution.Response, error) {
 	// Set MonitorParams before any proving happens
 	profiling.SetMonitorParams(cfg)
+
+	defer func() {
+		filepath := cfg.PathforLimitlessProverAssets()
+		filepath = path.Join(filepath, "witness")
+		os.RemoveAll(filepath)
+	}()
 
 	// Setup execution circuit
 	var (
@@ -83,7 +84,7 @@ func (asset *Asset) Prove(cfg *config.Config, req *execution.Request) (*executio
 	logrus.Info("Finished running LPP Prover")
 
 	logrus.Info("Starting to run Conglomerator")
-	proof, err := RunConglomerationProver(asset.DistWizard.CompiledConglomeration, runGLs, runLPPs)
+	proof, err := RunConglomerationProver(cfg, asset.DistWizard.CompiledConglomeration, witnessGLs, witnessLPPs)
 	if err != nil {
 		return nil, err
 	}
@@ -183,13 +184,14 @@ func ReadAndDeserAssets(config *config.Config) (*Asset, error) {
 	return assets, nil
 }
 
-func SerializeAndWriteRecursionWitness(cfg *config.Config, witnessName string, witness *recursion.Witness, isLPP bool) error {
+func serializeAndWriteRecursionWitness(cfg *config.Config, witnessName string, witness *recursion.Witness, isLPP bool) error {
 	reader := bytes.NewReader(nil)
 	filePath := cfg.PathforLimitlessProverAssets()
+	filePath = path.Join(filePath, "witness")
 	if isLPP {
-		filePath = path.Join(filePath, "lpp-witness")
+		filePath = path.Join(filePath, "lpp")
 	} else {
-		filePath = path.Join(filePath, "gl-witness")
+		filePath = path.Join(filePath, "gl")
 	}
 	return serializeAndWrite(filePath, witnessName, witness, reader)
 }
