@@ -68,8 +68,18 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 	// Collect all the roots: rounds by rounds
 	// and append them to the sis or no sis roots
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+
+		// If the round is empty (i.e. the wizard does not have any committed
+		// columns associated to this round), then the rootSv and rootF will not
+		// be defined so this case cannot be handled as a "switch-case" as in
+		// the "if" clause below.
+		if ctx.RoundStatus[round] == IsEmpty {
+			continue
+		}
+
 		rootSv := run.GetColumn(ctx.Items.MerkleRoots[round].GetColID()) // len 1 smart vector
-		rootF := rootSv.Get(0)                                           // root as a field element
+		rootF := rootSv.Get(0)                                           // root as field element
+
 		// Append the isSISApplied flag
 		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
 			noSisRoots = append(noSisRoots, types.Bytes32(rootF.Bytes()))
