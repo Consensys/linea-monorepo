@@ -37,9 +37,9 @@ func RunProverGLs(
 			utils.Panic("module GL does not exists")
 		}
 
-		logrus.Infof("RUNNING THE GL PROVER:")
+		logrus.Infof("RUNNING the GL Prover")
 		runs[i] = RunGLProver(moduleGL, witnessGL)
-		logrus.Infof("RUNNING THE GL PROVER - DONE:")
+		logrus.Infof("FINISHED Running the GL Prover")
 	}
 	return runs
 }

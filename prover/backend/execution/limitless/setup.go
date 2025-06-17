@@ -11,7 +11,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
+	utils_limitless "github.com/consensys/linea-monorepo/prover/utils/limitless"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
 )
 
@@ -22,7 +23,7 @@ type SerAsset struct {
 }
 
 // Unified function to serialize and write all assets and compiled files
-func SerializeAndWrite(config *config.Config) error {
+func SerializeAndWriteAssets(config *config.Config) error {
 	if config == nil {
 		return fmt.Errorf("config is nil")
 	}
@@ -34,13 +35,15 @@ func SerializeAndWrite(config *config.Config) error {
 	}
 
 	// Shared initialization for zkevm and disc
-	zkevm := test_utils.GetZkEVM()
-	disc := &distributed.StandardModuleDiscoverer{
-		TargetWeight: 1 << 28,
-		Affinities:   test_utils.GetAffinities(zkevm),
-		Predivision:  1,
-	}
-	dwRaw := distributed.DistributeWizard(zkevm.WizardIOP, disc)
+	var (
+		zkevm = zkevm.FullZKEVMWithSuite(&config.TracesLimits, zkevm.CompilationSuite{}, config)
+		disc  = &distributed.StandardModuleDiscoverer{
+			TargetWeight: 1 << 28,
+			Affinities:   utils_limitless.GetAffinities(zkevm),
+			Predivision:  1,
+		}
+		dwRaw = distributed.DistributeWizard(zkevm.WizardIOP, disc)
+	)
 
 	// Serialize and write initial assets
 	initialAssets := []SerAsset{

@@ -38,9 +38,9 @@ func RunProverLPPs(
 			utils.Panic("module does not exists")
 		}
 
-		logrus.Infof("RUNNING THE LPP PROVER:")
+		logrus.Infof("RUNNING the LPP prover")
 		runs[i] = RunLPPProver(moduleLPP, witnessLPP)
-		logrus.Infof("RUNNING THE LPP PROVER - DONE:")
+		logrus.Infof("FINISHED running the LPP prover")
 	}
 	return runs
 }

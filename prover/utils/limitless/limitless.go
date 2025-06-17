@@ -1,18 +1,9 @@
 package utils_limitless
 
 import (
-	"github.com/consensys/linea-monorepo/prover/backend/execution"
-	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
-
-// GetZkevmWitness returns a [zkevm.Witness]
-func GetZkevmWitness(req *execution.Request, cfg *config.Config) *zkevm.Witness {
-	out := execution.CraftProverOutput(cfg, req)
-	witness := execution.NewWitness(cfg, req, &out)
-	return witness.ZkEVM
-}
 
 // GetAffinities returns a list of affinities for the following modules. This
 // affinities regroup how the modules are grouped.
