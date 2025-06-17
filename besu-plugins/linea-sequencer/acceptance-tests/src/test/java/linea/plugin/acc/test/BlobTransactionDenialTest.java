@@ -19,6 +19,7 @@ import java.util.Optional;
 import okhttp3.Response;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.BlobGas;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.RequestType;
@@ -89,108 +90,16 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
   @Test
   public void blobTransactionsIsRejectedFromNodeImport() throws Exception {
     // Arrange
-    String genesisBlockHash =
-        web3j
-            .ethGetBlockByNumber(org.web3j.protocol.core.DefaultBlockParameterName.LATEST, false)
-            .send()
-            .getBlock()
-            .getHash();
-    Hash transactionsRoot =
-        Hash.fromHexString("0x7a430a1c9da1f6e25ff8e6e96217c359784f3438dc1d983b4695355d66437f8f");
-    Hash withdrawalsRoot =
-        Hash.fromHexString("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421");
+    String genesisBlockHash = getLatestBlockHash();
 
-    final ObjectMapper mapper = new ObjectMapper();
-    // We obtained the below values by running the test
-    // `blobTransactionsIsRejectedFromTransactionPool` with the following plugins removed -
-    // LineaTransactionPoolValidatorPlugin, LineaTransactionValidatorPlugin
-    ObjectNode executionPayloadWithoutBlockHash =
-        mapper
-            .createObjectNode()
-            .put("parentHash", genesisBlockHash)
-            .put("feeRecipient", "0x0000000000000000000000000000000000000000")
-            .put("stateRoot", "0x2c1457760c057cf42f2d509648d725ec1f557b9d8729a5361e517952f91d050e")
-            .put(
-                "logsBloom",
-                "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
-            .put("prevRandao", "0x0000000000000000000000000000000000000000000000000000000000000000")
-            .put("gasLimit", "0x1ca35ef")
-            .put("gasUsed", "0x5208")
-            .put("timestamp", "0x5")
-            .put("extraData", "0x626573752032352e362e302d6c696e656131")
-            .put("baseFeePerGas", "0x7")
-            .put("excessBlobGas", "0x0")
-            .put("blobGasUsed", "0x20000");
-    final ArrayNode transactions = mapper.createArrayNode();
-    transactions.add(
-        "0x03f8908205398084f461090084f46109008389544094627306090abab3a6e1400e9345bc60c78a8bef578080c001e1a0018ef96865998238a5e1783b6cafbc1253235d636f15d318f1fb50ef6a5b8f6a80a0576a95756f32ab705a22b591ab464d5affc8c1c7fcd14d777bac24d83bc44821a01f93b26f4f9989c3fe764f4a58d264bcd71b9deab72d6852f5dcdf19d55494f1");
-    executionPayloadWithoutBlockHash.set("transactions", transactions);
-    final ArrayNode withdrawals = mapper.createArrayNode();
-    executionPayloadWithoutBlockHash.set("withdrawals", withdrawals);
-    executionPayloadWithoutBlockHash.put(
-        "receiptsRoot", "0xeaa8c40899a61ae59615cf9985f5e2194f8fd2b57d273be63bde6733e89b12ab");
-    executionPayloadWithoutBlockHash.put(
-        "blockHash", "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef");
-    executionPayloadWithoutBlockHash.put("blockNumber", "0x1");
+    ObjectNode executionPayload = createExecutionPayload(mapper, genesisBlockHash);
+    ArrayNode expectedBlobVersionedHashes = createBlobVersionedHashes(mapper);
+    String parentBeaconBlockRoot = Hash.ZERO.toHexString();
+    ArrayNode executionRequests = createExecutionRequests(mapper);
 
-    final ArrayNode expectedBlobVersionedHashes = mapper.createArrayNode();
-    expectedBlobVersionedHashes.add(
-        "0x018ef96865998238a5e1783b6cafbc1253235d636f15d318f1fb50ef6a5b8f6a");
-    final String parentBeaconBlockRoot =
-        "0x0000000000000000000000000000000000000000000000000000000000000000";
-
-    String executionRequestString =
-        "0x01a4664c40aacebd82a2db79f0ea36c06bc6a19adbb10a4a15bf67b328c9b101d09e5c6ee6672978fdad9ef0d9e2ceffaee99223555d8601f0cb3bcc4ce1af9864779a416e0000000000000000";
-    final ArrayNode executionRequests = mapper.createArrayNode();
-    executionRequests.add(executionRequestString);
-    final Bytes executionRequestBytes = Bytes.fromHexString(executionRequestString);
-    final Bytes executionRequestBytesData = executionRequestBytes.slice(1);
-    final Request executionRequest =
-        new Request(RequestType.of(executionRequestBytes.get(0)), executionRequestBytesData);
-    Optional<List<Request>> maybeRequests = Optional.of(List.of(executionRequest));
-
-    // We must compute the blockhash manually, as the genesis block hash changes each run
-    String executionPayloadWithoutBlockHashStringified =
-        executionPayloadWithoutBlockHash.toString();
-    EnginePayloadParameter blockParam =
-        mapper.readValue(executionPayloadWithoutBlockHashStringified, EnginePayloadParameter.class);
-
-    // From AbstractEngineNewPayload.syncResponse method in Besu
-    final BlockHeader blockHeader =
-        new BlockHeader(
-            blockParam.getParentHash(),
-            Hash.EMPTY_LIST_HASH,
-            blockParam.getFeeRecipient(),
-            blockParam.getStateRoot(),
-            transactionsRoot,
-            blockParam.getReceiptsRoot(),
-            blockParam.getLogsBloom(),
-            Difficulty.ZERO,
-            blockParam.getBlockNumber(),
-            blockParam.getGasLimit(),
-            blockParam.getGasUsed(),
-            blockParam.getTimestamp(),
-            Bytes.fromHexString(blockParam.getExtraData()),
-            blockParam.getBaseFeePerGas(),
-            blockParam.getPrevRandao(),
-            0,
-            withdrawalsRoot,
-            blockParam.getBlobGasUsed(),
-            BlobGas.fromHexString(blockParam.getExcessBlobGas()),
-            Bytes32.fromHexString(parentBeaconBlockRoot),
-            maybeRequests.map(BodyValidation::requestsHash).orElse(null),
-            new MainnetBlockHeaderFunctions());
-    executionPayloadWithoutBlockHash.set("transactions", transactions);
-
-    // Create new executionPayload with computed block hash
-    ObjectNode executionPayload = mapper.createObjectNode();
-    executionPayloadWithoutBlockHash
-        .fields()
-        .forEachRemaining(
-            entry -> {
-              executionPayload.set(entry.getKey(), entry.getValue());
-            });
-    executionPayload.put("blockHash", blockHeader.getBlockHash().toHexString());
+    // Compute block hash and update payload
+    BlockHeader blockHeader = computeBlockHeader(executionPayload, mapper);
+    updateExecutionPayloadWithBlockHash(executionPayload, blockHeader);
 
     // Act
     Response response =
@@ -206,5 +115,113 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
     String validationError = result.get("validationError").asText();
     assertThat(status).isEqualTo("INVALID");
     assertThat(validationError).contains("LineaTransactionValidatorPlugin - BLOB_TX_NOT_ALLOWED");
+  }
+
+  private String getLatestBlockHash() throws Exception {
+    return web3j
+        .ethGetBlockByNumber(org.web3j.protocol.core.DefaultBlockParameterName.LATEST, false)
+        .send()
+        .getBlock()
+        .getHash();
+  }
+
+  private ObjectNode createExecutionPayload(ObjectMapper mapper, String genesisBlockHash) {
+    ObjectNode payload =
+        mapper
+            .createObjectNode()
+            .put("parentHash", genesisBlockHash)
+            .put("feeRecipient", Address.ZERO.toHexString())
+            .put("stateRoot", "0x2c1457760c057cf42f2d509648d725ec1f557b9d8729a5361e517952f91d050e")
+            .put(
+                "logsBloom",
+                "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+            .put("prevRandao", Hash.ZERO.toHexString())
+            .put("gasLimit", "0x1ca35ef")
+            .put("gasUsed", "0x5208")
+            .put("timestamp", "0x5")
+            .put("extraData", "0x626573752032352e362e302d6c696e656131")
+            .put("baseFeePerGas", "0x7")
+            .put("excessBlobGas", "0x0")
+            .put("blobGasUsed", "0x20000")
+            .put(
+                "receiptsRoot",
+                "0xeaa8c40899a61ae59615cf9985f5e2194f8fd2b57d273be63bde6733e89b12ab")
+            .put("blockNumber", "0x1");
+
+    // Add transactions
+    ArrayNode transactions = mapper.createArrayNode();
+    transactions.add(
+        "0x03f8908205398084f461090084f46109008389544094627306090abab3a6e1400e9345bc60c78a8bef578080c001e1a0018ef96865998238a5e1783b6cafbc1253235d636f15d318f1fb50ef6a5b8f6a80a0576a95756f32ab705a22b591ab464d5affc8c1c7fcd14d777bac24d83bc44821a01f93b26f4f9989c3fe764f4a58d264bcd71b9deab72d6852f5dcdf19d55494f1");
+    payload.set("transactions", transactions);
+
+    // Add withdrawals
+    ArrayNode withdrawals = mapper.createArrayNode();
+    payload.set("withdrawals", withdrawals);
+
+    return payload;
+  }
+
+  private ArrayNode createBlobVersionedHashes(ObjectMapper mapper) {
+    ArrayNode hashes = mapper.createArrayNode();
+    hashes.add("0x018ef96865998238a5e1783b6cafbc1253235d636f15d318f1fb50ef6a5b8f6a");
+    return hashes;
+  }
+
+  private ArrayNode createExecutionRequests(ObjectMapper mapper) {
+    String executionRequestString =
+        "0x01a4664c40aacebd82a2db79f0ea36c06bc6a19adbb10a4a15bf67b328c9b101d09e5c6ee6672978fdad9ef0d9e2ceffaee99223555d8601f0cb3bcc4ce1af9864779a416e0000000000000000";
+    ArrayNode requests = mapper.createArrayNode();
+    requests.add(executionRequestString);
+    return requests;
+  }
+
+  private BlockHeader computeBlockHeader(ObjectNode executionPayload, ObjectMapper mapper)
+      throws Exception {
+    EnginePayloadParameter blockParam =
+        mapper.readValue(executionPayload.toString(), EnginePayloadParameter.class);
+
+    Hash transactionsRoot =
+        Hash.fromHexString("0x7a430a1c9da1f6e25ff8e6e96217c359784f3438dc1d983b4695355d66437f8f");
+    Hash withdrawalsRoot =
+        Hash.fromHexString("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421");
+    String parentBeaconBlockRoot =
+        "0x0000000000000000000000000000000000000000000000000000000000000000";
+
+    String executionRequestString =
+        "0x01a4664c40aacebd82a2db79f0ea36c06bc6a19adbb10a4a15bf67b328c9b101d09e5c6ee6672978fdad9ef0d9e2ceffaee99223555d8601f0cb3bcc4ce1af9864779a416e0000000000000000";
+    Bytes executionRequestBytes = Bytes.fromHexString(executionRequestString);
+    Bytes executionRequestBytesData = executionRequestBytes.slice(1);
+    Request executionRequest =
+        new Request(RequestType.of(executionRequestBytes.get(0)), executionRequestBytesData);
+    Optional<List<Request>> maybeRequests = Optional.of(List.of(executionRequest));
+
+    return new BlockHeader(
+        blockParam.getParentHash(),
+        Hash.EMPTY_LIST_HASH,
+        blockParam.getFeeRecipient(),
+        blockParam.getStateRoot(),
+        transactionsRoot,
+        blockParam.getReceiptsRoot(),
+        blockParam.getLogsBloom(),
+        Difficulty.ZERO,
+        blockParam.getBlockNumber(),
+        blockParam.getGasLimit(),
+        blockParam.getGasUsed(),
+        blockParam.getTimestamp(),
+        Bytes.fromHexString(blockParam.getExtraData()),
+        blockParam.getBaseFeePerGas(),
+        blockParam.getPrevRandao(),
+        0,
+        withdrawalsRoot,
+        blockParam.getBlobGasUsed(),
+        BlobGas.fromHexString(blockParam.getExcessBlobGas()),
+        Bytes32.fromHexString(parentBeaconBlockRoot),
+        maybeRequests.map(BodyValidation::requestsHash).orElse(null),
+        new MainnetBlockHeaderFunctions());
+  }
+
+  private void updateExecutionPayloadWithBlockHash(
+      ObjectNode executionPayload, BlockHeader blockHeader) {
+    executionPayload.put("blockHash", blockHeader.getBlockHash().toHexString());
   }
 }

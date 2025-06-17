@@ -51,7 +51,7 @@ import org.web3j.utils.Numeric;
 @Slf4j
 public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
   private EngineAPIService engineApiService;
-  private ObjectMapper mapper;
+  protected ObjectMapper mapper;
 
   private static final BigInteger GAS_PRICE = DefaultGasProvider.GAS_PRICE;
   private static final BigInteger GAS_LIMIT = DefaultGasProvider.GAS_LIMIT;
@@ -116,9 +116,6 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
     JsonNode genesisConfig = mapper.readTree(genesisConfigSerialized);
     long defaultSlotTimeSeconds =
         genesisConfig.path("config").path("clique").path("blockperiodseconds").asLong();
-
-    // TODO: Remove this for PR
-    // long defaultSlotTimeSeconds = 2;
     this.engineApiService.buildNewBlock(
         latestTimestamp.longValue() + defaultSlotTimeSeconds, defaultSlotTimeSeconds * 1000);
   }
