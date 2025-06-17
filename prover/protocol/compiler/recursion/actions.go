@@ -159,7 +159,7 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 		var (
 			pcsCtx                       = cc.Ctx.PcsCtx[i]
 			piWitness                    = pis[i].GetColAssignmentGnark(run)
-			circX, circYs, circMRoots, _ = SplitPublicInputs(cc.Ctx, piWitness)
+			circX, circYs, circMRoots, _ = SplitPublicInputsGnark(cc.Ctx, piWitness)
 			params                       = run.GetUnivariateParams(pcsCtx.Query.QueryID)
 			pcsMRoot                     = pcsCtx.Items.MerkleRoots
 		)

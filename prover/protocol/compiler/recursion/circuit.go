@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -142,9 +143,13 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 
 // SplitPublicInputs parses a vector of field elements and returns the
 // parsed arguments.
+// allPubs in Base,
+// x,y in fext,
+// mRoot in [8]Base
+
 // TODO@yao check the type, x, ys in fext, mRoots in [8]field?
 // they are all from allPubs, if they share different data types, what type does allPubs have
-func SplitPublicInputs[T any, B any](r *Recursion, allPubs []B) (x T, ys []T, mRoots, pubs []B) {
+func SplitPublicInputs(r *Recursion, allPubs []field.Element) (x fext.Element, ys []fext.Element, mRoots, pubs []field.Element) {
 
 	var (
 		numPubs     = len(r.InputCompiledIOP.PublicInputs)
@@ -172,9 +177,55 @@ func SplitPublicInputs[T any, B any](r *Recursion, allPubs []B) (x T, ys []T, mR
 	// Commitments    []frontend.Variable `gnark:",public"`
 	// Pubs           []frontend.Variable `gnark:",public"`
 	//
-	x, allPubDrain = allPubDrain[0], allPubDrain[1:]
-	ys, allPubDrain = allPubDrain[:numYs], allPubDrain[numYs:]
-	mRoots, allPubDrain = allPubDrain[:numMRoots], allPubDrain[numMRoots:]
+	x.B0.A0, x.B0.A1, x.B1.A0, x.B1.A1 = allPubDrain[0], allPubDrain[1], allPubDrain[2], allPubDrain[3]
+	allPubDrain = allPubDrain[4:]
+	for i := 0; i < numYs; i++ {
+		ys[i].B0.A0, ys[i].B0.A1, ys[i].B1.A0, ys[i].B1.A1 = allPubDrain[4*i], allPubDrain[4*i+1], allPubDrain[4*i+2], allPubDrain[4*i+3]
+
+	}
+	allPubDrain = allPubDrain[4*numYs:]
+	mRoots, allPubDrain = allPubDrain[:8*numMRoots], allPubDrain[8*numMRoots:]
+	pubs, _ = allPubDrain[:numPubs], allPubDrain[numPubs:]
+
+	return x, ys, mRoots, pubs
+}
+
+func SplitPublicInputsGnark(r *Recursion, allPubs []frontend.Variable) (x gnarkfext.Element, ys []gnarkfext.Element, mRoots, pubs []frontend.Variable) {
+
+	var (
+		numPubs     = len(r.InputCompiledIOP.PublicInputs)
+		pcsCtx      = r.PcsCtx[0]
+		numYs       = len(pcsCtx.Query.Pols)
+		numMRoots   = 0
+		allPubDrain = allPubs
+	)
+
+	if pcsCtx.Items.Precomputeds.MerkleRoot != nil {
+		numMRoots++
+	}
+
+	for i := range pcsCtx.Items.MerkleRoots {
+		if pcsCtx.Items.MerkleRoots[i] != nil {
+			numMRoots++
+		}
+	}
+
+	// The order below is based on the field declaration order for the
+	// circuit struct.
+	//
+	// X              gnarkfext.Element   `gnark:",public"`
+	// Ys             []gnarkfext.Element `gnark:",public"`
+	// Commitments    []frontend.Variable `gnark:",public"`
+	// Pubs           []frontend.Variable `gnark:",public"`
+	//
+	x.B0.A0, x.B0.A1, x.B1.A0, x.B1.A1 = allPubDrain[0], allPubDrain[1], allPubDrain[2], allPubDrain[3]
+	allPubDrain = allPubDrain[4:]
+	for i := 0; i < numYs; i++ {
+		ys[i].B0.A0, ys[i].B0.A1, ys[i].B1.A0, ys[i].B1.A1 = allPubDrain[4*i], allPubDrain[4*i+1], allPubDrain[4*i+2], allPubDrain[4*i+3]
+
+	}
+	allPubDrain = allPubDrain[4*numYs:]
+	mRoots, allPubDrain = allPubDrain[:8*numMRoots], allPubDrain[8*numMRoots:]
 	pubs, _ = allPubDrain[:numPubs], allPubDrain[numPubs:]
 
 	return x, ys, mRoots, pubs

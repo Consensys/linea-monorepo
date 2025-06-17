@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -48,7 +49,7 @@ var testCases = []struct {
 	size     int
 	a        smartvectors.SmartVector
 	b        []smartvectors.SmartVector
-	expected []field.Element
+	expected []fext.Element
 }{
 	{qName: "Quey1",
 		aName: "ColA1",
@@ -58,7 +59,7 @@ var testCases = []struct {
 		b: []smartvectors.SmartVector{
 			smartvectors.ForTest(0, 3, 0, 2),
 		},
-		expected: []field.Element{field.NewElement(5)},
+		expected: []fext.Element{fext.NewFromBase(field.Element{5})},
 	},
 	{qName: "Quey2",
 		aName: "ColA2",
@@ -69,7 +70,7 @@ var testCases = []struct {
 			smartvectors.ForTest(0, 3, 0, 2),
 			smartvectors.ForTest(1, 0, 0, 2),
 		},
-		expected: []field.Element{field.NewElement(5), field.NewElement(3)},
+		expected: []fext.Element{fext.NewFromBase(field.Element{5}), fext.NewFromBase(field.Element{3})},
 	},
 	{qName: "Quey3",
 		aName: "ColA3",
@@ -80,7 +81,7 @@ var testCases = []struct {
 			smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0),
 			smartvectors.ForTest(1, 0, 0, 2, 1, 0, 0, 0),
 		},
-		expected: []field.Element{field.NewElement(7), field.NewElement(5)},
+		expected: []fext.Element{fext.NewFromBase(field.Element{7}), fext.NewFromBase(field.Element{5})},
 	},
 	{qName: "Quey4",
 		aName: "ColA4",
@@ -90,7 +91,7 @@ var testCases = []struct {
 		b: []smartvectors.SmartVector{
 			smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1),
 		},
-		expected: []field.Element{field.NewElement(15)},
+		expected: []fext.Element{fext.NewFromBase(field.Element{15})},
 	},
 
 	{qName: "Quey",
@@ -102,6 +103,6 @@ var testCases = []struct {
 		b: []smartvectors.SmartVector{
 			smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1),
 		},
-		expected: []field.Element{field.NewElement(30)},
+		expected: []fext.Element{fext.NewFromBase(field.Element{30})},
 	},
 }
