@@ -222,7 +222,7 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
 
     return new BlockHeader(
         blockParam.getParentHash(),
-        Hash.EMPTY_LIST_HASH,
+        Hash.EMPTY_LIST_HASH, // OMMERS_HASH_CONSTANT
         blockParam.getFeeRecipient(),
         blockParam.getStateRoot(),
         transactionsRoot,
@@ -236,7 +236,7 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
         Bytes.fromHexString(blockParam.getExtraData()),
         blockParam.getBaseFeePerGas(),
         blockParam.getPrevRandao(),
-        0,
+        0, // Nonce
         withdrawalsRoot,
         blockParam.getBlobGasUsed(),
         BlobGas.fromHexString(blockParam.getExcessBlobGas()),
