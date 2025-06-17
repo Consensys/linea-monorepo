@@ -84,7 +84,6 @@ func (asset *Asset) Prove(cfg *config.Config, req *execution.Request) (*executio
 	}
 
 	execution.ValidateSetupChecksum(setup, &cfg.TracesLimits)
-
 	out.Proof = ckt_exec.MakeProof(&config.TracesLimits{}, setup, asset.Zkevm.WizardIOP, *proof, *witness.FuncInp)
 	out.VerifyingKeyShaSum = setup.VerifyingKeyDigest()
 	return &out, nil
