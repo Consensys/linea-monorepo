@@ -48,15 +48,15 @@ func (p *FlatProof) WithStatus(comp *wizard.CompiledIOP, status column.Status) *
 
 // Assign assigns the proof columns to the [FlatProof] object from a list of
 // [merkletree.Proof] objects. The columns are zero-padded on the right.
+// Each leaf in the proof is converted to a [8]field.Element and then appended to assignment
 func (p *FlatProof) Assign(run *wizard.ProverRuntime, proofs []smt.Proof) {
 
 	assignment := make([][]field.Element, p.Depth())
 
 	for i := range proofs {
 		for j := range proofs[i].Siblings {
-			var nodeAsFr field.Element
-			nodeAsFr.SetBytes(proofs[i].Siblings[j][:])
-			assignment[j] = append(assignment[j], nodeAsFr)
+			nodeAsFr := types.Bytes32ToHash(proofs[i].Siblings[j])
+			assignment[j] = append(assignment[j], nodeAsFr...)
 		}
 	}
 
@@ -71,6 +71,7 @@ func (p *FlatProof) Assign(run *wizard.ProverRuntime, proofs []smt.Proof) {
 //
 // The function also takes as additional input a smart-vector containing
 // the positions corresponding for each proofs.
+// Every [8]field.Element is converted back to a leaf in the Siblings
 func (p *FlatProof) Unpack(run ifaces.Runtime, pos smartvectors.SmartVector) []smt.Proof {
 
 	var (
@@ -88,7 +89,10 @@ func (p *FlatProof) Unpack(run ifaces.Runtime, pos smartvectors.SmartVector) []s
 		}
 
 		for n := range p.Nodes {
-			node := p.Nodes[n].GetColAssignmentAt(run, i)
+			var node [8]field.Element
+			for j := 0; j < 8; j++ {
+				node[j] = p.Nodes[n].GetColAssignmentAt(run, i+j)
+			}
 			newProof.Siblings[n] = types.HashToBytes32(node)
 		}
 

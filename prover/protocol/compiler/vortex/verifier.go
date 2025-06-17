@@ -40,13 +40,16 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 	// Append the precomputed roots and the corresponding flag
 	if ctx.IsNonEmptyPrecomputed() {
 		precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID()) // len 1 smart vector
-		precompRootF := precompRootSv.Get(0)                                        // root as a field element?? fext element?? shoud root be mapped to 8 field elements?
+		var precompRootF [8]field.Element
+		for j := 0; j < 8; j++ {
+			precompRootF[j] = precompRootSv.Get(j)
+		}
 
 		if ctx.IsSISAppliedToPrecomputed() {
-			sisRoots = append(sisRoots, types.Bytes32(precompRootF.Bytes()))
+			sisRoots = append(sisRoots, types.HashToBytes32(precompRootF))
 			flagForSISRounds = append(flagForSISRounds, false)
 		} else {
-			noSisRoots = append(noSisRoots, types.Bytes32(precompRootF.Bytes()))
+			noSisRoots = append(noSisRoots, types.HashToBytes32(precompRootF))
 			flagForNoSISRounds = append(flagForNoSISRounds, true)
 		}
 	}
@@ -54,13 +57,16 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 	// and append them to the sis or no sis roots
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
 		rootSv := vr.GetColumn(ctx.Items.MerkleRoots[round].GetColID()) // len 1 smart vector
-		rootF := rootSv.Get(0)                                          // root as a field element
+		var rootF [8]field.Element
+		for j := 0; j < 8; j++ {
+			rootF[j] = rootSv.Get(j)
+		}
 		// Append the isSISApplied flag
 		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
-			noSisRoots = append(noSisRoots, types.Bytes32(rootF.Bytes()))
+			noSisRoots = append(noSisRoots, types.HashToBytes32(rootF))
 			flagForNoSISRounds = append(flagForNoSISRounds, true)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
-			sisRoots = append(sisRoots, types.Bytes32(rootF.Bytes()))
+			sisRoots = append(sisRoots, types.HashToBytes32(rootF))
 			flagForSISRounds = append(flagForSISRounds, false)
 		}
 	}
