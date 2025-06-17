@@ -1,23 +1,23 @@
 package limitless
 
 import (
-	"bytes"
-	"path"
+	"fmt"
 	"reflect"
 
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
 
-func RunProverLPPs(
+func RunProverLPPs(cfg *config.Config,
 	distWizard *distributed.DistributedWizard,
 	sharedRandomness field.Element,
 	witnessLPPs []*distributed.ModuleWitnessLPP,
-) []*wizard.ProverRuntime {
+) ([]*wizard.ProverRuntime, error) {
 
 	var (
 		runs         = make([]*wizard.ProverRuntime, len(witnessLPPs))
@@ -27,10 +27,10 @@ func RunProverLPPs(
 	for i, witnessLPP := range witnessLPPs {
 		var moduleLPP *distributed.RecursedSegmentCompilation
 		witnessLPP.InitialFiatShamirState = sharedRandomness
-		logrus.Infof("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleNames, witnessLPP.ModuleIndex)
+		logrus.Infof("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleName, witnessLPP.ModuleIndex)
 		for k := range distWizard.LPPs {
 
-			if !reflect.DeepEqual(distWizard.LPPs[k].ModuleNames(), witnessLPPs[i].ModuleNames) {
+			if !reflect.DeepEqual(distWizard.LPPs[k].ModuleNames(), witnessLPPs[i].ModuleName) {
 				continue
 			}
 
@@ -41,20 +41,36 @@ func RunProverLPPs(
 			utils.Panic("module does not exists")
 		}
 
-		logrus.Infof("RUNNING the LPP prover")
-		runs[i] = RunLPPProver(moduleLPP, witnessLPP)
-		logrus.Infof("FINISHED running the LPP prover")
+		modSegID := &ModSegID{
+			SegmentID:  i,
+			ModuleName: string(witnessLPP.ModuleName),
+			ModuleIdx:  witnessLPP.ModuleIndex,
+		}
+
+		run, err := modSegID.RunLPPProver(cfg, moduleLPP, witnessLPP)
+		if err != nil {
+			return nil, err
+		}
+		runs[i] = run
 	}
-	return runs
+	return runs, nil
 }
 
-func RunLPPProver(moduleLPP *distributed.RecursedSegmentCompilation, witnessLPP *distributed.ModuleWitnessLPP) *wizard.ProverRuntime {
-	return moduleLPP.ProveSegment(witnessLPP)
-}
+func (ms *ModSegID) RunLPPProver(cfg *config.Config,
+	moduleLPP *distributed.RecursedSegmentCompilation,
+	witnessLPP *distributed.ModuleWitnessLPP) (*wizard.ProverRuntime, error) {
 
-func SerializeAndWriteWitnessLPP(cfg *config.Config, witnessLPPName string, witnessLPP *distributed.ModuleWitnessLPP) error {
-	reader := bytes.NewReader(nil)
-	filePath := cfg.PathforLimitlessProverAssets()
-	filePath = path.Join(filePath, "witnesses")
-	return serializeAndWrite(filePath, witnessLPPName, witnessLPP, reader)
+	logrus.Infof("RUNNING the LPP prover for segment(total)=%v module=%v segment.index=%v", ms.SegmentID, ms.ModuleName, ms.ModuleIdx)
+	runtimeLPP := moduleLPP.ProveSegment(witnessLPP)
+	logrus.Infof("Finished running the LPP prover")
+
+	logrus.Infof("Extracting LPP-recursion witness and writing it to disk")
+	recursionLPPWitness := recursion.ExtractWitness(runtimeLPP)
+	moduleName := fmt.Sprintf("%v-%v-%v", ms.SegmentID, ms.ModuleName, ms.ModuleIdx)
+
+	err := SerializeAndWriteRecursionWitness(cfg, moduleName, &recursionLPPWitness, true)
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize and write LPP-recursion witness: %w", err)
+	}
+	return runtimeLPP, nil
 }

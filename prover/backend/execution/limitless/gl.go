@@ -1,25 +1,25 @@
 package limitless
 
 import (
-	"bytes"
-	"path"
+	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
 
-// runProverGLs executes the prover for each GL module segment. It takes in a list of
+// RunProverGLs executes the prover for each GL module segment. It takes in a list of
 // compiled GL segments and corresponding witnesses, then runs the prover for each
 // segment. The function logs the start and end times of the prover execution for each
 // segment. It returns a slice of ProverRuntime instances, each representing the
 // result of the prover execution for a segment.
-func RunProverGLs(
+func RunProverGLs(cfg *config.Config,
 	distWizard *distributed.DistributedWizard,
 	witnessGLs []*distributed.ModuleWitnessGL,
-) []*wizard.ProverRuntime {
+) ([]*wizard.ProverRuntime, error) {
 
 	var (
 		compiledGLs = distWizard.CompiledGLs
@@ -62,20 +62,39 @@ func RunProverGLs(
 			utils.Panic("module GL does not exists")
 		}
 
-		logrus.Infof("RUNNING the GL Prover")
-		runs[i] = RunGLProver(moduleGL, witnessGL)
-		logrus.Infof("FINISHED Running the GL Prover")
+		modSegID := &ModSegID{
+			SegmentID:  i,
+			ModuleName: string(witnessGL.ModuleName),
+			ModuleIdx:  witnessGL.ModuleIndex,
+		}
+
+		run, err := modSegID.RunGLProver(cfg, moduleGL, witnessGL)
+		if err != nil {
+			return nil, err
+		}
+		runs[i] = run
+
 	}
-	return runs
+	return runs, nil
 }
 
-func RunGLProver(moduleGL *distributed.RecursedSegmentCompilation, witnessGL *distributed.ModuleWitnessGL) *wizard.ProverRuntime {
-	return moduleGL.ProveSegment(witnessGL)
-}
+// RunGLProver executes the prover for a single GL module segment and writes the `recursion.Witness`
+// needed for Conglomeration to a file.
+func (ms *ModSegID) RunGLProver(cfg *config.Config,
+	moduleGL *distributed.RecursedSegmentCompilation,
+	witnessGL *distributed.ModuleWitnessGL) (*wizard.ProverRuntime, error) {
 
-func SerializeAndWriteWitnessGL(cfg *config.Config, witnessGLName string, witnessGL *distributed.ModuleWitnessGL) error {
-	reader := bytes.NewReader(nil)
-	filePath := cfg.PathforLimitlessProverAssets()
-	filePath = path.Join(filePath, "witnesses")
-	return serializeAndWrite(filePath, witnessGLName, witnessGL, reader)
+	logrus.Infof("RUNNING the GL prover for segment(total)=%v module=%v segment.index=%v", ms.SegmentID, ms.ModuleName, ms.ModuleIdx)
+	runtimeGL := moduleGL.ProveSegment(witnessGL)
+	logrus.Infof("Finished running the GL prover")
+
+	logrus.Infof("Extracting GL-recursion witness and writing it to disk")
+	recursionGLWitness := recursion.ExtractWitness(runtimeGL)
+	moduleName := fmt.Sprintf("%v-%v-%v", ms.SegmentID, ms.ModuleName, ms.ModuleIdx)
+
+	err := SerializeAndWriteRecursionWitness(cfg, moduleName, &recursionGLWitness, false)
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize and write GL-recursion witness: %w", err)
+	}
+	return runtimeGL, nil
 }
