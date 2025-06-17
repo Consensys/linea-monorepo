@@ -68,7 +68,7 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
   public void blobTransactionsIsRejectedFromTransactionPool() throws Exception {
     // Act - Send a blob transaction to transaction pool
     EthSendTransaction response = sendRawBlobTransaction(web3j, credentials, recipient);
-    this.buildNewBlock();
+    // No need to build new block.
 
     // Assert
     assertThat(response.hasError()).isTrue();
@@ -94,15 +94,15 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
   @Test
   public void blobTransactionsIsRejectedFromNodeImport() throws Exception {
     // Arrange
-    EngineNewPayloadRequest blockWithBlobTx = getBlockWithBlobTxRequest(mapper);
+    EngineNewPayloadRequest blockWithBlobTxRequest = getBlockWithBlobTxRequest(mapper);
 
     // Act
     Response response =
         this.importPremadeBlock(
-            blockWithBlobTx.executionPayload(),
-            blockWithBlobTx.expectedBlobVersionedHashes(),
-            blockWithBlobTx.parentBeaconBlockRoot(),
-            blockWithBlobTx.executionRequests());
+            blockWithBlobTxRequest.executionPayload(),
+            blockWithBlobTxRequest.expectedBlobVersionedHashes(),
+            blockWithBlobTxRequest.parentBeaconBlockRoot(),
+            blockWithBlobTxRequest.executionRequests());
 
     // Assert
     JsonNode result = mapper.readTree(response.body().string()).get("result");
