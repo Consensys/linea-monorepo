@@ -172,10 +172,10 @@ func SplitPublicInputs(r *Recursion, allPubs []field.Element) (x fext.Element, y
 	// The order below is based on the field declaration order for the
 	// circuit struct.
 	//
-	// X              gnarkfext.Element   `gnark:",public"`
-	// Ys             []gnarkfext.Element `gnark:",public"`
-	// Commitments    []frontend.Variable `gnark:",public"`
-	// Pubs           []frontend.Variable `gnark:",public"`
+	// X              fext.Element
+	// Ys             []fext.Element
+	// mRoots         []field.Element, each root is [8]field.Element
+	// Pubs           []field.Element
 	//
 	x.B0.A0, x.B0.A1, x.B1.A0, x.B1.A1 = allPubDrain[0], allPubDrain[1], allPubDrain[2], allPubDrain[3]
 	allPubDrain = allPubDrain[4:]

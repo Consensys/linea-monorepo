@@ -1,11 +1,10 @@
 package mimc
 
-/*
 import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	cs "github.com/consensys/gnark/constraint/bls12-377"
+	cs "github.com/consensys/gnark/constraint/koalabear"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -50,7 +49,7 @@ func TestMiMCFactories(t *testing.T) {
 
 	solver.RegisterHint(MimcHintfunc)
 
-	ccs_, compileErr := frontend.Compile(blsField, builder, circuit)
+	ccs_, compileErr := frontend.CompileU32(blsField, builder, circuit)
 
 	if compileErr != nil {
 		t.Fatalf("unexpected compile error: %v", compileErr)
@@ -100,4 +99,3 @@ func TestMiMCFactories(t *testing.T) {
 		}
 	}
 }
-*/
