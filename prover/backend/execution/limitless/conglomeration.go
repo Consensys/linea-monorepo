@@ -3,6 +3,7 @@ package limitless
 import (
 	"bytes"
 	"fmt"
+	"path"
 
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
@@ -12,13 +13,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func RunConglomerationProver(cfg *config.Config,
-	cong *distributed.ConglomeratorCompilation, witnessGLs []*distributed.ModuleWitnessGL,
-	witnessLPPs []*distributed.ModuleWitnessLPP,
+func RunConglomerationProver(cfg *config.Config, cong *distributed.ConglomeratorCompilation,
+	witnessGLs []*distributed.ModuleWitnessGL, witnessLPPs []*distributed.ModuleWitnessLPP,
 ) (*wizard.Proof, error) {
 
 	var (
-		filePath     = cfg.PathforLimitlessProverAssets()
+		filePath     = path.Join(cfg.PathforLimitlessProverAssets(), "witness")
 		recurWitGLs  = make([]recursion.Witness, len(witnessGLs))
 		recurWitLPPs = make([]recursion.Witness, len(witnessLPPs))
 	)
@@ -26,22 +26,22 @@ func RunConglomerationProver(cfg *config.Config,
 	var readBuf *bytes.Buffer
 	for i, witnessLPP := range witnessLPPs {
 		var recurWitLPP *recursion.Witness
-
+		filePath = path.Join(filePath, "lpp")
 		fileName := fmt.Sprintf("%v-%v-%v", i, witnessLPP.ModuleName, witnessLPP.ModuleIndex)
 		err := readAndDeserialize(filePath, fileName, &recurWitLPP, readBuf)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read and deserialize LPP recursion witness: %w", err)
+			return nil, fmt.Errorf("failed to read and deserialize LPP-recursion witness: %w", err)
 		}
 		recurWitLPPs[i] = *recurWitLPP
 	}
 
 	for i, witnessGL := range witnessGLs {
 		var recurWitGL *recursion.Witness
-
+		filePath = path.Join(filePath, "gl")
 		fileName := fmt.Sprintf("%v-%v-%v", i, witnessGL.ModuleName, witnessGL.ModuleIndex)
 		err := readAndDeserialize(filePath, fileName, &recurWitGL, readBuf)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read and deserialize GL recursion witness: %w", err)
+			return nil, fmt.Errorf("failed to read and deserialize GL-recursion witness: %w", err)
 		}
 		recurWitGLs[i] = *recurWitGL
 	}
