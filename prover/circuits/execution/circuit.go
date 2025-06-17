@@ -47,6 +47,30 @@ func Allocate(zkevm *zkevm.ZkEvm) CircuitExecution {
 	}
 }
 
+// AllocateLimitless allocates the outer-proof circuit in the context of a
+// limitless execution. It works as [Allocate] but takes the conglomeration
+// wizard as input and uses it to allocate the outer circuit. The trace-limits
+// file is used to derive the maximal number of L2L1 logs.
+//
+// The proof generation can be done using the [MakeProof] function as we woult
+// do for the non-limitless execution proof.
+func AllocateLimitless(congWiop *wizard.CompiledIOP, limits *config.TracesLimits) CircuitExecution {
+
+	wverifier := wizard.AllocateWizardCircuit(congWiop, congWiop.NumRounds())
+
+	return CircuitExecution{
+		WizardVerifier: *wverifier,
+		FuncInputs: FunctionalPublicInputSnark{
+			FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
+				L2MessageHashes: L2MessageHashes{
+					Values: make([][32]frontend.Variable, limits.BlockL2L1Logs),
+					Length: nil,
+				},
+			},
+		},
+	}
+}
+
 // assign the wizard proof to the outer circuit
 func assign(
 	limits *config.TracesLimits,
