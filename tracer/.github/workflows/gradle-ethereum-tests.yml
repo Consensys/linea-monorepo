@@ -64,7 +64,7 @@ jobs:
           path: reference-tests/build/jacoco/referenceGeneralStateTests.exec
 
       - name: Failure Notification
-        if: ${{ failure() || cancelled() }}
+        if: github.ref == 'refs/head/arith-dev' && (failure() || cancelled())
         uses: slackapi/slack-github-action@v2.0.0
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
