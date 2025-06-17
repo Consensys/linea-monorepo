@@ -1,0 +1,24 @@
+.back {
+  text-decoration: none;
+  color: var(--color-indigo);
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 29.25rem;
+  margin: 1.5rem auto;
+  padding-left: 1.25rem;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  @include bp(tablet) {
+    padding-left: 1.5rem;
+  }
+
+  svg {
+    width: 0.5rem;
+    height: auto;
+  }
+}
