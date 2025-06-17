@@ -12,6 +12,9 @@ concurrency:
 
 jobs:
   weekly-unit-tests:
+    strategy:
+      matrix:
+        zkevm_fork: [LONDON, SHANGHAI]
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
     steps:
       - name: Checkout repository
@@ -27,27 +30,27 @@ jobs:
         env:
           WEEKLY_TESTS_PARALLELISM: 32
           GOCORSET_FLAGS: -v -b1024 --ansi-escapes=false --report --mir
-          ZKEVM_FORK: LONDON
+          ZKEVM_FORK: ${{ matrix.zkevm_fork }}
 
       - name: Upload test report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: weekly-tests-report
+          name: weekly-tests-report-${{ matrix.zkevm_fork }}
           path: arithmetization/build/reports/tests/**/*
 
       - name: Upload jacoco weekly tests coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jacoco-weekly-tests-coverage-report
+          name: jacoco-weekly-tests-coverage-report-${{ matrix.zkevm_fork }}
           path: arithmetization/build/reports/jacoco/jacocoWeeklyTestsReport/**/*
 
       - name: Upload jacoco weekly tests exec file
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jacoco-weekly-tests-exec-file
+          name: jacoco-weekly-tests-exec-file-${{ matrix.zkevm_fork }}
           path: arithmetization/build/jacoco/weeklyTests.exec
 
       - name: Failure Notification
@@ -61,6 +64,9 @@ jobs:
              status: "${{ job.status }}"
 
   weekly-prc-calltests:
+    strategy:
+      matrix:
+        zkevm_fork: [LONDON, SHANGHAI]
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
     steps:
       - name: Checkout repository
@@ -77,27 +83,27 @@ jobs:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           WEEKLY_TESTS_PARALLELISM: 24
           GOCORSET_FLAGS: -v -b1024 --ansi-escapes=false --report --mir
-          ZKEVM_FORK: LONDON
+          ZKEVM_FORK: ${{ matrix.zkevm_fork }}
 
       - name: Upload prc calls test report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: prc-call-tests-report
+          name: prc-call-tests-report-${{ matrix.zkevm_fork }}
           path: arithmetization/build/reports/tests/**/*
 
       - name: Upload jacoco weekly prc-call tests coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jacoco-prc-call-tests-coverage-report
+          name: jacoco-prc-call-tests-coverage-report-${{ matrix.zkevm_fork }}
           path: arithmetization/build/reports/jacoco/jacocoPrcCallTestsReport/**/*
 
       - name: Upload jacoco weekly prc-call tests exec file
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jacoco-prc-call-tests-exec-file
+          name: jacoco-prc-call-tests-exec-file-${{ matrix.zkevm_fork }}
           path: arithmetization/build/jacoco/prcCallTests.exec
 
       - name: Failure Notification
