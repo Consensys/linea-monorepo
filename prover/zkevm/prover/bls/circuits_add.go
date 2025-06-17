@@ -80,6 +80,7 @@ func newAdd(comp *wizard.CompiledIOP, g group, limits *Limits, src *BlsAddDataSo
 		Circuit:            NewCheckCircuit(g, CURVE, limits),
 		NbCircuitInstances: limits.nbCurveMembershipCircuitInstances(g),
 		PlonkOptions:       plonkOptions,
+		InputFillerKey:     membershipInputFillerKey(g, CURVE),
 	}
 
 	res := &BlsAdd{

@@ -166,25 +166,33 @@ func (d *UnalignedCurveMembershipData) Assign(run *wizard.ProverRuntime) {
 		if srcCs[i].IsZero() {
 			continue
 		}
-		dstIsActive.PushBoolean(true)
 		// for the first line of input, we push the expected success bit
 		if srcCounter[i].IsZero() {
+			dstIsActive.PushBoolean(true)
 			dstGnarkData.PushBoolean(false) // we push additional input to gnark input to indicate curve non-membership
 		}
+		dstIsActive.PushBoolean(true)
 		dstGnarkData.PushField(srcLimb[i])
 	}
 	dstIsActive.PadAndAssign(run, field.Zero())
 	dstGnarkData.PadAndAssign(run, field.Zero())
 }
 
-const (
-	inputFillerC1MembershipKey = "bls12381-c1-membership-input-filler"
-	inputFillerC2MembershipKey = "bls12381-c2-membership-input-filler"
-)
-
 func init() {
-	plonk.RegisterInputFiller(inputFillerC1MembershipKey, newMembershipInputFiller(G1, CURVE))
-	plonk.RegisterInputFiller(inputFillerC2MembershipKey, newMembershipInputFiller(G2, CURVE))
+	plonk.RegisterInputFiller(membershipInputFillerKey(G1, CURVE), newMembershipInputFiller(G1, CURVE))
+	plonk.RegisterInputFiller(membershipInputFillerKey(G2, CURVE), newMembershipInputFiller(G2, CURVE))
+}
+
+func membershipInputFillerKey(g group, m membership) string {
+	base := "bls12381-%s-membership-input-filler"
+	switch m {
+	case CURVE:
+		return fmt.Sprintf(base, g.StringCurve())
+	case GROUP:
+		return fmt.Sprintf(base, g.String())
+	default:
+		panic(fmt.Sprintf("unknown membership type %v for group %v", m, g))
+	}
 }
 
 func newMembershipInputFiller(g group, m membership) plonk.InputFiller {
