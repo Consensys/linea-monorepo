@@ -1,16 +1,10 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package linea.plugin.acc.test;
 
@@ -27,7 +21,6 @@ import linea.plugin.acc.test.tests.web3j.generated.EcAdd;
 import linea.plugin.acc.test.tests.web3j.generated.EcMul;
 import linea.plugin.acc.test.tests.web3j.generated.EcPairing;
 import linea.plugin.acc.test.tests.web3j.generated.EcRecover;
-import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
@@ -56,7 +49,7 @@ public class EcDataLimitsTest extends LineaPluginTestBase {
   @Override
   protected GenesisConfigurationFactory.CliqueOptions getCliqueOptions() {
     return new GenesisConfigurationFactory.CliqueOptions(
-        BLOCK_PERIOD_SECONDS + 1,
+        BLOCK_PERIOD_SECONDS * 2,
         GenesisConfigurationFactory.CliqueOptions.DEFAULT.epochLength(),
         false);
   }
@@ -144,8 +137,7 @@ public class EcDataLimitsTest extends LineaPluginTestBase {
 
   private static Stream<Arguments> ecPairingLimitsTestSource() {
     Map<String, Integer> moduleLimits =
-        ModuleLineCountValidator.createLimitModules(
-            new LineaTracerConfiguration(getResourcePath("/moduleLimits.toml")));
+        ModuleLineCountValidator.createLimitModules(getResourcePath("/moduleLimits.toml"));
     final int PRECOMPILE_ECPAIRING_FINAL_EXPONENTIATIONS =
         moduleLimits.get("PRECOMPILE_ECPAIRING_FINAL_EXPONENTIATIONS");
     final int PRECOMPILE_ECPAIRING_MILLER_LOOPS =
@@ -297,8 +289,7 @@ public class EcDataLimitsTest extends LineaPluginTestBase {
   @Test
   public void ecAddLimitTest() throws Exception {
     Map<String, Integer> moduleLimits =
-        ModuleLineCountValidator.createLimitModules(
-            new LineaTracerConfiguration(getResourcePath("/moduleLimits.toml")));
+        ModuleLineCountValidator.createLimitModules(getResourcePath("/moduleLimits.toml"));
     final int PRECOMPILE_ECADD_EFFECTIVE_CALLS =
         moduleLimits.get("PRECOMPILE_ECADD_EFFECTIVE_CALLS");
 
@@ -390,8 +381,7 @@ public class EcDataLimitsTest extends LineaPluginTestBase {
   @Test
   public void ecMulLimitTest() throws Exception {
     Map<String, Integer> moduleLimits =
-        ModuleLineCountValidator.createLimitModules(
-            new LineaTracerConfiguration(getResourcePath("/moduleLimits.toml")));
+        ModuleLineCountValidator.createLimitModules(getResourcePath("/moduleLimits.toml"));
     final int PRECOMPILE_ECMUL_EFFECTIVE_CALLS =
         moduleLimits.get("PRECOMPILE_ECMUL_EFFECTIVE_CALLS");
 
@@ -479,8 +469,7 @@ public class EcDataLimitsTest extends LineaPluginTestBase {
   @Test
   public void ecRecoverLimitTest() throws Exception {
     Map<String, Integer> moduleLimits =
-        ModuleLineCountValidator.createLimitModules(
-            new LineaTracerConfiguration(getResourcePath("/moduleLimits.toml")));
+        ModuleLineCountValidator.createLimitModules(getResourcePath("/moduleLimits.toml"));
     final int PRECOMPILE_ECRECOVER_EFFECTIVE_CALLS =
         moduleLimits.get("PRECOMPILE_ECRECOVER_EFFECTIVE_CALLS");
 

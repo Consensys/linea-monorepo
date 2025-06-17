@@ -1,16 +1,10 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package net.consensys.linea.sequencer.txselection.selectors;
 
@@ -20,7 +14,6 @@ import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectio
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +26,7 @@ import net.consensys.linea.jsonrpc.JsonRpcManager;
 import net.consensys.linea.jsonrpc.JsonRpcRequestBuilder;
 import net.consensys.linea.metrics.HistogramMetrics;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
-import net.consensys.linea.zktracer.ZkTracer;
+import net.consensys.linea.zktracer.LineCountingTracer;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.BlockchainService;
@@ -58,7 +51,6 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final LineaProfitabilityConfiguration profitabilityConfiguration,
       final LineaTracerConfiguration tracerConfiguration,
       final BundlePoolService bundlePoolService,
-      final Map<String, Integer> limitsMap,
       final Optional<JsonRpcManager> rejectedTxJsonRpcManager,
       final Optional<HistogramMetrics> maybeProfitabilityMetrics) {
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
@@ -78,7 +70,6 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
             profitabilityConfiguration,
             tracerConfiguration,
             bundlePoolService,
-            limitsMap,
             maybeProfitabilityMetrics);
   }
 
@@ -103,14 +94,12 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final LineaProfitabilityConfiguration profitabilityConfiguration,
       final LineaTracerConfiguration tracerConfiguration,
       final BundlePoolService bundlePoolService,
-      final Map<String, Integer> limitsMap,
       final Optional<HistogramMetrics> maybeProfitabilityMetrics) {
 
     traceLineLimitTransactionSelector =
         new TraceLineLimitTransactionSelector(
             selectorsStateManager,
             blockchainService.getChainId().get(),
-            limitsMap,
             txSelectorConfiguration,
             l1L2BridgeConfiguration,
             tracerConfiguration);
@@ -235,7 +224,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
    * @return the operation tracer
    */
   @Override
-  public ZkTracer getOperationTracer() {
+  public LineCountingTracer getOperationTracer() {
     return traceLineLimitTransactionSelector.getOperationTracer();
   }
 }
