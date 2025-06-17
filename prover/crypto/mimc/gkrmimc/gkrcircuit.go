@@ -4,18 +4,18 @@ import (
 	"strconv"
 	"strings"
 
-	cGkr "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/gkr"
-	"github.com/consensys/gnark/constraint"
-	cs "github.com/consensys/gnark/constraint/bls12-377"
+	//cGkr "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/gkr"
 	"github.com/consensys/gnark/constraint/solver"
+	gateGkr "github.com/consensys/gnark/constraint/solver/gkrgates"
 	"github.com/consensys/gnark/frontend"
-	gGkr "github.com/consensys/gnark/std/gkr"
+	"github.com/consensys/gnark/std/gkrapi"
+
+	apiGkr "github.com/consensys/gnark/std/gkrapi/gkr"
 	"github.com/consensys/gnark/std/hash"
 	gmimc "github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/multicommit"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -30,13 +30,13 @@ func init() {
 	registerGates()
 
 	// Registers the mimc hash function in the hash builder registry.
-	hash.Register("mimc", func(api frontend.API) (hash.FieldHasher, error) {
+	hash.Register(0, func(api frontend.API) (hash.FieldHasher, error) {
 		h, err := gmimc.NewMiMC(api)
 		return &h, err
 	})
 
 	// Registers the hasher to be used in the GKR prover
-	cs.RegisterHashBuilder("mimc", mimc.NewMiMC)
+	//cs.RegisterHashBuilder("mimc", mimc.NewMiMC)
 	solver.RegisterHint(mimcHintfunc)
 }
 
@@ -72,19 +72,46 @@ func createGateNames() {
 	}
 }
 
-// registerGates instantiates and populates the cGkr and gGkr global variables
+// registerGates instantiates and populates the cGkr and apiGkr global variables
 // which contains the "normal" and the "gnark" version of the GKR gates forming
 // the MiMC GKR circuit.
 func registerGates() {
+
+	var (
+		//cDegree17 = gkrgates.WithDegree(17)
+		gDegree17 = gateGkr.WithUnverifiedDegree(17)
+	)
+
 	for i := 4; i < numGates-1; i++ {
-		name := gateNames[i]
-		gGkr.Gates[name] = NewRoundGateGnark(mimc.Constants[i-prefetchSize])
-		cGkr.Gates[name] = NewRoundGateCrypto(mimc.Constants[i-prefetchSize])
+
+		var (
+			//name  = gateNames[i]
+			gateG = NewRoundGateGnark(mimc.Constants[i-prefetchSize])
+			//gateC = NewRoundGateCrypto(mimc.Constants[i-prefetchSize])
+		)
+
+		if e := gateGkr.Register(gateG.Evaluate, 2, gDegree17); e != nil {
+			panic(e)
+		}
+
+		/*
+			if e := cGkr.RegisterGate(cGkr.GateName(name), gateC.Evaluate, 2, cDegree17); e != nil {
+				panic(e)
+			}
+		*/
 	}
 
-	name := gateNames[numGates-1]
-	gGkr.Gates[name] = NewFinalRoundGateGnark(mimc.Constants[len(mimc.Constants)-1])
-	cGkr.Gates[name] = NewFinalRoundGateCrypto(mimc.Constants[len(mimc.Constants)-1])
+	var (
+		//name  = gateNames[numGates-1]
+		gateG = NewFinalRoundGateGnark(mimc.Constants[len(mimc.Constants)-1])
+		//gateC = NewFinalRoundGateCrypto(mimc.Constants[len(mimc.Constants)-1])
+	)
+	if e := gateGkr.Register(gateG.Evaluate, 3, gDegree17); e != nil {
+		panic(e)
+	}
+	/*if e := cGkr.RegisterGate(cGkr.GateName(name), gateC.Evaluate, 3, cDegree17); e != nil {
+		panic(e)
+	}*/
 }
 
 // gkrMiMC constructs and return the GKR circuit. The function is concretely
@@ -94,25 +121,25 @@ func registerGates() {
 // The returned object symbolizees the last layer of the GKR circuit and formally
 // contains the result of the MiMC block compression as computed by the GKR
 // circuit.
-func gkrMiMC(gkr *gGkr.API, initStates, blocks []frontend.Variable) (constraint.GkrVariable, error) {
+func gkrMiMC(gkr *gkrapi.API, initStates, blocks []frontend.Variable) (apiGkr.Variable, error) {
 
 	var err error
-	v := make([]constraint.GkrVariable, numGates-1)
+	v := make([]apiGkr.Variable, numGates-1)
 	if v[0], err = gkr.Import(initStates); err != nil {
 		panic(err)
 	}
 	if v[1], err = gkr.Import(blocks); err != nil {
 		panic(err)
 	}
-
-	v[2] = gkr.NamedGate("identity", v[0])
-	v[3] = gkr.NamedGate("identity", v[1])
+	gkrApi := gkrapi.New()
+	v[2] = gkrApi.NamedGate("identity", v[0])
+	v[3] = gkrApi.NamedGate("identity", v[1])
 
 	for i := 4; i < numGates-1; i++ {
-		v[i] = gkr.NamedGate(gateNames[i], v[2], v[i-1])
+		v[i] = gkrApi.NamedGate(apiGkr.GateName(gateNames[i]), v[2], v[i-1])
 	}
 
-	res := gkr.NamedGate(gateNames[numGates-1], v[2], v[3], v[numGates-2])
+	res := gkrApi.NamedGate(apiGkr.GateName(gateNames[numGates-1]), v[2], v[3], v[numGates-2])
 
 	return res, nil
 }
@@ -126,7 +153,7 @@ func gkrMiMC(gkr *gGkr.API, initStates, blocks []frontend.Variable) (constraint.
 // instances are the inner indexes
 func checkWithGkr(api frontend.API, initStates, blocks, allegedNewState []frontend.Variable) {
 
-	gkr := gGkr.NewApi()
+	gkr := gkrapi.New()
 
 	D, err := gkrMiMC(gkr, initStates, blocks)
 	if err != nil {
@@ -134,7 +161,7 @@ func checkWithGkr(api frontend.API, initStates, blocks, allegedNewState []fronte
 	}
 
 	// This creates a placeholder that will contain the GKR assignment
-	var solution gGkr.Solution
+	var solution gkrapi.Solution
 	if solution, err = gkr.Solve(api); err != nil {
 		panic(err)
 	}
@@ -148,7 +175,6 @@ func checkWithGkr(api frontend.API, initStates, blocks, allegedNewState []fronte
 	multicommit.WithCommitment(
 		api,
 		func(api frontend.API, initialChallenge frontend.Variable) error {
-			logrus.Infof("defining the constraints of the GKR verifier")
 
 			// "mimc" means that we are using MiMC hashes to compute the FS challenges
 			// this part is responsible for verifying the GKR proof.
@@ -156,8 +182,6 @@ func checkWithGkr(api frontend.API, initStates, blocks, allegedNewState []fronte
 			if err != nil {
 				panic(err)
 			}
-
-			logrus.Infof("defining the constraints of the GKR verifier : done")
 
 			// Export the last gkr layer as an array of frontend variable
 			d := solution.Export(D)

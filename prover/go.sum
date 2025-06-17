@@ -106,6 +106,8 @@ github.com/consensys/gnark v0.12.1-0.20250514073836-781518d6846f h1:Mxbx1mF5G19e
 github.com/consensys/gnark v0.12.1-0.20250514073836-781518d6846f/go.mod h1:ixgF209R5mle5ADd/7/vvuxpixraSq8NmEVC+Fk6eeY=
 github.com/consensys/gnark v0.12.1-0.20250606194417-57a79c2edad5 h1:Z1mxlvGo/F9FfcSOjW7JX75uepFcHfpHjZIlIexD5vk=
 github.com/consensys/gnark v0.12.1-0.20250606194417-57a79c2edad5/go.mod h1:Q3mkMtUVaujW6RVYxclHkQa1EiAMfXdCBL7W055rjEk=
+github.com/consensys/gnark v0.13.0 h1:NDsMmyknIEJA3S/2u1PZSsSIRVXFroICN1jYR+tyR2c=
+github.com/consensys/gnark v0.13.0/go.mod h1:F6k35ZIi9GC//wW2i9Fz9mURBcLF8qJLQQ/BETnQ9Z4=
 github.com/consensys/gnark v0.13.1-0.20250613171447-869ee3f7fa8f h1:EUuDDeBp9bfTw5C3e9mXUwpRdPGnIdTCDgy5QOGAgxg=
 github.com/consensys/gnark v0.13.1-0.20250613171447-869ee3f7fa8f/go.mod h1:z0NQZeLmasLT6UBmX64pfcDbY6aa8n/B9XHhTDVcam4=
 github.com/consensys/gnark-crypto v0.17.1-0.20250326164229-5fd6610ac2a1 h1:6cK71BoMAjWHNl+EpvBh2PDDa0PIeoz1KFJ/6R16DjQ=
