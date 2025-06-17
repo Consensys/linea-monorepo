@@ -97,7 +97,7 @@ func TestConglomeration(t *testing.T) {
 	t.Logf("[%v] running the bootstrapper\n", time.Now())
 
 	var (
-		witness     = utils_limitless.GetZkevmWitness(req, cfg)
+		_, witness  = test_utils.GetZkevmWitness(req, cfg)
 		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, zkevm.GetMainProverStep(witness))
 	)
 

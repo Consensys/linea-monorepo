@@ -13,7 +13,7 @@ func TestSerAndWriteAssets(t *testing.T) {
 		t.Fatalf("could not get the config: %v", err)
 	}
 
-	err = SerializeAndWrite(cfg)
+	err = SerializeAndWriteAssets(cfg)
 	if err != nil {
 		t.Fatalf("could not serialize and write the assets: %v", err)
 	}
@@ -28,7 +28,7 @@ func TestReadAndDeserAssets(t *testing.T) {
 		t.Fatalf("could not get the config: %v", err)
 	}
 
-	_, err = ReadAndDeser(cfg)
+	_, err = ReadAndDeserAssets(cfg)
 	if err != nil {
 		t.Fatalf("could not read and deserialize the assets: %v", err)
 	}

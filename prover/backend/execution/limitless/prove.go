@@ -6,6 +6,8 @@ import (
 	"path"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
+	"github.com/consensys/linea-monorepo/prover/circuits"
+	ckt_exec "github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
@@ -14,7 +16,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
-	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
 )
@@ -27,14 +28,30 @@ type Asset struct {
 }
 
 // Prove function for the Assest struct
-func (asset *Asset) Prove(cfg *config.Config, req *execution.Request) {
+func (asset *Asset) Prove(cfg *config.Config, req *execution.Request) (*execution.Response, error) {
 	// Set MonitorParams before any proving happens
 	profiling.SetMonitorParams(cfg)
 
+	// Setup execution circuit
+	var (
+		setup       circuits.Setup
+		errSetup    error
+		chSetupDone = make(chan struct{})
+	)
+	go func() {
+		setup, errSetup = circuits.LoadSetup(cfg, circuits.ExecutionCircuitID)
+		close(chSetupDone)
+	}()
+
+	// Setup execution witness and output response
+	var (
+		out     = execution.CraftProverOutput(cfg, req)
+		witness = execution.NewWitness(cfg, req, &out)
+	)
+
 	logrus.Info("Starting to run the bootstrapper")
 	var (
-		witness                 = test_utils.GetZkevmWitness(req, cfg)
-		runtimeBoot             = wizard.RunProver(asset.DistWizard.Bootstrapper, asset.Zkevm.GetMainProverStep(witness))
+		runtimeBoot             = wizard.RunProver(asset.DistWizard.Bootstrapper, asset.Zkevm.GetMainProverStep(witness.ZkEVM))
 		witnessGLs, witnessLPPs = distributed.SegmentRuntime(runtimeBoot, asset.DistWizard)
 	)
 	logrus.Info("Finished running the bootstrapper")
@@ -53,11 +70,29 @@ func (asset *Asset) Prove(cfg *config.Config, req *execution.Request) {
 	SanityCheckProvers(asset.DistWizard, runLPPs)
 	logrus.Info("Finished running LPP Prover")
 
-	RunConglomerationProver(asset.DistWizard.CompiledConglomeration, runGLs, runLPPs)
+	logrus.Info("Starting to run Conglomerator")
+	proof, err := RunConglomerationProver(asset.DistWizard.CompiledConglomeration, runGLs, runLPPs)
+	if err != nil {
+		return nil, err
+	}
+	logrus.Info("Finished running Conglomerator")
+
+	// wait for setup to be loaded
+	<-chSetupDone
+	if errSetup != nil {
+		utils.Panic("could not load setup: %v", errSetup)
+	}
+
+	execution.ValidateSetupChecksum(setup, &cfg.TracesLimits)
+
+	out.Proof = ckt_exec.MakeProof(&config.TracesLimits{}, setup, asset.Zkevm.WizardIOP, *proof, *witness.FuncInp)
+	out.VerifyingKeyShaSum = setup.VerifyingKeyDigest()
+	return &out, nil
 }
 
 func SanityCheckProvers(distWizard *distributed.DistributedWizard, runs []*wizard.ProverRuntime) {
 	for i := range runs {
+		logrus.Infof("sanity-checking prover run[%d]", i)
 		SanityCheckConglomeration(distWizard.CompiledConglomeration, runs[i])
 	}
 }
@@ -76,7 +111,7 @@ func GetSharedRandomness(runs []*wizard.ProverRuntime) field.Element {
 }
 
 // Unified function to read and deserialize all assets and compiled files
-func ReadAndDeser(config *config.Config) (*Asset, error) {
+func ReadAndDeserAssets(config *config.Config) (*Asset, error) {
 	if config == nil {
 		return nil, fmt.Errorf("config is nil")
 	}

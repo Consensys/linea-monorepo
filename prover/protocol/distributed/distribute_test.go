@@ -110,7 +110,7 @@ func TestDistributedWizardLogic(t *testing.T) {
 
 	t.Logf("Checking the initial bootstrapper - wizard")
 	var (
-		witness     = utils_limitless.GetZkevmWitness(req, cfg)
+		_, witness  = test_utils.GetZkevmWitness(req, cfg)
 		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, zkevm.GetMainProverStep(witness))
 		proof       = runtimeBoot.ExtractProof()
 		verBootErr  = wizard.Verify(distWizard.Bootstrapper, proof)
@@ -299,7 +299,7 @@ func TestBenchDistributedWizard(t *testing.T) {
 	t.Logf("[%v] running the bootstrapper\n", time.Now())
 
 	var (
-		witness     = utils_limitless.GetZkevmWitness(req, cfg)
+		_, witness  = test_utils.GetZkevmWitness(req, cfg)
 		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, zkevm.GetMainProverStep(witness))
 	)
 

@@ -18,6 +18,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	snarkHash "github.com/consensys/gnark/std/hash"
+	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
@@ -430,6 +431,13 @@ func GetZkEVM() *zkevm.ZkEvm {
 	}
 
 	return zkevm.FullZKEVMWithSuite(traceLimits, zkevm.CompilationSuite{}, &config.Config{})
+}
+
+// GetZkevmWitness returns a [zkevm.Witness]
+func GetZkevmWitness(req *execution.Request, cfg *config.Config) (*execution.Response, *zkevm.Witness) {
+	out := execution.CraftProverOutput(cfg, req)
+	witness := execution.NewWitness(cfg, req, &out)
+	return &out, witness.ZkEVM
 }
 
 func PrettyPrint(v reflect.Value, indent int) string {

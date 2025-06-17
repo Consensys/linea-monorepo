@@ -154,14 +154,14 @@ func handleFullProver(cfg *config.Config, traces *config.TracesLimits, w *Witnes
 	}
 
 	// Ensure the checksum for the traces in the setup matches the one in the config
-	validateSetupChecksum(setup, traces)
+	ValidateSetupChecksum(setup, traces)
 
 	// TODO: implements the collection of the functional inputs from the prover response
 	return execution.MakeProof(traces, setup, fullZkEvm.WizardIOP, proof, *w.FuncInp), setup.VerifyingKeyDigest()
 }
 
 // Validate setup checksum
-func validateSetupChecksum(setup circuits.Setup, traces *config.TracesLimits) {
+func ValidateSetupChecksum(setup circuits.Setup, traces *config.TracesLimits) {
 	setupCfgChecksum, err := setup.Manifest.GetString("cfg_checksum")
 	if err != nil {
 		utils.Panic("could not get the traces checksum from the setup manifest: %v", err)

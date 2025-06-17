@@ -1,6 +1,8 @@
 package limitless
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -8,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func RunConglomerationProver(cong *distributed.ConglomeratorCompilation, runGLs, runLPPs []*wizard.ProverRuntime) {
+func RunConglomerationProver(cong *distributed.ConglomeratorCompilation, runGLs, runLPPs []*wizard.ProverRuntime) (*wizard.Proof, error) {
 	var (
 		witLPPs = make([]recursion.Witness, len(runLPPs))
 		witGLs  = make([]recursion.Witness, len(runGLs))
@@ -29,9 +31,10 @@ func RunConglomerationProver(cong *distributed.ConglomeratorCompilation, runGLs,
 	logrus.Info("Start sanity-checking conglomeration proof")
 	err := wizard.Verify(cong.Wiop, proof)
 	if err != nil {
-		utils.Panic("could not verify conglomeration proof: %v", err)
+		return nil, fmt.Errorf("could not verify conglomeration proof: %v", err)
 	}
 	logrus.Info("Finished sanity-checking conglomeration proof")
+	return &proof, nil
 }
 
 func SanityCheckConglomeration(cong *distributed.ConglomeratorCompilation, run *wizard.ProverRuntime) {
