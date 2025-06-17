@@ -7,6 +7,8 @@ import (
 	"path"
 	"runtime"
 
+	"github.com/consensys/linea-monorepo/prover/backend/execution"
+	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
@@ -138,5 +140,28 @@ func serializeAndWrite(filePath string, fileName string, object any, reader *byt
 		return fmt.Errorf("failed to write %s: %w", fullPath, err)
 	}
 	logrus.Infof("Written %s to %s", fileName, fullPath)
+	return nil
+}
+
+func loadCktSetupAsync(cfg *config.Config) (*circuits.Setup, error) {
+	var (
+		setup       circuits.Setup
+		errSetup    error
+		chSetupDone = make(chan struct{})
+	)
+	go func() {
+		setup, errSetup = circuits.LoadSetup(cfg, circuits.ExecutionCircuitID)
+		close(chSetupDone)
+	}()
+	<-chSetupDone
+	return &setup, errSetup
+}
+
+// Helper function to finalize setup and validate checksum
+func finalizeCktSetup(setup *circuits.Setup, errSetup error, cfg *config.Config) error {
+	if errSetup != nil {
+		utils.Panic("could not load setup: %v", errSetup)
+	}
+	execution.ValidateSetupChecksum(*setup, &cfg.TracesLimits)
 	return nil
 }

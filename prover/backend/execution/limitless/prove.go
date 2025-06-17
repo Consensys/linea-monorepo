@@ -7,7 +7,6 @@ import (
 	"path"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
-	"github.com/consensys/linea-monorepo/prover/circuits"
 	ckt_exec "github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -33,22 +32,10 @@ func (asset *Asset) Prove(cfg *config.Config, req *execution.Request) (*executio
 	// Set MonitorParams before any proving happens
 	profiling.SetMonitorParams(cfg)
 
-	defer func() {
-		filepath := cfg.PathforLimitlessProverAssets()
-		filepath = path.Join(filepath, "witness")
-		os.RemoveAll(filepath)
-	}()
+	defer cleanWitnessDirectory(cfg)
 
 	// Setup execution circuit
-	var (
-		setup       circuits.Setup
-		errSetup    error
-		chSetupDone = make(chan struct{})
-	)
-	go func() {
-		setup, errSetup = circuits.LoadSetup(cfg, circuits.ExecutionCircuitID)
-		close(chSetupDone)
-	}()
+	setup, errSetup := loadCktSetupAsync(cfg)
 
 	// Setup execution witness and output response
 	var (
@@ -58,30 +45,29 @@ func (asset *Asset) Prove(cfg *config.Config, req *execution.Request) (*executio
 
 	logrus.Info("Starting to run the bootstrapper")
 	var (
-		runtimeBoot             = wizard.RunProver(asset.DistWizard.Bootstrapper, asset.Zkevm.GetMainProverStep(witness.ZkEVM))
-		witnessGLs, witnessLPPs = distributed.SegmentRuntime(runtimeBoot, asset.DistWizard)
+		witnessGLs, witnessLPPs = RunBootstrapper(asset, witness.ZkEVM)
 	)
 	logrus.Info("Finished running the bootstrapper")
 
-	logrus.Info("Starting to run GL Prover")
+	logrus.Info("Starting to run GL Provers")
 	runGLs, err := RunProverGLs(cfg, asset.DistWizard, witnessGLs)
 	if err != nil {
 		return nil, err
 	}
 	SanityCheckProvers(asset.DistWizard, runGLs)
-	logrus.Info("Finished running GL Prover")
+	logrus.Info("Finished running GL Provers")
 
 	logrus.Info("Starting to generate shared Randomness")
 	sharedRandomness := GetSharedRandomness(runGLs)
 	logrus.Info("Finished generating shared Randomness")
 
-	logrus.Info("Starting to run LPP Prover")
+	logrus.Info("Starting to run LPP Provers")
 	runLPPs, err := RunProverLPPs(cfg, asset.DistWizard, sharedRandomness, witnessLPPs)
 	if err != nil {
 		return nil, err
 	}
 	SanityCheckProvers(asset.DistWizard, runLPPs)
-	logrus.Info("Finished running LPP Prover")
+	logrus.Info("Finished running LPP Provers")
 
 	logrus.Info("Starting to run Conglomerator")
 	proof, err := RunConglomerationProver(cfg, asset.DistWizard.CompiledConglomeration, witnessGLs, witnessLPPs)
@@ -90,16 +76,20 @@ func (asset *Asset) Prove(cfg *config.Config, req *execution.Request) (*executio
 	}
 	logrus.Info("Finished running Conglomerator")
 
-	// wait for setup to be loaded
-	<-chSetupDone
-	if errSetup != nil {
-		utils.Panic("could not load setup: %v", errSetup)
+	// Wait for setup to be loaded and validate checksum
+	if err := finalizeCktSetup(setup, errSetup, cfg); err != nil {
+		return nil, err
 	}
 
-	execution.ValidateSetupChecksum(setup, &cfg.TracesLimits)
-	out.Proof = ckt_exec.MakeProof(&config.TracesLimits{}, setup, asset.Zkevm.WizardIOP, *proof, *witness.FuncInp)
+	out.Proof = ckt_exec.MakeProof(&config.TracesLimits{}, *setup, asset.Zkevm.WizardIOP, *proof, *witness.FuncInp)
 	out.VerifyingKeyShaSum = setup.VerifyingKeyDigest()
 	return &out, nil
+}
+
+func RunBootstrapper(asset *Asset, zkevmWitness *zkevm.Witness,
+) ([]*distributed.ModuleWitnessGL, []*distributed.ModuleWitnessLPP) {
+	runtimeBoot := wizard.RunProver(asset.DistWizard.Bootstrapper, asset.Zkevm.GetMainProverStep(zkevmWitness))
+	return distributed.SegmentRuntime(runtimeBoot, asset.DistWizard)
 }
 
 func SanityCheckProvers(distWizard *distributed.DistributedWizard, runs []*wizard.ProverRuntime) {
@@ -208,4 +198,11 @@ func readAndDeserialize(filePath string, fileName string, target any, readBuf *b
 	}
 	logrus.Infof("Read and deserialized %s from %s", fileName, fullPath)
 	return nil
+}
+
+// Helper function to clean up witness directory
+func cleanWitnessDirectory(cfg *config.Config) {
+	filepath := cfg.PathforLimitlessProverAssets()
+	filepath = path.Join(filepath, "witness")
+	os.RemoveAll(filepath)
 }
