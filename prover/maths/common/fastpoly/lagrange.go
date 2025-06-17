@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -15,46 +16,17 @@ import (
 // EvaluateLagrangeMixed computes ∑_i L_i(x), i.e. evaluates p interpreted as a polynomial in Lagrange form, and x lives in the extension
 func EvaluateLagrangeMixed(poly []field.Element, x fext.Element, oncoset ...bool) fext.Element {
 
-	if !utils.IsPowerOfTwo(len(poly)) {
-		utils.Panic("only support powers of two but poly has length %v", len(poly))
-	}
-
 	if len(oncoset) > 0 && oncoset[0] {
 		genFr := fft.GeneratorFullMultiplicativeGroup()
+		genFr.Inverse(&genFr)
 		x.MulByElement(&x, &genFr)
 	}
 
-	size := len(poly)
-	omega, err := fft.Generator(uint64(size))
+	res, err := vortex.EvalBasePolyLagrange(poly, x)
 	if err != nil {
-		// TODO handle that properly
 		panic(err)
 	}
 
-	var accw, one, extomega fext.Element
-	one.SetOne()
-	accw.SetOne()
-	fext.FromBase(&extomega, &omega)
-	dens := make([]fext.Element, size) // [x-1, x-ω, x-ω², ...]
-	for i := 0; i < size; i++ {
-		dens[i].Sub(&x, &accw)
-		accw.Mul(&accw, &extomega)
-	}
-	invdens := fext.BatchInvert(dens) // [1/x-1, 1/x-ω, 1/x-ω², ...]
-	var tmp fext.Element
-	tmp.Exp(x, big.NewInt(int64(size))).Sub(&tmp, &one) // xⁿ-1
-	var li fext.Element
-	fext.SetInt64(&li, int64(size))
-	li.Inverse(&li)
-	li.Mul(&tmp, &li) // 1/n * (xⁿ-1)
-
-	var res fext.Element
-	for i := 0; i < size; i++ {
-		li.Mul(&li, &invdens[i])        // ( xⁿ-1)/n * 1/(x-ωⁱ)
-		tmp.MulByElement(&li, &poly[i]) // pᵢ *  ( xⁿ-1)/n * 1/(x-ωⁱ)
-		res.Add(&res, &tmp)
-		li.Mul(&li, &dens[i]).Mul(&li, &extomega)
-	}
 	return res
 }
 
