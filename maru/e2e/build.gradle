@@ -32,6 +32,9 @@ dependencies {
   implementation('com.palantir.docker.compose:docker-compose-rule-junit4')
   implementation('com.palantir.docker.compose:docker-compose-junit-jupiter')
   implementation "org.hyperledger.besu.internal:dsl"
+
+  implementation "build.linea.internal:metrics"
+  implementation "build.linea.internal:micrometer"
 }
 
 sourceSets {

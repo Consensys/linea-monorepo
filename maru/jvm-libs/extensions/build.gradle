@@ -18,6 +18,7 @@ plugins {
 }
 
 dependencies {
-  api "build.linea.internal:futures"
-  api "tech.pegasys.teku.internal:executionclient"
+  implementation "build.linea.internal:metrics"
+  implementation "build.linea.internal:futures"
+  implementation "tech.pegasys.teku.internal:executionclient"
 }

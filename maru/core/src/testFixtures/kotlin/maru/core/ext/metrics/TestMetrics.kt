@@ -8,12 +8,14 @@
  */
 package maru.core.ext.metrics
 
+import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
+import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 
 object TestMetrics {
-  private val TestMeterRegistry = SimpleMeterRegistry()
-  val TestMetricsFacade =
+  private val TestMeterRegistry: MeterRegistry = SimpleMeterRegistry()
+  val TestMetricsFacade: MetricsFacade =
     MicrometerMetricsFacade(
       registry = TestMeterRegistry,
       metricsPrefix = "maru.test",

@@ -11,6 +11,8 @@ plugins {
 }
 
 dependencies {
+  implementation "build.linea.internal:metrics"
+  implementation "io.vertx:vertx-micrometer-metrics"
   implementation "build.linea.internal:micrometer"
   implementation "build.linea.internal:vertx-helper"
 }

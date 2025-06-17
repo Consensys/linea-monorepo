@@ -60,4 +60,5 @@ dependencies {
   testImplementation "org.jetbrains.kotlin:kotlin-test:2.1.0"
   testImplementation "tech.pegasys.teku.internal:executionclient"
   testImplementation "tech.pegasys.teku.internal:spec"
+  testImplementation "build.linea.internal:metrics"
 }
