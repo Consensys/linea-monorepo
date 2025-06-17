@@ -90,24 +90,15 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
   @Test
   public void blobTransactionsIsRejectedFromNodeImport() throws Exception {
     // Arrange
-    String genesisBlockHash = getLatestBlockHash();
-
-    ObjectNode executionPayload = createExecutionPayload(mapper, genesisBlockHash);
-    ArrayNode expectedBlobVersionedHashes = createBlobVersionedHashes(mapper);
-    String parentBeaconBlockRoot = Hash.ZERO.toHexString();
-    ArrayNode executionRequests = createExecutionRequests(mapper);
-
-    // Compute block hash and update payload
-    BlockHeader blockHeader = computeBlockHeader(executionPayload, mapper);
-    updateExecutionPayloadWithBlockHash(executionPayload, blockHeader);
+    BlockWithBlobTx blockWithBlobTx = getBlockWithBlobTx(mapper);
 
     // Act
     Response response =
         this.importPremadeBlock(
-            executionPayload,
-            expectedBlobVersionedHashes,
-            parentBeaconBlockRoot,
-            executionRequests);
+            blockWithBlobTx.executionPayload(),
+            blockWithBlobTx.expectedBlobVersionedHashes(),
+            blockWithBlobTx.parentBeaconBlockRoot(),
+            blockWithBlobTx.executionRequests());
 
     // Assert
     JsonNode result = mapper.readTree(response.body().string()).get("result");
@@ -115,6 +106,28 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
     String validationError = result.get("validationError").asText();
     assertThat(status).isEqualTo("INVALID");
     assertThat(validationError).contains("LineaTransactionValidatorPlugin - BLOB_TX_NOT_ALLOWED");
+  }
+
+  private record BlockWithBlobTx(
+      ObjectNode executionPayload,
+      ArrayNode expectedBlobVersionedHashes,
+      String parentBeaconBlockRoot,
+      ArrayNode executionRequests) {}
+
+  private BlockWithBlobTx getBlockWithBlobTx(ObjectMapper mapper) throws Exception {
+    String genesisBlockHash = getLatestBlockHash();
+    String parentBeaconBlockRoot = Hash.ZERO.toHexString();
+
+    ObjectNode executionPayload = createExecutionPayload(mapper, genesisBlockHash);
+    ArrayNode expectedBlobVersionedHashes = createBlobVersionedHashes(mapper);
+    ArrayNode executionRequests = createExecutionRequests(mapper);
+
+    // Compute block hash and update payload
+    BlockHeader blockHeader = computeBlockHeader(executionPayload, mapper);
+    updateExecutionPayloadWithBlockHash(executionPayload, blockHeader);
+
+    return new BlockWithBlobTx(
+        executionPayload, expectedBlobVersionedHashes, parentBeaconBlockRoot, executionRequests);
   }
 
   private String getLatestBlockHash() throws Exception {
