@@ -8,7 +8,7 @@ java {
 }
 
 def stagingDeployDir = rootProject.layout.buildDirectory.dir("staging-deploy")
-    .get().asFile.absolutePath.toString()
+  .get().asFile.absolutePath.toString()
 
 def _artifactId = project.hasProperty('artifactId') ? project.artifactId : project.name
 
@@ -121,4 +121,18 @@ jreleaser {
       }
     }
   }
+
+  distributions {
+    if (plugins.hasPlugin('java-test-fixtures')) {
+      testFixtures {
+        enabled = true
+        artifact {
+          path = "${project.buildDir}/libs/${project.name}-test-fixtures.jar"
+          active = "ALWAYS"
+          extraProperties.put("classifier", "test-fixtures")
+        }
+      }
+    }
+  }
 }
+
