@@ -29,6 +29,7 @@ dependencies {
   implementation "tech.pegasys.teku.internal:unsigned"
   implementation "tech.pegasys.teku.internal:bytes"
   implementation "tech.pegasys.teku.internal:spec"
+  implementation "build.linea.internal:metrics"
 
   testImplementation (group: 'tech.pegasys.teku.internal', name: 'spec', classifier: 'test-fixtures')
   testImplementation(testFixtures(project(":core")))

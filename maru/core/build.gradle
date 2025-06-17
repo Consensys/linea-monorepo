@@ -20,12 +20,14 @@ plugins {
 
 dependencies {
   implementation(project(":jvm-libs:extensions"))
+  implementation "build.linea.internal:metrics"
 
   testImplementation(project(":serialization"))
   testFixturesImplementation("org.hyperledger.besu.internal:core")
   testFixturesImplementation("org.hyperledger.besu:besu-datatypes")
   testFixturesImplementation("org.hyperledger.besu:plugin-api")
   testFixturesImplementation("org.hyperledger.besu.internal:algorithms")
+  testFixturesImplementation("build.linea.internal:metrics")
   testFixturesImplementation("build.linea.internal:micrometer")
   testFixturesImplementation(project(":serialization"))
 }

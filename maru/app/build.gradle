@@ -18,7 +18,6 @@ dependencies {
 
   implementation "info.picocli:picocli"
   implementation "com.sksamuel.hoplite:hoplite-core"
-  implementation "io.vertx:vertx-micrometer-metrics"
 
   implementation("org.hyperledger.besu.internal:metrics-core")
   implementation("org.hyperledger.besu.internal:algorithms")
