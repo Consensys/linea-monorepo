@@ -93,8 +93,10 @@
 
 .sub-item {
   border-radius: 0.625rem;
+  color: var(--color-darker-gray);
 
   &:hover {
+    color: var(--text-color);
     background: linear-gradient(90deg, var(--color-smoke) 0%, var(--color-white) 100%);
   }
 
