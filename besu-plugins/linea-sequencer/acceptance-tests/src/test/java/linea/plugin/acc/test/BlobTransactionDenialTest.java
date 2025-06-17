@@ -119,17 +119,30 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
       ArrayNode executionRequests) {}
 
   private EngineNewPayloadRequest getBlockWithBlobTxRequest(ObjectMapper mapper) throws Exception {
-    // Obtained following values by running `blobTransactionsIsRejectedFromTransactionPool` test without the LineaTransactionSelectorPlugin and LineaTransactionValidatorPlugin plugins.
+    // Obtained following values by running `blobTransactionsIsRejectedFromTransactionPool` test
+    // without the LineaTransactionSelectorPlugin and LineaTransactionValidatorPlugin plugins.
     Map<String, String> blockWithBlockTxParams = new HashMap<>();
-    blockWithBlockTxParams.put("STATE_ROOT", "0x2c1457760c057cf42f2d509648d725ec1f557b9d8729a5361e517952f91d050e");
-    blockWithBlockTxParams.put("LOGS_BLOOM", "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-    blockWithBlockTxParams.put("RECEIPTS_ROOT", "0xeaa8c40899a61ae59615cf9985f5e2194f8fd2b57d273be63bde6733e89b12ab");
+    blockWithBlockTxParams.put(
+        "STATE_ROOT", "0x2c1457760c057cf42f2d509648d725ec1f557b9d8729a5361e517952f91d050e");
+    blockWithBlockTxParams.put(
+        "LOGS_BLOOM",
+        "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
+    blockWithBlockTxParams.put(
+        "RECEIPTS_ROOT", "0xeaa8c40899a61ae59615cf9985f5e2194f8fd2b57d273be63bde6733e89b12ab");
     blockWithBlockTxParams.put("EXTRA_DATA", "0x626573752032352e362e302d6c696e656131");
-    blockWithBlockTxParams.put("BLOB_TX", "0x03f8908205398084f461090084f46109008389544094627306090abab3a6e1400e9345bc60c78a8bef578080c001e1a0018ef96865998238a5e1783b6cafbc1253235d636f15d318f1fb50ef6a5b8f6a80a0576a95756f32ab705a22b591ab464d5affc8c1c7fcd14d777bac24d83bc44821a01f93b26f4f9989c3fe764f4a58d264bcd71b9deab72d6852f5dcdf19d55494f1");
-    blockWithBlockTxParams.put("BLOB_VERSIONED_HASH", "0x018ef96865998238a5e1783b6cafbc1253235d636f15d318f1fb50ef6a5b8f6a");
-    blockWithBlockTxParams.put("EXECUTION_REQUEST", "0x01a4664c40aacebd82a2db79f0ea36c06bc6a19adbb10a4a15bf67b328c9b101d09e5c6ee6672978fdad9ef0d9e2ceffaee99223555d8601f0cb3bcc4ce1af9864779a416e0000000000000000");
-    blockWithBlockTxParams.put("TRANSACTIONS_ROOT", "0x7a430a1c9da1f6e25ff8e6e96217c359784f3438dc1d983b4695355d66437f8f");
-    blockWithBlockTxParams.put("WITHDRAWALS_ROOT", "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421");
+    blockWithBlockTxParams.put(
+        "BLOB_TX",
+        "0x03f8908205398084f461090084f46109008389544094627306090abab3a6e1400e9345bc60c78a8bef578080c001e1a0018ef96865998238a5e1783b6cafbc1253235d636f15d318f1fb50ef6a5b8f6a80a0576a95756f32ab705a22b591ab464d5affc8c1c7fcd14d777bac24d83bc44821a01f93b26f4f9989c3fe764f4a58d264bcd71b9deab72d6852f5dcdf19d55494f1");
+    blockWithBlockTxParams.put(
+        "BLOB_VERSIONED_HASH",
+        "0x018ef96865998238a5e1783b6cafbc1253235d636f15d318f1fb50ef6a5b8f6a");
+    blockWithBlockTxParams.put(
+        "EXECUTION_REQUEST",
+        "0x01a4664c40aacebd82a2db79f0ea36c06bc6a19adbb10a4a15bf67b328c9b101d09e5c6ee6672978fdad9ef0d9e2ceffaee99223555d8601f0cb3bcc4ce1af9864779a416e0000000000000000");
+    blockWithBlockTxParams.put(
+        "TRANSACTIONS_ROOT", "0x7a430a1c9da1f6e25ff8e6e96217c359784f3438dc1d983b4695355d66437f8f");
+    blockWithBlockTxParams.put(
+        "WITHDRAWALS_ROOT", "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421");
     blockWithBlockTxParams.put("GAS_LIMIT", "0x1ca35ef");
     blockWithBlockTxParams.put("GAS_USED", "0x5208");
     blockWithBlockTxParams.put("TIMESTAMP", "0x5");
@@ -144,14 +157,19 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
     // Seems that the genesis block hash change with each run, despite a constant genesis file
     String genesisBlockHash = getLatestBlockHash();
 
-    ObjectNode executionPayload = createExecutionPayload(mapper, genesisBlockHash, blockWithBlockTxParams);
-    ArrayNode expectedBlobVersionedHashes = createBlobVersionedHashes(mapper, blockWithBlockTxParams);
+    ObjectNode executionPayload =
+        createExecutionPayload(mapper, genesisBlockHash, blockWithBlockTxParams);
+    ArrayNode expectedBlobVersionedHashes =
+        createBlobVersionedHashes(mapper, blockWithBlockTxParams);
     ArrayNode executionRequests = createExecutionRequests(mapper, blockWithBlockTxParams);
     // Compute block hash and update payload
     BlockHeader blockHeader = computeBlockHeader(executionPayload, mapper, blockWithBlockTxParams);
     updateExecutionPayloadWithBlockHash(executionPayload, blockHeader);
     return new EngineNewPayloadRequest(
-        executionPayload, expectedBlobVersionedHashes, blockWithBlockTxParams.get("PARENT_BEACON_BLOCK_ROOT"), executionRequests);
+        executionPayload,
+        expectedBlobVersionedHashes,
+        blockWithBlockTxParams.get("PARENT_BEACON_BLOCK_ROOT"),
+        executionRequests);
   }
 
   private String getLatestBlockHash() throws Exception {
@@ -162,7 +180,8 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
         .getHash();
   }
 
-  private ObjectNode createExecutionPayload(ObjectMapper mapper, String genesisBlockHash, Map<String, String> blockParams) {
+  private ObjectNode createExecutionPayload(
+      ObjectMapper mapper, String genesisBlockHash, Map<String, String> blockParams) {
     ObjectNode payload =
         mapper
             .createObjectNode()
@@ -192,7 +211,8 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
     return payload;
   }
 
-  private ArrayNode createBlobVersionedHashes(ObjectMapper mapper, Map<String, String> blockParams) {
+  private ArrayNode createBlobVersionedHashes(
+      ObjectMapper mapper, Map<String, String> blockParams) {
     ArrayNode hashes = mapper.createArrayNode();
     hashes.add(blockParams.get("BLOB_VERSIONED_HASH"));
     return hashes;
