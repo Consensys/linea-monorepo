@@ -8,10 +8,7 @@
  */
 package maru.app
 
-import io.libp2p.core.PeerId
-import io.libp2p.core.crypto.unmarshalPrivateKey
-import io.micrometer.core.instrument.MeterRegistry
-import io.vertx.micrometer.backends.BackendRegistries
+import io.vertx.core.Vertx
 import java.time.Clock
 import java.util.Optional
 import maru.config.FollowersConfig
@@ -36,14 +33,13 @@ import maru.consensus.state.InstantFinalizationProvider
 import maru.core.Protocol
 import maru.crypto.Crypto
 import maru.database.kv.KvDatabaseFactory
+import maru.metrics.MaruMetricsCategory
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockBroadcaster
 import maru.p2p.ValidationResult
 import net.consensys.linea.async.get
-import net.consensys.linea.metrics.Tag
-import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
+import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.vertx.ObservabilityServer
-import net.consensys.linea.vertx.VertxFactory
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
@@ -58,25 +54,10 @@ class MaruApp(
   private var p2pNetwork: P2PNetwork,
   private val privateKeyProvider: () -> ByteArray,
   private val finalizationProvider: FinalizationProvider = InstantFinalizationProvider,
+  private val vertx: Vertx,
+  private val metricsFacade: MetricsFacade,
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::javaClass)
-
-  private val vertx =
-    VertxFactory.createVertx(
-      jvmMetricsEnabled = config.observabilityOptions.jvmMetricsEnabled,
-      prometheusMetricsEnabled = config.observabilityOptions.prometheusMetricsEnabled,
-    )
-
-  private var privateKeyBytes: ByteArray = privateKeyProvider.invoke()
-
-  private val nodeId = PeerId.fromPubKey(unmarshalPrivateKey(privateKeyBytes).publicKey())
-  private val meterRegistry: MeterRegistry = BackendRegistries.getDefaultNow()
-  private val metricsFacade =
-    MicrometerMetricsFacade(
-      meterRegistry,
-      "maru",
-      allMetricsCommonTags = listOf(Tag("nodeid", nodeId.toBase58())),
-    )
 
   init {
     if (config.qbftOptions == null) {
@@ -86,6 +67,15 @@ class MaruApp(
       log.info("P2PManager is not defined.")
     }
     log.info(config.toString())
+
+    metricsFacade.createGauge(
+      category = MaruMetricsCategory.METADATA,
+      name = "block.height",
+      description = "Latest block height",
+      measurementSupplier = {
+        lastBlockMetadataCache.getLatestBlockMetadata().blockNumber.toLong()
+      },
+    )
   }
 
   fun p2pPort(): UInt = p2pNetwork.port

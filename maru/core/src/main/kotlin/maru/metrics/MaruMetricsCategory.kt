@@ -12,4 +12,6 @@ import net.consensys.linea.metrics.MetricsCategory
 
 enum class MaruMetricsCategory : MetricsCategory {
   ENGINE_API,
+  METADATA,
+  P2P_NETWORK,
 }
