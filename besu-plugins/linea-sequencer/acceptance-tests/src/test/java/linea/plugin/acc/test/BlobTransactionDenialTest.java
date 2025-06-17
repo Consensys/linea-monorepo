@@ -94,7 +94,7 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
   @Test
   public void blobTransactionsIsRejectedFromNodeImport() throws Exception {
     // Arrange
-    EngineNewPayloadRequest blockWithBlobTx = getBlockWithBlobTx(mapper);
+    EngineNewPayloadRequest blockWithBlobTx = getBlockWithBlobTxRequest(mapper);
 
     // Act
     Response response =
@@ -118,7 +118,7 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
       String parentBeaconBlockRoot,
       ArrayNode executionRequests) {}
 
-  private EngineNewPayloadRequest getBlockWithBlobTx(ObjectMapper mapper) throws Exception {
+  private EngineNewPayloadRequest getBlockWithBlobTxRequest(ObjectMapper mapper) throws Exception {
     // Obtained following values by running `blobTransactionsIsRejectedFromTransactionPool` test without the LineaTransactionSelectorPlugin and LineaTransactionValidatorPlugin plugins.
     Map<String, String> blockWithBlockTxParams = new HashMap<>();
     blockWithBlockTxParams.put("STATE_ROOT", "0x2c1457760c057cf42f2d509648d725ec1f557b9d8729a5361e517952f91d050e");
@@ -137,21 +137,21 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
     blockWithBlockTxParams.put("EXCESS_BLOB_GAS", "0x0");
     blockWithBlockTxParams.put("BLOB_GAS_USED", "0x20000");
     blockWithBlockTxParams.put("BLOCK_NUMBER", "0x1");
+    blockWithBlockTxParams.put("FEE_RECIPIENT", Address.ZERO.toHexString());
+    blockWithBlockTxParams.put("PREV_RANDAO", Hash.ZERO.toHexString());
+    blockWithBlockTxParams.put("PARENT_BEACON_BLOCK_ROOT", Hash.ZERO.toHexString());
     blockWithBlockTxParams = Collections.unmodifiableMap(blockWithBlockTxParams);
-
+    // Seems that the genesis block hash change with each run, despite a constant genesis file
     String genesisBlockHash = getLatestBlockHash();
-    String parentBeaconBlockRoot = Hash.ZERO.toHexString();
 
     ObjectNode executionPayload = createExecutionPayload(mapper, genesisBlockHash, blockWithBlockTxParams);
     ArrayNode expectedBlobVersionedHashes = createBlobVersionedHashes(mapper, blockWithBlockTxParams);
     ArrayNode executionRequests = createExecutionRequests(mapper, blockWithBlockTxParams);
-
     // Compute block hash and update payload
-    BlockHeader blockHeader = computeBlockHeader(executionPayload, parentBeaconBlockRoot, mapper, blockWithBlockTxParams);
+    BlockHeader blockHeader = computeBlockHeader(executionPayload, mapper, blockWithBlockTxParams);
     updateExecutionPayloadWithBlockHash(executionPayload, blockHeader);
-
     return new EngineNewPayloadRequest(
-        executionPayload, expectedBlobVersionedHashes, parentBeaconBlockRoot, executionRequests);
+        executionPayload, expectedBlobVersionedHashes, blockWithBlockTxParams.get("PARENT_BEACON_BLOCK_ROOT"), executionRequests);
   }
 
   private String getLatestBlockHash() throws Exception {
@@ -167,10 +167,10 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
         mapper
             .createObjectNode()
             .put("parentHash", genesisBlockHash)
-            .put("feeRecipient", Address.ZERO.toHexString())
+            .put("feeRecipient", blockParams.get("FEE_RECIPIENT"))
             .put("stateRoot", blockParams.get("STATE_ROOT"))
             .put("logsBloom", blockParams.get("LOGS_BLOOM"))
-            .put("prevRandao", Hash.ZERO.toHexString())
+            .put("prevRandao", blockParams.get("PREV_RANDAO"))
             .put("gasLimit", blockParams.get("GAS_LIMIT"))
             .put("gasUsed", blockParams.get("GAS_USED"))
             .put("timestamp", blockParams.get("TIMESTAMP"))
@@ -181,12 +181,11 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
             .put("receiptsRoot", blockParams.get("RECEIPTS_ROOT"))
             .put("blockNumber", blockParams.get("BLOCK_NUMBER"));
 
-    // Add transactions
+    // Add transactions (blob tx)
     ArrayNode transactions = mapper.createArrayNode();
     transactions.add(blockParams.get("BLOB_TX"));
     payload.set("transactions", transactions);
-
-    // Add withdrawals
+    // Add withdrawals (empty list)
     ArrayNode withdrawals = mapper.createArrayNode();
     payload.set("withdrawals", withdrawals);
 
@@ -206,7 +205,7 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
   }
 
   private BlockHeader computeBlockHeader(
-      ObjectNode executionPayload, String parentBeaconBlockRoot, ObjectMapper mapper, Map<String, String> blockParams)
+      ObjectNode executionPayload, ObjectMapper mapper, Map<String, String> blockParams)
       throws Exception {
     EnginePayloadParameter blockParam =
         mapper.readValue(executionPayload.toString(), EnginePayloadParameter.class);
@@ -214,6 +213,7 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
     Hash transactionsRoot = Hash.fromHexString(blockParams.get("TRANSACTIONS_ROOT"));
     Hash withdrawalsRoot = Hash.fromHexString(blockParams.get("WITHDRAWALS_ROOT"));
 
+    // Take code from AbstractEngineNewPayload in Besu codebase
     Bytes executionRequestBytes = Bytes.fromHexString(blockParams.get("EXECUTION_REQUEST"));
     Bytes executionRequestBytesData = executionRequestBytes.slice(1);
     Request executionRequest =
@@ -240,7 +240,7 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
         withdrawalsRoot,
         blockParam.getBlobGasUsed(),
         BlobGas.fromHexString(blockParam.getExcessBlobGas()),
-        Bytes32.fromHexString(parentBeaconBlockRoot),
+        Bytes32.fromHexString(blockParams.get("PARENT_BEACON_BLOCK_ROOT")),
         maybeRequests.map(BodyValidation::requestsHash).orElse(null),
         new MainnetBlockHeaderFunctions());
   }
