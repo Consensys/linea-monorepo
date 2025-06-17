@@ -1,8 +1,11 @@
 package limitless
 
 import (
+	"bytes"
+	"path"
 	"reflect"
 
+	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -47,4 +50,11 @@ func RunProverLPPs(
 
 func RunLPPProver(moduleLPP *distributed.RecursedSegmentCompilation, witnessLPP *distributed.ModuleWitnessLPP) *wizard.ProverRuntime {
 	return moduleLPP.ProveSegment(witnessLPP)
+}
+
+func SerializeAndWriteWitnessLPP(cfg *config.Config, witnessLPPName string, witnessLPP *distributed.ModuleWitnessLPP) error {
+	reader := bytes.NewReader(nil)
+	filePath := cfg.PathforLimitlessProverAssets()
+	filePath = path.Join(filePath, "witnesses")
+	return serializeAndWrite(filePath, witnessLPPName, witnessLPP, reader)
 }
