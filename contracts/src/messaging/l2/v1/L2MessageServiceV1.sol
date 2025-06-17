@@ -29,7 +29,7 @@ abstract contract L2MessageServiceV1 is
    * NB: Take note that this is at the beginning of the file where other storage gaps,
    * are at the end of files. Be careful with how storage is adjusted on upgrades.
    */
-  uint256[50] private __gap_L2MessageService;
+  uint256[50] private __gap_L2MessageServiceV1;
 
   /// @notice The role required to set the minimum DDOS fee.
   bytes32 public constant MINIMUM_FEE_SETTER_ROLE = keccak256("MINIMUM_FEE_SETTER_ROLE");
