@@ -45,6 +45,27 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
   private Credentials credentials;
   private String recipient;
 
+  private static final class TestConstants {
+    private static final String STATE_ROOT = "0x2c1457760c057cf42f2d509648d725ec1f557b9d8729a5361e517952f91d050e";
+    private static final String LOGS_BLOOM = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+    private static final String RECEIPTS_ROOT = "0xeaa8c40899a61ae59615cf9985f5e2194f8fd2b57d273be63bde6733e89b12ab";
+    private static final String EXTRA_DATA = "0x626573752032352e362e302d6c696e656131";
+    private static final String BLOB_TX = "0x03f8908205398084f461090084f46109008389544094627306090abab3a6e1400e9345bc60c78a8bef578080c001e1a0018ef96865998238a5e1783b6cafbc1253235d636f15d318f1fb50ef6a5b8f6a80a0576a95756f32ab705a22b591ab464d5affc8c1c7fcd14d777bac24d83bc44821a01f93b26f4f9989c3fe764f4a58d264bcd71b9deab72d6852f5dcdf19d55494f1";
+    private static final String BLOB_VERSIONED_HASH = "0x018ef96865998238a5e1783b6cafbc1253235d636f15d318f1fb50ef6a5b8f6a";
+    private static final String EXECUTION_REQUEST = "0x01a4664c40aacebd82a2db79f0ea36c06bc6a19adbb10a4a15bf67b328c9b101d09e5c6ee6672978fdad9ef0d9e2ceffaee99223555d8601f0cb3bcc4ce1af9864779a416e0000000000000000";
+    private static final String TRANSACTIONS_ROOT = "0x7a430a1c9da1f6e25ff8e6e96217c359784f3438dc1d983b4695355d66437f8f";
+    private static final String WITHDRAWALS_ROOT = "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421";
+
+    // Numeric constants
+    private static final String GAS_LIMIT = "0x1ca35ef";
+    private static final String GAS_USED = "0x5208";
+    private static final String TIMESTAMP = "0x5";
+    private static final String BASE_FEE_PER_GAS = "0x7";
+    private static final String EXCESS_BLOB_GAS = "0x0";
+    private static final String BLOB_GAS_USED = "0x20000";
+    private static final String BLOCK_NUMBER = "0x1";
+  }
+
   @Override
   protected String getGenesisFileTemplatePath() {
     // We cannot use clique-prague-zero-blobs because `config.blobSchedule.prague.max = 0` will
@@ -124,7 +145,7 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
     ArrayNode executionRequests = createExecutionRequests(mapper);
 
     // Compute block hash and update payload
-    BlockHeader blockHeader = computeBlockHeader(executionPayload, mapper);
+    BlockHeader blockHeader = computeBlockHeader(executionPayload, parentBeaconBlockRoot, mapper);
     updateExecutionPayloadWithBlockHash(executionPayload, blockHeader);
 
     return new EngineNewPayloadRequest(
@@ -145,27 +166,22 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
             .createObjectNode()
             .put("parentHash", genesisBlockHash)
             .put("feeRecipient", Address.ZERO.toHexString())
-            .put("stateRoot", "0x2c1457760c057cf42f2d509648d725ec1f557b9d8729a5361e517952f91d050e")
-            .put(
-                "logsBloom",
-                "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+            .put("stateRoot", TestConstants.STATE_ROOT)
+            .put("logsBloom", TestConstants.LOGS_BLOOM)
             .put("prevRandao", Hash.ZERO.toHexString())
-            .put("gasLimit", "0x1ca35ef")
-            .put("gasUsed", "0x5208")
-            .put("timestamp", "0x5")
-            .put("extraData", "0x626573752032352e362e302d6c696e656131")
-            .put("baseFeePerGas", "0x7")
-            .put("excessBlobGas", "0x0")
-            .put("blobGasUsed", "0x20000")
-            .put(
-                "receiptsRoot",
-                "0xeaa8c40899a61ae59615cf9985f5e2194f8fd2b57d273be63bde6733e89b12ab")
-            .put("blockNumber", "0x1");
+            .put("gasLimit", TestConstants.GAS_LIMIT)
+            .put("gasUsed", TestConstants.GAS_USED)
+            .put("timestamp", TestConstants.TIMESTAMP)
+            .put("extraData", TestConstants.EXTRA_DATA)
+            .put("baseFeePerGas", TestConstants.BASE_FEE_PER_GAS)
+            .put("excessBlobGas", TestConstants.EXCESS_BLOB_GAS)
+            .put("blobGasUsed", TestConstants.BLOB_GAS_USED)
+            .put("receiptsRoot", TestConstants.RECEIPTS_ROOT)
+            .put("blockNumber", TestConstants.BLOCK_NUMBER);
 
     // Add transactions
     ArrayNode transactions = mapper.createArrayNode();
-    transactions.add(
-        "0x03f8908205398084f461090084f46109008389544094627306090abab3a6e1400e9345bc60c78a8bef578080c001e1a0018ef96865998238a5e1783b6cafbc1253235d636f15d318f1fb50ef6a5b8f6a80a0576a95756f32ab705a22b591ab464d5affc8c1c7fcd14d777bac24d83bc44821a01f93b26f4f9989c3fe764f4a58d264bcd71b9deab72d6852f5dcdf19d55494f1");
+    transactions.add(TestConstants.BLOB_TX);
     payload.set("transactions", transactions);
 
     // Add withdrawals
@@ -177,33 +193,25 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
 
   private ArrayNode createBlobVersionedHashes(ObjectMapper mapper) {
     ArrayNode hashes = mapper.createArrayNode();
-    hashes.add("0x018ef96865998238a5e1783b6cafbc1253235d636f15d318f1fb50ef6a5b8f6a");
+    hashes.add(TestConstants.BLOB_VERSIONED_HASH);
     return hashes;
   }
 
   private ArrayNode createExecutionRequests(ObjectMapper mapper) {
-    String executionRequestString =
-        "0x01a4664c40aacebd82a2db79f0ea36c06bc6a19adbb10a4a15bf67b328c9b101d09e5c6ee6672978fdad9ef0d9e2ceffaee99223555d8601f0cb3bcc4ce1af9864779a416e0000000000000000";
     ArrayNode requests = mapper.createArrayNode();
-    requests.add(executionRequestString);
+    requests.add(TestConstants.EXECUTION_REQUEST);
     return requests;
   }
 
-  private BlockHeader computeBlockHeader(ObjectNode executionPayload, ObjectMapper mapper)
+  private BlockHeader computeBlockHeader(ObjectNode executionPayload, String parentBeaconBlockRoot, ObjectMapper mapper)
       throws Exception {
     EnginePayloadParameter blockParam =
         mapper.readValue(executionPayload.toString(), EnginePayloadParameter.class);
 
-    Hash transactionsRoot =
-        Hash.fromHexString("0x7a430a1c9da1f6e25ff8e6e96217c359784f3438dc1d983b4695355d66437f8f");
-    Hash withdrawalsRoot =
-        Hash.fromHexString("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421");
-    String parentBeaconBlockRoot =
-        "0x0000000000000000000000000000000000000000000000000000000000000000";
+    Hash transactionsRoot = Hash.fromHexString(TestConstants.TRANSACTIONS_ROOT);
+    Hash withdrawalsRoot = Hash.fromHexString(TestConstants.WITHDRAWALS_ROOT);
 
-    String executionRequestString =
-        "0x01a4664c40aacebd82a2db79f0ea36c06bc6a19adbb10a4a15bf67b328c9b101d09e5c6ee6672978fdad9ef0d9e2ceffaee99223555d8601f0cb3bcc4ce1af9864779a416e0000000000000000";
-    Bytes executionRequestBytes = Bytes.fromHexString(executionRequestString);
+    Bytes executionRequestBytes = Bytes.fromHexString(TestConstants.EXECUTION_REQUEST);
     Bytes executionRequestBytesData = executionRequestBytes.slice(1);
     Request executionRequest =
         new Request(RequestType.of(executionRequestBytes.get(0)), executionRequestBytesData);
