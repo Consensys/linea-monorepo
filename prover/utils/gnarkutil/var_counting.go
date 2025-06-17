@@ -3,6 +3,7 @@ package gnarkutil
 import (
 	"reflect"
 
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/schema"
 )
@@ -16,7 +17,7 @@ func CountVariables(circ any) (nbPublic, nbSecret int) {
 		tVar = reflect.ValueOf(struct{ A frontend.Variable }{}).FieldByName("A").Type()
 	)
 
-	s, err := schema.Walk(circ, tVar, nil)
+	s, err := schema.Walk(ecc.BN254.ScalarField(), circ, tVar, nil) //TODO@yao: check if we should plugin field to replace ecc.BN254.ScalarField()
 	if err != nil {
 		panic(err)
 	}
