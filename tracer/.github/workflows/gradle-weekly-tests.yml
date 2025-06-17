@@ -26,7 +26,7 @@ jobs:
         run: GOMAXPROCS=2 GOMEMLIMIT=10GiB ./gradlew weeklyTests
         env:
           WEEKLY_TESTS_PARALLELISM: 32
-          GOCORSET_FLAGS: -v -b1024 --ansi-escapes=false --report --hir
+          GOCORSET_FLAGS: -v -b1024 --ansi-escapes=false --report --mir
           ZKEVM_FORK: LONDON
 
       - name: Upload test report
@@ -76,7 +76,7 @@ jobs:
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           WEEKLY_TESTS_PARALLELISM: 24
-          GOCORSET_FLAGS: -v -b1024 --ansi-escapes=false --report --hir
+          GOCORSET_FLAGS: -v -b1024 --ansi-escapes=false --report --mir
           ZKEVM_FORK: LONDON
 
       - name: Upload prc calls test report
