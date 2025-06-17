@@ -3,15 +3,15 @@ module github.com/consensys/linea-monorepo/prover
 go 1.23.0
 
 require (
-	github.com/bits-and-blooms/bitset v1.20.0
+	github.com/bits-and-blooms/bitset v1.22.0
 	github.com/consensys/bavard v0.1.31-0.20250406004941-2db259e4b582
 	github.com/consensys/compress v0.2.5
-	github.com/consensys/gnark v0.12.1-0.20250514073836-781518d6846f
-	github.com/consensys/gnark-crypto v0.17.1-0.20250528124741-df975784a60b
+	github.com/consensys/gnark v0.13.1-0.20250613171447-869ee3f7fa8f
+	github.com/consensys/gnark-crypto v0.18.1-0.20250613145137-bf7ac9d06da2
 	github.com/consensys/go-corset v1.0.3
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.11.2
-	github.com/fxamacker/cbor/v2 v2.7.0
+	github.com/fxamacker/cbor/v2 v2.8.0
 	github.com/go-playground/assert/v2 v2.2.0
 	github.com/go-playground/validator/v10 v10.22.0
 	github.com/iancoleman/strcase v0.3.0
@@ -20,15 +20,15 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.21
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.19.1
-	github.com/rs/zerolog v1.33.0
+	github.com/rs/zerolog v1.34.0
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/crypto v0.35.0
+	golang.org/x/crypto v0.39.0
 	golang.org/x/net v0.27.0
-	golang.org/x/sync v0.11.0
+	golang.org/x/sync v0.15.0
 	golang.org/x/time v0.5.0
 )
 
@@ -59,7 +59,7 @@ require (
 	github.com/gofrs/flock v0.12.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
-	github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8 // indirect
+	github.com/google/pprof v0.0.0-20250607225305-033d6d78b36a // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
 	github.com/holiman/uint256 v1.3.1 // indirect
@@ -70,7 +70,7 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
@@ -82,7 +82,7 @@ require (
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
-	github.com/ronanh/intcomp v1.1.0 // indirect
+	github.com/ronanh/intcomp v1.1.1 // indirect
 	github.com/sagikazarmark/locafero v0.6.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
@@ -97,8 +97,8 @@ require (
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/term v0.29.0 // indirect
-	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/term v0.32.0 // indirect
+	golang.org/x/text v0.26.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
@@ -110,7 +110,7 @@ require (
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/pkg/profile v1.7.0
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	golang.org/x/exp v0.0.0-20240823005443-9b4947da3948
-	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/exp v0.0.0-20250606033433-dcc06ee1d476
+	golang.org/x/sys v0.33.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

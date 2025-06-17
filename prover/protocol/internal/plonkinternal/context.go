@@ -5,9 +5,10 @@ import (
 	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
-	plonkBLS12_377 "github.com/consensys/gnark/backend/plonk/bls12-377"
-	cs "github.com/consensys/gnark/constraint/bls12-377"
+	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	plonkKOALABEAR "github.com/consensys/gnark/backend/plonk/koalabear"
+	cs "github.com/consensys/gnark/constraint/koalabear"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
@@ -50,7 +51,7 @@ type CompilationCtx struct {
 		// The plonk circuit being integrated
 		Circuit frontend.Circuit
 		// The compiled circuit
-		Trace *plonkBLS12_377.Trace
+		Trace *plonkKOALABEAR.Trace
 		// The sparse constrained system
 		SPR *cs.SparseR1CS
 		// Domain to gets the polynomials in lagrange form
@@ -203,7 +204,7 @@ func createCtx(
 		utils.Panic("plonk-in-wizard: the number of constraints of the circuit outweight the fixed number of rows. fixed-nb-row=%v domain-size=%v", ctx.FixedNbRowsOption.NbRow, ctx.DomainSizePlonk())
 	}
 
-	ctx.Plonk.Trace = plonkBLS12_377.NewTrace(ctx.Plonk.SPR, ctx.Plonk.Domain)
+	ctx.Plonk.Trace = plonkKOALABEAR.NewTrace(ctx.Plonk.SPR, ctx.Plonk.Domain)
 
 	ctx.buildPermutation(ctx.Plonk.SPR, ctx.Plonk.Trace) // no part of BuildTrace
 
@@ -220,12 +221,12 @@ func createCtx(
 // of gnark.
 func CompileCircuitDefault(circ frontend.Circuit) (*cs.SparseR1CS, error) {
 
-	ccsIface, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circ)
+	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circ)
 	if err != nil {
 		return nil, fmt.Errorf("frontend.Compile returned an err=%v", err)
 	}
 
-	return ccsIface.(*cs.SparseR1CS), err
+	return ccs.(*cs.SparseR1CS), err
 }
 
 // CompileCircuitWithRangeCheck compiles the circuit and returns the compiled
@@ -234,12 +235,13 @@ func CompileCircuitWithRangeCheck(circ frontend.Circuit, addGates bool) (*cs.Spa
 
 	gnarkBuilder, rcGetter := newExternalRangeChecker(addGates)
 
-	ccsIface, err := frontend.Compile(ecc.BLS12_377.ScalarField(), gnarkBuilder, circ)
+	// ccsIface, err := frontend.Compile(ecc.BLS12_377.ScalarField(), gnarkBuilder, circ)
+	ccs, err := frontend.CompileU32(koalabear.Modulus(), gnarkBuilder, circ)
 	if err != nil {
 		return nil, nil, fmt.Errorf("frontend.Compile returned an err=%v", err)
 	}
 
-	return ccsIface.(*cs.SparseR1CS), rcGetter, err
+	return ccs.(*cs.SparseR1CS), rcGetter, err
 }
 
 // CompileCircuitWithExternalHasher compiles the circuit and returns the compiled
@@ -299,7 +301,7 @@ func (ctx *CompilationCtx) TinyPISize() int {
 // The permutation is encoded as a slice s of size 3*size(l), where the
 // i-th entry of l∥r∥o is sent to the s[i]-th entry, so it acts on a tab
 // like this: for i in tab: tab[i] = tab[permutation[i]]
-func (ctx *CompilationCtx) buildPermutation(spr *cs.SparseR1CS, pt *plonkBLS12_377.Trace) {
+func (ctx *CompilationCtx) buildPermutation(spr *cs.SparseR1CS, pt *plonkKOALABEAR.Trace) {
 
 	// nbVariables counts the number of variables occuring in the Plonk circuit. The
 	// +1 is to account for a "special" variable that we use for padding. It is
