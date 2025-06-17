@@ -7,12 +7,6 @@ import (
 	"github.com/consensys/gnark/std/algebra/emulated/sw_bls12381"
 	"github.com/consensys/gnark/std/evmprecompiles"
 	"github.com/consensys/gnark/std/math/emulated"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 type OnCurveInstance[C convertable[T], T element] struct {
@@ -71,12 +65,6 @@ type multiCheckableCircuit[T checkableInstance] struct {
 	Instances []T
 }
 
-func newMultiCheckableCircuit[T checkableInstance](nbInstances int) *multiCheckableCircuit[T] {
-	return &multiCheckableCircuit[T]{
-		Instances: make([]T, nbInstances),
-	}
-}
-
 func (c *multiCheckableCircuit[T]) Define(api frontend.API) error {
 	fp, err := emulated.NewField[sw_bls12381.BaseField](api)
 	if err != nil {
@@ -94,7 +82,13 @@ func (c *multiCheckableCircuit[T]) Define(api frontend.API) error {
 	return nil
 }
 
-func NewCheckCircuit(g group, membership membership, limits *Limits) frontend.Circuit {
+func newMultiCheckableCircuit[T checkableInstance](nbInstances int) *multiCheckableCircuit[T] {
+	return &multiCheckableCircuit[T]{
+		Instances: make([]T, nbInstances),
+	}
+}
+
+func newCheckCircuit(g group, membership membership, limits *Limits) frontend.Circuit {
 	switch g {
 	case G1:
 		switch membership {
@@ -117,101 +111,4 @@ func NewCheckCircuit(g group, membership membership, limits *Limits) frontend.Ci
 	default:
 		panic(fmt.Sprintf("unknown group for bls curve membership circuit: %v", g))
 	}
-}
-
-type UnalignedCurveMembershipData struct {
-	*UnalignedCurveMembershipDataSource
-
-	// IsActive is a constructed column which indicates if the circuit is active. Set when selector is on or when we provide the input data.
-	IsActive ifaces.Column
-	// IsFirstLineOfInput is a constructed column which indicates if the row is
-	// the first line of the input.
-	IsFirstLineOfInput    ifaces.Column
-	IsFirstLineOfInputAct wizard.ProverAction
-
-	GnarkData ifaces.Column
-}
-
-type UnalignedCurveMembershipDataSource struct {
-	Limb              ifaces.Column
-	Counter           ifaces.Column
-	CsCurveMembership ifaces.Column
-}
-
-func newUnalignedCurveMembershipData(comp *wizard.CompiledIOP, g group, size int, src *UnalignedCurveMembershipDataSource) *UnalignedCurveMembershipData {
-	createCol := createColFn(comp, fmt.Sprintf("UNALIGNED_%s_CURVE_MEMBERSHIP", g.StringCurve()), size)
-	res := &UnalignedCurveMembershipData{
-		UnalignedCurveMembershipDataSource: src,
-		IsActive:                           createCol("IS_ACTIVE"),
-		GnarkData:                          createCol("GNARK_DATA"),
-	}
-	res.IsFirstLineOfInput, res.IsFirstLineOfInputAct = dedicated.IsZero(comp, src.Counter)
-	return res
-}
-
-func (d *UnalignedCurveMembershipData) Assign(run *wizard.ProverRuntime) {
-	d.IsFirstLineOfInputAct.Run(run)
-
-	var (
-		srcLimb    = d.Limb.GetColAssignment(run).IntoRegVecSaveAlloc()
-		srcCounter = d.Counter.GetColAssignment(run).IntoRegVecSaveAlloc()
-		srcCs      = d.CsCurveMembership.GetColAssignment(run).IntoRegVecSaveAlloc()
-	)
-	var (
-		dstIsActive  = common.NewVectorBuilder(d.IsActive)
-		dstGnarkData = common.NewVectorBuilder(d.GnarkData)
-	)
-
-	for i := 0; i < len(srcLimb); i++ {
-		if srcCs[i].IsZero() {
-			continue
-		}
-		// for the first line of input, we push the expected success bit
-		if srcCounter[i].IsZero() {
-			dstIsActive.PushBoolean(true)
-			dstGnarkData.PushBoolean(false) // we push additional input to gnark input to indicate curve non-membership
-		}
-		dstIsActive.PushBoolean(true)
-		dstGnarkData.PushField(srcLimb[i])
-	}
-	dstIsActive.PadAndAssign(run, field.Zero())
-	dstGnarkData.PadAndAssign(run, field.Zero())
-}
-
-func init() {
-	plonk.RegisterInputFiller(membershipInputFillerKey(G1, CURVE), newMembershipInputFiller(G1, CURVE))
-	plonk.RegisterInputFiller(membershipInputFillerKey(G2, CURVE), newMembershipInputFiller(G2, CURVE))
-}
-
-func membershipInputFillerKey(g group, m membership) string {
-	base := "bls12381-%s-membership-input-filler"
-	switch m {
-	case CURVE:
-		return fmt.Sprintf(base, g.StringCurve())
-	case GROUP:
-		return fmt.Sprintf(base, g.String())
-	default:
-		panic(fmt.Sprintf("unknown membership type %v for group %v", m, g))
-	}
-}
-
-func newMembershipInputFiller(g group, m membership) plonk.InputFiller {
-	switch m {
-	case CURVE:
-		return func(circuitInstance, inputIndex int) field.Element {
-			var nbLimbs int
-			switch g {
-			case G1:
-				nbLimbs = nbG1Limbs
-			case G2:
-				nbLimbs = nbG2Limbs
-			}
-			if inputIndex%(nbLimbs+1) == 0 {
-				return field.One() // first input is the success bit
-			} else {
-				return field.Zero() // other inputs are zero
-			}
-		}
-	}
-	return nil
 }

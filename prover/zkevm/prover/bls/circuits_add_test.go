@@ -18,10 +18,10 @@ func TestBlsG1Add(t *testing.T) {
 	}
 	ct := csvtraces.MustOpenCsvFile("testdata/bls_g1_add_input.csv")
 	var blsAdd *BlsAdd
-	var blsAddSource *BlsAddDataSource
+	var blsAddSource *blsAddDataSource
 	cmp := wizard.Compile(
 		func(b *wizard.Builder) {
-			blsAddSource = &BlsAddDataSource{
+			blsAddSource = &blsAddDataSource{
 				CsAdd:             ct.GetCommit(b, "CIRCUIT_SELECTOR_G1_ADD"),
 				Limb:              ct.GetCommit(b, "LIMB"),
 				Index:             ct.GetCommit(b, "INDEX"),
@@ -56,10 +56,10 @@ func TestBlsG2Add(t *testing.T) {
 	}
 	ct := csvtraces.MustOpenCsvFile("testdata/bls_g2_add_input.csv")
 	var blsAdd *BlsAdd
-	var blsAddSource *BlsAddDataSource
+	var blsAddSource *blsAddDataSource
 	cmp := wizard.Compile(
 		func(b *wizard.Builder) {
-			blsAddSource = &BlsAddDataSource{
+			blsAddSource = &blsAddDataSource{
 				CsAdd:             ct.GetCommit(b, "CIRCUIT_SELECTOR_G2_ADD"),
 				Limb:              ct.GetCommit(b, "LIMB"),
 				Index:             ct.GetCommit(b, "INDEX"),
