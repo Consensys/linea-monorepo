@@ -2,7 +2,7 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { TestL2MessageService, TestReceivingContract } from "../../../../typechain-types";
+import { NoFundReceiver, TestL2MessageService, TestReceivingContract } from "../../../../typechain-types";
 import {
   ADDRESS_ZERO,
   BLOCK_COINBASE,
@@ -47,6 +47,8 @@ import {
 
 describe("L2MessageService", () => {
   let l2MessageService: TestL2MessageService;
+  let noFundReceiver: NoFundReceiver;
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let admin: SignerWithAddress;
   let securityCouncil: SignerWithAddress;
@@ -66,6 +68,10 @@ describe("L2MessageService", () => {
     ]) as unknown as Promise<TestL2MessageService>;
   }
 
+  async function deployNoFundReceiverFixture() {
+    return deployUpgradableFromFactory("NoFundReceiver") as unknown as Promise<NoFundReceiver>;
+  }
+
   before(async () => {
     [admin, securityCouncil, l1l2MessageSetter, notAuthorizedAccount, postmanAddress] = await ethers.getSigners();
     roleAddresses = generateRoleAssignments(L2_MESSAGE_SERVICE_ROLES, securityCouncil.address, [
@@ -75,6 +81,7 @@ describe("L2MessageService", () => {
 
   beforeEach(async () => {
     l2MessageService = await loadFixture(deployL2MessageServiceFixture);
+    noFundReceiver = await loadFixture(deployNoFundReceiverFixture);
   });
 
   describe("Initialization checks", () => {
@@ -216,7 +223,7 @@ describe("L2MessageService", () => {
       it("Should fail when the coinbase fee transfer fails", async () => {
         await l2MessageService.connect(securityCouncil).setMinimumFee(MINIMUM_FEE);
 
-        await ethers.provider.send("hardhat_setCoinbase", [await l2MessageService.getAddress()]);
+        await ethers.provider.send("hardhat_setCoinbase", [await noFundReceiver.getAddress()]);
 
         const sendMessageCall = l2MessageService
           .connect(admin)
@@ -225,7 +232,7 @@ describe("L2MessageService", () => {
           });
 
         await expectRevertWithCustomError(l2MessageService, sendMessageCall, "FeePaymentFailed", [
-          await l2MessageService.getAddress(),
+          await noFundReceiver.getAddress(),
         ]);
 
         await ethers.provider.send("hardhat_setCoinbase", [BLOCK_COINBASE]);
@@ -1163,42 +1170,31 @@ describe("L2MessageService", () => {
         await expectRevertWithReason(claimMessageCall, "ReentrancyGuard: reentrant call");
       });
 
-      it("Should fail when the destination errors through receive", async () => {
+      it("Should send a message when receive is invoked", async () => {
+        const adminAddress = await admin.getAddress();
+        const setMinimumFeeInWei = await l2MessageService.minimumFeeInWei();
+
         const expectedBytes = await encodeSendMessage(
-          await l2MessageService.getAddress(),
-          await l2MessageService.getAddress(),
-          MESSAGE_FEE,
+          adminAddress,
+          adminAddress,
+          0n,
           MESSAGE_VALUE_1ETH,
           1n,
           EMPTY_CALLDATA,
         );
 
-        await l2MessageService.addFunds({ value: INITIAL_WITHDRAW_LIMIT });
+        const messageHash = ethers.keccak256(expectedBytes);
 
-        const expectedBytesArray = [ethers.keccak256(expectedBytes)];
-        const expectedRollingHash = calculateRollingHash(ethers.ZeroHash, ethers.keccak256(expectedBytes));
+        const eventArgs = [adminAddress, adminAddress, 0n, MESSAGE_VALUE_1ETH, 1, EMPTY_CALLDATA, messageHash];
 
-        await l2MessageService.setLastAnchoredL1MessageNumber(1);
-        await l2MessageService
-          .connect(l1l2MessageSetter)
-          .anchorL1L2MessageHashes(expectedBytesArray, 2, 2, expectedRollingHash);
-
-        await expect(
-          l2MessageService
-            .connect(admin)
-            .claimMessage(
-              await l2MessageService.getAddress(),
-              await l2MessageService.getAddress(),
-              MESSAGE_FEE,
-              MESSAGE_VALUE_1ETH,
-              ADDRESS_ZERO,
-              EMPTY_CALLDATA,
-              1,
-            ),
-        ).to.be.reverted;
-
-        expect(await l2MessageService.inboxL1L2MessageStatus(ethers.keccak256(expectedBytes))).to.be.equal(
-          INBOX_STATUS_RECEIVED,
+        await expectEvent(
+          l2MessageService,
+          admin.sendTransaction({
+            to: await l2MessageService.getAddress(),
+            value: MESSAGE_VALUE_1ETH + setMinimumFeeInWei,
+          }),
+          "MessageSent",
+          eventArgs,
         );
       });
 
