@@ -81,16 +81,17 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
   // 5. Send 'debug_getBadBlocks' RPC request to minerNode, confirm that block is rejected from
   // import
   //
-  // However we are unable to run more than one node per test, due to the CLI options being
+  // However we are currently unable to run more than one node per test, due to the CLI options
+  // being
   // singleton options and this implemented in dependency repository - linea tracer.
-  // Thus we are limited to 'simulating' the block import as below:
+  // Thus simulate the block import as below:
   // 1. Create a premade block containing a blob tx
   // 2. Import the premade block using 'engine_newPayloadV4' Engine API call
 
   @Test
   public void blobTransactionsIsRejectedFromNodeImport() throws Exception {
     // Arrange
-    BlockWithBlobTx blockWithBlobTx = getBlockWithBlobTx(mapper);
+    EngineNewPayloadRequest blockWithBlobTx = getBlockWithBlobTx(mapper);
 
     // Act
     Response response =
@@ -108,13 +109,13 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
     assertThat(validationError).contains("LineaTransactionValidatorPlugin - BLOB_TX_NOT_ALLOWED");
   }
 
-  private record BlockWithBlobTx(
+  private record EngineNewPayloadRequest(
       ObjectNode executionPayload,
       ArrayNode expectedBlobVersionedHashes,
       String parentBeaconBlockRoot,
       ArrayNode executionRequests) {}
 
-  private BlockWithBlobTx getBlockWithBlobTx(ObjectMapper mapper) throws Exception {
+  private EngineNewPayloadRequest getBlockWithBlobTx(ObjectMapper mapper) throws Exception {
     String genesisBlockHash = getLatestBlockHash();
     String parentBeaconBlockRoot = Hash.ZERO.toHexString();
 
@@ -126,7 +127,7 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
     BlockHeader blockHeader = computeBlockHeader(executionPayload, mapper);
     updateExecutionPayloadWithBlockHash(executionPayload, blockHeader);
 
-    return new BlockWithBlobTx(
+    return new EngineNewPayloadRequest(
         executionPayload, expectedBlobVersionedHashes, parentBeaconBlockRoot, executionRequests);
   }
 
