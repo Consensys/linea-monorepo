@@ -143,7 +143,7 @@ func serializeAndWrite(filePath string, fileName string, object any, reader *byt
 	return nil
 }
 
-func loadCktSetupAsync(cfg *config.Config) (*circuits.Setup, error) {
+func loadCktSetupAsync(cfg *config.Config) (*circuits.Setup, chan struct{}, error) {
 	var (
 		setup       circuits.Setup
 		errSetup    error
@@ -153,15 +153,23 @@ func loadCktSetupAsync(cfg *config.Config) (*circuits.Setup, error) {
 		setup, errSetup = circuits.LoadSetup(cfg, circuits.ExecutionCircuitID)
 		close(chSetupDone)
 	}()
-	<-chSetupDone
-	return &setup, errSetup
+
+	return &setup, chSetupDone, errSetup
 }
 
 // Helper function to finalize setup and validate checksum
-func finalizeCktSetup(setup *circuits.Setup, errSetup error, cfg *config.Config) error {
+func finalizeCktSetup(cfg *config.Config, chSetupDone <-chan struct{}, setup *circuits.Setup, errSetup error) error {
+	<-chSetupDone
 	if errSetup != nil {
 		utils.Panic("could not load setup: %v", errSetup)
 	}
 	execution.ValidateSetupChecksum(*setup, &cfg.TracesLimits)
 	return nil
+}
+
+// Helper function to clean up witness directory
+func cleanWitnessDirectory(cfg *config.Config) {
+	filepath := cfg.PathforLimitlessProverAssets()
+	filepath = path.Join(filepath, "witness")
+	os.RemoveAll(filepath)
 }

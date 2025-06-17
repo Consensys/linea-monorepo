@@ -3,7 +3,6 @@ package limitless
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"path"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
@@ -35,7 +34,7 @@ func (asset *Asset) Prove(cfg *config.Config, req *execution.Request) (*executio
 	defer cleanWitnessDirectory(cfg)
 
 	// Setup execution circuit
-	setup, errSetup := loadCktSetupAsync(cfg)
+	setup, done, errSetup := loadCktSetupAsync(cfg)
 
 	// Setup execution witness and output response
 	var (
@@ -77,7 +76,7 @@ func (asset *Asset) Prove(cfg *config.Config, req *execution.Request) (*executio
 	logrus.Info("Finished running Conglomerator")
 
 	// Wait for setup to be loaded and validate checksum
-	if err := finalizeCktSetup(setup, errSetup, cfg); err != nil {
+	if err := finalizeCktSetup(cfg, done, setup, errSetup); err != nil {
 		return nil, err
 	}
 
@@ -198,11 +197,4 @@ func readAndDeserialize(filePath string, fileName string, target any, readBuf *b
 	}
 	logrus.Infof("Read and deserialized %s from %s", fileName, fullPath)
 	return nil
-}
-
-// Helper function to clean up witness directory
-func cleanWitnessDirectory(cfg *config.Config) {
-	filepath := cfg.PathforLimitlessProverAssets()
-	filepath = path.Join(filepath, "witness")
-	os.RemoveAll(filepath)
 }
