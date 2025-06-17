@@ -291,7 +291,7 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *wizard.ProverRuntime
 	case *ModuleWitnessLPP:
 		comp = r.ModuleLPP.Wiop
 		proverStep = r.ModuleLPP.GetMainProverStep(m)
-		moduleName = m.ModuleNames
+		moduleName = m.ModuleName
 		moduleIndex = m.ModuleIndex
 	case *ModuleWitnessGL:
 		comp = r.ModuleGL.Wiop

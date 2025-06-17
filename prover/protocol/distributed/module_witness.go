@@ -42,8 +42,8 @@ type ModuleWitnessGL struct {
 // difference with a ModuleWitnessGL is that the witness is that the witness
 // can be for a group of modules.
 type ModuleWitnessLPP struct {
-	// ModuleNames indicates the name of the module
-	ModuleNames []ModuleName
+	// ModuleName indicates the name of the module
+	ModuleName ModuleName
 	// ModuleIndex indicates the vertical split of the current module
 	ModuleIndex int
 	// InitialFiatShamirState is the initial FiatShamir state to set at
@@ -145,7 +145,7 @@ func SegmentModuleLPP(runtime *wizard.ProverRuntime, moduleLPP *ModuleLPP) (witn
 	for moduleIndex := range witnessesLPPs {
 
 		moduleWitnessLPP := &ModuleWitnessLPP{
-			ModuleNames: moduleNames,
+			ModuleName:  moduleNames[moduleIndex],
 			ModuleIndex: moduleIndex,
 			Columns:     make(map[ifaces.ColID]smartvectors.SmartVector),
 			N0Values:    n0,
@@ -292,7 +292,7 @@ func (mw *ModuleWitnessLPP) NextN0s(moduleLPP *ModuleLPP) []int {
 
 			selSV, ok := mw.Columns[selCol.GetColID()]
 			if !ok {
-				utils.Panic("selector: %v is missing from witness columns for module: %v index: %v", selCol, mw.ModuleNames, mw.ModuleIndex)
+				utils.Panic("selector: %v is missing from witness columns for module: %v index: %v", selCol, mw.ModuleName, mw.ModuleIndex)
 			}
 
 			sel := selSV.IntoRegVecSaveAlloc()
