@@ -195,13 +195,13 @@ func TestDistributedWizardLogic(t *testing.T) {
 		var (
 			witnessLPP  = witnessLPPs[i]
 			moduleIndex = witnessLPPs[i].ModuleIndex
-			moduleNames = witnessLPPs[i].ModuleNames
+			moduleNames = witnessLPPs[i].ModuleName
 			moduleLPP   *ModuleLPP
 		)
 
 		witnessLPP.InitialFiatShamirState = field.NewFromString("6861409415040334196327676756394403519979367936044773323994693747743991500772")
 
-		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleNames, witnessLPP.ModuleIndex)
+		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleName, witnessLPP.ModuleIndex)
 
 		for k := range distWizard.LPPs {
 			if !reflect.DeepEqual(distWizard.LPPs[k].ModuleNames(), moduleNames) {
@@ -233,7 +233,7 @@ func TestDistributedWizardLogic(t *testing.T) {
 			hornerSum        = verLPPRun.GetPublicInput(hornerPublicInput)
 			hornerN0Hash     = verLPPRun.GetPublicInput(hornerN0HashPublicInput)
 			hornerN1Hash     = verLPPRun.GetPublicInput(hornerN1HashPublicInput)
-			shouldBeFirst    = i == 0 || !reflect.DeepEqual(witnessLPPs[i].ModuleNames, witnessLPPs[i-1].ModuleNames)
+			shouldBeFirst    = i == 0 || !reflect.DeepEqual(witnessLPPs[i].ModuleName, witnessLPPs[i-1].ModuleName)
 		)
 
 		if !shouldBeFirst && hornerN0Hash != prevHornerN1Hash {
@@ -433,10 +433,10 @@ func runProverLPPs(
 
 		witnessLPP.InitialFiatShamirState = sharedRandomness
 
-		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleNames, witnessLPP.ModuleIndex)
+		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleName, witnessLPP.ModuleIndex)
 		for k := range distWizard.LPPs {
 
-			if !reflect.DeepEqual(distWizard.LPPs[k].ModuleNames(), witnessLPPs[i].ModuleNames) {
+			if !reflect.DeepEqual(distWizard.LPPs[k].ModuleNames(), witnessLPPs[i].ModuleName) {
 				continue
 			}
 
