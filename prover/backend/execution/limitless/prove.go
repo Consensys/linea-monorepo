@@ -27,6 +27,12 @@ type Asset struct {
 	DistWizard *distributed.DistributedWizard
 }
 
+type ModSegID struct {
+	SegmentID  int
+	ModuleName string
+	ModuleIdx  int
+}
+
 // Prove function for the Assest struct
 func (asset *Asset) Prove(cfg *config.Config, req *execution.Request) (*execution.Response, error) {
 	// Set MonitorParams before any proving happens
@@ -57,7 +63,10 @@ func (asset *Asset) Prove(cfg *config.Config, req *execution.Request) (*executio
 	logrus.Info("Finished running the bootstrapper")
 
 	logrus.Info("Starting to run GL Prover")
-	runGLs := RunProverGLs(asset.DistWizard, witnessGLs)
+	runGLs, err := RunProverGLs(cfg, asset.DistWizard, witnessGLs)
+	if err != nil {
+		return nil, err
+	}
 	SanityCheckProvers(asset.DistWizard, runGLs)
 	logrus.Info("Finished running GL Prover")
 
@@ -66,7 +75,10 @@ func (asset *Asset) Prove(cfg *config.Config, req *execution.Request) (*executio
 	logrus.Info("Finished generating shared Randomness")
 
 	logrus.Info("Starting to run LPP Prover")
-	runLPPs := RunProverLPPs(asset.DistWizard, sharedRandomness, witnessLPPs)
+	runLPPs, err := RunProverLPPs(cfg, asset.DistWizard, sharedRandomness, witnessLPPs)
+	if err != nil {
+		return nil, err
+	}
 	SanityCheckProvers(asset.DistWizard, runLPPs)
 	logrus.Info("Finished running LPP Prover")
 
@@ -169,6 +181,17 @@ func ReadAndDeserAssets(config *config.Config) (*Asset, error) {
 	}
 
 	return assets, nil
+}
+
+func SerializeAndWriteRecursionWitness(cfg *config.Config, witnessName string, witness *recursion.Witness, isLPP bool) error {
+	reader := bytes.NewReader(nil)
+	filePath := cfg.PathforLimitlessProverAssets()
+	if isLPP {
+		filePath = path.Join(filePath, "lpp-witness")
+	} else {
+		filePath = path.Join(filePath, "gl-witness")
+	}
+	return serializeAndWrite(filePath, witnessName, witness, reader)
 }
 
 // Helper function to read and deserialize an object from a file
