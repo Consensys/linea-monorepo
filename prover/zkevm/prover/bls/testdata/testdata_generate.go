@@ -9,39 +9,8 @@ import (
 	fr_bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 )
 
-const (
-	dirAddG1 = "add_g1"
-	dirAddG2 = "add_g2"
-	dirMsmG1 = "msm_g1"
-	dirMsmG2 = "msm_g2"
-	dirMapG1 = "map_g1"
-	dirMapG2 = "map_g2"
-	dirPair  = "pairing"
-)
-
-type addInputType int
-type msmInputType int
 type mapInputType int
 type pairInputType int
-
-// for addition tests, we combine all possible cases from below
-const (
-	addTrivial    addInputType = iota // 0
-	addOnCurve                        // P on curve not in subgroup
-	addInSubgroup                     // P in subgroup
-	addInvalid                        // P not on curve
-)
-
-const (
-	msmScalarTrivial msmInputType = iota // 0
-	msmScalarValid
-	msmScalarInvalid
-
-	msmPointTrivial    // point is 0
-	msmPointOnCurve    // point is on curve but not in subgroup
-	msmPointInSubgroup // point is in subgroup
-	msmPointInvalid    // point is not on curve
-)
 
 const (
 	mapTrivial    mapInputType = iota // 0

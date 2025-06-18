@@ -24,3 +24,23 @@ func NewG2AddZkEvm(comp *wizard.CompiledIOP, limits *Limits) *BlsAdd {
 		[]query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)},
 	)
 }
+
+func NewG1MsmZkEvm(comp *wizard.CompiledIOP, limits *Limits) *BlsMsm {
+	return newMsm(
+		comp,
+		G1,
+		limits,
+		newMsmDataSource(comp, G1),
+		[]query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)},
+	)
+}
+
+func NewG2MsmZkEvm(comp *wizard.CompiledIOP, limits *Limits) *BlsMsm {
+	return newMsm(
+		comp,
+		G2,
+		limits,
+		newMsmDataSource(comp, G2),
+		[]query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)},
+	)
+}

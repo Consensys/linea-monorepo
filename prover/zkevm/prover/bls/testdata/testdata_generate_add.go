@@ -9,6 +9,16 @@ import (
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 )
 
+type addInputType int
+
+// for addition tests, we combine all possible cases from below
+const (
+	addTrivial    addInputType = iota // 0
+	addOnCurve                        // P on curve not in subgroup
+	addInSubgroup                     // P in subgroup
+	addInvalid                        // P not on curve
+)
+
 type addInputCase[T affine] struct {
 	left  addInputType
 	right addInputType
