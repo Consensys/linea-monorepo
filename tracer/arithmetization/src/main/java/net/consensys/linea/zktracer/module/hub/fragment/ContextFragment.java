@@ -85,6 +85,11 @@ public class ContextFragment implements TraceFragment {
         hub, Either.right(hub.newChildContextNumber()), MemoryRange.EMPTY, false);
   }
 
+  /** returns the account address, (stored in pContextAccountAddress) = aADDR in spec */
+  public Address getAccountAddress() {
+    return getCallFrame().accountAddress();
+  }
+
   @Override
   public Trace.Hub trace(Trace.Hub trace) {
     final CallFrame callFrame = getCallFrame();

@@ -386,7 +386,7 @@ public abstract class Hub implements Module {
     mmu = new Mmu(euc, wcp);
     mmio = new Mmio(mmu);
 
-    refTableModules = List.of(new BinRt(), new InstructionDecoder(), new ShfRt());
+    refTableModules = List.of(new BinRt(), setInstructionDecoder(), new ShfRt());
 
     modules =
         Stream.concat(
@@ -915,7 +915,6 @@ public abstract class Hub implements Module {
   }
 
   void traceOpcode(MessageFrame frame) {
-
     switch (this.opCodeData().instructionFamily()) {
       case ADD, MOD, SHF, BIN, WCP, EXT, BATCH, PUSH_POP, DUP, SWAP -> new StackOnlySection(this);
       case MACHINE_STATE -> {
@@ -939,7 +938,6 @@ public abstract class Hub implements Module {
           case STOP -> new StopSection(this);
           case SELFDESTRUCT -> new SelfdestructSection(this, frame);
         }
-
         final boolean returnFromDeployment =
             (this.opCode() == RETURN && this.currentFrame().isDeployment());
 
@@ -950,7 +948,6 @@ public abstract class Hub implements Module {
                     ? new MemoryRange(currentFrame().contextNumber())
                     : currentFrame().outputDataRange());
       }
-
       case KEC -> new KeccakSection(this);
       case CONTEXT -> new ContextSection(this);
       case LOG -> new LogSection(this);
@@ -965,9 +962,7 @@ public abstract class Hub implements Module {
               "Invalid instruction: " + this.opCode().toString() + " not in the COPY family");
         }
       }
-
       case TRANSACTION -> new TransactionSection(this);
-
       case STACK_RAM -> {
         switch (this.currentFrame().opCode()) {
           case CALLDATALOAD -> new CallDataLoadSection(this);
@@ -975,7 +970,6 @@ public abstract class Hub implements Module {
           default -> throw new IllegalStateException("unexpected STACK_RAM opcode");
         }
       }
-
       case STORAGE -> {
         switch (this.currentFrame().opCode()) {
           case SSTORE -> new SstoreSection(this, frame.getWorldUpdater());
@@ -983,13 +977,10 @@ public abstract class Hub implements Module {
           default -> throw new IllegalStateException("invalid operation in family STORAGE");
         }
       }
-
+      case TRANSIENT -> setTransientSection(this);
       case JUMP -> new JumpSection(this);
-
       case CREATE -> setCreateSection(this, frame);
-
       case CALL -> new CallSection(this, frame);
-
       case INVALID -> new EarlyExceptionSection(this);
     }
   }
@@ -1040,18 +1031,6 @@ public abstract class Hub implements Module {
     return deploymentNumberOf(this.accountAddress());
   }
 
-  public final boolean deploymentStatusOfAccountAddress() {
-    return deploymentStatusOf(this.accountAddress());
-  }
-
-  public final boolean returnFromMessageCall(MessageFrame frame) {
-    return opCode() == RETURN && frame.getType() == MESSAGE_CALL;
-  }
-
-  public final boolean returnFromDeployment(MessageFrame frame) {
-    return opCode() == RETURN && frame.getType() == CONTRACT_CREATION;
-  }
-
   public Address coinbaseAddress() {
     return blockStack.currentBlock().coinbaseAddress();
   }
@@ -1068,9 +1047,13 @@ public abstract class Hub implements Module {
 
   protected abstract Blockdata setBlockData(Hub hub, Wcp wcp, Euc euc, ChainConfig chain);
 
+  protected abstract InstructionDecoder setInstructionDecoder();
+
   protected abstract void setInitializationSection(WorldView world);
 
   protected abstract boolean coinbaseWarmthAtTxEnd();
 
   protected abstract void setCreateSection(final Hub hub, final MessageFrame frame);
+
+  protected abstract void setTransientSection(Hub hub);
 }

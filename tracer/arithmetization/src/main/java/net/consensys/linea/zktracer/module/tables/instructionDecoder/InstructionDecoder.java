@@ -26,8 +26,8 @@ import net.consensys.linea.zktracer.opcode.gas.BillingRate;
 import net.consensys.linea.zktracer.opcode.gas.MxpType;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 
-public final class InstructionDecoder implements Module {
-  private static void traceFamily(OpCodeData op, Trace.Instdecoder trace) {
+public abstract class InstructionDecoder implements Module {
+  private void traceFamily(OpCodeData op, Trace.Instdecoder trace) {
     trace
         .familyAdd(op.instructionFamily() == InstructionFamily.ADD)
         .familyMod(op.instructionFamily() == InstructionFamily.MOD)
@@ -54,7 +54,10 @@ public final class InstructionDecoder implements Module {
         .familyCall(op.instructionFamily() == InstructionFamily.CALL)
         .familyHalt(op.instructionFamily() == InstructionFamily.HALT)
         .familyInvalid(op.instructionFamily() == InstructionFamily.INVALID);
+    traceTransientFamily(op, trace);
   }
+
+  protected abstract void traceTransientFamily(OpCodeData op, Trace.Instdecoder trace);
 
   private static void traceStackSettings(OpCodeData op, Trace.Instdecoder trace) {
     trace
@@ -122,7 +125,7 @@ public final class InstructionDecoder implements Module {
     }
   }
 
-  protected void traceOpcode(final int i, final Trace trace) {
+  private void traceOpcode(final int i, final Trace trace) {
     final OpCodeData op = OpCode.of(i).getData();
     traceFamily(op, trace.instdecoder());
     traceStackSettings(op, trace.instdecoder());

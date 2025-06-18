@@ -101,6 +101,6 @@ public class DomSubStampsSubFragment implements TraceSubFragment {
 
   @Override
   public Trace.Hub trace(Trace.Hub trace) {
-    return trace.domStamp(this.domStamp()).subStamp(this.subStamp());
+    return trace.domStamp(domStamp()).subStamp(subStamp());
   }
 }
