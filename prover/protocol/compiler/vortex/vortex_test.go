@@ -1,5 +1,3 @@
-//go:build !fuzzlight
-
 package vortex_test
 
 import (
