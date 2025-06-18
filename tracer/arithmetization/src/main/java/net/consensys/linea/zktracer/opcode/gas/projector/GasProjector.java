@@ -150,6 +150,8 @@ public class GasProjector {
       case MSTORE8 -> new MStore8(gc, frame);
       case SLOAD -> new SLoad(gc, frame);
       case SSTORE -> new SStore(gc, frame);
+      case TLOAD -> new TLoad(gc);
+      case TSTORE -> new TStore(gc);
       case JUMPI -> new High(gc);
       case JUMPDEST -> new JumpDest(gc);
       case LOG0 -> new Log(gc, frame, 0);

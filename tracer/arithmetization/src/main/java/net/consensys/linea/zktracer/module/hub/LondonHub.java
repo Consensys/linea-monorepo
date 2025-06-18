@@ -27,6 +27,8 @@ import net.consensys.linea.zktracer.module.hub.section.create.LondonCreateSectio
 import net.consensys.linea.zktracer.module.hub.section.txInitializationSection.LondonInitializationSection;
 import net.consensys.linea.zktracer.module.hub.state.LondonTransactionStack;
 import net.consensys.linea.zktracer.module.hub.state.TransactionStack;
+import net.consensys.linea.zktracer.module.tables.instructionDecoder.InstructionDecoder;
+import net.consensys.linea.zktracer.module.tables.instructionDecoder.LondonInstructionDecoder;
 import net.consensys.linea.zktracer.module.txndata.module.LondonTxnData;
 import net.consensys.linea.zktracer.module.txndata.module.TxnData;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
@@ -62,6 +64,11 @@ public class LondonHub extends Hub {
   }
 
   @Override
+  protected InstructionDecoder setInstructionDecoder() {
+    return new LondonInstructionDecoder();
+  }
+
+  @Override
   protected void setInitializationSection(WorldView world) {
     new LondonInitializationSection(this, world);
   }
@@ -82,5 +89,10 @@ public class LondonHub extends Hub {
   @Override
   protected void setCreateSection(final Hub hub, final MessageFrame frame) {
     new LondonCreateSection(hub, frame);
+  }
+
+  @Override
+  protected void setTransientSection(final Hub hub) {
+    throw new IllegalStateException("Transient opcodes appear in Cancun");
   }
 }

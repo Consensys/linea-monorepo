@@ -1,5 +1,5 @@
 /*
- * Copyright Consensys Software Inc.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -13,34 +13,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.opcode;
+package net.consensys.linea.zktracer.module.tables.instructionDecoder;
 
-/** All the instruction families, as used by the hub. */
-public enum InstructionFamily {
-  ADD,
-  MOD,
-  MUL,
-  EXT,
-  WCP,
-  BIN,
-  SHF,
-  KEC,
-  CONTEXT,
-  ACCOUNT,
-  COPY,
-  TRANSACTION,
-  BATCH,
-  STACK_RAM,
-  STORAGE,
-  TRANSIENT,
-  JUMP,
-  MACHINE_STATE,
-  PUSH_POP,
-  DUP,
-  SWAP,
-  LOG,
-  CREATE,
-  CALL,
-  HALT,
-  INVALID
+import net.consensys.linea.zktracer.Trace;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
+
+public class LondonInstructionDecoder extends InstructionDecoder {
+  @Override
+  protected void traceTransientFamily(OpCodeData op, Trace.Instdecoder trace) {
+    // London does not have any transient family opcodes, they appear in Cancun
+  }
 }

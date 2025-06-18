@@ -1,5 +1,5 @@
 /*
- * Copyright Consensys Software Inc.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -13,34 +13,17 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.opcode;
+package net.consensys.linea.zktracer.opcode.gas.projector;
 
-/** All the instruction families, as used by the hub. */
-public enum InstructionFamily {
-  ADD,
-  MOD,
-  MUL,
-  EXT,
-  WCP,
-  BIN,
-  SHF,
-  KEC,
-  CONTEXT,
-  ACCOUNT,
-  COPY,
-  TRANSACTION,
-  BATCH,
-  STACK_RAM,
-  STORAGE,
-  TRANSIENT,
-  JUMP,
-  MACHINE_STATE,
-  PUSH_POP,
-  DUP,
-  SWAP,
-  LOG,
-  CREATE,
-  CALL,
-  HALT,
-  INVALID
+import lombok.RequiredArgsConstructor;
+import org.hyperledger.besu.evm.gascalculator.GasCalculator;
+
+@RequiredArgsConstructor
+public class TLoad extends GasProjection {
+  final GasCalculator gc;
+
+  @Override
+  public long staticGas() {
+    return gc.getTransientLoadOperationGasCost();
+  }
 }
