@@ -213,8 +213,6 @@ func (ctx *Ctx) RecoverSelectedColumns(run wizard.Runtime, entryList []int) [][]
 		numRowsPerSisRound = []int{}
 		// slice containing the number of rows per non SIS round
 		numRowsPerNonSisRound = []int{}
-		// numRowsPerRound = (numRowsPerNonSisRound, numRowsPerSisRound)
-		numRowsPerRound = []int{}
 		// the running offset of rows count
 		roundStartAt = 0
 	)
@@ -257,7 +255,8 @@ func (ctx *Ctx) RecoverSelectedColumns(run wizard.Runtime, entryList []int) [][]
 		}
 	}
 	// Append the no SIS and SIS rows counts
-	numRowsPerRound = append(numRowsPerNonSisRound, numRowsPerSisRound...)
+	// numRowsPerRound = (numRowsPerNonSisRound, numRowsPerSisRound)
+	numRowsPerRound := append(numRowsPerNonSisRound, numRowsPerSisRound...)
 
 	// Next compute the openedSubColumns
 	for _, numRows := range numRowsPerRound {
