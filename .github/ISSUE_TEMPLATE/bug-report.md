@@ -6,6 +6,8 @@ labels: Bug
 assignees: ''
 ---
 
+# CONSIDER IF THIS IS THIS THE APPROPRIATE AUDIENCE BEFORE ADDING THIS (delete this line)
+
 _Remenber not to put too much unhelpful information or too little important information, be specific._
 
 ## Impact
