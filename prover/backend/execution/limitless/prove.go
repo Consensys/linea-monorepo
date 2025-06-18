@@ -26,13 +26,13 @@ type Asset struct {
 }
 
 // Prove function for the Assest struct
-func (asset *Asset) Prove(cfg *config.Config, req *execution.Request) (*execution.Response, error) {
+func Prove(asset *Asset, cfg *config.Config, req *execution.Request) (*execution.Response, error) {
 	// Set MonitorParams before any proving happens
 	profiling.SetMonitorParams(cfg)
 
 	defer cleanWitnessDirectory(cfg)
 
-	// Setup execution circuit
+	// Setup execution-limitless circuit
 	setup, done, errSetup := loadCktSetupAsync(cfg)
 
 	// Setup execution witness and output response

@@ -135,7 +135,7 @@ func loadCktSetupAsync(cfg *config.Config) (*circuits.Setup, chan struct{}, erro
 		chSetupDone = make(chan struct{})
 	)
 	go func() {
-		setup, errSetup = circuits.LoadSetup(cfg, circuits.ExecutionCircuitID)
+		setup, errSetup = circuits.LoadSetup(cfg, circuits.ExecutionLimitlessCircuitID)
 		close(chSetupDone)
 	}()
 
@@ -143,7 +143,8 @@ func loadCktSetupAsync(cfg *config.Config) (*circuits.Setup, chan struct{}, erro
 }
 
 // Helper function to finalize setup and validate checksum
-func finalizeCktSetup(cfg *config.Config, chSetupDone <-chan struct{}, setup *circuits.Setup, errSetup error) error {
+func finalizeCktSetup(cfg *config.Config, chSetupDone <-chan struct{},
+	setup *circuits.Setup, errSetup error) error {
 	<-chSetupDone
 	if errSetup != nil {
 		utils.Panic("could not load setup: %v", errSetup)
