@@ -44,6 +44,7 @@ type SetupArgs struct {
 var AllCircuits = []circuits.CircuitID{
 	circuits.ExecutionCircuitID,
 	circuits.ExecutionLargeCircuitID,
+	circuits.ExecutionLimitlessCircuitID,
 	circuits.BlobDecompressionV0CircuitID,
 	circuits.BlobDecompressionV1CircuitID,
 	circuits.PublicInputInterconnectionCircuitID,
