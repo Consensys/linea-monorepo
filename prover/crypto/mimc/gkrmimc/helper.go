@@ -71,7 +71,7 @@ type Hasher struct {
 // and will provide the same results for the same usage.
 //
 // However, the hasher should not be used in deferred gnark circuit execution.
-func (f *HasherFactory) NewHasher() *Hasher {
+func (f *HasherFactory) NewHasher() hash.StateStorer {
 	return &Hasher{factory: f, state: frontend.Variable(0)}
 }
 
@@ -95,7 +95,7 @@ func (h *Hasher) Reset() {
 
 // Sum returns the hash of what was appended to the hasher so far. Calling it
 // multiple time without updating returns the same result. This function
-// implements [hash.FieldHasher] interfae
+// implements [hash.FieldHasher] interface.
 func (h *Hasher) Sum() frontend.Variable {
 	// 1 - Call the compression function in a loop
 	curr := h.state

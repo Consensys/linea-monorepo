@@ -92,6 +92,7 @@ func (t *Type) UnmarshalJSON(b []byte) error {
 /*
 Sample a random coin, according to its `spec`
 */
+//TODO@yao: checnk datatype
 func (info *Info) Sample(fs *fiatshamir.State, seed field.Element) interface{} {
 	switch info.Type {
 	case Field:
@@ -100,7 +101,10 @@ func (info *Info) Sample(fs *fiatshamir.State, seed field.Element) interface{} {
 		return fs.RandomManyIntegers(info.Size, info.UpperBound)
 	case FieldFromSeed:
 		return fs.RandomFieldFromSeed(seed, string(info.Name))
+	case FieldExt:
+		return fs.RandomFext()
 	}
+
 	panic("Unreachable")
 }
 

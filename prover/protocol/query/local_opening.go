@@ -5,7 +5,6 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
@@ -94,8 +93,7 @@ func (r LocalOpening) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 		actualY := r.Pol.GetColAssignmentGnarkAt(run, 0)
 		api.AssertIsEqual(params.BaseY, actualY)
 	} else {
-		apiExt := gnarkfext.API{api}
 		actualY := r.Pol.GetColAssignmentGnarkAtExt(run, 0)
-		apiExt.AssertIsEqual(params.ExtY, actualY)
+		params.ExtY.AssertIsEqual(api, actualY)
 	}
 }

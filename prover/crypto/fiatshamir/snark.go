@@ -6,7 +6,8 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/hash/mimc"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
+	locmimc "github.com/consensys/linea-monorepo/prover/crypto/mimc"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -30,7 +31,7 @@ type GnarkFiatShamir struct {
 // NewGnarkFiatShamir creates a [GnarkFiatShamir] object. The function accepts
 // an optional [gkrmimc.HasherFactory] object as input. This is expected to be
 // used in the scope of a [frontend.Define] function.
-func NewGnarkFiatShamir(api frontend.API, factory *gkrmimc.HasherFactory) *GnarkFiatShamir {
+func NewGnarkFiatShamir(api frontend.API, factory locmimc.HasherFactory) *GnarkFiatShamir {
 
 	var hasher hash.StateStorer
 	if factory != nil {

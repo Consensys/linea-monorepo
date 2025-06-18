@@ -29,8 +29,8 @@ func TestWithProfile(t *testing.T) {
 				Polys: []smartvectors.SmartVector{
 					smartvectors.ForTest(1, 2, 3, 4),
 				},
-				QueryXs: []field.Element{
-					field.NewElement(3),
+				QueryXs: []fext.Element{
+					fext.NewFromBase(field.NewElement(3)),
 				},
 				QueryPols: [][]int{
 					{0},

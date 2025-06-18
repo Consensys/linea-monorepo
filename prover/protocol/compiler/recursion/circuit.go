@@ -76,7 +76,8 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	w := r.WizardVerifier
 
 	if !r.withoutGkr {
-		w.HasherFactory = gkrmimc.NewHasherFactory(api)
+		temp := gkrmimc.NewHasherFactory(api)
+		w.HasherFactory = temp
 		w.FS = fiatshamir.NewGnarkFiatShamir(api, w.HasherFactory)
 	}
 

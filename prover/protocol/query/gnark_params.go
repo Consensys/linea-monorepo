@@ -82,7 +82,7 @@ func (p UnivariateEval) GnarkAllocate() GnarkUnivariateEvalParams {
 
 // Returns a gnark assignment for the present parameters
 func (p UnivariateEvalParams) GnarkAssign() GnarkUnivariateEvalParams {
-	return GnarkUnivariateEvalParams{Ys: vectorext.IntoGnarkAssignment.IntoGnarkAssignment(p.Ys), X: p.X}
+	return GnarkUnivariateEvalParams{Ys: vectorext.IntoGnarkAssignment(p.Ys), X: gnarkfext.FromValue(p.X)}
 }
 
 // GnarkAllocate allocates a [GnarkHornerParams] with the right dimensions
@@ -131,7 +131,7 @@ func (p GnarkGrandProductParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkUnivariateEvalParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
-	fs.Update(p.Ys...)
+	fs.UpdateExt(p.Ys...)
 }
 
 // Update the fiat-shamir state with the the present parameters
