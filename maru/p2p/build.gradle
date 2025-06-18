@@ -32,6 +32,7 @@ dependencies {
   implementation("org.hyperledger.besu:plugin-api")
   implementation("org.hyperledger.besu.internal:core")
   implementation("org.hyperledger.besu.internal:metrics-core")
+  implementation "build.linea.internal:metrics"
 
   implementation "io.libp2p:jvm-libp2p"
 
