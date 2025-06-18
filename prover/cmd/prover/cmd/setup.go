@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 
 	blob_v0 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
 	blob_v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
@@ -97,7 +98,7 @@ func Setup(ctx context.Context, args SetupArgs) error {
 		}
 		logrus.Infof("setting up %s", c)
 
-		// let's compile the circuit.
+		// Build the circuit
 		builder, extraFlags, err := createCircuitBuilder(c, cfg, args)
 		if c == circuits.BlobDecompressionV0CircuitID {
 			foundDecompressionV0 = true
@@ -150,6 +151,55 @@ func Setup(ctx context.Context, args SetupArgs) error {
 	return nil
 }
 
+// updateSetup runs the setup for the given circuit if needed.
+// it first compiles the circuit, then checks if the files already exist,
+// and if so, if the checksums match.
+// if the files already exist and the checksums match, it skips the setup.
+// else it does the setup and writes the assets to disk.
+func updateSetup(ctx context.Context, cfg *config.Config, force bool, srsProvider circuits.SRSProvider, circuit circuits.CircuitID, builder circuits.Builder, extraFlags map[string]any) error {
+	if extraFlags == nil {
+		extraFlags = make(map[string]any)
+	}
+
+	// compile the circuit
+	logrus.Infof("compiling %s", circuit)
+	ccs, err := builder.Compile()
+	if err != nil {
+		return fmt.Errorf("failed to compile circuit %s: %w", circuit, err)
+	}
+
+	// derive the asset paths
+	setupPath := cfg.PathForSetup(string(circuit))
+	manifestPath := filepath.Join(setupPath, config.ManifestFileName)
+
+	if !force {
+		// we may want to skip setup if the files already exist
+		// and the checksums match
+		// read manifest if already exists
+		if manifest, err := circuits.ReadSetupManifest(manifestPath); err == nil {
+			circuitDigest, err := circuits.CircuitDigest(ccs)
+			if err != nil {
+				return fmt.Errorf("failed to compute circuit digest for circuit %s: %w", circuit, err)
+			}
+
+			if manifest.Checksums.Circuit == circuitDigest {
+				logrus.Infof("skipping %s (already setup)", circuit)
+				return nil
+			}
+		}
+	}
+
+	// run the actual setup
+	logrus.Infof("plonk setup for %s", circuit)
+	setup, err := circuits.MakeSetup(ctx, circuit, ccs, srsProvider, extraFlags)
+	if err != nil {
+		return fmt.Errorf("failed to setup circuit %s: %w", circuit, err)
+	}
+
+	logrus.Infof("writing assets for %s", circuit)
+	return setup.WriteTo(setupPath)
+}
+
 // parseCircuitInputs: Converts the comma-separated circuit string into a map of enabled circuits.
 func parseCircuitInputs(circuitsStr string) (map[circuits.CircuitID]bool, error) {
 	inCircuits := make(map[circuits.CircuitID]bool)
@@ -167,7 +217,8 @@ func parseCircuitInputs(circuitsStr string) (map[circuits.CircuitID]bool, error)
 }
 
 // createCircuitBuilder: Constructs the appropriate circuit builder and extra flags based on the circuit ID.
-func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupArgs) (circuits.Builder, map[string]any, error) {
+func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupArgs,
+) (circuits.Builder, map[string]any, error) {
 	extraFlags := make(map[string]any)
 	switch c {
 	case circuits.ExecutionCircuitID, circuits.ExecutionLargeCircuitID:
@@ -177,6 +228,18 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 		}
 		extraFlags["cfg_checksum"] = limits.Checksum()
 		zkEvm := zkevm.FullZkEvm(&limits, cfg)
+		return execution.NewBuilder(zkEvm), extraFlags, nil
+
+	case circuits.ExecutionLimitlessCircuitID:
+		limits := cfg.TracesLimits
+		extraFlags["cfg_checksum"] = limits.Checksum()
+
+		// Read the zkevm.bin file from the assets directory and deserialize it
+		var zkEvm *zkevm.ZkEvm
+		err := serialization.ReadAndDeserialize(cfg.PathforLimitlessProverAssets(), "zkevm.bin", &zkEvm, nil)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to read zkevm.bin file while building limitless execution circuit: %w", err)
+		}
 		return execution.NewBuilder(zkEvm), extraFlags, nil
 
 	case circuits.BlobDecompressionV0CircuitID:
@@ -307,55 +370,6 @@ func getDummyCircuitVK(ctx context.Context, srsProvider circuits.SRSProvider, ci
 	}
 
 	return setup.VerifyingKey, nil
-}
-
-// updateSetup runs the setup for the given circuit if needed.
-// it first compiles the circuit, then checks if the files already exist,
-// and if so, if the checksums match.
-// if the files already exist and the checksums match, it skips the setup.
-// else it does the setup and writes the assets to disk.
-func updateSetup(ctx context.Context, cfg *config.Config, force bool, srsProvider circuits.SRSProvider, circuit circuits.CircuitID, builder circuits.Builder, extraFlags map[string]any) error {
-	if extraFlags == nil {
-		extraFlags = make(map[string]any)
-	}
-
-	// compile the circuit
-	logrus.Infof("compiling %s", circuit)
-	ccs, err := builder.Compile()
-	if err != nil {
-		return fmt.Errorf("failed to compile circuit %s: %w", circuit, err)
-	}
-
-	// derive the asset paths
-	setupPath := cfg.PathForSetup(string(circuit))
-	manifestPath := filepath.Join(setupPath, config.ManifestFileName)
-
-	if !force {
-		// we may want to skip setup if the files already exist
-		// and the checksums match
-		// read manifest if already exists
-		if manifest, err := circuits.ReadSetupManifest(manifestPath); err == nil {
-			circuitDigest, err := circuits.CircuitDigest(ccs)
-			if err != nil {
-				return fmt.Errorf("failed to compute circuit digest for circuit %s: %w", circuit, err)
-			}
-
-			if manifest.Checksums.Circuit == circuitDigest {
-				logrus.Infof("skipping %s (already setup)", circuit)
-				return nil
-			}
-		}
-	}
-
-	// run the actual setup
-	logrus.Infof("plonk setup for %s", circuit)
-	setup, err := circuits.MakeSetup(ctx, circuit, ccs, srsProvider, extraFlags)
-	if err != nil {
-		return fmt.Errorf("failed to setup circuit %s: %w", circuit, err)
-	}
-
-	logrus.Infof("writing assets for %s", circuit)
-	return setup.WriteTo(setupPath)
 }
 
 // listOfChecksums Computes a list of SHA256 checksums for a list of assets, the result is given
