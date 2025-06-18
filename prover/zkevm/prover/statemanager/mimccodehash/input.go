@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 // The first four elements are to be populated from the ROM module,
@@ -20,9 +21,8 @@ type RomInput struct {
 }
 
 type RomLexInput struct {
-	CFIRomLex  ifaces.Column
-	CodeHashHi ifaces.Column
-	CodeHashLo ifaces.Column
+	CFIRomLex ifaces.Column
+	CodeHash  [common.NbLimbU256]ifaces.Column
 }
 
 // complete constructs the IsZero columns "CounterIsEqualToNBytesMinusOne" and

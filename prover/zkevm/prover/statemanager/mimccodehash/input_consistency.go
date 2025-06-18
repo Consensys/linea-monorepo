@@ -35,17 +35,17 @@ func (mch *Module) ConnectToRom(comp *wizard.CompiledIOP,
 			FilterB: mch.IsActive})
 
 	// Lookup between romLexInput and mch for
-	// {CFI, codeHashHi, codeHashLo}
+	// {CFI, codeHash}
 	comp.InsertInclusion(0,
 		ifaces.QueryIDf("LOOKUP_MIMC_CODE_HASH_ROMLEX_%v", mch.Inputs.Name),
-		[]ifaces.Column{mch.CFI, mch.CodeHashHi, mch.CodeHashLo},
-		[]ifaces.Column{romLexInput.CFIRomLex, romLexInput.CodeHashHi, romLexInput.CodeHashLo})
+		append([]ifaces.Column{mch.CFI}, mch.CodeHash[:]...),
+		append([]ifaces.Column{romLexInput.CFIRomLex}, romLexInput.CodeHash[:]...))
 
 	// And the reverse lookup
 	comp.InsertInclusion(0,
 		ifaces.QueryIDf("LOOKUP_ROMLEX_MIMC_CODE_HASH_%v", mch.Inputs.Name),
-		[]ifaces.Column{romLexInput.CFIRomLex, romLexInput.CodeHashHi, romLexInput.CodeHashLo},
-		[]ifaces.Column{mch.CFI, mch.CodeHashHi, mch.CodeHashLo})
+		append([]ifaces.Column{romLexInput.CFIRomLex}, romLexInput.CodeHash[:]...),
+		append([]ifaces.Column{mch.CFI}, mch.CodeHash[:]...))
 
 	mch.InputModules = &inputModules{
 		RomInput:    romInput,

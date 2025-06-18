@@ -1,6 +1,8 @@
 package mimccodehash
 
 import (
+	"fmt"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"os"
 	"testing"
 
@@ -49,9 +51,11 @@ func TestMiMCCodeHash(t *testing.T) {
 
 		// Define romLexInput
 		romLexInput = &RomLexInput{
-			CFIRomLex:  ctRomLex.GetCommit(build, "CFI_ROMLEX"),
-			CodeHashHi: ctRomLex.GetCommit(build, "CODEHASH_HI"),
-			CodeHashLo: ctRomLex.GetCommit(build, "CODEHASH_LO"),
+			CFIRomLex: ctRomLex.GetCommit(build, "CFI_ROMLEX"),
+		}
+
+		for i := range common.NbLimbU256 {
+			romLexInput.CodeHash[i] = ctRomLex.GetCommit(build, fmt.Sprintf("CODEHASH_%d", i))
 		}
 
 		mod = NewModule(
@@ -67,6 +71,11 @@ func TestMiMCCodeHash(t *testing.T) {
 	}, dummy.Compile)
 
 	proof := wizard.Prove(cmp, func(run *wizard.ProverRuntime) {
+		codeHashNames := make([]string, len(romLexInput.CodeHash))
+		for i := range romLexInput.CodeHash {
+			codeHashNames[i] = string(romLexInput.CodeHash[i].GetColID())
+		}
+
 		ctRom.Assign(run,
 			"CFI",
 			"ACC",
@@ -75,9 +84,8 @@ func TestMiMCCodeHash(t *testing.T) {
 			"CODESIZE")
 		romInput.completeAssign(run)
 		ctRomLex.Assign(run,
-			"CFI_ROMLEX",
-			"CODEHASH_HI",
-			"CODEHASH_LO")
+			append([]string{"CFI_ROMLEX"},
+				codeHashNames...)...)
 		mod.Assign(run)
 		ctRom.CheckAssignment(run,
 			// TODO: add also auxiliary columns
@@ -87,10 +95,12 @@ func TestMiMCCodeHash(t *testing.T) {
 			string(romInput.Counter.GetColID()),
 			string(romInput.CodeSize.GetColID()),
 		)
+
 		ctRomLex.CheckAssignment(run,
-			string(romLexInput.CFIRomLex.GetColID()),
-			string(romLexInput.CodeHashHi.GetColID()),
-			string(romLexInput.CodeHashLo.GetColID()),
+			append(
+				[]string{string(romLexInput.CFIRomLex.GetColID())},
+				codeHashNames[:]...,
+			)...,
 		)
 	})
 	if err := wizard.Verify(cmp, proof); err != nil {
