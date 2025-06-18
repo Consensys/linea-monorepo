@@ -6,7 +6,7 @@ labels: Bug
 assignees: ''
 ---
 
-# CONSIDER IF THIS IS THIS THE APPROPRIATE AUDIENCE BEFORE ADDING THIS (delete this line)
+🔐 🔐 `Should this be a security advisory instead?` 🔐 🔐
 
 _Remenber not to put too much unhelpful information or too little important information, be specific._
 

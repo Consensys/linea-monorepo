@@ -7,7 +7,7 @@ assignees: ''
 
 ---
 
-# CONSIDER IF THIS IS THIS THE APPROPRIATE AUDIENCE BEFORE ADDING THIS (delete this line)
+🔐 🔐 `Should this be a security advisory instead?` 🔐 🔐
 
 ## Problem Statement
 - Contains some manner of action item. 

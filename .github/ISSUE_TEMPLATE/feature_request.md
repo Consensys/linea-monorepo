@@ -6,7 +6,7 @@ assignees: ''
 
 ---
 
-# CONSIDER IF THIS IS THIS THE APPROPRIATE AUDIENCE BEFORE ADDING THIS (delete this line)
+🔐 🔐 `Should this be a security advisory instead?` 🔐 🔐
 
 ## Description
 Write a clear and concise description of what you want to happen. Add any considered drawbacks.
