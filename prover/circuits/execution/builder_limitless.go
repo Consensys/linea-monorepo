@@ -9,15 +9,15 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
-type builder_limitless struct {
+type limitlessBuilder struct {
 	congWIOP *wizard.CompiledIOP
 }
 
-func NewLimitlessBuilder(congWIOP *wizard.CompiledIOP) *builder_limitless {
-	return &builder_limitless{congWIOP: congWIOP}
+func NewLimitlessBuilder(congWIOP *wizard.CompiledIOP) *limitlessBuilder {
+	return &limitlessBuilder{congWIOP: congWIOP}
 }
 
-func (b *builder_limitless) Compile() (constraint.ConstraintSystem, error) {
+func (b *limitlessBuilder) Compile() (constraint.ConstraintSystem, error) {
 	return makeLimitlessCS(b.congWIOP), nil
 }
 
