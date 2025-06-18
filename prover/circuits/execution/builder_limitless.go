@@ -10,20 +10,21 @@ import (
 )
 
 type limitlessBuilder struct {
-	congWIOP *wizard.CompiledIOP
+	congWIOP    *wizard.CompiledIOP
+	traceLimits *config.TracesLimits
 }
 
-func NewLimitlessBuilder(congWIOP *wizard.CompiledIOP) *limitlessBuilder {
-	return &limitlessBuilder{congWIOP: congWIOP}
+func NewLimitlessBuilder(congWIOP *wizard.CompiledIOP, traceLimits *config.TracesLimits) *limitlessBuilder {
+	return &limitlessBuilder{congWIOP: congWIOP, traceLimits: traceLimits}
 }
 
 func (b *limitlessBuilder) Compile() (constraint.ConstraintSystem, error) {
-	return makeLimitlessCS(b.congWIOP), nil
+	return makeLimitlessCS(b), nil
 }
 
 // Makes the constraint system for the execution-limitless circuit
-func makeLimitlessCS(congWIOP *wizard.CompiledIOP) constraint.ConstraintSystem {
-	circuit := AllocateLimitless(congWIOP, &config.TracesLimits{})
+func makeLimitlessCS(b *limitlessBuilder) constraint.ConstraintSystem {
+	circuit := AllocateLimitless(b.congWIOP, b.traceLimits)
 	scs, err := frontend.Compile(fr.Modulus(), scs.NewBuilder, &circuit, frontend.WithCapacity(1<<24))
 	if err != nil {
 		panic(err)

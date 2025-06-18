@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"errors"
@@ -98,7 +99,7 @@ func Setup(ctx context.Context, args SetupArgs) error {
 			// we skip aggregation/emulation circuits in this first loop since the setup is more complex
 			continue
 		}
-		logrus.Infof("setting up %s", c)
+		logrus.Infof("Setting up circuit %s", c)
 
 		// Build the circuit
 		builder, extraFlags, err := createCircuitBuilder(c, cfg, args)
@@ -166,7 +167,7 @@ func updateSetup(ctx context.Context, cfg *config.Config, force bool,
 	}
 
 	// compile the circuit
-	logrus.Infof("compiling %s", circuit)
+	logrus.Infof("Compiling circuit %s", circuit)
 	ccs, err := builder.Compile()
 	if err != nil {
 		return fmt.Errorf("failed to compile circuit %s: %w", circuit, err)
@@ -240,8 +241,9 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 
 		// Read the dw-compiled-conglomeration.bin file from the assets directory and deserialize it
 		var compCong *distributed.ConglomeratorCompilation
+		var readBuf bytes.Buffer
 		err := serialization.ReadAndDeserialize(cfg.PathforLimitlessProverAssets(),
-			"dw-compiled-conglomeration.bin", &compCong, nil)
+			"dw-compiled-conglomeration.bin", &compCong, &readBuf)
 		if err != nil {
 			return nil, nil, fmt.Errorf(
 				"failed to read dw-compiled-conglomeration.bin file "+
@@ -250,7 +252,10 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 			)
 		}
 
-		return execution.NewLimitlessBuilder(compCong.Wiop), extraFlags, nil
+		if compCong == nil {
+			return nil, nil, fmt.Errorf("dw-compiled-conglomeration.bin file is empty while building limitless execution circuit")
+		}
+		return execution.NewLimitlessBuilder(compCong.Wiop, &limits), extraFlags, nil
 
 	case circuits.BlobDecompressionV0CircuitID:
 		dict, err := os.ReadFile(args.DictPath)

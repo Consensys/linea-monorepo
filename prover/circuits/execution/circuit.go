@@ -55,6 +55,8 @@ func Allocate(zkevm *zkevm.ZkEvm) CircuitExecution {
 // The proof generation can be done using the [MakeProof] function as we would
 // do for the non-limitless execution proof.
 func AllocateLimitless(congWiop *wizard.CompiledIOP, limits *config.TracesLimits) CircuitExecution {
+	logrus.Infof("Allocating the outer circuit with params: no_of_cong_wiop_rounds=%d "+
+		"limits_block_l2l1_logs=%d", congWiop.NumRounds(), limits.BlockL2L1Logs)
 	wverifier := wizard.AllocateWizardCircuit(congWiop, congWiop.NumRounds())
 	return CircuitExecution{
 		WizardVerifier: *wverifier,
