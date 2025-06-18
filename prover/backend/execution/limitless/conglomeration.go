@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
+	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
@@ -28,7 +29,7 @@ func RunConglomerationProver(cfg *config.Config, cong *distributed.Conglomerator
 		var recurWitLPP *recursion.Witness
 		filePath = path.Join(filePath, "lpp")
 		fileName := fmt.Sprintf("%v-%v-%v", i, witnessLPP.ModuleName, witnessLPP.ModuleIndex)
-		err := readAndDeserialize(filePath, fileName, &recurWitLPP, readBuf)
+		err := serialization.ReadAndDeserialize(filePath, fileName, &recurWitLPP, readBuf)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read and deserialize LPP-recursion witness: %w", err)
 		}
@@ -39,7 +40,7 @@ func RunConglomerationProver(cfg *config.Config, cong *distributed.Conglomerator
 		var recurWitGL *recursion.Witness
 		filePath = path.Join(filePath, "gl")
 		fileName := fmt.Sprintf("%v-%v-%v", i, witnessGL.ModuleName, witnessGL.ModuleIndex)
-		err := readAndDeserialize(filePath, fileName, &recurWitGL, readBuf)
+		err := serialization.ReadAndDeserialize(filePath, fileName, &recurWitGL, readBuf)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read and deserialize GL-recursion witness: %w", err)
 		}

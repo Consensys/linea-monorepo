@@ -121,25 +121,10 @@ func SerializeAndWriteAssets(config *config.Config) error {
 func serializeAssets(filePath string, assets []SerAsset) error {
 	reader := bytes.NewReader(nil)
 	for _, asset := range assets {
-		if err := serializeAndWrite(filePath, asset.Name, asset.Object, reader); err != nil {
+		if err := serialization.SerializeAndWrite(filePath, asset.Name, asset.Object, reader); err != nil {
 			return err
 		}
 	}
-	return nil
-}
-
-// Helper function to serialize and write an object to a file
-func serializeAndWrite(filePath string, fileName string, object any, reader *bytes.Reader) error {
-	data, err := serialization.Serialize(object)
-	if err != nil {
-		return fmt.Errorf("failed to serialize %s: %w", fileName, err)
-	}
-	reader.Reset(data)
-	fullPath := path.Join(filePath, fileName)
-	if err := utils.WriteToFile(fullPath, reader); err != nil {
-		return fmt.Errorf("failed to write %s: %w", fullPath, err)
-	}
-	logrus.Infof("Written %s to %s", fileName, fullPath)
 	return nil
 }
 

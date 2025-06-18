@@ -13,7 +13,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
@@ -140,7 +139,7 @@ func ReadAndDeserAssets(config *config.Config) (*Asset, error) {
 
 	// Read and deserialize each file
 	for _, file := range files {
-		if err := readAndDeserialize(filePath, file.name, file.target, &readBuf); err != nil {
+		if err := serialization.ReadAndDeserialize(filePath, file.name, file.target, &readBuf); err != nil {
 			return nil, err
 		}
 	}
@@ -149,7 +148,7 @@ func ReadAndDeserAssets(config *config.Config) (*Asset, error) {
 	for i := 0; i < len(assets.DistWizard.GLs); i++ {
 		var compiledGL *distributed.RecursedSegmentCompilation
 		fileName := fmt.Sprintf("dw-compiled-gl-%d.bin", i)
-		if err := readAndDeserialize(filePath, fileName, &compiledGL, &readBuf); err != nil {
+		if err := serialization.ReadAndDeserialize(filePath, fileName, &compiledGL, &readBuf); err != nil {
 			return nil, err
 		}
 		assets.DistWizard.CompiledGLs = append(assets.DistWizard.CompiledGLs, compiledGL)
@@ -159,14 +158,14 @@ func ReadAndDeserAssets(config *config.Config) (*Asset, error) {
 	for i := 0; i < len(assets.DistWizard.LPPs); i++ {
 		var compiledLPP *distributed.RecursedSegmentCompilation
 		fileName := fmt.Sprintf("dw-compiled-lpp-%d.bin", i)
-		if err := readAndDeserialize(filePath, fileName, &compiledLPP, &readBuf); err != nil {
+		if err := serialization.ReadAndDeserialize(filePath, fileName, &compiledLPP, &readBuf); err != nil {
 			return nil, err
 		}
 		assets.DistWizard.CompiledLPPs = append(assets.DistWizard.CompiledLPPs, compiledLPP)
 	}
 
 	// Read and deserialize conglomeration compilation
-	if err := readAndDeserialize(filePath, "dw-compiled-conglomeration.bin", &assets.DistWizard.CompiledConglomeration, &readBuf); err != nil {
+	if err := serialization.ReadAndDeserialize(filePath, "dw-compiled-conglomeration.bin", &assets.DistWizard.CompiledConglomeration, &readBuf); err != nil {
 		return nil, err
 	}
 
@@ -182,19 +181,5 @@ func serializeAndWriteRecursionWitness(cfg *config.Config, witnessName string, w
 	} else {
 		filePath = path.Join(filePath, "gl")
 	}
-	return serializeAndWrite(filePath, witnessName, witness, reader)
-}
-
-// Helper function to read and deserialize an object from a file
-func readAndDeserialize(filePath string, fileName string, target any, readBuf *bytes.Buffer) error {
-	readBuf.Reset()
-	fullPath := path.Join(filePath, fileName)
-	if err := utils.ReadFromFile(fullPath, readBuf); err != nil {
-		return fmt.Errorf("failed to read %s: %w", fullPath, err)
-	}
-	if err := serialization.Deserialize(readBuf.Bytes(), target); err != nil {
-		return fmt.Errorf("failed to deserialize %s: %w", fileName, err)
-	}
-	logrus.Infof("Read and deserialized %s from %s", fileName, fullPath)
-	return nil
+	return serialization.SerializeAndWrite(filePath, witnessName, witness, reader)
 }
