@@ -1,4 +1,4 @@
-package ecdsa
+package common
 
 // LimbBytes is the size of one limb in bytes
 const LimbBytes = 2

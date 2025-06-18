@@ -93,8 +93,8 @@ func AssignEcRecTxnData(
 			isEcRecRes[i*nbRowsPerEcRec+offSetEcRec] = field.One()
 			isEcRecRes[i*nbRowsPerEcRec+offSetEcRec+1] = field.One()
 
-			ecRecHiLimbs := SplitBytes(hashRes[addressTrimmedBytes:halfDigest])
-			ecRecLoLimbs := SplitBytes(hashRes[halfDigest:])
+			ecRecHiLimbs := common.SplitBytes(hashRes[addressTrimmedBytes:halfDigest])
+			ecRecLoLimbs := common.SplitBytes(hashRes[halfDigest:])
 
 			for j := 0; j < common.NbLimbU128; j++ {
 				if j >= addressTrimmedColumns {
@@ -106,7 +106,7 @@ func AssignEcRecTxnData(
 
 			continue
 		} else {
-			fromLimbs := SplitBytes(hashRes[:])
+			fromLimbs := common.SplitBytes(hashRes[:])
 			j := i - nbEcRec
 
 			for k, limb := range fromLimbs {
@@ -200,7 +200,7 @@ func (td *txnData) assignTxnDataFromPK(
 	}
 
 	for i := 0; i < len(pkHash); i++ {
-		fromLimbs := SplitBytes(pkHash[i])
+		fromLimbs := common.SplitBytes(pkHash[i])
 
 		for j, limb := range fromLimbs {
 			// Initialize limb values for each column of from
