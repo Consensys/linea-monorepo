@@ -799,7 +799,7 @@ describe("Linea Rollup contract", () => {
 
       const upgradedContract = await newLineaRollup.waitForDeployment();
 
-      await upgradedContract.setFallbackOperatorAddress(forwardingProxyAddress);
+      await upgradedContract.setFallbackOperatorManually(forwardingProxyAddress);
 
       // Grants deployed callforwarding proxy as operator
       await networkTime.increase(SIX_MONTHS_IN_SECONDS);

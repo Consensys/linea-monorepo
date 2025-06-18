@@ -290,6 +290,11 @@ interface ILineaRollup {
   error OnlyNonFallbackOperator();
 
   /**
+   * @dev Thrown when the rollup is missing a forced transaction in the finalization block range.
+   */
+  error FinalizationDataMissingForcedTransaction(uint256 nextForcedTransactionNumber);
+
+  /**
    * @notice Returns the ABI version and not the reinitialize version.
    * @return contractVersion The contract ABI version.
    */
