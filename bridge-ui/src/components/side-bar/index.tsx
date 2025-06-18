@@ -37,27 +37,27 @@ export default function SideBar() {
     const navItems = [
       {
         name: "Home",
-        href: "https://linea.build/apps",
+        href: "https://linea.build/hub",
         icon: <LineaIcon />,
         external: false,
       },
       {
         name: "Apps",
-        href: "https://linea.build/apps/apps",
+        href: "https://linea.build/hub/apps",
         icon: <DappIcon />,
       },
       {
         name: "Tokens",
-        href: "https://linea.build/apps/tokens",
+        href: "https://linea.build/hub/tokens",
         icon: <TokenIcon />,
         subItems: [
           {
             name: "Swap",
-            href: "https://linea.build/apps/tokens/swap",
+            href: "https://linea.build/hub/tokens/swap?toChain=59144&toToken=0xe5d7c2a44ffddf6b295a15c148167daaaf5cf34f",
           },
           {
             name: "Bridge",
-            href: "https://linea.build/bridge",
+            href: "/",
             active: true,
           },
         ],

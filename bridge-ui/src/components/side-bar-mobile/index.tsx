@@ -9,17 +9,17 @@ export default function SideBarMobile() {
   const navData = [
     {
       name: "Home",
-      href: "https://linea.build/apps",
+      href: "https://linea.build/hub",
       icon: <LineaIcon />,
     },
     {
       name: "Apps",
-      href: "https://linea.build/apps/apps",
+      href: "https://linea.build/hub/apps",
       icon: <DappIcon />,
     },
     {
       name: "Tokens",
-      href: "https://linea.build/apps/tokens",
+      href: "https://linea.build/hub/tokens",
       icon: <TokenIcon />,
     },
   ];
