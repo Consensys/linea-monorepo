@@ -52,12 +52,10 @@ func Allocate(zkevm *zkevm.ZkEvm) CircuitExecution {
 // wizard as input and uses it to allocate the outer circuit. The trace-limits
 // file is used to derive the maximal number of L2L1 logs.
 //
-// The proof generation can be done using the [MakeProof] function as we woult
+// The proof generation can be done using the [MakeProof] function as we would
 // do for the non-limitless execution proof.
 func AllocateLimitless(congWiop *wizard.CompiledIOP, limits *config.TracesLimits) CircuitExecution {
-
 	wverifier := wizard.AllocateWizardCircuit(congWiop, congWiop.NumRounds())
-
 	return CircuitExecution{
 		WizardVerifier: *wverifier,
 		FuncInputs: FunctionalPublicInputSnark{
@@ -93,7 +91,6 @@ func assign(
 	)
 
 	res.FuncInputs.Assign(&funcInputs)
-
 	return res
 }
 
