@@ -88,11 +88,10 @@ func (mt *moduleTranslator) TranslateColumn(col ifaces.Column) ifaces.Column {
 	case verifiercol.ConstCol:
 
 		if c.IsBase() {
-      return verifiercol.NewConstantCol(c.F, c.Size())
+			return verifiercol.NewConstantCol(c.Base, c.Size())
 		} else {
 			return verifiercol.NewConstantColExt(c.Ext, c.Size())
 		}
-
 
 	default:
 		utils.Panic("unexpected type of column: type: %T, name: %v", col, col.GetColID())

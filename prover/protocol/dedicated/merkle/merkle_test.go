@@ -103,10 +103,13 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 				b.isActive = append(b.isActive, field.One())
 
 				// Update the tree by changing the leaf value at position j
-				var newVal field.Element
-				newVal.SetRandom()
-				tree.Update(j, newVal.Bytes())
-				leaves[j] = newVal.Bytes()
+				var newVal [8]field.Element
+				for i := 0; i < 8; i++ {
+					newVal[i].SetRandom()
+				}
+
+				tree.Update(j, types.HashToBytes32(newVal))
+				leaves[j] = types.HashToBytes32(newVal)
 				proof_new := tree.MustProve(j)
 				root_new := tree.Root
 				b.proofs = append(b.proofs, proof_new)
@@ -192,10 +195,13 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 				b.isActive = append(b.isActive, field.One())
 
 				// Update the tree by changing the leaf value at position j
-				var newVal field.Element
-				newVal.SetRandom()
-				tree.Update(j, newVal.Bytes())
-				leaves[j] = newVal.Bytes()
+				var newVal [8]field.Element
+				for i := 0; i < 8; i++ {
+					newVal[i].SetRandom()
+				}
+
+				tree.Update(j, types.HashToBytes32(newVal))
+				leaves[j] = types.HashToBytes32(newVal)
 				proof_new := tree.MustProve(j)
 				root_new := tree.Root
 				b.proofs = append(b.proofs, proof_new)
@@ -241,10 +247,13 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 				b.isActive = append(b.isActive, field.One())
 
 				// Update the tree by changing the leaf value at position j
-				var newVal field.Element
-				newVal.SetRandom()
-				tree.Update(j, newVal.Bytes())
-				leaves[j] = newVal.Bytes()
+				var newVal [8]field.Element
+				for i := 0; i < 8; i++ {
+					newVal[i].SetRandom()
+				}
+
+				tree.Update(j, types.HashToBytes32(newVal))
+				leaves[j] = types.HashToBytes32(newVal)
 				proof_new := tree.MustProve(j)
 				root_new := tree.Root
 				b.proofs = append(b.proofs, proof_new)
@@ -308,10 +317,13 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 				b.isActive = append(b.isActive, field.One())
 
 				// Update the tree by changing the leaf value at position j
-				var newVal field.Element
-				newVal.SetRandom()
-				tree.Update(j, newVal.Bytes())
-				leaves[j] = newVal.Bytes()
+				var newVal [8]field.Element
+				for i := 0; i < 8; i++ {
+					newVal[i].SetRandom()
+				}
+
+				tree.Update(j, types.HashToBytes32(newVal))
+				leaves[j] = types.HashToBytes32(newVal)
 				proof_new := tree.MustProve(j)
 				root_new := tree.Root
 				b.proofs = append(b.proofs, proof_new)
