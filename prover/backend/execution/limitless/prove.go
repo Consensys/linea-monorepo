@@ -79,7 +79,8 @@ func (asset *Asset) Prove(cfg *config.Config, req *execution.Request) (*executio
 		return nil, err
 	}
 
-	out.Proof = ckt_exec.MakeProof(&config.TracesLimits{}, *setup, asset.Zkevm.WizardIOP, *proof, *witness.FuncInp)
+	out.Proof = ckt_exec.MakeProof(&config.TracesLimits{}, *setup,
+		asset.DistWizard.CompiledConglomeration.Wiop, *proof, *witness.FuncInp)
 	out.VerifyingKeyShaSum = setup.VerifyingKeyDigest()
 	return &out, nil
 }

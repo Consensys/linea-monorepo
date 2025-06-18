@@ -22,7 +22,7 @@ var (
 	// setupCmd represents the setup command
 	setupCmd = &cobra.Command{
 		Use:   "setup",
-		Short: "pre compute assets for Linea circuits",
+		Short: "pre-compute assets for Linea circuits",
 		RunE:  cmdSetup,
 	}
 	setupArgs cmd.SetupArgs

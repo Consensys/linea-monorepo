@@ -21,6 +21,7 @@ const (
 	ProverModeDev       ProverMode = "dev"
 	ProverModePartial   ProverMode = "partial"
 	ProverModeFull      ProverMode = "full"
+	ProverModeLimitless ProverMode = "limitless"
 	ProverModeProofless ProverMode = "proofless"
 	// ProverModeBench is used to only run the inner-proof. This is convenient
 	// in a context where it is simpler to not have to deal with the setup.
