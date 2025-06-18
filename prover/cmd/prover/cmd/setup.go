@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 
 	blob_v0 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
@@ -151,12 +152,14 @@ func Setup(ctx context.Context, args SetupArgs) error {
 	return nil
 }
 
-// updateSetup runs the setup for the given circuit if needed.
-// it first compiles the circuit, then checks if the files already exist,
-// and if so, if the checksums match.
-// if the files already exist and the checksums match, it skips the setup.
+// updateSetup: Runs the setup for the given circuit if needed.
+// It first compiles the circuit, then checks if the files already exist, and if so, if the checksums match.
+// If the files already exist and the checksums match, it skips the setup.
 // else it does the setup and writes the assets to disk.
-func updateSetup(ctx context.Context, cfg *config.Config, force bool, srsProvider circuits.SRSProvider, circuit circuits.CircuitID, builder circuits.Builder, extraFlags map[string]any) error {
+func updateSetup(ctx context.Context, cfg *config.Config, force bool,
+	srsProvider circuits.SRSProvider, circuit circuits.CircuitID,
+	builder circuits.Builder, extraFlags map[string]any,
+) error {
 	if extraFlags == nil {
 		extraFlags = make(map[string]any)
 	}
@@ -168,7 +171,7 @@ func updateSetup(ctx context.Context, cfg *config.Config, force bool, srsProvide
 		return fmt.Errorf("failed to compile circuit %s: %w", circuit, err)
 	}
 
-	// derive the asset paths
+	// Derive the asset paths
 	setupPath := cfg.PathForSetup(string(circuit))
 	manifestPath := filepath.Join(setupPath, config.ManifestFileName)
 
@@ -234,13 +237,19 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 		limits := cfg.TracesLimits
 		extraFlags["cfg_checksum"] = limits.Checksum()
 
-		// Read the zkevm.bin file from the assets directory and deserialize it
-		var zkEvm *zkevm.ZkEvm
-		err := serialization.ReadAndDeserialize(cfg.PathforLimitlessProverAssets(), "zkevm.bin", &zkEvm, nil)
+		// Read the dw-compiled-conglomeration.bin file from the assets directory and deserialize it
+		var compCong *distributed.ConglomeratorCompilation
+		err := serialization.ReadAndDeserialize(cfg.PathforLimitlessProverAssets(),
+			"dw-compiled-conglomeration.bin", &compCong, nil)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to read zkevm.bin file while building limitless execution circuit: %w", err)
+			return nil, nil, fmt.Errorf(
+				"failed to read dw-compiled-conglomeration.bin file "+
+					"while building limitless execution circuit: %w",
+				err,
+			)
 		}
-		return execution.NewBuilder(zkEvm), extraFlags, nil
+
+		return execution.NewLimitlessBuilder(compCong.Wiop), extraFlags, nil
 
 	case circuits.BlobDecompressionV0CircuitID:
 		dict, err := os.ReadFile(args.DictPath)
