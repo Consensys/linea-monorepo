@@ -15,7 +15,7 @@ type RomInput struct {
 	Acc                             ifaces.Column
 	NBytes                          ifaces.Column
 	Counter                         ifaces.Column
-	CodeSize                        ifaces.Column
+	CodeSize                        [common.NbLimbU32]ifaces.Column
 	CounterIsEqualToNBytesMinusOne  ifaces.Column
 	CptCounterEqualToNBytesMinusOne wizard.ProverAction
 }

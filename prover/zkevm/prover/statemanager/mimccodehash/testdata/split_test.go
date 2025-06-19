@@ -11,14 +11,19 @@ import (
 )
 
 type Record struct {
-	CFI_ROMLEX  string
-	CODEHASH_HI string
-	CODEHASH_LO string
+	CFI      string
+	ACC      string
+	NBYTES   string
+	COUNTER  string
+	CODESIZE string
 }
 
 type RecordWrite struct {
-	CFI_ROMLEX string
-	CODEHASH   []string
+	CFI      string
+	ACC      string
+	NBYTES   string
+	COUNTER  string
+	CODESIZE []string
 }
 
 func readCSVFile(filePath string) ([]Record, error) {
@@ -48,9 +53,11 @@ func readCSVFile(filePath string) ([]Record, error) {
 
 	for _, row := range dataRows {
 		record := Record{
-			CFI_ROMLEX:  row[0],
-			CODEHASH_HI: row[1],
-			CODEHASH_LO: row[2],
+			CFI:      row[0],
+			ACC:      row[1],
+			NBYTES:   row[2],
+			COUNTER:  row[3],
+			CODESIZE: row[4],
 		}
 		records = append(records, record)
 	}
@@ -68,9 +75,9 @@ func writeCSVFile(filePath string, records []RecordWrite) error {
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
-	header := []string{"CFI_ROMLEX"}
-	for i := range common.NbLimbU256 {
-		header = append(header, fmt.Sprintf("CODEHASH_%d", i))
+	header := []string{"CFI", "ACC", "NBYTES", "COUNTER"}
+	for i := range common.NbLimbU32 {
+		header = append(header, fmt.Sprintf("CODESIZE_%d", i))
 	}
 
 	if err := writer.Write(header); err != nil {
@@ -78,7 +85,7 @@ func writeCSVFile(filePath string, records []RecordWrite) error {
 	}
 
 	for _, record := range records {
-		row := append([]string{record.CFI_ROMLEX}, record.CODEHASH[:]...)
+		row := append([]string{record.CFI, record.ACC, record.NBYTES, record.COUNTER}, record.CODESIZE[:]...)
 		if err := writer.Write(row); err != nil {
 			return fmt.Errorf("failed to write record %v to %s: %w", record, filePath, err)
 		}
@@ -89,17 +96,28 @@ func writeCSVFile(filePath string, records []RecordWrite) error {
 
 func split(romlexRecord []Record) (res []RecordWrite) {
 	for _, record := range romlexRecord {
-		codehash := record.CODEHASH_HI[2:] + record.CODEHASH_LO[2:]
-		codehashBytes, _ := hex.DecodeString(codehash)
+		codesizeBytes, _ := hex.DecodeString(record.CODESIZE[2:])
+		codesizes := make([]string, common.NbLimbU32)
+		codesizeLimbs := common.SplitBytes(codesizeBytes)
 
-		codehashes := make([]string, 16)
-		for i, limbBytes := range common.SplitBytes(codehashBytes) {
-			codehashes[i] = fmt.Sprintf("0x%s", hex.EncodeToString(limbBytes))
+		padBytes := make([][]byte, common.NbLimbU32-len(codesizeLimbs))
+		padBytes = append(padBytes, codesizeLimbs...)
+
+		for i := 0; i < common.NbLimbU32; i++ {
+			limbByte := padBytes[i]
+			if len(limbByte) == 0 {
+				limbByte = []byte{0}
+			}
+
+			codesizes[i] = fmt.Sprintf("0x%s", hex.EncodeToString(limbByte))
 		}
 
 		res = append(res, RecordWrite{
-			CFI_ROMLEX: record.CFI_ROMLEX,
-			CODEHASH:   codehashes,
+			CFI:      record.CFI,
+			ACC:      record.ACC,
+			NBYTES:   record.NBYTES,
+			COUNTER:  record.COUNTER,
+			CODESIZE: codesizes,
 		})
 	}
 
@@ -107,8 +125,8 @@ func split(romlexRecord []Record) (res []RecordWrite) {
 }
 
 func TestSplit(t *testing.T) {
-	records, _ := readCSVFile("romlex_input.csv")
+	records, _ := readCSVFile("rom_input.csv")
 	recordsToWrite := split(records)
-	writeCSVFile("romlex_input_new.csv", recordsToWrite)
+	writeCSVFile("rom_input_new.csv", recordsToWrite)
 	fmt.Println(recordsToWrite)
 }

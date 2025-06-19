@@ -14,7 +14,7 @@ type assignBuilder struct {
 	cfi              []field.Element
 	limb             []field.Element
 	codeHash         [common.NbLimbU256][]field.Element
-	codeSize         []field.Element
+	codeSize         [common.NbLimbU32][]field.Element
 	isNewHash        []field.Element
 	isHashEnd        []field.Element
 	prevState        []field.Element
@@ -27,16 +27,19 @@ func newAssignmentBuilder(length int) *assignBuilder {
 		isActive:  make([]field.Element, 0, length),
 		cfi:       make([]field.Element, 0, length),
 		limb:      make([]field.Element, 0, length),
-		codeSize:  make([]field.Element, 0, length),
 		isNewHash: make([]field.Element, 0, length),
 		isHashEnd: make([]field.Element, 0, length),
 		prevState: make([]field.Element, 0, length),
 		newState:  make([]field.Element, 0, length),
 	}
 
-	for i := range ab.codeHash {
+	for i := range common.NbLimbU256 {
 		ab.codeHash[i] = make([]field.Element, 0, length)
 		ab.isNonEmptyKeccak[i] = make([]field.Element, 0, length)
+	}
+
+	for i := range common.NbLimbU32 {
+		ab.codeSize[i] = make([]field.Element, 0, length)
 	}
 
 	return ab
@@ -62,16 +65,20 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 		cfi       = rom.CFI.GetColAssignment(run).IntoRegVecSaveAlloc()
 		acc       = rom.Acc.GetColAssignment(run).IntoRegVecSaveAlloc()
 		cfiRomLex = romLex.CFIRomLex.GetColAssignment(run).IntoRegVecSaveAlloc()
-		codeSize  = rom.CodeSize.GetColAssignment(run).IntoRegVecSaveAlloc()
 		filter    = rom.CounterIsEqualToNBytesMinusOne.GetColAssignment(run).IntoRegVecSaveAlloc()
 		length    = len(cfi)
 		builder   = newAssignmentBuilder(length)
 
 		codeHash [common.NbLimbU256][]field.Element
+		codeSize [common.NbLimbU32][]field.Element
 	)
 
 	for i := range common.NbLimbU256 {
 		codeHash[i] = romLex.CodeHash[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+	}
+
+	for i := range common.NbLimbU32 {
+		codeSize[i] = rom.CodeSize[i].GetColAssignment(run).IntoRegVecSaveAlloc()
 	}
 
 	for i := 0; i < length; i++ {
@@ -84,7 +91,11 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 			builder.isActive = append(builder.isActive, field.Zero())
 			builder.cfi = append(builder.cfi, field.Zero())
 			builder.limb = append(builder.limb, field.Zero())
-			builder.codeSize = append(builder.codeSize, field.Zero())
+
+			for j := range builder.codeSize {
+				builder.codeSize[j] = append(builder.codeSize[j], field.Zero())
+			}
+
 			break
 		}
 
@@ -98,7 +109,10 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 		// Inject the other incoming columns from the rom input
 		builder.cfi = append(builder.cfi, cfi[i])
 		builder.limb = append(builder.limb, acc[i])
-		builder.codeSize = append(builder.codeSize, codeSize[i])
+
+		for j := range builder.codeSize {
+			builder.codeSize[j] = append(builder.codeSize[j], codeSize[j][i])
+		}
 	}
 
 	// The content of this statement is constructing isNewHash and isHashEnd
@@ -231,7 +245,6 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 	run.AssignColumn(mh.IsActive.GetColID(), smartvectors.RightZeroPadded(builder.isActive, mh.Inputs.Size))
 	run.AssignColumn(mh.CFI.GetColID(), smartvectors.RightZeroPadded(builder.cfi, mh.Inputs.Size))
 	run.AssignColumn(mh.Limb.GetColID(), smartvectors.RightZeroPadded(builder.limb, mh.Inputs.Size))
-	run.AssignColumn(mh.CodeSize.GetColID(), smartvectors.RightZeroPadded(builder.codeSize, mh.Inputs.Size))
 	run.AssignColumn(mh.IsNewHash.GetColID(), smartvectors.RightZeroPadded(builder.isNewHash, mh.Inputs.Size))
 	run.AssignColumn(mh.IsHashEnd.GetColID(), smartvectors.RightZeroPadded(builder.isHashEnd, mh.Inputs.Size))
 	run.AssignColumn(mh.PrevState.GetColID(), smartvectors.RightZeroPadded(builder.prevState, mh.Inputs.Size))
@@ -240,6 +253,10 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 		run.AssignColumn(mh.IsForConsistency[i].GetColID(), smartvectors.RightZeroPadded(builder.isNonEmptyKeccak[i], mh.Inputs.Size))
 		run.AssignColumn(mh.CodeHash[i].GetColID(), smartvectors.RightZeroPadded(builder.codeHash[i], mh.Inputs.Size))
 		mh.CptIsEmptyKeccak[i].Run(run)
+	}
+
+	for i := range common.NbLimbU32 {
+		run.AssignColumn(mh.CodeSize[i].GetColID(), smartvectors.RightZeroPadded(builder.codeSize[i], mh.Inputs.Size))
 	}
 
 	// Assignment of new state with the zero hash padding
