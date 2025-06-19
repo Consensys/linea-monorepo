@@ -175,13 +175,19 @@ public abstract class BlockdataOperation extends ModuleOperation {
     wcpCallToLEQ(1, data, gasLimitMaximum);
 
     if (!firstBlockInConflation) {
-      final EWord prevGasLimit = EWord.of(prevBlockHeader.getGasLimit());
+      final BigInteger prevGasLimit = BigInteger.valueOf(prevBlockHeader.getGasLimit());
       // row i + 2
-      final Bytes maxDeviation = eucCall(2, prevGasLimit, EWord.of(GAS_LIMIT_ADJUSTMENT_FACTOR));
+      final Bytes maxDeviation =
+          eucCall(2, EWord.of(prevGasLimit), EWord.of(GAS_LIMIT_ADJUSTMENT_FACTOR));
+
+      final BigInteger gasLimitDeviationUpperBound =
+          prevGasLimit.add(maxDeviation.toUnsignedBigInteger());
+      final BigInteger gasLimitDeviationLowerBound =
+          prevGasLimit.subtract(maxDeviation.toUnsignedBigInteger());
       // row i + 3
-      wcpCallToLT(3, data, EWord.of(prevGasLimit.toLong() + maxDeviation.toLong()));
+      wcpCallToLT(3, data, EWord.of(gasLimitDeviationUpperBound));
       // row i + 4
-      wcpCallToGT(4, data, EWord.of(prevGasLimit.toLong() - maxDeviation.toLong()));
+      wcpCallToGT(4, data, EWord.of(gasLimitDeviationLowerBound));
     }
   }
 
