@@ -22,6 +22,8 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedCliOptions;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
+import net.consensys.linea.plugins.config.LineaTracerSharedCliOptions;
+import net.consensys.linea.plugins.config.LineaTracerSharedConfiguration;
 import net.consensys.linea.zktracer.Fork;
 
 /** In this class we put CLI options that are shared with other plugins not defined here */
@@ -32,9 +34,11 @@ public abstract class AbstractLineaSharedOptionsPlugin extends AbstractLineaOpti
   public Map<String, LineaOptionsPluginConfiguration> getLineaPluginConfigMap() {
     final LineaL1L2BridgeSharedCliOptions l1L2BridgeCliOptions =
         LineaL1L2BridgeSharedCliOptions.create();
+    final LineaTracerSharedCliOptions tracerSharedCliOptions = LineaTracerSharedCliOptions.create();
 
     return Map.of(
-        LineaL1L2BridgeSharedCliOptions.CONFIG_KEY, l1L2BridgeCliOptions.asPluginConfig());
+        LineaL1L2BridgeSharedCliOptions.CONFIG_KEY, l1L2BridgeCliOptions.asPluginConfig(),
+        LineaTracerSharedCliOptions.CONFIG_KEY, tracerSharedCliOptions.asPluginConfig());
   }
 
   public LineaL1L2BridgeSharedConfiguration l1L2BridgeSharedConfiguration() {
@@ -46,6 +50,11 @@ public abstract class AbstractLineaSharedOptionsPlugin extends AbstractLineaOpti
       throw new IllegalStateException("L1L2 bridge configuration not provided.");
     }
     return l2L1;
+  }
+
+  public LineaTracerSharedConfiguration tracerSharedConfiguration() {
+    return (LineaTracerSharedConfiguration)
+        getConfigurationByKey(LineaTracerSharedCliOptions.CONFIG_KEY).optionsConfig();
   }
 
   public Fork fork() {

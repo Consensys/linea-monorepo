@@ -25,11 +25,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.plugins.BesuServiceProvider;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
+import net.consensys.linea.plugins.config.LineaTracerSharedConfiguration;
 import net.consensys.linea.plugins.rpc.RequestLimiter;
 import net.consensys.linea.plugins.rpc.Validator;
+import net.consensys.linea.zktracer.Fork;
+import net.consensys.linea.zktracer.LineCountingTracer;
 import net.consensys.linea.zktracer.ZkCounter;
+import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.json.JsonConverter;
 import org.hyperledger.besu.plugin.ServiceManager;
+import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TraceService;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
@@ -46,6 +51,7 @@ public class GenerateLineCountsV2 {
   private final ServiceManager besuContext;
   private TraceService traceService;
   private final LineaL1L2BridgeSharedConfiguration l1L2BridgeSharedConfiguration;
+  private final LineaTracerSharedConfiguration tracerSharedConfiguration;
 
   public String getNamespace() {
     return "linea";
@@ -95,7 +101,7 @@ public class GenerateLineCountsV2 {
                 .computeIfAbsent(
                     requestedBlockNumber,
                     blockNumber -> {
-                      final ZkCounter counter = new ZkCounter(l1L2BridgeSharedConfiguration);
+                      final LineCountingTracer counter = createLineCountingTracer();
 
                       traceService.trace(
                           blockNumber,
@@ -110,5 +116,16 @@ public class GenerateLineCountsV2 {
     log.info("Line count for {} returned in {}", requestedBlockNumber, sw);
 
     return r;
+  }
+
+  private LineCountingTracer createLineCountingTracer() {
+    return tracerSharedConfiguration.isLimitless()
+        ? new ZkCounter(l1L2BridgeSharedConfiguration)
+        : new ZkTracer(
+            Fork.LONDON,
+            l1L2BridgeSharedConfiguration,
+            BesuServiceProvider.getBesuService(besuContext, BlockchainService.class)
+                .getChainId()
+                .orElseThrow());
   }
 }
