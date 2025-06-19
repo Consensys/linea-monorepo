@@ -43,9 +43,12 @@ func TestMiMCCodeHash(t *testing.T) {
 		// Define romInput
 		romInput = &RomInput{
 			CFI:     ctRom.GetCommit(build, "CFI"),
-			Acc:     ctRom.GetCommit(build, "ACC"),
 			NBytes:  ctRom.GetCommit(build, "NBYTES"),
 			Counter: ctRom.GetCommit(build, "COUNTER"),
+		}
+
+		for i := range common.NbLimbU128 {
+			romInput.Acc[i] = ctRom.GetCommit(build, fmt.Sprintf("ACC_%d", i))
 		}
 
 		for i := range common.NbLimbU32 {
@@ -84,31 +87,32 @@ func TestMiMCCodeHash(t *testing.T) {
 			codeSizeNames[i] = string(romInput.CodeSize[i].GetColID())
 		}
 
-		ctRom.Assign(run,
-			append(
-				[]string{
-					"CFI",
-					"ACC",
-					"NBYTES",
-					"COUNTER",
-				},
-				codeSizeNames[:]...,
-			)...,
-		)
+		accNames := make([]string, len(romInput.Acc))
+		for i := range romInput.Acc {
+			accNames[i] = string(romInput.Acc[i].GetColID())
+		}
+
+		var ctRomCols = []string{"CFI"}
+		ctRomCols = append(ctRomCols, accNames[:]...)
+		ctRomCols = append(ctRomCols, "NBYTES", "COUNTER")
+		ctRomCols = append(ctRomCols, codeSizeNames[:]...)
+
+		ctRom.Assign(run, ctRomCols[:]...)
 		romInput.completeAssign(run)
 		ctRomLex.Assign(run,
 			append([]string{"CFI_ROMLEX"},
 				codeHashNames...)...)
 		mod.Assign(run)
+
+		var ctRomColIds = []string{string(romInput.CFI.GetColID())}
+		ctRomColIds = append(ctRomColIds, accNames[:]...)
+		ctRomColIds = append(ctRomColIds, string(romInput.NBytes.GetColID()))
+		ctRomColIds = append(ctRomColIds, string(romInput.Counter.GetColID()))
+		ctRomColIds = append(ctRomColIds, codeSizeNames[:]...)
+
 		ctRom.CheckAssignment(run,
 			// TODO: add also auxiliary columns
-			append(
-				[]string{string(romInput.CFI.GetColID()),
-					string(romInput.Acc.GetColID()),
-					string(romInput.NBytes.GetColID()),
-					string(romInput.Counter.GetColID())},
-				codeSizeNames[:]...,
-			)...,
+			ctRomColIds[:]...,
 		)
 
 		ctRomLex.CheckAssignment(run,

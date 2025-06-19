@@ -15,12 +15,12 @@ type Record struct {
 	ACC      string
 	NBYTES   string
 	COUNTER  string
-	CODESIZE string
+	CODESIZE []string
 }
 
 type RecordWrite struct {
 	CFI      string
-	ACC      string
+	ACC      []string
 	NBYTES   string
 	COUNTER  string
 	CODESIZE []string
@@ -53,12 +53,16 @@ func readCSVFile(filePath string) ([]Record, error) {
 
 	for _, row := range dataRows {
 		record := Record{
-			CFI:      row[0],
-			ACC:      row[1],
-			NBYTES:   row[2],
-			COUNTER:  row[3],
-			CODESIZE: row[4],
+			CFI:     row[0],
+			ACC:     row[1],
+			NBYTES:  row[2],
+			COUNTER: row[3],
 		}
+
+		for i := range common.NbLimbU32 {
+			record.CODESIZE = append(record.CODESIZE, row[4+i])
+		}
+
 		records = append(records, record)
 	}
 
@@ -75,7 +79,12 @@ func writeCSVFile(filePath string, records []RecordWrite) error {
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
-	header := []string{"CFI", "ACC", "NBYTES", "COUNTER"}
+	header := []string{"CFI"}
+	for i := range common.NbLimbU128 {
+		header = append(header, fmt.Sprintf("ACC_%d", i))
+	}
+
+	header = append(header, "NBYTES", "COUNTER")
 	for i := range common.NbLimbU32 {
 		header = append(header, fmt.Sprintf("CODESIZE_%d", i))
 	}
@@ -85,7 +94,9 @@ func writeCSVFile(filePath string, records []RecordWrite) error {
 	}
 
 	for _, record := range records {
-		row := append([]string{record.CFI, record.ACC, record.NBYTES, record.COUNTER}, record.CODESIZE[:]...)
+		row := append([]string{record.CFI}, record.ACC[:]...)
+		row = append(row, record.NBYTES, record.COUNTER)
+		row = append(row, record.CODESIZE[:]...)
 		if err := writer.Write(row); err != nil {
 			return fmt.Errorf("failed to write record %v to %s: %w", record, filePath, err)
 		}
@@ -96,28 +107,28 @@ func writeCSVFile(filePath string, records []RecordWrite) error {
 
 func split(romlexRecord []Record) (res []RecordWrite) {
 	for _, record := range romlexRecord {
-		codesizeBytes, _ := hex.DecodeString(record.CODESIZE[2:])
-		codesizes := make([]string, common.NbLimbU32)
-		codesizeLimbs := common.SplitBytes(codesizeBytes)
+		accBytes, _ := hex.DecodeString(record.ACC[2:])
+		accs := make([]string, common.NbLimbU128)
+		accLimbs := common.SplitBytes(accBytes)
 
-		padBytes := make([][]byte, common.NbLimbU32-len(codesizeLimbs))
-		padBytes = append(padBytes, codesizeLimbs...)
+		padBytes := make([][]byte, common.NbLimbU128-len(accLimbs))
+		padBytes = append(padBytes, accLimbs...)
 
-		for i := 0; i < common.NbLimbU32; i++ {
+		for i := 0; i < common.NbLimbU128; i++ {
 			limbByte := padBytes[i]
 			if len(limbByte) == 0 {
 				limbByte = []byte{0}
 			}
 
-			codesizes[i] = fmt.Sprintf("0x%s", hex.EncodeToString(limbByte))
+			accs[i] = fmt.Sprintf("0x%s", hex.EncodeToString(limbByte))
 		}
 
 		res = append(res, RecordWrite{
 			CFI:      record.CFI,
-			ACC:      record.ACC,
+			ACC:      accs,
 			NBYTES:   record.NBYTES,
 			COUNTER:  record.COUNTER,
-			CODESIZE: codesizes,
+			CODESIZE: record.CODESIZE,
 		})
 	}
 

@@ -67,15 +67,15 @@ type Module struct {
 	// All the columns characterizing the module
 	IsActive  ifaces.Column
 	CFI       ifaces.Column
-	Limb      ifaces.Column
+	Limb      [common.NbLimbU128]ifaces.Column // 16 bytes
 	CodeHash  [common.NbLimbU256]ifaces.Column
 	CodeSize  [common.NbLimbU32]ifaces.Column
 	IsNewHash ifaces.Column
 	IsHashEnd ifaces.Column
-	PrevState ifaces.Column
+	PrevState [common.NbLimbU256]ifaces.Column
 
 	// Contains the MiMC code hash when IsHashEnd is 1
-	NewState ifaces.Column
+	NewState [common.NbLimbU256]ifaces.Column
 
 	// inputModule stores the modules connected the present Module (e.g. Rom/RomLex)
 	// when they are not omitted.
@@ -97,11 +97,12 @@ func NewModule(comp *wizard.CompiledIOP, inputs Inputs) (mh Module) {
 		Inputs:    inputs,
 		IsActive:  comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_ACTIVE_NAME, inputs.Size),
 		CFI:       comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_CFI_NAME, inputs.Size),
-		Limb:      comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_LIMB_NAME, inputs.Size),
 		IsNewHash: comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_NEW_HASH_NAME, inputs.Size),
 		IsHashEnd: comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_HASH_END_NAME, inputs.Size),
-		PrevState: comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_PREV_STATE_NAME, inputs.Size),
-		NewState:  comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_NEW_STATE_NAME, inputs.Size),
+	}
+
+	for i := range common.NbLimbU128 {
+		mh.Limb[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_LIMB_NAME, i), inputs.Size)
 	}
 
 	for i := range common.NbLimbU32 {
@@ -112,6 +113,9 @@ func NewModule(comp *wizard.CompiledIOP, inputs Inputs) (mh Module) {
 		mh.CodeHash[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_KECCAK_CODEHASH_NAME, i), inputs.Size)
 		mh.IsForConsistency[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_IS_FOR_CONSISTENCY, i), inputs.Size)
 		mh.IsEmptyKeccak[i], mh.CptIsEmptyKeccak[i] = dedicated.IsZero(comp, sym.Sub(mh.CodeHash[i], emptyKeccak[i])).GetColumnAndProverAction()
+
+		mh.PrevState[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_PREV_STATE_NAME, i), inputs.Size)
+		mh.NewState[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_NEW_STATE_NAME, i), inputs.Size)
 
 		// TODO: recheck this constraint because originally, it will pass
 		// if either HashHi or HashLo corresponds to the empty keccak part
@@ -152,18 +156,7 @@ func NewModule(comp *wizard.CompiledIOP, inputs Inputs) (mh Module) {
 func (mh *Module) checkConsistency(comp *wizard.CompiledIOP) {
 
 	// NewState = MiMC(PrevState, Limb)
-	comp.InsertMiMC(mh.Inputs.Round, mh.qname("MiMC_CODE_HASH"), mh.Limb, mh.PrevState, mh.NewState, nil)
-
-	// If IsNewHash = 0, PrevState[i] = NewState[i-1] (in the active area), e.g.,
-	// IsActive[i] * (1 - IsNewHash[i]) * (PrevState[i] - NextState[i-1]) = 0
-	comp.InsertGlobal(mh.Inputs.Round, mh.qname("PREV_STATE_CONSISTENCY_2"),
-		sym.Mul(mh.IsActive,
-			sym.Sub(1, mh.IsNewHash),
-			sym.Sub(mh.PrevState, ifaces.ColumnAsVariable(column.Shift(mh.NewState, -1)))))
-
-	// If IsNewHash = 1, PrevState = 0 (in the active area) e.g., IsActive[i] * IsNewHash[i] * PrevState[i] = 0
-	comp.InsertGlobal(mh.Inputs.Round, mh.qname("PREV_STATE_ZERO_AT_BEGINNING"),
-		sym.Mul(mh.IsActive, mh.IsNewHash, mh.PrevState))
+	//comp.InsertMiMC(mh.inputs.Round, mh.qname("MiMC_CODE_HASH"), mh.Limb, mh.PrevState, mh.NewState, nil)
 
 	// If CFI incremented, IsNewHash = 1, e.g., IsActive[i] * (CFI[i] - CFI[i-1]) * (1 - IsNewHash[i]) = 0
 	comp.InsertGlobal(mh.Inputs.Round, mh.qname("IS_NEW_HASH_CONSISTENCY_1"),
@@ -209,8 +202,24 @@ func (mh *Module) checkConsistency(comp *wizard.CompiledIOP) {
 				sym.Sub(1, mh.IsHashEnd),
 				sym.Sub(ifaces.ColumnAsVariable(column.Shift(mh.CodeHash[i], 1)), mh.CodeHash[i])))
 
+		// If IsNewHash = 0, PrevState[i] = NewState[i-1] (in the active area), e.g.,
+		// IsActive[i] * (1 - IsNewHash[i]) * (PrevState[i] - NextState[i-1]) = 0
+		comp.InsertGlobal(mh.Inputs.Round, mh.qname("PREV_STATE_CONSISTENCY_2_%d", i),
+			sym.Mul(mh.IsActive,
+				sym.Sub(1, mh.IsNewHash),
+				sym.Sub(mh.PrevState[i], ifaces.ColumnAsVariable(column.Shift(mh.NewState[i], -1)))))
+
+		// If IsNewHash = 1, PrevState = 0 (in the active area) e.g., IsActive[i] * IsNewHash[i] * PrevState[i] = 0
+		comp.InsertGlobal(mh.Inputs.Round, mh.qname("PREV_STATE_ZERO_AT_BEGINNING_%d", i),
+			sym.Mul(mh.IsActive, mh.IsNewHash, mh.PrevState[i]))
+
 		// All columns of CodeHash are zero in the inactive area
 		mh.colZeroAtInactive(comp, mh.CodeHash[i], fmt.Sprintf("CODE_HASH_HI_ZERO_IN_INACTIVE_%d", i))
+		mh.colZeroAtInactive(comp, mh.PrevState[i], fmt.Sprintf("PREV_STATE_ZERO_IN_INACTIVE_%d", i))
+	}
+
+	for i := range common.NbLimbU128 {
+		mh.colZeroAtInactive(comp, mh.Limb[i], fmt.Sprintf("LIMB_ZERO_IN_INACTIVE_%d", i))
 	}
 
 	for i := range common.NbLimbU32 {
@@ -226,10 +235,8 @@ func (mh *Module) checkConsistency(comp *wizard.CompiledIOP) {
 
 	// All columns are zero in the inactive area, except newState
 	mh.colZeroAtInactive(comp, mh.CFI, "CFI_ZERO_IN_INACTIVE")
-	mh.colZeroAtInactive(comp, mh.Limb, "LIMB_ZERO_IN_INACTIVE")
 	mh.colZeroAtInactive(comp, mh.IsNewHash, "IS_NEW_HASH_ZERO_IN_INACTIVE")
 	mh.colZeroAtInactive(comp, mh.IsHashEnd, "IS_HASH_END_ZERO_IN_INACTIVE")
-	mh.colZeroAtInactive(comp, mh.PrevState, "PREV_STATE_ZERO_IN_INACTIVE")
 }
 
 // Function returning a query name
