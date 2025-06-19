@@ -36,8 +36,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// lppGroupingArity indicates how many GL modules an LPP module relates to.
-const lppGroupingArity = 4
+// lppGroupingArity indicates how many GL modules an LPP module relates to. The
+// value is fixed to 1 not for efficiency concern but putting it to a higher
+// value creates edge-cases for the FS security that are not fully-addressed yet.
+const lppGroupingArity = 1
 
 // DistributedWizard represents a wizard protocol that has undergone a
 // distributed compilation process.
