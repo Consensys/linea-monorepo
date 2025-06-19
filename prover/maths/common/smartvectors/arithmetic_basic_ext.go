@@ -3,6 +3,7 @@ package smartvectors
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -98,6 +99,13 @@ func PolyEvalExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPool) (resu
 		}
 	}
 
+	accumulateRegBase := func(acc []fext.Element, v []field.Element, x fext.Element) {
+		for i := 0; i < length; i++ {
+			tmpF.MulByBase(&x, &v[i])
+			acc[i].Add(&acc[i], &tmpF)
+		}
+	}
+
 	// Computes the polynomial operation separately on the const,
 	// windows and regular and the aggregate the results at the end.
 	// The computation is done following horner's method.
@@ -109,6 +117,23 @@ func PolyEvalExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPool) (resu
 		}
 
 		switch casted := v.(type) {
+		case *Constant:
+			anyCon = true
+			tmpF.MulByBase(&xPow, &casted.val)
+			resCon.Add(&resCon, &tmpF)
+		case *Regular:
+			anyReg = true
+			v := *casted
+			accumulateRegBase(resReg, v, xPow)
+		case *Pooled: // e.g. from product
+			anyReg = true
+			v := casted.Regular
+			accumulateRegBase(resReg, v, xPow)
+		case *PaddedCircularWindow:
+			// treat it as a regular, reusing the buffer
+			anyReg = true
+			casted.WriteInSliceExt(tmpVec)
+			accumulateReg(resReg, tmpVec, xPow)
 		case *ConstantExt:
 			anyCon = true
 			tmpF.Mul(&casted.val, &xPow)
