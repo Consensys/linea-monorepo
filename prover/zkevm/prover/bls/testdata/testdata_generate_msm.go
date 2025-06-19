@@ -1,6 +1,14 @@
 package main
 
-import "math/big"
+import (
+	"encoding/csv"
+	"fmt"
+	"iter"
+	"math/big"
+	"os"
+
+	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
+)
 
 type msmInputType int
 
@@ -30,4 +38,150 @@ type msmInputCase[T affine] struct {
 	inputs []msmInput[T]
 
 	Res T
+}
+
+func generateMsmInput[T affine]() iter.Seq2[int, msmInput[T]] {
+	return func(yield func(int, msmInput[T]) bool) {
+		var id int
+		for _, scalar := range []msmInputType{msmScalarTrivial, msmScalarRange, msmScalarBig} {
+			for _, point := range []msmInputType{msmPointTrivial, msmPointOnCurve, msmPointInSubgroup, msmPointInvalid} {
+				tc := msmInput[T]{
+					scalar:       scalar,
+					point:        point,
+					n:            generateScalar(scalar),
+					ToMSMCircuit: true,
+				}
+				switch point {
+				case msmPointTrivial:
+					tc.P = generateTrivial[T]()
+				case msmPointOnCurve:
+					tc.P = generateOnCurve[T]()
+				case msmPointInSubgroup:
+					tc.P = generateInSubgroup[T]()
+				case msmPointInvalid:
+					tc.P = generateInvalid[T]()
+				}
+				if !yield(id, tc) {
+					return
+				}
+				id++
+			}
+		}
+	}
+}
+
+func generateMsmInputCases[T affine](msmLength int) iter.Seq2[int, msmInputCase[T]] {
+	return func(yield func(int, msmInputCase[T]) bool) {
+		var id int
+		for v := range cartesianProduct(msmLength, generateMsmInput[T]) {
+			tc := msmInputCase[T]{
+				inputs: v,
+			}
+			var hasFailure bool
+			for _, input := range v {
+				if input.point == msmPointInvalid || input.point == msmPointOnCurve {
+					hasFailure = true
+				}
+			}
+			// in case of failure, we don't need to compute the result. Also we
+			// don't need to send the inputs to the MSM circuit, but we need to
+			// send the first failing input to the group check circuit
+			if hasFailure {
+				for i := range tc.inputs {
+					tc.inputs[i].ToMSMCircuit = false
+				}
+				for i := range tc.inputs {
+					if tc.inputs[i].point == msmPointInvalid || tc.inputs[i].point == msmPointOnCurve {
+						tc.inputs[i].ToGroupCheckCircuit = true
+						break
+					}
+				}
+			} else {
+				switch vv := any(&tc.Res).(type) {
+				case *bls12381.G1Affine:
+					for _, input := range v {
+						var tmp bls12381.G1Affine
+						tmp.ScalarMultiplication(any(&input.P).(*bls12381.G1Affine), input.n)
+						vv.Add(vv, &tmp)
+					}
+				case *bls12381.G2Affine:
+					for _, input := range v {
+						var tmp bls12381.G2Affine
+						tmp.ScalarMultiplication(any(&input.P).(*bls12381.G2Affine), input.n)
+						vv.Add(vv, &tmp)
+					}
+				}
+			}
+			if !yield(id, tc) {
+				return
+			}
+			id++
+		}
+	}
+}
+
+func (tc msmInputCase[T]) WriteCSV(w *csv.Writer, id int) error {
+	// columns:
+	// - ID
+	// - data_T_MSM
+	// - RSLT_T_MSM
+	// - INDEX (0-N for the inputs, then 0-7 for the result)
+	// - CT (0-7 for point, 0-1 for scalar, 0-7 for result)
+	// - IS_FIRST_INPUT point
+	// - IS_SECOND_INPUT scalar
+	// - CIRCUIT_SELECTOR_T_MSM - in case all goes to MSM
+	// - CIRCUIT_SELECTOR_T_MEMBERSHIP - in case goes to subgroup non-membership check
+	// - LIMB - limb of the scalar or point
+	var index int
+	for i, input := range tc.inputs {
+		nLimbs := splitScalarToLimbs(input.n)
+		pLimbs := splitToLimbs(input.P)
+		for j, limb := range pLimbs {
+			
+		} 
+	}
+}
+
+func headersMsm[T affine]() []string {
+	var t string
+	switch any(t).(type) {
+	case bls12381.G1Affine:
+		t = "G1"
+	case bls12381.G2Affine:
+		t = "G2"
+	default:
+		panic("unknown type")
+	}
+	return []string{
+		"ID",
+		fmt.Sprintf("DATA_%s_MSM", t),
+		fmt.Sprintf("RSLT_%s_MSM", t),
+		"INDEX",
+		"CT",
+		"IS_FIRST_INPUT",
+		"IS_SECOND_INPUT",
+		fmt.Sprintf("CIRCUIT_SELECTOR_%s_MSM", t),
+		fmt.Sprintf("CIRCUIT_SELECTOR_%s_MEMBERSHIP", t),
+		"LIMB",
+	}
+}
+
+func mainMsm() error {
+	f, err := os.Create("bls_g1_msm_inputs.csv")
+	if err != nil {
+		return fmt.Errorf("create file: %w", err)
+	}
+	defer f.Close()
+	w := csv.NewWriter(f)
+	defer w.Flush()
+	if err := w.Write(headersMsm[bls12381.G1Affine]()); err != nil {
+		return fmt.Errorf("write headers: %w", err)
+	}
+	var id int
+	for msmLength := 1; msmLength <= 4; msmLength++ {
+		for _, tc := range generateMsmInputCases[bls12381.G1Affine](msmLength) {
+
+		}
+	}
+	for _, tc := range generateMsmInputCases[bls12381.G1Affine]()
 }

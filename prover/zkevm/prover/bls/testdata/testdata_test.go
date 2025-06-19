@@ -95,3 +95,7 @@ func TestGenerateAdd(t *testing.T) {
 func TestAddMain(t *testing.T) {
 	mainAdd()
 }
+
+func TestMsmMain(t *testing.T) {
+	mainMsm()
+}

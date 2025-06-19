@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/rand"
 	"fmt"
+	"iter"
 	"math/big"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
@@ -170,6 +172,58 @@ func generateInvalid[T affine]() T {
 	return res
 }
 
+func generateScalar(scalarType msmInputType) *big.Int {
+	switch scalarType {
+	case msmScalarTrivial:
+		return big.NewInt(0)
+	case msmScalarRange:
+		for {
+			r, err := rand.Int(rand.Reader, fr_bls12381.Modulus())
+			if err != nil {
+				panic(fmt.Sprintf("failed to generate random scalar: %v", err))
+			}
+			if r.Cmp(fr_bls12381.Modulus()) < 0 {
+				return r
+			}
+		}
+	case msmScalarBig:
+		for {
+			r, err := rand.Int(rand.Reader, fr_bls12381.Modulus())
+			if err != nil {
+				panic(fmt.Sprintf("failed to generate random scalar: %v", err))
+			}
+			if r.Cmp(fr_bls12381.Modulus()) >= 0 {
+				continue // ensure the scalar is big
+			}
+			return r
+		}
+	default:
+		panic(fmt.Sprintf("unknown scalar type: %d", scalarType))
+	}
+}
+
+func recIt[T any](newIterator func() iter.Seq2[int, T], yield func([]T) bool, width int, vals []T) {
+	if width == 0 {
+		return
+	}
+	for _, v := range newIterator() {
+		newVals := append(vals, v)
+		if len(newVals) == width {
+			if !yield(newVals) {
+				return
+			}
+		} else {
+			recIt(newIterator, yield, width, newVals)
+		}
+	}
+}
+
+func cartesianProduct[T any](width int, newIterator func() iter.Seq2[int, T]) iter.Seq[[]T] {
+	return func(yield func([]T) bool) {
+		recIt(newIterator, yield, width, []T{})
+	}
+}
+
 func splitG1ToLimbs(p bls12381.G1Affine) []string {
 	px := p.X.Bytes()
 	py := p.Y.Bytes()
@@ -223,8 +277,9 @@ func splitToLimbs[T affine](p T) []string {
 	}
 }
 
-func splitScalarToLimbs(s fr_bls12381.Element) []string {
-	sb := s.Bytes()
+func splitScalarToLimbs(s *big.Int) []string {
+	var sb [32]byte
+	s.FillBytes(sb[:])
 	limbs := []string{
 		fmt.Sprintf("0x%x", sb[0:16]),
 		fmt.Sprintf("0x%x", sb[16:32]),

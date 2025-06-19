@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/csv"
 	"fmt"
+	"iter"
 	"os"
 	"strconv"
 
@@ -30,54 +31,58 @@ type addInputCase[T affine] struct {
 	RightToCurveCheckCircuit bool
 }
 
-func generateAddInputCases[T affine]() []addInputCase[T] {
-	var tcs []addInputCase[T]
-	for _, left := range []addInputType{addTrivial, addOnCurve, addInSubgroup, addInvalid} {
-		for _, right := range []addInputType{addTrivial, addOnCurve, addInSubgroup, addInvalid} {
-			tc := addInputCase[T]{
-				left:         left,
-				right:        right,
-				ToAddCircuit: true,
-			}
-			switch left {
-			case addTrivial:
-				tc.P = generateTrivial[T]()
-			case addOnCurve:
-				tc.P = generateOnCurve[T]()
-			case addInSubgroup:
-				tc.P = generateInSubgroup[T]()
-			case addInvalid:
-				tc.P = generateInvalid[T]()
-				tc.LeftToCurveCheckCircuit = true
-				tc.ToAddCircuit = false
-			}
-			switch right {
-			case addTrivial:
-				tc.Q = generateTrivial[T]()
-			case addOnCurve:
-				tc.Q = generateOnCurve[T]()
-			case addInSubgroup:
-				tc.Q = generateInSubgroup[T]()
-			case addInvalid:
-				tc.Q = generateInvalid[T]()
-				if !tc.LeftToCurveCheckCircuit {
-					// if the left point is invalid, we don't need to check the right point
-					tc.RightToCurveCheckCircuit = true
+func generateAddInputCases[T affine]() iter.Seq2[int, addInputCase[T]] {
+	return func(yield func(int, addInputCase[T]) bool) {
+		var id int
+		for _, left := range []addInputType{addTrivial, addOnCurve, addInSubgroup, addInvalid} {
+			for _, right := range []addInputType{addTrivial, addOnCurve, addInSubgroup, addInvalid} {
+				tc := addInputCase[T]{
+					left:         left,
+					right:        right,
+					ToAddCircuit: true,
+				}
+				switch left {
+				case addTrivial:
+					tc.P = generateTrivial[T]()
+				case addOnCurve:
+					tc.P = generateOnCurve[T]()
+				case addInSubgroup:
+					tc.P = generateInSubgroup[T]()
+				case addInvalid:
+					tc.P = generateInvalid[T]()
+					tc.LeftToCurveCheckCircuit = true
 					tc.ToAddCircuit = false
 				}
-			}
-			if tc.left != addInvalid && tc.right != addInvalid {
-				switch vv := any(&tc.Res).(type) {
-				case *bls12381.G1Affine:
-					vv.Add(any(&tc.P).(*bls12381.G1Affine), any(&tc.Q).(*bls12381.G1Affine))
-				case *bls12381.G2Affine:
-					vv.Add(any(&tc.P).(*bls12381.G2Affine), any(&tc.Q).(*bls12381.G2Affine))
+				switch right {
+				case addTrivial:
+					tc.Q = generateTrivial[T]()
+				case addOnCurve:
+					tc.Q = generateOnCurve[T]()
+				case addInSubgroup:
+					tc.Q = generateInSubgroup[T]()
+				case addInvalid:
+					tc.Q = generateInvalid[T]()
+					if !tc.LeftToCurveCheckCircuit {
+						// if the left point is invalid, we don't need to check the right point
+						tc.RightToCurveCheckCircuit = true
+						tc.ToAddCircuit = false
+					}
 				}
+				if tc.left != addInvalid && tc.right != addInvalid {
+					switch vv := any(&tc.Res).(type) {
+					case *bls12381.G1Affine:
+						vv.Add(any(&tc.P).(*bls12381.G1Affine), any(&tc.Q).(*bls12381.G1Affine))
+					case *bls12381.G2Affine:
+						vv.Add(any(&tc.P).(*bls12381.G2Affine), any(&tc.Q).(*bls12381.G2Affine))
+					}
+				}
+				if !yield(id, tc) {
+					return
+				}
+				id++
 			}
-			tcs = append(tcs, tc)
 		}
 	}
-	return tcs
 }
 
 func (a addInputCase[T]) WriteCSV(w *csv.Writer, id int) error {
@@ -172,7 +177,6 @@ func headersAdd[T affine]() []string {
 }
 
 func mainAdd() error {
-	tcs := generateAddInputCases[bls12381.G1Affine]()
 	f, err := os.Create("bls_g1_add_input.csv")
 	if err != nil {
 		return fmt.Errorf("create file: %w", err)
@@ -183,13 +187,12 @@ func mainAdd() error {
 	if err := w.Write(headersAdd[bls12381.G1Affine]()); err != nil {
 		return fmt.Errorf("write headers: %w", err)
 	}
-	for i, tc := range tcs {
+	for i, tc := range generateAddInputCases[bls12381.G1Affine]() {
 		if err := tc.WriteCSV(w, i); err != nil {
 			return fmt.Errorf("write csv: %w", err)
 		}
 	}
 
-	tcs2 := generateAddInputCases[bls12381.G2Affine]()
 	f, err = os.Create("bls_g2_add_input.csv")
 	if err != nil {
 		return fmt.Errorf("create file: %w", err)
@@ -199,7 +202,7 @@ func mainAdd() error {
 	if err := w.Write(headersAdd[bls12381.G2Affine]()); err != nil {
 		return fmt.Errorf("write headers: %w", err)
 	}
-	for i, tc := range tcs2 {
+	for i, tc := range generateAddInputCases[bls12381.G2Affine]() {
 		if err := tc.WriteCSV(w, i); err != nil {
 			return fmt.Errorf("write csv: %w", err)
 		}
