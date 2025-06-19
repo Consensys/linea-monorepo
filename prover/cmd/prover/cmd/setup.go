@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"errors"
@@ -9,11 +8,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
+	"github.com/consensys/linea-monorepo/prover/backend/execution/limitless"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	utils_limitless "github.com/consensys/linea-monorepo/prover/utils/limitless"
 
 	blob_v0 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
 	blob_v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
@@ -236,26 +237,34 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 		return execution.NewBuilder(zkEvm), extraFlags, nil
 
 	case circuits.ExecutionLimitlessCircuitID:
-		limits := cfg.TracesLimits
+		//limits := cfg.TracesLimits
+		limits := utils_limitless.GetLimitlessTraceLimits()
 		extraFlags["cfg_checksum"] = limits.Checksum()
 
 		// Read the dw-compiled-conglomeration.bin file from the assets directory and deserialize it
 		var compCong *distributed.ConglomeratorCompilation
-		var readBuf bytes.Buffer
-		err := serialization.ReadAndDeserialize(cfg.PathforLimitlessProverAssets(),
-			"dw-compiled-conglomeration.bin", &compCong, &readBuf)
-		if err != nil {
-			return nil, nil, fmt.Errorf(
-				"failed to read dw-compiled-conglomeration.bin file "+
-					"while building limitless execution circuit: %w",
-				err,
-			)
-		}
 
-		if compCong == nil {
-			return nil, nil, fmt.Errorf("dw-compiled-conglomeration.bin file is empty while building limitless execution circuit")
-		}
-		return execution.NewLimitlessBuilder(compCong.Wiop, &limits), extraFlags, nil
+		// var readBuf bytes.Buffer
+		// err := serialization.ReadAndDeserialize(cfg.PathforLimitlessProverAssets(),
+		// 	"dw-compiled-conglomeration.bin", &compCong, &readBuf)
+		// if err != nil {
+		// 	return nil, nil, fmt.Errorf(
+		// 		"failed to read dw-compiled-conglomeration.bin file "+
+		// 			"while building limitless execution circuit: %w",
+		// 		err,
+		// 	)
+		// }
+		// if compCong == nil {
+		// 	return nil, nil, fmt.Errorf("dw-compiled-conglomeration.bin file is empty while building limitless execution circuit")
+		// }
+
+		logrus.Info("Setting up limitless prover assets")
+		asset := limitless.SetupLimitlessAssest(cfg)
+		compCong = asset.DistWizard.CompiledConglomeration
+		asset = nil
+		runtime.GC()
+
+		return execution.NewLimitlessBuilder(compCong.Wiop, limits), extraFlags, nil
 
 	case circuits.BlobDecompressionV0CircuitID:
 		dict, err := os.ReadFile(args.DictPath)

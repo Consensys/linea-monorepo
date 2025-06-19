@@ -159,3 +159,22 @@ func cleanWitnessDirectory(cfg *config.Config) {
 	filepath = path.Join(filepath, "witness")
 	os.RemoveAll(filepath)
 }
+
+func SetupLimitlessAssest(config *config.Config) *Asset {
+	var (
+		traceLimits = utils_limitless.GetLimitlessTraceLimits()
+		zkevm       = zkevm.FullZKEVMWithSuite(traceLimits, zkevm.CompilationSuite{}, config)
+		disc        = &distributed.StandardModuleDiscoverer{
+			TargetWeight: 1 << 28,
+			Affinities:   utils_limitless.GetAffinities(zkevm),
+			Predivision:  1,
+		}
+		dw = distributed.DistributeWizard(zkevm.WizardIOP, disc).CompileSegments().Conglomerate(20)
+	)
+
+	return &Asset{
+		Zkevm:      zkevm,
+		Disc:       disc,
+		DistWizard: dw,
+	}
+}
