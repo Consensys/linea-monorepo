@@ -79,7 +79,6 @@ func TestConcatTinyColRange(t *testing.T) {
 
 				// Compile with the full suite
 				compiled := wizard.Compile(define,
-					compiler.Arcane(compiler.WithTargetColSize(16)),
 					dummy.Compile,
 				)
 

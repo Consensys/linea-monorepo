@@ -68,8 +68,18 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 	// Collect all the roots: rounds by rounds
 	// and append them to the sis or no sis roots
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+
+		// If the round is empty (i.e. the wizard does not have any committed
+		// columns associated to this round), then the rootSv and rootF will not
+		// be defined so this case cannot be handled as a "switch-case" as in
+		// the "if" clause below.
+		if ctx.RoundStatus[round] == IsEmpty {
+			continue
+		}
+
 		rootSv := run.GetColumn(ctx.Items.MerkleRoots[round].GetColID()) // len 1 smart vector
-		rootF := rootSv.Get(0)                                           // root as a field element
+		rootF := rootSv.Get(0)                                           // root as field element
+
 		// Append the isSISApplied flag
 		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
 			noSisRoots = append(noSisRoots, types.Bytes32(rootF.Bytes()))
@@ -168,6 +178,13 @@ func (ctx *Ctx) getYs(run wizard.Runtime) (ys [][]field.Element) {
 	// Get the list of the polynomials rounds by rounds
 	// and append them to the sis or no sis lists
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		// If the round is empty (i.e. the wizard does not have any committed
+		// columns associated to this round), then the ysRounds will not
+		// be defined so this case cannot be handled as a "switch-case" as in
+		// the "if" clause below.
+		if ctx.RoundStatus[round] == IsEmpty {
+			continue
+		}
 		names := ctx.CommitmentsByRounds.MustGet(round)
 		ysRounds := make([]field.Element, len(names))
 		for i, name := range names {
@@ -190,11 +207,14 @@ func (ctx *Ctx) getYs(run wizard.Runtime) (ys [][]field.Element) {
 // Returns the opened columns from the messages. The returned columns are
 // split "by-commitment-round".
 func (ctx *Ctx) RecoverSelectedColumns(run wizard.Runtime, entryList []int) [][][]field.Element {
-	// We assign as below:
-	// openedSubColumns = (openedSubColumnsNoSIS, openedSubColumnsSIS)
 	var (
-		openedSubColumnsNoSIS = [][][]field.Element{}
-		openedSubColumnsSIS   = [][][]field.Element{}
+		openedSubColumns = [][][]field.Element{}
+		// slice containing the number of rows per SIS round
+		numRowsPerSisRound = []int{}
+		// slice containing the number of rows per non SIS round
+		numRowsPerNonSisRound = []int{}
+		// the running offset of rows count
+		roundStartAt = 0
 	)
 	// Collect the columns : first extract the full columns
 	// Bear in mind that the prover messages are zero-padded
@@ -204,46 +224,51 @@ func (ctx *Ctx) RecoverSelectedColumns(run wizard.Runtime, entryList []int) [][]
 		fullSelectedCols[j] = smartvectors.IntoRegVec(fullSelectedCol)
 	}
 
-	// Split the columns per commitment for the verification
-	roundStartAt := 0
-
+	// Next we compute numRowsPerRound
 	// Process precomputed
 	if ctx.IsNonEmptyPrecomputed() {
-		openedPrecompCols := make([][]field.Element, len(entryList))
 		numPrecomputeds := len(ctx.Items.Precomputeds.PrecomputedColums)
-		for j := range entryList {
-			openedPrecompCols[j] = fullSelectedCols[j][roundStartAt : roundStartAt+numPrecomputeds]
-		}
-		// update the start counter to ensure we do not pass twice the same row
-		roundStartAt += numPrecomputeds
-		// conditionally append the opened precomputed columns
+		// conditionally append numPrecomputeds
 		// to the SIS or no SIS list
 		if ctx.IsSISAppliedToPrecomputed() {
-			openedSubColumnsSIS = append(openedSubColumnsSIS, openedPrecompCols)
+			numRowsPerSisRound = append(numRowsPerSisRound, numPrecomputeds)
 		} else {
-			openedSubColumnsNoSIS = append(openedSubColumnsNoSIS, openedPrecompCols)
+			numRowsPerNonSisRound = append(numRowsPerNonSisRound, numPrecomputeds)
 		}
 	}
 
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		openedSubColumnsForRound := make([][]field.Element, len(entryList))
+		// If the round is empty (i.e. the wizard does not have any committed
+		// columns associated to this round), then the openedSubColumnsForRound
+		// will not be defined so this case cannot be handled as a "switch-case" as in
+		// the "if" clause below.
+		if ctx.RoundStatus[round] == IsEmpty {
+			continue
+		}
 		numRowsForRound := ctx.getNbCommittedRows(round)
+		// conditionally append the numRowsForRound
+		// to the SIS or no SIS list
+		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
+			numRowsPerNonSisRound = append(numRowsPerNonSisRound, numRowsForRound)
+		} else if ctx.RoundStatus[round] == IsSISApplied {
+			numRowsPerSisRound = append(numRowsPerSisRound, numRowsForRound)
+		}
+	}
+	// Append the no SIS and SIS rows counts
+	// numRowsPerRound = (numRowsPerNonSisRound, numRowsPerSisRound)
+	numRowsPerRound := append(numRowsPerNonSisRound, numRowsPerSisRound...)
+
+	// Next compute the openedSubColumns
+	for _, numRows := range numRowsPerRound {
+		openedSubColumnsForRound := make([][]field.Element, len(entryList))
 		for j := range entryList {
-			openedSubColumnsForRound[j] = fullSelectedCols[j][roundStartAt : roundStartAt+numRowsForRound]
+			openedSubColumnsForRound[j] = fullSelectedCols[j][roundStartAt : roundStartAt+numRows]
 		}
 
 		// update the start counter to ensure we do not pass twice the same row
-		roundStartAt += numRowsForRound
-		// conditionally append the opened columns
-		// to the SIS or no SIS list
-		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
-			openedSubColumnsNoSIS = append(openedSubColumnsNoSIS, openedSubColumnsForRound)
-		} else if ctx.RoundStatus[round] == IsSISApplied {
-			openedSubColumnsSIS = append(openedSubColumnsSIS, openedSubColumnsForRound)
-		}
+		roundStartAt += numRows
+		openedSubColumns = append(openedSubColumns, openedSubColumnsForRound)
 	}
-	// Append the no SIS and SIS opened sub columns
-	openedSubColumns := append(openedSubColumnsNoSIS, openedSubColumnsSIS...)
 
 	// sanity-check : make sure we have not forgotten any column
 	// We need to treat the precomputed separately if they are committed
