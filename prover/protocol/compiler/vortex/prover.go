@@ -1,8 +1,6 @@
 package vortex
 
 import (
-	"fmt"
-
 	gnarkvortex "github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
@@ -120,14 +118,10 @@ func (ctx *Ctx) ComputeLinearComb(pr *wizard.ProverRuntime) {
 
 	// And get the randomness
 	randomCoinLC := pr.GetRandomCoinFieldExt(ctx.Items.Alpha.Name)
-	fmt.Printf("ok3\n")
 
 	// and compute and assign the random linear combination of the rows
 	proof := ctx.VortexParams.Open(committedSV, randomCoinLC)
-	fmt.Printf("ok3\n")
 	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
-	fmt.Printf("ok4\n")
-
 }
 
 // ComputeLinearCombFromRsMatrix is the same as ComputeLinearComb but uses

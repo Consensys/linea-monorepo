@@ -26,7 +26,7 @@ func TestWizarldutils(t *testing.T) {
 			col5 = b.RegisterPrecomputed("P3", smartvectors.ForTest(1, 0, 1, 1))
 			col6 = verifiercol.NewConstantCol(field.NewElement(3), size)
 
-			coin = b.RegisterRandomCoin(coin.Namef("Coin"), coin.Field)
+			coin = b.RegisterRandomCoin(coin.Namef("Coin"), coin.FieldExt)
 		)
 
 		// PolyEval over columns

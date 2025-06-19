@@ -80,7 +80,6 @@ func ContinueCompilation(rootComp *CompiledIOP, compilers ...func(*CompiledIOP))
 			comp.subProvers.Len(), comp.NumRounds(),
 		)
 	}
-
 	return comp
 }
 

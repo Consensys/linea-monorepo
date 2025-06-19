@@ -55,7 +55,7 @@ func TestVortexGnarkVerifier(t *testing.T) {
 		for round := 0; round < numRounds; round++ {
 			// trigger the creation of a new round by declaring a dummy coin
 			if round != 0 {
-				_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
+				_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
 			}
 
 			rows[round] = make([]ifaces.Column, nPols)
@@ -86,7 +86,7 @@ func TestVortexGnarkVerifier(t *testing.T) {
 			// let the prover know that it is free to go to the next
 			// round by sampling the coin.
 			if round != 0 {
-				_ = pr.GetRandomCoinField(coin.Namef("COIN_%v", round))
+				_ = pr.GetRandomCoinFieldExt(coin.Namef("COIN_%v", round))
 			}
 			for i, row := range rows[round] {
 				// For round 0 we need (numPolys - numPrecomputeds) polys, as the precomputed are

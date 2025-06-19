@@ -258,6 +258,7 @@ func TestCompiler(t *testing.T) {
 		t.Run(tc.Explainer, func(t *testing.T) {
 			logrus.Infof("Testing %s", tc.Explainer)
 			compiled := wizard.Compile(tc.Define, vortex.Compile(4, vortex.WithOptionalSISHashingThreshold(9)))
+
 			proof := wizard.Prove(compiled, tc.Prove)
 			valid := wizard.Verify(compiled, proof)
 

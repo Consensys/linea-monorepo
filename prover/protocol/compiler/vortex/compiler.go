@@ -586,7 +586,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 	ctx.Items.Alpha = ctx.comp.InsertCoin(
 		lastRound+1,
 		ctx.LinCombRandCoinName(),
-		coin.Field,
+		coin.FieldExt,
 	)
 
 	// registers the linear combination claimed by the prover

@@ -1,8 +1,6 @@
 package vortex
 
 import (
-	"fmt"
-
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
@@ -26,8 +24,6 @@ func (p *Params) Commit(ps []smartvectors.SmartVector) (encodedMatrix EncodedMat
 	}
 	encodedMatrix = p.encodeRows(ps)
 	nbColumns := p.NumEncodedCols()
-	fmt.Printf("encodedMatrix=%v\n", (encodedMatrix[0].Len()))
-	fmt.Printf("ok22\n")
 	colHashes = p.transversalHash(encodedMatrix)
 
 	// at this stage colHashes is a list of field.Element
