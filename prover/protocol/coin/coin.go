@@ -145,6 +145,10 @@ func NewInfo(name Name, type_ Type, round int, size ...int) Info {
 		if len(size) > 0 {
 			utils.Panic("size for Field")
 		}
+	case FieldExt:
+		if len(size) > 0 {
+			utils.Panic("size for FieldExt")
+		}
 	default:
 		panic("unreachable")
 	}

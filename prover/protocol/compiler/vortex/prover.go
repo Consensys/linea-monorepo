@@ -1,6 +1,8 @@
 package vortex
 
 import (
+	"fmt"
+
 	gnarkvortex "github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
@@ -62,9 +64,15 @@ func (ctx *Ctx) AssignColumn(round int) func(*wizard.ProverRuntime) {
 		}
 
 		// And assign the 1-sized column to contain the root
-		var root field.Element
-		root.SetBytes(tree.Root[:])
-		pr.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round)), smartvectors.NewConstant(root, 1))
+		root := types.Bytes32ToHash(tree.Root)
+		// TODO@yao: fix, how to assign the whole root? 8 field.Element?
+		pr.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round)), smartvectors.NewConstant(root[0], 1))
+
+		/*
+			for i, r := range root {
+				pr.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round)), smartvectors.NewConstant(r, 1))
+			}
+		*/
 	}
 }
 
@@ -112,10 +120,14 @@ func (ctx *Ctx) ComputeLinearComb(pr *wizard.ProverRuntime) {
 
 	// And get the randomness
 	randomCoinLC := pr.GetRandomCoinFieldExt(ctx.Items.Alpha.Name)
+	fmt.Printf("ok3\n")
 
 	// and compute and assign the random linear combination of the rows
 	proof := ctx.VortexParams.Open(committedSV, randomCoinLC)
+	fmt.Printf("ok3\n")
 	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
+	fmt.Printf("ok4\n")
+
 }
 
 // ComputeLinearCombFromRsMatrix is the same as ComputeLinearComb but uses

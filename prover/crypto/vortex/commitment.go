@@ -1,6 +1,8 @@
 package vortex
 
 import (
+	"fmt"
+
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
@@ -24,7 +26,8 @@ func (p *Params) Commit(ps []smartvectors.SmartVector) (encodedMatrix EncodedMat
 	}
 	encodedMatrix = p.encodeRows(ps)
 	nbColumns := p.NumEncodedCols()
-
+	fmt.Printf("encodedMatrix=%v\n", (encodedMatrix[0].Len()))
+	fmt.Printf("ok22\n")
 	colHashes = p.transversalHash(encodedMatrix)
 
 	// at this stage colHashes is a list of field.Element
@@ -76,8 +79,9 @@ func (p *Params) hashColumn(column []field.Element) []field.Element {
 		}
 		h := hasher.Sum(nil)
 		for j := 0; j < 8; j++ {
-			res[j].SetBytes(h[j*8 : (j+1)*8])
+			res[j].SetBytes(h[j*4 : (j+1)*4]) // every 4 bytes can be converted to 1 koalabear element
 		}
+
 	} else {
 		res = p.Key.Hash(column)
 	}
@@ -85,7 +89,6 @@ func (p *Params) hashColumn(column []field.Element) []field.Element {
 }
 
 func (p *Params) transversalHash(v []smartvectors.SmartVector) []field.Element {
-
 	var res []field.Element
 	nbColumns := v[0].Len()
 	nbRows := len(v)
@@ -95,6 +98,7 @@ func (p *Params) transversalHash(v []smartvectors.SmartVector) []field.Element {
 	} else {
 		sizeChunk = 8
 	}
+
 	res = make([]field.Element, sizeChunk*nbColumns)
 	parallel.Execute(nbColumns, func(start, end int) {
 		ithCol := make([]field.Element, nbRows)
@@ -103,6 +107,7 @@ func (p *Params) transversalHash(v []smartvectors.SmartVector) []field.Element {
 				ithCol[j] = v[j].Get(i)
 			}
 			curHash := p.hashColumn(ithCol)
+
 			copy(res[i*sizeChunk:(i+1)*sizeChunk], curHash)
 		}
 	})
