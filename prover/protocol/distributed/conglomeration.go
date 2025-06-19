@@ -156,7 +156,7 @@ func conglomerate(maxNbProofs int, moduleGLs, moduleLpps []*RecursedSegmentCompi
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
-			vortex.WithSISParams(&sisInstance),
+			vortex.WithOptionalSISHashingThreshold(1<<20),
 		),
 	)
 
