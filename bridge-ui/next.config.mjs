@@ -1,12 +1,25 @@
+const isProd = process.env.NEXT_PUBLIC_ENVIRONMENT === "production";
+const basePath = isProd ? "/hub/bridge" : "";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
   reactStrictMode: true,
+  basePath,
+  env: {
+    NEXT_PUBLIC_BASE_PATH: basePath,
+  },
   images: {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "**",
+        hostname: "s2.coinmarketcap.com",
+        pathname: "/static/img/coins/**",
+      },
+      {
+        protocol: "https",
+        hostname: "assets.coingecko.com",
+        pathname: "/coins/images/**",
       },
     ],
   },

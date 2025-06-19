@@ -10,6 +10,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.Deque
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.time.Duration
 
 class L1MessageSentEventsPoller(
@@ -23,27 +24,32 @@ class L1MessageSentEventsPoller(
   private val l1MessagesSentFetchLimit: UInt,
   private val l1MessagesSentFetchTimeout: Duration,
   private val l1BlockSearchChuck: UInt,
-  private val highestBlockNumber: BlockParameter,
-  private val log: Logger = LogManager.getLogger(L1MessageSentEventsPoller::class.java)
+  private val l1HighestBlock: BlockParameter,
+  private val l2HighestBlock: BlockParameter,
+  private val log: Logger = LogManager.getLogger(L1MessageSentEventsPoller::class.java),
 ) : PeriodicPollingService(
   vertx,
   pollingIntervalMs = pollingInterval.inWholeMilliseconds,
-  log = log
+  log = log,
 ) {
   private val eventsFetcher = L1MessageSentEventsFetcher(
     l1SmartContractAddress = l1SmartContractAddress,
     l1EventsSearcher = l1EventsSearcher,
-    highestBlock = highestBlockNumber,
-    log = log
+    l1HighestBlock = l1HighestBlock,
+    log = log,
   )
+  private val lastFetchedMessageNumber: AtomicLong = AtomicLong(0L)
 
   private fun nextMessageNumberToFetchFromL1(): SafeFuture<ULong> {
-    val queueLastMessage = eventsQueue.peekLast()
-    if (queueLastMessage != null) {
-      return SafeFuture.completedFuture(queueLastMessage.messageNumber.inc())
+    if (lastFetchedMessageNumber.get() > 0) {
+      return SafeFuture.completedFuture(lastFetchedMessageNumber.get().inc().toULong())
     } else {
-      return l2MessageService.getLastAnchoredL1MessageNumber(block = highestBlockNumber)
-        .thenApply { it.inc() }
+      return l2MessageService
+        .getLastAnchoredL1MessageNumber(block = l2HighestBlock)
+        .thenApply {
+          lastFetchedMessageNumber.set(it.toLong())
+          it.inc()
+        }
     }
   }
 
@@ -58,7 +64,7 @@ class L1MessageSentEventsPoller(
       log.debug(
         "skipping fetching MessageSent events: queueSize={} reached targetCapacity={}",
         eventsQueue.size,
-        eventsQueueMaxCapacity
+        eventsQueueMaxCapacity,
       )
       return SafeFuture.completedFuture(null)
     }
@@ -69,11 +75,12 @@ class L1MessageSentEventsPoller(
           startingMessageNumber = nextMessageNumberToFetchFromL1,
           targetMessagesToFetch = l1MessagesSentFetchLimit.coerceAtMost(remainingCapacity.toUInt()),
           fetchTimeout = l1MessagesSentFetchTimeout,
-          blockChunkSize = l1BlockSearchChuck
+          blockChunkSize = l1BlockSearchChuck,
         )
       }
       .thenApply { events ->
         eventsQueue.addAll(events.map { it.event })
+        events.lastOrNull()?.also { lastFetchedMessageNumber.set(it.event.messageNumber.toLong()) }
       }
   }
 }

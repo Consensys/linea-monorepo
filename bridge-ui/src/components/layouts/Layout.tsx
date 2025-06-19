@@ -1,6 +1,5 @@
 "use client";
 
-import clsx from "clsx";
 import { usePathname } from "next/navigation";
 import { useDynamicContext } from "@/lib/dynamic";
 import Header from "../header";
@@ -40,7 +39,7 @@ function CommonLayout({ children, pathname }: { children: React.ReactNode; pathn
       <div>
         <Image
           className="left-illustration"
-          src="/images/illustration/illustration-left.svg"
+          src={`${process.env.NEXT_PUBLIC_BASE_PATH}/images/illustration/illustration-left.svg`}
           role="presentation"
           alt="illustration left"
           width={300}
@@ -49,21 +48,11 @@ function CommonLayout({ children, pathname }: { children: React.ReactNode; pathn
         />
         <Image
           className="right-illustration"
-          src="/images/illustration/illustration-right.svg"
+          src={`${process.env.NEXT_PUBLIC_BASE_PATH}/images/illustration/illustration-right.svg`}
           role="presentation"
           alt="illustration right"
           width={610}
           height={842}
-          priority
-        />
-        <Image
-          className={clsx("mobile-illustration", { hidden: pathname === "/faq" })}
-          src="/images/illustration/illustration-mobile.svg"
-          role="presentation"
-          alt="illustration mobile"
-          width={0}
-          height={0}
-          style={{ width: "100%", height: "auto", objectFit: "cover" }}
           priority
         />
       </div>

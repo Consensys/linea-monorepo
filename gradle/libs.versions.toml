@@ -1,8 +1,14 @@
 [plugins]
 docker = { id = "com.avast.gradle.docker-compose", version = "0.17.7" }
 web3j = { id = "org.web3j", version.ref = "web3j" }
-spotless = { id = "com.diffplug.spotless", version = "6.16.0" }
+web3jSolidity = { id = "org.web3j.solidity", version = "0.5.0" }
+spotless = { id = "com.diffplug.spotless", version = "6.25.0" }
 jreleaser = {id = "org.jreleaser", version = "1.15.0"}
+dependencyLicenseReport = { id = "com.github.jk1.dependency-license-report", version = "2.9" }
+lombok = { id = "io.freefair.lombok", version = "8.6" }
+gradleVersions = { id = "com.github.ben-manes.versions", version = "0.51.0" }
+dependencyManagement = { id = "io.spring.dependency-management", version = "1.1.5" }
+download = { id = "de.undercouch.download", version = "5.6.0" }
 
 [libraries]
 jreleaser = { group = "org.jreleaser", name = "jreleaser-gradle-plugin", version = "1.15.0" }
@@ -20,23 +26,30 @@ wiremock = "3.13.0"
 logcaptor = "2.11.0"
 
 # Runtime
-besu = "25.2.1-linea1"
-blobCompressor = "0.0.4"
-blobShnarfCalculator = "0.0.4"
+arithmetization="beta-v3.1-rc5"
+besu = "25.6.0-linea1"
+blobCompressor = "1.2.2"
+blobShnarfCalculator = "1.2.0"
 bouncycastle = "1.79"
 caffeine = "3.1.6"
+gson = "2.11.0"
 hoplite = "2.9.0"
 jackson = "2.19.0"
 jna = "5.14.0"
 kotlinResult = "1.1.16"
 kotlinxDatetime = "0.6.2"
-ktlint = "0.47.0"
-log4j = "2.20.0"
-micrometer = "1.8.4"
+ktlint = "0.50.0"
+lineaKotlin = "0.1.0"
+log4j = "2.24.3"
+micrometer = "1.12.13"
 netty = "4.1.92.Final"
 picoli = "4.7.6"
 slf4j="1.7.36"
 teku = "23.1.1"
-tuweni = "2.4.2"
+tuweni = "2.7.0"
 vertx = "4.5.14"
 web3j = "4.12.2"
+
+# Other
+googleJavaFormat = "1.27.0"
+dependencyLicenseReport = "2.9"

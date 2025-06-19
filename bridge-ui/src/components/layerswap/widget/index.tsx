@@ -1,4 +1,3 @@
-import "@layerswap/widget/index.css";
 import { Swap, LayerswapProvider, GetSettings, ThemeData } from "@layerswap/widget";
 import CustomHooks from "./custom-hooks";
 import { config } from "@/config";
