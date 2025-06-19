@@ -18,8 +18,6 @@ package net.consensys.linea.zktracer.opcode;
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.Trace.*;
 
-import java.util.List;
-
 import net.consensys.linea.zktracer.opcode.gas.MxpType;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 
@@ -318,12 +316,5 @@ public enum OpCode {
 
   public boolean mayTriggerMemoryExpansionException() {
     return this != MSIZE && this.getData().billing().type() != MxpType.NONE;
-  }
-
-  private static final List<OpCode> POST_LONDON_OPCODES =
-      List.of(PREVRANDAO, PUSH0, BLOBBASEFEE, BLOBHASH, TLOAD, TSTORE);
-
-  public boolean isNotInLondon() {
-    return POST_LONDON_OPCODES.contains(this);
   }
 }
