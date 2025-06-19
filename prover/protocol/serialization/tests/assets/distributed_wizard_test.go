@@ -37,11 +37,11 @@ func TestDistributedWizard(t *testing.T) {
 	dist := GetDistributed()
 
 	t.Run("Bootstrapper", func(t *testing.T) {
-		runSerdeTest(t, dist.Bootstrapper, "DistributedWizard.Bootstrapper", true)
+		runSerdeTest(t, dist.Bootstrapper, "DistributedWizard.Bootstrapper", false)
 	})
 
 	t.Run("Discoverer", func(t *testing.T) {
-		runSerdeTest(t, dist.Disc, "DistributedWizard.Discoverer", true)
+		runSerdeTest(t, dist.Disc, "DistributedWizard.Discoverer", false)
 	})
 
 	t.Run("CompiledDefault", func(t *testing.T) {
