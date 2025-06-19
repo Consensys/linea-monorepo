@@ -19,6 +19,6 @@
     "l2MerkleRoots": [],
     "l2MerkleTreesDepth": 5,
     "l2MessagingBlocksOffsets": "0x",
-    "parentAggregationLastL1RollingHash": "0xebf5dbf6b78735320a629d876aeffa1ef423a22252fc385b3c625090a42a2ba0",
-    "parentAggregationLastL1RollingHashMessageNumber": 750107
+    "parentAggregationLastL1RollingHash": "0xe77bb8170fc68048abafb7324b73db5f5a13c2d1b6f742ed199b779febfdabe8",
+    "parentAggregationLastL1RollingHashMessageNumber": 750106
 }
