@@ -44,23 +44,27 @@ tasks.register("generateBlockchainReferenceTests", RefTestGenerationTask) {
   failedConstraint = System.getenv('FAILED_CONSTRAINT') ?: ""
 }
 
-tasks.register("generateGeneralStateReferenceTests", RefTestGenerationTask) {
-  refTestTemplateFilePath = "src/test/resources/templates/GeneralStateReferenceTest.java.template"
-  refTests = "src/test/resources/ethereum-tests/GeneralStateTests"
-  refTestJsonParamsDirectory = "ethereum-tests/GeneralStateTests"
-  refTestJsonParamsExcludedPath = ""
-  refTestNamePrefix = "GeneralStateReferenceTest"
-  generatedRefTestsOutput = "src/test/java/net/consensys/linea/generated/generalstate"
-  failedTestsFilePath = System.getenv('FAILED_TEST_JSON_DIRECTORY') ?: "../tmp/local/"
-  failedModule = System.getenv('FAILED_MODULE') ?: ""
-  failedConstraint = System.getenv('FAILED_CONSTRAINT') ?: ""
-}
-
 tasks.register('referenceBlockchainTests', Test) {
   finalizedBy(jacocoReferenceBlockchainTestsReport)
   description = 'Runs ETH reference blockchain tests.'
   dependsOn generateBlockchainReferenceTests
   environment.put("REFERENCE_TEST_OUTCOME_OUTPUT_FILE", "BlockchainReferenceTestOutcome.json")
+
+  it.configure {
+    // Configure resource limits
+    boolean isCiServer = System.getenv().containsKey("CI")
+    minHeapSize = "256m"
+    maxHeapSize = isCiServer ? "32g" : "8g"
+    // Configure parallelism
+    environment.put("blockchain", System.getenv("blockchain") ?: "Ethereum")
+    systemProperty("junit.jupiter.execution.timeout.default", "15 m")
+    systemProperty("junit.jupiter.execution.parallel.enabled", "true")
+    systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
+    systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
+    systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
+    systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
+            System.getenv().getOrDefault("REFERENCE_TESTS_PARALLELISM", "1").toInteger())
+  }
 
   useJUnitPlatform {
     includeTags("BlockchainReferenceTest")
@@ -74,47 +78,6 @@ tasks.register("jacocoReferenceBlockchainTestsReport", JacocoReport) {
 
   sourceSets project(":arithmetization").sourceSets.main
   executionData(referenceBlockchainTests)
-}
-
-tasks.register('referenceGeneralStateTests', Test) {
-  finalizedBy(jacocoReferenceGeneralStateTestsReport)
-  description = 'Runs ETH reference general state tests.'
-  dependsOn generateGeneralStateReferenceTests
-  environment.put("REFERENCE_TEST_OUTCOME_OUTPUT_FILE", "GeneralStateReferenceTestOutcome.json")
-
-  useJUnitPlatform {
-    includeTags("GeneralStateReferenceTest")
-  }
-}
-
-tasks.register("jacocoReferenceGeneralStateTestsReport", JacocoReport) {
-  reports {
-    xml.required = true
-  }
-
-  sourceSets project(":arithmetization").sourceSets.main
-  executionData(referenceGeneralStateTests)
-}
-
-[
-  tasks.named("referenceGeneralStateTests"),
-  tasks.named("referenceBlockchainTests"),
-].forEach {
-   it.configure {
-    // Configure resource limits    
-    boolean isCiServer = System.getenv().containsKey("CI")
-    minHeapSize = "256m"
-    maxHeapSize = isCiServer ? "32g" : "8g"           
-    // Configure parallelism
-    environment.put("blockchain", System.getenv("blockchain") ?: "Ethereum")
-    systemProperty("junit.jupiter.execution.timeout.default", "15 m")
-    systemProperty("junit.jupiter.execution.parallel.enabled", "true")
-    systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
-    systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
-    systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
-    systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
-      System.getenv().getOrDefault("REFERENCE_TESTS_PARALLELISM", "1").toInteger())
-  }
 }
 
 dependencies {
