@@ -75,6 +75,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	// pass the parameters for a merkle-mode sis verification
 	params := vortex.GParams{}
 	params.HasherFunc = factoryHasherFunc
+	params.NoSisHasher = factoryHasherFunc
 	params.Key = ctx.VortexParams.Key
 
 	vortex.GnarkVerifyOpeningWithMerkleProof(
