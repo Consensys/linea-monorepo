@@ -102,6 +102,15 @@ export abstract class MessageDBService {
   }
 
   /**
+   * Get the minimum block number for messages in a given direction.
+   * @param direction - The direction to filter messages by.
+   * @returns {Promise<number | null>} A promise that resolves to the minimum block number, or null if no messages are found.
+   */
+  public async getMinBlockNumber(direction: Direction): Promise<number | null> {
+    return this.messageRepository.getMinBlockNumber(direction);
+  }
+
+  /**
    * Updates a message with a claim transaction atomically.
    *
    * @param {Message} message - The message to update.

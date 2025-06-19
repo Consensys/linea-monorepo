@@ -43,6 +43,7 @@ type NetworkOptions = {
   messageServiceContractAddress: string;
   isEOAEnabled?: boolean;
   isCalldataEnabled?: boolean;
+  startingBlockForLogsFetching?: number;
 };
 
 type NetworkConfig = Omit<DeepRequired<NetworkOptions>, "claiming" | "listener"> & {

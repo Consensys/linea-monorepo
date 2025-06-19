@@ -33,7 +33,7 @@ export class EthersL2MessageServiceLogClient implements IL2MessageServiceLogClie
    */
   private async getEvents<TCEevent extends TypedContractEvent>(
     eventFilter: TypedDeferredTopicFilter<TypedContractEvent>,
-    fromBlock?: number,
+    fromBlock?: string | number,
     toBlock?: string | number,
     fromBlockLogIndex?: number,
   ): Promise<TypedEventLog<TCEevent>[]> {
@@ -63,7 +63,7 @@ export class EthersL2MessageServiceLogClient implements IL2MessageServiceLogClie
    */
   public async getMessageSentEvents(params: {
     filters?: MessageSentEventFilters;
-    fromBlock?: number;
+    fromBlock?: string | number;
     toBlock?: string | number;
     fromBlockLogIndex?: number;
   }): Promise<MessageSent[]> {
@@ -107,7 +107,7 @@ export class EthersL2MessageServiceLogClient implements IL2MessageServiceLogClie
    */
   public async getMessageSentEventsByMessageHash(params: {
     messageHash: string;
-    fromBlock?: number;
+    fromBlock?: string | number;
     toBlock?: string | number;
     fromBlockLogIndex?: number;
   }): Promise<MessageSent[]> {
@@ -146,7 +146,10 @@ export class EthersL2MessageServiceLogClient implements IL2MessageServiceLogClie
    * @param {number} toBlock - The ending block number.
    * @returns {Promise<MessageSent[]>} A promise that resolves to an array of `MessageSent` events.
    */
-  public async getMessageSentEventsByBlockRange(fromBlock: number, toBlock: number): Promise<MessageSent[]> {
+  public async getMessageSentEventsByBlockRange(
+    fromBlock: string | number,
+    toBlock: string | number,
+  ): Promise<MessageSent[]> {
     const messageSentEventFilter = this.l2MessageService.filters.MessageSent();
     return (await this.getEvents<MessageSentEvent.Event>(messageSentEventFilter, fromBlock, toBlock)).map((event) => ({
       messageSender: event.args._from,
@@ -173,7 +176,7 @@ export class EthersL2MessageServiceLogClient implements IL2MessageServiceLogClie
    * @returns {Promise<ServiceVersionMigrated[]>} A promise that resolves to an array of `ServiceVersionMigrated` events.
    */
   public async getServiceVersionMigratedEvents(params?: {
-    fromBlock?: number;
+    fromBlock?: string | number;
     toBlock?: string | number;
     fromBlockLogIndex?: number;
   }): Promise<ServiceVersionMigrated[]> {

@@ -55,6 +55,7 @@ export function getConfig(postmanOptions: PostmanOptions): PostmanConfig {
       messageServiceContractAddress: l1Options.messageServiceContractAddress,
       isEOAEnabled: l1Options.isEOAEnabled ?? DEFAULT_EOA_ENABLED,
       isCalldataEnabled: l1Options.isCalldataEnabled ?? DEFAULT_CALLDATA_ENABLED,
+      startingBlockForLogsFetching: l1Options.startingBlockForLogsFetching ?? 0,
       listener: {
         pollingInterval: l1Options.listener.pollingInterval ?? DEFAULT_LISTENER_INTERVAL,
         maxFetchMessagesFromDb: l1Options.listener.maxFetchMessagesFromDb ?? DEFAULT_MAX_FETCH_MESSAGES_FROM_DB,
@@ -89,6 +90,7 @@ export function getConfig(postmanOptions: PostmanOptions): PostmanConfig {
       isCalldataEnabled: l2Options.isCalldataEnabled ?? DEFAULT_CALLDATA_ENABLED,
       l2MessageTreeDepth: l2Options.l2MessageTreeDepth ?? DEFAULT_L2_MESSAGE_TREE_DEPTH,
       enableLineaEstimateGas: l2Options.enableLineaEstimateGas ?? false,
+      startingBlockForLogsFetching: l2Options.startingBlockForLogsFetching ?? 0,
       listener: {
         pollingInterval: l2Options.listener.pollingInterval ?? DEFAULT_LISTENER_INTERVAL,
         maxFetchMessagesFromDb: l2Options.listener.maxFetchMessagesFromDb ?? DEFAULT_MAX_FETCH_MESSAGES_FROM_DB,

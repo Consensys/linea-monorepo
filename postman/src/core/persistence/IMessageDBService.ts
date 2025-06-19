@@ -23,6 +23,7 @@ export interface IMessageDBService<TransactionResponse> {
     retryDelay: number,
   ): Promise<Message | null>;
   getLastClaimTxNonce(direction: Direction): Promise<number | null>;
+  getMinBlockNumber(direction: Direction): Promise<number | null>;
   updateMessageWithClaimTxAtomic(
     message: Message,
     nonce: number,

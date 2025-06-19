@@ -13,4 +13,6 @@ export type MessageClaimingProcessorConfig = {
   maxClaimGasLimit: bigint;
   direction: Direction;
   originContractAddress: string;
+  l1LogsFromBlock: number;
+  l2LogsFromBlock: number;
 };

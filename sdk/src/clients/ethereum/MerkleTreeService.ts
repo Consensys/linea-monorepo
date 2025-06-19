@@ -48,10 +48,22 @@ export class MerkleTreeService implements IMerkleTreeService {
   /**
    * Retrieves the message proof for claiming the message on L1.
    * @param {string} messageHash - The message hash.
+   * @param {Object} opts - Optional parameters.
+   * @param {string | number} opts.l1LogsFromBlock - The block number from which to start fetching L1 logs.
+   * @param {string | number} opts.l2LogsFromBlock - The block number from which to start fetching L2 logs.
    * @returns {Promise<Proof>} The merkle root, the merkle proof and the message leaf index.
    */
-  public async getMessageProof(messageHash: string): Promise<Proof> {
-    const [messageEvent] = await this.l2MessageServiceLogClient.getMessageSentEventsByMessageHash({ messageHash });
+  public async getMessageProof(
+    messageHash: string,
+    opts: {
+      l1LogsFromBlock?: string | number;
+      l2LogsFromBlock?: string | number;
+    } = {},
+  ): Promise<Proof> {
+    const [messageEvent] = await this.l2MessageServiceLogClient.getMessageSentEventsByMessageHash({
+      messageHash,
+      fromBlock: opts.l2LogsFromBlock,
+    });
 
     if (!messageEvent) {
       throw makeBaseError(`Message hash does not exist on L2. Message hash: ${messageHash}`);
@@ -59,6 +71,7 @@ export class MerkleTreeService implements IMerkleTreeService {
 
     const [l2MessagingBlockAnchoredEvent] = await this.lineaRollupLogClient.getL2MessagingBlockAnchoredEvents({
       filters: { l2Block: BigInt(messageEvent.blockNumber) },
+      fromBlock: opts.l1LogsFromBlock,
     });
 
     if (!l2MessagingBlockAnchoredEvent) {

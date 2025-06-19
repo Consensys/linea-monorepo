@@ -7,17 +7,21 @@ import {
   Signer,
   ErrorDescription,
 } from "ethers";
-import { OnChainMessageStatus } from "@consensys/linea-sdk";
+import { Direction, OnChainMessageStatus } from "@consensys/linea-sdk";
 import { MessageStatus } from "../../core/enums";
 import {
   IMessageClaimingProcessor,
   MessageClaimingProcessorConfig,
 } from "../../core/services/processors/IMessageClaimingProcessor";
 import { ILogger } from "../../core/utils/logging/ILogger";
-import { IMessageServiceContract } from "../../core/services/contracts/IMessageServiceContract";
 import { Message } from "../../core/entities/Message";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
 import { ITransactionValidationService } from "../../core/services/ITransactionValidationService";
+import { IL2ToL1MessageStatusService } from "../../core/services/IL2ToL1MessageStatusService";
+import { IL1ToL2MessageStatusService } from "../../core/services/IL1ToL2MessageStatusService";
+import { getStartingBlocksForLogsFetching } from "../../utils/logs";
+import { ILineaRollupClient } from "../../core/clients/blockchain/ethereum/ILineaRollupClient";
+import { IL2MessageServiceClient } from "../../core/clients/blockchain/linea/IL2MessageServiceClient";
 
 export class MessageClaimingProcessor implements IMessageClaimingProcessor {
   private readonly maxNonceDiff: number;
@@ -29,20 +33,33 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
    * @param {Signer} signer - An instance of a class implementing the `Signer` interface, used to query blockchain data.
    * @param {IMessageDBService} databaseService - An instance of a class implementing the `IMessageDBService` interface, used for storing and retrieving message data.
    * @param {ITransactionValidationService} transactionValidationService - An instance of a class implementing the `ITransactionValidationService` interface, used for validating transactions.
+   * @param {IL2ToL1MessageStatusService<Overrides> | IL1ToL2MessageStatusService<Overrides>} messageStatusService - An instance of a class implementing either the `IL2ToL1MessageStatusService` or `IL1ToL2MessageStatusService` interface, used to query the status of messages on-chain.
    * @param {MessageClaimingProcessorConfig} config - Configuration for network-specific settings, including transaction submission timeout, maximum transaction retries, and gas limit.
    * @param {ILogger} logger - An instance of a class implementing the `ILogger` interface, used for logging messages.
    */
   constructor(
-    private readonly messageServiceContract: IMessageServiceContract<
-      Overrides,
-      TransactionReceipt,
-      TransactionResponse,
-      ContractTransactionResponse,
-      ErrorDescription
-    >,
+    private readonly messageServiceContract:
+      | ILineaRollupClient<
+          Overrides,
+          TransactionReceipt,
+          TransactionResponse,
+          ContractTransactionResponse,
+          ErrorDescription
+        >
+      | IL2MessageServiceClient<
+          Overrides,
+          TransactionReceipt,
+          TransactionResponse,
+          ContractTransactionResponse,
+          Signer,
+          ErrorDescription
+        >,
     private readonly signer: Signer,
     private readonly databaseService: IMessageDBService<TransactionResponse>,
     private readonly transactionValidationService: ITransactionValidationService,
+    private readonly messageStatusService:
+      | IL2ToL1MessageStatusService<Overrides>
+      | IL1ToL2MessageStatusService<Overrides>,
     private readonly config: MessageClaimingProcessorConfig,
     private readonly logger: ILogger,
   ) {
@@ -77,7 +94,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
         return;
       }
 
-      const messageStatus = await this.messageServiceContract.getMessageStatus(nextMessageToClaim.messageHash);
+      const messageStatus = await this.messageStatusService.getMessageStatus(nextMessageToClaim.messageHash);
 
       if (messageStatus === OnChainMessageStatus.CLAIMED) {
         this.logger.info("Found already claimed message: messageHash=%s", nextMessageToClaim.messageHash);
@@ -167,12 +184,36 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     maxPriorityFeePerGas: bigint,
     maxFeePerGas: bigint,
   ): Promise<void> {
+    if (this.config.direction === Direction.L1_TO_L2) {
+      const claimTxResponsePromise = this.messageServiceContract.claim(
+        {
+          ...message,
+          feeRecipient: this.config.feeRecipientAddress,
+        },
+        { nonce, gasLimit, maxPriorityFeePerGas, maxFeePerGas },
+      );
+      await this.databaseService.updateMessageWithClaimTxAtomic(message, nonce, claimTxResponsePromise);
+      return;
+    }
+
+    const { l1LogsFromBlock, l2LogsFromBlock } = await getStartingBlocksForLogsFetching(
+      {
+        l1LogsFromBlock: this.config.l1LogsFromBlock,
+        l2LogsFromBlock: this.config.l2LogsFromBlock,
+      },
+      this.databaseService,
+    );
+
     const claimTxResponsePromise = this.messageServiceContract.claim(
       {
         ...message,
         feeRecipient: this.config.feeRecipientAddress,
       },
-      { nonce, gasLimit, maxPriorityFeePerGas, maxFeePerGas },
+      {
+        overrides: { nonce, gasLimit, maxPriorityFeePerGas, maxFeePerGas },
+        l1LogsFromBlock,
+        l2LogsFromBlock,
+      },
     );
     await this.databaseService.updateMessageWithClaimTxAtomic(message, nonce, claimTxResponsePromise);
   }

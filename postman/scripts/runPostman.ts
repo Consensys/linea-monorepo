@@ -11,6 +11,9 @@ async function main() {
       messageServiceContractAddress: process.env.L1_CONTRACT_ADDRESS ?? "",
       isEOAEnabled: process.env.L1_L2_EOA_ENABLED === "true",
       isCalldataEnabled: process.env.L1_L2_CALLDATA_ENABLED === "true",
+      startingBlockForLogsFetching: process.env.L1_STARTING_BLOCK_FOR_LOGS_FETCHING
+        ? parseInt(process.env.L1_STARTING_BLOCK_FOR_LOGS_FETCHING)
+        : undefined,
       listener: {
         pollingInterval: process.env.L1_LISTENER_INTERVAL ? parseInt(process.env.L1_LISTENER_INTERVAL) : undefined,
         maxFetchMessagesFromDb: process.env.MAX_FETCH_MESSAGES_FROM_DB
@@ -73,6 +76,9 @@ async function main() {
       messageServiceContractAddress: process.env.L2_CONTRACT_ADDRESS ?? "",
       isEOAEnabled: process.env.L2_L1_EOA_ENABLED === "true",
       isCalldataEnabled: process.env.L2_L1_CALLDATA_ENABLED === "true",
+      startingBlockForLogsFetching: process.env.L2_STARTING_BLOCK_FOR_LOGS_FETCHING
+        ? parseInt(process.env.L2_STARTING_BLOCK_FOR_LOGS_FETCHING)
+        : undefined,
       listener: {
         pollingInterval: process.env.L2_LISTENER_INTERVAL ? parseInt(process.env.L2_LISTENER_INTERVAL) : undefined,
         maxFetchMessagesFromDb: process.env.MAX_FETCH_MESSAGES_FROM_DB

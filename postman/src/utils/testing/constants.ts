@@ -217,6 +217,7 @@ export const testL1NetworkConfig: L1NetworkConfig = {
   messageServiceContractAddress: TEST_CONTRACT_ADDRESS_1,
   isEOAEnabled: true,
   isCalldataEnabled: false,
+  startingBlockForLogsFetching: 0,
 };
 
 export const testL2NetworkConfig: L2NetworkConfig = {
@@ -248,4 +249,5 @@ export const testL2NetworkConfig: L2NetworkConfig = {
   isEOAEnabled: true,
   l2MessageTreeDepth: DEFAULT_L2_MESSAGE_TREE_DEPTH,
   enableLineaEstimateGas: false,
+  startingBlockForLogsFetching: 0,
 };

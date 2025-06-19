@@ -22,6 +22,8 @@ import {
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
 import { ErrorParser } from "../../utils/ErrorParser";
 import { ISponsorshipMetricsUpdater } from "../../core/metrics";
+import { IL2ToL1MessageStatusService } from "../../core/services/IL2ToL1MessageStatusService";
+import { IL1ToL2MessageStatusService } from "../../core/services/IL1ToL2MessageStatusService";
 
 export class MessageClaimingPersister implements IMessageClaimingPersister {
   private messageBeingRetry: { message: Message | null; retries: number };
@@ -33,16 +35,15 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
    * @param {IMessageServiceContract} messageServiceContract - An instance of a class implementing the `IMessageServiceContract` interface, used to interact with the blockchain contract.
    * @param {ISponsorshipMetricsUpdater} sponsorshipMetricsUpdater - An instance of a class implementing the `ISponsorshipMetricsUpdater` interface, update sponsorship metrics for Prometheus monitoring.
    * @param {IProvider} provider - An instance of a class implementing the `IProvider` interface, used to query blockchain data.
+   * @param {IL2ToL1MessageStatusService<Overrides> | IL1ToL2MessageStatusService<Overrides>} messageStatusService - An instance of a class implementing either the `IL2ToL1MessageStatusService` or `IL1ToL2MessageStatusService` interface, used to query the status of messages on-chain.
    * @param {MessageClaimingPersisterConfig} config - Configuration for network-specific settings, including transaction submission timeout and maximum transaction retries.
    * @param {ILogger} logger - An instance of a class implementing the `ILogger` interface, used for logging messages.
    */
   constructor(
     private readonly databaseService: IMessageDBService<ContractTransactionResponse>,
     private readonly messageServiceContract: IMessageServiceContract<
-      Overrides,
       TransactionReceipt,
       TransactionResponse,
-      ContractTransactionResponse,
       ErrorDescription
     >,
     private readonly sponsorshipMetricsUpdater: ISponsorshipMetricsUpdater,
@@ -53,6 +54,9 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
       TransactionResponse,
       JsonRpcProvider
     >,
+    private readonly messageStatusService:
+      | IL2ToL1MessageStatusService<Overrides>
+      | IL1ToL2MessageStatusService<Overrides>,
     private readonly config: MessageClaimingPersisterConfig,
     private readonly logger: ILogger,
   ) {
@@ -88,6 +92,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
       }
 
       const receipt = await this.provider.getTransactionReceipt(firstPendingMessage.claimTxHash);
+
       if (receipt) {
         await this.updateReceiptStatus(firstPendingMessage, receipt);
       } else {
@@ -133,7 +138,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
    */
   private async retryTransaction(transactionHash: string, messageHash: string): Promise<TransactionReceipt | null> {
     try {
-      const messageStatus = await this.messageServiceContract.getMessageStatus(messageHash, {
+      const messageStatus = await this.messageStatusService.getMessageStatus(messageHash, {
         blockTag: "latest",
       });
 

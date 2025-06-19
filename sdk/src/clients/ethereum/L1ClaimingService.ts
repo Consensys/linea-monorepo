@@ -196,7 +196,7 @@ export class L1ClaimingService {
     messageHash: string,
     overrides: Overrides = {},
   ): Promise<OnChainMessageStatus> {
-    return this.l1ContractClient.getMessageStatusUsingMerkleTree(messageHash, overrides);
+    return this.l1ContractClient.getMessageStatusUsingMerkleTree(messageHash, { overrides });
   }
 
   /**
@@ -217,7 +217,7 @@ export class L1ClaimingService {
       return gasLimit;
     }
 
-    const gasLimit = await this.l1ContractClient.estimateClaimGas(message, overrides);
+    const gasLimit = await this.l1ContractClient.estimateClaimGas(message, { overrides });
     return gasLimit;
   }
 
@@ -238,6 +238,6 @@ export class L1ClaimingService {
       return this.l1ContractClient.claimWithoutProof(message, overrides);
     }
 
-    return this.l1ContractClient.claim(message, overrides) as Promise<ContractTransactionResponse>;
+    return this.l1ContractClient.claim(message, { overrides }) as Promise<ContractTransactionResponse>;
   }
 }

@@ -6,7 +6,6 @@ import {
   Block,
   TransactionRequest,
   JsonRpcProvider,
-  ErrorDescription,
 } from "ethers";
 import { OnChainMessageStatus } from "@consensys/linea-sdk";
 import {
@@ -16,9 +15,10 @@ import {
 import { IProvider } from "../../core/clients/blockchain/IProvider";
 import { MessageStatus } from "../../core/enums";
 import { ILogger } from "../../core/utils/logging/ILogger";
-import { IMessageServiceContract } from "../../core/services/contracts/IMessageServiceContract";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
 import { ErrorParser } from "../../utils/ErrorParser";
+import { IL2ToL1MessageStatusService } from "../../core/services/IL2ToL1MessageStatusService";
+import { IL1ToL2MessageStatusService } from "../../core/services/IL1ToL2MessageStatusService";
 
 export class MessageAnchoringProcessor implements IMessageAnchoringProcessor {
   private readonly maxFetchMessagesFromDb: number;
@@ -26,20 +26,16 @@ export class MessageAnchoringProcessor implements IMessageAnchoringProcessor {
   /**
    * Constructs a new instance of the `MessageAnchoringProcessor`.
    *
-   * @param {IMessageServiceContract<Overrides, TransactionReceipt, TransactionResponse, ContractTransactionResponse>} contractClient - An instance of a class implementing the `IMessageServiceContract` interface, used to interact with the blockchain contract.
+   * @param {IL2ToL1MessageStatusService<Overrides> | IL1ToL2MessageStatusService<Overrides>} messageStatusService - An instance of a class implementing either the `IL2ToL1MessageStatusService` or `IL1ToL2MessageStatusService` interface, used to query the status of messages on-chain.
    * @param {IProvider<TransactionReceipt, Block, TransactionRequest, TransactionResponse, JsonRpcProvider>} provider - An instance of a class implementing the `IProvider` interface, used to query blockchain data.
    * @param {IMessageDBService<ContractTransactionResponse>} databaseService - An instance of a class implementing the `IMessageDBService` interface, used for storing and retrieving message data.
    * @param {MessageAnchoringProcessorConfig} config - Configuration settings for the processor, including the maximum number of messages to fetch from the database for processing.
    * @param {ILogger} logger - An instance of a class implementing the `ILogger` interface, used for logging messages.
    */
   constructor(
-    private readonly contractClient: IMessageServiceContract<
-      Overrides,
-      TransactionReceipt,
-      TransactionResponse,
-      ContractTransactionResponse,
-      ErrorDescription
-    >,
+    private readonly messageStatusService:
+      | IL2ToL1MessageStatusService<Overrides>
+      | IL1ToL2MessageStatusService<Overrides>,
     private readonly provider: IProvider<
       TransactionReceipt,
       Block,
@@ -59,7 +55,7 @@ export class MessageAnchoringProcessor implements IMessageAnchoringProcessor {
    *
    * @returns {Promise<void>} A promise that resolves when the processing is complete.
    */
-  public async process() {
+  public async process(): Promise<void> {
     try {
       const messages = await this.databaseService.getNFirstMessagesSent(
         this.maxFetchMessagesFromDb,
@@ -77,7 +73,7 @@ export class MessageAnchoringProcessor implements IMessageAnchoringProcessor {
       const latestBlockNumber = await this.provider.getBlockNumber();
 
       for (const message of messages) {
-        const messageStatus = await this.contractClient.getMessageStatus(message.messageHash, {
+        const messageStatus = await this.messageStatusService.getMessageStatus(message.messageHash, {
           blockTag: latestBlockNumber,
         });
 

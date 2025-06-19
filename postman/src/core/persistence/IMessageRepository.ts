@@ -33,6 +33,7 @@ export interface IMessageRepository<ContractTransactionResponse> {
   getMessageSent(direction: Direction, contractAddress: string): Promise<Message | null>;
   getLastClaimTxNonce(direction: Direction): Promise<number | null>;
   getFirstPendingMessage(direction: Direction): Promise<Message | null>;
+  getMinBlockNumber(direction: Direction): Promise<number | null>;
   updateMessageWithClaimTxAtomic(
     message: Message,
     nonce: number,

@@ -271,6 +271,22 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
     }
   }
 
+  async getMinBlockNumber(direction: Direction): Promise<number | null> {
+    try {
+      const minBlockNumber = await this.minimum("sentBlockNumber", {
+        direction,
+      });
+
+      if (!minBlockNumber) {
+        return null;
+      }
+
+      return minBlockNumber;
+    } catch (err: any) {
+      throw new DatabaseAccessError(DatabaseRepoName.MessageRepository, DatabaseErrorType.Read, err);
+    }
+  }
+
   async updateMessageWithClaimTxAtomic(
     message: Message,
     nonce: number,

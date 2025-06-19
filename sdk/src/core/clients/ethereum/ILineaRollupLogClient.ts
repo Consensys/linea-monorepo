@@ -17,21 +17,21 @@ export type MessageClaimedFilters = {
 export interface ILineaRollupLogClient {
   getMessageSentEvents(params: {
     filters?: MessageSentEventFilters;
-    fromBlock?: number;
+    fromBlock?: string | number;
     toBlock?: string | number;
     fromBlockLogIndex?: number;
   }): Promise<MessageSent[]>;
 
   getL2MessagingBlockAnchoredEvents(params: {
     filters?: L2MessagingBlockAnchoredFilters;
-    fromBlock?: number;
+    fromBlock?: string | number;
     toBlock?: string | number;
     fromBlockLogIndex?: number;
   }): Promise<L2MessagingBlockAnchored[]>;
 
   getMessageClaimedEvents(params: {
     filters?: MessageClaimedFilters;
-    fromBlock?: number;
+    fromBlock?: string | number;
     toBlock?: string | number;
     fromBlockLogIndex?: number;
   }): Promise<MessageClaimed[]>;

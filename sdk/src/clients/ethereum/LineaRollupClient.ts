@@ -139,8 +139,14 @@ export class LineaRollupClient
    * @param {string} messageHash - The message hash.
    * @returns {Promise<Proof>} The merkle root, the merkle proof and the message leaf index.
    */
-  public async getMessageProof(messageHash: string): Promise<Proof> {
-    return this.merkleTreeService.getMessageProof(messageHash);
+  public async getMessageProof(
+    messageHash: string,
+    opts?: {
+      l1LogsFromBlock?: string | number;
+      l2LogsFromBlock?: string | number;
+    },
+  ): Promise<Proof> {
+    return this.merkleTreeService.getMessageProof(messageHash, opts);
   }
 
   public async getGasFees(): Promise<GasFees> {
@@ -196,24 +202,30 @@ export class LineaRollupClient
   /**
    * Retrieves the L2 message status on L1.
    * @param {string} messageHash - The hash of the message sent on L2.
-   * @param {Overrides} [overrides={}] - Ethers call overrides. Defaults to `{}` if not specified.
+   * @param {{ overrides?: Overrides; l1LogsFromBlock?: string | number; l2LogsFromBlock?: string | number }} [opts] - Ethers call overrides and logs fetching block range options.
    * @returns {Promise<OnChainMessageStatus>} The message status (CLAIMED, CLAIMABLE, UNKNOWN).
    */
-  public async getMessageStatus(messageHash: string, overrides: Overrides = {}): Promise<OnChainMessageStatus> {
-    return this.getMessageStatusUsingMerkleTree(messageHash, overrides);
+  public async getMessageStatus(
+    messageHash: string,
+    opts?: { overrides?: Overrides; l1LogsFromBlock?: string | number; l2LogsFromBlock?: string | number },
+  ): Promise<OnChainMessageStatus> {
+    return this.getMessageStatusUsingMerkleTree(messageHash, opts);
   }
 
   /**
    * Retrieves the L2 message status on L1 using merkle tree (for messages sent after migration).
    * @param {string} messageHash - The hash of the message sent on L2.
-   * @param {Overrides} [overrides={}] - Ethers call overrides. Defaults to `{}` if not specified.
+   * @param {{ overrides?: Overrides; l1LogsFromBlock?: string | number; l2LogsFromBlock?: string | number }} [opts] - Ethers call overrides and logs fetching block range options.
    * @returns {Promise<OnChainMessageStatus>} The message status (CLAIMED, CLAIMABLE, UNKNOWN).
    */
   public async getMessageStatusUsingMerkleTree(
     messageHash: string,
-    overrides: Overrides = {},
+    opts?: { overrides?: Overrides; l1LogsFromBlock?: string | number; l2LogsFromBlock?: string | number },
   ): Promise<OnChainMessageStatus> {
-    const [messageEvent] = await this.l2MessageServiceLogClient.getMessageSentEventsByMessageHash({ messageHash });
+    const [messageEvent] = await this.l2MessageServiceLogClient.getMessageSentEventsByMessageHash({
+      messageHash,
+      fromBlock: opts?.l2LogsFromBlock,
+    });
 
     if (!messageEvent) {
       throw makeBaseError(`Message hash does not exist on L2. Message hash: ${messageHash}`);
@@ -222,8 +234,9 @@ export class LineaRollupClient
     const [[l2MessagingBlockAnchoredEvent], isMessageClaimed] = await Promise.all([
       this.lineaRollupLogClient.getL2MessagingBlockAnchoredEvents({
         filters: { l2Block: BigInt(messageEvent.blockNumber) },
+        fromBlock: opts?.l1LogsFromBlock,
       }),
-      this.contract.isMessageClaimed(messageEvent.messageNonce, overrides),
+      this.contract.isMessageClaimed(messageEvent.messageNonce, opts?.overrides ?? {}),
     ]);
 
     if (isMessageClaimed) {
@@ -312,7 +325,11 @@ export class LineaRollupClient
    */
   public async estimateClaimGas(
     message: Message & { feeRecipient?: string },
-    overrides: Overrides = {},
+    opts: {
+      overrides?: Overrides;
+      l1LogsFromBlock?: string | number;
+      l2LogsFromBlock?: string | number;
+    } = {},
   ): Promise<bigint> {
     if (this.mode === "read-only") {
       throw makeBaseError("'EstimateClaimGasFees' function not callable using readOnly mode.");
@@ -320,7 +337,10 @@ export class LineaRollupClient
 
     const { messageSender, destination, fee, value, calldata, messageNonce, feeRecipient } = message;
 
-    const { proof, leafIndex, root } = await this.merkleTreeService.getMessageProof(message.messageHash);
+    const { proof, leafIndex, root } = await this.merkleTreeService.getMessageProof(message.messageHash, {
+      l1LogsFromBlock: opts.l1LogsFromBlock,
+      l2LogsFromBlock: opts.l2LogsFromBlock,
+    });
 
     const l1FeeRecipient = feeRecipient ?? ZERO_ADDRESS;
     try {
@@ -340,7 +360,7 @@ export class LineaRollupClient
 
         {
           ...(await this.gasProvider.getGasFees()),
-          ...overrides,
+          ...opts.overrides,
         },
       );
     } catch (e) {
@@ -356,7 +376,11 @@ export class LineaRollupClient
    */
   public async claim(
     message: Message & { feeRecipient?: string },
-    overrides: Overrides = {},
+    opts: {
+      overrides?: Overrides;
+      l1LogsFromBlock?: string | number;
+      l2LogsFromBlock?: string | number;
+    } = {},
   ): Promise<ContractTransactionResponse> {
     if (this.mode === "read-only") {
       throw makeBaseError("'claim' function not callable using readOnly mode.");
@@ -366,7 +390,10 @@ export class LineaRollupClient
 
     const l1FeeRecipient = feeRecipient ?? ZERO_ADDRESS;
 
-    const { proof, leafIndex, root } = await this.merkleTreeService.getMessageProof(message.messageHash);
+    const { proof, leafIndex, root } = await this.merkleTreeService.getMessageProof(message.messageHash, {
+      l1LogsFromBlock: opts.l1LogsFromBlock,
+      l2LogsFromBlock: opts.l2LogsFromBlock,
+    });
 
     return await this.contract.claimMessageWithProof(
       {
@@ -383,7 +410,7 @@ export class LineaRollupClient
       },
       {
         ...(await this.gasProvider.getGasFees()),
-        ...overrides,
+        ...opts.overrides,
       },
     );
   }

@@ -9,20 +9,42 @@ export interface ILineaRollupClient<
   TransactionResponse,
   ContractTransactionResponse,
   ErrorDescription,
-> extends IMessageServiceContract<
-    Overrides,
-    TransactionReceipt,
-    TransactionResponse,
-    ContractTransactionResponse,
-    ErrorDescription
-  > {
+> extends IMessageServiceContract<TransactionReceipt, TransactionResponse, ErrorDescription> {
   getFinalizationMessagingInfo(transactionHash: string): Promise<FinalizationMessagingInfo>;
   getL2MessageHashesInBlockRange(fromBlock: number, toBlock: number): Promise<string[]>;
   getMessageSiblings(messageHash: string, messageHashes: string[], treeDepth: number): string[];
-  getMessageProof(messageHash: string): Promise<Proof>;
+  getMessageProof(
+    messageHash: string,
+    opts?: {
+      l1LogsFromBlock?: string | number;
+      l2LogsFromBlock?: string | number;
+    },
+  ): Promise<Proof>;
+  getMessageStatus(
+    messageHash: string,
+    opts?: { overrides?: Overrides; l1LogsFromBlock?: string | number; l2LogsFromBlock?: string | number },
+  ): Promise<OnChainMessageStatus>;
   getMessageStatusUsingMessageHash(messageHash: string, overrides: Overrides): Promise<OnChainMessageStatus>;
-  getMessageStatusUsingMerkleTree(messageHash: string, overrides: Overrides): Promise<OnChainMessageStatus>;
-  estimateClaimGas(message: Message & { feeRecipient?: string }, overrides?: Overrides): Promise<bigint>;
+  getMessageStatusUsingMerkleTree(
+    messageHash: string,
+    opts?: { overrides?: Overrides; l1LogsFromBlock?: string | number; l2LogsFromBlock?: string | number },
+  ): Promise<OnChainMessageStatus>;
+  estimateClaimGas(
+    message: Message & { feeRecipient?: string },
+    opts?: {
+      overrides?: Overrides;
+      l1LogsFromBlock?: string | number;
+      l2LogsFromBlock?: string | number;
+    },
+  ): Promise<bigint>;
+  claim(
+    message: Message & { feeRecipient?: string },
+    opts?: {
+      overrides?: Overrides;
+      l1LogsFromBlock?: string | number;
+      l2LogsFromBlock?: string | number;
+    },
+  ): Promise<ContractTransactionResponse>;
   estimateClaimWithoutProofGas(message: Message & { feeRecipient?: string }, overrides: Overrides): Promise<bigint>;
   claimWithoutProof(
     message: Message & { feeRecipient?: string },

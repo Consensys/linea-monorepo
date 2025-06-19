@@ -30,8 +30,10 @@ import { Api } from "../api/Api";
 import { MessageStatusSubscriber } from "../persistence/subscribers/MessageStatusSubscriber";
 import { SingletonMetricsService } from "../api/metrics/SingletonMetricsService";
 import { MessageMetricsUpdater } from "../api/metrics/MessageMetricsUpdater";
-import { IMessageMetricsUpdater, IMetricsService, ISponsorshipMetricsUpdater } from "postman/src/core/metrics";
+import { IMessageMetricsUpdater, IMetricsService, ISponsorshipMetricsUpdater } from "../../../core/metrics";
 import { SponsorshipMetricsUpdater } from "../api/metrics/SponsorshipMetricsUpdater";
+import { L1ToL2MessageStatusService } from "../../../services/L1ToL2MessageStatusService";
+import { L2ToL1MessageStatusService } from "../../../services/L2ToL1MessageStatusService";
 export class PostmanServiceClient {
   // Metrics services
   private singletonMetricsService: IMetricsService;
@@ -156,8 +158,10 @@ export class PostmanServiceClient {
       new WinstonLogger(`L1${MessageSentEventPoller.name}`, config.loggerOptions),
     );
 
+    const l1ToL2MessageStatusService = new L1ToL2MessageStatusService(l2MessageServiceClient);
+
     const l2MessageAnchoringProcessor = new MessageAnchoringProcessor(
-      l2MessageServiceClient,
+      l1ToL2MessageStatusService,
       l2Provider,
       lineaMessageDBService,
       {
@@ -192,6 +196,7 @@ export class PostmanServiceClient {
       l2Signer,
       lineaMessageDBService,
       l2TransactionValidationService,
+      l1ToL2MessageStatusService,
       {
         direction: Direction.L1_TO_L2,
         originContractAddress: config.l1Config.messageServiceContractAddress,
@@ -201,6 +206,8 @@ export class PostmanServiceClient {
         maxNumberOfRetries: config.l2Config.claiming.maxNumberOfRetries,
         retryDelayInSeconds: config.l2Config.claiming.retryDelayInSeconds,
         maxClaimGasLimit: BigInt(config.l2Config.claiming.maxClaimGasLimit),
+        l1LogsFromBlock: config.l1Config.startingBlockForLogsFetching,
+        l2LogsFromBlock: config.l2Config.startingBlockForLogsFetching,
       },
       new WinstonLogger(`L2${MessageClaimingProcessor.name}`, config.loggerOptions),
     );
@@ -219,6 +226,7 @@ export class PostmanServiceClient {
       l2MessageServiceClient,
       this.sponsorshipMetricsUpdater,
       l2Provider,
+      l1ToL2MessageStatusService,
       {
         direction: Direction.L1_TO_L2,
         messageSubmissionTimeout: config.l2Config.claiming.messageSubmissionTimeout,
@@ -285,8 +293,13 @@ export class PostmanServiceClient {
       new WinstonLogger(`L2${MessageSentEventPoller.name}`, config.loggerOptions),
     );
 
+    const l2ToL1MessageStatusService = new L2ToL1MessageStatusService(lineaRollupClient, ethereumMessageDBService, {
+      l1LogsFromBlock: config.l1Config.startingBlockForLogsFetching,
+      l2LogsFromBlock: config.l2Config.startingBlockForLogsFetching,
+    });
+
     const l1MessageAnchoringProcessor = new MessageAnchoringProcessor(
-      lineaRollupClient,
+      l2ToL1MessageStatusService,
       l1Provider,
       ethereumMessageDBService,
       {
@@ -317,6 +330,7 @@ export class PostmanServiceClient {
       l1Signer,
       ethereumMessageDBService,
       l1TransactionValidationService,
+      l2ToL1MessageStatusService,
       {
         direction: Direction.L2_TO_L1,
         originContractAddress: config.l2Config.messageServiceContractAddress,
@@ -326,6 +340,8 @@ export class PostmanServiceClient {
         maxNumberOfRetries: config.l1Config.claiming.maxNumberOfRetries,
         retryDelayInSeconds: config.l1Config.claiming.retryDelayInSeconds,
         maxClaimGasLimit: BigInt(config.l1Config.claiming.maxClaimGasLimit),
+        l1LogsFromBlock: config.l1Config.startingBlockForLogsFetching,
+        l2LogsFromBlock: config.l2Config.startingBlockForLogsFetching,
       },
       new WinstonLogger(`L1${MessageClaimingProcessor.name}`, config.loggerOptions),
     );
@@ -344,6 +360,7 @@ export class PostmanServiceClient {
       lineaRollupClient,
       this.sponsorshipMetricsUpdater,
       l1Provider,
+      l2ToL1MessageStatusService,
       {
         direction: Direction.L2_TO_L1,
         messageSubmissionTimeout: config.l1Config.claiming.messageSubmissionTimeout,
