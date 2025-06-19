@@ -1,3 +1,18 @@
+export interface Context {
+  ethers: {
+    addProvider: (name: string, url: string) => void;
+    getProvider: (name: string) => any;
+    getContract: (address: string, abi: any, network: string) => any;
+  };
+  defiLlama: {
+    getCurrentPrice: (platform: string, token: string) => Promise<number>;
+  };
+  register: (config: any) => void;
+  ipfs: {
+    getDataURILoader: (hash: string, mimeType: string) => string;
+  };
+}
+
 export const name = 'Linea';
 export const version = '0.0.1';
 export const license = 'MIT';
@@ -5,7 +20,7 @@ export const license = 'MIT';
 const WETH_ADDR = '0xe5d7c2a44ffddf6b295a15c148167daaaf5cf34f';
 const USDC_ADDR = '0x176211869cA2b568f2A7D4EE941E073a821EE1ff';
 const FROM_ADDR = '0x8C8766c1Ac7308604C80387f1bF8128386b64de9';
-const TO_ADDR = '0xB1c25ff9F709cA3cd88D398586dd02aC62fce5BB'
+const TO_ADDR = '0xB1c25ff9F709cA3cd88D398586dd02aC62fce5BB';
 
 const PANCAKE_SWAP_ROUTER = '0x1b81D678ffb9C0263b24A97847620C99d213eB14';
 type TxType = 'EthTransfer' | 'ERC20Transfer' | 'ERC20Swap';
@@ -123,7 +138,7 @@ export function setup(sdk: Context) {
         data: '0x'
       });
     } else if (txType === 'ERC20Transfer') {
-      return usdcContract.estimateGas.transfer(USDC_ADDR, 1, { from: FROM_ADDR });
+      return usdcContract.estimateGas.transfer(TO_ADDR, 1, { from: FROM_ADDR });
     } else if (txType === 'ERC20Swap') {
       const params = {
         tokenIn: USDC_ADDR,
@@ -139,6 +154,9 @@ export function setup(sdk: Context) {
       return pancakeSwapContract.estimateGas.exactInputSingle(params, {
         from: FROM_ADDR,
       });
+    } else {
+      // Обработка неизвестного типа транзакции
+      throw new Error(`Unsupported transaction type: ${txType}`);
     }
   };
 
