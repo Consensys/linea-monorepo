@@ -147,7 +147,7 @@ func PolyEvalExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPool) (resu
 		return NewRegularExt(resReg)
 	}
 
-	// can only happen if no vectors are found or if an unknow type is found
+	// can only happen if no vectors are found or if an unknown type is found
 	panic("unreachable")
 }
 

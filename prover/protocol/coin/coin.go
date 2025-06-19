@@ -100,6 +100,8 @@ func (info *Info) Sample(fs *fiatshamir.State, seed field.Element) interface{} {
 		return fs.RandomManyIntegers(info.Size, info.UpperBound)
 	case FieldFromSeed:
 		return fs.RandomFieldFromSeed(seed, string(info.Name))
+	case FieldExt:
+		return fs.RandomFieldExt()
 	}
 	panic("Unreachable")
 }
@@ -138,6 +140,10 @@ func NewInfo(name Name, type_ Type, round int, size ...int) Info {
 			utils.Panic("size for Field")
 		}
 	case FieldFromSeed:
+		if len(size) > 0 {
+			utils.Panic("size for Field")
+		}
+	case FieldExt:
 		if len(size) > 0 {
 			utils.Panic("size for Field")
 		}
