@@ -147,6 +147,7 @@ func (fs *State) UpdateSV(sv smartvectors.SmartVector) {
 		fs.UpdateExt(vec...)
 
 	}
+
 	vec := make([]field.Element, sv.Len())
 	sv.WriteInSlice(vec)
 	fs.Update(vec...)
