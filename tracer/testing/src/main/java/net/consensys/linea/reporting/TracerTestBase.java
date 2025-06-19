@@ -41,7 +41,7 @@ public class TracerTestBase {
     TracerTestBase.testInfo.testInfo = testInfo;
   }
 
-  private static String getForkOrDefault(String defaultFork) {
+  public static String getForkOrDefault(String defaultFork) {
     String fork = System.getenv("ZKEVM_FORK");
     if(fork != null) {
       return fork;

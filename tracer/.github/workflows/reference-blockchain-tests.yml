@@ -29,6 +29,9 @@ concurrency:
 
 jobs:
   blockchain-reference-tests:
+    strategy:
+      matrix:
+        zkevm_fork: [London, Shanghai]
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
     steps:
       - name: Checkout repository
@@ -74,6 +77,7 @@ jobs:
           FAILED_MODULE: ${{ inputs.failed_module || '' }}
           FAILED_CONSTRAINT: ${{ inputs.failed_constraint || '' }}
           REFERENCE_TEST_FILTER_INPUT: failedBlockchainReferenceTests.json
+          ZKEVM_FORK: ${{ matrix.zkevm_fork }}
 
       - name: Upload artifact
         if: always()
@@ -86,21 +90,21 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: blockchain-refrence-tests-report
+          name: blockchain-refrence-tests-report-${{ matrix.zkevm_fork }}
           path: reference-tests/build/reports/tests/**/*
 
       - name: Upload jacoco blockchain tests coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jacoco-blockchain-tests-coverage-report
+          name: jacoco-blockchain-tests-coverage-report-${{ matrix.zkevm_fork }}
           path: reference-tests/build/reports/jacoco/jacocoReferenceBlockchainTestsReport/**/*
 
       - name: Upload jacoco blockchain tests exec file
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jacoco-blockchain-tests-exec-file
+          name: jacoco-blockchain-tests-exec-file-${{ matrix.zkevm_fork }}
           path: reference-tests/build/jacoco/referenceBlockchainTests.exec
 
       - name: Extract Metrics

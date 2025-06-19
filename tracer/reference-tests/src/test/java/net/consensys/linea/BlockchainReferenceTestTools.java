@@ -17,6 +17,7 @@ package net.consensys.linea;
 
 import static net.consensys.linea.BlockchainReferenceTestJson.readBlockchainReferenceTestsOutput;
 import static net.consensys.linea.ReferenceTestOutcomeRecorderTool.JSON_INPUT_FILENAME;
+import static net.consensys.linea.reporting.TracerTestBase.getForkOrDefault;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Paths;
@@ -60,10 +61,11 @@ import org.junit.jupiter.api.Assumptions;
 
 @Slf4j
 public class BlockchainReferenceTestTools {
+  private static final String forkName = getForkOrDefault("London");
   private static final ReferenceTestProtocolSchedules REFERENCE_TEST_PROTOCOL_SCHEDULES =
       ReferenceTestProtocolSchedules.create();
 
-  private static final List<String> NETWORKS_TO_RUN = List.of("London");
+  private static final List<String> NETWORKS_TO_RUN = List.of(forkName);
 
   public static final JsonTestParameters<?, ?> PARAMS =
       JsonTestParameters.create(BlockchainReferenceTestCaseSpec.class)
@@ -79,33 +81,33 @@ public class BlockchainReferenceTestTools {
       PARAMS.ignoreAll();
     }
     // ignore tests that are failing in Besu too
-    PARAMS.ignore("RevertInCreateInInitCreate2_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("RevertInCreateInInit_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("create2collisionStorage_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("create2collisionStorage_d1g0v0_London\\[London\\]");
-    PARAMS.ignore("create2collisionStorage_d2g0v0_London\\[London\\]");
-    PARAMS.ignore("dynamicAccountOverwriteEmpty_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("RevertInCreateInInitCreate2_d0g0v0_*");
+    PARAMS.ignore("RevertInCreateInInit_d0g0v0_*");
+    PARAMS.ignore("create2collisionStorage_d0g0v0_*");
+    PARAMS.ignore("create2collisionStorage_d1g0v0_*");
+    PARAMS.ignore("create2collisionStorage_d2g0v0_*");
+    PARAMS.ignore("dynamicAccountOverwriteEmpty_d0g0v0_*");
 
     // ignore tests that are failing because there is an account with nonce 0 and
     // non empty code which can't happen in Linea since we are post LONDON
-    PARAMS.ignore("InitCollision_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("InitCollision_d1g0v0_London\\[London\\]");
-    PARAMS.ignore("InitCollision_d2g0v0_London\\[London\\]");
-    PARAMS.ignore("InitCollision_d3g0v0_London\\[London\\]");
+    PARAMS.ignore("InitCollision_d0g0v0_*");
+    PARAMS.ignore("InitCollision_d1g0v0_*");
+    PARAMS.ignore("InitCollision_d2g0v0_*");
+    PARAMS.ignore("InitCollision_d3g0v0_*");
     PARAMS.ignore("RevertInCreateInInitCreate2_d0g0v0_London\\[London\\]");
     PARAMS.ignore("RevertInCreateInInit_d0g0v0_London\\[London\\]");
 
     // Arithmetization restriction: recipient address is a precompile.
-    PARAMS.ignore("modexpRandomInput_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("modexpRandomInput_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("modexpRandomInput_d1g0v0_London\\[London\\]");
-    PARAMS.ignore("modexpRandomInput_d1g1v0_London\\[London\\]");
-    PARAMS.ignore("modexpRandomInput_d2g0v0_London\\[London\\]");
-    PARAMS.ignore("modexpRandomInput_d2g1v0_London\\[London\\]");
-    PARAMS.ignore("randomStatetest642_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("randomStatetest644_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("randomStatetest645_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("randomStatetest645_d0g0v1_London\\[London\\]");
+    PARAMS.ignore("modexpRandomInput_d0g0v0_*");
+    PARAMS.ignore("modexpRandomInput_d0g1v0_*");
+    PARAMS.ignore("modexpRandomInput_d1g0v0_*");
+    PARAMS.ignore("modexpRandomInput_d1g1v0_*");
+    PARAMS.ignore("modexpRandomInput_d2g0v0_*");
+    PARAMS.ignore("modexpRandomInput_d2g1v0_*");
+    PARAMS.ignore("randomStatetest642_d0g0v0_*");
+    PARAMS.ignore("randomStatetest644_d0g0v0_*");
+    PARAMS.ignore("randomStatetest645_d0g0v0_*");
+    PARAMS.ignore("randomStatetest645_d0g0v1_*");
 
     // Consumes a huge amount of memory.
     PARAMS.ignore("static_Call1MB1024Calldepth_d1g0v0_\\w+");
@@ -119,114 +121,115 @@ public class BlockchainReferenceTestTools {
     PARAMS.ignore("randomStatetest94_\\w+");
 
     // Balance is more than 128 bits
-    PARAMS.ignore("CALLCODE_Bounds2_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("CALLCODE_Bounds2_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("CALLCODE_Bounds3_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("CALLCODE_Bounds3_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("CALLCODE_Bounds4_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("CALLCODE_Bounds4_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("CALLCODE_Bounds4_d0g2v0_London\\[London\\]");
-    PARAMS.ignore("CALLCODE_Bounds_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("CALLCODE_Bounds_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("CALL_Bounds2_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("CALL_Bounds2_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("CALL_Bounds2a_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("CALL_Bounds2a_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("CALL_Bounds3_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("CALL_Bounds3_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("CALL_Bounds3_d0g2v0_London\\[London\\]");
-    PARAMS.ignore("CALL_Bounds_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("CALL_Bounds_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("CREATE2_Bounds2_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("CREATE2_Bounds2_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("CREATE2_Bounds3_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("CREATE2_Bounds3_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("CREATE2_Bounds3_d0g2v0_London\\[London\\]");
-    PARAMS.ignore("CREATE2_Bounds_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("CREATE2_Bounds_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("CREATE_Bounds2_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("CREATE_Bounds2_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("CREATE_Bounds3_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("CREATE_Bounds3_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("CREATE_Bounds3_d0g2v0_London\\[London\\]");
-    PARAMS.ignore("CREATE_Bounds_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("CREATE_Bounds_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("Call1024PreCalls_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("Call1024PreCalls_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("Call1024PreCalls_d0g2v0_London\\[London\\]");
-    PARAMS.ignore("Create2OnDepth1023_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("Create2OnDepth1024_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("Create2Recursive_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("Create2Recursive_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("DELEGATECALL_Bounds2_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("DELEGATECALL_Bounds2_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("DELEGATECALL_Bounds3_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("DELEGATECALL_Bounds3_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("DELEGATECALL_Bounds3_d0g2v0_London\\[London\\]");
-    PARAMS.ignore("DELEGATECALL_Bounds_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("DELEGATECALL_Bounds_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("DelegateCallSpam_London\\[London\\]");
-    PARAMS.ignore("HighGasLimit_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("MSTORE_Bounds2_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("MSTORE_Bounds2_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("MSTORE_Bounds2a_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("MSTORE_Bounds2a_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("MSTORE_Bounds_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("MSTORE_Bounds_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("OutOfGasContractCreation_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("OutOfGasContractCreation_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("OutOfGasContractCreation_d1g0v0_London\\[London\\]");
-    PARAMS.ignore("OutOfGasContractCreation_d1g1v0_London\\[London\\]");
-    PARAMS.ignore("OverflowGasRequire2_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("OverflowGasRequire_London\\[London\\]");
-    PARAMS.ignore("RETURN_Bounds_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("RETURN_Bounds_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("RETURN_Bounds_d0g2v0_London\\[London\\]");
-    PARAMS.ignore("StrangeContractCreation_London\\[London\\]");
-    PARAMS.ignore("SuicideIssue_London\\[London\\]");
-    PARAMS.ignore("static_CALL_Bounds2_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("static_CALL_Bounds2_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("static_CALL_Bounds2a_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("static_CALL_Bounds2a_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("static_CALL_Bounds3_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("static_CALL_Bounds3_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("static_CALL_Bounds_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("static_CALL_Bounds_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("static_Call1024PreCalls2_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("static_Call1024PreCalls2_d1g0v0_London\\[London\\]");
-    PARAMS.ignore("static_Call1024PreCalls3_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("static_Call1024PreCalls3_d1g0v0_London\\[London\\]");
-    PARAMS.ignore("static_Call1024PreCalls_d1g0v0_London\\[London\\]");
-    PARAMS.ignore("static_RETURN_BoundsOOG_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("static_RETURN_BoundsOOG_d1g0v0_London\\[London\\]");
+    PARAMS.ignore("CALLCODE_Bounds2_d0g0v0_*");
+    PARAMS.ignore("CALLCODE_Bounds2_d0g1v0_*");
+    PARAMS.ignore("CALLCODE_Bounds3_d0g0v0_*");
+    PARAMS.ignore("CALLCODE_Bounds3_d0g1v0_*");
+    PARAMS.ignore("CALLCODE_Bounds4_d0g0v0_*");
+    PARAMS.ignore("CALLCODE_Bounds4_d0g1v0_*");
+    PARAMS.ignore("CALLCODE_Bounds4_d0g2v0_*");
+    PARAMS.ignore("CALLCODE_Bounds_d0g0v0_*");
+    PARAMS.ignore("CALLCODE_Bounds_d0g1v0_*");
+    PARAMS.ignore("CALL_Bounds2_d0g0v0_*");
+    PARAMS.ignore("CALL_Bounds2_d0g1v0_*");
+    PARAMS.ignore("CALL_Bounds2a_d0g0v0_*");
+    PARAMS.ignore("CALL_Bounds2a_d0g1v0_*");
+    PARAMS.ignore("CALL_Bounds3_d0g0v0_*");
+    PARAMS.ignore("CALL_Bounds3_d0g1v0_*");
+    PARAMS.ignore("CALL_Bounds3_d0g2v0_*");
+    PARAMS.ignore("CALL_Bounds_d0g0v0_*");
+    PARAMS.ignore("CALL_Bounds_d0g1v0_*");
+    PARAMS.ignore("CREATE2_Bounds2_d0g0v0_*");
+    PARAMS.ignore("CREATE2_Bounds2_d0g1v0_*");
+    PARAMS.ignore("CREATE2_Bounds3_d0g0v0_*");
+    PARAMS.ignore("CREATE2_Bounds3_d0g1v0_*");
+    PARAMS.ignore("CREATE2_Bounds3_d0g2v0_*");
+    PARAMS.ignore("CREATE2_Bounds_d0g0v0_*");
+    PARAMS.ignore("CREATE2_Bounds_d0g1v0_*");
+    PARAMS.ignore("CREATE_Bounds2_d0g0v0_*");
+    PARAMS.ignore("CREATE_Bounds2_d0g1v0_*");
+    PARAMS.ignore("CREATE_Bounds3_d0g0v0_*");
+    PARAMS.ignore("CREATE_Bounds3_d0g1v0_*");
+    PARAMS.ignore("CREATE_Bounds3_d0g2v0_*");
+    PARAMS.ignore("CREATE_Bounds_d0g0v0_*");
+    PARAMS.ignore("CREATE_Bounds_d0g1v0_*");
+    PARAMS.ignore("Call1024PreCalls_d0g0v0_*");
+    PARAMS.ignore("Call1024PreCalls_d0g1v0_*");
+    PARAMS.ignore("Call1024PreCalls_d0g2v0_*");
+    PARAMS.ignore("Create2OnDepth1023_d0g0v0_*");
+    PARAMS.ignore("Create2OnDepth1024_d0g0v0_*");
+    PARAMS.ignore("Create2Recursive_d0g0v0_*");
+    PARAMS.ignore("Create2Recursive_d0g1v0_*");
+    PARAMS.ignore("Create2Recursive_d0g2v0_*");
+    PARAMS.ignore("DELEGATECALL_Bounds2_d0g0v0_*");
+    PARAMS.ignore("DELEGATECALL_Bounds2_d0g1v0_*");
+    PARAMS.ignore("DELEGATECALL_Bounds3_d0g0v0_*");
+    PARAMS.ignore("DELEGATECALL_Bounds3_d0g1v0_*");
+    PARAMS.ignore("DELEGATECALL_Bounds3_d0g2v0_*");
+    PARAMS.ignore("DELEGATECALL_Bounds_d0g0v0_*");
+    PARAMS.ignore("DELEGATECALL_Bounds_d0g1v0_*");
+    PARAMS.ignore("DelegateCallSpam_*");
+    PARAMS.ignore("HighGasLimit_d0g0v0_*");
+    PARAMS.ignore("MSTORE_Bounds2_d0g0v0_*");
+    PARAMS.ignore("MSTORE_Bounds2_d0g1v0_*");
+    PARAMS.ignore("MSTORE_Bounds2a_d0g0v0_*");
+    PARAMS.ignore("MSTORE_Bounds2a_d0g1v0_*");
+    PARAMS.ignore("MSTORE_Bounds_d0g0v0_*");
+    PARAMS.ignore("MSTORE_Bounds_d0g1v0_*");
+    PARAMS.ignore("OutOfGasContractCreation_d0g0v0_*");
+    PARAMS.ignore("OutOfGasContractCreation_d0g1v0_*");
+    PARAMS.ignore("OutOfGasContractCreation_d1g0v0_*");
+    PARAMS.ignore("OutOfGasContractCreation_d1g1v0_*");
+    PARAMS.ignore("OverflowGasRequire2_d0g0v0_*");
+    PARAMS.ignore("OverflowGasRequire_*");
+    PARAMS.ignore("RETURN_Bounds_d0g0v0_*");
+    PARAMS.ignore("RETURN_Bounds_d0g1v0_*");
+    PARAMS.ignore("RETURN_Bounds_d0g2v0_*");
+    PARAMS.ignore("StrangeContractCreation_*");
+    PARAMS.ignore("SuicideIssue_*");
+    PARAMS.ignore("static_CALL_Bounds2_d0g0v0_*");
+    PARAMS.ignore("static_CALL_Bounds2_d0g1v0_*");
+    PARAMS.ignore("static_CALL_Bounds2a_d0g0v0_*");
+    PARAMS.ignore("static_CALL_Bounds2a_d0g1v0_*");
+    PARAMS.ignore("static_CALL_Bounds3_d0g0v0_*");
+    PARAMS.ignore("static_CALL_Bounds3_d0g1v0_*");
+    PARAMS.ignore("static_CALL_Bounds_d0g0v0_*");
+    PARAMS.ignore("static_CALL_Bounds_d0g1v0_*");
+    PARAMS.ignore("static_Call1024PreCalls2_d0g0v0_*");
+    PARAMS.ignore("static_Call1024PreCalls2_d1g0v0_*");
+    PARAMS.ignore("static_Call1024PreCalls3_d0g0v0_*");
+    PARAMS.ignore("static_Call1024PreCalls3_d1g0v0_*");
+    PARAMS.ignore("static_Call1024PreCalls_d1g0v0_*");
+    PARAMS.ignore("static_RETURN_BoundsOOG_d0g0v0_*");
+    PARAMS.ignore("static_RETURN_BoundsOOG_d1g0v0_*");
     PARAMS.ignore("static_RETURN_Bounds_d0g0v0_London\\[London\\]");
 
     // Deployment transaction to an account with nonce / code
-    PARAMS.ignore("TransactionCollisionToEmptyButCode_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("TransactionCollisionToEmptyButCode_d0g0v1_London\\[London\\]");
-    PARAMS.ignore("TransactionCollisionToEmptyButCode_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("TransactionCollisionToEmptyButCode_d0g1v1_London\\[London\\]");
-    PARAMS.ignore("TransactionCollisionToEmptyButNonce_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("TransactionCollisionToEmptyButNonce_d0g0v1_London\\[London\\]");
-    PARAMS.ignore("TransactionCollisionToEmptyButNonce_d0g1v0_London\\[London\\]");
-    PARAMS.ignore("TransactionCollisionToEmptyButNonce_d0g1v1_London\\[London\\]");
-    PARAMS.ignore("createJS_ExampleContract_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("initCollidingWithNonEmptyAccount_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("initCollidingWithNonEmptyAccount_d1g0v0_London\\[London\\]");
-    PARAMS.ignore("initCollidingWithNonEmptyAccount_d2g0v0_London\\[London\\]");
-    PARAMS.ignore("initCollidingWithNonEmptyAccount_d3g0v0_London\\[London\\]");
-    PARAMS.ignore("initCollidingWithNonEmptyAccount_d4g0v0_London\\[London\\]");
+    PARAMS.ignore("TransactionCollisionToEmptyButCode_d0g0v0_*");
+    PARAMS.ignore("TransactionCollisionToEmptyButCode_d0g0v1_*");
+    PARAMS.ignore("TransactionCollisionToEmptyButCode_d0g1v0_*");
+    PARAMS.ignore("TransactionCollisionToEmptyButCode_d0g1v1_*");
+    PARAMS.ignore("TransactionCollisionToEmptyButNonce_d0g0v0_*");
+    PARAMS.ignore("TransactionCollisionToEmptyButNonce_d0g0v1_*");
+    PARAMS.ignore("TransactionCollisionToEmptyButNonce_d0g1v0_*");
+    PARAMS.ignore("TransactionCollisionToEmptyButNonce_d0g1v1_*");
+    PARAMS.ignore("createJS_ExampleContract_d0g0v0_*");
+    PARAMS.ignore("initCollidingWithNonEmptyAccount_d0g0v0_*");
+    PARAMS.ignore("initCollidingWithNonEmptyAccount_d1g0v0_*");
+    PARAMS.ignore("initCollidingWithNonEmptyAccount_d2g0v0_*");
+    PARAMS.ignore("initCollidingWithNonEmptyAccount_d3g0v0_*");
+    PARAMS.ignore("initCollidingWithNonEmptyAccount_d4g0v0_*");
 
     // Deployment transaction to an account with zero nonce, empty code (and zero balance) but
     // nonempty storage. Given [EIP-7610](https://github.com/ethereum/EIPs/pull/8161), no Besu
     // execution takes place, which means that no TraceSection's are created beyond the
     // {@link TxInitializationSection}. This triggers a NPE when tracing, as at some point
     // {@link TraceSection#nextSection} is null in {@link TraceSection#computeContextNumberNew()}.
-    PARAMS.ignore("FailedCreateRevertsDeletion_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("FailedCreateRevertsDeletion_d0g0v0_*");
 
     // Ignore the following test as it is not supported in Linea.
     // See [issue #1678](https://github.com/Consensys/linea-tracer/issues/1678)
-    PARAMS.ignore("suicideStorageCheck_London\\[London\\]");
+    PARAMS.ignore("suicideStorageCheck_*");
 
     // Don't do time-consuming tests.
     PARAMS.ignore("CALLBlake2f_MaxRounds.*");
@@ -234,7 +237,7 @@ public class BlockchainReferenceTestTools {
 
     // Inconclusive fork choice rule, since in merge CL should be choosing forks and setting the
     // chain head. Perfectly valid test pre-merge.
-    PARAMS.ignore("UncleFromSideChain_(Merge|Shanghai|Cancun|Prague|Osaka|Bogota)");
+    PARAMS.ignore("UncleFromSideChain_(Cancun|Prague|Osaka|Bogota)");
 
     // EOF tests are written against an older version of the spec.
     PARAMS.ignore("/stEOF/");
@@ -243,33 +246,33 @@ public class BlockchainReferenceTestTools {
     // - bbs > 512, bbs ≡ base byte size
     // - ebs > 512, ebs ≡ exponent byte size
     // - mbs > 512, mbs ≡ modulus byte size
-    PARAMS.ignore("modexp_d28g0v0_London\\[London\\]");
-    PARAMS.ignore("modexp_d28g1v0_London\\[London\\]");
-    PARAMS.ignore("modexp_d28g2v0_London\\[London\\]");
-    PARAMS.ignore("modexp_d28g3v0_London\\[London\\]");
-    PARAMS.ignore("modexp_d29g0v0_London\\[London\\]");
-    PARAMS.ignore("modexp_d29g1v0_London\\[London\\]");
-    PARAMS.ignore("modexp_d29g2v0_London\\[London\\]");
-    PARAMS.ignore("modexp_d29g3v0_London\\[London\\]");
-    PARAMS.ignore("modexp_d2g0v0_London\\[London\\]");
-    PARAMS.ignore("modexp_d2g1v0_London\\[London\\]");
-    PARAMS.ignore("modexp_d2g2v0_London\\[London\\]");
-    PARAMS.ignore("modexp_d2g3v0_London\\[London\\]");
-    PARAMS.ignore("modexp_d30g0v0_London\\[London\\]");
-    PARAMS.ignore("modexp_d30g1v0_London\\[London\\]");
-    PARAMS.ignore("modexp_d30g2v0_London\\[London\\]");
-    PARAMS.ignore("modexp_d30g3v0_London\\[London\\]");
-    PARAMS.ignore("modexp_d36g0v0_London\\[London\\]");
-    PARAMS.ignore("modexp_d36g1v0_London\\[London\\]");
-    PARAMS.ignore("modexp_d36g2v0_London\\[London\\]");
-    PARAMS.ignore("modexp_d36g3v0_London\\[London\\]");
-    PARAMS.ignore("modexp_d37g0v0_London\\[London\\]");
-    PARAMS.ignore("modexp_d37g1v0_London\\[London\\]");
-    PARAMS.ignore("modexp_d37g2v0_London\\[London\\]");
-    PARAMS.ignore("modexp_d37g3v0_London\\[London\\]");
-    PARAMS.ignore("idPrecomps_d4g0v0_London\\[London\\]");
-    PARAMS.ignore("modexp_modsize0_returndatasize_d4g0v0_London\\[London\\]");
-    PARAMS.ignore("randomStatetest650_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d28g0v0_*");
+    PARAMS.ignore("modexp_d28g1v0_*");
+    PARAMS.ignore("modexp_d28g2v0_*");
+    PARAMS.ignore("modexp_d28g3v0_*");
+    PARAMS.ignore("modexp_d29g0v0_*");
+    PARAMS.ignore("modexp_d29g1v0_*");
+    PARAMS.ignore("modexp_d29g2v0_*");
+    PARAMS.ignore("modexp_d29g3v0_*");
+    PARAMS.ignore("modexp_d2g0v0_*");
+    PARAMS.ignore("modexp_d2g1v0_*");
+    PARAMS.ignore("modexp_d2g2v0_*");
+    PARAMS.ignore("modexp_d2g3v0_*");
+    PARAMS.ignore("modexp_d30g0v0_*");
+    PARAMS.ignore("modexp_d30g1v0_*");
+    PARAMS.ignore("modexp_d30g2v0_*");
+    PARAMS.ignore("modexp_d30g3v0_*");
+    PARAMS.ignore("modexp_d36g0v0_*");
+    PARAMS.ignore("modexp_d36g1v0_*");
+    PARAMS.ignore("modexp_d36g2v0_*");
+    PARAMS.ignore("modexp_d36g3v0_*");
+    PARAMS.ignore("modexp_d37g0v0_*");
+    PARAMS.ignore("modexp_d37g1v0_*");
+    PARAMS.ignore("modexp_d37g2v0_*");
+    PARAMS.ignore("modexp_d37g3v0_*");
+    PARAMS.ignore("idPrecomps_d4g0v0_*");
+    PARAMS.ignore("modexp_modsize0_returndatasize_d4g0v0_*");
+    PARAMS.ignore("randomStatetest650_d0g0v0_*");
 
     // unsupported behaviour: uncle blocks, re-orgs, forks, side chain (?)
     PARAMS.ignore("ChainAtoChainBCallContractFormA_London\\[London\\]");
@@ -310,7 +313,6 @@ public class BlockchainReferenceTestTools {
     PARAMS.ignore("tipsLondon_London\\[London\\]");
     PARAMS.ignore("transType_London\\[London\\]");
     PARAMS.ignore("highGasUsage_London\\[London\\]");
-    PARAMS.ignore("blockhashNonConstArg_London\\[London\\]");
     PARAMS.ignore("blockhashTests_London\\[London\\]");
     PARAMS.ignore("extcodehashEmptySuicide_London\\[London\\]");
     PARAMS.ignore("logRevert_London\\[London\\]");
@@ -343,6 +345,49 @@ public class BlockchainReferenceTestTools {
     PARAMS.ignore("wallet2outOf3txsRevoke_London\\[London\\]");
     PARAMS.ignore("wallet2outOf3txsRevokeAndConfirmAgain_London\\[London\\]");
     PARAMS.ignore("walletReorganizeOwners_London\\[London\\]");
+
+    // Tests have a root hash mismatch
+    // They have been removed from legacy ethereum tests repo
+    // - all the other ecmul tests for point 1,3 factor 0 are run for Byzantium and
+    // Contantinople+Fix
+    // - in state tests, they run on the 3 forks above only
+    // - coinbase is in pre and not post and has no balance
+    PARAMS.ignore("ecmul_1-3_0_28000_80_d0g0v0_Shanghai\\[Shanghai\\]");
+    PARAMS.ignore("ecmul_1-3_0_28000_80_d0g1v0_Shanghai\\[Shanghai\\]");
+    PARAMS.ignore("ecmul_1-3_0_28000_80_d0g2v0_Shanghai\\[Shanghai\\]");
+    PARAMS.ignore("ecmul_1-3_0_28000_80_d0g3v0_Shanghai\\[Shanghai\\]");
+    // - all the other ecmul tests for point 0,3 factor
+    // 21888242871839275222246405745257275088548364400416034343698204186575808495616 have coinbase
+    // pre and post with balance
+    // - coinbase is in pre and not post and has no balance
+    PARAMS.ignore("ecmul_0-3_5616_28000_96_d0g0v0_Shanghai\\[Shanghai\\]");
+    PARAMS.ignore("ecmul_0-3_5616_28000_96_d0g1v0_Shanghai\\[Shanghai\\]");
+    PARAMS.ignore("ecmul_0-3_5616_28000_96_d0g2v0_Shanghai\\[Shanghai\\]");
+    // - all the other ecadd tests for points (0,0) and (0,0) have coinbase pre and post with
+    // balance
+    // - coinbase is in pre and not post and has no balance
+    PARAMS.ignore("ecadd_0-0_0-0_21000_80_d0g0v0_Shanghai\\[Shanghai\\]");
+    PARAMS.ignore("ecadd_0-0_0-0_21000_80_d0g1v0_Shanghai\\[Shanghai\\]");
+    PARAMS.ignore("ecadd_0-0_0-0_21000_80_d0g2v0_Shanghai\\[Shanghai\\]");
+    PARAMS.ignore("ecadd_0-0_0-0_21000_80_d0g3v0_Shanghai\\[Shanghai\\]");
+    // - all the other ecadd tests for points (1,3) and (0,0) have coinbase pre and post with
+    // balance
+    // - coinbase is in pre and not post and has no balance
+    PARAMS.ignore("ecadd_1-3_0-0_25000_80_d0g0v0_Shanghai\\[Shanghai\\]");
+    PARAMS.ignore("ecadd_1-3_0-0_25000_80_d0g1v0_Shanghai\\[Shanghai\\]");
+    PARAMS.ignore("ecadd_1-3_0-0_25000_80_d0g2v0_Shanghai\\[Shanghai\\]");
+    PARAMS.ignore("ecadd_1-3_0-0_25000_80_d0g3v0_Shanghai\\[Shanghai\\]");
+
+    // System transactions Withdrawals are not supported
+    // Breaks hub.account-consistency---linking---conflation-level---balance as the transition on
+    // account 0x0000000000000000000000000000000000000200
+    PARAMS.ignore("BlockchainTests/Pyspecs/shanghai/eip4895_withdrawals/balance_within_block.json");
+    PARAMS.ignore(
+        "BlockchainTests/Pyspecs/shanghai/eip4895_withdrawals/use_value_in_contract.json");
+
+    // Pending deployment number fix
+    // Issue #https://github.com/Consensys/linea-specification/issues/191
+    PARAMS.ignore("create2collisionwithSelfdestructSameBlock.json");
   }
 
   private BlockchainReferenceTestTools() {
