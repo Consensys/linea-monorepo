@@ -21,7 +21,7 @@ class L2CalldataBasedVariableFeesCalculatorTest {
   private val feeHistory = FeeHistory(
     oldestBlock = 100uL,
     baseFeePerGas = listOf(100UL),
-    reward = listOf(listOf(1000UL)), // not a big impact
+    reward = listOf(listOf(1000UL)),
     gasUsedRatio = listOf(0.25),
     baseFeePerBlobGas = listOf(100UL),
     blobGasUsedRatio = listOf(0.25),

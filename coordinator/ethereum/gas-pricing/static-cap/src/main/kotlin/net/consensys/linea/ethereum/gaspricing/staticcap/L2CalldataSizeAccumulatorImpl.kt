@@ -40,8 +40,8 @@ class L2CalldataSizeAccumulatorImpl(
               it.minus(config.blockSizeNonCalldataOverhead.toULong().toBigInteger())
                 .coerceAtLeast(BigInteger.ZERO)
             }.also {
-              log.trace(
-                "sumOfblockSizes = {} blockSizes = {} blockSizeNonCalldataOverhead = {}",
+              log.debug(
+                "sumOfBlockSizes={} blockSizes={} blockSizeNonCalldataOverhead={}",
                 it,
                 blockSizes,
                 config.blockSizeNonCalldataOverhead,
