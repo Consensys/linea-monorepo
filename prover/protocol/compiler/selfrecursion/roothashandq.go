@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -14,20 +15,33 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 
 	// Get the list of the root hashes (without the non-appended ones)
 	// Insert precomputed roots
-	rootHashesClean := []ifaces.Column{}
+	var (
+		rootHashSis     = []ifaces.Column{}
+		rootHashNonsis  = []ifaces.Column{}
+		rootHashesClean = []ifaces.Column{}
+	)
 	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		precompRoots := ctx.Columns.PrecompRoot
 		if precompRoots == nil {
 			utils.Panic("Precomputed root should not be nil! That's because, we are in commit to precomputed mode.")
 		}
-		rootHashesClean = append(rootHashesClean, precompRoots)
-	}
-
-	for _, rh := range ctx.Columns.Rooth {
-		if rh != nil {
-			rootHashesClean = append(rootHashesClean, rh)
+		if ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+			rootHashSis = append(rootHashSis, precompRoots)
+		} else {
+			rootHashNonsis = append(rootHashNonsis, precompRoots)
 		}
 	}
+
+	for round, rh := range ctx.Columns.Rooth {
+		if ctx.VortexCtx.RoundStatus[round] == vortex.IsSISApplied {
+			rootHashSis = append(rootHashSis, rh)
+		} else if ctx.VortexCtx.RoundStatus[round] == vortex.IsOnlyMiMCApplied {
+			rootHashNonsis = append(rootHashNonsis, rh)
+		} else if ctx.VortexCtx.RoundStatus[round] == vortex.IsEmpty {
+			continue
+		}
+	}
+	rootHashesClean = append(rootHashNonsis, rootHashSis...)
 
 	numCommittedRound := ctx.VortexCtx.NumCommittedRounds()
 	// numCommittedRound increses by 1 if we commit to the precomputeds
