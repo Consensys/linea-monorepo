@@ -6,7 +6,7 @@ L1_LISTENER_INTERVAL=2000
 # Starting block for L1 event fetching. Controls from which block the Postman service starts fetching events.
 # Options: -1 = current latest block (default), 0 = from genesis (all historical events),
 # specific number = custom starting block (e.g., 18500000)
-# Note: Only applies when database is empty; otherwise resumes from last processed block
+# Note: This value is always prioritized when set, even if database contains previously processed messages
 L1_LISTENER_INITIAL_FROM_BLOCK=0
 L1_LISTENER_BLOCK_CONFIRMATION=1
 L1_MAX_BLOCKS_TO_FETCH_LOGS=1000
@@ -19,7 +19,7 @@ L2_LISTENER_INTERVAL=2000
 # Starting block for L2 event fetching. Controls from which block the Postman service starts fetching events.
 # Options: -1 = current latest block (default), 0 = from genesis (all historical events),
 # specific number = custom starting block (e.g., 1000000)
-# Note: Only applies when database is empty; otherwise resumes from last processed block
+# Note: This value is always prioritized when set, even if database contains previously processed messages
 L2_LISTENER_INITIAL_FROM_BLOCK=0
 L2_LISTENER_BLOCK_CONFIRMATION=0 # set confirmation as zero since L2 block won't auto increase
 L2_MAX_BLOCKS_TO_FETCH_LOGS=1000
