@@ -11,8 +11,7 @@ import (
 // The first four elements are to be populated from the ROM module,
 // the last element is to be computed by the IsZero query
 type RomInput struct {
-	CFI [common.NbLimbU32]ifaces.Column
-	// Since Acc is an accumulation of Limb column, number of Acc limbs should be the same as the number of Limb limbs.
+	CFI                             [common.NbLimbU32]ifaces.Column
 	Acc                             [common.NbLimbU128]ifaces.Column
 	NBytes                          ifaces.Column
 	Counter                         ifaces.Column

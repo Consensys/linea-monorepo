@@ -2,6 +2,7 @@ package statemanager
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -22,23 +23,36 @@ const (
 // romLex returns the columns of the arithmetization.RomLex module of interest
 // to justify the consistency between them and the MiMCCodeHash module
 func romLex(comp *wizard.CompiledIOP) *mimccodehash.RomLexInput {
-	return &mimccodehash.RomLexInput{
-		CFIRomLex:  comp.Columns.GetHandle("romlex.CODE_FRAGMENT_INDEX"),
-		CodeHashHi: comp.Columns.GetHandle("romlex.CODE_HASH_HI"),
-		CodeHashLo: comp.Columns.GetHandle("romlex.CODE_HASH_LO"),
+	res := &mimccodehash.RomLexInput{}
+
+	for i := range common.NbLimbU32 {
+		res.CFIRomLex[i] = comp.Columns.GetHandle(ifaces.ColIDf("romlex.CODE_FRAGMENT_INDEX_%d", i))
 	}
+
+	for i := range common.NbLimbU256 {
+		res.CodeHash[i] = comp.Columns.GetHandle(ifaces.ColIDf("romlex.CODE_HASH_%d", i))
+	}
+
+	return res
 }
 
 // rom returns the columns of the arithmetization corresponding to the Rom module
 // that are of interest to justify consistency with the MiMCCodeHash module
 func rom(comp *wizard.CompiledIOP) *mimccodehash.RomInput {
 	res := &mimccodehash.RomInput{
-		CFI:      comp.Columns.GetHandle("rom.CODE_FRAGMENT_INDEX"),
-		Acc:      comp.Columns.GetHandle("rom.ACC"),
-		NBytes:   comp.Columns.GetHandle("rom.nBYTES"),
-		Counter:  comp.Columns.GetHandle("rom.COUNTER"),
-		CodeSize: comp.Columns.GetHandle("rom.CODE_SIZE"),
+		NBytes:  comp.Columns.GetHandle("rom.nBYTES"),
+		Counter: comp.Columns.GetHandle("rom.COUNTER"),
 	}
+
+	for i := range common.NbLimbU128 {
+		res.Acc[i] = comp.Columns.GetHandle(ifaces.ColIDf("rom.ACC_%d", i))
+	}
+
+	for i := range common.NbLimbU32 {
+		res.CFI[i] = comp.Columns.GetHandle(ifaces.ColIDf("rom.CODE_FRAGMENT_INDEX_%d", i))
+		res.CodeSize[i] = comp.Columns.GetHandle(ifaces.ColIDf("rom.CODE_SIZE_%d", i))
+	}
+
 	return res
 }
 

@@ -117,8 +117,6 @@ func NewModule(comp *wizard.CompiledIOP, inputs Inputs) (mh Module) {
 		mh.PrevState[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_PREV_STATE_NAME, i), inputs.Size)
 		mh.NewState[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_NEW_STATE_NAME, i), inputs.Size)
 
-		// TODO: recheck this constraint because originally, it will pass
-		// if either HashHi or HashLo corresponds to the empty keccak part
 		comp.InsertGlobal(
 			0,
 			ifaces.QueryIDf("MIMC_CODE_HASH_CPT_IF_FOR_CONSISTENCY_%d", i),
