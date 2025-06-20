@@ -1,6 +1,8 @@
 package bls
 
 import (
+	"errors"
+	"os"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
@@ -16,7 +18,18 @@ func TestBlsG1Add(t *testing.T) {
 		NbC1MembershipInputInstances:   16,
 		NbC1MembershipCircuitInstances: 1,
 	}
-	ct := csvtraces.MustOpenCsvFile("testdata/bls_g1_add_input.csv")
+	f, err := os.Open("testdata/bls_g1_add_input.csv")
+	if errors.Is(err, os.ErrNotExist) {
+		t.Fatal("csv file does not exist, please run `go generate` to generate the test data")
+	}
+	if err != nil {
+		t.Fatal("failed to open csv file", err)
+	}
+	defer f.Close()
+	ct, err := csvtraces.NewCsvTrace(f)
+	if err != nil {
+		t.Fatal("failed to create csv trace", err)
+	}
 	var blsAdd *BlsAdd
 	var blsAddSource *blsAddDataSource
 	cmp := wizard.Compile(
@@ -54,7 +67,18 @@ func TestBlsG2Add(t *testing.T) {
 		NbC2MembershipInputInstances:   16,
 		NbC2MembershipCircuitInstances: 1,
 	}
-	ct := csvtraces.MustOpenCsvFile("testdata/bls_g2_add_input.csv")
+	f, err := os.Open("testdata/bls_g2_add_input.csv")
+	if errors.Is(err, os.ErrNotExist) {
+		t.Fatal("csv file does not exist, please run `go generate` to generate the test data")
+	}
+	if err != nil {
+		t.Fatal("failed to open csv file", err)
+	}
+	defer f.Close()
+	ct, err := csvtraces.NewCsvTrace(f)
+	if err != nil {
+		t.Fatal("failed to create csv trace", err)
+	}
 	var blsAdd *BlsAdd
 	var blsAddSource *blsAddDataSource
 	cmp := wizard.Compile(

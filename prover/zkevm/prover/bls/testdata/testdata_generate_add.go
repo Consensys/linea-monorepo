@@ -177,7 +177,7 @@ func headersAdd[T affine]() []string {
 }
 
 func mainAdd() error {
-	f, err := os.Create("bls_g1_add_input.csv")
+	f, err := os.Create(path_add_g1)
 	if err != nil {
 		return fmt.Errorf("create file: %w", err)
 	}
@@ -193,7 +193,7 @@ func mainAdd() error {
 		}
 	}
 
-	f, err = os.Create("bls_g2_add_input.csv")
+	f, err = os.Create(path_add_g2)
 	if err != nil {
 		return fmt.Errorf("create file: %w", err)
 	}
