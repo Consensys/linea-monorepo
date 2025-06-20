@@ -46,7 +46,7 @@ func (leaf *LeafOpening) WriteTo(w io.Writer) (int64, error) {
 
 // Hash returns a hash of the leaf opening
 func (leaf LeafOpening) Hash(conf *smt.Config) Bytes32 {
-	return hash(conf, &leaf)
+	return Hash(conf, &leaf)
 }
 
 // Head returns the "head" of the accumulator set
@@ -82,11 +82,11 @@ func (t KVOpeningTuple[K, V]) CheckAndLeaf(conf *smt.Config) (Bytes32, error) {
 		return t.LeafOpening.Hash(conf), nil
 	}
 
-	if t.LeafOpening.HKey != hash(conf, t.Key) {
+	if t.LeafOpening.HKey != Hash(conf, t.Key) {
 		return Bytes32{}, fmt.Errorf("inconsistent key and leaf openings")
 	}
 
-	if t.LeafOpening.HVal != hash(conf, t.Value) {
+	if t.LeafOpening.HVal != Hash(conf, t.Value) {
 		return Bytes32{}, fmt.Errorf("inconsistent val and leaf opening")
 	}
 
@@ -107,13 +107,13 @@ func (leaf LeafOpening) CopyWithNext(next int64) LeafOpening {
 
 // MatchValue returns true if the leaf opening opening matches the value
 func (l *LeafOpening) MatchValue(conf *smt.Config, v io.WriterTo) bool {
-	hval := hash(conf, v)
+	hval := Hash(conf, v)
 	return l.HVal == hval
 }
 
 // MatchKey returns true if the leaf opening opening matches the value
 func (l *LeafOpening) MatchKey(conf *smt.Config, k io.WriterTo) bool {
-	hkey := hash(conf, k)
+	hkey := Hash(conf, k)
 	return l.HKey == hkey
 }
 
@@ -132,7 +132,7 @@ func (t KVOpeningTuple[K, V]) CopyWithNext(next int64) KVOpeningTuple[K, V] {
 // CopyWithVal copies the tuple and give it a new new value
 func (t KVOpeningTuple[K, V]) CopyWithVal(conf *smt.Config, val V) KVOpeningTuple[K, V] {
 	t.Value = val
-	t.LeafOpening.HVal = hash(conf, val)
+	t.LeafOpening.HVal = Hash(conf, val)
 	return t
 }
 

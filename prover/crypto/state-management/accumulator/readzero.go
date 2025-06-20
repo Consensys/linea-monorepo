@@ -78,7 +78,7 @@ func (v *VerifierState[K, V]) ReadZeroVerify(trace ReadZeroTrace[K, V]) error {
 	}
 
 	// Check that the opening's hkeys make a correct sandwich
-	hkey := hash(v.Config, trace.Key)
+	hkey := Hash(v.Config, trace.Key)
 	if Bytes32Cmp(hkey, trace.OpeningMinus.HKey) < 1 || Bytes32Cmp(hkey, trace.OpeningPlus.HKey) > -1 {
 		return fmt.Errorf(
 			"sandwich is incorrect expected %x < %x < %x",
@@ -87,13 +87,13 @@ func (v *VerifierState[K, V]) ReadZeroVerify(trace ReadZeroTrace[K, V]) error {
 	}
 
 	// Test membership of leaf minus
-	leafMinus := hash(v.Config, &trace.OpeningMinus)
+	leafMinus := Hash(v.Config, &trace.OpeningMinus)
 	if !trace.ProofMinus.Verify(v.Config, leafMinus, trace.SubRoot) {
 		return fmt.Errorf("merkle proof verification failed : minus")
 	}
 
 	// Test membership of leaf plus
-	leafPlus := hash(v.Config, &trace.OpeningPlus)
+	leafPlus := Hash(v.Config, &trace.OpeningPlus)
 	if !trace.ProofPlus.Verify(v.Config, leafPlus, trace.SubRoot) {
 		return fmt.Errorf("merkle proof verification failed : plus")
 	}
@@ -113,17 +113,17 @@ func (trace ReadZeroTrace[K, V]) DeferMerkleChecks(
 ) []smt.ProvedClaim {
 
 	// Test membership of leaf minus
-	leafMinus := hash(config, &trace.OpeningMinus)
+	leafMinus := Hash(config, &trace.OpeningMinus)
 
 	// Test membership of leaf plus
-	leafPlus := hash(config, &trace.OpeningPlus)
+	leafPlus := Hash(config, &trace.OpeningPlus)
 
 	appendTo = append(appendTo, smt.ProvedClaim{Proof: trace.ProofMinus, Root: trace.SubRoot, Leaf: leafMinus})
 	return append(appendTo, smt.ProvedClaim{Proof: trace.ProofPlus, Root: trace.SubRoot, Leaf: leafPlus})
 }
 
 func (trace ReadZeroTrace[K, V]) HKey(cfg *smt.Config) Bytes32 {
-	return hash(cfg, trace.Key)
+	return Hash(cfg, trace.Key)
 }
 
 func (trace ReadZeroTrace[K, V]) RWInt() int {

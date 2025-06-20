@@ -4,6 +4,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
@@ -19,8 +20,11 @@ func genShomei(t *testing.T, tcases []TestCases, config *smt.Config) (*smt.Tree,
 
 	var leaves []Bytes32
 	for _, c := range tcases {
+		account := AccountForHash{
+			Acc: c.Account,
+		}
 
-		leaves = append(leaves, c.Account.HashAccount())
+		leaves = append(leaves, accumulator.Hash(config, account))
 	}
 
 	// Build the same tree by adding the leaves one by one
