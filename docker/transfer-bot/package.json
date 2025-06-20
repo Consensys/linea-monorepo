@@ -1,0 +1,13 @@
+{
+  "name": "eth-transfer-bot",
+  "version": "1.0.0",
+  "description": "Ethereum transfer bot for devnet testing",
+  "main": "transfer-script.js",
+  "scripts": {
+    "start": "node transfer-script.js"
+  },
+  "dependencies": {
+    "ethers": "^6.8.0",
+    "dotenv": "^16.3.1"
+  }
+}
