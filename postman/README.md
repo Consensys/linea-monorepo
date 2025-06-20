@@ -29,8 +29,8 @@ All messages are stored in a configurable Postgres DB.
   - **Custom block number**: Set to a specific block number (e.g., `12345678`) to start fetching events from that block
   - **From genesis**: Set to `0` to fetch all historical events from the beginning of the chain
   - **Priority order**: The service determines the starting block using the following priority:
-    1. If there are previously processed messages in the database, resume from the last processed block
-    2. If `L1_LISTENER_INITIAL_FROM_BLOCK` is set to a value greater than `-1`, use that block number
+    1. If `L1_LISTENER_INITIAL_FROM_BLOCK` is set to a value greater than `-1`, use that block number
+    2. If there are previously processed messages in the database, resume from the last processed block
     3. Otherwise, start from the current latest block on the chain
   - **⚠️ Performance Note**: Setting this to `0` or a very low block number may result in long initial sync times as the service will process all historical events
 - `L1_LISTENER_BLOCK_CONFIRMATION`: Required block confirmations
@@ -57,8 +57,8 @@ All messages are stored in a configurable Postgres DB.
   - **Custom block number**: Set to a specific block number (e.g., `5432100`) to start fetching events from that block
   - **From genesis**: Set to `0` to fetch all historical events from the beginning of the chain
   - **Priority order**: The service determines the starting block using the following priority:
-    1. If there are previously processed messages in the database, resume from the last processed block
-    2. If `L2_LISTENER_INITIAL_FROM_BLOCK` is set to a value greater than `-1`, use that block number
+    1. If `L2_LISTENER_INITIAL_FROM_BLOCK` is set to a value greater than `-1`, use that block number
+    2. If there are previously processed messages in the database, resume from the last processed block
     3. Otherwise, start from the current latest block on the chain
   - **⚠️ Performance Note**: Setting this to `0` or a very low block number may result in long initial sync times as the service will process all historical events
 - `L2_LISTENER_BLOCK_CONFIRMATION`: Required block confirmations
@@ -118,8 +118,9 @@ The `L1_LISTENER_INITIAL_FROM_BLOCK` and `L2_LISTENER_INITIAL_FROM_BLOCK` config
 #### Example 1: Development Setup (Default Behavior)
 ```bash
 # For development, start from current block to avoid processing historical data
-L1_LISTENER_INITIAL_FROM_BLOCK=-1  # Default value
-L2_LISTENER_INITIAL_FROM_BLOCK=-1  # Default value
+# These variables are optional - if not specified, default value -1 will be used
+L1_LISTENER_INITIAL_FROM_BLOCK=-1  # Default value (optional)
+L2_LISTENER_INITIAL_FROM_BLOCK=-1  # Default value (optional)
 ```
 
 #### Example 2: Fresh Production Deployment from Genesis
@@ -151,7 +152,7 @@ L2_LISTENER_INITIAL_FROM_BLOCK=1050000
 - **Database Recovery**: Set to last known good block numbers after database restoration
 - **Performance Optimization**: Use higher block numbers to skip irrelevant historical events
 
-**Note**: The configuration only takes effect when there are no existing messages in the database. If the database contains previously processed messages, the service will automatically resume from the last processed block regardless of these configuration values.
+**Note**: The `L1_LISTENER_INITIAL_FROM_BLOCK` and `L2_LISTENER_INITIAL_FROM_BLOCK` configuration values are always prioritized when set to a value greater than -1, even if the database contains previously processed messages.
 
 ## Development
 
