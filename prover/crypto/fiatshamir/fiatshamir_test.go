@@ -1,9 +1,12 @@
 package fiatshamir
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,39 +21,39 @@ func TestFiatShamirSafeguardUpdate(t *testing.T) {
 	require.NotEqual(t, a.String(), b.String())
 }
 
-// func TestFiatShamirRandomVec(t *testing.T) {
+func TestFiatShamirRandomVec(t *testing.T) {
 
-// 	for _, testCase := range randomIntVecTestCases {
-// 		testName := fmt.Sprintf("%v-integers-of-%v-bits", testCase.NumIntegers, testCase.IntegerBitSize)
-// 		t.Run(testName, func(t *testing.T) {
+	for _, testCase := range randomIntVecTestCases {
+		testName := fmt.Sprintf("%v-integers-of-%v-bits", testCase.NumIntegers, testCase.IntegerBitSize)
+		t.Run(testName, func(t *testing.T) {
 
-// 			fs := NewMiMCFiatShamir()
-// 			fs.Update(field.NewElement(420))
+			fs := poseidon2.NewMerkleDamgardHasher()
+			Update(fs, field.NewElement(420))
 
-// 			var oldState, newState field.Element
+			var oldState, newState field.Element
 
-// 			if err := oldState.SetBytesCanonical(fs.hasher.Sum(nil)); err != nil {
-// 				t.Fatalf("unexpected error: %v", err)
-// 			}
+			if err := oldState.SetBytesCanonical(fs.Sum(nil)); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 
-// 			a := fs.RandomManyIntegers(testCase.NumIntegers, 1<<testCase.IntegerBitSize)
-// 			t.Logf("the generated vector= %v", a)
+			a := RandomManyIntegers(fs, testCase.NumIntegers, 1<<testCase.IntegerBitSize)
+			t.Logf("the generated vector= %v", a)
 
-// 			if err := newState.SetBytesCanonical(fs.hasher.Sum(nil)); err != nil {
-// 				t.Fatalf("unexpected error: %v", err)
-// 			}
+			if err := newState.SetBytesCanonical(fs.Sum(nil)); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 
-// 			assert.Len(t, a, testCase.NumIntegers)
-// 			assert.NoError(t, errIfHasDuplicate(a...))
+			assert.Len(t, a, testCase.NumIntegers)
+			assert.NoError(t, errIfHasDuplicate(a...))
 
-// 			if testCase.ShouldUpdate {
-// 				assert.NotEqualf(t, oldState.String(), newState.String(), "the state was not updated (%v)", oldState.String())
-// 			} else {
-// 				assert.Equal(t, oldState.String(), newState.String(), "the state was updated")
-// 			}
-// 		})
-// 	}
-// }
+			if testCase.ShouldUpdate {
+				assert.NotEqualf(t, oldState.String(), newState.String(), "the state was not updated (%v)", oldState.String())
+			} else {
+				assert.Equal(t, oldState.String(), newState.String(), "the state was updated")
+			}
+		})
+	}
+}
 
 // func TestBatchUpdates(t *testing.T) {
 
@@ -190,54 +193,54 @@ func TestFiatShamirSafeguardUpdate(t *testing.T) {
 
 // }
 
-// // errIfHasDuplicate returns an error if a duplicate is found in the caller's slice
-// // indicating the positions and the value corresponding to the first duplicate.
-// func errIfHasDuplicate[T comparable](slice ...T) error {
-// 	m := map[T]int{}
-// 	for i, f := range slice {
-// 		if prevPos, ok := m[f]; ok {
-// 			return fmt.Errorf("found a duplicate value: %v at positions %v and %v", f, prevPos, i)
-// 		}
+// errIfHasDuplicate returns an error if a duplicate is found in the caller's slice
+// indicating the positions and the value corresponding to the first duplicate.
+func errIfHasDuplicate[T comparable](slice ...T) error {
+	m := map[T]int{}
+	for i, f := range slice {
+		if prevPos, ok := m[f]; ok {
+			return fmt.Errorf("found a duplicate value: %v at positions %v and %v", f, prevPos, i)
+		}
 
-// 		m[f] = i
-// 	}
-// 	return nil
-// }
+		m[f] = i
+	}
+	return nil
+}
 
-// // Test vectors that are used to test the RandomIntVec feature
-// var randomIntVecTestCases = []struct {
-// 	ShouldUpdate   bool
-// 	NumIntegers    int
-// 	IntegerBitSize int
-// }{
-// 	{
-// 		ShouldUpdate:   false,
-// 		NumIntegers:    0,
-// 		IntegerBitSize: 16,
-// 	},
-// 	{
-// 		ShouldUpdate:   true,
-// 		NumIntegers:    1,
-// 		IntegerBitSize: 16,
-// 	},
-// 	{
-// 		ShouldUpdate:   true,
-// 		NumIntegers:    15,
-// 		IntegerBitSize: 16,
-// 	},
-// 	{
-// 		ShouldUpdate:   true,
-// 		NumIntegers:    16,
-// 		IntegerBitSize: 16,
-// 	},
-// 	{
-// 		ShouldUpdate:   true,
-// 		NumIntegers:    17,
-// 		IntegerBitSize: 16,
-// 	},
-// 	{
-// 		ShouldUpdate:   true,
-// 		NumIntegers:    45,
-// 		IntegerBitSize: 16,
-// 	},
-// }
+// Test vectors that are used to test the RandomIntVec feature
+var randomIntVecTestCases = []struct {
+	ShouldUpdate   bool
+	NumIntegers    int
+	IntegerBitSize int
+}{
+	{
+		ShouldUpdate:   false,
+		NumIntegers:    0,
+		IntegerBitSize: 16,
+	},
+	{
+		ShouldUpdate:   true,
+		NumIntegers:    1,
+		IntegerBitSize: 16,
+	},
+	{
+		ShouldUpdate:   true,
+		NumIntegers:    15,
+		IntegerBitSize: 16,
+	},
+	{
+		ShouldUpdate:   true,
+		NumIntegers:    16,
+		IntegerBitSize: 16,
+	},
+	{
+		ShouldUpdate:   true,
+		NumIntegers:    17,
+		IntegerBitSize: 16,
+	},
+	{
+		ShouldUpdate:   true,
+		NumIntegers:    45,
+		IntegerBitSize: 16,
+	},
+}

@@ -34,7 +34,7 @@ func Update(h hash.StateStorer, vec ...field.Element) {
 		bytes := f.Bytes()
 		_, err := h.Write(bytes[:])
 		if err != nil {
-			panic("Hashing is not supposed to fail")
+			panic(err)
 		}
 	}
 }
@@ -44,7 +44,7 @@ func UpdateExt(h hash.StateStorer, vec ...fext.Element) {
 		bytes := fext.Bytes(&f)
 		_, err := h.Write(bytes[:])
 		if err != nil {
-			panic("Hashing is not supposed to fail")
+			panic(err)
 		}
 	}
 }
