@@ -66,8 +66,14 @@ func RandomField(h hash.StateStorer) field.Element {
 }
 
 func RandomFext(h hash.StateStorer) fext.Element {
+	// TODO @thomas according the size of s, run several hashes to fit in an fext elmt
 	s := h.Sum(nil)
-	res := fext.SetBytes(s)
+	var res fext.Element
+	if len(s) > 4 {
+		res = fext.SetBytes(s)
+	} else {
+		res.B0.A0.SetBytes(s)
+	}
 	UpdateExt(h, fext.NewElement(0, 0, 0, 0)) // ??
 	return res
 }
@@ -123,7 +129,7 @@ func RandomManyIntegers(h hash.StateStorer, num, upperBound int) []int {
 	}
 
 	// number of field elmts per hash
-	maxNumChallsPerDigest = (field.Bits - 1) / int(logTwoUpperBound)
+	maxNumChallsPerDigest := (field.Bits - 1) / int(logTwoUpperBound)
 
 	res := make([]int, 0, num)
 
@@ -137,7 +143,7 @@ func RandomManyIntegers(h hash.StateStorer, num, upperBound int) []int {
 				return res
 			}
 
-			newChall, err := buffer.ReadInt(int(challsBitSize))
+			newChall, err := buffer.ReadInt(int(logTwoUpperBound))
 			if err != nil {
 				utils.Panic("could not instantiate the buffer for a single field element")
 			}
@@ -151,12 +157,3 @@ func RandomManyIntegers(h hash.StateStorer, num, upperBound int) []int {
 		UpdateExt(h, fext.NewElement(0, 0, 0, 0)) // ??
 	}
 }
-
-// safeguardUpdate updates the state as a safeguard. This way, we are guaranteed
-// that successive random oracle queries will yield a different, independant
-// result.
-//
-// This is implemented by adding a 0 in the transcript.
-// func (fs *State) safeguardUpdate() {
-// 	fs.UpdateExt(fext.NewElement(0, 0, 0, 0))
-// }
