@@ -67,7 +67,7 @@ func CheckReedSolomon(comp *wizard.CompiledIOP, rate int, h ifaces.Column) {
 	beta := comp.InsertCoin(
 		round+1,
 		coin.Namef("%v_%v", REED_SOLOMON_BETA, h.GetColID()),
-		coin.Field,
+		coin.FieldExt,
 	)
 
 	// Inserts the prover before calling the sub-wizard so that it is executed

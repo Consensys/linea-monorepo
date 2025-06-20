@@ -1,6 +1,8 @@
 package testtools
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -230,6 +232,7 @@ func (u *UnivariateTestcase) Define(comp *wizard.CompiledIOP) {
 			polys[i] = comp.InsertPrecomputed(name, u.Polys[i])
 			continue
 		}
+		fmt.Printf("polysss SV=%v\n", u.Polys[i].Pretty())
 
 		maxRound = max(maxRound, round)
 		polys[i] = comp.InsertCommit(round, name, u.Polys[i].Len())
@@ -243,7 +246,7 @@ func (u *UnivariateTestcase) Define(comp *wizard.CompiledIOP) {
 	}
 
 	for round := 1; round <= maxRound; round++ {
-		_ = comp.InsertCoin(round, formatName[coin.Name]("Univariate", u.NameStr, "Coin", round), coin.Field)
+		_ = comp.InsertCoin(round, formatName[coin.Name]("Univariate", u.NameStr, "Coin", round), coin.FieldExt)
 	}
 
 	for i := range u.QueryXs {
@@ -252,7 +255,6 @@ func (u *UnivariateTestcase) Define(comp *wizard.CompiledIOP) {
 		for j := range queryPols {
 			queryPols[j] = polys[u.QueryPols[i][j]]
 		}
-
 		comp.InsertUnivariate(
 			maxRound,
 			formatName[ifaces.QueryID]("Univariate", u.NameStr, "Query", i),

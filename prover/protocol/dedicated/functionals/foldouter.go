@@ -78,7 +78,7 @@ func FoldOuter(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, out
 	})
 
 	innerCoinName := coin.Namef("INNER_COIN_%v", folded.GetColID())
-	innerCoin := comp.InsertCoin(round+1, innerCoinName, coin.Field)
+	innerCoin := comp.InsertCoin(round+1, innerCoinName, coin.FieldExt)
 	innerCoinAcc := accessors.NewFromCoin(innerCoin)
 
 	foldedEvalAcc := CoeffEval(comp, folded.String(), innerCoin, folded)

@@ -368,7 +368,7 @@ func compileLookupTable(
 		alpha := comp.InsertCoin(
 			round+1,
 			DeriveTableName[coin.Name](LogDerivativePrefix, lookupTable, "ALPHA"),
-			coin.Field,
+			coin.FieldExt,
 		)
 
 		for frag := range ctx.T {
@@ -393,7 +393,7 @@ func compileLookupTable(
 	ctx.Gamma = comp.InsertCoin(
 		round+1,
 		DeriveTableName[coin.Name](LogDerivativePrefix, lookupTable, "GAMMA"),
-		coin.Field,
+		coin.FieldExt,
 	)
 
 	return ctx

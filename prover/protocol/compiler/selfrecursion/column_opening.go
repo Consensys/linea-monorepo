@@ -351,7 +351,7 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 	round := ctx.Columns.Q.Round() + 1
 
 	// Sampling of r_collapse
-	ctx.Coins.Collapse = ctx.comp.InsertCoin(round, ctx.collapseCoin(), coin.Field)
+	ctx.Coins.Collapse = ctx.comp.InsertCoin(round, ctx.collapseCoin(), coin.FieldExt)
 
 	// Declare the linear combination of the preimages by collapse coin
 	// aka, the collapsed preimage
@@ -543,7 +543,7 @@ func (ctx *SelfRecursionCtx) foldPhase() {
 	round := ctx.Columns.Edual.Round() + 1
 
 	// Sample rFold
-	ctx.Coins.Fold = ctx.comp.InsertCoin(round, ctx.foldCoinName(), coin.Field)
+	ctx.Coins.Fold = ctx.comp.InsertCoin(round, ctx.foldCoinName(), coin.FieldExt)
 
 	// Constructs ACollapsedFold
 	ctx.Columns.ACollapseFold = functionals.Fold(

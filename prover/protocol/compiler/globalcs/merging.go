@@ -101,7 +101,7 @@ func (ctx *mergingCtx) aggregateConstraints(comp *wizard.CompiledIOP) []*symboli
 	var (
 		aggregateExpressions = make([]*symbolic.Expression, len(ctx.Ratios))
 		initialRound         = comp.NumRounds()
-		mergingCoin          = comp.InsertCoin(initialRound, coin.Name(deriveName(comp, DEGREE_RANDOMNESS)), coin.Field)
+		mergingCoin          = comp.InsertCoin(initialRound, coin.Name(deriveName(comp, DEGREE_RANDOMNESS)), coin.FieldExt)
 	)
 
 	for i, ratio := range ctx.Ratios {

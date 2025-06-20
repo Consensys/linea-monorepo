@@ -170,7 +170,7 @@ func (mt *moduleTranslator) TranslateExpressionList(exprs []*symbolic.Expression
 // as a [coin.FieldFromSeed] if it is not found.
 func (mt *moduleTranslator) TranslateCoin(info coin.Info) coin.Info {
 	if !mt.Wiop.Coins.Exists(info.Name) {
-		mt.Wiop.InsertCoin(1, info.Name, coin.FieldFromSeed)
+		mt.Wiop.InsertCoin(1, info.Name, coin.FieldFromSeed) //TODO@yao: FieldExt?
 	}
 	return mt.Wiop.Coins.Data(info.Name)
 }

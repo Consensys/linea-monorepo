@@ -82,7 +82,7 @@ func compileForSize(
 		batchingCoin = comp.InsertCoin(
 			round,
 			deriveName[coin.Name]("BATCHING_COIN", size, comp.SelfRecursionCount),
-			coin.Field,
+			coin.FieldExt,
 		)
 
 		for _, q := range queries {

@@ -63,7 +63,7 @@ func declareUnivariateQueries(
 			EvalCoin: comp.InsertCoin(
 				round+1,
 				coin.Name(deriveName(comp, EVALUATION_RANDOMESS)),
-				coin.Field,
+				coin.FieldExt,
 			),
 			WitnessEval: comp.InsertUnivariate(
 				round+1,

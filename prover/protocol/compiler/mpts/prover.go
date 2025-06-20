@@ -1,6 +1,7 @@
 package mpts
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
@@ -32,7 +33,7 @@ type randomPointEvaluation struct {
 func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 
 	var (
-		rho = run.GetRandomCoinField(qa.LinCombCoeffRho.Name)
+		rho = run.GetRandomCoinFieldExt(qa.LinCombCoeffRho.Name)
 
 		// zetas stores the values zetas[i] = lambda^i / (X - xi)
 		// where xi is the i-th evaluation point. Having these values precomputed
@@ -46,7 +47,7 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 
 		// powersOfRho lists all the powers of rho and are precomputed to help
 		// parallelization.
-		powersOfRho = vector.PowerVec(rho, len(qa.Polys))
+		powersOfRho = vectorext.PowerVec(rho, len(qa.Polys))
 
 		// mempool is a memory pool that is used to allocate and reuse memory
 		// for the partial results.
@@ -118,7 +119,7 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 
 			for k := range localPartialQuotient {
 				localPartialQuotient[k].MulByElement(&localPartialQuotient[k], &poly[k])
-				localPartialQuotient[k].MulByElement(&localPartialQuotient[k], &powersOfRho[polyID])
+				localPartialQuotient[k].Mul(&localPartialQuotient[k], &powersOfRho[polyID])
 			}
 
 			// This part of the algorithm cannot be parallelized or there
@@ -188,7 +189,7 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 
 				// This reuses the memory slot of yik to compute the temporary
 				// rho^k y_ik
-				yik.MulByElement(&yik, &powersOfRho[k])
+				yik.Mul(&yik, &powersOfRho[k])
 				sumRhoKYik.Add(&sumRhoKYik, &yik)
 			}
 
@@ -205,6 +206,7 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 
 		quotientLock.Lock()
 		vectorext.Sub(quotient, quotient, localResult)
+
 		quotientLock.Unlock()
 	})
 
@@ -220,12 +222,21 @@ func (re randomPointEvaluation) Run(run *wizard.ProverRuntime) {
 	)
 
 	for i := range polyVals {
+		fmt.Printf("polyVals bef=%v\n", polyVals[i].Pretty())
+
 		polyVals[i] = polys[i].GetColAssignment(run)
+		//fmt.Printf("polyVals aft=%v\n", polyVals[i].Pretty())
+
 	}
 
 	ys := make([]fext.Element, len(polyVals))
 	for i := range ys {
 		ys[i] = smartvectors.EvaluateLagrangeMixed(polyVals[i], r)
+		fmt.Printf("i=%v\n", i)
+
+		fmt.Printf("polyVals=%v\n", polyVals[i].Pretty())
+		fmt.Printf("ys=%v\n", ys[i])
+
 	}
 
 	run.AssignUnivariate(re.NewQuery.QueryID, r, ys...)

@@ -137,13 +137,13 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 	ctx.LinCombCoeffLambda = comp.InsertCoin(
 		ctx.getNumRound(comp),
 		coin.Namef("MPTS_LINCOMB_COEFF_LAMBDA_%v", comp.SelfRecursionCount),
-		coin.Field,
+		coin.FieldExt,
 	)
 
 	ctx.LinCombCoeffRho = comp.InsertCoin(
 		ctx.getNumRound(comp),
 		coin.Namef("MPTS_LINCOMB_COEFF_RHO_%v", comp.SelfRecursionCount),
-		coin.Field,
+		coin.FieldExt,
 	)
 
 	ctx.Quotient = comp.InsertCommit(
@@ -155,7 +155,7 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 	ctx.EvaluationPoint = comp.InsertCoin(
 		ctx.getNumRound(comp)+1,
 		coin.Namef("MPTS_EVALUATION_POINT_%v", comp.SelfRecursionCount),
-		coin.Field,
+		coin.FieldExt,
 	)
 
 	ctx.NewQuery = comp.InsertUnivariate(

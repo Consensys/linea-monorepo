@@ -182,7 +182,7 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 	// there is no random coins in the GL module, we need to add at least one dummy coin
 	// otherwise the compiler will throw an error stating that we have several rounds for
 	// the columns and the queries but not for the coins.
-	_ = moduleGL.Wiop.InsertCoin(1, "DUMMY_GL_COIN", coin.Field)
+	_ = moduleGL.Wiop.InsertCoin(1, "DUMMY_GL_COIN", coin.FieldExt)
 
 	for _, globalCs := range moduleInput.GlobalConstraints {
 		moduleGL.InsertGlobal(*globalCs)

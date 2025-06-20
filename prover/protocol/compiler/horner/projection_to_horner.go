@@ -65,13 +65,13 @@ func ProjectionToHorner(comp *wizard.CompiledIOP) {
 			selectorsA = make([]ifaces.Column, widthA)
 			selectorsB = make([]ifaces.Column, widthB)
 			gamma      coin.Info
-			alpha      = comp.InsertCoin(qRound+1, coin.Name(qName+"_COIN_ALPHA"), coin.Field)
+			alpha      = comp.InsertCoin(qRound+1, coin.Name(qName+"_COIN_ALPHA"), coin.FieldExt)
 		)
 
 		round = max(round, qRound+1)
 
 		if numCols > 1 {
-			gamma = comp.InsertCoin(qRound+1, coin.Name(qName+"_COIN_GAMMA"), coin.Field)
+			gamma = comp.InsertCoin(qRound+1, coin.Name(qName+"_COIN_GAMMA"), coin.FieldExt)
 		}
 
 		for i := 0; i < widthA; i++ {

@@ -148,10 +148,10 @@ func CheckSubsample(comp *wizard.CompiledIOP, name string, large, small []ifaces
 	var gamma coin.Info
 
 	if needGamma {
-		gamma = comp.InsertCoin(round+1, coin.Namef("%v_GAMMA", name), coin.Field)
+		gamma = comp.InsertCoin(round+1, coin.Namef("%v_GAMMA", name), coin.FieldExt)
 	}
 
-	alpha := comp.InsertCoin(round+1, coin.Namef("%v_ALPHA", name), coin.Field)
+	alpha := comp.InsertCoin(round+1, coin.Namef("%v_ALPHA", name), coin.FieldExt)
 
 	// Registers the two accumulators
 	accSmall := comp.InsertCommit(

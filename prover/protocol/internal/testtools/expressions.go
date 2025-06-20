@@ -347,7 +347,7 @@ func (etc *ExpressionTestcase) Define(comp *wizard.CompiledIOP) {
 			// the coin is inserted at round 1. Since there is only one coin
 			// we already know which one is needed.
 			if !comp.Coins.Exists("coin") {
-				comp.InsertCoin(1, "coin", coin.Field)
+				comp.InsertCoin(1, "coin", coin.FieldExt)
 			}
 			round = max(round, 1)
 

@@ -43,6 +43,10 @@ func (va verifierAction) Run(run wizard.Runtime) error {
 		rho    = run.GetRandomCoinFieldExt(va.LinCombCoeffRho.Name)
 	)
 
+	fmt.Printf("qr=%v\n", qr.String())
+	fmt.Printf("r=%v\n", r.String())
+	fmt.Printf("rcoin=%v\n", rCoin.String())
+
 	if r != rCoin {
 		return fmt.Errorf("(verifier of %v) : Evaluation point of %v is incorrect (%v, expected %v)",
 			va.NewQuery.QueryID, va.NewQuery.QueryID, r.String(), rCoin.String())
@@ -84,6 +88,7 @@ func (va verifierAction) Run(run wizard.Runtime) error {
 
 		rhoK.Mul(&rhoK, &rho)
 	}
+	fmt.Printf("res=%v\n", res.String())
 
 	if !res.Equal(&qr) {
 		return fmt.Errorf("(verifier of %v) : Q(r) is incorrect (%v, expected %v)",

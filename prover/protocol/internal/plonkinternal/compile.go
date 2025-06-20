@@ -128,7 +128,7 @@ func (ctx *CompilationCtx) commitGateColumns() {
 		}
 
 		// Second rounds, after sampling HCP
-		ctx.Columns.Hcp = ctx.comp.InsertCoin(ctx.round+1, coin.Name(ctx.Sprintf("HCP")), coin.Field)
+		ctx.Columns.Hcp = ctx.comp.InsertCoin(ctx.round+1, coin.Name(ctx.Sprintf("HCP")), coin.FieldExt)
 
 		// And assigns the LRO polynomials
 		for i := 0; i < ctx.maxNbInstances; i++ {
@@ -274,7 +274,7 @@ func (ctx *CompilationCtx) addCopyConstraint() {
 		randLin := ctx.comp.InsertCoin(
 			roundPermutation,
 			coin.Name(ctx.Sprintf("PERMUTATION_RANDLIN")),
-			coin.Field,
+			coin.FieldExt,
 		)
 		// And declare special columns for the linear combination
 		l = expr_handle.RandLinCombCol(
