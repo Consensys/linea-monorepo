@@ -66,7 +66,7 @@ type Module struct {
 
 	// All the columns characterizing the module
 	IsActive  ifaces.Column
-	CFI       ifaces.Column
+	CFI       [common.NbLimbU32]ifaces.Column
 	Limb      [common.NbLimbU128]ifaces.Column // 16 bytes
 	CodeHash  [common.NbLimbU256]ifaces.Column
 	CodeSize  [common.NbLimbU32]ifaces.Column
@@ -96,7 +96,6 @@ func NewModule(comp *wizard.CompiledIOP, inputs Inputs) (mh Module) {
 	mh = Module{
 		Inputs:    inputs,
 		IsActive:  comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_ACTIVE_NAME, inputs.Size),
-		CFI:       comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_CFI_NAME, inputs.Size),
 		IsNewHash: comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_NEW_HASH_NAME, inputs.Size),
 		IsHashEnd: comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_HASH_END_NAME, inputs.Size),
 	}
@@ -107,6 +106,7 @@ func NewModule(comp *wizard.CompiledIOP, inputs Inputs) (mh Module) {
 
 	for i := range common.NbLimbU32 {
 		mh.CodeSize[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_CODE_SIZE_NAME, i), inputs.Size)
+		mh.CFI[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_CFI_NAME, i), inputs.Size)
 	}
 
 	for i := range common.NbLimbU256 {
@@ -155,23 +155,12 @@ func NewModule(comp *wizard.CompiledIOP, inputs Inputs) (mh Module) {
 //	11. All columns are zero in the inactive area
 func (mh *Module) checkConsistency(comp *wizard.CompiledIOP) {
 
+	panic("TODO: add poseidon checks")
 	// NewState = MiMC(PrevState, Limb)
 	//comp.InsertMiMC(mh.inputs.Round, mh.qname("MiMC_CODE_HASH"), mh.Limb, mh.PrevState, mh.NewState, nil)
 
-	// If CFI incremented, IsNewHash = 1, e.g., IsActive[i] * (CFI[i] - CFI[i-1]) * (1 - IsNewHash[i]) = 0
-	comp.InsertGlobal(mh.Inputs.Round, mh.qname("IS_NEW_HASH_CONSISTENCY_1"),
-		sym.Mul(mh.IsActive,
-			sym.Sub(mh.CFI, ifaces.ColumnAsVariable(column.Shift(mh.CFI, -1))),
-			sym.Sub(1, mh.IsNewHash)))
-
 	// Local constraint IsNewHash starts with 1
 	comp.InsertLocal(mh.Inputs.Round, mh.qname("IS_NEW_HASH_LOCAL"), sym.Sub(mh.IsNewHash, mh.IsActive))
-
-	// if CFI[i+1] - CFI[i] != 0, IsHashEnd[i] = 1, e.g., IsActive[i] * (CFI[i+1] - CFI[i]) * (1 - IsHashEnd[i]) = 0
-	comp.InsertGlobal(mh.Inputs.Round, mh.qname("IS_HASH_END_CONSISTENCY_1"),
-		sym.Mul(mh.IsActive,
-			sym.Sub(ifaces.ColumnAsVariable(column.Shift(mh.CFI, 1)), mh.CFI),
-			sym.Sub(1, mh.IsHashEnd)))
 
 	// Booleanity of IsNewHash, IsHashEnd (in the active area)
 	comp.InsertGlobal(mh.Inputs.Round, mh.qname("IS_NEW_HASH_BOOLEAN"),
@@ -223,6 +212,12 @@ func (mh *Module) checkConsistency(comp *wizard.CompiledIOP) {
 	}
 
 	for i := range common.NbLimbU32 {
+		// if CFI[i+1] - CFI[i] != 0, IsHashEnd[i] = 1, e.g., IsActive[i] * (CFI[i+1] - CFI[i]) * (1 - IsHashEnd[i]) = 0
+		comp.InsertGlobal(mh.Inputs.Round, mh.qname("IS_HASH_END_CONSISTENCY_1_%d", i),
+			sym.Mul(mh.IsActive,
+				sym.Sub(ifaces.ColumnAsVariable(column.Shift(mh.CFI[i], 1)), mh.CFI[i]),
+				sym.Sub(1, mh.IsHashEnd)))
+
 		// In a particular CFI segment, CodeSize remains constant,
 		// e.g., IsActive[i] * (1 - IsEndHash[i]) * (CodeSize[i+1] - CodeSize[i]) = 0
 		comp.InsertGlobal(mh.Inputs.Round, mh.qname("CODE_SIZE_SEGMENT_WISE_CONSTANT_%d", i),
@@ -231,10 +226,10 @@ func (mh *Module) checkConsistency(comp *wizard.CompiledIOP) {
 				sym.Sub(ifaces.ColumnAsVariable(column.Shift(mh.CodeSize[i], 1)), mh.CodeSize[i])))
 
 		mh.colZeroAtInactive(comp, mh.CodeSize[i], fmt.Sprintf("CODE_SIZE_ZERO_IN_INACTIVE_%d", i))
+		mh.colZeroAtInactive(comp, mh.CFI[i], fmt.Sprintf("CFI_ZERO_IN_INACTIVE_%d", i))
 	}
 
 	// All columns are zero in the inactive area, except newState
-	mh.colZeroAtInactive(comp, mh.CFI, "CFI_ZERO_IN_INACTIVE")
 	mh.colZeroAtInactive(comp, mh.IsNewHash, "IS_NEW_HASH_ZERO_IN_INACTIVE")
 	mh.colZeroAtInactive(comp, mh.IsHashEnd, "IS_HASH_END_ZERO_IN_INACTIVE")
 }

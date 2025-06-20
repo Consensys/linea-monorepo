@@ -34,7 +34,7 @@ func TestMiMCCodeHash(t *testing.T) {
 
 	var (
 		romInput    *RomInput
-		romLexInput *RomLexInput
+		romLexInput = &RomLexInput{}
 		mod         Module
 	)
 
@@ -42,7 +42,6 @@ func TestMiMCCodeHash(t *testing.T) {
 
 		// Define romInput
 		romInput = &RomInput{
-			CFI:     ctRom.GetCommit(build, "CFI"),
 			NBytes:  ctRom.GetCommit(build, "NBYTES"),
 			Counter: ctRom.GetCommit(build, "COUNTER"),
 		}
@@ -52,16 +51,17 @@ func TestMiMCCodeHash(t *testing.T) {
 		}
 
 		for i := range common.NbLimbU32 {
+			romInput.CFI[i] = ctRom.GetCommit(build, fmt.Sprintf("CFI_%d", i))
 			romInput.CodeSize[i] = ctRom.GetCommit(build, fmt.Sprintf("CODESIZE_%d", i))
 		}
 
 		// Define romLexInput
-		romLexInput = &RomLexInput{
-			CFIRomLex: ctRomLex.GetCommit(build, "CFI_ROMLEX"),
-		}
-
 		for i := range common.NbLimbU256 {
 			romLexInput.CodeHash[i] = ctRomLex.GetCommit(build, fmt.Sprintf("CODEHASH_%d", i))
+		}
+
+		for i := range common.NbLimbU32 {
+			romLexInput.CFIRomLex[i] = ctRomLex.GetCommit(build, fmt.Sprintf("CFI_ROMLEX_%d", i))
 		}
 
 		mod = NewModule(
@@ -92,7 +92,7 @@ func TestMiMCCodeHash(t *testing.T) {
 			accNames[i] = string(romInput.Acc[i].GetColID())
 		}
 
-		var ctRomCols = []string{"CFI"}
+		var ctRomCols = []string{"CFI_0", "CFI_1"}
 		ctRomCols = append(ctRomCols, accNames[:]...)
 		ctRomCols = append(ctRomCols, "NBYTES", "COUNTER")
 		ctRomCols = append(ctRomCols, codeSizeNames[:]...)
@@ -100,11 +100,11 @@ func TestMiMCCodeHash(t *testing.T) {
 		ctRom.Assign(run, ctRomCols[:]...)
 		romInput.completeAssign(run)
 		ctRomLex.Assign(run,
-			append([]string{"CFI_ROMLEX"},
+			append([]string{"CFI_ROMLEX_0", "CFI_ROMLEX_1"},
 				codeHashNames...)...)
 		mod.Assign(run)
 
-		var ctRomColIds = []string{string(romInput.CFI.GetColID())}
+		var ctRomColIds = []string{string(romInput.CFI[0].GetColID()), string(romInput.CFI[1].GetColID())}
 		ctRomColIds = append(ctRomColIds, accNames[:]...)
 		ctRomColIds = append(ctRomColIds, string(romInput.NBytes.GetColID()))
 		ctRomColIds = append(ctRomColIds, string(romInput.Counter.GetColID()))
@@ -117,7 +117,7 @@ func TestMiMCCodeHash(t *testing.T) {
 
 		ctRomLex.CheckAssignment(run,
 			append(
-				[]string{string(romLexInput.CFIRomLex.GetColID())},
+				[]string{string(romLexInput.CFIRomLex[0].GetColID()), string(romLexInput.CFIRomLex[1].GetColID())},
 				codeHashNames[:]...,
 			)...,
 		)

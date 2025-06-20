@@ -10,7 +10,7 @@ import (
 
 type assignBuilder struct {
 	isActive         []field.Element
-	cfi              []field.Element
+	cfi              [][common.NbLimbU32]field.Element
 	limb             [common.NbLimbU128][]field.Element
 	codeHash         [common.NbLimbU256][]field.Element
 	codeSize         [common.NbLimbU32][]field.Element
@@ -24,7 +24,6 @@ type assignBuilder struct {
 func newAssignmentBuilder(length int) *assignBuilder {
 	ab := &assignBuilder{
 		isActive:  make([]field.Element, 0, length),
-		cfi:       make([]field.Element, 0, length),
 		isNewHash: make([]field.Element, 0, length),
 		isHashEnd: make([]field.Element, 0, length),
 	}
@@ -43,6 +42,8 @@ func newAssignmentBuilder(length int) *assignBuilder {
 	for i := range common.NbLimbU32 {
 		ab.codeSize[i] = make([]field.Element, 0, length)
 	}
+
+	ab.cfi = make([][common.NbLimbU32]field.Element, 0, length)
 
 	return ab
 }
@@ -64,15 +65,13 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 	}
 
 	var (
-		cfi       = rom.CFI.GetColAssignment(run).IntoRegVecSaveAlloc()
-		cfiRomLex = romLex.CFIRomLex.GetColAssignment(run).IntoRegVecSaveAlloc()
-		filter    = rom.CounterIsEqualToNBytesMinusOne.GetColAssignment(run).IntoRegVecSaveAlloc()
-		length    = len(cfi)
-		builder   = newAssignmentBuilder(length)
+		filter = rom.CounterIsEqualToNBytesMinusOne.GetColAssignment(run).IntoRegVecSaveAlloc()
 
-		codeHash [common.NbLimbU256][]field.Element
-		acc      [common.NbLimbU128][]field.Element
-		codeSize [common.NbLimbU32][]field.Element
+		codeHash  [common.NbLimbU256][]field.Element
+		acc       [common.NbLimbU128][]field.Element
+		codeSize  [common.NbLimbU32][]field.Element
+		cfi       [common.NbLimbU32][]field.Element
+		cfiRomLex [common.NbLimbU32][]field.Element
 	)
 
 	for i := range common.NbLimbU256 {
@@ -85,17 +84,26 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 
 	for i := range common.NbLimbU32 {
 		codeSize[i] = rom.CodeSize[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+		cfi[i] = rom.CFI[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+		cfiRomLex[i] = romLex.CFIRomLex[i].GetColAssignment(run).IntoRegVecSaveAlloc()
 	}
+
+	// Since we need to operate on limb slices, we need to transpose limb columns.
+	cfiTransponed := transposeLimbs(cfi[:])
+	cfiRomLexTransponed := transposeLimbs(cfiRomLex[:])
+
+	var length = len(cfiTransponed)
+	var builder = newAssignmentBuilder(length)
 
 	for i := 0; i < length; i++ {
 
-		if !cfi[i].IsZero() && ((i+1 == length) || cfi[i+1].IsZero()) {
+		if !areLimbsZero(cfiTransponed[i]) && ((i+1 == length) || areLimbsZero(cfiTransponed[i+1])) {
 			// This is the last row in the active area of the rom input.
 			// We assign one more row to make the assignment of the last row
 			// for other columns below work correctly, we exclude codeHash and
 			// assign it below from the romLex input.
 			builder.isActive = append(builder.isActive, field.Zero())
-			builder.cfi = append(builder.cfi, field.Zero())
+			builder.cfi = append(builder.cfi, [common.NbLimbU32]field.Element{field.Zero(), field.Zero()})
 
 			for j := range builder.limb {
 				builder.limb[j] = append(builder.limb[j], field.Zero())
@@ -116,7 +124,9 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 		builder.isActive = append(builder.isActive, field.One())
 
 		// Inject the other incoming columns from the rom input
-		builder.cfi = append(builder.cfi, cfi[i])
+		var cfiRow [common.NbLimbU32]field.Element
+		copy(cfiRow[:], cfiTransponed[i])
+		builder.cfi = append(builder.cfi, cfiRow)
 
 		for j := range builder.limb {
 			builder.limb[j] = append(builder.limb[j], acc[j][i])
@@ -169,19 +179,19 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 				isOneLimbSegment = false
 			)
 
-			if cfiPrev.Equal(&cfiCurr) && cfiCurr.Equal(&cfiNext) {
+			if cfiPrev == cfiCurr && cfiCurr == cfiNext {
 				isSegmentMiddle = true
 			}
 
-			if !cfiPrev.Equal(&cfiCurr) && cfiCurr.Equal(&cfiNext) {
+			if cfiPrev != cfiCurr && cfiCurr == cfiNext {
 				isSegmentBegin = true
 			}
 
-			if cfiPrev.Equal(&cfiCurr) && !cfiCurr.Equal((&cfiNext)) {
+			if cfiPrev == cfiCurr && cfiCurr != cfiNext {
 				isSegmentEnd = true
 			}
 
-			if !cfiPrev.Equal(&cfiCurr) && !cfiCurr.Equal((&cfiNext)) {
+			if cfiPrev != cfiCurr && cfiCurr != cfiNext {
 				isOneLimbSegment = true
 			}
 
@@ -266,8 +276,16 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 
 			// For each currCFI, we look over all the CFIs in the Romlex input,
 			// and append only that codehash for which the cfi matches with currCFI
-			for j := 0; j < len(cfiRomLex); j++ {
-				if currCFI == cfiRomLex[j] {
+			for j := 0; j < len(cfiRomLexTransponed); j++ {
+				areCfiEqual := true
+				for k := range common.NbLimbU32 {
+					if currCFI[k] != cfiRomLexTransponed[j][k] {
+						areCfiEqual = false
+						break
+					}
+				}
+
+				if areCfiEqual {
 
 					for k := range common.NbLimbU256 {
 						currIsNonEmptyKeccak := field.One()
@@ -293,7 +311,15 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 
 	// Assign the columns of the mimc code hash module
 	run.AssignColumn(mh.IsActive.GetColID(), smartvectors.RightZeroPadded(builder.isActive, mh.Inputs.Size))
-	run.AssignColumn(mh.CFI.GetColID(), smartvectors.RightZeroPadded(builder.cfi, mh.Inputs.Size))
+
+	for j := range builder.cfi[0] {
+		var cfiLimbCol []field.Element
+		for i := range builder.cfi {
+			cfiLimbCol = append(cfiLimbCol, builder.cfi[i][j])
+		}
+
+		run.AssignColumn(mh.CFI[j].GetColID(), smartvectors.RightZeroPadded(cfiLimbCol, mh.Inputs.Size))
+	}
 
 	for i := range common.NbLimbU128 {
 		run.AssignColumn(mh.Limb[i].GetColID(), smartvectors.RightZeroPadded(builder.limb[i], mh.Inputs.Size))
@@ -338,4 +364,16 @@ func transposeLimbs(inputMatrix [][]field.Element) [][]field.Element {
 		}
 	}
 	return outputMatrix
+}
+
+// areLimbsZero checks whether the provided value (represented in limbs) is zero.
+// It returns false if some limb is not zero.
+func areLimbsZero(limbs []field.Element) bool {
+	for i := range limbs {
+		if !limbs[i].IsZero() {
+			return false
+		}
+	}
+
+	return true
 }
