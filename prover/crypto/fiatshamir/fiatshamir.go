@@ -34,9 +34,7 @@ import (
 //
 // https://blog.trailofbits.com/2022/04/18/the-frozen-heart-vulnerability-in-plonk/
 type State struct {
-	hasher           hash.StateStorer
-	TranscriptSize   int
-	NumCoinGenerated int
+	hasher hash.StateStorer
 }
 
 // NewMiMCFiatShamir constructs a fresh and empty Fiat-Shamir state.
@@ -81,9 +79,6 @@ func (fs *State) Update(vec ...field.Element) {
 			panic("Hashing is not supposed to fail")
 		}
 	}
-
-	// Increase the transcript counter
-	fs.TranscriptSize += len(vec)
 }
 
 // Update the Fiat-Shamir state with a one or more of field elements. The
@@ -105,9 +100,6 @@ func (fs *State) UpdateExt(vec ...fext.Element) {
 			panic("Hashing is not supposed to fail")
 		}
 	}
-
-	// Increase the transcript counter
-	fs.TranscriptSize += len(vec)
 }
 
 // UpdateVec updates the Fiat-Shamir state by passing one of more slices of
@@ -161,8 +153,6 @@ func (fs *State) RandomField() field.Element {
 	var res field.Element
 	res.SetBytes(challBytes)
 
-	// increase the counter by one
-	fs.NumCoinGenerated++
 	return res
 }
 
@@ -171,11 +161,8 @@ func (fs *State) RandomField() field.Element {
 func (fs *State) RandomFext() fext.Element {
 	defer fs.safeguardUpdate()
 	challBytes := fs.hasher.Sum(nil)
-	var res fext.Element
-	res = fext.SetBytes(challBytes)
+	res := fext.SetBytes(challBytes)
 
-	// increase the counter by one
-	fs.NumCoinGenerated++
 	return res
 }
 
@@ -208,7 +195,6 @@ func (fs *State) RandomFieldFromSeed(seed field.Element, name string) field.Elem
 	challBytes := fs.hasher.Sum(nil)
 	res := new(field.Element).SetBytes(challBytes)
 
-	fs.NumCoinGenerated++
 	return *res
 }
 
@@ -265,9 +251,6 @@ func (fs *State) RandomManyIntegers(num, upperBound int) []int {
 	for {
 		digest := fs.hasher.Sum(nil)
 		buffer := NewBitReader(digest, field.Bits-1)
-
-		// Increase the counter
-		fs.NumCoinGenerated++
 
 		for i := 0; i < maxNumChallsPerDigest; i++ {
 			// Stopping condition, we computed enough challenges
