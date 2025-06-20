@@ -118,6 +118,7 @@ func EvaluateLagrangeMixed(v SmartVector, x fext.Element, oncoset ...bool) fext.
 	poly := make([]field.Element, v.Len())
 	v.WriteInSlice(poly)
 	res := fastpoly.EvaluateLagrangeMixed(poly, x, oncoset...)
+
 	return res
 }
 

@@ -61,9 +61,9 @@ type consistencyYsUalphaVerifierAction struct {
 
 func (a *consistencyYsUalphaVerifierAction) Run(run wizard.Runtime) error {
 	ys := a.ctx.Columns.Ys.GetColAssignment(run)
-	alpha := run.GetRandomCoinField(a.ctx.Coins.Alpha.Name)
-	ysAlpha := smartvectors.EvalCoeff(ys, alpha)
-	uAlphaX := a.interpolateUalphaX.GetVal(run)
+	alpha := run.GetRandomCoinFieldExt(a.ctx.Coins.Alpha.Name)
+	ysAlpha := smartvectors.EvalCoeffExt(ys, alpha)
+	uAlphaX := a.interpolateUalphaX.GetValExt(run)
 	if uAlphaX != ysAlpha {
 		return fmt.Errorf("ConsistencyBetweenYsAndUalpha did not pass, ysAlphaX=%v uAlphaX=%v", ysAlpha.String(), uAlphaX.String())
 	}

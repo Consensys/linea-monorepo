@@ -167,6 +167,7 @@ func (b *Builder) UnivariateEval(name ifaces.QueryID, pols ...ifaces.Column) {
 	// Mark the state as dirty
 	b.fsStateIsDirty = true
 	b.InsertUnivariate(b.currRound, name, pols)
+
 }
 
 /*

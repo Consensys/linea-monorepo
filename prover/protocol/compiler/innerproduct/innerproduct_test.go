@@ -23,7 +23,7 @@ func TestInnerProduct(t *testing.T) {
 			}
 			b.InnerProduct(c.qName, a, bs...)
 			// go to the next round
-			_ = b.RegisterRandomCoin(coin.Namef("Coin_%v", i), coin.Field)
+			_ = b.RegisterRandomCoin(coin.Namef("Coin_%v", i), coin.FieldExt)
 		}
 	}
 	prover := func(run *wizard.ProverRuntime) {
@@ -33,7 +33,7 @@ func TestInnerProduct(t *testing.T) {
 				run.AssignColumn(name, c.b[i])
 			}
 			run.AssignInnerProduct(c.qName, c.expected...)
-			run.GetRandomCoinField(coin.Namef("Coin_%v", j))
+			run.GetRandomCoinFieldExt(coin.Namef("Coin_%v", j))
 		}
 	}
 

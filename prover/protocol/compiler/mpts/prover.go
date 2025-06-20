@@ -1,7 +1,6 @@
 package mpts
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
@@ -222,22 +221,15 @@ func (re randomPointEvaluation) Run(run *wizard.ProverRuntime) {
 	)
 
 	for i := range polyVals {
-		fmt.Printf("polyVals bef=%v\n", polyVals[i].Pretty())
-
 		polyVals[i] = polys[i].GetColAssignment(run)
-		//fmt.Printf("polyVals aft=%v\n", polyVals[i].Pretty())
 
 	}
 
 	ys := make([]fext.Element, len(polyVals))
-	for i := range ys {
+	for i := 0; i < len(ys)-1; i++ {
 		ys[i] = smartvectors.EvaluateLagrangeMixed(polyVals[i], r)
-		fmt.Printf("i=%v\n", i)
-
-		fmt.Printf("polyVals=%v\n", polyVals[i].Pretty())
-		fmt.Printf("ys=%v\n", ys[i])
-
 	}
+	ys[len(polyVals)-1] = smartvectors.EvaluateLagrangeFullFext(polyVals[len(polyVals)-1], r)
 
 	run.AssignUnivariate(re.NewQuery.QueryID, r, ys...)
 }
