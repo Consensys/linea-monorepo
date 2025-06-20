@@ -104,6 +104,12 @@ class L2NetworkGasPricingService(
       null
     }
 
+  private fun isL2CalldataBasedVariableFeesEnabled(config: Config): Boolean {
+    return config.l2CalldataBasedVariableFeesCalculatorConfig != null &&
+      config.l2CalldataSizeAccumulatorConfig != null &&
+      config.l2CalldataBasedVariableFeesCalculatorConfig.calldataSizeBlockCount > 0u
+  }
+
   private val extraDataPricerService: ExtraDataV1PricerService? = if (config.extraDataPricingPropagationEnabled) {
     ExtraDataV1PricerService(
       pollingInterval = config.extraDataUpdateInterval,
@@ -111,18 +117,14 @@ class L2NetworkGasPricingService(
       feesFetcher = gasPricingFeesFetcher,
       minerExtraDataCalculator = MinerExtraDataV1CalculatorImpl(
         config = config.extraDataCalculatorConfig,
-        variableFeesCalculator = if (
-          config.l2CalldataBasedVariableFeesCalculatorConfig != null &&
-          config.l2CalldataSizeAccumulatorConfig != null &&
-          config.l2CalldataBasedVariableFeesCalculatorConfig.calldataSizeBlockCount > 0u
-        ) {
+        variableFeesCalculator = if (isL2CalldataBasedVariableFeesEnabled(config)) {
           L2CalldataBasedVariableFeesCalculator(
             variableFeesCalculator = boundedVariableCostCalculator,
             l2CalldataSizeAccumulator = L2CalldataSizeAccumulatorImpl(
               web3jClient = l2Web3jClient,
-              config = config.l2CalldataSizeAccumulatorConfig,
+              config = config.l2CalldataSizeAccumulatorConfig!!,
             ),
-            config = config.l2CalldataBasedVariableFeesCalculatorConfig,
+            config = config.l2CalldataBasedVariableFeesCalculatorConfig!!,
           )
         } else {
           boundedVariableCostCalculator

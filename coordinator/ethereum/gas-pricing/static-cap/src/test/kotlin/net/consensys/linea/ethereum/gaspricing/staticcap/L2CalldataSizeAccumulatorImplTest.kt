@@ -76,4 +76,43 @@ class L2CalldataSizeAccumulatorImplTest {
       l2CalldataSizeAccumulator.getSumOfL2CalldataSize().get()
     }
   }
+
+  @Test
+  fun test_getSumOfL2CalldataSize_when_ethBlockNumber_is_less_than_calldataSizeBlockCount() {
+    val mockWeb3jClient = mock<ExtendedWeb3J> {
+      on { ethBlockNumber() } doReturn SafeFuture.completedFuture(BigInteger.ONE)
+      on { ethGetBlockSizeByNumber(any()) } doReturn SafeFuture.completedFuture(10540.toBigInteger())
+    }
+    val l2CalldataSizeAccumulator = L2CalldataSizeAccumulatorImpl(
+      config = config,
+      web3jClient = mockWeb3jClient,
+    )
+
+    val sumOfL2CalldataSize = l2CalldataSizeAccumulator.getSumOfL2CalldataSize().get()
+
+    verify(mockWeb3jClient, times(0)).ethGetBlockSizeByNumber(any())
+
+    assertThat(sumOfL2CalldataSize).isEqualTo(BigInteger.ZERO)
+  }
+
+  @Test
+  fun test_getSumOfL2CalldataSize_if_calldataSizeBlockCount_is_zero() {
+    val mockWeb3jClient = mock<ExtendedWeb3J> {
+      on { ethBlockNumber() } doReturn SafeFuture.completedFuture(BigInteger.ONE)
+      on { ethGetBlockSizeByNumber(any()) } doReturn SafeFuture.completedFuture(10540.toBigInteger())
+    }
+    val l2CalldataSizeAccumulator = L2CalldataSizeAccumulatorImpl(
+      config = L2CalldataSizeAccumulatorImpl.Config(
+        blockSizeNonCalldataOverhead = 540u,
+        calldataSizeBlockCount = 0u,
+      ),
+      web3jClient = mockWeb3jClient,
+    )
+
+    val sumOfL2CalldataSize = l2CalldataSizeAccumulator.getSumOfL2CalldataSize().get()
+
+    verify(mockWeb3jClient, times(0)).ethGetBlockSizeByNumber(any())
+
+    assertThat(sumOfL2CalldataSize).isEqualTo(BigInteger.ZERO)
+  }
 }

@@ -20,34 +20,38 @@ class L2CalldataSizeAccumulatorImpl(
     val calldataSizeBlockCount: UInt,
   ) {
     init {
-      require(calldataSizeBlockCount <= 30u) {
-        "calldataSizeBlockCount must be less than 30." +
-          " Value=$calldataSizeBlockCount"
+      require(calldataSizeBlockCount <= 60u) {
+        "calldataSizeBlockCount must be less than 60 to avoid excessive " +
+          "eth_getBlockByNumber calls to the web3j client. Value=$calldataSizeBlockCount"
       }
     }
   }
   private fun getRecentL2CalldataSize(): SafeFuture<BigInteger> {
     return web3jClient.ethBlockNumber()
       .thenCompose { currentBlockNumber ->
-        val futures =
-          ((currentBlockNumber.toUInt() - config.calldataSizeBlockCount + 1U)..currentBlockNumber.toUInt())
-            .map { blockNumber ->
-              web3jClient.ethGetBlockSizeByNumber(blockNumber.toLong())
+        if (config.calldataSizeBlockCount > 0u && currentBlockNumber.toUInt() >= config.calldataSizeBlockCount) {
+          val futures =
+            ((currentBlockNumber.toUInt() - config.calldataSizeBlockCount + 1U)..currentBlockNumber.toUInt())
+              .map { blockNumber ->
+                web3jClient.ethGetBlockSizeByNumber(blockNumber.toLong())
+              }
+          SafeFuture.collectAll(futures.stream())
+            .thenApply { blockSizes ->
+              blockSizes.sumOf {
+                it.minus(config.blockSizeNonCalldataOverhead.toULong().toBigInteger())
+                  .coerceAtLeast(BigInteger.ZERO)
+              }.also {
+                log.debug(
+                  "sumOfBlockSizes={} blockSizes={} blockSizeNonCalldataOverhead={}",
+                  it,
+                  blockSizes,
+                  config.blockSizeNonCalldataOverhead,
+                )
+              }
             }
-        SafeFuture.collectAll(futures.stream())
-          .thenApply { blockSizes ->
-            blockSizes.sumOf {
-              it.minus(config.blockSizeNonCalldataOverhead.toULong().toBigInteger())
-                .coerceAtLeast(BigInteger.ZERO)
-            }.also {
-              log.debug(
-                "sumOfBlockSizes={} blockSizes={} blockSizeNonCalldataOverhead={}",
-                it,
-                blockSizes,
-                config.blockSizeNonCalldataOverhead,
-              )
-            }
-          }
+        } else {
+          SafeFuture.completedFuture(BigInteger.ZERO)
+        }
       }
   }
 

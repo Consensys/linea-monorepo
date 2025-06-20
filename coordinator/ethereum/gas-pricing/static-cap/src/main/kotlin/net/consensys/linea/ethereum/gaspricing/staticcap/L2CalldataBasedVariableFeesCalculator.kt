@@ -29,6 +29,7 @@ class L2CalldataBasedVariableFeesCalculator(
   ) {
     init {
       require(feeChangeDenominator > 0u) { "feeChangeDenominator=$feeChangeDenominator must be greater than 0" }
+      require(maxBlockCalldataSize > 0u) { "maxBlockCalldataSize=$maxBlockCalldataSize must be greater than 0" }
     }
   }
 
@@ -37,6 +38,14 @@ class L2CalldataBasedVariableFeesCalculator(
 
   override fun calculateFees(feeHistory: FeeHistory): Double {
     val variableFee = variableFeesCalculator.calculateFees(feeHistory)
+
+    if (config.calldataSizeBlockCount == 0u) {
+      log.debug(
+        "Calldata-based variable fee is disabled as calldataSizeBlockCount is set as 0: variableFee={} wei",
+        variableFee,
+      )
+      return variableFee
+    }
 
     val callDataTargetSize = config.maxBlockCalldataSize
       .times(config.calldataSizeBlockCount)
@@ -52,7 +61,7 @@ class L2CalldataBasedVariableFeesCalculator(
       .coerceAtMost(1.0)
 
     val calldataBasedVariableFee =
-      lastVariableCost.get().times(1.0 + delta.div(config.feeChangeDenominator.toDouble()))
+      lastVariableCost.get().times(1.0 + (delta.div(config.feeChangeDenominator.toDouble())))
 
     val finalVariableFee = variableFee.coerceAtLeast(calldataBasedVariableFee)
 
