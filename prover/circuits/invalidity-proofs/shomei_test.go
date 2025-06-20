@@ -5,26 +5,27 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/go-playground/assert/v2"
 	"github.com/stretchr/testify/require"
 )
 
-// it create a merkle tree for the given accounts and config
+// it creates a merkle tree for the given [accumulator.LeafOpening] and config
 func genShomei(t *testing.T, tcases []TestCases, config *smt.Config) (*smt.Tree, []smt.Proof, []Bytes32) {
-
-	/*	config := &smt.Config{
-		HashFunc: hashtypes.MiMC,
-		Depth:    depth,
-	}*/
 
 	var leaves []Bytes32
 	for _, c := range tcases {
-		account := AccountForHash{
-			Acc: c.Account,
-		}
 
-		leaves = append(leaves, accumulator.Hash(config, account))
+		leaf := accumulator.Hash(config, &accumulator.LeafOpening{
+			Prev: c.Leaf.Prev,
+			Next: c.Leaf.Next,
+			HKey: c.Leaf.HKey,
+			HVal: accumulator.Hash(config, c.Account),
+		})
+
+		leaves = append(leaves, leaf)
 	}
 
 	// Build the same tree by adding the leaves one by one
@@ -54,9 +55,35 @@ func genShomei(t *testing.T, tcases []TestCases, config *smt.Config) (*smt.Tree,
 	return tree, proofs, leaves
 }
 
+// it gets a leaf via its position and check it has the expected value.
+func TestShomei(t *testing.T) {
+
+	config := &smt.Config{
+		HashFunc: hashtypes.MiMC,
+		Depth:    10,
+	}
+	tree, _, leaves := genShomei(t, tcases, config)
+
+	for i := range leaves {
+		leaf, _ := tree.GetLeaf(i)
+		c := tcases[i]
+
+		expectedLeaf := accumulator.Hash(config, &accumulator.LeafOpening{
+			Prev: c.Leaf.Prev,
+			Next: c.Leaf.Next,
+			HKey: c.Leaf.HKey,
+			HVal: accumulator.Hash(config, c.Account),
+		})
+
+		assert.Equal(t, leaf, expectedLeaf)
+
+	}
+
+}
+
 type TestCases struct {
-	Account   Account
-	HexString string
+	Account Account
+	Leaf    accumulator.LeafOpening
 }
 
 var tcases = []TestCases{
@@ -65,7 +92,11 @@ var tcases = []TestCases{
 		Account: Account{
 			Balance: big.NewInt(0),
 		},
-		HexString: "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+		Leaf: accumulator.LeafOpening{
+			Prev: 0,
+			Next: 1,
+			HKey: Bytes32FromHex("0x00aed6"),
+		},
 	},
 	{
 		// EOA
@@ -77,7 +108,12 @@ var tcases = []TestCases{
 			KeccakCodeHash: FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
 			CodeSize:       0,
 		},
-		HexString: "0x0000000000000000000000000000000000000000000000000000000000000041000000000000000000000000000000000000000000000000000000000000163a00aed60bedfcad80c2a5e6a7a3100e837f875f9aa71d768291f68f894b0a3d11007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6eec5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a4700000000000000000000000000000000000000000000000000000000000000000",
+
+		Leaf: accumulator.LeafOpening{
+			Prev: 0,
+			Next: 2,
+			HKey: Bytes32FromHex("0x00aed7"),
+		},
 	},
 	{
 		// Another EOA
@@ -89,6 +125,10 @@ var tcases = []TestCases{
 			KeccakCodeHash: FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
 			CodeSize:       0,
 		},
-		HexString: "0x00000000000000000000000000000000000000000000000000000000000000410000000000000000000000000000000000000000000000000000000000000343007942bb21022172cbad3ffc38d1c59e998f1ab6ab52feb15345d04bbf859f14007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6eec5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a4700000000000000000000000000000000000000000000000000000000000000000",
+		Leaf: accumulator.LeafOpening{
+			Prev: 1,
+			Next: 3,
+			HKey: Bytes32FromHex("0x00aed8"),
+		},
 	},
 }

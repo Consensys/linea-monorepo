@@ -114,11 +114,11 @@ func (a *Account) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// AccountForHash it is a wrapper for Account, used for hashing the account via io.Writer
-type AccountForHash struct {
+// AccountForSerialization is a wrapper for Account, used for serialization of the account via io.Writer
+type AccountForSerialization struct {
 	Acc Account
 }
 
-func (a AccountForHash) WriteTo(w io.Writer) (int64, error) {
+func (a AccountForSerialization) WriteTo(w io.Writer) (int64, error) {
 	return a.Acc.writeTo(w, true)
 }
