@@ -6,8 +6,7 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // An Ethereum account represented with the zkTrie representation
@@ -23,8 +22,12 @@ type Account struct {
 	CodeSize       int64
 }
 
-func (a Account) WriteTo(w io.Writer) (int64, error) {
-	return a.writeTo(w, false)
+func (a Account) WriteTo(w io.Writer, option ...bool) (int64, error) {
+
+	if len(option) == 0 {
+		return a.writeTo(w, false)
+	}
+	return a.writeTo(w, option...)
 }
 
 func (a *Account) ReadFrom(r io.Reader) (int64, error) {
@@ -37,7 +40,12 @@ func (a *Account) ReadFrom(r io.Reader) (int64, error) {
 // hash.
 //
 // If the account contains a "nil" balance is will be written as zero.
-func (a Account) writeTo(w io.Writer, packed bool) (int64, error) {
+func (a Account) writeTo(w io.Writer, packed ...bool) (int64, error) {
+
+	if len(packed) > 1 {
+		utils.Panic("expected a single boolean option")
+	}
+
 	n0, _ := WriteInt64On32Bytes(w, a.Nonce)
 	// Without this edge-case handling, the function panics if called over
 	// Account{}
@@ -49,7 +57,7 @@ func (a Account) writeTo(w io.Writer, packed bool) (int64, error) {
 	n2, _ := a.StorageRoot.WriteTo(w)
 	n3, _ := a.MimcCodeHash.WriteTo(w)
 	var n4 int64
-	if packed {
+	if packed[0] {
 		n4, _ = a.KeccakCodeHash.Write1Word(w)
 	} else {
 		n4, _ = a.KeccakCodeHash.WriteTo(w)
@@ -115,44 +123,4 @@ func (a *Account) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("unmarshaling JSON account : %w", err)
 	}
 	return nil
-}
-
-func (account Account) HashAccount() Bytes32 {
-
-	hashFr := mimc.HashVec(encode(account))
-	b := Bytes32(hashFr.Bytes())
-
-	return b
-}
-
-func encode(a Account) []field.Element {
-	var v []field.Element
-	var u field.Element
-	v = append(v, *u.SetInt64(a.Nonce))
-	v = append(v, *u.SetBigInt(a.Balance))
-	v = append(v, *u.SetBytes(a.StorageRoot[:]))
-	v = append(v, *u.SetBytes(a.MimcCodeHash[:]))
-
-	msb, lsb := splitBytes32(a.KeccakCodeHash)
-	v = append(v, msb)
-	v = append(v, lsb)
-	v = append(v, *u.SetInt64(a.CodeSize))
-	return v
-
-}
-
-func splitBytes32(input FullBytes32) (field.Element, field.Element) {
-	if len(input[:]) != 32 {
-		panic("Input must be 32 bytes")
-	}
-
-	// Most Significant Bits (MSB): First 16 bytes
-	msb := input[:16]
-
-	// Least Significant Bits (LSB): Last 16 bytes
-	lsb := input[16:]
-
-	var u field.Element
-
-	return *u.SetBytes(msb), *u.SetBytes(lsb)
 }
