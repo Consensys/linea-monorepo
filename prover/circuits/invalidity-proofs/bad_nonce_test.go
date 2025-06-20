@@ -58,7 +58,7 @@ func TestMerkleProofs(t *testing.T) {
 	}
 	witness.Proofs.Path = proofs.Path
 	buf.SetBytes(leafs[:])
-	witness.Leafs = buf.String()
+	witness.Leaf = buf.String()
 
 	buf.SetBytes(root[:])
 	witness.Root = buf.String()
