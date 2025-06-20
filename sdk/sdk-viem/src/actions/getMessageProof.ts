@@ -1,9 +1,14 @@
 import {
+  Abi,
   Account,
   BaseError,
+  BlockNumber,
+  BlockTag,
   Chain,
   Client,
+  ContractEventName,
   encodePacked,
+  GetContractEventsParameters,
   Hex,
   keccak256,
   parseEventLogs,
@@ -16,9 +21,21 @@ import { getContractEvents, getTransactionReceipt } from "viem/actions";
 
 export type GetMessageProofReturnType = MessageProof;
 
-export type GetMessageProofParameters<chain extends Chain | undefined, account extends Account | undefined> = {
+export type GetMessageProofParameters<
+  chain extends Chain | undefined,
+  account extends Account | undefined,
+  abi extends Abi | readonly unknown[] = Abi,
+  eventName extends ContractEventName<abi> | undefined = ContractEventName<abi> | undefined,
+  strict extends boolean | undefined = undefined,
+  fromBlock extends BlockNumber | BlockTag | undefined = undefined,
+  toBlock extends BlockNumber | BlockTag | undefined = undefined,
+> = {
   l2Client: Client<Transport, chain, account>;
   messageHash: Hex;
+  l2LogsBlockRange?: Pick<
+    GetContractEventsParameters<abi, eventName, strict, fromBlock, toBlock>,
+    "fromBlock" | "toBlock"
+  >;
 };
 
 /**
@@ -72,6 +89,8 @@ export async function getMessageProof<
   const [messageSentEvent] = await getMessageSentEvents(l2Client, {
     address: l2MessageServiceAddress,
     args: { _messageHash: messageHash },
+    fromBlock: parameters.l2LogsBlockRange?.fromBlock,
+    toBlock: parameters.l2LogsBlockRange?.toBlock,
   });
 
   if (!messageSentEvent) {

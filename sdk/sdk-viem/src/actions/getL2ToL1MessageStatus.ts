@@ -1,11 +1,35 @@
-import { Account, BaseError, Chain, Client, Hex, Transport } from "viem";
+import {
+  Abi,
+  Account,
+  BaseError,
+  BlockNumber,
+  BlockTag,
+  Chain,
+  Client,
+  ContractEventName,
+  GetContractEventsParameters,
+  Hex,
+  Transport,
+} from "viem";
 import { getContractEvents, readContract } from "viem/actions";
 import { getContractsAddressesByChainId, OnChainMessageStatus } from "@consensys/linea-sdk-core";
 import { getMessageSentEvents } from "./getMessageSentEvents";
 
-export type GetL2ToL1MessageStatusParameters<chain extends Chain | undefined, account extends Account | undefined> = {
+export type GetL2ToL1MessageStatusParameters<
+  chain extends Chain | undefined,
+  account extends Account | undefined,
+  abi extends Abi | readonly unknown[] = Abi,
+  eventName extends ContractEventName<abi> | undefined = ContractEventName<abi> | undefined,
+  strict extends boolean | undefined = undefined,
+  fromBlock extends BlockNumber | BlockTag | undefined = undefined,
+  toBlock extends BlockNumber | BlockTag | undefined = undefined,
+> = {
   l2Client: Client<Transport, chain, account>;
   messageHash: Hex;
+  l2LogsBlockRange?: Pick<
+    GetContractEventsParameters<abi, eventName, strict, fromBlock, toBlock>,
+    "fromBlock" | "toBlock"
+  >;
 };
 
 export type GetL2ToL1MessageStatusReturnType = OnChainMessageStatus;
@@ -46,13 +70,24 @@ export async function getL2ToL1MessageStatus<
   client: Client<Transport, chain, account>,
   parameters: GetL2ToL1MessageStatusParameters<chainL2, accountL2>,
 ): Promise<GetL2ToL1MessageStatusReturnType> {
-  const { l2Client, messageHash } = parameters;
+  const { l2Client, messageHash, l2LogsBlockRange } = parameters;
 
   if (!client.chain) {
     throw new BaseError("Client is required to get L2 to L1 message status.");
   }
 
-  const [messageSentEvent] = await getMessageSentEvents(l2Client, { args: { _messageHash: messageHash } });
+  if (!l2Client.chain) {
+    throw new BaseError("L2 client is required to get L2 to L1 message status.");
+  }
+
+  const l2MessageServiceAddress = getContractsAddressesByChainId(l2Client.chain.id).messageService;
+
+  const [messageSentEvent] = await getMessageSentEvents(l2Client, {
+    args: { _messageHash: messageHash },
+    address: l2MessageServiceAddress,
+    fromBlock: l2LogsBlockRange?.fromBlock,
+    toBlock: l2LogsBlockRange?.toBlock,
+  });
 
   if (!messageSentEvent) {
     throw new BaseError(`Message hash does not exist on L2. Message hash: ${messageHash}`);
