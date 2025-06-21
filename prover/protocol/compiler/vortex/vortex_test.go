@@ -128,6 +128,56 @@ func TestCompiler(t *testing.T) {
 				pr.AssignUnivariate("EVAL", x, ys...)
 			},
 		},
+		// {
+		// 	Explainer: "Multiple round w/o pre-computed column starting at round2",
+		// 	Define: func(b *wizard.Builder) {
+		// 		for round := 1; round < 2; round++ {
+		// 			_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
+		// 		}
+		// 		for round := 2; round < numRounds+2; round++ {
+		// 			var offsetIndex = 0
+		// 			// trigger the creation of a new round by declaring a dummy coin
+
+		// 			_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
+		// 			// Compute the offsetIndex
+		// 			for i := 2; i < round; i++ {
+		// 				offsetIndex += nPols
+		// 			}
+
+		// 			rowsMultiRound[round-2] = make([]ifaces.Column, nPols)
+		// 			for i := 0; i < nPols; i++ {
+		// 				rowsMultiRound[round-2][i] = b.RegisterCommit(ifaces.ColIDf("P_%v", offsetIndex+i), polSize)
+		// 			}
+		// 		}
+
+		// 		b.UnivariateEval("EVAL", utils.Join(rowsMultiRound...)...)
+		// 	},
+		// 	Prove: func(pr *wizard.ProverRuntime) {
+		// 		// Count the total number of polynomials
+		// 		numPolys := numRounds * nPols
+		// 		ys := make([]field.Element, numPolys)
+		// 		x := field.NewElement(57) // the evaluation point
+
+		// 		// assign the rows with random polynomials and collect the ys
+		// 		for round := 2; round < numRounds+2; round++ {
+		// 			var offsetIndex = 0
+
+		// 			// let the prover know that it is free to go to the next
+		// 			// round by sampling the coin.
+		// 			_ = pr.GetRandomCoinField(coin.Namef("COIN_%v", round))
+		// 			// Compute the offsetIndex
+		// 			offsetIndex = nPols * (round - 2)
+
+		// 			for i, row := range rowsMultiRound[round-2] {
+		// 				p := smartvectors.Rand(polSize)
+		// 				ys[offsetIndex+i] = smartvectors.Interpolate(p, x)
+		// 				pr.AssignColumn(row.GetColID(), p)
+		// 			}
+		// 		}
+
+		// 		pr.AssignUnivariate("EVAL", x, ys...)
+		// 	},
+		// },
 		{
 			Explainer: "Vortex with multiple round and never SIS, without precomputed columns",
 			Define: func(b *wizard.Builder) {

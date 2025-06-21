@@ -94,6 +94,8 @@ func Setup(ctx context.Context, args SetupArgs) error {
 	var foundDecompressionV0 bool
 
 	// Setup non-aggregation and non-emulation circuits first
+	// For each circuit, we start by compiling the circuit, and
+	// then we do a SHA-sum and compare against the one in the manifest.json
 	for _, c := range AllCircuits {
 		if !inCircuits[c] || c == circuits.AggregationCircuitID ||
 			c == circuits.EmulationCircuitID {
@@ -241,15 +243,15 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 		limits := utils_limitless.GetLimitlessTraceLimits()
 		extraFlags["cfg_checksum"] = limits.Checksum()
 
-		// Read the dw-compiled-conglomeration.bin file from the assets directory and deserialize it
 		var compCong *distributed.ConglomeratorCompilation
 
+		// Read the dw-compiled-conglomeration.bin file from the assets directory and deserialize it
 		// var readBuf bytes.Buffer
 		// err := serialization.ReadAndDeserialize(cfg.PathforLimitlessProverAssets(),
-		// 	"dw-compiled-conglomeration.bin", &compCong, &readBuf)
+		// 	"dw-cong-ckt.bin", &compCong, &readBuf)
 		// if err != nil {
 		// 	return nil, nil, fmt.Errorf(
-		// 		"failed to read dw-compiled-conglomeration.bin file "+
+		// 		"failed to read dw-cong-ckt.bin file "+
 		// 			"while building limitless execution circuit: %w",
 		// 		err,
 		// 	)
@@ -264,6 +266,19 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 		asset = nil
 		runtime.GC()
 
+		// Write congWIOP object for serialization
+		// reader := bytes.NewReader(nil)
+		// err := serialization.SerializeAndWrite(cfg.PathforLimitlessProverAssets(),
+		// 	"dw-cong-ckt.bin", compCong, reader)
+		// if err != nil {
+		// 	return nil, nil, fmt.Errorf(
+		// 		"failed to serialize and write dw-cong-ckt.bin file "+
+		// 			"while building limitless execution circuit: %w",
+		// 		err,
+		// 	)
+		// }
+
+		logrus.Info("Starting to build limitless execution circuit after finishing compilation and serialization of cong. object")
 		return execution.NewLimitlessBuilder(compCong.Wiop, limits), extraFlags, nil
 
 	case circuits.BlobDecompressionV0CircuitID:
