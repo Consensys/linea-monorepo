@@ -595,7 +595,8 @@ func compareStructs(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path st
 
 		// When the field has the omitted tag, we skip it there without any warning.
 		if tag, hasTag := structField.Tag.Lookup(serialization.SerdeStructTag); hasTag {
-			if strings.Contains(tag, serialization.SerdeStructTagOmit) {
+			if strings.Contains(tag, serialization.SerdeStructTagOmit) ||
+				strings.Contains(tag, serialization.SerdeStructTagTestOmit) {
 				continue
 			}
 		}

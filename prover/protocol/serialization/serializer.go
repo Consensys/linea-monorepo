@@ -24,8 +24,13 @@ import (
 )
 
 var (
-	SerdeStructTag     = "serde"
+	SerdeStructTag = "serde"
+
+	// Do not serialize fields with this tag
 	SerdeStructTagOmit = "omit"
+
+	// Serialize this but don't include it in test comparisions to prevent OOM
+	SerdeStructTagTestOmit = "test_omit"
 )
 
 // Global type constants for reflection-based type checking.

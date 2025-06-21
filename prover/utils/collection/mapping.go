@@ -9,7 +9,7 @@ import (
 
 // Mapping wraps a map and adds utility functions
 type Mapping[K comparable, V any] struct {
-	InnerMap map[K]V
+	InnerMap map[K]V `serde:"test_omit"`
 }
 
 // Constructor for KVStore
