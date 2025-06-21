@@ -6,8 +6,9 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/std/hash/mimc"
+	gkr_mimc "github.com/consensys/gnark/std/hash/mimc/gkr-mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -68,12 +69,16 @@ func (c *gnarkCircuit) Define(api frontend.API) error {
 
 	w := c.WizardVerifier
 
+	newHash := gkr_mimc.New
 	if c.withoutGkr {
-		w.FS = fiatshamir.NewGnarkFiatShamir(api, nil)
-	} else {
-		w.HasherFactory = gkrmimc.NewHasherFactory(api)
-		w.FS = fiatshamir.NewGnarkFiatShamir(api, w.HasherFactory)
+		newHash = mimc.New
 	}
+
+	hsh, err := newHash(api)
+	if err != nil {
+		return fmt.Errorf("cannot create hasher: %w", err)
+	}
+	w.FS = fiatshamir.NewGnarkFiatShamir(api, hsh)
 
 	w.FiatShamirHistory = make([][2][]frontend.Variable, c.comp.NumRounds())
 

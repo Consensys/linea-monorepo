@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"slices"
 
+	gkr_mimc "github.com/consensys/gnark/std/hash/mimc/gkr-mimc"
 	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -17,7 +18,6 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
-	"github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/gnark/std/math/cmp"
@@ -25,7 +25,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
@@ -94,17 +93,13 @@ func (c *Circuit) Define(api frontend.API) error {
 		api.AssertIsLessOrEqual(api.Add(nbExecution, c.NbDecompression), c.MaxNbCircuits)
 	}
 
-	var (
-		hshM hash.FieldHasher
-	)
+	newHash := mimc.New
 	if c.UseGkrMimc {
-		hshM = gkrmimc.NewHasherFactory(api).NewHasher()
-	} else {
-		if hsh, err := mimc.NewMiMC(api); err != nil {
-			return err
-		} else {
-			hshM = &hsh
-		}
+		newHash = gkr_mimc.New
+	}
+	hsh, err := newHash(api)
+	if err != nil {
+		return err
 	}
 
 	batchHashes := make([]frontend.Variable, len(c.ExecutionPublicInput))
@@ -118,7 +113,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		finalStateRootHashes.Insert(pi.FinalStateRootHash)
 	}
 
-	blobBatchHashes := internal.ChecksumSubSlices(api, hshM, batchHashes, internal.VarSlice{Values: nbBatchesSums, Length: c.NbDecompression})
+	blobBatchHashes := internal.ChecksumSubSlices(api, hsh, batchHashes, internal.VarSlice{Values: nbBatchesSums, Length: c.NbDecompression})
 
 	shnarfParams := make([]ShnarfIteration, len(c.DecompressionPublicInput))
 	for i, piq := range c.DecompressionFPIQ {
@@ -132,7 +127,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		}
 
 		// "open" decompression circuit public input
-		api.AssertIsEqual(c.DecompressionPublicInput[i], api.Mul(rDecompression.InRange[i], piq.Sum(api, hshM, blobBatchHashes[i])))
+		api.AssertIsEqual(c.DecompressionPublicInput[i], api.Mul(rDecompression.InRange[i], piq.Sum(api, hsh, blobBatchHashes[i])))
 	}
 
 	shnarfs := ComputeShnarfs(&hshK, c.ParentShnarf, shnarfParams)
@@ -193,7 +188,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		finalBlockNum = pi.FinalBlockNumber
 		finalState = pi.FinalStateRootHash
 
-		api.AssertIsEqual(c.ExecutionPublicInput[i], api.Mul(rExecution.InRange[i], pi.Sum(api, hshM))) // "open" execution circuit public input
+		api.AssertIsEqual(c.ExecutionPublicInput[i], api.Mul(rExecution.InRange[i], pi.Sum(api, hsh))) // "open" execution circuit public input
 
 		if len(pi.L2MessageHashes.Values) != execMaxNbL2Msg {
 			return errors.New("number of L2 messages must be the same for all executions")
