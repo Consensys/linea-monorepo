@@ -1,11 +1,8 @@
 "use client";
 import { useState } from "react";
 import { motion } from "motion/react";
-
-import styles from "./page.module.scss";
-import Link from "next/link";
-import ArrowLeftIcon from "@/assets/icons/arrow-left.svg";
 import PlusIcon from "@/assets/icons/plus.svg";
+import styles from "./page.module.scss";
 
 const faqList = [
   {
@@ -68,10 +65,6 @@ export default function FaqPage() {
   return (
     <>
       <div className={styles["content-wrapper"]}>
-        <Link className={styles["home-link"]} href="/">
-          <ArrowLeftIcon />
-          <span>Bridge</span>
-        </Link>
         <h1 className={styles["title"]}>FAQ</h1>
 
         <ul className={styles["list"]}>
