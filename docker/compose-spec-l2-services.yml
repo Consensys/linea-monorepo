@@ -141,7 +141,7 @@ services:
       retries: 120
     restart: "no"
     environment:
-      JAVA_OPTS: -Xmx1g -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
+      JAVA_OPTS: -Xmx1g
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
     entrypoint: besu-untuned
     command:
@@ -310,7 +310,7 @@ services:
         ipv4_address: 11.11.11.113
     environment:
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
-      JAVA_OPTS: -Xmx512m -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
+      JAVA_OPTS: -Xmx512m
     entrypoint:
       - /bin/bash
       - -c
@@ -590,3 +590,17 @@ services:
       - --trace-start-block-number=0
     volumes:
       - ./config/shomei/log4j.xml:/log4j.xml:ro
+
+  transfer-bot:
+    build: transfer-bot
+    container_name: eth-transfer-bot
+    restart: unless-stopped
+    environment:
+      - RPC_URL=http://sequencer:8545
+      - PRIVATE_KEY=0x7303d2fadd895018075cbe76d8a700bc65b4a1b8641b97d660533f0e029e3954
+      - TO_ADDRESS=0xb3c150df38e91149e260c3233f3121810d4d2976
+      - TRANSFER_AMOUNT=0.001
+      - INTERVAL_MS=2000
+      - LOG_TO_FILE=false
+    networks:
+      - linea
