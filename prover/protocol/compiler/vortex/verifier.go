@@ -67,13 +67,14 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 	}
 	// Collect all the roots: rounds by rounds
 	// and append them to the sis or no sis roots
-	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+	startingRound := ctx.startingRound()
+	for round := startingRound; round <= ctx.MaxCommittedRound; round++ {
 
 		// If the round is empty (i.e. the wizard does not have any committed
 		// columns associated to this round), then the rootSv and rootF will not
 		// be defined so this case cannot be handled as a "switch-case" as in
 		// the "if" clause below.
-		if ctx.RoundStatus[round] == IsEmpty {
+		if ctx.RoundStatus[round-startingRound] == IsEmpty {
 			continue
 		}
 

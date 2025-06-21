@@ -92,6 +92,8 @@ func Setup(ctx context.Context, args SetupArgs) error {
 	var foundDecompressionV0 bool
 
 	// Setup non-aggregation and non-emulation circuits first
+	// For each circuit, we start by compiling the circuit, and
+	// then we do a SHA-sum and compare against the one in the manifest.json
 	for _, c := range AllCircuits {
 		if !inCircuits[c] || c == circuits.AggregationCircuitID ||
 			c == circuits.EmulationCircuitID {
@@ -239,15 +241,15 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 		limits := cfg.TracesLimits
 		extraFlags["cfg_checksum"] = limits.Checksum()
 
-		// Read the dw-compiled-conglomeration.bin file from the assets directory and deserialize it
 		var compCong *distributed.ConglomeratorCompilation
 
+		// Read the dw-compiled-conglomeration.bin file from the assets directory and deserialize it
 		// var readBuf bytes.Buffer
 		// err := serialization.ReadAndDeserialize(cfg.PathforLimitlessProverAssets(),
-		// 	"dw-compiled-conglomeration.bin", &compCong, &readBuf)
+		// 	"dw-cong-ckt.bin", &compCong, &readBuf)
 		// if err != nil {
 		// 	return nil, nil, fmt.Errorf(
-		// 		"failed to read dw-compiled-conglomeration.bin file "+
+		// 		"failed to read dw-cong-ckt.bin file "+
 		// 			"while building limitless execution circuit: %w",
 		// 		err,
 		// 	)
