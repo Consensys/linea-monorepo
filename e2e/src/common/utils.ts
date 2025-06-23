@@ -1,6 +1,16 @@
 import * as fs from "fs";
 import assert from "assert";
-import { AbstractSigner, BaseContract, BlockTag, TransactionReceipt, TransactionRequest, Wallet, ethers } from "ethers";
+import {
+  AbstractSigner,
+  BaseContract,
+  BlockTag,
+  Transaction,
+  TransactionReceipt,
+  TransactionRequest,
+  Wallet,
+  ethers,
+  toBeHex,
+} from "ethers";
 import path from "path";
 import { exec } from "child_process";
 import { L2MessageServiceV1 as L2MessageService, TokenBridgeV1_1 as TokenBridge, LineaRollupV6 } from "../typechain";
@@ -8,6 +18,7 @@ import { PayableOverrides, TypedContractEvent, TypedDeferredTopicFilter, TypedEv
 import { MessageEvent, SendMessageArgs } from "./types";
 import { createTestLogger } from "../config/logger";
 import { randomUUID, randomInt } from "crypto";
+import { config } from "../config/tests-config";
 
 const logger = createTestLogger();
 
@@ -425,13 +436,12 @@ export async function sendTransactionsToGenerateTrafficWithInterval(
   signer: AbstractSigner,
   pollingInterval: number = 1_000,
 ) {
-  const { maxPriorityFeePerGas, maxFeePerGas } = await signer.provider!.getFeeData();
-  const transactionRequest = {
+  const lineaEstimateGasClient = new LineaEstimateGasClient(config.getL2BesuNodeEndpoint()!);
+
+  const transaction = Transaction.from({
     to: await signer.getAddress(),
     value: etherToWei("0.000001"),
-    maxPriorityFeePerGas: maxPriorityFeePerGas,
-    maxFeePerGas: maxFeePerGas,
-  };
+  });
 
   let timeoutId: NodeJS.Timeout | null = null;
   let isRunning = true;
@@ -440,8 +450,15 @@ export async function sendTransactionsToGenerateTrafficWithInterval(
     if (!isRunning) return;
 
     try {
-      const tx = await signer.sendTransaction(transactionRequest);
+      const { maxPriorityFeePerGas, maxFeePerGas } = await lineaEstimateGasClient.lineaEstimateGas(
+        await signer.getAddress(),
+        await signer.getAddress(),
+        undefined,
+        toBeHex(transaction.value),
+      );
+      const tx = await signer.sendTransaction({ ...transaction, maxPriorityFeePerGas, maxFeePerGas });
       await tx.wait();
+      logger.debug(`Transaction sent successfully. hash=${tx.hash}`);
     } catch (error) {
       logger.error(`Error sending transaction. error=${JSON.stringify(error)}`);
     } finally {
