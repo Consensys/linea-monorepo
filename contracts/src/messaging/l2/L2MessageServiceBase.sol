@@ -50,9 +50,7 @@ abstract contract L2MessageServiceBase is
     __Context_init();
     __AccessControl_init();
     __RateLimiter_init(_rateLimitPeriod, _rateLimitAmount);
-
     __PauseManager_init(_pauseTypeRoleAssignments, _unpauseTypeRoleAssignments);
-    __ReentrancyGuard_init();
 
     if (_defaultAdmin == address(0)) {
       revert ZeroAddressNotAllowed();
@@ -68,7 +66,6 @@ abstract contract L2MessageServiceBase is
 
     nextMessageNumber = 1;
 
-    _messageSender = DEFAULT_SENDER_ADDRESS;
     minimumFeeInWei = 0.0001 ether;
   }
 
