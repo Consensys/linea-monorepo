@@ -203,7 +203,7 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 		// collapsingRandomness is the randomness used in the collapsing trick.
 		// It is sampled via `crypto/rand` internally to ensure it cannot be
 		// predicted ahead of time by an adversary.
-		var collapsingRandomness field.Element
+		var collapsingRandomness fext.Element
 		if _, err := collapsingRandomness.SetRandom(); err != nil {
 			utils.Panic("could not sample the collapsing randomness: %v", err.Error())
 		}
@@ -228,7 +228,7 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 		//
 		// It is used to let us know where an entry of S appears in T. The stored
 		// 2-uple of integers indicate [fragment, row]
-		mapM = make(map[field.Element][2]int, fragmentUnionSize)
+		mapM = make(map[fext.Element][2]int, fragmentUnionSize)
 
 		// one stores a reference to the field element equals to 1 for
 		// convenience so that we can use pointer on it directly.
@@ -252,7 +252,7 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 		m[frag] = make([]field.Element, tCollapsed[frag].Len())
 
 		for k := start; k < end; k++ {
-			v := tCollapsed[frag].Get(k)
+			v := tCollapsed[frag].GetExt(k)
 			mapM[v] = [2]int{frag, k}
 		}
 	}
@@ -294,21 +294,21 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 			var (
 				// v stores the entry of S that we are examining and looking for
 				// in the look up table.
-				v = sCollapsed[i].Get(k)
+				v = sCollapsed[i].GetExt(k)
 
 				// posInM stores the position of `v` in the look-up table
 				posInM, ok = mapM[v]
 			)
 
 			if !ok {
-				tableRow := make([]field.Element, len(a.S[i]))
+				tableRow := make([]fext.Element, len(a.S[i]))
 				for j := range tableRow {
-					tableRow[j] = a.S[i][j].GetColAssignmentAt(run, k)
+					tableRow[j] = a.S[i][j].GetColAssignmentAtExt(run, k)
 				}
 
 				utils.Panic(
 					"entry %v of the table %v is not included in the table. tableRow=%v T-mapSize=%v T-name=%v\n",
-					k, NameTable([][]ifaces.Column{a.S[i]}), vector.Prettify(tableRow), len(mapM), NameTable(a.T),
+					k, NameTable([][]ifaces.Column{a.S[i]}), vectorext.Prettify(tableRow), len(mapM), NameTable(a.T),
 				)
 			}
 

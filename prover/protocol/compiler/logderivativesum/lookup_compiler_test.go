@@ -349,3 +349,210 @@ func BenchmarkLogDeriveLookupMultiXor(b *testing.B) {
 		require.NoError(b, err)
 	}
 }
+
+func TestLogDerivativeLookupMultiXorMixed(t *testing.T) {
+
+	var sizeTable, sizeCheckeds, sizeCheckedLarger int = 16, 4, 8
+	var runtime *wizard.ProverRuntime
+
+	// The test uses a lookup over a xor table
+
+	define := func(b *wizard.Builder) {
+
+		xorX := b.RegisterCommit("XOR_TABLE_X", sizeTable)
+		xorY := b.RegisterCommit("XOR_TABLE_Y", sizeTable)
+		xorXY := b.RegisterCommit("XOR_TABLE_XXORY", sizeTable)
+
+		wX := b.RegisterCommit("WITNESS_X", sizeCheckeds)
+		wY := b.RegisterCommit("WITNESS_Y", sizeCheckeds)
+		wXY := b.RegisterCommit("WITNESS_XXORY", sizeCheckeds)
+
+		w2X := b.RegisterCommit("W2_X", sizeCheckedLarger)
+		w2Y := b.RegisterCommit("W2_Y", sizeCheckedLarger)
+		w2XY := b.RegisterCommit("W2_XXORY", sizeCheckedLarger)
+
+		b.Inclusion("LOOKUP", []ifaces.Column{xorX, xorY, xorXY}, []ifaces.Column{wX, wY, wXY})
+		b.Inclusion("LOOKUP2", []ifaces.Column{xorX, xorY, xorXY}, []ifaces.Column{w2X, w2Y, w2XY})
+	}
+
+	prover := func(run *wizard.ProverRuntime) {
+		runtime = run
+		// assign a and b
+		xorX := smartvectors.ForTest(0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11)
+		xorY := smartvectors.ForTestFromPairs(0b00, 0, 0b00, 0, 0b00, 0, 0b00, 0, 0b01, 0, 0b01, 0, 0b01, 0, 0b01, 0, 0b10, 0, 0b10, 0, 0b10, 0, 0b10, 0, 0b11, 0, 0b11, 0, 0b11, 0, 0b11, 0)
+		xorXY := smartvectors.ForTest(0b00, 0b01, 0b10, 0b11, 0b01, 0b00, 0b11, 0b10, 0b10, 0b11, 0b00, 0b01, 0b11, 0b10, 0b01, 0b00)
+
+		wX := smartvectors.ForTest(0b00, 0b11, 0b10, 0b01)
+		wY := smartvectors.ForTestFromPairs(0b01, 0, 0b00, 0, 0b11, 0, 0b10, 0)
+		wXY := smartvectors.ForTest(0b01, 0b11, 0b01, 0b11)
+
+		w2X := smartvectors.ForTest(0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11)
+		w2Y := smartvectors.ForTestFromPairs(0b00, 0, 0b00, 0, 0b00, 0, 0b00, 0, 0b01, 0, 0b01, 0, 0b01, 0, 0b01, 0)
+		w2XY := smartvectors.ForTest(0b00, 0b01, 0b10, 0b11, 0b01, 0b00, 0b11, 0b10)
+
+		run.AssignColumn("XOR_TABLE_X", xorX)
+		run.AssignColumn("XOR_TABLE_Y", xorY)
+		run.AssignColumn("XOR_TABLE_XXORY", xorXY)
+
+		run.AssignColumn("WITNESS_X", wX)
+		run.AssignColumn("WITNESS_Y", wY)
+		run.AssignColumn("WITNESS_XXORY", wXY)
+
+		run.AssignColumn("W2_X", w2X)
+		run.AssignColumn("W2_Y", w2Y)
+		run.AssignColumn("W2_XXORY", w2XY)
+	}
+
+	comp := wizard.Compile(define, CompileLookups, dummy.Compile)
+	proof := wizard.Prove(comp, prover)
+
+	// m should be
+	expectedM := smartvectors.ForTest(1, 1, 1, 2, 2, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0)
+	t.Logf("all column names = %v", runtime.Columns.ListAllKeys())
+	actualM := runtime.GetColumn("TABLE_XOR_TABLE_X,XOR_TABLE_XXORY,XOR_TABLE_Y_0_LOGDERIVATIVE_M")
+
+	assert.Equal(t, expectedM.Pretty(), actualM.Pretty(), "m does not match the expected value")
+
+	err := wizard.Verify(comp, proof)
+	require.NoError(t, err)
+}
+
+func TestLogDerivativeLookupMultiMixed(t *testing.T) {
+
+	var sizeTable, sizeCheckeds, sizeCheckedLarger int = 8, 4, 4
+	var runtime *wizard.ProverRuntime
+
+	// The test uses a lookup over a xor table
+
+	define := func(b *wizard.Builder) {
+
+		tableA := b.RegisterCommit("TABLE_A", sizeTable)
+		tableB := b.RegisterCommit("TABLE_B", sizeTable)
+		tableC := b.RegisterCommit("TABLE_C", sizeTable)
+
+		includedA := b.RegisterCommit("INCLUDED_A", sizeCheckeds)
+		includedB := b.RegisterCommit("INCLUDED_B", sizeCheckeds)
+		includedC := b.RegisterCommit("INCLUDED_C", sizeCheckeds)
+
+		includedA2 := b.RegisterCommit("INCLUDED_A2", sizeCheckedLarger)
+		includedB2 := b.RegisterCommit("INCLUDED_B2", sizeCheckedLarger)
+		includedC2 := b.RegisterCommit("INCLUDED_C2", sizeCheckedLarger)
+
+		b.Inclusion("LOOKUP", []ifaces.Column{tableA, tableB, tableC}, []ifaces.Column{includedA, includedB, includedC})
+		b.Inclusion("LOOKUP2", []ifaces.Column{tableA, tableB, tableC}, []ifaces.Column{includedA2, includedB2, includedC2})
+	}
+
+	prover := func(run *wizard.ProverRuntime) {
+		runtime = run
+		// assign a and b
+		// tableA contains base field integers
+		tableA := smartvectors.ForTest(2816, 2817, 2816, 3001, 3002, 5008, 2816, 9000)
+		// table B contains extension field elements computed as (first two digits, last two digits)
+		tableB := smartvectors.ForTestFromPairs(28, 16, 28, 17, 28, 16, 30, 01, 30, 02, 50, 8, 28, 16, 90, 0)
+		// table B contains base field elements (first three digits, last two digits)
+		tableC := smartvectors.ForTest(281, 281, 281, 300, 300, 500, 281, 900)
+
+		includedA := smartvectors.ForTest(2816, 9000, 3001, 9000)
+		includedB := smartvectors.ForTestFromPairs(28, 16, 90, 00, 30, 01, 90, 0)
+		includedC := smartvectors.ForTest(281, 900, 300, 900)
+
+		includedA2 := smartvectors.ForTest(3002, 2817, 3001, 9000)
+		includedB2 := smartvectors.ForTestFromPairs(30, 02, 28, 17, 30, 01, 90, 0)
+		includedC2 := smartvectors.ForTest(300, 281, 300, 900)
+
+		run.AssignColumn("TABLE_A", tableA)
+		run.AssignColumn("TABLE_B", tableB)
+		run.AssignColumn("TABLE_C", tableC)
+
+		run.AssignColumn("INCLUDED_A", includedA)
+		run.AssignColumn("INCLUDED_B", includedB)
+		run.AssignColumn("INCLUDED_C", includedC)
+
+		run.AssignColumn("INCLUDED_A2", includedA2)
+		run.AssignColumn("INCLUDED_B2", includedB2)
+		run.AssignColumn("INCLUDED_C2", includedC2)
+	}
+
+	comp := wizard.Compile(define, CompileLookups, dummy.Compile)
+	proof := wizard.Prove(comp, prover)
+
+	// m should be
+	expectedM := smartvectors.ForTest(0, 1, 0, 2, 1, 0, 1, 3)
+	t.Logf("all column names = %v", runtime.Columns.ListAllKeys())
+	actualM := runtime.GetColumn("TABLE_TABLE_A,TABLE_B,TABLE_C_0_LOGDERIVATIVE_M")
+
+	assert.Equal(t, expectedM.Pretty(), actualM.Pretty(), "m does not match the expected value")
+
+	err := wizard.Verify(comp, proof)
+	require.NoError(t, err)
+}
+
+func TestLogDerivativeLookupOnlyExt(t *testing.T) {
+
+	var sizeTable, sizeCheckeds, sizeCheckedLarger int = 8, 4, 4
+	var runtime *wizard.ProverRuntime
+
+	// The test uses a lookup over a xor table
+
+	define := func(b *wizard.Builder) {
+
+		tableA := b.RegisterCommit("TABLE_A", sizeTable)
+		tableB := b.RegisterCommit("TABLE_B", sizeTable)
+		tableC := b.RegisterCommit("TABLE_C", sizeTable)
+
+		includedA := b.RegisterCommit("INCLUDED_A", sizeCheckeds)
+		includedB := b.RegisterCommit("INCLUDED_B", sizeCheckeds)
+		includedC := b.RegisterCommit("INCLUDED_C", sizeCheckeds)
+
+		includedA2 := b.RegisterCommit("INCLUDED_A2", sizeCheckedLarger)
+		includedB2 := b.RegisterCommit("INCLUDED_B2", sizeCheckedLarger)
+		includedC2 := b.RegisterCommit("INCLUDED_C2", sizeCheckedLarger)
+
+		b.Inclusion("LOOKUP", []ifaces.Column{tableA, tableB, tableC}, []ifaces.Column{includedA, includedB, includedC})
+		b.Inclusion("LOOKUP2", []ifaces.Column{tableA, tableB, tableC}, []ifaces.Column{includedA2, includedB2, includedC2})
+	}
+
+	prover := func(run *wizard.ProverRuntime) {
+		runtime = run
+		// assign a and b
+		// tableA contains base field integers
+		tableA := smartvectors.ForTestExt(2816, 2817, 2816, 3001, 3002, 5008, 2816, 9000)
+		// table B contains extension field elements computed as (first two digits, last two digits)
+		tableB := smartvectors.ForTestFromPairs(28, 16, 28, 17, 28, 16, 30, 01, 30, 02, 50, 8, 28, 16, 90, 0)
+		// table B contains base field elements (first three digits, last two digits)
+		tableC := smartvectors.ForTestExt(281, 281, 281, 300, 300, 500, 281, 900)
+
+		includedA := smartvectors.ForTestExt(2816, 9000, 3001, 9000)
+		includedB := smartvectors.ForTestFromPairs(28, 16, 90, 00, 30, 01, 90, 0)
+		includedC := smartvectors.ForTestExt(281, 900, 300, 900)
+
+		includedA2 := smartvectors.ForTestExt(3002, 2817, 3001, 9000)
+		includedB2 := smartvectors.ForTestFromPairs(30, 02, 28, 17, 30, 01, 90, 0)
+		includedC2 := smartvectors.ForTestExt(300, 281, 300, 900)
+
+		run.AssignColumn("TABLE_A", tableA)
+		run.AssignColumn("TABLE_B", tableB)
+		run.AssignColumn("TABLE_C", tableC)
+
+		run.AssignColumn("INCLUDED_A", includedA)
+		run.AssignColumn("INCLUDED_B", includedB)
+		run.AssignColumn("INCLUDED_C", includedC)
+
+		run.AssignColumn("INCLUDED_A2", includedA2)
+		run.AssignColumn("INCLUDED_B2", includedB2)
+		run.AssignColumn("INCLUDED_C2", includedC2)
+	}
+
+	comp := wizard.Compile(define, CompileLookups, dummy.Compile)
+	proof := wizard.Prove(comp, prover)
+
+	// m should be
+	expectedM := smartvectors.ForTest(0, 1, 0, 2, 1, 0, 1, 3)
+	t.Logf("all column names = %v", runtime.Columns.ListAllKeys())
+	actualM := runtime.GetColumn("TABLE_TABLE_A,TABLE_B,TABLE_C_0_LOGDERIVATIVE_M")
+
+	assert.Equal(t, expectedM.Pretty(), actualM.Pretty(), "m does not match the expected value")
+
+	err := wizard.Verify(comp, proof)
+	require.NoError(t, err)
+}
