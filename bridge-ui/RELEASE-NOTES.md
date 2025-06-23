@@ -1,3 +1,55 @@
+<a name="v2.4.0"></a>
+
+# [v2.4.0] - 09 May 2025
+
+# Feat: Add Layerswap widget
+
+Description:
+- Add Layerswap widget
+
+<a name="v2.3.0"></a>
+
+# [v2.3.0] - 04 Apr 2025
+
+# Feat: Add Solana support in the LiFi widget
+
+Description:
+- Add Solana support in the LiFi widget
+
+<a name="v2.2.0"></a>
+
+# [v2.2.0] - 31 Mar 2025
+
+# Feat: OnRamper integration
+
+Description:
+- OnRamper integration
+
+[Changes][v2.2.0]
+
+<a name="v2.1.0"></a>
+
+# [v2.1.0] - 24 Mar 2025
+
+# Feat: LiFi and CCTP V2 integration
+
+Description:
+- LiFi integration
+- CCTP V2 for USDC bridging
+
+[Changes][v2.1.0]
+
+<a name="v2.0.0"></a>
+
+# [v2.0.0] - 18 Mar 2025
+
+# Feat: New bridge UI design
+
+Description:
+- New bridge UI v2 design
+
+[Changes][v2.0.0]
+
 <a name="v1.1.0"></a>
 
 # [v1.1.0] - 2 Dec 2024
@@ -30,9 +82,6 @@ Description:
 Description:
 - Fix ETH and USDC history fetching issue
 
-Technical implementation:
-- [PR](https://github.com/Consensys/zkevm-monorepo/pull/3328)
-
 [Changes][v0.6.5]
 
 <a name="v0.6.4"></a>
@@ -43,9 +92,6 @@ Technical implementation:
 
 Description:
 - Add claim message as a recipient feature
-
-Technical implementation:
-- [PR](https://github.com/Consensys/zkevm-monorepo/pull/3132)
 
 [Changes][v0.6.4]
 
@@ -59,9 +105,6 @@ Description:
 - Update shortcuts doc url
 - Update shortcuts description
 
-Technical implementation:
-- [PR](https://github.com/Consensys/zkevm-monorepo/pull/3220)
-
 [Changes][v0.6.3]
 
 <a name="v0.6.2"></a>
@@ -74,10 +117,6 @@ Description:
 - Update link for third party bridges on the landing page to https://linea.build/apps?types=bridge
 - Enable shortcuts for easy bridging from L1 -> Linea
 
-Technical implementation:
-- [PR for third party bridges](https://github.com/Consensys/zkevm-monorepo/pull/3116)
-- [PR to enable shortcuts](https://github.com/Consensys/zkevm-monorepo/pull/2883)
-
 [Changes][v0.6.2]
 
 <a name="v0.6.1"></a>
@@ -88,9 +127,6 @@ Technical implementation:
 
 Description:
 - Fix ERC20 abi approve function return types to support USDT
-
-Technical implementation:
-[PR](https://github.com/Consensys/zkevm-monorepo/pull/2932)
 
 [Changes][v0.6.1]
 
@@ -103,9 +139,6 @@ Technical implementation:
 Description:
 - Add support for Linea Sepolia testnet
 - Remove support for Linea Goerli testnet
-
-Technical implementation:
-[PR](https://github.com/Consensys/zkevm-monorepo/pull/2735)
 
 [Changes][v0.6.0]
 

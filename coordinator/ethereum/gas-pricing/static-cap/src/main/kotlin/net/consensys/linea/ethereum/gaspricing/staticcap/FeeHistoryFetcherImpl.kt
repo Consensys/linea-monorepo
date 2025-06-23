@@ -2,8 +2,8 @@ package net.consensys.linea.ethereum.gaspricing.staticcap
 
 import linea.domain.FeeHistory
 import linea.kotlin.toIntervalString
+import linea.web3j.Web3jBlobExtended
 import net.consensys.linea.ethereum.gaspricing.FeesFetcher
-import net.consensys.linea.web3j.Web3jBlobExtended
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.web3j.protocol.Web3j
@@ -14,15 +14,18 @@ import java.math.BigInteger
 class FeeHistoryFetcherImpl(
   private val web3jClient: Web3j,
   private val web3jService: Web3jBlobExtended,
-  private val config: Config
+  private val config: Config,
 ) : FeesFetcher {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
   data class Config(
     val feeHistoryBlockCount: UInt,
-    val feeHistoryRewardPercentile: Double
+    val feeHistoryRewardPercentile: Double,
   ) {
     init {
+      require(feeHistoryBlockCount > 0u) {
+        "feeHistoryBlockCount=$feeHistoryBlockCount must be greater than 0."
+      }
       require(feeHistoryRewardPercentile in 0.0..100.0) {
         "feeHistoryRewardPercentile must be within 0.0 and 100.0." +
           " Value=$feeHistoryRewardPercentile"
@@ -43,7 +46,7 @@ class FeeHistoryFetcherImpl(
             .ethFeeHistoryWithBlob(
               config.feeHistoryBlockCount.toInt(),
               DefaultBlockParameterName.LATEST,
-              listOf(config.feeHistoryRewardPercentile)
+              listOf(config.feeHistoryRewardPercentile),
             )
             .sendAsync()
             .thenApply {
@@ -59,7 +62,7 @@ class FeeHistoryFetcherImpl(
                   feeHistory.reward.map { percentiles -> percentiles[0] },
                   feeHistory.gasUsedRatio,
                   feeHistory.baseFeePerBlobGas[feeHistory.baseFeePerBlobGas.lastIndex],
-                  feeHistory.blobGasUsedRatio
+                  feeHistory.blobGasUsedRatio,
                 )
               } else {
                 log.trace(
@@ -68,7 +71,7 @@ class FeeHistoryFetcherImpl(
                   feeHistory.blocksRange().toIntervalString(),
                   feeHistory.baseFeePerGas[feeHistory.baseFeePerGas.lastIndex],
                   feeHistory.reward.map { percentiles -> percentiles[0] },
-                  feeHistory.gasUsedRatio
+                  feeHistory.gasUsedRatio,
                 )
               }
               feesCache = feeHistory

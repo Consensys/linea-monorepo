@@ -8,14 +8,15 @@ import "hardhat-storage-layout";
 // import "hardhat-tracer"; // This plugin does not work with the latest hardhat version
 import { HardhatUserConfig } from "hardhat/config";
 import { getBlockchainNode, getL2BlockchainNode } from "./common";
-import "./scripts/operational/getCurrentFinalizedBlockNumberTask";
-import "./scripts/operational/grantContractRolesTask";
-import "./scripts/operational/renounceContractRolesTask";
-import "./scripts/operational/setRateLimitTask";
-import "./scripts/operational/setVerifierAddressTask";
-import "./scripts/operational/setMessageServiceOnTokenBridgeTask";
+import "./scripts/operational/tasks/getCurrentFinalizedBlockNumberTask";
+import "./scripts/operational/tasks/grantContractRolesTask";
+import "./scripts/operational/tasks/renounceContractRolesTask";
+import "./scripts/operational/tasks/setRateLimitTask";
+import "./scripts/operational/tasks/setVerifierAddressTask";
+import "./scripts/operational/tasks/setMessageServiceOnTokenBridgeTask";
 
 import "solidity-docgen";
+import { overrides } from "./hardhat_overrides";
 
 dotenv.config();
 
@@ -34,35 +35,21 @@ const config: HardhatUserConfig = {
   },
   solidity: {
     // NB: double check the autoupdate shell script version complies to the latest solidity version if you add a new one.
+    /// @dev Please see the overrides file for a list of files not targetting the default EVM version of Prague.
     compilers: [
       {
-        version: "0.8.28",
+        version: "0.8.30",
         settings: {
           viaIR: useViaIR,
           optimizer: {
             enabled: true,
             runs: 10_000,
           },
-          evmVersion: "cancun",
-        },
-      },
-      /**
-       * Maintain for Mimc contract
-       * src/libraries/Mimc.sol (0.8.25)
-       * src/libraries/SparseMerkleProof.sol (0.8.25)
-       */
-      {
-        version: "0.8.25",
-        settings: {
-          viaIR: useViaIR,
-          optimizer: {
-            enabled: true,
-            runs: 10_000,
-          },
-          evmVersion: "cancun",
+          evmVersion: "prague",
         },
       },
     ],
+    overrides: overrides,
   },
   namedAccounts: {
     deployer: {
@@ -71,7 +58,7 @@ const config: HardhatUserConfig = {
   },
   networks: {
     hardhat: {
-      hardfork: "cancun",
+      hardfork: "prague",
     },
     mainnet: {
       accounts: [process.env.MAINNET_PRIVATE_KEY || EMPTY_HASH],

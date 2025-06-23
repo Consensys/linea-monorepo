@@ -1,37 +1,61 @@
 "use client";
 
-import { ToastContainer } from "react-toastify";
-import { Header } from "./header";
+import { usePathname } from "next/navigation";
+import { useDynamicContext } from "@/lib/dynamic";
+import Header from "../header";
 import { useInitialiseChain } from "@/hooks";
-import Sidebar from "./Sidebar";
-import { useAccount } from "wagmi";
-import { linea, lineaSepolia, mainnet, sepolia } from "viem/chains";
-import WrongNetwork from "./WrongNetwork";
-import TermsModal from "../terms/TermsModal";
+import { Theme } from "@/types";
+import Image from "next/image";
+import styles from "./layout.module.scss";
+import InternalNav from "../internal-nav";
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  const { sdkHasLoaded } = useDynamicContext();
   useInitialiseChain();
 
-  const { chainId } = useAccount();
+  const pathname = usePathname();
 
-  return chainId &&
-    ![mainnet.id, sepolia.id, linea.id, lineaSepolia.id].includes(chainId as 1 | 11155111 | 59144 | 59141) ? (
-    <WrongNetwork />
-  ) : (
-    <div className="flex min-h-screen flex-col bg-cover bg-no-repeat">
-      <ToastContainer
-        position="top-center"
-        autoClose={2000}
-        hideProgressBar={false}
-        pauseOnFocusLoss={false}
-        theme="dark"
-      />
-      <TermsModal />
-      <Sidebar />
-      <div className="md:ml-64">
-        <Header />
+  if (!sdkHasLoaded) {
+    return <CommonLayout pathname={pathname}>{children}</CommonLayout>;
+  }
+
+  return <CommonLayout pathname={pathname}>{children}</CommonLayout>;
+}
+
+function CommonLayout({ children, pathname }: { children: React.ReactNode; pathname: string }) {
+  return (
+    <div className="layout">
+      <div className="container-v2">
+        <Header theme={Theme.navy} />
+        <main>
+          {pathname !== "/faq" && (
+            <div className={styles["content-wrapper"]}>
+              <InternalNav hide={pathname === "/"} />
+            </div>
+          )}
+          {children}
+        </main>
       </div>
-      <main className="m-0 flex-1 p-3 md:ml-64 md:p-10">{children}</main>
+      <div>
+        <Image
+          className="left-illustration"
+          src={`${process.env.NEXT_PUBLIC_BASE_PATH}/images/illustration/illustration-left.svg`}
+          role="presentation"
+          alt="illustration left"
+          width={300}
+          height={445}
+          priority
+        />
+        <Image
+          className="right-illustration"
+          src={`${process.env.NEXT_PUBLIC_BASE_PATH}/images/illustration/illustration-right.svg`}
+          role="presentation"
+          alt="illustration right"
+          width={610}
+          height={842}
+          priority
+        />
+      </div>
     </div>
   );
 }

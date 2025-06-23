@@ -12,7 +12,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/merkle"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/sirupsen/logrus"
 )
 
 // leafOpenings represents the structure for leaf openings
@@ -176,35 +178,39 @@ func (am *Module) Assign(
 	)
 
 	for _, trace := range traces {
-		switch t := trace.Underlying.(type) {
-		case statemanager.UpdateTraceST:
-			pushUpdateRows(builder, t)
-		case statemanager.UpdateTraceWS:
-			pushUpdateRows(builder, t)
-		case statemanager.InsertionTraceST:
-			pushInsertionRows(builder, t)
-		case statemanager.InsertionTraceWS:
-			pushInsertionRows(builder, t)
-		case statemanager.DeletionTraceST:
-			pushDeletionRows(builder, t)
-		case statemanager.DeletionTraceWS:
-			pushDeletionRows(builder, t)
-		case statemanager.ReadZeroTraceST:
-			pushReadZeroRows(builder, t)
-		case statemanager.ReadZeroTraceWS:
-			pushReadZeroRows(builder, t)
-		case statemanager.ReadNonZeroTraceST:
-			pushReadNonZeroRows(builder, t)
-		case statemanager.ReadNonZeroTraceWS:
-			pushReadNonZeroRows(builder, t)
-		default:
-			utils.Panic("Unexpected type : %T", t)
+		// only assign the traces that are flagged as not to be skipped
+		if !trace.IsSkipped {
+			switch t := trace.Underlying.(type) {
+			case statemanager.UpdateTraceST:
+				pushUpdateRows(builder, t)
+			case statemanager.UpdateTraceWS:
+				pushUpdateRows(builder, t)
+			case statemanager.InsertionTraceST:
+				pushInsertionRows(builder, t)
+			case statemanager.InsertionTraceWS:
+				pushInsertionRows(builder, t)
+			case statemanager.DeletionTraceST:
+				pushDeletionRows(builder, t)
+			case statemanager.DeletionTraceWS:
+				pushDeletionRows(builder, t)
+			case statemanager.ReadZeroTraceST:
+				pushReadZeroRows(builder, t)
+			case statemanager.ReadZeroTraceWS:
+				pushReadZeroRows(builder, t)
+			case statemanager.ReadNonZeroTraceST:
+				pushReadNonZeroRows(builder, t)
+			case statemanager.ReadNonZeroTraceWS:
+				pushReadNonZeroRows(builder, t)
+			default:
+				utils.Panic("Unexpected type : %T", t)
+			}
 		}
 	}
 
 	// Sanity check on the size
 	if len(builder.leaves) > am.MaxNumProofs {
-		utils.Panic("We have registered %v proofs which is more than the maximum number of proofs %v", len(builder.leaves), am.MaxNumProofs)
+		logrus.Errorf("We have registered %v proofs which is more than the maximum number of proofs %v", len(builder.leaves), am.MaxNumProofs)
+		exit.OnLimitOverflow()
 	}
 
 	// Assignments of columns

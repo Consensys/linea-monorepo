@@ -1,11 +1,16 @@
 name: Github Release for Besu Plugins
+
+permissions:
+  contents: write
+  actions: read
+
 on:
   workflow_call:
     inputs:
       pluginName:
         required: true
         type: string
-        description: 'plugin name used for the tag name, e.g staterecovery'
+        description: 'plugin name used for the tag name, e.g linea-staterecovery'
       workspaceModulePath:
         required: true
         type: string
@@ -19,7 +24,7 @@ on:
       pluginName:
         required: true
         type: string
-        description: 'plugin name used for the tag name, e.g staterecovery'
+        description: 'plugin name used for the tag name, e.g linea-staterecovery'
       workspaceModulePath:
         required: true
         type: string
@@ -39,7 +44,7 @@ jobs:
           fetch-depth: 1
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b #v4.5.0
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -47,7 +52,7 @@ jobs:
       # Configure Gradle for optimal use in GiHub Actions, including caching of downloaded dependencies.
       # See: https://github.com/gradle/actions/blob/main/setup-gradle/README.md
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@8379f6a1328ee0e06e2bb424dadb7b159856a326 # 4.4.0
 
       - name: Clean
         # ./gradlew clean is necessary because the build is cached
@@ -56,22 +61,22 @@ jobs:
 
       - name: Build
         run: |
-          GRAGLE_PATH=:$(echo "${{inputs.workspaceModulePath}}" | sed 's/\//:/g')
+          GRAGLE_PATH=:$(echo "besu-plugins/${{inputs.workspaceModulePath}}" | sed 's/\//:/g')
           echo $GRAGLE_PATH
           ./gradlew $GRAGLE_PATH:shadowJar -Pversion=v${{inputs.version}}
-          ls -lh ${{inputs.workspaceModulePath}}/build/libs
+          ls -lh besu-plugins/${{inputs.workspaceModulePath}}/build/libs
 
       - name: Release to GitHub
         uses: jreleaser/release-action@v2
         with:
-          arguments: full-release --git-root-search --basedir=${{ github.workspace }}/${{inputs.workspaceModulePath}} -P=version=v${{inputs.version}}
+          arguments: full-release --git-root-search --basedir=${{github.workspace}}/besu-plugins/${{inputs.workspaceModulePath}} -P=version=v${{inputs.version}}
         env:
-          GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
+          GITHUB_TOKEN: ${{secrets._GITHUB_TOKEN_RELEASE_ACCESS}}
           JRELEASER_TAG_NAME: ${{inputs.pluginName}}-v${{inputs.version}}
           JRELEASER_PROJECT_VERSION: ${{inputs.version}}
-          JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          JRELEASER_GITHUB_USERNAME: ${{ github.actor }}
-          JRELEASER_GITHUB_EMAIL: ${{ github.actor }}@users.noreply.github.com
+          JRELEASER_GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          JRELEASER_GITHUB_USERNAME: ${{github.actor}}
+          JRELEASER_GITHUB_EMAIL: ${{github.actor}}@users.noreply.github.com
 
       # Persist logs
       - name: JReleaser release output

@@ -4,8 +4,8 @@ import io.vertx.core.Vertx
 import linea.domain.Block
 import linea.domain.BlockParameter.Companion.toBlockParameter
 import linea.kotlin.encodeHex
+import linea.web3j.ExtendedWeb3J
 import net.consensys.linea.async.AsyncRetryer
-import net.consensys.linea.web3j.ExtendedWeb3J
 import net.consensys.zkevm.PeriodicPollingService
 import net.consensys.zkevm.ethereum.coordination.blockcreation.BlockCreated
 import net.consensys.zkevm.ethereum.coordination.blockcreation.BlockCreationListener
@@ -25,18 +25,18 @@ class BlockCreationMonitor(
   private val blockCreationListener: BlockCreationListener,
   private val lastProvenBlockNumberProviderAsync: LastProvenBlockNumberProviderAsync,
   private val config: Config,
-  private val log: Logger = LogManager.getLogger(BlockCreationMonitor::class.java)
+  private val log: Logger = LogManager.getLogger(BlockCreationMonitor::class.java),
 ) : PeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = config.pollingInterval.inWholeMilliseconds,
-  log = log
+  log = log,
 ) {
   data class Config(
     val pollingInterval: Duration,
     val blocksToFinalization: Long,
     val blocksFetchLimit: Long,
     val startingBlockWaitTimeout: Duration = 14.days,
-    val lastL2BlockNumberToProcessInclusive: ULong? = null
+    val lastL2BlockNumberToProcessInclusive: ULong? = null,
   )
 
   private val _nexBlockNumberToFetch: AtomicLong = AtomicLong(startingBlockNumberExclusive + 1)
@@ -44,7 +44,7 @@ class BlockCreationMonitor(
   private val reorgDetected: AtomicBoolean = AtomicBoolean(false)
   private var statingBlockAvailabilityFuture: SafeFuture<*>? = null
 
-  val nexBlockNumberToFetch: Long
+  private val nexBlockNumberToFetch: Long
     get() = _nexBlockNumberToFetch.get()
 
   override fun handleError(error: Throwable) {
@@ -76,7 +76,7 @@ class BlockCreationMonitor(
             log.warn(
               "Block {} not found yet. Retrying in {}",
               startingBlockNumberExclusive,
-              config.pollingInterval
+              config.pollingInterval,
             )
             false
           } else {
@@ -84,7 +84,7 @@ class BlockCreationMonitor(
             expectedParentBlockHash.set(block.hash)
             true
           }
-        }
+        },
       ) {
         web3j.ethGetBlock(startingBlockNumberExclusive.toBlockParameter())
       }
@@ -104,7 +104,7 @@ class BlockCreationMonitor(
             lastProvenBlockNumber,
             _nexBlockNumberToFetch.get(),
             _nexBlockNumberToFetch.get() - lastProvenBlockNumber,
-            config.blocksFetchLimit
+            config.blocksFetchLimit,
           )
           SafeFuture.COMPLETE
         } else if (config.lastL2BlockNumberToProcessInclusive != null &&
@@ -115,7 +115,7 @@ class BlockCreationMonitor(
               "All blocks upto and including lastL2BlockNumberInclusiveToProcess={} have been processed. " +
               "nextBlockNumberToFetch={}",
             config.lastL2BlockNumberToProcessInclusive,
-            nexBlockNumberToFetch
+            nexBlockNumberToFetch,
           )
           SafeFuture.COMPLETE
         } else {
@@ -128,7 +128,7 @@ class BlockCreationMonitor(
                       log.debug(
                         "updating nexBlockNumberToFetch from {} --> {}",
                         _nexBlockNumberToFetch.get(),
-                        _nexBlockNumberToFetch.incrementAndGet()
+                        _nexBlockNumberToFetch.incrementAndGet(),
                       )
                       expectedParentBlockHash.set(block.hash)
                     }
@@ -140,7 +140,7 @@ class BlockCreationMonitor(
                     block.number,
                     block.hash.encodeHex(),
                     block.parentHash.encodeHex(),
-                    expectedParentBlockHash.get().encodeHex()
+                    expectedParentBlockHash.get().encodeHex(),
                   )
                   SafeFuture.failedFuture(IllegalStateException("Reorg detected on block ${block.number}"))
                 }
@@ -164,7 +164,7 @@ class BlockCreationMonitor(
       .thenApply {
         log.debug(
           "blockCreationListener blockNumber={} resolved with success",
-          payload.number
+          payload.number,
         )
       }
       .whenException { throwable ->
@@ -172,7 +172,7 @@ class BlockCreationMonitor(
           "Failed to notify blockCreationListener: blockNumber={} errorMessage={}",
           payload.number,
           throwable.message,
-          throwable
+          throwable,
         )
       }
   }
@@ -188,14 +188,14 @@ class BlockCreationMonitor(
           val blockNumber = _nexBlockNumberToFetch.get()
           web3j.ethGetBlock(blockNumber.toBlockParameter())
             .thenPeek { block ->
-              log.trace("requestedBock={} responselock={}", blockNumber, block?.number)
+              log.trace("requestedBlock={} responseBlock={}", blockNumber, block?.number)
             }
             .whenException {
               log.warn(
                 "eth_getBlockByNumber({}) failed: errorMessage={}",
                 blockNumber,
                 it.message,
-                it
+                it,
               )
             }
         } else {

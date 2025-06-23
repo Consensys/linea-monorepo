@@ -3,36 +3,35 @@ plugins {
   id 'java-library'
 }
 
-def besuArtifactGroup="io.consensys.linea-besu"
-def besuVersion="25.2-delivery48"
+def besuVersion="${libs.versions.besu.get()}"
 
 dependencies {
   api("${besuArtifactGroup}:besu-datatypes:${besuVersion}") {
     transitive = false
   }
-  api("${besuArtifactGroup}:evm:${besuVersion}") {
+  api("${besuArtifactGroup}:besu-evm:${besuVersion}") {
     transitive = false
   }
-  api("${besuArtifactGroup}.internal:core:${besuVersion}") {
+  api("${besuArtifactGroup}.internal:besu-ethereum-core:${besuVersion}") {
     transitive = false
   }
-  api("${besuArtifactGroup}.internal:algorithms:${besuVersion}") {
-    transitive = false
-  }
-
-  api("${besuArtifactGroup}:plugin-api:${besuVersion}") {
+  api("${besuArtifactGroup}.internal:besu-crypto-algorithms:${besuVersion}") {
     transitive = false
   }
 
-  api("${besuArtifactGroup}.internal:rlp:${besuVersion}") {
+  api("${besuArtifactGroup}:besu-plugin-api:${besuVersion}") {
     transitive = false
   }
 
-  api("io.tmio:tuweni-bytes:${libs.versions.tuweni.get()}") {
+  api("${besuArtifactGroup}.internal:besu-ethereum-rlp:${besuVersion}") {
     transitive = false
   }
 
-  api("io.tmio:tuweni-units:${libs.versions.tuweni.get()}") {
+  api("io.consensys.tuweni:tuweni-bytes:${libs.versions.tuweni.get()}") {
+    transitive = false
+  }
+
+  api("io.consensys.tuweni:tuweni-units:${libs.versions.tuweni.get()}") {
     transitive = false
   }
 

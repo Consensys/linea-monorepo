@@ -1,18 +1,14 @@
 import { useAccount, useReadContract } from "wagmi";
 import { erc20Abi } from "viem";
-import { useChainStore } from "@/stores/chainStore";
+import { useFormStore, useChainStore } from "@/stores";
+import { isEth } from "@/utils";
+import { isCctp } from "@/utils/tokens";
 
 const useAllowance = () => {
-  // Wagmi
   const { address } = useAccount();
-
-  // Context
-  const { token, networkLayer, tokenBridgeAddress, fromChain } = useChainStore((state) => ({
-    token: state.token,
-    networkLayer: state.networkLayer,
-    tokenBridgeAddress: state.tokenBridgeAddress,
-    fromChain: state.fromChain,
-  }));
+  const token = useFormStore((state) => state.token);
+  const fromChain = useChainStore.useFromChain();
+  const spender = !isCctp(token) ? fromChain.tokenBridgeAddress : fromChain.cctpTokenMessengerV2Address;
 
   const {
     data: allowance,
@@ -21,12 +17,12 @@ const useAllowance = () => {
   } = useReadContract({
     abi: erc20Abi,
     functionName: "allowance",
-    args: [address ?? "0x", tokenBridgeAddress ?? "0x"],
-    address: token?.[networkLayer] ?? "0x",
+    args: [address ?? "0x", spender],
+    address: token[fromChain.layer] ?? "0x",
     query: {
-      enabled: !!token && !!address && !!networkLayer && !!tokenBridgeAddress,
+      enabled: !!token && !isEth(token) && !!address && !!fromChain,
     },
-    chainId: fromChain?.id,
+    chainId: fromChain.id,
   });
 
   return { allowance, queryKey, refetchAllowance: refetch };

@@ -1,30 +1,30 @@
+const isProd = process.env.NEXT_PUBLIC_ENVIRONMENT === "production";
+const basePath = isProd ? "/hub/bridge" : "";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
   reactStrictMode: true,
+  basePath,
+  env: {
+    NEXT_PUBLIC_BASE_PATH: basePath,
+  },
   images: {
     remotePatterns: [
       {
         protocol: "https",
         hostname: "s2.coinmarketcap.com",
-        pathname: "/static/img/coins/64x64/**",
+        pathname: "/static/img/coins/**",
       },
       {
         protocol: "https",
         hostname: "assets.coingecko.com",
         pathname: "/coins/images/**",
       },
-      {
-        protocol: "https",
-        hostname: "coin-images.coingecko.com",
-        pathname: "/coins/images/**",
-      },
-      {
-        protocol: "https",
-        hostname: "storage.googleapis.com",
-        pathname: "/public.withstable.com/logos/**",
-      },
     ],
+  },
+  sassOptions: {
+    prependData: `@use 'sass:math'; @import 'src/scss/breakpoints';`,
   },
   webpack: (config) => {
     const warning = [...(config.ignoreWarnings || []), { module: /typeorm/ }];

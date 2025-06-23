@@ -37,15 +37,15 @@ class ExtraDataV1PricerServiceTest {
       0.25,
       0.5,
       0.75,
-      0.9
+      0.9,
     ),
     baseFeePerBlobGas = listOf(100, 110, 120, 130, 140).map { it.toULong() },
     blobGasUsedRatio = listOf(
       0.25,
       0.5,
       0.75,
-      0.9
-    )
+      0.9,
+    ),
   )
 
   @Test
@@ -69,10 +69,10 @@ class ExtraDataV1PricerServiceTest {
     val boundableFeeCalculator = MinerExtraDataV1CalculatorImpl(
       MinerExtraDataV1CalculatorImpl.Config(
         defaultFixedCost,
-        defaultEthGasPriceMultiplier
+        defaultEthGasPriceMultiplier,
       ),
       variableFeesCalculator = mockVariableFeesCalculator,
-      legacyFeesCalculator = mockLegacyFeesCalculator
+      legacyFeesCalculator = mockLegacyFeesCalculator,
     )
     val mockExtraDataUpdater = mock<ExtraDataUpdater> {
       on { updateMinerExtraData(any()) } doAnswer { SafeFuture.completedFuture(Unit) }
@@ -82,20 +82,26 @@ class ExtraDataV1PricerServiceTest {
         pollingInterval = pollingInterval,
         vertx = vertx,
         feesFetcher = mockFeesFetcher,
-        minerExtraDataCalculatorImpl = boundableFeeCalculator,
-        extraDataUpdater = mockExtraDataUpdater
+        minerExtraDataCalculator = boundableFeeCalculator,
+        extraDataUpdater = mockExtraDataUpdater,
       )
 
     val expectedExtraData = MinerExtraDataV1(
       defaultFixedCost,
       expectedVariableFees.toKWei().toUInt(),
-      expectedEthGasPrice.toKWei().toUInt()
+      expectedEthGasPrice.toKWei().toUInt(),
     )
-    monitor.start().thenApply {
-      vertx.setTimer(pollingInterval.inWholeMilliseconds * 2) {
+
+    // Start the service
+    monitor.start().thenAccept { _ ->
+      // Wait for a reasonable amount of time to ensure polling executes at least once
+      // Use 5x the polling interval to ensure enough time for the action to complete
+      vertx.setTimer(pollingInterval.inWholeMilliseconds * 5) {
         testContext
           .verify {
+            // Stop the service
             monitor.stop()
+            // Verify the mocks were called as expected
             verify(mockFeesFetcher, atLeastOnce()).getL1EthGasPriceData()
             verify(mockVariableFeesCalculator, atLeastOnce()).calculateFees(feeHistory)
             verify(mockLegacyFeesCalculator, atLeastOnce()).calculateFees(feeHistory)

@@ -1,5 +1,9 @@
 name: postman-and-SDK-testing
 
+permissions:
+  contents: read
+  actions: read
+
 on:
   workflow_call:
 
@@ -20,7 +24,7 @@ jobs:
 
       - name: Run tests and generate coverage report
         env:
-          NATIVE_LIBS_RELEASE_TAG: blob-libs-v1.0.1
+          NATIVE_LIBS_RELEASE_TAG: blob-libs-v1.2.0
         run: |
           pnpm run -F ./ts-libs/linea-native-libs build;
           pnpm run -F ./sdk build;

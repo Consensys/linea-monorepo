@@ -1,7 +1,7 @@
 package net.consensys.zkevm.ethereum.submission
 
-import build.linea.contract.l1.ContractVersionProvider
-import build.linea.contract.l1.LineaContractVersion
+import linea.contract.l1.ContractVersionProvider
+import linea.contract.l1.LineaContractVersion
 import linea.domain.BlockInterval
 import net.consensys.linea.async.AsyncFilter
 import org.apache.logging.log4j.LogManager
@@ -12,7 +12,7 @@ class ContractUpgradeSubmissionLatchFilter<T : BlockInterval>(
   private val l2SwitchBlockNumber: ULong? = null,
   private val contractVersionProvider: ContractVersionProvider<LineaContractVersion>,
   private val currentContractVersion: LineaContractVersion,
-  private val expectedNewContractVersion: LineaContractVersion
+  private val expectedNewContractVersion: LineaContractVersion,
 ) : AsyncFilter<T> {
   private val log = LogManager.getLogger(this::class.java)
   private val latchEnabled = AtomicBoolean(false)
@@ -35,7 +35,7 @@ class ContractUpgradeSubmissionLatchFilter<T : BlockInterval>(
               l2SwitchBlockNumber,
               items.firstOrNull()?.intervalString(),
               contractVersion,
-              expectedNewContractVersion
+              expectedNewContractVersion,
             )
           }
           blobs
@@ -48,7 +48,7 @@ class ContractUpgradeSubmissionLatchFilter<T : BlockInterval>(
               l2SwitchBlockNumber,
               items.firstOrNull()?.intervalString(),
               contractVersion,
-              expectedNewContractVersion
+              expectedNewContractVersion,
             )
           }
           items

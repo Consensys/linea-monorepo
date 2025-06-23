@@ -11,9 +11,9 @@ Private configuration variables are store on GitHub Secrets.
 ### Get a Frontend Tag
 
 - Retrieve an existing tag.
-  - Get a Tag from [GitHub Actions](https://github.com/Consensys/zkevm-monorepo/actions) on `Bridge UI Build and Publish` job, `Set Docker Tag` action.
+  - Get a Tag from [GitHub Actions](https://github.com/Consensys/linea-monorepo/actions) on `Bridge UI Build and Publish` job, `Set Docker Tag` action.
 - Or create a new tag.
-  - Create a PR and merge the last version to develop branch, and get a Tag from [GitHub Actions](https://github.com/Consensys/zkevm-monorepo/actions) on `Bridge UI Build and Publish` job, `Set Docker Tag` action.
+  - Create a PR and merge the last version to develop branch, and get a Tag from [GitHub Actions](https://github.com/Consensys/linea-monorepo/actions) on `Bridge UI Build and Publish` job, `Set Docker Tag` action.
 
 Example:
 
@@ -95,13 +95,13 @@ cp .env.template .env
 2. Install packages:
 
 ```shell
-npm i
+pnpm i
 ```
 
 3. Start the development server, execute:
 
 ```shell
-npm run dev
+pnpm dev
 ```
 
 Frontend should be available at: http://localhost:3000

@@ -23,7 +23,7 @@ repositories {
   maven {
     url "https://artifacts.consensys.net/public/linea-besu/maven/"
     content {
-      includeGroupAndSubgroups('io.consensys')
+      includeGroupAndSubgroups('org.hyperledger')
     }
   }
   maven {

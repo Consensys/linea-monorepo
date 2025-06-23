@@ -1,6 +1,9 @@
 package execution
 
 import (
+	"fmt"
+	"path/filepath"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
@@ -8,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/config"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
@@ -19,10 +23,13 @@ type Witness struct {
 }
 
 func Prove(cfg *config.Config, req *Request, large bool) (*Response, error) {
-	traces := &cfg.TracesLimits
-	if large {
-		traces = &cfg.TracesLimitsLarge
-	}
+
+	// Set MonitorParams before any proving happens
+	profiling.SetMonitorParams(cfg)
+
+	// This instructs the [exit] package to actually exit when [OnLimitOverflow]
+	// or [OnSatisfiedConstraints] are called.
+	exit.ActivateExitOnIssue()
 
 	var resp Response
 
@@ -44,8 +51,8 @@ func Prove(cfg *config.Config, req *Request, large bool) (*Response, error) {
 				// - NewFromString can panic
 				out.Proof, out.VerifyingKeyShaSum = mustProveAndPass(
 					cfg,
-					traces,
 					NewWitness(cfg, req, &out),
+					large,
 				)
 
 				out.Version = cfg.Version
@@ -71,9 +78,14 @@ func Prove(cfg *config.Config, req *Request, large bool) (*Response, error) {
 // when calling it twice.
 func mustProveAndPass(
 	cfg *config.Config,
-	traces *config.TracesLimits,
 	w *Witness,
+	large bool,
 ) (proofHexString string, vkeyShaSum string) {
+
+	traces := &cfg.TracesLimits
+	if large {
+		traces = &cfg.TracesLimitsLarge
+	}
 
 	switch cfg.Execution.ProverMode {
 	case config.ProverModeDev, config.ProverModePartial:
@@ -115,8 +127,21 @@ func mustProveAndPass(
 			errSetup    error
 			chSetupDone = make(chan struct{})
 		)
+
+		circuitID := circuits.ExecutionCircuitID
+		if large {
+			circuitID = circuits.ExecutionLargeCircuitID
+		}
+
+		// Sanity-check trace limits checksum between setup and config
+		if err := SanityCheckTracesChecksum(circuitID, traces, cfg); err != nil {
+			utils.Panic("traces checksum in the setup manifest does not match the one in the config: %v", err)
+		}
+
+		// Start loading the setup
 		go func() {
-			setup, errSetup = circuits.LoadSetup(cfg, circuits.ExecutionCircuitID)
+			logrus.Infof("Loading setup - circuitID: %s", circuitID)
+			setup, errSetup = circuits.LoadSetup(cfg, circuitID)
 			close(chSetupDone)
 		}()
 
@@ -126,28 +151,14 @@ func mustProveAndPass(
 
 		logrus.Info("Sanity-checking the inner-proof")
 		if err := fullZkEvm.VerifyInner(proof); err != nil {
-			utils.Panic("The prover did not pass: %v", err)
+			logrus.Errorf("The sanity-check of the inner-proof did not pass: %v", err)
+			exit.OnUnsatisfiedConstraints()
 		}
 
 		// wait for setup to be loaded
 		<-chSetupDone
 		if errSetup != nil {
 			utils.Panic("could not load setup: %v", errSetup)
-		}
-
-		// ensure the checksum for the traces in the setup matches the one in the config
-		setupCfgChecksum, err := setup.Manifest.GetString("cfg_checksum")
-		if err != nil {
-			utils.Panic("could not get the traces checksum from the setup manifest: %v", err)
-		}
-
-		if setupCfgChecksum != traces.Checksum() {
-			// This check is failing on prod but works locally.
-			// @alex: since this is a setup-related constraint, it would likely be
-			// more interesting to directly include that information in the setup
-			// instead of the config. That way we are guaranteed to not pass the
-			// wrong value at runtime.
-			utils.Panic("traces checksum in the setup manifest does not match the one in the config")
 		}
 
 		// TODO: implements the collection of the functional inputs from the prover response
@@ -182,4 +193,32 @@ func mustProveAndPass(
 	default:
 		panic("not implemented")
 	}
+}
+
+// SanityCheckTraceChecksum ensures the checksum for the traces in the setup matches the one in the config
+func SanityCheckTracesChecksum(circuitID circuits.CircuitID, traces *config.TracesLimits, cfg *config.Config) error {
+
+	// read setup manifest
+	manifestPath := filepath.Join(cfg.PathForSetup(string(circuitID)), config.ManifestFileName)
+	manifest, err := circuits.ReadSetupManifest(manifestPath)
+	if err != nil {
+		utils.Panic("could not read the setup manifest: %v", err)
+	}
+
+	// read manifest traces checksum
+	setupCfgChecksum, err := manifest.GetString("cfg_checksum")
+	if err != nil {
+		utils.Panic("could not get the traces checksum from the setup manifest: %v", err)
+	}
+
+	if setupCfgChecksum != traces.Checksum() {
+		// This check is failing on prod but works locally.
+		// @alex: since this is a setup-related constraint, it would likely be
+		// more interesting to directly include that information in the setup
+		// instead of the config. That way we are guaranteed to not pass the
+		// wrong value at runtime.
+		return fmt.Errorf("setup (%s): '%s' vs config: '%s'", circuitID, setupCfgChecksum, traces.Checksum())
+	}
+
+	return nil
 }
