@@ -26,11 +26,6 @@ export function etherToWei(amount: string): bigint {
   return ethers.parseEther(amount.toString());
 }
 
-export function readJsonFile(filePath: string): unknown {
-  const data = fs.readFileSync(filePath, "utf8");
-  return JSON.parse(data);
-}
-
 export const wait = (timeout: number) => new Promise((resolve) => setTimeout(resolve, timeout));
 
 export function increaseDate(currentDate: Date, seconds: number): Date {
