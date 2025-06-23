@@ -10,12 +10,21 @@ package maru.app
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.unmarshalPrivateKey
+import io.vertx.core.Vertx
 import io.vertx.micrometer.backends.BackendRegistries
 import java.nio.file.Path
 import java.time.Clock
+import linea.contract.l1.LineaRollupSmartContractClientReadOnly
+import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
+import linea.kotlin.encodeHex
+import linea.web3j.createWeb3jHttpClient
+import linea.web3j.ethapi.createEthApiClient
 import maru.config.MaruConfig
 import maru.config.P2P
 import maru.consensus.ForksSchedule
+import maru.consensus.state.FinalizationProvider
+import maru.consensus.state.InstantFinalizationProvider
+import maru.finalization.LineaFinalizationProvider
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkImpl
@@ -35,6 +44,8 @@ class MaruAppFactory {
     beaconGenesisConfig: ForksSchedule,
     clock: Clock = Clock.systemUTC(),
     overridingP2PNetwork: P2PNetwork? = null,
+    overridingFinalizationProvider: FinalizationProvider? = null,
+    overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
   ): MaruApp {
     val privateKey = getOrGeneratePrivateKey(config.persistence.privateKeyPath)
     val vertx =
@@ -58,6 +69,10 @@ class MaruAppFactory {
         chainId = beaconGenesisConfig.chainId,
         metricsFacade = metricsFacade,
       )
+    val finalizationProvider =
+      overridingFinalizationProvider
+        ?: setupFinalizationProvider(config, overridingLineaContractClient, vertx)
+
     val maru =
       MaruApp(
         config = config,
@@ -65,6 +80,7 @@ class MaruAppFactory {
         clock = clock,
         p2pNetwork = p2pNetwork,
         privateKeyProvider = { privateKey },
+        finalizationProvider = finalizationProvider,
         metricsFacade = metricsFacade,
         vertx = vertx,
       )
@@ -74,6 +90,43 @@ class MaruAppFactory {
 
   companion object {
     private val log = LogManager.getLogger(MaruApp::class.java)
+
+    fun setupFinalizationProvider(
+      config: MaruConfig,
+      overridingLineaContractClient: LineaRollupSmartContractClientReadOnly?,
+      vertx: Vertx,
+    ): FinalizationProvider =
+      config.linea
+        ?.let { lineaConfig ->
+          val contractClient =
+            overridingLineaContractClient
+              ?: Web3JLineaRollupSmartContractClientReadOnly(
+                web3j =
+                  createWeb3jHttpClient(
+                    rpcUrl = lineaConfig.l1EthApi.endpoint.toString(),
+                    log = LogManager.getLogger("clients.l1.linea"),
+                  ),
+                contractAddress = lineaConfig.contractAddress.encodeHex(),
+                log = LogManager.getLogger("clients.l1.linea"),
+              )
+          LineaFinalizationProvider(
+            lineaContract = contractClient,
+            l2EthApi =
+              createEthApiClient(
+                rpcUrl =
+                  config.validatorElNode.ethApiEndpoint.endpoint
+                    .toString(),
+                log = LogManager.getLogger("clients.l2.eth.el"),
+                // FIXME: retries break the tests atm
+                // we cannot retry atm, because eth_getBlockByNumber finalized will fail and will retry in loop
+                // need to implement custom retry mechanism
+                requestRetryConfig = null,
+                vertx = null,
+              ),
+            pollingUpdateInterval = lineaConfig.l1PollingInterval,
+            l1HighestBlock = lineaConfig.l1HighestBlockTag,
+          )
+        } ?: InstantFinalizationProvider
 
     fun setupP2PNetwork(
       p2pConfig: P2P?,

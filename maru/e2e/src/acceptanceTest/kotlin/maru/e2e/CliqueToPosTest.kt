@@ -28,6 +28,7 @@ import maru.config.ApiEndpointConfig
 import maru.config.consensus.ElFork
 import maru.consensus.NewBlockHandler
 import maru.consensus.blockimport.FollowerBeaconBlockImporter
+import maru.consensus.state.InstantFinalizationProvider
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
@@ -244,6 +245,7 @@ class CliqueToPosTest {
         ElFork.Prague,
         TestEnvironment.testMetricsFacade,
       ),
+      InstantFinalizationProvider,
     )
 
   private fun waitTillTimestamp(timestamp: Long) {

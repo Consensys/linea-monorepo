@@ -10,8 +10,7 @@ package maru.consensus.qbft
 
 import kotlin.time.Duration
 import maru.consensus.qbft.adapters.toBeaconBlockHeader
-import maru.consensus.state.FinalizationState
-import maru.core.BeaconBlockBody
+import maru.consensus.state.FinalizationProvider
 import maru.core.Validator
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
@@ -30,7 +29,7 @@ import org.hyperledger.besu.crypto.SECPSignature
 class EagerQbftBlockCreator(
   private val manager: ExecutionLayerManager,
   private val delegate: QbftBlockCreator,
-  private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
+  private val finalizationStateProvider: FinalizationProvider,
   private val blockBuilderIdentity: Validator,
   private val beaconChain: BeaconChain,
   private val config: Config,

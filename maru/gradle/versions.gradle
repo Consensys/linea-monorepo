@@ -164,6 +164,12 @@ dependencyManagement {
     dependency "build.linea.internal:vertx-helper:$lineaPackagesVersion"
     dependency "build.linea.internal:json-rpc:$lineaPackagesVersion"
     dependency "build.linea.internal:futures:$lineaPackagesVersion"
-
+    dependency "build.linea.internal:core:$lineaPackagesVersion"
+    dependency "build.linea.internal:kotlin:$lineaPackagesVersion"
+    dependency "build.linea.internal:domain-models:$lineaPackagesVersion"
+    dependency "build.linea.internal:interfaces:$lineaPackagesVersion"
+    dependency "build.linea.internal:linea-contract-clients:$lineaPackagesVersion"
+    dependency "build.linea.internal:web3j-extensions:$lineaPackagesVersion"
+    dependency "build.linea.internal:linea-contract-clients$lineaPackagesVersion:test-fixtures"
   }
 }

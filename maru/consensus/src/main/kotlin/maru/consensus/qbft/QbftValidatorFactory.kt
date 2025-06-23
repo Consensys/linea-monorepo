@@ -33,11 +33,9 @@ import maru.consensus.qbft.adapters.QbftValidatorModeTransitionLoggerAdapter
 import maru.consensus.qbft.adapters.QbftValidatorProviderAdapter
 import maru.consensus.qbft.adapters.toSealedBeaconBlock
 import maru.consensus.state.FinalizationProvider
-import maru.consensus.state.FinalizationState
 import maru.consensus.state.StateTransition
 import maru.consensus.state.StateTransitionImpl
 import maru.consensus.validation.BeaconBlockValidatorFactoryImpl
-import maru.core.BeaconBlockBody
 import maru.core.BeaconState
 import maru.core.Protocol
 import maru.core.Validator
@@ -106,6 +104,7 @@ class QbftValidatorFactory(
         proposerSelector = proposerSelector,
         localNodeIdentity = localValidator,
         stateTransition = stateTransition,
+        finalizationStateProvider = finalizationStateProvider,
       )
 
     val qbftBlockCreatorFactory =
@@ -236,11 +235,8 @@ class QbftValidatorFactory(
     localNodeIdentity: Validator,
     beaconChain: BeaconChain,
     stateTransition: StateTransition,
+    finalizationStateProvider: FinalizationProvider,
   ): SealedBeaconBlockImporter<ValidationResult> {
-    val finalizationStateProvider = { beaconBlockBody: BeaconBlockBody ->
-      val hash = beaconBlockBody.executionPayload.blockHash
-      FinalizationState(hash, hash)
-    }
     val shouldBuildNextBlock =
       { beaconState: BeaconState, roundIdentifier: ConsensusRoundIdentifier ->
         val nextProposerAddress =

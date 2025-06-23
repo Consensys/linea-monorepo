@@ -11,7 +11,6 @@ package maru.consensus.blockimport
 import maru.consensus.NewBlockHandler
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.state.FinalizationProvider
-import maru.consensus.state.InstantFinalizationProvider
 import maru.core.BeaconBlock
 import maru.core.BeaconState
 import maru.core.Validator
@@ -39,7 +38,7 @@ class FollowerBeaconBlockImporter(
   companion object {
     fun create(
       executionLayerEngineApiClient: ExecutionLayerEngineApiClient,
-      finalizationStateProvider: FinalizationProvider = InstantFinalizationProvider,
+      finalizationStateProvider: FinalizationProvider,
     ): NewBlockHandler<ValidationResult> {
       val executionLayerManager =
         JsonRpcExecutionLayerManager(

@@ -14,6 +14,7 @@
             level="INFO"/>
 <!--    <Logger name="org.hyperledger.besu.consensus.merge.blockcreation.MergeCoordinator"-->
 <!--            level="TRACE"/>-->
+    <Logger name="clients.l2.eth" level="DEBUG"/>
     <Logger name="org.hyperledger.besu" level="INFO"/>
     <Logger name="org.hyperledger.besu.consensus.qbft" level="TRACE"/>
     <Root level="INFO" additivity="false">
