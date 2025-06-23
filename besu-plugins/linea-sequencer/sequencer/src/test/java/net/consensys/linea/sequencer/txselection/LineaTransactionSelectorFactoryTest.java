@@ -1,16 +1,10 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package net.consensys.linea.sequencer.txselection;
 
@@ -28,10 +22,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
-
 import net.consensys.linea.bundles.BundlePoolService;
 import net.consensys.linea.bundles.LineaLimitedBundlePool;
 import net.consensys.linea.bundles.TransactionBundle;
@@ -74,7 +66,6 @@ class LineaTransactionSelectorFactoryTest {
   private LineaTransactionSelectorConfiguration mockTxSelectorConfiguration;
   private LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration;
   private LineaProfitabilityConfiguration mockProfitabilityConfiguration;
-  private Map<String, Integer> lineCountLimits;
   private BesuEvents mockEvents;
   private LineaLimitedBundlePool bundlePool;
   private BundlePoolService mockBundlePool;
@@ -99,9 +90,11 @@ class LineaTransactionSelectorFactoryTest {
     lineaTracerConfiguration =
         LineaTracerConfiguration.builder()
             .moduleLimitsFilePath(lineLimitsConfPath.toString())
+            .moduleLimitsMap(
+                new HashMap<>(
+                    ModuleLineCountValidator.createLimitModules(lineLimitsConfPath.toString())))
+            .isLimitless(false)
             .build();
-    lineCountLimits =
-        new HashMap<>(ModuleLineCountValidator.createLimitModules(lineaTracerConfiguration));
 
     mockBlockchainService = mock(BlockchainService.class);
     when(mockBlockchainService.getChainId()).thenReturn(Optional.of(BigInteger.ONE));
@@ -120,7 +113,6 @@ class LineaTransactionSelectorFactoryTest {
             l1L2BridgeConfiguration,
             mockProfitabilityConfiguration,
             lineaTracerConfiguration,
-            lineCountLimits,
             Optional.empty(),
             Optional.empty(),
             bundlePool);
