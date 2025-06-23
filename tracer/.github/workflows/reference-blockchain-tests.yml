@@ -124,7 +124,7 @@ jobs:
           JSON_REPORT: ${{ github.workspace }}/tmp/${{ steps.extract_branch.outputs.branch }}/BlockchainReferenceTestOutcome.json
 
       - name: Failure Notification
-        if: github.ref == 'refs/head/arith-dev' && (failure() || cancelled())
+        if: github.ref == 'refs/heads/arith-dev' && (failure() || cancelled())
         uses: slackapi/slack-github-action@v2.0.0
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}

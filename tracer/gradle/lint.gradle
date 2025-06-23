@@ -40,7 +40,7 @@ spotless {
   java {
     // This path needs to be relative to each project
     target 'src/**/*.java'
-    targetExclude '**/Trace*.java', '**/GlobalConstants.java'
+    targetExclude '**/Trace*.java', '**/GlobalConstants.java', '**/BlockchainReferenceTest_*.java', '**/GeneralStateReferenceTest_*'
         
     removeUnusedImports()
     googleJavaFormat('1.17.0')
