@@ -20,6 +20,6 @@ eth-api-endpoint = { endpoint = "http://sequencer:8545" }
 "follower-geth" = { endpoint = "http://follower-geth:8551", jwt-secret-path = "../docker/jwt" }
 
 [observability-options]
-port = 8080
+port = 9090
 jvm-metrics-enabled = true
 prometheus-metrics-enabled = true
