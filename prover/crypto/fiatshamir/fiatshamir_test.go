@@ -50,7 +50,7 @@ func TestFiatShamirRandomVec(t *testing.T) {
 
 			if testCase.ShouldUpdate {
 				errStr := fmt.Sprintf("the state was not updated (%v)", oldState.String())
-				if !oldState.Equal(&newState) {
+				if oldState.Equal(&newState) {
 					t.Fatal(errStr)
 				}
 			} else {

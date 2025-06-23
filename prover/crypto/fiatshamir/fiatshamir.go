@@ -118,10 +118,6 @@ func RandomManyIntegers(h hash.StateStorer, num, upperBound int) []int {
 		utils.Panic("Expected a power of two but got %v", upperBound)
 	}
 
-	if num == 0 {
-		return []int{}
-	}
-
 	logTwoUpperBound := -1
 	tmp := upperBound
 	for tmp != 0 {
@@ -129,32 +125,35 @@ func RandomManyIntegers(h hash.StateStorer, num, upperBound int) []int {
 		tmp >>= 1
 	}
 
-	// number of field elmts per hash
-	maxNumChallsPerDigest := (field.Bits - 1) / int(logTwoUpperBound)
+	numChallengesPerDigest := (field.Bits - 1) / int(logTwoUpperBound)
 
-	res := make([]int, 0, num)
+	res := make([]int, num)
 
-	for {
+	var i int
+	for i < num {
 		digest := h.Sum(nil)
 		buffer := NewBitReader(digest, field.Bits-1)
 
-		for i := 0; i < maxNumChallsPerDigest; i++ {
-			// Stopping condition, we computed enough challenges
-			if len(res) >= num {
-				return res
+		for j := 0; j < numChallengesPerDigest; j++ {
+			if i > num {
+				break
 			}
-
-			newChall, err := buffer.ReadInt(int(logTwoUpperBound))
+			curChallenge, err := buffer.ReadInt(int(logTwoUpperBound))
 			if err != nil {
 				utils.Panic("could not instantiate the buffer for a single field element")
 			}
-			res = append(res, int(newChall)%upperBound)
+			res[i] = curChallenge % upperBound
+			i++
 		}
-
-		if len(res) >= num {
-			return res
-		}
-
-		UpdateExt(h, fext.NewElement(0, 0, 0, 0)) // ??
+		safeguardUpdate(h)
 	}
+
+	if num > 0 {
+		safeguardUpdate(h)
+	}
+	return res
+}
+
+func safeguardUpdate(h hash.StateStorer) {
+	Update(h, field.NewElement(0))
 }
