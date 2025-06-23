@@ -27,7 +27,3 @@ services:
       file: compose-spec-l2-services.yml
       service: transaction-exclusion-api
 
-  transfer-bot:
-    extends:
-      file: compose-spec-l2-services.yml
-      service: transfer-bot
