@@ -2,19 +2,11 @@ package nonce
 
 import "github.com/consensys/gnark/frontend"
 
-// To do: We will only use txType == 0x02 (Dynamic Fee Transactions)
-// Legacy and AccessList can be removed
+// This function is used to extract the nonce from the raw transaction
+// Tx type is the Dynamic Fee Transactions (EIP-1559)
 func ExtractTxNonceFromRLP(api frontend.API, rawTx []frontend.Variable) frontend.Variable {
-	// Extract the transaction type (first byte of rawTx)
-	txType := rawTx[0]
-
-	// Check if the transaction is typed (Access List or Dynamic Fee)
-	isAccessList := api.IsZero(api.Sub(txType, frontend.Variable(0x01))) // txType == 0x01
-	isDynamicFee := api.IsZero(api.Sub(txType, frontend.Variable(0x02))) // txType == 0x02
-	isTyped := api.Or(isAccessList, isDynamicFee)
-
-	// Directly access the nonce field based on the transaction type
-	firstByte := api.Select(isTyped, rawTx[1], rawTx[0]) // Use hardcoded indices (1 for typed, 0 for legacy)
+	// Directly access the nonce field (first byte of rawTx)
+	firstByte := rawTx[0]
 
 	// Check if the nonce is a single-byte value
 	isSingleByte := api.IsZero(api.Sub(frontend.Variable(0x80), firstByte)) // 1 if firstByte < 0x80
