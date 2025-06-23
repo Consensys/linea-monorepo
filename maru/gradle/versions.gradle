@@ -157,7 +157,7 @@ dependencyManagement {
       mavenBom "org.slf4j:slf4j-bom:2.0.16"
     }
 
-    def lineaPackagesVersion = "0.0.1-v20250610200556"
+    def lineaPackagesVersion = System.getenv("LINEA_LIBS_VERSION") ?: "0.0.1-v20250623134044"
 
     dependency "build.linea.internal:metrics:$lineaPackagesVersion"
     dependency "build.linea.internal:micrometer:$lineaPackagesVersion"

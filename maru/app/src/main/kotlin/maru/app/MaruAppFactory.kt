@@ -117,11 +117,8 @@ class MaruAppFactory {
                   config.validatorElNode.ethApiEndpoint.endpoint
                     .toString(),
                 log = LogManager.getLogger("clients.l2.eth.el"),
-                // FIXME: retries break the tests atm
-                // we cannot retry atm, because eth_getBlockByNumber finalized will fail and will retry in loop
-                // need to implement custom retry mechanism
-                requestRetryConfig = null,
-                vertx = null,
+                requestRetryConfig = config.validatorElNode.ethApiEndpoint.requestRetries,
+                vertx = vertx,
               ),
             pollingUpdateInterval = lineaConfig.l1PollingInterval,
             l1HighestBlock = lineaConfig.l1HighestBlockTag,
