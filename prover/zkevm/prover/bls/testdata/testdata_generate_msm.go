@@ -231,7 +231,7 @@ func mainMsm() error {
 		return fmt.Errorf("write headers: %w", err)
 	}
 	var id int
-	for msmLength := 1; msmLength <= 4; msmLength++ {
+	for msmLength := 1; msmLength <= maxNbMsmInputs; msmLength++ {
 		for _, tc := range generateMsmInputCases[bls12381.G1Affine](msmLength) {
 			if err := tc.WriteCSV(w, id); err != nil {
 				return fmt.Errorf("write csv: %w", err)
@@ -250,7 +250,7 @@ func mainMsm() error {
 		return fmt.Errorf("write headers: %w", err)
 	}
 	id = 0
-	for msmLength := 1; msmLength <= 4; msmLength++ {
+	for msmLength := 1; msmLength <= maxNbMsmInputs; msmLength++ {
 		for _, tc := range generateMsmInputCases[bls12381.G2Affine](msmLength) {
 			if err := tc.WriteCSV(w, id); err != nil {
 				return fmt.Errorf("write csv: %w", err)

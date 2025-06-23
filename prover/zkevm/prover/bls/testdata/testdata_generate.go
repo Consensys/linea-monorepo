@@ -12,24 +12,11 @@ import (
 )
 
 type mapInputType int
-type pairInputType int
 
 const (
 	mapTrivial    mapInputType = iota // 0
 	mapInRange                        // element is in range of the field
 	mapOutOfRange                     // element is not in range of the field
-)
-
-const (
-	pairFullTrivial            pairInputType = iota // (0, 0)
-	pairLeftTrivialValid                            // (0, Q)
-	pairLeftTrivialInvalid                          // (0, Q') where Q' is not in G2
-	pairRightTrivialValid                           // (P, 0)
-	pairRightTrivialInvalid                         // (P', 0) where P' is not in G1
-	pairNonTrivialLeftInvalid                       // (P, Q) where P is not in G1
-	pairNonTrivialRightInvalid                      // (P, Q) where Q is not in G2
-	pairFullInvalid                                 // (P, Q) where P and Q not in G1 and G2 respectively
-	pairNonTrivial                                  // (P, Q)
 )
 
 type affine interface {

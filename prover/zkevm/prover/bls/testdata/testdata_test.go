@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
@@ -73,21 +72,5 @@ func TestGenerators(t *testing.T) {
 	}
 	if q.IsInfinity() {
 		t.Errorf("generated G2 point is infinity: %s", q.String())
-	}
-}
-
-func TestGenerateAdd(t *testing.T) {
-	tcs := generateAddInputCases[bls12381.G1Affine]()
-	for i, tc := range tcs {
-		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			fmt.Printf("test case: %#v\n", tc)
-		})
-	}
-
-	tcs2 := generateAddInputCases[bls12381.G2Affine]()
-	for i, tc := range tcs2 {
-		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			fmt.Printf("test case: %#v\n", tc)
-		})
 	}
 }

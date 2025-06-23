@@ -3,10 +3,16 @@ package main
 import "log/slog"
 
 const (
-	path_add_g1 = "bls_g1_add_input.csv"
-	path_add_g2 = "bls_g2_add_input.csv"
-	path_msm_g1 = "bls_g1_msm_inputs.csv"
-	path_msm_g2 = "bls_g2_msm_inputs.csv"
+	path_add_g1  = "bls_g1_add_input.csv"
+	path_add_g2  = "bls_g2_add_input.csv"
+	path_msm_g1  = "bls_g1_msm_inputs.csv"
+	path_msm_g2  = "bls_g2_msm_inputs.csv"
+	path_pairing = "bls_pairing_inputs.csv"
+)
+
+const (
+	maxNbPairingInputs = 4
+	maxNbMsmInputs     = 2
 )
 
 //go:generate go run .
@@ -22,6 +28,11 @@ func main() {
 	logger.Info("Generating MAP test data", "path_g1", path_msm_g1, "path_g2", path_msm_g2)
 	if err := mainMsm(); err != nil {
 		logger.Error("Failed to generate MSM test data", "error", err)
+		return
+	}
+	logger.Info("Generating PAIRING test data", "path_pairing", path_pairing)
+	if err := mainPairing(); err != nil {
+		logger.Error("Failed to generate PAIRING test data", "error", err)
 		return
 	}
 }
