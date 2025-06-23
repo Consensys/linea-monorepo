@@ -66,7 +66,6 @@ abstract contract L2MessageServiceBase is
 
     nextMessageNumber = 1;
 
-    _messageSender = DEFAULT_SENDER_ADDRESS;
     minimumFeeInWei = 0.0001 ether;
   }
 
