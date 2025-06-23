@@ -2,6 +2,7 @@ package fiatshamir
 
 import (
 	"github.com/consensys/gnark-crypto/hash"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -53,6 +54,18 @@ func UpdateVec(h hash.StateStorer, vecs ...[]field.Element) {
 	for i := range vecs {
 		Update(h, vecs[i]...)
 	}
+}
+
+// UpdateSV updates the FS state with a smart-vector. No-op if the smart-vector
+// has a length of zero.
+func UpdateSV(h hash.StateStorer, sv smartvectors.SmartVector) {
+	if sv.Len() == 0 {
+		return
+	}
+
+	vec := make([]field.Element, sv.Len())
+	sv.WriteInSlice(vec)
+	Update(h, vec...)
 }
 
 // RandomField generates and returns a single field element from the Fiat-Shamir

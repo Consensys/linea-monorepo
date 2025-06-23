@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/assert"
@@ -93,13 +94,13 @@ func TestBatchUpdates(t *testing.T) {
 		assert.Equal(t, expectedVal.String(), actualValue.String())
 	})
 
-	// t.Run("for a smart-vector", func(t *testing.T) {
-	// 	sv := smartvectors.RightPadded(vector.ForTest(2, 2), field.NewElement(1), 3)
-	// 	fs := poseidon2.NewMerkleDamgardHasher()
-	// 	UpdateSV(fs, sv)
-	// 	actualValue := RandomFext(fs)
-	// 	assert.Equal(t, expectedVal.String(), actualValue.String())
-	// })
+	t.Run("for a smart-vector", func(t *testing.T) {
+		sv := smartvectors.RightPadded(vector.ForTest(2, 2), field.NewElement(1), 3)
+		fs := poseidon2.NewMerkleDamgardHasher()
+		UpdateSV(fs, sv)
+		actualValue := RandomFext(fs)
+		assert.Equal(t, expectedVal.String(), actualValue.String())
+	})
 
 }
 
