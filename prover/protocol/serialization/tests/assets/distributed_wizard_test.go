@@ -37,26 +37,26 @@ func TestDistributedWizard(t *testing.T) {
 	dist := GetDistributed()
 
 	t.Run("Bootstrapper", func(t *testing.T) {
-		runSerdeTest(t, dist.Bootstrapper, "DistributedWizard.Bootstrapper", false)
+		runSerdeTest(t, dist.Bootstrapper, "DistributedWizard.Bootstrapper", true)
 	})
 
 	t.Run("Discoverer", func(t *testing.T) {
-		runSerdeTest(t, dist.Disc, "DistributedWizard.Discoverer", false)
+		runSerdeTest(t, dist.Disc, "DistributedWizard.Discoverer", true)
 	})
 
 	t.Run("CompiledDefault", func(t *testing.T) {
-		runSerdeTest(t, dist.CompiledDefault, "DistributedWizard.CompiledDefault", false)
+		runSerdeTest(t, dist.CompiledDefault, "DistributedWizard.CompiledDefault", true)
 	})
 
 	for i := range dist.CompiledGLs {
 		t.Run(fmt.Sprintf("CompiledGL-%v", i), func(t *testing.T) {
-			runSerdeTest(t, dist.CompiledGLs[i], fmt.Sprintf("DistributedWizard.CompiledGL-%v", i), false)
+			runSerdeTest(t, dist.CompiledGLs[i], fmt.Sprintf("DistributedWizard.CompiledGL-%v", i), true)
 		})
 	}
 
 	for i := range dist.CompiledLPPs {
 		t.Run(fmt.Sprintf("CompiledLPP-%v", i), func(t *testing.T) {
-			runSerdeTest(t, dist.CompiledLPPs[i], fmt.Sprintf("DistributedWizard.CompiledLPP-%v", i), false)
+			runSerdeTest(t, dist.CompiledLPPs[i], fmt.Sprintf("DistributedWizard.CompiledLPP-%v", i), true)
 		})
 	}
 
@@ -65,5 +65,5 @@ func TestDistributedWizard(t *testing.T) {
 	dist = nil
 	runtime.GC()
 
-	runSerdeTest(t, cong, "DistributedWizard.CompiledConglomeration", false)
+	runSerdeTest(t, cong, "DistributedWizard.CompiledConglomeration", true)
 }

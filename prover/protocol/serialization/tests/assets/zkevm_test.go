@@ -68,5 +68,5 @@ func runSerdeTest(t *testing.T, input interface{}, name string, isSanityCheck bo
 }
 
 func TestSerdeZkEVM(t *testing.T) {
-	runSerdeTest(t, z, "ZkEVM", false)
+	runSerdeTest(t, z, "ZkEVM", true)
 }

@@ -466,7 +466,21 @@ func CompareExportedFields(a, b interface{}) bool {
 }
 
 func CompareExportedFieldsWithPath(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path string) bool {
-	a, b = normalizeInvalidValues(a, b)
+	// Handle invalid values
+	if !a.IsValid() || !b.IsValid() {
+		// Treat nil and zero values as equivalent
+		if !a.IsValid() && !b.IsValid() {
+			return true
+		}
+		if !a.IsValid() {
+			a = reflect.Zero(b.Type())
+		}
+		if !b.IsValid() {
+			b = reflect.Zero(a.Type())
+		}
+	}
+
+	// Type check after normalization of invalid values
 	if a.Type() != b.Type() {
 		logrus.Printf("Mismatch at %s: types differ (v1: %v, v2: %v, types: %v, %v)\n", path, a.Interface(), b.Interface(), a.Type(), b.Type())
 		return false
@@ -503,39 +517,30 @@ func CompareExportedFieldsWithPath(cachedPtrs map[uintptr]struct{}, a, b reflect
 	}
 }
 
-func normalizeInvalidValues(a, b reflect.Value) (reflect.Value, reflect.Value) {
-	if !a.IsValid() || !b.IsValid() {
-		// Treat nil and zero values as equivalent
-		if !a.IsValid() && !b.IsValid() {
-			return a, b
-		}
-		if !a.IsValid() {
-			a = reflect.Zero(b.Type())
-		}
-		if !b.IsValid() {
-			b = reflect.Zero(a.Type())
-		}
-	}
-	return a, b
-}
-
 func compareSymbolicExpressions(a, b reflect.Value, path string) bool {
 	ae := a.Interface().(*symbolic.Expression)
 	be := b.Interface().(*symbolic.Expression)
 
+	// If both nil, they are equal
+	if ae == nil && be == nil {
+		return true
+	}
+
+	// If only one is nil, they differ
 	if (ae == nil) != (be == nil) {
-		logrus.Printf("Mismatch at %s: one value is nil, the other is not\n", path)
+		logrus.Errorf("Mismatch at %s: one value is nil, the other is not\n", path)
 		return false
 	}
 
+	// Both non-nil, validate and compare
 	errA, errB := ae.Validate(), be.Validate()
 	if errA != nil || errB != nil {
-		logrus.Printf("One of the expressions is invalid: path=%v errA=%v, errB=%v\n", path, errA, errB)
+		logrus.Errorf("One of the expressions is invalid: path=%s errA=%v, errB=%v\n", path, errA, errB)
 		return false
 	}
 
 	if ae.ESHash != be.ESHash {
-		logrus.Printf("Mismatch at %s: hashes differ (v1: %v, v2: %v)\n", path, ae.ESHash.Text(16), be.ESHash.Text(16))
+		logrus.Errorf("Mismatch at %s: hashes differ (v1: %v, v2: %v)\n", path, ae.ESHash.Text(16), be.ESHash.Text(16))
 		return false
 	}
 
