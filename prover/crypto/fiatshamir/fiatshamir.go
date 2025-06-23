@@ -74,7 +74,7 @@ func RandomFext(h hash.StateStorer) fext.Element {
 	} else {
 		res.B0.A0.SetBytes(s)
 	}
-	UpdateExt(h, fext.NewElement(0, 0, 0, 0)) // ??
+	UpdateExt(h, fext.NewElement(0, 0, 0, 0)) // safefuard update
 	return res
 }
 
@@ -123,9 +123,10 @@ func RandomManyIntegers(h hash.StateStorer, num, upperBound int) []int {
 	}
 
 	logTwoUpperBound := -1
-	for upperBound != 0 {
+	tmp := upperBound
+	for tmp != 0 {
 		logTwoUpperBound++
-		upperBound >>= 1
+		tmp >>= 1
 	}
 
 	// number of field elmts per hash

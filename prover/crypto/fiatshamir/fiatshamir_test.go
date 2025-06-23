@@ -32,14 +32,16 @@ func TestFiatShamirRandomVec(t *testing.T) {
 
 			var oldState, newState field.Element
 
-			if err := oldState.SetBytesCanonical(fs.Sum(nil)); err != nil {
+			ss := fs.Sum(nil)
+			if err := oldState.SetBytesCanonical(ss[:4]); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
 			a := RandomManyIntegers(fs, testCase.NumIntegers, 1<<testCase.IntegerBitSize)
 			t.Logf("the generated vector= %v", a)
 
-			if err := newState.SetBytesCanonical(fs.Sum(nil)); err != nil {
+			ss = fs.Sum(nil)
+			if err := newState.SetBytesCanonical(ss[:4]); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
@@ -47,9 +49,15 @@ func TestFiatShamirRandomVec(t *testing.T) {
 			assert.NoError(t, errIfHasDuplicate(a...))
 
 			if testCase.ShouldUpdate {
-				assert.NotEqualf(t, oldState.String(), newState.String(), "the state was not updated (%v)", oldState.String())
+				errStr := fmt.Sprintf("the state was not updated (%v)", oldState.String())
+				if !oldState.Equal(&newState) {
+					t.Fatal(errStr)
+				}
 			} else {
-				assert.Equal(t, oldState.String(), newState.String(), "the state was updated")
+				errStr := "the state was updated"
+				if !oldState.Equal(&newState) {
+					t.Fatal(errStr)
+				}
 			}
 		})
 	}
