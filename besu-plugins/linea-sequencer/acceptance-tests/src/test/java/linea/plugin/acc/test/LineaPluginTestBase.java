@@ -1,16 +1,10 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 
 package linea.plugin.acc.test;
@@ -20,6 +14,9 @@ import static net.consensys.linea.metrics.LineaMetricCategory.SEQUENCER_PROFITAB
 import static net.consensys.linea.metrics.LineaMetricCategory.TX_POOL_PROFITABILITY;
 import static org.assertj.core.api.Assertions.*;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.net.URI;
@@ -36,10 +33,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import linea.plugin.acc.test.tests.web3j.generated.AcceptanceTestToken;
 import linea.plugin.acc.test.tests.web3j.generated.DummyAdder;
 import linea.plugin.acc.test.tests.web3j.generated.EcAdd;
@@ -98,6 +91,17 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
   public static final int BLOCK_PERIOD_SECONDS = 5;
   public static final CliqueOptions DEFAULT_LINEA_CLIQUE_OPTIONS =
       new CliqueOptions(BLOCK_PERIOD_SECONDS, CliqueOptions.DEFAULT.epochLength(), false);
+  protected static final List<String> DEFAULT_REQUESTED_PLUGINS =
+      List.of(
+          "LineaExtraDataPlugin",
+          "LineaEstimateGasEndpointPlugin",
+          "LineaSetExtraDataEndpointPlugin",
+          "LineaTransactionPoolValidatorPlugin",
+          "LineaTransactionSelectorPlugin",
+          "LineaBundleEndpointsPlugin",
+          "ForwardBundlesPlugin",
+          "LineaTransactionValidatorPlugin");
+
   protected static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
   protected BesuNode minerNode;
 
@@ -105,7 +109,12 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
   public void setup() throws Exception {
     minerNode =
         createCliqueNodeWithExtraCliOptionsAndRpcApis(
-            "miner1", getCliqueOptions(), getTestCliOptions(), Set.of("LINEA", "MINER"), false);
+            "miner1",
+            getCliqueOptions(),
+            getTestCliOptions(),
+            Set.of("LINEA", "MINER"),
+            false,
+            DEFAULT_REQUESTED_PLUGINS);
     minerNode.setTransactionPoolConfiguration(
         ImmutableTransactionPoolConfiguration.builder()
             .from(TransactionPoolConfiguration.DEFAULT)
@@ -138,7 +147,8 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
       final CliqueOptions cliqueOptions,
       final List<String> extraCliOptions,
       final Set<String> extraRpcApis,
-      final boolean isEngineRpcEnabled)
+      final boolean isEngineRpcEnabled,
+      final List<String> requestedPlugins)
       throws IOException {
     final NodeConfigurationFactory node = new NodeConfigurationFactory();
 
@@ -162,15 +172,7 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
                     .metricCategories(
                         Set.of(PRICING_CONF, SEQUENCER_PROFITABILITY, TX_POOL_PROFITABILITY))
                     .build())
-            .requestedPlugins(
-                List.of(
-                    "LineaExtraDataPlugin",
-                    "LineaEstimateGasEndpointPlugin",
-                    "LineaSetExtraDataEndpointPlugin",
-                    "LineaTransactionPoolValidatorPlugin",
-                    "LineaTransactionSelectorPlugin",
-                    "LineaBundleEndpointsPlugin",
-                    "ForwardBundlesPlugin"));
+            .requestedPlugins(requestedPlugins);
 
     return besu.create(nodeConfBuilder.build());
   }

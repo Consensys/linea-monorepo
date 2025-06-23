@@ -1,16 +1,10 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package net.consensys.linea.sequencer.txselection.selectors;
 
@@ -26,8 +20,6 @@ import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.Map;
-
 import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
@@ -52,8 +44,7 @@ import org.junit.jupiter.api.io.TempDir;
 public class TraceLineLimitTransactionSelectorTest {
   private static final int OVER_LINE_COUNT_LIMIT_CACHE_SIZE = 2;
   private static final String MODULE_LINE_LIMITS_RESOURCE_NAME = "/sequencer/line-limits.toml";
-  private Map<String, Integer> lineCountLimits;
-  private LineaTracerConfiguration lineaTracerConfiguration;
+  private LineaTracerConfiguration tracerConfiguration;
   private SelectorsStateManager selectorsStateManager;
 
   @TempDir static Path tempDir;
@@ -70,30 +61,27 @@ public class TraceLineLimitTransactionSelectorTest {
 
   @BeforeEach
   public void initialize() {
-    lineaTracerConfiguration =
+    tracerConfiguration =
         LineaTracerConfiguration.builder()
             .moduleLimitsFilePath(lineLimitsConfPath.toString())
+            .moduleLimitsMap(
+                new HashMap<>(
+                    ModuleLineCountValidator.createLimitModules(lineLimitsConfPath.toString())))
             .build();
-    lineCountLimits =
-        new HashMap<>(ModuleLineCountValidator.createLimitModules(lineaTracerConfiguration));
   }
 
-  private TestableTraceLineLimitTransactionSelector newSelectorForNewBlock(
-      final Map<String, Integer> lineCountLimits) {
+  private TestableTraceLineLimitTransactionSelector newSelectorForNewBlock() {
     selectorsStateManager = new SelectorsStateManager();
     final var selector =
         new TestableTraceLineLimitTransactionSelector(
-            selectorsStateManager,
-            lineaTracerConfiguration,
-            lineCountLimits,
-            OVER_LINE_COUNT_LIMIT_CACHE_SIZE);
+            selectorsStateManager, tracerConfiguration, OVER_LINE_COUNT_LIMIT_CACHE_SIZE);
     selectorsStateManager.blockSelectionStarted();
     return selector;
   }
 
   @Test
   public void shouldSelectWhenBelowLimits() {
-    final var transactionSelector = newSelectorForNewBlock(lineCountLimits);
+    final var transactionSelector = newSelectorForNewBlock();
     transactionSelector.resetCache();
 
     final var evaluationContext =
@@ -112,8 +100,8 @@ public class TraceLineLimitTransactionSelectorTest {
 
   @Test
   public void shouldNotSelectWhenOverLimits() {
-    lineCountLimits.put("EXT", 5);
-    final var transactionSelector = newSelectorForNewBlock(lineCountLimits);
+    tracerConfiguration.moduleLimitsMap().put("EXT", 5);
+    final var transactionSelector = newSelectorForNewBlock();
     transactionSelector.resetCache();
 
     final var evaluationContext =
@@ -132,8 +120,8 @@ public class TraceLineLimitTransactionSelectorTest {
 
   @Test
   public void shouldNotReprocessedWhenOverLimits() {
-    lineCountLimits.put("EXT", 5);
-    var transactionSelector = newSelectorForNewBlock(lineCountLimits);
+    tracerConfiguration.moduleLimitsMap().put("EXT", 5);
+    var transactionSelector = newSelectorForNewBlock();
     transactionSelector.resetCache();
 
     var evaluationContext =
@@ -149,7 +137,7 @@ public class TraceLineLimitTransactionSelectorTest {
             transactionSelector.isOverLineCountLimitTxCached(
                 evaluationContext.getPendingTransaction().getTransaction().getHash()))
         .isTrue();
-    transactionSelector = newSelectorForNewBlock(lineCountLimits);
+    transactionSelector = newSelectorForNewBlock();
     assertThat(
             transactionSelector.isOverLineCountLimitTxCached(
                 evaluationContext.getPendingTransaction().getTransaction().getHash()))
@@ -169,8 +157,8 @@ public class TraceLineLimitTransactionSelectorTest {
 
   @Test
   public void shouldEvictWhenCacheIsFull() {
-    lineCountLimits.put("EXT", 5);
-    final var transactionSelector = newSelectorForNewBlock(lineCountLimits);
+    tracerConfiguration.moduleLimitsMap().put("EXT", 5);
+    final var transactionSelector = newSelectorForNewBlock();
     transactionSelector.resetCache();
 
     final TestTransactionEvaluationContext[] evaluationContexts =
@@ -260,12 +248,10 @@ public class TraceLineLimitTransactionSelectorTest {
     TestableTraceLineLimitTransactionSelector(
         final SelectorsStateManager selectorsStateManager,
         final LineaTracerConfiguration lineaTracerConfiguration,
-        final Map<String, Integer> moduleLimits,
         final int overLimitCacheSize) {
       super(
           selectorsStateManager,
           BigInteger.ONE,
-          moduleLimits,
           LineaTransactionSelectorConfiguration.builder()
               .overLinesLimitCacheSize(overLimitCacheSize)
               .build(),

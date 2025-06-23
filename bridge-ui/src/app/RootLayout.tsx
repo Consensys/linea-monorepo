@@ -1,7 +1,6 @@
 import { Metadata } from "next";
 import Script from "next/script";
 import clsx from "clsx";
-import usabillaBeScript from "@/scripts/usabilla";
 import { gtmScript, gtmNoScript } from "@/scripts/gtm";
 import { Providers } from "@/components/layouts/Providers";
 import { Layout } from "@/components/layouts/Layout";
@@ -18,8 +17,9 @@ const metadata: Metadata = {
   Discover the future of blockchain interaction with Linea Bridge.`,
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const nonce = headers().get("x-nonce") || "";
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const headersList = await headers();
+  const nonce = headersList.get("x-nonce") || "";
 
   return (
     <html lang="en" data-theme="v2" className={clsx(atypFont.variable, atypTextFont.variable)}>
@@ -47,12 +47,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <FirstVisitModal />
       </body>
 
-      <Script
-        id="usabilla"
-        dangerouslySetInnerHTML={{ __html: usabillaBeScript }}
-        strategy="lazyOnload"
-        nonce={nonce}
-      />
       <Script id="gtm" dangerouslySetInnerHTML={{ __html: gtmScript }} strategy="lazyOnload" nonce={nonce} />
     </html>
   );

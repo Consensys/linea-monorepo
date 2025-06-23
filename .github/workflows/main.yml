@@ -6,6 +6,12 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+  packages: write
+
 jobs:
   store-image-name-and-tags:
     uses: ./.github/workflows/reuse-store-image-name-and-tags.yml
@@ -65,7 +71,6 @@ jobs:
               - '.github/workflows/staterecovery-*.yml'
               - '.github/workflows/main.yml'
               - '.github/workflows/reuse-*.yml'
-              - 'e2e/**'
             postman:
               - 'postman/**'
               - 'sdk/**'
@@ -143,6 +148,9 @@ jobs:
       prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
       transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
     secrets: inherit
+
+  code-analysis:
+    uses: ./.github/workflows/codeql.yml
 
   testing:
     needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]

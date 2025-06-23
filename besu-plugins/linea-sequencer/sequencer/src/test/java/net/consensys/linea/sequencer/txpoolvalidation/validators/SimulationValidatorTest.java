@@ -1,16 +1,10 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 
 package net.consensys.linea.sequencer.txpoolvalidation.validators;
@@ -30,6 +24,8 @@ import static org.awaitility.Awaitility.await;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
+import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.net.MalformedURLException;
@@ -37,11 +33,7 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
-
-import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
-import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.config.LineaNodeType;
@@ -103,11 +95,10 @@ public class SimulationValidatorTest {
             curve.getN());
   }
 
-  private Map<String, Integer> lineCountLimits;
-
   @Mock BlockchainService blockchainService;
   @Mock TransactionSimulationService transactionSimulationService;
   private JsonRpcManager jsonRpcManager;
+  private LineaTracerConfiguration tracerConfiguration;
   @TempDir private Path tempDataDir;
   @TempDir static Path tempDir;
   static Path lineLimitsConfPath;
@@ -123,11 +114,14 @@ public class SimulationValidatorTest {
 
   @BeforeEach
   public void initialize(final WireMockRuntimeInfo wmInfo) throws MalformedURLException {
-    final var tracerConf =
+    tracerConfiguration =
         LineaTracerConfiguration.builder()
             .moduleLimitsFilePath(lineLimitsConfPath.toString())
+            .moduleLimitsMap(
+                new HashMap<>(
+                    ModuleLineCountValidator.createLimitModules(lineLimitsConfPath.toString())))
+            .isLimitless(false)
             .build();
-    lineCountLimits = new HashMap<>(ModuleLineCountValidator.createLimitModules(tracerConf));
     final var pendingBlockHeader = mock(BlockHeader.class);
     when(pendingBlockHeader.getBaseFee()).thenReturn(Optional.of(BASE_FEE));
     when(pendingBlockHeader.getCoinbase()).thenReturn(Address.ZERO);
@@ -159,9 +153,7 @@ public class SimulationValidatorTest {
   }
 
   private SimulationValidator createSimulationValidator(
-      final Map<String, Integer> lineCountLimits,
-      final boolean enableForApi,
-      final boolean enableForP2p) {
+      final boolean enableForApi, final boolean enableForP2p) {
     return new SimulationValidator(
         blockchainService,
         transactionSimulationService,
@@ -169,7 +161,7 @@ public class SimulationValidatorTest {
             .txPoolSimulationCheckApiEnabled(enableForApi)
             .txPoolSimulationCheckP2pEnabled(enableForP2p)
             .build(),
-        lineCountLimits,
+        tracerConfiguration,
         LineaL1L2BridgeSharedConfiguration.builder()
             .contract(BRIDGE_CONTRACT)
             .topic(BRIDGE_LOG_TOPIC)
@@ -179,7 +171,7 @@ public class SimulationValidatorTest {
 
   @Test
   public void successfulTransactionIsValid() {
-    final var simulationValidator = createSimulationValidator(lineCountLimits, true, false);
+    final var simulationValidator = createSimulationValidator(true, false);
     final org.hyperledger.besu.ethereum.core.Transaction transaction =
         org.hyperledger.besu.ethereum.core.Transaction.builder()
             .sender(SENDER)
@@ -195,8 +187,8 @@ public class SimulationValidatorTest {
 
   @Test
   public void moduleLineCountOverflowTransactionIsInvalidAndReported() {
-    lineCountLimits.put("EXT", 5);
-    final var simulationValidator = createSimulationValidator(lineCountLimits, true, false);
+    tracerConfiguration.moduleLimitsMap().put("EXT", 5);
+    final var simulationValidator = createSimulationValidator(true, false);
     final org.hyperledger.besu.ethereum.core.Transaction transaction =
         org.hyperledger.besu.ethereum.core.Transaction.builder()
             .sender(SENDER)
