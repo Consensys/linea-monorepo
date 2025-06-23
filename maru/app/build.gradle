@@ -11,6 +11,12 @@ dependencies {
   implementation(project(":storage"))
   implementation(project(":crypto"))
   implementation(project(":serialization"))
+  api(project(":linea-finalization-provider")) {
+    exclude group: "build.linea", module: "besu-libs"
+  }
+  implementation("build.linea.internal:web3j-extensions") {
+    exclude group: "build.linea", module: "besu-libs"
+  }
   implementation(project(":jvm-libs:extensions"))
   implementation(project(":jvm-libs:mappers"))
 
@@ -57,7 +63,14 @@ jar {
   archiveBaseName = 'maru'
   manifest {
     attributes(
-      'Class-Path': project.configurations.runtimeClasspath.collect { it.getName() }.findAll { it.endsWith('jar') }.join(' '),
+      'Class-Path': project.configurations.runtimeClasspath
+      .collect {
+        it.getName()
+      }
+      .findAll {
+        it.endsWith('jar')
+      }
+      .join(' '),
       'Main-Class': 'maru.app.CliEntrypoint',
       'Multi-Release': 'true'
       )

@@ -18,20 +18,11 @@ plugins {
   id 'java-test-fixtures'
 }
 
-sourceSets {
-  testFixtures {
-    compileClasspath += sourceSets.main.compileClasspath
-    runtimeClasspath += sourceSets.main.runtimeClasspath
-  }
-}
-
 dependencies {
   implementation(project(":jvm-libs:extensions"))
-  implementation(project(":core"))
-  api("build.linea.internal:domain-models")
-  api("build.linea.internal:kotlin")
-
-  implementation "com.sksamuel.hoplite:hoplite-toml"
-  implementation "com.sksamuel.hoplite:hoplite-json"
-  implementation "com.sksamuel.hoplite:hoplite-core"
+  api(project(":core"))
+  api("build.linea.internal:linea-contract-clients"){
+    exclude group: "build.linea", module: "besu-libs"
+  }
+  api("build.linea.internal:interfaces")
 }

@@ -9,8 +9,7 @@
 package maru.consensus.qbft
 
 import maru.consensus.ValidatorProvider
-import maru.consensus.state.FinalizationState
-import maru.core.BeaconBlockBody
+import maru.consensus.state.FinalizationProvider
 import maru.core.Validator
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
@@ -28,7 +27,7 @@ class QbftBlockCreatorFactory(
   private val proposerSelector: ProposerSelector,
   private val validatorProvider: ValidatorProvider,
   private val beaconChain: BeaconChain,
-  private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
+  private val finalizationStateProvider: FinalizationProvider,
   private val blockBuilderIdentity: Validator,
   private val eagerQbftBlockCreatorConfig: EagerQbftBlockCreator.Config,
 ) : QbftBlockCreatorFactory {
