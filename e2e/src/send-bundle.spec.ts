@@ -41,9 +41,9 @@ describe("Send bundle test suite", () => {
 
       await lineaSendBundleClient.lineaSendBundle(txs, replacementUUID, "0x" + targetBlockNumber.toString(16));
 
-      const hasReachedTargeBlockNumber = await pollForBlockNumber(config.getL2Provider(), targetBlockNumber);
+      const hasReachedTargetBlockNumber = await pollForBlockNumber(config.getL2Provider(), targetBlockNumber);
 
-      expect(hasReachedTargeBlockNumber).toBeTruthy();
+      expect(hasReachedTargetBlockNumber).toBeTruthy();
       for (const tx of txHashes) {
         const receipt = await config.getL2Provider().getTransactionReceipt(tx);
         expect(receipt?.status).toStrictEqual(1);
@@ -53,19 +53,23 @@ describe("Send bundle test suite", () => {
   );
 
   it.concurrent(
-    "Call sendBundle to RPC node but the bundled txs should not get included as not all of them is valid",
+    "Call sendBundle to RPC node but the bundled txs should not get included as not all of them are valid",
     async () => {
-      // 1500 wei should just be enough for the first ETH transfer tx, and the second and third would fail
-      const senderAccount = await l2AccountManager.generateAccount(ethers.parseUnits("1500", "wei"));
+      const senderAccount = await l2AccountManager.generateAccount();
       const senderWallet = getWallet(senderAccount.privateKey, config.getL2BesuNodeProvider()!);
       const recipientAccount = await l2AccountManager.generateAccount(0n);
 
+      const recipients: string[] = [
+        recipientAccount.address,
+        "0x0000000000000000000000000000000000000001", // second tx fails since sending to precompile is not supported
+        recipientAccount.address,
+      ];
       let senderNonce = await senderAccount.getNonce();
       const txHashes: string[] = [];
       const txs: string[] = [];
       for (let i = 0; i < 3; i++) {
         const txRequest: TransactionRequest = {
-          to: recipientAccount.address,
+          to: recipients[i],
           value: ethers.parseUnits("1000", "wei"),
           maxPriorityFeePerGas: ethers.parseEther("0.000000001"), // 1 Gwei
           maxFeePerGas: ethers.parseEther("0.00000001"), // 10 Gwei
@@ -79,9 +83,9 @@ describe("Send bundle test suite", () => {
 
       await lineaSendBundleClient.lineaSendBundle(txs, replacementUUID, "0x" + targetBlockNumber.toString(16));
 
-      const hasReachedTargeBlockNumber = await pollForBlockNumber(config.getL2Provider(), targetBlockNumber);
+      const hasReachedTargetBlockNumber = await pollForBlockNumber(config.getL2Provider(), targetBlockNumber);
 
-      expect(hasReachedTargeBlockNumber).toBeTruthy();
+      expect(hasReachedTargetBlockNumber).toBeTruthy();
       // None of the bundled txs should be included as not all of them is valid
       for (const tx of txHashes) {
         const receipt = await config.getL2Provider().getTransactionReceipt(tx);
@@ -121,9 +125,9 @@ describe("Send bundle test suite", () => {
       const cancelled = await lineaCancelBundleClient.lineaCancelBundle(replacementUUID);
       expect(cancelled).toBeTruthy();
 
-      const hasReachedTargeBlockNumber = await pollForBlockNumber(config.getL2Provider(), targetBlockNumber);
+      const hasReachedTargetBlockNumber = await pollForBlockNumber(config.getL2Provider(), targetBlockNumber);
 
-      expect(hasReachedTargeBlockNumber).toBeTruthy();
+      expect(hasReachedTargetBlockNumber).toBeTruthy();
       for (const tx of txHashes) {
         const receipt = await config.getL2Provider().getTransactionReceipt(tx);
         expect(receipt?.status).toBeUndefined();
