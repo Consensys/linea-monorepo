@@ -34,7 +34,7 @@ class Web3jEthApiClientWithRetriesTest {
   @Test
   fun `should retry until retries elapse`() {
     jsonRpcServer.handle("eth_getBlockByNumber") { request ->
-      throw JsonRpcErrorResponseException(rpcErrorCode = -39001, rpcErrorMessage = "Unknown block")
+      throw JsonRpcErrorResponseException(rpcErrorCode = -123, rpcErrorMessage = "Internal error")
     }
     runCatching { client.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get() }
     assertThat(jsonRpcServer.recordedRequests()).hasSize(3)
