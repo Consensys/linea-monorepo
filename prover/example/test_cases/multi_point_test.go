@@ -12,9 +12,9 @@ import (
 
 func defineMultiPoint(build *wizard.Builder) {
 	P1 := build.RegisterCommit(P1, 4)
-	build.RegisterRandomCoin(COIN1, coin.Field)
+	build.RegisterRandomCoin(COIN1, coin.FieldExt)
 	P2 := build.RegisterCommit(P2, 4)
-	build.RegisterRandomCoin(COIN2, coin.Field)
+	build.RegisterRandomCoin(COIN2, coin.FieldExt)
 	build.UnivariateEval(UNIV1, P1)
 	build.UnivariateEval(UNIV2, P2)
 }

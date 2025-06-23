@@ -1,6 +1,7 @@
 package mpts
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
@@ -185,6 +186,7 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 					posOfYik = getPositionOfPolyInQueryYs(qa.Queries[i], qa.Polys[k])
 					yik      = paramsI.Ys[posOfYik]
 				)
+				fmt.Printf("yik-prover=%v\n", yik.String())
 
 				// This reuses the memory slot of yik to compute the temporary
 				// rho^k y_ik
@@ -205,7 +207,6 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 
 		quotientLock.Lock()
 		vectorext.Sub(quotient, quotient, localResult)
-
 		quotientLock.Unlock()
 	})
 
@@ -219,7 +220,6 @@ func (re randomPointEvaluation) Run(run *wizard.ProverRuntime) {
 		polys    = re.NewQuery.Pols
 		polyVals = make([]smartvectors.SmartVector, len(polys))
 	)
-
 	for i := range polyVals {
 		polyVals[i] = polys[i].GetColAssignment(run)
 
@@ -228,8 +228,14 @@ func (re randomPointEvaluation) Run(run *wizard.ProverRuntime) {
 	ys := make([]fext.Element, len(polyVals))
 	for i := 0; i < len(ys)-1; i++ {
 		ys[i] = smartvectors.EvaluateLagrangeMixed(polyVals[i], r)
+		fmt.Printf("i=%v,quotient-poly-prover-ys =%v\n", i, ys[i].String())
+
 	}
+
+	fmt.Printf("quotient-poly-prover=%v\n", polyVals[len(polyVals)-1].Pretty())
+
 	ys[len(polyVals)-1] = smartvectors.EvaluateLagrangeFullFext(polyVals[len(polyVals)-1], r)
+	fmt.Printf("quotient-poly-prover-ys=%v\n", ys[len(polyVals)-1].String())
 
 	run.AssignUnivariate(re.NewQuery.QueryID, r, ys...)
 }
@@ -257,26 +263,25 @@ func (qa quotientAccumulation) computeZetas(run *wizard.ProverRuntime) [][]fext.
 				params = run.GetUnivariateParams(q.Name())
 				xi     = params.X
 
-				// l is the value of lambda^i / (X - xi). It is computed by:
+				// zetaI is the value of lambda^i / (omega^j - xi). It is computed by:
 				// 	1 - Deep copying the powers of omega
 				//  2 - Substracting xi to each entry
 				//  3 - Batch inverting the result
 				//  4 - Multiplying the result by lambdaPowi
-				l = append([]field.Element{}, powersOfOmega...)
 			)
 
-			lext := make([]fext.Element, len(l))
-			for j := range l {
-				lext[j] = fext.NewFromBase(l[j])
+			lext := make([]fext.Element, len(powersOfOmega))
+			for j := range powersOfOmega {
+				lext[j] = fext.NewFromBase(powersOfOmega[j])
 				lext[j].Sub(&lext[j], &xi)
 			}
 
+			//TODO@yao: add a sanity check, as xi=/=powersOfOmega
 			lext = fext.BatchInvert(lext)
 
-			for j := range l {
+			for j := range powersOfOmega {
 				lext[j].Mul(&lext[j], &powersOfLambda[i])
 			}
-
 			zetaI[i] = lext
 		}
 	})

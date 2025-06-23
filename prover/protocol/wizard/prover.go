@@ -789,7 +789,6 @@ func (run *ProverRuntime) AssignInnerProduct(name ifaces.QueryID, ys ...fext.Ele
 //   - parameters for this query have already been assigned
 //   - the assignment round is not the correct one
 func (run *ProverRuntime) AssignUnivariate(name ifaces.QueryID, x fext.Element, ys ...fext.Element) {
-
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
 	defer run.lock.Unlock()
@@ -802,6 +801,7 @@ func (run *ProverRuntime) AssignUnivariate(name ifaces.QueryID, x fext.Element, 
 	if len(q.Pols) != len(ys) {
 		utils.Panic("Query expected ys = %v but got %v", len(q.Pols), len(ys))
 	}
+
 	// Adds it to the assignments
 	params := query.NewUnivariateEvalParams(x, ys...)
 	run.QueriesParams.InsertNew(name, params)

@@ -1,6 +1,7 @@
 package mpts
 
 import (
+	"math/rand/v2"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
@@ -14,9 +15,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/internal/testtools"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 func TestWithProfile(t *testing.T) {
+	var rng = rand.New(utils.NewRandSource(0))
 
 	testcases := []struct {
 		Profile []int
@@ -30,7 +33,7 @@ func TestWithProfile(t *testing.T) {
 					smartvectors.ForTest(1, 2, 3, 4),
 				},
 				QueryXs: []fext.Element{
-					fext.NewFromBase(field.NewElement(3)),
+					fext.PseudoRand(rng),
 				},
 				QueryPols: [][]int{
 					{0},

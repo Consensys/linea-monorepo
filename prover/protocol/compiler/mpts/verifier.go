@@ -21,6 +21,7 @@ type verifierAction struct {
 }
 
 func (va verifierAction) Run(run wizard.Runtime) error {
+	fmt.Printf("-----------------------\n")
 
 	var (
 		queryParams = run.GetUnivariateParams(va.NewQuery.QueryID)
@@ -66,24 +67,70 @@ func (va verifierAction) Run(run wizard.Runtime) error {
 		zetasOfR[i].Mul(&zetasOfR[i], &lambdaPowI)
 		lambdaPowI.Mul(&lambdaPowI, &lambda)
 	}
+	//TODO@yao: remove the following:
+	/*
+		for i, q := range va.Queries {
+
+			xi := run.GetUnivariateParams(q.Name()).X
+
+			zetasOfR[i].Sub(&r, &xi)
+			// NB: this is very sub-optimal. We should use a batch-inverse instead
+			// but the native verifier time is not very important in this context.
+			fmt.Printf("zetasOfR[i]-verifer=%v\n", zetasOfR[i].String())
+			var inv fext.Element
+			inv.Inverse(&zetasOfR[i])
+
+			//zetasOfR[i].Inverse(&zetasOfR[i])
+
+			//check.Sub(&r, &xi)
+			inv.Mul(&inv, &zetasOfR[i])
+			fmt.Printf("===1?=%v\n", inv.String())
+
+			zetasOfR[i].Mul(&zetasOfR[i], &lambdaPowI)
+			lambdaPowI.Mul(&lambdaPowI, &lambda)
+			zetasOfR[i].Mul(&zetasOfR[i], &rhoK)
+			fmt.Printf("zetasOfR[i]-verifer=%v\n", zetasOfR[i].String())
+			///
+			var check, val fext.Element
+
+			val = fext.NewElement(1065353216, 0, 0, 0)
+			check.Inverse(&val)
+
+			//check.Sub(&r, &xi)
+			val.Mul(&val, &check)
+
+			fmt.Printf("mul-verifer=%v\n", val.String())
+			fmt.Printf("mul=1-verifer=%v\n", val.String())
+
+		}
+	*/
 
 	// This loop computes the value of [res]
 	for k, p := range va.Polys {
 
 		pr := polysAtR[p.GetColID()]
+		fmt.Printf("pr-verifer=%v\n", pr.String())
 
 		for _, i := range va.EvalPointOfPolys[k] {
 			// This sets tmp with the value of yik
 			posOfYik := getPositionOfPolyInQueryYs(va.Queries[i], va.Polys[k])
 			tmp := run.GetUnivariateParams(va.Queries[i].Name()).Ys[posOfYik]
+			fmt.Printf("yik-verifer=%v\n", tmp.String())
+
 			tmp.Sub(&pr, &tmp) // Pk(r) - y_{ik}
+			fmt.Printf("Pk(r) - y_{ik}=%v\n", tmp.String())
+			fmt.Printf("zetasOfR[i]=%v\n", zetasOfR[i].String())
+
 			tmp.Mul(&tmp, &zetasOfR[i])
+			fmt.Printf("(Pk(r) - y_{ik})*zeta=%v\n", tmp.String())
+
 			tmp.Mul(&tmp, &rhoK)
 			res.Add(&res, &tmp)
 		}
 
 		rhoK.Mul(&rhoK, &rho)
 	}
+	fmt.Printf("res-verifer=%v\n", res.String())
 
 	if !res.Equal(&qr) {
 		return fmt.Errorf("(verifier of %v) : Q(r) is incorrect (%v, expected %v)",
