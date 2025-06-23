@@ -186,6 +186,11 @@ public class ReplayTests extends TracerTestBase {
     replay(OLD_MAINNET_TESTCONFIG, "4323985.mainnet.json.gz");
   }
 
+  @Test
+  void duplicateSubZero() {
+    replay(MAINNET_LONDON_TESTCONFIG, "20197061-20197173.mainnet.json.gz");
+  }
+
   /**
    * The mainnet conflation below blew up the HUB <> state manager integration. The issue was
    * related to a <b>SSTOREX</b> exception happening in the wild. Recall that this is the exception
