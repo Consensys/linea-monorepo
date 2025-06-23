@@ -23,3 +23,30 @@ services:
       - "5005:5005"
     networks:
       - linea
+
+  prometheus:
+    container_name: prometheus
+    hostname: prometheus
+    image: prom/prometheus:v2.53.4
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yaml:/etc/prometheus/prometheus.yaml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yaml'
+    networks:
+      - linea
+
+  grafana:
+    container_name: grafana
+    hostname: grafana
+    image: grafana/grafana:12.0.1
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./config/grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ./config/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - linea
