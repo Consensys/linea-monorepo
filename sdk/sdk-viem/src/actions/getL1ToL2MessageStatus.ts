@@ -39,7 +39,7 @@ export async function getL1ToL2MessageStatus<chain extends Chain | undefined, ac
     throw new Error("Client chain is required to get L1 to L2 message status.");
   }
 
-  const l2MessageService = getContractsAddressesByChainId(client.chain.id).destinationChainMessageService;
+  const l2MessageService = getContractsAddressesByChainId(client.chain.id).messageService;
 
   const status = await readContract(client, {
     address: l2MessageService,

@@ -115,7 +115,7 @@ export async function deposit<
 >(
   client: Client<Transport, chain, account>,
   parameters: DepositParameters<chain, account, chainOverride, chainL2, accountL2, derivedChain>,
-) {
+): Promise<DepositReturnType> {
   const { account: account_ = client.account, l2Client, token, amount, data, to, ...tx } = parameters;
   let { fee } = parameters;
 
@@ -507,7 +507,7 @@ export function computeMessageStorageSlot(messageHash: `0x${string}`) {
   );
 }
 
-function createStateOverride(messageServiceAddress: Address, storageSlot: Hex): StateOverride {
+export function createStateOverride(messageServiceAddress: Address, storageSlot: Hex): StateOverride {
   return [
     {
       address: messageServiceAddress,

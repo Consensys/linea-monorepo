@@ -90,7 +90,7 @@ export async function withdraw<
 >(
   client: Client<Transport, chain, account>,
   parameters: WithdrawParameters<chain, account, chainOverride, derivedChain>,
-) {
+): Promise<WithdrawReturnType> {
   const { account: account_ = client.account, token, amount, to, data, ...tx } = parameters;
 
   const account = account_ ? parseAccount(account_) : client.account;

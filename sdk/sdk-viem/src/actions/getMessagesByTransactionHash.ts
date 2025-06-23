@@ -1,4 +1,4 @@
-import { Account, BaseError, Chain, Client, Hex, parseEventLogs, toEventSignature, Transport } from "viem";
+import { Account, BaseError, Chain, Client, Hex, parseEventLogs, toEventSelector, Transport } from "viem";
 import { getTransactionReceipt } from "viem/actions";
 import { ExtendedMessage, getContractsAddressesByChainId } from "@consensys/linea-sdk-core";
 
@@ -38,17 +38,19 @@ export async function getMessagesByTransactionHash<
 ): Promise<GetMessagesByTransactionHashReturnType> {
   const { transactionHash } = parameters;
 
-  const receipt = await getTransactionReceipt(client, { hash: transactionHash });
   const chainId = client.chain?.id;
 
   if (!chainId) {
     throw new BaseError("No chain id found in client");
   }
 
+  const receipt = await getTransactionReceipt(client, { hash: transactionHash });
+
   const logs = receipt.logs.filter(
     (log) =>
-      log.address === getContractsAddressesByChainId(chainId).messageService &&
-      log.topics[0] === toEventSignature("MessageSent(address,address,uint256,uint256,uint256,bytes,bytes32)"),
+      log.address.toLowerCase() === getContractsAddressesByChainId(chainId).messageService.toLowerCase() &&
+      log.topics[0]?.toLowerCase() ===
+        toEventSelector("MessageSent(address,address,uint256,uint256,uint256,bytes,bytes32)").toLowerCase(),
   );
 
   const parsedLogs = parseEventLogs({

@@ -48,5 +48,5 @@ export function getContractsAddressesByChainId(chainId: number): {
     };
   }
 
-  throw new Error("Unsupported chain ID. Only Linea networks are supported.");
+  throw new Error("Unsupported chain ID. Only Ethereum and Linea networks are supported.");
 }

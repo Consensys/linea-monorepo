@@ -162,6 +162,7 @@ async function getFinalizationMessagingInfo<chain extends Chain | undefined, acc
   },
 ) {
   const receipt = await getTransactionReceipt(client, { hash: parameters.transactionHash });
+
   let treeDepth = 0;
   const l2MerkleRoots: string[] = [];
   const blocksNumber: number[] = [];

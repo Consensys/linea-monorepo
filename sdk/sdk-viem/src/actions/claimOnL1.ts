@@ -28,7 +28,11 @@ export type ClaimOnL1Parameters<
 > = UnionEvaluate<UnionOmit<FormattedTransactionRequest<derivedChain>, "data" | "to" | "from">> &
   Partial<GetChainParameter<chain, chainOverride>> &
   Partial<GetAccountParameter<account>> &
-  Omit<Message, "messageHash"> & { messageProof: MessageProof; feeRecipient?: Address };
+  Omit<Message<bigint>, "messageHash" | "nonce"> & {
+    messageNonce: bigint;
+    messageProof: MessageProof;
+    feeRecipient?: Address;
+  };
 
 export type ClaimOnL1ReturnType = SendTransactionReturnType;
 
@@ -47,7 +51,7 @@ export async function claimOnL1<
     to,
     fee,
     value,
-    nonce,
+    messageNonce,
     calldata,
     feeRecipient,
     messageProof,
@@ -107,7 +111,7 @@ export async function claimOnL1<
           value,
           feeRecipient: feeRecipient ?? zeroAddress,
           data: calldata,
-          messageNumber: nonce,
+          messageNumber: messageNonce,
           merkleRoot: messageProof.root,
           proof: messageProof.proof,
           leafIndex: messageProof.leafIndex,

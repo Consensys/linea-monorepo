@@ -28,7 +28,7 @@ export type ClaimOnL2Parameters<
 > = UnionEvaluate<UnionOmit<FormattedTransactionRequest<derivedChain>, "data" | "to" | "from">> &
   Partial<GetChainParameter<chain, chainOverride>> &
   Partial<GetAccountParameter<account>> &
-  Omit<Message, "messageHash"> & { feeRecipient?: Address };
+  Omit<Message, "messageHash" | "nonce"> & { messageNonce: bigint; feeRecipient?: Address };
 
 export type ClaimOnL2ReturnType = SendTransactionReturnType;
 
@@ -41,7 +41,17 @@ export async function claimOnL2<
   client: Client<Transport, chain, account>,
   parameters: ClaimOnL2Parameters<chain, account, chainOverride, derivedChain>,
 ): Promise<ClaimOnL2ReturnType> {
-  const { account: account_ = client.account, from, to, fee, value, nonce, calldata, feeRecipient, ...tx } = parameters;
+  const {
+    account: account_ = client.account,
+    from,
+    to,
+    fee,
+    value,
+    messageNonce,
+    calldata,
+    feeRecipient,
+    ...tx
+  } = parameters;
 
   const account = account_ ? parseAccount(account_) : client.account;
   if (!account) {
@@ -106,7 +116,7 @@ export async function claimOnL2<
         },
       ],
       functionName: "claimMessage",
-      args: [from, to, fee, value, feeRecipient ?? zeroAddress, calldata, nonce],
+      args: [from, to, fee, value, feeRecipient ?? zeroAddress, calldata, messageNonce],
     }),
     ...tx,
   } as SendTransactionParameters);
