@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	badnonce "github.com/consensys/linea-monorepo/prover/circuits/invalidity-proofs"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
@@ -81,5 +82,30 @@ func TestMerkleProofs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+}
+
+func TestMimcCircuit(t *testing.T) {
+
+	scs, err := frontend.Compile(
+		ecc.BLS12_377.ScalarField(),
+		scs.NewBuilder,
+		&badnonce.MimcCircuit{PreImage: make([]frontend.Variable, 4)},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	require.NoError(t, err)
+
+	assignment := badnonce.MimcCircuit{
+		PreImage: []frontend.Variable{0, 1, 2, 3},
+		Hash:     mimc.HashVec(vector.ForTest(0, 1, 2, 3)),
+	}
+
+	witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())
+	require.NoError(t, err)
+
+	err = scs.IsSolved(witness)
+	require.NoError(t, err)
 
 }

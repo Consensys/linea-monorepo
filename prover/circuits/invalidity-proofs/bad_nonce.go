@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	gmimc "github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
-	"github.com/ethereum/go-ethereum/core/types"
 )
 
 type MerkleProofCircuit struct {
@@ -22,12 +21,11 @@ type BadNonceCircuit struct {
 	MerkleTree  MerkleProofCircuit
 	LeafOpening GnarkLeafOpening
 	Account     GnarkAccount
-	Transaction types.Transactions
 }
 
 func (circuit *BadNonceCircuit) Define(api frontend.API) error {
 
-	// check that the FTx.Nonce is not compatible with the account.nonce
+	// check that the FTx.Nonce = Account.Nonce + 1
 	res := api.Sub(circuit.FTxNonce, api.Add(circuit.Account.Nonce, 1))
 	api.AssertIsDifferent(res, 0)
 
@@ -52,14 +50,14 @@ func (circuit *BadNonceCircuit) Define(api frontend.API) error {
 		return err
 	}
 
-	// check that leaf is compatible with the state
+	// check that MerkleTree.Leaf is compatible with the state
 	err = circuit.MerkleTree.Define(api)
 
 	if err != nil {
 		return err
 	}
 
-	// check that FTx.Nonce is related to  FTx.Hash  and then in the interconnection we show that
+	// TBD: check that FTx.Nonce is related to  FTx.Hash  and then in the interconnection we show that
 	//FTx.Hash is included in the RollingHash
 	return nil
 }
@@ -107,13 +105,15 @@ func (circuit *MimcCircuit) Define(api frontend.API) error {
 	// hash function
 	mimc, _ := gmimc.NewMiMC(api)
 
-	// specify constraints
 	// mimc(preImage) == hash
-	mimc.Write(circuit.PreImage)
+	for _, toHash := range circuit.PreImage {
+		mimc.Write(toHash)
+	}
+
 	api.AssertIsEqual(circuit.Hash, mimc.Sum())
 
 	return nil
-}
+} // specify constraints
 
 func sliceFromStruct(input interface{}) []frontend.Variable {
 	var v []frontend.Variable
