@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -63,44 +64,44 @@ func TestFiatShamirRandomVec(t *testing.T) {
 	}
 }
 
-// func TestBatchUpdates(t *testing.T) {
+func TestBatchUpdates(t *testing.T) {
 
-// 	fs := NewMiMCFiatShamir()
-// 	fs.Update(field.NewElement(2))
-// 	fs.Update(field.NewElement(2))
-// 	fs.Update(field.NewElement(1))
-// 	expectedVal := fs.RandomFext()
+	fs := poseidon2.NewMerkleDamgardHasher()
+	Update(fs, field.NewElement(2))
+	Update(fs, field.NewElement(2))
+	Update(fs, field.NewElement(1))
+	expectedVal := RandomFext(fs)
 
-// 	t.Run("for a variadic call", func(t *testing.T) {
-// 		fs := NewMiMCFiatShamir()
-// 		fs.Update(field.NewElement(2), field.NewElement(2), field.NewElement(1))
-// 		actualValue := fs.RandomFext()
-// 		assert.Equal(t, expectedVal.String(), actualValue.String())
-// 	})
+	t.Run("for a variadic call", func(t *testing.T) {
+		fs := poseidon2.NewMerkleDamgardHasher()
+		Update(fs, field.NewElement(2), field.NewElement(2), field.NewElement(1))
+		actualValue := RandomFext(fs)
+		assert.Equal(t, expectedVal.String(), actualValue.String())
+	})
 
-// 	t.Run("for slice of field elements", func(t *testing.T) {
-// 		fs := NewMiMCFiatShamir()
-// 		fs.UpdateVec(vector.ForTest(2, 2, 1))
-// 		actualValue := fs.RandomFext()
-// 		assert.Equal(t, expectedVal.String(), actualValue.String())
-// 	})
+	t.Run("for slice of field elements", func(t *testing.T) {
+		fs := poseidon2.NewMerkleDamgardHasher()
+		UpdateVec(fs, vector.ForTest(2, 2, 1))
+		actualValue := RandomFext(fs)
+		assert.Equal(t, expectedVal.String(), actualValue.String())
+	})
 
-// 	t.Run("for multi-slice of field elements", func(t *testing.T) {
-// 		fs := NewMiMCFiatShamir()
-// 		fs.UpdateVec(vector.ForTest(2, 2), vector.ForTest(1))
-// 		actualValue := fs.RandomFext()
-// 		assert.Equal(t, expectedVal.String(), actualValue.String())
-// 	})
+	t.Run("for multi-slice of field elements", func(t *testing.T) {
+		fs := poseidon2.NewMerkleDamgardHasher()
+		UpdateVec(fs, vector.ForTest(2, 2), vector.ForTest(1))
+		actualValue := RandomFext(fs)
+		assert.Equal(t, expectedVal.String(), actualValue.String())
+	})
 
-// 	t.Run("for a smart-vector", func(t *testing.T) {
-// 		sv := smartvectors.RightPadded(vector.ForTest(2, 2), field.NewElement(1), 3)
-// 		fs := NewMiMCFiatShamir()
-// 		fs.UpdateSV(sv)
-// 		actualValue := fs.RandomFext()
-// 		assert.Equal(t, expectedVal.String(), actualValue.String())
-// 	})
+	// t.Run("for a smart-vector", func(t *testing.T) {
+	// 	sv := smartvectors.RightPadded(vector.ForTest(2, 2), field.NewElement(1), 3)
+	// 	fs := poseidon2.NewMerkleDamgardHasher()
+	// 	UpdateSV(fs, sv)
+	// 	actualValue := RandomFext(fs)
+	// 	assert.Equal(t, expectedVal.String(), actualValue.String())
+	// })
 
-// }
+}
 
 // // TestSamplingFromSeed tests that sampling from seed is consistent, does not forget
 // // bytes from the seed and does not depends on the state.
