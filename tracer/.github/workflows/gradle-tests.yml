@@ -55,6 +55,7 @@ jobs:
   # ==================================================================
   unit-tests:
     strategy:
+      fail-fast: false
       matrix:
         zkevm_fork: [LONDON, SHANGHAI]
     needs: [ build ]
