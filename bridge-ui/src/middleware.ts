@@ -2,8 +2,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export function middleware(request: NextRequest) {
-  // const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
-
   // We only want to allow unsafe-eval in local environment for NextJS dev server
   const unsafeScript = process.env.NEXT_PUBLIC_ENVIRONMENT === "local" ? "'unsafe-eval'" : "";
 
