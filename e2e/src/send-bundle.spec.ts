@@ -1,4 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
+import { ethers, toBeHex, TransactionRequest } from "ethers";
 import { config } from "./config/tests-config";
 import {
   generateRandomUUIDv4,
@@ -8,7 +9,6 @@ import {
   LineaBundleClient,
   pollForBlockNumber,
 } from "./common/utils";
-import { ethers, TransactionRequest } from "ethers";
 
 describe("Send bundle test suite", () => {
   const l2AccountManager = config.getL2AccountManager();
@@ -39,11 +39,11 @@ describe("Send bundle test suite", () => {
       const targetBlockNumber = (await config.getL2Provider().getBlockNumber()) + 5;
       const replacementUUID = generateRandomUUIDv4();
 
-      await lineaSendBundleClient.lineaSendBundle(txs, replacementUUID, "0x" + targetBlockNumber.toString(16));
+      await lineaSendBundleClient.lineaSendBundle(txs, replacementUUID, toBeHex(targetBlockNumber));
 
-      const hasReachedTargeBlockNumber = await pollForBlockNumber(config.getL2Provider(), targetBlockNumber);
+      const hasReachedTargetBlockNumber = await pollForBlockNumber(config.getL2Provider(), targetBlockNumber);
 
-      expect(hasReachedTargeBlockNumber).toBeTruthy();
+      expect(hasReachedTargetBlockNumber).toBeTruthy();
       for (const tx of txHashes) {
         const receipt = await config.getL2Provider().getTransactionReceipt(tx);
         expect(receipt?.status).toStrictEqual(1);
@@ -77,11 +77,11 @@ describe("Send bundle test suite", () => {
       const targetBlockNumber = (await config.getL2Provider().getBlockNumber()) + 5;
       const replacementUUID = generateRandomUUIDv4();
 
-      await lineaSendBundleClient.lineaSendBundle(txs, replacementUUID, "0x" + targetBlockNumber.toString(16));
+      await lineaSendBundleClient.lineaSendBundle(txs, replacementUUID, toBeHex(targetBlockNumber));
 
-      const hasReachedTargeBlockNumber = await pollForBlockNumber(config.getL2Provider(), targetBlockNumber);
+      const hasReachedTargetBlockNumber = await pollForBlockNumber(config.getL2Provider(), targetBlockNumber);
 
-      expect(hasReachedTargeBlockNumber).toBeTruthy();
+      expect(hasReachedTargetBlockNumber).toBeTruthy();
       // None of the bundled txs should be included as not all of them is valid
       for (const tx of txHashes) {
         const receipt = await config.getL2Provider().getTransactionReceipt(tx);
@@ -115,15 +115,15 @@ describe("Send bundle test suite", () => {
       const targetBlockNumber = (await config.getL2Provider().getBlockNumber()) + 10;
       const replacementUUID = generateRandomUUIDv4();
 
-      await lineaSendBundleClient.lineaSendBundle(txs, replacementUUID, "0x" + targetBlockNumber.toString(16));
+      await lineaSendBundleClient.lineaSendBundle(txs, replacementUUID, toBeHex(targetBlockNumber));
 
       await pollForBlockNumber(config.getL2Provider(), targetBlockNumber - 5);
       const cancelled = await lineaCancelBundleClient.lineaCancelBundle(replacementUUID);
       expect(cancelled).toBeTruthy();
 
-      const hasReachedTargeBlockNumber = await pollForBlockNumber(config.getL2Provider(), targetBlockNumber);
+      const hasReachedTargetBlockNumber = await pollForBlockNumber(config.getL2Provider(), targetBlockNumber);
 
-      expect(hasReachedTargeBlockNumber).toBeTruthy();
+      expect(hasReachedTargetBlockNumber).toBeTruthy();
       for (const tx of txHashes) {
         const receipt = await config.getL2Provider().getTransactionReceipt(tx);
         expect(receipt?.status).toBeUndefined();
