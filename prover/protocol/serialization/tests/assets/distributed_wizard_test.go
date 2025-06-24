@@ -1,15 +1,19 @@
 package assets
 
 import (
+	"bytes"
 	"fmt"
 	"runtime"
+	"slices"
 	"testing"
 
+	"github.com/consensys/gnark-crypto/utils/unsafe"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	utils_limitless "github.com/consensys/linea-monorepo/prover/utils/limitless"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 )
 
@@ -90,7 +94,34 @@ func TestSerdeCongWIOP(t *testing.T) {
 				Conglomerate(20)
 	)
 
-	runSerdeTest(t, distWizard.CompiledConglomeration.Wiop, "DistributedWizard.CompiledConglomeration.WIOP", true)
+	// runSerdeTest(t, comp, "initialWizard.CompiledIOP", true) => PASS
+	// runSerdeTest(t, distWizard.CompiledConglomeration.Wiop, "DistributedWizard.CompiledConglomeration.WIOP", true)
+
+	buffer := &bytes.Buffer{}
+	iop := distWizard.CompiledConglomeration.Wiop
+
+	serTime := profiling.TimeIt(func() {
+		err := unsafe.WriteSlice(buffer, []*wizard.CompiledIOP{iop})
+		if err != nil {
+			t.Fatalf("could not marshal array of compiled IOP: %v", err)
+		}
+	})
+
+	var iop2 []*wizard.CompiledIOP
+	var err error
+	deserTime := profiling.TimeIt(func() {
+		readBuf := bytes.NewReader(buffer.Bytes())
+		iop2, _, err = unsafe.ReadSlice[[]*wizard.CompiledIOP](readBuf)
+		if err != nil {
+			t.Fatalf("could not unmarshal array of compiled IOP: %v", err)
+		}
+	})
+
+	t.Logf("%s serialization=%v deserialization=%v buffer-size=%v \n", "conglomeration", serTime, deserTime, len(buffer.Bytes()))
+	t.Logf("Running sanity check on ser/de cong. object")
+	if !test_utils.CompareExportedFields(iop, iop2[0]) {
+		t.Fatalf("IOPs are not equal")
+	}
 }
 
 type DistributeTestCase struct {
@@ -119,4 +150,26 @@ func (d DistributeTestCase) Define(comp *wizard.CompiledIOP) {
 	comp.InsertGlobal(0, "global-1", symbolic.Sub(c1, b1, a1))
 
 	comp.InsertInclusion(0, "inclusion-0", []ifaces.Column{c0, b0, a0}, []ifaces.Column{c1, b1, a1})
+}
+
+func TestUnsafeSerde(t *testing.T) {
+	var buf bytes.Buffer
+
+	// Slice with pointers (strings)
+	data := []string{"hello", "unsafe", "world!"}
+
+	err := unsafe.WriteSlice(&buf, data)
+	if err != nil {
+		t.Fatalf("could not marshal array of strings: %v", err)
+	}
+
+	readBuf := bytes.NewReader(buf.Bytes())
+	data2, _, err := unsafe.ReadSlice[[]string](readBuf)
+	if err != nil {
+		t.Fatalf("could not unmarshal array of strings: %v", err)
+	}
+
+	if !slices.Equal(data, data2) {
+		t.Fatalf("strings are not equal")
+	}
 }
