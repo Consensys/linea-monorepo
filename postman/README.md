@@ -24,7 +24,7 @@ All messages are stored in a configurable Postgres DB.
 - `L1_CONTRACT_ADDRESS`: Address of the LineaRollup contract on L1
 - `L1_SIGNER_PRIVATE_KEY`: Private key for L1 transactions
 - `L1_LISTENER_INTERVAL`: Block listening interval (ms)
-- `L1_LISTENER_INITIAL_FROM_BLOCK`: (optional) Starting block for event listening. This configuration option controls from which block the Postman service starts fetching events when it first starts up or when there are no previously processed messages in the database.
+- `L1_LISTENER_INITIAL_FROM_BLOCK`: (optional) Starting block for event listening. This configuration option controls from which block the Postman service starts fetching events.
   - **Default behavior**: If not specified or set to `-1` (default), the service will start from the current latest block on the chain or from the latest processed block if there are previously processed messages in the database.
   - **Custom block number**: Set to a specific block number (e.g., `12345678`) to start fetching events from that block
   - **From genesis**: Set to `0` to fetch all historical events from the beginning of the chain
