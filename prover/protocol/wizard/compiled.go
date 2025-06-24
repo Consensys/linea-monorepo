@@ -3,7 +3,6 @@ package wizard
 import (
 	// "reflect"
 
-	"fmt"
 	"slices"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -428,8 +427,6 @@ func (c *CompiledIOP) InsertPrecomputed(name ifaces.ColID, v smartvectors.SmartV
 	}
 
 	c.Precomputed.InsertNew(name, v)
-	fmt.Printf("polysss InsertPrecomputed =%v\n", v.Pretty())
-
 	return c.Columns.AddToRound(0, name, v.Len(), column.Precomputed)
 }
 

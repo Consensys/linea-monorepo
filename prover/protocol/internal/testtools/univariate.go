@@ -30,13 +30,27 @@ type UnivariateTestcase struct {
 // that are supposed to pass.
 var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 	/*
+			{
+				NameStr: "constant-poly",
+				Polys: []smartvectors.SmartVector{
+					smartvectors.ForTest(10, 10, 10, 10, 10, 10, 10, 10),
+				},
+				QueryXs: []fext.Element{
+					fext.PseudoRand(rng),
+				},
+				QueryPols: [][]int{
+					{0},
+				},
+			},
+
+
 		{
-			NameStr: "constant-poly",
+			NameStr: "one-poly-one-point-non-simple-values", // q(r)=const = 1065353216+0*u+(0+0*u)*v
 			Polys: []smartvectors.SmartVector{
-				smartvectors.ForTest(10, 10, 10, 10, 10, 10, 10, 10),
+				smartvectors.ForTest(1, 2),
 			},
 			QueryXs: []fext.Element{
-				fext.PseudoRand(rng),
+				fext.NewElement(0, 0, 0, 1),
 			},
 			QueryPols: [][]int{
 				{0},
@@ -45,30 +59,19 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 	*/
 
 	{
-		NameStr: "one-poly-one-point-non-simple-values", // q(r)=const = 1065353216+0*u+(0+0*u)*v
+		NameStr: "one-poly-one-point",
 		Polys: []smartvectors.SmartVector{
-			smartvectors.ForTest(1, 2),
+			RandomVec(8),
 		},
 		QueryXs: []fext.Element{
-			fext.NewElement(0, 0, 0, 1),
+			fext.Zero(),
 		},
 		QueryPols: [][]int{
 			{0},
 		},
+		RoundOfPolys: []int{2},
 	},
 	/*
-				{
-					NameStr: "one-poly-one-point",
-					Polys: []smartvectors.SmartVector{
-						RandomVec(8),
-					},
-					QueryXs: []fext.Element{
-						fext.Zero(),
-					},
-					QueryPols: [][]int{
-						{0},
-					},
-				},
 				{
 					NameStr: "one-poly-one-point-precomputed",
 					Polys: []smartvectors.SmartVector{
@@ -180,8 +183,7 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 					{0, 1},
 				},
 			},
-
-		{
+			{
 			NameStr: "complex-multi-round",
 			Polys: []smartvectors.SmartVector{
 				RandomVec(8),
@@ -207,8 +209,34 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 				{6},
 			},
 			RoundOfPolys: []int{-1, 0, 1, 2, 2, 3, 3},
-		},
+		}
 	*/
+	{
+		NameStr: "complex-multi-round",
+		Polys: []smartvectors.SmartVector{
+			RandomVec(8),
+			RandomVec(8),
+			RandomVec(8),
+			RandomVec(8),
+			RandomVec(8),
+			RandomVec(8),
+			RandomVec(8),
+		},
+		QueryXs: []fext.Element{
+			fext.PseudoRand(rng),
+			fext.PseudoRand(rng),
+			fext.PseudoRand(rng),
+			fext.PseudoRand(rng),
+		},
+		QueryPols: [][]int{
+			{0, 1, 2, 3},
+			{2, 3, 4, 5},
+			{0, 1, 4},
+			{0},
+			{6},
+		},
+		RoundOfPolys: []int{-1, 0, 0, 2, 2},
+	},
 }
 
 func (u *UnivariateTestcase) Name() string {

@@ -1,9 +1,10 @@
 package symbolic
 
 import (
+	"testing"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"testing"
 
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/stretchr/testify/require"
@@ -27,7 +28,7 @@ func TestSimpleAddition(t *testing.T) {
 				sv.NewConstantExt(fext.NewFromBaseInteger(3), 1),
 			}).(*sv.ConstantExt).Val()
 
-			require.Equal(t, res.String(), "5+0*u")
+			require.Equal(t, res.String(), "5+0*u+(0+0*u)*v")
 		})
 
 		t.Run("const-vec", func(t *testing.T) {
@@ -38,8 +39,8 @@ func TestSimpleAddition(t *testing.T) {
 				sv.ForTestExt(1, 5),
 			}).(*sv.RegularExt)
 
-			require.Equal(t, (*res)[0].String(), "3+0*u")
-			require.Equal(t, (*res)[1].String(), "7+0*u")
+			require.Equal(t, (*res)[0].String(), "3+0*u+(0+0*u)*v")
+			require.Equal(t, (*res)[1].String(), "7+0*u+(0+0*u)*v")
 		})
 
 		t.Run("vec-vec", func(t *testing.T) {
@@ -50,7 +51,7 @@ func TestSimpleAddition(t *testing.T) {
 			}).(*sv.RegularExt)
 
 			for i := range *res {
-				require.Equal(t, (*res)[i].String(), "5+0*u", "at position %v", i)
+				require.Equal(t, (*res)[i].String(), "5+0*u+(0+0*u)*v", "at position %v", i)
 			}
 		})
 	})
@@ -72,7 +73,7 @@ func TestPythagoras(t *testing.T) {
 			sv.NewConstantExt(fext.NewFromBaseInteger(3), 1),
 		}).(*sv.ConstantExt).Val()
 
-		require.Equal(t, res.String(), "13+0*u")
+		require.Equal(t, res.String(), "13+0*u+(0+0*u)*v")
 	}
 
 	{
@@ -84,7 +85,7 @@ func TestPythagoras(t *testing.T) {
 
 		require.Equal(t, res.Len(), 1024)
 		for i := range *res {
-			require.Equal(t, (*res)[i].String(), "13+0*u")
+			require.Equal(t, (*res)[i].String(), "13+0*u+(0+0*u)*v")
 		}
 	}
 
@@ -97,7 +98,7 @@ func TestPythagoras(t *testing.T) {
 
 		require.Equal(t, res.Len(), 8192)
 		for i := range *res {
-			require.Equal(t, (*res)[i].String(), "13+0*u", "at position i = %v", i)
+			require.Equal(t, (*res)[i].String(), "13+0*u+(0+0*u)*v", "at position i = %v", i)
 		}
 	}
 }
@@ -116,7 +117,7 @@ func TestMulAdd(t *testing.T) {
 			sv.NewConstantExt(fext.NewFromBaseInteger(3), 1),
 		}).(*sv.ConstantExt).Val()
 
-		require.Equal(t, res.String(), "24+0*u")
+		require.Equal(t, res.String(), "24+0*u+(0+0*u)*v")
 	}
 
 	{
@@ -128,7 +129,7 @@ func TestMulAdd(t *testing.T) {
 
 		require.Equal(t, res.Len(), 1024)
 		for i := range *res {
-			require.Equal(t, (*res)[i].String(), "24+0*u", "at position i = %v", i)
+			require.Equal(t, (*res)[i].String(), "24+0*u+(0+0*u)*v", "at position i = %v", i)
 		}
 	}
 
@@ -141,7 +142,7 @@ func TestMulAdd(t *testing.T) {
 
 		require.Equal(t, res.Len(), 8192)
 		for i := range *res {
-			require.Equal(t, (*res)[i].String(), "24+0*u", "at position i = %v", i)
+			require.Equal(t, (*res)[i].String(), "24+0*u+(0+0*u)*v", "at position i = %v", i)
 		}
 	}
 }
@@ -164,7 +165,7 @@ func TestBinaryConstraintWithLargeWindows(t *testing.T) {
 
 	for i := 0; i < res.Len(); i++ {
 		resx := res.GetExt(i)
-		require.Equal(t, "0+0*u", resx.String(), "position %v", i)
+		require.Equal(t, "0+0*u+(0+0*u)*v", resx.String(), "position %v", i)
 	}
 }
 
