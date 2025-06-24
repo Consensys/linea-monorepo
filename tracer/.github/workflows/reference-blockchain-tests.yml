@@ -30,6 +30,7 @@ concurrency:
 jobs:
   blockchain-reference-tests:
     strategy:
+      fail-fast: false
       matrix:
         zkevm_fork: [London, Shanghai]
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl

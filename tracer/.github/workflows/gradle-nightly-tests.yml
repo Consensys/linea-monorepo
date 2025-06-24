@@ -12,6 +12,7 @@ concurrency:
 jobs:
   nightly-tests:
     strategy:
+      fail-fast: false
       matrix:
         zkevm_fork: [LONDON, SHANGHAI]
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
