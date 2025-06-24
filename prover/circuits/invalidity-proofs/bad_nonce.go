@@ -8,30 +8,26 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 )
 
-type MerkleProofCircuit struct {
-	Proofs smt.GnarkProof    `gnark:",public"`
-	Leaf   frontend.Variable `gnark:",public"`
-	Root   frontend.Variable
-}
-
+// BadNonceCircuit define the circuit for the transaction with a bad nonce.
 type BadNonceCircuit struct {
-	// Nonce for the target FTx
-	FTxNonce frontend.Variable
-	// merkle proof for the account nonce
-	MerkleTree  MerkleProofCircuit
+	// Transaction Nonce
+	TxNonce frontend.Variable
+	// Account for the sender of the transaction
+	Account GnarkAccount
+	// LeafOpening of the Account in the Merkle tree
 	LeafOpening GnarkLeafOpening
-	Account     GnarkAccount
+	// Merkle proof for the LeafOpening
+	MerkleTree MerkleProofCircuit
 }
 
 func (circuit *BadNonceCircuit) Define(api frontend.API) error {
-
 	// check that the FTx.Nonce = Account.Nonce + 1
-	res := api.Sub(circuit.FTxNonce, api.Add(circuit.Account.Nonce, 1))
+	res := api.Sub(circuit.TxNonce, api.Add(circuit.Account.Nonce, 1))
 	api.AssertIsDifferent(res, 0)
 
 	// Hash (Account) == LeafOpening.HVal
 	hashAccount := MimcCircuit{
-		PreImage: sliceFromStruct(circuit.Account),
+		PreImage: SliceFromStruct(circuit.Account),
 		Hash:     circuit.LeafOpening.HVal,
 	}
 
@@ -42,7 +38,7 @@ func (circuit *BadNonceCircuit) Define(api frontend.API) error {
 
 	// Hash(LeafOpening)= MerkleTree.Leaf
 	hashLeafOpening := MimcCircuit{
-		PreImage: sliceFromStruct(circuit.LeafOpening),
+		PreImage: SliceFromStruct(circuit.LeafOpening),
 		Hash:     circuit.MerkleTree.Leaf,
 	}
 	err = hashLeafOpening.Define(api)
@@ -62,8 +58,14 @@ func (circuit *BadNonceCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
+// MerkleProofCircuit defines the circuit for validating the Merkle proofs
+type MerkleProofCircuit struct {
+	Proofs smt.GnarkProof    `gnark:",public"`
+	Leaf   frontend.Variable `gnark:",public"`
+	Root   frontend.Variable
+}
 
+func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
 	h, err := gmimc.NewMiMC(api)
 	if err != nil {
 		return err
@@ -74,15 +76,18 @@ func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
 	return nil
 }
 
+// GnarkAccount represent [types.Account] in gnark
 type GnarkAccount struct {
-	Nonce          frontend.Variable
-	Balance        frontend.Variable
-	StorageRoot    frontend.Variable
-	MimcCodeHash   frontend.Variable
-	KeccakCodeHash frontend.Variable
-	CodeSize       frontend.Variable
+	Nonce             frontend.Variable
+	Balance           frontend.Variable
+	StorageRoot       frontend.Variable
+	MimcCodeHash      frontend.Variable
+	KeccakCodeHashMSB frontend.Variable
+	KeccakCodeHashLSB frontend.Variable
+	CodeSize          frontend.Variable
 }
 
+// GnarkLeafOpening represent [accumulator.LeafOpening] in gnark
 type GnarkLeafOpening struct {
 	Prev frontend.Variable
 	Next frontend.Variable
@@ -93,8 +98,6 @@ type GnarkLeafOpening struct {
 // Circuit defines a pre-image knowledge proof
 // mimc( preImage) = public hash
 type MimcCircuit struct {
-	// struct tag on a variable is optional
-	// default uses variable name and secret visibility.
 	PreImage []frontend.Variable
 	Hash     frontend.Variable `gnark:",public"`
 }
@@ -113,36 +116,21 @@ func (circuit *MimcCircuit) Define(api frontend.API) error {
 	api.AssertIsEqual(circuit.Hash, mimc.Sum())
 
 	return nil
-} // specify constraints
+}
 
-func sliceFromStruct(input interface{}) []frontend.Variable {
+// SliceFromStruct creates a slice of [frontend.Variable] from the struct.
+func SliceFromStruct(input interface{}) []frontend.Variable {
 	var v []frontend.Variable
 
 	val := reflect.ValueOf(input)
 
 	for i := 0; i < val.NumField(); i++ {
 		field := val.Field(i)
-		v = append(v, field)
+		if variable, ok := field.Interface().(frontend.Variable); ok {
+			v = append(v, variable)
+		} else {
+			panic("field is not of type frontend.Variable")
+		}
 	}
 	return v
-}
-
-// DynamicFeeTx represents an EIP-1559 transaction.
-type GnarkTransaction struct {
-	ChainID    frontend.Variable
-	Nonce      frontend.Variable
-	GasTipCap  frontend.Variable // a.k.a. maxPriorityFeePerGas
-	GasFeeCap  frontend.Variable // a.k.a. maxFeePerGas
-	Gas        frontend.Variable
-	To         frontend.Variable `rlp:"nil"` // nil means contract creation
-	Value      frontend.Variable
-	Data       []frontend.Variable
-	AccessList GnarkAccessList
-}
-
-type GnarkAccessList []GnarkAccessTuple
-
-type GnarkAccessTuple struct {
-	Address     frontend.Variable   `json:"address"     gencodec:"required"`
-	StorageKeys []frontend.Variable `json:"storageKeys" gencodec:"required"`
 }
