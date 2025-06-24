@@ -53,7 +53,7 @@ All messages are stored in a configurable Postgres DB.
 - `L2_SIGNER_PRIVATE_KEY`: Private key for L2 transactions
 - `L2_LISTENER_INTERVAL`: Block listening interval (ms)
 - `L2_LISTENER_INITIAL_FROM_BLOCK`: (optional) Starting block for event listening. This configuration option controls from which block the Postman service starts fetching events when it first starts up or when there are no previously processed messages in the database.
-  - **Default behavior**: If not specified or set to `-1` (default), the service will start from the current latest block on the chain
+  - **Default behavior**: If not specified or set to `-1` (default), the service will start from the current latest block on the chain or from the latest processed block if there are previously processed messages in the database.
   - **Custom block number**: Set to a specific block number (e.g., `5432100`) to start fetching events from that block
   - **From genesis**: Set to `0` to fetch all historical events from the beginning of the chain
   - **Priority order**: The service determines the starting block using the following priority:
