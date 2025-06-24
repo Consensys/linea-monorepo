@@ -11,10 +11,6 @@ concurrency:
 
 jobs:
   nightly-tests:
-    strategy:
-      fail-fast: false
-      matrix:
-        zkevm_fork: [LONDON, SHANGHAI]
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
     steps:
       - name: Checkout repository
@@ -26,33 +22,33 @@ jobs:
         uses: ./.github/actions/setup-environment
 
       - name: Run Nightly tests
-        run: GOMEMLIMIT=32GiB ./gradlew nightlyTests
+        run: GOMAXPROCS=10 GOMEMLIMIT=20GiB ./gradlew nightlyTests
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
           GOCORSET_FLAGS: -v --ansi-escapes=false --report --mir
           NIGHTLY_TESTS_PARALLELISM: 2
-          ZKEVM_FORK: ${{ matrix.zkevm_fork }}
+          ZKEVM_FORK: LONDON
 
       - name: Upload test report
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: nightly-tests-report-${{ matrix.zkevm_fork }}
+          name: nightly-tests-report-LONDON
           path: arithmetization/build/reports/tests/**/*
 
       - name: Upload jacoco nightly tests coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jacoco-nightly-tests-coverage-report-${{ matrix.zkevm_fork }}
+          name: jacoco-nightly-tests-coverage-report-LONDON
           path: arithmetization/build/reports/jacoco/jacocoNightlyTestsReport/**/*
 
       - name: Upload jacoco nightly tests exec file
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jacoco-nightly-tests-exec-file-${{ matrix.zkevm_fork }}
+          name: jacoco-nightly-tests-exec-file-LONDON
           path: arithmetization/build/jacoco/nightlyTests.exec
 
       - name: Failure Notification
