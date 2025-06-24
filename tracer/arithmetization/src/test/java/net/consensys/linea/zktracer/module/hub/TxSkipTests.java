@@ -440,4 +440,34 @@ public class TxSkipTests extends TracerTestBase {
         .build()
         .run();
   }
+
+  @Test
+  void txSkipValueIsZero() {
+    final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
+    final Address senderAddress =
+        Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
+    final ToyAccount senderAccount =
+        ToyAccount.builder().balance(Wei.fromEth(0xffff)).nonce(127).address(senderAddress).build();
+
+    final ToyAccount receiverAccount =
+        ToyAccount.builder()
+            .balance(Wei.fromEth(1))
+            .address(Address.fromHexString("0xdead000000000000000000000000000beef"))
+            .build();
+
+    final Transaction tx =
+        ToyTransaction.builder()
+            .sender(senderAccount)
+            .to(receiverAccount)
+            .keyPair(senderKeyPair)
+            .value(Wei.ZERO)
+            .build();
+
+    ToyExecutionEnvironmentV2.builder(testInfo)
+        .accounts(List.of(senderAccount, receiverAccount))
+        .transaction(tx)
+        .zkTracerValidator(zkTracer -> {})
+        .build()
+        .run();
+  }
 }
