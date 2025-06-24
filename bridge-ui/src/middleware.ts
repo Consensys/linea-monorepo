@@ -82,8 +82,6 @@ export function middleware(request: NextRequest) {
   const contentSecurityPolicyHeaderValue = cspHeader.replace(/\s{2,}/g, " ").trim();
 
   const requestHeaders = new Headers(request.headers);
-  // Pass nonce to <Script> elements in layout.tsx to bypass CSP
-  // requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("Content-Security-Policy", contentSecurityPolicyHeaderValue);
   // Set response headers so that browsers enforce CSP
   const responseHeaders = new Headers();
