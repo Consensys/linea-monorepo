@@ -70,10 +70,47 @@ data class SignerConfigToml(
     val publicKey: ByteArray,
     val maxPoolSize: Int = 10,
     val keepAlive: Boolean = true,
+    val tls: TlsConfig?,
   ) {
     init {
       require(publicKey.size == 64) { "publicKey must be 64 bytes (128 hex characters)" }
       require(maxPoolSize > 0) { "maxPoolSize must be greater than 0" }
+    }
+
+    data class TlsConfig(
+      val keyStorePath: String,
+      val keyStorePassword: Masked,
+      val trustStorePath: String,
+      val trustStorePassword: Masked,
+    ) {
+      init {
+        require(!keyStorePassword.value.isEmpty()) { "keyStorePassword must not be empty" }
+        require(!trustStorePassword.value.isEmpty()) { "trustStorePassword must not be empty" }
+        require(!keyStorePath.isEmpty()) { "keyStorePath must not be empty" }
+        require(!trustStorePath.isEmpty()) { "trustStorePath must not be empty" }
+      }
+
+      override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as TlsConfig
+
+        if (keyStorePath != other.keyStorePath) return false
+        if (keyStorePassword != other.keyStorePassword) return false
+        if (trustStorePath != other.trustStorePath) return false
+        if (trustStorePassword != other.trustStorePassword) return false
+
+        return true
+      }
+
+      override fun hashCode(): Int {
+        var result = keyStorePath.hashCode()
+        result = 31 * result + keyStorePassword.hashCode()
+        result = 31 * result + trustStorePath.hashCode()
+        result = 31 * result + trustStorePassword.hashCode()
+        return result
+      }
     }
 
     override fun equals(other: Any?): Boolean {
@@ -109,6 +146,14 @@ data class SignerConfigToml(
           publicKey = it.publicKey,
           maxPoolSize = it.maxPoolSize,
           keepAlive = it.keepAlive,
+          tls = it.tls?.let { tls ->
+            SignerConfig.Web3SignerConfig.TlsConfig(
+              keyStorePath = tls.keyStorePath,
+              keyStorePassword = tls.keyStorePassword.value,
+              trustStorePath = tls.trustStorePath,
+              trustStorePassword = tls.trustStorePassword.value,
+            )
+          },
         )
       },
     )
