@@ -71,8 +71,8 @@ func (p *ProverState[K, V]) InsertAndProve(key K, val V) (trace InsertionTrace[K
 		LeafOpening: LeafOpening{
 			Prev: int64(iMinus),
 			Next: int64(iPlus),
-			HKey: hash(p.Config(), key),
-			HVal: hash(p.Config(), val),
+			HKey: Hash(p.Config(), key),
+			HVal: Hash(p.Config(), val),
 		},
 	}
 	trace.ProofNew = p.upsertTuple(iInserted, insertedTuple)
@@ -122,7 +122,7 @@ func (v *VerifierState[K, V]) VerifyInsertion(trace InsertionTrace[K, V]) error 
 	}
 
 	// Also checks that the their hkey are lower/larger than the inserted one
-	hkey := hash(v.Config, trace.Key)
+	hkey := Hash(v.Config, trace.Key)
 	if Bytes32Cmp(hkey, trace.OldOpenMinus.HKey) < 1 || Bytes32Cmp(hkey, trace.OldOpenPlus.HKey) > -1 {
 		return fmt.Errorf(
 			"sandwich is incorrect expected %x < %x < %x",
@@ -146,7 +146,7 @@ func (v *VerifierState[K, V]) VerifyInsertion(trace InsertionTrace[K, V]) error 
 		Prev: int64(trace.ProofMinus.Path),
 		Next: int64(trace.ProofPlus.Path),
 		HKey: hkey,
-		HVal: hash(v.Config, trace.Val),
+		HVal: Hash(v.Config, trace.Val),
 	}.Hash(v.Config)
 
 	currentRoot, err = updateCheckRoot(v.Config, trace.ProofNew, currentRoot, smt.EmptyLeaf(), newLeaf)
@@ -187,7 +187,7 @@ func (trace InsertionTrace[K, V]) DeferMerkleChecks(
 	iInserted := int64(trace.ProofNew.Path)
 
 	// Also checks that the their hkey are lower/larger than the inserted one
-	hkey := hash(config, trace.Key)
+	hkey := Hash(config, trace.Key)
 
 	currentRoot := trace.OldSubRoot
 
@@ -202,7 +202,7 @@ func (trace InsertionTrace[K, V]) DeferMerkleChecks(
 		Prev: int64(trace.ProofMinus.Path),
 		Next: int64(trace.ProofPlus.Path),
 		HKey: hkey,
-		HVal: hash(config, trace.Val),
+		HVal: Hash(config, trace.Val),
 	}.Hash(config)
 
 	appendTo, currentRoot = deferCheckUpdateRoot(config, trace.ProofNew, currentRoot, smt.EmptyLeaf(), newLeaf, appendTo)
@@ -216,7 +216,7 @@ func (trace InsertionTrace[K, V]) DeferMerkleChecks(
 }
 
 func (trace InsertionTrace[K, V]) HKey(cfg *smt.Config) Bytes32 {
-	return hash(cfg, trace.Key)
+	return Hash(cfg, trace.Key)
 }
 
 func (trace InsertionTrace[K, V]) RWInt() int {
