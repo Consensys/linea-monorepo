@@ -16,7 +16,7 @@ var (
 )
 
 // Helper function for serialization and deserialization tests
-func runSerdeTest(t *testing.T, input interface{}, name string, isSanityCheck bool) {
+func runSerdeTest(t *testing.T, input any, name string, isSanityCheck bool) {
 
 	// In case the test panics, log the error but do not let the panic
 	// interrupt the test.
