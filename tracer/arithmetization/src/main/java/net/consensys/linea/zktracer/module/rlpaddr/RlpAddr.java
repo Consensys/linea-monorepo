@@ -62,7 +62,7 @@ public class RlpAddr implements OperationSetModule<RlpAddrOperation> {
   private final ModuleOperationStackedSet<RlpAddrOperation> operations =
       new ModuleOperationStackedSet<>();
 
-  private static final Bytes CREATE2_SHIFT = Bytes.minimalBytes(Trace.CREATE2_SHIFT);
+  public static final Bytes CREATE2_SHIFT = Bytes.minimalBytes(Trace.CREATE2_SHIFT);
   private static final Bytes INT_SHORT = Bytes.minimalBytes(RLP_PREFIX_INT_SHORT);
   private static final UnsignedByte BYTES_LLARGE = UnsignedByte.of(LLARGE);
   final int recipe1NbRows = MAX_CT_CREATE + 1;
