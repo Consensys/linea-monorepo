@@ -25,6 +25,7 @@ describe("Send bundle test suite", () => {
       let senderNonce = await senderAccount.getNonce();
       const txHashes: string[] = [];
       const txs: string[] = [];
+
       for (let i = 0; i < 3; i++) {
         const txRequest: TransactionRequest = {
           to: recipientAccount.address,
@@ -36,6 +37,7 @@ describe("Send bundle test suite", () => {
         txs.push(await getRawTransactionHex(txRequest, senderWallet));
         txHashes.push(await getTransactionHash(txRequest, senderWallet));
       }
+
       const targetBlockNumber = (await config.getL2Provider().getBlockNumber()) + 5;
       const replacementUUID = generateRandomUUIDv4();
 
@@ -63,6 +65,7 @@ describe("Send bundle test suite", () => {
       let senderNonce = await senderAccount.getNonce();
       const txHashes: string[] = [];
       const txs: string[] = [];
+
       for (let i = 0; i < 3; i++) {
         const txRequest: TransactionRequest = {
           to: recipientAccount.address,
@@ -74,6 +77,7 @@ describe("Send bundle test suite", () => {
         txs.push(await getRawTransactionHex(txRequest, senderWallet));
         txHashes.push(await getTransactionHash(txRequest, senderWallet));
       }
+
       const targetBlockNumber = (await config.getL2Provider().getBlockNumber()) + 5;
       const replacementUUID = generateRandomUUIDv4();
 
@@ -101,6 +105,7 @@ describe("Send bundle test suite", () => {
       let senderNonce = await senderAccount.getNonce();
       const txHashes: string[] = [];
       const txs: string[] = [];
+
       for (let i = 0; i < 3; i++) {
         const txRequest: TransactionRequest = {
           to: recipientAccount.address,
@@ -112,6 +117,7 @@ describe("Send bundle test suite", () => {
         txs.push(await getRawTransactionHex(txRequest, senderWallet));
         txHashes.push(await getTransactionHash(txRequest, senderWallet));
       }
+
       const targetBlockNumber = (await config.getL2Provider().getBlockNumber()) + 10;
       const replacementUUID = generateRandomUUIDv4();
 
