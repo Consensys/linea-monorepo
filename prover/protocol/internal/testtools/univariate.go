@@ -50,7 +50,7 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 			smartvectors.ForTest(1, 2),
 		},
 		QueryXs: []fext.Element{
-			fext.NewElement(0, 0, 0, 0),
+			fext.NewElement(0, 0, 0, 1),
 		},
 		QueryPols: [][]int{
 			{0},
