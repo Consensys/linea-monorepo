@@ -104,104 +104,107 @@ func TestBatchUpdates(t *testing.T) {
 
 }
 
-// // TestSamplingFromSeed tests that sampling from seed is consistent, does not forget
-// // bytes from the seed and does not depends on the state.
-// func TestSamplingFromSeed(t *testing.T) {
+// TestSamplingFromSeed tests that sampling from seed is consistent, does not forget
+// bytes from the seed and does not depends on the state.
+func TestSamplingFromSeed(t *testing.T) {
 
-// 	t.Run("dependence-on-name", func(t *testing.T) {
+	t.Run("dependence-on-name", func(t *testing.T) {
 
-// 		var (
-// 			// #nosec G404 --we don't need a cryptographic RNG for testing purpose
-// 			rng          = rand.New(utils.NewRandSource(789))
-// 			initialState = field.PseudoRand(rng)
-// 			seed         = field.PseudoRand(rng)
-// 			resMap       = map[field.Element]struct{}{}
-// 			name         = ""
-// 			totalSize    = 1000
-// 		)
+		totalSize := 1000
+		name := ""
+		resMap := map[field.Element]struct{}{}
 
-// 		fs := NewMiMCFiatShamir()
-// 		fs.SetState([]field.Element{initialState})
+		var seed, initialState field.Element
+		seed.SetRandom()
+		initialState.SetRandom()
 
-// 		for i := 0; i < totalSize; i++ {
+		fs := poseidon2.NewMerkleDamgardHasher()
+		bInitialState := make([]byte, fs.BlockSize())
+		copy(bInitialState, initialState.Marshal())
+		fs.SetState(bInitialState)
 
-// 			x := fs.RandomFieldFromSeed(seed, name)
-// 			if _, found := resMap[x]; found {
-// 				t.Errorf("found a collision for i=%v", i)
-// 			}
+		for i := 0; i < totalSize; i++ {
 
-// 			resMap[x] = struct{}{}
-// 			name += "a"
-// 		}
-// 	})
+			x := RandomFieldFromSeed(fs, seed, name)
+			if _, found := resMap[x]; found {
+				t.Errorf("found a collision for i=%v", i)
+			}
 
-// 	t.Run("non-dependance-curr-state", func(t *testing.T) {
+			resMap[x] = struct{}{}
+			name += "a"
+		}
+	})
 
-// 		var (
-// 			// #nosec G404 --we don't need a cryptographic RNG for testing purpose
-// 			rng    = rand.New(utils.NewRandSource(789))
-// 			state1 = field.PseudoRand(rng)
-// 			state2 = field.PseudoRand(rng)
-// 			fs1    = NewMiMCFiatShamir()
-// 			fs2    = NewMiMCFiatShamir()
-// 			seed   = field.PseudoRand(rng)
-// 			name   = "string-name"
-// 		)
+	t.Run("non-dependance-curr-state", func(t *testing.T) {
 
-// 		fs1.SetState([]field.Element{state1})
-// 		fs2.SetState([]field.Element{state2})
+		var s1, s2, seed field.Element
+		seed.SetRandom()
+		s1.SetRandom()
+		s2.SetRandom()
 
-// 		y1 := fs1.RandomFieldFromSeed(seed, name)
-// 		y2 := fs2.RandomFieldFromSeed(seed, name)
+		name := "string-name"
+		fs1 := poseidon2.NewMerkleDamgardHasher()
+		fs2 := poseidon2.NewMerkleDamgardHasher()
 
-// 		if y1 != y2 {
-// 			t.Errorf("starting from different state does not give the same results")
-// 		}
-// 	})
+		fs1.SetState(s1.Marshal())
+		fs2.SetState(s2.Marshal())
 
-// 	t.Run("does-not-modify-state", func(t *testing.T) {
+		y1 := RandomFieldFromSeed(fs1, seed, name)
+		y2 := RandomFieldFromSeed(fs2, seed, name)
 
-// 		var (
-// 			// #nosec G404 --we don't need a cryptographic RNG for testing purpose
-// 			rng          = rand.New(utils.NewRandSource(789))
-// 			initialState = field.PseudoRand(rng)
-// 			seed         = field.PseudoRand(rng)
-// 			name         = "ddqsdjqskljd"
-// 			fs           = NewMiMCFiatShamir()
-// 		)
+		if y1 != y2 {
+			t.Errorf("starting from different state does not give the same results")
+		}
+	})
 
-// 		fs.SetState([]field.Element{initialState})
+	t.Run("does-not-modify-state", func(t *testing.T) {
 
-// 		fs.RandomFieldFromSeed(seed, name)
+		var initialState, seed field.Element
+		initialState.SetRandom()
+		seed.SetRandom()
 
-// 		newState := fs.State()
-// 		if initialState != newState[0] {
-// 			t.Errorf("state was modified")
-// 		}
-// 	})
+		name := "ddqsdjqskljd"
+		fs := poseidon2.NewMerkleDamgardHasher()
 
-// 	t.Run("is-repeatable", func(t *testing.T) {
+		bInitialState := make([]byte, fs.BlockSize())
+		copy(bInitialState, initialState.Marshal())
+		fs.SetState(bInitialState)
 
-// 		var (
-// 			// #nosec G404 --we don't need a cryptographic RNG for testing purpose
-// 			rng          = rand.New(utils.NewRandSource(789))
-// 			initialState = field.PseudoRand(rng)
-// 			seed         = field.PseudoRand(rng)
-// 			name         = "ddqsdjqskljd"
-// 			fs           = NewMiMCFiatShamir()
-// 		)
+		RandomFieldFromSeed(fs, seed, name)
 
-// 		fs.SetState([]field.Element{initialState})
+		newState := fs.State()
+		errStr := "state was modified"
+		if len(newState) != len(bInitialState) {
+			t.Fatal(errStr)
+		}
+		for i := 0; i < len(newState); i++ {
+			if newState[i] != bInitialState[i] {
+				t.Fatal(errStr)
+			}
+		}
+	})
 
-// 		y1 := fs.RandomFieldFromSeed(seed, name)
-// 		y2 := fs.RandomFieldFromSeed(seed, name)
+	t.Run("is-repeatable", func(t *testing.T) {
 
-// 		if y1 != y2 {
-// 			t.Errorf("state was modified")
-// 		}
-// 	})
+		var initialState, seed field.Element
+		initialState.SetRandom()
+		seed.SetRandom()
+		name := "ddqsdjqskljd"
+		fs := poseidon2.NewMerkleDamgardHasher()
 
-// }
+		bInitialState := make([]byte, fs.BlockSize())
+		copy(bInitialState, initialState.Marshal())
+		fs.SetState(initialState.Marshal())
+
+		y1 := RandomFieldFromSeed(fs, seed, name)
+		y2 := RandomFieldFromSeed(fs, seed, name)
+
+		if y1 != y2 {
+			t.Errorf("state was modified")
+		}
+	})
+
+}
 
 // errIfHasDuplicate returns an error if a duplicate is found in the caller's slice
 // indicating the positions and the value corresponding to the first duplicate.
