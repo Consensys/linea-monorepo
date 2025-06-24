@@ -467,12 +467,12 @@ opcodes:
       flag2: true
   - mnemonic: BLOBHASH
     value: 0x49
-    instructionFamily: BATCH
+    instructionFamily: TRANSACTION
     stackSettings:
       pattern: ONE_ONE
       alpha: 1
       delta: 1
-      staticGas: G_VERY_LOW
+      staticGas: G_CONST_HASH_OPCODE
       flag3: true
   - mnemonic: BLOBBASEFEE
     value: 0x4a
