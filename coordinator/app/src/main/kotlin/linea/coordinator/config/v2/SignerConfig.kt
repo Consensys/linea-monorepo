@@ -11,17 +11,29 @@ data class SignerConfig(
   init {
     when {
       type == SignerType.WEB3J && web3j == null -> {
-        throw IllegalArgumentException("signetType=$type requires web3j config")
+        throw IllegalArgumentException("signerType=$type requires web3j config")
       }
 
       type == SignerType.WEB3SIGNER && web3signer == null -> {
-        throw IllegalArgumentException("signetType=$type requires web3signer config")
+        throw IllegalArgumentException("signerType=$type requires web3signer config")
       }
+    }
 
-      type == SignerType.WEB3SIGNER &&
-        web3signer?.tls != null &&
-        web3signer.endpoint.protocol != "https" -> {
-        throw IllegalArgumentException("signetType=$type with TLS configs requires endpoint URL in https")
+    if (type == SignerType.WEB3SIGNER && web3signer?.tls != null) {
+      require(web3signer.endpoint.protocol == "https") {
+        "signerType=$type with TLS configs requires web3signer.endpoint in https"
+      }
+      require(!web3signer.tls.keyStorePassword.isEmpty()) {
+        "web3signer.tls.keyStorePassword must not be empty"
+      }
+      require(!web3signer.tls.trustStorePassword.isEmpty()) {
+        "web3signer.tls.trustStorePassword must not be empty"
+      }
+      require(File(web3signer.tls.keyStorePath).exists()) {
+        "web3signer.tls.keyStorePath=${web3signer.tls.keyStorePath} must point to an existing file"
+      }
+      require(File(web3signer.tls.trustStorePath).exists()) {
+        "web3signer.tls.trustStorePath=${web3signer.tls.trustStorePath} must point to an existing file"
       }
     }
   }
@@ -65,13 +77,6 @@ data class SignerConfig(
       val trustStorePath: String,
       val trustStorePassword: String,
     ) {
-      init {
-        require(!keyStorePassword.isEmpty()) { "keyStorePassword must not be empty" }
-        require(!trustStorePassword.isEmpty()) { "trustStorePassword must not be empty" }
-        require(File(keyStorePath).exists()) { "keyStorePath=$keyStorePath must point to an existing file" }
-        require(File(trustStorePath).exists()) { "trustStorePath=$trustStorePath must point to an existing file" }
-      }
-
       override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
