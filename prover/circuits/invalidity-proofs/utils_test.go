@@ -165,7 +165,7 @@ func TestMimcAccount(t *testing.T) {
 // it creates a merkle tree for the given [accumulator.LeafOpening] and config
 func genShomei(t *testing.T, tcases []TestCases, config *smt.Config) (*smt.Tree, []smt.Proof, []Bytes32) {
 
-	var leaves []Bytes32
+	var leaves = []Bytes32{}
 	for _, c := range tcases {
 
 		leaf := accumulator.Hash(config, &accumulator.LeafOpening{
@@ -185,8 +185,8 @@ func genShomei(t *testing.T, tcases []TestCases, config *smt.Config) (*smt.Tree,
 	}
 
 	var (
-		leafs  []Bytes32
-		proofs []smt.Proof
+		leafs  = []Bytes32{}
+		proofs = []smt.Proof{}
 	)
 	// Make a valid Bytes32
 	for i := range leaves {

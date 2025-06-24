@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 )
 
-// BadNonceCircuit define the circuit for the transaction with a bad nonce.
+// BadNonceCircuit defines the circuit for the transaction with a bad nonce.
 type BadNonceCircuit struct {
 	// Transaction Nonce
 	TxNonce frontend.Variable
@@ -20,6 +20,7 @@ type BadNonceCircuit struct {
 	MerkleTree MerkleProofCircuit
 }
 
+// Define represent the constraints relevant to [BadNonceCircuit]
 func (circuit *BadNonceCircuit) Define(api frontend.API) error {
 	// check that the FTx.Nonce = Account.Nonce + 1
 	res := api.Sub(circuit.TxNonce, api.Add(circuit.Account.Nonce, 1))
