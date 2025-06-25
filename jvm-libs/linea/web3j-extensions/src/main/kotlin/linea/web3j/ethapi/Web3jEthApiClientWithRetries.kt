@@ -35,7 +35,7 @@ class Web3jEthApiClientWithRetries(
   private fun stopRetryOnFinalizedSafeTags(th: Throwable): Boolean {
     return if (th.cause is linea.error.JsonRpcErrorResponseException) {
       val rpcError = th.cause as linea.error.JsonRpcErrorResponseException
-      // 39001 = "Block Unknow", this means that the node does not support
+      // 39001 = "Block Unknown", this means that the node does not support
       // SAFE/FINALIZED block tags hence retry would fail always
       rpcError.rpcErrorCode == -39001
     } else {
