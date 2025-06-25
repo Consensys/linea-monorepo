@@ -9,31 +9,33 @@ data class SignerConfig(
   val web3signer: Web3SignerConfig?,
 ) {
   init {
-    when {
-      type == SignerType.WEB3J && web3j == null -> {
-        throw IllegalArgumentException("signerType=$type requires web3j config")
+    when (type) {
+      SignerType.WEB3J -> {
+        require(web3j != null) {
+          "signerType=$type requires web3j config"
+        }
       }
-
-      type == SignerType.WEB3SIGNER && web3signer == null -> {
-        throw IllegalArgumentException("signerType=$type requires web3signer config")
-      }
-    }
-
-    if (type == SignerType.WEB3SIGNER && web3signer?.tls != null) {
-      require(web3signer.endpoint.protocol == "https") {
-        "signerType=$type with TLS configs requires web3signer.endpoint in https"
-      }
-      require(!web3signer.tls.keyStorePassword.isEmpty()) {
-        "web3signer.tls.keyStorePassword must not be empty"
-      }
-      require(!web3signer.tls.trustStorePassword.isEmpty()) {
-        "web3signer.tls.trustStorePassword must not be empty"
-      }
-      require(File(web3signer.tls.keyStorePath).exists()) {
-        "web3signer.tls.keyStorePath=${web3signer.tls.keyStorePath} must point to an existing file"
-      }
-      require(File(web3signer.tls.trustStorePath).exists()) {
-        "web3signer.tls.trustStorePath=${web3signer.tls.trustStorePath} must point to an existing file"
+      SignerType.WEB3SIGNER -> {
+        require(web3signer != null) {
+          "signerType=$type requires web3signer config"
+        }
+        if (web3signer.tls != null) {
+          require(web3signer.endpoint.protocol == "https") {
+            "signerType=$type with TLS configs requires web3signer.endpoint in https"
+          }
+          require(!web3signer.tls.keyStorePassword.isEmpty()) {
+            "web3signer.tls.keyStorePassword must not be empty"
+          }
+          require(!web3signer.tls.trustStorePassword.isEmpty()) {
+            "web3signer.tls.trustStorePassword must not be empty"
+          }
+          require(File(web3signer.tls.keyStorePath).exists()) {
+            "web3signer.tls.keyStorePath=${web3signer.tls.keyStorePath} must point to an existing file"
+          }
+          require(File(web3signer.tls.trustStorePath).exists()) {
+            "web3signer.tls.trustStorePath=${web3signer.tls.trustStorePath} must point to an existing file"
+          }
+        }
       }
     }
   }
