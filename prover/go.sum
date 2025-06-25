@@ -122,6 +122,8 @@ github.com/consensys/gnark-crypto v0.18.1-0.20250613145137-bf7ac9d06da2 h1:LZlar
 github.com/consensys/gnark-crypto v0.18.1-0.20250613145137-bf7ac9d06da2/go.mod h1:L3mXGFTe1ZN+RSJ+CLjUt9x7PNdx8ubaYfDROyp2Z8c=
 github.com/consensys/gnark-crypto v0.18.1-0.20250623075712-4876a36f2df7 h1:8PmcO6YCEX1eS0MoL7tV2Khr4HhCrZl5STtaQVz5jlg=
 github.com/consensys/gnark-crypto v0.18.1-0.20250623075712-4876a36f2df7/go.mod h1:L3mXGFTe1ZN+RSJ+CLjUt9x7PNdx8ubaYfDROyp2Z8c=
+github.com/consensys/gnark-crypto v0.18.1-0.20250625071604-45b6465260b0 h1:3ylXJTmXakbFErAEue0GIiYBJwZb8iqniYlvsAWzRA0=
+github.com/consensys/gnark-crypto v0.18.1-0.20250625071604-45b6465260b0/go.mod h1:L3mXGFTe1ZN+RSJ+CLjUt9x7PNdx8ubaYfDROyp2Z8c=
 github.com/consensys/go-corset v1.0.3 h1:CZ04qi9NaMkMJnfv19UUHGhEXJZwpDNrAo5fwDbT1OM=
 github.com/consensys/go-corset v1.0.3/go.mod h1:JKJTywyjBE0Goco4DokW4BAkF6R+jtoo3XgkICwxrcw=
 github.com/coreos/go-semver v0.3.0/go.mod h1:nnelYz7RCh+5ahJtPPxZlU+153eP4D4r3EedlOD2RNk=
