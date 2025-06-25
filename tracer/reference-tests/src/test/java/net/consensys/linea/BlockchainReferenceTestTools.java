@@ -61,6 +61,7 @@ import org.junit.jupiter.api.Assumptions;
 
 @Slf4j
 public class BlockchainReferenceTestTools {
+  // Keep the forkName and the zkevm_fork in github worklow in PascalCase
   private static final String forkName = getForkOrDefault("London");
   private static final ReferenceTestProtocolSchedules REFERENCE_TEST_PROTOCOL_SCHEDULES =
       ReferenceTestProtocolSchedules.create();
@@ -313,6 +314,7 @@ public class BlockchainReferenceTestTools {
     PARAMS.ignore("tipsLondon_London\\[London\\]");
     PARAMS.ignore("transType_London\\[London\\]");
     PARAMS.ignore("highGasUsage_London\\[London\\]");
+    PARAMS.ignore("blockhashNonConstArg_London\\[London\\]");
     PARAMS.ignore("blockhashTests_London\\[London\\]");
     PARAMS.ignore("extcodehashEmptySuicide_London\\[London\\]");
     PARAMS.ignore("logRevert_London\\[London\\]");

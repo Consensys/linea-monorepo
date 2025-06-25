@@ -155,6 +155,7 @@ tasks.test.configure {
   systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
       System.getenv().getOrDefault("UNIT_TESTS_PARALLELISM", "4").toInteger())
   //
+
   useJUnitPlatform {
     excludeTags("nightly")
     excludeTags("replay")
