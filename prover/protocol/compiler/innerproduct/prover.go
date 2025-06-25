@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
@@ -39,8 +39,8 @@ func (ctx *contextForSize) run(run *wizard.ProverRuntime) {
 
 	var (
 		size      = ctx.Summation.Size()
-		collapsed = column.EvalExprColumn(run, ctx.CollapsedBoard).IntoRegVecSaveAlloc()
-		summation = make([]field.Element, size)
+		collapsed = column.EvalExprColumn(run, ctx.CollapsedBoard).IntoRegVecSaveAllocExt()
+		summation = make([]fext.Element, size)
 	)
 
 	summation[0] = collapsed[0]
@@ -49,6 +49,6 @@ func (ctx *contextForSize) run(run *wizard.ProverRuntime) {
 		summation[i+1].Add(&summation[i], &collapsed[i+1])
 	}
 
-	run.AssignColumn(ctx.Summation.GetColID(), smartvectors.NewRegular(summation))
-	run.AssignLocalPoint(ctx.SummationOpening.ID, summation[len(summation)-1])
+	run.AssignColumn(ctx.Summation.GetColID(), smartvectors.NewRegularExt(summation))
+	run.AssignLocalPointExt(ctx.SummationOpening.ID, summation[len(summation)-1])
 }

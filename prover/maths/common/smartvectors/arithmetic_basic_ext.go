@@ -1,6 +1,8 @@
 package smartvectors
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -99,11 +101,9 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPo
 		}
 	}
 
-	accumulateReg := func(acc []fext.Element, v []field.Element, x fext.Element) {
-		var vExt fext.Element
+	accumulateRegMixed := func(acc []fext.Element, v []field.Element, x fext.Element) {
 		for i := 0; i < length; i++ {
-			vExt.B0.A0.Set(&v[i])
-			tmpF.Mul(&vExt, &x)
+			tmpF.MulByElement(&x, &v[i])
 			acc[i].Add(&acc[i], &tmpF)
 		}
 	}
@@ -126,11 +126,15 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPo
 		case *Regular:
 			anyReg = true
 			v := *casted
-			accumulateReg(resReg, v, xPow)
+			accumulateRegMixed(resReg, v, xPow)
 		case *RegularExt:
 			anyReg = true
 			v := *casted
 			accumulateRegExt(resReg, v, xPow)
+		case *Pooled: // e.g. from product
+			anyReg = true
+			v := casted.Regular
+			accumulateRegMixed(resReg, v, xPow)
 		case *PooledExt: // e.g. from product
 			anyReg = true
 			v := casted.RegularExt
@@ -141,9 +145,11 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPo
 			casted.WriteInSliceExt(tmpVec)
 			accumulateRegExt(resReg, tmpVec, xPow)
 		}
+		//fmt.Printf("types=\n casted=%v", v.Pretty())
 
 		xPow.Mul(&x, &xPow)
 	}
+	fmt.Printf("res=%v\n", resReg)
 
 	switch {
 	case anyCon && anyReg:

@@ -325,7 +325,6 @@ func (b boardAssignment) evalMixed(na *nodeAssignment, pool mempool.MemPool) {
 
 		smv[i] = v.Value
 	}
-
 	na.Value = na.Node.Operator.EvaluateMixed(smv, pool)
 
 	for i := range val {

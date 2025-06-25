@@ -28,7 +28,7 @@ func LinearCombinationMixed(vecs []SmartVector, x fext.Element, p ...mempool.Mem
 		resReg = make([]fext.Element, length)
 		tmpVec = make([]field.Element, length)
 	} else {
-		a := AllocFromPoolMixed(pool)
+		a := AllocFromPoolExt(pool)
 		b := AllocFromPool(pool)
 		resReg = a.RegularExt
 		tmpVec = b.Regular
