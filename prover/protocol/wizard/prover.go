@@ -6,6 +6,9 @@ import (
 	"os"
 	"path"
 
+	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
+	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"strconv"
@@ -145,7 +148,7 @@ type ProverRuntime struct {
 	// it to update the FS hash, this can potentially result in the prover and
 	// the verifer end up having different state or the same message being
 	// included a second time. Use it externally at your own risks.
-	FS *fiatshamir.State
+	FS hash.StateStorer
 
 	// lock is global lock so that the assignment maps are thread safes
 	lock *sync.Mutex
@@ -283,8 +286,8 @@ func (run *ProverRuntime) NumRounds() int {
 func (c *CompiledIOP) createProver() ProverRuntime {
 
 	// Create a new fresh FS state and bootstrap it
-	fs := fiatshamir.NewMiMCFiatShamir()
-	fs.Update(c.FiatShamirSetup)
+	fs := poseidon2.NewMerkleDamgardHasher()
+	fiatshamir.Update(fs, c.FiatShamirSetup)
 
 	// Instantiates an empty Assignment (but link it to the CompiledIOP)
 	runtime := ProverRuntime{
@@ -300,9 +303,12 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 		PerformanceMonitor: profiling.GetMonitorParams(),
 	}
 
+	stateBytes := fs.State()
+	var state koalabear.Element
+	state.SetBytes(stateBytes)
 	runtime.FiatShamirHistory[0] = [2][]field.Element{
-		fs.State(),
-		fs.State(),
+		[]field.Element{state},
+		[]field.Element{state},
 	}
 
 	// Pass the precomputed polynomials
@@ -636,7 +642,9 @@ func (run *ProverRuntime) getRandomCoinGeneric(name coin.Name, requestedType coi
 // parameters. This makes all the new coins available in the prover runtime.
 func (run *ProverRuntime) goNextRound() {
 
-	initialState := run.FS.State()
+	initialStateBytes := run.FS.State()
+	var initialState koalabear.Element
+	initialState.SetBytes(initialStateBytes)
 
 	if !run.Spec.DummyCompiled {
 
@@ -658,7 +666,7 @@ func (run *ProverRuntime) goNextRound() {
 			}
 
 			instance := run.GetMessage(msgName)
-			run.FS.UpdateSV(instance)
+			fiatshamir.UpdateSV(run.FS, instance)
 		}
 
 		/*
@@ -691,7 +699,9 @@ func (run *ProverRuntime) goNextRound() {
 		}
 	}
 
-	seed := run.FS.State()[0]
+	seedByte := run.FS.State()
+	var seed koalabear.Element
+	seed.SetBytes(seedByte)
 
 	// Then assigns the coins for the new round. As the round
 	// incrementation is made lazily, we expect that there is
@@ -708,11 +718,13 @@ func (run *ProverRuntime) goNextRound() {
 		run.Coins.InsertNew(myCoin, value)
 	}
 
-	finalState := run.FS.State()
+	finalStateBytes := run.FS.State()
+	var finalState koalabear.Element
+	finalState.SetBytes(finalStateBytes)
 
 	run.FiatShamirHistory[run.currRound] = [2][]field.Element{
-		initialState,
-		finalState,
+		[]koalabear.Element{initialState},
+		[]koalabear.Element{finalState},
 	}
 }
 
@@ -971,7 +983,7 @@ func (run *ProverRuntime) GetHornerParams(name ifaces.QueryID) query.HornerParam
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *ProverRuntime) Fs() *fiatshamir.State {
+func (run *ProverRuntime) Fs() hash.StateStorer {
 	return run.FS
 }
 
