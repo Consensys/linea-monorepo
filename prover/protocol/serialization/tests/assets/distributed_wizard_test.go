@@ -121,22 +121,39 @@ func TestSerdeDistWizard(t *testing.T) {
 }
 
 func TestSerdeDWCong(t *testing.T) {
+	// Setup
 	distWizard := GetBasicDistWizard()
 	cong := distWizard.CompiledConglomeration
 	distWizard = nil
 	runtime.GC()
 
-	runSerdeTest(t, cong.MaxNbProofs, "cong.MaxNbProofs", true, false)
-	runSerdeTest(t, cong.Wiop, "cong.Wiop", true, true)
-	runSerdeTest(t, cong.DefaultWitness, "cong.DefaultWitness", true, true)
-	runSerdeTest(t, cong.DefaultIops, "cong.DefaultIops", true, true)
-	runSerdeTest(t, cong.Recursion, "cong.Recursion", true, true)
-	runSerdeTest(t, cong.PrecomputedGLVks, "cong.PrecomputedGLVks", true, false)
-	runSerdeTest(t, cong.PrecomputedLPPVks, "cong.PrecomputedLPPVks", true, false)
-	runSerdeTest(t, cong.VerifyingKeyColumns, "cong.VerifyingKeyColumns", true, false)
-	runSerdeTest(t, cong.HolisticLookupMappedLPPPostion, "cong.HolisticLookupMappedLPPPostion", true, false)
-	runSerdeTest(t, cong.HolisticLookupMappedLPPVK, "cong.HolisticLookupMappedLPPVK", true, false)
-	runSerdeTest(t, cong.IsGL, "cong.IsGL", true, false)
+	// Subtests
+	tests := []struct {
+		name        string
+		obj         any
+		sanityCheck bool
+		failfast    bool
+	}{
+		{name: "Wiop", obj: cong.Wiop, sanityCheck: true, failfast: true},
+		{name: "Recursion", obj: cong.Recursion, sanityCheck: true, failfast: true},
+
+		// All of these tests PASS
+		{name: "MaxNbProofs", obj: cong.MaxNbProofs, sanityCheck: true, failfast: false},
+		{name: "DefaultWitness", obj: cong.DefaultWitness, sanityCheck: true, failfast: true},
+		{name: "DefaultIops", obj: cong.DefaultIops, sanityCheck: true, failfast: true},
+		{name: "PrecomputedGLVks", obj: cong.PrecomputedGLVks, sanityCheck: true, failfast: false},
+		{name: "PrecomputedLPPVks", obj: cong.PrecomputedLPPVks, sanityCheck: true, failfast: false},
+		{name: "VerifyingKeyColumns", obj: cong.VerifyingKeyColumns, sanityCheck: true, failfast: false},
+		{name: "HolisticLookupMappedLPPPostion", obj: cong.HolisticLookupMappedLPPPostion, sanityCheck: true, failfast: false},
+		{name: "HolisticLookupMappedLPPVK", obj: cong.HolisticLookupMappedLPPVK, sanityCheck: true, failfast: false},
+		{name: "IsGL", obj: cong.IsGL, sanityCheck: true, failfast: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runSerdeTest(t, tt.obj, tt.name, tt.sanityCheck, tt.failfast)
+		})
+	}
 }
 
 // BELOW IDEA DOES NOT WORK.

@@ -63,6 +63,8 @@ func runSerdeTest(t *testing.T, input any, name string, isSanityCheck, failFast 
 		outputDeref := reflect.ValueOf(output).Elem().Interface()
 		if !test_utils.CompareExportedFields(input, outputDeref, failFast) {
 			t.Errorf("Mismatch in exported fields of %s during serde", name)
+		} else {
+			t.Logf("Sanity checks passed for %s", name)
 		}
 	}
 }

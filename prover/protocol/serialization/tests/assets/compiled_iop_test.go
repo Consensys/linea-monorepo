@@ -10,9 +10,15 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -406,4 +412,47 @@ func TestSerdeIOP6(t *testing.T) {
 	}{Comp1: comp1, Comp2: comp2}
 
 	runSerdeTest(t, comp, "iop6", true, false)
+}
+
+func TestSerdeIOP7(t *testing.T) {
+
+	logrus.SetLevel(logrus.FatalLevel)
+
+	define1 := func(bui *wizard.Builder) {
+
+		var (
+			a = bui.RegisterCommit("A", 8)
+			b = bui.RegisterCommit("B", 8)
+		)
+
+		bui.Inclusion("Q", []ifaces.Column{a}, []ifaces.Column{b})
+	}
+
+	suites := [][]func(*wizard.CompiledIOP){
+		{
+			logderivativesum.CompileLookups,
+			localcs.Compile,
+			globalcs.Compile,
+			univariates.Naturalize,
+			mpts.Compile(),
+			vortex.Compile(2, vortex.ForceNumOpenedColumns(4), vortex.WithSISParams(&ringsis.StdParams), vortex.PremarkAsSelfRecursed()),
+		},
+	}
+
+	for i, s := range suites {
+
+		t.Run(fmt.Sprintf("case-%v", i), func(t *testing.T) {
+			comp1 := wizard.Compile(define1, s...)
+			runSerdeTest(t, comp1, fmt.Sprintf("iop7-recursion-comp1-%v", i), true, false)
+			define2 := func(build2 *wizard.Builder) {
+				recursion.DefineRecursionOf(build2.CompiledIOP, comp1, recursion.Parameters{
+					Name:        "test",
+					WithoutGkr:  true,
+					MaxNumProof: 1,
+				})
+			}
+			comp2 := wizard.Compile(define2, dummy.CompileAtProverLvl())
+			runSerdeTest(t, comp2, fmt.Sprintf("iop7-recursion-comp2-%v", i), true, true)
+		})
+	}
 }
