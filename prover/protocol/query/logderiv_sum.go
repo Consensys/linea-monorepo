@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/consensys/gnark-crypto/hash"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -41,8 +43,8 @@ type LogDerivSumParams struct {
 }
 
 // Updates a Fiat-Shamir state
-func (l LogDerivSumParams) UpdateFS(fs *fiatshamir.State) {
-	fs.Update(l.Sum)
+func (l LogDerivSumParams) UpdateFS(fs hash.StateStorer) {
+	fiatshamir.Update(fs, l.Sum)
 }
 
 // NewLogDerivativeSum creates the new context LogDerivativeSum.

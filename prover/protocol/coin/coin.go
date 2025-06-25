@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -93,16 +94,16 @@ func (t *Type) UnmarshalJSON(b []byte) error {
 Sample a random coin, according to its `spec`
 */
 //TODO@yao: checnk datatype
-func (info *Info) Sample(fs *fiatshamir.State, seed field.Element) interface{} {
+func (info *Info) Sample(fs hash.StateStorer, seed field.Element) interface{} {
 	switch info.Type {
 	case Field:
-		return fs.RandomField()
+		return fiatshamir.RandomField(fs)
 	case IntegerVec:
-		return fs.RandomManyIntegers(info.Size, info.UpperBound)
+		return fiatshamir.RandomManyIntegers(fs, info.Size, info.UpperBound)
 	case FieldFromSeed:
-		return fs.RandomFieldFromSeed(seed, string(info.Name))
+		return fiatshamir.RandomFieldFromSeed(fs, seed, string(info.Name))
 	case FieldExt:
-		return fs.RandomFext()
+		return fiatshamir.RandomFext(fs)
 	}
 
 	panic("Unreachable")

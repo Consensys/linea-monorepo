@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
@@ -65,8 +66,8 @@ func NewUnivariateEvalParams(x fext.Element, ys ...fext.Element) UnivariateEvalP
 // Update the fiat-shamir state with the alleged evaluations. We assume that
 // the verifer always computes the values of X upfront on his own. Therefore
 // there is no need to include them in the FS.
-func (p UnivariateEvalParams) UpdateFS(state *fiatshamir.State) {
-	state.UpdateExt(p.Ys...)
+func (p UnivariateEvalParams) UpdateFS(state hash.StateStorer) {
+	fiatshamir.UpdateExt(state, p.Ys...)
 }
 
 // Test that the polynomial evaluation holds

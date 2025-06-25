@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/consensys/gnark-crypto/hash"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -243,12 +245,12 @@ func (h *Horner) Name() ifaces.QueryID {
 
 // UpdateFS implements the [ifaces.QueryParams] interface. It updates
 // FS with the parameters of the query.
-func (h HornerParams) UpdateFS(fs *fiatshamir.State) {
+func (h HornerParams) UpdateFS(fs hash.StateStorer) {
 
-	fs.Update(h.FinalResult)
+	fiatshamir.Update(fs, h.FinalResult)
 
 	for _, part := range h.Parts {
-		fs.Update(
+		fiatshamir.Update(fs,
 			field.NewElement(uint64(part.N0)),
 			field.NewElement(uint64(part.N1)),
 		)

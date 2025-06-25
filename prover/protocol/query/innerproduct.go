@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/consensys/gnark-crypto/hash"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -26,8 +28,8 @@ type InnerProductParams struct {
 }
 
 // Update the fiat-shamir state with inner-product params
-func (ipp InnerProductParams) UpdateFS(state *fiatshamir.State) {
-	state.UpdateVecExt(ipp.Ys)
+func (ipp InnerProductParams) UpdateFS(state hash.StateStorer) {
+	fiatshamir.UpdateVecExt(state, ipp.Ys)
 }
 
 // Constructor for inner-product.

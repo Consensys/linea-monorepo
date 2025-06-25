@@ -56,6 +56,14 @@ func UpdateVec(h hash.StateStorer, vecs ...[]field.Element) {
 	}
 }
 
+// UpdateVec updates the Fiat-Shamir state by passing one of more slices of
+// field elements.
+func UpdateVecExt(h hash.StateStorer, vecs ...[]fext.Element) {
+	for i := range vecs {
+		UpdateExt(h, vecs[i]...)
+	}
+}
+
 // UpdateSV updates the FS state with a smart-vector. No-op if the smart-vector
 // has a length of zero.
 func UpdateSV(h hash.StateStorer, sv smartvectors.SmartVector) {
@@ -170,30 +178,37 @@ func RandomManyIntegers(h hash.StateStorer, num, upperBound int) []int {
 	numChallengesPerDigest := (field.Bits - 1) / int(logTwoUpperBound)
 
 	res := make([]int, num)
-
-	var i int
-	for i < num {
+	for {
 		digest := h.Sum(nil)
 		buffer := NewBitReader(digest, field.Bits-1)
 
-		for j := 0; j < numChallengesPerDigest; j++ {
-			if i > num {
-				break
+		for i := 0; i < numChallengesPerDigest; i++ {
+			// Stopping condition, we computed enough challenges
+			if len(res) >= num {
+				return res
 			}
+
 			curChallenge, err := buffer.ReadInt(int(logTwoUpperBound))
 			if err != nil {
 				utils.Panic("could not instantiate the buffer for a single field element")
 			}
-			res[i] = curChallenge % upperBound
-			i++
+			res = append(res, int(curChallenge)%upperBound)
 		}
-		safeguardUpdate(h)
-	}
 
-	if num > 0 {
+		// This is guarded by the condition to prevent the [State] updating
+		// twice in a row when exiting the function. Recall that we have a
+		// defer of the safeguard update in the function. This handles the
+		// edge-case where the number of requested field elements is a multiple
+		// of the number of challenges we can generate with a single field
+		// element.
+		if len(res) >= num {
+			return res
+		}
+
+		// This updates ensures that for the next iterations of the loop and the
+		// next randomness comsumption uses a fresh randomness.
 		safeguardUpdate(h)
 	}
-	return res
 }
 
 func safeguardUpdate(h hash.StateStorer) {

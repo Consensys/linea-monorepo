@@ -29,34 +29,32 @@ type UnivariateTestcase struct {
 // ListOfUnivariateTestcasesPositive lists standard univariate testcases
 // that are supposed to pass.
 var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
-	/*
-			{
-				NameStr: "constant-poly",
-				Polys: []smartvectors.SmartVector{
-					smartvectors.ForTest(10, 10, 10, 10, 10, 10, 10, 10),
-				},
-				QueryXs: []fext.Element{
-					fext.PseudoRand(rng),
-				},
-				QueryPols: [][]int{
-					{0},
-				},
-			},
 
-
-		{
-			NameStr: "one-poly-one-point-non-simple-values", // q(r)=const = 1065353216+0*u+(0+0*u)*v
-			Polys: []smartvectors.SmartVector{
-				smartvectors.ForTest(1, 2),
-			},
-			QueryXs: []fext.Element{
-				fext.NewElement(0, 0, 0, 1),
-			},
-			QueryPols: [][]int{
-				{0},
-			},
+	{
+		NameStr: "constant-poly",
+		Polys: []smartvectors.SmartVector{
+			smartvectors.ForTest(10, 10, 10, 10, 10, 10, 10, 10),
 		},
-	*/
+		QueryXs: []fext.Element{
+			fext.PseudoRand(rng),
+		},
+		QueryPols: [][]int{
+			{0},
+		},
+	},
+
+	{
+		NameStr: "one-poly-one-point-non-simple-values",
+		Polys: []smartvectors.SmartVector{
+			smartvectors.ForTest(0, 0, 0, 0, 0, 1, 0, 0),
+		},
+		QueryXs: []fext.Element{
+			fext.Zero(),
+		},
+		QueryPols: [][]int{
+			{0},
+		},
+	},
 
 	{
 		NameStr: "one-poly-one-point",
@@ -69,148 +67,118 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 		QueryPols: [][]int{
 			{0},
 		},
-		RoundOfPolys: []int{2},
 	},
-	/*
-				{
-					NameStr: "one-poly-one-point-precomputed",
-					Polys: []smartvectors.SmartVector{
-						RandomVec(8),
-					},
-					QueryXs: []fext.Element{
-						fext.Zero(),
-					},
-					QueryPols: [][]int{
-						{0},
-					},
-					RoundOfPolys: []int{-1},
-				},
-				{
-					NameStr: "one-poly-one-point-round-k",
-					Polys: []smartvectors.SmartVector{
-						RandomVec(8),
-					},
-					QueryXs: []fext.Element{
-						fext.Zero(),
-					},
-					QueryPols: [][]int{
-						{0},
-					},
-					RoundOfPolys: []int{3},
-				},
-				{
-					NameStr: "two-poly-one-point-same-simple-values",
-					Polys: []smartvectors.SmartVector{
-						smartvectors.ForTest(0, 0, 0, 0, 0, 1, 0, 0),
-						smartvectors.ForTest(0, 0, 0, 0, 0, 1, 0, 0),
-					},
-					QueryXs: []fext.Element{
-						fext.Zero(),
-					},
-					QueryPols: [][]int{
-						{0, 1},
-					},
-				},
-				{
-					NameStr: "two-poly-one-point-same-simple-values-one-precomputed",
-					Polys: []smartvectors.SmartVector{
-						smartvectors.ForTest(0, 0, 0, 0, 0, 1, 0, 0),
-						smartvectors.ForTest(0, 0, 0, 0, 0, 1, 0, 0),
-					},
-					QueryXs: []fext.Element{
-						fext.Zero(),
-					},
-					QueryPols: [][]int{
-						{0, 1},
-					},
-					RoundOfPolys: []int{-1, 0},
-				},
-				{
-					NameStr: "two-poly-one-point-different-sizes-simple-values",
-					Polys: []smartvectors.SmartVector{
-						smartvectors.ForTest(0, 0, 0, 0, 0, 1, 0, 0),
-						smartvectors.ForTest(0, 1, 0, 0),
-					},
-					QueryXs: []fext.Element{
-						fext.Zero(),
-					},
-					QueryPols: [][]int{
-						{0, 1},
-					},
-				},
 
+	{
+		NameStr: "one-poly-one-point-precomputed",
+		Polys: []smartvectors.SmartVector{
+			RandomVec(8),
+		},
+		QueryXs: []fext.Element{
+			fext.Zero(),
+		},
+		QueryPols: [][]int{
+			{0},
+		},
+		RoundOfPolys: []int{-1},
+	},
+	{
+		NameStr: "one-poly-one-point-round-k",
+		Polys: []smartvectors.SmartVector{
+			RandomVec(8),
+		},
+		QueryXs: []fext.Element{
+			fext.Zero(),
+		},
+		QueryPols: [][]int{
+			{0},
+		},
+		RoundOfPolys: []int{3},
+	},
+	{
+		NameStr: "two-poly-one-point-same-simple-values",
+		Polys: []smartvectors.SmartVector{
+			smartvectors.ForTest(0, 0, 0, 0, 0, 1, 0, 0),
+			smartvectors.ForTest(0, 0, 0, 0, 0, 1, 0, 0),
+		},
+		QueryXs: []fext.Element{
+			fext.Zero(),
+		},
+		QueryPols: [][]int{
+			{0, 1},
+		},
+	},
+	{
+		NameStr: "two-poly-one-point-same-simple-values-one-precomputed",
+		Polys: []smartvectors.SmartVector{
+			smartvectors.ForTest(0, 0, 0, 0, 0, 1, 0, 0),
+			smartvectors.ForTest(0, 0, 0, 0, 0, 1, 0, 0),
+		},
+		QueryXs: []fext.Element{
+			fext.Zero(),
+		},
+		QueryPols: [][]int{
+			{0, 1},
+		},
+		RoundOfPolys: []int{-1, 0},
+	},
+	{
+		NameStr: "two-poly-one-point-different-sizes-simple-values",
+		Polys: []smartvectors.SmartVector{
+			smartvectors.ForTest(0, 0, 0, 0, 0, 1, 0, 0),
+			smartvectors.ForTest(0, 1, 0, 0),
+		},
+		QueryXs: []fext.Element{
+			fext.Zero(),
+		},
+		QueryPols: [][]int{
+			{0, 1},
+		},
+	},
 
-			{
-				NameStr: "two-poly-one-point",
-				Polys: []smartvectors.SmartVector{
-					RandomVec(8),
-					RandomVec(8),
-				},
-				QueryXs: []fext.Element{
-					fext.PseudoRand(rng),
-				},
-				QueryPols: [][]int{
-					{0, 1},
-				},
-			},
+	{
+		NameStr: "two-poly-one-point",
+		Polys: []smartvectors.SmartVector{
+			RandomVec(8),
+			RandomVec(8),
+		},
+		QueryXs: []fext.Element{
+			fext.PseudoRand(rng),
+		},
+		QueryPols: [][]int{
+			{0, 1},
+		},
+	},
 
-			{
-				NameStr: "one-poly-two-points",
-				Polys: []smartvectors.SmartVector{
-					RandomVec(8),
-				},
-				QueryXs: []fext.Element{
-					fext.PseudoRand(rng),
-					fext.PseudoRand(rng),
-				},
-				QueryPols: [][]int{
-					{0},
-					{0},
-				},
-			},
-			{
-				NameStr: "two-poly-two-points",
-				Polys: []smartvectors.SmartVector{
-					RandomVec(8),
-					RandomVec(8),
-				},
-				QueryXs: []fext.Element{
-					fext.PseudoRand(rng),
-					fext.PseudoRand(rng),
-				},
-				QueryPols: [][]int{
-					{0, 1},
-					{0, 1},
-				},
-			},
-			{
-			NameStr: "complex-multi-round",
-			Polys: []smartvectors.SmartVector{
-				RandomVec(8),
-				RandomVec(8),
-				RandomVec(8),
-				RandomVec(8),
-				RandomVec(8),
-				RandomVec(8),
-				RandomVec(8),
-			},
-			QueryXs: []fext.Element{
-				fext.PseudoRand(rng),
-				fext.PseudoRand(rng),
-				fext.PseudoRand(rng),
-				fext.PseudoRand(rng),
-				fext.PseudoRand(rng),
-			},
-			QueryPols: [][]int{
-				{0, 1, 2, 3},
-				{2, 3, 4, 5},
-				{0, 1, 4},
-				{0},
-				{6},
-			},
-			RoundOfPolys: []int{-1, 0, 1, 2, 2, 3, 3},
-		}
-	*/
+	{
+		NameStr: "one-poly-two-points",
+		Polys: []smartvectors.SmartVector{
+			RandomVec(8),
+		},
+		QueryXs: []fext.Element{
+			fext.PseudoRand(rng),
+			fext.PseudoRand(rng),
+		},
+		QueryPols: [][]int{
+			{0},
+			{0},
+		},
+	},
+	{
+		NameStr: "two-poly-two-points",
+		Polys: []smartvectors.SmartVector{
+			RandomVec(8),
+			RandomVec(8),
+		},
+		QueryXs: []fext.Element{
+			fext.PseudoRand(rng),
+			fext.PseudoRand(rng),
+		},
+		QueryPols: [][]int{
+			{0, 1},
+			{0, 1},
+		},
+	},
 	{
 		NameStr: "complex-multi-round",
 		Polys: []smartvectors.SmartVector{
@@ -227,6 +195,7 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 			fext.PseudoRand(rng),
 			fext.PseudoRand(rng),
 			fext.PseudoRand(rng),
+			fext.PseudoRand(rng),
 		},
 		QueryPols: [][]int{
 			{0, 1, 2, 3},
@@ -235,7 +204,7 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 			{0},
 			{6},
 		},
-		RoundOfPolys: []int{-1, 0, 0, 2, 2},
+		RoundOfPolys: []int{-1, 0, 1, 2, 2, 3, 3},
 	},
 }
 

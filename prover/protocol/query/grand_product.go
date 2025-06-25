@@ -3,6 +3,8 @@ package query
 import (
 	"fmt"
 
+	"github.com/consensys/gnark-crypto/hash"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -96,8 +98,8 @@ func (g GrandProduct) Name() ifaces.QueryID {
 }
 
 // Updates a Fiat-Shamir state
-func (gp GrandProductParams) UpdateFS(fs *fiatshamir.State) {
-	fs.Update(gp.Y)
+func (gp GrandProductParams) UpdateFS(fs hash.StateStorer) {
+	fiatshamir.Update(fs, gp.Y)
 }
 
 // Compute returns the result value of the [GrandProduct] query. It

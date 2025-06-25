@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
+	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -27,12 +28,12 @@ type LocalOpeningParams struct {
 }
 
 // Updates a Fiat-Shamir state
-func (lop LocalOpeningParams) UpdateFS(fs *fiatshamir.State) {
+func (lop LocalOpeningParams) UpdateFS(fs hash.StateStorer) {
 	if lop.IsBase {
-		fs.Update(lop.BaseY)
+		fiatshamir.Update(fs, lop.BaseY)
 	} else {
 		// Change this for the actual extension!
-		fs.UpdateExt(lop.ExtY)
+		fiatshamir.UpdateExt(fs, lop.ExtY)
 	}
 }
 
