@@ -125,7 +125,18 @@ func TestSerdeDWCong(t *testing.T) {
 	cong := distWizard.CompiledConglomeration
 	distWizard = nil
 	runtime.GC()
-	runSerdeTest(t, cong, "DistributedWizard.CompiledConglomeration", true, true)
+
+	runSerdeTest(t, cong.MaxNbProofs, "cong.MaxNbProofs", true, false)
+	runSerdeTest(t, cong.Wiop, "cong.Wiop", true, true)
+	runSerdeTest(t, cong.DefaultWitness, "cong.DefaultWitness", true, true)
+	runSerdeTest(t, cong.DefaultIops, "cong.DefaultIops", true, true)
+	runSerdeTest(t, cong.Recursion, "cong.Recursion", true, true)
+	runSerdeTest(t, cong.PrecomputedGLVks, "cong.PrecomputedGLVks", true, false)
+	runSerdeTest(t, cong.PrecomputedLPPVks, "cong.PrecomputedLPPVks", true, false)
+	runSerdeTest(t, cong.VerifyingKeyColumns, "cong.VerifyingKeyColumns", true, false)
+	runSerdeTest(t, cong.HolisticLookupMappedLPPPostion, "cong.HolisticLookupMappedLPPPostion", true, false)
+	runSerdeTest(t, cong.HolisticLookupMappedLPPVK, "cong.HolisticLookupMappedLPPVK", true, false)
+	runSerdeTest(t, cong.IsGL, "cong.IsGL", true, false)
 }
 
 // BELOW IDEA DOES NOT WORK.
