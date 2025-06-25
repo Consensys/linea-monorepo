@@ -15,13 +15,16 @@
 package net.consensys.linea.zktracer.exceptions;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static net.consensys.linea.zktracer.Fork.isPostShanghai;
 import static net.consensys.linea.zktracer.Trace.EIP_3541_MARKER;
 import static net.consensys.linea.zktracer.Trace.MAX_CODE_SIZE;
-import static net.consensys.linea.zktracer.module.hub.signals.TracedException.INVALID_CODE_PREFIX;
-import static net.consensys.linea.zktracer.module.hub.signals.TracedException.MAX_CODE_SIZE_EXCEPTION;
+import static net.consensys.linea.zktracer.exceptions.ExceptionUtils.getPgCreateWithInitCodeSize;
+import static net.consensys.linea.zktracer.module.hub.signals.TracedException.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
@@ -33,6 +36,7 @@ import net.consensys.linea.testing.ToyTransaction;
 import net.consensys.linea.zktracer.module.hub.signals.TracedException;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.AddressUtils;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.Address;
@@ -42,6 +46,8 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(UnitTestWatcher.class)
 public class InvalidCodePrefixAndMaxCodeSizeExceptionTest extends TracerTestBase {
@@ -192,5 +198,30 @@ public class InvalidCodePrefixAndMaxCodeSizeExceptionTest extends TracerTestBase
     assertEquals(
         MAX_CODE_SIZE_EXCEPTION,
         bytecodeRunner.getHub().previousTraceSection(2).commonValues.tracedException());
+  }
+
+  @ParameterizedTest
+  @MethodSource("createOpCodesList")
+  public void MaxCodeSizeExceptionWithInitCodeForCreatesTest(OpCode opCode) {
+    // Dummy init code, repeats ADDRESS opcode
+    Bytes32 initCodeChunk = Bytes32.fromHexString("30".repeat(32));
+
+    // We now prepare a create program with an init code of (1537 * 32) byte size that will trigger
+    // a Max code size exception
+    BytecodeCompiler pg = getPgCreateWithInitCodeSize(opCode, initCodeChunk, 1537);
+    BytecodeRunner bytecodeRunner = BytecodeRunner.of(pg.compile());
+    bytecodeRunner.run(testInfo);
+
+    // (Post-Shanghai) MAX_CODE_SIZE_EXCEPTION happens
+    TracedException exceptionTriggered =
+        isPostShanghai(testInfo.chainConfig.fork) ? MAX_CODE_SIZE_EXCEPTION : NONE;
+    assertEquals(
+        exceptionTriggered,
+        bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+  }
+
+  static Stream<OpCode> createOpCodesList() {
+    List<OpCode> opCodesListArgument = Arrays.asList(OpCode.CREATE, OpCode.CREATE2);
+    return opCodesListArgument.stream();
   }
 }

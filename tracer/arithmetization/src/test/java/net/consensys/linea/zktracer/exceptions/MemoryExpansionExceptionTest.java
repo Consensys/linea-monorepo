@@ -46,7 +46,10 @@ public class MemoryExpansionExceptionTest extends TracerTestBase {
   @MethodSource("memoryExpansionExceptionTestSource")
   public void memoryExpansionExceptionTest(boolean triggerRoob, OpCode opCode) {
     BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
-    new MxpTestUtils().triggerNonTrivialButMxpxOrRoobForOpCode(program, triggerRoob, opCode);
+    boolean triggerMaxCodeSizeException = false;
+    new MxpTestUtils()
+        .triggerNonTrivialButMxpxOrRoobOrMaxCodeSizeExceptionForOpCode(
+            program, triggerRoob, triggerMaxCodeSizeException, opCode);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
     bytecodeRunner.run(testInfo);
     assertEquals(
@@ -59,9 +62,12 @@ public class MemoryExpansionExceptionTest extends TracerTestBase {
   @Test
   public void soloMemoryExpansionTest() {
     boolean triggerRoob = false;
+    boolean triggerMaxCodeSizeException = false;
     OpCode opCode = OpCode.CODECOPY;
     BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
-    new MxpTestUtils().triggerNonTrivialButMxpxOrRoobForOpCode(program, triggerRoob, opCode);
+    new MxpTestUtils()
+        .triggerNonTrivialButMxpxOrRoobOrMaxCodeSizeExceptionForOpCode(
+            program, triggerRoob, triggerMaxCodeSizeException, opCode);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
     bytecodeRunner.run(testInfo);
     assertEquals(

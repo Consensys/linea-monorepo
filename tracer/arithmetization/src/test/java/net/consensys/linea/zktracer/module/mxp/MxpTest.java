@@ -465,6 +465,7 @@ public class MxpTest extends TracerTestBase {
 
   private void triggerNonTrivialButMxpxOrRoob(
       BytecodeCompiler program, boolean isHalting, boolean triggerRoob) {
+    boolean triggerMaxCodeSizeException = false;
     OpCode opCode;
 
     if (!isHalting) {
@@ -475,7 +476,8 @@ public class MxpTest extends TracerTestBase {
       opCode = opCodesType4Halting[util.nextRandomInt(opCodesType4Halting.length)];
     }
     // OpCode.CALL-type (Type 5) are tested via testCall()
-    util.triggerNonTrivialButMxpxOrRoobForOpCode(program, triggerRoob, opCode);
+    util.triggerNonTrivialButMxpxOrRoobOrMaxCodeSizeExceptionForOpCode(
+        program, triggerRoob, triggerMaxCodeSizeException, opCode);
   }
 
   private OpCode getRandomNonHaltingOpCodeByType(MxpType mxpType) {

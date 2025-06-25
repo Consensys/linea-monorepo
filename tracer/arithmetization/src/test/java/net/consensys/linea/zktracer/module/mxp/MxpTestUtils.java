@@ -99,8 +99,11 @@ public class MxpTestUtils {
     return RAND.nextFloat();
   }
 
-  public void triggerNonTrivialButMxpxOrRoobForOpCode(
-      BytecodeCompiler program, boolean triggerRoob, OpCode opCode) {
+  public void triggerNonTrivialButMxpxOrRoobOrMaxCodeSizeExceptionForOpCode(
+      BytecodeCompiler program,
+      boolean triggerRoob,
+      boolean triggerMaxCodeSizeException,
+      OpCode opCode) {
     MxpType mxpType = opCode.getData().billing().type();
 
     // Generate as many random values as needed at most
@@ -120,7 +123,10 @@ public class MxpTestUtils {
     do {
       // For creates, we trigger mxpx with the offset to avoid triggering a max code size exception
       // that takes precedence on mxpx, so size1 is set to a small value (1)
-      size1 = opCode.isCreate() ? EWord.of(1) : getRandomBigIntegerByBytesSize(0, MAX_BYTE_SIZE);
+      size1 =
+          (opCode.isCreate() && !triggerMaxCodeSizeException)
+              ? EWord.of(1)
+              : getRandomBigIntegerByBytesSize(0, MAX_BYTE_SIZE);
       size2 = getRandomBigIntegerByBytesSize(0, MAX_BYTE_SIZE);
       offset1 = getRandomBigIntegerByBytesSize(0, MAX_BYTE_SIZE);
       offset2 = getRandomBigIntegerByBytesSize(0, MAX_BYTE_SIZE);
