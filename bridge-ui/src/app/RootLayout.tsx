@@ -7,7 +7,6 @@ import { Layout } from "@/components/layouts/Layout";
 import atypFont from "@/assets/fonts/atyp";
 import atypTextFont from "@/assets/fonts/atypText";
 import FirstVisitModal from "@/components/modal/first-time-visit";
-import { headers } from "next/headers";
 import { getNavData } from "@/services";
 import "../scss/app.scss";
 
@@ -18,9 +17,7 @@ const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const headersList = await headers();
   const navData = await getNavData();
-  const nonce = headersList.get("x-nonce") || "";
 
   return (
     <html lang="en" className={clsx(atypFont.variable, atypTextFont.variable)}>
@@ -37,7 +34,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <FirstVisitModal />
       </body>
 
-      <Script id="gtm" dangerouslySetInnerHTML={{ __html: gtmScript }} strategy="lazyOnload" nonce={nonce} />
+      <Script id="gtm" dangerouslySetInnerHTML={{ __html: gtmScript }} strategy="lazyOnload" />
     </html>
   );
 }
