@@ -129,7 +129,6 @@ jobs:
               - '!docs/**'
             contracts-excluding-local-deployment-artifacts:
               - 'contracts/**'
-              - '!contracts/local-deployments-artifacts/**'
           # Means that ALL (and not just one) filter patterns must match. In other words applies the 'AND' operator to filter patterns.
           # The default is 'some', which requires just one filter pattern match and applies the 'OR' operator.
           # For 'has-changes-requiring-build', it means we have an exclusion list that we can append to.
