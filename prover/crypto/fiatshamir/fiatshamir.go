@@ -1,12 +1,8 @@
 package fiatshamir
 
 import (
-	"math"
-
 	"github.com/consensys/gnark-crypto/hash"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -33,158 +29,58 @@ import (
 // to prevent rogue protocol attack as in the Frozen Heart vulnerability.
 //
 // https://blog.trailofbits.com/2022/04/18/the-frozen-heart-vulnerability-in-plonk/
-type State struct {
-	hasher           hash.StateStorer
-	TranscriptSize   int
-	NumCoinGenerated int
-}
 
-// NewMiMCFiatShamir constructs a fresh and empty Fiat-Shamir state.
-func NewMiMCFiatShamir() *State {
-	return &State{
-		hasher: mimc.NewMiMC().(hash.StateStorer),
-	}
-}
-
-// State returns the internal state of the Fiat-Shamir hasher. Only works for
-// MiMC.
-func (s *State) State() []field.Element {
-	_ = s.hasher.Sum(nil)
-	b := s.hasher.State()
-	f := new(field.Element).SetBytes(b)
-	return []field.Element{*f}
-}
-
-// SetState sets the fiat-shamir state to the requested value
-func (s *State) SetState(f []field.Element) {
-	_ = s.hasher.Sum(nil)
-	b := f[0].Bytes()
-	s.hasher.SetState(b[:])
-}
-
-// Update the Fiat-Shamir state with a one or more of field elements. The
-// function as no-op if the caller supplies no field elements.
-func (fs *State) Update(vec ...field.Element) {
-	if len(vec) == 0 {
-		return
-	}
-
-	// Marshal the elements in a vector of bytes
+func Update(h hash.StateStorer, vec ...field.Element) {
 	for _, f := range vec {
 		bytes := f.Bytes()
-		_, err := fs.hasher.Write(bytes[:])
+		_, err := h.Write(bytes[:])
 		if err != nil {
-			// This normally happens if the bytes that we provide do not represent
-			// a field element. In our case, the bytes are computed by ourselves
-			// from the caller's field element so the error is not possible. Hence,
-			// the assertion.
-			panic("Hashing is not supposed to fail")
+			panic(err)
 		}
 	}
-
-	// Increase the transcript counter
-	fs.TranscriptSize += len(vec)
 }
 
-// Update the Fiat-Shamir state with a one or more of field elements. The
-// function as no-op if the caller supplies no field elements.
-func (fs *State) UpdateExt(vec ...fext.Element) {
-	if len(vec) == 0 {
-		return
-	}
-
-	// Marshal the elements in a vector of bytes
+func UpdateExt(h hash.StateStorer, vec ...fext.Element) {
 	for _, f := range vec {
 		bytes := fext.Bytes(&f)
-		_, err := fs.hasher.Write(bytes[:])
+		_, err := h.Write(bytes[:])
 		if err != nil {
-			// This normally happens if the bytes that we provide do not represent
-			// a field element. In our case, the bytes are computed by ourselves
-			// from the caller's field element so the error is not possible. Hence,
-			// the assertion.
-			panic("Hashing is not supposed to fail")
+			panic(err)
 		}
 	}
-
-	// Increase the transcript counter
-	fs.TranscriptSize += len(vec)
 }
 
-// UpdateVec updates the Fiat-Shamir state by passing one of more slices of
-// field elements.
-func (fs *State) UpdateVec(vecs ...[]field.Element) {
-	if len(vecs) == 0 {
-		return
-	}
-
+func UpdateVec(h hash.StateStorer, vecs ...[]field.Element) {
 	for i := range vecs {
-		fs.Update(vecs[i]...)
-	}
-}
-
-// UpdateVec updates the Fiat-Shamir state by passing one of more slices of
-// field elements.
-func (fs *State) UpdateVecExt(vecs ...[]fext.Element) {
-	if len(vecs) == 0 {
-		return
-	}
-
-	for i := range vecs {
-		fs.UpdateExt(vecs[i]...)
+		Update(h, vecs[i]...)
 	}
 }
 
 // UpdateSV updates the FS state with a smart-vector. No-op if the smart-vector
 // has a length of zero.
-func (fs *State) UpdateSV(sv smartvectors.SmartVector) {
+func UpdateSV(h hash.StateStorer, sv smartvectors.SmartVector) {
 	if sv.Len() == 0 {
 		return
 	}
 
-	if !smartvectors_mixed.IsBase(sv) {
-		vec := make([]fext.Element, sv.Len())
-		sv.WriteInSliceExt(vec)
-		fs.UpdateExt(vec...)
-
-	}
-
 	vec := make([]field.Element, sv.Len())
 	sv.WriteInSlice(vec)
-	fs.Update(vec...)
+	Update(h, vec...)
 }
 
 // RandomField generates and returns a single field element from the Fiat-Shamir
 // transcript.
-func (fs *State) RandomField() field.Element {
-	defer fs.safeguardUpdate()
-	challBytes := fs.hasher.Sum(nil)
+func RandomField(h hash.StateStorer) field.Element {
+	s := h.Sum(nil)
 	var res field.Element
-	res.SetBytes(challBytes)
-
-	// increase the counter by one
-	fs.NumCoinGenerated++
+	res.SetBytes(s)
+	safeguardUpdate(h)
 	return res
 }
 
-// RandomFext generates and returns a single fext element from the Fiat-Shamir
-// transcript.
-func (fs *State) RandomFext() fext.Element {
-	defer fs.safeguardUpdate()
-	challBytes := fs.hasher.Sum(nil)
-	var res fext.Element
-	res = fext.SetBytes(challBytes)
+func RandomFieldFromSeed(h hash.StateStorer, seed field.Element, name string) field.Element {
 
-	// increase the counter by one
-	fs.NumCoinGenerated++
-	return res
-}
-
-// RandomFieldFromSeed generates and returns a single field element from the seed and the given name.
-func (fs *State) RandomFieldFromSeed(seed field.Element, name string) field.Element {
-
-	// The first step encodes the 'name' into a single field element. The
-	// field element is obtained by hashing and taking the modulo of the
-	// result to fit into a field element.
+	// map name to a field elmt
 	tmpFr := field.Element{}
 	nameBytes := []byte(name)
 	hasher, _ := blake2b.New256(nil)
@@ -198,41 +94,64 @@ func (fs *State) RandomFieldFromSeed(seed field.Element, name string) field.Elem
 
 	// The seed is then obtained by calling the compression function over
 	// the seed and the encoded name.
-	oldState := fs.State()
-	defer fs.SetState(oldState)
+	oldState := h.State()
+	defer h.SetState(oldState)
 
-	fs.SetState([]field.Element{seed})
-	if _, err := fs.hasher.Write(nameBytes); err != nil {
+	h.SetState(seed.Marshal())
+	if _, err := h.Write(nameBytes); err != nil {
 		panic(err)
 	}
-	challBytes := fs.hasher.Sum(nil)
+	challBytes := h.Sum(nil)
 	res := new(field.Element).SetBytes(challBytes)
 
-	fs.NumCoinGenerated++
 	return *res
 }
 
+func RandomFext(h hash.StateStorer) fext.Element {
+	// TODO @thomas according the size of s, run several hashes to fit in an fext elmt
+	s := h.Sum(nil)
+	var res fext.Element
+	if len(s) > 4 {
+		res = fext.SetBytes(s)
+	} else {
+		res.B0.A0.SetBytes(s)
+	}
+	UpdateExt(h, fext.NewElement(0, 0, 0, 0)) // safefuard update
+	return res
+}
+
+func RandomFromSeed(h hash.StateStorer, seed field.Element, name string) field.Element {
+
+	bName := []byte(name)
+	hasher, _ := blake2b.New256(nil) //?? TODO @Thomas use proper hash to field
+	hasher.Write(bName)
+	bName = hasher.Sum(nil)
+
+	var bnToFr field.Element // reduction mod r...
+	bnToFr.SetBytes(bName)
+	bName = bnToFr.Marshal()
+
+	// seed = compress(name || seed)
+	backupState := h.State() // ??
+	h.SetState(seed.Marshal())
+	if _, err := h.Write(bName); err != nil {
+		panic(err)
+	}
+	bRes := h.Sum(nil)
+	var res field.Element
+	res.SetBytes(bRes)
+
+	err := h.SetState(backupState)
+	if err != nil {
+		panic(err)
+	}
+
+	return res
+}
+
 // TODO@yao: RandomFextFromSeed generates and returns a single fext element from the seed and the given name.
+func RandomManyIntegers(h hash.StateStorer, num, upperBound int) []int {
 
-// RandomManyIntegers returns a list of challenge small integers. That is, a
-// list of positive integer bounded by `upperBound`. The upperBound is strict
-// and is restricted to being only be a power of two.
-//
-// The function will panic if the coin cannot be generated. We motivate this
-// behaviour by the fact that if it happens, this will always be for
-// "deterministic" reasons pertaining to the description of the user's protocol
-// and never because of the values that are in the transcript itself.
-//
-// The function is implemented by, first generating random field elements, and
-// then breaking each of them down separately into several small integers. The
-// "remainder" bits (nameely, the bits of the generated field element that we
-// could not pack into a small integer) are thrown away.
-//
-// If the caller provides num=0, the function no-ops after doing its
-// sanity-checks although the call makes no possible sense.
-func (fs *State) RandomManyIntegers(num, upperBound int) []int {
-
-	// Even `1` would be wierd, there would be only one acceptable coin value.
 	if upperBound < 1 {
 		utils.Panic("UpperBound was %v", upperBound)
 	}
@@ -241,68 +160,42 @@ func (fs *State) RandomManyIntegers(num, upperBound int) []int {
 		utils.Panic("Expected a power of two but got %v", upperBound)
 	}
 
-	if num == 0 {
-		return []int{}
+	logTwoUpperBound := -1
+	tmp := upperBound
+	for tmp != 0 {
+		logTwoUpperBound++
+		tmp >>= 1
 	}
 
-	defer fs.safeguardUpdate()
+	numChallengesPerDigest := (field.Bits - 1) / int(logTwoUpperBound)
 
-	var (
-		// challsBitSize stores the number of bits required instantiate each
-		// small integer.
-		challsBitSize = math.Ceil(math.Log2(float64(upperBound)))
-		// Number of challenges computable with one call to hash (implicitly,
-		// the division is rounded down). The "-1" corresponds to the fact that
-		// the most significant bit of a field element cannot be assumed to
-		// contain exactly 1 bit of entropy since the modulus of the field is
-		// never a power of 2.
-		maxNumChallsPerDigest = (field.Bits - 1) / int(challsBitSize)
-		// res stores the preallocated result slice, to which all generated
-		// small integers will be appended.
-		res = make([]int, 0, num)
-	)
+	res := make([]int, num)
 
-	for {
-		digest := fs.hasher.Sum(nil)
+	var i int
+	for i < num {
+		digest := h.Sum(nil)
 		buffer := NewBitReader(digest, field.Bits-1)
 
-		// Increase the counter
-		fs.NumCoinGenerated++
-
-		for i := 0; i < maxNumChallsPerDigest; i++ {
-			// Stopping condition, we computed enough challenges
-			if len(res) >= num {
-				return res
+		for j := 0; j < numChallengesPerDigest; j++ {
+			if i > num {
+				break
 			}
-
-			newChall, err := buffer.ReadInt(int(challsBitSize))
+			curChallenge, err := buffer.ReadInt(int(logTwoUpperBound))
 			if err != nil {
 				utils.Panic("could not instantiate the buffer for a single field element")
 			}
-			res = append(res, int(newChall)%upperBound)
+			res[i] = curChallenge % upperBound
+			i++
 		}
-
-		// This is guarded by the condition to prevent the [State] updating
-		// twice in a row when exiting the function. Recall that we have a
-		// defer of the safeguard update in the function. This handles the
-		// edge-case where the number of requested field elements is a multiple
-		// of the number of challenges we can generate with a single field
-		// element.
-		if len(res) >= num {
-			return res
-		}
-
-		// This updates ensures that for the next iterations of the loop and the
-		// next randomness comsumption uses a fresh randomness.
-		fs.safeguardUpdate()
+		safeguardUpdate(h)
 	}
+
+	if num > 0 {
+		safeguardUpdate(h)
+	}
+	return res
 }
 
-// safeguardUpdate updates the state as a safeguard. This way, we are guaranteed
-// that successive random oracle queries will yield a different, independant
-// result.
-//
-// This is implemented by adding a 0 in the transcript.
-func (fs *State) safeguardUpdate() {
-	fs.UpdateExt(fext.NewElement(0, 0, 0, 0))
+func safeguardUpdate(h hash.StateStorer) {
+	Update(h, field.NewElement(0))
 }

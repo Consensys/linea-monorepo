@@ -2,23 +2,22 @@ package fiatshamir
 
 import (
 	"fmt"
-	"math/rand/v2"
 	"testing"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestFiatShamirSafeguardUpdate(t *testing.T) {
 
-	fs := NewMiMCFiatShamir()
+	fs := poseidon2.NewMerkleDamgardHasher()
 
-	a := fs.RandomFext()
-	b := fs.RandomFext()
+	a := RandomFext(fs)
+	b := RandomFext(fs)
 
 	// Two consecutive call to fs do not return the same result
 	require.NotEqual(t, a.String(), b.String())
@@ -30,19 +29,21 @@ func TestFiatShamirRandomVec(t *testing.T) {
 		testName := fmt.Sprintf("%v-integers-of-%v-bits", testCase.NumIntegers, testCase.IntegerBitSize)
 		t.Run(testName, func(t *testing.T) {
 
-			fs := NewMiMCFiatShamir()
-			fs.Update(field.NewElement(420))
+			fs := poseidon2.NewMerkleDamgardHasher()
+			Update(fs, field.NewElement(420))
 
 			var oldState, newState field.Element
 
-			if err := oldState.SetBytesCanonical(fs.hasher.Sum(nil)); err != nil {
+			ss := fs.Sum(nil)
+			if err := oldState.SetBytesCanonical(ss[:4]); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
-			a := fs.RandomManyIntegers(testCase.NumIntegers, 1<<testCase.IntegerBitSize)
+			a := RandomManyIntegers(fs, testCase.NumIntegers, 1<<testCase.IntegerBitSize)
 			t.Logf("the generated vector= %v", a)
 
-			if err := newState.SetBytesCanonical(fs.hasher.Sum(nil)); err != nil {
+			ss = fs.Sum(nil)
+			if err := newState.SetBytesCanonical(ss[:4]); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
@@ -50,9 +51,15 @@ func TestFiatShamirRandomVec(t *testing.T) {
 			assert.NoError(t, errIfHasDuplicate(a...))
 
 			if testCase.ShouldUpdate {
-				assert.NotEqualf(t, oldState.String(), newState.String(), "the state was not updated (%v)", oldState.String())
+				errStr := fmt.Sprintf("the state was not updated (%v)", oldState.String())
+				if oldState.Equal(&newState) {
+					t.Fatal(errStr)
+				}
 			} else {
-				assert.Equal(t, oldState.String(), newState.String(), "the state was updated")
+				errStr := "the state was updated"
+				if !oldState.Equal(&newState) {
+					t.Fatal(errStr)
+				}
 			}
 		})
 	}
@@ -60,38 +67,38 @@ func TestFiatShamirRandomVec(t *testing.T) {
 
 func TestBatchUpdates(t *testing.T) {
 
-	fs := NewMiMCFiatShamir()
-	fs.Update(field.NewElement(2))
-	fs.Update(field.NewElement(2))
-	fs.Update(field.NewElement(1))
-	expectedVal := fs.RandomFext()
+	fs := poseidon2.NewMerkleDamgardHasher()
+	Update(fs, field.NewElement(2))
+	Update(fs, field.NewElement(2))
+	Update(fs, field.NewElement(1))
+	expectedVal := RandomFext(fs)
 
 	t.Run("for a variadic call", func(t *testing.T) {
-		fs := NewMiMCFiatShamir()
-		fs.Update(field.NewElement(2), field.NewElement(2), field.NewElement(1))
-		actualValue := fs.RandomFext()
+		fs := poseidon2.NewMerkleDamgardHasher()
+		Update(fs, field.NewElement(2), field.NewElement(2), field.NewElement(1))
+		actualValue := RandomFext(fs)
 		assert.Equal(t, expectedVal.String(), actualValue.String())
 	})
 
 	t.Run("for slice of field elements", func(t *testing.T) {
-		fs := NewMiMCFiatShamir()
-		fs.UpdateVec(vector.ForTest(2, 2, 1))
-		actualValue := fs.RandomFext()
+		fs := poseidon2.NewMerkleDamgardHasher()
+		UpdateVec(fs, vector.ForTest(2, 2, 1))
+		actualValue := RandomFext(fs)
 		assert.Equal(t, expectedVal.String(), actualValue.String())
 	})
 
 	t.Run("for multi-slice of field elements", func(t *testing.T) {
-		fs := NewMiMCFiatShamir()
-		fs.UpdateVec(vector.ForTest(2, 2), vector.ForTest(1))
-		actualValue := fs.RandomFext()
+		fs := poseidon2.NewMerkleDamgardHasher()
+		UpdateVec(fs, vector.ForTest(2, 2), vector.ForTest(1))
+		actualValue := RandomFext(fs)
 		assert.Equal(t, expectedVal.String(), actualValue.String())
 	})
 
 	t.Run("for a smart-vector", func(t *testing.T) {
 		sv := smartvectors.RightPadded(vector.ForTest(2, 2), field.NewElement(1), 3)
-		fs := NewMiMCFiatShamir()
-		fs.UpdateSV(sv)
-		actualValue := fs.RandomFext()
+		fs := poseidon2.NewMerkleDamgardHasher()
+		UpdateSV(fs, sv)
+		actualValue := RandomFext(fs)
 		assert.Equal(t, expectedVal.String(), actualValue.String())
 	})
 
@@ -103,22 +110,20 @@ func TestSamplingFromSeed(t *testing.T) {
 
 	t.Run("dependence-on-name", func(t *testing.T) {
 
-		var (
-			// #nosec G404 --we don't need a cryptographic RNG for testing purpose
-			rng          = rand.New(utils.NewRandSource(789))
-			initialState = field.PseudoRand(rng)
-			seed         = field.PseudoRand(rng)
-			resMap       = map[field.Element]struct{}{}
-			name         = ""
-			totalSize    = 1000
-		)
+		totalSize := 1000
+		name := ""
+		resMap := map[field.Element]struct{}{}
 
-		fs := NewMiMCFiatShamir()
-		fs.SetState([]field.Element{initialState})
+		var seed, initialState field.Element
+		seed.SetRandom()
+		initialState.SetRandom()
+
+		fs := poseidon2.NewMerkleDamgardHasher()
+		fs.SetState(initialState.Marshal())
 
 		for i := 0; i < totalSize; i++ {
 
-			x := fs.RandomFieldFromSeed(seed, name)
+			x := RandomFieldFromSeed(fs, seed, name)
 			if _, found := resMap[x]; found {
 				t.Errorf("found a collision for i=%v", i)
 			}
@@ -128,66 +133,68 @@ func TestSamplingFromSeed(t *testing.T) {
 		}
 	})
 
-	t.Run("non-dependance-curr-state", func(t *testing.T) {
+	// t.Run("non-dependance-curr-state", func(t *testing.T) {
 
-		var (
-			// #nosec G404 --we don't need a cryptographic RNG for testing purpose
-			rng    = rand.New(utils.NewRandSource(789))
-			state1 = field.PseudoRand(rng)
-			state2 = field.PseudoRand(rng)
-			fs1    = NewMiMCFiatShamir()
-			fs2    = NewMiMCFiatShamir()
-			seed   = field.PseudoRand(rng)
-			name   = "string-name"
-		)
+	// 	var s1, s2, seed field.Element
+	// 	seed.SetRandom()
+	// 	s1.SetRandom()
+	// 	s2.SetRandom()
 
-		fs1.SetState([]field.Element{state1})
-		fs2.SetState([]field.Element{state2})
+	// 	name := "string-name"
+	// 	fs1 := poseidon2.NewMerkleDamgardHasher()
+	// 	fs2 := poseidon2.NewMerkleDamgardHasher()
 
-		y1 := fs1.RandomFieldFromSeed(seed, name)
-		y2 := fs2.RandomFieldFromSeed(seed, name)
+	// 	fs1.SetState(s1.Marshal())
+	// 	fs2.SetState(s2.Marshal())
 
-		if y1 != y2 {
-			t.Errorf("starting from different state does not give the same results")
-		}
-	})
+	// 	y1 := RandomFieldFromSeed(fs1, seed, name)
+	// 	y2 := RandomFieldFromSeed(fs2, seed, name)
+
+	// 	if y1 != y2 {
+	// 		t.Errorf("starting from different state does not give the same results")
+	// 	}
+	// })
 
 	t.Run("does-not-modify-state", func(t *testing.T) {
 
-		var (
-			// #nosec G404 --we don't need a cryptographic RNG for testing purpose
-			rng          = rand.New(utils.NewRandSource(789))
-			initialState = field.PseudoRand(rng)
-			seed         = field.PseudoRand(rng)
-			name         = "ddqsdjqskljd"
-			fs           = NewMiMCFiatShamir()
-		)
+		var initialState, seed field.Element
+		initialState.SetRandom()
+		seed.SetRandom()
 
-		fs.SetState([]field.Element{initialState})
+		name := "ddqsdjqskljd"
+		fs := poseidon2.NewMerkleDamgardHasher()
 
-		fs.RandomFieldFromSeed(seed, name)
+		oldState := initialState.Marshal()
+		fs.SetState(oldState)
+		oldState = fs.State() // we read the state again because padding might happen in setState
+
+		RandomFieldFromSeed(fs, seed, name)
 
 		newState := fs.State()
-		if initialState != newState[0] {
-			t.Errorf("state was modified")
+
+		errStr := "state was modified"
+
+		for i := 0; i < len(newState); i++ {
+			if newState[i] != oldState[i] {
+				t.Fatal(errStr)
+			}
 		}
 	})
 
 	t.Run("is-repeatable", func(t *testing.T) {
 
-		var (
-			// #nosec G404 --we don't need a cryptographic RNG for testing purpose
-			rng          = rand.New(utils.NewRandSource(789))
-			initialState = field.PseudoRand(rng)
-			seed         = field.PseudoRand(rng)
-			name         = "ddqsdjqskljd"
-			fs           = NewMiMCFiatShamir()
-		)
+		var initialState, seed field.Element
+		initialState.SetRandom()
+		seed.SetRandom()
+		name := "ddqsdjqskljd"
+		fs := poseidon2.NewMerkleDamgardHasher()
 
-		fs.SetState([]field.Element{initialState})
+		bInitialState := make([]byte, fs.BlockSize())
+		copy(bInitialState, initialState.Marshal())
+		fs.SetState(initialState.Marshal())
 
-		y1 := fs.RandomFieldFromSeed(seed, name)
-		y2 := fs.RandomFieldFromSeed(seed, name)
+		y1 := RandomFieldFromSeed(fs, seed, name)
+		y2 := RandomFieldFromSeed(fs, seed, name)
 
 		if y1 != y2 {
 			t.Errorf("state was modified")

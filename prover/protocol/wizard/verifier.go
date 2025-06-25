@@ -1,6 +1,9 @@
 package wizard
 
 import (
+	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
+	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -51,7 +54,7 @@ type Runtime interface {
 	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
 	GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams
 	GetQuery(name ifaces.QueryID) ifaces.Query
-	Fs() *fiatshamir.State
+	Fs() hash.StateStorer
 	InsertCoin(name coin.Name, value any)
 	GetState(name string) (any, bool)
 	SetState(name string, value any)
@@ -91,7 +94,7 @@ type VerifierRuntime struct {
 	// it to update the FS hash, this can potentially result in the prover and
 	// the verifer end up having different state or the same message being
 	// included a second time. Use it externally at your own risks.
-	FS *fiatshamir.State
+	FS hash.StateStorer
 
 	// State stores arbitrary data that can be used by the verifier. This
 	// can be used to communicate values between verifier states.
@@ -166,11 +169,11 @@ func (c *CompiledIOP) createVerifier(proof Proof) VerifierRuntime {
 		Coins:         collection.NewMapping[coin.Name, interface{}](),
 		Columns:       proof.Messages,
 		QueriesParams: proof.QueriesParams,
-		FS:            fiatshamir.NewMiMCFiatShamir(),
+		FS:            poseidon2.NewMerkleDamgardHasher(),
 		State:         make(map[string]interface{}),
 	}
 
-	runtime.FS.Update(c.FiatShamirSetup)
+	fiatshamir.Update(runtime.FS, c.FiatShamirSetup)
 
 	/*
 		Insert the verifying key into the messages
@@ -239,7 +242,7 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 				}
 
 				instance := run.GetColumn(msgName)
-				run.FS.UpdateSV(instance)
+				fiatshamir.UpdateSV(run.FS, instance)
 			}
 
 			/*
@@ -268,7 +271,10 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 		}
 	}
 
-	seed := run.FS.State()[0]
+	// seed := run.FS.State()[0]
+	seed := run.FS.State()
+	var kSeed koalabear.Element
+	kSeed.SetBytes(seed[:1]) // TODO @thomas why take only the first byte ?
 
 	/*
 		Then assigns the coins for the new round. As the round incrementation
@@ -281,7 +287,7 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 		}
 
 		info := run.Spec.Coins.Data(myCoin)
-		value := info.Sample(run.FS, seed)
+		value := info.Sample(run.FS, kSeed)
 		run.Coins.InsertNew(myCoin, value)
 	}
 }
@@ -515,7 +521,7 @@ func (run *VerifierRuntime) GetPublicInput(name string) field.Element {
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *VerifierRuntime) Fs() *fiatshamir.State {
+func (run *VerifierRuntime) Fs() hash.StateStorer {
 	return run.FS
 }
 

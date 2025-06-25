@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 )
@@ -80,7 +81,7 @@ type Query interface {
 // should update the Fiat-Shamir state.
 type QueryParams interface {
 	// Update fiat-shamir with the query parameters
-	UpdateFS(*fiatshamir.State)
+	UpdateFS(hash.StateStorer)
 }
 
 // GnarkQueryParams mirrors exactly [QueryParams], but in a gnark circuit.
