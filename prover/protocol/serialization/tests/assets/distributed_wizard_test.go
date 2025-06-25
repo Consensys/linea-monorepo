@@ -79,7 +79,7 @@ func GetBasicDistWizard() *distributed.DistributedWizard {
 		// This tests the compilation of the compiled-IOP
 		distWizard = distributed.DistributeWizard(comp, disc).
 				CompileSegments().
-				Conglomerate(5)
+				Conglomerate(20)
 	)
 
 	return distWizard
@@ -87,6 +87,22 @@ func GetBasicDistWizard() *distributed.DistributedWizard {
 
 func TestSerdeDistWizard(t *testing.T) {
 	dist := GetDistWizard()
+
+	t.Run("ModuleNames", func(t *testing.T) {
+		runSerdeTest(t, dist.ModuleNames, "DistributedWizard.ModuleNames", true, false)
+	})
+
+	t.Run("GLModules", func(t *testing.T) {
+		runSerdeTest(t, dist.GLs, "DistributedWizard.GLs", true, false)
+	})
+
+	t.Run("LPPModules", func(t *testing.T) {
+		runSerdeTest(t, dist.LPPs, "DistributedWizard.LPPs", true, false)
+	})
+
+	t.Run("DefaultModule", func(t *testing.T) {
+		runSerdeTest(t, dist.DefaultModule, "DistributedWizard.DefaultModule", true, false)
+	})
 
 	t.Run("Bootstrapper", func(t *testing.T) {
 		runSerdeTest(t, dist.Bootstrapper, "DistributedWizard.Bootstrapper", true, false)
@@ -116,7 +132,6 @@ func TestSerdeDistWizard(t *testing.T) {
 	cong := dist.CompiledConglomeration
 	dist = nil
 	runtime.GC()
-
 	runSerdeTest(t, cong, "DistributedWizard.CompiledConglomeration", true, false)
 }
 
