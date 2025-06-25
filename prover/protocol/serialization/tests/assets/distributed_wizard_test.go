@@ -1,19 +1,15 @@
 package assets
 
 import (
-	"bytes"
 	"fmt"
 	"runtime"
 	"testing"
 
-	"github.com/consensys/gnark-crypto/utils/unsafe"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	utils_limitless "github.com/consensys/linea-monorepo/prover/utils/limitless"
-	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 )
 
@@ -125,12 +121,15 @@ func TestSerdeDistWizard(t *testing.T) {
 }
 
 func TestSerdeDWCong(t *testing.T) {
-	distWizard := GetDistWizard()
+	distWizard := GetBasicDistWizard()
 	cong := distWizard.CompiledConglomeration
 	distWizard = nil
 	runtime.GC()
-	unsafeBinDump(t, cong, true)
+	runSerdeTest(t, cong, "DistributedWizard.CompiledConglomeration", true)
 }
+
+// BELOW IDEA DOES NOT WORK.
+/*
 
 func unsafeBinDump(t *testing.T, cong *distributed.ConglomeratorCompilation, sanityCheck bool) {
 	var buffer bytes.Buffer
@@ -191,3 +190,30 @@ func unsafeBinDump(t *testing.T, cong *distributed.ConglomeratorCompilation, san
 		}
 	}
 }
+
+
+func TestReadBin(t *testing.T) {
+
+	var readBuffer bytes.Buffer
+	// var deCong []*distributed.ConglomeratorCompilation
+
+	// Read from file into readBuffer
+	err := utils.ReadFromFile("cong-dump.bin", &readBuffer)
+	if err != nil {
+		t.Fatalf("could not read from file: %v", err)
+	}
+	// Verify architecture marker
+	err = unsafe.ReadMarker(&readBuffer)
+	if err != nil {
+		t.Fatalf("could not read marker: %v", err)
+	}
+	// Deserialize the slice
+	deCong, _, err := unsafe.ReadSlice[[]*distributed.ConglomeratorCompilation](&readBuffer)
+	if err != nil {
+		t.Fatalf("could not unmarshal array of compiled IOP: %v", err)
+	}
+
+	t.Logf("(deser) QueriesParams mapping inner length in cong.WIOP:%d \n", len(deCong[0].Wiop.QueriesParams.Mapping.InnerMap))
+}
+
+*/
