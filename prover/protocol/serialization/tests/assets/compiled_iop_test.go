@@ -6,11 +6,12 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -81,7 +82,7 @@ var testcases_precomp []TestCase = []TestCase{
 }
 
 // generate a testcase protocol with given parameters
-func generateProtocol(tc TestCase) (define func(*wizard.Builder), prove func(*wizard.ProverRuntime)) {
+func generateProtocol(tc TestCase) (define func(*wizard.Builder)) {
 
 	// the define function creates a dummy protocol
 	// with only univariate evaluations
@@ -128,57 +129,7 @@ func generateProtocol(tc TestCase) (define func(*wizard.Builder), prove func(*wi
 		b.UnivariateEval(QNAME, cols...)
 	}
 
-	// the prove function assignes the univariate evaluation
-	// and the columns with random values
-	prove = func(run *wizard.ProverRuntime) {
-		// the evaluation point
-		x := field.NewElement(42)
-		var ys []field.Element
-		if tc.IsCommitPrecomp {
-			ys = make([]field.Element, (tc.Numpoly + tc.NumPrecomp))
-		} else {
-			ys = make([]field.Element, tc.Numpoly)
-		}
-		numColPerRound := tc.Numpoly / tc.NumRound
-
-		// Handle the precomputeds at the beginning
-		if tc.IsCommitPrecomp {
-			for i := 0; i < tc.NumPrecomp; i++ {
-				p := run.Spec.Precomputed.MustGet(precompColName(i))
-				ys[i] = smartvectors.Interpolate(p, x)
-			}
-		}
-
-		for round := 0; round < tc.NumRound; round++ {
-			// determine which columns should be declared for each round
-			start, stop := round*numColPerRound, (round+1)*numColPerRound
-
-			// Consider the precomputed polys
-			if tc.IsCommitPrecomp {
-				start, stop = round*numColPerRound+tc.NumPrecomp, (round+1)*numColPerRound+tc.NumPrecomp
-			}
-			if round == tc.NumRound-1 && tc.IsCommitPrecomp {
-				stop = tc.Numpoly + tc.NumPrecomp
-			}
-			if round == tc.NumRound-1 && !tc.IsCommitPrecomp {
-				stop = tc.Numpoly
-			}
-
-			// assigns each column to a random value and evalutes it at x
-			for i := start; i < stop; i++ {
-				v := smartvectors.Rand(tc.PolSize)
-				run.AssignColumn(dummyColName(i), v)
-				ys[i] = smartvectors.Interpolate(v, x)
-			}
-
-			if round < tc.NumRound-1 {
-				_ = run.GetRandomCoinField(dummyCoinName(round))
-			}
-		}
-
-		run.AssignUnivariate(QNAME, x, ys...)
-	}
-	return define, prove
+	return define
 }
 
 func TestSerdeIOP1(t *testing.T) {
@@ -187,7 +138,7 @@ func TestSerdeIOP1(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(fmt.Sprintf("testcase-%++v", tc), func(subT *testing.T) {
-			define, _ := generateProtocol(tc)
+			define := generateProtocol(tc)
 			sisInstances := tc.SisInstance
 
 			comp := wizard.Compile(
@@ -212,7 +163,7 @@ func TestSerdeIOP2(t *testing.T) {
 
 	tc := TestCase{Numpoly: 32, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]}
 	t.Run(fmt.Sprintf("testcase-%++v", tc), func(subT *testing.T) {
-		define, _ := generateProtocol(tc)
+		define := generateProtocol(tc)
 
 		comp := wizard.Compile(
 			define,
@@ -253,7 +204,7 @@ func TestSerdeIOP3(t *testing.T) {
 
 	for _, tc := range testcases_precomp {
 		t.Run(fmt.Sprintf("testcase-%++v", tc), func(subT *testing.T) {
-			define, _ := generateProtocol(tc)
+			define := generateProtocol(tc)
 			sisInstances := tc.SisInstance
 			comp := wizard.Compile(
 				define,
@@ -279,7 +230,7 @@ func TestSerdeIOP4(t *testing.T) {
 	tc := TestCase{Numpoly: 32, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0],
 		NumPrecomp: 4, IsCommitPrecomp: true}
 	t.Run(fmt.Sprintf("testcase-%++v", tc), func(subT *testing.T) {
-		define, _ := generateProtocol(tc)
+		define := generateProtocol(tc)
 
 		comp := wizard.Compile(
 			define,
@@ -310,5 +261,61 @@ func TestSerdeIOP4(t *testing.T) {
 		)
 
 		runSerdeTest(t, comp, "iop4", true)
+	})
+}
+
+const lppMerkleRootPublicInput = "LPP_COLUMNS_MERKLE_ROOTS"
+
+func TestSerdeIOP5(t *testing.T) {
+
+	logrus.SetLevel(logrus.FatalLevel)
+
+	numRow := 1 << 10
+	tc := distributeTestCase{numRow: numRow}
+	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
+
+	t.Run(fmt.Sprintf("testcase-%++v", tc), func(subT *testing.T) {
+
+		comp := wizard.Compile(
+			func(build *wizard.Builder) {
+				tc.define(build.CompiledIOP)
+			},
+			mimc.CompileMiMC,
+			plonkinwizard.Compile,
+			compiler.Arcane(
+				compiler.WithTargetColSize(1<<17),
+				compiler.WithDebugMode("conglomeration"),
+			),
+			vortex.Compile(
+				2,
+				vortex.ForceNumOpenedColumns(256),
+				vortex.WithSISParams(&sisInstance),
+				vortex.AddMerkleRootToPublicInputs(lppMerkleRootPublicInput, []int{0}),
+			),
+			selfrecursion.SelfRecurse,
+			cleanup.CleanUp,
+			mimc.CompileMiMC,
+			compiler.Arcane(
+				compiler.WithTargetColSize(1<<15),
+			),
+			vortex.Compile(
+				8,
+				vortex.ForceNumOpenedColumns(64),
+				vortex.WithSISParams(&sisInstance),
+			),
+			selfrecursion.SelfRecurse,
+			cleanup.CleanUp,
+			mimc.CompileMiMC,
+			compiler.Arcane(
+				compiler.WithTargetColSize(1<<13),
+			),
+			vortex.Compile(
+				8,
+				vortex.ForceNumOpenedColumns(64),
+				vortex.WithOptionalSISHashingThreshold(1<<20),
+			),
+		)
+
+		runSerdeTest(t, comp, "iop5", true)
 	})
 }
