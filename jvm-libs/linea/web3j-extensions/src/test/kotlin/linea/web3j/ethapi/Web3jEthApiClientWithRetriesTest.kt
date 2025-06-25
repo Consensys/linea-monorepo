@@ -32,7 +32,7 @@ class Web3jEthApiClientWithRetriesTest {
   }
 
   @Test
-  fun `should retry until retries elapse`() {
+  fun `should retry until retries elapsed`() {
     jsonRpcServer.handle("eth_getBlockByNumber") { request ->
       throw JsonRpcErrorResponseException(rpcErrorCode = -123, rpcErrorMessage = "Internal error")
     }
@@ -63,7 +63,7 @@ class Web3jEthApiClientWithRetriesTest {
   }
 
   @Test
-  fun `should stop retry when getBlockByNumber FINALIED or SAFE is nof found`() {
+  fun `should stop retry when getBlockByNumber FINALIED or SAFE is not found`() {
     jsonRpcServer.handle("eth_getBlockByNumber") { request ->
       throw JsonRpcErrorResponseException(rpcErrorCode = -39001, rpcErrorMessage = "Unknown block")
     }
