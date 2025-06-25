@@ -152,7 +152,7 @@ func TestSerdeIOP1(t *testing.T) {
 				dummy.Compile,
 			)
 
-			runSerdeTest(t, comp, "iop1", true)
+			runSerdeTest(t, comp, "iop1", true, false)
 		})
 	}
 }
@@ -193,7 +193,7 @@ func TestSerdeIOP2(t *testing.T) {
 			dummy.Compile,
 		)
 
-		runSerdeTest(t, comp, "iop2", true)
+		runSerdeTest(t, comp, "iop2", true, false)
 	})
 }
 
@@ -217,7 +217,7 @@ func TestSerdeIOP3(t *testing.T) {
 				dummy.Compile,
 			)
 
-			runSerdeTest(t, comp, "iop3", true)
+			runSerdeTest(t, comp, "iop3", true, false)
 		})
 	}
 }
@@ -260,7 +260,7 @@ func TestSerdeIOP4(t *testing.T) {
 			dummy.Compile,
 		)
 
-		runSerdeTest(t, comp, "iop4", true)
+		runSerdeTest(t, comp, "iop4", true, false)
 	})
 }
 
@@ -316,6 +316,94 @@ func TestSerdeIOP5(t *testing.T) {
 			),
 		)
 
-		runSerdeTest(t, comp, "iop5", true)
+		runSerdeTest(t, comp, "iop5", true, false)
 	})
+}
+
+func TestSerdeIOP6(t *testing.T) {
+
+	numRow := 1 << 10
+	tc1 := distributeTestCase{numRow: numRow}
+	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
+
+	comp1 := wizard.Compile(
+		func(build *wizard.Builder) {
+			tc1.define(build.CompiledIOP)
+		},
+		mimc.CompileMiMC,
+		plonkinwizard.Compile,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<17),
+			compiler.WithDebugMode("conglomeration"),
+		),
+		vortex.Compile(
+			2,
+			vortex.ForceNumOpenedColumns(256),
+			vortex.WithSISParams(&sisInstance),
+			vortex.AddMerkleRootToPublicInputs(lppMerkleRootPublicInput, []int{0}),
+		),
+		selfrecursion.SelfRecurse,
+		cleanup.CleanUp,
+		mimc.CompileMiMC,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<15),
+		),
+		vortex.Compile(
+			8,
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithSISParams(&sisInstance),
+		),
+		selfrecursion.SelfRecurse,
+		cleanup.CleanUp,
+		mimc.CompileMiMC,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<13),
+		),
+		vortex.Compile(
+			8,
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithOptionalSISHashingThreshold(1<<20),
+		),
+	)
+
+	tc2 := TestCase{Numpoly: 32, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0],
+		NumPrecomp: 4, IsCommitPrecomp: true}
+
+	define := generateProtocol(tc2)
+
+	comp2 := wizard.Compile(
+		define,
+		vortex.Compile(
+			2,
+			vortex.ForceNumOpenedColumns(16),
+			vortex.WithSISParams(&tc2.SisInstance),
+		),
+		selfrecursion.SelfRecurse,
+		mimc.CompileMiMC,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<10)),
+		vortex.Compile(
+			2,
+			vortex.ForceNumOpenedColumns(16),
+			vortex.WithSISParams(&tc2.SisInstance),
+		),
+		selfrecursion.SelfRecurse,
+		mimc.CompileMiMC,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<13)),
+		vortex.Compile(
+			2,
+			vortex.ForceNumOpenedColumns(16),
+			vortex.WithSISParams(&tc2.SisInstance),
+		),
+		dummy.Compile,
+	)
+
+	// Combination of IOPs inside a struct
+	comp := struct {
+		Comp1 *wizard.CompiledIOP
+		Comp2 *wizard.CompiledIOP
+	}{Comp1: comp1, Comp2: comp2}
+
+	runSerdeTest(t, comp, "iop6", true, false)
 }

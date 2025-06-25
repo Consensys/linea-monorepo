@@ -79,7 +79,7 @@ func GetBasicDistWizard() *distributed.DistributedWizard {
 		// This tests the compilation of the compiled-IOP
 		distWizard = distributed.DistributeWizard(comp, disc).
 				CompileSegments().
-				Conglomerate(20)
+				Conglomerate(5)
 	)
 
 	return distWizard
@@ -89,26 +89,26 @@ func TestSerdeDistWizard(t *testing.T) {
 	dist := GetDistWizard()
 
 	t.Run("Bootstrapper", func(t *testing.T) {
-		runSerdeTest(t, dist.Bootstrapper, "DistributedWizard.Bootstrapper", true)
+		runSerdeTest(t, dist.Bootstrapper, "DistributedWizard.Bootstrapper", true, false)
 	})
 
 	t.Run("Discoverer", func(t *testing.T) {
-		runSerdeTest(t, dist.Disc, "DistributedWizard.Discoverer", true)
+		runSerdeTest(t, dist.Disc, "DistributedWizard.Discoverer", true, false)
 	})
 
 	t.Run("CompiledDefault", func(t *testing.T) {
-		runSerdeTest(t, dist.CompiledDefault, "DistributedWizard.CompiledDefault", true)
+		runSerdeTest(t, dist.CompiledDefault, "DistributedWizard.CompiledDefault", true, false)
 	})
 
 	for i := range dist.CompiledGLs {
 		t.Run(fmt.Sprintf("CompiledGL-%v", i), func(t *testing.T) {
-			runSerdeTest(t, dist.CompiledGLs[i], fmt.Sprintf("DistributedWizard.CompiledGL-%v", i), true)
+			runSerdeTest(t, dist.CompiledGLs[i], fmt.Sprintf("DistributedWizard.CompiledGL-%v", i), true, false)
 		})
 	}
 
 	for i := range dist.CompiledLPPs {
 		t.Run(fmt.Sprintf("CompiledLPP-%v", i), func(t *testing.T) {
-			runSerdeTest(t, dist.CompiledLPPs[i], fmt.Sprintf("DistributedWizard.CompiledLPP-%v", i), true)
+			runSerdeTest(t, dist.CompiledLPPs[i], fmt.Sprintf("DistributedWizard.CompiledLPP-%v", i), true, false)
 		})
 	}
 
@@ -117,7 +117,7 @@ func TestSerdeDistWizard(t *testing.T) {
 	dist = nil
 	runtime.GC()
 
-	runSerdeTest(t, cong, "DistributedWizard.CompiledConglomeration", true)
+	runSerdeTest(t, cong, "DistributedWizard.CompiledConglomeration", true, false)
 }
 
 func TestSerdeDWCong(t *testing.T) {
@@ -125,7 +125,7 @@ func TestSerdeDWCong(t *testing.T) {
 	cong := distWizard.CompiledConglomeration
 	distWizard = nil
 	runtime.GC()
-	runSerdeTest(t, cong, "DistributedWizard.CompiledConglomeration", true)
+	runSerdeTest(t, cong, "DistributedWizard.CompiledConglomeration", true, true)
 }
 
 // BELOW IDEA DOES NOT WORK.

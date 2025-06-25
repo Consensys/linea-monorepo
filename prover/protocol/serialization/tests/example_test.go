@@ -1,0 +1,408 @@
+package serialization_test
+
+import (
+	"fmt"
+	"math/big"
+	"reflect"
+	"testing"
+	"time"
+
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
+	"github.com/stretchr/testify/require"
+)
+
+func TestSerdeValue(t *testing.T) {
+
+	serialization.RegisterImplementation(string(""))
+	serialization.RegisterImplementation(ifaces.ColID(""))
+	serialization.RegisterImplementation(column.Natural{})
+	serialization.RegisterImplementation(column.Shifted{})
+	serialization.RegisterImplementation(verifiercol.ConstCol{})
+	serialization.RegisterImplementation(verifiercol.FromYs{})
+	serialization.RegisterImplementation(verifiercol.FromAccessors{})
+	serialization.RegisterImplementation(accessors.FromPublicColumn{})
+	serialization.RegisterImplementation(accessors.FromConstAccessor{})
+	serialization.RegisterImplementation(query.UnivariateEval{})
+
+	testCases := []struct {
+		V    any
+		Name string
+	}{
+		{
+			Name: "random-string",
+			V:    "someRandomString",
+		},
+		{
+			Name: "random-column-id-ptr",
+			V: func() any {
+				var s = ifaces.ColID("someIndirectedString")
+				return &s
+			}(),
+		},
+		{
+			Name: "some-string-ptr",
+			V: func() any {
+				// It's important to not provide an untyped string under
+				// the interface because the type cannot be serialized.
+				var s any = string("someStringUnderIface")
+				return &s
+			}(),
+		},
+		{
+			Name: "some-col-id-ptr",
+			V: func() any {
+				var id = ifaces.ColID("newTypeUnderIface")
+				var s any = &id
+				return &s
+			}(),
+		},
+		{
+			Name: "query-id",
+			V:    ifaces.QueryID("QueryID"),
+		},
+		{
+			Name: "natural-column",
+			V: func() any {
+				comp := wizard.NewCompiledIOP()
+				return comp.InsertColumn(0, "myNaturalColumn", 16, column.Committed)
+			}(),
+		},
+		{
+			Name: "shifted-column",
+			V: func() any {
+				comp := wizard.NewCompiledIOP()
+				nat := comp.InsertColumn(0, "myNaturalColumn", 16, column.Committed)
+				return column.Shift(nat, 2)
+			}(),
+		},
+		{
+			Name: "concat-tiny-columns",
+			V: func() any {
+				comp := wizard.NewCompiledIOP()
+				col := verifiercol.NewConcatTinyColumns(
+					comp,
+					8,
+					field.Element{},
+					comp.InsertColumn(0, "a", 1, column.Proof),
+					comp.InsertColumn(0, "b", 1, column.Proof),
+					comp.InsertColumn(0, "c", 1, column.Proof),
+				)
+				return &col
+			}(),
+		},
+		{
+			Name: "from-public-column",
+			V: func() any {
+				comp := wizard.NewCompiledIOP()
+				nat := comp.InsertColumn(0, "myNaturalColumn", 16, column.Proof)
+				return accessors.NewFromPublicColumn(nat, 2)
+			}(),
+		},
+		{
+			Name: "from-const-accessor",
+			V: func() any {
+				comp := wizard.NewCompiledIOP()
+				c := comp.InsertCoin(0, "myCoin", coin.Field)
+				return accessors.NewFromCoin(c)
+			}(),
+		},
+		{
+			Name: "univariate-eval",
+			V: func() any {
+				comp := wizard.NewCompiledIOP()
+				a := comp.InsertColumn(0, "a", 16, column.Committed)
+				b := comp.InsertColumn(0, "b", 16, column.Committed)
+				q := comp.InsertUnivariate(0, "q", []ifaces.Column{a, b})
+				return q
+			}(),
+		},
+		{
+			Name: "from-ys",
+			V: func() any {
+				comp := wizard.NewCompiledIOP()
+				a := comp.InsertColumn(0, "a", 16, column.Committed)
+				b := comp.InsertColumn(0, "b", 16, column.Committed)
+				q := comp.InsertUnivariate(0, "q", []ifaces.Column{a, b})
+				return verifiercol.NewFromYs(comp, q, []ifaces.ColID{a.GetColID(), b.GetColID()})
+			}(),
+		},
+		{
+			Name: "integer-vec-coin",
+			V: func() any {
+				comp := wizard.NewCompiledIOP()
+				c := comp.InsertCoin(0, "myCoin", coin.IntegerVec, 16, 16)
+				return c
+			}(),
+		},
+		{
+			Name: "from-integer-vec-coin",
+			V: func() any {
+				comp := wizard.NewCompiledIOP()
+				c := comp.InsertCoin(0, "myCoin", coin.IntegerVec, 16, 16)
+				return verifiercol.NewFromIntVecCoin(comp, c)
+			}(),
+		},
+		{
+			Name: "verifier-col-from-accessors",
+			V: func() any {
+				comp := wizard.NewCompiledIOP()
+				a := comp.InsertColumn(0, "a", 16, column.Proof)
+				b := comp.InsertColumn(0, "b", 16, column.Proof)
+				return verifiercol.NewFromAccessors(
+					[]ifaces.Accessor{
+						accessors.NewFromPublicColumn(a, 2),
+						accessors.NewFromPublicColumn(b, 2),
+					},
+					field.Element{}, 16)
+			}(),
+		},
+		{
+			Name: "const-col",
+			V:    verifiercol.NewConstantCol(field.Element{}, 16),
+		},
+		{
+			Name: "new-coin",
+			V:    coin.NewInfo("foo", coin.IntegerVec, 16, 16, 1),
+		},
+		{
+			Name: "bigint-zero",
+			V:    big.NewInt(0),
+		},
+		{
+			Name: "bigint-one",
+			V:    big.NewInt(1),
+		},
+		{
+			Name: "bigint-minus-one",
+			V:    big.NewInt(-1),
+		},
+		{
+			Name: "bigint-max-uint256",
+			V: func() any {
+				v, ok := new(big.Int).SetString("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 0)
+				if !ok {
+					panic("bigint does not work")
+				}
+				return v
+			}(),
+		},
+		{
+			Name: "field-zero",
+			V:    field.NewElement(0),
+		},
+		{
+			Name: "field-one",
+			V:    field.NewElement(1),
+		},
+		{
+			Name: "field-2**248-1",
+			V: func() any {
+				v, err := new(field.Element).SetString("0x00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+				if err != nil {
+					utils.Panic("field does not work: %v", err)
+				}
+				return v
+			}(),
+		},
+		{
+			Name: "vector-1234",
+			V:    vector.ForTest(0, 1, 2, 3, 4, 5, 5, 6, 7),
+		},
+		{
+			Name: "symbolic-add-with-shifted",
+			V: func() any {
+				comp := wizard.NewCompiledIOP()
+				a := comp.InsertColumn(0, "a", 16, column.Committed)
+				aNext := column.Shift(a, 2)
+				return symbolic.Add(a, aNext)
+			}(),
+		},
+		{
+			Name: "symbolic-add",
+			V: func() any {
+				comp := wizard.NewCompiledIOP()
+				a := comp.InsertColumn(0, "a", 16, column.Committed)
+				b := comp.InsertColumn(0, "b", 16, column.Committed)
+				return symbolic.Add(a, b)
+			}(),
+		},
+		{
+			Name: "symbolic-mul",
+			V: func() any {
+				comp := wizard.NewCompiledIOP()
+				a := comp.InsertColumn(0, "a", 16, column.Committed)
+				b := comp.InsertColumn(0, "b", 16, column.Committed)
+				return symbolic.Mul(a, b)
+			}(),
+		},
+		{
+			Name: "symbolic-new-variable",
+			V: func() any {
+				comp := wizard.NewCompiledIOP()
+				a := comp.InsertColumn(0, "a", 16, column.Committed)
+				return symbolic.NewVariable(a)
+			}(),
+		},
+		{
+			Name: "symbolic-constant-0",
+			V:    symbolic.NewConstant(0),
+		},
+		{
+			Name: "symbolic-constant-1",
+			V:    symbolic.NewConstant(1),
+		},
+		{
+			Name: "symbolic-constant-minus-1",
+			V:    symbolic.NewConstant(-1),
+		},
+		{
+			Name: "symbolic-intricate-expression",
+			V: func() any {
+				comp := wizard.NewCompiledIOP()
+				a := comp.InsertColumn(0, "a", 16, column.Committed)
+				b := comp.InsertColumn(0, "b", 16, column.Committed)
+				c := comp.InsertColumn(0, "c", 16, column.Committed)
+				d := comp.InsertColumn(0, "d", 16, column.Committed)
+				return symbolic.Add(symbolic.Mul(symbolic.Add(a, b), symbolic.Add(c, d)), symbolic.NewConstant(1))
+			}(),
+		},
+		{
+			Name: "mimc-query",
+			V: func() any {
+				comp := wizard.NewCompiledIOP()
+				a := comp.InsertColumn(0, "a", 16, column.Committed)
+				b := comp.InsertColumn(0, "b", 16, column.Committed)
+				c := comp.InsertColumn(0, "c", 16, column.Committed)
+				return comp.InsertMiMC(0, "mimc", a, b, c, nil)
+			}(),
+		},
+		{
+			Name: "nil-expression",
+			V: func() any {
+				return struct {
+					E *symbolic.Expression
+				}{}
+			}(),
+		},
+		{
+			Name: "map-with-column-as-key",
+			V: func() any {
+				comp := wizard.NewCompiledIOP()
+				a := comp.InsertColumn(0, "a", 16, column.Committed).(column.Natural)
+				b := comp.InsertColumn(0, "b", 16, column.Committed).(column.Natural)
+				return map[column.Natural]string{a: "a", b: "b"}
+			}(),
+		},
+		{
+			Name: "frontend-variables",
+			V:    frontend.Variable(0),
+		},
+		{
+			Name: "frontend-variables",
+			V:    frontend.Variable(12),
+		},
+		{
+			Name: "frontend-variables",
+			V:    frontend.Variable(-10),
+		},
+	}
+
+	for i := range testCases {
+		t.Run(fmt.Sprintf("test-case-%v/%v", i, testCases[i].Name), func(t *testing.T) {
+
+			msg, err := serialization.Serialize(testCases[i].V)
+			require.NoError(t, err)
+
+			fmt.Printf("testcase=%v, msg=%v\n", i, string(msg))
+
+			unmarshaled := reflect.New(reflect.TypeOf(testCases[i].V)).Interface()
+			err = serialization.Deserialize(msg, unmarshaled)
+			require.NoError(t, err)
+
+			unmarshalledDereferenced := reflect.ValueOf(unmarshaled).Elem().Interface()
+			if !test_utils.CompareExportedFields(testCases[i].V, unmarshalledDereferenced, false) {
+				t.Errorf("Mismatch in exported fields after full serde value")
+			}
+
+		})
+	}
+}
+
+type Team struct {
+	Name      string
+	CreatedAt time.Time
+	Members   []*Person
+	Metadata  map[string]interface{}
+	privateID string // unexported field
+}
+
+type Person struct {
+	Name       string
+	Age        int
+	Attributes Attributes
+}
+
+type Attributes struct {
+	Nickname string
+	Score    int
+	private  string // unexported field
+}
+
+func TestSerdeSampleStruct(t *testing.T) {
+	p1 := &Person{
+		Name: "Alice",
+		Age:  28,
+		Attributes: Attributes{
+			Nickname: "Ace",
+			Score:    95,
+			private:  "secret-1",
+		},
+	}
+	p2 := &Person{
+		Name: "Bob",
+		Age:  35,
+		Attributes: Attributes{
+			Nickname: "Builder",
+			Score:    88,
+			private:  "secret-2",
+		},
+	}
+
+	team := Team{
+		Name:      "DevTeam",
+		CreatedAt: time.Now().Truncate(time.Second),
+		Members:   []*Person{p1, p2},
+		Metadata: map[string]interface{}{
+			"department": "Engineering",
+			"active":     true,
+			"head":       p1.Name,
+		},
+		privateID: "internal-uuid-1234",
+	}
+
+	// Serialize
+	teamBytes, err := serialization.Serialize(team)
+	require.NoError(t, err)
+
+	// Deserialize
+	var deserializedTeam Team
+	err = serialization.Deserialize(teamBytes, &deserializedTeam)
+	require.NoError(t, err)
+
+	if !test_utils.CompareExportedFields(team, deserializedTeam, false) {
+		t.Errorf("expected team and deserializedTeam to be equal")
+	}
+}
