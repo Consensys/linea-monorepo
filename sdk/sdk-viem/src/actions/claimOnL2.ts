@@ -32,6 +32,65 @@ export type ClaimOnL2Parameters<
 
 export type ClaimOnL2ReturnType = SendTransactionReturnType;
 
+/**
+ * Claim a message on L2.
+ *
+ * @param client - Client to use
+ * @param parameters - {@link ClaimOnL2Parameters}
+ * @returns hash - The [Transaction](https://viem.sh/docs/glossary/terms#transaction) hash. {@link ClaimOnL2ReturnType}
+ *
+ * @example
+ * import { createPublicClient, http, zeroAddress } from 'viem'
+ * import { privateKeyToAccount } from 'viem/accounts'
+ * import { linea } from 'viem/chains'
+ * import { claimOnL2 } from '@consensys/linea-sdk-viem'
+ *
+ * const client = createPublicClient({
+ *   chain: linea,
+ *   transport: http(),
+ * });
+ *
+ * const hash = await claimOnL2(client, {
+ *     account: privateKeyToAccount('0x…'),
+ *     from: '0xSenderAddress',
+ *     to: '0xRecipientAddress',
+ *     fee: 100_000_000n, // Fee in wei
+ *     value: 1_000_000_000_000n, // Amount in wei
+ *     messageNonce: 1n, // Nonce of the message to claim
+ *     calldata: '0x',
+ *     feeRecipient: zeroAddress, // Optional fee recipient, defaults to zeroAddress
+ *     // Optional transaction parameters
+ *     gas: 21000n, // Gas limit
+ *     maxFeePerGas: 100_000_000n, // Max fee per gas
+ *     maxPriorityFeePerGas: 1_000_000n, // Max priority fee per gas
+ * });
+ *
+ * @example Account Hoisting
+ * import { createWalletClient, http, zeroAddress } from 'viem'
+ * import { privateKeyToAccount } from 'viem/accounts'
+ * import { linea } from 'viem/chains'
+ * import { claimOnL2 } from '@consensys/linea-sdk-viem'
+ *
+ * const client = createWalletClient({
+ *   account: privateKeyToAccount('0x…'),
+ *   chain: linea,
+ *   transport: http(),
+ * });
+ *
+ * const hash = await claimOnL2(client, {
+ *     from: '0xSenderAddress',
+ *     to: '0xRecipientAddress',
+ *     fee: 100_000_000n, // Fee in wei
+ *     value: 1_000_000_000_000n, // Amount in wei
+ *     messageNonce: 1n, // Nonce of the message to claim
+ *     calldata: '0x',
+ *     feeRecipient: zeroAddress, // Optional fee recipient, defaults to zeroAddress
+ *     // Optional transaction parameters
+ *     gas: 21000n, // Gas limit
+ *     maxFeePerGas: 100_000_000n, // Max fee per gas
+ *     maxPriorityFeePerGas: 1_000_000n, // Max priority fee per gas
+ * });
+ */
 export async function claimOnL2<
   chain extends Chain | undefined,
   account extends Account | undefined,

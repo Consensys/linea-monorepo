@@ -36,6 +36,75 @@ export type ClaimOnL1Parameters<
 
 export type ClaimOnL1ReturnType = SendTransactionReturnType;
 
+/**
+ * Claim a message on L1.
+ *
+ * @param client - Client to use
+ * @param parameters - {@link ClaimOnL1Parameters}
+ * @returns hash - The [Transaction](https://viem.sh/docs/glossary/terms#transaction) hash. {@link ClaimOnL1ReturnType}
+ *
+ * @example
+ * import { createPublicClient, http, zeroAddress } from 'viem'
+ * import { privateKeyToAccount } from 'viem/accounts'
+ * import { mainnet } from 'viem/chains'
+ * import { claimOnL1 } from '@consensys/linea-sdk-viem'
+ *
+ * const client = createPublicClient({
+ *   chain: mainnet,
+ *   transport: http(),
+ * });
+ *
+ * const hash = await claimOnL1(client, {
+ *     account: privateKeyToAccount('0x…'),
+ *     from: '0xSenderAddress',
+ *     to: '0xRecipientAddress',
+ *     fee: 100_000_000n, // Fee in wei
+ *     value: 1_000_000_000_000n, // Amount in wei
+ *     messageNonce: 1n, // Nonce of the message to claim
+ *     calldata: '0x',
+ *     feeRecipient: zeroAddress, // Optional fee recipient, defaults to zeroAddress
+ *      messageProof: {
+ *         root: '0x…', // Merkle root of the message
+ *         proof: ['0x…'], // Merkle proof of the message
+ *         leafIndex: 0, // Index of the leaf in the Merkle tree
+ *     },
+ *     // Optional transaction parameters
+ *     gas: 21000n, // Gas limit
+ *     maxFeePerGas: 100_000_000n, // Max fee per gas
+ *     maxPriorityFeePerGas: 1_000_000n, // Max priority fee per gas
+ * });
+ *
+ * @example Account Hoisting
+ * import { createWalletClient, http, zeroAddress } from 'viem'
+ * import { privateKeyToAccount } from 'viem/accounts'
+ * import { mainnet } from 'viem/chains'
+ * import { claimOnL1 } from '@consensys/linea-sdk-viem'
+ *
+ * const client = createWalletClient({
+ *   account: privateKeyToAccount('0x…'),
+ *   chain: mainnet,
+ *   transport: http(),
+ * });
+ *
+ * const hash = await claimOnL1(client, {
+ *     from: '0xSenderAddress',
+ *     to: '0xRecipientAddress',
+ *     fee: 100_000_000n, // Fee in wei
+ *     value: 1_000_000_000_000n, // Amount in wei
+ *     messageNonce: 1n, // Nonce of the message to claim
+ *     calldata: '0x',
+ *     feeRecipient: zeroAddress, // Optional fee recipient, defaults to zeroAddress
+ *      messageProof: {
+ *         root: '0x…', // Merkle root of the message
+ *         proof: ['0x…'], // Merkle proof of the message
+ *         leafIndex: 0, // Index of the leaf in the Merkle tree
+ *     },
+ *     // Optional transaction parameters
+ *     gas: 21000n, // Gas limit
+ *     maxFeePerGas: 100_000_000n, // Max fee per gas
+ *     maxPriorityFeePerGas: 1_000_000n, // Max priority fee per gas
+ * });
+ */
 export async function claimOnL1<
   chain extends Chain | undefined,
   account extends Account | undefined,

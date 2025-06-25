@@ -11,7 +11,7 @@ export type GetL1ToL2MessageStatusParameters = {
 /**
  * Returns the status of an L1 to L2 message on Linea.
  *
- * @returns The status of the L1 to L2 message.
+ * @returns The status of the L1 to L2 message. {@link GetL1ToL2MessageStatusReturnType}
  * @param client - Client to use
  * @param args - {@link GetL1ToL2MessageStatusParameters}
  *

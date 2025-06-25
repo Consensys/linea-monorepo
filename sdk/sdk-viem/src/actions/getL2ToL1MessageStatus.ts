@@ -37,7 +37,7 @@ export type GetL2ToL1MessageStatusReturnType = OnChainMessageStatus;
 /**
  * Returns the status of an L2 to L1 message on Linea.
  *
- * @returns The status of the L2 to L1 message.
+ * @returns The status of the L2 to L1 message.  {@link GetL2ToL1MessageStatusReturnType}
  * @param client - Client to use
  * @param args - {@link GetL2ToL1MessageStatusParameters}
  *

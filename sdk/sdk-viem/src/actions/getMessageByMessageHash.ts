@@ -21,7 +21,7 @@ export type GetMessageByMessageHashReturnType = {
 /**
  * Returns the details of a message by its hash.
  *
- * @returns The details of a message.
+ * @returns The details of a message. {@link GetMessageByMessageHashReturnType}
  * @param client - Client to use
  * @param args - {@link GetMessageByMessageHashParameters}
  *

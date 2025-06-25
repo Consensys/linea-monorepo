@@ -11,7 +11,7 @@ export type GetMessagesByTransactionHashReturnType = ExtendedMessage[];
 /**
  * Returns the details of messages sent in a transaction by its hash.
  *
- * @returns The details of messages sent in the transaction.
+ * @returns The details of messages sent in the transaction.  {@link GetMessagesByTransactionHashReturnType}
  * @param client - Client to use
  * @param args - {@link GetMessagesByTransactionHashParameters}
  *

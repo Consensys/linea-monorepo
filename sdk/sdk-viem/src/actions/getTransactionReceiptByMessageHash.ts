@@ -12,7 +12,7 @@ export type GetTransactionReceiptByMessageHashReturnType<chain extends Chain | u
 /**
  * Returns the transaction receipt for a message sent by its message hash.
  *
- * @returns The transaction receipt of the message.
+ * @returns The transaction receipt of the message. {@link GetTransactionReceiptByMessageHashReturnType}
  * @param client - Client to use
  * @param args - {@link GetTransactionReceiptByMessageHashParameters}
  *

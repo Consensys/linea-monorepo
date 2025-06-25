@@ -18,7 +18,7 @@ export type GetBlockExtraDataParameters<blockTag extends BlockTag = "latest"> = 
 /**
  * Returns fomatted linea block extra data.
  *
- * @returns Formatted linea block extra data.
+ * @returns Formatted linea block extra data. {@link GetBlockExtraDataReturnType}
  * @param client - Client to use
  * @param args - {@link GetBlockExtraDataParameters}
  *

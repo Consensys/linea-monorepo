@@ -41,7 +41,7 @@ export type GetMessageProofParameters<
 /**
  * Returns the proof of a message sent from L2 to L1.
  *
- * @returns The proof of a message sent from L2 to L1.
+ * @returns The proof of a message sent from L2 to L1. {@link GetMessageProofReturnType}
  * @param client - Client to use
  * @param args - {@link GetMessageProofParameters}
  *
