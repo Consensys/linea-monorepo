@@ -9,9 +9,11 @@ type Props = {
 
 export default function PageBack({ label = "Back", href = "/" }: Props) {
   return (
-    <Link className={styles.back} href={href}>
-      <ArrowLeftIcon />
-      <span>{label}</span>
-    </Link>
+    <div className={styles.wrapper}>
+      <Link className={styles.back} href={href}>
+        <ArrowLeftIcon />
+        <span>{label}</span>
+      </Link>
+    </div>
   );
 }
