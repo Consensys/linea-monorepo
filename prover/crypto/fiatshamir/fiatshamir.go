@@ -74,15 +74,13 @@ func RandomField(h hash.StateStorer) field.Element {
 	s := h.Sum(nil)
 	var res field.Element
 	res.SetBytes(s)
-	UpdateExt(h, fext.NewElement(0, 0, 0, 0)) // ??
+	safeguardUpdate(h)
 	return res
 }
 
 func RandomFieldFromSeed(h hash.StateStorer, seed field.Element, name string) field.Element {
 
-	// The first step encodes the 'name' into a single field element. The
-	// field element is obtained by hashing and taking the modulo of the
-	// result to fit into a field element.
+	// map name to a field elmt
 	tmpFr := field.Element{}
 	nameBytes := []byte(name)
 	hasher, _ := blake2b.New256(nil)
@@ -99,19 +97,14 @@ func RandomFieldFromSeed(h hash.StateStorer, seed field.Element, name string) fi
 	oldState := h.State()
 	defer h.SetState(oldState)
 
-	// TODO @thomas just use SetState once PR#700 in gnark-crypto is merged
-	stateByte := make([]byte, h.BlockSize())
-	copy(stateByte, stateByte)
-	h.SetState(stateByte)
+	h.SetState(seed.Marshal())
 	if _, err := h.Write(nameBytes); err != nil {
 		panic(err)
 	}
 	challBytes := h.Sum(nil)
-	// res := new(field.Element).SetBytes(challBytes)
-	var res field.Element
-	res.SetBytes(challBytes)
+	res := new(field.Element).SetBytes(challBytes)
 
-	return res
+	return *res
 }
 
 func RandomFext(h hash.StateStorer) fext.Element {
