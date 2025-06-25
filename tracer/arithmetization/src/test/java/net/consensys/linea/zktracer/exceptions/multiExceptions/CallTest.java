@@ -130,13 +130,16 @@ public class CallTest extends TracerTestBase {
 
   @Test
   public void staticAndMxpExceptionsCall() {
+    boolean triggerMaxCodeSizeException = false;
     // We test with or without Roob
     boolean[] triggerRoob = new boolean[] {false, true};
 
     for (boolean roob : triggerRoob) {
       // We prepare a program with an MXPX for the opcode
       BytecodeCompiler pg = BytecodeCompiler.newProgram(testInfo);
-      new MxpTestUtils().triggerNonTrivialButMxpxOrRoobForOpCode(pg, roob, OpCode.CALL);
+      new MxpTestUtils()
+          .triggerNonTrivialButMxpxOrRoobOrMaxCodeSizeExceptionForOpCode(
+              pg, roob, triggerMaxCodeSizeException, OpCode.CALL);
 
       // We prepare a program to static call the code account
       ToyAccount codeProviderAccount = getAccountForAddressWithBytecode(codeAddress, pg.compile());

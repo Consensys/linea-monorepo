@@ -25,6 +25,7 @@ import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 
@@ -191,8 +192,61 @@ public class ExceptionUtils extends TracerTestBase {
   }
 
   /**
-   * The {@code initProgram} inserts a single byte {@code startByte} at offset 0 into RAM and
-   * returns {@code returnSize} bytes starting at offset 0. There are four cases of interest:
+   * The {@code getInitCodeWithSize} pushes an init code program in memory with a byte size a
+   * multiple of 32. Byte size of the init code program is 32 * {@code nbChunks}. There are 2 cases
+   * of interest:
+   *
+   * <ul>
+   *   <li>{@code nbChunks} is > 0 and <= 1536.
+   *   <li>{@code nbChunks} is > 1536.
+   * </ul>
+   *
+   * Only the second one should raise the <b>maxCodeSizeException</b> when used in a CREATE or
+   * CREATE2. Indeed EIP-3860 limits and meters init code at ( 32 * 1536 ) = 49152.
+   */
+  public static BytecodeCompiler getInitCodeWithSize(Bytes32 initCodeChunk, int nbChunks) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    int decrNbChunks = nbChunks;
+
+    while (decrNbChunks > 0) {
+      program
+          .push(initCodeChunk) // value
+          .push((nbChunks - decrNbChunks) * 32) // offset
+          .op(OpCode.MSTORE);
+      decrNbChunks -= 1;
+    }
+    return program;
+  }
+
+  /**
+   * The {@code getPgCreateWithInitCodeSize} returns a CREATE or CREATE2 program with a piloted init
+   * code. It pushes a 32 Bytes {@code initCodeChunk} in memory as many times as described by @code
+   * nbChunks}. Byte size of the init code program is 32 * {@code nbChunks}.
+   */
+  public static BytecodeCompiler getPgCreateWithInitCodeSize(
+      OpCode opCode, Bytes32 initCodeChunk, int nbChunks) {
+    checkArgument(opCode == OpCode.CREATE || opCode == OpCode.CREATE2);
+
+    BytecodeCompiler program = getInitCodeWithSize(initCodeChunk, nbChunks);
+
+    if (opCode == OpCode.CREATE2) {
+      program.push(salt); // salt
+    }
+
+    program
+        .push(nbChunks * 32) // size
+        .push(0) // offset
+        .push(0); // value
+
+    program.op(opCode);
+
+    return program;
+  }
+
+  /**
+   * The {@code getPgCreateInitCodeWithReturnStartByteAndSize} inserts a single byte {@code
+   * startByte} at offset 0 into RAM and returns {@code returnSize} bytes starting at offset 0.
+   * There are four cases of interest:
    *
    * <ul>
    *   <li>{@code startByte} is <b>0xEF</b> and {@code returnSize} > 0

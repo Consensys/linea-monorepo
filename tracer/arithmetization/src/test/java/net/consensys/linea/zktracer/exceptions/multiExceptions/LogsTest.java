@@ -79,13 +79,16 @@ public class LogsTest extends TracerTestBase {
   @ParameterizedTest
   @MethodSource("logsOpCodesList")
   public void staticAndMxpExceptions(OpCode opCode) {
+    boolean triggerMaxCodeSizeException = false;
     // We test with or without Roob
     boolean[] triggerRoob = new boolean[] {false, true};
 
     for (boolean roob : triggerRoob) {
       // We prepare a program with an MXPX for the opcode
       BytecodeCompiler pg = BytecodeCompiler.newProgram(testInfo);
-      new MxpTestUtils().triggerNonTrivialButMxpxOrRoobForOpCode(pg, roob, opCode);
+      new MxpTestUtils()
+          .triggerNonTrivialButMxpxOrRoobOrMaxCodeSizeExceptionForOpCode(
+              pg, roob, triggerMaxCodeSizeException, opCode);
 
       // We prepare a program to static call the code account
       ToyAccount codeProviderAccount = getAccountForAddressWithBytecode(codeAddress, pg.compile());
