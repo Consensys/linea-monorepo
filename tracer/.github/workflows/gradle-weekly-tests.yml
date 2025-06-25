@@ -11,108 +11,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  weekly-unit-tests:
-    strategy:
-      fail-fast: false
-      matrix:
-        zkevm_fork: [LONDON, SHANGHAI]
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive
+  weekly-unit-tests-london:
+    uses: ./.github/workflows/reusable-weekly-tests.yml
+    with:
+      zkevm_fork: LONDON
 
-      - name: Setup Test Environment
-        uses: ./.github/actions/setup-environment
+  weekly-unit-tests-shanghai:
+    uses: ./.github/workflows/reusable-weekly-tests.yml
+    with:
+      zkevm_fork: SHANGHAI
 
-      - name: Run Weekly tests
-        run: GOMAXPROCS=2 GOMEMLIMIT=10GiB ./gradlew weeklyTests
-        env:
-          WEEKLY_TESTS_PARALLELISM: 32
-          GOCORSET_FLAGS: -v -b1024 --ansi-escapes=false --report --mir
-          ZKEVM_FORK: ${{ matrix.zkevm_fork }}
+  weekly-prc-call-tests-london:
+    uses: ./.github/workflows/reusable-weekly-prc-tests.yml
+    with:
+      zkevm_fork: LONDON
 
-      - name: Upload test report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: weekly-tests-report-${{ matrix.zkevm_fork }}
-          path: arithmetization/build/reports/tests/**/*
-
-      - name: Upload jacoco weekly tests coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: jacoco-weekly-tests-coverage-report-${{ matrix.zkevm_fork }}
-          path: arithmetization/build/reports/jacoco/jacocoWeeklyTestsReport/**/*
-
-      - name: Upload jacoco weekly tests exec file
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: jacoco-weekly-tests-exec-file-${{ matrix.zkevm_fork }}
-          path: arithmetization/build/jacoco/weeklyTests.exec
-
-      - name: Failure Notification
-        if: github.ref == 'refs/heads/arith-dev' && (failure() || cancelled())
-        uses: slackapi/slack-github-action@v2.0.0
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: webhook-trigger
-          payload: |
-             name: "Weekly Unit"
-             status: "${{ job.status }}"
-
-  weekly-prc-calltests:
-    strategy:
-      matrix:
-        zkevm_fork: [LONDON, SHANGHAI]
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive
-
-      - name: Setup Test Environment
-        uses: ./.github/actions/setup-environment
-
-      - name: Run Precompile Call tests
-        run: GOMAXPROCS=1 GOMEMLIMIT=10GiB ./gradlew prcCallTests
-        env:
-          JAVA_OPTS: -Dorg.gradle.daemon=false
-          WEEKLY_TESTS_PARALLELISM: 24
-          GOCORSET_FLAGS: -v -b1024 --ansi-escapes=false --report --mir
-          ZKEVM_FORK: ${{ matrix.zkevm_fork }}
-
-      - name: Upload prc calls test report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: prc-call-tests-report-${{ matrix.zkevm_fork }}
-          path: arithmetization/build/reports/tests/**/*
-
-      - name: Upload jacoco weekly prc-call tests coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: jacoco-prc-call-tests-coverage-report-${{ matrix.zkevm_fork }}
-          path: arithmetization/build/reports/jacoco/jacocoPrcCallTestsReport/**/*
-
-      - name: Upload jacoco weekly prc-call tests exec file
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: jacoco-prc-call-tests-exec-file-${{ matrix.zkevm_fork }}
-          path: arithmetization/build/jacoco/prcCallTests.exec
-
-      - name: Failure Notification
-        if: github.ref == 'refs/heads/arith-dev' && (failure() || cancelled())
-        uses: slackapi/slack-github-action@v2.0.0
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: webhook-trigger
-          payload: |
-            name: "Weekly Precompile call"
-            status: "${{ job.status }}"
+  weekly-prc-call-tests-shanghai:
+    uses: ./.github/workflows/reusable-weekly-prc-tests.yml
+    with:
+      zkevm_fork: SHANGHAI
