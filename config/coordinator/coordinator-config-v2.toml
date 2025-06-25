@@ -208,7 +208,7 @@ max-pool-size = 10
 keep-alive = true
 public-key = "ba5734d8f7091719471e7f7ed6b9df170dc70cc661ca05e688601ad984f068b0d67351e5f06073092499336ab0839ef8a521afd334e53807205fa2f08eec74f4"
 [l1-submission.aggregation.signer.web3signer.tls]
-key-store-path = /tlsFiles/coordinator_client_keystore.p12"
+key-store-path = "/tlsFiles/coordinator_client_keystore.p12"
 key-store-password = "changeit"
 trust-store-path = "/tlsFiles/web3signer_truststore.p12"
 trust-store-password = "changeit"
