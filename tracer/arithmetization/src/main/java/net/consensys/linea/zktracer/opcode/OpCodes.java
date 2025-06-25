@@ -30,14 +30,53 @@ import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.json.JsonConverter;
 
 @Slf4j
-/** Responsible for managing opcode loading and opcode metadata retrieval. */
+/**
+ * Responsible for managing opcode loading and opcode metadata retrieval. The design here is not
+ * ideal for a concurrent setting, but it works. Essentially, the assumption is that loadOpcodes is
+ * called before any attempt is made to access the opCodeDataList directly.
+ */
 public class OpCodes {
   private static final short OPCODES_LIST_SIZE = 256;
-  public static List<OpCodeData> opCodeDataList = new ArrayList<>(OPCODES_LIST_SIZE);
+  private static volatile Fork forkLoaded;
+  private static final List<OpCodeData> opCodeDataList = new ArrayList<>(OPCODES_LIST_SIZE);
 
   /** Loads all opcode metadata from src/main/resources/shanghaiOpcodes.yml. */
   @SneakyThrows(IOException.class)
   public static void loadOpcodes(Fork fork) {
+    // Handle fast case where fork already loaded
+    if (fork.equals(forkLoaded)) {
+      log.info("opCodeDataList has already been initialized for " + fork + " fork.");
+      return;
+    } else if (forkLoaded != null) {
+      throw new IllegalArgumentException(
+          "request to load opcodes for "
+              + fork
+              + " conflicts with those previously "
+              + "loaded for "
+              + forkLoaded);
+    }
+    // Slow case.  Acquire lock and load opcodes.
+    synchronized (opCodeDataList) {
+      if (forkLoaded != null) {
+        // Retry to get either an error or a warning above.
+        loadOpcodes(fork);
+        return;
+      }
+      // If we get here, then we are the only thread where forkLoaded == null.  Therefore, we can
+      // proceed in peace.
+      for (int i = 0; i < OPCODES_LIST_SIZE; i++) {
+        opCodeDataList.add(null);
+      }
+      for (OpCodeData opCodeData : opCodesLocal(fork)) {
+        opCodeDataList.set(opCodeData.value(), opCodeData);
+      }
+      // Finally, assign the fork.  Note, this must be done last.
+      forkLoaded = fork;
+    }
+  }
+
+  // Load opcodedata from yaml file.
+  private static List<OpCodeData> opCodesLocal(Fork fork) throws IOException {
     final JsonConverter YamlConverter = JsonConverter.builder().enableYaml().build();
 
     final String yamlFileName = Fork.toString(fork) + "Opcodes.yml";
@@ -50,22 +89,24 @@ public class OpCodes {
     final CollectionType typeReference =
         TypeFactory.defaultInstance().constructCollectionType(List.class, OpCodeData.class);
 
-    final List<OpCodeData> opCodesLocal =
-        YamlConverter.getObjectMapper().treeToValue(rootNode, typeReference);
-
-    initOpcodes(opCodesLocal);
+    return YamlConverter.getObjectMapper().treeToValue(rootNode, typeReference);
   }
 
-  private static void initOpcodes(final List<OpCodeData> opCodesLocal) {
-    if (!opCodeDataList.isEmpty()) {
-      log.info("opCodeDataList has already been initialized.");
-      return;
+  /**
+   * isValid checks whether or not a given opcode index corresponds with a real opcode.
+   *
+   * @param value
+   * @return
+   */
+  public static boolean isValid(final int value) {
+    if (value < 0 || value > 255) {
+      throw new IllegalArgumentException("No OpCode with value %s is defined.".formatted(value));
     }
-    for (int i = 0; i < OPCODES_LIST_SIZE; i++) {
-      opCodeDataList.add(null);
-    }
-    for (OpCodeData opCodeData : opCodesLocal) {
-      opCodeDataList.set(opCodeData.value(), opCodeData);
+    synchronized (opCodeDataList) {
+      if (opCodeDataList.isEmpty()) {
+        throw new IllegalArgumentException("opcodes not initialised!");
+      }
+      return opCodeDataList.get(value) != null;
     }
   }
 
@@ -79,8 +120,13 @@ public class OpCodes {
     if (value < 0 || value > 255) {
       throw new IllegalArgumentException("No OpCode with value %s is defined.".formatted(value));
     }
-
-    return Optional.ofNullable(opCodeDataList.get(value)).orElse(OpCodeData.forNonOpCodes(value));
+    synchronized (opCodeDataList) {
+      if (opCodeDataList.isEmpty()) {
+        throw new IllegalArgumentException("opcodes not initialised!");
+      }
+      //
+      return Optional.ofNullable(opCodeDataList.get(value)).orElse(OpCodeData.forNonOpCodes(value));
+    }
   }
 
   /**
@@ -90,11 +136,17 @@ public class OpCodes {
    * @return an instance of {@link OpCodeData} corresponding to mnemonic of type {@link OpCode}.
    */
   public static OpCodeData of(final OpCode code) {
-    return Optional.ofNullable(opCodeDataList.get(code.getOpcode()))
-        .orElseThrow(
-            () ->
-                new IllegalArgumentException(
-                    "No OpCode of mnemonic %s is defined.".formatted(code)));
+    synchronized (opCodeDataList) {
+      if (opCodeDataList.isEmpty()) {
+        throw new IllegalArgumentException("opcodes not initialised!");
+      }
+      //
+      return Optional.ofNullable(opCodeDataList.get(code.getOpcode()))
+          .orElseThrow(
+              () ->
+                  new IllegalArgumentException(
+                      "No OpCode of mnemonic %s is defined.".formatted(code)));
+    }
   }
 
   /**
@@ -106,5 +158,20 @@ public class OpCodes {
    */
   public static List<OpCodeData> of(final OpCode... codes) {
     return Arrays.stream(codes).map(OpCodes::of).toList();
+  }
+
+  /**
+   * Get an iterator over the underlying opcode data.
+   *
+   * @return
+   */
+  public static Iterable<OpCodeData> iterator() {
+    synchronized (opCodeDataList) {
+      if (opCodeDataList.isEmpty()) {
+        throw new IllegalArgumentException("opcodes not initialised!");
+      }
+      //
+      return opCodeDataList;
+    }
   }
 }

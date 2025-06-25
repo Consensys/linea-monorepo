@@ -16,11 +16,9 @@
 package net.consensys.linea.zktracer.exceptions;
 
 import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.DEFAULT_BLOCK_NUMBER;
-import static net.consensys.linea.zktracer.Fork.LONDON;
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.OUT_OF_GAS_EXCEPTION;
 import static net.consensys.linea.zktracer.opcode.OpCodes.loadOpcodes;
-import static net.consensys.linea.zktracer.opcode.OpCodes.opCodeDataList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
@@ -36,6 +34,7 @@ import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
@@ -51,76 +50,79 @@ public class OutOfGasExceptionTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("outOfGasExceptionWithEmptyAccountsAndNoMemoryExpansionCostTestSource")
-  void outOfGasExceptionWithEmptyAccountsAndNoMemoryExpansionCostTest(
-      OpCode opCode, int nPushes, int cornerCase) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void outOfGasExceptionWithEmptyAccountsAndNoMemoryExpansionCostTest(int opcode, int cornerCase) {
+    // Ensure opcodes relevant to the given fork are loaded.
+    loadOpcodes(testInfo.chainConfig.fork);
+    //
+    OpCodeData opCodeData = OpCodes.of(opcode);
+    // Only test opcodes which do not cause memory expansion.
+    if (noMemoryExpansion(opCodeData)) {
+      OpCode opCode = opCodeData.mnemonic();
+      int nPushes = opCodeData.stackSettings().delta(); // number of items popped from the stack
+      BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+      for (int i = 0; i < nPushes; i++) {
+        // In order to disambiguate between empty stack items and writing a result of 0 on the stack
+        // we push small integers to the stack which all produce non-zero results
+        int pushedValue =
+            switch (opCode) {
+              case OpCode.BLOCKHASH -> Math.toIntExact(DEFAULT_BLOCK_NUMBER) - 1;
+              case OpCode.EXP -> i == 0 ? 5 : 2; // EXP 2 5 (2 ** 5)
+              default -> 7 * i + 11;
+                // small integer but greater than 10, so as when it represents an address
+                // it is not the one of a precompile contract
+            };
+        program.push(pushedValue);
+      }
+      program.op(opCode);
+      Bytes pgCompile = program.compile();
+      BytecodeRunner bytecodeRunner = BytecodeRunner.of(pgCompile);
 
-    for (int i = 0; i < nPushes; i++) {
-      // In order to disambiguate between empty stack items and writing a result of 0 on the stack
-      // we push small integers to the stack which all produce non-zero results
+      long gasCost = bytecodeRunner.runOnlyForGasCost(testInfo);
 
-      int pushedValue =
-          switch (opCode) {
-            case OpCode.BLOCKHASH -> Math.toIntExact(DEFAULT_BLOCK_NUMBER) - 1;
-            case OpCode.EXP -> i == 0 ? 5 : 2; // EXP 2 5 (2 ** 5)
-            default -> 7 * i + 11;
-              // small integer but greater than 10, so as when it represents an address
-              // it is not the one of a precompile contract
-          };
-      program.push(pushedValue);
+      bytecodeRunner.run(gasCost + cornerCase, testInfo);
+
+      ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
+          cornerCase, bytecodeRunner);
     }
-    program.op(opCode);
-    Bytes pgCompile = program.compile();
-    BytecodeRunner bytecodeRunner = BytecodeRunner.of(pgCompile);
+  }
 
-    long gasCost = bytecodeRunner.runOnlyForGasCost(testInfo);
-
-    bytecodeRunner.run(gasCost + cornerCase, testInfo);
-
-    ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
-        cornerCase, bytecodeRunner);
+  static boolean noMemoryExpansion(OpCodeData opCodeData) {
+    OpCode opCode = opCodeData.mnemonic();
+    //
+    return opCode != OpCode.CALLDATACOPY // CALLDATACOPY needs the memory expansion cost
+        && opCode != OpCode.CODECOPY // CODECOPY needs the memory expansion cost
+        && opCode != OpCode.EXTCODECOPY // EXTCODECOPY needs the memory expansion cost
+        && opCode != OpCode.INVALID // INVALID consumes all gas left
+        && opCode != OpCode.MLOAD // MLOAD needs the memory expansion cost
+        && opCode != OpCode.MSTORE // MSTORE needs the memory expansion cost
+        && opCode != OpCode.MSTORE8 // MSTORE8 needs the memory expansion cost
+        && opCode != OpCode.RETURN // RETURN needs the memory expansion cost
+        && opCode != OpCode.RETURNDATACOPY // RETURNDATACOPY needs the memory expansion cost
+        && opCode != OpCode.REVERT // REVERT needs the memory expansion cost
+        && opCode != OpCode.SHA3 // SHA3 needs the memory expansion cost ??
+        && opCode != OpCode.STOP // STOP does not consume gas
+        && opCode
+            != OpCode
+                .JUMP // JUMP needs a valid bytecode to jump to, see outOfGasExceptionJump below
+        && opCode
+            != OpCode.JUMPI // JUMPI needs a valid bytecode to jump to, see outOfGasExceptionJumpi
+        // below
+        && opCode != OpCode.SLOAD // SLOAD a non-zero value, see outOfGasExceptionSLoad below
+        && !opCodeData.isCall() // CALL family is managed separately
+        && !opCodeData.isCreate() // CREATE needs the memory expansion cost
+        && !opCodeData.isLog(); // LOG needs the memory expansion cost
   }
 
   static Stream<Arguments> outOfGasExceptionWithEmptyAccountsAndNoMemoryExpansionCostTestSource() {
-    List<Arguments> arguments = new ArrayList<>();
-    loadOpcodes(LONDON);
-    for (OpCodeData opCodeData : opCodeDataList) {
-      if (opCodeData != null) {
-        OpCode opCode = opCodeData.mnemonic();
-        int nPushes = opCodeData.stackSettings().delta(); // number of items popped from the stack
-        if (opCode != OpCode.CALLDATACOPY // CALLDATACOPY needs the memory expansion cost
-            && opCode != OpCode.CODECOPY // CODECOPY needs the memory expansion cost
-            && opCode != OpCode.EXTCODECOPY // EXTCODECOPY needs the memory expansion cost
-            && opCode != OpCode.INVALID // INVALID consumes all gas left
-            && opCode != OpCode.MLOAD // MLOAD needs the memory expansion cost
-            && opCode != OpCode.MSTORE // MSTORE needs the memory expansion cost
-            && opCode != OpCode.MSTORE8 // MSTORE8 needs the memory expansion cost
-            && opCode != OpCode.RETURN // RETURN needs the memory expansion cost
-            && opCode != OpCode.RETURNDATACOPY // RETURNDATACOPY needs the memory expansion cost
-            && opCode != OpCode.REVERT // REVERT needs the memory expansion cost
-            && opCode != OpCode.SHA3 // SHA3 needs the memory expansion cost ??
-            && opCode != OpCode.STOP // STOP does not consume gas
-            && opCode
-                != OpCode
-                    .JUMP // JUMP needs a valid bytecode to jump to, see outOfGasExceptionJump below
-            && opCode
-                != OpCode
-                    .JUMPI // JUMPI needs a valid bytecode to jump to, see outOfGasExceptionJumpi
-            // below
-            && opCode != OpCode.SLOAD // SLOAD a non-zero value, see outOfGasExceptionSLoad below
-            && !opCodeData.isCall() // CALL family is managed separately
-            && !opCodeData.isCreate() // CREATE needs the memory expansion cost
-            && !opCodeData.isLog() // LOG needs the memory expansion cost
-        ) {
-          arguments.add(Arguments.of(opCode, nPushes, -1));
-          System.out.println(opCode);
-          System.out.println(nPushes);
-          arguments.add(Arguments.of(opCode, nPushes, 0));
-          arguments.add(Arguments.of(opCode, nPushes, 1));
-        }
-      }
+    ArrayList<Arguments> args = new ArrayList<>();
+    //
+    for (int i = 0; i < 256; i++) {
+      args.add(Arguments.of(i, -1));
+      args.add(Arguments.of(i, 0));
+      args.add(Arguments.of(i, 1));
     }
-    return arguments.stream();
+    //
+    return args.stream();
   }
 
   @ParameterizedTest

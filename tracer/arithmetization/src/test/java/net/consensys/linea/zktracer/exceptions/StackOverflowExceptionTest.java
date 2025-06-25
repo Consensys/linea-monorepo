@@ -15,7 +15,6 @@
 package net.consensys.linea.zktracer.exceptions;
 
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.STACK_OVERFLOW;
-import static net.consensys.linea.zktracer.opcode.OpCodes.opCodeDataList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
@@ -28,6 +27,7 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -56,7 +56,7 @@ public class StackOverflowExceptionTest extends TracerTestBase {
 
   static Stream<Arguments> stackOverflowExceptionSource() {
     List<Arguments> arguments = new ArrayList<>();
-    for (OpCodeData opCodeData : opCodeDataList) {
+    for (OpCodeData opCodeData : OpCodes.iterator()) {
       if (opCodeData != null) {
         OpCode opCode = opCodeData.mnemonic();
         int alpha = opCodeData.stackSettings().alpha(); // number of items pushed onto the stack
