@@ -124,7 +124,7 @@ func TestSerdeDistWizard(t *testing.T) {
 	runSerdeTest(t, cong, "DistributedWizard.CompiledConglomeration", true)
 }
 
-func TestSerdeCongWIOP(t *testing.T) {
+func TestSerdeDWCong(t *testing.T) {
 	distWizard := GetDistWizard()
 	cong := distWizard.CompiledConglomeration
 	distWizard = nil
@@ -133,42 +133,52 @@ func TestSerdeCongWIOP(t *testing.T) {
 }
 
 func unsafeBinDump(t *testing.T, cong *distributed.ConglomeratorCompilation, sanityCheck bool) {
+	var buffer bytes.Buffer
 
-	var (
-		buffer  = &bytes.Buffer{}
-		readBuf = bytes.NewReader(nil)
-	)
-
+	// Serialize
 	serTime := profiling.TimeIt(func() {
-		err := unsafe.WriteSlice(buffer, []*distributed.ConglomeratorCompilation{cong})
+		// Write architecture marker
+		err := unsafe.WriteMarker(&buffer)
+		if err != nil {
+			t.Fatalf("could not write marker: %v", err)
+		}
+		// Serialize the slice
+		err = unsafe.WriteSlice(&buffer, []*distributed.ConglomeratorCompilation{cong})
 		if err != nil {
 			t.Fatalf("could not marshal array of compiled IOP: %v", err)
 		}
 	})
 
-	// Write to file
-	var err error
-	err = utils.WriteToFile("cong-dump.bin", readBuf)
+	// Write to file using buffer's data
+	err := utils.WriteToFile("dw-cong-dump.bin", bytes.NewReader(buffer.Bytes()))
 	if err != nil {
 		t.Fatalf("could not write to file: %v", err)
 	}
 
+	// Create a new buffer for deserialization
+	var readBuffer bytes.Buffer
 	var deCong []*distributed.ConglomeratorCompilation
 
+	// Deserialize
 	deserTime := profiling.TimeIt(func() {
-
-		err = utils.ReadFromFile("cong-dump.bin", buffer)
+		// Read from file into readBuffer
+		err = utils.ReadFromFile("cong-dump.bin", &readBuffer)
 		if err != nil {
 			t.Fatalf("could not read from file: %v", err)
 		}
-		deCong, _, err = unsafe.ReadSlice[[]*distributed.ConglomeratorCompilation](buffer)
+		// Verify architecture marker
+		err = unsafe.ReadMarker(&readBuffer)
+		if err != nil {
+			t.Fatalf("could not read marker: %v", err)
+		}
+		// Deserialize the slice
+		deCong, _, err = unsafe.ReadSlice[[]*distributed.ConglomeratorCompilation](&readBuffer)
 		if err != nil {
 			t.Fatalf("could not unmarshal array of compiled IOP: %v", err)
 		}
 	})
 
-	t.Logf("%s serialization=%v deserialization=%v buffer-size=%v \n", "conglomeration", serTime, deserTime, len(buffer.Bytes()))
-
+	t.Logf("%s serialization=%v deserialization=%v buffer-size=%v \n", "conglomeration", serTime, deserTime, readBuffer.Len())
 	t.Logf("(ser)   No. of rounds in cong.WIOP:%d \n", cong.Wiop.NumRounds())
 	t.Logf("(deser) No. of rounds in cong.WIOP:%d \n", deCong[0].Wiop.NumRounds())
 	t.Logf("(ser)   QueriesParams mapping inner length in cong.WIOP:%d \n", len(cong.Wiop.QueriesParams.Mapping.InnerMap))
