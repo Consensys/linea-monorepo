@@ -77,6 +77,7 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 			continue
 		}
 
+
 		rootSv := run.GetColumn(ctx.Items.MerkleRoots[round].GetColID()) // len 1 smart vector
 		rootF := rootSv.Get(0)                                           // root as field element
 

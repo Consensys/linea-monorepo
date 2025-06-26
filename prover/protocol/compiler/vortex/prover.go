@@ -159,16 +159,20 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 // ComputeLinearCombFromRsMatrix is the same as ComputeLinearComb but uses
 // the RS encoded matrix instead of using the basic one. It is slower than
 // the later but is recommended.
-// Todo: We do not shuffle the no SIS round matrix before the SIS round
-// matrix for now.
 func (ctx *Ctx) ComputeLinearCombFromRsMatrix(run *wizard.ProverRuntime) {
 
 	var (
-		committedSV = []smartvectors.SmartVector{}
+		committedSVSIS   = []smartvectors.SmartVector{}
+		committedSVNoSIS = []smartvectors.SmartVector{}
 	)
 
-	// Add the precomputed columns to commitedSV
-	committedSV = append(committedSV, ctx.Items.Precomputeds.CommittedMatrix...)
+	// Add the precomputed columns to commitedSVSIS or commitedSVNoSIS depending
+	// in which case applies.
+	if ctx.IsSISAppliedToPrecomputed() {
+		committedSVSIS = append(committedSVSIS, ctx.Items.Precomputeds.CommittedMatrix...)
+	} else {
+		committedSVNoSIS = append(committedSVNoSIS, ctx.Items.Precomputeds.CommittedMatrix...)
+	}
 
 	// Collect all the committed polynomials : round by round
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
@@ -177,12 +181,23 @@ func (ctx *Ctx) ComputeLinearCombFromRsMatrix(run *wizard.ProverRuntime) {
 		if ctx.RoundStatus[round] == IsEmpty {
 			continue
 		}
+
 		committedMatrix := run.State.MustGet(ctx.VortexProverStateName(round)).(vortex.EncodedMatrix)
-		committedSV = append(committedSV, committedMatrix...)
+
+		// Push pols to the right stack
+		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
+			committedSVNoSIS = append(committedSVNoSIS, committedMatrix...)
+		} else if ctx.RoundStatus[round] == IsSISApplied {
+			committedSVSIS = append(committedSVSIS, committedMatrix...)
+		}
 	}
 
 	// And get the randomness
 	randomCoinLC := run.GetRandomCoinField(ctx.Items.Alpha.Name)
+
+	// Construct committedSV by stacking the No SIS round
+	// matrices before the SIS round matrices
+	committedSV := append(committedSVNoSIS, committedSVSIS...)
 
 	// and compute and assign the random linear combination of the rows
 	proof := ctx.VortexParams.InitOpeningFromAlreadyEncodedLC(committedSV, randomCoinLC)
