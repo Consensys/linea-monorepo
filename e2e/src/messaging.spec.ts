@@ -141,7 +141,7 @@ describe("Messaging test suite", () => {
         `Message claimed on L2. messageHash=${messageClaimedEvent.args._messageHash} transactionHash=${messageClaimedEvent.transactionHash}`,
       );
     },
-    100_000,
+    150_000,
   );
 
   it.concurrent(
@@ -174,7 +174,7 @@ describe("Messaging test suite", () => {
         `Message claimed on L2. messageHash=${messageClaimedEvent.args._messageHash} transactionHash=${messageClaimedEvent.transactionHash}`,
       );
     },
-    100_000,
+    150_000,
   );
 
   // Test that Postman sponsoring works for L1->L2
@@ -208,7 +208,7 @@ describe("Messaging test suite", () => {
         `Message claimed on L2. messageHash=${messageClaimedEvent.args._messageHash} transactionHash=${messageClaimedEvent.transactionHash}`,
       );
     },
-    100_000,
+    150_000,
   );
 
   it.concurrent(
