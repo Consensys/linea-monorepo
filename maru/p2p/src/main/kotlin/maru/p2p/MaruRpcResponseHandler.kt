@@ -9,14 +9,13 @@
 package maru.p2p
 
 import java.util.Optional
-import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.rpc.RpcResponseHandler
 
-class MaruRpcResponseHandler : RpcResponseHandler<Bytes> {
-  val future = SafeFuture<Bytes>()
+class MaruRpcResponseHandler<TResponse> : RpcResponseHandler<TResponse> {
+  val future = SafeFuture<TResponse>()
 
-  override fun onResponse(response: Bytes): SafeFuture<*> {
+  override fun onResponse(response: TResponse): SafeFuture<*> {
     future.complete(response)
     return SafeFuture.completedFuture(response)
   }
@@ -29,5 +28,5 @@ class MaruRpcResponseHandler : RpcResponseHandler<Bytes> {
     }
   }
 
-  fun response(): SafeFuture<Bytes> = future
+  fun response(): SafeFuture<TResponse> = future
 }

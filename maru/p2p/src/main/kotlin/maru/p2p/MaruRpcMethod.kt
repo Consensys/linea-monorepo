@@ -8,40 +8,55 @@
  */
 package maru.p2p
 
+import maru.serialization.SerDe
 import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.networking.p2p.rpc.RpcMethod
 import tech.pegasys.teku.networking.p2p.rpc.RpcRequestHandler
 
-class MaruRpcMethod : RpcMethod<MaruOutgoingRpcRequestHandler, Bytes, MaruRpcResponseHandler> {
-  override fun getIds(): MutableList<String> = mutableListOf(LINEA_DOMAIN)
+class MaruRpcMethod<TRequest : Message<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>>(
+  private val messageType: RpcMessageType,
+  private val rpcMessageHandler: RpcMessageHandler<TRequest, TResponse>,
+  private val requestMessageSerDe: SerDe<TRequest>,
+  private val responseMessageSerDe: SerDe<TResponse>,
+  private val peerLookup: PeerLookup,
+  private val version: Version,
+  protocolIdGenerator: MessageIdGenerator,
+) : RpcMethod<MaruOutgoingRpcRequestHandler<TResponse>, TRequest, MaruRpcResponseHandler<TResponse>> {
+  private val protocolId = protocolIdGenerator.id(messageType.name, version)
 
-  override fun createIncomingRequestHandler(protocolId: String): RpcRequestHandler {
-    val maruRpcRequestHandler = MaruIncomingRpcRequestHandler()
-    return maruRpcRequestHandler
-  }
+  override fun getIds(): MutableList<String> = mutableListOf(protocolId)
+
+  override fun createIncomingRequestHandler(protocolId: String): RpcRequestHandler =
+    MaruIncomingRpcRequestHandler<TRequest, TResponse>(
+      rpcMessageHandler = rpcMessageHandler,
+      requestMessageSerDe = requestMessageSerDe,
+      responseMessageSerDe = responseMessageSerDe,
+      peerLookup = peerLookup,
+    )
 
   override fun createOutgoingRequestHandler(
     protocolId: String,
-    request: Bytes,
-    responseHandler: MaruRpcResponseHandler,
-  ): MaruOutgoingRpcRequestHandler {
-    val maruRpcRequestHandler = MaruOutgoingRpcRequestHandler(responseHandler)
-    return maruRpcRequestHandler
-  }
+    request: TRequest,
+    responseHandler: MaruRpcResponseHandler<TResponse>,
+  ): MaruOutgoingRpcRequestHandler<TResponse> = MaruOutgoingRpcRequestHandler(responseHandler, responseMessageSerDe)
 
-  override fun encodeRequest(bytes: Bytes): Bytes = bytes
+  override fun encodeRequest(request: TRequest): Bytes = Bytes.wrap(requestMessageSerDe.serialize(request))
 
   override fun equals(other: Any?): Boolean {
-    if (this === other) {
-      return true
-    }
-    if (other == null || javaClass != other.javaClass) {
-      return false
-    }
-    val rpcMethod: MaruRpcMethod =
-      other as MaruRpcMethod
-    return LINEA_DOMAIN == rpcMethod.ids.first()
+    if (this === other) return true
+    if (other !is MaruRpcMethod<*, *>) return false
+
+    if (messageType != other.messageType) return false
+    if (protocolId != other.protocolId) return false
+    if (version != other.version) return false
+
+    return true
   }
 
-  override fun hashCode(): Int = 42
+  override fun hashCode(): Int {
+    var result = messageType.hashCode()
+    result = 31 * result + protocolId.hashCode()
+    result = 31 * result + version.hashCode()
+    return result
+  }
 }
