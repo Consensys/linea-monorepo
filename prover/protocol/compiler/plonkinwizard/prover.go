@@ -65,7 +65,7 @@ func (a assignSelOpening) Run(run *wizard.ProverRuntime) {
 
 		var (
 			openedPos = i * nbPubInputsPadded
-			openedVal = a.Q.Selector.GetColAssignment(run).Get(openedPos)
+			openedVal = a.Q.Selector.GetColAssignment(run).GetExt(openedPos)
 		)
 
 		run.AssignLocalPoint(a.SelOpenings[i].ID, openedVal)

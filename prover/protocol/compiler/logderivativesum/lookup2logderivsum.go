@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
@@ -142,7 +143,7 @@ type assignLogDerivativeSumProverAction struct {
 // Run executes the assignment of the log-derivative sum result.
 func (a *assignLogDerivativeSumProverAction) Run(run *wizard.ProverRuntime) {
 	if a.Segmenter == nil {
-		run.AssignLogDerivSum(a.QName, field.Zero())
+		run.AssignLogDerivSum(a.QName, fext.Zero())
 		return
 	}
 

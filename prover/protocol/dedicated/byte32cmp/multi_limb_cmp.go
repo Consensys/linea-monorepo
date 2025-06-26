@@ -193,7 +193,7 @@ func (mCmp *multiLimbCmp) Run(run *wizard.ProverRuntime) {
 
 	var (
 		syndrom   = column.EvalExprColumn(run, mCmp.syndromBoard)
-		isGreater = make([]field.Element, mCmp.isGreater.Size())
+		isGreater = make([]field.Element, mCmp.isGreater.Size()) //TODO@yao fext?
 		isLower   = make([]field.Element, mCmp.isLower.Size())
 		nnSyndrom = make([]field.Element, mCmp.isLower.Size())
 	)

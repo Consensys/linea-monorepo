@@ -44,7 +44,6 @@ func (ctx *contextForSize) run(run *wizard.ProverRuntime) {
 	)
 
 	summation[0] = collapsed[0]
-
 	for i := 0; i+1 < size; i++ {
 		summation[i+1].Add(&summation[i], &collapsed[i+1])
 	}

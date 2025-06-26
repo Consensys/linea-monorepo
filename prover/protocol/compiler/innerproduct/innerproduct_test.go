@@ -1,7 +1,6 @@
 package innerproduct
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -33,9 +32,6 @@ func TestInnerProduct(t *testing.T) {
 			for i, name := range c.bName {
 				run.AssignColumn(name, c.b[i])
 			}
-			fmt.Printf("a=%v\n", c.a)
-			fmt.Printf("b=%v,%v\n", c.b[0], c.b[1])
-			fmt.Printf("expected=%v\n", c.expected)
 
 			run.AssignInnerProduct(c.qName, c.expected...)
 			run.GetRandomCoinFieldExt(coin.Namef("Coin_%v", j))
@@ -56,21 +52,45 @@ var testCases = []struct {
 	b        []smartvectors.SmartVector
 	expected []fext.Element
 }{
-	/*
-		{qName: "Quey1",
-			aName: "ColA1",
-			bName: []ifaces.ColID{"ColB1"},
-			size:  4,
-			a:     smartvectors.ForTest(1, 1, 1, 1),
-			b: []smartvectors.SmartVector{
-				smartvectors.ForTest(0, 3, 0, 2),
-			},
-			expected: []fext.Element{fext.NewFromBase(field.NewElement(5))},
+
+	{qName: "Quey1",
+		aName: "ColA1",
+		bName: []ifaces.ColID{"ColB1"},
+		size:  4,
+		a:     smartvectors.ForTest(1, 1, 1, 1),
+		b: []smartvectors.SmartVector{
+			smartvectors.ForTest(0, 3, 0, 2),
 		},
-	*/
+		expected: []fext.Element{fext.NewFromBase(field.NewElement(5))},
+	},
+
 	{qName: "Quey2",
 		aName: "ColA2",
-		bName: []ifaces.ColID{"ColB2_0", "ColB2_1"},
+		bName: []ifaces.ColID{"ColB2"},
+		size:  16,
+		a:     smartvectors.ForTest(1, 1, 1, 1, 2, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1),
+		b: []smartvectors.SmartVector{
+			smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1),
+		},
+		expected: []fext.Element{fext.NewFromBase(field.NewElement(15))},
+	},
+
+	{qName: "Quey3",
+
+		aName: "ColA3",
+		bName: []ifaces.ColID{"ColB3"},
+		size:  32,
+		a:     smartvectors.ForTest(1, 1, 1, 1, 2, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1),
+		b: []smartvectors.SmartVector{
+			smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1),
+		},
+		expected: []fext.Element{fext.NewFromBase(field.NewElement(30))},
+	},
+
+	// Test linea combination of innerproducts
+	{qName: "Quey4",
+		aName: "ColA4",
+		bName: []ifaces.ColID{"ColB4_0", "ColB4_1"},
 		size:  4,
 		a:     smartvectors.ForTest(1, 1, 1, 1),
 		b: []smartvectors.SmartVector{
@@ -78,40 +98,17 @@ var testCases = []struct {
 			smartvectors.ForTest(1, 0, 0, 2),
 		},
 		expected: []fext.Element{fext.NewFromBase(field.NewElement(5)), fext.NewFromBase(field.NewElement(3))},
-	}, /*
-		{qName: "Quey3",
-			aName: "ColA3",
-			bName: []ifaces.ColID{"ColB3_0", "ColB3_1"},
-			size:  8,
-			a:     smartvectors.ForTest(1, 1, 1, 1, 2, 0, 2, 0),
-			b: []smartvectors.SmartVector{
-				smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0),
-				smartvectors.ForTest(1, 0, 0, 2, 1, 0, 0, 0),
-			},
-			expected: []fext.Element{fext.NewFromBase(field.NewElement(7)), fext.NewFromBase(field.NewElement(5))},
-		},
-		{qName: "Quey4",
-			aName: "ColA4",
-			bName: []ifaces.ColID{"ColB4"},
-			size:  16,
-			a:     smartvectors.ForTest(1, 1, 1, 1, 2, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1),
-			b: []smartvectors.SmartVector{
-				smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1),
-			},
-			expected: []fext.Element{fext.NewFromBase(field.NewElement(15))},
-		},
+	},
 
-		{qName: "Quey",
-
-			aName: "ColA",
-			bName: []ifaces.ColID{"ColB"},
-			size:  32,
-			a:     smartvectors.ForTest(1, 1, 1, 1, 2, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1),
-			b: []smartvectors.SmartVector{
-				smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1),
-			},
-			expected: []fext.Element{fext.NewFromBase(field.NewElement(30))},
+	{qName: "Quey5",
+		aName: "ColA5",
+		bName: []ifaces.ColID{"ColB5_0", "ColB5_1"},
+		size:  8,
+		a:     smartvectors.ForTest(1, 1, 1, 1, 2, 0, 2, 0),
+		b: []smartvectors.SmartVector{
+			smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0),
+			smartvectors.ForTest(1, 0, 0, 2, 1, 0, 0, 0),
 		},
-
-	*/
+		expected: []fext.Element{fext.NewFromBase(field.NewElement(7)), fext.NewFromBase(field.NewElement(5))},
+	},
 }

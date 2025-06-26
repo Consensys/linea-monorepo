@@ -6,6 +6,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -78,14 +79,14 @@ func (c *CheckGrandProductIsOne) Run(run wizard.Runtime) error {
 
 	var (
 		y = run.GetGrandProductParams(c.Query.ID).Y
-		d = field.One()
+		d = fext.One()
 	)
 
 	for _, e := range c.ExplicitNum {
 
 		var (
-			col = column.EvalExprColumn(run, e.Board()).IntoRegVecSaveAlloc()
-			tmp = field.One()
+			col = column.EvalExprColumn(run, e.Board()).IntoRegVecSaveAllocExt()
+			tmp = fext.One()
 		)
 
 		for i := range col {
@@ -98,8 +99,8 @@ func (c *CheckGrandProductIsOne) Run(run wizard.Runtime) error {
 	for _, e := range c.ExplicitDen {
 
 		var (
-			col = column.EvalExprColumn(run, e.Board()).IntoRegVecSaveAlloc()
-			tmp = field.One()
+			col = column.EvalExprColumn(run, e.Board()).IntoRegVecSaveAllocExt()
+			tmp = fext.One()
 		)
 
 		for i := range col {
@@ -185,14 +186,14 @@ func (f *FinalProductCheck) Run(run wizard.Runtime) error {
 
 	// zProd stores the product of the ending values of the zs as queried
 	// in the protocol via the local opening queries.
-	zProd := field.One()
+	zProd := fext.One()
 	for k := range f.ZOpenings {
-		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).BaseY
+		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).ExtY
 		zProd.Mul(&zProd, &temp)
 	}
 
 	for _, e := range f.ToExplicitlyEvaluate {
-		c := column.EvalExprColumn(run, e.Board()).IntoRegVecSaveAlloc()
+		c := column.EvalExprColumn(run, e.Board()).IntoRegVecSaveAllocExt()
 		for i := range c {
 			zProd.Mul(&zProd, &c[i])
 		}

@@ -3,7 +3,6 @@ package query
 import (
 	"fmt"
 
-	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/gnark-crypto/hash"
@@ -53,10 +52,10 @@ func (r LocalOpening) Name() ifaces.QueryID {
 }
 
 // Constructor for non-fixed point univariate evaluation query parameters
-func NewLocalOpeningParams(y field.Element) LocalOpeningParams {
+func NewLocalOpeningParams(y fext.Element) LocalOpeningParams {
 	return LocalOpeningParams{
-		BaseY:  y,
-		ExtY:   fext.Element{B0: extensions.E2{A0: y, A1: field.Zero()}, B1: extensions.E2{A0: field.Zero(), A1: field.Zero()}},
+		BaseY:  y.B0.A0,
+		ExtY:   y,
 		IsBase: true,
 	}
 }

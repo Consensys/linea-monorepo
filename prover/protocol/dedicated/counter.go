@@ -83,7 +83,7 @@ func (rc CyclicCounter) Assign(run *wizard.ProverRuntime) {
 
 	var (
 		size     = rc.ColumnSize
-		res      = make([]field.Element, size)
+		res      = make([]field.Element, size) //TODO@yao: fext?
 		isActive []field.Element
 	)
 

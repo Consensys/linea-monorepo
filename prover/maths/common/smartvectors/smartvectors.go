@@ -350,6 +350,17 @@ func PaddingVal(v SmartVector) (val field.Element, hasPadding bool) {
 	}
 }
 
+func PaddingValExt(v SmartVector) (val fext.Element, hasPadding bool) {
+	switch w := v.(type) {
+	case *ConstantExt:
+		return w.val, true
+	case *PaddedCircularWindowExt:
+		return w.paddingVal, true
+	default:
+		return fext.Element{}, false
+	}
+}
+
 // TryReduceSize detects if the input smart-vector can be reduced to a constant
 // smart-vector. It will only apply over the following types: [Regular].
 func TryReduceSize(v SmartVector) (new SmartVector, totalSaving int) {
