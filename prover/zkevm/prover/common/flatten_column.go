@@ -13,6 +13,8 @@ import (
 const (
 	// NbLimbU32 represents the number of 16-bit limbs for a 32-bit integer.
 	NbLimbU32 = 2
+	// NbLimbU48 represents the number of 16-bit limbs for a 48-bit integer.
+	NbLimbU48 = 3
 	// NbLimbU64 represents the number of 16-bit limbs for a 64-bit integer.
 	NbLimbU64 = 4
 	// NbLimbEthAddress represents the number of 16-bit limbs for an Ethereum address (160 bits).
