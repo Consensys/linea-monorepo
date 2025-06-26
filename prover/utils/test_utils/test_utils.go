@@ -628,7 +628,7 @@ func compareStructs(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path st
 
 func compareSlices(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path string) bool {
 	if a.Len() != b.Len() {
-		logrus.Printf("Mismatch at %s: slice lengths differ (v1: %v, v2: %v, type: %v)\n", path, a, b, a.Type())
+		logrus.Printf("Mismatch at %s: slice lengths differ (v1: %v, v2: %v, type: %v)\n", path, a.Len(), b.Len(), a.Type())
 		return false
 	}
 
