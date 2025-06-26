@@ -76,11 +76,11 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 			Object: lz.Disc,
 		},
 		{
-			Name:   "bootstrapper.bin",
+			Name:   "dw-bootstrapper.bin",
 			Object: lz.DistWizard.Bootstrapper,
 		},
 		{
-			Name:   "compile-default.bin",
+			Name:   "dw-compile-default.bin",
 			Object: lz.DistWizard.CompiledDefault,
 		},
 	}
@@ -90,7 +90,7 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 			Name   string
 			Object any
 		}{
-			Name:   fmt.Sprintf("compile-gl-%d.bin", i),
+			Name:   fmt.Sprintf("dw-compile-gl-%d.bin", i),
 			Object: modGl,
 		})
 	}
@@ -100,7 +100,7 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 			Name   string
 			Object any
 		}{
-			Name:   fmt.Sprintf("compile-lpp-%d.bin", i),
+			Name:   fmt.Sprintf("dw-compile-lpp-%d.bin", i),
 			Object: modLpp,
 		})
 	}
@@ -109,7 +109,7 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 		Name   string
 		Object any
 	}{
-		Name:   "dw-raw.bin",
+		Name:   "dw-cong.bin",
 		Object: lz.DistWizard.CompiledConglomeration,
 	})
 
