@@ -124,6 +124,7 @@ data class SignerConfigToml(
       if (keepAlive != other.keepAlive) return false
       if (endpoint != other.endpoint) return false
       if (!publicKey.contentEquals(other.publicKey)) return false
+      if (tls != other.tls) return false
 
       return true
     }
@@ -133,6 +134,7 @@ data class SignerConfigToml(
       result = 31 * result + keepAlive.hashCode()
       result = 31 * result + endpoint.hashCode()
       result = 31 * result + publicKey.contentHashCode()
+      result = 31 * result + (tls?.hashCode() ?: 0)
       return result
     }
   }
