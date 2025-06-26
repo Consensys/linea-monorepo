@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -61,7 +62,7 @@ func (a *subsampleProverAction) Run(run *wizard.ProverRuntime) {
 	}
 
 	run.AssignColumn(a.accLarge.GetColID(), smartvectors.NewRegular(accLargeWit))
-	run.AssignLocalPoint(a.accLargeLast, prev)
+	run.AssignLocalPoint(a.accLargeLast, fext.Lift(prev))
 
 	rPrime := a.small[0].GetColAssignment(run)
 	if a.needGamma {
@@ -85,7 +86,7 @@ func (a *subsampleProverAction) Run(run *wizard.ProverRuntime) {
 	}
 
 	run.AssignColumn(a.accSmall.GetColID(), smartvectors.NewRegular(accSmallWit))
-	run.AssignLocalPoint(a.accSmallLast, prev)
+	run.AssignLocalPoint(a.accSmallLast, fext.Lift(prev))
 }
 
 type subsampleVerifierAction struct {
