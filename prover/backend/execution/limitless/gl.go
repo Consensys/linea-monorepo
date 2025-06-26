@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -80,12 +79,12 @@ func RunGLProver(cfg *config.Config,
 ) (*wizard.ProverRuntime, error) {
 
 	runtimeGL := moduleGL.ProveSegment(witnessGL)
-	logrus.Info("Extracting GL-recursion witness and writing it to disk")
-	recursionGLWitness := recursion.ExtractWitness(runtimeGL)
-	err := serializeAndWriteRecursionWitness(cfg, fileName, &recursionGLWitness, false)
-	if err != nil {
-		return nil, fmt.Errorf("failed to serialize and write GL-recursion witness: %w", err)
-	}
+	// logrus.Info("Extracting GL-recursion witness and writing it to disk")
+	// recursionGLWitness := recursion.ExtractWitness(runtimeGL)
+	// err := serializeAndWriteRecursionWitness(cfg, fileName, &recursionGLWitness, false)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to serialize and write GL-recursion witness: %w", err)
+	// }
 	logrus.Infof("Finished extracting GL-recursion witness and writing it to disk")
 	return runtimeGL, nil
 }

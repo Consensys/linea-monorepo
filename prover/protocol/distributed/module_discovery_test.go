@@ -1,31 +1,31 @@
-package distributed
+package distributed_test
 
 import (
 	"fmt"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	utils_limitless "github.com/consensys/linea-monorepo/prover/utils/limitless"
-	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
 
 func TestQueryBasedDiscoveryOnZkEVM(t *testing.T) {
 
 	var (
-		zkevm = test_utils.GetZkEVM()
-		disc  = &QueryBasedModuleDiscoverer{}
+		z    = zkevm.GetTestZkEVM()
+		disc = &distributed.QueryBasedModuleDiscoverer{}
 	)
 
-	precompileInitialWizard(zkevm.WizardIOP, nil)
+	distributed.PrecompileInitialWizard(z.WizardIOP, nil)
 
 	// The test is to make sure that this function returns
-	disc.Analyze(zkevm.WizardIOP)
+	disc.Analyze(z.WizardIOP)
 
-	mapSize := map[ModuleName]int{}
+	mapSize := map[distributed.ModuleName]int{}
 
-	allCols := zkevm.WizardIOP.Columns.AllKeys()
+	allCols := z.WizardIOP.Columns.AllKeys()
 	for _, colName := range allCols {
-		col := zkevm.WizardIOP.Columns.GetHandle(colName)
+		col := z.WizardIOP.Columns.GetHandle(colName)
 
 		var (
 			oldSize = col.Size()
@@ -55,11 +55,11 @@ func TestQueryBasedDiscoveryOnZkEVM(t *testing.T) {
 		}
 	}
 
-	for _, col := range zkevm.WizardIOP.Columns.AllKeys() {
+	for _, col := range z.WizardIOP.Columns.AllKeys() {
 
 		var (
-			nat     = zkevm.WizardIOP.Columns.GetHandle(col).(column.Natural)
-			modules = []ModuleName{}
+			nat     = z.WizardIOP.Columns.GetHandle(col).(column.Natural)
+			modules = []distributed.ModuleName{}
 		)
 
 		for i := range disc.Modules {
@@ -82,24 +82,24 @@ func TestQueryBasedDiscoveryOnZkEVM(t *testing.T) {
 func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 
 	var (
-		zkevm = test_utils.GetZkEVM()
-		disc  = &StandardModuleDiscoverer{
+		z    = zkevm.GetTestZkEVM()
+		disc = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
-			Affinities:   utils_limitless.GetAffinities(zkevm),
+			Affinities:   zkevm.GetAffinities(z),
 			Predivision:  16,
 		}
 	)
 
-	precompileInitialWizard(zkevm.WizardIOP, disc)
+	distributed.PrecompileInitialWizard(z.WizardIOP, disc)
 
 	// The test is to make sure that this function returns
-	disc.Analyze(zkevm.WizardIOP)
+	disc.Analyze(z.WizardIOP)
 
 	fmt.Printf("%++v\n", disc)
 
-	allCols := zkevm.WizardIOP.Columns.AllKeys()
+	allCols := z.WizardIOP.Columns.AllKeys()
 	for _, colName := range allCols {
-		col := zkevm.WizardIOP.Columns.GetHandle(colName)
+		col := z.WizardIOP.Columns.GetHandle(colName)
 
 		var (
 			nat     = col.(column.Natural)
@@ -116,11 +116,11 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 		}
 	}
 
-	for _, col := range zkevm.WizardIOP.Columns.AllKeys() {
+	for _, col := range z.WizardIOP.Columns.AllKeys() {
 
 		var (
-			nat     = zkevm.WizardIOP.Columns.GetHandle(col).(column.Natural)
-			modules = []ModuleName{}
+			nat     = z.WizardIOP.Columns.GetHandle(col).(column.Natural)
+			modules = []distributed.ModuleName{}
 		)
 
 		for i := range disc.Modules {
@@ -141,7 +141,7 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 		}
 	}
 
-	t.Logf("totalNumber of columns: %v", len(zkevm.WizardIOP.Columns.AllKeys()))
+	t.Logf("totalNumber of columns: %v", len(z.WizardIOP.Columns.AllKeys()))
 
 	for _, mod := range disc.Modules {
 		t.Logf("module=%v weight=%v numcol=%v\n", mod.ModuleName, mod.Weight(), disc.NumColumnOf(mod.ModuleName))

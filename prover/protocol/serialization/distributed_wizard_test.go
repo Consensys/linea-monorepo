@@ -1,4 +1,4 @@
-package assets
+package serialization_test
 
 import (
 	"fmt"
@@ -9,8 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
-	utils_limitless "github.com/consensys/linea-monorepo/prover/utils/limitless"
-	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
 
 type distributeTestCase struct {
@@ -47,15 +46,15 @@ func (d distributeTestCase) define(comp *wizard.CompiledIOP) {
 // distributed wizard, which is then returned.
 func GetDistWizard() *distributed.DistributedWizard {
 	var (
-		zkevm = test_utils.GetZkEVM()
-		disc  = &distributed.StandardModuleDiscoverer{
+		z    = zkevm.GetTestZkEVM()
+		disc = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
-			Affinities:   utils_limitless.GetAffinities(zkevm),
+			Affinities:   zkevm.GetAffinities(z),
 			Predivision:  1,
 		}
 
 		// This tests the compilation of the compiled-IOP
-		distWizard = distributed.DistributeWizard(zkevm.WizardIOP, disc).
+		distWizard = distributed.DistributeWizard(z.WizardIOP, disc).
 				CompileSegments().
 				Conglomerate(20)
 	)
@@ -170,93 +169,3 @@ func TestSerdeDWCong(t *testing.T) {
 		})
 	}
 }
-
-// BELOW IDEA DOES NOT WORK.
-/*
-
-func unsafeBinDump(t *testing.T, cong *distributed.ConglomeratorCompilation, sanityCheck bool) {
-	var buffer bytes.Buffer
-
-	// Serialize
-	serTime := profiling.TimeIt(func() {
-		// Write architecture marker
-		err := unsafe.WriteMarker(&buffer)
-		if err != nil {
-			t.Fatalf("could not write marker: %v", err)
-		}
-		// Serialize the slice
-		err = unsafe.WriteSlice(&buffer, []*distributed.ConglomeratorCompilation{cong})
-		if err != nil {
-			t.Fatalf("could not marshal array of compiled IOP: %v", err)
-		}
-	})
-
-	// Write to file using buffer's data
-	err := utils.WriteToFile("dw-cong-dump.bin", bytes.NewReader(buffer.Bytes()))
-	if err != nil {
-		t.Fatalf("could not write to file: %v", err)
-	}
-
-	// Create a new buffer for deserialization
-	var readBuffer bytes.Buffer
-	var deCong []*distributed.ConglomeratorCompilation
-
-	// Deserialize
-	deserTime := profiling.TimeIt(func() {
-		// Read from file into readBuffer
-		err = utils.ReadFromFile("cong-dump.bin", &readBuffer)
-		if err != nil {
-			t.Fatalf("could not read from file: %v", err)
-		}
-		// Verify architecture marker
-		err = unsafe.ReadMarker(&readBuffer)
-		if err != nil {
-			t.Fatalf("could not read marker: %v", err)
-		}
-		// Deserialize the slice
-		deCong, _, err = unsafe.ReadSlice[[]*distributed.ConglomeratorCompilation](&readBuffer)
-		if err != nil {
-			t.Fatalf("could not unmarshal array of compiled IOP: %v", err)
-		}
-	})
-
-	t.Logf("%s serialization=%v deserialization=%v buffer-size=%v \n", "conglomeration", serTime, deserTime, readBuffer.Len())
-	t.Logf("(ser)   No. of rounds in cong.WIOP:%d \n", cong.Wiop.NumRounds())
-	t.Logf("(deser) No. of rounds in cong.WIOP:%d \n", deCong[0].Wiop.NumRounds())
-	t.Logf("(ser)   QueriesParams mapping inner length in cong.WIOP:%d \n", len(cong.Wiop.QueriesParams.Mapping.InnerMap))
-	t.Logf("(deser) QueriesParams mapping inner length in cong.WIOP:%d \n", len(deCong[0].Wiop.QueriesParams.Mapping.InnerMap))
-
-	if sanityCheck {
-		t.Logf("Running sanity check on ser/de cong. object")
-		if !test_utils.CompareExportedFields(cong, deCong[0]) {
-			t.Fatalf("Ser/de conglomerator compilation are not equal")
-		}
-	}
-}
-
-
-func TestReadBin(t *testing.T) {
-
-	var readBuffer bytes.Buffer
-	// var deCong []*distributed.ConglomeratorCompilation
-
-	// Read from file into readBuffer
-	err := utils.ReadFromFile("cong-dump.bin", &readBuffer)
-	if err != nil {
-		t.Fatalf("could not read from file: %v", err)
-	}
-	// Verify architecture marker
-	err = unsafe.ReadMarker(&readBuffer)
-	if err != nil {
-		t.Fatalf("could not read marker: %v", err)
-	}
-	// Deserialize the slice
-	deCong, _, err := unsafe.ReadSlice[[]*distributed.ConglomeratorCompilation](&readBuffer)
-	if err != nil {
-		t.Fatalf("could not unmarshal array of compiled IOP: %v", err)
-	}
-
-	t.Logf("(deser) QueriesParams mapping inner length in cong.WIOP:%d \n", len(deCong[0].Wiop.QueriesParams.Mapping.InnerMap))
-}
-
-*/

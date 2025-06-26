@@ -6,7 +6,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -59,13 +58,13 @@ func RunLPPProver(cfg *config.Config,
 
 	runtimeLPP := moduleLPP.ProveSegment(witnessLPP)
 
-	logrus.Info("Extracting LPP-recursion witness and writing it to disk")
-	recursionLPPWitness := recursion.ExtractWitness(runtimeLPP)
+	// logrus.Info("Extracting LPP-recursion witness and writing it to disk")
+	// recursionLPPWitness := recursion.ExtractWitness(runtimeLPP)
 
-	err := serializeAndWriteRecursionWitness(cfg, fileName, &recursionLPPWitness, true)
-	if err != nil {
-		return nil, fmt.Errorf("failed to serialize and write LPP-recursion witness: %w", err)
-	}
-	logrus.Info("Finished extracting LPP-recursion witness and writing it to disk")
+	// // err := serializeAndWriteRecursionWitness(cfg, fileName, &recursionLPPWitness, true)
+	// // if err != nil {
+	// // 	return nil, fmt.Errorf("failed to serialize and write LPP-recursion witness: %w", err)
+	// // }
+	// logrus.Info("Finished extracting LPP-recursion witness and writing it to disk")
 	return runtimeLPP, nil
 }

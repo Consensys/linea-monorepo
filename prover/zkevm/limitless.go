@@ -13,6 +13,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
+// GetTestZkEVM returns a ZkEVM object configured for testing.
+func GetTestZkEVM() *ZkEvm {
+	return FullZKEVMWithSuite(config.GetTestTracesLimits(), CompilationSuite{}, &config.Config{})
+}
+
 // LimitlessZkEVM defines the wizard responsible for proving execution of the EVM
 // and the associated wizard circuits for the limitless prover protocol.
 type LimitlessZkEVM struct {
@@ -28,7 +33,7 @@ func NewLimitlessZkEVM(cfg *config.Config) *LimitlessZkEVM {
 		zkevm       = FullZKEVMWithSuite(&traceLimits, CompilationSuite{}, cfg)
 		disc        = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
-			Affinities:   getAffinities(zkevm),
+			Affinities:   GetAffinities(zkevm),
 			Predivision:  1,
 		}
 		dw = distributed.DistributeWizard(zkevm.WizardIOP, disc).CompileSegments().Conglomerate(20)
@@ -137,13 +142,13 @@ func writeToDisk(dir, fileName string, asset any) error {
 	return nil
 }
 
-// getAffinities returns a list of affinities for the following modules. This
+// GetAffinities returns a list of affinities for the following modules. This
 // affinities regroup how the modules are grouped.
 //
 //	ecadd / ecmul / ecpairing
 //	hub / hub.scp / hub.acp
 //	everything related to keccak
-func getAffinities(z *ZkEvm) [][]column.Natural {
+func GetAffinities(z *ZkEvm) [][]column.Natural {
 
 	return [][]column.Natural{
 		{

@@ -1,4 +1,4 @@
-package assets
+package serialization_test
 
 import (
 	"fmt"

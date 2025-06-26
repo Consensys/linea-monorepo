@@ -11,10 +11,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/consensys/linea-monorepo/prover/backend/execution/limitless"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
-	utils_limitless "github.com/consensys/linea-monorepo/prover/utils/limitless"
 
 	blob_v0 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
 	blob_v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
@@ -238,7 +236,7 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 
 	case circuits.ExecutionLimitlessCircuitID:
 		//limits := cfg.TracesLimits
-		limits := utils_limitless.GetLimitlessTraceLimits()
+		limits := cfg.TracesLimits
 		extraFlags["cfg_checksum"] = limits.Checksum()
 
 		// Read the dw-compiled-conglomeration.bin file from the assets directory and deserialize it
@@ -259,12 +257,12 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 		// }
 
 		logrus.Info("Setting up limitless prover assets")
-		asset := limitless.SetupLimitlessAssest(cfg)
+		asset := zkevm.NewLimitlessZkEVM(cfg)
 		compCong = asset.DistWizard.CompiledConglomeration
 		asset = nil
 		runtime.GC()
 
-		return execution.NewLimitlessBuilder(compCong.Wiop, limits), extraFlags, nil
+		return execution.NewLimitlessBuilder(compCong.Wiop, &limits), extraFlags, nil
 
 	case circuits.BlobDecompressionV0CircuitID:
 		dict, err := os.ReadFile(args.DictPath)

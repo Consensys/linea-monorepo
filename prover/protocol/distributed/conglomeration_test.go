@@ -1,4 +1,4 @@
-package distributed
+package distributed_test
 
 import (
 	"encoding/json"
@@ -10,9 +10,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	utils_limitless "github.com/consensys/linea-monorepo/prover/utils/limitless"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
 
 // TestConglomerationBasic generates a conglomeration proof and checks if it is valid
@@ -21,7 +22,7 @@ func TestConglomerationBasic(t *testing.T) {
 	var (
 		numRow = 1 << 10
 		tc     = DistributeTestCase{numRow: numRow}
-		disc   = &StandardModuleDiscoverer{
+		disc   = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 3 * numRow,
 			Predivision:  1,
 		}
@@ -30,12 +31,12 @@ func TestConglomerationBasic(t *testing.T) {
 		})
 
 		// This tests the compilation of the compiled-IOP
-		distWizard = DistributeWizard(comp, disc).
+		distWizard = distributed.DistributeWizard(comp, disc).
 				CompileSegments().
 				Conglomerate(20)
 
 		runtimeBoot             = wizard.RunProver(distWizard.Bootstrapper, tc.Assign)
-		witnessGLs, witnessLPPs = SegmentRuntime(runtimeBoot, distWizard)
+		witnessGLs, witnessLPPs = distributed.SegmentRuntime(runtimeBoot, distWizard)
 		runGLs                  = runProverGLs(t, distWizard, witnessGLs)
 	)
 
@@ -63,15 +64,15 @@ func TestConglomeration(t *testing.T) {
 	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
 	var (
-		zkevm = test_utils.GetZkEVM()
-		disc  = &StandardModuleDiscoverer{
+		z    = zkevm.GetTestZkEVM()
+		disc = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
-			Affinities:   utils_limitless.GetAffinities(zkevm),
+			Affinities:   zkevm.GetAffinities(z),
 			Predivision:  1,
 		}
 
 		// This tests the compilation of the compiled-IOP
-		distWizard = DistributeWizard(zkevm.WizardIOP, disc).
+		distWizard = distributed.DistributeWizard(z.WizardIOP, disc).
 				CompileSegments().
 				Conglomerate(20)
 	)
@@ -98,13 +99,13 @@ func TestConglomeration(t *testing.T) {
 
 	var (
 		_, witness  = test_utils.GetZkevmWitness(req, cfg)
-		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, zkevm.GetMainProverStep(witness))
+		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, z.GetMainProverStep(witness))
 	)
 
 	t.Logf("[%v] done running the bootstrapper\n", time.Now())
 
 	var (
-		witnessGLs, witnessLPPs = SegmentRuntime(runtimeBoot, distWizard)
+		witnessGLs, witnessLPPs = distributed.SegmentRuntime(runtimeBoot, distWizard)
 		runGLs                  = runProverGLs(t, distWizard, witnessGLs)
 	)
 
@@ -138,11 +139,11 @@ func getSharedRandomness(runs []*wizard.ProverRuntime) field.Element {
 		comps[i] = runs[i].Spec
 	}
 
-	return GetSharedRandomnessFromWitnesses(comps, witnesses)
+	return distributed.GetSharedRandomnessFromWitnesses(comps, witnesses)
 }
 
 // Sanity-check for conglomeration compilation.
-func sanityCheckConglomeration(t *testing.T, cong *ConglomeratorCompilation, run *wizard.ProverRuntime) {
+func sanityCheckConglomeration(t *testing.T, cong *distributed.ConglomeratorCompilation, run *wizard.ProverRuntime) {
 
 	t.Logf("sanity-check for conglomeration")
 	stopRound := recursion.VortexQueryRound(cong.ModuleGLIops[0])
@@ -157,7 +158,7 @@ func sanityCheckConglomeration(t *testing.T, cong *ConglomeratorCompilation, run
 // object and two slices of ProverRuntime objects, runGLs and runLPPs. It extracts witnesses from
 // these runtimes, then uses the ConglomeratorCompilation object to prove the conglomerator,
 // logging the start and end times of the proof process.
-func runConglomerationProver(t *testing.T, cong *ConglomeratorCompilation, runGLs, runLPPs []*wizard.ProverRuntime) {
+func runConglomerationProver(t *testing.T, cong *distributed.ConglomeratorCompilation, runGLs, runLPPs []*wizard.ProverRuntime) {
 
 	var (
 		witLPPs = make([]recursion.Witness, len(runLPPs))

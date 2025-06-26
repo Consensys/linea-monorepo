@@ -92,7 +92,7 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *Distribu
 	}
 
 	distributedWizard := &DistributedWizard{
-		Bootstrapper: precompileInitialWizard(comp, disc),
+		Bootstrapper: PrecompileInitialWizard(comp, disc),
 		Disc:         disc,
 	}
 
@@ -213,11 +213,11 @@ func GetSharedRandomnessFromWitnesses(comp []*wizard.CompiledIOP, gLWitnesses []
 	return GetSharedRandomness(lppCommitments)
 }
 
-// precompileInitialWizard pre-compiles the initial wizard protocol by applying all the
+// PrecompileInitialWizard pre-compiles the initial wizard protocol by applying all the
 // compilation steps needing to be run before the splitting phase. Its role is to
 // ensure that all of the queries that cannot be processed by the splitting phase
 // are removed from the compiled IOP.
-func precompileInitialWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *wizard.CompiledIOP {
+func PrecompileInitialWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *wizard.CompiledIOP {
 	mimc.CompileMiMC(comp)
 	// specialqueries.RangeProof(comp)
 	// specialqueries.CompileFixedPermutations(comp)

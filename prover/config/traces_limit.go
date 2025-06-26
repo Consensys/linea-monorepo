@@ -135,3 +135,62 @@ func (tl *TracesLimits) ScaleUp(by int) {
 	tl.BlockTransactions *= by
 	tl.ShomeiMerkleProofs *= by
 }
+
+func GetTestTracesLimits() *TracesLimits {
+
+	// This are the config trace-limits from sepolia. All multiplied by 16.
+	traceLimits := &TracesLimits{
+		Add:                                  1 << 19,
+		Bin:                                  1 << 18,
+		Blake2Fmodexpdata:                    1 << 14,
+		Blockdata:                            1 << 12,
+		Blockhash:                            1 << 12,
+		Ecdata:                               1 << 18,
+		Euc:                                  1 << 16,
+		Exp:                                  1 << 14,
+		Ext:                                  1 << 20,
+		Gas:                                  1 << 16,
+		Hub:                                  1 << 21,
+		Logdata:                              1 << 16,
+		Loginfo:                              1 << 12,
+		Mmio:                                 1 << 21,
+		Mmu:                                  1 << 21,
+		Mod:                                  1 << 17,
+		Mul:                                  1 << 16,
+		Mxp:                                  1 << 19,
+		Oob:                                  1 << 18,
+		Rlpaddr:                              1 << 12,
+		Rlptxn:                               1 << 17,
+		Rlptxrcpt:                            1 << 17,
+		Rom:                                  1 << 22,
+		Romlex:                               1 << 12,
+		Shakiradata:                          1 << 15,
+		Shf:                                  1 << 16,
+		Stp:                                  1 << 14,
+		Trm:                                  1 << 15,
+		Txndata:                              1 << 14,
+		Wcp:                                  1 << 18,
+		Binreftable:                          1 << 20,
+		Shfreftable:                          1 << 12,
+		Instdecoder:                          1 << 9,
+		PrecompileEcrecoverEffectiveCalls:    1 << 9,
+		PrecompileSha2Blocks:                 1 << 9,
+		PrecompileRipemdBlocks:               0,
+		PrecompileModexpEffectiveCalls:       1 << 10,
+		PrecompileModexpEffectiveCalls4096:   1 << 4,
+		PrecompileEcaddEffectiveCalls:        1 << 6,
+		PrecompileEcmulEffectiveCalls:        1 << 6,
+		PrecompileEcpairingEffectiveCalls:    1 << 4,
+		PrecompileEcpairingMillerLoops:       1 << 4,
+		PrecompileEcpairingG2MembershipCalls: 1 << 4,
+		PrecompileBlakeEffectiveCalls:        0,
+		PrecompileBlakeRounds:                0,
+		BlockKeccak:                          1 << 13,
+		BlockL1Size:                          100_000,
+		BlockL2L1Logs:                        16,
+		BlockTransactions:                    1 << 8,
+		ShomeiMerkleProofs:                   1 << 14,
+	}
+
+	return traceLimits
+}

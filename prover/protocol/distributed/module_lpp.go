@@ -17,15 +17,15 @@ import (
 )
 
 var (
-	logDerivativeSumPublicInput  = "LOG_DERIVATE_SUM_PUBLIC_INPUT"
-	grandProductPublicInput      = "GRAND_PRODUCT_PUBLIC_INPUT"
-	hornerPublicInput            = "HORNER_FINAL_RES_PUBLIC_INPUT"
-	hornerN0HashPublicInput      = "HORNER_N0_HASH_PUBLIC_INPUT"
-	hornerN1HashPublicInput      = "HORNER_N1_HASH_PUBLIC_INPUT"
-	isLppPublicInput             = "IS_LPP"
-	isGlPublicInput              = "IS_GL"
-	nbActualLppPublicInput       = "NB_ACTUAL_LPP"
-	initialRandomnessPublicInput = "INITIAL_RANDOMNESS_PUBLIC_INPUT"
+	LogDerivativeSumPublicInput  = "LOG_DERIVATE_SUM_PUBLIC_INPUT"
+	GrandProductPublicInput      = "GRAND_PRODUCT_PUBLIC_INPUT"
+	HornerPublicInput            = "HORNER_FINAL_RES_PUBLIC_INPUT"
+	HornerN0HashPublicInput      = "HORNER_N0_HASH_PUBLIC_INPUT"
+	HornerN1HashPublicInput      = "HORNER_N1_HASH_PUBLIC_INPUT"
+	IsLppPublicInput             = "IS_LPP"
+	IsGlPublicInput              = "IS_GL"
+	NbActualLppPublicInput       = "NB_ACTUAL_LPP"
+	InitialRandomnessPublicInput = "INITIAL_RANDOMNESS_PUBLIC_INPUT"
 )
 
 // ModuleLPP is a compilation structure holding the central informations
@@ -132,11 +132,11 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 		moduleLPP.Wiop.InsertPublicInput(pi.Name, accessors.NewConstant(field.Zero()))
 	}
 
-	moduleLPP.Wiop.InsertPublicInput(initialRandomnessPublicInput, accessors.NewFromPublicColumn(moduleLPP.InitialFiatShamirState, 0))
-	moduleLPP.Wiop.InsertPublicInput(isFirstPublicInput, accessors.NewConstant(field.Zero()))
-	moduleLPP.Wiop.InsertPublicInput(isLastPublicInput, accessors.NewConstant(field.Zero()))
-	moduleLPP.Wiop.InsertPublicInput(globalSenderPublicInput, accessors.NewConstant(field.Zero()))
-	moduleLPP.Wiop.InsertPublicInput(globalReceiverPublicInput, accessors.NewConstant(field.Zero()))
+	moduleLPP.Wiop.InsertPublicInput(InitialRandomnessPublicInput, accessors.NewFromPublicColumn(moduleLPP.InitialFiatShamirState, 0))
+	moduleLPP.Wiop.InsertPublicInput(IsFirstPublicInput, accessors.NewConstant(field.Zero()))
+	moduleLPP.Wiop.InsertPublicInput(IsLastPublicInput, accessors.NewConstant(field.Zero()))
+	moduleLPP.Wiop.InsertPublicInput(GlobalSenderPublicInput, accessors.NewConstant(field.Zero()))
+	moduleLPP.Wiop.InsertPublicInput(GlobalReceiverPublicInput, accessors.NewConstant(field.Zero()))
 
 	for round, moduleInput := range moduleInputs {
 		for _, col := range moduleInput.Columns {
@@ -171,14 +171,14 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 		)
 
 		moduleLPP.Wiop.InsertPublicInput(
-			logDerivativeSumPublicInput,
+			LogDerivativeSumPublicInput,
 			accessors.NewLogDerivSumAccessor(moduleLPP.LogDerivativeSum),
 		)
 
 	} else {
 
 		moduleLPP.Wiop.InsertPublicInput(
-			logDerivativeSumPublicInput,
+			LogDerivativeSumPublicInput,
 			accessors.NewConstant(field.Zero()),
 		)
 	}
@@ -192,14 +192,14 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 		)
 
 		moduleLPP.Wiop.InsertPublicInput(
-			grandProductPublicInput,
+			GrandProductPublicInput,
 			accessors.NewGrandProductAccessor(moduleLPP.GrandProduct),
 		)
 
 	} else {
 
 		moduleLPP.Wiop.InsertPublicInput(
-			grandProductPublicInput,
+			GrandProductPublicInput,
 			accessors.NewConstant(field.One()),
 		)
 	}
@@ -216,17 +216,17 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 		moduleLPP.N1Hash = builder.InsertProof(startingRound, "LPP_N1_HASH", 1)
 
 		moduleLPP.Wiop.InsertPublicInput(
-			hornerPublicInput,
+			HornerPublicInput,
 			accessors.NewFromHornerAccessorFinalValue(&moduleLPP.Horner),
 		)
 
 		moduleLPP.Wiop.InsertPublicInput(
-			hornerN0HashPublicInput,
+			HornerN0HashPublicInput,
 			accessors.NewFromPublicColumn(moduleLPP.N0Hash, 0),
 		)
 
 		moduleLPP.Wiop.InsertPublicInput(
-			hornerN1HashPublicInput,
+			HornerN1HashPublicInput,
 			accessors.NewFromPublicColumn(moduleLPP.N1Hash, 0),
 		)
 
@@ -235,24 +235,24 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 	} else {
 
 		moduleLPP.Wiop.InsertPublicInput(
-			hornerPublicInput,
+			HornerPublicInput,
 			accessors.NewConstant(field.Zero()),
 		)
 
 		moduleLPP.Wiop.InsertPublicInput(
-			hornerN0HashPublicInput,
+			HornerN0HashPublicInput,
 			accessors.NewConstant(field.Zero()),
 		)
 
 		moduleLPP.Wiop.InsertPublicInput(
-			hornerN1HashPublicInput,
+			HornerN1HashPublicInput,
 			accessors.NewConstant(field.Zero()),
 		)
 	}
 
-	moduleLPP.Wiop.InsertPublicInput(isGlPublicInput, accessors.NewConstant(field.Zero()))
-	moduleLPP.Wiop.InsertPublicInput(isLppPublicInput, accessors.NewConstant(field.One()))
-	moduleLPP.Wiop.InsertPublicInput(nbActualLppPublicInput, accessors.NewConstant(field.NewElement(uint64(len(moduleInputs)))))
+	moduleLPP.Wiop.InsertPublicInput(IsGlPublicInput, accessors.NewConstant(field.Zero()))
+	moduleLPP.Wiop.InsertPublicInput(IsLppPublicInput, accessors.NewConstant(field.One()))
+	moduleLPP.Wiop.InsertPublicInput(NbActualLppPublicInput, accessors.NewConstant(field.NewElement(uint64(len(moduleInputs)))))
 
 	// In case the LPP part is empty, we have a scenario where the sub-proof to
 	// build has no registered coin. This creates errors in the compilation

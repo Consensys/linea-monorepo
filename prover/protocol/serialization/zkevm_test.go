@@ -1,4 +1,4 @@
-package assets
+package serialization_test
 
 import (
 	"reflect"
@@ -7,12 +7,12 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
-	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
 )
 
 var (
-	z = test_utils.GetZkEVM()
+	z = zkevm.GetTestZkEVM()
 )
 
 // Helper function for serialization and deserialization tests
@@ -61,7 +61,7 @@ func runSerdeTest(t *testing.T, input any, name string, isSanityCheck, failFast 
 		// Sanity check: Compare exported fields
 		t.Logf("Running sanity checks on deserialized object: Comparing if the values matched before and after serialization")
 		outputDeref := reflect.ValueOf(output).Elem().Interface()
-		if !test_utils.CompareExportedFields(input, outputDeref, failFast) {
+		if !compareExportedFields(input, outputDeref, failFast) {
 			t.Errorf("Mismatch in exported fields of %s during serde", name)
 		} else {
 			t.Logf("Sanity checks passed for %s", name)
