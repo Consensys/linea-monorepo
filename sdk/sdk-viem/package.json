@@ -20,14 +20,13 @@
     "@consensys/linea-sdk-core": "workspace:*"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.14",
-    "jest": "^29.7.0",
-    "prool": "^0.0.24",
-    "ts-jest": "^29.3.4",
+    "@types/jest": "catalog:",
+    "jest": "catalog:",
+    "ts-jest": "catalog:",
     "tsup": "8.5.0",
-    "viem": "2.29.0"
+    "viem": "catalog:"
   },
   "peerDependencies": {
-    "viem": "2.25.0"
+    "viem": "^2.25.0"
   }
 }

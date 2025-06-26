@@ -25,11 +25,11 @@
   },
   "keywords": [],
   "devDependencies": {
-    "@types/jest": "^29.5.14",
-    "jest": "^29.7.0",
-    "ts-jest": "^29.3.4",
+    "@types/jest": "catalog:",
+    "jest": "catalog:",
+    "ts-jest": "catalog:",
     "tsup": "8.5.0",
-    "viem": "^2.30.1"
+    "viem": "catalog:"
   },
   "dependencies": {
     "abitype": "^1.0.8"
