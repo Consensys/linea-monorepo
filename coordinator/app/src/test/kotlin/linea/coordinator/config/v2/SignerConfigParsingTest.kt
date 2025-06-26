@@ -32,9 +32,9 @@ class SignerConfigParsingTest {
     keep-alive = true
     public-key = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"
     [web3signerWithTlsExample.web3signer.tls]
-    key-store-path = "coordinator_client_keystore.p12"
+    key-store-path = "coordinator-client-keystore.p12"
     key-store-password = "xxxxx"
-    trust-store-path = "web3signer_truststore.p12"
+    trust-store-path = "web3signer-truststore.p12"
     trust-store-password = "xxxxx"
     """.trimIndent()
 
@@ -72,9 +72,9 @@ class SignerConfigParsingTest {
           maxPoolSize = 10,
           keepAlive = true,
           tls = SignerConfigToml.Web3SignerConfig.TlsConfig(
-            keyStorePath = "coordinator_client_keystore.p12",
+            keyStorePath = "coordinator-client-keystore.p12",
             keyStorePassword = Masked("xxxxx"),
-            trustStorePath = "web3signer_truststore.p12",
+            trustStorePath = "web3signer-truststore.p12",
             trustStorePassword = Masked("xxxxx"),
           ),
         ),

@@ -4,6 +4,7 @@ import com.sksamuel.hoplite.Masked
 import linea.coordinator.config.v2.SignerConfig
 import linea.kotlin.decodeHex
 import java.net.URL
+import java.nio.file.Path
 
 data class SignerConfigToml(
   val type: SignerType,
@@ -148,10 +149,10 @@ data class SignerConfigToml(
           keepAlive = it.keepAlive,
           tls = it.tls?.let { tls ->
             SignerConfig.Web3SignerConfig.TlsConfig(
-              keyStorePath = tls.keyStorePath,
-              keyStorePassword = tls.keyStorePassword.value,
-              trustStorePath = tls.trustStorePath,
-              trustStorePassword = tls.trustStorePassword.value,
+              keyStorePath = Path.of(tls.keyStorePath),
+              keyStorePassword = tls.keyStorePassword,
+              trustStorePath = Path.of(tls.trustStorePath),
+              trustStorePassword = tls.trustStorePassword,
             )
           },
         )

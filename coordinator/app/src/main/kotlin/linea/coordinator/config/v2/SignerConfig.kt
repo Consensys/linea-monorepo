@@ -1,7 +1,9 @@
 package linea.coordinator.config.v2
 
-import java.io.File
+import com.sksamuel.hoplite.Masked
 import java.net.URL
+import java.nio.file.Path
+import kotlin.io.path.exists
 
 data class SignerConfig(
   val type: SignerType,
@@ -23,16 +25,16 @@ data class SignerConfig(
           require(web3signer.endpoint.protocol == "https") {
             "signerType=$type with TLS configs requires web3signer.endpoint in https"
           }
-          require(!web3signer.tls.keyStorePassword.isEmpty()) {
+          require(!web3signer.tls.keyStorePassword.value.isEmpty()) {
             "web3signer.tls.keyStorePassword must not be empty"
           }
-          require(!web3signer.tls.trustStorePassword.isEmpty()) {
+          require(!web3signer.tls.trustStorePassword.value.isEmpty()) {
             "web3signer.tls.trustStorePassword must not be empty"
           }
-          require(File(web3signer.tls.keyStorePath).exists()) {
+          require(web3signer.tls.keyStorePath.exists()) {
             "web3signer.tls.keyStorePath=${web3signer.tls.keyStorePath} must point to an existing file"
           }
-          require(File(web3signer.tls.trustStorePath).exists()) {
+          require(web3signer.tls.trustStorePath.exists()) {
             "web3signer.tls.trustStorePath=${web3signer.tls.trustStorePath} must point to an existing file"
           }
         }
@@ -74,10 +76,10 @@ data class SignerConfig(
     val tls: TlsConfig?,
   ) {
     data class TlsConfig(
-      val keyStorePath: String,
-      val keyStorePassword: String,
-      val trustStorePath: String,
-      val trustStorePassword: String,
+      val keyStorePath: Path,
+      val keyStorePassword: Masked,
+      val trustStorePath: Path,
+      val trustStorePassword: Masked,
     ) {
       override fun equals(other: Any?): Boolean {
         if (this === other) return true

@@ -19,6 +19,7 @@ import org.web3j.service.TxSignServiceImpl
 import org.web3j.tx.gas.ContractGasProvider
 import org.web3j.utils.Numeric
 import java.io.FileInputStream
+import java.nio.file.Path
 import java.security.KeyStore
 import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.SSLContext
@@ -31,14 +32,14 @@ fun createTransactionManager(
 ): AsyncFriendlyTransactionManager {
   fun loadKeyAndTrustStoreFromFiles(
     webClientOptions: WebClientOptions,
-    clientKeystorePath: String,
+    clientKeystorePath: Path,
     clientKeystorePassword: String,
-    trustStorePath: String,
+    trustStorePath: Path,
     trustStorePassword: String,
   ): WebClientOptions {
     // Load client keystore
     val keyStore = KeyStore.getInstance("PKCS12")
-    FileInputStream(clientKeystorePath).use { input ->
+    FileInputStream(clientKeystorePath.toAbsolutePath().toString()).use { input ->
       keyStore.load(input, clientKeystorePassword.toCharArray())
     }
 
@@ -48,7 +49,7 @@ fun createTransactionManager(
 
     // Load truststore
     val trustStore = KeyStore.getInstance("PKCS12")
-    FileInputStream(trustStorePath).use { input ->
+    FileInputStream(trustStorePath.toAbsolutePath().toString()).use { input ->
       trustStore.load(input, trustStorePassword.toCharArray())
     }
 
@@ -65,12 +66,12 @@ fun createTransactionManager(
       .setTrustAll(false)
       .setPfxKeyCertOptions(
         PfxOptions()
-          .setPath(clientKeystorePath)
+          .setPath(clientKeystorePath.toAbsolutePath().toString())
           .setPassword(clientKeystorePassword),
       )
       .setPfxTrustOptions(
         PfxOptions()
-          .setPath(trustStorePath)
+          .setPath(trustStorePath.toAbsolutePath().toString())
           .setPassword(trustStorePassword),
       )
       .setVerifyHost(true)
@@ -96,9 +97,9 @@ fun createTransactionManager(
               loadKeyAndTrustStoreFromFiles(
                 webClientOptions = it,
                 clientKeystorePath = signerConfig.web3signer.tls.keyStorePath,
-                clientKeystorePassword = signerConfig.web3signer.tls.keyStorePassword,
+                clientKeystorePassword = signerConfig.web3signer.tls.keyStorePassword.value,
                 trustStorePath = signerConfig.web3signer.tls.trustStorePath,
-                trustStorePassword = signerConfig.web3signer.tls.trustStorePassword,
+                trustStorePassword = signerConfig.web3signer.tls.trustStorePassword.value,
               )
             }
           }
