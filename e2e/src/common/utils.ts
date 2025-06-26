@@ -141,7 +141,7 @@ export class RollupGetZkEVMBlockNumberClient {
 export class LineaEstimateGasClient {
   private endpoint: URL;
   private BASE_FEE_MULTIPLIER = 1.35;
-  private PRIORITY_FEE_MULTIPLIER = 1.05;
+  private PRIORITY_FEE_MULTIPLIER = 1.35;
 
   public constructor(endpoint: URL) {
     this.endpoint = endpoint;
