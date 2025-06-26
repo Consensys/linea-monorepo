@@ -358,7 +358,7 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 	}
 
 	if dstVortexCtx.ApplySISHashThreshold > 0 {
-		panic("SIS hashes are not yet supported in recursion")
+		panic("only SIS hashes are supported in recursion")
 	}
 
 	translator.Target.QueriesParams.MarkAsIgnored(dstVortexCtx.Query.QueryID)
