@@ -185,9 +185,10 @@ func (ctx *Ctx) ComputeLinearCombFromRsMatrix(run *wizard.ProverRuntime) {
 		committedMatrix := run.State.MustGet(ctx.VortexProverStateName(round)).(vortex.EncodedMatrix)
 
 		// Push pols to the right stack
-		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
+		switch ctx.RoundStatus[round] {
+		case IsOnlyMiMCApplied:
 			committedSVNoSIS = append(committedSVNoSIS, committedMatrix...)
-		} else if ctx.RoundStatus[round] == IsSISApplied {
+		case IsSISApplied:
 			committedSVSIS = append(committedSVSIS, committedMatrix...)
 		}
 	}
