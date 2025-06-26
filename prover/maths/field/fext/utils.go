@@ -54,6 +54,12 @@ func SetInt64(z *Element, v int64) *Element {
 	return z // z.toMont()
 }
 
+func Lift(v field.Element) Element {
+	var res Element
+	res.B0.A0.Set(&v)
+	return res
+}
+
 // FromBase sets z = v//TODO:yao remove this function
 func FromBase(z *Element, v *field.Element) {
 	z.B0.A0.Set(v)
