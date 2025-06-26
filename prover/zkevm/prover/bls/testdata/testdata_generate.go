@@ -5,18 +5,11 @@ import (
 	"fmt"
 	"iter"
 	"math/big"
+	"slices"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	fp_bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fp"
 	fr_bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
-)
-
-type mapInputType int
-
-const (
-	mapTrivial    mapInputType = iota // 0
-	mapInRange                        // element is in range of the field
-	mapOutOfRange                     // element is not in range of the field
 )
 
 type affine interface {
@@ -212,44 +205,20 @@ func cartesianProduct[T any](width int, newIterator func() iter.Seq2[int, T]) it
 }
 
 func splitG1ToLimbs(p bls12381.G1Affine) []string {
-	px := p.X.Bytes()
-	py := p.Y.Bytes()
-	limbs := []string{
-		"0x00000000000000000000000000000000",
-		fmt.Sprintf("0x%x", px[0:16]),
-		fmt.Sprintf("0x%x", px[16:32]),
-		fmt.Sprintf("0x%x", px[32:48]),
-		"0x00000000000000000000000000000000",
-		fmt.Sprintf("0x%x", py[0:16]),
-		fmt.Sprintf("0x%x", py[16:32]),
-		fmt.Sprintf("0x%x", py[32:48]),
-	}
+	limbs := slices.Concat(
+		splitBaseToLimbs(p.X),
+		splitBaseToLimbs(p.Y),
+	)
 	return limbs
 }
 
 func splitG2ToLimbs(q bls12381.G2Affine) []string {
-	qxre := q.X.A0.Bytes()
-	qxim := q.X.A1.Bytes()
-	qyre := q.Y.A0.Bytes()
-	qyim := q.Y.A1.Bytes()
-	limbs := []string{
-		"0x00000000000000000000000000000000",
-		fmt.Sprintf("0x%x", qxim[0:16]),
-		fmt.Sprintf("0x%x", qxim[16:32]),
-		fmt.Sprintf("0x%x", qxim[32:48]),
-		"0x00000000000000000000000000000000",
-		fmt.Sprintf("0x%x", qxre[0:16]),
-		fmt.Sprintf("0x%x", qxre[16:32]),
-		fmt.Sprintf("0x%x", qxre[32:48]),
-		"0x00000000000000000000000000000000",
-		fmt.Sprintf("0x%x", qyim[0:16]),
-		fmt.Sprintf("0x%x", qyim[16:32]),
-		fmt.Sprintf("0x%x", qyim[32:48]),
-		"0x00000000000000000000000000000000",
-		fmt.Sprintf("0x%x", qyre[0:16]),
-		fmt.Sprintf("0x%x", qyre[16:32]),
-		fmt.Sprintf("0x%x", qyre[32:48]),
-	}
+	limbs := slices.Concat(
+		splitBaseToLimbs(q.X.A0),
+		splitBaseToLimbs(q.X.A1),
+		splitBaseToLimbs(q.Y.A0),
+		splitBaseToLimbs(q.Y.A1),
+	)
 	return limbs
 }
 
@@ -270,6 +239,17 @@ func splitScalarToLimbs(s *big.Int) []string {
 	limbs := []string{
 		fmt.Sprintf("0x%x", sb[0:16]),
 		fmt.Sprintf("0x%x", sb[16:32]),
+	}
+	return limbs
+}
+
+func splitBaseToLimbs(x fp_bls12381.Element) []string {
+	xb := x.Bytes()
+	limbs := []string{
+		"0x00000000000000000000000000000000",
+		fmt.Sprintf("0x%x", xb[0:16]),
+		fmt.Sprintf("0x%x", xb[16:32]),
+		fmt.Sprintf("0x%x", xb[32:48]),
 	}
 	return limbs
 }

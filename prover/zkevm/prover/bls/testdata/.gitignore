@@ -3,3 +3,5 @@ bls_g2_add_input.csv
 bls_g1_msm_inputs.csv
 bls_g2_msm_inputs.csv
 bls_pairing_inputs.csv
+bls_g1_map_inputs.csv
+bls_g2_map_inputs.csv
