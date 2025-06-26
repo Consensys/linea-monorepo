@@ -29,10 +29,10 @@ jobs:
         env:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
-
       - name: Create draft release with uploaded assets
+        id: create_draft_release
 
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@v1.16.0
         with:
           name: "Linea Sequencer ${{ github.event.inputs.version }}"
           artifacts: "./besu-plugins/linea-sequencer/sequencer/build/libs/linea-sequencer-${{ github.event.inputs.version }}.jar,./besu-plugins/linea-sequencer/sequencer/build/distributions/linea-sequencer-${{ github.event.inputs.version }}.zip"
@@ -40,6 +40,13 @@ jobs:
           artifactContentType: application/octet-stream
           generateReleaseNotes: true
           tag: linea-sequencer-${{ github.event.inputs.version }}
-          commit: ${{ github.ref }}
+          commit: ${{ github.sha }}
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: true
+          allowUpdates: true
+          updateOnlyUnreleased: true
+
+      - name: Log GitHub Release URL
+        shell: bash
+        run: |
+          echo "Draft release URL: ${{ steps.create_draft_release.outputs.html_url }}"
