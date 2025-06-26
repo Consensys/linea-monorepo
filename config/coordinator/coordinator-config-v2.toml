@@ -259,10 +259,10 @@ expected-gas = 21000
 # uses it dynaically culcuale the profitability of each transaction on:
 # eth_sendRawTransaction, linea_estimateGas, and block building
 l1-blob-gas = 131072 # 2^17 # expected-l1-blob-gas previous name: expected-blob-gas
-blob-submission-expected-execution-gas = 213000
+blob-submission-expected-execution-gas = 65250
 variable-cost-upper-bound = 1000000001 # ~1 GWEI
 variable-cost-lower-bound = 90000001  # ~0.09 GWEI
-margin = 4.0
+margin = 1.0
 [l2-network-gas-pricing.dynamic-gas-pricing.calldata-based-pricing]
 calldata-sum-size-block-count = 0 # disabled if zero
 fee-change-denominator = 32
