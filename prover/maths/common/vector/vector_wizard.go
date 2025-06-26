@@ -104,6 +104,14 @@ func ForTest(xs ...int) []field.Element {
 	return res
 }
 
+func ForRandTestFromLen(len int) []field.Element {
+	res := make([]field.Element, len)
+	for i := range res {
+		res[i].SetRandom()
+	}
+	return res
+}
+
 // Add adds two vectors `a` and `b` and put the result in `res`
 // `res` must be pre-allocated by the caller and res, a and b must all have
 // the same size.

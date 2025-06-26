@@ -71,7 +71,7 @@ func (v *verifierForSize) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		expected frontend.Variable
 		// actual stores the opening value of the last entry of Summation. The
 		// verifier checks the equality between it and `expected`.
-		actual = run.GetLocalPointEvalParams(v.SummationOpening.ID).BaseY
+		actual = run.GetLocalPointEvalParams(v.SummationOpening.ID).ExtY
 	)
 
 	for _, q := range v.Queries {

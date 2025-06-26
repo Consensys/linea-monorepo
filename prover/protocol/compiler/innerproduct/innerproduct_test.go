@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -43,6 +45,31 @@ func TestInnerProduct(t *testing.T) {
 	assert.NoErrorf(t, wizard.Verify(comp, proof), "invalid proof")
 }
 
+func multiplyElements(a, b []fext.Element) fext.Element {
+
+	tmp := fext.Zero()
+	var multmp fext.Element
+	var result fext.Element
+	for i := range a {
+		multmp.Mul(&a[i], &b[i])
+		tmp.Add(&tmp, &multmp)
+	}
+	result = tmp
+	return result
+}
+func multiplyBaseElements(a, b []field.Element) fext.Element {
+
+	tmp := field.Zero()
+	var multmp field.Element
+	var result fext.Element
+	for i := range a {
+		multmp.Mul(&a[i], &b[i])
+		tmp.Add(&tmp, &multmp)
+	}
+	result.B0.A0 = tmp
+	return result
+}
+
 var testCases = []struct {
 	qName    ifaces.QueryID
 	aName    ifaces.ColID
@@ -52,63 +79,78 @@ var testCases = []struct {
 	b        []smartvectors.SmartVector
 	expected []fext.Element
 }{
+	// Single InnerProduct
+	createMultiIPTestCase("Quey1", "ColA1", []ifaces.ColID{"ColB1"}, 4, 1, false),
+	createMultiIPTestCase("Quey2", "ColA2", []ifaces.ColID{"ColB2"}, 4, 1, true),
 
-	{qName: "Quey1",
-		aName: "ColA1",
-		bName: []ifaces.ColID{"ColB1"},
-		size:  4,
-		a:     smartvectors.ForTest(1, 1, 1, 1),
-		b: []smartvectors.SmartVector{
-			smartvectors.ForTest(0, 3, 0, 2),
-		},
-		expected: []fext.Element{fext.NewFromBase(field.NewElement(5))},
-	},
+	// Linear Combine Multiple InnerProducts
+	createMultiIPTestCase("Quey3", "ColA3", []ifaces.ColID{"ColB3_0", "ColB3_1"}, 8, 2, false),
+	createMultiIPTestCase("Quey4", "ColA4", []ifaces.ColID{"ColB4_0", "ColB4_1"}, 8, 2, true),
+	createMultiIPTestCase("Quey5", "ColA5", []ifaces.ColID{"ColB5_0", "ColB5_1"}, 16, 2, false),
+}
 
-	{qName: "Quey2",
-		aName: "ColA2",
-		bName: []ifaces.ColID{"ColB2"},
-		size:  16,
-		a:     smartvectors.ForTest(1, 1, 1, 1, 2, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1),
-		b: []smartvectors.SmartVector{
-			smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1),
-		},
-		expected: []fext.Element{fext.NewFromBase(field.NewElement(15))},
-	},
+type testCase struct {
+	qName    ifaces.QueryID
+	aName    ifaces.ColID
+	bName    []ifaces.ColID
+	size     int
+	a        smartvectors.SmartVector
+	b        []smartvectors.SmartVector
+	expected []fext.Element
+}
 
-	{qName: "Quey3",
+// createMultiIPTestCase generates a testCase for multiple inner products (linear combination).
+func createMultiIPTestCase(
+	qName ifaces.QueryID,
+	aName ifaces.ColID,
+	bName []ifaces.ColID,
+	size int,
+	bRows int,
+	isBase bool,
+) testCase {
+	if !isBase {
+		aValues := vectorext.ForRandTestFromLen(size)
+		aVec := smartvectors.NewRegularExt(aValues)
+		bVec := make([]smartvectors.SmartVector, bRows)
 
-		aName: "ColA3",
-		bName: []ifaces.ColID{"ColB3"},
-		size:  32,
-		a:     smartvectors.ForTest(1, 1, 1, 1, 2, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1),
-		b: []smartvectors.SmartVector{
-			smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1),
-		},
-		expected: []fext.Element{fext.NewFromBase(field.NewElement(30))},
-	},
+		expected_Vec := make([]fext.Element, bRows)
+		bValues := make([][]fext.Element, bRows)
+		for i := 0; i < bRows; i++ {
+			bValues[i] = vectorext.ForRandTestFromLen(size)
+			bVec[i] = smartvectors.NewRegularExt(bValues[i])
+			expected_Vec[i] = multiplyElements(aValues, bValues[i])
+		}
+		return testCase{
+			qName:    qName,
+			aName:    aName,
+			bName:    bName,
+			size:     size,
+			a:        aVec,
+			b:        bVec,
+			expected: expected_Vec,
+		}
+	} else {
+		aValues := vector.ForRandTestFromLen(size)
+		aVec := smartvectors.NewRegular(aValues)
+		bVec := make([]smartvectors.SmartVector, bRows)
 
-	// Test linea combination of innerproducts
-	{qName: "Quey4",
-		aName: "ColA4",
-		bName: []ifaces.ColID{"ColB4_0", "ColB4_1"},
-		size:  4,
-		a:     smartvectors.ForTest(1, 1, 1, 1),
-		b: []smartvectors.SmartVector{
-			smartvectors.ForTest(0, 3, 0, 2),
-			smartvectors.ForTest(1, 0, 0, 2),
-		},
-		expected: []fext.Element{fext.NewFromBase(field.NewElement(5)), fext.NewFromBase(field.NewElement(3))},
-	},
+		expected_Vec := make([]fext.Element, bRows)
+		bValues := make([][]field.Element, bRows)
+		for i := 0; i < bRows; i++ {
+			bValues[i] = vector.ForRandTestFromLen(size)
+			bVec[i] = smartvectors.NewRegular(bValues[i])
+			expected_Vec[i] = multiplyBaseElements(aValues, bValues[i])
 
-	{qName: "Quey5",
-		aName: "ColA5",
-		bName: []ifaces.ColID{"ColB5_0", "ColB5_1"},
-		size:  8,
-		a:     smartvectors.ForTest(1, 1, 1, 1, 2, 0, 2, 0),
-		b: []smartvectors.SmartVector{
-			smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0),
-			smartvectors.ForTest(1, 0, 0, 2, 1, 0, 0, 0),
-		},
-		expected: []fext.Element{fext.NewFromBase(field.NewElement(7)), fext.NewFromBase(field.NewElement(5))},
-	},
+		}
+		return testCase{
+			qName:    qName,
+			aName:    aName,
+			bName:    bName,
+			size:     size,
+			a:        aVec,
+			b:        bVec,
+			expected: expected_Vec,
+		}
+	}
+
 }

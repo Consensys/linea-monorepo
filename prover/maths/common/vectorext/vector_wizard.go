@@ -112,6 +112,16 @@ func ForTest(xs ...int) []fext.Element {
 
 // ForTestFromVect computes a vector of field extensions,
 // where each field extension is populated using one vector of size [fext.ExtensionDegree]
+func ForRandTestFromLen(len int) []fext.Element {
+	res := make([]fext.Element, len)
+	for i := range res {
+		res[i].SetRandom()
+	}
+	return res
+}
+
+// ForTestFromVect computes a vector of field extensions,
+// where each field extension is populated using one vector of size [fext.ExtensionDegree]
 func ForTestFromVect(xs ...[4]int) []fext.Element {
 	res := make([]fext.Element, len(xs))
 	for i, x := range xs {
