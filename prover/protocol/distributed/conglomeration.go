@@ -105,8 +105,6 @@ func conglomerate(maxNbProofs int, moduleGLs, moduleLpps []*RecursedSegmentCompi
 
 	cong := &ConglomeratorCompilation{
 		MaxNbProofs: maxNbProofs,
-		// ModuleGLIops:  moduleGLs,
-		// ModuleLPPIops: moduleLpps,
 		DefaultIops: moduleDefault,
 	}
 
