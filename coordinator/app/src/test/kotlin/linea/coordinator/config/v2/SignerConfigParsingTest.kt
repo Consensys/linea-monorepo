@@ -7,6 +7,7 @@ import linea.kotlin.decodeHex
 import linea.kotlin.toURL
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import kotlin.io.path.Path
 
 class SignerConfigParsingTest {
   companion object {
@@ -72,9 +73,9 @@ class SignerConfigParsingTest {
           maxPoolSize = 10,
           keepAlive = true,
           tls = SignerConfigToml.Web3SignerConfig.TlsConfig(
-            keyStorePath = "coordinator-client-keystore.p12",
+            keyStorePath = Path("coordinator-client-keystore.p12"),
             keyStorePassword = Masked("xxxxx"),
-            trustStorePath = "web3signer-truststore.p12",
+            trustStorePath = Path("web3signer-truststore.p12"),
             trustStorePassword = Masked("xxxxx"),
           ),
         ),

@@ -79,16 +79,16 @@ data class SignerConfigToml(
     }
 
     data class TlsConfig(
-      val keyStorePath: String,
+      val keyStorePath: Path,
       val keyStorePassword: Masked,
-      val trustStorePath: String,
+      val trustStorePath: Path,
       val trustStorePassword: Masked,
     ) {
       init {
         require(!keyStorePassword.value.isEmpty()) { "keyStorePassword must not be empty" }
         require(!trustStorePassword.value.isEmpty()) { "trustStorePassword must not be empty" }
-        require(!keyStorePath.isEmpty()) { "keyStorePath must not be empty" }
-        require(!trustStorePath.isEmpty()) { "trustStorePath must not be empty" }
+        require(!keyStorePath.toString().isEmpty()) { "keyStorePath must not be empty" }
+        require(!trustStorePath.toString().isEmpty()) { "trustStorePath must not be empty" }
       }
 
       override fun equals(other: Any?): Boolean {
@@ -149,9 +149,9 @@ data class SignerConfigToml(
           keepAlive = it.keepAlive,
           tls = it.tls?.let { tls ->
             SignerConfig.Web3SignerConfig.TlsConfig(
-              keyStorePath = Path.of(tls.keyStorePath),
+              keyStorePath = tls.keyStorePath,
               keyStorePassword = tls.keyStorePassword,
-              trustStorePath = Path.of(tls.trustStorePath),
+              trustStorePath = tls.trustStorePath,
               trustStorePassword = tls.trustStorePassword,
             )
           },
