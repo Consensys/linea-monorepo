@@ -11,8 +11,8 @@ package maru.testutils
 import java.util.concurrent.CopyOnWriteArrayList
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
 import maru.core.SealedBeaconBlock
+import maru.p2p.GossipMessageType
 import maru.p2p.Message
-import maru.p2p.MessageType
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockHandler
 import maru.p2p.ValidationResult
@@ -29,12 +29,13 @@ class SpyingP2PNetwork(
   val p2pNetwork: P2PNetwork,
 ) : P2PNetwork {
   companion object {
-    private fun Message<*>.toBesuMessageData(): BesuMessageData {
-      require(this.type == MessageType.QBFT) {
+    private fun Message<*, *>.toBesuMessageData(): BesuMessageData {
+      require(this.type == GossipMessageType.QBFT) {
         "Unsupported message type: ${this.type}"
       }
       require(this.payload is BesuMessageData) {
-        "Message is QBFT, but its payload is of type: ${this.payload.javaClass}"
+        "Message is QBFT, but its payload is of type: ${this.payload
+          ?.javaClass}"
       }
       return this.payload as BesuMessageData
     }
@@ -57,16 +58,16 @@ class SpyingP2PNetwork(
 
   override fun stop(): SafeFuture<Unit> = SafeFuture.completedFuture(Unit)
 
-  override fun broadcastMessage(message: Message<*>): SafeFuture<Unit> {
+  override fun broadcastMessage(message: Message<*, GossipMessageType>): SafeFuture<Unit> {
     when (message.type) {
-      MessageType.QBFT -> {
+      GossipMessageType.QBFT -> {
         val decodedMessage = decodedMessage(message.toBesuMessageData())
         log.debug("Got new message {}", decodedMessage)
         emittedQbftMessages.add(decodedMessage)
         p2pNetwork.broadcastMessage(message)
       }
 
-      MessageType.BEACON_BLOCK -> emittedBlockMessages.add(message.payload as SealedBeaconBlock)
+      GossipMessageType.BEACON_BLOCK -> emittedBlockMessages.add(message.payload as SealedBeaconBlock)
     }
 
     return SafeFuture.completedFuture(Unit)

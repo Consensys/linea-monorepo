@@ -134,6 +134,7 @@ dependencyManagement {
       entry 'ssz'
       entry 'storage'
       entry 'p2p'
+      entry 'eth2'
     }
 
     dependencySet(group: 'org.apache.logging.log4j', version: '2.24.3') {

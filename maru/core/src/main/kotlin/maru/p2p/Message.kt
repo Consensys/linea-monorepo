@@ -8,42 +8,48 @@
  */
 package maru.p2p
 
-import maru.core.SealedBeaconBlock
-
 enum class Version : Comparable<Version> {
   V1,
 }
 
-enum class MessageType {
-  QBFT, // Won't be supported until Milestone 6
+enum class GossipMessageType : MessageType {
+  QBFT,
   BEACON_BLOCK,
 }
 
-data class Message<T : Any>(
-  val type: MessageType,
-  val version: Version = Version.V1,
-  val payload: T,
-) {
-  init {
-    when (type) {
-      MessageType.QBFT -> Unit // require(payload is BftMessage≤*>) Not adding this to avoid dependency on QBFT
-      MessageType.BEACON_BLOCK -> require(payload is SealedBeaconBlock)
-    }
-  }
+enum class RpcMessageType : MessageType {
+  STATUS(),
 }
 
-interface TopicIdGenerator {
-  fun topicId(
-    messageType: MessageType,
+sealed interface MessageType
+
+data class Message<TPayload, TMessageType : MessageType>(
+  val type: TMessageType,
+  val version: Version = Version.V1,
+  val payload: TPayload,
+)
+
+interface MessageIdGenerator {
+  fun id(
+    messageName: String,
     version: Version,
   ): String
 }
 
-class LineaTopicIdGenerator(
+class LineaMessageIdGenerator(
   private val chainId: UInt,
-) : TopicIdGenerator {
-  override fun topicId(
-    messageType: MessageType,
+) : MessageIdGenerator {
+  override fun id(
+    messageName: String,
     version: Version,
-  ): String = "/linea/$chainId/${messageType.toString().lowercase()}/$version"
+  ): String = "/linea/$chainId/${messageName.lowercase()}/$version"
+}
+
+class LineaRpcProtocolIdGenerator(
+  private val chainId: UInt,
+) : MessageIdGenerator {
+  override fun id(
+    messageName: String,
+    version: Version,
+  ): String = "/linea/req/$chainId/${messageName.lowercase()}/$version"
 }
