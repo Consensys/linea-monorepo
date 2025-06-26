@@ -174,7 +174,7 @@ func Digest(src io.Reader) (string, error) {
 }
 
 // RightPadWith copies `s` and returns a vector padded up to length `n` using
-// `padWith` as a filling value. The function panics if len(s) < n and returns
+// `padWith` as a filling value. The function panics if len(s) > n and returns
 // a copy of s if len(s) == n.
 func RightPadWith[T any](s []T, n int, padWith T) []T {
 	if len(s) > n {

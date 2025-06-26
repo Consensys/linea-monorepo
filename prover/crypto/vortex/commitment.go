@@ -40,9 +40,7 @@ func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatr
 		encodedMatrix = p.encodeRows(ps)
 	})
 	timeSisHashing := profiling.TimeIt(func() {
-		// colHashes stores concatenation of SIS+MiMC hashes of the columns
-		// if isSISAppliedForRound is true, otherwise it stores the MiMC hashes
-		// of the columns.
+		// colHashes stores concatenation of SIS hashes of the columns
 		colHashes = p.Key.TransversalHash(encodedMatrix)
 	})
 
