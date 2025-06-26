@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 	"github.com/ethereum/go-ethereum/core/vm"
 )
@@ -90,4 +91,34 @@ func CheckLastELemConsistency(comp *wizard.CompiledIOP, isActive ifaces.Column, 
 			),
 		),
 	)
+}
+
+// Multi16bitLimbAdd adds a uint64 to a multi-limb number represented as a slice of 16-bit field.Element.
+func Multi16bitLimbAdd(a []field.Element, carry uint64) []field.Element {
+	if len(a) == 0 {
+		utils.Panic("Multi16bitLimbAdd: zero limbs")
+	}
+
+	const (
+		bits = 16
+		mask = (1 << bits) - 1
+	)
+
+	res := make([]field.Element, len(a))
+	for i := len(a) - 1; i >= 0; i-- {
+		v := a[i].Uint64()
+		if v > mask {
+			utils.Panic("Multi16bitLimbAdd: a[%d]=%d exceeds %d bits", i, v, bits)
+		}
+
+		sum := v + carry
+		res[i].SetUint64(sum & mask)
+		carry = sum >> bits
+	}
+
+	if carry != 0 {
+		utils.Panic("Multi16bitLimbAdd: overflow adding %d to %v", carry, a)
+	}
+
+	return res
 }
