@@ -82,10 +82,11 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 		rootF := rootSv.Get(0)                                           // root as field element
 
 		// Append the isSISApplied flag
-		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
+		switch ctx.RoundStatus[round] {
+		case IsOnlyMiMCApplied:
 			noSisRoots = append(noSisRoots, types.Bytes32(rootF.Bytes()))
 			flagForNoSISRounds = append(flagForNoSISRounds, true)
-		} else if ctx.RoundStatus[round] == IsSISApplied {
+		case IsSISApplied:
 			sisRoots = append(sisRoots, types.Bytes32(rootF.Bytes()))
 			flagForSISRounds = append(flagForSISRounds, false)
 		}
@@ -192,9 +193,10 @@ func (ctx *Ctx) getYs(run wizard.Runtime) (ys [][]field.Element) {
 			ysRounds[i] = ysMap[name]
 		}
 		// conditionally append ysRounds to the SIS or no SIS list
-		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
+		switch ctx.RoundStatus[round] {
+		case IsOnlyMiMCApplied:
 			ysNoSIS = append(ysNoSIS, ysRounds)
-		} else if ctx.RoundStatus[round] == IsSISApplied {
+		case IsSISApplied:
 			ysSIS = append(ysSIS, ysRounds)
 		}
 	}
@@ -249,9 +251,10 @@ func (ctx *Ctx) RecoverSelectedColumns(run wizard.Runtime, entryList []int) [][]
 		numRowsForRound := ctx.getNbCommittedRows(round)
 		// conditionally append the numRowsForRound
 		// to the SIS or no SIS list
-		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
+		switch ctx.RoundStatus[round] {
+		case IsOnlyMiMCApplied:
 			numRowsPerNonSisRound = append(numRowsPerNonSisRound, numRowsForRound)
-		} else if ctx.RoundStatus[round] == IsSISApplied {
+		case IsSISApplied:
 			numRowsPerSisRound = append(numRowsPerSisRound, numRowsForRound)
 		}
 	}
