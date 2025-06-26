@@ -167,7 +167,7 @@ func Serialize(v any) (bytesOfV []byte, err error) {
 	// Pack the input value.
 	payload, errV := ser.PackValue(reflect.ValueOf(v))
 	if errV != nil {
-		return nil, newSerdeErrorf("could not pack the value: %w", err)
+		return nil, newSerdeErrorf("could not pack the value: %w", errV)
 	}
 
 	// Print any warnings (e.g., unexported fields).
@@ -622,13 +622,16 @@ func (s *Serializer) PackCompiledIOP(comp *wizard.CompiledIOP) (any, *serdeError
 		// reserve the back-reference before attempting at unpacking it. That
 		// way, the recursive attempts at packing will cache-hit without
 		// creating an infinite loop.
-		s.compiledIOPs[comp] = len(s.PackedObject.CompiledIOP)
+		n := len(s.PackedObject.CompiledIOP)
+		s.compiledIOPs[comp] = n
+		s.PackedObject.CompiledIOP = append(s.PackedObject.CompiledIOP, nil)
+
 		obj, err := s.PackStructObject(reflect.ValueOf(*comp))
 		if err != nil {
 			return nil, err.wrapPath("(compiled-IOP)")
 		}
 
-		s.PackedObject.CompiledIOP = append(s.PackedObject.CompiledIOP, obj)
+		s.PackedObject.CompiledIOP[n] = obj
 	}
 
 	return BackReference(s.compiledIOPs[comp]), nil
