@@ -49,7 +49,7 @@ function CommonLayout({
         <div className={styles.right}>
           <Header navData={navData} />
           <main>
-            <PageBack />
+            <PageBack isHomepage={pathname === "/"} />
             {pathname !== "/faq" && (
               <div className={styles["content-wrapper"]}>
                 <InternalNav hide={pathname === "/"} />

@@ -10,7 +10,8 @@
   display: none;
 
   @include bp("tablet") {
-    display: block;
+    display: flex;
+    flex-direction: column;
   }
 }
 
