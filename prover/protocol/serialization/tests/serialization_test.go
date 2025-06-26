@@ -379,7 +379,7 @@ func TestSerdeValue(t *testing.T) {
 			require.NoError(t, err)
 
 			unmarshalledDereferenced := reflect.ValueOf(unmarshaled).Elem().Interface()
-			if !test_utils.CompareExportedFields(testCases[i].V, unmarshalledDereferenced) {
+			if !test_utils.CompareExportedFields(testCases[i].V, unmarshalledDereferenced, true) {
 				t.Errorf("Mismatch in exported fields after full serde value")
 			}
 
@@ -448,7 +448,7 @@ func TestSerdeSampleStruct(t *testing.T) {
 	err = serialization.Deserialize(teamBytes, &deserializedTeam)
 	require.NoError(t, err)
 
-	if !test_utils.CompareExportedFields(team, deserializedTeam) {
+	if !test_utils.CompareExportedFields(team, deserializedTeam, true) {
 		t.Errorf("expected team and deserializedTeam to be equal")
 	}
 }
