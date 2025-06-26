@@ -7,7 +7,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -33,7 +33,7 @@ type GrandProduct struct {
 }
 
 type GrandProductParams struct {
-	Y field.Element
+	Y fext.Element
 }
 
 // NewGrandProduct creates a new instance of a GrandProduct query.
@@ -88,7 +88,7 @@ func NewGrandProduct(round int, inp map[int]*GrandProductInput, id ifaces.QueryI
 }
 
 // Constructor for grand product query parameters
-func NewGrandProductParams(y field.Element) GrandProductParams {
+func NewGrandProductParams(y fext.Element) GrandProductParams {
 	return GrandProductParams{Y: y}
 }
 
@@ -99,16 +99,16 @@ func (g GrandProduct) Name() ifaces.QueryID {
 
 // Updates a Fiat-Shamir state
 func (gp GrandProductParams) UpdateFS(fs hash.StateStorer) {
-	fiatshamir.Update(fs, gp.Y)
+	fiatshamir.UpdateExt(fs, gp.Y)
 }
 
 // Compute returns the result value of the [GrandProduct] query. It
 // should be run by a runtime with access to the query columns. i.e
 // either by a [wizard.ProverRuntime] or a [wizard.VerifierRuntime]
 // but then the involved columns should all be public.
-func (g GrandProduct) Compute(run ifaces.Runtime) field.Element {
+func (g GrandProduct) Compute(run ifaces.Runtime) fext.Element {
 
-	result := field.One()
+	result := fext.One()
 
 	for size := range g.Inputs {
 		for _, factor := range g.Inputs[size].Numerators {
@@ -116,7 +116,7 @@ func (g GrandProduct) Compute(run ifaces.Runtime) field.Element {
 			var (
 				numBoard          = factor.Board()
 				numeratorMetadata = numBoard.ListVariableMetadata()
-				numerator         []field.Element
+				numerator         []fext.Element
 			)
 
 			if len(numeratorMetadata) == 0 {
@@ -124,9 +124,8 @@ func (g GrandProduct) Compute(run ifaces.Runtime) field.Element {
 			}
 
 			if len(numeratorMetadata) > 0 {
-				numerator = column.EvalExprColumn(run, numBoard).IntoRegVecSaveAlloc()
+				numerator = column.EvalExprColumn(run, numBoard).IntoRegVecSaveAllocExt()
 			}
-
 			for k := range numerator {
 				result.Mul(&result, &numerator[k])
 			}
@@ -137,8 +136,8 @@ func (g GrandProduct) Compute(run ifaces.Runtime) field.Element {
 			var (
 				denBoard            = factor.Board()
 				denominatorMetadata = denBoard.ListVariableMetadata()
-				denominator         []field.Element
-				tmp                 = field.NewElement(1)
+				denominator         []fext.Element
+				tmp                 = fext.One()
 			)
 
 			if len(denominatorMetadata) == 0 {
@@ -146,7 +145,7 @@ func (g GrandProduct) Compute(run ifaces.Runtime) field.Element {
 			}
 
 			if len(denominatorMetadata) > 0 {
-				denominator = column.EvalExprColumn(run, denBoard).IntoRegVecSaveAlloc()
+				denominator = column.EvalExprColumn(run, denBoard).IntoRegVecSaveAllocExt()
 			}
 
 			for k := range denominator {

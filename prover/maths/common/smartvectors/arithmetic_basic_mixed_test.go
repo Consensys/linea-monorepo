@@ -44,6 +44,6 @@ func TestLinearCombination(t *testing.T) {
 	yPrime := EvalCoeffExt(foldedPolys, x)
 
 	if !y.Equal(&yPrime) {
-		t.Fatal("LinearCombinationExt")
+		t.Fatal("LinearCombinationMixed")
 	}
 }

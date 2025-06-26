@@ -4,8 +4,8 @@ import (
 	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -44,23 +44,23 @@ func (z *ZCtx) run(run *wizard.ProverRuntime) {
 
 	for i := range z.Zs {
 		var (
-			numerator   []field.Element
-			denominator []field.Element
+			numerator   []fext.Element
+			denominator []fext.Element
 		)
 
 		if packingArity*i < len(z.NumeratorFactors) {
-			numerator = column.EvalExprColumn(run, z.NumeratorFactorsBoarded[i]).IntoRegVecSaveAlloc()
+			numerator = column.EvalExprColumn(run, z.NumeratorFactorsBoarded[i]).IntoRegVecSaveAllocExt()
 		} else {
-			numerator = vector.Repeat(field.One(), z.Size)
+			numerator = vectorext.Repeat(fext.One(), z.Size)
 		}
 
 		if packingArity*i < len(z.DenominatorFactors) {
-			denominator = column.EvalExprColumn(run, z.DenominatorFactorsBoarded[i]).IntoRegVecSaveAlloc()
+			denominator = column.EvalExprColumn(run, z.DenominatorFactorsBoarded[i]).IntoRegVecSaveAllocExt()
 		} else {
-			denominator = vector.Repeat(field.One(), z.Size)
+			denominator = vectorext.Repeat(fext.One(), z.Size)
 		}
 
-		denominator = field.BatchInvert(denominator)
+		denominator = fext.BatchInvert(denominator)
 
 		for i := range denominator {
 			numerator[i].Mul(&numerator[i], &denominator[i])
@@ -69,7 +69,7 @@ func (z *ZCtx) run(run *wizard.ProverRuntime) {
 			}
 		}
 
-		run.AssignColumn(z.Zs[i].GetColID(), smartvectors.NewRegular(numerator))
+		run.AssignColumn(z.Zs[i].GetColID(), smartvectors.NewRegularExt(numerator))
 		run.AssignLocalPoint(z.ZOpenings[i].Name(), numerator[len(numerator)-1])
 	}
 }
@@ -84,7 +84,7 @@ type AssignPermutationGrandProduct struct {
 }
 
 func (a AssignPermutationGrandProduct) Run(run *wizard.ProverRuntime) {
-	y := field.One()
+	y := fext.One()
 	if a.IsPartial {
 		y = a.Query.Compute(run)
 	}

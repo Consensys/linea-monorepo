@@ -10,7 +10,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -39,12 +39,12 @@ type LogDerivativeSum struct {
 
 // the result of the global Sum
 type LogDerivSumParams struct {
-	Sum field.Element // the sum of all the ZOpenings from different [round,size].
+	Sum fext.Element // the sum of all the ZOpenings from different [round,size].
 }
 
 // Updates a Fiat-Shamir state
 func (l LogDerivSumParams) UpdateFS(fs hash.StateStorer) {
-	fiatshamir.Update(fs, l.Sum)
+	fiatshamir.UpdateExt(fs, l.Sum)
 }
 
 // NewLogDerivativeSum creates the new context LogDerivativeSum.
@@ -106,7 +106,7 @@ func (r LogDerivativeSum) Name() ifaces.QueryID {
 }
 
 // Constructor for the query parameters/result
-func NewLogDerivSumParams(sum field.Element) LogDerivSumParams {
+func NewLogDerivSumParams(sum fext.Element) LogDerivSumParams {
 	return LogDerivSumParams{Sum: sum}
 }
 
@@ -114,12 +114,12 @@ func NewLogDerivSumParams(sum field.Element) LogDerivSumParams {
 // should be run by a runtime with access to the query columns. i.e
 // either by a [wizard.ProverRuntime] or a [wizard.VerifierRuntime]
 // but then the involved columns should all be public.
-func (r LogDerivativeSum) Compute(run ifaces.Runtime) (field.Element, error) {
+func (r LogDerivativeSum) Compute(run ifaces.Runtime) (fext.Element, error) {
 
 	// compute the actual sum from the Numerator and Denominator
 	var (
 		err       error
-		actualSum = field.Zero()
+		actualSum = fext.Zero()
 		resLock   = &sync.Mutex{}
 		inputs    = []struct {
 			Num, Den *sym.Expression
@@ -170,7 +170,7 @@ func (r LogDerivativeSum) Compute(run ifaces.Runtime) (field.Element, error) {
 	})
 
 	if err != nil {
-		return field.Element{}, err
+		return fext.Element{}, err
 	}
 
 	return actualSum, nil
@@ -202,7 +202,7 @@ func (r LogDerivativeSum) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) 
 
 // computeLogDerivativeSumPair computes the log derivative sum for a couple
 // of numerator and denominator.
-func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, size int) (field.Element, error) {
+func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, size int) (fext.Element, error) {
 
 	var (
 		numBoard            = num.Board()
@@ -213,11 +213,11 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 		denominator         smartvectors.SmartVector
 		noNumerator         = len(numeratorMetadata) == 0
 		noDenominator       = len(denominatorMetadata) == 0
-		res                 field.Element
+		res                 fext.Element //TODO@yao: fext?
 	)
 
 	if noNumerator && noDenominator {
-		return field.NewElement(uint64(size)), nil
+		return fext.NewElement(uint64(size), 0, 0, 0), nil
 	}
 
 	if !noNumerator {
@@ -232,7 +232,7 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 			v := numC.Val()
 
 			if v.IsZero() {
-				return field.Zero(), nil
+				return fext.Zero(), nil
 			}
 
 			if v.IsOne() {
@@ -247,7 +247,7 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 
 		for d := range denominator.IterateCompact() {
 			if d.IsZero() {
-				return field.Zero(), errors.New("denominator is zero")
+				return fext.Zero(), errors.New("denominator is zero")
 			}
 		}
 	}
@@ -255,33 +255,33 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 	if noNumerator {
 
 		var (
-			denominatorWindow = smartvectors.Window(denominator)
-			res               = field.Zero()
+			denominatorWindow = smartvectors.WindowExt(denominator)
+			res               = fext.Zero()
 		)
 
-		denominatorWindow = field.BatchInvert(denominatorWindow)
+		denominatorWindow = fext.BatchInvert(denominatorWindow)
 		for i := range denominatorWindow {
 			if denominatorWindow[i].IsZero() {
-				return field.Element{}, errors.New("denominator is zero")
+				return fext.Element{}, errors.New("denominator is zero")
 			}
 			res.Add(&res, &denominatorWindow[i])
 		}
 
-		denominatorPadding, denominatorHasPadding := smartvectors.PaddingVal(denominator)
+		denominatorPadding, denominatorHasPadding := smartvectors.PaddingValExt(denominator)
 		if denominatorHasPadding {
 
 			if denominatorPadding.IsZero() {
-				return field.Zero(), fmt.Errorf("denominator padding is zero")
+				return fext.Zero(), fmt.Errorf("denominator padding is zero")
 			}
 
 			denominatorPadding.Inverse(&denominatorPadding)
 
 			var (
 				nbPadding        = denominator.Len() - len(denominatorWindow)
-				nbPaddingAsField field.Element
+				nbPaddingAsField fext.Element
 			)
 
-			nbPaddingAsField.SetInt64(int64(nbPadding))
+			fext.SetInt64(&nbPaddingAsField, int64(nbPadding))
 			denominatorPadding.Mul(&denominatorPadding, &nbPaddingAsField)
 			res.Add(&res, &denominatorPadding)
 		}
@@ -292,23 +292,23 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 	if noDenominator {
 
 		var (
-			numeratorWindow = smartvectors.Window(numerator)
-			res             = field.Zero()
+			numeratorWindow = smartvectors.WindowExt(numerator)
+			res             = fext.Zero()
 		)
 
 		for i := range numeratorWindow {
 			res.Add(&res, &numeratorWindow[i])
 		}
 
-		numeratorPadding, numeratorHasPadding := smartvectors.PaddingVal(numerator)
+		numeratorPadding, numeratorHasPadding := smartvectors.PaddingValExt(numerator)
 		if numeratorHasPadding {
 
 			var (
 				nbPadding        = numerator.Len() - len(numeratorWindow)
-				nbPaddingAsField field.Element
+				nbPaddingAsField fext.Element
 			)
 
-			nbPaddingAsField.SetInt64(int64(nbPadding))
+			fext.SetInt64(&nbPaddingAsField, int64(nbPadding))
 			numeratorPadding.Mul(&numeratorPadding, &nbPaddingAsField)
 			res.Add(&res, &numeratorPadding)
 		}
@@ -333,26 +333,26 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 			var (
 				start              = offset
 				stop               = offset + len(window)
-				denominatorNonZero = make([]field.Element, 0, len(window))
-				numeratorNonZero   = make([]field.Element, 0, len(window))
+				denominatorNonZero = make([]fext.Element, 0, len(window))
+				numeratorNonZero   = make([]fext.Element, 0, len(window))
 			)
 
 			for i := start; i < stop; i++ {
 
 				if denominator.GetPtr(i).IsZero() {
-					return field.Element{}, errors.New("denominator is zero")
+					return fext.Element{}, errors.New("denominator is zero")
 				}
 
 				if !numerator.GetPtr(i).IsZero() {
-					denominatorNonZero = append(denominatorNonZero, denominator.Get(i))
-					numeratorNonZero = append(numeratorNonZero, numerator.Get(i))
+					denominatorNonZero = append(denominatorNonZero, denominator.GetExt(i))
+					numeratorNonZero = append(numeratorNonZero, numerator.GetExt(i))
 				}
 			}
 
-			denominatorNonZero = field.BatchInvert(denominatorNonZero)
+			denominatorNonZero = fext.BatchInvert(denominatorNonZero)
 
 			for i := range denominatorNonZero {
-				var tmp field.Element
+				var tmp fext.Element
 				tmp.Mul(&denominatorNonZero[i], &numeratorNonZero[i])
 				res.Add(&res, &tmp)
 			}
@@ -370,27 +370,27 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 	// The implementation is based on the following observation: the numerator
 	// is always full of zeroes.
 	var (
-		denominatorNonZero = make([]field.Element, 0, denominator.Len()/16)
-		numeratorNonZero   = make([]field.Element, 0, numerator.Len()/16)
+		denominatorNonZero = make([]fext.Element, 0, denominator.Len()/16)
+		numeratorNonZero   = make([]fext.Element, 0, numerator.Len()/16)
 	)
 
 	for i := 0; i < numerator.Len(); i++ {
 
 		if denominator.GetPtr(i).IsZero() {
-			return field.Element{}, errors.New("denominator is zero")
+			return fext.Element{}, errors.New("denominator is zero")
 		}
 
 		if !numerator.GetPtr(i).IsZero() {
 
-			denominatorNonZero = append(denominatorNonZero, denominator.Get(i))
-			numeratorNonZero = append(numeratorNonZero, numerator.Get(i))
+			denominatorNonZero = append(denominatorNonZero, denominator.GetExt(i))
+			numeratorNonZero = append(numeratorNonZero, numerator.GetExt(i))
 		}
 	}
 
-	denominatorNonZero = field.BatchInvert(denominatorNonZero)
+	denominatorNonZero = fext.BatchInvert(denominatorNonZero)
 
 	for i := range denominatorNonZero {
-		var tmp field.Element
+		var tmp fext.Element
 		tmp.Mul(&denominatorNonZero[i], &numeratorNonZero[i])
 		res.Add(&res, &tmp)
 	}

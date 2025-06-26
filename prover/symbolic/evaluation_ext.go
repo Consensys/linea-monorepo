@@ -1,10 +1,11 @@
 package symbolic
 
 import (
+	"sync"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"sync"
 
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -338,6 +339,7 @@ func (b *ExpressionBoard) evaluateSingleThreadMixed(inputs []sv.SmartVector, p .
 
 			node := &nodeAssignment[level][pil]
 			nodeAssignment.evalMixed(node, pool)
+
 		}
 	}
 
@@ -369,6 +371,5 @@ func (b *ExpressionBoard) evaluateSingleThreadMixed(inputs []sv.SmartVector, p .
 			}
 		}
 	}
-
 	return resBuf
 }

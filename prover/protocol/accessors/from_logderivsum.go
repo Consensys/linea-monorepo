@@ -36,8 +36,8 @@ func (l *FromLogDerivSumAccessor) GetValBase(run ifaces.Runtime) (field.Element,
 }
 
 func (l *FromLogDerivSumAccessor) GetValExt(run ifaces.Runtime) fext.Element {
-	//TODO implement me
-	panic("implement me")
+	params := run.GetParams(l.Q.ID).(query.LogDerivSumParams)
+	return params.Sum
 }
 
 func (l *FromLogDerivSumAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {
@@ -69,7 +69,7 @@ func (l *FromLogDerivSumAccessor) String() string {
 // GetVal implements [ifaces.Accessor]
 func (l *FromLogDerivSumAccessor) GetVal(run ifaces.Runtime) field.Element {
 	params := run.GetParams(l.Q.ID).(query.LogDerivSumParams)
-	return params.Sum
+	return params.Sum.B0.A0
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]

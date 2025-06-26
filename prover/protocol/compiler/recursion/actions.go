@@ -3,7 +3,6 @@ package recursion
 import (
 	"fmt"
 
-	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	vCom "github.com/consensys/linea-monorepo/prover/crypto/vortex"
@@ -68,10 +67,8 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 	for i := range run.Spec.PublicInputs {
 		pubs = append(pubs, run.Spec.PublicInputs[i].Acc.GetVal(run))
 	}
-
-	finalFSBytes := run.FS.State()
-	var finalState koalabear.Element
-	finalState.SetBytes(finalFSBytes)
+	var finalState field.Element
+	finalState.SetBytes(run.FS.State())
 	return Witness{
 		Proof:             run.ExtractProof(),
 		CommittedMatrices: committedMatrices,

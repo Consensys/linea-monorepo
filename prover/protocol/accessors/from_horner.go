@@ -36,6 +36,12 @@ func (l *FromHornerAccessorFinalValue) String() string {
 // GetVal implements [ifaces.Accessor]
 func (l *FromHornerAccessorFinalValue) GetVal(run ifaces.Runtime) field.Element {
 	params := run.GetParams(l.Q.ID).(query.HornerParams)
+	return params.FinalResult.B0.A0
+}
+
+// GetVal implements [ifaces.Accessor]
+func (l *FromHornerAccessorFinalValue) GetValExt(run ifaces.Runtime) fext.Element {
+	params := run.GetParams(l.Q.ID).(query.HornerParams)
 	return params.FinalResult
 }
 
@@ -56,11 +62,6 @@ func (l *FromHornerAccessorFinalValue) Round() int {
 }
 
 func (l *FromHornerAccessorFinalValue) GetValBase(run ifaces.Runtime) (field.Element, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (l *FromHornerAccessorFinalValue) GetValExt(run ifaces.Runtime) fext.Element {
 	//TODO implement me
 	panic("implement me")
 }

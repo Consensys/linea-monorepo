@@ -26,7 +26,7 @@ type assignLocalPointProverAction struct {
 }
 
 func (a *assignLocalPointProverAction) Run(run *wizard.ProverRuntime) {
-	y := run.QueriesParams.MustGet(a.qID).(query.LocalOpeningParams).BaseY
+	y := run.QueriesParams.MustGet(a.qID).(query.LocalOpeningParams).ExtY
 	run.AssignLocalPoint(a.newQ, y)
 }
 

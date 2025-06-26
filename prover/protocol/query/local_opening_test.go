@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -31,7 +32,7 @@ func TestLocalOpening(t *testing.T) {
 		run.AssignColumn("P", smartvectors.NewRegular(p))
 
 		for i := range p {
-			run.AssignLocalPoint(ifaces.QueryIDf("Q_%v", i), p[i])
+			run.AssignLocalPoint(ifaces.QueryIDf("Q_%v", i), fext.NewFromBase(p[i]))
 		}
 	}
 

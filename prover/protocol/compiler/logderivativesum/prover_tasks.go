@@ -1,10 +1,11 @@
 package logderivativesum
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"runtime/debug"
 	"sync"
+
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
@@ -339,16 +340,16 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 
 			svDenominator := column.EvalExprColumn(run, z.ZDenominatorBoarded[frag])
 			if sv.IsBase(svDenominator) {
-				var numerator []field.Element
-				denominator := svDenominator.IntoRegVecSaveAlloc()
-				packedZ := field.BatchInvert(denominator)
+				var numerator []fext.Element
+				denominator := svDenominator.IntoRegVecSaveAllocExt()
+				packedZ := fext.BatchInvert(denominator)
 				if len(numeratorMetadata) == 0 {
-					numerator = vector.Repeat(field.One(), z.Size)
+					numerator = vectorext.Repeat(fext.One(), z.Size)
 				}
 
 				if len(numeratorMetadata) > 0 {
 					evalResult := column.EvalExprColumn(run, z.ZNumeratorBoarded[frag])
-					numerator, _ = evalResult.IntoRegVecSaveAllocBase()
+					numerator = evalResult.IntoRegVecSaveAllocExt()
 				}
 
 				for k := range packedZ {
@@ -358,7 +359,7 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 					}
 				}
 
-				run.AssignColumn(z.Zs[frag].GetColID(), sv.NewRegular(packedZ))
+				run.AssignColumn(z.Zs[frag].GetColID(), sv.NewRegularExt(packedZ))
 				run.AssignLocalPoint(z.ZOpenings[frag].ID, packedZ[len(packedZ)-1])
 			} else {
 				// we are dealing with extension denominators

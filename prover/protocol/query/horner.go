@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -83,7 +84,7 @@ type HornerParamsPart struct {
 type HornerParams struct {
 	// Final result is the result of summing the Horner parts for every
 	// queries.
-	FinalResult field.Element
+	FinalResult fext.Element
 	// Parts are the parameters of the Horner parts
 	Parts []HornerParamsPart
 }
@@ -155,11 +156,11 @@ func (p *HornerParams) SetResult(run ifaces.Runtime, q Horner) *HornerParams {
 // from the (possibly incomplete) [HornerParams]. The function returns
 // the list of the N1 values and the final result of the Horner evaluation
 // query.
-func (p *HornerParams) GetResult(run ifaces.Runtime, q Horner) (n1s []int, finalResult field.Element) {
+func (p *HornerParams) GetResult(run ifaces.Runtime, q Horner) (n1s []int, finalResult fext.Element) {
 
 	// note: this is ineffective as the final result is already allocated
 	// and assigned with 0. The line is here for clarity.
-	finalResult = field.Zero()
+	finalResult = fext.Zero()
 	n1s = make([]int, len(p.Parts))
 
 	if len(q.Parts) != len(p.Parts) {
@@ -171,8 +172,8 @@ func (p *HornerParams) GetResult(run ifaces.Runtime, q Horner) (n1s []int, final
 		var (
 			n0         = p.Parts[i].N0
 			res, count = getResultOfParts(run, &part)
-			x          = part.X.GetVal(run)
-			xN0        = new(field.Element).Exp(x, big.NewInt(int64(n0)))
+			x          = part.X.GetValExt(run)
+			xN0        = new(fext.Element).Exp(x, big.NewInt(int64(n0)))
 		)
 
 		res.Mul(&res, xN0)
@@ -190,14 +191,14 @@ func (p *HornerParams) GetResult(run ifaces.Runtime, q Horner) (n1s []int, final
 
 // getResultOfParts computes the result of a part i of the [HornerQuery]. It
 // returns the result of the evaluation and the selector count.
-func getResultOfParts(run ifaces.Runtime, q *HornerPart) (field.Element, int) {
+func getResultOfParts(run ifaces.Runtime, q *HornerPart) (fext.Element, int) {
 
 	var (
-		datas     = [][]field.Element{}
-		selectors = [][]field.Element{}
+		datas     = [][]fext.Element{}
+		selectors = [][]field.Element{} //TODO@yao:field?
 		count     = 0
-		x         = q.X.GetVal(run)
-		acc       = field.Zero()
+		x         = q.X.GetValExt(run)
+		acc       = fext.Zero()
 		size      = 0
 	)
 
@@ -205,7 +206,7 @@ func getResultOfParts(run ifaces.Runtime, q *HornerPart) (field.Element, int) {
 
 		var (
 			board    = q.Coefficients[coor].Board()
-			data     = column.EvalExprColumn(run, board).IntoRegVecSaveAlloc()
+			data     = column.EvalExprColumn(run, board).IntoRegVecSaveAllocExt()
 			selector = q.Selectors[coor].GetColAssignment(run).IntoRegVecSaveAlloc()
 		)
 
@@ -247,7 +248,7 @@ func (h *Horner) Name() ifaces.QueryID {
 // FS with the parameters of the query.
 func (h HornerParams) UpdateFS(fs hash.StateStorer) {
 
-	fiatshamir.Update(fs, h.FinalResult)
+	fiatshamir.UpdateExt(fs, h.FinalResult)
 
 	for _, part := range h.Parts {
 		fiatshamir.Update(fs,

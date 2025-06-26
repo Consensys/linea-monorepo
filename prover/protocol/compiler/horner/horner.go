@@ -179,7 +179,7 @@ func (a assignHornerCtx) Run(run *wizard.ProverRuntime) {
 
 	var (
 		params = run.GetHornerParams(a.Q.ID)
-		res    = field.Zero()
+		res    = fext.Zero()
 	)
 
 	for i, part := range a.Q.Parts {
@@ -188,30 +188,30 @@ func (a assignHornerCtx) Run(run *wizard.ProverRuntime) {
 			arity        = len(part.Selectors)
 			datas        = make([]smartvectors.SmartVector, arity)
 			selectors    = make([]smartvectors.SmartVector, arity)
-			x            = part.X.GetVal(run)
+			x            = part.X.GetValExt(run)
 			n0           = params.Parts[i].N0
 			count        = 0
 			numRow       = part.Size()
-			acc          = field.Zero()
-			accumulators = make([][]field.Element, arity)
+			acc          = fext.Zero()
+			accumulators = make([][]fext.Element, arity)
 		)
 
 		for k := 0; k < arity; k++ {
 			board := part.Coefficients[k].Board()
 			datas[k] = column.EvalExprColumn(run, board)
 			selectors[k] = part.Selectors[k].GetColAssignment(run)
-			accumulators[k] = make([]field.Element, numRow)
+			accumulators[k] = make([]fext.Element, numRow)
 		}
 
 		for row := numRow - 1; row >= 0; row-- {
 			for k := 0; k < arity; k++ {
 
-				sel := selectors[k].Get(row)
+				sel := selectors[k].GetExt(row)
 				if sel.IsOne() {
 					count++
 				}
 
-				acc = computeMicroAccumulate(selectors[k].Get(row), acc, x, datas[k].Get(row))
+				acc = computeMicroAccumulate(selectors[k].GetExt(row), acc, x, datas[k].GetExt(row))
 				accumulators[k][row] = acc
 			}
 		}
@@ -222,14 +222,14 @@ func (a assignHornerCtx) Run(run *wizard.ProverRuntime) {
 		}
 
 		for k := 0; k < arity; k++ {
-			run.AssignColumn(a.AccumulatingCols[i][k].GetColID(), smartvectors.NewRegular(accumulators[k]))
+			run.AssignColumn(a.AccumulatingCols[i][k].GetColID(), smartvectors.NewRegularExt(accumulators[k]))
 		}
 
 		tmp := accumulators[arity-1][0]
 		run.AssignLocalPoint(a.LocOpenings[i].ID, tmp)
 
 		if n0 > 0 {
-			xN0 := new(field.Element).Exp(x, big.NewInt(int64(n0)))
+			xN0 := new(fext.Element).Exp(x, big.NewInt(int64(n0)))
 			tmp.Mul(&tmp, xN0)
 		}
 
@@ -272,7 +272,7 @@ func (c *checkHornerResult) Run(run wizard.Runtime) error {
 	var (
 		hornerQuery  = c.Q
 		hornerParams = run.GetHornerParams(hornerQuery.ID)
-		res          = field.Zero()
+		res          = fext.Zero()
 	)
 
 	// This loop is responsible for checking that the final result is correctly
@@ -280,13 +280,13 @@ func (c *checkHornerResult) Run(run wizard.Runtime) error {
 	for i, lo := range c.LocOpenings {
 
 		var (
-			tmp = run.GetLocalPointEvalParams(lo.ID).BaseY
+			tmp = run.GetLocalPointEvalParams(lo.ID).ExtY
 			n0  = hornerParams.Parts[i].N0
-			x   = hornerQuery.Parts[i].X.GetVal(run)
+			x   = hornerQuery.Parts[i].X.GetValExt(run)
 		)
 
 		if n0 > 0 {
-			xN0 := new(field.Element).Exp(x, big.NewInt(int64(n0)))
+			xN0 := new(fext.Element).Exp(x, big.NewInt(int64(n0)))
 			tmp.Mul(&tmp, xN0)
 		}
 
@@ -381,14 +381,14 @@ func microAccumulate(sel, acc, x, p any) *sym.Expression {
 	)
 }
 
-func computeMicroAccumulate(sel, acc, x, p field.Element) field.Element {
+func computeMicroAccumulate(sel, acc, x, p fext.Element) fext.Element {
 
 	if sel.IsZero() {
 		return acc
 	}
 
 	if sel.IsOne() {
-		var tmp field.Element
+		var tmp fext.Element
 		tmp.Mul(&x, &acc)
 		tmp.Add(&tmp, &p)
 		return tmp

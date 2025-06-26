@@ -176,8 +176,7 @@ func (r *RegularExt) IntoRegVecSaveAllocBase() ([]field.Element, error) {
 func (r *RegularExt) IntoRegVecSaveAllocExt() []fext.Element {
 	temp := make([]fext.Element, r.Len())
 	for i := 0; i < r.Len(); i++ {
-		elem, _ := r.GetBase(i)
-		fext.SetFromBase(&temp[i], &elem)
+		temp[i] = r.GetExt(i)
 	}
 	return temp
 }

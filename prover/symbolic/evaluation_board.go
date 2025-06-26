@@ -98,7 +98,6 @@ func (b boardAssignment) eval(na *nodeAssignment, pool mempool.MemPool) {
 	}
 
 	na.Value = na.Node.Operator.EvaluateMixed(smv, pool)
-
 	for i := range val {
 		b.incParentKnownCountOf(val[i], pool, false)
 	}

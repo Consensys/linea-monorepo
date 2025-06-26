@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	logderiv "github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -63,7 +63,7 @@ func TestLogDerivativeSum(t *testing.T) {
 		run.AssignColumn("Den_1", smartvectors.ForTest(2, 3, 7, 9))
 		run.AssignColumn("Den_2", smartvectors.ForTest(5, 6, 1, 1))
 
-		run.AssignLogDerivSum("LogDerivSum_Test", field.NewElement(8))
+		run.AssignLogDerivSum("LogDerivSum_Test", fext.NewElement(8, 0, 0, 0))
 
 	}
 
@@ -121,7 +121,7 @@ func TestLogDerivativeSumMixed(t *testing.T) {
 		run.AssignColumn("Den_1", smartvectors.ForTestFromQuads(2, 3, 7, 9, 11, 13, 17, 19))
 		run.AssignColumn("Den_2", smartvectors.ForTestFromQuads(5, 6, 1, 1, 2, 3, 4, 5))
 
-		run.AssignLogDerivSum("LogDerivSum_Test", field.NewElement(8))
+		run.AssignLogDerivSum("LogDerivSum_Test", fext.NewElement(8, 0, 0, 0))
 
 	}
 
@@ -179,7 +179,7 @@ func TestLogDerivativeSumBogdan(t *testing.T) {
 		run.AssignColumn("Den_1", smartvectors.ForTest(2, 3))
 		run.AssignColumn("Den_2", smartvectors.ForTest(5, 6))
 
-		run.AssignLogDerivSum("LogDerivSum_Test", field.NewElement(8))
+		run.AssignLogDerivSum("LogDerivSum_Test", fext.NewElement(8, 0, 0, 0))
 
 	}
 
