@@ -67,13 +67,14 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 	for i := range run.Spec.PublicInputs {
 		pubs = append(pubs, run.Spec.PublicInputs[i].Acc.GetVal(run))
 	}
-
+	var finalState field.Element
+	finalState.SetBytes(run.FS.State())
 	return Witness{
 		Proof:             run.ExtractProof(),
 		CommittedMatrices: committedMatrices,
 		SisHashes:         sisHashes,
 		Trees:             trees,
-		FinalFS:           run.FS.State()[0],
+		FinalFS:           finalState,
 		Pub:               pubs,
 	}
 }
