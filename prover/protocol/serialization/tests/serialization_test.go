@@ -14,6 +14,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
@@ -317,6 +319,50 @@ func TestSerdeValue(t *testing.T) {
 		{
 			Name: "frontend-variables",
 			V:    frontend.Variable(-10),
+		},
+		{
+			Name: "two-wiop-in-a-struct",
+			V: func() any {
+
+				res := struct {
+					A, B *wizard.CompiledIOP
+				}{
+					A: wizard.NewCompiledIOP(),
+					B: wizard.NewCompiledIOP(),
+				}
+
+				res.A.InsertColumn(0, "a", 16, column.Committed)
+				res.B.InsertColumn(0, "b", 16, column.Committed)
+
+				return res
+			}(),
+		},
+		{
+			Name: "recursion",
+			V: func() any {
+
+				wiop := wizard.NewCompiledIOP()
+				a := wiop.InsertCommit(0, "a", 1<<10)
+				wiop.InsertUnivariate(0, "u", []ifaces.Column{a})
+
+				wizard.ContinueCompilation(wiop,
+					vortex.Compile(
+						2,
+						vortex.WithOptionalSISHashingThreshold(0),
+						vortex.ForceNumOpenedColumns(2),
+						vortex.PremarkAsSelfRecursed(),
+					),
+				)
+
+				rec := wizard.NewCompiledIOP()
+				recursion.DefineRecursionOf(rec, wiop, recursion.Parameters{
+					MaxNumProof: 1,
+					WithoutGkr:  true,
+					Name:        "recursion",
+				})
+
+				return rec
+			}(),
 		},
 	}
 
