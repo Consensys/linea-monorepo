@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
@@ -23,6 +24,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/sirupsen/logrus"
@@ -475,6 +477,18 @@ func (c *ConglomeratorCompilation) RunGnark(api frontend.API, run wizard.GnarkRu
 	api.AssertIsEqual(allGrandProduct, 1)
 	api.AssertIsEqual(allHornerSum, 0)
 	api.AssertIsEqual(allLogDerivativeSum, 0)
+}
+
+// BubbleUpPublicInput bubbles up the public inputs of a given name.
+func (c *ConglomeratorCompilation) BubbleUpPublicInput(name string) wizard.PublicInput {
+
+	pubInputSum := symbolic.NewConstant(0)
+	for i := 0; i < c.MaxNbProofs; i++ {
+		subPubInput := c.Recursion.GetPublicInputAccessorOfInstance(c.Wiop, preRecursionPrefix+name, i)
+		pubInputSum = symbolic.Add(pubInputSum, subPubInput)
+	}
+
+	return c.Wiop.InsertPublicInput(name, accessors.NewFromExpression(pubInputSum, name+"_SUMMATION_ACCESSOR"))
 }
 
 // Prove is the main entry point for the prover. It takes a compiled IOP and

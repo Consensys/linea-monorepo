@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 )
 
 // GetTestZkEVM returns a ZkEVM object configured for testing.
@@ -38,6 +39,8 @@ func NewLimitlessZkEVM(cfg *config.Config) *LimitlessZkEVM {
 		}
 		dw = distributed.DistributeWizard(zkevm.WizardIOP, disc).CompileSegments().Conglomerate(20)
 	)
+
+	decorateWithPublicInputs(dw.CompiledConglomeration)
 
 	return &LimitlessZkEVM{
 		Zkevm:      zkevm,
@@ -192,5 +195,36 @@ func GetAffinities(z *ZkEvm) [][]column.Natural {
 			z.WizardIOP.Columns.GetHandle("mmio.MMIO_STAMP").(column.Natural),
 			z.WizardIOP.Columns.GetHandle("mmu.STAMP").(column.Natural),
 		},
+	}
+}
+
+// decorateWithPublicInputs decorates the [LimitlessZkEVM] with the public inputs from
+// the initial zkevm.
+func decorateWithPublicInputs(cong *distributed.ConglomeratorCompilation) {
+
+	publicInputList := []string{
+		publicInput.DataNbBytes,
+		publicInput.DataChecksum,
+		publicInput.L2MessageHash,
+		publicInput.InitialStateRootHash,
+		publicInput.FinalStateRootHash,
+		publicInput.InitialBlockNumber,
+		publicInput.FinalBlockNumber,
+		publicInput.InitialBlockTimestamp,
+		publicInput.FinalBlockTimestamp,
+		publicInput.FirstRollingHashUpdate_0,
+		publicInput.FirstRollingHashUpdate_1,
+		publicInput.LastRollingHashUpdate_0,
+		publicInput.LastRollingHashUpdate_1,
+		publicInput.FirstRollingHashUpdateNumber,
+		publicInput.LastRollingHashNumberUpdate,
+		publicInput.ChainID,
+		publicInput.NBytesChainID,
+		publicInput.L2MessageServiceAddrHi,
+		publicInput.L2MessageServiceAddrLo,
+	}
+
+	for _, name := range publicInputList {
+		cong.BubbleUpPublicInput(name)
 	}
 }
