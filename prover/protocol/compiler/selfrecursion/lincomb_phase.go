@@ -41,7 +41,7 @@ func (ctx *SelfRecursionCtx) RowLinearCombinationPhase() {
 func (ctx *SelfRecursionCtx) defineYs() {
 	var (
 		rangesNonSis = []ifaces.ColID{}
-		rangesSis = []ifaces.ColID{}
+		rangesSis    = []ifaces.ColID{}
 	)
 	// Includes the precomputed colIds
 	if ctx.VortexCtx.IsNonEmptyPrecomputed() {

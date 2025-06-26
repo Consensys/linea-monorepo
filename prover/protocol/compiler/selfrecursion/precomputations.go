@@ -128,7 +128,7 @@ func (ctx *SelfRecursionCtx) RegistersAh() {
 			continue
 		}
 	}
-		ctx.Columns.Ah = ah
+	ctx.Columns.Ah = ah
 }
 
 // Returns the laid out keys

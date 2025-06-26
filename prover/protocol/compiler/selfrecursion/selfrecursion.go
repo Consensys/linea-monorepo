@@ -11,9 +11,7 @@ func SelfRecurse(comp *wizard.CompiledIOP) {
 
 	logrus.Trace("started self-recursion compiler")
 	defer logrus.Trace("finished self-recursion compiler")
-	// ToDo: Split into two sub contex, namely lincombContext and columnOpeningContext
 	ctx := NewSelfRecursionCxt(comp)
-	// To be shifted to columnOpeningPhase
 	ctx.Precomputations()
 	// the round-by-round commitment phase is implicit here
 	ctx.RowLinearCombinationPhase()

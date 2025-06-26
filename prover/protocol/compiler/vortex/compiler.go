@@ -181,22 +181,29 @@ type Ctx struct {
 	// for computing the leaves of the Merkle tree.
 	ApplySISHashThreshold int
 	RoundStatus           []roundStatus
-
+	// Committed rows count for both SIS and non-SIS rounds
 	CommittedRowsCount int
 	// Committed rows count for the SIS rounds only
-	CommittedRowsCountSIS   int
-	NumCols                 int
-	MaxCommittedRound       int
-	MaxCommittedRoundSIS    int
+	CommittedRowsCountSIS int
+	// Number of columns in the Vortex matrix, i.e., the
+	// length of each column to be committed to. Recall,
+	// the rows of the vortex matrix are the
+	// zkEVM columns.
+	NumCols int
+	// Maximum round number (including both SIS and non-SIS rounds)
+	MaxCommittedRound int
+	// Maximum round number for SIS rounds
+	MaxCommittedRoundSIS int
+	// Maximum round number for non-SIS rounds
 	MaxCommittedRoundNonSIS int
-	VortexParams            *vortex.Params
-	SisParams               *ringsis.Params
+	// The vortex parameters
+	VortexParams *vortex.Params
+	// The SIS hashing parameters
+	SisParams *ringsis.Params
 	// Optional parameter
 	NumOpenedCol int
 
 	// By rounds commitments
-	// Todo: To remove it completely after the change for
-	// optional sis hasing is complete for self recursion
 	CommitmentsByRounds collection.VecVec[ifaces.ColID]
 	// SIS round commitments
 	CommitmentsByRoundsSIS collection.VecVec[ifaces.ColID]
@@ -229,11 +236,11 @@ type Ctx struct {
 		Ualpha ifaces.Column
 		// Random column selection
 		Q coin.Info
-		// Opened columns
+		// Opened columns, to be used in the Vortex compilation
 		OpenedColumns []ifaces.Column
-		// Opened SIS columns
+		// Opened SIS columns, to be used in the Self recursion compilation
 		OpenedSISColumns []ifaces.Column
-		// Opened non-SIS columns
+		// Opened non-SIS columns, to be used in the Self recursion compilation
 		OpenedNonSISColumns []ifaces.Column
 		// MerkleProofs
 		// We represents all the Merkle proof as specfied here:
@@ -442,7 +449,7 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 	} else {
 		ctx.RoundStatus = append(ctx.RoundStatus, IsSISApplied)
 		ctx.CommitmentsByRoundsSIS.AppendToInner(round, coms...)
-		// Increase the number of rows
+		// Increase the number of SIS round rows
 		ctx.CommittedRowsCountSIS += len(coms)
 		ctx.MaxCommittedRoundSIS = utils.Max(ctx.MaxCommittedRoundSIS, round)
 	}

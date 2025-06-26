@@ -39,7 +39,7 @@ func testCaseGenerator() []testCase {
 		numPrecomputedsSIS   = 10
 		// variables for testing if we have all Non-SIS rounds
 		nPolsMultiRoundNoSIS = []int{7, 8, 9, 5}
-		// variables for testing if we have all Non-SIS rounds
+		// variables for testing if we have all SIS rounds
 		nPolsMultiRoundSIS = []int{25, 12, 14, 16}
 		// variables for testing if we have an empty round
 		nPolsMultiRoundEmpty = []int{12, 0, 12, 8}
@@ -478,7 +478,6 @@ func testCaseGenerator() []testCase {
 	})
 	return tc
 }
-
 
 func TestSelfRecursionOpsSisSingleLayered(t *testing.T) {
 	// Mute the logs

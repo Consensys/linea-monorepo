@@ -17,9 +17,10 @@ import (
 type StackedColumn struct {
 	// Column is the built column
 	Column column.Natural
-	// Source is the list of columns to stack.
-	// If the number of columns is not a power of two,
-	// we pad with const zero valued column to the next power of two.
+	// Source is the list of columns to stack. All of them should have the
+	// same number of rows. If after stacking all the rows, the total number of
+	// rows is not a power of two, then
+	// we pad with zeros up to the next power of two.
 	Source []ifaces.Column
 }
 

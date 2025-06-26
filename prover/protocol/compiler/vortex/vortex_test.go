@@ -22,6 +22,7 @@ func TestCompiler(t *testing.T) {
 		nPols   = 16
 		rows    = make([]ifaces.Column, nPols)
 		// variables for multi-round
+		// Threshold for SIS hashing is 10, so we have 2 rounds with SIS and 2 without
 		nPolsMultiRound = []int{14, 8, 9, 16}
 		numRounds       = 4
 		rowsMultiRound  = make([][]ifaces.Column, numRounds)

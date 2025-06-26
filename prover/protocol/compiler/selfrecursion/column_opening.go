@@ -199,12 +199,11 @@ func (a *CollapsingProverAction) Run(run *wizard.ProverRuntime) {
 		roundStartAt += len(comsInRoundI)
 	}
 
-
 	colPowT := accessors.NewExponent(a.Ctx.Coins.Collapse, a.Ctx.VortexCtx.NbColsToOpen()).GetVal(run)
 	eDual := smartvectors.PolyEval(subDuals, colPowT)
 
 	run.AssignColumn(a.EDualID, eDual)
-	
+
 }
 
 type CollapsingVerifierAction struct {
@@ -263,15 +262,6 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 
 	// Consistency check between the collapsed preimage and UalphaQ
 	{
-		uAlphaQEval := functionals.CoeffEval(
-			ctx.Comp,
-			ctx.constencyUalphaQPreimageLeft(),
-			ctx.Coins.Collapse,
-			ctx.Columns.UalphaQ,
-		)
-
-		// The collapsed preimage for the non SIS rounds
-		// Computed only if there are non zero number of non SIS rounds
 		var (
 			// The random linear combination of the collapsed preimage
 			// for the non SIS rounds
@@ -282,6 +272,15 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			offset       = 0
 			preImageEval ifaces.Accessor
 		)
+		// Compute the collapsed value of uAlphaQ
+		uAlphaQEval := functionals.CoeffEval(
+			ctx.Comp,
+			ctx.constencyUalphaQPreimageLeft(),
+			ctx.Coins.Collapse,
+			ctx.Columns.UalphaQ,
+		)
+		// The collapsed preimage for the non SIS rounds
+		// Computed only if there are non-zero number of non SIS rounds
 		if len(ctx.MIMCMetaData.ToHashSizes) > 0 {
 			ctx.Columns.CollapsedPreimagesNonSis = expr_handle.RandLinCombCol(
 				ctx.Comp,
@@ -327,8 +326,9 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			)
 		}
 
-		// preImageEval := preimageNonSisEval + alpha^offset * preImageSisEval
+		// preImageEval := preimageNonSisEval + alpha^offset * preImageSisEval.
 		if len(ctx.MIMCMetaData.ToHashSizes) > 0 && ctx.Columns.ConcatenatedDhQ != nil {
+			// Case when both sis and non sis rounds are present
 			preImageEvalSymb := symbolic.Add(
 				preImageNonSisEval,
 				symbolic.Mul(
@@ -341,8 +341,10 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			)
 			preImageEval = accessors.NewFromExpression(preImageEvalSymb, fmt.Sprintf("PREIMAGE_EVAL_%v", ctx.SelfRecursionCnt))
 		} else if len(ctx.MIMCMetaData.ToHashSizes) > 0 && ctx.Columns.ConcatenatedDhQ == nil {
+			// Case when only non sis rounds are present
 			preImageEval = preImageNonSisEval
 		} else if len(ctx.MIMCMetaData.ToHashSizes) == 0 && ctx.Columns.ConcatenatedDhQ != nil {
+			// Case when only sis rounds are present
 			preImageEval = preImageSisEval
 		} else {
 			utils.Panic("There are neither SIS nor non SIS round, this should not happen")
@@ -364,13 +366,13 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			utils.Panic("Attempting to fold to a non-power of two size : %v", sisDeg)
 		}
 
-	// Compute the collapsed hashes
-	ctx.Columns.DhQCollapse = functionals.FoldOuter(
-		ctx.Comp,
-		ctx.Columns.ConcatenatedDhQ,
-		accessors.NewFromCoin(ctx.Coins.Collapse),
-		ctx.Columns.ConcatenatedDhQ.Size()/sisDeg,
-	)
+		// Compute the collapsed hashes
+		ctx.Columns.DhQCollapse = functionals.FoldOuter(
+			ctx.Comp,
+			ctx.Columns.ConcatenatedDhQ,
+			accessors.NewFromCoin(ctx.Coins.Collapse),
+			ctx.Columns.ConcatenatedDhQ.Size()/sisDeg,
+		)
 
 		// sanity-check : the size of DhQCollapse must equal to sisDeg
 		if ctx.Columns.DhQCollapse.Size() != sisDeg {
@@ -397,28 +399,26 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			}
 		}
 
-	// And computes the linear combination
-	ctx.Columns.ACollapsed = expr_handle.RandLinCombCol(
-		ctx.Comp,
-		collapsePowT,
-		nonNilAh,
-		ctx.aCollapsedName(),
-	)
+		// And computes the linear combination
+		ctx.Columns.ACollapsed = expr_handle.RandLinCombCol(
+			ctx.Comp,
+			collapsePowT,
+			nonNilAh,
+			ctx.aCollapsedName(),
+		)
 
-		// And edual
+		// Declare Edual
+		ctx.Columns.Edual = ctx.Comp.InsertCommit(
+			round, ctx.eDual(), ctx.VortexCtx.SisParams.OutputSize(),
+		)
 
-	// Declare Edual
-	ctx.Columns.Edual = ctx.Comp.InsertCommit(
-		round, ctx.eDual(), ctx.VortexCtx.SisParams.OutputSize(),
-	)
-
-	// And assign it
-	ctx.Comp.RegisterProverAction(round, &CollapsingProverAction{
-		Ctx:     ctx,
-		EDualID: ctx.Columns.Edual.GetColID(),
-		SisKey:  ctx.SisKey(),
-	})
-}
+		// And assign it
+		ctx.Comp.RegisterProverAction(round, &CollapsingProverAction{
+			Ctx:     ctx,
+			EDualID: ctx.Columns.Edual.GetColID(),
+			SisKey:  ctx.SisKey(),
+		})
+	}
 }
 
 type FoldPhaseProverAction struct {
@@ -539,24 +539,6 @@ func (ctx *SelfRecursionCtx) FoldPhase() {
 
 	degree := ctx.SisKey().OutputSize()
 
-	// And the final check
-	// check the folding of the polynomial is correct
-	// ctx.comp.InsertVerifier(round, func(run wizard.Runtime) error {
-
-	// 	// fetch the assignments to edual and dcollapse
-	// 	edual := ctx.Columns.Edual.GetColAssignment(run)
-	// 	dcollapse := ctx.Columns.DhQCollapse.GetColAssignment(run)
-
-	// 	// the folding coin
-	// 	rfold := run.GetRandomCoinField(ctx.Coins.Fold.Name)
-
-	// 	// evaluates both edual and dcollapse (seen as polynomial) by
-	// 	// coefficients and fetch the result of the inner-product
-	// 	yAlleged := run.GetInnerProductParams(ctx.preimagesAndAmergeIP()).Ys[0]
-	// 	yDual := smartvectors.EvalCoeff(edual, rfold)
-	// 	yActual := smartvectors.EvalCoeff(dcollapse, rfold)
-
-	// 	
 	// 		If P(X) is of degree 2n
 
 	//	And
@@ -568,7 +550,7 @@ func (ctx *SelfRecursionCtx) FoldPhase() {
 
 	//	yDual * (x^n+1) - yActual * (x^n-1) == 2 * yAlleged
 	//	We perform this check in the verifier action below.
-	
+
 	ctx.Comp.RegisterVerifierAction(round, &FoldPhaseVerifierAction{
 		Ctx:       ctx,
 		IpQueryID: ctx.Queries.LatticeInnerProd.Name(),

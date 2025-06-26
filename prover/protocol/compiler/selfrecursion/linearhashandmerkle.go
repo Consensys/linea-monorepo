@@ -54,13 +54,15 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	ctx.Columns.MerkleProofsLeaves = ctx.Comp.InsertCommit(roundQ, ctx.merkleLeavesName(), leavesSize)
 	ctx.Columns.MerkleProofPositions = ctx.Comp.InsertCommit(roundQ, ctx.merklePositionsName(), leavesSize)
 	ctx.Columns.MerkleRoots = ctx.Comp.InsertCommit(roundQ, ctx.merkleRootsName(), leavesSize)
+
 	// We commit to the below columns only if SIS is applied to any of the rounds including precomputed
 	if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 		ctx.Columns.ConcatenatedDhQ = ctx.Comp.InsertCommit(roundQ, ctx.concatenatedDhQ(), concatDhQSize)
 		ctx.Columns.SisRoundLeaves = make([]ifaces.Column, 0, numRoundSis)
 		for i := 0; i < numRoundSis; i++ {
 			// Register the SIS round leaves
-			ctx.Columns.SisRoundLeaves = append(ctx.Columns.SisRoundLeaves, ctx.Comp.InsertCommit(roundQ, ctx.sisRoundLeavesName(i), ctx.VortexCtx.NbColsToOpen()))
+			ctx.Columns.SisRoundLeaves = append(ctx.Columns.SisRoundLeaves, ctx.Comp.InsertCommit(
+				roundQ, ctx.sisRoundLeavesName(i), ctx.VortexCtx.NbColsToOpen()))
 		}
 	}
 

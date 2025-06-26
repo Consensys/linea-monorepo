@@ -74,9 +74,10 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 	}
 	// We commit to the polynomials with SIS hashing if the number of polynomials
 	// is greater than the [ApplyToSISThreshold].
-	if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
+	switch ctx.RoundStatus[round] {
+	case IsOnlyMiMCApplied:
 		committedMatrix, tree, mimcDigest = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
-	} else if ctx.RoundStatus[round] == IsSISApplied {
+	case IsSISApplied:
 		committedMatrix, tree, sisAndMimcDigest = ctx.VortexParams.CommitMerkleWithSIS(pols)
 	}
 	run.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
@@ -86,9 +87,10 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 	if ctx.IsSelfrecursed {
 		// We need to store the SIS and MiMC digests in the prover state
 		// so that we can use them in the self-recursion compiler.
-		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
+		switch ctx.RoundStatus[round] {
+		case IsOnlyMiMCApplied:
 			run.State.InsertNew(ctx.MIMCHashName(round), mimcDigest)
-		} else if ctx.RoundStatus[round] == IsSISApplied {
+		case IsSISApplied:
 			run.State.InsertNew(ctx.SisHashName(round), sisAndMimcDigest)
 		}
 	}
@@ -135,9 +137,10 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 		}
 		pols := ctx.getPols(pr, round)
 		// Push pols to the right stack
-		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
+		switch ctx.RoundStatus[round] {
+		case IsOnlyMiMCApplied:
 			committedSVNoSIS = append(committedSVNoSIS, pols...)
-		} else if ctx.RoundStatus[round] == IsSISApplied {
+		case IsSISApplied:
 			committedSVSIS = append(committedSVSIS, pols...)
 		}
 	}
@@ -235,10 +238,11 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 
 		// conditionally stack the matrix and tree
 		// to SIS or no SIS matrices and trees
-		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
+		switch ctx.RoundStatus[round] {
+		case IsOnlyMiMCApplied:
 			committedMatricesNoSIS = append(committedMatricesNoSIS, committedMatrix)
 			treesNoSIS = append(treesNoSIS, tree)
-		} else if ctx.RoundStatus[round] == IsSISApplied {
+		case IsSISApplied:
 			committedMatricesSIS = append(committedMatricesSIS, committedMatrix)
 			treesSIS = append(treesSIS, tree)
 		}
@@ -267,7 +271,7 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	// but are used in the self-recursion compilers.
 	// But we need to assign them anyway as the self-recursion
 	// compiler always runs after running the Vortex compiler
-	
+
 	// Handle SIS round
 	if len(committedMatricesSIS) > 0 {
 		sisProof.Complete(entryList, committedMatricesSIS, treesSIS)
@@ -406,11 +410,12 @@ func (ctx *Ctx) assignOpenedColumns(
 		if assignable.Len() < utils.NextPowerOfTwo(len(fullCol)) {
 			assignable = smartvectors.RightZeroPadded(fullCol, utils.NextPowerOfTwo(len(fullCol)))
 		}
-		if mode == NonSelfRecursion {
+		switch mode {
+		case NonSelfRecursion:
 			pr.AssignColumn(ctx.Items.OpenedColumns[j].GetColID(), assignable)
-		} else if mode == SelfRecursionSIS {
+		case SelfRecursionSIS:
 			pr.AssignColumn(ctx.Items.OpenedSISColumns[j].GetColID(), assignable)
-		} else if mode == SelfRecursionMiMCOnly {
+		case SelfRecursionMiMCOnly:
 			pr.AssignColumn(ctx.Items.OpenedNonSISColumns[j].GetColID(), assignable)
 		}
 	}
