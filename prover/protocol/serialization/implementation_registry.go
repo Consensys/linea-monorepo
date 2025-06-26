@@ -6,20 +6,38 @@ import (
 	"strconv"
 	"strings"
 
+	cmimc "github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/bigrange"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/merkle"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/mimc"
+	dmimc "github.com/consensys/linea-monorepo/prover/protocol/dedicated/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/reedsolomon"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/selector"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -36,6 +54,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
+	"github.com/crate-crypto/go-ipa/bandersnatch/fr"
 
 	ded "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated/spaghettifier"
@@ -75,6 +94,7 @@ func init() {
 	RegisterImplementation(column.Shifted{})
 	RegisterImplementation(coin.Name(""))
 	RegisterImplementation(coin.Info{})
+	RegisterImplementation(column.FakeColumn{})
 
 	// Verifier columns
 	RegisterImplementation(verifiercol.ConstCol{})
@@ -168,7 +188,7 @@ func init() {
 
 	RegisterImplementation(cleanup.CleanupProverAction{})
 
-	RegisterImplementation(mimc.LinearHashProverAction{})
+	RegisterImplementation(dmimc.LinearHashProverAction{})
 	RegisterImplementation(merkle.MerkleProofProverAction{})
 
 	RegisterImplementation(univariates.NaturalizeProverAction{})
@@ -195,6 +215,108 @@ func init() {
 	RegisterImplementation(base_conversion.HashBaseConversion{})
 	RegisterImplementation(base_conversion.BlockBaseConversion{})
 	RegisterImplementation(base_conversion.DecompositionCtx{})
+
+	RegisterImplementation(cleanup.CleanupProverAction{})
+	RegisterImplementation(dummy.DummyVerifierAction{})
+	RegisterImplementation(dummy.DummyProverAction{})
+
+	RegisterImplementation(globalcs.EvaluationProver{})
+	RegisterImplementation(globalcs.EvaluationVerifier{})
+	RegisterImplementation(globalcs.QuotientCtx{})
+
+	RegisterImplementation(horner.AssignHornerCtx{})
+	RegisterImplementation(horner.AssignHornerIP{})
+	RegisterImplementation(horner.AssignHornerQuery{})
+	RegisterImplementation(horner.CheckHornerQuery{})
+	RegisterImplementation(horner.CheckHornerResult{})
+
+	RegisterImplementation(innerproduct.ProverTask{})
+	RegisterImplementation(innerproduct.VerifierForSize{})
+
+	RegisterImplementation(logderivativesum.AssignLogDerivativeSumProverAction{})
+	RegisterImplementation(logderivativesum.CheckLogDerivativeSumMustBeZero{})
+	RegisterImplementation(logderivativesum.ProverTaskAtRound{})
+	RegisterImplementation(logderivativesum.FinalEvaluationCheck{})
+
+	RegisterImplementation(mimc.MimcContext{})
+	RegisterImplementation(mpts.QuotientAccumulation{})
+	RegisterImplementation(mpts.RandomPointEvaluation{})
+	RegisterImplementation(mpts.ShadowRowProverAction{})
+	RegisterImplementation(mpts.VerifierAction{})
+
+	RegisterImplementation(permutation.ProverTaskAtRound{})
+	RegisterImplementation(permutation.AssignPermutationGrandProduct{})
+	RegisterImplementation(permutation.FinalProductCheck{})
+	RegisterImplementation(permutation.CheckGrandProductIsOne{})
+
+	RegisterImplementation(plonkinwizard.AssignSelOpening{})
+	RegisterImplementation(plonkinwizard.CheckActivatorAndMask{})
+	RegisterImplementation(plonkinwizard.CircAssignment{})
+
+	RegisterImplementation(recursion.RecursionCircuit{})
+	RegisterImplementation(recursion.AssignVortexOpenedCols{})
+	RegisterImplementation(recursion.AssignVortexUAlpha{})
+	RegisterImplementation(recursion.ConsistencyCheck{})
+
+	RegisterImplementation(selfrecursion.ColSelectionProverAction{})
+	RegisterImplementation(selfrecursion.CollapsingProverAction{})
+	RegisterImplementation(selfrecursion.CollapsingVerifierAction{})
+	RegisterImplementation(selfrecursion.ConsistencyYsUalphaVerifierAction{})
+	RegisterImplementation(selfrecursion.FoldPhaseProverAction{})
+	RegisterImplementation(selfrecursion.FoldPhaseVerifierAction{})
+	RegisterImplementation(selfrecursion.LinearHashMerkleProverAction{})
+	RegisterImplementation(selfrecursion.PreimageLimbsProverAction{})
+
+	RegisterImplementation(stitchsplit.AssignLocalPointProverAction{})
+	RegisterImplementation(stitchsplit.ProveRoundProverAction{})
+	RegisterImplementation(stitchsplit.QueryVerifierAction{})
+	RegisterImplementation(stitchsplit.SplitProverAction{})
+	RegisterImplementation(stitchsplit.StitchColumnsProverAction{})
+	RegisterImplementation(stitchsplit.StitchSubColumnsProverAction{})
+
+	RegisterImplementation(univariates.NaturalizeProverAction{})
+	RegisterImplementation(univariates.NaturalizeVerifierAction{})
+
+	RegisterImplementation(vortex.Ctx{})
+	RegisterImplementation(vortex.ColumnAssignmentProverAction{})
+	RegisterImplementation(vortex.OpenSelectedColumnsProverAction{})
+	RegisterImplementation(vortex.LinearCombinationComputationProverAction{})
+	RegisterImplementation(vortex.VortexVerifierAction{})
+	RegisterImplementation(vortex.ExplicitPolynomialEval{})
+	RegisterImplementation(vortex.ShadowRowProverAction{})
+	RegisterImplementation(vortex.ReassignPrecomputedRootAction{})
+
+	RegisterImplementation(functionals.CoeffEvalProverAction{})
+	RegisterImplementation(functionals.InterpolationProverAction{})
+	RegisterImplementation(functionals.EvalBivariateProverAction{})
+	RegisterImplementation(functionals.FoldProverAction{})
+	RegisterImplementation(functionals.FoldOuterProverAction{})
+	RegisterImplementation(functionals.FoldOuterVerifierAction{})
+	RegisterImplementation(functionals.FoldVerifierAction{})
+	RegisterImplementation(functionals.XYPow1MinNAccessor{})
+
+	RegisterImplementation(reedsolomon.ReedSolomonProverAction{})
+	RegisterImplementation(reedsolomon.ReedSolomonVerifierAction{})
+
+	RegisterImplementation(column.FakeColumn{})
+
+	RegisterImplementation(selector.SubsampleProverAction{})
+	RegisterImplementation(selector.SubsampleVerifierAction{})
+
+	RegisterImplementation(expr_handle.ExprHandleProverAction{})
+
+	RegisterImplementation(plonkinternal.CheckingActivators{})
+
+	RegisterImplementation(cmimc.ExternalHasherBuilder{})
+	RegisterImplementation(cmimc.ExternalHasherFactory{})
+
+	RegisterImplementation(plonkinternal.CheckingActivators{})
+	RegisterImplementation(plonkinternal.InitialBBSProverAction{})
+	RegisterImplementation(plonkinternal.PlonkNoCommitProverAction{})
+	RegisterImplementation(plonkinternal.LROCommitProverAction{})
+
+	RegisterImplementation(fr.Element{})
+
 }
 
 // In order to save some space, we trim the prefix of the package path as this

@@ -4,31 +4,15 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	cmimc "github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/reedsolomon"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/selector"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -96,106 +80,6 @@ func init() {
 	serialization.RegisterImplementation(LPPSegmentBoundaryCalculator{})
 	serialization.RegisterImplementation(ConglomerateHolisticCheck{})
 	serialization.RegisterImplementation(ConglomerationAssignHolisticCheckColumn{})
-
-	serialization.RegisterImplementation(cleanup.CleanupProverAction{})
-	serialization.RegisterImplementation(dummy.DummyVerifierAction{})
-	serialization.RegisterImplementation(dummy.DummyProverAction{})
-
-	serialization.RegisterImplementation(globalcs.EvaluationProver{})
-	serialization.RegisterImplementation(globalcs.EvaluationVerifier{})
-	serialization.RegisterImplementation(globalcs.QuotientCtx{})
-
-	serialization.RegisterImplementation(horner.AssignHornerCtx{})
-	serialization.RegisterImplementation(horner.AssignHornerIP{})
-	serialization.RegisterImplementation(horner.AssignHornerQuery{})
-	serialization.RegisterImplementation(horner.CheckHornerQuery{})
-	serialization.RegisterImplementation(horner.CheckHornerResult{})
-
-	serialization.RegisterImplementation(innerproduct.ProverTask{})
-	serialization.RegisterImplementation(innerproduct.VerifierForSize{})
-
-	serialization.RegisterImplementation(logderivativesum.AssignLogDerivativeSumProverAction{})
-	serialization.RegisterImplementation(logderivativesum.CheckLogDerivativeSumMustBeZero{})
-	serialization.RegisterImplementation(logderivativesum.ProverTaskAtRound{})
-	serialization.RegisterImplementation(logderivativesum.FinalEvaluationCheck{})
-
-	serialization.RegisterImplementation(mimc.MimcContext{})
-	serialization.RegisterImplementation(mpts.QuotientAccumulation{})
-	serialization.RegisterImplementation(mpts.RandomPointEvaluation{})
-	serialization.RegisterImplementation(mpts.ShadowRowProverAction{})
-	serialization.RegisterImplementation(mpts.VerifierAction{})
-
-	serialization.RegisterImplementation(permutation.ProverTaskAtRound{})
-	serialization.RegisterImplementation(permutation.AssignPermutationGrandProduct{})
-	serialization.RegisterImplementation(permutation.FinalProductCheck{})
-	serialization.RegisterImplementation(permutation.CheckGrandProductIsOne{})
-
-	serialization.RegisterImplementation(plonkinwizard.AssignSelOpening{})
-	serialization.RegisterImplementation(plonkinwizard.CheckActivatorAndMask{})
-	serialization.RegisterImplementation(plonkinwizard.CircAssignment{})
-
-	serialization.RegisterImplementation(recursion.RecursionCircuit{})
-	serialization.RegisterImplementation(recursion.AssignVortexOpenedCols{})
-	serialization.RegisterImplementation(recursion.AssignVortexUAlpha{})
-	serialization.RegisterImplementation(recursion.ConsistencyCheck{})
-
-	serialization.RegisterImplementation(selfrecursion.ColSelectionProverAction{})
-	serialization.RegisterImplementation(selfrecursion.CollapsingProverAction{})
-	serialization.RegisterImplementation(selfrecursion.CollapsingVerifierAction{})
-	serialization.RegisterImplementation(selfrecursion.ConsistencyYsUalphaVerifierAction{})
-	serialization.RegisterImplementation(selfrecursion.FoldPhaseProverAction{})
-	serialization.RegisterImplementation(selfrecursion.FoldPhaseVerifierAction{})
-	serialization.RegisterImplementation(selfrecursion.LinearHashMerkleProverAction{})
-	serialization.RegisterImplementation(selfrecursion.PreimageLimbsProverAction{})
-
-	serialization.RegisterImplementation(stitchsplit.AssignLocalPointProverAction{})
-	serialization.RegisterImplementation(stitchsplit.ProveRoundProverAction{})
-	serialization.RegisterImplementation(stitchsplit.QueryVerifierAction{})
-	serialization.RegisterImplementation(stitchsplit.SplitProverAction{})
-	serialization.RegisterImplementation(stitchsplit.StitchColumnsProverAction{})
-	serialization.RegisterImplementation(stitchsplit.StitchSubColumnsProverAction{})
-
-	serialization.RegisterImplementation(univariates.NaturalizeProverAction{})
-	serialization.RegisterImplementation(univariates.NaturalizeVerifierAction{})
-
-	serialization.RegisterImplementation(vortex.Ctx{})
-	serialization.RegisterImplementation(vortex.ColumnAssignmentProverAction{})
-	serialization.RegisterImplementation(vortex.OpenSelectedColumnsProverAction{})
-	serialization.RegisterImplementation(vortex.LinearCombinationComputationProverAction{})
-	serialization.RegisterImplementation(vortex.VortexVerifierAction{})
-	serialization.RegisterImplementation(vortex.ExplicitPolynomialEval{})
-	serialization.RegisterImplementation(vortex.ShadowRowProverAction{})
-	serialization.RegisterImplementation(vortex.ReassignPrecomputedRootAction{})
-
-	serialization.RegisterImplementation(functionals.CoeffEvalProverAction{})
-	serialization.RegisterImplementation(functionals.InterpolationProverAction{})
-	serialization.RegisterImplementation(functionals.EvalBivariateProverAction{})
-	serialization.RegisterImplementation(functionals.FoldProverAction{})
-	serialization.RegisterImplementation(functionals.FoldOuterProverAction{})
-	serialization.RegisterImplementation(functionals.FoldOuterVerifierAction{})
-	serialization.RegisterImplementation(functionals.FoldVerifierAction{})
-
-	serialization.RegisterImplementation(reedsolomon.ReedSolomonProverAction{})
-	serialization.RegisterImplementation(reedsolomon.ReedSolomonVerifierAction{})
-
-	serialization.RegisterImplementation(column.FakeColumn{})
-
-	serialization.RegisterImplementation(selector.SubsampleProverAction{})
-	serialization.RegisterImplementation(selector.SubsampleVerifierAction{})
-
-	serialization.RegisterImplementation(expr_handle.ExprHandleProverAction{})
-
-	serialization.RegisterImplementation(plonkinternal.CheckingActivators{})
-
-	serialization.RegisterImplementation(cmimc.ExternalHasherBuilder{})
-	serialization.RegisterImplementation(cmimc.ExternalHasherFactory{})
-
-	serialization.RegisterImplementation(plonkinternal.CheckingActivators{})
-	serialization.RegisterImplementation(plonkinternal.InitialBBSProverAction{})
-	serialization.RegisterImplementation(plonkinternal.PlonkNoCommitProverAction{})
-	serialization.RegisterImplementation(plonkinternal.LROCommitProverAction{})
-
-	serialization.RegisterImplementation(fr.Element{})
 }
 
 // DistributeWizard returns a [DistributedWizard] from a [wizard.CompiledIOP]. It
@@ -228,6 +112,8 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *Distribu
 			distributedWizard.Bootstrapper,
 		)
 
+		logrus.Infof("Compiling GL module %v\n", moduleName)
+
 		distributedWizard.GLs = append(
 			distributedWizard.GLs,
 			BuildModuleGL(&filteredModuleInputs),
@@ -246,6 +132,8 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *Distribu
 	for i := 0; i < nbLPP; i += lppGroupingArity {
 
 		stop := min(len(distributedWizard.ModuleNames), i+lppGroupingArity)
+
+		logrus.Infof("Compiling LPP modules [%d .. %d]\n", i, stop)
 
 		distributedWizard.LPPs = append(
 			distributedWizard.LPPs,

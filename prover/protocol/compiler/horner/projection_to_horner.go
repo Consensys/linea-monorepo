@@ -8,17 +8,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
-
-func init() {
-	serialization.RegisterImplementation(CheckHornerQuery{})
-	serialization.RegisterImplementation(AssignHornerQuery{})
-}
 
 // ProjectionContext is a compilation artefact generated during the execution of
 // the [InsertProjection] and which is used to instantiate the Horner query.
