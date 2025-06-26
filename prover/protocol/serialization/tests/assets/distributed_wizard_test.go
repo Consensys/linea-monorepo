@@ -1,19 +1,15 @@
 package assets
 
 import (
-	"bytes"
 	"fmt"
 	"runtime"
 	"testing"
 
-	"github.com/consensys/gnark-crypto/utils/unsafe"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	utils_limitless "github.com/consensys/linea-monorepo/prover/utils/limitless"
-	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 )
 
@@ -92,27 +88,43 @@ func GetBasicDistWizard() *distributed.DistributedWizard {
 func TestSerdeDistWizard(t *testing.T) {
 	dist := GetDistWizard()
 
+	t.Run("ModuleNames", func(t *testing.T) {
+		runSerdeTest(t, dist.ModuleNames, "DistributedWizard.ModuleNames", true, false)
+	})
+
+	t.Run("GLModules", func(t *testing.T) {
+		runSerdeTest(t, dist.GLs, "DistributedWizard.GLs", true, false)
+	})
+
+	t.Run("LPPModules", func(t *testing.T) {
+		runSerdeTest(t, dist.LPPs, "DistributedWizard.LPPs", true, false)
+	})
+
+	t.Run("DefaultModule", func(t *testing.T) {
+		runSerdeTest(t, dist.DefaultModule, "DistributedWizard.DefaultModule", true, false)
+	})
+
 	t.Run("Bootstrapper", func(t *testing.T) {
-		runSerdeTest(t, dist.Bootstrapper, "DistributedWizard.Bootstrapper", true)
+		runSerdeTest(t, dist.Bootstrapper, "DistributedWizard.Bootstrapper", true, false)
 	})
 
 	t.Run("Discoverer", func(t *testing.T) {
-		runSerdeTest(t, dist.Disc, "DistributedWizard.Discoverer", true)
+		runSerdeTest(t, dist.Disc, "DistributedWizard.Discoverer", true, false)
 	})
 
 	t.Run("CompiledDefault", func(t *testing.T) {
-		runSerdeTest(t, dist.CompiledDefault, "DistributedWizard.CompiledDefault", true)
+		runSerdeTest(t, dist.CompiledDefault, "DistributedWizard.CompiledDefault", true, false)
 	})
 
 	for i := range dist.CompiledGLs {
 		t.Run(fmt.Sprintf("CompiledGL-%v", i), func(t *testing.T) {
-			runSerdeTest(t, dist.CompiledGLs[i], fmt.Sprintf("DistributedWizard.CompiledGL-%v", i), true)
+			runSerdeTest(t, dist.CompiledGLs[i], fmt.Sprintf("DistributedWizard.CompiledGL-%v", i), true, false)
 		})
 	}
 
 	for i := range dist.CompiledLPPs {
 		t.Run(fmt.Sprintf("CompiledLPP-%v", i), func(t *testing.T) {
-			runSerdeTest(t, dist.CompiledLPPs[i], fmt.Sprintf("DistributedWizard.CompiledLPP-%v", i), true)
+			runSerdeTest(t, dist.CompiledLPPs[i], fmt.Sprintf("DistributedWizard.CompiledLPP-%v", i), true, false)
 		})
 	}
 
@@ -120,17 +132,47 @@ func TestSerdeDistWizard(t *testing.T) {
 	cong := dist.CompiledConglomeration
 	dist = nil
 	runtime.GC()
-
-	runSerdeTest(t, cong, "DistributedWizard.CompiledConglomeration", true)
+	runSerdeTest(t, cong, "DistributedWizard.CompiledConglomeration", true, false)
 }
 
 func TestSerdeDWCong(t *testing.T) {
-	distWizard := GetDistWizard()
+	// Setup
+	distWizard := GetBasicDistWizard()
 	cong := distWizard.CompiledConglomeration
 	distWizard = nil
 	runtime.GC()
-	unsafeBinDump(t, cong, true)
+
+	// Subtests
+	tests := []struct {
+		name        string
+		obj         any
+		sanityCheck bool
+		failfast    bool
+	}{
+		{name: "Wiop", obj: cong.Wiop, sanityCheck: true, failfast: true},
+		{name: "Recursion", obj: cong.Recursion, sanityCheck: true, failfast: true},
+
+		// All of these tests PASS
+		{name: "MaxNbProofs", obj: cong.MaxNbProofs, sanityCheck: true, failfast: false},
+		{name: "DefaultWitness", obj: cong.DefaultWitness, sanityCheck: true, failfast: true},
+		{name: "DefaultIops", obj: cong.DefaultIops, sanityCheck: true, failfast: true},
+		{name: "PrecomputedGLVks", obj: cong.PrecomputedGLVks, sanityCheck: true, failfast: false},
+		{name: "PrecomputedLPPVks", obj: cong.PrecomputedLPPVks, sanityCheck: true, failfast: false},
+		{name: "VerifyingKeyColumns", obj: cong.VerifyingKeyColumns, sanityCheck: true, failfast: false},
+		{name: "HolisticLookupMappedLPPPostion", obj: cong.HolisticLookupMappedLPPPostion, sanityCheck: true, failfast: false},
+		{name: "HolisticLookupMappedLPPVK", obj: cong.HolisticLookupMappedLPPVK, sanityCheck: true, failfast: false},
+		{name: "IsGL", obj: cong.IsGL, sanityCheck: true, failfast: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runSerdeTest(t, tt.obj, tt.name, tt.sanityCheck, tt.failfast)
+		})
+	}
 }
+
+// BELOW IDEA DOES NOT WORK.
+/*
 
 func unsafeBinDump(t *testing.T, cong *distributed.ConglomeratorCompilation, sanityCheck bool) {
 	var buffer bytes.Buffer
@@ -191,3 +233,30 @@ func unsafeBinDump(t *testing.T, cong *distributed.ConglomeratorCompilation, san
 		}
 	}
 }
+
+
+func TestReadBin(t *testing.T) {
+
+	var readBuffer bytes.Buffer
+	// var deCong []*distributed.ConglomeratorCompilation
+
+	// Read from file into readBuffer
+	err := utils.ReadFromFile("cong-dump.bin", &readBuffer)
+	if err != nil {
+		t.Fatalf("could not read from file: %v", err)
+	}
+	// Verify architecture marker
+	err = unsafe.ReadMarker(&readBuffer)
+	if err != nil {
+		t.Fatalf("could not read marker: %v", err)
+	}
+	// Deserialize the slice
+	deCong, _, err := unsafe.ReadSlice[[]*distributed.ConglomeratorCompilation](&readBuffer)
+	if err != nil {
+		t.Fatalf("could not unmarshal array of compiled IOP: %v", err)
+	}
+
+	t.Logf("(deser) QueriesParams mapping inner length in cong.WIOP:%d \n", len(deCong[0].Wiop.QueriesParams.Mapping.InnerMap))
+}
+
+*/

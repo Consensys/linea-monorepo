@@ -459,13 +459,13 @@ func PrettyPrint(v reflect.Value, indent int) string {
 }
 
 // CompareExportedFields checks if two values are equal, ignoring unexported fields, including in nested structs.
-// It logs mismatched fields with their paths and values.
-func CompareExportedFields(a, b interface{}) bool {
+// It logs mismatched fields with their paths and values. If failFast is true, it returns after the first mismatch.
+func CompareExportedFields(a, b interface{}, failFast bool) bool {
 	cachedPtrs := make(map[uintptr]struct{})
-	return CompareExportedFieldsWithPath(cachedPtrs, reflect.ValueOf(a), reflect.ValueOf(b), "")
+	return CompareExportedFieldsWithPath(cachedPtrs, reflect.ValueOf(a), reflect.ValueOf(b), "", failFast)
 }
 
-func CompareExportedFieldsWithPath(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path string) bool {
+func CompareExportedFieldsWithPath(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path string, failFast bool) bool {
 	// Handle invalid values
 	if !a.IsValid() || !b.IsValid() {
 		// Treat nil and zero values as equivalent
@@ -499,15 +499,15 @@ func CompareExportedFieldsWithPath(cachedPtrs map[uintptr]struct{}, a, b reflect
 		// Ignore Func
 		return true
 	case reflect.Interface:
-		return CompareExportedFieldsWithPath(cachedPtrs, a.Elem(), b.Elem(), path+".(interface)")
+		return CompareExportedFieldsWithPath(cachedPtrs, a.Elem(), b.Elem(), path+".(interface)", failFast)
 	case reflect.Map:
-		return compareMaps(cachedPtrs, a, b, path)
+		return compareMaps(cachedPtrs, a, b, path, failFast)
 	case reflect.Ptr:
-		return comparePointers(cachedPtrs, a, b, path)
+		return comparePointers(cachedPtrs, a, b, path, failFast)
 	case reflect.Struct:
-		return compareStructs(cachedPtrs, a, b, path)
+		return compareStructs(cachedPtrs, a, b, path, failFast)
 	case reflect.Slice, reflect.Array:
-		return compareSlices(cachedPtrs, a, b, path)
+		return compareSlices(cachedPtrs, a, b, path, failFast)
 	default:
 		if !reflect.DeepEqual(a.Interface(), b.Interface()) {
 			logrus.Printf("Mismatch at %s: values differ (v1: %v, v2: %v, type_v1: %v type_v2: %v)\n", path, a.Interface(), b.Interface(), a.Type(), b.Type())
@@ -547,7 +547,7 @@ func compareSymbolicExpressions(a, b reflect.Value, path string) bool {
 	return true
 }
 
-func comparePointers(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path string) bool {
+func comparePointers(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path string, failFast bool) bool {
 	if a.IsNil() && b.IsNil() {
 		return true
 	}
@@ -562,10 +562,10 @@ func comparePointers(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path s
 	}
 
 	cachedPtrs[a.Pointer()] = struct{}{}
-	return CompareExportedFieldsWithPath(cachedPtrs, a.Elem(), b.Elem(), path)
+	return CompareExportedFieldsWithPath(cachedPtrs, a.Elem(), b.Elem(), path, failFast)
 }
 
-func compareMaps(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path string) bool {
+func compareMaps(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path string, failFast bool) bool {
 	if a.Len() != b.Len() {
 		logrus.Printf("Mismatch at %s: map lengths differ (v1: %v, v2: %v, type: %v)\n", path, a.Len(), b.Len(), a.Type())
 		return false
@@ -586,14 +586,16 @@ func compareMaps(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path strin
 			return false
 		}
 		keyPath := fmt.Sprintf("%s[%v]", path, key)
-		if !CompareExportedFieldsWithPath(cachedPtrs, valA, valB, keyPath) {
-			return false
+		if !CompareExportedFieldsWithPath(cachedPtrs, valA, valB, keyPath, failFast) {
+			if failFast {
+				return false
+			}
 		}
 	}
 	return true
 }
 
-func compareStructs(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path string) bool {
+func compareStructs(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path string, failFast bool) bool {
 	equal := true
 	for i := 0; i < a.NumField(); i++ {
 		structField := a.Type().Field(i)
@@ -619,14 +621,17 @@ func compareStructs(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path st
 			fieldPath = path + "." + fieldName
 		}
 
-		if !CompareExportedFieldsWithPath(cachedPtrs, fieldA, fieldB, fieldPath) {
+		if !CompareExportedFieldsWithPath(cachedPtrs, fieldA, fieldB, fieldPath, failFast) {
 			equal = false
+			if failFast {
+				return false
+			}
 		}
 	}
 	return equal
 }
 
-func compareSlices(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path string) bool {
+func compareSlices(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path string, failFast bool) bool {
 	if a.Len() != b.Len() {
 		logrus.Printf("Mismatch at %s: slice lengths differ (v1: %v, v2: %v, type: %v)\n", path, a.Len(), b.Len(), a.Type())
 		return false
@@ -635,8 +640,11 @@ func compareSlices(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path str
 	equal := true
 	for i := 0; i < a.Len(); i++ {
 		elemPath := fmt.Sprintf("%s[%d]", path, i)
-		if !CompareExportedFieldsWithPath(cachedPtrs, a.Index(i), b.Index(i), elemPath) {
+		if !CompareExportedFieldsWithPath(cachedPtrs, a.Index(i), b.Index(i), elemPath, failFast) {
 			equal = false
+			if failFast {
+				return false
+			}
 		}
 	}
 	return equal

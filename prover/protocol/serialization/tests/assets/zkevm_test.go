@@ -16,7 +16,7 @@ var (
 )
 
 // Helper function for serialization and deserialization tests
-func runSerdeTest(t *testing.T, input any, name string, isSanityCheck bool) {
+func runSerdeTest(t *testing.T, input any, name string, isSanityCheck, failFast bool) {
 
 	// In case the test panics, log the error but do not let the panic
 	// interrupt the test.
@@ -61,12 +61,14 @@ func runSerdeTest(t *testing.T, input any, name string, isSanityCheck bool) {
 		// Sanity check: Compare exported fields
 		t.Logf("Running sanity checks on deserialized object: Comparing if the values matched before and after serialization")
 		outputDeref := reflect.ValueOf(output).Elem().Interface()
-		if !test_utils.CompareExportedFields(input, outputDeref) {
+		if !test_utils.CompareExportedFields(input, outputDeref, failFast) {
 			t.Errorf("Mismatch in exported fields of %s during serde", name)
+		} else {
+			t.Logf("Sanity checks passed for %s", name)
 		}
 	}
 }
 
 func TestSerdeZkEVM(t *testing.T) {
-	runSerdeTest(t, z, "ZkEVM", true)
+	runSerdeTest(t, z, "ZkEVM", true, false)
 }
