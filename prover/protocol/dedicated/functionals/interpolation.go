@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -68,7 +69,7 @@ func (a *interpolationProverAction) Run(assi *wizard.ProverRuntime) {
 	}
 
 	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.name, INTERPOLATION_POLY), smartvectors.NewRegular(witi))
-	assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", a.name, INTERPOLATION_OPEN_END), witi[a.n-1])
+	assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", a.name, INTERPOLATION_OPEN_END), fext.Lift(witi[a.n-1]))
 }
 
 // See the explainer here : https://hackmd.io/S78bJUa0Tk-T256iduE22g#Evaluate-in-Lagrange-form
