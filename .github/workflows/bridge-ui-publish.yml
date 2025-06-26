@@ -38,7 +38,7 @@ jobs:
 
       - name: Get version from package.json
         id: package-version
-        uses: martinbeentjes/npm-get-version-action@master
+        uses: martinbeentjes/npm-get-version-action@3cf273023a0dda27efcd3164bdfb51908dd46a5b #v1.3.1
         with:
           path: ./bridge-ui
 
@@ -101,7 +101,6 @@ jobs:
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs
         with:
-          node-version: 18.17.0
           pnpm-install-options: '--frozen-lockfile --prefer-offline'
 
       - name: Test Build Bridge UI
