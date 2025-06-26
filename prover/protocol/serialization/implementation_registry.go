@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	cmimc "github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
@@ -54,7 +55,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
-	"github.com/crate-crypto/go-ipa/bandersnatch/fr"
 
 	ded "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated/spaghettifier"
