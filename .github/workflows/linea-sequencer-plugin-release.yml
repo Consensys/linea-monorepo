@@ -31,8 +31,8 @@ jobs:
 
       - name: Create draft release with uploaded assets
         id: create_draft_release
-
-        uses: ncipollo/release-action@v1.16.0
+        # v1.16.0
+        uses: ncipollo/release-action@440c8c1cb0ed28b9f43e4d1d670870f059653174
         with:
           name: "Linea Sequencer ${{ github.event.inputs.version }}"
           artifacts: "./besu-plugins/linea-sequencer/sequencer/build/libs/linea-sequencer-${{ github.event.inputs.version }}.jar,./besu-plugins/linea-sequencer/sequencer/build/distributions/linea-sequencer-${{ github.event.inputs.version }}.zip"
