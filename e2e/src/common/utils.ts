@@ -141,7 +141,7 @@ export class RollupGetZkEVMBlockNumberClient {
 export class LineaEstimateGasClient {
   private endpoint: URL;
   private BASE_FEE_MULTIPLIER = 1.35;
-  private PRIORITY_FEE_MULTIPLIER = 1.35;
+  private PRIORITY_FEE_MULTIPLIER = 1.05;
 
   public constructor(endpoint: URL) {
     this.endpoint = endpoint;
@@ -468,7 +468,9 @@ export async function sendTransactionsToGenerateTrafficWithInterval(
       );
       const tx = await signer.sendTransaction({ ...transaction, maxPriorityFeePerGas, maxFeePerGas });
       await tx.wait();
-      logger.debug(`Transaction sent successfully. hash=${tx.hash}`);
+      logger.debug(
+        `Transaction sent successfully. hash=${tx.hash} maxPriorityFeePerGas=${tx.maxPriorityFeePerGas} maxFeePerGas=${tx.maxFeePerGas}`,
+      );
     } catch (error) {
       logger.error(`Error sending transaction. error=${JSON.stringify(error)}`);
     } finally {

@@ -1,4 +1,4 @@
-import { ethers, NonceManager, Provider, TransactionResponse, Wallet } from "ethers";
+import { ethers, NonceManager, Provider, TransactionRequest, TransactionResponse, Wallet } from "ethers";
 import { Mutex } from "async-mutex";
 import type { Logger } from "winston";
 import Account from "./account";
@@ -86,10 +86,12 @@ abstract class AccountManager implements IAccountManager {
       const newAccount = new Account(randomPrivKey, ethers.computeAddress(randomPrivKey));
       accounts.push(newAccount);
 
-      const tx = {
+      const tx: TransactionRequest = {
+        type: 2,
         to: newAccount.address,
         value: initialBalanceWei,
-        gasPrice: ethers.parseUnits("300", "gwei"),
+        maxPriorityFeePerGas: ethers.parseUnits("1", "gwei"),
+        maxFeePerGas: ethers.parseUnits("1.000000007", "gwei"),
         gasLimit: 21000n,
       };
 
