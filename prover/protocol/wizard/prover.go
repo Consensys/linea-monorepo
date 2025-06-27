@@ -934,6 +934,34 @@ func (run *ProverRuntime) AssignGrandProduct(name ifaces.QueryID, y field.Elemen
 	run.QueriesParams.InsertNew(name, params)
 }
 
+func (run *ProverRuntime) AssignGrandProductGeneric(name ifaces.QueryID, y fext.Element) {
+
+	// Global prover locks for accessing the maps
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	// Make sure, it is done at the right round
+	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
+
+	// Adds it to the assignments
+	params := query.NewGrandProductParamsExt(y)
+	run.QueriesParams.InsertNew(name, params)
+}
+
+func (run *ProverRuntime) AssignGrandProductExt(name ifaces.QueryID, extY fext.Element) {
+
+	// Global prover locks for accessing the maps
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	// Make sure, it is done at the right round
+	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
+
+	// Adds it to the assignments
+	params := query.NewGrandProductParamsExt(extY)
+	run.QueriesParams.InsertNew(name, params)
+}
+
 // GetLogDeriveSum gets the metadata of a [query.LogDerivativeSum] query. Panic if not found.
 func (run *ProverRuntime) GetLogDeriveSum(name ifaces.QueryID) query.LogDerivativeSum {
 	// Global prover locks for accessing the maps

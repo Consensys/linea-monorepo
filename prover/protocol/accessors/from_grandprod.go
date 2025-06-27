@@ -68,7 +68,7 @@ func (l *FromGrandProductAccessor) String() string {
 // GetVal implements [ifaces.Accessor]
 func (l *FromGrandProductAccessor) GetVal(run ifaces.Runtime) field.Element {
 	params := run.GetParams(l.Q.ID).(query.GrandProductParams)
-	return params.Y
+	return params.BaseY
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]

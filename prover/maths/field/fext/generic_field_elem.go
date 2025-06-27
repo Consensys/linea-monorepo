@@ -134,6 +134,30 @@ func (e *GenericFieldElem) Mul(inp *GenericFieldElem) *GenericFieldElem {
 	}
 }
 
+func (e *GenericFieldElem) MulByBase(inp *field.Element) *GenericFieldElem {
+	if e.isBase {
+		e.base.Mul(&e.base, inp)
+		e.ext.SetFromBase(&e.base)
+	} else {
+		// e is an extension
+		e.ext.MulByBase(&e.ext, inp)
+	}
+	return e
+}
+
+func (e *GenericFieldElem) MulByExt(inp *Element) *GenericFieldElem {
+	if e.isBase {
+		e.ext.MulByBase(inp, &e.base)
+		// now we can set the base to be 0, as it was already used
+		e.base.SetZero()
+		e.isBase = false
+	} else {
+		// e is an extension
+		e.ext.Mul(&e.ext, inp)
+	}
+	return e
+}
+
 func (e *GenericFieldElem) Add(inp *GenericFieldElem) *GenericFieldElem {
 	if e.isBase && inp.isBase {
 		e.base.Add(&e.base, &inp.base)

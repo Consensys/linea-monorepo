@@ -3,6 +3,8 @@ package permutation
 import (
 	"errors"
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -76,45 +78,89 @@ type CheckGrandProductIsOne struct {
 
 func (c *CheckGrandProductIsOne) Run(run wizard.Runtime) error {
 
-	var (
-		y = run.GetGrandProductParams(c.Query.ID).Y
-		d = field.One()
-	)
-
-	for _, e := range c.ExplicitNum {
-
+	params := run.GetGrandProductParams(c.Query.ID)
+	if params.IsBase {
 		var (
-			col = column.EvalExprColumn(run, e.Board()).IntoRegVecSaveAlloc()
-			tmp = field.One()
+			y = params.BaseY
+			d = field.One()
 		)
 
-		for i := range col {
-			tmp.Mul(&tmp, &col[i])
+		for _, e := range c.ExplicitNum {
+
+			var (
+				col = column.EvalExprColumn(run, e.Board()).IntoRegVecSaveAlloc()
+				tmp = field.One()
+			)
+
+			for i := range col {
+				tmp.Mul(&tmp, &col[i])
+			}
+
+			y.Mul(&y, &tmp)
 		}
 
-		y.Mul(&y, &tmp)
-	}
+		for _, e := range c.ExplicitDen {
 
-	for _, e := range c.ExplicitDen {
+			var (
+				col = column.EvalExprColumn(run, e.Board()).IntoRegVecSaveAlloc()
+				tmp = field.One()
+			)
 
+			for i := range col {
+				tmp.Mul(&tmp, &col[i])
+			}
+
+			d.Mul(&d, &tmp)
+		}
+
+		d.Inverse(&d)
+		y.Mul(&y, &d)
+
+		if !y.IsOne() {
+			return fmt.Errorf("[CheckGrandProductIsOne -> GrandProduct] the outcome of the grand-product query should be one")
+		}
+	} else {
 		var (
-			col = column.EvalExprColumn(run, e.Board()).IntoRegVecSaveAlloc()
-			tmp = field.One()
+			y = params.ExtY
+			d = fext.One()
 		)
 
-		for i := range col {
-			tmp.Mul(&tmp, &col[i])
+		for _, e := range c.ExplicitNum {
+
+			var (
+				col = column.EvalExprColumn(run, e.Board()).IntoRegVecSaveAllocExt()
+				tmp = fext.One()
+			)
+
+			for i := range col {
+				tmp.Mul(&tmp, &col[i])
+			}
+
+			y.Mul(&y, &tmp)
 		}
 
-		d.Mul(&d, &tmp)
+		for _, e := range c.ExplicitDen {
+
+			var (
+				col = column.EvalExprColumn(run, e.Board()).IntoRegVecSaveAllocExt()
+				tmp = fext.One()
+			)
+
+			for i := range col {
+				tmp.Mul(&tmp, &col[i])
+			}
+
+			d.Mul(&d, &tmp)
+		}
+
+		d.Inverse(&d)
+		y.Mul(&y, &d)
+
+		if !y.IsOne() {
+			return fmt.Errorf("[CheckGrandProductIsOne -> GrandProduct] the outcome of the grand-product query should be one")
+		}
 	}
 
-	d.Inverse(&d)
-	y.Mul(&y, &d)
-
-	if !y.IsOne() {
-		return fmt.Errorf("[CheckGrandProductIsOne -> GrandProduct] the outcome of the grand-product query should be one")
-	}
 	return nil
 }
 
@@ -185,24 +231,53 @@ func (f *FinalProductCheck) Run(run wizard.Runtime) error {
 
 	// zProd stores the product of the ending values of the zs as queried
 	// in the protocol via the local opening queries.
-	zProd := field.One()
+	zProd := fext.GenericFieldOne()
 	for k := range f.ZOpenings {
-		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).BaseY
-		zProd.Mul(&zProd, &temp)
-	}
-
-	for _, e := range f.ToExplicitlyEvaluate {
-		c := column.EvalExprColumn(run, e.Board()).IntoRegVecSaveAlloc()
-		for i := range c {
-			zProd.Mul(&zProd, &c[i])
+		params := run.GetLocalPointEvalParams(f.ZOpenings[k].ID)
+		if params.IsBase {
+			temp := params.BaseY
+			zProd.MulByBase(&temp)
+		} else {
+			temp := params.ExtY
+			zProd.MulByExt(&temp)
 		}
 	}
 
-	claimedProd := run.GetGrandProductParams(f.GrandProductID).Y
-	if zProd != claimedProd {
-		return fmt.Errorf("grand product: the final evaluation check failed for %v\n"+
-			"given %v but calculated %v,",
-			f.GrandProductID, claimedProd.String(), zProd.String())
+	for _, e := range f.ToExplicitlyEvaluate {
+		sv := column.EvalExprColumn(run, e.Board())
+		if smartvectors.IsBase(sv) {
+			c, _ := sv.IntoRegVecSaveAllocBase()
+			temp := field.One()
+			for i := range c {
+				temp.Mul(&temp, &c[i])
+			}
+			zProd.MulByBase(&temp)
+		} else {
+			c := sv.IntoRegVecSaveAllocExt()
+			temp := fext.One()
+			for i := range c {
+				temp.Mul(&temp, &c[i])
+			}
+			zProd.MulByExt(&temp)
+		}
+
+	}
+
+	params := run.GetGrandProductParams(f.GrandProductID)
+	if params.IsBase {
+		claimedProd := fext.NewESHashFromBase(&params.BaseY)
+		if !zProd.IsEqual(claimedProd) {
+			return fmt.Errorf("grand product: the final evaluation check failed for %v\n"+
+				"given %v but calculated %v,",
+				f.GrandProductID, claimedProd.String(), zProd.String())
+		}
+	} else {
+		claimedProd := fext.NewESHashFromExt(&params.ExtY)
+		if !zProd.IsEqual(claimedProd) {
+			return fmt.Errorf("grand product: the final evaluation check failed for %v\n"+
+				"given %v but calculated %v,",
+				f.GrandProductID, claimedProd.String(), zProd.String())
+		}
 	}
 
 	return nil
