@@ -16,6 +16,7 @@ import (
 )
 
 func TestInnerProduct(t *testing.T) {
+
 	define := func(b *wizard.Builder) {
 		for i, c := range testCases {
 			bs := make([]ifaces.Column, len(c.bName))
@@ -28,6 +29,7 @@ func TestInnerProduct(t *testing.T) {
 			_ = b.RegisterRandomCoin(coin.Namef("Coin_%v", i), coin.FieldExt)
 		}
 	}
+
 	prover := func(run *wizard.ProverRuntime) {
 		for j, c := range testCases {
 			run.AssignColumn(c.aName, c.a)
@@ -45,29 +47,31 @@ func TestInnerProduct(t *testing.T) {
 	assert.NoErrorf(t, wizard.Verify(comp, proof), "invalid proof")
 }
 
-func multiplyElements(a, b []fext.Element) fext.Element {
+func innerProductExt(a, b []fext.Element) fext.Element {
 
-	tmp := fext.Zero()
-	var multmp fext.Element
-	var result fext.Element
-	for i := range a {
-		multmp.Mul(&a[i], &b[i])
-		tmp.Add(&tmp, &multmp)
+	if len(a) != len(b) {
+		panic("<a, b> with len(a) != len(b)")
 	}
-	result = tmp
-	return result
+	var res, tmp fext.Element
+	for i := 0; i < len(a); i++ {
+		tmp.Mul(&a[i], &b[i])
+		res.Add(&res, &tmp)
+	}
+	return res
+
 }
-func multiplyBaseElements(a, b []field.Element) fext.Element {
 
-	tmp := field.Zero()
-	var multmp field.Element
-	var result fext.Element
-	for i := range a {
-		multmp.Mul(&a[i], &b[i])
-		tmp.Add(&tmp, &multmp)
+func innerProduct(a, b []field.Element) fext.Element {
+
+	if len(a) != len(b) {
+		panic("<a, b> with len(a) != len(b)")
 	}
-	result.B0.A0 = tmp
-	return result
+	var res, tmp field.Element
+	for i := 0; i < len(a); i++ {
+		tmp.Mul(&a[i], &b[i])
+		res.Add(&res, &tmp)
+	}
+	return fext.Lift(res)
 }
 
 var testCases = []struct {
@@ -118,7 +122,7 @@ func createMultiIPTestCase(
 		for i := 0; i < bRows; i++ {
 			bValues[i] = vectorext.ForRandTestFromLen(size)
 			bVec[i] = smartvectors.NewRegularExt(bValues[i])
-			expected_Vec[i] = multiplyElements(aValues, bValues[i])
+			expected_Vec[i] = innerProductExt(aValues, bValues[i])
 		}
 		return testCase{
 			qName:    qName,
@@ -139,7 +143,7 @@ func createMultiIPTestCase(
 		for i := 0; i < bRows; i++ {
 			bValues[i] = vector.ForRandTestFromLen(size)
 			bVec[i] = smartvectors.NewRegular(bValues[i])
-			expected_Vec[i] = multiplyBaseElements(aValues, bValues[i])
+			expected_Vec[i] = innerProduct(aValues, bValues[i])
 
 		}
 		return testCase{
