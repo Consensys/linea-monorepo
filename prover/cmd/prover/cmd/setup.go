@@ -7,14 +7,12 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
 
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 
 	blob_v0 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
 	blob_v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
@@ -239,30 +237,22 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 		return execution.NewBuilder(zkEvm), extraFlags, nil
 
 	case circuits.ExecutionLimitlessCircuitID:
+
+		executionLimitlessPath := cfg.PathForSetup("execution-limitless")
 		limits := cfg.TracesLimits
 		extraFlags["cfg_checksum"] = limits.Checksum()
 		var compCong *distributed.ConglomeratorCompilation
 
-		// Read from file if it exists
-		congBinPath := path.Join(cfg.PathforLimitlessProverAssets(), "dw-cong.bin")
-		congBytes, err := os.ReadFile(congBinPath)
-		if err == nil {
-			logrus.Infof("Reading dist.wizard conglomeration from filepath:%s", congBinPath)
-			err = serialization.Deserialize(congBytes, &compCong)
-			if err != nil {
-				return nil, nil, fmt.Errorf("failed to deserialize conglomeration: %w", err)
-			}
-		} else {
-			logrus.Info("Setting up limitless prover assets")
-			asset := zkevm.NewLimitlessZkEVM(cfg)
-			logrus.Infof("Writing limitless prover assets to path:%s", cfg.PathforLimitlessProverAssets())
-			if err := asset.Store(cfg); err != nil {
-				return nil, nil, fmt.Errorf("failed to write limitless prover assets: %w", err)
-			}
-			compCong = asset.DistWizard.CompiledConglomeration
-			asset = nil
-			runtime.GC()
+		logrus.Info("Setting up limitless prover assets")
+		asset := zkevm.NewLimitlessZkEVM(cfg)
+		logrus.Infof("Writing limitless prover assets to path:%s", executionLimitlessPath)
+		if err := asset.Store(cfg); err != nil {
+			return nil, nil, fmt.Errorf("failed to write limitless prover assets: %w", err)
 		}
+		compCong = asset.DistWizard.CompiledConglomeration
+		asset = nil
+		runtime.GC()
+
 		return execution.NewLimitlessBuilder(compCong.Wiop, &limits), extraFlags, nil
 
 	case circuits.BlobDecompressionV0CircuitID:

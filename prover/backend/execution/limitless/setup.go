@@ -37,7 +37,7 @@ func finalizeCktSetup(cfg *config.Config, chSetupDone <-chan struct{},
 
 // Helper function to clean up witness directory
 func cleanWitnessDirectory(cfg *config.Config) {
-	filepath := cfg.PathforLimitlessProverAssets()
+	filepath := cfg.PathForSetup("execution-limitless")
 	filepath = path.Join(filepath, "witness")
 	os.RemoveAll(filepath)
 }

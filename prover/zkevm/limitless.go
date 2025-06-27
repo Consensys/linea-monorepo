@@ -58,7 +58,7 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 	}
 
 	// Create directory for assets
-	assetDir := cfg.PathforLimitlessProverAssets()
+	assetDir := cfg.PathForSetup("execution-limitless")
 	if err := os.MkdirAll(assetDir, 0755); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", assetDir, err)
 	}
