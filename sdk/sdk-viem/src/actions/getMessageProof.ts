@@ -1,6 +1,7 @@
 import {
   Abi,
   Account,
+  Address,
   BaseError,
   BlockNumber,
   BlockTag,
@@ -36,6 +37,10 @@ export type GetMessageProofParameters<
     GetContractEventsParameters<abi, eventName, strict, fromBlock, toBlock>,
     "fromBlock" | "toBlock"
   >;
+  // Defaults to the message service address for the L1 chain
+  lineaRollupAddress?: Address;
+  // Defaults to the message service address for the L2 chain
+  l2MessageServiceAddress?: Address;
 };
 
 /**
@@ -84,7 +89,8 @@ export async function getMessageProof<
     throw new BaseError("L2 client is required to get message proof.");
   }
 
-  const l2MessageServiceAddress = getContractsAddressesByChainId(l2Client.chain.id).messageService;
+  const l2MessageServiceAddress =
+    parameters.l2MessageServiceAddress ?? getContractsAddressesByChainId(l2Client.chain.id).messageService;
 
   const [messageSentEvent] = await getMessageSentEvents(l2Client, {
     address: l2MessageServiceAddress,
@@ -97,7 +103,8 @@ export async function getMessageProof<
     throw new BaseError(`Message hash does not exist on L2. Message hash: ${messageHash}`);
   }
 
-  const lineaRollupAddress = getContractsAddressesByChainId(client.chain.id).messageService;
+  const lineaRollupAddress =
+    parameters.lineaRollupAddress ?? getContractsAddressesByChainId(client.chain.id).messageService;
 
   const [l2MessagingBlockAnchoredEvent] = await getContractEvents(client, {
     address: lineaRollupAddress,

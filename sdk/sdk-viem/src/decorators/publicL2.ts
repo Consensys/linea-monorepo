@@ -1,4 +1,4 @@
-import { Account, Chain, Client, Transport } from "viem";
+import { Account, Address, BlockTag, Chain, Client, Transport } from "viem";
 import { L2PublicClient } from "@consensys/linea-sdk-core";
 import {
   getBlockExtraData,
@@ -30,19 +30,26 @@ import { StrictFunctionOnly } from "../types/misc";
 export type PublicActionsL2<chain extends Chain | undefined = Chain | undefined> = StrictFunctionOnly<
   L2PublicClient,
   {
-    getBlockExtraData(args: GetBlockExtraDataParameters): Promise<GetBlockExtraDataReturnType>;
-    getL1ToL2MessageStatus(args: GetL1ToL2MessageStatusParameters): Promise<GetL1ToL2MessageStatusReturnType>;
-    getMessageByMessageHash(args: GetMessageByMessageHashParameters): Promise<GetMessageByMessageHashReturnType>;
-    getMessagesByTransactionHash(
+    getBlockExtraData: <blockTag extends BlockTag = "latest">(
+      args: GetBlockExtraDataParameters<blockTag>,
+    ) => Promise<GetBlockExtraDataReturnType>;
+    getL1ToL2MessageStatus: (args: GetL1ToL2MessageStatusParameters) => Promise<GetL1ToL2MessageStatusReturnType>;
+    getMessageByMessageHash: (args: GetMessageByMessageHashParameters) => Promise<GetMessageByMessageHashReturnType>;
+    getMessagesByTransactionHash: (
       args: GetMessagesByTransactionHashParameters,
-    ): Promise<GetMessagesByTransactionHashReturnType>;
-    getTransactionReceiptByMessageHash(
+    ) => Promise<GetMessagesByTransactionHashReturnType>;
+    getTransactionReceiptByMessageHash: (
       args: GetTransactionReceiptByMessageHashParameters,
-    ): Promise<GetTransactionReceiptByMessageHashReturnType<chain>>;
+    ) => Promise<GetTransactionReceiptByMessageHashReturnType<chain>>;
   }
 >;
 
-export function publicActionsL2() {
+export type PublicActionsL2Parameters = {
+  lineaRollupAddress: Address;
+  l2MessageServiceAddress: Address;
+};
+
+export function publicActionsL2(parameters?: PublicActionsL2Parameters) {
   return <
     transport extends Transport = Transport,
     chain extends Chain | undefined = Chain | undefined,
@@ -51,9 +58,25 @@ export function publicActionsL2() {
     client: Client<transport, chain, account>,
   ): PublicActionsL2<chain> => ({
     getBlockExtraData: (args) => getBlockExtraData(client, args),
-    getL1ToL2MessageStatus: (args) => getL1ToL2MessageStatus(client, args),
-    getMessageByMessageHash: (args) => getMessageByMessageHash(client, args),
-    getMessagesByTransactionHash: (args) => getMessagesByTransactionHash(client, args),
-    getTransactionReceiptByMessageHash: (args) => getTransactionReceiptByMessageHash(client, args),
+    getL1ToL2MessageStatus: (args) =>
+      getL1ToL2MessageStatus(client, {
+        ...args,
+        ...(parameters ? { l2MessageServiceAddress: parameters.l2MessageServiceAddress } : {}),
+      }),
+    getMessageByMessageHash: (args) =>
+      getMessageByMessageHash(client, {
+        ...args,
+        ...(parameters ? { messageServiceAddress: parameters.lineaRollupAddress } : {}),
+      }),
+    getMessagesByTransactionHash: (args) =>
+      getMessagesByTransactionHash(client, {
+        ...args,
+        ...(parameters ? { messageServiceAddress: parameters.lineaRollupAddress } : {}),
+      }),
+    getTransactionReceiptByMessageHash: (args) =>
+      getTransactionReceiptByMessageHash(client, {
+        ...args,
+        ...(parameters ? { messageServiceAddress: parameters.lineaRollupAddress } : {}),
+      }),
   });
 }

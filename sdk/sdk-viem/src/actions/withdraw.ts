@@ -12,8 +12,6 @@ import {
   SendTransactionParameters,
   SendTransactionReturnType,
   Transport,
-  UnionEvaluate,
-  UnionOmit,
   zeroAddress,
 } from "viem";
 import { GetAccountParameter } from "../types/account";
@@ -26,13 +24,17 @@ export type WithdrawParameters<
   account extends Account | undefined = Account | undefined,
   chainOverride extends Chain | undefined = Chain | undefined,
   derivedChain extends Chain | undefined = DeriveChain<chain, chainOverride>,
-> = UnionEvaluate<UnionOmit<FormattedTransactionRequest<derivedChain>, "data" | "to" | "from">> &
+> = Omit<FormattedTransactionRequest<derivedChain>, "data" | "to" | "from"> &
   Partial<GetChainParameter<chain, chainOverride>> &
   Partial<GetAccountParameter<account>> & {
     token: Address;
     to: Address;
     amount: bigint;
     data?: Hex;
+    /** defaults to the L2 message service address for the chain */
+    l2MessageServiceAddress?: Address;
+    /** defaults to the L2 token bridge address for the chain */
+    l2TokenBridgeAddress?: Address;
   };
 
 export type WithdrawReturnType = SendTransactionReturnType;
@@ -105,7 +107,8 @@ export async function withdraw<
     throw new BaseError("No chain id found");
   }
 
-  const l2MessageServiceAddress = getContractsAddressesByChainId(chainId).messageService;
+  const l2MessageServiceAddress =
+    parameters.l2MessageServiceAddress ?? getContractsAddressesByChainId(chainId).messageService;
 
   const minimumFeeInWei = await readContract(client, {
     address: l2MessageServiceAddress,
@@ -147,7 +150,7 @@ export async function withdraw<
     } as SendTransactionParameters);
   }
 
-  const tokenBridgeAddress = getContractsAddressesByChainId(chainId).tokenBridge;
+  const tokenBridgeAddress = parameters.l2TokenBridgeAddress ?? getContractsAddressesByChainId(chainId).tokenBridge;
 
   return sendTransaction(client, {
     to: tokenBridgeAddress,

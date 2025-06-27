@@ -1,9 +1,11 @@
-import { Account, BaseError, Chain, Client, Hex, Transport } from "viem";
+import { Account, Address, BaseError, Chain, Client, Hex, Transport } from "viem";
 import { getContractEvents } from "viem/actions";
 import { getContractsAddressesByChainId } from "@consensys/linea-sdk-core";
 
 export type GetMessageByMessageHashParameters = {
   messageHash: Hex;
+  // Defaults to the message service address for the chain
+  messageServiceAddress?: Address;
 };
 
 export type GetMessageByMessageHashReturnType = {
@@ -43,7 +45,7 @@ export async function getMessageByMessageHash<chain extends Chain | undefined, a
   client: Client<Transport, chain, account>,
   parameters: GetMessageByMessageHashParameters,
 ): Promise<GetMessageByMessageHashReturnType> {
-  const { messageHash } = parameters;
+  const { messageHash, messageServiceAddress } = parameters;
 
   const chainId = client.chain?.id;
 
@@ -52,7 +54,7 @@ export async function getMessageByMessageHash<chain extends Chain | undefined, a
   }
 
   const [event] = await getContractEvents(client, {
-    address: getContractsAddressesByChainId(chainId).messageService,
+    address: messageServiceAddress ?? getContractsAddressesByChainId(chainId).messageService,
     abi: [
       {
         anonymous: false,

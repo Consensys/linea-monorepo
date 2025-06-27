@@ -1,9 +1,11 @@
-import { Account, BaseError, Chain, Client, Hex, parseEventLogs, toEventSelector, Transport } from "viem";
+import { Account, Address, BaseError, Chain, Client, Hex, parseEventLogs, toEventSelector, Transport } from "viem";
 import { getTransactionReceipt } from "viem/actions";
 import { ExtendedMessage, getContractsAddressesByChainId } from "@consensys/linea-sdk-core";
 
 export type GetMessagesByTransactionHashParameters = {
   transactionHash: Hex;
+  // Defaults to the message service address for the chain
+  messageServiceAddress?: Address;
 };
 
 export type GetMessagesByTransactionHashReturnType = ExtendedMessage[];
@@ -46,9 +48,13 @@ export async function getMessagesByTransactionHash<
 
   const receipt = await getTransactionReceipt(client, { hash: transactionHash });
 
+  const messageServiceAddress = parameters.messageServiceAddress
+    ? parameters.messageServiceAddress.toLowerCase()
+    : getContractsAddressesByChainId(chainId).messageService.toLowerCase();
+
   const logs = receipt.logs.filter(
     (log) =>
-      log.address.toLowerCase() === getContractsAddressesByChainId(chainId).messageService.toLowerCase() &&
+      log.address.toLowerCase() === messageServiceAddress &&
       log.topics[0]?.toLowerCase() ===
         toEventSelector("MessageSent(address,address,uint256,uint256,uint256,bytes,bytes32)").toLowerCase(),
   );

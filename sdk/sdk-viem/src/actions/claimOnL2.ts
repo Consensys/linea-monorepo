@@ -11,8 +11,6 @@ import {
   SendTransactionParameters,
   SendTransactionReturnType,
   Transport,
-  UnionEvaluate,
-  UnionOmit,
   zeroAddress,
 } from "viem";
 import { GetAccountParameter } from "../types/account";
@@ -25,10 +23,15 @@ export type ClaimOnL2Parameters<
   account extends Account | undefined = Account | undefined,
   chainOverride extends Chain | undefined = Chain | undefined,
   derivedChain extends Chain | undefined = DeriveChain<chain, chainOverride>,
-> = UnionEvaluate<UnionOmit<FormattedTransactionRequest<derivedChain>, "data" | "to" | "from">> &
+> = Omit<FormattedTransactionRequest<derivedChain>, "data" | "to" | "from"> &
   Partial<GetChainParameter<chain, chainOverride>> &
   Partial<GetAccountParameter<account>> &
-  Omit<Message, "messageHash" | "nonce"> & { messageNonce: bigint; feeRecipient?: Address };
+  Omit<Message, "messageHash" | "nonce"> & {
+    messageNonce: bigint;
+    feeRecipient?: Address;
+    // defaults to the message service address for the L2 chain
+    l2MessageServiceAddress?: Address;
+  };
 
 export type ClaimOnL2ReturnType = SendTransactionReturnType;
 
@@ -123,7 +126,8 @@ export async function claimOnL2<
     throw new BaseError("No chain id found in l2 client");
   }
 
-  const l2MessageServiceAddress = getContractsAddressesByChainId(chainId).messageService;
+  const l2MessageServiceAddress =
+    parameters.l2MessageServiceAddress ?? getContractsAddressesByChainId(chainId).messageService;
 
   return sendTransaction(client, {
     to: l2MessageServiceAddress,

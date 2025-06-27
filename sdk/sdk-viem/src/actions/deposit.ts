@@ -17,8 +17,6 @@ import {
   SendTransactionReturnType,
   StateOverride,
   Transport,
-  UnionEvaluate,
-  UnionOmit,
   zeroAddress,
 } from "viem";
 import { GetAccountParameter } from "../types/account";
@@ -33,7 +31,7 @@ export type DepositParameters<
   chainL2 extends Chain | undefined = Chain | undefined,
   accountL2 extends Account | undefined = Account | undefined,
   derivedChain extends Chain | undefined = DeriveChain<chain, chainOverride>,
-> = UnionEvaluate<UnionOmit<FormattedTransactionRequest<derivedChain>, "data" | "to" | "from">> &
+> = Omit<FormattedTransactionRequest<derivedChain>, "data" | "to" | "from"> &
   Partial<GetChainParameter<chain, chainOverride>> &
   Partial<GetAccountParameter<account>> & {
     l2Client: Client<Transport, chainL2, accountL2>;
@@ -42,6 +40,14 @@ export type DepositParameters<
     fee?: bigint;
     amount: bigint;
     data?: Hex;
+    // defaults to the message service address for the chain
+    lineaRollupAddress?: Address;
+    // defaults to the L2 message service address for the chain
+    l2MessageServiceAddress?: Address;
+    // defaults to the L1 token bridge address for the chain
+    l1TokenBridgeAddress?: Address;
+    // defaults to the L2 token bridge address for the chain
+    l2TokenBridgeAddress?: Address;
   };
 
 export type DepositReturnType = SendTransactionReturnType;
@@ -105,6 +111,7 @@ export type DepositReturnType = SendTransactionReturnType;
  *     fee: 100_000_000n, // Optional fee
  * });
  */
+
 export async function deposit<
   chain extends Chain | undefined,
   account extends Account | undefined,
@@ -131,11 +138,15 @@ export async function deposit<
     throw new BaseError("No chain id found in l1 or l2 client");
   }
 
+  const lineaRollupAddress = parameters.lineaRollupAddress ?? getContractsAddressesByChainId(l1ChainId).messageService;
+  const l2MessageServiceAddress =
+    parameters.l2MessageServiceAddress ?? getContractsAddressesByChainId(l2ChainId).messageService;
+
   if (!fee || fee === 0n) {
     const { maxFeePerGas } = await estimateFeesPerGas(l2Client, { type: "eip1559", chain: l2Client.chain });
 
     const nextMessageNumber = await readContract(client, {
-      address: getContractsAddressesByChainId(l1ChainId).messageService,
+      address: lineaRollupAddress,
       abi: [
         {
           inputs: [],
@@ -156,14 +167,19 @@ export async function deposit<
 
     if (token === zeroAddress) {
       const l2ClaimingTxGasLimit = await estimateEthBridgingGasUsed(l2Client, {
-        chainId: l1ChainId,
         account: account.address,
         recipient: to as Address,
         amount,
         nextMessageNumber,
+        l2MessageServiceAddress,
       });
       fee = maxFeePerGas * (l2ClaimingTxGasLimit + 6_000n);
     } else {
+      const l1TokenBridgeAddress =
+        parameters.l1TokenBridgeAddress ?? getContractsAddressesByChainId(l1ChainId).tokenBridge;
+      const l2TokenBridgeAddress =
+        parameters.l2TokenBridgeAddress ?? getContractsAddressesByChainId(l2ChainId).tokenBridge;
+
       const l2ClaimingTxGasLimit = await estimateERC20BridgingGasUsed(l2Client, {
         account: account.address,
         token,
@@ -172,14 +188,15 @@ export async function deposit<
         amount,
         recipient: to,
         nextMessageNumber,
+        l2MessageServiceAddress,
+        l1TokenBridgeAddress,
+        l2TokenBridgeAddress,
       });
       fee = maxFeePerGas * (l2ClaimingTxGasLimit + 6_000n);
     }
   }
 
   if (token === zeroAddress) {
-    const lineaRollupAddress = getContractsAddressesByChainId(l1ChainId).messageService;
-
     return sendTransaction(client, {
       to: lineaRollupAddress,
       value: amount + fee,
@@ -205,7 +222,7 @@ export async function deposit<
     } as SendTransactionParameters);
   }
 
-  const l1TokenBridgeAddress = getContractsAddressesByChainId(l1ChainId).tokenBridge;
+  const l1TokenBridgeAddress = parameters.l1TokenBridgeAddress ?? getContractsAddressesByChainId(l1ChainId).tokenBridge;
 
   return sendTransaction(client, {
     to: l1TokenBridgeAddress,
@@ -247,23 +264,21 @@ export async function deposit<
 async function estimateEthBridgingGasUsed<chain extends Chain | undefined, _account extends Account | undefined>(
   client: Client<Transport, chain, _account>,
   parameters: {
-    chainId: number;
     account: Address;
     recipient: Address;
     amount: bigint;
     nextMessageNumber: bigint;
+    l2MessageServiceAddress: Address; // Optional, defaults to the message service address for the chain
   },
 ) {
-  const { account, recipient, amount, nextMessageNumber, chainId } = parameters;
+  const { account, recipient, amount, nextMessageNumber, l2MessageServiceAddress } = parameters;
   const messageHash = computeMessageHash(account, recipient, 0n, amount, nextMessageNumber, "0x");
 
-  const messageServiceAddress = getContractsAddressesByChainId(chainId).messageService;
-
   const storageSlot = computeMessageStorageSlot(messageHash);
-  const stateOverride = createStateOverride(messageServiceAddress, storageSlot);
+  const stateOverride = createStateOverride(l2MessageServiceAddress, storageSlot);
 
   return estimateContractGas(client, {
-    address: messageServiceAddress as `0x${string}`,
+    address: l2MessageServiceAddress,
     abi: [
       {
         inputs: [
@@ -298,9 +313,23 @@ async function estimateERC20BridgingGasUsed<chain extends Chain | undefined, _ac
     amount: bigint;
     recipient: Address;
     nextMessageNumber: bigint;
+    l2MessageServiceAddress: Address;
+    l1TokenBridgeAddress: Address;
+    l2TokenBridgeAddress: Address;
   },
 ) {
-  const { token, l1ChainId, l2ChainId, amount, recipient, nextMessageNumber, account } = parameters;
+  const {
+    token,
+    l1ChainId,
+    l2ChainId,
+    amount,
+    recipient,
+    nextMessageNumber,
+    account,
+    l2MessageServiceAddress,
+    l1TokenBridgeAddress,
+    l2TokenBridgeAddress,
+  } = parameters;
 
   const { tokenAddress, chainId, tokenMetadata } = await prepareERC20TokenParams(client, {
     token,
@@ -349,8 +378,8 @@ async function estimateERC20BridgingGasUsed<chain extends Chain | undefined, _ac
   });
 
   const messageHash = computeMessageHash(
-    getContractsAddressesByChainId(l1ChainId).tokenBridge,
-    getContractsAddressesByChainId(l2ChainId).tokenBridge,
+    l1TokenBridgeAddress,
+    l2TokenBridgeAddress,
     0n,
     0n,
     nextMessageNumber,
@@ -358,10 +387,10 @@ async function estimateERC20BridgingGasUsed<chain extends Chain | undefined, _ac
   );
 
   const storageSlot = computeMessageStorageSlot(messageHash);
-  const stateOverride = createStateOverride(getContractsAddressesByChainId(l2ChainId).messageService, storageSlot);
+  const stateOverride = createStateOverride(l2MessageServiceAddress, storageSlot);
 
   return estimateContractGas(client, {
-    address: getContractsAddressesByChainId(l2ChainId).messageService,
+    address: l2MessageServiceAddress,
     abi: [
       {
         inputs: [
@@ -381,15 +410,7 @@ async function estimateERC20BridgingGasUsed<chain extends Chain | undefined, _ac
     ] as const,
     functionName: "claimMessage",
     account: account,
-    args: [
-      getContractsAddressesByChainId(l1ChainId).tokenBridge,
-      getContractsAddressesByChainId(l2ChainId).tokenBridge,
-      0n,
-      0n,
-      zeroAddress,
-      encodedData,
-      nextMessageNumber,
-    ],
+    args: [l1TokenBridgeAddress, l2TokenBridgeAddress, 0n, 0n, zeroAddress, encodedData, nextMessageNumber],
     stateOverride,
   } as EstimateContractGasParameters);
 }

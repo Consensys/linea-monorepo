@@ -1,4 +1,4 @@
-import { Account, Chain, Client, Transport } from "viem";
+import { Abi, Account, Address, BlockNumber, BlockTag, Chain, Client, ContractEventName, Transport } from "viem";
 import { getMessageProof, GetMessageProofParameters, GetMessageProofReturnType } from "../actions/getMessageProof";
 import {
   getL2ToL1MessageStatus,
@@ -29,31 +29,92 @@ export type PublicActionsL1<
 > = StrictFunctionOnly<
   L1PublicClient,
   {
-    getMessageProof(args: GetMessageProofParameters<chain, account>): Promise<GetMessageProofReturnType>;
-    getL2ToL1MessageStatus<chain extends Chain | undefined, account extends Account | undefined>(
-      args: GetL2ToL1MessageStatusParameters<chain, account>,
-    ): Promise<GetL2ToL1MessageStatusReturnType>;
-    getMessageByMessageHash(args: GetMessageByMessageHashParameters): Promise<GetMessageByMessageHashReturnType>;
-    getMessagesByTransactionHash(
+    getMessageProof: <
+      abi extends Abi | readonly unknown[] = Abi,
+      eventName extends ContractEventName<abi> | undefined = ContractEventName<abi> | undefined,
+      strict extends boolean | undefined = undefined,
+      fromBlock extends BlockNumber | BlockTag | undefined = undefined,
+      toBlock extends BlockNumber | BlockTag | undefined = undefined,
+    >(
+      args: GetMessageProofParameters<chain, account, abi, eventName, strict, fromBlock, toBlock>,
+    ) => Promise<GetMessageProofReturnType>;
+    getL2ToL1MessageStatus: <
+      abi extends Abi | readonly unknown[] = Abi,
+      eventName extends ContractEventName<abi> | undefined = ContractEventName<abi> | undefined,
+      strict extends boolean | undefined = undefined,
+      fromBlock extends BlockNumber | BlockTag | undefined = undefined,
+      toBlock extends BlockNumber | BlockTag | undefined = undefined,
+    >(
+      args: GetL2ToL1MessageStatusParameters<chain, account, abi, eventName, strict, fromBlock, toBlock>,
+    ) => Promise<GetL2ToL1MessageStatusReturnType>;
+    getMessageByMessageHash: (args: GetMessageByMessageHashParameters) => Promise<GetMessageByMessageHashReturnType>;
+    getMessagesByTransactionHash: (
       args: GetMessagesByTransactionHashParameters,
-    ): Promise<GetMessagesByTransactionHashReturnType>;
-    getTransactionReceiptByMessageHash<chain extends Chain | undefined>(
+    ) => Promise<GetMessagesByTransactionHashReturnType>;
+    getTransactionReceiptByMessageHash: <chain extends Chain | undefined>(
       args: GetTransactionReceiptByMessageHashParameters,
-    ): Promise<GetTransactionReceiptByMessageHashReturnType<chain>>;
+    ) => Promise<GetTransactionReceiptByMessageHashReturnType<chain>>;
   }
 >;
 
-export function publicActionsL1() {
+export type PublicActionsL1Parameters = {
+  lineaRollupAddress: Address;
+  l2MessageServiceAddress: Address;
+};
+
+export function publicActionsL1(parameters?: PublicActionsL1Parameters) {
   return <
     chain extends Chain | undefined = Chain | undefined,
     account extends Account | undefined = Account | undefined,
   >(
     client: Client<Transport, chain, account>,
   ): PublicActionsL1<chain, account> => ({
-    getMessageProof: (args) => getMessageProof(client, args),
-    getL2ToL1MessageStatus: (args) => getL2ToL1MessageStatus(client, args),
-    getMessageByMessageHash: (args) => getMessageByMessageHash(client, args),
-    getMessagesByTransactionHash: (args) => getMessagesByTransactionHash(client, args),
-    getTransactionReceiptByMessageHash: (args) => getTransactionReceiptByMessageHash(client, args),
+    getMessageProof: (args) =>
+      getMessageProof(client, {
+        ...args,
+        ...(parameters
+          ? {
+              lineaRollupAddress: parameters.lineaRollupAddress,
+              l2MessageServiceAddress: parameters.l2MessageServiceAddress,
+            }
+          : {}),
+      }),
+    getL2ToL1MessageStatus: (args) =>
+      getL2ToL1MessageStatus(client, {
+        ...args,
+        ...(parameters
+          ? {
+              lineaRollupAddress: parameters.lineaRollupAddress,
+              l2MessageServiceAddress: parameters.l2MessageServiceAddress,
+            }
+          : {}),
+      }),
+    getMessageByMessageHash: (args) =>
+      getMessageByMessageHash(client, {
+        ...args,
+        ...(parameters
+          ? {
+              messageServiceAddress: parameters.lineaRollupAddress,
+            }
+          : {}),
+      }),
+    getMessagesByTransactionHash: (args) =>
+      getMessagesByTransactionHash(client, {
+        ...args,
+        ...(parameters
+          ? {
+              messageServiceAddress: parameters.lineaRollupAddress,
+            }
+          : {}),
+      }),
+    getTransactionReceiptByMessageHash: (args) =>
+      getTransactionReceiptByMessageHash(client, {
+        ...args,
+        ...(parameters
+          ? {
+              messageServiceAddress: parameters.lineaRollupAddress,
+            }
+          : {}),
+      }),
   });
 }

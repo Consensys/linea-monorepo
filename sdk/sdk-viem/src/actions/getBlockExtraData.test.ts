@@ -1,5 +1,5 @@
 import { getBlockExtraData, GetBlockExtraDataParameters } from "./getBlockExtraData";
-import { BaseError, Client, Transport, Chain, Account } from "viem";
+import { Client, Transport, Chain, Account } from "viem";
 import { linea } from "viem/chains";
 import { getBlock } from "viem/actions";
 import { generateBlock } from "../../tests/utils";
@@ -20,11 +20,6 @@ describe("getBlockExtraData", () => {
 
   afterEach(() => {
     jest.clearAllMocks();
-  });
-
-  it("throws if client chain is not Linea or Linea Sepolia", async () => {
-    const client = mockClient(12345);
-    await expect(getBlockExtraData(client, parameters)).rejects.toThrow(BaseError);
   });
 
   it("calls getBlock and parseBlockExtraData for Linea", async () => {
