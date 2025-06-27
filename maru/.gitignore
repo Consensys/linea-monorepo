@@ -26,6 +26,8 @@ replay_pid*
 ### Gradle ###
 .gradle/
 build/
+.java-version
+*.hprof
 
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider
 
@@ -45,8 +47,8 @@ build/
 # IntelliJ
 out/
 
+*.local.toml
 
 # Generated files
 docker/initialization/*.json
-
-.java-version
+tmp/

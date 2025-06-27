@@ -39,6 +39,9 @@ data class ForkChoiceUpdatedResult(
     result = 31 * result + (payloadId?.contentHashCode() ?: 0)
     return result
   }
+
+  override fun toString(): String =
+    "ForkChoiceUpdatedResult(payloadStatus=$payloadStatus, payloadId=${payloadId?.encodeHex()})"
 }
 
 data class PayloadAttributes(

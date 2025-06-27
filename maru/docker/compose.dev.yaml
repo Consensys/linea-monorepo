@@ -7,14 +7,16 @@ services:
     # docker build app --build-context=libs=./app/build/install/app/lib/ --build-context=maru=./app/build/libs/ -t local/maru:latest
     # command: [ 'java', '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005','-Dvertx.configurationFile=/path/to/vertx-options.json', '-Dlog4j2.configurationFile=/path/to/log4j2-dev.xml']
     #image: local/maru:latest
-    image: consensys/maru:${MARU_TAG:-2687246}
+    image: consensys/maru:${MARU_TAG:-2bb0fb1}
     container_name: maru
     depends_on:
       - sequencer
       - follower-geth
-    command: [ 'java', '-jar', "maru.jar", '--besu-genesis-file', 'configs/genesis.json', '--config', 'configs/config.dev.toml' ]
+    command: [ 'java', '-Dlog4j2.configurationFile=configs/log4j.xml', '-jar', "maru.jar", '--besu-genesis-file', 'configs/genesis.json', '--config', 'configs/config.dev.toml']
+#    command: [ 'echo' , 'Forced exit to run in IntellIJ' ]
     volumes:
       - ./maru/config.dev.toml:/opt/consensys/maru/configs/config.dev.toml:ro
+      - ./maru/log4j.xml:/opt/consensys/maru/configs/log4j.xml:ro
       - ./initialization/genesis-maru.json:/opt/consensys/maru/configs/genesis.json:ro
       - ./maru/0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0.key:/tmp/maru-db/private-key
       - ./jwt:/opt/consensys/docker/jwt:ro
