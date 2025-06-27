@@ -20,14 +20,16 @@ import net.consensys.linea.zktracer.module.blockdata.module.Blockdata;
 import net.consensys.linea.zktracer.module.blockdata.module.ParisBlockData;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
+import org.hyperledger.besu.plugin.services.BlockchainService;
 
 public class ParisHub extends LondonHub {
-  public ParisHub(ChainConfig chain) {
-    super(chain);
+  public ParisHub(ChainConfig chain, BlockchainService blockchainService) {
+    super(chain, blockchainService);
   }
 
   @Override
-  protected Blockdata setBlockData(Hub hub, Wcp wcp, Euc euc, ChainConfig chain) {
+  protected Blockdata setBlockData(
+      Hub hub, Wcp wcp, Euc euc, ChainConfig chain, BlockchainService blockchainService) {
     return new ParisBlockData(hub, wcp, euc, chain);
   }
 }

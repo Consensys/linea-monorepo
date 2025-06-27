@@ -25,12 +25,14 @@ import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.EWord;
 import org.hyperledger.besu.plugin.data.BlockHeader;
+import org.hyperledger.besu.plugin.services.BlockchainService;
 
 public class CancunBlockDataOperation extends ParisBlockDataOperation {
-  private final Hub
-      hub; // TODO: will have to be removed when we get the blobbasefee from the block header
+
+  private final BlockchainService blockchainService;
 
   public CancunBlockDataOperation(
+      BlockchainService blockchainService,
       Hub hub,
       BlockHeader blockHeader,
       BlockHeader prevBlockHeader,
@@ -41,15 +43,12 @@ public class CancunBlockDataOperation extends ParisBlockDataOperation {
       OpCode opCode,
       long firstBlockNumber) {
     super(hub, blockHeader, prevBlockHeader, relTxMax, wcp, euc, chain, opCode, firstBlockNumber);
-    this.hub = hub;
+    this.blockchainService = blockchainService;
   }
 
   @Override
   protected void handleBlobBaseFee() {
-    data = EWord.of(hub.currentFrame().frame().getBlobGasPrice()); // TODO: this is ugly.
-    // the BLOBBASEFEE is accessible from the besu frame, not the
-    // blockheader. I've raised the point to Besu team to have it in
-    // block header. Plus it'll fail when we'll deal with empty block. Wait & see.
+    data = EWord.of(blockchainService.getBlobGasPrice(blockHeader()));
 
     // row i
     wcpCallToGEQ(0, data(), EWord.ZERO);

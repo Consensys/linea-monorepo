@@ -116,8 +116,6 @@ public class ConflatedCountTracesV2 {
         : new ZkTracer(
             Fork.LONDON,
             l1L2BridgeSharedConfiguration,
-            BesuServiceProvider.getBesuService(besuContext, BlockchainService.class)
-                .getChainId()
-                .orElseThrow());
+            BesuServiceProvider.getBesuService(besuContext, BlockchainService.class));
   }
 }

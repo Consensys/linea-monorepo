@@ -18,10 +18,11 @@ package net.consensys.linea.zktracer.module.hub;
 import net.consensys.linea.zktracer.ChainConfig;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.gascalculator.PragueGasCalculator;
+import org.hyperledger.besu.plugin.services.BlockchainService;
 
 public class PragueHub extends CancunHub {
-  public PragueHub(ChainConfig chain) {
-    super(chain);
+  public PragueHub(ChainConfig chain, BlockchainService blockchainService) {
+    super(chain, blockchainService);
   }
 
   @Override

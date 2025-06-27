@@ -30,10 +30,15 @@ import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.plugin.data.BlockHeader;
+import org.hyperledger.besu.plugin.services.BlockchainService;
 
 public class CancunBlockData extends ParisBlockData {
-  public CancunBlockData(Hub hub, Wcp wcp, Euc euc, ChainConfig chain) {
+  private final BlockchainService blockchainService;
+
+  public CancunBlockData(
+      Hub hub, Wcp wcp, Euc euc, ChainConfig chain, BlockchainService blockchainService) {
     super(hub, wcp, euc, chain);
+    this.blockchainService = blockchainService;
   }
 
   @Override
@@ -60,6 +65,7 @@ public class CancunBlockData extends ParisBlockData {
       OpCode opCode,
       long firstBlockNumber) {
     return new CancunBlockDataOperation(
+        blockchainService,
         hub,
         blockHeader,
         previousBlockHeader,

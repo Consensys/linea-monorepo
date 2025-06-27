@@ -17,11 +17,11 @@ package net.consensys.linea.zktracer.module.mxp;
 
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_MEMORY;
-import static net.consensys.linea.zktracer.Trace.Mxp.CT_MAX_NON_TRIVIAL;
-import static net.consensys.linea.zktracer.Trace.Mxp.CT_MAX_NON_TRIVIAL_BUT_MXPX;
-import static net.consensys.linea.zktracer.Trace.Mxp.CT_MAX_TRIVIAL;
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE_MO;
+import static net.consensys.linea.zktracer.TraceLondon.Mxp.CT_MAX_NON_TRIVIAL;
+import static net.consensys.linea.zktracer.TraceLondon.Mxp.CT_MAX_NON_TRIVIAL_BUT_MXPX;
+import static net.consensys.linea.zktracer.TraceLondon.Mxp.CT_MAX_TRIVIAL;
 import static net.consensys.linea.zktracer.module.Util.max;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static org.hyperledger.besu.evm.internal.Words.clampedAdd;
