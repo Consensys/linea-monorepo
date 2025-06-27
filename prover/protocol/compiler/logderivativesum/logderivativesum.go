@@ -21,6 +21,7 @@ func CompileLogDerivativeSum(comp *wizard.CompiledIOP) {
 
 		// Filter out non other types of queries
 		logDeriv, ok := comp.QueriesParams.Data(qName).(query.LogDerivativeSum)
+
 		if !ok {
 			continue
 		}
@@ -99,11 +100,20 @@ func (f *FinalEvaluationCheck) Run(run wizard.Runtime) error {
 	zSum := fext.Zero()
 	for k := range f.ZOpenings {
 		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).ExtY
+		fmt.Printf("tmp ExtY=%v \n", temp.String())
+
 		tmps = append(tmps, temp)
 		zSum.Add(&zSum, &temp)
+		fmt.Printf("zSum=%v \n", zSum.String())
 	}
 
-	claimedSum := run.GetLogDerivSumParams(f.LogDerivSumID).Sum
+	logDerivSumParam := run.GetLogDerivSumParams(f.LogDerivSumID)
+	claimedSum := logDerivSumParam.Sum
+	fmt.Printf("log-derivate-sum;  \n"+
+		"given claimedSum= %v but calculated zSum= %v\n"+
+		"partial-sums=(len %v) tmps= %v",
+		claimedSum.String(), zSum.String(), len(tmps), vectorext.Prettify(tmps),
+	)
 	if zSum != claimedSum {
 		return fmt.Errorf("log-derivate-sum; the final evaluation check failed for %v\n"+
 			"given %v but calculated %v\n"+

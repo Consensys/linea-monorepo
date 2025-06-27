@@ -55,13 +55,13 @@ func TestLogDerivativeSum(t *testing.T) {
 
 	prover := func(run *wizard.ProverRuntime) {
 
-		run.AssignColumn("Num_0", smartvectors.ForTest(1, 1, 1, 1))
-		run.AssignColumn("Num_1", smartvectors.ForTest(2, 3, 7, 9))
-		run.AssignColumn("Num_2", smartvectors.ForTest(5, 6, 1, 1))
+		run.AssignColumn("Num_0", smartvectors.ForExtTest(1, 1, 1, 1))
+		run.AssignColumn("Num_1", smartvectors.ForExtTest(2, 3, 7, 9))
+		run.AssignColumn("Num_2", smartvectors.ForExtTest(5, 6, 1, 1))
 
-		run.AssignColumn("Den_0", smartvectors.ForTest(1, 1, 1, 1))
-		run.AssignColumn("Den_1", smartvectors.ForTest(2, 3, 7, 9))
-		run.AssignColumn("Den_2", smartvectors.ForTest(5, 6, 1, 1))
+		run.AssignColumn("Den_0", smartvectors.ForExtTest(1, 1, 1, 1))
+		run.AssignColumn("Den_1", smartvectors.ForExtTest(2, 3, 7, 9))
+		run.AssignColumn("Den_2", smartvectors.ForExtTest(5, 6, 1, 1))
 
 		run.AssignLogDerivSum("LogDerivSum_Test", fext.NewElement(8, 0, 0, 0))
 
@@ -117,9 +117,9 @@ func TestLogDerivativeSumMixed(t *testing.T) {
 		run.AssignColumn("Num_1", smartvectors.ForTest(2, 3, 7, 9))
 		run.AssignColumn("Num_2", smartvectors.ForTest(5, 6, 1, 1))
 
-		run.AssignColumn("Den_0", smartvectors.ForTestFromQuads(1, 2, 3, 4, 5, 6, 7, 8))
-		run.AssignColumn("Den_1", smartvectors.ForTestFromQuads(2, 3, 7, 9, 11, 13, 17, 19))
-		run.AssignColumn("Den_2", smartvectors.ForTestFromQuads(5, 6, 1, 1, 2, 3, 4, 5))
+		run.AssignColumn("Den_0", smartvectors.ForExtTest(1, 1, 1, 1))
+		run.AssignColumn("Den_1", smartvectors.ForExtTest(2, 3, 7, 9))
+		run.AssignColumn("Den_2", smartvectors.ForExtTest(5, 6, 1, 1))
 
 		run.AssignLogDerivSum("LogDerivSum_Test", fext.NewElement(8, 0, 0, 0))
 
@@ -171,15 +171,15 @@ func TestLogDerivativeSumBogdan(t *testing.T) {
 
 	prover := func(run *wizard.ProverRuntime) {
 
-		run.AssignColumn("Num_0", smartvectors.ForTest(1, 1))
-		run.AssignColumn("Num_1", smartvectors.ForTest(2, 3))
-		run.AssignColumn("Num_2", smartvectors.ForTest(5, 6))
+		run.AssignColumn("Num_0", smartvectors.ForExtTest(1, 1))
+		run.AssignColumn("Num_1", smartvectors.ForExtTest(2, 3))
+		run.AssignColumn("Num_2", smartvectors.ForExtTest(5, 6))
 
-		run.AssignColumn("Den_0", smartvectors.ForTest(1, 1))
-		run.AssignColumn("Den_1", smartvectors.ForTest(2, 3))
-		run.AssignColumn("Den_2", smartvectors.ForTest(5, 6))
+		run.AssignColumn("Den_0", smartvectors.ForExtTest(1, 1))
+		run.AssignColumn("Den_1", smartvectors.ForExtTest(2, 3))
+		run.AssignColumn("Den_2", smartvectors.ForExtTest(5, 6))
 
-		run.AssignLogDerivSum("LogDerivSum_Test", fext.NewElement(8, 0, 0, 0))
+		run.AssignLogDerivSum("LogDerivSum_Test", fext.NewElement(4, 0, 0, 0))
 
 	}
 

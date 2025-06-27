@@ -122,6 +122,11 @@ func ForTest(xs ...int) SmartVector {
 	return NewRegular(vector.ForTest(xs...))
 }
 
+// ForTest returns a witness from a explicit litteral assignement
+func ForExtTest(xs ...int) SmartVector {
+	return NewRegularExt(vectorext.ForTest(xs...))
+}
+
 // IntoRegVec converts a smart-vector into a normal vec. The resulting vector
 // is always reallocated and can be safely mutated without side-effects
 // on s.

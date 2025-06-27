@@ -1,6 +1,7 @@
 package logderivativesum
 
 import (
+	"fmt"
 	"runtime/debug"
 	"sync"
 
@@ -339,6 +340,8 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 			)
 
 			svDenominator := column.EvalExprColumn(run, z.ZDenominatorBoarded[frag])
+			fmt.Printf("svDenominator=%v \n", svDenominator.Pretty())
+
 			if sv.IsBase(svDenominator) {
 				var numerator []fext.Element
 				denominator := svDenominator.IntoRegVecSaveAllocExt()
@@ -365,14 +368,26 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 				// we are dealing with extension denominators
 				var numerator []fext.Element
 				denominator := svDenominator.IntoRegVecSaveAllocExt()
+				for i := range denominator {
+					fmt.Printf("denominator %v=%v \n", i, denominator[i].String())
+
+				}
 				packedZ := fext.BatchInvert(denominator)
 				if len(numeratorMetadata) == 0 {
 					numerator = vectorext.Repeat(fext.One(), z.Size)
+				}
+				for i := range packedZ {
+					fmt.Printf("packedZ %v=%v \n", i, packedZ[i].String())
+
 				}
 
 				if len(numeratorMetadata) > 0 {
 					evalResult := column.EvalExprColumn(run, z.ZNumeratorBoarded[frag])
 					numerator = evalResult.IntoRegVecSaveAllocExt()
+				}
+				for i := range numerator {
+					fmt.Printf("numerator %v=%v \n", i, numerator[i].String())
+
 				}
 
 				for k := range packedZ {
