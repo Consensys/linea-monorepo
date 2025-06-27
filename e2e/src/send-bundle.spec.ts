@@ -1,4 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
+import { ethers, toBeHex, TransactionRequest } from "ethers";
 import { config } from "./config/tests-config";
 import {
   generateRandomUUIDv4,
@@ -8,7 +9,6 @@ import {
   LineaBundleClient,
   pollForBlockNumber,
 } from "./common/utils";
-import { ethers, TransactionRequest } from "ethers";
 
 describe("Send bundle test suite", () => {
   const l2AccountManager = config.getL2AccountManager();
@@ -25,6 +25,7 @@ describe("Send bundle test suite", () => {
       let senderNonce = await senderAccount.getNonce();
       const txHashes: string[] = [];
       const txs: string[] = [];
+
       for (let i = 0; i < 3; i++) {
         const txRequest: TransactionRequest = {
           to: recipientAccount.address,
@@ -36,10 +37,11 @@ describe("Send bundle test suite", () => {
         txs.push(await getRawTransactionHex(txRequest, senderWallet));
         txHashes.push(await getTransactionHash(txRequest, senderWallet));
       }
+
       const targetBlockNumber = (await config.getL2Provider().getBlockNumber()) + 5;
       const replacementUUID = generateRandomUUIDv4();
 
-      await lineaSendBundleClient.lineaSendBundle(txs, replacementUUID, "0x" + targetBlockNumber.toString(16));
+      await lineaSendBundleClient.lineaSendBundle(txs, replacementUUID, toBeHex(targetBlockNumber));
 
       const hasReachedTargetBlockNumber = await pollForBlockNumber(config.getL2Provider(), targetBlockNumber);
 
@@ -67,6 +69,7 @@ describe("Send bundle test suite", () => {
       let senderNonce = await senderAccount.getNonce();
       const txHashes: string[] = [];
       const txs: string[] = [];
+
       for (let i = 0; i < 3; i++) {
         const txRequest: TransactionRequest = {
           to: recipients[i],
@@ -78,10 +81,11 @@ describe("Send bundle test suite", () => {
         txs.push(await getRawTransactionHex(txRequest, senderWallet));
         txHashes.push(await getTransactionHash(txRequest, senderWallet));
       }
+
       const targetBlockNumber = (await config.getL2Provider().getBlockNumber()) + 5;
       const replacementUUID = generateRandomUUIDv4();
 
-      await lineaSendBundleClient.lineaSendBundle(txs, replacementUUID, "0x" + targetBlockNumber.toString(16));
+      await lineaSendBundleClient.lineaSendBundle(txs, replacementUUID, toBeHex(targetBlockNumber));
 
       const hasReachedTargetBlockNumber = await pollForBlockNumber(config.getL2Provider(), targetBlockNumber);
 
@@ -105,6 +109,7 @@ describe("Send bundle test suite", () => {
       let senderNonce = await senderAccount.getNonce();
       const txHashes: string[] = [];
       const txs: string[] = [];
+
       for (let i = 0; i < 3; i++) {
         const txRequest: TransactionRequest = {
           to: recipientAccount.address,
@@ -116,10 +121,11 @@ describe("Send bundle test suite", () => {
         txs.push(await getRawTransactionHex(txRequest, senderWallet));
         txHashes.push(await getTransactionHash(txRequest, senderWallet));
       }
+
       const targetBlockNumber = (await config.getL2Provider().getBlockNumber()) + 10;
       const replacementUUID = generateRandomUUIDv4();
 
-      await lineaSendBundleClient.lineaSendBundle(txs, replacementUUID, "0x" + targetBlockNumber.toString(16));
+      await lineaSendBundleClient.lineaSendBundle(txs, replacementUUID, toBeHex(targetBlockNumber));
 
       await pollForBlockNumber(config.getL2Provider(), targetBlockNumber - 5);
       const cancelled = await lineaCancelBundleClient.lineaCancelBundle(replacementUUID);
