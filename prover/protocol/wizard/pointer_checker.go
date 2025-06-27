@@ -16,12 +16,21 @@ import (
 //
 // This is useful to early-catch bugs that would otherwise hard to find.
 func (comp *CompiledIOP) checkAnyInStore(x any) {
+
+	if !comp.WithStorePointerChecks {
+		return
+	}
+
 	comp.checkReflectValueInStore(reflect.ValueOf(x))
 }
 
 // checkReflectValueInStore recursively crawls in the fields of the provided
 // reflect.Value object.
 func (comp *CompiledIOP) checkReflectValueInStore(x reflect.Value) {
+
+	if !comp.WithStorePointerChecks {
+		return
+	}
 
 	if !x.IsValid() {
 		return
@@ -66,6 +75,10 @@ func (comp *CompiledIOP) checkReflectValueInStore(x reflect.Value) {
 // find.
 func (comp *CompiledIOP) checkColumnInStore(col ifaces.Column) {
 
+	if !comp.WithStorePointerChecks {
+		return
+	}
+
 	if nat, ok := col.(column.Natural); ok {
 		if nat.GetStoreUnsafe() != comp.Columns {
 			utils.Panic("column %v has a wrong store", col.GetColID())
@@ -77,6 +90,10 @@ func (comp *CompiledIOP) checkColumnInStore(col ifaces.Column) {
 // the compiled IOP. It is used to early-catch bugs that would otherwise hard to
 // find.
 func (comp *CompiledIOP) checkExpressionInStore(expr *symbolic.Expression) {
+
+	if !comp.WithStorePointerChecks {
+		return
+	}
 
 	var (
 		board = expr.Board()
