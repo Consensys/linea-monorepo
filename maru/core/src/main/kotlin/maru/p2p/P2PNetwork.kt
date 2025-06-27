@@ -20,7 +20,6 @@ enum class ValidationResultCode {
   ACCEPT,
   REJECT,
   IGNORE,
-  KEEP_FOR_THE_FUTURE,
 }
 
 sealed interface ValidationResult {

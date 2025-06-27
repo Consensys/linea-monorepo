@@ -68,29 +68,31 @@ class ElDelegatedConsensus(
 
   private fun poll(): SafeFuture<Unit> {
     log.debug("Polling EL for new blocks")
-    if (currentTask != null) {
-      if (!currentTask!!.isDone) {
-        log.warn("Current task isn't done. Scheduling the next one, but results may be unexpected!")
-      }
-      stop()
+    if (currentTask != null && !currentTask!!.isDone) {
+      log.warn("Current task isn't done. Cancelling it before scheduling the next one.")
+      currentTask!!.cancel(false)
     }
 
-    return SafeFuture
-      .of(
-        ethereumJsonRpcClient.ethGetBlockByNumber(DefaultBlockParameter.valueOf("latest"), true).sendAsync(),
-      ).thenApply {
-        onNewBlock.handleNewBlock(wrapIntoDummyBeaconBlock(it.block.toDomain()))
-      }.handleException {
-        log.error(it.message, it)
-      }.thenApply {
-        SafeFuture
-          .runAsync(
-            {
-              currentTask = poll()
-            },
-            SafeFuture.delayedExecutor(blockTimeSeconds.toLong(), TimeUnit.SECONDS),
-          )
-      }
+    val future =
+      SafeFuture
+        .of(
+          ethereumJsonRpcClient.ethGetBlockByNumber(DefaultBlockParameter.valueOf("latest"), true).sendAsync(),
+        ).thenApply {
+          onNewBlock.handleNewBlock(wrapIntoDummyBeaconBlock(it.block.toDomain()))
+        }.handleException {
+          log.error(it.message, it)
+        }.thenCompose {
+          SafeFuture
+            .runAsync(
+              {
+                poll()
+              },
+              SafeFuture.delayedExecutor(blockTimeSeconds.toLong(), TimeUnit.SECONDS),
+            ).thenApply { }
+        }
+
+    currentTask = future
+    return future
   }
 
   private fun wrapIntoDummyBeaconBlock(executionPayload: ExecutionPayload): BeaconBlock {
