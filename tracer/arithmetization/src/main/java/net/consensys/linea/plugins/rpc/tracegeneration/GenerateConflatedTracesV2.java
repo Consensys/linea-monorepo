@@ -104,9 +104,7 @@ public class GenerateConflatedTracesV2 {
         new ZkTracer(
             fork,
             l1L2BridgeSharedConfiguration,
-            BesuServiceProvider.getBesuService(besuContext, BlockchainService.class)
-                .getChainId()
-                .orElseThrow());
+            BesuServiceProvider.getBesuService(besuContext, BlockchainService.class));
     final TraceWriter traceWriter = new TraceWriter(tracer);
 
     traceService.trace(
