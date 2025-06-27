@@ -17,6 +17,9 @@ if [[ ! -f "initialization/genesis-besu.json" && ! -f "initialization/genesis-ge
     sed -i "s/%SWITCH_TIME%/$merge_timestamp/g" genesis-geth.json
     merge_timestamp_hex=$(printf "0x%x" $merge_timestamp)
     sed -i "s/%SWITCH_TIME%/$merge_timestamp_hex/g" genesis-nethermind.json
+
+    CREATE_EMPTY_BLOCKS="${CREATE_EMPTY_BLOCKS:-false}"
+    sed -i "s/%CREATE_EMPTY_BLOCKS%/$CREATE_EMPTY_BLOCKS/g" genesis-besu.json
 else
     echo "Genesis files already exist. Initialization skipped."
 fi

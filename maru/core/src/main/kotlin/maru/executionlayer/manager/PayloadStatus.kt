@@ -8,6 +8,8 @@
  */
 package maru.executionlayer.manager
 
+import maru.extensions.encodeHex
+
 enum class ExecutionPayloadStatus(
   private val validity: Validity,
 ) {
@@ -55,4 +57,7 @@ data class PayloadStatus(
     result = 31 * result + (validationError?.hashCode() ?: 0)
     return result
   }
+
+  override fun toString(): String =
+    "PayloadStatus(status=$status, latestValidHash=${latestValidHash?.encodeHex()}, validationError=$validationError)"
 }

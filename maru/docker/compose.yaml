@@ -13,6 +13,8 @@ services:
   initialization:
     image: busybox:latest
     container_name: intialization_using_busybox
+    environment:
+      CREATE_EMPTY_BLOCKS: ${CREATE_EMPTY_BLOCKS:-false}
     entrypoint: [ "sh","/initialization/init.sh" ]
     volumes:
       - ./initialization/:/initialization:rw
@@ -21,7 +23,7 @@ services:
     depends_on:
       initialization:
         condition: service_completed_successfully
-    image: hyperledger/besu:25.5.0
+    image: hyperledger/besu:${BESU_TAG:-25.6.0}
     container_name: sequencer
     healthcheck:
       test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
@@ -101,7 +103,7 @@ services:
     depends_on:
       sequencer:
         condition: service_healthy
-    image: hyperledger/besu:25.5.0
+    image: hyperledger/besu:${BESU_TAG:-25.6.0}
     container_name: follower-besu
     healthcheck:
       test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]

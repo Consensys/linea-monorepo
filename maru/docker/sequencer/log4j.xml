@@ -19,6 +19,15 @@
     <Logger name="org.hyperledger.besu.ethereum.eth.sync.fullsync.FullSyncTargetManager" level="INFO" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
+    <Logger name="org.hyperledger.besu.ethereum.mainnet.BlockHeaderValidator" level="DEBUG" additivity="false">
+      <AppenderRef ref="Console"/>
+    </Logger>
+    <Logger name="org.hyperledger.besu.ethereum.mainnet.BlockBodyValidator" level="DEBUG" additivity="false">
+      <AppenderRef ref="Console"/>
+    </Logger>
+    <Logger name="org.hyperledger.besu.consensus.clique.headervalidationrules" level="DEBUG" additivity="false">
+      <AppenderRef ref="Console"/>
+    </Logger>
     <Logger name="org.hyperledger.besu.ethereum.blockcreation" level="INFO" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
@@ -41,7 +50,7 @@
       <AppenderRef ref="Console"/>
     </Logger>
     <Logger name="net.consensys.linea.sequencer.txselection.selectors" level="DEBUG" />
-    <Logger name="org.hyperledger.besu.ethereum.blockcreation.txselection.BlockTransactionSelector" level="TRACE">
+    <Logger name="org.hyperledger.besu.ethereum.blockcreation.txselection.BlockTransactionSelector" level="INFO">
       <Filters>
         <LevelRangeFilter maxLevel="DEBUG" onMatch="ACCEPT" onMismatch="NEUTRAL" />
         <RegexFilter regex="Transaction selection result .*" useRawMsg="true" onMatch="ACCEPT" onMismatch="DENY" />
