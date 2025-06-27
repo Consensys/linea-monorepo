@@ -16,7 +16,7 @@ import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
 import maru.core.SealedBeaconBlock
 import maru.metrics.MaruMetricsCategory
-import maru.p2p.topics.SealedBlocksTopicHandler
+import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import maru.serialization.SerDe
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
@@ -40,13 +40,20 @@ class P2PNetworkImpl(
   private val p2pConfig: P2P,
   private val serDe: SerDe<SealedBeaconBlock>,
   private val metricsFacade: MetricsFacade,
+  nextExpectedBeaconBlockNumber: ULong,
 ) : P2PNetwork,
   PeerLookup {
   private val topicIdGenerator = LineaMessageIdGenerator(chainId)
   private val sealedBlocksTopicId = topicIdGenerator.id(GossipMessageType.BEACON_BLOCK.name, Version.V1)
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
   private val sealedBlocksTopicHandler =
-    SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serDe, sealedBlocksTopicId)
+    TopicHandlerWithInOrderDelivering(
+      initialExpectedSequenceNumber = nextExpectedBeaconBlockNumber,
+      subscriptionManager = sealedBlocksSubscriptionManager,
+      sequenceNumberExtractor = { it.beaconBlock.beaconBlockHeader.number },
+      deserializer = serDe,
+      topicId = sealedBlocksTopicId,
+    )
   private val broadcastMessageCounterFactory =
     metricsFacade.createCounterFactory(
       category = MaruMetricsCategory.P2P_NETWORK,
@@ -74,7 +81,7 @@ class P2PNetworkImpl(
   private val builtNetwork: TekuLibP2PNetwork = buildP2PNetwork(privateKeyBytes, p2pConfig)
   private val p2pNetwork = builtNetwork.p2PNetwork
 
-  private val log: Logger = LogManager.getLogger(this::class.java)
+  private val log: Logger = LogManager.getLogger(this::javaClass)
   private val delayedExecutor =
     SafeFuture.delayedExecutor(p2pConfig.reconnectDelay.inWholeMilliseconds, TimeUnit.MILLISECONDS)
   private val staticPeerMap = mutableMapOf<NodeId, MultiaddrPeerAddress>()

@@ -27,7 +27,8 @@ import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.tcp.TcpTransport
 import java.util.Optional
 import kotlin.random.Random
-import maru.p2p.topics.SealedBlocksTopicHandler
+import maru.core.SealedBeaconBlock
+import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import pubsub.pb.Rpc
@@ -59,7 +60,7 @@ class Libp2pNetworkFactory(
     privateKey: PrivKey,
     port: UInt,
     ipAddress: String,
-    sealedBlocksTopicHandler: SealedBlocksTopicHandler,
+    sealedBlocksTopicHandler: TopicHandlerWithInOrderDelivering<SealedBeaconBlock>,
     sealedBlocksTopicId: String,
     rpcMethods: List<RpcMethod<*, *, *>>,
   ): TekuLibP2PNetwork {

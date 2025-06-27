@@ -25,6 +25,8 @@ import maru.config.P2P
 import maru.consensus.ForkIdHashProvider
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForksSchedule
+import maru.consensus.LatestBlockMetadataCache
+import maru.consensus.Web3jMetadataProvider
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.InstantFinalizationProvider
 import maru.crypto.Hashing
@@ -46,8 +48,6 @@ import org.hyperledger.besu.plugin.services.metrics.MetricCategory
 import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 
 class MaruAppFactory {
-  private val log = LogManager.getLogger(MaruAppFactory::class.java)
-
   fun create(
     config: MaruConfig,
     beaconGenesisConfig: ForksSchedule,
@@ -104,6 +104,19 @@ class MaruAppFactory {
         forkIdHashProvider = forkIdHashProvider,
         chainId = beaconGenesisConfig.chainId,
       )
+    val ethereumJsonRpcClient =
+      Helpers.createWeb3jClient(
+        config.validatorElNode.ethApiEndpoint,
+      )
+    val asyncMetadataProvider = Web3jMetadataProvider(ethereumJsonRpcClient.eth1Web3j)
+    val lastBlockMetadataCache =
+      LatestBlockMetadataCache(asyncMetadataProvider.getLatestBlockMetadata())
+    val beaconChainLastBlockNumber =
+      if (beaconChain.isInitialized()) {
+        beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number
+      } else {
+        0UL // If the chain is not initialized, we start from block number 1
+      }
     val p2pNetwork =
       overridingP2PNetwork ?: setupP2PNetwork(
         p2pConfig = config.p2pConfig,
@@ -111,6 +124,7 @@ class MaruAppFactory {
         chainId = beaconGenesisConfig.chainId,
         metricsFacade = metricsFacade,
         rpcMethodFactory = rpcMaruAppFactory,
+        nextExpectedBeaconBlockNumber = beaconChainLastBlockNumber + 1UL,
       )
     val finalizationProvider =
       overridingFinalizationProvider
@@ -128,6 +142,8 @@ class MaruAppFactory {
         vertx = vertx,
         beaconChain = beaconChain,
         metricsSystem = besuMetricsSystem,
+        lastBlockMetadataCache = lastBlockMetadataCache,
+        ethereumJsonRpcClient = ethereumJsonRpcClient,
       )
 
     return maru
@@ -174,6 +190,7 @@ class MaruAppFactory {
       p2pConfig: P2P?,
       privateKey: ByteArray,
       chainId: UInt,
+      nextExpectedBeaconBlockNumber: ULong = 1UL,
       metricsFacade: MetricsFacade,
       rpcMethodFactory: RpcMethodFactory,
     ): P2PNetwork =
@@ -183,6 +200,7 @@ class MaruAppFactory {
           p2pConfig = p2pConfig,
           chainId = chainId,
           serDe = RLPSerializers.SealedBeaconBlockSerializer,
+          nextExpectedBeaconBlockNumber = nextExpectedBeaconBlockNumber,
           metricsFacade = metricsFacade,
           rpcMethodFactory = rpcMethodFactory,
         )

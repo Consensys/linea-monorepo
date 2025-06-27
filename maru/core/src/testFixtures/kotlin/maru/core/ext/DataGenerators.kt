@@ -155,8 +155,8 @@ object DataGenerators {
   fun randomValidPayloadStatus(): PayloadStatus =
     PayloadStatus(ExecutionPayloadStatus.VALID, latestValidHash = Random.nextBytes(32), validationError = null)
 
-  fun randomBlockMessage(): Message<SealedBeaconBlock, GossipMessageType> {
-    val sealedBeaconBlock = randomSealedBeaconBlock(1u)
+  fun randomBlockMessage(blockNumber: ULong = 1uL): Message<SealedBeaconBlock, GossipMessageType> {
+    val sealedBeaconBlock = randomSealedBeaconBlock(blockNumber)
     return Message(GossipMessageType.BEACON_BLOCK, Version.V1, sealedBeaconBlock)
   }
 }
