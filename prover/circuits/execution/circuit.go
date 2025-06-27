@@ -4,6 +4,8 @@ import (
 	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -59,6 +61,7 @@ func AllocateLimitless(congWiop *wizard.CompiledIOP, limits *config.TracesLimits
 		"limits_block_l2l1_logs=%d", congWiop.NumRounds(), limits.BlockL2L1Logs)
 
 	wverifier := wizard.AllocateWizardCircuit(congWiop, congWiop.NumRounds())
+
 	return CircuitExecution{
 		WizardVerifier: *wverifier,
 		FuncInputs: FunctionalPublicInputSnark{
@@ -99,6 +102,10 @@ func assign(
 
 // Define of the wizard circuit
 func (c *CircuitExecution) Define(api frontend.API) error {
+
+	c.WizardVerifier.HasherFactory = gkrmimc.NewHasherFactory(api)
+	c.WizardVerifier.FS = fiatshamir.NewGnarkFiatShamir(api, c.WizardVerifier.HasherFactory)
+
 	c.WizardVerifier.Verify(api)
 	checkPublicInputs(
 		api,
