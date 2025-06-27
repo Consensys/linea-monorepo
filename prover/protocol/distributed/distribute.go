@@ -112,7 +112,7 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *Distribu
 			distributedWizard.Bootstrapper,
 		)
 
-		logrus.Infof("Compiling GL module %v\n", moduleName)
+		logrus.Infof("Compiling GL module %v", moduleName)
 
 		distributedWizard.GLs = append(
 			distributedWizard.GLs,
@@ -133,7 +133,7 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *Distribu
 
 		stop := min(len(distributedWizard.ModuleNames), i+lppGroupingArity)
 
-		logrus.Infof("Compiling LPP modules [%d .. %d]\n", i, stop)
+		logrus.Infof("Compiling LPP modules [%d .. %d]", i, stop)
 
 		distributedWizard.LPPs = append(
 			distributedWizard.LPPs,
