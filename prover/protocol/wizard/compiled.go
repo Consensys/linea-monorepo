@@ -127,6 +127,11 @@ type CompiledIOP struct {
 
 	// ExtraData is a free field in which compilers can store whatever they want.
 	ExtraData map[string]any
+
+	// WithStorePointerChecks is a flag that controls whether or not the
+	// CompiledIOP should check that its columns and queries are registered in
+	// the store.
+	WithStorePointerChecks bool
 }
 
 // NumRounds returns the total number of prover interactions with the verifier
