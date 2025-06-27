@@ -1,4 +1,4 @@
-package distributed
+package distributed_test
 
 import (
 	"encoding/json"
@@ -15,19 +15,21 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
 
 // TestDistributedWizard attempts to compiler the wizard distribution.
 func TestDistributedWizard(t *testing.T) {
 
 	var (
-		zkevm      = test_utils.GetZkEVM()
-		affinities = test_utils.GetAffinities(zkevm)
-		discoverer = &StandardModuleDiscoverer{
+		z          = zkevm.GetTestZkEVM()
+		affinities = zkevm.GetAffinities(z)
+		discoverer = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
 			Affinities:   affinities,
 			Predivision:  1,
@@ -38,9 +40,9 @@ func TestDistributedWizard(t *testing.T) {
 	logdata.GenCSV(
 		files.MustOverwrite("./base-data/main.csv"),
 		logdata.IncludeAllFilter,
-	)(zkevm.WizardIOP)
+	)(z.WizardIOP)
 
-	distributed := DistributeWizard(zkevm.WizardIOP, discoverer)
+	distributed := distributed.DistributeWizard(z.WizardIOP, discoverer)
 
 	for i, modGL := range distributed.GLs {
 
@@ -69,15 +71,15 @@ func TestDistributedWizardLogic(t *testing.T) {
 		// #nosec G404 --we don't need a cryptographic RNG for testing purpose
 		// rng              = rand.New(utils.NewRandSource(0))
 		// sharedRandomness = field.PseudoRand(rng)
-		zkevm = test_utils.GetZkEVM()
-		disc  = &StandardModuleDiscoverer{
+		z    = zkevm.GetTestZkEVM()
+		disc = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
-			Affinities:   test_utils.GetAffinities(zkevm),
+			Affinities:   zkevm.GetAffinities(z),
 			Predivision:  1,
 		}
 
 		// This tests the compilation of the compiled-IOP
-		distWizard = DistributeWizard(zkevm.WizardIOP, disc)
+		distWizard = distributed.DistributeWizard(z.WizardIOP, disc)
 	)
 
 	// This applies the dummy.Compiler to all parts of the distributed wizard.
@@ -109,8 +111,8 @@ func TestDistributedWizardLogic(t *testing.T) {
 
 	t.Logf("Checking the initial bootstrapper - wizard")
 	var (
-		witness     = test_utils.GetZkevmWitness(req, cfg)
-		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, zkevm.GetMainProverStep(witness))
+		_, witness  = test_utils.GetZkevmWitness(req, cfg)
+		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, z.GetMainProverStep(witness))
 		proof       = runtimeBoot.ExtractProof()
 		verBootErr  = wizard.Verify(distWizard.Bootstrapper, proof)
 	)
@@ -128,7 +130,7 @@ func TestDistributedWizardLogic(t *testing.T) {
 		prevHornerN1Hash    = field.Element{}
 	)
 
-	witnessGLs, witnessLPPs := SegmentRuntime(runtimeBoot, distWizard)
+	witnessGLs, witnessLPPs := distributed.SegmentRuntime(runtimeBoot, distWizard)
 
 	for i := range witnessGLs {
 
@@ -136,7 +138,7 @@ func TestDistributedWizardLogic(t *testing.T) {
 			witnessGL   = witnessGLs[i]
 			moduleIndex = witnessGLs[i].ModuleIndex
 			moduleName  = witnessGLs[i].ModuleName
-			moduleGL    *ModuleGL
+			moduleGL    *distributed.ModuleGL
 		)
 
 		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessGL.ModuleName, witnessGL.ModuleIndex)
@@ -166,10 +168,10 @@ func TestDistributedWizardLogic(t *testing.T) {
 
 		var (
 			errMsg         = fmt.Sprintf("segment=%v, moduleName=%v, segment-index=%v", i, moduleName, moduleIndex)
-			globalReceived = verGLRun.GetPublicInput(globalReceiverPublicInput)
-			globalSent     = verGLRun.GetPublicInput(globalSenderPublicInput)
-			isFirst        = verGLRun.GetPublicInput(isFirstPublicInput)
-			isLast         = verGLRun.GetPublicInput(isLastPublicInput)
+			globalReceived = verGLRun.GetPublicInput(distributed.GlobalReceiverPublicInput)
+			globalSent     = verGLRun.GetPublicInput(distributed.GlobalSenderPublicInput)
+			isFirst        = verGLRun.GetPublicInput(distributed.IsFirstPublicInput)
+			isLast         = verGLRun.GetPublicInput(distributed.IsLastPublicInput)
 			shouldBeFirst  = i == 0 || witnessGLs[i].ModuleName != witnessGLs[i-1].ModuleName
 			shouldBeLast   = i == len(witnessGLs)-1 || witnessGLs[i].ModuleName != witnessGLs[i+1].ModuleName
 		)
@@ -194,13 +196,13 @@ func TestDistributedWizardLogic(t *testing.T) {
 		var (
 			witnessLPP  = witnessLPPs[i]
 			moduleIndex = witnessLPPs[i].ModuleIndex
-			moduleNames = witnessLPPs[i].ModuleNames
-			moduleLPP   *ModuleLPP
+			moduleNames = witnessLPPs[i].ModuleName
+			moduleLPP   *distributed.ModuleLPP
 		)
 
 		witnessLPP.InitialFiatShamirState = field.NewFromString("6861409415040334196327676756394403519979367936044773323994693747743991500772")
 
-		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleNames, witnessLPP.ModuleIndex)
+		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleName, witnessLPP.ModuleIndex)
 
 		for k := range distWizard.LPPs {
 			if !reflect.DeepEqual(distWizard.LPPs[k].ModuleNames(), moduleNames) {
@@ -227,12 +229,12 @@ func TestDistributedWizardLogic(t *testing.T) {
 
 		var (
 			errMsg           = fmt.Sprintf("segment=%v, moduleName=%v, segment-index=%v", i, moduleNames, moduleIndex)
-			logDerivativeSum = verLPPRun.GetPublicInput(logDerivativeSumPublicInput)
-			grandProduct     = verLPPRun.GetPublicInput(grandProductPublicInput)
-			hornerSum        = verLPPRun.GetPublicInput(hornerPublicInput)
-			hornerN0Hash     = verLPPRun.GetPublicInput(hornerN0HashPublicInput)
-			hornerN1Hash     = verLPPRun.GetPublicInput(hornerN1HashPublicInput)
-			shouldBeFirst    = i == 0 || !reflect.DeepEqual(witnessLPPs[i].ModuleNames, witnessLPPs[i-1].ModuleNames)
+			logDerivativeSum = verLPPRun.GetPublicInput(distributed.LogDerivativeSumPublicInput)
+			grandProduct     = verLPPRun.GetPublicInput(distributed.GrandProductPublicInput)
+			hornerSum        = verLPPRun.GetPublicInput(distributed.HornerPublicInput)
+			hornerN0Hash     = verLPPRun.GetPublicInput(distributed.HornerN0HashPublicInput)
+			hornerN1Hash     = verLPPRun.GetPublicInput(distributed.HornerN1HashPublicInput)
+			shouldBeFirst    = i == 0 || !reflect.DeepEqual(witnessLPPs[i].ModuleName, witnessLPPs[i-1].ModuleName)
 		)
 
 		if !shouldBeFirst && hornerN0Hash != prevHornerN1Hash {
@@ -266,15 +268,15 @@ func TestBenchDistributedWizard(t *testing.T) {
 	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
 	var (
-		zkevm = test_utils.GetZkEVM()
-		disc  = &StandardModuleDiscoverer{
+		z    = zkevm.GetTestZkEVM()
+		disc = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
-			Affinities:   test_utils.GetAffinities(zkevm),
+			Affinities:   zkevm.GetAffinities(z),
 			Predivision:  1,
 		}
 
 		// This tests the compilation of the compiled-IOP
-		distWizard = DistributeWizard(zkevm.WizardIOP, disc).CompileSegments()
+		distWizard = distributed.DistributeWizard(z.WizardIOP, disc).CompileSegments()
 	)
 
 	var (
@@ -298,14 +300,14 @@ func TestBenchDistributedWizard(t *testing.T) {
 	t.Logf("[%v] running the bootstrapper\n", time.Now())
 
 	var (
-		witness     = test_utils.GetZkevmWitness(req, cfg)
-		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, zkevm.GetMainProverStep(witness))
+		_, witness  = test_utils.GetZkevmWitness(req, cfg)
+		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, z.GetMainProverStep(witness))
 	)
 
 	t.Logf("[%v] done running the bootstrapper\n", time.Now())
 
 	var (
-		witnessGLs, witnessLPPs = SegmentRuntime(runtimeBoot, distWizard)
+		witnessGLs, witnessLPPs = distributed.SegmentRuntime(runtimeBoot, distWizard)
 		runGLs                  = runProverGLs(t, distWizard, witnessGLs)
 		sharedRandomness        = getSharedRandomness(runGLs)
 		_                       = runProverLPPs(t, distWizard, sharedRandomness, witnessLPPs)
@@ -370,8 +372,8 @@ func (d DistributeTestCase) Assign(run *wizard.ProverRuntime) {
 // result of the prover execution for a segment.
 func runProverGLs(
 	t *testing.T,
-	distWizard *DistributedWizard,
-	witnessGLs []*ModuleWitnessGL,
+	distWizard *distributed.DistributedWizard,
+	witnessGLs []*distributed.ModuleWitnessGL,
 ) []*wizard.ProverRuntime {
 
 	var (
@@ -383,7 +385,7 @@ func runProverGLs(
 
 		var (
 			witnessGL = witnessGLs[i]
-			moduleGL  *RecursedSegmentCompilation
+			moduleGL  *distributed.RecursedSegmentCompilation
 		)
 
 		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessGL.ModuleName, witnessGL.ModuleIndex)
@@ -413,9 +415,9 @@ func runProverGLs(
 // instances, each representing the result of the prover execution for a segment.
 func runProverLPPs(
 	t *testing.T,
-	distWizard *DistributedWizard,
+	distWizard *distributed.DistributedWizard,
 	sharedRandomness field.Element,
-	witnessLPPs []*ModuleWitnessLPP,
+	witnessLPPs []*distributed.ModuleWitnessLPP,
 ) []*wizard.ProverRuntime {
 
 	var (
@@ -427,15 +429,15 @@ func runProverLPPs(
 
 		var (
 			witnessLPP = witnessLPPs[i]
-			moduleLPP  *RecursedSegmentCompilation
+			moduleLPP  *distributed.RecursedSegmentCompilation
 		)
 
 		witnessLPP.InitialFiatShamirState = sharedRandomness
 
-		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleNames, witnessLPP.ModuleIndex)
+		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleName, witnessLPP.ModuleIndex)
 		for k := range distWizard.LPPs {
 
-			if !reflect.DeepEqual(distWizard.LPPs[k].ModuleNames(), witnessLPPs[i].ModuleNames) {
+			if !reflect.DeepEqual(distWizard.LPPs[k].ModuleNames(), witnessLPPs[i].ModuleName) {
 				continue
 			}
 

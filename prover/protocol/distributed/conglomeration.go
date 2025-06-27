@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
@@ -23,6 +24,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/sirupsen/logrus"
@@ -105,8 +107,6 @@ func conglomerate(maxNbProofs int, moduleGLs, moduleLpps []*RecursedSegmentCompi
 
 	cong := &ConglomeratorCompilation{
 		MaxNbProofs: maxNbProofs,
-		// ModuleGLIops:  moduleGLs,
-		// ModuleLPPIops: moduleLpps,
 		DefaultIops: moduleDefault,
 	}
 
@@ -156,7 +156,7 @@ func conglomerate(maxNbProofs int, moduleGLs, moduleLpps []*RecursedSegmentCompi
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
-			vortex.WithSISParams(&sisInstance),
+			vortex.WithOptionalSISHashingThreshold(1<<20),
 		),
 	)
 
@@ -221,20 +221,20 @@ func (c *ConglomerateHolisticCheck) Run(run wizard.Runtime) error {
 
 		var (
 			lppCommitment    = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, 0), i)
-			sharedRandomness = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+initialRandomnessPublicInput, i)
+			sharedRandomness = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+InitialRandomnessPublicInput, i)
 			verifyingKey     = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+verifyingKeyPublicInput, i)
 			verifyingKey2    = c.Recursion.GetPublicInputOfInstance(run, verifyingKey2PublicInput, i)
-			logDerivativeSum = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+logDerivativeSumPublicInput, i)
-			grandProduct     = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+grandProductPublicInput, i)
-			hornerSum        = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+hornerPublicInput, i)
-			hornerN0Hash     = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+hornerN0HashPublicInput, i)
-			hornerN1Hash     = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+hornerN1HashPublicInput, i)
-			globalReceived   = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+globalReceiverPublicInput, i)
-			globalSent       = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+globalSenderPublicInput, i)
-			isFirst          = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+isFirstPublicInput, i)
-			isLast           = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+isLastPublicInput, i)
-			isLPP            = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+isLppPublicInput, i)
-			isGL             = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+isGlPublicInput, i)
+			logDerivativeSum = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+LogDerivativeSumPublicInput, i)
+			grandProduct     = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+GrandProductPublicInput, i)
+			hornerSum        = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+HornerPublicInput, i)
+			hornerN0Hash     = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+HornerN0HashPublicInput, i)
+			hornerN1Hash     = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+HornerN1HashPublicInput, i)
+			globalReceived   = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+GlobalReceiverPublicInput, i)
+			globalSent       = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+GlobalSenderPublicInput, i)
+			isFirst          = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+IsFirstPublicInput, i)
+			isLast           = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+IsLastPublicInput, i)
+			isLPP            = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+IsLppPublicInput, i)
+			isGL             = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+IsGlPublicInput, i)
 
 			sameVerifyingKeyAsPrev, sameVerifyingKeyAsNext bool
 		)
@@ -330,20 +330,20 @@ func (c *ConglomeratorCompilation) RunGnark(api frontend.API, run wizard.GnarkRu
 
 		var (
 			lppCommitment    = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, 0), i)
-			sharedRandomness = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+initialRandomnessPublicInput, i)
+			sharedRandomness = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+InitialRandomnessPublicInput, i)
 			verifyingKey     = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+verifyingKeyPublicInput, i)
 			verifyingKey2    = c.Recursion.GetPublicInputOfInstanceGnark(api, run, verifyingKey2PublicInput, i)
-			logDerivativeSum = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+logDerivativeSumPublicInput, i)
-			grandProduct     = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+grandProductPublicInput, i)
-			hornerSum        = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+hornerPublicInput, i)
-			hornerN0Hash     = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+hornerN0HashPublicInput, i)
-			hornerN1Hash     = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+hornerN1HashPublicInput, i)
-			globalReceived   = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+globalReceiverPublicInput, i)
-			globalSent       = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+globalSenderPublicInput, i)
-			isFirst          = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+isFirstPublicInput, i)
-			isLast           = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+isLastPublicInput, i)
-			isLPP            = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+isLppPublicInput, i)
-			isGL             = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+isGlPublicInput, i)
+			logDerivativeSum = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+LogDerivativeSumPublicInput, i)
+			grandProduct     = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+GrandProductPublicInput, i)
+			hornerSum        = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+HornerPublicInput, i)
+			hornerN0Hash     = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+HornerN0HashPublicInput, i)
+			hornerN1Hash     = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+HornerN1HashPublicInput, i)
+			globalReceived   = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+GlobalReceiverPublicInput, i)
+			globalSent       = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+GlobalSenderPublicInput, i)
+			isFirst          = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+IsFirstPublicInput, i)
+			isLast           = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+IsLastPublicInput, i)
+			isLPP            = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+IsLppPublicInput, i)
+			isGL             = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+IsGlPublicInput, i)
 
 			sameVerifyingKeyAsPrev, sameVerifyingKeyAsNext = frontend.Variable(0), frontend.Variable(0)
 		)
@@ -477,6 +477,18 @@ func (c *ConglomeratorCompilation) RunGnark(api frontend.API, run wizard.GnarkRu
 	api.AssertIsEqual(allGrandProduct, 1)
 	api.AssertIsEqual(allHornerSum, 0)
 	api.AssertIsEqual(allLogDerivativeSum, 0)
+}
+
+// BubbleUpPublicInput bubbles up the public inputs of a given name.
+func (c *ConglomeratorCompilation) BubbleUpPublicInput(name string) wizard.PublicInput {
+
+	pubInputSum := symbolic.NewConstant(0)
+	for i := 0; i < c.MaxNbProofs; i++ {
+		subPubInput := c.Recursion.GetPublicInputAccessorOfInstance(c.Wiop, preRecursionPrefix+name, i)
+		pubInputSum = symbolic.Add(pubInputSum, subPubInput)
+	}
+
+	return c.Wiop.InsertPublicInput(name, accessors.NewFromExpression(pubInputSum, name+"_SUMMATION_ACCESSOR"))
 }
 
 // Prove is the main entry point for the prover. It takes a compiled IOP and
@@ -733,8 +745,8 @@ func (cong *ConglomeratorCompilation) declareLookups() {
 		var (
 			verifyingKey  = cong.Recursion.GetPublicInputAccessorOfInstance(comp, preRecursionPrefix+verifyingKeyPublicInput, i)
 			verifyingKey2 = cong.Recursion.GetPublicInputAccessorOfInstance(comp, verifyingKey2PublicInput, i)
-			isLPP         = cong.Recursion.GetPublicInputAccessorOfInstance(comp, preRecursionPrefix+isLppPublicInput, i)
-			isGL          = cong.Recursion.GetPublicInputAccessorOfInstance(comp, preRecursionPrefix+isGlPublicInput, i)
+			isLPP         = cong.Recursion.GetPublicInputAccessorOfInstance(comp, preRecursionPrefix+IsLppPublicInput, i)
+			isGL          = cong.Recursion.GetPublicInputAccessorOfInstance(comp, preRecursionPrefix+IsGlPublicInput, i)
 		)
 
 		effectiveVksAccessors[0] = append(effectiveVksAccessors[0], verifyingKey)

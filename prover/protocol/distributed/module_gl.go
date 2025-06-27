@@ -21,12 +21,12 @@ import (
 )
 
 const (
-	moduleGLReceiveGlobalKey  = "RECEIVE_GLOBAL"
-	moduleGLSendGlobalKey     = "SEND_GLOBAL"
-	globalSenderPublicInput   = "GLOBAL_PROVIDER"
-	globalReceiverPublicInput = "GLOBAL_RECEIVER"
-	isFirstPublicInput        = "IS_FIRST"
-	isLastPublicInput         = "IS_LAST"
+	ModuleGLReceiveGlobalKey  = "RECEIVE_GLOBAL"
+	ModuleGLSendGlobalKey     = "SEND_GLOBAL"
+	GlobalSenderPublicInput   = "GLOBAL_PROVIDER"
+	GlobalReceiverPublicInput = "GLOBAL_RECEIVER"
+	IsFirstPublicInput        = "IS_FIRST"
+	IsLastPublicInput         = "IS_LAST"
 )
 
 // ModuleGL is a compilation structure holding the central informations
@@ -230,31 +230,31 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 		)
 	}
 
-	moduleGL.Wiop.InsertPublicInput(initialRandomnessPublicInput, accessors.NewConstant(field.Zero()))
-	moduleGL.Wiop.InsertPublicInput(isFirstPublicInput, accessors.NewFromPublicColumn(moduleGL.IsFirst, 0))
-	moduleGL.Wiop.InsertPublicInput(isLastPublicInput, accessors.NewFromPublicColumn(moduleGL.IsLast, 0))
+	moduleGL.Wiop.InsertPublicInput(InitialRandomnessPublicInput, accessors.NewConstant(field.Zero()))
+	moduleGL.Wiop.InsertPublicInput(IsFirstPublicInput, accessors.NewFromPublicColumn(moduleGL.IsFirst, 0))
+	moduleGL.Wiop.InsertPublicInput(IsLastPublicInput, accessors.NewFromPublicColumn(moduleGL.IsLast, 0))
 
 	if len(moduleGL.ReceivedValuesGlobalMap) > 0 {
-		moduleGL.Wiop.InsertPublicInput(globalSenderPublicInput, accessors.NewFromPublicColumn(moduleGL.SentValuesGlobalHash, 0))
-		moduleGL.Wiop.InsertPublicInput(globalReceiverPublicInput, accessors.NewFromPublicColumn(moduleGL.ReceivedValuesGlobalHash, 0))
+		moduleGL.Wiop.InsertPublicInput(GlobalSenderPublicInput, accessors.NewFromPublicColumn(moduleGL.SentValuesGlobalHash, 0))
+		moduleGL.Wiop.InsertPublicInput(GlobalReceiverPublicInput, accessors.NewFromPublicColumn(moduleGL.ReceivedValuesGlobalHash, 0))
 	} else {
-		moduleGL.Wiop.InsertPublicInput(globalSenderPublicInput, accessors.NewConstant(field.Zero()))
-		moduleGL.Wiop.InsertPublicInput(globalReceiverPublicInput, accessors.NewConstant(field.Zero()))
+		moduleGL.Wiop.InsertPublicInput(GlobalSenderPublicInput, accessors.NewConstant(field.Zero()))
+		moduleGL.Wiop.InsertPublicInput(GlobalReceiverPublicInput, accessors.NewConstant(field.Zero()))
 	}
 
 	// These public-inputs are the "dummy" ones and are only here so that the
 	// LPP and GL modules have exactly the same set of public inputs. The
 	// public-inputs are reordered a posteriori to ensure that the order
 	// match between GL and LPP.
-	moduleGL.Wiop.InsertPublicInput(logDerivativeSumPublicInput, accessors.NewConstant(field.Zero()))
-	moduleGL.Wiop.InsertPublicInput(grandProductPublicInput, accessors.NewConstant(field.One()))
-	moduleGL.Wiop.InsertPublicInput(hornerPublicInput, accessors.NewConstant(field.Zero()))
-	moduleGL.Wiop.InsertPublicInput(hornerN0HashPublicInput, accessors.NewConstant(field.Zero()))
-	moduleGL.Wiop.InsertPublicInput(hornerN1HashPublicInput, accessors.NewConstant(field.Zero()))
+	moduleGL.Wiop.InsertPublicInput(LogDerivativeSumPublicInput, accessors.NewConstant(field.Zero()))
+	moduleGL.Wiop.InsertPublicInput(GrandProductPublicInput, accessors.NewConstant(field.One()))
+	moduleGL.Wiop.InsertPublicInput(HornerPublicInput, accessors.NewConstant(field.Zero()))
+	moduleGL.Wiop.InsertPublicInput(HornerN0HashPublicInput, accessors.NewConstant(field.Zero()))
+	moduleGL.Wiop.InsertPublicInput(HornerN1HashPublicInput, accessors.NewConstant(field.Zero()))
 
-	moduleGL.Wiop.InsertPublicInput(isGlPublicInput, accessors.NewConstant(field.One()))
-	moduleGL.Wiop.InsertPublicInput(isLppPublicInput, accessors.NewConstant(field.Zero()))
-	moduleGL.Wiop.InsertPublicInput(nbActualLppPublicInput, accessors.NewConstant(field.Zero()))
+	moduleGL.Wiop.InsertPublicInput(IsGlPublicInput, accessors.NewConstant(field.One()))
+	moduleGL.Wiop.InsertPublicInput(IsLppPublicInput, accessors.NewConstant(field.Zero()))
+	moduleGL.Wiop.InsertPublicInput(NbActualLppPublicInput, accessors.NewConstant(field.Zero()))
 
 	moduleGL.Wiop.RegisterProverAction(1, &ModuleGLAssignGL{ModuleGL: moduleGL})
 	moduleGL.Wiop.RegisterProverAction(1, &ModuleGLAssignSendReceiveGlobal{ModuleGL: moduleGL})

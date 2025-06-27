@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -161,13 +160,6 @@ type XYPow1MinNAccessor struct {
 	// AccessName is used to derive a unique name to the accessor.s
 	AccessName string
 }
-
-// This makes the [XYPow1MinNAccessor] serializable. The return value is just
-// for making this compilable.
-var _ = func() int {
-	serialization.RegisterImplementation(XYPow1MinNAccessor{})
-	return 0
-}()
 
 // String implements [symbolic.Metadata] and thus [ifaces.Accessor].
 func (a *XYPow1MinNAccessor) String() string {
