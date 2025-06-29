@@ -29,6 +29,33 @@ export type PublicActionsL1<
 > = StrictFunctionOnly<
   L1PublicClient,
   {
+    /**
+     * Returns the proof of a message sent from L2 to L1.
+     *
+     * @param client - Client to use
+     * @param args - {@link GetMessageProofParameters}
+     * @returns The proof of a message sent from L2 to L1. {@link GetMessageProofReturnType}
+     *
+     * @example
+     * import { createPublicClient, http } from 'viem'
+     * import { mainnet, linea } from 'viem/chains'
+     * import { publicActionsL1 } from '@consensys/linea-sdk-viem'
+     *
+     * const client = createPublicClient({
+     *   chain: mainnet,
+     *   transport: http,
+     * }).extend(publicActionsL1());
+     *
+     * const l2Client = createPublicClient({
+     *  chain: linea,
+     *  transport: http(),
+     * });
+     *
+     * const data = await client.getMessageProof({
+     *   l2Client,
+     *   messageHash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+     * });
+     */
     getMessageProof: <
       abi extends Abi | readonly unknown[] = Abi,
       eventName extends ContractEventName<abi> | undefined = ContractEventName<abi> | undefined,
@@ -38,6 +65,34 @@ export type PublicActionsL1<
     >(
       args: GetMessageProofParameters<chain, account, abi, eventName, strict, fromBlock, toBlock>,
     ) => Promise<GetMessageProofReturnType>;
+
+    /**
+     * Returns the status of an L2 to L1 message on Linea.
+     *
+     * @param client - Client to use
+     * @param args - {@link GetL2ToL1MessageStatusParameters}
+     * @returns The status of a message sent from L2 to L1. {@link GetL2ToL1MessageStatusReturnType}
+     *
+     * @example
+     * import { createPublicClient, http } from 'viem'
+     * import { mainnet, linea } from 'viem/chains'
+     * import { publicActionsL1 } from '@consensys/linea-sdk-viem'
+     *
+     * const client = createPublicClient({
+     *   chain: mainnet,
+     *   transport: http(),
+     * }).extend(publicActionsL1());
+     *
+     * const l2Client = createPublicClient({
+     *  chain: linea,
+     *  transport: http(),
+     * });
+     *
+     * const status = await client.getL2ToL1MessageStatus({
+     *   l2Client,
+     *   messageHash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+     * });
+     */
     getL2ToL1MessageStatus: <
       abi extends Abi | readonly unknown[] = Abi,
       eventName extends ContractEventName<abi> | undefined = ContractEventName<abi> | undefined,
@@ -47,10 +102,76 @@ export type PublicActionsL1<
     >(
       args: GetL2ToL1MessageStatusParameters<chain, account, abi, eventName, strict, fromBlock, toBlock>,
     ) => Promise<GetL2ToL1MessageStatusReturnType>;
+
+    /**
+     * Returns the details of a message by its hash.
+     *
+     * @param client - Client to use
+     * @param args - {@link GetMessageByMessageHashParameters}
+     * @returns The details of a message. {@link GetMessageByMessageHashReturnType}
+     *
+     * @example
+     * import { createPublicClient, http } from 'viem'
+     * import { mainnet } from 'viem/chains'
+     * import { publicActionsL1 } from '@consensys/linea-sdk-viem'
+     *
+     * const client = createPublicClient({
+     *   chain: mainnet,
+     *   transport: http(),
+     * }).extend(publicActionsL1());
+     *
+     * const data = await client.getMessageByMessageHash({
+     *   messageHash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+     * });
+     */
     getMessageByMessageHash: (args: GetMessageByMessageHashParameters) => Promise<GetMessageByMessageHashReturnType>;
+
+    /**
+     * Returns the details of messages sent in a transaction by its hash.
+     *
+     * @param client - Client to use
+     * @param parameters - {@link GetMessagesByTransactionHashParameters}
+     * @returns The details of messages sent in the transaction.  {@link GetMessagesByTransactionHashReturnType}
+     *
+     * @example
+     * import { createPublicClient, http } from 'viem'
+     * import { mainnet } from 'viem/chains'
+     * import { publicActionsL1 } from '@consensys/linea-sdk-viem'
+     *
+     * const client = createPublicClient({
+     *   chain: mainnet,
+     *   transport: http(),
+     * }).extend(publicActionsL1());
+     *
+     * const data = await client.getMessagesByTransactionHash({
+     *   transactionHash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+     * });
+     */
     getMessagesByTransactionHash: (
       args: GetMessagesByTransactionHashParameters,
     ) => Promise<GetMessagesByTransactionHashReturnType>;
+
+    /**
+     * Returns the transaction receipt for a message sent by its message hash.
+     *
+     * @param client - Client to use
+     * @param args - {@link GetTransactionReceiptByMessageHashParameters}
+     * @returns The transaction receipt of the message. {@link GetTransactionReceiptByMessageHashReturnType}
+     *
+     * @example
+     * import { createPublicClient, http } from 'viem'
+     * import { mainnet } from 'viem/chains'
+     * import { publicActionsL1 } from '@consensys/linea-sdk-viem'
+     *
+     * const client = createPublicClient({
+     *   chain: mainnet,
+     *   transport: http(),
+     * }).extend(publicActionsL1());
+     *
+     * const data = await client.getTransactionReceiptByMessageHash({
+     *   messageHash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+     * });
+     */
     getTransactionReceiptByMessageHash: <chain extends Chain | undefined>(
       args: GetTransactionReceiptByMessageHashParameters,
     ) => Promise<GetTransactionReceiptByMessageHashReturnType<chain>>;

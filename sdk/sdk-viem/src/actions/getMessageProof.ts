@@ -48,7 +48,7 @@ export type GetMessageProofParameters<
  *
  * @returns The proof of a message sent from L2 to L1. {@link GetMessageProofReturnType}
  * @param client - Client to use
- * @param args - {@link GetMessageProofParameters}
+ * @param parameters - {@link GetMessageProofParameters}
  *
  * @example
  * import { createPublicClient, http } from 'viem'

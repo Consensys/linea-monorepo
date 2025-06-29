@@ -47,12 +47,12 @@ export type WithdrawReturnType = SendTransactionReturnType;
  * @returns hash - The [Transaction](https://viem.sh/docs/glossary/terms#transaction) hash. {@link WithdrawReturnType}
  *
  * @example
- * import { createPublicClient, http, zeroAddress } from 'viem'
+ * import { createWalletClient, http, zeroAddress } from 'viem'
  * import { privateKeyToAccount } from 'viem/accounts'
  * import { linea } from 'viem/chains'
  * import { withdraw } from '@consensys/linea-sdk-viem'
  *
- * const client = createPublicClient({
+ * const client = createWalletClient({
  *   chain: linea,
  *   transport: http(),
  * });
@@ -66,7 +66,7 @@ export type WithdrawReturnType = SendTransactionReturnType;
  * });
  *
  * @example Account Hoisting
- * import { createPublicClient, createWalletClient, http, zeroAddress } from 'viem'
+ * import { createWalletClient, http, zeroAddress } from 'viem'
  * import { privateKeyToAccount } from 'viem/accounts'
  * import { linea } from 'viem/chains'
  * import { withdraw } from '@consensys/linea-sdk-viem'

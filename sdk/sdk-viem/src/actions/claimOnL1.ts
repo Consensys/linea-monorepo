@@ -44,12 +44,12 @@ export type ClaimOnL1ReturnType = SendTransactionReturnType;
  * @returns hash - The [Transaction](https://viem.sh/docs/glossary/terms#transaction) hash. {@link ClaimOnL1ReturnType}
  *
  * @example
- * import { createPublicClient, http, zeroAddress } from 'viem'
+ * import { createWalletClient, http, zeroAddress } from 'viem'
  * import { privateKeyToAccount } from 'viem/accounts'
  * import { mainnet } from 'viem/chains'
  * import { claimOnL1 } from '@consensys/linea-sdk-viem'
  *
- * const client = createPublicClient({
+ * const client = createWalletClient({
  *   chain: mainnet,
  *   transport: http(),
  * });

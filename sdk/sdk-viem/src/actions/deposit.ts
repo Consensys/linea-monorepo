@@ -60,12 +60,12 @@ export type DepositReturnType = SendTransactionReturnType;
  * @returns hash - The [Transaction](https://viem.sh/docs/glossary/terms#transaction) hash. {@link DepositReturnType}
  *
  * @example
- * import { createPublicClient, http, zeroAddress } from 'viem'
+ * import { createWalletClient, http, zeroAddress } from 'viem'
  * import { privateKeyToAccount } from 'viem/accounts'
  * import { mainnet, linea } from 'viem/chains'
  * import { deposit } from '@consensys/linea-sdk-viem'
  *
- * const client = createPublicClient({
+ * const client = createWalletClient({
  *   chain: mainnet,
  *   transport: http(),
  * });
