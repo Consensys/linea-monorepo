@@ -142,6 +142,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 				vortex.ForceNumOpenedColumns(256),
 				vortex.WithSISParams(&sisInstance),
 				vortex.AddMerkleRootToPublicInputs(lppMerkleRootPublicInput, []int{0}),
+				vortex.WithOptionalSISHashingThreshold(0),
 			),
 		)
 
@@ -157,6 +158,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 				vortex.ForceNumOpenedColumns(256),
 				vortex.WithSISParams(&sisInstance),
 				vortex.AddMerkleRootToPublicInputs(lppMerkleRootPublicInput, utils.RangeSlice(numActualLppRound, 0)),
+				vortex.WithOptionalSISHashingThreshold(0),
 			),
 		)
 
@@ -176,6 +178,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			8,
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
+			vortex.WithOptionalSISHashingThreshold(0),
 		),
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
@@ -191,6 +194,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
 			vortex.PremarkAsSelfRecursed(),
+			vortex.WithOptionalSISHashingThreshold(0),
 		),
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
@@ -208,6 +212,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			vortex.WithSISParams(&sisInstance),
 			vortex.PremarkAsSelfRecursed(),
 			vortex.AddPrecomputedMerkleRootToPublicInputs(verifyingKeyPublicInput),
+			vortex.WithOptionalSISHashingThreshold(0),
 		),
 	)
 
@@ -241,6 +246,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
 			vortex.AddPrecomputedMerkleRootToPublicInputs(verifyingKey2PublicInput),
+			vortex.WithOptionalSISHashingThreshold(0),
 		),
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
@@ -252,6 +258,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			8,
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
+			vortex.WithOptionalSISHashingThreshold(0),
 		),
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
@@ -264,6 +271,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
 			vortex.PremarkAsSelfRecursed(),
+			vortex.WithOptionalSISHashingThreshold(0),
 		),
 	)
 

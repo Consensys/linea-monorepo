@@ -2,8 +2,10 @@ package zkevm
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
@@ -12,6 +14,19 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
+)
+
+var (
+	bootstrapperFile       = "dw-bootstrapper.bin"
+	discFile               = "disc.bin"
+	zkevmFile              = "zkevm-wiop.bin"
+	compiledDefaultFile    = "dw-compiled-default.bin"
+	moduleGlTemplate       = "dw-module-gl-%d.bin"
+	moduleLppTemplate      = "dw-module-lpp-%d.bin"
+	compileLppTemplate     = "dw-compiled-lpp-%d.bin"
+	compileGlTemplate      = "dw-compiled-gl-%d.bin"
+	conglomerationFile     = "dw-compiled-conglomeration.bin"
+	executionLimitlessPath = "execution-limitless"
 )
 
 // GetTestZkEVM returns a ZkEVM object configured for testing.
@@ -58,7 +73,7 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 	}
 
 	// Create directory for assets
-	assetDir := cfg.PathForSetup("execution-limitless")
+	assetDir := cfg.PathForSetup(executionLimitlessPath)
 	if err := os.MkdirAll(assetDir, 0755); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", assetDir, err)
 	}
@@ -68,53 +83,144 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 		Object any
 	}{
 		{
-			Name:   "zkevm-wiop.bin",
+			Name:   zkevmFile,
 			Object: lz.Zkevm,
 		},
 		{
-			Name:   "disc.bin",
+			Name:   discFile,
 			Object: lz.Disc,
 		},
 		{
-			Name:   "dw-bootstrapper.bin",
+			Name:   bootstrapperFile,
 			Object: lz.DistWizard.Bootstrapper,
 		},
 		{
-			Name:   "dw-compile-default.bin",
+			Name:   compiledDefaultFile,
 			Object: lz.DistWizard.CompiledDefault,
 		},
 	}
 
 	for i, modGl := range lz.DistWizard.CompiledGLs {
-		assets = append(assets, struct {
+		assets = append(assets, []struct {
 			Name   string
 			Object any
-		}{
-			Name:   fmt.Sprintf("dw-compile-gl-%d.bin", i),
+		}{{
+
+			Name:   fmt.Sprintf(compileGlTemplate, i),
 			Object: modGl,
-		})
+		}, {
+			Name:   fmt.Sprintf(moduleGlTemplate, i),
+			Object: lz.DistWizard.GLs[i],
+		},
+		}...)
 	}
 
 	for i, modLpp := range lz.DistWizard.CompiledLPPs {
-		assets = append(assets, struct {
+		assets = append(assets, []struct {
 			Name   string
 			Object any
 		}{
-			Name:   fmt.Sprintf("dw-compile-lpp-%d.bin", i),
-			Object: modLpp,
-		})
+			{
+				Name:   fmt.Sprintf(compileLppTemplate, i),
+				Object: modLpp,
+			},
+			{
+				Name:   fmt.Sprintf(moduleLppTemplate, i),
+				Object: lz.DistWizard.LPPs[i],
+			},
+		}...)
 	}
 
 	assets = append(assets, struct {
 		Name   string
 		Object any
 	}{
-		Name:   "dw-cong.bin",
+		Name:   conglomerationFile,
 		Object: lz.DistWizard.CompiledConglomeration,
 	})
 
 	for _, asset := range assets {
 		if err := writeToDisk(assetDir, asset.Name, asset.Object); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func loadFromFile(assetFilePath string, obj any) error {
+
+	var (
+		f        = files.MustRead(assetFilePath)
+		buf, err = io.ReadAll(f)
+	)
+
+	if err != nil {
+		return fmt.Errorf("could not read file %s: %w", assetFilePath, err)
+	}
+
+	if err := serialization.Deserialize(buf, obj); err != nil {
+		return fmt.Errorf("could not deserialize file %s: %w", assetFilePath, err)
+	}
+
+	return nil
+}
+
+// LoadBootstrapperAsync loads the bootstrapper from disk.
+func (lz *LimitlessZkEVM) LoadBootstrapper(cfg *config.Config) error {
+	return loadFromFile(cfg.PathForSetup(executionLimitlessPath)+"/"+bootstrapperFile, &lz.DistWizard.Bootstrapper)
+}
+
+// LoadZkEVM loads the zkevm from disk
+func (lz *LimitlessZkEVM) LoadZkEVM(cfg *config.Config) error {
+	return loadFromFile(cfg.PathForSetup(executionLimitlessPath)+"/"+zkevmFile, &lz.Zkevm)
+}
+
+// LoadDisc loads the discoverer from disk
+func (lz *LimitlessZkEVM) LoadDisc(cfg *config.Config) error {
+	return loadFromFile(cfg.PathForSetup(executionLimitlessPath)+"/"+discFile, &lz.Disc)
+}
+
+// LoadModuleGLsAndLPPs loads the uncompiled version of the GL and LPP modules.
+// The function auto-resolves the modules that needs to be deserialized by
+// looking into the asset directory and searching for files whose name start
+// with `dw-module-gl-` or `dw-module-lpp-`.
+func (lz *LimitlessZkEVM) LoadModuleGLsAndLPPs(cfg *config.Config) error {
+
+	var (
+		assetDir        = cfg.PathForSetup(executionLimitlessPath)
+		cntLpps, cntGLs int
+	)
+
+	files, err := os.ReadDir(assetDir)
+	if err != nil {
+		return fmt.Errorf("could not read directory %s: %w", assetDir, err)
+	}
+
+	for _, file := range files {
+
+		if strings.HasPrefix(file.Name(), "dw-module-gl-") {
+			cntGLs++
+		}
+
+		if strings.HasPrefix(file.Name(), "dw-module-lpp-") {
+			cntLpps++
+		}
+	}
+
+	lz.DistWizard.GLs = make([]*distributed.ModuleGL, cntGLs)
+	lz.DistWizard.LPPs = make([]*distributed.ModuleLPP, cntLpps)
+
+	for i := 0; i < cntGLs; i++ {
+		filePath := path.Join(assetDir, fmt.Sprintf(moduleGlTemplate, i))
+		if err := loadFromFile(filePath, &lz.DistWizard.GLs[i]); err != nil {
+			return err
+		}
+	}
+
+	for i := 0; i < cntLpps; i++ {
+		filePath := path.Join(assetDir, fmt.Sprintf(moduleLppTemplate, i))
+		if err := loadFromFile(filePath, &lz.DistWizard.LPPs[i]); err != nil {
 			return err
 		}
 	}

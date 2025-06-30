@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 
 	blob_v0 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
 	blob_v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
@@ -241,19 +240,24 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 		executionLimitlessPath := cfg.PathForSetup("execution-limitless")
 		limits := cfg.TracesLimits
 		extraFlags["cfg_checksum"] = limits.Checksum()
-		var compCong *distributed.ConglomeratorCompilation
 
 		logrus.Info("Setting up limitless prover assets")
 		asset := zkevm.NewLimitlessZkEVM(cfg)
-		logrus.Infof("Writing limitless prover assets to path:%s", executionLimitlessPath)
+
+		// Unlike for the other circuits, the limitless prover assets are written
+		// to disk directly before returning the circuit builder. The reason is
+		// that the limitless prover assets are large and we want to avoid keeping
+		// them in memory. The second reason is that returning them alongside the
+		// build would change the structure of the function for just one case.
+		logrus.Infof("Writing limitless prover assets to path: %s", executionLimitlessPath)
 		if err := asset.Store(cfg); err != nil {
 			return nil, nil, fmt.Errorf("failed to write limitless prover assets: %w", err)
 		}
-		compCong = asset.DistWizard.CompiledConglomeration
+		compCong := asset.DistWizard.CompiledConglomeration
 		asset = nil
 		runtime.GC()
 
-		return execution.NewLimitlessBuilder(compCong.Wiop, &limits), extraFlags, nil
+		return execution.NewBuilderLimitless(compCong.Wiop, &limits), extraFlags, nil
 
 	case circuits.BlobDecompressionV0CircuitID:
 		dict, err := os.ReadFile(args.DictPath)

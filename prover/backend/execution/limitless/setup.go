@@ -1,9 +1,6 @@
 package limitless
 
 import (
-	"os"
-	"path"
-
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/config"
@@ -33,11 +30,4 @@ func finalizeCktSetup(cfg *config.Config, chSetupDone <-chan struct{},
 	}
 	execution.ValidateSetupChecksum(*setup, &cfg.TracesLimits)
 	return nil
-}
-
-// Helper function to clean up witness directory
-func cleanWitnessDirectory(cfg *config.Config) {
-	filepath := cfg.PathForSetup("execution-limitless")
-	filepath = path.Join(filepath, "witness")
-	os.RemoveAll(filepath)
 }
