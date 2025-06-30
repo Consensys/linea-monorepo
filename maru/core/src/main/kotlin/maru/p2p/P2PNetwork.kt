@@ -91,4 +91,12 @@ interface P2PNetwork {
   fun unsubscribeFromBlocks(subscriptionId: Int)
 
   val port: UInt
+
+  val nodeId: String
+
+  val nodeAddresses: List<String>
+
+  val discoveryAddresses: List<String>
+
+  val enr: String?
 }

@@ -10,6 +10,7 @@ package maru.app
 
 import io.vertx.core.Vertx
 import java.time.Clock
+import maru.api.ApiServer
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
 import maru.config.consensus.ElFork
@@ -57,6 +58,7 @@ class MaruApp(
   private val metricsSystem: MetricsSystem,
   private val lastBlockMetadataCache: LatestBlockMetadataCache,
   private val ethereumJsonRpcClient: Web3JClient,
+  private val apiServer: ApiServer,
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::javaClass)
 
@@ -120,7 +122,13 @@ class MaruApp(
       log.error("Error while trying to start the P2P network", th)
       throw th
     }
-    protocolStarter.start()
+    try {
+      protocolStarter.start()
+    } catch (th: Throwable) {
+      log.error("Error while trying to start the protocol starter", th)
+      throw th
+    }
+    apiServer.start()
     log.info("Maru is up")
   }
 
@@ -138,6 +146,7 @@ class MaruApp(
       log.warn("Error while trying to stop the P2P network", th)
     }
     protocolStarter.stop()
+    apiServer.stop()
     log.info("Maru is down")
   }
 

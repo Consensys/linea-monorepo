@@ -21,6 +21,7 @@ import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.kotlin.decodeHex
 import maru.app.MaruApp
 import maru.app.MaruAppFactory
+import maru.config.ApiConfig
 import maru.config.ApiEndpointConfig
 import maru.config.FollowersConfig
 import maru.config.LineaConfig
@@ -91,6 +92,7 @@ class MaruFactory {
     observabilityOptions: ObservabilityOptions =
       ObservabilityOptions(port = 0u, prometheusMetricsEnabled = true, jvmMetricsEnabled = true),
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
+    apiConfig: ApiConfig = ApiConfig(port = 0u),
   ): MaruConfig {
     val lineaConfig =
       overridingLineaContractClient?.let {
@@ -113,6 +115,7 @@ class MaruFactory {
       followers = followers,
       observabilityOptions = observabilityOptions,
       linea = lineaConfig,
+      apiConfig = apiConfig,
     )
   }
 

@@ -27,7 +27,7 @@ import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData as BesuMessageDat
 
 class SpyingP2PNetwork(
   val p2pNetwork: P2PNetwork,
-) : P2PNetwork {
+) : P2PNetwork by p2pNetwork {
   companion object {
     private fun Message<*, *>.toBesuMessageData(): BesuMessageData {
       require(this.type == GossipMessageType.QBFT) {

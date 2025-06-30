@@ -20,6 +20,7 @@ import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.kotlin.encodeHex
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
+import maru.api.ApiServer
 import maru.config.MaruConfig
 import maru.config.P2P
 import maru.consensus.ForkIdHashProvider
@@ -34,6 +35,7 @@ import maru.database.kv.KvDatabaseFactory
 import maru.finalization.LineaFinalizationProvider
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
+import maru.p2p.P2PNetworkDataProvider
 import maru.p2p.P2PNetworkImpl
 import maru.p2p.RpcMethodFactory
 import maru.serialization.ForkIdSerializers
@@ -130,6 +132,15 @@ class MaruAppFactory {
       overridingFinalizationProvider
         ?: setupFinalizationProvider(config, overridingLineaContractClient, vertx)
 
+    val apiServer =
+      ApiServer(
+        config =
+          ApiServer.Config(
+            port = config.apiConfig.port,
+          ),
+        networkDataProvider = P2PNetworkDataProvider(p2pNetwork),
+      )
+
     val maru =
       MaruApp(
         config = config,
@@ -144,6 +155,7 @@ class MaruAppFactory {
         metricsSystem = besuMetricsSystem,
         lastBlockMetadataCache = lastBlockMetadataCache,
         ethereumJsonRpcClient = ethereumJsonRpcClient,
+        apiServer = apiServer,
       )
 
     return maru
