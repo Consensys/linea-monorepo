@@ -1,6 +1,7 @@
 # volumes:
 #   local-dev:
 #     name: "local-dev"
+name: maru
 
 networks:
   linea:

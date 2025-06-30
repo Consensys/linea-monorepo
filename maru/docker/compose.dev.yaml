@@ -1,13 +1,13 @@
 #docker compose -f docker/compose.yml -f docker/compose.dev.yml
+name: maru
 
 services:
 
   maru:
-    # ./gradlew :app:installDist
-    # docker build app --build-context=libs=./app/build/install/app/lib/ --build-context=maru=./app/build/libs/ -t local/maru:latest
+    # make build-local-image
+    # MARU_TAG=local make docker-run-stack
     # command: [ 'java', '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005','-Dvertx.configurationFile=/path/to/vertx-options.json', '-Dlog4j2.configurationFile=/path/to/log4j2-dev.xml']
-    #image: local/maru:latest
-    image: consensys/maru:${MARU_TAG:-2bb0fb1}
+    image: consensys/maru:${MARU_TAG:-ce6054c}
     container_name: maru
     depends_on:
       - sequencer
