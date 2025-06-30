@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -86,57 +87,57 @@ func NewStateDiffAssignmentBuilder(as StateDiff) StateDiffAssignmentBuilder {
 
 // PushReadZero pushes the relevant row when a ReadZero occurs on the
 // accumulator side.
-func (as *StateDiffAssignmentBuilder) PushReadZero(root, hkey [common.NbLimbU256][]byte) {
+func (as *StateDiffAssignmentBuilder) PushReadZero(root, hkey [][]byte) {
 	for i := range common.NbLimbU256 {
-		as.HKey[i].PushBytes(hkey[i])
+		as.HKey[i].PushBytes(pagZerosAtBeginning(hkey[i]))
 		as.InitialHVal[i].PushZero()
 		as.FinalHVal[i].PushZero()
-		as.InitialRoot[i].PushBytes(root[i])
-		as.FinalRoot[i].PushBytes(root[i])
+		as.InitialRoot[i].PushBytes(pagZerosAtBeginning(root[i]))
+		as.FinalRoot[i].PushBytes(pagZerosAtBeginning(root[i]))
 	}
 }
 
 // PushReadNonZero pushes a row onto `as` for a read-non-zero operation.
-func (as *StateDiffAssignmentBuilder) PushReadNonZero(root, hKey, hVal [common.NbLimbU256][]byte) {
+func (as *StateDiffAssignmentBuilder) PushReadNonZero(root, hKey, hVal [][]byte) {
 	for i := range common.NbLimbU256 {
-		as.HKey[i].PushBytes(hKey[i])
-		as.InitialHVal[i].PushBytes(hVal[i])
-		as.FinalHVal[i].PushBytes(hVal[i])
-		as.InitialRoot[i].PushBytes(root[i])
-		as.FinalRoot[i].PushBytes(root[i])
+		as.HKey[i].PushBytes(pagZerosAtBeginning(hKey[i]))
+		as.InitialHVal[i].PushBytes(pagZerosAtBeginning(hVal[i]))
+		as.FinalHVal[i].PushBytes(pagZerosAtBeginning(hVal[i]))
+		as.InitialRoot[i].PushBytes(pagZerosAtBeginning(root[i]))
+		as.FinalRoot[i].PushBytes(pagZerosAtBeginning(root[i]))
 	}
 }
 
 // PushInsert pushes a row representing an insertion onto `as`.
-func (as *StateDiffAssignmentBuilder) PushInsert(oldRoot, newRoot, hKey, newHVal [common.NbLimbU256][]byte) {
+func (as *StateDiffAssignmentBuilder) PushInsert(oldRoot, newRoot, hKey, newHVal [][]byte) {
 	for i := range common.NbLimbU256 {
-		as.HKey[i].PushBytes(hKey[i])
+		as.HKey[i].PushBytes(pagZerosAtBeginning(hKey[i]))
 		as.InitialHVal[i].PushZero()
-		as.FinalHVal[i].PushBytes(newHVal[i])
-		as.InitialRoot[i].PushBytes(oldRoot[i])
-		as.FinalRoot[i].PushBytes(newRoot[i])
+		as.FinalHVal[i].PushBytes(pagZerosAtBeginning(newHVal[i]))
+		as.InitialRoot[i].PushBytes(pagZerosAtBeginning(oldRoot[i]))
+		as.FinalRoot[i].PushBytes(pagZerosAtBeginning(newRoot[i]))
 	}
 }
 
 // PushUpdate pushes a row representing an update onto `as`.
-func (as *StateDiffAssignmentBuilder) PushUpdate(oldRoot, newRoot, hKey, oldHVal, newHVal [common.NbLimbU256][]byte) {
+func (as *StateDiffAssignmentBuilder) PushUpdate(oldRoot, newRoot, hKey, oldHVal, newHVal [][]byte) {
 	for i := range common.NbLimbU256 {
-		as.HKey[i].PushBytes(hKey[i])
-		as.InitialHVal[i].PushBytes(oldHVal[i])
-		as.FinalHVal[i].PushBytes(newHVal[i])
-		as.InitialRoot[i].PushBytes(oldRoot[i])
-		as.FinalRoot[i].PushBytes(newRoot[i])
+		as.HKey[i].PushBytes(pagZerosAtBeginning(hKey[i]))
+		as.InitialHVal[i].PushBytes(pagZerosAtBeginning(oldHVal[i]))
+		as.FinalHVal[i].PushBytes(pagZerosAtBeginning(newHVal[i]))
+		as.InitialRoot[i].PushBytes(pagZerosAtBeginning(oldRoot[i]))
+		as.FinalRoot[i].PushBytes(pagZerosAtBeginning(newRoot[i]))
 	}
 }
 
 // PushDelete pushes a row representing a deletion onto `as`.
-func (as *StateDiffAssignmentBuilder) PushDelete(oldRoot, newRoot, hKey, oldHVal [common.NbLimbU256][]byte) {
+func (as *StateDiffAssignmentBuilder) PushDelete(oldRoot, newRoot, hKey, oldHVal [][]byte) {
 	for i := range common.NbLimbU256 {
-		as.HKey[i].PushBytes(hKey[i])
-		as.InitialHVal[i].PushBytes(oldHVal[i])
+		as.HKey[i].PushBytes(pagZerosAtBeginning(hKey[i]))
+		as.InitialHVal[i].PushBytes(pagZerosAtBeginning(oldHVal[i]))
 		as.FinalHVal[i].PushZero()
-		as.InitialRoot[i].PushBytes(oldRoot[i])
-		as.FinalRoot[i].PushBytes(newRoot[i])
+		as.InitialRoot[i].PushBytes(pagZerosAtBeginning(oldRoot[i]))
+		as.FinalRoot[i].PushBytes(pagZerosAtBeginning(newRoot[i]))
 	}
 }
 
@@ -162,4 +163,14 @@ func (builder *StateDiffAssignmentBuilder) AddRows(numRowsAccSegment int, hKey, 
 			builder.FinalRoot[j].PushField(finalRoot[j])
 		}
 	}
+}
+
+// pagZerosAtBeginning pads provided array to [fr.Bytes] len with zeros at the beginning.
+func pagZerosAtBeginning(arr []byte) []byte {
+	if len(arr) >= fr.Bytes {
+		return arr
+	}
+
+	padding := make([]byte, fr.Bytes-len(arr))
+	return append(padding, arr...)
 }

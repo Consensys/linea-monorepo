@@ -25,7 +25,7 @@ type stateSummaryAssignmentBuilder struct {
 	IsDeleteSegment             *common.VectorBuilder
 	isStorage                   *common.VectorBuilder
 	batchNumber                 *common.VectorBuilder
-	worldStateRoot              *common.VectorBuilder
+	worldStateRoot              [common.NbLimbU256]*common.VectorBuilder
 	account                     accountPeekAssignmentBuilder
 	storage                     storagePeekAssignmentBuilder
 	accumulatorStatement        AccumulatorStatementAssignmentBuilder
@@ -51,6 +51,9 @@ func (ss *Module) Assign(run *wizard.ProverRuntime, traces [][]statemanager.Deco
 	if ss.ArithmetizationLink != nil {
 		ss.assignArithmetizationLink(run)
 	}
+
+	v := ss.Account.Final.MiMCCodeHash.GetColAssignmentAt(run, 0)
+	println(v.Text(16))
 }
 
 // accountSegmentWitness represents a collection of traces representing
@@ -84,11 +87,14 @@ func newStateSummaryAssignmentBuilder(ss *Module, run *wizard.ProverRuntime) *st
 		IsDeleteSegment:             common.NewVectorBuilder(ss.IsDeleteSegment),
 		isStorage:                   common.NewVectorBuilder(ss.IsStorage),
 		batchNumber:                 common.NewVectorBuilder(ss.BatchNumber),
-		worldStateRoot:              common.NewVectorBuilder(ss.WorldStateRoot),
 		storage:                     newStoragePeekAssignmentBuilder(&ss.Storage),
 		account:                     newAccountPeekAssignmentBuilder(&ss.Account),
 		accumulatorStatement:        newAccumulatorStatementAssignmentBuilder(&ss.AccumulatorStatement),
 		arithmetizationStorage:      newArithmetizationStorageParser(ss, run),
+	}
+
+	for i := range common.NbLimbU256 {
+		res.worldStateRoot[i] = common.NewVectorBuilder(ss.WorldStateRoot[i])
 	}
 
 	return res
@@ -193,8 +199,14 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 					segID == 0 && i == firstUnskippedIndex(seg.storageTraces),
 				)
 				ss.account.initial.pushAll(initialAccount)
-				ss.account.final.pushOverrideStorageRoot(finalAccount, newRoot)
-				ss.worldStateRoot.PushBytes32(initWsRoot)
+				ss.account.final.pushOverrideStorageRoot(finalAccount, common.SplitBytes(newRoot[:]))
+
+				for j, initWsRootLimbs := range common.SplitBytes(initWsRoot[:]) {
+					ss.worldStateRoot[j].PushBytes32(types.LeftPadToBytes32(initWsRootLimbs))
+				}
+
+				oldRootLimbs := common.SplitBytes(oldRoot[:])
+				newRootLimbs := common.SplitBytes(newRoot[:])
 
 				switch t := stoTrace.(type) {
 				case statemanager.ReadZeroTraceST:
@@ -215,10 +227,17 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 						arithStorage := ss.arithmetizationStorage.Values[keysAndBlock]
 
 						ss.storage.push(t.Key, types.FullBytes32{}, arithStorage)
-						ss.accumulatorStatement.PushReadZero(oldRoot, hash(t.Key))
+
+						keyH := hash(t.Key)
+						keyHashBytesLimbs := common.SplitBytes(keyH[:])
+
+						ss.accumulatorStatement.PushReadZero(oldRootLimbs, keyHashBytesLimbs)
 					} else {
+						keyH := hash(t.Key)
+						keyHashBytesLimbs := common.SplitBytes(keyH[:])
+
 						ss.storage.pushOnlyKey(t.Key)
-						ss.accumulatorStatement.PushReadZero(oldRoot, hash(t.Key))
+						ss.accumulatorStatement.PushReadZero(oldRootLimbs, keyHashBytesLimbs)
 					}
 				case statemanager.ReadNonZeroTraceST:
 					if isDeleteSegment {
@@ -233,25 +252,58 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 						}
 						arithStorage := ss.arithmetizationStorage.Values[keysAndBlock]
 
+						keyH := hash(t.Key)
+						keyHashBytesLimbs := common.SplitBytes(keyH[:])
+
+						valueH := hash(t.Value)
+						valueHashBytesLimbs := common.SplitBytes(valueH[:])
+
 						ss.storage.push(t.Key, t.Value, arithStorage)
-						ss.accumulatorStatement.PushReadNonZero(oldRoot, hash(t.Key), hash(t.Value))
+						ss.accumulatorStatement.PushReadNonZero(oldRootLimbs, keyHashBytesLimbs, valueHashBytesLimbs)
 
 					} else {
+						keyH := hash(t.Key)
+						keyHashBytesLimbs := common.SplitBytes(keyH[:])
+
+						valueH := hash(t.Value)
+						valueHashBytesLimbs := common.SplitBytes(valueH[:])
+
 						ss.storage.push(t.Key, t.Value, t.Value)
-						ss.accumulatorStatement.PushReadNonZero(oldRoot, hash(t.Key), hash(t.Value))
+						ss.accumulatorStatement.PushReadNonZero(oldRootLimbs, keyHashBytesLimbs, valueHashBytesLimbs)
 					}
 
 				case statemanager.InsertionTraceST:
+					keyH := hash(t.Key)
+					keyHashBytesLimbs := common.SplitBytes(keyH[:])
+
+					valueH := hash(t.Val)
+					valueHashBytesLimbs := common.SplitBytes(valueH[:])
+
 					ss.storage.pushOnlyNew(t.Key, t.Val)
-					ss.accumulatorStatement.PushInsert(oldRoot, newRoot, hash(t.Key), hash(t.Val))
+					ss.accumulatorStatement.PushInsert(oldRootLimbs, newRootLimbs, keyHashBytesLimbs, valueHashBytesLimbs)
 
 				case statemanager.UpdateTraceST:
+					keyH := hash(t.Key)
+					keyHashBytesLimbs := common.SplitBytes(keyH[:])
+
+					oldValueH := hash(t.OldValue)
+					oldValueHashBytesLimbs := common.SplitBytes(oldValueH[:])
+
+					newValueH := hash(t.NewValue)
+					newValueHashBytesLimbs := common.SplitBytes(newValueH[:])
+
 					ss.storage.push(t.Key, t.OldValue, t.NewValue)
-					ss.accumulatorStatement.PushUpdate(oldRoot, newRoot, hash(t.Key), hash(t.OldValue), hash(t.NewValue))
+					ss.accumulatorStatement.PushUpdate(oldRootLimbs, newRootLimbs, keyHashBytesLimbs, oldValueHashBytesLimbs, newValueHashBytesLimbs)
 
 				case statemanager.DeletionTraceST:
+					keyH := hash(t.Key)
+					keyHashBytesLimbs := common.SplitBytes(keyH[:])
+
+					delValueH := hash(t.DeletedValue)
+					delValueHashBytesLimbs := common.SplitBytes(delValueH[:])
+
 					ss.storage.pushOnlyOld(t.Key, t.DeletedValue)
-					ss.accumulatorStatement.PushDelete(oldRoot, newRoot, hash(t.Key), hash(t.DeletedValue))
+					ss.accumulatorStatement.PushDelete(oldRootLimbs, newRootLimbs, keyHashBytesLimbs, delValueHashBytesLimbs)
 				default:
 					panic("unknown trace type")
 				}
@@ -272,20 +324,57 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 		ss.isBeginningOfAccountSegment.PushBoolean(segID == 0 && actualUnskippedLength(seg.storageTraces) == 0)
 		ss.account.initial.pushAll(initialAccount)
 		ss.account.final.pushAll(finalAccount)
-		ss.worldStateRoot.PushBytes32(finalWsRoot)
+
+		for j, finalWsRootLimbs := range common.SplitBytes(finalWsRoot[:]) {
+			ss.worldStateRoot[j].PushBytes32(types.LeftPadToBytes32(finalWsRootLimbs))
+		}
+
 		ss.storage.pushAllZeroes()
+
+		initWsRootLimbs := common.SplitBytes(initWsRoot[:])
+		finalWsRootLimbs := common.SplitBytes(finalWsRoot[:])
 
 		switch t := seg.worldStateTrace.Underlying.(type) {
 		case statemanager.ReadZeroTraceWS:
-			ss.accumulatorStatement.PushReadZero(initWsRoot, hash(t.Key))
+			keyH := hash(t.Key)
+			keyHashBytesLimbs := common.SplitBytes(keyH[:])
+
+			ss.accumulatorStatement.PushReadZero(initWsRootLimbs, keyHashBytesLimbs)
 		case statemanager.ReadNonZeroTraceWS:
-			ss.accumulatorStatement.PushReadNonZero(initWsRoot, hash(t.Key), hash(t.Value))
+			keyH := hash(t.Key)
+			keyHashBytesLimbs := common.SplitBytes(keyH[:])
+
+			valueH := hash(t.Value)
+			valueHashBytesLimbs := common.SplitBytes(valueH[:])
+
+			ss.accumulatorStatement.PushReadNonZero(initWsRootLimbs, keyHashBytesLimbs, valueHashBytesLimbs)
 		case statemanager.InsertionTraceWS:
-			ss.accumulatorStatement.PushInsert(initWsRoot, finalWsRoot, hash(t.Key), hash(t.Val))
+			keyH := hash(t.Key)
+			keyHashBytesLimbs := common.SplitBytes(keyH[:])
+
+			valueH := hash(t.Val)
+			valueHashBytesLimbs := common.SplitBytes(valueH[:])
+
+			ss.accumulatorStatement.PushInsert(initWsRootLimbs, finalWsRootLimbs, keyHashBytesLimbs, valueHashBytesLimbs)
 		case statemanager.UpdateTraceWS:
-			ss.accumulatorStatement.PushUpdate(initWsRoot, finalWsRoot, hash(t.Key), hash(t.OldValue), hash(t.NewValue))
+			keyH := hash(t.Key)
+			keyHashBytesLimbs := common.SplitBytes(keyH[:])
+
+			oldValueH := hash(t.OldValue)
+			oldValueHashBytesLimbs := common.SplitBytes(oldValueH[:])
+
+			newValueH := hash(t.NewValue)
+			newValueHashBytesLimbs := common.SplitBytes(newValueH[:])
+
+			ss.accumulatorStatement.PushUpdate(initWsRootLimbs, finalWsRootLimbs, keyHashBytesLimbs, oldValueHashBytesLimbs, newValueHashBytesLimbs)
 		case statemanager.DeletionTraceWS:
-			ss.accumulatorStatement.PushDelete(initWsRoot, finalWsRoot, hash(t.Key), hash(t.DeletedValue))
+			keyH := hash(t.Key)
+			keyHashBytesLimbs := common.SplitBytes(keyH[:])
+
+			deletedValueH := hash(t.DeletedValue)
+			deletedValueHashBytesLimbs := common.SplitBytes(deletedValueH[:])
+
+			ss.accumulatorStatement.PushDelete(initWsRootLimbs, finalWsRootLimbs, keyHashBytesLimbs, deletedValueHashBytesLimbs)
 		default:
 			panic("unknown trace type")
 		}
@@ -303,7 +392,11 @@ func (ss *stateSummaryAssignmentBuilder) finalize(run *wizard.ProverRuntime) {
 	ss.IsDeleteSegment.PadAndAssign(run)
 	ss.isStorage.PadAndAssign(run)
 	ss.batchNumber.PadAndAssign(run)
-	ss.worldStateRoot.PadAndAssign(run)
+
+	for i := range common.NbLimbU256 {
+		ss.worldStateRoot[i].PadAndAssign(run)
+	}
+
 	ss.account.initial.PadAndAssign(run)
 	ss.account.final.PadAndAssign(run)
 	ss.account.address.PadAndAssign(run)
@@ -335,24 +428,41 @@ func (ss *stateSummaryAssignmentBuilder) finalize(run *wizard.ProverRuntime) {
 		ss.StateSummary.AccumulatorStatement.CptSameTypeAsBefore,
 	})
 
-	runConcurrent([]wizard.ProverAction{
-		ss.StateSummary.Account.ComputeAddressLimbs,
-		ss.StateSummary.Storage.ComputeKeyLimbs,
-	})
+	runConcurrent(
+		append(
+			ss.StateSummary.Storage.ComputeKeyLimbs[:],
+			ss.StateSummary.Account.ComputeAddressLimbs[:]...,
+		),
+	)
 
-	runConcurrent([]wizard.ProverAction{
-		ss.StateSummary.Account.ComputeInitialAndFinalAreSame,
-		ss.StateSummary.Account.ComputeAddressComparison,
-		ss.StateSummary.Storage.ComputeOldValueIsZero,
-		ss.StateSummary.Storage.ComputeNewValueIsZero,
-		ss.StateSummary.Storage.ComputeKeyIncreased,
-		ss.StateSummary.Storage.ComputeOldAndNewValuesAreEqual,
-	})
+	summaryActions := [][]wizard.ProverAction{
+		ss.StateSummary.Storage.ComputeOldValueIsZero[:],
+		ss.StateSummary.Storage.ComputeNewValueIsZero[:],
+		ss.StateSummary.Account.ComputeInitialAndFinalAreSame[:],
+		ss.StateSummary.Storage.ComputeOldAndNewValuesAreEqual[:],
+		{
+			ss.StateSummary.Storage.ComputeKeyIncreased,
+			ss.StateSummary.Account.ComputeAddressComparison,
+		},
+	}
 
-	runConcurrent([]wizard.ProverAction{
-		ss.StateSummary.AccumulatorStatement.ComputeInitialAndFinalHValEqual,
-		ss.StateSummary.AccumulatorStatement.ComputeFinalHValIsZero,
-	})
+	var actions []wizard.ProverAction
+	for _, action := range summaryActions {
+		actions = append(actions, action...)
+	}
+
+	runConcurrent(actions)
+
+	runConcurrent(append(
+		ss.StateSummary.AccumulatorStatement.ComputeInitialAndFinalHValEqual[:],
+		ss.StateSummary.AccumulatorStatement.ComputeFinalHValIsZero[:]...,
+	))
+
+	//for i := range common.NbLimbU256 {
+	//	v := ss.StateSummary.Account.HashFinal[i].GetColAssignmentAt(run, 0)
+	//	print(v.Text(16), "")
+	//}
+	//println()
 }
 
 // getOldAndNewAccount traces a world-state trace and return the old and the

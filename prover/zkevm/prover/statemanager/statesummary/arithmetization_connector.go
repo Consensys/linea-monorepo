@@ -259,7 +259,6 @@ func accountIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc Hu
 
 		stateSummaryTable = []ifaces.Column{ss.Account.Address,
 			ss.Account.Initial.Balance,
-			ss.Account.Initial.Nonce,
 			ss.Account.Initial.CodeSize,
 			ss.Account.Initial.ExpectedHubCodeHash.Hi,
 			ss.Account.Initial.ExpectedHubCodeHash.Lo,
@@ -369,13 +368,15 @@ func accountIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 	stateSummaryTable := []ifaces.Column{
 		ss.Account.Address,
 		ss.Account.Final.Balance,
-		ss.Account.Final.Nonce,
 		ss.Account.Final.CodeSize,
 		ss.Account.Final.ExpectedHubCodeHash.Hi,
 		ss.Account.Final.ExpectedHubCodeHash.Lo,
 		ss.BatchNumber,
 		ss.Account.Final.Exists,
 	}
+
+	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.Nonce[:]...)
+
 	arithTable := []ifaces.Column{
 		smc.Address,
 		smc.BalanceNew,

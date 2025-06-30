@@ -1,12 +1,14 @@
 package statesummary
 
 import (
+	"fmt"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 const (
@@ -69,7 +71,7 @@ type Module struct {
 	BatchNumber ifaces.Column
 
 	// WorldStateRoot stores the state-root hashes.
-	WorldStateRoot ifaces.Column
+	WorldStateRoot [common.NbLimbU256]ifaces.Column
 
 	// Account.Initial and Account.Final represents the values stored in the
 	// account at the beginning and the end of the trace segment.
@@ -110,10 +112,13 @@ func NewModule(comp *wizard.CompiledIOP, size int) Module {
 		IsDeleteSegment:             createCol("IS_DELETE_SEGMENT"),
 		IsStorage:                   createCol("IS_STORAGE"),
 		BatchNumber:                 createCol("BATCH_NUMBER"),
-		WorldStateRoot:              createCol("WORLD_STATE_ROOT"),
 		Account:                     newAccountPeek(comp, size),
 		Storage:                     newStoragePeek(comp, size, "STORAGE_PEEK"),
 		AccumulatorStatement:        newAccumulatorStatement(comp, size, "ACCUMULATOR_STATEMENT"),
+	}
+
+	for i := range common.NbLimbU256 {
+		res.WorldStateRoot[i] = createCol(fmt.Sprintf("WORLD_STATE_ROOT_%v", i))
 	}
 
 	res.csAccountAddress(comp)
@@ -434,46 +439,47 @@ func (ss *Module) csBatchNumber(comp *wizard.CompiledIOP) {
 // csWorldStateRootSequentiality ensures that the WorldStateRoot column is
 // properly set w.r.t. the accumulator statement.
 func (ss *Module) csWorldStateRoot(comp *wizard.CompiledIOP) {
+	for i := range common.NbLimbU256 {
+		isZeroWhenInactive(comp, ss.WorldStateRoot[i], ss.IsActive)
 
-	isZeroWhenInactive(comp, ss.WorldStateRoot, ss.IsActive)
-
-	comp.InsertGlobal(
-		0,
-		"STATE_SUMMARY_WORLD_STATE_ROOT_SEQUENTIALITY_WHEN_NOT_WS_ACCESS",
-		sym.Mul(
-			ss.IsStorage,
-			sym.Sub(
-				column.Shift(ss.WorldStateRoot, -1),
-				ss.WorldStateRoot,
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("STATE_SUMMARY_WORLD_STATE_ROOT_SEQUENTIALITY_WHEN_NOT_WS_ACCESS_%d", i),
+			sym.Mul(
+				ss.IsStorage,
+				sym.Sub(
+					column.Shift(ss.WorldStateRoot[i], -1),
+					ss.WorldStateRoot[i],
+				),
 			),
-		),
-	)
+		)
 
-	comp.InsertGlobal(
-		0,
-		"STATE_SUMMARY_WORLD_STATE_ROOT_SEQUENTIALITY_WHEN_WS_ACCESS_OLD_ROOT",
-		sym.Mul(
-			ss.IsActive,
-			sym.Sub(1, ss.IsStorage),
-			sym.Sub(
-				column.Shift(ss.WorldStateRoot, -1),
-				ss.AccumulatorStatement.StateDiff.InitialRoot,
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("STATE_SUMMARY_WORLD_STATE_ROOT_SEQUENTIALITY_WHEN_WS_ACCESS_OLD_ROOT_%d", i),
+			sym.Mul(
+				ss.IsActive,
+				sym.Sub(1, ss.IsStorage),
+				sym.Sub(
+					column.Shift(ss.WorldStateRoot[i], -1),
+					ss.AccumulatorStatement.StateDiff.InitialRoot[i],
+				),
 			),
-		),
-	)
+		)
 
-	comp.InsertGlobal(
-		0,
-		"STATE_SUMMARY_WORLD_STATE_ROOT_SEQUENTIALITY_WHEN_WS_ACCESS_NEW_ROOT",
-		sym.Mul(
-			ss.IsActive,
-			sym.Sub(1, ss.IsStorage),
-			sym.Sub(
-				ss.WorldStateRoot,
-				ss.AccumulatorStatement.StateDiff.FinalRoot,
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("STATE_SUMMARY_WORLD_STATE_ROOT_SEQUENTIALITY_WHEN_WS_ACCESS_NEW_ROOT_%d", i),
+			sym.Mul(
+				ss.IsActive,
+				sym.Sub(1, ss.IsStorage),
+				sym.Sub(
+					ss.WorldStateRoot[i],
+					ss.AccumulatorStatement.StateDiff.FinalRoot[i],
+				),
 			),
-		),
-	)
+		)
+	}
 }
 
 // csAccountNew ensures that the account new is updated consistently with the
@@ -501,31 +507,16 @@ func (ss *Module) csAccountNew(comp *wizard.CompiledIOP) {
 	}
 
 	mustBeConstantOnSubsegment(ss.Account.Final.Exists)
-	mustBeConstantOnSubsegment(ss.Account.Final.Nonce)
+
+	for i := range common.NbLimbU64 {
+		mustBeConstantOnSubsegment(ss.Account.Final.Nonce[i])
+	}
+
 	mustBeConstantOnSubsegment(ss.Account.Final.Balance)
 	mustBeConstantOnSubsegment(ss.Account.Final.CodeSize)
 	mustBeConstantOnSubsegment(ss.Account.Final.MiMCCodeHash)
 	mustBeConstantOnSubsegment(ss.Account.Final.KeccakCodeHash.Hi)
 	mustBeConstantOnSubsegment(ss.Account.Final.KeccakCodeHash.Lo)
-
-	comp.InsertGlobal(
-		0,
-		ifaces.QueryIDf("STATE_SUMMARY_NEW_STORAGE_ROOT_CONSTANT_ON_SUB_SEGMENT"),
-		sym.Mul(
-			ss.IsActive,
-			sym.Sub(1, ss.IsStorage),
-			column.Shift(ss.IsStorage, -1),
-			sym.Sub(
-				1,
-				ss.AccumulatorStatement.IsReadZero,
-				ss.AccumulatorStatement.IsDelete,
-			),
-			sym.Sub(
-				ss.Account.Final.StorageRoot,
-				column.Shift(ss.Account.Final.StorageRoot, -1),
-			),
-		),
-	)
 
 	// mustHaveDefaultWhenNotExists defines a template constraint to ensure that
 	// `col` uses a default value when Exists = 0
@@ -540,23 +531,46 @@ func (ss *Module) csAccountNew(comp *wizard.CompiledIOP) {
 		)
 	}
 
-	mustHaveDefaultWhenNotExists(ss.Account.Final.Nonce, 0)
+	for i := range common.NbLimbU64 {
+		mustHaveDefaultWhenNotExists(ss.Account.Final.Nonce[i], 0)
+	}
+
 	mustHaveDefaultWhenNotExists(ss.Account.Final.Balance, 0)
 	mustHaveDefaultWhenNotExists(ss.Account.Final.CodeSize, 0)
 	mustHaveDefaultWhenNotExists(ss.Account.Final.MiMCCodeHash, 0)
 	mustHaveDefaultWhenNotExists(ss.Account.Final.KeccakCodeHash.Hi, 0)
 	mustHaveDefaultWhenNotExists(ss.Account.Final.KeccakCodeHash.Lo, 0)
 
-	comp.InsertGlobal(
-		0,
-		ifaces.QueryIDf("STATE_SUMMARY_STORAGE_ROOT_IS_EMPTY"),
-		sym.Mul(
-			sym.Sub(1, ss.Account.Final.Exists),
-			sym.Sub(1, ss.IsStorage),
-			ss.Account.Final.StorageRoot,
-		),
-	)
+	for i := range common.NbLimbU256 {
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("STATE_SUMMARY_STORAGE_ROOT_IS_EMPTY_%d", i),
+			sym.Mul(
+				sym.Sub(1, ss.Account.Final.Exists),
+				sym.Sub(1, ss.IsStorage),
+				ss.Account.Final.StorageRoot[i],
+			),
+		)
 
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("STATE_SUMMARY_NEW_STORAGE_ROOT_CONSTANT_ON_SUB_SEGMENT_%d", i),
+			sym.Mul(
+				ss.IsActive,
+				sym.Sub(1, ss.IsStorage),
+				column.Shift(ss.IsStorage, -1),
+				sym.Sub(
+					1,
+					ss.AccumulatorStatement.IsReadZero,
+					ss.AccumulatorStatement.IsDelete,
+				),
+				sym.Sub(
+					ss.Account.Final.StorageRoot[i],
+					column.Shift(ss.Account.Final.StorageRoot[i], -1),
+				),
+			),
+		)
+	}
 }
 
 // csAccountOld ensures that the account new is updated consistently with the
@@ -569,10 +583,18 @@ func (ss *Module) csAccountOld(comp *wizard.CompiledIOP) {
 	// mustBeConstantOnSubsegment defines a template for generating the
 	// constraints ensuring that the initial account value remains unchanged on
 	// an account sub-segment.
-	mustBeConstantOnSubsegment := func(col ifaces.Column) {
+	//
+	// limbNum is an argument that adds a number of constrained column limb to the query name.
+	// If limbNum is negative, the query name remains unchanged.
+	mustBeConstantOnSubsegment := func(col ifaces.Column, limbNum int) {
+		qName := ifaces.QueryIDf("%v_IS_CONSTANT_DURING_SUB_SEGMENT", col.GetColID())
+		if limbNum >= 0 {
+			qName = ifaces.QueryIDf("%v_IS_CONSTANT_DURING_SUB_SEGMENT_%d", col.GetColID(), limbNum)
+		}
+
 		comp.InsertGlobal(
 			0,
-			ifaces.QueryIDf("%v_IS_CONSTANT_DURING_SUB_SEGMENT", col.GetColID()),
+			qName,
 			sym.Mul(
 				column.Shift(ss.IsStorage, -1),
 				sym.Sub(col, column.Shift(col, -1)),
@@ -580,21 +602,37 @@ func (ss *Module) csAccountOld(comp *wizard.CompiledIOP) {
 		)
 	}
 
-	mustBeConstantOnSubsegment(ss.Account.Initial.Exists)
-	mustBeConstantOnSubsegment(ss.Account.Initial.Nonce)
-	mustBeConstantOnSubsegment(ss.Account.Initial.Balance)
-	mustBeConstantOnSubsegment(ss.Account.Initial.CodeSize)
-	mustBeConstantOnSubsegment(ss.Account.Initial.MiMCCodeHash)
-	mustBeConstantOnSubsegment(ss.Account.Initial.StorageRoot)
-	mustBeConstantOnSubsegment(ss.Account.Initial.KeccakCodeHash.Hi)
-	mustBeConstantOnSubsegment(ss.Account.Initial.KeccakCodeHash.Lo)
+	mustBeConstantOnSubsegment(ss.Account.Initial.Exists, -1)
+
+	for i := range common.NbLimbU64 {
+		mustBeConstantOnSubsegment(ss.Account.Initial.Nonce[i], -1)
+	}
+
+	mustBeConstantOnSubsegment(ss.Account.Initial.Balance, -1)
+	mustBeConstantOnSubsegment(ss.Account.Initial.CodeSize, -1)
+	mustBeConstantOnSubsegment(ss.Account.Initial.MiMCCodeHash, -1)
+
+	for i := range common.NbLimbU256 {
+		mustBeConstantOnSubsegment(ss.Account.Initial.StorageRoot[i], i)
+	}
+
+	mustBeConstantOnSubsegment(ss.Account.Initial.KeccakCodeHash.Hi, -1)
+	mustBeConstantOnSubsegment(ss.Account.Initial.KeccakCodeHash.Lo, -1)
 
 	// mustHaveDefaultWhenNotExists defines a template constraint to ensure that
 	// `col` uses a default value when Exists = 0
-	mustHaveDefaultWhenNotExists := func(col ifaces.Column, def any) {
+	//
+	// limbNum is an argument that adds a number of constrained column limb to the query name.
+	// If limbNum is negative, the query name remains unchanged.
+	mustHaveDefaultWhenNotExists := func(col ifaces.Column, def any, limbNum int) {
+		qName := ifaces.QueryIDf("%v_HAS_DEFAULT_VALUE", col.GetColID())
+		if limbNum >= 0 {
+			qName = ifaces.QueryIDf("%v_HAS_DEFAULT_VALUE_%d", col.GetColID(), limbNum)
+		}
+
 		comp.InsertGlobal(
 			0,
-			ifaces.QueryIDf("%v_HAS_DEFAULT_VALUE", col.GetColID()),
+			qName,
 			sym.Mul(
 				sym.Sub(1, ss.Account.Initial.Exists),
 				sym.Sub(col, sym.Mul(ss.IsActive, def)),
@@ -602,13 +640,20 @@ func (ss *Module) csAccountOld(comp *wizard.CompiledIOP) {
 		)
 	}
 
-	mustHaveDefaultWhenNotExists(ss.Account.Initial.Nonce, 0)
-	mustHaveDefaultWhenNotExists(ss.Account.Initial.Balance, 0)
-	mustHaveDefaultWhenNotExists(ss.Account.Initial.CodeSize, 0)
-	mustHaveDefaultWhenNotExists(ss.Account.Initial.MiMCCodeHash, 0)
-	mustHaveDefaultWhenNotExists(ss.Account.Initial.StorageRoot, 0)
-	mustHaveDefaultWhenNotExists(ss.Account.Initial.KeccakCodeHash.Hi, 0)
-	mustHaveDefaultWhenNotExists(ss.Account.Initial.KeccakCodeHash.Lo, 0)
+	for i := range common.NbLimbU64 {
+		mustHaveDefaultWhenNotExists(ss.Account.Initial.Nonce[i], 0, -1)
+	}
+
+	mustHaveDefaultWhenNotExists(ss.Account.Initial.Balance, 0, -1)
+	mustHaveDefaultWhenNotExists(ss.Account.Initial.CodeSize, 0, -1)
+	mustHaveDefaultWhenNotExists(ss.Account.Initial.MiMCCodeHash, 0, -1)
+
+	for i := range common.NbLimbU256 {
+		mustHaveDefaultWhenNotExists(ss.Account.Initial.StorageRoot[i], 0, i)
+	}
+
+	mustHaveDefaultWhenNotExists(ss.Account.Initial.KeccakCodeHash.Hi, 0, -1)
+	mustHaveDefaultWhenNotExists(ss.Account.Initial.KeccakCodeHash.Lo, 0, -1)
 
 }
 
@@ -691,6 +736,11 @@ func (ss *Module) csAccumulatorStatementFlags(comp *wizard.CompiledIOP) {
 		),
 	)
 
+	var oldValueLimbExpressions []any
+	for i := range common.NbLimbU256 {
+		oldValueLimbExpressions = append(oldValueLimbExpressions, sym.Sub(1, ss.Storage.OldValueIsZero[i]))
+	}
+
 	comp.InsertGlobal(
 		0,
 		"STATE_SUMMARY_OLD_STORAGE_ZEROIZATION",
@@ -699,10 +749,15 @@ func (ss *Module) csAccumulatorStatementFlags(comp *wizard.CompiledIOP) {
 			sym.Add(
 				ss.AccumulatorStatement.IsReadZero,
 				ss.AccumulatorStatement.IsInsert,
-				sym.Neg(ss.Storage.OldValueIsZero),
+				sym.Neg(sym.Sub(1, sym.Mul(oldValueLimbExpressions...))),
 			),
 		),
 	)
+
+	var zeroizationLibsExpressions []any
+	for i := range common.NbLimbU256 {
+		zeroizationLibsExpressions = append(zeroizationLibsExpressions, sym.Sub(1, ss.AccumulatorStatement.FinalHValIsZero[i]))
+	}
 
 	comp.InsertGlobal(
 		0,
@@ -710,9 +765,8 @@ func (ss *Module) csAccumulatorStatementFlags(comp *wizard.CompiledIOP) {
 		sym.Mul(
 			ss.IsStorage,
 			sym.Add(
-				ss.AccumulatorStatement.IsReadZero,
-				ss.AccumulatorStatement.IsDelete,
-				sym.Neg(ss.AccumulatorStatement.FinalHValIsZero),
+				ss.AccumulatorStatement.IsReadZero, ss.AccumulatorStatement.IsDelete,
+				sym.Neg(sym.Sub(1, sym.Mul(zeroizationLibsExpressions...))),
 			),
 		),
 	)
@@ -745,18 +799,27 @@ func (ss *Module) csAccumulatorStatementFlags(comp *wizard.CompiledIOP) {
 		),
 	)
 
+	var oldNewStorageEqualLimbs []any
+	for i := range common.NbLimbU256 {
+		oldNewStorageEqualLimbs = append(oldNewStorageEqualLimbs, ss.AccumulatorStatement.InitialAndFinalHValAreEqual[i])
+	}
+
 	comp.InsertGlobal(
 		0,
 		"STATE_SUMMARY_OLD_NEW_STORAGE_EQUAL",
 		sym.Mul(
 			ss.IsStorage,
 			sym.Add(
-				ss.AccumulatorStatement.IsReadNonZero,
-				ss.AccumulatorStatement.IsReadZero,
-				sym.Neg(ss.AccumulatorStatement.InitialAndFinalHValAreEqual),
+				ss.AccumulatorStatement.IsReadNonZero, ss.AccumulatorStatement.IsReadZero,
+				sym.Neg(sym.Mul(oldNewStorageEqualLimbs...)),
 			),
 		),
 	)
+
+	var sameBitLimbExpressions []any
+	for i := range common.NbLimbU256 {
+		sameBitLimbExpressions = append(sameBitLimbExpressions, sym.Sub(1, ss.Account.InitialAndFinalAreSame[i]))
+	}
 
 	comp.InsertGlobal(
 		0,
@@ -767,7 +830,7 @@ func (ss *Module) csAccumulatorStatementFlags(comp *wizard.CompiledIOP) {
 			sym.Add(
 				ss.AccumulatorStatement.IsReadNonZero,
 				ss.AccumulatorStatement.IsReadZero,
-				sym.Neg(ss.Account.InitialAndFinalAreSame),
+				sym.Neg(sym.Sub(1, sym.Mul(sameBitLimbExpressions...))),
 			),
 		),
 	)
@@ -814,42 +877,51 @@ func (ss *Module) csAccumulatorStatementFlags(comp *wizard.CompiledIOP) {
 // StorageHashing or from the AccountHashing. This is done using binary
 // selectors.
 func (ss *Module) csAccumulatorStatementHValKey(comp *wizard.CompiledIOP) {
-
-	comp.InsertGlobal(
-		0,
-		ifaces.QueryIDf("STATE_SUMMARY_ACC_STATEMENT_HKEY"),
-		sym.Sub(
-			ss.AccumulatorStatement.StateDiff.HKey,
-			sym.Mul(
-				ss.IsActive,
-				ternary(ss.IsStorage, ss.Storage.KeyHash, ss.Account.AddressHash),
+	for i := range common.NbLimbU256 {
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("STATE_SUMMARY_ACC_STATEMENT_HKEY_%d", i),
+			sym.Sub(
+				ss.AccumulatorStatement.StateDiff.HKey[i],
+				sym.Mul(
+					ss.IsActive,
+					ternary(ss.IsStorage, ss.Storage.KeyHash[i], ss.Account.AddressHash[i]),
+				),
 			),
-		),
-	)
+		)
 
-	comp.InsertGlobal(
-		0,
-		ifaces.QueryIDf("STATE_SUMMARY_ACC_STATEMENT_INITIAL_HVAL"),
-		sym.Sub(
-			ss.AccumulatorStatement.StateDiff.InitialHVal,
-			sym.Mul(
-				sym.Sub(ss.IsActive, ss.AccumulatorStatement.IsReadZero, ss.AccumulatorStatement.IsInsert),
-				ternary(ss.IsStorage, ss.Storage.OldValueHash, ss.Account.HashInitial),
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("STATE_SUMMARY_ACC_STATEMENT_INITIAL_HVAL_%d", i),
+			sym.Sub(
+				ss.AccumulatorStatement.StateDiff.InitialHVal[i],
+				sym.Mul(
+					sym.Sub(ss.IsActive, ss.AccumulatorStatement.IsReadZero, ss.AccumulatorStatement.IsInsert),
+					ternary(ss.IsStorage, ss.Storage.OldValueHash[i], ss.Account.HashInitial[i]),
+				),
 			),
-		),
-	)
+		)
 
-	comp.InsertGlobal(
-		0,
-		ifaces.QueryIDf("STATE_SUMMARY_ACC_STATEMENT_FINAL_HVAL"),
-		sym.Sub(
-			ss.AccumulatorStatement.StateDiff.FinalHVal,
-			ternary(ss.IsStorage,
-				ternary(
-					ss.IsDeleteSegment,
-					ss.AccumulatorStatement.StateDiff.InitialHVal,
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("STATE_SUMMARY_ACC_STATEMENT_FINAL_HVAL_%d", i),
+			sym.Sub(
+				ss.AccumulatorStatement.StateDiff.FinalHVal[i],
+				ternary(ss.IsStorage,
+					ternary(
+						ss.IsDeleteSegment,
+						ss.AccumulatorStatement.StateDiff.InitialHVal[i],
+						sym.Mul(
+							ss.Storage.NewValueHash[i],
+							sym.Sub(
+								ss.IsActive,
+								ss.AccumulatorStatement.IsReadZero,
+								ss.AccumulatorStatement.IsDelete,
+							),
+						),
+					),
 					sym.Mul(
-						ss.Storage.NewValueHash,
+						ss.Account.HashFinal[i],
 						sym.Sub(
 							ss.IsActive,
 							ss.AccumulatorStatement.IsReadZero,
@@ -857,17 +929,9 @@ func (ss *Module) csAccumulatorStatementHValKey(comp *wizard.CompiledIOP) {
 						),
 					),
 				),
-				sym.Mul(
-					ss.Account.HashFinal,
-					sym.Sub(
-						ss.IsActive,
-						ss.AccumulatorStatement.IsReadZero,
-						ss.AccumulatorStatement.IsDelete,
-					),
-				),
 			),
-		),
-	)
+		)
+	}
 }
 
 // csAccumulatorRoots constrains the "roots" provided to the accumulator
@@ -875,68 +939,69 @@ func (ss *Module) csAccumulatorStatementHValKey(comp *wizard.CompiledIOP) {
 func (ss *Module) csAccumulatorRoots(comp *wizard.CompiledIOP) {
 
 	// IsBeginningOfAccountSegment && IsStorage
-
-	comp.InsertGlobal(
-		0,
-		"STATE_SUMMARY_STORAGE_ROOT_HASH_SEQUENTIALITY_BEGINNING_OF_SUBSEGMENT",
-		sym.Mul(
-			ss.IsStorage,
-			sym.Sub(1, column.Shift(ss.IsStorage, -1)),
-			sym.Add(
-				sym.Mul(
-					ss.Account.Initial.Exists,
-					sym.Sub(ss.Account.Initial.StorageRoot, ss.AccumulatorStatement.StateDiff.InitialRoot),
-				),
-				sym.Mul(
-					sym.Sub(1, ss.Account.Initial.Exists),
-					sym.Sub(emptyStorageRoot, ss.AccumulatorStatement.StateDiff.InitialRoot),
-				),
-			),
-		),
-	)
-
-	comp.InsertLocal(
-		0,
-		"STATE_SUMMARY_STORAGE_ROOT_HASH_SEQUENTIALITY_FIRST_ROW",
-		sym.Mul(
-			ss.IsStorage,
-			sym.Add(
-				sym.Mul(
-					ss.Account.Initial.Exists,
-					sym.Sub(ss.Account.Initial.StorageRoot, ss.AccumulatorStatement.StateDiff.InitialRoot),
-				),
-				sym.Mul(
-					sym.Sub(1, ss.Account.Initial.Exists),
-					sym.Sub(emptyStorageRoot, ss.AccumulatorStatement.StateDiff.InitialRoot),
+	for i := range common.NbLimbU256 {
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("STATE_SUMMARY_STORAGE_ROOT_HASH_SEQUENTIALITY_BEGINNING_OF_SUBSEGMENT_%d", i),
+			sym.Mul(
+				ss.IsStorage,
+				sym.Sub(1, column.Shift(ss.IsStorage, -1)),
+				sym.Add(
+					sym.Mul(
+						ss.Account.Initial.Exists,
+						sym.Sub(ss.Account.Initial.StorageRoot[i], ss.AccumulatorStatement.StateDiff.InitialRoot[i]),
+					),
+					sym.Mul(
+						sym.Sub(1, ss.Account.Initial.Exists),
+						sym.Sub(emptyStorageRoot[i], ss.AccumulatorStatement.StateDiff.InitialRoot[i]),
+					),
 				),
 			),
-		),
-	)
+		)
 
-	comp.InsertGlobal(
-		0,
-		"STATE_SUMMARY_ACCOUNT_ROOT_HASH_SEQUENTIALITY_MIDDLE_OF_SUBSEGMENT",
-		sym.Mul(
-			ss.IsStorage,
-			column.Shift(ss.IsStorage, -1),
-			sym.Sub(
-				column.Shift(ss.Account.Final.StorageRoot, -1),
-				ss.AccumulatorStatement.StateDiff.InitialRoot,
+		comp.InsertLocal(
+			0,
+			ifaces.QueryIDf("STATE_SUMMARY_STORAGE_ROOT_HASH_SEQUENTIALITY_FIRST_ROW_%d", i),
+			sym.Mul(
+				ss.IsStorage,
+				sym.Add(
+					sym.Mul(
+						ss.Account.Initial.Exists,
+						sym.Sub(ss.Account.Initial.StorageRoot[i], ss.AccumulatorStatement.StateDiff.InitialRoot[i]),
+					),
+					sym.Mul(
+						sym.Sub(1, ss.Account.Initial.Exists),
+						sym.Sub(emptyStorageRoot[i], ss.AccumulatorStatement.StateDiff.InitialRoot[i]),
+					),
+				),
 			),
-		),
-	)
+		)
 
-	comp.InsertGlobal(
-		0,
-		"STATE_SUMMARY_STORAGE_ROOT_HASH_SEQUENTIALITY_MIDDLE_OF_SEGMENT",
-		sym.Mul(
-			ss.IsStorage,
-			sym.Sub(
-				ss.Account.Final.StorageRoot,
-				ss.AccumulatorStatement.StateDiff.FinalRoot,
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("STATE_SUMMARY_ACCOUNT_ROOT_HASH_SEQUENTIALITY_MIDDLE_OF_SUBSEGMENT_%d", i),
+			sym.Mul(
+				ss.IsStorage,
+				column.Shift(ss.IsStorage, -1),
+				sym.Sub(
+					column.Shift(ss.Account.Final.StorageRoot[i], -1),
+					ss.AccumulatorStatement.StateDiff.InitialRoot[i],
+				),
 			),
-		),
-	)
+		)
+
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("STATE_SUMMARY_STORAGE_ROOT_HASH_SEQUENTIALITY_MIDDLE_OF_SEGMENT_%d", i),
+			sym.Mul(
+				ss.IsStorage,
+				sym.Sub(
+					ss.Account.Final.StorageRoot[i],
+					ss.AccumulatorStatement.StateDiff.FinalRoot[i],
+				),
+			),
+		)
+	}
 }
 
 // constrainExpectedHubCodeHash constrains the ExpectedHubCodeHash columns

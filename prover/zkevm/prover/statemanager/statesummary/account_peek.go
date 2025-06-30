@@ -1,10 +1,16 @@
 package statesummary
 
 import (
+	"bytes"
+	"encoding/binary"
+	"fmt"
+
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -27,35 +33,35 @@ type AccountPeek struct {
 
 	// HashInitial, HashFinal stores the hash of the initial account and the
 	// hash of the final account
-	HashInitial, HashFinal ifaces.Column
+	HashInitial, HashFinal [common.NbLimbU256]ifaces.Column
 
 	// ComputeHashInitial and ComputeHashFinal are [wizard.ProverAction]
 	// responsible for hashing the accounts.
-	ComputeHashInitial, ComputeHashFinal wizard.ProverAction
+	ComputeHashInitial, ComputeHashFinal *mimc.HashingCtx
 
 	// InitialAndFinalAreSame is an indicator column set to 1 when the
 	// initial and final account share the same hash and 0 otherwise.
-	InitialAndFinalAreSame ifaces.Column
+	InitialAndFinalAreSame [common.NbLimbU256]ifaces.Column
 
 	// ComputeInitialAndFinalAreSame is a [wizard.ProverAction] responsible for
 	// computing the column InitialAndFinalAreSame
-	ComputeInitialAndFinalAreSame wizard.ProverAction
+	ComputeInitialAndFinalAreSame [common.NbLimbU256]wizard.ProverAction
 
 	// Address represents which account is being peeked by the module.
 	// It is assigned by providing
 	Address ifaces.Column
 
 	// AddressHash is the hash of the account address
-	AddressHash ifaces.Column
+	AddressHash [common.NbLimbU256]ifaces.Column
 
 	// ComputeAddressHash is responsible for computing the AddressHash
-	ComputeAddressHash wizard.ProverAction
+	ComputeAddressHash *mimc.HashingCtx
 
 	// AddressHashLimbs stores the limbs of the address
-	AddressHashLimbs byte32cmp.LimbColumns
+	AddressHashLimbs [common.NbLimbU256]byte32cmp.LimbColumns
 
 	// ComputeAddressLimbs computes the [AddressLimbs] column.
-	ComputeAddressLimbs wizard.ProverAction
+	ComputeAddressLimbs [common.NbLimbU256]wizard.ProverAction
 
 	// HasSameAddressAsPrev is an indicator column telling whether the previous
 	// row has the same AccountAddress value as the current one.
@@ -91,55 +97,67 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 		Address: createCol("ADDRESS"),
 	}
 
-	accPeek.HashInitial, accPeek.ComputeHashInitial = common.HashOf(
+	initialHashCols := [][]ifaces.Column{accPeek.Initial.Nonce[:]}
+	initialHashCols = append(initialHashCols, []ifaces.Column{accPeek.Initial.Balance})
+	initialHashCols = append(initialHashCols, [][]ifaces.Column{accPeek.Initial.StorageRoot[:]}...)
+	initialHashCols = append(initialHashCols, [][]ifaces.Column{
+		{accPeek.Initial.MiMCCodeHash},
+		{accPeek.Initial.KeccakCodeHash.Lo},
+		{accPeek.Initial.KeccakCodeHash.Hi},
+		{accPeek.Initial.CodeSize},
+	}...)
+
+	accPeek.ComputeHashInitial = mimc.HashOf(comp, initialHashCols)
+	accPeek.HashInitial = accPeek.ComputeHashInitial.Result()
+
+	finalHashCols := [][]ifaces.Column{accPeek.Final.Nonce[:]}
+	finalHashCols = append(finalHashCols, []ifaces.Column{accPeek.Final.Balance})
+	finalHashCols = append(finalHashCols, [][]ifaces.Column{accPeek.Final.StorageRoot[:]}...)
+	finalHashCols = append(finalHashCols, [][]ifaces.Column{
+		{accPeek.Final.MiMCCodeHash},
+		{accPeek.Final.KeccakCodeHash.Lo},
+		{accPeek.Final.KeccakCodeHash.Hi},
+		{accPeek.Final.CodeSize},
+	}...)
+
+	accPeek.ComputeHashFinal = mimc.HashOf(comp, finalHashCols)
+	accPeek.HashFinal = accPeek.ComputeHashFinal.Result()
+
+	for i := range common.NbLimbU256 {
+		accPeek.InitialAndFinalAreSame[i], accPeek.ComputeInitialAndFinalAreSame[i] = dedicated.IsZero(
+			comp,
+			sym.Sub(accPeek.HashInitial[i], accPeek.HashFinal[i]),
+		)
+	}
+
+	accPeek.ComputeAddressHash = mimc.HashOf(
 		comp,
-		[]ifaces.Column{
-			accPeek.Initial.Nonce,
-			accPeek.Initial.Balance,
-			accPeek.Initial.StorageRoot,
-			accPeek.Initial.MiMCCodeHash,
-			accPeek.Initial.KeccakCodeHash.Lo,
-			accPeek.Initial.KeccakCodeHash.Hi,
-			accPeek.Initial.CodeSize,
+		[][]ifaces.Column{
+			{accPeek.Address},
 		},
 	)
 
-	accPeek.HashFinal, accPeek.ComputeHashFinal = common.HashOf(
-		comp,
-		[]ifaces.Column{
-			accPeek.Final.Nonce,
-			accPeek.Final.Balance,
-			accPeek.Final.StorageRoot,
-			accPeek.Final.MiMCCodeHash,
-			accPeek.Final.KeccakCodeHash.Lo,
-			accPeek.Final.KeccakCodeHash.Hi,
-			accPeek.Final.CodeSize,
-		},
-	)
+	accPeek.AddressHash = accPeek.ComputeAddressHash.Result()
 
+	panic("the initial/final-are-same is not visible in the small field migration so; this needs to be resolved")
 	accPeek.InitialAndFinalAreSame, accPeek.ComputeInitialAndFinalAreSame = dedicated.IsZero(
 		comp,
 		sym.Sub(accPeek.HashInitial, accPeek.HashFinal),
 	).GetColumnAndProverAction()
 
-	accPeek.AddressHash, accPeek.ComputeAddressHash = common.HashOf(
-		comp,
-		[]ifaces.Column{
-			accPeek.Address,
-		},
-	)
+	addrHashLimbColumbs := byte32cmp.LimbColumns{LimbBitSize: common.LimbBytes * 8, IsBigEndian: true}
+	shiftedAddrHashLimbColumbs := byte32cmp.LimbColumns{LimbBitSize: common.LimbBytes * 8, IsBigEndian: true}
+	for i := range common.NbLimbU256 {
+		accPeek.AddressHashLimbs[i], accPeek.ComputeAddressLimbs[i] = byte32cmp.Decompose(comp, accPeek.AddressHash[i], 1, common.LimbBytes*8)
 
-	accPeek.AddressHashLimbs, accPeek.ComputeAddressLimbs = byte32cmp.Decompose(
-		comp,
-		accPeek.AddressHash,
-		16, // numLimbs so that we have 20 bytes
-		16, // number of bits per limbs (= 2 bytes)
-	)
+		addrHashLimbColumbs.Limbs = append(addrHashLimbColumbs.Limbs, accPeek.AddressHashLimbs[i].Limbs...)
+		shiftedAddrHashLimbColumbs.Limbs = append(shiftedAddrHashLimbColumbs.Limbs, accPeek.AddressHashLimbs[i].Shift(-1).Limbs...)
+	}
 
 	accPeek.HasGreaterAddressAsPrev, accPeek.HasSameAddressAsPrev, _, accPeek.ComputeAddressComparison = byte32cmp.CmpMultiLimbs(
 		comp,
-		accPeek.AddressHashLimbs,
-		accPeek.AddressHashLimbs.Shift(-1),
+		addrHashLimbColumbs,
+		shiftedAddrHashLimbColumbs,
 	)
 
 	return accPeek
@@ -150,7 +168,9 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 type Account struct {
 	// Nonce, Balance, MiMCCodeHash and CodeSize store the account field on a
 	// single column each.
-	Exists, Nonce, Balance, MiMCCodeHash, CodeSize, StorageRoot ifaces.Column
+	Exists, Balance, MiMCCodeHash, CodeSize ifaces.Column
+	Nonce                                   [common.NbLimbU64]ifaces.Column
+	StorageRoot                             [common.NbLimbU256]ifaces.Column
 	// KeccakCodeHash stores the keccak code hash of the account.
 	KeccakCodeHash common.HiLoColumns
 	// ExpectedHubCodeHash is almost the same as the KeccakCodeHash, with the difference
@@ -177,14 +197,20 @@ func newAccount(comp *wizard.CompiledIOP, size int, name string) Account {
 
 	acc := Account{
 		Exists:                       createCol("EXISTS"),
-		Nonce:                        createCol("NONCE"),
 		Balance:                      createCol("BALANCE"),
 		MiMCCodeHash:                 createCol("MIMC_CODEHASH"),
 		CodeSize:                     createCol("CODESIZE"),
-		StorageRoot:                  createCol("STORAGE_ROOT"),
 		KeccakCodeHash:               common.NewHiLoColumns(comp, size, name+"_KECCAK_CODE_HASH"),
 		ExpectedHubCodeHash:          common.NewHiLoColumns(comp, size, name+"_EXPECTED_HUB_CODE_HASH"),
 		ExistsAndHasNonEmptyCodeHash: createCol("EXISTS_AND_NON_EMPTY_CODEHASH"),
+	}
+
+	for i := range common.NbLimbU64 {
+		acc.Nonce[i] = createCol(fmt.Sprintf("NONCE_%v", i))
+	}
+
+	for i := range common.NbLimbU256 {
+		acc.StorageRoot[i] = createCol(fmt.Sprintf("STORAGE_ROOT_%d", i))
 	}
 
 	// There is no need for an IsActive mask here because the column will be
@@ -235,26 +261,36 @@ func newAccountPeekAssignmentBuilder(ap *AccountPeek) accountPeekAssignmentBuild
 // accountAssignmentBuilder is a convenience structure storing the column
 // builders relating to the an Account.
 type accountAssignmentBuilder struct {
-	exists, nonce, balance, miMCCodeHash, codeSize, storageRoot *common.VectorBuilder
-	keccakCodeHash                                              common.HiLoAssignmentBuilder
-	expectedHubCodeHash                                         common.HiLoAssignmentBuilder
-	existsAndHasNonEmptyCodeHash                                *common.VectorBuilder
+	exists, balance, miMCCodeHash, codeSize *common.VectorBuilder
+	nonce                                   [common.NbLimbU64]*common.VectorBuilder
+	storageRoot                             [common.NbLimbU256]*common.VectorBuilder
+	keccakCodeHash                          common.HiLoAssignmentBuilder
+	expectedHubCodeHash                     common.HiLoAssignmentBuilder
+	existsAndHasNonEmptyCodeHash            *common.VectorBuilder
 }
 
 // newAccountAssignmentBuilder returns a new [accountAssignmentBuilder] bound
 // to an [Account].
 func newAccountAssignmentBuilder(ap *Account) accountAssignmentBuilder {
-	return accountAssignmentBuilder{
+	res := accountAssignmentBuilder{
 		exists:                       common.NewVectorBuilder(ap.Exists),
-		nonce:                        common.NewVectorBuilder(ap.Nonce),
 		balance:                      common.NewVectorBuilder(ap.Balance),
 		miMCCodeHash:                 common.NewVectorBuilder(ap.MiMCCodeHash),
 		codeSize:                     common.NewVectorBuilder(ap.CodeSize),
-		storageRoot:                  common.NewVectorBuilder(ap.StorageRoot),
 		existsAndHasNonEmptyCodeHash: common.NewVectorBuilder(ap.ExistsAndHasNonEmptyCodeHash),
 		keccakCodeHash:               common.NewHiLoAssignmentBuilder(ap.KeccakCodeHash),
 		expectedHubCodeHash:          common.NewHiLoAssignmentBuilder(ap.ExpectedHubCodeHash),
 	}
+
+	for i := range common.NbLimbU64 {
+		res.nonce[i] = common.NewVectorBuilder(ap.Nonce[i])
+	}
+
+	for i := range common.NbLimbU256 {
+		res.storageRoot[i] = common.NewVectorBuilder(ap.StorageRoot[i])
+	}
+
+	return res
 }
 
 // pushAll stacks the value of a [types.Account] as a new row on the receiver.
@@ -262,7 +298,18 @@ func (ss *accountAssignmentBuilder) pushAll(acc types.Account) {
 	// accountExists is telling whether the intent is to push an empty account
 	accountExists := acc.Balance != nil
 
-	ss.nonce.PushInt(int(acc.Nonce))
+	nonceBuffer := new(bytes.Buffer)
+
+	err := binary.Write(nonceBuffer, binary.BigEndian, acc.Nonce)
+	if err != nil {
+		panic(err)
+	}
+
+	nonceLimbs := common.SplitBytes(nonceBuffer.Bytes())
+	for i := range ss.nonce {
+		padding := make([]byte, fr.Bytes-len(nonceLimbs[i]))
+		ss.nonce[i].PushBytes(append(padding, nonceLimbs[i]...))
+	}
 
 	// This is telling us whether the intent is to push an empty account
 	if accountExists {
@@ -281,7 +328,12 @@ func (ss *accountAssignmentBuilder) pushAll(acc types.Account) {
 
 	ss.codeSize.PushInt(int(acc.CodeSize))
 	ss.miMCCodeHash.PushBytes32(acc.MimcCodeHash)
-	ss.storageRoot.PushBytes32(acc.StorageRoot)
+
+	for i, limbBytes := range common.SplitBytes(acc.StorageRoot[:]) {
+		limbBytes32 := types.LeftPadToBytes32(limbBytes)
+		ss.storageRoot[i].PushBytes(limbBytes32[:])
+	}
+
 	ss.existsAndHasNonEmptyCodeHash.PushBoolean(accountExists && acc.CodeSize > 0)
 }
 
@@ -289,12 +341,23 @@ func (ss *accountAssignmentBuilder) pushAll(acc types.Account) {
 // the caller to override the StorageRoot field with the provided one.
 func (ss *accountAssignmentBuilder) pushOverrideStorageRoot(
 	acc types.Account,
-	storageRoot types.Bytes32,
+	storageRoot [][]byte,
 ) {
 	// accountExists is telling whether the intent is to push an empty account
 	accountExists := acc.Balance != nil
 
-	ss.nonce.PushInt(int(acc.Nonce))
+	nonceBuffer := new(bytes.Buffer)
+
+	err := binary.Write(nonceBuffer, binary.BigEndian, acc.Nonce)
+	if err != nil {
+		panic(err)
+	}
+
+	nonceLimbs := common.SplitBytes(nonceBuffer.Bytes())
+	for i := range ss.nonce {
+		padding := make([]byte, fr.Bytes-len(nonceLimbs[i]))
+		ss.nonce[i].PushBytes(append(padding, nonceLimbs[i]...))
+	}
 
 	// This is telling us whether the intent is to push an empty account
 	if accountExists {
@@ -313,7 +376,11 @@ func (ss *accountAssignmentBuilder) pushOverrideStorageRoot(
 
 	ss.codeSize.PushInt(int(acc.CodeSize))
 	ss.miMCCodeHash.PushBytes32(acc.MimcCodeHash)
-	ss.storageRoot.PushBytes32(storageRoot)
+
+	for i := range storageRoot {
+		ss.storageRoot[i].PushBytes32(types.LeftPadToBytes32(storageRoot[i]))
+	}
+
 	ss.existsAndHasNonEmptyCodeHash.PushBoolean(accountExists && acc.CodeSize > 0)
 }
 
@@ -322,12 +389,20 @@ func (ss *accountAssignmentBuilder) pushOverrideStorageRoot(
 // assigning the underlying [ifaces.Column] object with it.
 func (ss *accountAssignmentBuilder) PadAndAssign(run *wizard.ProverRuntime) {
 	ss.exists.PadAndAssign(run)
-	ss.nonce.PadAndAssign(run)
+
+	for i := range common.NbLimbU64 {
+		ss.nonce[i].PadAndAssign(run)
+	}
+
 	ss.balance.PadAndAssign(run)
 	ss.keccakCodeHash.PadAssign(run, types.FullBytes32{})
 	ss.expectedHubCodeHash.PadAssign(run, types.FullBytes32{})
 	ss.miMCCodeHash.PadAndAssign(run)
-	ss.storageRoot.PadAndAssign(run)
+
+	for i := range ss.storageRoot {
+		ss.storageRoot[i].PadAndAssign(run)
+	}
+
 	ss.codeSize.PadAndAssign(run)
 	ss.existsAndHasNonEmptyCodeHash.PadAndAssign(run)
 }
