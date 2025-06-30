@@ -101,18 +101,6 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		}
 		ctx.registerOpeningProof(lastRound)
 		
-		// If the vortex is not self-recursed, we need to
-		// mark the opened sis and non sis columns as ignored
-		if !ctx.IsSelfrecursed {
-			// Mark the opened SIS columns as ignored
-			for _, opened := range ctx.Items.OpenedSISColumns {
-				ctx.Comp.Columns.MarkAsIgnored(opened.GetColID())
-			}
-			// Mark the opened non-SIS columns as ignored
-			for _, opened := range ctx.Items.OpenedNonSISColumns {
-				ctx.Comp.Columns.MarkAsIgnored(opened.GetColID())
-			}
-		}
 		// Registers the prover and verifier steps
 		comp.RegisterProverAction(lastRound+1, &LinearCombinationComputationProverAction{
 			Ctx: ctx,

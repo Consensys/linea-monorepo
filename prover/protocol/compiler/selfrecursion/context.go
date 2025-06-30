@@ -297,7 +297,7 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 	// same assumption that theirs status is `Proof`
 	for _, opened := range ctx.Columns.WholePreimagesSis {
 		// Assume that the rounds commitments have a `Proof` status
-		if comp.Columns.Status(opened.GetColID()) != column.Ignored {
+		if comp.Columns.Status(opened.GetColID()) != column.Proof {
 			utils.Panic(
 				"Assumed the SIS preimages %v to be %v but status is %v (recursion context is %v)",
 				opened.GetColID(),
@@ -313,7 +313,7 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 	// For the non-SIS preimages, we mark them as Committed
 	for _, opened := range ctx.Columns.WholePreimagesNonSis {
 		// Assume that the rounds commitments have a `Proof` status
-		if comp.Columns.Status(opened.GetColID()) != column.Ignored {
+		if comp.Columns.Status(opened.GetColID()) != column.Proof {
 			utils.Panic(
 				"Assumed the non-SIS preimages %v to be %v but status is %v (recursion context is %v)",
 				opened.GetColID(),
