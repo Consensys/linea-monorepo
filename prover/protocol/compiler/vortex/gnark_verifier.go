@@ -145,6 +145,9 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]front
 
 	// Get the list of the polynomials
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		if ctx.RoundStatus[round] == IsEmpty {
+			continue // skip the dry rounds
+		}
 		names := ctx.CommitmentsByRounds.MustGet(round)
 		ysRounds := make([]frontend.Variable, len(names))
 		for i, name := range names {
@@ -195,6 +198,9 @@ func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRun
 	}
 
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		if ctx.RoundStatus[round] == IsEmpty {
+			continue // skip the dry rounds
+		}
 		openedSubColumnsForRound := make([][]frontend.Variable, ctx.NbColsToOpen())
 		numRowsForRound := ctx.getNbCommittedRows(round)
 		for j := 0; j < ctx.NbColsToOpen(); j++ {

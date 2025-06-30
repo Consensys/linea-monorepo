@@ -10,8 +10,8 @@ import (
 )
 
 /*
-	Enforces a fixedPermutation constraint, that  two handles must
-	be a fixedpermutation of eachother
+	Enforces a fixedPermutation constraint, that two handles must
+	be a fixedpermutation of each other
 
 */
 //fix permutation over splittings of two vectors
