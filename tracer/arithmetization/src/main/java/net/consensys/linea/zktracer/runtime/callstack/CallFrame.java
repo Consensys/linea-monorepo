@@ -245,8 +245,13 @@ public class CallFrame {
     this.revertChildren(callStack, revertStamp);
   }
 
+  /** Return true if this call frame is reverted (self reverted or get reverted) */
   public boolean willRevert() {
     return selfReverts() || getsReverted();
+  }
+
+  public boolean wontRevert() {
+    return !willRevert();
   }
 
   public void initializeFrame(final MessageFrame frame) {

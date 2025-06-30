@@ -27,8 +27,10 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.transients.DeploymentInfo;
 import net.consensys.linea.zktracer.types.Bytecode;
+import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.worldstate.WorldView;
@@ -261,5 +263,13 @@ public class AccountSnapshot {
     checkState(deploymentStatus, "Deployment status should be true before deploying byte code.");
 
     return new AccountSnapshot(address, nonce, balance, true, code, deploymentNumber, false);
+  }
+
+  public EWord tracedCodeHash() {
+    return EWord.of(this.deploymentStatus() ? Hash.EMPTY : this.code().getCodeHash());
+  }
+
+  public boolean tracedHasCode() {
+    return !this.tracedCodeHash().equals(EWord.of(Hash.EMPTY));
   }
 }

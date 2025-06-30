@@ -49,24 +49,6 @@ public class SelfdestructCoinbaseTests extends TracerTestBase {
    * context is deployment - coinbase / recipient address collision - coinbase is deployed prior to
    * the transaction - the transaction is reverted
    */
-  static final ToyAccount CHECKING_COINBASE =
-      ToyAccount.builder()
-          .code(
-              BytecodeCompiler.newProgram(testInfo)
-                  .op(OpCode.COINBASE)
-                  .op(OpCode.BALANCE)
-                  .op(OpCode.POP)
-                  .op(OpCode.COINBASE)
-                  .op(OpCode.EXTCODESIZE)
-                  .push(0)
-                  .push(0)
-                  .op(OpCode.COINBASE)
-                  .op(OpCode.EXTCODECOPY)
-                  .op(OpCode.COINBASE)
-                  .op(OpCode.EXTCODEHASH)
-                  .compile())
-          .build();
-
   @ParameterizedTest
   @MethodSource("selfDestructCoinbaseInputs")
   void selfdestructCoinbaseTests(
@@ -74,6 +56,24 @@ public class SelfdestructCoinbaseTests extends TracerTestBase {
       boolean recipientCoinbaseCollision,
       boolean coinBaseDeployed,
       boolean revertingTransaction) {
+
+    final ToyAccount CHECKING_COINBASE =
+        ToyAccount.builder()
+            .code(
+                BytecodeCompiler.newProgram(testInfo)
+                    .op(OpCode.COINBASE)
+                    .op(OpCode.BALANCE)
+                    .op(OpCode.POP)
+                    .op(OpCode.COINBASE)
+                    .op(OpCode.EXTCODESIZE)
+                    .push(0)
+                    .push(0)
+                    .op(OpCode.COINBASE)
+                    .op(OpCode.EXTCODECOPY)
+                    .op(OpCode.COINBASE)
+                    .op(OpCode.EXTCODEHASH)
+                    .compile())
+            .build();
 
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =

@@ -41,12 +41,11 @@ import net.consensys.linea.zktracer.module.hub.section.halt.EphemeralAccount;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 @Accessors(fluent = true)
-public final class AccountFragment
+public abstract class AccountFragment
     implements TraceFragment, EndTransactionDefer, PostBlockDefer, PostConflationDefer {
 
   @Getter private final AccountSnapshot oldState;
@@ -56,10 +55,10 @@ public final class AccountFragment
   private final Optional<Bytes> addressToTrim;
   @Getter private final DomSubStampsSubFragment domSubStampsSubFragment;
   @Setter private RlpAddrSubFragment rlpAddrSubFragment;
-  private boolean markedForSelfDestruct;
-  private boolean markedForSelfDestructNew;
   final int hubStamp;
   @Getter final TransactionProcessingMetadata transactionProcessingMetadata;
+  protected boolean markedForDeletion;
+  protected boolean markedForDeletionNew;
 
   /**
    * {@link AccountFragment} creation requires access to a {@link DeferRegistry} for post-conflation
@@ -73,8 +72,12 @@ public final class AccountFragment
         AccountSnapshot oldState,
         AccountSnapshot newState,
         DomSubStampsSubFragment domSubStampsSubFragment) {
-      return new AccountFragment(
-          hub, oldState, newState, Optional.empty(), domSubStampsSubFragment);
+      return switch (hub.fork) {
+        case LONDON, PARIS, SHANGHAI -> new LondonAccountFragment(
+            hub, oldState, newState, Optional.empty(), domSubStampsSubFragment);
+        case CANCUN, PRAGUE -> new CancunAccountFragment(
+            hub, oldState, newState, Optional.empty(), domSubStampsSubFragment);
+      };
     }
 
     public AccountFragment makeWithTrm(
@@ -83,8 +86,12 @@ public final class AccountFragment
         Bytes toTrim,
         DomSubStampsSubFragment domSubStampsSubFragment) {
       hub.trm().callTrimming(toTrim);
-      return new AccountFragment(
-          hub, oldState, newState, Optional.of(toTrim), domSubStampsSubFragment);
+      return switch (hub.fork) {
+        case LONDON, PARIS, SHANGHAI -> new LondonAccountFragment(
+            hub, oldState, newState, Optional.of(toTrim), domSubStampsSubFragment);
+        case CANCUN, PRAGUE -> new CancunAccountFragment(
+            hub, oldState, newState, Optional.of(toTrim), domSubStampsSubFragment);
+      };
     }
   }
 
@@ -107,8 +114,7 @@ public final class AccountFragment
     // This allows us to properly fill EXISTS_INFTY, DEPLOYMENT_NUMBER_INFTY and CODE_FRAGMENT_INDEX
     hub.defers().scheduleForPostConflation(this);
 
-    // This allows us to properly fill MARKED_FOR_SELFDESTRUCT and MARKED_FOR_SELFDESTRUCT_NEW,
-    // among other things
+    // This allows us to properly fill MARKED_FOR_SELFDESTRUCT/DELETION(_NEW), among other things
     hub.defers().scheduleForEndTransaction(this);
 
     // This allows us to keep track of account that are accessed by the HUB during the execution of
@@ -118,10 +124,6 @@ public final class AccountFragment
 
   @Override
   public Trace.Hub trace(Trace.Hub trace) {
-    final EWord eCodeHash =
-        EWord.of(oldState.deploymentStatus() ? Hash.EMPTY : oldState.code().getCodeHash());
-    final EWord eCodeHashNew =
-        EWord.of(newState.deploymentStatus() ? Hash.EMPTY : newState.code().getCodeHash());
 
     // tracing
     domSubStampsSubFragment.trace(trace);
@@ -129,10 +131,10 @@ public final class AccountFragment
       rlpAddrSubFragment.trace(trace);
     }
 
-    final boolean hasCode = !eCodeHash.equals(EWord.of(Hash.EMPTY));
-    final boolean hasCodeNew = !eCodeHashNew.equals(EWord.of(Hash.EMPTY));
+    final boolean hasCode = oldState().tracedHasCode();
+    final boolean hasCodeNew = newState.tracedHasCode();
 
-    return trace
+    trace
         .peekAtAccount(true)
         .pAccountAddressHi(highPart(oldState.address()))
         .pAccountAddressLo(lowPart(oldState.address()))
@@ -142,10 +144,10 @@ public final class AccountFragment
         .pAccountBalanceNew(newState.balance())
         .pAccountCodeSize(oldState.code().getSize())
         .pAccountCodeSizeNew(newState.code().getSize())
-        .pAccountCodeHashHi(eCodeHash.hi())
-        .pAccountCodeHashHiNew(eCodeHashNew.hi())
-        .pAccountCodeHashLo(eCodeHash.lo())
-        .pAccountCodeHashLoNew(eCodeHashNew.lo())
+        .pAccountCodeHashHi(oldState.tracedCodeHash().hi())
+        .pAccountCodeHashLo(oldState.tracedCodeHash().lo())
+        .pAccountCodeHashHiNew(newState.tracedCodeHash().hi())
+        .pAccountCodeHashLoNew(newState.tracedCodeHash().lo())
         .pAccountHasCode(hasCode)
         .pAccountHasCodeNew(hasCodeNew)
         .pAccountCodeFragmentIndex(codeFragmentIndex)
@@ -154,8 +156,6 @@ public final class AccountFragment
         .pAccountExistsNew(newState.nonce() > 0 || hasCodeNew || !newState.balance().isZero())
         .pAccountWarmth(oldState.isWarm())
         .pAccountWarmthNew(newState.isWarm())
-        .pAccountMarkedForSelfdestruct(markedForSelfDestruct)
-        .pAccountMarkedForSelfdestructNew(markedForSelfDestructNew)
         .pAccountDeploymentNumber(oldState.deploymentNumber())
         .pAccountDeploymentStatus(oldState.deploymentStatus())
         .pAccountDeploymentNumberNew(newState.deploymentNumber())
@@ -163,7 +163,18 @@ public final class AccountFragment
         .pAccountTrmFlag(addressToTrim.isPresent())
         .pAccountTrmRawAddressHi(addressToTrim.map(a -> EWord.of(a).hi()).orElse(Bytes.EMPTY))
         .pAccountIsPrecompile(isPrecompile(oldState.address()));
+    traceMarkedForSelfDestruct(trace);
+    traceMarkedForDeletion(trace);
+    traceHadCodeInitially(trace);
+
+    return trace;
   }
+
+  abstract void traceHadCodeInitially(Trace.Hub trace);
+
+  abstract void traceMarkedForDeletion(Trace.Hub trace);
+
+  abstract void traceMarkedForSelfDestruct(Trace.Hub trace);
 
   @Override
   public void resolveAtEndTransaction(
@@ -171,15 +182,15 @@ public final class AccountFragment
     final Map<EphemeralAccount, Integer> effectiveSelfDestructMap =
         transactionProcessingMetadata.getEffectiveSelfDestructMap();
     final EphemeralAccount ephemeralAccount =
-        new EphemeralAccount(oldState.address(), oldState.deploymentNumber());
+        new EphemeralAccount(oldState().address(), oldState().deploymentNumber());
     if (effectiveSelfDestructMap.containsKey(ephemeralAccount)) {
       final int selfDestructTime = effectiveSelfDestructMap.get(ephemeralAccount);
-      markedForSelfDestruct =
-          domSubStampsSubFragment.domStamp() > MULTIPLIER___DOM_SUB_STAMPS * selfDestructTime;
-      markedForSelfDestructNew = hubStamp >= selfDestructTime;
+      markedForDeletion =
+          domSubStampsSubFragment().domStamp() > MULTIPLIER___DOM_SUB_STAMPS * selfDestructTime;
+      markedForDeletionNew = hubStamp >= selfDestructTime;
     } else {
-      markedForSelfDestruct = false;
-      markedForSelfDestructNew = false;
+      markedForDeletion = false;
+      markedForDeletionNew = false;
     }
   }
 
