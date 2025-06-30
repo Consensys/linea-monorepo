@@ -183,8 +183,7 @@ func makeBw6Proof(
 
 		// That's the quickest reject condition we have
 		if maxNbProofs < numProofClaims {
-			logrus.Warnf("skipping setup with %v proofs < %v claims", maxNbProofs, numProofClaims)
-			errs = append(errs, fmt.Errorf("skipping setup with %v proofs < %v claims", maxNbProofs, numProofClaims))
+			logrus.Debugf("skipping setup for aggregation-%v proof circuit since %v proof claims is greater than what this setup can handle", maxNbProofs, numProofClaims)
 			continue
 		}
 
