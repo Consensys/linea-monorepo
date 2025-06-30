@@ -201,8 +201,8 @@ func makeBw6Proof(
 
 		// This reject condition may take longer
 		if err = doesBw6CircuitSupportVKeys(allowedVkForAggregation, cf.ProofClaims); err != nil {
-			logrus.Warnf("skipping setup with %v proofs because it does not support the required verifying keys", maxNbProofs)
-			errs = append(errs, err)
+			logrus.Warnf("skipped setup with %v proofs because it does not support the required verifying keys", maxNbProofs)
+			errs = append(errs, fmt.Errorf("skipped setup for aggregation-%v proof circuit: %w", maxNbProofs, err))
 			continue
 		}
 
