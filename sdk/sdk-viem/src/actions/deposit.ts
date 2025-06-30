@@ -21,7 +21,14 @@ import {
 } from "viem";
 import { GetAccountParameter } from "../types/account";
 import { parseAccount } from "viem/utils";
-import { estimateContractGas, estimateFeesPerGas, multicall, readContract, sendTransaction } from "viem/actions";
+import {
+  estimateContractGas,
+  estimateFeesPerGas,
+  multicall,
+  readContract,
+  sendTransaction,
+  waitForTransactionReceipt,
+} from "viem/actions";
 import { getContractsAddressesByChainId } from "@consensys/linea-sdk-core";
 
 export type DepositParameters<
@@ -657,7 +664,7 @@ async function depositERC20<
   }
 
   if (allowance < amount) {
-    await sendTransaction(client, {
+    const approveTxHash = await sendTransaction(client, {
       to: token,
       account: account,
       data: encodeFunctionData({
@@ -666,6 +673,10 @@ async function depositERC20<
         args: [l1TokenBridgeAddress, amount],
       }),
     } as SendTransactionParameters);
+
+    await waitForTransactionReceipt(client, {
+      hash: approveTxHash,
+    });
   }
 
   return sendTransaction(client, {

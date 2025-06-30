@@ -13,10 +13,18 @@ import {
   toFunctionSelector,
   erc20Abi,
 } from "viem";
-import { readContract, sendTransaction, estimateFeesPerGas, estimateContractGas, multicall } from "viem/actions";
+import {
+  readContract,
+  sendTransaction,
+  estimateFeesPerGas,
+  estimateContractGas,
+  multicall,
+  waitForTransactionReceipt,
+} from "viem/actions";
 import { getContractsAddressesByChainId } from "@consensys/linea-sdk-core";
 import { linea, mainnet } from "viem/chains";
 import { TEST_ADDRESS_2, TEST_TRANSACTION_HASH } from "../../tests/constants";
+import { generateTransactionReceipt } from "../../tests/utils";
 
 jest.mock("viem/actions", () => ({
   readContract: jest.fn(),
@@ -24,6 +32,7 @@ jest.mock("viem/actions", () => ({
   estimateFeesPerGas: jest.fn(),
   estimateContractGas: jest.fn(),
   multicall: jest.fn(),
+  waitForTransactionReceipt: jest.fn(),
 }));
 
 type MockClient = Client<Transport, Chain, Account>;
@@ -171,6 +180,7 @@ describe("deposit", () => {
     (sendTransaction as jest.Mock)
       .mockResolvedValueOnce("APPROVE_TX_HASH")
       .mockResolvedValueOnce(TEST_TRANSACTION_HASH);
+    (waitForTransactionReceipt as jest.Mock).mockResolvedValueOnce(generateTransactionReceipt());
     const result = await deposit(client, {
       l2Client,
       token,

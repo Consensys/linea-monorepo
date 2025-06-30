@@ -86,7 +86,7 @@ export async function getMessageProof<
   }
 
   if (!client.chain) {
-    throw new BaseError("L2 client is required to get message proof.");
+    throw new BaseError("L1 client is required to get message proof.");
   }
 
   const l2MessageServiceAddress =
