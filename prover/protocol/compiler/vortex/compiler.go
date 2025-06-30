@@ -93,13 +93,14 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 			})
 		}
 
+		
 		ctx.generateVortexParams()
-		// Commit to precomputed columnsù
+		// Commit to precomputed columns
 		if ctx.IsNonEmptyPrecomputed() {
 			ctx.commitPrecomputeds()
 		}
 		ctx.registerOpeningProof(lastRound)
-
+		
 		// Registers the prover and verifier steps
 		comp.RegisterProverAction(lastRound+1, &LinearCombinationComputationProverAction{
 			Ctx: ctx,
