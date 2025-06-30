@@ -27,6 +27,7 @@ import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.defer.AfterTransactionFinalizationDefer;
 import net.consensys.linea.zktracer.module.hub.defer.EndTransactionDefer;
+import net.consensys.linea.zktracer.module.hub.defer.PostOpcodeDefer;
 import net.consensys.linea.zktracer.module.hub.defer.PostRollbackDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
@@ -42,23 +43,26 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class SelfdestructSection extends TraceSection
-    implements PostRollbackDefer, EndTransactionDefer, AfterTransactionFinalizationDefer {
+    implements PostOpcodeDefer,
+        PostRollbackDefer,
+        EndTransactionDefer,
+        AfterTransactionFinalizationDefer {
 
   final int id;
   final int hubStamp;
   final TransactionProcessingMetadata transactionProcessingMetadata;
   final short exceptions;
 
-  SelfdestructScenarioFragment selfdestructScenarioFragment;
+  final SelfdestructScenarioFragment selfdestructScenarioFragment;
 
-  final Address addressWhichMaySelfDestruct;
   final Bytes recipientAddressUntrimmed;
   final Address recipientAddress;
 
-  AccountSnapshot selfdestructor;
+  final AccountSnapshot selfdestructor;
   AccountSnapshot selfdestructorNew;
   AccountSnapshot recipient;
   AccountSnapshot recipientNew;
@@ -80,9 +84,8 @@ public class SelfdestructSection extends TraceSection
     exceptions = hub.pch().exceptions();
 
     // Account
-    addressWhichMaySelfDestruct = frame.getRecipientAddress();
-    selfdestructor =
-        AccountSnapshot.canonical(hub, frame.getWorldUpdater(), addressWhichMaySelfDestruct);
+    final Address addressWhichMaySelfDestruct = frame.getRecipientAddress();
+    selfdestructor = AccountSnapshot.canonical(hub, addressWhichMaySelfDestruct);
 
     // Recipient
     recipientAddressUntrimmed = frame.getStackItem(0);
@@ -144,7 +147,7 @@ public class SelfdestructSection extends TraceSection
         hub.txStack().current().getUnexceptionalSelfDestructMap();
 
     final EphemeralAccount ephemeralAccount =
-        new EphemeralAccount(addressWhichMaySelfDestruct, selfdestructor.deploymentNumber());
+        new EphemeralAccount(selfdestructor.address(), selfdestructor.deploymentNumber());
 
     if (unexceptionalSelfDestructMap.containsKey(ephemeralAccount)) {
       unexceptionalSelfDestructMap
@@ -156,20 +159,20 @@ public class SelfdestructSection extends TraceSection
           new ArrayList<>(List.of(new AttemptedSelfDestruct(hubStamp, hub.currentFrame()))));
     }
 
+    hub.defers().scheduleForPostExecution(this);
     hub.defers().scheduleForPostRollback(this, hub.currentFrame());
     hub.defers().scheduleForEndTransaction(this);
 
-    // Modify the current account and the recipient account
-    // - The current account has its balance reduced to 0 (i+2)
-    //   * selfdestructorFirstAccountFragment
-    // - The recipient account, if it is not the current account, receive that balance (+= balance),
-    // otherwise remains 0 (i+3)
-    //   * recipientFirstAccountFragment
-    // - The recipient address will become warm (i+3)
-    //   * recipientFirstAccountFragment
+    if (!selfdestructTargetsItself()) {
+      recipient = AccountSnapshot.canonical(hub, frame.getWorldUpdater(), recipientAddress);
+    }
+  }
 
-    selfdestructorNew = selfdestructor.deepCopy().setBalanceToZero();
+  @Override
+  public void resolvePostExecution(
+      Hub hub, MessageFrame frame, Operation.OperationResult operationResult) {
 
+    selfdestructorNew = AccountSnapshot.canonical(hub, selfdestructor.address());
     final boolean isDeployment = frame.getType() == MessageFrame.Type.CONTRACT_CREATION;
     checkState(isDeployment == selfdestructor.deploymentStatus());
     if (isDeployment) {
@@ -179,13 +182,8 @@ public class SelfdestructSection extends TraceSection
 
     if (selfdestructTargetsItself()) {
       recipient = selfdestructorNew.deepCopy();
-      recipientNew = selfdestructorNew.deepCopy();
-    } else {
-      recipient = AccountSnapshot.canonical(hub, frame.getWorldUpdater(), recipientAddress);
-      recipientNew =
-          recipient.deepCopy().incrementBalanceBy(selfdestructor.balance()).turnOnWarmth();
     }
-    checkArgument(recipientNew.isWarm());
+    recipientNew = AccountSnapshot.canonical(hub, recipientAddress);
 
     final AccountFragment selfdestructorFirstAccountFragment =
         hub.factories()
@@ -250,7 +248,7 @@ public class SelfdestructSection extends TraceSection
     final Map<EphemeralAccount, Integer> effectiveSelfDestructMap =
         transactionProcessingMetadata.getEffectiveSelfDestructMap();
     final EphemeralAccount ephemeralAccount =
-        new EphemeralAccount(addressWhichMaySelfDestruct, selfdestructorNew.deploymentNumber());
+        new EphemeralAccount(selfdestructor.address(), selfdestructorNew.deploymentNumber());
 
     checkArgument(effectiveSelfDestructMap.containsKey(ephemeralAccount));
 
@@ -258,8 +256,7 @@ public class SelfdestructSection extends TraceSection
     // in particular this will get the coinbase address post gas reward.
     accountWiping =
         transactionProcessingMetadata.getDestructedAccountsSnapshot().stream()
-            .filter(
-                accountSnapshot -> accountSnapshot.address().equals(addressWhichMaySelfDestruct))
+            .filter(accountSnapshot -> accountSnapshot.address().equals(selfdestructor.address()))
             .findFirst()
             .orElseThrow(() -> new IllegalStateException("Account not found"));
 
@@ -305,6 +302,6 @@ public class SelfdestructSection extends TraceSection
   }
 
   private boolean selfdestructTargetsItself() {
-    return addressWhichMaySelfDestruct.equals(recipientAddress);
+    return selfdestructor.address().equals(recipientAddress);
   }
 }

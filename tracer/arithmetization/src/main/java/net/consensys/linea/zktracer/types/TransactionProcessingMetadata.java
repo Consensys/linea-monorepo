@@ -32,6 +32,7 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.TransactionFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.account.TimeAndExistence;
 import net.consensys.linea.zktracer.module.hub.section.halt.AttemptedSelfDestruct;
 import net.consensys.linea.zktracer.module.hub.section.halt.EphemeralAccount;
 import org.apache.tuweni.bytes.Bytes;
@@ -128,6 +129,10 @@ public abstract class TransactionProcessingMetadata {
   @Accessors(fluent = true)
   @Getter
   private final TransactionFragment transactionFragment;
+
+  @Accessors(fluent = true)
+  @Getter
+  private final Map<Address, TimeAndExistence> hadCodeInitiallyMap = new HashMap<>();
 
   public TransactionProcessingMetadata(
       final Hub hub,
@@ -325,7 +330,7 @@ public abstract class TransactionProcessingMetadata {
       // the time in which the first unexceptional and un-reverted SELFDESTRUCT occurs
       // Then we add this value in a new map
       for (AttemptedSelfDestruct attemptedSelfDestruct : attemptedSelfDestructs) {
-        if (attemptedSelfDestruct.callFrame().revertStamp() == 0) {
+        if (attemptedSelfDestruct.callFrame().wontRevert()) {
           final int selfDestructTime = attemptedSelfDestruct.hubStamp();
           effectiveSelfDestructMap.put(ephemeralAccount, selfDestructTime);
           break;
@@ -363,5 +368,19 @@ public abstract class TransactionProcessingMetadata {
 
   public boolean coinbaseAddressCollision() {
     return senderIsCoinbase() || recipientIsCoinbase();
+  }
+
+  public void updateHadCodeInitially(Address address, int domStamp, int subStamp, boolean hadCode) {
+
+    final TimeAndExistence newOccurrence = new TimeAndExistence(domStamp, subStamp, hadCode);
+
+    if (hadCodeInitiallyMap.containsKey(address)) {
+      final TimeAndExistence oldOccurrence = hadCodeInitiallyMap.get(address);
+      if (oldOccurrence.needsUpdate(newOccurrence)) {
+        hadCodeInitiallyMap.replace(address, oldOccurrence, newOccurrence);
+      }
+    } else {
+      hadCodeInitiallyMap.put(address, newOccurrence);
+    }
   }
 }
