@@ -22,7 +22,6 @@ const (
 	// since it is a shift, -1 means no offset.
 	TimestampOffset = -12
 	// dataLoPartStart is the starting position of the dataLo part where the timestamp data is stored
-	dataLoPartStart = common.NbLimbU256 / 2
 	// limbBitSize is the bit size of each limb
 	limbBitSize = 16
 )
@@ -222,7 +221,7 @@ func DefineTimestampFetcher(comp *wizard.CompiledIOP, fetcher *TimestampFetcher,
 			ifaces.QueryIDf("%s_LAST_LOCAL_%d", name, i),
 			sym.Sub(
 				column.Shift(fetcher.LastArith[i], -1),
-				column.Shift(bdc.Data[dataLoPartStart+i], TimestampOffset),
+				column.Shift(bdc.Data[common.NbLimbU128+i], TimestampOffset),
 			),
 		)
 	}
@@ -259,7 +258,7 @@ func DefineTimestampFetcher(comp *wizard.CompiledIOP, fetcher *TimestampFetcher,
 
 	// the BlockDataCols we extract timestamp data from, and which we will use to check for consistency
 	arithTable := []ifaces.Column{bdc.RelBlock}
-	arithTable = append(arithTable, bdc.Data[dataLoPartStart:]...)
+	arithTable = append(arithTable, bdc.Data[common.NbLimbU128:]...)
 	arithTable = append(arithTable, fetcher.FirstBlockIDArith[:]...)
 	arithTable = append(arithTable, fetcher.LastBlockIDArith[:]...)
 	arithTable = append(arithTable, fetcher.FirstArith[:]...)
@@ -323,7 +322,7 @@ func AssignTimestampFetcher(run *wizard.ProverRuntime, fetcher *TimestampFetcher
 		if inst.Equal(&timestampField) && ct.IsZero() {
 			// the row type is a timestamp-encoding row
 			for j := range timestamp {
-				timestamp[j] = bdc.Data[dataLoPartStart+j].GetColAssignmentAt(run, i)
+				timestamp[j] = bdc.Data[common.NbLimbU128+j].GetColAssignmentAt(run, i)
 			}
 			// in the arithmetization, relBlock is the relative block number inside the conflation
 			fetchedRelBlock := bdc.RelBlock.GetColAssignmentAt(run, i)

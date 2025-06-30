@@ -28,9 +28,9 @@ The number of transactions in the block (2 bytes), the block timestamp (4 bytes)
 and then for each transaction tx_i, the sender address (20 bytes) and the transaction RLP.
 We then continue analogously for each block.
 
-Due to design choices in the arithmetization and other submodules, we can only load at most 16 bytes
-at a time. For this reason, blockhash is divided into two columns: BlockHashHi (16 bytes) and BlockHashLo (16 bytes).
-Similarly, the sender address is divided into AddrHi (4 bytes) and AddrLo (16 bytes).
+Due to design choices in the arithmetization and other submodules, we can only load at most 2 bytes
+at a time. For this reason, blockhash is divided into 8 columns: [16]BlockHash (32 bytes in total).
+Similarly, the sender address is divided into 10 columns: [10]Addr (20 bytes in total).
 
 
 Finally, the RLP data for each transaction is stored in the RLPTXN module. We use an intermediary fetcher

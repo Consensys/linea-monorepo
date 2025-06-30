@@ -3,6 +3,7 @@ package publicInput
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 // FunctionalInputExtractor is a collection over LocalOpeningQueries that can be
@@ -27,16 +28,15 @@ type FunctionalInputExtractor struct {
 
 	// InitialStateRootHash and FinalStateRootHash are resp the initial and
 	// root hash of the state for the
-	InitialStateRootHash, FinalStateRootHash                  query.LocalOpening
-	InitialBlockNumber, FinalBlockNumber                      query.LocalOpening
-	InitialBlockTimestamp, FinalBlockTimestamp                query.LocalOpening
-	FirstRollingHashUpdate, LastRollingHashUpdate             [2]query.LocalOpening
-	FirstRollingHashUpdateNumber, LastRollingHashUpdateNumber query.LocalOpening
+	InitialStateRootHash, FinalStateRootHash                  [common.NbLimbU256]query.LocalOpening
+	InitialBlockNumber, FinalBlockNumber                      [common.NbLimbU48]query.LocalOpening
+	InitialBlockTimestamp, FinalBlockTimestamp                [common.NbLimbU128]query.LocalOpening
+	FirstRollingHashUpdate, LastRollingHashUpdate             [common.NbLimbU256]query.LocalOpening
+	FirstRollingHashUpdateNumber, LastRollingHashUpdateNumber [common.NbLimbU128]query.LocalOpening
 
-	ChainID                query.LocalOpening
-	NBytesChainID          query.LocalOpening
-	L2MessageServiceAddrHi query.LocalOpening
-	L2MessageServiceAddrLo query.LocalOpening
+	ChainID              [common.NbLimbU128]query.LocalOpening
+	NBytesChainID        query.LocalOpening
+	L2MessageServiceAddr [common.NbLimbEthAddress]query.LocalOpening
 }
 
 // Run assigns all the local opening queries
@@ -49,20 +49,29 @@ func (fie *FunctionalInputExtractor) Run(run *wizard.ProverRuntime) {
 	assignLO(fie.DataNbBytes)
 	assignLO(fie.DataChecksum)
 	assignLO(fie.L2MessageHash)
-	assignLO(fie.InitialStateRootHash)
-	assignLO(fie.InitialBlockNumber)
-	assignLO(fie.InitialBlockTimestamp)
-	assignLO(fie.FirstRollingHashUpdate[0])
-	assignLO(fie.FirstRollingHashUpdate[1])
-	assignLO(fie.FirstRollingHashUpdateNumber)
-	assignLO(fie.FinalStateRootHash)
-	assignLO(fie.FinalBlockNumber)
-	assignLO(fie.FinalBlockTimestamp)
-	assignLO(fie.LastRollingHashUpdate[0])
-	assignLO(fie.LastRollingHashUpdate[1])
-	assignLO(fie.LastRollingHashUpdateNumber)
-	assignLO(fie.ChainID)
 	assignLO(fie.NBytesChainID)
-	assignLO(fie.L2MessageServiceAddrHi)
-	assignLO(fie.L2MessageServiceAddrLo)
+
+	for i := range common.NbLimbU256 {
+		assignLO(fie.FirstRollingHashUpdate[i])
+		assignLO(fie.LastRollingHashUpdate[i])
+		assignLO(fie.InitialStateRootHash[i])
+		assignLO(fie.FinalStateRootHash[i])
+	}
+
+	for i := range common.NbLimbEthAddress {
+		assignLO(fie.L2MessageServiceAddr[i])
+	}
+
+	for i := range common.NbLimbU48 {
+		assignLO(fie.InitialBlockNumber[i])
+		assignLO(fie.FinalBlockNumber[i])
+	}
+
+	for i := range common.NbLimbU128 {
+		assignLO(fie.ChainID[i])
+		assignLO(fie.InitialBlockTimestamp[i])
+		assignLO(fie.FinalBlockTimestamp[i])
+		assignLO(fie.FirstRollingHashUpdateNumber[i])
+		assignLO(fie.LastRollingHashUpdateNumber[i])
+	}
 }
