@@ -19,6 +19,9 @@ eth-api-endpoint = { endpoint = "http://localhost:8545" }
 "follower-geth" = { endpoint = "http://localhost:8561", jwt-secret-path = "../docker/jwt" }
 
 [observability-options]
-port = 8080
+port = 9090
 jvm-metrics-enabled = true
 prometheus-metrics-enabled = true
+
+[api-config]
+port = 8080

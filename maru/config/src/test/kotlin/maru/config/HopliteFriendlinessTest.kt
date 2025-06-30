@@ -41,6 +41,9 @@ class HopliteFriendlinessTest {
     eth-api-endpoint = { endpoint = "http://localhost:8545" }
 
     [observability-options]
+    port = 9090
+
+    [api-config]
     port = 8080
     """.trimIndent()
   private val rawConfigToml =
@@ -120,7 +123,8 @@ class HopliteFriendlinessTest {
         p2pConfig = p2pConfig,
         payloadValidator = payloadValidator,
         followerEngineApis = mapOf("follower1" to follower1, "follower2" to follower2),
-        observabilityOptions = ObservabilityOptions(port = 8080u),
+        observabilityOptions = ObservabilityOptions(port = 9090u),
+        apiConfig = ApiConfig(port = 8080u),
       ),
     )
   }
@@ -135,7 +139,8 @@ class HopliteFriendlinessTest {
         p2pConfig = p2pConfig,
         payloadValidator = payloadValidator,
         followerEngineApis = null,
-        observabilityOptions = ObservabilityOptions(port = 8080u),
+        observabilityOptions = ObservabilityOptions(port = 9090u),
+        apiConfig = ApiConfig(port = 8080u),
       ),
     )
   }
@@ -154,7 +159,8 @@ class HopliteFriendlinessTest {
           ),
         qbftOptions = qbftOptions,
         followers = followersConfig,
-        observabilityOptions = ObservabilityOptions(port = 8080u),
+        observabilityOptions = ObservabilityOptions(port = 9090u),
+        apiConfig = ApiConfig(port = 8080u),
       ),
     )
   }
@@ -173,7 +179,8 @@ class HopliteFriendlinessTest {
             ethApiEndpoint = ethApiEndpoint,
           ),
         followers = emptyFollowersConfig,
-        observabilityOptions = ObservabilityOptions(port = 8080u),
+        observabilityOptions = ObservabilityOptions(port = 9090u),
+        apiConfig = ApiConfig(port = 8080u),
       ),
     )
   }

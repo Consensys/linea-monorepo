@@ -130,6 +130,10 @@ data class LineaConfig(
   }
 }
 
+data class ApiConfig(
+  val port: UInt,
+)
+
 data class MaruConfig(
   val persistence: Persistence,
   val qbftOptions: QbftOptions?,
@@ -138,4 +142,5 @@ data class MaruConfig(
   val followers: FollowersConfig,
   val observabilityOptions: ObservabilityOptions,
   val linea: LineaConfig? = null,
+  val apiConfig: ApiConfig,
 )

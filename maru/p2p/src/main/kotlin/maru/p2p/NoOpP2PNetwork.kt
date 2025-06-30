@@ -8,6 +8,7 @@
  */
 package maru.p2p
 
+import java.util.UUID
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
@@ -42,4 +43,9 @@ object NoOpP2PNetwork : P2PNetwork {
 
   override val port: UInt
     get() = 0u
+
+  override val nodeId: String = UUID.randomUUID().toString()
+  override val nodeAddresses: List<String> = emptyList()
+  override val discoveryAddresses: List<String> = emptyList()
+  override val enr: String? = null
 }

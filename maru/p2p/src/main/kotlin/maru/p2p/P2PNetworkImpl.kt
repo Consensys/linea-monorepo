@@ -12,6 +12,7 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.unmarshalPrivateKey
 import java.util.Optional
 import java.util.concurrent.TimeUnit
+import kotlin.jvm.optionals.getOrElse
 import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
 import maru.core.SealedBeaconBlock
@@ -79,12 +80,16 @@ class P2PNetworkImpl(
   }
 
   private val builtNetwork: TekuLibP2PNetwork = buildP2PNetwork(privateKeyBytes, p2pConfig)
-  private val p2pNetwork = builtNetwork.p2PNetwork
-
+  internal val p2pNetwork = builtNetwork.p2PNetwork
   private val log: Logger = LogManager.getLogger(this::javaClass)
   private val delayedExecutor =
     SafeFuture.delayedExecutor(p2pConfig.reconnectDelay.inWholeMilliseconds, TimeUnit.MILLISECONDS)
   private val staticPeerMap = mutableMapOf<NodeId, MultiaddrPeerAddress>()
+
+  override val nodeId: String = p2pNetwork.nodeId.toBase58()
+  override val discoveryAddresses: List<String> = p2pNetwork.discoveryAddresses.getOrElse { emptyList() }
+  override val enr: String? = p2pNetwork.enr.getOrNull()
+  override val nodeAddresses: List<String> = p2pNetwork.nodeAddresses
 
   override fun start(): SafeFuture<Unit> =
     p2pNetwork

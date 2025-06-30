@@ -24,12 +24,16 @@ dependencyManagement {
       entry 'jackson-datatype-jdk8'
     }
 
+    dependency 'com.fasterxml.jackson.module:jackson-module-kotlin:2.17.3'
+
 //    dependency 'com.github.ben-manes.caffeine:caffeine:3.1.8'
 
     // For java code only
     dependency 'com.google.errorprone:error_prone_core:2.29.2'
 
     dependency 'com.squareup.okhttp3:okhttp:4.12.0'
+
+    dependency 'io.javalin:javalin:6.7.0'
 
     dependencySet(group: 'info.picocli', version: '4.7.6') {
       entry 'picocli'

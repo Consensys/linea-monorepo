@@ -93,6 +93,7 @@ data class MaruConfigDtoToml(
   private val payloadValidator: PayloadValidatorDto,
   private val followerEngineApis: Map<String, ApiEndpointDto>?,
   private val observabilityOptions: ObservabilityOptions,
+  private val apiConfig: ApiConfig,
 ) {
   fun domainFriendly(): MaruConfig =
     MaruConfig(
@@ -105,5 +106,6 @@ data class MaruConfigDtoToml(
           followers = followerEngineApis?.mapValues { it.value.domainFriendly() } ?: emptyMap(),
         ),
       observabilityOptions = observabilityOptions,
+      apiConfig = apiConfig,
     )
 }
