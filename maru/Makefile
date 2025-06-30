@@ -19,15 +19,15 @@ run-e2e-test-use-maru-container:
 clean:
 	./gradlew clean
 
-build-local-image:
+docker-build-local-image:
 	./gradlew :app:installDist
 	docker build app --build-context=libs=./app/build/install/app/lib/ --build-context=maru=./app/build/libs/ -t consensys/maru:local
 
-run-local-image:
-	CREATE_EMPTY_BLOCKS=true docker compose -f docker/compose.yaml -f docker/compose.dev.yaml up -d
+docker-run-stack:
+	CREATE_EMPTY_BLOCKS=true $(if $(MARU_TAG),MARU_TAG=$(MARU_TAG)) docker compose -f docker/compose.yaml -f docker/compose.dev.yaml up -d
 
-run-local-image-partial:
-	CREATE_EMPTY_BLOCKS=true docker compose -f docker/compose.yaml -f docker/compose.dev.yaml up -d maru
+docker-run-stack-partial:
+	CREATE_EMPTY_BLOCKS=true $(if $(MARU_TAG),MARU_TAG=$(MARU_TAG)) docker compose -f docker/compose.yaml -f docker/compose.dev.yaml up -d maru
 
 docker-clean-environment:
 	docker compose -f docker/compose.yaml -f docker/compose.dev.yaml down || true

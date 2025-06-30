@@ -36,7 +36,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Run Docker with maru container
         run: |
-          MARU_TAG=${{ inputs.commit-tag }} make run-local-image-partial
+          MARU_TAG=${{ inputs.commit-tag }} make docker-run-stack-partial
       - name: List docker containers/images
         continue-on-error: true
         run: |

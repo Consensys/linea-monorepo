@@ -48,10 +48,12 @@ dependencies {
 // Besu and Teku have similar versioning and some modules are also named the same. This creates conflicts when
 // dependencies are collected
 tasks.named("distTar").configure {
+  enabled = false // disable from build, not used
   duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
 tasks.named("distZip").configure {
+  enabled = false // disable from build, not used
   duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
