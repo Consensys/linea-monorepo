@@ -3,7 +3,6 @@ package functionals
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -39,7 +38,7 @@ func (a *coeffEvalProverAction) Run(assi *wizard.ProverRuntime) {
 	}
 
 	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.name, EVAL_COEFF_POLY), smartvectors.NewRegular(h))
-	assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", a.name, EVAL_COEFF_FIXED_POINT_BEGIN), fext.Lift(h[0]))
+	assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", a.name, EVAL_COEFF_FIXED_POINT_BEGIN), h[0])
 }
 
 // Create a dedicated wizard to perform an evaluation in coefficient basis.

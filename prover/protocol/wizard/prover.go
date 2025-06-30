@@ -846,7 +846,7 @@ func (run *ProverRuntime) GetUnivariateParams(name ifaces.QueryID) query.Univari
 //   - the parameters were already assigned
 //   - the specified query is not registered
 //   - the assignment round is incorrect
-func (run *ProverRuntime) AssignLocalPoint(name ifaces.QueryID, y fext.Element) { //TODO@yao: fext -> field
+func (run *ProverRuntime) AssignLocalPoint(name ifaces.QueryID, y field.Element) { //TODO@yao: fext -> field
 
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
@@ -900,7 +900,21 @@ func (run *ProverRuntime) GetLocalPointEvalParams(name ifaces.QueryID) query.Loc
 //   - the parameters were already assigned
 //   - the specified query is not registered
 //   - the assignment round is incorrect
-func (run *ProverRuntime) AssignLogDerivSum(name ifaces.QueryID, y fext.Element) {
+func (run *ProverRuntime) AssignLogDerivSum(name ifaces.QueryID, y field.Element) {
+
+	// Global prover locks for accessing the maps
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	// Make sure, it is done at the right round
+	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
+
+	// Adds it to the assignments
+	genericY := fext.NewESHashFromBase(&y)
+	params := query.NewLogDerivSumParams(*genericY)
+	run.QueriesParams.InsertNew(name, params)
+}
+func (run *ProverRuntime) AssignLogDerivSumGeneric(name ifaces.QueryID, y fext.GenericFieldElem) {
 
 	// Global prover locks for accessing the maps
 	run.lock.Lock()

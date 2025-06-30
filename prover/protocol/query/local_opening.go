@@ -52,14 +52,20 @@ func (r LocalOpening) Name() ifaces.QueryID {
 }
 
 // Constructor for non-fixed point univariate evaluation query parameters
-func NewLocalOpeningParams(y fext.Element) LocalOpeningParams { //TODO@yao: fext -> field
+func NewLocalOpeningParams(y field.Element) LocalOpeningParams { //TODO@yao: fext -> field
 	return LocalOpeningParams{
-		BaseY:  y.B0.A0,
-		ExtY:   y,
+		BaseY:  y,
+		ExtY:   fext.Lift(y),
 		IsBase: true,
 	}
 }
-
+func (lop LocalOpeningParams) ToGenericGroupElement() *fext.GenericFieldElem {
+	if lop.IsBase {
+		return fext.NewESHashFromBase(&lop.BaseY)
+	} else {
+		return fext.NewESHashFromExt(&lop.ExtY)
+	}
+}
 func NewLocalOpeningParamsExt(z fext.Element) LocalOpeningParams {
 	return LocalOpeningParams{
 		BaseY:  field.Zero(),

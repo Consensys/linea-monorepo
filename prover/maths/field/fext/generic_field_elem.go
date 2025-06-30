@@ -279,3 +279,25 @@ func (e *GenericFieldElem) SetInt64(v int64) *GenericFieldElem {
 	e.isBase = true
 	return e
 }
+
+func (z *GenericFieldElem) GenericBytes() []byte {
+	if z.IsBase() {
+		res := z.base.Bytes()
+		return res[:]
+	} else {
+		res := Bytes(&z.ext)
+		return res[:]
+	}
+}
+
+func (z *GenericFieldElem) Inverse(x *GenericFieldElem) *GenericFieldElem {
+	if x.IsBase() {
+		var resBase field.Element
+		resBase.Inverse(&x.base)
+		return NewESHashFromBase(&resBase)
+	} else {
+		var resExt Element
+		resExt.Inverse(&x.ext)
+		return NewESHashFromExt(&resExt)
+	}
+}

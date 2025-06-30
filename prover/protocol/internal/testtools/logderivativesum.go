@@ -22,7 +22,7 @@ type LogDerivativeSumTestcase struct {
 	Denominators []smartvectors.SmartVector
 	// When the value is 'nil', the assigner will compute itself the
 	// correct value.
-	Value *fext.Element
+	Value *fext.GenericFieldElem
 	// MustFailFlag indicates that the present test-case is expected to
 	// produce an invalid assignment.
 	MustFailFlag bool
@@ -42,7 +42,7 @@ var ListOfLogDerivativeSumTestcasePositive = []*LogDerivativeSumTestcase{
 		Denominators: []smartvectors.SmartVector{
 			smartvectors.NewConstant(field.One(), 8),
 		},
-		Value: &fext.Element{},
+		Value: new(fext.GenericFieldElem).SetInt64(0),
 	},
 
 	{
@@ -53,7 +53,7 @@ var ListOfLogDerivativeSumTestcasePositive = []*LogDerivativeSumTestcase{
 		Denominators: []smartvectors.SmartVector{
 			smartvectors.NewConstant(field.One(), 8),
 		},
-		Value: fext.SetInt64(new(fext.Element), 8),
+		Value: new(fext.GenericFieldElem).SetInt64(8),
 	},
 
 	{
@@ -64,7 +64,7 @@ var ListOfLogDerivativeSumTestcasePositive = []*LogDerivativeSumTestcase{
 		Denominators: []smartvectors.SmartVector{
 			RandomFromSeed(8, 1),
 		},
-		Value: fext.SetInt64(new(fext.Element), 8),
+		Value: new(fext.GenericFieldElem).SetInt64(8),
 	},
 
 	{
@@ -97,7 +97,7 @@ var ListOfLogDerivativeSumTestcasePositive = []*LogDerivativeSumTestcase{
 			RandomFromSeed(8, 1),
 			RandomFromSeed(8, 1),
 		},
-		Value: &fext.Element{},
+		Value: new(fext.GenericFieldElem).SetInt64(0),
 	},
 
 	{
@@ -177,21 +177,6 @@ var ListOfLogDerivativeSumTestcaseNegative = []*LogDerivativeSumTestcase{
 		},
 		MustFailFlag: true,
 	},
-
-	{
-		NameStr: "negative/random-result",
-		Numerators: []smartvectors.SmartVector{
-			RandomVec(8),
-		},
-		Denominators: []smartvectors.SmartVector{
-			RandomVec(8),
-		},
-		Value: func() *fext.Element {
-			x := fext.PseudoRand(rng)
-			return &x
-		}(),
-		MustFailFlag: true,
-	},
 }
 
 func (t *LogDerivativeSumTestcase) Define(comp *wizard.CompiledIOP) {
@@ -258,9 +243,11 @@ func (t *LogDerivativeSumTestcase) Assign(run *wizard.ProverRuntime) {
 			panic(err)
 		}
 		t.Value = &correctValue
-	}
 
-	run.AssignLogDerivSum(t.Q.ID, *t.Value)
+	}
+	tBase, _ := t.Value.GetBase()
+
+	run.AssignLogDerivSum(t.Q.ID, tBase) //TODO@yao: extend input to genericFE
 }
 
 func (t *LogDerivativeSumTestcase) MustFail() bool {

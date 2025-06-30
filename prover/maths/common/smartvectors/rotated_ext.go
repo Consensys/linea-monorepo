@@ -172,7 +172,8 @@ func (r *RotatedExt) IntoRegVecSaveAllocExt() []fext.Element {
 	temp := *rotatedAsRegularExt(r)
 	res := make([]fext.Element, temp.Len())
 	for i := 0; i < temp.Len(); i++ {
-		res[i].Set(&temp[i])
+		elem := r.GetExt(i)
+		temp[i].Set(&elem)
 	}
 	return res
 }

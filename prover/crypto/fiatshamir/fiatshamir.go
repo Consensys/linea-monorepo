@@ -49,7 +49,27 @@ func UpdateExt(h hash.StateStorer, vec ...fext.Element) {
 		}
 	}
 }
+func UpdateGeneric(h hash.StateStorer, vec ...fext.GenericFieldElem) {
+	if len(vec) == 0 {
+		return
+	}
 
+	// Marshal the elements in a vector of bytes
+	for _, f := range vec {
+		bytes := f.GenericBytes()
+		_, err := h.Write(bytes)
+		if err != nil {
+			// This normally happens if the bytes that we provide do not represent
+			// a field element. In our case, the bytes are computed by ourselves
+			// from the caller's field element so the error is not possible. Hence,
+			// the assertion.
+			panic("Hashing is not supposed to fail")
+		}
+	}
+
+	// Increase the transcript counter //TODO@yao: check the need of Increaseing the transcript counter?
+	//h.TranscriptSize += len(vec)
+}
 func UpdateVec(h hash.StateStorer, vecs ...[]field.Element) {
 	for i := range vecs {
 		Update(h, vecs[i]...)

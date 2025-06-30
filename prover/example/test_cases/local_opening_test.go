@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -27,8 +26,8 @@ func defineLocalOpening(builder *wizard.Builder) {
 
 func proverLocalOpening(run *wizard.ProverRuntime) {
 	run.AssignColumn(P1, smartvectors.ForTest(0, 1, 2, 3, 4, 5, 6, 7))
-	run.AssignLocalPoint("Inclusion1", fext.NewElement(1, 0, 0, 0))
-	run.AssignLocalPoint("Inclusion2", fext.NewElement(7, 0, 0, 0))
+	run.AssignLocalPoint("Inclusion1", field.NewElement(1))
+	run.AssignLocalPoint("Inclusion2", field.NewElement(7))
 }
 
 func TestGnarkCompile(t *testing.T) {

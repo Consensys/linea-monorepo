@@ -363,7 +363,7 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 				}
 
 				run.AssignColumn(z.Zs[frag].GetColID(), sv.NewRegular(packedZ))
-				run.AssignLocalPoint(z.ZOpenings[frag].ID, fext.Lift(packedZ[len(packedZ)-1])) //TODO@yao: fix the call
+				run.AssignLocalPoint(z.ZOpenings[frag].ID, packedZ[len(packedZ)-1]) //TODO@yao: fix the call
 			} else {
 				// we are dealing with extension denominators
 				var numerator []fext.Element

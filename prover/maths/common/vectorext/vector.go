@@ -361,3 +361,18 @@ func execute(nbIterations int, work func(int, int), maxCpus ...int) {
 
 	wg.Wait()
 }
+func PrettifyGeneric(a []fext.GenericFieldElem) string {
+	res := "["
+
+	for i := range a {
+		// Discards the case first element when adding a comma
+		if i > 0 {
+			res += ", "
+		}
+
+		res += fmt.Sprintf("%v", a[i].String())
+	}
+	res += "]"
+
+	return res
+}

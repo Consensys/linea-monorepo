@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -399,7 +398,7 @@ assignmentLoop:
 func (a *Alignment) assignCircMaskOpenings(run *wizard.ProverRuntime) {
 	for i := range a.circMaskOpenings {
 		v := a.circMaskOpenings[i].Pol.GetColAssignmentAt(run, 0)
-		run.AssignLocalPoint(a.circMaskOpenings[i].ID, fext.Lift(v))
+		run.AssignLocalPoint(a.circMaskOpenings[i].ID, v)
 	}
 }
 

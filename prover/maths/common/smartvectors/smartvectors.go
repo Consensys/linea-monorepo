@@ -181,6 +181,20 @@ func IntoGnarkAssignmentExt(sv SmartVector) []gnarkfext.Element {
 	}
 	return res
 }
+func PaddingValGeneric(v SmartVector) (val fext.GenericFieldElem, hasPadding bool) {
+	switch w := v.(type) {
+	case *Constant:
+		return *fext.NewESHashFromBase(&w.val), true
+	case *PaddedCircularWindow:
+		return *fext.NewESHashFromBase(&w.paddingVal), true
+	case *ConstantExt:
+		return *fext.NewESHashFromExt(&w.val), true
+	case *PaddedCircularWindowExt:
+		return *fext.NewESHashFromExt(&w.paddingVal), true
+	default:
+		return *fext.GenericFieldZero(), false
+	}
+}
 
 // LeftPadded creates a new padded vector (padded on the left)
 func LeftPadded(v []field.Element, padding field.Element, targetLen int) SmartVector {

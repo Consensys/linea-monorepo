@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
@@ -155,29 +154,29 @@ func TestLocalEvalWithStatus(t *testing.T) {
 
 		logrus.Info("Assigning local points")
 		// Assign the alleged results
-		assi.AssignLocalPoint("Q00", fext.NewElement(0, 0, 0, 0))
+		assi.AssignLocalPoint("Q00", field.NewElement(0))
 		logrus.WithField("Q00", field.NewElement(0)).Debug("Assigned local point Q00")
-		assi.AssignLocalPoint("Q01", fext.NewElement(2, 0, 0, 0))
+		assi.AssignLocalPoint("Q01", field.NewElement(2))
 		logrus.WithField("Q01", field.NewElement(2)).Debug("Assigned local point Q01")
-		assi.AssignLocalPoint("Q02", fext.NewElement(6, 0, 0, 0))
+		assi.AssignLocalPoint("Q02", field.NewElement(6))
 		logrus.WithField("Q02", field.NewElement(6)).Debug("Assigned local point Q02")
-		assi.AssignLocalPoint("Q03", fext.NewElement(15, 0, 0, 0))
+		assi.AssignLocalPoint("Q03", field.NewElement(15))
 		logrus.WithField("Q03", field.NewElement(15)).Debug("Assigned local point Q03")
-		assi.AssignLocalPoint("Q10", fext.NewElement(1, 0, 0, 0))
+		assi.AssignLocalPoint("Q10", field.NewElement(1))
 		logrus.WithField("Q10", field.NewElement(1)).Debug("Assigned local point Q10")
-		assi.AssignLocalPoint("Q11", fext.NewElement(3, 0, 0, 0))
+		assi.AssignLocalPoint("Q11", field.NewElement(3))
 		logrus.WithField("Q11", field.NewElement(3)).Debug("Assigned local point Q11")
-		assi.AssignLocalPoint("Q12", fext.NewElement(7, 0, 0, 0))
+		assi.AssignLocalPoint("Q12", field.NewElement(7))
 		logrus.WithField("Q12", field.NewElement(7)).Debug("Assigned local point Q12")
-		assi.AssignLocalPoint("Q13", fext.NewElement(16, 0, 0, 0))
+		assi.AssignLocalPoint("Q13", field.NewElement(16))
 		logrus.WithField("Q13", field.NewElement(16)).Debug("Assigned local point Q13")
-		assi.AssignLocalPoint("Q20", fext.NewElement(1, 0, 0, 0))
+		assi.AssignLocalPoint("Q20", field.NewElement(1))
 		logrus.WithField("Q20", field.NewElement(1)).Debug("Assigned local point Q20")
-		assi.AssignLocalPoint("Q21", fext.NewElement(5, 0, 0, 0))
+		assi.AssignLocalPoint("Q21", field.NewElement(5))
 		logrus.WithField("Q21", field.NewElement(5)).Debug("Assigned local point Q21")
-		assi.AssignLocalPoint("Q22", fext.NewElement(13, 0, 0, 0))
+		assi.AssignLocalPoint("Q22", field.NewElement(13))
 		logrus.WithField("Q22", field.NewElement(13)).Debug("Assigned local point Q22")
-		assi.AssignLocalPoint("Q23", fext.NewElement(30, 0, 0, 0))
+		assi.AssignLocalPoint("Q23", field.NewElement(30))
 		logrus.WithField("Q23", field.NewElement(30)).Debug("Assigned local point Q23")
 	})
 	logrus.Info("Proof generation completed")
@@ -245,10 +244,10 @@ func localOpening(n int) func() (wizard.DefineFunc, wizard.MainProverStep) {
 			}
 			p1 := smartvectors.NewRegular(p1_)
 			run.AssignColumn(P1, p1)
-			run.AssignLocalPoint("O1", p1.GetExt(0%n))
-			run.AssignLocalPoint("O2", p1.GetExt(3%n))
-			run.AssignLocalPoint("O3", p1.GetExt(4%n))
-			run.AssignLocalPoint("O4", p1.GetExt(n-1))
+			run.AssignLocalPoint("O1", p1.Get(0%n))
+			run.AssignLocalPoint("O2", p1.Get(3%n))
+			run.AssignLocalPoint("O3", p1.Get(4%n))
+			run.AssignLocalPoint("O4", p1.Get(n-1))
 		}
 
 		return definer, prover

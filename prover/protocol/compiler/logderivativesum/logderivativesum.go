@@ -3,10 +3,11 @@ package logderivativesum
 import (
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -21,7 +22,6 @@ func CompileLogDerivativeSum(comp *wizard.CompiledIOP) {
 
 		// Filter out non other types of queries
 		logDeriv, ok := comp.QueriesParams.Data(qName).(query.LogDerivativeSum)
-
 		if !ok {
 			continue
 		}
@@ -93,32 +93,33 @@ type FinalEvaluationCheck struct {
 // Run implements the [wizard.VerifierAction]
 func (f *FinalEvaluationCheck) Run(run wizard.Runtime) error {
 
-	tmps := make([]fext.Element, 0)
+	tmps := make([]fext.GenericFieldElem, 0)
 
 	// zSum stores the sum of the ending values of the zs as queried
 	// in the protocol via the local opening queries.
-	zSum := fext.Zero()
-	for k := range f.ZOpenings {
-		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).ExtY
-		fmt.Printf("tmp ExtY=%v \n", temp.String())
+	zSum := fext.GenericFieldZero()
 
-		tmps = append(tmps, temp)
-		zSum.Add(&zSum, &temp)
-		fmt.Printf("zSum=%v \n", zSum.String())
+	for k := range f.ZOpenings {
+		zOpening := run.GetLocalPointEvalParams(f.ZOpenings[k].ID)
+		temp := zOpening.ToGenericGroupElement()
+		fmt.Printf("temp=%v \n", temp)
+
+		tmps = append(tmps, *temp)
+		zSum.Add(temp)
+		//fmt.Printf("temp=%v \n", temp.String())
+
+		fmt.Printf("zSum=%v \n", zSum)
+
 	}
 
 	logDerivSumParam := run.GetLogDerivSumParams(f.LogDerivSumID)
 	claimedSum := logDerivSumParam.Sum
-	fmt.Printf("log-derivate-sum;  \n"+
-		"given claimedSum= %v but calculated zSum= %v\n"+
-		"partial-sums=(len %v) tmps= %v",
-		claimedSum.String(), zSum.String(), len(tmps), vectorext.Prettify(tmps),
-	)
-	if zSum != claimedSum {
+
+	if !zSum.IsEqual(&claimedSum) {
 		return fmt.Errorf("log-derivate-sum; the final evaluation check failed for %v\n"+
 			"given %v but calculated %v\n"+
 			"partial-sums=(len %v) %v",
-			f.LogDerivSumID, claimedSum.String(), zSum.String(), len(tmps), vectorext.Prettify(tmps),
+			f.LogDerivSumID, claimedSum.String(), zSum.String(), len(tmps), vectorext.PrettifyGeneric(tmps),
 		)
 	}
 

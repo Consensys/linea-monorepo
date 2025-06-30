@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -53,7 +52,7 @@ func (a *evalBivariateProverAction) Run(assi *wizard.ProverRuntime) {
 	}
 
 	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.name, EVAL_BIVARIATE_POLY), smartvectors.NewRegular(h))
-	assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", a.name, EVAL_BIVARIATE_FIXED_POINT_BEGIN), fext.Lift(h[0]))
+	assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", a.name, EVAL_BIVARIATE_FIXED_POINT_BEGIN), h[0])
 }
 
 /*
