@@ -68,6 +68,7 @@ func FromBase(z *Element, v *field.Element) {
 	z.B1.A1.SetZero()
 }
 
+// TODO@yao: remove, the same as Lift
 func NewFromBase(base field.Element) Element {
 	var z Element
 	z.B0.A0 = base

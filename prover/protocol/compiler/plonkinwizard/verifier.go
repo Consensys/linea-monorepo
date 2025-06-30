@@ -15,6 +15,7 @@ type checkActivatorAndMask struct {
 }
 
 func (c *checkActivatorAndMask) Run(run wizard.Runtime) error {
+
 	for i := range c.SelOpenings {
 		var (
 			localOpening = run.GetLocalPointEvalParams(c.SelOpenings[i].ID)

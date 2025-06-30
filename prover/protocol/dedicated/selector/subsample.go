@@ -95,6 +95,7 @@ type subsampleVerifierAction struct {
 }
 
 func (a *subsampleVerifierAction) Run(run wizard.Runtime) error {
+
 	resAccLast := run.GetLocalPointEvalParams(a.accLargeLast)
 	expectedResAccLast := run.GetLocalPointEvalParams(a.accSmallLast)
 	if resAccLast.BaseY != expectedResAccLast.BaseY {

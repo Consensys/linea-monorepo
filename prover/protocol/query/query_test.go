@@ -22,10 +22,11 @@ func TestQuery(t *testing.T) {
 	runTestList(t, "projection", testtools.ListOfProjectionTestcaseNegative)
 	runTestList(t, "permutation", testtools.ListOfPermutationTestcasePositive)
 	runTestList(t, "permutation", testtools.ListOfPermutationTestcaseNegative)
-	// runTestList(t, "log-derivative", testtools.ListOfLogDerivativeSumTestcasePositive)
+	runTestList(t, "log-derivative", testtools.ListOfLogDerivativeSumTestcasePositive)
 	runTestList(t, "log-derivative", testtools.ListOfLogDerivativeSumTestcaseNegative)
 	runTestList(t, "mimc", testtools.ListOfMiMCTestcase)
 	runTestList(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
+
 }
 
 func runTestList[T testtools.Testcase](t *testing.T, prefix string, list []T) {

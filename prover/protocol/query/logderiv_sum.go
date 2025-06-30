@@ -213,7 +213,7 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 		denominator         smartvectors.SmartVector
 		noNumerator         = len(numeratorMetadata) == 0
 		noDenominator       = len(denominatorMetadata) == 0
-		res                 fext.Element //TODO@yao: fext?
+		res                 fext.Element
 	)
 
 	if noNumerator && noDenominator {
@@ -258,7 +258,6 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 			denominatorWindow = smartvectors.WindowExt(denominator)
 			res               = fext.Zero()
 		)
-
 		denominatorWindow = fext.BatchInvert(denominatorWindow)
 		for i := range denominatorWindow {
 			if denominatorWindow[i].IsZero() {
@@ -267,7 +266,9 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 			res.Add(&res, &denominatorWindow[i])
 		}
 
-		denominatorPadding, denominatorHasPadding := smartvectors.PaddingValExt(denominator)
+		denominatorPaddingBase, denominatorHasPadding := smartvectors.PaddingVal(denominator) //TODO@yao : here is the key part, use PaddingVal not PaddingValExt, TODO change to PaddingValGeneric
+		denominatorPadding := fext.Lift(denominatorPaddingBase)
+
 		if denominatorHasPadding {
 
 			if denominatorPadding.IsZero() {

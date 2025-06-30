@@ -104,7 +104,6 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPo
 			acc[i].Add(&acc[i], &tmpF)
 		}
 	}
-
 	// Computes the polynomial operation separately on the const,
 	// windows and regular and the aggregate the results at the end.
 	// The computation is done following horner's method.
