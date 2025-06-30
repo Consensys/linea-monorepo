@@ -1,5 +1,18 @@
 import { deposit, computeMessageHash, computeMessageStorageSlot, createStateOverride } from "./deposit";
-import { Client, Transport, Chain, Account, Address, BaseError, zeroAddress, Hex } from "viem";
+import {
+  Client,
+  Transport,
+  Chain,
+  Account,
+  Address,
+  BaseError,
+  zeroAddress,
+  Hex,
+  SendTransactionParameters,
+  encodeFunctionData,
+  toFunctionSelector,
+  erc20Abi,
+} from "viem";
 import { readContract, sendTransaction, estimateFeesPerGas, estimateContractGas, multicall } from "viem/actions";
 import { getContractsAddressesByChainId } from "@consensys/linea-sdk-core";
 import { linea, mainnet } from "viem/chains";
@@ -147,6 +160,294 @@ describe("deposit", () => {
     expect(readContract).toHaveBeenCalledWith(client, expect.objectContaining({ functionName: "nextMessageNumber" }));
     expect(estimateContractGas).toHaveBeenCalled();
     expect(multicall).toHaveBeenCalled();
+  });
+
+  it("calls approve if ERC20 allowance is insufficient", async () => {
+    const client = mockClient(l1ChainId, mockAccount);
+    const l2Client = mockL2Client(l2ChainId, mockAccount);
+    (multicall as jest.Mock)
+      .mockResolvedValueOnce(["TokenName", "TKN", 18, zeroAddress])
+      .mockResolvedValueOnce([200n, 100n]); // allowance < amount
+    (sendTransaction as jest.Mock)
+      .mockResolvedValueOnce("APPROVE_TX_HASH")
+      .mockResolvedValueOnce(TEST_TRANSACTION_HASH);
+    const result = await deposit(client, {
+      l2Client,
+      token,
+      to,
+      amount: 123n,
+      data,
+      account: mockAccount,
+    });
+    // Should call approve first, then deposit
+    const sendTransactionMock = sendTransaction as jest.Mock;
+    expect(sendTransactionMock).toHaveBeenCalledTimes(2);
+    expect(sendTransactionMock.mock.calls[0][1]).toEqual(
+      expect.objectContaining({
+        to: token,
+        data: encodeFunctionData({
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [l1TokenBridgeAddress, amount],
+        }),
+      }),
+    );
+    expect(sendTransactionMock.mock.calls[1][1]).toEqual(
+      expect.objectContaining({
+        to: l1TokenBridgeAddress,
+        data: expect.any(String),
+      }),
+    );
+    expect(result).toBe(TEST_TRANSACTION_HASH);
+  });
+
+  it("does not call approve if ERC20 allowance is sufficient", async () => {
+    const client = mockClient(l1ChainId, mockAccount);
+    const l2Client = mockL2Client(l2ChainId, mockAccount);
+    (multicall as jest.Mock)
+      .mockResolvedValueOnce(["TokenName", "TKN", 18, zeroAddress])
+      .mockResolvedValueOnce([200n, 200n]); // allowance >= amount
+    await deposit(client, {
+      l2Client,
+      token,
+      to,
+      amount: 123n,
+      data,
+      account: mockAccount,
+    });
+    // Only one sendTransaction call (the deposit)
+    expect(sendTransaction).toHaveBeenCalledTimes(1);
+    expect(sendTransaction).toHaveBeenCalledWith(
+      client,
+      expect.objectContaining({
+        to: l1TokenBridgeAddress,
+        data: expect.any(String),
+      }),
+    );
+    // Check that approve was not called
+    const approveCall = (sendTransaction as jest.Mock).mock.calls.find(
+      ([, args]: [typeof client, SendTransactionParameters]) =>
+        args.to === token &&
+        args.data &&
+        args.data.includes(
+          toFunctionSelector({
+            type: "function",
+            name: "approve",
+            stateMutability: "nonpayable",
+            inputs: [
+              {
+                name: "spender",
+                type: "address",
+              },
+              {
+                name: "amount",
+                type: "uint256",
+              },
+            ],
+            outputs: [
+              {
+                type: "bool",
+              },
+            ],
+          }),
+        ),
+    );
+    expect(approveCall).toBeUndefined();
+  });
+
+  it("throws if ERC20 token balance is insufficient", async () => {
+    const client = mockClient(l1ChainId, mockAccount);
+    const l2Client = mockL2Client(l2ChainId, mockAccount);
+    (multicall as jest.Mock)
+      .mockResolvedValueOnce(["TokenName", "TKN", 18, zeroAddress])
+      .mockResolvedValueOnce([100n, 200n]); // balance < amount
+    await expect(
+      deposit(client, {
+        l2Client,
+        token,
+        to,
+        amount: 123n,
+        data,
+        account: mockAccount,
+      }),
+    ).rejects.toThrow(/Insufficient token balance/);
+    expect(sendTransaction).not.toHaveBeenCalled();
+  });
+
+  it("uses custom contract addresses if provided (ETH)", async () => {
+    const client = mockClient(l1ChainId, mockAccount);
+    const l2Client = mockL2Client(l2ChainId, mockAccount);
+    const customAddress = "0x9999999999999999999999999999999999999999" as Address;
+    await deposit(client, {
+      l2Client,
+      token: zeroAddress,
+      to,
+      amount,
+      data,
+      account: mockAccount,
+      lineaRollupAddress: customAddress,
+      l2MessageServiceAddress: customAddress,
+    });
+    expect(sendTransaction).toHaveBeenCalledTimes(1);
+    expect(sendTransaction).toHaveBeenCalledWith(
+      client,
+      expect.objectContaining({
+        to: customAddress,
+        data: expect.any(String),
+      }),
+    );
+  });
+
+  it("uses custom contract addresses if provided (ERC20)", async () => {
+    const client = mockClient(l1ChainId, mockAccount);
+    const l2Client = mockL2Client(l2ChainId, mockAccount);
+    const customL1 = "0x8888888888888888888888888888888888888888" as Address;
+    const customL2 = "0x7777777777777777777777777777777777777777" as Address;
+    (multicall as jest.Mock).mockResolvedValueOnce(["TokenName", "TKN", 18, zeroAddress]);
+    (multicall as jest.Mock).mockResolvedValueOnce([200n, 200n]);
+    await deposit(client, {
+      l2Client,
+      token,
+      to,
+      amount,
+      data,
+      account: mockAccount,
+      l1TokenBridgeAddress: customL1,
+      l2TokenBridgeAddress: customL2,
+    });
+    expect(sendTransaction).toHaveBeenCalledTimes(1);
+    expect(sendTransaction).toHaveBeenCalledWith(
+      client,
+      expect.objectContaining({
+        to: customL1,
+        data: expect.any(String),
+      }),
+    );
+  });
+
+  it("handles bridged token scenario (nativeToken !== zeroAddress)", async () => {
+    const client = mockClient(l1ChainId, mockAccount);
+    const l2Client = mockL2Client(l2ChainId, mockAccount);
+    (multicall as jest.Mock).mockResolvedValueOnce([
+      "TokenName",
+      "TKN",
+      18,
+      "0x1234567890123456789012345678901234567890", // bridgedToken
+    ]);
+    (multicall as jest.Mock).mockResolvedValueOnce([200n, 200n]);
+    await deposit(client, {
+      l2Client,
+      token,
+      to,
+      amount,
+      data,
+      account: mockAccount,
+    });
+    expect(multicall).toHaveBeenCalledTimes(2);
+    expect(sendTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("defaults data to '0x' if not provided (ETH)", async () => {
+    const client = mockClient(l1ChainId, mockAccount);
+    const l2Client = mockL2Client(l2ChainId, mockAccount);
+    await deposit(client, {
+      l2Client,
+      token: zeroAddress,
+      to,
+      amount,
+      account: mockAccount,
+    });
+    expect(sendTransaction).toHaveBeenCalledTimes(1);
+    expect(sendTransaction).toHaveBeenCalledWith(
+      client,
+      expect.objectContaining({
+        data: encodeFunctionData({
+          abi: [
+            {
+              inputs: [
+                { internalType: "address", name: "_to", type: "address" },
+                { internalType: "uint256", name: "_fee", type: "uint256" },
+                { internalType: "bytes", name: "_calldata", type: "bytes" },
+              ],
+              name: "sendMessage",
+              outputs: [],
+              stateMutability: "payable",
+              type: "function",
+            },
+          ],
+          functionName: "sendMessage",
+          args: [to, 700000000n, "0x"],
+        }),
+      }),
+    );
+  });
+
+  it("propagates errors from multicall (ERC20)", async () => {
+    const client = mockClient(l1ChainId, mockAccount);
+    const l2Client = mockL2Client(l2ChainId, mockAccount);
+    (multicall as jest.Mock).mockRejectedValueOnce(new Error("multicall failed"));
+    await expect(
+      deposit(client, {
+        l2Client,
+        token,
+        to,
+        amount,
+        data,
+        account: mockAccount,
+      }),
+    ).rejects.toThrow("multicall failed");
+    expect(sendTransaction).not.toHaveBeenCalled();
+  });
+
+  it("propagates errors from sendTransaction (ETH)", async () => {
+    const client = mockClient(l1ChainId, mockAccount);
+    const l2Client = mockL2Client(l2ChainId, mockAccount);
+    (sendTransaction as jest.Mock).mockRejectedValueOnce(new Error("sendTransaction failed"));
+    await expect(
+      deposit(client, {
+        l2Client,
+        token: zeroAddress,
+        to,
+        amount,
+        data,
+        account: mockAccount,
+      }),
+    ).rejects.toThrow("sendTransaction failed");
+    expect(sendTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("propagates errors from estimateFeesPerGas (ETH)", async () => {
+    const client = mockClient(l1ChainId, mockAccount);
+    const l2Client = mockL2Client(l2ChainId, mockAccount);
+    (estimateFeesPerGas as jest.Mock).mockRejectedValueOnce(new Error("estimateFeesPerGas failed"));
+    await expect(
+      deposit(client, {
+        l2Client,
+        token: zeroAddress,
+        to,
+        amount,
+        data,
+        account: mockAccount,
+      }),
+    ).rejects.toThrow("estimateFeesPerGas failed");
+    expect(sendTransaction).not.toHaveBeenCalled();
+  });
+
+  it("propagates errors from estimateContractGas (ETH)", async () => {
+    const client = mockClient(l1ChainId, mockAccount);
+    const l2Client = mockL2Client(l2ChainId, mockAccount);
+    (estimateContractGas as jest.Mock).mockRejectedValueOnce(new Error("estimateContractGas failed"));
+    await expect(
+      deposit(client, {
+        l2Client,
+        token: zeroAddress,
+        to,
+        amount,
+        data,
+        account: mockAccount,
+      }),
+    ).rejects.toThrow("estimateContractGas failed");
+    expect(sendTransaction).not.toHaveBeenCalled();
   });
 });
 

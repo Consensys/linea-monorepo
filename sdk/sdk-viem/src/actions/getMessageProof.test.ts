@@ -215,4 +215,238 @@ describe("getMessageProof", () => {
     const result = await getMessageProof(client, { l2Client, messageHash });
     expect(result).toEqual({ proof, root: merkleRoot, leafIndex });
   });
+
+  it("propagates errors from getMessageSentEvents", async () => {
+    const client = mockClient(mainnetId);
+    const l2Client = mockL2Client(lineaId);
+    (getMessageSentEvents as jest.Mock).mockRejectedValueOnce(new Error("getMessageSentEvents failed"));
+    await expect(getMessageProof(client, { l2Client, messageHash })).rejects.toThrow("getMessageSentEvents failed");
+  });
+
+  it("propagates errors from getContractEvents", async () => {
+    const client = mockClient(mainnetId);
+    const l2Client = mockL2Client(lineaId);
+    const messageSentLog = generateMessageSentLog({ blockNumber: l2BlockNumber });
+    (getMessageSentEvents as jest.Mock).mockResolvedValue([
+      {
+        messageSender: messageSentLog.args._from!,
+        destination: messageSentLog.args._to!,
+        fee: messageSentLog.args._fee!,
+        value: messageSentLog.args._value!,
+        messageNonce: messageSentLog.args._nonce!,
+        calldata: messageSentLog.args._calldata!,
+        messageHash: messageSentLog.args._messageHash!,
+        blockNumber: messageSentLog.blockNumber,
+        logIndex: messageSentLog.logIndex,
+        contractAddress: messageSentLog.address,
+        transactionHash: messageSentLog.transactionHash,
+      },
+    ]);
+    (getContractEvents as jest.Mock).mockRejectedValueOnce(new Error("getContractEvents failed"));
+    await expect(getMessageProof(client, { l2Client, messageHash })).rejects.toThrow("getContractEvents failed");
+  });
+
+  it("propagates errors from getTransactionReceipt", async () => {
+    const client = mockClient(mainnetId);
+    const l2Client = mockL2Client(lineaId);
+    const messageSentLog = generateMessageSentLog({ blockNumber: l2BlockNumber });
+    (getMessageSentEvents as jest.Mock).mockResolvedValue([
+      {
+        messageSender: messageSentLog.args._from!,
+        destination: messageSentLog.args._to!,
+        fee: messageSentLog.args._fee!,
+        value: messageSentLog.args._value!,
+        messageNonce: messageSentLog.args._nonce!,
+        calldata: messageSentLog.args._calldata!,
+        messageHash: messageSentLog.args._messageHash!,
+        blockNumber: messageSentLog.blockNumber,
+        logIndex: messageSentLog.logIndex,
+        contractAddress: messageSentLog.address,
+        transactionHash: messageSentLog.transactionHash,
+      },
+    ]);
+    (getContractEvents as jest.Mock).mockResolvedValue([
+      generateL2MessagingBlockAnchoredLog(l2BlockNumber, {
+        address: getContractsAddressesByChainId(mainnetId).messageService,
+      }),
+    ]);
+    (getTransactionReceipt as jest.Mock).mockRejectedValueOnce(new Error("getTransactionReceipt failed"));
+    await expect(getMessageProof(client, { l2Client, messageHash })).rejects.toThrow("getTransactionReceipt failed");
+  });
+
+  it("handles multiple MessageSent events in block range, selects correct one by message hash", async () => {
+    const client = mockClient(mainnetId);
+    const l2Client = mockL2Client(lineaId);
+    const messageSentLog1 = generateMessageSentLog({ blockNumber: l2BlockNumber, args: { _messageHash: "0xabc" } });
+    const messageSentLog2 = generateMessageSentLog({ blockNumber: l2BlockNumber, args: { _messageHash: messageHash } });
+    (getMessageSentEvents as jest.Mock).mockResolvedValueOnce([
+      {
+        messageSender: messageSentLog1.args._from!,
+        destination: messageSentLog1.args._to!,
+        fee: messageSentLog1.args._fee!,
+        value: messageSentLog1.args._value!,
+        messageNonce: messageSentLog1.args._nonce!,
+        calldata: messageSentLog1.args._calldata!,
+        messageHash: messageSentLog1.args._messageHash!,
+        blockNumber: messageSentLog1.blockNumber,
+        logIndex: messageSentLog1.logIndex,
+        contractAddress: messageSentLog1.address,
+        transactionHash: messageSentLog1.transactionHash,
+      },
+      {
+        messageSender: messageSentLog2.args._from!,
+        destination: messageSentLog2.args._to!,
+        fee: messageSentLog2.args._fee!,
+        value: messageSentLog2.args._value!,
+        messageNonce: messageSentLog2.args._nonce!,
+        calldata: messageSentLog2.args._calldata!,
+        messageHash: messageSentLog2.args._messageHash!,
+        blockNumber: messageSentLog2.blockNumber,
+        logIndex: messageSentLog2.logIndex,
+        contractAddress: messageSentLog2.address,
+        transactionHash: messageSentLog2.transactionHash,
+      },
+    ]);
+    (getContractEvents as jest.Mock).mockResolvedValue([
+      generateL2MessagingBlockAnchoredLog(l2BlockNumber, {
+        address: getContractsAddressesByChainId(mainnetId).messageService,
+      }),
+    ]);
+    (getTransactionReceipt as jest.Mock).mockResolvedValue(
+      generateTransactionReceipt({
+        logs: [
+          generateL2MerkleTreeAddedLog(TEST_MERKLE_ROOT, treeDepth, {
+            address: getContractsAddressesByChainId(mainnetId).messageService,
+          }),
+          generateL2MessagingBlockAnchoredLog(l2BlockNumber, {
+            address: getContractsAddressesByChainId(mainnetId).messageService,
+          }),
+        ],
+      }),
+    );
+    const result = await getMessageProof(client, { l2Client, messageHash });
+    expect(result).toEqual({ proof, root: merkleRoot, leafIndex });
+  });
+
+  it("throws if MerkleTreeAdded log is missing in receipt", async () => {
+    const client = mockClient(mainnetId);
+    const l2Client = mockL2Client(lineaId);
+    const messageSentLog = generateMessageSentLog({ blockNumber: l2BlockNumber });
+    (getMessageSentEvents as jest.Mock).mockResolvedValue([
+      {
+        messageSender: messageSentLog.args._from!,
+        destination: messageSentLog.args._to!,
+        fee: messageSentLog.args._fee!,
+        value: messageSentLog.args._value!,
+        messageNonce: messageSentLog.args._nonce!,
+        calldata: messageSentLog.args._calldata!,
+        messageHash: messageSentLog.args._messageHash!,
+        blockNumber: messageSentLog.blockNumber,
+        logIndex: messageSentLog.logIndex,
+        contractAddress: messageSentLog.address,
+        transactionHash: messageSentLog.transactionHash,
+      },
+    ]);
+    (getContractEvents as jest.Mock).mockResolvedValue([
+      generateL2MessagingBlockAnchoredLog(l2BlockNumber, {
+        address: getContractsAddressesByChainId(mainnetId).messageService,
+      }),
+    ]);
+    (getTransactionReceipt as jest.Mock).mockResolvedValue(
+      generateTransactionReceipt({
+        logs: [
+          // No MerkleTreeAdded log
+          generateL2MessagingBlockAnchoredLog(l2BlockNumber, {
+            address: getContractsAddressesByChainId(mainnetId).messageService,
+          }),
+        ],
+      }),
+    );
+    await expect(getMessageProof(client, { l2Client, messageHash })).rejects.toThrow(
+      "No L2MerkleRootAdded events found in this transaction.",
+    );
+  });
+
+  it("throws if L2MessagingBlockAnchored log is missing in receipt", async () => {
+    const client = mockClient(mainnetId);
+    const l2Client = mockL2Client(lineaId);
+    const messageSentLog = generateMessageSentLog({ blockNumber: l2BlockNumber });
+    (getMessageSentEvents as jest.Mock).mockResolvedValue([
+      {
+        messageSender: messageSentLog.args._from!,
+        destination: messageSentLog.args._to!,
+        fee: messageSentLog.args._fee!,
+        value: messageSentLog.args._value!,
+        messageNonce: messageSentLog.args._nonce!,
+        calldata: messageSentLog.args._calldata!,
+        messageHash: messageSentLog.args._messageHash!,
+        blockNumber: messageSentLog.blockNumber,
+        logIndex: messageSentLog.logIndex,
+        contractAddress: messageSentLog.address,
+        transactionHash: messageSentLog.transactionHash,
+      },
+    ]);
+    (getContractEvents as jest.Mock).mockResolvedValue([
+      generateL2MessagingBlockAnchoredLog(l2BlockNumber, {
+        address: getContractsAddressesByChainId(mainnetId).messageService,
+      }),
+    ]);
+    (getTransactionReceipt as jest.Mock).mockResolvedValue(
+      generateTransactionReceipt({
+        logs: [
+          generateL2MerkleTreeAddedLog(TEST_MERKLE_ROOT, treeDepth, {
+            address: getContractsAddressesByChainId(mainnetId).messageService,
+          }),
+          // No L2MessagingBlockAnchored log
+        ],
+      }),
+    );
+    await expect(getMessageProof(client, { l2Client, messageHash })).rejects.toThrow(
+      "No L2MessagingBlocksAnchored events found in this transaction.",
+    );
+  });
+
+  it("throws if message hash is not found in messages", async () => {
+    const client = mockClient(mainnetId);
+    const l2Client = mockL2Client(lineaId);
+    // Mock getMessageSentEvents to return a different message hash
+    (getMessageSentEvents as jest.Mock).mockResolvedValue([
+      {
+        messageSender: "0xabc",
+        destination: "0xdef",
+        fee: 1n,
+        value: 2n,
+        messageNonce: 3n,
+        calldata: "0x",
+        messageHash: "0xnotfound",
+        blockNumber: 42n,
+        logIndex: 0,
+        contractAddress: "0xcontract",
+        transactionHash: "0xtx",
+      },
+    ]);
+    // Mock getContractEvents to return a valid block anchor
+    (getContractEvents as jest.Mock).mockResolvedValue([
+      generateL2MessagingBlockAnchoredLog(42n, {
+        address: getContractsAddressesByChainId(mainnetId).messageService,
+      }),
+    ]);
+    // Mock getTransactionReceipt to return a valid receipt
+    (getTransactionReceipt as jest.Mock).mockResolvedValue(
+      generateTransactionReceipt({
+        logs: [
+          generateL2MerkleTreeAddedLog(TEST_MERKLE_ROOT, 5, {
+            address: getContractsAddressesByChainId(mainnetId).messageService,
+          }),
+          generateL2MessagingBlockAnchoredLog(42n, {
+            address: getContractsAddressesByChainId(mainnetId).messageService,
+          }),
+        ],
+      }),
+    );
+
+    await expect(getMessageProof(client, { l2Client, messageHash })).rejects.toThrow(
+      "Message hash not found in messages.",
+    );
+  });
 });
