@@ -93,8 +93,21 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 			})
 		}
 
+		// If the vortex is not self-recursed, we need to
+		// mark the opened sis and non sis columns as ignored
+		if !ctx.IsSelfrecursed {
+			// Mark the opened SIS columns as ignored
+			for _, opened := range ctx.Items.OpenedSISColumns {
+				ctx.Comp.Columns.MarkAsIgnored(opened.GetColID())
+			}
+			// Mark the opened non-SIS columns as ignored
+			for _, opened := range ctx.Items.OpenedNonSISColumns {
+				ctx.Comp.Columns.MarkAsIgnored(opened.GetColID())
+			}
+		}
+
 		ctx.generateVortexParams()
-		// Commit to precomputed columnsù
+		// Commit to precomputed columns
 		if ctx.IsNonEmptyPrecomputed() {
 			ctx.commitPrecomputeds()
 		}

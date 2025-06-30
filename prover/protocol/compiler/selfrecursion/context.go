@@ -307,7 +307,7 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 			)
 		}
 		// Mark them as Committed
-		comp.Columns.SetStatus(opened.GetColID(), column.Ignored)
+		comp.Columns.SetStatus(opened.GetColID(), column.Committed)
 	}
 
 	// For the non-SIS preimages, we mark them as Committed
@@ -324,6 +324,22 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 		}
 		// Mark them as Committed
 		comp.Columns.SetStatus(opened.GetColID(), column.Committed)
+	}
+
+	// Mark the opened columns from the vortex context as Ignored
+	for _, opened := range vortexCtx.Items.OpenedColumns {
+		// Assume that the opened columns have a `Proof` status
+		if comp.Columns.Status(opened.GetColID()) != column.Proof {
+			utils.Panic(
+				"Assumed the opened columns %v to be %v but status is %v (recursion context is %v)",
+				opened.GetColID(),
+				column.Proof.String(),
+				comp.Columns.Status(opened.GetColID()),
+				ctx.SelfRecursionCnt,
+			)
+		}
+		// Mark them as Ignored
+		comp.Columns.SetStatus(opened.GetColID(), column.Ignored)
 	}
 
 	// And mark the merkle proof column as a Proof message
