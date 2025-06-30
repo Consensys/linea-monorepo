@@ -1,5 +1,5 @@
 export function isLineaSepolia(chainId: number): boolean {
-  return chainId === 59140;
+  return chainId === 59141;
 }
 
 export function isLineaMainnet(chainId: number): boolean {

@@ -123,8 +123,7 @@ export async function deposit<
   client: Client<Transport, chain, account>,
   parameters: DepositParameters<chain, account, chainOverride, chainL2, accountL2, derivedChain>,
 ): Promise<DepositReturnType> {
-  const { account: account_ = client.account, l2Client, token, amount, data, to, ...tx } = parameters;
-  let { fee } = parameters;
+  const { account: account_ = client.account, l2Client, token, amount, data, to, fee, ...tx } = parameters;
 
   const account = account_ ? parseAccount(account_) : client.account;
   if (!account) {
@@ -141,124 +140,38 @@ export async function deposit<
   const lineaRollupAddress = parameters.lineaRollupAddress ?? getContractsAddressesByChainId(l1ChainId).messageService;
   const l2MessageServiceAddress =
     parameters.l2MessageServiceAddress ?? getContractsAddressesByChainId(l2ChainId).messageService;
-
-  if (!fee || fee === 0n) {
-    const { maxFeePerGas } = await estimateFeesPerGas(l2Client, { type: "eip1559", chain: l2Client.chain });
-
-    const nextMessageNumber = await readContract(client, {
-      address: lineaRollupAddress,
-      abi: [
-        {
-          inputs: [],
-          name: "nextMessageNumber",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-      ],
-      functionName: "nextMessageNumber",
-    });
-
-    if (token === zeroAddress) {
-      const l2ClaimingTxGasLimit = await estimateEthBridgingGasUsed(l2Client, {
-        account: account.address,
-        recipient: to as Address,
-        amount,
-        nextMessageNumber,
-        l2MessageServiceAddress,
-      });
-      fee = maxFeePerGas * (l2ClaimingTxGasLimit + 6_000n);
-    } else {
-      const l1TokenBridgeAddress =
-        parameters.l1TokenBridgeAddress ?? getContractsAddressesByChainId(l1ChainId).tokenBridge;
-      const l2TokenBridgeAddress =
-        parameters.l2TokenBridgeAddress ?? getContractsAddressesByChainId(l2ChainId).tokenBridge;
-
-      const l2ClaimingTxGasLimit = await estimateERC20BridgingGasUsed(l2Client, {
-        account: account.address,
-        token,
-        l1ChainId,
-        l2ChainId,
-        amount,
-        recipient: to,
-        nextMessageNumber,
-        l2MessageServiceAddress,
-        l1TokenBridgeAddress,
-        l2TokenBridgeAddress,
-      });
-      fee = maxFeePerGas * (l2ClaimingTxGasLimit + 6_000n);
-    }
-  }
+  const l1TokenBridgeAddress = parameters.l1TokenBridgeAddress ?? getContractsAddressesByChainId(l1ChainId).tokenBridge;
+  const l2TokenBridgeAddress = parameters.l2TokenBridgeAddress ?? getContractsAddressesByChainId(l2ChainId).tokenBridge;
 
   if (token === zeroAddress) {
-    return sendTransaction(client, {
-      to: lineaRollupAddress,
-      value: amount + fee,
-      account: account,
-      data: encodeFunctionData({
-        abi: [
-          {
-            inputs: [
-              { internalType: "address", name: "_to", type: "address" },
-              { internalType: "uint256", name: "_fee", type: "uint256" },
-              { internalType: "bytes", name: "_calldata", type: "bytes" },
-            ],
-            name: "sendMessage",
-            outputs: [],
-            stateMutability: "payable",
-            type: "function",
-          },
-        ],
-        functionName: "sendMessage",
-        args: [to, fee, data ?? "0x"],
-      }),
-      ...tx,
-    } as SendTransactionParameters);
+    return depositETH(client, {
+      l2Client,
+      account,
+      lineaRollupAddress,
+      l2MessageServiceAddress,
+      to: to as Address,
+      fee,
+      amount,
+      data: data ?? "0x",
+      tx,
+    });
   }
 
-  const l1TokenBridgeAddress = parameters.l1TokenBridgeAddress ?? getContractsAddressesByChainId(l1ChainId).tokenBridge;
-
-  return sendTransaction(client, {
-    to: l1TokenBridgeAddress,
-    value: fee,
-    account: account,
-    data: encodeFunctionData({
-      abi: [
-        {
-          inputs: [
-            {
-              internalType: "address",
-              name: "_token",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "_amount",
-              type: "uint256",
-            },
-            {
-              internalType: "address",
-              name: "_recipient",
-              type: "address",
-            },
-          ],
-          name: "bridgeToken",
-          outputs: [],
-          stateMutability: "payable",
-          type: "function",
-        },
-      ],
-      functionName: "bridgeToken",
-      args: [token, amount, to],
-    }),
-    ...tx,
-  } as SendTransactionParameters);
+  return depositERC20(client, {
+    l2Client,
+    account,
+    lineaRollupAddress,
+    l2MessageServiceAddress,
+    l1TokenBridgeAddress,
+    l2TokenBridgeAddress,
+    l1ChainId,
+    l2ChainId,
+    token: token as Address,
+    to: to as Address,
+    fee,
+    amount,
+    tx,
+  });
 }
 
 async function estimateEthBridgingGasUsed<chain extends Chain | undefined, _account extends Account | undefined>(
@@ -540,4 +453,254 @@ export function createStateOverride(messageServiceAddress: Address, storageSlot:
       ],
     },
   ];
+}
+
+async function getNextMessageNumber<chain extends Chain | undefined, _account extends Account | undefined>(
+  client: Client<Transport, chain, _account>,
+  parameters: { lineaRollupAddress: Address },
+): Promise<bigint> {
+  const { lineaRollupAddress } = parameters;
+
+  return readContract(client, {
+    address: lineaRollupAddress,
+    abi: [
+      {
+        inputs: [],
+        name: "nextMessageNumber",
+        outputs: [
+          {
+            internalType: "uint256",
+            name: "",
+            type: "uint256",
+          },
+        ],
+        stateMutability: "view",
+        type: "function",
+      },
+    ],
+    functionName: "nextMessageNumber",
+  });
+}
+
+async function depositETH<
+  chain extends Chain | undefined,
+  account extends Account | undefined,
+  chainOverride extends Chain | undefined = Chain | undefined,
+  chainL2 extends Chain | undefined = Chain | undefined,
+  accountL2 extends Account | undefined = Account | undefined,
+  derivedChain extends Chain | undefined = DeriveChain<chain, chainOverride>,
+>(
+  client: Client<Transport, chain, account>,
+  parameters: {
+    l2Client: Client<Transport, chainL2, accountL2>;
+    account: Account;
+    lineaRollupAddress: Address;
+    l2MessageServiceAddress: Address;
+    to: Address;
+    fee: bigint | undefined;
+    amount: bigint;
+    data: Hex;
+    tx: Omit<
+      DepositParameters<chain, account, chainOverride, chainL2, accountL2, derivedChain>,
+      "account" | "to" | "data" | "amount" | "token" | "l2Client" | "fee"
+    >;
+  },
+): Promise<DepositReturnType> {
+  const {
+    l2Client,
+    account: account_,
+    lineaRollupAddress,
+    l2MessageServiceAddress,
+    amount,
+    to,
+    data,
+    fee,
+    tx,
+  } = parameters;
+
+  let bridgingFee = fee ?? 0n;
+
+  if (fee === undefined) {
+    const [nextMessageNumber, { maxFeePerGas }] = await Promise.all([
+      getNextMessageNumber(client, {
+        lineaRollupAddress,
+      }),
+      estimateFeesPerGas(l2Client, { type: "eip1559", chain: l2Client.chain }),
+    ]);
+
+    const l2ClaimingTxGasLimit = await estimateEthBridgingGasUsed(l2Client, {
+      account: account_.address,
+      recipient: to as Address,
+      amount,
+      nextMessageNumber,
+      l2MessageServiceAddress,
+    });
+    bridgingFee = maxFeePerGas * (l2ClaimingTxGasLimit + 6_000n);
+  }
+
+  return sendTransaction(client, {
+    to: lineaRollupAddress,
+    value: amount + bridgingFee,
+    account: account_,
+    data: encodeFunctionData({
+      abi: [
+        {
+          inputs: [
+            { internalType: "address", name: "_to", type: "address" },
+            { internalType: "uint256", name: "_fee", type: "uint256" },
+            { internalType: "bytes", name: "_calldata", type: "bytes" },
+          ],
+          name: "sendMessage",
+          outputs: [],
+          stateMutability: "payable",
+          type: "function",
+        },
+      ],
+      functionName: "sendMessage",
+      args: [to, bridgingFee, data],
+    }),
+    ...tx,
+  } as SendTransactionParameters);
+}
+
+async function depositERC20<
+  chain extends Chain | undefined,
+  account extends Account | undefined,
+  chainOverride extends Chain | undefined = Chain | undefined,
+  chainL2 extends Chain | undefined = Chain | undefined,
+  accountL2 extends Account | undefined = Account | undefined,
+  derivedChain extends Chain | undefined = DeriveChain<chain, chainOverride>,
+>(
+  client: Client<Transport, chain, account>,
+  parameters: {
+    l2Client: Client<Transport, chainL2, accountL2>;
+    account: Account;
+    lineaRollupAddress: Address;
+    l2MessageServiceAddress: Address;
+    l1TokenBridgeAddress: Address;
+    l2TokenBridgeAddress: Address;
+    l1ChainId: number;
+    l2ChainId: number;
+    token: Address;
+    to: Address;
+    fee: bigint | undefined;
+    amount: bigint;
+    tx: Omit<
+      DepositParameters<chain, account, chainOverride, chainL2, accountL2, derivedChain>,
+      "account" | "to" | "data" | "amount" | "token" | "l2Client" | "fee"
+    >;
+  },
+): Promise<DepositReturnType> {
+  const {
+    l2Client,
+    account,
+    l1TokenBridgeAddress,
+    l2TokenBridgeAddress,
+    lineaRollupAddress,
+    l2MessageServiceAddress,
+    l1ChainId,
+    l2ChainId,
+    token,
+    to,
+    fee,
+    amount,
+    tx,
+  } = parameters;
+
+  let bridgingFee = fee ?? 0n;
+
+  if (fee === undefined) {
+    const [nextMessageNumber, { maxFeePerGas }] = await Promise.all([
+      getNextMessageNumber(client, {
+        lineaRollupAddress,
+      }),
+      estimateFeesPerGas(l2Client, { type: "eip1559", chain: l2Client.chain }),
+    ]);
+
+    const l2ClaimingTxGasLimit = await estimateERC20BridgingGasUsed(l2Client, {
+      account: account.address,
+      token,
+      l1ChainId,
+      l2ChainId,
+      amount,
+      recipient: to,
+      nextMessageNumber,
+      l2MessageServiceAddress,
+      l1TokenBridgeAddress,
+      l2TokenBridgeAddress,
+    });
+    bridgingFee = maxFeePerGas * (l2ClaimingTxGasLimit + 6_000n);
+  }
+
+  const [tokenBalance, allowance] = await multicall(client, {
+    contracts: [
+      {
+        address: token,
+        abi: erc20Abi,
+        functionName: "balanceOf",
+        args: [account.address],
+      },
+      {
+        address: token,
+        abi: erc20Abi,
+        functionName: "allowance",
+        args: [account.address, l1TokenBridgeAddress],
+      },
+    ],
+    allowFailure: false,
+  });
+
+  if (tokenBalance < amount) {
+    throw new BaseError(
+      `Insufficient token balance for bridging. Current balance: ${tokenBalance}, required: ${amount}`,
+    );
+  }
+
+  if (allowance < amount) {
+    await sendTransaction(client, {
+      to: token,
+      account: account,
+      data: encodeFunctionData({
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [l1TokenBridgeAddress, amount],
+      }),
+    } as SendTransactionParameters);
+  }
+
+  return sendTransaction(client, {
+    to: l1TokenBridgeAddress,
+    value: bridgingFee,
+    account: account,
+    data: encodeFunctionData({
+      abi: [
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_token",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "_amount",
+              type: "uint256",
+            },
+            {
+              internalType: "address",
+              name: "_recipient",
+              type: "address",
+            },
+          ],
+          name: "bridgeToken",
+          outputs: [],
+          stateMutability: "payable",
+          type: "function",
+        },
+      ],
+      functionName: "bridgeToken",
+      args: [token, amount, to],
+    }),
+    ...tx,
+  } as SendTransactionParameters);
 }
