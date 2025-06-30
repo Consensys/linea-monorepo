@@ -29,8 +29,8 @@ import (
 // The final value of the chained hash can be retrieved as ---> hashSecond[ctMax[any index]]
 type LogHasher struct {
 	// the hash value after each step, as explained in the description of LogHasher
-	HashFirst, HashSecond ifaces.Column
-	// L2L1 logs: Inter is a shifted version of hashSecond, necessary due to how the MiMC constraints operate
+	Hashes [common.NbLimbU256]ifaces.Column
+	// L2L1 logs: inter is a shifted version of hashSecond, necessary due to how the MiMC constraints operate
 	Inter ifaces.Column
 	// the relevant value of the hash (the last value when isActive ends)
 	HashFinal ifaces.Column
@@ -77,7 +77,7 @@ func DefineHasher(comp *wizard.CompiledIOP, hasher LogHasher, name string, fetch
 
 // AssignHasher assigns the data in the LogHasher using the ExtractedData fetched from the arithmetization
 func AssignHasher(run *wizard.ProverRuntime, hasher LogHasher, fetched ExtractedData) {
-	size := fetched.Hi.Size()
+	size := fetched..Data[0].Size()
 
 	hashFirst := common.NewVectorBuilder(hasher.HashFirst)
 	hashSecond := common.NewVectorBuilder(hasher.HashSecond)

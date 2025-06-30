@@ -1,6 +1,7 @@
 package logs
 
 import (
+	"fmt"
 	eth "github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -27,28 +28,34 @@ func noTopics(logType int) int {
 // LogInfo will be a mock data structure containing the minimal amount of information
 // needed to generate test logs
 type LogInfo struct {
-	LogType              int
-	DataSize, noTopics   field.Element
-	AddressHi, AddressLo field.Element
-	TopicsHi, TopicsLo   []field.Element
+	LogType            int
+	DataSize, noTopics [common.NbLimbU128]field.Element
+	Address            [common.NbLimbEthAddress]field.Element
+	Topics             [][common.NbLimbU256]field.Element
 }
 
 // LogColumns represents the relevant columns for l2l1logs/RollingHash logs from the LogInfo module.
 type LogColumns struct {
 	IsLog0, IsLog1, IsLog2, IsLog3, IsLog4 ifaces.Column
 	AbsLogNum                              ifaces.Column
-	AbsLogNumMax                           ifaces.Column // total number of logs in the conflated batch
-	Ct                                     ifaces.Column // counter column used inside a column segment used for one specific log
-	DataHi, DataLo                         ifaces.Column // the Hi and Lo parts of outgoing data
-	TxEmitsLogs                            ifaces.Column
+	// total number of logs in the conflated batch
+	AbsLogNumMax ifaces.Column
+	// counter column used inside a column segment used for one specific log
+	Ct ifaces.Column
+	// the logs outgoing data
+	Data        [common.NbLimbU256]ifaces.Column
+	TxEmitsLogs ifaces.Column
 }
 
-// ConvertAddress converts a 20 bytes address into the HI and LO parts on the arithmetization side
-func ConvertAddress(address eth.Address) (field.Element, field.Element) {
-	var hi, lo field.Element
-	hi.SetBytes(address[:4])
-	lo.SetBytes(address[4:])
-	return hi, lo
+// ConvertAddress converts a 20 bytes address into the 10 16-bit limbs on the arithmetization side
+func ConvertAddress(address eth.Address) [common.NbLimbEthAddress]field.Element {
+	var res [common.NbLimbEthAddress]field.Element
+
+	for i := range res {
+		res[i].SetBytes(address[i*2 : (i+1)*2])
+	}
+
+	return res
 }
 
 // ComputeSize computes the size of columns that have the same shape as the ones in the LogInfo module
@@ -59,7 +66,7 @@ func ComputeSize(logs []LogInfo) int {
 		if log.LogType == MISSING_LOG {
 			size++
 		} else {
-			size += 2 + len(log.TopicsHi)
+			size += 2 + len(log.Topics)
 		}
 	}
 	return size
@@ -71,13 +78,13 @@ func (logInfo LogInfo) ConvertToL2L1Log() types.Log {
 
 	// compute the topics
 	var topics []ethCommon.Hash
-	for i := 0; i < len(logInfo.TopicsHi); i++ {
-		bytesHi := logInfo.TopicsHi[i].Bytes()
-		bytesLo := logInfo.TopicsLo[i].Bytes()
-		hashBytes := make([]byte, 0, 32)
-		hashBytes = append(hashBytes, bytesHi[16:]...)
-		hashBytes = append(hashBytes, bytesLo[16:]...)
-		topics = append(topics, ethCommon.BytesToHash(hashBytes))
+	for i := 0; i < len(logInfo.Topics); i++ {
+		var hashBytes [32]byte
+		for j := range logInfo.Topics[i] {
+			bytes := logInfo.Topics[i][j].Bytes()
+			copy(hashBytes[j*2:(j+1)*2], bytes[field.Bytes-2:])
+		}
+		topics = append(topics, ethCommon.BytesToHash(hashBytes[:]))
 	}
 	var data []byte
 
@@ -131,9 +138,11 @@ func NewLogColumns(comp *wizard.CompiledIOP, size int, name string) LogColumns {
 		AbsLogNum:    createCol("ABS_LOG_NUM"),
 		AbsLogNumMax: createCol("ABS_LOG_NUM_MAX"),
 		Ct:           createCol("CT"),
-		DataHi:       createCol("OUTGOING_HI"),
-		DataLo:       createCol("OUTGOING_LO"),
 		TxEmitsLogs:  createCol("TX_EMITS_LOGS"),
+	}
+
+	for i := range res.Data {
+		res.Data[i] = createCol(fmt.Sprintf("OUTGOING_%d", i))
 	}
 
 	return res
@@ -145,13 +154,13 @@ type LogColumnsAssignmentBuilder struct {
 	IsLog0, IsLog1, IsLog2, IsLog3, IsLog4 *common.VectorBuilder
 	AbsLogNum, AbsLogNumMax                *common.VectorBuilder
 	Ct                                     *common.VectorBuilder
-	OutgoingHi, OutgoingLo                 *common.VectorBuilder
+	Outgoing                               [common.NbLimbU256]*common.VectorBuilder
 	TxEmitsLogs                            *common.VectorBuilder
 }
 
 // NewLogColumnsAssignmentBuilder initializes a fresh LogColumnsAssignmentBuilder
 func NewLogColumnsAssignmentBuilder(lc *LogColumns) LogColumnsAssignmentBuilder {
-	return LogColumnsAssignmentBuilder{
+	res := LogColumnsAssignmentBuilder{
 		IsLog0:       common.NewVectorBuilder(lc.IsLog0),
 		IsLog1:       common.NewVectorBuilder(lc.IsLog1),
 		IsLog2:       common.NewVectorBuilder(lc.IsLog2),
@@ -160,11 +169,14 @@ func NewLogColumnsAssignmentBuilder(lc *LogColumns) LogColumnsAssignmentBuilder 
 		AbsLogNum:    common.NewVectorBuilder(lc.AbsLogNum),
 		AbsLogNumMax: common.NewVectorBuilder(lc.AbsLogNumMax),
 		Ct:           common.NewVectorBuilder(lc.Ct),
-		OutgoingHi:   common.NewVectorBuilder(lc.DataHi),
-		OutgoingLo:   common.NewVectorBuilder(lc.DataLo),
 		TxEmitsLogs:  common.NewVectorBuilder(lc.TxEmitsLogs),
 	}
 
+	for i := range res.Outgoing {
+		res.Outgoing[i] = common.NewVectorBuilder(lc.Data[i])
+	}
+
+	return res
 }
 
 // PushLogSelectors populates the IsLogX and TxEmitsLogs columns in what will become LogColumns
@@ -232,9 +244,11 @@ func (lc *LogColumnsAssignmentBuilder) PadAndAssign(run *wizard.ProverRuntime) {
 	lc.AbsLogNum.PadAndAssign(run)
 	lc.AbsLogNumMax.PadAndAssign(run)
 	lc.Ct.PadAndAssign(run)
-	lc.OutgoingHi.PadAndAssign(run)
-	lc.OutgoingLo.PadAndAssign(run)
 	lc.TxEmitsLogs.PadAndAssign(run)
+
+	for i := range lc.Outgoing {
+		lc.Outgoing[i].PadAndAssign(run)
+	}
 }
 
 // LogColumnsAssign uses test samples from LogInfo to populate LogColumns uses for testing
@@ -246,22 +260,27 @@ func LogColumnsAssign(run *wizard.ProverRuntime, logCols *LogColumns, logs []Log
 		// row 0
 		builder.PushLogSelectors(logs[i].LogType)
 		builder.PushCounters(i, len(logs), 0)
-		builder.OutgoingHi.PushField(logs[i].DataSize)
-		builder.OutgoingLo.PushField(logs[i].noTopics)
+
+		for j := range common.NbLimbU128 {
+			builder.Outgoing[j].PushField(logs[i].DataSize[j])
+			builder.Outgoing[common.NbLimbU128+j].PushField(logs[i].noTopics[j])
+		}
 
 		if logType != MISSING_LOG {
 			// row 1 has a special form
 			builder.PushLogSelectors(logs[i].LogType)
 			builder.PushCounters(i, len(logs), 1)
-			builder.OutgoingHi.PushField(logs[i].AddressHi)
-			builder.OutgoingLo.PushField(logs[i].AddressLo)
+			for j := common.NbLimbU256 - common.NbLimbEthAddress; j < common.NbLimbU256; j++ {
+				builder.Outgoing[j].PushField(logs[i].Address[j])
+			}
 
 			// subsequent rows contain the topic data
 			for topicNo := 0; topicNo < noTopics(logType); topicNo++ {
 				builder.PushLogSelectors(logs[i].LogType)
 				builder.PushCounters(i, len(logs), topicNo+2) // topicNo+2, starting at row index 2
-				builder.OutgoingHi.PushField(logs[i].TopicsHi[topicNo])
-				builder.OutgoingLo.PushField(logs[i].TopicsLo[topicNo])
+				for j := range common.NbLimbU256 {
+					builder.Outgoing[j].PushField(logs[i].Topics[topicNo][j])
+				}
 			}
 		}
 	}
