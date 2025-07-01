@@ -370,11 +370,11 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 				denominator := svDenominator.IntoRegVecSaveAllocExt()
 
 				packedZ := fext.BatchInvert(denominator)
+				/*
+					for i := range packedZ {
+						fmt.Printf("denominator %v=%v \n packedZ %v=%v \n", i, denominator[i].String(), i, packedZ[i].String())
 
-				for i := range packedZ {
-					fmt.Printf("denominator %v=%v \n packedZ %v=%v \n", i, denominator[i].String(), i, packedZ[i].String())
-
-				}
+					}*/
 				if len(numeratorMetadata) == 0 {
 					numerator = vectorext.Repeat(fext.One(), z.Size)
 				}

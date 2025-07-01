@@ -106,7 +106,6 @@ func (f *FinalEvaluationCheck) Run(run wizard.Runtime) error {
 
 		tmps = append(tmps, *temp)
 		zSum.Add(temp)
-		//fmt.Printf("temp=%v \n", temp.String())
 
 		fmt.Printf("zSum=%v \n", zSum)
 

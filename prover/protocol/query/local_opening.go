@@ -52,7 +52,7 @@ func (r LocalOpening) Name() ifaces.QueryID {
 }
 
 // Constructor for non-fixed point univariate evaluation query parameters
-func NewLocalOpeningParams(y field.Element) LocalOpeningParams { //TODO@yao: fext -> field
+func NewLocalOpeningParams(y field.Element) LocalOpeningParams {
 	return LocalOpeningParams{
 		BaseY:  y,
 		ExtY:   fext.Lift(y),
