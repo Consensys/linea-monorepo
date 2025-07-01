@@ -564,7 +564,6 @@ func (ctx *SelfRecursionCtx) foldPhase() {
 	ctx.comp.Columns.SetStatus(ctx.Columns.Edual.GetColID(), column.Proof)
 
 	// Declare and assign the inner-product
-	// TODO@yao: Here
 	ctx.Queries.LatticeInnerProd = ctx.comp.InsertInnerProduct(
 		round, ctx.preimagesAndAmergeIP(), ctx.Columns.ACollapseFold,
 		[]ifaces.Column{ctx.Columns.PreimageCollapseFold})

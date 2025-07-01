@@ -813,7 +813,6 @@ func (run *ProverRuntime) AssignUnivariate(name ifaces.QueryID, x fext.Element, 
 	if len(q.Pols) != len(ys) {
 		utils.Panic("Query expected ys = %v but got %v", len(q.Pols), len(ys))
 	}
-	fmt.Printf("q=%v\n", ys)
 
 	// Adds it to the assignments
 	params := query.NewUnivariateEvalParams(x, ys...)

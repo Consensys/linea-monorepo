@@ -1,9 +1,8 @@
 package plonkinternal
 
 import (
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/backend/witness"
-	cs "github.com/consensys/gnark/constraint/bls12-377"
+	cs "github.com/consensys/gnark/constraint/koalabear"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -72,7 +71,7 @@ func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []wi
 
 				// Converts it as a smart-vector
 				pubWitSV := smartvectors.RightZeroPadded(
-					[]field.Element(pubWitness.Vector().(fr.Vector)),
+					[]field.Element(pubWitness.Vector().(field.Vector)),
 					ctx.TinyPISize(),
 				)
 

@@ -11,6 +11,7 @@ import (
 )
 
 type Element = koalabear.Element
+type Vector []Element
 
 const (
 	// RmaxOrderRoot

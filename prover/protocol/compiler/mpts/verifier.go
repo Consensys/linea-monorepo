@@ -32,7 +32,7 @@ func (va verifierAction) Run(run wizard.Runtime) error {
 		qr       = queryParams.Ys[len(va.NewQuery.Pols)-1]
 		polysAtR = va.cptEvaluationMap(run)
 		r        = queryParams.X
-		rCoin    = run.GetRandomCoinFieldExt(va.EvaluationPoint.Name) //TODO@yao: how to properly assign a random coin into an extension field? The value is overflowing, and not all compilers can pass, mainly those using fext.Zero()
+		rCoin    = run.GetRandomCoinFieldExt(va.EvaluationPoint.Name)
 
 		// zetasOfR stores the values zetas[i] = lambda^i / (r - xi).
 		// These values are precomputed for efficiency.

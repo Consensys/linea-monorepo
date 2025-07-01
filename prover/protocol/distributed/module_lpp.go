@@ -425,8 +425,9 @@ func (a AssignLPPQueries) Run(run *wizard.ProverRuntime) {
 		if err != nil {
 			utils.Panic("LogDerivative has a zero term in the denominator: %v", err)
 		}
+		yBase, _ := y.GetBase()
 
-		run.AssignLogDerivSum(a.LogDerivativeSum.ID, y)
+		run.AssignLogDerivSum(a.LogDerivativeSum.ID, yBase)
 	}
 }
 

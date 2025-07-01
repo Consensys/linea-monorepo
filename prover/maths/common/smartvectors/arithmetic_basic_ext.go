@@ -114,6 +114,10 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPo
 			v = rotatedAsRegularExt(asRotated)
 		}
 		switch casted := v.(type) {
+		case *Constant:
+			anyCon = true
+			tmpF.MulByElement(&xPow, &casted.val)
+			resCon.Add(&resCon, &tmpF)
 		case *ConstantExt:
 			anyCon = true
 			tmpF.Mul(&casted.val, &xPow)

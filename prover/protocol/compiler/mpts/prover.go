@@ -262,13 +262,22 @@ func (qa quotientAccumulation) computeZetas(run *wizard.ProverRuntime) [][]fext.
 				//  4 - Multiplying the result by lambdaPowi
 			)
 
+			// Sanity check : all xi should not be a powersOfOmega
+			for j := range powersOfOmega {
+				if xi.B0.A0 == powersOfOmega[j] && xi.B0.A1 == field.Zero() && xi.B1.A0 == field.Zero() && xi.B1.A1 == field.Zero() {
+					utils.Panic("bad value %v, should not equal to a powersOfOmega", xi)
+				}
+			}
+
 			lext := make([]fext.Element, len(powersOfOmega))
 			for j := range powersOfOmega {
+				if xi.B0.A0 == powersOfOmega[j] && xi.B0.A1 == field.Zero() && xi.B1.A0 == field.Zero() && xi.B1.A1 == field.Zero() {
+					utils.Panic("bad value %v, should not equal to a powersOfOmega", xi)
+				}
 				lext[j] = fext.NewFromBase(powersOfOmega[j])
 				lext[j].Sub(&lext[j], &xi)
 			}
 
-			//TODO@yao: add a sanity check, as xi=/=powersOfOmega
 			lext = fext.BatchInvert(lext)
 
 			for j := range powersOfOmega {
