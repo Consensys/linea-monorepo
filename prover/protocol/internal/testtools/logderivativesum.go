@@ -245,9 +245,8 @@ func (t *LogDerivativeSumTestcase) Assign(run *wizard.ProverRuntime) {
 		t.Value = &correctValue
 
 	}
-	tBase, _ := t.Value.GetBase()
 
-	run.AssignLogDerivSum(t.Q.ID, tBase) //TODO@yao: extend input to genericFE
+	run.AssignLogDerivSum(t.Q.ID, *t.Value)
 }
 
 func (t *LogDerivativeSumTestcase) MustFail() bool {

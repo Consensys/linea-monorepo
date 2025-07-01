@@ -25,7 +25,7 @@ type ConstCol struct {
 func NewConstantCol(elem field.Element, size int) ifaces.Column {
 	return ConstCol{
 		Base:   elem,
-		Ext:    fext.NewFromBase(elem),
+		Ext:    fext.Lift(elem),
 		isBase: true,
 		Size_:  size,
 	}

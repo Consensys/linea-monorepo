@@ -78,9 +78,8 @@ func (p *PaddedCircularWindow) GetBase(n int) (field.Element, error) {
 
 func (p *PaddedCircularWindow) GetExt(n int) fext.Element {
 	elem, _ := p.GetBase(n)
-	var res fext.Element
-	fext.FromBase(&res, &elem)
-	return res
+	return fext.Lift(elem)
+
 }
 
 func (r *PaddedCircularWindow) Get(n int) field.Element {

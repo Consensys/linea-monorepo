@@ -274,6 +274,13 @@ func (e *GenericFieldElem) SetInt64(v int64) *GenericFieldElem {
 	return e
 }
 
+func SetGenericInt64(v int64) GenericFieldElem {
+	var e GenericFieldElem
+	e.base.SetInt64(v)
+	FromBase(&e.ext, &e.base)
+	e.isBase = true
+	return e
+}
 func (z *GenericFieldElem) GenericBytes() []byte {
 	if z.IsBase() {
 		res := z.base.Bytes()

@@ -145,7 +145,7 @@ func (e *FromExprAccessor) GetValBase(run ifaces.Runtime) (field.Element, error)
 func (e *FromExprAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 	if e.IsBase() {
 		res, _ := e.GetValBase(run)
-		return fext.NewFromBase(res)
+		return fext.Lift(res)
 	} else {
 		// expression is over field extensions
 		metadata := e.Boarded.ListVariableMetadata()

@@ -23,7 +23,7 @@ func LiftToExt(vec sv.SmartVector) sv.SmartVector {
 	switch v := vec.(type) {
 	case *sv.Constant:
 		res := sv.NewConstantExt(
-			fext.NewFromBase(v.Val()),
+			fext.Lift(v.Val()),
 			v.Len(),
 		)
 		return res
@@ -34,7 +34,7 @@ func LiftToExt(vec sv.SmartVector) sv.SmartVector {
 		}
 		res := sv.NewPaddedCircularWindowExt(
 			windowExt,
-			fext.NewFromBase(v.PaddingVal()),
+			fext.Lift(v.PaddingVal()),
 			v.Offset(),
 			v.Len(),
 		)

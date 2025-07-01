@@ -64,7 +64,7 @@ func TestLogDerivativeSum(t *testing.T) {
 		run.AssignColumn("Den_1", smartvectors.ForTest(2, 3, 7, 9))
 		run.AssignColumn("Den_2", smartvectors.ForTest(5, 6, 1, 1))
 
-		run.AssignLogDerivSum("LogDerivSum_Test", field.NewElement(8))
+		run.AssignLogDerivSum("LogDerivSum_Test", fext.SetGenericInt64(8))
 
 	}
 
@@ -187,7 +187,7 @@ func TestLogDerivativeSumMixed2(t *testing.T) {
 		run.AssignColumn("Den_1", smartvectors.ForExtTest(2, 0, 0, 0, 3, 0, 0, 0, 7, 0, 0, 0, 9, 0, 0, 0))
 		run.AssignColumn("Den_2", smartvectors.ForExtTest(5, 0, 0, 0, 6, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0))
 
-		run.AssignLogDerivSum("LogDerivSum_Test", field.NewElement(8))
+		run.AssignLogDerivSum("LogDerivSum_Test", fext.SetGenericInt64(8))
 
 	}
 

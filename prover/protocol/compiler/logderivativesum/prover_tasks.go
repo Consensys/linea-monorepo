@@ -361,18 +361,13 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 				}
 
 				run.AssignColumn(z.Zs[frag].GetColID(), sv.NewRegular(packedZ))
-				run.AssignLocalPoint(z.ZOpenings[frag].ID, packedZ[len(packedZ)-1]) //TODO@yao: fix the call
+				run.AssignLocalPoint(z.ZOpenings[frag].ID, packedZ[len(packedZ)-1])
 			} else {
 				// we are dealing with extension denominators
 				var numerator []fext.Element
 				denominator := svDenominator.IntoRegVecSaveAllocExt()
-
 				packedZ := fext.BatchInvert(denominator)
-				/*
-					for i := range packedZ {
-						fmt.Printf("denominator %v=%v \n packedZ %v=%v \n", i, denominator[i].String(), i, packedZ[i].String())
 
-					}*/
 				if len(numeratorMetadata) == 0 {
 					numerator = vectorext.Repeat(fext.One(), z.Size)
 				}

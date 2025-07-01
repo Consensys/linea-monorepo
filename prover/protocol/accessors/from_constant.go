@@ -28,7 +28,7 @@ type FromConstAccessor struct {
 func NewConstant(f field.Element) ifaces.Accessor {
 	return &FromConstAccessor{
 		Base:   f,
-		Ext:    fext.NewFromBase(f),
+		Ext:    fext.Lift(f),
 		isBase: true,
 	}
 }

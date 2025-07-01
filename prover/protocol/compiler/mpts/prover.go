@@ -274,7 +274,7 @@ func (qa quotientAccumulation) computeZetas(run *wizard.ProverRuntime) [][]fext.
 				if xi.B0.A0 == powersOfOmega[j] && xi.B0.A1 == field.Zero() && xi.B1.A0 == field.Zero() && xi.B1.A1 == field.Zero() {
 					utils.Panic("bad value %v, should not equal to a powersOfOmega", xi)
 				}
-				lext[j] = fext.NewFromBase(powersOfOmega[j])
+				lext[j] = fext.Lift(powersOfOmega[j])
 				lext[j].Sub(&lext[j], &xi)
 			}
 

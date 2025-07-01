@@ -68,16 +68,6 @@ func FromBase(z *Element, v *field.Element) {
 	z.B1.A1.SetZero()
 }
 
-// TODO@yao: remove, the same as Lift
-func NewFromBase(base field.Element) Element {
-	var z Element
-	z.B0.A0 = base
-	z.B0.A1.SetZero()
-	z.B1.A0.SetZero()
-	z.B1.A1.SetZero()
-	return z
-}
-
 func NewFromBaseInteger(b uint64) Element {
 	var res Element
 	res.B0.A0.SetUint64(b)

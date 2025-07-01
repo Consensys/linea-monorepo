@@ -271,7 +271,7 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 			res.Add(&elemDenominatorWindow)
 		}
 
-		denominatorPadding, denominatorHasPadding := smartvectors.PaddingValGeneric(denominator) //TODO@yao : here is the key part, use PaddingVal not PaddingValExt, TODO change to PaddingValGeneric
+		denominatorPadding, denominatorHasPadding := smartvectors.PaddingValGeneric(denominator)
 
 		if denominatorHasPadding {
 

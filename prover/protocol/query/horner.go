@@ -195,7 +195,7 @@ func getResultOfParts(run ifaces.Runtime, q *HornerPart) (fext.Element, int) {
 
 	var (
 		datas     = [][]fext.Element{}
-		selectors = [][]field.Element{} //TODO@yao:field?
+		selectors = [][]field.Element{}
 		count     = 0
 		x         = q.X.GetValExt(run)
 		acc       = fext.Zero()

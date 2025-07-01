@@ -65,9 +65,7 @@ func (r *Rotated) GetBase(n int) (field.Element, error) {
 // Returns a particular element of the vector
 func (r *Rotated) GetExt(n int) fext.Element {
 	temp, _ := r.v.GetBase(utils.PositiveMod(n+r.offset, r.Len()))
-	var res fext.Element
-	fext.FromBase(&res, &temp)
-	return res
+	return fext.Lift(temp)
 }
 
 func (r *Rotated) Get(n int) field.Element {
