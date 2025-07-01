@@ -17,13 +17,11 @@ type GenericFieldElem struct {
 }
 
 func NewESHashFromBase(base field.Element) GenericFieldElem {
-	var ext Element
-	FromBase(&ext, &base)
-	return GenericFieldElem{
-		base:   base,
-		ext:    ext,
-		isBase: true,
-	}
+	var res GenericFieldElem
+	res.base.Set(&base)
+	FromBase(&res.ext, &base)
+	res.isBase = true
+	return res
 }
 
 func (e *GenericFieldElem) GetBase() (field.Element, error) {

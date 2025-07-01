@@ -19,7 +19,7 @@ func (f *Expression) IsConstant() (bool, fext.GenericFieldElem) {
 	if cons, ok := f.Operator.(Constant); ok {
 		return ok, cons.Val
 	}
-	return false, *fext.GenericFieldZero()
+	return false, fext.GenericFieldZero()
 }
 
 /*

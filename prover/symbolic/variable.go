@@ -83,7 +83,7 @@ func metadataToESH(m Metadata) fext.GenericFieldElem {
 	sigBytes := hasher.Sum(nil)
 	esh.SetBytes(sigBytes)
 	// the base field element is then wrapped into an extension element
-	return *fext.NewESHashFromBase(&esh)
+	return fext.NewESHashFromBase(esh)
 }
 
 /*

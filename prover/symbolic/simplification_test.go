@@ -1,8 +1,9 @@
 package symbolic
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -112,7 +113,7 @@ func TestRegroupTerms(t *testing.T) {
 			InputMagn:  []int{1, 1, 1, 1, 1, 1, 1},
 			OutputVars: []*Expression{a, b, c},
 			OutputMagn: []int{2, 2, 2},
-			ConstVars:  []fext.GenericFieldElem{*fext.GenericFieldZero()},
+			ConstVars:  []fext.GenericFieldElem{fext.GenericFieldZero()},
 			ConstMagn:  []int{1},
 		},
 	}

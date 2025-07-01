@@ -59,11 +59,11 @@ func NewLocalOpeningParams(y field.Element) LocalOpeningParams { //TODO@yao: fex
 		IsBase: true,
 	}
 }
-func (lop LocalOpeningParams) ToGenericGroupElement() *fext.GenericFieldElem {
+func (lop LocalOpeningParams) ToGenericGroupElement() fext.GenericFieldElem {
 	if lop.IsBase {
-		return fext.NewESHashFromBase(&lop.BaseY)
+		return fext.NewESHashFromBase(lop.BaseY)
 	} else {
-		return fext.NewESHashFromExt(&lop.ExtY)
+		return fext.NewESHashFromExt(lop.ExtY)
 	}
 }
 func NewLocalOpeningParamsExt(z fext.Element) LocalOpeningParams {

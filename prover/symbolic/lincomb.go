@@ -89,7 +89,8 @@ func NewLinComb(items []*Expression, coeffs []int) *Expression {
 		// The cast back to sv.Constant is not functionally important but is an easy
 		// sanity check.
 		evalResult := e.Operator.EvaluateMixed(eshashes)
-		e.ESHash.Set(sv.GetGenericElemOfSmartvector(evalResult, 0))
+		tmp := sv.GetGenericElemOfSmartvector(evalResult, 0)
+		e.ESHash.Set(&tmp)
 	}
 
 	return e

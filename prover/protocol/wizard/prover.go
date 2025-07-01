@@ -910,8 +910,8 @@ func (run *ProverRuntime) AssignLogDerivSum(name ifaces.QueryID, y field.Element
 	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
 
 	// Adds it to the assignments
-	genericY := fext.NewESHashFromBase(&y)
-	params := query.NewLogDerivSumParams(*genericY)
+	genericY := fext.NewESHashFromBase(y)
+	params := query.NewLogDerivSumParams(genericY)
 	run.QueriesParams.InsertNew(name, params)
 }
 func (run *ProverRuntime) AssignLogDerivSumGeneric(name ifaces.QueryID, y fext.GenericFieldElem) {
