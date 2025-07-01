@@ -385,7 +385,7 @@ func PaddingValExt(v SmartVector) (val fext.Element, hasPadding bool) {
 func TryReduceSize(v SmartVector) (new SmartVector, totalSaving int) {
 
 	switch w := v.(type) {
-	case *Constant, *Rotated, *Pooled, *PaddedCircularWindow:
+	case *Constant, *Rotated, *Pooled, *PaddedCircularWindow, *RegularExt, *ConstantExt, *PooledExt:
 		return v, 0
 	case *Regular:
 
@@ -397,10 +397,6 @@ func TryReduceSize(v SmartVector) (new SmartVector, totalSaving int) {
 			return res, len(*w) - len(res.window)
 		}
 
-		return v, 0
-	case *RegularExt:
-		return v, 0
-	case *PooledExt:
 		return v, 0
 	default:
 		panic(fmt.Sprintf("unexpected type %T", v))

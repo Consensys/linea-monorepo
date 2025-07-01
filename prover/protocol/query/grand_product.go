@@ -184,7 +184,7 @@ func (g GrandProduct) Check(run ifaces.Runtime) error {
 	for size := range g.Inputs {
 		input := g.Inputs[size]
 		for i := range input.Denominators {
-			denominator := column.EvalExprColumn(run, input.Denominators[i].Board()).IntoRegVecSaveAlloc()
+			denominator := column.EvalExprColumn(run, input.Denominators[i].Board()).IntoRegVecSaveAllocExt()
 			for k := range denominator {
 				if denominator[k].IsZero() {
 					return fmt.Errorf("the grand product query %v is not satisfied, (size=%v, denominator n°%v) denominator[%v] is zero", g.ID, size, i, k)
