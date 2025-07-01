@@ -425,8 +425,9 @@ func (a AssignLPPQueries) Run(run *wizard.ProverRuntime) {
 		if err != nil {
 			utils.Panic("LogDerivative has a zero term in the denominator: %v", err)
 		}
+		yBase, _ := y.GetBase()
 
-		run.AssignLogDerivSum(a.LogDerivativeSum.ID, y)
+		run.AssignLogDerivSum(a.LogDerivativeSum.ID, yBase)
 	}
 }
 
@@ -488,7 +489,8 @@ func (a *CheckNxHash) IsSkipped() bool {
 
 func (a *SetInitialFSHash) Run(run wizard.Runtime) error {
 	state := a.InitialFiatShamirState.GetColAssignment(run).Get(0)
-	run.Fs().SetState([]field.Element{state})
+	stateBytes := state.Bytes()
+	run.Fs().SetState(stateBytes[:])
 	return nil
 }
 
