@@ -242,7 +242,7 @@ services:
   web3signer:
     hostname: web3signer
     container_name: web3signer
-    image: consensys/web3signer:23.3-jdk17
+    image: consensys/web3signer:25.2
     profiles: [ "l2", "debug", "external-to-monorepo" ]
     ports:
       - "9000:9000"
@@ -253,6 +253,7 @@ services:
       - --tls-known-clients-file=/tls-files/known-clients.txt
       - --http-host-allowlist=*
       - eth1
+      - --chain-id=1337 #required but no impact as only used for proxying eth_sendTransaction
     volumes:
       - ./web3signer/key-files/:/key-files/
       - ./web3signer/tls-files/:/tls-files/
