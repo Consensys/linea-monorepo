@@ -54,11 +54,13 @@ func NewExtractedData(comp *wizard.CompiledIOP, size int, name string) Extracted
 // DefineExtractedData then uses a projection query to check that the data was fetched appropriately
 func DefineExtractedData(comp *wizard.CompiledIOP, logCols LogColumns, sel Selectors, fetched ExtractedData, logType int) {
 	selectors := sym.Mul(
-		IsLogType(logCols, logType),      // IsLogType returns either isLog3 or isLog4 depending on the case
-		GetSelectorCounter(sel, logType), // GetSelectorCounter returns 1 when one of the following holds:
+		// IsLogType returns either isLog3 or isLog4 depending on the case
+		IsLogType(logCols, logType),
+		// GetSelectorCounter returns 1 when one of the following holds:
+		// logCols.Ct = 5 (an L2L1 message) or logCols.Ct = 3 (RollingMsgNo) or logCols.Ct = 4 (RollingHashNo)
+		GetSelectorCounter(sel, logType),
 	)
 
-	// logCols.Ct = 5 (an L2L1 message) or logCols.Ct = 3 (RollingMsgNo) or logCols.Ct = 4 (RollingHashNo)
 	// now we check that the first topics are computed properly in the log, by inspecting a previous row at a certain offset
 	// the offset is -3 (an L2L1 message) or -1 (RollingMsgNo) or -2 (RollingHashNo)
 	selectorsFirstTopic := GetSelectorFirstTopic(sel, logType)
@@ -115,8 +117,17 @@ func DefineExtractedData(comp *wizard.CompiledIOP, logCols LogColumns, sel Selec
 
 // CheckBridgeAddress checks if a row does indeed contain the data corresponding to a the bridge address
 func CheckBridgeAddress(run *wizard.ProverRuntime, lCols LogColumns, sel Selectors, pos int) bool {
-	for i := range sel.L2BridgeAddressCol {
+	offset := common.NbLimbU256 - common.NbLimbEthAddress
+
+	for i := range offset {
 		out := lCols.Data[i].GetColAssignmentAt(run, pos)
+		if !out.IsZero() {
+			return false
+		}
+	}
+
+	for i := range sel.L2BridgeAddressCol {
+		out := lCols.Data[i+offset].GetColAssignmentAt(run, pos)
 		bridgeAddr := sel.L2BridgeAddressCol[i].GetColAssignmentAt(run, 0)
 
 		if !out.Equal(&bridgeAddr) {
@@ -177,9 +188,8 @@ func AssignExtractedData(run *wizard.ProverRuntime, lCols LogColumns, sel Select
 		data[i] = make([]field.Element, lCols.Ct.Size())
 	}
 
-	var logData [common.NbLimbU256]field.Element
 	filterFetched := make([]field.Element, lCols.Ct.Size())
-	counter := 0 // counter used to incrementally populate Hi, Lo of the ExtractedData and their associated filterFetched
+	counter := 0 // counter used to incrementally populate limbs of the ExtractedData and their associated filterFetched
 	for i := 0; i < lCols.Ct.Size(); i++ {
 		// the following conditional checks if row i contains a message that should be picked
 		if !IsPositionTargetMessage(run, lCols, sel, i, logType) {
@@ -187,9 +197,8 @@ func AssignExtractedData(run *wizard.ProverRuntime, lCols LogColumns, sel Select
 		}
 
 		for j := range data {
-			logData[j] = lCols.Data[j].GetColAssignmentAt(run, i)
-			// pick the messages and add them to the msgHi/Lo ExtractedData columns
-			data[j][counter].Set(&logData[j])
+			// pick the messages and add them to the msg limbs ExtractedData columns
+			data[j][counter] = lCols.Data[j].GetColAssignmentAt(run, i)
 		}
 
 		// now set the filter on ExtractedData columns to be 1

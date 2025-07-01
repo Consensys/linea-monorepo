@@ -255,6 +255,9 @@ func (lc *LogColumnsAssignmentBuilder) PadAndAssign(run *wizard.ProverRuntime) {
 // in the fetching of messages from L2L1/RollingHash logs
 func LogColumnsAssign(run *wizard.ProverRuntime, logCols *LogColumns, logs []LogInfo) {
 	builder := NewLogColumnsAssignmentBuilder(logCols)
+
+	addrOffset := common.NbLimbU256 - common.NbLimbEthAddress
+
 	for i := 0; i < len(logs); i++ {
 		logType := logs[i].LogType
 		// row 0
@@ -270,8 +273,12 @@ func LogColumnsAssign(run *wizard.ProverRuntime, logCols *LogColumns, logs []Log
 			// row 1 has a special form
 			builder.PushLogSelectors(logs[i].LogType)
 			builder.PushCounters(i, len(logs), 1)
-			for j := common.NbLimbU256 - common.NbLimbEthAddress; j < common.NbLimbU256; j++ {
-				builder.Outgoing[j].PushField(logs[i].Address[j])
+
+			for j := 0; j < addrOffset; j++ {
+				builder.Outgoing[j].PushField(field.Zero())
+			}
+			for j := 0; j < common.NbLimbEthAddress; j++ {
+				builder.Outgoing[j+addrOffset].PushField(logs[i].Address[j])
 			}
 
 			// subsequent rows contain the topic data
@@ -284,5 +291,6 @@ func LogColumnsAssign(run *wizard.ProverRuntime, logCols *LogColumns, logs []Log
 			}
 		}
 	}
+
 	builder.PadAndAssign(run)
 }

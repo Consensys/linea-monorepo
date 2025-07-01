@@ -212,24 +212,23 @@ func NewSelectorColumns(comp *wizard.CompiledIOP, lc LogColumns) Selectors {
 	}
 
 	var bridgeAddrCol [pcommon.NbLimbEthAddress]ifaces.Column
-	for i := range lc.Data {
-		bridgeAddrCol[i] = comp.InsertCommit(0, ifaces.ColIDf("LOGS_FETCHER_BRIDGE_ADDRESS_%d", i), lc.Data[i].Size())
-		commonconstraints.MustBeConstant(comp, bridgeAddrCol[i])
-	}
-
 	// selectors that light up when OutgoingHi/OutgoingLo contain the Hi/Lo parts of the l2BridgeAddress
 	var SelectorL2BridgeAddress [pcommon.NbLimbU256]ifaces.Column
 	var ComputeSelectorL2BridgeAddress [pcommon.NbLimbU256]wizard.ProverAction
-	for i := range SelectorL2BridgeAddress {
-		// first limbs are zeroes as the address is 20 bytes long, while the data can be up to 32 bytes long
-		if i < pcommon.NbLimbU256-pcommon.NbLimbEthAddress {
-			SelectorL2BridgeAddress[i], ComputeSelectorL2BridgeAddress[i] = dedicated.IsZero(comp, lc.Data[i]).GetColumnAndProverAction()
-			continue
-		}
 
-		SelectorL2BridgeAddress[i], ComputeSelectorL2BridgeAddress[i] = dedicated.IsZero(comp,
-			sym.Sub(lc.Data[i], bridgeAddrCol[i]),
-		).GetColumnAndProverAction()
+	offset := pcommon.NbLimbU256 - pcommon.NbLimbEthAddress
+	for i := range bridgeAddrCol {
+		bridgeAddrCol[i] = comp.InsertCommit(0, ifaces.ColIDf("LOGS_FETCHER_BRIDGE_ADDRESS_%d", i), lc.Data[i].Size())
+		commonconstraints.MustBeConstant(comp, bridgeAddrCol[i])
+
+		iOffset := i + offset
+		SelectorL2BridgeAddress[iOffset], ComputeSelectorL2BridgeAddress[iOffset] =
+			dedicated.IsZero(comp, sym.Sub(lc.Data[iOffset], bridgeAddrCol[i]))
+	}
+
+	// first limbs are zeroes as the address is 20 bytes long, while the data can be up to 32 bytes long
+	for i := 0; i < offset; i++ {
+		SelectorL2BridgeAddress[i], ComputeSelectorL2BridgeAddress[i] = dedicated.IsZero(comp, lc.Data[i])
 	}
 
 	// generate the final selector object
