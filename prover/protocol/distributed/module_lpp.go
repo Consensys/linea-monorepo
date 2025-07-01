@@ -488,7 +488,8 @@ func (a *CheckNxHash) IsSkipped() bool {
 
 func (a *SetInitialFSHash) Run(run wizard.Runtime) error {
 	state := a.InitialFiatShamirState.GetColAssignment(run).Get(0)
-	run.Fs().SetState([]field.Element{state})
+	// run.Fs().SetState([]field.Element{state})
+	run.Fs().SetState(state.Marshal())
 	return nil
 }
 
