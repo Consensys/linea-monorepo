@@ -186,12 +186,6 @@ public class ReplayTests extends TracerTestBase {
     replay(OLD_MAINNET_TESTCONFIG, "4323985.mainnet.json.gz");
   }
 
-  /**
-   * The 146th operation added in ADD is a SUB Bytes32.ZERO Bytes32.ZERO. We try to add a SUB
-   * Wei.ZERO Bytes32.ZERO for the 3768th ADD operation. Because of an issue in Tuweni library
-   * operation, it was added for the line counting. But when tracing, it wasn't added. Issue was
-   * that Wei.ZERO.equals(Bytes32.ZERO) != Bytes32.ZERO.equals(Wei.ZERO)
-   */
   @Test
   void duplicateSubZero() {
     replay(MAINNET_LONDON_TESTCONFIG, "20197061-20197173.mainnet.json.gz");

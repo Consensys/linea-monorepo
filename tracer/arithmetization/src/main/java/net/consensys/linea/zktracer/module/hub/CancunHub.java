@@ -26,11 +26,10 @@ import net.consensys.linea.zktracer.module.tables.instructionDecoder.Instruction
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.hyperledger.besu.evm.gascalculator.CancunGasCalculator;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
-import org.hyperledger.besu.plugin.services.BlockchainService;
 
 public class CancunHub extends ShanghaiHub {
-  public CancunHub(ChainConfig chain, BlockchainService blockchainService) {
-    super(chain, blockchainService);
+  public CancunHub(ChainConfig chain) {
+    super(chain);
   }
 
   @Override
@@ -39,9 +38,8 @@ public class CancunHub extends ShanghaiHub {
   }
 
   @Override
-  protected Blockdata setBlockData(
-      Hub hub, Wcp wcp, Euc euc, ChainConfig chain, BlockchainService blockchainService) {
-    return new CancunBlockData(hub, wcp, euc, chain, blockchainService);
+  protected Blockdata setBlockData(Hub hub, Wcp wcp, Euc euc, ChainConfig chain) {
+    return new CancunBlockData(hub, wcp, euc, chain);
   }
 
   @Override

@@ -37,11 +37,10 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.gascalculator.LondonGasCalculator;
 import org.hyperledger.besu.evm.worldstate.WorldView;
-import org.hyperledger.besu.plugin.services.BlockchainService;
 
 public class LondonHub extends Hub {
-  public LondonHub(ChainConfig chain, BlockchainService blockchainService) {
-    super(chain, blockchainService);
+  public LondonHub(ChainConfig chain) {
+    super(chain);
   }
 
   @Override
@@ -60,8 +59,7 @@ public class LondonHub extends Hub {
   }
 
   @Override
-  protected Blockdata setBlockData(
-      Hub hub, Wcp wcp, Euc euc, ChainConfig chain, BlockchainService blockchainService) {
+  protected Blockdata setBlockData(Hub hub, Wcp wcp, Euc euc, ChainConfig chain) {
     return new LondonBlockData(hub, wcp, euc, chain);
   }
 
