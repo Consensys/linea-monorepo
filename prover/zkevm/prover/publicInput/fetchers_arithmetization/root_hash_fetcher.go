@@ -83,8 +83,12 @@ func AssignRootHashFetcher(run *wizard.ProverRuntime, fetcher *RootHashFetcher, 
 	size := ss.IsActive.Size()
 	for i := 0; i < size; i++ {
 		isActive := ss.IsActive.GetColAssignmentAt(run, i)
-		if isActive.IsOne() || i == 0 {
+		if isActive.IsOne() && i != size-1 {
 			continue
+		}
+
+		if i == 0 {
+			break
 		}
 
 		for j := range last {
