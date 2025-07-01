@@ -380,7 +380,6 @@ func TestExhaustive(t *testing.T) {
 				},
 			},
 		},
-		/*TODO@yao: fix this
 		{
 			Title: "range check for 2 by 2 column with two conditions on either side of the query",
 			PerTableCases: []perTableCase{
@@ -405,8 +404,6 @@ func TestExhaustive(t *testing.T) {
 				},
 			},
 		},
-		*/
-
 		{
 			Title: "plenty of range checks",
 			PerTableCases: []perTableCase{

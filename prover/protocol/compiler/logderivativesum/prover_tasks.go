@@ -1,7 +1,6 @@
 package logderivativesum
 
 import (
-	"fmt"
 	"runtime/debug"
 	"sync"
 
@@ -340,7 +339,6 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 			)
 
 			svDenominator := column.EvalExprColumn(run, z.ZDenominatorBoarded[frag])
-			fmt.Printf("svDenominator=%v\n", svDenominator.Pretty())
 
 			if sv.IsBase(svDenominator) {
 				var numerator []field.Element
