@@ -13,7 +13,7 @@ func EvalUnivariateMixed(pol []fext.GenericFieldElem, x fext.GenericFieldElem) f
 		res.Mul(&x)
 		res.Add(&pol[i])
 	}
-	return *res
+	return res
 }
 
 // Eval evalutes P := \sum_{i<n}pol[i]X^i at x.

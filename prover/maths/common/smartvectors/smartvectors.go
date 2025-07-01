@@ -184,15 +184,15 @@ func IntoGnarkAssignmentExt(sv SmartVector) []gnarkfext.Element {
 func PaddingValGeneric(v SmartVector) (val fext.GenericFieldElem, hasPadding bool) {
 	switch w := v.(type) {
 	case *Constant:
-		return *fext.NewESHashFromBase(&w.val), true
+		return fext.NewESHashFromBase(w.val), true
 	case *PaddedCircularWindow:
-		return *fext.NewESHashFromBase(&w.paddingVal), true
+		return fext.NewESHashFromBase(w.paddingVal), true
 	case *ConstantExt:
-		return *fext.NewESHashFromExt(&w.val), true
+		return fext.NewESHashFromExt(w.val), true
 	case *PaddedCircularWindowExt:
-		return *fext.NewESHashFromExt(&w.paddingVal), true
+		return fext.NewESHashFromExt(w.paddingVal), true
 	default:
-		return *fext.GenericFieldZero(), false
+		return fext.GenericFieldZero(), false
 	}
 }
 

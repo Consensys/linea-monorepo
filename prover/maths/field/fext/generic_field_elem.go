@@ -7,22 +7,20 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
-/*
-GenericFieldElem is a generic field element that can either be a base field element or an extension field element.
-It should only be used in places where performance is not critical, as it incurs overhead due to the
-storing both a base and extension field version, as well as checks and conversions between base and extension elements.
-*/
+// GenericFieldElem is a generic field element that can either be a base field element or an extension field element.
+// It should only be used in places where performance is not critical, as it incurs overhead due to the
+// storing both a base and extension field version, as well as checks and conversions between base and extension elements.
 type GenericFieldElem struct {
 	base   field.Element
 	ext    Element
 	isBase bool
 }
 
-func NewESHashFromBase(base *field.Element) *GenericFieldElem {
+func NewESHashFromBase(base field.Element) GenericFieldElem {
 	var ext Element
-	FromBase(&ext, base)
-	return &GenericFieldElem{
-		base:   *new(field.Element).Set(base),
+	FromBase(&ext, &base)
+	return GenericFieldElem{
+		base:   base,
 		ext:    ext,
 		isBase: true,
 	}
@@ -45,11 +43,11 @@ func (e *GenericFieldElem) GetExt() Element {
 	}
 }
 
-func NewESHashFromExt(ext *Element) *GenericFieldElem {
-	return &GenericFieldElem{
-		ext:    *new(Element).Set(ext),
-		isBase: false,
-	}
+func NewESHashFromExt(ext Element) GenericFieldElem {
+	var res GenericFieldElem
+	res.ext.Set(&ext)
+	res.isBase = false
+	return res
 }
 
 func NewMinimalESHashFromExt(ext *Element) *GenericFieldElem {
@@ -222,14 +220,12 @@ func (e *GenericFieldElem) IsOne() bool {
 	}
 }
 
-func GenericFieldOne() *GenericFieldElem {
-	baseOne := field.One()
-	return NewESHashFromBase(&baseOne)
+func GenericFieldOne() GenericFieldElem {
+	return NewESHashFromBase(field.One())
 }
 
-func GenericFieldZero() *GenericFieldElem {
-	baseZero := field.Zero()
-	return NewESHashFromBase(&baseZero)
+func GenericFieldZero() GenericFieldElem {
+	return NewESHashFromBase(field.Zero())
 }
 
 func (e *GenericFieldElem) Square(inp *GenericFieldElem) *GenericFieldElem {
@@ -292,12 +288,9 @@ func (z *GenericFieldElem) GenericBytes() []byte {
 
 func (z *GenericFieldElem) Inverse(x *GenericFieldElem) *GenericFieldElem {
 	if x.IsBase() {
-		var resBase field.Element
-		resBase.Inverse(&x.base)
-		return NewESHashFromBase(&resBase)
+		z.base.Inverse(&x.base)
 	} else {
-		var resExt Element
-		resExt.Inverse(&x.ext)
-		return NewESHashFromExt(&resExt)
+		z.ext.Inverse(&x.ext)
 	}
+	return z
 }
