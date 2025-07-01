@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/iop"
+	"github.com/consensys/gnark-crypto/field/koalabear/iop"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
