@@ -19,6 +19,7 @@ import static net.consensys.linea.zktracer.opcode.OpCodes.loadOpcodes;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.math.BigInteger;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
@@ -46,7 +47,6 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
-import org.hyperledger.besu.plugin.services.BlockchainService;
 
 @Slf4j
 public class ZkTracer implements LineCountingTracer {
@@ -68,14 +68,13 @@ public class ZkTracer implements LineCountingTracer {
    * by the sequencer for tracing in production, such as on mainnet and/or sepolia.
    *
    * @param bridgeConfiguration Configuration for the L1L2 bridge.
+   * @param chainId Identifies the chain being traced.
    */
   public ZkTracer(
       final Fork fork,
       final LineaL1L2BridgeSharedConfiguration bridgeConfiguration,
-      BlockchainService blockchainService) {
-    this(
-        FORK_LINEA_CHAIN(fork, bridgeConfiguration, blockchainService.getChainId().orElseThrow()),
-        blockchainService);
+      BigInteger chainId) {
+    this(FORK_LINEA_CHAIN(fork, bridgeConfiguration, chainId));
   }
 
   /**
@@ -84,17 +83,16 @@ public class ZkTracer implements LineCountingTracer {
    *
    * @param chain
    */
-  public ZkTracer(ChainConfig chain, BlockchainService blockchainService) {
+  public ZkTracer(ChainConfig chain) {
     loadOpcodes(chain.fork);
     this.chain = chain;
-    // checkArgument(blockchainService.getChainId().get().equals(chain.id));
     this.hub =
         switch (chain.fork) {
-          case LONDON -> new LondonHub(chain, null);
-          case PARIS -> new ParisHub(chain, null);
-          case SHANGHAI -> new ShanghaiHub(chain, null);
-          case CANCUN -> new CancunHub(chain, blockchainService);
-          case PRAGUE -> new PragueHub(chain, blockchainService);
+          case LONDON -> new LondonHub(chain);
+          case PARIS -> new ParisHub(chain);
+          case SHANGHAI -> new ShanghaiHub(chain);
+          case CANCUN -> new CancunHub(chain);
+          case PRAGUE -> new PragueHub(chain);
         };
     this.trace =
         switch (chain.fork) {

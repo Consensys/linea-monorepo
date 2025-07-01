@@ -65,7 +65,8 @@ public abstract class Blockdata implements Module {
             + (bigIntegerToBytes(chain.gasLimitMaximum).size() * 4) // for GASLIMIT
             + LLARGE // for CHAINID
             + LLARGE // for BASEFEE
-            + 1 // for BLOBBASEFEE
+        // TODO: we should add +1 here for BLOBBASEFEE (post Cancun), but we don't as limitless
+        // prover will be deployed before Cancun (and all this line counting will die)
         );
 
     euc.additionalRows.add(8);

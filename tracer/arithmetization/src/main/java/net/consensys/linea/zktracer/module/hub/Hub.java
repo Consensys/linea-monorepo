@@ -135,7 +135,6 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
-import org.hyperledger.besu.plugin.services.BlockchainService;
 
 @Slf4j
 @Accessors(fluent = true)
@@ -367,10 +366,10 @@ public abstract class Hub implements Module {
     return Stream.concat(getModulesToTrace().stream(), getTracelessModules().stream()).toList();
   }
 
-  public Hub(final ChainConfig chain, BlockchainService blockchainService) {
+  public Hub(final ChainConfig chain) {
     fork = chain.fork;
     checkState(chain.id.signum() >= 0);
-    final Address l2l1ContractAddress = chain.bridgeConfiguration.contract();
+    Address l2l1ContractAddress = chain.bridgeConfiguration.contract();
     final Bytes l2l1Topic = chain.bridgeConfiguration.topic();
     //
     if (l2l1ContractAddress.equals(TEST_DEFAULT.contract())) {
@@ -383,7 +382,7 @@ public abstract class Hub implements Module {
             blockTransactions, keccak, l2L1Logs, l2l1ContractAddress, LogTopic.of(l2l1Topic));
     shakiraData = new ShakiraData(wcp, sha256Blocks, keccak, ripemdBlocks);
     rlpAddr = new RlpAddr(this, trm, keccak);
-    blockdata = setBlockData(this, wcp, euc, chain, blockchainService);
+    blockdata = setBlockData(this, wcp, euc, chain);
     mmu = new Mmu(euc, wcp);
     mmio = new Mmio(mmu);
 
@@ -1046,8 +1045,7 @@ public abstract class Hub implements Module {
 
   protected abstract TxnData setTxnData();
 
-  protected abstract Blockdata setBlockData(
-      Hub hub, Wcp wcp, Euc euc, ChainConfig chain, BlockchainService blockchainService);
+  protected abstract Blockdata setBlockData(Hub hub, Wcp wcp, Euc euc, ChainConfig chain);
 
   protected abstract InstructionDecoder setInstructionDecoder();
 

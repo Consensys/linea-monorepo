@@ -26,11 +26,10 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.gascalculator.ShanghaiGasCalculator;
 import org.hyperledger.besu.evm.worldstate.WorldView;
-import org.hyperledger.besu.plugin.services.BlockchainService;
 
 public class ShanghaiHub extends ParisHub {
-  public ShanghaiHub(ChainConfig chain, BlockchainService blockchainService) {
-    super(chain, blockchainService);
+  public ShanghaiHub(ChainConfig chain) {
+    super(chain);
   }
 
   @Override

@@ -84,7 +84,7 @@ public class ToyExecutionEnvironmentV2 {
     return new ToyExecutionEnvironmentV2Builder()
         .unitTestsChain(testInfo.chainConfig)
         .testInfo(testInfo.testInfo)
-        .tracer(new ZkTracer(testInfo.chainConfig, null));
+        .tracer(new ZkTracer(testInfo.chainConfig));
   }
 
   public void run() {

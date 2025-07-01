@@ -38,7 +38,7 @@ public class BlakeRoundsTests extends TracerTestBase {
 
   @Test
   void checkWoCommit() {
-    final ZkTracer state = new ZkTracer(testInfo.chainConfig, null);
+    final ZkTracer state = new ZkTracer(testInfo.chainConfig);
     final BlakeRounds blakeRounds = state.getHub().blakeModexpData().blakeRounds();
 
     blakeRounds.addPrecompileLimit(ONE);
@@ -68,7 +68,7 @@ public class BlakeRoundsTests extends TracerTestBase {
 
   @Test
   void checkWithCommit() {
-    final ZkTracer state = new ZkTracer(testInfo.chainConfig, null);
+    final ZkTracer state = new ZkTracer(testInfo.chainConfig);
     final BlakeRounds blakeRounds = state.getHub().blakeModexpData().blakeRounds();
 
     blakeRounds.addPrecompileLimit(ONE);

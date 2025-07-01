@@ -59,7 +59,7 @@ public class MultiBlockExecutionEnvironment {
   public static MultiBlockExecutionEnvironment.MultiBlockExecutionEnvironmentBuilder builder(
       TestInfoWithChainConfig testInfo) {
     return new MultiBlockExecutionEnvironmentBuilder()
-        .tracer(new ZkTracer(testInfo.chainConfig, null))
+        .tracer(new ZkTracer(testInfo.chainConfig))
         .testsChain(testInfo.chainConfig);
   }
 
