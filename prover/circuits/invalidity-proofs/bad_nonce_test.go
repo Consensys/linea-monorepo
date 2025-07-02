@@ -8,9 +8,11 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	badnonce "github.com/consensys/linea-monorepo/prover/circuits/invalidity-proofs"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
+	ac "github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulator"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,8 +30,8 @@ func TestBadNonce(t *testing.T) {
 
 	// allocate the circuit for merkle tree
 	var circuit badnonce.BadNonceCircuit
-	lenProof := len(assignment.MerkleTree.Proofs.Siblings)
-	circuit.MerkleTree.Proofs.Siblings = make([]frontend.Variable, lenProof)
+	lenProof := len(assignment.MerkleProof.Proofs.Siblings)
+	circuit.MerkleProof.Proofs.Siblings = make([]frontend.Variable, lenProof)
 
 	// compile the circuit
 	scs, err := frontend.Compile(
@@ -77,7 +79,7 @@ func genWitness(t *testing.T, tcases []TestCases, config *smt.Config) badnonce.B
 	//generate witness for account and leafOpening
 	a := tcases[1].Account
 
-	account := badnonce.GnarkAccount{
+	account := types.GnarkAccount{
 		Nonce:    a.Nonce,
 		Balance:  a.Balance,
 		CodeSize: a.CodeSize,
@@ -88,10 +90,10 @@ func genWitness(t *testing.T, tcases []TestCases, config *smt.Config) badnonce.B
 	account.KeccakCodeHashMSB = *buf.SetBytes(a.KeccakCodeHash[16:])
 	account.KeccakCodeHashLSB = *buf.SetBytes(a.KeccakCodeHash[:16])
 
-	hval := accumulator.Hash(config, a)
+	hval := ac.Hash(config, a)
 
 	l := tcases[1].Leaf
-	leafOpening := badnonce.GnarkLeafOpening{
+	leafOpening := accumulator.GnarkLeafOpening{
 		Prev: l.Prev,
 		Next: l.Next,
 	}
@@ -101,7 +103,7 @@ func genWitness(t *testing.T, tcases []TestCases, config *smt.Config) badnonce.B
 
 	return badnonce.BadNonceCircuit{
 		TxNonce:     tcases[1].TxNonce,
-		MerkleTree:  witMerkle,
+		MerkleProof: witMerkle,
 		LeafOpening: leafOpening,
 		Account:     account,
 	}

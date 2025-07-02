@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+
+	"github.com/consensys/gnark/frontend"
 )
 
 // An Ethereum account represented with the zkTrie representation
@@ -18,6 +20,17 @@ type Account struct {
 	MimcCodeHash   Bytes32
 	KeccakCodeHash FullBytes32
 	CodeSize       int64
+}
+
+// GnarkAccount represent [Account] in gnark
+type GnarkAccount struct {
+	Nonce             frontend.Variable
+	Balance           frontend.Variable
+	StorageRoot       frontend.Variable
+	MimcCodeHash      frontend.Variable
+	KeccakCodeHashMSB frontend.Variable
+	KeccakCodeHashLSB frontend.Variable
+	CodeSize          frontend.Variable
 }
 
 func (a Account) WriteTo(w io.Writer) (int64, error) {

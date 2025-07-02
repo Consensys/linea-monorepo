@@ -1,6 +1,7 @@
 package accumulator
 
 import (
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
@@ -104,6 +105,14 @@ type LeafOpenings struct {
 	HVal ifaces.Column
 	Prev ifaces.Column
 	Next ifaces.Column
+}
+
+// GnarkLeafOpening represent [LeafOpenings] in gnark
+type GnarkLeafOpening struct {
+	Prev frontend.Variable
+	Next frontend.Variable
+	HKey frontend.Variable
+	HVal frontend.Variable
 }
 
 // Module module

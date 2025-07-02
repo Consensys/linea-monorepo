@@ -15,6 +15,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/go-playground/assert/v2"
 	"github.com/stretchr/testify/require"
@@ -117,29 +118,40 @@ func TestMimcCircuit(t *testing.T) {
 // it test the Mimc Hashing over [types.Account]
 func TestMimcAccount(t *testing.T) {
 
-	var buf field.Element
-	// generate Mimc witness for Hash(Account)
-	a := tcases[1].Account
+	var (
+		buf field.Element
+		// generate Mimc witness for Hash(Account)
+		a = tcases[1].Account
 
-	var witMimc badnonce.MimcCircuit
+		witMimc badnonce.MimcCircuit
 
-	account := badnonce.GnarkAccount{
-		Nonce:    a.Nonce,
-		Balance:  a.Balance,
-		CodeSize: a.CodeSize,
-	}
+		account = types.GnarkAccount{
+			Nonce:    a.Nonce,
+			Balance:  a.Balance,
+			CodeSize: a.CodeSize,
+		}
+		accountSlice = []frontend.Variable{}
+
+		config = &smt.Config{
+			HashFunc: hashtypes.MiMC,
+			Depth:    10,
+		}
+	)
 
 	account.StorageRoot = *buf.SetBytes(a.StorageRoot[:])
 	account.MimcCodeHash = *buf.SetBytes(a.MimcCodeHash[:])
 	account.KeccakCodeHashMSB = *buf.SetBytes(a.KeccakCodeHash[16:])
 	account.KeccakCodeHashLSB = *buf.SetBytes(a.KeccakCodeHash[:16])
 
-	config := &smt.Config{
-		HashFunc: hashtypes.MiMC,
-		Depth:    10,
-	}
-
-	witMimc.PreImage = badnonce.SliceFromStruct(account)
+	witMimc.PreImage = append(accountSlice,
+		account.Nonce,
+		account.Balance,
+		account.StorageRoot,
+		account.MimcCodeHash,
+		account.KeccakCodeHashMSB,
+		account.KeccakCodeHashLSB,
+		account.CodeSize,
+	)
 	hash := accumulator.Hash(config, a)
 	witMimc.Hash = *buf.SetBytes(hash[:])
 
