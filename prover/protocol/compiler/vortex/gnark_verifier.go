@@ -38,9 +38,8 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	}
 
 	// Collect all the commitments : rounds by rounds
-	startingRound := ctx.startingRound()
-	for round := startingRound; round <= ctx.MaxCommittedRound; round++ {
-		if ctx.RoundStatus[round-startingRound] == IsEmpty {
+	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		if ctx.RoundStatus[round] == IsEmpty {
 			continue // skip the dry rounds
 		}
 		rootSv := vr.GetColumn(ctx.MerkleRootName(round)) // len 1 smart vector

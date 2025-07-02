@@ -108,7 +108,7 @@ func TestVortexGnarkVerifier(t *testing.T) {
 	compiled := wizard.Compile(
 		define,
 		vortex.Compile(4,
-			vortex.WithOptionalSISHashingThreshold(1<<20))) // Set to a high value to disable SIS hashing, because gnark does not support SIS hashing
+			vortex.WithOptionalSISHashingThreshold(1 << 20))) // Set to a high value to disable SIS hashing, because gnark does not support SIS hashing
 	proof := wizard.Prove(compiled, prove)
 
 	// Just as a sanity check, do not run the Plonk
