@@ -62,7 +62,7 @@ func (as *Module) ConnectToStateSummary(comp *wizard.CompiledIOP, ss *statesumma
 	stateSummaryTable = append(stateSummaryTable, ss.AccumulatorStatement.StateDiff.HKey[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.AccumulatorStatement.StateDiff.InitialHVal[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.AccumulatorStatement.StateDiff.FinalHVal[:]...)
-	accSummaryTable = append(
+	stateSummaryTable = append(
 		stateSummaryTable,
 		ss.AccumulatorStatement.IsReadNonZero,
 		ss.AccumulatorStatement.IsReadZero,
