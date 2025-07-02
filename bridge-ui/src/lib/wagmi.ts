@@ -1,19 +1,36 @@
 import { http, createConfig } from "wagmi";
-import { CHAINS, CHAINS_IDS, CHAINS_RPC_URLS } from "@/constants";
+import { CHAINS, CHAINS_IDS, E2E_TEST_CHAINS, CHAINS_RPC_URLS, localL1Network, localL2Network } from "@/constants";
+import { config as appConfig } from "@/config";
 
-export const config = createConfig({
-  chains: CHAINS,
-  multiInjectedProviderDiscovery: false,
-  transports: generateWagmiTransports(CHAINS_IDS),
-});
+export const config = appConfig.e2eTestMode
+  ? createConfig({
+      chains: E2E_TEST_CHAINS,
+      multiInjectedProviderDiscovery: false,
+      transports: {
+        [localL1Network.id]: http(localL1Network.rpcUrls.default.http[0], { batch: true }),
+        [localL2Network.id]: http(localL2Network.rpcUrls.default.http[0], { batch: true }),
+      },
+    })
+  : createConfig({
+      chains: CHAINS,
+      multiInjectedProviderDiscovery: false,
+      transports: generateWagmiTransports(CHAINS_IDS),
+    });
 
 function generateWagmiTransports(chainIds: (typeof CHAINS_IDS)[number][]) {
   return chainIds.reduce(
     (acc, chainId) => {
+      // if (chainId === localL1Network.id) {
+      //   acc[chainId] = http(localL1Network.rpcUrls.default.http[0]);
+      // } else if (chainId === localL2Network.id) {
+      //   acc[chainId] = http(localL2Network.rpcUrls.default.http[0]);
+      // } else {
+      //   acc[chainId] = generateWagmiTransport(chainId);
+      // }
       acc[chainId] = generateWagmiTransport(chainId);
       return acc;
     },
-    {} as Record<(typeof chainIds)[number], ReturnType<typeof generateWagmiTransport>>,
+    {} as Record<(typeof CHAINS_IDS)[number], ReturnType<typeof http>>,
   );
 }
 

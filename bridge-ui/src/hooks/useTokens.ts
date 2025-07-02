@@ -12,6 +12,10 @@ const useTokens = (): Token[] => {
   return useMemo(() => {
     if (isUndefined(fromChain)) return [];
 
+    if (config.e2eTestMode && fromChain.localNetwork) {
+      return tokensList.SEPOLIA.filter((token) => token.symbol === "ETH");
+    }
+
     if (fromChain.testnet) {
       if (fromChain.layer !== ChainLayer.L2) {
         return tokensList.SEPOLIA.filter(
