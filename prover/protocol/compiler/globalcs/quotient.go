@@ -230,8 +230,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 			if !isNatural {
 				witness = pol.GetColAssignment(run)
 			}
-
-			witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil) //TODO@yao why witness is ext element
+			witness = sv.FFTInverseExt(witness, fft.DIF, false, 0, 0, nil) //TODO@yao why witness is ext element
 			coeffs.Store(name, witness)
 		})
 	})
@@ -335,7 +334,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 					// coset reevaluation.
 
 					v, _ := coeffs.Load(name)
-					reevaledRoot := sv.FFT(v.(sv.SmartVector), fft.DIT, false, ratio, share, localPool)
+					reevaledRoot := sv.FFTExt(v.(sv.SmartVector), fft.DIT, false, ratio, share, localPool)
 					computedReeval.Store(name, reevaledRoot)
 				})
 
@@ -364,7 +363,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 
 					if shifted, isShifted := pol.(column.Shifted); isShifted {
 						polName := pol.GetColID()
-						res := sv.SoftRotate(reevaledRoot.(sv.SmartVector), shifted.Offset)
+						res := sv.SoftRotateExt(reevaledRoot.(sv.SmartVector), shifted.Offset)
 						computedReeval.Store(polName, res)
 						return
 					}
