@@ -337,7 +337,13 @@ func TestSerdeIOP6(t *testing.T) {
 			globalcs.Compile,
 			univariates.Naturalize,
 			mpts.Compile(),
-			vortex.Compile(2, vortex.ForceNumOpenedColumns(4), vortex.WithSISParams(&ringsis.StdParams), vortex.PremarkAsSelfRecursed()),
+			vortex.Compile(
+				2,
+				vortex.ForceNumOpenedColumns(4),
+				vortex.WithSISParams(&ringsis.StdParams),
+				vortex.PremarkAsSelfRecursed(),
+				vortex.WithOptionalSISHashingThreshold(0),
+			),
 		},
 	}
 
@@ -345,7 +351,7 @@ func TestSerdeIOP6(t *testing.T) {
 
 		t.Run(fmt.Sprintf("case-%v", i), func(t *testing.T) {
 			comp1 := wizard.Compile(define1, s...)
-			runSerdeTest(t, comp1, fmt.Sprintf("iop7-recursion-comp1-%v", i), true, false)
+			runSerdeTest(t, comp1, fmt.Sprintf("iop6-recursion-comp1-%v", i), true, false)
 			define2 := func(build2 *wizard.Builder) {
 				recursion.DefineRecursionOf(build2.CompiledIOP, comp1, recursion.Parameters{
 					Name:        "test",
@@ -354,7 +360,7 @@ func TestSerdeIOP6(t *testing.T) {
 				})
 			}
 			comp2 := wizard.Compile(define2, dummy.CompileAtProverLvl())
-			runSerdeTest(t, comp2, fmt.Sprintf("iop7-recursion-comp2-%v", i), true, false)
+			runSerdeTest(t, comp2, fmt.Sprintf("iop6-recursion-comp2-%v", i), true, false)
 		})
 	}
 }
