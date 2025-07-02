@@ -29,12 +29,6 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 		// precomputed. Otherwise, it is the first root of the no SIS roots.
 		noSisRoots = []types.Bytes32{}
 		sisRoots   = []types.Bytes32{}
-		// Slice of true value of length equal to the number of no SIS round
-		// + 1 (if SIS is not applied to precomputed)
-		flagForNoSISRounds = []bool{}
-		// Slice of false value of length equal to the number of SIS round
-		// + 1 (if SIS is applied to precomputed)
-		flagForSISRounds = []bool{}
 	)
 
 	// Append the precomputed roots and the corresponding flag
@@ -47,10 +41,8 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 
 		if ctx.IsSISAppliedToPrecomputed() {
 			sisRoots = append(sisRoots, types.HashToBytes32(precompRootF))
-			flagForSISRounds = append(flagForSISRounds, false)
 		} else {
 			noSisRoots = append(noSisRoots, types.HashToBytes32(precompRootF))
-			flagForNoSISRounds = append(flagForNoSISRounds, true)
 		}
 	}
 	// Collect all the roots: rounds by rounds
@@ -61,18 +53,17 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 		for j := 0; j < 8; j++ {
 			rootF[j] = rootSv.Get(j)
 		}
+
 		// Append the isSISApplied flag
-		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
+		switch ctx.RoundStatus[round] {
+		case IsOnlyPoseidon2Applied:
 			noSisRoots = append(noSisRoots, types.HashToBytes32(rootF))
-			flagForNoSISRounds = append(flagForNoSISRounds, true)
-		} else if ctx.RoundStatus[round] == IsSISApplied {
+		case IsSISApplied:
 			sisRoots = append(sisRoots, types.HashToBytes32(rootF))
-			flagForSISRounds = append(flagForSISRounds, false)
 		}
 	}
-	// assign the roots and the IsSISReplaced flags
+	// assign the roots
 	roots := append(noSisRoots, sisRoots...)
-	//IsSISReplaced := append(flagForNoSISRounds, flagForSISRounds...)
 
 	proof := &vortex.OpeningProof{}
 	randomCoin := vr.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
@@ -98,7 +89,6 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 		OpeningProof: *proof,
 		RandomCoin:   randomCoin,
 		EntryList:    entryList,
-		//IsSISReplaced: IsSISReplaced, //TODO@yao@thomas: how to remove this flag without breaking the code?
 	})
 }
 
