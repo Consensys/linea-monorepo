@@ -28,6 +28,7 @@ public enum InstructionFamily {
   CONTEXT,
   ACCOUNT,
   COPY,
+  MCOPY,
   TRANSACTION,
   BATCH,
   STACK_RAM,

@@ -171,7 +171,8 @@ public enum OpCode {
   STATICCALL(EVM_INST_STATICCALL),
   REVERT(EVM_INST_REVERT),
   INVALID(EVM_INST_INVALID),
-  SELFDESTRUCT(EVM_INST_SELFDESTRUCT);
+  SELFDESTRUCT(EVM_INST_SELFDESTRUCT),
+  MCOPY(EVM_INST_MCOPY);
 
   private final int opcode;
 
@@ -245,6 +246,10 @@ public enum OpCode {
 
   public boolean isLog() {
     return getData().isLog();
+  }
+
+  public boolean isCopy() {
+    return getData().isCopy();
   }
 
   /** Returns whether the {@link OpCode} entails a contract creation. */

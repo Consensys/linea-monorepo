@@ -13,22 +13,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.opcode.stack;
+package net.consensys.linea.zktracer.module.mxp.moduleCall;
 
-public enum Pattern {
-  ZERO_ZERO,
-  ONE_ZERO,
-  TWO_ZERO,
-  THREE_ZERO,
-  ZERO_ONE,
-  ONE_ONE,
-  TWO_ONE,
-  THREE_ONE,
-  LOAD_STORE,
-  DUP,
-  SWAP,
-  LOG,
-  COPY,
-  CALL,
-  CREATE,
+import net.consensys.linea.zktracer.Trace;
+import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
+
+/** The parent class of this MXP Call is located in the Hub. */
+public class LondonMxpCall extends MxpCall {
+
+  public LondonMxpCall(Hub hub) {
+    super(hub);
+  }
+
+  protected void traceMayTriggerNonTrivialMmuOperationFromMxpx(Trace.Hub trace) {
+    trace.pMiscMxpMtntop(this.mayTriggerNontrivialMmuOperation);
+  }
 }

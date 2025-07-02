@@ -111,6 +111,10 @@ public record OpCodeData(
     return instructionFamily == LOG;
   }
 
+  public boolean isCopy() {
+    return instructionFamily == COPY;
+  }
+
   /**
    * Returns whether this instruction belong to the INVALID family.
    *

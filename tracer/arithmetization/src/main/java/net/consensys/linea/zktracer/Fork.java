@@ -47,4 +47,8 @@ public enum Fork {
   public static boolean isPostShanghai(Fork fork) {
     return fork.compareTo(SHANGHAI) >= 0;
   }
+
+  public static boolean isPostCancun(Fork fork) {
+    return fork.compareTo(CANCUN) >= 0;
+  }
 }

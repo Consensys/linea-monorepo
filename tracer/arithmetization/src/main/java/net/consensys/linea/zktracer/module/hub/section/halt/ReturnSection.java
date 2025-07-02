@@ -94,7 +94,7 @@ public class ReturnSection extends TraceSection
     returnScenarioFragment = new ReturnScenarioFragment();
     final ContextFragment currentContextFragment = ContextFragment.readCurrentContextData(hub);
     final ImcFragment firstImcFragment = ImcFragment.empty(hub);
-    final MxpCall mxpCall = new MxpCall(hub);
+    final MxpCall mxpCall = MxpCall.getMxpCallByFork(hub.fork, hub);
     firstImcFragment.callMxp(mxpCall);
 
     this.addStackAndFragments(

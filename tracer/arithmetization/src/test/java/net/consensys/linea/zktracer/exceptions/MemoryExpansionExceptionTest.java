@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.exceptions;
 
+import static net.consensys.linea.zktracer.Fork.isPostCancun;
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.MEMORY_EXPANSION_EXCEPTION;
 import static net.consensys.linea.zktracer.module.mxp.MxpTestUtils.opCodesType2;
 import static net.consensys.linea.zktracer.module.mxp.MxpTestUtils.opCodesType3;
@@ -32,6 +33,7 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.module.mxp.MxpTestUtils;
+import net.consensys.linea.zktracer.module.mxp.moduleOperation.LondonMxpOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,8 +57,15 @@ public class MemoryExpansionExceptionTest extends TracerTestBase {
     assertEquals(
         MEMORY_EXPANSION_EXCEPTION,
         bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+
     assertTrue(bytecodeRunner.getHub().mxp().operations().getLast().getMxpCall().isMxpx());
-    assertEquals(triggerRoob, bytecodeRunner.getHub().mxp().operations().getLast().isRoob());
+
+    // Check to do prior to Cancun fork
+    if (!isPostCancun(testInfo.chainConfig.fork)) {
+      LondonMxpOperation londonMxpOperation =
+          (LondonMxpOperation) bytecodeRunner.getHub().mxp().operations().getLast();
+      assertEquals(triggerRoob, londonMxpOperation.isRoob());
+    }
   }
 
   @Test
@@ -73,8 +82,15 @@ public class MemoryExpansionExceptionTest extends TracerTestBase {
     assertEquals(
         MEMORY_EXPANSION_EXCEPTION,
         bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+
     assertTrue(bytecodeRunner.getHub().mxp().operations().getLast().getMxpCall().isMxpx());
-    assertEquals(triggerRoob, bytecodeRunner.getHub().mxp().operations().getLast().isRoob());
+
+    // Check to do prior to Cancun fork
+    if (!isPostCancun(testInfo.chainConfig.fork)) {
+      LondonMxpOperation londonMxpOperation =
+          (LondonMxpOperation) bytecodeRunner.getHub().mxp().operations().getLast();
+      assertEquals(triggerRoob, londonMxpOperation.isRoob());
+    }
   }
 
   private static Stream<Arguments> memoryExpansionExceptionTestSource() {

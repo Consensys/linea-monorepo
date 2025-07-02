@@ -13,22 +13,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.opcode.stack;
+package net.consensys.linea.zktracer.module.mxp.moduleOperation;
 
-public enum Pattern {
-  ZERO_ZERO,
-  ONE_ZERO,
-  TWO_ZERO,
-  THREE_ZERO,
-  ZERO_ONE,
-  ONE_ONE,
-  TWO_ONE,
-  THREE_ONE,
-  LOAD_STORE,
-  DUP,
-  SWAP,
-  LOG,
-  COPY,
-  CALL,
-  CREATE,
+import lombok.Getter;
+import net.consensys.linea.zktracer.Trace;
+import net.consensys.linea.zktracer.container.ModuleOperation;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
+
+@Getter
+public abstract class MxpOperation extends ModuleOperation {
+
+  final MxpCall mxpCall;
+
+  public MxpOperation(MxpCall mxpCall) {
+    this.mxpCall = mxpCall;
+  }
+
+  public abstract void trace(int stamp, Trace.Mxp trace);
 }

@@ -13,22 +13,27 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.opcode.stack;
+package net.consensys.linea.zktracer.module.mxp.moduleCall;
 
-public enum Pattern {
-  ZERO_ZERO,
-  ONE_ZERO,
-  TWO_ZERO,
-  THREE_ZERO,
-  ZERO_ONE,
-  ONE_ONE,
-  TWO_ONE,
-  THREE_ONE,
-  LOAD_STORE,
-  DUP,
-  SWAP,
-  LOG,
-  COPY,
-  CALL,
-  CREATE,
+import static net.consensys.linea.zktracer.TraceCancun.Mxp.CT_MAX_MXPX;
+
+import net.consensys.linea.zktracer.module.hub.Hub;
+
+public class CancunMxpxMxpCall extends CancunNotMSizeNorTrivialMxpCall {
+
+  public CancunMxpxMxpCall(Hub hub, boolean mxpx) {
+    super(hub);
+    this.mxpx = mxpx;
+    // Nothing to compute for MXPX scenario
+  }
+
+  @Override
+  public boolean isMxpxScenario() {
+    return true;
+  }
+
+  @Override
+  public int ctMax() {
+    return CT_MAX_MXPX;
+  }
 }
