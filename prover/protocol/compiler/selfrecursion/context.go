@@ -306,7 +306,7 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 				ctx.SelfRecursionCnt,
 			)
 		}
-		// Mark them as Committed
+
 		comp.Columns.SetStatus(opened.GetColID(), column.Ignored)
 	}
 
