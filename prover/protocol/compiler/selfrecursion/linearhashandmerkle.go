@@ -82,17 +82,17 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	}
 
 	ctx.Comp.RegisterProverAction(roundQ, &LinearHashMerkleProverAction{
-		ctx:                           ctx,
-		concatDhQSize:                 concatDhQSize,
-		leavesSize:                    leavesSize,
-		leavesSizeUnpadded:            leavesSizeUnpadded,
-		sisRoundLeavesSize:            sisRoundLeavesSize,
-		sisRoundLeavesSizeUnpadded:    sisRoundLeavesSizeUnpadded,
-		nonSisRoundLeavesSizeUnpadded: nonSisRoundLeavesSizeUnpadded,
-		numNonSisRound:                numRoundNonSis,
-		numSisRound:                   numRoundSis,
-		hashValuesSize:                mimcHashColumnSize,
-		hashPreimagesSize:             mimcPreimageColumnsSize,
+		Ctx:                           ctx,
+		ConcatDhQSize:                 concatDhQSize,
+		LeavesSize:                    leavesSize,
+		LeavesSizeUnpadded:            leavesSizeUnpadded,
+		SisRoundLeavesSize:            sisRoundLeavesSize,
+		SisRoundLeavesSizeUnpadded:    sisRoundLeavesSizeUnpadded,
+		NonSisRoundLeavesSizeUnpadded: nonSisRoundLeavesSizeUnpadded,
+		NumNonSisRound:                numRoundNonSis,
+		NumSisRound:                   numRoundSis,
+		HashValuesSize:                mimcHashColumnSize,
+		HashPreimagesSize:             mimcPreimageColumnsSize,
 	})
 
 	depth := utils.Log2Ceil(ctx.VortexCtx.NumEncodedCols())
@@ -237,17 +237,17 @@ func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 
 // Implements the prover action interface
 type LinearHashMerkleProverAction struct {
-	ctx                           *SelfRecursionCtx
-	concatDhQSize                 int
-	leavesSize                    int
-	leavesSizeUnpadded            int
-	sisRoundLeavesSize            int
-	sisRoundLeavesSizeUnpadded    int
-	nonSisRoundLeavesSizeUnpadded int
-	numNonSisRound                int
-	numSisRound                   int
-	hashValuesSize                int
-	hashPreimagesSize             []int
+	Ctx                           *SelfRecursionCtx
+	ConcatDhQSize                 int
+	LeavesSize                    int
+	LeavesSizeUnpadded            int
+	SisRoundLeavesSize            int
+	SisRoundLeavesSizeUnpadded    int
+	NonSisRoundLeavesSizeUnpadded int
+	NumNonSisRound                int
+	NumSisRound                   int
+	HashValuesSize                int
+	HashPreimagesSize             []int
 }
 
 // linearHashMerkleProverActionBuilder builds the assignment parameters
@@ -298,41 +298,41 @@ type linearHashMerkleProverActionBuilder struct {
 // linearHashMerkleProverActionBuilder
 func newLinearHashMerkleProverActionBuilder(a *LinearHashMerkleProverAction) *linearHashMerkleProverActionBuilder {
 	lmp := linearHashMerkleProverActionBuilder{}
-	lmp.ConcatDhQ = make([]field.Element, a.sisRoundLeavesSizeUnpadded*a.ctx.VortexCtx.SisParams.OutputSize())
-	lmp.MerkleLeaves = make([]field.Element, 0, a.leavesSizeUnpadded)
-	lmp.MerklePositions = make([]field.Element, 0, a.leavesSizeUnpadded)
-	lmp.MerkleRoots = make([]field.Element, 0, a.leavesSizeUnpadded)
-	lmp.MerkleSisLeaves = make([]field.Element, 0, a.sisRoundLeavesSizeUnpadded)
-	lmp.MerkleSisPositions = make([]field.Element, 0, a.sisRoundLeavesSizeUnpadded)
-	lmp.MerkleSisRoots = make([]field.Element, 0, a.sisRoundLeavesSizeUnpadded)
-	lmp.MerkleNonSisLeaves = make([]field.Element, 0, a.nonSisRoundLeavesSizeUnpadded)
-	lmp.MerkleNonSisPositions = make([]field.Element, 0, a.nonSisRoundLeavesSizeUnpadded)
-	lmp.MerkleNonSisRoots = make([]field.Element, 0, a.nonSisRoundLeavesSizeUnpadded)
-	lmp.SisLeaves = make([][]field.Element, 0, a.numSisRound)
-	lmp.NonSisLeaves = make([][]field.Element, 0, a.numNonSisRound)
-	lmp.NonSisHashPreimages = make([][]field.Element, 0, a.numNonSisRound)
-	lmp.SisHashSize = a.ctx.VortexCtx.SisParams.OutputSize()
-	lmp.NumOpenedCol = a.ctx.VortexCtx.NbColsToOpen()
-	lmp.TotalNumRounds = a.ctx.VortexCtx.MaxCommittedRound
+	lmp.ConcatDhQ = make([]field.Element, a.SisRoundLeavesSizeUnpadded*a.Ctx.VortexCtx.SisParams.OutputSize())
+	lmp.MerkleLeaves = make([]field.Element, 0, a.LeavesSizeUnpadded)
+	lmp.MerklePositions = make([]field.Element, 0, a.LeavesSizeUnpadded)
+	lmp.MerkleRoots = make([]field.Element, 0, a.LeavesSizeUnpadded)
+	lmp.MerkleSisLeaves = make([]field.Element, 0, a.SisRoundLeavesSizeUnpadded)
+	lmp.MerkleSisPositions = make([]field.Element, 0, a.SisRoundLeavesSizeUnpadded)
+	lmp.MerkleSisRoots = make([]field.Element, 0, a.SisRoundLeavesSizeUnpadded)
+	lmp.MerkleNonSisLeaves = make([]field.Element, 0, a.NonSisRoundLeavesSizeUnpadded)
+	lmp.MerkleNonSisPositions = make([]field.Element, 0, a.NonSisRoundLeavesSizeUnpadded)
+	lmp.MerkleNonSisRoots = make([]field.Element, 0, a.NonSisRoundLeavesSizeUnpadded)
+	lmp.SisLeaves = make([][]field.Element, 0, a.NumSisRound)
+	lmp.NonSisLeaves = make([][]field.Element, 0, a.NumNonSisRound)
+	lmp.NonSisHashPreimages = make([][]field.Element, 0, a.NumNonSisRound)
+	lmp.SisHashSize = a.Ctx.VortexCtx.SisParams.OutputSize()
+	lmp.NumOpenedCol = a.Ctx.VortexCtx.NbColsToOpen()
+	lmp.TotalNumRounds = a.Ctx.VortexCtx.MaxCommittedRound
 	lmp.CommittedRound = 0
 	return &lmp
 }
 
 // Run implements the prover action for the linear hash and merkle
 func (a *LinearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
-	openingIndices := run.GetRandomCoinIntegerVec(a.ctx.Coins.Q.Name)
+	openingIndices := run.GetRandomCoinIntegerVec(a.Ctx.Coins.Q.Name)
 	lmp := newLinearHashMerkleProverActionBuilder(a)
 
 	// Handle the precomputed round
-	if a.ctx.VortexCtx.IsNonEmptyPrecomputed() {
+	if a.Ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		processPrecomputedRound(a, lmp, run, openingIndices)
 	}
 
 	// Handle the SIS and non SIS rounds
 	processRound(a, lmp, run, openingIndices)
 
-	numCommittedRound := a.ctx.VortexCtx.NumCommittedRounds()
-	if a.ctx.VortexCtx.IsNonEmptyPrecomputed() {
+	numCommittedRound := a.Ctx.VortexCtx.NumCommittedRounds()
+	if a.Ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		numCommittedRound += 1
 	}
 
@@ -346,23 +346,23 @@ func (a *LinearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 	lmp.MerklePositions = append(lmp.MerkleNonSisPositions, lmp.MerkleSisPositions...)
 
 	// Assign columns using IDs from ctx.Columns
-	run.AssignColumn(a.ctx.Columns.MerkleProofsLeaves.GetColID(), smartvectors.RightZeroPadded(lmp.MerkleLeaves, a.leavesSize))
-	run.AssignColumn(a.ctx.Columns.MerkleProofPositions.GetColID(), smartvectors.RightZeroPadded(lmp.MerklePositions, a.leavesSize))
-	run.AssignColumn(a.ctx.Columns.MerkleRoots.GetColID(), smartvectors.RightZeroPadded(lmp.MerkleRoots, a.leavesSize))
+	run.AssignColumn(a.Ctx.Columns.MerkleProofsLeaves.GetColID(), smartvectors.RightZeroPadded(lmp.MerkleLeaves, a.LeavesSize))
+	run.AssignColumn(a.Ctx.Columns.MerkleProofPositions.GetColID(), smartvectors.RightZeroPadded(lmp.MerklePositions, a.LeavesSize))
+	run.AssignColumn(a.Ctx.Columns.MerkleRoots.GetColID(), smartvectors.RightZeroPadded(lmp.MerkleRoots, a.LeavesSize))
 	// The below assignments are only done if SIS is applied to any of the rounds
-	if a.ctx.VortexCtx.NumCommittedRoundsSis() > 0 || a.ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+	if a.Ctx.VortexCtx.NumCommittedRoundsSis() > 0 || a.Ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 		// Assign the concatenated SIS hashes
-		run.AssignColumn(a.ctx.Columns.ConcatenatedDhQ.GetColID(), smartvectors.RightZeroPadded(lmp.ConcatDhQ, a.concatDhQSize))
-		for i := 0; i < a.numSisRound; i++ {
+		run.AssignColumn(a.Ctx.Columns.ConcatenatedDhQ.GetColID(), smartvectors.RightZeroPadded(lmp.ConcatDhQ, a.ConcatDhQSize))
+		for i := 0; i < a.NumSisRound; i++ {
 			// Assign the SIS round leaves
-			run.AssignColumn(a.ctx.Columns.SisRoundLeaves[i].GetColID(), smartvectors.NewRegular(lmp.SisLeaves[i]))
+			run.AssignColumn(a.Ctx.Columns.SisRoundLeaves[i].GetColID(), smartvectors.NewRegular(lmp.SisLeaves[i]))
 		}
 	}
 
 	// Assign the hash values and preimages for the non SIS rounds
-	for i := 0; i < a.numNonSisRound; i++ {
-		run.AssignColumn(a.ctx.MIMCMetaData.NonSisLeaves[i].GetColID(), smartvectors.RightZeroPadded(lmp.NonSisLeaves[i], a.hashValuesSize))
-		run.AssignColumn(a.ctx.MIMCMetaData.ConcatenatedHashPreimages[i].GetColID(), smartvectors.RightZeroPadded(lmp.NonSisHashPreimages[i], a.hashPreimagesSize[i]))
+	for i := 0; i < a.NumNonSisRound; i++ {
+		run.AssignColumn(a.Ctx.MIMCMetaData.NonSisLeaves[i].GetColID(), smartvectors.RightZeroPadded(lmp.NonSisLeaves[i], a.HashValuesSize))
+		run.AssignColumn(a.Ctx.MIMCMetaData.ConcatenatedHashPreimages[i].GetColID(), smartvectors.RightZeroPadded(lmp.NonSisHashPreimages[i], a.HashPreimagesSize[i]))
 	}
 }
 
@@ -375,9 +375,9 @@ func processPrecomputedRound(
 	openingIndices []int,
 ) {
 	// The merkle root for the precomputed round
-	rootPrecomp := a.ctx.Columns.PrecompRoot.GetColAssignment(run).Get(0)
-	if a.ctx.VortexCtx.IsSISAppliedToPrecomputed() {
-		precompColSisHash := a.ctx.VortexCtx.Items.Precomputeds.DhWithMerkle
+	rootPrecomp := a.Ctx.Columns.PrecompRoot.GetColAssignment(run).Get(0)
+	if a.Ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+		precompColSisHash := a.Ctx.VortexCtx.Items.Precomputeds.DhWithMerkle
 		precompSisLeaves := make([]field.Element, 0, len(openingIndices))
 		for i, selectedCol := range openingIndices {
 			srcStart := selectedCol * lmp.SisHashSize
@@ -394,15 +394,15 @@ func processPrecomputedRound(
 		lmp.CommittedRound++
 		lmp.TotalNumRounds++
 	} else {
-		precompColMiMCHash := a.ctx.VortexCtx.Items.Precomputeds.DhWithMerkle
+		precompColMiMCHash := a.Ctx.VortexCtx.Items.Precomputeds.DhWithMerkle
 		precompMimcHashValues := make([]field.Element, 0, lmp.NumOpenedCol)
-		precompMimcHashPreimages := make([]field.Element, 0, lmp.NumOpenedCol*len(a.ctx.VortexCtx.Items.Precomputeds.PrecomputedColums))
+		precompMimcHashPreimages := make([]field.Element, 0, lmp.NumOpenedCol*len(a.Ctx.VortexCtx.Items.Precomputeds.PrecomputedColums))
 		for _, selectedCol := range openingIndices {
 			srcStart := selectedCol
 			// MiMC hash is a single value
 			mimcHash := precompColMiMCHash[srcStart : srcStart+1]
 			leaf := mimcHash[0]
-			mimcPreimage := a.ctx.VortexCtx.GetPrecomputedSelectedCol(selectedCol)
+			mimcPreimage := a.Ctx.VortexCtx.GetPrecomputedSelectedCol(selectedCol)
 			// Also compute the leaf from the column
 			// to check sanity
 			leaf_ := mimc.HashVec(mimcPreimage)
@@ -439,8 +439,8 @@ func processRound(
 		nonSisRoundCount     = 0
 		sisRoundCount        = 0
 	)
-	if a.numNonSisRound > 0 {
-		nonSisOpenedColsName = a.ctx.VortexCtx.SelectedColumnNonSISName()
+	if a.NumNonSisRound > 0 {
+		nonSisOpenedColsName = a.Ctx.VortexCtx.SelectedColumnNonSISName()
 		nonSisOpenedColsSV, found := run.State.TryGet(nonSisOpenedColsName)
 		if !found {
 			utils.Panic("nonSisOpenedColsName %v not found", nonSisOpenedColsName)
@@ -450,13 +450,13 @@ func processRound(
 		// SIS is not applied to the precomputed.
 		// However, we already have it at the time of processing
 		// the precomputed round, so we need to exclude it
-		if a.ctx.VortexCtx.IsNonEmptyPrecomputed() && !a.ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+		if a.Ctx.VortexCtx.IsNonEmptyPrecomputed() && !a.Ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 			nonSisOpenedCols = nonSisOpenedCols[1:]
 		}
 	}
 	// If SIS is applied to the precomputed, we need to
 	// increase the sisRoundCount by 1
-	if a.ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+	if a.Ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 		sisRoundCount++
 	}
 
@@ -464,18 +464,18 @@ func processRound(
 	numRound := lmp.TotalNumRounds
 	// We need to decrease the number of rounds by 1
 	// as precomputed round is considered seperately
-	if a.ctx.VortexCtx.IsNonEmptyPrecomputed() {
+	if a.Ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		numRound -= 1
 	}
 	for round := 0; round <= numRound; round++ {
-		if a.ctx.VortexCtx.RoundStatus[round] == vortex.IsSISApplied {
-			colSisHashName := a.ctx.VortexCtx.SisHashName(round)
+		if a.Ctx.VortexCtx.RoundStatus[round] == vortex.IsSISApplied {
+			colSisHashName := a.Ctx.VortexCtx.SisHashName(round)
 			colSisHashSV, found := run.State.TryGet(colSisHashName)
 			if !found {
 				utils.Panic("colSisHashName %v not found", colSisHashName)
 			}
 
-			rooth := a.ctx.Columns.Rooth[round].GetColAssignment(run).Get(0)
+			rooth := a.Ctx.Columns.Rooth[round].GetColAssignment(run).Get(0)
 			colSisHash := colSisHashSV.([]field.Element)
 
 			sisRoundLeaves := make([]field.Element, 0, lmp.NumOpenedCol)
@@ -495,9 +495,9 @@ func processRound(
 			sisRoundCount++
 			run.State.TryDel(colSisHashName)
 			lmp.CommittedRound++
-		} else if a.ctx.VortexCtx.RoundStatus[round] == vortex.IsOnlyMiMCApplied {
+		} else if a.Ctx.VortexCtx.RoundStatus[round] == vortex.IsOnlyMiMCApplied {
 			// Fetch the MiMC hash values
-			colMimcHashName := a.ctx.VortexCtx.MIMCHashName(round)
+			colMimcHashName := a.Ctx.VortexCtx.MIMCHashName(round)
 			colMimcHashSV, found := run.State.TryGet(colMimcHashName)
 			if !found {
 				utils.Panic("colMimcHashName %v not found", colMimcHashName)
@@ -505,9 +505,9 @@ func processRound(
 			colMimcHash := colMimcHashSV.([]field.Element)
 
 			// Fetch the root for the round
-			rooth := a.ctx.Columns.Rooth[round].GetColAssignment(run).Get(0)
+			rooth := a.Ctx.Columns.Rooth[round].GetColAssignment(run).Get(0)
 			mimcHashValues := make([]field.Element, 0, lmp.NumOpenedCol)
-			mimcHashPreimages := make([]field.Element, 0, lmp.NumOpenedCol*a.ctx.VortexCtx.GetNumPolsForNonSisRounds(round))
+			mimcHashPreimages := make([]field.Element, 0, lmp.NumOpenedCol*a.Ctx.VortexCtx.GetNumPolsForNonSisRounds(round))
 			for i, selectedCol := range openingIndices {
 				srcStart := selectedCol
 				// MiMC hash is a single value
@@ -532,7 +532,7 @@ func processRound(
 			run.State.TryDel(colMimcHashName)
 			lmp.CommittedRound++
 			nonSisRoundCount++
-		} else if a.ctx.VortexCtx.RoundStatus[round] == vortex.IsEmpty {
+		} else if a.Ctx.VortexCtx.RoundStatus[round] == vortex.IsEmpty {
 			continue
 		}
 	}
