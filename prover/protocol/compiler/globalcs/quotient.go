@@ -1,6 +1,7 @@
 package globalcs
 
 import (
+	"fmt"
 	"math/big"
 	"reflect"
 	"runtime"
@@ -16,6 +17,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -426,7 +428,8 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 				// Note that this will panic if the expression contains "no commitment"
 				// This should be caught already by the constructor of the constraint.
 				quotientShare := ctx.AggregateExpressionsBoard[j].EvaluateMixed(evalInputs, pool)
-				quotientShare = sv.ScalarMul(quotientShare, annulatorInvVals[i])
+				quotientShare = smartvectors_mixed.ScalarMul(quotientShare, annulatorInvVals[i])
+				fmt.Printf("quotientShare=%v\n", quotientShare.Pretty())
 				run.AssignColumn(ctx.QuotientShares[j][share].GetColID(), quotientShare)
 			})
 

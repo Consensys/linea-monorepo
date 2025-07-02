@@ -55,6 +55,21 @@ func LiftToExt(vec sv.SmartVector) sv.SmartVector {
 	panic("unsupported type")
 }
 
+func Mul(vecs ...sv.SmartVector) sv.SmartVector {
+	coeffs := make([]int, len(vecs))
+	for i := range coeffs {
+		coeffs[i] = 1
+	}
+
+	return ProductMixed(coeffs, vecs)
+}
+
+// ScalarMul returns a smart-vector obtained by  multiplying a scalar with a [SmartVector].
+//   - the output smart-vector has the same size as the input vector
+func ScalarMul(vec sv.SmartVector, x field.Element) sv.SmartVector {
+	xVec := sv.NewConstant(x, vec.Len())
+	return Mul(vec, xVec)
+}
 func executeFuncOnBaseExt(
 	vecs []sv.SmartVector,
 	baseOperation func(vec ...sv.SmartVector) sv.SmartVector,
