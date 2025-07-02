@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	badnonce "github.com/consensys/linea-monorepo/prover/circuits/invalidity-proofs"
@@ -57,16 +56,15 @@ func TestMerkleProofs(t *testing.T) {
 	proofs, leafs, root := getMerkleProof(t)
 
 	var witness badnonce.MerkleProofCircuit
-	var buf fr.Element
 
 	witness.Proofs.Siblings = make([]frontend.Variable, len(proofs.Siblings))
 	for j := 0; j < len(proofs.Siblings); j++ {
-		witness.Proofs.Siblings[j] = *buf.SetBytes(proofs.Siblings[j][:])
+		witness.Proofs.Siblings[j] = proofs.Siblings[j][:]
 	}
 	witness.Proofs.Path = proofs.Path
-	witness.Leaf = *buf.SetBytes(leafs[:])
+	witness.Leaf = leafs[:]
 
-	witness.Root = *buf.SetBytes(root[:])
+	witness.Root = root[:]
 
 	// compile circuit
 	var circuit badnonce.MerkleProofCircuit

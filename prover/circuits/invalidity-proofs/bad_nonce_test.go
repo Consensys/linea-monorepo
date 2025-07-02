@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	badnonce "github.com/consensys/linea-monorepo/prover/circuits/invalidity-proofs"
@@ -28,10 +27,9 @@ func TestBadNonce(t *testing.T) {
 	// generate witness
 	assignment := genWitness(t, tcases, config)
 
-	// allocate the circuit for merkle tree
+	// allocate the circuit for merkleProof
 	var circuit badnonce.BadNonceCircuit
-	lenProof := len(assignment.MerkleProof.Proofs.Siblings)
-	circuit.MerkleProof.Proofs.Siblings = make([]frontend.Variable, lenProof)
+	circuit.MerkleProof.Proofs.Siblings = make([]frontend.Variable, config.Depth)
 
 	// compile the circuit
 	scs, err := frontend.Compile(
@@ -62,19 +60,17 @@ func genWitness(t *testing.T, tcases []TestCases, config *smt.Config) badnonce.B
 
 	//generate merkle tree witMerkle
 	var witMerkle badnonce.MerkleProofCircuit
-	var buf fr.Element
 
 	witMerkle.Proofs.Siblings = make([]frontend.Variable, len(proof.Siblings))
 	for j := 0; j < len(proof.Siblings); j++ {
-		buf.SetBytes(proof.Siblings[j][:])
-		witMerkle.Proofs.Siblings[j] = buf.String()
+
+		// witMerkle.Proofs.Siblings[j] = *buf.SetBytes(proof.Siblings[j][:])
+		witMerkle.Proofs.Siblings[j] = proof.Siblings[j][:]
 	}
 	witMerkle.Proofs.Path = proof.Path
-	buf.SetBytes(leaf[:])
-	witMerkle.Leaf = buf.String()
+	witMerkle.Leaf = leaf[:]
 
-	buf.SetBytes(root[:])
-	witMerkle.Root = buf.String()
+	witMerkle.Root = root[:]
 
 	//generate witness for account and leafOpening
 	a := tcases[1].Account
@@ -85,10 +81,10 @@ func genWitness(t *testing.T, tcases []TestCases, config *smt.Config) badnonce.B
 		CodeSize: a.CodeSize,
 	}
 
-	account.StorageRoot = *buf.SetBytes(a.StorageRoot[:])
-	account.MimcCodeHash = *buf.SetBytes(a.MimcCodeHash[:])
-	account.KeccakCodeHashMSB = *buf.SetBytes(a.KeccakCodeHash[16:])
-	account.KeccakCodeHashLSB = *buf.SetBytes(a.KeccakCodeHash[:16])
+	account.StorageRoot = a.StorageRoot[:]
+	account.MimcCodeHash = a.MimcCodeHash[:]
+	account.KeccakCodeHashMSB = a.KeccakCodeHash[16:]
+	account.KeccakCodeHashLSB = a.KeccakCodeHash[:16]
 
 	hval := ac.Hash(config, a)
 
@@ -98,8 +94,8 @@ func genWitness(t *testing.T, tcases []TestCases, config *smt.Config) badnonce.B
 		Next: l.Next,
 	}
 
-	leafOpening.HKey = *buf.SetBytes(l.HKey[:])
-	leafOpening.HVal = *buf.SetBytes(hval[:])
+	leafOpening.HKey = l.HKey[:]
+	leafOpening.HVal = hval[:]
 
 	return badnonce.BadNonceCircuit{
 		TxNonce:     tcases[1].TxNonce,

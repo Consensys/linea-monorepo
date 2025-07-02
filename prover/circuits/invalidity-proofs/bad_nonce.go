@@ -1,9 +1,16 @@
 package badnonce
 
 import (
+	"math/big"
+
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/circuits"
+	ac "github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
+	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulator"
+	"github.com/crate-crypto/go-ipa/bandersnatch/fr"
+	"github.com/sirupsen/logrus"
 )
 
 // BadNonceCircuit defines the circuit for the transaction with a bad nonce.
@@ -75,4 +82,94 @@ func (circuit *BadNonceCircuit) Define(api frontend.API) error {
 	//@azam TBD: check that FTx.Nonce is related to  FTx.Hash  and then in the interconnection we show that
 	//FTx.Hash is included in the RollingHash
 	return nil
+}
+
+// the depth of the tree should be already assigned
+func (c BadNonceCircuit) Allocate(config Config) {
+	c.MerkleProof.Proofs.Siblings = make([]frontend.Variable, config.Depth)
+}
+
+func (c *BadNonceCircuit) assign(assi AssignInputs) CircuitInvadity {
+
+	// assign the merkle proof
+	leaf, _ := assi.Tree.GetLeaf(assi.Pos)
+	proof, _ := assi.Tree.Prove(assi.Pos)
+	root := assi.Tree.Root
+
+	var witMerkle MerkleProofCircuit
+	var buf fr.Element
+
+	witMerkle.Proofs.Siblings = make([]frontend.Variable, len(proof.Siblings))
+	for j := 0; j < len(proof.Siblings); j++ {
+		buf.SetBytes(proof.Siblings[j][:])
+		witMerkle.Proofs.Siblings[j] = buf.String()
+	}
+	witMerkle.Proofs.Path = proof.Path
+	buf.SetBytes(leaf[:])
+	witMerkle.Leaf = buf.String()
+
+	buf.SetBytes(root[:])
+	witMerkle.Root = buf.String()
+
+	//generate witness for account and leafOpening
+	a := assi.Account
+
+	account := types.GnarkAccount{
+		Nonce:    a.Nonce,
+		Balance:  a.Balance,
+		CodeSize: a.CodeSize,
+	}
+
+	account.StorageRoot = *buf.SetBytes(a.StorageRoot[:])
+	account.MimcCodeHash = *buf.SetBytes(a.MimcCodeHash[:])
+	account.KeccakCodeHashMSB = *buf.SetBytes(a.KeccakCodeHash[16:])
+	account.KeccakCodeHashLSB = *buf.SetBytes(a.KeccakCodeHash[:16])
+
+	hval := ac.Hash(assi.Tree.Config, a)
+
+	l := assi.LeafOpening
+	leafOpening := accumulator.GnarkLeafOpening{
+		Prev: l.Prev,
+		Next: l.Next,
+	}
+
+	leafOpening.HKey = *buf.SetBytes(l.HKey[:])
+	leafOpening.HVal = *buf.SetBytes(hval[:])
+
+	res := CircuitInvadity{
+		subCircuit: BadNonceCircuit{
+			TxNonce:     assi.Transaction.Nonce(),
+			MerkleProof: witMerkle,
+			LeafOpening: leafOpening,
+			Account:     account,
+		},
+	}
+
+	// assign the functional public inputs
+	res.FuncInputs.Assign(assi.FuncInputs)
+
+	return res
+
+}
+
+func (c BadNonceCircuit) MakeProof(setup circuits.Setup, assi AssignInputs, FuncInputs public_input.Invalidity) string {
+	assignment := c.assign(assi)
+
+	//@azam what options should I add?
+	proof, err := circuits.ProveCheck(
+		&setup,
+		&assignment,
+	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	logrus.Infof("generated circuit proof `%++v` for input `%v`", proof, assignment.PublicInput.(*big.Int).String())
+
+	// Write the serialized proof
+	return circuits.SerializeProofRaw(proof)
+}
+func (c BadNonceCircuit) Compile(config Config) {
+	c.Allocate(config)
 }
