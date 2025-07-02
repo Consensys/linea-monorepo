@@ -5,14 +5,12 @@ import (
 	"strings"
 
 	//cGkr "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/gkr"
-	"github.com/consensys/gnark/constraint/solver"
+
 	gateGkr "github.com/consensys/gnark/constraint/solver/gkrgates"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/gkrapi"
 
 	apiGkr "github.com/consensys/gnark/std/gkrapi/gkr"
-	"github.com/consensys/gnark/std/hash"
-	gmimc "github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/multicommit"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -23,22 +21,6 @@ var (
 	numGates     int = prefetchSize + len(mimc.Constants)
 	gateNames    []string
 )
-
-func init() {
-	// Registers the names of the GKR gates into the global GKR registry.
-	createGateNames()
-	registerGates()
-
-	// Registers the mimc hash function in the hash builder registry.
-	hash.Register(0, func(api frontend.API) (hash.FieldHasher, error) {
-		h, err := gmimc.NewMiMC(api)
-		return &h, err
-	})
-
-	// Registers the hasher to be used in the GKR prover
-	//cs.RegisterHashBuilder("mimc", mimc.NewMiMC)
-	solver.RegisterHint(mimcHintfunc)
-}
 
 // writePaddedHex appends the integer `n` (assumedly less than 1<<(4*nbDigits))
 // into `sbb` formatted: (1) in hexadecimal, (2) left padded with zeroes so that

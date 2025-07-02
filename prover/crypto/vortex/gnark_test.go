@@ -2,6 +2,8 @@
 
 package vortex
 
+/*TODO@yao
+
 import (
 	// "github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	// "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -412,3 +414,4 @@ func makeMimcHasherfunc(api frontend.API) (hash.FieldHasher, error) {
 	h, err := gmimc.NewMiMC(api)
 	return &h, err
 }
+*/
