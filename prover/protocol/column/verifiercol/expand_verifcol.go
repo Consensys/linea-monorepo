@@ -20,8 +20,7 @@ type ExpandedVerifCol struct {
 }
 
 func (ex ExpandedVerifCol) IsBase() bool {
-	//TODO implement me
-	panic("implement me")
+	return ex.Verifiercol.IsBase()
 }
 
 func (ex ExpandedVerifCol) GetColAssignmentAtBase(run ifaces.Runtime, pos int) (field.Element, error) {

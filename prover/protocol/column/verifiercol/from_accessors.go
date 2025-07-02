@@ -30,8 +30,7 @@ type FromAccessors struct {
 }
 
 func (f FromAccessors) IsBase() bool {
-	//TODO implement me
-	panic("implement me")
+	return f.Accessors[0].IsBase()
 }
 
 func (f FromAccessors) GetColAssignmentAtBase(run ifaces.Runtime, pos int) (field.Element, error) {

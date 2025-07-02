@@ -49,15 +49,12 @@ func TestStitcherLocalWithPeriodicSample(t *testing.T) {
 	testStitcher(t, 64, 256, localWithPeriodicSample(256, 8, 7))
 }
 
-/*
-TODO@yao
+func TestSplitterGlobalWithVerifColAndPerriodic(t *testing.T) {
+	testStitcher(t, 8, 64, globalWithVerifColAndPeriodic(8, 4, 0))
+	testStitcher(t, 64, 128, globalWithVerifColAndPeriodic(256, 8, 1))
+	testStitcher(t, 8, 16, globalWithVerifColAndPeriodic(256, 8, 7))
+}
 
-	func TestSplitterGlobalWithVerifColAndPerriodic(t *testing.T) {
-		testStitcher(t, 8, 64, globalWithVerifColAndPeriodic(8, 4, 0))
-		testStitcher(t, 64, 128, globalWithVerifColAndPeriodic(256, 8, 1))
-		testStitcher(t, 8, 16, globalWithVerifColAndPeriodic(256, 8, 7))
-	}
-*/
 func TestLocalEvalWithStatus(t *testing.T) {
 	// Set log level to Info to capture detailed logs during the test
 	logrus.SetLevel(logrus.DebugLevel)
