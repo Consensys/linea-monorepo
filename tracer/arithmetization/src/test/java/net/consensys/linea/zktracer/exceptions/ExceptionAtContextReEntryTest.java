@@ -38,7 +38,7 @@ import org.junit.jupiter.api.Test;
  *
  * <p><b>Note.</b> All exceptions that we test are <b>stackUnderflowException</b>'s.
  */
-public class ExceptionAtContextReEntry extends TracerTestBase {
+public class ExceptionAtContextReEntryTest extends TracerTestBase {
 
   /**
    * {@link #firstInstructionAfterResumingFromUnsuccessfulMessageCallIsExceptional} tests what
