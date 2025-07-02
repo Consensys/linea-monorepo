@@ -46,9 +46,5 @@ async function fetchBridgeEvents(
     config.isCctpEnabled ? fetchCctpBridgeEvents(historyStoreActions, address, fromChain, toChain, tokens) : [],
   ]);
 
-  console.log("ethEvents:", ethEvents);
-  console.log("erc20Events:", erc20Events);
-  console.log("cctpEvents:", cctpEvents);
-
   return [...ethEvents, ...erc20Events, ...cctpEvents];
 }

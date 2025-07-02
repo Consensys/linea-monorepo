@@ -11,12 +11,14 @@ import {
   Token,
   MessageSentABIEvent,
   MessageSentLogEvent,
+  TransactionStatus,
 } from "@/types";
 import { formatOnChainMessageStatus } from "./formatOnChainMessageStatus";
 import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
 import { isBlockTooOld } from "./isBlockTooOld";
 import { config } from "@/config";
 import { localL1Network, localL2Network } from "@/constants";
+import { isNativeBridgeMessage } from "../message";
 
 export async function fetchETHBridgeEvents(
   historyStoreActions: HistoryActionsForCompleteTxCaching,
@@ -82,7 +84,14 @@ export async function fetchETHBridgeEvents(
       const cacheKey = getCompleteTxStoreKey(fromChain.id, log.transactionHash);
       const cachedCompletedTx = historyStoreActions.getCompleteTx(cacheKey);
       if (cachedCompletedTx) {
-        transactionsMap.set(uniqueKey, cachedCompletedTx);
+        if (cachedCompletedTx.status !== TransactionStatus.COMPLETED) {
+          if (isNativeBridgeMessage(cachedCompletedTx.message)) {
+            const messageStatus = await contract.getMessageStatus(cachedCompletedTx.message.messageHash);
+            transactionsMap.set(uniqueKey, { ...cachedCompletedTx, status: formatOnChainMessageStatus(messageStatus) });
+          }
+        } else {
+          transactionsMap.set(uniqueKey, cachedCompletedTx);
+        }
         return;
       }
 

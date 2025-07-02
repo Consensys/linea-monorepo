@@ -32,7 +32,7 @@ const useLineaSDK = () => {
     const sdk = new LineaSDK({
       l1RpcUrl,
       l2RpcUrl,
-      network: `linea-${fromChain.testnet ? "sepolia" : "mainnet"}` as Network,
+      network: fromChain.localNetwork ? "localhost" : (`linea-${fromChain.testnet ? "sepolia" : "mainnet"}` as Network),
       mode: "read-only",
     });
 
