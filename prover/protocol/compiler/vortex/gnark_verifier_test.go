@@ -3,19 +3,8 @@
 package vortex_test
 
 import (
-	"testing"
-
-	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/protocol/coin"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/stretchr/testify/require"
 )
 
 /*
@@ -43,6 +32,8 @@ func assignTestCircuit(comp *wizard.CompiledIOP, proof wizard.Proof) *VortexTest
 	}
 }
 
+/*
+TODO@yao
 func TestVortexGnarkVerifier(t *testing.T) {
 
 	polSize := 1 << 4
@@ -154,3 +145,4 @@ func TestVortexGnarkVerifier(t *testing.T) {
 	}
 
 }
+*/

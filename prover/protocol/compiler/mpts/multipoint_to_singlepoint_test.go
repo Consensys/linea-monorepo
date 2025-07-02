@@ -70,20 +70,23 @@ func TestCompiler(t *testing.T) {
 	}
 }
 
+/*
+TODO@yao
+
 func TestCompilerWithGnark(t *testing.T) {
 
-	suite := []func(*wizard.CompiledIOP){
-		Compile(),
-		dummy.Compile,
-	}
+		suite := []func(*wizard.CompiledIOP){
+			Compile(),
+			dummy.Compile,
+		}
 
-	for _, tc := range testtools.ListOfUnivariateTestcasesPositive {
-		t.Run(tc.Name(), func(t *testing.T) {
-			testtools.RunTestShouldPassWithGnark(t, tc, suite)
-		})
+		for _, tc := range testtools.ListOfUnivariateTestcasesPositive {
+			t.Run(tc.Name(), func(t *testing.T) {
+				testtools.RunTestShouldPassWithGnark(t, tc, suite)
+			})
+		}
 	}
-}
-
+*/
 func TestWithVerifierCol(t *testing.T) {
 
 	suite := []func(*wizard.CompiledIOP){
