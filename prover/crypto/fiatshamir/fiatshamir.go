@@ -150,35 +150,6 @@ func RandomFext(h hash.StateStorer) fext.Element {
 	return res
 }
 
-func RandomFromSeed(h hash.StateStorer, seed field.Element, name string) field.Element {
-
-	bName := []byte(name)
-	hasher, _ := blake2b.New256(nil) //?? TODO @Thomas use proper hash to field
-	hasher.Write(bName)
-	bName = hasher.Sum(nil)
-
-	var bnToFr field.Element // reduction mod r...
-	bnToFr.SetBytes(bName)
-	bName = bnToFr.Marshal()
-
-	// seed = compress(name || seed)
-	backupState := h.State() // ??
-	h.SetState(seed.Marshal())
-	if _, err := h.Write(bName); err != nil {
-		panic(err)
-	}
-	bRes := h.Sum(nil)
-	var res field.Element
-	res.SetBytes(bRes)
-
-	err := h.SetState(backupState)
-	if err != nil {
-		panic(err)
-	}
-
-	return res
-}
-
 // TODO@yao: maybe we want 'RandomFextFromSeed', which generates and returns a single fext element from the seed and the given name.
 
 func RandomManyIntegers(h hash.StateStorer, num, upperBound int) []int {

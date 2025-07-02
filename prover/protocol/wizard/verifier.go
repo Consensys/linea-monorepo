@@ -303,7 +303,7 @@ func (run *VerifierRuntime) GetRandomCoinField(name coin.Name) field.Element {
 		and that it has the correct type
 	*/
 	infos := run.Spec.Coins.Data(name)
-	if infos.Type != coin.Field && infos.Type != coin.FieldFromSeed {
+	if infos.Type != coin.Field && infos.Type != coin.FieldFromSeed && infos.Type != coin.FieldExt {
 		utils.Panic("Coin %v was registered with type %v but got %v", name, infos.Type, coin.Field)
 	}
 	// If this panics, it means we generates the coins wrongly

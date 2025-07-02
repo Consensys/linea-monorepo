@@ -30,7 +30,7 @@ type FromCoinAccessor struct {
 // function panics.
 func NewFromCoin(info coin.Info) ifaces.Accessor {
 	if info.Type != coin.Field && info.Type != coin.FieldFromSeed && info.Type != coin.FieldExt {
-		utils.Panic("NewFromCoin expects a [coin.Field] or a [coin.FieldFromSeed] `info`, got `%v`", info.Type)
+		utils.Panic("NewFromCoin expects a [coin.Field], a [coin.FieldFromSeed] or a [coin.FieldExt] `info`, got `%v`", info.Type)
 	}
 	return &FromCoinAccessor{
 		Info: info,
