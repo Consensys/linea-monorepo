@@ -231,7 +231,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 				witness = pol.GetColAssignment(run)
 			}
 
-			witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil)
+			witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil) //TODO@yao why witness is ext element
 			coeffs.Store(name, witness)
 		})
 	})
@@ -405,7 +405,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 						value, _ := computedReeval.Load(metadata.GetColID())
 						evalInputs[k] = value.(sv.SmartVector)
 					case coin.Info:
-						evalInputs[k] = sv.NewConstant(run.GetRandomCoinField(metadata.Name), ctx.DomainSize)
+						evalInputs[k] = sv.NewConstantExt(run.GetRandomCoinFieldExt(metadata.Name), ctx.DomainSize)
 					case variables.X:
 						evalInputs[k] = metadata.EvalCoset(ctx.DomainSize, i, maxRatio, true)
 					case variables.PeriodicSample:

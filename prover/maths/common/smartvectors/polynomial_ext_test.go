@@ -166,6 +166,46 @@ func TestBivariatePolynomialExt(t *testing.T) {
 
 }
 */
+
+func TestBatchEvaluateLagrangeExt(t *testing.T) {
+
+	x := fext.RandomElement()
+
+	nbPoly := 8
+	size := 64
+
+	polys := make([][]fext.Element, nbPoly)
+	for i := 0; i < nbPoly; i++ {
+		polys[i] = make([]fext.Element, size)
+		for j := 0; j < size; j++ {
+			polys[i][j].SetRandom()
+		}
+	}
+
+	evalCan := make([]fext.Element, nbPoly)
+	for i := 0; i < nbPoly; i++ {
+		evalCan[i] = polyext.Eval(polys[i], x)
+	}
+
+	d := fft.NewDomain(uint64(size))
+	polyLagranges := make([][]fext.Element, nbPoly)
+	copy(polyLagranges, polys)
+
+	polyLagrangeSv := make([]SmartVector, nbPoly)
+	for i := 0; i < nbPoly; i++ {
+		d.FFTExt(polyLagranges[i], fft.DIF)
+		fft.BitReverse(polyLagranges[i])
+		polyLagrangeSv[i] = NewRegularExt(polyLagranges[i])
+
+	}
+	evalLag := BatchEvaluateLagrangeExt(polyLagrangeSv, x)
+
+	// check the result
+	for i := 0; i < nbPoly; i++ {
+		require.Equal(t, evalLag[i].String(), evalCan[i].String())
+	}
+
+}
 func TestBatchInterpolationWithConstantVectorExt(t *testing.T) {
 	n := 4
 	randPoly := vectorext.ForTest(1, 2, 3, 4)
