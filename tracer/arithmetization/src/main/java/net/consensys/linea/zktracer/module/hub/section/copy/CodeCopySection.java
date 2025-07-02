@@ -41,7 +41,7 @@ public class CodeCopySection extends TraceSection {
 
     // triggerOob = false
     // triggerMxp = true
-    final MxpCall mxpCall = new MxpCall(hub);
+    final MxpCall mxpCall = MxpCall.getMxpCallByFork(hub.fork, hub);
     imcFragment.callMxp(mxpCall);
 
     final short exceptions = hub.pch().exceptions();

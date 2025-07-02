@@ -50,7 +50,7 @@ public class ReturnDataCopySection extends TraceSection {
       return;
     }
 
-    final MxpCall mxpCall = new MxpCall(hub);
+    final MxpCall mxpCall = MxpCall.getMxpCallByFork(hub.fork, hub);
     imcFragment.callMxp(mxpCall);
 
     checkArgument(mxpCall.mxpx == Exceptions.memoryExpansionException(exceptions));

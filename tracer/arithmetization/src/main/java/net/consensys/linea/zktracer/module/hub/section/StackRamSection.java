@@ -49,7 +49,7 @@ public class StackRamSection extends TraceSection {
     final ImcFragment imcFragment = ImcFragment.empty(hub);
     this.addFragment(imcFragment);
 
-    final MxpCall mxpCall = new MxpCall(hub);
+    final MxpCall mxpCall = MxpCall.getMxpCallByFork(hub.fork, hub);
     imcFragment.callMxp(mxpCall);
 
     checkArgument(mxpCall.isMxpx() == Exceptions.memoryExpansionException(exceptions));

@@ -38,7 +38,7 @@ public class CallDataCopySection extends TraceSection {
 
     // triggerOob = false
     // triggerMxp = true
-    final MxpCall mxpCall = new MxpCall(hub);
+    final MxpCall mxpCall = MxpCall.getMxpCallByFork(hub.fork, hub);
     imcFragment.callMxp(mxpCall);
 
     // the only allowable exceptions are

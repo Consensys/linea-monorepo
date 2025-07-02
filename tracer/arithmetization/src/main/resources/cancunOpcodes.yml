@@ -623,6 +623,18 @@ opcodes:
       staticGas: G_WARM_ACCESS
       forbiddenInStatic: true
       flag2: true
+  - mnemonic: MCOPY
+    value: 0x5e
+    instructionFamily: MCOPY
+    stackSettings:
+      pattern: THREE_ZERO
+      alpha: 0
+      delta: 3
+      staticGas: G_VERY_LOW
+    billing:
+      byWord:
+        type: TYPE_4
+        wordPrice: G_COPY
   - mnemonic: PUSH0
     value: 0x5f
     instructionFamily: PUSH_POP

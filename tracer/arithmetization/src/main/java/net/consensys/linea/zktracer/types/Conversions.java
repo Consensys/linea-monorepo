@@ -54,6 +54,10 @@ public class Conversions {
     return input ? 1 : 0;
   }
 
+  public static long booleanToLong(final boolean input) {
+    return input ? 1L : 0L;
+  }
+
   public static boolean bigIntegerToBoolean(BigInteger n) {
     if (!n.equals(BigInteger.ONE) && !n.equals(BigInteger.ZERO)) {
       throw new IllegalArgumentException(

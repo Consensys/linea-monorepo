@@ -13,28 +13,24 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.mxp;
+package net.consensys.linea.zktracer.module.mxp.moduleOperation;
 
 import static com.google.common.base.Preconditions.*;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_MEMORY;
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE_MO;
-import static net.consensys.linea.zktracer.TraceLondon.Mxp.CT_MAX_NON_TRIVIAL;
-import static net.consensys.linea.zktracer.TraceLondon.Mxp.CT_MAX_NON_TRIVIAL_BUT_MXPX;
-import static net.consensys.linea.zktracer.TraceLondon.Mxp.CT_MAX_TRIVIAL;
+import static net.consensys.linea.zktracer.TraceLondon.Mxp.*;
 import static net.consensys.linea.zktracer.module.Util.max;
+import static net.consensys.linea.zktracer.module.mxp.MxpUtils.memoryCost;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
-import static org.hyperledger.besu.evm.internal.Words.clampedAdd;
-import static org.hyperledger.besu.evm.internal.Words.clampedMultiply;
 
 import java.math.BigInteger;
 import java.util.Arrays;
 
 import lombok.Getter;
 import net.consensys.linea.zktracer.Trace;
-import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
+import net.consensys.linea.zktracer.module.mxp.moduleCall.LondonMxpCall;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.gas.BillingRate;
@@ -48,12 +44,12 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
 @Getter
-public class MxpOperation extends ModuleOperation {
+public class LondonMxpOperation extends MxpOperation {
   public static final BigInteger TWO_POW_128 = BigInteger.ONE.shiftLeft(128);
   public static final BigInteger TWO_POW_32 = BigInteger.ONE.shiftLeft(32);
 
-  @Getter final MxpCall mxpCall;
   private final int contextNumber;
+  private final LondonMxpCall londonMxpCall;
 
   private BigInteger maxOffset1 = BigInteger.ZERO;
   private BigInteger maxOffset2 = BigInteger.ZERO;
@@ -89,23 +85,19 @@ public class MxpOperation extends ModuleOperation {
   private long quadCost = 0;
   private long linCost = 0;
 
-  public MxpOperation(final MxpCall mxpCall) {
-
-    final Hub hub = mxpCall.hub;
+  public LondonMxpOperation(final MxpCall mxpCall) {
+    super(mxpCall);
+    // We cast the mxpCall to a LondonMxpCall, to keep the same behavior as in the following forks
+    // MxpCall and LondonMxpCall are strictly the same
+    this.londonMxpCall = (LondonMxpCall) mxpCall;
+    final Hub hub = this.londonMxpCall.hub;
     final MessageFrame frame = hub.messageFrame();
-
-    this.mxpCall = mxpCall;
-    this.mxpCall.setOpCodeData(hub.opCodeData());
-    this.mxpCall.setDeploys(
-        mxpCall.getOpCodeData().mnemonic() == OpCode.RETURN & hub.currentFrame().isDeployment());
-    this.mxpCall.setMemorySizeInWords(frame.memoryWordSize());
     this.wordsNew = frame.memoryWordSize(); // will (may) be updated later
     this.cMem = memoryCost(frame.memoryWordSize());
     this.cMemNew = memoryCost(frame.memoryWordSize()); // will (may) be updated later
     this.contextNumber = hub.currentFrame().contextNumber();
-    this.typeMxp = mxpCall.opCodeData.billing().type();
+    this.typeMxp = this.londonMxpCall.getOpCodeData().billing().type();
 
-    setOffsetsAndSizes();
     setRoob();
     setNoOperation();
     setMaxOffset1and2();
@@ -119,7 +111,7 @@ public class MxpOperation extends ModuleOperation {
     setMtntop();
 
     // "tracing" the remaining fields of the MxpCall
-    mxpCall.setGasMxp(getGasMxp());
+    londonMxpCall.setGasMxp(getGasMxp());
   }
 
   @Override
@@ -159,70 +151,24 @@ public class MxpOperation extends ModuleOperation {
     Arrays.fill(byteR, UnsignedByte.of(0));
   }
 
-  private void setOffsetsAndSizes() {
-    final MessageFrame frame = this.mxpCall.hub.messageFrame();
-    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
-
-    switch (opCode) {
-      case SHA3, LOG0, LOG1, LOG2, LOG3, LOG4, RETURN, REVERT -> {
-        mxpCall.setOffset1(EWord.of(frame.getStackItem(0)));
-        mxpCall.setSize1(EWord.of(frame.getStackItem(1)));
-      }
-      case MSIZE -> {}
-      case CALLDATACOPY, CODECOPY, RETURNDATACOPY -> {
-        mxpCall.setOffset1(EWord.of(frame.getStackItem(0)));
-        mxpCall.setSize1(EWord.of(frame.getStackItem(2)));
-      }
-      case EXTCODECOPY -> {
-        mxpCall.setOffset1(EWord.of(frame.getStackItem(1)));
-        mxpCall.setSize1(EWord.of(frame.getStackItem(3)));
-      }
-      case MLOAD, MSTORE, MSTORE8 -> mxpCall.setOffset1(EWord.of(frame.getStackItem(0)));
-      case CREATE, CREATE2 -> {
-        mxpCall.setOffset1(EWord.of(frame.getStackItem(1)));
-        mxpCall.setSize1(EWord.of(frame.getStackItem(2)));
-      }
-      case CALL, CALLCODE -> {
-        EWord offset1 = EWord.of(frame.getStackItem(3));
-        EWord size1 = EWord.of(frame.getStackItem(4));
-        EWord offset2 = EWord.of(frame.getStackItem(5));
-        EWord size2 = EWord.of(frame.getStackItem(6));
-
-        mxpCall.setOffset1(offset1);
-        mxpCall.setSize1(size1);
-        mxpCall.setOffset2(offset2);
-        mxpCall.setSize2(size2);
-      }
-      case DELEGATECALL, STATICCALL -> {
-        EWord offset1 = EWord.of(frame.getStackItem(2));
-        EWord size1 = EWord.of(frame.getStackItem(3));
-        EWord offset2 = EWord.of(frame.getStackItem(4));
-        EWord size2 = EWord.of(frame.getStackItem(5));
-
-        mxpCall.setOffset1(offset1);
-        mxpCall.setSize1(size1);
-        mxpCall.setOffset2(offset2);
-        mxpCall.setSize2(size2);
-      }
-      default -> throw new IllegalStateException("Unexpected value: " + opCode);
-    }
-  }
-
   /** get ridiculously out of bounds. */
   protected void setRoob() {
     roob =
         switch (typeMxp) {
-          case TYPE_2, TYPE_3 -> mxpCall.getOffset1().toUnsignedBigInteger().compareTo(TWO_POW_128)
+          case TYPE_2, TYPE_3 -> londonMxpCall
+                  .getOffset1()
+                  .toUnsignedBigInteger()
+                  .compareTo(TWO_POW_128)
               >= 0;
-          case TYPE_4 -> mxpCall.getSize1().toUnsignedBigInteger().compareTo(TWO_POW_128) >= 0
-              || (mxpCall.getOffset1().toUnsignedBigInteger().compareTo(TWO_POW_128) >= 0
-                  && !mxpCall.getSize1().toUnsignedBigInteger().equals(BigInteger.ZERO));
-          case TYPE_5 -> mxpCall.getSize1().toUnsignedBigInteger().compareTo(TWO_POW_128) >= 0
-              || (mxpCall.getOffset1().toUnsignedBigInteger().compareTo(TWO_POW_128) >= 0
-                  && !mxpCall.getSize1().toUnsignedBigInteger().equals(BigInteger.ZERO))
-              || (mxpCall.getSize2().toUnsignedBigInteger().compareTo(TWO_POW_128) >= 0
-                  || (mxpCall.getOffset2().toUnsignedBigInteger().compareTo(TWO_POW_128) >= 0
-                      && !mxpCall.getSize2().toUnsignedBigInteger().equals(BigInteger.ZERO)));
+          case TYPE_4 -> londonMxpCall.getSize1().toUnsignedBigInteger().compareTo(TWO_POW_128) >= 0
+              || (londonMxpCall.getOffset1().toUnsignedBigInteger().compareTo(TWO_POW_128) >= 0
+                  && !londonMxpCall.getSize1().toUnsignedBigInteger().equals(BigInteger.ZERO));
+          case TYPE_5 -> londonMxpCall.getSize1().toUnsignedBigInteger().compareTo(TWO_POW_128) >= 0
+              || (londonMxpCall.getOffset1().toUnsignedBigInteger().compareTo(TWO_POW_128) >= 0
+                  && !londonMxpCall.getSize1().toUnsignedBigInteger().equals(BigInteger.ZERO))
+              || (londonMxpCall.getSize2().toUnsignedBigInteger().compareTo(TWO_POW_128) >= 0
+                  || (londonMxpCall.getOffset2().toUnsignedBigInteger().compareTo(TWO_POW_128) >= 0
+                      && !londonMxpCall.getSize2().toUnsignedBigInteger().equals(BigInteger.ZERO)));
           default -> false;
         };
   }
@@ -235,16 +181,16 @@ public class MxpOperation extends ModuleOperation {
     noOperation =
         switch (typeMxp) {
           case TYPE_1 -> true;
-          case TYPE_4 -> mxpCall.getSize1().isZero();
-          case TYPE_5 -> mxpCall.getSize1().isZero() && mxpCall.getSize2().isZero();
+          case TYPE_4 -> londonMxpCall.getSize1().isZero();
+          case TYPE_5 -> londonMxpCall.getSize1().isZero() && londonMxpCall.getSize2().isZero();
           default -> false;
         };
   }
 
   private void setMtntop() {
-    final boolean mxpx = mxpCall.isMxpx();
-    mxpCall.setMayTriggerNontrivialMmuOperation(
-        typeMxp == MxpType.TYPE_4 && !mxpx && mxpCall.getSize1().loBigInt().signum() > 0);
+    final boolean mxpx = londonMxpCall.isMxpx();
+    londonMxpCall.setMayTriggerNontrivialMmuOperation(
+        typeMxp == MxpType.TYPE_4 && !mxpx && londonMxpCall.getSize1().loBigInt().signum() > 0);
   }
 
   /** set max offsets 1 and 2. */
@@ -252,33 +198,33 @@ public class MxpOperation extends ModuleOperation {
     if (getMxpExecutionPath() != mxpExecutionPath.TRIVIAL) {
       switch (typeMxp) {
         case TYPE_2 -> maxOffset1 =
-            mxpCall.getOffset1().toUnsignedBigInteger().add(BigInteger.valueOf(31));
-        case TYPE_3 -> maxOffset1 = mxpCall.getOffset1().toUnsignedBigInteger();
+            londonMxpCall.getOffset1().toUnsignedBigInteger().add(BigInteger.valueOf(31));
+        case TYPE_3 -> maxOffset1 = londonMxpCall.getOffset1().toUnsignedBigInteger();
         case TYPE_4 -> {
-          if (!mxpCall.getSize1().toUnsignedBigInteger().equals(BigInteger.ZERO)) {
+          if (!londonMxpCall.getSize1().toUnsignedBigInteger().equals(BigInteger.ZERO)) {
             maxOffset1 =
-                mxpCall
+                londonMxpCall
                     .getOffset1()
                     .toUnsignedBigInteger()
-                    .add(mxpCall.getSize1().toUnsignedBigInteger())
+                    .add(londonMxpCall.getSize1().toUnsignedBigInteger())
                     .subtract(BigInteger.ONE);
           }
         }
         case TYPE_5 -> {
-          if (!mxpCall.getSize1().toUnsignedBigInteger().equals(BigInteger.ZERO)) {
+          if (!londonMxpCall.getSize1().toUnsignedBigInteger().equals(BigInteger.ZERO)) {
             maxOffset1 =
-                mxpCall
+                londonMxpCall
                     .getOffset1()
                     .toUnsignedBigInteger()
-                    .add(mxpCall.getSize1().toUnsignedBigInteger())
+                    .add(londonMxpCall.getSize1().toUnsignedBigInteger())
                     .subtract(BigInteger.ONE);
           }
-          if (!mxpCall.getSize2().toUnsignedBigInteger().equals(BigInteger.ZERO)) {
+          if (!londonMxpCall.getSize2().toUnsignedBigInteger().equals(BigInteger.ZERO)) {
             maxOffset2 =
-                mxpCall
+                londonMxpCall
                     .getOffset2()
                     .toUnsignedBigInteger()
-                    .add(mxpCall.getSize2().toUnsignedBigInteger())
+                    .add(londonMxpCall.getSize2().toUnsignedBigInteger())
                     .subtract(BigInteger.ONE);
           }
         }
@@ -289,29 +235,18 @@ public class MxpOperation extends ModuleOperation {
   /** set max offset and mxpx. */
   protected void setMaxOffsetAndMxpx() {
     if (roob || noOperation) {
-      mxpCall.setMxpx(roob);
+      londonMxpCall.setMxpx(roob);
     } else {
       // choose the max value
       maxOffset = max(maxOffset1, maxOffset2);
-      mxpCall.setMxpx(maxOffset.compareTo(TWO_POW_32) >= 0);
+      londonMxpCall.setMxpx(maxOffset.compareTo(TWO_POW_32) >= 0);
     }
   }
 
   public void setExpands() {
-    if (!roob && !noOperation && !mxpCall.isMxpx()) {
-      expands = accA.compareTo(BigInteger.valueOf(mxpCall.getMemorySizeInWords())) > 0;
+    if (!roob && !noOperation && !londonMxpCall.isMxpx()) {
+      expands = accA.compareTo(BigInteger.valueOf(londonMxpCall.getMemorySizeInWords())) > 0;
     }
-  }
-
-  // This is a copy and past from FrontierGasCalculator.java
-  private static long memoryCost(final long length) {
-    final long lengthSquare = clampedMultiply(length, length);
-    final long base =
-        (lengthSquare == Long.MAX_VALUE)
-            ? clampedMultiply(length / 512, length)
-            : lengthSquare / 512;
-
-    return clampedAdd(clampedMultiply(GAS_CONST_G_MEMORY, length), base);
   }
 
   private long getLinCost(OpCodeData opCodeData, long sizeInBytes) {
@@ -354,7 +289,7 @@ public class MxpOperation extends ModuleOperation {
     if (roob) {
       return;
     }
-    if (mxpCall.isMxpx()) {
+    if (londonMxpCall.isMxpx()) {
       if (maxOffset1.compareTo(TWO_POW_32) >= 0) {
         acc1 = maxOffset1.subtract(TWO_POW_32);
       } else {
@@ -379,9 +314,9 @@ public class MxpOperation extends ModuleOperation {
   protected void setAcc4() {
     if (this.getMxpExecutionPath() == mxpExecutionPath.NON_TRIVIAL) {
       if (expands) {
-        acc4 = accA.subtract(BigInteger.valueOf(mxpCall.getMemorySizeInWords() + 1));
+        acc4 = accA.subtract(BigInteger.valueOf(londonMxpCall.getMemorySizeInWords() + 1));
       } else {
-        acc4 = BigInteger.valueOf(mxpCall.getMemorySizeInWords()).subtract(accA);
+        acc4 = BigInteger.valueOf(londonMxpCall.getMemorySizeInWords()).subtract(accA);
       }
     }
   }
@@ -393,14 +328,15 @@ public class MxpOperation extends ModuleOperation {
       }
 
       accW =
-          mxpCall
+          londonMxpCall
               .getSize1()
               .toUnsignedBigInteger()
               .add(BigInteger.valueOf(31))
               .divide(BigInteger.valueOf(32));
 
       final BigInteger r =
-          accW.multiply(BigInteger.valueOf(32)).subtract(mxpCall.getSize1().toUnsignedBigInteger());
+          accW.multiply(BigInteger.valueOf(32))
+              .subtract(londonMxpCall.getSize1().toUnsignedBigInteger());
 
       // r in [0,31]
       UnsignedByte rByte = UnsignedByte.of(r.toByteArray()[r.toByteArray().length - 1]);
@@ -420,7 +356,7 @@ public class MxpOperation extends ModuleOperation {
     if (this.isRoob() || this.isNoOperation()) {
       return mxpExecutionPath.TRIVIAL;
     }
-    if (mxpCall.mxpx) {
+    if (londonMxpCall.mxpx) {
       return mxpExecutionPath.NON_TRIVIAL_BUT_MXPX;
     }
     return mxpExecutionPath.NON_TRIVIAL;
@@ -483,26 +419,27 @@ public class MxpOperation extends ModuleOperation {
   }
 
   private void setWordsNew(final MessageFrame frame) {
-    if (getMxpExecutionPath() == MxpOperation.mxpExecutionPath.NON_TRIVIAL && expands) {
+    if (getMxpExecutionPath() == LondonMxpOperation.mxpExecutionPath.NON_TRIVIAL && expands) {
       switch (getTypeMxp()) {
         case TYPE_1 -> wordsNew =
-            frame.calculateMemoryExpansion(Words.clampedToLong(mxpCall.getOffset1()), 0);
+            frame.calculateMemoryExpansion(Words.clampedToLong(londonMxpCall.getOffset1()), 0);
         case TYPE_2 -> wordsNew =
-            frame.calculateMemoryExpansion(Words.clampedToLong(mxpCall.getOffset1()), 32);
+            frame.calculateMemoryExpansion(Words.clampedToLong(londonMxpCall.getOffset1()), 32);
         case TYPE_3 -> wordsNew =
-            frame.calculateMemoryExpansion(Words.clampedToLong(mxpCall.getOffset1()), 1);
+            frame.calculateMemoryExpansion(Words.clampedToLong(londonMxpCall.getOffset1()), 1);
         case TYPE_4 -> wordsNew =
             frame.calculateMemoryExpansion(
-                Words.clampedToLong(mxpCall.getOffset1()), Words.clampedToLong(mxpCall.getSize1()));
+                Words.clampedToLong(londonMxpCall.getOffset1()),
+                Words.clampedToLong(londonMxpCall.getSize1()));
         case TYPE_5 -> {
           long wordsNew1 =
               frame.calculateMemoryExpansion(
-                  Words.clampedToLong(mxpCall.getOffset1()),
-                  Words.clampedToLong(mxpCall.getSize1()));
+                  Words.clampedToLong(londonMxpCall.getOffset1()),
+                  Words.clampedToLong(londonMxpCall.getSize1()));
           long wordsNew2 =
               frame.calculateMemoryExpansion(
-                  Words.clampedToLong(mxpCall.getOffset2()),
-                  Words.clampedToLong(mxpCall.getSize2()));
+                  Words.clampedToLong(londonMxpCall.getOffset2()),
+                  Words.clampedToLong(londonMxpCall.getSize2()));
           wordsNew = Math.max(wordsNew1, wordsNew2);
         }
       }
@@ -510,7 +447,7 @@ public class MxpOperation extends ModuleOperation {
   }
 
   private void setCMemNew() {
-    if (getMxpExecutionPath() == MxpOperation.mxpExecutionPath.NON_TRIVIAL && expands) {
+    if (getMxpExecutionPath() == LondonMxpOperation.mxpExecutionPath.NON_TRIVIAL && expands) {
       cMemNew = memoryCost(wordsNew);
     }
   }
@@ -518,16 +455,19 @@ public class MxpOperation extends ModuleOperation {
   private void setCosts() {
     if (getMxpExecutionPath() == mxpExecutionPath.NON_TRIVIAL) {
       quadCost = cMemNew - cMem;
-      linCost = getLinCost(mxpCall.getOpCodeData(), Words.clampedToLong(mxpCall.getSize1()));
+      linCost =
+          getLinCost(londonMxpCall.getOpCodeData(), Words.clampedToLong(londonMxpCall.getSize1()));
     }
   }
 
   long getEffectiveLinCost() {
-    if (mxpCall.getOpCodeData().mnemonic() != OpCode.RETURN) {
-      return getLinCost(mxpCall.getOpCodeData(), Words.clampedToLong(mxpCall.getSize1()));
+    if (londonMxpCall.getOpCodeData().mnemonic() != OpCode.RETURN) {
+      return getLinCost(
+          londonMxpCall.getOpCodeData(), Words.clampedToLong(londonMxpCall.getSize1()));
     } else {
-      if (mxpCall.isDeploys()) {
-        return getLinCost(mxpCall.getOpCodeData(), Words.clampedToLong(mxpCall.getSize1()));
+      if (londonMxpCall.isDeploys()) {
+        return getLinCost(
+            londonMxpCall.getOpCodeData(), Words.clampedToLong(londonMxpCall.getSize1()));
       } else {
         return 0;
       }
@@ -538,7 +478,8 @@ public class MxpOperation extends ModuleOperation {
     return getQuadCost() + getEffectiveLinCost();
   }
 
-  final void trace(int stamp, Trace.Mxp trace) {
+  @Override
+  public void trace(int stamp, Trace.Mxp trace) {
     this.compute();
 
     Bytes32 acc1Bytes32 = Bytes32.leftPad(bigIntegerToBytes(this.getAcc1()));
@@ -548,10 +489,10 @@ public class MxpOperation extends ModuleOperation {
     Bytes32 accABytes32 = Bytes32.leftPad(bigIntegerToBytes(this.getAccA()));
     Bytes32 accWBytes32 = Bytes32.leftPad(bigIntegerToBytes(this.getAccW()));
     Bytes32 accQBytes32 = Bytes32.leftPad(bigIntegerToBytes(this.getAccQ()));
-    final EWord eOffset1 = EWord.of(this.mxpCall.getOffset1());
-    final EWord eOffset2 = EWord.of(this.mxpCall.getOffset2());
-    final EWord eSize1 = EWord.of(this.mxpCall.getSize1());
-    final EWord eSize2 = EWord.of(this.mxpCall.getSize2());
+    final EWord eOffset1 = EWord.of(this.londonMxpCall.getOffset1());
+    final EWord eOffset2 = EWord.of(this.londonMxpCall.getOffset2());
+    final EWord eSize1 = EWord.of(this.londonMxpCall.getSize1());
+    final EWord eSize2 = EWord.of(this.londonMxpCall.getSize2());
 
     final int nRows = this.nRows();
     final int nRowsComplement = 32 - nRows;
@@ -563,24 +504,24 @@ public class MxpOperation extends ModuleOperation {
           .ct((short) i)
           .roob(this.isRoob())
           .noop(this.isNoOperation())
-          .mxpx(this.mxpCall.isMxpx())
-          .inst(UnsignedByte.of(this.mxpCall.getOpCodeData().value()))
-          .mxpType1(this.mxpCall.getOpCodeData().billing().type() == MxpType.TYPE_1)
-          .mxpType2(this.mxpCall.getOpCodeData().billing().type() == MxpType.TYPE_2)
-          .mxpType3(this.mxpCall.getOpCodeData().billing().type() == MxpType.TYPE_3)
-          .mxpType4(this.mxpCall.getOpCodeData().billing().type() == MxpType.TYPE_4)
-          .mxpType5(this.mxpCall.getOpCodeData().billing().type() == MxpType.TYPE_5)
+          .mxpx(this.londonMxpCall.isMxpx())
+          .inst(UnsignedByte.of(this.londonMxpCall.getOpCodeData().value()))
+          .mxpType1(this.londonMxpCall.getOpCodeData().billing().type() == MxpType.TYPE_1)
+          .mxpType2(this.londonMxpCall.getOpCodeData().billing().type() == MxpType.TYPE_2)
+          .mxpType3(this.londonMxpCall.getOpCodeData().billing().type() == MxpType.TYPE_3)
+          .mxpType4(this.londonMxpCall.getOpCodeData().billing().type() == MxpType.TYPE_4)
+          .mxpType5(this.londonMxpCall.getOpCodeData().billing().type() == MxpType.TYPE_5)
           .gword(
               Bytes.ofUnsignedLong(
-                  this.mxpCall.getOpCodeData().billing().billingRate() == BillingRate.BY_WORD
-                      ? this.mxpCall.getOpCodeData().billing().perUnit().cost()
+                  this.londonMxpCall.getOpCodeData().billing().billingRate() == BillingRate.BY_WORD
+                      ? this.londonMxpCall.getOpCodeData().billing().perUnit().cost()
                       : 0))
           .gbyte(
               Bytes.ofUnsignedLong(
-                  this.mxpCall.getOpCodeData().billing().billingRate() == BillingRate.BY_BYTE
-                      ? this.mxpCall.getOpCodeData().billing().perUnit().cost()
+                  this.londonMxpCall.getOpCodeData().billing().billingRate() == BillingRate.BY_BYTE
+                      ? this.londonMxpCall.getOpCodeData().billing().perUnit().cost()
                       : 0))
-          .deploys(mxpCall.isDeploys())
+          .deploys(londonMxpCall.isDeploys())
           .offset1Hi(eOffset1.hi())
           .offset1Lo(eOffset1.lo())
           .offset2Hi(eOffset2.hi())
@@ -609,17 +550,17 @@ public class MxpOperation extends ModuleOperation {
           .byteQ(UnsignedByte.of(accQBytes32.get(nRowsComplement + i)))
           .byteQq(UnsignedByte.of(this.getByteQQ()[i].toInteger()))
           .byteR(UnsignedByte.of(this.getByteR()[i].toInteger()))
-          .words(Bytes.ofUnsignedLong(this.mxpCall.getMemorySizeInWords()))
+          .words(Bytes.ofUnsignedLong(this.londonMxpCall.getMemorySizeInWords()))
           .wordsNew(Bytes.ofUnsignedLong(this.getWordsNew()))
           .cMem(Bytes.ofUnsignedLong(this.getCMem())) // Returns current memory size in EVM words
           .cMemNew(Bytes.ofUnsignedLong(this.getCMemNew()))
           .quadCost(Bytes.ofUnsignedLong(this.getQuadCost()))
           .linCost(Bytes.ofUnsignedLong(this.getLinCost()))
-          .gasMxp(Bytes.ofUnsignedLong(this.mxpCall.getGasMxp()))
+          .gasMxp(Bytes.ofUnsignedLong(this.londonMxpCall.getGasMxp()))
           .expands(this.isExpands())
-          .mtntop(this.mxpCall.mayTriggerNontrivialMmuOperation)
-          .size1NonzeroNoMxpx(this.mxpCall.getSize1NonZeroNoMxpx())
-          .size2NonzeroNoMxpx(this.mxpCall.getSize2NonZeroNoMxpx())
+          .mtntop(this.londonMxpCall.mayTriggerNontrivialMmuOperation)
+          .size1NonzeroNoMxpx(this.londonMxpCall.getSize1NonZeroNoMxpx())
+          .size2NonzeroNoMxpx(this.londonMxpCall.getSize2NonZeroNoMxpx())
           .validateRow();
     }
   }

@@ -64,7 +64,7 @@ public class ExtCodeCopySection extends TraceSection implements PostRollbackDefe
     this.addStack(hub);
     this.addFragment(imcFragment);
 
-    final MxpCall mxpCall = new MxpCall(hub);
+    final MxpCall mxpCall = MxpCall.getMxpCallByFork(hub.fork, hub);
     imcFragment.callMxp(mxpCall);
 
     final short exceptions = hub.pch().exceptions();

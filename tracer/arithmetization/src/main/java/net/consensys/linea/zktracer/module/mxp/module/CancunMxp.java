@@ -13,22 +13,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.opcode.stack;
+package net.consensys.linea.zktracer.module.mxp.module;
 
-public enum Pattern {
-  ZERO_ZERO,
-  ONE_ZERO,
-  TWO_ZERO,
-  THREE_ZERO,
-  ZERO_ONE,
-  ONE_ONE,
-  TWO_ONE,
-  THREE_ONE,
-  LOAD_STORE,
-  DUP,
-  SWAP,
-  LOG,
-  COPY,
-  CALL,
-  CREATE,
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
+import net.consensys.linea.zktracer.module.mxp.moduleOperation.CancunMxpOperation;
+
+@Getter
+@Accessors(fluent = true)
+@RequiredArgsConstructor
+public class CancunMxp extends Mxp {
+
+  @Override
+  public void call(MxpCall mxpCall) {
+    operations().add(new CancunMxpOperation(mxpCall));
+  }
 }

@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.mxp;
+package net.consensys.linea.zktracer.module.mxp.module;
 
 import java.util.List;
 
@@ -25,20 +25,16 @@ import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
+import net.consensys.linea.zktracer.module.mxp.moduleOperation.MxpOperation;
 
-/** Implementation of a {@link Module} for memory expansion. */
+/** Abstract class for implementation of a {@link Module} for memory expansion. */
 @Getter
 @Accessors(fluent = true)
 @RequiredArgsConstructor
-public class Mxp implements OperationListModule<MxpOperation> {
+public abstract class Mxp implements OperationListModule<MxpOperation> {
 
   private final ModuleOperationStackedList<MxpOperation> operations =
       new ModuleOperationStackedList<>();
-
-  @Override
-  public String moduleKey() {
-    return "MXP";
-  }
 
   @Override
   public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
@@ -53,12 +49,15 @@ public class Mxp implements OperationListModule<MxpOperation> {
   @Override
   public void commit(Trace trace) {
     int stamp = 0;
-    for (MxpOperation op : operations.getAll()) {
+    for (MxpOperation op : operations().getAll()) {
       op.trace(++stamp, trace.mxp());
     }
   }
 
-  public void call(MxpCall mxpCall) {
-    operations.add(new MxpOperation(mxpCall));
+  @Override
+  public String moduleKey() {
+    return "MXP";
   }
+
+  public abstract void call(MxpCall mxpCall);
 }
