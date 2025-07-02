@@ -117,7 +117,7 @@ func (pa evaluationProver) Run(run *wizard.ProverRuntime) {
 		}
 	})
 
-	ys := sv.BatchEvaluateLagrangeMixed(witnesses, r)
+	ys := sv.BatchEvaluateLagrangeExt(witnesses, r)
 	run.AssignUnivariate(pa.WitnessEval.QueryID, r, ys...)
 
 	/*
@@ -175,10 +175,12 @@ func (ctx *evaluationVerifier) Run(run wizard.Runtime) error {
 		// Map all the evaluations and checks the evaluations points
 		mapYs = make(map[ifaces.ColID]fext.Element)
 		// Get the parameters
-		params           = run.GetUnivariateParams(ctx.WitnessEval.QueryID)
-		univQuery        = run.GetUnivariateEval(ctx.WitnessEval.QueryID)
-		quotientYs, errQ = ctx.recombineQuotientSharesEvaluation(run, r)
+		params    = run.GetUnivariateParams(ctx.WitnessEval.QueryID)
+		univQuery = run.GetUnivariateEval(ctx.WitnessEval.QueryID)
+		//quotientYs, errQ = ctx.recombineQuotientSharesEvaluation(run, r)
 	)
+
+	quotientYs, errQ := ctx.recombineQuotientSharesEvaluation(run, r)
 
 	if errQ != nil {
 		return fmt.Errorf("invalid evaluation point for the quotients: %v", errQ.Error())
@@ -319,7 +321,6 @@ func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 		omegaN, _ = fft.Generator(uint64(ctx.DomainSize * maxRatio))
 	)
 
-	omegaN.Inverse(&omegaN)
 	shiftedR.MulByElement(&r, &mulGenInv)
 
 	for i, q := range ctx.QuotientEvals {
@@ -330,9 +331,11 @@ func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 		providedX := params.X
 		var expectedXinit field.Element
 		var expectedX fext.Element
+
 		expectedXinit.Inverse(&omegaN)
 		expectedXinit.Exp(expectedXinit, big.NewInt(int64(i)))
 		expectedX.MulByElement(&shiftedR, &expectedXinit)
+
 		if providedX != expectedX {
 			return nil, fmt.Errorf("bad X value")
 		}

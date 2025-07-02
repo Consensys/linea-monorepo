@@ -1,7 +1,6 @@
 package globalcs
 
 import (
-	"fmt"
 	"math/big"
 	"reflect"
 	"runtime"
@@ -429,7 +428,6 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 				// This should be caught already by the constructor of the constraint.
 				quotientShare := ctx.AggregateExpressionsBoard[j].EvaluateMixed(evalInputs, pool)
 				quotientShare = smartvectors_mixed.ScalarMul(quotientShare, annulatorInvVals[i])
-				fmt.Printf("quotientShare=%v\n", quotientShare.Pretty())
 				run.AssignColumn(ctx.QuotientShares[j][share].GetColID(), quotientShare)
 			})
 

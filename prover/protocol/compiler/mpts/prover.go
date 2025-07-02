@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -88,8 +87,8 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 			foundNonConstantPoly = true
 
 			var (
-				poly                    = polySV.IntoRegVecSaveAlloc()
-				polyPtr                 *[]field.Element
+				poly                    = polySV.IntoRegVecSaveAllocExt()
+				polyPtr                 *[]fext.Element
 				pointsOfPoly            = qa.EvalPointOfPolys[polyID]
 				localPartialQuotientPtr = memPool.AllocExt()
 				localPartialQuotient    = *localPartialQuotientPtr
@@ -117,7 +116,7 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 			}
 
 			for k := range localPartialQuotient {
-				localPartialQuotient[k].MulByElement(&localPartialQuotient[k], &poly[k])
+				localPartialQuotient[k].Mul(&localPartialQuotient[k], &poly[k])
 				localPartialQuotient[k].Mul(&localPartialQuotient[k], &powersOfRho[polyID])
 			}
 
@@ -135,7 +134,7 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 			memPool.FreeExt(localPartialQuotientPtr)
 
 			if polyPtr != nil {
-				memPool.Free(polyPtr)
+				memPool.FreeExt(polyPtr)
 			}
 		}
 	})
@@ -310,25 +309,25 @@ func getPowersOfOmega(n int) []field.Element {
 
 // ldeOf computes the low-degree extension of a vector and allocates the result
 // in the pool. The size of the result is the same as the size of the pool.
-func ldeOf(v []field.Element, pool mempool.MemPool) *[]field.Element {
+func ldeOf(v []fext.Element, pool mempool.MemPool) *[]fext.Element {
 
 	var (
 		sizeLarge   = pool.Size()
 		domainSmall = fft.NewDomain(uint64(len(v)))
 		domainLarge = fft.NewDomain(uint64(sizeLarge))
-		resPtr      = pool.Alloc()
+		resPtr      = pool.AllocExt()
 		res         = *resPtr
 	)
 
-	vector.Fill(res, field.Zero())
+	vectorext.Fill(res, fext.Zero())
 	copy(res[:len(v)], v)
 
 	// Note: this implementation is very suboptimal as it should be possible
 	// reduce the overheads of bit-reversal with a smarter implementation.
 	// To be digged in the future, if this comes up as a bottleneck.
-	domainSmall.FFTInverse(res[:len(v)], fft.DIF)
+	domainSmall.FFTInverseExt(res[:len(v)], fft.DIF)
 	fft.BitReverse(res[:len(v)])
-	domainLarge.FFT(res, fft.DIF)
+	domainLarge.FFTExt(res, fft.DIF)
 	fft.BitReverse(res)
 
 	return resPtr

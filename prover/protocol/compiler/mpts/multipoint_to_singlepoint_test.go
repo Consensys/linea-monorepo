@@ -7,7 +7,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
@@ -137,23 +137,23 @@ func TestLdeOf(t *testing.T) {
 	}
 	testcases := []struct {
 		Name string
-		Poly []field.Element
-		LDE  []field.Element
+		Poly []fext.Element
+		LDE  []fext.Element
 	}{
 		{
 			Name: "constant-poly",
-			Poly: vector.Repeat(field.NewElement(23), 8),
-			LDE:  vector.Repeat(field.NewElement(23), 32),
+			Poly: vectorext.Repeat(fext.NewElement(23, 0, 0, 0), 8),
+			LDE:  vectorext.Repeat(fext.NewElement(23, 0, 0, 0), 32),
 		},
 		{
 			Name: "x-poly",
-			Poly: vector.ForTest(1, -1),
-			LDE:  vector.PowerVec(gen_8, 8),
+			Poly: vectorext.ForTest(1, -1),
+			LDE:  vectorext.PowerVec(fext.Lift(gen_8), 8),
 		},
 		{
 			Name: "x-poly-2",
-			Poly: vector.PowerVec(gen_4, 4),
-			LDE:  vector.PowerVec(gen_8, 8),
+			Poly: vectorext.PowerVec(fext.Lift(gen_4), 4),
+			LDE:  vectorext.PowerVec(fext.Lift(gen_8), 8),
 		},
 	}
 
@@ -169,7 +169,7 @@ func TestLdeOf(t *testing.T) {
 
 			for i := range tc.LDE {
 				if !tc.LDE[i].Equal(&res[i]) {
-					t.Errorf("mismatch res=%v, expected=%v", vector.Prettify(res), vector.Prettify(tc.LDE))
+					t.Errorf("mismatch res=%v, expected=%v", vectorext.Prettify(res), vectorext.Prettify(tc.LDE))
 					return
 				}
 			}
