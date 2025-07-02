@@ -147,7 +147,7 @@ func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, coset
 
 	if decimation == fft.DIF {
 		// Optionally, bitReverse the output
-		domain.FFTInverse(res.Regular, fft.DIF, fft.OnCoset())
+		domain.FFTInverse(res.Regular, fft.DIF)
 		if bitReverse {
 			fft.BitReverse(res.Regular)
 		}
@@ -156,7 +156,7 @@ func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, coset
 		if bitReverse {
 			fft.BitReverse(res.Regular)
 		}
-		domain.FFTInverse(res.Regular, fft.DIT, fft.OnCoset())
+		domain.FFTInverse(res.Regular, fft.DIT)
 	}
 	return res
 }

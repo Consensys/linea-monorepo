@@ -1,6 +1,8 @@
 package fiatshamir
 
 import (
+	"math"
+
 	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -177,9 +179,11 @@ func RandomFromSeed(h hash.StateStorer, seed field.Element, name string) field.E
 	return res
 }
 
-// TODO@yao: RandomFextFromSeed generates and returns a single fext element from the seed and the given name.
+// TODO@yao: maybe we want 'RandomFextFromSeed', which generates and returns a single fext element from the seed and the given name.
+
 func RandomManyIntegers(h hash.StateStorer, num, upperBound int) []int {
 
+	// Even `1` would be wierd, there would be only one acceptable coin value.
 	if upperBound < 1 {
 		utils.Panic("UpperBound was %v", upperBound)
 	}
@@ -188,31 +192,44 @@ func RandomManyIntegers(h hash.StateStorer, num, upperBound int) []int {
 		utils.Panic("Expected a power of two but got %v", upperBound)
 	}
 
-	logTwoUpperBound := -1
-	tmp := upperBound
-	for tmp != 0 {
-		logTwoUpperBound++
-		tmp >>= 1
+	if num == 0 {
+		return []int{}
 	}
 
-	numChallengesPerDigest := (field.Bits - 1) / int(logTwoUpperBound)
+	defer safeguardUpdate(h)
 
-	res := make([]int, num)
+	var (
+		// challsBitSize stores the number of bits required instantiate each
+		// small integer.
+		challsBitSize = math.Ceil(math.Log2(float64(upperBound)))
+		// Number of challenges computable with one call to hash (implicitly,
+		// the division is rounded down). The "-1" corresponds to the fact that
+		// the most significant bit of a field element cannot be assumed to
+		// contain exactly 1 bit of entropy since the modulus of the field is
+		// never a power of 2.
+		maxNumChallsPerDigest = (field.Bits - 1) / int(challsBitSize)
+		// res stores the preallocated result slice, to which all generated
+		// small integers will be appended.
+		res = make([]int, 0, num)
+	)
+
 	for {
 		digest := h.Sum(nil)
 		buffer := NewBitReader(digest, field.Bits-1)
 
-		for i := 0; i < numChallengesPerDigest; i++ {
+		// Increase the counter
+
+		for i := 0; i < maxNumChallsPerDigest; i++ {
 			// Stopping condition, we computed enough challenges
 			if len(res) >= num {
 				return res
 			}
 
-			curChallenge, err := buffer.ReadInt(int(logTwoUpperBound))
+			newChall, err := buffer.ReadInt(int(challsBitSize))
 			if err != nil {
 				utils.Panic("could not instantiate the buffer for a single field element")
 			}
-			res = append(res, int(curChallenge)%upperBound)
+			res = append(res, int(newChall)%upperBound)
 		}
 
 		// This is guarded by the condition to prevent the [State] updating
