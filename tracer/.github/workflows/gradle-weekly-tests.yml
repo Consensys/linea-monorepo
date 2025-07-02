@@ -13,20 +13,24 @@ concurrency:
 jobs:
   weekly-unit-tests-london:
     uses: ./.github/workflows/reusable-weekly-tests.yml
+    secrets: inherit
     with:
       zkevm_fork: LONDON
 
   weekly-unit-tests-shanghai:
     uses: ./.github/workflows/reusable-weekly-tests.yml
+    secrets: inherit    
     with:
       zkevm_fork: SHANGHAI
 
   weekly-prc-call-tests-london:
     uses: ./.github/workflows/reusable-weekly-prc-tests.yml
+    secrets: inherit    
     with:
       zkevm_fork: LONDON
 
   weekly-prc-call-tests-shanghai:
     uses: ./.github/workflows/reusable-weekly-prc-tests.yml
+    secrets: inherit    
     with:
       zkevm_fork: SHANGHAI

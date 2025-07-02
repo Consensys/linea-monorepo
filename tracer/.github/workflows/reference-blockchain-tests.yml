@@ -30,6 +30,7 @@ concurrency:
 jobs:
   blockchain-reference-tests-london:
     uses: ./.github/workflows/reusable-blockchain-tests.yml
+    secrets: inherit
     with:
       zkevm_fork: London
       test_filter: ${{ inputs.test_filter || 'BlockchainReferenceTest_*' }}
@@ -39,6 +40,7 @@ jobs:
 
   blockchain-reference-tests-shanghai:
     uses: ./.github/workflows/reusable-blockchain-tests.yml
+    secrets: inherit    
     with:
       zkevm_fork: Shanghai
       test_filter: ${{ inputs.test_filter || 'BlockchainReferenceTest_*' }}
