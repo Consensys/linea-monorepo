@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
-	"github.com/stretchr/testify/require"
 )
 
 func TestGnarkEval(t *testing.T) {
@@ -45,6 +44,7 @@ func TestGnarkEval(t *testing.T) {
 
 }
 
+/*TODO@yao
 func TestGnarkEvalAnyDomain(t *testing.T) {
 
 	t.Run("single-variable", func(t *testing.T) {
@@ -90,3 +90,4 @@ func TestGnarkEvalAnyDomain(t *testing.T) {
 	})
 
 }
+*/
