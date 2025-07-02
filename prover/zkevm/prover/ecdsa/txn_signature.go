@@ -87,10 +87,15 @@ func (txn *TxSignature) GetProvider(comp *wizard.CompiledIOP, rlpTxn generic.Gen
 // it builds an infoModule from native columns
 func (txn *TxSignature) buildInfoModule() generic.GenInfoModule {
 	info := generic.GenInfoModule{
+<<<<<<< HEAD
 		HashHi:   txn.TxHash[:common.NbLimbU128],
 		HashLo:   txn.TxHash[common.NbLimbU128:],
 		IsHashHi: txn.IsTxHash,
 		IsHashLo: txn.IsTxHash,
+=======
+		Hash:   txn.txHash[:],
+		IsHash: txn.isTxHash,
+>>>>>>> 4a6dab3e (Implement "glue" for sha2 module over koalabear field)
 	}
 	return info
 }

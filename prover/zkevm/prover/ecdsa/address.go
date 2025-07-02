@@ -221,10 +221,15 @@ func (addr *Addresses) buildGenericModule(id ifaces.Column, uaGnark *UnalignedGn
 	}
 
 	pkModule.Info = generic.GenInfoModule{
+<<<<<<< HEAD
 		HashHi:   addr.Address[:addressHiColumns],
 		HashLo:   addr.Address[addressHiColumns:],
 		IsHashHi: addr.IsAddress,
 		IsHashLo: addr.IsAddress,
+=======
+		Hash:   addr.address[:],
+		IsHash: addr.isAddress,
+>>>>>>> 4a6dab3e (Implement "glue" for sha2 module over koalabear field)
 	}
 	return pkModule
 }

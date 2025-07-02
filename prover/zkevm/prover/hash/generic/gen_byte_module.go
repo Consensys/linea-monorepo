@@ -35,11 +35,9 @@ type GenDataModule struct {
 
 // GenInfoModule collects the columns summarizing information about the result of the hash
 type GenInfoModule struct {
-	HashNum  ifaces.Column   // Identifier for the hash. Allows joining with the data module
-	HashLo   []ifaces.Column // The Low part of the hash result
-	HashHi   []ifaces.Column // The Hi part of the hash result
-	IsHashLo ifaces.Column   // indicating the location of HashHi
-	IsHashHi ifaces.Column   // indicting the location od HashLo
+	HashNum ifaces.Column   // Identifier for the hash. Allows joining with the data module
+	Hash    []ifaces.Column // The hash result
+	IsHash  ifaces.Column   // indicating the location of Hash
 }
 
 // ScanStreams scans the receiver GenDataModule's assignment and returns the list
