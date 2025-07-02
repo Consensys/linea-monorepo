@@ -73,15 +73,14 @@ func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio i
 		if bitReverse {
 			fft.BitReverse(res.Regular)
 		}
-		domain.FFT(res.Regular, fft.DIT, fft.OnCoset())
+		domain.FFT(res.Regular, fft.DIT)
 	} else {
 		// Likewise, the optionally rearrange the input in correct order
-		domain.FFT(res.Regular, fft.DIF, fft.OnCoset())
+		domain.FFT(res.Regular, fft.DIF)
 		if bitReverse {
 			fft.BitReverse(res.Regular)
 		}
 	}
-
 	return res
 }
 

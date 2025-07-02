@@ -72,10 +72,10 @@ func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRati
 		if bitReverse {
 			fft.BitReverse(res.RegularExt)
 		}
-		domain.FFTExt(res.RegularExt, fft.DIT, fft.OnCoset())
+		domain.FFTExt(res.RegularExt, fft.DIT)
 	} else {
 		// Likewise, the optionally rearrange the input in correct order
-		domain.FFTExt(res.RegularExt, fft.DIF, fft.OnCoset())
+		domain.FFTExt(res.RegularExt, fft.DIF)
 		if bitReverse {
 			fft.BitReverse(res.RegularExt)
 		}

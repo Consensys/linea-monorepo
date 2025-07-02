@@ -77,7 +77,6 @@ func (r InnerProduct) Check(run ifaces.Runtime) error {
 
 	expecteds := run.GetParams(r.ID).(InnerProductParams)
 	computed := r.Compute(run)
-	fmt.Printf("a=%v\n", expecteds.Ys[0].String())
 
 	// Prepare a nice error message in case we need it
 	errMsg := fmt.Sprintf("Inner-product %v\n", r.ID)

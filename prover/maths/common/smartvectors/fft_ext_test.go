@@ -171,7 +171,6 @@ func TestFFTExtFuzzyDITDIFBitReverse(t *testing.T) {
 	}
 }
 
-// TODO@yao: fix the test
 func TestFFTExtFuzzyEvaluation(t *testing.T) {
 
 	for i := 0; i < FuzzIteration; i++ {
@@ -205,7 +204,6 @@ func TestFFTExtFuzzyEvaluation(t *testing.T) {
 				if err != nil {
 					panic(err)
 				}
-				x.Exp(x, big.NewInt(int64(i)))
 
 				if oncoset {
 					omegacoset, err := fft.Generator(uint64(evals.Len() * ratio))
@@ -232,7 +230,6 @@ func TestFFTExtFuzzyEvaluation(t *testing.T) {
 	}
 }
 
-// TODO@yao: fix the test
 func TestFFTExtFuzzyConsistWithInterpolation(t *testing.T) {
 
 	for i := 0; i < FuzzIteration; i++ {
