@@ -79,8 +79,8 @@ func newStoragePeek(comp *wizard.CompiledIOP, size int, name string) StoragePeek
 	res.ComputeOldValueHash = dedicatedmimc.HashOf(
 		comp,
 		[][]ifaces.Column{
-			{res.OldValue.Lo},
-			{res.OldValue.Hi},
+			res.OldValue.Lo[:],
+			res.OldValue.Hi[:],
 		},
 	)
 
@@ -90,8 +90,8 @@ func newStoragePeek(comp *wizard.CompiledIOP, size int, name string) StoragePeek
 	res.ComputeNewValueHash = dedicatedmimc.HashOf(
 		comp,
 		[][]ifaces.Column{
-			{res.NewValue.Lo},
-			{res.NewValue.Hi},
+			res.NewValue.Lo[:],
+			res.NewValue.Hi[:],
 		},
 	)
 
@@ -107,8 +107,8 @@ func newStoragePeek(comp *wizard.CompiledIOP, size int, name string) StoragePeek
 	res.ComputeKeyHash = dedicatedmimc.HashOf(
 		comp,
 		[][]ifaces.Column{
-			{res.Key.Lo},
-			{res.Key.Hi},
+			res.Key.Lo[:],
+			res.Key.Hi[:],
 		},
 	)
 
@@ -170,7 +170,10 @@ func (sh *storagePeekAssignmentBuilder) pushAllZeroes() {
 // pushOnlyKey pushes the key onto the the "key" columns builder and zero on
 // the others
 func (sh *storagePeekAssignmentBuilder) pushOnlyKey(key types.FullBytes32) {
-	sh.key.Push(key)
+	var keyLimbs [common.NbLimbU256][]byte
+	copy(keyLimbs[:], common.SplitBytes(key[:]))
+
+	sh.key.Push(keyLimbs)
 	sh.oldValue.PushZeroes()
 	sh.newValue.PushZeroes()
 }
@@ -178,32 +181,53 @@ func (sh *storagePeekAssignmentBuilder) pushOnlyKey(key types.FullBytes32) {
 // pushOnlyOld pushes a row where the keys and the old value are the one provided
 // by the caller and the new value is zero.
 func (sh *storagePeekAssignmentBuilder) pushOnlyOld(key, oldVal types.FullBytes32) {
-	sh.key.Push(key)
-	sh.oldValue.Push(oldVal)
+	var keyLimbs [common.NbLimbU256][]byte
+	copy(keyLimbs[:], common.SplitBytes(key[:]))
+
+	var oldValueLimbs [common.NbLimbU256][]byte
+	copy(oldValueLimbs[:], common.SplitBytes(oldVal[:]))
+
+	sh.key.Push(keyLimbs)
+	sh.oldValue.Push(oldValueLimbs)
 	sh.newValue.PushZeroes()
 }
 
 // pushOnlyNew pushes a row where the key and the new value are the one provided
 // by the caller and the old value is set to zero.
 func (sh *storagePeekAssignmentBuilder) pushOnlyNew(key, newVal types.FullBytes32) {
-	sh.key.Push(key)
+	var keyLimbs [common.NbLimbU256][]byte
+	copy(keyLimbs[:], common.SplitBytes(key[:]))
+
+	var newValueLimbs [common.NbLimbU256][]byte
+	copy(newValueLimbs[:], common.SplitBytes(newVal[:]))
+
+	sh.key.Push(keyLimbs)
 	sh.oldValue.PushZeroes()
-	sh.newValue.Push(newVal)
+	sh.newValue.Push(newValueLimbs)
 }
 
 // push pushes a row where the key, the old value and the new value are the
 // one provided by the caller.
 func (sh *storagePeekAssignmentBuilder) push(key, oldVal, newVal types.FullBytes32) {
-	sh.key.Push(key)
-	sh.oldValue.Push(oldVal)
-	sh.newValue.Push(newVal)
+	var keyLimbs [common.NbLimbU256][]byte
+	copy(keyLimbs[:], common.SplitBytes(key[:]))
+
+	var oldValueLimbs [common.NbLimbU256][]byte
+	copy(oldValueLimbs[:], common.SplitBytes(oldVal[:]))
+
+	var newValueLimbs [common.NbLimbU256][]byte
+	copy(newValueLimbs[:], common.SplitBytes(newVal[:]))
+
+	sh.key.Push(keyLimbs)
+	sh.oldValue.Push(oldValueLimbs)
+	sh.newValue.Push(newValueLimbs)
 }
 
 // padAssign pads and assigns the columns of the storage peek into `run`.
 func (sh *storagePeekAssignmentBuilder) padAssign(run *wizard.ProverRuntime) {
-	sh.key.PadAssign(run, types.FullBytes32{})
-	sh.oldValue.PadAssign(run, types.FullBytes32{})
-	sh.newValue.PadAssign(run, types.FullBytes32{})
+	sh.key.PadAssign(run, [common.NbLimbU256][]byte{})
+	sh.oldValue.PadAssign(run, [common.NbLimbU256][]byte{})
+	sh.newValue.PadAssign(run, [common.NbLimbU256][]byte{})
 }
 
 // hashOfZeroStorage returns the hash of (0, 0) which is what we use for empty

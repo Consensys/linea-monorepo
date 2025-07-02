@@ -9,11 +9,36 @@ import (
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	"math/big"
 )
 
+// initEmptyKeccak initialises emptyKeccak variable from emptyKeccakString.
+//
+// Returns a representation of empty keccak value in limbs with size defined
+// by common.LimbBytes.
+func initEmptyKeccak(emptyKeccakString string) (res [common.NbLimbU256]field.Element) {
+	var emptyKeccakBig big.Int
+	_, isErr := emptyKeccakBig.SetString(emptyKeccakString, 16)
+	if !isErr {
+		panic("empty keccak string is not correct")
+	}
+
+	emptyKeccakByteLimbs := common.SplitBytes(emptyKeccakBig.Bytes())
+	for i, limbByte := range emptyKeccakByteLimbs {
+		res[i] = *new(field.Element).SetBytes(limbByte)
+	}
+
+	return res
+}
+
 const (
-	EMPTYKECCAKCODEHASH_HI = "0xc5d2460186f7233c927e7db2dcc703c0"
-	EMPTYKECCAKCODEHASH_LO = "0xe500b653ca82273b7bfad8045d85a470"
+	EMPTYKECCAKCODEHASH_HI_STR = "c5d2460186f7233c927e7db2dcc703c0"
+	EMPTYKECCAKCODEHASH_LO_STR = "e500b653ca82273b7bfad8045d85a470"
+)
+
+var (
+	EMPTYKECCAKCODEHASH_HI = initEmptyKeccak(EMPTYKECCAKCODEHASH_HI_STR)
+	EMPTYKECCAKCODEHASH_LO = initEmptyKeccak(EMPTYKECCAKCODEHASH_LO_STR)
 )
 
 // Module represents the state-summary module. It defines all the columns
@@ -508,16 +533,6 @@ func (ss *Module) csAccountNew(comp *wizard.CompiledIOP) {
 
 	mustBeConstantOnSubsegment(ss.Account.Final.Exists)
 
-	for i := range common.NbLimbU64 {
-		mustBeConstantOnSubsegment(ss.Account.Final.Nonce[i])
-	}
-
-	mustBeConstantOnSubsegment(ss.Account.Final.Balance)
-	mustBeConstantOnSubsegment(ss.Account.Final.CodeSize)
-	mustBeConstantOnSubsegment(ss.Account.Final.MiMCCodeHash)
-	mustBeConstantOnSubsegment(ss.Account.Final.KeccakCodeHash.Hi)
-	mustBeConstantOnSubsegment(ss.Account.Final.KeccakCodeHash.Lo)
-
 	// mustHaveDefaultWhenNotExists defines a template constraint to ensure that
 	// `col` uses a default value when Exists = 0
 	mustHaveDefaultWhenNotExists := func(col ifaces.Column, def any) {
@@ -532,16 +547,27 @@ func (ss *Module) csAccountNew(comp *wizard.CompiledIOP) {
 	}
 
 	for i := range common.NbLimbU64 {
+		mustBeConstantOnSubsegment(ss.Account.Final.CodeSize[i])
+		mustBeConstantOnSubsegment(ss.Account.Final.Nonce[i])
+
+		mustHaveDefaultWhenNotExists(ss.Account.Final.CodeSize[i], 0)
 		mustHaveDefaultWhenNotExists(ss.Account.Final.Nonce[i], 0)
 	}
 
-	mustHaveDefaultWhenNotExists(ss.Account.Final.Balance, 0)
-	mustHaveDefaultWhenNotExists(ss.Account.Final.CodeSize, 0)
-	mustHaveDefaultWhenNotExists(ss.Account.Final.MiMCCodeHash, 0)
-	mustHaveDefaultWhenNotExists(ss.Account.Final.KeccakCodeHash.Hi, 0)
-	mustHaveDefaultWhenNotExists(ss.Account.Final.KeccakCodeHash.Lo, 0)
+	for i := range common.NbLimbU128 {
+		mustHaveDefaultWhenNotExists(ss.Account.Final.Balance[i], 0)
+		mustHaveDefaultWhenNotExists(ss.Account.Final.KeccakCodeHash.Hi[i], 0)
+		mustHaveDefaultWhenNotExists(ss.Account.Final.KeccakCodeHash.Lo[i], 0)
+
+		mustBeConstantOnSubsegment(ss.Account.Final.Balance[i])
+		mustBeConstantOnSubsegment(ss.Account.Final.KeccakCodeHash.Hi[i])
+		mustBeConstantOnSubsegment(ss.Account.Final.KeccakCodeHash.Lo[i])
+	}
 
 	for i := range common.NbLimbU256 {
+		mustBeConstantOnSubsegment(ss.Account.Final.MiMCCodeHash[i])
+		mustHaveDefaultWhenNotExists(ss.Account.Final.MiMCCodeHash[i], 0)
+
 		comp.InsertGlobal(
 			0,
 			ifaces.QueryIDf("STATE_SUMMARY_STORAGE_ROOT_IS_EMPTY_%d", i),
@@ -604,21 +630,6 @@ func (ss *Module) csAccountOld(comp *wizard.CompiledIOP) {
 
 	mustBeConstantOnSubsegment(ss.Account.Initial.Exists, -1)
 
-	for i := range common.NbLimbU64 {
-		mustBeConstantOnSubsegment(ss.Account.Initial.Nonce[i], -1)
-	}
-
-	mustBeConstantOnSubsegment(ss.Account.Initial.Balance, -1)
-	mustBeConstantOnSubsegment(ss.Account.Initial.CodeSize, -1)
-	mustBeConstantOnSubsegment(ss.Account.Initial.MiMCCodeHash, -1)
-
-	for i := range common.NbLimbU256 {
-		mustBeConstantOnSubsegment(ss.Account.Initial.StorageRoot[i], i)
-	}
-
-	mustBeConstantOnSubsegment(ss.Account.Initial.KeccakCodeHash.Hi, -1)
-	mustBeConstantOnSubsegment(ss.Account.Initial.KeccakCodeHash.Lo, -1)
-
 	// mustHaveDefaultWhenNotExists defines a template constraint to ensure that
 	// `col` uses a default value when Exists = 0
 	//
@@ -641,19 +652,30 @@ func (ss *Module) csAccountOld(comp *wizard.CompiledIOP) {
 	}
 
 	for i := range common.NbLimbU64 {
+		mustBeConstantOnSubsegment(ss.Account.Initial.CodeSize[i], -1)
+		mustBeConstantOnSubsegment(ss.Account.Initial.Nonce[i], -1)
+
+		mustHaveDefaultWhenNotExists(ss.Account.Initial.CodeSize[i], 0, -1)
 		mustHaveDefaultWhenNotExists(ss.Account.Initial.Nonce[i], 0, -1)
 	}
 
-	mustHaveDefaultWhenNotExists(ss.Account.Initial.Balance, 0, -1)
-	mustHaveDefaultWhenNotExists(ss.Account.Initial.CodeSize, 0, -1)
-	mustHaveDefaultWhenNotExists(ss.Account.Initial.MiMCCodeHash, 0, -1)
+	for i := range common.NbLimbU128 {
+		mustHaveDefaultWhenNotExists(ss.Account.Initial.Balance[i], 0, -1)
+		mustHaveDefaultWhenNotExists(ss.Account.Initial.KeccakCodeHash.Hi[i], 0, -1)
+		mustHaveDefaultWhenNotExists(ss.Account.Initial.KeccakCodeHash.Lo[i], 0, -1)
 
-	for i := range common.NbLimbU256 {
-		mustHaveDefaultWhenNotExists(ss.Account.Initial.StorageRoot[i], 0, i)
+		mustBeConstantOnSubsegment(ss.Account.Initial.Balance[i], -1)
+		mustBeConstantOnSubsegment(ss.Account.Initial.KeccakCodeHash.Hi[i], -1)
+		mustBeConstantOnSubsegment(ss.Account.Initial.KeccakCodeHash.Lo[i], -1)
 	}
 
-	mustHaveDefaultWhenNotExists(ss.Account.Initial.KeccakCodeHash.Hi, 0, -1)
-	mustHaveDefaultWhenNotExists(ss.Account.Initial.KeccakCodeHash.Lo, 0, -1)
+	for i := range common.NbLimbU256 {
+		mustBeConstantOnSubsegment(ss.Account.Initial.MiMCCodeHash[i], -1)
+		mustBeConstantOnSubsegment(ss.Account.Initial.StorageRoot[i], i)
+
+		mustHaveDefaultWhenNotExists(ss.Account.Initial.MiMCCodeHash[i], 0, -1)
+		mustHaveDefaultWhenNotExists(ss.Account.Initial.StorageRoot[i], 0, i)
+	}
 
 }
 
@@ -669,12 +691,14 @@ func (ss *Module) csStoragePeek(comp *wizard.CompiledIOP) {
 		)
 	}
 
-	mustBeZeroWhenNotStorage(ss.Storage.Key.Hi)
-	mustBeZeroWhenNotStorage(ss.Storage.Key.Lo)
-	mustBeZeroWhenNotStorage(ss.Storage.OldValue.Hi)
-	mustBeZeroWhenNotStorage(ss.Storage.OldValue.Lo)
-	mustBeZeroWhenNotStorage(ss.Storage.NewValue.Hi)
-	mustBeZeroWhenNotStorage(ss.Storage.NewValue.Lo)
+	for i := range common.NbLimbU128 {
+		mustBeZeroWhenNotStorage(ss.Storage.Key.Hi[i])
+		mustBeZeroWhenNotStorage(ss.Storage.Key.Lo[i])
+		mustBeZeroWhenNotStorage(ss.Storage.OldValue.Hi[i])
+		mustBeZeroWhenNotStorage(ss.Storage.OldValue.Lo[i])
+		mustBeZeroWhenNotStorage(ss.Storage.NewValue.Hi[i])
+		mustBeZeroWhenNotStorage(ss.Storage.NewValue.Lo[i])
+	}
 
 	comp.InsertGlobal(
 		0,
@@ -1007,121 +1031,129 @@ func (ss *Module) csAccumulatorRoots(comp *wizard.CompiledIOP) {
 // constrainExpectedHubCodeHash constrains the ExpectedHubCodeHash columns
 // using the KeccakCodeHash information from the state summary
 func (ss *Module) constrainExpectedHubCodeHash(comp *wizard.CompiledIOP) {
-	// if account exists we have the same Keccak code hash
-	// if account does not exist we have the empty code hash in what is expected
-	// from the HUB
-	comp.InsertGlobal(
-		0,
-		"GLOBAL_CONSTRAINT_EXPECTED_HUB_CODEHASH_INITIAL_CASE_EXISTENT_HI",
-		sym.Mul(
-			ss.Account.Initial.Exists,
-			sym.Sub(
-				ss.Account.Initial.KeccakCodeHash.Hi,
-				ss.Account.Initial.ExpectedHubCodeHash.Hi,
-			),
-		),
-	)
-	// initial case Lo, existent accounts
-	comp.InsertGlobal(
-		0,
-		"GLOBAL_CONSTRAINT_EXPECTED_HUB_CODEHASH_INITIAL_CASE_EXISTENT_LO",
-		sym.Mul(
-			ss.Account.Initial.Exists,
-			sym.Sub(
-				ss.Account.Initial.KeccakCodeHash.Lo,
-				ss.Account.Initial.ExpectedHubCodeHash.Lo,
-			),
-		),
-	)
-	// initial case Hi, nonexistent accounts
-	comp.InsertGlobal(
-		0,
-		"GLOBAL_CONSTRAINT_EXPECTED_HUB_CODEHASH_INITIAL_CASE_NON_EXISTENT_HI",
-		sym.Mul(
-			ss.IsActive, // only on the active part of the module
-			sym.Sub(
-				1,
+	for i := range common.NbLimbU128 {
+		// if account exists we have the same Keccak code hash
+		// if account does not exist we have the empty code hash in what is expected
+		// from the HUB
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("GLOBAL_CONSTRAINT_EXPECTED_HUB_CODEHASH_INITIAL_CASE_EXISTENT_HI_%d", i),
+			sym.Mul(
 				ss.Account.Initial.Exists,
+				sym.Sub(
+					ss.Account.Initial.KeccakCodeHash.Hi[i],
+					ss.Account.Initial.ExpectedHubCodeHash.Hi[i],
+				),
 			),
-			sym.Sub(
-				ss.Account.Initial.ExpectedHubCodeHash.Hi,
-				field.NewFromString(EMPTYKECCAKCODEHASH_HI),
-			),
-		),
-	)
-	// initial case Lo, nonexistent accounts
-	comp.InsertGlobal(
-		0,
-		"GLOBAL_CONSTRAINT_EXPECTED_HUB_CODEHASH_INITIAL_CASE_NON_EXISTENT_LO",
-		sym.Mul(
-			ss.IsActive, // only on the active part of the module
-			sym.Sub(
-				1,
-				ss.Account.Initial.Exists,
-			),
-			sym.Sub(
-				ss.Account.Initial.ExpectedHubCodeHash.Lo,
-				field.NewFromString(EMPTYKECCAKCODEHASH_LO),
-			),
-		),
-	)
+		)
 
-	// final checks
-	comp.InsertGlobal(
-		0,
-		"GLOBAL_CONSTRAINT_EXPECTED_HUB_CODEHASH_FINALL_CASE_EXISTENT_HI",
-		sym.Mul(
-			ss.Account.Final.Exists,
-			sym.Sub(
-				ss.Account.Final.KeccakCodeHash.Hi,
-				ss.Account.Final.ExpectedHubCodeHash.Hi,
+		// initial case Lo, existent accounts
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("GLOBAL_CONSTRAINT_EXPECTED_HUB_CODEHASH_INITIAL_CASE_EXISTENT_LO_%d", i),
+			sym.Mul(
+				ss.Account.Initial.Exists,
+				sym.Sub(
+					ss.Account.Initial.KeccakCodeHash.Lo[i],
+					ss.Account.Initial.ExpectedHubCodeHash.Lo[i],
+				),
 			),
-		),
-	)
-	// final case Lo, existent accounts
-	comp.InsertGlobal(
-		0,
-		"GLOBAL_CONSTRAINT_EXPECTED_HUB_CODEHASH_FINAL_CASE_EXISTENT_LO",
-		sym.Mul(
-			ss.Account.Final.Exists,
-			sym.Sub(
-				ss.Account.Final.KeccakCodeHash.Lo,
-				ss.Account.Final.ExpectedHubCodeHash.Lo,
+		)
+
+		// initial case Hi, nonexistent accounts
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("GLOBAL_CONSTRAINT_EXPECTED_HUB_CODEHASH_INITIAL_CASE_NON_EXISTENT_HI_%d", i),
+			sym.Mul(
+				ss.IsActive, // only on the active part of the module
+				sym.Sub(
+					1,
+					ss.Account.Initial.Exists,
+				),
+				sym.Sub(
+					ss.Account.Initial.ExpectedHubCodeHash.Hi[i],
+					EMPTYKECCAKCODEHASH_HI[i],
+				),
 			),
-		),
-	)
-	// final case Hi, nonexistent accounts
-	comp.InsertGlobal(
-		0,
-		"GLOBAL_CONSTRAINT_EXPECTED_HUB_CODEHASH_FINAL_CASE_NON_EXISTENT_HI",
-		sym.Mul(
-			ss.IsActive, // only on the active part of the module
-			sym.Sub(
-				1,
+		)
+
+		// initial case Lo, nonexistent accounts
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("GLOBAL_CONSTRAINT_EXPECTED_HUB_CODEHASH_INITIAL_CASE_NON_EXISTENT_LO_%d", i),
+			sym.Mul(
+				ss.IsActive, // only on the active part of the module
+				sym.Sub(
+					1,
+					ss.Account.Initial.Exists,
+				),
+				sym.Sub(
+					ss.Account.Initial.ExpectedHubCodeHash.Lo[i],
+					EMPTYKECCAKCODEHASH_LO[i],
+				),
+			),
+		)
+
+		// final checks
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("GLOBAL_CONSTRAINT_EXPECTED_HUB_CODEHASH_FINALL_CASE_EXISTENT_HI_%d", i),
+			sym.Mul(
 				ss.Account.Final.Exists,
+				sym.Sub(
+					ss.Account.Final.KeccakCodeHash.Hi[i],
+					ss.Account.Final.ExpectedHubCodeHash.Hi[i],
+				),
 			),
-			sym.Sub(
-				ss.Account.Final.ExpectedHubCodeHash.Hi,
-				field.NewFromString(EMPTYKECCAKCODEHASH_HI),
-			),
-		),
-	)
-	// final case Lo, nonexistent accounts
-	comp.InsertGlobal(
-		0,
-		"GLOBAL_CONSTRAINT_EXPECTED_HUB_CODEHASH_FINAL_CASE_NON_EXISTENT_LO",
-		sym.Mul(
-			ss.IsActive, // only on the active part of the module
-			sym.Sub(
-				1,
+		)
+
+		// final case Lo, existent accounts
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("GLOBAL_CONSTRAINT_EXPECTED_HUB_CODEHASH_FINAL_CASE_EXISTENT_LO_%d", i),
+			sym.Mul(
 				ss.Account.Final.Exists,
+				sym.Sub(
+					ss.Account.Final.KeccakCodeHash.Lo[i],
+					ss.Account.Final.ExpectedHubCodeHash.Lo[i],
+				),
 			),
-			sym.Sub(
-				ss.Account.Final.ExpectedHubCodeHash.Lo,
-				field.NewFromString(EMPTYKECCAKCODEHASH_LO),
+		)
+
+		// final case Hi, nonexistent accounts
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("GLOBAL_CONSTRAINT_EXPECTED_HUB_CODEHASH_FINAL_CASE_NON_EXISTENT_HI_%d", i),
+			sym.Mul(
+				ss.IsActive, // only on the active part of the module
+				sym.Sub(
+					1,
+					ss.Account.Final.Exists,
+				),
+				sym.Sub(
+					ss.Account.Final.ExpectedHubCodeHash.Hi[i],
+					EMPTYKECCAKCODEHASH_HI[i],
+				),
 			),
-		),
-	)
+		)
+
+		// final case Lo, nonexistent accounts
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("GLOBAL_CONSTRAINT_EXPECTED_HUB_CODEHASH_FINAL_CASE_NON_EXISTENT_LO_%d", i),
+			sym.Mul(
+				ss.IsActive, // only on the active part of the module
+				sym.Sub(
+					1,
+					ss.Account.Final.Exists,
+				),
+				sym.Sub(
+					ss.Account.Final.ExpectedHubCodeHash.Lo[i],
+					EMPTYKECCAKCODEHASH_LO[i],
+				),
+			),
+		)
+	}
 }
 
 // ternary is a small utility to construct ternaries is constraints

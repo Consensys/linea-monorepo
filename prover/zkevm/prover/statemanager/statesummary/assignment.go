@@ -51,9 +51,6 @@ func (ss *Module) Assign(run *wizard.ProverRuntime, traces [][]statemanager.Deco
 	if ss.ArithmetizationLink != nil {
 		ss.assignArithmetizationLink(run)
 	}
-
-	v := ss.Account.Final.MiMCCodeHash.GetColAssignmentAt(run, 0)
-	println(v.Text(16))
 }
 
 // accountSegmentWitness represents a collection of traces representing
@@ -416,42 +413,49 @@ func (ss *stateSummaryAssignmentBuilder) finalize(run *wizard.ProverRuntime) {
 		wg.Wait()
 	}
 
-	runConcurrent([]wizard.ProverAction{
-		ss.StateSummary.Account.Initial.CptHasEmptyCodeHash,
-		ss.StateSummary.Account.Final.CptHasEmptyCodeHash,
-		ss.StateSummary.Account.ComputeAddressHash,
-		ss.StateSummary.Account.ComputeHashFinal,
-		ss.StateSummary.Account.ComputeHashInitial,
-		ss.StateSummary.Storage.ComputeKeyHash,
-		ss.StateSummary.Storage.ComputeOldValueHash,
-		ss.StateSummary.Storage.ComputeNewValueHash,
-		ss.StateSummary.AccumulatorStatement.CptSameTypeAsBefore,
-	})
-
-	runConcurrent(
-		append(
-			ss.StateSummary.Storage.ComputeKeyLimbs[:],
-			ss.StateSummary.Account.ComputeAddressLimbs[:]...,
-		),
-	)
-
-	summaryActions := [][]wizard.ProverAction{
-		ss.StateSummary.Storage.ComputeOldValueIsZero[:],
-		ss.StateSummary.Storage.ComputeNewValueIsZero[:],
-		ss.StateSummary.Account.ComputeInitialAndFinalAreSame[:],
-		ss.StateSummary.Storage.ComputeOldAndNewValuesAreEqual[:],
+	summaryAccountActions := [][]wizard.ProverAction{
+		ss.StateSummary.Account.Initial.CptHasEmptyCodeHash[:],
+		ss.StateSummary.Account.Final.CptHasEmptyCodeHash[:],
 		{
-			ss.StateSummary.Storage.ComputeKeyIncreased,
-			ss.StateSummary.Account.ComputeAddressComparison,
+			ss.StateSummary.Account.ComputeAddressHash,
+			ss.StateSummary.Account.ComputeHashFinal,
+			ss.StateSummary.Account.ComputeHashInitial,
+			ss.StateSummary.Storage.ComputeKeyHash,
+			ss.StateSummary.Storage.ComputeOldValueHash,
+			ss.StateSummary.Storage.ComputeNewValueHash,
+			ss.StateSummary.AccumulatorStatement.CptSameTypeAsBefore,
 		},
 	}
 
-	var actions []wizard.ProverAction
-	for _, action := range summaryActions {
-		actions = append(actions, action...)
+	var accountActions []wizard.ProverAction
+	for _, action := range summaryAccountActions {
+		accountActions = append(accountActions, action...)
 	}
 
-	runConcurrent(actions)
+	runConcurrent(accountActions)
+
+	runConcurrent(
+		append(
+			ss.StateSummary.Account.ComputeAddressLimbs[:],
+			ss.StateSummary.Storage.ComputeKeyLimbs[:]...,
+		),
+	)
+
+	summaryStorageActions := [][]wizard.ProverAction{
+		ss.StateSummary.Account.ComputeInitialAndFinalAreSame[:],
+		{ss.StateSummary.Account.ComputeAddressComparison},
+		ss.StateSummary.Storage.ComputeOldValueIsZero[:],
+		ss.StateSummary.Storage.ComputeNewValueIsZero[:],
+		{ss.StateSummary.Storage.ComputeKeyIncreased},
+		ss.StateSummary.Storage.ComputeOldAndNewValuesAreEqual[:],
+	}
+
+	var storageActions []wizard.ProverAction
+	for _, action := range summaryStorageActions {
+		storageActions = append(storageActions, action...)
+	}
+
+	runConcurrent(storageActions)
 
 	runConcurrent(append(
 		ss.StateSummary.AccumulatorStatement.ComputeInitialAndFinalHValEqual[:],

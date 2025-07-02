@@ -19,8 +19,13 @@ import (
 	types2 "github.com/ethereum/go-ethereum/core/types"
 )
 
+func initEmptyCodeHash() [][]byte {
+	emptyCodeHashBytes := statemanager.EmptyCodeHash(statemanager.MIMC_CONFIG)
+	return common.SplitBytes(emptyCodeHashBytes[:])
+}
+
 var (
-	emptyCodeHash = statemanager.EmptyCodeHash(statemanager.MIMC_CONFIG)
+	emptyCodeHash = initEmptyCodeHash()
 )
 
 // AccountPeek contains the view of the State-summary module regarding accounts.
@@ -98,27 +103,23 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 	}
 
 	initialHashCols := [][]ifaces.Column{accPeek.Initial.Nonce[:]}
-	initialHashCols = append(initialHashCols, []ifaces.Column{accPeek.Initial.Balance})
+	initialHashCols = append(initialHashCols, [][]ifaces.Column{accPeek.Initial.Balance[:]}...)
 	initialHashCols = append(initialHashCols, [][]ifaces.Column{accPeek.Initial.StorageRoot[:]}...)
-	initialHashCols = append(initialHashCols, [][]ifaces.Column{
-		{accPeek.Initial.MiMCCodeHash},
-		{accPeek.Initial.KeccakCodeHash.Lo},
-		{accPeek.Initial.KeccakCodeHash.Hi},
-		{accPeek.Initial.CodeSize},
-	}...)
+	initialHashCols = append(initialHashCols, [][]ifaces.Column{accPeek.Initial.MiMCCodeHash[:]}...)
+	initialHashCols = append(initialHashCols, [][]ifaces.Column{accPeek.Initial.KeccakCodeHash.Lo[:]}...)
+	initialHashCols = append(initialHashCols, [][]ifaces.Column{accPeek.Initial.KeccakCodeHash.Hi[:]}...)
+	initialHashCols = append(initialHashCols, [][]ifaces.Column{accPeek.Initial.CodeSize[:]}...)
 
 	accPeek.ComputeHashInitial = mimc.HashOf(comp, initialHashCols)
 	accPeek.HashInitial = accPeek.ComputeHashInitial.Result()
 
 	finalHashCols := [][]ifaces.Column{accPeek.Final.Nonce[:]}
-	finalHashCols = append(finalHashCols, []ifaces.Column{accPeek.Final.Balance})
+	finalHashCols = append(finalHashCols, [][]ifaces.Column{accPeek.Final.Balance[:]}...)
 	finalHashCols = append(finalHashCols, [][]ifaces.Column{accPeek.Final.StorageRoot[:]}...)
-	finalHashCols = append(finalHashCols, [][]ifaces.Column{
-		{accPeek.Final.MiMCCodeHash},
-		{accPeek.Final.KeccakCodeHash.Lo},
-		{accPeek.Final.KeccakCodeHash.Hi},
-		{accPeek.Final.CodeSize},
-	}...)
+	finalHashCols = append(finalHashCols, [][]ifaces.Column{accPeek.Final.MiMCCodeHash[:]}...)
+	finalHashCols = append(finalHashCols, [][]ifaces.Column{accPeek.Final.KeccakCodeHash.Lo[:]}...)
+	finalHashCols = append(finalHashCols, [][]ifaces.Column{accPeek.Final.KeccakCodeHash.Hi[:]}...)
+	finalHashCols = append(finalHashCols, [][]ifaces.Column{accPeek.Final.CodeSize[:]}...)
 
 	accPeek.ComputeHashFinal = mimc.HashOf(comp, finalHashCols)
 	accPeek.HashFinal = accPeek.ComputeHashFinal.Result()
@@ -168,9 +169,10 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 type Account struct {
 	// Nonce, Balance, MiMCCodeHash and CodeSize store the account field on a
 	// single column each.
-	Exists, Balance, MiMCCodeHash, CodeSize ifaces.Column
-	Nonce                                   [common.NbLimbU64]ifaces.Column
-	StorageRoot                             [common.NbLimbU256]ifaces.Column
+	Exists                    ifaces.Column
+	Nonce, CodeSize           [common.NbLimbU64]ifaces.Column
+	StorageRoot, MiMCCodeHash [common.NbLimbU256]ifaces.Column
+	Balance                   [common.NbLimbU128]ifaces.Column
 	// KeccakCodeHash stores the keccak code hash of the account.
 	KeccakCodeHash common.HiLoColumns
 	// ExpectedHubCodeHash is almost the same as the KeccakCodeHash, with the difference
@@ -178,8 +180,8 @@ type Account struct {
 	ExpectedHubCodeHash common.HiLoColumns
 	// HasEmptyCodeHash is an indicator column indicating whether the current
 	// account has an empty codehash
-	HasEmptyCodeHash             ifaces.Column
-	CptHasEmptyCodeHash          wizard.ProverAction
+	HasEmptyCodeHash             [common.NbLimbU64]ifaces.Column
+	CptHasEmptyCodeHash          [common.NbLimbU64]wizard.ProverAction
 	ExistsAndHasNonEmptyCodeHash ifaces.Column
 }
 
@@ -197,9 +199,6 @@ func newAccount(comp *wizard.CompiledIOP, size int, name string) Account {
 
 	acc := Account{
 		Exists:                       createCol("EXISTS"),
-		Balance:                      createCol("BALANCE"),
-		MiMCCodeHash:                 createCol("MIMC_CODEHASH"),
-		CodeSize:                     createCol("CODESIZE"),
 		KeccakCodeHash:               common.NewHiLoColumns(comp, size, name+"_KECCAK_CODE_HASH"),
 		ExpectedHubCodeHash:          common.NewHiLoColumns(comp, size, name+"_EXPECTED_HUB_CODE_HASH"),
 		ExistsAndHasNonEmptyCodeHash: createCol("EXISTS_AND_NON_EMPTY_CODEHASH"),
@@ -207,15 +206,28 @@ func newAccount(comp *wizard.CompiledIOP, size int, name string) Account {
 
 	for i := range common.NbLimbU64 {
 		acc.Nonce[i] = createCol(fmt.Sprintf("NONCE_%v", i))
+		acc.CodeSize[i] = createCol(fmt.Sprintf("CODESIZE_%v", i))
+	}
+
+	for i := range common.NbLimbU128 {
+		acc.Balance[i] = createCol(fmt.Sprintf("BALANCE_%v", i))
 	}
 
 	for i := range common.NbLimbU256 {
 		acc.StorageRoot[i] = createCol(fmt.Sprintf("STORAGE_ROOT_%d", i))
+		acc.MiMCCodeHash[i] = createCol(fmt.Sprintf("MICCODE_HASH_%d", i))
 	}
 
 	// There is no need for an IsActive mask here because the column will be
 	// multiplied by Exists which is already zero when inactive.
-	acc.HasEmptyCodeHash, acc.CptHasEmptyCodeHash = dedicated.IsZero(comp, acc.CodeSize).GetColumnAndProverAction()
+	for i := range common.NbLimbU64 {
+		acc.HasEmptyCodeHash[i], acc.CptHasEmptyCodeHash[i] = dedicated.IsZero(comp, acc.CodeSize[i]).GetColumnAndProverAction()
+	}
+
+	var hasEmptyCodeHashExpressions []any
+	for i := range common.NbLimbU64 {
+		hasEmptyCodeHashExpressions = append(hasEmptyCodeHashExpressions, acc.HasEmptyCodeHash[i])
+	}
 
 	comp.InsertGlobal(
 		0,
@@ -223,21 +235,23 @@ func newAccount(comp *wizard.CompiledIOP, size int, name string) Account {
 		sym.Sub(
 			acc.ExistsAndHasNonEmptyCodeHash,
 			sym.Mul(
-				sym.Sub(1, acc.HasEmptyCodeHash),
+				sym.Sub(1, sym.Mul(hasEmptyCodeHashExpressions...)),
 				acc.Exists,
 			),
 		),
 	)
 
-	comp.InsertGlobal(
-		0,
-		ifaces.QueryIDf("STATE_SUMMARY_%v_MIMC_CODEHASH_FOR_EXISTING_BUT_EMPTY_CODE", name),
-		sym.Mul(
-			acc.Exists,
-			acc.HasEmptyCodeHash,
-			sym.Sub(acc.MiMCCodeHash, *new(field.Element).SetBytes(emptyCodeHash[:])),
-		),
-	)
+	for i := range common.NbLimbU256 {
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("STATE_SUMMARY_%v_MIMC_CODEHASH_FOR_EXISTING_BUT_EMPTY_CODE_%v", name, i),
+			sym.Mul(
+				acc.Exists,
+				sym.Mul(hasEmptyCodeHashExpressions...),
+				sym.Sub(acc.MiMCCodeHash[i], *new(field.Element).SetBytes(emptyCodeHash[i][:])),
+			),
+		)
+	}
 
 	return acc
 }
@@ -261,12 +275,13 @@ func newAccountPeekAssignmentBuilder(ap *AccountPeek) accountPeekAssignmentBuild
 // accountAssignmentBuilder is a convenience structure storing the column
 // builders relating to the an Account.
 type accountAssignmentBuilder struct {
-	exists, balance, miMCCodeHash, codeSize *common.VectorBuilder
-	nonce                                   [common.NbLimbU64]*common.VectorBuilder
-	storageRoot                             [common.NbLimbU256]*common.VectorBuilder
-	keccakCodeHash                          common.HiLoAssignmentBuilder
-	expectedHubCodeHash                     common.HiLoAssignmentBuilder
-	existsAndHasNonEmptyCodeHash            *common.VectorBuilder
+	exists                       *common.VectorBuilder
+	nonce, codeSize              [common.NbLimbU64]*common.VectorBuilder
+	balance                      [common.NbLimbU128]*common.VectorBuilder
+	storageRoot, miMCCodeHash    [common.NbLimbU256]*common.VectorBuilder
+	keccakCodeHash               common.HiLoAssignmentBuilder
+	expectedHubCodeHash          common.HiLoAssignmentBuilder
+	existsAndHasNonEmptyCodeHash *common.VectorBuilder
 }
 
 // newAccountAssignmentBuilder returns a new [accountAssignmentBuilder] bound
@@ -274,20 +289,23 @@ type accountAssignmentBuilder struct {
 func newAccountAssignmentBuilder(ap *Account) accountAssignmentBuilder {
 	res := accountAssignmentBuilder{
 		exists:                       common.NewVectorBuilder(ap.Exists),
-		balance:                      common.NewVectorBuilder(ap.Balance),
-		miMCCodeHash:                 common.NewVectorBuilder(ap.MiMCCodeHash),
-		codeSize:                     common.NewVectorBuilder(ap.CodeSize),
 		existsAndHasNonEmptyCodeHash: common.NewVectorBuilder(ap.ExistsAndHasNonEmptyCodeHash),
 		keccakCodeHash:               common.NewHiLoAssignmentBuilder(ap.KeccakCodeHash),
 		expectedHubCodeHash:          common.NewHiLoAssignmentBuilder(ap.ExpectedHubCodeHash),
 	}
 
 	for i := range common.NbLimbU64 {
+		res.codeSize[i] = common.NewVectorBuilder(ap.CodeSize[i])
 		res.nonce[i] = common.NewVectorBuilder(ap.Nonce[i])
+	}
+
+	for i := range common.NbLimbU128 {
+		res.balance[i] = common.NewVectorBuilder(ap.Balance[i])
 	}
 
 	for i := range common.NbLimbU256 {
 		res.storageRoot[i] = common.NewVectorBuilder(ap.StorageRoot[i])
+		res.miMCCodeHash[i] = common.NewVectorBuilder(ap.MiMCCodeHash[i])
 	}
 
 	return res
@@ -298,36 +316,54 @@ func (ss *accountAssignmentBuilder) pushAll(acc types.Account) {
 	// accountExists is telling whether the intent is to push an empty account
 	accountExists := acc.Balance != nil
 
-	nonceBuffer := new(bytes.Buffer)
-
-	err := binary.Write(nonceBuffer, binary.BigEndian, acc.Nonce)
-	if err != nil {
-		panic(err)
-	}
-
-	nonceLimbs := common.SplitBytes(nonceBuffer.Bytes())
-	for i := range ss.nonce {
-		padding := make([]byte, fr.Bytes-len(nonceLimbs[i]))
-		ss.nonce[i].PushBytes(append(padding, nonceLimbs[i]...))
+	nonceBytes := int64ToByteLimbs(acc.Nonce)
+	for i := range common.NbLimbU64 {
+		ss.nonce[i].PushBytes(nonceBytes[i])
 	}
 
 	// This is telling us whether the intent is to push an empty account
 	if accountExists {
-		ss.balance.PushBytes32(types.LeftPadToBytes32(acc.Balance.Bytes()))
+		balanceBytes := acc.Balance.Bytes()
+		balancePadBytes := make([]byte, common.NbLimbU128*common.LimbBytes-len(balanceBytes))
+		balancePaddedBytes := append(balancePadBytes, balanceBytes...)
+
+		balanceLimbs := common.SplitBytes(balancePaddedBytes)
+		for i := range common.NbLimbU128 {
+			limbBytes32 := types.LeftPadToBytes32(balanceLimbs[i])
+			ss.balance[i].PushBytes(limbBytes32[:])
+		}
+
 		ss.exists.PushOne()
-		ss.keccakCodeHash.Push(acc.KeccakCodeHash)
+
+		var keccakCodeHashLimbs [common.NbLimbU256][]byte
+		copy(keccakCodeHashLimbs[:], common.SplitBytes(acc.KeccakCodeHash[:]))
+
+		ss.keccakCodeHash.Push(keccakCodeHashLimbs)
 		// if account exists push the same Keccak code hash
-		ss.expectedHubCodeHash.Push(acc.KeccakCodeHash)
+		ss.expectedHubCodeHash.Push(keccakCodeHashLimbs)
 	} else {
-		ss.balance.PushZero()
+		for i := range common.NbLimbU128 {
+			ss.balance[i].PushZero()
+		}
+
 		ss.exists.PushZero()
 		ss.keccakCodeHash.PushZeroes()
 		// if account does not exist push empty codehash
-		ss.expectedHubCodeHash.Push(types.FullBytes32(types2.EmptyCodeHash))
+		var emptyCodeHashLimbs [common.NbLimbU256][]byte
+		copy(emptyCodeHashLimbs[:], common.SplitBytes(types2.EmptyCodeHash[:]))
+		ss.expectedHubCodeHash.Push(emptyCodeHashLimbs)
 	}
 
-	ss.codeSize.PushInt(int(acc.CodeSize))
-	ss.miMCCodeHash.PushBytes32(acc.MimcCodeHash)
+	codesizeBytes := int64ToByteLimbs(acc.CodeSize)
+	for i := range common.NbLimbU64 {
+		ss.codeSize[i].PushBytes(codesizeBytes[i])
+	}
+
+	mimcCodeHashLimbs := common.SplitBytes(acc.MimcCodeHash[:])
+	for i := range common.NbLimbU256 {
+		limbBytes32 := types.LeftPadToBytes32(mimcCodeHashLimbs[i])
+		ss.miMCCodeHash[i].PushBytes(limbBytes32[:])
+	}
 
 	for i, limbBytes := range common.SplitBytes(acc.StorageRoot[:]) {
 		limbBytes32 := types.LeftPadToBytes32(limbBytes)
@@ -346,36 +382,54 @@ func (ss *accountAssignmentBuilder) pushOverrideStorageRoot(
 	// accountExists is telling whether the intent is to push an empty account
 	accountExists := acc.Balance != nil
 
-	nonceBuffer := new(bytes.Buffer)
-
-	err := binary.Write(nonceBuffer, binary.BigEndian, acc.Nonce)
-	if err != nil {
-		panic(err)
-	}
-
-	nonceLimbs := common.SplitBytes(nonceBuffer.Bytes())
-	for i := range ss.nonce {
-		padding := make([]byte, fr.Bytes-len(nonceLimbs[i]))
-		ss.nonce[i].PushBytes(append(padding, nonceLimbs[i]...))
+	nonceBytes := int64ToByteLimbs(acc.Nonce)
+	for i := range common.NbLimbU64 {
+		ss.nonce[i].PushBytes(nonceBytes[i])
 	}
 
 	// This is telling us whether the intent is to push an empty account
 	if accountExists {
-		ss.balance.PushBytes32(types.LeftPadToBytes32(acc.Balance.Bytes()))
+		balanceBytes := acc.Balance.Bytes()
+		balancePadBytes := make([]byte, common.NbLimbU128*common.LimbBytes-len(balanceBytes))
+		balancePaddedBytes := append(balancePadBytes, balanceBytes...)
+
+		balanceLimbs := common.SplitBytes(balancePaddedBytes)
+		for i := range common.NbLimbU128 {
+			limbBytes32 := types.LeftPadToBytes32(balanceLimbs[i])
+			ss.balance[i].PushBytes(limbBytes32[:])
+		}
+
 		ss.exists.PushOne()
-		ss.keccakCodeHash.Push(acc.KeccakCodeHash)
+
+		var keccakCodeHashLimbs [common.NbLimbU256][]byte
+		copy(keccakCodeHashLimbs[:], common.SplitBytes(acc.KeccakCodeHash[:]))
+
+		ss.keccakCodeHash.Push(keccakCodeHashLimbs)
 		// if account exists push the same codehash
-		ss.expectedHubCodeHash.Push(acc.KeccakCodeHash)
+		ss.expectedHubCodeHash.Push(keccakCodeHashLimbs)
 	} else {
-		ss.balance.PushZero()
+		for i := range common.NbLimbU128 {
+			ss.balance[i].PushZero()
+		}
+
 		ss.exists.PushZero()
 		ss.keccakCodeHash.PushZeroes()
 		// if account does not exist push empty codehash
-		ss.expectedHubCodeHash.Push(types.FullBytes32(types2.EmptyCodeHash))
+		var emptyCodeHashLimbs [common.NbLimbU256][]byte
+		copy(emptyCodeHashLimbs[:], common.SplitBytes(types2.EmptyCodeHash[:]))
+		ss.expectedHubCodeHash.Push(emptyCodeHashLimbs)
 	}
 
-	ss.codeSize.PushInt(int(acc.CodeSize))
-	ss.miMCCodeHash.PushBytes32(acc.MimcCodeHash)
+	codesizeBytes := int64ToByteLimbs(acc.CodeSize)
+	for i := range common.NbLimbU64 {
+		ss.codeSize[i].PushBytes(codesizeBytes[i])
+	}
+
+	mimcCodeHashLimbs := common.SplitBytes(acc.MimcCodeHash[:])
+	for i := range common.NbLimbU256 {
+		limbBytes := types.LeftPadToBytes32(mimcCodeHashLimbs[i])
+		ss.miMCCodeHash[i].PushBytes(limbBytes[:])
+	}
 
 	for i := range storageRoot {
 		ss.storageRoot[i].PushBytes32(types.LeftPadToBytes32(storageRoot[i]))
@@ -391,18 +445,39 @@ func (ss *accountAssignmentBuilder) PadAndAssign(run *wizard.ProverRuntime) {
 	ss.exists.PadAndAssign(run)
 
 	for i := range common.NbLimbU64 {
+		ss.codeSize[i].PadAndAssign(run)
 		ss.nonce[i].PadAndAssign(run)
 	}
 
-	ss.balance.PadAndAssign(run)
-	ss.keccakCodeHash.PadAssign(run, types.FullBytes32{})
-	ss.expectedHubCodeHash.PadAssign(run, types.FullBytes32{})
-	ss.miMCCodeHash.PadAndAssign(run)
+	for i := range common.NbLimbU128 {
+		ss.balance[i].PadAndAssign(run)
+	}
 
-	for i := range ss.storageRoot {
+	ss.keccakCodeHash.PadAssign(run, [common.NbLimbU256][]byte{})
+	ss.expectedHubCodeHash.PadAssign(run, [common.NbLimbU256][]byte{})
+
+	for i := range common.NbLimbU256 {
+		ss.miMCCodeHash[i].PadAndAssign(run)
 		ss.storageRoot[i].PadAndAssign(run)
 	}
 
-	ss.codeSize.PadAndAssign(run)
 	ss.existsAndHasNonEmptyCodeHash.PadAndAssign(run)
+}
+
+func int64ToByteLimbs(num int64) [][]byte {
+	nonceBuffer := new(bytes.Buffer)
+
+	err := binary.Write(nonceBuffer, binary.BigEndian, num)
+	if err != nil {
+		panic(err)
+	}
+
+	res := make([][]byte, common.NbLimbU64)
+	nonceLimbs := common.SplitBytes(nonceBuffer.Bytes())
+	for i := range common.NbLimbU64 {
+		padding := make([]byte, fr.Bytes-len(nonceLimbs[i]))
+		res[i] = append(padding, nonceLimbs[i]...)
+	}
+
+	return res
 }
