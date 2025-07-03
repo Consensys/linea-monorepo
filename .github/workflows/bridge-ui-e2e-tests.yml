@@ -74,12 +74,6 @@ jobs:
         run: |
           sudo apt-get install --no-install-recommends -y xvfb
 
-      - name: Initialize Metamask testing fixture
-        run: xvfb-run pnpm run -F bridge-ui build:cache
-        env:
-          E2E_TEST_SEED_PHRASE: "test test test test test test test test test test test junk"
-          E2E_TEST_WALLET_PASSWORD: "TestPassword!"
-
       - name: Run unit tests
         run: DOTENV_CONFIG_PATH=.env.production pnpm run -F bridge-ui test:unit
         env:
@@ -145,6 +139,12 @@ jobs:
         run: |
           docker ps -la && docker images
           docker container ls -a
+      
+      - name: Initialize Metamask testing fixture
+        run: xvfb-run pnpm run -F bridge-ui build:cache
+        env:
+          E2E_TEST_SEED_PHRASE: "test test test test test test test test test test test junk"
+          E2E_TEST_WALLET_PASSWORD: "TestPassword!"
 
       # Prerequisite - Testing wallet must have >0 ETH and USDC on Sepolia
       - name: Run E2E tests
