@@ -16,18 +16,8 @@ import (
 )
 
 // LogHasher is used to MiMC-hash the data in LogMessages. Using a zero initial stata,
-// the data in L2L1 logs must be hashed as follows:
-// msg1HashHi, msg1HashLo, msg2HashHi, msg2HashLo, and so on.
-// The hashing proceeds row by row. For row i, after hashing msgHashHi[i], the result is put into hashFirst[i].
-// hashFirst[i] is then used as the state to hash msgHashLo[i], and the result is put into hashSecond[i]
-// Finally, hashSecond[i] is used as the initial state for hashing msgHashHi[i+1]
-// Here is a diagram of how the values are computed
-// state:          0            x1           x1'       x2
-// block:       msg1Hi         msg1Lo      msg2Hi    msg2Lo     ....
-// MimcOutput     x1            x1'          x2        x2'
-// x1, x2 will correspond to the values stored in hashFirst
-// x1', x2' will correspond to values stored in hashSecond
-// The final value of the chained hash can be retrieved as ---> hashSecond[ctMax[any index]]
+// the data in L2L1 logs must be hashed as follows: msg1Hash, msg2Hash, and so on.
+// The final value of the chained hash can be retrieved as hash[ctMax[any index]]
 type LogHasher struct {
 	// the Hash value after each step, as explained in the description of LogHasher
 	Hash [common.NbLimbU256]ifaces.Column
