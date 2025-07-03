@@ -172,7 +172,6 @@ runs:
         echo "" >> output.md
 
     - name: append besu-fleet-plugin checksum to release notes
-      id: release_create_artifacts
       if: ${{ inputs.compile_release_notes == 'true' && inputs.fetch_besu_fleet_plugin == 'true' }}
       shell: bash
       run: |
