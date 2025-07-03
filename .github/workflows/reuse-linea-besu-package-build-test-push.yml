@@ -54,6 +54,9 @@ jobs:
         uses: ./.github/actions/linea-besu-package/assemble
         with:
           release_tag_prefix: ${{ inputs.release_tag_prefix }}
+          fetch_besu_fleet_plugin: true
+          fleet_github_app_id: ${{ secrets.FLEET_GITHUB_APP_ID }}
+          fleet_github_app_private_key: ${{ secrets.FLEET_GITHUB_APP_PRIVATE_KEY }}
 
       - name: set up docker buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 #v3.11.1
