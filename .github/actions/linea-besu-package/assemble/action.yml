@@ -10,6 +10,10 @@ inputs:
     description: 'Compile release notes or not'
     required: false
     default: 'false'
+  fetch_besu_fleet_plugin:
+    description: 'Fetch Besu Fleet plugin or not'
+    required: false
+    default: 'false'
 
 outputs:
   workflow_id:
@@ -101,12 +105,35 @@ runs:
       run: |
         echo "dockerimage=consensys/linea-besu-package:${{ steps.dockertag.outputs.dockertag }}" >> "$GITHUB_OUTPUT"
 
-    - name: assemble the packages to linea-besu and show folder structure
+    - name: assemble the packages to linea-besu
       shell: bash    
       run: |
         cd linea-besu-package
         make assemble
         mv ./tmp/besu ./linea-besu
+    
+    - name: generate token to fetch artifacts from private besu-fleet-plugin
+      id: generate_token
+      if: ${{ inputs.fetch_besu_fleet_plugin == 'true' }}
+      uses: getsentry/action-github-app-token@v3
+      with:
+        private_key: ${{ secrets.FLEET_GITHUB_APP_PRIVATE_KEY }}
+        app_id: ${{ secrets.FLEET_GITHUB_APP_ID }}
+
+    - name: get plugins from private besu-fleet-plugin
+      if: ${{ inputs.fetch_besu_fleet_plugin == 'true' }}
+      uses: dsaltares/fetch-gh-release-asset@master
+      with:
+        repo: 'Consensys/besu-fleet-plugin'
+        version: 'tags/${{ steps.dotenv.outputs.BESU_FLEET_PLUGIN_VERSION }}'
+        target: './linea-besu-package/linea-besu/besu/plugins/besu-fleet-plugin-${{ steps.dotenv.outputs.BESU_FLEET_PLUGIN_VERSION }}.jar'
+        file: 'besu-fleet-plugin-${{ steps.dotenv.outputs.BESU_FLEET_PLUGIN_VERSION }}.jar'
+        token: ${{ steps.generate_token.outputs.token }}
+    
+    - name: show folder structure
+      shell: bash    
+      run: |
+        cd linea-besu-package
         sudo apt update
         sudo apt-get install --no-install-recommends --assume-yes tree
         tree .
@@ -134,5 +161,14 @@ runs:
         echo "| linea-finalized-tag-updater-plugin | ${{ steps.dotenv.outputs.LINEA_FINALIZED_TAG_UPDATER_PLUGIN_VERSION }} | $(sha256sum ../linea-besu-package/linea-besu/besu/plugins/linea-finalized-tag-updater-v${{ steps.dotenv.outputs.LINEA_FINALIZED_TAG_UPDATER_PLUGIN_VERSION }}.jar | awk '{ print $1 }' ) |" >> output.md    
         echo "| linea-staterecovery-plugin | ${{ steps.dotenv.outputs.LINEA_STATERECOVERY_PLUGIN_VERSION }} | $(sha256sum ../linea-besu-package/linea-besu/besu/plugins/linea-staterecovery-besu-plugin-v${{ steps.dotenv.outputs.LINEA_STATERECOVERY_PLUGIN_VERSION }}.jar | awk '{ print $1 }' ) |" >> output.md    
         echo "| shomei-plugin | ${{ steps.dotenv.outputs.SHOMEI_PLUGIN_VERSION }} | $(sha256sum ../linea-besu-package/linea-besu/besu/plugins/besu-shomei-plugin-v${{ steps.dotenv.outputs.SHOMEI_PLUGIN_VERSION }}.jar | awk '{ print $1 }' ) |" >> output.md    
+        echo "| besu-fleet-plugin | ${{ steps.dotenv.outputs.BESU_FLEET_PLUGIN_VERSION }} | $(sha256sum ../linea-besu-package/linea-besu/besu/plugins/besu-fleet-plugin-${{ steps.dotenv.outputs.BESU_FLEET_PLUGIN_VERSION }}.jar | awk '{ print $1 }' ) |" >> output.md    
+        echo "" >> output.md
+
+    - name: append besu-fleet-plugin checksum to release notes
+      id: release_create_artifacts
+      if: ${{ inputs.compile_release_notes == 'true' && inputs.fetch_besu_fleet_plugin == 'true' }}
+      shell: bash
+      run: |
+        cd release
         echo "| besu-fleet-plugin | ${{ steps.dotenv.outputs.BESU_FLEET_PLUGIN_VERSION }} | $(sha256sum ../linea-besu-package/linea-besu/besu/plugins/besu-fleet-plugin-${{ steps.dotenv.outputs.BESU_FLEET_PLUGIN_VERSION }}.jar | awk '{ print $1 }' ) |" >> output.md    
         echo "" >> output.md
