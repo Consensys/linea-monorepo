@@ -20,7 +20,6 @@ inputs:
   fleet_github_app_private_key:
     description: 'GitHub App private key to authenticate to besu-fleet-plugin repo'
     required: false
-    default: ''
 
 outputs:
   workflow_id:
