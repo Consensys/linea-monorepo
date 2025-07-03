@@ -1,16 +1,16 @@
 package badnonce
 
 import (
+	"fmt"
+
 	"github.com/consensys/gnark/frontend"
 	ac "github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulator"
-	"github.com/crate-crypto/go-ipa/bandersnatch/fr"
 )
 
 // BadNonceCircuit defines the circuit for the transaction with a bad nonce.
 type BadNonceCircuit struct {
-	// Transaction Nonce
 	TxNonce frontend.Variable
 	// Account for the sender of the transaction
 	Account types.GnarkAccount
@@ -21,7 +21,7 @@ type BadNonceCircuit struct {
 }
 
 // Define represent the constraints relevant to [BadNonceCircuit]
-func (circuit BadNonceCircuit) Define(api frontend.API) error {
+func (circuit *BadNonceCircuit) Define(api frontend.API) error {
 
 	var (
 		diff             = api.Sub(circuit.TxNonce, api.Add(circuit.Account.Nonce, 1))
@@ -79,7 +79,7 @@ func (circuit BadNonceCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-func (c BadNonceCircuit) Allocate(config Config) {
+func (c *BadNonceCircuit) Allocate(config Config) {
 	c.MerkleProof.Proofs.Siblings = make([]frontend.Variable, config.Depth)
 }
 
@@ -91,19 +91,15 @@ func (c *BadNonceCircuit) Assign(assi AssigningInputs) BadNonceCircuit {
 	root := assi.Tree.Root
 
 	var witMerkle MerkleProofCircuit
-	var buf fr.Element
 
 	witMerkle.Proofs.Siblings = make([]frontend.Variable, len(proof.Siblings))
 	for j := 0; j < len(proof.Siblings); j++ {
-		buf.SetBytes(proof.Siblings[j][:])
-		witMerkle.Proofs.Siblings[j] = buf.String()
+		witMerkle.Proofs.Siblings[j] = proof.Siblings[j][:]
 	}
 	witMerkle.Proofs.Path = proof.Path
-	buf.SetBytes(leaf[:])
-	witMerkle.Leaf = buf.String()
+	witMerkle.Leaf = leaf[:]
 
-	buf.SetBytes(root[:])
-	witMerkle.Root = buf.String()
+	witMerkle.Root = root[:]
 
 	//generate witness for account and leafOpening
 	a := assi.Account
@@ -114,10 +110,10 @@ func (c *BadNonceCircuit) Assign(assi AssigningInputs) BadNonceCircuit {
 		CodeSize: a.CodeSize,
 	}
 
-	account.StorageRoot = *buf.SetBytes(a.StorageRoot[:])
-	account.MimcCodeHash = *buf.SetBytes(a.MimcCodeHash[:])
-	account.KeccakCodeHashMSB = *buf.SetBytes(a.KeccakCodeHash[16:])
-	account.KeccakCodeHashLSB = *buf.SetBytes(a.KeccakCodeHash[:16])
+	account.StorageRoot = a.StorageRoot[:]
+	account.MimcCodeHash = a.MimcCodeHash[:]
+	account.KeccakCodeHashMSB = a.KeccakCodeHash[16:]
+	account.KeccakCodeHashLSB = a.KeccakCodeHash[:16]
 
 	hval := ac.Hash(assi.Tree.Config, a)
 
@@ -127,14 +123,16 @@ func (c *BadNonceCircuit) Assign(assi AssigningInputs) BadNonceCircuit {
 		Next: l.Next,
 	}
 
-	leafOpening.HKey = *buf.SetBytes(l.HKey[:])
-	leafOpening.HVal = *buf.SetBytes(hval[:])
+	leafOpening.HKey = l.HKey[:]
+	leafOpening.HVal = hval[:]
 
-	res := BadNonceCircuit{
+	fmt.Printf("TxNonce %v\n", assi.Transaction.Nonce())
+
+	return BadNonceCircuit{
 		TxNonce:     assi.Transaction.Nonce(),
 		MerkleProof: witMerkle,
 		LeafOpening: leafOpening,
 		Account:     account,
 	}
-	return res
+
 }

@@ -40,11 +40,11 @@ type SubCircuit interface {
 
 // AssigningInputs collects the inputs used for the circuit assignment
 type AssigningInputs struct {
-	Tree        smt.Tree
+	Tree        *smt.Tree
 	Pos         int
 	Account     Account
 	LeafOpening accumulator.LeafOpening
-	Transaction types.Transaction
+	Transaction *types.Transaction
 	FuncInputs  public_input.Invalidity
 }
 

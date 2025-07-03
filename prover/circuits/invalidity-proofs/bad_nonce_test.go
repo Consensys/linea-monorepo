@@ -62,8 +62,6 @@ func genWitness(t *testing.T, tcases []TestCases, config *smt.Config) badnonce.B
 
 	witMerkle.Proofs.Siblings = make([]frontend.Variable, len(proof.Siblings))
 	for j := 0; j < len(proof.Siblings); j++ {
-
-		// witMerkle.Proofs.Siblings[j] = *buf.SetBytes(proof.Siblings[j][:])
 		witMerkle.Proofs.Siblings[j] = proof.Siblings[j][:]
 	}
 	witMerkle.Proofs.Path = proof.Path
