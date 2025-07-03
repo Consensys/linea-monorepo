@@ -109,20 +109,6 @@ jobs:
         run: |
           mkdir -p tmp/local/traces/v2/conflated
           chmod -R a+rw tmp/local/
-      
-      - name: Download local docker image artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: linea-*
-      
-      - name: Load Docker images
-        run: |
-          pwd && ls -la && echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" &&
-          gunzip -c $GITHUB_WORKSPACE/linea-coordinator/linea-coordinator-docker-image.tar.gz | docker load &&
-          gunzip -c $GITHUB_WORKSPACE/linea-postman/linea-postman-docker-image.tar.gz | docker load &&
-          gunzip -c $GITHUB_WORKSPACE/linea-prover/linea-prover-docker-image.tar.gz | docker load &&
-          gunzip -c $GITHUB_WORKSPACE/linea-transaction-exclusion-api/linea-transaction-exclusion-api-docker-image.tar.gz | docker load
-        shell: bash
 
       - name: Spin up fresh environment with besu tracing with retry
         uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 #v3.0.2
