@@ -6,14 +6,14 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	inval "github.com/consensys/linea-monorepo/prover/circuits/invalidity_proof"
+	badnonce "github.com/consensys/linea-monorepo/prover/circuits/invalidity_proof"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 )
 
-func TestInvalidity(t *testing.T) {
+func TestInvalidityBadNonce(t *testing.T) {
 
 	var (
 		config = &smt.Config{
@@ -26,7 +26,7 @@ func TestInvalidity(t *testing.T) {
 			Nonce: uint64(tcases[1].TxNonce),
 		}
 
-		assi = inval.AssigningInputs{
+		assi = badnonce.AssigningInputs{
 			Tree:        tree,
 			Pos:         1,
 			Account:     tcases[1].Account,
@@ -34,19 +34,17 @@ func TestInvalidity(t *testing.T) {
 			Transaction: types.NewTx(&tx),
 		}
 
-		circuit = inval.CircuitInvalidity{
-			SubCircuits: [inval.NBSubCircuit]inval.SubCircuit{&inval.BadNonceCircuit{}},
-		}
+		circuit badnonce.BadNonceCircuit
 	)
 
 	// assign the circuit
 	circuit.Assign(assi)
-	// solve the circuit
+
 	witness, err := frontend.NewWitness(&circuit, ecc.BLS12_377.ScalarField())
 	require.NoError(t, err)
 
 	// allocate the circuit
-	circuit.Allocate(inval.Config{
+	circuit.Allocate(badnonce.Config{
 		Depth: config.Depth,
 	})
 
@@ -58,6 +56,7 @@ func TestInvalidity(t *testing.T) {
 	)
 	require.NoError(t, err)
 
+	// solve the circuit
 	err = scs.IsSolved(witness)
 	require.NoError(t, err)
 

@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	NBSubCircuit = 2 // number of cases in the invalidity proof
+	NBSubCircuit = 1 // number of cases in the invalidity proof
 )
 
 type CircuitInvalidity struct {
@@ -25,7 +25,7 @@ type CircuitInvalidity struct {
 	// - bad transaction nonce
 	// - bad transaction value
 	// ...
-	subCircuits [NBSubCircuit]SubCircuit
+	SubCircuits [NBSubCircuit]SubCircuit
 	// the functional public inputs of the circuit.
 	FuncInputs FunctionalPublicInputsGnark
 	// the hash of the functional public inputs
@@ -50,9 +50,9 @@ type AssigningInputs struct {
 }
 
 // Define the constraints
-func (c CircuitInvalidity) Define(api frontend.API) error {
-	for i := range c.subCircuits {
-		c.subCircuits[i].Define(api)
+func (c *CircuitInvalidity) Define(api frontend.API) error {
+	for i := range c.SubCircuits {
+		c.SubCircuits[i].Define(api)
 	}
 
 	// @azam constraint on the hashing of functional public inputs
@@ -60,42 +60,42 @@ func (c CircuitInvalidity) Define(api frontend.API) error {
 }
 
 // Allocate the circuit
-func (c CircuitInvalidity) Allocate(config Config) {
+func (c *CircuitInvalidity) Allocate(config Config) {
 	// allocate the subCircuit
-	for i := range c.subCircuits {
-		c.subCircuits[i].Allocate(config)
+	for i := range c.SubCircuits {
+		c.SubCircuits[i].Allocate(config)
 	}
 	// @azam: allocate the Functional Public Inputs
 }
 
 // Assign the circuit
-func (c CircuitInvalidity) Assign(assi AssigningInputs) CircuitInvalidity {
+func (c *CircuitInvalidity) Assign(assi AssigningInputs) {
 	// assign the sub circuits
-	for i := range c.subCircuits {
-		c.subCircuits[i].Assign(assi)
+	for i := range c.SubCircuits {
+		c.SubCircuits[i].Assign(assi)
 	}
 	// assign the Functional Public Inputs
 	c.FuncInputs.Assign(assi.FuncInputs)
 	// assign the public input
-	c.PublicInput = new(big.Int).SetBytes(assi.FuncInputs.Sum(nil))
-	return c
+	c.PublicInput = assi.FuncInputs.Sum(nil)
+
 }
 
 // MakeProof and solve the circuit.
-func (c CircuitInvalidity) MakeProof(setup circuits.Setup, assi AssigningInputs, FuncInputs public_input.Invalidity) string {
-	assignment := c.Assign(assi)
+func (c *CircuitInvalidity) MakeProof(setup circuits.Setup, assi AssigningInputs, FuncInputs public_input.Invalidity) string {
+	c.Assign(assi)
 
 	//@azam what options should I add?
 	proof, err := circuits.ProveCheck(
 		&setup,
-		&assignment,
+		c,
 	)
 
 	if err != nil {
 		panic(err)
 	}
 
-	logrus.Infof("generated circuit proof `%++v` for input `%v`", proof, assignment.PublicInput.(*big.Int).String())
+	logrus.Infof("generated circuit proof `%++v` for input `%v`", proof, c.PublicInput.(*big.Int).String())
 
 	// Write the serialized proof
 	return circuits.SerializeProofRaw(proof)

@@ -84,7 +84,7 @@ func (c *BadNonceCircuit) Allocate(config Config) {
 }
 
 // Assign the circuit from [AssigningInputs]
-func (c *BadNonceCircuit) Assign(assi AssigningInputs) BadNonceCircuit {
+func (c *BadNonceCircuit) Assign(assi AssigningInputs) {
 
 	// assign the merkle proof
 	leaf, _ := assi.Tree.GetLeaf(assi.Pos)
@@ -127,11 +127,10 @@ func (c *BadNonceCircuit) Assign(assi AssigningInputs) BadNonceCircuit {
 	leafOpening.HKey = l.HKey[:]
 	leafOpening.HVal = hval[:]
 
-	return BadNonceCircuit{
+	*c = BadNonceCircuit{
 		TxNonce:     assi.Transaction.Nonce(),
 		MerkleProof: witMerkle,
 		LeafOpening: leafOpening,
 		Account:     account,
 	}
-
 }
