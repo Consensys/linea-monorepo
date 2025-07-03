@@ -13,6 +13,7 @@ type MerkleProofCircuit struct {
 	Root   frontend.Variable
 }
 
+// Define the constraints for a merkle proof
 func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
 	h, err := gmimc.NewMiMC(api)
 	if err != nil {

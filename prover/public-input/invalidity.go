@@ -9,14 +9,18 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+// Invalidity represents the functional public inputs for the invalidity circuit
+// The mimc hash over functional inputs is set as the public input of the circuit.
 type Invalidity struct {
-	TxHash               common.Hash
-	FromAddress          types.EthAddress
-	BlockHeight          uint64
-	InitialStateRootHash [32]byte
-	TimeStamp            uint64
+	TxHash      common.Hash      // keccak hash of the transaction
+	FromAddress types.EthAddress // address of the sender
+	BlockHeight uint64           // block number for the current virtual block,
+	// virtual block is the block containing only-and-only the forced transaction.
+	InitialStateRootHash [32]byte // state-root-hash before the current virtual block
+	TimeStamp            uint64   // time stamp of the virtual block
 }
 
+// Sum compute the mimc hash over the functional public inputs
 func (pi *Invalidity) Sum(hsh hash.Hash) []byte {
 	if hsh == nil {
 		hsh = mimc.NewMiMC()

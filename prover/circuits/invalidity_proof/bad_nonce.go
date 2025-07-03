@@ -1,8 +1,6 @@
 package invalidity_proof
 
 import (
-	"fmt"
-
 	"github.com/consensys/gnark/frontend"
 	ac "github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -75,15 +73,17 @@ func (circuit *BadNonceCircuit) Define(api frontend.API) error {
 		return err
 	}
 
-	//@azam TBD: check that FTx.Nonce is related to  FTx.Hash  and then in the interconnection we show that
+	//@azam check that FTx.Nonce is related to  FTx.Hash  and then in the interconnection we show that
 	//FTx.Hash is included in the RollingHash
 	return nil
 }
 
+// Allocate the circuit
 func (c *BadNonceCircuit) Allocate(config Config) {
 	c.MerkleProof.Proofs.Siblings = make([]frontend.Variable, config.Depth)
 }
 
+// Assign the circuit from [AssigningInputs]
 func (c *BadNonceCircuit) Assign(assi AssigningInputs) BadNonceCircuit {
 
 	// assign the merkle proof
@@ -102,7 +102,7 @@ func (c *BadNonceCircuit) Assign(assi AssigningInputs) BadNonceCircuit {
 
 	witMerkle.Root = root[:]
 
-	//generate witness for account and leafOpening
+	// assign account and leafOpening
 	a := assi.Account
 
 	account := types.GnarkAccount{
@@ -126,8 +126,6 @@ func (c *BadNonceCircuit) Assign(assi AssigningInputs) BadNonceCircuit {
 
 	leafOpening.HKey = l.HKey[:]
 	leafOpening.HVal = hval[:]
-
-	fmt.Printf("TxNonce %v\n", assi.Transaction.Nonce())
 
 	return BadNonceCircuit{
 		TxNonce:     assi.Transaction.Nonce(),

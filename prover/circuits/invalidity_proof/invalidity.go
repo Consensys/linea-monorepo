@@ -17,11 +17,11 @@ import (
 )
 
 const (
-	NBSubCircuit = 2
+	NBSubCircuit = 2 // number of cases in the invalidity proof
 )
 
 type CircuitInvalidity struct {
-	// The sub circuit for the invalidity case:
+	// The sub circuits for the invalidity cases:
 	// - bad transaction nonce
 	// - bad transaction value
 	// ...
@@ -32,37 +32,43 @@ type CircuitInvalidity struct {
 	PublicInput frontend.Variable
 }
 
+// SubCircuit is the circuit for the invalidity case
 type SubCircuit interface {
-	Define(frontend.API) error
-	Allocate(Config)        //  allocate the circuit
-	Assign(AssigningInputs) // generate assignment
+	Define(frontend.API) error // define the constraints
+	Allocate(Config)           //  allocate the circuit
+	Assign(AssigningInputs)    // generate assignment
 }
 
 // AssigningInputs collects the inputs used for the circuit assignment
 type AssigningInputs struct {
-	Tree        *smt.Tree
-	Pos         int
+	Tree        *smt.Tree // tree for the account trie
+	Pos         int       // position of the account in the tree
 	Account     Account
 	LeafOpening accumulator.LeafOpening
 	Transaction *types.Transaction
 	FuncInputs  public_input.Invalidity
 }
 
+// Define the constraints
 func (c CircuitInvalidity) Define(api frontend.API) error {
 	for i := range c.subCircuits {
 		c.subCircuits[i].Define(api)
 	}
+
+	// @azam constraint on the hashing of functional public inputs
 	return nil
 }
 
+// Allocate the circuit
 func (c CircuitInvalidity) Allocate(config Config) {
 	// allocate the subCircuit
 	for i := range c.subCircuits {
 		c.subCircuits[i].Allocate(config)
 	}
-	// allocate the Functional Public Inputs
+	// @azam: allocate the Functional Public Inputs
 }
 
+// Assign the circuit
 func (c CircuitInvalidity) Assign(assi AssigningInputs) CircuitInvalidity {
 	// assign the sub circuits
 	for i := range c.subCircuits {
@@ -75,6 +81,7 @@ func (c CircuitInvalidity) Assign(assi AssigningInputs) CircuitInvalidity {
 	return c
 }
 
+// MakeProof and solve the circuit.
 func (c CircuitInvalidity) MakeProof(setup circuits.Setup, assi AssigningInputs, FuncInputs public_input.Invalidity) string {
 	assignment := c.Assign(assi)
 
@@ -94,7 +101,7 @@ func (c CircuitInvalidity) MakeProof(setup circuits.Setup, assi AssigningInputs,
 	return circuits.SerializeProofRaw(proof)
 }
 
-// Config collects the data used for choosing the subcircuit and its allocation
+// Config collects the data used for the sub circuits allocation
 type Config struct {
 	// depth of the merkle tree for the account trie
 	Depth int
