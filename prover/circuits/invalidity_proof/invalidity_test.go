@@ -1,4 +1,4 @@
-package badnonce_test
+package invalidity_proof_test
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	badnonce "github.com/consensys/linea-monorepo/prover/circuits/invalidity-proofs"
+	badnonce "github.com/consensys/linea-monorepo/prover/circuits/invalidity_proof"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/ethereum/go-ethereum/core/types"

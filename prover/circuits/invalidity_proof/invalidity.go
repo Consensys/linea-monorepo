@@ -1,4 +1,4 @@
-package badnonce
+package invalidity_proof
 
 import (
 	"math/big"

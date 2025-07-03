@@ -1,4 +1,4 @@
-package badnonce
+package invalidity_proof
 
 import (
 	"fmt"
@@ -11,6 +11,7 @@ import (
 
 // BadNonceCircuit defines the circuit for the transaction with a bad nonce.
 type BadNonceCircuit struct {
+	// Transaction Nonce
 	TxNonce frontend.Variable
 	// Account for the sender of the transaction
 	Account types.GnarkAccount
