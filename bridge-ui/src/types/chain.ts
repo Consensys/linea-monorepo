@@ -27,6 +27,7 @@ export type Chain = {
   };
   testnet: boolean;
   layer: ChainLayer;
+  toChainId: SupportedChainIds;
   messageServiceAddress: Address;
   tokenBridgeAddress: Address;
   gasLimitSurplus: bigint;

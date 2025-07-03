@@ -2,7 +2,7 @@ import { metaMaskFixtures, getExtensionId } from "@synthetixio/synpress/playwrig
 import { Locator, Page } from "@playwright/test";
 import setup from "./wallet-setup/metamask.setup";
 import { getNativeBridgeTransactionsCountImpl, selectTokenAndWaitForBalance } from "./utils";
-import { LINEA_SEPOLIA_NETWORK, PAGE_TIMEOUT, POLLING_INTERVAL } from "./constants";
+import { LOCAL_L2_NETWORK, PAGE_TIMEOUT, POLLING_INTERVAL } from "./constants";
 
 /**
  * NB: There is an issue with Synpress `metaMaskFixtures` extension functions wherein extension functions
@@ -229,7 +229,7 @@ export const test = metaMaskFixtures(setup).extend<{
   },
   switchToLineaSepolia: async ({ metamask }, use) => {
     await use(async () => {
-      await metamask.switchNetwork(LINEA_SEPOLIA_NETWORK.name, true);
+      await metamask.switchNetwork(LOCAL_L2_NETWORK.name, true);
     });
   },
   switchToEthereumMainnet: async ({ metamask }, use) => {

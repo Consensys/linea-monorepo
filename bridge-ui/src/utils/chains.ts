@@ -32,6 +32,7 @@ export const generateChain = (chain: ViemChain): Chain => {
     blockExplorers: chain.blockExplorers,
     testnet: Boolean(chain.testnet),
     layer: getChainNetworkLayer(chain.id),
+    toChainId: getDestinationChainId(chain.id),
     messageServiceAddress: config.chains[chain.id].messageServiceAddress as Address,
     tokenBridgeAddress: config.chains[chain.id].tokenBridgeAddress as Address,
     gasLimitSurplus: config.chains[chain.id].gasLimitSurplus,
@@ -61,6 +62,25 @@ export const getChainNetworkLayer = (chainId: number) => {
       return ChainLayer.L1;
     case localL2Network.id:
       return ChainLayer.L2;
+    default:
+      throw new Error(`Unsupported chain id: ${chainId}`);
+  }
+};
+
+export const getDestinationChainId = (chainId: number): SupportedChainIds => {
+  switch (chainId) {
+    case linea.id:
+      return mainnet.id;
+    case lineaSepolia.id:
+      return sepolia.id;
+    case mainnet.id:
+      return linea.id;
+    case sepolia.id:
+      return lineaSepolia.id;
+    case localL1Network.id:
+      return localL2Network.id;
+    case localL2Network.id:
+      return localL1Network.id;
     default:
       throw new Error(`Unsupported chain id: ${chainId}`);
   }

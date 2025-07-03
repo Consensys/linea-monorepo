@@ -52,7 +52,7 @@ jobs:
           pnpm-install-options: '--frozen-lockfile --prefer-offline'
 
       - name: Install Playwright
-        run: pnpm dlx playwright@1.51.1 install --with-deps chromium
+        run: pnpm dlx playwright@1.53.2 install --with-deps chromium
 
       - name: Build Bridge UI
         run: pnpm run -F bridge-ui build
@@ -67,6 +67,8 @@ jobs:
           NEXT_PUBLIC_LAYERSWAP_API_KEY: ${{ secrets.PUBLIC_LAYERSWAP_API_KEY }}
           NEXT_PUBLIC_ENVIRONMENT: development
           REVALIDATE_SECRET: ${{ secrets.BRIDGE_UI_REVALIDATE_SECRET }}
+          NEXT_PUBLIC_E2E_TEST_MODE: true
+          NEXT_PUBLIC_IS_CCTP_ENABLED: false
 
       - name: Install linux dependencies
         run: |
@@ -75,10 +77,8 @@ jobs:
       - name: Initialize Metamask testing fixture
         run: xvfb-run pnpm run -F bridge-ui build:cache
         env:
-          E2E_TEST_PRIVATE_KEY: ${{ secrets.BRIDGE_UI_E2E_TESTS_PRIVATE_KEY }}
           E2E_TEST_SEED_PHRASE: "test test test test test test test test test test test junk"
           E2E_TEST_WALLET_PASSWORD: "TestPassword!"
-          NEXT_PUBLIC_INFURA_ID: ${{ secrets.PUBLIC_BRIDGE_UI_INFURA_ID }}
 
       - name: Run unit tests
         run: DOTENV_CONFIG_PATH=.env.production pnpm run -F bridge-ui test:unit
@@ -98,10 +98,8 @@ jobs:
         env:
           # Do not run E2E tests in parallel. Especially blockchain tx where nonces can collide.
           CI: "true"
-          E2E_TEST_PRIVATE_KEY: ${{ secrets.BRIDGE_UI_E2E_TESTS_PRIVATE_KEY }}
           E2E_TEST_SEED_PHRASE: "test test test test test test test test test test test junk"
           E2E_TEST_WALLET_PASSWORD: "TestPassword!"
-          NEXT_PUBLIC_INFURA_ID: ${{ secrets.PUBLIC_BRIDGE_UI_INFURA_ID }}
 
       - name: Archive Playwright report
         uses: actions/upload-artifact@v4

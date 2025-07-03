@@ -5,7 +5,6 @@ import { useState } from "react";
 import { useChainStore } from "@/stores";
 import { useChains } from "@/hooks";
 import { Chain } from "@/types";
-import { config } from "@/config";
 
 export default function FromChain() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -29,19 +28,7 @@ export default function FromChain() {
     }
 
     setFromChain(chain);
-
-    if (config.e2eTestMode) {
-      if (chain.localNetwork) {
-        setToChain(chains.find((c: Chain) => c.localNetwork && c.layer !== chain.layer));
-      }
-      return;
-    }
-
-    if (chain.testnet) {
-      setToChain(chains.find((c: Chain) => c.testnet && c.layer !== chain.layer));
-    } else {
-      setToChain(chains.find((c: Chain) => !c.testnet && c.layer !== chain.layer));
-    }
+    setToChain(chains.find((c: Chain) => c.id === chain.toChainId));
   };
 
   return (

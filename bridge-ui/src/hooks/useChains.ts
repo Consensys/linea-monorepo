@@ -10,6 +10,7 @@ const useChains = () => {
     if (config.e2eTestMode) {
       return chains.filter((chain) => chain.localNetwork);
     }
+
     if (!testnetsEnabled) {
       return chains.filter((chain) => !chain.testnet);
     }

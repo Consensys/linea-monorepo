@@ -10,6 +10,13 @@ export const localL1Network = defineChain({
     name: "Ether",
     symbol: "ETH",
   },
+  blockExplorers: {
+    default: {
+      name: "Etherscan",
+      url: "https://etherscan.io",
+      apiUrl: "https://api.etherscan.io/api",
+    },
+  },
   rpcUrls: {
     default: {
       http: ["http://127.0.0.1:8445"],
@@ -30,6 +37,13 @@ export const localL2Network = defineChain({
     decimals: 18,
     name: "Ether",
     symbol: "ETH",
+  },
+  blockExplorers: {
+    default: {
+      name: "Etherscan",
+      url: "https://lineascan.build",
+      apiUrl: "https://api.lineascan.build/api",
+    },
   },
   rpcUrls: {
     default: {
@@ -101,14 +115,6 @@ export const E2E_TEST_CHAINS = [localL1Network, localL2Network] as const;
 const SOLANA_CHAIN = 1151111081099710 as const;
 
 export const CHAINS_IDS = [...CHAINS.map((chain) => chain.id), SOLANA_CHAIN];
-
-// type AllChainIds = (typeof CHAINS_IDS)[number];
-// type LocalChainIds = typeof localL1Network.id | typeof localL2Network.id;
-// type ChainIdWithoutLocal = Exclude<AllChainIds, LocalChainIds>;
-
-// export const CHAINS_IDS_WITHOUT_LOCAL = CHAINS_IDS.filter(
-//   (chainId): chainId is ChainIdWithoutLocal => chainId !== localL1Network.id && chainId !== localL2Network.id,
-// );
 
 export const CHAINS_RPC_URLS: Record<(typeof CHAINS_IDS)[number], string> = {
   [mainnet.id]: `https://mainnet.infura.io/v3/${config.infuraApiKey}`,

@@ -3,15 +3,21 @@ import "dotenv/config";
 
 export const METAMASK_SEED_PHRASE = process.env.E2E_TEST_SEED_PHRASE;
 export const METAMASK_PASSWORD = process.env.E2E_TEST_WALLET_PASSWORD;
-export const TEST_PRIVATE_KEY = process.env.E2E_TEST_PRIVATE_KEY;
-export const INFURA_PROJECT_ID = process.env.NEXT_PUBLIC_INFURA_ID;
 
-export const LINEA_SEPOLIA_NETWORK = {
-  name: "Linea Sepolia",
-  rpcUrl: `https://linea-sepolia.infura.io/v3/${INFURA_PROJECT_ID}`,
-  chainId: 59141,
-  symbol: "LineaETH",
-  blockExplorerUrl: "https://sepolia.lineascan.build",
+export const LOCAL_L1_NETWORK = {
+  name: "L1",
+  rpcUrl: `http://localhost:8445`,
+  chainId: 31648428,
+  symbol: "ETH",
+  blockExplorerUrl: "https://etherscan.io",
+};
+
+export const LOCAL_L2_NETWORK = {
+  name: "L2",
+  rpcUrl: `http://localhost:9045`,
+  chainId: 1337,
+  symbol: "ETH",
+  blockExplorerUrl: "https://lineascan.build",
 };
 
 export const TEST_URL = "http://localhost:3000/";
