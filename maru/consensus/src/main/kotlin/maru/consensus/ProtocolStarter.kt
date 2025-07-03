@@ -77,6 +77,7 @@ class ProtocolStarter(
       Thread.sleep(timeTillFork)
 
       newProtocol.start()
+      log.debug("stated new protocol {}", newProtocol)
     } else {
       log.trace("Block {} was produced, but the fork switch isn't required", { block.blockNumber })
     }
