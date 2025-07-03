@@ -32,8 +32,8 @@ export const test = metaMaskFixtures(setup).extend<{
   submitERC20ApprovalTx: () => Promise<void>;
   waitForTransactionToConfirm: () => Promise<void>;
   confirmTransactionAndWaitForInclusion: () => Promise<void>;
-  switchToLineaSepolia: () => Promise<void>;
-  switchToEthereumMainnet: () => Promise<void>;
+  switchToL2Network: () => Promise<void>;
+  swapChain: () => Promise<void>;
 
   // Composite Bridge UI + Metamask Actions
   doTokenApprovalIfNeeded: () => Promise<void>;
@@ -227,14 +227,9 @@ export const test = metaMaskFixtures(setup).extend<{
       await page.bringToFront();
     });
   },
-  switchToLineaSepolia: async ({ metamask }, use) => {
+  switchToL2Network: async ({ metamask }, use) => {
     await use(async () => {
       await metamask.switchNetwork(LOCAL_L2_NETWORK.name, true);
-    });
-  },
-  switchToEthereumMainnet: async ({ metamask }, use) => {
-    await use(async () => {
-      await metamask.switchNetwork("Ethereum Mainnet", false);
     });
   },
 
@@ -291,6 +286,14 @@ export const test = metaMaskFixtures(setup).extend<{
       await confirmTransactionAndWaitForInclusion();
 
       // Should finish on tx history page
+    });
+  },
+  swapChain: async ({ page }, use) => {
+    await use(async () => {
+      const swapChainButton = page.getByTestId("swap-chain-button");
+      await expect(swapChainButton).toBeVisible();
+      await expect(swapChainButton).toBeEnabled();
+      await swapChainButton.click();
     });
   },
 });

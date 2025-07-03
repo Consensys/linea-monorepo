@@ -51,34 +51,14 @@ describe("L1 > L2 via Native Bridge", () => {
       await expect(txHistoryHeading).toBeVisible();
     });
 
-    test("should be able to switch to test networks", async ({
-      page,
-      connectMetamaskToDapp,
-      clickNativeBridgeButton,
-      openNativeBridgeFormSettings,
-      toggleShowTestNetworksInNativeBridgeForm,
-      clickFirstVisitModalConfirmButton,
-    }) => {
-      await connectMetamaskToDapp();
-      await clickNativeBridgeButton();
-      await clickFirstVisitModalConfirmButton();
-      await openNativeBridgeFormSettings();
-      await toggleShowTestNetworksInNativeBridgeForm();
-
-      // Should have Sepolia text visible
-      const sepoliaText = page.getByText("Sepolia").first();
-      await expect(sepoliaText).toBeVisible();
-    });
-
-    test("should not be able to approve on the wrong network", async ({
+    test("should not be able to bridge on the wrong network", async ({
       page,
       metamask,
       connectMetamaskToDapp,
       clickNativeBridgeButton,
       openNativeBridgeFormSettings,
-      toggleShowTestNetworksInNativeBridgeForm,
       selectTokenAndInputAmount,
-      switchToEthereumMainnet,
+      swapChain,
       clickFirstVisitModalConfirmButton,
     }) => {
       test.setTimeout(60_000);
@@ -86,13 +66,12 @@ describe("L1 > L2 via Native Bridge", () => {
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
       await openNativeBridgeFormSettings();
-      await toggleShowTestNetworksInNativeBridgeForm();
 
-      await switchToEthereumMainnet();
-      await selectTokenAndInputAmount(USDC_SYMBOL, USDC_AMOUNT);
+      await swapChain();
+      await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
 
       // Should have 'Switch to Sepolia' network button visible and enabled
-      const switchBtn = page.getByRole("button", { name: "Switch to Sepolia", exact: true });
+      const switchBtn = page.getByTestId("swap-chain-button");
       await expect(switchBtn).toBeVisible();
       await expect(switchBtn).toBeEnabled();
 
@@ -100,10 +79,10 @@ describe("L1 > L2 via Native Bridge", () => {
       await switchBtn.click();
       await metamask.approveSwitchNetwork();
 
-      // After network switch, should have 'Approve Token' button visible and enabled
-      const approvalButton = page.getByRole("button", { name: "Approve Token", exact: true });
-      await expect(approvalButton).toBeVisible();
-      await expect(approvalButton).toBeEnabled();
+      // After network switch, should have 'Bridge' button visible and enabled
+      const bridgeButton = page.getByRole("button", { name: "Bridge", exact: true });
+      await expect(bridgeButton).toBeVisible();
+      await expect(bridgeButton).toBeEnabled();
     });
 
     test("should see Free gas fees for ETH transfer to L2", async ({
@@ -111,7 +90,6 @@ describe("L1 > L2 via Native Bridge", () => {
       connectMetamaskToDapp,
       clickNativeBridgeButton,
       openNativeBridgeFormSettings,
-      toggleShowTestNetworksInNativeBridgeForm,
       selectTokenAndInputAmount,
       openGasFeeModal,
       clickFirstVisitModalConfirmButton,
@@ -122,20 +100,19 @@ describe("L1 > L2 via Native Bridge", () => {
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
       await openNativeBridgeFormSettings();
-      await toggleShowTestNetworksInNativeBridgeForm();
 
       await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
       await openGasFeeModal();
 
       // Assert text items
-      const lineaSepoliaFeeText = page.getByText("Linea Sepolia fee");
+      const l2NetworkFeeText = page.getByText("L2 fee");
       const freeText = page.getByText("Free");
-      await expect(lineaSepoliaFeeText).toBeVisible();
+      await expect(l2NetworkFeeText).toBeVisible();
       await expect(freeText).toBeVisible();
       const listItem = page
         .locator("li")
         .filter({
-          has: lineaSepoliaFeeText,
+          has: l2NetworkFeeText,
         })
         .filter({
           has: freeText,
@@ -143,7 +120,8 @@ describe("L1 > L2 via Native Bridge", () => {
       await expect(listItem).toBeVisible();
     });
 
-    test("should not see Free gas fees for USDC transfer to L2", async ({
+    // This test is skipped because CCTP is not supported on the local stack.
+    test.skip("should not see Free gas fees for USDC transfer to L2", async ({
       page,
       connectMetamaskToDapp,
       clickNativeBridgeButton,
@@ -174,10 +152,9 @@ describe("L1 > L2 via Native Bridge", () => {
       connectMetamaskToDapp,
       clickNativeBridgeButton,
       openNativeBridgeFormSettings,
-      toggleShowTestNetworksInNativeBridgeForm,
       selectTokenAndInputAmount,
       openGasFeeModal,
-      switchToLineaSepolia,
+      switchToL2Network,
       clickFirstVisitModalConfirmButton,
     }) => {
       test.setTimeout(60_000);
@@ -186,9 +163,8 @@ describe("L1 > L2 via Native Bridge", () => {
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
       await openNativeBridgeFormSettings();
-      await toggleShowTestNetworksInNativeBridgeForm();
 
-      await switchToLineaSepolia();
+      await switchToL2Network();
       await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
       await openGasFeeModal();
 
@@ -202,13 +178,12 @@ describe("L1 > L2 via Native Bridge", () => {
     // If not serial risk colliding nonces -> transactions cancelling each other out
     test.describe.configure({ retries: 1, timeout: 120_000, mode: "serial" });
 
-    test("should be able to initiate bridging ETH from L1 to L2 in testnet", async ({
+    test("should be able to initiate bridging ETH from L1 to L2", async ({
       getNativeBridgeTransactionsCount,
       waitForNewTxAdditionToTxList,
       connectMetamaskToDapp,
       clickNativeBridgeButton,
       openNativeBridgeFormSettings,
-      toggleShowTestNetworksInNativeBridgeForm,
       selectTokenAndInputAmount,
       doInitiateBridgeTransaction,
       openNativeBridgeTransactionHistory,
@@ -220,7 +195,6 @@ describe("L1 > L2 via Native Bridge", () => {
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
       await openNativeBridgeFormSettings();
-      await toggleShowTestNetworksInNativeBridgeForm();
 
       // Get # of txs in txHistory before doing bridge tx, so that we can later confirm that our bridge tx shows up in the txHistory.
       await openNativeBridgeTransactionHistory();
@@ -235,7 +209,8 @@ describe("L1 > L2 via Native Bridge", () => {
       await waitForNewTxAdditionToTxList(txnsLengthBefore);
     });
 
-    test("should be able to initiate bridging USDC from L1 to L2 in testnet", async ({
+    // This test is skipped because CCTP is not supported on the local stack.
+    test.skip("should be able to initiate bridging USDC from L1 to L2 in testnet", async ({
       getNativeBridgeTransactionsCount,
       waitForNewTxAdditionToTxList,
       connectMetamaskToDapp,
@@ -275,10 +250,9 @@ describe("L1 > L2 via Native Bridge", () => {
       connectMetamaskToDapp,
       clickNativeBridgeButton,
       openNativeBridgeFormSettings,
-      toggleShowTestNetworksInNativeBridgeForm,
       openNativeBridgeTransactionHistory,
       getNativeBridgeTransactionsCount,
-      switchToLineaSepolia,
+      switchToL2Network,
       doClaimTransaction,
       waitForTxListUpdateForClaimTx,
       clickFirstVisitModalConfirmButton,
@@ -287,10 +261,9 @@ describe("L1 > L2 via Native Bridge", () => {
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
       await openNativeBridgeFormSettings();
-      await toggleShowTestNetworksInNativeBridgeForm();
 
       // Switch to L2 network
-      await switchToLineaSepolia();
+      await switchToL2Network();
 
       // Load tx history
       await openNativeBridgeTransactionHistory();
