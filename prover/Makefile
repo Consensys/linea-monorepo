@@ -125,7 +125,7 @@ lib/compressor-and-shnarf-calculator-local: lib/compressor lib/shnarf_calculator
 ## Run all the unit-tests
 ##
 test:
-	go test ./...
+	go test -tags debug ./...
 
 ##
 ## Run the CI linting

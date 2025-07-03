@@ -317,6 +317,7 @@ func init() {
 
 	RegisterImplementation(fr.Element{})
 
+	RegisterImplementation(dedicated.StackedColumn{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this
