@@ -31,6 +31,10 @@ on:
         required: false
       DOCKERHUB_TOKEN:
         required: false
+      FLEET_GITHUB_APP_ID:
+        required: false
+      FLEET_GITHUB_APP_PRIVATE_KEY:
+        required: false
 
 jobs:
   build-and-upload-artifact:
@@ -131,6 +135,8 @@ jobs:
           release_tag_prefix: ${{ inputs.release_tag_prefix }}
           compile_release_notes: true
           fetch_besu_fleet_plugin: true
+          fleet_github_app_id: ${{ secrets.FLEET_GITHUB_APP_ID }}
+          fleet_github_app_private_key: ${{ secrets.FLEET_GITHUB_APP_PRIVATE_KEY }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 #v3.6.0
