@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// generate  a tree for testing
+// generate a tree for testing
 func getMerkleProof(t *testing.T) (smt.Proof, Bytes32, Bytes32) {
 
 	config := &smt.Config{

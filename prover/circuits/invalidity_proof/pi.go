@@ -6,6 +6,7 @@ import (
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 )
 
+// FunctionalPublicInputsGnark represents the gnark version of [public_input.Invalidity]
 type FunctionalPublicInputsGnark struct {
 	TxHashMSB            frontend.Variable
 	TxHashLSB            frontend.Variable
@@ -15,7 +16,7 @@ type FunctionalPublicInputsGnark struct {
 	TimeStamp            frontend.Variable
 }
 
-// assign the functional public inputs
+// Assign the functional public inputs
 func (gpi *FunctionalPublicInputsGnark) Assign(pi public_input.Invalidity) {
 	gpi.TxHashMSB = pi.TxHash[:16]
 	gpi.TxHashLSB = pi.TxHash[16:]
@@ -25,6 +26,7 @@ func (gpi *FunctionalPublicInputsGnark) Assign(pi public_input.Invalidity) {
 	gpi.TimeStamp = pi.TimeStamp
 }
 
+// Sum computes the hash over the functional inputs
 func (spi *FunctionalPublicInputsGnark) Sum(api frontend.API, hsh gnarkHash.FieldHasher) frontend.Variable {
 
 	hsh.Reset()
