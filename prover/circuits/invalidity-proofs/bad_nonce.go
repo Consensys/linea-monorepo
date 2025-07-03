@@ -1,16 +1,11 @@
 package badnonce
 
 import (
-	"math/big"
-
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/circuits"
 	ac "github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
-	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulator"
 	"github.com/crate-crypto/go-ipa/bandersnatch/fr"
-	"github.com/sirupsen/logrus"
 )
 
 // BadNonceCircuit defines the circuit for the transaction with a bad nonce.
@@ -26,7 +21,7 @@ type BadNonceCircuit struct {
 }
 
 // Define represent the constraints relevant to [BadNonceCircuit]
-func (circuit *BadNonceCircuit) Define(api frontend.API) error {
+func (circuit BadNonceCircuit) Define(api frontend.API) error {
 
 	var (
 		diff             = api.Sub(circuit.TxNonce, api.Add(circuit.Account.Nonce, 1))
@@ -84,12 +79,11 @@ func (circuit *BadNonceCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-// the depth of the tree should be already assigned
 func (c BadNonceCircuit) Allocate(config Config) {
 	c.MerkleProof.Proofs.Siblings = make([]frontend.Variable, config.Depth)
 }
 
-func (c *BadNonceCircuit) assign(assi AssignInputs) CircuitInvadity {
+func (c *BadNonceCircuit) Assign(assi AssigningInputs) BadNonceCircuit {
 
 	// assign the merkle proof
 	leaf, _ := assi.Tree.GetLeaf(assi.Pos)
@@ -136,40 +130,11 @@ func (c *BadNonceCircuit) assign(assi AssignInputs) CircuitInvadity {
 	leafOpening.HKey = *buf.SetBytes(l.HKey[:])
 	leafOpening.HVal = *buf.SetBytes(hval[:])
 
-	res := CircuitInvadity{
-		subCircuit: BadNonceCircuit{
-			TxNonce:     assi.Transaction.Nonce(),
-			MerkleProof: witMerkle,
-			LeafOpening: leafOpening,
-			Account:     account,
-		},
+	res := BadNonceCircuit{
+		TxNonce:     assi.Transaction.Nonce(),
+		MerkleProof: witMerkle,
+		LeafOpening: leafOpening,
+		Account:     account,
 	}
-
-	// assign the functional public inputs
-	res.FuncInputs.Assign(assi.FuncInputs)
-
 	return res
-
-}
-
-func (c BadNonceCircuit) MakeProof(setup circuits.Setup, assi AssignInputs, FuncInputs public_input.Invalidity) string {
-	assignment := c.assign(assi)
-
-	//@azam what options should I add?
-	proof, err := circuits.ProveCheck(
-		&setup,
-		&assignment,
-	)
-
-	if err != nil {
-		panic(err)
-	}
-
-	logrus.Infof("generated circuit proof `%++v` for input `%v`", proof, assignment.PublicInput.(*big.Int).String())
-
-	// Write the serialized proof
-	return circuits.SerializeProofRaw(proof)
-}
-func (c BadNonceCircuit) Compile(config Config) {
-	c.Allocate(config)
 }

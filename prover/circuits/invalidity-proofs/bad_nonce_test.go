@@ -24,7 +24,6 @@ func TestBadNonce(t *testing.T) {
 		Depth:    10,
 	}
 
-	// generate witness
 	assignment := genWitness(t, tcases, config)
 
 	// allocate the circuit for merkleProof

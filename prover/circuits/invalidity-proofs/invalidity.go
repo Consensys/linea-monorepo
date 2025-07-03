@@ -1,21 +1,31 @@
 package badnonce
 
 import (
+	"math/big"
+
+	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/crate-crypto/go-ipa/bandersnatch/fr"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/sirupsen/logrus"
 )
 
-type CircuitInvadity struct {
+const (
+	NBSubCircuit = 2
+)
+
+type CircuitInvalidity struct {
 	// The sub circuit for the invalidity case:
 	// - bad transaction nonce
 	// - bad transaction value
 	// ...
-	subCircuit SubCircuit
+	subCircuits [NBSubCircuit]SubCircuit
 	// the functional public inputs of the circuit.
 	FuncInputs FunctionalPublicInputsGnark
 	// the hash of the functional public inputs
@@ -23,22 +33,13 @@ type CircuitInvadity struct {
 }
 
 type SubCircuit interface {
-	Allocate(Config) //  allocate the circuit
-	// Compile()              // compile the circuit
-	// Assign()               // generate assignment
-	MakeProof(circuits.Setup, AssignInputs, public_input.Invalidity) string // set the witness and solve the circuit
+	Define(frontend.API) error
+	Allocate(Config)        //  allocate the circuit
+	Assign(AssigningInputs) // generate assignment
 }
 
-type FunctionalPublicInputsGnark struct {
-	TxHashMSB            frontend.Variable
-	TxHashLSB            frontend.Variable
-	FromAddress          frontend.Variable
-	BlockHeight          frontend.Variable
-	InitialStateRootHash frontend.Variable
-	TimeStamp            frontend.Variable
-}
-
-type AssignInputs struct {
+// AssigningInputs collects the inputs used for the circuit assignment
+type AssigningInputs struct {
 	Tree        smt.Tree
 	Pos         int
 	Account     Account
@@ -47,20 +48,79 @@ type AssignInputs struct {
 	FuncInputs  public_input.Invalidity
 }
 
-// @azam check for TxHash
-func (gpi *FunctionalPublicInputsGnark) Assign(pi public_input.Invalidity) {
-	gpi.TxHashMSB = pi.TxHash[:16]
-	gpi.TxHashLSB = pi.TxHash[16:]
-	gpi.FromAddress = pi.FromAddress[:]
-	gpi.BlockHeight = pi.BlockHeight
-	gpi.InitialStateRootHash = pi.InitialStateRootHash[:]
-	gpi.TimeStamp = pi.TimeStamp
-}
-func (c CircuitInvadity) Define(api frontend.API) error {
+func (c CircuitInvalidity) Define(api frontend.API) error {
+	for i := range c.subCircuits {
+		c.subCircuits[i].Define(api)
+	}
 	return nil
 }
 
-// Config collects the data used for circuit allocation
+func (c CircuitInvalidity) Allocate(config Config) {
+	// allocate the subCircuit
+	for i := range c.subCircuits {
+		c.subCircuits[i].Allocate(config)
+	}
+	// allocate the Functional Public Inputs
+}
+
+func (c CircuitInvalidity) Assign(assi AssigningInputs) CircuitInvalidity {
+	// assign the sub circuits
+	for i := range c.subCircuits {
+		c.subCircuits[i].Assign(assi)
+	}
+	// assign the Functional Public Inputs
+	c.FuncInputs.Assign(assi.FuncInputs)
+	// assign the public input
+	c.PublicInput = new(big.Int).SetBytes(assi.FuncInputs.Sum(nil))
+	return c
+}
+
+func (c CircuitInvalidity) MakeProof(setup circuits.Setup, assi AssigningInputs, FuncInputs public_input.Invalidity) string {
+	assignment := c.Assign(assi)
+
+	//@azam what options should I add?
+	proof, err := circuits.ProveCheck(
+		&setup,
+		&assignment,
+	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	logrus.Infof("generated circuit proof `%++v` for input `%v`", proof, assignment.PublicInput.(*big.Int).String())
+
+	// Write the serialized proof
+	return circuits.SerializeProofRaw(proof)
+}
+
+// Config collects the data used for choosing the subcircuit and its allocation
 type Config struct {
+	// depth of the merkle tree for the account trie
 	Depth int
+}
+
+type builder struct {
+	config  Config
+	circuit *CircuitInvalidity
+}
+
+func NewBuilder(config Config) *builder {
+	return &builder{config: config}
+}
+
+func (b *builder) Compile() (constraint.ConstraintSystem, error) {
+	return makeCS(b.config, b.circuit), nil
+}
+
+// compile  the circuit to the constraints
+func makeCS(config Config, circuit *CircuitInvalidity) constraint.ConstraintSystem {
+
+	circuit.Allocate(config)
+
+	scs, err := frontend.Compile(fr.Modulus(), scs.NewBuilder, circuit, frontend.WithCapacity(1<<24))
+	if err != nil {
+		panic(err)
+	}
+	return scs
 }
