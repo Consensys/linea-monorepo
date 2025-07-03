@@ -23,7 +23,7 @@ on:
 jobs:
   run-e2e-tests:
     if: github.event.pull_request.head.repo.fork == false
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -91,6 +91,60 @@ jobs:
           NEXT_PUBLIC_WALLET_CONNECT_ID: "placeholder"
           NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID: "placeholder"
           NEXT_PUBLIC_QUICKNODE_ID: "placeholder"
+      
+      - name: Login to Docker Hub
+        if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 #v3.4.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: Pull all images with retry
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 #v3.0.2
+        with:
+          max_attempts: 10
+          retry_on: error
+          retry_wait_seconds: 30
+          timeout_minutes: 10
+          command: |
+            make docker-pull-images-external-to-monorepo
+
+      - name: Create directory for conflated traces
+        run: |
+          mkdir -p tmp/local/traces/v2/conflated
+          chmod -R a+rw tmp/local/
+      
+      - name: Download local docker image artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: linea-*
+      
+      - name: Load Docker images
+        run: |
+          pwd && ls -la && echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" &&
+          gunzip -c $GITHUB_WORKSPACE/linea-coordinator/linea-coordinator-docker-image.tar.gz | docker load &&
+          gunzip -c $GITHUB_WORKSPACE/linea-postman/linea-postman-docker-image.tar.gz | docker load &&
+          gunzip -c $GITHUB_WORKSPACE/linea-prover/linea-prover-docker-image.tar.gz | docker load &&
+          gunzip -c $GITHUB_WORKSPACE/linea-transaction-exclusion-api/linea-transaction-exclusion-api-docker-image.tar.gz | docker load
+        shell: bash
+
+      - name: Spin up fresh environment with besu tracing with retry
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 #v3.0.2
+        with:
+          max_attempts: 10
+          retry_on: error
+          retry_wait_seconds: 30
+          timeout_minutes: 10
+          command: |
+            make start-env-with-tracing-v2-ci CLEAN_PREVIOUS_ENV=false
+          on_retry_command: |
+            make clean-environment
+
+      - name: List docker containers/images
+        continue-on-error: true
+        run: |
+          docker ps -la && docker images
+          docker container ls -a
 
       # Prerequisite - Testing wallet must have >0 ETH and USDC on Sepolia
       - name: Run E2E tests
