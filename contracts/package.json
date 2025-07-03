@@ -55,5 +55,8 @@
     "solidity-coverage": "0.8.16",
     "solidity-docgen": "0.6.0-beta.36",
     "yargs": "catalog:"
+  },
+  "dependencies": {
+    "hardhat-gas-reporter": "2.3.0"
   }
 }
