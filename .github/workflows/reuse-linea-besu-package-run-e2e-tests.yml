@@ -30,6 +30,11 @@ on:
         required: false
         type: boolean
         default: true
+      e2e-tests-with-besu-fleet:
+        description: Run end to end tests with Besu fleet nodes
+        required: false
+        type: boolean
+        default: false
     outputs:
       tests_outcome:
         value: ${{ jobs.run-e2e-tests.outputs.tests_outcome }}
@@ -88,6 +93,7 @@ jobs:
           echo "BESU_PACKAGE_TAG=${{ env.BESU_PACKAGE_TAG }}"
           echo "$(grep expected-traces-api-version config/coordinator/coordinator-config-v2.toml)"
       - name: Spin up fresh environment with besu tracing with retry
+        if: ${{ !inputs.e2e-tests-with-besu-fleet }}
         uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 #v3.0.2
         with:
           max_attempts: 10
@@ -96,6 +102,18 @@ jobs:
           timeout_minutes: 10
           command: |
             make start-env-with-tracing-v2-ci CLEAN_PREVIOUS_ENV=false
+          on_retry_command: |
+            make clean-environment
+      - name: Spin up fresh environment with besu tracing and fleet nodes with retry
+        if: ${{ inputs.e2e-tests-with-besu-fleet }}
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 #v3.0.2
+        with:
+          max_attempts: 10
+          retry_on: error
+          retry_wait_seconds: 30
+          timeout_minutes: 10
+          command: |
+            make start-env-with-tracing-v2-fleet-ci CLEAN_PREVIOUS_ENV=false
           on_retry_command: |
             make clean-environment
       - name: List docker containers/images
@@ -109,6 +127,12 @@ jobs:
         timeout-minutes: 4
         run: |
           pnpm run -F e2e test:e2e:local
+      - name: Run extra e2e tests for Besu fleet nodes
+        id: run_e2e_tests_fleet
+        if: ${{ inputs.e2e-tests-with-besu-fleet }}
+        timeout-minutes: 4
+        run: |
+          pnpm run -F e2e test:e2e:local e2e/src/shomei-get-proof.spec.ts
       - name: Show e2e tests result
         if: always()
         run: |
