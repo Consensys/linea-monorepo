@@ -81,6 +81,8 @@ jobs:
           CI: "false"
           NEXT_PUBLIC_INFURA_ID: ${{ secrets.PUBLIC_BRIDGE_UI_INFURA_ID }}
           NEXT_PUBLIC_LIFI_API_KEY: "placeholder"
+          NEXT_PUBLIC_ONRAMPER_API_KEY: "placeholder"
+          NEXT_PUBLIC_LAYERSWAP_API_KEY: "placeholder"
           NEXT_PUBLIC_LIFI_INTEGRATOR_NAME: "placeholder"
           NEXT_PUBLIC_WALLET_CONNECT_ID: "placeholder"
           NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID: "placeholder"
