@@ -73,14 +73,12 @@ func (p UnivariateEvalParams) UpdateFS(state hash.StateStorer) {
 // Test that the polynomial evaluation holds
 func (r UnivariateEval) Check(run ifaces.Runtime) error {
 	params := run.GetParams(r.QueryID).(UnivariateEvalParams)
-
 	errMsg := "univariate query check failed\n"
 	anyErr := false
 
 	for k, pol := range r.Pols {
 		wit := pol.GetColAssignment(run)
 		actualY := smartvectors.EvaluateLagrangeFullFext(wit, params.X)
-
 		if actualY != params.Ys[k] {
 			anyErr = true
 			errMsg += fmt.Sprintf("expected P(x) = %s but got %s for %v\n", params.Ys[k].String(), actualY.String(), pol.GetColID())

@@ -223,11 +223,9 @@ func (re randomPointEvaluation) Run(run *wizard.ProverRuntime) {
 	}
 
 	ys := make([]fext.Element, len(polyVals))
-	for i := 0; i < len(ys)-1; i++ {
-		ys[i] = smartvectors.EvaluateLagrangeMixed(polyVals[i], r)
+	for i := 0; i < len(ys); i++ {
+		ys[i] = smartvectors.EvaluateLagrangeFullFext(polyVals[i], r) //TODO@yao : check here EvaluateLagrangeMixed or EvaluateLagrangeFullFext, check witness and poly type,
 	}
-	ys[len(polyVals)-1] = smartvectors.EvaluateLagrangeFullFext(polyVals[len(polyVals)-1], r)
-
 	run.AssignUnivariate(re.NewQuery.QueryID, r, ys...)
 }
 

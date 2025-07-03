@@ -398,6 +398,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 				evalInputs := make([]sv.SmartVector, len(metadatas))
 
 				for k, metadataInterface := range metadatas {
+
 					switch metadata := metadataInterface.(type) {
 					case ifaces.Column:
 						//name := metadata.GetColID()

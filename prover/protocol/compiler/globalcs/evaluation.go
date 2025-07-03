@@ -147,7 +147,8 @@ func (pa evaluationProver) Run(run *wizard.ProverRuntime) {
 			parallel.Execute(len(q.Pols), func(start, stop int) {
 				for i := start; i < stop; i++ {
 					c := q.Pols[i].GetColAssignment(run)
-					ys[i] = sv.EvaluateLagrangeMixed(c, evalPoint)
+					ys[i] = sv.EvaluateLagrangeFullFext(c, evalPoint)
+
 				}
 			})
 
@@ -175,12 +176,10 @@ func (ctx *evaluationVerifier) Run(run wizard.Runtime) error {
 		// Map all the evaluations and checks the evaluations points
 		mapYs = make(map[ifaces.ColID]fext.Element)
 		// Get the parameters
-		params    = run.GetUnivariateParams(ctx.WitnessEval.QueryID)
-		univQuery = run.GetUnivariateEval(ctx.WitnessEval.QueryID)
-		//quotientYs, errQ = ctx.recombineQuotientSharesEvaluation(run, r)
+		params           = run.GetUnivariateParams(ctx.WitnessEval.QueryID)
+		univQuery        = run.GetUnivariateEval(ctx.WitnessEval.QueryID)
+		quotientYs, errQ = ctx.recombineQuotientSharesEvaluation(run, r)
 	)
-
-	quotientYs, errQ := ctx.recombineQuotientSharesEvaluation(run, r)
 
 	if errQ != nil {
 		return fmt.Errorf("invalid evaluation point for the quotients: %v", errQ.Error())
@@ -197,7 +196,7 @@ func (ctx *evaluationVerifier) Run(run wizard.Runtime) error {
 		mapYs[handle.GetColID()] = params.Ys[j]
 	}
 
-	// Annulator = X^n - 1, common for all ratios
+	// Annulator = r^n - 1, common for all ratios
 	one := fext.One()
 	annulator := r
 	annulator.Exp(annulator, big.NewInt(int64(ctx.DomainSize)))
@@ -234,6 +233,9 @@ func (ctx *evaluationVerifier) Run(run wizard.Runtime) error {
 		var right fext.Element
 		right.Mul(&annulator, &qr)
 
+		fmt.Printf("\nleft= %v right= %v\n", left.String(), right.String())
+		// left = q(x) * (x^n - 1)
+		// right = P(x) - Z(x)
 		if left != right {
 			return fmt.Errorf("global constraint - ratio %v - mismatch at random point - %v != %v", ratio, left.String(), right.String())
 		}
@@ -370,7 +372,6 @@ func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 		omegaRatioInv.Inverse(&omegaRatio)
 
 		for k := range ys {
-
 			// tmp stores ys[k] / ((r^m / omegaRatio^k) - 1)
 			var tmpinit field.Element
 			var tmp fext.Element
@@ -379,7 +380,6 @@ func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 			tmp.MulByElement(&rPowM, &tmpinit)
 			tmp.Sub(&tmp, &one)
 			tmp.Div(&ys[k], &tmp)
-
 			res.Add(&res, &tmp)
 		}
 

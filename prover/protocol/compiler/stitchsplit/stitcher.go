@@ -105,6 +105,7 @@ func (a *stitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
 		witnesses := make([]smartvectors.SmartVector, len(subColumns))
 		for i := range witnesses {
 			witnesses[i] = subColumns[i].GetColAssignment(run)
+			//TODO@yao: fix witness has both base and ext elements
 		}
 		assignement := smartvectors.
 			AllocateRegular(maxSizeGroup * witnesses[0].Len()).(*smartvectors.Regular)
