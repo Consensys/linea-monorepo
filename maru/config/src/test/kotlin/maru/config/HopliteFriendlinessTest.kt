@@ -15,7 +15,7 @@ import java.net.URI
 import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
-import maru.extensions.fromHexToByteArray
+import linea.kotlin.decodeHex
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -110,7 +110,7 @@ class HopliteFriendlinessTest {
       duplicateMessageLimit = 100,
       futureMessageMaxDistance = 10L,
       futureMessagesLimit = 1000L,
-      feeRecipient = "0xdead000000000000000000000000000000000000".fromHexToByteArray(),
+      feeRecipient = "0xdead000000000000000000000000000000000000".decodeHex(),
     )
 
   @Test
@@ -207,7 +207,7 @@ class HopliteFriendlinessTest {
         duplicateMessageLimit = 99,
         futureMessageMaxDistance = 11,
         futureMessagesLimit = 100,
-        feeRecipient = "0x0000000000000000000000000000000000000001".fromHexToByteArray(),
+        feeRecipient = "0x0000000000000000000000000000000000000001".decodeHex(),
       ),
     )
   }

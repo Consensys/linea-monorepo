@@ -273,7 +273,6 @@ class MaruFactory {
             "type": "qbft",
             "blockTimeSeconds": 1,
             "validatorSet": ["$validatorAddress"],
-            "feeRecipient": "$validatorAddress",
             "elFork": "Prague"
           }
         }
