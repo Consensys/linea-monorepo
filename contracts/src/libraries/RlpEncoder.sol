@@ -10,9 +10,6 @@ pragma solidity ^0.8.30;
  * @dev The internals have been significantly modified from the original for readability and gas.
  */
 library RlpEncoder {
-  bytes private constant TRUE_RLP = hex"01";
-  bytes private constant FALSE_RLP = hex"80";
-
   /**
    * @notice Supporting data for encoding an EIP-2930/1559 access lists.
    * @dev contractAddress is the address where the storageKeys will be accessed.
@@ -31,19 +28,24 @@ library RlpEncoder {
    */
   function _encodeBytes(bytes memory _bytesIn) internal pure returns (bytes memory encodedBytes) {
     if (_bytesIn.length == 1 && uint8(_bytesIn[0]) < 0x80) return _bytesIn;
+
     bytes memory lengthPrefix = _encodeLength(_bytesIn.length, 128);
     uint256 prefixLen = lengthPrefix.length;
     uint256 dataLen = _bytesIn.length;
+
     assembly {
       let totalLen := add(prefixLen, dataLen)
       encodedBytes := mload(0x40)
       mstore(encodedBytes, totalLen)
+
       let dest := add(encodedBytes, 0x20)
       let src := add(lengthPrefix, 0x20)
       mcopy(dest, src, prefixLen)
+
       dest := add(dest, prefixLen)
       src := add(_bytesIn, 0x20)
       mcopy(dest, src, dataLen)
+
       mstore(0x40, add(add(encodedBytes, 0x20), totalLen))
     }
   }
@@ -54,11 +56,6 @@ library RlpEncoder {
    * @return encodedBytes The uint encoded as bytes.
    */
   function _encodeUint(uint256 _uintIn) internal pure returns (bytes memory encodedBytes) {
-    if (_uintIn < 0x80) {
-      encodedBytes = new bytes(1);
-      encodedBytes[0] = bytes1(uint8(_uintIn));
-      return encodedBytes;
-    }
     encodedBytes = _encodeBytes(_toBinary(_uintIn));
   }
 
@@ -68,11 +65,6 @@ library RlpEncoder {
    * @return encodedBytes The int encoded as bytes.
    */
   function _encodeInt(int256 _intIn) internal pure returns (bytes memory encodedBytes) {
-    if (uint256(_intIn) < 0x80) {
-      encodedBytes = new bytes(1);
-      encodedBytes[0] = bytes1(uint8(uint256(_intIn)));
-      return encodedBytes;
-    }
     encodedBytes = _encodeUint(uint256(_intIn));
   }
 
@@ -82,7 +74,7 @@ library RlpEncoder {
    * @return encodedBytes The address encoded as bytes.
    */
   function _encodeAddress(address _addressIn) internal pure returns (bytes memory encodedBytes) {
-    // RLP for 20 bytes: prefix 0x94 (0x80 + 20), then address bytes
+    // RLP for 20 bytes: prefix 0x94 (0x80 + 20), then address bytes.
     encodedBytes = new bytes(21);
     encodedBytes[0] = 0x94;
     assembly {
@@ -105,7 +97,8 @@ library RlpEncoder {
    * @return encodedBytes The bool encoded as bytes.
    */
   function _encodeBool(bool _boolIn) internal pure returns (bytes memory encodedBytes) {
-    encodedBytes = _boolIn ? TRUE_RLP : FALSE_RLP;
+    encodedBytes = new bytes(1);
+    encodedBytes[0] = (_boolIn ? bytes1(0x01) : bytes1(0x80));
   }
 
   /**
@@ -127,17 +120,8 @@ library RlpEncoder {
     bytes[] memory _bytesToEncode,
     uint256 _bytesListLengthToEncode
   ) internal pure returns (bytes memory encodedBytes) {
-    bytes memory flattened = _flatten(_bytesToEncode, _bytesListLengthToEncode);
-    bytes memory lengthPrefix = _encodeLength(flattened.length, 192);
-    encodedBytes = new bytes(lengthPrefix.length + flattened.length);
-    assembly {
-      let dest := add(encodedBytes, 0x20)
-      let src := add(lengthPrefix, 0x20)
-      mcopy(dest, src, mload(lengthPrefix))
-      dest := add(dest, mload(lengthPrefix))
-      src := add(flattened, 0x20)
-      mcopy(dest, src, mload(flattened))
-    }
+    encodedBytes = _flatten(_bytesToEncode, _bytesListLengthToEncode);
+    encodedBytes = abi.encodePacked(_encodeLength(encodedBytes.length, 192), encodedBytes);
   }
 
   /**
