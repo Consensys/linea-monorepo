@@ -172,7 +172,7 @@ public class CallSection extends TraceSection
       return;
     }
 
-    final MxpCall mxpCall = MxpCall.getMxpCallByFork(hub.fork, hub);
+    final MxpCall mxpCall = MxpCall.newMxpCall(hub);
     firstImcFragment.callMxp(mxpCall);
     checkArgument(mxpCall.mxpx == Exceptions.memoryExpansionException(exceptions));
 

@@ -42,7 +42,7 @@ public class KeccakSection extends TraceSection implements PostOpcodeDefer {
     final ImcFragment imcFragment = ImcFragment.empty(hub);
     this.addStackAndFragments(hub, imcFragment);
 
-    final MxpCall mxpCall = MxpCall.getMxpCallByFork(hub.fork, hub);
+    final MxpCall mxpCall = MxpCall.newMxpCall(hub);
 
     imcFragment.callMxp(mxpCall);
 

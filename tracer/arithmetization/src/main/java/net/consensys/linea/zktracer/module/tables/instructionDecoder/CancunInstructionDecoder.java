@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.tables.instructionDecoder;
 
+import static net.consensys.linea.zktracer.opcode.InstructionFamily.MCOPY;
 import static net.consensys.linea.zktracer.opcode.InstructionFamily.TRANSIENT;
 
 import net.consensys.linea.zktracer.Trace;
@@ -24,5 +25,23 @@ public class CancunInstructionDecoder extends LondonInstructionDecoder {
   @Override
   protected void traceTransientFamily(OpCodeData op, Trace.Instdecoder trace) {
     trace.familyTransient(op.instructionFamily() == TRANSIENT);
+  }
+
+  @Override
+  protected void traceMcopyFamily(OpCodeData op, Trace.Instdecoder trace) {
+    trace.familyMcopy(op.instructionFamily() == MCOPY);
+  }
+
+  @Override
+  protected void traceMxpScenario(OpCodeData op, Trace.Instdecoder trace) {
+    // trace.isMsize()
+    //         .isReturn()
+    //         .isMcopy()
+    //         .isFixedSize1()
+    //         .isFixedSize32()
+    //         .isSingleMaxOffset()
+    //         .isDoubleMaxOffset()
+    //         .isWordPricing()
+    //         .isBytePricing();
   }
 }

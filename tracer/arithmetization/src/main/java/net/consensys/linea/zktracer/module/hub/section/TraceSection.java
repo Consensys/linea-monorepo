@@ -32,7 +32,7 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.HubProcessingPhase;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
-import net.consensys.linea.zktracer.module.hub.fragment.StackFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.stack.StackFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.common.CommonFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.common.CommonFragmentValues;

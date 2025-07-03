@@ -19,6 +19,7 @@ import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.module.blockdata.module.Blockdata;
 import net.consensys.linea.zktracer.module.blockdata.module.CancunBlockData;
 import net.consensys.linea.zktracer.module.euc.Euc;
+import net.consensys.linea.zktracer.module.hub.section.McopySection;
 import net.consensys.linea.zktracer.module.hub.section.transients.TLoadSection;
 import net.consensys.linea.zktracer.module.hub.section.transients.TStoreSection;
 import net.consensys.linea.zktracer.module.mxp.module.CancunMxp;
@@ -62,5 +63,10 @@ public class CancunHub extends ShanghaiHub {
       default -> throw new IllegalStateException(
           "invalid operation in family TRANSIENT: " + hub.opCode());
     }
+  }
+
+  @Override
+  protected void setMcopySection(Hub hub) {
+    new McopySection(hub);
   }
 }

@@ -782,6 +782,26 @@ public class MmuCall implements TraceSubFragment, EndTransactionDefer {
         .referenceSize(subsection.returnAtCapacity());
   }
 
+  public static MmuCall mcopyCopy(Hub hub, CallFrame callFrame) {
+    final long size = clampedToLong(callFrame.frame().getStackItem(2));
+    return new MmuCall(hub, MMU_INST_RAM_TO_RAM_SANS_PADDING)
+        .sourceId(callFrame.contextNumber())
+        .targetId(newIdentifierFromStamp(hub.stamp()))
+        .sourceOffset(EWord.of(callFrame.frame().getStackItem(1)))
+        .size(size)
+        .referenceSize(size);
+  }
+
+  public static MmuCall mcopyPaste(Hub hub, CallFrame callFrame) {
+    final long size = clampedToLong(callFrame.frame().getStackItem(2));
+    return new MmuCall(hub, MMU_INST_RAM_TO_RAM_SANS_PADDING)
+        .sourceId(newIdentifierFromStamp(hub.stamp()))
+        .targetId(callFrame.contextNumber())
+        .size(size)
+        .referenceOffset(clampedToLong(callFrame.frame().getStackItem(0)))
+        .referenceSize(size);
+  }
+
   @Override
   public Trace.Hub trace(Trace.Hub trace, State hubState) {
     hubState.incrementMmuStamp();

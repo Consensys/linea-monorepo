@@ -22,7 +22,7 @@ public class MsizeSection extends TraceSection {
   public MsizeSection(Hub hub) {
     super(hub, (short) 3);
 
-    final MxpCall mxpCall = MxpCall.getMxpCallByFork(hub.fork, hub);
+    final MxpCall mxpCall = MxpCall.newMxpCall(hub);
     final ImcFragment imcFragment = ImcFragment.empty(hub).callMxp(mxpCall);
     this.addStackAndFragments(hub, imcFragment);
   }

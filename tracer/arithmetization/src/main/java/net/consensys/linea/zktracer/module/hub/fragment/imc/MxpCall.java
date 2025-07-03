@@ -19,7 +19,6 @@ import static net.consensys.linea.zktracer.module.mxp.MxpUtils.*;
 
 import lombok.Getter;
 import lombok.Setter;
-import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
@@ -55,9 +54,9 @@ public abstract class MxpCall implements TraceSubFragment {
   /** - filled after computation by the module */
   @Getter @Setter public boolean mayTriggerNontrivialMmuOperation;
 
+  /** mxpx is short of Memory eXPansion eXception */
   @Getter @Setter public boolean mxpx;
 
-  /** mxpx is short of Memory eXPansion eXception */
   @Getter @Setter public long gasMxp;
 
   public MxpCall(Hub hub) {
@@ -78,17 +77,15 @@ public abstract class MxpCall implements TraceSubFragment {
     this.offset2 = sizesAndOffsets[3];
   }
 
-  public static MxpCall getMxpCallByFork(Fork fork, Hub hub) {
-    switch (fork) {
+  public static MxpCall newMxpCall(Hub hub) {
+    switch (hub.fork) {
       case LONDON, PARIS, SHANGHAI -> {
         return new LondonMxpCall(hub);
       }
       case CANCUN, PRAGUE -> {
         return getCancunMxpCall(hub);
       }
-      default -> {
-        throw new IllegalArgumentException("Unsupported fork: " + fork);
-      }
+      default -> throw new IllegalArgumentException("Unsupported fork: " + hub.fork);
     }
   }
 
@@ -100,7 +97,7 @@ public abstract class MxpCall implements TraceSubFragment {
    * @return CancunMxpCall instance corresponding to the Mxp scenario
    */
   public static CancunMxpCall getCancunMxpCall(Hub hub) {
-    OpCode opCode = OpCode.of(hub.messageFrame().getCurrentOperation().getOpcode());
+    final OpCode opCode = hub.opCode();
     if (opCode == OpCode.MSIZE) {
       return new CancunMSizeMxpCall(hub);
     }

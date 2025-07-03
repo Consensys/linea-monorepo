@@ -102,4 +102,9 @@ public class LondonHub extends Hub {
   protected void setTransientSection(final Hub hub) {
     throw new IllegalStateException("Transient opcodes appear in Cancun");
   }
+
+  @Override
+  protected void setMcopySection(Hub hub) {
+    throw new IllegalStateException("MCOPY opcode appears in Cancun");
+  }
 }
