@@ -8,6 +8,9 @@ export async function selectTokenAndWaitForBalance(tokenSymbol: string, page: Pa
   const tokenBalance = page.getByTestId(`token-details-${tokenSymbol.toLowerCase()}-amount`);
   console.log(`Fetching token balance for ${tokenSymbol}`);
 
+  console.log(tokenBalance.textContent());
+  console.log(tokenBalance.allTextContents());
+  console.log(tokenBalance.allInnerTexts());
   // Timeout implementation
   let fetchTokenTimeUsed = 0;
   // bridge-ui-known-flaky-line - Sometimes the RPC call to get ETH/ERC20 balance fails
