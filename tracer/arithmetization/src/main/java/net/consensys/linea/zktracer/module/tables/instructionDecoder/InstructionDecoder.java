@@ -23,7 +23,6 @@ import net.consensys.linea.zktracer.opcode.InstructionFamily;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.gas.BillingRate;
-import net.consensys.linea.zktracer.opcode.gas.MxpType;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 
 public abstract class InstructionDecoder implements Module {
@@ -55,9 +54,14 @@ public abstract class InstructionDecoder implements Module {
         .familyHalt(op.instructionFamily() == InstructionFamily.HALT)
         .familyInvalid(op.instructionFamily() == InstructionFamily.INVALID);
     traceTransientFamily(op, trace);
+    traceMcopyFamily(op, trace);
   }
 
   protected abstract void traceTransientFamily(OpCodeData op, Trace.Instdecoder trace);
+
+  protected abstract void traceMcopyFamily(OpCodeData op, Trace.Instdecoder trace);
+
+  protected abstract void traceMxpScenario(OpCodeData op, Trace.Instdecoder trace);
 
   private static void traceStackSettings(OpCodeData op, Trace.Instdecoder trace) {
     trace
@@ -72,7 +76,7 @@ public abstract class InstructionDecoder implements Module {
         .flag4(op.stackSettings().flag4());
   }
 
-  private static void traceBillingSettings(OpCodeData op, Trace.Instdecoder trace) {
+  private void traceBillingSettings(OpCodeData op, Trace.Instdecoder trace) {
     trace
         .billingPerWord(
             UnsignedByte.of(
@@ -84,12 +88,9 @@ public abstract class InstructionDecoder implements Module {
                 op.billing().billingRate() == BillingRate.BY_BYTE
                     ? op.billing().perUnit().cost()
                     : 0))
-        .mxpType1(op.billing().type() == MxpType.TYPE_1)
-        .mxpType2(op.billing().type() == MxpType.TYPE_2)
-        .mxpType3(op.billing().type() == MxpType.TYPE_3)
-        .mxpType4(op.billing().type() == MxpType.TYPE_4)
-        .mxpType5(op.billing().type() == MxpType.TYPE_5)
         .mxpFlag(op.isMxp());
+
+    traceMxpScenario(op, trace);
   }
 
   @Override

@@ -51,7 +51,7 @@ public class LogSection extends TraceSection implements EndTransactionDefer {
     final ImcFragment imcFragment = ImcFragment.empty(hub);
     this.addFragment(imcFragment);
 
-    final MxpCall mxpCall = MxpCall.getMxpCallByFork(hub.fork, hub);
+    final MxpCall mxpCall = MxpCall.newMxpCall(hub);
     imcFragment.callMxp(mxpCall);
 
     checkArgument(mxpCall.isMxpx() == Exceptions.memoryExpansionException(exceptions));

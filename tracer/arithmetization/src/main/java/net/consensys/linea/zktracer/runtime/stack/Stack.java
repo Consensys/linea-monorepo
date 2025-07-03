@@ -79,6 +79,19 @@ public class Stack {
             2, StackItem.pop((short) (height - 1), val2, stackStampWithOffset(1))));
   }
 
+  private void threeZero(MessageFrame frame, StackContext pending) {
+    Bytes val1 = getStack(frame, 0);
+    Bytes val2 = getStack(frame, 1);
+    Bytes val3 = getStack(frame, 2);
+
+    pending.addLine(
+        new IndexedStackOperation(1, StackItem.pop(height, val1, stackStampWithOffset(0))),
+        new IndexedStackOperation(
+            2, StackItem.pop((short) (height - 1), val2, stackStampWithOffset(1))),
+        new IndexedStackOperation(
+            3, StackItem.pop((short) (height - 2), val3, stackStampWithOffset(2))));
+  }
+
   private void zeroOne(MessageFrame ignoredFrame, StackContext pending) {
     pending.addArmingLine(
         new IndexedStackOperation(
@@ -426,6 +439,7 @@ public class Stack {
       case ZERO_ZERO -> stamp += callFrame.pending().addEmptyLines(1);
       case ONE_ZERO -> this.oneZero(frame, callFrame.pending());
       case TWO_ZERO -> this.twoZero(frame, callFrame.pending());
+      case THREE_ZERO -> this.threeZero(frame, callFrame.pending());
       case ZERO_ONE -> this.zeroOne(frame, callFrame.pending());
       case ONE_ONE -> this.oneOne(frame, callFrame.pending());
       case TWO_ONE -> this.twoOne(frame, callFrame.pending());

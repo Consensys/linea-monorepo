@@ -270,6 +270,7 @@ public class Exceptions {
       case CALLDATACOPY,
           CODECOPY,
           EXTCODECOPY,
+          MCOPY,
           LOG0,
           LOG1,
           LOG2,

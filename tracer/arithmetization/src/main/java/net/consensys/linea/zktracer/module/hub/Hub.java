@@ -54,7 +54,7 @@ import net.consensys.linea.zktracer.module.ext.Ext;
 import net.consensys.linea.zktracer.module.gas.Gas;
 import net.consensys.linea.zktracer.module.hub.defer.DeferRegistry;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
-import net.consensys.linea.zktracer.module.hub.fragment.StackFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.stack.StackFragment;
 import net.consensys.linea.zktracer.module.hub.section.*;
 import net.consensys.linea.zktracer.module.hub.section.call.CallSection;
 import net.consensys.linea.zktracer.module.hub.section.copy.CallDataCopySection;
@@ -962,6 +962,7 @@ public abstract class Hub implements Module {
               "Invalid instruction: " + this.opCode().toString() + " not in the COPY family");
         }
       }
+      case MCOPY -> setMcopySection(this);
       case TRANSACTION -> new TransactionSection(this);
       case STACK_RAM -> {
         switch (this.currentFrame().opCode()) {
@@ -1058,4 +1059,6 @@ public abstract class Hub implements Module {
   protected abstract void setCreateSection(final Hub hub, final MessageFrame frame);
 
   protected abstract void setTransientSection(Hub hub);
+
+  protected abstract void setMcopySection(Hub hub);
 }

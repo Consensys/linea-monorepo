@@ -47,7 +47,7 @@ public class RevertSection extends TraceSection {
     // triggerOob = false
     // triggerStp = false
     // triggerMxp = true
-    MxpCall mxpCall = MxpCall.getMxpCallByFork(hub.fork, hub);
+    MxpCall mxpCall = MxpCall.newMxpCall(hub);
     imcFragment.callMxp(mxpCall);
     checkArgument(mxpCall.mxpx == Exceptions.memoryExpansionException(exceptions));
 
