@@ -1,6 +1,13 @@
 name: Testing CI
 
 on:
+  workflow_dispatch:
+    inputs:
+      consensus-client-changed:
+        required: true
+        type: string
+        default: 'true'
+        description: 'when false, skips the job'
   workflow_call:
     inputs:
       #      commit-tag:
