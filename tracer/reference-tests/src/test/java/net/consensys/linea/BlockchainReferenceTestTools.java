@@ -41,7 +41,8 @@ import net.consensys.linea.reporting.TestOutcomeWriterTool;
 import net.consensys.linea.testing.ExecutionEnvironment;
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.ZkTracer;
-import org.hyperledger.besu.ethereum.MainnetBlockValidator;
+import org.hyperledger.besu.ethereum.BlockValidator;
+import org.hyperledger.besu.ethereum.MainnetBlockValidatorBuilder;
 import org.hyperledger.besu.ethereum.ProtocolContext;
 import org.hyperledger.besu.ethereum.chain.MutableBlockchain;
 import org.hyperledger.besu.ethereum.core.Block;
@@ -556,8 +557,8 @@ public class BlockchainReferenceTestTools {
             schedule,
             zkTracer);
 
-    final MainnetBlockValidator blockValidator =
-        new MainnetBlockValidator(
+    final BlockValidator blockValidator =
+        MainnetBlockValidatorBuilder.frontier(
             protocolSpec.getBlockHeaderValidator(),
             protocolSpec.getBlockBodyValidator(),
             corsetBlockProcessor);
