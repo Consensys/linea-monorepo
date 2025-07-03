@@ -44,7 +44,7 @@ func TestRootHashFetcher(t *testing.T) {
 					stateLogs      = tCase.StateLogsGens(initState)
 					shomeiTraces   = mock.StateLogsToShomeiTraces(shomeiState, stateLogs)
 					finalRootBytes = shomeiState.AccountTrie.TopRoot()
-					limbSize       = 32 / len(fetcher.First)
+					limbSize       = 32 / len(fetcher.First) // 32 bytes in total, divided into 16 limbs
 					initRoot       field.Element
 					finalRoot      field.Element
 				)

@@ -75,8 +75,7 @@ func AssignRootHashFetcher(run *wizard.ProverRuntime, fetcher *RootHashFetcher, 
 	}
 
 	for i := range first {
-		firstSrc := firstSrcCols[i].GetColAssignmentAt(run, 0)
-		first[i].Set(&firstSrc)
+		first[i] = firstSrcCols[i].GetColAssignmentAt(run, 0)
 	}
 
 	// get the value in the last row of FinalRoot before it goes inactive
@@ -92,8 +91,7 @@ func AssignRootHashFetcher(run *wizard.ProverRuntime, fetcher *RootHashFetcher, 
 		}
 
 		for j := range last {
-			finalRoot := ss.AccumulatorStatement.StateDiff.FinalRoot[j].GetColAssignmentAt(run, i)
-			last[j].Set(&finalRoot)
+			last[j] = ss.AccumulatorStatement.StateDiff.FinalRoot[j].GetColAssignmentAt(run, i-1)
 		}
 
 		break
