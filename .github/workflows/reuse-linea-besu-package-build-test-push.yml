@@ -145,7 +145,7 @@ jobs:
         with:
           release_tag_prefix: ${{ inputs.release_tag_prefix }}
           compile_release_notes: true
-          fetch_besu_fleet_plugin: true
+          fetch_besu_fleet_plugin: ${{ inputs.with_besu_fleet_plugin }}
           fleet_github_app_id: ${{ secrets.FLEET_GITHUB_APP_ID }}
           fleet_github_app_private_key: ${{ secrets.FLEET_GITHUB_APP_PRIVATE_KEY }}
 
