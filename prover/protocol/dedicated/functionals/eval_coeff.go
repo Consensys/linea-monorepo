@@ -2,7 +2,7 @@ package functionals
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -26,19 +26,19 @@ type coeffEvalProverAction struct {
 }
 
 func (a *coeffEvalProverAction) Run(assi *wizard.ProverRuntime) {
-	x := assi.GetRandomCoinField(a.x.Name)
+	x := assi.GetRandomCoinFieldExt(a.x.Name)
 	p := a.pol.GetColAssignment(assi)
 
-	h := make([]field.Element, a.length)
-	h[a.length-1] = p.Get(a.length - 1)
+	h := make([]fext.Element, a.length)
+	h[a.length-1] = p.GetExt(a.length - 1)
 
 	for i := a.length - 2; i >= 0; i-- {
-		pi := p.Get(i)
+		pi := p.GetExt(i)
 		h[i].Mul(&h[i+1], &x).Add(&h[i], &pi)
 	}
 
-	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.name, EVAL_COEFF_POLY), smartvectors.NewRegular(h))
-	assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", a.name, EVAL_COEFF_FIXED_POINT_BEGIN), h[0])
+	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.name, EVAL_COEFF_POLY), smartvectors.NewRegularExt(h))
+	assi.AssignLocalPointExt(ifaces.QueryIDf("%v_%v", a.name, EVAL_COEFF_FIXED_POINT_BEGIN), h[0])
 }
 
 // Create a dedicated wizard to perform an evaluation in coefficient basis.

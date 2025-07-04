@@ -205,13 +205,11 @@ func (a assignHornerCtx) Run(run *wizard.ProverRuntime) {
 
 		for row := numRow - 1; row >= 0; row-- {
 			for k := 0; k < arity; k++ {
-
 				sel := selectors[k].GetExt(row)
 				if sel.IsOne() {
 					count++
 				}
-
-				acc = computeMicroAccumulate(selectors[k].GetExt(row), acc, x, datas[k].GetExt(row))
+				acc = computeMicroAccumulate(selectors[k].Get(row), acc, x, datas[k].GetExt(row))
 				accumulators[k][row] = acc
 			}
 		}
@@ -226,7 +224,7 @@ func (a assignHornerCtx) Run(run *wizard.ProverRuntime) {
 		}
 
 		tmp := accumulators[arity-1][0]
-		run.AssignLocalPoint(a.LocOpenings[i].ID, tmp.B0.A0) //TODO@yao: tmp.B0.A0 or tmp?
+		run.AssignLocalPointExt(a.LocOpenings[i].ID, tmp) //TODO@yao: tmp.B0.A0 or tmp?
 
 		if n0 > 0 {
 			xN0 := new(fext.Element).Exp(x, big.NewInt(int64(n0)))
@@ -381,7 +379,7 @@ func microAccumulate(sel, acc, x, p any) *sym.Expression {
 	)
 }
 
-func computeMicroAccumulate(sel, acc, x, p fext.Element) fext.Element {
+func computeMicroAccumulate(sel field.Element, acc, x, p fext.Element) fext.Element {
 
 	if sel.IsZero() {
 		return acc

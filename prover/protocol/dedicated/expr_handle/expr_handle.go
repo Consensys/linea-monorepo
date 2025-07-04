@@ -57,8 +57,13 @@ func (a *exprHandleProverAction) Run(run *wizard.ProverRuntime) {
 			w := meta.GetColAssignment(run)
 			evalInputs[k] = w
 		case coin.Info:
-			x := run.GetRandomCoinField(meta.Name)
-			evalInputs[k] = sv.NewConstant(x, a.domainSize)
+			if meta.IsBase() {
+				x := run.GetRandomCoinField(meta.Name)
+				evalInputs[k] = sv.NewConstant(x, a.domainSize)
+			} else {
+				x := run.GetRandomCoinFieldExt(meta.Name)
+				evalInputs[k] = sv.NewConstantExt(x, a.domainSize)
+			}
 		case variables.X:
 			evalInputs[k] = meta.EvalCoset(a.domainSize, 0, 1, false)
 		case variables.PeriodicSample:

@@ -1,7 +1,7 @@
 package verifiercol
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -47,7 +47,7 @@ func AssertIsPublicCol(comp *wizard.CompiledIOP, col ifaces.Column) {
 func NewConcatTinyColumns(
 	comp *wizard.CompiledIOP,
 	paddedSize int,
-	paddingVal field.Element,
+	paddingVal fext.Element,
 	cols ...ifaces.Column,
 ) ifaces.Column {
 

@@ -279,7 +279,11 @@ func (ctx *evaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 			case ifaces.Column:
 				evalInputs[k] = mapYs[metadata.GetColID()]
 			case coin.Info:
-				evalInputs[k] = c.GetRandomCoinField(metadata.Name)
+				if metadata.IsBase() {
+					evalInputs[k] = c.GetRandomCoinField(metadata.Name)
+				} else {
+					evalInputs[k] = c.GetRandomCoinFieldExt(metadata.Name)
+				}
 			case variables.X:
 				evalInputs[k] = r
 			case variables.PeriodicSample:

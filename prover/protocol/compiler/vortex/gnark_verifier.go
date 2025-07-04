@@ -39,7 +39,7 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr wizard.GnarkRuntime) {
 		roots = append(roots, rootSv[0])
 	}
 
-	randomCoin := vr.GetRandomCoinField(ctx.LinCombRandCoinName())
+	randomCoin := vr.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
 
 	// Collect the linear combination
 	proof := vortex.GProof{}

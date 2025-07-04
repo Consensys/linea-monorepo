@@ -3,6 +3,7 @@ package selfrecursion
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -67,7 +68,7 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 	rootHashVec := verifiercol.NewConcatTinyColumns(
 		ctx.comp,
 		len(rootHashVecParts),
-		field.Element{}, // note: that this will be ditched by the function
+		fext.Element{}, // note: that this will be ditched by the function
 		rootHashVecParts...,
 	)
 
@@ -164,7 +165,7 @@ func (ctx SelfRecursionCtx) GluePositions() {
 			positionVec.(verifiercol.FromAccessors).Accessors,
 			merklePos.Size()/sizePositionVec,
 		),
-		field.Zero(),
+		fext.Zero(),
 		merklePos.Size(),
 	)
 

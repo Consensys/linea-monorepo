@@ -46,8 +46,13 @@ func (a *bigRangeProverAction) Run(run *wizard.ProverRuntime) {
 			w := meta.GetColAssignment(run)
 			evalInputs[k] = w
 		case coin.Info:
-			x := run.GetRandomCoinField(meta.Name)
-			evalInputs[k] = sv.NewConstant(x, a.size)
+			if meta.IsBase() {
+				x := run.GetRandomCoinField(meta.Name)
+				evalInputs[k] = sv.NewConstant(x, a.size)
+			} else {
+				x := run.GetRandomCoinFieldExt(meta.Name)
+				evalInputs[k] = sv.NewConstantExt(x, a.size)
+			}
 		case variables.X:
 			evalInputs[k] = meta.EvalCoset(a.size, 0, 1, false)
 		case variables.PeriodicSample:

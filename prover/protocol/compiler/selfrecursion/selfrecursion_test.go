@@ -175,7 +175,7 @@ func generateProtocol(tc TestCase) (define func(*wizard.Builder), prove func(*wi
 			}
 
 			if round < tc.NumRound-1 {
-				_ = run.GetRandomCoinField(dummyCoinName(round))
+				_ = run.GetRandomCoinFieldExt(dummyCoinName(round))
 			}
 		}
 

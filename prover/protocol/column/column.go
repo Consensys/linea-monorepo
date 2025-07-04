@@ -198,7 +198,11 @@ func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbol
 			case ifaces.Column:
 				inputs[i] = m.GetColAssignmentGnarkAt(run, k)
 			case coin.Info:
-				inputs[i] = run.GetRandomCoinField(m.Name)
+				if m.IsBase() {
+					inputs[i] = run.GetRandomCoinField(m.Name)
+				} else {
+					inputs[i] = run.GetRandomCoinFieldExt(m.Name)
+				}
 			case ifaces.Accessor:
 				inputs[i] = m.GetFrontendVariable(api, run)
 			case variables.PeriodicSample:

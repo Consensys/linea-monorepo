@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
@@ -58,7 +58,7 @@ func TestConcatTinyColRange(t *testing.T) {
 					ctc := verifiercol.NewConcatTinyColumns(
 						b.CompiledIOP,
 						tc.NumCols,
-						field.Element{},
+						fext.Element{},
 						cols...)
 
 					// We apply a shift to force the application of the
@@ -137,7 +137,7 @@ func TestConcatTinyColWithPaddingRange(t *testing.T) {
 					ctc := verifiercol.NewConcatTinyColumns(
 						b.CompiledIOP,
 						tc.PaddedSize,
-						field.Element{},
+						fext.Element{},
 						cols...)
 
 					// We apply a shift to force the application of the

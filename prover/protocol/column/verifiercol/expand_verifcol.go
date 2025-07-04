@@ -3,7 +3,7 @@ package verifiercol
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
@@ -78,12 +78,12 @@ func (ex ExpandedVerifCol) Size() int {
 // GetColAssignment returns the assignment of the current column
 func (ex ExpandedVerifCol) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 	assi := ex.Verifiercol.GetColAssignment(run)
-	values := make([][]field.Element, ex.Expansion)
+	values := make([][]fext.Element, ex.Expansion)
 	for j := range values {
-		values[j] = smartvectors.IntoRegVec(assi)
+		values[j] = smartvectors.IntoRegVecExt(assi)
 	}
-	res := vector.Interleave(values...)
-	return smartvectors.NewRegular(res)
+	res := vectorext.Interleave(values...)
+	return smartvectors.NewRegularExt(res)
 }
 
 // GetColAssignment returns a gnark assignment of the current column

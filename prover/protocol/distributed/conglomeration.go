@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
@@ -756,12 +757,12 @@ func (cong *ConglomeratorCompilation) declareLookups() {
 
 	var (
 		vkColums = [2]ifaces.Column{
-			verifiercol.NewFromAccessors(effectiveVksAccessors[0], field.Zero(), effectiveColumnSize),
-			verifiercol.NewFromAccessors(effectiveVksAccessors[1], field.Zero(), effectiveColumnSize),
+			verifiercol.NewFromAccessors(effectiveVksAccessors[0], fext.Zero(), effectiveColumnSize),
+			verifiercol.NewFromAccessors(effectiveVksAccessors[1], fext.Zero(), effectiveColumnSize),
 		}
 
-		isGLCol  = verifiercol.NewFromAccessors(isGLAccessors, field.Zero(), effectiveColumnSize)
-		isLPPCol = verifiercol.NewFromAccessors(isLPPAccessors, field.Zero(), effectiveColumnSize)
+		isGLCol  = verifiercol.NewFromAccessors(isGLAccessors, fext.Zero(), effectiveColumnSize)
+		isLPPCol = verifiercol.NewFromAccessors(isLPPAccessors, fext.Zero(), effectiveColumnSize)
 	)
 
 	cong.IsGL = isGLCol
@@ -788,7 +789,7 @@ func (cong *ConglomeratorCompilation) declareLookups() {
 
 		includingLppLookup = append(includingLppLookup, []ifaces.Column{
 			verifiercol.NewConstantCol(field.NewElement(uint64(j)), effectiveColumnSize),
-			verifiercol.NewFromAccessors(lppColumnsAccessors[j], field.Zero(), effectiveColumnSize),
+			verifiercol.NewFromAccessors(lppColumnsAccessors[j], fext.Zero(), effectiveColumnSize),
 			vkColums[0],
 			vkColums[1],
 		})
@@ -802,7 +803,7 @@ func (cong *ConglomeratorCompilation) declareLookups() {
 		includingLppLookup,
 		[]ifaces.Column{
 			cong.HolisticLookupMappedLPPPostion,
-			verifiercol.NewFromAccessors(lppColumnsAccessors[0], field.Zero(), effectiveColumnSize),
+			verifiercol.NewFromAccessors(lppColumnsAccessors[0], fext.Zero(), effectiveColumnSize),
 			cong.HolisticLookupMappedLPPVK[0],
 			cong.HolisticLookupMappedLPPVK[1],
 		},

@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -138,7 +138,7 @@ func TestSerializeValue(t *testing.T) {
 			col := verifiercol.NewConcatTinyColumns(
 				comp,
 				8,
-				field.Element{},
+				fext.Element{},
 				comp.InsertColumn(0, "a", 1, column.Proof),
 				comp.InsertColumn(0, "b", 1, column.Proof),
 				comp.InsertColumn(0, "c", 1, column.Proof),
@@ -169,7 +169,7 @@ func TestSerializeValue(t *testing.T) {
 				a                   = comp.InsertColumn(0, "a", 16, column.Committed)
 				aNext               = column.Shift(a, 2)
 				tiny                = comp.InsertColumn(0, "b", 1, column.Proof)
-				concat              = verifiercol.NewConcatTinyColumns(comp, 4, field.Element{}, tiny)
+				concat              = verifiercol.NewConcatTinyColumns(comp, 4, fext.Element{}, tiny)
 				univ   ifaces.Query = comp.InsertUnivariate(0, "univ", []ifaces.Column{a, aNext, concat})
 			)
 
@@ -198,7 +198,7 @@ func TestSerializeValue(t *testing.T) {
 				a      = comp.InsertColumn(0, "a", 16, column.Committed)
 				aNext  = column.Shift(a, 2)
 				tiny   = comp.InsertColumn(0, "b", 1, column.Proof)
-				concat = verifiercol.NewConcatTinyColumns(comp, 4, field.Element{}, tiny)
+				concat = verifiercol.NewConcatTinyColumns(comp, 4, fext.Element{}, tiny)
 				univ   = comp.InsertUnivariate(0, "univ", []ifaces.Column{a, aNext, tiny, concat})
 				fromYs = verifiercol.NewFromYs(comp, univ, []ifaces.ColID{a.GetColID(), aNext.GetColID(), tiny.GetColID(), concat.GetColID()})
 			)

@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -119,7 +120,7 @@ func (ctx *CompilationCtx) commitGateColumns() {
 		for i := 0; i < ctx.maxNbInstances; i++ {
 			if ctx.TinyPISize() > 0 {
 				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.round, ctx.colIDf("PI_%v", i), ctx.TinyPISize())
-				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, field.Zero(), ctx.Columns.TinyPI[i])
+				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, fext.Zero(), ctx.Columns.TinyPI[i])
 			} else {
 				ctx.Columns.PI[i] = verifiercol.NewConstantCol(field.Zero(), nbRow)
 			}
@@ -141,7 +142,7 @@ func (ctx *CompilationCtx) commitGateColumns() {
 		for i := 0; i < ctx.maxNbInstances; i++ {
 			if ctx.TinyPISize() > 0 {
 				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.round, ctx.colIDf("PI_%v", i), ctx.TinyPISize())
-				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, field.Zero(), ctx.Columns.TinyPI[i])
+				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, fext.Zero(), ctx.Columns.TinyPI[i])
 			} else {
 				ctx.Columns.PI[i] = verifiercol.NewConstantCol(field.Zero(), nbRow)
 			}

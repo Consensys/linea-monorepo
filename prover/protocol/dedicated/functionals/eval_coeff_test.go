@@ -46,9 +46,9 @@ func TestEvalCoeff(t *testing.T) {
 
 	proof := wizard.Prove(compiled, prover)
 
-	xVal := savedRuntime.GetRandomCoinField(x.Name)
+	xVal := savedRuntime.GetRandomCoinFieldExt(x.Name)
 	accY := acc.GetVal(savedRuntime)
-	expectedY := smartvectors.EvalCoeff(wp, xVal)
+	expectedY := smartvectors.EvalCoeffExt(wp, xVal)
 
 	require.Equal(t, accY, expectedY)
 

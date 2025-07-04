@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -22,7 +23,7 @@ type solverSync struct {
 	// The commitment witness
 	comChan chan []field.Element
 	// The commitment value
-	randChan chan field.Element
+	randChan chan fext.Element
 	// The final solution
 	solChan chan *cs.SparseR1CSSolution
 }
@@ -74,7 +75,7 @@ func (pa initialBBSProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []
 			// Initialize the channels
 			solSync := solverSync{
 				comChan:  make(chan []field.Element, 1),
-				randChan: make(chan field.Element, 1),
+				randChan: make(chan fext.Element, 1),
 				solChan:  make(chan *cs.SparseR1CSSolution, 1),
 			}
 
@@ -146,7 +147,7 @@ func (pa lroCommitProverAction) Run(run *wizard.ProverRuntime) {
 
 			// Inject the coin which will be assigned to the randomness
 			solsync := solsync_.(solverSync)
-			solsync.randChan <- run.GetRandomCoinField(ctx.Columns.Hcp.Name)
+			solsync.randChan <- run.GetRandomCoinFieldExt(ctx.Columns.Hcp.Name) // TODO@yao: GetRandomCoinFieldExt?
 			close(solsync.randChan)
 
 			// And we block until the solver has completely finished
@@ -217,7 +218,7 @@ func (ctx *CompilationCtx) solverCommitmentHint(
 	// Channel through which the committed poly is obtained
 	pi2Chan chan []field.Element,
 	// Channel through which the randomness is injected back
-	randChan chan field.Element,
+	randChan chan fext.Element,
 ) func(_ *big.Int, ins, outs []*big.Int) error {
 
 	return func(_ *big.Int, ins, outs []*big.Int) error {
@@ -255,7 +256,7 @@ func (ctx *CompilationCtx) solverCommitmentHint(
 		// Use a custom way of deriving the commitment from a random coin
 		// that is injected by the wizard runtime thereafter.
 		commitmentVal := <-randChan
-		commitmentVal.BigInt(outs[0])
+		commitmentVal.B0.A0.BigInt(outs[0]) //TODO@yao: check here commitmentVal field or fext element?
 		return nil
 	}
 }
