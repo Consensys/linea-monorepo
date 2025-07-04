@@ -56,7 +56,6 @@ describe("L1 > L2 via Native Bridge", () => {
       metamask,
       connectMetamaskToDapp,
       clickNativeBridgeButton,
-      openNativeBridgeFormSettings,
       selectTokenAndInputAmount,
       swapChain,
       clickFirstVisitModalConfirmButton,
@@ -65,7 +64,6 @@ describe("L1 > L2 via Native Bridge", () => {
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
-      await openNativeBridgeFormSettings();
 
       await swapChain();
       await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
@@ -92,7 +90,6 @@ describe("L1 > L2 via Native Bridge", () => {
       page,
       connectMetamaskToDapp,
       clickNativeBridgeButton,
-      openNativeBridgeFormSettings,
       selectTokenAndInputAmount,
       openGasFeeModal,
       clickFirstVisitModalConfirmButton,
@@ -102,7 +99,6 @@ describe("L1 > L2 via Native Bridge", () => {
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
-      await openNativeBridgeFormSettings();
 
       await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
       await openGasFeeModal();
@@ -128,8 +124,6 @@ describe("L1 > L2 via Native Bridge", () => {
       page,
       connectMetamaskToDapp,
       clickNativeBridgeButton,
-      openNativeBridgeFormSettings,
-      toggleShowTestNetworksInNativeBridgeForm,
       selectTokenAndInputAmount,
       openGasFeeModal,
       clickFirstVisitModalConfirmButton,
@@ -139,8 +133,6 @@ describe("L1 > L2 via Native Bridge", () => {
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
-      await openNativeBridgeFormSettings();
-      await toggleShowTestNetworksInNativeBridgeForm();
 
       await selectTokenAndInputAmount(USDC_SYMBOL, USDC_AMOUNT);
       await openGasFeeModal();
@@ -154,7 +146,6 @@ describe("L1 > L2 via Native Bridge", () => {
       page,
       connectMetamaskToDapp,
       clickNativeBridgeButton,
-      openNativeBridgeFormSettings,
       selectTokenAndInputAmount,
       openGasFeeModal,
       switchToL2Network,
@@ -165,7 +156,6 @@ describe("L1 > L2 via Native Bridge", () => {
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
-      await openNativeBridgeFormSettings();
 
       await switchToL2Network();
       await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
@@ -186,7 +176,6 @@ describe("L1 > L2 via Native Bridge", () => {
       waitForNewTxAdditionToTxList,
       connectMetamaskToDapp,
       clickNativeBridgeButton,
-      openNativeBridgeFormSettings,
       selectTokenAndInputAmount,
       doInitiateBridgeTransaction,
       openNativeBridgeTransactionHistory,
@@ -197,7 +186,6 @@ describe("L1 > L2 via Native Bridge", () => {
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
-      await openNativeBridgeFormSettings();
 
       // Get # of txs in txHistory before doing bridge tx, so that we can later confirm that our bridge tx shows up in the txHistory.
       await openNativeBridgeTransactionHistory();
@@ -218,8 +206,6 @@ describe("L1 > L2 via Native Bridge", () => {
       waitForNewTxAdditionToTxList,
       connectMetamaskToDapp,
       clickNativeBridgeButton,
-      openNativeBridgeFormSettings,
-      toggleShowTestNetworksInNativeBridgeForm,
       selectTokenAndInputAmount,
       doInitiateBridgeTransaction,
       openNativeBridgeTransactionHistory,
@@ -231,8 +217,6 @@ describe("L1 > L2 via Native Bridge", () => {
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
-      await openNativeBridgeFormSettings();
-      await toggleShowTestNetworksInNativeBridgeForm();
 
       // Get # of txs in txHistory before doing bridge tx, so that we can later confirm that our bridge tx shows up in the txHistory.
       await openNativeBridgeTransactionHistory();
@@ -252,7 +236,6 @@ describe("L1 > L2 via Native Bridge", () => {
       page,
       connectMetamaskToDapp,
       clickNativeBridgeButton,
-      openNativeBridgeFormSettings,
       openNativeBridgeTransactionHistory,
       getNativeBridgeTransactionsCount,
       switchToL2Network,
@@ -263,7 +246,6 @@ describe("L1 > L2 via Native Bridge", () => {
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
-      await openNativeBridgeFormSettings();
 
       // Switch to L2 network
       await switchToL2Network();
