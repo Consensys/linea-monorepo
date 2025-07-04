@@ -27,10 +27,12 @@ func TestInvalidity(t *testing.T) {
 		}
 
 		assi = inval.AssigningInputs{
-			Tree:        tree,
-			Pos:         1,
-			Account:     tcases[1].Account,
-			LeafOpening: tcases[1].Leaf,
+			AccountTrieInputs: inval.AccountTrieInputs{
+				Tree:        tree,
+				Pos:         1,
+				Account:     tcases[1].Account,
+				LeafOpening: tcases[1].Leaf,
+			},
 			Transaction: types.NewTx(&tx),
 		}
 

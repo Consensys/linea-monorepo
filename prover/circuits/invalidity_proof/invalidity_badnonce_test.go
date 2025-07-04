@@ -6,7 +6,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	badnonce "github.com/consensys/linea-monorepo/prover/circuits/invalidity_proof"
+	inval "github.com/consensys/linea-monorepo/prover/circuits/invalidity_proof"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -26,15 +26,17 @@ func TestInvalidityBadNonce(t *testing.T) {
 			Nonce: uint64(tcases[1].TxNonce),
 		}
 
-		assi = badnonce.AssigningInputs{
-			Tree:        tree,
-			Pos:         1,
-			Account:     tcases[1].Account,
-			LeafOpening: tcases[1].Leaf,
+		assi = inval.AssigningInputs{
+			AccountTrieInputs: inval.AccountTrieInputs{
+				Tree:        tree,
+				Pos:         1,
+				Account:     tcases[1].Account,
+				LeafOpening: tcases[1].Leaf,
+			},
 			Transaction: types.NewTx(&tx),
 		}
 
-		circuit badnonce.BadNonceCircuit
+		circuit inval.BadNonceCircuit
 	)
 
 	// assign the circuit
@@ -44,7 +46,7 @@ func TestInvalidityBadNonce(t *testing.T) {
 	require.NoError(t, err)
 
 	// allocate the circuit
-	circuit.Allocate(badnonce.Config{
+	circuit.Allocate(inval.Config{
 		Depth: config.Depth,
 	})
 

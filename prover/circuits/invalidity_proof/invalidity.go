@@ -7,8 +7,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/circuits"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/crate-crypto/go-ipa/bandersnatch/fr"
@@ -41,12 +39,12 @@ type SubCircuit interface {
 
 // AssigningInputs collects the inputs used for the circuit assignment
 type AssigningInputs struct {
-	Tree        *smt.Tree // tree for the account trie
-	Pos         int       // position of the account in the tree
-	Account     Account
-	LeafOpening accumulator.LeafOpening
-	Transaction *types.Transaction
-	FuncInputs  public_input.Invalidity
+	AccountTrieInputs AccountTrieInputs
+	Transaction       *types.Transaction
+	FuncInputs        public_input.Invalidity
+	// the address of the sender
+	// gateway contract on L1 extract it via ecrevovery over the signature
+	FromAddress EthAddress
 }
 
 // Define the constraints

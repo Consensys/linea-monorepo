@@ -6,7 +6,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	badnonce "github.com/consensys/linea-monorepo/prover/circuits/invalidity_proof"
+	inval "github.com/consensys/linea-monorepo/prover/circuits/invalidity_proof"
 	ac "github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// test [badnonce.BadNonceCircuit]
+// test [inval.BadNonceCircuit]
 func TestBadNonce(t *testing.T) {
 
 	// generate witness
@@ -25,10 +25,12 @@ func TestBadNonce(t *testing.T) {
 	}
 
 	assignment := genWitness(t, tcases, config)
+	witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())
+	require.NoError(t, err)
 
 	// allocate the circuit for merkleProof
-	var circuit badnonce.BadNonceCircuit
-	circuit.MerkleProof.Proofs.Siblings = make([]frontend.Variable, config.Depth)
+	var circuit inval.BadNonceCircuit
+	circuit.AccountTrie.MerkleProof.Proofs.Siblings = make([]frontend.Variable, config.Depth)
 
 	// compile the circuit
 	scs, err := frontend.Compile(
@@ -36,19 +38,16 @@ func TestBadNonce(t *testing.T) {
 		scs.NewBuilder,
 		&circuit,
 	)
-
 	require.NoError(t, err)
 	// solve the circuit
-	witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())
-	require.NoError(t, err)
 
 	err = scs.IsSolved(witness)
 	require.NoError(t, err)
 
 }
 
-// generates the witness for [badnonce.BadNonceCircuit]
-func genWitness(t *testing.T, tcases []TestCases, config *smt.Config) badnonce.BadNonceCircuit {
+// generates the witness for [inval.BadNonceCircuit]
+func genWitness(t *testing.T, tcases []TestCases, config *smt.Config) inval.BadNonceCircuit {
 
 	tree, proofs, leaves := genShomei(t, tcases, config)
 
@@ -58,7 +57,7 @@ func genWitness(t *testing.T, tcases []TestCases, config *smt.Config) badnonce.B
 	root := tree.Root
 
 	//generate merkle tree witMerkle
-	var witMerkle badnonce.MerkleProofCircuit
+	var witMerkle inval.MerkleProofCircuit
 
 	witMerkle.Proofs.Siblings = make([]frontend.Variable, len(proof.Siblings))
 	for j := 0; j < len(proof.Siblings); j++ {
@@ -94,11 +93,14 @@ func genWitness(t *testing.T, tcases []TestCases, config *smt.Config) badnonce.B
 	leafOpening.HKey = l.HKey[:]
 	leafOpening.HVal = hval[:]
 
-	return badnonce.BadNonceCircuit{
-		TxNonce:     tcases[1].TxNonce,
+	var accountTrie = inval.AccountTrie{
 		MerkleProof: witMerkle,
 		LeafOpening: leafOpening,
 		Account:     account,
 	}
 
+	return inval.BadNonceCircuit{
+		TxNonce:     tcases[1].TxNonce,
+		AccountTrie: accountTrie,
+	}
 }

@@ -1,0 +1,179 @@
+package invalidity_proof
+
+import (
+	"github.com/consensys/gnark/frontend"
+	gmimc "github.com/consensys/gnark/std/hash/mimc"
+	ac "github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulator"
+)
+
+// AccountTrie includes the account and the data
+// to prove the membership of the account in the state.
+type AccountTrie struct {
+	// Account for the sender of the transaction
+	Account types.GnarkAccount
+	// LeafOpening of the Account in the Merkle tree
+	LeafOpening accumulator.GnarkLeafOpening
+	// Merkle proof for the LeafOpening
+	MerkleProof MerkleProofCircuit
+}
+
+// AccountTrieInputs collects the data for assigning the [AccountTrie]
+type AccountTrieInputs struct {
+	Tree        *smt.Tree // tree for the account trie
+	Pos         int       // position of the account in the tree
+	Account     types.Account
+	LeafOpening ac.LeafOpening
+}
+
+// Define the constraints for the membership of the account in the state
+func (ac *AccountTrie) Define(api frontend.API) error {
+
+	var (
+		accountSlice     = []frontend.Variable{}
+		leafOpeningSlice = []frontend.Variable{}
+		account          = ac.Account
+		leafOpening      = ac.LeafOpening
+	)
+
+	// Hash (Account) == LeafOpening.HVal
+	hashAccount := MimcCircuit{
+		PreImage: append(accountSlice,
+			account.Nonce,
+			account.Balance,
+			account.StorageRoot,
+			account.MimcCodeHash,
+			account.KeccakCodeHashMSB,
+			account.KeccakCodeHashLSB,
+			account.CodeSize,
+		),
+		Hash: leafOpening.HVal,
+	}
+	err := hashAccount.Define(api)
+	if err != nil {
+		return err
+	}
+
+	// Hash(LeafOpening)= MerkleProof.Leaf
+	hashLeafOpening := MimcCircuit{
+		PreImage: append(leafOpeningSlice,
+			leafOpening.Prev,
+			leafOpening.Next,
+			leafOpening.HKey,
+			leafOpening.HVal),
+
+		Hash: ac.MerkleProof.Leaf,
+	}
+	err = hashLeafOpening.Define(api)
+	if err != nil {
+		return err
+	}
+
+	// check that MerkleProof.Leaf is compatible with the state
+	err = ac.MerkleProof.Define(api)
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Allocate the circuit
+func (c *AccountTrie) Allocate(config Config) {
+	c.MerkleProof.Proofs.Siblings = make([]frontend.Variable, config.Depth)
+}
+
+// Assign the circuit from [AAccountTrieInputs]
+func (c *AccountTrie) Assign(assi AccountTrieInputs) {
+
+	// assign the merkle proof
+	leaf, _ := assi.Tree.GetLeaf(assi.Pos)
+	proof, _ := assi.Tree.Prove(assi.Pos)
+	root := assi.Tree.Root
+
+	var witMerkle MerkleProofCircuit
+
+	witMerkle.Proofs.Siblings = make([]frontend.Variable, len(proof.Siblings))
+	for j := 0; j < len(proof.Siblings); j++ {
+		witMerkle.Proofs.Siblings[j] = proof.Siblings[j][:]
+	}
+	witMerkle.Proofs.Path = proof.Path
+	witMerkle.Leaf = leaf[:]
+
+	witMerkle.Root = root[:]
+
+	// assign account and leafOpening
+	a := assi.Account
+
+	account := types.GnarkAccount{
+		Nonce:    a.Nonce,
+		Balance:  a.Balance,
+		CodeSize: a.CodeSize,
+	}
+
+	account.StorageRoot = a.StorageRoot[:]
+	account.MimcCodeHash = a.MimcCodeHash[:]
+	account.KeccakCodeHashMSB = a.KeccakCodeHash[16:]
+	account.KeccakCodeHashLSB = a.KeccakCodeHash[:16]
+
+	hval := ac.Hash(assi.Tree.Config, a)
+
+	l := assi.LeafOpening
+	leafOpening := accumulator.GnarkLeafOpening{
+		Prev: l.Prev,
+		Next: l.Next,
+	}
+
+	leafOpening.HKey = l.HKey[:]
+	leafOpening.HVal = hval[:]
+
+	*c = AccountTrie{
+		MerkleProof: witMerkle,
+		LeafOpening: leafOpening,
+		Account:     account,
+	}
+}
+
+// MerkleProofCircuit defines the circuit for validating the Merkle proofs
+type MerkleProofCircuit struct {
+	Proofs smt.GnarkProof
+	Leaf   frontend.Variable
+	Root   frontend.Variable
+}
+
+// Define the constraints for a merkle proof
+func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
+	h, err := gmimc.NewMiMC(api)
+	if err != nil {
+		return err
+	}
+
+	smt.GnarkVerifyMerkleProof(api, circuit.Proofs, circuit.Leaf, circuit.Root, &h)
+
+	return nil
+}
+
+// Circuit defines a pre-image knowledge proof
+// mimc( preImage) = public hash
+type MimcCircuit struct {
+	PreImage []frontend.Variable
+	Hash     frontend.Variable
+}
+
+// Define declares the circuit's constraints
+// Hash = mimc(PreImage)
+func (circuit *MimcCircuit) Define(api frontend.API) error {
+	// hash function
+	mimc, _ := gmimc.NewMiMC(api)
+
+	// mimc(preImage) == hash
+	for _, toHash := range circuit.PreImage {
+		mimc.Write(toHash)
+	}
+
+	api.AssertIsEqual(circuit.Hash, mimc.Sum())
+
+	return nil
+}
