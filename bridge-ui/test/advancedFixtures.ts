@@ -90,12 +90,12 @@ export const test = metaMaskFixtures(setup).extend<{
       await selectTokenAndWaitForBalance(tokenSymbol, page);
 
       // Input amount
-      const amountInput = page.getByRole("textbox", { name: "0", exact: true });
+      const amountInput = page.getByTestId("amount-input");
       await amountInput.fill(amount);
 
       // Wait for "Receive amount" to populate, we need to fetch blockchain data before proceeding
       const receivedAmountField = page.getByTestId("received-amount-text");
-      await receivedAmountField.waitFor({ state: "visible" });
+      await receivedAmountField.waitFor({ state: "visible", timeout: PAGE_TIMEOUT });
 
       // Check if there are sufficient funds available
       const insufficientFundsButton = page.getByRole("button", { name: "Insufficient funds", exact: true });

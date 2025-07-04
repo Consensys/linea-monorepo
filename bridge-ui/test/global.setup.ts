@@ -10,7 +10,7 @@ import {
   http,
   parseEther,
 } from "viem";
-import { mnemonicToAccount } from "viem/accounts";
+import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
 import { waitForTransactionReceipt } from "viem/actions";
 import { sendTransactionsToGenerateTrafficWithInterval } from "./utils/utils";
 import { LOCAL_L1_NETWORK, LOCAL_L2_NETWORK } from "./constants";
@@ -18,21 +18,19 @@ import { estimateGas } from "viem/linea";
 
 setup.setTimeout(200_000);
 setup("Global setup", async () => {
+  console.log("Generating L2 traffic...");
+  await generateL2Traffic();
+
   console.log("Funding L2 account...");
   await fundL2Account();
 
   console.log("Sending ERC20 token to account...");
   await sendERC20TokenToAccount();
-
-  console.log("Generating L2 traffic...");
-  await generateL2Traffic();
 });
 
 async function generateL2Traffic() {
-  const pollingAccount = mnemonicToAccount(process.env.E2E_TEST_SEED_PHRASE, {
-    accountIndex: 0,
-    addressIndex: 10,
-  });
+  // FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
+  const pollingAccount = privateKeyToAccount("0xb17202c37cce9498e6f7dcdc1abd207802d09b5eee96677ea219ac867a198b91");
 
   const walletClient = createWalletClient({
     chain: localL2Network,

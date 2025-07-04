@@ -28,7 +28,6 @@ export async function sendTransactionsToGenerateTrafficWithInterval(client: Clie
       });
 
       await waitForTransactionReceipt(client, { hash: tx, confirmations: 1 });
-      console.log(`Transaction sent successfully. hash=${tx}`);
     } catch (error) {
       console.error(`Error sending transaction. error=${JSON.stringify(error)}`);
     } finally {
