@@ -11,10 +11,14 @@ import {
   Token,
   MessageSentABIEvent,
   MessageSentLogEvent,
+  TransactionStatus,
 } from "@/types";
 import { formatOnChainMessageStatus } from "./formatOnChainMessageStatus";
 import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
 import { isBlockTooOld } from "./isBlockTooOld";
+import { config } from "@/config";
+import { localL1Network, localL2Network } from "@/constants";
+import { isNativeBridgeMessage } from "../message";
 
 export async function fetchETHBridgeEvents(
   historyStoreActions: HistoryActionsForCompleteTxCaching,
@@ -30,7 +34,13 @@ export async function fetchETHBridgeEvents(
     chainId: fromChain.id,
   });
 
-  const contract = fromChain.layer === ChainLayer.L1 ? lineaSDK.getL2Contract() : lineaSDK.getL1Contract();
+  const contract =
+    fromChain.layer === ChainLayer.L1
+      ? lineaSDK.getL2Contract(config.e2eTestMode ? config.chains[localL2Network.id].messageServiceAddress : undefined)
+      : lineaSDK.getL1Contract(
+          config.e2eTestMode ? config.chains[localL1Network.id].messageServiceAddress : undefined,
+          config.e2eTestMode ? config.chains[localL2Network.id].messageServiceAddress : undefined,
+        );
 
   const messageServiceAddress = fromChain.messageServiceAddress;
   const [ethLogsForSender, ethLogsForRecipient] = await Promise.all([
@@ -74,7 +84,14 @@ export async function fetchETHBridgeEvents(
       const cacheKey = getCompleteTxStoreKey(fromChain.id, log.transactionHash);
       const cachedCompletedTx = historyStoreActions.getCompleteTx(cacheKey);
       if (cachedCompletedTx) {
-        transactionsMap.set(uniqueKey, cachedCompletedTx);
+        if (cachedCompletedTx.status !== TransactionStatus.COMPLETED) {
+          if (isNativeBridgeMessage(cachedCompletedTx.message)) {
+            const messageStatus = await contract.getMessageStatus(cachedCompletedTx.message.messageHash);
+            transactionsMap.set(uniqueKey, { ...cachedCompletedTx, status: formatOnChainMessageStatus(messageStatus) });
+          }
+        } else {
+          transactionsMap.set(uniqueKey, cachedCompletedTx);
+        }
         return;
       }
 

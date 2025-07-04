@@ -2,7 +2,7 @@ import { metaMaskFixtures, getExtensionId } from "@synthetixio/synpress/playwrig
 import { Locator, Page } from "@playwright/test";
 import setup from "./wallet-setup/metamask.setup";
 import { getNativeBridgeTransactionsCountImpl, selectTokenAndWaitForBalance } from "./utils";
-import { LINEA_SEPOLIA_NETWORK, PAGE_TIMEOUT, POLLING_INTERVAL } from "./constants";
+import { LOCAL_L2_NETWORK, PAGE_TIMEOUT, POLLING_INTERVAL } from "./constants";
 
 /**
  * NB: There is an issue with Synpress `metaMaskFixtures` extension functions wherein extension functions
@@ -32,8 +32,8 @@ export const test = metaMaskFixtures(setup).extend<{
   submitERC20ApprovalTx: () => Promise<void>;
   waitForTransactionToConfirm: () => Promise<void>;
   confirmTransactionAndWaitForInclusion: () => Promise<void>;
-  switchToLineaSepolia: () => Promise<void>;
-  switchToEthereumMainnet: () => Promise<void>;
+  switchToL2Network: () => Promise<void>;
+  swapChain: () => Promise<void>;
 
   // Composite Bridge UI + Metamask Actions
   doTokenApprovalIfNeeded: () => Promise<void>;
@@ -90,12 +90,12 @@ export const test = metaMaskFixtures(setup).extend<{
       await selectTokenAndWaitForBalance(tokenSymbol, page);
 
       // Input amount
-      const amountInput = page.getByRole("textbox", { name: "0", exact: true });
+      const amountInput = page.getByTestId("amount-input");
       await amountInput.fill(amount);
 
       // Wait for "Receive amount" to populate, we need to fetch blockchain data before proceeding
       const receivedAmountField = page.getByTestId("received-amount-text");
-      await receivedAmountField.waitFor({ state: "visible" });
+      await receivedAmountField.waitFor({ state: "visible", timeout: PAGE_TIMEOUT });
 
       // Check if there are sufficient funds available
       const insufficientFundsButton = page.getByRole("button", { name: "Insufficient funds", exact: true });
@@ -227,14 +227,9 @@ export const test = metaMaskFixtures(setup).extend<{
       await page.bringToFront();
     });
   },
-  switchToLineaSepolia: async ({ metamask }, use) => {
+  switchToL2Network: async ({ metamask }, use) => {
     await use(async () => {
-      await metamask.switchNetwork(LINEA_SEPOLIA_NETWORK.name, true);
-    });
-  },
-  switchToEthereumMainnet: async ({ metamask }, use) => {
-    await use(async () => {
-      await metamask.switchNetwork("Ethereum Mainnet", false);
+      await metamask.switchNetwork(LOCAL_L2_NETWORK.name, true);
     });
   },
 
@@ -291,6 +286,14 @@ export const test = metaMaskFixtures(setup).extend<{
       await confirmTransactionAndWaitForInclusion();
 
       // Should finish on tx history page
+    });
+  },
+  swapChain: async ({ page }, use) => {
+    await use(async () => {
+      const swapChainButton = page.getByTestId("swap-chain-button");
+      await expect(swapChainButton).toBeVisible();
+      await expect(swapChainButton).toBeEnabled();
+      await swapChainButton.click();
     });
   },
 });
