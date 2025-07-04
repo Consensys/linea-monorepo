@@ -68,11 +68,8 @@ describe("L1 > L2 via Native Bridge", () => {
       await swapChain();
       await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
 
-      const swapBtn = page.getByTestId("swap-chain-button");
-      await swapBtn.click();
-
       // Should have 'Switch to L1' network button visible and enabled
-      const switchBtn = page.getByRole("button", { name: "Switch to L1", exact: true });
+      const switchBtn = page.getByRole("button", { name: "Switch to Local L1 network", exact: true });
       await expect(switchBtn).toBeVisible();
       await expect(switchBtn).toBeEnabled();
 
