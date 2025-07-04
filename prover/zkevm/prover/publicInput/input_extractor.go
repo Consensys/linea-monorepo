@@ -17,14 +17,14 @@ type FunctionalInputExtractor struct {
 	DataNbBytes query.LocalOpening
 
 	// DataChecksum returns the hash of the execution data
-	DataChecksum query.LocalOpening
+	DataChecksum [common.NbLimbU256]query.LocalOpening
 
 	// L2MessagesHash is the hash of the hashes of the L2 messages. Each message
 	// hash is encoded as 2 field elements, thus the hash does not need padding.
 	//
 	// NB: the corresponding field in [FunctionalPublicInputSnark] is the list
 	// the individual L2 messages hashes.
-	L2MessageHash query.LocalOpening
+	L2MessageHash [common.NbLimbU256]query.LocalOpening
 
 	// InitialStateRootHash and FinalStateRootHash are resp the initial and
 	// root hash of the state for the
@@ -47,11 +47,11 @@ func (fie *FunctionalInputExtractor) Run(run *wizard.ProverRuntime) {
 	}
 
 	assignLO(fie.DataNbBytes)
-	assignLO(fie.DataChecksum)
-	assignLO(fie.L2MessageHash)
 	assignLO(fie.NBytesChainID)
 
 	for i := range common.NbLimbU256 {
+		assignLO(fie.L2MessageHash[i])
+		assignLO(fie.DataChecksum[i])
 		assignLO(fie.FirstRollingHashUpdate[i])
 		assignLO(fie.LastRollingHashUpdate[i])
 		assignLO(fie.InitialStateRootHash[i])
