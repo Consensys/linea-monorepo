@@ -21,7 +21,7 @@ func TestVectors(t *testing.T) {
 
 		a = vectorext.ForTestFromQuads(list_a...)
 		b = vectorext.ForTestFromQuads(list_b...)
-		x = fext.NewElement(2, 0, 0, 0)
+		x = fext.NewFromUint(2, 0, 0, 0)
 
 		// aBAndXMustNotChange asserts that a and b did not change as this is
 		// a very common check in all the sub-tests.
@@ -35,7 +35,7 @@ func TestVectors(t *testing.T) {
 	t.Run("DeepCopy", func(t *testing.T) {
 		c := vectorext.DeepCopy(a)
 		assert.Equal(t, a, c, "the deep copied vector must be equal")
-		c[0] = fext.NewElement(0, 0, 40, 0)
+		c[0] = fext.NewFromUint(0, 0, 40, 0)
 		aBAndXMustNotChange(t)
 	})
 
@@ -98,7 +98,7 @@ func TestVectors(t *testing.T) {
 	})
 
 	t.Run("Constant", func(t *testing.T) {
-		y := fext.NewElement(1, 2, 3, 4)
+		y := fext.NewFromUint(1, 2, 3, 4)
 		c := vectorext.Repeat(y, 2)
 		assert.Equal(t, vectorext.ForTestFromQuads(1, 2, 3, 4, 1, 2, 3, 4), c)
 		aBAndXMustNotChange(t)
@@ -178,14 +178,14 @@ func TestVectors(t *testing.T) {
 
 func TestReverse(t *testing.T) {
 	vec := []fext.Element{
-		fext.NewElement(7, 0, 0, 0),
-		fext.NewElement(5, 6, 0, 0),
-		fext.NewElement(1, 2, 3, 4),
+		fext.NewFromUint(7, 0, 0, 0),
+		fext.NewFromUint(5, 6, 0, 0),
+		fext.NewFromUint(1, 2, 3, 4),
 	}
 	vectorext.Reverse(vec)
-	require.Equal(t, vec[0], fext.NewElement(1, 2, 3, 4))
-	require.Equal(t, vec[1], fext.NewElement(5, 6, 0, 0))
-	require.Equal(t, vec[2], fext.NewElement(7, 0, 0, 0))
+	require.Equal(t, vec[0], fext.NewFromUint(1, 2, 3, 4))
+	require.Equal(t, vec[1], fext.NewFromUint(5, 6, 0, 0))
+	require.Equal(t, vec[2], fext.NewFromUint(7, 0, 0, 0))
 }
 
 func TestScalarProd(t *testing.T) {
@@ -194,7 +194,7 @@ func TestScalarProd(t *testing.T) {
 			vectorext.ForTest(1, 2, 3, 4),
 			vectorext.ForTest(1, 2, 3, 4),
 		),
-		fext.NewElement(30, 0, 0, 0),
+		fext.NewFromUint(30, 0, 0, 0),
 	)
 }
 

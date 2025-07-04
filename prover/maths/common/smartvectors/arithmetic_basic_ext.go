@@ -279,13 +279,13 @@ func SumExt(a SmartVector) (res fext.Element) {
 		for i := range v.window {
 			res.Add(&res, &v.window[i])
 		}
-		constTerm := fext.NewElement(uint64(v.totLen-len(v.window)), 0, 0, 0)
+		constTerm := fext.NewFromUint(uint64(v.totLen-len(v.window)), 0, 0, 0)
 		constTerm.Mul(&constTerm, &v.paddingVal)
 		res.Add(&res, &constTerm)
 		return res
 
 	case *ConstantExt:
-		res := fext.NewElement(uint64(v.length), 0, 0, 0)
+		res := fext.NewFromUint(uint64(v.length), 0, 0, 0)
 		res.Mul(&res, &v.val)
 		return res
 

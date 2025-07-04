@@ -189,7 +189,7 @@ func TestPeriodicSampleEvalAtConsistentWithEval(t *testing.T) {
 
 				vanillaEval := sampling.EvalCoset(domain, 0, 1, false)
 
-				x := fext.NewFromBaseInteger(420691966156)
+				x := fext.NewFromUintBase(420691966156)
 				yExpected := smartvectors.EvaluateLagrangeMixed(vanillaEval, x)
 				yActual := sampling.EvalAtOutOfDomain(domain, x)
 
@@ -223,7 +223,7 @@ func TestPeriodicSampleEvalAtOnDomain(t *testing.T) {
 								panic(err)
 							}
 							var x fext.Element
-							fext.FromBase(&x, &_x)
+							fext.SetFromBase(&x, &_x)
 							x.Exp(x, big.NewInt(int64(pos)))
 
 							// This should equates 0/1

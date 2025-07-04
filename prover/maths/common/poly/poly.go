@@ -22,7 +22,7 @@ func EvalMixed(p []field.Element, x fext.Element) fext.Element {
 
 	randpolyext := make([]fext.Element, len(p))
 	for i := 0; i < len(p); i++ {
-		fext.FromBase(&randpolyext[i], &p[i])
+		fext.SetFromBase(&randpolyext[i], &p[i])
 	}
 	for i := len(randpolyext) - 1; i >= 0; i-- {
 		res.Mul(&res, &x)

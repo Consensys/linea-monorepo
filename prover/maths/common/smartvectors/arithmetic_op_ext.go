@@ -19,7 +19,7 @@ func (linCombOp) constExtIntoConstExt(res, x *fext.Element, coeff int) {
 		res.Sub(res, x).Sub(res, x)
 	default:
 		var c fext.Element
-		fext.SetInt64(&c, int64(coeff))
+		fext.SetFromIntBase(&c, int64(coeff))
 		c.Mul(&c, x)
 		res.Add(res, &c)
 	}
@@ -43,7 +43,7 @@ func (linCombOp) vecExtIntoVecExt(res, x []fext.Element, coeff int) {
 		}
 	default:
 		var c, tmp fext.Element
-		fext.SetInt64(&c, int64(coeff))
+		fext.SetFromIntBase(&c, int64(coeff))
 		for i := range res {
 			tmp.Mul(&c, &x[i])
 			res[i].Add(&res[i], &tmp)
@@ -73,7 +73,7 @@ func (linCombOp) vecExtIntoTermExt(term, x []fext.Element, coeff int) {
 		}
 	default:
 		var c fext.Element
-		fext.SetInt64(&c, int64(coeff))
+		fext.SetFromIntBase(&c, int64(coeff))
 		for i := range term {
 			term[i].Mul(&c, &x[i])
 		}
@@ -92,7 +92,7 @@ func (linCombOp) constExtIntoTermExt(term, x *fext.Element, coeff int) {
 		term.Add(x, x).Neg(term)
 	default:
 		var c fext.Element
-		fext.SetInt64(&c, int64(coeff))
+		fext.SetFromIntBase(&c, int64(coeff))
 		term.Mul(&c, x)
 	}
 }

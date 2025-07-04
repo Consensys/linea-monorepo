@@ -16,8 +16,8 @@ func TestConstructorExt(t *testing.T) {
 		a    = NewDummyVarExt("a")
 		b    = NewDummyVarExt("b")
 		c    = NewDummyVarExt("c")
-		zero = NewConstant(fext.NewElement(0, 0, 0, 0))
-		one  = NewConstant(fext.NewElement(1, 0, 0, 0))
+		zero = NewConstant(fext.NewFromUint(0, 0, 0, 0))
+		one  = NewConstant(fext.NewFromUint(1, 0, 0, 0))
 	)
 
 	testCases := []struct {
@@ -136,7 +136,7 @@ func TestImmutableConstructorsExt(t *testing.T) {
 		aVar = NewVariable(a)
 		bVar = NewVariable(b)
 		cVar = NewVariable(c)
-		one  = NewConstant(fext.NewElement(1, 0, 0, 0))
+		one  = NewConstant(fext.NewFromUint(1, 0, 0, 0))
 	)
 
 	testCases := []struct {
@@ -240,8 +240,8 @@ func TestConstructorMixed(t *testing.T) {
 		extB = NewDummyVar("extB")
 		extC = NewDummyVar("extC")
 		// constants
-		zero    = NewConstant(fext.NewElement(0, 0, 0, 0))
-		one     = NewConstant(fext.NewElement(1, 0, 0, 0))
+		zero    = NewConstant(fext.NewFromUint(0, 0, 0, 0))
+		one     = NewConstant(fext.NewFromUint(1, 0, 0, 0))
 		oneBase = NewConstant(field.NewElement(1))
 	)
 
@@ -371,7 +371,7 @@ func TestImmutableConstructorsMixed(t *testing.T) {
 		bExtVar = NewVariable(extB)
 		cExtVar = NewVariable(extC)
 		// constants
-		one     = NewConstant(fext.NewElement(1, 0, 0, 0))
+		one     = NewConstant(fext.NewFromUint(1, 0, 0, 0))
 		oneBase = NewConstant(field.NewElement(1))
 	)
 

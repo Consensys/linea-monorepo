@@ -24,8 +24,8 @@ func TestSimpleAddition(t *testing.T) {
 		t.Run("const-const", func(t *testing.T) {
 			// 2 + 3 = 5
 			res := b.EvaluateMixed([]sv.SmartVector{
-				sv.NewConstantExt(fext.NewFromBaseInteger(2), 1),
-				sv.NewConstantExt(fext.NewFromBaseInteger(3), 1),
+				sv.NewConstantExt(fext.NewFromUintBase(2), 1),
+				sv.NewConstantExt(fext.NewFromUintBase(3), 1),
 			}).(*sv.ConstantExt).Val()
 
 			require.Equal(t, res.String(), "5+0*u+(0+0*u)*v")
@@ -35,7 +35,7 @@ func TestSimpleAddition(t *testing.T) {
 			// 2 + 1 = 3
 			// 2 + 5 = 7
 			res := b.EvaluateMixed([]sv.SmartVector{
-				sv.NewConstantExt(fext.NewFromBaseInteger(2), 2),
+				sv.NewConstantExt(fext.NewFromUintBase(2), 2),
 				sv.ForTestExt(1, 5),
 			}).(*sv.RegularExt)
 
@@ -46,8 +46,8 @@ func TestSimpleAddition(t *testing.T) {
 		t.Run("vec-vec", func(t *testing.T) {
 			// For large vectors
 			res := b.EvaluateMixed([]sv.SmartVector{
-				sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(2), SIZE)),
-				sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(3), SIZE)),
+				sv.NewRegularExt(vectorext.Repeat(fext.NewFromUintBase(2), SIZE)),
+				sv.NewRegularExt(vectorext.Repeat(fext.NewFromUintBase(3), SIZE)),
 			}).(*sv.RegularExt)
 
 			for i := range *res {
@@ -69,8 +69,8 @@ func TestPythagoras(t *testing.T) {
 	{
 		// 2^2 + 3^2 = 13
 		res := b.EvaluateMixed([]sv.SmartVector{
-			sv.NewConstantExt(fext.NewFromBaseInteger(2), 1),
-			sv.NewConstantExt(fext.NewFromBaseInteger(3), 1),
+			sv.NewConstantExt(fext.NewFromUintBase(2), 1),
+			sv.NewConstantExt(fext.NewFromUintBase(3), 1),
 		}).(*sv.ConstantExt).Val()
 
 		require.Equal(t, res.String(), "13+0*u+(0+0*u)*v")
@@ -79,8 +79,8 @@ func TestPythagoras(t *testing.T) {
 	{
 		// A vector and a scalar
 		res := b.EvaluateMixed([]sv.SmartVector{
-			sv.NewConstantExt(fext.NewFromBaseInteger(2), 1024),
-			sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(3), 1024)),
+			sv.NewConstantExt(fext.NewFromUintBase(2), 1024),
+			sv.NewRegularExt(vectorext.Repeat(fext.NewFromUintBase(3), 1024)),
 		}).(*sv.RegularExt)
 
 		require.Equal(t, res.Len(), 1024)
@@ -92,8 +92,8 @@ func TestPythagoras(t *testing.T) {
 	{
 		// Two vectors
 		res := b.EvaluateMixed([]sv.SmartVector{
-			sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(2), 8192)),
-			sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(3), 8192)),
+			sv.NewRegularExt(vectorext.Repeat(fext.NewFromUintBase(2), 8192)),
+			sv.NewRegularExt(vectorext.Repeat(fext.NewFromUintBase(3), 8192)),
 		}).(*sv.RegularExt)
 
 		require.Equal(t, res.Len(), 8192)
@@ -113,8 +113,8 @@ func TestMulAdd(t *testing.T) {
 	{
 		// (2+2) * (3+3) = 24
 		res := b.EvaluateMixed([]sv.SmartVector{
-			sv.NewConstantExt(fext.NewFromBaseInteger(2), 1),
-			sv.NewConstantExt(fext.NewFromBaseInteger(3), 1),
+			sv.NewConstantExt(fext.NewFromUintBase(2), 1),
+			sv.NewConstantExt(fext.NewFromUintBase(3), 1),
 		}).(*sv.ConstantExt).Val()
 
 		require.Equal(t, res.String(), "24+0*u+(0+0*u)*v")
@@ -123,8 +123,8 @@ func TestMulAdd(t *testing.T) {
 	{
 		// A vector and a scalar
 		res := b.EvaluateMixed([]sv.SmartVector{
-			sv.NewConstantExt(fext.NewFromBaseInteger(2), 1024),
-			sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(3), 1024)),
+			sv.NewConstantExt(fext.NewFromUintBase(2), 1024),
+			sv.NewRegularExt(vectorext.Repeat(fext.NewFromUintBase(3), 1024)),
 		}).(*sv.RegularExt)
 
 		require.Equal(t, res.Len(), 1024)
@@ -136,8 +136,8 @@ func TestMulAdd(t *testing.T) {
 	{
 		// Two vectors
 		res := b.EvaluateMixed([]sv.SmartVector{
-			sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(2), 8192)),
-			sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(3), 8192)),
+			sv.NewRegularExt(vectorext.Repeat(fext.NewFromUintBase(2), 8192)),
+			sv.NewRegularExt(vectorext.Repeat(fext.NewFromUintBase(3), 8192)),
 		}).(*sv.RegularExt)
 
 		require.Equal(t, res.Len(), 8192)
@@ -175,11 +175,11 @@ func TestExpressionsContainAllCases(t *testing.T) {
 	expr := ExpressionContainingAllCases()
 	b := expr.Board()
 
-	valA := sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(1), 8192))
-	valA0 := sv.NewConstantExt(fext.NewFromBaseInteger(1), 8192)
+	valA := sv.NewRegularExt(vectorext.Repeat(fext.NewFromUintBase(1), 8192))
+	valA0 := sv.NewConstantExt(fext.NewFromUintBase(1), 8192)
 	valAW := sv.NewPaddedCircularWindowExt(vectorext.Repeat(fext.One(), 1000), fext.One(), 0, 8192)
 	valAWShifted := sv.NewPaddedCircularWindowExt(vectorext.Repeat(fext.One(), 1000), fext.One(), 1, 8192)
-	valB := sv.NewConstantExt(fext.NewFromBaseInteger(3), 8192)
+	valB := sv.NewConstantExt(fext.NewFromUintBase(3), 8192)
 
 	/*
 		Catch potential errors arising from a change in the ordering of the

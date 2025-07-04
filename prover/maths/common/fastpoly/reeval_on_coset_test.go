@@ -1,37 +1,14 @@
 package fastpoly_test
 
 import (
-	"fmt"
 	"math/big"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/stretchr/testify/require"
 )
-
-func TestReEvalOnCoset(t *testing.T) {
-
-	// With the constant polynomial
-	smaller := vector.ForTest(1, 1, 1, 1)
-	larger := fastpoly.ReEvaluateOnLargerDomainCoset(smaller, 8)
-	require.Equal(t, append(smaller, smaller...), larger)
-
-	// With the identity polynomial
-	smaller = vector.ForTest(0, 1, 0, 0)
-	expectedLarger := vector.ZeroPad(smaller, 8)
-
-	fft.NewDomain(4).FFT(smaller, fft.DIF)
-	fft.BitReverse(smaller)
-	fft.NewDomain(8).FFT(expectedLarger, fft.DIF, fft.OnCoset())
-	fft.BitReverse(expectedLarger)
-
-	larger = fastpoly.ReEvaluateOnLargerDomainCoset(smaller, 8)
-	require.Equal(t, expectedLarger, larger)
-
-}
 
 func TestXMinusOneOnACoset(t *testing.T) {
 
@@ -55,30 +32,6 @@ func TestXMinusOneOnACoset(t *testing.T) {
 		expected.Sub(&expected, &one)
 
 		require.Equal(t, expected.String(), res[i%ratio].String())
-	}
-
-}
-
-func BenchmarkReEvalOnCoset(b *testing.B) {
-
-	// logRatio = 2 means that we want to reevaluate on a coset that is
-	// 4 time larger
-	lowPow := 20
-	bigPow := 22
-
-	for _, logRatio := range []int{1, 2, 3, 4} {
-		for logSize := lowPow; logSize <= bigPow; logSize++ {
-			// With the constant polynomial
-			smaller := vector.Rand(1 << logSize)
-			// Dummy run to ensure, the domain is precomputed
-			_ = fastpoly.ReEvaluateOnLargerDomainCoset(smaller, 1<<(logSize+logRatio))
-
-			b.Run(fmt.Sprintf("Domain of size %v - ratio %v", 1<<logSize, 1<<logRatio), func(b *testing.B) {
-				for k := 0; k < b.N; k++ {
-					_ = fastpoly.ReEvaluateOnLargerDomainCoset(smaller, 1<<(logSize+logRatio))
-				}
-			})
-		}
 	}
 
 }

@@ -173,7 +173,7 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMap(run wizard.Runti
 	for i, c := range ctx.ExplicitlyEvaluated {
 		colID := ctx.ExplicitlyEvaluated[i].GetColID()
 		poly := c.GetColAssignment(run)
-		evaluationMap[colID] = smartvectors.EvaluateLagrangeMixed(poly, x)
+		evaluationMap[colID] = smartvectors.EvaluateLagrangeFullFext(poly, x)
 	}
 
 	return evaluationMap

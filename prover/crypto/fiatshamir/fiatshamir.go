@@ -68,9 +68,6 @@ func UpdateGeneric(h hash.StateStorer, vec ...fext.GenericFieldElem) {
 			panic("Hashing is not supposed to fail")
 		}
 	}
-
-	// Increase the transcript counter //TODO@yao: check the need of Increaseing the transcript counter?
-	//h.TranscriptSize += len(vec)
 }
 func UpdateVec(h hash.StateStorer, vecs ...[]field.Element) {
 	for i := range vecs {
@@ -146,7 +143,7 @@ func RandomFext(h hash.StateStorer) fext.Element {
 	} else {
 		res.B0.A0.SetBytes(s)
 	}
-	UpdateExt(h, fext.NewElement(0, 0, 0, 0)) // safefuard update
+	UpdateExt(h, fext.NewFromUint(0, 0, 0, 0)) // safefuard update
 	return res
 }
 

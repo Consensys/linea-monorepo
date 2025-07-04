@@ -110,7 +110,7 @@ func EvaluateLagrangeMixed(v SmartVector, x fext.Element, oncoset ...bool) fext.
 	switch con := v.(type) {
 	case *Constant:
 		var res fext.Element
-		fext.FromBase(&res, &con.val)
+		fext.SetFromBase(&res, &con.val)
 		return res
 	}
 
@@ -137,7 +137,7 @@ func BatchEvaluateLagrangeMixed(vs []SmartVector, x fext.Element, oncoset ...boo
 		for i := start; i < stop; i++ {
 			switch con := vs[i].(type) {
 			case *Constant:
-				fext.FromBase(&results[i], &con.val)
+				fext.SetFromBase(&results[i], &con.val)
 
 				computed[i] = true
 				continue

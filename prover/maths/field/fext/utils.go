@@ -38,48 +38,33 @@ func Uint64(z *Element) (uint64, uint64, uint64, uint64) {
 // ./common/smartvectors/arithmetic_op.go:150:		c.SetInt64(int64(coeff))
 // ./common/smartvectors/arithmetic_op.go:169:		c.SetInt64(int64(coeff))
 // ./common/vector/vector_wizard.go:102:		res[i].SetInt64(int64(x))
-// SetUint64 sets z to v and returns z
-func SetUint64(z *Element, v uint64) *Element {
+// SetFromUIntBase sets z to v and returns z
+func SetFromUIntBase(z *Element, v uint64) *Element {
 	//  sets z LSB to v (non-Montgomery form) and convert z to Montgomery form
 	z.B0.A0.SetUint64(v)
-	z.B0.A1.SetZero()
-	z.B1.SetZero()
 	return z // z.toMont()
 }
 
-func SetInt64(z *Element, v int64) *Element {
+func SetFromIntBase(z *Element, v int64) *Element {
 	z.B0.A0.SetInt64(v)
-	z.B0.A1.SetZero()
-	z.B1.SetZero()
 	return z // z.toMont()
+}
+
+func SetFromBase(z *Element, x *field.Element) *Element {
+	z.B0.A0.Set(x)
+	return z
+}
+
+func NewFromUintBase(b uint64) Element {
+	var res Element
+	res.B0.A0.SetUint64(b)
+	return res
 }
 
 func Lift(v field.Element) Element {
 	var res Element
 	res.B0.A0.Set(&v)
 	return res
-}
-
-// FromBase sets z = v//TODO:yao remove this function
-func FromBase(z *Element, v *field.Element) {
-	z.B0.A0.Set(v)
-	z.B0.A1.SetZero()
-	z.B1.A0.SetZero()
-	z.B1.A1.SetZero()
-}
-
-func NewFromBaseInteger(b uint64) Element {
-	var res Element
-	res.B0.A0.SetUint64(b)
-	return res
-}
-
-func SetFromBase(z *Element, x *field.Element) *Element {
-	z.B0.A0.Set(x)
-	z.B0.A1.SetZero()
-	z.B1.A0.SetZero()
-	z.B1.A1.SetZero()
-	return z
 }
 
 // PseudoRand generates a field using a pseudo-random number generator

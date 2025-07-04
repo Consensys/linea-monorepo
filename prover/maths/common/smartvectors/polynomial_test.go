@@ -35,7 +35,7 @@ func TestEvaluateLagrange(t *testing.T) {
 	var evalCan fext.Element
 	var tmp fext.Element
 	for i := size - 1; i >= 0; i-- {
-		fext.FromBase(&tmp, &poly[i])
+		fext.SetFromBase(&tmp, &poly[i])
 		evalCan.Mul(&evalCan, &x)
 		evalCan.Add(&evalCan, &tmp)
 	}
@@ -270,7 +270,7 @@ func TestBatchEvaluateLagrangeOnFextOnlyConstantVector(t *testing.T) {
 	n := 4
 	randPoly := vector.ForTest(1, 1, 1, 1)
 	randPoly2 := vector.ForTest(2, 2, 2, 2)
-	x := fext.NewElement(51, 1, 2, 3)
+	x := fext.NewFromUint(51, 1, 2, 3)
 
 	expectedY := poly.EvalMixed(randPoly, x)
 	expectedY2 := poly.EvalMixed(randPoly2, x)
@@ -320,7 +320,7 @@ func TestBatchInterpolationThreeVectors(t *testing.T) {
 	randPoly2 := vector.ForTest(1, 1, 1, 1)
 	randPoly3 := vector.ForTest(1, 2, 3, 4)
 
-	x := fext.NewElement(51, 1, 2, 3)
+	x := fext.NewFromUint(51, 1, 2, 3)
 
 	expectedY := poly.EvalMixed(randPoly, x)
 	expectedY2 := poly.EvalMixed(randPoly2, x)

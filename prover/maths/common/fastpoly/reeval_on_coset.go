@@ -1,51 +1,13 @@
 package fastpoly
 
-//TODO@yao:remove
 import (
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
-
-/*
-Given a polynomial in standard order evaluation form. Return
-the evaluations on a coset of a larger domain. If the factor is not a power of two.
-The output is a vector of evaluation
-*/
-func ReEvaluateOnLargerDomainCoset(poly []field.Element, newLen int) []field.Element {
-
-	/*
-		Sanity-checks on the sizes of the elements
-	*/
-	if !utils.IsPowerOfTwo(len(poly)) || !utils.IsPowerOfTwo(newLen) {
-		utils.Panic("Both the length %v and the newLen %v should be powers of two", len(poly), newLen)
-	}
-
-	if newLen < len(poly) {
-		utils.Panic("The newLen %v is smaller than the old one %v", len(poly), newLen)
-	}
-
-	small := vector.DeepCopy(poly)
-	// memoized
-	domainSmall := fft.NewDomain(uint64(len(poly)))
-	domainSmall.FFTInverse(small, fft.DIF)
-	fft.BitReverse(small)
-
-	/*
-		Small now contains the coefficients of `poly` in normal order
-	*/
-	large := vector.ZeroPad(small, newLen)
-	// memoized
-	domainLarge := fft.NewDomain(uint64(len(large)))
-	domainLarge.FFT(large, fft.DIF, fft.OnCoset())
-	fft.BitReverse(large)
-
-	return large
-}
 
 /*
 Evaluation x^n - 1 for x on a coset of domain of size N

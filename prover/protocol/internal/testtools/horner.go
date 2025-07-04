@@ -238,7 +238,7 @@ var ListOfHornerTestcaseNegative = []*HornerTestcase{
 		N0s:          []int{1},
 		N1s:          []int{8},
 		Xs:           []fext.Element{fext.One()},
-		FinalResult:  fext.NewElement(8, 0, 0, 0),
+		FinalResult:  fext.NewFromUint(8, 0, 0, 0),
 		MustFailFlag: true,
 	},
 
@@ -253,8 +253,8 @@ var ListOfHornerTestcaseNegative = []*HornerTestcase{
 		}},
 		N0s:          []int{0},
 		N1s:          []int{8},
-		Xs:           []fext.Element{fext.NewElement(2, 0, 0, 0)},
-		FinalResult:  fext.NewElement(510, 0, 0, 0),
+		Xs:           []fext.Element{fext.NewFromUint(2, 0, 0, 0)},
+		FinalResult:  fext.NewFromUint(510, 0, 0, 0),
 		MustFailFlag: true,
 	},
 }

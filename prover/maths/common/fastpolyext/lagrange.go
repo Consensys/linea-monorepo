@@ -59,7 +59,7 @@ func BatchEvaluateLagrange(polys [][]fext.Element, x fext.Element, oncoset ...bo
 	var accw, one, extomega fext.Element
 	one.SetOne()
 	accw.SetOne()
-	fext.FromBase(&extomega, &omega)
+	fext.SetFromBase(&extomega, &omega)
 	dens := make([]fext.Element, size) // [x-1, x-ω, x-ω², ...]
 	for i := 0; i < size; i++ {
 		dens[i].Sub(&x, &accw)
@@ -68,7 +68,7 @@ func BatchEvaluateLagrange(polys [][]fext.Element, x fext.Element, oncoset ...bo
 	invdens := fext.BatchInvert(dens) // [1/x-1, 1/x-ω, 1/x-ω², ...]
 	var tmp fext.Element
 	tmp.Exp(x, big.NewInt(int64(size))).Sub(&tmp, &one) // xⁿ-1
-	fext.SetInt64(&lagrangeAtX[0], int64(size))
+	fext.SetFromIntBase(&lagrangeAtX[0], int64(size))
 	lagrangeAtX[0].Inverse(&lagrangeAtX[0])
 	lagrangeAtX[0].Mul(&tmp, &lagrangeAtX[0])        // 1/n * (xⁿ-1)
 	lagrangeAtX[0].Mul(&lagrangeAtX[0], &invdens[0]) // 1/n * (xⁿ-1)/(x-1)

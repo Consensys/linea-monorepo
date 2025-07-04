@@ -33,7 +33,7 @@ func EvaluateLagrangeMixed(poly []field.Element, x fext.Element, oncoset ...bool
 // EvaluateLagrange computes ∑_i L_i(x), i.e. evaluates p interpreted as a polynomial in Lagrange form, and x lives in the extension
 func EvaluateLagrange(poly []field.Element, x field.Element, oncoset ...bool) field.Element {
 	var xExt fext.Element
-	fext.FromBase(&xExt, &x)
+	fext.SetFromBase(&xExt, &x)
 	res := EvaluateLagrangeMixed(poly, xExt, oncoset...)
 	return res.B0.A0
 }
@@ -66,7 +66,7 @@ func BatchEvaluateLagrangeMixed(polys [][]field.Element, x fext.Element, oncoset
 	var accw, one, extomega fext.Element
 	one.SetOne()
 	accw.SetOne()
-	fext.FromBase(&extomega, &omega)
+	fext.SetFromBase(&extomega, &omega)
 	dens := make([]fext.Element, size) // [x-1, x-ω, x-ω², ...]
 	for i := 0; i < size; i++ {
 		dens[i].Sub(&x, &accw)
@@ -75,7 +75,7 @@ func BatchEvaluateLagrangeMixed(polys [][]field.Element, x fext.Element, oncoset
 	invdens := fext.BatchInvert(dens) // [1/x-1, 1/x-ω, 1/x-ω², ...]
 	var tmp fext.Element
 	tmp.Exp(x, big.NewInt(int64(size))).Sub(&tmp, &one) // xⁿ-1
-	fext.SetInt64(&lagrangeAtX[0], int64(size))
+	fext.SetFromIntBase(&lagrangeAtX[0], int64(size))
 	lagrangeAtX[0].Inverse(&lagrangeAtX[0])
 	lagrangeAtX[0].Mul(&tmp, &lagrangeAtX[0])        // 1/n * (xⁿ-1)
 	lagrangeAtX[0].Mul(&lagrangeAtX[0], &invdens[0]) // 1/n * (xⁿ-1)/(x-1)
@@ -97,7 +97,7 @@ func BatchEvaluateLagrangeMixed(polys [][]field.Element, x fext.Element, oncoset
 // BatchEvaluateLagrange batch evalute polys at x, where polys are in Lagrange basis
 func BatchEvaluateLagrange(polys [][]field.Element, x field.Element, oncoset ...bool) []field.Element {
 	var xExt fext.Element
-	fext.FromBase(&xExt, &x)
+	fext.SetFromBase(&xExt, &x)
 	resExt := BatchEvaluateLagrangeMixed(polys, xExt, oncoset...)
 	res := make([]field.Element, len(polys))
 	for i := 0; i < len(resExt); i++ {

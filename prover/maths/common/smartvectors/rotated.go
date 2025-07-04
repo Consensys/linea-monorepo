@@ -157,7 +157,7 @@ func (r *Rotated) WriteInSliceExt(s []fext.Element) {
 	temp := rotatedAsRegular(r)
 	for i := 0; i < temp.Len(); i++ {
 		elem, _ := temp.GetBase(i)
-		fext.FromBase(&s[i], &elem)
+		fext.SetFromBase(&s[i], &elem)
 	}
 }
 
@@ -187,7 +187,7 @@ func (r *Rotated) IntoRegVecSaveAllocExt() []fext.Element {
 	temp := *rotatedAsRegular(r)
 	res := make([]fext.Element, temp.Len())
 	for i := 0; i < temp.Len(); i++ {
-		fext.FromBase(&res[i], &temp[i])
+		fext.SetFromBase(&res[i], &temp[i])
 	}
 	return res
 }

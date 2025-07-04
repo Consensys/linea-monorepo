@@ -19,7 +19,7 @@ type GenericFieldElem struct {
 func NewESHashFromBase(base field.Element) GenericFieldElem {
 	var res GenericFieldElem
 	res.base.Set(&base)
-	FromBase(&res.ext, &base)
+	SetFromBase(&res.ext, &base)
 	res.isBase = true
 	return res
 }
@@ -34,7 +34,7 @@ func (e *GenericFieldElem) GetBase() (field.Element, error) {
 
 func (e *GenericFieldElem) GetExt() Element {
 	if e.isBase {
-		FromBase(&e.ext, &e.base)
+		SetFromBase(&e.ext, &e.base)
 		return e.ext
 	} else {
 		return e.ext
@@ -105,7 +105,7 @@ func (e *GenericFieldElem) Mul(inp *GenericFieldElem) *GenericFieldElem {
 	if e.isBase && inp.isBase {
 		e.base.Mul(&e.base, &inp.base)
 		e.isBase = true
-		FromBase(&e.ext, &e.base)
+		SetFromBase(&e.ext, &e.base)
 		return e
 	} else {
 		// not both are base elements
@@ -136,7 +136,7 @@ func (e *GenericFieldElem) Mul(inp *GenericFieldElem) *GenericFieldElem {
 func (e *GenericFieldElem) Add(inp *GenericFieldElem) *GenericFieldElem {
 	if e.isBase && inp.isBase {
 		e.base.Add(&e.base, &inp.base)
-		FromBase(&e.ext, &e.base)
+		SetFromBase(&e.ext, &e.base)
 		e.isBase = true
 	} else {
 		// not both are base elements
@@ -167,7 +167,7 @@ func (e *GenericFieldElem) Add(inp *GenericFieldElem) *GenericFieldElem {
 func (e *GenericFieldElem) Div(inp *GenericFieldElem) *GenericFieldElem {
 	if e.isBase && inp.isBase {
 		e.base.Div(&e.base, &inp.base)
-		FromBase(&e.ext, &e.base)
+		SetFromBase(&e.ext, &e.base)
 		e.isBase = true
 	} else {
 		// not both are base elements
@@ -230,7 +230,7 @@ func (e *GenericFieldElem) Square(inp *GenericFieldElem) *GenericFieldElem {
 	if inp.isBase {
 		// inp is a base element
 		e.base.Square(&inp.base)
-		FromBase(&e.ext, &e.base)
+		SetFromBase(&e.ext, &e.base)
 		e.isBase = true
 		return e
 	} else {
@@ -251,7 +251,7 @@ func (e *GenericFieldElem) Square(inp *GenericFieldElem) *GenericFieldElem {
 func (e *GenericFieldElem) Exp(inp *GenericFieldElem, exponent *big.Int) *GenericFieldElem {
 	if inp.isBase {
 		e.base.Exp(inp.base, exponent)
-		FromBase(&e.ext, &e.base)
+		SetFromBase(&e.ext, &e.base)
 		return e
 	} else {
 		e.ext.Exp(inp.ext, exponent)
@@ -269,7 +269,7 @@ func (e *GenericFieldElem) Exp(inp *GenericFieldElem, exponent *big.Int) *Generi
 
 func (e *GenericFieldElem) SetInt64(v int64) *GenericFieldElem {
 	e.base.SetInt64(v)
-	FromBase(&e.ext, &e.base)
+	SetFromBase(&e.ext, &e.base)
 	e.isBase = true
 	return e
 }
@@ -277,7 +277,7 @@ func (e *GenericFieldElem) SetInt64(v int64) *GenericFieldElem {
 func SetGenericInt64(v int64) GenericFieldElem {
 	var e GenericFieldElem
 	e.base.SetInt64(v)
-	FromBase(&e.ext, &e.base)
+	SetFromBase(&e.ext, &e.base)
 	e.isBase = true
 	return e
 }

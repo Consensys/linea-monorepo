@@ -60,7 +60,6 @@ func GenerateKey(params Params, maxNumFieldToHash int) Key {
 		Params:        params,
 		twiddleCosets: nil,
 	}
-	//TODO@yao: check if PrecomputeTwiddlesCoset does the same as the coset computation in fft?
 	return res
 }
 

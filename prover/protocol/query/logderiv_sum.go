@@ -316,7 +316,7 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 				nbPaddingAsField fext.Element
 			)
 
-			fext.SetInt64(&nbPaddingAsField, int64(nbPadding))
+			fext.SetFromIntBase(&nbPaddingAsField, int64(nbPadding))
 			numeratorPadding.Mul(&numeratorPadding, &nbPaddingAsField)
 			res.Add(&res, &numeratorPadding)
 		}

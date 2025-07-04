@@ -3,6 +3,7 @@
 package smartvectors
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
@@ -11,11 +12,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// TODO@yao: fix tests
-/*
 func TestRuffiniExt(t *testing.T) {
 
 	testCases := []struct {
@@ -25,26 +25,27 @@ func TestRuffiniExt(t *testing.T) {
 		expectedRem fext.Element
 	}{
 		{
-			q:           fext.NewElement(1, 0),
-			p:           ForTestFromPairs(3, 0, 0, 0, 1, 0),
-			expectedQuo: ForTestFromPairs(1, 0, 1, 0),
-			expectedRem: fext.NewElement(4, 0),
+			q:           fext.NewFromUint(1, 0, 0, 0),
+			p:           ForTestExt(3, 0, 1),
+			expectedQuo: ForTestExt(1, 1),
+
+			expectedRem: fext.NewFromUint(4, 0, 0, 0),
 		},
 		{
 			// 3 = 0 * (X - 1) + 3
-			q:           fext.NewElement(1, 0),
-			p:           ForTestFromPairs(3, 0),
+			q:           fext.NewFromUint(1, 0, 0, 0),
+			p:           ForTestFromQuads(3, 0, 0, 0),
 			expectedQuo: NewConstantExt(fext.Zero(), 1),
-			expectedRem: fext.NewElement(3, 0),
+			expectedRem: fext.NewFromUint(3, 0, 0, 0),
 		},
 		{
-			// -α^2 - 3 α + α x^3 + x^3 - α^2 x^2 - 2 α x^2 - x^2 + α x + 2 x + 3 =
-			// (x-(1+alpha))(x^2*(1+alpha)+(2+alpha))+5
+			// p = -α^2 - 3 α + α x^3 + x^3 - α^2 x^2 - 2 α x^2 - x^2 + α x + 2 x + 3 =
+			// q*expectedQuo + expectedRem = (x-(1+alpha))(x^2*(1+alpha)+(2+alpha))+5
 			// alpha is a square root used to build the extension field, i.e. alpha^2=fext.RootPowers[1]
-			q:           fext.NewElement(1, 1),
-			p:           ForTestFromPairs(-fext.RootPowers[1]+3, -3, 2, 1, -1-fext.RootPowers[1], -2, 1, 1),
-			expectedQuo: ForTestFromPairs(2, 1, 0, 0, 1, 1),
-			expectedRem: fext.NewElement(5, 0),
+			q:           fext.NewFromUint(1, 1, 0, 0),
+			p:           ForTestFromQuads(-fext.RootPowers[1]+3, -3, 0, 0, 2, 1, 0, 0, -1-fext.RootPowers[1], -2, 0, 0, 1, 1, 0, 0),
+			expectedQuo: ForTestFromQuads(2, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0),
+			expectedRem: fext.NewFromUint(5, 0, 0, 0),
 		},
 	}
 
@@ -130,23 +131,20 @@ func TestBivariatePolynomialExt(t *testing.T) {
 		res       fext.Element
 	}{
 		{
-			// P(X) = P1(X)+Y*P2(X) = (1+4)+(3+8)Y = 5+11Y = 5+33 = 38
+			// P(X) = P1(X)+Y*P2(X) = (1+2x)+(3+4x)Y = 5+11Y = 5+33 = 38
 			v:         ForTestExt(1, 2, 3, 4),
-			x:         fext.NewElement(2, 0),
-			y:         fext.NewElement(3, 0),
+			x:         fext.NewFromUint(2, 0, 0, 0),
+			y:         fext.NewFromUint(3, 0, 0, 0),
 			numCoeffX: 2,
-			res:       fext.NewElement(38, 0),
+			res:       fext.NewFromUint(38, 0, 0, 0),
 		},
 		{
 			// P(X) = P1(X)+Y*P2(X)
-			v:         ForTestFromPairs(1, 1, 2, 2, 3, 3, 4, 4),
-			x:         fext.NewElement(2, 1),
-			y:         fext.NewElement(3, 2),
+			v:         ForTestFromQuads(1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4),
+			x:         fext.NewFromUint(2, 0, 0, 0),
+			y:         fext.NewFromUint(3, 0, 0, 0),
 			numCoeffX: 2,
-			res: *new(fext.Element).
-				SetInt64Pair(
-					int64(44*fext.RootPowers[1]+38),
-					int64(8*fext.RootPowers[1]+74)),
+			res:       fext.NewFromUint(38, 38, 38, 38),
 		},
 	}
 
@@ -165,7 +163,6 @@ func TestBivariatePolynomialExt(t *testing.T) {
 	}
 
 }
-*/
 
 func TestBatchEvaluateLagrangeExt(t *testing.T) {
 

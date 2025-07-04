@@ -33,10 +33,8 @@ func (l *FromLocalOpeningYAccessor) GetValBase(run ifaces.Runtime) (field.Elemen
 }
 
 func (l *FromLocalOpeningYAccessor) GetValExt(run ifaces.Runtime) fext.Element {
-	//TODO implement me
 	params := run.GetParams(l.Q.ID).(query.LocalOpeningParams)
 	return params.ExtY
-	//panic("implement me")
 }
 
 func (l *FromLocalOpeningYAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {

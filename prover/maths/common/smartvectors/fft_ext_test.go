@@ -260,7 +260,7 @@ func TestFFTExtFuzzyConsistWithInterpolation(t *testing.T) {
 				t.Logf("Parameters are (vec %v - ratio %v - cosetID %v - evalAt %v", coeffs.Pretty(), ratio, cosetID, i)
 
 				var xCoeff fext.Element
-				fext.SetInt64(&xCoeff, 2)
+				fext.SetFromIntBase(&xCoeff, 2)
 
 				xVal := xCoeff
 

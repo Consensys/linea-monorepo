@@ -482,8 +482,8 @@ func (a *foldPhaseVerifierAction) Run(run wizard.Runtime) error {
 	dcollapse := a.ctx.Columns.DhQCollapse.GetColAssignment(run)
 	rfold := run.GetRandomCoinFieldExt(a.ctx.Coins.Fold.Name)
 	yAlleged := run.GetInnerProductParams(a.ipQueryID).Ys[0]
-	yDual := smartvectors.EvalCoeffMixed(edual, rfold)
-	yActual := smartvectors.EvalCoeffMixed(dcollapse, rfold)
+	yDual := smartvectors.EvalCoeffExt(edual, rfold)
+	yActual := smartvectors.EvalCoeffExt(dcollapse, rfold)
 
 	var xN, xNminus1, xNplus1 fext.Element
 	one := fext.One()

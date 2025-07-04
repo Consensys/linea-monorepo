@@ -26,7 +26,8 @@ type FromUnivXAccessor struct {
 
 func (u *FromUnivXAccessor) IsBase() bool {
 	//TODO implement me
-	panic("implement me")
+	return u.Q.Pols[0].IsBase()
+
 }
 
 func (u *FromUnivXAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {

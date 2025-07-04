@@ -112,7 +112,7 @@ func TestWithVerifierCol(t *testing.T) {
 				comp.InsertUnivariate(0, "U", []ifaces.Column{u})
 			},
 			AssignFunc: func(run *wizard.ProverRuntime) {
-				run.AssignUnivariate("U", fext.Zero(), fext.NewElement(42, 0, 0, 0))
+				run.AssignUnivariate("U", fext.Zero(), fext.NewFromUint(42, 0, 0, 0))
 			},
 		},
 	}
@@ -142,8 +142,8 @@ func TestLdeOf(t *testing.T) {
 	}{
 		{
 			Name: "constant-poly",
-			Poly: vectorext.Repeat(fext.NewElement(23, 0, 0, 0), 8),
-			LDE:  vectorext.Repeat(fext.NewElement(23, 0, 0, 0), 32),
+			Poly: vectorext.Repeat(fext.NewFromUint(23, 0, 0, 0), 8),
+			LDE:  vectorext.Repeat(fext.NewFromUint(23, 0, 0, 0), 32),
 		},
 		{
 			Name: "x-poly",

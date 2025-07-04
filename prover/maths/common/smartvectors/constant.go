@@ -33,7 +33,7 @@ func (c *Constant) GetBase(int) (field.Element, error) { return c.val, nil }
 
 func (c *Constant) GetExt(int) fext.Element {
 	var res fext.Element
-	fext.FromBase(&res, &c.val)
+	fext.SetFromBase(&res, &c.val)
 	return res
 }
 func (r *Constant) Get(n int) field.Element {

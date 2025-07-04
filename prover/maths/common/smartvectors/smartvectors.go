@@ -328,14 +328,14 @@ func WindowExt(v SmartVector) []fext.Element {
 		temp := make([]fext.Element, len(w.window))
 		for i := 0; i < len(w.window); i++ {
 			elem := w.window[i]
-			fext.FromBase(&temp[i], &elem)
+			fext.SetFromBase(&temp[i], &elem)
 		}
 		return temp
 	case *Regular:
 		temp := make([]fext.Element, len(*w))
 		for i := 0; i < len(*w); i++ {
 			elem, _ := w.GetBase(i)
-			fext.FromBase(&temp[i], &elem)
+			fext.SetFromBase(&temp[i], &elem)
 		}
 		return temp
 	case *Rotated:

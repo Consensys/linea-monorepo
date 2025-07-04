@@ -16,12 +16,21 @@ const ExtensionDegree int = 4
 // Embedding
 type Element = extensions.E4
 
-func NewElement(v1, v2, v3, v4 uint64) Element {
+func NewFromUint(v1, v2, v3, v4 uint64) Element {
 	var z Element
 	z.B0.A0.SetUint64(v1)
 	z.B0.A1.SetUint64(v2)
 	z.B1.A0.SetUint64(v3)
 	z.B1.A1.SetUint64(v4)
+	return z
+}
+
+func NewFromInt(v1, v2, v3, v4 int64) Element {
+	var z Element
+	z.B0.A0.SetInt64(v1)
+	z.B0.A1.SetInt64(v2)
+	z.B1.A0.SetInt64(v3)
+	z.B1.A1.SetInt64(v4)
 	return z
 }
 
@@ -109,25 +118,25 @@ func SetInterface(z *Element, i1 interface{}) (*Element, error) {
 		}
 		return SetFromBase(z, c1), nil
 	case uint8:
-		return SetUint64(z, uint64(c1)), nil
+		return SetFromUIntBase(z, uint64(c1)), nil
 	case uint16:
-		return SetUint64(z, uint64(c1)), nil
+		return SetFromUIntBase(z, uint64(c1)), nil
 	case uint32:
-		return SetUint64(z, uint64(c1)), nil
+		return SetFromUIntBase(z, uint64(c1)), nil
 	case uint:
-		return SetUint64(z, uint64(c1)), nil
+		return SetFromUIntBase(z, uint64(c1)), nil
 	case uint64:
-		return SetUint64(z, c1), nil
+		return SetFromUIntBase(z, c1), nil
 	case int8:
-		return SetInt64(z, int64(c1)), nil
+		return SetFromIntBase(z, int64(c1)), nil
 	case int16:
-		return SetInt64(z, int64(c1)), nil
+		return SetFromIntBase(z, int64(c1)), nil
 	case int32:
-		return SetInt64(z, int64(c1)), nil
+		return SetFromIntBase(z, int64(c1)), nil
 	case int64:
-		return SetInt64(z, c1), nil
+		return SetFromIntBase(z, c1), nil
 	case int:
-		return SetInt64(z, int64(c1)), nil
+		return SetFromIntBase(z, int64(c1)), nil
 	case string:
 		z.B0.A0.SetString(c1)
 		z.B0.A1.SetZero()
