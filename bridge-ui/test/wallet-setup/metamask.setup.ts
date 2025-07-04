@@ -21,7 +21,7 @@ export default defineWalletSetup(METAMASK_PASSWORD, async (context, walletPage) 
   await metamask.addNetwork(LOCAL_L1_NETWORK);
   await metamask.addNetwork(LOCAL_L2_NETWORK);
 
-  await metamask.switchNetwork("L1", true);
+  await metamask.switchNetwork("Local L1 network", true);
 
   // We need to use the Account 7 to not conflict with accounts used by the local docker stack
   for (let i = 2; i < 8; i++) {
