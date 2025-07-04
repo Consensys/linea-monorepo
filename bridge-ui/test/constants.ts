@@ -1,4 +1,4 @@
-import { formatEther, formatUnits } from "viem";
+import { formatUnits, parseEther } from "viem";
 import "dotenv/config";
 
 export const METAMASK_SEED_PHRASE = process.env.E2E_TEST_SEED_PHRASE;
@@ -21,7 +21,7 @@ export const LOCAL_L2_NETWORK = {
 };
 
 export const TEST_URL = "http://localhost:3000/";
-export const WEI_AMOUNT = formatEther(1n).toString();
+export const WEI_AMOUNT = parseEther("1").toString();
 // Must be > minimum CCTP fee
 export const USDC_AMOUNT = formatUnits(10n, 6).toString();
 export const ETH_SYMBOL = "ETH";
