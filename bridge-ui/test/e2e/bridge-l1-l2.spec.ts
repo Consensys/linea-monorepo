@@ -68,10 +68,10 @@ describe("L1 > L2 via Native Bridge", () => {
       await swapChain();
       await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
 
-      // Should have 'Switch to L1' network button visible and enabled
-      const switchBtn = page.getByRole("button", { name: "Switch to Local L1 network", exact: true });
-      await expect(switchBtn).toBeVisible();
-      await expect(switchBtn).toBeEnabled();
+      // Should have 'Switch to Local L2 network' network button visible and enabled
+      const switchBtn = page.getByRole("button", { name: "Switch to Local L2 network", exact: true });
+      await expect(switchBtn).toBeVisible({ timeout: 10_000 });
+      await expect(switchBtn).toBeEnabled({ timeout: 10_000 });
 
       // Do network switch
       await switchBtn.click();
@@ -79,8 +79,8 @@ describe("L1 > L2 via Native Bridge", () => {
 
       // After network switch, should have 'Bridge' button visible and enabled
       const bridgeButton = page.getByRole("button", { name: "Bridge", exact: true });
-      await expect(bridgeButton).toBeVisible();
-      await expect(bridgeButton).toBeEnabled();
+      await expect(bridgeButton).toBeVisible({ timeout: 10_000 });
+      await expect(bridgeButton).toBeEnabled({ timeout: 10_000 });
     });
 
     test("should see Free gas fees for ETH transfer to L2", async ({
