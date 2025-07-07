@@ -32,7 +32,7 @@ and then for each transaction tx_i, the sender address (20 bytes) and the transa
 We then continue analogously for each block.
 
 Due to design choices in the arithmetization and other submodules, we can only load at most 2 bytes
-at a time. For this reason, blockhash is divided into 8 columns: [16]BlockHash (32 bytes in total).
+at a time. For this reason, blockhash is divided into 16 columns: [16]BlockHash (32 bytes in total).
 Similarly, the sender address is divided into 10 columns: [10]Addr (20 bytes in total).
 
 
