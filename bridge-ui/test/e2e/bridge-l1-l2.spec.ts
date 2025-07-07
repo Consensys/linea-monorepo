@@ -1,6 +1,6 @@
 import { testWithSynpress } from "@synthetixio/synpress";
 import { test as advancedFixtures } from "../advancedFixtures";
-import { TEST_URL, USDC_SYMBOL, USDC_AMOUNT, WEI_AMOUNT, ETH_SYMBOL } from "../constants";
+import { TEST_URL, USDC_SYMBOL, USDC_AMOUNT, WEI_AMOUNT, ETH_SYMBOL, LOCAL_L2_NETWORK } from "../constants";
 
 const test = testWithSynpress(advancedFixtures);
 
@@ -68,8 +68,8 @@ describe("L1 > L2 via Native Bridge", () => {
       await swapChain();
       await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
 
-      // Should have 'Switch to Local L2 network' network button visible and enabled
-      const switchBtn = page.getByRole("button", { name: "Switch to Local L2 network", exact: true });
+      // Should have 'Switch to Local L2 Network' network button visible and enabled
+      const switchBtn = page.getByRole("button", { name: `Switch to ${LOCAL_L2_NETWORK.name}`, exact: true });
       await expect(switchBtn).toBeVisible({ timeout: 10_000 });
       await expect(switchBtn).toBeEnabled({ timeout: 10_000 });
 
@@ -101,7 +101,7 @@ describe("L1 > L2 via Native Bridge", () => {
       await openGasFeeModal();
 
       // Assert text items
-      const l2NetworkFeeText = page.getByText("L2 fee");
+      const l2NetworkFeeText = page.getByText(`${LOCAL_L2_NETWORK.name} fee`);
       const freeText = page.getByText("Free");
       await expect(l2NetworkFeeText).toBeVisible();
       await expect(freeText).toBeVisible();

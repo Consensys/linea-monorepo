@@ -4,7 +4,7 @@ import { defineChain } from "viem";
 // This is a local L1 network configuration for testing purposes
 export const localL1Network = defineChain({
   id: 31648428,
-  name: "Local L1 network",
+  name: "Local L1 Network",
   nativeCurrency: {
     decimals: 18,
     name: "Ether",
@@ -29,10 +29,10 @@ export const localL1Network = defineChain({
   },
 });
 
-// This is a local L2 network configuration for testing purposes
+// This is a local L2 Network configuration for testing purposes
 export const localL2Network = defineChain({
   id: 1337,
-  name: "Local L2 network",
+  name: "Local L2 Network",
   nativeCurrency: {
     decimals: 18,
     name: "Ether",

@@ -102,7 +102,7 @@ export function Web3Provider({ children }: Web3ProviderProps) {
                     {
                       blockExplorerUrls: [],
                       chainId: 31648428,
-                      chainName: "Local L1 network",
+                      chainName: "Local L1 Network",
                       iconUrls: ["https://app.dynamic.xyz/assets/networks/ethereum.svg"],
                       name: "L1Local",
                       nativeCurrency: {
@@ -118,7 +118,7 @@ export function Web3Provider({ children }: Web3ProviderProps) {
                     {
                       blockExplorerUrls: [],
                       chainId: 1337,
-                      chainName: "Local L2 network",
+                      chainName: "Local L2 Network",
                       iconUrls: ["https://app.dynamic.xyz/assets/networks/ethereum.svg"],
                       name: "L2Local",
                       nativeCurrency: {

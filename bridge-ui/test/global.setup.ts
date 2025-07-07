@@ -17,6 +17,7 @@ import { LOCAL_L1_NETWORK, LOCAL_L2_NETWORK } from "./constants";
 import { estimateGas } from "viem/linea";
 
 setup.setTimeout(200_000);
+
 setup("Global setup", async () => {
   console.log("Generating L2 traffic...");
   await generateL2Traffic();

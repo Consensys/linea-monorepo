@@ -5,7 +5,7 @@ export const METAMASK_SEED_PHRASE = process.env.E2E_TEST_SEED_PHRASE;
 export const METAMASK_PASSWORD = process.env.E2E_TEST_WALLET_PASSWORD;
 
 export const LOCAL_L1_NETWORK = {
-  name: "Local L1 network",
+  name: "Local L1 Network",
   rpcUrl: `http://localhost:8445`,
   chainId: 31648428,
   symbol: "ETH",
@@ -13,7 +13,7 @@ export const LOCAL_L1_NETWORK = {
 };
 
 export const LOCAL_L2_NETWORK = {
-  name: "Local L2 network",
+  name: "Local L2 Network",
   rpcUrl: `http://localhost:9045`,
   chainId: 1337,
   symbol: "ETH",
