@@ -67,7 +67,6 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 			return
 		}
 
-		// registers all the commitments
 		if len(comp.Columns.AllKeysCommitted()) == 0 {
 			logrus.Infof("no committed polynomial in the compilation context... compilation step skipped")
 			return
