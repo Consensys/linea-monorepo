@@ -15,6 +15,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/mock"
 )
 
+// TODO: delete this test in the final merge
+
 // TestIntegrationConnector checks the connector between the StateSummary
 // and the HUB arithmetization (account/storage consistency permutations—ACP/SCP)
 func TestIntegrationConnector(t *testing.T) {
@@ -202,10 +204,10 @@ func (smc *HubColumnSet) assignForTest(run *wizard.ProverRuntime, smVectors *moc
 }
 
 func transposeLimbs[T [provercommon.NbLimbEthAddress]field.Element |
-	[provercommon.NbLimbU256]field.Element |
-	[provercommon.NbLimbU64]field.Element |
-	[provercommon.NbLimbU32]field.Element |
-	[provercommon.NbLimbU128]field.Element](inputMatrix []T) [][]field.Element {
+[provercommon.NbLimbU256]field.Element |
+[provercommon.NbLimbU64]field.Element |
+[provercommon.NbLimbU32]field.Element |
+[provercommon.NbLimbU128]field.Element](inputMatrix []T) [][]field.Element {
 
 	if len(inputMatrix) == 0 || len(inputMatrix[0]) == 0 {
 		return [][]field.Element{}
