@@ -1,9 +1,14 @@
 import { Page } from "@playwright/test";
 import { POLLING_INTERVAL, PAGE_TIMEOUT } from "../constants";
 
-export async function selectTokenAndWaitForBalance(tokenSymbol: string, page: Page) {
+export async function selectTokenAndWaitForBalance(tokenSymbol: string, page: Page, waitForBalance = true) {
   const openModalBtn = page.getByTestId("native-bridge-open-token-list-modal");
   await openModalBtn.click();
+
+  if (!waitForBalance) {
+    await page.getByTestId(`token-details-${tokenSymbol.toLowerCase()}-btn`).click();
+    return;
+  }
   // Wait for API request to retrieve blockchain balance.
   const tokenBalance = page.getByTestId(`token-details-${tokenSymbol.toLowerCase()}-amount`);
   console.log(`Fetching token balance for ${tokenSymbol}`);

@@ -21,13 +21,13 @@ export const test = metaMaskFixtures(setup).extend<{
   openNativeBridgeFormSettings: () => Promise<void>;
   toggleShowTestNetworksInNativeBridgeForm: () => Promise<void>;
   getNativeBridgeTransactionsCount: () => Promise<number>;
-  selectTokenAndInputAmount: (tokenSymbol: string, amount: string) => Promise<void>;
+  selectTokenAndInputAmount: (tokenSymbol: string, amount: string, waitForBalance?: boolean) => Promise<void>;
   waitForNewTxAdditionToTxList: (txCountBeforeUpdate: number) => Promise<void>;
   waitForTxListUpdateForClaimTx: (claimTxCountBeforeUpdate: number) => Promise<void>;
   openGasFeeModal: () => Promise<void>;
 
   // Metamask Actions - Should be ok to reuse within other fixture functions
-  connectMetamaskToDapp: () => Promise<void>;
+  connectMetamaskToDapp: (account: string) => Promise<void>;
   openMetamaskActivityPage: () => Promise<void>;
   submitERC20ApprovalTx: () => Promise<void>;
   waitForTransactionToConfirm: () => Promise<void>;
@@ -85,9 +85,9 @@ export const test = metaMaskFixtures(setup).extend<{
     });
   },
   selectTokenAndInputAmount: async ({ page }, use) => {
-    await use(async (tokenSymbol: string, amount: string) => {
+    await use(async (tokenSymbol: string, amount: string, waitForBalance = true) => {
       // Wait for page to retrieve blockchain token balance
-      await selectTokenAndWaitForBalance(tokenSymbol, page);
+      await selectTokenAndWaitForBalance(tokenSymbol, page, waitForBalance);
 
       // Input amount
       const amountInput = page.getByTestId("amount-input");
@@ -134,14 +134,14 @@ export const test = metaMaskFixtures(setup).extend<{
     await use(async () => {
       const gasFeeBtn = page.getByRole("button", { name: "fee-chain-icon" });
       // bridge-ui-known-flaky-line - Unsure why, the gas fees may not load within 5s
-      await expect(gasFeeBtn).not.toContainText("0.00000000");
+      await expect(gasFeeBtn).not.toContainText("0.00000000", { timeout: PAGE_TIMEOUT });
       await gasFeeBtn.click();
     });
   },
 
   // Metamask Actions - Should be ok to reuse within other fixture functions
   connectMetamaskToDapp: async ({ page, metamask }, use) => {
-    await use(async () => {
+    await use(async (account: string) => {
       await page.waitForLoadState("domcontentloaded", { timeout: PAGE_TIMEOUT });
 
       // Click Connect button
@@ -152,7 +152,12 @@ export const test = metaMaskFixtures(setup).extend<{
       const metamaskBtnInDropdownList = page.getByRole("button").filter({ hasText: "MetaMask" }).first();
       await metamaskBtnInDropdownList.click();
 
-      await metamask.connectToDapp();
+      if (account !== "Account 7") {
+        // Switch to the specified account (used for L2 to L1 tests)
+        await metamask.switchAccount(account);
+      }
+
+      await metamask.connectToDapp([account]);
       await metamask.goBackToHomePage();
       await page.bringToFront();
     });

@@ -1,4 +1,10 @@
-import { LOCAL_L1_NETWORK, LOCAL_L2_NETWORK, METAMASK_PASSWORD, METAMASK_SEED_PHRASE } from "../constants";
+import {
+  L2_ACCOUNT_PRIVATE_KEY,
+  LOCAL_L1_NETWORK,
+  LOCAL_L2_NETWORK,
+  METAMASK_PASSWORD,
+  METAMASK_SEED_PHRASE,
+} from "../constants";
 import { defineWalletSetup } from "@synthetixio/synpress";
 import { MetaMask, getExtensionId } from "@synthetixio/synpress/playwright";
 
@@ -27,6 +33,10 @@ export default defineWalletSetup(METAMASK_PASSWORD, async (context, walletPage) 
   for (let i = 2; i < 8; i++) {
     await metamask.addNewAccount(`Account ${i}`);
   }
+
+  // Importing the L2 account
+  // Metamask name: Account 8
+  await metamask.importWalletFromPrivateKey(L2_ACCOUNT_PRIVATE_KEY);
 
   await metamask.switchAccount("Account 7");
 });

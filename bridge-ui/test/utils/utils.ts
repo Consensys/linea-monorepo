@@ -1,6 +1,6 @@
-import { localL2Network } from "@/constants";
-import { Client, parseEther } from "viem";
-import { getAddresses, sendTransaction, waitForTransactionReceipt } from "viem/actions";
+import { localL1Network, localL2Network } from "@/constants";
+import { Client, Hex, parseEther } from "viem";
+import { estimateMaxPriorityFeePerGas, getAddresses, sendTransaction, waitForTransactionReceipt } from "viem/actions";
 import { estimateGas } from "viem/linea";
 
 export async function sendTransactionsToGenerateTrafficWithInterval(client: Client, pollingInterval: number = 1_000) {
@@ -12,22 +12,37 @@ export async function sendTransactionsToGenerateTrafficWithInterval(client: Clie
     if (!isRunning) return;
 
     try {
-      const { priorityFeePerGas, baseFeePerGas, gasLimit } = await estimateGas(client, {
-        account: client.account!,
-        to: accountAddress,
-        value: parseEther("0.000001"),
-      });
-      const tx = await sendTransaction(client, {
-        to: accountAddress,
-        value: parseEther("0.000001"),
-        account: client.account!,
-        chain: localL2Network,
-        gas: gasLimit,
-        maxFeePerGas: baseFeePerGas + priorityFeePerGas,
-        maxPriorityFeePerGas: priorityFeePerGas,
-      });
+      let transactionHash: Hex;
+      if (client?.chain?.id === localL2Network.id) {
+        const { priorityFeePerGas, baseFeePerGas } = await estimateGas(client, {
+          account: client.account!,
+          to: accountAddress,
+          value: parseEther("0.000001"),
+        });
 
-      await waitForTransactionReceipt(client, { hash: tx, confirmations: 1 });
+        transactionHash = await sendTransaction(client, {
+          to: accountAddress,
+          value: parseEther("0.000001"),
+          account: client.account!,
+          chain: localL2Network,
+          maxFeePerGas: baseFeePerGas + priorityFeePerGas,
+          maxPriorityFeePerGas: priorityFeePerGas,
+        });
+      } else {
+        const maxPriorityFeePerGas = await estimateMaxPriorityFeePerGas(client, { chain: localL1Network });
+
+        transactionHash = await sendTransaction(client, {
+          to: accountAddress,
+          value: parseEther("0.000001"),
+          account: client.account!,
+          chain: localL1Network,
+          maxFeePerGas: BigInt("0x7") + maxPriorityFeePerGas,
+          maxPriorityFeePerGas,
+        });
+      }
+
+      await waitForTransactionReceipt(client, { hash: transactionHash, confirmations: 1 });
+      console.log(`Transaction sent successfully. hash=${transactionHash} chainId=${client?.chain?.id}`);
     } catch (error) {
       console.error(`Error sending transaction. error=${JSON.stringify(error)}`);
     } finally {
