@@ -214,7 +214,6 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<13),
 			compiler.WithoutMpts(),
-			compiler.GenCSVAfterExpansion("after-expansion-"+subscript+".csv"),
 		),
 		// This final step expectedly always generate always the same profile.
 		logdata.Log("just-before-recursion"),
