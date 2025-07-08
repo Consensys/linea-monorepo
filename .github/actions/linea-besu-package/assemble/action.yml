@@ -112,7 +112,7 @@ runs:
         echo "dockerimage=consensys/linea-besu-package:${{ steps.dockertag.outputs.dockertag }}" >> "$GITHUB_OUTPUT"
 
     - name: assemble the packages to linea-besu
-      shell: bash    
+      shell: bash
       run: |
         cd linea-besu-package
         make assemble
