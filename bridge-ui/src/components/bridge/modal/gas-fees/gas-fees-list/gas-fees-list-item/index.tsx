@@ -13,14 +13,16 @@ type Props = {
 export default function GasFeesListItem({ name, fee, fiatValue, currency }: Props) {
   const feeText = useMemo(() => {
     if (fee === 0n) return "Free";
-    return <span dangerouslySetInnerHTML={{ __html: `${formatDigit(fee)} ETH` }} />;
+    return `${formatDigit(fee)} ETH`;
   }, [fee]);
 
   return (
     <li className={styles["list-item"]}>
       <span>{name}</span>
       <div className={styles["fee-row"]}>
-        <span className={styles["fee-value"]}>{feeText}</span>
+        <span className={styles["fee-value"]}>
+          <span dangerouslySetInnerHTML={{ __html: feeText }} />
+        </span>
         {fiatValue && (
           <span className={styles["fee-fiat-value"]}>
             {fiatValue.toLocaleString("en-US", {
