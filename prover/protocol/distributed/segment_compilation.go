@@ -25,8 +25,8 @@ import (
 const (
 	// fixedNbRowPlonkCircuit is the number of rows in the plonk circuit,
 	// the value is empirical and corresponds to the lowest value that works.
-	fixedNbRowPlonkCircuit   = 1 << 20
-	fixedNbRowExternalHasher = 1 << 17
+	fixedNbRowPlonkCircuit   = 1 << 19
+	fixedNbRowExternalHasher = 1 << 16
 	verifyingKeyPublicInput  = "VERIFYING_KEY"
 	verifyingKey2PublicInput = "VERIFYING_KEY_2"
 	lppMerkleRootPublicInput = "LPP_COLUMNS_MERKLE_ROOTS"
@@ -41,8 +41,8 @@ var (
 	// numColumnProfileMpts tells the last invokation of Vortex prior to the self-
 	// recursion to use a plonk circuit with a fixed number of rows. The values
 	// are completely empirical and set to make the compilation work.
-	numColumnProfileMpts            = []int{68, 1596, 218, 5, 17, 7, 0, 1}
-	numColumnProfileMptsPrecomputed = 81
+	numColumnProfileMpts            = []int{17, 360, 38, 3, 9, 7, 0, 1}
+	numColumnProfileMptsPrecomputed = 36
 )
 
 // RecursedSegmentCompilation collects all the wizard compilation artefacts
@@ -176,7 +176,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		),
 		vortex.Compile(
 			8,
-			vortex.ForceNumOpenedColumns(64),
+			vortex.ForceNumOpenedColumns(32),
 			vortex.WithSISParams(&sisInstance),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
@@ -191,9 +191,21 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		// large inputs.
 		vortex.Compile(
 			8,
-			vortex.ForceNumOpenedColumns(64),
+			vortex.ForceNumOpenedColumns(32),
 			vortex.WithSISParams(&sisInstance),
-			vortex.PremarkAsSelfRecursed(),
+			vortex.WithOptionalSISHashingThreshold(64),
+		),
+		selfrecursion.SelfRecurse,
+		cleanup.CleanUp,
+		mimc.CompileMiMC,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<13),
+		),
+		// This final step expectedly always generate always the same profile.
+		vortex.Compile(
+			8,
+			vortex.ForceNumOpenedColumns(32),
+			vortex.WithSISParams(&sisInstance),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
 		selfrecursion.SelfRecurse,
@@ -202,13 +214,14 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<13),
 			compiler.WithoutMpts(),
+			compiler.GenCSVAfterExpansion("after-expansion-"+subscript+".csv"),
 		),
 		// This final step expectedly always generate always the same profile.
 		logdata.Log("just-before-recursion"),
 		mpts.Compile(mpts.WithNumColumnProfileOpt(numColumnProfileMpts, numColumnProfileMptsPrecomputed)),
 		vortex.Compile(
 			8,
-			vortex.ForceNumOpenedColumns(64),
+			vortex.ForceNumOpenedColumns(32),
 			vortex.WithSISParams(&sisInstance),
 			vortex.PremarkAsSelfRecursed(),
 			vortex.AddPrecomputedMerkleRootToPublicInputs(verifyingKeyPublicInput),
@@ -239,11 +252,12 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		plonkinwizard.Compile,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<15),
+			// compiler.WithDebugMode("post-recursion-arcane"),
 		),
 		logdata.Log("just-after-recursion-expanded"),
 		vortex.Compile(
 			8,
-			vortex.ForceNumOpenedColumns(64),
+			vortex.ForceNumOpenedColumns(32),
 			vortex.WithSISParams(&sisInstance),
 			vortex.AddPrecomputedMerkleRootToPublicInputs(verifyingKey2PublicInput),
 			vortex.WithOptionalSISHashingThreshold(64),
@@ -253,10 +267,11 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		mimc.CompileMiMC,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<13),
+			// compiler.WithDebugMode("post-recursion-arcane-2"),
 		),
 		vortex.Compile(
 			8,
-			vortex.ForceNumOpenedColumns(64),
+			vortex.ForceNumOpenedColumns(32),
 			vortex.WithSISParams(&sisInstance),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
@@ -265,10 +280,11 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		mimc.CompileMiMC,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<13),
+			// compiler.WithDebugMode("post-recursion-arcane-3"),
 		),
 		vortex.Compile(
 			8,
-			vortex.ForceNumOpenedColumns(64),
+			vortex.ForceNumOpenedColumns(32),
 			vortex.WithSISParams(&sisInstance),
 			vortex.PremarkAsSelfRecursed(),
 			vortex.WithOptionalSISHashingThreshold(64),

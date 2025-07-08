@@ -128,13 +128,11 @@ func conglomerate(maxNbProofs int, moduleGLs, moduleLpps []*RecursedSegmentCompi
 		plonkinwizard.Compile,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<17),
-			compiler.WithDebugMode("conglomeration"),
 		),
 		vortex.Compile(
 			2,
 			vortex.ForceNumOpenedColumns(256),
 			vortex.WithSISParams(&sisInstance),
-			vortex.AddMerkleRootToPublicInputs(lppMerkleRootPublicInput, []int{0}),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
 		selfrecursion.SelfRecurse,
@@ -145,7 +143,7 @@ func conglomerate(maxNbProofs int, moduleGLs, moduleLpps []*RecursedSegmentCompi
 		),
 		vortex.Compile(
 			8,
-			vortex.ForceNumOpenedColumns(64),
+			vortex.ForceNumOpenedColumns(32),
 			vortex.WithSISParams(&sisInstance),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
@@ -157,7 +155,7 @@ func conglomerate(maxNbProofs int, moduleGLs, moduleLpps []*RecursedSegmentCompi
 		),
 		vortex.Compile(
 			8,
-			vortex.ForceNumOpenedColumns(64),
+			vortex.ForceNumOpenedColumns(32),
 			vortex.WithOptionalSISHashingThreshold(1<<20),
 		),
 	)
