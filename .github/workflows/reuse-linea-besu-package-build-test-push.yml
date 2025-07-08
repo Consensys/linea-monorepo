@@ -136,6 +136,11 @@ jobs:
     if: ${{ always() && !cancelled() && inputs.push_image && (inputs.skip_e2e_test || needs.run-e2e-test.result == 'skipped' || needs.run-e2e-tests.outputs.tests_outcome == 'success') && (needs.run-test.result == 'skipped' || needs.run-test.result == 'success') }}
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     environment: dockerhub
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      PRIVATE_DOCKERHUB_USERNAME: ${{ secrets.PRIVATE_DOCKERHUB_USERNAME }}
+      PRIVATE_DOCKERHUB_TOKEN: ${{ secrets.PRIVATE_DOCKERHUB_TOKEN }}
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -157,7 +162,7 @@ jobs:
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 #v3.11.1
 
       - name: Login to private Docker Hub (if Besu fleet plugin is included)
-        if: ${{ inputs.with_besu_fleet_plugin && secrets.PRIVATE_DOCKERHUB_USERNAME != '' && secrets.PRIVATE_DOCKERHUB_TOKEN != '' }}
+        if: ${{ inputs.with_besu_fleet_plugin && env.PRIVATE_DOCKERHUB_USERNAME != '' && env.PRIVATE_DOCKERHUB_TOKEN != '' }}
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 #v3.4.0
         with:
           username: ${{ secrets.PRIVATE_DOCKERHUB_USERNAME }}
@@ -195,7 +200,7 @@ jobs:
           rm -fr linea-besu-package/linea-besu/besu/plugins/besu-fleet-plugin* || true
 
       - name: Login to public Docker Hub
-        if: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+        if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 #v3.4.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
