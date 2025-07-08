@@ -723,7 +723,8 @@ func (c *CompiledIOP) InsertProjection(id ifaces.QueryID, in any) query.Projecti
 	return q
 }
 
-// AddPublicInput inserts a public-input in the compiled-IOP
+// AddPublicInput inserts a public-input in the compiled-IOP. The function
+// panics if the public-input already exists.
 func (c *CompiledIOP) InsertPublicInput(name string, acc ifaces.Accessor) PublicInput {
 
 	c.checkAnyInStore(acc)
@@ -731,6 +732,12 @@ func (c *CompiledIOP) InsertPublicInput(name string, acc ifaces.Accessor) Public
 	res := PublicInput{
 		Name: name,
 		Acc:  acc,
+	}
+
+	for i := range c.PublicInputs {
+		if c.PublicInputs[i].Name == name {
+			utils.Panic("public input %v already exists", name)
+		}
 	}
 
 	c.PublicInputs = append(c.PublicInputs, res)
