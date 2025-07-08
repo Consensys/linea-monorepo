@@ -26,7 +26,7 @@ const (
 	// fixedNbRowPlonkCircuit is the number of rows in the plonk circuit,
 	// the value is empirical and corresponds to the lowest value that works.
 	fixedNbRowPlonkCircuit   = 1 << 20
-	fixedNbRowExternalHasher = 1 << 16
+	fixedNbRowExternalHasher = 1 << 17
 	verifyingKeyPublicInput  = "VERIFYING_KEY"
 	verifyingKey2PublicInput = "VERIFYING_KEY_2"
 	lppMerkleRootPublicInput = "LPP_COLUMNS_MERKLE_ROOTS"
