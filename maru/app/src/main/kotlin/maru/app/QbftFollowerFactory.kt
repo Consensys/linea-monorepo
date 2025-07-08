@@ -35,6 +35,7 @@ class QbftFollowerFactory(
   val validatorElNodeConfig: ValidatorElNode,
   val beaconChainInitialization: BeaconChainInitialization,
   val metricsFacade: MetricsFacade,
+  val allowEmptyBlocks: Boolean,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     val qbftConsensusConfig = (forkSpec.configuration as QbftConsensusConfig)
@@ -61,6 +62,7 @@ class QbftFollowerFactory(
         proposerSelector = ProposerSelectorImpl,
         stateTransition = stateTransition,
         executionLayerManager = executionLayerManager,
+        allowEmptyBlocks = allowEmptyBlocks,
       )
     val blockImporter =
       ValidatingSealedBeaconBlockImporter(

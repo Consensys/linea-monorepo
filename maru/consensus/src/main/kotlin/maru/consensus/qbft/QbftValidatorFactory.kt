@@ -79,6 +79,7 @@ class QbftValidatorFactory(
   private val executionLayerManager: JsonRpcExecutionLayerManager,
   private val clock: Clock,
   private val p2PNetwork: P2PNetwork,
+  private val allowEmptyBlocks: Boolean,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     val protocolConfig = forkSpec.configuration as QbftConsensusConfig
@@ -158,7 +159,13 @@ class QbftValidatorFactory(
     val blockCodec = QbftBlockCodecAdapter
     val blockInterface = QbftBlockInterfaceAdapter()
     val beaconBlockValidatorFactory =
-      BeaconBlockValidatorFactoryImpl(beaconChain, proposerSelector, stateTransition, executionLayerManager)
+      BeaconBlockValidatorFactoryImpl(
+        beaconChain = beaconChain,
+        proposerSelector = proposerSelector,
+        stateTransition = stateTransition,
+        executionLayerManager = executionLayerManager,
+        allowEmptyBlocks = allowEmptyBlocks,
+      )
     val protocolSchedule =
       QbftProtocolScheduleAdapter(
         blockImporter = blockImporter,
