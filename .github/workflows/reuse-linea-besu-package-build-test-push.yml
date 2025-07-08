@@ -171,7 +171,7 @@ jobs:
         run: |
           echo "Building docker image (without fleet): consensys/linea-besu-package:${{ steps.assemble.outputs.dockertag }}"
           if [[ "${{ inputs.with_besu_fleet_plugin }}" == "true" ]]; then
-            echo "Building docker image (with fleet): consensys/linea-besu-package-fleet:${{ steps.assemble.outputs.dockertag }}"
+            echo "Building docker image (with fleet): consensys/linea-besu-package-with-fleet:${{ steps.assemble.outputs.dockertag }}"
           fi
 
       - name: build and push the combined manifest (if Besu fleet plugin is included)
@@ -191,7 +191,7 @@ jobs:
             BUILD_DATE=${{ steps.assemble.outputs.build_date }}
           push: true
           tags: |
-            consensys/linea-besu-package-fleet:${{ steps.assemble.outputs.dockertag }}
+            consensys/linea-besu-package-with-fleet:${{ steps.assemble.outputs.dockertag }}
 
       - name: get versions via dotenv
         id: dotenv
@@ -278,7 +278,7 @@ jobs:
             if [[ "${{ inputs.with_besu_fleet_plugin }}" == "true" ]]; then
               echo "To pull the image with Besu fleet plugin, use the following command:" >> output.md
               echo "\`\`\`" >> output.md
-              echo "docker pull consensys/linea-besu-package-fleet:${{ steps.assemble.outputs.dockertag }}" >> output.md
+              echo "docker pull consensys/linea-besu-package-with-fleet:${{ steps.assemble.outputs.dockertag }}" >> output.md
               echo "\`\`\`" >> output.md
             fi
             echo "" >> output.md
