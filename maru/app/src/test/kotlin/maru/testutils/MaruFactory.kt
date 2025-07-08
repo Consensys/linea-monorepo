@@ -93,6 +93,7 @@ class MaruFactory {
       ObservabilityOptions(port = 0u, prometheusMetricsEnabled = true, jvmMetricsEnabled = true),
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     apiConfig: ApiConfig = ApiConfig(port = 0u),
+    allowEmptyBlocks: Boolean = false,
   ): MaruConfig {
     val lineaConfig =
       overridingLineaContractClient?.let {
@@ -104,6 +105,7 @@ class MaruFactory {
       }
 
     return MaruConfig(
+      allowEmptyBlocks = allowEmptyBlocks,
       persistence = Persistence(dataPath = dataDir),
       qbftOptions = qbftOptions,
       validatorElNode =
@@ -180,6 +182,7 @@ class MaruFactory {
     overridingFinalizationProvider: FinalizationProvider? = null,
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     p2pPort: UInt = 0u,
+    allowEmptyBlocks: Boolean = false,
   ): MaruApp {
     val p2pConfig = buildP2pConfig(p2pPort = p2pPort, validatorPortForStaticPeering = null)
     val config =
@@ -191,6 +194,7 @@ class MaruFactory {
         followers = FollowersConfig(emptyMap()),
         qbftOptions = validatorQbftOptions,
         overridingLineaContractClient = overridingLineaContractClient,
+        allowEmptyBlocks = allowEmptyBlocks,
       )
     writeValidatorPrivateKey(config)
 

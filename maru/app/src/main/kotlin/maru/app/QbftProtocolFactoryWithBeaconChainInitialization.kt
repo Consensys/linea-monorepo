@@ -38,6 +38,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
   private val p2pNetwork: P2PNetwork,
   private val beaconChainInitialization: BeaconChainInitialization,
   private val metricsFacade: MetricsFacade,
+  private val allowEmptyBlocks: Boolean,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     require(forkSpec.configuration is QbftConsensusConfig) {
@@ -73,6 +74,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
         executionLayerManager = executionLayerManager,
         clock = clock,
         p2PNetwork = p2pNetwork,
+        allowEmptyBlocks = allowEmptyBlocks,
       )
     return qbftValidatorFactory.create(forkSpec)
   }

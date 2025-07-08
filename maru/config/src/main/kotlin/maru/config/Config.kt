@@ -135,6 +135,7 @@ data class ApiConfig(
 )
 
 data class MaruConfig(
+  val allowEmptyBlocks: Boolean = false,
   val persistence: Persistence,
   val qbftOptions: QbftOptions?,
   val p2pConfig: P2P?,

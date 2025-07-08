@@ -199,6 +199,7 @@ class MaruApp(
           p2pNetwork = p2pNetwork,
           beaconChainInitialization = beaconChainInitialization,
           metricsFacade = metricsFacade,
+          allowEmptyBlocks = config.allowEmptyBlocks,
         )
       } else {
         QbftFollowerFactory(
@@ -208,6 +209,7 @@ class MaruApp(
           validatorElNodeConfig = config.validatorElNode,
           beaconChainInitialization = beaconChainInitialization,
           metricsFacade = metricsFacade,
+          allowEmptyBlocks = config.allowEmptyBlocks,
         )
       }
     val delegatedConsensusNewBlockHandler =

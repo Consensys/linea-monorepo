@@ -121,6 +121,7 @@ class BlockValidatorTest {
         proposerSelector = proposerSelector,
         stateTransition = stateTransition,
         executionLayerManager = executionLayerEngineApiClient,
+        allowEmptyBlocks = false,
       ).createValidatorForBlock(validNewBlock.beaconBlockHeader)
     blockValidator.also {
       assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
