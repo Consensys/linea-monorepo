@@ -20,11 +20,12 @@ import {
   estimateContractGas,
   multicall,
   waitForTransactionReceipt,
+  getBlock,
 } from "viem/actions";
 import { getContractsAddressesByChainId } from "@consensys/linea-sdk-core";
 import { linea, mainnet } from "viem/chains";
-import { TEST_ADDRESS_2, TEST_TRANSACTION_HASH } from "../../tests/constants";
-import { generateTransactionReceipt } from "../../tests/utils";
+import { TEST_ADDRESS_1, TEST_ADDRESS_2, TEST_TRANSACTION_HASH } from "../../tests/constants";
+import { generateBlock, generateTransactionReceipt } from "../../tests/utils";
 
 jest.mock("viem/actions", () => ({
   readContract: jest.fn(),
@@ -32,6 +33,7 @@ jest.mock("viem/actions", () => ({
   estimateFeesPerGas: jest.fn(),
   estimateContractGas: jest.fn(),
   multicall: jest.fn(),
+  getBlock: jest.fn(),
   waitForTransactionReceipt: jest.fn(),
 }));
 
@@ -68,15 +70,25 @@ describe("deposit", () => {
   const l2ClaimingTxGasLimit = 1000n;
 
   beforeEach(() => {
-    jest.clearAllMocks();
     (readContract as jest.Mock<ReturnType<typeof readContract>>).mockResolvedValue(nextMessageNumber);
     (sendTransaction as jest.Mock<ReturnType<typeof sendTransaction>>).mockResolvedValue(TEST_TRANSACTION_HASH);
     (estimateFeesPerGas as jest.Mock<ReturnType<typeof estimateFeesPerGas>>).mockResolvedValue({
       maxFeePerGas: 100_000n,
       maxPriorityFeePerGas: 99_000n,
     });
+    (getBlock as jest.Mock<ReturnType<typeof getBlock>>).mockResolvedValue(generateBlock());
     (estimateContractGas as jest.Mock<ReturnType<typeof estimateContractGas>>).mockResolvedValue(l2ClaimingTxGasLimit);
-    (multicall as jest.Mock<ReturnType<typeof multicall>>).mockResolvedValue(["TokenName", "TKN", 18, zeroAddress]);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+    (readContract as jest.Mock).mockReset();
+    (sendTransaction as jest.Mock).mockReset();
+    (estimateFeesPerGas as jest.Mock).mockReset();
+    (estimateContractGas as jest.Mock).mockReset();
+    (multicall as jest.Mock).mockReset();
+    (getBlock as jest.Mock).mockReset();
+    (waitForTransactionReceipt as jest.Mock).mockReset();
   });
 
   it("throws if no account is provided", async () => {
@@ -117,6 +129,27 @@ describe("deposit", () => {
   it("sends ERC20 deposit transaction when token is not zeroAddress", async () => {
     const client = mockClient(l1ChainId, mockAccount);
     const l2Client = mockL2Client(l2ChainId, mockAccount);
+    (multicall as jest.Mock)
+      .mockResolvedValueOnce([
+        {
+          result: "TokenName",
+          status: "success",
+        },
+        {
+          result: "TKN",
+          status: "success",
+        },
+        {
+          result: 18,
+          status: "success",
+        },
+        {
+          result: zeroAddress,
+          status: "success",
+        },
+      ])
+      .mockResolvedValueOnce([200n, 200n]);
+
     const result = await deposit(client, {
       l2Client,
       token,
@@ -157,6 +190,26 @@ describe("deposit", () => {
   it("estimates fee if not provided (ERC20)", async () => {
     const client = mockClient(l1ChainId, mockAccount);
     const l2Client = mockL2Client(l2ChainId, mockAccount);
+    (multicall as jest.Mock)
+      .mockResolvedValueOnce([
+        {
+          result: "TokenName",
+          status: "success",
+        },
+        {
+          result: "TKN",
+          status: "success",
+        },
+        {
+          result: 18,
+          status: "success",
+        },
+        {
+          result: zeroAddress,
+          status: "success",
+        },
+      ])
+      .mockResolvedValueOnce([200n, 200n]);
     await deposit(client, {
       l2Client,
       token,
@@ -168,14 +221,31 @@ describe("deposit", () => {
     expect(estimateFeesPerGas).toHaveBeenCalledWith(l2Client, expect.any(Object));
     expect(readContract).toHaveBeenCalledWith(client, expect.objectContaining({ functionName: "nextMessageNumber" }));
     expect(estimateContractGas).toHaveBeenCalled();
-    expect(multicall).toHaveBeenCalled();
+    expect(multicall).toHaveBeenCalledTimes(2);
   });
 
   it("calls approve if ERC20 allowance is insufficient", async () => {
     const client = mockClient(l1ChainId, mockAccount);
     const l2Client = mockL2Client(l2ChainId, mockAccount);
     (multicall as jest.Mock)
-      .mockResolvedValueOnce(["TokenName", "TKN", 18, zeroAddress])
+      .mockResolvedValueOnce([
+        {
+          result: "TokenName",
+          status: "success",
+        },
+        {
+          result: "TKN",
+          status: "success",
+        },
+        {
+          result: 18,
+          status: "success",
+        },
+        {
+          result: "0x1234567890123456789012345678901234567890", // bridgedToken
+          status: "success",
+        },
+      ])
       .mockResolvedValueOnce([200n, 100n]); // allowance < amount
     (sendTransaction as jest.Mock)
       .mockResolvedValueOnce("APPROVE_TX_HASH")
@@ -215,7 +285,24 @@ describe("deposit", () => {
     const client = mockClient(l1ChainId, mockAccount);
     const l2Client = mockL2Client(l2ChainId, mockAccount);
     (multicall as jest.Mock)
-      .mockResolvedValueOnce(["TokenName", "TKN", 18, zeroAddress])
+      .mockResolvedValueOnce([
+        {
+          result: "TokenName",
+          status: "success",
+        },
+        {
+          result: "TKN",
+          status: "success",
+        },
+        {
+          result: 18,
+          status: "success",
+        },
+        {
+          result: "0x1234567890123456789012345678901234567890", // bridgedToken
+          status: "success",
+        },
+      ])
       .mockResolvedValueOnce([200n, 200n]); // allowance >= amount
     await deposit(client, {
       l2Client,
@@ -269,7 +356,24 @@ describe("deposit", () => {
     const client = mockClient(l1ChainId, mockAccount);
     const l2Client = mockL2Client(l2ChainId, mockAccount);
     (multicall as jest.Mock)
-      .mockResolvedValueOnce(["TokenName", "TKN", 18, zeroAddress])
+      .mockResolvedValueOnce([
+        {
+          result: "TokenName",
+          status: "success",
+        },
+        {
+          result: "TKN",
+          status: "success",
+        },
+        {
+          result: 18,
+          status: "success",
+        },
+        {
+          result: "0x1234567890123456789012345678901234567890", // bridgedToken
+          status: "success",
+        },
+      ])
       .mockResolvedValueOnce([100n, 200n]); // balance < amount
     await expect(
       deposit(client, {
@@ -313,7 +417,24 @@ describe("deposit", () => {
     const l2Client = mockL2Client(l2ChainId, mockAccount);
     const customL1 = "0x8888888888888888888888888888888888888888" as Address;
     const customL2 = "0x7777777777777777777777777777777777777777" as Address;
-    (multicall as jest.Mock).mockResolvedValueOnce(["TokenName", "TKN", 18, zeroAddress]);
+    (multicall as jest.Mock).mockResolvedValueOnce([
+      {
+        result: "TokenName",
+        status: "success",
+      },
+      {
+        result: "TKN",
+        status: "success",
+      },
+      {
+        result: 18,
+        status: "success",
+      },
+      {
+        result: "0x1234567890123456789012345678901234567890", // bridgedToken
+        status: "success",
+      },
+    ]);
     (multicall as jest.Mock).mockResolvedValueOnce([200n, 200n]);
     await deposit(client, {
       l2Client,
@@ -338,11 +459,23 @@ describe("deposit", () => {
   it("handles bridged token scenario (nativeToken !== zeroAddress)", async () => {
     const client = mockClient(l1ChainId, mockAccount);
     const l2Client = mockL2Client(l2ChainId, mockAccount);
-    (multicall as jest.Mock).mockResolvedValueOnce([
-      "TokenName",
-      "TKN",
-      18,
-      "0x1234567890123456789012345678901234567890", // bridgedToken
+    (multicall as jest.Mock<ReturnType<typeof multicall>>).mockResolvedValueOnce([
+      {
+        result: "TokenName",
+        status: "success",
+      },
+      {
+        result: "TKN",
+        status: "success",
+      },
+      {
+        result: 18,
+        status: "success",
+      },
+      {
+        result: "0x1234567890123456789012345678901234567890", // bridgedToken
+        status: "success",
+      },
     ]);
     (multicall as jest.Mock).mockResolvedValueOnce([200n, 200n]);
     await deposit(client, {
@@ -386,7 +519,7 @@ describe("deposit", () => {
             },
           ],
           functionName: "sendMessage",
-          args: [to, 700000000n, "0x"],
+          args: [to, 693049000n, "0x"],
         }),
       }),
     );
@@ -395,7 +528,26 @@ describe("deposit", () => {
   it("propagates errors from multicall (ERC20)", async () => {
     const client = mockClient(l1ChainId, mockAccount);
     const l2Client = mockL2Client(l2ChainId, mockAccount);
-    (multicall as jest.Mock).mockRejectedValueOnce(new Error("multicall failed"));
+    (multicall as jest.Mock<ReturnType<typeof multicall>>)
+      .mockResolvedValueOnce([
+        {
+          result: "TokenName",
+          status: "success",
+        },
+        {
+          result: "TKN",
+          status: "success",
+        },
+        {
+          result: 18,
+          status: "success",
+        },
+        {
+          result: TEST_ADDRESS_1,
+          status: "success",
+        },
+      ])
+      .mockRejectedValueOnce(new Error("multicall failed"));
     await expect(
       deposit(client, {
         l2Client,
@@ -459,6 +611,83 @@ describe("deposit", () => {
     ).rejects.toThrow("estimateContractGas failed");
     expect(sendTransaction).not.toHaveBeenCalled();
   });
+
+  it("throws if tokenDecimalsResult.status is not 'success' (ERC20)", async () => {
+    const client = mockClient(l1ChainId, mockAccount);
+    const l2Client = mockL2Client(l2ChainId, mockAccount);
+    (multicall as jest.Mock).mockResolvedValueOnce([
+      { result: "TokenName", status: "success" },
+      { result: "TKN", status: "success" },
+      { status: "failure", error: "decimals error" },
+      { result: zeroAddress, status: "success" },
+    ]);
+    await expect(
+      deposit(client, {
+        l2Client,
+        token,
+        to,
+        amount,
+        data,
+        account: mockAccount,
+      }),
+    ).rejects.toThrow(`Failed to fetch token decimals for ${token}. Error: decimals error`);
+    expect(sendTransaction).not.toHaveBeenCalled();
+  });
+
+  it("throws if nativeTokenResult.status is not 'success' (ERC20)", async () => {
+    const client = mockClient(l1ChainId, mockAccount);
+    const l2Client = mockL2Client(l2ChainId, mockAccount);
+    (multicall as jest.Mock).mockResolvedValueOnce([
+      { result: "TokenName", status: "success" },
+      { result: "TKN", status: "success" },
+      { result: 18, status: "success" },
+      { status: "failure", error: "native token error" },
+    ]);
+    await expect(
+      deposit(client, {
+        l2Client,
+        token,
+        to,
+        amount,
+        data,
+        account: mockAccount,
+      }),
+    ).rejects.toThrow(`Failed to fetch native token for ${token}. Error: native token error`);
+    expect(sendTransaction).not.toHaveBeenCalled();
+  });
+
+  it("uses fallback values for tokenName and tokenSymbol if multicall fails", async () => {
+    const client = mockClient(l1ChainId, mockAccount);
+    const l2Client = mockL2Client(l2ChainId, mockAccount);
+    (multicall as jest.Mock)
+      .mockResolvedValueOnce([
+        { status: "failure", error: "token name error" },
+        { status: "failure", error: "token symbol" },
+        { status: "success", result: 18 },
+        { status: "success", result: zeroAddress },
+      ])
+      .mockResolvedValueOnce([200n, 200n]);
+
+    const result = await deposit(client, {
+      l2Client,
+      token,
+      to,
+      amount,
+      data,
+      account: mockAccount,
+    });
+
+    expect(sendTransaction).toHaveBeenCalledWith(
+      client,
+      expect.objectContaining({
+        to: l1TokenBridgeAddress,
+        value: 693049000n,
+        account: mockAccount,
+        data: expect.any(String),
+      }),
+    );
+    expect(result).toBe(TEST_TRANSACTION_HASH);
+  });
 });
 
 describe("deposit utility functions", () => {
@@ -472,6 +701,19 @@ describe("deposit utility functions", () => {
 
     const hash = computeMessageHash(from, to, fee, value, nonce, calldata);
     expect(hash).toBe("0x1ebd3a6c6d29012c12e2e6cc8c9cc3346ccd756b4b997e2c435b1a8b4c7c00e7");
+  });
+
+  it("computeMessageHash uses default calldata value '0x' when not provided", () => {
+    const from = TEST_ADDRESS_1 as Address;
+    const toAddr = TEST_ADDRESS_2 as Address;
+    const fee = 1n;
+    const value = 2n;
+    const nonce = 3n;
+
+    const hash = computeMessageHash(from, toAddr, fee, value, nonce);
+    const hashWithCalldata = computeMessageHash(from, toAddr, fee, value, nonce, "0x");
+
+    expect(hash).toBe(hashWithCalldata);
   });
 
   it("computeMessageStorageSlot returns correct slot", () => {

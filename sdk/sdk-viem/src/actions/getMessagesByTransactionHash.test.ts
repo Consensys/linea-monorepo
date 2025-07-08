@@ -3,7 +3,12 @@ import { Client, Transport, Chain, Account, Hex, BaseError } from "viem";
 import { getTransactionReceipt } from "viem/actions";
 import { linea } from "viem/chains";
 import { getContractsAddressesByChainId } from "@consensys/linea-sdk-core";
-import { TEST_ADDRESS_1, TEST_MESSAGE_HASH, TEST_TRANSACTION_HASH } from "../../tests/constants";
+import {
+  TEST_ADDRESS_1,
+  TEST_CONTRACT_ADDRESS_2,
+  TEST_MESSAGE_HASH,
+  TEST_TRANSACTION_HASH,
+} from "../../tests/constants";
 import { generateTransactionReceipt } from "../../tests/utils";
 
 jest.mock("viem/actions", () => ({
@@ -20,8 +25,9 @@ describe("getMessagesByTransactionHash", () => {
 
   const transactionHash: Hex = TEST_TRANSACTION_HASH;
 
-  beforeEach(() => {
+  afterEach(() => {
     jest.clearAllMocks();
+    (getTransactionReceipt as jest.Mock).mockReset();
   });
 
   it("throws if client.chain is not set", async () => {
@@ -36,6 +42,18 @@ describe("getMessagesByTransactionHash", () => {
     );
     const result = await getMessagesByTransactionHash(client, { transactionHash });
     expect(result).toEqual([]);
+  });
+
+  it("should use custom message service address when provided", async () => {
+    const client = mockClient(linea.id);
+    (getTransactionReceipt as jest.Mock<ReturnType<typeof getTransactionReceipt>>).mockResolvedValue(
+      generateTransactionReceipt({ logs: [] }),
+    );
+
+    await getMessagesByTransactionHash(client, {
+      transactionHash,
+      messageServiceAddress: TEST_CONTRACT_ADDRESS_2,
+    });
   });
 
   it("returns parsed messages if logs match", async () => {

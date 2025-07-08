@@ -20,8 +20,9 @@ describe("getMessageSentEvents", () => {
   const mockClient = (chainId?: number): MockClient =>
     ({ chain: chainId ? { id: chainId } : undefined }) as unknown as MockClient;
 
-  beforeEach(() => {
+  afterEach(() => {
     jest.clearAllMocks();
+    (getContractEvents as jest.Mock).mockReset();
   });
 
   it("returns empty array if no events", async () => {

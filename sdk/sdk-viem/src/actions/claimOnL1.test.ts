@@ -42,8 +42,12 @@ describe("claimOnL1", () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
     (sendTransaction as jest.Mock).mockResolvedValue(TEST_TRANSACTION_HASH);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+    (sendTransaction as jest.Mock).mockReset();
   });
 
   it("throws if no account is provided", async () => {

@@ -34,8 +34,12 @@ describe("claimOnL2", () => {
   const feeRecipient = "0x5555555555555555555555555555555555555555" as Address;
 
   beforeEach(() => {
-    jest.clearAllMocks();
     (sendTransaction as jest.Mock<ReturnType<typeof sendTransaction>>).mockResolvedValue(TEST_TRANSACTION_HASH);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+    (sendTransaction as jest.Mock).mockReset();
   });
 
   it("throws if no account is provided", async () => {

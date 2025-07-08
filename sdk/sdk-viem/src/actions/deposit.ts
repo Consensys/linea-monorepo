@@ -24,6 +24,7 @@ import { parseAccount } from "viem/utils";
 import {
   estimateContractGas,
   estimateFeesPerGas,
+  getBlock,
   multicall,
   readContract,
   sendTransaction,
@@ -223,9 +224,15 @@ async function estimateEthBridgingGasUsed<chain extends Chain | undefined, _acco
   } as EstimateContractGasParameters);
 }
 
-async function estimateERC20BridgingGasUsed<chain extends Chain | undefined, _account extends Account | undefined>(
+async function estimateERC20BridgingGasUsed<
+  chain extends Chain | undefined,
+  _account extends Account | undefined,
+  chainL2 extends Chain | undefined = Chain | undefined,
+  accountL2 extends Account | undefined = Account | undefined,
+>(
   client: Client<Transport, chain, _account>,
   parameters: {
+    l1Client: Client<Transport, chainL2, accountL2>;
     account: Address;
     token: Address;
     l1ChainId: number;
@@ -239,6 +246,7 @@ async function estimateERC20BridgingGasUsed<chain extends Chain | undefined, _ac
   },
 ) {
   const {
+    l1Client,
     token,
     l1ChainId,
     l2ChainId,
@@ -251,7 +259,7 @@ async function estimateERC20BridgingGasUsed<chain extends Chain | undefined, _ac
     l2TokenBridgeAddress,
   } = parameters;
 
-  const { tokenAddress, chainId, tokenMetadata } = await prepareERC20TokenParams(client, {
+  const { tokenAddress, chainId, tokenMetadata } = await prepareERC20TokenParams(l1Client, {
     token,
     l1ChainId,
     l2ChainId,
@@ -345,7 +353,7 @@ async function prepareERC20TokenParams<chain extends Chain | undefined, _account
 ): Promise<{ tokenAddress: Address; chainId: number; tokenMetadata: Hex }> {
   const { token, l1ChainId, l2ChainId } = parameters;
 
-  const [tokenName, tokenSymbol, tokenDecimals, nativeToken] = await multicall(client, {
+  const [tokenNameResult, tokenSymbolResult, tokenDecimalsResult, nativeTokenResult] = await multicall(client, {
     contracts: [
       {
         address: token,
@@ -389,8 +397,19 @@ async function prepareERC20TokenParams<chain extends Chain | undefined, _account
         args: [token],
       },
     ],
-    allowFailure: false,
+    allowFailure: true,
   });
+
+  const tokenName = tokenNameResult.status === "success" ? tokenNameResult.result : "NO_NAME";
+  const tokenSymbol = tokenSymbolResult.status === "success" ? tokenSymbolResult.result : "NO_SYMBOL";
+
+  if (tokenDecimalsResult.status !== "success") {
+    throw new BaseError(`Failed to fetch token decimals for ${token}. Error: ${tokenDecimalsResult.error}`);
+  }
+
+  if (nativeTokenResult.status !== "success") {
+    throw new BaseError(`Failed to fetch native token for ${token}. Error: ${nativeTokenResult.error}`);
+  }
 
   let tokenAddress = token;
   let chainId = l1ChainId;
@@ -401,11 +420,11 @@ async function prepareERC20TokenParams<chain extends Chain | undefined, _account
       { name: "tokenSymbol", type: "string" },
       { name: "tokenDecimals", type: "uint8" },
     ],
-    [tokenName, tokenSymbol, tokenDecimals],
+    [tokenName, tokenSymbol, tokenDecimalsResult.result],
   );
 
-  if (nativeToken !== zeroAddress) {
-    tokenAddress = nativeToken;
+  if (nativeTokenResult.result !== zeroAddress) {
+    tokenAddress = nativeTokenResult.result;
     chainId = l2ChainId;
     tokenMetadata = "0x";
   }
@@ -528,10 +547,11 @@ async function depositETH<
   let bridgingFee = fee ?? 0n;
 
   if (fee === undefined) {
-    const [nextMessageNumber, { maxFeePerGas }] = await Promise.all([
+    const [nextMessageNumber, { baseFeePerGas }, { maxPriorityFeePerGas }] = await Promise.all([
       getNextMessageNumber(client, {
         lineaRollupAddress,
       }),
+      getBlock(l2Client, { blockTag: "latest" }),
       estimateFeesPerGas(l2Client, { type: "eip1559", chain: l2Client.chain }),
     ]);
 
@@ -542,7 +562,7 @@ async function depositETH<
       nextMessageNumber,
       l2MessageServiceAddress,
     });
-    bridgingFee = maxFeePerGas * (l2ClaimingTxGasLimit + 6_000n);
+    bridgingFee = (baseFeePerGas + maxPriorityFeePerGas) * (l2ClaimingTxGasLimit + 6_000n);
   }
 
   return sendTransaction(client, {
@@ -617,14 +637,16 @@ async function depositERC20<
   let bridgingFee = fee ?? 0n;
 
   if (fee === undefined) {
-    const [nextMessageNumber, { maxFeePerGas }] = await Promise.all([
+    const [nextMessageNumber, { baseFeePerGas }, { maxPriorityFeePerGas }] = await Promise.all([
       getNextMessageNumber(client, {
         lineaRollupAddress,
       }),
+      getBlock(l2Client, { blockTag: "latest" }),
       estimateFeesPerGas(l2Client, { type: "eip1559", chain: l2Client.chain }),
     ]);
 
     const l2ClaimingTxGasLimit = await estimateERC20BridgingGasUsed(l2Client, {
+      l1Client: client,
       account: account.address,
       token,
       l1ChainId,
@@ -636,7 +658,7 @@ async function depositERC20<
       l1TokenBridgeAddress,
       l2TokenBridgeAddress,
     });
-    bridgingFee = maxFeePerGas * (l2ClaimingTxGasLimit + 6_000n);
+    bridgingFee = (baseFeePerGas + maxPriorityFeePerGas) * (l2ClaimingTxGasLimit + 6_000n);
   }
 
   const [tokenBalance, allowance] = await multicall(client, {

@@ -34,9 +34,14 @@ describe("withdraw", () => {
   const minimumFeeInWei = 10n;
 
   beforeEach(() => {
-    jest.clearAllMocks();
     (readContract as jest.Mock<ReturnType<typeof readContract>>).mockResolvedValue(minimumFeeInWei);
     (sendTransaction as jest.Mock<ReturnType<typeof sendTransaction>>).mockResolvedValue(TEST_TRANSACTION_HASH);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+    (readContract as jest.Mock).mockReset();
+    (sendTransaction as jest.Mock).mockReset();
   });
 
   it("throws if no account is provided", async () => {

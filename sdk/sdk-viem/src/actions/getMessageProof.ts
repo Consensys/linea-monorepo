@@ -150,6 +150,7 @@ export async function getMessageProof<
   const tree = new SparseMerkleTree(finalizationInfo.treeDepth, (left: Hex, right: Hex) =>
     keccak256(encodePacked(["bytes32", "bytes32"], [left, right])),
   );
+
   for (const [index, leaf] of l2messages.entries()) {
     tree.addLeaf(index, leaf);
   }

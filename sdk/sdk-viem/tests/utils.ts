@@ -271,7 +271,7 @@ export const generateBlock = (overrides?: Partial<Block>): Block => {
     gasLimit: 15_000_000n,
     gasUsed: 10_000_000n,
     miner: TEST_ADDRESS_1,
-    baseFeePerGas: 30_000n,
+    baseFeePerGas: 7n,
     extraData:
       "0x0100989680015eb3c80000ea600000000000000000000000000000000000000024997ceb570c667b9c369d351b384ce97dcfe0dda90696fc3b007b8d7160672548a6716cc33ffe0e4004c555a0c7edd9ddc2545a630f2276a2964dcf856e6ab501",
     withdrawals: [],

@@ -17,8 +17,9 @@ describe("getL1ToL2MessageStatus", () => {
       chain: { id: chainId },
     }) as unknown as MockClient;
 
-  beforeEach(() => {
+  afterEach(() => {
     jest.clearAllMocks();
+    (readContract as jest.Mock).mockReset();
   });
 
   it("throws if client.chain is not set", async () => {

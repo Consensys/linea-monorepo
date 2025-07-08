@@ -19,8 +19,10 @@ describe("getTransactionReceiptByMessageHash", () => {
       chain: chainId ? { id: chainId } : undefined,
     }) as unknown as MockClient;
 
-  beforeEach(() => {
+  afterEach(() => {
     jest.clearAllMocks();
+    (getContractEvents as jest.Mock).mockReset();
+    (getTransactionReceipt as jest.Mock).mockReset();
   });
 
   it("throws if client.chain is not set", async () => {

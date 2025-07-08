@@ -20,6 +20,7 @@ describe("getBlockExtraData", () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    (getBlock as jest.Mock).mockReset();
   });
 
   it("calls getBlock and parseBlockExtraData for Linea", async () => {

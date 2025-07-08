@@ -41,8 +41,11 @@ describe("getMessageProof", () => {
   const mockL2Client = (chainId?: number): MockClient =>
     ({ chain: chainId ? { id: chainId } : undefined }) as unknown as MockClient;
 
-  beforeEach(() => {
+  afterEach(() => {
     jest.clearAllMocks();
+    (getMessageSentEvents as jest.Mock).mockReset();
+    (getContractEvents as jest.Mock).mockReset();
+    (getTransactionReceipt as jest.Mock).mockReset();
   });
 
   it("throws if l2Client.chain is not set", async () => {
@@ -277,36 +280,55 @@ describe("getMessageProof", () => {
   it("handles multiple MessageSent events in block range, selects correct one by message hash", async () => {
     const client = mockClient(mainnetId);
     const l2Client = mockL2Client(lineaId);
-    const messageSentLog1 = generateMessageSentLog({ blockNumber: l2BlockNumber, args: { _messageHash: "0xabc" } });
+    const messageSentLog1 = generateMessageSentLog({
+      blockNumber: l2BlockNumber,
+      args: { _messageHash: TEST_MESSAGE_HASH },
+    });
     const messageSentLog2 = generateMessageSentLog({ blockNumber: l2BlockNumber, args: { _messageHash: messageHash } });
-    (getMessageSentEvents as jest.Mock).mockResolvedValueOnce([
-      {
-        messageSender: messageSentLog1.args._from!,
-        destination: messageSentLog1.args._to!,
-        fee: messageSentLog1.args._fee!,
-        value: messageSentLog1.args._value!,
-        messageNonce: messageSentLog1.args._nonce!,
-        calldata: messageSentLog1.args._calldata!,
-        messageHash: messageSentLog1.args._messageHash!,
-        blockNumber: messageSentLog1.blockNumber,
-        logIndex: messageSentLog1.logIndex,
-        contractAddress: messageSentLog1.address,
-        transactionHash: messageSentLog1.transactionHash,
-      },
-      {
-        messageSender: messageSentLog2.args._from!,
-        destination: messageSentLog2.args._to!,
-        fee: messageSentLog2.args._fee!,
-        value: messageSentLog2.args._value!,
-        messageNonce: messageSentLog2.args._nonce!,
-        calldata: messageSentLog2.args._calldata!,
-        messageHash: messageSentLog2.args._messageHash!,
-        blockNumber: messageSentLog2.blockNumber,
-        logIndex: messageSentLog2.logIndex,
-        contractAddress: messageSentLog2.address,
-        transactionHash: messageSentLog2.transactionHash,
-      },
-    ]);
+    (getMessageSentEvents as jest.Mock<ReturnType<typeof getMessageSentEvents>>)
+      .mockResolvedValue([
+        {
+          messageSender: messageSentLog2.args._from!,
+          destination: messageSentLog2.args._to!,
+          fee: messageSentLog2.args._fee!,
+          value: messageSentLog2.args._value!,
+          messageNonce: messageSentLog2.args._nonce!,
+          calldata: messageSentLog2.args._calldata!,
+          messageHash: messageSentLog2.args._messageHash!,
+          blockNumber: messageSentLog2.blockNumber,
+          logIndex: messageSentLog2.logIndex,
+          contractAddress: messageSentLog2.address,
+          transactionHash: messageSentLog2.transactionHash,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          messageSender: messageSentLog1.args._from!,
+          destination: messageSentLog1.args._to!,
+          fee: messageSentLog1.args._fee!,
+          value: messageSentLog1.args._value!,
+          messageNonce: messageSentLog1.args._nonce!,
+          calldata: messageSentLog1.args._calldata!,
+          messageHash: messageSentLog1.args._messageHash!,
+          blockNumber: messageSentLog1.blockNumber,
+          logIndex: messageSentLog1.logIndex,
+          contractAddress: messageSentLog1.address,
+          transactionHash: messageSentLog1.transactionHash,
+        },
+        {
+          messageSender: messageSentLog2.args._from!,
+          destination: messageSentLog2.args._to!,
+          fee: messageSentLog2.args._fee!,
+          value: messageSentLog2.args._value!,
+          messageNonce: messageSentLog2.args._nonce!,
+          calldata: messageSentLog2.args._calldata!,
+          messageHash: messageSentLog2.args._messageHash!,
+          blockNumber: messageSentLog2.blockNumber,
+          logIndex: messageSentLog2.logIndex,
+          contractAddress: messageSentLog2.address,
+          transactionHash: messageSentLog2.transactionHash,
+        },
+      ]);
     (getContractEvents as jest.Mock).mockResolvedValue([
       generateL2MessagingBlockAnchoredLog(l2BlockNumber, {
         address: getContractsAddressesByChainId(mainnetId).messageService,
