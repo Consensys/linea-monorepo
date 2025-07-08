@@ -163,8 +163,26 @@ func (ctx *SelfRecursionCtx) registerMiMCMetaDataForNonSisRounds(
 		mimcPreimageColumnsSize = append(mimcPreimageColumnsSize, precompPreimageSize)
 		ctx.MIMCMetaData.ToHashSizes = append(ctx.MIMCMetaData.ToHashSizes, len(ctx.VortexCtx.Items.Precomputeds.PrecomputedColums))
 	}
+
 	// Next, consider only the non SIS rounds
+
+	// firstNonEmptyRound and isPastFirstNonEmptyRound are used to determine the
+	// first non-empty round for Vortex in the wizard. This is needed for
+	// uniformity of the columns across different distributed segments. In
+	// particular, we want the name of the columns to be the same regardless of
+	// the starting round number.
+	firstNonEmptyRound := 0
+	isPastFirstNonEmptyRound := false
+
 	for i := range ctx.VortexCtx.RoundStatus {
+
+		if !isPastFirstNonEmptyRound && ctx.VortexCtx.RoundStatus[i] == vortex.IsEmpty {
+			firstNonEmptyRound = i + 1
+			continue
+		}
+
+		isPastFirstNonEmptyRound = true
+
 		if ctx.VortexCtx.RoundStatus[i] == vortex.IsOnlyMiMCApplied {
 
 			roundPreimageSize := utils.NextPowerOfTwo(
@@ -175,13 +193,13 @@ func (ctx *SelfRecursionCtx) registerMiMCMetaDataForNonSisRounds(
 				ctx.MIMCMetaData.NonSisLeaves,
 				ctx.Comp.InsertCommit(
 					round,
-					ctx.nonSisLeaves(i),
+					ctx.nonSisLeaves(i-firstNonEmptyRound),
 					mimcHashColumnSize,
 				))
 
 			ctx.MIMCMetaData.ConcatenatedHashPreimages = append(ctx.MIMCMetaData.ConcatenatedHashPreimages, ctx.Comp.InsertCommit(
 				round,
-				ctx.concatenatedMIMCPreimages(i),
+				ctx.concatenatedMIMCPreimages(i-firstNonEmptyRound),
 				roundPreimageSize,
 			))
 
