@@ -207,7 +207,7 @@ jobs:
         id: besu-fleet-plugin-checksum
         shell: bash
         run: |
-          echo "sha256sum=$(sha256sum ../linea-besu-package/linea-besu/besu/plugins/besu-fleet-plugin-${{ steps.dotenv.outputs.BESU_FLEET_PLUGIN_VERSION }}.jar | awk '{ print $1 }' )" >> $GITHUB_OUTPUT
+          echo "sha256sum=$(sha256sum linea-besu-package/linea-besu/besu/plugins/besu-fleet-plugin-${{ steps.dotenv.outputs.BESU_FLEET_PLUGIN_VERSION }}.jar | awk '{ print $1 }' )" >> $GITHUB_OUTPUT
 
       - name: Remove the Besu fleet plugin after image build (if existed)
         shell: bash
@@ -248,8 +248,8 @@ jobs:
           mkdir release && cd release
           tar -czvf linea-besu-package-${{ steps.assemble.outputs.dockertag }}.tar.gz ../linea-besu-package/linea-besu/
           echo "# Release Artifact: Linea Besu Package" > output.md
-          echo "**Name:** linea-besu-package-${{ steps.assemble.outputs.dockertag}}.tar.gz" >> output.md
-          echo "**SHA256:** $(sha256sum linea-besu-package-${{ steps.assemble.outputs.dockertag}}.tar.gz | awk '{ print $1 }' )" >> output.md
+          echo "**Name:** linea-besu-package-${{ steps.assemble.outputs.dockertag }}.tar.gz" >> output.md
+          echo "**SHA256:** $(sha256sum linea-besu-package-${{ steps.assemble.outputs.dockertag }}.tar.gz | awk '{ print $1 }' )" >> output.md
           echo "**From:** [${{ github.ref_name }} (${{ github.event_name }})](https://github.com/Consensys/linea-monorepo/actions/runs/${{ github.run_id }})" >> output.md
           echo "" >> output.md
 
