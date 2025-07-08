@@ -2,6 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { ethers, toBeHex, TransactionRequest } from "ethers";
 import { config } from "./config/tests-config";
 import {
+  etherToWei,
   generateRandomUUIDv4,
   getRawTransactionHex,
   getTransactionHash,
@@ -57,23 +58,20 @@ describe("Send bundle test suite", () => {
   it.concurrent(
     "Call sendBundle to RPC node but the bundled txs should not get included as not all of them are valid",
     async () => {
-      const senderAccount = await l2AccountManager.generateAccount();
+      // Sender has 10 ETH and will try to send a bundle of three txs each sending 5 ETH, thus only the first
+      // is valid, since we also need to account for the fee, so the second will fail and the entire bundle is reverted
+      const senderAccount = await l2AccountManager.generateAccount(etherToWei("10"));
       const senderWallet = getWallet(senderAccount.privateKey, config.getL2BesuNodeProvider()!);
       const recipientAccount = await l2AccountManager.generateAccount(0n);
 
-      const recipients: string[] = [
-        recipientAccount.address,
-        "0x0000000000000000000000000000000000000001", // second tx fails since sending to precompile is not supported
-        recipientAccount.address,
-      ];
       let senderNonce = await senderAccount.getNonce();
       const txHashes: string[] = [];
       const txs: string[] = [];
 
       for (let i = 0; i < 3; i++) {
         const txRequest: TransactionRequest = {
-          to: recipients[i],
-          value: ethers.parseUnits("1000", "wei"),
+          to: recipientAccount.address,
+          value: ethers.parseEther("5"),
           maxPriorityFeePerGas: ethers.parseEther("0.000000001"), // 1 Gwei
           maxFeePerGas: ethers.parseEther("0.00000001"), // 10 Gwei
           nonce: senderNonce++,
