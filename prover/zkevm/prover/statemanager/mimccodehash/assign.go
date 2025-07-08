@@ -18,19 +18,19 @@ type assignBuilder struct {
 	isHashEnd        []field.Element
 	prevState        [common.NbLimbU256][]field.Element
 	newState         [common.NbLimbU256][]field.Element
-	isNonEmptyKeccak [common.NbLimbU256][]field.Element
+	isNonEmptyKeccak []field.Element
 }
 
 func newAssignmentBuilder(length int) *assignBuilder {
 	ab := &assignBuilder{
-		isActive:  make([]field.Element, 0, length),
-		isNewHash: make([]field.Element, 0, length),
-		isHashEnd: make([]field.Element, 0, length),
+		isActive:         make([]field.Element, 0, length),
+		isNewHash:        make([]field.Element, 0, length),
+		isHashEnd:        make([]field.Element, 0, length),
+		isNonEmptyKeccak: make([]field.Element, 0, length),
 	}
 
 	for i := range common.NbLimbU256 {
 		ab.codeHash[i] = make([]field.Element, 0, length)
-		ab.isNonEmptyKeccak[i] = make([]field.Element, 0, length)
 		ab.prevState[i] = make([]field.Element, 0, length)
 		ab.newState[i] = make([]field.Element, 0, length)
 	}
@@ -287,19 +287,23 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 
 				if areCfiEqual {
 
+					currIsNonEmptyKeccakLimbs := true
 					for k := range common.NbLimbU256 {
-						currIsNonEmptyKeccak := field.One()
-
 						if builder.isHashEnd[i].IsZero() {
-							currIsNonEmptyKeccak = field.Zero()
+							currIsNonEmptyKeccakLimbs = false
 						}
 
 						if codeHash[k][j] == emptyKeccak[k] {
-							currIsNonEmptyKeccak = field.Zero()
+							currIsNonEmptyKeccakLimbs = false
 						}
 
-						builder.isNonEmptyKeccak[k] = append(builder.isNonEmptyKeccak[k], currIsNonEmptyKeccak)
 						builder.codeHash[k] = append(builder.codeHash[k], codeHash[k][j])
+					}
+
+					if currIsNonEmptyKeccakLimbs {
+						builder.isNonEmptyKeccak = append(builder.isNonEmptyKeccak, field.One())
+					} else {
+						builder.isNonEmptyKeccak = append(builder.isNonEmptyKeccak, field.Zero())
 					}
 
 					break
@@ -327,10 +331,10 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 
 	run.AssignColumn(mh.IsNewHash.GetColID(), smartvectors.RightZeroPadded(builder.isNewHash, mh.Inputs.Size))
 	run.AssignColumn(mh.IsHashEnd.GetColID(), smartvectors.RightZeroPadded(builder.isHashEnd, mh.Inputs.Size))
+	run.AssignColumn(mh.IsForConsistency.GetColID(), smartvectors.RightZeroPadded(builder.isNonEmptyKeccak, mh.Inputs.Size))
 
 	newStatePad := common.BlockCompression([]field.Element{field.Zero()}, []field.Element{field.Zero()})
 	for i := range common.NbLimbU256 {
-		run.AssignColumn(mh.IsForConsistency[i].GetColID(), smartvectors.RightZeroPadded(builder.isNonEmptyKeccak[i], mh.Inputs.Size))
 		run.AssignColumn(mh.CodeHash[i].GetColID(), smartvectors.RightZeroPadded(builder.codeHash[i], mh.Inputs.Size))
 		run.AssignColumn(mh.PrevState[i].GetColID(), smartvectors.RightZeroPadded(builder.prevState[i], mh.Inputs.Size))
 		// Assignment of new state with the zero hash padding

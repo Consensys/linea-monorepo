@@ -30,19 +30,19 @@ type Module struct {
 
 	IsActive        ifaces.Column
 	StateSumKeccak  common.HiLoColumns
-	StateSumMiMC    ifaces.Column
+	StateSumMiMC    [common.NbLimbU256]ifaces.Column
 	StateSumOngoing ifaces.Column
 	RomKeccak       common.HiLoColumns
-	RomMiMC         ifaces.Column
+	RomMiMC         [common.NbLimbU256]ifaces.Column
 	RomOngoing      ifaces.Column
 
 	StateSumKeccakLimbs byte32cmp.LimbColumns
 	RomKeccakLimbs      byte32cmp.LimbColumns
 
-	CptStateSumKeccakLimbsHi wizard.ProverAction
-	CptStateSumKeccakLimbsLo wizard.ProverAction
-	CptRomKeccakLimbsHi      wizard.ProverAction
-	CptRomKeccakLimbsLo      wizard.ProverAction
+	CptStateSumKeccakLimbsHi [common.NbLimbU128]wizard.ProverAction
+	CptStateSumKeccakLimbsLo [common.NbLimbU128]wizard.ProverAction
+	CptRomKeccakLimbsHi      [common.NbLimbU128]wizard.ProverAction
+	CptRomKeccakLimbsLo      [common.NbLimbU128]wizard.ProverAction
 	CmpStateSumLimbs         wizard.ProverAction
 	CmpRomLimbs              wizard.ProverAction
 	CmpRomVsStateSumLimbs    wizard.ProverAction
@@ -65,38 +65,65 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 		IsActive:          comp.InsertCommit(0, ifaces.ColID(name+"_IS_ACTIVE"), size),
 		StateSumKeccak:    common.NewHiLoColumns(comp, size, name+"_STATE_SUMMARY_KECCAK"),
 		RomKeccak:         common.NewHiLoColumns(comp, size, name+"_ROM_KECCAK"),
-		StateSumMiMC:      comp.InsertCommit(0, ifaces.ColID(name+"_STATE_SUMMARY_MIMC"), size),
-		RomMiMC:           comp.InsertCommit(0, ifaces.ColID(name+"_ROM_MIMC"), size),
 		RomOngoing:        comp.InsertCommit(0, ifaces.ColID(name+"_ROM_ONGOING"), size),
 		StateSumOngoing:   comp.InsertCommit(0, ifaces.ColID(name+"_STATE_SUM_ONGOING"), size),
+	}
+
+	for i := range common.NbLimbU256 {
+		ch.StateSumMiMC[i] = comp.InsertCommit(0, ifaces.ColIDf("%v_STATE_SUMMARY_MIMC_%v", name, i), size)
+		ch.RomMiMC[i] = comp.InsertCommit(0, ifaces.ColIDf("%v_ROM_MIMC_%v", name, i), size)
 	}
 
 	commonconstraints.MustBeActivationColumns(comp, ch.IsActive)
 	commonconstraints.MustBeActivationColumns(comp, ch.RomOngoing)
 	commonconstraints.MustBeActivationColumns(comp, ch.StateSumOngoing)
 
-	commonconstraints.MustZeroWhenInactive(comp, ch.IsActive,
-		ch.StateSumKeccak.Hi,
-		ch.StateSumKeccak.Lo,
-		ch.StateSumMiMC,
+	chCols := []ifaces.Column{
 		ch.StateSumOngoing,
-		ch.RomKeccak.Hi,
-		ch.RomKeccak.Lo,
-		ch.RomMiMC,
 		ch.RomOngoing,
-	)
+	}
+	chCols = append(chCols, ch.StateSumKeccak.Hi[:]...)
+	chCols = append(chCols, ch.StateSumKeccak.Lo[:]...)
+	chCols = append(chCols, ch.StateSumMiMC[:]...)
+	chCols = append(chCols, ch.RomKeccak.Hi[:]...)
+	chCols = append(chCols, ch.RomKeccak.Lo[:]...)
+	chCols = append(chCols, ch.RomMiMC[:]...)
+
+	commonconstraints.MustZeroWhenInactive(comp, ch.IsActive, chCols...)
 
 	var (
-		romDecreased                     ifaces.Column
-		stateSumDecreased                ifaces.Column
-		romLimbsHi, romLimbsLo           byte32cmp.LimbColumns
-		stateSumLimbsHi, stateSumLimbsLo byte32cmp.LimbColumns
+		romDecreased      ifaces.Column
+		stateSumDecreased ifaces.Column
+		romLimbsHi        = byte32cmp.LimbColumns{LimbBitSize: 16, IsBigEndian: false}
+		romLimbsLo        = byte32cmp.LimbColumns{LimbBitSize: 16, IsBigEndian: false}
+		stateSumLimbsHi   = byte32cmp.LimbColumns{LimbBitSize: 16, IsBigEndian: false}
+		stateSumLimbsLo   = byte32cmp.LimbColumns{LimbBitSize: 16, IsBigEndian: false}
 	)
 
-	romLimbsHi, ch.CptRomKeccakLimbsHi = byte32cmp.Decompose(comp, ch.RomKeccak.Hi, 8, 16)
-	romLimbsLo, ch.CptRomKeccakLimbsLo = byte32cmp.Decompose(comp, ch.RomKeccak.Lo, 8, 16)
-	stateSumLimbsHi, ch.CptStateSumKeccakLimbsHi = byte32cmp.Decompose(comp, ch.StateSumKeccak.Hi, 8, 16)
-	stateSumLimbsLo, ch.CptStateSumKeccakLimbsLo = byte32cmp.Decompose(comp, ch.StateSumKeccak.Lo, 8, 16)
+	romLimbsLo.Limbs = make([]ifaces.Column, common.NbLimbU128)
+	romLimbsHi.Limbs = make([]ifaces.Column, common.NbLimbU128)
+	stateSumLimbsHi.Limbs = make([]ifaces.Column, common.NbLimbU128)
+	stateSumLimbsLo.Limbs = make([]ifaces.Column, common.NbLimbU128)
+	for i := range common.NbLimbU128 {
+		ind := common.NbLimbU128 - 1 - i
+
+		romLimbHi, cptRomKeccakLimbsHi := byte32cmp.Decompose(comp, ch.RomKeccak.Hi[i], 1, 16)
+		romLimbsHi.Limbs[ind] = romLimbHi.Limbs[0]
+		ch.CptRomKeccakLimbsHi[i] = cptRomKeccakLimbsHi
+
+		romLimbLo, cptRomKeccakLimbsLo := byte32cmp.Decompose(comp, ch.RomKeccak.Lo[i], 1, 16)
+		romLimbsLo.Limbs[ind] = romLimbLo.Limbs[0]
+		ch.CptRomKeccakLimbsLo[i] = cptRomKeccakLimbsLo
+
+		stateSumLimbHi, cptStateSumKeccakLimbsHi := byte32cmp.Decompose(comp, ch.StateSumKeccak.Hi[i], 1, 16)
+		stateSumLimbsHi.Limbs[ind] = stateSumLimbHi.Limbs[0]
+		ch.CptStateSumKeccakLimbsHi[i] = cptStateSumKeccakLimbsHi
+
+		stateSumLimbLo, cptStateSumKeccakLimbsLo := byte32cmp.Decompose(comp, ch.StateSumKeccak.Lo[i], 1, 16)
+		stateSumLimbsLo.Limbs[ind] = stateSumLimbLo.Limbs[0]
+		ch.CptStateSumKeccakLimbsLo[i] = cptStateSumKeccakLimbsLo
+	}
+
 	ch.RomKeccakLimbs = byte32cmp.FuseLimbs(romLimbsLo, romLimbsHi)
 	ch.StateSumKeccakLimbs = byte32cmp.FuseLimbs(stateSumLimbsLo, stateSumLimbsHi)
 
@@ -146,7 +173,7 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 	// 	else:
 	// 		assert ssMustBeConstant == 0
 	// 	}
-	//
+
 	// The reciproqual constraint is enforced over the ROM module.
 	comp.InsertGlobal(
 		0,
@@ -169,6 +196,7 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 		0,
 		ifaces.QueryID(name+"_ROM_STAY_SAME"),
 		sym.Mul(
+			ch.StateSumKeccakLimbs.Limbs[0],
 			column.Shift(ch.RomOngoing, 1),
 			sym.Sub(
 				column.Shift(ch.RomIsConst, 1),
@@ -182,35 +210,40 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 		),
 	)
 
-	comp.InsertGlobal(
-		0,
-		ifaces.QueryID(name+"_MIMC_CONSISTENCY"),
-		sym.Mul(
-			ch.StateSumIsEqRom,
-			sym.Sub(ch.RomMiMC, ch.StateSumMiMC),
-		),
-	)
+	for i := range common.NbLimbU256 {
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("%s_MIMC_CONSISTENCY_%d", name, i),
+			sym.Mul(
+				ch.StateSumIsEqRom,
+				sym.Sub(ch.RomMiMC[i], ch.StateSumMiMC[i]),
+			),
+		)
+	}
+
+	var accInitialHashColumns []ifaces.Column
+	accInitialHashColumns = append(accInitialHashColumns, ss.Account.Initial.MiMCCodeHash[:]...)
+	accInitialHashColumns = append(accInitialHashColumns, ss.Account.Initial.KeccakCodeHash.Hi[:]...)
+	accInitialHashColumns = append(accInitialHashColumns, ss.Account.Initial.KeccakCodeHash.Lo[:]...)
+
+	var accFinalHashColumns []ifaces.Column
+	accFinalHashColumns = append(accFinalHashColumns, ss.Account.Final.MiMCCodeHash[:]...)
+	accFinalHashColumns = append(accFinalHashColumns, ss.Account.Final.KeccakCodeHash.Hi[:]...)
+	accFinalHashColumns = append(accFinalHashColumns, ss.Account.Final.KeccakCodeHash.Lo[:]...)
+
+	var stateSumHashColumns []ifaces.Column
+	stateSumHashColumns = append(stateSumHashColumns, ch.StateSumMiMC[:]...)
+	stateSumHashColumns = append(stateSumHashColumns, ch.StateSumKeccak.Hi[:]...)
+	stateSumHashColumns = append(stateSumHashColumns, ch.StateSumKeccak.Lo[:]...)
 
 	comp.GenericFragmentedConditionalInclusion(
 		0,
 		ifaces.QueryID(name+"_IMPORT_STATE_SUMMARY_BACK"),
 		[][]ifaces.Column{
-			{
-				ss.Account.Initial.MiMCCodeHash,
-				ss.Account.Initial.KeccakCodeHash.Hi,
-				ss.Account.Initial.KeccakCodeHash.Lo,
-			},
-			{
-				ss.Account.Final.MiMCCodeHash,
-				ss.Account.Final.KeccakCodeHash.Hi,
-				ss.Account.Final.KeccakCodeHash.Lo,
-			},
+			accFinalHashColumns,
+			accInitialHashColumns,
 		},
-		[]ifaces.Column{
-			ch.StateSumMiMC,
-			ch.StateSumKeccak.Hi,
-			ch.StateSumKeccak.Lo,
-		},
+		stateSumHashColumns,
 		[]ifaces.Column{
 			ss.Account.Initial.Exists,
 			ss.Account.Final.Exists,
@@ -221,16 +254,8 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 	comp.InsertInclusionDoubleConditional(
 		0,
 		ifaces.QueryID(name+"_IMPORT_STATE_SUMMARY_FORTH_INITIAL"),
-		[]ifaces.Column{
-			ch.StateSumMiMC,
-			ch.StateSumKeccak.Hi,
-			ch.StateSumKeccak.Lo,
-		},
-		[]ifaces.Column{
-			ss.Account.Initial.MiMCCodeHash,
-			ss.Account.Initial.KeccakCodeHash.Hi,
-			ss.Account.Initial.KeccakCodeHash.Lo,
-		},
+		stateSumHashColumns,
+		accInitialHashColumns,
 		ch.StateSumOngoing,
 		ss.Account.Initial.Exists,
 	)
@@ -238,33 +263,26 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 	comp.InsertInclusionDoubleConditional(
 		0,
 		ifaces.QueryID(name+"_IMPORT_STATE_SUMMARY_FORTH_FINAL"),
-		[]ifaces.Column{
-			ch.StateSumMiMC,
-			ch.StateSumKeccak.Hi,
-			ch.StateSumKeccak.Lo,
-		},
-		[]ifaces.Column{
-			ss.Account.Final.MiMCCodeHash,
-			ss.Account.Final.KeccakCodeHash.Hi,
-			ss.Account.Final.KeccakCodeHash.Lo,
-		},
+		stateSumHashColumns,
+		accFinalHashColumns,
 		ch.StateSumOngoing,
 		ss.Account.Final.Exists,
 	)
 
+	var chHashColumns []ifaces.Column
+	chHashColumns = append(chHashColumns, ch.RomMiMC[:]...)
+	chHashColumns = append(chHashColumns, ch.RomKeccak.Hi[:]...)
+	chHashColumns = append(chHashColumns, ch.RomKeccak.Lo[:]...)
+
+	var mchHashColumns []ifaces.Column
+	mchHashColumns = append(mchHashColumns, mch.NewState[:]...)
+	mchHashColumns = append(mchHashColumns, mch.CodeHash[:]...)
+
 	comp.InsertInclusionDoubleConditional(
 		0,
 		ifaces.QueryID(name+"_IMPORT_MIMC_CODE_HASH_FORTH"),
-		[]ifaces.Column{
-			ch.RomMiMC,
-			ch.RomKeccak.Hi,
-			ch.RomKeccak.Lo,
-		},
-		[]ifaces.Column{
-			mch.NewState,
-			mch.CodeHashHi,
-			mch.CodeHashLo,
-		},
+		chHashColumns,
+		mchHashColumns,
 		ch.RomOngoing,
 		mch.IsForConsistency,
 	)
@@ -272,16 +290,8 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 	comp.InsertInclusionDoubleConditional(
 		0,
 		ifaces.QueryID(name+"_IMPORT_MIMC_CODE_HASH_BACK"),
-		[]ifaces.Column{
-			mch.NewState,
-			mch.CodeHashHi,
-			mch.CodeHashLo,
-		},
-		[]ifaces.Column{
-			ch.RomMiMC,
-			ch.RomKeccak.Hi,
-			ch.RomKeccak.Lo,
-		},
+		mchHashColumns,
+		chHashColumns,
 		mch.IsForConsistency,
 		ch.RomOngoing,
 	)

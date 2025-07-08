@@ -84,7 +84,7 @@ type Module struct {
 	// IsForConsistency lights-up when the imported keccak code-hash is not the empty
 	// codehash. This is used as an import filter for the consistency module with the
 	// state summary.
-	IsForConsistency [common.NbLimbU256]ifaces.Column
+	IsForConsistency ifaces.Column
 	IsEmptyKeccak    [common.NbLimbU256]ifaces.Column
 
 	CptIsEmptyKeccak [common.NbLimbU256]wizard.ProverAction
@@ -109,9 +109,10 @@ func NewModule(comp *wizard.CompiledIOP, inputs Inputs) (mh Module) {
 		mh.CFI[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_CFI_NAME, i), inputs.Size)
 	}
 
+	mh.IsForConsistency = comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_FOR_CONSISTENCY, inputs.Size)
+
 	for i := range common.NbLimbU256 {
 		mh.CodeHash[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_KECCAK_CODEHASH_NAME, i), inputs.Size)
-		mh.IsForConsistency[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_IS_FOR_CONSISTENCY, i), inputs.Size)
 		mh.IsEmptyKeccak[i], mh.CptIsEmptyKeccak[i] = dedicated.IsZero(comp, sym.Sub(mh.CodeHash[i], emptyKeccak[i])).GetColumnAndProverAction()
 
 		mh.PrevState[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_PREV_STATE_NAME, i), inputs.Size)
@@ -121,7 +122,7 @@ func NewModule(comp *wizard.CompiledIOP, inputs Inputs) (mh Module) {
 			0,
 			ifaces.QueryIDf("MIMC_CODE_HASH_CPT_IF_FOR_CONSISTENCY_%d", i),
 			sym.Sub(
-				mh.IsForConsistency[i],
+				mh.IsForConsistency,
 				sym.Mul(
 					sym.Sub(1, mh.IsEmptyKeccak[i]),
 					mh.IsHashEnd,

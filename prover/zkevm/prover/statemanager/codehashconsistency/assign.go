@@ -21,44 +21,51 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 		InitAccountExists  smartvectors.SmartVector
 		FinalAccountExists smartvectors.SmartVector
 		IsStorage          smartvectors.SmartVector
-		InitMiMC           smartvectors.SmartVector
-		InitKeccakLo       smartvectors.SmartVector
-		InitKeccakHi       smartvectors.SmartVector
-		FinalMiMC          smartvectors.SmartVector
-		FinalKeccakLo      smartvectors.SmartVector
-		FinalKeccakHi      smartvectors.SmartVector
+		InitMiMC           [common.NbLimbU256]smartvectors.SmartVector
+		InitKeccakLo       [common.NbLimbU128]smartvectors.SmartVector
+		InitKeccakHi       [common.NbLimbU128]smartvectors.SmartVector
+		FinalMiMC          [common.NbLimbU256]smartvectors.SmartVector
+		FinalKeccakLo      [common.NbLimbU128]smartvectors.SmartVector
+		FinalKeccakHi      [common.NbLimbU128]smartvectors.SmartVector
 	}{
 		InitAccountExists:  ssInput.Account.Initial.Exists.GetColAssignment(run),
 		FinalAccountExists: ssInput.Account.Final.Exists.GetColAssignment(run),
 		IsStorage:          ssInput.IsStorage.GetColAssignment(run),
-		InitMiMC:           ssInput.Account.Initial.MiMCCodeHash.GetColAssignment(run),
-		InitKeccakHi:       ssInput.Account.Initial.KeccakCodeHash.Hi.GetColAssignment(run),
-		InitKeccakLo:       ssInput.Account.Initial.KeccakCodeHash.Lo.GetColAssignment(run),
-		FinalMiMC:          ssInput.Account.Final.MiMCCodeHash.GetColAssignment(run),
-		FinalKeccakHi:      ssInput.Account.Final.KeccakCodeHash.Hi.GetColAssignment(run),
-		FinalKeccakLo:      ssInput.Account.Final.KeccakCodeHash.Lo.GetColAssignment(run),
+	}
+
+	for i := range common.NbLimbU256 {
+		externalSs.InitMiMC[i] = ssInput.Account.Initial.MiMCCodeHash[i].GetColAssignment(run)
+		externalSs.FinalMiMC[i] = ssInput.Account.Final.MiMCCodeHash[i].GetColAssignment(run)
+	}
+
+	for i := range common.NbLimbU128 {
+		externalSs.InitKeccakHi[i] = ssInput.Account.Initial.KeccakCodeHash.Hi[i].GetColAssignment(run)
+		externalSs.InitKeccakLo[i] = ssInput.Account.Initial.KeccakCodeHash.Lo[i].GetColAssignment(run)
+		externalSs.FinalKeccakHi[i] = ssInput.Account.Final.KeccakCodeHash.Hi[i].GetColAssignment(run)
+		externalSs.FinalKeccakLo[i] = ssInput.Account.Final.KeccakCodeHash.Lo[i].GetColAssignment(run)
 	}
 
 	externalRom := struct {
 		IsActive         smartvectors.SmartVector
 		IsForConsistency smartvectors.SmartVector
-		NewState         smartvectors.SmartVector
-		CodeHashHi       smartvectors.SmartVector
-		CodeHashLo       smartvectors.SmartVector
+		NewState         [common.NbLimbU256]smartvectors.SmartVector
+		CodeHash         [common.NbLimbU256]smartvectors.SmartVector
 	}{
 		IsActive:         mchInput.IsActive.GetColAssignment(run),
 		IsForConsistency: mchInput.IsForConsistency.GetColAssignment(run),
-		NewState:         mchInput.NewState.GetColAssignment(run),
-		CodeHashHi:       mchInput.CodeHashHi.GetColAssignment(run),
-		CodeHashLo:       mchInput.CodeHashLo.GetColAssignment(run),
+	}
+
+	for i := range common.NbLimbU256 {
+		externalRom.NewState[i] = mchInput.NewState[i].GetColAssignment(run)
+		externalRom.CodeHash[i] = mchInput.CodeHash[i].GetColAssignment(run)
 	}
 
 	var (
-		ssData  = make([][3]field.Element, 0, 2*externalSs.InitMiMC.Len())
-		romData = make([][3]field.Element, 0, externalRom.IsForConsistency.Len())
+		ssData  = make([][2][common.NbLimbU256]field.Element, 0, 2*externalSs.InitMiMC[0].Len())
+		romData = make([][2][common.NbLimbU256]field.Element, 0, externalRom.IsForConsistency.Len())
 	)
 
-	for i := 0; i < externalSs.InitMiMC.Len(); i++ {
+	for i := 0; i < externalSs.InitMiMC[0].Len(); i++ {
 
 		if isStorage := externalSs.IsStorage.Get(i); isStorage.IsOne() {
 			continue
@@ -70,51 +77,80 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 		)
 
 		if initAccountExists.IsOne() {
+			var initMimc [common.NbLimbU256]field.Element
+			var initKeccak [common.NbLimbU256]field.Element
+			for j := range common.NbLimbU256 {
+				initMimc[j] = externalSs.InitMiMC[j].Get(i)
+			}
+
+			for j := range common.NbLimbU128 {
+				initKeccak[j] = externalSs.InitKeccakHi[j].Get(i)
+				initKeccak[common.NbLimbU128+j] = externalSs.InitKeccakLo[j].Get(i)
+			}
+
 			ssData = append(ssData,
-				[3]field.Element{
-					externalSs.InitMiMC.Get(i),
-					externalSs.InitKeccakHi.Get(i),
-					externalSs.InitKeccakLo.Get(i),
-				})
+				[2][common.NbLimbU256]field.Element{
+					initMimc,
+					initKeccak,
+				},
+			)
 		}
 
 		if finalAccountExists.IsOne() {
+			var finalMimc [common.NbLimbU256]field.Element
+			var finalKeccak [common.NbLimbU256]field.Element
+			for j := range common.NbLimbU256 {
+				finalMimc[j] = externalSs.FinalMiMC[j].Get(i)
+			}
+
+			for j := range common.NbLimbU128 {
+				finalKeccak[j] = externalSs.FinalKeccakHi[j].Get(i)
+				finalKeccak[common.NbLimbU128+j] = externalSs.FinalKeccakLo[j].Get(i)
+			}
+
 			ssData = append(ssData,
-				[3]field.Element{
-					externalSs.FinalMiMC.Get(i),
-					externalSs.FinalKeccakHi.Get(i),
-					externalSs.FinalKeccakLo.Get(i),
-				})
+				[2][common.NbLimbU256]field.Element{
+					finalMimc,
+					finalKeccak,
+				},
+			)
 		}
 	}
 
-	for i := 0; i < externalRom.NewState.Len(); i++ {
+	for i := 0; i < externalRom.NewState[0].Len(); i++ {
 
 		if isActive := externalRom.IsActive.Get(i); isActive.IsZero() {
 			break
 		}
 
-		if isHashEnd := externalRom.IsForConsistency.Get(i); isHashEnd.IsZero() {
+		isForConsistency := externalRom.IsForConsistency.Get(i)
+		isForConsistencyInt := isForConsistency.Uint64()
+		isHashEnd := 1 - isForConsistencyInt
+
+		if isHashEnd == 1 {
 			continue
 		}
 
+		var newState [common.NbLimbU256]field.Element
+		var codeHash [common.NbLimbU256]field.Element
+		for j := range common.NbLimbU256 {
+			newState[j] = externalRom.NewState[j].Get(i)
+			codeHash[j] = externalRom.CodeHash[j].Get(i)
+		}
+
 		romData = append(romData,
-			[3]field.Element{
-				externalRom.NewState.Get(i),
-				externalRom.CodeHashHi.Get(i),
-				externalRom.CodeHashLo.Get(i),
+			[2][common.NbLimbU256]field.Element{
+				newState,
+				codeHash,
 			},
 		)
 	}
 
-	cmp := func(a, b [3]field.Element) int {
-		if res := a[1].Cmp(&b[1]); res != 0 {
+	cmp := func(a, b [2][common.NbLimbU256]field.Element) int {
+		if res := CmpLimbs(a[1][:], b[1][:]); res != 0 {
 			return res
 		}
-		if res := a[2].Cmp(&b[2]); res != 0 {
-			return res
-		}
-		return a[0].Cmp(&b[0])
+		return CmpLimbs(a[0][:], b[0][:])
 	}
 
 	slices.SortFunc(ssData, cmp)
@@ -127,19 +163,22 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 	assignment := struct {
 		IsActive        *common.VectorBuilder
 		StateSumKeccak  common.HiLoAssignmentBuilder
-		StateSumMiMC    *common.VectorBuilder
+		StateSumMiMC    [common.NbLimbU256]*common.VectorBuilder
 		RomKeccak       common.HiLoAssignmentBuilder
-		RomMiMC         *common.VectorBuilder
+		RomMiMC         [common.NbLimbU256]*common.VectorBuilder
 		RomOngoing      *common.VectorBuilder
 		StateSumOngoing *common.VectorBuilder
 	}{
 		IsActive:        common.NewVectorBuilder(mod.IsActive),
 		StateSumKeccak:  common.NewHiLoAssignmentBuilder(mod.StateSumKeccak),
 		RomKeccak:       common.NewHiLoAssignmentBuilder(mod.RomKeccak),
-		StateSumMiMC:    common.NewVectorBuilder(mod.StateSumMiMC),
-		RomMiMC:         common.NewVectorBuilder(mod.RomMiMC),
 		RomOngoing:      common.NewVectorBuilder(mod.RomOngoing),
 		StateSumOngoing: common.NewVectorBuilder(mod.StateSumOngoing),
+	}
+
+	for i := range common.NbLimbU256 {
+		assignment.RomMiMC[i] = common.NewVectorBuilder(mod.RomMiMC[i])
+		assignment.StateSumMiMC[i] = common.NewVectorBuilder(mod.StateSumMiMC[i])
 	}
 
 	var (
@@ -159,8 +198,8 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 		// eoa-transactions only. Therefore, we need to check that cRom and cSS
 		// are within bounds. Otherwise, it will panic.
 		var (
-			romRow = [3]field.Element{}
-			ssRow  = [3]field.Element{}
+			romRow = [2][common.NbLimbU256]field.Element{}
+			ssRow  = [2][common.NbLimbU256]field.Element{}
 		)
 
 		if cRom < len(romData) {
@@ -174,13 +213,21 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 		romCmpSs := cmp(romRow, ssRow)
 
 		assignment.IsActive.PushOne()
-		assignment.RomMiMC.PushField(romRow[0])
-		assignment.RomKeccak.Hi.PushField(romRow[1])
-		assignment.RomKeccak.Lo.PushField(romRow[2])
+
+		for j := range common.NbLimbU256 {
+			assignment.RomMiMC[j].PushField(romRow[0][j])
+			assignment.StateSumMiMC[j].PushField(ssRow[0][j])
+		}
+
+		for j := range common.NbLimbU128 {
+			assignment.RomKeccak.Hi[j].PushField(romRow[1][j])
+			assignment.RomKeccak.Lo[j].PushField(romRow[1][common.NbLimbU128+j])
+
+			assignment.StateSumKeccak.Hi[j].PushField(ssRow[1][j])
+			assignment.StateSumKeccak.Lo[j].PushField(ssRow[1][common.NbLimbU128+j])
+		}
+
 		assignment.RomOngoing.PushBoolean(cRom < len(romData))
-		assignment.StateSumMiMC.PushField(ssRow[0])
-		assignment.StateSumKeccak.Hi.PushField(ssRow[1])
-		assignment.StateSumKeccak.Lo.PushField(ssRow[2])
 		assignment.StateSumOngoing.PushBoolean(cSS < len(ssData))
 
 		newCRom, newCSS := cRom, cSS
@@ -204,21 +251,84 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 		cRom, cSS = newCRom, newCSS
 	}
 
+	for i := range common.NbLimbU256 {
+		assignment.RomMiMC[i].PadAndAssign(run, field.Zero())
+		assignment.StateSumMiMC[i].PadAndAssign(run, field.Zero())
+	}
+
+	for i := range common.NbLimbU128 {
+		assignment.RomKeccak.Hi[i].PadAndAssign(run, field.Zero())
+		assignment.RomKeccak.Lo[i].PadAndAssign(run, field.Zero())
+
+		assignment.StateSumKeccak.Hi[i].PadAndAssign(run, field.Zero())
+		assignment.StateSumKeccak.Lo[i].PadAndAssign(run, field.Zero())
+	}
+
 	assignment.IsActive.PadAndAssign(run, field.Zero())
-	assignment.RomMiMC.PadAndAssign(run, field.Zero())
-	assignment.RomKeccak.Hi.PadAndAssign(run, field.Zero())
-	assignment.RomKeccak.Lo.PadAndAssign(run, field.Zero())
 	assignment.RomOngoing.PadAndAssign(run, field.Zero())
-	assignment.StateSumMiMC.PadAndAssign(run, field.Zero())
-	assignment.StateSumKeccak.Hi.PadAndAssign(run, field.Zero())
-	assignment.StateSumKeccak.Lo.PadAndAssign(run, field.Zero())
 	assignment.StateSumOngoing.PadAndAssign(run, field.Zero())
 
-	mod.CptStateSumKeccakLimbsHi.Run(run)
-	mod.CptStateSumKeccakLimbsLo.Run(run)
-	mod.CptRomKeccakLimbsHi.Run(run)
-	mod.CptRomKeccakLimbsLo.Run(run)
+	for i := range common.NbLimbU128 {
+		mod.CptStateSumKeccakLimbsHi[i].Run(run)
+		mod.CptStateSumKeccakLimbsLo[i].Run(run)
+		mod.CptRomKeccakLimbsHi[i].Run(run)
+		mod.CptRomKeccakLimbsLo[i].Run(run)
+	}
+
 	mod.CmpStateSumLimbs.Run(run)
 	mod.CmpRomLimbs.Run(run)
 	mod.CmpRomVsStateSumLimbs.Run(run)
+}
+
+// trimLeadingZeros removes any leading zero limbs from a number's representation.
+// For example, [0, 0, 5, 10] becomes [5, 10], and [0, 0, 0] becomes [].
+// This ensures that numbers like 0 are consistently represented (e.g., as []field.Element{}).
+func trimLeadingZeros(limbs []field.Element) []field.Element {
+	firstNonZeroIdx := -1
+	for i := len(limbs) - 1; i >= 0; i-- {
+		if !limbs[i].IsZero() {
+			firstNonZeroIdx = i
+			break
+		}
+	}
+
+	if firstNonZeroIdx == -1 {
+		return []field.Element{}
+	}
+
+	return limbs[:firstNonZeroIdx+1]
+}
+
+// CmpLimbs compares two numbers represented as slices of uint64 limbs.
+// The most significant limb is expected to be at the highest index.
+//
+// It returns:
+//
+//	 0 if a == b
+//	 1 if a > b
+//	-1 if a < b
+func CmpLimbs(a, b []field.Element) int {
+	trimmedA := trimLeadingZeros(a)
+	trimmedB := trimLeadingZeros(b)
+
+	lenA := len(trimmedA)
+	lenB := len(trimmedB)
+
+	if lenA > lenB {
+		return 1
+	}
+	if lenA < lenB {
+		return -1
+	}
+
+	for i := 0; i < lenA; i++ {
+		if trimmedA[i].Cmp(&trimmedB[i]) == 1 {
+			return 1
+		}
+		if trimmedA[i].Cmp(&trimmedB[i]) == -1 {
+			return -1
+		}
+	}
+
+	return 0
 }

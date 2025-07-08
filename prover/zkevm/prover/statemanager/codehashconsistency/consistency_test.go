@@ -2,20 +2,22 @@ package codehashconsistency
 
 import (
 	"fmt"
-	"math/rand/v2"
-	"slices"
-	"testing"
-
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/mimccodehash"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/statesummary"
+	"math/big"
+	"math/rand/v2"
+	"slices"
+	"testing"
+	"unsafe"
 )
 
 func TestConsistency(t *testing.T) {
@@ -48,12 +50,10 @@ func runTestcase(t *testing.T, mimcCodeHashCsvPath, stateSummaryCsvPath string) 
 			Account: statesummary.AccountPeek{
 				Initial: statesummary.Account{
 					KeccakCodeHash: common.NewHiLoColumns(b.CompiledIOP, sizeStateSummary, "SS_INITIAL_KECCAK"),
-					MiMCCodeHash:   b.InsertCommit(0, "SS_INITIAL_MIMC", sizeStateSummary),
 					Exists:         b.InsertCommit(0, "SS_INITIAL_EXISTS", sizeStateSummary),
 				},
 				Final: statesummary.Account{
 					KeccakCodeHash: common.NewHiLoColumns(b.CompiledIOP, sizeStateSummary, "SS_FINAL_KECCAK"),
-					MiMCCodeHash:   b.InsertCommit(0, "SS_FINAL_MIMC", sizeStateSummary),
 					Exists:         b.InsertCommit(0, "SS_FINAL_EXISTS", sizeStateSummary),
 				},
 			},
@@ -62,10 +62,16 @@ func runTestcase(t *testing.T, mimcCodeHashCsvPath, stateSummaryCsvPath string) 
 		mimcCodeHash = &mimccodehash.Module{
 			IsActive:         b.InsertCommit(0, "MCH_IS_ACTIVE", sizeMimcCodeHash),
 			IsHashEnd:        b.InsertCommit(0, "MCH_IS_HASH_END", sizeMimcCodeHash),
-			NewState:         b.InsertCommit(0, "MCH_NEW_STATE", sizeMimcCodeHash),
-			CodeHashHi:       b.InsertCommit(0, "MCH_KECCAK_HI", sizeMimcCodeHash),
-			CodeHashLo:       b.InsertCommit(0, "MCH_KECCAK_LO", sizeMimcCodeHash),
 			IsForConsistency: b.InsertCommit(0, "MCH_IS_FOR_CONSISTENCY", sizeMimcCodeHash),
+		}
+
+		for i := range common.NbLimbU256 {
+			stateSummary.Account.Initial.MiMCCodeHash[i] = b.InsertCommit(0, ifaces.ColIDf("SS_INITIAL_MIMC_%v", i), sizeStateSummary)
+			stateSummary.Account.Final.MiMCCodeHash[i] = b.InsertCommit(0, ifaces.ColIDf("SS_FINAL_MIMC_%v", i), sizeStateSummary)
+
+			mimcCodeHash.NewState[i] = b.InsertCommit(0, ifaces.ColIDf("MCH_NEW_STATE_%v", i), sizeMimcCodeHash)
+			mimcCodeHash.CodeHash[i] = b.InsertCommit(0, ifaces.ColIDf("MCH_KECCAK_%v", i), sizeMimcCodeHash)
+
 		}
 
 		consistency = NewModule(b.CompiledIOP, "CONSISTENCY", stateSummary, mimcCodeHash)
@@ -78,19 +84,25 @@ func runTestcase(t *testing.T, mimcCodeHashCsvPath, stateSummaryCsvPath string) 
 
 		run.AssignColumn(mimcCodeHash.IsActive.GetColID(), smartvectors.RightZeroPadded(mchCt.Get("IS_ACTIVE"), sizeMimcCodeHash))
 		run.AssignColumn(mimcCodeHash.IsHashEnd.GetColID(), smartvectors.RightZeroPadded(mchCt.Get("IS_HASH_END"), sizeMimcCodeHash))
-		run.AssignColumn(mimcCodeHash.NewState.GetColID(), smartvectors.RightZeroPadded(mchCt.Get("NEW_STATE"), sizeMimcCodeHash))
-		run.AssignColumn(mimcCodeHash.CodeHashHi.GetColID(), smartvectors.RightZeroPadded(mchCt.Get("KECCAK_HI"), sizeMimcCodeHash))
-		run.AssignColumn(mimcCodeHash.CodeHashLo.GetColID(), smartvectors.RightZeroPadded(mchCt.Get("KECCAK_LO"), sizeMimcCodeHash))
 		run.AssignColumn(mimcCodeHash.IsForConsistency.GetColID(), smartvectors.RightZeroPadded(mchCt.Get("IS_FOR_CONSISTENCY"), sizeMimcCodeHash))
+
+		for i := range common.NbLimbU256 {
+			run.AssignColumn(mimcCodeHash.NewState[i].GetColID(), smartvectors.RightZeroPadded(mchCt.Get(fmt.Sprintf("NEW_STATE_%d", i)), sizeMimcCodeHash))
+			run.AssignColumn(mimcCodeHash.CodeHash[i].GetColID(), smartvectors.RightZeroPadded(mchCt.Get(fmt.Sprintf("KECCAK_%d", i)), sizeMimcCodeHash))
+
+			run.AssignColumn(stateSummary.Account.Initial.MiMCCodeHash[i].GetColID(), smartvectors.RightZeroPadded(ssCt.Get(fmt.Sprintf("INITIAL_MIMC_%d", i)), sizeStateSummary))
+			run.AssignColumn(stateSummary.Account.Final.MiMCCodeHash[i].GetColID(), smartvectors.RightZeroPadded(ssCt.Get(fmt.Sprintf("FINAL_MIMC_%d", i)), sizeStateSummary))
+		}
+
+		for i := range common.NbLimbU128 {
+			run.AssignColumn(stateSummary.Account.Initial.KeccakCodeHash.Hi[i].GetColID(), smartvectors.RightZeroPadded(ssCt.Get(fmt.Sprintf("INITIAL_KECCAK_HI_%v", i)), sizeStateSummary))
+			run.AssignColumn(stateSummary.Account.Final.KeccakCodeHash.Hi[i].GetColID(), smartvectors.RightZeroPadded(ssCt.Get(fmt.Sprintf("FINAL_KECCAK_HI_%v", i)), sizeStateSummary))
+			run.AssignColumn(stateSummary.Account.Initial.KeccakCodeHash.Lo[i].GetColID(), smartvectors.RightZeroPadded(ssCt.Get(fmt.Sprintf("INITIAL_KECCAK_LO_%v", i)), sizeStateSummary))
+			run.AssignColumn(stateSummary.Account.Final.KeccakCodeHash.Lo[i].GetColID(), smartvectors.RightZeroPadded(ssCt.Get(fmt.Sprintf("FINAL_KECCAK_LO_%v", i)), sizeStateSummary))
+		}
 
 		run.AssignColumn(stateSummary.IsActive.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("IS_ACTIVE"), sizeStateSummary))
 		run.AssignColumn(stateSummary.IsStorage.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("IS_STORAGE"), sizeStateSummary))
-		run.AssignColumn(stateSummary.Account.Initial.MiMCCodeHash.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("INITIAL_MIMC"), sizeStateSummary))
-		run.AssignColumn(stateSummary.Account.Final.MiMCCodeHash.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("FINAL_MIMC"), sizeStateSummary))
-		run.AssignColumn(stateSummary.Account.Initial.KeccakCodeHash.Hi.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("INITIAL_KECCAK_HI"), sizeStateSummary))
-		run.AssignColumn(stateSummary.Account.Final.KeccakCodeHash.Hi.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("FINAL_KECCAK_HI"), sizeStateSummary))
-		run.AssignColumn(stateSummary.Account.Initial.KeccakCodeHash.Lo.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("INITIAL_KECCAK_LO"), sizeStateSummary))
-		run.AssignColumn(stateSummary.Account.Final.KeccakCodeHash.Lo.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("FINAL_KECCAK_LO"), sizeStateSummary))
 		run.AssignColumn(stateSummary.Account.Initial.Exists.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("INITIAL_EXISTS"), sizeStateSummary))
 		run.AssignColumn(stateSummary.Account.Final.Exists.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("FINAL_EXISTS"), sizeStateSummary))
 
@@ -102,25 +114,42 @@ func runTestcase(t *testing.T, mimcCodeHashCsvPath, stateSummaryCsvPath string) 
 
 }
 
+var isForConsistencyMocked = []uint64{1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0,
+	0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0,
+	1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1,
+	1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1}
+
 // TestCaseGeneration generates testdata csv and does not test anything per se.
 // To re-generate the testcases, you need to unskip it.
 func TestCaseGeneration(t *testing.T) {
 
 	t.Skip()
 
+	var isForConsistencyMockedElement []field.Element
+	for _, num := range isForConsistencyMocked {
+		isForConsistencyMockedElement = append(isForConsistencyMockedElement, field.NewElement(num))
+	}
+
 	var (
 		rng                = rand.New(utils.NewRandSource(67569)) // nolint
-		shared             = [][3]field.Element{}
+		shared             = [][3][]field.Element{}
 		numSharedRow       = 1
 		numStateSummaryRow = 128
 		numCodeHashRow     = 128
 	)
 
-	randRow := func() [3]field.Element {
-		row := [3]field.Element{}
-		row[0] = field.PseudoRand(rng)
-		row[1] = field.PseudoRandTruncated(rng, 16)
-		row[2] = field.PseudoRandTruncated(rng, 16)
+	randRow := func() [3][]field.Element {
+		row := [3][]field.Element{}
+		row0 := GenerateRandomLimbs(common.NbLimbU256, rng)
+		row1 := GenerateRandomLimbs(common.NbLimbU128, rng)
+		row2 := GenerateRandomLimbs(common.NbLimbU128, rng)
+
+		row[0] = make([]field.Element, common.NbLimbU256)
+		copy(row[0], row0)
+		row[1] = make([]field.Element, common.NbLimbU128)
+		copy(row[1], row1)
+		row[2] = make([]field.Element, common.NbLimbU128)
+		copy(row[2], row2)
 		return row
 	}
 
@@ -131,12 +160,14 @@ func TestCaseGeneration(t *testing.T) {
 	var (
 		ssIsActive      = make([]field.Element, 0)
 		ssIsStorage     = make([]field.Element, 0)
-		ssInitMimc      = make([]field.Element, 0)
-		ssInitKeccakHi  = make([]field.Element, 0)
-		ssInitKeccakLo  = make([]field.Element, 0)
-		ssFinalMimc     = make([]field.Element, 0)
-		ssFinalKeccakHi = make([]field.Element, 0)
-		ssFinalKeccakLo = make([]field.Element, 0)
+		ssInitMimc      = make([][]field.Element, 0)
+		ssInitKeccakHi  = make([][]field.Element, 0)
+		ssInitKeccakLo  = make([][]field.Element, 0)
+		ssFinalMimc     = make([][]field.Element, 0)
+		ssFinalKeccakHi = make([][]field.Element, 0)
+		ssFinalKeccakLo = make([][]field.Element, 0)
+		ssInitialExists = make([]field.Element, 0)
+		ssFinalExists   = make([]field.Element, 0)
 	)
 
 	for i := 0; i < numStateSummaryRow; i++ {
@@ -162,7 +193,7 @@ func TestCaseGeneration(t *testing.T) {
 
 		case c == 0 || c == 1:
 
-			var newInit, newFinal [3]field.Element
+			var newInit, newFinal [3][]field.Element
 
 			if c == 0 {
 				newInit = randRow()
@@ -177,6 +208,7 @@ func TestCaseGeneration(t *testing.T) {
 
 			ssIsActive = append(ssIsActive, field.One())
 			ssIsStorage = append(ssIsStorage, field.Zero())
+
 			ssInitMimc = append(ssInitMimc, newInit[0])
 			ssInitKeccakHi = append(ssInitKeccakHi, newInit[1])
 			ssInitKeccakLo = append(ssInitKeccakLo, newInit[2])
@@ -185,12 +217,54 @@ func TestCaseGeneration(t *testing.T) {
 			ssFinalKeccakLo = append(ssFinalKeccakLo, newFinal[2])
 
 		}
+
+		ssInitialExists = append(ssInitialExists, field.One())
+		ssFinalExists = append(ssInitialExists, field.One())
 	}
+
+	colNamesStateSummary := []string{"IS_ACTIVE", "IS_STORAGE"}
+	for i := range common.NbLimbU256 {
+		colNamesStateSummary = append(colNamesStateSummary, fmt.Sprintf("INITIAL_MIMC_%d", i))
+	}
+
+	for i := range common.NbLimbU256 {
+		colNamesStateSummary = append(colNamesStateSummary, fmt.Sprintf("FINAL_MIMC_%d", i))
+	}
+
+	for i := range common.NbLimbU128 {
+		colNamesStateSummary = append(colNamesStateSummary, fmt.Sprintf("INITIAL_KECCAK_HI_%d", i))
+	}
+
+	for i := range common.NbLimbU128 {
+		colNamesStateSummary = append(colNamesStateSummary, fmt.Sprintf("INITIAL_KECCAK_LO_%d", i))
+	}
+
+	for i := range common.NbLimbU128 {
+		colNamesStateSummary = append(colNamesStateSummary, fmt.Sprintf("FINAL_KECCAK_HI_%d", i))
+	}
+
+	for i := range common.NbLimbU128 {
+		colNamesStateSummary = append(colNamesStateSummary, fmt.Sprintf("FINAL_KECCAK_LO_%d", i))
+	}
+
+	colNamesStateSummary = append(colNamesStateSummary, "INITIAL_EXISTS", "FINAL_EXISTS")
+
+	var colValuesStateSummary = [][]field.Element{ssIsActive, ssIsStorage}
+	colValuesStateSummary = append(colValuesStateSummary, transposeLimbs(ssInitMimc)...)
+	colValuesStateSummary = append(colValuesStateSummary, transposeLimbs(ssFinalMimc)...)
+
+	colValuesStateSummary = append(colValuesStateSummary, transposeLimbs(ssInitKeccakHi)...)
+	colValuesStateSummary = append(colValuesStateSummary, transposeLimbs(ssInitKeccakLo)...)
+	colValuesStateSummary = append(colValuesStateSummary, transposeLimbs(ssFinalKeccakHi)...)
+	colValuesStateSummary = append(colValuesStateSummary, transposeLimbs(ssFinalKeccakLo)...)
+
+	colValuesStateSummary = append(colValuesStateSummary, ssInitialExists)
+	colValuesStateSummary = append(colValuesStateSummary, ssFinalExists)
 
 	csvtraces.WriteExplicit(
 		files.MustOverwrite("./testdata/state-summary.csv"),
-		[]string{"IS_ACTIVE", "IS_STORAGE", "INITIAL_MIMC", "INITIAL_KECCAK_HI", "INITIAL_KECCAK_LO", "FINAL_MIMC", "FINAL_KECCAK_HI", "FINAL_KECCAK_LO"},
-		[][]field.Element{ssIsActive, ssIsStorage, ssInitMimc, ssInitKeccakHi, ssInitKeccakLo, ssFinalMimc, ssFinalKeccakHi, ssFinalKeccakLo},
+		colNamesStateSummary,
+		colValuesStateSummary,
 		false,
 	)
 
@@ -202,9 +276,8 @@ func TestCaseGeneration(t *testing.T) {
 	var (
 		romIsActive  = make([]field.Element, 0)
 		romIsHashEnd = make([]field.Element, 0)
-		romNewState  = make([]field.Element, 0)
-		romKeccakHi  = make([]field.Element, 0)
-		romKeccakLo  = make([]field.Element, 0)
+		romNewState  = make([][]field.Element, 0)
+		romKeccak    = make([][]field.Element, 0)
 	)
 
 	for i := 0; i < numCodeHashRow; i++ {
@@ -225,16 +298,13 @@ func TestCaseGeneration(t *testing.T) {
 			romIsActive = append(romIsActive, field.One())
 			romIsHashEnd = append(romIsHashEnd, field.One())
 			romNewState = append(romNewState, row[0])
-			romKeccakHi = append(romKeccakHi, row[1])
-			romKeccakLo = append(romKeccakLo, row[2])
-
+			romKeccak = append(romKeccak, append(row[1], row[2]...))
 		default:
 
 			romIsActive = append(romIsActive, field.One())
 			romIsHashEnd = append(romIsHashEnd, field.Zero())
-			romNewState = append(romNewState, field.PseudoRand(rng))
-			romKeccakHi = append(romKeccakHi, romKeccakHi[i-1])
-			romKeccakLo = append(romKeccakLo, romKeccakLo[i-1])
+			romNewState = append(romNewState, GenerateRandomLimbs(common.NbLimbU256, rng))
+			romKeccak = append(romKeccak, romKeccak[i-1])
 
 		}
 	}
@@ -242,17 +312,69 @@ func TestCaseGeneration(t *testing.T) {
 	slices.Reverse(romIsActive)
 	slices.Reverse(romIsHashEnd)
 	slices.Reverse(romNewState)
-	slices.Reverse(romKeccakHi)
-	slices.Reverse(romKeccakLo)
+	slices.Reverse(romKeccak)
+
+	colNamesMimcCodehash := []string{"IS_FOR_CONSISTENCY", "IS_ACTIVE", "IS_HASH_END"}
+	for i := range common.NbLimbU256 {
+		colNamesMimcCodehash = append(colNamesMimcCodehash, fmt.Sprintf("NEW_STATE_%d", i))
+	}
+
+	for i := range common.NbLimbU256 {
+		colNamesMimcCodehash = append(colNamesMimcCodehash, fmt.Sprintf("KECCAK_%d", i))
+	}
+
+	var colValuesMimcCodehash = [][]field.Element{isForConsistencyMockedElement, romIsActive, romIsHashEnd}
+	colValuesMimcCodehash = append(colValuesMimcCodehash, transposeLimbs(romNewState)...)
+	colValuesMimcCodehash = append(colValuesMimcCodehash, transposeLimbs(romKeccak)...)
 
 	csvtraces.WriteExplicit(
 		files.MustOverwrite("./testdata/mimc-codehash.csv"),
-		[]string{"IS_ACTIVE", "IS_HASH_END", "NEW_STATE", "KECCAK_HI", "KECCAK_LO"},
-		[][]field.Element{romIsActive, romIsHashEnd, romNewState, romKeccakHi, romKeccakLo},
+		colNamesMimcCodehash,
+		colValuesMimcCodehash,
 		false,
 	)
 }
 
 func randChoose[T any](rand *rand.Rand, slice []T) T {
 	return slice[rand.IntN(len(slice))]
+}
+
+// GenerateRandomLimbs generates a slice of random limbs of the specified limbs number.
+func GenerateRandomLimbs(limbs int, rng *rand.Rand) []field.Element {
+	var (
+		bigInt    = &big.Int{}
+		res       = make([]field.Element, limbs)
+		bareU64   = [4]uint64{rng.Uint64(), rng.Uint64(), rng.Uint64(), rng.Uint64()}
+		bareBytes = *(*[32]byte)(unsafe.Pointer(&bareU64))
+	)
+
+	bigInt.SetBytes(bareBytes[:limbs*common.LimbBytes]).Mod(bigInt, field.Modulus())
+
+	limbBytes := common.SplitBytes(bareBytes[:])
+	for i := range limbs {
+		res[i].SetBytes(limbBytes[i])
+	}
+
+	return res
+}
+
+func transposeLimbs(inputMatrix [][]field.Element) [][]field.Element {
+	if len(inputMatrix) == 0 || len(inputMatrix[0]) == 0 {
+		return [][]field.Element{}
+	}
+
+	rows := len(inputMatrix)
+	cols := len(inputMatrix[0])
+
+	outputMatrix := make([][]field.Element, cols)
+	for i := range outputMatrix {
+		outputMatrix[i] = make([]field.Element, rows)
+	}
+
+	for i := 0; i < rows; i++ {
+		for j := 0; j < cols; j++ {
+			outputMatrix[j][i] = inputMatrix[i][j]
+		}
+	}
+	return outputMatrix
 }
