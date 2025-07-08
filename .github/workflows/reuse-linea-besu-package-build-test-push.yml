@@ -38,6 +38,10 @@ on:
         required: false
       DOCKERHUB_TOKEN:
         required: false
+      PRIVATE_DOCKERHUB_USERNAME:
+        required: false
+      PRIVATE_DOCKERHUB_TOKEN:
+        required: false
       FLEET_GITHUB_APP_ID:
         required: false
       FLEET_GITHUB_APP_PRIVATE_KEY:
@@ -132,9 +136,6 @@ jobs:
     if: ${{ always() && !cancelled() && inputs.push_image && (inputs.skip_e2e_test || needs.run-e2e-test.result == 'skipped' || needs.run-e2e-tests.outputs.tests_outcome == 'success') && (needs.run-test.result == 'skipped' || needs.run-test.result == 'success') }}
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     environment: dockerhub
-    env:
-      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -155,42 +156,22 @@ jobs:
       - name: set up docker buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 #v3.11.1
 
-      - name: Login to Docker Hub
-        if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
+      - name: Login to private Docker Hub (if Besu fleet plugin is included)
+        if: ${{ inputs.with_besu_fleet_plugin && secrets.PRIVATE_DOCKERHUB_USERNAME != '' && secrets.PRIVATE_DOCKERHUB_TOKEN != '' }}
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 #v3.4.0
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
-      - name: configure aws credentials
-        if: ${{ inputs.with_besu_fleet_plugin_debug }}
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::580947410102:role/ecr-read-write-infura-client-images-linea-besu-fleet
-          role-session-name: linea-besu-fleet-mainnet #linea-besu-package-with-fleet
-          role-duration-seconds: 1200
-          aws-region: us-east-1
-
-      - name: login to amazon ecr
-        if: ${{ inputs.with_besu_fleet_plugin_debug }}
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-
-      - name: set docker image name
-        id: docker-image-name
-        shell: bash
-        run: |
-          if [[ "${{ inputs.with_besu_fleet_plugin_debug }}" == "true" ]]; then
-            echo "dockerimagename=${{ steps.login-ecr.outputs.registry }}/infura/client-images/linea/besu-fleet" >> "$GITHUB_OUTPUT"
-          else
-            echo "dockerimagename=consensys/linea-besu-package" >> "$GITHUB_OUTPUT"
-          fi
+          username: ${{ secrets.PRIVATE_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.PRIVATE_DOCKERHUB_TOKEN }}
       
       - name: set docker build args
         run: |
-          echo "Building docker image: ${{ steps.docker-image-name.outputs.dockerimagename }}:${{ steps.assemble.outputs.dockertag }}"
+          echo "Building docker image (without fleet): consensys/linea-besu-package:${{ steps.assemble.outputs.dockertag }}"
+          if [[ "${{ inputs.with_besu_fleet_plugin }}" == "true" ]]; then
+            echo "Building docker image (with fleet): consensys/linea-besu-package-fleet:${{ steps.assemble.outputs.dockertag }}"
+          fi
 
-      - name: build and push the combined manifest
+      - name: build and push the combined manifest (if Besu fleet plugin is included)
+        if: ${{ inputs.with_besu_fleet_plugin_debug }}
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 #v6.18.0
         env:
           DOCKER_BUILD_SUMMARY: false
@@ -206,68 +187,65 @@ jobs:
             BUILD_DATE=${{ steps.assemble.outputs.build_date }}
           push: true
           tags: |
-            ${{ steps.docker-image-name.outputs.dockerimagename }}:${{ steps.assemble.outputs.dockertag }}
+            consensys/linea-besu-package-fleet:${{ steps.assemble.outputs.dockertag }}
+
+      - name: Remove the Besu fleet plugin after image build (if existed)
+        shell: bash
+        run: |
+          rm -fr linea-besu-package/linea-besu/besu/plugins/besu-fleet-plugin* || true
+
+      - name: Login to public Docker Hub
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 #v3.4.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: build and push the combined manifest (without Besu fleet plugin)
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 #v6.18.0
+        env:
+          DOCKER_BUILD_SUMMARY: false
+        with:
+          context: linea-besu-package/linea-besu/.
+          platforms: linux/arm64,linux/amd64
+          provenance: false
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+          build-args: |
+            VERSION=${{ steps.assemble.outputs.dockertag }}
+            VCS_REF=${{ github.sha }}
+            BUILD_DATE=${{ steps.assemble.outputs.build_date }}
+          push: true
+          tags: |
+            consensys/linea-besu-package:${{ steps.assemble.outputs.dockertag }}
             ${{ !inputs.with_besu_fleet_plugin && github.ref == 'refs/heads/main' && 'consensys/linea-besu-package:develop' || '' }}
             ${{ !inputs.with_besu_fleet_plugin && github.event_name == 'workflow_dispatch' && 'consensys/linea-besu-package:latest' || '' }}
-
-      # linea-besu-package with besu fleet plugin: on ecr this doesn't tag the individual images, so we do this 2x more (they are merely tags)
-      - name: build and push the combined manifest for linux/amd64
-        if: ${{ inputs.with_besu_fleet_plugin_debug }}
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 #v6.18.0
-        env:
-          DOCKER_BUILD_SUMMARY: false
-        with:
-          context: linea-besu-package/linea-besu/.
-          platforms: linux/amd64
-          provenance: false
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
-          build-args: |
-            VERSION=${{ steps.assemble.outputs.dockertag }}-amd64
-            VCS_REF=${{ github.sha }}
-            BUILD_DATE=${{ steps.assemble.outputs.build_date }}
-          push: true
-          tags: |
-            ${{ steps.docker-image-name.outputs.dockerimagename }}:${{ steps.assemble.outputs.dockertag }}-amd64
-      
-      - name: build and push the combined manifest for linux/arm64
-        if: ${{ inputs.with_besu_fleet_plugin_debug }}
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 #v6.18.0
-        env:
-          DOCKER_BUILD_SUMMARY: false
-        with:
-          context: linea-besu-package/linea-besu/.
-          platforms: linux/arm64
-          provenance: false
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
-          build-args: |
-            VERSION=${{ steps.assemble.outputs.dockertag }}-arm64
-            VCS_REF=${{ github.sha }}
-            BUILD_DATE=${{ steps.assemble.outputs.build_date }}
-          push: true
-          tags: |
-            ${{ steps.docker-image-name.outputs.dockerimagename }}:${{ steps.assemble.outputs.dockertag }}-arm64
 
       ### update the release notes with docker hashes
       - name: create the release notes and then the release
         id: release_create_artifacts
         run: |
           cd release
-          MANIFEST=$(docker manifest inspect ${{ steps.docker-image-name.outputs.dockerimagename }}:${{ steps.assemble.outputs.dockertag }})
+          MANIFEST=$(docker manifest inspect consensys/linea-besu-package:${{ steps.assemble.outputs.dockertag }})
           if [ $? -eq 0 ]; then
             echo "### Docker Image Details" >> output.md
             echo "" >> output.md
             echo "To pull the image, use the following command:" >> output.md
             echo "\`\`\`" >> output.md
-            echo "docker pull ${{ steps.docker-image-name.outputs.dockerimagename }}:${{ steps.assemble.outputs.dockertag }}" >> output.md
+            echo "docker pull consensys/linea-besu-package:${{ steps.assemble.outputs.dockertag }}" >> output.md
             echo "\`\`\`" >> output.md
+            if [[ "${{ inputs.with_besu_fleet_plugin }}" == "true" ]]; then
+              echo "To pull the image with Besu fleet plugin, use the following command:" >> output.md
+              echo "\`\`\`" >> output.md
+              echo "docker pull consensys/linea-besu-package-fleet:${{ steps.assemble.outputs.dockertag }}" >> output.md
+              echo "\`\`\`" >> output.md
+            fi
             echo "" >> output.md
             echo "| Digest | OS | Architecture |" >> output.md
             echo "|--------|----|--------------|" >> output.md
             echo "$MANIFEST" | jq -r '.manifests[] | select(.platform.architecture != "unknown" and .platform.os != "unknown") | "| \(.digest) | \(.platform.os) | \(.platform.architecture) |"' >> output.md
           else
-            echo "Docker image ${{ steps.docker-image-name.outputs.dockerimagename }}:${{ steps.assemble.outputs.dockertag }} does not exist on dockerhub"
+            echo "Docker image consensys/linea-besu-package:${{ steps.assemble.outputs.dockertag }} does not exist on dockerhub"
             exit 1
           fi
 
