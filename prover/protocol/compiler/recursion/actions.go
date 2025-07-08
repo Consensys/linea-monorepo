@@ -43,6 +43,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 		committedMatrices []vCom.EncodedMatrix
 		sisHashes         [][]field.Element
 		trees             []*smt.Tree
+		mimcHashes        [][]field.Element
 		lastRound         = run.Spec.QueriesParams.Round(pcs.Query.QueryID)
 		pubs              = []field.Element{}
 	)
@@ -53,16 +54,31 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 			committedMatrix, _ = run.State.TryGet(pcs.VortexProverStateName(round))
 			sisHash, _         = run.State.TryGet(pcs.SisHashName(round))
 			tree, _            = run.State.TryGet(pcs.MerkleTreeName(round))
+			mimcHash, _        = run.State.TryGet(pcs.MIMCHashName(round))
 		)
 
 		if committedMatrix != nil {
 			committedMatrices = append(committedMatrices, committedMatrix.(vCom.EncodedMatrix))
-			sisHashes = append(sisHashes, sisHash.([]field.Element))
-			trees = append(trees, tree.(*smt.Tree))
 		} else {
 			committedMatrices = append(committedMatrices, nil)
+		}
+
+		if sisHash != nil {
+			sisHashes = append(sisHashes, sisHash.([]field.Element))
+		} else {
 			sisHashes = append(sisHashes, nil)
+		}
+
+		if tree != nil {
+			trees = append(trees, tree.(*smt.Tree))
+		} else {
 			trees = append(trees, nil)
+		}
+
+		if mimcHash != nil {
+			mimcHashes = append(mimcHashes, mimcHash.([]field.Element))
+		} else {
+			mimcHashes = append(mimcHashes, nil)
 		}
 	}
 
@@ -74,6 +90,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 		Proof:             run.ExtractProof(),
 		CommittedMatrices: committedMatrices,
 		SisHashes:         sisHashes,
+		MimcHashes:        mimcHashes,
 		Trees:             trees,
 		FinalFS:           run.FS.State()[0],
 		Pub:               pubs,
