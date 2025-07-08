@@ -9,7 +9,7 @@ export function middleware(request: NextRequest) {
 
   const localUrls =
     process.env.NEXT_PUBLIC_ENVIRONMENT === "local"
-      ? "'unsafe-inline' http://127.0.0.1:8445 http://127.0.0.1:9045"
+      ? "'unsafe-inline' http://127.0.0.1:8445 http://localhost:8445 http://127.0.0.1:9045 http://localhost:9045"
       : "";
 
   // Metamask fails on Firefox without 'unsafe-inline' https://github.com/MetaMask/metamask-extension/issues/3133
