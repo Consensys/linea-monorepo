@@ -224,6 +224,16 @@ jobs:
             consensys/linea-besu-package:${{ steps.assemble.outputs.dockertag }}
             ${{ github.ref == 'refs/heads/main' && 'consensys/linea-besu-package:develop' || '' }}
             ${{ github.event_name == 'workflow_dispatch' && 'consensys/linea-besu-package:latest' || '' }}
+      
+      - name: get versions via dotenv
+        id: dotenv
+        uses: falti/dotenv-action@v1
+        with:
+          path: linea-besu-package/versions.env
+          mode: development
+          keys-case: lower
+          log-variables: true
+          load-mode: strict
 
       ### update the release notes with docker hashes
       - name: create the release notes and then the release
@@ -232,8 +242,8 @@ jobs:
           mkdir release && cd release
           tar -czvf linea-besu-package-${{ steps.assemble.outputs.dockertag }}.tar.gz ../linea-besu-package/linea-besu/
           echo "# Release Artifact: Linea Besu Package" > output.md
-          echo "**Name:** linea-besu-package-${{ steps.dockertag.outputs.dockertag }}.tar.gz" >> output.md
-          echo "**SHA256:** $(sha256sum linea-besu-package-${{ steps.dockertag.outputs.dockertag }}.tar.gz | awk '{ print $1 }' )" >> output.md
+          echo "**Name:** linea-besu-package-${{ steps.assemble.outputs.dockertag}}.tar.gz" >> output.md
+          echo "**SHA256:** $(sha256sum linea-besu-package-${{ steps.assemble.outputs.dockertag}}.tar.gz | awk '{ print $1 }' )" >> output.md
           echo "**From:** [${{ github.ref_name }} (${{ github.event_name }})](https://github.com/Consensys/linea-monorepo/actions/runs/${{ github.run_id }})" >> output.md
           echo "" >> output.md
 
