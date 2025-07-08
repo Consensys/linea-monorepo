@@ -49,7 +49,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           node-version: 20.17.0
-          pnpm-install-options: '--frozen-lockfile --prefer-offline'
+          pnpm-install-options: '-F bridge-ui --frozen-lockfile --prefer-offline'
 
       - name: Install Playwright
         run: pnpm dlx playwright@1.53.2 install --with-deps chromium
