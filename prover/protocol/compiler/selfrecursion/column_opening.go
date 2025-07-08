@@ -396,13 +396,27 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			}
 		}
 
-		// And computes the linear combination
-		ctx.Columns.ACollapsed = expr_handle.RandLinCombCol(
-			ctx.Comp,
-			collapsePowT,
-			nonNilAh,
-			ctx.aCollapsedName(),
-		)
+		// If there is only a single SIS round, then there is no need for
+		// computing an additional linear-combination column. We can simply
+		// return the single column. If we were using the random linear
+		// combination in this case, then the randomness would be factored out
+		// of the linear combination expression and the resulting column would
+		// be associated with the round "0" and not as a precomputed column.
+		// This would introduces an entire round for just one column and has
+		// noticeable effects on the performance of the protocol.
+		if len(nonNilAh) > 1 {
+			// And computes the linear combination
+			ctx.Columns.ACollapsed = expr_handle.RandLinCombCol(
+				ctx.Comp,
+				collapsePowT,
+				nonNilAh,
+				ctx.aCollapsedName(),
+			)
+		}
+
+		if len(nonNilAh) == 1 {
+			ctx.Columns.ACollapsed = nonNilAh[0]
+		}
 
 		// Declare Edual
 		ctx.Columns.Edual = ctx.Comp.InsertCommit(
