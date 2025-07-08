@@ -45,7 +45,7 @@ describe("General", () => {
   }) => {
     await clickNativeBridgeButton();
     await clickFirstVisitModalConfirmButton();
-    await connectMetamaskToDapp("Account 7");
+    await connectMetamaskToDapp("Account 4");
   });
 
   test("should be able to load the transaction history", async ({
@@ -55,7 +55,7 @@ describe("General", () => {
     openNativeBridgeTransactionHistory,
     clickFirstVisitModalConfirmButton,
   }) => {
-    await connectMetamaskToDapp("Account 7");
+    await connectMetamaskToDapp("Account 4");
     await clickNativeBridgeButton();
     await clickFirstVisitModalConfirmButton();
     await openNativeBridgeTransactionHistory();
@@ -74,7 +74,7 @@ describe("General", () => {
     clickFirstVisitModalConfirmButton,
   }) => {
     test.setTimeout(60_000);
-    await connectMetamaskToDapp("Account 7");
+    await connectMetamaskToDapp("Account 4");
     await clickNativeBridgeButton();
     await clickFirstVisitModalConfirmButton();
 

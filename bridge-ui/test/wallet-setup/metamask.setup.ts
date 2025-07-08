@@ -1,4 +1,5 @@
 import {
+  L1_ACCOUNT_PRIVATE_KEY,
   L2_ACCOUNT_PRIVATE_KEY,
   LOCAL_L1_NETWORK,
   LOCAL_L2_NETWORK,
@@ -29,14 +30,13 @@ export default defineWalletSetup(METAMASK_PASSWORD, async (context, walletPage) 
 
   await metamask.switchNetwork("Local L1 network", true);
 
-  // We need to use the Account 7 to not conflict with accounts used by the local docker stack
-  for (let i = 2; i < 8; i++) {
-    await metamask.addNewAccount(`Account ${i}`);
-  }
+  // Importing the L1 account
+  // Metamask name: Account 4
+  await metamask.importWalletFromPrivateKey(L1_ACCOUNT_PRIVATE_KEY);
 
   // Importing the L2 account
-  // Metamask name: Account 8
+  // Metamask name: Account 5
   await metamask.importWalletFromPrivateKey(L2_ACCOUNT_PRIVATE_KEY);
 
-  await metamask.switchAccount("Account 7");
+  await metamask.switchAccount("Account 4");
 });

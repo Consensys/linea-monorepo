@@ -40,7 +40,7 @@ describe("L2 > L1 via Native Bridge", () => {
     }) => {
       test.setTimeout(60_000);
 
-      await connectMetamaskToDapp("Account 8"); // Connect to L2 account
+      await connectMetamaskToDapp("Account 5"); // Connect to L2 account
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -64,7 +64,7 @@ describe("L2 > L1 via Native Bridge", () => {
     }) => {
       test.setTimeout(60_000);
 
-      await connectMetamaskToDapp("Account 8"); // Connect to L2 account
+      await connectMetamaskToDapp("Account 5"); // Connect to L2 account
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -96,7 +96,7 @@ describe("L2 > L1 via Native Bridge", () => {
       swapChain,
     }) => {
       // Setup testnet UI
-      await connectMetamaskToDapp("Account 8"); // Connect to L2 account
+      await connectMetamaskToDapp("Account 5"); // Connect to L2 account
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -134,7 +134,7 @@ describe("L2 > L1 via Native Bridge", () => {
       doTokenApprovalIfNeeded,
     }) => {
       // Setup testnet UI
-      await connectMetamaskToDapp("Account 8"); // Connect to L2 account
+      await connectMetamaskToDapp("Account 5"); // Connect to L2 account
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -169,7 +169,7 @@ describe("L2 > L1 via Native Bridge", () => {
       waitForTxListUpdateForClaimTx,
       clickFirstVisitModalConfirmButton,
     }) => {
-      await connectMetamaskToDapp("Account 8"); // Connect to L2 account
+      await connectMetamaskToDapp("Account 5"); // Connect to L2 account
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 

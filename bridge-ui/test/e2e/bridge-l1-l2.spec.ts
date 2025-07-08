@@ -46,7 +46,7 @@ describe("L1 > L2 via Native Bridge", () => {
     }) => {
       test.setTimeout(60_000);
 
-      await connectMetamaskToDapp("Account 7");
+      await connectMetamaskToDapp("Account 4");
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -80,7 +80,7 @@ describe("L1 > L2 via Native Bridge", () => {
     }) => {
       test.setTimeout(60_000);
 
-      await connectMetamaskToDapp("Account 7");
+      await connectMetamaskToDapp("Account 4");
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -109,7 +109,7 @@ describe("L1 > L2 via Native Bridge", () => {
       clickFirstVisitModalConfirmButton,
     }) => {
       // Setup testnet UI
-      await connectMetamaskToDapp("Account 7");
+      await connectMetamaskToDapp("Account 4");
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -139,7 +139,7 @@ describe("L1 > L2 via Native Bridge", () => {
       doTokenApprovalIfNeeded,
     }) => {
       // Setup testnet UI
-      await connectMetamaskToDapp("Account 7");
+      await connectMetamaskToDapp("Account 4");
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -171,7 +171,7 @@ describe("L1 > L2 via Native Bridge", () => {
       clickFirstVisitModalConfirmButton,
     }) => {
       // Setup testnet UI
-      await connectMetamaskToDapp("Account 7");
+      await connectMetamaskToDapp("Account 4");
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 

@@ -152,7 +152,7 @@ export const test = metaMaskFixtures(setup).extend<{
       const metamaskBtnInDropdownList = page.getByRole("button").filter({ hasText: "MetaMask" }).first();
       await metamaskBtnInDropdownList.click();
 
-      if (account !== "Account 7") {
+      if (account !== "Account 4") {
         // Switch to the specified account (used for L2 to L1 tests)
         await metamask.switchAccount(account);
       }
