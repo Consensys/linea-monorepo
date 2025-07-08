@@ -45,7 +45,13 @@ func TestLookup(t *testing.T) {
 			globalcs.Compile,
 			univariates.Naturalize,
 			mpts.Compile(),
-			vortex.Compile(2, vortex.ForceNumOpenedColumns(4), vortex.WithSISParams(&ringsis.StdParams), vortex.PremarkAsSelfRecursed()),
+			vortex.Compile(
+				2,
+				vortex.ForceNumOpenedColumns(4),
+				vortex.WithSISParams(&ringsis.StdParams),
+				vortex.PremarkAsSelfRecursed(),
+				vortex.WithOptionalSISHashingThreshold(64),
+			),
 		},
 	}
 
