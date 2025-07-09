@@ -2,6 +2,7 @@ package statemanager
 
 import (
 	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -129,6 +130,43 @@ func acp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 		ExistsFirstInBlock:  constantZero,
 		ExistsFinalInBlock:  constantZero,
 	}
+
+	for i := range common.NbLimbEthAddress {
+		res.Address[i] = comp.Columns.GetHandle(ifaces.ColIDf("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER_%v", i))
+	}
+
+	for i := range common.NbLimbU32 {
+		res.AddressHI[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_ADDRESS_HI_%v", i))
+		res.DeploymentNumber[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_DEPLOYMENT_NUMBER_%v", i))
+		res.DeploymentNumberInf[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_DEPLOYMENT_NUMBER_%v", i)) // Assuming same as DeploymentNumber
+		res.MinDeplBlock[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_DEPLOYMENT_NUMBER_FIRST_IN_BLOCK_%v", i))
+		res.MaxDeplBlock[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_DEPLOYMENT_NUMBER_FINAL_IN_BLOCK_%v", i))
+	}
+
+	for i := range common.NbLimbU128 {
+		res.AddressLO[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_ADDRESS_LO_%v", i))
+		res.CodeHashHI[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_HASH_HI_%v", i))
+		res.CodeHashLO[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_HASH_LO_%v", i))
+		res.CodeHashHINew[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_HASH_HI_NEW_%v", i))
+		res.CodeHashLONew[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_HASH_LO_NEW_%v", i))
+		res.BalanceOld[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_BALANCE_%v", i))
+		res.BalanceNew[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_BALANCE_NEW_%v", i))
+		res.KeyHI[i] = constantZero
+		res.KeyLO[i] = constantZero
+		res.ValueHICurr[i] = constantZero
+		res.ValueLOCurr[i] = constantZero
+		res.ValueHINext[i] = constantZero
+		res.ValueLONext[i] = constantZero
+	}
+
+	for i := range common.NbLimbU64 {
+		res.Nonce[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_NONCE_%v", i))
+		res.NonceNew[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_NONCE_NEW_%v", i))
+		res.CodeSizeOld[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_SIZE_%v", i))
+		res.CodeSizeNew[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_SIZE_NEW_%v", i))
+		res.BlockNumber[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_REL_BLK_NUM_%v", i))
+	}
+
 	return res
 }
 
@@ -205,6 +243,43 @@ func scp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 		ExistsFirstInBlock:  comp.Columns.GetHandle("hub.scp_EXISTS_FIRST_IN_BLOCK"),
 		ExistsFinalInBlock:  comp.Columns.GetHandle("hub.scp_EXISTS_FINAL_IN_BLOCK"),
 	}
+
+	for i := range common.NbLimbEthAddress {
+		res.Address[i] = comp.Columns.GetHandle(ifaces.ColIDf("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER_%v", i))
+	}
+
+	for i := range common.NbLimbU32 {
+		res.AddressHI[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_ADDRESS_HI_%v", i))
+		res.DeploymentNumber[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_DEPLOYMENT_NUMBER_%v", i))
+		res.DeploymentNumberInf[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_DEPLOYMENT_NUMBER_%v", i)) // Assuming same as DeploymentNumber
+		res.MinDeplBlock[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_DEPLOYMENT_NUMBER_FIRST_IN_BLOCK_%v", i))
+		res.MaxDeplBlock[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_DEPLOYMENT_NUMBER_FINAL_IN_BLOCK_%v", i))
+	}
+
+	for i := range common.NbLimbU128 {
+		res.AddressLO[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_ADDRESS_LO_%v", i))
+		res.CodeHashHI[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_HASH_HI_%v", i))
+		res.CodeHashLO[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_HASH_LO_%v", i))
+		res.CodeHashHINew[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_HASH_HI_NEW_%v", i))
+		res.CodeHashLONew[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_HASH_LO_NEW_%v", i))
+		res.BalanceOld[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_BALANCE_%v", i))
+		res.BalanceNew[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_BALANCE_NEW_%v", i))
+		res.KeyHI[i] = constantZero
+		res.KeyLO[i] = constantZero
+		res.ValueHICurr[i] = constantZero
+		res.ValueLOCurr[i] = constantZero
+		res.ValueHINext[i] = constantZero
+		res.ValueLONext[i] = constantZero
+	}
+
+	for i := range common.NbLimbU64 {
+		res.Nonce[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_NONCE_%v", i))
+		res.NonceNew[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_NONCE_NEW_%v", i))
+		res.CodeSizeOld[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_SIZE_%v", i))
+		res.CodeSizeNew[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_SIZE_NEW_%v", i))
+		res.BlockNumber[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_REL_BLK_NUM_%v", i))
+	}
+
 	return res
 }
 
