@@ -97,8 +97,8 @@ public abstract class MxpCall implements TraceSubFragment {
    * @return CancunMxpCall instance corresponding to the Mxp scenario
    */
   public static CancunMxpCall getCancunMxpCall(Hub hub) {
-    final OpCode opCode = hub.opCode();
-    if (opCode == OpCode.MSIZE) {
+    final OpCodeData opCodeData = hub.currentFrame().opCodeData();
+    if (opCodeData.isMSize()) {
       return new CancunMSizeMxpCall(hub);
     }
     EWord[] sizesAndOffsets = getSizesAndOffsets(hub.messageFrame());
@@ -112,7 +112,7 @@ public abstract class MxpCall implements TraceSubFragment {
     if (cancunNotMSizeNorTrivialMxpCall.mxpx) {
       return new CancunMxpxMxpCall(hub, cancunNotMSizeNorTrivialMxpCall.mxpx);
     } else {
-      if (isWordPricingOpcode(opCode)) {
+      if (opCodeData.isWordPricing()) {
         return new CancunStateUpdateWordPricingMxpCall(hub);
       }
       return new CancunStateUpdateBytePricingMxpCall(hub);

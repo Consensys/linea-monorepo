@@ -124,11 +124,56 @@ public record OpCodeData(
     return instructionFamily == INVALID;
   }
 
-  public boolean isMxp() {
-    return this.billing().type() != MxpType.NONE;
-  }
-
   public int numberOfStackRows() {
     return stackSettings.twoLineInstruction() ? 2 : 1;
+  }
+
+  public boolean isMSize() {
+    return mnemonic == OpCode.MSIZE;
+  }
+
+  public boolean isFixedSize32() {
+    return mnemonic == OpCode.MLOAD || mnemonic == OpCode.MSTORE;
+  }
+
+  public boolean isFixedSize1() {
+    return mnemonic == OpCode.MSTORE8;
+  }
+
+  public boolean isReturn() {
+    return mnemonic == OpCode.RETURN;
+  }
+
+  public boolean isMCopy() {
+    return instructionFamily == MCOPY;
+  }
+
+  public boolean isSingleOffset() {
+    return mnemonic == OpCode.MLOAD
+        || mnemonic == OpCode.MSTORE
+        || mnemonic == OpCode.MSTORE8
+        || mnemonic == OpCode.REVERT
+        || isReturn()
+        || isLog()
+        || mnemonic == OpCode.SHA3
+        || isCopy()
+        || isCreate();
+  }
+
+  public boolean isDoubleOffset() {
+    return isMCopy() || isCall();
+  }
+
+  public boolean isWordPricing() {
+    return billing().billingRate() == BillingRate.BY_WORD;
+  }
+
+  public boolean isBytePricing() {
+    return billing().billingRate() == BillingRate.BY_BYTE;
+  }
+
+  // Used on from Cancun and on, before ixMxp is determined by checking if there is a type
+  public boolean isMxp() {
+    return isMSize() || isSingleOffset() || isDoubleOffset();
   }
 }

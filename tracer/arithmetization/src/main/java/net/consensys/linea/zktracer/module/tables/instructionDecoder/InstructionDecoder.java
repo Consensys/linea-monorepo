@@ -61,6 +61,8 @@ public abstract class InstructionDecoder implements Module {
 
   protected abstract void traceMcopyFamily(OpCodeData op, Trace.Instdecoder trace);
 
+  protected abstract void traceMxpFlag(OpCodeData op, Trace.Instdecoder trace);
+
   protected abstract void traceMxpScenario(OpCodeData op, Trace.Instdecoder trace);
 
   private static void traceStackSettings(OpCodeData op, Trace.Instdecoder trace) {
@@ -87,9 +89,8 @@ public abstract class InstructionDecoder implements Module {
             UnsignedByte.of(
                 op.billing().billingRate() == BillingRate.BY_BYTE
                     ? op.billing().perUnit().cost()
-                    : 0))
-        .mxpFlag(op.isMxp());
-
+                    : 0));
+    traceMxpFlag(op, trace);
     traceMxpScenario(op, trace);
   }
 

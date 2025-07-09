@@ -17,15 +17,12 @@ package net.consensys.linea.zktracer.opcode.gas;
 
 import java.util.Objects;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-
 /**
  * An ancillary class to compute gas billing of some instructions.
  *
  * @param perUnit gas cost of a unit
  * @param billingRate the unit used to bill gas
  */
-@JsonDeserialize(using = BillingDeserializer.class)
 public record Billing(GasConstants perUnit, BillingRate billingRate, MxpType type) {
   public static final Billing DEFAULT =
       new Billing(GasConstants.G_ZERO, BillingRate.NONE, MxpType.NONE);

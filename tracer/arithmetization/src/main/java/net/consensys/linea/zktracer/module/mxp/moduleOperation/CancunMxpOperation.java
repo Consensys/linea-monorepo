@@ -23,6 +23,7 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
 import net.consensys.linea.zktracer.module.mxp.moduleCall.*;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 
@@ -58,22 +59,22 @@ public class CancunMxpOperation extends MxpOperation {
   }
 
   final void traceDecoder(int stamp, Trace.Mxp trace) {
-    OpCode opCode = cancunMxpCall.getOpCodeData().mnemonic();
+    OpCodeData opCodeData = cancunMxpCall.getOpCodeData();
 
     trace
         .mxpStamp(stamp)
         .cn(this.getContextNumber())
         .decoder(true)
-        .pDecoderInst(UnsignedByte.of(opCode.byteValue()))
-        .pDecoderIsMsize(opCode == OpCode.MSIZE)
-        .pDecoderIsReturn(opCode == OpCode.RETURN)
-        .pDecoderIsMcopy(opCode == OpCode.MCOPY)
-        .pDecoderIsFixedSize32(opCode == OpCode.MLOAD || opCode == OpCode.MSTORE)
-        .pDecoderIsFixedSize1(opCode == OpCode.MSTORE8)
-        .pDecoderIsSingleMaxOffset(isSingleOffsetOpcode(opCode))
-        .pDecoderIsDoubleMaxOffset(isDoubleOffsetOpcode(opCode))
-        .pDecoderIsWordPricing(isWordPricingOpcode(opCode))
-        .pDecoderIsBytePricing(isBytePricingOpcode(opCode))
+        .pDecoderInst(UnsignedByte.of(opCodeData.mnemonic().byteValue()))
+        .pDecoderIsMsize(opCodeData.isMSize())
+        .pDecoderIsReturn(opCodeData.isReturn())
+        .pDecoderIsMcopy(opCodeData.isMCopy())
+        .pDecoderIsFixedSize32(opCodeData.isFixedSize32())
+        .pDecoderIsFixedSize1(opCodeData.isFixedSize1())
+        .pDecoderIsSingleMaxOffset(opCodeData.isSingleOffset())
+        .pDecoderIsDoubleMaxOffset(opCodeData.isDoubleOffset())
+        .pDecoderIsWordPricing(opCodeData.isWordPricing())
+        .pDecoderIsBytePricing(opCodeData.isBytePricing())
         .pDecoderGword((UnsignedByte) cancunMxpCall.gWord)
         .pDecoderGbyte((UnsignedByte) cancunMxpCall.gByte)
         .fillAndValidateRow();
