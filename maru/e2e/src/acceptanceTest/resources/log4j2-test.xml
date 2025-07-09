@@ -6,10 +6,10 @@
     </Console>
   </Appenders>
   <Loggers>
-    <Logger name="maru" level="debug" additivity="false">
+    <Logger name="maru" level="INFO" additivity="false">
       <AppenderRef ref="console"/>
     </Logger>
-    <Logger name="org.hyperledger.besu" level="DEBUG"/>
+    <Logger name="org.hyperledger.besu" level="INFO"/>
     <Root level="INFO" additivity="false">
       <appender-ref ref="console"/>
     </Root>

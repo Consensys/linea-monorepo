@@ -82,5 +82,5 @@ jar {
 
 test {
   // To make room for Besu threads
-  systemProperties["junit.jupiter.execution.parallel.config.dynamic.factor"] = 0.7
+  systemProperties["junit.jupiter.execution.parallel.config.dynamic.factor"] = 0.5
 }

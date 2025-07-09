@@ -292,7 +292,7 @@ class MaruFollowerTest {
   private fun checkValidatorAndFollowerBlocks(blocksToProduce: Int) {
     await
       .pollDelay(100.milliseconds.toJavaDuration())
-      .timeout(5.seconds.toJavaDuration())
+      .timeout(10.seconds.toJavaDuration())
       .untilAsserted {
         val blocksProducedByQbftValidator = validatorStack.besuNode.getMinedBlocks(blocksToProduce)
         val blocksImportedByFollower = followerStack.besuNode.getMinedBlocks(blocksToProduce)

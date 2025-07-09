@@ -6,7 +6,7 @@
         </Console>
     </Appenders>
     <Loggers>
-        <Root level="DEBUG" additivity="false">
+        <Root level="INFO" additivity="false">
             <appender-ref ref="console"/>
         </Root>
     </Loggers>
