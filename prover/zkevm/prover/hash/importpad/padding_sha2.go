@@ -248,7 +248,7 @@ func (ipad *Importation) newSha2Padder(comp *wizard.CompiledIOP) padder {
 		Result:        pad.AccInsertedBits,
 		Mask:          sym.Mul(isInserted, isInsertedPrev), // All inserted rows, except the first one
 		NoBoundCancel: true,
-	})
+	}, true)
 
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%v_SHA2_FIRST_PADDING_VALUE", ipad.Inputs.Name),
