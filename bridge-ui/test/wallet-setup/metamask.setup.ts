@@ -18,6 +18,13 @@ export default defineWalletSetup(METAMASK_PASSWORD, async (context, walletPage) 
   const metamask = new MetaMask(context, walletPage, METAMASK_PASSWORD, extensionId);
   await metamask.importWallet(METAMASK_SEED_PHRASE);
 
+  // Importing the L1 account
+  // Metamask name: Account 2
+  await metamask.importWalletFromPrivateKey(L1_ACCOUNT_PRIVATE_KEY);
+  // Importing the L2 account
+  // Metamask name: Account 3
+  await metamask.importWalletFromPrivateKey(L2_ACCOUNT_PRIVATE_KEY);
+
   await metamask.openSettings();
 
   const SidebarMenus = metamask.homePage.selectors.settings.SettingsSidebarMenus;
@@ -30,13 +37,5 @@ export default defineWalletSetup(METAMASK_PASSWORD, async (context, walletPage) 
 
   await metamask.switchNetwork("Local L1 network", true);
 
-  // Importing the L1 account
-  // Metamask name: Account 4
-  await metamask.importWalletFromPrivateKey(L1_ACCOUNT_PRIVATE_KEY);
-
-  // Importing the L2 account
-  // Metamask name: Account 5
-  await metamask.importWalletFromPrivateKey(L2_ACCOUNT_PRIVATE_KEY);
-
-  await metamask.switchAccount("Account 4");
+  await metamask.switchAccount("Account 2");
 });

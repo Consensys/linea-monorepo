@@ -2,7 +2,7 @@ import { metaMaskFixtures, getExtensionId } from "@synthetixio/synpress/playwrig
 import { Locator, Page } from "@playwright/test";
 import setup from "./wallet-setup/metamask.setup";
 import { getNativeBridgeTransactionsCountImpl, selectTokenAndWaitForBalance } from "./utils";
-import { LOCAL_L2_NETWORK, PAGE_TIMEOUT, POLLING_INTERVAL } from "./constants";
+import { L1_ACCOUNT_METAMASK_NAME, LOCAL_L2_NETWORK, PAGE_TIMEOUT, POLLING_INTERVAL } from "./constants";
 
 /**
  * NB: There is an issue with Synpress `metaMaskFixtures` extension functions wherein extension functions
@@ -152,7 +152,7 @@ export const test = metaMaskFixtures(setup).extend<{
       const metamaskBtnInDropdownList = page.getByRole("button").filter({ hasText: "MetaMask" }).first();
       await metamaskBtnInDropdownList.click();
 
-      if (account !== "Account 4") {
+      if (account !== L1_ACCOUNT_METAMASK_NAME) {
         // Switch to the specified account (used for L2 to L1 tests)
         await metamask.switchAccount(account);
       }

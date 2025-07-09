@@ -1,7 +1,30 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig, devices, ReporterDescription } from "@playwright/test";
 import "dotenv/config";
 
 const isUnit = process.env.UNIT === "true";
+
+type LiteralUnion<T extends U, U = string> = T | (U & { zz_IGNORE_ME?: never });
+
+function getReporter(opts: {
+  isUnitTest: boolean;
+  isCI: boolean;
+}):
+  | LiteralUnion<"html" | "list" | "dot" | "line" | "github" | "json" | "junit" | "null", string>
+  | ReporterDescription[]
+  | undefined {
+  const { isUnitTest, isCI } = opts;
+
+  if (isUnitTest) {
+    return undefined;
+  }
+  if (isCI) {
+    return [
+      ["html", { open: "never", outputFolder: `playwright-report-${process.env.HEADLESS ? "headless" : "headful"}` }],
+      ["list"],
+    ];
+  }
+  return [["html"], ["list"]];
+}
 
 export default defineConfig({
   testDir: ".",
@@ -12,17 +35,7 @@ export default defineConfig({
   maxFailures: process.env.CI ? 1 : 0,
   // To consider - cannot really run E2E tests involving blockchain tx in parallel. There is a high risk of reusing the same tx nonce -> leading to dropped transactions
   workers: process.env.CI ? 1 : undefined,
-  reporter: isUnit
-    ? undefined
-    : process.env.CI
-      ? [
-          [
-            "html",
-            { open: "never", outputFolder: `playwright-report-${process.env.HEADLESS ? "headless" : "headful"}` },
-          ],
-          ["list"],
-        ]
-      : [["html"], ["list"]],
+  reporter: getReporter({ isUnitTest: isUnit, isCI: !!process.env.CI }),
   use: {
     baseURL: "http://localhost:3000",
     trace: process.env.CI ? "on" : "retain-on-failure",

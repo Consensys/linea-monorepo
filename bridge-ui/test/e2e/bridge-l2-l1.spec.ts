@@ -1,6 +1,6 @@
 import { testWithSynpress } from "@synthetixio/synpress";
 import { test as advancedFixtures } from "../advancedFixtures";
-import { WEI_AMOUNT, ETH_SYMBOL, ERC20_SYMBOL, ERC20_AMOUNT } from "../constants";
+import { WEI_AMOUNT, ETH_SYMBOL, ERC20_SYMBOL, ERC20_AMOUNT, L2_ACCOUNT_METAMASK_NAME } from "../constants";
 
 const test = testWithSynpress(advancedFixtures);
 
@@ -40,7 +40,7 @@ describe("L2 > L1 via Native Bridge", () => {
     }) => {
       test.setTimeout(60_000);
 
-      await connectMetamaskToDapp("Account 5"); // Connect to L2 account
+      await connectMetamaskToDapp(L2_ACCOUNT_METAMASK_NAME); // Connect to L2 account
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -64,7 +64,7 @@ describe("L2 > L1 via Native Bridge", () => {
     }) => {
       test.setTimeout(60_000);
 
-      await connectMetamaskToDapp("Account 5"); // Connect to L2 account
+      await connectMetamaskToDapp(L2_ACCOUNT_METAMASK_NAME); // Connect to L2 account
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -96,7 +96,7 @@ describe("L2 > L1 via Native Bridge", () => {
       swapChain,
     }) => {
       // Setup testnet UI
-      await connectMetamaskToDapp("Account 5"); // Connect to L2 account
+      await connectMetamaskToDapp(L2_ACCOUNT_METAMASK_NAME); // Connect to L2 account
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -134,7 +134,7 @@ describe("L2 > L1 via Native Bridge", () => {
       doTokenApprovalIfNeeded,
     }) => {
       // Setup testnet UI
-      await connectMetamaskToDapp("Account 5"); // Connect to L2 account
+      await connectMetamaskToDapp(L2_ACCOUNT_METAMASK_NAME); // Connect to L2 account
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -169,7 +169,7 @@ describe("L2 > L1 via Native Bridge", () => {
       waitForTxListUpdateForClaimTx,
       clickFirstVisitModalConfirmButton,
     }) => {
-      await connectMetamaskToDapp("Account 5"); // Connect to L2 account
+      await connectMetamaskToDapp(L2_ACCOUNT_METAMASK_NAME); // Connect to L2 account
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 

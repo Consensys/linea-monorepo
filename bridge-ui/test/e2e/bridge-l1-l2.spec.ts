@@ -8,6 +8,7 @@ import {
   LOCAL_L2_NETWORK,
   ERC20_SYMBOL,
   ERC20_AMOUNT,
+  L1_ACCOUNT_METAMASK_NAME,
 } from "../constants";
 
 const test = testWithSynpress(advancedFixtures);
@@ -46,7 +47,7 @@ describe("L1 > L2 via Native Bridge", () => {
     }) => {
       test.setTimeout(60_000);
 
-      await connectMetamaskToDapp("Account 4");
+      await connectMetamaskToDapp(L1_ACCOUNT_METAMASK_NAME);
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -80,7 +81,7 @@ describe("L1 > L2 via Native Bridge", () => {
     }) => {
       test.setTimeout(60_000);
 
-      await connectMetamaskToDapp("Account 4");
+      await connectMetamaskToDapp(L1_ACCOUNT_METAMASK_NAME);
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -109,7 +110,7 @@ describe("L1 > L2 via Native Bridge", () => {
       clickFirstVisitModalConfirmButton,
     }) => {
       // Setup testnet UI
-      await connectMetamaskToDapp("Account 4");
+      await connectMetamaskToDapp(L1_ACCOUNT_METAMASK_NAME);
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -139,7 +140,7 @@ describe("L1 > L2 via Native Bridge", () => {
       doTokenApprovalIfNeeded,
     }) => {
       // Setup testnet UI
-      await connectMetamaskToDapp("Account 4");
+      await connectMetamaskToDapp(L1_ACCOUNT_METAMASK_NAME);
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -171,7 +172,7 @@ describe("L1 > L2 via Native Bridge", () => {
       clickFirstVisitModalConfirmButton,
     }) => {
       // Setup testnet UI
-      await connectMetamaskToDapp("Account 4");
+      await connectMetamaskToDapp(L1_ACCOUNT_METAMASK_NAME);
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 

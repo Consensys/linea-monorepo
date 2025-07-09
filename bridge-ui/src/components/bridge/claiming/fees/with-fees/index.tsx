@@ -4,7 +4,7 @@ import { useState } from "react";
 import GasFees from "../../../modal/gas-fees";
 import { useFees } from "@/hooks";
 import { useConfigStore } from "@/stores";
-import { formatDigit } from "@/utils/format";
+import { useFormattedDigit } from "@/hooks/useFormattedDigit";
 
 type Props = {
   iconPath: string;
@@ -15,6 +15,8 @@ export default function WithFees({ iconPath }: Props) {
   const currency = useConfigStore.useCurrency();
 
   const { total, fees, isLoading } = useFees();
+
+  const formattedFees = useFormattedDigit(total.fees, 18);
 
   if (isLoading) {
     return null;
@@ -31,9 +33,7 @@ export default function WithFees({ iconPath }: Props) {
           }}
         >
           <Image src={iconPath} width={12} height={12} alt="fee-chain-icon" />
-          <p className={styles["estimate-crypto"]}>
-            <span dangerouslySetInnerHTML={{ __html: formatDigit(total.fees) }} /> ETH
-          </p>
+          <p className={styles["estimate-crypto"]}>{formattedFees} ETH</p>
           {total.fiatValue && (
             <p className={styles["estimate-amount"]}>{`(${total.fiatValue.toLocaleString("en-US", {
               style: "currency",

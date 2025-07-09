@@ -1,6 +1,6 @@
 import { testWithSynpress } from "@synthetixio/synpress";
 import { test as advancedFixtures } from "../advancedFixtures";
-import { TEST_URL, WEI_AMOUNT, ETH_SYMBOL, LOCAL_L2_NETWORK } from "../constants";
+import { TEST_URL, WEI_AMOUNT, ETH_SYMBOL, LOCAL_L2_NETWORK, L1_ACCOUNT_METAMASK_NAME } from "../constants";
 
 const test = testWithSynpress(advancedFixtures);
 
@@ -45,7 +45,7 @@ describe("General", () => {
   }) => {
     await clickNativeBridgeButton();
     await clickFirstVisitModalConfirmButton();
-    await connectMetamaskToDapp("Account 4");
+    await connectMetamaskToDapp(L1_ACCOUNT_METAMASK_NAME);
   });
 
   test("should be able to load the transaction history", async ({
@@ -55,7 +55,7 @@ describe("General", () => {
     openNativeBridgeTransactionHistory,
     clickFirstVisitModalConfirmButton,
   }) => {
-    await connectMetamaskToDapp("Account 4");
+    await connectMetamaskToDapp(L1_ACCOUNT_METAMASK_NAME);
     await clickNativeBridgeButton();
     await clickFirstVisitModalConfirmButton();
     await openNativeBridgeTransactionHistory();
@@ -74,7 +74,7 @@ describe("General", () => {
     clickFirstVisitModalConfirmButton,
   }) => {
     test.setTimeout(60_000);
-    await connectMetamaskToDapp("Account 4");
+    await connectMetamaskToDapp(L1_ACCOUNT_METAMASK_NAME);
     await clickNativeBridgeButton();
     await clickFirstVisitModalConfirmButton();
 

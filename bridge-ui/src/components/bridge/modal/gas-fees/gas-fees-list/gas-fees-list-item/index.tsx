@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import styles from "./gas-fees-list-item.module.scss";
 import { CurrencyOption } from "@/stores";
-import { formatDigit } from "@/utils/format";
+import { useFormattedDigit } from "@/hooks/useFormattedDigit";
 
 type Props = {
   name: string;
@@ -11,18 +11,18 @@ type Props = {
 };
 
 export default function GasFeesListItem({ name, fee, fiatValue, currency }: Props) {
+  const formattedFees = useFormattedDigit(fee, 18);
+
   const feeText = useMemo(() => {
-    if (fee === 0n) return "Free";
-    return `${formatDigit(fee)} ETH`;
-  }, [fee]);
+    if (fee === 0n) return <span>Free</span>;
+    return <>{formattedFees} ETH</>;
+  }, [fee, formattedFees]);
 
   return (
     <li className={styles["list-item"]}>
       <span>{name}</span>
       <div className={styles["fee-row"]}>
-        <span className={styles["fee-value"]}>
-          <span dangerouslySetInnerHTML={{ __html: feeText }} />
-        </span>
+        <span className={styles["fee-value"]}>{feeText}</span>
         {fiatValue && (
           <span className={styles["fee-fiat-value"]}>
             {fiatValue.toLocaleString("en-US", {
