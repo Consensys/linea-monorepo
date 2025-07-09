@@ -10,6 +10,7 @@ package maru.testutils.besu
 
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
+import org.hyperledger.besu.datatypes.Hash
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
@@ -44,15 +45,24 @@ class BesuTransactionsHelper {
     return accountTransactions.createTransfer(whaleAccount, recipient, numberOfTransactions.toInt())
   }
 
+  fun BesuNode.sendTransaction(
+    logger: Logger,
+    recipient: Account,
+    amount: Amount,
+  ): Hash {
+    val transfer = this@BesuTransactionsHelper.createTransfer(recipient, amount)
+    val txHash = this.execute(transfer)
+    assertThat(txHash).isNotNull()
+    logger.info("Sending transaction {}", txHash)
+    return txHash
+  }
+
   fun BesuNode.sendTransactionAndAssertExecution(
     logger: Logger,
     recipient: Account,
     amount: Amount,
   ) {
-    val transfer = this@BesuTransactionsHelper.createTransfer(recipient, amount)
-    val txHash = this.execute(transfer)
-    assertThat(txHash).isNotNull()
-    logger.info("Sending transaction {}, transaction data ", txHash)
+    val txHash = sendTransaction(logger, recipient, amount)
     this@BesuTransactionsHelper
       .ethConditions
       .expectSuccessfulTransactionReceipt(
