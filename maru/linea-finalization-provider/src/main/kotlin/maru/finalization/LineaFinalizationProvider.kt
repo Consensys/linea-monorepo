@@ -26,13 +26,31 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 class LineaFinalizationProvider(
   private val lineaContract: LineaRollupSmartContractClientReadOnly,
   private val l2EthApi: EthApiClient,
-  private val pollingUpdateInterval: Duration,
+  pollingUpdateInterval: Duration,
   private val l1HighestBlock: BlockParameter = BlockParameter.Tag.FINALIZED,
 ) : FinalizationProvider {
   private data class BlockHeader(
     val blockNumber: ULong,
     val hash: ByteArray,
-  )
+  ) {
+    override fun equals(other: Any?): Boolean {
+      if (this === other) return true
+      if (javaClass != other?.javaClass) return false
+
+      other as BlockHeader
+
+      if (blockNumber != other.blockNumber) return false
+      if (!hash.contentEquals(other.hash)) return false
+
+      return true
+    }
+
+    override fun hashCode(): Int {
+      var result = blockNumber.hashCode()
+      result = 31 * result + hash.contentHashCode()
+      return result
+    }
+  }
 
   private val log = LogManager.getLogger(LineaFinalizationProvider::class.java)
   private val lastFinalizedBlock: AtomicReference<BlockHeader>
@@ -99,12 +117,12 @@ class LineaFinalizationProvider(
         )
       }
 
-  fun getHighestBlockAvailableUpToBlock(finalizedBlockNumber: ULong): SafeFuture<BlockData<ByteArray>> =
+  private fun getHighestBlockAvailableUpToBlock(finalizedBlockNumber: ULong): SafeFuture<BlockData<ByteArray>> =
     l2EthApi
       .findBlockByNumberWithoutTransactionsData(finalizedBlockNumber.toBlockParameter())
       .thenCompose { block ->
         if (block == null) {
-          // If this node is behind (syncing) won't have the block locally to retrieve it's hash
+          // If this node is behind (syncing) won't have the block locally to retrieve its hash
           // until it catches up, we will default to the lastest available block while it catches up until
           // the finalized block
           l2EthApi

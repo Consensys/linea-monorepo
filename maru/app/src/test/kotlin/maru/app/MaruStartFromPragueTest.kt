@@ -63,7 +63,7 @@ class MaruStartFromPragueTest {
 
   @OptIn(ExperimentalTime::class)
   @Test
-  fun `should start QBFT consensus from pargue fork allowing empty blocks`() {
+  fun `should start QBFT consensus from prague fork allowing empty blocks`() {
     val besuNode = BesuFactory.buildTestBesu()
     cluster.start(besuNode)
     maruNode =
@@ -77,6 +77,7 @@ class MaruStartFromPragueTest {
 
     await
       .atMost(10.seconds.toJavaDuration())
+      .ignoreExceptions()
       .until {
         besuNode.latestBlock().number.toLong() > 5
       }
@@ -84,7 +85,7 @@ class MaruStartFromPragueTest {
 
   @OptIn(ExperimentalTime::class)
   @Test
-  fun `should start QBFT consensus from pargue fork not allowing empty blocks`() {
+  fun `should start QBFT consensus from prague fork not allowing empty blocks`() {
     val besuNode = BesuFactory.buildTestBesu()
     cluster.start(besuNode)
     maruNode =
@@ -107,6 +108,7 @@ class MaruStartFromPragueTest {
     }
 
     await
+      .ignoreExceptions()
       .atMost(10.seconds.toJavaDuration())
       .until {
         besuNode.latestBlock().number.toLong() == totalBlocksToProduce.toLong()
