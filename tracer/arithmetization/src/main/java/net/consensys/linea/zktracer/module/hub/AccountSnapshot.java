@@ -259,6 +259,11 @@ public class AccountSnapshot {
     return this;
   }
 
+  public AccountSnapshot setDeploymentStatus(boolean deploymentStatus) {
+    this.deploymentStatus(deploymentStatus);
+    return this;
+  }
+
   public AccountSnapshot deployByteCode(Bytecode code) {
     checkState(deploymentStatus, "Deployment status should be true before deploying byte code.");
 

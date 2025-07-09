@@ -66,7 +66,6 @@ public class SelfdestructSection extends TraceSection
   AccountSnapshot selfdestructorNew;
   AccountSnapshot recipient;
   AccountSnapshot recipientNew;
-  AccountSnapshot accountWiping;
   AccountSnapshot accountWipingNew;
 
   @Getter boolean selfDestructWasReverted = false;
@@ -183,7 +182,10 @@ public class SelfdestructSection extends TraceSection
     if (selfdestructTargetsItself()) {
       recipient = selfdestructorNew.deepCopy();
     }
-    recipientNew = AccountSnapshot.canonical(hub, recipientAddress);
+    recipientNew =
+        AccountSnapshot.canonical(hub, recipientAddress)
+            .setDeploymentStatus(recipient.deploymentStatus())
+            .code(recipient.code());
 
     final AccountFragment selfdestructorFirstAccountFragment =
         hub.factories()
@@ -244,7 +246,7 @@ public class SelfdestructSection extends TraceSection
       return;
     }
 
-    // beyond this point the self destruct was not reverted
+    // beyond this point the selfdestruct was not reverted
     final Map<EphemeralAccount, Integer> effectiveSelfDestructMap =
         transactionProcessingMetadata.getEffectiveSelfDestructMap();
     final EphemeralAccount ephemeralAccount =
@@ -254,7 +256,7 @@ public class SelfdestructSection extends TraceSection
 
     // This grabs the accounts right after the coinbase and sender got their gas money back
     // in particular this will get the coinbase address post gas reward.
-    accountWiping =
+    final AccountSnapshot accountWiping =
         transactionProcessingMetadata.getDestructedAccountsSnapshot().stream()
             .filter(accountSnapshot -> accountSnapshot.address().equals(selfdestructor.address()))
             .findFirst()
