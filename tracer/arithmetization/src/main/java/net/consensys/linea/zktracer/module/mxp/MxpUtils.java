@@ -24,35 +24,9 @@ import net.consensys.linea.zktracer.types.EWord;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class MxpUtils {
-  public static boolean isSingleOffsetOpcode(OpCode opCode) {
-    return opCode == OpCode.MLOAD
-        || opCode == OpCode.MSTORE
-        || opCode == OpCode.MSTORE8
-        || opCode == OpCode.REVERT
-        || opCode == OpCode.RETURN
-        || opCode.isLog()
-        || opCode == OpCode.SHA3
-        || opCode.isCopy()
-        || opCode.isCreate();
-  }
-
-  public static boolean isDoubleOffsetOpcode(OpCode opCode) {
-    return opCode == OpCode.MCOPY || opCode.isCall();
-  }
 
   public static boolean isWordPricingOpcode(OpCode opCode) {
     return opCode == OpCode.SHA3 || opCode.isCopy() || opCode.isCreate() || opCode == OpCode.MCOPY;
-  }
-
-  public static boolean isBytePricingOpcode(OpCode opCode) {
-    return opCode == OpCode.MSIZE
-        || opCode == OpCode.MLOAD
-        || opCode == OpCode.MSTORE
-        || opCode == OpCode.MSTORE8
-        || opCode == OpCode.REVERT
-        || opCode == OpCode.RETURN
-        || opCode.isLog()
-        || opCode.isCall();
   }
 
   /**

@@ -16,7 +16,6 @@
 package net.consensys.linea.zktracer.module.mxp.moduleCall;
 
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_MEMORY;
-import static net.consensys.linea.zktracer.module.mxp.MxpUtils.isDoubleOffsetOpcode;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
@@ -26,7 +25,6 @@ import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.mxp.MxpExoCall;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
-import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 
 public abstract class CancunStateUpdateMxpCall extends CancunNotMSizeNorTrivialMxpCall {
@@ -37,7 +35,6 @@ public abstract class CancunStateUpdateMxpCall extends CancunNotMSizeNorTrivialM
   }
 
   public void computeStateUpdt(Wcp wcp, Euc euc) {
-    final OpCode opCode = this.opCodeData.mnemonic();
 
     // We compute and assign the computation's result for each row
 
@@ -46,7 +43,7 @@ public abstract class CancunStateUpdateMxpCall extends CancunNotMSizeNorTrivialM
     boolean useParams2 = false; // default value if opcode is single offset
     boolean useParams1 = true;
     // we filter the row i + 7 wcp call by double_offset to prevent unnecessary comparisons
-    if (isDoubleOffsetOpcode(opCode)) {
+    if (this.opCodeData.isDoubleOffset()) {
       final BigInteger max1 =
           this.offset1.toUnsignedBigInteger().add(this.size1.toUnsignedBigInteger());
       final BigInteger max2 =

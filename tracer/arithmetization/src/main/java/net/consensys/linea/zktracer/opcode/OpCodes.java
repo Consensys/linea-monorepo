@@ -22,12 +22,15 @@ import java.util.List;
 import java.util.Optional;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.type.CollectionType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.json.JsonConverter;
+import net.consensys.linea.zktracer.opcode.gas.Billing;
+import net.consensys.linea.zktracer.opcode.gas.BillingDeserializer;
 
 @Slf4j
 /**
@@ -77,19 +80,34 @@ public class OpCodes {
 
   // Load opcodedata from yaml file.
   private static List<OpCodeData> opCodesLocal(Fork fork) throws IOException {
-    final JsonConverter YamlConverter = JsonConverter.builder().enableYaml().build();
+    final JsonConverter yamlConverter = JsonConverter.builder().enableYaml().build();
 
     final String yamlFileName = Fork.toString(fork) + "Opcodes.yml";
 
     final JsonNode rootNode =
-        YamlConverter.getObjectMapper()
+        yamlConverter
+            .getObjectMapper()
             .readTree(OpCodes.class.getClassLoader().getResourceAsStream(yamlFileName))
             .get("opcodes");
 
     final CollectionType typeReference =
         TypeFactory.defaultInstance().constructCollectionType(List.class, OpCodeData.class);
 
-    return YamlConverter.getObjectMapper().treeToValue(rootNode, typeReference);
+    SimpleModule module = new SimpleModule();
+    switch (fork) {
+      case LONDON, PARIS, SHANGHAI -> {
+        // Before Cancun, we deserialize Billing with a type (TYPE_1, TYPE_2, TYPE_3, TYPE_4).
+        module.addDeserializer(Billing.class, new BillingDeserializer(true));
+      }
+      case CANCUN, PRAGUE -> {
+        // From Cancun and on, we deserialize Billing without a type.
+        module.addDeserializer(Billing.class, new BillingDeserializer(false));
+      }
+      default -> throw new IllegalArgumentException("Unsupported fork: " + fork);
+    }
+    yamlConverter.getObjectMapper().registerModule(module);
+
+    return yamlConverter.getObjectMapper().treeToValue(rootNode, typeReference);
   }
 
   /**

@@ -31,6 +31,12 @@ public class LondonInstructionDecoder extends InstructionDecoder {
   }
 
   @Override
+  protected void traceMxpFlag(OpCodeData op, Trace.Instdecoder trace) {
+    // mxp flag is determined with types label in London
+    trace.mxpFlag(op.billing().type() != MxpType.NONE);
+  }
+
+  @Override
   protected void traceMxpScenario(OpCodeData op, Trace.Instdecoder trace) {
     trace
         .mxpType1(op.billing().type() == MxpType.TYPE_1)
