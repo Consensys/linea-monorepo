@@ -16,6 +16,7 @@ import maru.testutils.Checks.getMinedBlocks
 import maru.testutils.MaruFactory
 import maru.testutils.NetworkParticipantStack
 import maru.testutils.besu.BesuTransactionsHelper
+import maru.testutils.besu.ethGetBlockByNumber
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -27,7 +28,6 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurati
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
-import org.web3j.protocol.core.DefaultBlockParameter
 
 class MaruFollowerTest {
   private lateinit var cluster: Cluster
@@ -68,6 +68,10 @@ class MaruFollowerTest {
         )
       }
     followerStack.maruApp.start()
+
+    val validatorGenesis = validatorStack.besuNode.ethGetBlockByNumber("earliest", false)
+    val followerGenesis = followerStack.besuNode.ethGetBlockByNumber("earliest", false)
+    assertThat(validatorGenesis).isEqualTo(followerGenesis)
   }
 
   @AfterEach
@@ -79,26 +83,6 @@ class MaruFollowerTest {
 
   @Test
   fun `Maru follower is able to import blocks`() {
-    val validatorGenesis =
-      validatorStack.besuNode
-        .nodeRequests()
-        .eth()
-        .ethGetBlockByNumber(
-          DefaultBlockParameter.valueOf("earliest"),
-          false,
-        ).send()
-        .block
-    val followerGenesis =
-      followerStack.besuNode
-        .nodeRequests()
-        .eth()
-        .ethGetBlockByNumber(
-          DefaultBlockParameter.valueOf("earliest"),
-          false,
-        ).send()
-        .block
-    assertThat(validatorGenesis).isEqualTo(followerGenesis)
-
     val blocksToProduce = 5
     repeat(blocksToProduce) {
       transactionsHelper.run {
@@ -115,26 +99,6 @@ class MaruFollowerTest {
 
   @Test
   fun `Maru follower is able to import blocks after going down`() {
-    val validatorGenesis =
-      validatorStack.besuNode
-        .nodeRequests()
-        .eth()
-        .ethGetBlockByNumber(
-          DefaultBlockParameter.valueOf("earliest"),
-          false,
-        ).send()
-        .block
-    val followerGenesis =
-      followerStack.besuNode
-        .nodeRequests()
-        .eth()
-        .ethGetBlockByNumber(
-          DefaultBlockParameter.valueOf("earliest"),
-          false,
-        ).send()
-        .block
-    assertThat(validatorGenesis).isEqualTo(followerGenesis)
-
     val blocksToProduce = 5
     repeat(blocksToProduce) {
       transactionsHelper.run {
@@ -175,26 +139,6 @@ class MaruFollowerTest {
 
   @Test
   fun `Maru follower is able to import blocks after Validator stack goes down`() {
-    val validatorGenesis =
-      validatorStack.besuNode
-        .nodeRequests()
-        .eth()
-        .ethGetBlockByNumber(
-          DefaultBlockParameter.valueOf("earliest"),
-          false,
-        ).send()
-        .block
-    val followerGenesis =
-      followerStack.besuNode
-        .nodeRequests()
-        .eth()
-        .ethGetBlockByNumber(
-          DefaultBlockParameter.valueOf("earliest"),
-          false,
-        ).send()
-        .block
-    assertThat(validatorGenesis).isEqualTo(followerGenesis)
-
     val blocksToProduce = 5
     repeat(blocksToProduce) {
       transactionsHelper.run {
@@ -238,26 +182,6 @@ class MaruFollowerTest {
 
   @Test
   fun `Maru follower is able to import blocks after its validator el node goes down`() {
-    val validatorGenesis =
-      validatorStack.besuNode
-        .nodeRequests()
-        .eth()
-        .ethGetBlockByNumber(
-          DefaultBlockParameter.valueOf("earliest"),
-          false,
-        ).send()
-        .block
-    val followerGenesis =
-      followerStack.besuNode
-        .nodeRequests()
-        .eth()
-        .ethGetBlockByNumber(
-          DefaultBlockParameter.valueOf("earliest"),
-          false,
-        ).send()
-        .block
-    assertThat(validatorGenesis).isEqualTo(followerGenesis)
-
     val blocksToProduce = 5
     repeat(blocksToProduce) {
       transactionsHelper.run {

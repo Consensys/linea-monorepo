@@ -15,12 +15,12 @@ import kotlin.time.toJavaDuration
 import maru.testutils.MaruFactory
 import maru.testutils.besu.BesuFactory
 import maru.testutils.besu.BesuTransactionsHelper
+import maru.testutils.besu.latestBlock
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
-import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
 import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurationBuilder
@@ -29,8 +29,6 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import org.web3j.protocol.core.DefaultBlockParameter
-import org.web3j.protocol.core.methods.response.EthBlock
 
 class MaruStartFromPragueTest {
   private lateinit var cluster: Cluster
@@ -118,15 +116,4 @@ class MaruStartFromPragueTest {
     // assert no blocks were produced without transactions
     assertThat(besuNode.latestBlock().number.toLong()).isEqualTo(totalBlocksToProduce.toLong())
   }
-
-  fun BesuNode.latestBlock(): EthBlock.Block =
-    this
-      .nodeRequests()
-      .eth()
-      .ethGetBlockByNumber(
-        DefaultBlockParameter.valueOf("latest"),
-        false,
-      ).sendAsync()
-      .get()
-      .block
 }

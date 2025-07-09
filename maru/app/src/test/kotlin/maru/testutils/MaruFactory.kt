@@ -213,11 +213,13 @@ class MaruFactory {
     validatorPortForStaticPeering: UInt?,
     overridingFinalizationProvider: FinalizationProvider? = null,
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
+    allowEmptyBlocks: Boolean = false,
   ): MaruApp {
     val p2pConfig = buildP2pConfig(validatorPortForStaticPeering = validatorPortForStaticPeering)
     val followers = buildFollowersConfig(engineApiRpc)
     val config =
       buildMaruConfig(
+        allowEmptyBlocks = allowEmptyBlocks,
         ethereumJsonRpcUrl = ethereumJsonRpcUrl,
         engineApiRpc = engineApiRpc,
         dataDir = dataDir,
@@ -255,6 +257,7 @@ class MaruFactory {
     dataDir: Path,
     switchTimestamp: Long,
     p2pNetwork: P2PNetwork = NoOpP2PNetwork,
+    allowEmptyBlocks: Boolean = false,
   ): MaruApp {
     val config =
       buildMaruConfig(
@@ -262,6 +265,7 @@ class MaruFactory {
         engineApiRpc = engineApiRpc,
         dataDir = dataDir,
         qbftOptions = validatorQbftOptions,
+        allowEmptyBlocks = allowEmptyBlocks,
       )
     writeValidatorPrivateKey(config)
     val genesisContent =

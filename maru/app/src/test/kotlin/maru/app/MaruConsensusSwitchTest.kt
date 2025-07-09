@@ -9,12 +9,12 @@
 package maru.app
 
 import java.io.File
-import java.math.BigInteger
 import maru.testutils.Checks.getMinedBlocks
 import maru.testutils.Checks.verifyBlockTimeWithAGapOn
 import maru.testutils.MaruFactory
 import maru.testutils.besu.BesuFactory
 import maru.testutils.besu.BesuTransactionsHelper
+import maru.testutils.besu.ethGetBlockByNumber
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
@@ -28,7 +28,6 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import org.web3j.protocol.core.DefaultBlockParameter
 import org.web3j.protocol.core.methods.response.EthBlock
 
 class MaruConsensusSwitchTest {
@@ -110,29 +109,11 @@ class MaruConsensusSwitchTest {
     log.info("Current timestamp: $currentTimestamp, switch timestamp: $switchTimestamp")
     assertThat(currentTimestamp).isGreaterThan(switchTimestamp)
 
-    val blockProducedByClique =
-      besuNode
-        .nodeRequests()
-        .eth()
-        .ethGetBlockByNumber(
-          DefaultBlockParameter.valueOf(BigInteger.ONE),
-          false,
-        ).sendAsync()
-        .get()
-        .block
+    val blockProducedByClique = besuNode.ethGetBlockByNumber(1UL)
 
     assertThat(blockProducedByClique.extraData.length).isGreaterThan(VANILLA_EXTRA_DATA_LENGTH)
 
-    val blockProducedByPrague =
-      besuNode
-        .nodeRequests()
-        .eth()
-        .ethGetBlockByNumber(
-          DefaultBlockParameter.valueOf("latest"),
-          false,
-        ).sendAsync()
-        .get()
-        .block
+    val blockProducedByPrague = besuNode.ethGetBlockByNumber("latest")
 
     assertThat(blockProducedByPrague.extraData.length).isEqualTo(24)
 
