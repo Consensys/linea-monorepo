@@ -87,6 +87,7 @@ object QbftOptionsDecoder : Decoder<QbftOptions> {
 }
 
 data class MaruConfigDtoToml(
+  private val allowEmptyBlocks: Boolean = false,
   private val persistence: Persistence,
   private val qbftOptions: QbftOptions?,
   private val p2pConfig: P2P?,
@@ -97,6 +98,7 @@ data class MaruConfigDtoToml(
 ) {
   fun domainFriendly(): MaruConfig =
     MaruConfig(
+      allowEmptyBlocks = allowEmptyBlocks,
       persistence = persistence,
       qbftOptions = qbftOptions,
       p2pConfig = p2pConfig,

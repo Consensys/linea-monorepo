@@ -50,6 +50,8 @@ import org.hyperledger.besu.plugin.services.metrics.MetricCategory
 import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 
 class MaruAppFactory {
+  val log = LogManager.getLogger(MaruAppFactory::class.java)
+
   fun create(
     config: MaruConfig,
     beaconGenesisConfig: ForksSchedule,
@@ -58,6 +60,7 @@ class MaruAppFactory {
     overridingFinalizationProvider: FinalizationProvider? = null,
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
   ): MaruApp {
+    log.info("configs: {}", config)
     val privateKey = getOrGeneratePrivateKey(config.persistence.privateKeyPath)
     val vertx =
       VertxFactory.createVertx(
