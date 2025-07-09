@@ -128,6 +128,28 @@ data class LineaConfig(
   init {
     contractAddress.assertIs20Bytes("contractAddress")
   }
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as LineaConfig
+
+    if (!contractAddress.contentEquals(other.contractAddress)) return false
+    if (l1EthApi != other.l1EthApi) return false
+    if (l1PollingInterval != other.l1PollingInterval) return false
+    if (l1HighestBlockTag != other.l1HighestBlockTag) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = contractAddress.contentHashCode()
+    result = 31 * result + l1EthApi.hashCode()
+    result = 31 * result + l1PollingInterval.hashCode()
+    result = 31 * result + l1HighestBlockTag.hashCode()
+    return result
+  }
 }
 
 data class ApiConfig(

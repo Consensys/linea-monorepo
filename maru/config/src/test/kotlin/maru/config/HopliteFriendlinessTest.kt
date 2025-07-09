@@ -118,6 +118,7 @@ class HopliteFriendlinessTest {
     val config = parseTomlConfig<MaruConfigDtoToml>(rawConfigToml)
     assertThat(config).isEqualTo(
       MaruConfigDtoToml(
+        allowEmptyBlocks = false,
         persistence = persistence,
         qbftOptions = qbftOptions,
         p2pConfig = p2pConfig,
@@ -134,6 +135,7 @@ class HopliteFriendlinessTest {
     val config = parseTomlConfig<MaruConfigDtoToml>(emptyFollowersConfigToml)
     assertThat(config).isEqualTo(
       MaruConfigDtoToml(
+        allowEmptyBlocks = false,
         persistence = persistence,
         qbftOptions = qbftOptions,
         p2pConfig = p2pConfig,
@@ -150,6 +152,7 @@ class HopliteFriendlinessTest {
     val config = parseTomlConfig<MaruConfigDtoToml>(rawConfigToml)
     assertThat(config.domainFriendly()).isEqualTo(
       MaruConfig(
+        allowEmptyBlocks = false,
         persistence = persistence,
         p2pConfig = p2pConfig,
         validatorElNode =
@@ -170,6 +173,7 @@ class HopliteFriendlinessTest {
     val config = parseTomlConfig<MaruConfigDtoToml>(emptyFollowersConfigToml)
     assertThat(config.domainFriendly()).isEqualTo(
       MaruConfig(
+        allowEmptyBlocks = false,
         persistence = persistence,
         qbftOptions = qbftOptions,
         p2pConfig = p2pConfig,
@@ -210,6 +214,48 @@ class HopliteFriendlinessTest {
         feeRecipient = "0x0000000000000000000000000000000000000001".decodeHex(),
       ),
     )
+  }
+
+  @Test
+  fun `should parse allowEmptyBlocks = true`() {
+    val configToml =
+      """
+      allow-empty-blocks = true
+      $rawConfigToml
+      """.trimIndent()
+    val config = parseTomlConfig<MaruConfigDtoToml>(configToml)
+
+    assertThat(config)
+      .isEqualTo(
+        MaruConfigDtoToml(
+          allowEmptyBlocks = true,
+          persistence = persistence,
+          qbftOptions = qbftOptions,
+          p2pConfig = p2pConfig,
+          payloadValidator = payloadValidator,
+          followerEngineApis = mapOf("follower1" to follower1, "follower2" to follower2),
+          observabilityOptions = ObservabilityOptions(port = 9090u),
+          apiConfig = ApiConfig(port = 8080u),
+        ),
+      )
+
+    assertThat(config.domainFriendly())
+      .isEqualTo(
+        MaruConfig(
+          allowEmptyBlocks = true,
+          persistence = persistence,
+          p2pConfig = p2pConfig,
+          validatorElNode =
+            ValidatorElNode(
+              engineApiEndpoint = engineApiEndpoint,
+              ethApiEndpoint = ethApiEndpoint,
+            ),
+          qbftOptions = qbftOptions,
+          followers = followersConfig,
+          observabilityOptions = ObservabilityOptions(port = 9090u),
+          apiConfig = ApiConfig(port = 8080u),
+        ),
+      )
   }
 
   inline fun <reified T : Any> parseTomlConfig(toml: String): T =
