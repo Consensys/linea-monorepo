@@ -73,13 +73,20 @@ jobs:
       - name: Install linux dependencies
         run: |
           sudo apt-get install --no-install-recommends -y xvfb
-
+      
       - name: Run unit tests
         run: pnpm run -F bridge-ui test:unit
         env:
           # Can run unit tests in parallel
           CI: "false"
-          DOTENV_CONFIG_PATH: ".env.test"
+          DOTENV_CONFIG_PATH: ".env.production"
+          NEXT_PUBLIC_INFURA_ID: ${{ secrets.PUBLIC_BRIDGE_UI_INFURA_ID }}
+          NEXT_PUBLIC_LIFI_API_KEY: "placeholder"
+          NEXT_PUBLIC_LIFI_INTEGRATOR_NAME: "placeholder"
+          NEXT_PUBLIC_WALLET_CONNECT_ID: "placeholder"
+          NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID: "placeholder"
+          NEXT_PUBLIC_QUICKNODE_ID: "placeholder"
+          NEXT_PUBLIC_E2E_TEST_MODE: false
       
       - name: Login to Docker Hub
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 #v3.4.0
@@ -132,7 +139,9 @@ jobs:
         env:
           # Do not run E2E tests in parallel. Especially blockchain tx where nonces can collide.
           CI: "true"
-          DOTENV_CONFIG_PATH: ".env.test"
+          DOTENV_CONFIG_PATH: ".env.production"
+          E2E_TEST_SEED_PHRASE: "test test test test test test test test test test test junk"
+          E2E_TEST_WALLET_PASSWORD: "TestPassword!"
 
       - name: Archive Playwright report
         uses: actions/upload-artifact@v4

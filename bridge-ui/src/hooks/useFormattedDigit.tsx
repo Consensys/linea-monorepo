@@ -3,16 +3,16 @@ import { formatUnits } from "viem";
 
 export function useFormattedDigit(value: bigint, decimals: number = 18): JSX.Element {
   return useMemo(() => {
-    if (value <= 0n) return <span>0.00</span>;
+    if (value <= 0n) return <>0.00</>;
 
     const valueStr = formatUnits(value, decimals);
     const num = Number(valueStr);
 
-    if (!isFinite(num) || num === 0) return <span>0.00</span>;
-    if (num >= 1e-8) return <span>{num.toFixed(8)}</span>;
+    if (!isFinite(num) || num === 0) return <>0.00</>;
+    if (num >= 1e-8) return <>{num.toFixed(8)}</>;
 
     const match = /^0\.0+(?=\d)/.exec(valueStr);
-    if (!match) return <span>{num.toFixed(8)}</span>;
+    if (!match) return <>{num.toFixed(8)}</>;
 
     const zeroCount = match[0].length - 2;
     const remainderDigits = valueStr.slice(match[0].length);
@@ -21,10 +21,10 @@ export function useFormattedDigit(value: bigint, decimals: number = 18): JSX.Ele
       .padStart(2, "0");
 
     return (
-      <span>
+      <>
         0.0<sub>{zeroCount}</sub>
         {rounded}
-      </span>
+      </>
     );
   }, [value, decimals]);
 }

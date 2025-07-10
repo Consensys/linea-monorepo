@@ -14,7 +14,7 @@ export default function GasFeesListItem({ name, fee, fiatValue, currency }: Prop
   const formattedFees = useFormattedDigit(fee, 18);
 
   const feeText = useMemo(() => {
-    if (fee === 0n) return <span>Free</span>;
+    if (fee === 0n) return <>Free</>;
     return <>{formattedFees} ETH</>;
   }, [fee, formattedFees]);
 
