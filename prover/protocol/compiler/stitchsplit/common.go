@@ -1,6 +1,8 @@
 package stitchsplit
 
 import (
+	"strconv"
+
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -97,7 +99,7 @@ func IsExprEligible(
 
 			switch nat := rootColumn.(type) {
 			case column.Natural: // then it is not a verifiercol
-				statusMap[rootColumn.GetColID()] = nat.Status().String()
+				statusMap[rootColumn.GetColID()] = nat.Status().String() + "/" + strconv.Itoa(nat.Size())
 				allAreVeriferCol = false
 				b := isColEligible(stitchings, m)
 
@@ -107,7 +109,7 @@ func IsExprEligible(
 					panic("found a column with a size of 0")
 				}
 			case verifiercol.VerifierCol:
-				statusMap[rootColumn.GetColID()] = column.VerifierDefined.String()
+				statusMap[rootColumn.GetColID()] = column.VerifierDefined.String() + "/" + strconv.Itoa(nat.Size())
 			}
 		}
 	}
