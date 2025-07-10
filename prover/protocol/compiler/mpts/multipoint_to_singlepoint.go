@@ -143,7 +143,7 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 				utils.Panic("the number of polynomials in every round is not set. Got %v", numPolPerRounds)
 			}
 
-			polysByRound[round], err = extendPWithShadowColumns(comp, round,
+			polysByRound[round], errLocal = extendPWithShadowColumns(comp, round,
 				ctx.NumRow, polysByRound[round], ctx.NumColumnProfileOpt[round-startingRound], false)
 
 			err = errors.Join(err, errLocal)
