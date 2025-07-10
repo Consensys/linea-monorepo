@@ -4,10 +4,15 @@ import linea.domain.FeeHistory
 import linea.kotlin.decodeHex
 import linea.kotlin.encodeHex
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.math.BigInteger
 import java.nio.ByteBuffer
 
 interface FeesFetcher {
   fun getL1EthGasPriceData(): SafeFuture<FeeHistory>
+}
+
+interface L2CalldataSizeAccumulator {
+  fun getSumOfL2CalldataSize(): SafeFuture<BigInteger>
 }
 
 fun interface FeesCalculator {
@@ -23,13 +28,13 @@ interface GasPriceUpdater {
 }
 
 enum class MinerExtraDataVersions(val version: Byte) {
-  V1(0x1)
+  V1(0x1),
 }
 
 data class MinerExtraDataV1(
   val fixedCostInKWei: UInt,
   val variableCostInKWei: UInt,
-  val ethGasPriceInKWei: UInt
+  val ethGasPriceInKWei: UInt,
 ) {
   val version: Byte = MinerExtraDataVersions.V1.version
 

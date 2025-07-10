@@ -9,20 +9,16 @@ fs-responses-directory = "/data/prover/v3/compression/responses"
 fs-requests-directory = "/data/prover/v3/aggregation/requests"
 fs-responses-directory = "/data/prover/v3/aggregation/responses"
 
-[zk-traces]
-eth-api="http://traces-node-v2:8545"
-
 [traces]
-switch-to-linea-besu=true
-blob-compressor-version="V1_0_1"
+blob-compressor-version="V1_2"
 expected-traces-api-version-v2="v0.8.0-rc8"
 [traces.counters-v2]
-endpoints=["http://traces-node-v2:8545/"]
+endpoints=["http://traces-node:8545/"]
 request-limit-per-endpoint=1
 request-retry.backoff-delay="PT1S"
 request-retry.failures-warning-threshold=2
 [traces.conflation-v2]
-endpoints=["http://traces-node-v2:8545/"]
+endpoints=["http://traces-node:8545/"]
 request-limit-per-endpoint=1
 request-retry.backoff-delay="PT1S"
 request-retry.failures-warning-threshold=2
@@ -38,3 +34,14 @@ plain-transfer-cost-multiplier=1.0
 # Meaning 99.7% of transactions will be includable if priced using eth_gasPrice
 compressed-tx-size=350
 expected-gas=29400
+
+[message-anchoring]
+disabled = false
+l1-endpoint = "http://l1-endpoint-for-anchoring:8545"
+l2-endpoint = "http://l2-endpoint-for-anchoring:8545"
+l1-highest-block-tag="LATEST"
+l1-event-polling-interval="PT1S"
+anchoring-tick-interval = "PT1S"
+[message-anchoring.l1-request-retries]
+max-retries = 10
+failures-warning-threshold = 1

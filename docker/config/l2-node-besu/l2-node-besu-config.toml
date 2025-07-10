@@ -36,16 +36,17 @@ metrics-port=9545
 data-storage-format="BONSAI"
 
 # plugins
-plugins=["LineaEstimateGasEndpointPlugin","LineaL1FinalizationTagUpdaterPlugin","LineaExtraDataPlugin", "LineaTransactionPoolValidatorPlugin"]
+plugins=["LineaEstimateGasEndpointPlugin","LineaL1FinalizationTagUpdaterPlugin","LineaExtraDataPlugin","LineaTransactionPoolValidatorPlugin","LineaBundleEndpointsPlugin","ForwardBundlesPlugin"]
 plugin-linea-module-limit-file-path="/var/lib/besu/traces-limits.toml"
 plugin-linea-deny-list-path="/var/lib/besu/deny-list.txt"
 plugin-linea-l1l2-bridge-contract="0xe537D669CA013d86EBeF1D64e40fC74CADC91987"
 plugin-linea-l1l2-bridge-topic="e856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c"
-plugin-linea-tx-pool-profitability-check-p2p-enabled=false
-plugin-linea-tx-pool-profitability-check-api-enabled=false
+plugin-linea-tx-pool-profitability-check-p2p-enabled=true
+plugin-linea-tx-pool-profitability-check-api-enabled=true
 plugin-linea-tx-pool-simulation-check-api-enabled=true
-plugin-linea-tx-pool-simulation-check-p2p-enabled=false
+plugin-linea-tx-pool-simulation-check-p2p-enabled=true
 plugin-linea-extra-data-pricing-enabled=true
+plugin-linea-max-tx-calldata-size=30000 # lower this to 30000 (default 60000) for the transaction data limit e2e test 
 plugin-linea-tx-pool-min-margin="0.8"
 plugin-linea-min-margin="1.0"
 plugin-linea-fixed-gas-cost-wei=30000000
@@ -53,6 +54,9 @@ plugin-linea-variable-gas-cost-wei=1000000000
 plugin-linea-extra-data-set-min-gas-price-enabled=true
 plugin-linea-estimate-gas-compatibility-mode-enabled=false
 plugin-linea-estimate-gas-min-margin="1.2"
+plugin-linea-bundles-forward-urls=["http://sequencer:8545"]
+plugin-linea-bundles-forward-retry-delay=1000
+plugin-linea-bundles-forward-timeout=5000
 
 bonsai-limit-trie-logs-enabled=false
 bonsai-historical-block-limit=1024

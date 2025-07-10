@@ -2,17 +2,15 @@ include:
   - compose-tracing-v2.yml
 
 services:
-  l2-node:
+  web3signer:
     extends:
       file: compose-spec-l2-services.yml
-      service: l2-node
+      service: web3signer
 
   l2-node-besu:
     extends:
       file: compose-spec-l2-services.yml
       service: l2-node-besu
-    volumes:
-      - ../config/common/traces-limits-besu-v2.toml:/var/lib/besu/traces-limits.toml:ro
 
   shomei-frontend:
     extends:

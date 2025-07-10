@@ -3,10 +3,25 @@ import { linea, mainnet, Chain as ViemChain, sepolia, lineaSepolia } from "viem/
 import { config } from "@/config";
 import { Chain, ChainLayer, SupportedChainIds } from "@/types";
 
+const getChainName = (chainId: number) => {
+  switch (chainId) {
+    case linea.id:
+      return "Linea";
+    case lineaSepolia.id:
+      return "Linea Sepolia";
+    case mainnet.id:
+      return "Ethereum";
+    case sepolia.id:
+      return "Sepolia";
+    default:
+      return "";
+  }
+};
+
 export const generateChain = (chain: ViemChain): Chain => {
   return {
     id: chain.id as SupportedChainIds,
-    name: chain.id !== lineaSepolia.id ? chain.name : "Linea Sepolia",
+    name: getChainName(chain.id),
     iconPath: config.chains[chain.id].iconPath,
     nativeCurrency: chain.nativeCurrency,
     blockExplorers: chain.blockExplorers,
@@ -42,12 +57,12 @@ export const getChainNetworkLayer = (chainId: number) => {
 export const getChainLogoPath = (chainId: number) => {
   switch (chainId) {
     case linea.id:
-      return "/images/logo/linea-rounded.svg";
+      return `${process.env.NEXT_PUBLIC_BASE_PATH}/images/logo/linea-rounded.svg`;
     case lineaSepolia.id:
-      return "/images/logo/linea-sepolia.svg";
+      return `${process.env.NEXT_PUBLIC_BASE_PATH}/images/logo/linea-sepolia.svg`;
     case mainnet.id:
     case sepolia.id:
-      return "/images/logo/ethereum-rounded.svg";
+      return `${process.env.NEXT_PUBLIC_BASE_PATH}/images/logo/ethereum-rounded.svg`;
     default:
       return "";
   }

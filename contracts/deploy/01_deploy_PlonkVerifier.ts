@@ -13,7 +13,9 @@ import {
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;
 
-  const contractName = getRequiredEnvVar("PLONKVERIFIER_NAME");
+  const contractName = getRequiredEnvVar("VERIFIER_CONTRACT_NAME");
+  const verifierIndex = getRequiredEnvVar("VERIFIER_PROOF_TYPE");
+
   const existingContractAddress = await getDeployedContractAddress(contractName, deployments);
 
   const provider = ethers.provider;
@@ -30,6 +32,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   process.env.PLONKVERIFIER_ADDRESS = contractAddress;
   await tryStoreAddress(hre.network.name, contractName, contractAddress, contract.deploymentTransaction()!.hash);
+
+  const setVerifierAddress = ethers.concat([
+    "0xc2116974",
+    ethers.AbiCoder.defaultAbiCoder().encode(["address", "uint256"], [contractAddress, verifierIndex]),
+  ]);
+
+  console.log("setVerifierAddress calldata:", setVerifierAddress);
 
   await tryVerifyContract(contractAddress);
 };

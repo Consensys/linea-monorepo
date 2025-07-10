@@ -3,10 +3,8 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 import java.time.Duration
-import java.time.Instant
 
 plugins {
-  id 'net.consensys.zkevm.linea-contracts-helper'
   alias(libs.plugins.spotless)
   alias(libs.plugins.docker)
 }
@@ -18,7 +16,10 @@ task compileAll
 def allowCompilationWarnings = System.getenv('LINEA_DEV_ALLOW_WARNINGS') != null
 
 allprojects {
-  repositories { mavenCentral() }
+  repositories {
+    mavenCentral()
+    mavenLocal()
+  }
 
   apply plugin: 'java' // do not add kotlin plugin here, it will add unnecessary Kotlin runtime dependencies
   apply plugin: 'jacoco'
@@ -87,7 +88,7 @@ allprojects {
     systemProperty("L1_RPC_URL", "http://localhost:8445")
     systemProperty("L2_RPC_URL", "http://localhost:8545")
     systemProperty("L1_GENESIS", "docker/config/l1-node/el/genesis.json")
-    systemProperty("L2_GENESIS", "docker/config/linea-local-dev-genesis-PoA-geth.json")
+    systemProperty("L2_GENESIS", "docker/config/linea-local-dev-genesis-PoA-besu.json")
 
     systemProperties["junit.jupiter.execution.timeout.default"] = "5 m" // 5 minutes
     systemProperties["junit.jupiter.execution.parallel.enabled"] = true
@@ -115,9 +116,19 @@ allprojects {
         }
         // spotless check applied to build.gradle (groovy) files
         groovyGradle {
+          target '*.gradle'
           greclipse()
           indentWithSpaces(2)
           endWithNewline()
+        }
+
+        java {
+          target 'src/**/*.java'
+          // Do not use 'targetExclude' with wildcard patterns, it will add minutes to the build
+          removeUnusedImports()
+          trimTrailingWhitespace()
+          endWithNewline()
+          googleJavaFormat(libs.versions.googleJavaFormat.get())
         }
       }
     }

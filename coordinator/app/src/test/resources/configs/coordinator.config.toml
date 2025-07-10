@@ -37,34 +37,20 @@ handler-polling-interval="PT1S"
 # batches-limit must be less than or equal to aggregation-proofs-limit-1
 batches-limit=1
 
-[zk-traces]
-eth-api="http://traces-node:8545"
-new-block-polling-interval="PT1S"
-
 [traces]
-switch-to-linea-besu=false
-blob-compressor-version="V0_1_0"
+blob-compressor-version="V1_2"
 raw-execution-traces-version="0.2.0"
-expected-traces-api-version="0.2.0"
-[traces.counters]
-endpoints=["http://traces-api:8080/"]
-request-limit-per-endpoint=2
+expected-traces-api-version-v2="v0.8.0-rc8"
+[traces.counters-v2]
+endpoints=["http://traces-node:8545/"]
+request-limit-per-endpoint=1
 request-retry.backoff-delay="PT1S"
 request-retry.failures-warning-threshold=2
-[traces.conflation]
-endpoints=["http://traces-api:8080/"]
-request-limit-per-endpoint=2
+[traces.conflation-v2]
+endpoints=["http://traces-node:8545/"]
+request-limit-per-endpoint=1
 request-retry.backoff-delay="PT1S"
 request-retry.failures-warning-threshold=2
-
-
-[traces.file-manager]
-traces-file-extension="json.gz"
-raw-traces-directory="/data/traces/raw"
-non-canonical-raw-traces-directory="/data/traces/raw-non-canonical"
-create-non-canonical-directory=true
-polling-interval="PT1S"
-traces-file-creation-wait-timeout="PT2M"
 
 [state-manager]
 version="2.3.0"
@@ -77,6 +63,8 @@ request-retry.failures-warning-threshold=2
 endpoints=["http://shomei-frontend:8888/"]
 request-retry.backoff-delay="PT1S"
 request-retry.failures-warning-threshold=2
+l1-query-block-tag="SAFE"
+l1-polling-interval="PT6S"
 
 [api]
 observability_port=9545
@@ -131,6 +119,7 @@ max-receipt-retries=120
 # Coordinator will consider block as finalized after being included in the chain wtih children blocks-to-finalization
 # Recommended: Geth sequencer minimum of 2, Besu sequencer minimum of 1, 0 is safe localy
 blocks-to-finalization=0
+new-block-polling-interval="PT1S"
 
 [blob-submission]
 disabled=false
@@ -198,11 +187,6 @@ endpoint="http://web3signer:9000"
 max-pool-size=10
 keep-alive=true
 public-key="4a788ad6fa008beed58de6418369717d7492f37d173d70e2c26d9737e2c6eeae929452ef8602a19410844db3e200a0e73f5208fd76259a8766b73953fc3e7023"
-
-[message-anchoring-service]
-disabled=false
-polling-interval="PT1S"
-max-messages-to-anchor=100
 
 [l2-network-gas-pricing]
 disabled = false

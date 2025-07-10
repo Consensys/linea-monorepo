@@ -2,21 +2,13 @@ package net.consensys.zkevm.coordinator.app
 
 import io.vertx.core.Vertx
 import io.vertx.core.http.HttpVersion
+import io.vertx.core.net.PfxOptions
 import io.vertx.ext.web.client.WebClientOptions
-import net.consensys.linea.contract.AsyncFriendlyTransactionManager
-import net.consensys.linea.contract.EIP1559GasProvider
-import net.consensys.linea.contract.L2MessageService
-import net.consensys.linea.contract.LineaRollupAsyncFriendly
+import linea.kotlin.encodeHex
+import linea.web3j.SmartContractErrors
+import linea.web3j.transactionmanager.AsyncFriendlyTransactionManager
 import net.consensys.linea.contract.l1.Web3JLineaRollupSmartContractClient
-import net.consensys.linea.contract.l2.L2MessageServiceGasLimitEstimate
-import net.consensys.linea.ethereum.gaspricing.FeesCalculator
-import net.consensys.linea.ethereum.gaspricing.FeesFetcher
-import net.consensys.linea.ethereum.gaspricing.WMAGasProvider
 import net.consensys.linea.httprest.client.VertxHttpRestClient
-import net.consensys.linea.web3j.SmartContractErrors
-import net.consensys.zkevm.coordinator.app.config.L1Config
-import net.consensys.zkevm.coordinator.app.config.L2Config
-import net.consensys.zkevm.coordinator.app.config.SignerConfig
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.ethereum.crypto.Web3SignerRestClient
 import net.consensys.zkevm.ethereum.crypto.Web3SignerTxSignService
@@ -26,30 +18,93 @@ import org.web3j.protocol.Web3j
 import org.web3j.service.TxSignServiceImpl
 import org.web3j.tx.gas.ContractGasProvider
 import org.web3j.utils.Numeric
-import java.net.URI
+import java.io.FileInputStream
+import java.nio.file.Path
+import java.security.KeyStore
+import javax.net.ssl.KeyManagerFactory
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManagerFactory
 
 fun createTransactionManager(
   vertx: Vertx,
-  signerConfig: SignerConfig,
-  client: Web3j
+  signerConfig: linea.coordinator.config.v2.SignerConfig,
+  client: Web3j,
 ): AsyncFriendlyTransactionManager {
-  val transactionSignService = when (signerConfig.type) {
-    SignerConfig.Type.Web3j -> {
-      TxSignServiceImpl(Credentials.create(signerConfig.web3j!!.privateKey.value))
+  fun loadKeyAndTrustStoreFromFiles(
+    webClientOptions: WebClientOptions,
+    clientKeystorePath: Path,
+    clientKeystorePassword: String,
+    trustStorePath: Path,
+    trustStorePassword: String,
+  ): WebClientOptions {
+    // Load client keystore
+    val keyStore = KeyStore.getInstance("PKCS12")
+    FileInputStream(clientKeystorePath.toAbsolutePath().toString()).use { input ->
+      keyStore.load(input, clientKeystorePassword.toCharArray())
     }
 
-    SignerConfig.Type.Web3Signer -> {
+    // Initialize KeyManagerFactory for client certificate
+    val keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm())
+    keyManagerFactory.init(keyStore, clientKeystorePassword.toCharArray())
+
+    // Load truststore
+    val trustStore = KeyStore.getInstance("PKCS12")
+    FileInputStream(trustStorePath.toAbsolutePath().toString()).use { input ->
+      trustStore.load(input, trustStorePassword.toCharArray())
+    }
+
+    // Initialize TrustManagerFactory for server certificate
+    val trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
+    trustManagerFactory.init(trustStore)
+
+    // Initialize SSLContext
+    val sslContext = SSLContext.getInstance("TLS")
+    sslContext.init(keyManagerFactory.keyManagers, trustManagerFactory.trustManagers, null)
+
+    return webClientOptions
+      .setSsl(true)
+      .setTrustAll(false)
+      .setPfxKeyCertOptions(
+        PfxOptions()
+          .setPath(clientKeystorePath.toAbsolutePath().toString())
+          .setPassword(clientKeystorePassword),
+      )
+      .setPfxTrustOptions(
+        PfxOptions()
+          .setPath(trustStorePath.toAbsolutePath().toString())
+          .setPassword(trustStorePassword),
+      )
+      .setVerifyHost(true)
+  }
+
+  val transactionSignService = when (signerConfig.type) {
+    linea.coordinator.config.v2.SignerConfig.SignerType.WEB3J -> {
+      TxSignServiceImpl(Credentials.create(signerConfig.web3j!!.privateKey.encodeHex()))
+    }
+
+    linea.coordinator.config.v2.SignerConfig.SignerType.WEB3SIGNER -> {
       val web3SignerConfig = signerConfig.web3signer!!
-      val endpoint = URI(web3SignerConfig.endpoint)
+      val endpoint = web3SignerConfig.endpoint
       val webClientOptions: WebClientOptions =
         WebClientOptions()
           .setKeepAlive(web3SignerConfig.keepAlive)
           .setProtocolVersion(HttpVersion.HTTP_1_1)
-          .setMaxPoolSize(web3SignerConfig.maxPoolSize.toInt())
+          .setMaxPoolSize(web3SignerConfig.maxPoolSize)
           .setDefaultHost(endpoint.host)
           .setDefaultPort(endpoint.port)
+          .also {
+            if (signerConfig.web3signer.tls != null) {
+              loadKeyAndTrustStoreFromFiles(
+                webClientOptions = it,
+                clientKeystorePath = signerConfig.web3signer.tls.keyStorePath,
+                clientKeystorePassword = signerConfig.web3signer.tls.keyStorePassword.value,
+                trustStorePath = signerConfig.web3signer.tls.trustStorePath,
+                trustStorePassword = signerConfig.web3signer.tls.trustStorePassword.value,
+              )
+            }
+          }
       val httpRestClient = VertxHttpRestClient(webClientOptions, vertx)
-      val signer = Web3SignerRestClient(httpRestClient, signerConfig.web3signer.publicKey)
+      val signer = Web3SignerRestClient(httpRestClient, signerConfig.web3signer.publicKey.encodeHex())
       val signerAdapter = ECKeypairSignerAdapter(signer, Numeric.toBigInt(signerConfig.web3signer.publicKey))
       val web3SignerCredentials = Credentials.create(signerAdapter)
       Web3SignerTxSignService(web3SignerCredentials)
@@ -59,72 +114,20 @@ fun createTransactionManager(
   return AsyncFriendlyTransactionManager(client, transactionSignService, -1L)
 }
 
-fun instantiateZkEvmContractClient(
-  l1Config: L1Config,
-  transactionManager: AsyncFriendlyTransactionManager,
-  gasFetcher: FeesFetcher,
-  priorityFeeCalculator: FeesCalculator,
-  client: Web3j,
-  smartContractErrors: SmartContractErrors
-): LineaRollupAsyncFriendly {
-  return LineaRollupAsyncFriendly.load(
-    l1Config.zkEvmContractAddress,
-    client,
-    transactionManager,
-    WMAGasProvider(
-      client.ethChainId().send().chainId.toLong(),
-      gasFetcher,
-      priorityFeeCalculator,
-      WMAGasProvider.Config(
-        gasLimit = l1Config.gasLimit,
-        maxFeePerGasCap = l1Config.maxFeePerGasCap,
-        maxPriorityFeePerGasCap = l1Config.maxPriorityFeePerGasCap,
-        maxFeePerBlobGasCap = l1Config.maxFeePerBlobGasCap
-      )
-    ),
-    smartContractErrors
-  )
-}
-
 fun createLineaRollupContractClient(
-  l1Config: L1Config,
+  contractAddress: String,
   transactionManager: AsyncFriendlyTransactionManager,
   contractGasProvider: ContractGasProvider,
   web3jClient: Web3j,
   smartContractErrors: SmartContractErrors,
-  useEthEstimateGas: Boolean
+  useEthEstimateGas: Boolean,
 ): LineaRollupSmartContractClient {
   return Web3JLineaRollupSmartContractClient.load(
-    contractAddress = l1Config.zkEvmContractAddress,
+    contractAddress = contractAddress,
     web3j = web3jClient,
     transactionManager = transactionManager,
     contractGasProvider = contractGasProvider,
     smartContractErrors = smartContractErrors,
-    useEthEstimateGas = useEthEstimateGas
-  )
-}
-
-fun instantiateL2MessageServiceContractClient(
-  l2Config: L2Config,
-  transactionManager: AsyncFriendlyTransactionManager,
-  l2Client: Web3j,
-  smartContractErrors: SmartContractErrors
-): L2MessageService {
-  val gasProvider = EIP1559GasProvider(
-    l2Client,
-    EIP1559GasProvider.Config(
-      l2Config.gasLimit,
-      l2Config.maxFeePerGasCap,
-      l2Config.feeHistoryBlockCount,
-      l2Config.feeHistoryRewardPercentile
-    )
-  )
-
-  return L2MessageServiceGasLimitEstimate.load(
-    l2Config.messageServiceAddress,
-    l2Client,
-    transactionManager,
-    gasProvider,
-    smartContractErrors
+    useEthEstimateGas = useEthEstimateGas,
   )
 }

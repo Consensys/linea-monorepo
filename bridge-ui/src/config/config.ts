@@ -4,7 +4,7 @@ import { configSchema, Config } from "./config.schema";
 export const config: Config = {
   chains: {
     1: {
-      iconPath: "/images/logo/ethereum-rounded.svg",
+      iconPath: `${process.env.NEXT_PUBLIC_BASE_PATH}/images/logo/ethereum-rounded.svg`,
       messageServiceAddress: getAddress(process.env.NEXT_PUBLIC_MAINNET_L1_MESSAGE_SERVICE ?? ""),
       tokenBridgeAddress: getAddress(process.env.NEXT_PUBLIC_MAINNET_L1_TOKEN_BRIDGE ?? ""),
       gasLimitSurplus: process.env.NEXT_PUBLIC_MAINNET_DEFAULT_GAS_LIMIT_SURPLUS
@@ -18,7 +18,7 @@ export const config: Config = {
       cctpMessageTransmitterV2Address: getAddress("0x81D40F21F12A8F0E3252Bccb954D722d4c464B64"),
     },
     59144: {
-      iconPath: "/images/logo/linea-rounded.svg",
+      iconPath: `${process.env.NEXT_PUBLIC_BASE_PATH}/images/logo/linea-rounded.svg`,
       messageServiceAddress: getAddress(process.env.NEXT_PUBLIC_MAINNET_LINEA_MESSAGE_SERVICE ?? ""),
       tokenBridgeAddress: getAddress(process.env.NEXT_PUBLIC_MAINNET_LINEA_TOKEN_BRIDGE ?? ""),
       gasLimitSurplus: process.env.NEXT_PUBLIC_MAINNET_DEFAULT_GAS_LIMIT_SURPLUS
@@ -32,7 +32,7 @@ export const config: Config = {
       cctpMessageTransmitterV2Address: getAddress("0x81D40F21F12A8F0E3252Bccb954D722d4c464B64"),
     },
     11155111: {
-      iconPath: "/images/logo/ethereum-rounded.svg",
+      iconPath: `${process.env.NEXT_PUBLIC_BASE_PATH}/images/logo/ethereum-rounded.svg`,
       messageServiceAddress: getAddress(process.env.NEXT_PUBLIC_SEPOLIA_L1_MESSAGE_SERVICE ?? ""),
       tokenBridgeAddress: getAddress(process.env.NEXT_PUBLIC_SEPOLIA_L1_TOKEN_BRIDGE ?? ""),
       gasLimitSurplus: process.env.NEXT_PUBLIC_SEPOLIA_DEFAULT_GAS_LIMIT_SURPLUS
@@ -46,7 +46,7 @@ export const config: Config = {
       cctpMessageTransmitterV2Address: getAddress("0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275"),
     },
     59141: {
-      iconPath: "/images/logo/linea-sepolia.svg",
+      iconPath: `${process.env.NEXT_PUBLIC_BASE_PATH}/images/logo/linea-sepolia.svg`,
       messageServiceAddress: getAddress(process.env.NEXT_PUBLIC_SEPOLIA_LINEA_MESSAGE_SERVICE ?? ""),
       tokenBridgeAddress: getAddress(process.env.NEXT_PUBLIC_SEPOLIA_LINEA_TOKEN_BRIDGE ?? ""),
       gasLimitSurplus: process.env.NEXT_PUBLIC_SEPOLIA_DEFAULT_GAS_LIMIT_SURPLUS
@@ -67,8 +67,12 @@ export const config: Config = {
   },
   isCctpEnabled: process.env.NEXT_PUBLIC_IS_CCTP_ENABLED === "true",
   infuraApiKey: process.env.NEXT_PUBLIC_INFURA_ID ?? "",
+  quickNodeApiKey: process.env.NEXT_PUBLIC_QUICKNODE_ID ?? "",
   dynamicEnvironmentId: process.env.NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID ?? "",
   lifiApiKey: process.env.NEXT_PUBLIC_LIFI_API_KEY ?? "",
+  lifiIntegrator: process.env.NEXT_PUBLIC_LIFI_INTEGRATOR_NAME ?? "",
+  onRamperApiKey: process.env.NEXT_PUBLIC_ONRAMPER_API_KEY ?? "",
+  layerswapApiKey: process.env.NEXT_PUBLIC_LAYERSWAP_API_KEY ?? "",
   tokenListUrls: {
     mainnet: process.env.NEXT_PUBLIC_MAINNET_TOKEN_LIST ?? "",
     sepolia: process.env.NEXT_PUBLIC_SEPOLIA_TOKEN_LIST ?? "",
