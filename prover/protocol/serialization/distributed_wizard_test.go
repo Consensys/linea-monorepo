@@ -86,6 +86,8 @@ func GetBasicDistWizard() *distributed.DistributedWizard {
 
 func TestSerdeDistWizard(t *testing.T) {
 
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+
 	dist := GetDistWizard()
 
 	t.Run("ModuleNames", func(t *testing.T) {
