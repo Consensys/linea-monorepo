@@ -210,7 +210,9 @@ func AllocFromPool(pool mempool.MemPool) *Pooled {
 
 func (p *Pooled) Free(pool mempool.MemPool) {
 	if p.poolPtr != nil {
-		pool.Free(p.poolPtr)
+		if err := pool.Free(p.poolPtr); err != nil {
+			utils.Panic("failed to free slice in pool: %v", err)
+		}
 	}
 	p.poolPtr = nil
 	p.Regular = nil

@@ -12,7 +12,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	"github.com/sirupsen/logrus"
 )
 
 // proverTaskAtRound implements the [wizard.ProverAction] interface. It gathers
@@ -281,12 +283,16 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 			}
 
 			if hasFilter && !filter[k].IsOne() {
-				utils.Panic(
+				logrus.Errorf(
 					"the filter column `%v` has a non-binary value at position `%v`: (%v)",
 					a.SFilter[i].GetColID(),
 					k,
 					filter[k].String(),
 				)
+
+				// Even if this is unconstrained, this is still worth interrupting the
+				// prover because it "should" be a binary column.
+				exit.OnUnsatisfiedConstraints()
 			}
 
 			var (
@@ -308,6 +314,8 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 					"entry %v of the table %v is not included in the table. tableRow=%v T-mapSize=%v T-name=%v\n",
 					k, NameTable([][]ifaces.Column{a.S[i]}), vector.Prettify(tableRow), len(mapM), NameTable(a.T),
 				)
+
+				exit.OnUnsatisfiedConstraints()
 			}
 
 			mFrag, posInFragM := posInM[0], posInM[1]

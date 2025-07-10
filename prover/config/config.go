@@ -19,6 +19,19 @@ import (
 // NewConfigFromFile reads the configuration from the given file path and returns a new Config.
 // It also sets default value and validate the configuration.
 func NewConfigFromFile(path string) (*Config, error) {
+	return newConfigFromFile(path, true)
+}
+
+// NewConfigFromFileUnchecked is as [NewConfigFromFile] but does not run
+// the config validation. It will return an error if it fails reading
+// the file or if the config contains unknown fields.
+func NewConfigFromFileUnchecked(path string) (*Config, error) {
+	return newConfigFromFile(path, false)
+}
+
+// NewConfigFromFile reads the configuration from the given file path and returns a new Config.
+// It also sets default value and validate the configuration.
+func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 	viper.SetConfigFile(path)
 
 	// Parse the config
@@ -38,23 +51,25 @@ func NewConfigFromFile(path string) (*Config, error) {
 		return nil, err
 	}
 
-	// Validate the config
-	validate := validator.New(validator.WithRequiredStructEnabled())
-	if err = validate.RegisterValidation("power_of_2", validateIsPowerOfTwo); err != nil {
-		return nil, err
-	}
+	if withValidation {
+		// Validate the config
+		validate := validator.New(validator.WithRequiredStructEnabled())
+		if err = validate.RegisterValidation("power_of_2", validateIsPowerOfTwo); err != nil {
+			return nil, err
+		}
 
-	if err = validate.Struct(cfg); err != nil {
-		return nil, err
+		if err = validate.Struct(cfg); err != nil {
+			return nil, err
+		}
 	}
 
 	// Ensure cmdTmpl and cmdLargeTmpl are parsed
 	cfg.Controller.WorkerCmdTmpl, err = template.New("worker_cmd").Parse(cfg.Controller.WorkerCmd)
-	if err != nil {
+	if withValidation && err != nil {
 		return nil, fmt.Errorf("failed to parse worker_cmd template: %w", err)
 	}
 	cfg.Controller.WorkerCmdLargeTmpl, err = template.New("worker_cmd_large").Parse(cfg.Controller.WorkerCmdLarge)
-	if err != nil {
+	if withValidation && err != nil {
 		return nil, fmt.Errorf("failed to parse worker_cmd_large template: %w", err)
 	}
 
@@ -63,14 +78,14 @@ func NewConfigFromFile(path string) (*Config, error) {
 
 	// Extract the Layer2.MsgSvcContract address from the string
 	addr, err := common.NewMixedcaseAddressFromString(cfg.Layer2.MsgSvcContractStr)
-	if err != nil {
+	if withValidation && err != nil {
 		return nil, fmt.Errorf("failed to extract Layer2.MsgSvcContract address: %w", err)
 	}
 	cfg.Layer2.MsgSvcContract = addr.Address()
 
 	// ensure that asset dir / kzgsrs exists using os.Stat
 	srsDir := cfg.PathForSRS()
-	if _, err := os.Stat(srsDir); os.IsNotExist(err) {
+	if _, err := os.Stat(srsDir); withValidation && os.IsNotExist(err) {
 		return nil, fmt.Errorf("kzgsrs directory (%s) does not exist: %w", srsDir, err)
 	}
 
@@ -82,33 +97,6 @@ func NewConfigFromFile(path string) (*Config, error) {
 	// duplicate L2 hardcoded values for PI
 	cfg.PublicInputInterconnection.ChainID = uint64(cfg.Layer2.ChainID)
 	cfg.PublicInputInterconnection.L2MsgServiceAddr = cfg.Layer2.MsgSvcContract
-
-	return &cfg, nil
-}
-
-// NewConfigFromFileUnchecked is as [NewConfigFromFile] but does not run
-// the config validation. It will return an error if it fails reading
-// the file or if the config contains unknown fields.
-func NewConfigFromFileUnchecked(path string) (*Config, error) {
-
-	viper.SetConfigFile(path)
-
-	// Parse the config
-	err := viper.ReadInConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	// Set the default values
-	setDefaultValues()
-
-	// Unmarshal the config; note that UnmarshalExact will error if there are any fields in the config
-	// that are not present in the struct.
-	var cfg Config
-	err = viper.UnmarshalExact(&cfg)
-	if err != nil {
-		return nil, err
-	}
 
 	return &cfg, nil
 }
@@ -217,6 +205,10 @@ type Controller struct {
 	WorkerCmdLarge     string             `mapstructure:"worker_cmd_large_tmpl"`
 	WorkerCmdTmpl      *template.Template `mapstructure:"-"`
 	WorkerCmdLargeTmpl *template.Template `mapstructure:"-"`
+
+	// SpotInstanceMode tells the controller to gracefully exit as soon as it
+	// receives a SIGTERM.
+	SpotInstanceMode bool `mapstructure:"spot_instance_mode"`
 }
 
 type Prometheus struct {

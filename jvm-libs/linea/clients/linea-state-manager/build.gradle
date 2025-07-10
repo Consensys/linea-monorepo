@@ -12,7 +12,7 @@ dependencies {
   api project(':jvm-libs:generic:errors')
   api project(':jvm-libs:generic:extensions:futures')
   api project(':jvm-libs:generic:extensions:kotlin')
-  api "io.tmio:tuweni-bytes:${libs.versions.tuweni.get()}"
+  api "io.consensys.tuweni:tuweni-bytes:${libs.versions.tuweni.get()}"
 
   implementation "com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}"
   implementation "com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}"
@@ -21,5 +21,5 @@ dependencies {
   testImplementation(project(":jvm-libs:linea:testing:file-system"))
   testImplementation project(':jvm-libs:linea:metrics:micrometer')
   testImplementation "io.vertx:vertx-junit5"
-  testImplementation "com.github.tomakehurst:wiremock-jre8:${libs.versions.wiremock.get()}"
+  testImplementation "org.wiremock:wiremock:${libs.versions.wiremock.get()}"
 }

@@ -2,6 +2,7 @@ package net.consensys.linea.blob
 
 import kotlinx.datetime.Instant
 import linea.blob.BlobCompressor
+import linea.blob.BlobCompressorVersion
 import linea.blob.GoBackedBlobCompressor
 import linea.domain.AccessListEntry
 import linea.domain.TransactionFactory
@@ -23,9 +24,9 @@ import kotlin.jvm.optionals.getOrNull
 class GoNativeBlobDecompressorTest {
   private val blobCompressedLimit = 30 * 1024
   private val compressor: BlobCompressor = GoBackedBlobCompressor
-    .getInstance(BlobCompressorVersion.V1_0_1, blobCompressedLimit.toUInt())
+    .getInstance(BlobCompressorVersion.V1_2, blobCompressedLimit)
   private val decompressor: BlobDecompressor =
-    GoNativeBlobDecompressorFactory.getInstance(BlobDecompressorVersion.V1_1_1)
+    GoNativeBlobDecompressorFactory.getInstance(BlobDecompressorVersion.V1_2_0)
 
   @BeforeEach
   fun beforeEach() {
@@ -53,7 +54,7 @@ class GoNativeBlobDecompressorTest {
       gasLimit = 22_0000uL,
       to = null,
       value = 1uL.eth.toBigInteger(),
-      input = byteArrayOf()
+      input = byteArrayOf(),
     )
     val tx1 = TransactionFactory.createTransactionEip1559(
       nonce = 123uL,
@@ -66,22 +67,22 @@ class GoNativeBlobDecompressorTest {
           address = "0x0000000000000000000000000000000000000001".decodeHex(),
           storageKeys = listOf(
             "0x0000000000000000000000000000000000000000000000000000000000000001".decodeHex(),
-            "0x0000000000000000000000000000000000000000000000000000000000000002".decodeHex()
-          )
+            "0x0000000000000000000000000000000000000000000000000000000000000002".decodeHex(),
+          ),
         ),
         AccessListEntry(
           address = "0x0000000000000000000000000000000000000002".decodeHex(),
           storageKeys = listOf(
             "0x0000000000000000000000000000000000000000000000000000000000000011".decodeHex(),
-            "0x0000000000000000000000000000000000000000000000000000000000000012".decodeHex()
-          )
-        )
-      )
+            "0x0000000000000000000000000000000000000000000000000000000000000012".decodeHex(),
+          ),
+        ),
+      ),
     )
     val originalBesuBlock = createBlock(
       number = 123uL,
       timestamp = Instant.parse("2025-01-02T12:23:45Z"),
-      transactions = listOf(tx0, tx1)
+      transactions = listOf(tx0, tx1),
     ).toBesu()
 
     compressor.appendBlock(RLP.encodeBlock(originalBesuBlock))

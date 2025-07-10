@@ -1,0 +1,54 @@
+/*
+ * Copyright Consensys Software Inc.
+ *
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
+ *
+ * SPDX-License-Identifier: MIT OR Apache-2.0
+ */
+
+apply plugin: 'java-library'
+
+if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
+  throw new GradleException("Java 21 or later is required to build Besu.\n" +
+          "  Detected version ${JavaVersion.current()}")
+}
+
+sourceCompatibility = 21
+targetCompatibility = 21
+
+tasks.withType(JavaCompile) {
+  options.compilerArgs += [
+    '-Xlint:unchecked',
+    '-Xlint:cast',
+    '-Xlint:rawtypes',
+    '-Xlint:overloads',
+    '-Xlint:divzero',
+    '-Xlint:finally',
+    '-Xlint:static',
+    '-Werror',
+  ]
+
+  options.encoding = 'UTF-8'
+}
+
+def lineaSequencerProject = project(lineaSequencerProjectPath)
+
+// Takes the version, and if -SNAPSHOT is part of it replaces SNAPSHOT
+// with the git commit version.
+ext.calculateVersion = { ->
+  // First try to get releaseVersion from project properties (for -P overrides),
+  // otherwise fallback to the parent project's releaseVersion
+  String version = project.hasProperty('releaseVersion') ? 
+    project.releaseVersion : lineaSequencerProject.releaseVersion
+  if (version.endsWith("-SNAPSHOT")) {
+    version = version.replace("-SNAPSHOT", "-dev-${getCheckedOutGitCommitHash()}")
+  }
+
+  return version
+}
+
+static def getCheckedOutGitCommitHash() {
+  def hashLength = 8
+  "git rev-parse HEAD".execute().text.take(hashLength)
+}

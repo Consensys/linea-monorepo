@@ -2,22 +2,12 @@ package net.consensys.linea.metrics
 
 import java.util.concurrent.Callable
 import java.util.concurrent.CompletableFuture
-import java.util.function.Function
 import java.util.function.Supplier
 
 data class Tag(val key: String, val value: String)
 
-enum class LineaMetricsCategory {
-  AGGREGATION,
-  BATCH,
-  BLOB,
-  CONFLATION,
-  GAS_PRICE_CAP,
-  TX_EXCLUSION_API;
-
-  override fun toString(): String {
-    return this.name.replace('_', '.').lowercase()
-  }
+interface MetricsCategory {
+  val name: String
 }
 
 interface Counter {
@@ -30,51 +20,78 @@ interface Histogram {
   fun record(data: Double)
 }
 
-interface TimerCapture<T> {
+interface CounterFactory {
+  fun create(tags: List<Tag> = emptyList()): Counter
+}
+
+interface TimerFactory {
+  fun create(tags: List<Tag> = emptyList()): Timer
+}
+
+interface Timer {
+  fun <T> captureTime(f: CompletableFuture<T>): CompletableFuture<T>
+  fun <T> captureTime(action: Callable<T>): T
+}
+
+interface DynamicTagTimer<T> {
   fun captureTime(f: CompletableFuture<T>): CompletableFuture<T>
   fun captureTime(action: Callable<T>): T
 }
 
 interface MetricsFacade {
   fun createGauge(
-    category: LineaMetricsCategory? = null,
+    category: MetricsCategory,
     name: String,
     description: String,
     measurementSupplier: Supplier<Number>,
-    tags: List<Tag> = emptyList()
+    tags: List<Tag> = emptyList(),
   )
 
   fun createCounter(
-    category: LineaMetricsCategory? = null,
+    category: MetricsCategory,
     name: String,
     description: String,
-    tags: List<Tag> = emptyList()
-  ): Counter
+    tags: List<Tag> = emptyList(),
+  ): Counter = createCounterFactory(category, name, description, tags).create()
 
   fun createHistogram(
-    category: LineaMetricsCategory? = null,
+    category: MetricsCategory,
     name: String,
     description: String,
     tags: List<Tag> = emptyList(),
     isRatio: Boolean = false,
-    baseUnit: String? = null
+    baseUnit: String? = null,
   ): Histogram
 
-  fun <T> createSimpleTimer(
-    category: LineaMetricsCategory? = null,
+  fun createTimer(
+    category: MetricsCategory,
     name: String,
     description: String,
-    tags: List<Tag> = emptyList()
-  ): TimerCapture<T>
+    tags: List<Tag> = emptyList(),
+  ): Timer
 
   fun <T> createDynamicTagTimer(
-    category: LineaMetricsCategory? = null,
+    category: MetricsCategory,
     name: String,
     description: String,
-    tagKey: String,
-    tagValueExtractorOnError: Function<Throwable, String>,
-    tagValueExtractor: Function<T, String>
-  ): TimerCapture<T>
+    tagValueExtractorOnError: (Throwable) -> List<Tag>,
+    tagValueExtractor: (T) -> List<Tag>,
+    commonTags: List<Tag> = emptyList(),
+  ): DynamicTagTimer<T>
+
+  fun createCounterFactory(
+    category: MetricsCategory,
+    name: String,
+    description: String,
+    commonTags: List<Tag> = emptyList(),
+  ): CounterFactory
+
+  fun createTimerFactory(
+    category: MetricsCategory,
+    name: String,
+    description: String,
+    commonTags: List<Tag> = emptyList(),
+  ): TimerFactory
 }
 
 class FakeHistogram : Histogram {

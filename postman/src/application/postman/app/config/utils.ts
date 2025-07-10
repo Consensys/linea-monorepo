@@ -2,6 +2,7 @@ import { Interface, isAddress } from "ethers";
 import { compileExpression, useDotAccessOperator } from "filtrex";
 import {
   DEFAULT_CALLDATA_ENABLED,
+  DEFAULT_ENABLE_POSTMAN_SPONSORING,
   DEFAULT_EOA_ENABLED,
   DEFAULT_GAS_ESTIMATION_PERCENTILE,
   DEFAULT_INITIAL_FROM_BLOCK,
@@ -14,6 +15,7 @@ import {
   DEFAULT_MAX_FETCH_MESSAGES_FROM_DB,
   DEFAULT_MAX_NONCE_DIFF,
   DEFAULT_MAX_NUMBER_OF_RETRIES,
+  DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
   DEFAULT_MAX_TX_RETRIES,
   DEFAULT_MESSAGE_SUBMISSION_TIMEOUT,
   DEFAULT_PROFIT_MARGIN,
@@ -36,6 +38,7 @@ export function getConfig(postmanOptions: PostmanOptions): PostmanConfig {
     databaseOptions,
     databaseCleanerOptions,
     loggerOptions,
+    apiOptions,
   } = postmanOptions;
 
   if (l1Options.listener.eventFilters) {
@@ -73,6 +76,10 @@ export function getConfig(postmanOptions: PostmanOptions): PostmanConfig {
         retryDelayInSeconds: l1Options.claiming.retryDelayInSeconds ?? DEFAULT_RETRY_DELAY_IN_SECONDS,
         maxClaimGasLimit: l1Options.claiming.maxClaimGasLimit ?? DEFAULT_MAX_CLAIM_GAS_LIMIT,
         maxTxRetries: l1Options.claiming.maxTxRetries ?? DEFAULT_MAX_TX_RETRIES,
+        isPostmanSponsorshipEnabled:
+          l1Options.claiming.isPostmanSponsorshipEnabled ?? DEFAULT_ENABLE_POSTMAN_SPONSORING,
+        maxPostmanSponsorGasLimit:
+          l1Options.claiming.maxPostmanSponsorGasLimit ?? DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
       },
     },
     l2Config: {
@@ -103,6 +110,10 @@ export function getConfig(postmanOptions: PostmanOptions): PostmanConfig {
         retryDelayInSeconds: l2Options.claiming.retryDelayInSeconds ?? DEFAULT_RETRY_DELAY_IN_SECONDS,
         maxClaimGasLimit: l2Options.claiming.maxClaimGasLimit ?? DEFAULT_MAX_CLAIM_GAS_LIMIT,
         maxTxRetries: l2Options.claiming.maxTxRetries ?? DEFAULT_MAX_TX_RETRIES,
+        isPostmanSponsorshipEnabled:
+          l2Options.claiming.isPostmanSponsorshipEnabled ?? DEFAULT_ENABLE_POSTMAN_SPONSORING,
+        maxPostmanSponsorGasLimit:
+          l2Options.claiming.maxPostmanSponsorGasLimit ?? DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
       },
     },
     l1L2AutoClaimEnabled,
@@ -114,6 +125,9 @@ export function getConfig(postmanOptions: PostmanOptions): PostmanConfig {
       daysBeforeNowToDelete: databaseCleanerOptions?.daysBeforeNowToDelete ?? 14,
     },
     loggerOptions,
+    apiConfig: {
+      port: apiOptions?.port ?? 3000,
+    },
   };
 }
 
