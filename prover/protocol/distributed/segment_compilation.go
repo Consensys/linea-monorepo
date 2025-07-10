@@ -25,8 +25,8 @@ import (
 const (
 	// fixedNbRowPlonkCircuit is the number of rows in the plonk circuit,
 	// the value is empirical and corresponds to the lowest value that works.
-	fixedNbRowPlonkCircuit   = 1 << 19
-	fixedNbRowExternalHasher = 1 << 16
+	fixedNbRowPlonkCircuit   = 1 << 20
+	fixedNbRowExternalHasher = 1 << 17
 	verifyingKeyPublicInput  = "VERIFYING_KEY"
 	verifyingKey2PublicInput = "VERIFYING_KEY_2"
 	lppMerkleRootPublicInput = "LPP_COLUMNS_MERKLE_ROOTS"
@@ -41,7 +41,7 @@ var (
 	// numColumnProfileMpts tells the last invokation of Vortex prior to the self-
 	// recursion to use a plonk circuit with a fixed number of rows. The values
 	// are completely empirical and set to make the compilation work.
-	numColumnProfileMpts            = []int{17, 360, 38, 3, 9, 7, 0, 1}
+	numColumnProfileMpts            = []int{17, 361, 42, 3, 9, 7, 0, 1}
 	numColumnProfileMptsPrecomputed = 36
 )
 
