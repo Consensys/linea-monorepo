@@ -133,7 +133,6 @@ export const test = metaMaskFixtures(setup).extend<{
   openGasFeeModal: async ({ page }, use) => {
     await use(async () => {
       const gasFeeBtn = page.getByRole("button", { name: "fee-chain-icon" });
-      // bridge-ui-known-flaky-line - Unsure why, the gas fees may not load within 5s
       await expect(gasFeeBtn).not.toContainText("0.00000000", { timeout: PAGE_TIMEOUT });
       await gasFeeBtn.click();
     });

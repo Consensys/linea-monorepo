@@ -20,13 +20,6 @@ export const config = appConfig.e2eTestMode
 function generateWagmiTransports(chainIds: (typeof CHAINS_IDS)[number][]) {
   return chainIds.reduce(
     (acc, chainId) => {
-      // if (chainId === localL1Network.id) {
-      //   acc[chainId] = http(localL1Network.rpcUrls.default.http[0]);
-      // } else if (chainId === localL2Network.id) {
-      //   acc[chainId] = http(localL2Network.rpcUrls.default.http[0]);
-      // } else {
-      //   acc[chainId] = generateWagmiTransport(chainId);
-      // }
       acc[chainId] = generateWagmiTransport(chainId);
       return acc;
     },

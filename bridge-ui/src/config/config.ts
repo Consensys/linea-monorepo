@@ -1,4 +1,4 @@
-import { getAddress } from "viem";
+import { getAddress, zeroAddress } from "viem";
 import { configSchema, Config } from "./config.schema";
 
 export const config: Config = {
@@ -69,8 +69,8 @@ export const config: Config = {
             gasLimitSurplus: 6000n,
             profitMargin: 2n,
             cctpDomain: 0,
-            cctpTokenMessengerV2Address: getAddress("0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA"),
-            cctpMessageTransmitterV2Address: getAddress("0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275"),
+            cctpTokenMessengerV2Address: zeroAddress, // Not used in E2E tests
+            cctpMessageTransmitterV2Address: zeroAddress, // Not used in E2E tests
           },
           1337: {
             iconPath: `${process.env.NEXT_PUBLIC_BASE_PATH}/images/logo/linea-sepolia.svg`,
@@ -79,8 +79,8 @@ export const config: Config = {
             gasLimitSurplus: 6000n,
             profitMargin: 2n,
             cctpDomain: 0,
-            cctpTokenMessengerV2Address: getAddress("0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA"),
-            cctpMessageTransmitterV2Address: getAddress("0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275"),
+            cctpTokenMessengerV2Address: zeroAddress, // Not used in E2E tests
+            cctpMessageTransmitterV2Address: zeroAddress, // Not used in E2E tests
           },
         }
       : {}),
