@@ -28,6 +28,6 @@ func finalizeCktSetup(cfg *config.Config, chSetupDone <-chan struct{},
 	if errSetup != nil {
 		utils.Panic("could not load setup: %v", errSetup)
 	}
-	execution.ValidateSetupChecksum(*setup, &cfg.TracesLimits)
+	execution.SanityCheckTracesChecksum(circuits.ExecutionLimitlessCircuitID, &cfg.TracesLimits, cfg)
 	return nil
 }

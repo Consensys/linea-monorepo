@@ -121,6 +121,7 @@ __pycache__/
 /prover/**/*-*-zkProof.json
 /prover/**/prover/zkevm/arithmetization/zkevm.bin
 /prover/crypto/ringsis/**/*.txt
+!/prover/zkevm/prover/ecdsa/testdata/antichamber.csv
 
 /sdk/.nyc_output/
 /sdk/scripts/contractAddresses.json
@@ -152,4 +153,3 @@ prover/**/*.pdf
 # OK to remove eventually.
 prover/protocol/distributed/**/*.json
 prover/protocol/distributed/**/*.txt
-prover/protocol/distributed/**/*.csv
