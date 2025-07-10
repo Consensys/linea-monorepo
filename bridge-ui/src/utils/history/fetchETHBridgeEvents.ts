@@ -1,6 +1,6 @@
 import { Address, Client, Hex } from "viem";
 import { getPublicClient } from "@wagmi/core";
-import { getL1ToL2MessageStatus, getL2ToL1MessageStatus, OnChainMessageStatus } from "@consensys/linea-sdk-viem";
+import { getL1ToL2MessageStatus, getL2ToL1MessageStatus } from "@consensys/linea-sdk-viem";
 import { config as wagmiConfig } from "@/lib/wagmi";
 import { defaultTokensConfig, HistoryActionsForCompleteTxCaching } from "@/stores";
 import {
