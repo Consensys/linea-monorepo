@@ -123,6 +123,7 @@ func (a *StitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
 // sub columns to 'ignored'. since the sub columns are technically replaced with
 // their stitching.
 func (ctx *StitchingContext) ScanStitchCommit() {
+
 	for round := 0; round < ctx.Comp.NumRounds(); round++ {
 
 		// scan the compiler trace to find the eligible columns for stitching.
@@ -342,6 +343,7 @@ func isColEligibleStitching(stitchings MultiSummary, col ifaces.Column) bool {
 // It makes the given colum public.
 // If the colum is Precomputed it becomes the VerifierKey, otherwise it becomes Proof.
 func (ctx StitchingContext) makeColumnPublic(col ifaces.Column, status column.Status) {
+
 	switch status {
 	case column.Precomputed:
 		// send it to the verifier directly as part of the verifying key

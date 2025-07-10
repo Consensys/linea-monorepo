@@ -1026,8 +1026,13 @@ func (ctx *Ctx) commitmentsAtRoundFromQueryPrecomputed() []ifaces.ColID {
 			panic("verifiercol")
 		}
 
-		if nat, isNat := p.(column.Natural); !isNat || nat.Status() != column.Precomputed {
-			panic("not precomputed")
+		nat, isNat := p.(column.Natural)
+		if !isNat {
+			utils.Panic("not a Natural column: %v, type=%T", p.GetColID(), p)
+		}
+
+		if nat.Status() != column.Precomputed {
+			utils.Panic("not precomputed, nat.status=%v nat.id=%v", nat.Status().String(), nat.ID)
 		}
 
 		res = append(res, p.GetColID())
