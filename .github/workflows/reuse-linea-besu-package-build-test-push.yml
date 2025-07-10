@@ -29,18 +29,10 @@ on:
       with_besu_fleet_plugin:
         required: true
         type: boolean
-      with_besu_fleet_plugin_debug:
-        required: false
-        type: boolean
-        default: false
     secrets:
       DOCKERHUB_USERNAME:
         required: false
       DOCKERHUB_TOKEN:
-        required: false
-      PRIVATE_DOCKERHUB_USERNAME:
-        required: false
-      PRIVATE_DOCKERHUB_TOKEN:
         required: false
       FLEET_GITHUB_APP_ID:
         required: false
@@ -139,8 +131,6 @@ jobs:
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-      PRIVATE_DOCKERHUB_USERNAME: ${{ secrets.PRIVATE_DOCKERHUB_USERNAME }}
-      PRIVATE_DOCKERHUB_TOKEN: ${{ secrets.PRIVATE_DOCKERHUB_TOKEN }}
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -161,7 +151,7 @@ jobs:
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 #v3.11.1
 
       - name: Login to private Docker Hub (if Besu fleet plugin is included)
-        if: ${{ inputs.with_besu_fleet_plugin && env.PRIVATE_DOCKERHUB_USERNAME != '' && env.PRIVATE_DOCKERHUB_TOKEN != '' }}
+        if: ${{ inputs.with_besu_fleet_plugin && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 #v3.4.0
         with:
           username: ${{ secrets.PRIVATE_DOCKERHUB_USERNAME }}
@@ -175,7 +165,7 @@ jobs:
           fi
 
       - name: build and push the combined manifest (if Besu fleet plugin is included)
-        if: ${{ inputs.with_besu_fleet_plugin_debug }}
+        if: ${{ inputs.with_besu_fleet_plugin }}
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 #v6.18.0
         env:
           DOCKER_BUILD_SUMMARY: false
