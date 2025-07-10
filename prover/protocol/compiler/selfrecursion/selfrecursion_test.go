@@ -366,7 +366,6 @@ func TestSelfRecursionManyLayers(t *testing.T) {
 			mimc.CompileMiMC,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<13),
-				compiler.WithStitcherMinSize(1<<6),
 			),
 			// logdata.Log("before-vortex"),
 			logdata.GenCSV(files.MustOverwrite(fmt.Sprintf("selfrecursion-%v.csv", i)), logdata.IncludeAllFilter),
