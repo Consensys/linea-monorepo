@@ -55,8 +55,6 @@ func reduceFixedPermutation(comp *wizard.CompiledIOP, q query.FixedPermutation) 
 		s[i] = comp.InsertPrecomputed(deriveNamePerm("S", q.ID, i), q.S[i])
 		if column.StatusOf(q.B[i]).IsPublic() {
 			comp.Columns.SetStatus(s[i].GetColID(), column.VerifyingKey)
-		} else {
-			comp.Columns.SetStatus(s[i].GetColID(), column.Committed)
 		}
 		permB = append(permB, []ifaces.Column{q.B[i], s[i]})
 	}
@@ -66,9 +64,6 @@ func reduceFixedPermutation(comp *wizard.CompiledIOP, q query.FixedPermutation) 
 		sid[i] = dedicated.CounterPrecomputed(comp, cnt, cnt+size)
 		if column.StatusOf(q.A[i]).IsPublic() {
 			comp.Columns.SetStatus(sid[i].GetColID(), column.VerifyingKey)
-		} else {
-
-			comp.Columns.SetStatus(sid[i].GetColID(), column.Committed)
 		}
 		permA = append(permA, []ifaces.Column{q.A[i], sid[i]})
 		cnt += size

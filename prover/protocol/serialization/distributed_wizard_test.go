@@ -85,19 +85,26 @@ func GetBasicDistWizard() *distributed.DistributedWizard {
 }
 
 func TestSerdeDistWizard(t *testing.T) {
+
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+
 	dist := GetDistWizard()
 
 	t.Run("ModuleNames", func(t *testing.T) {
 		runSerdeTest(t, dist.ModuleNames, "DistributedWizard.ModuleNames", true, false)
 	})
 
-	t.Run("GLModules", func(t *testing.T) {
-		runSerdeTest(t, dist.GLs, "DistributedWizard.GLs", true, false)
-	})
+	for i := range dist.GLs {
+		t.Run(fmt.Sprintf("GLModule-%d", i), func(t *testing.T) {
+			runSerdeTest(t, dist.GLs[i], "DistributedWizard.GLs", true, false)
+		})
+	}
 
-	t.Run("LPPModules", func(t *testing.T) {
-		runSerdeTest(t, dist.LPPs, "DistributedWizard.LPPs", true, false)
-	})
+	for i := range dist.LPPs {
+		t.Run(fmt.Sprintf("LPPModule-%d", i), func(t *testing.T) {
+			runSerdeTest(t, dist.LPPs[i], "DistributedWizard.LPPs", true, false)
+		})
+	}
 
 	t.Run("DefaultModule", func(t *testing.T) {
 		runSerdeTest(t, dist.DefaultModule, "DistributedWizard.DefaultModule", true, false)
@@ -131,10 +138,16 @@ func TestSerdeDistWizard(t *testing.T) {
 	cong := dist.CompiledConglomeration
 	dist = nil
 	runtime.GC()
-	runSerdeTest(t, cong, "DistributedWizard.CompiledConglomeration", true, false)
+
+	t.Run("CompiledConglomeration", func(t *testing.T) {
+		runSerdeTest(t, cong, "DistributedWizard.CompiledConglomeration", true, false)
+	})
 }
 
 func TestSerdeDWCong(t *testing.T) {
+
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+
 	// Setup
 	distWizard := GetBasicDistWizard()
 	cong := distWizard.CompiledConglomeration

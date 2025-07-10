@@ -67,14 +67,13 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 	}
 	// Collect all the roots: rounds by rounds
 	// and append them to the sis or no sis roots
-	startingRound := ctx.startingRound()
-	for round := startingRound; round <= ctx.MaxCommittedRound; round++ {
+	for round := 0; round <= ctx.MaxCommittedRound; round++ {
 
 		// If the round is empty (i.e. the wizard does not have any committed
 		// columns associated to this round), then the rootSv and rootF will not
 		// be defined so this case cannot be handled as a "switch-case" as in
 		// the "if" clause below.
-		if ctx.RoundStatus[round-startingRound] == IsEmpty {
+		if ctx.RoundStatus[round] == IsEmpty {
 			continue
 		}
 
@@ -82,11 +81,10 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 		rootF := rootSv.Get(0)                                           // root as field element
 
 		// Append the isSISApplied flag
-		switch ctx.RoundStatus[round] {
-		case IsOnlyMiMCApplied:
+		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
 			noSisRoots = append(noSisRoots, types.Bytes32(rootF.Bytes()))
 			flagForNoSISRounds = append(flagForNoSISRounds, true)
-		case IsSISApplied:
+		} else if ctx.RoundStatus[round] == IsSISApplied {
 			sisRoots = append(sisRoots, types.Bytes32(rootF.Bytes()))
 			flagForSISRounds = append(flagForSISRounds, false)
 		}
@@ -193,10 +191,9 @@ func (ctx *Ctx) getYs(run wizard.Runtime) (ys [][]field.Element) {
 			ysRounds[i] = ysMap[name]
 		}
 		// conditionally append ysRounds to the SIS or no SIS list
-		switch ctx.RoundStatus[round] {
-		case IsOnlyMiMCApplied:
+		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
 			ysNoSIS = append(ysNoSIS, ysRounds)
-		case IsSISApplied:
+		} else if ctx.RoundStatus[round] == IsSISApplied {
 			ysSIS = append(ysSIS, ysRounds)
 		}
 	}
@@ -251,10 +248,9 @@ func (ctx *Ctx) RecoverSelectedColumns(run wizard.Runtime, entryList []int) [][]
 		numRowsForRound := ctx.getNbCommittedRows(round)
 		// conditionally append the numRowsForRound
 		// to the SIS or no SIS list
-		switch ctx.RoundStatus[round] {
-		case IsOnlyMiMCApplied:
+		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
 			numRowsPerNonSisRound = append(numRowsPerNonSisRound, numRowsForRound)
-		case IsSISApplied:
+		} else if ctx.RoundStatus[round] == IsSISApplied {
 			numRowsPerSisRound = append(numRowsPerSisRound, numRowsForRound)
 		}
 	}

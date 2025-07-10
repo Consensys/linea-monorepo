@@ -157,7 +157,11 @@ func TestConcatTinyColWithPaddingRange(t *testing.T) {
 
 				// Compile with the full suite
 				compiled := wizard.Compile(define,
-					compiler.Arcane(compiler.WithTargetColSize(tc.Split)),
+					compiler.Arcane(
+						compiler.WithTargetColSize(tc.Split),
+						compiler.WithStitcherMinSize(tc.Split),
+						compiler.WithoutMpts(),
+					),
 					dummy.Compile,
 				)
 

@@ -74,10 +74,9 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 	}
 	// We commit to the polynomials with SIS hashing if the number of polynomials
 	// is greater than the [ApplyToSISThreshold].
-	switch ctx.RoundStatus[round] {
-	case IsOnlyMiMCApplied:
+	if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
 		committedMatrix, tree, mimcDigest = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
-	case IsSISApplied:
+	} else if ctx.RoundStatus[round] == IsSISApplied {
 		committedMatrix, tree, sisAndMimcDigest = ctx.VortexParams.CommitMerkleWithSIS(pols)
 	}
 	run.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
@@ -87,10 +86,9 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 	if ctx.IsSelfrecursed {
 		// We need to store the SIS and MiMC digests in the prover state
 		// so that we can use them in the self-recursion compiler.
-		switch ctx.RoundStatus[round] {
-		case IsOnlyMiMCApplied:
+		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
 			run.State.InsertNew(ctx.MIMCHashName(round), mimcDigest)
-		case IsSISApplied:
+		} else if ctx.RoundStatus[round] == IsSISApplied {
 			run.State.InsertNew(ctx.SisHashName(round), sisAndMimcDigest)
 		}
 	}
@@ -137,10 +135,9 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 		}
 		pols := ctx.getPols(pr, round)
 		// Push pols to the right stack
-		switch ctx.RoundStatus[round] {
-		case IsOnlyMiMCApplied:
+		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
 			committedSVNoSIS = append(committedSVNoSIS, pols...)
-		case IsSISApplied:
+		} else if ctx.RoundStatus[round] == IsSISApplied {
 			committedSVSIS = append(committedSVSIS, pols...)
 		}
 	}
@@ -166,8 +163,7 @@ func (ctx *Ctx) ComputeLinearCombFromRsMatrix(run *wizard.ProverRuntime) {
 		committedSVNoSIS = []smartvectors.SmartVector{}
 	)
 
-	// Add the precomputed columns to commitedSVSIS or commitedSVNoSIS depending
-	// in which case applies.
+	// Add the precomputed columns to commitedSVSIS or commitedSVNoSIS
 	if ctx.IsSISAppliedToPrecomputed() {
 		committedSVSIS = append(committedSVSIS, ctx.Items.Precomputeds.CommittedMatrix...)
 	} else {
@@ -185,20 +181,19 @@ func (ctx *Ctx) ComputeLinearCombFromRsMatrix(run *wizard.ProverRuntime) {
 		committedMatrix := run.State.MustGet(ctx.VortexProverStateName(round)).(vortex.EncodedMatrix)
 
 		// Push pols to the right stack
-		switch ctx.RoundStatus[round] {
-		case IsOnlyMiMCApplied:
+		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
 			committedSVNoSIS = append(committedSVNoSIS, committedMatrix...)
-		case IsSISApplied:
+		} else if ctx.RoundStatus[round] == IsSISApplied {
 			committedSVSIS = append(committedSVSIS, committedMatrix...)
 		}
 	}
 
-	// And get the randomness
-	randomCoinLC := run.GetRandomCoinField(ctx.Items.Alpha.Name)
-
 	// Construct committedSV by stacking the No SIS round
 	// matrices before the SIS round matrices
 	committedSV := append(committedSVNoSIS, committedSVSIS...)
+
+	// And get the randomness
+	randomCoinLC := run.GetRandomCoinField(ctx.Items.Alpha.Name)
 
 	// and compute and assign the random linear combination of the rows
 	proof := ctx.VortexParams.InitOpeningFromAlreadyEncodedLC(committedSV, randomCoinLC)
@@ -254,11 +249,10 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 
 		// conditionally stack the matrix and tree
 		// to SIS or no SIS matrices and trees
-		switch ctx.RoundStatus[round] {
-		case IsOnlyMiMCApplied:
+		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
 			committedMatricesNoSIS = append(committedMatricesNoSIS, committedMatrix)
 			treesNoSIS = append(treesNoSIS, tree)
-		case IsSISApplied:
+		} else if ctx.RoundStatus[round] == IsSISApplied {
 			committedMatricesSIS = append(committedMatricesSIS, committedMatrix)
 			treesSIS = append(treesSIS, tree)
 		}
@@ -426,12 +420,11 @@ func (ctx *Ctx) assignOpenedColumns(
 		if assignable.Len() < utils.NextPowerOfTwo(len(fullCol)) {
 			assignable = smartvectors.RightZeroPadded(fullCol, utils.NextPowerOfTwo(len(fullCol)))
 		}
-		switch mode {
-		case NonSelfRecursion:
+		if mode == NonSelfRecursion {
 			pr.AssignColumn(ctx.Items.OpenedColumns[j].GetColID(), assignable)
-		case SelfRecursionSIS:
+		} else if mode == SelfRecursionSIS {
 			pr.AssignColumn(ctx.Items.OpenedSISColumns[j].GetColID(), assignable)
-		case SelfRecursionMiMCOnly:
+		} else if mode == SelfRecursionMiMCOnly {
 			pr.AssignColumn(ctx.Items.OpenedNonSISColumns[j].GetColID(), assignable)
 		}
 	}

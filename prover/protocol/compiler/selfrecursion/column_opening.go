@@ -262,6 +262,15 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 
 	// Consistency check between the collapsed preimage and UalphaQ
 	{
+		uAlphaQEval := functionals.CoeffEval(
+			ctx.Comp,
+			ctx.constencyUalphaQPreimageLeft(),
+			ctx.Coins.Collapse,
+			ctx.Columns.UalphaQ,
+		)
+
+		// The collapsed preimage for the non SIS rounds
+		// Computed only if there are non zero number of non SIS rounds
 		var (
 			// The random linear combination of the collapsed preimage
 			// for the non SIS rounds
@@ -272,15 +281,6 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			offset       = 0
 			preImageEval ifaces.Accessor
 		)
-		// Compute the collapsed value of uAlphaQ
-		uAlphaQEval := functionals.CoeffEval(
-			ctx.Comp,
-			ctx.constencyUalphaQPreimageLeft(),
-			ctx.Coins.Collapse,
-			ctx.Columns.UalphaQ,
-		)
-		// The collapsed preimage for the non SIS rounds
-		// Computed only if there are non-zero number of non SIS rounds
 		if len(ctx.MIMCMetaData.ToHashSizes) > 0 {
 			ctx.Columns.CollapsedPreimagesNonSis = expr_handle.RandLinCombCol(
 				ctx.Comp,
@@ -326,9 +326,8 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			)
 		}
 
-		// preImageEval := preimageNonSisEval + alpha^offset * preImageSisEval.
+		// preImageEval := preimageNonSisEval + alpha^offset * preImageSisEval
 		if len(ctx.MIMCMetaData.ToHashSizes) > 0 && ctx.Columns.ConcatenatedDhQ != nil {
-			// Case when both sis and non sis rounds are present
 			preImageEvalSymb := symbolic.Add(
 				preImageNonSisEval,
 				symbolic.Mul(
@@ -341,10 +340,8 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			)
 			preImageEval = accessors.NewFromExpression(preImageEvalSymb, fmt.Sprintf("PREIMAGE_EVAL_%v", ctx.SelfRecursionCnt))
 		} else if len(ctx.MIMCMetaData.ToHashSizes) > 0 && ctx.Columns.ConcatenatedDhQ == nil {
-			// Case when only non sis rounds are present
 			preImageEval = preImageNonSisEval
 		} else if len(ctx.MIMCMetaData.ToHashSizes) == 0 && ctx.Columns.ConcatenatedDhQ != nil {
-			// Case when only sis rounds are present
 			preImageEval = preImageSisEval
 		} else {
 			utils.Panic("There are neither SIS nor non SIS round, this should not happen")
@@ -399,13 +396,27 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			}
 		}
 
-		// And computes the linear combination
-		ctx.Columns.ACollapsed = expr_handle.RandLinCombCol(
-			ctx.Comp,
-			collapsePowT,
-			nonNilAh,
-			ctx.aCollapsedName(),
-		)
+		// If there is only a single SIS round, then there is no need for
+		// computing an additional linear-combination column. We can simply
+		// return the single column. If we were using the random linear
+		// combination in this case, then the randomness would be factored out
+		// of the linear combination expression and the resulting column would
+		// be associated with the round "0" and not as a precomputed column.
+		// This would introduces an entire round for just one column and has
+		// noticeable effects on the performance of the protocol.
+		if len(nonNilAh) > 1 {
+			// And computes the linear combination
+			ctx.Columns.ACollapsed = expr_handle.RandLinCombCol(
+				ctx.Comp,
+				collapsePowT,
+				nonNilAh,
+				ctx.aCollapsedName(),
+			)
+		}
+
+		if len(nonNilAh) == 1 {
+			ctx.Columns.ACollapsed = nonNilAh[0]
+		}
 
 		// Declare Edual
 		ctx.Columns.Edual = ctx.Comp.InsertCommit(

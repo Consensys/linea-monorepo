@@ -37,7 +37,7 @@ func StackColumn(comp *wizard.CompiledIOP, srcs []ifaces.Column) StackedColumn {
 		round = 0
 		// Variables needed if the number of rows of the
 		// stacked column is not a power of two.
-		count_padded = 0
+		count_padded int
 		srcs_padded  []ifaces.Column
 		s_padded     []smartvectors.SmartVector
 	)

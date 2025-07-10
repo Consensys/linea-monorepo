@@ -78,9 +78,13 @@ type Witness struct {
 	CommittedMatrices []vCom.EncodedMatrix
 
 	// SisHashes is the list of the SIS hashes of the vortex columns
-	// for each committed round. They are needed by the prover of
-	// the prover of the self-recursion.
+	// for each committed round. They are needed by the prover of the self-
+	// recursion.
 	SisHashes [][]field.Element
+
+	// MimcHashes is the list of the MiMC of the Vortex columns that are not
+	// hashed using SIS. They are needed by the prover of self-recursion.
+	MimcHashes [][]field.Element
 
 	// Trees are the list of the commitment merkle trees. They are needed
 	// by the prover of the self-recursion.
@@ -290,6 +294,10 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 			if round < len(wit[i].Trees) && wit[i].Trees[round] != nil {
 				run.State.InsertNew(r.PcsCtx[i].MerkleTreeName(round), wit[i].Trees[round])
 			}
+
+			if round < len(wit[i].MimcHashes) && wit[i].MimcHashes[round] != nil {
+				run.State.InsertNew(r.PcsCtx[i].MIMCHashName(round), wit[i].MimcHashes[round])
+			}
 		}
 	}
 
@@ -341,24 +349,24 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 		BlowUpFactor:          srcVortexCtx.BlowUpFactor,
 		ApplySISHashThreshold: srcVortexCtx.ApplySISHashThreshold,
 		CommittedRowsCount:    srcVortexCtx.CommittedRowsCount,
+		CommittedRowsCountSIS: srcVortexCtx.CommittedRowsCountSIS,
 		NumCols:               srcVortexCtx.NumCols,
 		MaxCommittedRound:     srcVortexCtx.MaxCommittedRound,
 		NumOpenedCol:          srcVortexCtx.NumOpenedCol,
 		VortexParams:          srcVortexCtx.VortexParams,
 		SisParams:             srcVortexCtx.SisParams,
 		RoundStatus:           srcVortexCtx.RoundStatus,
-		// Although the srcVor
-		IsSelfrecursed:                 true,
-		CommitmentsByRounds:            translator.AddColumnVecVec(srcVortexCtx.CommitmentsByRounds),
-		PolynomialsTouchedByTheQuery:   translator.TranslateColumnSet(srcVortexCtx.PolynomialsTouchedByTheQuery),
-		ShadowCols:                     translator.TranslateColumnSet(srcVortexCtx.ShadowCols),
-		Query:                          translator.AddUniEval(0, srcVortexCtx.Query),
-		AddMerkleRootToPublicInputsOpt: srcVortexCtx.AddMerkleRootToPublicInputsOpt,
-		AddPrecomputedMerkleRootToPublicInputsOpt: srcVortexCtx.AddPrecomputedMerkleRootToPublicInputsOpt,
-	}
 
-	if dstVortexCtx.ApplySISHashThreshold > 0 {
-		panic("only SIS hashes are supported in recursion")
+		// Although the srcVor
+		IsSelfrecursed:                            true,
+		CommitmentsByRounds:                       translator.AddColumnVecVec(srcVortexCtx.CommitmentsByRounds),
+		CommitmentsByRoundsSIS:                    translator.AddColumnVecVec(srcVortexCtx.CommitmentsByRoundsSIS),
+		CommitmentsByRoundsNonSIS:                 translator.AddColumnVecVec(srcVortexCtx.CommitmentsByRoundsNonSIS),
+		PolynomialsTouchedByTheQuery:              translator.TranslateColumnSet(srcVortexCtx.PolynomialsTouchedByTheQuery),
+		ShadowCols:                                translator.TranslateColumnSet(srcVortexCtx.ShadowCols),
+		Query:                                     translator.AddUniEval(0, srcVortexCtx.Query),
+		AddMerkleRootToPublicInputsOpt:            srcVortexCtx.AddMerkleRootToPublicInputsOpt,
+		AddPrecomputedMerkleRootToPublicInputsOpt: srcVortexCtx.AddPrecomputedMerkleRootToPublicInputsOpt,
 	}
 
 	translator.Target.QueriesParams.MarkAsIgnored(dstVortexCtx.Query.QueryID)
@@ -388,6 +396,8 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 	dstVortexCtx.Items.Q = translator.AddCoinAtRound(srcVortexCtx.Items.Q, 2)
 	dstVortexCtx.Items.OpenedColumns = translator.AddColumnList(srcVortexCtx.Items.OpenedColumns, false, 2)
 	dstVortexCtx.Items.MerkleProofs = translator.AddColumnAtRound(srcVortexCtx.Items.MerkleProofs, false, 2)
+	dstVortexCtx.Items.OpenedSISColumns = translator.AddColumnList(srcVortexCtx.Items.OpenedSISColumns, false, 2)
+	dstVortexCtx.Items.OpenedNonSISColumns = translator.AddColumnList(srcVortexCtx.Items.OpenedNonSISColumns, false, 2)
 
 	return dstVortexCtx
 }
