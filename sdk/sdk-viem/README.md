@@ -14,7 +14,7 @@ yarn add @consensys/linea-sdk-viem viem
 pnpm add @consensys/linea-sdk-viem viem
 ```
 
-> **Note:** `viem@^2.25.0` is a required peer dependency.
+> **Note:** `viem@>=2.22.0` is a required peer dependency.
 
 ## Usage
 
