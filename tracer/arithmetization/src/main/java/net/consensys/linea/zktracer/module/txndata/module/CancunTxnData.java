@@ -13,8 +13,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlptxn;
+package net.consensys.linea.zktracer.module.txndata.module;
 
-import net.consensys.linea.zktracer.container.ModuleOperation;
-
-public abstract class RlpTxnOperation extends ModuleOperation {}
+public class CancunTxnData {}

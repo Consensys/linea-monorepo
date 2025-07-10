@@ -18,11 +18,11 @@ package net.consensys.linea.zktracer.module.rlpaddr;
 import static net.consensys.linea.zktracer.Trace.LLARGE;
 import static net.consensys.linea.zktracer.Trace.RLP_ADDR_RECIPE_1;
 import static net.consensys.linea.zktracer.Trace.RLP_ADDR_RECIPE_2;
-import static net.consensys.linea.zktracer.Trace.RLP_PREFIX_INT_SHORT;
 import static net.consensys.linea.zktracer.Trace.RLP_PREFIX_LIST_SHORT;
 import static net.consensys.linea.zktracer.Trace.Rlpaddr.MAX_CT_CREATE;
 import static net.consensys.linea.zktracer.Trace.Rlpaddr.MAX_CT_CREATE2;
-import static net.consensys.linea.zktracer.module.rlputils.Pattern.byteCounting;
+import static net.consensys.linea.zktracer.module.rlpUtils.RlpUtils.BYTES_PREFIX_SHORT_INT;
+import static net.consensys.linea.zktracer.module.rlputilsOld.Pattern.byteCounting;
 import static net.consensys.linea.zktracer.types.AddressUtils.getCreate2RawAddress;
 import static net.consensys.linea.zktracer.types.AddressUtils.getCreateRawAddress;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
@@ -42,7 +42,7 @@ import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.limits.Keccak;
-import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
+import net.consensys.linea.zktracer.module.rlputilsOld.ByteCountAndPowerOutput;
 import net.consensys.linea.zktracer.module.trm.Trm;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.BitDecOutput;
@@ -63,7 +63,6 @@ public class RlpAddr implements OperationSetModule<RlpAddrOperation> {
       new ModuleOperationStackedSet<>();
 
   public static final Bytes CREATE2_SHIFT = Bytes.minimalBytes(Trace.CREATE2_SHIFT);
-  private static final Bytes INT_SHORT = Bytes.minimalBytes(RLP_PREFIX_INT_SHORT);
   private static final UnsignedByte BYTES_LLARGE = UnsignedByte.of(LLARGE);
   final int recipe1NbRows = MAX_CT_CREATE + 1;
 
@@ -209,7 +208,7 @@ public class RlpAddr implements OperationSetModule<RlpAddrOperation> {
     // Bytes RLP(nonce)
     Bytes rlpNonce;
     if (nonce.compareTo(BigInteger.ZERO) == 0) {
-      rlpNonce = INT_SHORT;
+      rlpNonce = BYTES_PREFIX_SHORT_INT;
     } else {
       if (tinyNonZeroNonce) {
         rlpNonce = bigIntegerToBytes(nonce);

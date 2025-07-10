@@ -163,6 +163,7 @@ public class Util {
       case ACCESS_LIST -> 1;
       case EIP1559 -> 2;
       case BLOB -> 3;
+      case DELEGATE_CODE -> 4;
       default -> throw new RuntimeException("Transaction type not supported:" + txType);
     };
   }

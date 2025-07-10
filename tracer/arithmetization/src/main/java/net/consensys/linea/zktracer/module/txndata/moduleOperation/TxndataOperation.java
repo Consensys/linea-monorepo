@@ -259,8 +259,8 @@ public abstract class TxndataOperation extends ModuleOperation {
         valuesToRlptxn.add(
             RlptxnOutgoing.set(
                 (short) TYPE_1_RLP_TXN_PHASE_NUMBER_7,
-                Bytes.ofUnsignedInt(tx.numberWarmedKey()),
-                Bytes.ofUnsignedInt(tx.numberWarmedAddress())));
+                Bytes.ofUnsignedInt(tx.numberOfWarmedStorageKeys()),
+                Bytes.ofUnsignedInt(tx.numberOfWarmedAddresses())));
 
         for (int i = 8; i < this.nbRowsType1 + 1; i++) {
           valuesToRlptxn.add(RlptxnOutgoing.empty());
@@ -280,8 +280,8 @@ public abstract class TxndataOperation extends ModuleOperation {
         valuesToRlptxn.add(
             RlptxnOutgoing.set(
                 (short) TYPE_2_RLP_TXN_PHASE_NUMBER_7,
-                Bytes.ofUnsignedInt(tx.numberWarmedKey()),
-                Bytes.ofUnsignedInt(tx.numberWarmedAddress())));
+                Bytes.ofUnsignedInt(tx.numberOfWarmedStorageKeys()),
+                Bytes.ofUnsignedInt(tx.numberOfWarmedAddresses())));
 
         for (int i = 8; i < this.nbRowsType2 + 1; i++) {
           valuesToRlptxn.add(RlptxnOutgoing.empty());
