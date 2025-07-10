@@ -150,12 +150,12 @@ jobs:
       - name: set up docker buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 #v3.11.1
 
-      - name: Login to private Docker Hub (if Besu fleet plugin is included)
+      - name: Login to Docker Hub
         if: ${{ inputs.with_besu_fleet_plugin && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 #v3.4.0
         with:
-          username: ${{ secrets.PRIVATE_DOCKERHUB_USERNAME }}
-          password: ${{ secrets.PRIVATE_DOCKERHUB_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: set docker build args
         run: |
@@ -203,13 +203,6 @@ jobs:
         shell: bash
         run: |
           rm -fr linea-besu-package/linea-besu/besu/plugins/besu-fleet-plugin* || true
-
-      - name: Login to public Docker Hub
-        if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
-        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 #v3.4.0
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
       
       - name: build and push the combined manifest (without Besu fleet plugin)
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 #v6.18.0
