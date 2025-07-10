@@ -63,7 +63,7 @@ func TestConglomerationBasic(t *testing.T) {
 // TestConglomeration generates a conglomeration proof and checks if it is valid
 func TestConglomeration(t *testing.T) {
 
-	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
 	var (
 		z    = zkevm.GetTestZkEVM()
