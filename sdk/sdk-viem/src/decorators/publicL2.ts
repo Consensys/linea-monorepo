@@ -154,7 +154,6 @@ export type PublicActionsL2<chain extends Chain | undefined = Chain | undefined>
 >;
 
 export type PublicActionsL2Parameters = {
-  lineaRollupAddress: Address;
   l2MessageServiceAddress: Address;
 };
 
@@ -175,17 +174,17 @@ export function publicActionsL2(parameters?: PublicActionsL2Parameters) {
     getMessageByMessageHash: (args) =>
       getMessageByMessageHash(client, {
         ...args,
-        ...(parameters ? { messageServiceAddress: parameters.lineaRollupAddress } : {}),
+        ...(parameters ? { messageServiceAddress: parameters.l2MessageServiceAddress } : {}),
       }),
     getMessagesByTransactionHash: (args) =>
       getMessagesByTransactionHash(client, {
         ...args,
-        ...(parameters ? { messageServiceAddress: parameters.lineaRollupAddress } : {}),
+        ...(parameters ? { messageServiceAddress: parameters.l2MessageServiceAddress } : {}),
       }),
     getTransactionReceiptByMessageHash: (args) =>
       getTransactionReceiptByMessageHash(client, {
         ...args,
-        ...(parameters ? { messageServiceAddress: parameters.lineaRollupAddress } : {}),
+        ...(parameters ? { messageServiceAddress: parameters.l2MessageServiceAddress } : {}),
       }),
   });
 }

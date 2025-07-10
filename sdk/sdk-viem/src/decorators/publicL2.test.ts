@@ -6,7 +6,7 @@ import { getMessageByMessageHash } from "../actions/getMessageByMessageHash";
 import { getMessagesByTransactionHash } from "../actions/getMessagesByTransactionHash";
 import { getTransactionReceiptByMessageHash } from "../actions/getTransactionReceiptByMessageHash";
 import { ExtendedMessage, OnChainMessageStatus } from "@consensys/linea-sdk-core";
-import { TEST_CONTRACT_ADDRESS_1, TEST_CONTRACT_ADDRESS_2 } from "../../tests/constants";
+import { TEST_CONTRACT_ADDRESS_2 } from "../../tests/constants";
 
 jest.mock("../actions/getBlockExtraData", () => ({ getBlockExtraData: jest.fn() }));
 jest.mock("../actions/getL1ToL2MessageStatus", () => ({ getL1ToL2MessageStatus: jest.fn() }));
@@ -28,21 +28,22 @@ describe("publicActionsL2", () => {
 
   describe("with parameters", () => {
     const actions = publicActionsL2({
-      lineaRollupAddress: TEST_CONTRACT_ADDRESS_1,
       l2MessageServiceAddress: TEST_CONTRACT_ADDRESS_2,
     })<Transport, Chain, Account>(client);
 
-    it("delegatesgetL1ToL2MessageStatus with custom contract addresses to the action", async () => {
+    it("delegates getL1ToL2MessageStatus with custom contract addresses to the action", async () => {
       const params: Parameters<typeof actions.getL1ToL2MessageStatus>[0] = {
         messageHash: "0xabc" as Hex,
-        l2MessageServiceAddress: TEST_CONTRACT_ADDRESS_2,
       };
 
       (getL1ToL2MessageStatus as jest.Mock<ReturnType<typeof getL1ToL2MessageStatus>>).mockResolvedValue(
         OnChainMessageStatus.CLAIMED,
       );
       const result = await actions.getL1ToL2MessageStatus(params);
-      expect(getL1ToL2MessageStatus).toHaveBeenCalledWith(client, params);
+      expect(getL1ToL2MessageStatus).toHaveBeenCalledWith(client, {
+        ...params,
+        l2MessageServiceAddress: TEST_CONTRACT_ADDRESS_2,
+      });
       expect(result).toBe(OnChainMessageStatus.CLAIMED);
     });
 
@@ -60,11 +61,13 @@ describe("publicActionsL2", () => {
       } as ExtendedMessage;
       const params: Parameters<typeof actions.getMessageByMessageHash>[0] = {
         messageHash: "0xabc" as Hex,
-        messageServiceAddress: TEST_CONTRACT_ADDRESS_1,
       };
       (getMessageByMessageHash as jest.Mock<ReturnType<typeof getMessageByMessageHash>>).mockResolvedValue(mockMessage);
       const result = await actions.getMessageByMessageHash(params);
-      expect(getMessageByMessageHash).toHaveBeenCalledWith(client, params);
+      expect(getMessageByMessageHash).toHaveBeenCalledWith(client, {
+        ...params,
+        messageServiceAddress: TEST_CONTRACT_ADDRESS_2,
+      });
       expect(result).toBe(mockMessage);
     });
 
@@ -82,13 +85,15 @@ describe("publicActionsL2", () => {
       } as ExtendedMessage;
       const params: Parameters<typeof actions.getMessagesByTransactionHash>[0] = {
         transactionHash: "0xabc" as Hex,
-        messageServiceAddress: TEST_CONTRACT_ADDRESS_1,
       };
       (getMessagesByTransactionHash as jest.Mock<ReturnType<typeof getMessagesByTransactionHash>>).mockResolvedValue([
         mockMessage,
       ]);
       const result = await actions.getMessagesByTransactionHash(params);
-      expect(getMessagesByTransactionHash).toHaveBeenCalledWith(client, params);
+      expect(getMessagesByTransactionHash).toHaveBeenCalledWith(client, {
+        ...params,
+        messageServiceAddress: TEST_CONTRACT_ADDRESS_2,
+      });
       expect(result).toEqual([mockMessage]);
     });
 
@@ -111,13 +116,15 @@ describe("publicActionsL2", () => {
       } as TransactionReceipt;
       const params: Parameters<typeof actions.getTransactionReceiptByMessageHash>[0] = {
         messageHash: "0xabc" as Hex,
-        messageServiceAddress: TEST_CONTRACT_ADDRESS_1,
       };
       (
         getTransactionReceiptByMessageHash as jest.Mock<ReturnType<typeof getTransactionReceiptByMessageHash>>
       ).mockResolvedValue(transactionReceipt);
       const result = await actions.getTransactionReceiptByMessageHash(params);
-      expect(getTransactionReceiptByMessageHash).toHaveBeenCalledWith(client, params);
+      expect(getTransactionReceiptByMessageHash).toHaveBeenCalledWith(client, {
+        ...params,
+        messageServiceAddress: TEST_CONTRACT_ADDRESS_2,
+      });
       expect(result).toBe(transactionReceipt);
     });
   });

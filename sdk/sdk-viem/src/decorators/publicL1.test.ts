@@ -41,14 +41,16 @@ describe("publicActionsL1", () => {
       const params: Parameters<typeof actions.getMessageProof>[0] = {
         l2Client: client,
         messageHash: "0xabc" as Hex,
-        lineaRollupAddress: TEST_CONTRACT_ADDRESS_1,
-        l2MessageServiceAddress: TEST_CONTRACT_ADDRESS_2,
       };
       (getMessageProof as jest.Mock<ReturnType<typeof getMessageProof>>).mockResolvedValue(messageProof);
 
       const result = await actions.getMessageProof(params);
 
-      expect(getMessageProof).toHaveBeenCalledWith(client, params);
+      expect(getMessageProof).toHaveBeenCalledWith(client, {
+        ...params,
+        lineaRollupAddress: TEST_CONTRACT_ADDRESS_1,
+        l2MessageServiceAddress: TEST_CONTRACT_ADDRESS_2,
+      });
       expect(result).toBe(messageProof);
     });
 
@@ -56,8 +58,6 @@ describe("publicActionsL1", () => {
       const params: Parameters<typeof actions.getL2ToL1MessageStatus>[0] = {
         l2Client: client,
         messageHash: "0xabc" as Hex,
-        lineaRollupAddress: TEST_CONTRACT_ADDRESS_1,
-        l2MessageServiceAddress: TEST_CONTRACT_ADDRESS_2,
       };
       (getL2ToL1MessageStatus as jest.Mock<ReturnType<typeof getL2ToL1MessageStatus>>).mockResolvedValue(
         OnChainMessageStatus.CLAIMED,
@@ -65,7 +65,11 @@ describe("publicActionsL1", () => {
 
       const result = await actions.getL2ToL1MessageStatus(params);
 
-      expect(getL2ToL1MessageStatus).toHaveBeenCalledWith(client, params);
+      expect(getL2ToL1MessageStatus).toHaveBeenCalledWith(client, {
+        ...params,
+        lineaRollupAddress: TEST_CONTRACT_ADDRESS_1,
+        l2MessageServiceAddress: TEST_CONTRACT_ADDRESS_2,
+      });
       expect(result).toBe(OnChainMessageStatus.CLAIMED);
     });
 
@@ -84,13 +88,15 @@ describe("publicActionsL1", () => {
 
       const params: Parameters<typeof actions.getMessageByMessageHash>[0] = {
         messageHash: "0xabc" as Hex,
-        messageServiceAddress: TEST_CONTRACT_ADDRESS_1,
       };
       (getMessageByMessageHash as jest.Mock<ReturnType<typeof getMessageByMessageHash>>).mockResolvedValue(mockMessage);
 
       const result = await actions.getMessageByMessageHash(params);
 
-      expect(getMessageByMessageHash).toHaveBeenCalledWith(client, params);
+      expect(getMessageByMessageHash).toHaveBeenCalledWith(client, {
+        ...params,
+        messageServiceAddress: TEST_CONTRACT_ADDRESS_1,
+      });
       expect(result).toBe(mockMessage);
     });
 
@@ -109,7 +115,6 @@ describe("publicActionsL1", () => {
 
       const params: Parameters<typeof actions.getMessagesByTransactionHash>[0] = {
         transactionHash: "0xabc" as Hex,
-        messageServiceAddress: TEST_CONTRACT_ADDRESS_1,
       };
       (getMessagesByTransactionHash as jest.Mock<ReturnType<typeof getMessagesByTransactionHash>>).mockResolvedValue([
         mockMessage,
@@ -117,7 +122,10 @@ describe("publicActionsL1", () => {
 
       const result = await actions.getMessagesByTransactionHash(params);
 
-      expect(getMessagesByTransactionHash).toHaveBeenCalledWith(client, params);
+      expect(getMessagesByTransactionHash).toHaveBeenCalledWith(client, {
+        ...params,
+        messageServiceAddress: TEST_CONTRACT_ADDRESS_1,
+      });
       expect(result).toEqual([mockMessage]);
     });
 
@@ -140,7 +148,6 @@ describe("publicActionsL1", () => {
       } as TransactionReceipt;
       const params: Parameters<typeof actions.getTransactionReceiptByMessageHash>[0] = {
         messageHash: "0xabc" as Hex,
-        messageServiceAddress: TEST_CONTRACT_ADDRESS_1,
       };
       (
         getTransactionReceiptByMessageHash as jest.Mock<ReturnType<typeof getTransactionReceiptByMessageHash>>
@@ -148,7 +155,10 @@ describe("publicActionsL1", () => {
 
       const result = await actions.getTransactionReceiptByMessageHash(params);
 
-      expect(getTransactionReceiptByMessageHash).toHaveBeenCalledWith(client, params);
+      expect(getTransactionReceiptByMessageHash).toHaveBeenCalledWith(client, {
+        ...params,
+        messageServiceAddress: TEST_CONTRACT_ADDRESS_1,
+      });
       expect(result).toBe(transactionReceipt);
     });
   });

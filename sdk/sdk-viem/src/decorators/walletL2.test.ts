@@ -31,12 +31,14 @@ describe("walletActionsL2", () => {
         token: "0x0000000000000000000000000000000000000000" as Address,
         to: "0x0000000000000000000000000000000000000001" as Address,
         amount: 1000n,
-        l2MessageServiceAddress: TEST_CONTRACT_ADDRESS_2,
-        l2TokenBridgeAddress: TEST_ADDRESS_2,
       };
       (withdraw as jest.Mock<ReturnType<typeof withdraw>>).mockResolvedValue(withdrawResult);
       const result = await actions.withdraw(params);
-      expect(withdraw).toHaveBeenCalledWith(client, params);
+      expect(withdraw).toHaveBeenCalledWith(client, {
+        ...params,
+        l2MessageServiceAddress: TEST_CONTRACT_ADDRESS_2,
+        l2TokenBridgeAddress: TEST_ADDRESS_2,
+      });
       expect(result).toBe(withdrawResult);
     });
 
@@ -49,11 +51,10 @@ describe("walletActionsL2", () => {
         value: 2n,
         messageNonce: 3n,
         calldata: "0x" as Hex,
-        l2MessageServiceAddress: TEST_CONTRACT_ADDRESS_2,
       };
       (claimOnL2 as jest.Mock<ReturnType<typeof claimOnL2>>).mockResolvedValue(claimResult);
       const result = await actions.claimOnL2(params);
-      expect(claimOnL2).toHaveBeenCalledWith(client, params);
+      expect(claimOnL2).toHaveBeenCalledWith(client, { ...params, l2MessageServiceAddress: TEST_CONTRACT_ADDRESS_2 });
       expect(result).toBe(claimResult);
     });
   });
