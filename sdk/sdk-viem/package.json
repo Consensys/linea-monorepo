@@ -4,7 +4,15 @@
   "description": "",
   "author": "Consensys Software Inc.",
   "license": "Apache-2.0",
-  "main": "index.js",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
   "scripts": {
     "build": "tsup --tsconfig tsconfig.build.json",
     "test": "npx jest --bail --detectOpenHandles",
@@ -27,6 +35,6 @@
     "viem": "catalog:"
   },
   "peerDependencies": {
-    "viem": "^2.25.0"
+    "viem": ">=2.22.0"
   }
 }

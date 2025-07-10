@@ -1,3 +1,5 @@
+export { OnChainMessageStatus, type MessageProof, type Message } from "@consensys/linea-sdk-core";
+
 export { deposit } from "./actions/deposit";
 export type { DepositParameters, DepositReturnType } from "./actions/deposit";
 

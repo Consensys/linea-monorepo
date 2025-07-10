@@ -17,6 +17,7 @@
     "exactOptionalPropertyTypes": true,
     "allowSyntheticDefaultImports": false,
     "isolatedModules": true,
+    "composite": true,
   },
   "references": [{
     "path": "../sdk-core"
