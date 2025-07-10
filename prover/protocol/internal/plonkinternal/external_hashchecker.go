@@ -178,7 +178,7 @@ func (ctx *compilationCtx) getHashCheckedPositionSV() (posOS, posBl, posNS smart
 	if ctx.ExternalHasherOption.FixedNbRows > 0 {
 		fixedNbRow := ctx.ExternalHasherOption.FixedNbRows
 		if fixedNbRow < size {
-			utils.Panic("the fixed number of rows %v is smaller than the normal one", fixedNbRow)
+			utils.Panic("the fixed number of rows %v is smaller than the number of hash claims %v", fixedNbRow, len(sls))
 		}
 		size = ctx.ExternalHasherOption.FixedNbRows
 	}
