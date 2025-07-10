@@ -329,5 +329,6 @@ func getPositionOfPolyInQueryYs(q query.UnivariateEval, poly ifaces.Column) int 
 		}
 	}
 
-	panic("not found")
+	utils.Panic("not found, poly=%v in query=%v", poly.GetColID(), q.Name())
+	return 0
 }

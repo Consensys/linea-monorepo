@@ -65,7 +65,7 @@ func TestDistributedWizard(t *testing.T) {
 // dummy mode. Meaning without actual compilation.
 func TestDistributedWizardLogic(t *testing.T) {
 
-	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
 	var (
 		// #nosec G404 --we don't need a cryptographic RNG for testing purpose
@@ -397,7 +397,7 @@ func runProverGLs(
 		}
 
 		if moduleGL == nil {
-			t.Fatalf("module does not exists")
+			t.Fatalf("module does not exists, module=%v, distWizard.ModuleNames=%v", witnessGL.ModuleName, distWizard.ModuleNames)
 		}
 
 		t.Logf("RUNNING THE GL PROVER: %v", time.Now())
@@ -428,8 +428,9 @@ func runProverLPPs(
 	for i := range witnessLPPs {
 
 		var (
-			witnessLPP = witnessLPPs[i]
-			moduleLPP  *distributed.RecursedSegmentCompilation
+			witnessLPP      = witnessLPPs[i]
+			moduleLPP       *distributed.RecursedSegmentCompilation
+			distModuleNames = [][]distributed.ModuleName{}
 		)
 
 		witnessLPP.InitialFiatShamirState = sharedRandomness
@@ -437,15 +438,21 @@ func runProverLPPs(
 		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleName, witnessLPP.ModuleIndex)
 		for k := range distWizard.LPPs {
 
-			if !reflect.DeepEqual(distWizard.LPPs[k].ModuleNames(), witnessLPPs[i].ModuleName) {
-				continue
-			}
+			moduleList := distWizard.LPPs[k].ModuleNames()
+			distModuleNames = append(distModuleNames, moduleList)
 
-			moduleLPP = compiledLPPs[k]
+			for _, m := range moduleList {
+				if m != witnessLPP.ModuleName {
+					continue
+				}
+
+				moduleLPP = compiledLPPs[k]
+				break
+			}
 		}
 
 		if moduleLPP == nil {
-			t.Fatalf("module does not exists")
+			t.Fatalf("module does not exists, moduleName=%v distModuleNames=%v", witnessLPP.ModuleName, distModuleNames)
 		}
 
 		t.Logf("RUNNING THE LPP PROVER: %v", time.Now())
