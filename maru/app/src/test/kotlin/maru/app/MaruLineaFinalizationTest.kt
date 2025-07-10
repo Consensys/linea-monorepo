@@ -151,7 +151,7 @@ class MaruLineaFinalizationTest {
       .atMost(5.seconds.toJavaDuration())
       .untilAsserted {
         assertThat(followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number)
-          .isGreaterThan(4UL)
+          .isGreaterThan(6UL)
       }
 
     assertThat(validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number)
