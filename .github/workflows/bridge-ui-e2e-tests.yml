@@ -139,7 +139,6 @@ jobs:
         env:
           # Do not run E2E tests in parallel. Especially blockchain tx where nonces can collide.
           CI: "true"
-          DOTENV_CONFIG_PATH: ".env.production"
           E2E_TEST_SEED_PHRASE: "test test test test test test test test test test test junk"
           E2E_TEST_WALLET_PASSWORD: "TestPassword!"
 
