@@ -80,13 +80,9 @@ export type EIP1559TransactionRequest<TUnit = bigint, TType = string> = BaseTran
 /**
  * EIP-4844 transaction (blob-carrying transaction)
  */
-export type EIP4844TransactionRequest<TUnit = bigint, TType = string> = BaseTransactionRequest<TUnit, TType> & {
-  maxFeePerGas: TUnit;
-  maxPriorityFeePerGas: TUnit;
+export type EIP4844TransactionRequest<TUnit = bigint, TType = string> = EIP1559TransactionRequest<TUnit, TType> & {
   maxFeePerBlobGas: TUnit;
   blobVersionedHashes: Hex[];
-  accessList?: AccessList;
-  chainId: TUnit;
 };
 
 /**

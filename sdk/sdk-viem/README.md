@@ -1,6 +1,6 @@
 # @consensys/linea-sdk-viem
 
-A TypeScript/JavaScript SDK for interacting with the Linea zkEVM bridge and messaging system, built on top of [viem](https://viem.sh/). This package provides high-level actions and decorators for bridging tokens, sending/claiming messages, and querying message status between L1 and L2 on Linea.
+A TypeScript SDK for interacting with the Linea bridge and messaging system, built on top of [Viem](https://viem.sh/). This package provides high-level actions and decorators for bridging tokens, sending/claiming messages, and querying message status between L1 and L2 on Linea.
 
 > **Note:** This SDK supports both mainnet and testnet environments, including Ethereum Mainnet, Linea Mainnet, Sepolia, and Linea Sepolia. Simply use the appropriate chain from `viem/chains` (e.g., `mainnet`, `linea`, `sepolia`, `lineaSepolia`).
 
@@ -33,7 +33,7 @@ const l2Client = createPublicClient({ chain: lineaSepolia, transport: http() });
 
 ## Wallet Actions
 
-These functions require a viem wallet client (e.g., `createWalletClient`). They are used for sending transactions that modify state, such as deposits, withdrawals, and claiming messages.
+These functions require a Viem wallet client (e.g., `createWalletClient`). They are used for sending transactions that modify state, such as deposits, withdrawals, and claiming messages.
 
 ### deposit
 Deposits tokens from L1 to L2 or ETH if `token` is set to `zeroAddress`.
@@ -152,7 +152,7 @@ const hash = await claimOnL2(client, {
 
 ## Public Actions
 
-These functions can be called on a viem public client (e.g., `createPublicClient`). They are used for reading data from the blockchain, such as querying message status, proofs, and events. All actions support both mainnet and testnet chains (mainnet/linea, sepolia/lineaSepolia).
+These functions can be called on a Viem public client (e.g., `createPublicClient`). They are used for reading data from the blockchain, such as querying message status, proofs, and events. All actions support both mainnet and testnet chains (mainnet/linea, sepolia/lineaSepolia).
 
 ### getBlockExtraData
 Returns formatted Linea block extra data.
@@ -250,9 +250,6 @@ const messageProof = await getMessageProof(client, {
 });
 ```
 
-### getMessageSentEvents
-Returns all `MessageSent` events matching the given filter.
-
 ### getMessagesByTransactionHash
 Returns the details of messages sent in a transaction by its hash.
 
@@ -291,11 +288,11 @@ const receipt = await getTransactionReceiptByMessageHash(client, {
 
 ## Decorators
 
-Decorators allow you to extend a viem client (public or wallet) with additional Linea-specific actions. Each decorator can take optional parameters to specify custom contract addresses, which is useful for advanced or non-standard deployments. Decorators and all actions support both mainnet and testnet (Linea Mainnet, Ethereum Mainnet, Sepolia, and Linea Sepolia).
+Decorators allow you to extend a Viem client (public or wallet) with additional Linea-specific actions. Each decorator can take optional parameters to specify custom contract addresses, which is useful for advanced or non-standard deployments. Decorators and all actions support both mainnet and testnet (Linea Mainnet, Ethereum Mainnet, Sepolia, and Linea Sepolia).
 
 ### publicActionsL1 / publicActionsL2
 
-Extend a viem public client with Linea public actions for L1 or L2. You can optionally pass an object with custom contract addresses:
+Extend a Viem public client with Linea public actions for L1 or L2. You can optionally pass an object with custom contract addresses:
 
 - **publicActionsL1 parameters:**
   - `lineaRollupAddress` (Address): Custom Linea rollup contract address on L1
@@ -326,7 +323,7 @@ const l1Client = createPublicClient({ chain: sepolia, transport: http() }).exten
 
 ### walletActionsL1 / walletActionsL2
 
-Extend a viem wallet client with Linea wallet actions for L1 or L2. You can optionally pass an object with custom contract addresses:
+Extend a Viem wallet client with Linea wallet actions for L1 or L2. You can optionally pass an object with custom contract addresses:
 
 - **walletActionsL1 parameters:**
   - `lineaRollupAddress` (Address): Custom Linea rollup contract address on L1
