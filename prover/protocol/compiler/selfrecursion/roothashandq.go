@@ -16,9 +16,9 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 	// Get the list of the root hashes (without the non-appended ones)
 	// Insert precomputed roots
 	var (
-		rootHashSis     = []ifaces.Column{}
-		rootHashNonsis  = []ifaces.Column{}
-		rootHashesClean = []ifaces.Column{}
+		rootHashSis     []ifaces.Column
+		rootHashNonsis  []ifaces.Column
+		rootHashesClean []ifaces.Column
 	)
 	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		precompRoots := ctx.Columns.PrecompRoot

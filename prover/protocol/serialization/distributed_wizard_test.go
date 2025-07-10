@@ -145,6 +145,9 @@ func TestSerdeDistWizard(t *testing.T) {
 }
 
 func TestSerdeDWCong(t *testing.T) {
+
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+
 	// Setup
 	distWizard := GetBasicDistWizard()
 	cong := distWizard.CompiledConglomeration
