@@ -14,8 +14,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/go-playground/assert/v2"
 	"github.com/stretchr/testify/require"
 )
@@ -123,7 +123,7 @@ func TestMimcAccount(t *testing.T) {
 
 		witMimc badnonce.MimcCircuit
 
-		account = types.GnarkAccount{
+		account = GnarkAccount{
 			Nonce:    a.Nonce,
 			Balance:  a.Balance,
 			CodeSize: a.CodeSize,
@@ -244,7 +244,7 @@ func TestShomei(t *testing.T) {
 type TestCases struct {
 	Account Account
 	Leaf    accumulator.LeafOpening
-	TxNonce int
+	Tx      types.DynamicFeeTx
 }
 
 var tcases = []TestCases{
@@ -258,7 +258,12 @@ var tcases = []TestCases{
 			Next: 1,
 			HKey: Bytes32FromHex("0x00aed6"),
 		},
-		TxNonce: 1, // valid nonce
+		Tx: types.DynamicFeeTx{
+			Nonce:     1, // valid nonce
+			Value:     big.NewInt(1),
+			Gas:       1,
+			GasFeeCap: big.NewInt(1), // gas price
+		},
 	},
 	{
 		// EOA
@@ -276,7 +281,12 @@ var tcases = []TestCases{
 			Next: 2,
 			HKey: Bytes32FromHex("0x00aed7"),
 		},
-		TxNonce: 65,
+		Tx: types.DynamicFeeTx{
+			Nonce:     65,               // invalid nonce
+			Value:     big.NewInt(5700), // invalid value
+			Gas:       1,
+			GasFeeCap: big.NewInt(1), // gas price
+		},
 	},
 	{
 		// Another EOA
@@ -293,6 +303,11 @@ var tcases = []TestCases{
 			Next: 3,
 			HKey: Bytes32FromHex("0x00aed8"),
 		},
-		TxNonce: 67,
+		Tx: types.DynamicFeeTx{
+			Nonce:     66,              // valid nonce
+			Value:     big.NewInt(800), // valid value
+			Gas:       1,
+			GasFeeCap: big.NewInt(1), // gas price
+		},
 	},
 }

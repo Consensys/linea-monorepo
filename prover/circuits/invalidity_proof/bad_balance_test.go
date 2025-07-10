@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestInvalidity(t *testing.T) {
+func TestInvalidityBadBalance(t *testing.T) {
 
 	var (
 		config = &smt.Config{
@@ -21,23 +21,26 @@ func TestInvalidity(t *testing.T) {
 			Depth:    10,
 		}
 
+		pos        = 1
 		tree, _, _ = genShomei(t, tcases, config)
-		tx         = types.DynamicFeeTx{
-			Nonce: uint64(tcases[1].TxNonce),
-		}
+		proof, _   = tree.Prove(pos)
+		leaf, _    = tree.GetLeaf(pos)
+		root       = tree.Root
 
 		assi = inval.AssigningInputs{
 			AccountTrieInputs: inval.AccountTrieInputs{
-				Tree:        tree,
-				Pos:         1,
+				Proof:       proof,
+				Leaf:        leaf,
+				Root:        root,
+				Config:      config,
 				Account:     tcases[1].Account,
 				LeafOpening: tcases[1].Leaf,
 			},
-			Transaction: types.NewTx(&tx),
+			Transaction: types.NewTx(&tcases[1].Tx),
 		}
 
 		circuit = inval.CircuitInvalidity{
-			SubCircuits: [inval.NBSubCircuit]inval.SubCircuit{&inval.BadNonceCircuit{}},
+			SubCircuits: &inval.BadBalanceCircuit{},
 		}
 	)
 

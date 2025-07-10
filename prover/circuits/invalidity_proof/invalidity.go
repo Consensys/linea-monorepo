@@ -14,16 +14,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const (
-	NBSubCircuit = 1 // number of cases in the invalidity proof
-)
-
 type CircuitInvalidity struct {
 	// The sub circuits for the invalidity cases:
 	// - bad transaction nonce
 	// - bad transaction value
 	// ...
-	SubCircuits [NBSubCircuit]SubCircuit
+	SubCircuits SubCircuit
 	// the functional public inputs of the circuit.
 	FuncInputs FunctionalPublicInputsGnark
 	// the hash of the functional public inputs
@@ -49,10 +45,7 @@ type AssigningInputs struct {
 
 // Define the constraints
 func (c *CircuitInvalidity) Define(api frontend.API) error {
-	for i := range c.SubCircuits {
-		c.SubCircuits[i].Define(api)
-	}
-
+	c.SubCircuits.Define(api)
 	// @azam constraint on the hashing of functional public inputs
 	return nil
 }
@@ -60,18 +53,14 @@ func (c *CircuitInvalidity) Define(api frontend.API) error {
 // Allocate the circuit
 func (c *CircuitInvalidity) Allocate(config Config) {
 	// allocate the subCircuit
-	for i := range c.SubCircuits {
-		c.SubCircuits[i].Allocate(config)
-	}
+	c.SubCircuits.Allocate(config)
 	// @azam: allocate the Functional Public Inputs
 }
 
 // Assign the circuit
 func (c *CircuitInvalidity) Assign(assi AssigningInputs) {
 	// assign the sub circuits
-	for i := range c.SubCircuits {
-		c.SubCircuits[i].Assign(assi)
-	}
+	c.SubCircuits.Assign(assi)
 	// assign the Functional Public Inputs
 	c.FuncInputs.Assign(assi.FuncInputs)
 	// assign the public input

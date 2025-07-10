@@ -2,6 +2,7 @@ package invalidity_proof
 
 import (
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // BadNonceCircuit defines the circuit for the transaction with a bad nonce.
@@ -25,8 +26,8 @@ func (circuit *BadNonceCircuit) Define(api frontend.API) error {
 	// check that the FTx.Nonce = Account.Nonce + 1
 	api.AssertIsDifferent(diff, 0)
 
-	//@azam check that FTx.Nonce is related to  FTx.Hash  and then in the interconnection we show that
-	//FTx.Hash is included in the RollingHash
+	//@azam check that tx fields are related to  Tx.Hash  and then in the interconnection we show that
+	//FTx.Hash and FromAddress  = HKey is included in the RollingHash
 	return nil
 }
 
@@ -38,8 +39,17 @@ func (c *BadNonceCircuit) Allocate(config Config) {
 // Assign the circuit from [AssigningInputs]
 func (c *BadNonceCircuit) Assign(assi AssigningInputs) {
 
+	var (
+		txNonce = assi.Transaction.Nonce()
+		acNonce = assi.AccountTrieInputs.Account.Nonce
+	)
 	*c = BadNonceCircuit{
-		TxNonce: assi.Transaction.Nonce(),
+		TxNonce: txNonce,
+	}
+
+	// sanity-check
+	if txNonce == uint64(acNonce+1) {
+		utils.Panic("tried to generate a bad-nonce proof for a valid transaction")
 	}
 
 	c.AccountTrie.Assign(assi.AccountTrieInputs)

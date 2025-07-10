@@ -22,8 +22,11 @@ type AccountTrie struct {
 
 // AccountTrieInputs collects the data for assigning the [AccountTrie]
 type AccountTrieInputs struct {
-	Tree        *smt.Tree // tree for the account trie
-	Pos         int       // position of the account in the tree
+	Proof      smt.Proof
+	Leaf, Root types.Bytes32
+	Config     *smt.Config
+	// Tree        *smt.Tree // tree for the account trie
+	// Pos         int       // position of the account in the tree
 	Account     types.Account
 	LeafOpening ac.LeafOpening
 }
@@ -89,20 +92,16 @@ func (c *AccountTrie) Allocate(config Config) {
 func (c *AccountTrie) Assign(assi AccountTrieInputs) {
 
 	// assign the merkle proof
-	leaf, _ := assi.Tree.GetLeaf(assi.Pos)
-	proof, _ := assi.Tree.Prove(assi.Pos)
-	root := assi.Tree.Root
-
 	var witMerkle MerkleProofCircuit
 
-	witMerkle.Proofs.Siblings = make([]frontend.Variable, len(proof.Siblings))
-	for j := 0; j < len(proof.Siblings); j++ {
-		witMerkle.Proofs.Siblings[j] = proof.Siblings[j][:]
+	witMerkle.Proofs.Siblings = make([]frontend.Variable, len(assi.Proof.Siblings))
+	for j := 0; j < len(assi.Proof.Siblings); j++ {
+		witMerkle.Proofs.Siblings[j] = assi.Proof.Siblings[j][:]
 	}
-	witMerkle.Proofs.Path = proof.Path
-	witMerkle.Leaf = leaf[:]
+	witMerkle.Proofs.Path = assi.Proof.Path
+	witMerkle.Leaf = assi.Leaf[:]
 
-	witMerkle.Root = root[:]
+	witMerkle.Root = assi.Root[:]
 
 	// assign account and leafOpening
 	a := assi.Account
@@ -118,7 +117,7 @@ func (c *AccountTrie) Assign(assi AccountTrieInputs) {
 	account.KeccakCodeHashMSB = a.KeccakCodeHash[16:]
 	account.KeccakCodeHashLSB = a.KeccakCodeHash[:16]
 
-	hval := ac.Hash(assi.Tree.Config, a)
+	hval := ac.Hash(assi.Config, a)
 
 	l := assi.LeafOpening
 	leafOpening := accumulator.GnarkLeafOpening{
