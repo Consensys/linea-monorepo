@@ -13,8 +13,27 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlptxn;
+package net.consensys.linea.zktracer.module.rlptxn.cancun.phaseSection;
 
-import net.consensys.linea.zktracer.container.ModuleOperation;
+public enum IntegerEntry {
+  CHAIN_ID,
+  NONCE,
+  GAS_PRICE,
+  MAX_PRIORITY_FEE_PER_GAS,
+  MAX_FEE_PER_GAS,
+  GAS_LIMIT,
+  VALUE,
+  Y,
+  R,
+  S;
 
-public abstract class RlpTxnOperation extends ModuleOperation {}
+  public boolean lx() {
+    return this == CHAIN_ID
+        || this == NONCE
+        || this == GAS_PRICE
+        || this == MAX_PRIORITY_FEE_PER_GAS
+        || this == MAX_FEE_PER_GAS
+        || this == GAS_LIMIT
+        || this == VALUE;
+  }
+}

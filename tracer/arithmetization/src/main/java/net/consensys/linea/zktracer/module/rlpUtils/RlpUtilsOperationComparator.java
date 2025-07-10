@@ -1,5 +1,5 @@
 /*
- * Copyright Consensys Software Inc.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -13,9 +13,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlputils;
+package net.consensys.linea.zktracer.module.rlpUtils;
 
-import java.math.BigInteger;
-import java.util.List;
+import java.util.Comparator;
 
-public record ByteCountAndPowerOutput(List<BigInteger> powerList, List<Integer> accByteSizeList) {}
+public class RlpUtilsOperationComparator implements Comparator<RlpUtilsCall> {
+  @Override
+  public int compare(RlpUtilsCall o1, RlpUtilsCall o2) {
+    // first sort by instruction type
+    final int instructionComp = o1.instruction() - o2.instruction();
+    if (instructionComp != 0) {
+      return instructionComp;
+    }
+
+    // o1 and o2 are the same instruction type, so we can compare them directly
+    return o1.compareTo(o2);
+  }
+}

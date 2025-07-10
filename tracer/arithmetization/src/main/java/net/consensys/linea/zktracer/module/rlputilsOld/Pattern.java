@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlputils;
+package net.consensys.linea.zktracer.module.rlputilsOld;
 
 import static com.google.common.base.Preconditions.*;
 

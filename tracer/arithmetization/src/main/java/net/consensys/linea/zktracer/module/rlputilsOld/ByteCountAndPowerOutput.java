@@ -1,5 +1,5 @@
 /*
- * Copyright ConsenSys Inc.
+ * Copyright Consensys Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -13,8 +13,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlptxn;
+package net.consensys.linea.zktracer.module.rlputilsOld;
 
-import net.consensys.linea.zktracer.container.ModuleOperation;
+import java.math.BigInteger;
+import java.util.List;
 
-public abstract class RlpTxnOperation extends ModuleOperation {}
+public record ByteCountAndPowerOutput(List<BigInteger> powerList, List<Integer> accByteSizeList) {}

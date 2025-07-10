@@ -15,18 +15,13 @@
 
 package net.consensys.linea.zktracer.container.stacked;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Stream;
 
 import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.ModuleOperation;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * Implements a system of pseudo-stacked squashed sets where {@link
@@ -90,23 +85,6 @@ public class ModuleOperationStackedSet<E extends ModuleOperation> extends Stacke
       return isNew;
     }
     return false;
-  }
-
-  public boolean containsAll(@NotNull Collection<?> c) {
-    for (var x : c) {
-      if (!contains(x)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  public boolean addAll(@NotNull Collection<? extends E> c) {
-    boolean r = false;
-    for (var x : c) {
-      r |= add(x);
-    }
-    return r;
   }
 
   public void clear() {

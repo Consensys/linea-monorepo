@@ -29,6 +29,10 @@ import net.consensys.linea.zktracer.module.hub.state.LondonTransactionStack;
 import net.consensys.linea.zktracer.module.hub.state.TransactionStack;
 import net.consensys.linea.zktracer.module.mxp.module.LondonMxp;
 import net.consensys.linea.zktracer.module.mxp.module.Mxp;
+import net.consensys.linea.zktracer.module.rlpUtils.RlpUtils;
+import net.consensys.linea.zktracer.module.rlptxn.RlpTxn;
+import net.consensys.linea.zktracer.module.rlptxn.london.LondonRlpTxn;
+import net.consensys.linea.zktracer.module.tables.PowerRt;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.InstructionDecoder;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.LondonInstructionDecoder;
 import net.consensys.linea.zktracer.module.txndata.module.LondonTxnData;
@@ -66,13 +70,30 @@ public class LondonHub extends Hub {
   }
 
   @Override
-  protected InstructionDecoder setInstructionDecoder() {
-    return new LondonInstructionDecoder();
+  protected RlpTxn setRlpTxn(Hub hub) {
+    return new LondonRlpTxn(hub.romLex());
+  }
+
+  @Override
+  protected RlpUtils setRlpUtils(Wcp wcp) {
+    // RlpUtils is not used in London, it is only used in Cancun
+    return null;
   }
 
   @Override
   protected Mxp setMxp() {
     return new LondonMxp();
+  }
+
+  @Override
+  protected InstructionDecoder setInstructionDecoder() {
+    return new LondonInstructionDecoder();
+  }
+
+  @Override
+  protected PowerRt setPower() {
+    // PowerRt is not used in London, it is only used in Cancun
+    return null;
   }
 
   @Override
