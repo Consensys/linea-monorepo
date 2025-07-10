@@ -9,7 +9,6 @@
 package maru.p2p
 
 import tech.pegasys.teku.networking.eth2.rpc.core.ResponseCallback
-import tech.pegasys.teku.networking.p2p.peer.Peer
 
 /**
  * Interface for handling incoming RPC messages. Adapted from Teku LocalMessageHandler without use of the Teku Eth2Peer
@@ -20,7 +19,7 @@ import tech.pegasys.teku.networking.p2p.peer.Peer
  */
 interface RpcMessageHandler<TRequest, TResponse> {
   fun handleIncomingMessage(
-    peer: Peer,
+    peer: MaruPeer,
     message: TRequest,
     callback: ResponseCallback<TResponse>,
   )

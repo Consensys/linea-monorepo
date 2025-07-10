@@ -37,7 +37,7 @@ import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkDataProvider
 import maru.p2p.P2PNetworkImpl
-import maru.p2p.RpcMethodFactory
+import maru.p2p.messages.StatusMessageFactory
 import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
 import net.consensys.linea.metrics.MetricsFacade
@@ -103,12 +103,6 @@ class MaruAppFactory {
         forksSchedule = beaconGenesisConfig,
         forkIdHasher = forkIdHasher,
       )
-    val rpcMaruAppFactory =
-      RpcMethodFactory(
-        beaconChain = beaconChain,
-        forkIdHashProvider = forkIdHashProvider,
-        chainId = beaconGenesisConfig.chainId,
-      )
     val ethereumJsonRpcClient =
       Helpers.createWeb3jClient(
         config.validatorElNode.ethApiEndpoint,
@@ -122,14 +116,15 @@ class MaruAppFactory {
       } else {
         0UL // If the chain is not initialized, we start from block number 1
       }
+    val statusMessageFactory = StatusMessageFactory(beaconChain, forkIdHashProvider)
     val p2pNetwork =
       overridingP2PNetwork ?: setupP2PNetwork(
         p2pConfig = config.p2pConfig,
         privateKey = privateKey,
         chainId = beaconGenesisConfig.chainId,
         metricsFacade = metricsFacade,
-        rpcMethodFactory = rpcMaruAppFactory,
         nextExpectedBeaconBlockNumber = beaconChainLastBlockNumber + 1UL,
+        statusMessageFactory = statusMessageFactory,
       )
     val finalizationProvider =
       overridingFinalizationProvider
@@ -207,7 +202,7 @@ class MaruAppFactory {
       chainId: UInt,
       nextExpectedBeaconBlockNumber: ULong = 1UL,
       metricsFacade: MetricsFacade,
-      rpcMethodFactory: RpcMethodFactory,
+      statusMessageFactory: StatusMessageFactory,
     ): P2PNetwork =
       p2pConfig?.let {
         P2PNetworkImpl(
@@ -217,7 +212,7 @@ class MaruAppFactory {
           serDe = RLPSerializers.SealedBeaconBlockSerializer,
           nextExpectedBeaconBlockNumber = nextExpectedBeaconBlockNumber,
           metricsFacade = metricsFacade,
-          rpcMethodFactory = rpcMethodFactory,
+          statusMessageFactory = statusMessageFactory,
         )
       } ?: run {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")
