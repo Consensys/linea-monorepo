@@ -22,13 +22,12 @@ type AccountTrie struct {
 
 // AccountTrieInputs collects the data for assigning the [AccountTrie]
 type AccountTrieInputs struct {
-	Proof      smt.Proof
-	Leaf, Root types.Bytes32
-	Config     *smt.Config
-	// Tree        *smt.Tree // tree for the account trie
-	// Pos         int       // position of the account in the tree
 	Account     types.Account
-	LeafOpening ac.LeafOpening
+	LeafOpening ac.LeafOpening // leaf opening of the account in Merkle tree
+	Leaf        types.Bytes32  // hash of the LeafOpening
+	Proof       smt.Proof      // Merkle proof associated with the leaf
+	Root        types.Bytes32  // root of the Merkle tree.
+	Config      *smt.Config    // Merkle tree configuration
 }
 
 // Define the constraints for the membership of the account in the state
