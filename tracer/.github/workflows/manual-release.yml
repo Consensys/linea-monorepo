@@ -17,14 +17,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           submodules: false
 
       - name: Setup Environment
         # setup go-corset
         uses: ./.github/actions/setup-environment
-        
+
       - name: Configure Tag
         id: config
         # set tag to use in subsequent steps.
@@ -40,7 +40,7 @@ jobs:
       - name: Upload Assets
         run: |
           gh release upload ${{ steps.config.outputs.TAG }} $jar_asset
-          gh release upload ${{ steps.config.outputs.TAG }} $zip_asset          
+          gh release upload ${{ steps.config.outputs.TAG }} $zip_asset
         env:
           jar_asset: ${{ github.workspace }}/plugins/build/libs/linea-tracer-${{ steps.config.outputs.TAG }}.jar
           zip_asset: ${{ github.workspace }}/plugins/build/distributions/linea-tracer-${{ steps.config.outputs.TAG }}.zip
@@ -55,7 +55,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Environment
         uses: ./.github/actions/setup-environment
