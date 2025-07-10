@@ -139,8 +139,8 @@ jobs:
         env:
           # Do not run E2E tests in parallel. Especially blockchain tx where nonces can collide.
           CI: "true"
-          E2E_TEST_SEED_PHRASE: "test test test test test test test test test test test junk"
-          E2E_TEST_WALLET_PASSWORD: "TestPassword!"
+          DOTENV_CONFIG_PATH: ".env.test"
+          NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID: ${{ secrets.PUBLIC_DYNAMIC_SANDBOX_ENVIRONMENT_ID }}
 
       - name: Archive Playwright report
         uses: actions/upload-artifact@v4
