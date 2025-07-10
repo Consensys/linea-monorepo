@@ -2,6 +2,7 @@ package bits
 
 import (
 	"encoding/binary"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -35,7 +36,7 @@ func BitDecompose(comp *wizard.CompiledIOP, packed []ifaces.Column, numBits int)
 		}
 	)
 
-	bitExpr := []*symbolic.Expression{}
+	var bitExpr = make([]*symbolic.Expression, numBits)
 
 	for j := 0; j < numBits; j++ {
 		bd.Bits[j] = comp.InsertCommit(round, ifaces.ColIDf("%v_BIT_%v", packed[0].GetColID(), j), packed[0].Size())
@@ -105,7 +106,7 @@ func (bd *BitDecomposed) Run(run *wizard.ProverRuntime) {
 		var elementBytes []byte
 		for j := range elements {
 			limbBytes := elements[j][i].Bytes()
-			elementBytes = append(elementBytes, limbBytes[32-common.LimbBytes:]...)
+			elementBytes = append(elementBytes, limbBytes[fr.Bytes-common.LimbBytes:]...)
 		}
 
 		if len(elementBytes) > 8 {

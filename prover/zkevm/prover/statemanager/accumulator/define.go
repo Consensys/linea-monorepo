@@ -685,12 +685,12 @@ func (am *Module) checkLeafHashes() {
 	for i := 0; i < common.NbLimbU256; i++ {
 
 		// TODO: fix MiMC query
-		//am.comp.InsertMiMC(am.Round, am.qname("MIMC_PREV_%d", i), cols.LeafOpenings.Prev, cols.Zero, cols.Interm[i][0], nil)
-		//am.comp.InsertMiMC(am.Round, am.qname("MIMC_NEXT_%d", i), cols.LeafOpenings.Next, cols.Interm[i][0], cols.Interm[i][1], nil)
+		am.comp.InsertMiMC(am.Round, am.qname("MIMC_PREV_%d", i), cols.LeafOpenings.Prev[0], cols.Zero, cols.Interm[i][0], nil)
+		am.comp.InsertMiMC(am.Round, am.qname("MIMC_NEXT_%d", i), cols.LeafOpenings.Next[0], cols.Interm[i][0], cols.Interm[i][1], nil)
 
 		// TODO: fix MiMC query
-		//am.comp.InsertMiMC(am.Round, am.qname("MIMC_HKEY"), cols.LeafOpenings.HKey, cols.Interm[1], cols.Interm[2], nil)
-		//am.comp.InsertMiMC(am.Round, am.qname("MIMC_HVAL_LEAF_%d", i), cols.LeafOpenings.HVal, cols.Interm[2], cols.LeafHashes[i], nil)
+		am.comp.InsertMiMC(am.Round, am.qname("MIMC_HKEY"), cols.LeafOpenings.HKey[0], cols.Interm[1][0], cols.Interm[2][0], nil)
+		am.comp.InsertMiMC(am.Round, am.qname("MIMC_HVAL_LEAF_%d", i), cols.LeafOpenings.HVal[0], cols.Interm[2][0], cols.LeafHashes[i], nil)
 
 		// Global: IsActive[i] * (1 - IsEmptyLeaf[i]) * (Leaves[i] - LeafHashes[i])
 		expr1 := symbolic.Sub(cols.Leaves[i], cols.LeafHashes[i])

@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -42,7 +43,7 @@ func HashOf(comp *wizard.CompiledIOP, inputCols [][]ifaces.Column) *HashingCtx {
 		numRows = ifaces.AssertSameLength(inputCols[i]...)
 	}
 
-	//var prevState = verifiercol.NewConstantCol(field.Zero(), numRows)
+	var prevState = verifiercol.NewConstantCol(field.Zero(), numRows)
 	for i, intermHashRow := range ctx.IntermediateHashes {
 		for j := range intermHashRow {
 			ctx.IntermediateHashes[i][j] = comp.InsertCommit(
@@ -61,7 +62,7 @@ func HashOf(comp *wizard.CompiledIOP, inputCols [][]ifaces.Column) *HashingCtx {
 		//	nil,
 		//)
 
-		//prevState = ctx.IntermediateHashes[i]
+		prevState = ctx.IntermediateHashes[i][0]
 	}
 
 	return ctx
