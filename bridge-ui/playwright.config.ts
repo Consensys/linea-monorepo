@@ -32,13 +32,13 @@ export default defineConfig({
   // Timeout for tests that don't involve blockchain transactions
   timeout: 40_000,
   fullyParallel: true,
-  maxFailures: process.env.CI ? 1 : 0,
+  maxFailures: 1,
   // To consider - cannot really run E2E tests involving blockchain tx in parallel. There is a high risk of reusing the same tx nonce -> leading to dropped transactions
-  workers: process.env.CI ? 1 : undefined,
-  reporter: getReporter({ isUnitTest: isUnit, isCI: !!process.env.CI }),
+  workers: process.env.CI === "true" ? 1 : undefined,
+  reporter: getReporter({ isUnitTest: isUnit, isCI: process.env.CI === "true" }),
   use: {
     baseURL: "http://localhost:3000",
-    trace: process.env.CI ? "on" : "retain-on-failure",
+    trace: process.env.CI === "true" ? "on" : "retain-on-failure",
   },
   projects: [
     {
