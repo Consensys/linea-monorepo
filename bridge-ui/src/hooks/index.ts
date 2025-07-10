@@ -9,7 +9,6 @@ export { default as useClaimingTx } from "./useClaimingTx";
 export { default as useDebounce } from "./useDebounce";
 export { default as useDevice } from "./useDevice";
 export { default as useInitialiseChain } from "./useInitialiseChain";
-export { default as useLineaSDK, type LineaSDKContracts } from "./useLineaSDK";
 export { default as useMessageNumber } from "./useMessageNumber";
 export { default as useSelectedToken } from "./useSelectedToken";
 export { default as useTokenBalance } from "./useTokenBalance";
