@@ -18,7 +18,7 @@ func makeTestCaseLengthConsistency() (
 ) {
 	lc := LengthConsistencyCtx{}
 	size := 8
-	maxLen := 6
+	maxLen := 2
 
 	define = func(build *wizard.Builder) {
 		var (
