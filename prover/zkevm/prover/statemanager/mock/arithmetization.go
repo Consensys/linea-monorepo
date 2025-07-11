@@ -1,7 +1,6 @@
 package mock
 
 import (
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"math/big"
 	"sort"
@@ -321,8 +320,8 @@ func (accHistory *AccountHistory) InitializeNewRow(currentBlock int, initialStat
 				addressBalanceBytes = make([]byte, common.NbLimbU64*common.LimbBytes)
 			}
 
-			balanceBytes := types.LeftPadToBytes32(initialState.GetBalance(address).Bytes())
-			balanceLimbs := common.SplitBytes(balanceBytes[fr.Bytes-8:])
+			balanceBytes := common.LeftPadToFrBytes(initialState.GetBalance(address).Bytes())
+			balanceLimbs := common.SplitBytes(balanceBytes)
 			codeSizeLimbs := common.SplitBigEndianUint64(uint64(initialState.GetCodeSize(address)))
 			for i := range common.NbLimbU64 {
 				prevBalance[i].SetBytes(balanceLimbs[i])
@@ -772,9 +771,9 @@ func (accHistory *AccountHistory) AddFrame(frame StateAccessLog, initialState *S
 			accHistory.nonceNew[lastIndex][i].SetBytes(nonceLimbBytes[i])
 		}
 	case Balance:
-		addressBalanceBytes := types.LeftPadToBytes32((frame.Value).(*big.Int).Bytes())
+		addressBalanceBytes := common.LeftPadToFrBytes((frame.Value).(*big.Int).Bytes())
 
-		balanceLimbs := common.SplitBytes(addressBalanceBytes[fr.Bytes-8:])
+		balanceLimbs := common.SplitBytes(addressBalanceBytes)
 		for i := range common.NbLimbU64 {
 			accHistory.balanceNew[lastIndex][i].SetBytes(balanceLimbs[i])
 		}

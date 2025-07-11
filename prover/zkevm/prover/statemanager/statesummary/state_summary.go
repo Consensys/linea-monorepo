@@ -169,7 +169,9 @@ func NewModule(comp *wizard.CompiledIOP, size int) Module {
 // csAccountAddress adds all the constraints related to the account address.
 func (ss *Module) csAccountAddress(comp *wizard.CompiledIOP) {
 
-	isZeroWhenInactive(comp, ss.Account.Address, ss.IsActive)
+	for i := range common.NbLimbEthAddress {
+		isZeroWhenInactive(comp, ss.Account.Address[i], ss.IsActive)
+	}
 
 	comp.InsertGlobal(
 		0,

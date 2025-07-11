@@ -168,6 +168,8 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 			_, isDeleteSegment           = seg.worldStateTrace.Underlying.(statemanager.DeletionTraceWS)
 		)
 
+		accountAddressLimbs := common.SplitBytes(accountAddress[:])
+
 		if errAddr != nil {
 			panic("could not get the account address")
 		}
@@ -185,7 +187,11 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 			if !seg.storageTraces[i].IsSkipped {
 				// the storage trace is to be kept, and not skipped
 				ss.batchNumber.PushInt(batchNumber)
-				ss.account.address.PushAddr(accountAddress)
+
+				for j := range common.NbLimbEthAddress {
+					ss.account.address[j].PushBytes(common.LeftPadToFrBytes(accountAddressLimbs[j]))
+				}
+
 				ss.isInitialDeployment.PushBoolean(segID == 0)
 				ss.isFinalDeployment.PushBoolean(segID == len(segment)-1)
 				ss.IsDeleteSegment.PushBoolean(isDeleteSegment)
@@ -199,7 +205,7 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 				ss.account.final.pushOverrideStorageRoot(finalAccount, common.SplitBytes(newRoot[:]))
 
 				for j, initWsRootLimbs := range common.SplitBytes(initWsRoot[:]) {
-					ss.worldStateRoot[j].PushBytes32(types.LeftPadToBytes32(initWsRootLimbs))
+					ss.worldStateRoot[j].PushBytes(common.LeftPadToFrBytes(initWsRootLimbs))
 				}
 
 				oldRootLimbs := common.SplitBytes(oldRoot[:])
@@ -311,7 +317,11 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 		}
 
 		ss.batchNumber.PushInt(batchNumber)
-		ss.account.address.PushAddr(accountAddress)
+
+		for j := range common.NbLimbEthAddress {
+			ss.account.address[j].PushBytes(common.LeftPadToFrBytes(accountAddressLimbs[j]))
+		}
+
 		ss.isInitialDeployment.PushBoolean(segID == 0)
 		ss.isFinalDeployment.PushBoolean(segID == len(segment)-1)
 		ss.IsDeleteSegment.PushBoolean(isDeleteSegment)
@@ -323,7 +333,7 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 		ss.account.final.pushAll(finalAccount)
 
 		for j, finalWsRootLimbs := range common.SplitBytes(finalWsRoot[:]) {
-			ss.worldStateRoot[j].PushBytes32(types.LeftPadToBytes32(finalWsRootLimbs))
+			ss.worldStateRoot[j].PushBytes(common.LeftPadToFrBytes(finalWsRootLimbs))
 		}
 
 		ss.storage.pushAllZeroes()
@@ -396,7 +406,11 @@ func (ss *stateSummaryAssignmentBuilder) finalize(run *wizard.ProverRuntime) {
 
 	ss.account.initial.PadAndAssign(run)
 	ss.account.final.PadAndAssign(run)
-	ss.account.address.PadAndAssign(run)
+
+	for i := range common.NbLimbEthAddress {
+		ss.account.address[i].PadAndAssign(run)
+	}
+
 	ss.storage.padAssign(run)
 	ss.accumulatorStatement.PadAndAssign(run)
 

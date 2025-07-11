@@ -4,7 +4,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // HiLoColumns represents a pair of column representing a sequence of bytes32
@@ -56,10 +55,10 @@ func NewHiLoAssignmentBuilder(hiLo HiLoColumns) HiLoAssignmentBuilder {
 // Push pushes a row representing `fb` onto `hl`
 func (hl *HiLoAssignmentBuilder) Push(fb [NbLimbU256][]byte) {
 	for i := range NbLimbU128 {
-		hiBytes := types.LeftPadToBytes32(fb[i])
-		hl.Hi[i].PushBytes(hiBytes[:])
-		loBytes := types.LeftPadToBytes32(fb[NbLimbU128+i])
-		hl.Lo[i].PushBytes(loBytes[:])
+		hiBytes := LeftPadToFrBytes(fb[i])
+		hl.Hi[i].PushBytes(hiBytes)
+		loBytes := LeftPadToFrBytes(fb[NbLimbU128+i])
+		hl.Lo[i].PushBytes(loBytes)
 	}
 }
 

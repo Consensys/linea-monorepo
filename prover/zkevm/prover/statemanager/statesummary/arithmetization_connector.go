@@ -267,10 +267,7 @@ func accountIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc Hu
 			ss.IsStorage.Size(),
 		)
 
-		stateSummaryTable = []ifaces.Column{ss.Account.Address,
-			ss.BatchNumber,
-			ss.Account.Initial.Exists,
-		}
+		stateSummaryTable []ifaces.Column
 
 		arithTable []ifaces.Column
 	)
@@ -287,6 +284,8 @@ func accountIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc Hu
 	)
 
 	pragmas.MarkLeftPadded(filterArith)
+	stateSummaryTable = append(stateSummaryTable, ss.Account.Address[:]...)
+	stateSummaryTable = append(stateSummaryTable, ss.BatchNumber, ss.Account.Initial.Exists)
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Initial.ExpectedHubCodeHash.Hi[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Initial.ExpectedHubCodeHash.Lo[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Initial.CodeSize[:]...)
@@ -379,12 +378,10 @@ func accountIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 
 	pragmas.MarkLeftPadded(filterArith)
 
-	stateSummaryTable := []ifaces.Column{
-		ss.Account.Address,
-		ss.BatchNumber,
-		ss.Account.Final.Exists,
-	}
+	var stateSummaryTable []ifaces.Column
 
+	stateSummaryTable = append(stateSummaryTable, ss.Account.Address[:]...)
+	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.Exists, ss.BatchNumber)
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.ExpectedHubCodeHash.Hi[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.ExpectedHubCodeHash.Lo[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.CodeSize[:]...)
@@ -469,18 +466,16 @@ For each block, these lookups will check the consistency of the initial storage 
 the corresponding columns in the arithmetization.
 */
 func storageIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc HubColumnSet, sc scpSelector) {
-	filterSummary := comp.InsertCommit(0, "FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_INITIAL_SUMMARY", ss.Account.Address.Size())
+	filterSummary := comp.InsertCommit(0, "FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_INITIAL_SUMMARY", ss.Account.Address[0].Size())
 	filterArith := comp.InsertCommit(0, "FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_INITIAL_ARITHMETIZATION", smc.AddressHI[0].Size())
 	filterArithReversed := comp.InsertCommit(0, "FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_INITIAL_ARITHMETIZATION_REVERSED", smc.AddressHI[0].Size())
 
 	pragmas.MarkLeftPadded(filterArith)
 	pragmas.MarkLeftPadded(filterArithReversed)
 
-	summaryTable := []ifaces.Column{
-		ss.Account.Address,
-		ss.BatchNumber,
-	}
-
+	var summaryTable []ifaces.Column
+	summaryTable = append(summaryTable, ss.Account.Address[:]...)
+	summaryTable = append(summaryTable, ss.BatchNumber)
 	summaryTable = append(summaryTable, ss.Storage.Key.Hi[:]...)
 	summaryTable = append(summaryTable, ss.Storage.Key.Lo[:]...)
 	summaryTable = append(summaryTable, ss.Storage.OldValue.Hi[:]...)
@@ -612,10 +607,7 @@ the corresponding columns in the arithmetization.
 func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubColumnSet, sc ScpSelector) {
 
 	var (
-		summaryTable = []ifaces.Column{
-			ss.Account.Address,
-			ss.BatchNumber,
-		}
+		summaryTable []ifaces.Column
 
 		arithTable = smc.Address[:]
 
@@ -631,7 +623,7 @@ func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 
 		filterSummary = comp.InsertCommit(0,
 			"FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_FINAL_SUMMARY",
-			ss.Account.Address.Size(),
+			ss.Account.Address[0].Size(),
 		)
 
 		filterSummaryReversed = comp.InsertCommit(0,
@@ -652,6 +644,8 @@ func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 	arithTable = append(arithTable, smc.ValueHINext[:]...)
 	arithTable = append(arithTable, smc.ValueLONext[:]...)
 
+	summaryTable = append(summaryTable, ss.Account.Address[:]...)
+	summaryTable = append(summaryTable, ss.BatchNumber)
 	summaryTable = append(summaryTable, ss.Storage.Key.Hi[:]...)
 	summaryTable = append(summaryTable, ss.Storage.Key.Lo[:]...)
 	summaryTable = append(summaryTable, ss.Storage.NewValue.Hi[:]...)
