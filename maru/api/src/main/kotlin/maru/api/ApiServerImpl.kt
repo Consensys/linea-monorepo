@@ -12,6 +12,8 @@ import io.javalin.Javalin
 import maru.VersionProvider
 import maru.api.beacon.GetBlock
 import maru.api.beacon.GetBlockHeader
+import maru.api.beacon.GetStateValidator
+import maru.api.beacon.GetStateValidators
 import maru.api.node.GetHealth
 import maru.api.node.GetNetworkIdentity
 import maru.api.node.GetPeer
@@ -54,6 +56,8 @@ class ApiServerImpl(
           .get(GetHealth.ROUTE, GetHealth())
           .get(GetBlockHeader.ROUTE, GetBlockHeader(chainDataProvider))
           .get(GetBlock.ROUTE, GetBlock(chainDataProvider))
+          .get(GetStateValidator.ROUTE, GetStateValidator(chainDataProvider))
+          .get(GetStateValidators.ROUTE, GetStateValidators(chainDataProvider))
           .start(config.port.toInt())
     }
   }

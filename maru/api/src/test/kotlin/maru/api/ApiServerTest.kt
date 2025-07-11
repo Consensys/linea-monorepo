@@ -15,8 +15,14 @@ import maru.api.beacon.GetBlock
 import maru.api.beacon.GetBlockHeader
 import maru.api.beacon.GetBlockHeaderResponse
 import maru.api.beacon.GetBlockResponse
+import maru.api.beacon.GetStateValidator
+import maru.api.beacon.GetStateValidatorResponse
+import maru.api.beacon.GetStateValidators
+import maru.api.beacon.GetStateValidatorsResponse
 import maru.api.beacon.SignedBeaconBlock
 import maru.api.beacon.SignedBeaconBlockHeader
+import maru.api.beacon.Validator
+import maru.api.beacon.ValidatorResponse
 import maru.api.beacon.toBeaconBlock
 import maru.api.beacon.toBeaconBlockHeader
 import maru.api.node.GetHealth
@@ -39,6 +45,7 @@ import maru.api.node.PeerData
 import maru.api.node.PeerMetaData
 import maru.api.node.SyncingStatusData
 import maru.api.node.VersionData
+import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
 import maru.extensions.encodeHex
@@ -90,6 +97,16 @@ class ApiServerTest {
   private val fakeChainDataProvider =
     object : ChainDataProvider {
       public val SEALED_BEACON_BLOCK = DataGenerators.randomSealedBeaconBlock(1u)
+      public val BEACON_STATE = DataGenerators.randomBeaconState(1u)
+
+      override fun getLatestBeaconState(): BeaconState = BEACON_STATE
+
+      override fun getBeaconStateByStateRoot(stateRoot: ByteArray): BeaconState {
+        if (stateRoot.contentEquals(BEACON_STATE.latestBeaconBlockHeader.stateRoot)) {
+          return BEACON_STATE
+        }
+        throw BeaconStateNotFoundException()
+      }
 
       override fun getBeaconBlockByNumber(blockNumber: ULong): SealedBeaconBlock {
         if (blockNumber == SEALED_BEACON_BLOCK.beaconBlock.beaconBlockHeader.number) {
@@ -378,6 +395,95 @@ class ApiServerTest {
       defaultObjectMapper.readValue(
         responseBody,
         GetBlockResponse::class.java,
+      )
+    assertThat(response).isEqualTo(expectedResponse)
+  }
+
+  @Test
+  fun `test GetStateValidator method`() {
+    val validator = fakeChainDataProvider.BEACON_STATE.validators.first()
+    val url =
+      (
+        apiServerUrl +
+          GetStateValidator.ROUTE
+            .replace("{${GetStateValidator.STATE_ID}}", "head")
+            .replace("{${GetStateValidator.VALIDATOR_ID}}", validator.address.encodeHex())
+      ).toHttpUrl()
+    val request = Request.Builder().url(url).build()
+    val expectedResponse =
+      GetStateValidatorResponse(
+        executionOptimistic = false,
+        finalized = false,
+        data =
+          ValidatorResponse(
+            index = "0",
+            balance = "",
+            status = "active_ongoing",
+            validator =
+              Validator(
+                pubkey = validator.address.encodeHex(),
+                withdrawalCredentials = "0x",
+                effectiveBalance = "",
+                slashed = false,
+                activationEligibilityEpoch = "",
+                activationEpoch = "",
+                exitEpoch = "",
+                withdrawableEpoch = "",
+              ),
+          ),
+      )
+    val httpResponse = client.newCall(request).execute()
+    assertThat(httpResponse).isNotNull
+    assertThat(httpResponse.code).isEqualTo(200)
+    val responseBody = httpResponse.body?.string()
+    val response =
+      defaultObjectMapper.readValue(
+        responseBody,
+        expectedResponse::class.java,
+      )
+    assertThat(response).isEqualTo(expectedResponse)
+  }
+
+  @Test
+  fun `test GetStateValidators method`() {
+    val url =
+      (
+        apiServerUrl + GetStateValidators.ROUTE.replace("{${GetStateValidators.STATE_ID}}", "head")
+      ).toHttpUrl()
+    val request = Request.Builder().url(url).build()
+    val validators =
+      fakeChainDataProvider.BEACON_STATE.validators.mapIndexed { index, validator ->
+        ValidatorResponse(
+          index = index.toString(),
+          balance = "",
+          status = "active_ongoing",
+          validator =
+            Validator(
+              pubkey = validator.address.encodeHex(),
+              withdrawalCredentials = "0x",
+              effectiveBalance = "",
+              slashed = false,
+              activationEligibilityEpoch = "",
+              activationEpoch = "",
+              exitEpoch = "",
+              withdrawableEpoch = "",
+            ),
+        )
+      }
+    val expectedResponse =
+      GetStateValidatorsResponse(
+        executionOptimistic = false,
+        finalized = false,
+        data = validators,
+      )
+    val httpResponse = client.newCall(request).execute()
+    assertThat(httpResponse).isNotNull
+    assertThat(httpResponse.code).isEqualTo(200)
+    val responseBody = httpResponse.body?.string()
+    val response =
+      defaultObjectMapper.readValue(
+        responseBody,
+        expectedResponse::class.java,
       )
     assertThat(response).isEqualTo(expectedResponse)
   }
