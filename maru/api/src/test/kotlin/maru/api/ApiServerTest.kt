@@ -11,6 +11,14 @@ package maru.api
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import java.util.concurrent.TimeUnit
 import maru.VersionProvider
+import maru.api.beacon.GetBlock
+import maru.api.beacon.GetBlockHeader
+import maru.api.beacon.GetBlockHeaderResponse
+import maru.api.beacon.GetBlockResponse
+import maru.api.beacon.SignedBeaconBlock
+import maru.api.beacon.SignedBeaconBlockHeader
+import maru.api.beacon.toBeaconBlock
+import maru.api.beacon.toBeaconBlockHeader
 import maru.api.node.GetHealth
 import maru.api.node.GetNetworkIdentity
 import maru.api.node.GetNetworkIdentityResponse
@@ -31,6 +39,9 @@ import maru.api.node.PeerData
 import maru.api.node.PeerMetaData
 import maru.api.node.SyncingStatusData
 import maru.api.node.VersionData
+import maru.core.SealedBeaconBlock
+import maru.core.ext.DataGenerators
+import maru.extensions.encodeHex
 import maru.p2p.PeerInfo
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
@@ -76,6 +87,31 @@ class ApiServerTest {
       override fun getVersion(): String = "maru/1.0.0-test"
     }
 
+  private val fakeChainDataProvider =
+    object : ChainDataProvider {
+      public val SEALED_BEACON_BLOCK = DataGenerators.randomSealedBeaconBlock(1u)
+
+      override fun getBeaconBlockByNumber(blockNumber: ULong): SealedBeaconBlock {
+        if (blockNumber == SEALED_BEACON_BLOCK.beaconBlock.beaconBlockHeader.number) {
+          return SEALED_BEACON_BLOCK
+        }
+        throw BlockNotFoundException()
+      }
+
+      override fun getLatestBeaconBlock(): SealedBeaconBlock = SEALED_BEACON_BLOCK
+
+      override fun getBeaconBlockByBlockRoot(blockRoot: String): SealedBeaconBlock {
+        if (blockRoot ==
+          SEALED_BEACON_BLOCK.beaconBlock.beaconBlockHeader
+            .hash()
+            .encodeHex()
+        ) {
+          return SEALED_BEACON_BLOCK
+        }
+        throw BlockNotFoundException()
+      }
+    }
+
   @BeforeEach
   fun beforeEach() {
     apiServer =
@@ -83,6 +119,7 @@ class ApiServerTest {
         config = ApiServerImpl.Config(port = 0u),
         networkDataProvider = fakeNetworkDataProvider,
         versionProvider = fakeVersionProvider,
+        chainDataProvider = fakeChainDataProvider,
       )
     apiServer.start()
     apiServerUrl = "http://localhost:${apiServer.port()}"
@@ -272,6 +309,76 @@ class ApiServerTest {
     assertThat(httpResponse).isNotNull
     assertThat(httpResponse.code).isEqualTo(200)
     val response = httpResponse.body?.string()
+    assertThat(response).isEqualTo(expectedResponse)
+  }
+
+  @Test
+  fun `test GetBlockHeader method`() {
+    val url =
+      (
+        apiServerUrl +
+          GetBlockHeader.ROUTE.replace(
+            "{${GetBlockHeader.BLOCK_ID}}",
+            fakeChainDataProvider.SEALED_BEACON_BLOCK.beaconBlock.beaconBlockHeader.number
+              .toString(),
+          )
+      ).toHttpUrl()
+    val request = Request.Builder().url(url).build()
+    val expectedResponse =
+      GetBlockHeaderResponse(
+        executionOptimistic = false,
+        finalized = false,
+        data =
+          SignedBeaconBlockHeader(
+            message =
+              fakeChainDataProvider.SEALED_BEACON_BLOCK.beaconBlock.beaconBlockHeader
+                .toBeaconBlockHeader(),
+            signature = "0x",
+          ),
+      )
+    val httpResponse = client.newCall(request).execute()
+    assertThat(httpResponse).isNotNull
+    assertThat(httpResponse.code).isEqualTo(200)
+    val responseBody = httpResponse.body?.string()
+    val response =
+      defaultObjectMapper.readValue(
+        responseBody,
+        GetBlockHeaderResponse::class.java,
+      )
+    assertThat(response).isEqualTo(expectedResponse)
+  }
+
+  @Test
+  fun `test GetBlock method`() {
+    val url =
+      (
+        apiServerUrl +
+          GetBlock.ROUTE.replace(
+            "{${GetBlock.BLOCK_ID}}",
+            "head",
+          )
+      ).toHttpUrl()
+    val request = Request.Builder().url(url).build()
+    val expectedResponse =
+      GetBlockResponse(
+        executionOptimistic = false,
+        finalized = false,
+        data =
+          SignedBeaconBlock(
+            message = fakeChainDataProvider.SEALED_BEACON_BLOCK.toBeaconBlock(),
+            signature = "0x",
+          ),
+        version = "maru",
+      )
+    val httpResponse = client.newCall(request).execute()
+    assertThat(httpResponse).isNotNull
+    assertThat(httpResponse.code).isEqualTo(200)
+    val responseBody = httpResponse.body?.string()
+    val response =
+      defaultObjectMapper.readValue(
+        responseBody,
+        GetBlockResponse::class.java,
+      )
     assertThat(response).isEqualTo(expectedResponse)
   }
 }

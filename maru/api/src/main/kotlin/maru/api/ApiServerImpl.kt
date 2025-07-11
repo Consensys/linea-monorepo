@@ -10,6 +10,8 @@ package maru.api
 
 import io.javalin.Javalin
 import maru.VersionProvider
+import maru.api.beacon.GetBlock
+import maru.api.beacon.GetBlockHeader
 import maru.api.node.GetHealth
 import maru.api.node.GetNetworkIdentity
 import maru.api.node.GetPeer
@@ -22,6 +24,7 @@ class ApiServerImpl(
   val config: Config,
   val networkDataProvider: NetworkDataProvider,
   val versionProvider: VersionProvider,
+  val chainDataProvider: ChainDataProvider,
 ) : ApiServer {
   data class Config(
     val port: UInt,
@@ -49,6 +52,8 @@ class ApiServerImpl(
           .get(GetVersion.ROUTE, GetVersion(versionProvider))
           .get(GetSyncingStatus.ROUTE, GetSyncingStatus())
           .get(GetHealth.ROUTE, GetHealth())
+          .get(GetBlockHeader.ROUTE, GetBlockHeader(chainDataProvider))
+          .get(GetBlock.ROUTE, GetBlock(chainDataProvider))
           .start(config.port.toInt())
     }
   }
