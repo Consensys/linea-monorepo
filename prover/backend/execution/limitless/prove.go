@@ -63,11 +63,15 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
 		utils.Panic("could not load zkevm: %v", err)
 	}
 
+	if err := assets.LoadDisc(cfg); err != nil {
+		utils.Panic("could not load disc: %v", err)
+	}
+
 	// The GL and LPP modules are loaded in the background immediately but we
 	// only need them for the [distributed.SegmentRuntime] call.
 	distDone := make(chan error)
 	go func() {
-		err := assets.LoadModuleGLsAndLPPs(cfg)
+		err := assets.LoadBlueprints(cfg)
 		distDone <- err
 	}()
 
