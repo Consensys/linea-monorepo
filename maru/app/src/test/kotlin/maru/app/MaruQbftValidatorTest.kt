@@ -23,6 +23,7 @@ import maru.testutils.MaruFactory
 import maru.testutils.NetworkParticipantStack
 import maru.testutils.SpyingP2PNetwork
 import maru.testutils.besu.BesuTransactionsHelper
+import maru.testutils.besu.startWithRetry
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -185,7 +186,7 @@ class MaruQbftValidatorTest {
     }
     cluster.stop()
     Thread.sleep(3000)
-    cluster.start(networkParticipantStack.besuNode)
+    cluster.startWithRetry(networkParticipantStack.besuNode)
 
     repeat(blocksToProduce) {
       transactionsHelper.run {

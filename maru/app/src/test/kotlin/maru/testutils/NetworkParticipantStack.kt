@@ -12,6 +12,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import maru.app.MaruApp
 import maru.testutils.besu.BesuFactory
+import maru.testutils.besu.startWithRetry
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
 
 class NetworkParticipantStack(
@@ -25,7 +26,7 @@ class NetworkParticipantStack(
     }
   var maruApp: MaruApp =
     let {
-      cluster.start(besuNode)
+      cluster.startWithRetry(besuNode)
       val ethereumJsonRpcBaseUrl = besuNode.jsonRpcBaseUrl().get()
       val engineRpcUrl = besuNode.engineRpcUrl().get()
       maruBuilder(ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir)
