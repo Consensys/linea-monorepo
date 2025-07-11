@@ -22,6 +22,7 @@ import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
 import maru.api.ApiServer
 import maru.api.ApiServerImpl
+import maru.api.ChainDataProviderImpl
 import maru.config.MaruConfig
 import maru.config.P2P
 import maru.consensus.ForkIdHashProvider
@@ -141,6 +142,7 @@ class MaruAppFactory {
             ),
           networkDataProvider = P2PNetworkDataProvider(p2pNetwork),
           versionProvider = MaruVersionProvider(),
+          chainDataProvider = ChainDataProviderImpl(beaconChain),
         )
 
     val maru =
