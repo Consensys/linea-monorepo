@@ -8,6 +8,7 @@
  */
 package maru.api
 
+import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
 import maru.extensions.fromHexToByteArray
@@ -15,6 +16,11 @@ import maru.extensions.fromHexToByteArray
 class ChainDataProviderImpl(
   val beaconChain: BeaconChain,
 ) : ChainDataProvider {
+  override fun getLatestBeaconState(): BeaconState = beaconChain.getLatestBeaconState()
+
+  override fun getBeaconStateByStateRoot(stateRoot: ByteArray): BeaconState =
+    beaconChain.getBeaconState(stateRoot) ?: throw BeaconStateNotFoundException()
+
   override fun getBeaconBlockByNumber(blockNumber: ULong): SealedBeaconBlock =
     beaconChain.getSealedBeaconBlock(blockNumber) ?: throw BlockNotFoundException()
 

@@ -8,9 +8,20 @@
  */
 package maru.api
 
+import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
 
 interface ChainDataProvider {
+  fun getGenesisBeaconState(): BeaconState =
+    getGenesisBeaconBlock().let { genesisBlock ->
+      getBeaconStateByStateRoot(genesisBlock.beaconBlock.beaconBlockHeader.stateRoot)
+        ?: throw BeaconStateNotFoundException()
+    }
+
+  fun getLatestBeaconState(): BeaconState
+
+  fun getBeaconStateByStateRoot(stateRoot: ByteArray): BeaconState
+
   fun getGenesisBeaconBlock(): SealedBeaconBlock = getBeaconBlockByNumber(0u)
 
   fun getBeaconBlockByNumber(blockNumber: ULong): SealedBeaconBlock
@@ -21,3 +32,5 @@ interface ChainDataProvider {
 }
 
 class BlockNotFoundException : Exception()
+
+class BeaconStateNotFoundException : Exception()
