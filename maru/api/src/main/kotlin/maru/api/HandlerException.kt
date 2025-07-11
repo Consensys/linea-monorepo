@@ -6,12 +6,14 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.p2p
+package maru.api
 
-import tech.pegasys.teku.networking.p2p.peer.NodeId
+data class ApiExceptionResponse(
+  val code: Int,
+  val message: String,
+)
 
-interface PeerLookup {
-  fun getPeer(nodeId: NodeId): MaruPeer?
-
-  fun getPeers(): List<MaruPeer>
-}
+class HandlerException(
+  val code: Int,
+  override val message: String,
+) : Exception(message)

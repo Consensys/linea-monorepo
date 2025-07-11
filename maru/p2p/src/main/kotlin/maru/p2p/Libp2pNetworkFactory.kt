@@ -51,6 +51,7 @@ import tech.pegasys.teku.networking.p2p.rpc.RpcMethod
 data class TekuLibP2PNetwork(
   val p2PNetwork: P2PNetwork<Peer>,
   val host: Host,
+  val peerLookup: PeerLookup,
 )
 
 class Libp2pNetworkFactory(
@@ -128,7 +129,7 @@ class Libp2pNetworkFactory(
         /* gossipNetwork = */ gossipNetwork,
         /* listenPorts = */ listOf(port.toInt()),
       )
-    return TekuLibP2PNetwork(p2pNetwork, host)
+    return TekuLibP2PNetwork(p2pNetwork, host, maruPeerManager)
   }
 
   private fun getMessageFactory(

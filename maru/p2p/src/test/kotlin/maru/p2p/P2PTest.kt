@@ -8,6 +8,7 @@
  */
 package maru.p2p
 
+import io.libp2p.core.PeerId
 import java.lang.Thread.sleep
 import java.util.concurrent.TimeUnit
 import maru.config.P2P
@@ -35,6 +36,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 
@@ -414,7 +416,7 @@ class P2PTest {
           latestBlockNumber = latestBeaconBlockHeader.number,
         )
       val peer1 =
-        p2pManagerImpl2.getPeer(PEER_ID_NODE_1)
+        p2pManagerImpl2.peerLookup.getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_1)))
           ?: throw IllegalStateException("Peer with ID $PEER_ID_NODE_1 not found in p2pManagerImpl2")
       val maruPeer1 = DefaultMaruPeer(peer1, rpcMethods, statusMessageFactory)
 

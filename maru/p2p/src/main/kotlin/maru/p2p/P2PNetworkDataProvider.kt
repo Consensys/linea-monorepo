@@ -8,6 +8,7 @@
  */
 package maru.p2p
 
+import maru.api.InvalidPeerIdException
 import maru.api.NetworkDataProvider
 
 class P2PNetworkDataProvider(
@@ -20,4 +21,16 @@ class P2PNetworkDataProvider(
   override fun getNodeAddresses(): List<String> = p2PNetwork.nodeAddresses
 
   override fun getDiscoveryAddresses(): List<String> = p2PNetwork.discoveryAddresses
+
+  override fun getPeers(): List<PeerInfo> = p2PNetwork.getPeers()
+
+  override fun getPeer(peerId: String): PeerInfo? =
+    try {
+      p2PNetwork.getPeer(peerId)
+    } catch (e: Exception) {
+      if (e.message?.contains("invalid base58 encoded form") == true) {
+        throw InvalidPeerIdException(peerId)
+      }
+      throw e
+    }
 }

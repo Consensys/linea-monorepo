@@ -99,4 +99,28 @@ interface P2PNetwork {
   val discoveryAddresses: List<String>
 
   val enr: String?
+
+  fun getPeers(): List<PeerInfo>
+
+  fun getPeer(peerId: String): PeerInfo?
+}
+
+data class PeerInfo(
+  val nodeId: String,
+  val enr: String?,
+  val address: String,
+  val status: PeerStatus,
+  val direction: PeerDirection,
+) {
+  enum class PeerStatus {
+    DISCONNECTED,
+    CONNECTING,
+    CONNECTED,
+    DISCONNECTING,
+  }
+
+  enum class PeerDirection {
+    INBOUND,
+    OUTBOUND,
+  }
 }

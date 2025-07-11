@@ -6,12 +6,15 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.p2p
+package maru.api.node
 
-import tech.pegasys.teku.networking.p2p.peer.NodeId
+import maru.p2p.PeerInfo
 
-interface PeerLookup {
-  fun getPeer(nodeId: NodeId): MaruPeer?
-
-  fun getPeers(): List<MaruPeer>
-}
+fun PeerInfo.toPeerData(): PeerData =
+  PeerData(
+    peerId = nodeId,
+    enr = enr,
+    lastSeenP2PAddress = address,
+    state = status.toString().lowercase(),
+    direction = direction.toString().lowercase(),
+  )

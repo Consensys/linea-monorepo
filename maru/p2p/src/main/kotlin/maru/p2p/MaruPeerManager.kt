@@ -53,4 +53,6 @@ class MaruPeerManager(
   }
 
   override fun getPeer(nodeId: NodeId): MaruPeer? = connectedPeers[nodeId]
+
+  override fun getPeers(): List<MaruPeer> = connectedPeers.values.toList()
 }

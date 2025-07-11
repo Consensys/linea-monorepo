@@ -6,12 +6,11 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.p2p
+package maru.app
 
-import tech.pegasys.teku.networking.p2p.peer.NodeId
+import maru.VersionProvider
 
-interface PeerLookup {
-  fun getPeer(nodeId: NodeId): MaruPeer?
-
-  fun getPeers(): List<MaruPeer>
+class MaruVersionProvider : VersionProvider {
+  // TODO: Get the version from a build file or environment variable
+  override fun getVersion(): String = "maru/v0.1.0"
 }
