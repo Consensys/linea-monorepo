@@ -17,6 +17,7 @@ import maru.testutils.MaruFactory
 import maru.testutils.NetworkParticipantStack
 import maru.testutils.besu.BesuTransactionsHelper
 import maru.testutils.besu.ethGetBlockByNumber
+import maru.testutils.besu.startWithRetry
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -198,7 +199,7 @@ class MaruFollowerTest {
 
     cluster.stop()
     Thread.sleep(3000)
-    cluster.start(followerStack.besuNode)
+    cluster.startWithRetry(followerStack.besuNode)
 
     repeat(blocksToProduce) {
       transactionsHelper.run {

@@ -15,6 +15,7 @@ import maru.testutils.MaruFactory
 import maru.testutils.besu.BesuFactory
 import maru.testutils.besu.BesuTransactionsHelper
 import maru.testutils.besu.ethGetBlockByNumber
+import maru.testutils.besu.startWithRetry
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
@@ -79,7 +80,7 @@ class MaruConsensusSwitchTest {
         switchTimestamp = switchTimestamp,
         expectedBlocksInClique = expectedBlocksInClique,
       )
-    cluster.start(besuNode)
+    cluster.startWithRetry(besuNode)
 
     // Create a new Maru node with consensus switch configuration
     val ethereumJsonRpcBaseUrl = besuNode.jsonRpcBaseUrl().get()

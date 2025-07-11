@@ -16,6 +16,7 @@ import maru.testutils.MaruFactory
 import maru.testutils.besu.BesuFactory
 import maru.testutils.besu.BesuTransactionsHelper
 import maru.testutils.besu.latestBlock
+import maru.testutils.besu.startWithRetry
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -63,7 +64,7 @@ class MaruStartFromPragueTest {
   @Test
   fun `should start QBFT consensus from prague fork allowing empty blocks`() {
     val besuNode = BesuFactory.buildTestBesu()
-    cluster.start(besuNode)
+    cluster.startWithRetry(besuNode)
     maruNode =
       maruFactory.buildTestMaruValidatorWithP2pPeering(
         ethereumJsonRpcUrl = besuNode.jsonRpcBaseUrl().get(),
@@ -85,7 +86,7 @@ class MaruStartFromPragueTest {
   @Test
   fun `should start QBFT consensus from prague fork not allowing empty blocks`() {
     val besuNode = BesuFactory.buildTestBesu()
-    cluster.start(besuNode)
+    cluster.startWithRetry(besuNode)
     maruNode =
       maruFactory.buildTestMaruValidatorWithP2pPeering(
         ethereumJsonRpcUrl = besuNode.jsonRpcBaseUrl().get(),
