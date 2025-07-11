@@ -17,6 +17,7 @@ import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
 import maru.core.SealedBeaconBlock
 import maru.metrics.MaruMetricsCategory
+import maru.p2p.MaruPeerManager
 import maru.p2p.messages.StatusMessageFactory
 import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import maru.serialization.SerDe
@@ -85,6 +86,7 @@ class P2PNetworkImpl(
 
   private val builtNetwork: TekuLibP2PNetwork = buildP2PNetwork(privateKeyBytes, p2pConfig)
   internal val p2pNetwork = builtNetwork.p2PNetwork
+  internal val peerLookup = builtNetwork.peerLookup
   private val log: Logger = LogManager.getLogger(this::javaClass)
   private val delayedExecutor =
     SafeFuture.delayedExecutor(p2pConfig.reconnectDelay.inWholeMilliseconds, TimeUnit.MILLISECONDS)
@@ -252,8 +254,8 @@ class P2PNetworkImpl(
     }
   }
 
-  internal fun getPeer(peer: String) =
-    p2pNetwork
-      .getPeer(LibP2PNodeId(PeerId.fromBase58(peer)))
-      .getOrNull()
+  override fun getPeers(): List<PeerInfo> = peerLookup.getPeers().map { it.toPeerInfo() }
+
+  override fun getPeer(peerId: String): PeerInfo? =
+    peerLookup.getPeer(LibP2PNodeId(PeerId.fromBase58(peerId)))?.toPeerInfo()
 }

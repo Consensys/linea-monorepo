@@ -21,6 +21,7 @@ import linea.kotlin.encodeHex
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
 import maru.api.ApiServer
+import maru.api.ApiServerImpl
 import maru.config.MaruConfig
 import maru.config.P2P
 import maru.consensus.ForkIdHashProvider
@@ -59,6 +60,7 @@ class MaruAppFactory {
     overridingP2PNetwork: P2PNetwork? = null,
     overridingFinalizationProvider: FinalizationProvider? = null,
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
+    overridingApiServer: ApiServer? = null,
   ): MaruApp {
     log.info("configs: {}", config)
     val privateKey = getOrGeneratePrivateKey(config.persistence.privateKeyPath)
@@ -131,13 +133,15 @@ class MaruAppFactory {
         ?: setupFinalizationProvider(config, overridingLineaContractClient, vertx)
 
     val apiServer =
-      ApiServer(
-        config =
-          ApiServer.Config(
-            port = config.apiConfig.port,
-          ),
-        networkDataProvider = P2PNetworkDataProvider(p2pNetwork),
-      )
+      overridingApiServer
+        ?: ApiServerImpl(
+          config =
+            ApiServerImpl.Config(
+              port = config.apiConfig.port,
+            ),
+          networkDataProvider = P2PNetworkDataProvider(p2pNetwork),
+          versionProvider = MaruVersionProvider(),
+        )
 
     val maru =
       MaruApp(

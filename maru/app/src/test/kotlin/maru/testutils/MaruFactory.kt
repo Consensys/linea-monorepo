@@ -19,6 +19,7 @@ import java.nio.file.Path
 import kotlin.time.Duration.Companion.milliseconds
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.kotlin.decodeHex
+import maru.api.ApiServer
 import maru.app.MaruApp
 import maru.app.MaruAppFactory
 import maru.config.ApiConfig
@@ -138,6 +139,14 @@ class MaruFactory {
       overridingP2PNetwork = overridingP2PNetwork,
       overridingFinalizationProvider = overridingFinalizationProvider,
       overridingLineaContractClient = overridingLineaContractClient,
+      overridingApiServer =
+        object : ApiServer {
+          override fun start() {}
+
+          override fun stop() {}
+
+          override fun port(): Int = 0
+        },
     )
 
   private fun buildP2pConfig(
