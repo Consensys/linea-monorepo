@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
 	"github.com/consensys/linea-monorepo/prover/backend/blobdecompression"
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
+	"github.com/consensys/linea-monorepo/prover/backend/execution/limitless"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
 )
@@ -67,11 +68,10 @@ func handleExecutionJob(cfg *config.Config, args ProverArgs) error {
 
 	if cfg.Execution.ProverMode == config.ProverModeLimitless {
 		// Limitless execution mode
-		panic("commented out")
-		// resp, err = handleLimitlessExecution(cfg, req)
-		// if err != nil {
-		// 	return fmt.Errorf("could not prove the execution in limitless mode: %w", err)
-		// }
+		resp, err = limitless.Prove(cfg, req)
+		if err != nil {
+			return fmt.Errorf("could not prove the execution in limitless mode: %w", err)
+		}
 	} else {
 		// Standard execution mode
 		large := args.Large || (strings.Contains(args.Input, "large") && cfg.Execution.CanRunFullLarge)
@@ -83,15 +83,6 @@ func handleExecutionJob(cfg *config.Config, args ProverArgs) error {
 
 	return writeResponse(args.Output, resp)
 }
-
-// // handleLimitlessExecution handles execution in limitless mode
-// func handleLimitlessExecution(cfg *config.Config, req *execution.Request) (*execution.Response, error) {
-// 	asset, err := limitless.ReadAndDeserAssets(cfg)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("could not read and deserialize limitless assets: %w", err)
-// 	}
-// 	return limitless.Prove(asset, cfg, req)
-// }
 
 // handleBlobDecompressionJob processes a blob decompression job
 func handleBlobDecompressionJob(cfg *config.Config, args ProverArgs) error {
