@@ -89,11 +89,6 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 		return nil, fmt.Errorf("kzgsrs directory (%s) does not exist: %w", srsDir, err)
 	}
 
-	limitlessDir := cfg.PathforLimitlessProverAssets()
-	if _, err := os.Stat(limitlessDir); os.IsNotExist(err) {
-		return nil, fmt.Errorf("limitless directory (%s) does not exist: %w", limitlessDir, err)
-	}
-
 	// duplicate L2 hardcoded values for PI
 	cfg.PublicInputInterconnection.ChainID = uint64(cfg.Layer2.ChainID)
 	cfg.PublicInputInterconnection.L2MsgServiceAddr = cfg.Layer2.MsgSvcContract
@@ -167,10 +162,6 @@ func (cfg *Config) PathForSetup(circuitID string) string {
 // PathForSRS returns the path to the SRS directory.
 func (cfg *Config) PathForSRS() string {
 	return path.Join(cfg.AssetsDir, "kzgsrs")
-}
-
-func (cfg *Config) PathforLimitlessProverAssets() string {
-	return path.Join(cfg.AssetsDir, "limitless")
 }
 
 type Controller struct {
