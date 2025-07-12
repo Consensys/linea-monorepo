@@ -39,6 +39,12 @@ type DistributedWizard struct {
 	// GLs is the list of the GL parts for every modules
 	GLs []*ModuleGL
 
+	// BlueprintGLs is the list of the blueprints for each GL module
+	BlueprintGLs []ModuleSegmentationBlueprint
+
+	// BlueprintLPPs is the list of the blueprints for each LPP module
+	BlueprintLPPs []ModuleSegmentationBlueprint
+
 	// DefaultModule is the module used for filling when the number of
 	// effective segment is smaller than the maximum number of segment to
 	// conglomerate.
@@ -116,9 +122,16 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *Distribu
 
 		logrus.Infof("Compiling GL module %v", moduleName)
 
+		moduleGL := BuildModuleGL(&filteredModuleInputs)
+
 		distributedWizard.GLs = append(
 			distributedWizard.GLs,
-			BuildModuleGL(&filteredModuleInputs),
+			moduleGL,
+		)
+
+		distributedWizard.BlueprintGLs = append(
+			distributedWizard.BlueprintGLs,
+			moduleGL.Blueprint(),
 		)
 
 		allFilteredModuleInputs = append(
@@ -137,9 +150,16 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *Distribu
 
 		logrus.Infof("Compiling LPP modules [%d .. %d]", i, stop)
 
+		moduleLPP := BuildModuleLPP(allFilteredModuleInputs[i:stop])
+
 		distributedWizard.LPPs = append(
 			distributedWizard.LPPs,
-			BuildModuleLPP(allFilteredModuleInputs[i:stop]),
+			moduleLPP,
+		)
+
+		distributedWizard.BlueprintLPPs = append(
+			distributedWizard.BlueprintLPPs,
+			moduleLPP.Blueprint(),
 		)
 	}
 

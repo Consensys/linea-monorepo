@@ -130,7 +130,12 @@ func TestDistributedWizardLogic(t *testing.T) {
 		prevHornerN1Hash    = field.Element{}
 	)
 
-	witnessGLs, witnessLPPs := distributed.SegmentRuntime(runtimeBoot, distWizard)
+	witnessGLs, witnessLPPs := distributed.SegmentRuntime(
+		runtimeBoot,
+		distWizard.Disc,
+		distWizard.BlueprintGLs,
+		distWizard.BlueprintLPPs,
+	)
 
 	for i := range witnessGLs {
 
@@ -307,10 +312,15 @@ func TestBenchDistributedWizard(t *testing.T) {
 	t.Logf("[%v] done running the bootstrapper\n", time.Now())
 
 	var (
-		witnessGLs, witnessLPPs = distributed.SegmentRuntime(runtimeBoot, distWizard)
-		runGLs                  = runProverGLs(t, distWizard, witnessGLs)
-		sharedRandomness        = getSharedRandomness(runGLs)
-		_                       = runProverLPPs(t, distWizard, sharedRandomness, witnessLPPs)
+		witnessGLs, witnessLPPs = distributed.SegmentRuntime(
+			runtimeBoot,
+			distWizard.Disc,
+			distWizard.BlueprintGLs,
+			distWizard.BlueprintLPPs,
+		)
+		runGLs           = runProverGLs(t, distWizard, witnessGLs)
+		sharedRandomness = getSharedRandomness(runGLs)
+		_                = runProverLPPs(t, distWizard, sharedRandomness, witnessLPPs)
 	)
 }
 
@@ -441,14 +451,15 @@ func runProverLPPs(
 			moduleList := distWizard.LPPs[k].ModuleNames()
 			distModuleNames = append(distModuleNames, moduleList)
 
-			for _, m := range moduleList {
-				if m != witnessLPP.ModuleName {
+			for l, m := range moduleList {
+				if m != witnessLPP.ModuleName[l] {
 					continue
 				}
 
-				moduleLPP = compiledLPPs[k]
 				break
 			}
+
+			moduleLPP = compiledLPPs[k]
 		}
 
 		if moduleLPP == nil {
