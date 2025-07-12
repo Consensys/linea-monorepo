@@ -151,6 +151,8 @@ func Setup(ctx context.Context, args SetupArgs) error {
 		return updateSetup(ctx, cfg, args.Force, srsProvider, circuits.EmulationCircuitID, builder, nil)
 	}
 
+	logrus.Infof("Done setting up circuits and writing the assets to disk :)")
+
 	return nil
 }
 
