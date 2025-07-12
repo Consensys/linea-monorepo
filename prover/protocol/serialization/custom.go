@@ -88,6 +88,12 @@ func init() {
 		Ser:  marshalArrayOfFieldElement,
 		Des:  unmarshalArrayOfFieldElement,
 	}
+
+	CustomCodexes[TypeOfMutexPtr] = CustomCodex{
+		Type: TypeOfMutexPtr,
+		Ser:  marshalAsEmptyStruct,
+		Des:  makeNewObject,
+	}
 }
 
 func marshalRingSisKey(ser *Serializer, val reflect.Value) (any, *serdeError) {
@@ -315,8 +321,9 @@ func unmarshalHashTypeHasher(des *Deserializer, val any, _ reflect.Type) (reflec
 	return reflect.ValueOf(hashtypes.MiMC), nil
 }
 
-// marshalAsNil is a custom serialization function that marshals the given value to nil.
-// It is used for types that are not meant to be serialized, such as functions.
+// marshalAsNil is a custom serialization function that marshals the given value
+// to nil. It is used for types that are not meant to be serialized, such as
+// functions.
 func marshalAsNil(_ *Serializer, _ reflect.Value) (any, *serdeError) {
 	return nil, nil
 }
@@ -341,4 +348,21 @@ func fieldToSmallBigInt(v field.Element) *big.Int {
 	bi := &big.Int{}
 	v.BigInt(bi)
 	return bi
+}
+
+// marshalAsEmptyStruct is a custom serialization function that marshals the
+// given value to an empty struct. It is used for types that are not meant to be
+// serialized, such as functions.
+func marshalAsEmptyStruct(_ *Serializer, _ reflect.Value) (any, *serdeError) {
+	return struct{}{}, nil
+}
+
+// makeNewPtr creates an object using reflect.New and is indicated for pointer
+// types as it creates a pointer to zero object rather than returning a nil
+// pointer. The provided type must be a pointer type.
+func makeNewObject(_ *Deserializer, _ any, t reflect.Type) (reflect.Value, *serdeError) {
+	if t.Kind() != reflect.Ptr {
+		return reflect.Value{}, newSerdeErrorf("type %v is not a pointer type", t.String())
+	}
+	return reflect.New(t.Elem()), nil
 }

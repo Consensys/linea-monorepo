@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/consensys/gnark/frontend"
@@ -363,6 +364,10 @@ func TestSerdeValue(t *testing.T) {
 
 				return rec
 			}(),
+		},
+		{
+			Name: "mutex",
+			V:    []*sync.Mutex{{}, {}},
 		},
 	}
 
