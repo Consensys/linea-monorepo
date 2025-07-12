@@ -33,8 +33,8 @@ type StandardModuleDiscoverer struct {
 	// divided by some values before being added in a [QueryBasedModule].
 	Predivision     int
 	Modules         []*StandardModule
-	ColumnsToModule map[ifaces.Column]ModuleName
-	ColumnsToSize   map[ifaces.Column]int
+	ColumnsToModule map[ifaces.ColID]ModuleName
+	ColumnsToSize   map[ifaces.ColID]int
 }
 
 // QueryBasedModuleDiscoverer tracks modules using DisjointSet.
@@ -42,7 +42,7 @@ type QueryBasedModuleDiscoverer struct {
 	Mutex           *sync.Mutex
 	Modules         []*QueryBasedModule
 	ModuleNames     []ModuleName
-	ColumnsToModule map[ifaces.Column]ModuleName
+	ColumnsToModule map[ifaces.ColID]ModuleName
 	Predivision     int
 }
 
@@ -56,7 +56,7 @@ type StandardModule struct {
 // QueryBasedModule represents a set of columns grouped by constraints.
 type QueryBasedModule struct {
 	ModuleName ModuleName
-	Ds         *utils.DisjointSet[column.Natural] // Uses a disjoint set to track relationships among columns.
+	Ds         *utils.DisjointSet[ifaces.ColID] // Uses a disjoint set to track relationships among columns.
 	Size       int
 	// NbConstraintsOfPlonkCirc counts the number of constraints in a Plonk
 	// in wizard module if one is found. If several circuits are stores
@@ -84,7 +84,7 @@ func NewQueryBasedDiscoverer() *QueryBasedModuleDiscoverer {
 		Mutex:           &sync.Mutex{},
 		Modules:         []*QueryBasedModule{},
 		ModuleNames:     []ModuleName{},
-		ColumnsToModule: make(map[ifaces.Column]ModuleName),
+		ColumnsToModule: make(map[ifaces.ColID]ModuleName),
 	}
 }
 
@@ -100,7 +100,7 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 	groupedByAffinity := groupQBModulesByAffinity(subDiscover.Modules, disc.Affinities)
 
 	sort.Slice(groupedByAffinity, func(i, j int) bool {
-		return weightOfGroupOfQBModules(groupedByAffinity[i]) < weightOfGroupOfQBModules(groupedByAffinity[j])
+		return weightOfGroupOfQBModules(comp, groupedByAffinity[i]) < weightOfGroupOfQBModules(comp, groupedByAffinity[j])
 	})
 
 	var (
@@ -112,7 +112,7 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 		var (
 			groupNext  = groupedByAffinity[i]
-			weightNext = weightOfGroupOfQBModules(groupNext)
+			weightNext = weightOfGroupOfQBModules(comp, groupNext)
 			distPrev   = utils.Abs(disc.TargetWeight - currWeightSum)
 			distNext   = utils.Abs(disc.TargetWeight - currWeightSum - weightNext)
 		)
@@ -150,10 +150,10 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 		// initializes the newSizes using the number of rows from the initial
 		// comp.
 		for j := range groups[i] {
-			numRows := groups[i][j].NumRow()
+			numRows := groups[i][j].NumRow(comp)
 			disc.Modules[i].NewSizes[j] = numRows
 			minNumRows = min(minNumRows, numRows)
-			weightTotalInitial += groups[i][j].Weight(0)
+			weightTotalInitial += groups[i][j].Weight(comp, 0)
 		}
 
 		// Computes optimal newSizes by successively dividing by two the numbers
@@ -168,7 +168,7 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 			currWeight := 0
 			for j := range groups[i] {
-				numRow := groups[i][j].NumRow()
+				numRow := groups[i][j].NumRow(comp)
 				if !groups[i][j].HasPrecomputed {
 					numRow /= reduction
 				}
@@ -176,7 +176,7 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 				if numRow < 1 {
 					panic("the 'reduction' is bounded by the min number of rows so it should not be smaller than 1")
 				}
-				currWeight += groups[i][j].Weight(numRow)
+				currWeight += groups[i][j].Weight(comp, numRow)
 			}
 
 			currDist := utils.Abs(currWeight - disc.TargetWeight)
@@ -193,8 +193,8 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 		}
 	}
 
-	disc.ColumnsToModule = make(map[ifaces.Column]ModuleName)
-	disc.ColumnsToSize = make(map[ifaces.Column]int)
+	disc.ColumnsToModule = make(map[ifaces.ColID]ModuleName)
+	disc.ColumnsToSize = make(map[ifaces.ColID]int)
 
 	for i := range disc.Modules {
 
@@ -205,9 +205,9 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 			subModule := disc.Modules[i].SubModules[j]
 			newSize := disc.Modules[i].NewSizes[j]
 
-			for col := range subModule.Ds.Iter() {
-				disc.ColumnsToModule[col] = moduleName
-				disc.ColumnsToSize[col] = newSize
+			for colID := range subModule.Ds.Iter() {
+				disc.ColumnsToModule[colID] = moduleName
+				disc.ColumnsToSize[colID] = newSize
 			}
 		}
 	}
@@ -244,12 +244,16 @@ func (disc *StandardModuleDiscoverer) NumColumnOf(moduleName ModuleName) int {
 
 // ModuleOf returns the module name for a given column“
 func (disc *StandardModuleDiscoverer) ModuleOf(col column.Natural) ModuleName {
-	return disc.ColumnsToModule[col]
+	res, found := disc.ColumnsToModule[col.GetColID()]
+	if !found {
+		utils.Panic("column not found, col: %q, disc: %v", col.GetColID(), disc.ColumnsToModule)
+	}
+	return res
 }
 
 // NewSizeOf returns the size (length) of a column.
 func (disc *StandardModuleDiscoverer) NewSizeOf(col column.Natural) int {
-	return disc.ColumnsToSize[col]
+	return disc.ColumnsToSize[col.GetColID()]
 }
 
 // SegmentBoundaryOfColumn returns the starting point and the ending point of the
@@ -265,7 +269,7 @@ func (disc *StandardModuleDiscoverer) SegmentBoundaryOf(run *wizard.ProverRuntim
 
 	var (
 		rootCol          = column.RootParents(col).(column.Natural)
-		stdModuleName    = disc.ColumnsToModule[col]
+		stdModuleName    = disc.ColumnsToModule[col.GetColID()]
 		stdModule        *StandardModule
 		queryBasedModule *QueryBasedModule
 		segmentSize      int
@@ -279,7 +283,7 @@ func (disc *StandardModuleDiscoverer) SegmentBoundaryOf(run *wizard.ProverRuntim
 	}
 
 	for i := range stdModule.SubModules {
-		if stdModule.SubModules[i].Ds.Has(rootCol) {
+		if stdModule.SubModules[i].Ds.Has(rootCol.ID) {
 			segmentSize = stdModule.NewSizes[i]
 			queryBasedModule = stdModule.SubModules[i]
 			break
@@ -340,7 +344,7 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 	disc.Mutex.Lock()
 	defer disc.Mutex.Unlock()
 
-	disc.ColumnsToModule = make(map[ifaces.Column]ModuleName)
+	disc.ColumnsToModule = make(map[ifaces.ColID]ModuleName)
 
 	moduleCandidates := []*QueryBasedModule{}
 
@@ -477,9 +481,11 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 		hasPrecomputed := false
 
-		for col := range module.Ds.Iter() {
-			disc.ColumnsToModule[col] = module.ModuleName
-			hp := col.Status() == column.Precomputed || col.Status() == column.VerifyingKey
+		for colID := range module.Ds.Iter() {
+			disc.ColumnsToModule[colID] = module.ModuleName
+			status := comp.Columns.Status(colID)
+
+			hp := status == column.Precomputed || status == column.VerifyingKey
 			hasPrecomputed = hp || hasPrecomputed
 		}
 
@@ -487,7 +493,7 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 		if !hasPrecomputed {
 			module.Predivision = disc.Predivision
 		}
-		module.mustHaveConsistentLength()
+		module.mustHaveConsistentLength(comp)
 	}
 }
 
@@ -510,16 +516,21 @@ func (disc *QueryBasedModuleDiscoverer) CreateModule(columns []column.Natural) *
 		colID = "default" // columns is empty
 	}
 
+	columnIDs := make([]ifaces.ColID, len(columns))
+	for i, c := range columns {
+		columnIDs[i] = c.GetColID()
+	}
+
 	module := &QueryBasedModule{
 		ModuleName:          ModuleName(fmt.Sprintf("Module_%d_%s", len(disc.Modules), colID)),
-		Ds:                  utils.NewDisjointSetFromList(columns),
+		Ds:                  utils.NewDisjointSetFromList(columnIDs),
 		NbSegmentCache:      make(map[unsafe.Pointer][2]int),
 		NbSegmentCacheMutex: &sync.Mutex{},
 	}
 
-	for i := 0; i < len(columns); i++ {
-		for j := i + 1; j < len(columns); j++ {
-			module.Ds.Union(columns[i], columns[j])
+	for i := 0; i < len(columnIDs); i++ {
+		for j := i + 1; j < len(columnIDs); j++ {
+			module.Ds.Union(columnIDs[i], columnIDs[j])
 		}
 	}
 
@@ -577,6 +588,11 @@ func (disc *QueryBasedModuleDiscoverer) GroupColumns(
 
 	var assignedModule *QueryBasedModule
 
+	columnIDs := make([]ifaces.ColID, len(columns))
+	for i, c := range columns {
+		columnIDs[i] = c.GetColID()
+	}
+
 	// Merge if necessary
 	if len(overlappingModules) > 0 {
 
@@ -584,7 +600,7 @@ func (disc *QueryBasedModuleDiscoverer) GroupColumns(
 		assignedModule.NbConstraintsOfPlonkCirc += nbConstraintsOfPlonkCirc
 		assignedModule.NbInstancesOfPlonkCirc += nbInstancesOfPlonkCirc
 		assignedModule.NbInstancesOfPlonkQuery += nbInstancesOfPlonkQuery
-		assignedModule.Ds.AddList(columns)
+		assignedModule.Ds.AddList(columnIDs)
 
 	} else {
 
@@ -634,7 +650,9 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		firstColumn       column.Natural
 	)
 
-	for col := range mod.Ds.Iter() {
+	for colID := range mod.Ds.Iter() {
+
+		col := run.Spec.Columns.GetHandle(colID).(column.Natural)
 
 		if size == 0 {
 			size = col.Size()
@@ -650,7 +668,7 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		// As the function is meant to be called **during** the bootstrapping
 		// compilation, we cannot expect all columns to be available at this
 		// point. This is for instance the case with the lookup "M" columns.
-		if !run.HasColumn(col.ID) {
+		if !run.HasColumn(colID) {
 			continue
 		}
 
@@ -702,7 +720,7 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		}
 
 		if !isRightPadded && !isLeftPadded {
-			utils.Panic("column is neither left nor right padded, col=%v", col.ID)
+			utils.Panic("column is neither left nor right padded, col=%v", colID)
 		}
 
 		if density > resMaxDensity {
@@ -766,7 +784,7 @@ func (module *QueryBasedModule) Nilify() {
 // HasOverlap checks if a module shares at least one column with a set of columns.
 func (module *QueryBasedModule) HasOverlap(columns []column.Natural) bool {
 	for _, col := range columns {
-		if module.Ds.Has(col) {
+		if module.Ds.Has(col.ID) {
 			return true
 		}
 	}
@@ -778,10 +796,10 @@ func (module *QueryBasedModule) HasOverlap(columns []column.Natural) bool {
 // optional "withNumRow" arguments to let the caller use a custom hypothetical value for
 // [nbRows] in the calculation. If withNumRow=0, then the function uses the actual
 // number of rows.
-func (module *QueryBasedModule) Weight(withNumRow int) int {
+func (module *QueryBasedModule) Weight(comp *wizard.CompiledIOP, withNumRow int) int {
 
 	var (
-		numRow             = module.NumRow()
+		numRow             = module.NumRow(comp)
 		numCol             = module.NumColumn()
 		numOfPlonkInstance = module.NbInstancesOfPlonkCirc
 	)
@@ -799,26 +817,30 @@ func (module *QueryBasedModule) Weight(withNumRow int) int {
 }
 
 // Weight returns the total weight of the module
-func (module *StandardModule) Weight() int {
+func (module *StandardModule) Weight(comp *wizard.CompiledIOP) int {
 	weight := 0
 	for i := range module.SubModules {
 		numRow := module.NewSizes[i]
-		weight += module.SubModules[i].Weight(numRow)
+		weight += module.SubModules[i].Weight(comp, numRow)
 	}
 	return weight
 }
 
 // NumRow returns the number of rows for the module
-func (module *QueryBasedModule) NumRow() int {
+func (module *QueryBasedModule) NumRow(comp *wizard.CompiledIOP) int {
 	if module.Size == 0 {
-		for col := range module.Ds.Iter() {
-			module.Size = col.Size()
+
+		for colID := range module.Ds.Iter() {
+
+			colSize := comp.Columns.GetSize(colID)
+
+			module.Size = colSize
 
 			if module.HasPrecomputed {
 				break
 			}
 
-			if module.Predivision > col.Size() || module.Predivision == 0 {
+			if module.Predivision > colSize || module.Predivision == 0 {
 				break
 			}
 
@@ -868,7 +890,7 @@ func (disc *QueryBasedModuleDiscoverer) ModuleOf(col column.Natural) ModuleName 
 	disc.Mutex.Lock()
 	defer disc.Mutex.Unlock()
 
-	if moduleName, exists := disc.ColumnsToModule[col]; exists {
+	if moduleName, exists := disc.ColumnsToModule[col.ID]; exists {
 		return moduleName
 	}
 	return ""
@@ -902,17 +924,20 @@ func rootsOfColumns(cols []ifaces.Column) []column.Natural {
 
 // audit checks that all the columns taking part in the [QueryBasedModule] have
 // the same length. It panics
-func (m *QueryBasedModule) mustHaveConsistentLength() {
+func (m *QueryBasedModule) mustHaveConsistentLength(comp *wizard.CompiledIOP) {
 
 	size := -1
 
-	for col := range m.Ds.Iter() {
+	for colID := range m.Ds.Iter() {
+
+		colSize := comp.Columns.GetSize(colID)
+
 		if size == -1 {
-			size = col.Size()
+			size = colSize
 		}
 
-		if size != col.Size() {
-			utils.Panic("col=%v does not have a consistent size %v != %v", col.ID, size, col.Size())
+		if size != colSize {
+			utils.Panic("col=%v does not have a consistent size %v != %v", colID, size, colSize)
 		}
 	}
 }
@@ -939,7 +964,7 @@ func groupQBModulesByAffinity(qbModules []*QueryBasedModule, affinities [][]colu
 
 			for k := range aff {
 				for qbm := range sets[i].Iter() {
-					if qbm.Ds.Has(aff[k]) {
+					if qbm.Ds.Has(aff[k].ID) {
 						isSetMatched = true
 						continue
 					}
@@ -983,10 +1008,10 @@ func groupQBModulesByAffinity(qbModules []*QueryBasedModule, affinities [][]colu
 	return groups
 }
 
-func weightOfGroupOfQBModules(group []*QueryBasedModule) int {
+func weightOfGroupOfQBModules(comp *wizard.CompiledIOP, group []*QueryBasedModule) int {
 	var weight int
 	for i := range group {
-		weight += group[i].Weight(0)
+		weight += group[i].Weight(comp, 0)
 	}
 	return weight
 }
@@ -997,7 +1022,7 @@ func weightOfGroupOfQBModules(group []*QueryBasedModule) int {
 type LPPSegmentBoundaryCalculator struct {
 	Disc     *StandardModuleDiscoverer
 	LPPArity int
-	Cached   map[*wizard.ProverRuntime]map[ifaces.Column][2]int
+	Cached   map[*wizard.ProverRuntime]map[ifaces.ColID][2]int
 }
 
 func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRuntime, col column.Natural) (int, int) {

@@ -56,7 +56,7 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 		for i := range disc.Modules {
 			mod := disc.Modules[i]
 			for k := range mod.SubModules {
-				if mod.SubModules[k].Ds.Has(nat) {
+				if mod.SubModules[k].Ds.Has(nat.ID) {
 					modules = append(modules, mod.ModuleName)
 				}
 			}
@@ -74,6 +74,6 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 	t.Logf("totalNumber of columns: %v", len(z.WizardIOP.Columns.AllKeys()))
 
 	for _, mod := range disc.Modules {
-		t.Logf("module=%v weight=%v numcol=%v\n", mod.ModuleName, mod.Weight(), disc.NumColumnOf(mod.ModuleName))
+		t.Logf("module=%v weight=%v numcol=%v\n", mod.ModuleName, mod.Weight(z.WizardIOP), disc.NumColumnOf(mod.ModuleName))
 	}
 }
