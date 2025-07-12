@@ -55,15 +55,15 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
 
 	logrus.Infof("Loading bootstrapper and zkevm")
 	assets := &zkevm.LimitlessZkEVM{}
-	if err := assets.LoadBootstrapper(cfg); err != nil {
+	if err := assets.LoadBootstrapper(cfg); err != nil || assets.DistWizard.Bootstrapper == nil {
 		utils.Panic("could not load bootstrapper: %v", err)
 	}
 
-	if err := assets.LoadZkEVM(cfg); err != nil {
+	if err := assets.LoadZkEVM(cfg); err != nil || assets.Zkevm == nil {
 		utils.Panic("could not load zkevm: %v", err)
 	}
 
-	if err := assets.LoadDisc(cfg); err != nil {
+	if err := assets.LoadDisc(cfg); err != nil || assets.DistWizard.Disc == nil {
 		utils.Panic("could not load disc: %v", err)
 	}
 
@@ -91,8 +91,13 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
 		utils.Panic("could not load GL and LPP modules: %v", err)
 	}
 
-	logrus.Info("Segmenting the runtime")
-	witnessGLs, witnessLPPs := distributed.SegmentRuntime(runtimeBoot, assets.DistWizard)
+	logrus.Infof("Segmenting the runtime")
+	witnessGLs, witnessLPPs := distributed.SegmentRuntime(
+		runtimeBoot,
+		assets.DistWizard.Disc,
+		assets.DistWizard.BlueprintGLs,
+		assets.DistWizard.BlueprintLPPs,
+	)
 
 	logrus.Info("Saving the witnesses")
 	for i := range witnessGLs {
