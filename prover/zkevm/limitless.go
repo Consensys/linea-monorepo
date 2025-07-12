@@ -14,6 +14,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -21,8 +23,10 @@ var (
 	discFile               = "disc.bin"
 	zkevmFile              = "zkevm-wiop.bin"
 	compiledDefaultFile    = "dw-compiled-default.bin"
-	moduleGlTemplate       = "dw-module-gl-%d.bin"
-	moduleLppTemplate      = "dw-module-lpp-%d.bin"
+	blueprintGLPrefix      = "dw-blueprint-gl"
+	blueprintLppPrefix     = "dw-blueprint-lpp"
+	blueprintGLTemplate    = blueprintGLPrefix + "-%d.bin"
+	blueprintLppTemplate   = blueprintLppPrefix + "-%d.bin"
 	compileLppTemplate     = "dw-compiled-lpp-%d.bin"
 	compileGlTemplate      = "dw-compiled-gl-%d.bin"
 	conglomerationFile     = "dw-compiled-conglomeration.bin"
@@ -38,7 +42,6 @@ func GetTestZkEVM() *ZkEvm {
 // and the associated wizard circuits for the limitless prover protocol.
 type LimitlessZkEVM struct {
 	Zkevm      *ZkEvm
-	Disc       *distributed.StandardModuleDiscoverer
 	DistWizard *distributed.DistributedWizard
 }
 
@@ -52,14 +55,16 @@ func NewLimitlessZkEVM(cfg *config.Config) *LimitlessZkEVM {
 			Affinities:   GetAffinities(zkevm),
 			Predivision:  1,
 		}
-		dw = distributed.DistributeWizard(zkevm.WizardIOP, disc).CompileSegments().Conglomerate(20)
+		dw = distributed.DistributeWizard(zkevm.WizardIOP, disc)
 	)
 
-	decorateWithPublicInputs(dw.CompiledConglomeration)
+	// These are the slow and expensive operations.
+	// dw.CompileSegments().Conglomerate(20)
+
+	// decorateWithPublicInputs(dw.CompiledConglomeration)
 
 	return &LimitlessZkEVM{
 		Zkevm:      zkevm,
-		Disc:       disc,
 		DistWizard: dw,
 	}
 }
@@ -67,6 +72,12 @@ func NewLimitlessZkEVM(cfg *config.Config) *LimitlessZkEVM {
 // Store writes the limitless prover zkevm into disk in the folder given by
 // [cfg.PathforLimitlessProverAssets].
 func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
+
+	// asset is a utility struct used to list the object and the file name
+	type asset struct {
+		Name   string
+		Object any
+	}
 
 	if cfg == nil {
 		utils.Panic("config is nil")
@@ -78,17 +89,18 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 		return fmt.Errorf("failed to create directory %s: %w", assetDir, err)
 	}
 
-	assets := []struct {
-		Name   string
-		Object any
-	}{
+	assets := []asset{
 		{
 			Name:   zkevmFile,
 			Object: lz.Zkevm,
 		},
 		{
-			Name:   discFile,
-			Object: lz.Disc,
+			Name: discFile,
+			// alex: the conversion is needed because we figured that the
+			// serialization was not working well when attempting with the
+			// interface object. The reason why is not clear yet, but it works
+			// this way.
+			Object: *lz.DistWizard.Disc.(*distributed.StandardModuleDiscoverer),
 		},
 		{
 			Name:   bootstrapperFile,
@@ -101,34 +113,31 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 	}
 
 	for i, modGl := range lz.DistWizard.CompiledGLs {
-		assets = append(assets, []struct {
-			Name   string
-			Object any
-		}{{
-
+		assets = append(assets, asset{
 			Name:   fmt.Sprintf(compileGlTemplate, i),
 			Object: modGl,
-		}, {
-			Name:   fmt.Sprintf(moduleGlTemplate, i),
-			Object: lz.DistWizard.GLs[i],
-		},
-		}...)
+		})
+	}
+
+	for i, blueprintGL := range lz.DistWizard.BlueprintGLs {
+		assets = append(assets, asset{
+			Name:   fmt.Sprintf(blueprintGLTemplate, i),
+			Object: blueprintGL,
+		})
 	}
 
 	for i, modLpp := range lz.DistWizard.CompiledLPPs {
-		assets = append(assets, []struct {
-			Name   string
-			Object any
-		}{
-			{
-				Name:   fmt.Sprintf(compileLppTemplate, i),
-				Object: modLpp,
-			},
-			{
-				Name:   fmt.Sprintf(moduleLppTemplate, i),
-				Object: lz.DistWizard.LPPs[i],
-			},
-		}...)
+		assets = append(assets, asset{
+			Name:   fmt.Sprintf(compileLppTemplate, i),
+			Object: modLpp,
+		})
+	}
+
+	for i, blueprintLPP := range lz.DistWizard.BlueprintLPPs {
+		assets = append(assets, asset{
+			Name:   fmt.Sprintf(blueprintLppTemplate, i),
+			Object: blueprintLPP,
+		})
 	}
 
 	assets = append(assets, struct {
@@ -140,15 +149,19 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 	})
 
 	for _, asset := range assets {
+		logrus.Infof("writing %s to disk", asset.Name)
 		if err := writeToDisk(assetDir, asset.Name, asset.Object); err != nil {
 			return err
 		}
 	}
 
+	logrus.Info("limitless prover assets written to disk")
 	return nil
 }
 
 func loadFromFile(assetFilePath string, obj any) error {
+
+	logrus.Infof("Loading %s\n", assetFilePath)
 
 	var (
 		f        = files.MustRead(assetFilePath)
@@ -168,6 +181,9 @@ func loadFromFile(assetFilePath string, obj any) error {
 
 // LoadBootstrapperAsync loads the bootstrapper from disk.
 func (lz *LimitlessZkEVM) LoadBootstrapper(cfg *config.Config) error {
+	if lz.DistWizard == nil {
+		lz.DistWizard = &distributed.DistributedWizard{}
+	}
 	return loadFromFile(cfg.PathForSetup(executionLimitlessPath)+"/"+bootstrapperFile, &lz.DistWizard.Bootstrapper)
 }
 
@@ -178,19 +194,36 @@ func (lz *LimitlessZkEVM) LoadZkEVM(cfg *config.Config) error {
 
 // LoadDisc loads the discoverer from disk
 func (lz *LimitlessZkEVM) LoadDisc(cfg *config.Config) error {
-	return loadFromFile(cfg.PathForSetup(executionLimitlessPath)+"/"+discFile, &lz.Disc)
+	if lz.DistWizard == nil {
+		lz.DistWizard = &distributed.DistributedWizard{}
+	}
+
+	// The discoverer is not directly deserialized as an interface object as we
+	// figured that it does not work very well and the reason is unclear. This
+	// conversion step is a workaround for the problem.
+	res := &distributed.StandardModuleDiscoverer{}
+
+	err := loadFromFile(cfg.PathForSetup(executionLimitlessPath)+"/"+discFile, res)
+	if err != nil {
+		return err
+	}
+
+	lz.DistWizard.Disc = res
+	return nil
 }
 
-// LoadModuleGLsAndLPPs loads the uncompiled version of the GL and LPP modules.
-// The function auto-resolves the modules that needs to be deserialized by
-// looking into the asset directory and searching for files whose name start
-// with `dw-module-gl-` or `dw-module-lpp-`.
-func (lz *LimitlessZkEVM) LoadModuleGLsAndLPPs(cfg *config.Config) error {
+// LoadBlueprints loads the segmentation blueprints from disk for all the modules
+// LPP and GL.
+func (lz *LimitlessZkEVM) LoadBlueprints(cfg *config.Config) error {
 
 	var (
 		assetDir        = cfg.PathForSetup(executionLimitlessPath)
 		cntLpps, cntGLs int
 	)
+
+	if lz.DistWizard == nil {
+		lz.DistWizard = &distributed.DistributedWizard{}
+	}
 
 	files, err := os.ReadDir(assetDir)
 	if err != nil {
@@ -199,30 +232,42 @@ func (lz *LimitlessZkEVM) LoadModuleGLsAndLPPs(cfg *config.Config) error {
 
 	for _, file := range files {
 
-		if strings.HasPrefix(file.Name(), "dw-module-gl-") {
+		if strings.HasPrefix(file.Name(), blueprintGLPrefix) {
 			cntGLs++
 		}
 
-		if strings.HasPrefix(file.Name(), "dw-module-lpp-") {
+		if strings.HasPrefix(file.Name(), blueprintLppPrefix) {
 			cntLpps++
 		}
 	}
 
-	lz.DistWizard.GLs = make([]*distributed.ModuleGL, cntGLs)
-	lz.DistWizard.LPPs = make([]*distributed.ModuleLPP, cntLpps)
+	lz.DistWizard.BlueprintGLs = make([]distributed.ModuleSegmentationBlueprint, cntGLs)
+	lz.DistWizard.BlueprintLPPs = make([]distributed.ModuleSegmentationBlueprint, cntLpps)
+
+	eg := &errgroup.Group{}
 
 	for i := 0; i < cntGLs; i++ {
-		filePath := path.Join(assetDir, fmt.Sprintf(moduleGlTemplate, i))
-		if err := loadFromFile(filePath, &lz.DistWizard.GLs[i]); err != nil {
-			return err
-		}
+		eg.Go(func() error {
+			filePath := path.Join(assetDir, fmt.Sprintf(blueprintGLTemplate, i))
+			if err := loadFromFile(filePath, &lz.DistWizard.BlueprintGLs[i]); err != nil {
+				return err
+			}
+			return nil
+		})
 	}
 
 	for i := 0; i < cntLpps; i++ {
-		filePath := path.Join(assetDir, fmt.Sprintf(moduleLppTemplate, i))
-		if err := loadFromFile(filePath, &lz.DistWizard.LPPs[i]); err != nil {
-			return err
-		}
+		eg.Go(func() error {
+			filePath := path.Join(assetDir, fmt.Sprintf(blueprintLppTemplate, i))
+			if err := loadFromFile(filePath, &lz.DistWizard.BlueprintLPPs[i]); err != nil {
+				return err
+			}
+			return nil
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		return err
 	}
 
 	return nil
