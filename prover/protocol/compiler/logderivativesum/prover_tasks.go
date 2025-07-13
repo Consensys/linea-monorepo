@@ -1,13 +1,16 @@
 package logderivativesum
 
 import (
+	"fmt"
 	"runtime/debug"
 	"sync"
 
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
@@ -66,6 +69,8 @@ func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
 					panicOnce.Do(func() {
 						panicMsg = r
 						panicTrace = debug.Stack()
+
+						inspectWiop(run)
 					})
 				}
 
@@ -365,4 +370,26 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 			run.AssignLocalPoint(z.ZOpenings[frag].ID, packedZ[len(packedZ)-1])
 		}
 	})
+}
+
+func inspectWiop(run *wizard.ProverRuntime) {
+
+	columns := run.Spec.Columns.AllKeys()
+
+	fmt.Printf("Name; HasPragmaFullCol; HasPragmaLeftPadded; HasPragmaRightPadded; RangeStart; RangeEnd; Size")
+
+	for _, colID := range columns {
+
+		var (
+			col                     = run.Spec.Columns.GetHandle(colID).(column.Natural)
+			_, hasPragmaFullCol     = col.GetPragma(pragmas.FullColumnPragma)
+			_, hasPragmaLeftPadded  = col.GetPragma(pragmas.LeftPadded)
+			_, hasPragmaRightPadded = col.GetPragma(pragmas.RightPadded)
+			v                       = col.GetColAssignment(run)
+			rangeStart, rangeEnd    = smartvectors.CoCompactRange(v)
+			size                    = v.Len()
+		)
+
+		fmt.Printf("%v; %v; %v; %v; %v; %v; %v\n", colID, hasPragmaFullCol, hasPragmaLeftPadded, hasPragmaRightPadded, rangeStart, rangeEnd, size)
+	}
 }
