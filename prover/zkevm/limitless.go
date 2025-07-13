@@ -59,9 +59,9 @@ func NewLimitlessZkEVM(cfg *config.Config) *LimitlessZkEVM {
 	)
 
 	// These are the slow and expensive operations.
-	// dw.CompileSegments().Conglomerate(20)
+	dw.CompileSegments().Conglomerate(20)
 
-	// decorateWithPublicInputs(dw.CompiledConglomeration)
+	decorateWithPublicInputs(dw.CompiledConglomeration)
 
 	return &LimitlessZkEVM{
 		Zkevm:      zkevm,
@@ -112,10 +112,10 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 		},
 	}
 
-	for i, modGl := range lz.DistWizard.CompiledGLs {
+	for _, modGl := range lz.DistWizard.CompiledGLs {
 		assets = append(assets, asset{
-			Name:   fmt.Sprintf(compileGlTemplate, i),
-			Object: modGl,
+			Name:   fmt.Sprintf(compileGlTemplate, modGl.ModuleGL.DefinitionInput.ModuleName),
+			Object: *modGl,
 		})
 	}
 
@@ -126,10 +126,10 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 		})
 	}
 
-	for i, modLpp := range lz.DistWizard.CompiledLPPs {
+	for _, modLpp := range lz.DistWizard.CompiledLPPs {
 		assets = append(assets, asset{
-			Name:   fmt.Sprintf(compileLppTemplate, i),
-			Object: modLpp,
+			Name:   fmt.Sprintf(compileLppTemplate, modLpp.ModuleLPP.ModuleNames()),
+			Object: *modLpp,
 		})
 	}
 
@@ -145,7 +145,7 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 		Object any
 	}{
 		Name:   conglomerationFile,
-		Object: lz.DistWizard.CompiledConglomeration,
+		Object: *lz.DistWizard.CompiledConglomeration,
 	})
 
 	for _, asset := range assets {
@@ -271,6 +271,54 @@ func (lz *LimitlessZkEVM) LoadBlueprints(cfg *config.Config) error {
 	}
 
 	return nil
+}
+
+// LoadCompiledGL loads the compiled GL from disk
+func LoadCompiledGL(cfg *config.Config, moduleName distributed.ModuleName) (*distributed.RecursedSegmentCompilation, error) {
+
+	var (
+		assetDir = cfg.PathForSetup(executionLimitlessPath)
+		filePath = path.Join(assetDir, fmt.Sprintf(compileGlTemplate, moduleName))
+		res      = &distributed.RecursedSegmentCompilation{}
+	)
+
+	if err := loadFromFile(filePath, res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+// LoadCompiledLPP loads the compiled LPP from disk
+func LoadCompiledLPP(cfg *config.Config, moduleNames []distributed.ModuleName) (*distributed.RecursedSegmentCompilation, error) {
+
+	var (
+		assetDir = cfg.PathForSetup(executionLimitlessPath)
+		filePath = path.Join(assetDir, fmt.Sprintf(compileLppTemplate, moduleNames))
+		res      = &distributed.RecursedSegmentCompilation{}
+	)
+
+	if err := loadFromFile(filePath, res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+// LoadConglomeration loads the conglomeration assets from disk
+func LoadConglomeration(cfg *config.Config) (*distributed.ConglomeratorCompilation, error) {
+
+	var (
+		assetDir = cfg.PathForSetup(executionLimitlessPath)
+		filePath = path.Join(assetDir, conglomerationFile)
+		res      = &distributed.ConglomeratorCompilation{}
+	)
+
+	if err := loadFromFile(filePath, res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
 
 // writeToDisk writes the provided assets to disk using the

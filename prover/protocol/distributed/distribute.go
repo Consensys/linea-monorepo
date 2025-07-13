@@ -235,6 +235,12 @@ func GetSharedRandomnessFromWitnesses(comp []*wizard.CompiledIOP, gLWitnesses []
 	return GetSharedRandomness(lppCommitments)
 }
 
+// GetLppCommitmentFromRuntime returns the LPP commitment from the runtime
+func GetLppCommitmentFromRuntime(runtime *wizard.ProverRuntime) field.Element {
+	name := fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, 0)
+	return runtime.GetPublicInput(preRecursionPrefix + name)
+}
+
 // PrecompileInitialWizard pre-compiles the initial wizard protocol by applying all the
 // compilation steps needing to be run before the splitting phase. Its role is to
 // ensure that all of the queries that cannot be processed by the splitting phase

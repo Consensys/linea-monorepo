@@ -2,12 +2,15 @@ package limitless
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -37,14 +40,48 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 
 	// Setup execution witness and output response
 	var (
-		out     = execution.CraftProverOutput(cfg, req)
-		witness = execution.NewWitness(cfg, req, &out)
+		out           = execution.CraftProverOutput(cfg, req)
+		witness       = execution.NewWitness(cfg, req, &out)
+		numGL, numLPP = 0, 0
 	)
 
 	logrus.Info("Starting to run the bootstrapper")
-	numGL, numLPP := RunBootstrapper(cfg, witness.ZkEVM)
+
+	numGL, numLPP = RunBootstrapper(cfg, witness.ZkEVM)
 
 	logrus.Infof("Finished running the bootstrapper, generated %d GL modules and %d LPP modules", numGL, numLPP)
+
+	var (
+		proofGLs       []recursion.Witness
+		proofLPPs      []recursion.Witness
+		lppCommitments []field.Element
+	)
+
+	for i := 0; i < numGL; i++ {
+		proofGL, lppCommitment, err := RunGL(cfg, i)
+		if err != nil {
+			return nil, fmt.Errorf("could not run GL prover for witness index=%v: %w", i, err)
+		}
+
+		proofGLs = append(proofGLs, *proofGL)
+		lppCommitments = append(lppCommitments, lppCommitment)
+	}
+
+	sharedRandomness := distributed.GetSharedRandomness(lppCommitments)
+
+	for i := 0; i < numLPP; i++ {
+		proofLPP, err := RunLPP(cfg, i, sharedRandomness)
+		if err != nil {
+			return nil, fmt.Errorf("could not run LPP prover for witness index=%v: %w", i, err)
+		}
+
+		proofLPPs = append(proofLPPs, *proofLPP)
+	}
+
+	_, err := RunConglomeration(cfg, proofGLs, proofLPPs)
+	if err != nil {
+		return nil, fmt.Errorf("could not run conglomeration prover: %w", err)
+	}
 
 	return &out, nil
 }
@@ -133,8 +170,8 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
 
 		eg.Go(func() error {
 
-			filePath := witnessDir + "witness-LPP-" + strconv.Itoa(i)
-			if err := writeToDisk(filePath, witnessLPPs[i]); err != nil {
+			filePath := witnessDir + "/witness-LPP-" + strconv.Itoa(i)
+			if err := writeToDisk(filePath, *witnessLPPs[i]); err != nil {
 				return fmt.Errorf("could not save witnessLPP: %v", err)
 			}
 
@@ -144,9 +181,126 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
 		})
 	}
 
-	eg.Wait()
+	if err := eg.Wait(); err != nil {
+		utils.Panic("could not save witnesses: %v", err)
+	}
 
 	return len(witnessGLs), len(witnessLPPs)
+}
+
+// RunGL runs the GL prover for the provided witness index
+func RunGL(cfg *config.Config, witnessIndex int) (proofGL *recursion.Witness, lppCommitments field.Element, err error) {
+
+	logrus.Infof("Running the GL-prover for witness index=%v", witnessIndex)
+
+	witness := &distributed.ModuleWitnessGL{}
+	witnessFilePath := witnessDir + "/witness-GL-" + strconv.Itoa(witnessIndex)
+	if err := loadFromDisk(witnessFilePath, witness); err != nil {
+		return nil, field.Element{}, err
+	}
+
+	logrus.Infof("Loaded the witness for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+
+	compiledGL, err := zkevm.LoadCompiledGL(cfg, witness.ModuleName)
+	if err != nil {
+		return nil, field.Element{}, fmt.Errorf("could not load compiled GL: %w", err)
+	}
+
+	logrus.Infof("Loaded the compiled GL for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+
+	run := compiledGL.ProveSegment(witness)
+
+	logrus.Infof("Finished running the GL-prover for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+
+	_proofGL := recursion.ExtractWitness(run)
+
+	logrus.Infof("Extracted the witness for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+
+	return &_proofGL, distributed.GetLppCommitmentFromRuntime(run), nil
+}
+
+// RunLPP runs the LPP prover for the provided witness index
+func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Element) (proofLPP *recursion.Witness, err error) {
+
+	logrus.Infof("Running the LPP-prover for witness index=%v", witnessIndex)
+
+	witness := &distributed.ModuleWitnessLPP{}
+	witnessFilePath := witnessDir + "/witness-LPP-" + strconv.Itoa(witnessIndex)
+	if err := loadFromDisk(witnessFilePath, witness); err != nil {
+		return nil, err
+	}
+
+	witness.InitialFiatShamirState = sharedRandomness
+
+	logrus.Infof("Loaded the witness for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+
+	compiledLPP, err := zkevm.LoadCompiledLPP(cfg, witness.ModuleName)
+	if err != nil {
+		return nil, fmt.Errorf("could not load compiled LPP: %w", err)
+	}
+
+	logrus.Infof("Loaded the compiled LPP for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+
+	run := compiledLPP.ProveSegment(witness)
+
+	logrus.Infof("Finished running the LPP-prover for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+
+	_proofLPP := recursion.ExtractWitness(run)
+
+	logrus.Infof("Extracted the witness for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+
+	return &_proofLPP, nil
+}
+
+// RunConglomeration runs the conglomeration prover for the provided subproofs
+func RunConglomeration(cfg *config.Config, proofGLs, proofLPPs []recursion.Witness) (proof wizard.Proof, err error) {
+
+	logrus.Infof("Running the conglomeration-prover")
+
+	cong, err := zkevm.LoadConglomeration(cfg)
+	if err != nil {
+		return wizard.Proof{}, fmt.Errorf("could not load compiled conglomeration: %w", err)
+	}
+
+	logrus.Infof("Loaded the compiled conglomeration")
+
+	proof = cong.Prove(proofGLs, proofLPPs)
+
+	logrus.Infof("Finished running the conglomeration-prover")
+
+	return proof, nil
+}
+
+func loadFromDisk(filePath string, assetPtr any) error {
+
+	f := files.MustRead(filePath)
+	defer f.Close()
+
+	var (
+		buf     []byte
+		desErr  error
+		readErr error
+	)
+
+	tRead := profiling.TimeIt(func() {
+		buf, readErr = io.ReadAll(f)
+	})
+
+	if readErr != nil {
+		return fmt.Errorf("could not read file %s: %w", filePath, readErr)
+	}
+
+	tDes := profiling.TimeIt(func() {
+		desErr = serialization.Deserialize(buf, assetPtr)
+	})
+
+	if desErr != nil {
+		return fmt.Errorf("could not deserialize %s: %w", filePath, desErr)
+	}
+
+	logrus.Infof("Read %s in %s, deserialized in %s, size: %dB", filePath, tRead, tDes, len(buf))
+
+	return nil
 }
 
 // writeToDisk writes the provided assets to disk using the
