@@ -645,8 +645,8 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		areAnyLeftPadded  = false
 		areAnyRightPadded = false
 		areAnyFull        = false
-		firstLeftPadded   column.Natural
-		firstRightPadded  column.Natural
+		lastLeftPadded    column.Natural
+		lastRightPadded   column.Natural
 		firstColumn       column.Natural
 	)
 
@@ -691,12 +691,12 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 
 		if hasLeftPaddedPragma {
 			areAnyLeftPadded = true
-			firstLeftPadded = col
+			lastLeftPadded = col
 		}
 
 		if hasRightPaddedPragma {
 			areAnyRightPadded = true
-			firstRightPadded = col
+			lastRightPadded = col
 		}
 
 		if isRightPadded && isLeftPadded {
@@ -711,12 +711,12 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		// activated when we mix right-padded with a constant column.
 		if isRightPadded && density > 0 {
 			areAnyRightPadded = true
-			firstLeftPadded = col
+			lastRightPadded = col
 		}
 
 		if isLeftPadded {
 			areAnyLeftPadded = true
-			firstRightPadded = col
+			lastLeftPadded = col
 		}
 
 		if !isRightPadded && !isLeftPadded {
@@ -745,7 +745,7 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 	}
 
 	if areAnyLeftPadded && areAnyRightPadded {
-		utils.Panic("the module cannot contain at the same time left and right padded columns, oneLeftPadded=%v, oneRightPadded=%v", firstLeftPadded.ID, firstRightPadded.ID)
+		utils.Panic("the module cannot contain at the same time left and right padded columns, oneLeftPadded=%v, oneRightPadded=%v", lastLeftPadded.ID, lastRightPadded.ID)
 	}
 
 	var (
