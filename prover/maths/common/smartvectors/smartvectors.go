@@ -299,9 +299,9 @@ func PaddingVal(v SmartVector) (val field.Element, hasPadding bool) {
 	}
 }
 
-// TryReduceSize detects if the input smart-vector can be reduced to a constant
+// TryReduceSizeRight detects if the input smart-vector can be reduced to a constant
 // smart-vector. It will only apply over the following types: [Regular].
-func TryReduceSize(v SmartVector) (new SmartVector, totalSaving int) {
+func TryReduceSizeRight(v SmartVector) (new SmartVector, totalSaving int) {
 
 	switch w := v.(type) {
 	case *Constant, *Rotated, *Pooled, *PaddedCircularWindow:
@@ -321,7 +321,31 @@ func TryReduceSize(v SmartVector) (new SmartVector, totalSaving int) {
 	default:
 		panic(fmt.Sprintf("unexpected type %T", v))
 	}
+}
 
+// TryReduceSizeLeft detects if the input smart-vector can be reduced to a
+// left-padded smart-vector. It will only apply over the following types:
+// [Regular].
+func TryReduceSizeLeft(v SmartVector) (new SmartVector, totalSaving int) {
+
+	switch w := v.(type) {
+	case *Constant, *Rotated, *Pooled, *PaddedCircularWindow:
+		return v, 0
+	case *Regular:
+
+		if res, ok := tryIntoConstant(*w); ok {
+			return res, len(*w)
+		}
+
+		if res, ok := tryIntoLeftPadded(*w); ok {
+			return res, len(*w) - len(res.Window_)
+		}
+
+		return v, 0
+
+	default:
+		panic(fmt.Sprintf("unexpected type %T", v))
+	}
 }
 
 // tryIntoConstant attemps to rewrite the smart-vector into a constant smart-vector.
@@ -376,13 +400,26 @@ func tryIntoRightPadded(v Regular) (*PaddedCircularWindow, bool) {
 		}
 	}
 
-	// 1000 is arbitrary value but is justified by the fact that saving less
-	// than 1000 field element is not interesting performance-wise.
-	if len(v)-bestPos < 1000 {
-		return nil, false
+	return RightPadded(v[:bestPos], last, len(v)).(*PaddedCircularWindow), true
+}
+
+// tryIntoLeftPadded scans the smartvector and attempts to rewrite it into a
+// a more space-efficient left padded circular windows.
+func tryIntoLeftPadded(v Regular) (*PaddedCircularWindow, bool) {
+
+	var (
+		bestPos = 0
+		first   = v[0]
+	)
+
+	for i := 1; i < len(v); i++ {
+		if v[i] != first {
+			bestPos = i - 1
+			break
+		}
 	}
 
-	return RightPadded(v[:bestPos], last, len(v)).(*PaddedCircularWindow), true
+	return LeftPadded(v[bestPos+1:], first, len(v)).(*PaddedCircularWindow), true
 }
 
 // FromCompactWithShape creates a new smart-vector with the same shape as the

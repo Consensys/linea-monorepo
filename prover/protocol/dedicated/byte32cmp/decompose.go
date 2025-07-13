@@ -184,7 +184,7 @@ func (d *DecompositionCtx) Run(run *wizard.ProverRuntime) {
 	// As eval expr column is defective in giving out optimized smart-vectors,
 	// we try to reduce the size of the smart-vector. This empirically
 	// improves the performances of the protocol.
-	original, _ = smartvectors.TryReduceSize(original)
+	original, _ = smartvectors.TryReduceSizeRight(original)
 
 	for x := range original.IterateCompact() {
 
