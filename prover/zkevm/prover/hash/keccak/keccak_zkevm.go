@@ -7,6 +7,7 @@ package keccak
 
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 	gen_acc "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/acc_module"
@@ -136,7 +137,8 @@ func getShakiraArithmetization(comp *wizard.CompiledIOP) (generic.GenericByteMod
 		},
 	}
 
-	supp := dedicated.ManuallyShift(comp, res.Info.IsHashHi, -1)
+	supp := dedicated.ManuallyShift(comp, res.Info.IsHashHi, -1, "shakiradata.SELECTOR_KECCAK_RES_LO")
+	pragmas.MarkLeftPadded(supp.Natural)
 	res.Info.IsHashLo = supp.Natural
 	return res, supp
 }

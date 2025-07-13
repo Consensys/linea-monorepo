@@ -175,7 +175,7 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 		res.IsActive,
 	)
 
-	res.IsEffFirstLaneOfNewHashShiftMin2 = dedicated.ManuallyShift(comp, res.IsEffFirstLaneOfNewHash, -2)
+	res.IsEffFirstLaneOfNewHashShiftMin2 = dedicated.ManuallyShift(comp, res.IsEffFirstLaneOfNewHash, -2, "IS_EFF_FIRST_LANE_OF_NEW_HASH_SHIFT_MIN_2")
 
 	commonconstraints.MustBeActivationColumns(comp, res.IsActive)
 
