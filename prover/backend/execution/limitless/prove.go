@@ -15,10 +15,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
-	witnessDir = "/tmp/witnesses"
+	witnessDir                            = "/tmp/witnesses"
+	numConcurrentWitnessWritingGoroutines = 1
 )
 
 // Prove function for the Assest struct
@@ -40,9 +42,9 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	)
 
 	logrus.Info("Starting to run the bootstrapper")
-	_, _ = RunBootstrapper(cfg, witness.ZkEVM)
+	numGL, numLPP := RunBootstrapper(cfg, witness.ZkEVM)
 
-	logrus.Info("Finished running the bootstrapper")
+	logrus.Infof("Finished running the bootstrapper, generated %d GL modules and %d LPP modules", numGL, numLPP)
 
 	return &out, nil
 }
@@ -100,27 +102,49 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
 	)
 
 	logrus.Info("Saving the witnesses")
+
+	eg := &errgroup.Group{}
+	eg.SetLimit(numConcurrentWitnessWritingGoroutines)
+
 	for i := range witnessGLs {
 
-		filePath := witnessDir + "/witness-GL-" + strconv.Itoa(i)
-		if err := writeToDisk(filePath, witnessGLs[i]); err != nil {
-			utils.Panic("could not save witnessGL: %v", err)
-		}
+		// This saves the value of i in the closure to ensure that the right
+		// value is passed. It should be obsolete with newer version of Go.
+		i := i
+		eg.Go(func() error {
 
-		// This frees the memory from the witness that is no longer needed.
-		witnessGLs[i] = nil
+			filePath := witnessDir + "/witness-GL-" + strconv.Itoa(i)
+			if err := writeToDisk(filePath, witnessGLs[i]); err != nil {
+				return fmt.Errorf("could not save witnessGL: %v", err)
+			}
+
+			// This frees the memory from the witness that is no longer needed.
+			witnessGLs[i] = nil
+			return nil
+		})
+
 	}
 
 	for i := range witnessLPPs {
 
-		filePath := witnessDir + "witness-LPP-" + strconv.Itoa(i)
-		if err := writeToDisk(filePath, witnessLPPs[i]); err != nil {
-			utils.Panic("could not save witnessLPP: %v", err)
-		}
+		// This saves the value of i in the closure to ensure that the right
+		// value is passed. It should be obsolete with newer version of Go.
+		i := i
 
-		// This frees the memory from the witness that is no longer needed.
-		witnessLPPs[i] = nil
+		eg.Go(func() error {
+
+			filePath := witnessDir + "witness-LPP-" + strconv.Itoa(i)
+			if err := writeToDisk(filePath, witnessLPPs[i]); err != nil {
+				return fmt.Errorf("could not save witnessLPP: %v", err)
+			}
+
+			// This frees the memory from the witness that is no longer needed.
+			witnessLPPs[i] = nil
+			return nil
+		})
 	}
+
+	eg.Wait()
 
 	return len(witnessGLs), len(witnessLPPs)
 }
@@ -132,14 +156,29 @@ func writeToDisk(filePath string, asset any) error {
 	f := files.MustOverwrite(filePath)
 	defer f.Close()
 
-	buf, serr := serialization.Serialize(asset)
+	var (
+		buf  []byte
+		serr error
+		werr error
+	)
+
+	tSer := profiling.TimeIt(func() {
+		buf, serr = serialization.Serialize(asset)
+	})
+
 	if serr != nil {
 		return fmt.Errorf("could not serialize %s: %w", filePath, serr)
 	}
 
-	if _, werr := f.Write(buf); werr != nil {
+	tW := profiling.TimeIt(func() {
+		_, werr = f.Write(buf)
+	})
+
+	if werr != nil {
 		return fmt.Errorf("could not write to file %s: %w", filePath, werr)
 	}
+
+	logrus.Infof("Wrote %s in %s, serialized in %s, size: %dB", filePath, tW, tSer, len(buf))
 
 	return nil
 }
