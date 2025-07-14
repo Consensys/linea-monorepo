@@ -13,6 +13,10 @@
     <Logger name="org.hyperledger.besu" level="WARN" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
+    <Logger name="org.hyperledger.besu.consensus.qbft" level="DEBUG"
+            additivity="false">
+      <AppenderRef ref="Console"/>
+    </Logger>
     <Logger name="tech.pegasys.teku" level="TRACE" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
