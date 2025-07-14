@@ -20,6 +20,7 @@ import linea.ethapi.EthApiClient
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockBody
+import maru.extensions.encodeHex
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
@@ -88,7 +89,7 @@ class LineaFinalizationProvider(
     poller.cancel()
   }
 
-  private fun update() {
+  fun update() {
     lastFinalizedBlock.set(getFinalizationUpdate().get())
   }
 
@@ -99,10 +100,13 @@ class LineaFinalizationProvider(
         getHighestBlockAvailableUpToBlock(finalizedBlockNumber)
           .thenPeek { block ->
             log.debug(
-              "finalization update: finalizedBlockOnL1={} prevCachedFinalizedBlock={} newCachedFinalizedBlock={} {}",
+              "finalization update: finalizedBlockOnL1={} prevCachedFinalizedBlock={} newCachedFinalizedBlock={} " +
+                "prevFinalizedBlockHash={} newFinalizedBlockHash={} {}",
               finalizedBlockNumber,
               lastFinalizedBlock.get().blockNumber,
               block.number,
+              lastFinalizedBlock.get().hash.encodeHex(),
+              block.hash,
               if (finalizedBlockNumber > block.number) {
                 "(node is behind, using latest available block)"
               } else {
