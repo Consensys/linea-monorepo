@@ -129,6 +129,7 @@ func conglomerate(maxNbProofs int, moduleGLs, moduleLpps []*RecursedSegmentCompi
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<17),
 		),
+		logdata.Log("before first vortex"),
 		vortex.Compile(
 			2,
 			vortex.ForceNumOpenedColumns(256),
