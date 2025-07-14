@@ -27,8 +27,8 @@ var (
 	blueprintLppPrefix     = "dw-blueprint-lpp"
 	blueprintGLTemplate    = blueprintGLPrefix + "-%d.bin"
 	blueprintLppTemplate   = blueprintLppPrefix + "-%d.bin"
-	compileLppTemplate     = "dw-compiled-lpp-%d.bin"
-	compileGlTemplate      = "dw-compiled-gl-%d.bin"
+	compileLppTemplate     = "dw-compiled-lpp-%v.bin"
+	compileGlTemplate      = "dw-compiled-gl-%v.bin"
 	conglomerationFile     = "dw-compiled-conglomeration.bin"
 	executionLimitlessPath = "execution-limitless"
 )
@@ -59,7 +59,7 @@ func NewLimitlessZkEVM(cfg *config.Config) *LimitlessZkEVM {
 	)
 
 	// These are the slow and expensive operations.
-	dw.CompileSegments().Conglomerate(20)
+	dw.CompileSegments().Conglomerate(50)
 
 	decorateWithPublicInputs(dw.CompiledConglomeration)
 
