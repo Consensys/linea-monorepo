@@ -151,7 +151,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
 		eg.Go(func() error {
 
 			filePath := witnessDir + "/witness-GL-" + strconv.Itoa(i)
-			if err := writeToDisk(filePath, witnessGLs[i]); err != nil {
+			if err := writeToDisk(filePath, *witnessGLs[i]); err != nil {
 				return fmt.Errorf("could not save witnessGL: %v", err)
 			}
 
