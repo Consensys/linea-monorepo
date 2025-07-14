@@ -61,7 +61,7 @@ func init() {
 
 	CustomCodexes[TypeOfHashFuncGenerator] = CustomCodex{
 		Type: TypeOfHashFuncGenerator,
-		Ser:  marshalHashGenerator,
+		Ser:  marshalAsEmptyStruct,
 		Des:  unmarshalHashGenerator,
 	}
 
@@ -300,10 +300,6 @@ func unmarshalFrontendVariable(des *Deserializer, val any, _ reflect.Type) (refl
 	v := reflect.New(TypeOfFrontendVariable).Elem()
 	v.Set(reflect.ValueOf(bi))
 	return v, nil
-}
-
-func marshalHashGenerator(ser *Serializer, val reflect.Value) (any, *serdeError) {
-	return nil, nil
 }
 
 func unmarshalHashGenerator(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
