@@ -8,7 +8,6 @@
  */
 package maru.app
 
-import kotlin.test.Test
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
@@ -30,6 +29,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurationBuilder
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
+import org.junit.jupiter.api.Test
 import org.web3j.protocol.core.DefaultBlockParameter
 
 class MaruFollowerNegativeTest {

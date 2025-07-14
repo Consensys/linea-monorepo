@@ -1,5 +1,19 @@
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+
 plugins {
   id 'maru.kotlin-application-conventions'
+}
+
+sourceSets {
+  integrationTest {
+    kotlin {
+      compileClasspath += main.output
+      runtimeClasspath += main.output
+    }
+    compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath + sourceSets.test.compileClasspath
+    runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
+  }
 }
 
 dependencies {
@@ -31,19 +45,19 @@ dependencies {
   implementation("tech.pegasys.teku.internal:p2p")
   implementation("io.libp2p:jvm-libp2p")
 
-  testImplementation(project(":jvm-libs:test-utils"))
-  testImplementation(testFixtures(project(":core")))
-  testImplementation(testFixtures(project(":config")))
-  testImplementation(project(":crypto"))
-  testImplementation "org.hyperledger.besu.internal:api"
-  testImplementation(group: 'org.hyperledger.besu.internal', name: 'core', classifier: 'test-support')
-  testImplementation("org.hyperledger.besu.internal:p2p")
-  testImplementation("org.hyperledger.besu.internal:qbft-core")
-  testImplementation("org.hyperledger.besu:besu-datatypes")
+  integrationTestImplementation(project(":jvm-libs:test-utils"))
+  integrationTestImplementation(testFixtures(project(":core")))
+  integrationTestImplementation(testFixtures(project(":config")))
+  integrationTestImplementation(project(":crypto"))
+  integrationTestImplementation "org.hyperledger.besu.internal:api"
+  integrationTestImplementation(group: 'org.hyperledger.besu.internal', name: 'core', classifier: 'test-support')
+  integrationTestImplementation("org.hyperledger.besu.internal:p2p")
+  integrationTestImplementation("org.hyperledger.besu.internal:qbft-core")
+  integrationTestImplementation("org.hyperledger.besu:besu-datatypes")
 
-  testImplementation("org.hyperledger.besu.internal:merge")
-  testImplementation("org.hyperledger.besu.internal:plugins-rocksdb")
-  testImplementation "org.jetbrains.kotlin:kotlin-test:2.1.0"
+  integrationTestImplementation("org.hyperledger.besu.internal:merge")
+  integrationTestImplementation("org.hyperledger.besu.internal:plugins-rocksdb")
+  integrationTestImplementation "org.jetbrains.kotlin:kotlin-test:2.1.0"
 }
 
 // Besu and Teku have similar versioning and some modules are also named the same. This creates conflicts when
@@ -80,7 +94,46 @@ jar {
   }
 }
 
-test {
+task integrationTest(type: Test) {
+  description = "Runs integration tests."
+  group = "verification"
+  useJUnitPlatform()
+
+  classpath = sourceSets.integrationTest.runtimeClasspath
+  testClassesDirs = sourceSets.integrationTest.output.classesDirs
+
   // To make room for Besu threads
-  systemProperties["junit.jupiter.execution.parallel.config.dynamic.factor"] = 0.5
+  systemProperties["junit.jupiter.execution.parallel.config.strategy"] = "fixed"
+  int maxThreads = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
+  systemProperties["junit.jupiter.execution.parallel.config.fixed.max-pool-size"]
+  = maxThreads
+  systemProperties["junit.jupiter.execution.parallel.config.fixed.parallelism"]
+  = maxThreads
+
+  testLogging {
+    events TestLogEvent.FAILED,
+    TestLogEvent.SKIPPED,
+    TestLogEvent.STANDARD_ERROR,
+    //    TestLogEvent.STARTED,
+    TestLogEvent.PASSED
+    exceptionFormat TestExceptionFormat.FULL
+    showCauses true
+    showExceptions true
+    showStackTraces true
+    // set showStandardStreams if you need to see test logs
+    showStandardStreams false
+  }
 }
+
+afterEvaluate {
+  // Integration tests are getting unstable when running concurrently with other tests
+  tasks.named('integrationTest') {
+    mustRunAfter rootProject.subprojects.collect {
+      it.tasks.matching {
+        it.name == 'test'
+      }
+    }.flatten()
+  }
+}
+
+check.dependsOn(integrationTest)
