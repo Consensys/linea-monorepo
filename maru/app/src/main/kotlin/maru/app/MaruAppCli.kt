@@ -64,7 +64,7 @@ class MaruAppCli : Callable<Int> {
   private val configFiles: List<File>? = null
 
   @CommandLine.Option(
-    names = ["--besu-genesis-file"],
+    names = ["--maru-genesis-file"],
     paramLabel = "BEACON_GENESIS.json",
     description = ["Beacon chain genesis file"],
     required = true,
