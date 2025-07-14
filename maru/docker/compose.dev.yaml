@@ -12,7 +12,7 @@ services:
     depends_on:
       - sequencer
       - follower-geth
-    command: [ 'java', '-Dlog4j2.configurationFile=configs/log4j.xml', '-jar', "maru.jar", '--besu-genesis-file', 'configs/genesis.json', '--config', 'configs/config.dev.toml']
+    command: [ 'java', '-Dlog4j2.configurationFile=configs/log4j.xml', '-jar', "maru.jar", '--maru-genesis-file', 'configs/genesis.json', '--config', 'configs/config.dev.toml']
 #    command: [ 'echo' , 'Forced exit to run in IntellIJ' ]
     volumes:
       - ./maru/config.dev.toml:/opt/consensys/maru/configs/config.dev.toml:ro
