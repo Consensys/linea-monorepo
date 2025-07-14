@@ -5,7 +5,6 @@ import (
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/gnark/profile"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
@@ -28,10 +27,6 @@ func (b *limitlessBuilder) Compile() (constraint.ConstraintSystem, error) {
 // Makes the constraint system for the execution-limitless circuit
 func makeCSLimitless(b *limitlessBuilder) constraint.ConstraintSystem {
 	circuit := AllocateLimitless(b.congWIOP, b.traceLimits)
-
-	// To be removed as it slows down the compilation
-	gnarkPprof := profile.Start(profile.WithPath("execution_limitless_gnark.pprof"))
-	defer gnarkPprof.Stop()
 
 	scs, err := frontend.Compile(fr.Modulus(), scs.NewBuilder, &circuit, frontend.WithCapacity(1<<24))
 	if err != nil {
