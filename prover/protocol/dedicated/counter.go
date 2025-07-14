@@ -18,8 +18,10 @@ func NewCyclicCounter(comp *wizard.CompiledIOP, round, period int, isActiveAny a
 
 	var (
 		isActive, fullyActive, size = cleanIsActive(isActiveAny)
-		name                        = fmt.Sprintf("CYCLIC_COUNTER_%v_%v", len(comp.Columns.AllKeys()), period)
-		rc                          = &CyclicCounter{
+		// The appending of the name is necessary to disambiguate the name of
+		// the column when serializing.
+		name = fmt.Sprintf("CYCLIC_COUNTER_%v_%v_%v", len(comp.Columns.AllKeys()), period, size)
+		rc   = &CyclicCounter{
 			IsActive:    isActive,
 			Period:      period,
 			FullyActive: fullyActive,
