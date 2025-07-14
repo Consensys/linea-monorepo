@@ -7,7 +7,7 @@ services:
     # make build-local-image
     # MARU_TAG=local make docker-run-stack
     # command: [ 'java', '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005','-Dvertx.configurationFile=/path/to/vertx-options.json', '-Dlog4j2.configurationFile=/path/to/log4j2-dev.xml']
-    image: consensys/maru:${MARU_TAG:-ce6054c}
+    image: consensys/maru:${MARU_TAG:-5c4e7fe}
     container_name: maru
     depends_on:
       - sequencer
@@ -23,6 +23,7 @@ services:
     ports:
       # Attach the IDE's remote java debugger to localhost:5005 to debug maru
       - "5005:5005"
+      - "8080:8080"
     networks:
       - linea
 

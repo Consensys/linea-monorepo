@@ -1,3 +1,5 @@
+allow-empty-blocks = true
+
 [persistence]
 data-path="/tmp/maru-db"
 private-key-path="/tmp/maru-db/private-key"
