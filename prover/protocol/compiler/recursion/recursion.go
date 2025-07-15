@@ -73,17 +73,15 @@ type Witness struct {
 	FinalFS field.Element
 
 	// CommittedMatrices are the list of the Reed-Solomon matrices
-	// for each committed round. They are needed by the prover of
-	// the prover of the self-recursion.
+	// for each committed round. They are needed by the prover of the self-recursion.
 	CommittedMatrices []vCom.EncodedMatrix
 
 	// SisHashes is the list of the SIS hashes of the vortex columns
-	// for each committed round. They are needed by the prover of the self-
-	// recursion.
+	// for each committed round. They are needed by the prover of the self-recursion.
 	SisHashes [][]field.Element
 
-	// MimcHashes is the list of the MiMC of the Vortex columns that are not
-	// hashed using SIS. They are needed by the prover of self-recursion.
+	// MimcHashes is the list of the Vortex columns that are not
+	// hashed using SIS. They are needed by the prover of the self-recursion.
 	MimcHashes [][]field.Element
 
 	// Trees are the list of the commitment merkle trees. They are needed
