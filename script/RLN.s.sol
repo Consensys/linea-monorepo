@@ -6,11 +6,9 @@ import { DeploymentConfig } from "./DeploymentConfig.s.sol";
 
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import { Groth16Verifier } from "../src/rln/Verifier.sol";
 import { RLN } from "../src/rln/RLN.sol";
 
 contract DeployRLNScript is BaseScript {
-
     error InvalidDepth();
     error InvalidAddress();
 
@@ -28,10 +26,9 @@ contract DeployRLNScript is BaseScript {
         }
 
         vm.startBroadcast(deployer);
-        address verifier = (address)(new Groth16Verifier());
         // Deploy Karma logic contract
         bytes memory initializeData =
-            abi.encodeCall(RLN.initialize, (deployer, deployer, deployer, depth, verifier, karmaAddress));
+            abi.encodeCall(RLN.initialize, (deployer, deployer, deployer, depth, karmaAddress));
         address impl = address(new RLN());
         // Create upgradeable proxy
         address proxy = address(new ERC1967Proxy(impl, initializeData));

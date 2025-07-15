@@ -4,44 +4,14 @@ pragma solidity ^0.8.26;
 import { Test } from "forge-std/Test.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { RLN } from "../src/rln/RLN.sol";
-import { IVerifier } from "../src/rln/IVerifier.sol";
 import { Karma } from "../src/Karma.sol";
 import { KarmaDistributorMock } from "./mocks/KarmaDistributorMock.sol";
 import { DeployKarmaScript } from "../script/DeployKarma.s.sol";
-import { DeployRLNScript } from "../script/RLN.s.sol";
 
 import { DeploymentConfig } from "../script/DeploymentConfig.s.sol";
 
-/// @dev A mock verifier that allows toggling proof validity.
-contract MockVerifier is IVerifier {
-    bool public result;
-
-    constructor() {
-        result = true;
-    }
-
-    function verifyProof(
-        uint256[2] memory,
-        uint256[2][2] memory,
-        uint256[2] memory,
-        uint256[2] memory
-    )
-        external
-        view
-        override
-        returns (bool)
-    {
-        return result;
-    }
-
-    function changeResult(bool _result) external {
-        result = _result;
-    }
-}
-
 contract RLNTest is Test {
     RLN public rln;
-    MockVerifier public verifier;
 
     uint256 private constant DEPTH = 2; // for most tests
     uint256 private constant SMALL_DEPTH = 1; // for “full” test
@@ -50,10 +20,6 @@ contract RLNTest is Test {
     uint256 private identityCommitment0 = 1234;
     uint256 private identityCommitment1 = 5678;
     uint256 private identityCommitment2 = 9999;
-
-    // Sample SNARK proof (8‐element array)
-    uint256[8] private mockProof =
-        [uint256(0), uint256(1), uint256(2), uint256(3), uint256(4), uint256(5), uint256(6), uint256(7)];
 
     // Role‐holders
     address private owner;
@@ -83,11 +49,8 @@ contract RLNTest is Test {
         registerAddr = makeAddr("register");
         slasherAddr = makeAddr("slasher");
 
-        // Deploy mock verifier
-        verifier = new MockVerifier();
-
         // Deploy RLN via UUPS proxy with DEPTH = 2
-        rln = _deployRLN(DEPTH, address(verifier), karma);
+        rln = _deployRLN(DEPTH, karma);
 
         // Sanity‐check that roles were assigned correctly
         assertTrue(rln.hasRole(rln.DEFAULT_ADMIN_ROLE(), adminAddr));
@@ -102,7 +65,7 @@ contract RLNTest is Test {
     }
 
     /// @dev Deploys a new RLN instance (behind ERC1967Proxy).
-    function _deployRLN(uint256 depth, address verifierAddr, Karma karmaToken) internal returns (RLN) {
+    function _deployRLN(uint256 depth, Karma karmaToken) internal returns (RLN) {
         bytes memory initData = abi.encodeCall(
             RLN.initialize,
             (
@@ -110,7 +73,6 @@ contract RLNTest is Test {
                 slasherAddr,
                 registerAddr,
                 depth,
-                verifierAddr,
                 address(karmaToken) // token address unused in these tests
             )
         );
@@ -132,9 +94,6 @@ contract RLNTest is Test {
         (address user0, uint256 idx0) = _memberData(identityCommitment0);
         assertEq(user0, address(0));
         assertEq(idx0, 0);
-
-        // Verifier address matches
-        assertEq(address(rln.verifier()), address(verifier));
     }
 
     /* ---------- REGISTER ---------- */
@@ -169,7 +128,7 @@ contract RLNTest is Test {
 
     function test_register_fails_when_index_exceeds_set_size() public {
         // Deploy a small RLN with depth = 1 => SET_SIZE = 2
-        RLN smallRLN = _deployRLN(SMALL_DEPTH, address(verifier), karma);
+        RLN smallRLN = _deployRLN(SMALL_DEPTH, karma);
         address smallRegister = registerAddr;
 
         // Fill up both slots
@@ -198,55 +157,6 @@ contract RLNTest is Test {
         vm.stopPrank();
     }
 
-    /* ---------- EXIT ---------- */
-
-    function test_exit_succeeds() public {
-        // Register the identity
-        vm.startPrank(registerAddr);
-        rln.register(identityCommitment0, user1Addr);
-        vm.stopPrank();
-
-        // Ensure mock verifier returns true by default
-        assertTrue(verifier.result());
-
-        // Call exit with a valid proof
-        vm.startPrank(registerAddr);
-        vm.expectEmit(false, false, false, true);
-        emit RLN.MemberExited(0);
-        rln.exit(identityCommitment0, mockProof);
-        vm.stopPrank();
-
-        // After exit, the member record should be cleared
-        (address u0, uint256 i0) = _memberData(identityCommitment0);
-        assertEq(u0, address(0));
-        assertEq(i0, 0);
-    }
-
-    function test_exit_fails_when_not_registered() public {
-        // Attempt exit without prior registration
-        vm.startPrank(registerAddr);
-        vm.expectRevert(RLN.RLN__MemberNotFound.selector);
-        rln.exit(identityCommitment1, mockProof);
-        vm.stopPrank();
-    }
-
-    function test_exit_fails_when_invalid_proof() public {
-        // Register the identity
-        vm.startPrank(registerAddr);
-        rln.register(identityCommitment0, user1Addr);
-        vm.stopPrank();
-
-        // Make proof invalid
-        verifier.changeResult(false);
-        assertFalse(verifier.result());
-
-        // Attempt exit with invalid proof
-        vm.startPrank(registerAddr);
-        vm.expectRevert(RLN.RLN__InvalidProof.selector);
-        rln.exit(identityCommitment0, mockProof);
-        vm.stopPrank();
-    }
-
     /* ---------- SLASH ---------- */
 
     function test_slash_succeeds() public {
@@ -268,7 +178,7 @@ contract RLNTest is Test {
         vm.startPrank(slasherAddr);
         vm.expectEmit(false, true, false, true);
         emit RLN.MemberSlashed(index1, slasherAddr);
-        rln.slash(identityCommitment1, mockProof);
+        rln.slash(identityCommitment1);
         vm.stopPrank();
 
         // After slash, the member record should be cleared
@@ -281,24 +191,7 @@ contract RLNTest is Test {
         // Attempt to slash a non‐existent identity
         vm.startPrank(slasherAddr);
         vm.expectRevert(RLN.RLN__MemberNotFound.selector);
-        rln.slash(identityCommitment0, mockProof);
-        vm.stopPrank();
-    }
-
-    function test_slash_fails_when_invalid_proof() public {
-        // Register the identity
-        vm.startPrank(registerAddr);
-        rln.register(identityCommitment0, user1Addr);
-        vm.stopPrank();
-
-        // Make proof invalid
-        verifier.changeResult(false);
-        assertFalse(verifier.result());
-
-        // Attempt to slash with invalid proof
-        vm.startPrank(slasherAddr);
-        vm.expectRevert(RLN.RLN__InvalidProof.selector);
-        rln.slash(identityCommitment0, mockProof);
+        rln.slash(identityCommitment0);
         vm.stopPrank();
     }
 
