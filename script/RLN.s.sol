@@ -10,12 +10,22 @@ import { Groth16Verifier } from "../src/rln/Verifier.sol";
 import { RLN } from "../src/rln/RLN.sol";
 
 contract DeployRLNScript is BaseScript {
+
+    error InvalidDepth();
+    error InvalidAddress();
+
     function run() public returns (RLN, DeploymentConfig) {
         DeploymentConfig deploymentConfig = new DeploymentConfig(broadcaster);
         (address deployer,) = deploymentConfig.activeNetworkConfig();
 
         uint256 depth = vm.envUint("DEPTH");
+        if (depth == 0) {
+            revert InvalidDepth();
+        }
         address karmaAddress = vm.envAddress("KARMA_ADDRESS");
+        if (karmaAddress == address(0)) {
+            revert InvalidAddress();
+        }
 
         vm.startBroadcast(deployer);
         address verifier = (address)(new Groth16Verifier());
