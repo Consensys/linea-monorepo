@@ -79,7 +79,7 @@ func (ex ExpandedVerifCol) IsComposite() bool {
 
 // String implements the [symbolic.Metadata] interface
 func (ex ExpandedVerifCol) String() string {
-	return ex.Verifiercol.String()
+	return string(ex.GetColID())
 }
 
 // Split implements the [VerifierCol] interface
