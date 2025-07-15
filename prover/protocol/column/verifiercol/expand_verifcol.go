@@ -25,7 +25,7 @@ func (ex ExpandedVerifCol) Round() int {
 
 // GetColID returns the column ID
 func (ex ExpandedVerifCol) GetColID() ifaces.ColID {
-	return ifaces.ColIDf("Expanded_%v", ex.Verifiercol.GetColID())
+	return ifaces.ColIDf("Expanded_%v_%v", ex.Verifiercol.GetColID(), ex.Expansion)
 }
 
 // MustExists implements the [ifaces.Column] interface and always returns true.

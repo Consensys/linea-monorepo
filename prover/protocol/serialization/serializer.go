@@ -745,12 +745,17 @@ func (de *Deserializer) UnpackPlonkCircuit(v BackReference) (reflect.Value, *ser
 // to it. The expression is cached using its ESHash.
 func (s *Serializer) PackExpression(e *symbolic.Expression) (BackReference, *serdeError) {
 	if _, ok := s.ExprMap[e.ESHash]; !ok {
+
+		n := len(s.PackedObject.Expressions)
+		s.ExprMap[e.ESHash] = n
+		s.PackedObject.Expressions = append(s.PackedObject.Expressions, nil)
+
 		packed, err := s.PackStructObject(reflect.ValueOf(*e))
 		if err != nil {
 			return 0, err
 		}
-		s.PackedObject.Expressions = append(s.PackedObject.Expressions, packed)
-		s.ExprMap[e.ESHash] = len(s.PackedObject.Expressions) - 1
+
+		s.PackedObject.Expressions[n] = packed
 	}
 
 	return BackReference(s.ExprMap[e.ESHash]), nil
