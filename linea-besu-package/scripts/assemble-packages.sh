@@ -37,9 +37,6 @@ rm linea-tracer-$LINEA_TRACER_PLUGIN_VERSION.zip
 echo "getting shomei_plugin_version: $SHOMEI_PLUGIN_VERSION"
 wget -nv https://github.com/Consensys/besu-shomei-plugin/releases/download/v$SHOMEI_PLUGIN_VERSION/besu-shomei-plugin-v$SHOMEI_PLUGIN_VERSION.jar
 
-#echo "getting fleet_plugin_version: $BESU_FLEET_PLUGIN_VERSION"
-#wget -nv https://github.com/Consensys/besu-fleet-plugin/releases/download/$BESU_FLEET_PLUGIN_VERSION/besu-fleet-plugin-$BESU_FLEET_PLUGIN_VERSION.jar
-
 popd
 
 echo "placing the packages, config, profiles together for preparing docker image build"
