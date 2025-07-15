@@ -251,7 +251,9 @@ type Ctx struct {
 
 	// IsSelfrecursed is a flag that tells the verifier Vortex to perform a
 	// NO-OP. This flags can be activated by the self-recursion compiler (whose
-	// goal is already to ensure that the verification was passing).
+	// goal is already to ensure that the verification was passing). It can also
+	// be activated by the PreMarkAsSelfRecursed option which is used by the
+	// full-recursion compiler.
 	IsSelfrecursed bool
 
 	// Additional options that tells the compiler to add a merkle root to the
