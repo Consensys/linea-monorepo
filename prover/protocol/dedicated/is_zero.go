@@ -134,20 +134,6 @@ func (ctx *IsZeroCtx) Run(run *wizard.ProverRuntime) {
 
 		mask := column.EvalExprColumn(run, ctx.Mask.Board())
 
-		_, _, maskLenTheory := wizardutils.AsExpr(ctx.Mask)
-		_, _, cLenTheory := wizardutils.AsExpr(ctx.C)
-
-		if cLenTheory != maskLenTheory {
-
-			maskExpr := ctx.Mask.MarshalJSONString()
-
-			utils.Panic("the theory size of the column if %v but the actual size is %v, expr=%v", cLenTheory, maskLenTheory, maskExpr)
-		}
-
-		if maskLenTheory != mask.Len() {
-			utils.Panic("the theory size of the mask if %v but the actual size is %v", maskLenTheory, mask.Len())
-		}
-
 		if mask.Len() != ctx.Size {
 			valueOfC := ctx.C.MarshalJSONString()
 			utils.Panic("the size of the mask if %v but the column's size is %v, mask=%v", mask.Len(), ctx.Size, valueOfC)
