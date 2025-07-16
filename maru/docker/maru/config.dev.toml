@@ -4,10 +4,10 @@ allow-empty-blocks = true
 data-path="/tmp/maru-db"
 private-key-path="/tmp/maru-db/private-key"
 
-[qbft-options]
+[qbft]
 fee-recipient = "0x0000000000000000000000000000000000000000"
 
-[p2p-config]
+[p2p]
 port = 3322
 ip-address = "127.0.0.1"
 
@@ -21,10 +21,10 @@ eth-api-endpoint = { endpoint = "http://sequencer:8545" }
 "follower-nethermind" = { endpoint = "http://follower-nethermind:8550", jwt-secret-path = "../docker/jwt" }
 "follower-geth" = { endpoint = "http://follower-geth:8551", jwt-secret-path = "../docker/jwt" }
 
-[observability-options]
+[observability]
 port = 9090
 jvm-metrics-enabled = true
 prometheus-metrics-enabled = true
 
-[api-config]
+[api]
 port = 8080

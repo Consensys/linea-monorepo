@@ -97,7 +97,7 @@ class TopicHandlerWithInOrderDelivering<T>(
 
         sequenceNumber > nextExpectedSequenceNumber -> {
           if (pendingEvents.size < maxQueueSize) {
-            log.debug(
+            log.trace(
               "enqueuing message with sequenceNumber={} next expectedSequenceNumber={}",
               sequenceNumber,
               nextExpectedSequenceNumber,
