@@ -7,3 +7,14 @@
 [submodule "contracts/lib/forge-std"]
 	path = contracts/lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
+[submodule "status-network-contracts/lib/forge-std"]
+	path = status-network-contracts/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "status-network-contracts/lib/openzeppelin-contracts"]
+	path = status-network-contracts/lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+    branch = v4.8.3
+[submodule "status-network-contracts/lib/openzeppelin-contracts-upgradeable"]
+	path = status-network-contracts/lib/openzeppelin-contracts-upgradeable
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable
+    branch = v4.8.3
