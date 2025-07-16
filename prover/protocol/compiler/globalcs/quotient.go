@@ -1,6 +1,8 @@
 package globalcs
 
 import (
+	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpolyext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math/big"
 	"reflect"
 	"runtime"
@@ -15,7 +17,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -231,7 +232,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 				witness = pol.GetColAssignment(run)
 			}
 
-			witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil)
+			witness = sv.FFTInverseExt(witness, fft.DIF, false, 0, 0, nil)
 			coeffs.Store(name, witness)
 		})
 	})
@@ -249,8 +250,8 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 		The first value is ignored because it correspond to the case where w^N = 1
 		(i.e. w is in the smaller subgroup)
 	*/
-	annulatorInvVals := fastpoly.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
-	annulatorInvVals = field.ParBatchInvert(annulatorInvVals, runtime.GOMAXPROCS(0))
+	annulatorInvVals := fastpolyext.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
+	annulatorInvVals = fext.ParBatchInvert(annulatorInvVals, runtime.GOMAXPROCS(0))
 
 	/*
 		Also returns the evaluations of
@@ -335,7 +336,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 					// coset reevaluation.
 
 					v, _ := coeffs.Load(name)
-					reevaledRoot := sv.FFT(v.(sv.SmartVector), fft.DIT, false, ratio, share, localPool)
+					reevaledRoot := sv.FFTExt(v.(sv.SmartVector), fft.DIT, false, ratio, share, localPool)
 					computedReeval.Store(name, reevaledRoot)
 				})
 
@@ -364,7 +365,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 
 					if shifted, isShifted := pol.(column.Shifted); isShifted {
 						polName := pol.GetColID()
-						res := sv.SoftRotate(reevaledRoot.(sv.SmartVector), shifted.Offset)
+						res := sv.SoftRotateExt(reevaledRoot.(sv.SmartVector), shifted.Offset)
 						computedReeval.Store(polName, res)
 						return
 					}
@@ -405,13 +406,21 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 						value, _ := computedReeval.Load(metadata.GetColID())
 						evalInputs[k] = value.(sv.SmartVector)
 					case coin.Info:
-						evalInputs[k] = sv.NewConstant(run.GetRandomCoinField(metadata.Name), ctx.DomainSize)
+						evalInputs[k] = sv.NewConstantExt(run.GetRandomCoinFieldExt(metadata.Name), ctx.DomainSize)
 					case variables.X:
 						evalInputs[k] = metadata.EvalCoset(ctx.DomainSize, i, maxRatio, true)
 					case variables.PeriodicSample:
 						evalInputs[k] = metadata.EvalCoset(ctx.DomainSize, i, maxRatio, true)
 					case ifaces.Accessor:
-						evalInputs[k] = sv.NewConstant(metadata.GetVal(run), ctx.DomainSize)
+						if metadata.IsBase() {
+							// This is a base accessor, we can use the constant
+							// value directly.
+							elem, _ := metadata.GetValBase(run)
+							evalInputs[k] = sv.NewConstant(elem, ctx.DomainSize)
+						} else {
+							// This is a non-base accessor
+							evalInputs[k] = sv.NewConstantExt(metadata.GetValExt(run), ctx.DomainSize)
+						}
 					default:
 						utils.Panic("Not a variable type %v", reflect.TypeOf(metadataInterface))
 					}
@@ -427,7 +436,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 				// Note that this will panic if the expression contains "no commitment"
 				// This should be caught already by the constructor of the constraint.
 				quotientShare := ctx.AggregateExpressionsBoard[j].EvaluateMixed(evalInputs, pool)
-				quotientShare = sv.ScalarMul(quotientShare, annulatorInvVals[i])
+				quotientShare = sv.ScalarMulExt(quotientShare, annulatorInvVals[i])
 				run.AssignColumn(ctx.QuotientShares[j][share].GetColID(), quotientShare)
 			})
 

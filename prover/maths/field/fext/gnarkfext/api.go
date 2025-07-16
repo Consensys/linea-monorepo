@@ -102,6 +102,16 @@ func (api *API) Mul(x, y Variable, in ...Variable) Variable {
 	}
 }
 
+func (api *API) Div(x, y Variable, in ...Variable) Variable {
+	temp := api.Inverse(y)
+	res := api.Mul(x, temp) // r = x / y
+	if len(in) > 0 {
+		return api.Div(res, in[0], in[1:]...)
+	} else {
+		return res
+	}
+}
+
 // Square e2 elt
 func (api_ *API) Square(x Variable) Variable {
 

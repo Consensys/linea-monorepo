@@ -26,10 +26,12 @@ import (
 	"math/bits"
 	"math/rand/v2"
 	"reflect"
+	"runtime"
 
 	"strings"
 
 	"github.com/bits-and-blooms/bitset"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 const (
@@ -401,12 +403,12 @@ func (z *Element) SetInterface(i1 interface{}) (*Element, error) {
 		}
 		return z.Set(c1), nil
 	case GenericFieldElem:
-		return z.Set(&c1.ext), nil
+		return z.Set(&c1.Ext), nil
 	case *GenericFieldElem:
 		if c1 == nil {
 			return nil, errors.New("can't set fext.Element with <nil>")
 		}
-		return z.Set(&c1.ext), nil
+		return z.Set(&c1.Ext), nil
 	case field.Element:
 		return z.SetFromBase(&c1), nil
 	case *field.Element:
@@ -493,4 +495,20 @@ func (z *Element) GetBase() (field.Element, error) {
 	} else {
 		return field.Zero(), fmt.Errorf("requested a base element but the field extension is not a wrapped field element")
 	}
+}
+
+func ParBatchInvert(a []Element, numCPU int) []Element {
+
+	if numCPU == 0 {
+		numCPU = runtime.NumCPU()
+	}
+
+	res := make([]Element, len(a))
+
+	parallel.Execute(len(a), func(start, stop int) {
+		subRes := BatchInvert(a[start:stop])
+		copy(res[start:stop], subRes)
+	}, numCPU)
+
+	return res
 }

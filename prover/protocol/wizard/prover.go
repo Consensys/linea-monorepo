@@ -472,6 +472,10 @@ func (run *ProverRuntime) GetRandomCoinField(name coin.Name) field.Element {
 }
 
 func (run *ProverRuntime) GetRandomCoinFieldExt(name coin.Name) fext.Element {
+	mycoin := run.Spec.Coins.Data(name)
+	if mycoin.Type == coin.FieldExtFromSeed {
+		return run.getRandomCoinGeneric(name, coin.FieldExtFromSeed).(fext.Element)
+	}
 	return run.getRandomCoinGeneric(name, coin.FieldExt).(fext.Element)
 }
 
@@ -580,7 +584,7 @@ func (run *ProverRuntime) getRandomCoinGeneric(name coin.Name, requestedType coi
 	*/
 	infos := run.Spec.Coins.Data(name)
 	if infos.Type != requestedType {
-		utils.Panic("Coin was registered as %v but got %v", infos.Type, requestedType)
+		utils.Panic("Coin %s was registered as %v but got %v", name, infos.Type, requestedType)
 	}
 
 	// Check if maybe we need to go to the next round
@@ -806,6 +810,25 @@ func (run *ProverRuntime) AssignUnivariate(name ifaces.QueryID, x field.Element,
 	run.QueriesParams.InsertNew(name, params)
 }
 
+func (run *ProverRuntime) AssignUnivariateExt(name ifaces.QueryID, x fext.Element, ys ...fext.Element) {
+
+	// Global prover locks for accessing the maps
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	// Make sure, it is done at the right round
+	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
+
+	// Check the length of ys
+	q := run.Spec.QueriesParams.Data(name).(query.UnivariateEval)
+	if len(q.Pols) != len(ys) {
+		utils.Panic("Query expected ys = %v but got %v", len(q.Pols), len(ys))
+	}
+	// Adds it to the assignments
+	params := query.NewUnivariateEvalParamsExt(x, ys...)
+	run.QueriesParams.InsertNew(name, params)
+}
+
 // GetUnivariateEval get univariate eval metadata. Panic if not found.
 // Deprecated: fallback to run.Spec.GetUnivariateEval instead which does exactly
 // the same thing.
@@ -934,7 +957,7 @@ func (run *ProverRuntime) AssignGrandProduct(name ifaces.QueryID, y field.Elemen
 	run.QueriesParams.InsertNew(name, params)
 }
 
-func (run *ProverRuntime) AssignGrandProductGeneric(name ifaces.QueryID, y fext.Element) {
+func (run *ProverRuntime) AssignGrandProductExt(name ifaces.QueryID, y fext.Element) {
 
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
@@ -948,7 +971,7 @@ func (run *ProverRuntime) AssignGrandProductGeneric(name ifaces.QueryID, y fext.
 	run.QueriesParams.InsertNew(name, params)
 }
 
-func (run *ProverRuntime) AssignGrandProductExt(name ifaces.QueryID, extY fext.Element) {
+func (run *ProverRuntime) AssignGrandProductGeneric(name ifaces.QueryID, y fext.Element) {
 
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
@@ -958,7 +981,7 @@ func (run *ProverRuntime) AssignGrandProductExt(name ifaces.QueryID, extY fext.E
 	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
 
 	// Adds it to the assignments
-	params := query.NewGrandProductParamsExt(extY)
+	params := query.NewGrandProductParamsExt(y)
 	run.QueriesParams.InsertNew(name, params)
 }
 

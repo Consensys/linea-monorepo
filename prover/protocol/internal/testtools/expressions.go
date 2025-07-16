@@ -20,7 +20,7 @@ var (
 	columnB = _comp.InsertColumn(0, "B", 8, column.Committed)
 	columnC = _comp.InsertColumn(0, "C", 8, column.Committed)
 
-	coinCoin = coin.Info{Name: "coin", Type: coin.Field, Round: 1}
+	coinCoin = coin.Info{Name: "coin", Type: coin.FieldExt, Round: 1}
 )
 
 // ExpressionTestcase can be used to generate a global constraint
@@ -347,7 +347,7 @@ func (etc *ExpressionTestcase) Define(comp *wizard.CompiledIOP) {
 			// the coin is inserted at round 1. Since there is only one coin
 			// we already know which one is needed.
 			if !comp.Coins.Exists("coin") {
-				comp.InsertCoin(1, "coin", coin.Field)
+				comp.InsertCoin(1, "coin", coinCoin.Type)
 			}
 			round = max(round, 1)
 

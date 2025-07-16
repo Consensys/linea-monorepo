@@ -2,6 +2,7 @@ package column
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math/big"
 	"reflect"
 	"strings"
@@ -68,6 +69,49 @@ func DeriveEvaluationPoint(
 	panic("unreachable")
 }
 
+func DeriveEvaluationPointExt(
+	h ifaces.Column,
+	upstream string,
+	cachedXs collection.Mapping[string, fext.Element],
+	x fext.Element,
+) (xRes fext.Element) {
+
+	if !h.IsComposite() {
+		// Just return x and cache it if necessary
+		newUpstream := appendNodeToUpstream(upstream, h)
+		// Store in the cache if necessary
+		if !cachedXs.Exists(newUpstream) {
+			// Else register the result in the cache
+			cachedXs.InsertNew(newUpstream, x)
+		}
+		return x
+	}
+
+	switch inner := h.(type) {
+	case Shifted:
+		newUpstream := appendNodeToUpstream(upstream, inner)
+		var derivedX fext.Element
+		// Early return if the result is cached
+		if cachedXs.Exists(newUpstream) {
+			derivedX = cachedXs.MustGet(newUpstream)
+		} else {
+			// If not, compute the shift on x and cache the result
+			n := h.Size()
+			omegaN := fft.GetOmega(n)
+			omegaN.Exp(omegaN, big.NewInt(int64(inner.Offset)))
+
+			omegaNExt := fext.NewFromBase(omegaN)
+			derivedX.Mul(&x, &omegaNExt)
+			cachedXs.InsertNew(newUpstream, derivedX)
+		}
+		return DeriveEvaluationPointExt(inner.Parent, newUpstream, cachedXs, derivedX)
+
+	default:
+		utils.Panic("unexpected type %v", reflect.TypeOf(inner))
+	}
+	panic("unreachable")
+}
+
 /*
 VerifyYConsistency verifies that the claimed values for y
   - upstream is a repr of the branch leading to the current node
@@ -80,9 +124,9 @@ engineer it, None of the name or comment in this function make sense to me.
 */
 func VerifyYConsistency(
 	h ifaces.Column, upstream string,
-	cachedXs collection.Mapping[string, field.Element],
-	finalYs collection.Mapping[string, field.Element],
-) (y field.Element) {
+	cachedXs collection.Mapping[string, fext.Element],
+	finalYs collection.Mapping[string, fext.Element],
+) (y fext.Element) {
 
 	if !h.IsComposite() {
 		// Get the Y from the map. An absence from this map is unexpected at

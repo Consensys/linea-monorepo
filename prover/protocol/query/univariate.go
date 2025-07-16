@@ -3,6 +3,7 @@ package query
 import (
 	"errors"
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
@@ -22,8 +23,11 @@ type UnivariateEval struct {
 
 // Parameters for an univariate evaluation
 type UnivariateEvalParams struct {
-	X  field.Element
-	Ys []field.Element
+	X      field.Element
+	Ys     []field.Element
+	ExtX   fext.Element
+	ExtYs  []fext.Element
+	IsBase bool
 }
 
 /*
@@ -59,7 +63,19 @@ func (r UnivariateEval) Name() ifaces.QueryID {
 
 // Constructor for non-fixed point univariate evaluation query parameters
 func NewUnivariateEvalParams(x field.Element, ys ...field.Element) UnivariateEvalParams {
-	return UnivariateEvalParams{X: x, Ys: ys}
+	return UnivariateEvalParams{
+		X:      x,
+		Ys:     ys,
+		IsBase: true,
+	}
+}
+
+func NewUnivariateEvalParamsExt(x fext.Element, ys ...fext.Element) UnivariateEvalParams {
+	return UnivariateEvalParams{
+		ExtX:   x,
+		ExtYs:  ys,
+		IsBase: false,
+	}
 }
 
 // Update the fiat-shamir state with the alleged evaluations. We assume that
@@ -78,9 +94,9 @@ func (r UnivariateEval) Check(run ifaces.Runtime) error {
 
 	for k, pol := range r.Pols {
 		wit := pol.GetColAssignment(run)
-		actualY := smartvectors.Interpolate(wit, params.X)
+		actualY := smartvectors.InterpolateExt(wit, params.ExtX)
 
-		if actualY != params.Ys[k] {
+		if actualY != params.ExtYs[k] {
 			anyErr = true
 			errMsg += fmt.Sprintf("expected P(x) = %s but got %s for %v\n", params.Ys[k].String(), actualY.String(), pol.GetColID())
 		}

@@ -382,7 +382,18 @@ func TryReduceSize(v SmartVector) (new SmartVector, totalSaving int) {
 		}
 
 		return v, 0
+	case *ConstantExt, *RotatedExt, *PooledExt, *PaddedCircularWindowExt:
+		return v, 0
 	case *RegularExt:
+
+		if res, ok := tryIntoConstantExt(*w); ok {
+			return res, len(*w)
+		}
+
+		if res, ok := tryIntoRightPaddedExt(*w); ok {
+			return res, len(*w) - len(res.window)
+		}
+
 		return v, 0
 	default:
 		panic(fmt.Sprintf("unexpected type %T", v))
@@ -613,4 +624,62 @@ func FromCompactWithRange(compact []field.Element, start, stop, fullLen int) Sma
 
 	return NewPaddedCircularWindow(compact[1:len(compact)-1], compact[0], start+1, fullLen)
 
+}
+
+func tryIntoConstantExt(w RegularExt) (*ConstantExt, bool) {
+
+	// to detect if a regular vector can be reduced to a constant, we need to
+	// check if all the values are equals. That's an expensive, so we instead
+	// by comparing values that would be likely to be unequal if it was not a
+	// constant. Also, we need to rule out the case where len(*w) because it
+	// is irrelevant to reducing the size.
+	if len(w) <= 1 {
+		return nil, false
+	}
+
+	if w[0] != w[1] {
+		return nil, false
+	}
+
+	if w[0] != w[len(w)-1] {
+		return nil, false
+	}
+
+	if w[0] != w[len(w)/2] {
+		return nil, false
+	}
+
+	// This is expensive check where we check all the values in the vector
+	// to see if they are all equal. This is not the most efficient way to
+	// detect if a vector is a constant but the only reliable one.
+	for i := range w {
+		if w[i] != w[0] {
+			return nil, false
+		}
+	}
+
+	return NewConstantExt(w[0], len(w)), true
+}
+
+func tryIntoRightPaddedExt(v RegularExt) (*PaddedCircularWindowExt, bool) {
+
+	var (
+		bestPos = len(v) - 1
+		last    = v[len(v)-1]
+	)
+
+	for i := len(v) - 2; i >= 0; i-- {
+		if v[i] != last {
+			bestPos = i + 1
+			break
+		}
+	}
+
+	// 1000 is arbitrary value but is justified by the fact that saving less
+	// than 1000 field element is not interesting performance-wise.
+	if len(v)-bestPos < 1000 {
+		return nil, false
+	}
+
+	return RightPaddedExt(v[:bestPos], last, len(v)).(*PaddedCircularWindowExt), true
 }

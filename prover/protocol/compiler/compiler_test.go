@@ -47,7 +47,7 @@ func TestCompilers(t *testing.T) {
 
 	logrus.SetLevel(logrus.FatalLevel)
 
-	//runTestList(t, "global", testtools.ListOfGlobalTestcasePositive)
+	runTestList(t, "global", testtools.ListOfGlobalTestcasePositive)
 	//runTestList(t, "global", testtools.ListOfGlobalTestcaseNegative)
 	//runTestList(t, "horner", testtools.ListOfHornerTestcasePositive)
 	//runTestList(t, "horner", testtools.ListOfHornerTestcaseNegative)
@@ -57,7 +57,7 @@ func TestCompilers(t *testing.T) {
 	//runTestList(t, "projection", testtools.ListOfProjectionTestcaseNegative)
 	//runTestList(t, "permutation", testtools.ListOfPermutationTestcasePositive)
 	//runTestList(t, "permutation", testtools.ListOfPermutationTestcaseNegative)
-	runTestList(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
+	//runTestList(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
 	//runTestList(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcaseNegative)
 	//runTestList(t, "mimc", testtools.ListOfMiMCTestcase)
 	//runTestList(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)

@@ -3,6 +3,7 @@ package testtools
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -21,7 +22,7 @@ type LogDerivativeSumTestcase struct {
 	Denominators []smartvectors.SmartVector
 	// When the value is 'nil', the assigner will compute itself the
 	// correct value.
-	Value *field.Element
+	Value *fext.Element
 	// MustFailFlag indicates that the present test-case is expected to
 	// produce an invalid assignment.
 	MustFailFlag bool
@@ -41,7 +42,7 @@ var ListOfLogDerivativeSumTestcasePositive = []*LogDerivativeSumTestcase{
 		Denominators: []smartvectors.SmartVector{
 			smartvectors.NewConstant(field.One(), 8),
 		},
-		Value: &field.Element{},
+		Value: &fext.Element{},
 	},
 
 	{
@@ -52,7 +53,7 @@ var ListOfLogDerivativeSumTestcasePositive = []*LogDerivativeSumTestcase{
 		Denominators: []smartvectors.SmartVector{
 			smartvectors.NewConstant(field.One(), 8),
 		},
-		Value: new(field.Element).SetInt64(8),
+		Value: new(fext.Element).SetInt64(8),
 	},
 
 	{
@@ -63,7 +64,7 @@ var ListOfLogDerivativeSumTestcasePositive = []*LogDerivativeSumTestcase{
 		Denominators: []smartvectors.SmartVector{
 			RandomFromSeed(8, 1),
 		},
-		Value: new(field.Element).SetInt64(8),
+		Value: new(fext.Element).SetInt64(8),
 	},
 
 	{
@@ -96,7 +97,7 @@ var ListOfLogDerivativeSumTestcasePositive = []*LogDerivativeSumTestcase{
 			RandomFromSeed(8, 1),
 			RandomFromSeed(8, 1),
 		},
-		Value: &field.Element{},
+		Value: &fext.Element{},
 	},
 
 	{
@@ -185,8 +186,8 @@ var ListOfLogDerivativeSumTestcaseNegative = []*LogDerivativeSumTestcase{
 		Denominators: []smartvectors.SmartVector{
 			RandomVec(8),
 		},
-		Value: func() *field.Element {
-			x := field.PseudoRand(rng)
+		Value: func() *fext.Element {
+			x := fext.PseudoRand(rng)
 			return &x
 		}(),
 		MustFailFlag: true,
@@ -256,10 +257,12 @@ func (t *LogDerivativeSumTestcase) Assign(run *wizard.ProverRuntime) {
 		if err != nil {
 			panic(err)
 		}
-		t.Value = &correctValue
+		elem := correctValue.GetExt()
+		t.Value = &elem
 	}
 
-	run.AssignLogDerivSum(t.Q.ID, *t.Value)
+	genValue := fext.NewESHashFromExt(t.Value)
+	run.AssignLogDerivSumGeneric(t.Q.ID, *genValue)
 }
 
 func (t *LogDerivativeSumTestcase) MustFail() bool {

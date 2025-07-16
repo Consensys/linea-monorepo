@@ -2,6 +2,8 @@ package mpts
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -29,17 +31,17 @@ func (va verifierAction) Run(run wizard.Runtime) error {
 		//
 		// However, the other values cannot be directly used by the verifier
 		// and should instead use the ysMap.
-		qr       = queryParams.Ys[len(va.NewQuery.Pols)-1]
-		polysAtR = va.cptEvaluationMap(run)
-		r        = queryParams.X
-		rCoin    = run.GetRandomCoinField(va.EvaluationPoint.Name)
+		qr       = queryParams.ExtYs[len(va.NewQuery.Pols)-1]
+		polysAtR = va.cptEvaluationMapExt(run)
+		r        = queryParams.ExtX
+		rCoin    = run.GetRandomCoinFieldExt(va.EvaluationPoint.Name)
 
 		// zetasOfR stores the values zetas[i] = lambda^i / (r - xi).
 		// These values are precomputed for efficiency.
-		zetasOfR = make([]field.Element, len(va.Queries))
+		zetasOfR = make([]fext.Element, len(va.Queries))
 
-		lambda = run.GetRandomCoinField(va.LinCombCoeffLambda.Name)
-		rho    = run.GetRandomCoinField(va.LinCombCoeffRho.Name)
+		lambda = run.GetRandomCoinFieldExt(va.LinCombCoeffLambda.Name)
+		rho    = run.GetRandomCoinFieldExt(va.LinCombCoeffRho.Name)
 	)
 
 	if r != rCoin {
@@ -48,16 +50,16 @@ func (va verifierAction) Run(run wizard.Runtime) error {
 	}
 
 	var (
-		lambdaPowI = field.One()
-		rhoK       = field.One()
+		lambdaPowI = fext.One()
+		rhoK       = fext.One()
 		// res stores the right-hand of the equality check. Namely,
 		// sum_{i,k \in claim} [\lambda^i \rho^k (Pk(r) - y_{ik})] / (r - xi).
-		res = field.Zero()
+		res = fext.Zero()
 	)
 
 	for i, q := range va.Queries {
 
-		xi := run.GetUnivariateParams(q.Name()).X
+		xi := run.GetUnivariateParams(q.Name()).ExtX
 		zetasOfR[i].Sub(&r, &xi)
 		// NB: this is very sub-optimal. We should use a batch-inverse instead
 		// but the native verifier time is not very important in this context.
@@ -74,7 +76,7 @@ func (va verifierAction) Run(run wizard.Runtime) error {
 		for _, i := range va.EvalPointOfPolys[k] {
 			// This sets tmp with the value of yik
 			posOfYik := getPositionOfPolyInQueryYs(va.Queries[i], va.Polys[k])
-			tmp := run.GetUnivariateParams(va.Queries[i].Name()).Ys[posOfYik]
+			tmp := run.GetUnivariateParams(va.Queries[i].Name()).ExtYs[posOfYik]
 			tmp.Sub(&pr, &tmp) // Pk(r) - y_{ik}
 			tmp.Mul(&tmp, &zetasOfR[i])
 			tmp.Mul(&tmp, &rhoK)
@@ -177,6 +179,28 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMap(run wizard.Runti
 	return evaluationMap
 }
 
+func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapExt(run wizard.Runtime) map[ifaces.ColID]fext.Element {
+
+	var (
+		evaluationMap = make(map[ifaces.ColID]fext.Element)
+		univParams    = run.GetParams(ctx.NewQuery.QueryID).(query.UnivariateEvalParams)
+		x             = univParams.ExtX
+	)
+
+	for i := range ctx.NewQuery.Pols {
+		colID := ctx.NewQuery.Pols[i].GetColID()
+		evaluationMap[colID] = univParams.ExtYs[i]
+	}
+
+	for i, c := range ctx.ExplicitlyEvaluated {
+		colID := ctx.ExplicitlyEvaluated[i].GetColID()
+		poly := c.GetColAssignment(run)
+		evaluationMap[colID] = smartvectors.InterpolateExt(poly, x)
+	}
+
+	return evaluationMap
+}
+
 // cptEvaluationMapGnark is the same as [cptEvaluationMap] but for a gnark circuit.
 func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api frontend.API, run wizard.GnarkRuntime) map[ifaces.ColID]frontend.Variable {
 
@@ -198,6 +222,36 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api fronten
 	}
 
 	ys := fastpoly.BatchInterpolateGnark(api, polys, x)
+
+	for i := range ctx.ExplicitlyEvaluated {
+		colID := ctx.ExplicitlyEvaluated[i].GetColID()
+		evaluationMap[colID] = ys[i]
+	}
+
+	return evaluationMap
+}
+
+// cptEvaluationMapGnark is the same as [cptEvaluationMap] but for a gnark circuit.
+func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api gnarkfext.API, run wizard.GnarkRuntime) map[ifaces.ColID]gnarkfext.Variable {
+
+	var (
+		evaluationMap = make(map[ifaces.ColID]gnarkfext.Variable)
+		univParams    = run.GetUnivariateParams(ctx.NewQuery.QueryID)
+		x             = univParams.ExtX
+		polys         = make([][]gnarkfext.Variable, 0)
+	)
+
+	for i := range ctx.NewQuery.Pols {
+		colID := ctx.NewQuery.Pols[i].GetColID()
+		evaluationMap[colID] = univParams.ExtYs[i]
+	}
+
+	for _, c := range ctx.ExplicitlyEvaluated {
+		poly := c.GetColAssignmentGnarkExt(run)
+		polys = append(polys, poly)
+	}
+
+	ys := fastpoly.BatchInterpolateGnarkExt(api, polys, x)
 
 	for i := range ctx.ExplicitlyEvaluated {
 		colID := ctx.ExplicitlyEvaluated[i].GetColID()

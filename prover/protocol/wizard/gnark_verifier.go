@@ -436,7 +436,7 @@ func (c *VerifierCircuit) GetRandomCoinField(name coin.Name) frontend.Variable {
 	*/
 	infos := c.Spec.Coins.Data(name)
 	if infos.Type != coin.Field && infos.Type != coin.FieldFromSeed {
-		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.Field)
+		utils.Panic("Coin %s was registered as %v but got %v", name, infos.Type, coin.Field)
 	}
 	// If this panics, it means we generate the coins wrongly
 	return c.Coins.MustGet(name).(frontend.Variable)

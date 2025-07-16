@@ -1,6 +1,8 @@
 package mpts
 
 import (
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
@@ -30,21 +32,21 @@ type randomPointEvaluation struct {
 func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 
 	var (
-		rho = run.GetRandomCoinField(qa.LinCombCoeffRho.Name)
+		rho = run.GetRandomCoinFieldExt(qa.LinCombCoeffRho.Name)
 
 		// zetas stores the values zetas[i] = lambda^i / (X - xi)
 		// where xi is the i-th evaluation point. Having these values precomputed
 		// allows to greatly speed-up the computation. This comes with a trade-off
 		// in space as these can be big if the number of queries is big.
-		zetas = qa.computeZetas(run)
+		zetas = qa.computeZetasExt(run)
 
 		// quotient stores the assignment of the quotient polynomial as it is
 		// being computed.
-		quotient = make([]field.Element, qa.getNumRow())
+		quotient = make([]fext.Element, qa.getNumRow())
 
 		// powersOfRho lists all the powers of rho and are precomputed to help
 		// parallelization.
-		powersOfRho = vector.PowerVec(rho, len(qa.Polys))
+		powersOfRho = vectorext.PowerVec(rho, len(qa.Polys))
 
 		// mempool is a memory pool that is used to allocate and reuse memory
 		// for the partial results.
@@ -86,15 +88,15 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 			foundNonConstantPoly = true
 
 			var (
-				poly                    = polySV.IntoRegVecSaveAlloc()
-				polyPtr                 *[]field.Element
+				poly                    = polySV.IntoRegVecSaveAllocExt()
+				polyPtr                 *[]fext.Element
 				pointsOfPoly            = qa.EvalPointOfPolys[polyID]
-				localPartialQuotientPtr = memPool.Alloc()
+				localPartialQuotientPtr = memPool.AllocExt()
 				localPartialQuotient    = *localPartialQuotientPtr
 			)
 
 			if len(poly) < qa.getNumRow() {
-				polyPtr = ldeOf(poly, memPool)
+				polyPtr = ldeOfExt(poly, memPool)
 				poly = *polyPtr
 			}
 
@@ -124,16 +126,16 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 			// small part of the computation.
 			{
 				quotientLock.Lock()
-				vector.Add(quotient, quotient, localPartialQuotient)
+				vectorext.Add(quotient, quotient, localPartialQuotient)
 				quotientLock.Unlock()
 			}
 
 			// Since the pool is "manual", we need to free the memory allocated
 			// manually.
-			memPool.Free(localPartialQuotientPtr)
+			memPool.FreeExt(localPartialQuotientPtr)
 
 			if polyPtr != nil {
-				memPool.Free(polyPtr)
+				memPool.FreeExt(polyPtr)
 			}
 		}
 	})
@@ -156,7 +158,7 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 	parallel.Execute(len(qa.Queries), func(start, stop int) {
 
 		var (
-			localResultPtr = memPool.Alloc()
+			localResultPtr = memPool.AllocExt()
 			localResult    = *localResultPtr
 		)
 
@@ -165,7 +167,7 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 			// The first step is to compute the \sum_k \rho^k y_{i,k}. This is
 			// pure scalar operation.
 			var (
-				sumRhoKYik = field.Zero()
+				sumRhoKYik = fext.Zero()
 				zetaI      = zetas[i]
 			)
 
@@ -181,7 +183,7 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 				var (
 					paramsI  = run.GetUnivariateParams(qa.Queries[i].Name())
 					posOfYik = getPositionOfPolyInQueryYs(qa.Queries[i], qa.Polys[k])
-					yik      = paramsI.Ys[posOfYik]
+					yik      = paramsI.ExtYs[posOfYik]
 				)
 
 				// This reuses the memory slot of yik to compute the temporary
@@ -192,27 +194,27 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 
 			// The second step is to multiply and accumulate the result by zetaI
 			// and sumRhoKYik. This part "comsumes" the value of zetaI.
-			vector.ScalarMul(zetaI, zetaI, sumRhoKYik)
+			vectorext.ScalarMul(zetaI, zetaI, sumRhoKYik)
 
 			if len(localResult) != len(zetaI) {
 				utils.Panic("len(localResult) = %v len(zetaI) = %v", len(localResult), len(zetaI))
 			}
 
-			vector.Add(localResult, localResult, zetaI)
+			vectorext.Add(localResult, localResult, zetaI)
 		}
 
 		quotientLock.Lock()
-		vector.Sub(quotient, quotient, localResult)
+		vectorext.Sub(quotient, quotient, localResult)
 		quotientLock.Unlock()
 	})
 
-	run.AssignColumn(qa.Quotient.GetColID(), smartvectors.NewRegular(quotient))
+	run.AssignColumn(qa.Quotient.GetColID(), smartvectors.NewRegularExt(quotient))
 }
 
 func (re randomPointEvaluation) Run(run *wizard.ProverRuntime) {
 
 	var (
-		r        = run.GetRandomCoinField(re.EvaluationPoint.Name)
+		r        = run.GetRandomCoinFieldExt(re.EvaluationPoint.Name)
 		polys    = re.NewQuery.Pols
 		polyVals = make([]smartvectors.SmartVector, len(polys))
 	)
@@ -221,12 +223,12 @@ func (re randomPointEvaluation) Run(run *wizard.ProverRuntime) {
 		polyVals[i] = polys[i].GetColAssignment(run)
 	}
 
-	ys := make([]field.Element, len(polyVals))
+	ys := make([]fext.Element, len(polyVals))
 	for i := range ys {
-		ys[i] = smartvectors.Interpolate(polyVals[i], r)
+		ys[i] = smartvectors.InterpolateExt(polyVals[i], r)
 	}
 
-	run.AssignUnivariate(re.NewQuery.QueryID, r, ys...)
+	run.AssignUnivariateExt(re.NewQuery.QueryID, r, ys...)
 }
 
 // computeZetas returns the values of zeta_i = lambda^i / (X - xi)
@@ -277,6 +279,51 @@ func (qa quotientAccumulation) computeZetas(run *wizard.ProverRuntime) [][]field
 	return zetaI
 }
 
+func (qa quotientAccumulation) computeZetasExt(run *wizard.ProverRuntime) [][]fext.Element {
+
+	var (
+		// powersOfOmega is the list of the powers of omega starting from 0.
+		powersOfOmega = getPowersOfOmegaExt(qa.getNumRow())
+		zetaI         = make([][]fext.Element, len(qa.Queries))
+		lambda        = run.GetRandomCoinFieldExt(qa.LinCombCoeffLambda.Name)
+		// powersOfLambda are precomputed outside of the loop to allow for
+		// parallization.
+		powersOfLambda = vectorext.PowerVec(lambda, len(qa.Queries))
+	)
+
+	parallel.Execute(len(qa.Queries), func(start, stop int) {
+		for i := start; i < stop; i++ {
+
+			var (
+				q      = qa.Queries[i]
+				params = run.GetUnivariateParams(q.Name())
+				xi     = params.ExtX
+
+				// l is the value of lambda^i / (X - xi). It is computed by:
+				// 	1 - Deep copying the powers of omega
+				//  2 - Substracting xi to each entry
+				//  3 - Batch inverting the result
+				//  4 - Multiplying the result by lambdaPowi
+				l = append([]fext.Element{}, powersOfOmega...)
+			)
+
+			for j := range l {
+				l[j].Sub(&l[j], &xi)
+			}
+
+			l = fext.BatchInvert(l)
+
+			for j := range l {
+				l[j].Mul(&l[j], &powersOfLambda[i])
+			}
+
+			zetaI[i] = l
+		}
+	})
+
+	return zetaI
+}
+
 // getPowersOfOmega returns the list of the powers of omega, where omega is a root
 // of unity of order n.
 func getPowersOfOmega(n int) []field.Element {
@@ -290,6 +337,22 @@ func getPowersOfOmega(n int) []field.Element {
 
 	for i := 1; i < n; i++ {
 		res[i].Mul(&res[i-1], &omega)
+	}
+
+	return res
+}
+
+func getPowersOfOmegaExt(n int) []fext.Element {
+
+	var (
+		omega = fft.GetOmega(n)
+		res   = make([]fext.Element, n)
+	)
+
+	res[0] = fext.One()
+
+	for i := 1; i < n; i++ {
+		res[i].MulByBase(&res[i-1], &omega)
 	}
 
 	return res
@@ -317,6 +380,30 @@ func ldeOf(v []field.Element, pool mempool.MemPool) *[]field.Element {
 	fft.BitReverse(res[:len(v)])
 	domainLarge.FFT(res, fft.DIF)
 	fft.BitReverse(res)
+
+	return resPtr
+}
+
+func ldeOfExt(v []fext.Element, pool mempool.MemPool) *[]fext.Element {
+
+	var (
+		sizeLarge   = pool.Size()
+		domainSmall = fft.NewDomain(len(v))
+		domainLarge = fft.NewDomain(sizeLarge)
+		resPtr      = pool.AllocExt()
+		res         = *resPtr
+	)
+
+	vectorext.Fill(res, fext.Zero())
+	copy(res[:len(v)], v)
+
+	// Note: this implementation is very suboptimal as it should be possible
+	// reduce the overheads of bit-reversal with a smarter implementation.
+	// To be digged in the future, if this comes up as a bottleneck.
+	domainSmall.FFTInverseExt(res[:len(v)], fft.DIF)
+	fft.BitReverseExt(res[:len(v)])
+	domainLarge.FFTExt(res, fft.DIF)
+	fft.BitReverseExt(res)
 
 	return resPtr
 }

@@ -307,7 +307,7 @@ func (run *VerifierRuntime) GetRandomCoinField(name coin.Name) field.Element {
 func (run *VerifierRuntime) GetRandomCoinFieldExt(name coin.Name) fext.Element {
 	infos := run.Spec.Coins.Data(name)
 	if infos.Type != coin.FieldExt {
-		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.FieldExt)
+		utils.Panic("Coin %s was registered as %v but got %v", name, infos.Type, coin.FieldExt)
 	}
 	// If this panics, it means we generates the coins wrongly
 	return run.Coins.MustGet(name).(fext.Element)
@@ -321,7 +321,7 @@ func (run *VerifierRuntime) GetRandomCoinFromSeed(name coin.Name) field.Element 
 	*/
 	infos := run.Spec.Coins.Data(name)
 	if infos.Type != coin.FieldFromSeed {
-		utils.Panic("Coin was registered as %v but expected %v", infos.Type, coin.FieldFromSeed)
+		utils.Panic("Coin %s was registered as %v but expected %v", name, infos.Type, coin.FieldFromSeed)
 	}
 	// If this panics, it means we generates the coins wrongly
 	return run.Coins.MustGet(name).(field.Element)

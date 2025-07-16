@@ -2,10 +2,10 @@ package univariates
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"reflect"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -234,8 +234,8 @@ func (ctx *naturalizationCtx) prove(run *wizard.ProverRuntime) {
 		newYs[i] contains then alleged evaluations
 	*/
 
-	newXs := []field.Element{}
-	newYs := [][]field.Element{}
+	newXs := []fext.Element{}
+	newYs := [][]fext.Element{}
 
 	alreadySeenPolyX := make(map[string]struct{})
 	alreadySeenX := make(map[string]struct{})
@@ -244,9 +244,9 @@ func (ctx *naturalizationCtx) prove(run *wizard.ProverRuntime) {
 		repr := column.DownStreamBranch(pol)
 		rootsAll := column.RootParents(pol)
 
-		cachedXs := collection.NewMapping[string, field.Element]()
-		cachedXs.InsertNew("", originalQuery.X)
-		derivedXs := column.DeriveEvaluationPoint(pol, "", cachedXs, originalQuery.X)
+		cachedXs := collection.NewMapping[string, fext.Element]()
+		cachedXs.InsertNew("", originalQuery.ExtX)
+		derivedXs := column.DeriveEvaluationPointExt(pol, "", cachedXs, originalQuery.ExtX)
 
 		// Filter out (handle, repr) pairs that we already saw
 		rootName := string(rootsAll.GetColID())
@@ -263,7 +263,7 @@ func (ctx *naturalizationCtx) prove(run *wizard.ProverRuntime) {
 				)
 			}
 			newXs = append(newXs, derivedXs)
-			newYs = append(newYs, []field.Element{})
+			newYs = append(newYs, []fext.Element{})
 			alreadySeenX[repr] = struct{}{}
 		}
 
@@ -280,7 +280,7 @@ func (ctx *naturalizationCtx) prove(run *wizard.ProverRuntime) {
 		*/
 
 		subQueryID := ctx.reprToSubQueryID[repr]
-		newYs[subQueryID] = append(newYs[subQueryID], originalQuery.Ys[parentID])
+		newYs[subQueryID] = append(newYs[subQueryID], originalQuery.ExtYs[parentID])
 		alreadySeenPolyX[repr] = struct{}{}
 	}
 
@@ -288,7 +288,7 @@ func (ctx *naturalizationCtx) prove(run *wizard.ProverRuntime) {
 		Assign the new univariate queries
 	*/
 	for queryID, qName := range ctx.subQueriesNames {
-		run.AssignUnivariate(qName, newXs[queryID], newYs[queryID]...)
+		run.AssignUnivariateExt(qName, newXs[queryID], newYs[queryID]...)
 	}
 }
 
@@ -301,20 +301,20 @@ func (ctx naturalizationCtx) Verify(run wizard.Runtime) error {
 	// Collect the subqueries and the collection in finalYs evaluations
 	subQueries := []query.UnivariateEval{}
 	subQueriesParams := []query.UnivariateEvalParams{}
-	finalYs := collection.NewMapping[string, field.Element]()
+	finalYs := collection.NewMapping[string, fext.Element]()
 
 	for qID, qName := range ctx.subQueriesNames {
 		subQueries = append(subQueries, run.GetUnivariateEval(qName))
 		subQueriesParams = append(subQueriesParams, run.GetUnivariateParams(qName))
 		repr := ctx.deduplicatedReprs[qID]
-		for j, derivedY := range subQueriesParams[qID].Ys {
+		for j, derivedY := range subQueriesParams[qID].ExtYs {
 			finalYs.InsertNew(column.DerivedYRepr(repr, subQueries[qID].Pols[j]), derivedY)
 		}
 	}
 
 	// For each subqueries verifies the values for xs
-	cachedXs := collection.NewMapping[string, field.Element]()
-	cachedXs.InsertNew("", originalQueryParams.X)
+	cachedXs := collection.NewMapping[string, fext.Element]()
+	cachedXs.InsertNew("", originalQueryParams.ExtX)
 	alreadyCheckedReprs := collection.NewSet[string]()
 
 	/*
@@ -328,14 +328,14 @@ func (ctx naturalizationCtx) Verify(run wizard.Runtime) error {
 
 	for originPolID, originH := range originalQuery.Pols {
 		subrepr := column.DownStreamBranch(originH)
-		recoveredX := column.DeriveEvaluationPoint(originH, "", cachedXs, originalQueryParams.X)
+		recoveredX := column.DeriveEvaluationPointExt(originH, "", cachedXs, originalQueryParams.ExtX)
 
 		if alreadyCheckedReprs.Exists(subrepr) {
 			continue
 		}
 
 		qID := ctx.reprToSubQueryID[subrepr]
-		submittedX := subQueriesParams[qID].X
+		submittedX := subQueriesParams[qID].ExtX
 
 		if recoveredX != submittedX {
 			return fmt.Errorf("mismatch between the original query's evaluation point and the derived queries'")
@@ -345,7 +345,7 @@ func (ctx naturalizationCtx) Verify(run wizard.Runtime) error {
 			Recovers the Y values
 		*/
 		recoveredY := column.VerifyYConsistency(originH, "", cachedXs, finalYs)
-		if recoveredY != originalQueryParams.Ys[originPolID] {
+		if recoveredY != originalQueryParams.ExtYs[originPolID] {
 			return fmt.Errorf("mismatch between the origin query's alleged values")
 		}
 	}

@@ -2,6 +2,7 @@ package variables
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math/big"
 
 	"github.com/consensys/gnark/frontend"
@@ -92,6 +93,38 @@ func (t PeriodicSample) EvalAtOutOfDomain(size int, x field.Element) field.Eleme
 	}
 
 	var res field.Element
+	res.Div(&numerator, &denominator)
+	return res
+}
+
+func (t PeriodicSample) EvalAtOutOfDomainExt(size int, x fext.Element) fext.Element {
+	n := size
+	l := size / t.T
+	one := fext.One()
+	var lField, nField fext.Element
+	nField.A0.SetUint64(uint64(size))
+	lField.A0.SetUint64(uint64(l))
+
+	evalPoint := x
+	// If there is an offset in the sample we also adjust here
+	if t.Offset > 0 {
+		var shift field.Element
+		evalPoint.MulByBase(&evalPoint, shift.Exp(fft.GetOmega(n), big.NewInt(int64(-t.Offset))))
+	}
+
+	var denominator, numerator fext.Element
+	denominator.Exp(x, big.NewInt(int64(l)))
+	denominator.Sub(&denominator, &one)
+	denominator.Mul(&denominator, &nField)
+	numerator.Exp(x, big.NewInt(int64(size)))
+	numerator.Sub(&numerator, &one)
+	numerator.Mul(&numerator, &lField)
+
+	if denominator.IsZero() {
+		panic("denominator was zero")
+	}
+
+	var res fext.Element
 	res.Div(&numerator, &denominator)
 	return res
 }
