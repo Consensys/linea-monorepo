@@ -11,10 +11,10 @@ package maru.e2e
 import java.io.File
 import java.nio.file.Files
 import maru.app.MaruApp
-import maru.app.MaruAppCli.Companion.loadConfig
 import maru.app.MaruAppFactory
 import maru.config.MaruConfigDtoToml
 import maru.config.consensus.JsonFriendlyForksSchedule
+import maru.config.loadConfigs
 
 const val VALIDATOR_PRIVATE_KEY_WITH_PREFIX =
   "0x080212201dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
@@ -22,10 +22,9 @@ const val VALIDATOR_PRIVATE_KEY_WITH_PREFIX =
 object MaruFactory {
   fun buildTestMaru(pragueTime: Long): MaruApp {
     val maruConfigResource = this::class.java.getResource("/config/maru.toml")
-    val maruConfig = loadConfig<MaruConfigDtoToml>(listOf(File(maruConfigResource!!.path)))
+    val maruConfig = loadConfigs<MaruConfigDtoToml>(listOf(File(maruConfigResource!!.path).toPath()))
     Files.writeString(
       maruConfig
-        .getUnsafe()
         .domainFriendly()
         .persistence.privateKeyPath,
       VALIDATOR_PRIVATE_KEY_WITH_PREFIX,
@@ -40,11 +39,11 @@ object MaruFactory {
     maruGenesisFile.writeText(renderTemplate(consensusGenesisTemplate, pragueTime))
 
     val beaconGenesisConfig =
-      loadConfig<JsonFriendlyForksSchedule>(listOf(maruGenesisFile))
+      loadConfigs<JsonFriendlyForksSchedule>(listOf(maruGenesisFile.toPath()))
 
     return MaruAppFactory().create(
-      config = maruConfig.getUnsafe().domainFriendly(),
-      beaconGenesisConfig = beaconGenesisConfig.getUnsafe().domainFriendly(),
+      config = maruConfig.domainFriendly(),
+      beaconGenesisConfig = beaconGenesisConfig.domainFriendly(),
     )
   }
 

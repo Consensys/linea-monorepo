@@ -8,21 +8,10 @@
  */
 package maru.config
 
-import com.sksamuel.hoplite.ConfigFailure
-import com.sksamuel.hoplite.ConfigResult
-import com.sksamuel.hoplite.DecoderContext
-import com.sksamuel.hoplite.Node
-import com.sksamuel.hoplite.decoder.DataClassDecoder
-import com.sksamuel.hoplite.decoder.Decoder
-import com.sksamuel.hoplite.fp.invalid
-import com.sksamuel.hoplite.valueOrNull
 import java.net.URL
-import kotlin.reflect.KType
-import kotlin.reflect.full.createType
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
-import maru.extensions.fromHexToByteArray
 
 data class PayloadValidatorDto(
   val engineApiEndpoint: ApiEndpointDto,
@@ -42,54 +31,59 @@ data class ApiEndpointDto(
   fun domainFriendly(): ApiEndpointConfig = ApiEndpointConfig(endpoint = endpoint, jwtSecretPath = jwtSecretPath)
 }
 
-object QbftOptionsDecoder : Decoder<QbftOptions> {
-  // This should be private, but Hoplite won't accept a private data class
-  data class QbftOptionsDtoToml(
-    val minBlockBuildTime: Duration = 500.milliseconds,
-    val messageQueueLimit: Int = 1000,
-    val roundExpiry: Duration = 1.seconds,
-    val duplicateMessageLimit: Int = 100,
-    val futureMessageMaxDistance: Long = 10L,
-    val futureMessagesLimit: Long = 1000L,
-  ) {
-    fun toDomain(feeRecipient: ByteArray): QbftOptions =
-      QbftOptions(
-        minBlockBuildTime = minBlockBuildTime,
-        messageQueueLimit = messageQueueLimit,
-        roundExpiry = roundExpiry,
-        duplicateMessageLimit = duplicateMessageLimit,
-        futureMessageMaxDistance = futureMessageMaxDistance,
-        futureMessagesLimit = futureMessagesLimit,
-        feeRecipient = feeRecipient,
-      )
+data class QbftOptionsDtoToml(
+  val minBlockBuildTime: Duration = 500.milliseconds,
+  val messageQueueLimit: Int = 1000,
+  val roundExpiry: Duration = 1.seconds,
+  val duplicateMessageLimit: Int = 100,
+  val futureMessageMaxDistance: Long = 10L,
+  val futureMessagesLimit: Long = 1000L,
+  val feeRecipient: ByteArray,
+) {
+  fun toDomain(): QbftOptions =
+    QbftOptions(
+      minBlockBuildTime = minBlockBuildTime,
+      messageQueueLimit = messageQueueLimit,
+      roundExpiry = roundExpiry,
+      duplicateMessageLimit = duplicateMessageLimit,
+      futureMessageMaxDistance = futureMessageMaxDistance,
+      futureMessagesLimit = futureMessagesLimit,
+      feeRecipient = feeRecipient,
+    )
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as QbftOptionsDtoToml
+
+    if (messageQueueLimit != other.messageQueueLimit) return false
+    if (duplicateMessageLimit != other.duplicateMessageLimit) return false
+    if (futureMessageMaxDistance != other.futureMessageMaxDistance) return false
+    if (futureMessagesLimit != other.futureMessagesLimit) return false
+    if (minBlockBuildTime != other.minBlockBuildTime) return false
+    if (roundExpiry != other.roundExpiry) return false
+    if (!feeRecipient.contentEquals(other.feeRecipient)) return false
+
+    return true
   }
 
-  override fun decode(
-    node: Node,
-    type: KType,
-    context: DecoderContext,
-  ): ConfigResult<QbftOptions> {
-    val tomlFriendlyPart = DataClassDecoder().safeDecode(node, QbftOptionsDtoToml::class.createType(), context)
-    val tomlFriendlyPartTyped = tomlFriendlyPart as ConfigResult<QbftOptionsDtoToml>
-    val feeRecipient =
-      try {
-        node.getString("feerecipient").fromHexToByteArray()
-      } catch (throwable: Throwable) {
-        return ConfigFailure.ResolverException("Unable to convert feeRecipient to byteArray!", throwable).invalid()
-      }
-
-    return tomlFriendlyPartTyped.map { it.toDomain(feeRecipient) }
+  override fun hashCode(): Int {
+    var result = messageQueueLimit
+    result = 31 * result + duplicateMessageLimit
+    result = 31 * result + futureMessageMaxDistance.hashCode()
+    result = 31 * result + futureMessagesLimit.hashCode()
+    result = 31 * result + minBlockBuildTime.hashCode()
+    result = 31 * result + roundExpiry.hashCode()
+    result = 31 * result + feeRecipient.contentHashCode()
+    return result
   }
-
-  private fun Node.getString(key: String): String = this[key].valueOrNull()!!
-
-  override fun supports(type: KType): Boolean = type.classifier == QbftOptions::class
 }
 
 data class MaruConfigDtoToml(
   private val allowEmptyBlocks: Boolean = false,
   private val persistence: Persistence,
-  private val qbftOptions: QbftOptions?,
+  private val qbftOptions: QbftOptionsDtoToml?,
   private val p2pConfig: P2P?,
   private val payloadValidator: PayloadValidatorDto,
   private val followerEngineApis: Map<String, ApiEndpointDto>?,
@@ -100,7 +94,7 @@ data class MaruConfigDtoToml(
     MaruConfig(
       allowEmptyBlocks = allowEmptyBlocks,
       persistence = persistence,
-      qbftOptions = qbftOptions,
+      qbftOptions = qbftOptions?.toDomain(),
       p2pConfig = p2pConfig,
       validatorElNode = payloadValidator.domainFriendly(),
       followers =
