@@ -1,0 +1,2 @@
+replicaCount: 3
+fullnameOverride: besu-follower
