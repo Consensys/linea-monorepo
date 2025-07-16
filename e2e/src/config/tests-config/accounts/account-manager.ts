@@ -106,6 +106,9 @@ abstract class AccountManager implements IAccountManager {
         maxFeePerGas = feeData.maxFeePerGas ?? ethers.parseUnits("10", "gwei");
       }
 
+      const whaleNonce = await whaleAccountWallet.getNonce("pending");
+      this.logger.info(`Nonce of whale ${await whaleAccountWallet.getAddress()}=${whaleNonce}`);
+
       const tx: TransactionRequest = {
         type: 2,
         to: newAccount.address,
@@ -113,6 +116,7 @@ abstract class AccountManager implements IAccountManager {
         maxPriorityFeePerGas,
         maxFeePerGas,
         gasLimit: 21000n,
+        nonce: whaleNonce,
       };
 
       const sendTransactionWithRetry = async (): Promise<TransactionResponse> => {
