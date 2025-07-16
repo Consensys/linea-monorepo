@@ -3,6 +3,7 @@ package testtools
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -69,6 +70,27 @@ var ListOfGlobalTestcasePositive = []*ExpressionTestcase{
 	},
 
 	{
+		NameStr: "positive/fibonacci-over-extensions",
+		Expr: sym.Sub(
+			columnA,
+			column.Shift(columnA, -1),
+			column.Shift(columnA, -2),
+		),
+		Columns: map[ifaces.ColID]smartvectors.SmartVector{
+			"A": smartvectors.ForTestFromPairs(
+				1, 2,
+				1, 3,
+				2, 5,
+				3, 8,
+				5, 13,
+				8, 21,
+				13, 34,
+				21, 55,
+			),
+		},
+	},
+
+	{
 		NameStr: "positive/geometric-progression",
 		Expr: sym.Sub(
 			columnA,
@@ -79,6 +101,29 @@ var ListOfGlobalTestcasePositive = []*ExpressionTestcase{
 		),
 		Columns: map[ifaces.ColID]smartvectors.SmartVector{
 			"A": smartvectors.ForTest(1, 2, 4, 8, 16, 32, 64, 128),
+		},
+	},
+
+	{
+		NameStr: "positive/geometric-progression-over-extensions",
+		Expr: sym.Sub(
+			columnA,
+			sym.Mul(
+				2,
+				column.Shift(columnA, -1),
+			),
+		),
+		Columns: map[ifaces.ColID]smartvectors.SmartVector{
+			"A": smartvectors.ForTestFromPairs(
+				1, 3,
+				2, 6,
+				4, 12,
+				8, 24,
+				16, 48,
+				32, 96,
+				64, 192,
+				128, 384,
+			),
 		},
 	},
 
@@ -100,6 +145,23 @@ var ListOfGlobalTestcasePositive = []*ExpressionTestcase{
 	},
 
 	{
+		NameStr: "positive/random-linear-combination-over-extensions",
+		Expr: sym.NewPolyEval(
+			sym.NewVariable(coinCoin),
+			[]*sym.Expression{
+				sym.NewVariable(columnA),
+				sym.NewVariable(columnB),
+				sym.NewVariable(columnC),
+			},
+		),
+		Columns: map[ifaces.ColID]smartvectors.SmartVector{
+			"A": smartvectors.NewConstant(field.Zero(), 16),
+			"B": smartvectors.NewConstantExt(fext.Zero(), 16),
+			"C": smartvectors.NewConstant(field.Zero(), 16),
+		},
+	},
+
+	{
 		NameStr: "positive/conditional-counter",
 		Expr: sym.Sub(
 			columnA,
@@ -114,6 +176,25 @@ var ListOfGlobalTestcasePositive = []*ExpressionTestcase{
 		),
 		Columns: map[ifaces.ColID]smartvectors.SmartVector{
 			"A": smartvectors.ForTest(0, 1, 1, 1, 2, 3, 3, 3),
+			"B": smartvectors.ForTest(0, 1, 0, 0, 1, 1, 0, 0),
+		},
+	},
+
+	{
+		NameStr: "positive/conditional-counter-over-extensions",
+		Expr: sym.Sub(
+			columnA,
+			sym.Mul(
+				sym.Sub(1, columnB),
+				column.Shift(columnA, -1),
+			),
+			sym.Mul(
+				columnB,
+				sym.Add(column.Shift(columnA, -1), 1),
+			),
+		),
+		Columns: map[ifaces.ColID]smartvectors.SmartVector{
+			"A": smartvectors.ForTestExt(0, 1, 1, 1, 2, 3, 3, 3),
 			"B": smartvectors.ForTest(0, 1, 0, 0, 1, 1, 0, 0),
 		},
 	},
