@@ -31,6 +31,8 @@ dependencyManagement {
     // For java code only
     dependency 'com.google.errorprone:error_prone_core:2.29.2'
 
+    dependency 'com.google.guava:guava:33.4.0-jre'
+
     dependency 'com.squareup.okhttp3:okhttp:4.12.0'
 
     dependency 'io.javalin:javalin:6.7.0'
