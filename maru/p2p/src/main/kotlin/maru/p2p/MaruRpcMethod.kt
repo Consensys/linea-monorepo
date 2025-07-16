@@ -18,20 +18,21 @@ class MaruRpcMethod<TRequest : Message<*, RpcMessageType>, TResponse : Message<*
   private val rpcMessageHandler: RpcMessageHandler<TRequest, TResponse>,
   private val requestMessageSerDe: SerDe<TRequest>,
   private val responseMessageSerDe: SerDe<TResponse>,
-  private val peerLookup: PeerLookup,
+  peerLookup: () -> PeerLookup,
   private val version: Version,
   protocolIdGenerator: MessageIdGenerator,
 ) : RpcMethod<MaruOutgoingRpcRequestHandler<TResponse>, TRequest, MaruRpcResponseHandler<TResponse>> {
   private val protocolId = protocolIdGenerator.id(messageType.name, version)
+  private val peerLookupLazy by lazy { peerLookup() }
 
   override fun getIds(): MutableList<String> = mutableListOf(protocolId)
 
   override fun createIncomingRequestHandler(protocolId: String): RpcRequestHandler =
-    MaruIncomingRpcRequestHandler<TRequest, TResponse>(
+    MaruIncomingRpcRequestHandler(
       rpcMessageHandler = rpcMessageHandler,
       requestMessageSerDe = requestMessageSerDe,
       responseMessageSerDe = responseMessageSerDe,
-      peerLookup = peerLookup,
+      peerLookup = peerLookupLazy,
     )
 
   override fun createOutgoingRequestHandler(

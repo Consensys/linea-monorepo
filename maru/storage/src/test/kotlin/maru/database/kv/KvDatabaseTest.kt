@@ -11,9 +11,11 @@ package maru.database.kv
 import java.nio.file.Path
 import java.util.Optional
 import kotlin.random.Random
+import maru.core.BeaconState
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import org.hyperledger.besu.plugin.services.metrics.MetricCategory
 import org.junit.jupiter.api.Test
@@ -177,6 +179,127 @@ class KvDatabaseTest {
 
       assertThat(db.getSealedBeaconBlock(testBeaconBlock2Root)).isNull()
       assertThat(db.getSealedBeaconBlock(testBeaconBlock2Number)).isNull()
+    }
+  }
+
+  @Test
+  fun `test getSealedBeaconBlocks returns consecutive blocks`(
+    @TempDir databasePath: Path,
+  ) {
+    val testBlocks = (0uL..5uL).map { DataGenerators.randomSealedBeaconBlock(it) }
+
+    createDatabase(databasePath).use { db ->
+      // Store blocks
+      testBlocks.forEach { block ->
+        db.newUpdater().use {
+          it.putSealedBeaconBlock(block).commit()
+        }
+      }
+      db.newUpdater().use {
+        it
+          .putBeaconState(
+            BeaconState(
+              latestBeaconBlockHeader = testBlocks.last().beaconBlock.beaconBlockHeader,
+              validators = DataGenerators.randomValidators(),
+            ),
+          ).commit()
+      }
+
+      // Get blocks 2-4
+      val startBlockNumber = 2uL
+      val count = 3uL
+      val blocks = db.getSealedBeaconBlocks(startBlockNumber, count)
+      assertThat(blocks).hasSize(3)
+      assertThat(blocks).isEqualTo(testBlocks.subList(startBlockNumber.toInt(), (startBlockNumber + count).toInt()))
+    }
+  }
+
+  @Test
+  fun `test getSealedBeaconBlocks returns empty list when count is zero`(
+    @TempDir databasePath: Path,
+  ) {
+    val testBlock = DataGenerators.randomSealedBeaconBlock(1uL)
+
+    createDatabase(databasePath).use { db ->
+      db.newUpdater().use {
+        it.putSealedBeaconBlock(testBlock).commit()
+      }
+      db.newUpdater().use {
+        it
+          .putBeaconState(
+            BeaconState(
+              latestBeaconBlockHeader = testBlock.beaconBlock.beaconBlockHeader,
+              validators = DataGenerators.randomValidators(),
+            ),
+          ).commit()
+      }
+
+      val blocks = db.getSealedBeaconBlocks(startBlockNumber = 1uL, count = 0uL)
+      assertThat(blocks).isEmpty()
+    }
+  }
+
+  @Test
+  fun `test getSealedBeaconBlocks stops at gap in sequence`(
+    @TempDir databasePath: Path,
+  ) {
+    val block1 = DataGenerators.randomSealedBeaconBlock(1uL)
+    val block2 = DataGenerators.randomSealedBeaconBlock(2uL)
+    // Skip block 3
+    val block4 = DataGenerators.randomSealedBeaconBlock(4uL)
+
+    createDatabase(databasePath).use { db ->
+      db.newUpdater().use {
+        it
+          .putSealedBeaconBlock(block1)
+          .putSealedBeaconBlock(block2)
+          .putSealedBeaconBlock(block4)
+          .commit()
+      }
+      db.newUpdater().use {
+        it
+          .putBeaconState(
+            BeaconState(
+              latestBeaconBlockHeader = block4.beaconBlock.beaconBlockHeader,
+              validators = DataGenerators.randomValidators(),
+            ),
+          ).commit()
+      }
+
+      // Request 5 blocks starting from 1, should throw exception at gap
+      assertThatThrownBy {
+        db.getSealedBeaconBlocks(startBlockNumber = 1uL, count = 5uL)
+      }.isInstanceOf(IllegalStateException::class.java)
+        .hasMessage("Missing sealed beacon block 3")
+    }
+  }
+
+  @Test
+  fun `test getSealedBeaconBlocks returns available blocks when count exceeds available`(
+    @TempDir databasePath: Path,
+  ) {
+    val testBlocks = (1uL..3uL).map { DataGenerators.randomSealedBeaconBlock(it) }
+
+    createDatabase(databasePath).use { db ->
+      testBlocks.forEach { block ->
+        db.newUpdater().use {
+          it.putSealedBeaconBlock(block).commit()
+        }
+      }
+      db.newUpdater().use {
+        it
+          .putBeaconState(
+            BeaconState(
+              latestBeaconBlockHeader = testBlocks.last().beaconBlock.beaconBlockHeader,
+              validators = DataGenerators.randomValidators(),
+            ),
+          ).commit()
+      }
+
+      // Request 10 blocks but only 3 exist
+      val blocks = db.getSealedBeaconBlocks(startBlockNumber = 1uL, count = 10uL)
+      assertThat(blocks).hasSize(3)
+      assertThat(blocks).isEqualTo(testBlocks)
     }
   }
 }
