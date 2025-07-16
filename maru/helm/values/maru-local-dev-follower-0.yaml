@@ -1,0 +1,29 @@
+replicaCount: 1
+configFiles:
+  privateKey: |
+    0x080212201dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aa0
+  configsToml: |
+    [payload-validator]
+    engine-api-endpoint = { endpoint = "http://besu-follower-0.besu-follower.default.svc.cluster.local:8550" }
+    eth-api-endpoint = { endpoint = "http://besu-follower-0.besu-follower.default.svc.cluster.local:8545" }
+
+    [follower-engine-apis]
+    follower-besu = { endpoint = "http://besu-follower-0.besu-follower.default.svc.cluster.local:8550" }
+  log4j: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <Configuration status="INFO" monitorInterval="2">
+    <Appenders>
+      <Console name="Console" target="SYSTEM_OUT">
+        <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSSZZZ} | %t | %-5level | %c{1} | %msg %throwable%n" />
+      </Console>
+    </Appenders>
+    <Loggers>
+      <Logger name="org.hyperledger.besu" level="TRACE"/>
+      <Logger name="tech.pegasys.teku" level="DEBUG"/>
+      <Logger name="maru" level="DEBUG"/>
+      <Logger name="clients" level="DEBUG"/>
+      <Root level="INFO">
+        <AppenderRef ref="Console"/>
+      </Root>
+    </Loggers>
+    </Configuration>

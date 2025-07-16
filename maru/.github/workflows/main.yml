@@ -37,6 +37,7 @@ jobs:
             has-changes-requiring-build:
               - '!**/*.md'
               - '!docs/**'
+              - '!helm/**'
 
   testing:
     needs: [ filter-commit-changes ]
