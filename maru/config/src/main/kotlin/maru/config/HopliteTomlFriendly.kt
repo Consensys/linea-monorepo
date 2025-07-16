@@ -83,25 +83,25 @@ data class QbftOptionsDtoToml(
 data class MaruConfigDtoToml(
   private val allowEmptyBlocks: Boolean = false,
   private val persistence: Persistence,
-  private val qbftOptions: QbftOptionsDtoToml?,
-  private val p2pConfig: P2P?,
+  private val qbft: QbftOptionsDtoToml?,
+  private val p2p: P2P?,
   private val payloadValidator: PayloadValidatorDto,
   private val followerEngineApis: Map<String, ApiEndpointDto>?,
-  private val observabilityOptions: ObservabilityOptions,
-  private val apiConfig: ApiConfig,
+  private val observability: ObservabilityOptions,
+  private val api: ApiConfig,
 ) {
   fun domainFriendly(): MaruConfig =
     MaruConfig(
       allowEmptyBlocks = allowEmptyBlocks,
       persistence = persistence,
-      qbftOptions = qbftOptions?.toDomain(),
-      p2pConfig = p2pConfig,
+      qbftOptions = qbft?.toDomain(),
+      p2pConfig = p2p,
       validatorElNode = payloadValidator.domainFriendly(),
       followers =
         FollowersConfig(
           followers = followerEngineApis?.mapValues { it.value.domainFriendly() } ?: emptyMap(),
         ),
-      observabilityOptions = observabilityOptions,
-      apiConfig = apiConfig,
+      observabilityOptions = observability,
+      apiConfig = api,
     )
 }

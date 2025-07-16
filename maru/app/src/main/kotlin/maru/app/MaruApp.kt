@@ -66,10 +66,6 @@ class MaruApp(
     if (config.qbftOptions == null) {
       log.info("Qbft options are not defined. Maru is running in follower-only node")
     }
-    if (config.p2pConfig == null) {
-      log.info("P2PManager is not defined.")
-    }
-    log.info(config.toString())
 
     metricsFacade.createGauge(
       category = MaruMetricsCategory.METADATA,
