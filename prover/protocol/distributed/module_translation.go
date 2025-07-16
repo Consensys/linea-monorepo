@@ -303,6 +303,7 @@ func (mt *ModuleLPP) InsertHorner(
 	for _, oldPart := range parts {
 
 		newPart := query.HornerPart{
+			Name:         oldPart.Name,
 			Coefficients: mt.TranslateExpressionList(oldPart.Coefficients),
 			SignNegative: oldPart.SignNegative,
 			Selectors:    mt.TranslateColumnList(oldPart.Selectors),

@@ -103,11 +103,13 @@ func ProjectionToHorner(comp *wizard.CompiledIOP) {
 		parts = append(
 			parts,
 			query.HornerPart{
+				Name:         string(qName) + "_A",
 				Coefficients: as,
 				Selectors:    selectorsA,
 				X:            accessors.NewFromCoin(alpha),
 			},
 			query.HornerPart{
+				Name:         string(qName) + "_B",
 				SignNegative: true,
 				Coefficients: bs,
 				Selectors:    selectorsB,
