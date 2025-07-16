@@ -1,0 +1,21 @@
+#!/bin/bash
+
+foundryup
+
+if [ $? -ne 0 ]; then
+  echo "foundryup failed."
+  exit 1
+fi
+
+pnpm run adorno
+
+if [ $? -ne 0 ]; then
+  echo "pnpm run adorno failed."
+  exit 1
+fi
+
+git add .
+
+echo "Successfully ran pnpm run adorno and added modified files."
+
+exit 0
