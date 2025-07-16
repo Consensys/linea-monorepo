@@ -10,6 +10,8 @@ package maru.p2p
 
 import java.util.Optional
 import java.util.concurrent.atomic.AtomicReference
+import maru.p2p.messages.BeaconBlocksByRangeRequest
+import maru.p2p.messages.BeaconBlocksByRangeResponse
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusMessageFactory
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -30,6 +32,11 @@ interface MaruPeer : Peer {
   fun sendStatus(): SafeFuture<Status>
 
   fun updateStatus(status: Status)
+
+  fun sendBeaconBlocksByRange(
+    startBlockNumber: ULong,
+    count: ULong,
+  ): SafeFuture<BeaconBlocksByRangeResponse>
 }
 
 interface MaruPeerFactory {
@@ -66,6 +73,16 @@ class DefaultMaruPeer(
 
   override fun updateStatus(status: Status) {
     this.status.set(status)
+  }
+
+  override fun sendBeaconBlocksByRange(
+    startBlockNumber: ULong,
+    count: ULong,
+  ): SafeFuture<BeaconBlocksByRangeResponse> {
+    val request = BeaconBlocksByRangeRequest(startBlockNumber, count)
+    val message = Message(RpcMessageType.BEACON_BLOCKS_BY_RANGE, Version.V1, request)
+    return sendRpcMessage(message, rpcMethods.beaconBlocksByRange())
+      .thenApply { responseMessage -> responseMessage.payload }
   }
 
   fun <TRequest : Message<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>> sendRpcMessage(
