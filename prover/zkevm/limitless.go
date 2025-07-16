@@ -5,13 +5,16 @@ import (
 	"io"
 	"os"
 	"path"
+	"reflect"
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 	"github.com/sirupsen/logrus"
@@ -29,6 +32,8 @@ var (
 	blueprintLppTemplate   = blueprintLppPrefix + "-%d.bin"
 	compileLppTemplate     = "dw-compiled-lpp-%v.bin"
 	compileGlTemplate      = "dw-compiled-gl-%v.bin"
+	debugLppTemplate       = "dw-debug-lpp-%v.bin"
+	debugGlTemplate        = "dw-debug-gl-%v.bin"
 	conglomerationFile     = "dw-compiled-conglomeration.bin"
 	executionLimitlessPath = "execution-limitless"
 )
@@ -66,6 +71,114 @@ func NewLimitlessZkEVM(cfg *config.Config) *LimitlessZkEVM {
 	return &LimitlessZkEVM{
 		Zkevm:      zkevm,
 		DistWizard: dw,
+	}
+}
+
+// NewLimitlessDebugZkEVM returns a new LimitlessZkEVM with only the debugging
+// components. The resulting object is not meant to be stored on disk and should
+// be used right away to debug the prover. The return object can run the
+// bootstrapper (with added) sanity-checks, the segmentation and then sanity-
+// checking all the segments.
+func NewLimitlessDebugZkEVM(cfg *config.Config) *LimitlessZkEVM {
+
+	var (
+		traceLimits = cfg.TracesLimits
+		zkevm       = FullZKEVMWithSuite(&traceLimits, CompilationSuite{}, cfg)
+		disc        = &distributed.StandardModuleDiscoverer{
+			TargetWeight: 1 << 28,
+			Affinities:   GetAffinities(zkevm),
+			Predivision:  1,
+		}
+		dw             = distributed.DistributeWizard(zkevm.WizardIOP, disc)
+		limitlessZkEVM = &LimitlessZkEVM{
+			Zkevm:      zkevm,
+			DistWizard: dw,
+		}
+	)
+
+	// This adds debugging to the bootstrapper which are normally not present by
+	// default.
+	wizard.ContinueCompilation(
+		limitlessZkEVM.DistWizard.Bootstrapper,
+		dummy.CompileAtProverLvl(dummy.WithMsg("bootstrapper")),
+	)
+
+	return limitlessZkEVM
+}
+
+// RunDebug runs the LimitlessZkEVM on debug mode. It will run the boostrapper,
+// the segmentation and then the sanity checks for all the segments. The
+// check of the LPP module is done using "0" as a shared randomness.
+func (lz *LimitlessZkEVM) RunDebug(witness *Witness) {
+
+	runtimeBoot := wizard.RunProver(
+		lz.DistWizard.Bootstrapper,
+		lz.Zkevm.GetMainProverStep(witness),
+	)
+
+	witnessGLs, witnessLPPs := distributed.SegmentRuntime(
+		runtimeBoot,
+		lz.DistWizard.Disc,
+		lz.DistWizard.BlueprintGLs,
+		lz.DistWizard.BlueprintLPPs,
+	)
+
+	for _, witness := range witnessGLs {
+
+		var (
+			moduleToFind = witness.ModuleName
+			debugGL      *distributed.ModuleGL
+		)
+
+		for i := range lz.DistWizard.DebugGLs {
+			if lz.DistWizard.DebugGLs[i].DefinitionInput.ModuleName == moduleToFind {
+				debugGL = lz.DistWizard.DebugGLs[i]
+				break
+			}
+		}
+
+		if debugGL == nil {
+			utils.Panic("debugGL not found")
+		}
+
+		var (
+			mainProverStep = debugGL.GetMainProverStep(witness)
+			compiledIOP    = debugGL.Wiop
+		)
+
+		// The debugLPP is compiled with the CompileAtProverLevel routine so we
+		// don't need the proof to complete the sanity checks: everything is
+		// done at the prover level.
+		_ = wizard.Prove(compiledIOP, mainProverStep)
+	}
+
+	for _, witness := range witnessLPPs {
+
+		var (
+			moduleToFind = witness.ModuleName
+			debugLPP     *distributed.ModuleLPP
+		)
+
+		for i := range lz.DistWizard.DebugLPPs {
+			if reflect.DeepEqual(lz.DistWizard.DebugLPPs[i].ModuleNames(), moduleToFind) {
+				debugLPP = lz.DistWizard.DebugLPPs[i]
+				break
+			}
+		}
+
+		if debugLPP == nil {
+			utils.Panic("debugLPP not found")
+		}
+
+		var (
+			mainProverStep = debugLPP.GetMainProverStep(witness)
+			compiledIOP    = debugLPP.Wiop
+		)
+
+		// The debugLPP is compiled with the CompileAtProverLevel routine so we
+		// don't need the proof to complete the sanity checks: everything is
+		// done at the prover level.
+		_ = wizard.Prove(compiledIOP, mainProverStep)
 	}
 }
 
@@ -126,6 +239,13 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 		})
 	}
 
+	for _, debugGL := range lz.DistWizard.DebugGLs {
+		assets = append(assets, asset{
+			Name:   fmt.Sprintf(debugGlTemplate, debugGL.DefinitionInput.ModuleName),
+			Object: debugGL,
+		})
+	}
+
 	for _, modLpp := range lz.DistWizard.CompiledLPPs {
 		assets = append(assets, asset{
 			Name:   fmt.Sprintf(compileLppTemplate, modLpp.ModuleLPP.ModuleNames()),
@@ -137,6 +257,13 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 		assets = append(assets, asset{
 			Name:   fmt.Sprintf(blueprintLppTemplate, i),
 			Object: blueprintLPP,
+		})
+	}
+
+	for _, debugLPP := range lz.DistWizard.DebugLPPs {
+		assets = append(assets, asset{
+			Name:   fmt.Sprintf(debugLppTemplate, debugLPP.ModuleNames()),
+			Object: debugLPP,
 		})
 	}
 
@@ -296,6 +423,38 @@ func LoadCompiledLPP(cfg *config.Config, moduleNames []distributed.ModuleName) (
 		assetDir = cfg.PathForSetup(executionLimitlessPath)
 		filePath = path.Join(assetDir, fmt.Sprintf(compileLppTemplate, moduleNames))
 		res      = &distributed.RecursedSegmentCompilation{}
+	)
+
+	if err := loadFromFile(filePath, res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+// LoadDebugGL loads the debug GL from disk
+func LoadDebugGL(cfg *config.Config, moduleName distributed.ModuleName) (*distributed.ModuleGL, error) {
+
+	var (
+		assetDir = cfg.PathForSetup(executionLimitlessPath)
+		filePath = path.Join(assetDir, fmt.Sprintf(debugGlTemplate, moduleName))
+		res      = &distributed.ModuleGL{}
+	)
+
+	if err := loadFromFile(filePath, res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+// LoadDebugLPP loads the debug LPP from disk
+func LoadDebugLPP(cfg *config.Config, moduleName []distributed.ModuleName) (*distributed.ModuleLPP, error) {
+
+	var (
+		assetDir = cfg.PathForSetup(executionLimitlessPath)
+		filePath = path.Join(assetDir, fmt.Sprintf(debugLppTemplate, moduleName))
+		res      = &distributed.ModuleLPP{}
 	)
 
 	if err := loadFromFile(filePath, res); err != nil {

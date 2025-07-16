@@ -7,6 +7,7 @@ import (
 	cmimc "github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
@@ -38,6 +39,14 @@ type DistributedWizard struct {
 
 	// GLs is the list of the GL parts for every modules
 	GLs []*ModuleGL
+
+	// DebugLPPs is the list of the LPP modules compiles with the dummy, this is
+	// convenient for debugging the distributed wizard after segmentation.
+	DebugLPPs []*ModuleLPP
+
+	// DebugGLs is the list of the GL modules compiles with the dummy, this is
+	// convenient for debugging the distributed wizard after segmentation.
+	DebugGLs []*ModuleGL
 
 	// BlueprintGLs is the list of the blueprints for each GL module
 	BlueprintGLs []ModuleSegmentationBlueprint
@@ -122,7 +131,22 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *Distribu
 
 		logrus.Infof("Compiling GL module %v", moduleName)
 
-		moduleGL := BuildModuleGL(&filteredModuleInputs)
+		var (
+			moduleGL         = BuildModuleGL(&filteredModuleInputs)
+			moduleGLForDebug = BuildModuleGL(&filteredModuleInputs)
+		)
+
+		// This add sanity-checking the module initial assignment. Without
+		// this compilation, the module would not check anything.
+		wizard.ContinueCompilation(
+			moduleGLForDebug.Wiop,
+			dummy.CompileAtProverLvl(dummy.WithMsg(fmt.Sprintf("GL module (debug) %v", moduleName))),
+		)
+
+		distributedWizard.DebugGLs = append(
+			distributedWizard.DebugGLs,
+			moduleGLForDebug,
+		)
 
 		distributedWizard.GLs = append(
 			distributedWizard.GLs,
@@ -150,7 +174,22 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *Distribu
 
 		logrus.Infof("Compiling LPP modules [%d .. %d]", i, stop)
 
-		moduleLPP := BuildModuleLPP(allFilteredModuleInputs[i:stop])
+		var (
+			moduleLPP         = BuildModuleLPP(allFilteredModuleInputs[i:stop])
+			moduleLPPForDebug = BuildModuleLPP(allFilteredModuleInputs[i:stop])
+		)
+
+		// This add sanity-checking the module initial assignment. Without
+		// this compilation, the module would not check anything.
+		wizard.ContinueCompilation(
+			moduleLPPForDebug.Wiop,
+			dummy.CompileAtProverLvl(dummy.WithMsg(fmt.Sprintf("LPP module (debug) [%d .. %d]", i, stop))),
+		)
+
+		distributedWizard.DebugLPPs = append(
+			distributedWizard.DebugLPPs,
+			moduleLPPForDebug,
+		)
 
 		distributedWizard.LPPs = append(
 			distributedWizard.LPPs,

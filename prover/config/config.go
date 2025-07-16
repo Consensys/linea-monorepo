@@ -235,6 +235,13 @@ type Execution struct {
 	// used within the prover was generated from the same commit of linea-constraints as the generated lt trace file.
 	// Set this to true to disable compatibility checks (default: false).
 	IgnoreCompatibilityCheck bool `mapstructure:"ignore_compatibility_check"`
+
+	// LimitlessWithDebug is only looked at when the limitless prover is
+	// activated. When set to true, the limitless prover will only run in
+	// debug mode and not produce any proof. This is useful to investigate
+	// bugs in the limitless prover. The field is optional and defaults to
+	// false.
+	LimitlessWithDebug bool `mapstructure:"limitless_with_debug"`
 }
 
 type BlobDecompression struct {

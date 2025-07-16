@@ -62,6 +62,13 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		numGL, numLPP = 0, 0
 	)
 
+	if cfg.Execution.LimitlessWithDebug {
+		limitlessZkEVM := zkevm.NewLimitlessDebugZkEVM(cfg)
+		limitlessZkEVM.RunDebug(witness.ZkEVM)
+		// The return of "out" is to avoid panics later on in the process.
+		return &out, nil
+	}
+
 	logrus.Info("Starting to run the bootstrapper")
 
 	numGL, numLPP = RunBootstrapper(cfg, witness.ZkEVM)
