@@ -395,9 +395,17 @@ func tryIntoRightPadded(v Regular) (*PaddedCircularWindow, bool) {
 
 	for i := len(v) - 2; i >= 0; i-- {
 		if v[i] != last {
-			bestPos = i + 1
 			break
 		}
+		bestPos = i
+	}
+
+	if bestPos == len(v)-1 {
+		return nil, false
+	}
+
+	if bestPos == 0 {
+		utils.Panic("passed a constant vector to tryIntoRightPadded, it should have been handled by tryIntoConstant")
 	}
 
 	return RightPadded(v[:bestPos], last, len(v)).(*PaddedCircularWindow), true
@@ -414,9 +422,17 @@ func tryIntoLeftPadded(v Regular) (*PaddedCircularWindow, bool) {
 
 	for i := 1; i < len(v); i++ {
 		if v[i] != first {
-			bestPos = i - 1
 			break
 		}
+		bestPos = i
+	}
+
+	if bestPos == 0 {
+		return nil, false
+	}
+
+	if bestPos == len(v)-1 {
+		utils.Panic("passed a constant vector to tryIntoLeftPadded, it should have been handled by tryIntoConstant")
 	}
 
 	return LeftPadded(v[bestPos+1:], first, len(v)).(*PaddedCircularWindow), true
