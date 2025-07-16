@@ -8,16 +8,11 @@
  */
 package maru.app
 
-import com.sksamuel.hoplite.ConfigLoaderBuilder
-import com.sksamuel.hoplite.ConfigResult
-import com.sksamuel.hoplite.ExperimentalHoplite
-import com.sksamuel.hoplite.addFileSource
 import java.io.File
 import java.util.concurrent.Callable
 import maru.config.MaruConfigDtoToml
-import maru.config.QbftOptionsDecoder
-import maru.config.consensus.ForkConfigDecoder
 import maru.config.consensus.JsonFriendlyForksSchedule
+import maru.config.loadConfigs
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.core.LoggerContext
 import org.apache.logging.log4j.core.config.Configurator
@@ -36,24 +31,6 @@ import picocli.CommandLine.Command
   footerHeading = "%n",
 )
 class MaruAppCli : Callable<Int> {
-  companion object {
-    @OptIn(ExperimentalHoplite::class)
-    inline fun <reified T : Any> loadConfig(configFiles: List<File>): ConfigResult<T> {
-      val confBuilder: ConfigLoaderBuilder =
-        ConfigLoaderBuilder.Companion
-          .default()
-          .addDecoder(QbftOptionsDecoder)
-          .addDecoder(ForkConfigDecoder)
-          .withExplicitSealedTypes()
-      for (configFile in configFiles.reversed()) {
-        // files must be added in reverse order for overriding
-        confBuilder.addFileSource(configFile, false)
-      }
-
-      return confBuilder.build().loadConfig<T>(emptyList())
-    }
-  }
-
   @CommandLine.Option(
     names = ["--config"],
     paramLabel = "CONFIG.toml,CONFIG.overrides.toml",
@@ -82,19 +59,8 @@ class MaruAppCli : Callable<Int> {
       System.err.println("Failed to read genesis file file: \"${genesisFile.path}\"")
       return 1
     }
-    val appConfig = loadConfig<MaruConfigDtoToml>(configFiles)
-    val beaconGenesisConfig = loadConfig<JsonFriendlyForksSchedule>(listOf(genesisFile))
-
-    if (!validateParsedFile(appConfig, "app configuration", configFiles.map { it.absolutePath }.toString())) {
-      return 1
-    }
-
-    if (!validateParsedFile(beaconGenesisConfig, "consensus genesis", genesisFile.absolutePath)) {
-      return 1
-    }
-
-    val parsedAppConfig = appConfig.getUnsafe()
-    val parsedBeaconGenesisConfig = beaconGenesisConfig.getUnsafe()
+    val parsedAppConfig = loadConfigs<MaruConfigDtoToml>(configFiles.map { it.toPath() })
+    val parsedBeaconGenesisConfig = loadConfigs<JsonFriendlyForksSchedule>(listOf(genesisFile.toPath()))
 
     val app =
       MaruAppFactory()
@@ -121,18 +87,4 @@ class MaruAppCli : Callable<Int> {
   }
 
   private fun validateConfigFile(file: File): Boolean = file.canRead()
-
-  private fun validateParsedFile(
-    configResult: ConfigResult<*>,
-    purpose: String,
-    validatedFile: String,
-  ): Boolean {
-    if (configResult.isInvalid()) {
-      System.err.println(
-        "Invalid $purpose config file: $validatedFile, ${configResult.getInvalidUnsafe().description()}",
-      )
-      return false
-    }
-    return true
-  }
 }
