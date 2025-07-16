@@ -1,10 +1,14 @@
 package limitless
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strconv"
+	"time"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
@@ -17,13 +21,26 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
+	"github.com/pierrec/lz4/v4"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/semaphore"
 )
 
-const (
-	witnessDir                            = "/tmp/witnesses"
-	numConcurrentWitnessWritingGoroutines = 1
+var (
+	witnessDir = "/tmp/witnesses"
+	// numConcurrentWitnessWritingGoroutines governs the goroutine serializing,
+	// compressing and writing the  witness. The writing part is also controlled
+	// by a semaphore on top of this.
+	numConcurrentWitnessWritingGoroutines = runtime.NumCPU()
+	// numConcurrentDiskWrite governs the number of concurrent disk writes
+	numConcurrentDiskWrite = 1
+	// concurrentSubProverSemaphore is a semaphore that controls the number of
+	// concurrent sub-prover jobs.
+	diskWriteSemaphore = semaphore.NewWeighted(int64(numConcurrentDiskWrite))
+	// numConcurrentSubProverJobs governs the number of concurrent sub-prover
+	// jobs.
+	numConcurrentSubProverJobs = 4
 )
 
 // Prove function for the Assest struct
@@ -55,27 +72,46 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		proofGLs       []recursion.Witness
 		proofLPPs      []recursion.Witness
 		lppCommitments []field.Element
+		errGroup       = &errgroup.Group{}
 	)
 
-	for i := 0; i < numGL; i++ {
-		proofGL, lppCommitment, err := RunGL(cfg, i)
-		if err != nil {
-			return nil, fmt.Errorf("could not run GL prover for witness index=%v: %w", i, err)
-		}
+	errGroup.SetLimit(numConcurrentSubProverJobs)
 
-		proofGLs = append(proofGLs, *proofGL)
-		lppCommitments = append(lppCommitments, lppCommitment)
+	for i := 0; i < numGL; i++ {
+
+		errGroup.Go(func() error {
+			proofGL, lppCommitment, err := RunGL(cfg, i)
+			if err != nil {
+				return fmt.Errorf("could not run GL prover for witness index=%v: %w", i, err)
+			}
+
+			proofGLs = append(proofGLs, *proofGL)
+			lppCommitments = append(lppCommitments, lppCommitment)
+			return nil
+		})
+	}
+
+	if err := errGroup.Wait(); err != nil {
+		return nil, err
 	}
 
 	sharedRandomness := distributed.GetSharedRandomness(lppCommitments)
 
 	for i := 0; i < numLPP; i++ {
-		proofLPP, err := RunLPP(cfg, i, sharedRandomness)
-		if err != nil {
-			return nil, fmt.Errorf("could not run LPP prover for witness index=%v: %w", i, err)
-		}
 
-		proofLPPs = append(proofLPPs, *proofLPP)
+		errGroup.Go(func() error {
+			proofLPP, err := RunLPP(cfg, i, sharedRandomness)
+			if err != nil {
+				return fmt.Errorf("could not run LPP prover for witness index=%v: %w", i, err)
+			}
+
+			proofLPPs = append(proofLPPs, *proofLPP)
+			return nil
+		})
+	}
+
+	if err := errGroup.Wait(); err != nil {
+		return nil, err
 	}
 
 	_, err := RunConglomeration(cfg, proofGLs, proofLPPs)
@@ -151,7 +187,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
 		eg.Go(func() error {
 
 			filePath := witnessDir + "/witness-GL-" + strconv.Itoa(i)
-			if err := writeToDisk(filePath, *witnessGLs[i]); err != nil {
+			if err := writeToDisk(filePath, *witnessGLs[i], true); err != nil {
 				return fmt.Errorf("could not save witnessGL: %v", err)
 			}
 
@@ -171,7 +207,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
 		eg.Go(func() error {
 
 			filePath := witnessDir + "/witness-LPP-" + strconv.Itoa(i)
-			if err := writeToDisk(filePath, *witnessLPPs[i]); err != nil {
+			if err := writeToDisk(filePath, *witnessLPPs[i], true); err != nil {
 				return fmt.Errorf("could not save witnessLPP: %v", err)
 			}
 
@@ -195,7 +231,7 @@ func RunGL(cfg *config.Config, witnessIndex int) (proofGL *recursion.Witness, lp
 
 	witness := &distributed.ModuleWitnessGL{}
 	witnessFilePath := witnessDir + "/witness-GL-" + strconv.Itoa(witnessIndex)
-	if err := loadFromDisk(witnessFilePath, witness); err != nil {
+	if err := loadFromDisk(witnessFilePath, witness, true); err != nil {
 		return nil, field.Element{}, err
 	}
 
@@ -226,7 +262,7 @@ func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Element
 
 	witness := &distributed.ModuleWitnessLPP{}
 	witnessFilePath := witnessDir + "/witness-LPP-" + strconv.Itoa(witnessIndex)
-	if err := loadFromDisk(witnessFilePath, witness); err != nil {
+	if err := loadFromDisk(witnessFilePath, witness, true); err != nil {
 		return nil, err
 	}
 
@@ -271,20 +307,37 @@ func RunConglomeration(cfg *config.Config, proofGLs, proofLPPs []recursion.Witne
 	return proof, nil
 }
 
-func loadFromDisk(filePath string, assetPtr any) error {
+func loadFromDisk(filePath string, assetPtr any, withCompression bool) error {
 
 	f := files.MustRead(filePath)
 	defer f.Close()
 
 	var (
-		buf     []byte
-		desErr  error
-		readErr error
+		buf       []byte
+		desErr    error
+		readErr   error
+		decompErr error
+		tDecomp   time.Duration
 	)
 
 	tRead := profiling.TimeIt(func() {
 		buf, readErr = io.ReadAll(f)
 	})
+
+	if withCompression {
+
+		tDecomp = profiling.TimeIt(func() {
+			r := lz4.NewReader(bytes.NewReader(buf))
+			buf, decompErr = io.ReadAll(r)
+			if decompErr != nil {
+				return
+			}
+		})
+
+		if decompErr != nil {
+			return fmt.Errorf("could not decompress file %s: %w", filePath, decompErr)
+		}
+	}
 
 	if readErr != nil {
 		return fmt.Errorf("could not read file %s: %w", filePath, readErr)
@@ -298,22 +351,24 @@ func loadFromDisk(filePath string, assetPtr any) error {
 		return fmt.Errorf("could not deserialize %s: %w", filePath, desErr)
 	}
 
-	logrus.Infof("Read %s in %s, deserialized in %s, size: %dB", filePath, tRead, tDes, len(buf))
+	logrus.Infof("Read %s in %s, deserialized in %s, decompressed in %s, size: %dB", filePath, tRead, tDes, tDecomp, len(buf))
 
 	return nil
 }
 
 // writeToDisk writes the provided assets to disk using the
 // [serialization.Serialize] function.
-func writeToDisk(filePath string, asset any) error {
+func writeToDisk(filePath string, asset any, withCompression bool) error {
 
 	f := files.MustOverwrite(filePath)
 	defer f.Close()
 
 	var (
-		buf  []byte
-		serr error
-		werr error
+		buf     []byte
+		serr    error
+		werr    error
+		compErr error
+		tComp   time.Duration
 	)
 
 	tSer := profiling.TimeIt(func() {
@@ -324,15 +379,44 @@ func writeToDisk(filePath string, asset any) error {
 		return fmt.Errorf("could not serialize %s: %w", filePath, serr)
 	}
 
+	if withCompression {
+
+		tComp = profiling.TimeIt(func() {
+
+			var (
+				b = bytes.NewBuffer(nil)
+				w = lz4.NewWriter(b)
+			)
+
+			if _, compErr = w.Write(buf); compErr != nil {
+				return
+			}
+
+			if compErr = w.Flush(); compErr != nil {
+				return
+			}
+
+			buf = b.Bytes()
+		})
+
+		if compErr != nil {
+			return fmt.Errorf("could not compress file %s: %w", filePath, compErr)
+		}
+	}
+
+	diskWriteSemaphore.Acquire(context.Background(), 1)
+
 	tW := profiling.TimeIt(func() {
 		_, werr = f.Write(buf)
 	})
+
+	diskWriteSemaphore.Release(1)
 
 	if werr != nil {
 		return fmt.Errorf("could not write to file %s: %w", filePath, werr)
 	}
 
-	logrus.Infof("Wrote %s in %s, serialized in %s, size: %dB", filePath, tW, tSer, len(buf))
+	logrus.Infof("Wrote %s in %s, serialized in %s, compressed in %s, size: %dB", filePath, tW, tSer, tComp, len(buf))
 
 	return nil
 }
