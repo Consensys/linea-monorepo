@@ -66,13 +66,17 @@ abstract class AccountManager implements IAccountManager {
     return this.selectWhaleAccount(accIndex).accountWallet;
   }
 
-  async generateAccount(initialBalanceWei = etherToWei("10")): Promise<Wallet> {
-    const accounts = await this.generateAccounts(1, initialBalanceWei);
+  async generateAccount(initialBalanceWei = etherToWei("10"), accIndex?: number): Promise<Wallet> {
+    const accounts = await this.generateAccounts(1, initialBalanceWei, accIndex);
     return accounts[0];
   }
 
-  async generateAccounts(numberOfAccounts: number, initialBalanceWei = etherToWei("10")): Promise<Wallet[]> {
-    const { account: whaleAccount, accountWallet: whaleAccountWallet } = this.selectWhaleAccount();
+  async generateAccounts(
+    numberOfAccounts: number,
+    initialBalanceWei = etherToWei("10"),
+    accIndex?: number,
+  ): Promise<Wallet[]> {
+    const { account: whaleAccount, accountWallet: whaleAccountWallet } = this.selectWhaleAccount(accIndex);
 
     this.logger.debug(
       `Generating accounts... chainId=${this.chainId} numberOfAccounts=${numberOfAccounts} whaleAccount=${whaleAccount.address}`,
@@ -106,9 +110,6 @@ abstract class AccountManager implements IAccountManager {
         maxFeePerGas = feeData.maxFeePerGas ?? ethers.parseUnits("10", "gwei");
       }
 
-      const whaleNonce = await whaleAccountWallet.getNonce("pending");
-      this.logger.info(`Nonce of whale ${await whaleAccountWallet.getAddress()}=${whaleNonce}`);
-
       const tx: TransactionRequest = {
         type: 2,
         to: newAccount.address,
@@ -116,7 +117,6 @@ abstract class AccountManager implements IAccountManager {
         maxPriorityFeePerGas,
         maxFeePerGas,
         gasLimit: 21000n,
-        nonce: whaleNonce,
       };
 
       const sendTransactionWithRetry = async (): Promise<TransactionResponse> => {
