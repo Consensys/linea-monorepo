@@ -3,6 +3,7 @@ package zkevm
 import (
 	"fmt"
 	"io"
+	"math/rand/v2"
 	"os"
 	"path"
 	"reflect"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
@@ -108,7 +110,8 @@ func NewLimitlessDebugZkEVM(cfg *config.Config) *LimitlessZkEVM {
 
 // RunDebug runs the LimitlessZkEVM on debug mode. It will run the boostrapper,
 // the segmentation and then the sanity checks for all the segments. The
-// check of the LPP module is done using "0" as a shared randomness.
+// check of the LPP module is done using a deterministic pseudo-random number
+// generator and will yield the same result every time.
 func (lz *LimitlessZkEVM) RunDebug(witness *Witness) {
 
 	runtimeBoot := wizard.RunProver(
@@ -146,11 +149,19 @@ func (lz *LimitlessZkEVM) RunDebug(witness *Witness) {
 			compiledIOP    = debugGL.Wiop
 		)
 
-		// The debugLPP is compiled with the CompileAtProverLevel routine so we
+		// The debugGLs is compiled with the CompileAtProverLevel routine so we
 		// don't need the proof to complete the sanity checks: everything is
 		// done at the prover level.
 		_ = wizard.Prove(compiledIOP, mainProverStep)
 	}
+
+	// Here, we can't we can't just use 0 or a dummy small value because there
+	// is a risk of creating false-positives with the grand-products and the
+	// horner (as if one of the term of the product cancels, the product is
+	// zero and we want to prevent that) or false negative due to inverting
+	// zeroes in the log-derivative sums.
+	rng := rand.New(utils.NewRandSource(42))
+	sharedRandomness := field.PseudoRand(rng)
 
 	for _, witness := range witnessLPPs {
 
@@ -169,6 +180,8 @@ func (lz *LimitlessZkEVM) RunDebug(witness *Witness) {
 		if debugLPP == nil {
 			utils.Panic("debugLPP not found")
 		}
+
+		witness.InitialFiatShamirState = sharedRandomness
 
 		var (
 			mainProverStep = debugLPP.GetMainProverStep(witness)
