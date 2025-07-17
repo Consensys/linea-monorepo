@@ -4,8 +4,8 @@ plugins {
 
 dependencies {
   implementation(project(":core"))
-  implementation("org.hyperledger.besu.internal:algorithms")
   implementation("org.hyperledger.besu:besu-datatypes")
-  implementation("org.hyperledger.besu.internal:core")
+  implementation("org.hyperledger.besu.internal:besu-crypto-algorithms")
+  implementation("org.hyperledger.besu.internal:besu-ethereum-core")
   implementation "io.tmio:tuweni-bytes"
 }

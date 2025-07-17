@@ -23,7 +23,7 @@ dependencies {
   implementation(project(":crypto"))
   implementation(project(":jvm-libs:extensions"))
   implementation "io.tmio:tuweni-bytes"
-  implementation "org.hyperledger.besu.internal:rlp"
   implementation "org.hyperledger.besu:besu-datatypes"
+  implementation "org.hyperledger.besu.internal:besu-ethereum-rlp"
   testImplementation(testFixtures(project(":core")))
 }

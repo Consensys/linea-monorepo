@@ -5,13 +5,13 @@ plugins {
 dependencies {
   implementation(project(":consensus"))
 
-  api "org.hyperledger.besu.internal:dsl"
-  implementation("org.hyperledger.besu.internal:core")
-  implementation("org.hyperledger.besu.internal:merge")
-  implementation("org.hyperledger.besu.internal:algorithms")
-  implementation("org.hyperledger.besu.internal:clique")
-  implementation("org.hyperledger.besu.internal:plugins-rocksdb")
-  implementation(group: 'org.hyperledger.besu.internal', name: 'core', classifier: 'test-support')
+  api "org.hyperledger.besu.internal:besu-acceptance-tests-dsl"
+  implementation("org.hyperledger.besu.internal:besu-ethereum-core")
+  implementation("org.hyperledger.besu.internal:besu-consensus-merge")
+  implementation("org.hyperledger.besu.internal:besu-crypto-algorithms")
+  implementation("org.hyperledger.besu.internal:besu-consensus-clique")
+  implementation("org.hyperledger.besu.internal:besu-plugins-rocksdb")
+  implementation(group: 'org.hyperledger.besu.internal', name: 'besu-ethereum-core', classifier: 'test-support')
 
   implementation "org.web3j:core"
   implementation 'org.assertj:assertj-core'
