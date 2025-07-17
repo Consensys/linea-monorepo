@@ -7270,14 +7270,6 @@ packages:
   fb-watchman@2.0.2:
     resolution: {integrity: sha512-p5161BqbuCaSnB8jIbzQHOlpgsPmK5rJVDfDKO91Axs5NC1uu3HRQm6wt9cd9/+GtQQIO53JdGXXoyDpTAsgYA==}
 
-  fdir@6.4.2:
-    resolution: {integrity: sha512-KnhMXsKSPZlAhp7+IjUkRZKPb4fUyccpDrdFXbi4QL1qkmFh9kVY09Yox+n4MaOb3lHZ1Tv829C3oaaXoMYPDQ==}
-    peerDependencies:
-      picomatch: ^3 || ^4
-    peerDependenciesMeta:
-      picomatch:
-        optional: true
-
   fdir@6.4.6:
     resolution: {integrity: sha512-hiFoqpyZcfNm1yc4u8oWCf9A2c4D3QjCrks3zmoVKVxpQRzmPNar1hUJcBG2RQHvEVGDN+Jm81ZheVLAQMK6+w==}
     peerDependencies:
@@ -11410,10 +11402,6 @@ packages:
   tinyexec@0.3.2:
     resolution: {integrity: sha512-KQQR9yN7R5+OSwaK0XQoj22pwHoTlgYqmUscPYoknOoWCWfj/5/ABTMRi69FrKU5ffPVh5QcFikpWJI/P1ocHA==}
 
-  tinyglobby@0.2.10:
-    resolution: {integrity: sha512-Zc+8eJlFMvgatPZTl6A9L/yht8QqdmUNtURHaKZLmKBE12hNPSrqNkUp2cs3M/UKmNVVAMFQYSjYIVHDjW5zew==}
-    engines: {node: '>=12.0.0'}
-
   tinyglobby@0.2.14:
     resolution: {integrity: sha512-tX5e7OM1HnYr2+a2C/4V0htOcSQcoSTH9KgJnVvNm5zm/cyEWKJ7j7YutsH9CxMdtOkkLFy2AHrMci9IM8IPZQ==}
     engines: {node: '>=12.0.0'}
@@ -12822,7 +12810,7 @@ snapshots:
 
   '@babel/highlight@7.25.9':
     dependencies:
-      '@babel/helper-validator-identifier': 7.25.9
+      '@babel/helper-validator-identifier': 7.27.1
       chalk: 2.4.2
       js-tokens: 4.0.0
       picocolors: 1.1.1
@@ -13601,7 +13589,7 @@ snapshots:
 
   '@babel/template@7.25.7':
     dependencies:
-      '@babel/code-frame': 7.25.7
+      '@babel/code-frame': 7.27.1
       '@babel/parser': 7.25.7
       '@babel/types': 7.25.7
 
@@ -13613,7 +13601,7 @@ snapshots:
 
   '@babel/traverse@7.25.7':
     dependencies:
-      '@babel/code-frame': 7.25.7
+      '@babel/code-frame': 7.27.1
       '@babel/generator': 7.25.7
       '@babel/parser': 7.25.7
       '@babel/template': 7.25.7
@@ -13803,7 +13791,7 @@ snapshots:
   '@depay/web3-mock-evm@14.19.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
       '@depay/web3-blockchains': 9.6.7
-      ethers: 5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+      ethers: 5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -13812,7 +13800,7 @@ snapshots:
     dependencies:
       '@depay/solana-web3.js': 1.27.0
       '@depay/web3-blockchains': 9.6.7
-      ethers: 5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+      ethers: 5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -14568,7 +14556,7 @@ snapshots:
     dependencies:
       '@ethersproject/bytes': 5.7.0
       '@ethersproject/logger': 5.7.0
-      bn.js: 5.2.1
+      bn.js: 5.2.2
 
   '@ethersproject/bignumber@5.8.0':
     dependencies:
@@ -15845,7 +15833,7 @@ snapshots:
       '@paulmillr/qr': 0.2.1
       bowser: 2.11.0
       cross-fetch: 4.0.0(encoding@0.1.13)
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1(supports-color@8.1.1)
       eciesjs: 0.4.13
       eth-rpc-errors: 4.0.3
       eventemitter2: 6.4.9
@@ -19132,7 +19120,7 @@ snapshots:
       graphemer: 1.4.0
       ignore: 5.3.2
       natural-compare: 1.4.0
-      semver: 7.6.3
+      semver: 7.7.2
       ts-api-utils: 1.3.0(typescript@5.4.5)
     optionalDependencies:
       typescript: 5.4.5
@@ -22049,7 +22037,7 @@ snapshots:
       es-define-property: 1.0.1
       es-errors: 1.3.0
       es-object-atoms: 1.1.1
-      es-set-tostringtag: 2.0.3
+      es-set-tostringtag: 2.1.0
       es-to-primitive: 1.2.1
       function.prototype.name: 1.1.6
       get-intrinsic: 1.3.0
@@ -22558,7 +22546,7 @@ snapshots:
   ethereumjs-util@7.1.5:
     dependencies:
       '@types/bn.js': 5.1.6
-      bn.js: 5.2.1
+      bn.js: 5.2.2
       create-hash: 1.2.0
       ethereum-cryptography: 0.1.3
       rlp: 2.2.7
@@ -22863,10 +22851,6 @@ snapshots:
     dependencies:
       bser: 2.1.1
 
-  fdir@6.4.2(picomatch@4.0.2):
-    optionalDependencies:
-      picomatch: 4.0.2
-
   fdir@6.4.6(picomatch@4.0.2):
     optionalDependencies:
       picomatch: 4.0.2
@@ -22995,6 +22979,10 @@ snapshots:
   follow-redirects@1.15.9(debug@4.4.0):
     optionalDependencies:
       debug: 4.4.0(supports-color@8.1.1)
+
+  follow-redirects@1.15.9(debug@4.4.1):
+    optionalDependencies:
+      debug: 4.4.1(supports-color@8.1.1)
 
   for-each@0.3.3:
     dependencies:
@@ -23509,7 +23497,7 @@ snapshots:
   hardhat@2.24.0(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))(typescript@5.4.5)(utf-8-validate@5.0.10):
     dependencies:
       '@ethereumjs/util': 9.1.0
-      '@ethersproject/abi': 5.7.0
+      '@ethersproject/abi': 5.8.0
       '@nomicfoundation/edr': 0.11.0
       '@nomicfoundation/solidity-analyzer': 0.1.2
       '@sentry/node': 5.30.0
@@ -23519,9 +23507,9 @@ snapshots:
       aggregate-error: 3.1.0
       ansi-escapes: 4.3.2
       boxen: 5.1.2
-      chokidar: 4.0.1
+      chokidar: 4.0.3
       ci-info: 2.0.0
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1(supports-color@8.1.1)
       enquirer: 2.4.1
       env-paths: 2.2.1
       ethereum-cryptography: 1.2.0
@@ -23535,20 +23523,20 @@ snapshots:
       lodash: 4.17.21
       micro-eth-signer: 0.14.0
       mnemonist: 0.38.5
-      mocha: 10.7.3
+      mocha: 10.8.2
       p-map: 4.0.0
       picocolors: 1.1.1
       raw-body: 2.5.2
       resolve: 1.17.0
       semver: 6.3.1
-      solc: 0.8.26(debug@4.4.0)
+      solc: 0.8.26(debug@4.4.1)
       source-map-support: 0.5.21
       stacktrace-parser: 0.1.10
-      tinyglobby: 0.2.10
+      tinyglobby: 0.2.14
       tsort: 0.0.1
       undici: 5.29.0
       uuid: 8.3.2
-      ws: 7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+      ws: 8.18.2(bufferutil@4.0.8)(utf-8-validate@5.0.10)
     optionalDependencies:
       ts-node: 10.9.2(@types/node@22.7.5)(typescript@5.4.5)
       typescript: 5.4.5
@@ -25364,7 +25352,7 @@ snapshots:
       ansi-colors: 4.1.3
       browser-stdout: 1.3.1
       chokidar: 3.6.0
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1(supports-color@8.1.1)
       diff: 5.2.0
       escape-string-regexp: 4.0.0
       find-up: 5.0.0
@@ -27330,11 +27318,11 @@ snapshots:
       ip-address: 9.0.5
       smart-buffer: 4.2.0
 
-  solc@0.8.26(debug@4.4.0):
+  solc@0.8.26(debug@4.4.1):
     dependencies:
       command-exists: 1.2.9
       commander: 8.3.0
-      follow-redirects: 1.15.9(debug@4.4.0)
+      follow-redirects: 1.15.9(debug@4.4.1)
       js-sha3: 0.8.0
       memorystream: 0.3.1
       semver: 5.7.2
@@ -27744,7 +27732,7 @@ snapshots:
   synckit@0.8.8:
     dependencies:
       '@pkgr/core': 0.1.1
-      tslib: 2.7.0
+      tslib: 2.8.1
 
   system-architecture@0.1.0: {}
 
@@ -27891,11 +27879,6 @@ snapshots:
   tinycolor2@1.6.0: {}
 
   tinyexec@0.3.2: {}
-
-  tinyglobby@0.2.10:
-    dependencies:
-      fdir: 6.4.2(picomatch@4.0.2)
-      picomatch: 4.0.2
 
   tinyglobby@0.2.14:
     dependencies:
@@ -28733,7 +28716,7 @@ snapshots:
 
   web3-eth-abi@1.10.4:
     dependencies:
-      '@ethersproject/abi': 5.7.0
+      '@ethersproject/abi': 5.8.0
       web3-utils: 1.10.4
 
   web3-eth-accounts@1.10.4(encoding@0.1.13):
@@ -28859,7 +28842,7 @@ snapshots:
   web3-utils@1.10.4:
     dependencies:
       '@ethereumjs/util': 8.1.0
-      bn.js: 5.2.1
+      bn.js: 5.2.2
       ethereum-bloom-filters: 1.2.0
       ethereum-cryptography: 2.2.1
       ethjs-unit: 0.1.6
