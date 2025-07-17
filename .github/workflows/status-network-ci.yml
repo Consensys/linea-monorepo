@@ -152,9 +152,7 @@ jobs:
           sudo mv solc-static-linux /usr/local/bin/solc
 
       - name: "Install Pnpm"
-        uses: "pnpm/action-setup@v2"
-        with:
-          version: "8"
+        uses: "pnpm/action-setup@v4"
 
       - name: "Install Node.js"
         uses: "actions/setup-node@v3"
