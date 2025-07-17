@@ -292,6 +292,10 @@ func (h *Horner) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 
 // Size returns the size of the columns taking part in a [HornerPart].
 func (h *HornerPart) Size() int {
+	if h.size == 0 {
+		board := h.Coefficients[0].Board()
+		h.size = column.ExprIsOnSameLengthHandles(&board)
+	}
 	return h.size
 }
 
