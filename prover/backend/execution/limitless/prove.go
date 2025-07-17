@@ -66,7 +66,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		limitlessZkEVM := zkevm.NewLimitlessDebugZkEVM(cfg)
 		limitlessZkEVM.RunDebug(witness.ZkEVM)
 		// The return of "out" is to avoid panics later on in the process.
-		return &out, nil
+		// return &out, nil
 	}
 
 	logrus.Info("Starting to run the bootstrapper")
@@ -76,10 +76,11 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	logrus.Infof("Finished running the bootstrapper, generated %d GL modules and %d LPP modules", numGL, numLPP)
 
 	var (
-		proofGLs       []recursion.Witness
-		proofLPPs      []recursion.Witness
-		lppCommitments []field.Element
-		errGroup       = &errgroup.Group{}
+		proofGLs            []recursion.Witness
+		proofLPPs           []recursion.Witness
+		lppCommitments      []field.Element
+		errGroup            = &errgroup.Group{}
+		contextGL, cancelGL = context.WithCancel(context.Background())
 	)
 
 	errGroup.SetLimit(numConcurrentSubProverJobs)
@@ -87,9 +88,40 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	for i := 0; i < numGL; i++ {
 
 		errGroup.Go(func() error {
-			proofGL, lppCommitment, err := RunGL(cfg, i)
-			if err != nil {
-				return fmt.Errorf("could not run GL prover for witness index=%v: %w", i, err)
+
+			if contextGL.Err() != nil {
+				return nil
+			}
+
+			var (
+				jobErr        error
+				proofGL       *recursion.Witness
+				lppCommitment field.Element
+			)
+
+			// RunGL may panic and therefore exit the goroutine without returning
+			// an error. Therefore it has to be wrapped in a recoverable function
+			// call so that the error handling mechanism work. If an error occur
+			// it is assigned to jobErr so that we can check it once the wrapper
+			// function returns.
+			func() {
+
+				defer func() {
+					if err := recover(); err != nil {
+						jobErr = fmt.Errorf("GL prover for witness index=%v panicked: %v", i, err)
+					}
+				}()
+
+				var err error
+				proofGL, lppCommitment, err = RunGL(cfg, i)
+				if err != nil {
+					jobErr = fmt.Errorf("could not run GL prover for witness index=%v: %w", i, err)
+				}
+			}()
+
+			if jobErr != nil {
+				cancelGL()
+				return jobErr
 			}
 
 			proofGLs = append(proofGLs, *proofGL)
@@ -98,18 +130,55 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		})
 	}
 
-	if err := errGroup.Wait(); err != nil {
+	err := errGroup.Wait()
+	// This context cancellation is here to ensure the context is wiped-out in
+	// every branches.
+	cancelGL()
+	if err != nil {
 		return nil, err
 	}
 
-	sharedRandomness := distributed.GetSharedRandomness(lppCommitments)
+	var (
+		sharedRandomness      = distributed.GetSharedRandomness(lppCommitments)
+		contextLPP, cancelLPP = context.WithCancel(context.Background())
+	)
 
 	for i := 0; i < numLPP; i++ {
 
 		errGroup.Go(func() error {
-			proofLPP, err := RunLPP(cfg, i, sharedRandomness)
-			if err != nil {
-				return fmt.Errorf("could not run LPP prover for witness index=%v: %w", i, err)
+
+			if contextLPP.Err() != nil {
+				return nil
+			}
+
+			var (
+				jobErr   error
+				proofLPP *recursion.Witness
+			)
+
+			// RunLPP may panic and therefore exit the goroutine without returning
+			// an error. Therefore it has to be wrapped in a recoverable function
+			// call so that the error handling mechanism work. If an error occur
+			// it is assigned to jobErr so that we can check it once the wrapper
+			// function returns.
+			func() {
+
+				defer func() {
+					if err := recover(); err != nil {
+						jobErr = fmt.Errorf("LPP prover for witness index=%v panicked: %v", i, err)
+					}
+				}()
+
+				var err error
+				proofLPP, err = RunLPP(cfg, i, sharedRandomness)
+				if err != nil {
+					jobErr = fmt.Errorf("could not run LPP prover for witness index=%v: %w", i, err)
+				}
+			}()
+
+			if jobErr != nil {
+				cancelLPP()
+				return fmt.Errorf("could not run LPP prover for witness index=%v: %w", i, jobErr)
 			}
 
 			proofLPPs = append(proofLPPs, *proofLPP)
@@ -117,11 +186,15 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		})
 	}
 
-	if err := errGroup.Wait(); err != nil {
+	err = errGroup.Wait()
+	// This context cancellation is here to ensure the context is wiped-out in
+	// every branches.
+	cancelLPP()
+	if err != nil {
 		return nil, err
 	}
 
-	_, err := RunConglomeration(cfg, proofGLs, proofLPPs)
+	_, err = RunConglomeration(cfg, proofGLs, proofLPPs)
 	if err != nil {
 		return nil, fmt.Errorf("could not run conglomeration prover: %w", err)
 	}
