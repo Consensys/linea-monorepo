@@ -12,9 +12,11 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.unmarshalPrivateKey
 import io.vertx.core.Vertx
 import io.vertx.micrometer.backends.BackendRegistries
+import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Clock
 import java.util.Optional
+import kotlin.io.path.exists
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.kotlin.encodeHex
@@ -53,7 +55,7 @@ import org.hyperledger.besu.plugin.services.metrics.MetricCategory
 import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 
 class MaruAppFactory {
-  val log = LogManager.getLogger(MaruAppFactory::class.java)
+  private val log = LogManager.getLogger(MaruAppFactory::class.java)
 
   fun create(
     config: MaruConfig,
@@ -81,6 +83,7 @@ class MaruAppFactory {
       )
     val besuMetricsSystem = NoOpMetricsSystem()
 
+    ensureDirectoryExists(config.persistence.dataPath)
     val beaconChain =
       KvDatabaseFactory
         .createRocksDbDatabase(
@@ -170,7 +173,7 @@ class MaruAppFactory {
   companion object {
     private val log = LogManager.getLogger(MaruApp::class.java)
 
-    fun setupFinalizationProvider(
+    private fun setupFinalizationProvider(
       config: MaruConfig,
       overridingLineaContractClient: LineaRollupSmartContractClientReadOnly?,
       vertx: Vertx,
@@ -204,7 +207,7 @@ class MaruAppFactory {
           )
         } ?: InstantFinalizationProvider
 
-    fun setupP2PNetwork(
+    private fun setupP2PNetwork(
       p2pConfig: P2P?,
       privateKey: ByteArray,
       chainId: UInt,
@@ -229,7 +232,7 @@ class MaruAppFactory {
         NoOpP2PNetwork
       }
 
-    fun getOrGeneratePrivateKey(privateKeyPath: Path): ByteArray {
+    private fun getOrGeneratePrivateKey(privateKeyPath: Path): ByteArray {
       if (!privateKeyPath
           .toFile()
           .exists()
@@ -244,5 +247,9 @@ class MaruAppFactory {
 
       return GeneratingFilePrivateKeySource(privateKeyPath.toString()).privateKeyBytes.toArray()
     }
+  }
+
+  private fun ensureDirectoryExists(path: Path) {
+    if (!path.exists()) Files.createDirectories(path)
   }
 }
