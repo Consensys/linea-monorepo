@@ -37,7 +37,6 @@ func (a CircAssignment) getWitnesses(run *wizard.ProverRuntime) []witness.Witnes
 		)
 
 		for currPos := 0; currPos < nbPublic; currPos++ {
-
 			witnessFiller <- locPubInputs[currPos]
 		}
 
