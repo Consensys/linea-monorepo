@@ -218,7 +218,7 @@ func (a AssignHornerCtx) Run(run *wizard.ProverRuntime) {
 
 		if n0+count != params.Parts[i].N1 {
 			// To update once we merge with the "code 78" branch as it means that a constraint is not satisfied.
-			utils.Panic("the counting of the 1s in the filter does not match the one in the local-opening: (%v-%v) != %v", params.Parts[i].N1, n0, count)
+			utils.Panic("the counting of the 1s in the filter does not match the one in the local-opening: (%v-%v) != %v, part=%v", params.Parts[i].N1, n0, count, part.Name)
 		}
 
 		for k := 0; k < arity; k++ {
