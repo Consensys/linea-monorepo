@@ -24,7 +24,7 @@ func addPrefixToID[T ~string](prefix string, id T) T {
 }
 
 // AddPrecomputedColumn inserts a precomputed column. The inserted column is not
-// fakes and actually features a precomputed value. The inserted column retains
+// a fake one and actually features a precomputed value. The inserted column retains
 // the same status as the original one.
 func (comp *compTranslator) AddPrecomputed(srcComp *wizard.CompiledIOP, col ifaces.Column) ifaces.Column {
 

@@ -81,7 +81,8 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	if r.withExternalHasher {
 		w.HasherFactory = &mimc.ExternalHasherFactory{Api: api}
 	}
-
+	// The below step is responsible for verifying all
+	// the verifier actions of all compilation steps.
 	w.Verify(api)
 
 	for i := range r.Pubs {

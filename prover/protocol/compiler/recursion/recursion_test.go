@@ -55,7 +55,7 @@ func TestLookup(t *testing.T) {
 				vortex.ForceNumOpenedColumns(4),
 				vortex.WithSISParams(&ringsis.StdParams),
 				vortex.PremarkAsSelfRecursed(),
-				// 		vortex.WithOptionalSISHashingThreshold(64),
+				vortex.WithOptionalSISHashingThreshold(64),
 			),
 		},
 		{

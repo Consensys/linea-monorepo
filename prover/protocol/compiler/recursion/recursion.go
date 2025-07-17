@@ -131,7 +131,7 @@ type Parameters struct {
 // DefineRecursionOf builds a recursion sub-circuit into 'comp' for verifying
 // 'inputComp' and returns the recursion context. 'inputComp' is expected to
 // be compiled with the [vortex.Compile] compiler with the options
-// [MarkAsSelfRecursed] and without the option [ReplaceByMiMC].
+// [PremarkAsSelfRecursed].
 //
 // To assign the recursion, use [Assign] and make sure the input compiled
 // IOP is run using [wizard.RunProverUntil] passing the return value of
@@ -330,7 +330,7 @@ func VortexQueryRound(comp *wizard.CompiledIOP) int {
 	return comp.QueriesParams.Round(query.QueryID)
 }
 
-// createNewPcsCtx creates a mirror for a vortex compilation context in to
+// createNewPcsCtx creates a mirror for a vortex compilation context into
 // comp. The mirror has all its commitments defined at the initial round
 // and the "vortex proof" columns are inserted starting at round 1 (after
 // vortex.alpha has been sampled).
@@ -339,10 +339,11 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 	srcVortexCtx := srcComp.PcsCtxs.(*vortex.Ctx)
 
 	if !srcVortexCtx.IsSelfrecursed {
-		utils.Panic("the input vortex ctx is expected to be selfrecursed. Please make sure the input comp has been last compiled by Vortex with the option [vortex.MarkAsSelfRecursed]")
+		utils.Panic("the input vortex ctx is expected to be selfrecursed. Please make sure the input comp has been last compiled by Vortex with the option [vortex.PremarkAsSelfRecursed]")
 	}
 
 	dstVortexCtx := &vortex.Ctx{
+		// Direct Copy
 		RunStateNamePrefix:    translator.Prefix,
 		BlowUpFactor:          srcVortexCtx.BlowUpFactor,
 		ApplySISHashThreshold: srcVortexCtx.ApplySISHashThreshold,
@@ -355,7 +356,7 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 		SisParams:             srcVortexCtx.SisParams,
 		RoundStatus:           srcVortexCtx.RoundStatus,
 
-		// Although the srcVor
+		// Copy via the translator
 		IsSelfrecursed:                            true,
 		CommitmentsByRounds:                       translator.AddColumnVecVec(srcVortexCtx.CommitmentsByRounds),
 		CommitmentsByRoundsSIS:                    translator.AddColumnVecVec(srcVortexCtx.CommitmentsByRoundsSIS),
@@ -392,8 +393,8 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 	dstVortexCtx.Items.Alpha = translator.AddCoinAtRound(srcVortexCtx.Items.Alpha, 1)
 	dstVortexCtx.Items.Ualpha = translator.AddColumnAtRound(srcVortexCtx.Items.Ualpha, false, 1)
 	dstVortexCtx.Items.Q = translator.AddCoinAtRound(srcVortexCtx.Items.Q, 2)
-	dstVortexCtx.Items.OpenedColumns = translator.AddColumnList(srcVortexCtx.Items.OpenedColumns, false, 2)
 	dstVortexCtx.Items.MerkleProofs = translator.AddColumnAtRound(srcVortexCtx.Items.MerkleProofs, false, 2)
+	dstVortexCtx.Items.OpenedColumns = translator.AddColumnList(srcVortexCtx.Items.OpenedColumns, false, 2)
 	dstVortexCtx.Items.OpenedSISColumns = translator.AddColumnList(srcVortexCtx.Items.OpenedSISColumns, false, 2)
 	dstVortexCtx.Items.OpenedNonSISColumns = translator.AddColumnList(srcVortexCtx.Items.OpenedNonSISColumns, false, 2)
 
