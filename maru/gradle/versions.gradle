@@ -150,13 +150,13 @@ dependencyManagement {
       entry 'log4j-slf4j2-impl'
     }
 
-    def besuVersion = "25.5.0"
+    def besuVersion = "25.7.0"
 
     imports {
       mavenBom "org.hyperledger.besu:bom:$besuVersion"
     }
 
-    dependency "org.hyperledger.besu.internal:plugins-rocksdb:$besuVersion"
+    dependency "org.hyperledger.besu.internal:besu-plugins-rocksdb:$besuVersion"
 
     dependency "com.michael-bull.kotlin-result:kotlin-result:1.1.16"
 

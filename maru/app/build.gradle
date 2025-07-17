@@ -40,8 +40,8 @@ dependencies {
   implementation "info.picocli:picocli"
   implementation "com.sksamuel.hoplite:hoplite-core"
 
-  implementation("org.hyperledger.besu.internal:metrics-core")
-  implementation("org.hyperledger.besu.internal:algorithms")
+  implementation("org.hyperledger.besu.internal:besu-metrics-core")
+  implementation("org.hyperledger.besu.internal:besu-crypto-algorithms")
   implementation("tech.pegasys.teku.internal:p2p")
   implementation("io.libp2p:jvm-libp2p")
 
@@ -49,14 +49,14 @@ dependencies {
   integrationTestImplementation(testFixtures(project(":core")))
   integrationTestImplementation(testFixtures(project(":config")))
   integrationTestImplementation(project(":crypto"))
-  integrationTestImplementation "org.hyperledger.besu.internal:api"
-  integrationTestImplementation(group: 'org.hyperledger.besu.internal', name: 'core', classifier: 'test-support')
-  integrationTestImplementation("org.hyperledger.besu.internal:p2p")
-  integrationTestImplementation("org.hyperledger.besu.internal:qbft-core")
+  integrationTestImplementation "org.hyperledger.besu.internal:besu-ethereum-api"
+  integrationTestImplementation(group: 'org.hyperledger.besu.internal', name: 'besu-ethereum-core', classifier: 'test-support')
+  integrationTestImplementation("org.hyperledger.besu.internal:besu-ethereum-p2p")
+  integrationTestImplementation("org.hyperledger.besu.internal:besu-consensus-qbft-core")
   integrationTestImplementation("org.hyperledger.besu:besu-datatypes")
 
-  integrationTestImplementation("org.hyperledger.besu.internal:merge")
-  integrationTestImplementation("org.hyperledger.besu.internal:plugins-rocksdb")
+  integrationTestImplementation("org.hyperledger.besu.internal:besu-consensus-merge")
+  integrationTestImplementation("org.hyperledger.besu.internal:besu-plugins-rocksdb")
   integrationTestImplementation "org.jetbrains.kotlin:kotlin-test:2.1.0"
 }
 

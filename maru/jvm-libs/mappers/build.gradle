@@ -24,11 +24,11 @@ dependencies {
   implementation "tech.pegasys.teku.internal:unsigned"
   implementation "tech.pegasys.teku.internal:bytes"
   implementation "tech.pegasys.teku.internal:executionclient"
-  implementation("org.hyperledger.besu.internal:metrics-core")
-  implementation("org.hyperledger.besu.internal:algorithms")
-  implementation("org.hyperledger.besu.internal:core")
-  implementation("org.hyperledger.besu:besu-datatypes")
+  implementation "org.hyperledger.besu.internal:besu-metrics-core"
+  implementation "org.hyperledger.besu.internal:besu-crypto-algorithms"
+  implementation "org.hyperledger.besu.internal:besu-ethereum-core"
+  implementation "org.hyperledger.besu:besu-datatypes"
+  implementation "org.hyperledger.besu:besu-plugin-api"
   implementation "io.tmio:tuweni-bytes"
-  implementation "org.hyperledger.besu:plugin-api"
   implementation "tech.pegasys.teku.internal:spec"
 }

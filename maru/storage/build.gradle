@@ -23,7 +23,7 @@ dependencies {
   implementation (project(":jvm-libs:extensions"))
   implementation "org.rocksdb:rocksdbjni"
   implementation "tech.pegasys.teku.internal:storage"
-  implementation "org.hyperledger.besu.internal:metrics-core"
-  implementation "org.hyperledger.besu:plugin-api"
+  implementation "org.hyperledger.besu.internal:besu-metrics-core"
+  implementation "org.hyperledger.besu:besu-plugin-api"
   testImplementation (testFixtures(project(":core")))
 }
