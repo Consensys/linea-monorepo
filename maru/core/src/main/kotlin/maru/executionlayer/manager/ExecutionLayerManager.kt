@@ -81,6 +81,7 @@ interface ExecutionLayerManager {
     finalizedHash: ByteArray,
     nextBlockTimestamp: Long,
     feeRecipient: ByteArray,
+    prevRandao: ByteArray = EMPTY_HASH,
   ): SafeFuture<ForkChoiceUpdatedResult>
 
   fun finishBlockBuilding(): SafeFuture<ExecutionPayload>

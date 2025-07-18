@@ -17,12 +17,14 @@ import maru.core.BeaconState
 import maru.core.Validator
 import maru.core.ext.DataGenerators
 import maru.executionlayer.manager.ExecutionLayerManager
+import org.apache.tuweni.bytes.Bytes32
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
+import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -34,6 +36,7 @@ class FollowerBeaconBlockImporterTest {
   private var blockBuilderIdentity: Validator = Validator(Random.nextBytes(20))
   private lateinit var beaconBlockImporter: BlockBuildingBeaconBlockImporter
   private lateinit var finalizationState: FinalizationState
+  private val prevRandaoProvider = { a: ULong, b: ByteArray -> Bytes32.random().toArray() }
 
   @BeforeEach
   fun setUp() {
@@ -45,6 +48,7 @@ class FollowerBeaconBlockImporterTest {
         executionLayerManager = executionLayerManager,
         finalizationStateProvider = { finalizationState },
         nextBlockTimestampProvider = { nextBlockTimestamp },
+        prevRandaoProvider = prevRandaoProvider,
         shouldBuildNextBlock = { _: BeaconState, _: ConsensusRoundIdentifier ->
           shouldBuildNextBlock
         },
@@ -66,6 +70,7 @@ class FollowerBeaconBlockImporterTest {
         finalizedHash = eq(finalizationState.finalizedBlockHash),
         nextBlockTimestamp = eq(nextBlockTimestamp),
         feeRecipient = eq(blockBuilderIdentity.address),
+        prevRandao = any(),
       ),
     ).thenReturn(expectedResponse)
 
@@ -77,6 +82,7 @@ class FollowerBeaconBlockImporterTest {
       finalizedHash = eq(finalizationState.finalizedBlockHash),
       nextBlockTimestamp = eq(nextBlockTimestamp),
       feeRecipient = eq(blockBuilderIdentity.address),
+      prevRandao = any(),
     )
   }
 
@@ -122,6 +128,7 @@ class FollowerBeaconBlockImporterTest {
         executionLayerManager = executionLayerManager,
         finalizationStateProvider = { finalizationState },
         nextBlockTimestampProvider = nextBlockTimestampProvider,
+        prevRandaoProvider = prevRandaoProvider,
         shouldBuildNextBlock = shouldBuildNextBlockPredicate,
         blockBuilderIdentity = blockBuilderIdentity,
       )

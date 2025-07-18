@@ -15,6 +15,8 @@ import maru.config.QbftOptions
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.NextBlockTimestampProvider
+import maru.consensus.PrevRandaoProvider
+import maru.consensus.PrevRandaoProviderImpl
 import maru.consensus.ProtocolFactory
 import maru.consensus.StaticValidatorProvider
 import maru.consensus.blockimport.BlockBuildingBeaconBlockImporter
@@ -39,6 +41,8 @@ import maru.consensus.validation.BeaconBlockValidatorFactoryImpl
 import maru.core.BeaconState
 import maru.core.Protocol
 import maru.core.Validator
+import maru.crypto.Hashing
+import maru.crypto.Signing
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
@@ -106,6 +110,11 @@ class QbftValidatorFactory(
         localNodeIdentity = localValidator,
         stateTransition = stateTransition,
         finalizationStateProvider = finalizationStateProvider,
+        prevRandaoProvider =
+          PrevRandaoProviderImpl(
+            signer = Signing.ULongSigner(nodeKey),
+            hasher = Hashing::keccak,
+          ),
       )
 
     val qbftBlockCreatorFactory =
@@ -115,6 +124,11 @@ class QbftValidatorFactory(
         validatorProvider = validatorProvider,
         beaconChain = beaconChain,
         finalizationStateProvider = finalizationStateProvider,
+        prevRandaoProvider =
+          PrevRandaoProviderImpl(
+            signer = Signing.ULongSigner(nodeKey),
+            hasher = Hashing::keccak,
+          ),
         blockBuilderIdentity = Validator(localAddress.toArray()),
         eagerQbftBlockCreatorConfig =
           EagerQbftBlockCreator.Config(
@@ -243,6 +257,7 @@ class QbftValidatorFactory(
     beaconChain: BeaconChain,
     stateTransition: StateTransition,
     finalizationStateProvider: FinalizationProvider,
+    prevRandaoProvider: PrevRandaoProvider<ULong>,
   ): SealedBeaconBlockImporter<ValidationResult> {
     val shouldBuildNextBlock =
       { beaconState: BeaconState, roundIdentifier: ConsensusRoundIdentifier ->
@@ -255,6 +270,7 @@ class QbftValidatorFactory(
         executionLayerManager = executionLayerManager,
         finalizationStateProvider = finalizationStateProvider,
         nextBlockTimestampProvider = nextBlockTimestampProvider,
+        prevRandaoProvider = prevRandaoProvider,
         shouldBuildNextBlock = shouldBuildNextBlock,
         blockBuilderIdentity = localNodeIdentity,
       )

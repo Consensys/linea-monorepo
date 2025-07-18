@@ -10,6 +10,7 @@ package maru.consensus.blockimport
 
 import maru.consensus.NewBlockHandler
 import maru.consensus.NextBlockTimestampProvider
+import maru.consensus.PrevRandaoProvider
 import maru.consensus.state.FinalizationProvider
 import maru.core.BeaconBlock
 import maru.core.BeaconState
@@ -80,6 +81,7 @@ class BlockBuildingBeaconBlockImporter(
   private val executionLayerManager: ExecutionLayerManager,
   private val finalizationStateProvider: FinalizationProvider,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
+  private val prevRandaoProvider: PrevRandaoProvider<ULong>,
   private val shouldBuildNextBlock: (BeaconState, ConsensusRoundIdentifier) -> Boolean,
   private val blockBuilderIdentity: Validator,
 ) : BeaconBlockImporter {
@@ -100,9 +102,10 @@ class BlockBuildingBeaconBlockImporter(
             .toLong(),
         )
       log.debug(
-        "Importing blockHeader={} with timestamp={} and starting building of next block with timestamp={}",
+        "Importing blockHeader={} with timestamp={} blockNumber={} and starting building of next block with timestamp={}",
         beaconBlockHeader,
         beaconBlock.beaconBlockBody.executionPayload.timestamp,
+        beaconBlock.beaconBlockBody.executionPayload.blockNumber,
         nextBlockTimestamp,
       )
       executionLayerManager.setHeadAndStartBlockBuilding(
@@ -111,6 +114,13 @@ class BlockBuildingBeaconBlockImporter(
         finalizedHash = finalizationState.finalizedBlockHash,
         nextBlockTimestamp = nextBlockTimestamp,
         feeRecipient = blockBuilderIdentity.address,
+        prevRandao =
+          prevRandaoProvider.calculateNextPrevRandao(
+            signee =
+              beaconBlock.beaconBlockBody.executionPayload.blockNumber
+                .inc(),
+            prevRandao = beaconBlock.beaconBlockBody.executionPayload.prevRandao,
+          ),
       )
     } else {
       log.debug("Importing blockHeader={}", beaconBlockHeader)

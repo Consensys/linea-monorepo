@@ -14,6 +14,7 @@ import maru.core.Validator
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
+import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
 import org.junit.jupiter.api.Test
@@ -28,6 +29,7 @@ class QbftBlockCreatorFactoryTest {
   private val finalizationState = Mockito.mock(FinalizationState::class.java)
   private val blockBuilderIdentity = Mockito.mock(Validator::class.java)
   private val eagerQbftBlockCreatorConfig = Mockito.mock(EagerQbftBlockCreator.Config::class.java)
+  private val prevRandaoProvider = { a: ULong, b: ByteArray -> Bytes32.random().toArray() }
 
   @Test
   fun `uses eager block creator for first block`() {
@@ -42,6 +44,7 @@ class QbftBlockCreatorFactoryTest {
         validatorProvider = validatorProvider,
         beaconChain = beaconChain,
         finalizationStateProvider = { (_) -> finalizationState },
+        prevRandaoProvider = prevRandaoProvider,
         blockBuilderIdentity = blockBuilderIdentity,
         eagerQbftBlockCreatorConfig = eagerQbftBlockCreatorConfig,
       )
@@ -63,6 +66,7 @@ class QbftBlockCreatorFactoryTest {
         validatorProvider = validatorProvider,
         beaconChain = beaconChain,
         finalizationStateProvider = { (_) -> finalizationState },
+        prevRandaoProvider = prevRandaoProvider,
         blockBuilderIdentity = blockBuilderIdentity,
         eagerQbftBlockCreatorConfig = eagerQbftBlockCreatorConfig,
       )
@@ -84,6 +88,7 @@ class QbftBlockCreatorFactoryTest {
         validatorProvider = validatorProvider,
         beaconChain = beaconChain,
         finalizationStateProvider = { (_) -> finalizationState },
+        prevRandaoProvider = prevRandaoProvider,
         blockBuilderIdentity = blockBuilderIdentity,
         eagerQbftBlockCreatorConfig = eagerQbftBlockCreatorConfig,
       )
