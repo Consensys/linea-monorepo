@@ -9,6 +9,7 @@
 package maru.serialization
 
 import java.nio.ByteBuffer
+import maru.config.consensus.delegated.ElDelegatedConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkId
 import maru.consensus.ForkSpec
@@ -29,6 +30,8 @@ object ForkIdSerializers {
     }
   }
 
+  const val EL_DELEGATED_CONFIG_MARKER = 0xDE.toByte()
+
   object ForkSpecSerializer : Serializer<ForkSpec> {
     override fun serialize(value: ForkSpec): ByteArray =
       when (value.configuration) {
@@ -40,6 +43,15 @@ object ForkIdSerializers {
             .putInt(value.blockTimeSeconds)
             .putLong(value.timestampSeconds)
             .put(serializedConsensusConfig)
+            .array()
+        }
+
+        is ElDelegatedConfig -> {
+          ByteBuffer
+            .allocate(4 + 8 + 1)
+            .putInt(value.blockTimeSeconds)
+            .putLong(value.timestampSeconds)
+            .put(EL_DELEGATED_CONFIG_MARKER)
             .array()
         }
 

@@ -168,4 +168,14 @@ class DefaultMaruPeerTest {
 
     verify(delegatePeer).adjustReputation(adjustment)
   }
+
+  @Test
+  fun `sendStatus returns failed future when exception is thrown`() {
+    whenever(statusMessageFactory.createStatusMessage()).thenThrow(RuntimeException("fail"))
+
+    val future = maruPeer.sendStatus()
+    assertThat(future).isNotNull()
+    assertThat(future.isDone).isTrue()
+    assertThat(future.isCompletedExceptionally).isTrue()
+  }
 }

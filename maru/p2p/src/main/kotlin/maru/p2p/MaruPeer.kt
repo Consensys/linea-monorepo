@@ -14,6 +14,8 @@ import maru.p2p.messages.BeaconBlocksByRangeRequest
 import maru.p2p.messages.BeaconBlocksByRangeResponse
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusMessageFactory
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.network.PeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
@@ -60,15 +62,21 @@ class DefaultMaruPeer(
   private val rpcMethods: RpcMethods,
   private val statusMessageFactory: StatusMessageFactory,
 ) : MaruPeer {
+  private val log: Logger = LogManager.getLogger(this::javaClass)
   private val status = AtomicReference<Status?>(null)
 
   override fun getStatus(): Status? = status.get()
 
   override fun sendStatus(): SafeFuture<Status> {
-    val statusMessage = statusMessageFactory.createStatusMessage()
-    val sendRpcMessage: SafeFuture<Message<Status, RpcMessageType>> =
-      sendRpcMessage(statusMessage, rpcMethods.status())
-    return sendRpcMessage.thenApply { message -> message.payload }
+    try {
+      val statusMessage = statusMessageFactory.createStatusMessage()
+      val sendRpcMessage: SafeFuture<Message<Status, RpcMessageType>> =
+        sendRpcMessage(statusMessage, rpcMethods.status())
+      return sendRpcMessage.thenApply { message -> message.payload }
+    } catch (e: Exception) {
+      log.error("Failed to send status message to peer ${delegatePeer.id}", e)
+      return SafeFuture.failedFuture(e)
+    }
   }
 
   override fun updateStatus(status: Status) {
