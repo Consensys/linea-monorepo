@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 
 	"github.com/stretchr/testify/require"
 
@@ -46,6 +47,7 @@ func TestSingleBlockBlobE2E(t *testing.T) {
 		ExecutionMaxNbMsg:  1,
 		L2MsgMerkleDepth:   5,
 		L2MsgMaxNbMerkle:   1,
+		MockKeccakWizard:   true,
 	}
 	compiled, err := pi_interconnection.Compile(cfg, dummy.Compile)
 	assert.NoError(t, err)
@@ -101,6 +103,17 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 		InitialStateRootHash:         stateRootHashes[1],
 		InitialBlockNumber:           6,
 	}}
+	invalReq := []public_input.Invalidity{{
+		TxHash:        internal.Uint64To32Bytes(2),
+		StateRootHash: stateRootHashes[2],
+		BlockHeight:   11,
+		FromAddress:   types.DummyAddress(32),
+	}, {
+		TxHash:        internal.Uint64To32Bytes(2),
+		StateRootHash: stateRootHashes[2],
+		BlockHeight:   11,
+		FromAddress:   types.DummyAddress(32),
+	}}
 
 	blobReq := blobsubmission.Request{
 		Eip4844Enabled:      true,
@@ -118,6 +131,7 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 	req := pi_interconnection.Request{
 		Decompressions: []blobsubmission.Response{*blobResp},
 		Executions:     execReq,
+		Invalidity:     invalReq,
 		Aggregation: public_input.Aggregation{
 			FinalShnarf:                             blobResp.ExpectedShnarf,
 			ParentAggregationFinalShnarf:            blobReq.PrevShnarf,
