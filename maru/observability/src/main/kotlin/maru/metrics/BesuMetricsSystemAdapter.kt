@@ -34,6 +34,8 @@ class BesuMetricsSystemAdapter(
   private val logger = LogManager.getLogger(BesuMetricsSystemAdapter::class.java)
   private val noOpMetricsSystem = NoOpMetricsSystem()
 
+  private fun String.toValidMicrometerName(): String = this.lowercase().replace('_', '.')
+
   override fun createLabelledCounter(
     category: BesuMetricCategory,
     name: String,
@@ -43,9 +45,9 @@ class BesuMetricsSystemAdapter(
     LabelledCounterAdapter(
       metricsFacade = metricsFacade,
       lineaMetricsCategory = BesuMetricsCategoryAdapter.toLineaMetricsCategory(category),
-      name = name,
+      name = name.toValidMicrometerName(),
       description = help,
-      labelNames = labelNames.toList(),
+      labelNames = labelNames.map { it.toValidMicrometerName() }.toList(),
     )
 
   override fun createLabelledSuppliedCounter(
@@ -57,9 +59,9 @@ class BesuMetricsSystemAdapter(
     LabelledSuppliedCounterAdapter(
       metricsFacade = metricsFacade,
       lineaMetricsCategory = BesuMetricsCategoryAdapter.toLineaMetricsCategory(category),
-      name = name,
+      name = name.toValidMicrometerName(),
       description = help,
-      labelNames = labelNames.toList(),
+      labelNames = labelNames.map { it.toValidMicrometerName() }.toList(),
       vertx = vertx,
     )
 
@@ -72,9 +74,9 @@ class BesuMetricsSystemAdapter(
     LabelledSuppliedGaugeAdapter(
       metricsFacade = metricsFacade,
       lineaMetricsCategory = BesuMetricsCategoryAdapter.toLineaMetricsCategory(category),
-      name = name,
+      name = name.toValidMicrometerName(),
       description = help,
-      labelNames = labelNames.toList(),
+      labelNames = labelNames.map { it.toValidMicrometerName() }.toList(),
     )
 
   override fun createLabelledTimer(
@@ -86,8 +88,8 @@ class BesuMetricsSystemAdapter(
     LabelledTimerAdapter(
       metricsFacade = metricsFacade,
       lineaMetricsCategory = BesuMetricsCategoryAdapter.toLineaMetricsCategory(category),
-      labelNames = labelNames.toList(),
-      name = name,
+      name = name.toValidMicrometerName(),
+      labelNames = labelNames.map { it.toValidMicrometerName() }.toList(),
       description = help,
     )
 
@@ -99,9 +101,9 @@ class BesuMetricsSystemAdapter(
   ): LabelledMetric<OperationTimer> =
     createLabelledTimer(
       category = category,
-      name = name,
+      name = name.toValidMicrometerName(),
       help = help,
-      labelNames = labelNames,
+      labelNames = labelNames.map { it.toValidMicrometerName() }.toTypedArray(),
     )
 
   override fun createLabelledHistogram(
@@ -114,9 +116,9 @@ class BesuMetricsSystemAdapter(
     LabelledHistogramAdapter(
       metricsFacade = metricsFacade,
       lineaMetricsCategory = BesuMetricsCategoryAdapter.toLineaMetricsCategory(category),
-      name = name,
+      name = name.toValidMicrometerName(),
       description = help,
-      labelNames = labelNames.toList(),
+      labelNames = labelNames.map { it.toValidMicrometerName() }.toList(),
     )
 
   override fun createLabelledSuppliedSummary(
@@ -128,9 +130,9 @@ class BesuMetricsSystemAdapter(
     LabelledSuppliedSummaryAdapter(
       metricsFacade = metricsFacade,
       lineaMetricsCategory = BesuMetricsCategoryAdapter.toLineaMetricsCategory(category),
-      name = name,
+      name = name.toValidMicrometerName(),
       description = help,
-      labelNames = labelNames.toList(),
+      labelNames = labelNames.map { it.toValidMicrometerName() }.toList(),
       vertx = vertx,
     )
 
@@ -142,7 +144,7 @@ class BesuMetricsSystemAdapter(
     logger.warn("Guava cache collector is not supported in Maru metrics system. Category: $category, Name: $name")
     noOpMetricsSystem.createGuavaCacheCollector(
       category,
-      name,
+      name.toValidMicrometerName(),
       cache,
     )
   }
