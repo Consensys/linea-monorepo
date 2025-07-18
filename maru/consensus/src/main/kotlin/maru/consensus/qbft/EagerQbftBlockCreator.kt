@@ -72,8 +72,10 @@ class EagerQbftBlockCreator(
           feeRecipient = blockBuilderIdentity.address,
           prevRandao =
             prevRandaoProvider.calculateNextPrevRandao(
-              signee = parentBeaconBlockBody.executionPayload.blockNumber.inc(),
-              prevRandao = parentBeaconBlockBody.executionPayload.prevRandao,
+              signee =
+                parentBeaconBlock.beaconBlockBody.executionPayload.blockNumber
+                  .inc(),
+              prevRandao = parentBeaconBlock.beaconBlockBody.executionPayload.prevRandao,
             ),
         ).get()
     log.debug(
