@@ -1,6 +1,7 @@
 package distributed
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"sort"
@@ -76,6 +77,34 @@ type QueryBasedModule struct {
 	NbSegmentCacheMutex *sync.Mutex
 	Predivision         int
 	HasPrecomputed      bool
+}
+
+// QueryBasedAssignmentStatsRecord is a record of one assignment of one query
+// based module it features information about the padding, the number of
+// assigned rows and the number of columns and the name of the first and the
+// last column in alphabetical order.
+type QueryBasedAssignmentStatsRecord struct {
+	ModuleName               ModuleName
+	SegmentSize              int
+	OriginalSize             int
+	NbConstraintsOfPlonkCirc int
+	NbInstancesOfPlonkCirc   int
+	NbInstancesOfPlonkQuery  int
+	NbPrecomputed            int
+	NbColumns                int
+	NbPragmaLeftPadded       int
+	NbPragmaRightPadded      int
+	NbPragmaFullColumn       int
+	NbAssignedLeftPadded     int
+	NbAssignedRightPadded    int
+	NbAssignedFullColumn     int
+	NbAssignedConstantColumn int
+	NbActiveRows             int
+	FirstColumnAlphabetical  ifaces.ColID
+	LastColumnAlphabetical   ifaces.ColID
+	LastLeftPadded           ifaces.ColID
+	LastRightPadded          ifaces.ColID
+	err                      error
 }
 
 // NewQueryBasedDiscoverer initializes a new Discoverer.
@@ -639,30 +668,91 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 	mod.NbSegmentCacheMutex.Unlock()
 
 	var (
-		resMaxDensity     = 0
-		size              int
-		areAnyNonRegular  = false
-		areAnyLeftPadded  = false
-		areAnyRightPadded = false
-		areAnyFull        = false
-		lastLeftPadded    column.Natural
-		lastRightPadded   column.Natural
-		firstColumn       column.Natural
+		resMaxDensity = 0
+		stats         = mod.RecordAssignmentStats(run)
 	)
 
-	for colID := range mod.Ds.Iter() {
+	if stats.err != nil {
+		panic(stats.err)
+	}
+
+	if stats.NbAssignedLeftPadded+stats.NbAssignedRightPadded+stats.NbAssignedConstantColumn == 0 || stats.NbAssignedFullColumn == stats.NbColumns {
+		start, stop := 0, stats.OriginalSize
+		mod.NbSegmentCacheMutex.Lock()
+		defer mod.NbSegmentCacheMutex.Unlock()
+		mod.NbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
+		return start, stop
+	}
+
+	if stats.NbActiveRows == 0 {
+		start, stop := 0, 0
+		mod.NbSegmentCacheMutex.Lock()
+		defer mod.NbSegmentCacheMutex.Unlock()
+		mod.NbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
+		return start, stop
+	}
+
+	if stats.NbAssignedLeftPadded > 0 && stats.NbAssignedRightPadded > 0 {
+		utils.Panic("there should not be both left and right padded columns, stats: %v, lastLeft=%v, lastRight=%v", stats, stats.LastLeftPadded, stats.LastRightPadded)
+	}
+
+	var (
+		localNbSegment     = utils.DivCeil(resMaxDensity, segmentSize)
+		totalSegmentedArea = segmentSize * localNbSegment
+	)
+
+	if stats.NbAssignedRightPadded > 0 {
+		start, stop := 0, totalSegmentedArea
+		mod.NbSegmentCacheMutex.Lock()
+		defer mod.NbSegmentCacheMutex.Unlock()
+		mod.NbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
+		return start, stop
+	}
+
+	if stats.NbAssignedLeftPadded > 0 {
+		start, stop := stats.OriginalSize-totalSegmentedArea, stats.OriginalSize
+		mod.NbSegmentCacheMutex.Lock()
+		defer mod.NbSegmentCacheMutex.Unlock()
+		mod.NbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
+		return start, stop
+	}
+
+	panic("unreachable")
+}
+
+func (mod *QueryBasedModule) RecordAssignmentStats(run *wizard.ProverRuntime) QueryBasedAssignmentStatsRecord {
+
+	var (
+		colIDs = utils.SortedKeysOf(mod.Ds.Parent, func(a, b ifaces.ColID) bool { return a < b })
+		res    = QueryBasedAssignmentStatsRecord{
+			ModuleName:               mod.ModuleName,
+			SegmentSize:              mod.Size,
+			NbConstraintsOfPlonkCirc: mod.NbConstraintsOfPlonkCirc,
+			NbInstancesOfPlonkCirc:   mod.NbInstancesOfPlonkCirc,
+			NbInstancesOfPlonkQuery:  mod.NbInstancesOfPlonkQuery,
+			FirstColumnAlphabetical:  colIDs[0],
+			LastColumnAlphabetical:   colIDs[len(colIDs)-1],
+			NbColumns:                len(colIDs),
+		}
+		size        int
+		firstColumn column.Natural
+	)
+
+	for _, colID := range colIDs {
 
 		col := run.Spec.Columns.GetHandle(colID).(column.Natural)
 
 		if size == 0 {
 			size = col.Size()
 			firstColumn = col
+			res.OriginalSize = size
 		}
 
 		// This should not happen for a well-formed module, query-based modules
 		// are expected to contain the same size for all columns.
 		if size != col.Size() {
-			utils.Panic("all columns must have the same size, first=%v col=%v", firstColumn.ID, col.ID)
+			res.err = errors.Join(res.err, fmt.Errorf("columns must have the same size, first=%v col=%v, sizeFirst=%v sizeCol=%v", firstColumn.ID, col.ID, size, col.Size()))
+			continue
 		}
 
 		// As the function is meant to be called **during** the bootstrapping
@@ -683,93 +773,84 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 			hasRightPaddedPragma = pragmas.IsRightPadded(col)
 		)
 
-		if hasFullColumnPragma {
-			areAnyFull = true
-			resMaxDensity = density
-			break
+		switch {
+
+		case hasFullColumnPragma:
+
+			res.NbPragmaFullColumn++
+			// This sets the nb active row to the maximal possible size for the
+			// module.
+			res.NbActiveRows = col.Size()
+
+		case hasLeftPaddedPragma:
+
+			// The user might provide non-left padded columns to the module but
+			// then the wizard package is responsible for restructuring the
+			// column so that it has the right shape within the assignment.
+			if !isLeftPadded && density > 0 {
+				res.err = errors.Join(res.err, fmt.Errorf("a left padded column must be left padded, col=%v", colID))
+				continue
+			}
+
+			res.NbPragmaLeftPadded++
+			res.LastLeftPadded = colID
+
+		case hasRightPaddedPragma:
+
+			// The user might provde non-right padded columns to the module but
+			// then the wizard package is responsible for restructuring the
+			// column so that it has the right shape within the assignment.
+			if !isRightPadded && density > 0 {
+				res.err = errors.Join(fmt.Errorf("a right padded column must be right padded, col=%v", colID))
+				continue
+			}
+
+			res.NbPragmaRightPadded++
+			res.LastRightPadded = colID
 		}
 
-		if hasLeftPaddedPragma {
-			areAnyLeftPadded = true
-			lastLeftPadded = col
-		}
+		switch {
 
-		if hasRightPaddedPragma {
-			areAnyRightPadded = true
-			lastRightPadded = col
-		}
+		// This case must be checked first because, the values of isLeftPadded
+		// and isRightPadded are meaningless in that situation.
+		case density == 0:
 
-		if isRightPadded && isLeftPadded {
+			res.NbAssignedConstantColumn++
+
+		// This indicates that the column is assigned to a [Regular] vector,
+		// most of the time, this indicates a sub-optimal assignment but this
+		// is not a relevant indication for deducing the number of active row
+		// and the padding direction of the module (unless the pragma is
+		// activated).
+		case isRightPadded && isLeftPadded:
+
+			res.NbAssignedFullColumn++
+			// this avoid using the density to evaluate the density of the
+			// module
 			continue
-		} else {
-			areAnyNonRegular = true
+
+		case isRightPadded:
+
+			res.NbAssignedRightPadded++
+			res.LastRightPadded = colID
+
+		case isLeftPadded:
+
+			res.NbAssignedLeftPadded++
+			res.LastLeftPadded = colID
+
+		case !isRightPadded && !isLeftPadded && density > 0:
+
+			res.err = errors.Join(fmt.Errorf("column is neither left nor right padded, col=%v", colID))
+			continue
 		}
 
-		// It is important to exclude constant column from toggling up the
-		// areAnyLeftPadded flag. Otherwise, the panic condition stating that
-		// there should not be both left and right padded columns will be
-		// activated when we mix right-padded with a constant column.
-		if isRightPadded && density > 0 {
-			areAnyRightPadded = true
-			lastRightPadded = col
-		}
-
-		if isLeftPadded {
-			areAnyLeftPadded = true
-			lastLeftPadded = col
-		}
-
-		if !isRightPadded && !isLeftPadded {
-			utils.Panic("column is neither left nor right padded, col=%v", colID)
-		}
-
-		if density > resMaxDensity {
-			resMaxDensity = density
+		if density > res.NbActiveRows {
+			res.NbActiveRows = density
 		}
 	}
 
-	if !areAnyNonRegular || areAnyFull {
-		start, stop := 0, size
-		mod.NbSegmentCacheMutex.Lock()
-		defer mod.NbSegmentCacheMutex.Unlock()
-		mod.NbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
-		return start, stop
-	}
-
-	if resMaxDensity == 0 {
-		start, stop := 0, 0
-		mod.NbSegmentCacheMutex.Lock()
-		defer mod.NbSegmentCacheMutex.Unlock()
-		mod.NbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
-		return start, stop
-	}
-
-	if areAnyLeftPadded && areAnyRightPadded {
-		utils.Panic("the module cannot contain at the same time left and right padded columns, oneLeftPadded=%v, oneRightPadded=%v", lastLeftPadded.ID, lastRightPadded.ID)
-	}
-
-	var (
-		localNbSegment     = utils.DivCeil(resMaxDensity, segmentSize)
-		totalSegmentedArea = segmentSize * localNbSegment
-	)
-
-	if areAnyRightPadded {
-		start, stop := 0, totalSegmentedArea
-		mod.NbSegmentCacheMutex.Lock()
-		defer mod.NbSegmentCacheMutex.Unlock()
-		mod.NbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
-		return start, stop
-	}
-
-	if areAnyLeftPadded {
-		start, stop := size-totalSegmentedArea, size
-		mod.NbSegmentCacheMutex.Lock()
-		defer mod.NbSegmentCacheMutex.Unlock()
-		mod.NbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
-		return start, stop
-	}
-
-	panic("unreachable")
+	return res
 }
 
 // Nilify a module. It empties its maps and sets its size to 0.
