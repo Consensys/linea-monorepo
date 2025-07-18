@@ -18,22 +18,22 @@ type Limits struct {
 	// Miller loop which is done in the final exponentiation part.
 	NbMillerLoopInputInstances int
 	// Number of Miller loop circuits
-	NbMillerLoopCircuits int
+	NbMillerLoopCircuitInstances int
 
 	// Number of inputs per final exponentiation circuits
 	NbFinalExpInputInstances int
 	// Number of final exponentiation circuits
-	NbFinalExpCircuits int
+	NbFinalExpCircuitInstances int
 
 	// Number of inputs per G1 subgroup membership circuits
 	NbG1MembershipInputInstances int
 	// Number of G1 subgroup membership circuits
-	NbG1MembershipCircuits int
+	NbG1MembershipCircuitInstances int
 
 	// Number of inputs per G2 subgroup membership circuits
 	NbG2MembershipInputInstances int
 	// Number of G2 subgroup membership circuits
-	NbG2MembershipCircuits int
+	NbG2MembershipCircuitInstances int
 
 	NbG1MapToInputInstances   int
 	NbG1MapToCircuitInstances int
@@ -66,6 +66,17 @@ func (l *Limits) sizeMulIntegration(g group) int {
 		return utils.NextPowerOfTwo(l.NbG2MulInputInstances*nbRowsPerG2Mul) * utils.NextPowerOfTwo(l.NbG2MulCircuitInstances)
 	default:
 		panic("unknown group for bls mul integration size")
+	}
+}
+
+func (l *Limits) sizeMulUnalignedIntegration(g group) int {
+	switch g {
+	case G1:
+		return utils.NextPowerOfTwo(l.NbG1MulInputInstances) * utils.NextPowerOfTwo(l.NbG1MulCircuitInstances)
+	case G2:
+		return utils.NextPowerOfTwo(l.NbG2MulInputInstances) * utils.NextPowerOfTwo(l.NbG2MulCircuitInstances)
+	default:
+		panic("unknown group for bls mul unaligned integration size")
 	}
 }
 
@@ -102,18 +113,29 @@ func (l *Limits) nbCurveMembershipCircuitInstances(g group) int {
 	}
 }
 
+func (l *Limits) nbGroupMembershipCircuitInstances(g group) int {
+	switch g {
+	case G1:
+		return l.NbG1MembershipCircuitInstances
+	case G2:
+		return l.NbG2MembershipCircuitInstances
+	default:
+		panic("unknown group for bls group membership instances")
+	}
+}
+
 func (l *Limits) nbMillerLoops() int {
-	return l.NbMillerLoopInputInstances * l.NbMillerLoopCircuits
+	return l.NbMillerLoopInputInstances * l.NbMillerLoopCircuitInstances
 }
 
 func (l *Limits) nbFinalExps() int {
-	return l.NbFinalExpInputInstances * l.NbFinalExpCircuits
+	return l.NbFinalExpInputInstances * l.NbFinalExpCircuitInstances
 }
 
 func (l *Limits) nbG1MembershipChecks() int {
-	return l.NbG1MembershipInputInstances * l.NbG1MembershipCircuits
+	return l.NbG1MembershipInputInstances * l.NbG1MembershipCircuitInstances
 }
 
 func (l *Limits) nbG2MembershipChecks() int {
-	return l.NbG2MembershipInputInstances * l.NbG2MembershipCircuits
+	return l.NbG2MembershipInputInstances * l.NbG2MembershipCircuitInstances
 }

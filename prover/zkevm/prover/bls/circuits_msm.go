@@ -15,10 +15,10 @@ const (
 )
 
 type mulInstance[C convertable[T], T element] struct {
-	CurrentAccumulator C                  `gnark:",public"`
-	Scalar             sw_bls12381.Scalar `gnark:",public"`
-	Point              C                  `gnark:",public"`
-	NextAccumulator    C                  `gnark:",public"`
+	CurrentAccumulator C                   `gnark:",public"`
+	Scalar             scalarElementWizard `gnark:",public"`
+	Point              C                   `gnark:",public"`
+	NextAccumulator    C                   `gnark:",public"`
 }
 
 type multiMulCircuit[C convertable[T], T element] struct {
@@ -26,29 +26,33 @@ type multiMulCircuit[C convertable[T], T element] struct {
 }
 
 func (c *multiMulCircuit[C, T]) Define(api frontend.API) error {
-	f, err := emulated.NewField[sw_bls12381.BaseField](api)
+	fp, err := emulated.NewField[sw_bls12381.BaseField](api)
 	if err != nil {
 		return fmt.Errorf("new field: %w", err)
+	}
+	fr, err := emulated.NewField[sw_bls12381.ScalarField](api)
+	if err != nil {
+		return fmt.Errorf("new scalar field: %w", err)
 	}
 	nbInstances := len(c.Instances)
 	switch vv := any(c.Instances).(type) {
 	case []mulInstance[g1ElementWizard, sw_bls12381.G1Affine]:
 		for i := range nbInstances {
-			tCurrent := vv[i].CurrentAccumulator.ToElement(api, f)
-			tScalar := &c.Instances[i].Scalar
-			tPoint := vv[i].Point.ToElement(api, f)
-			tNext := vv[i].NextAccumulator.ToElement(api, f)
-			if err := evmprecompiles.ECG1ScalarMulSumBLS(api, &tCurrent, &tPoint, tScalar, &tNext); err != nil {
+			tCurrent := vv[i].CurrentAccumulator.ToElement(api, fp)
+			tScalar := c.Instances[i].Scalar.ToElement(api, fr)
+			tPoint := vv[i].Point.ToElement(api, fp)
+			tNext := vv[i].NextAccumulator.ToElement(api, fp)
+			if err := evmprecompiles.ECG1ScalarMulSumBLS(api, &tCurrent, &tPoint, &tScalar, &tNext); err != nil {
 				return fmt.Errorf("instance %d scalar mul sum: %w", i, err)
 			}
 		}
 	case []mulInstance[g2ElementWizard, sw_bls12381.G2Affine]:
 		for i := range nbInstances {
-			tCurrent := vv[i].CurrentAccumulator.ToElement(api, f)
-			tScalar := &c.Instances[i].Scalar
-			tPoint := vv[i].Point.ToElement(api, f)
-			tNext := vv[i].NextAccumulator.ToElement(api, f)
-			if err := evmprecompiles.ECG2ScalarMulSumBLS(api, &tCurrent, &tPoint, tScalar, &tNext); err != nil {
+			tCurrent := vv[i].CurrentAccumulator.ToElement(api, fp)
+			tScalar := c.Instances[i].Scalar.ToElement(api, fr)
+			tPoint := vv[i].Point.ToElement(api, fp)
+			tNext := vv[i].NextAccumulator.ToElement(api, fp)
+			if err := evmprecompiles.ECG2ScalarMulSumBLS(api, &tCurrent, &tPoint, &tScalar, &tNext); err != nil {
 				return fmt.Errorf("instance %d scalar mul sum: %w", i, err)
 			}
 		}

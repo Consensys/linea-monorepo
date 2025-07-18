@@ -23,6 +23,17 @@ const (
 	nbGtLimbs = 12 * nbFpLimbs // representation according to gnark - we don't use Gt in arithmetization, only in glue for accumulation
 )
 
+func nbLimbs(g group) int {
+	switch g {
+	case G1:
+		return nbG1Limbs
+	case G2:
+		return nbG2Limbs
+	default:
+		panic("unknown group for bls nbLimbs")
+	}
+}
+
 var fpParams sw_bls12381.BaseField
 
 type scalarElementWizard struct {
@@ -30,10 +41,10 @@ type scalarElementWizard struct {
 }
 
 func (c scalarElementWizard) ToElement(api frontend.API, fr *emulated.Field[sw_bls12381.ScalarField]) sw_bls12381.Scalar {
-	// gnark represents the BLS12-381 Fp element on 2 limbs of 128 bits.
-	// Arithmetization uses 2 limbs of 128 bits, but the MSB limb is always 0.
+	// gnark represents the BLS12-381 Fr element on 4 limbs of 64 bits.
 	Slimbs := make([]frontend.Variable, fpParams.NbLimbs())
-	Slimbs[len(Slimbs)-2], Slimbs[len(Slimbs)-1] = bitslice.Partition(api, c.S[1], 64, bitslice.WithNbDigits(128))
+	Slimbs[3], Slimbs[2] = bitslice.Partition(api, c.S[0], 64, bitslice.WithNbDigits(128))
+	Slimbs[1], Slimbs[0] = bitslice.Partition(api, c.S[1], 64, bitslice.WithNbDigits(128))
 	return *fr.NewElement(Slimbs)
 }
 
