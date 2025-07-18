@@ -668,15 +668,17 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 	mod.NbSegmentCacheMutex.Unlock()
 
 	var (
-		resMaxDensity = 0
-		stats         = mod.RecordAssignmentStats(run)
+		stats = mod.RecordAssignmentStats(run)
 	)
 
 	if stats.err != nil {
 		panic(stats.err)
 	}
 
-	if stats.NbAssignedLeftPadded+stats.NbAssignedRightPadded+stats.NbAssignedConstantColumn == 0 || stats.NbAssignedFullColumn == stats.NbColumns {
+	if stats.NbAssignedLeftPadded+stats.NbAssignedRightPadded+stats.NbAssignedConstantColumn == 0 ||
+		stats.NbAssignedFullColumn == stats.NbColumns ||
+		stats.NbPragmaFullColumn > 0 {
+
 		start, stop := 0, stats.OriginalSize
 		mod.NbSegmentCacheMutex.Lock()
 		defer mod.NbSegmentCacheMutex.Unlock()
@@ -697,7 +699,7 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 	}
 
 	var (
-		localNbSegment     = utils.DivCeil(resMaxDensity, segmentSize)
+		localNbSegment     = utils.DivCeil(stats.NbActiveRows, segmentSize)
 		totalSegmentedArea = segmentSize * localNbSegment
 	)
 
@@ -717,7 +719,8 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		return start, stop
 	}
 
-	panic("unreachable")
+	utils.Panic("unreachable: stats: %++v\n", stats)
+	return 0, 0 // unreachable return
 }
 
 func (mod *QueryBasedModule) RecordAssignmentStats(run *wizard.ProverRuntime) QueryBasedAssignmentStatsRecord {
@@ -760,6 +763,10 @@ func (mod *QueryBasedModule) RecordAssignmentStats(run *wizard.ProverRuntime) Qu
 		// point. This is for instance the case with the lookup "M" columns.
 		if !run.HasColumn(colID) {
 			continue
+		}
+
+		if run.Spec.Precomputed.Exists(colID) {
+			res.NbPrecomputed++
 		}
 
 		var (
