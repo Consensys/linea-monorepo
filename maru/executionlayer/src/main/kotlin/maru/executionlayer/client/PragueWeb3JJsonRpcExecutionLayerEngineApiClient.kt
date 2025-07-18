@@ -95,6 +95,9 @@ class PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
       web3jEngineClient.forkChoiceUpdatedV3(forkChoiceState, Optional.ofNullable(payloadAttributes?.toV3())),
     )
 
+  override fun getLatestBlockHash(): SafeFuture<ByteArray> =
+    web3jEngineClient.powChainHead.thenApply { powBlock -> powBlock.blockHash.toArray() }
+
   private fun PayloadAttributesV1.toV3(): PayloadAttributesV3 =
     PayloadAttributesV3(
       this.timestamp,

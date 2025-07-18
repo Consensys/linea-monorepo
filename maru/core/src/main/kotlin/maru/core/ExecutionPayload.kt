@@ -70,3 +70,21 @@ data class ExecutionPayload(
     return result
   }
 }
+
+val GENESIS_EXECUTION_PAYLOAD =
+  ExecutionPayload(
+    parentHash = EMPTY_HASH,
+    feeRecipient = EMPTY_HASH.copyOf(20), // 20 bytes for address
+    stateRoot = EMPTY_HASH,
+    receiptsRoot = EMPTY_HASH,
+    logsBloom = ByteArray(256), // Ethereum logs bloom is 256 bytes
+    prevRandao = EMPTY_HASH,
+    blockNumber = 0UL,
+    gasLimit = 0UL,
+    gasUsed = 0UL,
+    timestamp = 0UL,
+    extraData = EMPTY_HASH,
+    baseFeePerGas = BigInteger.ZERO,
+    blockHash = EMPTY_HASH,
+    transactions = emptyList(),
+  )

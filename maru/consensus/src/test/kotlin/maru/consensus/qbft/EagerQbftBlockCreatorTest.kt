@@ -22,6 +22,7 @@ import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlock
 import maru.core.BeaconState
 import maru.core.EMPTY_HASH
+import maru.core.GENESIS_EXECUTION_PAYLOAD
 import maru.core.HashUtil
 import maru.core.SealedBeaconBlock
 import maru.core.Validator
@@ -53,6 +54,9 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
+import org.mockito.Mockito.verify
+import org.mockito.kotlin.any
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.whenever
 import org.web3j.protocol.core.DefaultBlockParameter
@@ -106,32 +110,27 @@ class EagerQbftBlockCreatorTest {
    * Sets the mock up according to the generated genesis beacon block
    */
   private fun setup(
+    executionLayerManager: ExecutionLayerManager,
     sealedGenesisBeaconBlock: SealedBeaconBlock,
-    adaptedGenesisBeaconBlock: QbftBlockHeaderAdapter,
+    mainBlockCreator: QbftBlockCreator,
+    sequence: Long,
+    round: Int,
   ): EagerQbftBlockCreator {
     whenever(
       beaconChain.getSealedBeaconBlock(sealedGenesisBeaconBlock.beaconBlock.beaconBlockHeader.hash()),
     ).thenReturn(
       sealedGenesisBeaconBlock,
     )
-    whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(1L, 1))).thenReturn(
+    whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(sequence, round))).thenReturn(
       Address.wrap(
         Bytes.wrap
           (validator.address),
       ),
     )
     whenever(
-      validatorProvider.getValidatorsAfterBlock(0u),
+      validatorProvider.getValidatorsAfterBlock(sequence.toULong() - 1U),
     ).thenReturn(completedFuture(validatorSet))
 
-    val mainBlockCreator =
-      DelayedQbftBlockCreator(
-        manager = executionLayerManager,
-        proposerSelector = proposerSelector,
-        validatorProvider = validatorProvider,
-        beaconChain = beaconChain,
-        round = 1,
-      )
     val genesisBlockHash = sealedGenesisBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockHash
     val eagerQbftBlockCreator =
       EagerQbftBlockCreator(
@@ -150,12 +149,6 @@ class EagerQbftBlockCreatorTest {
           ),
         beaconChain = beaconChain,
       )
-    createProposalToBeRejected(
-      clock = clock,
-      genesisBlockHash = genesisBlockHash,
-      mainBlockCreator = mainBlockCreator,
-      parentHeader = adaptedGenesisBeaconBlock,
-    )
     return eagerQbftBlockCreator
   }
 
@@ -180,7 +173,15 @@ class EagerQbftBlockCreatorTest {
     val sealedGenesisBeaconBlock = SealedBeaconBlock(parentBlock, emptySet())
     val parentHeader = QbftBlockHeaderAdapter(sealedGenesisBeaconBlock.beaconBlock.beaconBlockHeader)
 
-    val eagerQbftBlockCreator = setup(sealedGenesisBeaconBlock, parentHeader)
+    val mainBlockCreator = createDelayedBlockCreator(round = 1)
+    val eagerQbftBlockCreator =
+      setup(executionLayerManager, sealedGenesisBeaconBlock, mainBlockCreator, sequence = 1, round = 1)
+    createProposalToBeRejected(
+      clock = clock,
+      genesisBlockHash = sealedGenesisBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockHash,
+      mainBlockCreator = mainBlockCreator,
+      parentHeader = parentHeader,
+    )
 
     setNextSecondMillis(0)
     // Try to create an new non-empty block instead of a non-empty proposal
@@ -223,6 +224,47 @@ class EagerQbftBlockCreatorTest {
     )
     assertThat(createdBlockBody.executionPayload.timestamp).isEqualTo(acceptedBlockTimestamp.toULong())
     assertThat(createdBlockBody.executionPayload.transactions).isNotEmpty
+  }
+
+  @Test
+  fun `uses latest blockhash when parent block is genesis`() {
+    val latestExecutionLayerBlock =
+      ethApiClient.eth1Web3j
+        .ethGetBlockByNumber(
+          DefaultBlockParameter.valueOf("latest"),
+          true,
+        ).send()
+        .block
+        .toDomain()
+    val genesisBeaconBlock =
+      BeaconBlock(
+        beaconBlockHeader = DataGenerators.randomBeaconBlockHeader(0U), // Genesis block has number 0
+        beaconBlockBody =
+          DataGenerators
+            .randomBeaconBlockBody()
+            .copy(executionPayload = GENESIS_EXECUTION_PAYLOAD),
+      )
+    val sealedGenesisBeaconBlock = SealedBeaconBlock(genesisBeaconBlock, emptySet())
+    val parentHeader = QbftBlockHeaderAdapter(sealedGenesisBeaconBlock.beaconBlock.beaconBlockHeader)
+
+    val spyExecutionLayerManager = Mockito.spy(executionLayerManager)
+    val mainBlockCreator = createDelayedBlockCreator(round = 0, manager = spyExecutionLayerManager)
+    val eagerQbftBlockCreator =
+      setup(spyExecutionLayerManager, sealedGenesisBeaconBlock, mainBlockCreator, sequence = 1, round = 0)
+
+    setNextSecondMillis(0)
+    val acceptedBlockTimestamp = (clock.millis() / 1000)
+    eagerQbftBlockCreator.createBlock(acceptedBlockTimestamp, parentHeader)
+
+    // Verify that getLatestBlockHash() was called since parent block number is 0 (genesis)
+    verify(spyExecutionLayerManager).getLatestBlockHash()
+    verify(spyExecutionLayerManager).setHeadAndStartBlockBuilding(
+      headHash = eq(latestExecutionLayerBlock.blockHash),
+      safeHash = any(),
+      finalizedHash = any(),
+      nextBlockTimestamp = any(),
+      feeRecipient = any(),
+    )
   }
 
   private fun createProposalToBeRejected(
@@ -268,6 +310,18 @@ class EagerQbftBlockCreatorTest {
       ),
     )
   }
+
+  private fun createDelayedBlockCreator(
+    round: Int,
+    manager: ExecutionLayerManager = executionLayerManager,
+  ): DelayedQbftBlockCreator =
+    DelayedQbftBlockCreator(
+      manager = manager,
+      proposerSelector = proposerSelector,
+      validatorProvider = validatorProvider,
+      beaconChain = beaconChain,
+      round = round,
+    )
 
   /*
    * Sets the clock to return the next second with the given milliseconds
