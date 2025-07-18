@@ -37,16 +37,19 @@ func TestInvalidity(t *testing.T) {
 				LeafOpening: tcases[1].Leaf,
 			},
 			Transaction: types.NewTx(&tcases[1].Tx),
+			FunctionalPublicInputsQ: inval.FunctionalPublicInputsQ{
+				SateRootHash: root,
+			},
 		}
 
 		circuit = inval.CircuitInvalidity{
-			SubCircuits: &inval.BadNonceCircuit{},
+			SubCircuit: &inval.BadNonceCircuit{},
 		}
 	)
 
 	// assign the circuit
 	circuit.Assign(assi)
-	// solve the circuit
+
 	witness, err := frontend.NewWitness(&circuit, ecc.BLS12_377.ScalarField())
 	require.NoError(t, err)
 

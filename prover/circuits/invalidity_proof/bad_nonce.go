@@ -54,3 +54,7 @@ func (c *BadNonceCircuit) Assign(assi AssigningInputs) {
 
 	c.AccountTrie.Assign(assi.AccountTrieInputs)
 }
+
+func (c *BadNonceCircuit) ExecutionCtx() frontend.Variable {
+	return c.AccountTrie.MerkleProof.Root
+}

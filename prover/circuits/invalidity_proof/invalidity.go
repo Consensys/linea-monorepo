@@ -19,7 +19,7 @@ type CircuitInvalidity struct {
 	// - bad transaction nonce
 	// - bad transaction value
 	// ...
-	SubCircuits SubCircuit
+	SubCircuit SubCircuit
 	// the functional public inputs of the circuit.
 	FuncInputs FunctionalPublicInputsGnark
 	// the hash of the functional public inputs
@@ -28,9 +28,10 @@ type CircuitInvalidity struct {
 
 // SubCircuit is the circuit for the invalidity case
 type SubCircuit interface {
-	Define(frontend.API) error // define the constraints
-	Allocate(Config)           //  allocate the circuit
-	Assign(AssigningInputs)    // generate assignment
+	Define(frontend.API) error       // define the constraints
+	Allocate(Config)                 //  allocate the circuit
+	Assign(AssigningInputs)          // generate assignment
+	ExecutionCtx() frontend.Variable // returns the execution context (FinalStateRootHash) used in the subcircuit
 }
 
 // AssigningInputs collects the inputs used for the circuit assignment
@@ -40,12 +41,14 @@ type AssigningInputs struct {
 	FuncInputs        public_input.Invalidity
 	// the address of the sender
 	// gateway contract on L1 extract it via ecrevovery over the signature
-	FromAddress EthAddress
+	FromAddress             EthAddress
+	FunctionalPublicInputsQ FunctionalPublicInputsQ
 }
 
 // Define the constraints
 func (c *CircuitInvalidity) Define(api frontend.API) error {
-	c.SubCircuits.Define(api)
+	c.SubCircuit.Define(api)
+	api.AssertIsEqual(c.SubCircuit.ExecutionCtx(), c.FuncInputs.FunctionalPublicInputsQGnark.SateRootHash)
 	// @azam constraint on the hashing of functional public inputs
 	return nil
 }
@@ -53,19 +56,20 @@ func (c *CircuitInvalidity) Define(api frontend.API) error {
 // Allocate the circuit
 func (c *CircuitInvalidity) Allocate(config Config) {
 	// allocate the subCircuit
-	c.SubCircuits.Allocate(config)
+	c.SubCircuit.Allocate(config)
 	// @azam: allocate the Functional Public Inputs
 }
 
 // Assign the circuit
 func (c *CircuitInvalidity) Assign(assi AssigningInputs) {
 	// assign the sub circuits
-	c.SubCircuits.Assign(assi)
+	c.SubCircuit.Assign(assi)
 	// assign the Functional Public Inputs
 	c.FuncInputs.Assign(assi.FuncInputs)
 	// assign the public input
 	c.PublicInput = assi.FuncInputs.Sum(nil)
-
+	c.FuncInputs.FunctionalPublicInputsQGnark.BlockNumber = assi.FunctionalPublicInputsQ.BlockNumber
+	c.FuncInputs.FunctionalPublicInputsQGnark.SateRootHash = assi.FunctionalPublicInputsQ.SateRootHash[:]
 }
 
 // MakeProof and solve the circuit.

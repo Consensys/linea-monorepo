@@ -5,9 +5,10 @@ package pi_interconnection_test
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"slices"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 
 	"github.com/stretchr/testify/require"
 
@@ -41,6 +42,7 @@ func TestSingleBlockBlobE2E(t *testing.T) {
 	cfg := config.PublicInput{
 		MaxNbDecompression: len(req.Decompressions),
 		MaxNbExecution:     len(req.Executions),
+		MaxNbInvalidity:    len(req.Invalidity),
 		ExecutionMaxNbMsg:  1,
 		L2MsgMerkleDepth:   5,
 		L2MsgMaxNbMerkle:   1,
@@ -272,6 +274,7 @@ func testPI(t *testing.T, req pi_interconnection.Request, options ...testPIOptio
 		cfg := config.PublicInput{
 			MaxNbDecompression: len(req.Decompressions) + slack[0],
 			MaxNbExecution:     len(req.Executions) + slack[1],
+			MaxNbInvalidity:    len(req.Invalidity) + slack[1],
 			ExecutionMaxNbMsg:  1 + slack[2],
 			L2MsgMerkleDepth:   5,
 			L2MsgMaxNbMerkle:   1 + slack[3],

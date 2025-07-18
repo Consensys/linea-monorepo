@@ -55,3 +55,7 @@ func (c *BadBalanceCircuit) Assign(assi AssigningInputs) {
 	c.AccountTrie.Assign(assi.AccountTrieInputs)
 
 }
+
+func (c *BadBalanceCircuit) ExecutionCtx() frontend.Variable {
+	return c.AccountTrie.MerkleProof.Root
+}

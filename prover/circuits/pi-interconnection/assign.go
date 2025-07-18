@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"hash"
+
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 
@@ -13,6 +15,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
 	decompression "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/circuits/invalidity_proof"
+	inval "github.com/consensys/linea-monorepo/prover/circuits/invalidity_proof"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -24,6 +28,7 @@ type Request struct {
 	Decompressions []blobsubmission.Response
 	Executions     []public_input.Execution
 	Aggregation    public_input.Aggregation
+	Invalidity     []public_input.Invalidity
 }
 
 func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err error) {
@@ -48,7 +53,11 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 		err = fmt.Errorf("failing CHECK_EXEC_LIMIT:\n\t%d execution proofs exceeds maximum of %d", len(r.Executions), cfg.MaxNbExecution)
 		return
 	}
-	if nbC := len(r.Decompressions) + len(r.Executions); nbC > cfg.MaxNbCircuits && cfg.MaxNbCircuits > 0 {
+	if len(r.Invalidity) > cfg.MaxNbInvalidity {
+		err = fmt.Errorf("failing CHECK_INVAL_LIMIT:\n\t%d invalidity proofs exceeds maximum of %d", len(r.Invalidity), cfg.MaxNbInvalidity)
+		return
+	}
+	if nbC := len(r.Decompressions) + len(r.Executions) + len(r.Invalidity); nbC > cfg.MaxNbCircuits && cfg.MaxNbCircuits > 0 {
 		err = fmt.Errorf("failing CHECK_CIRCUIT_LIMIT:\n\t%d circuits exceeds maximum of %d", nbC, cfg.MaxNbCircuits)
 		return
 	}
@@ -182,6 +191,7 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 	}
 
 	aggregationFPI.NbDecompression = uint64(len(r.Decompressions))
+	aggregationFPI.NbInvalidity = uint64(len(r.Invalidity))
 	a.AggregationFPIQSnark = aggregationFPI.ToSnarkType().AggregationFPIQSnark
 
 	merkleNbLeaves := 1 << cfg.L2MsgMerkleDepth
@@ -378,6 +388,7 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 	a.ChainID = r.Aggregation.ChainID
 	a.L2MessageServiceAddr = r.Aggregation.L2MessageServiceAddr
 
+	a.InvalidityFPI, a.InvalidityPublicInput = assignInvalidity(r, len(a.InvalidityFPI))
 	return
 }
 
@@ -404,4 +415,22 @@ func MerkleRoot(hsh hash.Hash, treeNbLeaves int, data [][32]byte) [32]byte {
 	}
 
 	return b[0]
+}
+func assignInvalidity(r Request, n int) (invalidityFPI []invalidity_proof.FunctionalPublicInputsGnark, invalidityPI []frontend.Variable) {
+
+	invalidityFPI = make([]inval.FunctionalPublicInputsGnark, n)
+	invalidityPI = make([]frontend.Variable, n)
+	hshM := mimc.NewMiMC()
+
+	for i := 0; i < n; i++ {
+		if i < len(r.Invalidity) {
+			invalidityFPI[i].Assign(r.Invalidity[i])
+			invalidityPI[i] = r.Invalidity[i].Sum(hshM)
+
+		} else {
+			invalidityFPI[i].Assign(r.Invalidity[len(r.Invalidity)-1])
+			invalidityPI[i] = 0
+		}
+	}
+	return invalidityFPI, invalidityPI
 }

@@ -99,6 +99,7 @@ func (p Aggregation) GetPublicInputHex() string {
 type AggregationFPI struct {
 	ParentShnarf                      [32]byte
 	NbDecompression                   uint64
+	NbInvalidity                      uint64
 	InitialStateRootHash              [32]byte
 	LastFinalizedBlockNumber          uint64
 	LastFinalizedBlockTimestamp       uint64
@@ -125,6 +126,7 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 			InitialStateRootHash:           pi.InitialStateRootHash[:],
 
 			NbDecompression:      pi.NbDecompression,
+			NbInvalidity:         pi.NbInvalidity,
 			ChainID:              pi.ChainID,
 			L2MessageServiceAddr: pi.L2MessageServiceAddr[:],
 		},
@@ -150,6 +152,7 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 type AggregationFPIQSnark struct {
 	ParentShnarf                   [32]frontend.Variable
 	NbDecompression                frontend.Variable
+	NbInvalidity                   frontend.Variable // @Azam do we need this?
 	InitialStateRootHash           frontend.Variable
 	LastFinalizedBlockNumber       frontend.Variable
 	LastFinalizedBlockTimestamp    frontend.Variable

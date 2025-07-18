@@ -37,10 +37,13 @@ func TestInvalidityBadBalance(t *testing.T) {
 				LeafOpening: tcases[1].Leaf,
 			},
 			Transaction: types.NewTx(&tcases[1].Tx),
+			FunctionalPublicInputsQ: inval.FunctionalPublicInputsQ{
+				SateRootHash: root,
+			},
 		}
 
 		circuit = inval.CircuitInvalidity{
-			SubCircuits: &inval.BadBalanceCircuit{},
+			SubCircuit: &inval.BadBalanceCircuit{},
 		}
 	)
 
