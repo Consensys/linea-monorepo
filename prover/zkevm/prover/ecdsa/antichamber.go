@@ -122,6 +122,7 @@ func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *anticha
 		Circuit:            newMultiEcRecoverCircuit(settings.NbInputInstance),
 		PlonkOptions:       inputs.PlonkOptions,
 		NbCircuitInstances: settings.NbCircuitInstances,
+		InputFillerKey:     plonkInputFillerKey,
 	}
 
 	res.AlignedGnarkData = plonk.DefineAlignment(comp, toAlign)
@@ -155,11 +156,13 @@ func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *anticha
 // As the initial data is copied from the EC_DATA arithmetization module, then
 // it has to be provided as an input.
 func (ac *antichamber) assign(run *wizard.ProverRuntime, txGet TxSignatureGetter, nbTx int) {
+
 	var (
 		ecSrc             = ac.Inputs.EcSource
 		txSource          = ac.Inputs.TxSource
 		nbActualEcRecover = ecSrc.nbActualInstances(run)
 	)
+
 	ac.assignAntichamber(run, nbActualEcRecover, nbTx)
 	ac.EcRecover.Assign(run, ecSrc)
 	ac.TxSignature.assignTxSignature(run, nbActualEcRecover)

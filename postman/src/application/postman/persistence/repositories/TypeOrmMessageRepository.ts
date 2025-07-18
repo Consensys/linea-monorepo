@@ -153,11 +153,6 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
     messageStatuses: MessageStatus[],
     maxRetry: number,
     retryDelay: number,
-    feeEstimationOptions: {
-      minimumMargin: number;
-      extraDataVariableCost: number;
-      extraDataFixedCost: number;
-    },
   ): Promise<Message | null> {
     try {
       const message = await this.createQueryBuilder("message")
@@ -174,15 +169,7 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
             });
           }),
         )
-        .andWhere(
-          "CAST(message.fee AS numeric) > :minimumMargin * ((:extraDataVariableCost * message.compressedTransactionSize) / message.claimTxGasLimit + :extraDataFixedCost) * message.claimTxGasLimit",
-          {
-            minimumMargin: feeEstimationOptions.minimumMargin,
-            extraDataVariableCost: feeEstimationOptions.extraDataVariableCost,
-            extraDataFixedCost: feeEstimationOptions.extraDataFixedCost,
-          },
-        )
-        .orderBy("CAST(message.status as CHAR)", "ASC")
+        .orderBy("CAST(message.status as CHAR)", "DESC")
         .addOrderBy("CAST(message.fee AS numeric)", "DESC")
         .addOrderBy("message.sentBlockNumber", "ASC")
         .getOne();
@@ -315,6 +302,13 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
           claimTxHash: tx.hash,
         },
       );
+
+      // Store updated entity in the queryRunner to access it in the afterTransactionCommit hook
+      entityManager.queryRunner!.data.updatedEntity = {
+        previousStatus: message.status,
+        newStatus: MessageStatus.PENDING,
+        direction: message.direction,
+      };
     });
   }
 }

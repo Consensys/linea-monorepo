@@ -1,7 +1,7 @@
 include makefile-contracts.mk
 
 docker-pull-images-external-to-monorepo:
-		docker compose -f docker/compose-tracing-v1-ci-extension.yml -f docker/compose-tracing-v2-ci-extension.yml --profile external-to-monorepo pull
+		docker compose -f docker/compose-tracing-v2-ci-extension.yml --profile external-to-monorepo pull
 
 clean-local-folders:
 		make clean-smc-folders
@@ -12,8 +12,8 @@ clean-testnet-folders:
 		rm -rf tmp/testnet/* || true # ignore failure if folders do not exist already
 
 clean-environment:
-		docker compose -f docker/compose-tracing-v1-ci-extension.yml -f docker/compose-tracing-v2-ci-extension.yml -f docker/compose-tracing-v2-staterecovery-extension.yml --profile l1 --profile l2 --profile debug --profile staterecovery kill -s 9 || true;
-		docker compose -f docker/compose-tracing-v1-ci-extension.yml -f docker/compose-tracing-v2-ci-extension.yml -f docker/compose-tracing-v2-staterecovery-extension.yml --profile l1 --profile l2 --profile debug --profile staterecovery down || true;
+		docker compose -f docker/compose-tracing-v2-ci-extension.yml -f docker/compose-tracing-v2-staterecovery-extension.yml --profile l1 --profile l2 --profile debug --profile staterecovery kill -s 9 || true;
+		docker compose -f docker/compose-tracing-v2-ci-extension.yml -f docker/compose-tracing-v2-staterecovery-extension.yml --profile l1 --profile l2 --profile debug --profile staterecovery down || true;
 		make clean-local-folders;
 		docker volume rm linea-local-dev linea-logs || true; # ignore failure if volumes do not exist already
 		docker system prune -f || true;
@@ -23,6 +23,7 @@ start-env: CLEAN_PREVIOUS_ENV:=true
 start-env: COMPOSE_FILE:=docker/compose-tracing-v2.yml
 start-env: L1_CONTRACT_VERSION:=6
 start-env: SKIP_CONTRACTS_DEPLOYMENT:=false
+start-env: SKIP_L1_L2_NODE_HEALTH_CHECK:=false
 start-env: LINEA_PROTOCOL_CONTRACTS_ONLY:=false
 start-env:
 	@if [ "$(CLEAN_PREVIOUS_ENV)" = "true" ]; then \
@@ -32,8 +33,9 @@ start-env:
 	fi; \
 	mkdir -p tmp/local; \
 	COMPOSE_PROFILES=$(COMPOSE_PROFILES) docker compose -f $(COMPOSE_FILE) up -d; \
-	while [ "$$(docker compose -f $(COMPOSE_FILE) ps -q l1-el-node | xargs docker inspect -f '{{.State.Health.Status}}')" != "healthy" ] || \
-  			[ "$$(docker compose -f $(COMPOSE_FILE) ps -q sequencer | xargs docker inspect -f '{{.State.Health.Status}}')" != "healthy" ]; do \
+	while [ "$(SKIP_L1_L2_NODE_HEALTH_CHECK)" = "false" ] && \
+			{ [ "$$(docker compose -f $(COMPOSE_FILE) ps -q l1-el-node | xargs docker inspect -f '{{.State.Health.Status}}')" != "healthy" ] || \
+  			[ "$$(docker compose -f $(COMPOSE_FILE) ps -q sequencer | xargs docker inspect -f '{{.State.Health.Status}}')" != "healthy" ]; }; do \
   			sleep 2; \
   			echo "Checking health status of l1-el-node and sequencer..."; \
   	done
@@ -44,33 +46,31 @@ start-env:
 	fi
 
 start-l1:
-	command start-env COMPOSE_PROFILES:=l1 COMPOSE_FILE:=docker/compose-tracing-v2.yml SKIP_CONTRACTS_DEPLOYMENT:=true
+	make start-env COMPOSE_PROFILES:=l1 COMPOSE_FILE:=docker/compose-tracing-v2.yml SKIP_CONTRACTS_DEPLOYMENT:=true SKIP_L1_L2_NODE_HEALTH_CHECK:=true
 
-start-l2:
-	command start-env COMPOSE_PROFILES:=l2 COMPOSE_FILE:=docker/compose-tracing-v2.yml SKIP_CONTRACTS_DEPLOYMENT:=true
+start-l1-l2:
+	make start-env COMPOSE_PROFILES:=l1,l2 COMPOSE_FILE:=docker/compose-tracing-v2.yml SKIP_CONTRACTS_DEPLOYMENT:=true SKIP_L1_L2_NODE_HEALTH_CHECK:=true
 
 start-l2-blockchain-only:
-	command start-env COMPOSE_PROFILES:=l2-bc COMPOSE_FILE:=docker/compose-tracing-v2.yml SKIP_CONTRACTS_DEPLOYMENT:=true
+	make start-env COMPOSE_PROFILES:=l2-bc COMPOSE_FILE:=docker/compose-tracing-v2.yml SKIP_CONTRACTS_DEPLOYMENT:=true SKIP_L1_L2_NODE_HEALTH_CHECK:=true
 
 fresh-start-l2-blockchain-only:
-		make clean-environment
-		make start-l2-blockchain-only
+	make clean-environment
+	make start-l2-blockchain-only
 
 ##
 ## Creating new targets to avoid conflicts with existing targets
 ## Redundant targets above will cleanup once this get's merged
 ##
-start-env-with-tracing-v1:
-	make start-env COMPOSE_FILE=docker/compose-tracing-v1.yml LINEA_PROTOCOL_CONTRACTS_ONLY=true
-
-start-env-with-tracing-v1-ci:
-	make start-env COMPOSE_FILE=docker/compose-tracing-v1-ci-extension.yml DISABLE_JSON_RPC_PRICING_PROPAGATION=false
-
 start-env-with-tracing-v2:
 	make start-env COMPOSE_FILE=docker/compose-tracing-v2.yml LINEA_PROTOCOL_CONTRACTS_ONLY=true
 
+## Enable L2 geth node
+start-env-with-tracing-v2-extra:
+	make start-env COMPOSE_PROFILES:=l1,l2 COMPOSE_FILE:=docker/compose-tracing-v2-extra-extension.yml LINEA_PROTOCOL_CONTRACTS_ONLY=true LINEA_COORDINATOR_DISABLE_TYPE2_STATE_PROOF_PROVIDER=false LINEA_COORDINATOR_SIGNER_TYPE=web3signer
+
 start-env-with-tracing-v2-ci:
-	make start-env COMPOSE_FILE=docker/compose-tracing-v2-ci-extension.yml DISABLE_JSON_RPC_PRICING_PROPAGATION=false
+	make start-env COMPOSE_FILE=docker/compose-tracing-v2-ci-extension.yml LINEA_COORDINATOR_DISABLE_TYPE2_STATE_PROOF_PROVIDER=false LINEA_COORDINATOR_SIGNER_TYPE=web3signer
 
 start-env-with-staterecovery: COMPOSE_PROFILES:=l1,l2,staterecovery
 start-env-with-staterecovery: L1_CONTRACT_VERSION:=6

@@ -32,7 +32,7 @@ const (
 	/*
 		Explanation for Manual Garbage Collection Thresholds
 	*/
-	// These two threshold work well for the real-world traces at the moment of writing and a 340GiB memory limit,
+	// These two thresholds work well for the real-world traces at the moment of writing and a 340GiB memory limit,
 	// but this approach can be generalized and further improved.
 
 	// When ctx.domainSize>=524288, proverEvaluationQueries() experiences a heavy workload,
@@ -93,7 +93,7 @@ type QuotientCtx struct {
 	MaxNbExprNode int
 }
 
-// createQuotientCtx constructs a [QuotientCtx] from a list of ratios and aggreated
+// createQuotientCtx constructs a [quotientCtx] from a list of ratios and aggregated
 // expressions. The function organizes the handles but does not declare anything
 // in the current wizard.CompiledIOP.
 func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressions []*symbolic.Expression) QuotientCtx {
@@ -126,7 +126,7 @@ func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressi
 		ctx.MaxNbExprNode = max(ctx.MaxNbExprNode, board.CountNodes())
 
 		// This loop scans the metadata looking for columns with the goal of
-		// populating the collections composing QuotientCtx.
+		// populating the collections composing quotientCtx.
 		for _, metadata := range board.ListVariableMetadata() {
 
 			// Scan in column metadata only
@@ -141,7 +141,7 @@ func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressi
 
 			// Append the handle (we trust that there are no duplicate of handles
 			// within a constraint). This works because the symbolic package has
-			// automatic simplifications routines that ensure that an expression
+			// automatic simplification routines that ensure that an expression
 			// does not refer to duplicates of the same variable.
 			ctx.ColumnsForRatio[k] = append(ctx.ColumnsForRatio[k], col)
 
@@ -194,6 +194,12 @@ func generateQuotientShares(comp *wizard.CompiledIOP, ratios []int, domainSize i
 // compute the quotient shares.
 func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 
+	// threadSafeVector is a wrapper around the smart vector that makes it lockable
+	type threadSafeVector struct {
+		*sync.Mutex
+		sv.SmartVector
+	}
+
 	var (
 		// Tracks the time spent on garbage collection
 		totalTimeGc = int64(0)
@@ -231,8 +237,8 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 				witness = pol.GetColAssignment(run)
 			}
 
-			witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil)
-			coeffs.Store(name, witness)
+			witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil, fft.WithNbTasks(2))
+			coeffs.Store(name, threadSafeVector{&sync.Mutex{}, witness})
 		})
 	})
 
@@ -292,7 +298,7 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 			}
 
 			// For instance, if deg = 2 and max deg 8, we enter only if
-			// i = 0 or 4 because this correspond to the cosets we are
+			// i = 0 or 4 because this corresponds to the cosets we are
 			// interested in.
 			if i%(maxRatio/ratio) != 0 {
 				continue
@@ -323,10 +329,7 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 
 					root := roots[k]
 					name := root.GetColID()
-
-					_, found := computedReeval.Load(name)
-
-					if found {
+					if _, found := computedReeval.Load(name); found {
 						// it was already computed in a previous iteration of `j`
 						return
 					}
@@ -334,8 +337,23 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 					// else it's the first value of j that sees it. so we compute the
 					// coset reevaluation.
 
-					v, _ := coeffs.Load(name)
-					reevaledRoot := sv.FFT(v.(sv.SmartVector), fft.DIT, false, ratio, share, localPool)
+					v, ok := coeffs.Load(name)
+					if !ok {
+						utils.Panic("handle %v not found in the coeffs (a)\n", name)
+					}
+
+					// lock the vector to ensure we don't do twice the same compute
+					// and that we don't (over)write an entry in the map with a (leaking) pool vector
+					v.(threadSafeVector).Lock()
+					defer v.(threadSafeVector).Unlock()
+
+					// check again if it was already computed
+					// (can happen if 2 go routines hit the lock at the same time)
+					if _, ok := computedReeval.Load(name); ok {
+						return
+					}
+
+					reevaledRoot := sv.FFT(v.(threadSafeVector).SmartVector, fft.DIT, false, ratio, share, localPool, fft.WithNbTasks(2))
 					computedReeval.Store(name, reevaledRoot)
 				})
 
@@ -350,7 +368,6 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 					rootName := root.GetColID()
 
 					reevaledRoot, found := computedReeval.Load(rootName)
-
 					if !found {
 						// it is expected to computed in the above loop
 						utils.Panic("did not find the reevaluation of %v", rootName)
@@ -370,8 +387,8 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 					}
 
 					polName := pol.GetColID()
-					_, ok := computedReeval.Load(polName)
-					if ok {
+					if _, ok := computedReeval.Load(polName); ok {
+						// already computed
 						return
 					}
 
@@ -380,7 +397,18 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 						utils.Panic("handle %v not found in the coeffs\n", polName)
 					}
 
-					res := sv.FFT(v.(sv.SmartVector), fft.DIT, false, ratio, share, localPool)
+					// lock the vector to ensure we don't do twice the same compute
+					// and that we don't (over)write an entry in the map with a (leaking) pool vector
+					v.(threadSafeVector).Lock()
+					defer v.(threadSafeVector).Unlock()
+
+					// check again if it was already computed
+					// (can happen if 2 go routines hit the lock at the same time)
+					if _, ok := computedReeval.Load(polName); ok {
+						return
+					}
+
+					res := sv.FFT(v.(threadSafeVector).SmartVector, fft.DIT, false, ratio, share, localPool, fft.WithNbTasks(2))
 					computedReeval.Store(polName, res)
 				})
 			})
@@ -400,9 +428,10 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 				for k, metadataInterface := range metadatas {
 					switch metadata := metadataInterface.(type) {
 					case ifaces.Column:
-						//name := metadata.GetColID()
-						//evalInputs[k] = computedReeval[name]
-						value, _ := computedReeval.Load(metadata.GetColID())
+						value, ok := computedReeval.Load(metadata.GetColID())
+						if !ok {
+							utils.Panic("did not find the reevaluation of %v", metadata.GetColID())
+						}
 						evalInputs[k] = value.(sv.SmartVector)
 					case coin.Info:
 						evalInputs[k] = sv.NewConstant(run.GetRandomCoinField(metadata.Name), ctx.DomainSize)
@@ -433,7 +462,7 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 
 		}
 
-		// Forcefuly clean the memory for the computed reevals
+		// Forcefully clean the memory for the computed reevals
 		computedReeval.Range(func(k, v interface{}) bool {
 
 			if pooled, ok := v.(*sv.Pooled); ok {

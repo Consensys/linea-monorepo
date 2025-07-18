@@ -38,8 +38,13 @@ func TestConglomerationBasic(t *testing.T) {
 				Conglomerate(20)
 
 		runtimeBoot             = wizard.RunProver(distWizard.Bootstrapper, tc.Assign)
-		witnessGLs, witnessLPPs = distributed.SegmentRuntime(runtimeBoot, distWizard)
-		runGLs                  = runProverGLs(t, distWizard, witnessGLs)
+		witnessGLs, witnessLPPs = distributed.SegmentRuntime(
+			runtimeBoot,
+			distWizard.Disc,
+			distWizard.BlueprintGLs,
+			distWizard.BlueprintLPPs,
+		)
+		runGLs = runProverGLs(t, distWizard, witnessGLs)
 	)
 
 	for i := range runGLs {
@@ -107,8 +112,13 @@ func TestConglomeration(t *testing.T) {
 	t.Logf("[%v] done running the bootstrapper\n", time.Now())
 
 	var (
-		witnessGLs, witnessLPPs = distributed.SegmentRuntime(runtimeBoot, distWizard)
-		runGLs                  = runProverGLs(t, distWizard, witnessGLs)
+		witnessGLs, witnessLPPs = distributed.SegmentRuntime(
+			runtimeBoot,
+			distWizard.Disc,
+			distWizard.BlueprintGLs,
+			distWizard.BlueprintLPPs,
+		)
+		runGLs = runProverGLs(t, distWizard, witnessGLs)
 	)
 
 	for i := range runGLs {

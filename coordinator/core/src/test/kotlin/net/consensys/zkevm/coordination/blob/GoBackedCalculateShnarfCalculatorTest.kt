@@ -1,11 +1,11 @@
 package net.consensys.zkevm.coordination.blob
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
+import linea.blob.CalculateShnarfResult
+import linea.blob.GoNativeBlobShnarfCalculator
 import linea.domain.BlockIntervals
 import linea.kotlin.decodeHex
 import linea.kotlin.encodeHex
-import net.consensys.linea.blob.CalculateShnarfResult
-import net.consensys.linea.blob.GoNativeBlobShnarfCalculator
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.zkevm.ethereum.coordination.blob.GoBackedBlobShnarfCalculator
@@ -41,7 +41,7 @@ class GoBackedCalculateShnarfCalculatorTest {
     expectedX = Bytes32.random().toArray().encodeHex(),
     expectedY = Bytes32.random().toArray().encodeHex(),
     expectedShnarf = Bytes32.random().toArray().encodeHex(),
-    errorMessage = ""
+    errorMessage = "",
   )
   private val expectedShnarfParsedResult = ShnarfResult(
     dataHash = fakeCalculationResult.dataHash.decodeHex(),
@@ -51,7 +51,7 @@ class GoBackedCalculateShnarfCalculatorTest {
     expectedShnarf = fakeCalculationResult.expectedShnarf.decodeHex(),
     commitment = fakeCalculationResult.commitment.decodeHex(),
     kzgProofSideCar = fakeCalculationResult.kzgProofSideCar.decodeHex(),
-    kzgProofContract = fakeCalculationResult.kzgProofContract.decodeHex()
+    kzgProofContract = fakeCalculationResult.kzgProofContract.decodeHex(),
   )
 
   @BeforeEach
@@ -70,7 +70,7 @@ class GoBackedCalculateShnarfCalculatorTest {
       parentStateRootHash = parentStateRootHash,
       finalStateRootHash = finalStateRootHash,
       prevShnarf = prevShnarf,
-      conflationOrder = BlockIntervals(1UL, listOf(5UL, 10UL))
+      conflationOrder = BlockIntervals(1UL, listOf(5UL, 10UL)),
     )
 
     verify(delegate).CalculateShnarf(
@@ -81,7 +81,7 @@ class GoBackedCalculateShnarfCalculatorTest {
       eq(prevShnarf.encodeHex()),
       eq(1L),
       eq(2),
-      eq(longArrayOf(5L, 10L))
+      eq(longArrayOf(5L, 10L)),
     )
     assertThat(result).isEqualTo(expectedShnarfParsedResult)
   }
@@ -96,7 +96,7 @@ class GoBackedCalculateShnarfCalculatorTest {
       parentStateRootHash = parentStateRootHash,
       finalStateRootHash = finalStateRootHash,
       prevShnarf = prevShnarf,
-      conflationOrder = BlockIntervals(Long.MAX_VALUE.toULong(), listOf(5UL, Long.MAX_VALUE.toULong()))
+      conflationOrder = BlockIntervals(Long.MAX_VALUE.toULong(), listOf(5UL, Long.MAX_VALUE.toULong())),
     )
 
     verify(delegate).CalculateShnarf(
@@ -107,7 +107,7 @@ class GoBackedCalculateShnarfCalculatorTest {
       eq(prevShnarf.encodeHex()),
       eq(Long.MAX_VALUE),
       eq(2),
-      eq(longArrayOf(5L, Long.MAX_VALUE))
+      eq(longArrayOf(5L, Long.MAX_VALUE)),
     )
 
     assertThat(result).isEqualTo(expectedShnarfParsedResult)
@@ -125,7 +125,7 @@ class GoBackedCalculateShnarfCalculatorTest {
         parentStateRootHash = ByteArray(0),
         finalStateRootHash = ByteArray(0),
         prevShnarf = ByteArray(0),
-        conflationOrder = BlockIntervals(0UL, listOf(0UL))
+        conflationOrder = BlockIntervals(0UL, listOf(0UL)),
       )
     }
   }

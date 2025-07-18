@@ -9,10 +9,10 @@ import {
   L2MessageServiceV1__factory as L2MessageService__factory,
   LineaRollupV6,
   LineaRollupV6__factory,
-  OpcodeTestContract,
-  OpcodeTestContract__factory,
   ProxyAdmin,
   ProxyAdmin__factory,
+  SparseMerkleProof,
+  SparseMerkleProof__factory,
   TestContract,
   TestContract__factory,
   TestERC20,
@@ -229,17 +229,8 @@ export default class TestSetup {
     }
   }
 
-  public getOpcodeTestContract(signer?: Wallet): OpcodeTestContract {
-    const opcodeTestContract = OpcodeTestContract__factory.connect(
-      this.config.L2.opcodeTestContractAddress,
-      this.getL2Provider(),
-    );
-
-    if (signer) {
-      return opcodeTestContract.connect(signer);
-    }
-
-    return opcodeTestContract;
+  public getL2SparseMerkleProofContract(): SparseMerkleProof {
+    return SparseMerkleProof__factory.connect(this.config.L2.l2SparseMerkleProofAddress, this.getL2Provider());
   }
 
   public getL1AccountManager(): AccountManager {

@@ -1,181 +1,502 @@
 package limitless
 
-// import (
-// 	"github.com/consensys/linea-monorepo/prover/backend/execution"
-// 	ckt_exec "github.com/consensys/linea-monorepo/prover/circuits/execution"
-// 	"github.com/consensys/linea-monorepo/prover/config"
-// 	"github.com/consensys/linea-monorepo/prover/maths/field"
-// 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
-// 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
-// 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-// 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
-// 	"github.com/consensys/linea-monorepo/prover/zkevm"
-// 	"github.com/sirupsen/logrus"
-// )
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"io"
+	"os"
+	"runtime"
+	"strconv"
+	"time"
 
-// // Asset struct to hold deserialized assets
-// type Asset struct {
-// 	Zkevm      *zkevm.ZkEvm
-// 	Disc       *distributed.StandardModuleDiscoverer
-// 	DistWizard *distributed.DistributedWizard
-// }
+	"github.com/consensys/linea-monorepo/prover/backend/execution"
+	"github.com/consensys/linea-monorepo/prover/backend/files"
+	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
+	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
+	"github.com/pierrec/lz4/v4"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/semaphore"
+)
 
-// // Prove function for the Assest struct
-// func Prove(asset *Asset, cfg *config.Config, req *execution.Request) (*execution.Response, error) {
-// 	// Set MonitorParams before any proving happens
-// 	profiling.SetMonitorParams(cfg)
+var (
+	witnessDir = "/tmp/witnesses"
+	// numConcurrentWitnessWritingGoroutines governs the goroutine serializing,
+	// compressing and writing the  witness. The writing part is also controlled
+	// by a semaphore on top of this.
+	numConcurrentWitnessWritingGoroutines = runtime.NumCPU()
+	// numConcurrentDiskWrite governs the number of concurrent disk writes
+	numConcurrentDiskWrite = 1
+	// concurrentSubProverSemaphore is a semaphore that controls the number of
+	// concurrent sub-prover jobs.
+	diskWriteSemaphore = semaphore.NewWeighted(int64(numConcurrentDiskWrite))
+	// numConcurrentSubProverJobs governs the number of concurrent sub-prover
+	// jobs.
+	numConcurrentSubProverJobs = 4
+)
 
-// 	defer cleanWitnessDirectory(cfg)
+// Prove function for the Assest struct
+func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, error) {
 
-// 	// Setup execution-limitless circuit
-// 	setup, done, errSetup := loadCktSetupAsync(cfg)
+	// Set MonitorParams before any proving happens
+	profiling.SetMonitorParams(cfg)
 
-// 	// Setup execution witness and output response
-// 	var (
-// 		out     = execution.CraftProverOutput(cfg, req)
-// 		witness = execution.NewWitness(cfg, req, &out)
-// 	)
+	// Clean up witness directory to be sure it is empty when we start the
+	// process. This helps addressing the situation where a previous process
+	// have been interrupted.
+	os.RemoveAll(witnessDir)
+	defer os.RemoveAll(witnessDir)
 
-// 	logrus.Info("Starting to run the bootstrapper")
-// 	var (
-// 		witnessGLs, witnessLPPs = RunBootstrapper(asset, witness.ZkEVM)
-// 	)
-// 	logrus.Info("Finished running the bootstrapper")
+	// Setup execution witness and output response
+	var (
+		out           = execution.CraftProverOutput(cfg, req)
+		witness       = execution.NewWitness(cfg, req, &out)
+		numGL, numLPP = 0, 0
+	)
 
-// 	logrus.Info("Starting to run GL Provers")
-// 	runGLs, err := RunProverGLs(cfg, asset.DistWizard, witnessGLs)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	SanityCheckProvers(asset.DistWizard, runGLs)
-// 	logrus.Info("Finished running GL Provers")
+	if cfg.Execution.LimitlessWithDebug {
+		limitlessZkEVM := zkevm.NewLimitlessDebugZkEVM(cfg)
+		limitlessZkEVM.RunDebug(witness.ZkEVM)
+		// The return of "out" is to avoid panics later on in the process.
+		// return &out, nil
+	}
 
-// 	logrus.Info("Starting to generate shared Randomness")
-// 	sharedRandomness := GetSharedRandomness(runGLs)
-// 	logrus.Info("Finished generating shared Randomness")
+	logrus.Info("Starting to run the bootstrapper")
 
-// 	logrus.Info("Starting to run LPP Provers")
-// 	runLPPs, err := RunProverLPPs(cfg, asset.DistWizard, sharedRandomness, witnessLPPs)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	SanityCheckProvers(asset.DistWizard, runLPPs)
-// 	logrus.Info("Finished running LPP Provers")
+	numGL, numLPP = RunBootstrapper(cfg, witness.ZkEVM)
 
-// 	logrus.Info("Starting to run Conglomerator")
-// 	proof, err := RunConglomerationProver(cfg, asset.DistWizard.CompiledConglomeration, witnessGLs, witnessLPPs)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	logrus.Info("Finished running Conglomerator")
+	logrus.Infof("Finished running the bootstrapper, generated %d GL modules and %d LPP modules", numGL, numLPP)
 
-// 	// Wait for setup to be loaded and validate checksum
-// 	if err := finalizeCktSetup(cfg, done, setup, errSetup); err != nil {
-// 		return nil, err
-// 	}
+	var (
+		proofGLs            []recursion.Witness
+		proofLPPs           []recursion.Witness
+		lppCommitments      []field.Element
+		errGroup            = &errgroup.Group{}
+		contextGL, cancelGL = context.WithCancel(context.Background())
+	)
 
-// 	out.Proof = ckt_exec.MakeProof(&config.TracesLimits{}, *setup,
-// 		asset.DistWizard.CompiledConglomeration.Wiop, *proof, *witness.FuncInp)
-// 	out.VerifyingKeyShaSum = setup.VerifyingKeyDigest()
-// 	return &out, nil
-// }
+	errGroup.SetLimit(numConcurrentSubProverJobs)
 
-// func RunBootstrapper(asset *Asset, zkevmWitness *zkevm.Witness,
-// ) ([]*distributed.ModuleWitnessGL, []*distributed.ModuleWitnessLPP) {
-// 	runtimeBoot := wizard.RunProver(asset.DistWizard.Bootstrapper, asset.Zkevm.GetMainProverStep(zkevmWitness))
-// 	return distributed.SegmentRuntime(runtimeBoot, asset.DistWizard)
-// }
+	for i := 0; i < numGL; i++ {
 
-// func SanityCheckProvers(distWizard *distributed.DistributedWizard, runs []*wizard.ProverRuntime) {
-// 	for i := range runs {
-// 		logrus.Infof("sanity-checking prover run[%d]", i)
-// 		SanityCheckConglomeration(distWizard.CompiledConglomeration, runs[i])
-// 	}
-// }
+		errGroup.Go(func() error {
 
-// func GetSharedRandomness(runs []*wizard.ProverRuntime) field.Element {
-// 	witnesses := make([]recursion.Witness, len(runs))
-// 	for i := range runs {
-// 		witnesses[i] = recursion.ExtractWitness(runs[i])
-// 	}
+			if contextGL.Err() != nil {
+				return nil
+			}
 
-// 	comps := make([]*wizard.CompiledIOP, len(runs))
-// 	for i := range runs {
-// 		comps[i] = runs[i].Spec
-// 	}
-// 	return distributed.GetSharedRandomnessFromWitnesses(comps, witnesses)
-// }
+			var (
+				jobErr        error
+				proofGL       *recursion.Witness
+				lppCommitment field.Element
+			)
 
-// // // Unified function to read and deserialize all assets and compiled files
-// // func ReadAndDeserAssets(config *config.Config) (*Asset, error) {
-// // 	if config == nil {
-// // 		return nil, fmt.Errorf("config is nil")
-// // 	}
+			// RunGL may panic and therefore exit the goroutine without returning
+			// an error. Therefore it has to be wrapped in a recoverable function
+			// call so that the error handling mechanism work. If an error occur
+			// it is assigned to jobErr so that we can check it once the wrapper
+			// function returns.
+			func() {
 
-// // 	filePath := config.PathforLimitlessProverAssets()
-// // 	var readBuf bytes.Buffer
+				defer func() {
+					if err := recover(); err != nil {
+						jobErr = fmt.Errorf("GL prover for witness index=%v panicked: %v", i, err)
+					}
+				}()
 
-// // 	// Initialize result struct
-// // 	assets := &Asset{
-// // 		Zkevm:      &zkevm.ZkEvm{},
-// // 		Disc:       &distributed.StandardModuleDiscoverer{},
-// // 		DistWizard: &distributed.DistributedWizard{},
-// // 	}
+				var err error
+				proofGL, lppCommitment, err = RunGL(cfg, i)
+				if err != nil {
+					jobErr = fmt.Errorf("could not run GL prover for witness index=%v: %w", i, err)
+				}
+			}()
 
-// // 	// Define all files to read and deserialize
-// // 	files := []struct {
-// // 		name   string
-// // 		target any
-// // 	}{
-// // 		{name: "zkevm.bin", target: &assets.Zkevm},
-// // 		{name: "disc.bin", target: &assets.Disc},
-// // 		{name: "dw-raw.bin", target: &assets.DistWizard},
-// // 		{name: "dw-compiled-default.bin", target: &assets.DistWizard.CompiledDefault},
-// // 	}
+			if jobErr != nil {
+				cancelGL()
+				return jobErr
+			}
 
-// // 	// Read and deserialize each file
-// // 	for _, file := range files {
-// // 		if err := serialization.ReadAndDeserialize(filePath, file.name, file.target, &readBuf); err != nil {
-// // 			return nil, err
-// // 		}
-// // 	}
+			proofGLs = append(proofGLs, *proofGL)
+			lppCommitments = append(lppCommitments, lppCommitment)
+			return nil
+		})
+	}
 
-// // 	// Read and deserialize GL modules
-// // 	for i := 0; i < len(assets.DistWizard.GLs); i++ {
-// // 		var compiledGL *distributed.RecursedSegmentCompilation
-// // 		fileName := fmt.Sprintf("dw-compiled-gl-%d.bin", i)
-// // 		if err := serialization.ReadAndDeserialize(filePath, fileName, &compiledGL, &readBuf); err != nil {
-// // 			return nil, err
-// // 		}
-// // 		assets.DistWizard.CompiledGLs = append(assets.DistWizard.CompiledGLs, compiledGL)
-// // 	}
+	err := errGroup.Wait()
+	// This context cancellation is here to ensure the context is wiped-out in
+	// every branches.
+	cancelGL()
+	if err != nil {
+		return nil, err
+	}
 
-// // 	// Read and deserialize LPP modules
-// // 	for i := 0; i < len(assets.DistWizard.LPPs); i++ {
-// // 		var compiledLPP *distributed.RecursedSegmentCompilation
-// // 		fileName := fmt.Sprintf("dw-compiled-lpp-%d.bin", i)
-// // 		if err := serialization.ReadAndDeserialize(filePath, fileName, &compiledLPP, &readBuf); err != nil {
-// // 			return nil, err
-// // 		}
-// // 		assets.DistWizard.CompiledLPPs = append(assets.DistWizard.CompiledLPPs, compiledLPP)
-// // 	}
+	var (
+		sharedRandomness      = distributed.GetSharedRandomness(lppCommitments)
+		contextLPP, cancelLPP = context.WithCancel(context.Background())
+	)
 
-// // 	// Read and deserialize conglomeration compilation
-// // 	if err := serialization.ReadAndDeserialize(filePath, "dw-compiled-conglomeration.bin", &assets.DistWizard.CompiledConglomeration, &readBuf); err != nil {
-// // 		return nil, err
-// // 	}
+	for i := 0; i < numLPP; i++ {
 
-// // 	return assets, nil
-// // }
+		errGroup.Go(func() error {
 
-// // func serializeAndWriteRecursionWitness(cfg *config.Config, witnessName string, witness *recursion.Witness, isLPP bool) error {
-// // 	reader := bytes.NewReader(nil)
-// // 	filePath := cfg.PathforLimitlessProverAssets()
-// // 	filePath = path.Join(filePath, "witness")
-// // 	if isLPP {
-// // 		filePath = path.Join(filePath, "lpp")
-// // 	} else {
-// // 		filePath = path.Join(filePath, "gl")
-// // 	}
-// // 	return serialization.SerializeAndWrite(filePath, witnessName, witness, reader)
-// // }
+			if contextLPP.Err() != nil {
+				return nil
+			}
+
+			var (
+				jobErr   error
+				proofLPP *recursion.Witness
+			)
+
+			// RunLPP may panic and therefore exit the goroutine without returning
+			// an error. Therefore it has to be wrapped in a recoverable function
+			// call so that the error handling mechanism work. If an error occur
+			// it is assigned to jobErr so that we can check it once the wrapper
+			// function returns.
+			func() {
+
+				defer func() {
+					if err := recover(); err != nil {
+						jobErr = fmt.Errorf("LPP prover for witness index=%v panicked: %v", i, err)
+					}
+				}()
+
+				var err error
+				proofLPP, err = RunLPP(cfg, i, sharedRandomness)
+				if err != nil {
+					jobErr = fmt.Errorf("could not run LPP prover for witness index=%v: %w", i, err)
+				}
+			}()
+
+			if jobErr != nil {
+				cancelLPP()
+				return fmt.Errorf("could not run LPP prover for witness index=%v: %w", i, jobErr)
+			}
+
+			proofLPPs = append(proofLPPs, *proofLPP)
+			return nil
+		})
+	}
+
+	err = errGroup.Wait()
+	// This context cancellation is here to ensure the context is wiped-out in
+	// every branches.
+	cancelLPP()
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = RunConglomeration(cfg, proofGLs, proofLPPs)
+	if err != nil {
+		return nil, fmt.Errorf("could not run conglomeration prover: %w", err)
+	}
+
+	return &out, nil
+}
+
+// RunBootstrapper loads the assets required to run the bootstrapper and runs it,
+// the function then performs the module segmentation and saves each module
+// witness in the /tmp directory.
+func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
+) (numWitnessGL, numWitnessLPP int) {
+
+	logrus.Infof("Loading bootstrapper and zkevm")
+	assets := &zkevm.LimitlessZkEVM{}
+	if err := assets.LoadBootstrapper(cfg); err != nil || assets.DistWizard.Bootstrapper == nil {
+		utils.Panic("could not load bootstrapper: %v", err)
+	}
+
+	if err := assets.LoadZkEVM(cfg); err != nil || assets.Zkevm == nil {
+		utils.Panic("could not load zkevm: %v", err)
+	}
+
+	if err := assets.LoadDisc(cfg); err != nil || assets.DistWizard.Disc == nil {
+		utils.Panic("could not load disc: %v", err)
+	}
+
+	// The GL and LPP modules are loaded in the background immediately but we
+	// only need them for the [distributed.SegmentRuntime] call.
+	distDone := make(chan error)
+	go func() {
+		err := assets.LoadBlueprints(cfg)
+		distDone <- err
+	}()
+
+	logrus.Infof("Running bootstrapper")
+	runtimeBoot := wizard.RunProver(
+		assets.DistWizard.Bootstrapper,
+		assets.Zkevm.GetMainProverStep(zkevmWitness),
+	)
+
+	// This frees the memory from the assets that are no longer needed. We don't
+	// need to do that for the module GLs and LPPs because they are thrown away
+	// when the current function returns.
+	assets.Zkevm = nil
+	assets.DistWizard.Bootstrapper = nil
+
+	if err := <-distDone; err != nil {
+		utils.Panic("could not load GL and LPP modules: %v", err)
+	}
+
+	logrus.Infof("Segmenting the runtime")
+	witnessGLs, witnessLPPs := distributed.SegmentRuntime(
+		runtimeBoot,
+		assets.DistWizard.Disc,
+		assets.DistWizard.BlueprintGLs,
+		assets.DistWizard.BlueprintLPPs,
+	)
+
+	logrus.Info("Saving the witnesses")
+
+	eg := &errgroup.Group{}
+	eg.SetLimit(numConcurrentWitnessWritingGoroutines)
+
+	for i := range witnessGLs {
+
+		// This saves the value of i in the closure to ensure that the right
+		// value is passed. It should be obsolete with newer version of Go.
+		i := i
+		eg.Go(func() error {
+
+			filePath := witnessDir + "/witness-GL-" + strconv.Itoa(i)
+			if err := writeToDisk(filePath, *witnessGLs[i], true); err != nil {
+				return fmt.Errorf("could not save witnessGL: %v", err)
+			}
+
+			// This frees the memory from the witness that is no longer needed.
+			witnessGLs[i] = nil
+			return nil
+		})
+
+	}
+
+	for i := range witnessLPPs {
+
+		// This saves the value of i in the closure to ensure that the right
+		// value is passed. It should be obsolete with newer version of Go.
+		i := i
+
+		eg.Go(func() error {
+
+			filePath := witnessDir + "/witness-LPP-" + strconv.Itoa(i)
+			if err := writeToDisk(filePath, *witnessLPPs[i], true); err != nil {
+				return fmt.Errorf("could not save witnessLPP: %v", err)
+			}
+
+			// This frees the memory from the witness that is no longer needed.
+			witnessLPPs[i] = nil
+			return nil
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		utils.Panic("could not save witnesses: %v", err)
+	}
+
+	return len(witnessGLs), len(witnessLPPs)
+}
+
+// RunGL runs the GL prover for the provided witness index
+func RunGL(cfg *config.Config, witnessIndex int) (proofGL *recursion.Witness, lppCommitments field.Element, err error) {
+
+	logrus.Infof("Running the GL-prover for witness index=%v", witnessIndex)
+
+	witness := &distributed.ModuleWitnessGL{}
+	witnessFilePath := witnessDir + "/witness-GL-" + strconv.Itoa(witnessIndex)
+	if err := loadFromDisk(witnessFilePath, witness, true); err != nil {
+		return nil, field.Element{}, err
+	}
+
+	logrus.Infof("Loaded the witness for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+
+	compiledGL, err := zkevm.LoadCompiledGL(cfg, witness.ModuleName)
+	if err != nil {
+		return nil, field.Element{}, fmt.Errorf("could not load compiled GL: %w", err)
+	}
+
+	logrus.Infof("Loaded the compiled GL for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+
+	run := compiledGL.ProveSegment(witness)
+
+	logrus.Infof("Finished running the GL-prover for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+
+	_proofGL := recursion.ExtractWitness(run)
+
+	logrus.Infof("Extracted the witness for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+
+	return &_proofGL, distributed.GetLppCommitmentFromRuntime(run), nil
+}
+
+// RunLPP runs the LPP prover for the provided witness index
+func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Element) (proofLPP *recursion.Witness, err error) {
+
+	logrus.Infof("Running the LPP-prover for witness index=%v", witnessIndex)
+
+	witness := &distributed.ModuleWitnessLPP{}
+	witnessFilePath := witnessDir + "/witness-LPP-" + strconv.Itoa(witnessIndex)
+	if err := loadFromDisk(witnessFilePath, witness, true); err != nil {
+		return nil, err
+	}
+
+	witness.InitialFiatShamirState = sharedRandomness
+
+	logrus.Infof("Loaded the witness for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+
+	compiledLPP, err := zkevm.LoadCompiledLPP(cfg, witness.ModuleName)
+	if err != nil {
+		return nil, fmt.Errorf("could not load compiled LPP: %w", err)
+	}
+
+	logrus.Infof("Loaded the compiled LPP for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+
+	run := compiledLPP.ProveSegment(witness)
+
+	logrus.Infof("Finished running the LPP-prover for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+
+	_proofLPP := recursion.ExtractWitness(run)
+
+	logrus.Infof("Extracted the witness for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+
+	return &_proofLPP, nil
+}
+
+// RunConglomeration runs the conglomeration prover for the provided subproofs
+func RunConglomeration(cfg *config.Config, proofGLs, proofLPPs []recursion.Witness) (proof wizard.Proof, err error) {
+
+	logrus.Infof("Running the conglomeration-prover")
+
+	cong, err := zkevm.LoadConglomeration(cfg)
+	if err != nil {
+		return wizard.Proof{}, fmt.Errorf("could not load compiled conglomeration: %w", err)
+	}
+
+	logrus.Infof("Loaded the compiled conglomeration")
+
+	proof = cong.Prove(proofGLs, proofLPPs)
+
+	logrus.Infof("Finished running the conglomeration-prover")
+
+	return proof, nil
+}
+
+func loadFromDisk(filePath string, assetPtr any, withCompression bool) error {
+
+	f := files.MustRead(filePath)
+	defer f.Close()
+
+	var (
+		buf       []byte
+		desErr    error
+		readErr   error
+		decompErr error
+		tDecomp   time.Duration
+	)
+
+	tRead := profiling.TimeIt(func() {
+		buf, readErr = io.ReadAll(f)
+	})
+
+	if withCompression {
+
+		tDecomp = profiling.TimeIt(func() {
+			r := lz4.NewReader(bytes.NewReader(buf))
+			buf, decompErr = io.ReadAll(r)
+			if decompErr != nil {
+				return
+			}
+		})
+
+		if decompErr != nil {
+			return fmt.Errorf("could not decompress file %s: %w", filePath, decompErr)
+		}
+	}
+
+	if readErr != nil {
+		return fmt.Errorf("could not read file %s: %w", filePath, readErr)
+	}
+
+	tDes := profiling.TimeIt(func() {
+		desErr = serialization.Deserialize(buf, assetPtr)
+	})
+
+	if desErr != nil {
+		return fmt.Errorf("could not deserialize %s: %w", filePath, desErr)
+	}
+
+	logrus.Infof("Read %s in %s, deserialized in %s, decompressed in %s, size: %dB", filePath, tRead, tDes, tDecomp, len(buf))
+
+	return nil
+}
+
+// writeToDisk writes the provided assets to disk using the
+// [serialization.Serialize] function.
+func writeToDisk(filePath string, asset any, withCompression bool) error {
+
+	f := files.MustOverwrite(filePath)
+	defer f.Close()
+
+	var (
+		buf     []byte
+		serr    error
+		werr    error
+		compErr error
+		tComp   time.Duration
+	)
+
+	tSer := profiling.TimeIt(func() {
+		buf, serr = serialization.Serialize(asset)
+	})
+
+	if serr != nil {
+		return fmt.Errorf("could not serialize %s: %w", filePath, serr)
+	}
+
+	if withCompression {
+
+		tComp = profiling.TimeIt(func() {
+
+			var (
+				b = bytes.NewBuffer(nil)
+				w = lz4.NewWriter(b)
+			)
+
+			if _, compErr = w.Write(buf); compErr != nil {
+				return
+			}
+
+			if compErr = w.Flush(); compErr != nil {
+				return
+			}
+
+			buf = b.Bytes()
+		})
+
+		if compErr != nil {
+			return fmt.Errorf("could not compress file %s: %w", filePath, compErr)
+		}
+	}
+
+	diskWriteSemaphore.Acquire(context.Background(), 1)
+
+	tW := profiling.TimeIt(func() {
+		_, werr = f.Write(buf)
+	})
+
+	diskWriteSemaphore.Release(1)
+
+	if werr != nil {
+		return fmt.Errorf("could not write to file %s: %w", filePath, werr)
+	}
+
+	logrus.Infof("Wrote %s in %s, serialized in %s, compressed in %s, size: %dB", filePath, tW, tSer, tComp, len(buf))
+
+	return nil
+}

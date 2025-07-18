@@ -1,18 +1,23 @@
 package logderivativesum
 
 import (
+	"fmt"
 	"runtime/debug"
 	"sync"
 
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	"github.com/sirupsen/logrus"
 )
 
 // proverTaskAtRound implements the [wizard.ProverAction] interface. It gathers
@@ -64,6 +69,8 @@ func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
 					panicOnce.Do(func() {
 						panicMsg = r
 						panicTrace = debug.Stack()
+
+						inspectWiop(run)
 					})
 				}
 
@@ -281,12 +288,16 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 			}
 
 			if hasFilter && !filter[k].IsOne() {
-				utils.Panic(
+				logrus.Errorf(
 					"the filter column `%v` has a non-binary value at position `%v`: (%v)",
 					a.SFilter[i].GetColID(),
 					k,
 					filter[k].String(),
 				)
+
+				// Even if this is unconstrained, this is still worth interrupting the
+				// prover because it "should" be a binary column.
+				exit.OnUnsatisfiedConstraints()
 			}
 
 			var (
@@ -308,6 +319,8 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 					"entry %v of the table %v is not included in the table. tableRow=%v T-mapSize=%v T-name=%v\n",
 					k, NameTable([][]ifaces.Column{a.S[i]}), vector.Prettify(tableRow), len(mapM), NameTable(a.T),
 				)
+
+				exit.OnUnsatisfiedConstraints()
 			}
 
 			mFrag, posInFragM := posInM[0], posInM[1]
@@ -357,4 +370,26 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 			run.AssignLocalPoint(z.ZOpenings[frag].ID, packedZ[len(packedZ)-1])
 		}
 	})
+}
+
+func inspectWiop(run *wizard.ProverRuntime) {
+
+	columns := run.Spec.Columns.AllKeys()
+
+	fmt.Printf("Name; HasPragmaFullCol; HasPragmaLeftPadded; HasPragmaRightPadded; RangeStart; RangeEnd; Size")
+
+	for _, colID := range columns {
+
+		var (
+			col                     = run.Spec.Columns.GetHandle(colID).(column.Natural)
+			_, hasPragmaFullCol     = col.GetPragma(pragmas.FullColumnPragma)
+			_, hasPragmaLeftPadded  = col.GetPragma(pragmas.LeftPadded)
+			_, hasPragmaRightPadded = col.GetPragma(pragmas.RightPadded)
+			v                       = col.GetColAssignment(run)
+			rangeStart, rangeEnd    = smartvectors.CoCompactRange(v)
+			size                    = v.Len()
+		)
+
+		fmt.Printf("%v; %v; %v; %v; %v; %v; %v\n", colID, hasPragmaFullCol, hasPragmaLeftPadded, hasPragmaRightPadded, rangeStart, rangeEnd, size)
+	}
 }

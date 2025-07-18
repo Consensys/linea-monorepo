@@ -222,7 +222,7 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 
 	if !noNumerator {
 		numerator = column.EvalExprColumn(run, numBoard)
-		numerator, _ = smartvectors.TryReduceSize(numerator)
+		numerator, _ = smartvectors.TryReduceSizeRight(numerator)
 
 		// If the denominator resolves into a constant equal to 1, then
 		// this is identical to not having any denominator. If it is
@@ -243,7 +243,7 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 
 	if !noDenominator {
 		denominator = column.EvalExprColumn(run, denBoard)
-		denominator, _ = smartvectors.TryReduceSize(denominator)
+		denominator, _ = smartvectors.TryReduceSizeRight(denominator)
 
 		for d := range denominator.IterateCompact() {
 			if d.IsZero() {

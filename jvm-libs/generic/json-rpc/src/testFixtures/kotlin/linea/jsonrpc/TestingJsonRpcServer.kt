@@ -24,6 +24,8 @@ import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.net.URI
+import java.net.URL
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -36,7 +38,7 @@ open class TestingJsonRpcServer(
   loggerName: String = serverName,
   val vertx: Vertx = Vertx.vertx(),
   val responseObjectMapper: ObjectMapper = jacksonObjectMapper(),
-  responsesArtificialDelay: Duration? = null
+  responsesArtificialDelay: Duration? = null,
 ) {
   val log: Logger = LogManager.getLogger(loggerName)
   private var httpServer: HttpJsonRpcServer = createHttpServer(port)
@@ -45,8 +47,10 @@ open class TestingJsonRpcServer(
   private var verticleId: String? = null
   private val handlers: MutableMap<String, (JsonRpcRequest) -> Any?> = ConcurrentHashMap()
   private var requests: MutableList<
-    Pair<JsonRpcRequest, Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>>>
+    Pair<JsonRpcRequest, Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>>>,
     > = mutableListOf()
+  val httpEndpoint: URL
+    get() = URI.create("http://127.0.0.1:$boundPort/$apiPath").toURL()
 
   var responsesArtificialDelay: Duration? = responsesArtificialDelay
     set(value) {
@@ -63,10 +67,10 @@ open class TestingJsonRpcServer(
           requestsHandler = this::handleRequest,
           metricsFacade = MicrometerMetricsFacade(registry = SimpleMeterRegistry()),
           log = log,
-          responseResultObjectMapper = responseObjectMapper
-        )
+          responseResultObjectMapper = responseObjectMapper,
+        ),
       ),
-      serverName = serverName
+      serverName = serverName,
     )
   }
 
@@ -100,7 +104,7 @@ open class TestingJsonRpcServer(
   private fun handleRequest(
     user: User?,
     jsonRpcRequest: JsonRpcRequest,
-    requestJson: JsonObject
+    requestJson: JsonObject,
   ): Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> {
     // need this otherwise kotlin compiler/IDE struggle to infer the type
     val result: Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> = (
@@ -112,9 +116,9 @@ open class TestingJsonRpcServer(
               Ok(
                 JsonRpcSuccessResponse(
                   request = jsonRpcRequest,
-                  result = result
-                )
-              )
+                  result = result,
+                ),
+              ),
             )
           } catch (e: JsonRpcErrorResponseException) {
             Future.succeededFuture(Err(JsonRpcErrorResponse(jsonRpcRequest.id, e.asJsonRpcError())))
@@ -141,7 +145,7 @@ open class TestingJsonRpcServer(
    */
   fun handle(
     method: String,
-    methodHandler: (jsonRpcRequest: JsonRpcRequest) -> Any?
+    methodHandler: (jsonRpcRequest: JsonRpcRequest) -> Any?,
   ) {
     handlers[method] = methodHandler
   }
@@ -169,7 +173,10 @@ open class TestingJsonRpcServer(
   private fun <T> SafeFuture<T>.delayed(delay: Duration): SafeFuture<T> {
     val promise = SafeFuture<T>()
     vertx.setTimer(delay.inWholeMilliseconds) {
-      this.thenAccept(promise::complete).exceptionally { promise.completeExceptionally(it); null }
+      this.thenAccept(promise::complete).exceptionally {
+        promise.completeExceptionally(it)
+        null
+      }
     }
     return promise
   }

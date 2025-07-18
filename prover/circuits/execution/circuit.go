@@ -4,6 +4,8 @@ import (
 	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -99,6 +101,10 @@ func assign(
 
 // Define of the wizard circuit
 func (c *CircuitExecution) Define(api frontend.API) error {
+
+	c.WizardVerifier.HasherFactory = gkrmimc.NewHasherFactory(api)
+	c.WizardVerifier.FS = fiatshamir.NewGnarkFiatShamir(api, c.WizardVerifier.HasherFactory)
+
 	c.WizardVerifier.Verify(api)
 	checkPublicInputs(
 		api,
