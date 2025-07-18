@@ -9,30 +9,24 @@
 package maru.database.kv
 
 import java.nio.file.Path
-import java.util.Optional
 import kotlin.random.Random
 import maru.core.BeaconState
 import maru.core.ext.DataGenerators
+import maru.core.ext.metrics.TestMetrics
 import maru.database.BeaconChain
+import maru.metrics.BesuMetricsCategoryAdapter
+import maru.metrics.MaruMetricsCategory
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
-import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
-import org.hyperledger.besu.plugin.services.metrics.MetricCategory
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class KvDatabaseTest {
-  private object KvDatabaseTestMetricCategory : MetricCategory {
-    override fun getName(): String = KvDatabaseTest::class.simpleName!!
-
-    override fun getApplicationPrefix(): Optional<String> = Optional.empty()
-  }
-
   private fun createDatabase(databasePath: Path): BeaconChain =
     KvDatabaseFactory.createRocksDbDatabase(
       databasePath = databasePath,
-      metricsSystem = NoOpMetricsSystem(),
-      metricCategory = KvDatabaseTestMetricCategory,
+      metricsSystem = TestMetrics.TestMetricsSystemAdapter,
+      metricCategory = BesuMetricsCategoryAdapter.from(MaruMetricsCategory.STORAGE),
     )
 
   @Test

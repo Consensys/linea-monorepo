@@ -26,4 +26,6 @@ dependencies {
   implementation "org.hyperledger.besu.internal:besu-metrics-core"
   implementation "org.hyperledger.besu:besu-plugin-api"
   testImplementation (testFixtures(project(":core")))
+  testImplementation (project(":observability"))
+  testImplementation ("build.linea.internal:metrics")
 }

@@ -26,6 +26,7 @@ dependencies {
   implementation(project(":storage"))
   implementation(project(":crypto"))
   implementation(project(":serialization"))
+  implementation(project(":observability"))
   api(project(":linea-finalization-provider")) {
     exclude group: "build.linea", module: "besu-libs"
   }
