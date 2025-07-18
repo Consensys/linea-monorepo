@@ -13,6 +13,8 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.networking.p2p.network.PeerHandler
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.NodeId
@@ -25,7 +27,19 @@ class MaruPeerManager(
   private val maruPeerFactory: MaruPeerFactory,
 ) : PeerHandler,
   PeerLookup {
+  private val log: Logger = LogManager.getLogger(this::javaClass)
   private val connectedPeers: ConcurrentHashMap<NodeId, MaruPeer> = ConcurrentHashMap()
+
+  init {
+    scheduler.scheduleAtFixedRate({
+      logConnectedPeers()
+    }, 30, 30, TimeUnit.SECONDS)
+  }
+
+  private fun logConnectedPeers() {
+    val peerIds = connectedPeers.keys.joinToString(", ") { it.toString() }
+    log.info("Currently connected peers: [$peerIds]")
+  }
 
   override fun onConnect(peer: Peer) {
     val maruPeer = maruPeerFactory.createMaruPeer(peer)

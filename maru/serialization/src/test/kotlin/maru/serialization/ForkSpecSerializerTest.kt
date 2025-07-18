@@ -9,6 +9,7 @@
 package maru.serialization
 
 import maru.config.consensus.ElFork
+import maru.config.consensus.delegated.ElDelegatedConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.core.ext.DataGenerators
@@ -17,7 +18,7 @@ import org.junit.jupiter.api.Test
 
 class ForkSpecSerializerTest {
   @Test
-  fun `serialization is deterministic for same input`() {
+  fun `serialization for Qbft is deterministic for same input`() {
     val v1 = DataGenerators.randomValidator()
     val v2 = DataGenerators.randomValidator()
     val config1 =
@@ -48,7 +49,43 @@ class ForkSpecSerializerTest {
   }
 
   @Test
-  fun `serialization changes when blockTimeSeconds changes`() {
+  fun `serialization for ELDelegated is deterministic for same input`() {
+    val config = ElDelegatedConfig
+    val forkSpec1 =
+      ForkSpec(
+        blockTimeSeconds = 5,
+        timestampSeconds = 123456789L,
+        configuration = config,
+      )
+    val forkSpec2 =
+      ForkSpec(
+        blockTimeSeconds = 5,
+        timestampSeconds = 123456789L,
+        configuration = config,
+      )
+    val bytes1 = ForkIdSerializers.ForkSpecSerializer.serialize(forkSpec1)
+    val bytes2 = ForkIdSerializers.ForkSpecSerializer.serialize(forkSpec2)
+    assertThat(bytes1).isEqualTo(bytes2)
+  }
+
+  @Test
+  fun `serialization changes for ELDelegated when blockTimeSeconds changes`() {
+    val config = ElDelegatedConfig
+    val forkSpec1 =
+      ForkSpec(
+        blockTimeSeconds = 5,
+        timestampSeconds = 123456789L,
+        configuration = config,
+      )
+    val forkSpec2 =
+      forkSpec1.copy(blockTimeSeconds = 10)
+    val bytes1 = ForkIdSerializers.ForkSpecSerializer.serialize(forkSpec1)
+    val bytes2 = ForkIdSerializers.ForkSpecSerializer.serialize(forkSpec2)
+    assertThat(bytes1).isNotEqualTo(bytes2)
+  }
+
+  @Test
+  fun `serialization changes for QBFT when blockTimeSeconds changes`() {
     val v = DataGenerators.randomValidator()
     val config =
       QbftConsensusConfig(
@@ -69,13 +106,28 @@ class ForkSpecSerializerTest {
   }
 
   @Test
-  fun `serialization changes when timestampSeconds changes`() {
+  fun `serialization for QBFT changes when timestampSeconds changes`() {
     val v = DataGenerators.randomValidator()
     val config =
       QbftConsensusConfig(
         validatorSet = setOf(v),
         elFork = ElFork.Prague,
       )
+    val forkSpec1 =
+      ForkSpec(
+        blockTimeSeconds = 5,
+        timestampSeconds = 123456789L,
+        configuration = config,
+      )
+    val forkSpec2 = forkSpec1.copy(timestampSeconds = 3123L)
+    val bytes1 = ForkIdSerializers.ForkSpecSerializer.serialize(forkSpec1)
+    val bytes2 = ForkIdSerializers.ForkSpecSerializer.serialize(forkSpec2)
+    assertThat(bytes1).isNotEqualTo(bytes2)
+  }
+
+  @Test
+  fun `serialization for ELDelegated changes when timestampSeconds changes`() {
+    val config = ElDelegatedConfig
     val forkSpec1 =
       ForkSpec(
         blockTimeSeconds = 5,
