@@ -723,6 +723,18 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 	return 0, 0 // unreachable return
 }
 
+// RecordAssignmentStats scans the assignment of the module and reports stats
+// related to the columns and their padding. It returns a list of records for
+// each query-based submodule.
+func (mod *StandardModule) RecordAssignmentStats(run *wizard.ProverRuntime) (qbmRecords []QueryBasedAssignmentStatsRecord) {
+	for _, submod := range mod.SubModules {
+		qbmRecords = append(qbmRecords, submod.RecordAssignmentStats(run))
+	}
+	return qbmRecords
+}
+
+// RecordAssignmentStats scans the assignment of the module and reports stats
+// related to the columns and their padding.
 func (mod *QueryBasedModule) RecordAssignmentStats(run *wizard.ProverRuntime) QueryBasedAssignmentStatsRecord {
 
 	var (

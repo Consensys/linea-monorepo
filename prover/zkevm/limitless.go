@@ -108,6 +108,26 @@ func NewLimitlessDebugZkEVM(cfg *config.Config) *LimitlessZkEVM {
 	return limitlessZkEVM
 }
 
+// RunStatRecords runs only the bootstrapper and returns a list of stat records
+func (lz *LimitlessZkEVM) RunStatRecords(witness *Witness) []distributed.QueryBasedAssignmentStatsRecord {
+
+	var (
+		runtimeBoot = wizard.RunProver(
+			lz.DistWizard.Bootstrapper,
+			lz.Zkevm.GetMainProverStep(witness),
+		)
+
+		res  = []distributed.QueryBasedAssignmentStatsRecord{}
+		disc = lz.DistWizard.Disc.(*distributed.StandardModuleDiscoverer)
+	)
+
+	for _, mod := range disc.Modules {
+		res = append(res, mod.RecordAssignmentStats(runtimeBoot)...)
+	}
+
+	return res
+}
+
 // RunDebug runs the LimitlessZkEVM on debug mode. It will run the boostrapper,
 // the segmentation and then the sanity checks for all the segments. The
 // check of the LPP module is done using a deterministic pseudo-random number
