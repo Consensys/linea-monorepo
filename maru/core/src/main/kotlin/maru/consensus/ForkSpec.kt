@@ -10,6 +10,7 @@ package maru.consensus
 
 import java.util.NavigableSet
 import java.util.TreeSet
+import kotlin.reflect.KClass
 
 data class ForkSpec(
   val timestampSeconds: Long,
@@ -44,6 +45,14 @@ class ForksSchedule(
 
     throw IllegalArgumentException(
       "No fork found for $timestamp, first known fork is at ${forks.last.timestampSeconds}",
+    )
+  }
+
+  fun <T : ConsensusConfig> getForkByConfigType(configClass: KClass<T>): ForkSpec {
+    // Uses findLast since the list is reversed to get the first matching fork
+    val fork = forks.findLast { it.configuration::class == configClass }
+    return fork ?: throw IllegalArgumentException(
+      "No fork found for config type ${configClass.simpleName}",
     )
   }
 

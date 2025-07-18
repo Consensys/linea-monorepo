@@ -45,17 +45,25 @@ class EagerQbftBlockCreator(
     parentHeader: QbftBlockHeader,
   ): QbftBlock {
     val beaconBlockHeader = parentHeader.toBeaconBlockHeader()
-    val parentBeaconBlockBody =
+    val parentBeaconBlock =
       beaconChain
         .getSealedBeaconBlock(beaconBlockHeader.hash)
         ?.beaconBlock
-        ?.beaconBlockBody
         ?: throw IllegalStateException("Parent block not found in the database")
-    val finalizedState = finalizationStateProvider(parentBeaconBlockBody)
+    val finalizedState = finalizationStateProvider(parentBeaconBlock.beaconBlockBody)
+
+    val headHash =
+      // If the parent block is genesis, we use the latest EL block hash as the head hash to start the block building
+      if (parentBeaconBlock.beaconBlockHeader.number == 0UL) {
+        manager.getLatestBlockHash().get()
+      } else {
+        parentBeaconBlock.beaconBlockBody.executionPayload.blockHash
+      }
+
     val blockBuildingTriggerResult =
       manager
         .setHeadAndStartBlockBuilding(
-          headHash = parentBeaconBlockBody.executionPayload.blockHash,
+          headHash = headHash,
           safeHash = finalizedState.safeBlockHash,
           finalizedHash = finalizedState.finalizedBlockHash,
           nextBlockTimestamp = headerTimeStampSeconds,

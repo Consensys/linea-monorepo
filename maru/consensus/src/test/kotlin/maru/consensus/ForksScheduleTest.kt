@@ -14,6 +14,8 @@ import org.junit.jupiter.api.assertThrows
 
 class ForksScheduleTest {
   private val consensusConfig = object : ConsensusConfig {}
+  private val qbftConsensusConfig = object : ConsensusConfig {}
+  private val otherConsensusConfig = object : ConsensusConfig {}
   private val expectedChainId = 1337u
 
   @Test
@@ -81,5 +83,35 @@ class ForksScheduleTest {
 
     assertThat(schedule1).isNotEqualTo(schedule2)
     assertThat(schedule1.hashCode()).isNotEqualTo(schedule2.hashCode())
+  }
+
+  @Test
+  fun `getForkByConfigType throws exception when config class not found`() {
+    val qbftFork = ForkSpec(1000L, 10, qbftConsensusConfig)
+    val forks = listOf(qbftFork)
+
+    val schedule = ForksSchedule(expectedChainId, forks)
+
+    val exception =
+      assertThrows<IllegalArgumentException> {
+        schedule.getForkByConfigType(otherConsensusConfig::class)
+      }
+    assertThat(exception).hasMessageContaining("No fork found for config type")
+  }
+
+  @Test
+  fun `getForkByConfigType returns first matching fork`() {
+    val otherFork1 = ForkSpec(1000L, 10, consensusConfig)
+    val qbftFork1 = ForkSpec(2000L, 20, qbftConsensusConfig)
+    val otherFork2 = ForkSpec(3000L, 30, consensusConfig)
+    val qbftFork2 = ForkSpec(4000L, 40, qbftConsensusConfig)
+    val qbftFork3 = ForkSpec(5000L, 50, qbftConsensusConfig)
+    val forks = listOf(otherFork1, qbftFork1, otherFork2, qbftFork2, qbftFork3)
+
+    val schedule = ForksSchedule(expectedChainId, forks)
+
+    // Should return the first one found (note: forks are sorted by timestamp in reverse order internally)
+    val result = schedule.getForkByConfigType(qbftConsensusConfig::class)
+    assertThat(result).isEqualTo(qbftFork1)
   }
 }

@@ -121,4 +121,6 @@ class JsonRpcExecutionLayerManager(
         throw IllegalStateException("engine_newPayload request failed! Cause: " + payloadStatusResponse.errorMessage)
       }
     }
+
+  override fun getLatestBlockHash(): SafeFuture<ByteArray> = executionLayerEngineApiClient.getLatestBlockHash()
 }

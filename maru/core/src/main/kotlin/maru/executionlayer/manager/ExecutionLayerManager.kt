@@ -92,4 +92,6 @@ interface ExecutionLayerManager {
   ): SafeFuture<ForkChoiceUpdatedResult>
 
   fun newPayload(executionPayload: ExecutionPayload): SafeFuture<PayloadStatus>
+
+  fun getLatestBlockHash(): SafeFuture<ByteArray>
 }

@@ -26,4 +26,6 @@ interface ExecutionLayerEngineApiClient {
     forkChoiceState: ForkChoiceStateV1,
     payloadAttributes: PayloadAttributesV1?,
   ): SafeFuture<Response<ForkChoiceUpdatedResult>>
+
+  fun getLatestBlockHash(): SafeFuture<ByteArray>
 }
