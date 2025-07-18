@@ -8,6 +8,7 @@
  */
 package maru.consensus.qbft
 
+import maru.consensus.PrevRandaoProvider
 import maru.consensus.ValidatorProvider
 import maru.consensus.state.FinalizationProvider
 import maru.core.Validator
@@ -28,6 +29,7 @@ class QbftBlockCreatorFactory(
   private val validatorProvider: ValidatorProvider,
   private val beaconChain: BeaconChain,
   private val finalizationStateProvider: FinalizationProvider,
+  private val prevRandaoProvider: PrevRandaoProvider<ULong>,
   private val blockBuilderIdentity: Validator,
   private val eagerQbftBlockCreatorConfig: EagerQbftBlockCreator.Config,
 ) : QbftBlockCreatorFactory {
@@ -63,6 +65,7 @@ class QbftBlockCreatorFactory(
         manager = manager,
         delegate = delayedQbftBlockCreator,
         finalizationStateProvider = finalizationStateProvider,
+        prevRandaoProvider = prevRandaoProvider,
         blockBuilderIdentity = blockBuilderIdentity,
         beaconChain = beaconChain,
         config = eagerQbftBlockCreatorConfig,

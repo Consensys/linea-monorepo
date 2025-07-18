@@ -39,6 +39,7 @@ import maru.serialization.rlp.stateRoot
 import maru.testutils.besu.BesuFactory
 import maru.testutils.besu.BesuTransactionsHelper
 import org.apache.tuweni.bytes.Bytes
+import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
@@ -74,6 +75,7 @@ class EagerQbftBlockCreatorTest {
   private val beaconChain = Mockito.mock(BeaconChain::class.java)
   private val clock = Mockito.mock(Clock::class.java)
   private val validator = Validator(Random.nextBytes(20))
+  private val prevRandaoProvider = { a: ULong, b: ByteArray -> Bytes32.random().toArray() }
   private lateinit var executionLayerManager: ExecutionLayerManager
   private val validatorSet = DataGenerators.randomValidators() + validator
 
@@ -142,6 +144,7 @@ class EagerQbftBlockCreatorTest {
             genesisBlockHash,
           )
         },
+        prevRandaoProvider = prevRandaoProvider,
         blockBuilderIdentity = validator,
         config =
           EagerQbftBlockCreator.Config(

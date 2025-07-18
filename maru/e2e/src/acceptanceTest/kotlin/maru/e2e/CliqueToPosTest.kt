@@ -34,6 +34,7 @@ import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
 import maru.core.EMPTY_HASH
 import maru.core.Validator
+import maru.extensions.encodeHex
 import maru.mappers.Mappers.toDomain
 import maru.serialization.rlp.RLPSerializers
 import maru.testutils.Web3jTransactionsHelper
@@ -234,6 +235,7 @@ class CliqueToPosTest {
           assertThat(latestBlockFromGeth).isNotNull
         } else {
           assertNodeBlockHeight(nodeEthereumClient)
+          assertNodeBlockPrevRandao(nodeEthereumClient)
         }
       }
   }
@@ -345,6 +347,29 @@ class CliqueToPosTest {
   ) {
     val targetNodeBlockHeight = web3j.ethBlockNumber().send().blockNumber
     assertThat(targetNodeBlockHeight).isEqualTo(expectedBlockNumber)
+  }
+
+  private fun assertNodeBlockPrevRandao(
+    web3j: Web3j,
+    lastPreMergeBlockNumber: Long = 5L,
+    lastPostMergeBlockNumber: Long = 9L,
+  ) {
+    var lastMixHash: String? = null
+    (lastPreMergeBlockNumber..lastPostMergeBlockNumber).forEach {
+      val mixHash =
+        web3j
+          .ethGetBlockByNumber(
+            DefaultBlockParameter.valueOf(it.toBigInteger()),
+            false,
+          ).send()
+          .block.mixHash
+      if (it == lastPreMergeBlockNumber) {
+        assertThat(mixHash).isEqualTo(EMPTY_HASH.encodeHex())
+      } else {
+        assertThat(mixHash).isNotEqualTo(lastMixHash)
+      }
+      lastMixHash = mixHash
+    }
   }
 
   private fun waitForAllBlockHeightsToMatch() {

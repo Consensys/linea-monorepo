@@ -32,6 +32,7 @@ class JsonRpcExecutionLayerManager(
     finalizedHash: ByteArray,
     nextBlockTimestamp: Long,
     feeRecipient: ByteArray,
+    prevRandao: ByteArray,
   ): SafeFuture<ForkChoiceUpdatedResult> {
     log.debug(
       "Trying to create a new block with timestamp={}",
@@ -41,6 +42,7 @@ class JsonRpcExecutionLayerManager(
       PayloadAttributes(
         timestamp = nextBlockTimestamp,
         suggestedFeeRecipient = feeRecipient,
+        prevRandao = prevRandao,
       )
     log.debug("Starting block building with payloadAttributes={}", payloadAttributes)
     return forkChoiceUpdate(headHash, safeHash, finalizedHash, payloadAttributes).thenPeek {

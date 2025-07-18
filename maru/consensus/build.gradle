@@ -29,6 +29,7 @@ dependencies {
   implementation(project(":core"))
   implementation(project(":serialization"))
   implementation(project(":config"))
+  implementation(project(":crypto"))
   implementation(project(":jvm-libs:extensions"))
   implementation(project(":jvm-libs:mappers"))
   implementation(project(":executionlayer")) {
