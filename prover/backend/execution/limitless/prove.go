@@ -66,7 +66,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		limitlessZkEVM := zkevm.NewLimitlessDebugZkEVM(cfg)
 		limitlessZkEVM.RunDebug(witness.ZkEVM)
 		// The return of "out" is to avoid panics later on in the process.
-		// return &out, nil
+		return &out, nil
 	}
 
 	logrus.Info("Starting to run the bootstrapper")
