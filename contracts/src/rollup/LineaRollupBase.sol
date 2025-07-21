@@ -223,9 +223,10 @@ abstract contract LineaRollupBase is
     unchecked {
       forcedTransactionNumber = nextForcedTransactionNumber++;
 
-      if (forcedTransactionL2BlockNumbers[forcedTransactionNumber - 1] >= _forcedL2BlockNumber) {
-        revert ForcedTransactionExistsForBlockOrIsTooLow(_forcedL2BlockNumber);
-      }
+      require(
+        forcedTransactionL2BlockNumbers[forcedTransactionNumber - 1] < _forcedL2BlockNumber,
+        ForcedTransactionExistsForBlockOrIsTooLow(_forcedL2BlockNumber)
+      );
 
       forcedTransactionRollingHashes[forcedTransactionNumber] = _forcedTransactionRollingHash;
       forcedTransactionL2BlockNumbers[forcedTransactionNumber] = _forcedL2BlockNumber;

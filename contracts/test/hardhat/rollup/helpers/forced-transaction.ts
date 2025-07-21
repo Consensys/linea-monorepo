@@ -1,6 +1,6 @@
 import { time as networkTime } from "@nomicfoundation/hardhat-network-helpers";
-import { LineaRollup, Mimc, TestEip1559RlpEncoder } from "contracts/typechain-types";
-import { encodeData, generateKeccak256 } from "contracts/common/helpers";
+import { LineaRollup, Mimc } from "contracts/typechain-types";
+import { encodeData } from "contracts/common/helpers";
 import { Eip1559Transaction } from "../../common/types";
 import { THREE_DAYS_IN_SECONDS } from "../../common/constants";
 
@@ -37,43 +37,63 @@ const _computeForcedTransactionRollingHash = async (
   expectedBlockNumber: bigint,
   from: string,
 ): Promise<string> => {
-  const mostSignificantBytesHashedPayload = "0x" + hashedPayload.slice(2, 32 + 2).padStart(64, "0");
-  const leastSignificantBytesHashedPayload = "0x" + hashedPayload.slice(32 + 2, 64 + 2).padStart(64, "0");
   const mimcPayload = encodeData(
-    ["bytes32", "bytes32", "bytes32", "uint256", "address"],
-    [
-      previousRollingHash,
-      mostSignificantBytesHashedPayload,
-      leastSignificantBytesHashedPayload,
-      expectedBlockNumber,
-      from,
-    ],
+    ["bytes32", "bytes32", "uint256", "address"],
+    [previousRollingHash, hashedPayload, expectedBlockNumber, from],
   );
   return await mimcLibrary.hash(mimcPayload);
+};
+
+const _computeMimcPayloadHash = async (
+  mimcLibrary: Mimc,
+  eip1559Tx: Eip1559Transaction,
+  chainId: bigint,
+): Promise<string> => {
+  const types = [
+    "tuple(" +
+      "uint256," +
+      "uint256," +
+      "uint256," +
+      "uint256," +
+      "uint256," +
+      "address," +
+      "uint256," +
+      "bytes," +
+      "tuple(address,bytes32[])[]" +
+      ")",
+  ];
+
+  const values = [
+    [
+      chainId,
+      eip1559Tx.nonce,
+      eip1559Tx.maxPriorityFeePerGas,
+      eip1559Tx.maxFeePerGas,
+      eip1559Tx.gasLimit,
+      eip1559Tx.to,
+      eip1559Tx.value,
+      eip1559Tx.input,
+      eip1559Tx.accessList,
+    ],
+  ];
+
+  const mimcPayload = encodeData(types, values);
+
+  return await mimcLibrary.hash("0x" + mimcPayload.slice(66)); // stripped out the first offset
 };
 
 export const getForcedTransactionRollingHash = async (
   mimcLibrary: Mimc,
   lineaRollup: LineaRollup,
-  eip1559RlpEncoder: TestEip1559RlpEncoder,
   eip1559Tx: Eip1559Transaction,
   expectedBlockNumber: bigint,
   from: string,
+  chainId: bigint,
 ): Promise<string> => {
   const { previousForcedTransactionRollingHash } = await lineaRollup.getRequiredForcedTransactionFields();
-  const { rlpEncodedTransaction } = await eip1559RlpEncoder.encodeEip1559Transaction(eip1559Tx);
-  // Strip `yParity`, `r` and `s` from the rlpEncodedTransaction
-  const rlpEncodedTransactionWithoutSignature = rlpEncodedTransaction.slice(0, -134);
-  // Get length byte and subtract by 67 (bytes used by signature)
-  const lengthByte = rlpEncodedTransactionWithoutSignature.slice(6, 8);
-  const lengthWithSignature = parseInt(lengthByte, 16);
-  const lengthWithoutSignature = lengthWithSignature - 67;
-  const lengthByteWithoutSignature = lengthWithoutSignature.toString(16);
-  const rlpEncodedUnsignedTransaction =
-    rlpEncodedTransactionWithoutSignature.slice(0, 6) +
-    lengthByteWithoutSignature +
-    rlpEncodedTransactionWithoutSignature.slice(8);
-  const hashedPayload = generateKeccak256(["bytes"], [rlpEncodedUnsignedTransaction], { encodePacked: true });
+
+  const hashedPayload = await _computeMimcPayloadHash(mimcLibrary, eip1559Tx, chainId);
+
   return await _computeForcedTransactionRollingHash(
     mimcLibrary,
     previousForcedTransactionRollingHash,

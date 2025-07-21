@@ -1,6 +1,6 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { ForcedTransactionGateway, Mimc, TestLineaRollup, TestEip1559RlpEncoder } from "contracts/typechain-types";
+import { ForcedTransactionGateway, Mimc, TestLineaRollup } from "contracts/typechain-types";
 import transactionWithoutCalldata from "../../_testData/eip1559RlpEncoderTransactions/withoutCalldata.json";
 import transactionWithLargeCalldata from "../../_testData/eip1559RlpEncoderTransactions/withLargeCalldata.json";
 import transactionWithCalldataAndAccessList from "../../_testData/eip1559RlpEncoderTransactions/withCalldataAndAccessList.json";
@@ -43,7 +43,6 @@ describe("Linea Rollup contract: Forced Transactions", () => {
   let forcedTransactionGateway: ForcedTransactionGateway;
   let mimcLibrary: Mimc;
   let mimcLibraryAddress: string;
-  let eip1559RlpEncoder: TestEip1559RlpEncoder;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let securityCouncil: SignerWithAddress;
@@ -85,14 +84,9 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       mimcLibraryAddress = await mimcLibrary.getAddress();
     }
 
-    async function deployTestEip1559RlpEncoderFixture() {
-      return deployFromFactory("TestEip1559RlpEncoder", LINEA_MAINNET_CHAIN_ID);
-    }
-
     // Unsure why the following two lines do not work in before block
     // If we deploy mimic or eip1559RlpEncoder in before block, and try to invoke the contracts, we get a weird error
     await loadFixture(deployMimc);
-    eip1559RlpEncoder = (await loadFixture(deployTestEip1559RlpEncoderFixture)) as TestEip1559RlpEncoder;
   });
 
   describe("Contract Construction", () => {
@@ -194,6 +188,14 @@ describe("Linea Rollup contract: Forced Transactions", () => {
         defaultFinalizedState,
       );
       await expectRevertWithCustomError(forcedTransactionGateway, sendCall, "MaxGasLimitExceeded");
+    });
+
+    it("Should fail if the gas limit is too low", async () => {
+      const forcedTransaction = buildEip1559Transaction(transactionWithLargeCalldata.result);
+      forcedTransaction.gasLimit = 20999n;
+
+      const sendCall = forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState);
+      await expectRevertWithCustomError(forcedTransactionGateway, sendCall, "GasLimitTooLow");
     });
 
     it("Should fail if the calldata input is too long", async () => {
@@ -401,10 +403,10 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       const expectedMimcHashWithPreviousZeroValueRollingHash = await getForcedTransactionRollingHash(
         mimcLibrary,
         lineaRollup,
-        eip1559RlpEncoder,
         buildEip1559Transaction(l2SendMessageTransaction.result),
         expectedBlockNumber,
         l2SendMessageTransaction?.result?.from,
+        BigInt(l2SendMessageTransaction.result.chainId),
       );
 
       const expectedEventArgs = [
@@ -439,10 +441,10 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       const expectedMimcHashWithPreviousZeroValueRollingHash = await getForcedTransactionRollingHash(
         mimcLibrary,
         lineaRollup,
-        eip1559RlpEncoder,
         buildEip1559Transaction(l2SendMessageTransaction.result),
         expectedBlockNumber,
         l2SendMessageTransaction?.result?.from,
+        BigInt(l2SendMessageTransaction.result.chainId),
       );
 
       const expectedEventArgs = [
@@ -496,10 +498,10 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       const expectedForcedTxRollingHash = await getForcedTransactionRollingHash(
         mimcLibrary,
         lineaRollup,
-        eip1559RlpEncoder,
         buildEip1559Transaction(l2SendMessageTransaction.result),
         expectedBlockNumber,
         l2SendMessageTransaction?.result?.from,
+        BigInt(l2SendMessageTransaction.result.chainId),
       );
 
       await forcedTransactionGateway.submitForcedTransaction(

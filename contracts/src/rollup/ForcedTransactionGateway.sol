@@ -20,6 +20,9 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
   uint256 private constant SIGNED_TRANSACTION_FIELD_LENGTH = 12;
   address private constant PRECOMPILE_ADDRESS_LIMIT = address(21);
 
+  /// @notice Contains the minimum gas allowed for a forced transaction.
+  uint256 private constant MIN_GAS_LIMIT = 21000;
+
   /// @notice Contains the destination address to store the forced transactions on.
   IAcceptForcedTransactions public immutable LINEA_ROLLUP;
 
@@ -78,32 +81,34 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
     Eip1559Transaction memory _forcedTransaction,
     LastFinalizedState calldata _lastFinalizedState
   ) external {
-    if (_forcedTransaction.gasLimit > MAX_GAS_LIMIT) {
-      revert MaxGasLimitExceeded();
-    }
+    require(_forcedTransaction.gasLimit >= MIN_GAS_LIMIT, GasLimitTooLow());
+    require(_forcedTransaction.gasLimit <= MAX_GAS_LIMIT, MaxGasLimitExceeded());
+    require(_forcedTransaction.input.length <= MAX_INPUT_LENGTH_LIMIT, CalldataInputLengthLimitExceeded());
+    require(
+      _forcedTransaction.maxPriorityFeePerGas > 0 && _forcedTransaction.maxFeePerGas > 0,
+      GasFeeParametersContainZero(_forcedTransaction.maxFeePerGas, _forcedTransaction.maxPriorityFeePerGas)
+    );
+    require(
+      _forcedTransaction.maxPriorityFeePerGas <= _forcedTransaction.maxFeePerGas,
+      MaxPriorityFeePerGasHigherThanMaxFee(_forcedTransaction.maxFeePerGas, _forcedTransaction.maxPriorityFeePerGas)
+    );
 
-    if (_forcedTransaction.input.length > MAX_INPUT_LENGTH_LIMIT) {
-      revert CalldataInputLengthLimitExceeded();
-    }
+    require(_forcedTransaction.yParity <= 1, YParityGreaterThanOne(_forcedTransaction.yParity));
+    require(_forcedTransaction.to >= address(PRECOMPILE_ADDRESS_LIMIT), ToAddressTooLow());
 
-    if (_forcedTransaction.maxPriorityFeePerGas == 0 || _forcedTransaction.maxFeePerGas == 0) {
-      revert GasFeeParametersContainZero(_forcedTransaction.maxFeePerGas, _forcedTransaction.maxPriorityFeePerGas);
-    }
-
-    if (_forcedTransaction.maxPriorityFeePerGas > _forcedTransaction.maxFeePerGas) {
-      revert MaxPriorityFeePerGasHigherThanMaxFee(
+    bytes32 mimcHashedPayload = Mimc.hash(
+      abi.encode(
+        DESTINATION_CHAIN_ID,
+        _forcedTransaction.nonce,
+        _forcedTransaction.maxPriorityFeePerGas,
         _forcedTransaction.maxFeePerGas,
-        _forcedTransaction.maxPriorityFeePerGas
-      );
-    }
-
-    if (_forcedTransaction.yParity > 1) {
-      revert YParityGreaterThanOne(_forcedTransaction.yParity);
-    }
-
-    if (_forcedTransaction.to < address(PRECOMPILE_ADDRESS_LIMIT)) {
-      revert ToAddressTooLow();
-    }
+        _forcedTransaction.gasLimit,
+        _forcedTransaction.to,
+        _forcedTransaction.value,
+        _forcedTransaction.input,
+        _forcedTransaction.accessList
+      )
+    );
 
     (
       bytes32 currentFinalizedState,
@@ -123,23 +128,23 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
     ) {
       /// @dev This is temporary and will be removed in the next upgrade and exists here for an initial zero-downtime migration.
       /// @dev Note: if this clause fails after first finalization post upgrade, the 5 fields are actually what is expected in the lastFinalizedState.
-      if (
-        currentFinalizedState !=
-        FinalizedStateHashing._computeLastFinalizedState(
-          _lastFinalizedState.messageNumber,
-          _lastFinalizedState.messageRollingHash,
-          _lastFinalizedState.timestamp
-        )
-      ) {
-        revert FinalizationStateIncorrect(
+
+      require(
+        currentFinalizedState ==
+          FinalizedStateHashing._computeLastFinalizedState(
+            _lastFinalizedState.messageNumber,
+            _lastFinalizedState.messageRollingHash,
+            _lastFinalizedState.timestamp
+          ),
+        FinalizationStateIncorrect(
           FinalizedStateHashing._computeLastFinalizedState(
             _lastFinalizedState.messageNumber,
             _lastFinalizedState.messageRollingHash,
             _lastFinalizedState.timestamp
           ),
           currentFinalizedState
-        );
-      }
+        )
+      );
     }
 
     bytes[] memory signedTransactionFields = new bytes[](SIGNED_TRANSACTION_FIELD_LENGTH);
@@ -156,14 +161,12 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
     signedTransactionFields[10] = RlpEncoder._encodeUint(_forcedTransaction.r);
     signedTransactionFields[11] = RlpEncoder._encodeUint(_forcedTransaction.s);
 
-    bytes32 hashedPayload = keccak256(
-      abi.encodePacked(hex"02", RlpEncoder._encodeList(signedTransactionFields, UNSIGNED_TRANSACTION_FIELD_LENGTH))
-    );
-
     address signer;
     unchecked {
       signer = ecrecover(
-        hashedPayload,
+        keccak256(
+          abi.encodePacked(hex"02", RlpEncoder._encodeList(signedTransactionFields, UNSIGNED_TRANSACTION_FIELD_LENGTH))
+        ),
         _forcedTransaction.yParity + 27,
         bytes32(_forcedTransaction.r),
         bytes32(_forcedTransaction.s)
@@ -180,11 +183,8 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
         L2_BLOCK_BUFFER;
     }
 
-    bytes32 forcedTransactionRollingHash = _computeForcedTransactionRollingHash(
-      previousForcedTransactionRollingHash,
-      hashedPayload,
-      expectedBlockNumber,
-      signer
+    bytes32 forcedTransactionRollingHash = Mimc.hash(
+      abi.encode(previousForcedTransactionRollingHash, mimcHashedPayload, expectedBlockNumber, signer)
     );
 
     emit ForcedTransactionAdded(
@@ -194,42 +194,5 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
       forcedTransactionRollingHash,
       abi.encodePacked(hex"02", RlpEncoder._encodeList(signedTransactionFields))
     );
-  }
-
-  /**
-   * @notice Function to compute the forced transaction rolling hash with Mimc.
-   * @dev _hashedUnsignedPayload is split into two 16 bytes limbs, each represented in MSB over uint256 (e.g. 0x00..<16 bytes>..00yy..<16 bytes>..yy),
-   * to ensure that each limb fits on a BLS12-377 field element without overflowing, preventing potential resulting collisions.
-   * @param _previousRollingHash The previous rolling hash.
-   * @param _hashedUnsignedPayload The keccak256 hashed unsigned payload.
-   * @param _expectedBlockNumber The expected block number.
-   * @param _signer The transaction signer address.
-   */
-  function _computeForcedTransactionRollingHash(
-    bytes32 _previousRollingHash,
-    bytes32 _hashedUnsignedPayload,
-    uint256 _expectedBlockNumber,
-    address _signer
-  ) internal pure returns (bytes32 forcedTransactionRollingHash) {
-    bytes memory mimcPayload;
-
-    assembly {
-      let mostSignificantBytes := shr(128, _hashedUnsignedPayload)
-      let leastSignificantBytes := and(_hashedUnsignedPayload, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
-
-      mimcPayload := mload(0x40)
-      let dataPtr := add(mimcPayload, 0x20)
-
-      mstore(dataPtr, _previousRollingHash)
-      mstore(add(dataPtr, 0x20), mostSignificantBytes)
-      mstore(add(dataPtr, 0x40), leastSignificantBytes)
-      mstore(add(dataPtr, 0x60), _expectedBlockNumber)
-      mstore(add(dataPtr, 0x80), _signer)
-
-      mstore(mimcPayload, 0xA0)
-      mstore(0x40, add(dataPtr, 0xA0))
-    }
-
-    forcedTransactionRollingHash = Mimc.hash(mimcPayload);
   }
 }
