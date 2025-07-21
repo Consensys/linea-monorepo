@@ -5,10 +5,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -273,28 +273,54 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, col i
 	}
 
 	var (
-		start               = startSeg + index*newSize
-		end                 = start + newSize
-		assignment          = col.GetColAssignment(runtime)
-		padding, isPaddable = pragmas.IsPaddable(col)
+		start      = startSeg + index*newSize
+		end        = start + newSize
+		assignment = col.GetColAssignment(runtime)
 	)
 
-	isOOB := end > col.Size() || start < 0
+	// This switch case corresponds to a dirty-hack where the original column.
+	// It is unexpected to have start < 0 and end > 0 due to the fact that the
+	// columns and segment size are all power of two. And same observation for
+	// stop > size and start < size.
+	switch {
 
-	// This dirty hack is needed because sometime, the log-derivative-m columns are
-	// paired with precomputed columns. It means their sizes are not affected by the
-	// splitter and they will go OOB if they are used for more than 1 segment. When,
-	// this happens we "pad" it on the fly with zeroes to signify that they corresponds
-	// to unmatched lookup value.
-	if isOOB && isPaddable {
+	// This is the regular case and there is no hack going on here.
+	case start >= 0 && end <= col.Size():
+		return assignment.SubVector(start, end)
+
+	case start < 0 && end <= 0:
+		// Otherwise, the padding technique is completely fine.
+		if startSeg == 0 {
+			logrus.Warnf("[ModuleWitnessOverflow] start and end are both negative, "+
+				"name=%v length=%v start=%v stop=%v sub-module-segment=[%v - %v]. "+
+				"Going to use the first value of the vector as a constant but this might fail.",
+				col.GetColID(), col.Size(), start, end, startSeg, stopSeg)
+		}
+		// At this point, we are sure that the correct padding value is the
+		// first value.
+		padding := assignment.Get(0)
 		return smartvectors.NewConstant(padding, newSize)
-	}
 
-	if isOOB {
-		utils.Panic("going to overflow a column, name=%v length=%v start=%v stop=%v", col.GetColID(), col.Size(), start, end)
-	}
+	case start >= col.Size() && end > col.Size():
+		// Otherwise, the padding technique is completely fine.
+		if stopSeg == col.Size() {
+			logrus.Warnf("[ModuleWitnessOverflow] start and end are both greater than the length of the vector, "+
+				"name=%v length=%v start=%v stop=%v sub-module-segment=[%v - %v]. "+
+				"Going to use the last value of the vector as a constant but this might fail.",
+				col.GetColID(), col.Size(), start, end, startSeg, stopSeg)
+		}
+		// At this point, we are sure that the correct padding value is the
+		// last value (otherwise, we would have no way of guessing it).
+		padding := assignment.Get(col.Size() - 1)
+		return smartvectors.NewConstant(padding, newSize)
 
-	return assignment.SubVector(start, end)
+	default:
+		utils.Panic(
+			"unexpected case, col=%v, start=%v, end=%v, size=%v, startSeg=%v, stopSeg=%v",
+			col, start, end, col.Size(), startSeg, stopSeg,
+		)
+		return nil
+	}
 }
 
 // Blueprint returns the blueprint for the current module.
