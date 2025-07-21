@@ -14,6 +14,7 @@ const (
 )
 
 type blsAddDataSource struct {
+	ID                ifaces.Column
 	CsAdd             ifaces.Column
 	CsCurveMembership ifaces.Column
 	Limb              ifaces.Column
@@ -25,6 +26,7 @@ type blsAddDataSource struct {
 
 func newAddDataSource(comp *wizard.CompiledIOP, g group) *blsAddDataSource {
 	return &blsAddDataSource{
+		ID:                comp.Columns.GetHandle("bls.ID"),
 		CsAdd:             comp.Columns.GetHandle(ifaces.ColIDf("bls.CIRCUIT_SELECTOR_%s_ADD", g.String())),
 		CsCurveMembership: comp.Columns.GetHandle(ifaces.ColIDf("bls.CURVE_MEMBERSHIP_%s_ADD", g.StringCurve())),
 		Limb:              comp.Columns.GetHandle("bls.LIMB"),

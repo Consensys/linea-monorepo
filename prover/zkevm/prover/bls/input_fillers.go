@@ -28,14 +28,8 @@ func newMembershipInputFiller(g group, m membership) plonk.InputFiller {
 	switch m {
 	case CURVE:
 		return func(circuitInstance, inputIndex int) field.Element {
-			var nbLimbs int
-			switch g {
-			case G1:
-				nbLimbs = nbG1Limbs
-			case G2:
-				nbLimbs = nbG2Limbs
-			}
-			if inputIndex%(nbLimbs+1) == 0 {
+			nbL := nbLimbs(g)
+			if inputIndex%(nbL+1) == 0 {
 				return field.One() // first input is the success bit
 			} else {
 				return field.Zero() // other inputs are zero

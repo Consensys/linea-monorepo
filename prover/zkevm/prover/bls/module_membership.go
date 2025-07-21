@@ -79,20 +79,15 @@ func (d *unalignedCurveMembershipData) Assign(run *wizard.ProverRuntime) {
 		dstGnarkIndex = common.NewVectorBuilder(d.GnarkIndex)
 	)
 
-	var counter, nbLimbs int
-	switch d.group {
-	case G1:
-		nbLimbs = nbG1Limbs
-	case G2:
-		nbLimbs = nbG2Limbs
-	}
+	var counter int
+	nbL := nbLimbs(d.group)
 
 	for i := range len(srcLimb) {
 		if srcCs[i].IsZero() {
 			continue
 		}
 		dstGnarkIndex.PushInt(counter)
-		counter = (counter + 1) % (nbLimbs + 1)
+		counter = (counter + 1) % (nbL + 1)
 		// for the first line of input, we push the expected success bit
 		if srcCounter[i].IsZero() {
 			dstIsActive.PushBoolean(true)

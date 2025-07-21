@@ -9,6 +9,9 @@ import (
 )
 
 const (
+	nbBits  = 128 // we use 128 bits limbs for the BLS12-381 field
+	nbBytes = 16  // 128 bits = 16 bytes
+
 	// BLS scalar field is 255 bits, and we use 2 limbs of 128 bits to represent
 	nbFrLimbs = 2 // (x_1, x_0) MSB order
 
