@@ -40,7 +40,7 @@ var (
 	diskWriteSemaphore = semaphore.NewWeighted(int64(numConcurrentDiskWrite))
 	// numConcurrentSubProverJobs governs the number of concurrent sub-prover
 	// jobs.
-	numConcurrentSubProverJobs = 4
+	numConcurrentSubProverJobs = 6
 )
 
 // Prove function for the Assest struct
