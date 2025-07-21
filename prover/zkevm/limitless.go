@@ -18,6 +18,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
@@ -449,18 +450,29 @@ func loadFromFile(assetFilePath string, obj any) error {
 	logrus.Infof("Loading %s\n", assetFilePath)
 
 	var (
-		f        = files.MustRead(assetFilePath)
-		buf, err = io.ReadAll(f)
+		f   *os.File
+		buf []byte
+		err error
 	)
+
+	tRead := profiling.TimeIt(func() {
+		f = files.MustRead(assetFilePath)
+		buf, err = io.ReadAll(f)
+	})
 
 	if err != nil {
 		return fmt.Errorf("could not read file %s: %w", assetFilePath, err)
 	}
 
-	if err := serialization.Deserialize(buf, obj); err != nil {
+	tDeser := profiling.TimeIt(func() {
+		err = serialization.Deserialize(buf, obj)
+	})
+
+	if err != nil {
 		return fmt.Errorf("could not deserialize file %s: %w", assetFilePath, err)
 	}
 
+	logrus.Infof("Loaded %s in reading=%s and deserialization=%s", assetFilePath, tRead, tDeser)
 	return nil
 }
 
