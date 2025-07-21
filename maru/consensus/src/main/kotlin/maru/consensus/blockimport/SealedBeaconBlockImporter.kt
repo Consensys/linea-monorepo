@@ -143,7 +143,11 @@ class ValidatingSealedBeaconBlockImporter(
             sealsVerificationResult.flatMap { blockValidationResult.mapError { it.message } }
           when (combinedValidationResult) {
             is Ok -> {
-              log.debug("Block is validated blockNumber={} hash={}", beaconBlockHeader.number, beaconBlockHeader.hash)
+              log.debug(
+                "Block is validated: blockNumber={} hash={}",
+                beaconBlockHeader.number,
+                beaconBlockHeader.hash.encodeHex(),
+              )
               beaconBlockImporter.importBlock(sealedBeaconBlock).thenApply { it }
             }
 

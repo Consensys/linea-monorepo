@@ -36,14 +36,6 @@ data class BeaconBlockHeader(
   fun hash(): ByteArray = hash
 
   override fun toString(): String =
-    """
-    BeaconBlockHeader(
-      number=$number,
-      round=$round,
-      timestamp=$timestamp,
-      proposer=$proposer,
-      parentRoot=${parentRoot.encodeHex()},
-      stateRoot=${stateRoot.encodeHex()},
-      bodyRoot=${bodyRoot.encodeHex()}
-    """.trimIndent()
+    "BeaconBlockHeader(number=$number, round=$round, timestamp=$timestamp, proposer=$proposer, " +
+      "parentRoot=${parentRoot.encodeHex()}, stateRoot=${stateRoot.encodeHex()}, bodyRoot=${bodyRoot.encodeHex()})"
 }
