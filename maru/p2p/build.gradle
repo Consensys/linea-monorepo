@@ -18,27 +18,31 @@ plugins {
 }
 
 dependencies {
-  implementation(project(":config"))
-  implementation(project(":serialization"))
-  implementation(project(":crypto"))
+  implementation project(":config")
+  implementation project(":serialization")
+  implementation project(":crypto")
+  implementation project(":core")
 
   implementation "io.libp2p:jvm-libp2p"
+
   implementation "tech.pegasys.teku.internal:p2p"
   implementation "tech.pegasys.teku.internal:eth2"
-
   implementation "tech.pegasys.teku.internal:spec"
   implementation "tech.pegasys.teku.internal:storage"
   implementation "tech.pegasys.teku.internal:unsigned"
 
-  implementation("org.hyperledger.besu:besu-plugin-api")
-  implementation("org.hyperledger.besu.internal:besu-metrics-core")
+  implementation "org.hyperledger.besu:besu-plugin-api"
+  implementation "org.hyperledger.besu.internal:besu-metrics-core"
   implementation "org.hyperledger.besu.internal:besu-ethereum-rlp"
+
+  implementation "io.tmio:tuweni-crypto"
+  implementation "io.tmio:tuweni-rlp"
+
   implementation "build.linea.internal:metrics"
+  implementation "build.linea.internal:futures"
 
-  implementation "io.libp2p:jvm-libp2p"
+  implementation 'tech.pegasys.discovery:discovery'
 
-  implementation(project(":core"))
-
-  testImplementation(testFixtures(project(":core")))
-  testImplementation(project(":serialization"))
+  testImplementation testFixtures(project(":core"))
+  testImplementation project(":serialization")
 }

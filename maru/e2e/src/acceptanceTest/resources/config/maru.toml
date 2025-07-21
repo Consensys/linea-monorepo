@@ -7,6 +7,12 @@ fee-recipient="0x0000000000000000000000000000000000000000"
 [p2p]
 port = 3322
 ip-address = "127.0.0.1"
+static-peers = []
+reconnect-delay = 500
+
+[p2p.discovery]
+port = 3324
+bootnodes = ["enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2yFBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toYDrgUyOhV4N0Y3CCJBKDdWRwgiQT"]
 
 [payload-validator]
 engine-api-endpoint = { endpoint = "http://localhost:8550" }

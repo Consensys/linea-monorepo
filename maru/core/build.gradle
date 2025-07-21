@@ -21,7 +21,8 @@ plugins {
 dependencies {
   implementation(project(":jvm-libs:extensions"))
   implementation "build.linea.internal:metrics"
-
+  implementation "build.linea.internal:metrics"
+  implementation "io.tmio:tuweni-bytes"
   testImplementation(project(":serialization"))
   testFixturesImplementation("org.hyperledger.besu:besu-datatypes")
   testFixturesImplementation("org.hyperledger.besu:besu-plugin-api")
