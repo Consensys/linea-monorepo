@@ -385,9 +385,16 @@ func inspectWiop(run *wizard.ProverRuntime) {
 			_, hasPragmaFullCol     = col.GetPragma(pragmas.FullColumnPragma)
 			_, hasPragmaLeftPadded  = col.GetPragma(pragmas.LeftPadded)
 			_, hasPragmaRightPadded = col.GetPragma(pragmas.RightPadded)
-			v                       = col.GetColAssignment(run)
-			rangeStart, rangeEnd    = smartvectors.CoCompactRange(v)
-			size                    = v.Len()
+		)
+
+		if !run.Columns.Exists(colID) {
+			fmt.Printf("%v; %v; %v; %v; %v; %v; %v\n", colID, hasPragmaFullCol, hasPragmaLeftPadded, hasPragmaRightPadded, "N/A", "N/A", col.Size())
+		}
+
+		var (
+			v                    = col.GetColAssignment(run)
+			rangeStart, rangeEnd = smartvectors.CoCompactRange(v)
+			size                 = v.Len()
 		)
 
 		fmt.Printf("%v; %v; %v; %v; %v; %v; %v\n", colID, hasPragmaFullCol, hasPragmaLeftPadded, hasPragmaRightPadded, rangeStart, rangeEnd, size)
