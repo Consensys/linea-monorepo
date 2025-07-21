@@ -17,6 +17,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
+	"github.com/sirupsen/logrus"
 )
 
 // StandardModuleDiscoverer groups modules using two layers. In the first layer,
@@ -32,7 +33,11 @@ type StandardModuleDiscoverer struct {
 	Affinities [][]column.Natural
 	// Predivision indicates that all the inputs column size should be
 	// divided by some values before being added in a [QueryBasedModule].
-	Predivision     int
+	Predivision int
+	// Advices is an optional list of advices for the [QueryBasedModuleDiscoverer].
+	// When used, the discoverer expects that every query-based module is provided
+	// with an advice otherwise, it will panic.
+	Advices         []ModuleDiscoveryAdvice
 	Modules         []*StandardModule
 	ColumnsToModule map[ifaces.ColID]ModuleName
 	ColumnsToSize   map[ifaces.ColID]int
@@ -79,11 +84,21 @@ type QueryBasedModule struct {
 	HasPrecomputed      bool
 }
 
+// ModuleDiscoveryAdvice is an advice provided by the user and allows having
+// fine-grained control over the assignment of columns to modules and their
+// sizes.
+type ModuleDiscoveryAdvice struct {
+	Column   ifaces.ColID
+	Cluster  ModuleName
+	BaseSize int
+}
+
 // QueryBasedAssignmentStatsRecord is a record of one assignment of one query
 // based module it features information about the padding, the number of
 // assigned rows and the number of columns and the name of the first and the
 // last column in alphabetical order.
 type QueryBasedAssignmentStatsRecord struct {
+	Request                  string
 	ModuleName               ModuleName
 	SegmentSize              int
 	OriginalSize             int
@@ -117,10 +132,138 @@ func NewQueryBasedDiscoverer() *QueryBasedModuleDiscoverer {
 	}
 }
 
-// Analyze processes scans the comp and generate the modules. It works by
+func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
+	if disc.Advices == nil {
+		disc.analyzeBasic(comp)
+	}
+	disc.analyzeWithAdvices(comp)
+}
+
+func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIOP) {
+
+	subDiscover := NewQueryBasedDiscoverer()
+	subDiscover.Predivision = 1
+	subDiscover.Analyze(comp)
+
+	moduleSets := map[ModuleName]*StandardModule{}
+	adviceOfColumn := map[ifaces.ColID]ModuleDiscoveryAdvice{}
+
+	// This gathers the advices in a map indexed by the column ID
+	for _, adv := range disc.Advices {
+		adviceOfColumn[adv.Column] = adv
+		if moduleSets[adv.Cluster] == nil {
+			moduleSets[adv.Cluster] = &StandardModule{
+				ModuleName: adv.Cluster,
+			}
+		}
+	}
+
+	// This maps each query-based module to its advice and adds it to the module
+	// set based on the advice indication.
+	oneNotFound := false
+	for _, qbm := range subDiscover.Modules {
+		found := false
+		for c := range qbm.Ds.Rank {
+			if advice, exists := adviceOfColumn[c]; exists {
+				moduleSets[advice.Cluster].SubModules = append(moduleSets[advice.Cluster].SubModules, qbm)
+				moduleSets[advice.Cluster].NewSizes = append(moduleSets[advice.Cluster].NewSizes, advice.BaseSize)
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			logrus.Errorf("Could not find advice for %v", qbm.ModuleName)
+			oneNotFound = true
+		}
+	}
+
+	if oneNotFound {
+		panic("Could not find advice for one of the query-based modules")
+	}
+
+	// This adds the module sets to the discovery in deterministic order
+	moduleNameList := utils.SortedKeysOf(moduleSets, func(a, b ModuleName) bool { return a < b })
+	for _, moduleName := range moduleNameList {
+		disc.Modules = append(disc.Modules, moduleSets[moduleName])
+	}
+
+	// This resizes the modules so that their weights are close to the target
+	// weight.
+	for i := range disc.Modules {
+
+		// weightTotalInitial is the weight of the module using the initial
+		// number of rows.
+		weightTotalInitial := 0
+		// maxNumRows is the number of rows of the "shallowest" submodule of in
+		// group[i]
+		minNumRows := math.MaxInt
+
+		// initializes the newSizes using the number of rows from the initial
+		// comp.
+		for j := range disc.Modules[i].NewSizes {
+			numRows := disc.Modules[i].NewSizes[j]
+			minNumRows = min(minNumRows, numRows)
+			weightTotalInitial += disc.Modules[i].SubModules[j].Weight(comp, numRows)
+		}
+
+		// Computes optimal newSizes by successively dividing by two the numbers
+		// of rows and checks if this brings the total weight of the module to
+		// the target weight.
+		var (
+			bestReduction = 1
+			bestWeight    = weightTotalInitial
+		)
+
+		for reduction := 2; reduction < minNumRows; reduction *= 2 {
+
+			currWeight := 0
+			for j := range disc.Modules[i].SubModules {
+				numRow := disc.Modules[i].SubModules[j].NumRow(comp)
+				if !disc.Modules[i].SubModules[j].HasPrecomputed {
+					numRow /= reduction
+				}
+
+				if numRow < 1 {
+					panic("the 'reduction' is bounded by the min number of rows so it should not be smaller than 1")
+				}
+				currWeight += disc.Modules[i].SubModules[j].Weight(comp, numRow)
+			}
+
+			currDist := utils.Abs(currWeight - disc.TargetWeight)
+			bestDist := utils.Abs(bestWeight - disc.TargetWeight)
+
+			if currDist < bestDist {
+				bestReduction = reduction
+				bestWeight = currWeight
+			}
+		}
+
+		for j := range disc.Modules[i].SubModules {
+			disc.Modules[i].NewSizes[j] /= bestReduction
+		}
+	}
+
+	disc.ColumnsToModule = make(map[ifaces.ColID]ModuleName)
+	disc.ColumnsToSize = make(map[ifaces.ColID]int)
+
+	for i := range disc.Modules {
+		moduleName := disc.Modules[i].ModuleName
+		for j := range disc.Modules[i].SubModules {
+			subModule := disc.Modules[i].SubModules[j]
+			newSize := disc.Modules[i].NewSizes[j]
+			for colID := range subModule.Ds.Iter() {
+				disc.ColumnsToModule[colID] = moduleName
+				disc.ColumnsToSize[colID] = newSize
+			}
+		}
+	}
+}
+
+// analyzeBasic processes scans the comp and generate the modules. It works by
 // grouping columns that are part of the same query using the [QueryBasedModuleDiscoverer].
 // After that it sorts the generated modules by weight and
-func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
+func (disc *StandardModuleDiscoverer) analyzeBasic(comp *wizard.CompiledIOP) {
 
 	subDiscover := NewQueryBasedDiscoverer()
 	subDiscover.Predivision = disc.Predivision
@@ -675,6 +818,16 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		panic(stats.err)
 	}
 
+	// As a sanity-check, there should not be contradictory pragmas
+	if utils.Ternary(stats.NbPragmaFullColumn > 0, 1, 0)+
+		utils.Ternary(stats.NbPragmaLeftPadded > 0, 1, 0)+
+		utils.Ternary(stats.NbPragmaRightPadded > 0, 1, 0) > 1 {
+
+		utils.Panic("there should not be contradictory pragmas, stats: %++v", stats)
+	}
+
+	// In theory, the first and the second condition are equivalent. This is a
+	// double-check
 	if stats.NbAssignedLeftPadded+stats.NbAssignedRightPadded+stats.NbAssignedConstantColumn == 0 ||
 		stats.NbAssignedFullColumn == stats.NbColumns ||
 		stats.NbPragmaFullColumn > 0 {
@@ -686,6 +839,7 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		return start, stop
 	}
 
+	// When all the assigned columns are constants (or there is no column)
 	if stats.NbActiveRows == 0 {
 		start, stop := 0, 0
 		mod.NbSegmentCacheMutex.Lock()
@@ -694,8 +848,14 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		return start, stop
 	}
 
-	if stats.NbAssignedLeftPadded > 0 && stats.NbAssignedRightPadded > 0 {
-		utils.Panic("there should not be both left and right padded columns, stats: %v, lastLeft=%v, lastRight=%v", stats, stats.LastLeftPadded, stats.LastRightPadded)
+	// If no pragma are given, we expect that there are not simultaneously
+	// assigned left and right padded columns. Otherwise, we cannot guess which
+	// case to refer to.
+	if stats.NbPragmaLeftPadded == 0 &&
+		stats.NbAssignedRightPadded == 0 &&
+		stats.NbAssignedLeftPadded > 0 &&
+		stats.NbAssignedRightPadded > 0 {
+		utils.Panic("there should not be simultaneously assigned left and right padded columns, stats: %++v", stats)
 	}
 
 	var (
@@ -703,7 +863,9 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		totalSegmentedArea = segmentSize * localNbSegment
 	)
 
-	if stats.NbAssignedRightPadded > 0 {
+	// In theory, the condition with the pragma is redundant based on the sanity
+	// check we are doing.
+	if stats.NbPragmaRightPadded > 0 || stats.NbAssignedRightPadded > 0 {
 		start, stop := 0, totalSegmentedArea
 		mod.NbSegmentCacheMutex.Lock()
 		defer mod.NbSegmentCacheMutex.Unlock()
@@ -711,7 +873,9 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		return start, stop
 	}
 
-	if stats.NbAssignedLeftPadded > 0 {
+	// In theory, the condition with the pragma is redundant based on the sanity
+	// check we are doing.
+	if stats.NbPragmaRightPadded > 0 || stats.NbAssignedLeftPadded > 0 {
 		start, stop := stats.OriginalSize-totalSegmentedArea, stats.OriginalSize
 		mod.NbSegmentCacheMutex.Lock()
 		defer mod.NbSegmentCacheMutex.Unlock()
