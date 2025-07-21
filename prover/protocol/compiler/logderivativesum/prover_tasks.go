@@ -389,6 +389,7 @@ func inspectWiop(run *wizard.ProverRuntime) {
 
 		if !run.Columns.Exists(colID) {
 			fmt.Printf("%v; %v; %v; %v; %v; %v; %v\n", colID, hasPragmaFullCol, hasPragmaLeftPadded, hasPragmaRightPadded, "N/A", "N/A", col.Size())
+			continue
 		}
 
 		var (
