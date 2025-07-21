@@ -41,26 +41,13 @@ data class P2P(
   val port: UInt,
   val staticPeers: List<String> = emptyList(),
   val reconnectDelay: Duration = 5.seconds,
+  val maxPeers: Int = 25,
+  val discovery: Discovery? = null,
 ) {
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
-
-    other as P2P
-
-    if (ipAddress != other.ipAddress) return false
-    if (port != other.port) return false
-    if (staticPeers != other.staticPeers) return false
-
-    return true
-  }
-
-  override fun hashCode(): Int {
-    var result = ipAddress.hashCode()
-    result = 31 * result + port.hashCode()
-    result = 31 * result + staticPeers.hashCode()
-    return result
-  }
+  data class Discovery(
+    val port: UInt,
+    val bootnodes: List<String> = emptyList(),
+  )
 }
 
 data class ValidatorElNode(
