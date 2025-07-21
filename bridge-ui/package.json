@@ -5,6 +5,7 @@
   "license": "(MIT OR Apache-2.0)",
   "type": "module",
   "scripts": {
+    "postinstall": "pnpm run -F @consensys/linea-sdk-core build && pnpm run -F @consensys/linea-sdk-viem build",
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
