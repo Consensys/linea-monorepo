@@ -788,7 +788,7 @@ func (c *CompiledIOP) InsertPlonkInWizard(q *query.PlonkInWizard) {
 	}
 
 	if nbPub > q.Data.Size() {
-		utils.Panic("the number of public inputs of the circuit is larger than the size of Data and Selector, nbPub=%v data-size=%v selector-size=%v", nbPub, q.Data.Size(), q.Selector.Size())
+		utils.Panic("the number of public inputs of the circuit is larger than the size of Data and Selector, nbPub=%v data-size=%v selector-size=%v, name=%v", nbPub, q.Data.Size(), q.Selector.Size(), q.ID)
 	}
 
 	if nbSecret > 0 {
