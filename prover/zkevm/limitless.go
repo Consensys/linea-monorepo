@@ -2,14 +2,12 @@ package zkevm
 
 import (
 	"fmt"
-	"io"
 	"math/rand/v2"
 	"os"
 	"path"
 	"reflect"
 	"strings"
 
-	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -18,7 +16,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
@@ -436,7 +433,7 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 
 	for _, asset := range assets {
 		logrus.Infof("writing %s to disk", asset.Name)
-		if err := writeToDisk(assetDir, asset.Name, asset.Object); err != nil {
+		if err := serialization.StoreToDisk(assetDir+"/"+asset.Name, asset.Object, true); err != nil {
 			return err
 		}
 	}
@@ -445,48 +442,21 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 	return nil
 }
 
-func loadFromFile(assetFilePath string, obj any) error {
-
-	logrus.Infof("Loading %s\n", assetFilePath)
-
-	var (
-		f   *os.File
-		buf []byte
-		err error
-	)
-
-	tRead := profiling.TimeIt(func() {
-		f = files.MustRead(assetFilePath)
-		buf, err = io.ReadAll(f)
-	})
-
-	if err != nil {
-		return fmt.Errorf("could not read file %s: %w", assetFilePath, err)
-	}
-
-	tDeser := profiling.TimeIt(func() {
-		err = serialization.Deserialize(buf, obj)
-	})
-
-	if err != nil {
-		return fmt.Errorf("could not deserialize file %s: %w", assetFilePath, err)
-	}
-
-	logrus.Infof("Loaded %s in reading=%s and deserialization=%s", assetFilePath, tRead, tDeser)
-	return nil
-}
-
 // LoadBootstrapperAsync loads the bootstrapper from disk.
 func (lz *LimitlessZkEVM) LoadBootstrapper(cfg *config.Config) error {
 	if lz.DistWizard == nil {
 		lz.DistWizard = &distributed.DistributedWizard{}
 	}
-	return loadFromFile(cfg.PathForSetup(executionLimitlessPath)+"/"+bootstrapperFile, &lz.DistWizard.Bootstrapper)
+	return serialization.LoadFromDisk(
+		cfg.PathForSetup(executionLimitlessPath)+"/"+bootstrapperFile,
+		&lz.DistWizard.Bootstrapper,
+		true,
+	)
 }
 
 // LoadZkEVM loads the zkevm from disk
 func (lz *LimitlessZkEVM) LoadZkEVM(cfg *config.Config) error {
-	return loadFromFile(cfg.PathForSetup(executionLimitlessPath)+"/"+zkevmFile, &lz.Zkevm)
+	return serialization.LoadFromDisk(cfg.PathForSetup(executionLimitlessPath)+"/"+zkevmFile, &lz.Zkevm, true)
 }
 
 // LoadDisc loads the discoverer from disk
@@ -500,7 +470,7 @@ func (lz *LimitlessZkEVM) LoadDisc(cfg *config.Config) error {
 	// conversion step is a workaround for the problem.
 	res := &distributed.StandardModuleDiscoverer{}
 
-	err := loadFromFile(cfg.PathForSetup(executionLimitlessPath)+"/"+discFile, res)
+	err := serialization.LoadFromDisk(cfg.PathForSetup(executionLimitlessPath)+"/"+discFile, res, true)
 	if err != nil {
 		return err
 	}
@@ -546,7 +516,7 @@ func (lz *LimitlessZkEVM) LoadBlueprints(cfg *config.Config) error {
 	for i := 0; i < cntGLs; i++ {
 		eg.Go(func() error {
 			filePath := path.Join(assetDir, fmt.Sprintf(blueprintGLTemplate, i))
-			if err := loadFromFile(filePath, &lz.DistWizard.BlueprintGLs[i]); err != nil {
+			if err := serialization.LoadFromDisk(filePath, &lz.DistWizard.BlueprintGLs[i], true); err != nil {
 				return err
 			}
 			return nil
@@ -556,7 +526,7 @@ func (lz *LimitlessZkEVM) LoadBlueprints(cfg *config.Config) error {
 	for i := 0; i < cntLpps; i++ {
 		eg.Go(func() error {
 			filePath := path.Join(assetDir, fmt.Sprintf(blueprintLppTemplate, i))
-			if err := loadFromFile(filePath, &lz.DistWizard.BlueprintLPPs[i]); err != nil {
+			if err := serialization.LoadFromDisk(filePath, &lz.DistWizard.BlueprintLPPs[i], true); err != nil {
 				return err
 			}
 			return nil
@@ -579,7 +549,7 @@ func LoadCompiledGL(cfg *config.Config, moduleName distributed.ModuleName) (*dis
 		res      = &distributed.RecursedSegmentCompilation{}
 	)
 
-	if err := loadFromFile(filePath, res); err != nil {
+	if err := serialization.LoadFromDisk(filePath, res, true); err != nil {
 		return nil, err
 	}
 
@@ -595,7 +565,7 @@ func LoadCompiledLPP(cfg *config.Config, moduleNames []distributed.ModuleName) (
 		res      = &distributed.RecursedSegmentCompilation{}
 	)
 
-	if err := loadFromFile(filePath, res); err != nil {
+	if err := serialization.LoadFromDisk(filePath, res, true); err != nil {
 		return nil, err
 	}
 
@@ -611,7 +581,7 @@ func LoadDebugGL(cfg *config.Config, moduleName distributed.ModuleName) (*distri
 		res      = &distributed.ModuleGL{}
 	)
 
-	if err := loadFromFile(filePath, res); err != nil {
+	if err := serialization.LoadFromDisk(filePath, res, true); err != nil {
 		return nil, err
 	}
 
@@ -627,7 +597,7 @@ func LoadDebugLPP(cfg *config.Config, moduleName []distributed.ModuleName) (*dis
 		res      = &distributed.ModuleLPP{}
 	)
 
-	if err := loadFromFile(filePath, res); err != nil {
+	if err := serialization.LoadFromDisk(filePath, res, true); err != nil {
 		return nil, err
 	}
 
@@ -643,34 +613,11 @@ func LoadConglomeration(cfg *config.Config) (*distributed.ConglomeratorCompilati
 		res      = &distributed.ConglomeratorCompilation{}
 	)
 
-	if err := loadFromFile(filePath, res); err != nil {
+	if err := serialization.LoadFromDisk(filePath, res, true); err != nil {
 		return nil, err
 	}
 
 	return res, nil
-}
-
-// writeToDisk writes the provided assets to disk using the
-// [serialization.Serialize] function.
-func writeToDisk(dir, fileName string, asset any) error {
-
-	var (
-		filepath = path.Join(dir, fileName)
-		f        = files.MustOverwrite(filepath)
-	)
-
-	defer f.Close()
-
-	buf, serr := serialization.Serialize(asset)
-	if serr != nil {
-		return fmt.Errorf("could not serialize %s: %w", filepath, serr)
-	}
-
-	if _, werr := f.Write(buf); werr != nil {
-		return fmt.Errorf("could not write to file %s: %w", filepath, werr)
-	}
-
-	return nil
 }
 
 // GetAffinities returns a list of affinities for the following modules. This
