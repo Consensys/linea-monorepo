@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -277,6 +278,8 @@ func accountIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc Hu
 		}
 	)
 
+	pragmas.MarkLeftPadded(filterArith)
+
 	comp.InsertInclusionDoubleConditional(0,
 		"LOOKUP_STATE_MGR_ARITH_TO_STATE_SUMMARY_INIT_ACCOUNT",
 		stateSummaryTable,
@@ -360,6 +363,9 @@ the corresponding columns in the arithmetization.
 func accountIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubColumnSet) {
 	filterArith := comp.InsertCommit(0, "FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_ACCOUNT_FINAL_ARITHMETIZATION", smc.AddressHI.Size())
 	filterSummary := comp.InsertCommit(0, "FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_ACCOUNT_FINAL_SUMMARY", ss.IsStorage.Size())
+
+	pragmas.MarkLeftPadded(filterArith)
+
 	stateSummaryTable := []ifaces.Column{
 		ss.Account.Address,
 		ss.Account.Final.Balance,
@@ -447,10 +453,12 @@ For each block, these lookups will check the consistency of the initial storage 
 the corresponding columns in the arithmetization.
 */
 func storageIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc HubColumnSet, sc ScpSelector) {
-	filterArith := comp.InsertCommit(0, "FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_INITIAL_ARITHMETIZATION", smc.AddressHI.Size())
 	filterSummary := comp.InsertCommit(0, "FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_INITIAL_SUMMARY", ss.Account.Address.Size())
-
+	filterArith := comp.InsertCommit(0, "FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_INITIAL_ARITHMETIZATION", smc.AddressHI.Size())
 	filterArithReversed := comp.InsertCommit(0, "FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_INITIAL_ARITHMETIZATION_REVERSED", smc.AddressHI.Size())
+
+	pragmas.MarkLeftPadded(filterArith)
+	pragmas.MarkLeftPadded(filterArithReversed)
 
 	summaryTable := []ifaces.Column{
 		ss.Account.Address,
@@ -618,6 +626,9 @@ func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 		filterEphemeralAccounts = comp.Columns.GetHandle("FILTER_CONNECTOR_HUB_STATE_SUMMARY_ACCOUNT_EPHEMERAL_FILTER")
 	)
 
+	pragmas.MarkLeftPadded(filterArith)
+	pragmas.MarkLeftPadded(filterArithReversed)
+
 	comp.InsertInclusionDoubleConditional(0,
 		"LOOKUP_STATE_MGR_ARITH_TO_STATE_SUMMARY_FINAL_STORAGE",
 		summaryTable,
@@ -728,6 +739,8 @@ func defineInsertionFilterForFinalStorage(comp *wizard.CompiledIOP, smc HubColum
 		"FILTER_CONNECTOR_HUB_STATE_SUMMARY_ACCOUNT_INSERT_FILTER",
 		smc.AddressHI.Size(),
 	)
+
+	pragmas.MarkLeftPadded(filterAccountInsert)
 
 	// constraint the insertion selector filter
 	// on storage rows, we enforce that filterAccountInsert is 0 then (existsFirstInBlock = 0 and existsFinalInBlock = 1)
@@ -868,6 +881,8 @@ func defineEphemeralAccountFilterStorage(comp *wizard.CompiledIOP, smc HubColumn
 		"FILTER_CONNECTOR_HUB_STATE_SUMMARY_ACCOUNT_EPHEMERAL_FILTER",
 		smc.AddressHI.Size(),
 	)
+
+	pragmas.MarkLeftPadded(filterEphemeralAccounts)
 
 	// constraint the ephemeral selector filter
 	// on storage rows, we enforce that filterEphemeralAccounts is 0 then (existsFirstInBlock = 0 and existsFinalInBlock = 0)
