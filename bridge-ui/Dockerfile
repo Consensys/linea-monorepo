@@ -43,10 +43,11 @@ COPY ./bridge-ui ./bridge-ui
 
 COPY $ENV_FILE ./bridge-ui/.env.production
 
-RUN --mount=type=secret,id=revalidate_secret,env=REVALIDATE_SECRET pnpm run -F @consensys/linea-sdk-core build \
-    && pnpm run -F @consensys/linea-sdk-viem build \
-    && pnpm run -F bridge-ui build \
-    && apk del build-dependencies
+RUN pnpm run -F @consensys/linea-sdk-core build
+RUN pnpm run -F @consensys/linea-sdk-viem build
+RUN --mount=type=secret,id=revalidate_secret,env=REVALIDATE_SECRET pnpm run -F bridge-ui build
+
+RUN apk del build-dependencies
 
 FROM node:lts-alpine AS runner
 
