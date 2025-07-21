@@ -31,20 +31,16 @@ WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
 COPY ./bridge-ui/package.json ./bridge-ui/package.json
-COPY ./sdk/sdk-core/package.json ./sdk/sdk-core/package.json
-COPY ./sdk/sdk-viem/package.json ./sdk/sdk-viem/package.json
+COPY ./sdk/sdk-core ./sdk/sdk-core
+COPY ./sdk/sdk-viem ./sdk/sdk-viem
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store apk add --virtual build-dependencies --no-cache python3 make g++ \
     && pnpm install --frozen-lockfile --prefer-offline
 
-COPY ./sdk/sdk-core ./sdk/sdk-core
-COPY ./sdk/sdk-viem ./sdk/sdk-viem
 COPY ./bridge-ui ./bridge-ui
 
 COPY $ENV_FILE ./bridge-ui/.env.production
 
-RUN pnpm run -F @consensys/linea-sdk-core build
-RUN pnpm run -F @consensys/linea-sdk-viem build
 RUN --mount=type=secret,id=revalidate_secret,env=REVALIDATE_SECRET pnpm run -F bridge-ui build
 
 RUN apk del build-dependencies
