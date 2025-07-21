@@ -1,12 +1,11 @@
 // Break pattern of 1 hook-1 file because TypeScript and CI were going nuts on filenames such as useCctpDestinationDomain.ts
 
+import { useMemo } from "react";
 import { useChainStore } from "@/stores";
 import { getCctpFee } from "@/services/cctp";
 import { useQuery } from "@tanstack/react-query";
 import { CCTP_MIN_FINALITY_THRESHOLD, USDC_DECIMALS } from "@/constants";
 import { isUndefined } from "@/utils";
-import { formatUnits, parseUnits } from "viem";
-import { useMemo } from "react";
 
 const useCctpSrcDomain = () => {
   const fromChain = useChainStore.useFromChain();
@@ -39,10 +38,7 @@ export const useCctpFee = (amount: bigint | null, tokenDecimals: number): bigint
       return null;
     }
 
-    const feeFraction = fastFinalityFee / 10_000; // Convert BPS to fraction (1 BPS = 0.01% and 10 000 BPS = 100%)
-    const formattedAmount = formatUnits(amount, USDC_DECIMALS);
-    const rawFee = parseFloat(formattedAmount) * feeFraction;
-
-    return parseUnits(rawFee.toString(), USDC_DECIMALS);
+    // Convert BPS (basis points) to multiplier: multiply amount * fee (bps), then divide by 10_000 (1 BPS = 0.01%, 10_000 BPS = 100%)
+    return (amount * BigInt(fastFinalityFee)) / 10_000n;
   }, [amount, tokenDecimals, data]);
 };
