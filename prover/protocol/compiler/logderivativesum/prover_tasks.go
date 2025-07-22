@@ -244,6 +244,7 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 	// entries of T. It also preinitializes the values of ms
 	for frag := range a.T {
 
+		size := tCollapsed[frag].Len()
 		start, end := 0, tCollapsed[frag].Len()
 
 		if a.Segmenter != nil {
@@ -256,7 +257,7 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 
 		m[frag] = make([]field.Element, tCollapsed[frag].Len())
 
-		for k := start; k < end; k++ {
+		for k := max(0, start); k < min(size, end); k++ {
 			v := tCollapsed[frag].Get(k)
 			mapM[v] = [2]int{frag, k}
 		}
