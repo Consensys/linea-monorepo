@@ -36,7 +36,7 @@ var ListOfCyclicCounterTestcase = []*CyclicCounterTestcase{
 	{
 		name:     "full-active/verifier-column",
 		Period:   20,
-		IsActive: verifiercol.NewConstantCol(field.One(), 1<<8),
+		IsActive: verifiercol.NewConstantCol(field.One(), 1<<8, false),
 	},
 	{
 		name:     "full-active/no-auto",
