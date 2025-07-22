@@ -143,7 +143,7 @@ public class GasProjector {
           BASEFEE,
           BLOBBASEFEE -> new Base(gc);
       case BALANCE, EXTCODESIZE, EXTCODEHASH -> new AccountAccess(gc, frame);
-      case CALLDATACOPY, CODECOPY, RETURNDATACOPY -> new DataCopy(gc, frame);
+      case MCOPY, CALLDATACOPY, CODECOPY, RETURNDATACOPY -> new DataCopy(gc, frame);
       case EXTCODECOPY -> new ExtCodeCopy(gc, frame);
       case BLOCKHASH -> new BlockHash(gc);
       case MLOAD, MSTORE -> new MLoadStore(gc, frame);

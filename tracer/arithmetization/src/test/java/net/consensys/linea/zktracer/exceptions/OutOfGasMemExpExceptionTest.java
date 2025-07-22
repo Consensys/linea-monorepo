@@ -479,4 +479,34 @@ public class OutOfGasMemExpExceptionTest extends TracerTestBase {
     ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
         cornerCase, bytecodeRunner);
   }
+
+  @ParameterizedTest
+  @ValueSource(ints = {-1, 0, 1})
+  void outOfGasExceptionMCopy(int cornerCase) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+
+    try {
+      program
+          .push(Bytes.fromHexString("0x7F")) // value
+          .push(32) // offset
+          .op(OpCode.MSTORE)
+          .push(32) // size
+          .push(32) // offset to trigger mem expansion
+          .push(0) // dest offset
+          .op(OpCode.MCOPY);
+    } catch (IllegalArgumentException e) {
+      // MCOPY is not supported prior to Cancun fork
+      return;
+    }
+
+    Bytes pgCompile = program.compile();
+    BytecodeRunner bytecodeRunner = BytecodeRunner.of(pgCompile);
+
+    long gasCost = bytecodeRunner.runOnlyForGasCost(testInfo);
+
+    bytecodeRunner.run(gasCost + cornerCase, testInfo);
+
+    ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
+        cornerCase, bytecodeRunner);
+  }
 }

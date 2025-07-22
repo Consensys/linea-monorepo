@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.types.Conversions.*;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.euc.EucOperation;
@@ -41,7 +42,7 @@ public class MxpExoCall {
   @Builder.Default private final Bytes arg2Lo = Bytes.EMPTY;
   // Results for wcp computations
   // Quotients for euc computations in trace
-  @Builder.Default private final Bytes resultA = ZERO;
+  @Setter @Builder.Default private Bytes resultA = ZERO;
   // Ceiling results for euc computations in trace
   @Builder.Default private final Bytes resultB = ZERO;
 
@@ -53,10 +54,10 @@ public class MxpExoCall {
     return MxpExoCall.builder()
         .wcpFlag(true)
         .instruction(EVM_INST_LT)
-        .arg1Hi(arg1B32.lo())
-        .arg1Lo(arg1B32.hi())
-        .arg2Hi(arg2B32.lo())
-        .arg2Lo(arg2B32.hi())
+        .arg1Hi(arg1B32.hi())
+        .arg1Lo(arg1B32.lo())
+        .arg2Hi(arg2B32.hi())
+        .arg2Lo(arg2B32.lo())
         .resultA(booleanToBytes(wcp.callLT(arg1B32, arg2B32)))
         .build();
   }
@@ -69,10 +70,10 @@ public class MxpExoCall {
     return MxpExoCall.builder()
         .wcpFlag(true)
         .instruction(WCP_INST_LEQ)
-        .arg1Hi(arg1B32.lo())
-        .arg1Lo(arg1B32.hi())
-        .arg2Hi(arg2B32.lo())
-        .arg2Lo(arg2B32.hi())
+        .arg1Hi(arg1B32.hi())
+        .arg1Lo(arg1B32.lo())
+        .arg2Hi(arg2B32.hi())
+        .arg2Lo(arg2B32.lo())
         .resultA(booleanToBytes(wcp.callLEQ(arg1B32, arg2B32)))
         .build();
   }
@@ -84,8 +85,8 @@ public class MxpExoCall {
     return MxpExoCall.builder()
         .wcpFlag(true)
         .instruction(EVM_INST_ISZERO)
-        .arg1Hi(arg1B32.slice(0, LLARGE))
-        .arg1Lo(arg1B32.slice(LLARGE, LLARGE))
+        .arg1Hi(arg1B32.hi())
+        .arg1Lo(arg1B32.lo())
         .resultA(booleanToBytes(wcp.callISZERO(arg1B32)))
         .build();
   }
@@ -99,8 +100,10 @@ public class MxpExoCall {
 
     return MxpExoCall.builder()
         .eucFlag(true)
-        .arg1Lo(arg1B32.hi())
-        .arg2Lo(arg2B32.hi())
+        .arg1Hi(arg1B32.hi())
+        .arg1Lo(arg1B32.lo())
+        .arg2Hi(arg2B32.hi())
+        .arg2Lo(arg2B32.lo())
         .resultA(eucOperation.quotient())
         .resultB(eucOperation.ceiling())
         .build();

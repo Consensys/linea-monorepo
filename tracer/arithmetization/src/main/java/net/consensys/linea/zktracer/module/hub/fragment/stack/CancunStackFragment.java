@@ -25,6 +25,7 @@ import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.common.CommonFragmentValues;
 import net.consensys.linea.zktracer.module.hub.signals.AbortingConditions;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.gas.projector.GasProjection;
 import net.consensys.linea.zktracer.runtime.stack.Stack;
 import net.consensys.linea.zktracer.runtime.stack.StackItem;
@@ -50,5 +51,10 @@ public class CancunStackFragment extends LondonStackFragment {
   @Override
   protected void traceTransientFamily(Trace.Hub trace, InstructionFamily currentInstFamily) {
     trace.pStackTransFlag(currentInstFamily == TRANSIENT);
+  }
+
+  @Override
+  protected void traceMxpFlag(Trace.Hub trace, OpCodeData opCodeData) {
+    trace.pStackMxpFlag(opCodeData.isMxp());
   }
 }

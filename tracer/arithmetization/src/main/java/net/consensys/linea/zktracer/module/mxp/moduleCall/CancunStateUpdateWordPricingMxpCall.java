@@ -16,6 +16,9 @@
 package net.consensys.linea.zktracer.module.mxp.moduleCall;
 
 import static net.consensys.linea.zktracer.TraceCancun.Mxp.CT_MAX_UPDT_W;
+import static net.consensys.linea.zktracer.types.Conversions.unsignedIntToBytes;
+
+import java.math.BigInteger;
 
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -26,11 +29,10 @@ public class CancunStateUpdateWordPricingMxpCall extends CancunStateUpdateMxpCal
 
   public CancunStateUpdateWordPricingMxpCall(Hub hub) {
     super(hub);
-    if (this.isStateUpdate) {
-      // if state has changed, an extra gas cost is incurred
-      computeExtraGasCost(hub.euc());
-      setGasMpxFromExtraGasCost();
-    }
+    exoCalls[10] = MxpExoCall.builder().build(); // Row i + 11, initialized to default values
+    // if state has changed, an extra gas cost is incurred
+    computeExtraGasCost(hub.euc());
+    setGasMpxFromExtraGasCost();
   }
 
   @Override
@@ -40,13 +42,10 @@ public class CancunStateUpdateWordPricingMxpCall extends CancunStateUpdateMxpCal
 
   private void computeExtraGasCost(Euc euc) {
     // Row i + 11
-    exoCalls[10] = MxpExoCall.callToEUC(euc, this.size1.lo(), Bytes.of(32));
+    exoCalls[10] = MxpExoCall.callToEUC(euc, this.size1.lo(), unsignedIntToBytes(32));
     Bytes numberOfWords = exoCalls[10].resultB(); // result of row i + 11
     this.extraGasCost =
-        numberOfWords
-            .toUnsignedBigInteger()
-            .multiply(this.gWord.toUnsignedBigInteger())
-            .longValue();
+        numberOfWords.toUnsignedBigInteger().multiply(BigInteger.valueOf(this.gWord)).longValue();
   }
 
   @Override

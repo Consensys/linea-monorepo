@@ -45,7 +45,7 @@ public class SelfDestructTest extends TracerTestBase {
   @Test
   void staticAndOogExceptionsSelfDestruct() {
 
-    BytecodeCompiler program = simpleProgramEmptyStorage(OpCode.SELFDESTRUCT);
+    BytecodeCompiler program = simpleProgram(OpCode.SELFDESTRUCT);
     Bytes pgCompile = program.compile();
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(pgCompile);
     long gasCostTx = bytecodeRunner.runOnlyForGasCost(testInfo);

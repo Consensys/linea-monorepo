@@ -131,21 +131,24 @@ public abstract class MxpCall implements TraceSubFragment {
     return !this.mxpx && !this.size2.isZero();
   }
 
-  public Bytes getCostBy(BillingRate billingRate) {
-    return Bytes.of(
-        getOpCodeData().billing().billingRate() == billingRate
-            ? getOpCodeData().billing().perUnit().cost()
-            : 0);
+  public int getCostBy(BillingRate billingRate) {
+    return getOpCodeData().billing().billingRate() == billingRate
+        ? getOpCodeData().billing().perUnit().cost()
+        : 0;
   }
 
   // Method only filled for LondonMxpCall
-  protected void traceMayTriggerNonTrivialMmuOperationFromMxpx(Trace.Hub trace) {}
-  ;
+  public abstract void traceMayTriggerNonTrivialMmuOperationFromMxpx(Trace.Hub trace);
+
+  // Method only filled for LondonMxpCall
+  public abstract void traceMxpWords(Trace.Hub trace);
 
   public Trace.Hub trace(Trace.Hub trace, State hubState) {
     hubState.incrementMxpStamp();
     // Legacy for LondonMxpCall
     traceMayTriggerNonTrivialMmuOperationFromMxpx(trace);
+    // Conditional from Cancun
+    traceMxpWords(trace);
     return trace
         .pMiscMxpFlag(true)
         .pMiscMxpInst(this.opCodeData.value())
@@ -161,7 +164,6 @@ public abstract class MxpCall implements TraceSubFragment {
         .pMiscMxpSize1NonzeroNoMxpx(this.getSize1NonZeroNoMxpx())
         .pMiscMxpSize2NonzeroNoMxpx(this.getSize2NonZeroNoMxpx())
         .pMiscMxpMxpx(this.mxpx)
-        .pMiscMxpWords(Bytes.ofUnsignedLong(this.memorySizeInWords))
         .pMiscMxpGasMxp(Bytes.ofUnsignedLong(this.gasMxp));
   }
 }

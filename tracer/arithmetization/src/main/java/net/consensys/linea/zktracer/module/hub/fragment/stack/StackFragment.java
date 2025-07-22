@@ -24,7 +24,6 @@ import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
 import java.math.BigInteger;
 import java.util.List;
-import java.util.Optional;
 import java.util.function.Function;
 
 import lombok.Getter;
@@ -39,7 +38,7 @@ import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.module.hub.signals.TracedException;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
 import net.consensys.linea.zktracer.opcode.OpCode;
-import net.consensys.linea.zktracer.opcode.gas.MxpType;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.gas.projector.GasProjection;
 import net.consensys.linea.zktracer.runtime.stack.Stack;
 import net.consensys.linea.zktracer.runtime.stack.StackItem;
@@ -276,11 +275,9 @@ public abstract class StackFragment implements TraceFragment {
         .pStackDecFlag1(stack.getCurrentOpcodeData().stackSettings().flag1())
         .pStackDecFlag2(stack.getCurrentOpcodeData().stackSettings().flag2())
         .pStackDecFlag3(stack.getCurrentOpcodeData().stackSettings().flag3())
-        .pStackDecFlag4(stack.getCurrentOpcodeData().stackSettings().flag4())
-        .pStackMxpFlag(
-            Optional.ofNullable(stack.getCurrentOpcodeData().billing())
-                .map(b -> b.type() != MxpType.NONE)
-                .orElse(false))
+        .pStackDecFlag4(stack.getCurrentOpcodeData().stackSettings().flag4());
+    traceMxpFlag(trace, stack.getCurrentOpcodeData());
+    trace
         .pStackStaticFlag(stack.getCurrentOpcodeData().stackSettings().forbiddenInStatic())
         .pStackPushValueHi(pushValue.hi())
         .pStackPushValueLo(pushValue.lo())
@@ -310,6 +307,8 @@ public abstract class StackFragment implements TraceFragment {
 
   protected abstract void traceTransientFamily(
       Trace.Hub trace, InstructionFamily currentInstFamily);
+
+  protected abstract void traceMxpFlag(Trace.Hub trace, OpCodeData opCodeData);
 
   private void tracedExceptionSanityChecks(TracedException tracedException) {
     switch (tracedException) {

@@ -165,14 +165,26 @@ public record OpCodeData(
   }
 
   public boolean isWordPricing() {
-    return billing().billingRate() == BillingRate.BY_WORD;
+    return mnemonic == OpCode.SHA3 || isCopy() || isCreate() || mnemonic == OpCode.MCOPY;
   }
 
   public boolean isBytePricing() {
-    return billing().billingRate() == BillingRate.BY_BYTE;
+    return mnemonic == OpCode.MSIZE
+        || mnemonic == OpCode.MLOAD
+        || mnemonic == OpCode.MSTORE
+        || mnemonic == OpCode.MSTORE8
+        || mnemonic == OpCode.REVERT
+        || isReturn()
+        || isLog()
+        || isCall();
   }
 
-  // Used on from Cancun and on, before ixMxp is determined by checking if there is a type
+  // Used before Cancun, determined by checking if there is a type
+  public boolean isMxpLondon() {
+    return billing().type() != MxpType.NONE;
+  }
+
+  // Used from Cancun and on, before ixMxp is determined by checking if there is a type
   public boolean isMxp() {
     return isMSize() || isSingleOffset() || isDoubleOffset();
   }
