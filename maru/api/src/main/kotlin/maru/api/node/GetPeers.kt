@@ -12,7 +12,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import io.javalin.http.Context
 import io.javalin.http.Handler
 import io.javalin.http.HttpStatus
-import maru.api.NetworkDataProvider
+import maru.p2p.NetworkDataProvider
 
 data class GetPeersResponse(
   val data: List<PeerData>,

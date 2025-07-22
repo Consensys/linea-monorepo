@@ -11,6 +11,7 @@ package maru.p2p
 import java.util.UUID
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import tech.pegasys.teku.networking.p2p.peer.NodeId
 
 object NoOpP2PNetwork : P2PNetwork {
   private val log = LogManager.getLogger(this.javaClass)
@@ -52,4 +53,19 @@ object NoOpP2PNetwork : P2PNetwork {
   override fun getPeers(): List<PeerInfo> = emptyList()
 
   override fun getPeer(peerId: String): PeerInfo? = null
+
+  override fun getPeerLookup(): PeerLookup {
+    log.debug("Get peer lookup")
+    return object : PeerLookup {
+      override fun getPeer(nodeId: NodeId): MaruPeer? {
+        log.debug("NoOpP2PNetwork.getPeer called for nodeId={}", nodeId)
+        return null
+      }
+
+      override fun getPeers(): List<MaruPeer> {
+        log.debug("NoOpP2PNetwork.getPeers called")
+        return emptyList()
+      }
+    }
+  }
 }

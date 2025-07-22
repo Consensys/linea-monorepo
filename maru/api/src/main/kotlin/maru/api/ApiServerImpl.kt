@@ -21,6 +21,7 @@ import maru.api.node.GetPeerCount
 import maru.api.node.GetPeers
 import maru.api.node.GetSyncingStatus
 import maru.api.node.GetVersion
+import maru.p2p.NetworkDataProvider
 
 class ApiServerImpl(
   val config: Config,

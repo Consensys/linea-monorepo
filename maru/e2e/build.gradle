@@ -11,6 +11,7 @@ dependencies {
   implementation project(":consensus")
   implementation project(":executionlayer")
   implementation project(":config")
+  implementation project(":p2p")
   // For the syncing logic
   implementation project(":jvm-libs:mappers")
   implementation(project(":serialization"))

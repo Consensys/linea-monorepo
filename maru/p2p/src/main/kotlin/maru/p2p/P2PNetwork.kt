@@ -103,6 +103,8 @@ interface P2PNetwork {
   fun getPeers(): List<PeerInfo>
 
   fun getPeer(peerId: String): PeerInfo?
+
+  fun getPeerLookup(): PeerLookup
 }
 
 data class PeerInfo(

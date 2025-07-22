@@ -10,7 +10,7 @@ package maru.api.node
 
 import io.javalin.http.Context
 import io.javalin.http.Handler
-import maru.api.NetworkDataProvider
+import maru.p2p.NetworkDataProvider
 import maru.p2p.PeerInfo
 
 data class GetPeerCountResponse(
