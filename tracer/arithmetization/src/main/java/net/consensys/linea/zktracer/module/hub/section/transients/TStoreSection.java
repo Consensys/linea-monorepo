@@ -44,7 +44,7 @@ public class TStoreSection extends TraceSection implements PostRollbackDefer {
 
     if (Exceptions.any(exceptions)) {
       checkArgument(
-          Exceptions.stackException(exceptions) || Exceptions.outOfGasException(exceptions),
+          Exceptions.staticFault(exceptions) || Exceptions.outOfGasException(exceptions),
           "The only possible exceptions are STATICX or OOGX");
       return;
     }

@@ -212,9 +212,8 @@ public class OutOfGasExceptionTest extends TracerTestBase {
         .op(OpCode.SSTORE);
 
     program
-        .push(1)
-        . // key
-        op(OpCode.SLOAD);
+        .push(1) // key
+        .op(OpCode.SLOAD);
 
     Bytes pgCompile = program.compile();
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(pgCompile);
@@ -282,6 +281,61 @@ public class OutOfGasExceptionTest extends TracerTestBase {
     }
 
     bytecodeRunner.run(gasCost, testInfo);
+
+    ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
+        cornerCase, bytecodeRunner);
+  }
+
+  /** We provide a non-zero key and value to store in transient storage to avoid trivialities */
+  @ParameterizedTest
+  @ValueSource(ints = {-1, 0, 1})
+  void outOfGasExceptionTStore(int cornerCase) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+
+    try {
+      program
+          .push(2) // value
+          .push(1) // key
+          .op(OpCode.TSTORE);
+    } catch (IllegalArgumentException e) {
+      // TLOAD/TSTORE are not supported prior to Cancun fork
+      return;
+    }
+
+    Bytes pgCompile = program.compile();
+    BytecodeRunner bytecodeRunner = BytecodeRunner.of(pgCompile);
+
+    long gasCost = bytecodeRunner.runOnlyForGasCost(testInfo);
+
+    bytecodeRunner.run(gasCost + cornerCase, testInfo);
+
+    ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
+        cornerCase, bytecodeRunner);
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {-1, 0, 1})
+  void outOfGasExceptionTLoad(int cornerCase) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+
+    try {
+      program
+          .push(2) // value
+          .push(1) // key
+          .op(OpCode.TSTORE)
+          .push(1) // key
+          .op(OpCode.TLOAD);
+    } catch (IllegalArgumentException e) {
+      // TLOAD/TSTORE are not supported prior to Cancun fork
+      return;
+    }
+
+    Bytes pgCompile = program.compile();
+    BytecodeRunner bytecodeRunner = BytecodeRunner.of(pgCompile);
+
+    long gasCost = bytecodeRunner.runOnlyForGasCost(testInfo);
+
+    bytecodeRunner.run(gasCost + cornerCase, testInfo);
 
     ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
         cornerCase, bytecodeRunner);

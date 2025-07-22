@@ -134,7 +134,9 @@ public class Stack {
   }
 
   private void loadStore(MessageFrame frame, StackContext pending) {
-    if (currentOpcodeData.mnemonic().isAnyOf(OpCode.MSTORE, OpCode.MSTORE8, OpCode.SSTORE)) {
+    if (currentOpcodeData
+        .mnemonic()
+        .isAnyOf(OpCode.MSTORE, OpCode.MSTORE8, OpCode.SSTORE, OpCode.TSTORE)) {
       Bytes val1 = getStack(frame, 0);
       Bytes val2 = getStack(frame, 1);
 
