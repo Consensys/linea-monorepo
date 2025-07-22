@@ -53,7 +53,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 
 	if cfg.Execution.LimitlessWithDebug {
 		limitlessZkEVM := zkevm.NewLimitlessDebugZkEVM(cfg)
-		limitlessZkEVM.RunDebug(witness.ZkEVM)
+		limitlessZkEVM.RunDebug(cfg, witness.ZkEVM)
 		// The return of "out" is to avoid panics later on in the process.
 		return &out, nil
 	}

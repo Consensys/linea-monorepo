@@ -56,7 +56,6 @@ type LimitlessZkEVM struct {
 // The advices are optimized to minimize the number of segments generated when
 // producing an EVM proof.
 var DiscoveryAdvices = []distributed.ModuleDiscoveryAdvice{
-	{BaseSize: 4096, Cluster: "STATIC", Column: "PUBLIC_INPUT_L2L1LOGS_EXTRACTED_HI"},
 	{BaseSize: 32, Cluster: "STATIC", Column: "LookUp_Num"},
 	{BaseSize: 32, Cluster: "STATIC", Column: "REPEATED_PATTERN_4741_24_PATTERN"},
 	{BaseSize: 32, Cluster: "STATIC", Column: "REPEATED_PATTERN_6890_20_PATTERN"},
@@ -89,7 +88,7 @@ var DiscoveryAdvices = []distributed.ModuleDiscoveryAdvice{
 	{BaseSize: 256, Cluster: "ELLIPTIC_CURVES", Column: "ECMUL_INTEGRATION_ALIGNMENT_IS_ACTIVE"},
 	{BaseSize: 128, Cluster: "ELLIPTIC_CURVES", Column: "ECPAIR_IS_ACTIVE"},
 	{BaseSize: 128, Cluster: "ELLIPTIC_CURVES", Column: "ECPAIR_ALIGNMENT_ML_PI"},
-	{BaseSize: 128, Cluster: "ELLIPTIC_CURVES", Column: "CYCLIC_COUNTER_6762_64_1024_COUNTER"},
+	{BaseSize: 128, Cluster: "ELLIPTIC_CURVES", Column: "CYCLIC_COUNTER_6762_64_0_COUNTER"},
 	{BaseSize: 256, Cluster: "SHA2", Column: "CLEANING_SHA2_CleanLimb"},
 	{BaseSize: 256, Cluster: "SHA2", Column: "ACCUMULATE_UP_TO_MAX_6864_Accumulator"},
 	{BaseSize: 256, Cluster: "SHA2", Column: "BLOCK_SHA2_AccNumLane"},
@@ -97,6 +96,7 @@ var DiscoveryAdvices = []distributed.ModuleDiscoveryAdvice{
 	{BaseSize: 512, Cluster: "SHA2", Column: "SHA2_OVER_BLOCK_SHA2_COMPRESSION_CIRCUIT_PI"},
 	{BaseSize: 4096, Cluster: "ECDSA", Column: "ECDSA_ANTICHAMBER_ADDRESSES_ADDRESS_HI"},
 	{BaseSize: 4096, Cluster: "ECDSA", Column: "ECDSA_ANTICHAMBER_GNARK_DATA_IS_ACTIVE"},
+	{BaseSize: 4096, Cluster: "TINY STUFFS", Column: "PUBLIC_INPUT_L2L1LOGS_EXTRACTED_HI"},
 	{BaseSize: 4096, Cluster: "TINY-STUFFS", Column: "TABLE_rlpaddr.ADDR_HI,rlpaddr.ADDR_LO,rlpaddr.DEP_ADDR_HI,rlpaddr.DEP_ADDR_LO,rlpaddr.KEC_HI,rlpaddr.KEC_LO,rlpaddr.NONCE,rlpaddr.RECIPE,rlpaddr.SALT_HI,rlpaddr.SALT_LO_0_LOGDERIVATIVE_M"},
 	{BaseSize: 2048, Cluster: "TINY-STUFFS", Column: "TABLE_blockhash.BLOCKHASH_ARG_HI_xor_EXO_ARG_1_HI,blockhash.BLOCKHASH_ARG_LO_xor_EXO_ARG_1_LO,blockhash.BLOCKHASH_RES_HI_xor_EXO_ARG_2_HI,blockhash.BLOCKHASH_RES_LO_xor_EXO_ARG_2_LO,blockhash.REL_BLOCK_0_LOGDERIVATIVE_M"},
 	{BaseSize: 4096, Cluster: "TINY-STUFFS", Column: "PUBLIC_INPUT_ROLLING_MSG_EXTRACTED_HI"},
@@ -231,6 +231,16 @@ func NewLimitlessDebugZkEVM(cfg *config.Config) *LimitlessZkEVM {
 	return limitlessZkEVM
 }
 
+// GetScaledUpBootstrapper returns a bootstrapper where all the limits have
+// been increased.
+func GetScaledUpBootstrapper(cfg *config.Config, disc distributed.ModuleDiscoverer, scalingFactor int) (*wizard.CompiledIOP, *ZkEvm) {
+
+	traceLimits := cfg.TracesLimits
+	traceLimits.ScaleUp(scalingFactor)
+	zkevm := FullZKEVMWithSuite(&traceLimits, CompilationSuite{}, cfg)
+	return distributed.PrecompileInitialWizard(zkevm.WizardIOP, disc), zkevm
+}
+
 // RunStatRecords runs only the bootstrapper and returns a list of stat records
 func (lz *LimitlessZkEVM) RunStatRecords(witness *Witness) []distributed.QueryBasedAssignmentStatsRecord {
 
@@ -255,11 +265,13 @@ func (lz *LimitlessZkEVM) RunStatRecords(witness *Witness) []distributed.QueryBa
 // the segmentation and then the sanity checks for all the segments. The
 // check of the LPP module is done using a deterministic pseudo-random number
 // generator and will yield the same result every time.
-func (lz *LimitlessZkEVM) RunDebug(witness *Witness) {
+func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
+
+	scaledUpBootstrapper, scaledUpZkEVM := GetScaledUpBootstrapper(cfg, lz.DistWizard.Disc, 2)
 
 	runtimeBoot := wizard.RunProver(
-		lz.DistWizard.Bootstrapper,
-		lz.Zkevm.GetMainProverStep(witness),
+		scaledUpBootstrapper,
+		scaledUpZkEVM.GetMainProverStep(witness),
 	)
 
 	witnessGLs, witnessLPPs := distributed.SegmentRuntime(
