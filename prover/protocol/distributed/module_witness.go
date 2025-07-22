@@ -205,12 +205,13 @@ func SegmentModuleLPP(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, modu
 }
 
 // NbSegmentOfModule returns the number of segments for a given module
-func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, moduleName []ModuleName) int {
+func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, moduleName []ModuleName) (nbSegment int) {
 
 	var (
 		cols            = runtime.Spec.Columns.AllKeys()
 		nbSegmentModule = -1
 		moduleSet       = map[ModuleName]struct{}{}
+		largeQbmSet     = map[ModuleName]struct{}{}
 	)
 
 	for _, mn := range moduleName {
@@ -235,11 +236,26 @@ func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, mod
 
 		var (
 			newSize         = NewSizeOfColumn(disc, col)
-			start, stop     = disc.SegmentBoundaryOf(runtime, col.(column.Natural))
+			start, stop, _  = disc.SegmentBoundaryOf(runtime, col.(column.Natural))
 			nbSegmentForCol = utils.DivExact(stop-start, newSize)
 		)
 
 		if nbSegmentForCol >= nbSegmentModule {
+
+			// If the number of segment is large, we are very likely meeting a
+			// bottlenecking QBM and it might be worth considering increasing
+			// the new-size of that module.
+			if nbSegmentForCol >= 2 {
+				qbm, _ := disc.(*StandardModuleDiscoverer).QbmOf(col.(column.Natural))
+				if _, ok := largeQbmSet[qbm.ModuleName]; !ok {
+					largeQbmSet[qbm.ModuleName] = struct{}{}
+					logrus.Warnf(
+						"[large number of segment] column=%v newSize=%v start=%v stop=%v nbSegment=%v, qbm=%v, module=%v",
+						col.GetColID(), newSize, start, stop, nbSegmentForCol, qbm.ModuleName, mn,
+					)
+				}
+			}
+
 			nbSegmentModule = nbSegmentForCol
 		}
 	}
@@ -265,10 +281,10 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, col i
 		// standard module. But we might need to adjust for the LPP columns because
 		// LPP modules group several standard modules together and they might have
 		// different number of segments.
-		startSeg, stopSeg = disc.SegmentBoundaryOf(runtime, col.(column.Natural))
+		startSeg, stopSeg, paddingInfo = disc.SegmentBoundaryOf(runtime, col.(column.Natural))
 	)
 
-	if startSeg > 0 && (stopSeg-startSeg) < totalNbSegment*newSize {
+	if paddingInfo == leftPaddingInformation && (stopSeg-startSeg) < totalNbSegment*newSize {
 		startSeg = stopSeg - totalNbSegment*newSize
 	}
 
