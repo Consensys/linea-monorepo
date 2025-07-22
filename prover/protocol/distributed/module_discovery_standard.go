@@ -78,7 +78,7 @@ type QueryBasedModule struct {
 	// present module.
 	NbInstancesOfPlonkQuery int
 	// NbSegmentCache caches the results of SegmentBoundaries
-	NbSegmentCache      map[unsafe.Pointer][2]int
+	NbSegmentCache      map[unsafe.Pointer][3]int
 	NbSegmentCacheMutex *sync.Mutex
 	Predivision         int
 	HasPrecomputed      bool
@@ -428,16 +428,8 @@ func (disc *StandardModuleDiscoverer) NewSizeOf(col column.Natural) int {
 	return disc.ColumnsToSize[col.GetColID()]
 }
 
-// SegmentBoundaryOfColumn returns the starting point and the ending point of the
-// segmentation of column. The implementation works by identifying the corresponding
-// [StandardModule] and then the corresponding inner [QueryBasedModule]. The function
-// will then scans the assignment of the columns in the query based module and examine
-// their padding to return the boundaries of the segmented area.
-//
-// To clarify, the segmentation of the column corresponds to the part that will be
-// kept by the segmentation process of the column (e.g. the area covered by the
-// reunion of all the segments). The rest of the assignment corresponds to padding.
-func (disc *StandardModuleDiscoverer) SegmentBoundaryOf(run *wizard.ProverRuntime, col column.Natural) (int, int) {
+// QbmOf returns the query-based module associated with a column and the associated new size.
+func (disc *StandardModuleDiscoverer) QbmOf(col column.Natural) (*QueryBasedModule, int) {
 
 	var (
 		rootCol          = column.RootParents(col).(column.Natural)
@@ -462,7 +454,21 @@ func (disc *StandardModuleDiscoverer) SegmentBoundaryOf(run *wizard.ProverRuntim
 		}
 	}
 
-	return queryBasedModule.SegmentBoundaries(run, segmentSize)
+	return queryBasedModule, segmentSize
+}
+
+// SegmentBoundaryOfColumn returns the starting point and the ending point of the
+// segmentation of column. The implementation works by identifying the corresponding
+// [StandardModule] and then the corresponding inner [QueryBasedModule]. The function
+// will then scans the assignment of the columns in the query based module and examine
+// their padding to return the boundaries of the segmented area.
+//
+// To clarify, the segmentation of the column corresponds to the part that will be
+// kept by the segmentation process of the column (e.g. the area covered by the
+// reunion of all the segments). The rest of the assignment corresponds to padding.
+func (disc *StandardModuleDiscoverer) SegmentBoundaryOf(run *wizard.ProverRuntime, col column.Natural) (int, int, paddingInformation) {
+	qbm, segmentSize := disc.QbmOf(col)
+	return qbm.SegmentBoundaries(run, segmentSize)
 }
 
 // Analyze processes columns and assigns them to modules.
@@ -696,7 +702,7 @@ func (disc *QueryBasedModuleDiscoverer) CreateModule(columns []column.Natural) *
 	module := &QueryBasedModule{
 		ModuleName:          ModuleName(fmt.Sprintf("Module_%d_%s", len(disc.Modules), colID)),
 		Ds:                  utils.NewDisjointSetFromList(columnIDs),
-		NbSegmentCache:      make(map[unsafe.Pointer][2]int),
+		NbSegmentCache:      make(map[unsafe.Pointer][3]int),
 		NbSegmentCacheMutex: &sync.Mutex{},
 	}
 
@@ -801,12 +807,12 @@ func (disc *QueryBasedModuleDiscoverer) GroupColumns(
 //
 // Beside we consider that constants columns have a density of 0, and the
 // function will return 0, 0 if all columns in the module are constants.
-func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmentSize int) (int, int) {
+func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmentSize int) (int, int, paddingInformation) {
 
 	mod.NbSegmentCacheMutex.Lock()
 	if res, ok := mod.NbSegmentCache[unsafe.Pointer(run)]; ok {
 		mod.NbSegmentCacheMutex.Unlock()
-		return res[0], res[1]
+		return res[0], res[1], paddingInformation(res[2])
 	}
 	mod.NbSegmentCacheMutex.Unlock()
 
@@ -826,33 +832,35 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		utils.Panic("there should not be contradictory pragmas, stats: %++v", stats)
 	}
 
-	// In theory, the first and the second condition are equivalent. This is a
-	// double-check
-	if stats.NbAssignedLeftPadded+stats.NbAssignedRightPadded+stats.NbAssignedConstantColumn == 0 ||
-		stats.NbAssignedFullColumn == stats.NbColumns ||
-		stats.NbPragmaFullColumn > 0 {
-
-		start, stop := 0, stats.OriginalSize
-		mod.NbSegmentCacheMutex.Lock()
-		defer mod.NbSegmentCacheMutex.Unlock()
-		mod.NbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
-		return start, stop
-	}
-
 	// When all the assigned columns are constants (or there is no column)
 	if stats.NbActiveRows == 0 {
 		start, stop := 0, 0
 		mod.NbSegmentCacheMutex.Lock()
 		defer mod.NbSegmentCacheMutex.Unlock()
-		mod.NbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
-		return start, stop
+		mod.NbSegmentCache[unsafe.Pointer(run)] = [3]int{start, stop, constantPaddingInformation}
+		return start, stop, constantPaddingInformation
+	}
+
+	if stats.NbPragmaRightPadded+stats.NbPragmaLeftPadded == 0 {
+		// In theory, the first and the second condition are equivalent. This is a
+		// double-check
+		if stats.NbAssignedLeftPadded+stats.NbAssignedRightPadded == 0 ||
+			stats.NbAssignedFullColumn+stats.NbAssignedConstantColumn == stats.NbColumns ||
+			stats.NbPragmaFullColumn > 0 {
+
+			start, stop := 0, stats.OriginalSize
+			mod.NbSegmentCacheMutex.Lock()
+			defer mod.NbSegmentCacheMutex.Unlock()
+			mod.NbSegmentCache[unsafe.Pointer(run)] = [3]int{start, stop, noPaddingInformation}
+			return start, stop, noPaddingInformation
+		}
 	}
 
 	// If no pragma are given, we expect that there are not simultaneously
 	// assigned left and right padded columns. Otherwise, we cannot guess which
 	// case to refer to.
 	if stats.NbPragmaLeftPadded == 0 &&
-		stats.NbAssignedRightPadded == 0 &&
+		stats.NbPragmaRightPadded == 0 &&
 		stats.NbAssignedLeftPadded > 0 &&
 		stats.NbAssignedRightPadded > 0 {
 		utils.Panic("there should not be simultaneously assigned left and right padded columns, stats: %++v", stats)
@@ -869,22 +877,22 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		start, stop := 0, totalSegmentedArea
 		mod.NbSegmentCacheMutex.Lock()
 		defer mod.NbSegmentCacheMutex.Unlock()
-		mod.NbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
-		return start, stop
+		mod.NbSegmentCache[unsafe.Pointer(run)] = [3]int{start, stop, rightPaddingInformation}
+		return start, stop, rightPaddingInformation
 	}
 
 	// In theory, the condition with the pragma is redundant based on the sanity
 	// check we are doing.
-	if stats.NbPragmaRightPadded > 0 || stats.NbAssignedLeftPadded > 0 {
+	if stats.NbPragmaLeftPadded > 0 || stats.NbAssignedLeftPadded > 0 {
 		start, stop := stats.OriginalSize-totalSegmentedArea, stats.OriginalSize
 		mod.NbSegmentCacheMutex.Lock()
 		defer mod.NbSegmentCacheMutex.Unlock()
-		mod.NbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
-		return start, stop
+		mod.NbSegmentCache[unsafe.Pointer(run)] = [3]int{start, stop, leftPaddingInformation}
+		return start, stop, leftPaddingInformation
 	}
 
 	utils.Panic("unreachable: stats: %++v\n", stats)
-	return 0, 0 // unreachable return
+	return 0, 0, noPaddingInformation // unreachable return
 }
 
 // RecordAssignmentStats scans the assignment of the module and reports stats
@@ -1005,6 +1013,9 @@ func (mod *QueryBasedModule) RecordAssignmentStats(run *wizard.ProverRuntime) Qu
 		// is not a relevant indication for deducing the number of active row
 		// and the padding direction of the module (unless the pragma is
 		// activated).
+		//
+		// In case, all columns are either constant or full, the approach is
+		// flawed and is "fixed" after the loop.
 		case isRightPadded && isLeftPadded:
 
 			res.NbAssignedFullColumn++
@@ -1031,6 +1042,15 @@ func (mod *QueryBasedModule) RecordAssignmentStats(run *wizard.ProverRuntime) Qu
 		if density > res.NbActiveRows {
 			res.NbActiveRows = density
 		}
+	}
+
+	// This covers for the case where there are only constant and/or full
+	// columns in the module. In that case, the above loop does not give the
+	// correct result. A special is when the module is explicitly highlighted
+	// as padded with a pragma. In that situation, the number of active rows
+	// is zero.
+	if res.NbActiveRows == 0 && res.NbAssignedFullColumn > 0 && res.NbPragmaLeftPadded+res.NbPragmaRightPadded == 0 {
+		res.NbActiveRows = size
 	}
 
 	return res
@@ -1292,12 +1312,12 @@ type LPPSegmentBoundaryCalculator struct {
 func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRuntime, col column.Natural) (int, int) {
 
 	var (
-		module      = ls.Disc.ModuleOf(col)
-		moduleNames = ls.Disc.ModuleList()
-		nbSegment   = -1
-		start, stop = ls.Disc.SegmentBoundaryOf(run, col)
-		newSize     = ls.Disc.NewSizeOf(col)
-		fullSize    = col.Size()
+		module                   = ls.Disc.ModuleOf(col)
+		moduleNames              = ls.Disc.ModuleList()
+		nbSegment                = -1
+		start, stop, paddingInfo = ls.Disc.SegmentBoundaryOf(run, col)
+		newSize                  = ls.Disc.NewSizeOf(col)
+		fullSize                 = col.Size()
 	)
 
 	for i := range ls.Disc.Modules {
@@ -1321,7 +1341,28 @@ func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRunt
 	// is a consequence of the fact that LPP modules are aggregates of GL modules
 	// and #moduleLpp.segments = max_i(#moduleGL_i.segments)
 	if newLen < stop-start {
-		utils.Panic("newLen=%v, stop=%v, start=%v", newLen, stop, start)
+		utils.Panic("newLen=%v, stop=%v, start=%v, col=%v", newLen, stop, start, col.ID)
+	}
+
+	// This corresponds to the OOB case. In that situation, we have to resolve
+	// the padding of the corresponding QBM to deduce the exact range to return.
+	// The padding is left-wise, we will return size-newLen:size and 0:newLen if
+	// the module is right padded. In case the module is "full", we panic as
+	// there are no clear ways to guess what range to return.
+	if newLen > fullSize {
+
+		switch paddingInfo {
+		case noPaddingInformation:
+			utils.Panic("cannot guess how to bad the column, you may want to recheck your module grouping for %v because it is not padded but grouped with padded modules", col.ID)
+		case constantPaddingInformation:
+			return 0, 0 // There should not be anyway to end up in that situation
+		case leftPaddingInformation:
+			return fullSize - newLen, newLen
+		case rightPaddingInformation:
+			return 0, newLen
+		}
+
+		panic("unreachable")
 	}
 
 	// Everything will be used. The case where newLen < stop-start is impossible due
@@ -1330,7 +1371,7 @@ func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRunt
 	// and we do not support that).
 	if start == 0 && stop == fullSize {
 		if stop != newLen {
-			utils.Panic("stop=%v, nbSegment=%v, newSize=%v, newLen=%v", stop, nbSegment, newSize, newLen)
+			utils.Panic("start=%v stop=%v, nbSegment=%v, newSize=%v, newLen=%v, col=%v", start, stop, nbSegment, newSize, newLen, col.ID)
 		}
 		return start, stop
 	}
@@ -1343,6 +1384,6 @@ func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRunt
 		return fullSize - newLen, fullSize
 	}
 
-	utils.Panic("start=%v, stop=%v, nbSegment=%v, newSize=%v, newLen=%v", start, stop, nbSegment, newSize, newLen)
+	utils.Panic("start=%v, stop=%v, nbSegment=%v, newSize=%v, newLen=%v, col=%v", start, stop, nbSegment, newSize, newLen, col.ID)
 	return -1, -1 // Unreachable
 }
