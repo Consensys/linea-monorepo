@@ -45,13 +45,11 @@ type BlsMsm struct {
 	*unalignedMsmData
 	AlignedGnarkMsmData             *plonk.Alignment
 	AlignedGnarkGroupMembershipData *plonk.Alignment
-	size                            int
 	*Limits
 	group
 }
 
 func newMsm(comp *wizard.CompiledIOP, g group, limits *Limits, src *BlsMsmDataSource, plonkOptions []query.PlonkOption) *BlsMsm {
-	size := limits.sizeMulIntegration(g)
 	umsm := newUnalignedMsmData(comp, g, limits, src)
 
 	toAlignMsm := &plonk.CircuitAlignmentInput{
@@ -66,18 +64,19 @@ func newMsm(comp *wizard.CompiledIOP, g group, limits *Limits, src *BlsMsmDataSo
 	toAlignMembership := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_%s_GROUP_MEMBERSHIP", NAME_BLS_MSM, g.String()),
 		Round:              ROUND_NR,
-		DataToCircuitMask:  umsm.GnarkIsActiveMembership,
-		DataToCircuit:      umsm.GnarkDataMembership,
+		DataToCircuitMask:  src.CsMembership,
+		DataToCircuit:      src.Limb,
 		Circuit:            newCheckCircuit(g, GROUP, limits),
 		NbCircuitInstances: limits.nbGroupMembershipCircuitInstances(g),
+		InputFillerKey:     membershipInputFillerKey(g, GROUP),
 		PlonkOptions:       plonkOptions,
 	}
 
 	return &BlsMsm{
 		BlsMsmDataSource:                src,
+		unalignedMsmData:                umsm,
 		AlignedGnarkMsmData:             plonk.DefineAlignment(comp, toAlignMsm),
 		AlignedGnarkGroupMembershipData: plonk.DefineAlignment(comp, toAlignMembership),
-		size:                            size,
 		Limits:                          limits,
 		group:                           g,
 	}
@@ -86,26 +85,23 @@ func newMsm(comp *wizard.CompiledIOP, g group, limits *Limits, src *BlsMsmDataSo
 func (bm *BlsMsm) Assign(run *wizard.ProverRuntime) {
 	bm.unalignedMsmData.Assign(run)
 	bm.AlignedGnarkMsmData.Assign(run)
+	bm.AlignedGnarkGroupMembershipData.Assign(run)
 }
 
 type unalignedMsmData struct {
 	*BlsMsmDataSource
 	// this part is used to define the accumulators and indicate if the
-	IsActive            ifaces.Column
-	Scalar              [nbFrLimbs]ifaces.Column
-	Point               []ifaces.Column // length nbG1Limbs or nbG2Limbs
-	CurrentAccumulator  []ifaces.Column // length nbG1Limbs or nbG2Limbs
-	NextAccumulator     []ifaces.Column // length nbG1Limbs or nbG2Limbs
-	ToMsmCircuit        ifaces.Column
-	ToMembershipCircuit ifaces.Column
+	IsActive           ifaces.Column
+	IsFirstLine        ifaces.Column
+	IsLastLine         ifaces.Column
+	Scalar             [nbFrLimbs]ifaces.Column
+	Point              []ifaces.Column // length nbG1Limbs or nbG2Limbs
+	CurrentAccumulator []ifaces.Column // length nbG1Limbs or nbG2Limbs
+	NextAccumulator    []ifaces.Column // length nbG1Limbs or nbG2Limbs
 
 	// data which is projected from above columns going into the MSM circuit
 	GnarkIsActiveMsm ifaces.Column
 	GnarkDataMsm     ifaces.Column
-
-	// data which is projected from above columns going into the membership circuit
-	GnarkIsActiveMembership ifaces.Column
-	GnarkDataMembership     ifaces.Column
 
 	group group
 }
@@ -121,15 +117,9 @@ func newUnalignedMsmData(comp *wizard.CompiledIOP, g group, limits *Limits, src 
 		NextAccumulator:    make([]ifaces.Column, nbLimbs(g)),
 		IsFirstLine:        createCol1("IS_FIRST_LINE"),
 		IsLastLine:         createCol1("IS_LAST_LINE"),
-		ToMsmCircuit:        createCol1("TO_MSM_CIRCUIT"),
-		ToMembershipCircuit: createCol1("TO_GROUP_MEMBERSHIP_CIRCUIT"),
-
-		GnarkIsActiveMsm: createCol2("GNARK_IS_ACTIVE_MSM"),
-		GnarkDataMsm:     createCol2("GNARK_DATA_MSM"),
-
-		GnarkIsActiveMembership: createCol("GNARK_IS_ACTIVE_MEMBERSHIP"),
-		GnarkDataMembership:     createCol("GNARK_DATA_GROUP_MEMBERSHIP"),
-		group:                   g,
+		GnarkIsActiveMsm:   createCol2("GNARK_IS_ACTIVE_MSM"),
+		GnarkDataMsm:       createCol2("GNARK_DATA_MSM"),
+		group:              g,
 	}
 
 	for i := range res.Scalar {

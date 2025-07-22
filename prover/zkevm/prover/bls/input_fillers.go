@@ -10,6 +10,8 @@ import (
 func init() {
 	plonk.RegisterInputFiller(membershipInputFillerKey(G1, CURVE), newMembershipInputFiller(G1, CURVE))
 	plonk.RegisterInputFiller(membershipInputFillerKey(G2, CURVE), newMembershipInputFiller(G2, CURVE))
+	plonk.RegisterInputFiller(membershipInputFillerKey(G1, GROUP), newMembershipInputFiller(G1, GROUP))
+	plonk.RegisterInputFiller(membershipInputFillerKey(G2, GROUP), newMembershipInputFiller(G2, GROUP))
 }
 
 func membershipInputFillerKey(g group, m membership) string {
@@ -33,6 +35,15 @@ func newMembershipInputFiller(g group, m membership) plonk.InputFiller {
 				return field.One() // first input is the success bit
 			} else {
 				return field.Zero() // other inputs are zero
+			}
+		}
+	case GROUP:
+		return func(circuitInstance, inputIndex int) field.Element {
+			nbL := nbLimbs(g)
+			if (inputIndex+1)%(nbL/2) == 0 {
+				return field.One()
+			} else {
+				return field.Zero()
 			}
 		}
 	}
