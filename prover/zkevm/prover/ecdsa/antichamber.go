@@ -8,7 +8,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -187,7 +189,8 @@ func (ac *antichamber) assignAntichamber(run *wizard.ProverRuntime, nbEcRecInsta
 	)
 
 	if nbRowsPerEcRec*maxNbEcRecover+nbRowsPerTxSign*maxNbTx > ac.Size {
-		utils.Panic("not enough space in antichamber to store all the data. Need %d, got %d", 24*maxNbEcRecover+15*maxNbTx, ac.Size)
+		logrus.Errorf("not enough space in antichamber to store all the data. Need %d, got %d", 24*maxNbEcRecover+15*maxNbTx, ac.Size)
+		exit.OnLimitOverflow()
 	}
 	// prepare root module columns
 	// for ecrecover case we need 10+14 rows (fetchin and pushing). For TX we need 1+14
