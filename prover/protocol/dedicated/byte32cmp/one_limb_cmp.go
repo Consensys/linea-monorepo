@@ -65,10 +65,11 @@ func CmpSmallCols(comp *wizard.CompiledIOP, a, b ifaces.Column, numBits int) (g,
 	}
 
 	var (
-		size    = a.Size()
-		round   = max(a.Round(), b.Round())
-		ctxName = func(subName string) string {
-			return fmt.Sprintf("CMP_ONE_LIMB_CTX_%v_%v_%v", a.GetColID(), b.GetColID(), subName)
+		size       = a.Size()
+		round      = max(a.Round(), b.Round())
+		identifier = len(comp.Columns.AllKeys())
+		ctxName    = func(subName string) string {
+			return fmt.Sprintf("CMP_ONE_LIMB_CTX_%v_%v", identifier, subName)
 		}
 
 		// Note: that isEqual is already constrained to be correctly formed.
