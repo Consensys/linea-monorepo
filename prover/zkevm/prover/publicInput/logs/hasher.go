@@ -50,9 +50,9 @@ func DefineHasher(comp *wizard.CompiledIOP, hasher LogHasher, name string, fetch
 
 	// Needed for the limitless prover to understand that the columns are
 	// not just empty with just padding and suboptimal representation.
-	pragmas.MarkFullColumn(hasher.Inter)
-	pragmas.MarkFullColumn(hasher.HashFirst)
-	pragmas.MarkFullColumn(hasher.HashSecond)
+	pragmas.MarkRightPadded(hasher.Inter)
+	pragmas.MarkRightPadded(hasher.HashFirst)
+	pragmas.MarkRightPadded(hasher.HashSecond)
 
 	// MiMC constraints
 	comp.InsertMiMC(0, ifaces.QueryIDf("%s_%s", name, "MIMC_CONSTRAINT"), fetched.Hi, hasher.Inter, hasher.HashFirst, nil)
