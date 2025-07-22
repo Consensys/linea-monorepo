@@ -15,8 +15,6 @@
 
 package net.consensys.linea.zktracer.module.mxp.moduleCall;
 
-import static net.consensys.linea.zktracer.TraceCancun.Mxp.CT_MAX_MXPX;
-
 import net.consensys.linea.zktracer.module.hub.Hub;
 
 public class CancunMxpxMxpCall extends CancunNotMSizeNorTrivialMxpCall {
@@ -30,10 +28,5 @@ public class CancunMxpxMxpCall extends CancunNotMSizeNorTrivialMxpCall {
   @Override
   public boolean isMxpxScenario() {
     return true;
-  }
-
-  @Override
-  public int ctMax() {
-    return CT_MAX_MXPX;
   }
 }

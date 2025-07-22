@@ -154,7 +154,7 @@ public class CommonFragmentValues {
     }
 
     if (Exceptions.memoryExpansionException(exceptions)) {
-      checkArgument(opCode.mayTriggerMemoryExpansionException());
+      checkArgument(opCode.mayTriggerMemoryExpansionException(hub.fork));
       setTracedException(TracedException.MEMORY_EXPANSION_EXCEPTION);
       return;
     }

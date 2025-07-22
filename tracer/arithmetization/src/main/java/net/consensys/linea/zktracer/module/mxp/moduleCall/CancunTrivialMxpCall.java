@@ -16,13 +16,10 @@
 package net.consensys.linea.zktracer.module.mxp.moduleCall;
 
 import static net.consensys.linea.zktracer.TraceCancun.Mxp.CT_MAX_TRIV;
-import static net.consensys.linea.zktracer.types.Conversions.bytesToBoolean;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.mxp.MxpExoCall;
-import net.consensys.linea.zktracer.module.wcp.Wcp;
 
-public class CancunTrivialMxpCall extends CancunMSizeMxpCall {
+public class CancunTrivialMxpCall extends CancunMxpCall {
 
   public CancunTrivialMxpCall(Hub hub) {
     super(hub);
@@ -32,20 +29,6 @@ public class CancunTrivialMxpCall extends CancunMSizeMxpCall {
   @Override
   public boolean isTrivialScenario() {
     return true;
-  }
-
-  private void computeSize1Size2IsZero(Wcp wcp) {
-    // We compute and assign the computation's result for each row
-
-    // Row i + 1
-    // Compute size1IsZero
-    exoCalls[0] = MxpExoCall.callToIsZero(wcp, this.size1);
-    this.size1IsZero = bytesToBoolean(exoCalls[0].resultA());
-
-    // Row i + 2
-    // Compute size2IsZero
-    exoCalls[1] = MxpExoCall.callToIsZero(wcp, this.size2);
-    this.size2IsZero = bytesToBoolean(exoCalls[1].resultA());
   }
 
   @Override

@@ -27,8 +27,7 @@ import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata
 import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.EBS_MIN_OFFSET;
 import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.MBS_MIN_OFFSET;
 import static net.consensys.linea.zktracer.runtime.callstack.CallFrame.extractContiguousLimbsFromMemory;
-import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
-import static net.consensys.linea.zktracer.types.Conversions.longToBytes;
+import static net.consensys.linea.zktracer.types.Conversions.*;
 import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
@@ -783,20 +782,30 @@ public class MmuCall implements TraceSubFragment, EndTransactionDefer {
   }
 
   public static MmuCall mcopyCopy(Hub hub, CallFrame callFrame) {
+    final EWord sourceOffset = EWord.of(callFrame.frame().getStackItem(1));
     final long size = clampedToLong(callFrame.frame().getStackItem(2));
     return new MmuCall(hub, MMU_INST_RAM_TO_RAM_SANS_PADDING)
         .sourceId(callFrame.contextNumber())
+        .sourceRamBytes(
+            Optional.of(
+                extractContiguousLimbsFromMemory(
+                    callFrame.frame(), Range.fromOffsetAndSize(sourceOffset.toLong(), size))))
         .targetId(newIdentifierFromStamp(hub.stamp()))
-        .sourceOffset(EWord.of(callFrame.frame().getStackItem(1)))
+        .sourceOffset(sourceOffset)
         .size(size)
         .referenceSize(size);
   }
 
   public static MmuCall mcopyPaste(Hub hub, CallFrame callFrame) {
     final long size = clampedToLong(callFrame.frame().getStackItem(2));
+    final long sourceOffset = clampedToLong(callFrame.frame().getStackItem(1));
+    final Bytes currentMemory =
+        hub.currentFrame().frame().shadowReadMemory(0, hub.currentFrame().frame().memoryByteSize());
     return new MmuCall(hub, MMU_INST_RAM_TO_RAM_SANS_PADDING)
         .sourceId(newIdentifierFromStamp(hub.stamp()))
+        .sourceRamBytes(Optional.of(currentMemory.slice((int) sourceOffset, (int) size)))
         .targetId(callFrame.contextNumber())
+        .targetRamBytes(Optional.of(currentMemory))
         .size(size)
         .referenceOffset(clampedToLong(callFrame.frame().getStackItem(0)))
         .referenceSize(size);

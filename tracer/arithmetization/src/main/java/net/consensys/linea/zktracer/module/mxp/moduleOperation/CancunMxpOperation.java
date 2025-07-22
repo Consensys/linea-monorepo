@@ -52,7 +52,7 @@ public class CancunMxpOperation extends MxpOperation {
 
   @Override
   public final void trace(int stamp, Trace.Mxp trace) {
-    traceDecoder(++stamp, trace);
+    traceDecoder(stamp, trace);
     traceMacro(stamp, trace);
     traceScenario(stamp, trace);
     traceComputation(stamp, trace);
@@ -75,8 +75,8 @@ public class CancunMxpOperation extends MxpOperation {
         .pDecoderIsDoubleMaxOffset(opCodeData.isDoubleOffset())
         .pDecoderIsWordPricing(opCodeData.isWordPricing())
         .pDecoderIsBytePricing(opCodeData.isBytePricing())
-        .pDecoderGword((UnsignedByte) cancunMxpCall.gWord)
-        .pDecoderGbyte((UnsignedByte) cancunMxpCall.gByte)
+        .pDecoderGword(cancunMxpCall.gWord)
+        .pDecoderGbyte(cancunMxpCall.gByte)
         .fillAndValidateRow();
   }
 

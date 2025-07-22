@@ -35,6 +35,29 @@ public class McopyTests extends TracerTestBase {
   @ParameterizedTest
   @MethodSource("inputs")
   void singleMcopy(Bytes targetOffset, Bytes sourceOffset, Bytes size) {
+
+    final Bytes FILL_MEMORY =
+        BytecodeCompiler.newProgram(testInfo)
+            .push(0) // offset
+            .push(
+                Bytes32.fromHexString(
+                    "0x11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff")) // value
+            .op(MSTORE)
+            .compile();
+
+    final Bytes MLOADS =
+        BytecodeCompiler.newProgram(testInfo)
+            .push(0)
+            .op(MLOAD)
+            .op(POP)
+            .push(WORD_SIZE)
+            .op(MLOAD)
+            .op(POP)
+            .push(2 * WORD_SIZE)
+            .op(MLOAD)
+            .op(POP)
+            .compile();
+
     BytecodeRunner.of(
             Bytes.concatenate(
                 FILL_MEMORY, // We fill the first 32 bytes of memory with non-trivial value
@@ -43,28 +66,6 @@ public class McopyTests extends TracerTestBase {
                 ))
         .run(testInfo);
   }
-
-  private static final Bytes FILL_MEMORY =
-      BytecodeCompiler.newProgram(testInfo)
-          .push(0) // offset
-          .push(
-              Bytes32.fromHexString(
-                  "0x11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff")) // value
-          .op(MSTORE)
-          .compile();
-
-  private static final Bytes MLOADS =
-      BytecodeCompiler.newProgram(testInfo)
-          .push(0)
-          .op(MLOAD)
-          .op(POP)
-          .push(WORD_SIZE)
-          .op(MLOAD)
-          .op(POP)
-          .push(2 * WORD_SIZE)
-          .op(MLOAD)
-          .op(POP)
-          .compile();
 
   private static final List<Bytes32> INPUTS =
       List.of(

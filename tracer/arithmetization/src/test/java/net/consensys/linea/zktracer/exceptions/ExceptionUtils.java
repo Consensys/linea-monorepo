@@ -130,7 +130,7 @@ public class ExceptionUtils extends TracerTestBase {
         .op(OpCode.MSTORE);
   }
 
-  public static BytecodeCompiler simpleProgramEmptyStorage(OpCode opCode) {
+  public static BytecodeCompiler simpleProgram(OpCode opCode) {
     BytecodeCompiler program =
         (opCode == OpCode.CREATE || opCode == OpCode.CREATE2)
             ? getPgPushInitCodeToMem()

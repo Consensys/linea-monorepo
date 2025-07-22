@@ -15,11 +15,15 @@
 
 package net.consensys.linea.zktracer.module.mxp.moduleCall;
 
+import static net.consensys.linea.zktracer.TraceCancun.Mxp.MXPX_THRESHOLD;
 import static net.consensys.linea.zktracer.module.mxp.MxpUtils.memoryCost;
+import static net.consensys.linea.zktracer.types.Conversions.*;
 
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
 import net.consensys.linea.zktracer.module.mxp.MxpExoCall;
+import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.gas.BillingRate;
 import org.apache.tuweni.bytes.Bytes;
 
@@ -57,8 +61,8 @@ public class CancunMxpCall extends MxpCall {
 
   public final long words;
   public final long cMem;
-  public final Bytes gWord;
-  public final Bytes gByte;
+  public final int gWord;
+  public final int gByte;
 
   public CancunMxpCall(Hub hub) {
     super(hub);
@@ -72,7 +76,7 @@ public class CancunMxpCall extends MxpCall {
   }
 
   /** Store all wcp and euc computations with params and results */
-  public final MxpExoCall[] exoCalls = new MxpExoCall[ctMax()];
+  public final MxpExoCall[] exoCalls = new MxpExoCall[ctMax() + 1];
 
   /** Computed by CancunTrivialMxpCall */
   public boolean size1IsZero = false;
@@ -81,6 +85,8 @@ public class CancunMxpCall extends MxpCall {
 
   /** Computed by CancunNotMSizeNorTrivialMxpCall for CancunMxpxMxpCall */
   public int mxpxExpression = 0;
+
+  static final Bytes mxpxThreshold = Bytes.ofUnsignedLong(MXPX_THRESHOLD);
 
   /**
    * Computed in CancunStateUpdateMxpCall for State update scenarii CancunStateUpdtWPricingMxpCall
@@ -123,5 +129,66 @@ public class CancunMxpCall extends MxpCall {
 
   public void setGasMpxFromExtraGasCost() {
     this.gasMxp = this.cMemNew - this.cMem + this.extraGasCost;
+  }
+
+  public void computeSize1Size2IsZero(Wcp wcp) {
+    // We compute and assign the computation's result for each row
+
+    // Row i + 1
+    // Compute size1IsZero
+    exoCalls[0] = MxpExoCall.callToIsZero(wcp, this.size1);
+    this.size1IsZero = bytesToBoolean(exoCalls[0].resultA());
+
+    // Row i + 2
+    // Compute size2IsZero
+    exoCalls[1] = MxpExoCall.callToIsZero(wcp, this.size2);
+    this.size2IsZero = bytesToBoolean(exoCalls[1].resultA());
+  }
+
+  public void computeMxpxExpression(Wcp wcp) {
+    // We compute and assign the computation's result for each row
+
+    // Row i + 3
+    // Compute size1IsSmall
+    exoCalls[2] = MxpExoCall.callToLEQ(wcp, this.size1, mxpxThreshold);
+    final boolean size1IsSmall = bytesToBoolean(exoCalls[2].resultA());
+
+    // Row i + 4
+    // Compute size2IsSmall
+    exoCalls[3] = MxpExoCall.callToLEQ(wcp, this.size2, mxpxThreshold);
+    final boolean size2IsSmall = bytesToBoolean(exoCalls[3].resultA());
+
+    // Row i + 5
+    // Compute offset1IsSmall
+    exoCalls[4] = MxpExoCall.callToLEQ(wcp, this.offset1, mxpxThreshold);
+    final boolean offset1IsSmall = bytesToBoolean(exoCalls[4].resultA());
+
+    // Row i + 6
+    // Compute offset2IsSmall
+    exoCalls[5] = MxpExoCall.callToLEQ(wcp, this.offset2, mxpxThreshold);
+    final boolean offset2IsSmall = bytesToBoolean(exoCalls[5].resultA());
+
+    final boolean size1IsNonZero = !this.size1IsZero;
+    final boolean size2IsNonZero = !this.size2IsZero;
+    final boolean size1IsLarge = !size1IsSmall;
+    final boolean size2IsLarge = !size2IsSmall;
+    final boolean offset1IsLarge = !offset1IsSmall;
+    final boolean offset2IsLarge = !offset2IsSmall;
+    final int mxpxExpression1 =
+        booleanToInt(size1IsLarge) + booleanToInt(size1IsNonZero) * booleanToInt(offset1IsLarge);
+    final int mxpxExpression2 =
+        booleanToInt(size2IsLarge) + booleanToInt(size2IsNonZero) * booleanToInt(offset2IsLarge);
+
+    this.mxpxExpression = mxpxExpression1 + mxpxExpression2;
+  }
+
+  public void traceMayTriggerNonTrivialMmuOperationFromMxpx(Trace.Hub trace) {
+    // From Cancun and on, we don't trace mayTriggerNonTrivialMmuOperationFromMxpx anymore
+  }
+
+  public void traceMxpWords(Trace.Hub trace) {
+    // TODO: check with Lorenzo to match mxp
+    trace.pMiscMxpWords(
+        this.opCodeData.isMSize() ? Bytes.ofUnsignedLong(this.memorySizeInWords) : Bytes.EMPTY);
   }
 }

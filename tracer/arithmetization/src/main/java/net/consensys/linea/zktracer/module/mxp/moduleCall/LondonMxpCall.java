@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module.mxp.moduleCall;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
+import org.apache.tuweni.bytes.Bytes;
 
 /** The parent class of this MXP Call is located in the Hub. */
 public class LondonMxpCall extends MxpCall {
@@ -26,7 +27,11 @@ public class LondonMxpCall extends MxpCall {
     super(hub);
   }
 
-  protected void traceMayTriggerNonTrivialMmuOperationFromMxpx(Trace.Hub trace) {
+  public void traceMayTriggerNonTrivialMmuOperationFromMxpx(Trace.Hub trace) {
     trace.pMiscMxpMtntop(this.mayTriggerNontrivialMmuOperation);
+  }
+
+  public void traceMxpWords(Trace.Hub trace) {
+    trace.pMiscMxpWords(Bytes.ofUnsignedLong(this.memorySizeInWords));
   }
 }

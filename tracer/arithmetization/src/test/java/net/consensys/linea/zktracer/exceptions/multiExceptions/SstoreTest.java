@@ -65,7 +65,7 @@ public class SstoreTest extends TracerTestBase {
   @Test
   void staticAndOogExceptionsSStore() {
 
-    BytecodeCompiler program = simpleProgramEmptyStorage(OpCode.SSTORE);
+    BytecodeCompiler program = simpleProgram(OpCode.SSTORE);
     Bytes pgCompile = program.compile();
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(pgCompile);
     long gasCostTx = bytecodeRunner.runOnlyForGasCost(testInfo);
