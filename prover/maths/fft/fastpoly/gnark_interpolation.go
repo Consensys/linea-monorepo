@@ -130,10 +130,19 @@ func BatchInterpolateGnark(api frontend.API, polys [][]frontend.Variable, x fron
 		res = make([]frontend.Variable, len(polys))
 	)
 
-	for i := range innerProductTerms {
-		innerProductTerms[i] = api.Mul(powersOfOmegaInv[i], x)
-		innerProductTerms[i] = api.Sub(innerProductTerms[i], 1)
-		innerProductTerms[i] = api.Inverse(innerProductTerms[i])
+	// @Alex: this closure is an optimization. I profiled and figured that this
+	// routine is an important bottle and it is sometime possible to skip it
+	// for most cases due to the fact that [BatchInterpolateGnark] is very
+	// often called with structured vectors containing a lot of constant-zero
+	// coordinates. Evaluating the inner-product term in a closure enable lazy
+	// evaluation of the inner-product and saves a ton of constraints.
+	getInnerProductTerm := func(i int) frontend.Variable {
+		if innerProductTerms[i] == nil {
+			innerProductTerms[i] = api.Mul(powersOfOmegaInv[i], x)
+			innerProductTerms[i] = api.Sub(innerProductTerms[i], 1)
+			innerProductTerms[i] = api.Inverse(innerProductTerms[i])
+		}
+		return innerProductTerms[i]
 	}
 
 	for i, n := range sizes {
@@ -144,6 +153,14 @@ func BatchInterpolateGnark(api frontend.API, polys [][]frontend.Variable, x fron
 	}
 
 	for i := range polys {
+
+		// When the poly is represented by a single value, it is a constant poly
+		// and we can simply return the constant without creating any additional
+		// constant.
+		if len(polys[i]) == 1 {
+			res[i] = polys[i][0]
+			continue
+		}
 
 		var (
 			poly          = polys[i]
@@ -172,12 +189,15 @@ func BatchInterpolateGnark(api frontend.API, polys [][]frontend.Variable, x fron
 			// that is precomputed and raised as a Proof object in the wizard. When
 			// that happens, it will contain constant values (very often actually)
 			// and when they contain zeroes we can just skip the related
-			// computation. The saving was not negligible in practice.
+			// computation. The saving was not negligible in practice. The
+			// optimization also covers complex verifier cols that might contain
+			// constant values.
 			if isConstantZeroGnarkVariable(api, poly[k]) {
 				continue
 			}
 
-			tmp := api.Mul(poly[k], innerProductTerms[k*maxSize/n])
+			ip := getInnerProductTerm(k * maxSize / n)
+			tmp := api.Mul(poly[k], ip)
 			yUnscaled = api.Add(tmp, yUnscaled)
 		}
 
