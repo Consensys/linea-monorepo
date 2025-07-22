@@ -18,8 +18,13 @@ var (
 	// numConcurrentDiskWrite governs the number of concurrent disk writes
 	numConcurrentDiskWrite = 1
 	// concurrentSubProverSemaphore is a semaphore that controls the number of
-	// concurrent sub-prover jobs.
+	// concurrent disk writes.
 	diskWriteSemaphore = semaphore.NewWeighted(int64(numConcurrentDiskWrite))
+	// concurrentDiskRead governs the number of concurrent disk reads
+	numConcurrentDiskRead = 1
+	// diskReadSemaphore is a semaphore that controls the number of concurrent
+	// disk reads.
+	diskReadSemaphore = semaphore.NewWeighted(int64(numConcurrentDiskRead))
 )
 
 // LoadFromDisk loads a serialized asset from disk
@@ -36,9 +41,23 @@ func LoadFromDisk(filePath string, assetPtr any, withCompression bool) error {
 		tDecomp   time.Duration
 	)
 
+	diskReadSemaphore.Acquire(context.Background(), 1)
+
+	logrus.Infof("Reading file %v\n", filePath)
+
 	tRead := profiling.TimeIt(func() {
 		buf, readErr = io.ReadAll(f)
 	})
+
+	diskReadSemaphore.Release(int64(1))
+
+	if readErr != nil {
+		return fmt.Errorf("could not read file %s: %w", filePath, readErr)
+	}
+
+	sizeDisk := len(buf)
+	sizeUncompressed := sizeDisk
+	readingSpeedBytesperSec := float64(sizeDisk) / tRead.Seconds()
 
 	if withCompression {
 
@@ -53,10 +72,8 @@ func LoadFromDisk(filePath string, assetPtr any, withCompression bool) error {
 		if decompErr != nil {
 			return fmt.Errorf("could not decompress file %s: %w", filePath, decompErr)
 		}
-	}
 
-	if readErr != nil {
-		return fmt.Errorf("could not read file %s: %w", filePath, readErr)
+		sizeUncompressed = len(buf)
 	}
 
 	tDes := profiling.TimeIt(func() {
@@ -67,7 +84,7 @@ func LoadFromDisk(filePath string, assetPtr any, withCompression bool) error {
 		return fmt.Errorf("could not deserialize %s: %w", filePath, desErr)
 	}
 
-	logrus.Infof("Read %s in %s, deserialized in %s, decompressed in %s, size: %dB", filePath, tRead, tDes, tDecomp, len(buf))
+	logrus.Infof("Read %s in %s, deserialized in %s, decompressed in %s, size-disk: %dB, size-uncompressed: %v, reading-speed: %vB/sec", filePath, tRead, tDes, tDecomp, sizeDisk, sizeUncompressed, readingSpeedBytesperSec)
 
 	return nil
 }
