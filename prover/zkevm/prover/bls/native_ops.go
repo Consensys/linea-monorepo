@@ -9,8 +9,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
-func set(buf []byte, nbL int, q *fp.Element, limbs []field.Element) {
-	buf = nil
+func set(nbL int, q *fp.Element, limbs []field.Element) {
+	var buf []byte
 	for i := range nbL/2 - 1 {
 		lbts := limbs[i+1].Bytes()
 		buf = append(buf, lbts[nbBytes:]...)
@@ -36,50 +36,51 @@ func nativeScalarMulAndSum(g group, currentAccumulator []field.Element, point []
 	}
 	s := new(big.Int).SetBytes(buf)
 
-	buf = nil
-	var resBytesX, resBytesY []byte
 	switch g {
 	case G1:
 		var C, P, N bls12381.G1Affine
-		set(buf, nbL, &P.X, point[:nbL/2])
-		set(buf, nbL, &P.Y, point[nbL/2:])
-		set(buf, nbL, &C.X, currentAccumulator[:nbL/2])
-		set(buf, nbL, &C.Y, currentAccumulator[nbL/2:])
+		set(nbL, &P.X, point[:nbL/2])
+		set(nbL, &P.Y, point[nbL/2:])
+		set(nbL, &C.X, currentAccumulator[:nbL/2])
+		set(nbL, &C.Y, currentAccumulator[nbL/2:])
 		N.ScalarMultiplication(&P, s)
 		N.Add(&C, &N)
 		NXBytes := N.X.Bytes()
 		NYBytes := N.Y.Bytes()
-		resBytesX = NXBytes[:]
-		resBytesY = NYBytes[:]
+		nextAccumulator = make([]field.Element, nbL)
+		nextAccumulator[0].SetZero()
+		nextAccumulator[nbL/2].SetZero()
+		for i := 0; i < nbL/2-1; i++ {
+			nextAccumulator[i+1].SetBytes(NXBytes[i*nbBytes : (i+1)*nbBytes])
+			nextAccumulator[i+1+nbL/2].SetBytes(NYBytes[i*nbBytes : (i+1)*nbBytes])
+		}
 	case G2:
 		var C, P, N bls12381.G2Affine
-		set(buf, nbL, &P.X.A1, point[:nbL/4])
-		set(buf, nbL, &P.X.A0, point[nbL/4:nbL/2])
-		set(buf, nbL, &P.Y.A1, point[nbL/2:3*nbL/4])
-		set(buf, nbL, &P.Y.A0, point[3*nbL/4:])
-		set(buf, nbL, &C.X.A1, currentAccumulator[:nbL/4])
-		set(buf, nbL, &C.X.A0, currentAccumulator[nbL/4:nbL/2])
-		set(buf, nbL, &C.Y.A1, currentAccumulator[nbL/2:3*nbL/4])
-		set(buf, nbL, &C.Y.A0, currentAccumulator[3*nbL/4:])
+		set(nbL/2, &P.X.A1, point[:nbL/4])
+		set(nbL/2, &P.X.A0, point[nbL/4:nbL/2])
+		set(nbL/2, &P.Y.A1, point[nbL/2:3*nbL/4])
+		set(nbL/2, &P.Y.A0, point[3*nbL/4:])
+		set(nbL/2, &C.X.A1, currentAccumulator[:nbL/4])
+		set(nbL/2, &C.X.A0, currentAccumulator[nbL/4:nbL/2])
+		set(nbL/2, &C.Y.A1, currentAccumulator[nbL/2:3*nbL/4])
+		set(nbL/2, &C.Y.A0, currentAccumulator[3*nbL/4:])
 		N.ScalarMultiplication(&P, s)
 		N.Add(&C, &N)
 		NXA1Bytes := N.X.A1.Bytes()
 		NXA0Bytes := N.X.A0.Bytes()
 		NYA1Bytes := N.Y.A1.Bytes()
 		NYA0Bytes := N.Y.A0.Bytes()
-		resBytesX = make([]byte, 0, 2*len(NXA1Bytes))
-		resBytesX = append(resBytesX, NXA1Bytes[:]...)
-		resBytesX = append(resBytesX, NXA0Bytes[:]...)
-		resBytesY = make([]byte, 0, 2*len(NYA1Bytes))
-		resBytesY = append(resBytesY, NYA1Bytes[:]...)
-		resBytesY = append(resBytesY, NYA0Bytes[:]...)
-	}
-	nextAccumulator = make([]field.Element, nbL)
-	nextAccumulator[0].SetZero()
-	nextAccumulator[nbL/2].SetZero()
-	for i := 0; i < nbL/2-1; i++ {
-		nextAccumulator[i+1].SetBytes(resBytesX[i*nbBytes : (i+1)*nbBytes])
-		nextAccumulator[i+1+nbL/2].SetBytes(resBytesY[i*nbBytes : (i+1)*nbBytes])
+		nextAccumulator = make([]field.Element, nbL)
+		nextAccumulator[0].SetZero()
+		nextAccumulator[nbL/4].SetZero()
+		nextAccumulator[nbL/2].SetZero()
+		nextAccumulator[3*nbL/4].SetZero()
+		for i := 0; i < nbL/4-1; i++ {
+			nextAccumulator[i+1].SetBytes(NXA1Bytes[i*nbBytes : (i+1)*nbBytes])
+			nextAccumulator[i+1+nbL/4].SetBytes(NXA0Bytes[i*nbBytes : (i+1)*nbBytes])
+			nextAccumulator[i+1+nbL/2].SetBytes(NYA1Bytes[i*nbBytes : (i+1)*nbBytes])
+			nextAccumulator[i+1+3*nbL/4].SetBytes(NYA0Bytes[i*nbBytes : (i+1)*nbBytes])
+		}
 	}
 	return nextAccumulator
 }
