@@ -4,10 +4,12 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
@@ -90,6 +92,8 @@ func (bm *BlsMsm) Assign(run *wizard.ProverRuntime) {
 
 type unalignedMsmData struct {
 	*BlsMsmDataSource
+	IsDataAndCsMul   ifaces.Column // indicates if source is data and has CS_MSM set
+	IsResultAndCsMul ifaces.Column // indicates if source is result and has CS_MSM set
 	// this part is used to define the accumulators and indicate if the
 	IsActive           ifaces.Column
 	IsFirstLine        ifaces.Column
@@ -111,6 +115,8 @@ func newUnalignedMsmData(comp *wizard.CompiledIOP, g group, limits *Limits, src 
 	createCol2 := createColFn(comp, fmt.Sprintf("UNALIGNED_%s_BLS_MSM", g.String()), limits.sizeMulIntegration(g))
 	res := &unalignedMsmData{
 		BlsMsmDataSource:   src,
+		IsDataAndCsMul:     comp.InsertCommit(ROUND_NR, ifaces.ColIDf("UNALIGNED_%s_BLS_MSM_SRC_IS_DATA_AND_CS_MSM", g.String()), src.CsMul.Size()),
+		IsResultAndCsMul:   comp.InsertCommit(ROUND_NR, ifaces.ColIDf("UNALIGNED_%s_BLS_MSM_SRC_IS_RESULT_AND_CS_MSM", g.String()), src.CsMul.Size()),
 		IsActive:           createCol1("IS_ACTIVE"),
 		Point:              make([]ifaces.Column, nbLimbs(g)),
 		CurrentAccumulator: make([]ifaces.Column, nbLimbs(g)),
@@ -135,7 +141,90 @@ func newUnalignedMsmData(comp *wizard.CompiledIOP, g group, limits *Limits, src 
 		res.NextAccumulator[i] = createCol1(fmt.Sprintf("NEXT_ACCUMULATOR_%d", i))
 	}
 
+	res.csInputMasks(comp)
+	// data projection
+	res.csProjectionData(comp)
+	// result projection
+	res.csProjectionResult(comp)
+	// first line accumulator zero
+	res.csAccumulatorInit(comp)
+	// accumulator consistency
+	res.csAccumulatorConsistency(comp)
+
 	return res
+}
+
+func (d *unalignedMsmData) csInputMasks(comp *wizard.CompiledIOP) {
+	// we need to compute the IS_DATA && CS_MUL column which is used for projection
+	comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_IS_DATA_AND_CS_MUL", NAME_UNALIGNED_MSM), sym.Sub(d.IsDataAndCsMul, sym.Mul(d.IsData, d.CsMul)))
+	comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_IS_RESULT_AND_CS_MUL", NAME_UNALIGNED_MSM), sym.Sub(d.IsResultAndCsMul, sym.Mul(d.IsRes, d.CsMul)))
+}
+
+func (d *unalignedMsmData) csProjectionData(comp *wizard.CompiledIOP) {
+	// ensures that the data limbs from source are projected into columns of the
+	// unaligned module properly. It additionally constraints IsActive to
+	// correspond to the number of lines in the source.
+	nbL := nbLimbs(d.group)
+
+	filtersB := make([]ifaces.Column, nbL+nbFrLimbs)
+	columnsB := make([][]ifaces.Column, nbL+nbFrLimbs)
+	for i := range nbL {
+		filtersB[i] = d.IsActive
+		columnsB[i] = []ifaces.Column{d.Point[i]}
+	}
+	for i := range nbFrLimbs {
+		filtersB[nbL+i] = d.IsActive
+		columnsB[nbL+i] = []ifaces.Column{d.Scalar[i]}
+	}
+	prj := query.ProjectionMultiAryInput{
+		FiltersA: []ifaces.Column{d.IsDataAndCsMul},
+		FiltersB: filtersB,
+		ColumnsA: [][]ifaces.Column{{d.BlsMsmDataSource.Limb}},
+		ColumnsB: columnsB,
+	}
+	comp.InsertProjection(ifaces.QueryIDf("%s_PROJECTION_DATA", NAME_UNALIGNED_MSM), prj)
+}
+
+func (d *unalignedMsmData) csProjectionResult(comp *wizard.CompiledIOP) {
+	nbL := nbLimbs(d.group)
+
+	filtersB := make([]ifaces.Column, nbL)
+	columnsB := make([][]ifaces.Column, nbL)
+	for i := range nbL {
+		filtersB[i] = d.IsLastLine
+		columnsB[i] = []ifaces.Column{d.NextAccumulator[i]}
+	}
+	prj := query.ProjectionMultiAryInput{
+		FiltersA: []ifaces.Column{d.IsResultAndCsMul},
+		FiltersB: filtersB,
+		ColumnsA: [][]ifaces.Column{{d.BlsMsmDataSource.Limb}},
+		ColumnsB: columnsB,
+	}
+	comp.InsertProjection(ifaces.QueryIDf("%s_PROJECTION_RESULT", NAME_UNALIGNED_MSM), prj)
+}
+
+func (d *unalignedMsmData) csAccumulatorInit(comp *wizard.CompiledIOP) {
+	// ensures that the first line accumulator is zero
+	nbL := nbLimbs(d.group)
+	for i := range nbL {
+		comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_ACCUMULATOR_INIT_%d", NAME_UNALIGNED_MSM, i), sym.Mul(d.CurrentAccumulator[i], d.IsFirstLine))
+	}
+}
+
+func (d *unalignedMsmData) csAccumulatorConsistency(comp *wizard.CompiledIOP) {
+	// ensure that the current accumulator is equal to the next accumulator on previous line.
+	// we need to cancel out if current line is the first line where the current accumulator is zero
+	// (checked in [unalignedMsmData.csAccumulatorInit])
+	nbL := nbLimbs(d.group)
+	for i := range nbL {
+		comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_ACCUMULATOR_CONSISTENCY_%d", NAME_UNALIGNED_MSM, i),
+			sym.Mul(
+				d.IsActive,
+				sym.Sub(1, d.IsFirstLine),
+				sym.Sub(d.CurrentAccumulator[i], column.Shift(d.NextAccumulator[i], -1)),
+			),
+		)
+	}
 }
 
 func (d *unalignedMsmData) Assign(run *wizard.ProverRuntime) {
@@ -151,8 +240,9 @@ func (d *unalignedMsmData) Assign(run *wizard.ProverRuntime) {
 
 	nbL := nbLimbs(d.group)
 	var (
-		dstIsActive = common.NewVectorBuilder(d.IsActive)
-
+		dstIsActive           = common.NewVectorBuilder(d.IsActive)
+		dstDataAndCs          = common.NewVectorBuilder(d.IsDataAndCsMul)
+		dstIsResultAndCs      = common.NewVectorBuilder(d.IsResultAndCsMul)
 		dstIsFirstLine        = common.NewVectorBuilder(d.IsFirstLine)
 		dstIsLastLine         = common.NewVectorBuilder(d.IsLastLine)
 		dstScalar             = make([]*common.VectorBuilder, nbFrLimbs)
@@ -167,6 +257,12 @@ func (d *unalignedMsmData) Assign(run *wizard.ProverRuntime) {
 		dstPoint[i] = common.NewVectorBuilder(d.Point[i])
 		dstCurrentAccumulator[i] = common.NewVectorBuilder(d.CurrentAccumulator[i])
 		dstNextAccumulator[i] = common.NewVectorBuilder(d.NextAccumulator[i])
+	}
+
+	// compute the IS_DATA && CS_MUL column which is used for projection
+	for ptr := range srcLimb {
+		dstDataAndCs.PushBoolean(srcIsData[ptr].IsOne() && srcCsMul[ptr].IsOne())
+		dstIsResultAndCs.PushBoolean(srcIsRes[ptr].IsOne() && srcCsMul[ptr].IsOne())
 	}
 
 	var ptr int
@@ -215,6 +311,12 @@ func (d *unalignedMsmData) Assign(run *wizard.ProverRuntime) {
 				currAccumulator = nextAccumulator
 				ptr += nbL + nbFrLimbs
 				dstIsActive.PushOne()
+				if idx == 0 {
+					dstIsFirstLine.PushOne()
+				} else {
+					dstIsFirstLine.PushZero()
+				}
+				idx++
 			case srcIsRes[ptr].IsOne():
 				// if it is the last line then we don't need to copy the result limbs - we have already computed it.
 				// its consistency will be checked by gnark circuit and projection queries.
@@ -222,13 +324,11 @@ func (d *unalignedMsmData) Assign(run *wizard.ProverRuntime) {
 				dstIsLastLine.PushOne()
 				ptr += nbL
 			}
-			if idx == 0 {
-				dstIsFirstLine.PushOne()
-			}
-			idx++
 		}
 	}
 
+	dstDataAndCs.PadAndAssign(run, field.Zero())
+	dstIsResultAndCs.PadAndAssign(run, field.Zero())
 	dstIsActive.PadAndAssign(run, field.Zero())
 	dstIsFirstLine.PadAndAssign(run, field.Zero())
 	dstIsLastLine.PadAndAssign(run, field.Zero())
@@ -241,7 +341,9 @@ func (d *unalignedMsmData) Assign(run *wizard.ProverRuntime) {
 		dstNextAccumulator[i].PadAndAssign(run, field.Zero())
 	}
 
-	// we now need to transpose again the limbs into the gnark input format
+	// we now need to transpose again the limbs into the gnark input format.
+	// This is essentially mapping the lines of current accumulator, point,
+	// scalar and next accumulator into column.
 
 	var (
 		srcIsActive           = dstIsActive.Slice()
