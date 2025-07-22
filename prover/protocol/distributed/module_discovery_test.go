@@ -85,9 +85,8 @@ func TestStandardDiscoveryOnZkEVMWithAdvices(t *testing.T) {
 	var (
 		z    = zkevm.GetTestZkEVM()
 		disc = &distributed.StandardModuleDiscoverer{
-			TargetWeight: 1 << 28,
-			Affinities:   zkevm.GetAffinities(z),
-			Predivision:  16,
+			TargetWeight: 1 << 29,
+			Predivision:  1,
 			Advices:      zkevm.DiscoveryAdvices,
 		}
 	)
@@ -154,9 +153,10 @@ func TestStandardDiscoveryOnZkEVMWithAdvices(t *testing.T) {
 				allCols  = utils.SortedKeysOf(subModule.Ds.Parent, func(a, b ifaces.ColID) bool { return a < b })
 				nbCols   = len(allCols)
 				firstCol = allCols[0]
+				weight   = subModule.Weight(z.WizardIOP, newSize)
 			)
 
-			fmt.Printf("\tname=%v firstcol=%v nbCols=%v newSize=%v\n", subModule.ModuleName, firstCol, nbCols, newSize)
+			fmt.Printf("\tname=%v firstcol=%v nbCols=%v newSize=%v weight=%v\n", subModule.ModuleName, firstCol, nbCols, newSize, weight)
 		}
 	}
 }

@@ -61,9 +61,9 @@ type StandardModule struct {
 
 // QueryBasedModule represents a set of columns grouped by constraints.
 type QueryBasedModule struct {
-	ModuleName ModuleName
-	Ds         *utils.DisjointSet[ifaces.ColID] // Uses a disjoint set to track relationships among columns.
-	Size       int
+	ModuleName   ModuleName
+	Ds           *utils.DisjointSet[ifaces.ColID] // Uses a disjoint set to track relationships among columns.
+	OriginalSize int
 	// NbConstraintsOfPlonkCirc counts the number of constraints in a Plonk
 	// in wizard module if one is found. If several circuits are stores
 	// the number is the sum for all the circuits where the nb constraint
@@ -215,11 +215,15 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 			bestWeight    = weightTotalInitial
 		)
 
+		if weightTotalInitial < disc.TargetWeight {
+			continue
+		}
+
 		for reduction := 2; reduction < minNumRows; reduction *= 2 {
 
 			currWeight := 0
 			for j := range disc.Modules[i].SubModules {
-				numRow := disc.Modules[i].SubModules[j].NumRow(comp)
+				numRow := disc.Modules[i].NewSizes[j]
 				if !disc.Modules[i].SubModules[j].HasPrecomputed {
 					numRow /= reduction
 				}
@@ -240,7 +244,9 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 		}
 
 		for j := range disc.Modules[i].SubModules {
-			disc.Modules[i].NewSizes[j] /= bestReduction
+			if !disc.Modules[i].SubModules[j].HasPrecomputed {
+				disc.Modules[i].NewSizes[j] /= bestReduction
+			}
 		}
 	}
 
@@ -913,7 +919,7 @@ func (mod *QueryBasedModule) RecordAssignmentStats(run *wizard.ProverRuntime) Qu
 		colIDs = utils.SortedKeysOf(mod.Ds.Parent, func(a, b ifaces.ColID) bool { return a < b })
 		res    = QueryBasedAssignmentStatsRecord{
 			ModuleName:               mod.ModuleName,
-			SegmentSize:              mod.Size,
+			SegmentSize:              mod.OriginalSize,
 			NbConstraintsOfPlonkCirc: mod.NbConstraintsOfPlonkCirc,
 			NbInstancesOfPlonkCirc:   mod.NbInstancesOfPlonkCirc,
 			NbInstancesOfPlonkQuery:  mod.NbInstancesOfPlonkQuery,
@@ -1059,7 +1065,7 @@ func (mod *QueryBasedModule) RecordAssignmentStats(run *wizard.ProverRuntime) Qu
 // Nilify a module. It empties its maps and sets its size to 0.
 func (module *QueryBasedModule) Nilify() {
 	module.Ds.Reset()
-	module.Size = 0
+	module.OriginalSize = 0
 	module.NbConstraintsOfPlonkCirc = 0
 	module.NbInstancesOfPlonkCirc = 0
 	module.NbInstancesOfPlonkQuery = 0
@@ -1112,14 +1118,12 @@ func (module *StandardModule) Weight(comp *wizard.CompiledIOP) int {
 
 // NumRow returns the number of rows for the module
 func (module *QueryBasedModule) NumRow(comp *wizard.CompiledIOP) int {
-	if module.Size == 0 {
+	if module.OriginalSize == 0 {
 
 		for colID := range module.Ds.Iter() {
 
 			colSize := comp.Columns.GetSize(colID)
-
-			module.Size = colSize
-
+			module.OriginalSize = colSize
 			if module.HasPrecomputed {
 				break
 			}
@@ -1128,12 +1132,12 @@ func (module *QueryBasedModule) NumRow(comp *wizard.CompiledIOP) int {
 				break
 			}
 
-			module.Size /= module.Predivision
+			module.OriginalSize /= module.Predivision
 			break
 		}
 	}
 
-	return module.Size
+	return module.OriginalSize
 }
 
 // NumColumn returns the number of columns for the module
