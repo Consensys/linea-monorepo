@@ -169,7 +169,7 @@ func (tc msmInputCase[T]) WriteCSV(w *csv.Writer, id int) error {
 				"0",
 				"1",
 				formatBoolAsInt(input.ToMSMCircuit),
-				formatBoolAsInt(input.ToGroupCheckCircuit),
+				"0", // formatBoolAsInt(input.ToGroupCheckCircuit), /* scalars never go to group check circuit */
 				limb,
 			}); err != nil {
 				return fmt.Errorf("write scalar limb: %w", err)
