@@ -15,6 +15,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
@@ -37,6 +38,10 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 
 	// Set MonitorParams before any proving happens
 	profiling.SetMonitorParams(cfg)
+
+	// Setting the issue handler to exit on unsatisfied constraint but not limit
+	// overflow.
+	exit.SetIssueHandlingMode(exit.ExitOnUnsatisfiedConstraint)
 
 	// Clean up witness directory to be sure it is empty when we start the
 	// process. This helps addressing the situation where a previous process
@@ -219,11 +224,49 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
 		distDone <- err
 	}()
 
-	logrus.Infof("Running bootstrapper")
-	runtimeBoot := wizard.RunProver(
-		assets.DistWizard.Bootstrapper,
-		assets.Zkevm.GetMainProverStep(zkevmWitness),
+	// The function initially attempt to run the bootstrapper directly and will
+	// catch "limit-overflow" panic msgs. When they happen, we reattempt running
+	// the bootstrapper with higher and higher limits until it works.
+	var (
+		scalingFactor = 1
+		runtimeBoot   *wizard.ProverRuntime
 	)
+
+	for runtimeBoot == nil {
+
+		func() {
+
+			// Since the [exit] package is configured to only send panic messages
+			// on overflow. The overflows are catchable.
+			defer func() {
+				if err := recover(); err != nil {
+					oFReport, isOF := err.(exit.LimitOverflowReport)
+					if isOF {
+						extra := utils.DivCeil(oFReport.RequestedSize, oFReport.Limit)
+						scalingFactor *= utils.NextPowerOfTwo(extra)
+					}
+				}
+			}()
+
+			if scalingFactor == 1 {
+				logrus.Infof("Running bootstrapper")
+				runtimeBoot = wizard.RunProver(
+					assets.DistWizard.Bootstrapper,
+					assets.Zkevm.GetMainProverStep(zkevmWitness),
+				)
+				return
+			}
+
+			scaledUpBootstrapper, scaledUpZkEVM := zkevm.GetScaledUpBootstrapper(
+				cfg, assets.DistWizard.Disc, scalingFactor,
+			)
+
+			runtimeBoot = wizard.RunProver(
+				scaledUpBootstrapper,
+				scaledUpZkEVM.GetMainProverStep(zkevmWitness),
+			)
+		}()
+	}
 
 	// This frees the memory from the assets that are no longer needed. We don't
 	// need to do that for the module GLs and LPPs because they are thrown away

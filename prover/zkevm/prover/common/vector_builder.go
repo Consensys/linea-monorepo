@@ -1,6 +1,8 @@
 package common
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -8,7 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
-	"github.com/sirupsen/logrus"
 )
 
 // VectorBuilder is a convenience structure to assign columns by appending
@@ -159,9 +160,12 @@ func (vb *VectorBuilder) PushAddr(addr types.EthAddress) {
 func (vb *VectorBuilder) PadAndAssign(run *wizard.ProverRuntime, v ...field.Element) {
 
 	if len(vb.slice) > vb.column.Size() {
-		logrus.Errorf("the slice size %v is larger than the column size %v", len(vb.slice), vb.column.Size())
 		// We print the stack to help debugging
-		exit.OnLimitOverflow()
+		exit.OnLimitOverflow(
+			vb.column.Size(),
+			len(vb.slice),
+			fmt.Errorf("the slice size %v is larger than the column size %v", len(vb.slice), vb.column.Size()),
+		)
 	}
 
 	paddingValue := field.Zero()

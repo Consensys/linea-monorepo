@@ -1,12 +1,13 @@
 package modexp
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
-	"github.com/sirupsen/logrus"
 )
 
 // antichamberAssignment is a builder structure used to incrementally compute
@@ -87,13 +88,19 @@ func (mod *Module) Assign(run *wizard.ProverRuntime) {
 	}
 
 	if modexpCountSmall > settings.MaxNbInstance256 {
-		logrus.Errorf("limit overflow: the modexp (256 bits) count is %v and the limit is %v\n", modexpCountSmall, settings.MaxNbInstance256)
-		exit.OnLimitOverflow()
+		exit.OnLimitOverflow(
+			settings.MaxNbInstance256,
+			modexpCountSmall,
+			fmt.Errorf("limit overflow: the modexp (256 bits) count is %v and the limit is %v", modexpCountSmall, settings.MaxNbInstance256),
+		)
 	}
 
 	if modexpCountLarge > settings.MaxNbInstance4096 {
-		logrus.Errorf("limit overflow: the modexp (4096 bits) count is %v and the limit is %v\n", modexpCountLarge, settings.MaxNbInstance4096)
-		exit.OnLimitOverflow()
+		exit.OnLimitOverflow(
+			settings.MaxNbInstance4096,
+			modexpCountLarge,
+			fmt.Errorf("limit overflow: the modexp (4096 bits) count is %v and the limit is %v", modexpCountLarge, settings.MaxNbInstance4096),
+		)
 	}
 
 	builder.isActive.PadAndAssign(run, field.Zero())

@@ -1,6 +1,8 @@
 package ecdsa
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
@@ -10,7 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -189,9 +190,15 @@ func (ac *antichamber) assignAntichamber(run *wizard.ProverRuntime, nbEcRecInsta
 	)
 
 	if nbRowsPerEcRec*maxNbEcRecover+nbRowsPerTxSign*maxNbTx > ac.Size {
-		logrus.Errorf("not enough space in antichamber to store all the data. Need %d, got %d", 24*maxNbEcRecover+15*maxNbTx, ac.Size)
-		exit.OnLimitOverflow()
+		exit.OnLimitOverflow(
+			ac.Size,
+			nbRowsPerEcRec*maxNbEcRecover+nbRowsPerTxSign*maxNbTx,
+			fmt.Errorf("not enough space in ECDSA antichamber to store all the data. Need %d, got %d",
+				nbRowsPerEcRec*maxNbEcRecover+nbRowsPerTxSign*maxNbTx, ac.Size,
+			),
+		)
 	}
+
 	// prepare root module columns
 	// for ecrecover case we need 10+14 rows (fetchin and pushing). For TX we need 1+14
 

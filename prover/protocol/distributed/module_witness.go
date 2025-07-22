@@ -211,7 +211,6 @@ func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, mod
 		cols            = runtime.Spec.Columns.AllKeys()
 		nbSegmentModule = -1
 		moduleSet       = map[ModuleName]struct{}{}
-		largeQbmSet     = map[ModuleName]struct{}{}
 	)
 
 	for _, mn := range moduleName {
@@ -241,20 +240,6 @@ func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, mod
 		)
 
 		if nbSegmentForCol >= nbSegmentModule {
-
-			// If the number of segment is large, we are very likely meeting a
-			// bottlenecking QBM and it might be worth considering increasing
-			// the new-size of that module.
-			if nbSegmentForCol >= 2 {
-				qbm, _ := disc.(*StandardModuleDiscoverer).QbmOf(col.(column.Natural))
-				if _, ok := largeQbmSet[qbm.ModuleName]; !ok {
-					largeQbmSet[qbm.ModuleName] = struct{}{}
-					logrus.Warnf(
-						"[large number of segment] column=%v newSize=%v start=%v stop=%v nbSegment=%v, qbm=%v, module=%v",
-						col.GetColID(), newSize, start, stop, nbSegmentForCol, qbm.ModuleName, mn,
-					)
-				}
-			}
 
 			nbSegmentModule = nbSegmentForCol
 		}

@@ -1,6 +1,7 @@
 package accumulator
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
@@ -13,7 +14,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
-	"github.com/sirupsen/logrus"
 )
 
 // leafOpenings represents the structure for leaf openings
@@ -207,8 +207,11 @@ func (am *Module) Assign(
 
 	// Sanity check on the size
 	if len(builder.leaves) > am.MaxNumProofs {
-		logrus.Errorf("We have registered %v proofs which is more than the maximum number of proofs %v", len(builder.leaves), am.MaxNumProofs)
-		exit.OnLimitOverflow()
+		exit.OnLimitOverflow(
+			am.MaxNumProofs,
+			len(builder.leaves),
+			fmt.Errorf("we have registered %v proofs which is more than the maximum number of proofs %v", len(builder.leaves), am.MaxNumProofs),
+		)
 	}
 
 	// Assignments of columns

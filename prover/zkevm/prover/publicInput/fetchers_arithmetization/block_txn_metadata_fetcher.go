@@ -37,12 +37,8 @@ func NewBlockTxnMetadata(comp *wizard.CompiledIOP, name string, td *arith.TxnDat
 		LastAbsTxId:     util.CreateCol(name, "LAST_ABS_TX_ID", td.Ct.Size(), comp),
 	}
 
-	pragmas.MarkLeftPadded(res.BlockID)
-	pragmas.MarkLeftPadded(res.TotalNoTxnBlock)
-	pragmas.MarkLeftPadded(res.FilterFetched)
+	pragmas.MarkRightPadded(res.BlockID)
 	pragmas.MarkLeftPadded(res.FilterArith)
-	pragmas.MarkLeftPadded(res.FirstAbsTxId)
-	pragmas.MarkLeftPadded(res.LastAbsTxId)
 
 	return res
 }

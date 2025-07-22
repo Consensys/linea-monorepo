@@ -17,7 +17,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"golang.org/x/sync/errgroup"
 )
@@ -121,12 +120,8 @@ func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 
 	nbPublicInputs, _ := gnarkutil.CountVariables(ci.Circuit)
 
-	if err := ci.checkNbCircuitInvocation(run); err != nil {
-		// Don't use the fatal level here because we want to control the exit code
-		// to be 77.
-		logrus.Errorf("fatal=%v", err)
-		exit.OnLimitOverflow()
-	}
+	// This call may panic or exit the program
+	ci.checkNbCircuitInvocation(run)
 
 	inputFiller := retrieveInputFiler(ci.InputFillerKey)
 	if inputFiller == nil {
@@ -247,9 +242,15 @@ func (ci *CircuitAlignmentInput) checkNbCircuitInvocation(run *wizard.ProverRunt
 	}
 
 	if count > nbPublicInputs*ci.NbCircuitInstances {
-		return fmt.Errorf(
-			"[circuit-alignement] too many inputs circuit=%v nb-public-input-required=%v nb-public-input-per-circuit=%v nb-circuits-available=%v nb-circuit-required=%v",
-			ci.Name, count, nbPublicInputs, ci.NbCircuitInstances, utils.DivCeil(count, nbPublicInputs),
+
+		// This will either panic or exit the program.
+		exit.OnLimitOverflow(
+			nbPublicInputs*ci.NbCircuitInstances,
+			count,
+			fmt.Errorf(
+				"[circuit-alignement] too many inputs circuit=%v nb-public-input-required=%v nb-public-input-per-circuit=%v nb-circuits-available=%v nb-circuit-required=%v",
+				ci.Name, count, nbPublicInputs, ci.NbCircuitInstances, utils.DivCeil(count, nbPublicInputs),
+			),
 		)
 	}
 
