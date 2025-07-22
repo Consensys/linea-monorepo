@@ -157,39 +157,38 @@ func generateScalar(scalarType msmInputType) *big.Int {
 	case msmScalarTrivial:
 		return big.NewInt(0)
 	case msmScalarRange:
-		for {
-			r, err := rand.Int(rand.Reader, fr_bls12381.Modulus())
-			if err != nil {
-				panic(fmt.Sprintf("failed to generate random scalar: %v", err))
-			}
-			if r.Cmp(fr_bls12381.Modulus()) < 0 {
-				return r
-			}
+		r, err := rand.Int(rand.Reader, fr_bls12381.Modulus())
+		if err != nil {
+			panic(fmt.Sprintf("failed to generate random scalar: %v", err))
 		}
+		return r
 	case msmScalarBig:
-		for {
-			r, err := rand.Int(rand.Reader, fr_bls12381.Modulus())
-			if err != nil {
-				panic(fmt.Sprintf("failed to generate random scalar: %v", err))
-			}
-			if r.Cmp(fr_bls12381.Modulus()) >= 0 {
-				continue // ensure the scalar is big
-			}
-			return r
+		bound := new(big.Int).Lsh(big.NewInt(1), fr_bls12381.Bits)
+		bound.Sub(bound, fr_bls12381.Modulus()) // ensure the scalar is less than the modulus
+		// Generate a random scalar that is guaranteed to be big
+		r, err := rand.Int(rand.Reader, bound)
+		if err != nil {
+			panic(fmt.Sprintf("failed to generate random scalar: %v", err))
 		}
+		r.Add(r, fr_bls12381.Modulus()) // ensure the scalar is larger than modulus
+		return r
 	default:
 		panic(fmt.Sprintf("unknown scalar type: %d", scalarType))
 	}
 }
 
-func recIt[T any](newIterator func() iter.Seq2[int, T], yield func([]T) bool, width int, vals []T) {
+func recIt[T any](newIterator func() iter.Seq2[int, func() T], yield func([]T) bool, width int, vals []func() T) {
 	if width == 0 {
 		return
 	}
 	for _, v := range newIterator() {
 		newVals := append(vals, v)
 		if len(newVals) == width {
-			if !yield(newVals) {
+			ret := make([]T, len(newVals))
+			for i, f := range newVals {
+				ret[i] = f()
+			}
+			if !yield(ret) {
 				return
 			}
 		} else {
@@ -198,9 +197,9 @@ func recIt[T any](newIterator func() iter.Seq2[int, T], yield func([]T) bool, wi
 	}
 }
 
-func cartesianProduct[T any](width int, newIterator func() iter.Seq2[int, T]) iter.Seq[[]T] {
+func cartesianProduct[T any](width int, newIterator func() iter.Seq2[int, func() T]) iter.Seq[[]T] {
 	return func(yield func([]T) bool) {
-		recIt(newIterator, yield, width, []T{})
+		recIt(newIterator, yield, width, []func() T{})
 	}
 }
 

@@ -115,8 +115,8 @@ func (p pairInputCase) String() string {
 	return fmt.Sprintf("[]{%s}, result: %t", strings.Join(inputStrs, ", "), p.result)
 }
 
-func generatePairInput() iter.Seq2[int, pairInput] {
-	return func(yield func(int, pairInput) bool) {
+func generatePairInput() iter.Seq2[int, func() pairInput] {
+	return func(yield func(int, func() pairInput) bool) {
 		for i, inputType := range []pairInputType{
 			pairFullTrivial,
 			pairLeftTrivialValid,
@@ -135,221 +135,224 @@ func generatePairInput() iter.Seq2[int, pairInput] {
 			pairFullInvalidGroupGroup,
 			pairNonTrivial,
 		} {
-			var ip pairInput
-			switch inputType {
-			case pairFullTrivial:
-				ip = pairInput{
-					P:                     generateG1Trivial(),
-					Q:                     generateG2Trivial(),
-					ToPairingCircuit:      false,
-					ToG1MembershipCircuit: false,
-					ToG2MembershipCircuit: false,
-					MembershipSuccess:     true,
-					IsTrivialG1:           true,
-					IsTrivialG2:           true,
-					IsTrivialAcc:          true,
-					inputType:             inputType,
+			tcf := func() pairInput {
+				var ip pairInput
+				switch inputType {
+				case pairFullTrivial:
+					ip = pairInput{
+						P:                     generateG1Trivial(),
+						Q:                     generateG2Trivial(),
+						ToPairingCircuit:      false,
+						ToG1MembershipCircuit: false,
+						ToG2MembershipCircuit: false,
+						MembershipSuccess:     true,
+						IsTrivialG1:           true,
+						IsTrivialG2:           true,
+						IsTrivialAcc:          true,
+						inputType:             inputType,
+					}
+				case pairLeftTrivialValid:
+					ip = pairInput{
+						P:                     generateG1Trivial(),
+						Q:                     generateG2InSubgroup(),
+						ToPairingCircuit:      false,
+						ToG1MembershipCircuit: false,
+						ToG2MembershipCircuit: true,
+						MembershipSuccess:     true,
+						IsTrivialG1:           true,
+						IsTrivialG2:           false,
+						IsTrivialAcc:          true,
+						inputType:             inputType,
+					}
+				case pairLeftTrivialInvalidCurve:
+					ip = pairInput{
+						P:                     generateG1Trivial(),
+						Q:                     generateG2Invalid(),
+						ToPairingCircuit:      false,
+						ToG1MembershipCircuit: false,
+						ToG2MembershipCircuit: true,
+						MembershipSuccess:     false,
+						IsTrivialG1:           true,
+						IsTrivialG2:           false,
+						IsTrivialAcc:          true,
+						inputType:             inputType,
+					}
+				case pairLeftTrivialInvalidGroup:
+					ip = pairInput{
+						P:                     generateG1Trivial(),
+						Q:                     generateG2OnCurve(),
+						ToPairingCircuit:      false,
+						ToG1MembershipCircuit: false,
+						ToG2MembershipCircuit: true,
+						MembershipSuccess:     false,
+						IsTrivialG1:           true,
+						IsTrivialG2:           false,
+						IsTrivialAcc:          true,
+						inputType:             inputType,
+					}
+				case pairRightTrivialValid:
+					ip = pairInput{
+						P:                     generateG1InSubgroup(),
+						Q:                     generateG2Trivial(),
+						ToPairingCircuit:      false,
+						ToG1MembershipCircuit: true,
+						ToG2MembershipCircuit: false,
+						MembershipSuccess:     true,
+						IsTrivialG1:           false,
+						IsTrivialG2:           true,
+						IsTrivialAcc:          true,
+						inputType:             inputType,
+					}
+				case pairRightTrivialInvalidCurve:
+					ip = pairInput{
+						P:                     generateG1Invalid(),
+						Q:                     generateG2Trivial(),
+						ToPairingCircuit:      false,
+						ToG1MembershipCircuit: true,
+						ToG2MembershipCircuit: false,
+						MembershipSuccess:     false,
+						IsTrivialG1:           false,
+						IsTrivialG2:           true,
+						IsTrivialAcc:          true,
+						inputType:             inputType,
+					}
+				case pairRightTrivialInvalidGroup:
+					ip = pairInput{
+						P:                     generateG1OnCurve(),
+						Q:                     generateG2Trivial(),
+						ToPairingCircuit:      false,
+						ToG1MembershipCircuit: true,
+						ToG2MembershipCircuit: false,
+						MembershipSuccess:     false,
+						IsTrivialG1:           false,
+						IsTrivialG2:           true,
+						IsTrivialAcc:          true,
+						inputType:             inputType,
+					}
+				case pairNonTrivialLeftInvalidCurve:
+					ip = pairInput{
+						P:                generateG1InSubgroup(),
+						Q:                generateG2Invalid(),
+						ToPairingCircuit: false,
+						// right is invalid, we send it to the G2 membership circuit
+						ToG1MembershipCircuit: false,
+						ToG2MembershipCircuit: true,
+						MembershipSuccess:     false,
+						IsTrivialG1:           false,
+						IsTrivialG2:           false,
+						IsTrivialAcc:          false,
+						inputType:             inputType,
+					}
+				case pairNonTrivialLeftInvalidGroup:
+					ip = pairInput{
+						P:                     generateG1InSubgroup(),
+						Q:                     generateG2OnCurve(),
+						ToPairingCircuit:      false,
+						ToG1MembershipCircuit: false,
+						ToG2MembershipCircuit: true,
+						MembershipSuccess:     false,
+						IsTrivialG1:           false,
+						IsTrivialG2:           false,
+						IsTrivialAcc:          false,
+						inputType:             inputType,
+					}
+				case pairNonTrivialRightInvalidCurve:
+					ip = pairInput{
+						P:                     generateG1Invalid(),
+						Q:                     generateG2InSubgroup(),
+						ToPairingCircuit:      false,
+						ToG1MembershipCircuit: true,
+						ToG2MembershipCircuit: false,
+						MembershipSuccess:     false,
+						IsTrivialG1:           false,
+						IsTrivialG2:           false,
+						IsTrivialAcc:          false,
+						inputType:             inputType,
+					}
+				case pairNonTrivialRightInvalidGroup:
+					ip = pairInput{
+						P:                     generateG1OnCurve(),
+						Q:                     generateG2InSubgroup(),
+						ToPairingCircuit:      false,
+						ToG1MembershipCircuit: true,
+						ToG2MembershipCircuit: false,
+						MembershipSuccess:     false,
+						IsTrivialG1:           false,
+						IsTrivialG2:           false,
+						IsTrivialAcc:          false,
+						inputType:             inputType,
+					}
+				case pairFullInvalidCurveCurve:
+					ip = pairInput{
+						P:                generateG1Invalid(),
+						Q:                generateG2Invalid(),
+						ToPairingCircuit: false,
+						// it seems from the spec that if both points are invalid, then they both are sent for membership check
+						ToG1MembershipCircuit: true,
+						ToG2MembershipCircuit: true,
+						MembershipSuccess:     false,
+						IsTrivialG1:           false,
+						IsTrivialG2:           false,
+						IsTrivialAcc:          false,
+						inputType:             inputType,
+					}
+				case pairFullInvalidCurveGroup:
+					ip = pairInput{
+						P:                     generateG1Invalid(),
+						Q:                     generateG2OnCurve(),
+						ToPairingCircuit:      false,
+						ToG1MembershipCircuit: true,
+						ToG2MembershipCircuit: true,
+						MembershipSuccess:     false,
+						IsTrivialG1:           false,
+						IsTrivialG2:           false,
+						IsTrivialAcc:          false,
+						inputType:             inputType,
+					}
+				case pairFullInvalidGroupCurve:
+					ip = pairInput{
+						P:                     generateG1OnCurve(),
+						Q:                     generateG2Invalid(),
+						ToPairingCircuit:      false,
+						ToG1MembershipCircuit: true,
+						ToG2MembershipCircuit: true,
+						MembershipSuccess:     false,
+						IsTrivialG1:           false,
+						IsTrivialG2:           false,
+						IsTrivialAcc:          false,
+						inputType:             inputType,
+					}
+				case pairFullInvalidGroupGroup:
+					ip = pairInput{
+						P:                     generateG1OnCurve(),
+						Q:                     generateG2OnCurve(),
+						ToPairingCircuit:      false,
+						ToG1MembershipCircuit: true,
+						ToG2MembershipCircuit: true,
+						MembershipSuccess:     false,
+						IsTrivialG1:           false,
+						IsTrivialG2:           false,
+						IsTrivialAcc:          false,
+						inputType:             inputType,
+					}
+				case pairNonTrivial:
+					// this will be overwritten to obtain input such that pairing check is 1 or 0
+					ip = pairInput{
+						P:                     generateG1InSubgroup(),
+						Q:                     generateG2InSubgroup(),
+						ToPairingCircuit:      true,
+						ToG1MembershipCircuit: false,
+						ToG2MembershipCircuit: false,
+						MembershipSuccess:     true,
+						IsTrivialG1:           false,
+						IsTrivialG2:           false,
+						IsTrivialAcc:          false,
+						inputType:             inputType,
+					}
 				}
-			case pairLeftTrivialValid:
-				ip = pairInput{
-					P:                     generateG1Trivial(),
-					Q:                     generateG2InSubgroup(),
-					ToPairingCircuit:      false,
-					ToG1MembershipCircuit: false,
-					ToG2MembershipCircuit: true,
-					MembershipSuccess:     true,
-					IsTrivialG1:           true,
-					IsTrivialG2:           false,
-					IsTrivialAcc:          true,
-					inputType:             inputType,
-				}
-			case pairLeftTrivialInvalidCurve:
-				ip = pairInput{
-					P:                     generateG1Trivial(),
-					Q:                     generateG2Invalid(),
-					ToPairingCircuit:      false,
-					ToG1MembershipCircuit: false,
-					ToG2MembershipCircuit: true,
-					MembershipSuccess:     false,
-					IsTrivialG1:           true,
-					IsTrivialG2:           false,
-					IsTrivialAcc:          true,
-					inputType:             inputType,
-				}
-			case pairLeftTrivialInvalidGroup:
-				ip = pairInput{
-					P:                     generateG1Trivial(),
-					Q:                     generateG2OnCurve(),
-					ToPairingCircuit:      false,
-					ToG1MembershipCircuit: false,
-					ToG2MembershipCircuit: true,
-					MembershipSuccess:     false,
-					IsTrivialG1:           true,
-					IsTrivialG2:           false,
-					IsTrivialAcc:          true,
-					inputType:             inputType,
-				}
-			case pairRightTrivialValid:
-				ip = pairInput{
-					P:                     generateG1InSubgroup(),
-					Q:                     generateG2Trivial(),
-					ToPairingCircuit:      false,
-					ToG1MembershipCircuit: true,
-					ToG2MembershipCircuit: false,
-					MembershipSuccess:     true,
-					IsTrivialG1:           false,
-					IsTrivialG2:           true,
-					IsTrivialAcc:          true,
-					inputType:             inputType,
-				}
-			case pairRightTrivialInvalidCurve:
-				ip = pairInput{
-					P:                     generateG1Invalid(),
-					Q:                     generateG2Trivial(),
-					ToPairingCircuit:      false,
-					ToG1MembershipCircuit: true,
-					ToG2MembershipCircuit: false,
-					MembershipSuccess:     false,
-					IsTrivialG1:           false,
-					IsTrivialG2:           true,
-					IsTrivialAcc:          true,
-					inputType:             inputType,
-				}
-			case pairRightTrivialInvalidGroup:
-				ip = pairInput{
-					P:                     generateG1OnCurve(),
-					Q:                     generateG2Trivial(),
-					ToPairingCircuit:      false,
-					ToG1MembershipCircuit: true,
-					ToG2MembershipCircuit: false,
-					MembershipSuccess:     false,
-					IsTrivialG1:           false,
-					IsTrivialG2:           true,
-					IsTrivialAcc:          true,
-					inputType:             inputType,
-				}
-			case pairNonTrivialLeftInvalidCurve:
-				ip = pairInput{
-					P:                generateG1InSubgroup(),
-					Q:                generateG2Invalid(),
-					ToPairingCircuit: false,
-					// right is invalid, we send it to the G2 membership circuit
-					ToG1MembershipCircuit: false,
-					ToG2MembershipCircuit: true,
-					MembershipSuccess:     false,
-					IsTrivialG1:           false,
-					IsTrivialG2:           false,
-					IsTrivialAcc:          false,
-					inputType:             inputType,
-				}
-			case pairNonTrivialLeftInvalidGroup:
-				ip = pairInput{
-					P:                     generateG1InSubgroup(),
-					Q:                     generateG2OnCurve(),
-					ToPairingCircuit:      false,
-					ToG1MembershipCircuit: false,
-					ToG2MembershipCircuit: true,
-					MembershipSuccess:     false,
-					IsTrivialG1:           false,
-					IsTrivialG2:           false,
-					IsTrivialAcc:          false,
-					inputType:             inputType,
-				}
-			case pairNonTrivialRightInvalidCurve:
-				ip = pairInput{
-					P:                     generateG1Invalid(),
-					Q:                     generateG2InSubgroup(),
-					ToPairingCircuit:      false,
-					ToG1MembershipCircuit: true,
-					ToG2MembershipCircuit: false,
-					MembershipSuccess:     false,
-					IsTrivialG1:           false,
-					IsTrivialG2:           false,
-					IsTrivialAcc:          false,
-					inputType:             inputType,
-				}
-			case pairNonTrivialRightInvalidGroup:
-				ip = pairInput{
-					P:                     generateG1OnCurve(),
-					Q:                     generateG2InSubgroup(),
-					ToPairingCircuit:      false,
-					ToG1MembershipCircuit: true,
-					ToG2MembershipCircuit: false,
-					MembershipSuccess:     false,
-					IsTrivialG1:           false,
-					IsTrivialG2:           false,
-					IsTrivialAcc:          false,
-					inputType:             inputType,
-				}
-			case pairFullInvalidCurveCurve:
-				ip = pairInput{
-					P:                generateG1Invalid(),
-					Q:                generateG2Invalid(),
-					ToPairingCircuit: false,
-					// it seems from the spec that if both points are invalid, then they both are sent for membership check
-					ToG1MembershipCircuit: true,
-					ToG2MembershipCircuit: true,
-					MembershipSuccess:     false,
-					IsTrivialG1:           false,
-					IsTrivialG2:           false,
-					IsTrivialAcc:          false,
-					inputType:             inputType,
-				}
-			case pairFullInvalidCurveGroup:
-				ip = pairInput{
-					P:                     generateG1Invalid(),
-					Q:                     generateG2OnCurve(),
-					ToPairingCircuit:      false,
-					ToG1MembershipCircuit: true,
-					ToG2MembershipCircuit: true,
-					MembershipSuccess:     false,
-					IsTrivialG1:           false,
-					IsTrivialG2:           false,
-					IsTrivialAcc:          false,
-					inputType:             inputType,
-				}
-			case pairFullInvalidGroupCurve:
-				ip = pairInput{
-					P:                     generateG1OnCurve(),
-					Q:                     generateG2Invalid(),
-					ToPairingCircuit:      false,
-					ToG1MembershipCircuit: true,
-					ToG2MembershipCircuit: true,
-					MembershipSuccess:     false,
-					IsTrivialG1:           false,
-					IsTrivialG2:           false,
-					IsTrivialAcc:          false,
-					inputType:             inputType,
-				}
-			case pairFullInvalidGroupGroup:
-				ip = pairInput{
-					P:                     generateG1OnCurve(),
-					Q:                     generateG2OnCurve(),
-					ToPairingCircuit:      false,
-					ToG1MembershipCircuit: true,
-					ToG2MembershipCircuit: true,
-					MembershipSuccess:     false,
-					IsTrivialG1:           false,
-					IsTrivialG2:           false,
-					IsTrivialAcc:          false,
-					inputType:             inputType,
-				}
-			case pairNonTrivial:
-				// this will be overwritten to obtain input such that pairing check is 1 or 0
-				ip = pairInput{
-					P:                     generateG1InSubgroup(),
-					Q:                     generateG2InSubgroup(),
-					ToPairingCircuit:      true,
-					ToG1MembershipCircuit: false,
-					ToG2MembershipCircuit: false,
-					MembershipSuccess:     true,
-					IsTrivialG1:           false,
-					IsTrivialG2:           false,
-					IsTrivialAcc:          false,
-					inputType:             inputType,
-				}
+				return ip
 			}
-			if !yield(i, ip) {
+			if !yield(i, tcf) {
 				return
 			}
 		}

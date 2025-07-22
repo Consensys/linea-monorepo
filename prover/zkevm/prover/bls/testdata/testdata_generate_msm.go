@@ -41,28 +41,31 @@ type msmInputCase[T affine] struct {
 	Res T
 }
 
-func generateMsmInput[T affine]() iter.Seq2[int, msmInput[T]] {
-	return func(yield func(int, msmInput[T]) bool) {
+func generateMsmInput[T affine]() iter.Seq2[int, func() msmInput[T]] {
+	return func(yield func(int, func() msmInput[T]) bool) {
 		var id int
 		for _, scalar := range []msmInputType{msmScalarTrivial, msmScalarRange, msmScalarBig} {
 			for _, point := range []msmInputType{msmPointTrivial, msmPointOnCurve, msmPointInSubgroup, msmPointInvalid} {
-				tc := msmInput[T]{
-					scalar:       scalar,
-					point:        point,
-					n:            generateScalar(scalar),
-					ToMSMCircuit: true,
+				tcf := func() msmInput[T] {
+					tc := msmInput[T]{
+						scalar:       scalar,
+						point:        point,
+						n:            generateScalar(scalar),
+						ToMSMCircuit: true,
+					}
+					switch point {
+					case msmPointTrivial:
+						tc.P = generateTrivial[T]()
+					case msmPointOnCurve:
+						tc.P = generateOnCurve[T]()
+					case msmPointInSubgroup:
+						tc.P = generateInSubgroup[T]()
+					case msmPointInvalid:
+						tc.P = generateInvalid[T]()
+					}
+					return tc
 				}
-				switch point {
-				case msmPointTrivial:
-					tc.P = generateTrivial[T]()
-				case msmPointOnCurve:
-					tc.P = generateOnCurve[T]()
-				case msmPointInSubgroup:
-					tc.P = generateInSubgroup[T]()
-				case msmPointInvalid:
-					tc.P = generateInvalid[T]()
-				}
-				if !yield(id, tc) {
+				if !yield(id, tcf) {
 					return
 				}
 				id++
