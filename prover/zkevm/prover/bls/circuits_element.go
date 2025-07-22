@@ -38,16 +38,17 @@ func nbLimbs(g group) int {
 }
 
 var fpParams sw_bls12381.BaseField
+var frParams sw_bls12381.ScalarField
 
 type scalarElementWizard struct {
-	S [nbFpLimbs]frontend.Variable
+	S [nbFrLimbs]frontend.Variable
 }
 
 func (c scalarElementWizard) ToElement(api frontend.API, fr *emulated.Field[sw_bls12381.ScalarField]) sw_bls12381.Scalar {
 	// gnark represents the BLS12-381 Fr element on 4 limbs of 64 bits.
-	Slimbs := make([]frontend.Variable, fpParams.NbLimbs())
-	Slimbs[3], Slimbs[2] = bitslice.Partition(api, c.S[0], 64, bitslice.WithNbDigits(128))
-	Slimbs[1], Slimbs[0] = bitslice.Partition(api, c.S[1], 64, bitslice.WithNbDigits(128))
+	Slimbs := make([]frontend.Variable, frParams.NbLimbs())
+	Slimbs[2], Slimbs[3] = bitslice.Partition(api, c.S[0], 64, bitslice.WithNbDigits(128))
+	Slimbs[0], Slimbs[1] = bitslice.Partition(api, c.S[1], 64, bitslice.WithNbDigits(128))
 	return *fr.NewElement(Slimbs)
 }
 

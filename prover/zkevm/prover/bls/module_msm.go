@@ -111,19 +111,21 @@ type unalignedMsmData struct {
 }
 
 func newUnalignedMsmData(comp *wizard.CompiledIOP, g group, limits *Limits, src *BlsMsmDataSource) *unalignedMsmData {
-	size := limits.sizeMulUnalignedIntegration(g)
-	createCol := createColFn(comp, fmt.Sprintf("UNALIGNED_%s_BLS_MSM", g.String()), size)
+	createCol1 := createColFn(comp, fmt.Sprintf("UNALIGNED_%s_BLS_MSM", g.String()), limits.sizeMulUnalignedIntegration(g))
+	createCol2 := createColFn(comp, fmt.Sprintf("UNALIGNED_%s_BLS_MSM", g.String()), limits.sizeMulIntegration(g))
 	res := &unalignedMsmData{
-		BlsMsmDataSource:    src,
-		IsActive:            createCol("IS_ACTIVE"),
-		Point:               make([]ifaces.Column, nbLimbs(g)),
-		CurrentAccumulator:  make([]ifaces.Column, nbLimbs(g)),
-		NextAccumulator:     make([]ifaces.Column, nbLimbs(g)),
-		ToMsmCircuit:        createCol("TO_MSM_CIRCUIT"),
-		ToMembershipCircuit: createCol("TO_GROUP_MEMBERSHIP_CIRCUIT"),
+		BlsMsmDataSource:   src,
+		IsActive:           createCol1("IS_ACTIVE"),
+		Point:              make([]ifaces.Column, nbLimbs(g)),
+		CurrentAccumulator: make([]ifaces.Column, nbLimbs(g)),
+		NextAccumulator:    make([]ifaces.Column, nbLimbs(g)),
+		IsFirstLine:        createCol1("IS_FIRST_LINE"),
+		IsLastLine:         createCol1("IS_LAST_LINE"),
+		ToMsmCircuit:        createCol1("TO_MSM_CIRCUIT"),
+		ToMembershipCircuit: createCol1("TO_GROUP_MEMBERSHIP_CIRCUIT"),
 
-		GnarkIsActiveMsm: createCol("GNARK_IS_ACTIVE_MSM"),
-		GnarkDataMsm:     createCol("GNARK_DATA_MSM"),
+		GnarkIsActiveMsm: createCol2("GNARK_IS_ACTIVE_MSM"),
+		GnarkDataMsm:     createCol2("GNARK_DATA_MSM"),
 
 		GnarkIsActiveMembership: createCol("GNARK_IS_ACTIVE_MEMBERSHIP"),
 		GnarkDataMembership:     createCol("GNARK_DATA_GROUP_MEMBERSHIP"),
@@ -131,16 +133,16 @@ func newUnalignedMsmData(comp *wizard.CompiledIOP, g group, limits *Limits, src 
 	}
 
 	for i := range res.Scalar {
-		res.Scalar[i] = createCol(fmt.Sprintf("SCALAR_%d", i))
+		res.Scalar[i] = createCol1(fmt.Sprintf("SCALAR_%d", i))
 	}
 	for i := range res.Point {
-		res.Point[i] = createCol(fmt.Sprintf("POINT_%d", i))
+		res.Point[i] = createCol1(fmt.Sprintf("POINT_%d", i))
 	}
 	for i := range res.CurrentAccumulator {
-		res.CurrentAccumulator[i] = createCol(fmt.Sprintf("CURRENT_ACCUMULATOR_%d", i))
+		res.CurrentAccumulator[i] = createCol1(fmt.Sprintf("CURRENT_ACCUMULATOR_%d", i))
 	}
 	for i := range res.NextAccumulator {
-		res.NextAccumulator[i] = createCol(fmt.Sprintf("NEXT_ACCUMULATOR_%d", i))
+		res.NextAccumulator[i] = createCol1(fmt.Sprintf("NEXT_ACCUMULATOR_%d", i))
 	}
 
 	return res
@@ -153,36 +155,35 @@ func (d *unalignedMsmData) Assign(run *wizard.ProverRuntime) {
 		srcIndex   = d.Index.GetColAssignment(run).IntoRegVecSaveAlloc()
 		srcCounter = d.Counter.GetColAssignment(run).IntoRegVecSaveAlloc()
 		srcCsMul   = d.CsMul.GetColAssignment(run).IntoRegVecSaveAlloc()
-		srcIsData = d.IsData.GetColAssignment(run).IntoRegVecSaveAlloc()
-		srcIsRes  = d.IsRes.GetColAssignment(run).IntoRegVecSaveAlloc()
+		srcIsData  = d.IsData.GetColAssignment(run).IntoRegVecSaveAlloc()
+		srcIsRes   = d.IsRes.GetColAssignment(run).IntoRegVecSaveAlloc()
 	)
 
+	nbL := nbLimbs(d.group)
 	var (
 		dstIsActive = common.NewVectorBuilder(d.IsActive)
 
 		dstIsFirstLine        = common.NewVectorBuilder(d.IsFirstLine)
 		dstIsLastLine         = common.NewVectorBuilder(d.IsLastLine)
 		dstScalar             = make([]*common.VectorBuilder, nbFrLimbs)
-		dstPoint              = make([]*common.VectorBuilder, nbLimbs(d.group))
-		dstCurrentAccumulator = make([]*common.VectorBuilder, nbLimbs(d.group))
-		dstNextAccumulator    = make([]*common.VectorBuilder, nbLimbs(d.group))
+		dstPoint              = make([]*common.VectorBuilder, nbL)
+		dstCurrentAccumulator = make([]*common.VectorBuilder, nbL)
+		dstNextAccumulator    = make([]*common.VectorBuilder, nbL)
 	)
 	for i := range dstScalar {
 		dstScalar[i] = common.NewVectorBuilder(d.Scalar[i])
 	}
-	for i := range nbLimbs(d.group) {
+	for i := range nbL {
 		dstPoint[i] = common.NewVectorBuilder(d.Point[i])
 		dstCurrentAccumulator[i] = common.NewVectorBuilder(d.CurrentAccumulator[i])
 		dstNextAccumulator[i] = common.NewVectorBuilder(d.NextAccumulator[i])
 	}
 
-	nbL := nbLimbs(d.group)
-
 	var ptr int
 
 	for ptr < len(srcLimb) {
 		// first detect if it is a new MSM instance
-		if !(srcIsData[ptr].IsOne() && srcIndex[ptr].IsZero() && srcCounter[ptr].IsZero()) {
+		if !(srcIsData[ptr].IsOne() && srcIndex[ptr].IsZero() && srcCounter[ptr].IsZero() && srcCsMul[ptr].IsOne()) {
 			ptr++
 			continue
 		}
@@ -238,21 +239,60 @@ func (d *unalignedMsmData) Assign(run *wizard.ProverRuntime) {
 		}
 	}
 
-	var (
-		dstDataMsm         = common.NewVectorBuilder(d.GnarkDataMsm)
-		dstDataIsActiveMsm = common.NewVectorBuilder(d.GnarkIsActiveMsm)
-	)
-
 	dstIsActive.PadAndAssign(run, field.Zero())
 	dstIsFirstLine.PadAndAssign(run, field.Zero())
 	dstIsLastLine.PadAndAssign(run, field.Zero())
 	for i := range nbFrLimbs {
 		dstScalar[i].PadAndAssign(run, field.Zero())
 	}
-	for i := range nbLimbs(d.group) {
+	for i := range nbL {
 		dstPoint[i].PadAndAssign(run, field.Zero())
 		dstCurrentAccumulator[i].PadAndAssign(run, field.Zero())
 		dstNextAccumulator[i].PadAndAssign(run, field.Zero())
+	}
+
+	// we now need to transpose again the limbs into the gnark input format
+
+	var (
+		srcIsActive           = dstIsActive.Slice()
+		srcScalar             = make([][]field.Element, nbFrLimbs)
+		srcPoint              = make([][]field.Element, nbL)
+		srcCurrentAccumulator = make([][]field.Element, nbL)
+		srcNextAccumulator    = make([][]field.Element, nbL)
+	)
+	for i := range nbFrLimbs {
+		srcScalar[i] = dstScalar[i].Slice()
+	}
+	for i := range nbL {
+		srcPoint[i] = dstPoint[i].Slice()
+		srcCurrentAccumulator[i] = dstCurrentAccumulator[i].Slice()
+		srcNextAccumulator[i] = dstNextAccumulator[i].Slice()
+	}
+
+	var (
+		dstDataMsm         = common.NewVectorBuilder(d.GnarkDataMsm)
+		dstDataIsActiveMsm = common.NewVectorBuilder(d.GnarkIsActiveMsm)
+	)
+	for i := range len(srcIsActive) {
+		if !srcIsActive[i].IsOne() {
+			continue
+		}
+		for j := range nbL {
+			dstDataMsm.PushField(srcCurrentAccumulator[j][i])
+			dstDataIsActiveMsm.PushOne()
+		}
+		for j := range nbFrLimbs {
+			dstDataMsm.PushField(srcScalar[j][i])
+			dstDataIsActiveMsm.PushOne()
+		}
+		for j := range nbL {
+			dstDataMsm.PushField(srcPoint[j][i])
+			dstDataIsActiveMsm.PushOne()
+		}
+		for j := range nbL {
+			dstDataMsm.PushField(srcNextAccumulator[j][i])
+			dstDataIsActiveMsm.PushOne()
+		}
 	}
 
 	dstDataMsm.PadAndAssign(run, field.Zero())

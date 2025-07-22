@@ -5,8 +5,18 @@ import (
 	"math/big"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
+	"github.com/consensys/gnark-crypto/ecc/bls12-381/fp"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
+
+func set(buf []byte, nbL int, q *fp.Element, limbs []field.Element) {
+	buf = nil
+	for i := range nbL/2 - 1 {
+		lbts := limbs[i+1].Bytes()
+		buf = append(buf, lbts[nbBytes:]...)
+	}
+	q.SetBytes(buf)
+}
 
 func nativeScalarMulAndSum(g group, currentAccumulator []field.Element, point []field.Element, scalar []field.Element) (nextAccumulator []field.Element) {
 	nbL := nbLimbs(g)
@@ -31,17 +41,10 @@ func nativeScalarMulAndSum(g group, currentAccumulator []field.Element, point []
 	switch g {
 	case G1:
 		var C, P, N bls12381.G1Affine
-		for i := range nbFrLimbs {
-			lbts := point[i].Bytes()
-			buf = append(buf, lbts[nbBytes:]...)
-		}
-		P.SetBytes(buf)
-		buf = nil
-		for i := range nbL {
-			lbts := currentAccumulator[i].Bytes()
-			buf = append(buf, lbts[nbBytes:]...)
-		}
-		C.SetBytes(buf)
+		set(buf, nbL, &P.X, point[:nbL/2])
+		set(buf, nbL, &P.Y, point[nbL/2:])
+		set(buf, nbL, &C.X, currentAccumulator[:nbL/2])
+		set(buf, nbL, &C.Y, currentAccumulator[nbL/2:])
 		N.ScalarMultiplication(&P, s)
 		N.Add(&C, &N)
 		NXBytes := N.X.Bytes()
@@ -50,17 +53,14 @@ func nativeScalarMulAndSum(g group, currentAccumulator []field.Element, point []
 		resBytesY = NYBytes[:]
 	case G2:
 		var C, P, N bls12381.G2Affine
-		for i := range nbFrLimbs {
-			lbts := point[i].Bytes()
-			buf = append(buf, lbts[nbBytes:]...)
-		}
-		P.SetBytes(buf)
-		buf = nil
-		for i := range nbL {
-			lbts := currentAccumulator[i].Bytes()
-			buf = append(buf, lbts[nbBytes:]...)
-		}
-		C.SetBytes(buf)
+		set(buf, nbL, &P.X.A1, point[:nbL/4])
+		set(buf, nbL, &P.X.A0, point[nbL/4:nbL/2])
+		set(buf, nbL, &P.Y.A1, point[nbL/2:3*nbL/4])
+		set(buf, nbL, &P.Y.A0, point[3*nbL/4:])
+		set(buf, nbL, &C.X.A1, currentAccumulator[:nbL/4])
+		set(buf, nbL, &C.X.A0, currentAccumulator[nbL/4:nbL/2])
+		set(buf, nbL, &C.Y.A1, currentAccumulator[nbL/2:3*nbL/4])
+		set(buf, nbL, &C.Y.A0, currentAccumulator[3*nbL/4:])
 		N.ScalarMultiplication(&P, s)
 		N.Add(&C, &N)
 		NXA1Bytes := N.X.A1.Bytes()
