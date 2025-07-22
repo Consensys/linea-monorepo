@@ -29,7 +29,7 @@ var (
 	numConcurrentWitnessWritingGoroutines = runtime.NumCPU()
 	// numConcurrentSubProverJobs governs the number of concurrent sub-prover
 	// jobs.
-	numConcurrentSubProverJobs = 6
+	numConcurrentSubProverJobs = 4
 )
 
 // Prove function for the Assest struct
