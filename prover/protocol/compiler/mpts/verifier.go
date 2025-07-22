@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -193,6 +194,15 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api fronten
 	}
 
 	for _, c := range ctx.ExplicitlyEvaluated {
+
+		// When encountering a verifiercol.ConstCol, the optimization is to
+		// represent the column not to its full length but as a length 1 column
+		// which will yield the same result in the end.
+		if constCol, isConstCol := c.(verifiercol.ConstCol); isConstCol {
+			polys = append(polys, []frontend.Variable{constCol.F})
+			continue
+		}
+
 		poly := c.GetColAssignmentGnark(run)
 		polys = append(polys, poly)
 	}
