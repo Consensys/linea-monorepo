@@ -41,6 +41,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
+import maru.p2p.ext.DataGenerators as P2P2DataGenerators
 
 @Execution(ExecutionMode.SAME_THREAD)
 class P2PTest {
@@ -386,9 +387,11 @@ class P2PTest {
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl1, peers = 1) }
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
 
-      val randomBlockMessage1 = DataGenerators.randomBlockMessage()
+      val randomBlockMessage1 =
+        maru.p2p.ext.DataGenerators
+          .randomBlockMessage()
       p2pNetworkImpl1.broadcastMessage(randomBlockMessage1).get()
-      val randomBlockMessage2 = DataGenerators.randomBlockMessage(2UL)
+      val randomBlockMessage2 = P2P2DataGenerators.randomBlockMessage(2UL)
       p2pNetworkImpl1.broadcastMessage(randomBlockMessage2).get()
 
       awaitUntilAsserted {
@@ -479,7 +482,7 @@ class P2PTest {
       sleep(1100L) // to make sure that the peers have communicated that they have subscribed to the topic
       // This sleep can be decreased if the heartbeat is decreased (set to 1s for now, see P2PNetworkFactory) in the GossipRouter
 
-      val randomBlockMessage = DataGenerators.randomBlockMessage()
+      val randomBlockMessage = P2P2DataGenerators.randomBlockMessage()
       p2PNetworkImpl1.broadcastMessage(randomBlockMessage)
 
       assertThat(
@@ -546,7 +549,7 @@ class P2PTest {
           latestBlockNumber = latestBeaconBlockHeader.number,
         )
       val peer1 =
-        p2pManagerImpl2.peerLookup.getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_1)))
+        p2pManagerImpl2.getPeerLookup().getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_1)))
           ?: throw IllegalStateException("Peer with ID $PEER_ID_NODE_1 not found in p2pManagerImpl2")
       val maruPeer1 = DefaultMaruPeer(peer1, rpcMethods, statusMessageFactory)
 
@@ -628,7 +631,7 @@ class P2PTest {
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pManagerImpl2, peers = 1) }
 
       val peer1 =
-        p2pManagerImpl2.peerLookup.getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_1)))
+        p2pManagerImpl2.getPeerLookup().getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_1)))
           ?: throw IllegalStateException("Peer with ID $PEER_ID_NODE_1 not found in p2pManagerImpl2")
 
       val startBlockNumber = 3UL

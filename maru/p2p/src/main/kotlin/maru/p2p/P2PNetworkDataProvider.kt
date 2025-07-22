@@ -8,9 +8,6 @@
  */
 package maru.p2p
 
-import maru.api.InvalidPeerIdException
-import maru.api.NetworkDataProvider
-
 class P2PNetworkDataProvider(
   val p2PNetwork: P2PNetwork,
 ) : NetworkDataProvider {

@@ -15,6 +15,7 @@
 
 plugins {
   id 'maru.kotlin-library-conventions'
+  id 'java-test-fixtures'
 }
 
 dependencies {
@@ -43,6 +44,10 @@ dependencies {
 
   implementation 'tech.pegasys.discovery:discovery'
 
-  testImplementation testFixtures(project(":core"))
-  testImplementation project(":serialization")
+  implementation(project(":core"))
+
+  testImplementation(testFixtures(project(":core")))
+  testImplementation(project(":serialization"))
+
+  testFixturesImplementation(testImplementation(testFixtures(project(":core"))))
 }

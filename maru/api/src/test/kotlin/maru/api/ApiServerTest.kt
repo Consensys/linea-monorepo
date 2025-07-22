@@ -49,6 +49,7 @@ import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
 import maru.extensions.encodeHex
+import maru.p2p.NetworkDataProvider
 import maru.p2p.PeerInfo
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient

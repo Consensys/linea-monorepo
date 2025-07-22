@@ -12,8 +12,8 @@ import io.javalin.http.Context
 import io.javalin.http.Handler
 import io.javalin.http.HttpStatus
 import maru.api.HandlerException
-import maru.api.InvalidPeerIdException
-import maru.api.NetworkDataProvider
+import maru.p2p.InvalidPeerIdException
+import maru.p2p.NetworkDataProvider
 
 data class GetPeerResponse(
   val data: PeerData,

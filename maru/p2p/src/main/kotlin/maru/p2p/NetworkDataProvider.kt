@@ -6,9 +6,7 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.api
-
-import maru.p2p.PeerInfo
+package maru.p2p
 
 interface NetworkDataProvider {
   fun getNodeId(): String
