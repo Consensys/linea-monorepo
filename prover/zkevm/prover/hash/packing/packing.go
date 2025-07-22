@@ -128,7 +128,7 @@ func spaghettiMaker(comp *wizard.CompiledIOP, decomposed decomposition, isNewHas
 	var (
 		isNewHashTable []ifaces.Column
 		size           = decomposed.Size
-		zeroCol        = verifiercol.NewConstantCol(field.Zero(), size)
+		zeroCol        = verifiercol.NewConstantCol(field.Zero(), size, true)
 	)
 
 	// build isNewHash

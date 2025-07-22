@@ -52,11 +52,11 @@ func newLookUpTables(comp *wizard.CompiledIOP, maxNumKeccakf int) lookUpTables {
 	l.BaseBDirty = comp.InsertPrecomputed(deriveName("BASE2_DIRTY"), baseBDirty)
 
 	// tables for the RC columns
-	l.RC = dedicated.NewRepeatedPattern(comp, 0, valRCBase2Pattern(), verifiercol.NewConstantCol(field.One(), numRows(maxNumKeccakf)))
+	l.RC = dedicated.NewRepeatedPattern(comp, 0, valRCBase2Pattern(), verifiercol.NewConstantCol(field.One(), numRows(maxNumKeccakf), true))
 
 	// tables to indicate when to use the output of the previous round as
 	// input for the next round.
-	l.DontUsePrevAIota = dedicated.CreateHeartBeat(comp, 0, keccak.NumRound, 0, verifiercol.NewConstantCol(field.One(), numRows(maxNumKeccakf)))
+	l.DontUsePrevAIota = dedicated.CreateHeartBeat(comp, 0, keccak.NumRound, 0, verifiercol.NewConstantCol(field.One(), numRows(maxNumKeccakf), true))
 
 	return l
 }

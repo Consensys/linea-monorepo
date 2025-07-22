@@ -279,7 +279,7 @@ func captureLookupTables(comp *wizard.CompiledIOP, seg ColumnSegmenter) mainLook
 		if lookup.IsFilteredOnIncluding() {
 			var (
 				checkedLen = checkedTable[0].Size()
-				ones       = verifiercol.NewConstantCol(field.One(), checkedLen)
+				ones       = verifiercol.NewConstantCol(field.One(), checkedLen, false)
 			)
 
 			checkedTable = append([]ifaces.Column{ones}, checkedTable...)

@@ -11,13 +11,14 @@ import (
 
 // Represents a constant column
 type ConstCol struct {
-	F     field.Element
-	Size_ int
+	F                  field.Element
+	Size_              int
+	RemoveSizeFromName bool
 }
 
 // NewConstCol creates a new ConstCol column
-func NewConstantCol(f field.Element, size int) ifaces.Column {
-	return ConstCol{F: f, Size_: size}
+func NewConstantCol(f field.Element, size int, removeSizeFromName bool) ifaces.Column {
+	return ConstCol{F: f, Size_: size, RemoveSizeFromName: removeSizeFromName}
 }
 
 // Returns the round of definition of the column (always zero)
@@ -29,6 +30,9 @@ func (cc ConstCol) Round() int {
 
 // Returns a generic name from the column. Defined from the coin's.
 func (cc ConstCol) GetColID() ifaces.ColID {
+	if cc.RemoveSizeFromName {
+		return ifaces.ColIDf("CONSTCOL_%v", cc.F.String())
+	}
 	return ifaces.ColIDf("CONSTCOL_%v_%v", cc.F.String(), cc.Size_)
 }
 
@@ -84,5 +88,5 @@ func (cc ConstCol) Split(comp *wizard.CompiledIOP, from, to int) ifaces.Column {
 	}
 
 	// Copy the underlying cc, and assigns the new from and to
-	return NewConstantCol(cc.F, to-from)
+	return NewConstantCol(cc.F, to-from, cc.RemoveSizeFromName)
 }

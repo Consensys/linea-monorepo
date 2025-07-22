@@ -86,7 +86,7 @@ func (mt *ModuleTranslator) TranslateColumn(col ifaces.Column) ifaces.Column {
 			Offset: c.Offset,
 		}
 	case verifiercol.ConstCol:
-		return verifiercol.NewConstantCol(c.F, c.Size())
+		return verifiercol.NewConstantCol(c.F, c.Size(), false)
 	default:
 		utils.Panic("unexpected type of column: type: %T, name: %v", col, col.GetColID())
 	}

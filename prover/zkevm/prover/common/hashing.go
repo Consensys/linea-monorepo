@@ -37,7 +37,7 @@ func HashOf(comp *wizard.CompiledIOP, inputCols []ifaces.Column) (ifaces.Column,
 		round     = column.MaxRound(inputCols...)
 		ctxID     = len(comp.ListCommitments())
 		numRows   = ifaces.AssertSameLength(inputCols...)
-		prevState = verifiercol.NewConstantCol(field.Zero(), numRows)
+		prevState = verifiercol.NewConstantCol(field.Zero(), numRows, true)
 	)
 
 	for i := range ctx.IntermediateHashes {
