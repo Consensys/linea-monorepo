@@ -36,11 +36,12 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 public class TransientTest extends TracerTestBase {
 
-  private static final Bytes TLOAD_TSTORE_TLOAD = Bytes.fromHexString("0x60025C600160025D60025C");
+  private static final Bytes TLOAD_TSTORE_TLOAD = Bytes.fromHexString("0x60025C50600160025D60025C");
   // This bytecode is:
   // BytecodeCompiler.newProgram(testInfo)
   // .push(2) // storage key
   //     .op(TLOAD)
+  //     .op(POP) // value
   //     .push(1) // value
   //     .push(2) // storage key
   //     .op(TSTORE)
