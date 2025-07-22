@@ -96,7 +96,7 @@ var DiscoveryAdvices = []distributed.ModuleDiscoveryAdvice{
 	{BaseSize: 512, Cluster: "SHA2", Column: "SHA2_OVER_BLOCK_SHA2_COMPRESSION_CIRCUIT_PI"},
 	{BaseSize: 4096, Cluster: "ECDSA", Column: "ECDSA_ANTICHAMBER_ADDRESSES_ADDRESS_HI"},
 	{BaseSize: 4096, Cluster: "ECDSA", Column: "ECDSA_ANTICHAMBER_GNARK_DATA_IS_ACTIVE"},
-	{BaseSize: 4096, Cluster: "TINY STUFFS", Column: "PUBLIC_INPUT_L2L1LOGS_EXTRACTED_HI"},
+	{BaseSize: 4096, Cluster: "TINY-STUFFS", Column: "PUBLIC_INPUT_L2L1LOGS_EXTRACTED_HI"},
 	{BaseSize: 4096, Cluster: "TINY-STUFFS", Column: "TABLE_rlpaddr.ADDR_HI,rlpaddr.ADDR_LO,rlpaddr.DEP_ADDR_HI,rlpaddr.DEP_ADDR_LO,rlpaddr.KEC_HI,rlpaddr.KEC_LO,rlpaddr.NONCE,rlpaddr.RECIPE,rlpaddr.SALT_HI,rlpaddr.SALT_LO_0_LOGDERIVATIVE_M"},
 	{BaseSize: 2048, Cluster: "TINY-STUFFS", Column: "TABLE_blockhash.BLOCKHASH_ARG_HI_xor_EXO_ARG_1_HI,blockhash.BLOCKHASH_ARG_LO_xor_EXO_ARG_1_LO,blockhash.BLOCKHASH_RES_HI_xor_EXO_ARG_2_HI,blockhash.BLOCKHASH_RES_LO_xor_EXO_ARG_2_LO,blockhash.REL_BLOCK_0_LOGDERIVATIVE_M"},
 	{BaseSize: 4096, Cluster: "TINY-STUFFS", Column: "PUBLIC_INPUT_ROLLING_MSG_EXTRACTED_HI"},
