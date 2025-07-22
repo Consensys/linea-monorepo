@@ -497,6 +497,14 @@ func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssi
 		utils.Panic("Witness with non-power of two sizes, should have been caught earlier")
 	}
 
+	// If the column is generated after the first round, there is no need
+	// optimizing the assignment.
+	if run.currRound > 0 {
+		// Adds it to the assignments
+		run.Columns.InsertNew(handle.GetColID(), witness)
+		return
+	}
+
 	start, stop := smartvectors.CoWindowRange(witness)
 
 	var (
