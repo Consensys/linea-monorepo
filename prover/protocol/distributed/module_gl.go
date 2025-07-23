@@ -477,19 +477,19 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 					return e
 				}
 
-				if cnst, isConst := col.(verifiercol.ConstCol); isConst {
-					return sym.NewConstant(cnst.F)
-				}
-
-				if _, isVCol := col.(verifiercol.ConstCol); isVCol {
-					utils.Panic("unexpected type of column: %T", col)
-				}
-
 				var (
 					colOffset = column.StackOffsets(col)
 					shfPos    = row + colOffset
 					rootCol   = column.RootParents(col)
 				)
+
+				if cnst, isConst := rootCol.(verifiercol.ConstCol); isConst {
+					return sym.NewConstant(cnst.F)
+				}
+
+				if _, isVCol := rootCol.(verifiercol.VerifierCol); isVCol {
+					utils.Panic("unexpected type of column: %T", col)
+				}
 
 				if shfPos < 0 {
 					rcvValue := m.getReceivedValueGlobal(rootCol, shfPos)
