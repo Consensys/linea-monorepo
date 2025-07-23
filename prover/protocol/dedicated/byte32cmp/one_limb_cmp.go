@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -132,19 +133,38 @@ func (ol *OneLimbCmpCtx) Run(run *wizard.ProverRuntime) {
 	ol.InternalProverAction[0].Run(run)
 
 	var (
-		a      = ol.A.GetColAssignment(run)
-		b      = ol.B.GetColAssignment(run)
-		length = a.Len()
-		g      = make([]field.Element, length)
-		l      = make([]field.Element, length)
-		rc     = make([]field.Element, length)
+		a         = ol.A.GetColAssignment(run)
+		b         = ol.B.GetColAssignment(run)
+		length    = a.Len()
+		g         = make([]field.Element, length)
+		l         = make([]field.Element, length)
+		rc        = make([]field.Element, length)
+		minOffset = min(column.StackOffsets(ol.A), column.StackOffsets(ol.B))
+		maxOffset = min(column.StackOffsets(ol.A), column.StackOffsets(ol.B))
 	)
 
 	for i := 0; i < a.Len(); i++ {
+
 		var (
 			aiF, biF = a.Get(i), b.Get(i)
 			ai, bi   = aiF.Uint64(), biF.Uint64()
 		)
+
+		// If we are in an area where A - B is outside the range of the
+		// constraints due to the column offset, then we can put any value in
+		// theory but with the limitless prover we have to account for the fact
+		// that the columns are going to be extended and it is safer to use the
+		// same value as initial/final constrained value so that the column
+		// extension stays valid.
+		if minOffset < 0 && i < -minOffset {
+			aiF, biF = a.Get(-minOffset), b.Get(-minOffset)
+			ai, bi = aiF.Uint64(), biF.Uint64()
+		}
+
+		if maxOffset > 0 && i >= a.Len()-maxOffset {
+			aiF, biF = a.Get(a.Len()-maxOffset-1), b.Get(a.Len()-maxOffset-1)
+			ai, bi = aiF.Uint64(), biF.Uint64()
+		}
 
 		if ai > bi {
 			g[i].SetOne()
