@@ -1,10 +1,14 @@
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import styles from "./from-chain.module.scss";
-import SelectNetwork from "@/components/bridge/modal/select-network";
 import { useState } from "react";
 import { useChainStore } from "@/stores";
 import { useChains } from "@/hooks";
 import { Chain } from "@/types";
+
+const SelectNetwork = dynamic(() => import("@/components/bridge/modal/select-network"), {
+  ssr: false,
+});
 
 export default function FromChain() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,12 +32,7 @@ export default function FromChain() {
     }
 
     setFromChain(chain);
-
-    if (chain.testnet) {
-      setToChain(chains.find((c: Chain) => c.testnet && c.layer !== chain.layer));
-    } else {
-      setToChain(chains.find((c: Chain) => !c.testnet && c.layer !== chain.layer));
-    }
+    setToChain(chains.find((c: Chain) => c.id === chain.toChainId));
   };
 
   return (
@@ -47,12 +46,14 @@ export default function FromChain() {
           <div className={styles["info-value"]}>{fromChain.name}</div>
         </div>
       </button>
-      <SelectNetwork
-        isModalOpen={isModalOpen}
-        onCloseModal={closeModal}
-        onClick={handleSelectNetwork}
-        networks={chains}
-      />
+      {isModalOpen && (
+        <SelectNetwork
+          isModalOpen={isModalOpen}
+          onCloseModal={closeModal}
+          onClick={handleSelectNetwork}
+          networks={chains}
+        />
+      )}
     </>
   );
 }

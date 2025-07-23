@@ -5,7 +5,8 @@
   "license": "(MIT OR Apache-2.0)",
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "postinstall": "pnpm run -F @consensys/linea-sdk-core build && pnpm run -F @consensys/linea-sdk-viem build",
+    "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint && pnpm run lint:test",
@@ -18,14 +19,14 @@
     "build:cache": "synpress",
     "build:cache:force": "synpress --force",
     "build:cache:headless": "synpress --headless",
-    "test:unit": "HEADLESS=true playwright test src",
-    "test:e2e:headful": "playwright test test/e2e",
-    "test:e2e:headless": "HEADLESS=true playwright test test/e2e",
-    "test:e2e:headless:ui": "HEADLESS=true playwright test test/e2e --ui"
+    "test:unit": "HEADLESS=true UNIT=true playwright test --project=unit",
+    "test:e2e:headful": "playwright test --project=chromium",
+    "test:e2e:headless": "HEADLESS=true playwright test --project=chromium",
+    "test:e2e:headless:ui": "HEADLESS=true playwright test --project=chromium --ui"
   },
   "dependencies": {
     "@bigmi/react": "0.3.1",
-    "@consensys/linea-sdk": "0.3.0",
+    "@consensys/linea-sdk-viem": "workspace:*",
     "@dynamic-labs/ethereum": "4.19.7",
     "@dynamic-labs/sdk-react-core": "4.19.7",
     "@dynamic-labs/solana": "4.19.7",
@@ -51,13 +52,13 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "sharp": "0.33.5",
-    "viem": "2.31.0",
+    "viem": "catalog:",
     "wagmi": "2.15.6",
     "zod": "3.24.2",
     "zustand": "4.5.4"
   },
   "devDependencies": {
-    "@playwright/test": "1.51.1",
+    "@playwright/test": "1.53.2",
     "@svgr/webpack": "8.1.0",
     "@synthetixio/synpress": "4.1.0",
     "@types/fs-extra": "11.0.4",

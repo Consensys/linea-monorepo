@@ -11,7 +11,7 @@
       "path": "../ts-libs/linea-native-libs"
     },
     {
-      "path": "../sdk"
+      "path": "../sdk/sdk-ethers"
     }
   ],
   "exclude": ["./dist", "**/node_modules"]
