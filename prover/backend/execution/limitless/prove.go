@@ -234,6 +234,8 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
 
 	for runtimeBoot == nil {
 
+		logrus.Infof("Trying to bootstrap with a scaling of %v\n", scalingFactor)
+
 		func() {
 
 			// Since the [exit] package is configured to only send panic messages
@@ -244,7 +246,10 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
 					if isOF {
 						extra := utils.DivCeil(oFReport.RequestedSize, oFReport.Limit)
 						scalingFactor *= utils.NextPowerOfTwo(extra)
+						return
 					}
+
+					panic(err)
 				}
 			}()
 

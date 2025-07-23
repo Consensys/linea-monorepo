@@ -16,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
@@ -267,11 +268,13 @@ func (lz *LimitlessZkEVM) RunStatRecords(witness *Witness) []distributed.QueryBa
 // generator and will yield the same result every time.
 func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 
-	scaledUpBootstrapper, scaledUpZkEVM := GetScaledUpBootstrapper(cfg, lz.DistWizard.Disc, 2)
-
-	runtimeBoot := wizard.RunProver(
-		scaledUpBootstrapper,
-		scaledUpZkEVM.GetMainProverStep(witness),
+	runtimeBoot := runBootstrapperWithRescaling(
+		cfg,
+		lz.DistWizard.Bootstrapper,
+		lz.Zkevm,
+		lz.DistWizard.Disc,
+		witness,
+		true,
 	)
 
 	witnessGLs, witnessLPPs := distributed.SegmentRuntime(
@@ -354,6 +357,75 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		// done at the prover level.
 		_ = wizard.Prove(compiledIOP, mainProverStep)
 	}
+}
+
+// runBootstrapperWithRescaling runs the bootstrapper and returns the resulting
+// prover runtime.
+func runBootstrapperWithRescaling(
+	cfg *config.Config,
+	bootstrapper *wizard.CompiledIOP,
+	zkevm *ZkEvm,
+	disc distributed.ModuleDiscoverer,
+	zkevmWitness *Witness,
+	withDebug bool,
+) *wizard.ProverRuntime {
+
+	var (
+		scalingFactor = 1
+		runtimeBoot   *wizard.ProverRuntime
+	)
+
+	for runtimeBoot == nil {
+
+		logrus.Infof("Trying to bootstrap with a scaling of %v\n", scalingFactor)
+
+		func() {
+
+			// Since the [exit] package is configured to only send panic messages
+			// on overflow. The overflows are catchable.
+			defer func() {
+				if err := recover(); err != nil {
+					oFReport, isOF := err.(exit.LimitOverflowReport)
+					if isOF {
+						extra := utils.DivCeil(oFReport.RequestedSize, oFReport.Limit)
+						scalingFactor *= utils.NextPowerOfTwo(extra)
+						return
+					}
+
+					panic(err)
+				}
+			}()
+
+			if scalingFactor == 1 {
+				logrus.Infof("Running bootstrapper")
+				runtimeBoot = wizard.RunProver(
+					bootstrapper,
+					zkevm.GetMainProverStep(zkevmWitness),
+				)
+				return
+			}
+
+			scaledUpBootstrapper, scaledUpZkEVM := GetScaledUpBootstrapper(
+				cfg, disc, scalingFactor,
+			)
+
+			if withDebug {
+				// This adds debugging to the bootstrapper which are normally
+				// not present by default.
+				wizard.ContinueCompilation(
+					scaledUpBootstrapper,
+					dummy.CompileAtProverLvl(dummy.WithMsg("bootstrapper")),
+				)
+			}
+
+			runtimeBoot = wizard.RunProver(
+				scaledUpBootstrapper,
+				scaledUpZkEVM.GetMainProverStep(zkevmWitness),
+			)
+		}()
+	}
+
+	return runtimeBoot
 }
 
 // Store writes the limitless prover zkevm into disk in the folder given by
