@@ -242,24 +242,41 @@ func (c *Circuit) Define(api frontend.API) error {
 		pi.L2MsgMerkleTreeRoots[i] = MerkleRootSnark(&hshK, merkleLeavesConcat.Values[i*merkleNbLeaves:(i+1)*merkleNbLeaves])
 	}
 
+	// check invalidity proofs against the finalStateRootHash and FinalBlockNumber in the aggregation.
+	maxNbInvalidity := len(c.InvalidityFPI)
+	api.AssertIsLessOrEqual(c.NbInvalidity, maxNbInvalidity) // @Azam check if it is neccassary here
+	rInvalidity := internal.NewRange(api, c.NbInvalidity, maxNbInvalidity)
+	lastFinalizedTxNum := c.AggregationFPIQSnark.LastFinalizedRollingHashNumberTx
+	for i, invalidityFPI := range c.InvalidityFPI {
+
+		api.AssertIsEqual(invalidityFPI.SateRootHash, finalState) // @Azam make sure it really give the finalState
+		api.AssertIsLessOrEqual(pi.FinalBlockNumber, invalidityFPI.ExpectedBlockNumber)
+		api.AssertIsEqual(c.InvalidityPublicInput[i], api.Mul(rInvalidity.InRange[i], c.InvalidityFPI[i].Sum(api, hshM)))
+
+		// constraints over rollingHashFtx
+		if i != 0 {
+			expr := api.Mul(rInvalidity.InRange[i], api.Sub(invalidityFPI.TxNumber, c.InvalidityFPI[i-1].TxNumber, 1))
+			api.AssertIsEqual(expr, 0)
+		}
+
+	}
+
+	// for i == 0 check it against the lastFinalizedTxNum
+	shouldUpdate := api.Mul(rInvalidity.InRange[0], api.Sub(c.InvalidityFPI[0].TxNumber, lastFinalizedTxNum, 1))
+	api.AssertIsEqual(shouldUpdate, 0)
+
+	// set the FinalRollingHashNumberFtx for the aggregation circuit.
+	pi.FinalRollingHashNumberTx =
+		api.Add(
+			api.Mul(api.Sub(1, rInvalidity.InRange[0]), pi.LastFinalizedRollingHashNumberTx),
+			api.Mul(rInvalidity.InRange[0], c.InvalidityFPI[len(c.InvalidityFPI)-1].TxNumber),
+		)
+
 	twoPow8 := big.NewInt(256)
 	// "open" aggregation public input
 	aggregationPIBytes := pi.Sum(api, &hshK)
 	api.AssertIsEqual(c.AggregationPublicInput[0], compress.ReadNum(api, aggregationPIBytes[:16], twoPow8))
 	api.AssertIsEqual(c.AggregationPublicInput[1], compress.ReadNum(api, aggregationPIBytes[16:], twoPow8))
-
-	// check invalidity proofs against the finalStateRootHash and FinalBlockNumber in the aggregation.
-	maxNbInvalidity := len(c.InvalidityFPI)
-	api.AssertIsLessOrEqual(c.NbInvalidity, maxNbInvalidity) // @Azam check if it is neccassary here
-	rInvalidity := internal.NewRange(api, c.NbInvalidity, maxNbInvalidity)
-
-	for i, invalidityFPI := range c.InvalidityFPI {
-
-		api.AssertIsEqual(invalidityFPI.FunctionalPublicInputsQGnark.SateRootHash, finalState) // @Azam make sure it really give the finalState
-		api.AssertIsEqual(invalidityFPI.FunctionalPublicInputsQGnark.BlockNumber, pi.FinalBlockNumber)
-		api.AssertIsEqual(c.InvalidityPublicInput[i], api.Mul(rInvalidity.InRange[i], c.InvalidityFPI[i].Sum(api, hshM)))
-
-	}
 
 	return hshK.Finalize()
 }
@@ -370,7 +387,7 @@ func newKeccakCompiler(c config.PublicInput) *keccak.StrictHasherCompiler {
 
 	// aggregation PI opening
 	res.WithFlexibleHashLengths(32 * c.L2MsgMaxNbMerkle)
-	res.WithStrictHashLengths(384)
+	res.WithStrictHashLengths(public_input.NbAggregationFPI * 32)
 
 	return &res
 }

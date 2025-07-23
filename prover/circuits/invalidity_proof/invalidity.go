@@ -41,14 +41,13 @@ type AssigningInputs struct {
 	FuncInputs        public_input.Invalidity
 	// the address of the sender
 	// gateway contract on L1 extract it via ecrevovery over the signature
-	FromAddress             EthAddress
-	FunctionalPublicInputsQ FunctionalPublicInputsQ
+	FromAddress EthAddress
 }
 
 // Define the constraints
 func (c *CircuitInvalidity) Define(api frontend.API) error {
 	c.SubCircuit.Define(api)
-	api.AssertIsEqual(c.SubCircuit.ExecutionCtx(), c.FuncInputs.FunctionalPublicInputsQGnark.SateRootHash)
+	api.AssertIsEqual(c.SubCircuit.ExecutionCtx(), c.FuncInputs.SateRootHash)
 	// @azam constraint on the hashing of functional public inputs
 	return nil
 }
@@ -68,8 +67,8 @@ func (c *CircuitInvalidity) Assign(assi AssigningInputs) {
 	c.FuncInputs.Assign(assi.FuncInputs)
 	// assign the public input
 	c.PublicInput = assi.FuncInputs.Sum(nil)
-	c.FuncInputs.FunctionalPublicInputsQGnark.BlockNumber = assi.FunctionalPublicInputsQ.BlockNumber
-	c.FuncInputs.FunctionalPublicInputsQGnark.SateRootHash = assi.FunctionalPublicInputsQ.SateRootHash[:]
+	c.FuncInputs.ExpectedBlockNumber = assi.FuncInputs.ExpectedBlockHeight
+	c.FuncInputs.SateRootHash = assi.FuncInputs.StateRootHash[:]
 }
 
 // MakeProof and solve the circuit.

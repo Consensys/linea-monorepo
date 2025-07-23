@@ -104,15 +104,17 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 		InitialBlockNumber:           6,
 	}}
 	invalReq := []public_input.Invalidity{{
-		TxHash:        internal.Uint64To32Bytes(2),
-		StateRootHash: stateRootHashes[2],
-		BlockHeight:   11,
-		FromAddress:   types.DummyAddress(32),
+		TxHash:              internal.Uint64To32Bytes(2),
+		TxNumber:            3,
+		StateRootHash:       stateRootHashes[2],
+		ExpectedBlockHeight: 11,
+		FromAddress:         types.DummyAddress(32),
 	}, {
-		TxHash:        internal.Uint64To32Bytes(2),
-		StateRootHash: stateRootHashes[2],
-		BlockHeight:   11,
-		FromAddress:   types.DummyAddress(32),
+		TxHash:              internal.Uint64To32Bytes(2),
+		TxNumber:            4,
+		StateRootHash:       stateRootHashes[2],
+		ExpectedBlockHeight: 11,
+		FromAddress:         types.DummyAddress(32),
 	}}
 
 	blobReq := blobsubmission.Request{
@@ -146,6 +148,8 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 			L1RollingHashMessageNumber:              uint(execReq[1].LastRollingHashUpdateNumber),
 			L2MsgRootHashes:                         merkleRoots,
 			L2MsgMerkleTreeDepth:                    5,
+			LastFinalizedRollingHashNumberTx:        2,
+			RollingHashNumberTx:                     4,
 		},
 	}
 
@@ -201,6 +205,13 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 		LastRollingHashUpdateNumber:  26,
 	}}
 
+	invalReq := []public_input.Invalidity{
+		{
+			TxNumber:            3,
+			ExpectedBlockHeight: 23,
+			StateRootHash:       internal.Uint64To32Bytes(22),
+		}}
+
 	blobReq0 := blobsubmission.Request{
 		Eip4844Enabled:      true,
 		CompressedData:      base64.StdEncoding.EncodeToString(blobs[0]),
@@ -228,6 +239,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 	req := pi_interconnection.Request{
 		Decompressions: []blobsubmission.Response{*blobResp0, *blobResp1},
 		Executions:     execReq,
+		Invalidity:     invalReq,
 		Aggregation: public_input.Aggregation{
 			FinalShnarf:                             blobResp1.ExpectedShnarf,
 			ParentAggregationFinalShnarf:            blobReq0.PrevShnarf,
@@ -242,6 +254,8 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 			L1RollingHashMessageNumber:              uint(execReq[3].LastRollingHashUpdateNumber),
 			L2MsgRootHashes:                         merkleRoots,
 			L2MsgMerkleTreeDepth:                    5,
+			LastFinalizedRollingHashNumberTx:        2,
+			RollingHashNumberTx:                     3,
 		},
 	}
 

@@ -428,7 +428,12 @@ func assignInvalidity(r Request, n int) (invalidityFPI []invalidity_proof.Functi
 			invalidityPI[i] = r.Invalidity[i].Sum(hshM)
 
 		} else {
-			invalidityFPI[i].Assign(r.Invalidity[len(r.Invalidity)-1])
+			if len(r.Invalidity) != 0 {
+				invalidityFPI[i].Assign(r.Invalidity[len(r.Invalidity)-1])
+			} else {
+				utils.Panic("There is no invalidity context in the Request file," +
+					" add a dummy one setting StateRootHash and ExpectedBlockHeight from the final Block")
+			}
 			invalidityPI[i] = 0
 		}
 	}

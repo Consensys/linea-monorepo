@@ -47,10 +47,11 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 	}
 
 	invalReq := public_input.Invalidity{
-		TxHash:        internal.Uint64To32Bytes(2),
-		StateRootHash: finalStateRootHash,
-		BlockHeight:   9,
-		FromAddress:   types.DummyAddress(32),
+		TxHash:              internal.Uint64To32Bytes(2),
+		TxNumber:            4,
+		StateRootHash:       finalStateRootHash,
+		ExpectedBlockHeight: 9,
+		FromAddress:         types.DummyAddress(32),
 	}
 
 	merkleRoots := aggregation.PackInMiniTrees(test_utils.BlocksToHex(execReq.L2MessageHashes))
@@ -73,6 +74,8 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 			L1RollingHashMessageNumber:              uint(execReq.LastRollingHashUpdateNumber),
 			L2MsgRootHashes:                         merkleRoots,
 			L2MsgMerkleTreeDepth:                    5,
+			LastFinalizedRollingHashNumberTx:        3,
+			RollingHashNumberTx:                     4,
 		},
 	}
 }
