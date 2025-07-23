@@ -150,7 +150,7 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
 
   /**
    * Evaluates a transaction post-processing. Checks if it is profitable according to its gas used.
-   * If unprofitable, the transaction is penalized, to be retried in the future, since gas price
+   * If unprofitable, the transaction is penalized, but can still be retried in the future, since gas price
    * market fluctuations can make it profitable again.
    *
    * @param evaluationContext The current selection context.

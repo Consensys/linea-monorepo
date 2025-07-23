@@ -86,7 +86,7 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
       hidden = true,
       paramLabel = "<INTEGER>",
       description =
-          "DEPRECATED, has not effect: Max number of unprofitable transactions we keep track of (default: ${DEFAULT-VALUE})")
+          "DEPRECATED, has no effect: Max number of unprofitable transactions we keep track of (default: ${DEFAULT-VALUE})")
   private int unprofitableCacheSize = 1;
 
   @Deprecated
@@ -96,7 +96,7 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
       hidden = true,
       paramLabel = "<INTEGER>",
       description =
-          "DEPRECATED, has not effect: Max number of unprofitable transactions we retry on each block creation (default: ${DEFAULT-VALUE})")
+          "DEPRECATED, has no effect: Max number of unprofitable transactions we retry on each block creation (default: ${DEFAULT-VALUE})")
   private int unprofitableRetryLimit = 1;
 
   private LineaTransactionSelectorCliOptions() {}
