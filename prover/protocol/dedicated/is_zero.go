@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -124,18 +125,44 @@ func compileIsZeroWithSize(comp *wizard.CompiledIOP, ctx *IsZeroCtx) {
 func (ctx *IsZeroCtx) Run(run *wizard.ProverRuntime) {
 
 	var (
-		c         = column.EvalExprColumn(run, ctx.C.Board())
-		invOrZero = smartvectors.BatchInvert(c)
-		isZero    = smartvectors.IsZero(c)
+		c                    = column.EvalExprColumn(run, ctx.C.Board()).IntoRegVecSaveAlloc()
+		offsetRange          = query.MinMaxOffset(ctx.C)
+		minOffset, maxOffset = offsetRange.Min, offsetRange.Max
+	)
+
+	// In case the expression contains offsets, the concrete value of
+	// isZero won't be constrained. However, we still need to pay attention to
+	// the value set in the "non-checked" positions because the limitless prover
+	// might decide to extend the column by padding on the left or the right
+	// using the initial or the final value. In that case, it is safer to use
+	// the first/last non-ignored value.
+	if minOffset < 0 {
+		paddingVal := c[-minOffset]
+		for p := 0; p < -minOffset; p++ {
+			c[p] = paddingVal
+		}
+	}
+
+	if maxOffset > 0 {
+		paddingVal := c[len(c)-maxOffset-1]
+		for p := len(c) - maxOffset; p < len(c); p++ {
+			c[p] = paddingVal
+		}
+	}
+
+	var (
+		cSV       = smartvectors.NewRegular(c)
+		invOrZero = smartvectors.BatchInvert(cSV)
+		isZero    = smartvectors.IsZero(cSV)
 	)
 
 	if ctx.Mask != nil {
 
 		mask := column.EvalExprColumn(run, ctx.Mask.Board())
 
-		if mask.Len() != c.Len() {
+		if mask.Len() != len(c) {
 			valueOfC := ctx.C.MarshalJSONString()
-			utils.Panic("the size of the mask if %v but the column's size is %v, mask=%v", mask.Len(), c.Len(), valueOfC)
+			utils.Panic("the size of the mask if %v but the column's size is %v, mask=%v", mask.Len(), len(c), valueOfC)
 		}
 
 		if mask.Len() != invOrZero.Len() {
