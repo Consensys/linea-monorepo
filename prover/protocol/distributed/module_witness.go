@@ -1,6 +1,9 @@
 package distributed
 
 import (
+	"fmt"
+	"sync"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -204,6 +207,10 @@ func SegmentModuleLPP(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, modu
 	return witnessesLPPs
 }
 
+var (
+	segmentWarningCache = &sync.Map{}
+)
+
 // NbSegmentOfModule returns the number of segments for a given module
 func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, moduleName []ModuleName) (nbSegment int) {
 
@@ -234,12 +241,24 @@ func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, mod
 		}
 
 		var (
-			newSize         = NewSizeOfColumn(disc, col)
-			start, stop, _  = disc.SegmentBoundaryOf(runtime, col.(column.Natural))
-			nbSegmentForCol = utils.DivExact(stop-start, newSize)
+			newSize                  = NewSizeOfColumn(disc, col)
+			start, stop, paddingInfo = disc.SegmentBoundaryOf(runtime, col.(column.Natural))
+			nbSegmentForCol          = utils.DivExact(stop-start, newSize)
 		)
 
 		if nbSegmentForCol >= nbSegmentModule {
+
+			if nbSegmentForCol >= 4 {
+				col := col.(column.Natural)
+				qbm, _ := disc.(*StandardModuleDiscoverer).QbmOf(col)
+
+				if _, ok := segmentWarningCache.Load(qbm.ModuleName); !ok {
+					fmt.Printf("[large nb segment] module=%v qbm=%v column=%v nbSegment=%v paddingInfo=%v start=%v stop=%v newSize=%v originalSize=%v\n",
+						mn, qbm.ModuleName, col.ID, nbSegmentForCol, paddingInfo, start, stop, newSize, col.Size(),
+					)
+					segmentWarningCache.Store(qbm.ModuleName, struct{}{})
+				}
+			}
 
 			nbSegmentModule = nbSegmentForCol
 		}
@@ -314,6 +333,32 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, col i
 		// last value (otherwise, we would have no way of guessing it).
 		padding := assignment.Get(col.Size() - 1)
 		return smartvectors.NewConstant(padding, newSize)
+
+	case start == 0 && end > col.Size():
+
+		logrus.Warnf("[ModuleWitnessOverflow] the segment is larger than the segment size. "+
+			"name=%v length=%v start=%v stop=%v sub-module-segment=[%v - %v]. "+
+			"Going to extend the column on the right by repeating the last value but this might fail. You may want to increase the bootstrapper size for this column so that it is always larger than the new size",
+			col.GetColID(), col.Size(), start, end, startSeg, stopSeg)
+
+		return smartvectors.RightPadded(
+			assignment.IntoRegVecSaveAlloc(),
+			assignment.Get(col.Size()-1),
+			newSize,
+		)
+
+	case start < 0 && end == col.Size():
+
+		logrus.Warnf("[ModuleWitnessOverflow] the segment is larger than the segment size. "+
+			"name=%v length=%v start=%v stop=%v sub-module-segment=[%v - %v]. "+
+			"Going to extend the column on the left by repeating the first value but this might fail. You may want to increase the bootstrapper size for this column so that it is always larger than the new size",
+			col.GetColID(), col.Size(), start, end, startSeg, stopSeg)
+
+		return smartvectors.LeftPadded(
+			assignment.IntoRegVecSaveAlloc(),
+			assignment.Get(0),
+			newSize,
+		)
 
 	default:
 		utils.Panic(
