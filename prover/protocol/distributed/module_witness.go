@@ -509,10 +509,14 @@ func (mw *ModuleWitnessGL) NextReceivedValuesGlobal(blueprintGL *ModuleSegmentat
 	for i := range blueprintGL.ReceivedValuesGlobalAccsRoots {
 
 		var (
-			rootName = blueprintGL.ReceivedValuesGlobalAccsRoots[i]
-			loc      = blueprintGL.ReceivedValuesGlobalAccsPositions[i]
-			smartvec = mw.Columns[rootName]
+			rootName        = blueprintGL.ReceivedValuesGlobalAccsRoots[i]
+			loc             = blueprintGL.ReceivedValuesGlobalAccsPositions[i]
+			smartvec, found = mw.Columns[rootName]
 		)
+
+		if !found {
+			utils.Panic("could not find smartvector: %v in the columns of the module", rootName)
+		}
 
 		loc = utils.PositiveMod(loc, smartvec.Len())
 		newReceivedValuesGlobal[i] = smartvec.Get(loc)

@@ -382,6 +382,12 @@ func (m *ModuleGL) InsertGlobal(q query.GlobalConstraint) query.GlobalConstraint
 			rootCol   = column.RootParents(col)
 		)
 
+		// If the column is a [verifiercol.ConstCol], then there is no need to
+		// send any missing value.
+		if _, isVCol := rootCol.(verifiercol.ConstCol); isVCol {
+			continue
+		}
+
 		for i := colOffset; i < offsetRange.Max; i++ {
 
 			posToRcv := i - offsetRange.Max
