@@ -130,7 +130,7 @@ class ValidatingSealedBeaconBlockImporter(
     try {
       val beaconBlock = sealedBeaconBlock.beaconBlock
       val beaconBlockHeader = beaconBlock.beaconBlockHeader
-      log.debug("Received beacon block blockNumber={} hash={}", beaconBlockHeader.number, beaconBlockHeader.hash)
+      log.debug("Received beacon block: blockNumber={} hash={}", beaconBlockHeader.number, beaconBlockHeader.hash)
       val blockValidators =
         beaconBlockValidatorFactory
           .createValidatorForBlock(beaconBlockHeader)
@@ -153,9 +153,11 @@ class ValidatingSealedBeaconBlockImporter(
 
             is Err -> {
               log.error(
-                "Validation failed for blockNumber=${sealedBeaconBlock.beaconBlock.beaconBlockHeader.number}, " +
-                  "hash=${sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash.encodeHex()}! " +
-                  "error=${combinedValidationResult.error}",
+                "block validation failed: blockNumber={} hash={} error={}",
+                sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
+                sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
+                  .encodeHex(),
+                combinedValidationResult.error,
               )
               SafeFuture.completedFuture(combinedValidationResult.toDomain())
             }
