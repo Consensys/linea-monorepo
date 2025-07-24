@@ -68,7 +68,7 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 	rootHashVecParts := utils.RightPadWith(
 		rootHashesClean,
 		utils.NextPowerOfTwo(len(rootHashesClean)),
-		verifiercol.NewConstantCol(field.Zero(), 1, false),
+		verifiercol.NewConstantCol(field.Zero(), 1, ""),
 	)
 
 	numRootsPadded := len(rootHashVecParts)

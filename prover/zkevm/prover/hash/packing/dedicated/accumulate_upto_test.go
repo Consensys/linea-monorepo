@@ -33,7 +33,7 @@ func makeTestCaseLaneAlloc() (
 
 		colA := comp.InsertCommit(0, ifaces.ColIDf("COL_A"), size)
 
-		acc = AccumulateUpToMax(comp, maxValue, colA, verifiercol.NewConstantCol(field.One(), size, true))
+		acc = AccumulateUpToMax(comp, maxValue, colA, verifiercol.NewConstantCol(field.One(), size, "accumulate-up-to-max"))
 
 	}
 	prover = func(run *wizard.ProverRuntime) {

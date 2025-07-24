@@ -99,7 +99,7 @@ func (mt *ModuleTranslator) TranslateColumnWithSizeHint(col ifaces.Column, sizeH
 		if sizeHint < 0 {
 			utils.Panic("called TranslateColumnWithSizeHint with a negative offset on a constant col")
 		}
-		return verifiercol.NewConstantCol(c.F, sizeHint, false)
+		return verifiercol.NewConstantCol(c.F, sizeHint, "")
 	default:
 		utils.Panic("unexpected type of column: type: %T, name: %v", col, col.GetColID())
 	}

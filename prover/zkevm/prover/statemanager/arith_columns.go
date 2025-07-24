@@ -73,7 +73,7 @@ func acp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 		)
 	}
 
-	constantZero := verifiercol.NewConstantCol(field.Zero(), size, true)
+	constantZero := verifiercol.NewConstantCol(field.Zero(), size, "hub.acp_connection")
 
 	res := statesummary.HubColumnSet{
 		Address:             comp.Columns.GetHandle("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
@@ -149,7 +149,7 @@ func scp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 		)
 	}
 
-	constantZero := verifiercol.NewConstantCol(field.Zero(), size, true)
+	constantZero := verifiercol.NewConstantCol(field.Zero(), size, "hub.scp_connection")
 
 	res := statesummary.HubColumnSet{
 		Address:             comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ADDRESS_IDENTIFIER"),

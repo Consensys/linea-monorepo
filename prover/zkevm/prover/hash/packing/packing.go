@@ -3,6 +3,8 @@
 package packing
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -128,7 +130,7 @@ func spaghettiMaker(comp *wizard.CompiledIOP, decomposed decomposition, isNewHas
 	var (
 		isNewHashTable []ifaces.Column
 		size           = decomposed.Size
-		zeroCol        = verifiercol.NewConstantCol(field.Zero(), size, true)
+		zeroCol        = verifiercol.NewConstantCol(field.Zero(), size, fmt.Sprintf("spaghetti-maker-%v", decomposed.Inputs.Name))
 	)
 
 	// build isNewHash

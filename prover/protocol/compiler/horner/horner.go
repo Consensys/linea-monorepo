@@ -163,7 +163,7 @@ func compileHornerQuery(comp *wizard.CompiledIOP, q *query.Horner) {
 		ip := comp.InsertInnerProduct(
 			iPRound,
 			ifaces.QueryIDf("HORNER_%v_COUNTING_%v_SRCNT_%v_%v", q.ID, size, comp.SelfRecursionCount, i),
-			verifiercol.NewConstantCol(field.One(), size, false),
+			verifiercol.NewConstantCol(field.One(), size, ""),
 			ctx.Q.Parts[i].Selectors,
 		)
 

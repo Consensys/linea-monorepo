@@ -212,7 +212,7 @@ func (cm *ComputeMod) defineNewProofAndProofEnd() {
 	if cm.WithOptProofReuseCheck {
 		isActive = symbolic.NewVariable(cm.Cols.IsActiveExpanded)
 	} else if cm.isFullyActive() {
-		isActive = symbolic.NewVariable(verifiercol.NewConstantCol(field.One(), cm.NumRows, false))
+		isActive = symbolic.NewVariable(verifiercol.NewConstantCol(field.One(), cm.NumRows, ""))
 	} else if cm.Cols.IsInactive != nil {
 		isActive = symbolic.Sub(1, cm.Cols.IsInactive)
 	} else {
@@ -225,7 +225,7 @@ func (cm *ComputeMod) defineNewProofAndProofEnd() {
 
 // Defines the precomputed column ZERO (always zero)
 func (cm *ComputeMod) defineZero() {
-	cm.Cols.Zero = verifiercol.NewConstantCol(field.Zero(), cm.NumRows, false)
+	cm.Cols.Zero = verifiercol.NewConstantCol(field.Zero(), cm.NumRows, "")
 }
 
 // Defines all the variables that we will need for the constraints

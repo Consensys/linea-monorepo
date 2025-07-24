@@ -172,7 +172,7 @@ func TestSerdeValue(t *testing.T) {
 		},
 		{
 			Name: "const-col",
-			V:    verifiercol.NewConstantCol(field.Element{}, 16, false),
+			V:    verifiercol.NewConstantCol(field.Element{}, 16, ""),
 		},
 		{
 			Name: "new-coin",

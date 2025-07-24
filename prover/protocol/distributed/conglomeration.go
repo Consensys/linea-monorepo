@@ -801,7 +801,7 @@ func (cong *ConglomeratorCompilation) declareLookups() {
 		})
 
 		includingLppLookup = append(includingLppLookup, []ifaces.Column{
-			verifiercol.NewConstantCol(field.NewElement(uint64(j)), effectiveColumnSize, false),
+			verifiercol.NewConstantCol(field.NewElement(uint64(j)), effectiveColumnSize, ""),
 			verifiercol.NewFromAccessors(lppColumnsAccessors[j], field.Zero(), effectiveColumnSize),
 			vkColums[0],
 			vkColums[1],

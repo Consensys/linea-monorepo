@@ -61,7 +61,7 @@ func StackColumn(comp *wizard.CompiledIOP, srcs []ifaces.Column) StackedColumn {
 
 	if !utils.IsPowerOfTwo(count) {
 		count_padded = utils.NextPowerOfTwo(count)
-		padding_col := verifiercol.NewConstantCol(field.Zero(), srcs_length, false)
+		padding_col := verifiercol.NewConstantCol(field.Zero(), srcs_length, "")
 		srcs_padded = make([]ifaces.Column, 0, len(srcs)+(count_padded-count)/srcs_length)
 		srcs_padded = append(srcs_padded, srcs...)
 		for i := 0; i < (count_padded-count)/srcs_length; i++ {

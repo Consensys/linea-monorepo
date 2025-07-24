@@ -1,6 +1,8 @@
 package common
 
 import (
+	"strconv"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -37,7 +39,7 @@ func HashOf(comp *wizard.CompiledIOP, inputCols []ifaces.Column) (ifaces.Column,
 		round     = column.MaxRound(inputCols...)
 		ctxID     = len(comp.ListCommitments())
 		numRows   = ifaces.AssertSameLength(inputCols...)
-		prevState = verifiercol.NewConstantCol(field.Zero(), numRows, true)
+		prevState = verifiercol.NewConstantCol(field.Zero(), numRows, "hash-of-"+strconv.Itoa(ctxID))
 	)
 
 	for i := range ctx.IntermediateHashes {
