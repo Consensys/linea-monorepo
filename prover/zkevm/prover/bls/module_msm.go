@@ -37,8 +37,8 @@ func newMsmDataSource(comp *wizard.CompiledIOP, g group) *BlsMsmDataSource {
 		Limb:         comp.Columns.GetHandle("bls.LIMB"),
 		Index:        comp.Columns.GetHandle("bls.INDEX"),
 		Counter:      comp.Columns.GetHandle("bls.CT"),
-		IsData:       comp.Columns.GetHandle("bls.IS_BLS_MUL_DATA"),
-		IsRes:        comp.Columns.GetHandle("bls.IS_BLS_MUL_RESULT"),
+		IsData:       comp.Columns.GetHandle(ifaces.ColIDf("bls.DATA_BLS_%s_MSM", g.String())),
+		IsRes:        comp.Columns.GetHandle(ifaces.ColIDf("bls.RSLT_BLS_%s_MSM", g.String())),
 	}
 }
 
@@ -51,43 +51,56 @@ type BlsMsm struct {
 	group
 }
 
-func newMsm(comp *wizard.CompiledIOP, g group, limits *Limits, src *BlsMsmDataSource, plonkOptions []query.PlonkOption) *BlsMsm {
+func newMsm(comp *wizard.CompiledIOP, g group, limits *Limits, src *BlsMsmDataSource) *BlsMsm {
 	umsm := newUnalignedMsmData(comp, g, limits, src)
 
-	toAlignMsm := &plonk.CircuitAlignmentInput{
-		Name:               fmt.Sprintf("%s_%s_MSM", NAME_BLS_MSM, g.String()),
-		Round:              ROUND_NR,
-		DataToCircuitMask:  umsm.GnarkIsActiveMsm,
-		DataToCircuit:      umsm.GnarkDataMsm,
-		Circuit:            newMulCircuit(g, limits),
-		NbCircuitInstances: limits.nbMulCircuitInstances(g),
-		PlonkOptions:       plonkOptions,
+	return &BlsMsm{
+		BlsMsmDataSource: src,
+		unalignedMsmData: umsm,
+		Limits:           limits,
+		group:            g,
 	}
-	toAlignMembership := &plonk.CircuitAlignmentInput{
-		Name:               fmt.Sprintf("%s_%s_GROUP_MEMBERSHIP", NAME_BLS_MSM, g.String()),
+}
+
+func (bm *BlsMsm) WithMsmCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsMsm {
+	toAlignMsm := &plonk.CircuitAlignmentInput{
+		Name:               fmt.Sprintf("%s_%s_MSM", NAME_BLS_MSM, bm.group.String()),
 		Round:              ROUND_NR,
-		DataToCircuitMask:  src.CsMembership,
-		DataToCircuit:      src.Limb,
-		Circuit:            newCheckCircuit(g, GROUP, limits),
-		NbCircuitInstances: limits.nbGroupMembershipCircuitInstances(g),
-		InputFillerKey:     membershipInputFillerKey(g, GROUP),
-		PlonkOptions:       plonkOptions,
+		DataToCircuitMask:  bm.unalignedMsmData.GnarkIsActiveMsm,
+		DataToCircuit:      bm.unalignedMsmData.GnarkDataMsm,
+		Circuit:            newMulCircuit(bm.group, bm.Limits),
+		NbCircuitInstances: bm.Limits.nbMulCircuitInstances(bm.group),
+		PlonkOptions:       options,
 	}
 
-	return &BlsMsm{
-		BlsMsmDataSource:                src,
-		unalignedMsmData:                umsm,
-		AlignedGnarkMsmData:             plonk.DefineAlignment(comp, toAlignMsm),
-		AlignedGnarkGroupMembershipData: plonk.DefineAlignment(comp, toAlignMembership),
-		Limits:                          limits,
-		group:                           g,
+	bm.AlignedGnarkMsmData = plonk.DefineAlignment(comp, toAlignMsm)
+	return bm
+}
+
+func (bm *BlsMsm) WithGroupMembershipCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsMsm {
+	toAlignMembership := &plonk.CircuitAlignmentInput{
+		Name:               fmt.Sprintf("%s_%s_GROUP_MEMBERSHIP", NAME_BLS_MSM, bm.group.String()),
+		Round:              ROUND_NR,
+		DataToCircuitMask:  bm.BlsMsmDataSource.CsMembership,
+		DataToCircuit:      bm.BlsMsmDataSource.Limb,
+		Circuit:            newCheckCircuit(bm.group, GROUP, bm.Limits),
+		NbCircuitInstances: bm.Limits.nbGroupMembershipCircuitInstances(bm.group),
+		InputFillerKey:     membershipInputFillerKey(bm.group, GROUP),
+		PlonkOptions:       options,
 	}
+
+	bm.AlignedGnarkGroupMembershipData = plonk.DefineAlignment(comp, toAlignMembership)
+	return bm
 }
 
 func (bm *BlsMsm) Assign(run *wizard.ProverRuntime) {
 	bm.unalignedMsmData.Assign(run)
-	bm.AlignedGnarkMsmData.Assign(run)
-	bm.AlignedGnarkGroupMembershipData.Assign(run)
+	if bm.AlignedGnarkMsmData != nil {
+		bm.AlignedGnarkMsmData.Assign(run)
+	}
+	if bm.AlignedGnarkGroupMembershipData != nil {
+		bm.AlignedGnarkGroupMembershipData.Assign(run)
+	}
 }
 
 type unalignedMsmData struct {
@@ -268,7 +281,10 @@ func (d *unalignedMsmData) Assign(run *wizard.ProverRuntime) {
 	var ptr int
 
 	for ptr < len(srcLimb) {
-		// first detect if it is a new MSM instance
+		// first detect if it is a new MSM instance.
+		// We normally would only check is IsData=1 && Index=0 && Counter=0, but we also don't want to "open"
+		// new instance here if the circuit selector to MSM is not set as it indicates MSM with invalid inputs, in which
+		// case the invalid input will be sent to non-membership circuit.
 		if !(srcIsData[ptr].IsOne() && srcIndex[ptr].IsZero() && srcCounter[ptr].IsZero() && srcCsMul[ptr].IsOne()) {
 			ptr++
 			continue

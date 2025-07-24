@@ -11,7 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 )
 
-func TestBlsG1Add(t *testing.T) {
+func testBlsG1Add(t *testing.T, withCircuit bool) {
 	limits := &Limits{
 		NbG1AddInputInstances:          16,
 		NbG1AddCircuitInstances:        1,
@@ -43,7 +43,12 @@ func TestBlsG1Add(t *testing.T) {
 				IsData:            ct.GetCommit(b, "DATA_G1_ADD"),
 				IsRes:             ct.GetCommit(b, "RSLT_G1_ADD"),
 			}
-			blsAdd = newAdd(b.CompiledIOP, G1, limits, blsAddSource, []query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)})
+			blsAdd = newAdd(b.CompiledIOP, G1, limits, blsAddSource)
+			if withCircuit {
+				blsAdd = blsAdd.
+					WithAddCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true)).
+					WithCurveMembershipCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true))
+			}
 		},
 		dummy.Compile,
 	)
@@ -60,7 +65,7 @@ func TestBlsG1Add(t *testing.T) {
 	t.Log("proof succeeded")
 }
 
-func TestBlsG2Add(t *testing.T) {
+func testBlsG2Add(t *testing.T, withCircuit bool) {
 	limits := &Limits{
 		NbG2AddInputInstances:          16,
 		NbG2AddCircuitInstances:        1,
@@ -92,7 +97,12 @@ func TestBlsG2Add(t *testing.T) {
 				IsData:            ct.GetCommit(b, "DATA_G2_ADD"),
 				IsRes:             ct.GetCommit(b, "RSLT_G2_ADD"),
 			}
-			blsAdd = newAdd(b.CompiledIOP, G2, limits, blsAddSource, []query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)})
+			blsAdd = newAdd(b.CompiledIOP, G2, limits, blsAddSource)
+			if withCircuit {
+				blsAdd = blsAdd.
+					WithAddCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true)).
+					WithCurveMembershipCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true))
+			}
 		},
 		dummy.Compile,
 	)
@@ -107,4 +117,20 @@ func TestBlsG2Add(t *testing.T) {
 		t.Fatal("proof failed", err)
 	}
 	t.Log("proof succeeded")
+}
+
+func TestBlsG1AddNoCircuit(t *testing.T) {
+	testBlsG1Add(t, false)
+}
+
+func TestBlsG1AddWithCircuit(t *testing.T) {
+	testBlsG1Add(t, true)
+}
+
+func TestBlsG2AddNoCircuit(t *testing.T) {
+	testBlsG2Add(t, false)
+}
+
+func TestBlsG2AddWithCircuit(t *testing.T) {
+	testBlsG2Add(t, true)
 }

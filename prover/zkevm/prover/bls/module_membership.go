@@ -18,14 +18,8 @@ const (
 	NAME_UNALIGNED_CURVE_MEMBERSHIP = "UNALIGNED_CURVE_MEMBERSHIP"
 )
 
-type unalignedCurveMembershipDataSource struct {
-	Limb              ifaces.Column
-	Counter           ifaces.Column
-	CsCurveMembership ifaces.Column
-}
-
 type unalignedCurveMembershipData struct {
-	*unalignedCurveMembershipDataSource
+	*blsAddDataSource
 
 	// IsActive is a constructed column which indicates if the circuit is
 	// active. Set when selector is on or when we provide the input data. It is IsActive+IsComputed
@@ -45,16 +39,16 @@ type unalignedCurveMembershipData struct {
 	group
 }
 
-func newUnalignedCurveMembershipData(comp *wizard.CompiledIOP, g group, size int, src *unalignedCurveMembershipDataSource) *unalignedCurveMembershipData {
+func newUnalignedCurveMembershipData(comp *wizard.CompiledIOP, g group, size int, src *blsAddDataSource) *unalignedCurveMembershipData {
 	createCol := createColFn(comp, fmt.Sprintf("UNALIGNED_%s_CURVE_MEMBERSHIP", g.StringCurve()), size)
 	res := &unalignedCurveMembershipData{
-		unalignedCurveMembershipDataSource: src,
-		IsActive:                           createCol("IS_ACTIVE"),
-		IsFetching:                         createCol("IS_FETCHING"),
-		IsComputed:                         createCol("IS_COMPUTED"),
-		GnarkIndex:                         createCol("GNARK_INDEX"),
-		GnarkData:                          createCol("GNARK_DATA"),
-		group:                              g,
+		blsAddDataSource: src,
+		IsActive:         createCol("IS_ACTIVE"),
+		IsFetching:       createCol("IS_FETCHING"),
+		IsComputed:       createCol("IS_COMPUTED"),
+		GnarkIndex:       createCol("GNARK_INDEX"),
+		GnarkData:        createCol("GNARK_DATA"),
+		group:            g,
 	}
 	res.IsFirstLine, res.IsFirstLineAct = dedicated.IsZero(comp, res.GnarkIndex)
 	res.csProjection(comp)
@@ -113,9 +107,9 @@ func (d *unalignedCurveMembershipData) csProjection(comp *wizard.CompiledIOP) {
 	comp.InsertProjection(
 		ifaces.QueryIDf("%s_PROJECTION", NAME_UNALIGNED_CURVE_MEMBERSHIP),
 		query.ProjectionInput{
-			ColumnA: []ifaces.Column{d.unalignedCurveMembershipDataSource.Limb},
+			ColumnA: []ifaces.Column{d.blsAddDataSource.Limb},
 			ColumnB: []ifaces.Column{d.GnarkData},
-			FilterA: d.unalignedCurveMembershipDataSource.CsCurveMembership,
+			FilterA: d.blsAddDataSource.CsCurveMembership,
 			FilterB: d.IsFetching,
 		},
 	)
