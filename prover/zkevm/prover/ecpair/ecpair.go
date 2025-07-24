@@ -2,6 +2,7 @@ package ecpair
 
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -9,7 +10,9 @@ import (
 
 func createColFn(comp *wizard.CompiledIOP, rootName string, size int) func(name string) ifaces.Column {
 	return func(name string) ifaces.Column {
-		return comp.InsertCommit(roundNr, ifaces.ColIDf("%s_%s", rootName, name), size)
+		res := comp.InsertCommit(roundNr, ifaces.ColIDf("%s_%s", rootName, name), size)
+		pragmas.MarkRightPadded(res)
+		return res
 	}
 }
 

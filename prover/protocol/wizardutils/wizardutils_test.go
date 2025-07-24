@@ -24,7 +24,7 @@ func TestWizarldutils(t *testing.T) {
 			col2 = b.RegisterCommit("P2", size)
 
 			col5 = b.RegisterPrecomputed("P3", smartvectors.ForTest(1, 0, 1, 1))
-			col6 = verifiercol.NewConstantCol(field.NewElement(3), size)
+			col6 = verifiercol.NewConstantCol(field.NewElement(3), size, "")
 
 			coin = b.RegisterRandomCoin(coin.Namef("Coin"), coin.Field)
 		)

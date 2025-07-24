@@ -1,6 +1,8 @@
 package testtools
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
@@ -262,6 +264,7 @@ func (t *HornerTestcase) Define(comp *wizard.CompiledIOP) {
 	parts := make([]query.HornerPart, len(t.Coefficients))
 	for i := range parts {
 		parts[i] = query.HornerPart{
+			Name:         fmt.Sprintf("HornerPart_%d", i),
 			SignNegative: t.SignNegativeParts[i],
 			Coefficients: make([]*sym.Expression, len(t.Coefficients[i])),
 			Selectors:    make([]ifaces.Column, len(t.Selectors[i])),

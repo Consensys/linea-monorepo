@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/go-corset/pkg/trace"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -82,7 +83,8 @@ func (s *schemaScanner) scanColumns() {
 		}
 
 		// #nosec G115 -- this bound will not overflow
-		s.Comp.InsertCommit(0, ifaces.ColID(name), size)
+		col := s.Comp.InsertCommit(0, ifaces.ColID(name), size)
+		pragmas.MarkLeftPadded(col)
 	}
 }
 

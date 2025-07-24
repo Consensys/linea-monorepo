@@ -7,24 +7,27 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
 
 type limitlessBuilder struct {
-	congWIOP    *wizard.CompiledIOP
-	traceLimits *config.TracesLimits
+	congWIOP     *wizard.CompiledIOP
+	traceLimits  *config.TracesLimits
+	WizardAssets *zkevm.LimitlessZkEVM
 }
 
-func NewLimitlessBuilder(congWIOP *wizard.CompiledIOP, traceLimits *config.TracesLimits) *limitlessBuilder {
+func NewBuilderLimitless(congWIOP *wizard.CompiledIOP, traceLimits *config.TracesLimits) *limitlessBuilder {
 	return &limitlessBuilder{congWIOP: congWIOP, traceLimits: traceLimits}
 }
 
 func (b *limitlessBuilder) Compile() (constraint.ConstraintSystem, error) {
-	return makeLimitlessCS(b), nil
+	return makeCSLimitless(b), nil
 }
 
 // Makes the constraint system for the execution-limitless circuit
-func makeLimitlessCS(b *limitlessBuilder) constraint.ConstraintSystem {
+func makeCSLimitless(b *limitlessBuilder) constraint.ConstraintSystem {
 	circuit := AllocateLimitless(b.congWIOP, b.traceLimits)
+
 	scs, err := frontend.Compile(fr.Modulus(), scs.NewBuilder, &circuit, frontend.WithCapacity(1<<24))
 	if err != nil {
 		panic(err)

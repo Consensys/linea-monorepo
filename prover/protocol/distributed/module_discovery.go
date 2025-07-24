@@ -28,6 +28,16 @@ var (
 	AnyModule ModuleName = ModuleName("any module")
 )
 
+// paddingInformation is an indication of how a column is padded
+type paddingInformation int
+
+const (
+	constantPaddingInformation = iota + 1
+	leftPaddingInformation
+	rightPaddingInformation
+	noPaddingInformation
+)
+
 // ModuleDiscoverer a set of methods responsible for the horizontal splittings (i.e., splitting to modules)
 type ModuleDiscoverer interface {
 	// Analyze is responsible for letting the module discoverer compute how to
@@ -46,7 +56,7 @@ type ModuleDiscoverer interface {
 
 	// SegmentBoundaryOfColumn returns the starting point and the ending point of the
 	// segmentation of a column.
-	SegmentBoundaryOf(run *wizard.ProverRuntime, col column.Natural) (int, int)
+	SegmentBoundaryOf(run *wizard.ProverRuntime, col column.Natural) (int, int, paddingInformation)
 }
 
 // ExpressionIsInModule is a helper function that returns the module of a [symbolic.Expression]

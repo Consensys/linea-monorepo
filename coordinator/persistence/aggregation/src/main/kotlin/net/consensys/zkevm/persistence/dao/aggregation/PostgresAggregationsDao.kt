@@ -24,7 +24,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class PostgresAggregationsDao(
   connection: SqlClient,
-  private val clock: Clock = Clock.System
+  private val clock: Clock = Clock.System,
 ) : AggregationsDao {
   private val log = LogManager.getLogger(this.javaClass.name)
   private val queryLog = SQLQueryLogger(log)
@@ -114,7 +114,7 @@ class PostgresAggregationsDao(
         ORDER BY bl.start_block_number ASC
       )
       select * from final_blobs
-    """.trimIndent()
+    """.trimIndent(),
   )
 
   private val insertQuery =
@@ -123,10 +123,10 @@ class PostgresAggregationsDao(
         insert into $aggregationsTable
         (start_block_number, end_block_number, status, start_block_timestamp, batch_count, aggregation_proof)
         VALUES ($1, $2, $3, $4, $5, CAST($6::text as jsonb))
-      """.trimIndent()
+      """.trimIndent(),
     )
 
-  private val selectAggregationProofs =
+  private val selectAggregations =
     connection.preparedQuery(
       """
         with previous_ends as (select *,
@@ -139,14 +139,12 @@ class PostgresAggregationsDao(
           where start_block_number > $1 and start_block_number - 1 != previous_end_block_number
           limit 1)
 
-        select
-          aggregation_proof
-        from previous_ends
+        select * from previous_ends
         where EXISTS (select 1 from previous_ends where start_block_number = $1)
           and (previous_ends.previous_end_block_number = previous_ends.start_block_number - 1 or previous_ends.start_block_number = $1)
           and ((select count(1) from first_gapped_aggregation) = 0 or previous_ends.start_block_number < (select * from first_gapped_aggregation))
         limit $3
-      """.trimIndent()
+      """.trimIndent(),
     )
 
   private val findAggregationByEndBlockNumber =
@@ -155,7 +153,7 @@ class PostgresAggregationsDao(
         select * from $aggregationsTable
         where end_block_number = $1
         LIMIT 2
-      """.trimIndent()
+      """.trimIndent(),
     )
 
   private val deleteUptoQuery =
@@ -163,7 +161,7 @@ class PostgresAggregationsDao(
       """
         delete from $aggregationsTable
         where end_block_number <= $1
-      """.trimIndent()
+      """.trimIndent(),
     )
 
   private val deleteAfterQuery =
@@ -171,7 +169,7 @@ class PostgresAggregationsDao(
       """
         delete from $aggregationsTable
         where start_block_number >= $1
-      """.trimIndent()
+      """.trimIndent(),
     )
 
   private fun parseBatchAnbBlobRecord(record: Row): BatchRecordWithBlobInfo {
@@ -183,7 +181,7 @@ class PostgresAggregationsDao(
       blobExpectedShnarf = record.getString("blob_expected_shnarf").decodeHex(),
       batchesCount = record.getLong("batches_count").toUInt(),
       batchStartBlockNumber = record.getLong("start_block_number").toULong(),
-      batchEndBlockNumber = record.getLong("end_block_number").toULong()
+      batchEndBlockNumber = record.getLong("end_block_number").toULong(),
     )
   }
 
@@ -195,11 +193,11 @@ class PostgresAggregationsDao(
     val blobExpectedShnarf: ByteArray,
     val batchesCount: UInt,
     val batchStartBlockNumber: ULong,
-    val batchEndBlockNumber: ULong
+    val batchEndBlockNumber: ULong,
   )
 
   override fun findConsecutiveProvenBlobs(
-    fromBlockNumber: Long
+    fromBlockNumber: Long,
   ): SafeFuture<List<BlobAndBatchCounters>> {
     return selectBatchesAndBlobsForAggregation
       .execute(Tuple.of(fromBlockNumber))
@@ -216,14 +214,14 @@ class PostgresAggregationsDao(
               endBlockNumber = firstBatch.blobEndBlockNumber,
               startBlockTimestamp = firstBatch.blobStartBlockTimestamp,
               endBlockTimestamp = firstBatch.blobEndBlockTimestamp,
-              expectedShnarf = firstBatch.blobExpectedShnarf
+              expectedShnarf = firstBatch.blobExpectedShnarf,
             )
             BlobAndBatchCounters(
               blobCounters = blobCounters,
               executionProofs = BlockIntervals(
                 startingBlockNumber = batches.first().batchStartBlockNumber,
-                upperBoundaries = batches.map { it.batchEndBlockNumber }
-              )
+                upperBoundaries = batches.map { it.batchEndBlockNumber },
+              ),
             )
           }
           .filter {
@@ -252,7 +250,7 @@ class PostgresAggregationsDao(
         status,
         clock.now().toEpochMilliseconds(),
         batchCount,
-        aggregationProof
+        aggregationProof,
       )
     queryLog.log(Level.TRACE, insertQuery.toString(), params)
     return insertQuery.execute(Tuple.tuple(params))
@@ -265,8 +263,8 @@ class PostgresAggregationsDao(
             DuplicatedRecordException(
               "Aggregation startBlockNumber=$startBlockNumber, endBlockNumber=$endBlockNumber " +
                 "batchCount=$batchCount is already persisted!",
-              th
-            )
+              th,
+            ),
           )
         } else {
           Future.failedFuture(th)
@@ -278,15 +276,15 @@ class PostgresAggregationsDao(
   override fun getProofsToFinalize(
     fromBlockNumber: Long,
     finalEndBlockCreatedBefore: Instant,
-    maximumNumberOfProofs: Int
+    maximumNumberOfProofs: Int,
   ): SafeFuture<List<ProofToFinalize>> {
-    return selectAggregationProofs
+    return selectAggregations
       .execute(
         Tuple.of(
           fromBlockNumber,
           aggregationStatusToDbValue(Aggregation.Status.Proven),
-          maximumNumberOfProofs
-        )
+          maximumNumberOfProofs,
+        ),
       )
       .toSafeFuture()
       .thenApply { rowSet ->
@@ -296,10 +294,27 @@ class PostgresAggregationsDao(
       }
   }
 
+  override fun findHighestConsecutiveEndBlockNumber(
+    fromBlockNumber: Long,
+  ): SafeFuture<Long?> {
+    return selectAggregations
+      .execute(
+        Tuple.of(
+          fromBlockNumber,
+          aggregationStatusToDbValue(Aggregation.Status.Proven),
+          Int.MAX_VALUE,
+        ),
+      )
+      .toSafeFuture()
+      .thenApply { rowSet ->
+        rowSet.lastOrNull()?.getLong("end_block_number")
+      }
+  }
+
   override fun findAggregationProofByEndBlockNumber(endBlockNumber: Long): SafeFuture<ProofToFinalize?> {
     return findAggregationByEndBlockNumber
       .execute(
-        Tuple.of(endBlockNumber)
+        Tuple.of(endBlockNumber),
       )
       .toSafeFuture()
       .thenApply { rowSet ->
@@ -309,7 +324,7 @@ class PostgresAggregationsDao(
           // if this happens, a conflation invariant was broken
           throw IllegalStateException(
             "Multiple aggregations found for endBlockNumber=$endBlockNumber " +
-              "aggregations=${aggregationProofs.toBlockIntervalsString()}"
+              "aggregations=${aggregationProofs.toBlockIntervalsString()}",
           )
         } else {
           aggregationProofs.firstOrNull()

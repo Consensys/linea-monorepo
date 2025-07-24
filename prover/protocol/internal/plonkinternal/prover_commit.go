@@ -138,6 +138,9 @@ func (pa LROCommitProverAction) Run(run *wizard.ProverRuntime) {
 			run.State.TryDel(fmt.Sprintf("%v_SOLSYNC", pa.Columns.L[i].GetColID()))
 			pa.ProverStateLock.Unlock()
 
+			// The absence of solsync means the Plonk instance is not used and
+			// we can simply assign zero vectors (the Plonk checks) are
+			// disactivated to make that possible.
 			if !foundSolSync {
 				zeroCol := smartvectors.NewConstant(field.Zero(), ctx.Columns.L[i].Size())
 				run.AssignColumn(ctx.Columns.L[i].GetColID(), zeroCol)
@@ -185,7 +188,7 @@ func (ctx *GenericPlonkProverAction) runGnarkPlonkProver(
 	sol_, err := ctx.SPR.Solve(
 		witness,
 		// Inject our special hint for the commitment. It's goal is to
-		// force the solver to pause once the commitment
+		// force the solver to pause once the commitment has been constructed.
 		solver.OverrideHint(
 			commitHintID,
 			ctx.solverCommitmentHint(solSync.comChan, solSync.randChan),

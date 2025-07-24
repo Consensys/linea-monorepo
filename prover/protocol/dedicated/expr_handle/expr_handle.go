@@ -19,31 +19,38 @@ import (
 )
 
 type ExprHandleProverAction struct {
-	Boarded    symbolic.ExpressionBoard
+	Expr       *symbolic.Expression
 	HandleName ifaces.ColID
-	DomainSize int
 	MaxRound   int
 }
 
+func (a *ExprHandleProverAction) DomainSize() int {
+	_, _, n := wizardutils.AsExpr(a.Expr)
+	return n
+}
+
 func (a *ExprHandleProverAction) Run(run *wizard.ProverRuntime) {
+
+	boarded := a.Expr.Board()
+
 	logrus.Tracef("running the expr handle assignment for %v, (round %v)", a.HandleName, a.MaxRound)
-	metadatas := a.Boarded.ListVariableMetadata()
+	metadatas := boarded.ListVariableMetadata()
 
 	for _, metadataInterface := range metadatas {
 		if handle, ok := metadataInterface.(ifaces.Column); ok {
 			witness := handle.GetColAssignment(run)
-			if witness.Len() != a.DomainSize {
+			if witness.Len() != a.DomainSize() {
 				utils.Panic("Query %v - Witness of %v has size %v which is below %v",
-					a.HandleName, handle.String(), witness.Len(), a.DomainSize)
+					a.HandleName, handle.String(), witness.Len(), a.DomainSize())
 			}
 		}
 	}
 
 	evalInputs := make([]sv.SmartVector, len(metadatas))
-	omega := fft.GetOmega(a.DomainSize)
+	omega := fft.GetOmega(a.DomainSize())
 	omegaI := field.One()
-	omegas := make([]field.Element, a.DomainSize)
-	for i := 0; i < a.DomainSize; i++ {
+	omegas := make([]field.Element, a.DomainSize())
+	for i := 0; i < a.DomainSize(); i++ {
 		omegas[i] = omegaI
 		omegaI.Mul(&omegaI, &omega)
 	}
@@ -55,19 +62,19 @@ func (a *ExprHandleProverAction) Run(run *wizard.ProverRuntime) {
 			evalInputs[k] = w
 		case coin.Info:
 			x := run.GetRandomCoinField(meta.Name)
-			evalInputs[k] = sv.NewConstant(x, a.DomainSize)
+			evalInputs[k] = sv.NewConstant(x, a.DomainSize())
 		case variables.X:
-			evalInputs[k] = meta.EvalCoset(a.DomainSize, 0, 1, false)
+			evalInputs[k] = meta.EvalCoset(a.DomainSize(), 0, 1, false)
 		case variables.PeriodicSample:
-			evalInputs[k] = meta.EvalCoset(a.DomainSize, 0, 1, false)
+			evalInputs[k] = meta.EvalCoset(a.DomainSize(), 0, 1, false)
 		case ifaces.Accessor:
-			evalInputs[k] = sv.NewConstant(meta.GetVal(run), a.DomainSize)
+			evalInputs[k] = sv.NewConstant(meta.GetVal(run), a.DomainSize())
 		default:
 			utils.Panic("Not a variable type %v in query %v", reflect.TypeOf(metadataInterface), a.HandleName)
 		}
 	}
 
-	resWitness := a.Boarded.Evaluate(evalInputs)
+	resWitness := boarded.Evaluate(evalInputs)
 	run.AssignColumn(a.HandleName, resWitness)
 }
 
@@ -88,7 +95,7 @@ func ExprHandle(comp *wizard.CompiledIOP, expr *symbolic.Expression, name ...str
 	}
 
 	res := comp.InsertCommit(maxRound, ifaces.ColID(handleName), length)
-	cs := comp.InsertGlobal(maxRound, ifaces.QueryID(handleName), expr.Sub(ifaces.ColumnAsVariable(res)))
+	comp.InsertGlobal(maxRound, ifaces.QueryID(handleName), expr.Sub(ifaces.ColumnAsVariable(res)))
 
 	// prover := func(run *wizard.ProverRuntime) {
 
@@ -163,9 +170,8 @@ func ExprHandle(comp *wizard.CompiledIOP, expr *symbolic.Expression, name ...str
 	//comp.SubProvers.AppendToInner(maxRound, prover)
 
 	comp.RegisterProverAction(maxRound, &ExprHandleProverAction{
-		Boarded:    boarded,
+		Expr:       expr,
 		HandleName: ifaces.ColID(handleName),
-		DomainSize: cs.DomainSize,
 		MaxRound:   maxRound,
 	})
 	return res

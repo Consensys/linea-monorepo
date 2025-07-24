@@ -36,8 +36,12 @@ interface AggregationsDao {
   fun getProofsToFinalize(
     fromBlockNumber: Long,
     finalEndBlockCreatedBefore: Instant,
-    maximumNumberOfProofs: Int
+    maximumNumberOfProofs: Int,
   ): SafeFuture<List<ProofToFinalize>>
+
+  fun findHighestConsecutiveEndBlockNumber(
+    fromBlockNumber: Long,
+  ): SafeFuture<Long?>
 
   fun findAggregationProofByEndBlockNumber(endBlockNumber: Long): SafeFuture<ProofToFinalize?>
 

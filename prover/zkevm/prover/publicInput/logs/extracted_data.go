@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -32,6 +33,14 @@ func NewExtractedData(comp *wizard.CompiledIOP, size int, name string) Extracted
 		// a filter on the columns with fetched data
 		FilterFetched: util.CreateCol(name, "FILTER_ON_FETCHED", size, comp),
 	}
+
+	// Tagging of "fetched" column hints the compiler on how this column should
+	// be padded. Without it, it will assume that there are no padding
+	// informations. The "arith" columns are already "grouped" with the columns
+	// of the logdata module and the compiler will already infer that they are
+	// right padded.
+	pragmas.MarkRightPadded(res.FilterFetched)
+
 	return res
 }
 

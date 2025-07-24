@@ -4,6 +4,7 @@ package sha2
 
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -63,7 +64,8 @@ func NewSha2ZkEvm(comp *wizard.CompiledIOP, s Settings) *Sha2SingleProvider {
 		},
 	}
 
-	man := dedicated.ManuallyShift(comp, sha2ProviderInput.Provider.Info.IsHashHi, -1)
+	man := dedicated.ManuallyShift(comp, sha2ProviderInput.Provider.Info.IsHashHi, -1, "shakiradata.SELECTOR_SHA2_RES_LO")
+	pragmas.MarkLeftPadded(man.Natural)
 	sha2ProviderInput.Provider.Info.IsHashLo = man.Natural
 	sha2ProviderInput.IsHashLoAssigner = man
 

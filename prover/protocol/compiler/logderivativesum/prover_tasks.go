@@ -1,6 +1,7 @@
 package logderivativesum
 
 import (
+	"fmt"
 	"runtime/debug"
 	"sync"
 
@@ -8,10 +9,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
@@ -64,6 +67,8 @@ func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
 					panicOnce.Do(func() {
 						panicMsg = r
 						panicTrace = debug.Stack()
+
+						inspectWiop(run)
 					})
 				}
 
@@ -237,6 +242,7 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 	// entries of T. It also preinitializes the values of ms
 	for frag := range a.T {
 
+		size := tCollapsed[frag].Len()
 		start, end := 0, tCollapsed[frag].Len()
 
 		if a.Segmenter != nil {
@@ -249,7 +255,7 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 
 		m[frag] = make([]field.Element, tCollapsed[frag].Len())
 
-		for k := start; k < end; k++ {
+		for k := max(0, start); k < min(size, end); k++ {
 			v := tCollapsed[frag].Get(k)
 			mapM[v] = [2]int{frag, k}
 		}
@@ -260,7 +266,8 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 	for i := range sCollapsed {
 
 		var (
-			start, stop = 0, sCollapsed[i].Len()
+			size        = sCollapsed[i].Len()
+			start, stop = 0, size
 			hasFilter   = a.SFilter[i] != nil
 			filter      []field.Element
 		)
@@ -274,19 +281,23 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 			filter = a.SFilter[i].GetColAssignment(run).IntoRegVecSaveAlloc()
 		}
 
-		for k := start; k < stop; k++ {
+		for k := max(0, start); k < min(stop, size); k++ {
 
 			if hasFilter && filter[k].IsZero() {
 				continue
 			}
 
 			if hasFilter && !filter[k].IsOne() {
-				utils.Panic(
+				err := fmt.Errorf(
 					"the filter column `%v` has a non-binary value at position `%v`: (%v)",
 					a.SFilter[i].GetColID(),
 					k,
 					filter[k].String(),
 				)
+
+				// Even if this is unconstrained, this is still worth interrupting the
+				// prover because it "should" be a binary column.
+				exit.OnUnsatisfiedConstraints(err)
 			}
 
 			var (
@@ -304,14 +315,29 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 					tableRow[j] = a.S[i][j].GetColAssignmentAt(run, k)
 				}
 
-				utils.Panic(
-					"entry %v of the table %v is not included in the table. tableRow=%v T-mapSize=%v T-name=%v\n",
+				err := fmt.Errorf(
+					"entry %v of the table %v is not included in the table. tableRow=%v T-mapSize=%v T-name=%v",
 					k, NameTable([][]ifaces.Column{a.S[i]}), vector.Prettify(tableRow), len(mapM), NameTable(a.T),
 				)
+
+				exit.OnUnsatisfiedConstraints(err)
 			}
 
 			mFrag, posInFragM := posInM[0], posInM[1]
-			m[mFrag][posInFragM].Add(&m[mFrag][posInFragM], &one)
+			mk := one
+
+			// In case, the S table gets virtually expanded we account for it
+			// by adding multiplicities for the first value is the table is
+			// left-padded orthe last value if the table is right padded. This
+			// corresponds to the behaviour that the module segmenter will have.
+			switch {
+			case k == 0 && start < 0:
+				mk = field.NewElement(uint64(-start + 1))
+			case k == size-1 && stop > size:
+				mk = field.NewElement(uint64(stop - size + 1))
+			}
+
+			m[mFrag][posInFragM].Add(&m[mFrag][posInFragM], &mk)
 		}
 
 	}
@@ -357,4 +383,38 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 			run.AssignLocalPoint(z.ZOpenings[frag].ID, packedZ[len(packedZ)-1])
 		}
 	})
+}
+
+func inspectWiop(run *wizard.ProverRuntime) {
+
+	if true {
+		return
+	}
+
+	columns := run.Spec.Columns.AllKeys()
+
+	fmt.Printf("Name; HasPragmaFullCol; HasPragmaLeftPadded; HasPragmaRightPadded; RangeStart; RangeEnd; Size")
+
+	for _, colID := range columns {
+
+		var (
+			col                     = run.Spec.Columns.GetHandle(colID).(column.Natural)
+			_, hasPragmaFullCol     = col.GetPragma(pragmas.FullColumnPragma)
+			_, hasPragmaLeftPadded  = col.GetPragma(pragmas.LeftPadded)
+			_, hasPragmaRightPadded = col.GetPragma(pragmas.RightPadded)
+		)
+
+		if !run.Columns.Exists(colID) {
+			fmt.Printf("%v; %v; %v; %v; %v; %v; %v\n", colID, hasPragmaFullCol, hasPragmaLeftPadded, hasPragmaRightPadded, "N/A", "N/A", col.Size())
+			continue
+		}
+
+		var (
+			v                    = col.GetColAssignment(run)
+			rangeStart, rangeEnd = sv.CoCompactRange(v)
+			size                 = v.Len()
+		)
+
+		fmt.Printf("%v; %v; %v; %v; %v; %v; %v\n", colID, hasPragmaFullCol, hasPragmaLeftPadded, hasPragmaRightPadded, rangeStart, rangeEnd, size)
+	}
 }

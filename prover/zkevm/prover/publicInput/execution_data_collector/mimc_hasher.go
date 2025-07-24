@@ -1,6 +1,8 @@
 package execution_data_collector
 
 import (
+	"math"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -45,7 +47,9 @@ func NewMIMCHasher(comp *wizard.CompiledIOP, inputData, inputIsActive ifaces.Col
 		State:         util.CreateCol(name, "STATE", size, comp),
 		IsData:        util.CreateCol(name, "IS_DATA", size, comp),
 	}
-	res.IsDataFirstRow = dedicated.CreateHeartBeat(comp, 0, size, 0, res.IsActive)
+	// Passing a very large size will ensure that the heartbeat produces the
+	// same result even if we change the length of the column.
+	res.IsDataFirstRow = dedicated.CreateHeartBeat(comp, 0, math.MaxInt, 0, res.IsActive)
 	res.IsDataOddRows = dedicated.CreateHeartBeat(comp, 0, 2, 1, res.IsActive)
 	return res
 }

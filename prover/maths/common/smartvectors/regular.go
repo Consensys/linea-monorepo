@@ -63,25 +63,17 @@ func (r *Regular) RotateRight(offset int) SmartVector {
 		return &resSlice
 	}
 
-	if offset > 0 {
-		// v and w may be the same vector thus we should use a
-		// separate leftover buffer for temporary memory buffers.
-		cutAt := len(*r) - offset
-		leftovers := vector.DeepCopy((*r)[cutAt:])
-		copy(resSlice[offset:], (*r)[:cutAt])
-		copy(resSlice[:offset], leftovers)
-		return &resSlice
+	if offset < 0 || offset > len(*r) {
+		offset = utils.PositiveMod(offset, len(*r))
 	}
 
-	if offset < 0 {
-		glueAt := len(*r) + offset
-		leftovers := vector.DeepCopy((*r)[:-offset])
-		copy(resSlice[:glueAt], (*r)[-offset:])
-		copy(resSlice[glueAt:], leftovers)
-		return &resSlice
-	}
-
-	panic("unreachable")
+	// v and w may be the same vector thus we should use a
+	// separate leftover buffer for temporary memory buffers.
+	cutAt := len(*r) - offset
+	leftovers := vector.DeepCopy((*r)[cutAt:])
+	copy(resSlice[offset:], (*r)[:cutAt])
+	copy(resSlice[:offset], leftovers)
+	return &resSlice
 }
 
 func (r *Regular) WriteInSlice(s []field.Element) {
@@ -210,7 +202,9 @@ func AllocFromPool(pool mempool.MemPool) *Pooled {
 
 func (p *Pooled) Free(pool mempool.MemPool) {
 	if p.poolPtr != nil {
-		pool.Free(p.poolPtr)
+		if err := pool.Free(p.poolPtr); err != nil {
+			utils.Panic("failed to free slice in pool: %v", err)
+		}
 	}
 	p.poolPtr = nil
 	p.Regular = nil

@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -51,12 +52,32 @@ func newLookUpTables(comp *wizard.CompiledIOP, maxNumKeccakf int) lookUpTables {
 	l.BaseADirty = comp.InsertPrecomputed(deriveName("BASE1_DIRTY"), baseADirty)
 	l.BaseBDirty = comp.InsertPrecomputed(deriveName("BASE2_DIRTY"), baseBDirty)
 
+	// This constraint is a small hack fixing an issue unrelated to keccak
+	// itself. The above-declared precomputed columns are grouped in a module
+	// named "STATIC" and it regroups common an small lookup tables and none of
+	// theses constraints is otherwise by a global or local constraint. This
+	// creates an edge-case where the corresponding GL module has nothing to
+	// prove and this bugs the compilation. To remediate, we add this dummy
+	// constraint that the first value of the column is equal to what it should
+	// be equal. This is always true and avoids the issue.
+	//
+	// Note: @alex: I had tried using a global constraint that A = A, but this
+	// gets simplified as 0 = 0 and panic instantly because the wizard won't
+	// detect any column in the expression.
+	comp.InsertLocal(0, "FILLING_FOR_STATIC_MODULE", symbolic.Sub(l.BaseAClean, baseAClean.Get(0)))
+
 	// tables for the RC columns
-	l.RC = dedicated.NewRepeatedPattern(comp, 0, valRCBase2Pattern(), verifiercol.NewConstantCol(field.One(), numRows(maxNumKeccakf)))
+	l.RC = dedicated.NewRepeatedPattern(
+		comp, 0, valRCBase2Pattern(),
+		verifiercol.NewConstantCol(
+			field.One(),
+			numRows(maxNumKeccakf),
+			"keccak-rc-pattern",
+		))
 
 	// tables to indicate when to use the output of the previous round as
 	// input for the next round.
-	l.DontUsePrevAIota = dedicated.CreateHeartBeat(comp, 0, keccak.NumRound, 0, verifiercol.NewConstantCol(field.One(), numRows(maxNumKeccakf)))
+	l.DontUsePrevAIota = dedicated.CreateHeartBeat(comp, 0, keccak.NumRound, 0, verifiercol.NewConstantCol(field.One(), numRows(maxNumKeccakf), "keccak-dont-use-prev-a-iota-heart-beat"))
 
 	return l
 }

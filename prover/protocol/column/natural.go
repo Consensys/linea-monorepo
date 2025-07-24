@@ -1,6 +1,8 @@
 package column
 
 import (
+	"strconv"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -85,7 +87,7 @@ func (n Natural) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) front
 // String returns the ID of the column as a string and implements [ifaces.Column]
 // and [github.com/consensys/linea-monorepo/prover/symbolic.Metadata]
 func (n Natural) String() string {
-	return string(n.GetColID())
+	return string(n.GetColID()) + "_" + strconv.Itoa(n.Round()) + "_" + strconv.Itoa(n.Size())
 }
 
 // Status returns the status of the column. It is only implemented for Natural

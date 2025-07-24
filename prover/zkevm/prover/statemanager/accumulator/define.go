@@ -329,7 +329,7 @@ func (am *Module) commitLeafHashingCols() {
 	ACCUMULATOR_INTERM[1] = "ACCUMULATOR_INTERM_NEXT"
 	ACCUMULATOR_INTERM[2] = "ACCUMULATOR_INTERM_HKEY"
 	am.Cols.Interm = make([]ifaces.Column, 3)
-	am.Cols.Zero = verifiercol.NewConstantCol(field.Zero(), am.NumRows())
+	am.Cols.Zero = verifiercol.NewConstantCol(field.Zero(), am.NumRows(), "merkle-tree-accumulator")
 	am.Cols.LeafOpenings.Prev = am.Comp.InsertCommit(am.Round, ifaces.ColID(ACCUMULATOR_LEAF_OPENING_PREV), am.NumRows())
 	am.Cols.LeafOpenings.Next = am.Comp.InsertCommit(am.Round, ifaces.ColID(ACCUMULATOR_LEAF_OPENING_NEXT), am.NumRows())
 	am.Cols.LeafOpenings.HKey = am.Comp.InsertCommit(am.Round, ifaces.ColID(ACCUMULATOR_LEAF_OPENING_HKEY), am.NumRows())
@@ -470,7 +470,7 @@ func (am *Module) checkEmptyLeaf() {
 	if err := emptyLeafField.SetBytesCanonical(emptyLeafBytes[:]); err != nil {
 		panic(err)
 	}
-	emptyLeaf := verifiercol.NewConstantCol(emptyLeafField, am.NumRows())
+	emptyLeaf := verifiercol.NewConstantCol(emptyLeafField, am.NumRows(), "accumulator-empty-leaves")
 	cols := am.Cols
 
 	// (Leaf[i+2] - emptyLeaf) * IsActiveAccumulator[i] * IsFirst[i] * IsInsert[i]

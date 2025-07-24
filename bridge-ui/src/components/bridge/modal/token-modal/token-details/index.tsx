@@ -10,13 +10,14 @@ import { Token } from "@/types";
 import { formatBalance, isEth } from "@/utils";
 
 interface TokenDetailsProps {
+  isConnected: boolean;
   token: Token;
   onTokenClick: (token: Token) => void;
   tokenPrice?: number;
   currency: CurrencyOption;
 }
 
-export default function TokenDetails({ token, onTokenClick, tokenPrice, currency }: TokenDetailsProps) {
+export default function TokenDetails({ isConnected, token, onTokenClick, tokenPrice, currency }: TokenDetailsProps) {
   const setSelectedToken = useTokenStore((state) => state.setSelectedToken);
   const fromChain = useChainStore.useFromChain();
   const { balance } = useTokenBalance(token);
@@ -45,6 +46,7 @@ export default function TokenDetails({ token, onTokenClick, tokenPrice, currency
   return (
     <button
       id={`token-details-${token.symbol}-btn`}
+      data-testid={`token-details-${token.symbol.toLowerCase()}-btn`}
       className={styles["token-wrapper"]}
       type="button"
       disabled={tokenNotFromCurrentLayer}
@@ -57,9 +59,9 @@ export default function TokenDetails({ token, onTokenClick, tokenPrice, currency
           <p className={styles["token-name"]}>{token.name}</p>
         </div>
       </div>
-      {!tokenNotFromCurrentLayer && (
+      {isConnected && !tokenNotFromCurrentLayer && (
         <div className={styles.rìght}>
-          <p className={styles["balance"]}>
+          <p className={styles["balance"]} data-testid={`token-details-${token.symbol.toLowerCase()}-amount`}>
             {formatBalance(formattedBalance, 8)} {token.symbol}
           </p>
           {totalValue !== undefined && (

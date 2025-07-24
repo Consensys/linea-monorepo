@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.30;
 
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { IPauseManager } from "./interfaces/IPauseManager.sol";
@@ -150,7 +150,7 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
     if (isPaused(_pauseType)) {
       revert IsPaused(_pauseType);
     }
-    
+
     unchecked {
       if (hasRole(SECURITY_COUNCIL_ROLE, _msgSender())) {
         pauseExpiryTimestamp = type(uint256).max - COOLDOWN_DURATION;
@@ -193,9 +193,7 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
    * @dev Throws if UNUSED pause type is used, or the pause expiry period has not passed.
    * @param _pauseType The pause type value.
    */
-  function unPauseByExpiredType(
-    PauseType _pauseType
-  ) external onlyUsedPausedTypes(_pauseType) {
+  function unPauseByExpiredType(PauseType _pauseType) external onlyUsedPausedTypes(_pauseType) {
     if (!isPaused(_pauseType)) {
       revert IsNotPaused(_pauseType);
     }

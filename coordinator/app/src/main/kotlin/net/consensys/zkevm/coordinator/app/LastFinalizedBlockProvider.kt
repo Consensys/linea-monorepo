@@ -1,7 +1,7 @@
 package net.consensys.zkevm.coordinator.app
 
-import build.linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import io.vertx.core.Vertx
+import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.domain.BlockParameter
 import net.consensys.linea.async.AsyncRetryer
 import org.apache.logging.log4j.LogManager
@@ -27,7 +27,7 @@ class L1BasedLastFinalizedBlockProvider(
   private val lineaRollupSmartContractClient: LineaRollupSmartContractClientReadOnly,
   private val consistentNumberOfBlocksOnL1: UInt,
   private val numberOfRetries: UInt = Int.MAX_VALUE.toUInt(),
-  private val pollingInterval: Duration = 2.seconds
+  private val pollingInterval: Duration = 2.seconds,
 ) : LastFinalizedBlockProvider {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
@@ -42,7 +42,7 @@ class L1BasedLastFinalizedBlockProvider(
           "Rollup finalized block updated from {} to {}, waiting {} blocks for confirmation",
           lastObservedBlock.get(),
           lastPolledBlockNumber,
-          consistentNumberOfBlocksOnL1
+          consistentNumberOfBlocksOnL1,
         )
         numberOfObservations.set(1)
         lastObservedBlock.set(lastPolledBlockNumber)
@@ -54,10 +54,10 @@ class L1BasedLastFinalizedBlockProvider(
       vertx,
       maxRetries = numberOfRetries.toInt(),
       backoffDelay = pollingInterval,
-      stopRetriesPredicate = isConsistentEnough
+      stopRetriesPredicate = isConsistentEnough,
     ) {
       lineaRollupSmartContractClient.finalizedL2BlockNumber(
-        blockParameter = BlockParameter.Tag.LATEST
+        blockParameter = BlockParameter.Tag.LATEST,
       )
     }
   }

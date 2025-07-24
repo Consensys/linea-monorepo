@@ -1,28 +1,28 @@
 import * as fs from "fs";
 import assert from "assert";
-import { AbstractSigner, BaseContract, BlockTag, TransactionReceipt, TransactionRequest, Wallet, ethers } from "ethers";
+import {
+  AbstractSigner,
+  BaseContract,
+  BlockTag,
+  TransactionReceipt,
+  TransactionRequest,
+  Wallet,
+  ethers,
+  toBeHex,
+} from "ethers";
 import path from "path";
 import { exec } from "child_process";
 import { L2MessageServiceV1 as L2MessageService, TokenBridgeV1_1 as TokenBridge, LineaRollupV6 } from "../typechain";
-import {
-  PayableOverrides,
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
-  TypedContractMethod,
-} from "../typechain/common";
+import { PayableOverrides, TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog } from "../typechain/common";
 import { MessageEvent, SendMessageArgs } from "./types";
 import { createTestLogger } from "../config/logger";
+import { randomUUID, randomInt } from "crypto";
+import { config } from "../config/tests-config";
 
 const logger = createTestLogger();
 
 export function etherToWei(amount: string): bigint {
   return ethers.parseEther(amount.toString());
-}
-
-export function readJsonFile(filePath: string): unknown {
-  const data = fs.readFileSync(filePath, "utf8");
-  return JSON.parse(data);
 }
 
 export const wait = (timeout: number) => new Promise((resolve) => setTimeout(resolve, timeout));
@@ -57,6 +57,63 @@ export const encodeData = (types: string[], values: unknown[], packed?: boolean)
   return ethers.AbiCoder.defaultAbiCoder().encode(types, values);
 };
 
+export async function isSendBundleMethodNotFound(rpcEndpoint: URL, targetBlockNumber = "0xffff") {
+  const lineaSendBundleClient = new LineaBundleClient(rpcEndpoint);
+  try {
+    await lineaSendBundleClient.lineaSendBundle([], generateRandomUUIDv4(), targetBlockNumber);
+  } catch (err) {
+    if (err instanceof Error) {
+      if (err.message === "Method not found") {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+export function generateRandomInt(max = 1000): number {
+  return randomInt(max);
+}
+
+export function generateRandomUUIDv4(): string {
+  return randomUUID();
+}
+
+export async function awaitUntil<T>(
+  callback: () => Promise<T>,
+  stopRetry: (a: T) => boolean,
+  pollingIntervalMs: number = 500,
+  timeoutMs: number = 2 * 60 * 1000,
+): Promise<T | null> {
+  let isExceedTimeOut = false;
+  setTimeout(() => {
+    isExceedTimeOut = true;
+  }, timeoutMs);
+
+  while (!isExceedTimeOut) {
+    const result = await callback();
+    if (stopRetry(result)) return result;
+    await wait(pollingIntervalMs);
+  }
+  return null;
+}
+
+export async function pollForBlockNumber(
+  provider: ethers.JsonRpcProvider,
+  expectedBlockNumber: number,
+  pollingIntervalMs: number = 500,
+  timeoutMs: number = 2 * 60 * 1000,
+): Promise<boolean> {
+  return (
+    (await awaitUntil(
+      async () => await provider.getBlockNumber(),
+      (a: number) => a >= expectedBlockNumber,
+      pollingIntervalMs,
+      timeoutMs,
+    )) != null
+  );
+}
+
 export class RollupGetZkEVMBlockNumberClient {
   private endpoint: URL;
   private request = {
@@ -65,7 +122,7 @@ export class RollupGetZkEVMBlockNumberClient {
       jsonrpc: "2.0",
       method: "rollup_getZkEVMBlockNumber",
       params: [],
-      id: 1,
+      id: generateRandomInt(),
     }),
   };
 
@@ -83,6 +140,8 @@ export class RollupGetZkEVMBlockNumberClient {
 
 export class LineaEstimateGasClient {
   private endpoint: URL;
+  private BASE_FEE_MULTIPLIER = 1.35;
+  private PRIORITY_FEE_MULTIPLIER = 1.05;
 
   public constructor(endpoint: URL) {
     this.endpoint = endpoint;
@@ -90,7 +149,7 @@ export class LineaEstimateGasClient {
 
   public async lineaEstimateGas(
     from: string,
-    to: string,
+    to?: string,
     data: string = "0x",
     value: string = "0x0",
   ): Promise<{ maxFeePerGas: bigint; maxPriorityFeePerGas: bigint; gasLimit: bigint }> {
@@ -107,17 +166,151 @@ export class LineaEstimateGasClient {
             value,
           },
         ],
-        id: 1,
+        id: generateRandomInt(),
       }),
     };
     const response = await fetch(this.endpoint, request);
     const responseJson = await response.json();
     assert("result" in responseJson);
+
+    const baseFeePerGas = this.getValueFromMultiplier(
+      BigInt(responseJson.result.baseFeePerGas),
+      this.BASE_FEE_MULTIPLIER,
+    );
+    const maxPriorityFeePerGas = this.getValueFromMultiplier(
+      BigInt(responseJson.result.priorityFeePerGas),
+      this.PRIORITY_FEE_MULTIPLIER,
+    );
+
     return {
-      maxFeePerGas: BigInt(responseJson.result.baseFeePerGas) + BigInt(responseJson.result.priorityFeePerGas),
-      maxPriorityFeePerGas: BigInt(responseJson.result.priorityFeePerGas),
+      maxFeePerGas: baseFeePerGas + maxPriorityFeePerGas,
+      maxPriorityFeePerGas,
       gasLimit: BigInt(responseJson.result.gasLimit),
     };
+  }
+
+  private getValueFromMultiplier(value: bigint, multiplier: number): bigint {
+    return (value * BigInt(multiplier * 100)) / 100n;
+  }
+}
+
+export class LineaBundleClient {
+  private endpoint: URL;
+
+  public constructor(endpoint: URL) {
+    this.endpoint = endpoint;
+  }
+
+  public async lineaSendBundle(
+    txs: string[],
+    replacementUUID: string,
+    blockNumber: string,
+  ): Promise<{ bundleHash: string }> {
+    const request = {
+      method: "post",
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "linea_sendBundle",
+        params: [
+          {
+            txs,
+            replacementUUID,
+            blockNumber,
+          },
+        ],
+        id: generateRandomInt(),
+      }),
+    };
+    const response = await fetch(this.endpoint, request);
+    const responseJson = await response.json();
+    if (responseJson.error?.code === -32601 && responseJson.error?.message === "Method not found") {
+      throw Error("Method not found");
+    }
+    assert("result" in responseJson);
+    return {
+      bundleHash: responseJson.result.bundleHash,
+    };
+  }
+
+  public async lineaCancelBundle(replacementUUID: string): Promise<boolean> {
+    const request = {
+      method: "post",
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "linea_cancelBundle",
+        params: [replacementUUID],
+        id: generateRandomInt(),
+      }),
+    };
+    const response = await fetch(this.endpoint, request);
+    const responseJson = await response.json();
+    if (responseJson.error?.code === -32601 && responseJson.error?.message === "Method not found") {
+      throw Error("Method not found");
+    }
+    assert("result" in responseJson);
+    return responseJson.result;
+  }
+}
+
+export class LineaShomeiClient {
+  private endpoint: URL;
+
+  public constructor(endpoint: URL) {
+    this.endpoint = endpoint;
+  }
+
+  public async rollupGetZkEVMStateMerkleProofV0(
+    startBlockNumber: number,
+    endBlockNumber: number,
+    zkStateManagerVersion: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ): Promise<any> {
+    const request = {
+      method: "post",
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "rollup_getZkEVMStateMerkleProofV0",
+        params: [
+          {
+            startBlockNumber,
+            endBlockNumber,
+            zkStateManagerVersion,
+          },
+        ],
+        id: generateRandomInt(),
+      }),
+    };
+    const response = await fetch(this.endpoint, request);
+    const responseJson = await response.json();
+    assert("result" in responseJson);
+    return responseJson;
+  }
+}
+
+export class LineaShomeiFrontendClient {
+  private endpoint: URL;
+
+  public constructor(endpoint: URL) {
+    this.endpoint = endpoint;
+  }
+
+  public async lineaGetProof(
+    address: string,
+    storageKeys: string[] = [],
+    blockParameter: string = "latest",
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ): Promise<any> {
+    const request = {
+      method: "post",
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "linea_getProof",
+        params: [address, storageKeys, blockParameter],
+        id: generateRandomInt(),
+      }),
+    };
+    const response = await fetch(this.endpoint, request);
+    return await response.json();
   }
 }
 
@@ -136,7 +329,7 @@ export class TransactionExclusionClient {
         jsonrpc: "2.0",
         method: "linea_getTransactionExclusionStatusV1",
         params: [txHash],
-        id: 1,
+        id: generateRandomInt(),
       }),
     };
     const response = await fetch(this.endpoint, request);
@@ -172,7 +365,7 @@ export class TransactionExclusionClient {
         jsonrpc: "2.0",
         method: "linea_saveRejectedTransactionV1",
         params: params,
-        id: 1,
+        id: generateRandomInt(),
       }),
     };
     const response = await fetch(this.endpoint, request);
@@ -180,9 +373,13 @@ export class TransactionExclusionClient {
   }
 }
 
-export async function getTransactionHash(txRequest: TransactionRequest, signer: Wallet): Promise<string> {
+export async function getRawTransactionHex(txRequest: TransactionRequest, signer: Wallet): Promise<string> {
   const rawTransaction = await signer.populateTransaction(txRequest);
-  const signature = await signer.signTransaction(rawTransaction);
+  return await signer.signTransaction(rawTransaction);
+}
+
+export async function getTransactionHash(txRequest: TransactionRequest, signer: Wallet): Promise<string> {
+  const signature = await getRawTransactionHex(txRequest, signer);
   return ethers.keccak256(signature);
 }
 
@@ -225,57 +422,18 @@ export async function waitForEvents<
 >(
   contract: TContract,
   eventFilter: TypedDeferredTopicFilter<TEvent>,
-  pollingInterval: number = 500,
+  pollingIntervalMs: number = 500,
   fromBlock?: BlockTag,
   toBlock?: BlockTag,
   criteria?: (events: TypedEventLog<TEvent>[]) => Promise<TypedEventLog<TEvent>[]>,
 ): Promise<TypedEventLog<TEvent>[]> {
-  let events = await getEvents(contract, eventFilter, fromBlock, toBlock, criteria);
-
-  while (events.length === 0) {
-    events = await getEvents(contract, eventFilter, fromBlock, toBlock, criteria);
-    await wait(pollingInterval);
-  }
-
-  return events;
-}
-
-// Currently only handle simple single return types - uint256 | bytesX | string | bool
-export async function pollForContractMethodReturnValue<
-  ExpectedReturnType extends bigint | string | boolean,
-  R extends [ExpectedReturnType],
->(
-  method: TypedContractMethod<[], R, "view">,
-  expectedReturnValue: ExpectedReturnType,
-  compareFunction: (a: ExpectedReturnType, b: ExpectedReturnType) => boolean = (a, b) => a === b,
-  pollingInterval: number = 500,
-  timeout: number = 2 * 60 * 1000,
-): Promise<boolean> {
-  let isExceedTimeOut = false;
-  setTimeout(() => {
-    isExceedTimeOut = true;
-  }, timeout);
-
-  while (!isExceedTimeOut) {
-    const returnValue = await method();
-    if (compareFunction(returnValue, expectedReturnValue)) return true;
-    await wait(pollingInterval);
-  }
-
-  return false;
-}
-
-// Currently only handle single uint256 return type
-export async function pollForContractMethodReturnValueExceedTarget<
-  ExpectedReturnType extends bigint,
-  R extends [ExpectedReturnType],
->(
-  method: TypedContractMethod<[], R, "view">,
-  targetReturnValue: ExpectedReturnType,
-  pollingInterval: number = 500,
-  timeout: number = 2 * 60 * 1000,
-): Promise<boolean> {
-  return pollForContractMethodReturnValue(method, targetReturnValue, (a, b) => a >= b, pollingInterval, timeout);
+  return (
+    (await awaitUntil(
+      async () => await getEvents(contract, eventFilter, fromBlock, toBlock, criteria),
+      (a: TypedEventLog<TEvent>[]) => a.length > 0,
+      pollingIntervalMs,
+    )) ?? []
+  );
 }
 
 export function getFiles(directory: string, fileRegex: RegExp[]): string[] {
@@ -284,46 +442,15 @@ export function getFiles(directory: string, fileRegex: RegExp[]): string[] {
   return filteredFiles.map((file) => fs.readFileSync(path.join(directory, file.name), "utf-8"));
 }
 
-export async function waitForFile(
-  directory: string,
-  regex: RegExp,
-  pollingInterval: number,
-  timeout: number,
-  criteria?: (fileName: string) => boolean,
-): Promise<string> {
-  const endTime = Date.now() + timeout;
-
-  while (Date.now() < endTime) {
-    try {
-      const files = fs.readdirSync(directory);
-
-      for (const file of files) {
-        if (regex.test(file) && (!criteria || criteria(file))) {
-          const filePath = path.join(directory, file);
-          const content = fs.readFileSync(filePath, "utf-8");
-          return content;
-        }
-      }
-    } catch (err) {
-      throw new Error(`Error reading directory: ${(err as Error).message}`);
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, pollingInterval));
-  }
-
-  throw new Error("File check timed out");
-}
-
 export async function sendTransactionsToGenerateTrafficWithInterval(
   signer: AbstractSigner,
   pollingInterval: number = 1_000,
 ) {
-  const { maxPriorityFeePerGas, maxFeePerGas } = await signer.provider!.getFeeData();
-  const transactionRequest = {
+  const lineaEstimateGasClient = new LineaEstimateGasClient(config.getL2BesuNodeEndpoint()!);
+
+  const transaction: TransactionRequest = {
     to: await signer.getAddress(),
     value: etherToWei("0.000001"),
-    maxPriorityFeePerGas: maxPriorityFeePerGas,
-    maxFeePerGas: maxFeePerGas,
   };
 
   let timeoutId: NodeJS.Timeout | null = null;
@@ -333,8 +460,17 @@ export async function sendTransactionsToGenerateTrafficWithInterval(
     if (!isRunning) return;
 
     try {
-      const tx = await signer.sendTransaction(transactionRequest);
+      const { maxPriorityFeePerGas, maxFeePerGas } = await lineaEstimateGasClient.lineaEstimateGas(
+        await signer.getAddress(),
+        await signer.getAddress(),
+        undefined,
+        toBeHex(transaction.value!),
+      );
+      const tx = await signer.sendTransaction({ ...transaction, maxPriorityFeePerGas, maxFeePerGas });
       await tx.wait();
+      logger.debug(
+        `Transaction sent successfully. hash=${tx.hash} maxPriorityFeePerGas=${tx.maxPriorityFeePerGas} maxFeePerGas=${tx.maxFeePerGas}`,
+      );
     } catch (error) {
       logger.error(`Error sending transaction. error=${JSON.stringify(error)}`);
     } finally {
@@ -350,7 +486,7 @@ export async function sendTransactionsToGenerateTrafficWithInterval(
       clearTimeout(timeoutId);
       timeoutId = null;
     }
-    logger.info("Stopped generating traffic on L2");
+    logger.debug("Stopped generating traffic on L2");
   };
 
   sendTransaction();
@@ -407,17 +543,22 @@ export const sendMessage = async <T extends LineaRollupV6 | L2MessageService>(
 
 export async function execDockerCommand(command: string, containerName: string): Promise<string> {
   const dockerCommand = `docker ${command} ${containerName}`;
-  logger.info(`Executing ${dockerCommand}...`);
+  logger.debug(`Executing ${dockerCommand}...`);
   return new Promise((resolve, reject) => {
     exec(dockerCommand, (error, stdout, stderr) => {
       if (error) {
         logger.error(`Error executing (${dockerCommand}). error=${stderr}`);
         reject(error);
       }
-      logger.info(`Execution success (${dockerCommand}). output=${stdout}`);
+      logger.debug(`Execution success (${dockerCommand}). output=${stdout}`);
       resolve(stdout);
     });
   });
+}
+
+export async function getDockerImageTag(containerName: string, imageRepoName: string): Promise<string> {
+  const inspectJsonOutput = JSON.parse(await execDockerCommand("inspect", containerName));
+  return inspectJsonOutput[0]["Config"]["Image"].replace(imageRepoName + ":", "");
 }
 
 export function generateRoleAssignments(

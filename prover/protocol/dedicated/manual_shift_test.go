@@ -38,7 +38,7 @@ var ListOfManuallyShiftedTestcase = []*ManuallyShiftedTestcase{
 
 func (m *ManuallyShiftedTestcase) Define(comp *wizard.CompiledIOP) {
 	root := comp.InsertCommit(0, ifaces.ColID(m.name)+"_ROOT", m.Root.Len())
-	m.m = ManuallyShift(comp, root, m.Offset)
+	m.m = ManuallyShift(comp, root, m.Offset, "")
 }
 
 func (m *ManuallyShiftedTestcase) Assign(run *wizard.ProverRuntime) {

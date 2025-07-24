@@ -3,6 +3,7 @@ package modexp
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
@@ -71,6 +72,8 @@ func newModule(comp *wizard.CompiledIOP, input Input) *Module {
 			ToSmallCirc: comp.InsertCommit(0, "MODEXP_TO_SMALL_CIRC", size),
 		}
 	)
+
+	pragmas.MarkRightPadded(mod.IsActive)
 
 	mod.Input.setIsModexp(comp)
 

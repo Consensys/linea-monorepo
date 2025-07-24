@@ -1,9 +1,6 @@
 package linea.blob
 
 import linea.kotlin.encodeHex
-import net.consensys.linea.blob.BlobCompressorVersion
-import net.consensys.linea.blob.GoNativeBlobCompressor
-import net.consensys.linea.blob.GoNativeBlobCompressorFactory
 import org.apache.logging.log4j.LogManager
 
 class BlobCompressionException(message: String) : RuntimeException(message)
@@ -35,42 +32,33 @@ interface BlobCompressor {
     val blockAppended: Boolean,
     val compressedSizeBefore: Int,
     // even when block is not appended, compressedSizeAfter should as if it was appended
-    val compressedSizeAfter: Int
+    val compressedSizeAfter: Int,
   )
+
+  fun compressedSize(data: ByteArray): Int
 }
 
 class GoBackedBlobCompressor private constructor(
-  internal val goNativeBlobCompressor: GoNativeBlobCompressor
+  internal val goNativeBlobCompressor: GoNativeBlobCompressor,
 ) : BlobCompressor {
 
   companion object {
-    @Volatile
-    private var instance: GoBackedBlobCompressor? = null
-
+    @JvmStatic
     fun getInstance(
-      compressorVersion: BlobCompressorVersion = BlobCompressorVersion.V0_1_0,
-      dataLimit: UInt
+      compressorVersion: BlobCompressorVersion,
+      dataLimit: Int,
     ): GoBackedBlobCompressor {
-      if (instance == null) {
-        synchronized(this) {
-          if (instance == null) {
-            val goNativeBlobCompressor = GoNativeBlobCompressorFactory.getInstance(compressorVersion)
-            val initialized = goNativeBlobCompressor.Init(
-              dataLimit.toInt(),
-              GoNativeBlobCompressorFactory.dictionaryPath.toString()
-            )
-            if (!initialized) {
-              throw InstantiationException(goNativeBlobCompressor.Error())
-            }
-            instance = GoBackedBlobCompressor(goNativeBlobCompressor)
-          } else {
-            throw IllegalStateException("Compressor singleton instance already created")
-          }
-        }
-      } else {
-        throw IllegalStateException("Compressor singleton instance already created")
+      require(dataLimit > 0) { "dataLimit=$dataLimit must be greater than 0" }
+
+      val goNativeBlobCompressor = GoNativeBlobCompressorFactory.getInstance(compressorVersion)
+      val initialized = goNativeBlobCompressor.Init(
+        dataLimit = dataLimit,
+        dictPath = GoNativeBlobCompressorFactory.dictionaryPath.toString(),
+      )
+      if (!initialized) {
+        throw InstantiationException(goNativeBlobCompressor.Error())
       }
-      return instance!!
+      return GoBackedBlobCompressor(goNativeBlobCompressor)
     }
   }
 
@@ -93,7 +81,7 @@ class GoBackedBlobCompressor private constructor(
       blockRLPEncoded.size,
       compressionSizeBefore,
       compressedSizeAfter,
-      1.0 - ((compressedSizeAfter - compressionSizeBefore).toDouble() / blockRLPEncoded.size)
+      1.0 - ((compressedSizeAfter - compressionSizeBefore).toDouble() / blockRLPEncoded.size),
     )
     val error = goNativeBlobCompressor.Error()
     if (error != null) {
@@ -115,5 +103,9 @@ class GoBackedBlobCompressor private constructor(
 
   override fun reset() {
     goNativeBlobCompressor.Reset()
+  }
+
+  override fun compressedSize(data: ByteArray): Int {
+    return goNativeBlobCompressor.RawCompressedSize(data, data.size)
   }
 }

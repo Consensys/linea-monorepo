@@ -23,11 +23,13 @@ export default function TransactionHistory() {
         <div className={styles.headline}>
           <div className={styles["action"]}>
             <Button
+              className={styles["go-back-button"]}
               variant="link"
               onClick={() => {
                 setIsTransactionHistoryOpen(false);
                 setIsBridgeOpen(true);
               }}
+              data-testid="transaction-history-close-btn"
             >
               <ArrowLeftIcon className={styles["go-back-icon"]} />
             </Button>
@@ -44,11 +46,13 @@ export default function TransactionHistory() {
       <div className={styles.headline}>
         <div className={styles["action"]}>
           <Button
+            className={styles["go-back-button"]}
             variant="link"
             onClick={() => {
               setIsTransactionHistoryOpen(false);
               setIsBridgeOpen(true);
             }}
+            data-testid="transaction-history-close-btn"
           >
             <ArrowLeftIcon className={styles["go-back-icon"]} />
           </Button>

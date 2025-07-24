@@ -124,7 +124,7 @@ func (ctx *compilationCtx) commitGateColumns() {
 				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("PI_%v", i), tinyPISize(ctx.Plonk.SPR))
 				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, field.Zero(), ctx.Columns.TinyPI[i])
 			} else {
-				ctx.Columns.PI[i] = verifiercol.NewConstantCol(field.Zero(), nbRow)
+				ctx.Columns.PI[i] = verifiercol.NewConstantCol(field.Zero(), nbRow, "")
 			}
 			ctx.Columns.Cp[i] = ctx.comp.InsertCommit(ctx.Round, ctx.colIDf("Cp_%v", i), nbRow)
 			ctx.Columns.Activators[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("ACTIVATOR_%v", i), 1)
@@ -146,7 +146,7 @@ func (ctx *compilationCtx) commitGateColumns() {
 				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("PI_%v", i), tinyPISize(ctx.Plonk.SPR))
 				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, field.Zero(), ctx.Columns.TinyPI[i])
 			} else {
-				ctx.Columns.PI[i] = verifiercol.NewConstantCol(field.Zero(), nbRow)
+				ctx.Columns.PI[i] = verifiercol.NewConstantCol(field.Zero(), nbRow, "")
 			}
 			ctx.Columns.L[i] = ctx.comp.InsertCommit(ctx.Round, ctx.colIDf("L_%v", i), nbRow)
 			ctx.Columns.R[i] = ctx.comp.InsertCommit(ctx.Round, ctx.colIDf("R_%v", i), nbRow)

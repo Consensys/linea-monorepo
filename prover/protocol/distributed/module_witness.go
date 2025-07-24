@@ -1,14 +1,17 @@
 package distributed
 
 import (
+	"fmt"
+	"sync"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -16,6 +19,38 @@ var (
 	// in the [wizard.ProverRuntime.State]
 	moduleWitnessKey = "MODULE_WITNESS"
 )
+
+// ModuleSegmentationBlueprint is a blueprint for the segmentation of a
+// module. It contains the informations of ModuleGL or ModuleLPP that are
+// relevant to performing the module segmentation. The raison d'être of this
+// structure is to avoid having to deal with the the complete [ModuleGL] or
+// [ModuleLPP] structure which are massive compared to what is actually required
+// to perform the segmentation.
+type ModuleSegmentationBlueprint struct {
+	// ModuleName indicates the name of the module
+	ModuleNames []ModuleName
+	// ReceivedValuesGlobalRoots stores the list of the root column for the
+	// [ModuleGL.ReceivedValuesGlobalAccs] for each received value.
+	ReceivedValuesGlobalAccsRoots []ifaces.ColID
+	// ReceivedValuesGlobalPosition stores the list of the position of the
+	// [ModuleGL.ReceivedValuesGlobalAccs] for each received value.
+	ReceivedValuesGlobalAccsPositions []int
+	// NextN0SelectorRoots stores the list of the selector columns ID for the
+	// Horner queries.
+	NextN0SelectorRoots [][]ifaces.ColID
+	// NextN0SelectorIsConst stores a list of boolean indicating if the the
+	// selector is constant.
+	NextN0SelectorIsConsts [][]bool
+	// NextN0SelectorConsts stores the list of the constants for the Horner
+	// queries.
+	NextN0SelectorConsts [][]field.Element
+	// NextN0SelectorConstSize lists the size of the constants column that are
+	// used for the Horner queries.
+	NextN0SelectorConstSizes [][]int
+	// LPPColumnSets stores the list of the columns that are used for the
+	// LPP segments.
+	LPPColumnSets [][]ifaces.ColID
+}
 
 // ModuleWitnessGL is a structure collecting the witness of a module. And
 // stores all the informations that are necessary to build the witness.
@@ -43,7 +78,7 @@ type ModuleWitnessGL struct {
 // can be for a group of modules.
 type ModuleWitnessLPP struct {
 	// ModuleName indicates the name of the module
-	ModuleName ModuleName
+	ModuleName []ModuleName
 	// ModuleIndex indicates the vertical split of the current module
 	ModuleIndex int
 	// InitialFiatShamirState is the initial FiatShamir state to set at
@@ -59,15 +94,22 @@ type ModuleWitnessLPP struct {
 // SegmentRuntime scans a [wizard.ProverRuntime] and returns a list of
 // [ModuleWitness] that contains the witness for each segment of each
 // module.
-func SegmentRuntime(runtime *wizard.ProverRuntime, distributedWizard *DistributedWizard) (witnessesGL []*ModuleWitnessGL, witnessesLPP []*ModuleWitnessLPP) {
+func SegmentRuntime(
+	runtime *wizard.ProverRuntime,
+	disc ModuleDiscoverer,
+	blueprintGLs, blueprintLPPs []ModuleSegmentationBlueprint,
+) (
+	witnessesGL []*ModuleWitnessGL,
+	witnessesLPP []*ModuleWitnessLPP,
+) {
 
-	for i := range distributedWizard.GLs {
-		wGL := SegmentModuleGL(runtime, distributedWizard.GLs[i])
+	for i := range blueprintGLs {
+		wGL := SegmentModuleGL(runtime, disc, &blueprintGLs[i])
 		witnessesGL = append(witnessesGL, wGL...)
 	}
 
-	for i := range distributedWizard.LPPs {
-		wLPP := SegmentModuleLPP(runtime, distributedWizard.LPPs[i])
+	for i := range blueprintLPPs {
+		wLPP := SegmentModuleLPP(runtime, disc, &blueprintLPPs[i])
 		witnessesLPP = append(witnessesLPP, wLPP...)
 	}
 
@@ -75,13 +117,13 @@ func SegmentRuntime(runtime *wizard.ProverRuntime, distributedWizard *Distribute
 }
 
 // SegmentModule produces the list of the [ModuleWitness] for a given module
-func SegmentModuleGL(runtime *wizard.ProverRuntime, moduleGL *ModuleGL) (witnessesGL []*ModuleWitnessGL) {
+func SegmentModuleGL(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, blueprintGL *ModuleSegmentationBlueprint) (witnessesGL []*ModuleWitnessGL) {
 
 	var (
-		fmi                  = moduleGL.DefinitionInput
+		moduleName           = blueprintGL.ModuleNames[0]
 		cols                 = runtime.Spec.Columns.AllKeys()
-		nbSegmentModule      = NbSegmentOfModule(runtime, fmi.Disc, []ModuleName{fmi.ModuleName})
-		receivedValuesGlobal = make([]field.Element, len(moduleGL.ReceivedValuesGlobalAccs))
+		nbSegmentModule      = NbSegmentOfModule(runtime, disc, []ModuleName{moduleName})
+		receivedValuesGlobal = make([]field.Element, len(blueprintGL.ReceivedValuesGlobalAccsRoots))
 	)
 
 	witnessesGL = make([]*ModuleWitnessGL, nbSegmentModule)
@@ -89,7 +131,7 @@ func SegmentModuleGL(runtime *wizard.ProverRuntime, moduleGL *ModuleGL) (witness
 	for moduleIndex := range witnessesGL {
 
 		moduleWitnessGL := &ModuleWitnessGL{
-			ModuleName:           fmi.ModuleName,
+			ModuleName:           moduleName,
 			ModuleIndex:          moduleIndex,
 			IsFirst:              moduleIndex == 0,
 			IsLast:               moduleIndex == nbSegmentModule-1,
@@ -101,51 +143,47 @@ func SegmentModuleGL(runtime *wizard.ProverRuntime, moduleGL *ModuleGL) (witness
 
 			col := runtime.Spec.Columns.GetHandle(col)
 
-			if ModuleOfColumn(fmi.Disc, col) != fmi.ModuleName {
+			if ModuleOfColumn(disc, col) != moduleName {
 				continue
 			}
 
-			segment := SegmentOfColumn(runtime, fmi.Disc, col, moduleIndex, nbSegmentModule)
+			segment := SegmentOfColumn(runtime, disc, col, moduleIndex, nbSegmentModule)
 			moduleWitnessGL.Columns[col.GetColID()] = segment
 		}
 
 		witnessesGL[moduleIndex] = moduleWitnessGL
-		receivedValuesGlobal = moduleWitnessGL.NextReceivedValuesGlobal(moduleGL)
+		receivedValuesGlobal = moduleWitnessGL.NextReceivedValuesGlobal(blueprintGL)
 	}
 
 	return witnessesGL
 }
 
 // SegmentModuleLPP produces the list of the [ModuleWitness] for a given module
-func SegmentModuleLPP(runtime *wizard.ProverRuntime, moduleLPP *ModuleLPP) (witnessesLPP []*ModuleWitnessLPP) {
+func SegmentModuleLPP(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, moduleLPP *ModuleSegmentationBlueprint) (witnessesLPP []*ModuleWitnessLPP) {
 
 	var (
-		fmis          = moduleLPP.DefinitionInputs
 		cols          = runtime.Spec.Columns.AllKeys()
-		_, _, hArgs   = getQueryArgs(fmis)
-		n0            = make([]int, len(hArgs))
-		moduleNames   = make([]ModuleName, 0, len(fmis))
+		n0            = make([]int, len(moduleLPP.NextN0SelectorRoots))
 		moduleNameSet = make(map[ModuleName]struct{})
 		columnsLPPSet = make(map[ifaces.ColID]struct{})
 	)
 
-	for _, fmi := range moduleLPP.DefinitionInputs {
-		moduleNames = append(moduleNames, fmi.ModuleName)
-		moduleNameSet[fmi.ModuleName] = struct{}{}
-		for col := range fmi.ColumnsLPPSet {
+	for moduleIndex := range moduleLPP.LPPColumnSets {
+		moduleNameSet[moduleLPP.ModuleNames[moduleIndex]] = struct{}{}
+		for _, col := range moduleLPP.LPPColumnSets[moduleIndex] {
 			columnsLPPSet[col] = struct{}{}
 		}
 	}
 
 	var (
-		nbSegmentModule = NbSegmentOfModule(runtime, moduleLPP.Disc, moduleNames)
+		nbSegmentModule = NbSegmentOfModule(runtime, disc, moduleLPP.ModuleNames)
 		witnessesLPPs   = make([]*ModuleWitnessLPP, nbSegmentModule)
 	)
 
 	for moduleIndex := range witnessesLPPs {
 
 		moduleWitnessLPP := &ModuleWitnessLPP{
-			ModuleName:  moduleNames[moduleIndex],
+			ModuleName:  moduleLPP.ModuleNames,
 			ModuleIndex: moduleIndex,
 			Columns:     make(map[ifaces.ColID]smartvectors.SmartVector),
 			N0Values:    n0,
@@ -158,7 +196,7 @@ func SegmentModuleLPP(runtime *wizard.ProverRuntime, moduleLPP *ModuleLPP) (witn
 			}
 
 			col := runtime.Spec.Columns.GetHandle(col)
-			segment := SegmentOfColumn(runtime, moduleLPP.Disc, col, moduleIndex, nbSegmentModule)
+			segment := SegmentOfColumn(runtime, disc, col, moduleIndex, nbSegmentModule)
 			moduleWitnessLPP.Columns[col.GetColID()] = segment
 		}
 
@@ -169,14 +207,17 @@ func SegmentModuleLPP(runtime *wizard.ProverRuntime, moduleLPP *ModuleLPP) (witn
 	return witnessesLPPs
 }
 
+var (
+	segmentWarningCache = &sync.Map{}
+)
+
 // NbSegmentOfModule returns the number of segments for a given module
-func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, moduleName []ModuleName) int {
+func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, moduleName []ModuleName) (nbSegment int) {
 
 	var (
-		cols                  = runtime.Spec.Columns.AllKeys()
-		nbSegmentModule       = -1
-		colNamesWithOrientErr = []ifaces.ColID{}
-		moduleSet             = map[ModuleName]struct{}{}
+		cols            = runtime.Spec.Columns.AllKeys()
+		nbSegmentModule = -1
+		moduleSet       = map[ModuleName]struct{}{}
 	)
 
 	for _, mn := range moduleName {
@@ -187,26 +228,44 @@ func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, mod
 
 		var (
 			col = runtime.Spec.Columns.GetHandle(col)
-			mn  = ModuleOfColumn(disc, col)
+			mn  = disc.ModuleOf(col.(column.Natural))
 		)
+
+		if len(mn) == 0 {
+			disc := disc.(*StandardModuleDiscoverer)
+			utils.Panic("one column does not belong to any module: %v, disc: %v, mn: %v", col.GetColID(), disc.ColumnsToModule, mn)
+		}
 
 		if _, ok := moduleSet[mn]; !ok {
 			continue
 		}
 
 		var (
-			newSize         = NewSizeOfColumn(disc, col)
-			start, stop     = disc.SegmentBoundaryOf(runtime, col.(column.Natural))
-			nbSegmentForCol = utils.DivExact(stop-start, newSize)
+			newSize                  = NewSizeOfColumn(disc, col)
+			start, stop, paddingInfo = disc.SegmentBoundaryOf(runtime, col.(column.Natural))
+			nbSegmentForCol          = utils.DivExact(stop-start, newSize)
 		)
 
 		if nbSegmentForCol >= nbSegmentModule {
+
+			if nbSegmentForCol >= 4 {
+				col := col.(column.Natural)
+				qbm, _ := disc.(*StandardModuleDiscoverer).QbmOf(col)
+
+				if _, ok := segmentWarningCache.Load(qbm.ModuleName); !ok {
+					fmt.Printf("[large nb segment] module=%v qbm=%v column=%v nbSegment=%v paddingInfo=%v start=%v stop=%v newSize=%v originalSize=%v\n",
+						mn, qbm.ModuleName, col.ID, nbSegmentForCol, paddingInfo, start, stop, newSize, col.Size(),
+					)
+					segmentWarningCache.Store(qbm.ModuleName, struct{}{})
+				}
+			}
+
 			nbSegmentModule = nbSegmentForCol
 		}
 	}
 
 	if nbSegmentModule == -1 {
-		utils.Panic("could not resolve the number of segment for module %v. columns with ambiguous orientation error: %v", moduleName, colNamesWithOrientErr)
+		utils.Panic("could not resolve the number of segment for module %v", moduleName)
 	}
 
 	return nbSegmentModule
@@ -226,73 +285,206 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, col i
 		// standard module. But we might need to adjust for the LPP columns because
 		// LPP modules group several standard modules together and they might have
 		// different number of segments.
-		startSeg, stopSeg = disc.SegmentBoundaryOf(runtime, col.(column.Natural))
+		startSeg, stopSeg, paddingInfo = disc.SegmentBoundaryOf(runtime, col.(column.Natural))
 	)
 
-	if startSeg > 0 && (stopSeg-startSeg) < totalNbSegment*newSize {
+	if paddingInfo == leftPaddingInformation && (stopSeg-startSeg) < totalNbSegment*newSize {
 		startSeg = stopSeg - totalNbSegment*newSize
 	}
 
 	var (
-		start               = startSeg + index*newSize
-		end                 = start + newSize
-		assignment          = col.GetColAssignment(runtime)
-		padding, isPaddable = pragmas.IsPaddable(col)
+		start      = startSeg + index*newSize
+		end        = start + newSize
+		assignment = col.GetColAssignment(runtime)
 	)
 
-	isOOB := end > col.Size() || start < 0
+	// This switch case corresponds to a dirty-hack where the original column.
+	// It is unexpected to have start < 0 and end > 0 due to the fact that the
+	// columns and segment size are all power of two. And same observation for
+	// stop > size and start < size.
+	switch {
 
-	// This dirty hack is needed because sometime, the log-derivative-m columns are
-	// paired with precomputed columns. It means their sizes are not affected by the
-	// splitter and they will go OOB if they are used for more than 1 segment. When,
-	// this happens we "pad" it on the fly with zeroes to signify that they corresponds
-	// to unmatched lookup value.
-	if isOOB && isPaddable {
+	// This is the regular case and there is no hack going on here.
+	case start >= 0 && end <= col.Size():
+		return assignment.SubVector(start, end)
+
+	case start < 0 && end <= 0:
+		// Otherwise, the padding technique is completely fine.
+		if startSeg == 0 {
+			logrus.Warnf("[ModuleWitnessOverflow] start and end are both negative, "+
+				"name=%v length=%v start=%v stop=%v sub-module-segment=[%v - %v]. "+
+				"Going to use the first value of the vector as a constant but this might fail.",
+				col.GetColID(), col.Size(), start, end, startSeg, stopSeg)
+		}
+		// At this point, we are sure that the correct padding value is the
+		// first value.
+		padding := assignment.Get(0)
 		return smartvectors.NewConstant(padding, newSize)
-	}
 
-	if isOOB {
-		utils.Panic("going to overflow a column, name=%v length=%v start=%v stop=%v", col.GetColID(), col.Size(), start, end)
-	}
+	case start >= col.Size() && end > col.Size():
+		// Otherwise, the padding technique is completely fine.
+		if stopSeg == col.Size() {
+			logrus.Warnf("[ModuleWitnessOverflow] start and end are both greater than the length of the vector, "+
+				"name=%v length=%v start=%v stop=%v sub-module-segment=[%v - %v]. "+
+				"Going to use the last value of the vector as a constant but this might fail.",
+				col.GetColID(), col.Size(), start, end, startSeg, stopSeg)
+		}
+		// At this point, we are sure that the correct padding value is the
+		// last value (otherwise, we would have no way of guessing it).
+		padding := assignment.Get(col.Size() - 1)
+		return smartvectors.NewConstant(padding, newSize)
 
-	return assignment.SubVector(start, end)
+	case start == 0 && end > col.Size():
+
+		logrus.Warnf("[ModuleWitnessOverflow] the segment is larger than the segment size. "+
+			"name=%v length=%v start=%v stop=%v sub-module-segment=[%v - %v]. "+
+			"Going to extend the column on the right by repeating the last value but this might fail. You may want to increase the bootstrapper size for this column so that it is always larger than the new size",
+			col.GetColID(), col.Size(), start, end, startSeg, stopSeg)
+
+		return smartvectors.RightPadded(
+			assignment.IntoRegVecSaveAlloc(),
+			assignment.Get(col.Size()-1),
+			newSize,
+		)
+
+	case start < 0 && end == col.Size():
+
+		logrus.Warnf("[ModuleWitnessOverflow] the segment is larger than the segment size. "+
+			"name=%v length=%v start=%v stop=%v sub-module-segment=[%v - %v]. "+
+			"Going to extend the column on the left by repeating the first value but this might fail. You may want to increase the bootstrapper size for this column so that it is always larger than the new size",
+			col.GetColID(), col.Size(), start, end, startSeg, stopSeg)
+
+		return smartvectors.LeftPadded(
+			assignment.IntoRegVecSaveAlloc(),
+			assignment.Get(0),
+			newSize,
+		)
+
+	default:
+		utils.Panic(
+			"unexpected case, col=%v, start=%v, end=%v, size=%v, startSeg=%v, stopSeg=%v",
+			col, start, end, col.Size(), startSeg, stopSeg,
+		)
+		return nil
+	}
 }
 
-// NextN0s returns the next value of N0, from the current one and the witness
-// of the current module.
-func (mw *ModuleWitnessLPP) NextN0s(moduleLPP *ModuleLPP) []int {
+// Blueprint returns the blueprint for the current module.
+func (moduleGL *ModuleGL) Blueprint() ModuleSegmentationBlueprint {
 
-	newN0s := append([]int{}, mw.N0Values...)
-	args := moduleLPP.Horner.Parts
+	blueprintGL := ModuleSegmentationBlueprint{
+		ModuleNames:                       []ModuleName{moduleGL.DefinitionInput.ModuleName},
+		ReceivedValuesGlobalAccsRoots:     make([]ifaces.ColID, len(moduleGL.SentValuesGlobal)),
+		ReceivedValuesGlobalAccsPositions: make([]int, len(moduleGL.SentValuesGlobal)),
+	}
 
-	for i := range newN0s {
+	for i, loc := range moduleGL.SentValuesGlobal {
 
-		for k := range args[i].Selectors {
+		var (
+			col     = column.RootParents(loc.Pol)
+			pos     = column.StackOffsets(loc.Pol)
+			colName = col.GetColID()
+		)
+
+		blueprintGL.ReceivedValuesGlobalAccsRoots[i] = colName
+		blueprintGL.ReceivedValuesGlobalAccsPositions[i] = pos
+	}
+
+	return blueprintGL
+}
+
+// Blueprint returns the blueprint for the current module.
+func (moduleLPP *ModuleLPP) Blueprint() ModuleSegmentationBlueprint {
+
+	hornerParts := moduleLPP.Horner.Parts
+	numHornerPart := len(moduleLPP.Horner.Parts)
+	numSubmodule := len(moduleLPP.ModuleNames())
+
+	res := ModuleSegmentationBlueprint{
+		ModuleNames:              moduleLPP.ModuleNames(),
+		NextN0SelectorRoots:      make([][]ifaces.ColID, numHornerPart),
+		NextN0SelectorIsConsts:   make([][]bool, numHornerPart),
+		NextN0SelectorConsts:     make([][]field.Element, numHornerPart),
+		NextN0SelectorConstSizes: make([][]int, numHornerPart),
+		LPPColumnSets:            make([][]ifaces.ColID, numSubmodule),
+	}
+
+	for i, di := range moduleLPP.DefinitionInputs {
+		res.LPPColumnSets[i] = make([]ifaces.ColID, len(di.ColumnsLPP))
+		for j := range di.ColumnsLPP {
+			res.LPPColumnSets[i][j] = di.ColumnsLPP[j].GetColID()
+		}
+	}
+
+	for i := range hornerParts {
+
+		numParts := len(hornerParts[i].Selectors)
+		res.NextN0SelectorConstSizes[i] = make([]int, numParts)
+		res.NextN0SelectorRoots[i] = make([]ifaces.ColID, numParts)
+		res.NextN0SelectorIsConsts[i] = make([]bool, numParts)
+		res.NextN0SelectorConsts[i] = make([]field.Element, numParts)
+
+		for k := range hornerParts[i].Selectors {
 
 			// Note: the selector might be a non-natural column. Possibly a const-col.
-			selCol := args[i].Selectors[k]
+			selCol := hornerParts[i].Selectors[k]
+			res.NextN0SelectorRoots[i][k] = selCol.GetColID()
 
 			if constCol, isConstCol := selCol.(verifiercol.ConstCol); isConstCol {
 
-				if constCol.F.IsZero() {
-					continue
+				if !constCol.F.IsZero() || constCol.F.IsOne() {
+					utils.Panic("the selector column has non-binary values: %v", constCol.F.String())
 				}
 
-				if constCol.F.IsOne() {
-					newN0s[i] += constCol.Size()
-					continue
-				}
+				res.NextN0SelectorConsts[i][k] = constCol.F
+				res.NextN0SelectorIsConsts[i][k] = true
+				res.NextN0SelectorConstSizes[i][k] = constCol.Size()
 
-				utils.Panic("the selector column has non-zero values: %v", constCol.F.String())
+				continue
 			}
 
 			// Expectedly, at this point. The column must be a natural column. We can't support
 			// shifted selector columns.
 			_ = selCol.(column.Natural)
+		}
+	}
 
-			selSV, ok := mw.Columns[selCol.GetColID()]
+	return res
+}
+
+// NextN0s returns the next value of N0, from the current one and the witness
+// of the current module.
+func (mw *ModuleWitnessLPP) NextN0s(blueprintLPP *ModuleSegmentationBlueprint) []int {
+
+	newN0s := append([]int{}, mw.N0Values...)
+
+	for i := range blueprintLPP.NextN0SelectorRoots {
+		for k := range blueprintLPP.NextN0SelectorRoots[i] {
+
+			var (
+				selColID        = blueprintLPP.NextN0SelectorRoots[i][k]
+				selColIsConst   = blueprintLPP.NextN0SelectorIsConsts[i][k]
+				selColConst     = blueprintLPP.NextN0SelectorConsts[i][k]
+				selColConstSize = blueprintLPP.NextN0SelectorConstSizes[i][k]
+			)
+
+			if selColIsConst {
+
+				if selColConst.IsZero() {
+					continue
+				}
+
+				if selColConst.IsOne() {
+					newN0s[i] += selColConstSize
+					continue
+				}
+
+				utils.Panic("the selector column has non-zero values: %v", selColConst.String())
+			}
+
+			selSV, ok := mw.Columns[selColID]
 			if !ok {
-				utils.Panic("selector: %v is missing from witness columns for module: %v index: %v", selCol, mw.ModuleName, mw.ModuleIndex)
+				utils.Panic("selector: %v is missing from witness columns for module: %v index: %v", selColID, mw.ModuleName, mw.ModuleIndex)
 			}
 
 			sel := selSV.IntoRegVecSaveAlloc()
@@ -310,21 +502,24 @@ func (mw *ModuleWitnessLPP) NextN0s(moduleLPP *ModuleLPP) []int {
 
 // NextReceivedValuesGlobal returns the next value of ReceivedValuesGlobal, from
 // the witness of the current module.
-func (mw *ModuleWitnessGL) NextReceivedValuesGlobal(moduleGL *ModuleGL) []field.Element {
+func (mw *ModuleWitnessGL) NextReceivedValuesGlobal(blueprintGL *ModuleSegmentationBlueprint) []field.Element {
 
 	newReceivedValuesGlobal := make([]field.Element, len(mw.ReceivedValuesGlobal))
 
-	for i, loc := range moduleGL.SentValuesGlobal {
+	for i := range blueprintGL.ReceivedValuesGlobalAccsRoots {
 
 		var (
-			col      = column.RootParents(loc.Pol)
-			pos      = column.StackOffsets(loc.Pol)
-			colName  = col.GetColID()
-			smartvec = mw.Columns[colName]
+			rootName        = blueprintGL.ReceivedValuesGlobalAccsRoots[i]
+			loc             = blueprintGL.ReceivedValuesGlobalAccsPositions[i]
+			smartvec, found = mw.Columns[rootName]
 		)
 
-		pos = utils.PositiveMod(pos, col.Size())
-		newReceivedValuesGlobal[i] = smartvec.Get(pos)
+		if !found {
+			utils.Panic("could not find smartvector: %v in the columns of the module", rootName)
+		}
+
+		loc = utils.PositiveMod(loc, smartvec.Len())
+		newReceivedValuesGlobal[i] = smartvec.Get(loc)
 	}
 
 	return newReceivedValuesGlobal

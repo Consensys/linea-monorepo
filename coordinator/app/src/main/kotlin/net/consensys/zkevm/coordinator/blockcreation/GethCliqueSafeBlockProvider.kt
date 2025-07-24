@@ -1,8 +1,8 @@
 package net.consensys.zkevm.coordinator.blockcreation
 
-import build.linea.web3j.domain.toWeb3j
 import linea.domain.Block
 import linea.domain.BlockParameter.Companion.toBlockParameter
+import linea.web3j.domain.toWeb3j
 import linea.web3j.toDomain
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.zkevm.ethereum.coordination.blockcreation.SafeBlockProvider
@@ -12,10 +12,10 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class GethCliqueSafeBlockProvider(
   private val web3j: Web3j,
-  private val config: Config
+  private val config: Config,
 ) : SafeBlockProvider {
   data class Config(
-    val blocksToFinalization: Long
+    val blocksToFinalization: Long,
   )
 
   override fun getLatestSafeBlock(): SafeFuture<Block> {

@@ -73,7 +73,7 @@ func acp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 		)
 	}
 
-	constantZero := verifiercol.NewConstantCol(field.Zero(), size)
+	constantZero := verifiercol.NewConstantCol(field.Zero(), size, "hub.acp_connection")
 
 	res := statesummary.HubColumnSet{
 		Address:             comp.Columns.GetHandle("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
@@ -112,6 +112,8 @@ func acp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 		LastKOCBlock:        constantZero,
 		MinDeplBlock:        comp.Columns.GetHandle("hub.acp_DEPLOYMENT_NUMBER_FIRST_IN_BLOCK"),
 		MaxDeplBlock:        comp.Columns.GetHandle("hub.acp_DEPLOYMENT_NUMBER_FINAL_IN_BLOCK"),
+		ExistsFirstInBlock:  constantZero,
+		ExistsFinalInBlock:  constantZero,
 	}
 	return res
 }
@@ -147,7 +149,7 @@ func scp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 		)
 	}
 
-	constantZero := verifiercol.NewConstantCol(field.Zero(), size)
+	constantZero := verifiercol.NewConstantCol(field.Zero(), size, "hub.scp_connection")
 
 	res := statesummary.HubColumnSet{
 		Address:             comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
@@ -186,6 +188,8 @@ func scp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 		LastKOCBlock:        comp.Columns.GetHandle("hub.scp_FINAL_IN_BLK"),
 		MinDeplBlock:        comp.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER_FIRST_IN_BLOCK"),
 		MaxDeplBlock:        comp.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER_FINAL_IN_BLOCK"),
+		ExistsFirstInBlock:  comp.Columns.GetHandle("hub.scp_EXISTS_FIRST_IN_BLOCK"),
+		ExistsFinalInBlock:  comp.Columns.GetHandle("hub.scp_EXISTS_FINAL_IN_BLOCK"),
 	}
 	return res
 }

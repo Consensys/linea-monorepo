@@ -1,7 +1,7 @@
 package net.consensys.zkevm.ethereum.coordination.conflation
 
 import kotlinx.datetime.Instant
-import net.consensys.linea.traces.fakeTracesCountersV1
+import net.consensys.linea.traces.fakeTracesCountersV2
 import net.consensys.zkevm.domain.BlockCounters
 import net.consensys.zkevm.domain.ConflationTrigger
 import net.consensys.zkevm.ethereum.coordination.blob.BlobCompressionException
@@ -29,12 +29,12 @@ class ConflationCalculatorByDataCompressedTest {
         BlobCompressor.AppendResult(
           blockAppended = true,
           compressedSizeBefore = 0,
-          compressedSizeAfter = block.size
+          compressedSizeAfter = block.size,
         )
       }
     }
     calculator = ConflationCalculatorByDataCompressed(
-      blobCompressor
+      blobCompressor,
     )
   }
 
@@ -47,8 +47,8 @@ class ConflationCalculatorByDataCompressedTest {
     assertThat(calculator.checkOverflow(blockCounters())).isEqualTo(
       ConflationCalculator.OverflowTrigger(
         trigger = ConflationTrigger.DATA_LIMIT,
-        singleBlockOverSized = true
-      )
+        singleBlockOverSized = true,
+      ),
     )
   }
 
@@ -62,8 +62,8 @@ class ConflationCalculatorByDataCompressedTest {
     assertThat(calculator.checkOverflow(blockCounters())).isEqualTo(
       ConflationCalculator.OverflowTrigger(
         trigger = ConflationTrigger.DATA_LIMIT,
-        singleBlockOverSized = true
-      )
+        singleBlockOverSized = true,
+      ),
     )
   }
 
@@ -82,22 +82,22 @@ class ConflationCalculatorByDataCompressedTest {
       BlobCompressor.AppendResult(
         blockAppended = true,
         compressedSizeBefore = 0,
-        compressedSizeAfter = 50
-      )
+        compressedSizeAfter = 50,
+      ),
     )
     whenever(blobCompressor.appendBlock(eq(block2RawData))).thenReturn(
       BlobCompressor.AppendResult(
         blockAppended = true,
         compressedSizeBefore = 2,
-        compressedSizeAfter = 100
-      )
+        compressedSizeAfter = 100,
+      ),
     )
     whenever(blobCompressor.appendBlock(eq(block3RawData))).thenReturn(
       BlobCompressor.AppendResult(
         blockAppended = true,
         compressedSizeBefore = 3,
-        compressedSizeAfter = 150
-      )
+        compressedSizeAfter = 150,
+      ),
     )
 
     calculator.checkAndAppendBlock(blockCounters(block1RawData))
@@ -120,8 +120,8 @@ class ConflationCalculatorByDataCompressedTest {
       BlobCompressor.AppendResult(
         blockAppended = false,
         compressedSizeBefore = 0,
-        compressedSizeAfter = 5000
-      )
+        compressedSizeAfter = 5000,
+      ),
     )
 
     calculator.checkOverflow(blockCounters(block1RawData))
@@ -151,15 +151,15 @@ class ConflationCalculatorByDataCompressedTest {
       BlobCompressor.AppendResult(
         blockAppended = true,
         compressedSizeBefore = 0,
-        compressedSizeAfter = 50
-      )
+        compressedSizeAfter = 50,
+      ),
     )
     whenever(blobCompressor.appendBlock(eq(block2RawData))).thenReturn(
       BlobCompressor.AppendResult(
         blockAppended = true,
         compressedSizeBefore = 2,
-        compressedSizeAfter = 100
-      )
+        compressedSizeAfter = 100,
+      ),
     )
     whenever(blobCompressor.canAppendBlock(eq(block3RawData)))
       .thenReturn(false)
@@ -168,8 +168,8 @@ class ConflationCalculatorByDataCompressedTest {
       BlobCompressor.AppendResult(
         blockAppended = true,
         compressedSizeBefore = 3,
-        compressedSizeAfter = 150
-      )
+        compressedSizeAfter = 150,
+      ),
     )
     calculator.checkAndAppendBlock(blockCounters(block1RawData))
     calculator.startNewBatch()
@@ -196,7 +196,7 @@ class ConflationCalculatorByDataCompressedTest {
   private fun blockCounters(rlpRawData: ByteArray = ByteArray(1)): BlockCounters = BlockCounters(
     blockNumber = 0u,
     blockTimestamp = Instant.parse("2021-01-01T00:00:00Z"),
-    tracesCounters = fakeTracesCountersV1(0u),
-    blockRLPEncoded = rlpRawData
+    tracesCounters = fakeTracesCountersV2(0u),
+    blockRLPEncoded = rlpRawData,
   )
 }

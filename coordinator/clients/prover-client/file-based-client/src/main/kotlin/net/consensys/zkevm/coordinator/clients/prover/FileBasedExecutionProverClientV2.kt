@@ -3,6 +3,7 @@ package net.consensys.zkevm.coordinator.clients.prover
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
 import io.vertx.core.Vertx
+import linea.domain.EthLog
 import linea.encoding.BlockRLPEncoder
 import linea.kotlin.encodeHex
 import linea.kotlin.toHexString
@@ -11,7 +12,6 @@ import net.consensys.zkevm.coordinator.clients.BatchExecutionProofResponse
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.prover.serialization.JsonSerialization
 import net.consensys.zkevm.domain.ProofIndex
-import net.consensys.zkevm.domain.RlpBridgeLogsData
 import net.consensys.zkevm.encoding.BlockEncoder
 import net.consensys.zkevm.fileio.FileReader
 import net.consensys.zkevm.fileio.FileWriter
@@ -26,19 +26,49 @@ data class BatchExecutionProofRequestDto(
   val tracesEngineVersion: String,
   val type2StateManagerVersion: String?,
   val zkStateMerkleProof: ArrayNode,
-  val blocksData: List<RlpBridgeLogsData>
+  val blocksData: List<RlpBridgeLogsDto>,
 )
 
+data class RlpBridgeLogsDto(val rlp: String, val bridgeLogs: List<BridgeLogsDto>)
+
+data class BridgeLogsDto(
+  val removed: Boolean,
+  val logIndex: String,
+  val transactionIndex: String,
+  val transactionHash: String,
+  val blockHash: String,
+  val blockNumber: String,
+  val address: String,
+  val data: String,
+  val topics: List<String>,
+) {
+  companion object {
+    fun fromDomainObject(ethLog: EthLog): BridgeLogsDto {
+      return BridgeLogsDto(
+        removed = ethLog.removed,
+        logIndex = ethLog.logIndex.toHexString(),
+        transactionIndex = ethLog.transactionIndex.toHexString(),
+        transactionHash = ethLog.transactionHash.encodeHex(),
+        blockHash = ethLog.blockHash.encodeHex(),
+        blockNumber = ethLog.blockNumber.toHexString(),
+        address = ethLog.address.encodeHex(),
+        data = ethLog.data.encodeHex(),
+        topics = ethLog.topics.map { it.encodeHex() },
+      )
+    }
+  }
+}
+
 internal class ExecutionProofRequestDtoMapper(
-  private val encoder: BlockEncoder = BlockRLPEncoder
+  private val encoder: BlockEncoder = BlockRLPEncoder,
 ) : (BatchExecutionProofRequestV1) -> SafeFuture<BatchExecutionProofRequestDto> {
   override fun invoke(request: BatchExecutionProofRequestV1): SafeFuture<BatchExecutionProofRequestDto> {
     val blocksData = request.blocks.map { block ->
       val rlp = encoder.encode(block).encodeHex()
       val bridgeLogs = request.bridgeLogs.filter {
-        it.blockNumber == block.number.toHexString()
+        it.blockNumber == block.number
       }
-      RlpBridgeLogsData(rlp, bridgeLogs)
+      RlpBridgeLogsDto(rlp, bridgeLogs.map(BridgeLogsDto::fromDomainObject))
     }
 
     return SafeFuture.completedFuture(
@@ -49,8 +79,8 @@ internal class ExecutionProofRequestDtoMapper(
         tracesEngineVersion = request.tracesResponse.tracesEngineVersion,
         type2StateManagerVersion = request.type2StateData.zkStateManagerVersion,
         zkStateMerkleProof = request.type2StateData.zkStateMerkleProof,
-        blocksData = blocksData
-      )
+        blocksData = blocksData,
+      ),
     )
   }
 }
@@ -75,15 +105,15 @@ class FileBasedExecutionProverClientV2(
   executionProofRequestFileNameProvider: ProverFileNameProvider =
     ExecutionProofRequestFileNameProvider(
       tracesVersion = tracesVersion,
-      stateManagerVersion = stateManagerVersion
+      stateManagerVersion = stateManagerVersion,
     ),
-  executionProofResponseFileNameProvider: ProverFileNameProvider = ExecutionProofResponseFileNameProvider
+  executionProofResponseFileNameProvider: ProverFileNameProvider = ExecutionProofResponseFileNameProvider,
 ) :
   GenericFileBasedProverClient<
     BatchExecutionProofRequestV1,
     BatchExecutionProofResponse,
     BatchExecutionProofRequestDto,
-    Any
+    Any,
     >(
     config = config,
     vertx = vertx,
@@ -95,19 +125,19 @@ class FileBasedExecutionProverClientV2(
     requestMapper = ExecutionProofRequestDtoMapper(),
     responseMapper = { throw UnsupportedOperationException("Batch execution proof response shall not be parsed!") },
     proofTypeLabel = "batch",
-    log = LogManager.getLogger(FileBasedExecutionProverClientV2::class.java)
+    log = LogManager.getLogger(FileBasedExecutionProverClientV2::class.java),
   ),
   ExecutionProverClientV2 {
 
   override fun parseResponse(
     responseFilePath: Path,
-    proofIndex: ProofIndex
+    proofIndex: ProofIndex,
   ): SafeFuture<BatchExecutionProofResponse> {
     return SafeFuture.completedFuture(
       BatchExecutionProofResponse(
         startBlockNumber = proofIndex.startBlockNumber,
-        endBlockNumber = proofIndex.endBlockNumber
-      )
+        endBlockNumber = proofIndex.endBlockNumber,
+      ),
     )
   }
 }
