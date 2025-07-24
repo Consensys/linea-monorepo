@@ -1,5 +1,9 @@
 name: "Validate One Blockchain Test"
-on: [pull_request]
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+    branches:
+      - '**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -7,6 +11,7 @@ concurrency:
 
 jobs:
   validation-reference-test-flow:
+    if: github.event.pull_request.draft == false && github.base_ref != 'main'
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     steps:
       - name: Checkout repository

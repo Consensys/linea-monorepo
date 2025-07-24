@@ -5,6 +5,9 @@ on:
     branches:
       - main
   pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+    branches:
+      - '**'
   workflow_dispatch:
     inputs:
       tests-with-ssh:
@@ -22,6 +25,7 @@ jobs:
   # Build
   # ==================================================================
   build:
+    if: github.event.pull_request.draft == false && github.base_ref != 'main'
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     steps:
 
@@ -54,6 +58,7 @@ jobs:
   # Unit Tests
   # ==================================================================
   unit-tests-london:
+    if: github.event.pull_request.draft == false && github.base_ref != 'main'
     needs: [ build ]
     uses: ./.github/workflows/reusable-unit-tests.yml
     with:
@@ -61,6 +66,7 @@ jobs:
       tests-with-ssh: ${{ inputs.tests-with-ssh || false }}
 
   unit-tests-shanghai:
+    if: github.event.pull_request.draft == false && github.base_ref != 'main'
     needs: [ build ]
     uses: ./.github/workflows/reusable-unit-tests.yml
     with:
@@ -78,6 +84,7 @@ jobs:
   # Fast Replay Tests
   # ==================================================================
   replay-tests:
+    if: github.event.pull_request.draft == false && github.base_ref != 'main'
     needs: [ build ]
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
     steps:
