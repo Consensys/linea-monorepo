@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 	util "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
 )
@@ -55,13 +56,14 @@ func DefineHasher(comp *wizard.CompiledIOP, hasher LogHasher, name string, fetch
 	pragmas.MarkRightPadded(hasher.HashSecond)
 
 	// MiMC constraints
-	comp.InsertMiMC(0, ifaces.QueryIDf("%s_%s", name, "MIMC_CONSTRAINT"), fetched.Hi, hasher.Inter, hasher.HashFirst, nil)
-	comp.InsertMiMC(0, ifaces.QueryIDf("%s_%s", name, "MIMC_CONSTRAINT_SECOND"), fetched.Lo, hasher.HashFirst, hasher.HashSecond, nil)
+	comp.InsertMiMC(0, ifaces.QueryIDf("%s_%s", name, "MIMC_CONSTRAINT"), fetched.Hi, hasher.Inter, hasher.HashFirst, fetched.FilterFetched)
+	comp.InsertMiMC(0, ifaces.QueryIDf("%s_%s", name, "MIMC_CONSTRAINT_SECOND"), fetched.Lo, hasher.HashFirst, hasher.HashSecond, fetched.FilterFetched)
 
 	// intermediary state integrity
 	comp.InsertGlobal(0, ifaces.QueryIDf("%s_%s", name, "CONSISTENCY_INTER_AND_HASH_LAST"), // LAST is either hashSecond or hashThird
-		sym.Sub(hasher.HashSecond,
-			column.Shift(hasher.Inter, 1),
+		sym.Mul(
+			sym.Sub(column.Shift(hasher.HashSecond, -1), hasher.Inter),
+			fetched.FilterFetched,
 		),
 	)
 
@@ -76,39 +78,43 @@ func DefineHasher(comp *wizard.CompiledIOP, hasher LogHasher, name string, fetch
 // AssignHasher assigns the data in the LogHasher using the ExtractedData fetched from the arithmetization
 func AssignHasher(run *wizard.ProverRuntime, hasher LogHasher, fetched ExtractedData) {
 	size := fetched.Hi.Size()
-	hashFirst := make([]field.Element, size)
-	hashSecond := make([]field.Element, size)
-	inter := make([]field.Element, size)
+
+	hashFirst := common.NewVectorBuilder(hasher.HashFirst)
+	hashSecond := common.NewVectorBuilder(hasher.HashSecond)
+	inter := common.NewVectorBuilder(hasher.Inter)
 
 	var (
 		hashFinal field.Element
 	)
 
 	state := field.Zero() // the initial state is zero
-	for i := 0; i < len(hashFirst); i++ {
+	for i := 0; i < size; i++ {
+
+		isActive := fetched.FilterFetched.GetColAssignmentAt(run, i)
+		if isActive.IsZero() {
+			break
+		}
+
+		// Inter is either the initial state so (zero) for row i=0 or the last
+		// state from row i-1
+		inter.PushField(state)
+
 		// first, hash the HI part of the fetched log message
 		state = mimc.BlockCompression(state, fetched.Hi.GetColAssignmentAt(run, i))
-		hashFirst[i].Set(&state)
+		hashFirst.PushField(state)
 
 		// secondly, hash the Lo part of the fetched log message
 		state = mimc.BlockCompression(state, fetched.Lo.GetColAssignmentAt(run, i))
-		hashSecond[i].Set(&state)
+		hashSecond.PushField(state)
 
-		// the data in hashSecond is used to initialize the next initial state, stored in the inter column
-		if i+1 < len(hashFirst) {
-			inter[i+1] = hashSecond[i]
-		}
-
-		isActive := fetched.FilterFetched.GetColAssignmentAt(run, i)
-		// continuously update HashFinal
-		if isActive.IsOne() {
-			hashFinal.Set(&hashSecond[i])
-		}
+		// continuously update HashFinal. AthFinal will be the last value of
+		// hashSecond where isActive ends
+		hashFinal.Set(&state)
 	}
 
 	// assign the hasher columns
-	run.AssignColumn(hasher.HashFirst.GetColID(), smartvectors.NewRegular(hashFirst))
-	run.AssignColumn(hasher.HashSecond.GetColID(), smartvectors.NewRegular(hashSecond))
-	run.AssignColumn(hasher.Inter.GetColID(), smartvectors.NewRegular(inter))
+	inter.PadAndAssign(run, field.Zero())
+	hashSecond.PadAndAssign(run, field.Zero())
+	hashFirst.PadAndAssign(run, field.Zero())
 	run.AssignColumn(hasher.HashFinal.GetColID(), smartvectors.NewConstant(hashFinal, size))
 }
