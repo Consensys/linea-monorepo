@@ -102,7 +102,7 @@ class BlockBuildingBeaconBlockImporter(
             .toLong(),
         )
       log.debug(
-        "Importing block and starting build next block: " +
+        "importing block and starting build next block: " +
           "blockNumber={} timestamp={} nextBlockTimestamp={} beaconBlockHeader={}",
         beaconBlock.beaconBlockBody.executionPayload.blockNumber,
         beaconBlock.beaconBlockBody.executionPayload.timestamp,

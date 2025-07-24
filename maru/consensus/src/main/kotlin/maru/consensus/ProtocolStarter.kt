@@ -50,14 +50,14 @@ class ProtocolStarter(
 
   @Synchronized
   fun handleNewBlock(block: BlockMetadata) {
-    log.debug("New block number={} received", { block.blockNumber })
+    log.debug("new blockNumber={} received", { block.blockNumber })
 
     val nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(block.unixTimestampSeconds)
     val nextForkSpec = forksSchedule.getForkByTimestamp(nextBlockTimestamp)
 
     val currentProtocolWithFork = currentProtocolWithForkReference.get()
     if (currentProtocolWithFork?.fork != nextForkSpec) {
-      log.debug("Switching from forkSpec={} to newForkFpec={}", currentProtocolWithFork?.fork, nextForkSpec)
+      log.debug("switching from forkSpec={} to newForkSpec={}", currentProtocolWithFork?.fork, nextForkSpec)
       val newProtocol: Protocol = protocolFactory.create(nextForkSpec)
 
       val newProtocolWithFork =
@@ -65,7 +65,7 @@ class ProtocolStarter(
           newProtocol,
           nextForkSpec,
         )
-      log.debug("Switched from {} to protocol {}", currentProtocolWithFork, newProtocolWithFork)
+      log.debug("switched protocol: fromProtocol={} toProtocol={}", currentProtocolWithFork, newProtocolWithFork)
       currentProtocolWithForkReference.set(
         newProtocolWithFork,
       )
@@ -79,7 +79,7 @@ class ProtocolStarter(
       newProtocol.start()
       log.debug("stated new protocol {}", newProtocol)
     } else {
-      log.trace("Block {} was produced, but the fork switch isn't required", { block.blockNumber })
+      log.trace("block {} was produced, but the fork switch isn't required", { block.blockNumber })
     }
   }
 
