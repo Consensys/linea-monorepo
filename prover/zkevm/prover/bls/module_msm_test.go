@@ -137,10 +137,9 @@ func testBlsG2Msm(t *testing.T, withCircuit bool) {
 		t.Fatal("failed to create csv trace", err)
 	}
 	var blsMsm *BlsMsm
-	var blsMsmSource *BlsMsmDataSource
 	cmp := wizard.Compile(
 		func(b *wizard.Builder) {
-			blsMsmSource = &BlsMsmDataSource{
+			blsMsmSource := &BlsMsmDataSource{
 				ID:           ct.GetCommit(b, "ID"),
 				CsMul:        ct.GetCommit(b, "CIRCUIT_SELECTOR_G2_MSM"),
 				CsMembership: ct.GetCommit(b, "CIRCUIT_SELECTOR_G2_MEMBERSHIP"),
@@ -160,61 +159,10 @@ func testBlsG2Msm(t *testing.T, withCircuit bool) {
 		dummy.Compile,
 	)
 
-	fout, err := os.Create("testdata/bls_g2_msm_output.csv")
-	if err != nil {
-		t.Fatal("failed to create output csv file", err)
-	}
-	defer fout.Close()
-	fout2, err := os.Create("testdata/bls_g2_msm_output2.csv")
-	if err != nil {
-		t.Fatal("failed to create output csv file", err)
-	}
-	defer fout2.Close()
 	proof := wizard.Prove(cmp,
 		func(run *wizard.ProverRuntime) {
 			ct.Assign(run, "ID", "CIRCUIT_SELECTOR_G2_MSM", "CIRCUIT_SELECTOR_G2_MEMBERSHIP", "LIMB", "INDEX", "CT", "DATA_G2_MSM", "RSLT_G2_MSM")
 			blsMsm.Assign(run)
-			csvtraces.FmtCsv(fout, run,
-				[]ifaces.Column{
-					blsMsm.unalignedMsmData.IsActive,
-					blsMsm.unalignedMsmData.IsFirstLine,
-					blsMsm.unalignedMsmData.IsLastLine,
-					blsMsm.unalignedMsmData.Scalar[0],
-					blsMsm.unalignedMsmData.Scalar[1],
-					blsMsm.unalignedMsmData.Point[0],
-					blsMsm.unalignedMsmData.Point[1],
-					blsMsm.unalignedMsmData.Point[2],
-					blsMsm.unalignedMsmData.Point[3],
-					blsMsm.unalignedMsmData.Point[4],
-					blsMsm.unalignedMsmData.Point[5],
-					blsMsm.unalignedMsmData.Point[6],
-					blsMsm.unalignedMsmData.Point[7],
-					blsMsm.unalignedMsmData.CurrentAccumulator[0],
-					blsMsm.unalignedMsmData.CurrentAccumulator[1],
-					blsMsm.unalignedMsmData.CurrentAccumulator[2],
-					blsMsm.unalignedMsmData.CurrentAccumulator[3],
-					blsMsm.unalignedMsmData.CurrentAccumulator[4],
-					blsMsm.unalignedMsmData.CurrentAccumulator[5],
-					blsMsm.unalignedMsmData.CurrentAccumulator[6],
-					blsMsm.unalignedMsmData.CurrentAccumulator[7],
-					blsMsm.unalignedMsmData.NextAccumulator[0],
-					blsMsm.unalignedMsmData.NextAccumulator[1],
-					blsMsm.unalignedMsmData.NextAccumulator[2],
-					blsMsm.unalignedMsmData.NextAccumulator[3],
-					blsMsm.unalignedMsmData.NextAccumulator[4],
-					blsMsm.unalignedMsmData.NextAccumulator[5],
-					blsMsm.unalignedMsmData.NextAccumulator[6],
-					blsMsm.unalignedMsmData.NextAccumulator[7],
-				},
-				[]csvtraces.Option{csvtraces.SkipPrepaddingZero},
-			)
-			csvtraces.FmtCsv(fout2, run,
-				[]ifaces.Column{
-					blsMsm.unalignedMsmData.GnarkIsActiveMsm,
-					blsMsm.unalignedMsmData.GnarkDataMsm,
-				},
-				[]csvtraces.Option{csvtraces.SkipPrepaddingZero},
-			)
 		})
 	if err := wizard.Verify(cmp, proof); err != nil {
 		t.Fatal("proof failed", err)

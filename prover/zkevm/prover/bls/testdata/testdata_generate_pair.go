@@ -287,9 +287,9 @@ func generatePairInput() iter.Seq2[int, func() pairInput] {
 						P:                generateG1Invalid(),
 						Q:                generateG2Invalid(),
 						ToPairingCircuit: false,
-						// it seems from the spec that if both points are invalid, then they both are sent for membership check
+						// when both points are invalid, then we only send the easiest one for checking (G1)
 						ToG1MembershipCircuit: true,
-						ToG2MembershipCircuit: true,
+						ToG2MembershipCircuit: false,
 						MembershipSuccess:     false,
 						IsTrivialG1:           false,
 						IsTrivialG2:           false,
@@ -302,7 +302,7 @@ func generatePairInput() iter.Seq2[int, func() pairInput] {
 						Q:                     generateG2OnCurve(),
 						ToPairingCircuit:      false,
 						ToG1MembershipCircuit: true,
-						ToG2MembershipCircuit: true,
+						ToG2MembershipCircuit: false,
 						MembershipSuccess:     false,
 						IsTrivialG1:           false,
 						IsTrivialG2:           false,
@@ -315,7 +315,7 @@ func generatePairInput() iter.Seq2[int, func() pairInput] {
 						Q:                     generateG2Invalid(),
 						ToPairingCircuit:      false,
 						ToG1MembershipCircuit: true,
-						ToG2MembershipCircuit: true,
+						ToG2MembershipCircuit: false,
 						MembershipSuccess:     false,
 						IsTrivialG1:           false,
 						IsTrivialG2:           false,
@@ -328,7 +328,7 @@ func generatePairInput() iter.Seq2[int, func() pairInput] {
 						Q:                     generateG2OnCurve(),
 						ToPairingCircuit:      false,
 						ToG1MembershipCircuit: true,
-						ToG2MembershipCircuit: true,
+						ToG2MembershipCircuit: false,
 						MembershipSuccess:     false,
 						IsTrivialG1:           false,
 						IsTrivialG2:           false,
@@ -420,6 +420,8 @@ func processPairInputs(v []pairInput) []pairInputCase {
 			if isFirstInvalid && (v[i].ToG1MembershipCircuit || v[i].ToG2MembershipCircuit) {
 				isFirstInvalid = false
 			}
+			// we set SUCCESS_BIT to false for all inputs if there is an invalid point
+			v[i].MembershipSuccess = false
 		}
 		return []pairInputCase{pairInputCase{
 			inputs: v,
@@ -486,9 +488,15 @@ func generatePairInputCases(length int) iter.Seq2[int, pairInputCase] {
 
 func (tc pairInputCase) WriteCSV(w *csv.Writer, id int) error {
 	var index int
-	var hasPairing bool
+	hasPairing := false
+	// we first need to check if there are inputs which don't belong to the
+	// subgroup. In that case nothing goes to the pairing circuit
+	for _, input := range tc.inputs {
+		if input.ToPairingCircuit {
+			hasPairing = true
+		}
+	}
 	for i, input := range tc.inputs {
-		hasPairing = hasPairing || input.ToPairingCircuit
 		pLimbs := splitToLimbs(input.P)
 		qLimbs := splitToLimbs(input.Q)
 		for j, limb := range pLimbs {
@@ -503,10 +511,10 @@ func (tc pairInputCase) WriteCSV(w *csv.Writer, id int) error {
 				formatBoolAsInt(!input.IsTrivialAcc),    // NONTRIVIAL_POP_BIT
 				formatBoolAsInt(input.ToPairingCircuit), // CS_PAIRING_CHECK
 				formatBoolAsInt(input.ToG1MembershipCircuit), // CS_G1_MEMBERSHIP
-				formatBoolAsInt(input.ToG2MembershipCircuit), // CS_G2_MEMBERSHIP
-				formatBoolAsInt(input.MembershipSuccess),     // SUCCESS_BIT
-				strconv.Itoa(len(tc.inputs)),                 // ACC_INPUTS
-				limb,                                         // LIMB
+				"0",                                      // CS_G2_MEMBERSHIP. Always zero as P only goes to G1 membership
+				formatBoolAsInt(input.MembershipSuccess), // SUCCESS_BIT
+				strconv.Itoa(len(tc.inputs)),             // ACC_INPUTS
+				limb,                                     // LIMB
 			}); err != nil {
 				return fmt.Errorf("failed to write pairing input P %d/%d: %w", i, j, err)
 			}
@@ -523,7 +531,7 @@ func (tc pairInputCase) WriteCSV(w *csv.Writer, id int) error {
 				"1",                                     // IS_SECOND_INPUT
 				formatBoolAsInt(!input.IsTrivialAcc),    // NONTRIVIAL_POP_BIT
 				formatBoolAsInt(input.ToPairingCircuit), // CS_PAIRING_CHECK
-				formatBoolAsInt(input.ToG1MembershipCircuit), // CS_G1_MEMBERSHIP
+				"0",                                     // CS_G1_MEMBERSHIP. Always zero as Q only goes to G2 membership
 				formatBoolAsInt(input.ToG2MembershipCircuit), // CS_G2_MEMBERSHIP
 				formatBoolAsInt(input.MembershipSuccess),     // SUCCESS_BIT
 				strconv.Itoa(len(tc.inputs)),                 // ACC_INPUTS
@@ -535,38 +543,38 @@ func (tc pairInputCase) WriteCSV(w *csv.Writer, id int) error {
 		}
 	}
 	if err := w.Write([]string{
-		strconv.Itoa(id),             // ID
-		"0",                          // DATA_PAIRING_CHECK
-		"1",                          // RSLT_PAIRING_CHECK
-		"0",                          // INDEX
-		"0",                          // CT
-		"0",                          // IS_FIRST_INPUT
-		"0",                          // IS_SECOND_INPUT
-		"0",                          // NONTRIVIAL_POP_BIT
-		formatBoolAsInt(hasPairing),  // CS_PAIRING_CHECK
-		"0",                          // CS_G1_MEMBERSHIP
-		"0",                          // CS_G2_MEMBERSHIP
-		"1",                          // SUCCESS_BIT
-		strconv.Itoa(len(tc.inputs)), // ACC_INPUTS
-		"0",                          // LIMB
+		strconv.Itoa(id),            // ID
+		"0",                         // DATA_PAIRING_CHECK
+		"1",                         // RSLT_PAIRING_CHECK
+		"0",                         // INDEX
+		"0",                         // CT
+		"0",                         // IS_FIRST_INPUT
+		"0",                         // IS_SECOND_INPUT
+		"0",                         // NONTRIVIAL_POP_BIT
+		formatBoolAsInt(hasPairing), // CS_PAIRING_CHECK
+		"0",                         // CS_G1_MEMBERSHIP
+		"0",                         // CS_G2_MEMBERSHIP
+		formatBoolAsInt(tc.inputs[0].MembershipSuccess), // SUCCESS_BIT
+		strconv.Itoa(len(tc.inputs)),                    // ACC_INPUTS
+		"0",                                             // LIMB
 	}); err != nil {
 		return fmt.Errorf("failed to write pairing result: %w", err)
 	}
 	if err := w.Write([]string{
-		strconv.Itoa(id),             // ID
-		"0",                          // DATA_PAIRING_CHECK
-		"1",                          // RSLT_PAIRING_CHECK
-		"1",                          // INDEX
-		"1",                          // CT
-		"0",                          // IS_FIRST_INPUT
-		"0",                          // IS_SECOND_INPUT
-		"0",                          // NONTRIVIAL_POP_BIT
-		formatBoolAsInt(hasPairing),  // CS_PAIRING_CHECK
-		"0",                          // CS_G1_MEMBERSHIP
-		"0",                          // CS_G2_MEMBERSHIP
-		"1",                          // SUCCESS_BIT
-		strconv.Itoa(len(tc.inputs)), // ACC_INPUTS
-		formatBoolAsInt(tc.result),   // LIMB
+		strconv.Itoa(id),            // ID
+		"0",                         // DATA_PAIRING_CHECK
+		"1",                         // RSLT_PAIRING_CHECK
+		"1",                         // INDEX
+		"1",                         // CT
+		"0",                         // IS_FIRST_INPUT
+		"0",                         // IS_SECOND_INPUT
+		"0",                         // NONTRIVIAL_POP_BIT
+		formatBoolAsInt(hasPairing), // CS_PAIRING_CHECK
+		"0",                         // CS_G1_MEMBERSHIP
+		"0",                         // CS_G2_MEMBERSHIP
+		formatBoolAsInt(tc.inputs[0].MembershipSuccess), // SUCCESS_BIT
+		strconv.Itoa(len(tc.inputs)),                    // ACC_INPUTS
+		formatBoolAsInt(tc.result),                      // LIMB
 	}); err != nil {
 		return fmt.Errorf("failed to write pairing result: %w", err)
 	}
