@@ -84,3 +84,32 @@ func nativeScalarMulAndSum(g group, currentAccumulator []field.Element, point []
 	}
 	return nextAccumulator
 }
+
+func nativeGtZero() []field.Element {
+	// TODO: complete
+	nbL := nbGtLimbs
+	var gt0 bls12381.GT
+	gt0.SetOne()
+	// fmt.Println(gt0.String())
+	gt := make([]field.Element, nbL)
+	for i := range nbL {
+		gt[i].SetZero()
+	}
+	return gt
+}
+
+func nativeMillerLoopAndSum(currentAccumulator []field.Element, pointG1 []field.Element, pointG2 []field.Element) (nextAccumulator []field.Element) {
+	if len(currentAccumulator) != nbGtLimbs {
+		panic(fmt.Sprintf("currentAccumulator must have exactly %d limbs, got %d", nbGtLimbs, len(currentAccumulator)))
+	}
+	if len(pointG1) != nbG1Limbs {
+		panic(fmt.Sprintf("pointG1 must have exactly %d limbs, got %d", nbG1Limbs, len(pointG1)))
+	}
+	if len(pointG2) != nbG2Limbs {
+		panic(fmt.Sprintf("pointG2 must have exactly %d limbs, got %d", nbG2Limbs, len(pointG2)))
+	}
+
+	nextAccumulator = make([]field.Element, nbGtLimbs)
+	// TODO:
+	return nextAccumulator
+}

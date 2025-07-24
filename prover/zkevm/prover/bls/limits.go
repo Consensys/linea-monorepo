@@ -80,6 +80,18 @@ func (l *Limits) sizeMulUnalignedIntegration(g group) int {
 	}
 }
 
+func (l *Limits) sizePairUnalignedIntegration() int {
+	return utils.NextPowerOfTwo(l.NbMillerLoopInputInstances) * utils.NextPowerOfTwo(l.NbMillerLoopCircuitInstances)
+}
+
+func (l *Limits) sizePairMillerLoopIntegration() int {
+	return utils.NextPowerOfTwo(l.NbMillerLoopInputInstances*nbRowsPerMillerLoop) * utils.NextPowerOfTwo(l.NbMillerLoopCircuitInstances)
+}
+
+func (l *Limits) sizePairFinalExpIntegration() int {
+	return utils.NextPowerOfTwo(l.NbFinalExpInputInstances*nbRowsPerFinalExp) * utils.NextPowerOfTwo(l.NbFinalExpCircuitInstances)
+}
+
 func (l *Limits) nbAddCircuitInstances(g group) int {
 	switch g {
 	case G1:

@@ -9,6 +9,11 @@ import (
 	"github.com/consensys/gnark/std/math/emulated"
 )
 
+const (
+	nbRowsPerMillerLoop = 2*nbGtLimbs + nbG1Limbs + nbG2Limbs   // current accumulator Gt, next accumulator Gt, G1 input G1 and G2 input G2
+	nbRowsPerFinalExp   = nbGtLimbs + nbG1Limbs + nbG2Limbs + 2 // current accumulator Gt, G1 input G1 and G2 input G2. PLus 2 for the expected result
+)
+
 type MultiMillerLoopMulCircuit struct {
 	Instances []MillerLoopMulInstance `gnark:",public"`
 }

@@ -19,3 +19,7 @@ func NewG1MsmZkEvm(comp *wizard.CompiledIOP, limits *Limits) *BlsMsm {
 func NewG2MsmZkEvm(comp *wizard.CompiledIOP, limits *Limits) *BlsMsm {
 	return newMsm(comp, G2, limits, newMsmDataSource(comp, G2))
 }
+
+func NewPairing(comp *wizard.CompiledIOP, limits *Limits) *BlsPair {
+	return newPair(comp, limits, newPairDataSource(comp))
+}
