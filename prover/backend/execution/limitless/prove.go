@@ -8,6 +8,8 @@ import (
 	"strconv"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
+	"github.com/consensys/linea-monorepo/prover/circuits"
+	execCirc "github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
@@ -188,10 +190,41 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		return nil, err
 	}
 
-	_, err = RunConglomeration(cfg, proofGLs, proofLPPs)
+	var (
+		setup       circuits.Setup
+		errSetup    error
+		chSetupDone = make(chan struct{})
+	)
+
+	// Start loading the setup before starting the conglomeration so that it is
+	// ready when we need it.
+	go func() {
+		logrus.Infof("Loading setup - circuitID: %s", circuits.ExecutionLimitlessCircuitID)
+		setup, errSetup = circuits.LoadSetup(cfg, circuits.ExecutionLimitlessCircuitID)
+		close(chSetupDone)
+	}()
+
+	proofConglo, congloWIOP, err := RunConglomeration(cfg, proofGLs, proofLPPs)
 	if err != nil {
 		return nil, fmt.Errorf("could not run conglomeration prover: %w", err)
 	}
+
+	// wait for setup to be loaded. It should already be loaded normally so we
+	// do not expect to actually wait here.
+	<-chSetupDone
+	if errSetup != nil {
+		utils.Panic("could not load setup: %v", errSetup)
+	}
+
+	out.Proof = execCirc.MakeProof(
+		&config.TracesLimits{},
+		setup,
+		congloWIOP,
+		proofConglo,
+		*witness.FuncInp,
+	)
+
+	out.VerifyingKeyShaSum = setup.VerifyingKeyDigest()
 
 	return &out, nil
 }
@@ -406,13 +439,13 @@ func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Element
 }
 
 // RunConglomeration runs the conglomeration prover for the provided subproofs
-func RunConglomeration(cfg *config.Config, proofGLs, proofLPPs []recursion.Witness) (proof wizard.Proof, err error) {
+func RunConglomeration(cfg *config.Config, proofGLs, proofLPPs []recursion.Witness) (proof wizard.Proof, congloWIOP *wizard.CompiledIOP, err error) {
 
 	logrus.Infof("Running the conglomeration-prover")
 
 	cong, err := zkevm.LoadConglomeration(cfg)
 	if err != nil {
-		return wizard.Proof{}, fmt.Errorf("could not load compiled conglomeration: %w", err)
+		return wizard.Proof{}, nil, fmt.Errorf("could not load compiled conglomeration: %w", err)
 	}
 
 	logrus.Infof("Loaded the compiled conglomeration")
@@ -421,5 +454,11 @@ func RunConglomeration(cfg *config.Config, proofGLs, proofLPPs []recursion.Witne
 
 	logrus.Infof("Finished running the conglomeration-prover")
 
-	return proof, nil
+	if err := wizard.Verify(cong.Wiop, proof); err != nil {
+		exit.OnUnsatisfiedConstraints(err)
+	}
+
+	logrus.Infof("Successfully sanity-checked the conglomerator")
+
+	return proof, cong.Wiop, nil
 }
