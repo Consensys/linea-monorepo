@@ -333,6 +333,7 @@ func (d *unalignedPairData) assignUnaligned(run *wizard.ProverRuntime) {
 					dstPrevAccumulator[i].PushField(prevAccumulator[i])
 					dstCurrentAccumulator[i].PushField(currentAccumulator[i])
 				}
+				prevAccumulator = currentAccumulator
 				for i := range 2 {
 					dstExpectedResult[i].PushZero()
 				}
@@ -379,12 +380,13 @@ func (d *unalignedPairData) assignUnaligned(run *wizard.ProverRuntime) {
 
 func (d *unalignedPairData) assignGnarkData(run *wizard.ProverRuntime) {
 	var (
-		srcIsActive = d.IsActive.GetColAssignment(run).IntoRegVecSaveAlloc()
-		srcPointG1  = make([][]field.Element, nbG1Limbs)
-		srcPointG2  = make([][]field.Element, nbG2Limbs)
-		srcPrev     = make([][]field.Element, nbGtLimbs)
-		srcCurrent  = make([][]field.Element, nbGtLimbs)
-		srcExpected = make([][]field.Element, 2)
+		srcIsActive   = d.IsActive.GetColAssignment(run).IntoRegVecSaveAlloc()
+		srcIsLastLine = d.IsLastLine.GetColAssignment(run).IntoRegVecSaveAlloc()
+		srcPointG1    = make([][]field.Element, nbG1Limbs)
+		srcPointG2    = make([][]field.Element, nbG2Limbs)
+		srcPrev       = make([][]field.Element, nbGtLimbs)
+		srcCurrent    = make([][]field.Element, nbGtLimbs)
+		srcExpected   = make([][]field.Element, 2)
 	)
 
 	for i := range nbG1Limbs {
@@ -407,6 +409,49 @@ func (d *unalignedPairData) assignGnarkData(run *wizard.ProverRuntime) {
 		dstGnarkIsActiveFinalExp   = common.NewVectorBuilder(d.GnarkIsActiveFinalExp)
 		dstGnarkDataFinalExp       = common.NewVectorBuilder(d.GnarkDataFinalExp)
 	)
+
+	for i := range srcIsActive {
+		if !srcIsActive[i].IsOne() {
+			continue
+		}
+		if srcIsLastLine[i].IsZero() {
+			// we need to pass data to the Miller loop circuit
+			for j := range nbGtLimbs {
+				dstGnarkDataMillerLoop.PushField(srcPrev[j][i])
+				dstGnarkIsActiveMillerLoop.PushOne()
+			}
+			for j := range nbG1Limbs {
+				dstGnarkDataMillerLoop.PushField(srcPointG1[j][i])
+				dstGnarkIsActiveMillerLoop.PushOne()
+			}
+			for j := range nbG2Limbs {
+				dstGnarkDataMillerLoop.PushField(srcPointG2[j][i])
+				dstGnarkIsActiveMillerLoop.PushOne()
+			}
+			for j := range nbGtLimbs {
+				dstGnarkDataMillerLoop.PushField(srcCurrent[j][i])
+				dstGnarkIsActiveMillerLoop.PushOne()
+			}
+		} else {
+			// we need to pass data to the final exponentiation circuit
+			for j := range nbGtLimbs {
+				dstGnarkDataFinalExp.PushField(srcPrev[j][i])
+				dstGnarkIsActiveFinalExp.PushOne()
+			}
+			for j := range nbG1Limbs {
+				dstGnarkDataFinalExp.PushField(srcPointG1[j][i])
+				dstGnarkIsActiveFinalExp.PushOne()
+			}
+			for j := range nbG2Limbs {
+				dstGnarkDataFinalExp.PushField(srcPointG2[j][i])
+				dstGnarkIsActiveFinalExp.PushOne()
+			}
+			for j := range 2 {
+				dstGnarkDataFinalExp.PushField(srcExpected[j][i])
+				dstGnarkIsActiveFinalExp.PushOne()
+			}
+		}
+	}
 
 	dstGnarkIsActiveMillerLoop.PadAndAssign(run, field.Zero())
 	dstGnarkDataMillerLoop.PadAndAssign(run, field.Zero())
