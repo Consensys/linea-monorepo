@@ -801,9 +801,11 @@ public class MmuCall implements TraceSubFragment, EndTransactionDefer {
     final long sourceOffset = clampedToLong(callFrame.frame().getStackItem(1));
     final Bytes currentMemory =
         hub.currentFrame().frame().shadowReadMemory(0, hub.currentFrame().frame().memoryByteSize());
+    final Bytes slicedCurrentMemory =
+        currentMemory.isEmpty() ? Bytes.EMPTY : currentMemory.slice((int) sourceOffset, (int) size);
     return new MmuCall(hub, MMU_INST_RAM_TO_RAM_SANS_PADDING)
         .sourceId(newIdentifierFromStamp(hub.stamp()))
-        .sourceRamBytes(Optional.of(currentMemory.slice((int) sourceOffset, (int) size)))
+        .sourceRamBytes(Optional.of(slicedCurrentMemory))
         .targetId(callFrame.contextNumber())
         .targetRamBytes(Optional.of(currentMemory))
         .size(size)
