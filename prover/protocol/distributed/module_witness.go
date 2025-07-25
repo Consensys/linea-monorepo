@@ -168,8 +168,8 @@ func SegmentModuleLPP(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, modu
 		columnsLPPSet = make(map[ifaces.ColID]struct{})
 	)
 
-	for moduleIndex := range moduleLPP.LPPColumnSets {
-		moduleNameSet[moduleLPP.ModuleNames[moduleIndex]] = struct{}{}
+	for moduleIndex, moduleName := range moduleLPP.ModuleNames {
+		moduleNameSet[moduleName] = struct{}{}
 		for _, col := range moduleLPP.LPPColumnSets[moduleIndex] {
 			columnsLPPSet[col] = struct{}{}
 		}
@@ -180,11 +180,11 @@ func SegmentModuleLPP(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, modu
 		witnessesLPPs   = make([]*ModuleWitnessLPP, nbSegmentModule)
 	)
 
-	for moduleIndex := range witnessesLPPs {
+	for segment := range witnessesLPPs {
 
 		moduleWitnessLPP := &ModuleWitnessLPP{
 			ModuleName:  moduleLPP.ModuleNames,
-			ModuleIndex: moduleIndex,
+			ModuleIndex: segment,
 			Columns:     make(map[ifaces.ColID]smartvectors.SmartVector),
 			N0Values:    n0,
 		}
@@ -196,11 +196,11 @@ func SegmentModuleLPP(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, modu
 			}
 
 			col := runtime.Spec.Columns.GetHandle(col)
-			segment := SegmentOfColumn(runtime, disc, col, moduleIndex, nbSegmentModule)
+			segment := SegmentOfColumn(runtime, disc, col, segment, nbSegmentModule)
 			moduleWitnessLPP.Columns[col.GetColID()] = segment
 		}
 
-		witnessesLPPs[moduleIndex] = moduleWitnessLPP
+		witnessesLPPs[segment] = moduleWitnessLPP
 		n0 = moduleWitnessLPP.NextN0s(moduleLPP)
 	}
 

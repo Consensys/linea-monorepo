@@ -446,6 +446,8 @@ func runProverLPPs(
 		witnessLPP.InitialFiatShamirState = sharedRandomness
 
 		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleName, witnessLPP.ModuleIndex)
+
+	ModuleLoop:
 		for k := range distWizard.LPPs {
 
 			moduleList := distWizard.LPPs[k].ModuleNames()
@@ -453,13 +455,12 @@ func runProverLPPs(
 
 			for l, m := range moduleList {
 				if m != witnessLPP.ModuleName[l] {
-					continue
+					continue ModuleLoop
 				}
-
-				break
 			}
 
 			moduleLPP = compiledLPPs[k]
+			break
 		}
 
 		if moduleLPP == nil {
