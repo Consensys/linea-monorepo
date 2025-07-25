@@ -24,6 +24,7 @@ dependencies {
   implementation(project(":executionlayer"))
   implementation(project(":p2p"))
   implementation(project(":storage"))
+  implementation(project(":syncing"))
   implementation(project(":crypto"))
   implementation(project(":serialization"))
   implementation(project(":observability"))

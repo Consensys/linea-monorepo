@@ -23,3 +23,12 @@ private fun ULong.toByteArray(): ByteArray =
   ByteArray(ULong.SIZE_BYTES) { i ->
     ((this shr ((ULong.SIZE_BYTES - 1 - i) * Byte.SIZE_BITS)) and 0xFFu).toByte()
   }
+
+fun ULong.clampedAdd(other: ULong): ULong {
+  val result = this + other
+  return if (result < this || result < other) {
+    ULong.MAX_VALUE // Overflow occurred, return max value
+  } else {
+    result // No overflow, return the result
+  }
+}

@@ -18,8 +18,22 @@ plugins {
 }
 
 dependencies {
-  implementation (project(":core"))
-  implementation (project(":jvm-libs:extensions"))
-  implementation (project(":p2p"))
-  testImplementation (testFixtures(project(":core")))
+  implementation project(':core')
+  implementation project(':consensus')
+  implementation project(':p2p')
+  implementation project(':storage')
+  implementation project(':jvm-libs:extensions')
+
+  implementation 'org.hyperledger.besu.internal:besu-services-pipeline'
+  implementation 'org.hyperledger.besu.internal:besu-metrics-core'
+  implementation("org.hyperledger.besu.internal:besu-crypto-algorithms")
+
+  implementation 'tech.pegasys.teku.internal:async'
+  implementation 'tech.pegasys.teku.internal:p2p'
+  implementation 'org.apache.logging.log4j:log4j-api'
+
+  testImplementation(testFixtures(project(":core")))
+  testImplementation 'org.mockito:mockito-core'
+  testImplementation 'org.mockito.kotlin:mockito-kotlin'
+  testImplementation 'org.assertj:assertj-core'
 }

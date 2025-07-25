@@ -21,5 +21,4 @@ include 'p2p'
 include 'linea-finalization-provider'
 include 'api'
 include 'observability'
-
 include 'syncing'
