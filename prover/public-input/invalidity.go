@@ -12,12 +12,11 @@ import (
 // Invalidity represents the functional public inputs for the invalidity circuit
 // The mimc hash over functional inputs is set as the public input of the circuit.
 type Invalidity struct {
-	TxHash      common.Hash      // keccak hash of the transaction
-	FromAddress types.EthAddress // address of the sender
-	BlockHeight uint64           // block number for the current virtual block,
-	// virtual block is the block containing only-and-only the forced transaction.
-	InitialStateRootHash [32]byte // state-root-hash before the current virtual block
-	TimeStamp            uint64   // time stamp of the virtual block
+	TxHash              common.Hash // hash of the transaction
+	TxNumber            uint64
+	FromAddress         types.EthAddress // address of the sender
+	ExpectedBlockHeight uint64           //  the max expected block number for the transaction to be executed.
+	StateRootHash       types.Bytes32    // state-root-hash on which the invalidity is based
 }
 
 // Sum compute the mimc hash over the functional public inputs
@@ -27,15 +26,13 @@ func (pi *Invalidity) Sum(hsh hash.Hash) []byte {
 	}
 
 	hsh.Reset()
-	hsh.Write(pi.TxHash[:16])
-	hsh.Write(pi.TxHash[16:])
+	hsh.Write(pi.TxHash[:])
+	writeNum(hsh, pi.TxNumber)
 	hsh.Write(pi.FromAddress[:])
-	writeNum(hsh, pi.BlockHeight)
-	hsh.Write(pi.InitialStateRootHash[:])
-	writeNum(hsh, pi.TimeStamp)
+	writeNum(hsh, pi.ExpectedBlockHeight)
+	hsh.Write(pi.StateRootHash[:])
 
 	return hsh.Sum(nil)
-
 }
 
 func (pi *Invalidity) SumAsField() field.Element {

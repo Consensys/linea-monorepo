@@ -8,22 +8,20 @@ import (
 
 // FunctionalPublicInputsGnark represents the gnark version of [public_input.Invalidity]
 type FunctionalPublicInputsGnark struct {
-	TxHashMSB            frontend.Variable
-	TxHashLSB            frontend.Variable
-	FromAddress          frontend.Variable
-	BlockHeight          frontend.Variable
-	InitialStateRootHash frontend.Variable
-	TimeStamp            frontend.Variable
+	TxHash              frontend.Variable
+	TxNumber            frontend.Variable
+	FromAddress         frontend.Variable
+	SateRootHash        frontend.Variable
+	ExpectedBlockNumber frontend.Variable
 }
 
 // Assign the functional public inputs
 func (gpi *FunctionalPublicInputsGnark) Assign(pi public_input.Invalidity) {
-	gpi.TxHashMSB = pi.TxHash[:16]
-	gpi.TxHashLSB = pi.TxHash[16:]
+	gpi.TxHash = pi.TxHash[:]
 	gpi.FromAddress = pi.FromAddress[:]
-	gpi.BlockHeight = pi.BlockHeight
-	gpi.InitialStateRootHash = pi.InitialStateRootHash[:]
-	gpi.TimeStamp = pi.TimeStamp
+	gpi.ExpectedBlockNumber = pi.ExpectedBlockHeight
+	gpi.SateRootHash = pi.StateRootHash[:]
+	gpi.TxNumber = pi.TxNumber
 }
 
 // Sum computes the hash over the functional inputs
@@ -31,12 +29,11 @@ func (spi *FunctionalPublicInputsGnark) Sum(api frontend.API, hsh gnarkHash.Fiel
 
 	hsh.Reset()
 	hsh.Write(
-		spi.TxHashMSB,
-		spi.TxHashLSB,
+		spi.TxHash,
+		spi.TxNumber,
 		spi.FromAddress,
-		spi.BlockHeight,
-		spi.InitialStateRootHash,
-		spi.TimeStamp,
+		spi.ExpectedBlockNumber,
+		spi.SateRootHash,
 	)
 
 	return hsh.Sum()

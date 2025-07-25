@@ -3,10 +3,11 @@ package keccak
 import (
 	"bytes"
 	"errors"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"hash"
 	"math/big"
 	"slices"
+
+	"github.com/consensys/linea-monorepo/prover/utils"
 
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
@@ -283,7 +284,7 @@ func (s *StrictHasherSnark) Sum(nbIn frontend.Variable, bytess ...[32]frontend.V
 	radix := big.NewInt(256)
 	expectedBytess := s.ins[0]
 	if len(bytess) != len(expectedBytess) {
-		panic("unexpected hash size")
+		utils.Panic("expected hash size %v, but has %v", len(expectedBytess), len(bytess))
 	}
 	var inRange *internal.Range
 	if nbIn != nil {

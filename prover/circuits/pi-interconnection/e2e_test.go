@@ -5,9 +5,11 @@ package pi_interconnection_test
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"slices"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 
 	"github.com/stretchr/testify/require"
 
@@ -41,9 +43,11 @@ func TestSingleBlockBlobE2E(t *testing.T) {
 	cfg := config.PublicInput{
 		MaxNbDecompression: len(req.Decompressions),
 		MaxNbExecution:     len(req.Executions),
+		MaxNbInvalidity:    len(req.Invalidity),
 		ExecutionMaxNbMsg:  1,
 		L2MsgMerkleDepth:   5,
 		L2MsgMaxNbMerkle:   1,
+		MockKeccakWizard:   true,
 	}
 	compiled, err := pi_interconnection.Compile(cfg, dummy.Compile)
 	assert.NoError(t, err)
@@ -99,6 +103,19 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 		InitialStateRootHash:         stateRootHashes[1],
 		InitialBlockNumber:           6,
 	}}
+	invalReq := []public_input.Invalidity{{
+		TxHash:              internal.Uint64To32Bytes(2),
+		TxNumber:            3,
+		StateRootHash:       stateRootHashes[2],
+		ExpectedBlockHeight: 11,
+		FromAddress:         types.DummyAddress(32),
+	}, {
+		TxHash:              internal.Uint64To32Bytes(2),
+		TxNumber:            4,
+		StateRootHash:       stateRootHashes[2],
+		ExpectedBlockHeight: 11,
+		FromAddress:         types.DummyAddress(32),
+	}}
 
 	blobReq := blobsubmission.Request{
 		Eip4844Enabled:      true,
@@ -116,6 +133,7 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 	req := pi_interconnection.Request{
 		Decompressions: []blobsubmission.Response{*blobResp},
 		Executions:     execReq,
+		Invalidity:     invalReq,
 		Aggregation: public_input.Aggregation{
 			FinalShnarf:                             blobResp.ExpectedShnarf,
 			ParentAggregationFinalShnarf:            blobReq.PrevShnarf,
@@ -130,6 +148,8 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 			L1RollingHashMessageNumber:              uint(execReq[1].LastRollingHashUpdateNumber),
 			L2MsgRootHashes:                         merkleRoots,
 			L2MsgMerkleTreeDepth:                    5,
+			LastFinalizedRollingHashNumberTx:        2,
+			RollingHashNumberTx:                     4,
 		},
 	}
 
@@ -185,6 +205,13 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 		LastRollingHashUpdateNumber:  26,
 	}}
 
+	invalReq := []public_input.Invalidity{
+		{
+			TxNumber:            3,
+			ExpectedBlockHeight: 23,
+			StateRootHash:       internal.Uint64To32Bytes(22),
+		}}
+
 	blobReq0 := blobsubmission.Request{
 		Eip4844Enabled:      true,
 		CompressedData:      base64.StdEncoding.EncodeToString(blobs[0]),
@@ -212,6 +239,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 	req := pi_interconnection.Request{
 		Decompressions: []blobsubmission.Response{*blobResp0, *blobResp1},
 		Executions:     execReq,
+		Invalidity:     invalReq,
 		Aggregation: public_input.Aggregation{
 			FinalShnarf:                             blobResp1.ExpectedShnarf,
 			ParentAggregationFinalShnarf:            blobReq0.PrevShnarf,
@@ -226,6 +254,8 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 			L1RollingHashMessageNumber:              uint(execReq[3].LastRollingHashUpdateNumber),
 			L2MsgRootHashes:                         merkleRoots,
 			L2MsgMerkleTreeDepth:                    5,
+			LastFinalizedRollingHashNumberTx:        2,
+			RollingHashNumberTx:                     3,
 		},
 	}
 
@@ -272,6 +302,7 @@ func testPI(t *testing.T, req pi_interconnection.Request, options ...testPIOptio
 		cfg := config.PublicInput{
 			MaxNbDecompression: len(req.Decompressions) + slack[0],
 			MaxNbExecution:     len(req.Executions) + slack[1],
+			MaxNbInvalidity:    len(req.Invalidity) + slack[1],
 			ExecutionMaxNbMsg:  1 + slack[2],
 			L2MsgMerkleDepth:   5,
 			L2MsgMaxNbMerkle:   1 + slack[3],

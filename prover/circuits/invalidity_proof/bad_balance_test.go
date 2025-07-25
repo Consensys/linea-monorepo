@@ -9,6 +9,7 @@ import (
 	inval "github.com/consensys/linea-monorepo/prover/circuits/invalidity_proof"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 )
@@ -37,10 +38,13 @@ func TestInvalidityBadBalance(t *testing.T) {
 				LeafOpening: tcases[1].Leaf,
 			},
 			Transaction: types.NewTx(&tcases[1].Tx),
+			FuncInputs: public_input.Invalidity{
+				StateRootHash: root,
+			},
 		}
 
 		circuit = inval.CircuitInvalidity{
-			SubCircuits: &inval.BadBalanceCircuit{},
+			SubCircuit: &inval.BadBalanceCircuit{},
 		}
 	)
 

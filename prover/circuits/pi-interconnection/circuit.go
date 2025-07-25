@@ -24,6 +24,7 @@ import (
 	decompression "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/circuits/invalidity_proof"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
@@ -40,9 +41,11 @@ type Circuit struct {
 	AggregationPublicInput   [2]frontend.Variable `gnark:",public"` // the public input of the aggregation circuit; divided big-endian into two 16-byte chunks
 	ExecutionPublicInput     []frontend.Variable  `gnark:",public"`
 	DecompressionPublicInput []frontend.Variable  `gnark:",public"`
+	InvalidityPublicInput    []frontend.Variable  `gnark:",public"`
 
 	DecompressionFPIQ []decompression.FunctionalPublicInputQSnark
 	ExecutionFPIQ     []execution.FunctionalPublicInputQSnark
+	InvalidityFPI     []invalidity_proof.FunctionalPublicInputsGnark // to connected invalidityFPI to the aggregationFPI
 
 	public_input.AggregationFPIQSnark
 
@@ -91,7 +94,7 @@ func (c *Circuit) Define(api frontend.API) error {
 	api.AssertIsDifferent(nbExecution, 0)
 
 	if c.MaxNbCircuits > 0 { // CHECK_CIRCUIT_LIMIT
-		api.AssertIsLessOrEqual(api.Add(nbExecution, c.NbDecompression), c.MaxNbCircuits)
+		api.AssertIsLessOrEqual(api.Add(nbExecution, c.NbDecompression, c.NbInvalidity), c.MaxNbCircuits)
 	}
 
 	var (
@@ -239,6 +242,39 @@ func (c *Circuit) Define(api frontend.API) error {
 		pi.L2MsgMerkleTreeRoots[i] = MerkleRootSnark(&hshK, merkleLeavesConcat.Values[i*merkleNbLeaves:(i+1)*merkleNbLeaves])
 	}
 
+	// check invalidity proofs against the finalStateRootHash and FinalBlockNumber in the aggregation.
+	maxNbInvalidity := len(c.InvalidityFPI)
+	api.AssertIsLessOrEqual(c.NbInvalidity, maxNbInvalidity) // @Azam check if it is neccassary here
+	rInvalidity := internal.NewRange(api, c.NbInvalidity, maxNbInvalidity)
+	lastFinalizedTxNum := c.AggregationFPIQSnark.LastFinalizedRollingHashNumberTx
+	for i, invalidityFPI := range c.InvalidityFPI {
+
+		api.AssertIsEqual(invalidityFPI.SateRootHash, finalState) // @Azam make sure it really give the finalState
+		api.AssertIsLessOrEqual(pi.FinalBlockNumber, invalidityFPI.ExpectedBlockNumber)
+		api.AssertIsEqual(c.InvalidityPublicInput[i], api.Mul(rInvalidity.InRange[i], c.InvalidityFPI[i].Sum(api, hshM)))
+
+		if i != 0 {
+			// constraints over rollingHashFtx
+			expr := api.Mul(rInvalidity.InRange[i], api.Sub(invalidityFPI.TxNumber, c.InvalidityFPI[i-1].TxNumber, 1))
+
+			api.AssertIsEqual(expr, 0)
+
+			//@Azam check if we need ; if rInvalidity.InRange[i] = 0 ----> c.InvalidityFPI[i] == c.InvalidityFPI[i-1]
+		}
+
+	}
+
+	// for i == 0 check it against the lastFinalizedTxNum
+	shouldUpdate := api.Mul(rInvalidity.InRange[0], api.Sub(c.InvalidityFPI[0].TxNumber, lastFinalizedTxNum, 1))
+	api.AssertIsEqual(shouldUpdate, 0)
+
+	// set the FinalRollingHashNumberFtx for the aggregation circuit.
+	pi.FinalRollingHashNumberTx =
+		api.Add(
+			api.Mul(api.Sub(1, rInvalidity.InRange[0]), pi.LastFinalizedRollingHashNumberTx),
+			api.Mul(rInvalidity.InRange[0], c.InvalidityFPI[len(c.InvalidityFPI)-1].TxNumber),
+		)
+
 	twoPow8 := big.NewInt(256)
 	// "open" aggregation public input
 	aggregationPIBytes := pi.Sum(api, &hshK)
@@ -309,6 +345,7 @@ func (c *Compiled) getConfig() (config.PublicInput, error) {
 	return config.PublicInput{
 		MaxNbDecompression: len(c.Circuit.DecompressionFPIQ),
 		MaxNbExecution:     len(c.Circuit.ExecutionFPIQ),
+		MaxNbInvalidity:    len(c.Circuit.InvalidityFPI),
 		ExecutionMaxNbMsg:  executionNbMsg,
 		L2MsgMerkleDepth:   c.Circuit.L2MessageMerkleDepth,
 		L2MsgMaxNbMerkle:   c.Circuit.L2MessageMaxNbMerkle,
@@ -320,8 +357,10 @@ func allocateCircuit(cfg config.PublicInput) Circuit {
 	res := Circuit{
 		DecompressionPublicInput: make([]frontend.Variable, cfg.MaxNbDecompression),
 		ExecutionPublicInput:     make([]frontend.Variable, cfg.MaxNbExecution),
+		InvalidityPublicInput:    make([]frontend.Variable, cfg.MaxNbInvalidity),
 		DecompressionFPIQ:        make([]decompression.FunctionalPublicInputQSnark, cfg.MaxNbDecompression),
 		ExecutionFPIQ:            make([]execution.FunctionalPublicInputQSnark, cfg.MaxNbExecution),
+		InvalidityFPI:            make([]invalidity_proof.FunctionalPublicInputsGnark, cfg.MaxNbInvalidity),
 		L2MessageMerkleDepth:     cfg.L2MsgMerkleDepth,
 		L2MessageMaxNbMerkle:     cfg.L2MsgMaxNbMerkle,
 		MaxNbCircuits:            cfg.MaxNbCircuits,
@@ -351,7 +390,7 @@ func newKeccakCompiler(c config.PublicInput) *keccak.StrictHasherCompiler {
 
 	// aggregation PI opening
 	res.WithFlexibleHashLengths(32 * c.L2MsgMaxNbMerkle)
-	res.WithStrictHashLengths(384)
+	res.WithStrictHashLengths(public_input.NbAggregationFPI * 32)
 
 	return &res
 }
@@ -417,7 +456,7 @@ func WizardCompilationParameters() []func(iop *wizard.CompiledIOP) {
 
 }
 
-// GetMaxNbCircuitsSum computes MaxNbDecompression + MaxNbExecution from the compiled constraint system
+// GetMaxNbCircuitsSum computes MaxNbDecompression + MaxNbExecution + MaxNbInvalidity from the compiled constraint system
 // TODO replace with something cleaner, using the config
 func GetMaxNbCircuitsSum(cs constraint.ConstraintSystem) int {
 	return cs.GetNbPublicVariables() - 2
@@ -428,11 +467,14 @@ type InnerCircuitType uint8
 const (
 	Execution     InnerCircuitType = 0
 	Decompression InnerCircuitType = 1
+	Invalidity    InnerCircuitType = 2
 )
 
 func InnerCircuitTypesToIndexes(cfg *config.PublicInput, types []InnerCircuitType) []int {
-	indexes := utils.RightPad(utils.Partition(utils.RangeSlice[int](len(types)), types), 2)
-	return utils.RightPad(
-		append(utils.RightPad(indexes[Execution], cfg.MaxNbExecution), indexes[Decompression]...), cfg.MaxNbExecution+cfg.MaxNbDecompression)
-
+	indexes := utils.RightPad(utils.Partition(utils.RangeSlice[int](len(types)), types), 3)
+	return append(append(
+		utils.RightPad(indexes[Execution], cfg.MaxNbExecution),            // Pad Execution indexes
+		utils.RightPad(indexes[Decompression], cfg.MaxNbDecompression)..., // Pad Decompression indexes
+	),
+		utils.RightPad(indexes[Invalidity], cfg.MaxNbInvalidity)...) // Pad Invalidity indexes
 }
