@@ -355,7 +355,14 @@ func (a LppWitnessAssignment) Run(run *wizard.ProverRuntime) {
 
 			colWitness, ok := witness.Columns[colName]
 			if !ok {
-				utils.Panic("witness of column %v was not found", colName)
+				utils.Panic(
+					"witness of column %v was not found, module=%v witness-columns=%v module-columns=%v module-column-LPP=%v",
+					colName,
+					m.ModuleNames(),
+					utils.SortedKeysOf(witness.Columns, func(a, b ifaces.ColID) bool { return a < b }),
+					m.DefinitionInputs[0].Columns,
+					m.DefinitionInputs[0].ColumnsLPPSet,
+				)
 			}
 
 			run.AssignColumn(colName, colWitness)
