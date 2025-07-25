@@ -72,8 +72,8 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	logrus.Infof("Finished running the bootstrapper, generated %d GL modules and %d LPP modules", numGL, numLPP)
 
 	var (
-		proofGLs            []recursion.Witness
-		proofLPPs           []recursion.Witness
+		proofGLs            = make([]recursion.Witness, numGL)
+		proofLPPs           = make([]recursion.Witness, numGL)
 		lppCommitments      []field.Element
 		errGroup            = &errgroup.Group{}
 		contextGL, cancelGL = context.WithCancel(context.Background())
@@ -120,7 +120,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 				return jobErr
 			}
 
-			proofGLs = append(proofGLs, *proofGL)
+			proofGLs[i] = *proofGL
 			lppCommitments = append(lppCommitments, lppCommitment)
 			return nil
 		})
@@ -177,7 +177,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 				return fmt.Errorf("could not run LPP prover for witness index=%v: %w", i, jobErr)
 			}
 
-			proofLPPs = append(proofLPPs, *proofLPP)
+			proofLPPs[i] = *proofLPP
 			return nil
 		})
 	}
