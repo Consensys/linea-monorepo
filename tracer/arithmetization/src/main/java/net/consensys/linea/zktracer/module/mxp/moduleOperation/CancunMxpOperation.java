@@ -63,7 +63,7 @@ public class CancunMxpOperation extends MxpOperation {
 
     trace
         .mxpStamp(stamp)
-        .cn(this.getContextNumber())
+        .cn(Bytes.ofUnsignedLong(this.getContextNumber()))
         .decoder(true)
         .pDecoderInst(UnsignedByte.of(opCodeData.mnemonic().byteValue()))
         .pDecoderIsMsize(opCodeData.isMSize())
@@ -85,7 +85,7 @@ public class CancunMxpOperation extends MxpOperation {
 
     trace
         .mxpStamp(stamp)
-        .cn(this.getContextNumber())
+        .cn(Bytes.ofUnsignedLong(this.getContextNumber()))
         .macro(true)
         .pMacroInst(UnsignedByte.of(opCode.byteValue()))
         .pMacroDeploying(cancunMxpCall.isDeploys())
@@ -108,7 +108,7 @@ public class CancunMxpOperation extends MxpOperation {
   final void traceScenario(int stamp, Trace.Mxp trace) {
     trace
         .mxpStamp(stamp)
-        .cn(this.getContextNumber())
+        .cn(Bytes.ofUnsignedLong(this.getContextNumber()))
         .scenario(true)
         .pScenarioMsize(cancunMxpCall.isMSizeScenario())
         .pScenarioTrivial(cancunMxpCall.isTrivialScenario())
@@ -127,7 +127,7 @@ public class CancunMxpOperation extends MxpOperation {
     for (int i = 0; i < nRowsComputation(); i++) {
       trace
           .mxpStamp(stamp)
-          .cn(this.getContextNumber())
+          .cn(Bytes.ofUnsignedLong(this.getContextNumber()))
           .computation(true)
           .ct(i)
           .ctMax(cancunMxpCall.ctMax())
