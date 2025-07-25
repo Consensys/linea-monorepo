@@ -96,7 +96,7 @@ func (bp *BlsPair) WithG1MembershipCircuit(comp *wizard.CompiledIOP, options ...
 	toAlignG1Ms := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_G1_MEMBERSHIP", NAME_BLS_PAIR),
 		Round:              ROUND_NR,
-		DataToCircuitMask:  bp.BlsPairDataSource.CsG1Membership,
+		DataToCircuitMask:  bp.unalignedPairData.GnarkIsActiveG1Membership,
 		DataToCircuit:      bp.BlsPairDataSource.Limb,
 		Circuit:            newCheckCircuit(G1, GROUP, bp.Limits),
 		NbCircuitInstances: bp.Limits.nbGroupMembershipCircuitInstances(G1),
@@ -111,7 +111,7 @@ func (bp *BlsPair) WithG2MembershipCircuit(comp *wizard.CompiledIOP, options ...
 	toAlignG2Ms := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_G2_MEMBERSHIP", NAME_BLS_PAIR),
 		Round:              ROUND_NR,
-		DataToCircuitMask:  bp.BlsPairDataSource.CsG2Membership,
+		DataToCircuitMask:  bp.unalignedPairData.GnarkIsActiveG2Membership,
 		DataToCircuit:      bp.BlsPairDataSource.Limb,
 		Circuit:            newCheckCircuit(G2, GROUP, bp.Limits),
 		NbCircuitInstances: bp.Limits.nbGroupMembershipCircuitInstances(G2),
@@ -145,9 +145,12 @@ type unalignedPairData struct {
 	IsLastLine         ifaces.Column
 	PointG1            [nbG1Limbs]ifaces.Column
 	PointG2            [nbG2Limbs]ifaces.Column
+	PrevAccumulator    [nbGtLimbs]ifaces.Column
 	CurrentAccumulator [nbGtLimbs]ifaces.Column
-	NextAccumulator    [nbGtLimbs]ifaces.Column
 	ExpectedResult     [2]ifaces.Column
+
+	GnarkIsActiveG1Membership ifaces.Column
+	GnarkIsActiveG2Membership ifaces.Column
 
 	// data which is project from above to columns going into the gnark pairing check circuit
 	GnarkIsActiveMillerLoop ifaces.Column
@@ -158,18 +161,21 @@ type unalignedPairData struct {
 }
 
 func newUnalignedPairData(comp *wizard.CompiledIOP, limits *Limits, src *BlsPairDataSource) *unalignedPairData {
+	createColFnMembership := createColFn(comp, NAME_BLS_PAIR, src.SuccessBit.Size())
 	createColFnUa := createColFn(comp, NAME_UNALIGNED_PAIR, limits.sizePairUnalignedIntegration())
 	createColFnMl := createColFn(comp, NAME_UNALIGNED_PAIR, limits.sizePairMillerLoopIntegration())
 	createColFnFe := createColFn(comp, NAME_UNALIGNED_PAIR, limits.sizePairFinalExpIntegration())
 	ucmd := &unalignedPairData{
-		BlsPairDataSource:       src,
-		IsActive:                createColFnUa("IS_ACTIVE"),
-		IsFirstLine:             createColFnUa("IS_FIRST_LINE"),
-		IsLastLine:              createColFnUa("IS_LAST_LINE"),
-		GnarkIsActiveMillerLoop: createColFnMl("GNARK_IS_ACTIVE_ML"),
-		GnarkDataMillerLoop:     createColFnMl("GNARK_DATA_ML"),
-		GnarkIsActiveFinalExp:   createColFnFe("GNARK_IS_ACTIVE_FE"),
-		GnarkDataFinalExp:       createColFnFe("GNARK_DATA_FE"),
+		BlsPairDataSource:         src,
+		IsActive:                  createColFnUa("IS_ACTIVE"),
+		IsFirstLine:               createColFnUa("IS_FIRST_LINE"),
+		IsLastLine:                createColFnUa("IS_LAST_LINE"),
+		GnarkIsActiveMillerLoop:   createColFnMl("GNARK_IS_ACTIVE_ML"),
+		GnarkDataMillerLoop:       createColFnMl("GNARK_DATA_ML"),
+		GnarkIsActiveFinalExp:     createColFnFe("GNARK_IS_ACTIVE_FE"),
+		GnarkDataFinalExp:         createColFnFe("GNARK_DATA_FE"),
+		GnarkIsActiveG1Membership: createColFnMembership("GNARK_IS_ACTIVE_G1_MEMBERSHIP"),
+		GnarkIsActiveG2Membership: createColFnMembership("GNARK_IS_ACTIVE_G2_MEMBERSHIP"),
 	}
 
 	for i := range ucmd.PointG1 {
@@ -178,22 +184,58 @@ func newUnalignedPairData(comp *wizard.CompiledIOP, limits *Limits, src *BlsPair
 	for i := range ucmd.PointG2 {
 		ucmd.PointG2[i] = createColFnUa(fmt.Sprintf("POINT_G2_%d", i))
 	}
+	for i := range ucmd.PrevAccumulator {
+		ucmd.PrevAccumulator[i] = createColFnUa(fmt.Sprintf("PREV_ACCUMULATOR_%d", i))
+	}
 	for i := range ucmd.CurrentAccumulator {
 		ucmd.CurrentAccumulator[i] = createColFnUa(fmt.Sprintf("CURRENT_ACCUMULATOR_%d", i))
-	}
-	for i := range ucmd.NextAccumulator {
-		ucmd.NextAccumulator[i] = createColFnUa(fmt.Sprintf("NEXT_ACCUMULATOR_%d", i))
 	}
 	for i := range ucmd.ExpectedResult {
 		ucmd.ExpectedResult[i] = createColFnUa(fmt.Sprintf("EXPECTED_RESULT_%d", i))
 	}
 
-	// TODO: projections
+	// TODO: projection from source to unaligned
+	// TODO: projection from unaligned to gnark data
+	// TODO: that SUCCESS AND MEMBERSHIP is correctly set
+	// TODO: first line is correct
+	// TODO: last line is correct
 
 	return ucmd
 }
 
 func (d *unalignedPairData) Assign(run *wizard.ProverRuntime) {
+	d.assignMembershipMask(run)
+	d.assignUnaligned(run)
+	d.assignGnarkData(run)
+}
+
+func (d *unalignedPairData) assignMembershipMask(run *wizard.ProverRuntime) {
+	// assigns the masks (CS_G1_MEMBERSHIP AND !SUCCESS_BIT) and
+	// (CS_G2_MEMBERSHIP AND !SUCCESS_BIT) columns which are used for filtering
+	// the inputs going to group non-membership circuit.
+	var (
+		srcCsG1Membership = d.CsG1Membership.GetColAssignment(run).IntoRegVecSaveAlloc()
+		srcCsG2Membership = d.CsG2Membership.GetColAssignment(run).IntoRegVecSaveAlloc()
+		srcSuccessBit     = d.SuccessBit.GetColAssignment(run).IntoRegVecSaveAlloc()
+	)
+
+	var (
+		dstG1Membership = common.NewVectorBuilder(d.GnarkIsActiveG1Membership)
+		dstG2Membership = common.NewVectorBuilder(d.GnarkIsActiveG2Membership)
+	)
+
+	for i := range srcCsG1Membership {
+		dstG1Membership.PushBoolean(srcCsG1Membership[i].IsOne() && srcSuccessBit[i].IsZero())
+	}
+	for i := range srcCsG2Membership {
+		dstG2Membership.PushBoolean(srcCsG2Membership[i].IsOne() && srcSuccessBit[i].IsZero())
+	}
+
+	dstG1Membership.PadAndAssign(run, field.Zero())
+	dstG2Membership.PadAndAssign(run, field.Zero())
+}
+
+func (d *unalignedPairData) assignUnaligned(run *wizard.ProverRuntime) {
 	var (
 		srcID         = d.ID.GetColAssignment(run).IntoRegVecSaveAlloc()
 		srcSuccessBit = d.SuccessBit.GetColAssignment(run).IntoRegVecSaveAlloc()
@@ -215,8 +257,8 @@ func (d *unalignedPairData) Assign(run *wizard.ProverRuntime) {
 
 	var dstPointG1 [nbG1Limbs]*common.VectorBuilder
 	var dstPointG2 [nbG2Limbs]*common.VectorBuilder
+	var dstPrevAccumulator [nbGtLimbs]*common.VectorBuilder
 	var dstCurrentAccumulator [nbGtLimbs]*common.VectorBuilder
-	var dstNextAccumulator [nbGtLimbs]*common.VectorBuilder
 	var dstExpectedResult [2]*common.VectorBuilder
 
 	for i := range d.PointG1 {
@@ -225,11 +267,11 @@ func (d *unalignedPairData) Assign(run *wizard.ProverRuntime) {
 	for i := range d.PointG2 {
 		dstPointG2[i] = common.NewVectorBuilder(d.PointG2[i])
 	}
+	for i := range d.PrevAccumulator {
+		dstPrevAccumulator[i] = common.NewVectorBuilder(d.PrevAccumulator[i])
+	}
 	for i := range d.CurrentAccumulator {
 		dstCurrentAccumulator[i] = common.NewVectorBuilder(d.CurrentAccumulator[i])
-	}
-	for i := range d.NextAccumulator {
-		dstNextAccumulator[i] = common.NewVectorBuilder(d.NextAccumulator[i])
 	}
 	for i := range d.ExpectedResult {
 		dstExpectedResult[i] = common.NewVectorBuilder(d.ExpectedResult[i])
@@ -259,8 +301,8 @@ func (d *unalignedPairData) Assign(run *wizard.ProverRuntime) {
 		// pair input index
 		idx := 0
 		// we initialize the current accumulator to zero
-		currAccumulator := nativeGtZero()
-		var nextAccumulator []field.Element
+		prevAccumulator := nativeGtZero()
+		var currentAccumulator []field.Element
 		for ptr < len(srcID) && srcID[ptr].Equal(&currentID) {
 			// if we have success_bit = 0, then we advance the pointer to the
 			// next input. But we need to move the pointer according to if we
@@ -285,11 +327,11 @@ func (d *unalignedPairData) Assign(run *wizard.ProverRuntime) {
 				}
 				dstIsLastLine.PushZero()
 				// compute the next accumulator
-				nextAccumulator = nativeMillerLoopAndSum(currAccumulator, srcLimb[ptr:ptr+nbG1Limbs], srcLimb[ptr+nbG1Limbs:ptr+nbG1Limbs+nbG2Limbs])
+				currentAccumulator = nativeMillerLoopAndSum(prevAccumulator, srcLimb[ptr:ptr+nbG1Limbs], srcLimb[ptr+nbG1Limbs:ptr+nbG1Limbs+nbG2Limbs])
 				// copy the accumulator limbs
 				for i := range nbGtLimbs {
-					dstCurrentAccumulator[i].PushField(currAccumulator[i])
-					dstNextAccumulator[i].PushField(nextAccumulator[i])
+					dstPrevAccumulator[i].PushField(prevAccumulator[i])
+					dstCurrentAccumulator[i].PushField(currentAccumulator[i])
 				}
 				for i := range 2 {
 					dstExpectedResult[i].PushZero()
@@ -324,14 +366,39 @@ func (d *unalignedPairData) Assign(run *wizard.ProverRuntime) {
 	for i := range d.PointG2 {
 		dstPointG2[i].PadAndAssign(run, field.Zero())
 	}
+	for i := range d.PrevAccumulator {
+		dstPrevAccumulator[i].PadAndAssign(run, field.Zero())
+	}
 	for i := range d.CurrentAccumulator {
 		dstCurrentAccumulator[i].PadAndAssign(run, field.Zero())
 	}
-	for i := range d.NextAccumulator {
-		dstNextAccumulator[i].PadAndAssign(run, field.Zero())
-	}
 	for i := range d.ExpectedResult {
 		dstExpectedResult[i].PadAndAssign(run, field.Zero())
+	}
+}
+
+func (d *unalignedPairData) assignGnarkData(run *wizard.ProverRuntime) {
+	var (
+		srcIsActive = d.IsActive.GetColAssignment(run).IntoRegVecSaveAlloc()
+		srcPointG1  = make([][]field.Element, nbG1Limbs)
+		srcPointG2  = make([][]field.Element, nbG2Limbs)
+		srcPrev     = make([][]field.Element, nbGtLimbs)
+		srcCurrent  = make([][]field.Element, nbGtLimbs)
+		srcExpected = make([][]field.Element, 2)
+	)
+
+	for i := range nbG1Limbs {
+		srcPointG1[i] = d.PointG1[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+	}
+	for i := range nbG2Limbs {
+		srcPointG2[i] = d.PointG2[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+	}
+	for i := range nbGtLimbs {
+		srcPrev[i] = d.PrevAccumulator[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+		srcCurrent[i] = d.CurrentAccumulator[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+	}
+	for i := range 2 {
+		srcExpected[i] = d.ExpectedResult[i].GetColAssignment(run).IntoRegVecSaveAlloc()
 	}
 
 	var (
