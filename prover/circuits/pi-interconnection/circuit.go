@@ -253,10 +253,13 @@ func (c *Circuit) Define(api frontend.API) error {
 		api.AssertIsLessOrEqual(pi.FinalBlockNumber, invalidityFPI.ExpectedBlockNumber)
 		api.AssertIsEqual(c.InvalidityPublicInput[i], api.Mul(rInvalidity.InRange[i], c.InvalidityFPI[i].Sum(api, hshM)))
 
-		// constraints over rollingHashFtx
 		if i != 0 {
+			// constraints over rollingHashFtx
 			expr := api.Mul(rInvalidity.InRange[i], api.Sub(invalidityFPI.TxNumber, c.InvalidityFPI[i-1].TxNumber, 1))
+
 			api.AssertIsEqual(expr, 0)
+
+			//@Azam check if we need ; if rInvalidity.InRange[i] = 0 ----> c.InvalidityFPI[i] == c.InvalidityFPI[i-1]
 		}
 
 	}
