@@ -133,8 +133,9 @@ func NewQueryBasedDiscoverer() *QueryBasedModuleDiscoverer {
 }
 
 func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
-	if disc.Advices == nil {
+	if len(disc.Advices) == 0 {
 		disc.analyzeBasic(comp)
+		return
 	}
 	disc.analyzeWithAdvices(comp)
 }
