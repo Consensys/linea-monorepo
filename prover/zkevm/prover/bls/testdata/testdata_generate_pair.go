@@ -413,14 +413,26 @@ func processPairInputs(v []pairInput) []pairInputCase {
 		isFirstInvalid := true
 		for i := range v {
 			v[i].ToPairingCircuit = false
-			if !isFirstInvalid {
+			switch {
+			case (v[i].ToG2MembershipCircuit || v[i].ToG1MembershipCircuit) && v[i].MembershipSuccess:
+				// ensure that we only check non-membership
+				v[i].ToG1MembershipCircuit = false
+				v[i].ToG2MembershipCircuit = false
+			case isFirstInvalid && (v[i].ToG1MembershipCircuit || v[i].ToG2MembershipCircuit) && !v[i].MembershipSuccess:
+				// we only run membership check on the first invalid point. This
+				// means we keep it as is
+				isFirstInvalid = false
+			case !isFirstInvalid && (v[i].ToG1MembershipCircuit || v[i].ToG2MembershipCircuit) && !v[i].MembershipSuccess:
+				// we do not run membership check on the rest of invalid points,
+				// so we set ToG1MembershipCircuit and ToG2MembershipCircuit to
+				// false
 				v[i].ToG1MembershipCircuit = false
 				v[i].ToG2MembershipCircuit = false
 			}
-			if isFirstInvalid && (v[i].ToG1MembershipCircuit || v[i].ToG2MembershipCircuit) {
-				isFirstInvalid = false
-			}
-			// we set SUCCESS_BIT to false for all inputs if there is an invalid point
+		}
+		// now we set the success_bit to false on all inputs for this test case
+		// (even if we have something where the membership check passes)
+		for i := range v {
 			v[i].MembershipSuccess = false
 		}
 		return []pairInputCase{pairInputCase{
