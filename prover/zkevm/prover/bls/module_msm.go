@@ -241,6 +241,32 @@ func (d *unalignedMsmData) csAccumulatorConsistency(comp *wizard.CompiledIOP) {
 }
 
 func (d *unalignedMsmData) Assign(run *wizard.ProverRuntime) {
+	d.assignDataAndMul(run)
+	d.assignUnaligned(run)
+	d.assignGnarkData(run)
+}
+
+func (d *unalignedMsmData) assignDataAndMul(run *wizard.ProverRuntime) {
+	var (
+		srcLimb   = d.Limb.GetColAssignment(run).IntoRegVecSaveAlloc()
+		srcIsData = d.IsData.GetColAssignment(run).IntoRegVecSaveAlloc()
+		srcCsMul  = d.CsMul.GetColAssignment(run).IntoRegVecSaveAlloc()
+		srcIsRes  = d.IsRes.GetColAssignment(run).IntoRegVecSaveAlloc()
+	)
+	var (
+		dstDataAndCs     = common.NewVectorBuilder(d.IsDataAndCsMul)
+		dstIsResultAndCs = common.NewVectorBuilder(d.IsResultAndCsMul)
+	)
+	// compute the IS_DATA && CS_MUL column which is used for projection
+	for ptr := range srcLimb {
+		dstDataAndCs.PushBoolean(srcIsData[ptr].IsOne() && srcCsMul[ptr].IsOne())
+		dstIsResultAndCs.PushBoolean(srcIsRes[ptr].IsOne() && srcCsMul[ptr].IsOne())
+	}
+	dstDataAndCs.PadAndAssign(run, field.Zero())
+	dstIsResultAndCs.PadAndAssign(run, field.Zero())
+}
+
+func (d *unalignedMsmData) assignUnaligned(run *wizard.ProverRuntime) {
 	var (
 		srcID      = d.ID.GetColAssignment(run).IntoRegVecSaveAlloc()
 		srcLimb    = d.Limb.GetColAssignment(run).IntoRegVecSaveAlloc()
@@ -253,9 +279,8 @@ func (d *unalignedMsmData) Assign(run *wizard.ProverRuntime) {
 
 	nbL := nbLimbs(d.group)
 	var (
-		dstIsActive           = common.NewVectorBuilder(d.IsActive)
-		dstDataAndCs          = common.NewVectorBuilder(d.IsDataAndCsMul)
-		dstIsResultAndCs      = common.NewVectorBuilder(d.IsResultAndCsMul)
+		dstIsActive = common.NewVectorBuilder(d.IsActive)
+
 		dstIsFirstLine        = common.NewVectorBuilder(d.IsFirstLine)
 		dstIsLastLine         = common.NewVectorBuilder(d.IsLastLine)
 		dstScalar             = make([]*common.VectorBuilder, nbFrLimbs)
@@ -270,12 +295,6 @@ func (d *unalignedMsmData) Assign(run *wizard.ProverRuntime) {
 		dstPoint[i] = common.NewVectorBuilder(d.Point[i])
 		dstCurrentAccumulator[i] = common.NewVectorBuilder(d.CurrentAccumulator[i])
 		dstNextAccumulator[i] = common.NewVectorBuilder(d.NextAccumulator[i])
-	}
-
-	// compute the IS_DATA && CS_MUL column which is used for projection
-	for ptr := range srcLimb {
-		dstDataAndCs.PushBoolean(srcIsData[ptr].IsOne() && srcCsMul[ptr].IsOne())
-		dstIsResultAndCs.PushBoolean(srcIsRes[ptr].IsOne() && srcCsMul[ptr].IsOne())
 	}
 
 	var ptr int
@@ -343,8 +362,6 @@ func (d *unalignedMsmData) Assign(run *wizard.ProverRuntime) {
 		}
 	}
 
-	dstDataAndCs.PadAndAssign(run, field.Zero())
-	dstIsResultAndCs.PadAndAssign(run, field.Zero())
 	dstIsActive.PadAndAssign(run, field.Zero())
 	dstIsFirstLine.PadAndAssign(run, field.Zero())
 	dstIsLastLine.PadAndAssign(run, field.Zero())
@@ -356,32 +373,35 @@ func (d *unalignedMsmData) Assign(run *wizard.ProverRuntime) {
 		dstCurrentAccumulator[i].PadAndAssign(run, field.Zero())
 		dstNextAccumulator[i].PadAndAssign(run, field.Zero())
 	}
+}
+
+func (d *unalignedMsmData) assignGnarkData(run *wizard.ProverRuntime) {
+	nbL := nbLimbs(d.group)
 
 	// we now need to transpose again the limbs into the gnark input format.
 	// This is essentially mapping the lines of current accumulator, point,
 	// scalar and next accumulator into column.
-
 	var (
-		srcIsActive           = dstIsActive.Slice()
+		srcIsActive           = d.IsActive.GetColAssignment(run).IntoRegVecSaveAlloc()
 		srcScalar             = make([][]field.Element, nbFrLimbs)
 		srcPoint              = make([][]field.Element, nbL)
 		srcCurrentAccumulator = make([][]field.Element, nbL)
 		srcNextAccumulator    = make([][]field.Element, nbL)
 	)
 	for i := range nbFrLimbs {
-		srcScalar[i] = dstScalar[i].Slice()
+		srcScalar[i] = d.Scalar[i].GetColAssignment(run).IntoRegVecSaveAlloc()
 	}
 	for i := range nbL {
-		srcPoint[i] = dstPoint[i].Slice()
-		srcCurrentAccumulator[i] = dstCurrentAccumulator[i].Slice()
-		srcNextAccumulator[i] = dstNextAccumulator[i].Slice()
+		srcPoint[i] = d.Point[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+		srcCurrentAccumulator[i] = d.CurrentAccumulator[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+		srcNextAccumulator[i] = d.NextAccumulator[i].GetColAssignment(run).IntoRegVecSaveAlloc()
 	}
 
 	var (
 		dstDataMsm         = common.NewVectorBuilder(d.GnarkDataMsm)
 		dstDataIsActiveMsm = common.NewVectorBuilder(d.GnarkIsActiveMsm)
 	)
-	for i := range len(srcIsActive) {
+	for i := range srcIsActive {
 		if !srcIsActive[i].IsOne() {
 			continue
 		}
