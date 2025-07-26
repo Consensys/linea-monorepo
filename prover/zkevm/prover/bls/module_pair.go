@@ -74,8 +74,8 @@ func (bp *BlsPair) WithPairingCircuit(comp *wizard.CompiledIOP, options ...query
 		DataToCircuit:      bp.unalignedPairData.GnarkDataMillerLoop,
 		Circuit:            newMultiMillerLoopMulCircuit(bp.Limits),
 		NbCircuitInstances: bp.Limits.NbMillerLoopCircuitInstances,
-		// InputFillerKey:     "", // TODO
-		PlonkOptions: options,
+		InputFillerKey:     millerLoopInputFillerKey,
+		PlonkOptions:       options,
 	}
 	toAlignFe := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_FE", NAME_BLS_PAIR),
@@ -84,8 +84,8 @@ func (bp *BlsPair) WithPairingCircuit(comp *wizard.CompiledIOP, options ...query
 		DataToCircuit:      bp.unalignedPairData.GnarkDataFinalExp,
 		Circuit:            newMultiMillerLoopFinalExpCircuit(bp.Limits),
 		NbCircuitInstances: bp.Limits.NbFinalExpCircuitInstances,
-		// InputFillerKey:     "", // TODO
-		PlonkOptions: options,
+		InputFillerKey:     finalExpInputFillerKey,
+		PlonkOptions:       options,
 	}
 	bp.alignedMillerLoopData = plonk.DefineAlignment(comp, toAlignMl)
 	bp.alignedFinalExpData = plonk.DefineAlignment(comp, toAlignFe)
