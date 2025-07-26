@@ -1,6 +1,8 @@
 package bls
 
 import (
+	"fmt"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/algebra/emulated/fields_bls12381"
 	"github.com/consensys/gnark/std/algebra/emulated/sw_bls12381"
@@ -155,21 +157,26 @@ func (c gtElementWizard) ToElement(api frontend.API, fp *emulated.Field[sw_bls12
 		A11Limbs[len(A11Limbs)-(2*i+2)], A11Limbs[len(A11Limbs)-(2*i+1)] = bitslice.Partition(api, c.T[11*nbFpLimbs+i+1], 64, bitslice.WithNbDigits(128))
 	}
 
-	T := sw_bls12381.GTEl{
-		A0:  *fp.NewElement(A0Limbs),
-		A1:  *fp.NewElement(A1Limbs),
-		A2:  *fp.NewElement(A2Limbs),
-		A3:  *fp.NewElement(A3Limbs),
-		A4:  *fp.NewElement(A4Limbs),
-		A5:  *fp.NewElement(A5Limbs),
-		A6:  *fp.NewElement(A6Limbs),
-		A7:  *fp.NewElement(A7Limbs),
-		A8:  *fp.NewElement(A8Limbs),
-		A9:  *fp.NewElement(A9Limbs),
-		A10: *fp.NewElement(A10Limbs),
-		A11: *fp.NewElement(A11Limbs),
+	pairing, err := sw_bls12381.NewPairing(api)
+	if err != nil {
+		panic(fmt.Sprintf("new pairing: %v", err))
 	}
-	return T
+	T := pairing.Ext12.FromTower([12]*emulated.Element[sw_bls12381.BaseField]{
+		fp.NewElement(A0Limbs),
+		fp.NewElement(A1Limbs),
+		fp.NewElement(A2Limbs),
+		fp.NewElement(A3Limbs),
+		fp.NewElement(A4Limbs),
+		fp.NewElement(A5Limbs),
+		fp.NewElement(A6Limbs),
+		fp.NewElement(A7Limbs),
+		fp.NewElement(A8Limbs),
+		fp.NewElement(A9Limbs),
+		fp.NewElement(A10Limbs),
+		fp.NewElement(A11Limbs),
+	})
+
+	return *T
 }
 
 type element interface {

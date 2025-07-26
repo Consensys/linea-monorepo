@@ -7,7 +7,6 @@ import (
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fp"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 func set(nbL int, q *fp.Element, limbs []field.Element) {
@@ -131,8 +130,9 @@ func nativeMillerLoopAndSum(prevAccumulator []field.Element, pointG1 []field.Ele
 		[]bls12381.G1Affine{P},
 		[][2][len(bls12381.LoopCounter) - 1]bls12381.LineEvaluationAff{lines})
 	if err != nil {
-		utils.Panic("failed to compute miller loop: %v", err)
+		panic(fmt.Sprintf("failed to compute miller loop: %v", err))
 	}
+	mlres.Conjugate(&mlres)
 	next.Mul(&prev, &mlres)
 
 	nextAccumulator = make([]field.Element, nbGtLimbs)
