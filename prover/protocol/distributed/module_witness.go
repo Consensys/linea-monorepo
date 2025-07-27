@@ -96,7 +96,7 @@ type ModuleWitnessLPP struct {
 // module.
 func SegmentRuntime(
 	runtime *wizard.ProverRuntime,
-	disc ModuleDiscoverer,
+	disc *StandardModuleDiscoverer,
 	blueprintGLs, blueprintLPPs []ModuleSegmentationBlueprint,
 ) (
 	witnessesGL []*ModuleWitnessGL,
@@ -117,7 +117,7 @@ func SegmentRuntime(
 }
 
 // SegmentModule produces the list of the [ModuleWitness] for a given module
-func SegmentModuleGL(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, blueprintGL *ModuleSegmentationBlueprint) (witnessesGL []*ModuleWitnessGL) {
+func SegmentModuleGL(runtime *wizard.ProverRuntime, disc *StandardModuleDiscoverer, blueprintGL *ModuleSegmentationBlueprint) (witnessesGL []*ModuleWitnessGL) {
 
 	var (
 		moduleName           = blueprintGL.ModuleNames[0]
@@ -159,7 +159,7 @@ func SegmentModuleGL(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, bluep
 }
 
 // SegmentModuleLPP produces the list of the [ModuleWitness] for a given module
-func SegmentModuleLPP(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, moduleLPP *ModuleSegmentationBlueprint) (witnessesLPP []*ModuleWitnessLPP) {
+func SegmentModuleLPP(runtime *wizard.ProverRuntime, disc *StandardModuleDiscoverer, moduleLPP *ModuleSegmentationBlueprint) (witnessesLPP []*ModuleWitnessLPP) {
 
 	var (
 		cols          = runtime.Spec.Columns.AllKeys()
@@ -212,7 +212,7 @@ var (
 )
 
 // NbSegmentOfModule returns the number of segments for a given module
-func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, moduleName []ModuleName) (nbSegment int) {
+func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc *StandardModuleDiscoverer, moduleName []ModuleName) (nbSegment int) {
 
 	var (
 		cols            = runtime.Spec.Columns.AllKeys()
@@ -232,7 +232,7 @@ func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, mod
 		)
 
 		if len(mn) == 0 {
-			disc := disc.(*StandardModuleDiscoverer)
+			disc := disc
 			utils.Panic("one column does not belong to any module: %v, disc: %v, mn: %v", col.GetColID(), disc.ColumnsToModule, mn)
 		}
 
@@ -250,7 +250,7 @@ func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, mod
 
 			if nbSegmentForCol >= 4 {
 				col := col.(column.Natural)
-				qbm, _ := disc.(*StandardModuleDiscoverer).QbmOf(col)
+				qbm, _ := disc.QbmOf(col)
 
 				if _, ok := segmentWarningCache.Load(qbm.ModuleName); !ok {
 					fmt.Printf("[large nb segment] module=%v qbm=%v column=%v nbSegment=%v paddingInfo=%v start=%v stop=%v newSize=%v originalSize=%v\n",
@@ -273,7 +273,7 @@ func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, mod
 
 // SegmentColumn returns the segment of a given column for given index. The
 // function also takes a maxNbSegment value which is useful in case
-func SegmentOfColumn(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, col ifaces.Column, index, totalNbSegment int) smartvectors.SmartVector {
+func SegmentOfColumn(runtime *wizard.ProverRuntime, disc *StandardModuleDiscoverer, col ifaces.Column, index, totalNbSegment int) smartvectors.SmartVector {
 
 	if status := col.(column.Natural).Status(); status == column.Precomputed || status == column.VerifyingKey {
 		return col.GetColAssignment(runtime)

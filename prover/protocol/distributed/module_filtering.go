@@ -82,7 +82,7 @@ type FilteredModuleInputs struct {
 
 	// Disc is the module discoverer used to determine the module's
 	// scope
-	Disc ModuleDiscoverer
+	Disc *StandardModuleDiscoverer
 }
 
 // FilterCompiledIOP returns a FilteredModuleInputs for the given compiled IOP
@@ -284,7 +284,7 @@ func (mf moduleFilter) FilterCompiledIOP(comp *wizard.CompiledIOP) FilteredModul
 // The struct is not exported and should not be.
 type moduleFilter struct {
 	Module ModuleName
-	Disc   ModuleDiscoverer
+	Disc   *StandardModuleDiscoverer
 }
 
 // addGL adds a column to the GL part of the module and returns if

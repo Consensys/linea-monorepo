@@ -285,7 +285,7 @@ func (m *ModuleLPP) GetModuleTranslator() moduleTranslator {
 	return m.moduleTranslator
 }
 
-func (m *ModuleLPP) SetModuleTranslator(comp *wizard.CompiledIOP, disc ModuleDiscoverer) {
+func (m *ModuleLPP) SetModuleTranslator(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) {
 	m.moduleTranslator.Wiop = comp
 	m.moduleTranslator.Disc = disc
 } */

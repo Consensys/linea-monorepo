@@ -267,7 +267,7 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 // 	return m.moduleTranslator
 // }
 
-// func (m *ModuleGL) SetModuleTranslator(comp *wizard.CompiledIOP, disc ModuleDiscoverer) {
+// func (m *ModuleGL) SetModuleTranslator(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) {
 // 	m.moduleTranslator.Wiop = comp
 // 	m.moduleTranslator.Disc = disc
 // }

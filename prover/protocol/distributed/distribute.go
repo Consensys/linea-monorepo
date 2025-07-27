@@ -63,9 +63,9 @@ type DistributedWizard struct {
 	// preparation steps.
 	Bootstrapper *wizard.CompiledIOP
 
-	// Disc is the [ModuleDiscoverer] used to delimitate the scope for
+	// Disc is the [*StandardModuleDiscoverer] used to delimitate the scope for
 	// each module.
-	Disc ModuleDiscoverer
+	Disc *StandardModuleDiscoverer
 
 	// CompiledDefault stores the compiled default module and is set by calling
 	// [DistributedWizard.Compile]
@@ -102,7 +102,7 @@ func init() {
 // DistributeWizard returns a [DistributedWizard] from a [wizard.CompiledIOP]. It
 // takes ownership of the input [wizard.CompiledIOP]. And uses disc to design
 // the scope of each module.
-func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *DistributedWizard {
+func DistributeWizard(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) *DistributedWizard {
 
 	if err := auditInitialWizard(comp); err != nil {
 		utils.Panic("improper initial wizard for distribution: %v", err)
@@ -284,13 +284,13 @@ func GetLppCommitmentFromRuntime(runtime *wizard.ProverRuntime) field.Element {
 // compilation steps needing to be run before the splitting phase. Its role is to
 // ensure that all of the queries that cannot be processed by the splitting phase
 // are removed from the compiled IOP.
-func PrecompileInitialWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *wizard.CompiledIOP {
+func PrecompileInitialWizard(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) *wizard.CompiledIOP {
 	mimc.CompileMiMC(comp)
 	// specialqueries.RangeProof(comp)
 	// specialqueries.CompileFixedPermutations(comp)
 	logderivativesum.LookupIntoLogDerivativeSumWithSegmenter(
 		&LPPSegmentBoundaryCalculator{
-			Disc:     disc.(*StandardModuleDiscoverer),
+			Disc:     disc,
 			LPPArity: lppGroupingArity,
 		},
 	)(comp)

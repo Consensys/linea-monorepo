@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -38,27 +37,6 @@ const (
 	noPaddingInformation
 )
 
-// ModuleDiscoverer a set of methods responsible for the horizontal splittings (i.e., splitting to modules)
-type ModuleDiscoverer interface {
-	// Analyze is responsible for letting the module discoverer compute how to
-	// group best the columns into modules.
-	Analyze(comp *wizard.CompiledIOP)
-	// ModuleList returns the list of module names
-	ModuleList() []ModuleName
-	// FindModule returns the module corresponding to a column. The function is
-	// not required to return a column name for [verifier.VerifierCol]. The
-	// implementation is required to work using **only** the name of the column
-	// to find the result so the user can pass either columns from the original
-	// (unsplit) compiled-IOP or from a particular segment.
-	ModuleOf(col column.Natural) ModuleName
-	// NewSizeOf returns the split-size of a column in the module.
-	NewSizeOf(col column.Natural) int
-
-	// SegmentBoundaryOfColumn returns the starting point and the ending point of the
-	// segmentation of a column.
-	SegmentBoundaryOf(run *wizard.ProverRuntime, col column.Natural) (int, int, paddingInformation)
-}
-
 // ExpressionIsInModule is a helper function that returns the module of a [symbolic.Expression]
 // using the informations of the discoverer. The resolution of the module name
 // occurs as follows:
@@ -68,7 +46,7 @@ type ModuleDiscoverer interface {
 //     but have the same type. Then the expression takes their type.
 //   - If the expression contains variables that are from different modules,
 //     (excluding [AnyModule]), the function returns [NoModuleFound].
-func ModuleOfExpr(disc ModuleDiscoverer, expr *symbolic.Expression) ModuleName {
+func ModuleOfExpr(disc *StandardModuleDiscoverer, expr *symbolic.Expression) ModuleName {
 	board := expr.Board()
 	metadata := board.ListVariableMetadata()
 	return ModuleOfList(disc, metadata...)
@@ -77,7 +55,7 @@ func ModuleOfExpr(disc ModuleDiscoverer, expr *symbolic.Expression) ModuleName {
 // NewSizeOfExpr looks for the metadata in the expressions and resolves the new
 // size of the columns in the expression. The function returns 0 if the expression
 // does not have any size-resolvable item.
-func NewSizeOfExpr(disc ModuleDiscoverer, expr *symbolic.Expression) int {
+func NewSizeOfExpr(disc *StandardModuleDiscoverer, expr *symbolic.Expression) int {
 	board := expr.Board()
 	metadata := board.ListVariableMetadata()
 	newSize := 0
@@ -105,9 +83,9 @@ func NewSizeOfExpr(disc ModuleDiscoverer, expr *symbolic.Expression) int {
 }
 
 // ModuleOfColumn returns the module associated with the provided column.
-// The provided column can be of any type unlike what [ModuleDiscoverer.ModuleOf]
+// The provided column can be of any type unlike what [*StandardModuleDiscoverer.ModuleOf]
 // requires.
-func ModuleOfColumn(disc ModuleDiscoverer, col ifaces.Column) ModuleName {
+func ModuleOfColumn(disc *StandardModuleDiscoverer, col ifaces.Column) ModuleName {
 
 	switch c := col.(type) {
 
@@ -139,7 +117,7 @@ func ModuleOfColumn(disc ModuleDiscoverer, col ifaces.Column) ModuleName {
 //
 // The function panics if the type of the column is unexpected: all
 // the [verifiercol.VerifierCol] except for [verifiercol.ConstCol].
-func NewSizeOfColumn(disc ModuleDiscoverer, col ifaces.Column) int {
+func NewSizeOfColumn(disc *StandardModuleDiscoverer, col ifaces.Column) int {
 
 	switch c := col.(type) {
 	case column.Natural:
@@ -159,7 +137,7 @@ func NewSizeOfColumn(disc ModuleDiscoverer, col ifaces.Column) int {
 }
 
 // ModuleOfAccessor returns the module associated with acc
-func ModuleOfAccessor(disc ModuleDiscoverer, acc ifaces.Accessor) ModuleName {
+func ModuleOfAccessor(disc *StandardModuleDiscoverer, acc ifaces.Accessor) ModuleName {
 
 	switch a := acc.(type) {
 	case *accessors.FromConstAccessor:
@@ -181,7 +159,7 @@ func ModuleOfAccessor(disc ModuleDiscoverer, acc ifaces.Accessor) ModuleName {
 
 // ModuleOfList returns the module associated with the provided list of
 // items. Items can be either [ifaces.Column], [ifaces.Accessor] or [symbolic.Expression].
-func ModuleOfList[T any](disc ModuleDiscoverer, items ...T) ModuleName {
+func ModuleOfList[T any](disc *StandardModuleDiscoverer, items ...T) ModuleName {
 
 	res := AnyModule
 
@@ -227,7 +205,7 @@ func ModuleOfList[T any](disc ModuleDiscoverer, items ...T) ModuleName {
 // NewSizeOfList returns the new size of the provided list of items.
 // The function asserts that all provided items have the same new size
 // without which the
-func NewSizeOfList[T any](disc ModuleDiscoverer, items ...T) int {
+func NewSizeOfList[T any](disc *StandardModuleDiscoverer, items ...T) int {
 
 	res := 0
 

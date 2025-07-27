@@ -234,7 +234,7 @@ func NewLimitlessDebugZkEVM(cfg *config.Config) *LimitlessZkEVM {
 
 // GetScaledUpBootstrapper returns a bootstrapper where all the limits have
 // been increased.
-func GetScaledUpBootstrapper(cfg *config.Config, disc distributed.ModuleDiscoverer, scalingFactor int) (*wizard.CompiledIOP, *ZkEvm) {
+func GetScaledUpBootstrapper(cfg *config.Config, disc *distributed.StandardModuleDiscoverer, scalingFactor int) (*wizard.CompiledIOP, *ZkEvm) {
 
 	traceLimits := cfg.TracesLimits
 	traceLimits.ScaleUp(scalingFactor)
@@ -252,7 +252,7 @@ func (lz *LimitlessZkEVM) RunStatRecords(witness *Witness) []distributed.QueryBa
 		)
 
 		res  = []distributed.QueryBasedAssignmentStatsRecord{}
-		disc = lz.DistWizard.Disc.(*distributed.StandardModuleDiscoverer)
+		disc = lz.DistWizard.Disc
 	)
 
 	for _, mod := range disc.Modules {
@@ -378,7 +378,7 @@ func runBootstrapperWithRescaling(
 	cfg *config.Config,
 	bootstrapper *wizard.CompiledIOP,
 	zkevm *ZkEvm,
-	disc distributed.ModuleDiscoverer,
+	disc *distributed.StandardModuleDiscoverer,
 	zkevmWitness *Witness,
 	withDebug bool,
 ) *wizard.ProverRuntime {
@@ -467,12 +467,8 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 			Object: lz.Zkevm,
 		},
 		{
-			Name: discFile,
-			// alex: the conversion is needed because we figured that the
-			// serialization was not working well when attempting with the
-			// interface object. The reason why is not clear yet, but it works
-			// this way.
-			Object: *lz.DistWizard.Disc.(*distributed.StandardModuleDiscoverer),
+			Name:   discFile,
+			Object: *lz.DistWizard.Disc,
 		},
 		{
 			Name:   bootstrapperFile,

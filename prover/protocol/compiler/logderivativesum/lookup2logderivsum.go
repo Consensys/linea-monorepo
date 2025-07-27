@@ -21,7 +21,7 @@ import (
 type table = []ifaces.Column
 
 // ColumnSegmenter is an interface reflecting the behavior of the
-// ["github.com/consensys/linea-monorepo/prover/protocol/distributed.ModuleDiscoverer"]
+// ["github.com/consensys/linea-monorepo/prover/protocol/distributed.StandardModuleDiscoverer"]
 // interface. It is used by the M-assignment prover action so that we can omit
 // some of the values that will be cut-off by the wizard distribution scheme.
 //

@@ -16,13 +16,13 @@ import (
 // ModuleTranslator is a utily struct wrapping a [wizard.CompiledIOP] and
 // implements the logic to build it and to translate it.
 type ModuleTranslator struct {
-	Disc ModuleDiscoverer
+	Disc *StandardModuleDiscoverer
 	Wiop *wizard.CompiledIOP
 }
 
 // InsertColumn inserts a new column in the target compiled IOP. The column
 // name the column names is kept identical to the original. The size is
-// adjusted to match the one of the module following the [ModuleDiscoverer].
+// adjusted to match the one of the module following the [*StandardModuleDiscoverer].
 //
 // The function returns the inserted column. If the column had alreadu been
 // inserted the function is a no-op and returns the already inserted one.
