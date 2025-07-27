@@ -232,10 +232,6 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 		// It is used to let us know where an entry of S appears in T. The stored
 		// 2-uple of integers indicate [fragment, row]
 		mapM = make(map[field.Element][2]int, fragmentUnionSize)
-
-		// one stores a reference to the field element equals to 1 for
-		// convenience so that we can use pointer on it directly.
-		one = field.One()
 	)
 
 	// This loops initializes mapM so that it tracks to the positions of the
@@ -245,6 +241,13 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 		size := tCollapsed[frag].Len()
 		start, end := 0, tCollapsed[frag].Len()
 
+		// The segment tells us what range of T[frag] will be actually
+		// included in the segments after the segmentation. It range can be
+		// either larger or smaller than the size of T[frag]. In the former case
+		// we can just index the full size of T[frag] and decide that the
+		// multiplicity associated with the extension of T[frag] are all zeroes
+		// 0. In the latter case, we only index the segmented part of T[frag]
+		// (implictly, the remaining part of T[frag] are all padding).
 		if a.Segmenter != nil {
 			root, ok := column.RootsOf(a.T[frag], true)[0].(column.Natural)
 			if !ok {
@@ -283,6 +286,8 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 
 		for k := max(0, start); k < min(stop, size); k++ {
 
+			// Implicitly, continuing here means that we exclude the whole
+			// "extended" part of S from the lookup.
 			if hasFilter && filter[k].IsZero() {
 				continue
 			}
@@ -324,16 +329,19 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 			}
 
 			mFrag, posInFragM := posInM[0], posInM[1]
-			mk := one
 
 			// In case, the S table gets virtually expanded we account for it
 			// by adding multiplicities for the first value is the table is
 			// left-padded orthe last value if the table is right padded. This
 			// corresponds to the behaviour that the module segmenter will have.
+			//
+			// Note: that if we reach the current segment, it implicly means
+			// that can can't have filter[k] == 0.
+			mk := field.One()
 			switch {
-			case k == 0 && start < 0:
+			case k == 0 && start < 0 && !hasFilter:
 				mk = field.NewElement(uint64(-start + 1))
-			case k == size-1 && stop > size:
+			case k == size-1 && stop > size && !hasFilter:
 				mk = field.NewElement(uint64(stop - size + 1))
 			}
 
