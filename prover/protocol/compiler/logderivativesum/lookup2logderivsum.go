@@ -163,7 +163,7 @@ func pushToZCatalog(stc SingleTableCtx, zCatalog []query.LogDerivativeSumPart) [
 	for frag := range stc.T {
 		zCatalog = append(zCatalog, query.LogDerivativeSumPart{
 			Size: stc.M[frag].Size(),
-			Name: fmt.Sprintf("LogDerivativeSumPart_%v_S_%v", stc.TableName, frag),
+			Name: fmt.Sprintf("LogDerivativeSumPart_%v_T_%v", stc.TableName, frag),
 			Num:  symbolic.Neg(stc.M[frag]),
 			Den:  symbolic.Add(stc.Gamma, stc.T[frag]),
 		})
@@ -182,7 +182,7 @@ func pushToZCatalog(stc SingleTableCtx, zCatalog []query.LogDerivativeSumPart) [
 
 		zCatalog = append(zCatalog, query.LogDerivativeSumPart{
 			Size: size,
-			Name: fmt.Sprintf("LogDerivativeSumPart_%v_T_%v", stc.TableName, table),
+			Name: fmt.Sprintf("LogDerivativeSumPart_%v_S_%v", stc.TableName, table),
 			Num:  sFilter,
 			Den:  symbolic.Add(stc.Gamma, stc.S[table]),
 		})
@@ -374,7 +374,7 @@ func compileLookupTable(
 			// This is to tell the limitless prover that the column should be extended
 			// by zero padding in case it needs to be extended during the segmentation
 			// in modules.
-			pragmas.MarkPaddable(ctx.M[frag], field.Zero())
+			pragmas.MarkZeroPadded(ctx.M[frag])
 		}
 
 		for i := range ctx.S {

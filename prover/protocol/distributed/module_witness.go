@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -286,6 +287,9 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc *StandardModuleDiscover
 		// LPP modules group several standard modules together and they might have
 		// different number of segments.
 		startSeg, stopSeg, paddingInfo = disc.SegmentBoundaryOf(runtime, col.(column.Natural))
+
+		// IsZeroPaddedIndicates whether the column is tagged as zero padded
+		isZeroPadded = pragmas.IsZeroPadded(col)
 	)
 
 	if paddingInfo == leftPaddingInformation && (stopSeg-startSeg) < totalNbSegment*newSize {
@@ -316,6 +320,11 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc *StandardModuleDiscover
 				"Going to use the first value of the vector as a constant but this might fail.",
 				col.GetColID(), col.Size(), start, end, startSeg, stopSeg)
 		}
+
+		if isZeroPadded {
+			return smartvectors.NewConstant(field.Zero(), newSize)
+		}
+
 		// At this point, we are sure that the correct padding value is the
 		// first value.
 		padding := assignment.Get(0)
@@ -329,12 +338,25 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc *StandardModuleDiscover
 				"Going to use the last value of the vector as a constant but this might fail.",
 				col.GetColID(), col.Size(), start, end, startSeg, stopSeg)
 		}
+
+		if isZeroPadded {
+			return smartvectors.NewConstant(field.Zero(), newSize)
+		}
+
 		// At this point, we are sure that the correct padding value is the
 		// last value (otherwise, we would have no way of guessing it).
 		padding := assignment.Get(col.Size() - 1)
 		return smartvectors.NewConstant(padding, newSize)
 
 	case start == 0 && end > col.Size():
+
+		if isZeroPadded {
+			return smartvectors.RightPadded(
+				assignment.IntoRegVecSaveAlloc(),
+				field.Zero(),
+				newSize,
+			)
+		}
 
 		logrus.Warnf("[ModuleWitnessOverflow] the segment is larger than the segment size. "+
 			"name=%v length=%v start=%v stop=%v sub-module-segment=[%v - %v]. "+
@@ -348,6 +370,14 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc *StandardModuleDiscover
 		)
 
 	case start < 0 && end == col.Size():
+
+		if isZeroPadded {
+			return smartvectors.LeftPadded(
+				assignment.IntoRegVecSaveAlloc(),
+				field.Zero(),
+				newSize,
+			)
+		}
 
 		logrus.Warnf("[ModuleWitnessOverflow] the segment is larger than the segment size. "+
 			"name=%v length=%v start=%v stop=%v sub-module-segment=[%v - %v]. "+

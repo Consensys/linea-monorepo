@@ -1363,7 +1363,7 @@ func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRunt
 		case constantPaddingInformation:
 			return 0, 0 // There should not be anyway to end up in that situation
 		case leftPaddingInformation:
-			return fullSize - newLen, newLen
+			return fullSize - newLen, fullSize
 		case rightPaddingInformation:
 			return 0, newLen
 		}
