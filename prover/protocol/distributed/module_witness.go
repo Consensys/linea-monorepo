@@ -418,11 +418,11 @@ func (moduleLPP *ModuleLPP) Blueprint() ModuleSegmentationBlueprint {
 
 	for i := range hornerParts {
 
-		numParts := len(hornerParts[i].Selectors)
-		res.NextN0SelectorConstSizes[i] = make([]int, numParts)
-		res.NextN0SelectorRoots[i] = make([]ifaces.ColID, numParts)
-		res.NextN0SelectorIsConsts[i] = make([]bool, numParts)
-		res.NextN0SelectorConsts[i] = make([]field.Element, numParts)
+		partArity := len(hornerParts[i].Selectors)
+		res.NextN0SelectorConstSizes[i] = make([]int, partArity)
+		res.NextN0SelectorRoots[i] = make([]ifaces.ColID, partArity)
+		res.NextN0SelectorIsConsts[i] = make([]bool, partArity)
+		res.NextN0SelectorConsts[i] = make([]field.Element, partArity)
 
 		for k := range hornerParts[i].Selectors {
 
@@ -456,6 +456,8 @@ func (moduleLPP *ModuleLPP) Blueprint() ModuleSegmentationBlueprint {
 // of the current module.
 func (mw *ModuleWitnessLPP) NextN0s(blueprintLPP *ModuleSegmentationBlueprint) []int {
 
+	// This is a deep-copy of the current N0s, so that we can ensure that we do
+	// not modify the receiver witness when computing the updated value.
 	newN0s := append([]int{}, mw.N0Values...)
 
 	for i := range blueprintLPP.NextN0SelectorRoots {
@@ -489,7 +491,7 @@ func (mw *ModuleWitnessLPP) NextN0s(blueprintLPP *ModuleSegmentationBlueprint) [
 
 			sel := selSV.IntoRegVecSaveAlloc()
 
-			for j := range sel[k] {
+			for j := range sel {
 				if sel[j].IsOne() {
 					newN0s[i]++
 				}
