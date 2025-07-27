@@ -519,7 +519,7 @@ func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssi
 	case hasLeftPaddedPragma:
 
 		if !hasLeftPaddedRange {
-			logrus.Warnf("Left-padded column with non-left-padded witness: %v, start: %v, stop: %v", name, start, stop)
+			// logrus.Warnf("Left-padded column with non-left-padded witness: %v, start: %v, stop: %v", name, start, stop)
 			// This conversion to regular ensures that the witness won't be
 			// stored as a right-padded column. The size reduction might later
 			// find a padding opportunity in the right direction. The conversion
@@ -537,7 +537,7 @@ func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssi
 	case hasRightPaddedPragma:
 
 		if !hasRightPaddedRange {
-			logrus.Warnf("Right-padded column with non-right-padded witness: %v, start: %v, stop: %v", name, start, stop)
+			// logrus.Warnf("Right-padded column with non-right-padded witness: %v, start: %v, stop: %v", name, start, stop)
 			// This conversion to regular ensures that the witness won't be
 			// stored as a left-padded column. The size reduction might later
 			// find a padding opportunity in the right direction. The conversion

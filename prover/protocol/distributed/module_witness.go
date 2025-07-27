@@ -12,7 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -314,12 +313,12 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc *StandardModuleDiscover
 
 	case start < 0 && end <= 0:
 		// Otherwise, the padding technique is completely fine.
-		if startSeg == 0 {
-			logrus.Warnf("[ModuleWitnessOverflow] start and end are both negative, "+
-				"name=%v length=%v start=%v stop=%v sub-module-segment=[%v - %v]. "+
-				"Going to use the first value of the vector as a constant but this might fail.",
-				col.GetColID(), col.Size(), start, end, startSeg, stopSeg)
-		}
+		// if startSeg == 0 {
+		// 	logrus.Warnf("[ModuleWitnessOverflow] start and end are both negative, "+
+		// 		"name=%v length=%v start=%v stop=%v sub-module-segment=[%v - %v]. "+
+		// 		"Going to use the first value of the vector as a constant but this might fail.",
+		// 		col.GetColID(), col.Size(), start, end, startSeg, stopSeg)
+		// }
 
 		if isZeroPadded {
 			return smartvectors.NewConstant(field.Zero(), newSize)
@@ -332,12 +331,12 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc *StandardModuleDiscover
 
 	case start >= col.Size() && end > col.Size():
 		// Otherwise, the padding technique is completely fine.
-		if stopSeg == col.Size() {
-			logrus.Warnf("[ModuleWitnessOverflow] start and end are both greater than the length of the vector, "+
-				"name=%v length=%v start=%v stop=%v sub-module-segment=[%v - %v]. "+
-				"Going to use the last value of the vector as a constant but this might fail.",
-				col.GetColID(), col.Size(), start, end, startSeg, stopSeg)
-		}
+		// if stopSeg == col.Size() {
+		// 	logrus.Warnf("[ModuleWitnessOverflow] start and end are both greater than the length of the vector, "+
+		// 		"name=%v length=%v start=%v stop=%v sub-module-segment=[%v - %v]. "+
+		// 		"Going to use the last value of the vector as a constant but this might fail.",
+		// 		col.GetColID(), col.Size(), start, end, startSeg, stopSeg)
+		// }
 
 		if isZeroPadded {
 			return smartvectors.NewConstant(field.Zero(), newSize)
@@ -358,10 +357,10 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc *StandardModuleDiscover
 			)
 		}
 
-		logrus.Warnf("[ModuleWitnessOverflow] the segment is larger than the segment size. "+
-			"name=%v length=%v start=%v stop=%v sub-module-segment=[%v - %v]. "+
-			"Going to extend the column on the right by repeating the last value but this might fail. You may want to increase the bootstrapper size for this column so that it is always larger than the new size",
-			col.GetColID(), col.Size(), start, end, startSeg, stopSeg)
+		// logrus.Warnf("[ModuleWitnessOverflow] the segment is larger than the segment size. "+
+		// 	"name=%v length=%v start=%v stop=%v sub-module-segment=[%v - %v]. "+
+		// 	"Going to extend the column on the right by repeating the last value but this might fail. You may want to increase the bootstrapper size for this column so that it is always larger than the new size",
+		// 	col.GetColID(), col.Size(), start, end, startSeg, stopSeg)
 
 		return smartvectors.RightPadded(
 			assignment.IntoRegVecSaveAlloc(),
@@ -379,10 +378,10 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc *StandardModuleDiscover
 			)
 		}
 
-		logrus.Warnf("[ModuleWitnessOverflow] the segment is larger than the segment size. "+
-			"name=%v length=%v start=%v stop=%v sub-module-segment=[%v - %v]. "+
-			"Going to extend the column on the left by repeating the first value but this might fail. You may want to increase the bootstrapper size for this column so that it is always larger than the new size",
-			col.GetColID(), col.Size(), start, end, startSeg, stopSeg)
+		// logrus.Warnf("[ModuleWitnessOverflow] the segment is larger than the segment size. "+
+		// 	"name=%v length=%v start=%v stop=%v sub-module-segment=[%v - %v]. "+
+		// 	"Going to extend the column on the left by repeating the first value but this might fail. You may want to increase the bootstrapper size for this column so that it is always larger than the new size",
+		// 	col.GetColID(), col.Size(), start, end, startSeg, stopSeg)
 
 		return smartvectors.LeftPadded(
 			assignment.IntoRegVecSaveAlloc(),

@@ -1339,8 +1339,6 @@ func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRunt
 	// generated for the provided column.
 	newLen := nbSegment * sizeOfSegment
 
-	fmt.Printf("[LPPSegmentCalculator.SegmentBoundaryOf] col=%v module=%v nbSegment=%v sizeOfSegment=%v fullSize=%v newLen=%v start=%v stop=%v paddingInfo=%v\n", col.ID, module, nbSegment, sizeOfSegment, fullSize, newLen, start, stop, paddingInfo)
-
 	// The newLen cannot be smaller than the stop-start because the number of LPP
 	// segment for a column is always larger than the number of GL segments. This
 	// is a consequence of the fact that LPP modules are aggregates of GL modules
