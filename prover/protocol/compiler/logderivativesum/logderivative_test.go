@@ -22,34 +22,40 @@ func TestLogDerivativeSum(t *testing.T) {
 			comp = b.CompiledIOP
 		)
 
-		p0 := b.RegisterCommit("Num_0", 4)
-		p1 := b.RegisterCommit("Num_1", 4)
-		p2 := b.RegisterCommit("Num_2", 4)
-
-		q0 := b.RegisterCommit("Den_0", 4)
-		q1 := b.RegisterCommit("Den_1", 4)
-		q2 := b.RegisterCommit("Den_2", 4)
-
-		numerators := []*symbolic.Expression{
-			symbolic.Mul(p0, -1),
-			ifaces.ColumnAsVariable(p1),
-			symbolic.Mul(p2, p0, 2),
-		}
-
-		denominators := []*symbolic.Expression{
-			ifaces.ColumnAsVariable(q0),
-			ifaces.ColumnAsVariable(q1),
-			ifaces.ColumnAsVariable(q2),
-		}
-
 		size := 4
-		zCat1 := map[int]*query.LogDerivativeSumInput{}
-		zCat1[size] = &query.LogDerivativeSumInput{
-			Size:        size,
-			Numerator:   numerators,
-			Denominator: denominators,
+
+		p0 := b.RegisterCommit("Num_0", size)
+		p1 := b.RegisterCommit("Num_1", size)
+		p2 := b.RegisterCommit("Num_2", size)
+
+		q0 := b.RegisterCommit("Den_0", size)
+		q1 := b.RegisterCommit("Den_1", size)
+		q2 := b.RegisterCommit("Den_2", size)
+
+		inputs := []query.LogDerivativeSumPart{
+			{
+				Size: size,
+				Name: "Part_0",
+				Num:  symbolic.Mul(p0, -1),
+				Den:  ifaces.ColumnAsVariable(q0),
+			},
+			{
+				Size: size,
+				Name: "Part_1",
+				Num:  ifaces.ColumnAsVariable(p1),
+				Den:  ifaces.ColumnAsVariable(q1),
+			},
+			{
+				Size: size,
+				Name: "Part_2",
+				Num:  symbolic.Mul(p2, p0, 2),
+				Den:  ifaces.ColumnAsVariable(q2),
+			},
 		}
-		comp.InsertLogDerivativeSum(0, "LogDerivSum_Test", zCat1)
+
+		comp.InsertLogDerivativeSum(0, "LogDerivSum_Test", query.LogDerivativeSumInput{
+			Parts: inputs,
+		})
 
 	}
 

@@ -573,7 +573,11 @@ func hashNxsGnark(factory mimc.HasherFactory, params query.GnarkHornerParams, x 
 
 // getQueryArgs groups the args of the [FilteredModuleInputs] provided
 // by the caller.
-func getQueryArgs(moduleInputs []FilteredModuleInputs) (logDerivativeArgs, grandProductArgs [][2]*symbolic.Expression, hornerArgs []query.HornerPart) {
+func getQueryArgs(moduleInputs []FilteredModuleInputs) (
+	logDerivativeArgs []query.LogDerivativeSumPart,
+	grandProductArgs [][2]*symbolic.Expression,
+	hornerArgs []query.HornerPart,
+) {
 	for _, moduleInput := range moduleInputs {
 		logDerivativeArgs = append(logDerivativeArgs, moduleInput.LogDerivativeArgs...)
 		grandProductArgs = append(grandProductArgs, moduleInput.GrandProductArgs...)

@@ -255,34 +255,31 @@ func (mt *ModuleTranslator) InsertPlonkInWizard(oldQuery *query.PlonkInWizard) *
 func (mt *ModuleLPP) InsertLogDerivative(
 	round int,
 	id ifaces.QueryID,
-	logDerivativeArgs [][2]*symbolic.Expression,
+	logDerivativeArgs []query.LogDerivativeSumPart,
 ) query.LogDerivativeSum {
 
-	resInputs := map[int]*query.LogDerivativeSumInput{}
+	resInputs := []query.LogDerivativeSumPart{}
 
-	for _, numDenPair := range logDerivativeArgs {
+	for _, part := range logDerivativeArgs {
 
-		var (
-			num  = numDenPair[0]
-			den  = numDenPair[1]
-			size = NewSizeOfList(mt.Disc, num, den)
-		)
+		size := NewSizeOfList(mt.Disc, part.Num, part.Den)
 
-		mt.addCoinFromExpression(num)
-		mt.addCoinFromExpression(den)
+		mt.addCoinFromExpression(part.Num)
+		mt.addCoinFromExpression(part.Den)
 
-		if _, hasSize := resInputs[size]; !hasSize {
-			resInputs[size] = &query.LogDerivativeSumInput{
-				Size: size,
-			}
-		}
-
-		newInp := resInputs[size]
-		newInp.Numerator = append(newInp.Numerator, mt.TranslateExpressionWithHint(num, size))
-		newInp.Denominator = append(newInp.Denominator, mt.TranslateExpressionWithHint(den, size))
+		resInputs = append(resInputs, query.LogDerivativeSumPart{
+			Size: size,
+			Num:  mt.TranslateExpressionWithHint(part.Num, size),
+			Den:  mt.TranslateExpressionWithHint(part.Den, size),
+			Name: part.Name,
+		})
 	}
 
-	return mt.Wiop.InsertLogDerivativeSum(round, id, resInputs)
+	return mt.Wiop.InsertLogDerivativeSum(
+		round,
+		id,
+		query.LogDerivativeSumInput{Parts: resInputs},
+	)
 }
 
 // InsertGrandProduct inserts a new GrandProduct query in the target compiled IOP

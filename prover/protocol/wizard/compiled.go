@@ -592,7 +592,7 @@ func (c *CompiledIOP) InsertLocalOpening(round int, name ifaces.QueryID, pol ifa
 // InsertLogDerivativeSum registers a new LogDerivativeSum query [query.LogDerivativeSum].
 // It generates a single global summation for many Sigma Columns from Lookup compilation.
 // The sigma columns are categorized by [round,size].
-func (c *CompiledIOP) InsertLogDerivativeSum(lastRound int, id ifaces.QueryID, in map[int]*query.LogDerivativeSumInput) query.LogDerivativeSum {
+func (c *CompiledIOP) InsertLogDerivativeSum(lastRound int, id ifaces.QueryID, in query.LogDerivativeSumInput) query.LogDerivativeSum {
 
 	c.checkAnyInStore(in)
 

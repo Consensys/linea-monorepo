@@ -166,6 +166,7 @@ func (p *HornerParams) GetResult(run ifaces.Runtime, q Horner) (n1s []int, final
 	// and assigned with 0. The line is here for clarity.
 	finalResult = field.Zero()
 	n1s = make([]int, len(p.Parts))
+	hornerLogs := []string{}
 
 	if len(q.Parts) != len(p.Parts) {
 		utils.Panic("Horner query has %v parts but HornerParams has %v", len(q.Parts), len(p.Parts))
@@ -188,7 +189,10 @@ func (p *HornerParams) GetResult(run ifaces.Runtime, q Horner) (n1s []int, final
 
 		n1s[i] = n0 + count
 		finalResult.Add(&finalResult, &res)
+		hornerLogs = append(hornerLogs, fmt.Sprintf("Horner part %v: name=%v res=%v, count=%v size=%v n0=%v n1=%v", i, part.Name, res.String(), count, part.size, n0, n1s[i]))
 	}
+
+	fmt.Printf("[ComputeHorner] name=%s res=%v n1s=%v logs=%v\n", q.Name(), finalResult.String(), n1s, hornerLogs)
 
 	return n1s, finalResult
 }

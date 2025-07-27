@@ -2,6 +2,7 @@ package logderivativesum
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
@@ -38,7 +39,13 @@ func CompileLogDerivativeSum(comp *wizard.CompiledIOP) {
 			proverTasks = make([]ProverTaskAtRound, lastRound+1)
 		)
 
-		sizes := utils.SortedKeysOf(zEntries, func(i1, i2 int) bool { return i1 < i2 })
+		sizes := utils.MapFunc(zEntries.Parts, func(part query.LogDerivativeSumPart) int {
+			return part.Size
+		})
+
+		slices.SortFunc(sizes, func(a, b int) int { return a - b }) // sorts the slice of integers
+		sizes = slices.Compact(sizes)
+		sizes = slices.Clip(sizes)
 
 		for _, size := range sizes {
 
@@ -46,14 +53,18 @@ func CompileLogDerivativeSum(comp *wizard.CompiledIOP) {
 				utils.Panic("the size of a log-derivative cannot be a non-power of two: %v", size)
 			}
 
-			entry := zEntries[size]
-
 			// get the Numerator and Denominator from the input and prepare their compilation.
 			zC := ZCtx{
-				Round:            lastRound,
-				Size:             entry.Size,
-				SigmaNumerator:   entry.Numerator,
-				SigmaDenominator: entry.Denominator,
+				Round: lastRound,
+				Size:  size,
+			}
+
+			// This accumulates all the parts whose size is equal to size in zC
+			for _, part := range zEntries.Parts {
+				if part.Size == size {
+					zC.SigmaNumerator = append(zC.SigmaNumerator, part.Num)
+					zC.SigmaDenominator = append(zC.SigmaDenominator, part.Den)
+				}
 			}
 
 			// z-packing compile; it imposes the correct accumulation over Numerator and Denominator.

@@ -29,7 +29,7 @@ type FilteredModuleInputs struct {
 	// query. The pairs are not sorted by size because the sizes
 	// of each pair can be potentially changed during the distribution
 	// phase.
-	LogDerivativeArgs [][2]*symbolic.Expression
+	LogDerivativeArgs []query.LogDerivativeSumPart
 
 	// GrandProductArgs are the arguments of the grand product
 	// query (expectedly, the only one) for the current module.
@@ -160,8 +160,8 @@ func (mf moduleFilter) FilterCompiledIOP(comp *wizard.CompiledIOP) FilteredModul
 			args := mf.FilterLogDerivativeInputs(&q)
 			// This loops adds the involved columns in the lpp set
 			for i := range args {
-				for j := range args[i] {
-					cols := column.ColumnsOfExpression(args[i][j])
+				for _, e := range []*symbolic.Expression{args[i].Num, args[i].Den} {
+					cols := column.ColumnsOfExpression(e)
 					roots := column.RootsOf(cols, true)
 					for _, root := range roots {
 						fmi.addColumnLPP(root)
@@ -340,40 +340,21 @@ func (m *FilteredModuleInputs) addColumnLPP(col ifaces.Column) bool {
 // in each [query.LogDerivativeInput]
 //
 // The function returns nil if no column are matched.
-func (filter moduleFilter) FilterLogDerivativeInputs(q *query.LogDerivativeSum) [][2]*symbolic.Expression {
+func (filter moduleFilter) FilterLogDerivativeInputs(q *query.LogDerivativeSum) []query.LogDerivativeSumPart {
 
 	// It's important to sort to ensure that the iteration happens in
 	// deterministic order.
-	sizes := utils.SortedKeysOf(q.Inputs, func(a, b int) bool { return a < b })
+	res := []query.LogDerivativeSumPart{}
 
-	var res [][2]*symbolic.Expression
+	for _, part := range q.Inputs.Parts {
 
-	for _, size := range sizes {
-
-		logDerivInp := q.Inputs[size]
-
-		for i := range logDerivInp.Denominator {
-
-			resolvedMod := ModuleOfList(
-				filter.Disc,
-				logDerivInp.Numerator[i],
-				logDerivInp.Denominator[i],
-			)
-
-			resolvedMod.MustBeResolved()
-
-			if resolvedMod != filter.Module {
-				continue
-			}
-
-			res = append(
-				res,
-				[2]*symbolic.Expression{
-					logDerivInp.Numerator[i],
-					logDerivInp.Denominator[i],
-				},
-			)
+		resolvedMod := ModuleOfList(filter.Disc, part.Num, part.Den)
+		resolvedMod.MustBeResolved()
+		if resolvedMod != filter.Module {
+			continue
 		}
+
+		res = append(res, part)
 	}
 
 	return res

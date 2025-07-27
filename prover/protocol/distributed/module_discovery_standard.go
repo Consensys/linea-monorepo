@@ -613,15 +613,11 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 		case query.LogDerivativeSum:
 
-			sizes := utils.SortedKeysOf(q.Inputs, func(a, b int) bool { return a < b })
-			for _, size := range sizes {
-				inpForSize := q.Inputs[size]
-				for i := range inpForSize.Numerator {
-					colNums := column.ColumnsOfExpression(inpForSize.Numerator[i])
-					colDens := column.ColumnsOfExpression(inpForSize.Denominator[i])
-					rootNums, rootDens := rootsOfColumns(colNums), rootsOfColumns(colDens)
-					toGroup = append(toGroup, append(rootNums, rootDens...))
-				}
+			for _, part := range q.Inputs.Parts {
+				colNums := column.ColumnsOfExpression(part.Num)
+				colDens := column.ColumnsOfExpression(part.Den)
+				rootNums, rootDens := rootsOfColumns(colNums), rootsOfColumns(colDens)
+				toGroup = append(toGroup, append(rootNums, rootDens...))
 			}
 
 		// Note: this is case is already super-seded by our handling of the permutation
@@ -1321,7 +1317,7 @@ func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRunt
 		moduleNames              = ls.Disc.ModuleList()
 		nbSegment                = -1
 		start, stop, paddingInfo = ls.Disc.SegmentBoundaryOf(run, col)
-		newSize                  = ls.Disc.NewSizeOf(col)
+		sizeOfSegment            = ls.Disc.NewSizeOf(col)
 		fullSize                 = col.Size()
 	)
 
@@ -1339,7 +1335,11 @@ func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRunt
 		nbSegment = NbSegmentOfModule(run, ls.Disc, moduleNames[s0:s1])
 	}
 
-	newLen := nbSegment * newSize
+	// NewLen correspond to the sum of the size of all the segments that will be
+	// generated for the provided column.
+	newLen := nbSegment * sizeOfSegment
+
+	fmt.Printf("[LPPSegmentCalculator.SegmentBoundaryOf] col=%v module=%v nbSegment=%v sizeOfSegment=%v fullSize=%v newLen=%v start=%v stop=%v paddingInfo=%v\n", col.ID, module, nbSegment, sizeOfSegment, fullSize, newLen, start, stop, paddingInfo)
 
 	// The newLen cannot be smaller than the stop-start because the number of LPP
 	// segment for a column is always larger than the number of GL segments. This
@@ -1373,11 +1373,10 @@ func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRunt
 
 	// Everything will be used. The case where newLen < stop-start is impossible due
 	// to the above sanity-check. If newLen > stop-start, then it means we need to
-	// extend the column (this is the OOB case in the [SegmentOfColumn] functions
-	// and we do not support that).
+	// extend the column. In the current situation, we only handle the case
 	if start == 0 && stop == fullSize {
 		if stop != newLen {
-			utils.Panic("start=%v stop=%v, nbSegment=%v, newSize=%v, newLen=%v, col=%v", start, stop, nbSegment, newSize, newLen, col.ID)
+			utils.Panic("start=%v stop=%v, nbSegment=%v, newSize=%v, newLen=%v, col=%v", start, stop, nbSegment, sizeOfSegment, newLen, col.ID)
 		}
 		return start, stop
 	}
@@ -1390,6 +1389,6 @@ func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRunt
 		return fullSize - newLen, fullSize
 	}
 
-	utils.Panic("start=%v, stop=%v, nbSegment=%v, newSize=%v, newLen=%v, col=%v", start, stop, nbSegment, newSize, newLen, col.ID)
+	utils.Panic("start=%v, stop=%v, nbSegment=%v, newSize=%v, newLen=%v, col=%v", start, stop, nbSegment, sizeOfSegment, newLen, col.ID)
 	return -1, -1 // Unreachable
 }
