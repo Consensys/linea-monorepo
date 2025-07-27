@@ -286,6 +286,8 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 
 	logrus.Infof("Segmented %v GL segments and %v LPP segments", len(witnessGLs), len(witnessLPPs))
 
+	runtimes := []*wizard.ProverRuntime{}
+
 	for i, witness := range witnessGLs {
 
 		logrus.Infof("Checking GL witness %v, module=%v", i, witness.ModuleName)
@@ -314,7 +316,8 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		// The debugGLs is compiled with the CompileAtProverLevel routine so we
 		// don't need the proof to complete the sanity checks: everything is
 		// done at the prover level.
-		_ = wizard.Prove(compiledIOP, mainProverStep)
+		rt := wizard.RunProver(compiledIOP, mainProverStep)
+		runtimes = append(runtimes, rt)
 	}
 
 	// Here, we can't we can't just use 0 or a dummy small value because there
@@ -355,8 +358,18 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		// The debugLPP is compiled with the CompileAtProverLevel routine so we
 		// don't need the proof to complete the sanity checks: everything is
 		// done at the prover level.
-		_ = wizard.Prove(compiledIOP, mainProverStep)
+		rt := wizard.RunProver(compiledIOP, mainProverStep)
+
+		runtimes = append(runtimes, rt)
 	}
+
+	logrus.Infof("Running SanityCheckPublicInputsForConglo")
+
+	if err := distributed.SanityCheckPublicInputsForConglo(runtimes); err != nil {
+		utils.Panic("Sanity-check for conglo failed: %v", err)
+	}
+
+	logrus.Infof("Done running SanityCheckPublicInputsForConglo")
 }
 
 // runBootstrapperWithRescaling runs the bootstrapper and returns the resulting
