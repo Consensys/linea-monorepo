@@ -313,6 +313,10 @@ func (d *unalignedPairData) assignUnaligned(run *wizard.ProverRuntime) {
 					ptr += nbG1Limbs + nbG2Limbs
 				case srcIsRes[ptr].IsOne():
 					ptr += 2
+				default:
+					// otherwise, its not a given pairing instance. The input
+					// should have ended, but we scan through just in case.
+					ptr++
 				}
 				continue
 			}
