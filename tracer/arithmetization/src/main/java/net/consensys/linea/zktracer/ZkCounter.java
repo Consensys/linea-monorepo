@@ -64,7 +64,10 @@ public class ZkCounter implements LineCountingTracer {
 
   @Override
   public void traceStartBlock(
-      final BlockHeader blockHeader, final BlockBody blockBody, final Address miningBeneficiary) {
+      final WorldView worldView,
+      final BlockHeader blockHeader,
+      final BlockBody blockBody,
+      final Address miningBeneficiary) {
     l1BlockSize.traceStartBlock(blockHeader, miningBeneficiary);
   }
 

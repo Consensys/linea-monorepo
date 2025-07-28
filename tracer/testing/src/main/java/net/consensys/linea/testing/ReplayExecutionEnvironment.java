@@ -265,7 +265,7 @@ public class ReplayExecutionEnvironment {
           useCoinbaseAddressFromBlockHeader
               ? header.getCoinbase()
               : CliqueHelpers.getProposerOfBlock(header);
-      tracer.traceStartBlock(header, body, miningBeneficiary);
+      tracer.traceStartBlock(world, header, body, miningBeneficiary);
 
       for (TransactionSnapshot txs : blockSnapshot.txs()) {
         final Transaction tx = txs.toTransaction();

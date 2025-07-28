@@ -171,7 +171,9 @@ public class ZkTracer implements LineCountingTracer {
 
   @Override
   public void traceStartBlock(
-      final ProcessableBlockHeader processableBlockHeader, final Address miningBeneficiary) {
+      final WorldView worldView,
+      final ProcessableBlockHeader processableBlockHeader,
+      final Address miningBeneficiary) {
     try {
       this.hub.traceStartBlock(processableBlockHeader, miningBeneficiary);
       this.debugMode.ifPresent(DebugMode::traceEndConflation);
@@ -182,7 +184,10 @@ public class ZkTracer implements LineCountingTracer {
 
   @Override
   public void traceStartBlock(
-      final BlockHeader blockHeader, final BlockBody blockBody, final Address miningBeneficiary) {
+      final WorldView worldView,
+      final BlockHeader blockHeader,
+      final BlockBody blockBody,
+      final Address miningBeneficiary) {
     try {
       this.hub.traceStartBlock(blockHeader, miningBeneficiary);
       this.debugMode.ifPresent(x -> x.traceStartBlock(blockHeader, blockBody, miningBeneficiary));
