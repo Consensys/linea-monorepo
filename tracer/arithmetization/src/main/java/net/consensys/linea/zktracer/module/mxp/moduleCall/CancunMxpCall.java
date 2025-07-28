@@ -206,7 +206,6 @@ public class CancunMxpCall extends MxpCall {
   }
 
   public void traceMxpWords(Trace.Hub trace) {
-    // TODO: check with Lorenzo to match mxp
     trace.pMiscMxpWords(
         this.opCodeData.isMSize() ? Bytes.ofUnsignedLong(this.memorySizeInWords) : Bytes.EMPTY);
   }
