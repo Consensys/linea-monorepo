@@ -23,7 +23,6 @@ import static net.consensys.linea.zktracer.module.txndata.moduleOperation.Shangh
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.Trace;
-import net.consensys.linea.zktracer.TraceShanghai;
 import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
@@ -58,17 +57,11 @@ public class XCreateOobCall extends OobCall {
 
   @Override
   public Trace.Oob trace(Trace.Oob trace) {
-    try {
-      // At this stage, we use Shanghai trace columns so we cast the trace to Shanghai trace
-      var traceOobShanghai = (TraceShanghai.Oob) trace;
-      return traceOobShanghai
-          .isXcreate(true)
-          .oobInst(OOB_INST_XCREATE)
-          .data1(codeSize.hi())
-          .data2(codeSize.lo());
-    } catch (Exception e) {
-      throw new IllegalArgumentException("Trace argument is not of type TraceShanghai.Oob", e);
-    }
+    return trace
+        .isXcreate(true)
+        .oobInst(OOB_INST_XCREATE)
+        .data1(codeSize.hi())
+        .data2(codeSize.lo());
   }
 
   @Override

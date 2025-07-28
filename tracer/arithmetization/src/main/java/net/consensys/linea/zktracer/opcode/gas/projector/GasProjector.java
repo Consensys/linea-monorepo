@@ -115,7 +115,8 @@ public class GasProjector {
           SWAP13,
           SWAP14,
           SWAP15,
-          SWAP16 -> new VeryLow(gc);
+          SWAP16,
+          BLOBHASH -> new VeryLow(gc);
       case MUL, DIV, SDIV, MOD, SMOD, SIGNEXTEND, SELFBALANCE -> new Low(gc);
       case ADDMOD, MULMOD, JUMP -> new Mid(gc);
       case EXP -> new Exp(gc, frame);

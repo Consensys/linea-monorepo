@@ -52,7 +52,7 @@ public class OutOfGasExceptionTest extends TracerTestBase {
   @MethodSource("outOfGasExceptionWithEmptyAccountsAndNoMemoryExpansionCostTestSource")
   void outOfGasExceptionWithEmptyAccountsAndNoMemoryExpansionCostTest(int opcode, int cornerCase) {
     // Ensure opcodes relevant to the given fork are loaded.
-    loadOpcodes(testInfo.chainConfig.fork);
+    loadOpcodes(fork);
     //
     OpCodeData opCodeData = OpCodes.of(opcode);
     // Only test opcodes which do not cause memory expansion.

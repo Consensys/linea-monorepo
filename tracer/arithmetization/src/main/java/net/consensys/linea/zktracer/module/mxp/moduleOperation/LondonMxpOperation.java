@@ -188,9 +188,7 @@ public class LondonMxpOperation extends MxpOperation {
   }
 
   private void setMtntop() {
-    final boolean mxpx = londonMxpCall.isMxpx();
-    londonMxpCall.setMayTriggerNontrivialMmuOperation(
-        typeMxp == MxpType.TYPE_4 && !mxpx && londonMxpCall.getSize1().loBigInt().signum() > 0);
+    londonMxpCall.setMayTriggerNontrivialMmuOperation();
   }
 
   /** set max offsets 1 and 2. */

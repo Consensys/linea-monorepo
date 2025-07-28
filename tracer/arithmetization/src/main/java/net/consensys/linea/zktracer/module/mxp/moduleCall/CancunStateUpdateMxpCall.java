@@ -27,6 +27,7 @@ import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.mxp.MxpExoCall;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.evm.internal.Words;
 
 public abstract class CancunStateUpdateMxpCall extends CancunNotMSizeNorTrivialMxpCall {
 
@@ -95,9 +96,9 @@ public abstract class CancunStateUpdateMxpCall extends CancunNotMSizeNorTrivialM
     this.wordsNew = updateInternalState ? EYPa.longValue() : this.words;
     this.cMemNew =
         updateInternalState
-            ? bigIntegerToBytes(
-                    cMemQuadPart.toUnsignedBigInteger().add(cMemLinearPart.toUnsignedBigInteger()))
-                .toLong()
+            ? Words.clampedToLong(
+                bigIntegerToBytes(
+                    cMemQuadPart.toUnsignedBigInteger().add(cMemLinearPart.toUnsignedBigInteger())))
             : this.cMem;
   }
 

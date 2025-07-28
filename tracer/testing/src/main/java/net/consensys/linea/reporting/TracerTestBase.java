@@ -15,6 +15,7 @@
 package net.consensys.linea.reporting;
 
 import net.consensys.linea.zktracer.ChainConfig;
+import net.consensys.linea.zktracer.Fork;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
@@ -23,6 +24,7 @@ import static net.consensys.linea.zktracer.Fork.*;
 
 public class TracerTestBase {
   public static TestInfoWithChainConfig testInfo = new TestInfoWithChainConfig();
+  public static Fork fork;
   public Address add;
 
   @BeforeEach
@@ -38,6 +40,7 @@ public class TracerTestBase {
                   "Unknown fork: " + System.getProperty("unit.replay.tests.fork"));
             };
     TracerTestBase.testInfo.testInfo = testInfo;
+    TracerTestBase.fork = TracerTestBase.testInfo.chainConfig.fork;
   }
 
   public static String getForkOrDefault(String defaultFork) {

@@ -42,7 +42,6 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -54,7 +53,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 // into a csv file (one for successful and one for failing cases)
 // that can be used to run the same test cases with @CsvFileSource
 
-@Tag("disabled-for-cancun-temporarily")
 @ExtendWith(EcPairingTestWatcher.class)
 @ExtendWith(UnitTestWatcher.class)
 public class EcPairingTest extends TracerTestBase {

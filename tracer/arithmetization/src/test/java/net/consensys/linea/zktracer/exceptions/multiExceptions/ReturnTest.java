@@ -113,7 +113,7 @@ public class ReturnTest extends TracerTestBase {
     // + (post-Shanghai) 2L INIT CODE COST
     // + ((32027-3-3-6-3-3-3-32000/64))(less than 0.5 so not adding gas) + 3L PUSH + 3L PUSH
     // 21000L for the intrinsic transaction cost
-    var initCodeCost = isPostShanghai(testInfo.chainConfig.fork) ? 2L : 0L;
+    var initCodeCost = isPostShanghai(fork) ? 2L : 0L;
     var gasCostBefReturn = 32027L + 21000L + initCodeCost;
     bytecodeRunner.run(gasCostBefReturn, testInfo);
 
@@ -140,7 +140,7 @@ public class ReturnTest extends TracerTestBase {
     // + ((32036-3-3-6-3-3-3-32000)/64)(less than 0.5 so not adding gas) + 3L PUSH + 3L PUSH + 6L
     // MSTORE8 + 3L PUSH + 3L PUSH
     // 21000L for the intrinsic transaction cost
-    var initCodeCost = isPostShanghai(testInfo.chainConfig.fork) ? 2L : 0L;
+    var initCodeCost = isPostShanghai(fork) ? 2L : 0L;
     var gasCostBefReturn = 32039L + 21000L + initCodeCost;
     bytecodeRunnerWithICPXAndMCSX.run(gasCostBefReturn, testInfo);
 

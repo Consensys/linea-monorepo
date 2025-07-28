@@ -24,8 +24,10 @@ public record TimeAndExistence(int domStamp, int subStamp, boolean hadCode) {
 
     if (other.domStamp < this.domStamp) {
       return true;
+    } else if (other.domStamp == this.domStamp) {
+      return other.subStamp > this.subStamp;
+    } else {
+      return false;
     }
-
-    return other.subStamp > this.subStamp;
   }
 }

@@ -48,14 +48,11 @@ import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
-// This test is making unit test hang when running for Cancun - to debug
-@Tag("disabled-for-cancun-temporarily")
 // https://github.com/Consensys/linea-besu-plugin/issues/197
 @Execution(ExecutionMode.SAME_THREAD)
 @ExtendWith(UnitTestWatcher.class)
@@ -344,7 +341,7 @@ public class MxpTest extends TracerTestBase {
       offset2 = EWord.of(util.getRandomBigIntegerByBytesSize(0, MAX_BYTE_SIZE));
 
       // NOOP case (except for Type2 and Type3 instructions)
-      if (mxpType != MxpType.TYPE_2 && mxpType != MxpType.TYPE_3) {
+      if (opCode != OpCode.MLOAD && opCode != OpCode.MSTORE && opCode != OpCode.MSTORE8) {
         if (util.nextRandomFloat() < NOOP_PROB) {
           // One or both of the size parameters are equal to 0 (each scenario has the same
           // probability)
@@ -363,8 +360,8 @@ public class MxpTest extends TracerTestBase {
       }
 
       // size2 is irrelevant for this case
-      mxpx = isMxpx(mxpType, size1, offset1);
-      roob = isRoob(mxpType, size1, offset1);
+      mxpx = isMxpx(fork, opCode, size1, offset1, EWord.ZERO, EWord.ZERO);
+      roob = isRoob(fork, opCode, size1, offset1, EWord.ZERO, EWord.ZERO);
       if (roob || mxpx) {
         throw new RuntimeException("Unexpected ROOB or MXPX");
       }
@@ -480,7 +477,7 @@ public class MxpTest extends TracerTestBase {
     }
     // OpCode.CALL-type (Type 5) are tested via testCall()
     util.triggerNonTrivialButMxpxOrRoobOrMaxCodeSizeExceptionForOpCode(
-        program, triggerRoob, triggerMaxCodeSizeException, opCode);
+        fork, program, triggerRoob, triggerMaxCodeSizeException, opCode);
   }
 
   private OpCode getRandomNonHaltingOpCodeByType(MxpType mxpType) {

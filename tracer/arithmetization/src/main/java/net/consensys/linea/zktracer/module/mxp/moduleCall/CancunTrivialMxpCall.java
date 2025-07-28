@@ -23,6 +23,7 @@ public class CancunTrivialMxpCall extends CancunMxpCall {
 
   public CancunTrivialMxpCall(Hub hub) {
     super(hub);
+    setWordsAndCMemNewToPrevValues();
     computeSize1Size2IsZero(hub.wcp());
   }
 

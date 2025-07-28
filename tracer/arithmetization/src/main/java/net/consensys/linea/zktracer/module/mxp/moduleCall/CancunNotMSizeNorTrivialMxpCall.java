@@ -26,6 +26,7 @@ public class CancunNotMSizeNorTrivialMxpCall extends CancunMxpCall {
     computeSize1Size2IsZero(hub.wcp());
     computeMxpxExpression(hub.wcp());
     setMxpxFromMxpxExpression();
+    setMayTriggerNontrivialMmuOperation();
   }
 
   // We set ctMax to the minimum number of rows required for the following scenarii (Mxpx, State
