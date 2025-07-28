@@ -88,7 +88,9 @@ func assign(
 			WizardVerifier: *wizardVerifier,
 			FuncInputs: FunctionalPublicInputSnark{
 				FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
-					L2MessageHashes: L2MessageHashes{Values: make([][32]frontend.Variable, limits.BlockL2L1Logs)}, // TODO use a maximum from config
+					L2MessageHashes: L2MessageHashes{
+						Values: make([][32]frontend.Variable, limits.BlockL2L1Logs),
+					},
 				},
 			},
 			PublicInput: new(big.Int).SetBytes(funcInputs.Sum(nil)),

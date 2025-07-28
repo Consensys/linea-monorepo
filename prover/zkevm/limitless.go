@@ -772,33 +772,40 @@ func GetAffinities(z *ZkEvm) [][]column.Natural {
 	}
 }
 
+var publicInputNames = []string{
+	publicInput.DataNbBytes,
+	publicInput.DataChecksum,
+	publicInput.L2MessageHash,
+	publicInput.InitialStateRootHash,
+	publicInput.FinalStateRootHash,
+	publicInput.InitialBlockNumber,
+	publicInput.FinalBlockNumber,
+	publicInput.InitialBlockTimestamp,
+	publicInput.FinalBlockTimestamp,
+	publicInput.FirstRollingHashUpdate_0,
+	publicInput.FirstRollingHashUpdate_1,
+	publicInput.LastRollingHashUpdate_0,
+	publicInput.LastRollingHashUpdate_1,
+	publicInput.FirstRollingHashUpdateNumber,
+	publicInput.LastRollingHashNumberUpdate,
+	publicInput.ChainID,
+	publicInput.NBytesChainID,
+	publicInput.L2MessageServiceAddrHi,
+	publicInput.L2MessageServiceAddrLo,
+}
+
+// LogPublicInputs logs the list of the public inputs for the module
+func LogPublicInputs(vr wizard.Runtime) {
+	for _, name := range publicInputNames {
+		x := vr.GetPublicInput(name)
+		fmt.Printf("[public input] %s: %v\n", name, x)
+	}
+}
+
 // decorateWithPublicInputs decorates the [LimitlessZkEVM] with the public inputs from
 // the initial zkevm.
 func decorateWithPublicInputs(cong *distributed.ConglomeratorCompilation) {
-
-	publicInputList := []string{
-		publicInput.DataNbBytes,
-		publicInput.DataChecksum,
-		publicInput.L2MessageHash,
-		publicInput.InitialStateRootHash,
-		publicInput.FinalStateRootHash,
-		publicInput.InitialBlockNumber,
-		publicInput.FinalBlockNumber,
-		publicInput.InitialBlockTimestamp,
-		publicInput.FinalBlockTimestamp,
-		publicInput.FirstRollingHashUpdate_0,
-		publicInput.FirstRollingHashUpdate_1,
-		publicInput.LastRollingHashUpdate_0,
-		publicInput.LastRollingHashUpdate_1,
-		publicInput.FirstRollingHashUpdateNumber,
-		publicInput.LastRollingHashNumberUpdate,
-		publicInput.ChainID,
-		publicInput.NBytesChainID,
-		publicInput.L2MessageServiceAddrHi,
-		publicInput.L2MessageServiceAddrLo,
-	}
-
-	for _, name := range publicInputList {
+	for _, name := range publicInputNames {
 		cong.BubbleUpPublicInput(name)
 	}
 }

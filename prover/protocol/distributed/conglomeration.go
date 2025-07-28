@@ -516,7 +516,8 @@ func (c *ConglomeratorCompilation) BubbleUpPublicInput(name string) wizard.Publi
 	pubInputSum := symbolic.NewConstant(0)
 	for i := 0; i < c.MaxNbProofs; i++ {
 		subPubInput := c.Recursion.GetPublicInputAccessorOfInstance(c.Wiop, preRecursionPrefix+name, i)
-		pubInputSum = symbolic.Add(pubInputSum, subPubInput)
+		isFirst := c.Recursion.GetPublicInputAccessorOfInstance(c.Wiop, preRecursionPrefix+IsFirstPublicInput, i)
+		pubInputSum = symbolic.Add(pubInputSum, symbolic.Mul(isFirst, subPubInput))
 	}
 
 	return c.Wiop.InsertPublicInput(name, accessors.NewFromExpression(pubInputSum, name+"_SUMMATION_ACCESSOR"))
