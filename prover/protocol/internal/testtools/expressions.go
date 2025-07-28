@@ -70,6 +70,18 @@ var ListOfGlobalTestcasePositive = []*ExpressionTestcase{
 	},
 
 	{
+		NameStr: "positive/bogdan2",
+		Expr: sym.Sub(
+			columnA,
+			column.Shift(columnA, -1),
+			1,
+		),
+		Columns: map[ifaces.ColID]smartvectors.SmartVector{
+			"A": smartvectors.ForTestExt(2, 3, 4, 5, 6, 7, 8, 9),
+		},
+	},
+
+	{
 		NameStr: "positive/fibonacci-over-extensions",
 		Expr: sym.Sub(
 			columnA,
