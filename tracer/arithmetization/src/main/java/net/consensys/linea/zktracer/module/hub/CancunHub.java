@@ -20,6 +20,7 @@ import net.consensys.linea.zktracer.module.blockdata.module.Blockdata;
 import net.consensys.linea.zktracer.module.blockdata.module.CancunBlockData;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.section.McopySection;
+import net.consensys.linea.zktracer.module.hub.section.halt.selfdestruct.CancunSelfdestructSection;
 import net.consensys.linea.zktracer.module.hub.section.transients.TLoadSection;
 import net.consensys.linea.zktracer.module.hub.section.transients.TStoreSection;
 import net.consensys.linea.zktracer.module.mxp.module.CancunMxp;
@@ -31,6 +32,7 @@ import net.consensys.linea.zktracer.module.tables.PowerRt;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.CancunInstructionDecoder;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.InstructionDecoder;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.gascalculator.CancunGasCalculator;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 
@@ -87,5 +89,10 @@ public class CancunHub extends ShanghaiHub {
   @Override
   protected void setMcopySection(Hub hub) {
     new McopySection(hub);
+  }
+
+  @Override
+  protected void setSelfdestructSection(final Hub hub, final MessageFrame frame) {
+    new CancunSelfdestructSection(hub, frame);
   }
 }

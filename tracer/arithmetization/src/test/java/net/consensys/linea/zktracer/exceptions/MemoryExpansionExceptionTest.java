@@ -35,15 +35,12 @@ import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.module.mxp.MxpTestUtils;
 import net.consensys.linea.zktracer.module.mxp.moduleOperation.LondonMxpOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-// This test is making unit test hang when running for Cancun - to debug
-@Tag("disabled-for-cancun-temporarily")
 @ExtendWith(UnitTestWatcher.class)
 public class MemoryExpansionExceptionTest extends TracerTestBase {
 
@@ -54,7 +51,7 @@ public class MemoryExpansionExceptionTest extends TracerTestBase {
     boolean triggerMaxCodeSizeException = false;
     new MxpTestUtils()
         .triggerNonTrivialButMxpxOrRoobOrMaxCodeSizeExceptionForOpCode(
-            program, triggerRoob, triggerMaxCodeSizeException, opCode);
+            fork, program, triggerRoob, triggerMaxCodeSizeException, opCode);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
     bytecodeRunner.run(testInfo);
     assertEquals(
@@ -64,7 +61,7 @@ public class MemoryExpansionExceptionTest extends TracerTestBase {
     assertTrue(bytecodeRunner.getHub().mxp().operations().getLast().getMxpCall().isMxpx());
 
     // Check to do prior to Cancun fork
-    if (!isPostCancun(testInfo.chainConfig.fork)) {
+    if (!isPostCancun(fork)) {
       LondonMxpOperation londonMxpOperation =
           (LondonMxpOperation) bytecodeRunner.getHub().mxp().operations().getLast();
       assertEquals(triggerRoob, londonMxpOperation.isRoob());
@@ -79,7 +76,7 @@ public class MemoryExpansionExceptionTest extends TracerTestBase {
     BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     new MxpTestUtils()
         .triggerNonTrivialButMxpxOrRoobOrMaxCodeSizeExceptionForOpCode(
-            program, triggerRoob, triggerMaxCodeSizeException, opCode);
+            fork, program, triggerRoob, triggerMaxCodeSizeException, opCode);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
     bytecodeRunner.run(testInfo);
     assertEquals(
@@ -89,7 +86,7 @@ public class MemoryExpansionExceptionTest extends TracerTestBase {
     assertTrue(bytecodeRunner.getHub().mxp().operations().getLast().getMxpCall().isMxpx());
 
     // Check to do prior to Cancun fork
-    if (!isPostCancun(testInfo.chainConfig.fork)) {
+    if (!isPostCancun(fork)) {
       LondonMxpOperation londonMxpOperation =
           (LondonMxpOperation) bytecodeRunner.getHub().mxp().operations().getLast();
       assertEquals(triggerRoob, londonMxpOperation.isRoob());

@@ -18,12 +18,15 @@ package net.consensys.linea.zktracer.module.mxp.moduleCall;
 import static net.consensys.linea.zktracer.TraceCancun.Mxp.CT_MAX_MSIZE;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.mxp.MxpExoCall;
 
 public class CancunMSizeMxpCall extends CancunMxpCall {
 
   public CancunMSizeMxpCall(Hub hub) {
     super(hub);
     // Nothing to compute for MSize scenario
+    exoCalls[0] = MxpExoCall.builder().build();
+    setWordsAndCMemNewToPrevValues();
   }
 
   @Override

@@ -137,6 +137,9 @@ public abstract class MxpCall implements TraceSubFragment {
         : 0;
   }
 
+  protected void setMayTriggerNontrivialMmuOperation() {}
+  ;
+
   // Method only filled for LondonMxpCall
   public abstract void traceMayTriggerNonTrivialMmuOperationFromMxpx(Trace.Hub trace);
 

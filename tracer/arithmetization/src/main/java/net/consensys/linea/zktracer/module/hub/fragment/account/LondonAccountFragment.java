@@ -35,6 +35,12 @@ public class LondonAccountFragment extends AccountFragment {
     super(hub, oldState, newState, addressToTrim, domSubStampsSubFragment);
   }
 
+  // Fragment always wiped in London
+  public boolean shouldBeMarkedForDeletion() {
+    return true;
+  }
+  ;
+
   @Override
   void traceMarkedForSelfDestruct(Trace.Hub trace) {
     trace

@@ -176,6 +176,8 @@ public abstract class AccountFragment
 
   abstract void traceMarkedForSelfDestruct(Trace.Hub trace);
 
+  abstract boolean shouldBeMarkedForDeletion();
+
   @Override
   public void resolveAtEndTransaction(
       Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
@@ -183,7 +185,7 @@ public abstract class AccountFragment
         transactionProcessingMetadata.getEffectiveSelfDestructMap();
     final EphemeralAccount ephemeralAccount =
         new EphemeralAccount(oldState().address(), oldState().deploymentNumber());
-    if (effectiveSelfDestructMap.containsKey(ephemeralAccount)) {
+    if (shouldBeMarkedForDeletion() && effectiveSelfDestructMap.containsKey(ephemeralAccount)) {
       final int selfDestructTime = effectiveSelfDestructMap.get(ephemeralAccount);
       markedForDeletion =
           domSubStampsSubFragment().domStamp() > MULTIPLIER___DOM_SUB_STAMPS * selfDestructTime;

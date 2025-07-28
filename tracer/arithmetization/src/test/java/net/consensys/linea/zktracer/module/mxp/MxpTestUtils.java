@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.mxp;
 
+import static net.consensys.linea.zktracer.Fork.isPostCancun;
+
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,6 +28,7 @@ import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
+import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.gas.MxpType;
 import net.consensys.linea.zktracer.types.EWord;
@@ -100,12 +103,11 @@ public class MxpTestUtils {
   }
 
   public void triggerNonTrivialButMxpxOrRoobOrMaxCodeSizeExceptionForOpCode(
+      Fork fork,
       BytecodeCompiler program,
       boolean triggerRoob,
       boolean triggerMaxCodeSizeException,
       OpCode opCode) {
-    MxpType mxpType = opCode.getData().billing().type();
-
     // Generate as many random values as needed at most
     EWord size1;
     EWord size2;
@@ -131,8 +133,8 @@ public class MxpTestUtils {
       offset1 = getRandomBigIntegerByBytesSize(0, MAX_BYTE_SIZE);
       offset2 = getRandomBigIntegerByBytesSize(0, MAX_BYTE_SIZE);
 
-      mxpx = isMxpx(mxpType, size1, offset1, size2, offset2);
-      roob = isRoob(mxpType, size1, offset1, size2, offset2);
+      mxpx = isMxpx(fork, opCode, size1, offset1, size2, offset2);
+      roob = isRoob(fork, opCode, size1, offset1, size2, offset2);
     } while (!(triggerRoob && mxpx && roob) && !(!triggerRoob && mxpx && !roob));
 
     switch (opCode) {
@@ -184,11 +186,19 @@ public class MxpTestUtils {
     }
   }
 
-  public static boolean isRoob(MxpType randomMxpType, EWord size1, EWord offset1) {
-    return isRoob(randomMxpType, size1, offset1, EWord.ZERO, EWord.ZERO);
+  public static boolean isRoob(
+      Fork fork, OpCode opCode, EWord size1, EWord offset1, EWord size2, EWord offset2) {
+    boolean roob;
+    if (isPostCancun(fork)) {
+      roob = isRoob(opCode, size1, offset1, size2, offset2);
+    } else {
+      MxpType randomMxpType = opCode.getData().billing().type();
+      roob = isRoobLondon(randomMxpType, size1, offset1, size2, offset2);
+    }
+    return roob;
   }
 
-  public static boolean isRoob(
+  private static boolean isRoobLondon(
       MxpType randomMxpType, EWord size1, EWord offset1, EWord size2, EWord offset2) {
     final boolean offsetIsEnormousAndSizeIsNonZero1 =
         offset1.compareTo(TWO_POW_128) >= 0 && !size1.isZero();
@@ -206,11 +216,50 @@ public class MxpTestUtils {
     };
   }
 
-  public static boolean isMxpx(MxpType randomMxpType, EWord size1, EWord offset1) {
-    return isMxpx(randomMxpType, size1, offset1, EWord.ZERO, EWord.ZERO);
+  private static boolean isRoob(
+      OpCode opCode, EWord size1, EWord offset1, EWord size2, EWord offset2) {
+    final boolean offsetIsEnormousAndSizeIsNonZero1 =
+        offset1.compareTo(TWO_POW_128) >= 0 && !size1.isZero();
+    final boolean offsetIsEnormousAndSizeIsNonZero2 =
+        offset2.compareTo(TWO_POW_128) >= 0 && !size2.isZero();
+
+    return switch (opCode) {
+      case MLOAD, MSTORE, MSTORE8 -> offset1.compareTo(TWO_POW_128) >= 0;
+      case LOG0,
+          LOG1,
+          LOG2,
+          LOG3,
+          LOG4,
+          CREATE,
+          CREATE2,
+          RETURN,
+          REVERT,
+          SHA3,
+          CALLDATACOPY,
+          CODECOPY,
+          EXTCODECOPY,
+          RETURNDATACOPY -> size1.compareTo(TWO_POW_128) >= 0 || offsetIsEnormousAndSizeIsNonZero1;
+      case CALL, CALLCODE, DELEGATECALL, STATICCALL -> size1.compareTo(TWO_POW_128) >= 0
+          || offsetIsEnormousAndSizeIsNonZero1
+          || size2.compareTo(TWO_POW_128) >= 0
+          || offsetIsEnormousAndSizeIsNonZero2;
+      default -> false;
+    };
   }
 
   public static boolean isMxpx(
+      Fork fork, OpCode opCode, EWord size1, EWord offset1, EWord size2, EWord offset2) {
+    boolean mxpx;
+    if (isPostCancun(fork)) {
+      mxpx = isMxpx(opCode, size1, offset1, size2, offset2);
+    } else {
+      MxpType randomMxpType = opCode.getData().billing().type();
+      mxpx = isMxpxLondon(randomMxpType, size1, offset1, size2, offset2);
+    }
+    return mxpx;
+  }
+
+  private static boolean isMxpxLondon(
       MxpType randomMxpType, EWord size1, EWord offset1, EWord size2, EWord offset2) {
     EWord maxOffset1 = EWord.ZERO;
     EWord maxOffset2 = EWord.ZERO;
@@ -225,6 +274,47 @@ public class MxpTestUtils {
         }
       }
       case TYPE_5 -> {
+        if (!size1.isZero()) {
+          maxOffset1 = offset1.add(size1).subtract(1);
+        }
+        if (!size2.isZero()) {
+          maxOffset2 = offset2.add(size2).subtract(1);
+        }
+      }
+    }
+
+    maxOffset = maxOffset1.greaterThan(maxOffset2) ? maxOffset1 : maxOffset2;
+    return maxOffset.compareTo(TWO_POW_32) >= 0;
+  }
+
+  public static boolean isMxpx(
+      OpCode opCode, EWord size1, EWord offset1, EWord size2, EWord offset2) {
+    EWord maxOffset1 = EWord.ZERO;
+    EWord maxOffset2 = EWord.ZERO;
+    EWord maxOffset;
+
+    switch (opCode) {
+      case MLOAD, MSTORE -> maxOffset1 = offset1.add(31);
+      case MSTORE8 -> maxOffset1 = offset1;
+      case LOG0,
+          LOG1,
+          LOG2,
+          LOG3,
+          LOG4,
+          CREATE,
+          CREATE2,
+          RETURN,
+          REVERT,
+          SHA3,
+          CALLDATACOPY,
+          CODECOPY,
+          EXTCODECOPY,
+          RETURNDATACOPY -> {
+        if (!size1.isZero()) {
+          maxOffset1 = offset1.add(size1).subtract(1);
+        }
+      }
+      case CALL, CALLCODE, DELEGATECALL, STATICCALL -> {
         if (!size1.isZero()) {
           maxOffset1 = offset1.add(size1).subtract(1);
         }

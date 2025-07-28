@@ -24,6 +24,7 @@ import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
 import net.consensys.linea.zktracer.module.mxp.MxpExoCall;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
+import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.gas.BillingRate;
 import org.apache.tuweni.bytes.Bytes;
 
@@ -73,6 +74,7 @@ public class CancunMxpCall extends MxpCall {
     // Initialization of the computed values of MxpCall
     this.gasMxp = 0L;
     setMxpxFromMxpxExpression();
+    setMayTriggerNontrivialMmuOperation();
   }
 
   /** Store all wcp and euc computations with params and results */
@@ -127,8 +129,25 @@ public class CancunMxpCall extends MxpCall {
     this.mxpx = this.mxpxExpression != 0;
   }
 
+  public void setMayTriggerNontrivialMmuOperation() {
+    boolean opCodeEligibility =
+        this.opCodeData.isLog()
+            || this.opCodeData.isCopy()
+            || this.opCodeData.isCreate()
+            || this.opCodeData.isReturn()
+            || this.opCodeData.mnemonic() == OpCode.SHA3
+            || this.opCodeData.mnemonic() == OpCode.REVERT;
+    this.mayTriggerNontrivialMmuOperation =
+        opCodeEligibility && !mxpx && getSize1().loBigInt().signum() > 0;
+  }
+
   public void setGasMpxFromExtraGasCost() {
     this.gasMxp = this.cMemNew - this.cMem + this.extraGasCost;
+  }
+
+  public void setWordsAndCMemNewToPrevValues() {
+    this.wordsNew = this.words;
+    this.cMemNew = this.cMem;
   }
 
   public void computeSize1Size2IsZero(Wcp wcp) {

@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TestInfoWithChainConfig;
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.*;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -44,15 +45,19 @@ import org.junit.jupiter.params.provider.EnumSource;
 public class RepeatedSelfDestructsOfSameAccountTests extends TracerTestBase {
 
   private ToyAccount toAccount;
-  BytecodeCompiler toAccountCode = BytecodeCompiler.newProgram(testInfo);
+
+  private BytecodeCompiler toAccountCode(TestInfoWithChainConfig testInfo) {
+    return BytecodeCompiler.newProgram(testInfo);
+  }
+
   private ToyAccount selfDestructorAccount;
 
-  private void buildToAccount() {
+  private void buildToAccount(TestInfoWithChainConfig testInfo) {
     toAccount =
         ToyAccount.builder()
             .address(Address.fromHexString("0x1234567890"))
             .balance(Wei.fromEth(2))
-            .code(toAccountCode.compile())
+            .code(toAccountCode(testInfo).compile())
             .nonce(23)
             .build();
   }
@@ -68,9 +73,9 @@ public class RepeatedSelfDestructsOfSameAccountTests extends TracerTestBase {
         .build();
   }
 
-  private void run(Heir heir) {
+  private void run(TestInfoWithChainConfig testInfo, Heir heir) {
     selfDestructorAccount = basicSelfDestructor(heir, Optional.empty(), testInfo);
-    buildToAccount();
+    buildToAccount(testInfo);
     ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(userAccount, toAccount, selfDestructorAccount))
         .transaction(transaction())
@@ -85,23 +90,29 @@ public class RepeatedSelfDestructsOfSameAccountTests extends TracerTestBase {
   @EnumSource(Heir.class)
   public void sameAccountSelfDestructsThrice(Heir heir) {
 
-    appendCall(toAccountCode, OpCode.CALL, 100_000, Heir.selfDestructorAddress, 12, 0, 4, 0, 0);
-    appendCall(toAccountCode, OpCode.CALL, 100_000, Heir.selfDestructorAddress, 19, 0, 3, 0, 0);
-    appendCall(toAccountCode, OpCode.CALL, 100_000, Heir.selfDestructorAddress, 26, 0, 2, 0, 0);
+    appendCall(
+        toAccountCode(testInfo), OpCode.CALL, 100_000, Heir.selfDestructorAddress, 12, 0, 4, 0, 0);
+    appendCall(
+        toAccountCode(testInfo), OpCode.CALL, 100_000, Heir.selfDestructorAddress, 19, 0, 3, 0, 0);
+    appendCall(
+        toAccountCode(testInfo), OpCode.CALL, 100_000, Heir.selfDestructorAddress, 26, 0, 2, 0, 0);
 
-    run(heir);
+    run(testInfo, heir);
   }
 
   @ParameterizedTest
   @EnumSource(Heir.class)
   public void sameAccountSelfDestructsThriceReverted(Heir heir) {
 
-    appendCall(toAccountCode, OpCode.CALL, 100_000, Heir.selfDestructorAddress, 12, 0, 4, 0, 0);
-    appendCall(toAccountCode, OpCode.CALL, 100_000, Heir.selfDestructorAddress, 19, 0, 3, 0, 0);
-    appendCall(toAccountCode, OpCode.CALL, 100_000, Heir.selfDestructorAddress, 26, 0, 2, 0, 0);
-    appendRevert(toAccountCode, 0, 0);
+    appendCall(
+        toAccountCode(testInfo), OpCode.CALL, 100_000, Heir.selfDestructorAddress, 12, 0, 4, 0, 0);
+    appendCall(
+        toAccountCode(testInfo), OpCode.CALL, 100_000, Heir.selfDestructorAddress, 19, 0, 3, 0, 0);
+    appendCall(
+        toAccountCode(testInfo), OpCode.CALL, 100_000, Heir.selfDestructorAddress, 26, 0, 2, 0, 0);
+    appendRevert(toAccountCode(testInfo), 0, 0);
 
-    run(heir);
+    run(testInfo, heir);
   }
 
   /**
@@ -114,11 +125,27 @@ public class RepeatedSelfDestructsOfSameAccountTests extends TracerTestBase {
   public void calleeInducesSelfDestructInCallerViaDelegateCall(Heir heir) {
 
     appendCall(
-        toAccountCode, OpCode.DELEGATECALL, 100_000, Heir.selfDestructorAddress, 12, 0, 4, 0, 0);
+        toAccountCode(testInfo),
+        OpCode.DELEGATECALL,
+        100_000,
+        Heir.selfDestructorAddress,
+        12,
+        0,
+        4,
+        0,
+        0);
     appendCall(
-        toAccountCode, OpCode.DELEGATECALL, 100_000, Heir.selfDestructorAddress, 19, 0, 3, 0, 0);
+        toAccountCode(testInfo),
+        OpCode.DELEGATECALL,
+        100_000,
+        Heir.selfDestructorAddress,
+        19,
+        0,
+        3,
+        0,
+        0);
 
-    run(heir);
+    run(testInfo, heir);
   }
 
   @ParameterizedTest
@@ -126,32 +153,84 @@ public class RepeatedSelfDestructsOfSameAccountTests extends TracerTestBase {
   public void calleeInducesSelfDestructInCallerViaDelegateCallReverted(Heir heir) {
 
     appendCall(
-        toAccountCode, OpCode.DELEGATECALL, 100_000, Heir.selfDestructorAddress, 12, 0, 4, 0, 0);
+        toAccountCode(testInfo),
+        OpCode.DELEGATECALL,
+        100_000,
+        Heir.selfDestructorAddress,
+        12,
+        0,
+        4,
+        0,
+        0);
     appendCall(
-        toAccountCode, OpCode.DELEGATECALL, 100_000, Heir.selfDestructorAddress, 19, 0, 3, 0, 0);
-    appendRevert(toAccountCode, 0, 0);
+        toAccountCode(testInfo),
+        OpCode.DELEGATECALL,
+        100_000,
+        Heir.selfDestructorAddress,
+        19,
+        0,
+        3,
+        0,
+        0);
+    appendRevert(toAccountCode(testInfo), 0, 0);
 
-    run(heir);
+    run(testInfo, heir);
   }
 
   /** The second call should abort due to not having any funds left. */
   @ParameterizedTest
   @EnumSource(Heir.class)
   public void calleeInducesSelfDestructInCallerViaCallCode(Heir heir) {
-    appendCall(toAccountCode, OpCode.CALLCODE, 100_000, Heir.selfDestructorAddress, 12, 0, 4, 0, 0);
-    appendCall(toAccountCode, OpCode.CALLCODE, 100_000, Heir.selfDestructorAddress, 19, 0, 3, 0, 0);
+    appendCall(
+        toAccountCode(testInfo),
+        OpCode.CALLCODE,
+        100_000,
+        Heir.selfDestructorAddress,
+        12,
+        0,
+        4,
+        0,
+        0);
+    appendCall(
+        toAccountCode(testInfo),
+        OpCode.CALLCODE,
+        100_000,
+        Heir.selfDestructorAddress,
+        19,
+        0,
+        3,
+        0,
+        0);
 
-    run(heir);
+    run(testInfo, heir);
   }
 
   @ParameterizedTest
   @EnumSource(Heir.class)
   public void calleeInducesSelfDestructInCallerViaCallCodeReverted(Heir heir) {
-    appendCall(toAccountCode, OpCode.CALLCODE, 100_000, Heir.selfDestructorAddress, 12, 0, 4, 0, 0);
-    appendCall(toAccountCode, OpCode.CALLCODE, 100_000, Heir.selfDestructorAddress, 19, 0, 3, 0, 0);
-    appendRevert(toAccountCode, 0, 0);
+    appendCall(
+        toAccountCode(testInfo),
+        OpCode.CALLCODE,
+        100_000,
+        Heir.selfDestructorAddress,
+        12,
+        0,
+        4,
+        0,
+        0);
+    appendCall(
+        toAccountCode(testInfo),
+        OpCode.CALLCODE,
+        100_000,
+        Heir.selfDestructorAddress,
+        19,
+        0,
+        3,
+        0,
+        0);
+    appendRevert(toAccountCode(testInfo), 0, 0);
 
-    run(heir);
+    run(testInfo, heir);
   }
 
   /**
@@ -164,20 +243,38 @@ public class RepeatedSelfDestructsOfSameAccountTests extends TracerTestBase {
   @EnumSource(Heir.class)
   public void callerThenCalleeSelfDestruct(Heir heir) {
     appendCall(
-        toAccountCode, OpCode.DELEGATECALL, 100_000, Heir.selfDestructorAddress, 12, 0, 4, 0, 0);
-    appendCall(toAccountCode, OpCode.CALL, 100_000, Heir.selfDestructorAddress, 0, 0, 3, 0, 0);
+        toAccountCode(testInfo),
+        OpCode.DELEGATECALL,
+        100_000,
+        Heir.selfDestructorAddress,
+        12,
+        0,
+        4,
+        0,
+        0);
+    appendCall(
+        toAccountCode(testInfo), OpCode.CALL, 100_000, Heir.selfDestructorAddress, 0, 0, 3, 0, 0);
 
-    run(heir);
+    run(testInfo, heir);
   }
 
   @ParameterizedTest
   @EnumSource(Heir.class)
   public void callerThenCalleeSelfDestructReverted(Heir heir) {
     appendCall(
-        toAccountCode, OpCode.DELEGATECALL, 100_000, Heir.selfDestructorAddress, 12, 0, 4, 0, 0);
-    appendCall(toAccountCode, OpCode.CALL, 100_000, Heir.selfDestructorAddress, 0, 0, 3, 0, 0);
+        toAccountCode(testInfo),
+        OpCode.DELEGATECALL,
+        100_000,
+        Heir.selfDestructorAddress,
+        12,
+        0,
+        4,
+        0,
+        0);
+    appendCall(
+        toAccountCode(testInfo), OpCode.CALL, 100_000, Heir.selfDestructorAddress, 0, 0, 3, 0, 0);
 
-    run(heir);
+    run(testInfo, heir);
   }
 
   /**
@@ -189,29 +286,47 @@ public class RepeatedSelfDestructsOfSameAccountTests extends TracerTestBase {
   @ParameterizedTest
   @EnumSource(Heir.class)
   public void calleeThenCallerSelfDestruct(Heir heir) {
-    appendCall(toAccountCode, OpCode.CALL, 100_000, Heir.selfDestructorAddress, 25, 0, 3, 0, 0);
     appendCall(
-        toAccountCode, OpCode.DELEGATECALL, 100_000, Heir.selfDestructorAddress, 12, 0, 4, 0, 0);
+        toAccountCode(testInfo), OpCode.CALL, 100_000, Heir.selfDestructorAddress, 25, 0, 3, 0, 0);
+    appendCall(
+        toAccountCode(testInfo),
+        OpCode.DELEGATECALL,
+        100_000,
+        Heir.selfDestructorAddress,
+        12,
+        0,
+        4,
+        0,
+        0);
 
-    run(heir);
+    run(testInfo, heir);
   }
 
   @ParameterizedTest
   @EnumSource(Heir.class)
   public void calleeThenCallerSelfDestructReverted(Heir heir) {
-    appendCall(toAccountCode, OpCode.CALL, 100_000, Heir.selfDestructorAddress, 25, 0, 3, 0, 0);
     appendCall(
-        toAccountCode, OpCode.DELEGATECALL, 100_000, Heir.selfDestructorAddress, 12, 0, 4, 0, 0);
-    appendRevert(toAccountCode, 0, 0);
+        toAccountCode(testInfo), OpCode.CALL, 100_000, Heir.selfDestructorAddress, 25, 0, 3, 0, 0);
+    appendCall(
+        toAccountCode(testInfo),
+        OpCode.DELEGATECALL,
+        100_000,
+        Heir.selfDestructorAddress,
+        12,
+        0,
+        4,
+        0,
+        0);
+    appendRevert(toAccountCode(testInfo), 0, 0);
 
-    run(heir);
+    run(testInfo, heir);
   }
 
   @ParameterizedTest
   @EnumSource(Heir.class)
   public void basicSelfDestruct(Heir heir) {
     selfDestructorAccount = basicSelfDestructor(heir, Optional.empty(), testInfo);
-    buildToAccount();
+    buildToAccount(testInfo);
     Transaction transaction =
         ToyTransaction.builder()
             .keyPair(keyPair)
@@ -226,6 +341,5 @@ public class RepeatedSelfDestructsOfSameAccountTests extends TracerTestBase {
         .transaction(transaction)
         .build()
         .run();
-    run(heir);
   }
 }

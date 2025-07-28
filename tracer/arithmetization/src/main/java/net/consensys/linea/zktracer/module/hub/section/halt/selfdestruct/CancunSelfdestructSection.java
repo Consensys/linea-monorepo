@@ -12,22 +12,24 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+package net.consensys.linea.zktracer.module.hub.section.halt.selfdestruct;
 
-package net.consensys.linea.zktracer.module.mxp.moduleCall;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.SelfdestructScenarioFragment.SelfdestructScenario.*;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
-public class CancunMxpxMxpCall extends CancunNotMSizeNorTrivialMxpCall {
+public class CancunSelfdestructSection extends LondonSelfdestructSection {
 
-  public CancunMxpxMxpCall(Hub hub, boolean mxpx) {
-    super(hub);
-    this.mxpx = mxpx;
-    setWordsAndCMemNewToPrevValues();
-    // Nothing to compute for MXPX scenario
+  public CancunSelfdestructSection(Hub hub, MessageFrame frame) {
+    super(hub, frame);
   }
 
-  @Override
-  public boolean isMxpxScenario() {
-    return true;
+  public boolean accountFragmentWiping() {
+    // In Cancun, the account fragment is wiped only if it didn't have code initially
+    return !transactionProcessingMetadata
+        .hadCodeInitiallyMap()
+        .get(selfdestructor.address())
+        .hadCode();
   }
 }

@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.hub.section.halt;
+package net.consensys.linea.zktracer.module.hub.section.halt.selfdestruct;
 
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.SelfdestructScenarioFragment.SelfdestructScenario.*;
@@ -34,6 +34,8 @@ import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.SelfdestructScenarioFragment;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
+import net.consensys.linea.zktracer.module.hub.section.halt.AttemptedSelfDestruct;
+import net.consensys.linea.zktracer.module.hub.section.halt.EphemeralAccount;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.Bytecode;
@@ -46,7 +48,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
-public class SelfdestructSection extends TraceSection
+public abstract class SelfdestructSection extends TraceSection
     implements PostOpcodeDefer,
         PostRollbackDefer,
         EndTransactionDefer,
@@ -167,6 +169,8 @@ public class SelfdestructSection extends TraceSection
     }
   }
 
+  abstract boolean accountFragmentWiping();
+
   @Override
   public void resolvePostExecution(
       Hub hub, MessageFrame frame, Operation.OperationResult operationResult) {
@@ -254,38 +258,41 @@ public class SelfdestructSection extends TraceSection
 
     checkArgument(effectiveSelfDestructMap.containsKey(ephemeralAccount));
 
-    // This grabs the accounts right after the coinbase and sender got their gas money back
-    // in particular this will get the coinbase address post gas reward.
-    final AccountSnapshot accountWiping =
-        transactionProcessingMetadata.getDestructedAccountsSnapshot().stream()
-            .filter(accountSnapshot -> accountSnapshot.address().equals(selfdestructor.address()))
-            .findFirst()
-            .orElseThrow(() -> new IllegalStateException("Account not found"));
+    if (accountFragmentWiping()) {
+      // This grabs the accounts right after the coinbase and sender got their gas money back
+      // in particular this will get the coinbase address post gas reward.
+      final AccountSnapshot accountWiping =
+          transactionProcessingMetadata.getDestructedAccountsSnapshot().stream()
+              .filter(accountSnapshot -> accountSnapshot.address().equals(selfdestructor.address()))
+              .findFirst()
+              .orElseThrow(() -> new IllegalStateException("Account not found"));
 
-    // We modify the account fragment to reflect the self-destruct time
-    final int hubStampOfTheActionableSelfDestruct = effectiveSelfDestructMap.get(ephemeralAccount);
-    checkArgument(hubStamp >= hubStampOfTheActionableSelfDestruct);
+      // We modify the account fragment to reflect the self-destruct time
+      final int hubStampOfTheActionableSelfDestruct =
+          effectiveSelfDestructMap.get(ephemeralAccount);
+      checkArgument(hubStamp >= hubStampOfTheActionableSelfDestruct);
 
-    if (hubStamp == hubStampOfTheActionableSelfDestruct) {
-      selfdestructScenarioFragment.setScenario(SELFDESTRUCT_WONT_REVERT_NOT_YET_MARKED);
+      if (hubStamp == hubStampOfTheActionableSelfDestruct) {
+        selfdestructScenarioFragment.setScenario(SELFDESTRUCT_WONT_REVERT_NOT_YET_MARKED);
 
-      accountWipingNew = accountWiping.deepCopy();
-      // the hub's defers.resolvePostTransaction() gets called after the
-      // hub's completeLineaTransaction which in turn calls
-      // freshDeploymentNumberFinishingSelfdestruct()
-      // which raises the deployment number and sets the deployment status to false
-      final AccountFragment accountWipingFragment =
-          hub.factories()
-              .accountFragment()
-              .make(
-                  accountWiping,
-                  accountWipingNew,
-                  DomSubStampsSubFragment.selfdestructDomSubStamps(hub, hubStamp));
+        accountWipingNew = accountWiping.deepCopy();
+        // the hub's defers.resolvePostTransaction() gets called after the
+        // hub's completeLineaTransaction which in turn calls
+        // freshDeploymentNumberFinishingSelfdestruct()
+        // which raises the deployment number and sets the deployment status to false
+        final AccountFragment accountWipingFragment =
+            hub.factories()
+                .accountFragment()
+                .make(
+                    accountWiping,
+                    accountWipingNew,
+                    DomSubStampsSubFragment.selfdestructDomSubStamps(hub, hubStamp));
 
-      this.addFragment(accountWipingFragment);
-      this.addFragment(finalUnexceptionalContextFragment);
+        this.addFragment(accountWipingFragment);
+        this.addFragment(finalUnexceptionalContextFragment);
 
-      hub.defers().scheduleForAfterTransactionFinalization(this);
+        hub.defers().scheduleForAfterTransactionFinalization(this);
+      }
     } else {
       selfdestructScenarioFragment.setScenario(SELFDESTRUCT_WONT_REVERT_ALREADY_MARKED);
       this.addFragment(finalUnexceptionalContextFragment);

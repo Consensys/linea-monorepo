@@ -213,8 +213,7 @@ public class InvalidCodePrefixAndMaxCodeSizeExceptionTest extends TracerTestBase
     bytecodeRunner.run(testInfo);
 
     // (Post-Shanghai) MAX_CODE_SIZE_EXCEPTION happens
-    TracedException exceptionTriggered =
-        isPostShanghai(testInfo.chainConfig.fork) ? MAX_CODE_SIZE_EXCEPTION : NONE;
+    TracedException exceptionTriggered = isPostShanghai(fork) ? MAX_CODE_SIZE_EXCEPTION : NONE;
     assertEquals(
         exceptionTriggered,
         bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
