@@ -74,7 +74,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	var (
 		proofGLs            = make([]recursion.Witness, numGL)
 		proofLPPs           = make([]recursion.Witness, numGL)
-		lppCommitments      []field.Element
+		lppCommitments      = make([]field.Element, numGL)
 		errGroup            = &errgroup.Group{}
 		contextGL, cancelGL = context.WithCancel(context.Background())
 	)
@@ -121,7 +121,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 			}
 
 			proofGLs[i] = *proofGL
-			lppCommitments = append(lppCommitments, lppCommitment)
+			lppCommitments[i] = lppCommitment
 			return nil
 		})
 	}
@@ -217,7 +217,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	}
 
 	out.Proof = execCirc.MakeProof(
-		&config.TracesLimits{},
+		&cfg.TracesLimits,
 		setup,
 		congloWIOP,
 		proofConglo,
@@ -453,8 +453,9 @@ func RunConglomeration(cfg *config.Config, proofGLs, proofLPPs []recursion.Witne
 	proof = cong.Prove(proofGLs, proofLPPs)
 
 	logrus.Infof("Finished running the conglomeration-prover")
-
-	if err := wizard.Verify(cong.Wiop, proof); err != nil {
+	run, err := wizard.VerifyWithRuntime(cong.Wiop, proof)
+	if err != nil {
+		zkevm.LogPublicInputs(run)
 		exit.OnUnsatisfiedConstraints(err)
 	}
 
