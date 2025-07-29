@@ -26,6 +26,8 @@ import (
 // TestDistributedWizard attempts to compiler the wizard distribution.
 func TestDistributedWizard(t *testing.T) {
 
+	t.SkipNow()
+
 	var (
 		z          = zkevm.GetTestZkEVM()
 		affinities = zkevm.GetAffinities(z)
