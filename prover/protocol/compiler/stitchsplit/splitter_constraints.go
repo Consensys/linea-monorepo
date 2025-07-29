@@ -332,7 +332,7 @@ func (ctx SplitterContext) localQueriesForGapsInGlobal(q query.GlobalConstraint,
 	nextStart := 0
 
 	if offsetRange.Min < 0 {
-		for i := 0; i < offsetRange.Min; i-- {
+		for i := 0; i > offsetRange.Min; i-- {
 			// And fill the gap with a local constraint
 			if slot > 0 || q.NoBoundCancel {
 				// adjust the query over the sub columns
