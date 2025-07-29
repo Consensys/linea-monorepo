@@ -49,8 +49,8 @@ func TestCompilers(t *testing.T) {
 
 	runTestList(t, "global", testtools.ListOfGlobalTestcasePositive)
 	runTestList(t, "global", testtools.ListOfGlobalTestcaseNegative)
-	//runTestList(t, "horner", testtools.ListOfHornerTestcasePositive)
-	//runTestList(t, "horner", testtools.ListOfHornerTestcaseNegative)
+	runTestList(t, "horner", testtools.ListOfHornerTestcasePositive)
+	runTestList(t, "horner", testtools.ListOfHornerTestcaseNegative)
 	//runTestList(t, "grand-product", testtools.ListOfGrandProductTestcasePositive)
 	//runTestList(t, "grand-product", testtools.ListOfGrandProductTestcaseNegative)
 	//runTestList(t, "projection", testtools.ListOfProjectionTestcasePositive)
