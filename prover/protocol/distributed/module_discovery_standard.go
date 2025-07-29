@@ -174,7 +174,8 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 		}
 
 		if !found {
-			logrus.Errorf("Could not find advice for %v", qbm.ModuleName)
+			columnList := utils.SortedKeysOf(qbm.Ds.Rank, func(a, b ifaces.ColID) bool { return a < b })
+			logrus.Errorf("Could not find advice for %v, columns=[%v]", qbm.ModuleName, columnList)
 			oneNotFound = true
 		}
 	}
