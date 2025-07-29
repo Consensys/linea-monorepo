@@ -46,13 +46,13 @@ zkevm/arithmetization/zkevm.bin: go-corset
 ## Generate the setup for all provers job for sepolia (to be run with S3 access)
 ##
 setup-sepolia: bin/prover
-	bin/prover setup --config ./config/config-sepolia-full.toml --dict ./lib/compressor/compressor_dict.bin --assets-dir ./prover-assets
+	bin/prover setup --config ./config/config-sepolia-limitless.toml --dict ./lib/compressor/compressor_dict.bin --assets-dir ./prover-assets
 
 ##
 ## Generate the setup for all provers job for mainnet (to be run with S3 access)
 ##
 setup-mainnet: bin/prover
-	bin/prover setup --config ./config/config-mainnet-full.toml --dict ./lib/compressor/compressor_dict.bin --assets-dir ./prover-assets
+	bin/prover setup --config ./config/config-mainnet-limitless.toml --dict ./lib/compressor/compressor_dict.bin --assets-dir ./prover-assets
 
 ##
 ## Copy the prover assets to the S3 bucket (zkuat)
