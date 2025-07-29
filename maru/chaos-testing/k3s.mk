@@ -22,7 +22,15 @@ k3s-setup-kubeconfig:
 	#@docker exec k3s-server sh -c "cat /etc/rancher/k3s/k3s.yaml" > ~/.kube/k3s-server
 	# export KUBECONFIG=~/.kube/k3s-server
 
+k3s-wait:
+	@echo "Waiting for k3s server to be up..."
+	@until docker exec k3s-server sh -c "telnet localhost 6443 </dev/null 2>/dev/null | grep Connected" ; do \
+		sleep 1; \
+	done
+	@echo "k3s server is up and running."
+
 k3s-reload:
-	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) k3s-clean
-	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) k3s-run
-	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) k3s-setup-kubeconfig
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) k3s-clean
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) k3s-run
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) k3s-setup-kubeconfig
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) k3s-wait

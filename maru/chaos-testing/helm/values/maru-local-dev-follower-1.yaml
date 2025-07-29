@@ -1,4 +1,5 @@
 replicaCount: 1
+fullnameOverride: maru-follower-1
 configFiles:
   privateKey: |
     0x080212201dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aa1
@@ -8,7 +9,8 @@ configFiles:
     eth-api-endpoint = { endpoint = "http://besu-follower-1.besu-follower.default.svc.cluster.local:8545" }
 
     [follower-engine-apis]
-    follower-besu = { endpoint = "http://besu-follower-1.besu-follower.default.svc.cluster.local:8550" }
+    follower-besu = { endpoint = "http://besu-follower-2.besu-follower.default.svc.cluster.local:8550" }
+
   log4j: |
     <?xml version="1.0" encoding="UTF-8"?>
     <Configuration status="INFO" monitorInterval="2">
@@ -18,9 +20,9 @@ configFiles:
       </Console>
     </Appenders>
     <Loggers>
-      <Logger name="org.hyperledger.besu" level="TRACE"/>
-      <Logger name="tech.pegasys.teku" level="DEBUG"/>
-      <Logger name="maru" level="DEBUG"/>
+      <Logger name="org.hyperledger.besu" level="INFO"/>
+      <Logger name="tech.pegasys.teku" level="INFO"/>
+      <Logger name="maru" level="INFO"/>
       <Logger name="clients" level="DEBUG"/>
       <Root level="INFO">
         <AppenderRef ref="Console"/>
