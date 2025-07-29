@@ -6,9 +6,11 @@ import (
 	"math/big"
 	"math/rand/v2"
 	"reflect"
+	"runtime"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 const ExtensionDegree int = 4
@@ -168,5 +170,21 @@ func Text(z *Element, base int) string {
 	}
 
 	res := fmt.Sprintf("%s + %s*u + (%s + %s*u)*v", z.B0.A0.Text(base), z.B0.A1.Text(base), z.B1.A0.Text(base), z.B1.A1.Text(base))
+	return res
+}
+
+func ParBatchInvert(a []Element, numCPU int) []Element {
+
+	if numCPU == 0 {
+		numCPU = runtime.NumCPU()
+	}
+
+	res := make([]Element, len(a))
+
+	parallel.Execute(len(a), func(start, stop int) {
+		subRes := BatchInvert(a[start:stop])
+		copy(res[start:stop], subRes)
+	}, numCPU)
+
 	return res
 }

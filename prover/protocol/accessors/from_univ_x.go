@@ -37,7 +37,7 @@ func (u *FromUnivXAccessor) GetValBase(run ifaces.Runtime) (field.Element, error
 
 func (u *FromUnivXAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 	params := run.GetParams(u.Q.QueryID).(query.UnivariateEvalParams)
-	return params.X
+	return params.ExtX
 }
 
 func (u *FromUnivXAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {

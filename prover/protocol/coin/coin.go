@@ -66,6 +66,7 @@ const (
 	IntegerVec
 	FieldFromSeed
 	FieldExt
+	FieldExtFromSeed
 )
 
 // MarshalJSON implements [json.Marshaler] directly returning the Itoa of the

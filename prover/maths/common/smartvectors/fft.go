@@ -73,10 +73,18 @@ func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio i
 		if bitReverse {
 			fft.BitReverse(res.Regular)
 		}
-		domain.FFT(res.Regular, fft.DIT)
+		if cosetID != 0 || cosetRatio != 0 {
+			domain.FFT(res.Regular, fft.DIT, fft.OnCoset())
+		} else {
+			domain.FFT(res.Regular, fft.DIT)
+		}
 	} else {
 		// Likewise, the optionally rearrange the input in correct order
-		domain.FFT(res.Regular, fft.DIF)
+		if cosetID != 0 || cosetRatio != 0 {
+			domain.FFT(res.Regular, fft.DIF, fft.OnCoset())
+		} else {
+			domain.FFT(res.Regular, fft.DIF)
+		}
 		if bitReverse {
 			fft.BitReverse(res.Regular)
 		}
@@ -147,7 +155,11 @@ func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, coset
 
 	if decimation == fft.DIF {
 		// Optionally, bitReverse the output
-		domain.FFTInverse(res.Regular, fft.DIF)
+		if cosetID != 0 || cosetRatio != 0 {
+			domain.FFTInverse(res.Regular, fft.DIF, fft.OnCoset())
+		} else {
+			domain.FFTInverse(res.Regular, fft.DIF)
+		}
 		if bitReverse {
 			fft.BitReverse(res.Regular)
 		}
@@ -156,7 +168,11 @@ func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, coset
 		if bitReverse {
 			fft.BitReverse(res.Regular)
 		}
-		domain.FFTInverse(res.Regular, fft.DIT)
+		if cosetID != 0 || cosetRatio != 0 {
+			domain.FFTInverse(res.Regular, fft.DIT, fft.OnCoset())
+		} else {
+			domain.FFTInverse(res.Regular, fft.DIT)
+		}
 	}
 	return res
 }

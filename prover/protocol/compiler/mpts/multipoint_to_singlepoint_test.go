@@ -102,7 +102,7 @@ func TestWithVerifierCol(t *testing.T) {
 				comp.InsertUnivariate(0, "U", []ifaces.Column{u})
 			},
 			AssignFunc: func(run *wizard.ProverRuntime) {
-				run.AssignUnivariate("U", fext.Zero(), fext.Zero())
+				run.AssignUnivariateExt("U", fext.Zero(), fext.Zero())
 			},
 		},
 		{
@@ -112,7 +112,7 @@ func TestWithVerifierCol(t *testing.T) {
 				comp.InsertUnivariate(0, "U", []ifaces.Column{u})
 			},
 			AssignFunc: func(run *wizard.ProverRuntime) {
-				run.AssignUnivariate("U", fext.Zero(), fext.NewFromUint(42, 0, 0, 0))
+				run.AssignUnivariateExt("U", fext.Zero(), fext.NewFromUint(42, 0, 0, 0))
 			},
 		},
 	}
@@ -163,7 +163,7 @@ func TestLdeOf(t *testing.T) {
 			var (
 				sizeBig = len(tc.LDE)
 				memPool = mempool.CreateFromSyncPool(sizeBig)
-				resPtr  = ldeOf(tc.Poly, memPool)
+				resPtr  = ldeOfExt(tc.Poly, memPool)
 				res     = *resPtr
 			)
 

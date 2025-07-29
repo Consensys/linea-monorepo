@@ -191,7 +191,7 @@ func TestPeriodicSampleEvalAtConsistentWithEval(t *testing.T) {
 
 				x := fext.NewFromUintBase(420691966156)
 				yExpected := smartvectors.EvaluateLagrangeMixed(vanillaEval, x)
-				yActual := sampling.EvalAtOutOfDomain(domain, x)
+				yActual := sampling.EvalAtOutOfDomainExt(domain, x)
 
 				require.Equal(t, yExpected.String(), yActual.String())
 
@@ -227,7 +227,7 @@ func TestPeriodicSampleEvalAtOnDomain(t *testing.T) {
 							x.Exp(x, big.NewInt(int64(pos)))
 
 							// This should equates 0/1
-							_ = sampling.EvalAtOutOfDomain(domain, x)
+							_ = sampling.EvalAtOutOfDomainExt(domain, x)
 						}, "domain %v, pos %v, offset %v", domain, pos, offset)
 					}
 

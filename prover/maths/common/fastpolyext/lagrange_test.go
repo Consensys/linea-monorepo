@@ -92,20 +92,20 @@ func TestBatchEvaluateLagrangeOnFext(t *testing.T) {
 	/*
 		Test with coset
 	*/
-	// onCosets := make([][]fext.Element, nbPoly)
+	onCosets := make([][]fext.Element, nbPoly)
 
-	// for i := 0; i < nbPoly; i++ {
-	// 	onCosets[i] = vectorext.DeepCopy(polys[i])
+	for i := 0; i < nbPoly; i++ {
+		onCosets[i] = vectorext.DeepCopy(polys[i])
 
-	// 	d.FFTExt(onCosets[i], fft.DIF, fft.OnCoset())
-	// 	fft.BitReverse(onCosets[i])
-	// }
+		d.FFTExt(onCosets[i], fft.DIF, fft.OnCoset())
+		fft.BitReverse(onCosets[i])
+	}
 
-	// // compute lagrange eval
-	// lagEvalExtcoset := BatchEvaluateLagrange(onCosets, x, true)
+	// compute lagrange eval
+	lagEvalExtcoset := BatchEvaluateLagrange(onCosets, x, true)
 
-	// // check the result
-	// for i := 0; i < nbPoly; i++ {
-	// 	require.Equal(t, Eval[i].String(), lagEvalExtcoset[i].String())
-	// }
+	// check the result
+	for i := 0; i < nbPoly; i++ {
+		require.Equal(t, Eval[i].String(), lagEvalExtcoset[i].String())
+	}
 }

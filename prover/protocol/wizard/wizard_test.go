@@ -50,7 +50,7 @@ func TestCompiler(t *testing.T) {
 		run.AssignColumn(P, p)
 		u := run.GetRandomCoinFieldExt(COIN)
 		y := smartvectors.EvaluateLagrangeMixed(p, u)
-		run.AssignUnivariate(U, u, y)
+		run.AssignUnivariateExt(U, u, y)
 	}
 
 	proof := wizard.Prove(compiled, prover)

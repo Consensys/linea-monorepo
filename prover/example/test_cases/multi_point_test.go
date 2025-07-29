@@ -37,8 +37,8 @@ func proverProveMultiPoint(run *wizard.ProverRuntime) {
 	y1 := smartvectors.EvaluateLagrangeMixed(p1, c1)
 	y2 := smartvectors.EvaluateLagrangeMixed(p2, c2)
 
-	run.AssignUnivariate(UNIV1, c1, y1)
-	run.AssignUnivariate(UNIV2, c2, y2)
+	run.AssignUnivariateExt(UNIV1, c1, y1)
+	run.AssignUnivariateExt(UNIV2, c2, y2)
 }
 
 func TestMultiPoint(t *testing.T) {

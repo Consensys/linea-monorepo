@@ -3,7 +3,9 @@ package query
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 )
 
@@ -71,18 +73,39 @@ func (p InnerProductParams) GnarkAssign() GnarkInnerProductParams {
 
 // A gnark circuit version of univariate eval params
 type GnarkUnivariateEvalParams struct {
-	X  gnarkfext.Element
-	Ys []gnarkfext.Element
+	X      frontend.Variable
+	Ys     []frontend.Variable
+	ExtX   gnarkfext.Element
+	ExtYs  []gnarkfext.Element
+	IsBase bool
 }
 
 func (p UnivariateEval) GnarkAllocate() GnarkUnivariateEvalParams {
 	// no need to preallocate the x because its size is already known
-	return GnarkUnivariateEvalParams{Ys: make([]gnarkfext.Element, len(p.Pols))}
+	return GnarkUnivariateEvalParams{
+		Ys:    make([]frontend.Variable, len(p.Pols)),
+		ExtYs: make([]gnarkfext.Element, len(p.Pols)),
+	}
 }
 
 // Returns a gnark assignment for the present parameters
 func (p UnivariateEvalParams) GnarkAssign() GnarkUnivariateEvalParams {
-	return GnarkUnivariateEvalParams{Ys: vectorext.IntoGnarkAssignment(p.Ys), X: gnarkfext.FromValue(p.X)}
+	if p.IsBase {
+		return GnarkUnivariateEvalParams{
+			Ys:    vector.IntoGnarkAssignment(p.Ys),
+			X:     p.X,
+			ExtYs: vectorext.IntoGnarkAssignment(p.ExtYs),
+			ExtX:  gnarkfext.SetFromExt(p.ExtX),
+		}
+	} else {
+		// extension query
+		return GnarkUnivariateEvalParams{
+			Ys:    nil,
+			X:     field.Zero(),
+			ExtYs: vectorext.IntoGnarkAssignment(p.ExtYs),
+			ExtX:  gnarkfext.SetFromExt(p.ExtX),
+		}
+	}
 }
 
 // GnarkAllocate allocates a [GnarkHornerParams] with the right dimensions
@@ -131,7 +154,12 @@ func (p GnarkGrandProductParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkUnivariateEvalParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
-	fs.UpdateExt(p.Ys...)
+	fs.Update(p.Ys...)
+}
+
+// Update the fiat-shamir state with the the present parameters
+func (p GnarkUnivariateEvalParams) UpdateFSExt(fs *fiatshamir.GnarkFiatShamir) {
+	fs.UpdateExt(p.ExtYs...)
 }
 
 // Update the fiat-shamir state with the the present parameters

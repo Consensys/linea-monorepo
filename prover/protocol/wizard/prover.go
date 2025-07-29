@@ -479,6 +479,10 @@ func (run *ProverRuntime) GetRandomCoinField(name coin.Name) field.Element {
 }
 
 func (run *ProverRuntime) GetRandomCoinFieldExt(name coin.Name) fext.Element {
+	mycoin := run.Spec.Coins.Data(name)
+	if mycoin.Type == coin.FieldExtFromSeed {
+		return run.getRandomCoinGeneric(name, coin.FieldExtFromSeed).(fext.Element)
+	}
 	return run.getRandomCoinGeneric(name, coin.FieldExt).(fext.Element)
 }
 
@@ -800,7 +804,8 @@ func (run *ProverRuntime) AssignInnerProduct(name ifaces.QueryID, ys ...fext.Ele
 //   - no query with the name `name` are found in the [CompiledIOP] object.
 //   - parameters for this query have already been assigned
 //   - the assignment round is not the correct one
-func (run *ProverRuntime) AssignUnivariate(name ifaces.QueryID, x fext.Element, ys ...fext.Element) {
+func (run *ProverRuntime) AssignUnivariate(name ifaces.QueryID, x field.Element, ys ...field.Element) {
+
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
 	defer run.lock.Unlock()
@@ -813,9 +818,27 @@ func (run *ProverRuntime) AssignUnivariate(name ifaces.QueryID, x fext.Element, 
 	if len(q.Pols) != len(ys) {
 		utils.Panic("Query expected ys = %v but got %v", len(q.Pols), len(ys))
 	}
-
 	// Adds it to the assignments
 	params := query.NewUnivariateEvalParams(x, ys...)
+	run.QueriesParams.InsertNew(name, params)
+}
+
+func (run *ProverRuntime) AssignUnivariateExt(name ifaces.QueryID, x fext.Element, ys ...fext.Element) {
+
+	// Global prover locks for accessing the maps
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	// Make sure, it is done at the right round
+	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
+
+	// Check the length of ys
+	q := run.Spec.QueriesParams.Data(name).(query.UnivariateEval)
+	if len(q.Pols) != len(ys) {
+		utils.Panic("Query expected ys = %v but got %v", len(q.Pols), len(ys))
+	}
+	// Adds it to the assignments
+	params := query.NewUnivariateEvalParamsExt(x, ys...)
 	run.QueriesParams.InsertNew(name, params)
 }
 
@@ -931,7 +954,7 @@ func (run *ProverRuntime) AssignLogDerivSumGeneric(name ifaces.QueryID, y fext.G
 //   - the parameters were already assigned
 //   - the specified query is not registered
 //   - the assignment round is incorrect
-func (run *ProverRuntime) AssignGrandProduct(name ifaces.QueryID, y fext.Element) {
+func (run *ProverRuntime) AssignGrandProduct(name ifaces.QueryID, y field.Element) {
 
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
@@ -942,6 +965,20 @@ func (run *ProverRuntime) AssignGrandProduct(name ifaces.QueryID, y fext.Element
 
 	// Adds it to the assignments
 	params := query.NewGrandProductParams(y)
+	run.QueriesParams.InsertNew(name, params)
+}
+
+func (run *ProverRuntime) AssignGrandProductExt(name ifaces.QueryID, y fext.Element) {
+
+	// Global prover locks for accessing the maps
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	// Make sure, it is done at the right round
+	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
+
+	// Adds it to the assignments
+	params := query.NewGrandProductParamsExt(y)
 	run.QueriesParams.InsertNew(name, params)
 }
 

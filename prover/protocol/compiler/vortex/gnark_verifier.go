@@ -234,7 +234,7 @@ func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkR
 		expectedYs = append(expectedYs, params.Ys[i])
 	}
 
-	ys := fastpoly.BatchEvaluateLagrangeGnarkMixed(api, polys, params.X)
+	ys := fastpoly.BatchEvaluateLagrangeGnarkMixed(api, polys, params.ExtX)
 
 	for i := range polys {
 		api.AssertIsEqual(ys[i], expectedYs[i])

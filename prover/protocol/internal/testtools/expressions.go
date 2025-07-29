@@ -3,6 +3,7 @@ package testtools
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -67,6 +68,125 @@ var ListOfGlobalTestcasePositive = []*ExpressionTestcase{
 			"A": smartvectors.ForTest(1, 1, 2, 3, 5, 8, 13, 21),
 		},
 	},
+	/* TODO@yao extend to E4
+		{
+			NameStr: "positive/fibonacci-over-extensions",
+			Expr: sym.Sub(
+				columnA,
+				column.Shift(columnA, -1),
+				column.Shift(columnA, -2),
+			),
+			Columns: map[ifaces.ColID]smartvectors.SmartVector{
+				"A": smartvectors.ForTestFromPairs(
+					1, 2,
+					1, 3,
+					2, 5,
+					3, 8,
+					5, 13,
+					8, 21,
+					13, 34,
+					21, 55,
+				),
+			},
+		},
+		{
+			NameStr: "positive/geometric-progression-over-extensions",
+			Expr: sym.Sub(
+				columnA,
+				sym.Mul(
+					2,
+					column.Shift(columnA, -1),
+				),
+			),
+			Columns: map[ifaces.ColID]smartvectors.SmartVector{
+				"A": smartvectors.ForTestFromPairs(
+					1, 3,
+					2, 6,
+					4, 12,
+					8, 24,
+					16, 48,
+					32, 96,
+					64, 192,
+					128, 384,
+				),
+			},
+		},
+	{
+			NameStr: "positive/conditional-counter-extensions",
+			Expr: sym.Sub(
+				columnA,
+				sym.Mul(
+					sym.Sub(1, columnB),
+					column.Shift(columnA, -1),
+				),
+				sym.Mul(
+					columnB,
+					sym.Add(column.Shift(columnA, -1), 1),
+				),
+			),
+			Columns: map[ifaces.ColID]smartvectors.SmartVector{
+				"A": smartvectors.ForTestFromPairs(
+					0, 3,
+					1, 5,
+					1, 5,
+					1, 5,
+					2, 6,
+					3, 6,
+					3, 8,
+					3, 8,
+				),
+				"B": smartvectors.ForTestFromPairs(
+					0, 3,
+					1, 2,
+					0, 0,
+					0, 0,
+					1, 1,
+					1, 0,
+					0, 2,
+					0, 0,
+				),
+			},
+		},
+	{
+			NameStr: "positive/pythagorean-triplet-extensions",
+			Expr: sym.Sub(
+				sym.Mul(columnA, columnA),
+				sym.Mul(columnB, columnB),
+				sym.Mul(columnC, columnC),
+			),
+			Columns: map[ifaces.ColID]smartvectors.SmartVector{
+				"A": smartvectors.ForTestFromPairs(
+					0, 0,
+					0, 5,
+					1, 0,
+					17, 0,
+					5, 0,
+					0, 13,
+					0, 0,
+					0, 0,
+				),
+				"B": smartvectors.ForTestFromPairs(
+					0, 0,
+					0, 3,
+					0, 0,
+					15, 0,
+					4, 0,
+					0, 5,
+					0, 0,
+					0, 0),
+				"C": smartvectors.ForTestFromPairs(
+					0, 0,
+					0, 4,
+					1, 0,
+					8, 0,
+					3, 0,
+					0, 12,
+					0, 0,
+					0, 0,
+				),
+			},
+		},
+	*/
 
 	{
 		NameStr: "positive/geometric-progression",
@@ -95,6 +215,22 @@ var ListOfGlobalTestcasePositive = []*ExpressionTestcase{
 		Columns: map[ifaces.ColID]smartvectors.SmartVector{
 			"A": smartvectors.NewConstant(field.Zero(), 16),
 			"B": smartvectors.NewConstant(field.Zero(), 16),
+			"C": smartvectors.NewConstant(field.Zero(), 16),
+		},
+	},
+	{
+		NameStr: "positive/random-linear-combination-over-extensions",
+		Expr: sym.NewPolyEval(
+			sym.NewVariable(coinCoin),
+			[]*sym.Expression{
+				sym.NewVariable(columnA),
+				sym.NewVariable(columnB),
+				sym.NewVariable(columnC),
+			},
+		),
+		Columns: map[ifaces.ColID]smartvectors.SmartVector{
+			"A": smartvectors.NewConstant(field.Zero(), 16),
+			"B": smartvectors.NewConstantExt(fext.Zero(), 16),
 			"C": smartvectors.NewConstant(field.Zero(), 16),
 		},
 	},

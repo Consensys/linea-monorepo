@@ -208,10 +208,11 @@ func (t *GrandProductTestcase) Assign(run *wizard.ProverRuntime) {
 
 	if t.Value == nil {
 		correctValue := t.Q.Compute(run)
-		t.Value = &correctValue
+		res := correctValue.GetExt()
+		t.Value = &res
 	}
 
-	run.AssignGrandProduct(t.Q.ID, *t.Value)
+	run.AssignGrandProductExt(t.Q.ID, *t.Value)
 }
 
 func (t *GrandProductTestcase) MustFail() bool {

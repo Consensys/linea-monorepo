@@ -72,10 +72,18 @@ func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRati
 		if bitReverse {
 			fft.BitReverse(res.RegularExt)
 		}
-		domain.FFTExt(res.RegularExt, fft.DIT)
+		if cosetID != 0 || cosetRatio != 0 {
+			domain.FFTExt(res.RegularExt, fft.DIT, fft.OnCoset())
+		} else {
+			domain.FFTExt(res.RegularExt, fft.DIT)
+		}
 	} else {
 		// Likewise, the optionally rearrange the input in correct order
-		domain.FFTExt(res.RegularExt, fft.DIF)
+		if cosetID != 0 || cosetRatio != 0 {
+			domain.FFTExt(res.RegularExt, fft.DIF, fft.OnCoset())
+		} else {
+			domain.FFTExt(res.RegularExt, fft.DIF)
+		}
 		if bitReverse {
 			fft.BitReverse(res.RegularExt)
 		}
@@ -147,7 +155,11 @@ func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, co
 
 	if decimation == fft.DIF {
 		// Optionally, bitReverse the output
-		domain.FFTInverseExt(res.RegularExt, fft.DIF)
+		if cosetID != 0 || cosetRatio != 0 {
+			domain.FFTInverseExt(res.RegularExt, fft.DIF, fft.OnCoset())
+		} else {
+			domain.FFTInverseExt(res.RegularExt, fft.DIF)
+		}
 		if bitReverse {
 			fft.BitReverse(res.RegularExt)
 		}
@@ -156,7 +168,11 @@ func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, co
 		if bitReverse {
 			fft.BitReverse(res.RegularExt)
 		}
-		domain.FFTInverseExt(res.RegularExt, fft.DIT)
+		if cosetID != 0 || cosetRatio != 0 {
+			domain.FFTInverseExt(res.RegularExt, fft.DIT, fft.OnCoset())
+		} else {
+			domain.FFTInverseExt(res.RegularExt, fft.DIT)
+		}
 	}
 	return res
 }

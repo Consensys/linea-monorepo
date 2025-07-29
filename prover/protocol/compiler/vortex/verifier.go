@@ -76,7 +76,7 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 
 	// Collect the opened columns and split them "by-commitment-rounds"
 	proof.Columns = ctx.RecoverSelectedColumns(vr, entryList)
-	x := vr.GetUnivariateParams(ctx.Query.QueryID).X
+	x := vr.GetUnivariateParams(ctx.Query.QueryID).ExtX
 
 	packedMProofs := vr.GetColumn(ctx.MerkleProofName())
 	proof.MerkleProofs = ctx.unpackMerkleProofs(packedMProofs, entryList)
@@ -112,7 +112,7 @@ func (ctx *Ctx) getYs(vr wizard.Runtime) (ys [][]fext.Element) {
 	// prover evaluation from its colID.
 	ysMap := make(map[ifaces.ColID]fext.Element, len(params.Ys))
 	for i := range query.Pols {
-		ysMap[query.Pols[i].GetColID()] = params.Ys[i]
+		ysMap[query.Pols[i].GetColID()] = params.ExtYs[i]
 	}
 
 	// Also add the shadow evaluations into ysMap. Since the shadow columns
@@ -255,8 +255,8 @@ func (ctx *Ctx) explicitPublicEvaluation(vr wizard.Runtime) error {
 
 		val := pol.GetColAssignment(vr)
 
-		y := smartvectors.EvaluateLagrangeFullFext(val, params.X)
-		if y != params.Ys[i] {
+		y := smartvectors.EvaluateLagrangeFullFext(val, params.ExtX)
+		if y != params.ExtYs[i] {
 			return fmt.Errorf("inconsistent evaluation")
 		}
 	}

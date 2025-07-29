@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -23,8 +24,11 @@ type UnivariateEval struct {
 
 // Parameters for an univariate evaluation
 type UnivariateEvalParams struct {
-	X  fext.Element
-	Ys []fext.Element
+	X      field.Element
+	Ys     []field.Element
+	ExtX   fext.Element
+	ExtYs  []fext.Element
+	IsBase bool
 }
 
 /*
@@ -59,15 +63,30 @@ func (r UnivariateEval) Name() ifaces.QueryID {
 }
 
 // Constructor for non-fixed point univariate evaluation query parameters
-func NewUnivariateEvalParams(x fext.Element, ys ...fext.Element) UnivariateEvalParams {
-	return UnivariateEvalParams{X: x, Ys: ys}
+func NewUnivariateEvalParams(x field.Element, ys ...field.Element) UnivariateEvalParams {
+	return UnivariateEvalParams{
+		X:      x,
+		Ys:     ys,
+		IsBase: true,
+	}
+}
+func NewUnivariateEvalParamsExt(x fext.Element, ys ...fext.Element) UnivariateEvalParams {
+	return UnivariateEvalParams{
+		ExtX:   x,
+		ExtYs:  ys,
+		IsBase: false,
+	}
 }
 
 // Update the fiat-shamir state with the alleged evaluations. We assume that
 // the verifer always computes the values of X upfront on his own. Therefore
 // there is no need to include them in the FS.
 func (p UnivariateEvalParams) UpdateFS(state hash.StateStorer) {
-	fiatshamir.UpdateExt(state, p.Ys...)
+	fiatshamir.Update(state, p.Ys...)
+}
+
+func (p UnivariateEvalParams) UpdateFSExt(state hash.StateStorer) {
+	fiatshamir.UpdateExt(state, p.ExtYs...)
 }
 
 // Test that the polynomial evaluation holds
@@ -78,10 +97,10 @@ func (r UnivariateEval) Check(run ifaces.Runtime) error {
 
 	for k, pol := range r.Pols {
 		wit := pol.GetColAssignment(run)
-		actualY := smartvectors.EvaluateLagrangeFullFext(wit, params.X)
-		if actualY != params.Ys[k] {
+		actualY := smartvectors.EvaluateLagrangeFullFext(wit, params.ExtX)
+		if actualY != params.ExtYs[k] {
 			anyErr = true
-			errMsg += fmt.Sprintf("expected P(x) = %s but got %s for %v\n", params.Ys[k].String(), actualY.String(), pol.GetColID())
+			errMsg += fmt.Sprintf("expected P(x) = %s but got %s for %v\n", params.ExtYs[k].String(), actualY.String(), pol.GetColID())
 		}
 	}
 

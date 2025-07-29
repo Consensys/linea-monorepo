@@ -66,7 +66,40 @@ func (t PeriodicSample) EvalAtOnDomain(pos int) field.Element {
 }
 
 // Evaluates the expression outside of the domain
-func (t PeriodicSample) EvalAtOutOfDomain(size int, x fext.Element) fext.Element {
+func (t PeriodicSample) EvalAtOutOfDomain(size int, x field.Element) field.Element {
+	n := size
+	l := n / t.T
+	one := field.One()
+	lField := field.NewElement(uint64(l))
+	nField := field.NewElement(uint64(n))
+	evalPoint := x
+
+	// If there is an offset in the sample we also adjust here
+	if t.Offset > 0 {
+		var shift field.Element
+		omegaN, _ := fft.Generator(uint64(size))
+		evalPoint.Mul(&evalPoint, shift.Exp(omegaN, big.NewInt(int64(-t.Offset))))
+	}
+
+	var denominator, numerator field.Element
+	denominator.Exp(evalPoint, big.NewInt(int64(l)))
+	denominator.Sub(&denominator, &one)
+	denominator.Mul(&denominator, &nField)
+	numerator.Exp(evalPoint, big.NewInt(int64(n)))
+	numerator.Sub(&numerator, &one)
+	numerator.Mul(&numerator, &lField)
+
+	if denominator.IsZero() {
+		panic("denominator was zero")
+	}
+
+	var res field.Element
+	res.Div(&numerator, &denominator)
+	return res
+}
+
+// Evaluates the expression outside of the domain
+func (t PeriodicSample) EvalAtOutOfDomainExt(size int, x fext.Element) fext.Element {
 	l := size / t.T
 	one := fext.One()
 	var lField, nField fext.Element
@@ -76,10 +109,7 @@ func (t PeriodicSample) EvalAtOutOfDomain(size int, x fext.Element) fext.Element
 	// If there is an offset in the sample we also adjust here
 	if t.Offset > 0 {
 		var shift field.Element
-		omegaN, err := fft.Generator(uint64(size))
-		if err != nil {
-			panic(err)
-		}
+		omegaN, _ := fft.Generator(uint64(size))
 		x.MulByElement(&x, shift.Exp(omegaN, big.NewInt(int64(-t.Offset))))
 	}
 

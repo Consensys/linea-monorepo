@@ -55,7 +55,7 @@ func TestCompiler(t *testing.T) {
 					pr.AssignColumn(row.GetColID(), p)
 				}
 
-				pr.AssignUnivariate("EVAL", x, ys...)
+				pr.AssignUnivariateExt("EVAL", x, ys...)
 			},
 		},
 		{
@@ -109,7 +109,7 @@ func TestCompiler(t *testing.T) {
 					}
 				}
 
-				pr.AssignUnivariate("EVAL", x, ys...)
+				pr.AssignUnivariateExt("EVAL", x, ys...)
 			},
 		},
 
@@ -181,7 +181,7 @@ func TestCompiler(t *testing.T) {
 					}
 				}
 
-				pr.AssignUnivariate("EVAL", x, ys...)
+				pr.AssignUnivariateExt("EVAL", x, ys...)
 			},
 		},
 
@@ -253,7 +253,7 @@ func TestCompiler(t *testing.T) {
 					}
 				}
 
-				pr.AssignUnivariate("EVAL", x, ys...)
+				pr.AssignUnivariateExt("EVAL", x, ys...)
 			},
 		},
 	}

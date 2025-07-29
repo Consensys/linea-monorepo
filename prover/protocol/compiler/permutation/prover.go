@@ -109,9 +109,16 @@ type AssignPermutationGrandProduct struct {
 }
 
 func (a AssignPermutationGrandProduct) Run(run *wizard.ProverRuntime) {
-	y := fext.One()
+	y := fext.GenericFieldOne()
 	if a.IsPartial {
-		y = a.Query.Compute(run)
+		res := a.Query.Compute(run)
+		y = res
 	}
-	run.AssignGrandProduct(a.Query.ID, y)
+	if y.IsBase() {
+		baseRes, _ := y.GetBase()
+		run.AssignGrandProduct(a.Query.ID, baseRes)
+	} else {
+		extRes := y.GetExt()
+		run.AssignGrandProductExt(a.Query.ID, extRes)
+	}
 }
