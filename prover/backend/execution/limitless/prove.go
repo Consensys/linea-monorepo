@@ -55,7 +55,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	var (
 		out           = execution.CraftProverOutput(cfg, req)
 		witness       = execution.NewWitness(cfg, req, &out)
-		numGL, numLPP = 0, 0
+		numGL, numLPP int
 	)
 
 	if cfg.Execution.LimitlessWithDebug {

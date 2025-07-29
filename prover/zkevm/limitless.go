@@ -332,6 +332,7 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 	// horner (as if one of the term of the product cancels, the product is
 	// zero and we want to prevent that) or false negative due to inverting
 	// zeroes in the log-derivative sums.
+	// #nosec G404 --we don't need a cryptographic RNG for debugging purpose
 	rng := rand.New(utils.NewRandSource(42))
 	sharedRandomness := field.PseudoRand(rng)
 
