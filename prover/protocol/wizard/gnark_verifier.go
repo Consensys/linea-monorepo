@@ -339,9 +339,6 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 		c.GenerateCoinsForRound(api, round)
 
 		for _, step := range roundSteps {
-			// if !step.IsSkipped() {
-			// 	step.RunGnark(api, c)
-			// }
 			step.RunGnark(api, c)
 		}
 	}
