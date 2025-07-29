@@ -93,6 +93,7 @@ class SyncControllerImpl(
       elManager: ExecutionLayerManager,
       peersHeadsProvider: PeersHeadBlockProvider,
       targetChainHeadCalculator: SyncTargetSelector = MostFrequentHeadTargetSelector(),
+      peerChainTrackerConfig: PeerChainTracker.Config,
     ): SyncStatusProvider {
       val controller = SyncControllerImpl()
 
@@ -110,6 +111,7 @@ class SyncControllerImpl(
           peersHeadsProvider = peersHeadsProvider,
           syncTargetUpdateHandler = controller,
           targetChainHeadCalculator = targetChainHeadCalculator,
+          config = peerChainTrackerConfig,
         )
 
       return SyncControllerManager(
