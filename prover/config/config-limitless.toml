@@ -8,9 +8,10 @@ retry_delays = [0, 1]
 
 [execution]
 prover_mode = "limitless"
-conflated_traces_dir = "/home/ubuntu/bogdanlimitless/linea-monorepo/prover/limitlesstraces/download/traces"
+conflated_traces_dir = "/home/ubuntu/linea-prover-integration-test/download/traces/"
 requests_root_dir = "/home/ubuntu/bogdanlimitless/linea-monorepo/prover/limitlesstraces/download/requests"
 limitless_with_debug = true
+ignore_compatibility_check = true
 
 [blob_decompression]
 prover_mode = "full"
@@ -86,6 +87,11 @@ BLOCK_TRANSACTIONS = 300
 BIN_REFERENCE_TABLE = 262144
 SHF_REFERENCE_TABLE = 4096
 INSTRUCTION_DECODER = 512
+U20 = 131072
+U32 = 131072
+U36 = 131072
+U64 = 131072
+U128 = 131072
 
 [traces_limits_large]
 ADD = 524288
@@ -137,3 +143,8 @@ BLOCK_TRANSACTIONS = 300
 BIN_REFERENCE_TABLE = 262144
 SHF_REFERENCE_TABLE = 4096
 INSTRUCTION_DECODER = 512
+U20 = 262144
+U32 = 262144
+U36 = 262144
+U64 = 262144
+U128 = 262144
