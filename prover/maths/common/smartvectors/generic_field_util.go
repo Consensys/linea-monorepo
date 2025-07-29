@@ -5,7 +5,7 @@ import (
 )
 
 func ToConstantSmartvector(e *fext.GenericFieldElem, length int) SmartVector {
-	if e.IsBase() {
+	if e.GetIsBase() {
 		baseElem, _ := e.GetBase()
 		return NewConstant(baseElem, length)
 	} else {

@@ -114,7 +114,7 @@ func (a AssignPermutationGrandProduct) Run(run *wizard.ProverRuntime) {
 		res := a.Query.Compute(run)
 		y = res
 	}
-	if y.IsBase() {
+	if y.GetIsBase() {
 		baseRes, _ := y.GetBase()
 		run.AssignGrandProduct(a.Query.ID, baseRes)
 	} else {
