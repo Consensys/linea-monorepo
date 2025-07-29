@@ -10,7 +10,6 @@ package maru.p2p.topics
 
 import java.util.Optional
 import java.util.PriorityQueue
-import java.util.concurrent.atomic.AtomicLong
 import maru.p2p.LINEA_DOMAIN
 import maru.p2p.MaruPreparedGossipMessage
 import maru.p2p.SubscriptionManager
@@ -41,12 +40,13 @@ fun interface SequenceNumberExtractor<T> {
  * @param sequenceNumberExtractor definition of sequentiality for T
  */
 class TopicHandlerWithInOrderDelivering<T>(
-  initialExpectedSequenceNumber: ULong,
   private val subscriptionManager: SubscriptionManager<T>,
   private val deserializer: Deserializer<T>,
   private val sequenceNumberExtractor: SequenceNumberExtractor<T>,
   private val topicId: String,
   private val maxQueueSize: Int = 1000,
+  private val isHandlingEnabled: () -> Boolean,
+  private val nextExpectedSequenceNumberProvider: () -> ULong,
 ) : TopicHandler {
   private val log: Logger = LogManager.getLogger(this::javaClass)
 
@@ -58,8 +58,6 @@ class TopicHandlerWithInOrderDelivering<T>(
         ValidationResultCode.IGNORE -> Libp2pValidationResult.Ignore
       }
   }
-
-  private val nextExpectedSequenceNumber = AtomicLong(initialExpectedSequenceNumber.toLong())
 
   private val comparator: Comparator<Pair<T, SafeFuture<Libp2pValidationResult>>> =
     Comparator.comparing {
@@ -84,18 +82,9 @@ class TopicHandlerWithInOrderDelivering<T>(
     try {
       val deserializedMessage = deserializer.deserialize(message.originalMessage.toArray())
       val sequenceNumber = sequenceNumberExtractor.extractSequenceNumber(deserializedMessage)
-      val nextExpectedSequenceNumber = nextExpectedSequenceNumber.get().toULong()
+      val nextExpectedSequenceNumber = nextExpectedSequenceNumberProvider()
       when {
-        sequenceNumber == nextExpectedSequenceNumber -> {
-          log.debug("Handling message with sequenceNumber={}", sequenceNumber)
-          val futureToReturn = handleEvent(deserializedMessage)
-          futureToReturn.thenAccept {
-            processNextPendingEvent()
-          }
-          futureToReturn
-        }
-
-        sequenceNumber > nextExpectedSequenceNumber -> {
+        sequenceNumber >= nextExpectedSequenceNumber -> {
           if (pendingEvents.size < maxQueueSize) {
             log.trace(
               "enqueuing message with sequenceNumber={} next expectedSequenceNumber={}",
@@ -104,6 +93,7 @@ class TopicHandlerWithInOrderDelivering<T>(
             )
             val delayedHandlingFuture = SafeFuture<Libp2pValidationResult>()
             pendingEvents.add(deserializedMessage to delayedHandlingFuture)
+            processNextPendingEvent()
             // Note that it will be completed only when it's handled
             delayedHandlingFuture
           } else {
@@ -142,10 +132,9 @@ class TopicHandlerWithInOrderDelivering<T>(
 
   private fun processNextPendingEvent() {
     if (pendingEvents.isNotEmpty() &&
+      isHandlingEnabled() &&
       sequenceNumberExtractor.extractSequenceNumber(pendingEvents.peek().first) ==
-      nextExpectedSequenceNumber
-        .get()
-        .toULong()
+      nextExpectedSequenceNumberProvider()
     ) {
       val (nextEventToHandle, future) = pendingEvents.remove()
       handleEvent(nextEventToHandle)
@@ -159,7 +148,6 @@ class TopicHandlerWithInOrderDelivering<T>(
       subscriptionManager
         .handleEvent(event)
         .thenApply {
-          nextExpectedSequenceNumber.incrementAndGet()
           it.code.toLibP2P()
         }.exceptionally {
           log.warn(
@@ -167,7 +155,6 @@ class TopicHandlerWithInOrderDelivering<T>(
             sequenceNumberExtractor.extractSequenceNumber(event),
             it.message,
           )
-          nextExpectedSequenceNumber.incrementAndGet()
           Libp2pValidationResult.Invalid
         }
     }.getOrElse(

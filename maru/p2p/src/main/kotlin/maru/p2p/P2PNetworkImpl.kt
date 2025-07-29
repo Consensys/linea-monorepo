@@ -48,7 +48,7 @@ class P2PNetworkImpl(
   private val statusMessageFactory: StatusMessageFactory,
   private val beaconChain: BeaconChain,
   private val forkIdHashProvider: ForkIdHashProvider,
-  nextExpectedBeaconBlockNumber: ULong,
+  isBlockImportEnabledProvider: () -> Boolean,
 ) : P2PNetwork {
   lateinit var maruPeerManager: MaruPeerManager
   private val topicIdGenerator = LineaMessageIdGenerator(chainId)
@@ -56,11 +56,12 @@ class P2PNetworkImpl(
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
   private val sealedBlocksTopicHandler =
     TopicHandlerWithInOrderDelivering(
-      initialExpectedSequenceNumber = nextExpectedBeaconBlockNumber,
       subscriptionManager = sealedBlocksSubscriptionManager,
       sequenceNumberExtractor = { it.beaconBlock.beaconBlockHeader.number },
       deserializer = serDe,
       topicId = sealedBlocksTopicId,
+      isHandlingEnabled = isBlockImportEnabledProvider,
+      nextExpectedSequenceNumberProvider = { beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number + 1UL },
     )
   private val broadcastMessageCounterFactory =
     metricsFacade.createCounterFactory(
@@ -168,7 +169,7 @@ class P2PNetworkImpl(
       GossipMessageType.QBFT -> SafeFuture.completedFuture(Unit) // TODO: Add QBFT messages support later
       GossipMessageType.BEACON_BLOCK -> {
         require(message.payload is SealedBeaconBlock)
-        val serializedSealedBeaconBlock = Bytes.wrap(serDe.serialize(message.payload as SealedBeaconBlock))
+        val serializedSealedBeaconBlock = Bytes.wrap(serDe.serialize(message.payload))
         p2pNetwork.gossip(topicIdGenerator.id(message.type.name, message.version), serializedSealedBeaconBlock)
       }
     }
