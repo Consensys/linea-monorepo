@@ -121,7 +121,7 @@ type Config struct {
 
 	// AssetsDir stores the root of the directory where the assets are stored (setup) or
 	// accessed (prover). The file structure is described in TODO @gbotrel.
-	AssetsDir string `mapstructure:"assets_dir" validate:"required,dir"`
+	AssetsDir string `mapstructure:"assets_dir"`
 
 	Controller                 Controller
 	Execution                  Execution
