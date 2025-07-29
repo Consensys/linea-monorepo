@@ -55,10 +55,7 @@ class FinalizationUpdatePoller(
           "Detected network had been switched to Prague or later forks, " +
             "will stop updating safe/finalized block from the plugin",
         )
-        CompletableFuture.completedFuture(hardForkId).toSafeFuture()
-          .thenPeek {
-            super.stop()
-          }
+        super.stop().thenApply { hardForkId }
       } else {
         lineaRollup.finalizedL2BlockNumber(config.blockTag)
           .thenCompose { lineaFinalizedBlockNumber ->
