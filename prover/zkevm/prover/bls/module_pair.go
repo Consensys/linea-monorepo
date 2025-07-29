@@ -4,10 +4,12 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
@@ -143,6 +145,7 @@ type unalignedPairData struct {
 	IsActive           ifaces.Column
 	IsFirstLine        ifaces.Column
 	IsLastLine         ifaces.Column
+	IsNotLastLine      ifaces.Column
 	PointG1            [nbG1Limbs]ifaces.Column
 	PointG2            [nbG2Limbs]ifaces.Column
 	PrevAccumulator    [nbGtLimbs]ifaces.Column
@@ -170,6 +173,7 @@ func newUnalignedPairData(comp *wizard.CompiledIOP, limits *Limits, src *BlsPair
 		IsActive:                  createColFnUa("IS_ACTIVE"),
 		IsFirstLine:               createColFnUa("IS_FIRST_LINE"),
 		IsLastLine:                createColFnUa("IS_LAST_LINE"),
+		IsNotLastLine:             createColFnUa("IS_NOT_LAST_LINE"),
 		GnarkIsActiveMillerLoop:   createColFnMl("GNARK_IS_ACTIVE_ML"),
 		GnarkDataMillerLoop:       createColFnMl("GNARK_DATA_ML"),
 		GnarkIsActiveFinalExp:     createColFnFe("GNARK_IS_ACTIVE_FE"),
@@ -194,13 +198,161 @@ func newUnalignedPairData(comp *wizard.CompiledIOP, limits *Limits, src *BlsPair
 		ucmd.ExpectedResult[i] = createColFnUa(fmt.Sprintf("EXPECTED_RESULT_%d", i))
 	}
 
-	// TODO: projection from source to unaligned
-	// TODO: projection from unaligned to gnark data
-	// TODO: that SUCCESS AND MEMBERSHIP is correctly set
-	// TODO: first line is correct
-	// TODO: last line is correct
+	// non-membership input mask
+	ucmd.csInputMask(comp)
+	// projection from source to unaligned
+	ucmd.csProjectionUnaligned(comp)
+	ucmd.csProjectionGnarkDataMillerLoop(comp)
+	ucmd.csProjectionGnarkDataFinalExp(comp)
+	// first line is correct
+	ucmd.csAccumulatorInit(comp)
+	// accumulator consistency
+	ucmd.csAccumulatorConsistency(comp)
 
 	return ucmd
+}
+
+func (d *unalignedPairData) csInputMask(comp *wizard.CompiledIOP) {
+	// assert that the GnarkIsActiveG1Membership and GnarkIsActiveG2Membership
+	// are set correctly. We only call the subgroup membership for
+	// non-membership checks (all membership checks are done inside Miller
+	// Loop/final exp circuits). Thus it is:
+	//    GnarkIsActiveG?Membership = CsG?Membership AND !SuccessBit
+	comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_G1_MEMBERSHIP_AND_UNSUCCESSFUL", NAME_UNALIGNED_PAIR),
+		sym.Sub(
+			d.GnarkIsActiveG1Membership,
+			sym.Mul(
+				d.CsG1Membership,
+				sym.Sub(1, d.SuccessBit),
+			),
+		),
+	)
+	comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_G2_MEMBERSHIP_AND_UNSUCCESSFUL", NAME_UNALIGNED_PAIR),
+		sym.Sub(
+			d.GnarkIsActiveG2Membership,
+			sym.Mul(
+				d.CsG2Membership,
+				sym.Sub(1, d.SuccessBit),
+			),
+		),
+	)
+}
+
+func (d *unalignedPairData) csProjectionUnaligned(comp *wizard.CompiledIOP) {
+	filtersB := make([]ifaces.Column, nbG1Limbs+nbG2Limbs+2)
+	columnsB := make([][]ifaces.Column, nbG1Limbs+nbG2Limbs+2)
+	for i := range nbG1Limbs {
+		filtersB[i] = d.IsActive
+		columnsB[i] = []ifaces.Column{d.PointG1[i]}
+	}
+	for i := range nbG2Limbs {
+		filtersB[nbG1Limbs+i] = d.IsActive
+		columnsB[nbG1Limbs+i] = []ifaces.Column{d.PointG2[i]}
+	}
+	for i := range 2 {
+		filtersB[nbG1Limbs+nbG2Limbs+i] = d.IsLastLine
+		columnsB[nbG1Limbs+nbG2Limbs+i] = []ifaces.Column{d.ExpectedResult[i]}
+	}
+	prj := query.ProjectionMultiAryInput{
+		FiltersA: []ifaces.Column{d.SuccessBit},
+		FiltersB: filtersB,
+		ColumnsA: [][]ifaces.Column{{d.BlsPairDataSource.Limb}},
+		ColumnsB: columnsB,
+	}
+	comp.InsertProjection(ifaces.QueryIDf("%s_PROJECTION_DATA", NAME_UNALIGNED_PAIR), prj)
+}
+
+func (d *unalignedPairData) csProjectionGnarkDataMillerLoop(comp *wizard.CompiledIOP) {
+	// we map everything except the last input to the Miller loop circuit. We
+	// need to constrain the mask
+	comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_NOT_LAST_LINE", NAME_UNALIGNED_PAIR),
+		sym.Mul(
+			d.IsActive,
+			sym.Sub(1, d.IsLastLine, d.IsNotLastLine)),
+	)
+
+	filtersA := make([]ifaces.Column, nbG1Limbs+nbG2Limbs+2*nbGtLimbs)
+	columnsA := make([][]ifaces.Column, nbG1Limbs+nbG2Limbs+2*nbGtLimbs)
+	for i := range nbGtLimbs {
+		filtersA[i] = d.IsNotLastLine
+		columnsA[i] = []ifaces.Column{d.PrevAccumulator[i]}
+	}
+	for i := range nbG1Limbs {
+		filtersA[nbGtLimbs+i] = d.IsNotLastLine
+		columnsA[nbGtLimbs+i] = []ifaces.Column{d.PointG1[i]}
+	}
+	for i := range nbG2Limbs {
+		filtersA[nbGtLimbs+nbG1Limbs+i] = d.IsNotLastLine
+		columnsA[nbGtLimbs+nbG1Limbs+i] = []ifaces.Column{d.PointG2[i]}
+	}
+	for i := range nbGtLimbs {
+		filtersA[nbGtLimbs+nbG1Limbs+nbG2Limbs+i] = d.IsNotLastLine
+		columnsA[nbGtLimbs+nbG1Limbs+nbG2Limbs+i] = []ifaces.Column{d.CurrentAccumulator[i]}
+	}
+	prj := query.ProjectionMultiAryInput{
+		FiltersA: filtersA,
+		FiltersB: []ifaces.Column{d.GnarkIsActiveMillerLoop},
+		ColumnsA: columnsA,
+		ColumnsB: [][]ifaces.Column{{d.GnarkDataMillerLoop}},
+	}
+	comp.InsertProjection(ifaces.QueryIDf("%s_PROJECTION_ML_DATA", NAME_UNALIGNED_PAIR), prj)
+}
+
+func (d *unalignedPairData) csProjectionGnarkDataFinalExp(comp *wizard.CompiledIOP) {
+	filtersA := make([]ifaces.Column, nbGtLimbs+nbG1Limbs+nbG2Limbs+2)
+	columnsA := make([][]ifaces.Column, nbGtLimbs+nbG1Limbs+nbG2Limbs+2)
+	for i := range nbGtLimbs {
+		filtersA[i] = d.IsLastLine
+		columnsA[i] = []ifaces.Column{d.PrevAccumulator[i]}
+	}
+	for i := range nbG1Limbs {
+		filtersA[nbGtLimbs+i] = d.IsLastLine
+		columnsA[nbGtLimbs+i] = []ifaces.Column{d.PointG1[i]}
+	}
+	for i := range nbG2Limbs {
+		filtersA[nbGtLimbs+nbG1Limbs+i] = d.IsLastLine
+		columnsA[nbGtLimbs+nbG1Limbs+i] = []ifaces.Column{d.PointG2[i]}
+	}
+	for i := range 2 {
+		filtersA[nbGtLimbs+nbG1Limbs+nbG2Limbs+i] = d.IsLastLine
+		columnsA[nbGtLimbs+nbG1Limbs+nbG2Limbs+i] = []ifaces.Column{d.ExpectedResult[i]}
+	}
+	prj := query.ProjectionMultiAryInput{
+		FiltersA: filtersA,
+		FiltersB: []ifaces.Column{d.GnarkIsActiveFinalExp},
+		ColumnsA: columnsA,
+		ColumnsB: [][]ifaces.Column{{d.GnarkDataFinalExp}},
+	}
+	comp.InsertProjection(ifaces.QueryIDf("%s_PROJECTION_FE_DATA", NAME_UNALIGNED_PAIR), prj)
+}
+
+func (d *unalignedPairData) csAccumulatorInit(comp *wizard.CompiledIOP) {
+	// ensures that the first line accumulator is zero in Gt
+	for i := range nbGtLimbs {
+		if i == 3 {
+			// the first line accumulator is zero in Gt
+			comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_ACCUMULATOR_INIT_%d_ONE", NAME_UNALIGNED_PAIR, i),
+				sym.Mul(sym.Sub(1, d.PrevAccumulator[i]), d.IsFirstLine))
+		} else {
+			comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_ACCUMULATOR_INIT_%d_ZERO", NAME_UNALIGNED_PAIR, i),
+				sym.Mul(d.PrevAccumulator[i], d.IsFirstLine))
+		}
+	}
+}
+
+func (d *unalignedPairData) csAccumulatorConsistency(comp *wizard.CompiledIOP) {
+	// ensure that the current accumulator is equal to the next accumulator on previous line.
+	// we need to cancel out if current line is the first line where the current accumulator is zero
+	// (checked in [unalignedPairData.csAccumulatorInit])
+	for i := range nbGtLimbs {
+		comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_ACCUMULATOR_CONSISTENCY_%d", NAME_UNALIGNED_PAIR, i),
+			sym.Mul(
+				d.IsActive,
+				sym.Sub(1, d.IsFirstLine),
+				sym.Sub(d.PrevAccumulator[i], column.Shift(d.CurrentAccumulator[i], -1)),
+			),
+		)
+	}
 }
 
 func (d *unalignedPairData) Assign(run *wizard.ProverRuntime) {
@@ -244,15 +396,13 @@ func (d *unalignedPairData) assignUnaligned(run *wizard.ProverRuntime) {
 		srcCounter    = d.Counter.GetColAssignment(run).IntoRegVecSaveAlloc()
 		srcIsData     = d.IsData.GetColAssignment(run).IntoRegVecSaveAlloc()
 		srcIsRes      = d.IsRes.GetColAssignment(run).IntoRegVecSaveAlloc()
-		// srcCsPair         = d.CsPair.GetColAssignment(run).IntoRegVecSaveAlloc()
-		// srcCsG1Membership = d.CsG1Membership.GetColAssignment(run).IntoRegVecSaveAlloc()
-		// srcCsG2Membership = d.CsG2Membership.GetColAssignment(run).IntoRegVecSaveAlloc()
 	)
 
 	var (
-		dstIsActive    = common.NewVectorBuilder(d.IsActive)
-		dstIsFirstLine = common.NewVectorBuilder(d.IsFirstLine)
-		dstIsLastLine  = common.NewVectorBuilder(d.IsLastLine)
+		dstIsActive      = common.NewVectorBuilder(d.IsActive)
+		dstIsFirstLine   = common.NewVectorBuilder(d.IsFirstLine)
+		dstIsLastLine    = common.NewVectorBuilder(d.IsLastLine)
+		dstIsNotLastLine = common.NewVectorBuilder(d.IsNotLastLine)
 	)
 
 	var dstPointG1 [nbG1Limbs]*common.VectorBuilder
@@ -330,6 +480,7 @@ func (d *unalignedPairData) assignUnaligned(run *wizard.ProverRuntime) {
 					dstPointG2[i].PushField(srcLimb[ptr+nbG1Limbs+i])
 				}
 				dstIsLastLine.PushZero()
+				dstIsNotLastLine.PushOne()
 				// compute the next accumulator
 				currentAccumulator = nativeMillerLoopAndSum(prevAccumulator, srcLimb[ptr:ptr+nbG1Limbs], srcLimb[ptr+nbG1Limbs:ptr+nbG1Limbs+nbG2Limbs])
 				// copy the accumulator limbs
@@ -354,6 +505,8 @@ func (d *unalignedPairData) assignUnaligned(run *wizard.ProverRuntime) {
 				// thus we need to pop the data before pushing the expected result limbs.
 				dstIsLastLine.Pop()
 				dstIsLastLine.PushOne()
+				dstIsNotLastLine.Pop()
+				dstIsNotLastLine.PushZero()
 				for i := range 2 {
 					dstExpectedResult[i].Pop()
 					dstExpectedResult[i].PushField(srcLimb[ptr+i])
@@ -370,6 +523,7 @@ func (d *unalignedPairData) assignUnaligned(run *wizard.ProverRuntime) {
 	dstIsActive.PadAndAssign(run, field.Zero())
 	dstIsFirstLine.PadAndAssign(run, field.Zero())
 	dstIsLastLine.PadAndAssign(run, field.Zero())
+	dstIsNotLastLine.PadAndAssign(run, field.Zero())
 	for i := range d.PointG1 {
 		dstPointG1[i].PadAndAssign(run, field.Zero())
 	}

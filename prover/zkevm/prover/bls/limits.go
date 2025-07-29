@@ -81,7 +81,12 @@ func (l *Limits) sizeMulUnalignedIntegration(g group) int {
 }
 
 func (l *Limits) sizePairUnalignedIntegration() int {
-	return utils.NextPowerOfTwo(l.NbMillerLoopInputInstances) * utils.NextPowerOfTwo(l.NbMillerLoopCircuitInstances)
+	return utils.NextPowerOfTwo(
+		max(
+			l.NbMillerLoopInputInstances*l.NbMillerLoopCircuitInstances,
+			l.NbFinalExpInputInstances*l.NbFinalExpCircuitInstances,
+		),
+	)
 }
 
 func (l *Limits) sizePairMillerLoopIntegration() int {
