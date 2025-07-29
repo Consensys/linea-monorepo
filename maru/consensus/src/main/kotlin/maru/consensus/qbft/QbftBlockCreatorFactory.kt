@@ -57,10 +57,10 @@ class QbftBlockCreatorFactory(
     delayedQbftBlockCreator: DelayedQbftBlockCreator,
   ): BesuQbftBlockCreator =
     if (round == 0 && hasCreatedFirstBlockCreator) {
-      log.debug("Using delayed block creator number={}, round={}", blockNumber, round)
+      log.debug("Using delayed block creator: clBlockNumber={}, round={}", blockNumber, round)
       delayedQbftBlockCreator
     } else {
-      log.debug("Using eager block creator number={}, round={} ", blockNumber, round)
+      log.debug("Using eager block creator: clBlockNumber={}, round={} ", blockNumber, round)
       EagerQbftBlockCreator(
         manager = manager,
         delegate = delayedQbftBlockCreator,

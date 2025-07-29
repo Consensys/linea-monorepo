@@ -10,14 +10,15 @@ package maru.consensus
 
 import kotlin.text.contains
 import maru.core.ext.DataGenerators
+import maru.extensions.encodeHex
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.any
-import org.mockito.kotlin.argThat
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.doThrow
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -61,10 +62,11 @@ class NewBlockHandlerMultiplexerTest {
       multiplexer.handleNewBlock(block).get()
     }
     verify(logger).error(
-      argThat<String> {
-        contains("New block handler h failed processing") &&
-          contains("number=${block.beaconBlockHeader.number}")
-      },
+      eq("new block handling failed: handler={} clBlockNumber={} elBlockNumber={} clBlockHash={} errorMessage={}"),
+      eq("h"),
+      eq(block.beaconBlockHeader.number),
+      eq(block.beaconBlockBody.executionPayload.blockNumber),
+      eq(block.beaconBlockHeader.hash.encodeHex()),
       any<Throwable>(),
     )
   }
