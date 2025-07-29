@@ -41,6 +41,11 @@ func AssignFromLtTraces(run *wizard.ProverRuntime, schema *air.Schema, expTraces
 			level  = logrus.InfoLevel
 		)
 
+		// The arithmetization can give us an unnamed module, so we skip it
+		if len(name) == 0 {
+			continue
+		}
+
 		if maxRatio < ratio {
 			maxRatio = ratio
 			argMaxRatioLimit = limit

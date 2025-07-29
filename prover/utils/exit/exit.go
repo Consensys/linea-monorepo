@@ -64,10 +64,9 @@ func GetIssueHandlingMode() issueHandlingMode {
 // just panic.
 func OnLimitOverflow(limit, requestedSize int, err error) {
 
+	logrus.Errorf("[LIMIT OVERFLOW] A limit overflow has been detected limit=%v requested=%v err=%v", limit, requestedSize, err.Error())
+
 	if currentIssueHandlingMode&ExitOnLimitOverflow > 0 {
-
-		logrus.Errorf("[LIMIT OVERFLOW] A limit overflow has been detected limit=%v requested=%v err=%v", limit, requestedSize, err.Error())
-
 		// The print stack is really useful to help locating where the problem
 		// originates from.
 		debug.PrintStack()
