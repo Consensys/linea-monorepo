@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -117,7 +116,7 @@ func Setup(ctx context.Context, args SetupArgs) error {
 
 	// Validate dictionary usage
 	if !foundDecompressionV0 && args.DictPath != "" {
-		return errors.New("explicit provision of a dictionary is only allowed for backwards compatibility with v0 blob decompression")
+		logrus.Errorf("explicit provision of a dictionary is only allowed for backwards compatibility with v0 blob decompression")
 	}
 
 	// Early exit if no aggregation or emulation circuits

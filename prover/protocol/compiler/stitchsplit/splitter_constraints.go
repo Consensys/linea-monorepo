@@ -70,9 +70,16 @@ func (ctx SplitterContext) LocalGlobalConstraints() {
 		switch q := q.(type) {
 		case query.LocalConstraint:
 			board = q.Board()
+
 			// detect if the expression is eligible;
 			// i.e., it contains columns of proper size with status Precomputed, committed, or verifiercol.
-			if !IsExprEligible(isColEligibleSplitting, ctx.Splittings, board) {
+			isEligible, unSupported := IsExprEligible(isColEligibleSplitting, ctx.Splittings, board)
+
+			if unSupported {
+				panic("unSupported")
+			}
+
+			if !isEligible {
 				continue
 			}
 
@@ -84,8 +91,16 @@ func (ctx SplitterContext) LocalGlobalConstraints() {
 
 		case query.GlobalConstraint:
 			board = q.Board()
-			// detect if the expression is over the eligible columns.
-			if !IsExprEligible(isColEligibleSplitting, ctx.Splittings, board) {
+
+			// detect if the expression is eligible;
+			// i.e., it contains columns of proper size with status Precomputed, committed, or verifiercol.
+			isEligible, unSupported := IsExprEligible(isColEligibleSplitting, ctx.Splittings, board)
+
+			if unSupported {
+				panic("unSupported")
+			}
+
+			if !isEligible {
 				continue
 			}
 

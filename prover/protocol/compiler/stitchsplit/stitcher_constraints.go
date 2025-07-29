@@ -95,14 +95,20 @@ func (ctx StitchingContext) LocalGlobalConstraints() {
 				ctx.Comp.QueriesNoParams.MarkAsIgnored(qName)
 				continue
 			}
+
 			// detect if the expression is eligible;
 			// i.e., it contains columns of proper size with status Precomputed, committed, or verifiercol.
-			if !IsExprEligible(isColEligibleStitching, ctx.Stitchings, board) {
+			isEligible, unSupported := IsExprEligible(isColEligibleStitching, ctx.Stitchings, board)
+			if !isEligible && !unSupported {
 				continue
 			}
 
 			// if the associated expression is eligible to the stitching, mark the query, over the sub columns, as ignored.
 			ctx.Comp.QueriesNoParams.MarkAsIgnored(qName)
+
+			if unSupported {
+				continue
+			}
 
 			// adjust the query over the stitching columns
 			ctx.Comp.InsertLocal(round, queryNameStitcher(qName), ctx.adjustExpression(q.Expression, q.DomainSize, false))
@@ -126,12 +132,17 @@ func (ctx StitchingContext) LocalGlobalConstraints() {
 				continue
 			}
 			// detect if the expression is over the eligible columns.
-			if !IsExprEligible(isColEligibleStitching, ctx.Stitchings, board) {
+			isEligible, unSupported := IsExprEligible(isColEligibleStitching, ctx.Stitchings, board)
+			if !isEligible && !unSupported {
 				continue
 			}
 
 			// if the associated expression is eligible to the stitching, mark the query, over the sub columns, as ignored.
 			ctx.Comp.QueriesNoParams.MarkAsIgnored(qName)
+
+			if unSupported {
+				continue
+			}
 
 			// adjust the query over the stitching columns
 			ctx.Comp.InsertGlobal(round, queryNameStitcher(qName),
