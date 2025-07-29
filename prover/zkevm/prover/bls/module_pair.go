@@ -361,6 +361,7 @@ func (d *unalignedPairData) assignUnaligned(run *wizard.ProverRuntime) {
 				// additionally, we have pushed the current accumulator in the data part, but we don't need it here. So we pop it.
 				for i := range nbGtLimbs {
 					dstCurrentAccumulator[i].Pop()
+					dstCurrentAccumulator[i].PushZero()
 				}
 				ptr += 2
 			}

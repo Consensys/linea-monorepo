@@ -457,7 +457,9 @@ func processPairInputs(v []pairInput) []pairInputCase {
 		}}
 	}
 	if counts[pairNonTrivial] > 1 {
-		validV := v
+		// validV := v
+		validV := make([]pairInput, len(v))
+		copy(validV, v)
 		// there are multiple non-trivial inputs. We generate two test cases -
 		// one where the pairing check result is 1 and other where it is 0.
 		Ps, Qs := generateValidPairing(counts[pairNonTrivial])
