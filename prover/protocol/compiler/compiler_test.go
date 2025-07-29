@@ -48,7 +48,7 @@ func TestCompilers(t *testing.T) {
 	logrus.SetLevel(logrus.FatalLevel)
 
 	runTestList(t, "global", testtools.ListOfGlobalTestcasePositive)
-	//runTestList(t, "global", testtools.ListOfGlobalTestcaseNegative)
+	runTestList(t, "global", testtools.ListOfGlobalTestcaseNegative)
 	//runTestList(t, "horner", testtools.ListOfHornerTestcasePositive)
 	//runTestList(t, "horner", testtools.ListOfHornerTestcaseNegative)
 	//runTestList(t, "grand-product", testtools.ListOfGrandProductTestcasePositive)
