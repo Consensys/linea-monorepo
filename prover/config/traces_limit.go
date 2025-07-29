@@ -134,6 +134,11 @@ func (tl *TracesLimits) ScaleUp(by int) {
 	tl.BlockKeccak *= by
 	tl.BlockTransactions *= by
 	tl.ShomeiMerkleProofs *= by
+	tl.U128 *= by
+	tl.U20 *= by
+	tl.U32 *= by
+	tl.U36 *= by
+	tl.U64 *= by
 }
 
 func GetTestTracesLimits() *TracesLimits {
@@ -190,6 +195,11 @@ func GetTestTracesLimits() *TracesLimits {
 		BlockL2L1Logs:                        16,
 		BlockTransactions:                    1 << 8,
 		ShomeiMerkleProofs:                   1 << 14,
+		U128:                                 1 << 17,
+		U20:                                  1 << 17,
+		U32:                                  1 << 17,
+		U36:                                  1 << 17,
+		U64:                                  1 << 17,
 	}
 
 	return traceLimits
