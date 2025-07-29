@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	DefaultDeferToOtherLargeCodes     = []int{137}     // List of exit codes for which the job will put back the job to be reexecuted in large mode.
-	DefaultRetryLocallyWithLargeCodes = []int{77, 333} // List of exit codes for which the job will retry in large mode
+	DefaultDeferToOtherLargeCodes     = []int{137}        // List of exit codes for which the job will put back the job to be reexecuted in large mode.
+	DefaultRetryLocallyWithLargeCodes = []int{77, 333, 2} // List of exit codes for which the job will retry in large mode
 )
 
 func setDefaultValues() {
@@ -36,7 +36,6 @@ func setDefaultValues() {
 	viper.SetDefault("controller.worker_cmd_large_tmpl", "prover prove --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}} --large")
 
 	viper.SetDefault("execution.ignore_compatibility_check", false)
-
 }
 
 func setDefaultPaths() {
@@ -80,6 +79,12 @@ func setDefaultTracesLimit() {
 	viper.SetDefault("traces_limits.TRM", 32768)
 	viper.SetDefault("traces_limits.TXN_DATA", 8192)
 	viper.SetDefault("traces_limits.WCP", 262144)
+
+	viper.SetDefault("traces_limits.U128", 131072)
+	viper.SetDefault("traces_limits.U20", 131072)
+	viper.SetDefault("traces_limits.U32", 131072)
+	viper.SetDefault("traces_limits.U36", 131072)
+	viper.SetDefault("traces_limits.U64", 131072)
 
 	// Precompile limits
 	viper.SetDefault("traces_limits.PRECOMPILE_ECRECOVER_EFFECTIVE_CALLS", 128)
@@ -142,6 +147,12 @@ func setDefaultTracesLimit() {
 	viper.SetDefault("traces_limits_large.TRM", 65536)
 	viper.SetDefault("traces_limits_large.TXN_DATA", 16384)
 	viper.SetDefault("traces_limits_large.WCP", 524288)
+
+	viper.SetDefault("traces_limits_large.U128", 262144)
+	viper.SetDefault("traces_limits_large.U20", 262144)
+	viper.SetDefault("traces_limits_large.U32", 262144)
+	viper.SetDefault("traces_limits_large.U36", 262144)
+	viper.SetDefault("traces_limits_large.U64", 262144)
 
 	// Precompile limits
 	viper.SetDefault("traces_limits_large.PRECOMPILE_ECRECOVER_EFFECTIVE_CALLS", 256)

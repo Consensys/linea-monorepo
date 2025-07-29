@@ -497,23 +497,76 @@ func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssi
 		utils.Panic("Witness with non-power of two sizes, should have been caught earlier")
 	}
 
+	// If the column is generated after the first round, there is no need
+	// optimizing the assignment.
+	if run.currRound > 0 {
+		// Adds it to the assignments
+		run.Columns.InsertNew(handle.GetColID(), witness)
+		return
+	}
+
 	start, stop := smartvectors.CoWindowRange(witness)
-	if _, isLeftPadded := handle.GetPragma(pragmas.LeftPadded); isLeftPadded && stop < witness.Len() && start == 0 {
-		logrus.Errorf("Left-padded column with non-left-padded witness: %v, start: %v, stop: %v", name, start, stop)
-	}
 
-	if _, isRightPadded := handle.GetPragma(pragmas.RightPadded); isRightPadded && start > 0 && stop == witness.Len() {
-		logrus.Errorf("Right-padded column with non-right-padded witness: %v, start: %v, stop: %v", name, start, stop)
-	}
+	var (
+		hasRightPaddedRange  = stop < witness.Len()
+		hasLeftPaddedRange   = start > 0
+		hasRightPaddedPragma = pragmas.IsRightPadded(handle)
+		hasLeftPaddedPragma  = pragmas.IsLeftPadded(handle)
+		hasFullColumnPragma  = pragmas.IsFullColumn(handle)
+	)
 
-	if _, isFull := handle.GetPragma(pragmas.FullColumnPragma); isFull && (start > 0 || stop < witness.Len()) {
-		logrus.Errorf("Full column with non-full witness: %v, start: %v, stop: %v", name, start, stop)
-	}
+	switch {
+	case hasLeftPaddedPragma:
 
-	// This reduction is a trade-off between runtime and memory. It costs CPU
-	// but can save a significant amount of memory.
-	if opts_&DisableAssignmentSizeReduction == 0 {
-		witness, _ = smartvectors.TryReduceSize(witness)
+		if !hasLeftPaddedRange {
+			// logrus.Warnf("Left-padded column with non-left-padded witness: %v, start: %v, stop: %v", name, start, stop)
+			// This conversion to regular ensures that the witness won't be
+			// stored as a right-padded column. The size reduction might later
+			// find a padding opportunity in the right direction. The conversion
+			// is ineffective in case the column is a regular column (which
+			// might be caught by the condition)
+			witness = smartvectors.NewRegular(witness.IntoRegVecSaveAlloc())
+		}
+
+		// This reduction is a trade-off between runtime and memory. It costs CPU
+		// but can save a significant amount of memory.
+		if opts_&DisableAssignmentSizeReduction == 0 {
+			witness, _ = smartvectors.TryReduceSizeLeft(witness)
+		}
+
+	case hasRightPaddedPragma:
+
+		if !hasRightPaddedRange {
+			// logrus.Warnf("Right-padded column with non-right-padded witness: %v, start: %v, stop: %v", name, start, stop)
+			// This conversion to regular ensures that the witness won't be
+			// stored as a left-padded column. The size reduction might later
+			// find a padding opportunity in the right direction. The conversion
+			// is ineffective in case the column is a regular column (which
+			// might be caught by the condition)
+			witness = smartvectors.NewRegular(witness.IntoRegVecSaveAlloc())
+		}
+
+		// This reduction is a trade-off between runtime and memory. It costs CPU
+		// but can save a significant amount of memory.
+		if opts_&DisableAssignmentSizeReduction == 0 {
+			witness, _ = smartvectors.TryReduceSizeRight(witness)
+		}
+
+	case hasFullColumnPragma:
+
+		if hasLeftPaddedRange || hasRightPaddedRange {
+			logrus.Errorf("Full column with non-full witness: %v, start: %v, stop: %v", name, start, stop)
+		}
+
+		witness = smartvectors.NewRegular(witness.IntoRegVecSaveAlloc())
+
+	default:
+
+		// This reduction is a trade-off between runtime and memory. It costs CPU
+		// but can save a significant amount of memory.
+		if opts_&DisableAssignmentSizeReduction == 0 {
+			witness, _ = smartvectors.TryReduceSizeRight(witness)
+		}
 	}
 
 	// Adds it to the assignments

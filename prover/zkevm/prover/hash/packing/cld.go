@@ -114,7 +114,7 @@ func (decomposed *decomposition) insertCommit(comp *wizard.CompiledIOP) {
 
 	createCol := common.CreateColFn(comp, DECOMPOSITION+"_"+decomposed.Inputs.Name, decomposed.Size, pragmas.RightPadded)
 	for x := 0; x < decomposed.NbSlices; x++ {
-		decomposed.DecomposedLimbs = append(decomposed.DecomposedLimbs, createCol("Decomposed_Limbs", x))
+		decomposed.DecomposedLimbs = append(decomposed.DecomposedLimbs, createCol("Decomposed_Limbs_%v", x))
 		decomposed.DecomposedLen = append(decomposed.DecomposedLen, createCol("Decomposed_Len_%v", x))
 		decomposed.DecomposedLenPowers = append(decomposed.DecomposedLenPowers, createCol("Decomposed_Len_Powers_%v", x))
 	}

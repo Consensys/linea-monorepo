@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 
 	cs "github.com/consensys/gnark/constraint/bls12-377"
 	"github.com/consensys/gnark/frontend"
@@ -63,6 +64,7 @@ var (
 	TypeOfHashTypeHasher     = reflect.TypeOf(func() hashtypes.Hasher { return hashtypes.Hasher{} })
 	TypeOfRingSisKeyPtr      = reflect.TypeOf(&ringsis.Key{})
 	TypeofRingSisKeyGenParam = reflect.TypeOf(ringsis.KeyGen{})
+	TypeOfMutexPtr           = reflect.TypeOf(&sync.Mutex{})
 )
 
 // BackReference represents an integer index into PackedObject arrays (e.g., Columns, Coins).
@@ -743,12 +745,17 @@ func (de *Deserializer) UnpackPlonkCircuit(v BackReference) (reflect.Value, *ser
 // to it. The expression is cached using its ESHash.
 func (s *Serializer) PackExpression(e *symbolic.Expression) (BackReference, *serdeError) {
 	if _, ok := s.ExprMap[e.ESHash]; !ok {
+
+		n := len(s.PackedObject.Expressions)
+		s.ExprMap[e.ESHash] = n
+		s.PackedObject.Expressions = append(s.PackedObject.Expressions, nil)
+
 		packed, err := s.PackStructObject(reflect.ValueOf(*e))
 		if err != nil {
 			return 0, err
 		}
-		s.PackedObject.Expressions = append(s.PackedObject.Expressions, packed)
-		s.ExprMap[e.ESHash] = len(s.PackedObject.Expressions) - 1
+
+		s.PackedObject.Expressions[n] = packed
 	}
 
 	return BackReference(s.ExprMap[e.ESHash]), nil

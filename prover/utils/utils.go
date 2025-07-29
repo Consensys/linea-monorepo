@@ -464,6 +464,16 @@ func SortedKeysOf[K comparable, V any](m map[K]V, less func(K, K) bool) []K {
 	return keys
 }
 
+// MapFunc maps f to every entries of the slice and return an array with the
+// result.
+func MapFunc[T, U any](slice []T, f func(T) U) []U {
+	res := make([]U, len(slice))
+	for i, v := range slice {
+		res[i] = f(v)
+	}
+	return res
+}
+
 // Ternary returns "a" if cond is true, else b
 func Ternary[T any](cond bool, ifTrue, ifFalse T) T {
 	if cond {

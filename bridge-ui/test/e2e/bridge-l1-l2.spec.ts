@@ -1,189 +1,193 @@
 import { testWithSynpress } from "@synthetixio/synpress";
 import { test as advancedFixtures } from "../advancedFixtures";
-import { SEPOLIA_NETWORK_NAME, TEST_URL, USDC_AMOUNT, WEI_AMOUNT } from "../constants";
+import {
+  USDC_SYMBOL,
+  USDC_AMOUNT,
+  WEI_AMOUNT,
+  ETH_SYMBOL,
+  LOCAL_L2_NETWORK,
+  ERC20_SYMBOL,
+  ERC20_AMOUNT,
+  L1_ACCOUNT_METAMASK_NAME,
+} from "../constants";
 
 const test = testWithSynpress(advancedFixtures);
 
 const { expect, describe } = test;
 
-describe("Bridge L1 > L2", () => {
-  test.skip("should set up the UI and metamask correctly", async ({ page, metamask, initUI }) => {
-    await initUI(true);
+describe("L1 > L2 via Native Bridge", () => {
+  describe("No blockchain tx cases", () => {
+    test.describe.configure({ mode: "parallel" });
 
-    await page.locator("#wallet-connect-btn").click();
-    await page.locator("wui-list-wallet", { hasText: "MetaMask" }).nth(1).click();
+    test("should display fees and bridge information when not connected", async ({
+      page,
+      clickNativeBridgeButton,
+      selectTokenAndInputAmount,
+      clickFirstVisitModalConfirmButton,
+    }) => {
+      test.setTimeout(60_000);
 
-    await metamask.connectToDapp();
+      await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
 
-    await page.bringToFront();
+      await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT, false);
+
+      const receivedAmount = page.getByTestId("received-amount-text");
+      await expect(receivedAmount).toBeVisible();
+      await expect(receivedAmount).toHaveText(`${WEI_AMOUNT} ETH`);
+    });
+
+    test("should see Free gas fees for ETH transfer to L2", async ({
+      page,
+      connectMetamaskToDapp,
+      clickNativeBridgeButton,
+      selectTokenAndInputAmount,
+      openGasFeeModal,
+      clickFirstVisitModalConfirmButton,
+    }) => {
+      test.setTimeout(60_000);
+
+      await connectMetamaskToDapp(L1_ACCOUNT_METAMASK_NAME);
+      await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
+
+      await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
+      await openGasFeeModal();
+
+      // Assert text items
+      const l2NetworkFeeText = page.getByText(`${LOCAL_L2_NETWORK.name} fee`);
+      const freeText = page.getByText("Free");
+      await expect(l2NetworkFeeText).toBeVisible();
+      await expect(freeText).toBeVisible();
+      const listItem = page
+        .locator("li")
+        .filter({
+          has: l2NetworkFeeText,
+        })
+        .filter({
+          has: freeText,
+        });
+      await expect(listItem).toBeVisible();
+    });
+
+    // This test is skipped because CCTP is not supported on the local stack.
+    test.skip("should not see Free gas fees for USDC transfer to L2", async ({
+      page,
+      connectMetamaskToDapp,
+      clickNativeBridgeButton,
+      selectTokenAndInputAmount,
+      openGasFeeModal,
+      clickFirstVisitModalConfirmButton,
+    }) => {
+      test.setTimeout(60_000);
+
+      await connectMetamaskToDapp(L1_ACCOUNT_METAMASK_NAME);
+      await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
+
+      await selectTokenAndInputAmount(USDC_SYMBOL, USDC_AMOUNT);
+      await openGasFeeModal();
+
+      // Assert text items
+      const freeText = page.getByText("Free");
+      await expect(freeText).not.toBeVisible();
+    });
   });
 
-  test("should successfully go to the bridge UI page", async ({ page }) => {
-    const pageUrl = page.url();
-    expect(pageUrl).toEqual(TEST_URL);
-  });
+  describe("Blockchain tx cases", () => {
+    // If not serial risk colliding nonces -> transactions cancelling each other out
+    test.describe.configure({ retries: 1, timeout: 120_000, mode: "serial" });
 
-  test.skip("should successfully display the correct heading", async ({ page, initUI }) => {
-    await initUI(true);
+    test("should be able to initiate bridging ETH from L1 to L2", async ({
+      getNativeBridgeTransactionsCount,
+      waitForNewTxAdditionToTxList,
+      connectMetamaskToDapp,
+      clickNativeBridgeButton,
+      selectTokenAndInputAmount,
+      doInitiateBridgeTransaction,
+      openNativeBridgeTransactionHistory,
+      closeNativeBridgeTransactionHistory,
+      clickFirstVisitModalConfirmButton,
+    }) => {
+      // Setup testnet UI
+      await connectMetamaskToDapp(L1_ACCOUNT_METAMASK_NAME);
+      await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
 
-    const header = "Bridge";
-    await page.locator("h2", { hasText: header }).waitFor({ state: "visible" });
-  });
+      // Get # of txs in txHistory before doing bridge tx, so that we can later confirm that our bridge tx shows up in the txHistory.
+      await openNativeBridgeTransactionHistory();
+      const txnsLengthBefore = await getNativeBridgeTransactionsCount();
+      await closeNativeBridgeTransactionHistory();
 
-  test.skip("metamask should be connected to the right network", async ({ page, metamask, initUI }) => {
-    await initUI(true);
+      // // Actual bridging actions
+      await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
+      await doInitiateBridgeTransaction();
 
-    await page.locator("#wallet-connect-btn").click();
-    await page.locator("wui-list-wallet", { hasText: "MetaMask" }).nth(1).click();
+      // Check that our bridge tx shows up in the tx history
+      await waitForNewTxAdditionToTxList(txnsLengthBefore);
+    });
 
-    await metamask.connectToDapp();
+    test("should be able to initiate bridging ERC20 from L1 to L2", async ({
+      getNativeBridgeTransactionsCount,
+      waitForNewTxAdditionToTxList,
+      connectMetamaskToDapp,
+      clickNativeBridgeButton,
+      selectTokenAndInputAmount,
+      doInitiateBridgeTransaction,
+      openNativeBridgeTransactionHistory,
+      closeNativeBridgeTransactionHistory,
+      clickFirstVisitModalConfirmButton,
+      doTokenApprovalIfNeeded,
+    }) => {
+      // Setup testnet UI
+      await connectMetamaskToDapp(L1_ACCOUNT_METAMASK_NAME);
+      await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
 
-    await page.bringToFront();
-    await page
-      .locator("#active-chain-name", {
-        hasText: SEPOLIA_NETWORK_NAME,
-      })
-      .waitFor();
-  });
+      // Get # of txs in txHistory before doing bridge tx, so that we can later confirm that our bridge tx shows up in the txHistory.
+      await openNativeBridgeTransactionHistory();
+      const txnsLengthBefore = await getNativeBridgeTransactionsCount();
+      await closeNativeBridgeTransactionHistory();
 
-  test.skip("should be able to reload the transaction history", async ({ page, metamask, initUI }) => {
-    await initUI(true);
-    await page.locator("#wallet-connect-btn").click();
-    await page.locator("wui-list-wallet", { hasText: "MetaMask" }).nth(1).click();
+      // // Actual bridging actions
+      await selectTokenAndInputAmount(ERC20_SYMBOL, ERC20_AMOUNT);
+      await doTokenApprovalIfNeeded();
+      await doInitiateBridgeTransaction();
 
-    await metamask.connectToDapp();
+      // Check that our bridge tx shows up in the tx history
+      await waitForNewTxAdditionToTxList(txnsLengthBefore);
+    });
 
-    const reloadHistoryBtn = await page.waitForSelector("#reload-history-btn");
-    await reloadHistoryBtn.click();
+    // This test is skipped because CCTP is not supported on the local stack.
+    test.skip("should be able to initiate bridging USDC from L1 to L2 in testnet", async ({
+      getNativeBridgeTransactionsCount,
+      waitForNewTxAdditionToTxList,
+      connectMetamaskToDapp,
+      clickNativeBridgeButton,
+      selectTokenAndInputAmount,
+      doInitiateBridgeTransaction,
+      openNativeBridgeTransactionHistory,
+      closeNativeBridgeTransactionHistory,
+      doTokenApprovalIfNeeded,
+      clickFirstVisitModalConfirmButton,
+    }) => {
+      // Setup testnet UI
+      await connectMetamaskToDapp(L1_ACCOUNT_METAMASK_NAME);
+      await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
 
-    const reloadConfirmBtn = await page.waitForSelector("#reload-history-confirm-btn");
-    await reloadConfirmBtn.click();
+      // Get # of txs in txHistory before doing bridge tx, so that we can later confirm that our bridge tx shows up in the txHistory.
+      await openNativeBridgeTransactionHistory();
+      const txnsLengthBefore = await getNativeBridgeTransactionsCount();
+      await closeNativeBridgeTransactionHistory();
 
-    await page.locator("#transactions-list").locator("ul").nth(1).waitFor({ timeout: 10_000 });
-  });
+      // Actual bridging actions
+      await selectTokenAndInputAmount(USDC_SYMBOL, USDC_AMOUNT);
+      await doTokenApprovalIfNeeded();
+      await doInitiateBridgeTransaction();
 
-  test.skip("should be able to switch network", async ({ page, metamask, initUI }) => {
-    await initUI(true);
-    await page.locator("#wallet-connect-btn").click();
-    await page.locator("wui-list-wallet", { hasText: "MetaMask" }).nth(1).click();
-
-    await metamask.connectToDapp();
-
-    await page.locator("#chain-select").click();
-    await page.locator("#switch-alternative-chain-btn").click();
-
-    await metamask.approveSwitchNetwork();
-
-    await page.bringToFront();
-
-    await page.locator("#active-chain-name").getByText("Linea Sepolia Testnet").waitFor();
-  });
-
-  test.skip("should be able to claim funds if available", async ({
-    page,
-    metamask,
-    initUI,
-    waitForTransactionToConfirm,
-  }) => {
-    await initUI(true);
-    await page.locator("#wallet-connect-btn").click();
-    await page.locator("wui-list-wallet", { hasText: "MetaMask" }).nth(1).click();
-
-    await metamask.connectToDapp();
-
-    // Check if there is a claim button available
-    const checkClaimBtn = await page.locator("#claim-funds-btn").all();
-    if (checkClaimBtn.length > 0) {
-      const claimBtn = page.locator("#claim-funds-btn").nth(1);
-      await claimBtn.click();
-
-      await metamask.confirmTransaction();
-
-      await waitForTransactionToConfirm();
-    } else {
-      console.warn("Claim funds could not be tested since no funds are waiting to be claimed");
-    }
-  });
-
-  test.skip("should be able to bridge ETH from L1 to L2", async ({
-    page,
-    metamask,
-    getBridgeTransactionsCount,
-    sendTokens,
-    waitForTransactionToConfirm,
-    waitForTransactionListUpdate,
-  }) => {
-    await page.bringToFront();
-    const txnsLengthBefore = await getBridgeTransactionsCount();
-
-    await sendTokens(WEI_AMOUNT, true);
-    await metamask.confirmTransaction();
-
-    // Wait for transaction to finish
-    await waitForTransactionToConfirm();
-
-    await page.bringToFront();
-    // We check at the end that the transacton list is updated on the bridge UI
-    const listUpdated = await waitForTransactionListUpdate(txnsLengthBefore);
-
-    // Check that that new transaction is added to the list on the UI
-    expect(listUpdated).toBeTruthy();
-  });
-
-  test.skip("should be able to bridge USDC from L1 to L2", async ({
-    page,
-    metamask,
-    getBridgeTransactionsCount,
-    selectToken,
-    sendTokens,
-    waitForTransactionToConfirm,
-    waitForTransactionListUpdate,
-  }) => {
-    const txnsLengthBefore = await getBridgeTransactionsCount();
-
-    // Select USDC in the token list
-    await selectToken("USDC");
-
-    await sendTokens(USDC_AMOUNT);
-
-    await metamask.confirmTransaction();
-
-    // Wait for transaction to finish
-    await waitForTransactionToConfirm();
-
-    await page.bringToFront();
-    // We check at the end that the transacton list is updated on the bridge UI
-    const listUpdated = await waitForTransactionListUpdate(txnsLengthBefore);
-
-    // Check that that new transaction is added to the list on the UI
-    expect(listUpdated).toBeTruthy();
-  });
-
-  test.skip("should be able to bridge ERC20 tokens from L1 to L2", async ({
-    page,
-    metamask,
-    getBridgeTransactionsCount,
-    selectToken,
-    sendTokens,
-    waitForTransactionListUpdate,
-    waitForTransactionToConfirm,
-  }) => {
-    const txnsLengthBefore = await getBridgeTransactionsCount();
-
-    // Select WETH in the token list (Easiest to get)
-    await selectToken("WETH");
-
-    await sendTokens(WEI_AMOUNT);
-    await metamask.confirmTransaction();
-
-    // Wait for transaction to finish
-    await waitForTransactionToConfirm();
-
-    await page.bringToFront();
-    // We check at the end that the transacton list is updated on the bridge UI
-    const listUpdated = await waitForTransactionListUpdate(txnsLengthBefore);
-
-    // Check that that new transaction is added to the list on the UI
-    expect(listUpdated).toBeTruthy();
+      // Check that our bridge tx shows up in the tx history
+      await waitForNewTxAdditionToTxList(txnsLengthBefore);
+    });
   });
 });

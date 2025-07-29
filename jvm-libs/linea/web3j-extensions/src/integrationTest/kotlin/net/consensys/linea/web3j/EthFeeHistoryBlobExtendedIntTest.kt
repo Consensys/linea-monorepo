@@ -1,5 +1,6 @@
 package net.consensys.linea.web3j
 
+import linea.web3j.Web3jBlobExtended
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.web3j.protocol.core.DefaultBlockParameter
@@ -12,7 +13,7 @@ class EthFeeHistoryBlobExtendedIntTest {
     web3jBlobExtended.ethFeeHistoryWithBlob(
       blockCount = 5,
       newestBlock = DefaultBlockParameter.valueOf("latest"),
-      rewardPercentiles = listOf(15.0)
+      rewardPercentiles = listOf(15.0),
     ).sendAsync()
       .thenApply { response ->
         assertThat(response).isNotNull

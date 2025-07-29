@@ -4,7 +4,7 @@ import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import linea.domain.BlockIntervals
 import net.consensys.FakeFixedClock
-import net.consensys.linea.traces.TracesCountersV1
+import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProof
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProofRequest
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClientV2
@@ -30,7 +30,6 @@ import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import java.lang.RuntimeException
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -53,7 +52,7 @@ class BlobCompressionProofCoordinatorTest {
         startingBlockNumber =
         expectedStartBlock,
         upperBoundaries =
-        listOf(expectedEndBlock)
+        listOf(expectedEndBlock),
       ),
       prevShnarf = Random.nextBytes(32),
       parentStateRootHash = Random.nextBytes(32),
@@ -69,7 +68,7 @@ class BlobCompressionProofCoordinatorTest {
       verifierID = 6789,
       commitment = Random.nextBytes(48),
       kzgProofContract = Random.nextBytes(48),
-      kzgProofSidecar = Random.nextBytes(48)
+      kzgProofSidecar = Random.nextBytes(48),
     )
 
     whenever(it.requestProof(any()))
@@ -87,10 +86,10 @@ class BlobCompressionProofCoordinatorTest {
       rollingBlobShnarfCalculator = rollingBlobShnarfCalculator,
       blobZkStateProvider = blobZkStateProvider,
       config = BlobCompressionProofCoordinator.Config(
-        pollingInterval = blobHandlerPollingInterval
+        pollingInterval = blobHandlerPollingInterval,
       ),
       blobCompressionProofHandler = { _ -> SafeFuture.completedFuture(Unit) },
-      metricsFacade = mock(defaultAnswer = Mockito.RETURNS_DEEP_STUBS)
+      metricsFacade = mock(defaultAnswer = Mockito.RETURNS_DEEP_STUBS),
     )
     blobCompressionProofCoordinator.start()
   }
@@ -109,12 +108,12 @@ class BlobCompressionProofCoordinatorTest {
           startBlockNumber = expectedStartBlock,
           endBlockNumber = expectedEndBlock,
           conflationTrigger = ConflationTrigger.TRACES_LIMIT,
-          tracesCounters = TracesCountersV1.EMPTY_TRACES_COUNT
-        )
+          tracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT,
+        ),
       ),
       compressedData = Random.nextBytes(128),
       startBlockTime = startBlockTime,
-      endBlockTime = fixedClock.now().plus((12 * (expectedEndBlock - expectedStartBlock).toInt()).seconds)
+      endBlockTime = fixedClock.now().plus((12 * (expectedEndBlock - expectedStartBlock).toInt()).seconds),
     )
 
     whenever(blobZkStateProvider.getBlobZKState(any()))
@@ -122,9 +121,9 @@ class BlobCompressionProofCoordinatorTest {
         SafeFuture.completedFuture(
           BlobZkState(
             parentStateRootHash = parentStateRootHash,
-            finalStateRootHash = finalStateRootHash
-          )
-        )
+            finalStateRootHash = finalStateRootHash,
+          ),
+        ),
       )
 
     val shnarfResult = ShnarfResult(
@@ -135,7 +134,7 @@ class BlobCompressionProofCoordinatorTest {
       expectedShnarf = Random.nextBytes(32),
       commitment = Random.nextBytes(48),
       kzgProofContract = Random.nextBytes(48),
-      kzgProofSideCar = Random.nextBytes(48)
+      kzgProofSideCar = Random.nextBytes(48),
     )
 
     whenever(rollingBlobShnarfCalculator.calculateShnarf(any(), any(), any(), any()))
@@ -144,8 +143,8 @@ class BlobCompressionProofCoordinatorTest {
           RollingBlobShnarfResult(
             shnarfResult = shnarfResult,
             parentBlobHash = expectedParentDataHash,
-            parentBlobShnarf = expectedPrevShnarf
-          )
+            parentBlobShnarf = expectedPrevShnarf,
+          ),
         )
       }
 
@@ -165,8 +164,8 @@ class BlobCompressionProofCoordinatorTest {
               expectedShnarfResult = shnarfResult,
               commitment = shnarfResult.commitment,
               kzgProofContract = shnarfResult.kzgProofContract,
-              kzgProofSideCar = shnarfResult.kzgProofSideCar
-            )
+              kzgProofSideCar = shnarfResult.kzgProofSideCar,
+            ),
           )
       }
   }
@@ -185,12 +184,12 @@ class BlobCompressionProofCoordinatorTest {
           startBlockNumber = 1uL,
           endBlockNumber = 10uL,
           conflationTrigger = ConflationTrigger.TRACES_LIMIT,
-          tracesCounters = TracesCountersV1.EMPTY_TRACES_COUNT
-        )
+          tracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT,
+        ),
       ),
       compressedData = Random.nextBytes(128),
       startBlockTime = startBlockTime,
-      endBlockTime = fixedClock.now().plus((12 * (10 - 1)).seconds)
+      endBlockTime = fixedClock.now().plus((12 * (10 - 1)).seconds),
     )
 
     val blob2 = Blob(
@@ -199,12 +198,12 @@ class BlobCompressionProofCoordinatorTest {
           startBlockNumber = 11uL,
           endBlockNumber = 20uL,
           conflationTrigger = ConflationTrigger.TRACES_LIMIT,
-          tracesCounters = TracesCountersV1.EMPTY_TRACES_COUNT
-        )
+          tracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT,
+        ),
       ),
       compressedData = Random.nextBytes(128),
       startBlockTime = startBlockTime,
-      endBlockTime = fixedClock.now().plus((12 * (20 - 11)).seconds)
+      endBlockTime = fixedClock.now().plus((12 * (20 - 11)).seconds),
     )
 
     whenever(blobZkStateProvider.getBlobZKState(any()))
@@ -213,15 +212,15 @@ class BlobCompressionProofCoordinatorTest {
         SafeFuture.completedFuture(
           BlobZkState(
             parentStateRootHash = parentStateRootHash,
-            finalStateRootHash = finalStateRootHash
-          )
+            finalStateRootHash = finalStateRootHash,
+          ),
         ),
         SafeFuture.completedFuture(
           BlobZkState(
             parentStateRootHash = parentStateRootHash,
-            finalStateRootHash = finalStateRootHash
-          )
-        )
+            finalStateRootHash = finalStateRootHash,
+          ),
+        ),
       )
 
     val shnarfResult = ShnarfResult(
@@ -232,7 +231,7 @@ class BlobCompressionProofCoordinatorTest {
       expectedShnarf = Random.nextBytes(32),
       commitment = Random.nextBytes(48),
       kzgProofContract = Random.nextBytes(48),
-      kzgProofSideCar = Random.nextBytes(48)
+      kzgProofSideCar = Random.nextBytes(48),
     )
 
     whenever(rollingBlobShnarfCalculator.calculateShnarf(any(), any(), any(), any()))
@@ -241,8 +240,8 @@ class BlobCompressionProofCoordinatorTest {
           RollingBlobShnarfResult(
             shnarfResult = shnarfResult,
             parentBlobHash = expectedParentDataHash,
-            parentBlobShnarf = expectedPrevShnarf
-          )
+            parentBlobShnarf = expectedPrevShnarf,
+          ),
         )
       }
 
@@ -263,8 +262,8 @@ class BlobCompressionProofCoordinatorTest {
               expectedShnarfResult = shnarfResult,
               commitment = shnarfResult.commitment,
               kzgProofContract = shnarfResult.kzgProofContract,
-              kzgProofSideCar = shnarfResult.kzgProofSideCar
-            )
+              kzgProofSideCar = shnarfResult.kzgProofSideCar,
+            ),
           )
         verify(blobCompressionProverClient, times(1))
           .requestProof(
@@ -278,8 +277,8 @@ class BlobCompressionProofCoordinatorTest {
               expectedShnarfResult = shnarfResult,
               commitment = shnarfResult.commitment,
               kzgProofContract = shnarfResult.kzgProofContract,
-              kzgProofSideCar = shnarfResult.kzgProofSideCar
-            )
+              kzgProofSideCar = shnarfResult.kzgProofSideCar,
+            ),
           )
       }
   }

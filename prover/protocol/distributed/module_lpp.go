@@ -285,7 +285,7 @@ func (m *ModuleLPP) GetModuleTranslator() moduleTranslator {
 	return m.moduleTranslator
 }
 
-func (m *ModuleLPP) SetModuleTranslator(comp *wizard.CompiledIOP, disc ModuleDiscoverer) {
+func (m *ModuleLPP) SetModuleTranslator(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) {
 	m.moduleTranslator.Wiop = comp
 	m.moduleTranslator.Disc = disc
 } */
@@ -355,7 +355,14 @@ func (a LppWitnessAssignment) Run(run *wizard.ProverRuntime) {
 
 			colWitness, ok := witness.Columns[colName]
 			if !ok {
-				utils.Panic("witness of column %v was not found", colName)
+				utils.Panic(
+					"witness of column %v was not found, module=%v witness-columns=%v module-columns=%v module-column-LPP=%v",
+					colName,
+					m.ModuleNames(),
+					utils.SortedKeysOf(witness.Columns, func(a, b ifaces.ColID) bool { return a < b }),
+					m.DefinitionInputs[0].Columns,
+					m.DefinitionInputs[0].ColumnsLPPSet,
+				)
 			}
 
 			run.AssignColumn(colName, colWitness)
@@ -566,7 +573,11 @@ func hashNxsGnark(factory mimc.HasherFactory, params query.GnarkHornerParams, x 
 
 // getQueryArgs groups the args of the [FilteredModuleInputs] provided
 // by the caller.
-func getQueryArgs(moduleInputs []FilteredModuleInputs) (logDerivativeArgs, grandProductArgs [][2]*symbolic.Expression, hornerArgs []query.HornerPart) {
+func getQueryArgs(moduleInputs []FilteredModuleInputs) (
+	logDerivativeArgs []query.LogDerivativeSumPart,
+	grandProductArgs [][2]*symbolic.Expression,
+	hornerArgs []query.HornerPart,
+) {
 	for _, moduleInput := range moduleInputs {
 		logDerivativeArgs = append(logDerivativeArgs, moduleInput.LogDerivativeArgs...)
 		grandProductArgs = append(grandProductArgs, moduleInput.GrandProductArgs...)

@@ -7,6 +7,7 @@ import (
 	cmimc "github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
@@ -39,6 +40,20 @@ type DistributedWizard struct {
 	// GLs is the list of the GL parts for every modules
 	GLs []*ModuleGL
 
+	// DebugLPPs is the list of the LPP modules compiles with the dummy, this is
+	// convenient for debugging the distributed wizard after segmentation.
+	DebugLPPs []*ModuleLPP
+
+	// DebugGLs is the list of the GL modules compiles with the dummy, this is
+	// convenient for debugging the distributed wizard after segmentation.
+	DebugGLs []*ModuleGL
+
+	// BlueprintGLs is the list of the blueprints for each GL module
+	BlueprintGLs []ModuleSegmentationBlueprint
+
+	// BlueprintLPPs is the list of the blueprints for each LPP module
+	BlueprintLPPs []ModuleSegmentationBlueprint
+
 	// DefaultModule is the module used for filling when the number of
 	// effective segment is smaller than the maximum number of segment to
 	// conglomerate.
@@ -48,9 +63,9 @@ type DistributedWizard struct {
 	// preparation steps.
 	Bootstrapper *wizard.CompiledIOP
 
-	// Disc is the [ModuleDiscoverer] used to delimitate the scope for
+	// Disc is the [*StandardModuleDiscoverer] used to delimitate the scope for
 	// each module.
-	Disc ModuleDiscoverer
+	Disc *StandardModuleDiscoverer
 
 	// CompiledDefault stores the compiled default module and is set by calling
 	// [DistributedWizard.Compile]
@@ -87,7 +102,7 @@ func init() {
 // DistributeWizard returns a [DistributedWizard] from a [wizard.CompiledIOP]. It
 // takes ownership of the input [wizard.CompiledIOP]. And uses disc to design
 // the scope of each module.
-func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *DistributedWizard {
+func DistributeWizard(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) *DistributedWizard {
 
 	if err := auditInitialWizard(comp); err != nil {
 		utils.Panic("improper initial wizard for distribution: %v", err)
@@ -114,11 +129,33 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *Distribu
 			distributedWizard.Bootstrapper,
 		)
 
-		logrus.Infof("Compiling GL module %v\n", moduleName)
+		logrus.Infof("Compiling GL module %v", moduleName)
+
+		var (
+			moduleGL         = BuildModuleGL(&filteredModuleInputs)
+			moduleGLForDebug = BuildModuleGL(&filteredModuleInputs)
+		)
+
+		// This add sanity-checking the module initial assignment. Without
+		// this compilation, the module would not check anything.
+		wizard.ContinueCompilation(
+			moduleGLForDebug.Wiop,
+			dummy.CompileAtProverLvl(dummy.WithMsg(fmt.Sprintf("GL module (debug) %v", moduleName))),
+		)
+
+		distributedWizard.DebugGLs = append(
+			distributedWizard.DebugGLs,
+			moduleGLForDebug,
+		)
 
 		distributedWizard.GLs = append(
 			distributedWizard.GLs,
-			BuildModuleGL(&filteredModuleInputs),
+			moduleGL,
+		)
+
+		distributedWizard.BlueprintGLs = append(
+			distributedWizard.BlueprintGLs,
+			moduleGL.Blueprint(),
 		)
 
 		allFilteredModuleInputs = append(
@@ -135,11 +172,33 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *Distribu
 
 		stop := min(len(distributedWizard.ModuleNames), i+lppGroupingArity)
 
-		logrus.Infof("Compiling LPP modules [%d .. %d]\n", i, stop)
+		logrus.Infof("Compiling LPP modules [%d .. %d]", i, stop)
+
+		var (
+			moduleLPP         = BuildModuleLPP(allFilteredModuleInputs[i:stop])
+			moduleLPPForDebug = BuildModuleLPP(allFilteredModuleInputs[i:stop])
+		)
+
+		// This add sanity-checking the module initial assignment. Without
+		// this compilation, the module would not check anything.
+		wizard.ContinueCompilation(
+			moduleLPPForDebug.Wiop,
+			dummy.CompileAtProverLvl(dummy.WithMsg(fmt.Sprintf("LPP module (debug) [%d .. %d]", i, stop))),
+		)
+
+		distributedWizard.DebugLPPs = append(
+			distributedWizard.DebugLPPs,
+			moduleLPPForDebug,
+		)
 
 		distributedWizard.LPPs = append(
 			distributedWizard.LPPs,
-			BuildModuleLPP(allFilteredModuleInputs[i:stop]),
+			moduleLPP,
+		)
+
+		distributedWizard.BlueprintLPPs = append(
+			distributedWizard.BlueprintLPPs,
+			moduleLPP.Blueprint(),
 		)
 	}
 
@@ -215,17 +274,23 @@ func GetSharedRandomnessFromWitnesses(comp []*wizard.CompiledIOP, gLWitnesses []
 	return GetSharedRandomness(lppCommitments)
 }
 
+// GetLppCommitmentFromRuntime returns the LPP commitment from the runtime
+func GetLppCommitmentFromRuntime(runtime *wizard.ProverRuntime) field.Element {
+	name := fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, 0)
+	return runtime.GetPublicInput(preRecursionPrefix + name)
+}
+
 // PrecompileInitialWizard pre-compiles the initial wizard protocol by applying all the
 // compilation steps needing to be run before the splitting phase. Its role is to
 // ensure that all of the queries that cannot be processed by the splitting phase
 // are removed from the compiled IOP.
-func PrecompileInitialWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *wizard.CompiledIOP {
+func PrecompileInitialWizard(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) *wizard.CompiledIOP {
 	mimc.CompileMiMC(comp)
 	// specialqueries.RangeProof(comp)
 	// specialqueries.CompileFixedPermutations(comp)
 	logderivativesum.LookupIntoLogDerivativeSumWithSegmenter(
 		&LPPSegmentBoundaryCalculator{
-			Disc:     disc.(*StandardModuleDiscoverer),
+			Disc:     disc,
 			LPPArity: lppGroupingArity,
 		},
 	)(comp)

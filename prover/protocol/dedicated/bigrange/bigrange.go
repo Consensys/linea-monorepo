@@ -21,18 +21,18 @@ import (
 type BigRangeProverAction struct {
 	Boarded      symbolic.ExpressionBoard
 	Limbs        []ifaces.Column
-	Size         int
 	BitPerLimbs  int
 	TotalNumBits int
 }
 
 func (a *BigRangeProverAction) Run(run *wizard.ProverRuntime) {
+	size := a.Limbs[0].Size()
 	metadatas := a.Boarded.ListVariableMetadata()
 	evalInputs := make([]sv.SmartVector, len(metadatas))
-	omega := fft.GetOmega(a.Size)
+	omega := fft.GetOmega(size)
 	omegaI := field.One()
-	omegas := make([]field.Element, a.Size)
-	for i := 0; i < a.Size; i++ {
+	omegas := make([]field.Element, size)
+	for i := 0; i < size; i++ {
 		omegas[i] = omegaI
 		omegaI.Mul(&omegaI, &omega)
 	}
@@ -44,13 +44,13 @@ func (a *BigRangeProverAction) Run(run *wizard.ProverRuntime) {
 			evalInputs[k] = w
 		case coin.Info:
 			x := run.GetRandomCoinField(meta.Name)
-			evalInputs[k] = sv.NewConstant(x, a.Size)
+			evalInputs[k] = sv.NewConstant(x, size)
 		case variables.X:
-			evalInputs[k] = meta.EvalCoset(a.Size, 0, 1, false)
+			evalInputs[k] = meta.EvalCoset(size, 0, 1, false)
 		case variables.PeriodicSample:
-			evalInputs[k] = meta.EvalCoset(a.Size, 0, 1, false)
+			evalInputs[k] = meta.EvalCoset(size, 0, 1, false)
 		case ifaces.Accessor:
-			evalInputs[k] = sv.NewConstant(meta.GetVal(run), a.Size)
+			evalInputs[k] = sv.NewConstant(meta.GetVal(run), size)
 		default:
 			utils.Panic("Not a variable type %v in sub-wizard", reflect.TypeOf(metadataInterface))
 		}
@@ -59,10 +59,10 @@ func (a *BigRangeProverAction) Run(run *wizard.ProverRuntime) {
 	resWitness := a.Boarded.Evaluate(evalInputs)
 	limbsWitness := make([][]field.Element, len(a.Limbs))
 	for i := range limbsWitness {
-		limbsWitness[i] = make([]field.Element, a.Size)
+		limbsWitness[i] = make([]field.Element, size)
 	}
 
-	for j := 0; j < a.Size; j++ {
+	for j := 0; j < size; j++ {
 		x := resWitness.Get(j)
 		var tmp big.Int
 		x.BigInt(&tmp)
@@ -72,7 +72,7 @@ func (a *BigRangeProverAction) Run(run *wizard.ProverRuntime) {
 				a.TotalNumBits, tmp.BitLen(), j, x.String())
 		}
 
-		for i := 0; i < len(a.Limbs); i++ {
+		for i := range a.Limbs {
 			l := uint64(0)
 			for k := i * (a.TotalNumBits / len(a.Limbs)); k < (i+1)*(a.TotalNumBits/len(a.Limbs)); k++ {
 				extractedBit := tmp.Bit(k)
@@ -148,7 +148,6 @@ func BigRange(comp *wizard.CompiledIOP, expr *symbolic.Expression, numLimbs, bit
 	comp.RegisterProverAction(round, &BigRangeProverAction{
 		Boarded:      boarded,
 		Limbs:        limbs,
-		Size:         size,
 		BitPerLimbs:  bitPerLimbs,
 		TotalNumBits: totalNumBits,
 	})

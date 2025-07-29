@@ -1,0 +1,12 @@
+.content-wrapper {
+  max-width: 29.25rem;
+  margin: 0 auto 1.5rem;
+}
+
+.widget-wrapper {
+  font-family: var(--font-atyp-text);
+
+  @media (min-width: 640px) {
+    margin-bottom: -1.5rem;
+  }
+}

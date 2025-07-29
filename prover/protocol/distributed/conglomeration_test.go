@@ -25,7 +25,7 @@ func TestConglomerationBasic(t *testing.T) {
 		numRow = 1 << 10
 		tc     = DistributeTestCase{numRow: numRow}
 		disc   = &distributed.StandardModuleDiscoverer{
-			TargetWeight: 3 * numRow,
+			TargetWeight: 3 * numRow / 2,
 			Predivision:  1,
 		}
 		comp = wizard.Compile(func(build *wizard.Builder) {
@@ -38,8 +38,13 @@ func TestConglomerationBasic(t *testing.T) {
 				Conglomerate(20)
 
 		runtimeBoot             = wizard.RunProver(distWizard.Bootstrapper, tc.Assign)
-		witnessGLs, witnessLPPs = distributed.SegmentRuntime(runtimeBoot, distWizard)
-		runGLs                  = runProverGLs(t, distWizard, witnessGLs)
+		witnessGLs, witnessLPPs = distributed.SegmentRuntime(
+			runtimeBoot,
+			distWizard.Disc,
+			distWizard.BlueprintGLs,
+			distWizard.BlueprintLPPs,
+		)
+		runGLs = runProverGLs(t, distWizard, witnessGLs)
 	)
 
 	for i := range runGLs {
@@ -107,8 +112,13 @@ func TestConglomeration(t *testing.T) {
 	t.Logf("[%v] done running the bootstrapper\n", time.Now())
 
 	var (
-		witnessGLs, witnessLPPs = distributed.SegmentRuntime(runtimeBoot, distWizard)
-		runGLs                  = runProverGLs(t, distWizard, witnessGLs)
+		witnessGLs, witnessLPPs = distributed.SegmentRuntime(
+			runtimeBoot,
+			distWizard.Disc,
+			distWizard.BlueprintGLs,
+			distWizard.BlueprintLPPs,
+		)
+		runGLs = runProverGLs(t, distWizard, witnessGLs)
 	)
 
 	for i := range runGLs {

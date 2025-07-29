@@ -34,6 +34,13 @@ func runController(ctx context.Context, cfg *config.Config) {
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGTERM)
 	defer stop()
 
+	// cmdContext is the context we provide for the command execution. In
+	// spot-instance mode, the context is subordinated to the ctx.
+	cmdContext := context.Background()
+	if cfg.Controller.SpotInstanceMode {
+		cmdContext = ctx
+	}
+
 	go func() {
 		// This goroutine's raison d'etre is to log a message immediately when a
 		// cancellation request (e.g., ctx expiration/cancellation, SIGTERM, etc.)
@@ -43,7 +50,12 @@ func runController(ctx context.Context, cfg *config.Config) {
 		// SIGTERM is received, there would be no log entry about the signal
 		// until the proof completes.
 		<-ctx.Done()
-		cLog.Infoln("Received cancellation request, will exit as soon as possible or once current proof task is complete.")
+
+		if cfg.Controller.SpotInstanceMode {
+			cLog.Infoln("Received cancellation request. Killing the ongoing process and exiting immediately after.")
+		} else {
+			cLog.Infoln("Received cancellation request, will exit as soon as possible or once current proof task is complete.")
+		}
 	}()
 
 	for {
@@ -70,9 +82,9 @@ func runController(ctx context.Context, cfg *config.Config) {
 				numRetrySoFar++
 				noJobFoundMsg := "found no jobs in the queue"
 				if numRetrySoFar > 5 {
-					cLog.Debugf(noJobFoundMsg)
+					cLog.Debug(noJobFoundMsg)
 				} else {
-					cLog.Infof(noJobFoundMsg)
+					cLog.Info(noJobFoundMsg)
 				}
 				continue
 			}
@@ -81,7 +93,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 			numRetrySoFar = 0
 
 			// Run the command (potentially retrying in large mode)
-			status := executor.Run(job)
+			status := executor.Run(cmdContext, job)
 
 			// createColumns the job according to the status we got
 			switch {
@@ -106,7 +118,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 				if err := os.Rename(tmpRespFile, respFile); err != nil {
 					// @Alex: it is unclear how the rename operation could fail
 					// here. If this happens, we prefer removing the tmp file.
-					// Note that the operation is an `mv -f`
+					// Note that the operation is an `rm -f`.
 					os.Remove(tmpRespFile)
 
 					cLog.Errorf(
@@ -126,6 +138,8 @@ func runController(ctx context.Context, cfg *config.Config) {
 					// When that happens, the only thing left to do is to log
 					// the error and let the inprogress file where it is. It
 					// will likely require a human intervention.
+					//
+					// Note: this is assumedly an unreachable code path.
 					cLog.Errorf(
 						"Error renaming %v to %v: %v",
 						job.InProgressPath(), jobDone, err,
@@ -165,6 +179,33 @@ func runController(ctx context.Context, cfg *config.Config) {
 					)
 				}
 
+			case status.ExitCode == CodeKilledByUs:
+				// When receiving the killed-by-us code, the prover will put
+				// back the file in the queue. We do not immediately exit the
+				// loop as there is already a clause to exit the loop in case
+				// of sigterm at the top of the loop. So it will immediately
+				// exit as soon as we enter the next iteration.
+				cLog.Infof("Job %v was killed by us. Reputting it in the request folder", job.OriginalFile)
+
+				if err := os.Rename(job.InProgressPath(), job.OriginalPath()); err != nil {
+					// When that happens, the only thing left to do is to log
+					// the error and let the inprogress file where it is. It
+					// will likely require a human intervention.
+					//
+					// Note: this is assumedly an unreachable code path.
+					cLog.Errorf(
+						"Error renaming %v to %v: %v",
+						job.InProgressPath(), job.OriginalPath(), err,
+					)
+				}
+
+				// As an edge-case, it's possible (in theory) that the process
+				// completes exactly when we receive the kill signal. So we
+				// could end up in a situation where the tmp-response file
+				// exists. In that case, we simply delete it before exiting to
+				// keep the FS clean.
+				os.Remove(job.TmpResponseFile(cfg))
+
 			// Failure case
 			default:
 				// Move the inprogress to the done directory
@@ -178,6 +219,8 @@ func runController(ctx context.Context, cfg *config.Config) {
 					// When that happens, the only thing left to do is to log
 					// the error and let the inprogress file where it is. It
 					// will likely require a human intervention.
+					//
+					// Note: this is assumedly an unreachable code path.
 					cLog.Errorf(
 						"Error renaming %v to %v: %v",
 						job.InProgressPath(), jobFailed, err,

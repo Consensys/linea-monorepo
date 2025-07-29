@@ -134,6 +134,10 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		mpts.Compile(mpts.AddUnconstrainedColumns()),
 	)
 
+	initialWizardStats := logdata.GetWizardStats(modIOP)
+	logrus.Infof("[Before first Vortex] module=%v numCellsCommitted=%v numCellsPrecomputed=%v numCellsProof=%v",
+		subscript, initialWizardStats.NumCellsCommitted, initialWizardStats.NumCellsPrecomputed, initialWizardStats.NumCellsProof)
+
 	if !isLPP {
 
 		wizard.ContinueCompilation(modIOP,

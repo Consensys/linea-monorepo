@@ -58,6 +58,7 @@ func (a *MerkleProofProverAction) Run(run *wizard.ProverRuntime) {
 	pos := a.Pos.GetColAssignment(run)
 	a.Cm.assign(run, leaves, pos)
 }
+
 func merkleProofCheck(
 	// compiled IOP
 	comp *wizard.CompiledIOP,

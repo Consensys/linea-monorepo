@@ -16,13 +16,13 @@ import (
 // ModuleTranslator is a utily struct wrapping a [wizard.CompiledIOP] and
 // implements the logic to build it and to translate it.
 type ModuleTranslator struct {
-	Disc ModuleDiscoverer
+	Disc *StandardModuleDiscoverer
 	Wiop *wizard.CompiledIOP
 }
 
 // InsertColumn inserts a new column in the target compiled IOP. The column
 // name the column names is kept identical to the original. The size is
-// adjusted to match the one of the module following the [ModuleDiscoverer].
+// adjusted to match the one of the module following the [*StandardModuleDiscoverer].
 //
 // The function returns the inserted column. If the column had alreadu been
 // inserted the function is a no-op and returns the already inserted one.
@@ -73,20 +73,33 @@ func (mt *ModuleTranslator) InsertPrecomputed(col column.Natural, data smartvect
 // function panics if the column cannot be resolved. It will happen if the
 // column has an expected type or is defined from not resolvable items.
 //
-// The sizeHint argument is meant to deduce what the size of a translated
-// [verifiercol.ConstCol]
+// The function will also not support [verifiercol.VerifierCol] columns and
+// will panic if encountering them.
 func (mt *ModuleTranslator) TranslateColumn(col ifaces.Column) ifaces.Column {
+	return mt.TranslateColumnWithSizeHint(col, -1)
+}
+
+// TranslateColumnWithSizeHint is as [TranslateColumn] but it supports
+// [verifiercol.ConstCol] and uses the provided size-hint to give them the
+// proper size. The function also supports shifting of constant columns and will
+// preserve that structure.
+//
+// Passing a negative hint is equivalent to calling [ModuleTranslator.TranslateColumn].
+func (mt *ModuleTranslator) TranslateColumnWithSizeHint(col ifaces.Column, sizeHint int) ifaces.Column {
 
 	switch c := col.(type) {
 	case column.Natural:
 		return mt.Wiop.Columns.GetHandle(c.ID)
 	case column.Shifted:
 		return column.Shifted{
-			Parent: mt.TranslateColumn(c.Parent),
+			Parent: mt.TranslateColumnWithSizeHint(c.Parent, sizeHint),
 			Offset: c.Offset,
 		}
 	case verifiercol.ConstCol:
-		return verifiercol.NewConstantCol(c.F, c.Size())
+		if sizeHint < 0 {
+			utils.Panic("called TranslateColumnWithSizeHint with a negative offset on a constant col")
+		}
+		return verifiercol.NewConstantCol(c.F, sizeHint, "")
 	default:
 		utils.Panic("unexpected type of column: type: %T, name: %v", col, col.GetColID())
 	}
@@ -105,13 +118,9 @@ func (mt *ModuleTranslator) TranslateColumnList(cols []ifaces.Column) []ifaces.C
 	return res
 }
 
-// TranslateExpression returns an expression corresponding to the provided
-// expression but in term of the input module. When the function encounters
-// a [verifiercol.Constcol] as part of the expression, it converts it into
-// a [symbolic.Constant] directly as this simplifies the later steps in the
-// process and is strictly equivalent.
-func (mt *ModuleTranslator) TranslateExpression(expr *symbolic.Expression) *symbolic.Expression {
-
+// TranslateExpressionWithSizeHint is as [TranslateExpression] but uses a hint
+// to help translating the sub-components.
+func (mt *ModuleTranslator) TranslateExpressionWithHint(expr *symbolic.Expression, sizeHint int) *symbolic.Expression {
 	return expr.ReconstructBottomUpSingleThreaded(
 		func(e *symbolic.Expression, children []*symbolic.Expression) *symbolic.Expression {
 			switch op := e.Operator.(type) {
@@ -121,16 +130,16 @@ func (mt *ModuleTranslator) TranslateExpression(expr *symbolic.Expression) *symb
 					newAcc := mt.TranslateAccessor(m)
 					return symbolic.NewVariable(newAcc)
 				case ifaces.Column:
-					// When finding a constcol, it is always simpler to
-					// convert it into a constant sub-expression. Also,
-					// it is important to account for the fact that we
-					// can absolutely encounter shifted version of a
-					// constant col.
-					root := column.RootParents(m)
-					if constcol, isconst := root.(verifiercol.ConstCol); isconst {
-						return symbolic.NewConstant(constcol.F)
-					}
-					newCol := mt.TranslateColumn(m)
+					// @alex:
+					//
+					// There used to a tentative optimization where we would
+					// detect and simplify [verifiercol.ConstantCol] into
+					// constant expression but we removed it because sometime
+					// we have shifting of verifiercol inside of expressions as
+					// a way to cancel them at the first or the last position.
+					// This is hacky but doing the conversion would remove that
+					// cancellation so we removed it.
+					newCol := mt.TranslateColumnWithSizeHint(m, sizeHint)
 					return symbolic.NewVariable(newCol)
 				case coin.Info:
 					newCoin := mt.TranslateCoin(m)
@@ -143,6 +152,27 @@ func (mt *ModuleTranslator) TranslateExpression(expr *symbolic.Expression) *symb
 			}
 		},
 	)
+}
+
+// TranslateExpression returns an expression corresponding to the provided
+// expression but in term of the input module. The function will attempt resolving
+// the domain size of the new expression but might fail if the expression only
+// contains [verifiercol.ConstCol]. In that case, it is better to use TranslateExpressionWithHint.
+func (mt *ModuleTranslator) TranslateExpression(expr *symbolic.Expression) *symbolic.Expression {
+	// The initial step is there to capture the column size so that we can
+	// translate verifiercol.ConstCol properly. If the expression contains only
+	// verifiercol, the sizeHint value will be left as -1 and this will panic
+	// when attempting to call [TranslateColumn] inside the function call.
+	cols := column.ColumnsOfExpression(expr)
+	sizeHint := -1
+	for _, col := range cols {
+		root := column.RootParents(col)
+		if nat, isNat := root.(column.Natural); isNat {
+			sizeHint = mt.Disc.NewSizeOf(nat)
+			break
+		}
+	}
+	return mt.TranslateExpressionWithHint(expr, sizeHint)
 }
 
 // TranslateExpressionList returns a list of equivalent expressions from the new
@@ -225,34 +255,31 @@ func (mt *ModuleTranslator) InsertPlonkInWizard(oldQuery *query.PlonkInWizard) *
 func (mt *ModuleLPP) InsertLogDerivative(
 	round int,
 	id ifaces.QueryID,
-	logDerivativeArgs [][2]*symbolic.Expression,
+	logDerivativeArgs []query.LogDerivativeSumPart,
 ) query.LogDerivativeSum {
 
-	resInputs := map[int]*query.LogDerivativeSumInput{}
+	resInputs := []query.LogDerivativeSumPart{}
 
-	for _, numDenPair := range logDerivativeArgs {
+	for _, part := range logDerivativeArgs {
 
-		var (
-			num  = numDenPair[0]
-			den  = numDenPair[1]
-			size = NewSizeOfList(mt.Disc, num, den)
-		)
+		size := NewSizeOfList(mt.Disc, part.Num, part.Den)
 
-		mt.addCoinFromExpression(num)
-		mt.addCoinFromExpression(den)
+		mt.addCoinFromExpression(part.Num)
+		mt.addCoinFromExpression(part.Den)
 
-		if _, hasSize := resInputs[size]; !hasSize {
-			resInputs[size] = &query.LogDerivativeSumInput{
-				Size: size,
-			}
-		}
-
-		newInp := resInputs[size]
-		newInp.Numerator = append(newInp.Numerator, mt.TranslateExpression(num))
-		newInp.Denominator = append(newInp.Denominator, mt.TranslateExpression(den))
+		resInputs = append(resInputs, query.LogDerivativeSumPart{
+			Size: size,
+			Num:  mt.TranslateExpressionWithHint(part.Num, size),
+			Den:  mt.TranslateExpressionWithHint(part.Den, size),
+			Name: part.Name,
+		})
 	}
 
-	return mt.Wiop.InsertLogDerivativeSum(round, id, resInputs)
+	return mt.Wiop.InsertLogDerivativeSum(
+		round,
+		id,
+		query.LogDerivativeSumInput{Parts: resInputs},
+	)
 }
 
 // InsertGrandProduct inserts a new GrandProduct query in the target compiled IOP
@@ -303,6 +330,7 @@ func (mt *ModuleLPP) InsertHorner(
 	for _, oldPart := range parts {
 
 		newPart := query.HornerPart{
+			Name:         oldPart.Name,
 			Coefficients: mt.TranslateExpressionList(oldPart.Coefficients),
 			SignNegative: oldPart.SignNegative,
 			Selectors:    mt.TranslateColumnList(oldPart.Selectors),

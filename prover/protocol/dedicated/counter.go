@@ -2,6 +2,7 @@ package dedicated
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -13,13 +14,21 @@ import (
 	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 )
 
-// NewCyclicCounter creates a structured [CyclicCounter]
+// NewCyclicCounter creates a structured [CyclicCounter]. When passing period
+// = math.MaxInt it turns into a non-periodic counter.
 func NewCyclicCounter(comp *wizard.CompiledIOP, round, period int, isActiveAny any) *CyclicCounter {
 
 	var (
 		isActive, fullyActive, size = cleanIsActive(isActiveAny)
-		name                        = fmt.Sprintf("CYCLIC_COUNTER_%v_%v", len(comp.Columns.AllKeys()), period)
-		rc                          = &CyclicCounter{
+		numCols                     = len(comp.Columns.AllKeys())
+		// The appending of the round to the name is necessary to disambiguate
+		// the name of the column when serializing. This is particularly useful
+		// for self-recursion columns.
+		name = fmt.Sprintf("CYCLIC_COUNTER_%v_%v_%v", numCols, period, round)
+	)
+
+	var (
+		rc = &CyclicCounter{
 			IsActive:    isActive,
 			Period:      period,
 			FullyActive: fullyActive,
@@ -52,6 +61,11 @@ func NewCyclicCounter(comp *wizard.CompiledIOP, round, period int, isActiveAny a
 		),
 	)
 
+	// If the size if really big,
+	if size == math.MaxInt {
+		return rc
+	}
+
 	var (
 		isEndOfPeriod    ifaces.Column
 		cptIsEndOfPeriod wizard.ProverAction
@@ -82,7 +96,7 @@ func NewCyclicCounter(comp *wizard.CompiledIOP, round, period int, isActiveAny a
 func (rc CyclicCounter) Assign(run *wizard.ProverRuntime) {
 
 	var (
-		size     = rc.ColumnSize
+		size     = rc.Natural.Size()
 		res      = make([]field.Element, size)
 		isActive []field.Element
 	)
@@ -99,7 +113,13 @@ func (rc CyclicCounter) Assign(run *wizard.ProverRuntime) {
 			break
 		}
 
-		n := utils.PositiveMod(i, rc.Period)
+		n := i
+		// In theory, protecting the PositiveMod with this check should not be
+		// necessary but we consider it safer to not risk having overflow issue
+		// in case rc.Period = [math.MaxInt]
+		if rc.Period < size {
+			n = utils.PositiveMod(i, rc.Period)
+		}
 		res[i].SetUint64(uint64(n))
 	}
 

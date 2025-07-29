@@ -1,6 +1,8 @@
 package ecdsa
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
@@ -8,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 )
 
@@ -122,6 +125,7 @@ func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *anticha
 		Circuit:            newMultiEcRecoverCircuit(settings.NbInputInstance),
 		PlonkOptions:       inputs.PlonkOptions,
 		NbCircuitInstances: settings.NbCircuitInstances,
+		InputFillerKey:     plonkInputFillerKey,
 	}
 
 	res.AlignedGnarkData = plonk.DefineAlignment(comp, toAlign)
@@ -155,11 +159,13 @@ func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *anticha
 // As the initial data is copied from the EC_DATA arithmetization module, then
 // it has to be provided as an input.
 func (ac *antichamber) assign(run *wizard.ProverRuntime, txGet TxSignatureGetter, nbTx int) {
+
 	var (
 		ecSrc             = ac.Inputs.EcSource
 		txSource          = ac.Inputs.TxSource
 		nbActualEcRecover = ecSrc.nbActualInstances(run)
 	)
+
 	ac.assignAntichamber(run, nbActualEcRecover, nbTx)
 	ac.EcRecover.Assign(run, ecSrc)
 	ac.TxSignature.assignTxSignature(run, nbActualEcRecover)
@@ -184,8 +190,15 @@ func (ac *antichamber) assignAntichamber(run *wizard.ProverRuntime, nbEcRecInsta
 	)
 
 	if nbRowsPerEcRec*maxNbEcRecover+nbRowsPerTxSign*maxNbTx > ac.Size {
-		utils.Panic("not enough space in antichamber to store all the data. Need %d, got %d", 24*maxNbEcRecover+15*maxNbTx, ac.Size)
+		exit.OnLimitOverflow(
+			ac.Size,
+			nbRowsPerEcRec*maxNbEcRecover+nbRowsPerTxSign*maxNbTx,
+			fmt.Errorf("not enough space in ECDSA antichamber to store all the data. Need %d, got %d",
+				nbRowsPerEcRec*maxNbEcRecover+nbRowsPerTxSign*maxNbTx, ac.Size,
+			),
+		)
 	}
+
 	// prepare root module columns
 	// for ecrecover case we need 10+14 rows (fetchin and pushing). For TX we need 1+14
 

@@ -127,6 +127,11 @@ type CompiledIOP struct {
 
 	// ExtraData is a free field in which compilers can store whatever they want.
 	ExtraData map[string]any
+
+	// WithStorePointerChecks is a flag that controls whether or not the
+	// CompiledIOP should check that its columns and queries are registered in
+	// the store.
+	WithStorePointerChecks bool
 }
 
 // NumRounds returns the total number of prover interactions with the verifier
@@ -178,7 +183,7 @@ func (c *CompiledIOP) InsertColumn(round int, name ifaces.ColID, size int, statu
 	// @alex: this has actually caught a few typos. When wrongly setting an
 	// incorrect but very large size here, it will generate a disproportionate
 	// wizard
-	if size > 1<<27 {
+	if size > 1<<40 {
 		utils.Panic("column %v has size %v", name, size)
 	}
 
@@ -587,7 +592,7 @@ func (c *CompiledIOP) InsertLocalOpening(round int, name ifaces.QueryID, pol ifa
 // InsertLogDerivativeSum registers a new LogDerivativeSum query [query.LogDerivativeSum].
 // It generates a single global summation for many Sigma Columns from Lookup compilation.
 // The sigma columns are categorized by [round,size].
-func (c *CompiledIOP) InsertLogDerivativeSum(lastRound int, id ifaces.QueryID, in map[int]*query.LogDerivativeSumInput) query.LogDerivativeSum {
+func (c *CompiledIOP) InsertLogDerivativeSum(lastRound int, id ifaces.QueryID, in query.LogDerivativeSumInput) query.LogDerivativeSum {
 
 	c.checkAnyInStore(in)
 
@@ -783,7 +788,7 @@ func (c *CompiledIOP) InsertPlonkInWizard(q *query.PlonkInWizard) {
 	}
 
 	if nbPub > q.Data.Size() {
-		utils.Panic("the number of public inputs of the circuit is larger than the size of Data and Selector, nbPub=%v data-size=%v selector-size=%v", nbPub, q.Data.Size(), q.Selector.Size())
+		utils.Panic("the number of public inputs of the circuit is larger than the size of Data and Selector, nbPub=%v data-size=%v selector-size=%v, name=%v", nbPub, q.Data.Size(), q.Selector.Size(), q.ID)
 	}
 
 	if nbSecret > 0 {

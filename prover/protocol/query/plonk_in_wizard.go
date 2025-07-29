@@ -152,6 +152,12 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 
 		numEffInstances++
 
+		// This local variable (which could equivalently be defined as
+		// 'numEffInstance - 1') is needed because the value of numEffInstance
+		// might change when we go to the next iteration of the loop and print
+		// error messages from the goroutine.
+		currInstance := i / nbPublicPadded
+
 		wg.Add(1)
 
 		go func(i int) {
@@ -192,12 +198,12 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 			// be a panic instead. It bubbling up means there is a bug in the
 			// current function.
 			if err := witness.Fill(nbPublic, 0, witnessFiller); err != nil {
-				pushErr(fmt.Errorf("error in solver instance=%v err=%w", i, err))
+				pushErr(fmt.Errorf("error in witness filler instance=%v err=%w", currInstance, err))
 				return
 			}
 
 			if err := ccs.IsSolved(witness); err != nil {
-				pushErr(fmt.Errorf("error in solver instance=%v err=%w", i, err))
+				pushErr(fmt.Errorf("error in solver instance=%v err=%w", currInstance, err))
 				return
 			}
 

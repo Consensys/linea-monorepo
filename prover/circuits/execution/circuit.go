@@ -4,6 +4,8 @@ import (
 	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -86,7 +88,9 @@ func assign(
 			WizardVerifier: *wizardVerifier,
 			FuncInputs: FunctionalPublicInputSnark{
 				FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
-					L2MessageHashes: L2MessageHashes{Values: make([][32]frontend.Variable, limits.BlockL2L1Logs)}, // TODO use a maximum from config
+					L2MessageHashes: L2MessageHashes{
+						Values: make([][32]frontend.Variable, limits.BlockL2L1Logs),
+					},
 				},
 			},
 			PublicInput: new(big.Int).SetBytes(funcInputs.Sum(nil)),
@@ -99,6 +103,10 @@ func assign(
 
 // Define of the wizard circuit
 func (c *CircuitExecution) Define(api frontend.API) error {
+
+	c.WizardVerifier.HasherFactory = gkrmimc.NewHasherFactory(api)
+	c.WizardVerifier.FS = fiatshamir.NewGnarkFiatShamir(api, c.WizardVerifier.HasherFactory)
+
 	c.WizardVerifier.Verify(api)
 	checkPublicInputs(
 		api,

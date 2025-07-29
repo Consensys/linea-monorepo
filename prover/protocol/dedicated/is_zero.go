@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -12,7 +13,6 @@ import (
 
 type IsZeroCtx struct {
 	CtxID     int
-	Size      int
 	Round     int
 	C         *sym.Expression
 	Mask      *sym.Expression
@@ -40,12 +40,9 @@ func IsZero(comp *wizard.CompiledIOP, c any) (ifaces.Column, wizard.ProverAction
 	switch c1 := c.(type) {
 	case ifaces.Column:
 		ctx.Round = c1.Round()
-		ctx.Size = c1.Size()
 		ctx.C = sym.NewVariable(c1)
 	case *sym.Expression:
-		board := c1.Board()
 		ctx.C = c1
-		ctx.Size = column.ExprIsOnSameLengthHandles(&board)
 		ctx.Round = wizardutils.LastRoundToEval(c1)
 	}
 
@@ -66,12 +63,13 @@ func IsZeroMask(comp *wizard.CompiledIOP, c, mask any) (ifaces.Column, wizard.Pr
 		}
 	)
 
-	ctx.C, ctx.Round, ctx.Size = wizardutils.AsExpr(c)
+	var size int
+	ctx.C, ctx.Round, size = wizardutils.AsExpr(c)
 	m, roundMask, sizeMask := wizardutils.AsExpr(mask)
 	ctx.Round = max(roundMask, ctx.Round)
 
-	if sizeMask != ctx.Size {
-		utils.Panic("the size of the mask if %v but the column's size is %v", sizeMask, ctx.Size)
+	if sizeMask != size {
+		utils.Panic("the size of the mask if %v but the column's size is %v", sizeMask, size)
 	}
 
 	ctx.Mask = m
@@ -83,16 +81,18 @@ func IsZeroMask(comp *wizard.CompiledIOP, c, mask any) (ifaces.Column, wizard.Pr
 
 func compileIsZeroWithSize(comp *wizard.CompiledIOP, ctx *IsZeroCtx) {
 
+	_, _, size := wizardutils.AsExpr(ctx.C)
+
 	ctx.IsZero = comp.InsertCommit(
 		ctx.Round,
-		ifaces.ColIDf("IS_ZERO_%v_RES", ctx.CtxID),
-		ctx.Size,
+		ifaces.ColIDf("IS_ZERO_%v_RES_%v", ctx.CtxID, ctx.Round),
+		size,
 	)
 
 	ctx.InvOrZero = comp.InsertCommit(
 		ctx.Round,
-		ifaces.ColIDf("IS_ZERO_%v_INVERSE_OR_ZERO", ctx.CtxID),
-		ctx.Size,
+		ifaces.ColIDf("IS_ZERO_%v_INVERSE_OR_ZERO_%v", ctx.CtxID, ctx.Round),
+		size,
 	)
 
 	var mask = any(1)
@@ -123,14 +123,56 @@ func compileIsZeroWithSize(comp *wizard.CompiledIOP, ctx *IsZeroCtx) {
 
 // Run implements the [wizard.ProverAction] interface
 func (ctx *IsZeroCtx) Run(run *wizard.ProverRuntime) {
+
 	var (
-		c         = column.EvalExprColumn(run, ctx.C.Board())
-		invOrZero = smartvectors.BatchInvert(c)
-		isZero    = smartvectors.IsZero(c)
+		c                    = column.EvalExprColumn(run, ctx.C.Board()).IntoRegVecSaveAlloc()
+		offsetRange          = query.MinMaxOffset(ctx.C)
+		minOffset, maxOffset = offsetRange.Min, offsetRange.Max
+	)
+
+	// In case the expression contains offsets, the concrete value of
+	// isZero won't be constrained. However, we still need to pay attention to
+	// the value set in the "non-checked" positions because the limitless prover
+	// might decide to extend the column by padding on the left or the right
+	// using the initial or the final value. In that case, it is safer to use
+	// the first/last non-ignored value.
+	if minOffset < 0 {
+		paddingVal := c[-minOffset]
+		for p := 0; p < -minOffset; p++ {
+			c[p] = paddingVal
+		}
+	}
+
+	if maxOffset > 0 {
+		paddingVal := c[len(c)-maxOffset-1]
+		for p := len(c) - maxOffset; p < len(c); p++ {
+			c[p] = paddingVal
+		}
+	}
+
+	var (
+		cSV       = smartvectors.NewRegular(c)
+		invOrZero = smartvectors.BatchInvert(cSV)
+		isZero    = smartvectors.IsZero(cSV)
 	)
 
 	if ctx.Mask != nil {
+
 		mask := column.EvalExprColumn(run, ctx.Mask.Board())
+
+		if mask.Len() != len(c) {
+			valueOfC := ctx.C.MarshalJSONString()
+			utils.Panic("the size of the mask if %v but the column's size is %v, mask=%v", mask.Len(), len(c), valueOfC)
+		}
+
+		if mask.Len() != invOrZero.Len() {
+			utils.Panic("the size of the mask if %v but inv or zero's size is %v", mask.Len(), invOrZero.Len())
+		}
+
+		if mask.Len() != isZero.Len() {
+			utils.Panic("the size of the mask if %v but the column's size is %v", mask.Len(), isZero.Len())
+		}
+
 		invOrZero = smartvectors.Mul(invOrZero, mask)
 		isZero = smartvectors.Mul(isZero, mask)
 	}

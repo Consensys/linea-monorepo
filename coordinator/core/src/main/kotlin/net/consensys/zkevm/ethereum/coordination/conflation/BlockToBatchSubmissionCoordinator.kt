@@ -8,7 +8,7 @@ import linea.domain.Block
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.errors.ErrorResponse
 import net.consensys.zkevm.coordinator.clients.GetTracesCountersResponse
-import net.consensys.zkevm.coordinator.clients.TracesCountersClientV1
+import net.consensys.zkevm.coordinator.clients.TracesCountersClientV2
 import net.consensys.zkevm.coordinator.clients.TracesServiceErrorType
 import net.consensys.zkevm.domain.BlockCounters
 import net.consensys.zkevm.encoding.BlockEncoder
@@ -21,16 +21,16 @@ import java.util.concurrent.Callable
 
 class BlockToBatchSubmissionCoordinator(
   private val conflationService: ConflationService,
-  private val tracesCountersClient: TracesCountersClientV1,
+  private val tracesCountersClient: TracesCountersClientV2,
   private val vertx: Vertx,
   private val encoder: BlockEncoder,
-  private val log: Logger = LogManager.getLogger(BlockToBatchSubmissionCoordinator::class.java)
+  private val log: Logger = LogManager.getLogger(BlockToBatchSubmissionCoordinator::class.java),
 ) : BlockCreationListener {
   private fun getTracesCounters(
-    block: Block
+    block: Block,
   ): SafeFuture<GetTracesCountersResponse> {
     return tracesCountersClient
-      .rollupGetTracesCounters(block.numberAndHash)
+      .getTracesCounters(block.number)
       .thenCompose { result ->
         when (result) {
           is Err<ErrorResponse<TracesServiceErrorType>> -> {
@@ -56,15 +56,15 @@ class BlockToBatchSubmissionCoordinator(
             tracesCounters = traces.tracesCounters,
             blockRLPEncoded = blockRLPEncoded,
             numOfTransactions = blockEvent.block.transactions.size.toUInt(),
-            gasUsed = blockEvent.block.gasUsed
-          )
+            gasUsed = blockEvent.block.gasUsed,
+          ),
         )
       }.whenException { th ->
         log.error(
           "Failed to conflate block={} errorMessage={}",
           blockEvent.block.number,
           th.message,
-          th
+          th,
         )
       }
 
@@ -76,7 +76,7 @@ class BlockToBatchSubmissionCoordinator(
     return vertx.executeBlocking(
       Callable {
         encoder.encode(block)
-      }
+      },
     )
       .toSafeFuture()
   }

@@ -2,7 +2,6 @@ package plonk
 
 import (
 	"fmt"
-	"os"
 	"path"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -11,12 +10,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"golang.org/x/sync/errgroup"
 )
@@ -29,13 +29,10 @@ import (
 // The alignment is done in a way that the data is padded to power of two length
 // for every circuit instance.
 type CircuitAlignmentInput struct {
-
 	// Name is a unique name for the alignment for identification purposes.
 	Name string
-
 	// Round is the round at which we should call the PLONK solver.
 	Round int
-
 	// DataToCircuitMask is a binary vector which indicates which data should be
 	// given as an input to a PLONK-in-Wizard instance as a public input.
 	//
@@ -43,7 +40,6 @@ type CircuitAlignmentInput struct {
 	// data is not full length then we use InputFiller to compute the missing
 	// values.
 	DataToCircuitMask ifaces.Column
-
 	// DataToCircuit is the actual data to provide as input to PLONK-in-Wizard
 	// instance as public input. It is up to the caller to ensure that the
 	// number of masked elements is nbPublicInputs*nbCircuitInstances, as it is
@@ -53,10 +49,8 @@ type CircuitAlignmentInput struct {
 	//
 	// NB! See the comment for DataToCircuitMask.
 	DataToCircuit ifaces.Column
-
 	// Circuit is the gnark circuit for which we provide the public input.
 	Circuit frontend.Circuit
-
 	// NbCircuitInstances is the number of gnark circuit instances we call. We
 	// have to consider that for every circuit instance the PI column length has
 	// to be padded to a power of two.
@@ -126,12 +120,8 @@ func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 
 	nbPublicInputs, _ := gnarkutil.CountVariables(ci.Circuit)
 
-	if err := ci.checkNbCircuitInvocation(run); err != nil {
-		// Don't use the fatal level here because we want to control the exit code
-		// to be 77.
-		logrus.Errorf("fatal=%v", err)
-		os.Exit(77)
-	}
+	// This call may panic or exit the program
+	ci.checkNbCircuitInvocation(run)
 
 	inputFiller := retrieveInputFiler(ci.InputFillerKey)
 	if inputFiller == nil {
@@ -157,7 +147,6 @@ func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 	witnesses := make([]witness.Witness, ci.NbCircuitInstances)
 	witnessFillers := make([]chan any, ci.NbCircuitInstances)
 	numEffWitnesses := 0
-
 	var err error
 	wg, ctx := errgroup.WithContext(context.Background())
 	for i := range witnesses {
@@ -172,7 +161,8 @@ func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 			return witnesses[ii].Fill(nbPublicInputs, 0, witnessFillers[ii])
 		})
 	}
-	go func() {
+
+	wg.Go(func() error {
 		var filled int
 		for j := 0; j < dataCol.Len(); j++ {
 			mask := maskCol.Get(j)
@@ -182,7 +172,7 @@ func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 			data := dataCol.Get(j)
 			select {
 			case <-ctx.Done():
-				return
+				return nil
 			case witnessFillers[filled/nbPublicInputs] <- data:
 			}
 			filled++
@@ -198,7 +188,7 @@ func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 		for filled < nbPublicInputs*ci.NbCircuitInstances {
 			select {
 			case <-ctx.Done():
-				return
+				return nil
 			case witnessFillers[filled/nbPublicInputs] <- inputFiller(filled/nbPublicInputs, filled%nbPublicInputs):
 			}
 			filled++
@@ -206,7 +196,9 @@ func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 				close(witnessFillers[(filled-1)/nbPublicInputs])
 			}
 		}
-	}()
+
+		return nil
+	})
 
 	if err := wg.Wait(); err != nil {
 		utils.Panic("fill witness: %v", err.Error())
@@ -221,7 +213,6 @@ func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 // from the columns and if it is not long enough, then filled with dummy values.
 // Implements [WitnessAssigner].
 func (ci *CircuitAlignmentInput) Assign(run *wizard.ProverRuntime, i int) (private, public witness.Witness, err error) {
-	// done inside Once, so can always call without overhead
 	ci.prepareWitnesses(run)
 	witnesses := run.State.MustGet(path.Join(ci.Name, witnessRuntimeKey)).([]witness.Witness)
 	return witnesses[i], witnesses[i], nil
@@ -251,9 +242,15 @@ func (ci *CircuitAlignmentInput) checkNbCircuitInvocation(run *wizard.ProverRunt
 	}
 
 	if count > nbPublicInputs*ci.NbCircuitInstances {
-		return fmt.Errorf(
-			"[circuit-alignement] too many inputs circuit=%v nb-public-input-required=%v nb-public-input-per-circuit=%v nb-circuits-available=%v nb-circuit-required=%v",
-			ci.Name, count, nbPublicInputs, ci.NbCircuitInstances, utils.DivCeil(count, nbPublicInputs),
+
+		// This will either panic or exit the program.
+		exit.OnLimitOverflow(
+			nbPublicInputs*ci.NbCircuitInstances,
+			count,
+			fmt.Errorf(
+				"[circuit-alignement] too many inputs circuit=%v nb-public-input-required=%v nb-public-input-per-circuit=%v nb-circuits-available=%v nb-circuit-required=%v",
+				ci.Name, count, nbPublicInputs, ci.NbCircuitInstances, utils.DivCeil(count, nbPublicInputs),
+			),
 		)
 	}
 
@@ -305,6 +302,8 @@ func DefineAlignment(comp *wizard.CompiledIOP, toAlign *CircuitAlignmentInput) *
 			toAlign.PlonkOptions,
 		)
 	)
+
+	pragmas.MarkRightPadded(isActive)
 
 	comp.InsertPlonkInWizard(plonkInWizardQ)
 
@@ -371,7 +370,6 @@ func (a *Alignment) assignMasks(run *wizard.ProverRuntime) {
 		}
 
 		isActiveAssignment[i].SetOne()
-
 		if i%nbPublicInputsPadded < nbPublicInputs {
 			totalAligned++
 		}

@@ -1,11 +1,14 @@
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import styles from "./to-chain.module.scss";
-import SelectNetwork from "@/components/bridge/modal/select-network";
 import { useState } from "react";
 import { useChainStore } from "@/stores";
 import { useChains } from "@/hooks";
 import { Chain } from "@/types";
-import { useIsLoggedIn } from "@/lib/dynamic";
+
+const SelectNetwork = dynamic(() => import("@/components/bridge/modal/select-network"), {
+  ssr: false,
+});
 
 export default function ToChain() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -16,7 +19,6 @@ export default function ToChain() {
 
   const setFromChain = useChainStore.useSetFromChain();
   const setToChain = useChainStore.useSetToChain();
-  const isLoggedIn = useIsLoggedIn();
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
@@ -28,17 +30,12 @@ export default function ToChain() {
       return;
     }
     setToChain(chain);
-
-    if (chain.testnet) {
-      setFromChain(chains.find((c: Chain) => c.testnet && c.layer !== chain.layer));
-    } else {
-      setFromChain(chains.find((c: Chain) => !c.testnet && c.layer !== chain.layer));
-    }
+    setFromChain(chains.find((c: Chain) => c.id === chain.toChainId));
   };
 
   return (
     <>
-      <button onClick={openModal} className={styles["to"]} type="button" disabled={!isLoggedIn}>
+      <button onClick={openModal} className={styles["to"]} type="button">
         <div className={styles["name"]}>To</div>
         <div className={styles["info"]}>
           {toChain?.iconPath && (
@@ -47,12 +44,14 @@ export default function ToChain() {
           <div className={styles["info-value"]}>{toChain?.name}</div>
         </div>
       </button>
-      <SelectNetwork
-        isModalOpen={isModalOpen}
-        onCloseModal={closeModal}
-        networks={chains}
-        onClick={handleSelectNetwork}
-      />
+      {isModalOpen && (
+        <SelectNetwork
+          isModalOpen={isModalOpen}
+          onCloseModal={closeModal}
+          networks={chains}
+          onClick={handleSelectNetwork}
+        />
+      )}
     </>
   );
 }

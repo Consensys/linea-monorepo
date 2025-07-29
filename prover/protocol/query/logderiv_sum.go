@@ -19,9 +19,15 @@ import (
 
 // LogDerivativeSumInput stores the input to the query
 type LogDerivativeSumInput struct {
-	Size        int
-	Numerator   []*sym.Expression // T -> -M, S -> +Filter
-	Denominator []*sym.Expression // S or T -> ({S,T} + X)
+	Parts []LogDerivativeSumPart
+}
+
+// LogDerivativeSumPart is a part of the LogDerivativeSum query.
+type LogDerivativeSumPart struct {
+	Size int
+	Num  *sym.Expression
+	Den  *sym.Expression
+	Name string
 }
 
 // LogDerivativeSum is the context of LogDerivativeSum query.
@@ -32,7 +38,7 @@ type LogDerivativeSumInput struct {
 // D_{i,j} is  the i-th element of the underlying column of  j-th Denominator
 type LogDerivativeSum struct {
 	Round  int
-	Inputs map[int]*LogDerivativeSumInput
+	Inputs LogDerivativeSumInput
 	ID     ifaces.QueryID
 	uuid   uuid.UUID `serde:"omit"`
 }
@@ -48,47 +54,39 @@ func (l LogDerivSumParams) UpdateFS(fs *fiatshamir.State) {
 }
 
 // NewLogDerivativeSum creates the new context LogDerivativeSum.
-func NewLogDerivativeSum(round int, inp map[int]*LogDerivativeSumInput, id ifaces.QueryID) LogDerivativeSum {
+func NewLogDerivativeSum(round int, inp LogDerivativeSumInput, id ifaces.QueryID) LogDerivativeSum {
+
+	if len(inp.Parts) == 0 {
+		utils.Panic("Numerator and Denominator should have the same (no-zero) length, %v", len(inp.Parts))
+	}
 
 	// check the length consistency
-	for key := range inp {
+	for i, part := range inp.Parts {
 
-		if len(inp[key].Numerator) != len(inp[key].Denominator) || len(inp[key].Numerator) == 0 {
-			utils.Panic("Numerator and Denominator should have the same (no-zero) length, %v , %v", len(inp[key].Numerator), len(inp[key].Denominator))
+		if err := part.Num.Validate(); err != nil {
+			utils.Panic(" Numerator[%v] is not a valid expression", i)
 		}
 
-		if inp[key].Size != key {
-			utils.Panic("the size must match the key: key=%v != size=%v", key, inp[key].Size)
+		if rs := column.ColumnsOfExpression(part.Num); len(rs) == 0 {
+			continue
 		}
 
-		for i, num := range inp[key].Numerator {
-			if err := num.Validate(); err != nil {
-				utils.Panic(" Numerator[%v] is not a valid expression", i)
-			}
-
-			if rs := column.ColumnsOfExpression(num); len(rs) == 0 {
-				continue
-			}
-
-			b := num.Board()
-			if key != column.ExprIsOnSameLengthHandles(&b) {
-				utils.Panic("expression size mismatch")
-			}
+		numBoard := part.Num.Board()
+		if part.Size != column.ExprIsOnSameLengthHandles(&numBoard) {
+			utils.Panic("expression size mismatch")
 		}
 
-		for i, den := range inp[key].Denominator {
-			if err := inp[key].Denominator[i].Validate(); err != nil {
-				utils.Panic(" Denominator[%v] is not a valid expression", i)
-			}
+		if err := part.Den.Validate(); err != nil {
+			utils.Panic(" Denominator[%v] is not a valid expression", i)
+		}
 
-			if rs := column.ColumnsOfExpression(den); len(rs) == 0 {
-				continue
-			}
+		if rs := column.ColumnsOfExpression(part.Den); len(rs) == 0 {
+			continue
+		}
 
-			b := den.Board()
-			if key != column.ExprIsOnSameLengthHandles(&b) {
-				utils.Panic("expression size mismatch: qname=%v expression-size=%v expected-size=%v", id, column.ExprIsOnSameLengthHandles(&b), key)
-			}
+		denBoard := part.Den.Board()
+		if part.Size != column.ExprIsOnSameLengthHandles(&denBoard) {
+			utils.Panic("expression size mismatch: qname=%v expression-size=%v expected-size=%v", id, column.ExprIsOnSameLengthHandles(&numBoard), part.Size)
 		}
 	}
 
@@ -121,31 +119,14 @@ func (r LogDerivativeSum) Compute(run ifaces.Runtime) (field.Element, error) {
 		err       error
 		actualSum = field.Zero()
 		resLock   = &sync.Mutex{}
-		inputs    = []struct {
-			Num, Den *sym.Expression
-			Size     int
-		}{}
 	)
 
-	for key := range r.Inputs {
-		for i := range r.Inputs[key].Numerator {
-			inputs = append(inputs, struct {
-				Num  *sym.Expression
-				Den  *sym.Expression
-				Size int
-			}{
-				Num:  r.Inputs[key].Numerator[i],
-				Den:  r.Inputs[key].Denominator[i],
-				Size: r.Inputs[key].Size,
-			})
-		}
-	}
-
-	parallel.Execute(len(inputs), func(start, stop int) {
+	parallel.Execute(len(r.Inputs.Parts), func(start, stop int) {
 
 		for k := start; k < stop; k++ {
 
 			var (
+				inputs = r.Inputs.Parts
 				size   = inputs[k].Size
 				num    = inputs[k].Num
 				den    = inputs[k].Den
@@ -222,7 +203,7 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 
 	if !noNumerator {
 		numerator = column.EvalExprColumn(run, numBoard)
-		numerator, _ = smartvectors.TryReduceSize(numerator)
+		numerator, _ = smartvectors.TryReduceSizeRight(numerator)
 
 		// If the denominator resolves into a constant equal to 1, then
 		// this is identical to not having any denominator. If it is
@@ -243,7 +224,7 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 
 	if !noDenominator {
 		denominator = column.EvalExprColumn(run, denBoard)
-		denominator, _ = smartvectors.TryReduceSize(denominator)
+		denominator, _ = smartvectors.TryReduceSizeRight(denominator)
 
 		for d := range denominator.IterateCompact() {
 			if d.IsZero() {
@@ -297,11 +278,12 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 		)
 
 		for i := range numeratorWindow {
+			fmt.Printf("numeratorWindow[%v] = %v\n", i, numeratorWindow[i].String())
 			res.Add(&res, &numeratorWindow[i])
 		}
 
 		numeratorPadding, numeratorHasPadding := smartvectors.PaddingVal(numerator)
-		if numeratorHasPadding {
+		if numeratorHasPadding && !numeratorPadding.IsZero() {
 
 			var (
 				nbPadding        = numerator.Len() - len(numeratorWindow)
@@ -400,4 +382,21 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 
 func (q LogDerivativeSum) UUID() uuid.UUID {
 	return q.uuid
+}
+
+func fieldAsInt(f field.Element) int {
+
+	if f.IsUint64() {
+		return int(f.Uint64())
+	}
+
+	f_ := f
+	f_.Neg(&f_)
+
+	if f_.IsUint64() {
+		return -int(f_.Uint64())
+	}
+
+	// utils.Panic("unsupported field type: %v", f.String())
+	return 0
 }

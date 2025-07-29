@@ -1,6 +1,7 @@
 package distributed
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"sort"
@@ -16,6 +17,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
+	"github.com/sirupsen/logrus"
 )
 
 // StandardModuleDiscoverer groups modules using two layers. In the first layer,
@@ -31,10 +33,14 @@ type StandardModuleDiscoverer struct {
 	Affinities [][]column.Natural
 	// Predivision indicates that all the inputs column size should be
 	// divided by some values before being added in a [QueryBasedModule].
-	Predivision     int
+	Predivision int
+	// Advices is an optional list of advices for the [QueryBasedModuleDiscoverer].
+	// When used, the discoverer expects that every query-based module is provided
+	// with an advice otherwise, it will panic.
+	Advices         []ModuleDiscoveryAdvice
 	Modules         []*StandardModule
-	ColumnsToModule map[ifaces.Column]ModuleName
-	ColumnsToSize   map[ifaces.Column]int
+	ColumnsToModule map[ifaces.ColID]ModuleName
+	ColumnsToSize   map[ifaces.ColID]int
 }
 
 // QueryBasedModuleDiscoverer tracks modules using DisjointSet.
@@ -42,7 +48,7 @@ type QueryBasedModuleDiscoverer struct {
 	Mutex           *sync.Mutex
 	Modules         []*QueryBasedModule
 	ModuleNames     []ModuleName
-	ColumnsToModule map[ifaces.Column]ModuleName
+	ColumnsToModule map[ifaces.ColID]ModuleName
 	Predivision     int
 }
 
@@ -55,9 +61,9 @@ type StandardModule struct {
 
 // QueryBasedModule represents a set of columns grouped by constraints.
 type QueryBasedModule struct {
-	ModuleName ModuleName
-	Ds         *utils.DisjointSet[column.Natural] // Uses a disjoint set to track relationships among columns.
-	Size       int
+	ModuleName   ModuleName
+	Ds           *utils.DisjointSet[ifaces.ColID] // Uses a disjoint set to track relationships among columns.
+	OriginalSize int
 	// NbConstraintsOfPlonkCirc counts the number of constraints in a Plonk
 	// in wizard module if one is found. If several circuits are stores
 	// the number is the sum for all the circuits where the nb constraint
@@ -72,10 +78,48 @@ type QueryBasedModule struct {
 	// present module.
 	NbInstancesOfPlonkQuery int
 	// NbSegmentCache caches the results of SegmentBoundaries
-	NbSegmentCache      map[unsafe.Pointer][2]int
+	NbSegmentCache      map[unsafe.Pointer][3]int
 	NbSegmentCacheMutex *sync.Mutex
 	Predivision         int
 	HasPrecomputed      bool
+}
+
+// ModuleDiscoveryAdvice is an advice provided by the user and allows having
+// fine-grained control over the assignment of columns to modules and their
+// sizes.
+type ModuleDiscoveryAdvice struct {
+	Column   ifaces.ColID
+	Cluster  ModuleName
+	BaseSize int
+}
+
+// QueryBasedAssignmentStatsRecord is a record of one assignment of one query
+// based module it features information about the padding, the number of
+// assigned rows and the number of columns and the name of the first and the
+// last column in alphabetical order.
+type QueryBasedAssignmentStatsRecord struct {
+	Request                  string
+	ModuleName               ModuleName
+	SegmentSize              int
+	OriginalSize             int
+	NbConstraintsOfPlonkCirc int
+	NbInstancesOfPlonkCirc   int
+	NbInstancesOfPlonkQuery  int
+	NbPrecomputed            int
+	NbColumns                int
+	NbPragmaLeftPadded       int
+	NbPragmaRightPadded      int
+	NbPragmaFullColumn       int
+	NbAssignedLeftPadded     int
+	NbAssignedRightPadded    int
+	NbAssignedFullColumn     int
+	NbAssignedConstantColumn int
+	NbActiveRows             int
+	FirstColumnAlphabetical  ifaces.ColID
+	LastColumnAlphabetical   ifaces.ColID
+	LastLeftPadded           ifaces.ColID
+	LastRightPadded          ifaces.ColID
+	err                      error
 }
 
 // NewQueryBasedDiscoverer initializes a new Discoverer.
@@ -84,14 +128,150 @@ func NewQueryBasedDiscoverer() *QueryBasedModuleDiscoverer {
 		Mutex:           &sync.Mutex{},
 		Modules:         []*QueryBasedModule{},
 		ModuleNames:     []ModuleName{},
-		ColumnsToModule: make(map[ifaces.Column]ModuleName),
+		ColumnsToModule: make(map[ifaces.ColID]ModuleName),
 	}
 }
 
-// Analyze processes scans the comp and generate the modules. It works by
+func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
+	if len(disc.Advices) == 0 {
+		disc.analyzeBasic(comp)
+		return
+	}
+	disc.analyzeWithAdvices(comp)
+}
+
+func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIOP) {
+
+	subDiscover := NewQueryBasedDiscoverer()
+	subDiscover.Predivision = 1
+	subDiscover.Analyze(comp)
+
+	moduleSets := map[ModuleName]*StandardModule{}
+	adviceOfColumn := map[ifaces.ColID]ModuleDiscoveryAdvice{}
+
+	// This gathers the advices in a map indexed by the column ID
+	for _, adv := range disc.Advices {
+		adviceOfColumn[adv.Column] = adv
+		if moduleSets[adv.Cluster] == nil {
+			moduleSets[adv.Cluster] = &StandardModule{
+				ModuleName: adv.Cluster,
+			}
+		}
+	}
+
+	// This maps each query-based module to its advice and adds it to the module
+	// set based on the advice indication.
+	oneNotFound := false
+	for _, qbm := range subDiscover.Modules {
+		found := false
+		for c := range qbm.Ds.Rank {
+			if advice, exists := adviceOfColumn[c]; exists {
+				moduleSets[advice.Cluster].SubModules = append(moduleSets[advice.Cluster].SubModules, qbm)
+				moduleSets[advice.Cluster].NewSizes = append(moduleSets[advice.Cluster].NewSizes, advice.BaseSize)
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			columnList := utils.SortedKeysOf(qbm.Ds.Rank, func(a, b ifaces.ColID) bool { return a < b })
+			logrus.Errorf("Could not find advice for %v, columns=[%v]", qbm.ModuleName, columnList)
+			oneNotFound = true
+		}
+	}
+
+	if oneNotFound {
+		panic("Could not find advice for one of the query-based modules")
+	}
+
+	// This adds the module sets to the discovery in deterministic order
+	moduleNameList := utils.SortedKeysOf(moduleSets, func(a, b ModuleName) bool { return a < b })
+	for _, moduleName := range moduleNameList {
+		disc.Modules = append(disc.Modules, moduleSets[moduleName])
+	}
+
+	// This resizes the modules so that their weights are close to the target
+	// weight.
+	for i := range disc.Modules {
+
+		// weightTotalInitial is the weight of the module using the initial
+		// number of rows.
+		weightTotalInitial := 0
+		// maxNumRows is the number of rows of the "shallowest" submodule of in
+		// group[i]
+		minNumRows := math.MaxInt
+
+		// initializes the newSizes using the number of rows from the initial
+		// comp.
+		for j := range disc.Modules[i].NewSizes {
+			numRows := disc.Modules[i].NewSizes[j]
+			minNumRows = min(minNumRows, numRows)
+			weightTotalInitial += disc.Modules[i].SubModules[j].Weight(comp, numRows)
+		}
+
+		// Computes optimal newSizes by successively dividing by two the numbers
+		// of rows and checks if this brings the total weight of the module to
+		// the target weight.
+		var (
+			bestReduction = 1
+			bestWeight    = weightTotalInitial
+		)
+
+		if weightTotalInitial < disc.TargetWeight {
+			continue
+		}
+
+		for reduction := 2; reduction < minNumRows; reduction *= 2 {
+
+			currWeight := 0
+			for j := range disc.Modules[i].SubModules {
+				numRow := disc.Modules[i].NewSizes[j]
+				if !disc.Modules[i].SubModules[j].HasPrecomputed {
+					numRow /= reduction
+				}
+
+				if numRow < 1 {
+					panic("the 'reduction' is bounded by the min number of rows so it should not be smaller than 1")
+				}
+				currWeight += disc.Modules[i].SubModules[j].Weight(comp, numRow)
+			}
+
+			currDist := utils.Abs(currWeight - disc.TargetWeight)
+			bestDist := utils.Abs(bestWeight - disc.TargetWeight)
+
+			if currDist < bestDist {
+				bestReduction = reduction
+				bestWeight = currWeight
+			}
+		}
+
+		for j := range disc.Modules[i].SubModules {
+			if !disc.Modules[i].SubModules[j].HasPrecomputed {
+				disc.Modules[i].NewSizes[j] /= bestReduction
+			}
+		}
+	}
+
+	disc.ColumnsToModule = make(map[ifaces.ColID]ModuleName)
+	disc.ColumnsToSize = make(map[ifaces.ColID]int)
+
+	for i := range disc.Modules {
+		moduleName := disc.Modules[i].ModuleName
+		for j := range disc.Modules[i].SubModules {
+			subModule := disc.Modules[i].SubModules[j]
+			newSize := disc.Modules[i].NewSizes[j]
+			for colID := range subModule.Ds.Iter() {
+				disc.ColumnsToModule[colID] = moduleName
+				disc.ColumnsToSize[colID] = newSize
+			}
+		}
+	}
+}
+
+// analyzeBasic processes scans the comp and generate the modules. It works by
 // grouping columns that are part of the same query using the [QueryBasedModuleDiscoverer].
 // After that it sorts the generated modules by weight and
-func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
+func (disc *StandardModuleDiscoverer) analyzeBasic(comp *wizard.CompiledIOP) {
 
 	subDiscover := NewQueryBasedDiscoverer()
 	subDiscover.Predivision = disc.Predivision
@@ -100,7 +280,7 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 	groupedByAffinity := groupQBModulesByAffinity(subDiscover.Modules, disc.Affinities)
 
 	sort.Slice(groupedByAffinity, func(i, j int) bool {
-		return weightOfGroupOfQBModules(groupedByAffinity[i]) < weightOfGroupOfQBModules(groupedByAffinity[j])
+		return weightOfGroupOfQBModules(comp, groupedByAffinity[i]) < weightOfGroupOfQBModules(comp, groupedByAffinity[j])
 	})
 
 	var (
@@ -112,7 +292,7 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 		var (
 			groupNext  = groupedByAffinity[i]
-			weightNext = weightOfGroupOfQBModules(groupNext)
+			weightNext = weightOfGroupOfQBModules(comp, groupNext)
 			distPrev   = utils.Abs(disc.TargetWeight - currWeightSum)
 			distNext   = utils.Abs(disc.TargetWeight - currWeightSum - weightNext)
 		)
@@ -150,10 +330,10 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 		// initializes the newSizes using the number of rows from the initial
 		// comp.
 		for j := range groups[i] {
-			numRows := groups[i][j].NumRow()
+			numRows := groups[i][j].NumRow(comp)
 			disc.Modules[i].NewSizes[j] = numRows
 			minNumRows = min(minNumRows, numRows)
-			weightTotalInitial += groups[i][j].Weight(0)
+			weightTotalInitial += groups[i][j].Weight(comp, 0)
 		}
 
 		// Computes optimal newSizes by successively dividing by two the numbers
@@ -168,7 +348,7 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 			currWeight := 0
 			for j := range groups[i] {
-				numRow := groups[i][j].NumRow()
+				numRow := groups[i][j].NumRow(comp)
 				if !groups[i][j].HasPrecomputed {
 					numRow /= reduction
 				}
@@ -176,7 +356,7 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 				if numRow < 1 {
 					panic("the 'reduction' is bounded by the min number of rows so it should not be smaller than 1")
 				}
-				currWeight += groups[i][j].Weight(numRow)
+				currWeight += groups[i][j].Weight(comp, numRow)
 			}
 
 			currDist := utils.Abs(currWeight - disc.TargetWeight)
@@ -193,8 +373,8 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 		}
 	}
 
-	disc.ColumnsToModule = make(map[ifaces.Column]ModuleName)
-	disc.ColumnsToSize = make(map[ifaces.Column]int)
+	disc.ColumnsToModule = make(map[ifaces.ColID]ModuleName)
+	disc.ColumnsToSize = make(map[ifaces.ColID]int)
 
 	for i := range disc.Modules {
 
@@ -205,9 +385,9 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 			subModule := disc.Modules[i].SubModules[j]
 			newSize := disc.Modules[i].NewSizes[j]
 
-			for col := range subModule.Ds.Iter() {
-				disc.ColumnsToModule[col] = moduleName
-				disc.ColumnsToSize[col] = newSize
+			for colID := range subModule.Ds.Iter() {
+				disc.ColumnsToModule[colID] = moduleName
+				disc.ColumnsToSize[colID] = newSize
 			}
 		}
 	}
@@ -244,28 +424,24 @@ func (disc *StandardModuleDiscoverer) NumColumnOf(moduleName ModuleName) int {
 
 // ModuleOf returns the module name for a given column“
 func (disc *StandardModuleDiscoverer) ModuleOf(col column.Natural) ModuleName {
-	return disc.ColumnsToModule[col]
+	res, found := disc.ColumnsToModule[col.GetColID()]
+	if !found {
+		utils.Panic("column not found, col: %q, disc: %v", col.GetColID(), disc.ColumnsToModule)
+	}
+	return res
 }
 
 // NewSizeOf returns the size (length) of a column.
 func (disc *StandardModuleDiscoverer) NewSizeOf(col column.Natural) int {
-	return disc.ColumnsToSize[col]
+	return disc.ColumnsToSize[col.GetColID()]
 }
 
-// SegmentBoundaryOfColumn returns the starting point and the ending point of the
-// segmentation of column. The implementation works by identifying the corresponding
-// [StandardModule] and then the corresponding inner [QueryBasedModule]. The function
-// will then scans the assignment of the columns in the query based module and examine
-// their padding to return the boundaries of the segmented area.
-//
-// To clarify, the segmentation of the column corresponds to the part that will be
-// kept by the segmentation process of the column (e.g. the area covered by the
-// reunion of all the segments). The rest of the assignment corresponds to padding.
-func (disc *StandardModuleDiscoverer) SegmentBoundaryOf(run *wizard.ProverRuntime, col column.Natural) (int, int) {
+// QbmOf returns the query-based module associated with a column and the associated new size.
+func (disc *StandardModuleDiscoverer) QbmOf(col column.Natural) (*QueryBasedModule, int) {
 
 	var (
 		rootCol          = column.RootParents(col).(column.Natural)
-		stdModuleName    = disc.ColumnsToModule[col]
+		stdModuleName    = disc.ColumnsToModule[col.GetColID()]
 		stdModule        *StandardModule
 		queryBasedModule *QueryBasedModule
 		segmentSize      int
@@ -279,14 +455,28 @@ func (disc *StandardModuleDiscoverer) SegmentBoundaryOf(run *wizard.ProverRuntim
 	}
 
 	for i := range stdModule.SubModules {
-		if stdModule.SubModules[i].Ds.Has(rootCol) {
+		if stdModule.SubModules[i].Ds.Has(rootCol.ID) {
 			segmentSize = stdModule.NewSizes[i]
 			queryBasedModule = stdModule.SubModules[i]
 			break
 		}
 	}
 
-	return queryBasedModule.SegmentBoundaries(run, segmentSize)
+	return queryBasedModule, segmentSize
+}
+
+// SegmentBoundaryOfColumn returns the starting point and the ending point of the
+// segmentation of column. The implementation works by identifying the corresponding
+// [StandardModule] and then the corresponding inner [QueryBasedModule]. The function
+// will then scans the assignment of the columns in the query based module and examine
+// their padding to return the boundaries of the segmented area.
+//
+// To clarify, the segmentation of the column corresponds to the part that will be
+// kept by the segmentation process of the column (e.g. the area covered by the
+// reunion of all the segments). The rest of the assignment corresponds to padding.
+func (disc *StandardModuleDiscoverer) SegmentBoundaryOf(run *wizard.ProverRuntime, col column.Natural) (int, int, paddingInformation) {
+	qbm, segmentSize := disc.QbmOf(col)
+	return qbm.SegmentBoundaries(run, segmentSize)
 }
 
 // Analyze processes columns and assigns them to modules.
@@ -340,7 +530,7 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 	disc.Mutex.Lock()
 	defer disc.Mutex.Unlock()
 
-	disc.ColumnsToModule = make(map[ifaces.Column]ModuleName)
+	disc.ColumnsToModule = make(map[ifaces.ColID]ModuleName)
 
 	moduleCandidates := []*QueryBasedModule{}
 
@@ -424,15 +614,11 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 		case query.LogDerivativeSum:
 
-			sizes := utils.SortedKeysOf(q.Inputs, func(a, b int) bool { return a < b })
-			for _, size := range sizes {
-				inpForSize := q.Inputs[size]
-				for i := range inpForSize.Numerator {
-					colNums := column.ColumnsOfExpression(inpForSize.Numerator[i])
-					colDens := column.ColumnsOfExpression(inpForSize.Denominator[i])
-					rootNums, rootDens := rootsOfColumns(colNums), rootsOfColumns(colDens)
-					toGroup = append(toGroup, append(rootNums, rootDens...))
-				}
+			for _, part := range q.Inputs.Parts {
+				colNums := column.ColumnsOfExpression(part.Num)
+				colDens := column.ColumnsOfExpression(part.Den)
+				rootNums, rootDens := rootsOfColumns(colNums), rootsOfColumns(colDens)
+				toGroup = append(toGroup, append(rootNums, rootDens...))
 			}
 
 		// Note: this is case is already super-seded by our handling of the permutation
@@ -477,9 +663,11 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 		hasPrecomputed := false
 
-		for col := range module.Ds.Iter() {
-			disc.ColumnsToModule[col] = module.ModuleName
-			hp := col.Status() == column.Precomputed || col.Status() == column.VerifyingKey
+		for colID := range module.Ds.Iter() {
+			disc.ColumnsToModule[colID] = module.ModuleName
+			status := comp.Columns.Status(colID)
+
+			hp := status == column.Precomputed || status == column.VerifyingKey
 			hasPrecomputed = hp || hasPrecomputed
 		}
 
@@ -487,7 +675,7 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 		if !hasPrecomputed {
 			module.Predivision = disc.Predivision
 		}
-		module.mustHaveConsistentLength()
+		module.mustHaveConsistentLength(comp)
 	}
 }
 
@@ -510,16 +698,21 @@ func (disc *QueryBasedModuleDiscoverer) CreateModule(columns []column.Natural) *
 		colID = "default" // columns is empty
 	}
 
+	columnIDs := make([]ifaces.ColID, len(columns))
+	for i, c := range columns {
+		columnIDs[i] = c.GetColID()
+	}
+
 	module := &QueryBasedModule{
 		ModuleName:          ModuleName(fmt.Sprintf("Module_%d_%s", len(disc.Modules), colID)),
-		Ds:                  utils.NewDisjointSetFromList(columns),
-		NbSegmentCache:      make(map[unsafe.Pointer][2]int),
+		Ds:                  utils.NewDisjointSetFromList(columnIDs),
+		NbSegmentCache:      make(map[unsafe.Pointer][3]int),
 		NbSegmentCacheMutex: &sync.Mutex{},
 	}
 
-	for i := 0; i < len(columns); i++ {
-		for j := i + 1; j < len(columns); j++ {
-			module.Ds.Union(columns[i], columns[j])
+	for i := 0; i < len(columnIDs); i++ {
+		for j := i + 1; j < len(columnIDs); j++ {
+			module.Ds.Union(columnIDs[i], columnIDs[j])
 		}
 	}
 
@@ -577,6 +770,11 @@ func (disc *QueryBasedModuleDiscoverer) GroupColumns(
 
 	var assignedModule *QueryBasedModule
 
+	columnIDs := make([]ifaces.ColID, len(columns))
+	for i, c := range columns {
+		columnIDs[i] = c.GetColID()
+	}
+
 	// Merge if necessary
 	if len(overlappingModules) > 0 {
 
@@ -584,7 +782,7 @@ func (disc *QueryBasedModuleDiscoverer) GroupColumns(
 		assignedModule.NbConstraintsOfPlonkCirc += nbConstraintsOfPlonkCirc
 		assignedModule.NbInstancesOfPlonkCirc += nbInstancesOfPlonkCirc
 		assignedModule.NbInstancesOfPlonkQuery += nbInstancesOfPlonkQuery
-		assignedModule.Ds.AddList(columns)
+		assignedModule.Ds.AddList(columnIDs)
 
 	} else {
 
@@ -613,45 +811,150 @@ func (disc *QueryBasedModuleDiscoverer) GroupColumns(
 //
 // Beside we consider that constants columns have a density of 0, and the
 // function will return 0, 0 if all columns in the module are constants.
-func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmentSize int) (int, int) {
+func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmentSize int) (int, int, paddingInformation) {
 
 	mod.NbSegmentCacheMutex.Lock()
 	if res, ok := mod.NbSegmentCache[unsafe.Pointer(run)]; ok {
 		mod.NbSegmentCacheMutex.Unlock()
-		return res[0], res[1]
+		return res[0], res[1], paddingInformation(res[2])
 	}
 	mod.NbSegmentCacheMutex.Unlock()
 
 	var (
-		resMaxDensity     = 0
-		size              int
-		areAnyNonRegular  = false
-		areAnyLeftPadded  = false
-		areAnyRightPadded = false
-		areAnyFull        = false
-		firstLeftPadded   column.Natural
-		firstRightPadded  column.Natural
-		firstColumn       column.Natural
+		stats = mod.RecordAssignmentStats(run)
 	)
 
-	for col := range mod.Ds.Iter() {
+	if stats.err != nil {
+		panic(stats.err)
+	}
+
+	// As a sanity-check, there should not be contradictory pragmas
+	if utils.Ternary(stats.NbPragmaFullColumn > 0, 1, 0)+
+		utils.Ternary(stats.NbPragmaLeftPadded > 0, 1, 0)+
+		utils.Ternary(stats.NbPragmaRightPadded > 0, 1, 0) > 1 {
+
+		utils.Panic("there should not be contradictory pragmas, stats: %++v", stats)
+	}
+
+	// When all the assigned columns are constants (or there is no column)
+	if stats.NbActiveRows == 0 {
+		start, stop := 0, 0
+		mod.NbSegmentCacheMutex.Lock()
+		defer mod.NbSegmentCacheMutex.Unlock()
+		mod.NbSegmentCache[unsafe.Pointer(run)] = [3]int{start, stop, constantPaddingInformation}
+		return start, stop, constantPaddingInformation
+	}
+
+	if stats.NbPragmaRightPadded+stats.NbPragmaLeftPadded == 0 {
+		// In theory, the first and the second condition are equivalent. This is a
+		// double-check
+		if stats.NbAssignedLeftPadded+stats.NbAssignedRightPadded == 0 ||
+			stats.NbAssignedFullColumn+stats.NbAssignedConstantColumn == stats.NbColumns ||
+			stats.NbPragmaFullColumn > 0 {
+
+			start, stop := 0, stats.OriginalSize
+			mod.NbSegmentCacheMutex.Lock()
+			defer mod.NbSegmentCacheMutex.Unlock()
+			mod.NbSegmentCache[unsafe.Pointer(run)] = [3]int{start, stop, noPaddingInformation}
+			return start, stop, noPaddingInformation
+		}
+	}
+
+	// If no pragma are given, we expect that there are not simultaneously
+	// assigned left and right padded columns. Otherwise, we cannot guess which
+	// case to refer to.
+	if stats.NbPragmaLeftPadded == 0 &&
+		stats.NbPragmaRightPadded == 0 &&
+		stats.NbAssignedLeftPadded > 0 &&
+		stats.NbAssignedRightPadded > 0 {
+		utils.Panic("there should not be simultaneously assigned left and right padded columns, stats: %++v", stats)
+	}
+
+	var (
+		localNbSegment     = utils.DivCeil(stats.NbActiveRows, segmentSize)
+		totalSegmentedArea = segmentSize * localNbSegment
+	)
+
+	// In theory, the condition with the pragma is redundant based on the sanity
+	// check we are doing.
+	if stats.NbPragmaRightPadded > 0 || stats.NbAssignedRightPadded > 0 {
+		start, stop := 0, totalSegmentedArea
+		mod.NbSegmentCacheMutex.Lock()
+		defer mod.NbSegmentCacheMutex.Unlock()
+		mod.NbSegmentCache[unsafe.Pointer(run)] = [3]int{start, stop, rightPaddingInformation}
+		return start, stop, rightPaddingInformation
+	}
+
+	// In theory, the condition with the pragma is redundant based on the sanity
+	// check we are doing.
+	if stats.NbPragmaLeftPadded > 0 || stats.NbAssignedLeftPadded > 0 {
+		start, stop := stats.OriginalSize-totalSegmentedArea, stats.OriginalSize
+		mod.NbSegmentCacheMutex.Lock()
+		defer mod.NbSegmentCacheMutex.Unlock()
+		mod.NbSegmentCache[unsafe.Pointer(run)] = [3]int{start, stop, leftPaddingInformation}
+		return start, stop, leftPaddingInformation
+	}
+
+	utils.Panic("unreachable: stats: %++v\n", stats)
+	return 0, 0, noPaddingInformation // unreachable return
+}
+
+// RecordAssignmentStats scans the assignment of the module and reports stats
+// related to the columns and their padding. It returns a list of records for
+// each query-based submodule.
+func (mod *StandardModule) RecordAssignmentStats(run *wizard.ProverRuntime) (qbmRecords []QueryBasedAssignmentStatsRecord) {
+	for _, submod := range mod.SubModules {
+		qbmRecords = append(qbmRecords, submod.RecordAssignmentStats(run))
+	}
+	return qbmRecords
+}
+
+// RecordAssignmentStats scans the assignment of the module and reports stats
+// related to the columns and their padding.
+func (mod *QueryBasedModule) RecordAssignmentStats(run *wizard.ProverRuntime) QueryBasedAssignmentStatsRecord {
+
+	var (
+		colIDs = utils.SortedKeysOf(mod.Ds.Parent, func(a, b ifaces.ColID) bool { return a < b })
+		res    = QueryBasedAssignmentStatsRecord{
+			ModuleName:               mod.ModuleName,
+			SegmentSize:              mod.OriginalSize,
+			NbConstraintsOfPlonkCirc: mod.NbConstraintsOfPlonkCirc,
+			NbInstancesOfPlonkCirc:   mod.NbInstancesOfPlonkCirc,
+			NbInstancesOfPlonkQuery:  mod.NbInstancesOfPlonkQuery,
+			FirstColumnAlphabetical:  colIDs[0],
+			LastColumnAlphabetical:   colIDs[len(colIDs)-1],
+			NbColumns:                len(colIDs),
+		}
+		size        int
+		firstColumn column.Natural
+	)
+
+	for _, colID := range colIDs {
+
+		col := run.Spec.Columns.GetHandle(colID).(column.Natural)
 
 		if size == 0 {
 			size = col.Size()
 			firstColumn = col
+			res.OriginalSize = size
 		}
 
 		// This should not happen for a well-formed module, query-based modules
 		// are expected to contain the same size for all columns.
 		if size != col.Size() {
-			utils.Panic("all columns must have the same size, first=%v col=%v", firstColumn.ID, col.ID)
+			res.err = errors.Join(res.err, fmt.Errorf("columns must have the same size, first=%v col=%v, sizeFirst=%v sizeCol=%v", firstColumn.ID, col.ID, size, col.Size()))
+			continue
 		}
 
 		// As the function is meant to be called **during** the bootstrapping
 		// compilation, we cannot expect all columns to be available at this
 		// point. This is for instance the case with the lookup "M" columns.
-		if !run.HasColumn(col.ID) {
+		if !run.HasColumn(colID) {
 			continue
+		}
+
+		if run.Spec.Precomputed.Exists(colID) {
+			res.NbPrecomputed++
 		}
 
 		var (
@@ -665,99 +968,102 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 			hasRightPaddedPragma = pragmas.IsRightPadded(col)
 		)
 
-		if hasFullColumnPragma {
-			areAnyFull = true
-			resMaxDensity = density
-			break
+		switch {
+
+		case hasFullColumnPragma:
+
+			res.NbPragmaFullColumn++
+			// This sets the nb active row to the maximal possible size for the
+			// module.
+			res.NbActiveRows = col.Size()
+
+		case hasLeftPaddedPragma:
+
+			// The user might provide non-left padded columns to the module but
+			// then the wizard package is responsible for restructuring the
+			// column so that it has the right shape within the assignment.
+			if !isLeftPadded && density > 0 {
+				res.err = errors.Join(res.err, fmt.Errorf("a left padded column must be left padded, col=%v", colID))
+				continue
+			}
+
+			res.NbPragmaLeftPadded++
+			res.LastLeftPadded = colID
+
+		case hasRightPaddedPragma:
+
+			// The user might provde non-right padded columns to the module but
+			// then the wizard package is responsible for restructuring the
+			// column so that it has the right shape within the assignment.
+			if !isRightPadded && density > 0 {
+				res.err = errors.Join(fmt.Errorf("a right padded column must be right padded, col=%v", colID))
+				continue
+			}
+
+			res.NbPragmaRightPadded++
+			res.LastRightPadded = colID
 		}
 
-		if hasLeftPaddedPragma {
-			areAnyLeftPadded = true
-			firstLeftPadded = col
-		}
+		switch {
 
-		if hasRightPaddedPragma {
-			areAnyRightPadded = true
-			firstRightPadded = col
-		}
+		// This case must be checked first because, the values of isLeftPadded
+		// and isRightPadded are meaningless in that situation.
+		case density == 0:
 
-		if isRightPadded && isLeftPadded {
+			res.NbAssignedConstantColumn++
+
+		// This indicates that the column is assigned to a [Regular] vector,
+		// most of the time, this indicates a sub-optimal assignment but this
+		// is not a relevant indication for deducing the number of active row
+		// and the padding direction of the module (unless the pragma is
+		// activated).
+		//
+		// In case, all columns are either constant or full, the approach is
+		// flawed and is "fixed" after the loop.
+		case isRightPadded && isLeftPadded:
+
+			res.NbAssignedFullColumn++
+			// this avoid using the density to evaluate the density of the
+			// module
 			continue
-		} else {
-			areAnyNonRegular = true
+
+		case isRightPadded:
+
+			res.NbAssignedRightPadded++
+			res.LastRightPadded = colID
+
+		case isLeftPadded:
+
+			res.NbAssignedLeftPadded++
+			res.LastLeftPadded = colID
+
+		case !isRightPadded && !isLeftPadded && density > 0:
+
+			res.err = errors.Join(fmt.Errorf("column is neither left nor right padded, col=%v", colID))
+			continue
 		}
 
-		// It is important to exclude constant column from toggling up the
-		// areAnyLeftPadded flag. Otherwise, the panic condition stating that
-		// there should not be both left and right padded columns will be
-		// activated when we mix right-padded with a constant column.
-		if isRightPadded && density > 0 {
-			areAnyRightPadded = true
-			firstLeftPadded = col
-		}
-
-		if isLeftPadded {
-			areAnyLeftPadded = true
-			firstRightPadded = col
-		}
-
-		if !isRightPadded && !isLeftPadded {
-			utils.Panic("column is neither left nor right padded, col=%v", col.ID)
-		}
-
-		if density > resMaxDensity {
-			resMaxDensity = density
+		if density > res.NbActiveRows {
+			res.NbActiveRows = density
 		}
 	}
 
-	if !areAnyNonRegular || areAnyFull {
-		start, stop := 0, size
-		mod.NbSegmentCacheMutex.Lock()
-		defer mod.NbSegmentCacheMutex.Unlock()
-		mod.NbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
-		return start, stop
+	// This covers for the case where there are only constant and/or full
+	// columns in the module. In that case, the above loop does not give the
+	// correct result. A special is when the module is explicitly highlighted
+	// as padded with a pragma. In that situation, the number of active rows
+	// is zero.
+	if res.NbActiveRows == 0 && res.NbAssignedFullColumn > 0 && res.NbPragmaLeftPadded+res.NbPragmaRightPadded == 0 {
+		res.NbActiveRows = size
 	}
 
-	if resMaxDensity == 0 {
-		start, stop := 0, 0
-		mod.NbSegmentCacheMutex.Lock()
-		defer mod.NbSegmentCacheMutex.Unlock()
-		mod.NbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
-		return start, stop
-	}
-
-	if areAnyLeftPadded && areAnyRightPadded {
-		utils.Panic("the module cannot contain at the same time left and right padded columns, oneLeftPadded=%v, oneRightPadded=%v", firstLeftPadded.ID, firstRightPadded.ID)
-	}
-
-	var (
-		localNbSegment     = utils.DivCeil(resMaxDensity, segmentSize)
-		totalSegmentedArea = segmentSize * localNbSegment
-	)
-
-	if areAnyRightPadded {
-		start, stop := 0, totalSegmentedArea
-		mod.NbSegmentCacheMutex.Lock()
-		defer mod.NbSegmentCacheMutex.Unlock()
-		mod.NbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
-		return start, stop
-	}
-
-	if areAnyLeftPadded {
-		start, stop := size-totalSegmentedArea, size
-		mod.NbSegmentCacheMutex.Lock()
-		defer mod.NbSegmentCacheMutex.Unlock()
-		mod.NbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
-		return start, stop
-	}
-
-	panic("unreachable")
+	return res
 }
 
 // Nilify a module. It empties its maps and sets its size to 0.
 func (module *QueryBasedModule) Nilify() {
 	module.Ds.Reset()
-	module.Size = 0
+	module.OriginalSize = 0
 	module.NbConstraintsOfPlonkCirc = 0
 	module.NbInstancesOfPlonkCirc = 0
 	module.NbInstancesOfPlonkQuery = 0
@@ -766,7 +1072,7 @@ func (module *QueryBasedModule) Nilify() {
 // HasOverlap checks if a module shares at least one column with a set of columns.
 func (module *QueryBasedModule) HasOverlap(columns []column.Natural) bool {
 	for _, col := range columns {
-		if module.Ds.Has(col) {
+		if module.Ds.Has(col.ID) {
 			return true
 		}
 	}
@@ -778,10 +1084,10 @@ func (module *QueryBasedModule) HasOverlap(columns []column.Natural) bool {
 // optional "withNumRow" arguments to let the caller use a custom hypothetical value for
 // [nbRows] in the calculation. If withNumRow=0, then the function uses the actual
 // number of rows.
-func (module *QueryBasedModule) Weight(withNumRow int) int {
+func (module *QueryBasedModule) Weight(comp *wizard.CompiledIOP, withNumRow int) int {
 
 	var (
-		numRow             = module.NumRow()
+		numRow             = module.NumRow(comp)
 		numCol             = module.NumColumn()
 		numOfPlonkInstance = module.NbInstancesOfPlonkCirc
 	)
@@ -799,35 +1105,37 @@ func (module *QueryBasedModule) Weight(withNumRow int) int {
 }
 
 // Weight returns the total weight of the module
-func (module *StandardModule) Weight() int {
+func (module *StandardModule) Weight(comp *wizard.CompiledIOP) int {
 	weight := 0
 	for i := range module.SubModules {
 		numRow := module.NewSizes[i]
-		weight += module.SubModules[i].Weight(numRow)
+		weight += module.SubModules[i].Weight(comp, numRow)
 	}
 	return weight
 }
 
 // NumRow returns the number of rows for the module
-func (module *QueryBasedModule) NumRow() int {
-	if module.Size == 0 {
-		for col := range module.Ds.Iter() {
-			module.Size = col.Size()
+func (module *QueryBasedModule) NumRow(comp *wizard.CompiledIOP) int {
+	if module.OriginalSize == 0 {
 
+		for colID := range module.Ds.Iter() {
+
+			colSize := comp.Columns.GetSize(colID)
+			module.OriginalSize = colSize
 			if module.HasPrecomputed {
 				break
 			}
 
-			if module.Predivision > col.Size() || module.Predivision == 0 {
+			if module.Predivision > colSize || module.Predivision == 0 {
 				break
 			}
 
-			module.Size /= module.Predivision
+			module.OriginalSize /= module.Predivision
 			break
 		}
 	}
 
-	return module.Size
+	return module.OriginalSize
 }
 
 // NumColumn returns the number of columns for the module
@@ -868,7 +1176,7 @@ func (disc *QueryBasedModuleDiscoverer) ModuleOf(col column.Natural) ModuleName 
 	disc.Mutex.Lock()
 	defer disc.Mutex.Unlock()
 
-	if moduleName, exists := disc.ColumnsToModule[col]; exists {
+	if moduleName, exists := disc.ColumnsToModule[col.ID]; exists {
 		return moduleName
 	}
 	return ""
@@ -902,17 +1210,20 @@ func rootsOfColumns(cols []ifaces.Column) []column.Natural {
 
 // audit checks that all the columns taking part in the [QueryBasedModule] have
 // the same length. It panics
-func (m *QueryBasedModule) mustHaveConsistentLength() {
+func (m *QueryBasedModule) mustHaveConsistentLength(comp *wizard.CompiledIOP) {
 
 	size := -1
 
-	for col := range m.Ds.Iter() {
+	for colID := range m.Ds.Iter() {
+
+		colSize := comp.Columns.GetSize(colID)
+
 		if size == -1 {
-			size = col.Size()
+			size = colSize
 		}
 
-		if size != col.Size() {
-			utils.Panic("col=%v does not have a consistent size %v != %v", col.ID, size, col.Size())
+		if size != colSize {
+			utils.Panic("col=%v does not have a consistent size %v != %v", colID, size, colSize)
 		}
 	}
 }
@@ -939,7 +1250,7 @@ func groupQBModulesByAffinity(qbModules []*QueryBasedModule, affinities [][]colu
 
 			for k := range aff {
 				for qbm := range sets[i].Iter() {
-					if qbm.Ds.Has(aff[k]) {
+					if qbm.Ds.Has(aff[k].ID) {
 						isSetMatched = true
 						continue
 					}
@@ -983,10 +1294,10 @@ func groupQBModulesByAffinity(qbModules []*QueryBasedModule, affinities [][]colu
 	return groups
 }
 
-func weightOfGroupOfQBModules(group []*QueryBasedModule) int {
+func weightOfGroupOfQBModules(comp *wizard.CompiledIOP, group []*QueryBasedModule) int {
 	var weight int
 	for i := range group {
-		weight += group[i].Weight(0)
+		weight += group[i].Weight(comp, 0)
 	}
 	return weight
 }
@@ -997,18 +1308,18 @@ func weightOfGroupOfQBModules(group []*QueryBasedModule) int {
 type LPPSegmentBoundaryCalculator struct {
 	Disc     *StandardModuleDiscoverer
 	LPPArity int
-	Cached   map[*wizard.ProverRuntime]map[ifaces.Column][2]int
+	Cached   map[*wizard.ProverRuntime]map[ifaces.ColID][2]int
 }
 
 func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRuntime, col column.Natural) (int, int) {
 
 	var (
-		module      = ls.Disc.ModuleOf(col)
-		moduleNames = ls.Disc.ModuleList()
-		nbSegment   = -1
-		start, stop = ls.Disc.SegmentBoundaryOf(run, col)
-		newSize     = ls.Disc.NewSizeOf(col)
-		fullSize    = col.Size()
+		module                   = ls.Disc.ModuleOf(col)
+		moduleNames              = ls.Disc.ModuleList()
+		nbSegment                = -1
+		start, stop, paddingInfo = ls.Disc.SegmentBoundaryOf(run, col)
+		sizeOfSegment            = ls.Disc.NewSizeOf(col)
+		fullSize                 = col.Size()
 	)
 
 	for i := range ls.Disc.Modules {
@@ -1025,23 +1336,46 @@ func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRunt
 		nbSegment = NbSegmentOfModule(run, ls.Disc, moduleNames[s0:s1])
 	}
 
-	newLen := nbSegment * newSize
+	// NewLen correspond to the sum of the size of all the segments that will be
+	// generated for the provided column.
+	newLen := nbSegment * sizeOfSegment
 
 	// The newLen cannot be smaller than the stop-start because the number of LPP
 	// segment for a column is always larger than the number of GL segments. This
 	// is a consequence of the fact that LPP modules are aggregates of GL modules
 	// and #moduleLpp.segments = max_i(#moduleGL_i.segments)
 	if newLen < stop-start {
-		utils.Panic("newLen=%v, stop=%v, start=%v", newLen, stop, start)
+		utils.Panic("newLen=%v, stop=%v, start=%v, col=%v", newLen, stop, start, col.ID)
+	}
+
+	// This corresponds to the OOB case. In that situation, we have to resolve
+	// the padding of the corresponding QBM to deduce the exact range to return.
+	// The padding is left-wise, we will return size-newLen:size and 0:newLen if
+	// the module is right padded. In case the module is "full", we panic as
+	// there are no clear ways to guess what range to return.
+	if newLen > fullSize {
+
+		switch paddingInfo {
+		case noPaddingInformation:
+			qbm, _ := ls.Disc.QbmOf(col)
+			utils.Panic("cannot guess how to pad the column, you may want to recheck your module grouping because the current one is not padded but grouped with padded modules, newLen=%v, stop=%v, start=%v, col=%v, qbm=%v module=%v", newLen, stop, start, col.ID, qbm.ModuleName, module)
+		case constantPaddingInformation:
+			return 0, 0 // There should not be anyway to end up in that situation
+		case leftPaddingInformation:
+			return fullSize - newLen, fullSize
+		case rightPaddingInformation:
+			return 0, newLen
+		}
+
+		panic("unreachable")
 	}
 
 	// Everything will be used. The case where newLen < stop-start is impossible due
 	// to the above sanity-check. If newLen > stop-start, then it means we need to
-	// extend the column (this is the OOB case in the [SegmentOfColumn] functions
-	// and we do not support that).
+	// extend the column. In the current situation, we only handle the case
 	if start == 0 && stop == fullSize {
 		if stop != newLen {
-			utils.Panic("stop=%v, nbSegment=%v, newSize=%v, newLen=%v", stop, nbSegment, newSize, newLen)
+			utils.Panic("start=%v stop=%v, nbSegment=%v, newSize=%v, newLen=%v, col=%v", start, stop, nbSegment, sizeOfSegment, newLen, col.ID)
 		}
 		return start, stop
 	}
@@ -1054,6 +1388,6 @@ func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRunt
 		return fullSize - newLen, fullSize
 	}
 
-	utils.Panic("start=%v, stop=%v, nbSegment=%v, newSize=%v, newLen=%v", start, stop, nbSegment, newSize, newLen)
+	utils.Panic("start=%v, stop=%v, nbSegment=%v, newSize=%v, newLen=%v, col=%v", start, stop, nbSegment, sizeOfSegment, newLen, col.ID)
 	return -1, -1 // Unreachable
 }

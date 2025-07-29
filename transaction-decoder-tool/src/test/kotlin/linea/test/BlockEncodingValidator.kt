@@ -1,6 +1,7 @@
 package linea.test
 
 import io.vertx.core.Vertx
+import linea.blob.BlobCompressorVersion
 import linea.blob.GoBackedBlobCompressor
 import linea.domain.Block
 import linea.domain.CommonDomainFunctions
@@ -8,7 +9,6 @@ import linea.domain.toBesu
 import linea.rlp.BesuRlpDecoderAsyncVertxImpl
 import linea.rlp.BesuRlpMainnetEncoderAsyncVertxImpl
 import linea.rlp.RLP
-import net.consensys.linea.blob.BlobCompressorVersion
 import net.consensys.linea.blob.BlobDecompressorVersion
 import net.consensys.linea.blob.GoNativeBlobDecompressorFactory
 import net.consensys.zkevm.PeriodicPollingService
@@ -26,13 +26,13 @@ val BLOB_COMPRESSOR_SIZE: UInt = 100u * 1024u * 1024U
 
 class BlockEncodingValidator(
   val vertx: Vertx,
-  val compressorVersion: BlobCompressorVersion = BlobCompressorVersion.V1_0_1,
-  val decompressorVersion: BlobDecompressorVersion = BlobDecompressorVersion.V1_1_1,
+  val compressorVersion: BlobCompressorVersion = BlobCompressorVersion.V1_2,
+  val decompressorVersion: BlobDecompressorVersion = BlobDecompressorVersion.V1_2_0,
   val blobSizeLimitBytes: UInt = BLOB_COMPRESSOR_SIZE,
-  val log: Logger = LogManager.getLogger(BlockEncodingValidator::class.java)
+  val log: Logger = LogManager.getLogger(BlockEncodingValidator::class.java),
 ) : PeriodicPollingService(vertx, pollingIntervalMs = 1.milliseconds.inWholeMilliseconds, log = log) {
 
-  val compressor = GoBackedBlobCompressor.getInstance(compressorVersion, blobSizeLimitBytes)
+  val compressor = GoBackedBlobCompressor.getInstance(compressorVersion, blobSizeLimitBytes.toInt())
   val decompressor = GoNativeBlobDecompressorFactory.getInstance(decompressorVersion)
   val rlpEncoder = BesuRlpMainnetEncoderAsyncVertxImpl(vertx)
   val rlpMainnetDecoder = BesuRlpDecoderAsyncVertxImpl.mainnetDecoder(vertx)
@@ -55,7 +55,7 @@ class BlockEncodingValidator(
         if (unMatchingBlocks.isEmpty()) {
           log.info(
             "all blocks encoding/decoding match: blocks={}",
-            CommonDomainFunctions.blockIntervalString(blocks.first().number, blocks.last().number)
+            CommonDomainFunctions.blockIntervalString(blocks.first().number, blocks.last().number),
           )
         } else {
           unMatchingBlocks.forEach { (expected, actual) ->
@@ -63,7 +63,7 @@ class BlockEncodingValidator(
               "block encoding/decoding mismatch: block={} \nexpected={} \nactual={}",
               expected.header.number,
               expected,
-              actual
+              actual,
             )
           }
         }
@@ -82,7 +82,7 @@ class BlockEncodingValidator(
     }
     log.info(
       "compression validation blocks={} started",
-      CommonDomainFunctions.blockIntervalString(blocks.first().number, blocks.last().number)
+      CommonDomainFunctions.blockIntervalString(blocks.first().number, blocks.last().number),
     )
     val besuBlocks = blocks.map { it.toBesu() }
     val originalBlockInterval = CommonDomainFunctions.blockIntervalString(blocks.first().number, blocks.last().number)
@@ -98,7 +98,7 @@ class BlockEncodingValidator(
         assertThat(decompressedBlocks.size).isEqualTo(besuBlocks.size)
           .withFailMessage(
             // this can happen if not all blocks fit into compressor limit
-            "originalBlocks=$originalBlockInterval decompressedBlocks.size=${decompressedBlocks.size} != "
+            "originalBlocks=$originalBlockInterval decompressedBlocks.size=${decompressedBlocks.size} != ",
           )
         decompressedBlocks.zip(besuBlocks).forEach { (decompressed, original) ->
           runCatching {
@@ -108,7 +108,7 @@ class BlockEncodingValidator(
               "Decompressed block={} does not match: error={}",
               original.header.number,
               it.message,
-              it
+              it,
             )
           }
         }
@@ -117,7 +117,7 @@ class BlockEncodingValidator(
         highestValidatedBlockNumber.set(highestValidatedBlockNumber.get().coerceAtLeast(blocks.last().number))
         log.info(
           "compression validation blocks={} finished",
-          originalBlockInterval
+          originalBlockInterval,
         )
       }
   }
@@ -136,7 +136,7 @@ fun <T> ConcurrentLinkedQueue<T>.pull(elementsLimit: Int): List<T> {
 fun assertBlock(
   decompressedBlock: org.hyperledger.besu.ethereum.core.Block,
   originalBlock: org.hyperledger.besu.ethereum.core.Block,
-  log: Logger = LogManager.getLogger("test.assert.Block")
+  log: Logger = LogManager.getLogger("test.assert.Block"),
 ) {
   // on decompression, the hash is placed as parentHash because besu recomputes the hash
   // but custom decoder overrides hash calculation to use parentHash
@@ -152,7 +152,7 @@ fun assertBlock(
       originalTx,
       decompressedTx,
 
-      originalTx.encoded()
+      originalTx.encoded(),
     )
     runCatching {
       assertThat(decompressedTx.type).isEqualTo(originalTx.type)
@@ -173,7 +173,7 @@ fun assertBlock(
       fail(
         "Transaction does not match: block=${originalBlock.header.number} " +
           "txIndex=$index error=${th.message} origTxRlp=${originalTx.encoded()}",
-        th
+        th,
       )
     }
   }

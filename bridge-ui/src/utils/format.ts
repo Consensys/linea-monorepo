@@ -1,5 +1,7 @@
-import { formatDate, fromUnixTime } from "date-fns";
+import { fromUnixTime } from "date-fns/fromUnixTime";
+import { formatDate } from "date-fns/format";
 import { Address, getAddress } from "viem";
+import { isUndefinedOrEmptyString } from "@/utils";
 
 /**
  * Format Ethereum address
@@ -8,7 +10,7 @@ import { Address, getAddress } from "viem";
  * @returns
  */
 export const formatAddress = (address: string | undefined, step = 5) => {
-  if (!address) return "N/A";
+  if (isUndefinedOrEmptyString(address)) return "N/A";
   return address.substring(0, step) + "..." + address.substring(address.length - step, address.length);
 };
 
@@ -19,7 +21,7 @@ export const formatAddress = (address: string | undefined, step = 5) => {
  * @returns The formatted hexadecimal string.
  */
 export const formatHex = (hexString: string | undefined, step = 5) => {
-  if (!hexString) return "N/A";
+  if (isUndefinedOrEmptyString(hexString)) return "N/A";
   return hexString.substring(0, step) + "..." + hexString.substring(hexString.length - step, hexString.length);
 };
 
@@ -30,7 +32,7 @@ export const formatHex = (hexString: string | undefined, step = 5) => {
  * @returns
  */
 export const formatBalance = (balance: string | 0n | undefined, precision = 4) => {
-  if (!balance) return "";
+  if (balance === 0n || isUndefinedOrEmptyString(balance)) return "";
   const [whole, fraction = ""] = balance.split(".");
   if (fraction.length > precision) {
     return `${whole}.${fraction.slice(0, precision)}`;

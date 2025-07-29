@@ -24,7 +24,15 @@ All messages are stored in a configurable Postgres DB.
 - `L1_CONTRACT_ADDRESS`: Address of the LineaRollup contract on L1
 - `L1_SIGNER_PRIVATE_KEY`: Private key for L1 transactions
 - `L1_LISTENER_INTERVAL`: Block listening interval (ms)
-- `L1_LISTENER_INITIAL_FROM_BLOCK`: Starting block for event listening (optional)
+- `L1_LISTENER_INITIAL_FROM_BLOCK`: (optional) Starting block for event listening. This configuration option controls from which block the Postman service starts fetching events.
+  - **Default behavior**: If not specified or set to `-1` (default), the service will start from the current latest block on the chain or from the latest processed block if there are previously processed messages in the database.
+  - **Custom block number**: Set to a specific block number (e.g., `12345678`) to start fetching events from that block
+  - **From genesis**: Set to `0` to fetch all historical events from the beginning of the chain
+  - **Priority order**: The service determines the starting block using the following priority:
+    1. If `L1_LISTENER_INITIAL_FROM_BLOCK` is set to a value greater than `-1`, use that block number
+    2. If there are previously processed messages in the database, resume from the last processed block
+    3. Otherwise, start from the current latest block on the chain
+  - **⚠️ Performance Note**: Setting this to `0` or a very low block number may result in long initial sync times as the service will process all historical events
 - `L1_LISTENER_BLOCK_CONFIRMATION`: Required block confirmations
 - `L1_MAX_BLOCKS_TO_FETCH_LOGS`: Maximum blocks to fetch in one request
 - `L1_MAX_GAS_FEE_ENFORCED`: Enable/disable gas fee enforcement
@@ -34,7 +42,7 @@ All messages are stored in a configurable Postgres DB.
     <br>
     You can filter by the calldata field:
     <br>
-    
+
     Example:
     `calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85804`,
 - `L1_EVENT_FILTER_CALLDATA_FUNCTION_INTERFACE`: Calldata data function interface following this format: `"function transfer(address to, uint256 amount)"`. Make sure you specify parameters names in order to use syntax like `calldata.params.messageNumber`.
@@ -44,7 +52,15 @@ All messages are stored in a configurable Postgres DB.
 - `L2_CONTRACT_ADDRESS`: Address of the L2MessageService contract on L2
 - `L2_SIGNER_PRIVATE_KEY`: Private key for L2 transactions
 - `L2_LISTENER_INTERVAL`: Block listening interval (ms)
-- `L2_LISTENER_INITIAL_FROM_BLOCK`: Starting block for event listening (optional)
+- `L2_LISTENER_INITIAL_FROM_BLOCK`: (optional) Starting block for event listening. This configuration option controls from which block the Postman service starts fetching events.
+  - **Default behavior**: If not specified or set to `-1` (default), the service will start from the current latest block on the chain or from the latest processed block if there are previously processed messages in the database.
+  - **Custom block number**: Set to a specific block number (e.g., `5432100`) to start fetching events from that block
+  - **From genesis**: Set to `0` to fetch all historical events from the beginning of the chain
+  - **Priority order**: The service determines the starting block using the following priority:
+    1. If `L2_LISTENER_INITIAL_FROM_BLOCK` is set to a value greater than `-1`, use that block number
+    2. If there are previously processed messages in the database, resume from the last processed block
+    3. Otherwise, start from the current latest block on the chain
+  - **⚠️ Performance Note**: Setting this to `0` or a very low block number may result in long initial sync times as the service will process all historical events
 - `L2_LISTENER_BLOCK_CONFIRMATION`: Required block confirmations
 - `L2_MAX_BLOCKS_TO_FETCH_LOGS`: Maximum blocks to fetch in one request
 - `L2_MAX_GAS_FEE_ENFORCED`: Enable/disable gas fee enforcement
@@ -55,7 +71,7 @@ All messages are stored in a configurable Postgres DB.
     <br>
     You can filter by the calldata field:
     <br>
-    
+
     Example:
     `calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85804`,
 - `L2_EVENT_FILTER_CALLDATA_FUNCTION_INTERFACE`: Calldata data function interface following this format: `"function transfer(address to, uint256 amount)"`. Make sure you specify parameters names in order to use syntax like `calldata.params.messageNumber`.
@@ -70,6 +86,7 @@ All messages are stored in a configurable Postgres DB.
 - `MAX_NUMBER_OF_RETRIES`: Maximum retry attempts
 - `RETRY_DELAY_IN_SECONDS`: Delay between retries
 - `MAX_CLAIM_GAS_LIMIT`: Maximum gas limit for claim transactions
+- `MAX_POSTMAN_SPONSOR_GAS_LIMIT`: Maximum gas limit for sponsored Postman claim transactions
 
 #### Feature Flags
 - `L1_L2_EOA_ENABLED`: Enable L1->L2 EOA messages
@@ -80,6 +97,8 @@ All messages are stored in a configurable Postgres DB.
 - `L2_L1_AUTO_CLAIM_ENABLED`: Enable auto-claiming for L2->L1 messages
 - `ENABLE_LINEA_ESTIMATE_GAS`: Enable `linea_estimateGas`endpoint usage for L2 chain gas fees estimation
 - `DB_CLEANER_ENABLED`: Enable DB cleaning to delete old claimed messages
+- `L1_L2_ENABLE_POSTMAN_SPONSORING`: Enable L1->L2 Postman sponsoring for claiming messages
+- `L2_L1_ENABLE_POSTMAN_SPONSORING`: Enable L2->L1 Postman sponsoring for claiming messages
 
 #### DB cleaning
 - `DB_CLEANING_INTERVAL`: DB cleaning polling interval (ms)
@@ -91,6 +110,49 @@ All messages are stored in a configurable Postgres DB.
 - `POSTGRES_USER`: Database user
 - `POSTGRES_PASSWORD`: Database password
 - `POSTGRES_DB`: Database name
+
+### Starting Block Configuration Examples
+
+The `L1_LISTENER_INITIAL_FROM_BLOCK` and `L2_LISTENER_INITIAL_FROM_BLOCK` configuration options are crucial for controlling event fetching behavior. Here are practical examples:
+
+#### Example 1: Development Setup (Default Behavior)
+```bash
+# For development, start from current block to avoid processing historical data
+# These variables are optional - if not specified, default value -1 will be used
+L1_LISTENER_INITIAL_FROM_BLOCK=-1  # Default value (optional)
+L2_LISTENER_INITIAL_FROM_BLOCK=-1  # Default value (optional)
+```
+
+#### Example 2: Fresh Production Deployment from Genesis
+```bash
+# Process all historical events from the beginning of the chains
+L1_LISTENER_INITIAL_FROM_BLOCK=0
+L2_LISTENER_INITIAL_FROM_BLOCK=0
+```
+
+#### Example 3: Production Deployment from Specific Block Heights
+```bash
+# Start from specific block numbers to avoid processing unnecessary historical data
+L1_LISTENER_INITIAL_FROM_BLOCK=18500000  # Ethereum block number
+L2_LISTENER_INITIAL_FROM_BLOCK=1000000   # Linea block number
+```
+
+#### Example 4: Recovery from Known Good State
+```bash
+# After database restoration, resume from known block heights
+L1_LISTENER_INITIAL_FROM_BLOCK=18550000
+L2_LISTENER_INITIAL_FROM_BLOCK=1050000
+```
+
+#### Use Case Guidelines:
+
+- **New Development Environment**: Use default values (`-1`) to start fresh from current block
+- **Production Mainnet**: Set to specific block numbers where message bridge was deployed or activated
+- **Testing Historical Data**: Set to `0` or specific historical blocks (expect longer sync times)
+- **Database Recovery**: Set to last known good block numbers after database restoration
+- **Performance Optimization**: Use higher block numbers to skip irrelevant historical events
+
+**Note**: The `L1_LISTENER_INITIAL_FROM_BLOCK` and `L2_LISTENER_INITIAL_FROM_BLOCK` configuration values are always prioritized when set to a value greater than -1, even if the database contains previously processed messages.
 
 ## Development
 
@@ -106,6 +168,11 @@ make start-env-with-tracing-v2
 Stop the postman docker container manually.
 
 #### Run the postman locally:
+
+Before the postman can be run and tested locally, we must build the monorepo projects linea-sdk and linea-native-libs
+```bash
+NATIVE_LIBS_RELEASE_TAG=blob-libs-v1.2.0 pnpm run -F linea-native-libs build && pnpm run -F linea-sdk build
+```
 
 From the postman folder run the following commands:
 
@@ -130,6 +197,16 @@ pnpm run build
 pnpm run test
 ```
 
+### Database migrations
+
+Create an empty DB migration file with <NAME>
+
+```bash
+MIGRATION_NAME=<NAME> pnpm run migration:create
+```
+
+We will then implement the migration code manually. We omit scripts for TypeORM migration generation because the CLI tool is unable to generate correct migration code in our case.
+
 ## License
 
-This package is licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for more information.
+This package is licensed under the [Apache 2.0](../LICENSE-APACHE) and the [MIT](../LICENSE-MIT) licenses.

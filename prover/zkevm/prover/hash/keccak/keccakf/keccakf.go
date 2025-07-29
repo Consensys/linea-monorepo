@@ -4,6 +4,8 @@
 package keccakf
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
@@ -11,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
@@ -127,7 +130,11 @@ func (mod *Module) Assign(
 	// If the number of keccakf constraints is larger than what the module
 	// is sized for, then, we cannot prove everything.
 	if numKeccakf > mod.MaxNumKeccakf {
-		utils.Panic("Too many keccakf %v > %v", numKeccakf, mod.MaxNumKeccakf)
+		exit.OnLimitOverflow(
+			mod.MaxNumKeccakf,
+			numKeccakf,
+			fmt.Errorf("too many keccakf %v > %v", numKeccakf, mod.MaxNumKeccakf),
+		)
 	}
 
 	lu := mod.Lookups
