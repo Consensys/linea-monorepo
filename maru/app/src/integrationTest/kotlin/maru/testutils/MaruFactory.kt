@@ -17,6 +17,7 @@ import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.kotlin.decodeHex
 import maru.api.ApiServer
@@ -31,6 +32,7 @@ import maru.config.ObservabilityOptions
 import maru.config.P2P
 import maru.config.Persistence
 import maru.config.QbftOptions
+import maru.config.SyncingConfig
 import maru.config.ValidatorElNode
 import maru.config.consensus.Utils
 import maru.consensus.ForksSchedule
@@ -119,6 +121,7 @@ class MaruFactory {
       observabilityOptions = observabilityOptions,
       linea = lineaConfig,
       apiConfig = apiConfig,
+      syncing = SyncingConfig(5.seconds, 10u),
     )
   }
 

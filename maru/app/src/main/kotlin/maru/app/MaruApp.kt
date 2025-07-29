@@ -36,6 +36,7 @@ import maru.metrics.MaruMetricsCategory
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockBroadcaster
 import maru.p2p.ValidationResult
+import maru.services.LongRunningService
 import net.consensys.linea.async.get
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.vertx.ObservabilityServer
@@ -60,6 +61,7 @@ class MaruApp(
   private val lastBlockMetadataCache: LatestBlockMetadataCache,
   private val ethereumJsonRpcClient: Web3JClient,
   private val apiServer: ApiServer,
+  private val peerChainTracker: LongRunningService,
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::javaClass)
 

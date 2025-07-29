@@ -48,6 +48,7 @@ import maru.p2p.P2PNetworkImpl
 import maru.p2p.messages.StatusMessageFactory
 import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
+import maru.syncing.PeerChainTracker
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
@@ -162,6 +163,16 @@ class MaruAppFactory {
           versionProvider = MaruVersionProvider(),
           chainDataProvider = ChainDataProviderImpl(beaconChain),
         )
+    val peerChainTracker =
+      PeerChainTracker(
+        { emptyMap() },
+        {},
+        { it.first() },
+        PeerChainTracker.Config(
+          config.syncing.peerChainHeightPollingInterval,
+          config.syncing.peerChainHeightGranularity,
+        ),
+      )
 
     val maru =
       MaruApp(
@@ -178,6 +189,7 @@ class MaruAppFactory {
         lastBlockMetadataCache = lastBlockMetadataCache,
         ethereumJsonRpcClient = ethereumJsonRpcClient,
         apiServer = apiServer,
+        peerChainTracker = peerChainTracker,
       )
 
     return maru
