@@ -622,8 +622,14 @@ func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 			ss.Account.Address.Size(),
 		)
 
+		filterSummaryReversed = comp.InsertCommit(0,
+			"FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_FINAL_SUMMARY_REVERSED",
+			ss.Account.Address.Size(),
+		)
+
 		filterAccountInsert     = comp.Columns.GetHandle("FILTER_CONNECTOR_HUB_STATE_SUMMARY_ACCOUNT_INSERT_FILTER")
 		filterEphemeralAccounts = comp.Columns.GetHandle("FILTER_CONNECTOR_HUB_STATE_SUMMARY_ACCOUNT_EPHEMERAL_FILTER")
+		filterAccountDelete     = defineDeletionFilterForShomeiStorage(comp, ss)
 	)
 
 	pragmas.MarkLeftPadded(filterArith)
@@ -642,7 +648,7 @@ func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 		arithTable,
 		summaryTable,
 		filterArithReversed,
-		filterSummary,
+		filterSummaryReversed,
 	)
 
 	comp.InsertGlobal(
@@ -684,6 +690,19 @@ func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 			),
 		),
 	)
+
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryIDf("CONSTRAINT_FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_FINAL_SUMMARY_REVERSED"),
+		sym.Sub(
+			filterSummaryReversed,
+			sym.Mul(
+				ss.IsStorage,
+				ss.IsFinalDeployment,
+				filterAccountDelete,
+			),
+		),
+	)
 }
 
 /*
@@ -706,9 +725,18 @@ func storageIntegrationAssignFinal(run *wizard.ProverRuntime, ss Module, smc Hub
 	)
 	run.AssignColumn("FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_FINAL_SUMMARY", filterSummary)
 
-	// assign the insertion filter
+	// assign the insertion, deletion and deletion filters
 	filterAccountInsert := run.GetColumn("FILTER_CONNECTOR_HUB_STATE_SUMMARY_ACCOUNT_INSERT_FILTER")
 	filterEphemeralAccounts := run.GetColumn("FILTER_CONNECTOR_HUB_STATE_SUMMARY_ACCOUNT_EPHEMERAL_FILTER")
+	filterAccountDelete := assignDeletionFilterForShomeiStorage(run, ss)
+
+	// assign the filter on Shomei for the reverse lookup
+	filterSummaryReversed := smartvectors.Mul(
+		ss.IsStorage.GetColAssignment(run),
+		ss.IsFinalDeployment.GetColAssignment(run),
+		filterAccountDelete,
+	)
+	run.AssignColumn("FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_FINAL_SUMMARY_REVERSED", filterSummaryReversed)
 
 	filterArith := smartvectors.Mul(
 		svSelectorMaxDeplBlock,
@@ -755,7 +783,7 @@ func defineInsertionFilterForFinalStorage(comp *wizard.CompiledIOP, smc HubColum
 					1,
 					filterAccountInsert,
 				), // if  filterAccountInsert = 0 it must be that the conditions of the filter are both satisfied
-				sym.Add(
+				sym.Add( // the addition must sum up to 0
 					smc.ExistsFirstInBlock,
 					sym.Sub(
 						1,
@@ -982,4 +1010,57 @@ func assignEphemeralAccountFilterStorage(run *wizard.ProverRuntime, smc HubColum
 	svFilterEphemeralAccounts := smartvectors.NewRegular(filterEphemeralAccounts)
 	run.AssignColumn("FILTER_CONNECTOR_HUB_STATE_SUMMARY_ACCOUNT_EPHEMERAL_FILTER", svFilterEphemeralAccounts)
 	return svFilterEphemeralAccounts
+}
+
+// defineDeletionFilterForShomeiStorage covers a very specific edge case: normally, deleting an account
+// with storage causes no problems on the Shomei vs arithmetization integration
+// sometimes, there is an extra account access on the arithmetization side (not a storage access)
+// this extra access (can be a balance query for instance) will correspond to an incremented deployment number, so then
+// the final check cannot find the proper storage keys on the arithmetization side (since there is this trivial access for
+// non-existing account, the maxDeploymentNumber = storageKeyDeploymentNumber selector will not find anything).
+// The fix is to just exclude these storage keys from the check when we have a deletion filter.
+func defineDeletionFilterForShomeiStorage(comp *wizard.CompiledIOP, ss Module) ifaces.Column {
+	// create the filter
+	filterDeletionInsert := comp.InsertCommit(0,
+		"FILTER_CONNECTOR_HUB_STATE_SUMMARY_ACCOUNT_DELETION_FILTER",
+		ss.Account.Address.Size(),
+	)
+
+	// if the filter is set to 0, then all the emoty value selectors must be 1.
+	// but this only must be true for the last values seen in the relevant segment.
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryIDf("GLOBAL_CONSTRAINT_FILTER_CONNECTOR_HUB_STATE_SUMMARY_ACCOUNT_DELETION_FILTER_VALUE_ZEROIZATION"),
+		sym.Sub(
+			1,
+			filterDeletionInsert,
+			ss.IsDeleteSegment,
+		),
+	)
+	// constrain the filter to be binary
+	mustBeBinary(comp, filterDeletionInsert)
+
+	return filterDeletionInsert
+}
+
+// assignDeletionFilterForShomeiStorage computes and assigns the deletion filter
+func assignDeletionFilterForShomeiStorage(run *wizard.ProverRuntime, ss Module) smartvectors.SmartVector {
+	// compute the filter that detects account deletions in order to exclude those storage key accesses from the
+	// state summary to arithmetization lookups.
+	filterAccountDelete := make([]field.Element, ss.Account.Address.Size())
+	for index := range filterAccountDelete {
+		filterAccountDelete[index].SetOne() // always set the filter as one, unless we detect a deletion segment
+		isDeleteSegment := ss.IsDeleteSegment.GetColAssignmentAt(run, index)
+		if isDeleteSegment.IsOne() {
+			// exclude this cell from the lookup
+			filterAccountDelete[index].SetZero()
+		} else {
+			// otherwise, include the cell in the lookup
+			filterAccountDelete[index].SetOne()
+		}
+
+	}
+	svfilterAccountDelete := smartvectors.NewRegular(filterAccountDelete)
+	run.AssignColumn("FILTER_CONNECTOR_HUB_STATE_SUMMARY_ACCOUNT_DELETION_FILTER", svfilterAccountDelete)
+	return svfilterAccountDelete
 }
