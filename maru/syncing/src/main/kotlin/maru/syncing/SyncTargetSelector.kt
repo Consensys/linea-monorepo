@@ -8,9 +8,6 @@
  */
 package maru.syncing
 
-import maru.p2p.PeersHeadBlockProvider
-import maru.services.LongRunningService
-
 /**
  * Responsible to keep track of peer's STATUS and select the head of the chain
  */
@@ -26,26 +23,4 @@ class MostFrequentHeadTargetSelector : SyncTargetSelector {
 
 fun interface SyncTargetUpdateHandler {
   fun onChainHeadUpdated(beaconBlockNumber: ULong)
-}
-
-/**
- * polls periodically peers chain head
- * and notify SyncTargetSelector when chain head of any peer changes
- *
- * it only notifies syncTargetUpdateHandler when there is actual update, not on every tick/calculation
- *
- * MaruPeerManager -> PeerChainTracker -> SyncController
- */
-class PeerChainTracker(
-  val peersHeadsProvider: PeersHeadBlockProvider,
-  val syncTargetUpdateHandler: SyncTargetUpdateHandler,
-  val targetChainHeadCalculator: SyncTargetSelector,
-) : LongRunningService {
-  override fun start() {
-    TODO("Not yet implemented")
-  }
-
-  override fun stop() {
-    TODO("Not yet implemented")
-  }
 }
