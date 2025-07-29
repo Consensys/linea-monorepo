@@ -1,5 +1,5 @@
-environment = "mainnet"
-version = "5.1.3"                              # TODO @gbotrel hunt all version definitions.
+environment = "sepolia"
+version = "6.0.0"                              # TODO @gbotrel hunt all version definitions.
 assets_dir = "./prover-assets"
 log_level = 4                                  # TODO @gbotrel will be refactored with new logger.
 
@@ -7,21 +7,22 @@ log_level = 4                                  # TODO @gbotrel will be refactore
 retry_delays = [0, 1]
 
 [execution]
-prover_mode = "full"
-conflated_traces_dir = "/home/ubuntu/mainnet-test-2/conflated"
-requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/execution"
-
+prover_mode = "limitless"
+conflated_traces_dir = "/home/ubuntu/testing-sepolia-beta-v2-15520477/traces/conflated"
+requests_root_dir = "/home/ubuntu/testing-sepolia-beta-v2-15520477/prover-execution/requests-done"
+limitless_with_debug = false
+ignore_compatibility_check = true
 
 [blob_decompression]
 prover_mode = "full"
-requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/compression"
+requests_root_dir = "/home/ubuntu/mainnet-test-2/v1/prover-compression"
 dict_paths = ["lib/compressor/compressor_dict.bin", "lib/compressor/dict/25-04-21.bin"]
 
 [aggregation]
 prover_mode = "full"
-requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/aggregation"
+requests_root_dir = "/home/ubuntu/mainnet-test-2/v1/prover-aggregation"
 num_proofs = [10, 20, 50, 100, 200, 400]
-allowed_inputs = ["execution", "execution-large", "blob-decompression-v0", "blob-decompression-v1"]
+allowed_inputs = ["execution-dummy", "execution", "execution-large", "execution-limitless", "blob-decompression-dummy", "blob-decompression-v0", "blob-decompression-v1"]
 verifier_id = 1
 
 [public_input_interconnection]
@@ -33,8 +34,8 @@ l2_msg_merkle_depth = 5
 l2_msg_max_nb_merkle = 200
 
 [layer2]
-chain_id = 59144
-message_service_contract = "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec"
+chain_id = 59141
+message_service_contract = "0x971e727e956690b9957be6d51Ec16E73AcAC83A7"
 
 [traces_limits]
 ADD = 262144
@@ -71,7 +72,8 @@ PRECOMPILE_ECRECOVER_EFFECTIVE_CALLS = 128
 PRECOMPILE_SHA2_BLOCKS = 200
 PRECOMPILE_RIPEMD_BLOCKS = 0
 PRECOMPILE_MODEXP_EFFECTIVE_CALLS = 32
-PRECOMPILE_ECADD_EFFECTIVE_CALLS = 1024
+PRECOMPILE_MODEXP_EFFECTIVE_CALLS_4096 = 1
+PRECOMPILE_ECADD_EFFECTIVE_CALLS = 256
 PRECOMPILE_ECMUL_EFFECTIVE_CALLS = 40
 PRECOMPILE_ECPAIRING_FINAL_EXPONENTIATIONS = 16
 PRECOMPILE_ECPAIRING_MILLER_LOOPS = 64
@@ -85,6 +87,11 @@ BLOCK_TRANSACTIONS = 300
 BIN_REFERENCE_TABLE = 262144
 SHF_REFERENCE_TABLE = 4096
 INSTRUCTION_DECODER = 512
+U20 = 131072
+U32 = 131072
+U36 = 131072
+U64 = 131072
+U128 = 131072
 
 [traces_limits_large]
 ADD = 524288
@@ -121,7 +128,8 @@ PRECOMPILE_ECRECOVER_EFFECTIVE_CALLS = 256
 PRECOMPILE_SHA2_BLOCKS = 400
 PRECOMPILE_RIPEMD_BLOCKS = 0
 PRECOMPILE_MODEXP_EFFECTIVE_CALLS = 64
-PRECOMPILE_ECADD_EFFECTIVE_CALLS = 32768
+PRECOMPILE_MODEXP_EFFECTIVE_CALLS_4096 = 1
+PRECOMPILE_ECADD_EFFECTIVE_CALLS = 512
 PRECOMPILE_ECMUL_EFFECTIVE_CALLS = 80
 PRECOMPILE_ECPAIRING_FINAL_EXPONENTIATIONS = 32
 PRECOMPILE_ECPAIRING_MILLER_LOOPS = 128
@@ -135,3 +143,8 @@ BLOCK_TRANSACTIONS = 300
 BIN_REFERENCE_TABLE = 262144
 SHF_REFERENCE_TABLE = 4096
 INSTRUCTION_DECODER = 512
+U20 = 262144
+U32 = 262144
+U36 = 262144
+U64 = 262144
+U128 = 262144
