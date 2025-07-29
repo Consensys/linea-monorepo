@@ -11,7 +11,7 @@ package maru.syncing
 /**
  * Responsible to keep track of peer's STATUS and select the head of the chain
  */
-interface SyncTargetSelector {
+fun interface SyncTargetSelector {
   fun selectBestSyncTarget(peerHeads: List<ULong>): ULong
 }
 

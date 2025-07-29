@@ -140,6 +140,11 @@ data class ApiConfig(
   val port: UInt,
 )
 
+data class SyncingConfig(
+  val peerChainHeightPollingInterval: Duration,
+  val peerChainHeightGranularity: UInt,
+)
+
 data class MaruConfig(
   val allowEmptyBlocks: Boolean = false,
   val persistence: Persistence,
@@ -150,4 +155,5 @@ data class MaruConfig(
   val observabilityOptions: ObservabilityOptions,
   val linea: LineaConfig? = null,
   val apiConfig: ApiConfig,
+  val syncing: SyncingConfig,
 )

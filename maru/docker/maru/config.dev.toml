@@ -11,7 +11,7 @@ fee-recipient = "0x0000000000000000000000000000000000000000"
 port = 3322
 ip-address = "127.0.0.1"
 static-peers = []
-reconnect-delay = 500
+reconnect-delay = "500 ms"
 
 [p2p.discovery]
 port = 3324
@@ -34,3 +34,7 @@ prometheus-metrics-enabled = true
 
 [api]
 port = 8080
+
+[syncing]
+peer-chain-height-polling-interval = "5 seconds"
+peer-chain-height-granularity = 10

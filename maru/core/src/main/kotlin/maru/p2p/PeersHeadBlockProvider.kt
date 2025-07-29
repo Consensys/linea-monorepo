@@ -8,7 +8,7 @@
  */
 package maru.p2p
 
-interface PeersHeadBlockProvider {
+fun interface PeersHeadBlockProvider {
   /**
    * Returns a list of peerId and chain head block number
    */
