@@ -11,6 +11,7 @@ package maru.consensus
 import java.util.concurrent.ConcurrentHashMap
 import maru.core.BeaconBlock
 import maru.core.SealedBeaconBlock
+import maru.extensions.encodeHex
 import maru.p2p.SealedBeaconBlockHandler
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -74,7 +75,7 @@ abstract class CallAndForgetFutureMultiplexer<I>(
 
 class NewBlockHandlerMultiplexer(
   handlersMap: Map<String, NewBlockHandler<*>>,
-  log: Logger = LogManager.getLogger(CallAndForgetFutureMultiplexer<*>::javaClass)!!,
+  log: Logger = LogManager.getLogger(NewBlockHandlerMultiplexer::javaClass),
 ) : CallAndForgetFutureMultiplexer<BeaconBlock>(
     handlersMap = blockHandlersToGenericHandlers(handlersMap),
     log = log,
@@ -97,9 +98,11 @@ class NewBlockHandlerMultiplexer(
     ex: Exception,
   ) {
     this.error(
-      "New block handler $handlerName failed processing" +
-        " block hash=${input.beaconBlockHeader.hash}, number=${input.beaconBlockHeader.number} " +
-        "executionPayloadBlockNumber=${input.beaconBlockBody.executionPayload.blockNumber}!",
+      "new block handling failed: handler={} clBlockNumber={} elBlockNumber={} clBlockHash={} errorMessage={}",
+      handlerName,
+      input.beaconBlockHeader.number,
+      input.beaconBlockBody.executionPayload.blockNumber,
+      input.beaconBlockHeader.hash.encodeHex(),
       ex,
     )
   }

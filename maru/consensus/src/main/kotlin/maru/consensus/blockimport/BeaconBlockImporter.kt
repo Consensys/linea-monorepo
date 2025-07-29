@@ -101,9 +101,9 @@ class BlockBuildingBeaconBlockImporter(
             .latestBeaconBlockHeader.timestamp
             .toLong(),
         )
-      log.debug(
+      log.info(
         "importing block and starting build next block: " +
-          "blockNumber={} timestamp={} nextBlockTimestamp={} beaconBlockHeader={}",
+          "clBlockNumber={} clBlockTimestamp={} clNextBlockTimestamp={} beaconBlockHeader={}",
         beaconBlock.beaconBlockBody.executionPayload.blockNumber,
         beaconBlock.beaconBlockBody.executionPayload.timestamp,
         nextBlockTimestamp,
@@ -124,7 +124,11 @@ class BlockBuildingBeaconBlockImporter(
           ),
       )
     } else {
-      log.debug("Importing blockHeader={}", beaconBlockHeader)
+      log.info(
+        "importing block: clBlockNumber={} clBlockHeader={}",
+        beaconBlockHeader.number,
+        beaconBlockHeader,
+      )
       executionLayerManager.setHead(
         headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
         safeHash = finalizationState.safeBlockHash,
