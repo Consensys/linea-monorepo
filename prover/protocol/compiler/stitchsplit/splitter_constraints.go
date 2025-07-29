@@ -333,11 +333,16 @@ func (ctx SplitterContext) localQueriesForGapsInGlobal(q query.GlobalConstraint,
 
 	if offsetRange.Min < 0 {
 		for i := 0; i > offsetRange.Min; i-- {
-			// And fill the gap with a local constraint
+
 			if slot > 0 || q.NoBoundCancel {
+				// And fill the gap with a local constraint
+				newQName := ifaces.QueryIDf("%v_LOCAL_GAPS_NEG_OFFSET_%v", q.ID, i)
+				if ctx.Comp.QueriesNoParams.Exists(newQName) {
+					continue
+				}
 				// adjust the query over the sub columns
 				ctx.Comp.InsertLocal(round,
-					ifaces.QueryIDf("%v_LOCAL_GAPS_NEG_OFFSET_%v", q.ID, i),
+					newQName,
 					ctx.adjustExpressionForLocal(q.Expression, slot*ctx.Size-i))
 			}
 		}
@@ -351,9 +356,14 @@ func (ctx SplitterContext) localQueriesForGapsInGlobal(q query.GlobalConstraint,
 			point := ctx.Size - i - 1 // point at which we want to cancel the constraint
 			// And fill the gap with a local constraint
 			if slot < numSlots-1 || q.NoBoundCancel {
+				newQName := ifaces.QueryIDf("%v_LOCAL_GAPS_POS_OFFSET_%v_%v", q.ID, slot, i)
+				if ctx.Comp.QueriesNoParams.Exists(newQName) {
+					continue
+				}
+
 				shift := slot*ctx.Size + point
 				ctx.Comp.InsertLocal(round,
-					ifaces.QueryIDf("%v_LOCAL_GAPS_POS_OFFSET_%v_%v", q.ID, slot, i),
+					newQName,
 					ctx.adjustExpressionForLocal(q.Expression, shift))
 			}
 		}
