@@ -9,8 +9,8 @@ configFiles:
 
     [p2p]
     static-peers = [
-      "/dns4/maru-follower-0-maru/tcp/3322/p2p/16Uiu2HAm5t3cGzbzjy5wE8u1siwkeCWtyob1kinEmNrcRsKXX8Z6",
-      "/dns4/maru-follower-1-maru/tcp/3322/p2p/16Uiu2HAmLRVrc12TDbFM27MBi4fVvtjbiRKAYcXAMv3q5DpK6TVX"
+      "/dns4/maru-follower-0/tcp/3322/p2p/16Uiu2HAm5t3cGzbzjy5wE8u1siwkeCWtyob1kinEmNrcRsKXX8Z6",
+      "/dns4/maru-follower-1/tcp/3322/p2p/16Uiu2HAmLRVrc12TDbFM27MBi4fVvtjbiRKAYcXAMv3q5DpK6TVX"
     ]
 
     [payload-validator]
@@ -28,9 +28,9 @@ configFiles:
       </Console>
     </Appenders>
     <Loggers>
-      <Logger name="org.hyperledger.besu" level="TRACE"/>
-      <Logger name="tech.pegasys.teku" level="TRACE"/>
-      <Logger name="maru" level="DEBUG"/>
+     <Logger name="org.hyperledger.besu" level="INFO"/>
+      <Logger name="tech.pegasys.teku" level="INFO"/>
+      <Logger name="maru" level="INFO"/>
       <Logger name="clients" level="DEBUG"/>
       <Root level="INFO">
         <AppenderRef ref="Console"/>
