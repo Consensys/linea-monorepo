@@ -14,18 +14,18 @@ import org.apache.tuweni.bytes.Bytes32
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
 
-fun interface MetadataProvider {
-  fun getLatestBlockMetadata(): BlockMetadata
+fun interface ElMetadataProvider {
+  fun getLatestBlockMetadata(): ElBlockMetadata
 }
 
-data class BlockMetadata(
+data class ElBlockMetadata(
   val blockNumber: ULong,
   val blockHash: ByteArray,
   val unixTimestampSeconds: Long, // Since the use of Java standard lib, Long is more practical than ULong
 ) {
   companion object {
-    fun fromBeaconBlock(beaconBlock: BeaconBlock): BlockMetadata =
-      BlockMetadata(
+    fun fromBeaconBlock(beaconBlock: BeaconBlock): ElBlockMetadata =
+      ElBlockMetadata(
         beaconBlock.beaconBlockBody.executionPayload.blockNumber,
         beaconBlock.beaconBlockBody
           .executionPayload.blockHash,
@@ -38,7 +38,7 @@ data class BlockMetadata(
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
 
-    other as BlockMetadata
+    other as ElBlockMetadata
 
     if (blockNumber != other.blockNumber) return false
     if (!blockHash.contentEquals(other.blockHash)) return false
@@ -55,28 +55,28 @@ data class BlockMetadata(
   }
 }
 
-class LatestBlockMetadataCache(
-  currentBlockMetadata: BlockMetadata,
-) : MetadataProvider {
-  private var latestBlockMetadataCache = AtomicReference(currentBlockMetadata)
+class LatestElBlockMetadataCache(
+  currentElBlockMetadata: ElBlockMetadata,
+) : ElMetadataProvider {
+  private var latestBlockMetadataCache = AtomicReference(currentElBlockMetadata)
 
-  override fun getLatestBlockMetadata(): BlockMetadata = latestBlockMetadataCache.get()
+  override fun getLatestBlockMetadata(): ElBlockMetadata = latestBlockMetadataCache.get()
 
-  fun updateLatestBlockMetadata(blockMetadata: BlockMetadata) {
-    latestBlockMetadataCache.set(blockMetadata)
+  fun updateLatestBlockMetadata(elBlockMetadata: ElBlockMetadata) {
+    latestBlockMetadataCache.set(elBlockMetadata)
   }
 }
 
 class Web3jMetadataProvider(
   private val web3jEthereumApiClient: Web3j,
 ) {
-  fun getLatestBlockMetadata(): BlockMetadata {
+  fun getLatestBlockMetadata(): ElBlockMetadata {
     val block =
       web3jEthereumApiClient
         .ethGetBlockByNumber(DefaultBlockParameter.valueOf("latest"), false)
         .send()
         .block
-    return BlockMetadata(
+    return ElBlockMetadata(
       block.number
         .toLong()
         .toULong(),

@@ -22,6 +22,8 @@ import maru.database.BeaconChain
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockHandler
+import maru.syncing.ELSyncStatus
+import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
 import org.hyperledger.besu.plugin.services.MetricsSystem
 
@@ -39,6 +41,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
   private val beaconChainInitialization: BeaconChainInitialization,
   private val metricsFacade: MetricsFacade,
   private val allowEmptyBlocks: Boolean,
+  private val syncStatusProvider: SyncStatusProvider,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     require(forkSpec.configuration is QbftConsensusConfig) {
@@ -76,6 +79,13 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
         p2PNetwork = p2pNetwork,
         allowEmptyBlocks = allowEmptyBlocks,
       )
-    return qbftValidatorFactory.create(forkSpec)
+    val qbftProtocol = qbftValidatorFactory.create(forkSpec)
+    syncStatusProvider.onElSyncStatusUpdate {
+      when (it) {
+        ELSyncStatus.SYNCING -> qbftProtocol.stop()
+        ELSyncStatus.SYNCED -> qbftProtocol.start()
+      }
+    }
+    return qbftProtocol
   }
 }

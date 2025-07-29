@@ -66,7 +66,7 @@ class ProtocolStarterTest {
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
-        metadataProvider = metadataProvider,
+        elMetadataProvider = metadataProvider,
         clockMilliseconds = 14000,
       )
     protocolStarter.start()
@@ -90,12 +90,12 @@ class ProtocolStarterTest {
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
-        metadataProvider = metadataProvider,
+        elMetadataProvider = metadataProvider,
         clockMilliseconds = 16000,
       )
     protocolStarter.start()
     val initiallyCreatedProtocol = protocolStarter.currentProtocolWithForkReference.get().protocol
-    protocolStarter.handleNewBlock(randomBlockMetadata(16))
+    protocolStarter.handleNewElBlock(randomBlockMetadata(16))
     val currentProtocol = protocolStarter.currentProtocolWithForkReference.get().protocol
     assertThat(initiallyCreatedProtocol).isSameAs(currentProtocol)
     assertThat(protocol2.started).isTrue()
@@ -116,7 +116,7 @@ class ProtocolStarterTest {
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
-        metadataProvider = metadataProvider,
+        elMetadataProvider = metadataProvider,
         clockMilliseconds = 14000,
       )
     protocolStarter.start()
@@ -126,7 +126,7 @@ class ProtocolStarterTest {
     assertThat(protocol1.started).isTrue()
     assertThat(protocol2.started).isFalse()
 
-    protocolStarter.handleNewBlock(randomBlockMetadata(14))
+    protocolStarter.handleNewElBlock(randomBlockMetadata(14))
     val currentProtocolWithConfig = protocolStarter.currentProtocolWithForkReference.get()
     assertThat(currentProtocolWithConfig.fork).isEqualTo(forkSpec2)
     assertThat(initiallyCreatedProtocolWithConfig.protocol).isNotSameAs(currentProtocolWithConfig.protocol)
@@ -148,7 +148,7 @@ class ProtocolStarterTest {
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
-        metadataProvider = metadataProvider,
+        elMetadataProvider = metadataProvider,
         clockMilliseconds = 15000,
       )
     protocolStarter.start()
@@ -171,13 +171,13 @@ class ProtocolStarterTest {
 
   private fun createProtocolStarter(
     forksSchedule: ForksSchedule,
-    metadataProvider: MetadataProvider,
+    elMetadataProvider: ElMetadataProvider,
     clockMilliseconds: Long,
   ): ProtocolStarter =
     ProtocolStarter(
       forksSchedule = forksSchedule,
       protocolFactory = protocolFactory,
-      metadataProvider = metadataProvider,
+      elMetadataProvider = elMetadataProvider,
       nextBlockTimestampProvider =
         NextBlockTimestampProviderImpl(
           clock = Clock.fixed(Instant.ofEpochMilli(clockMilliseconds), ZoneOffset.UTC),
@@ -185,8 +185,8 @@ class ProtocolStarterTest {
         ),
     )
 
-  fun randomBlockMetadata(timestamp: Long): BlockMetadata =
-    BlockMetadata(
+  fun randomBlockMetadata(timestamp: Long): ElBlockMetadata =
+    ElBlockMetadata(
       Random.nextULong(),
       blockHash = Random.nextBytes(32),
       unixTimestampSeconds = timestamp,
