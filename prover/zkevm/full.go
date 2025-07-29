@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -61,6 +62,7 @@ var (
 	fullCompilationSuite = CompilationSuite{
 		// logdata.Log("initial-wizard"),
 		mimc.CompileMiMC,
+		plonkinwizard.Compile,
 		compiler.Arcane(compiler.WithTargetColSize(1 << 19)),
 		vortex.Compile(
 			2,
