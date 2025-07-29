@@ -137,4 +137,8 @@ class DefaultMaruPeer(
   override fun connectionInitiatedRemotely(): Boolean = delegatePeer.connectionInitiatedRemotely()
 
   override fun adjustReputation(adjustment: ReputationAdjustment) = delegatePeer.adjustReputation(adjustment)
+
+  override fun toString(): String =
+    "DefaultMaruPeer(id=${id.toBase58()}, status=${status.get()}, address=${getAddress()}, " +
+      "gossipScore=${getGossipScore()}, connected=$isConnected)"
 }

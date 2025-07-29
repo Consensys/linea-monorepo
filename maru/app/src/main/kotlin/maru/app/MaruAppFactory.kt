@@ -45,6 +45,7 @@ import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkDataProvider
 import maru.p2p.P2PNetworkImpl
+import maru.p2p.P2PPeersHeadBlockProvider
 import maru.p2p.messages.StatusMessageFactory
 import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
@@ -177,13 +178,14 @@ class MaruAppFactory {
         )
     val peerChainTracker =
       PeerChainTracker(
-        { emptyMap() },
-        {},
-        { it.first() },
-        PeerChainTracker.Config(
-          config.syncing.peerChainHeightPollingInterval,
-          config.syncing.peerChainHeightGranularity,
-        ),
+        peersHeadsProvider = P2PPeersHeadBlockProvider(peerLookup = p2pNetwork.getPeerLookup()),
+        syncTargetUpdateHandler = {},
+        targetChainHeadCalculator = { it.first() },
+        config =
+          PeerChainTracker.Config(
+            config.syncing.peerChainHeightPollingInterval,
+            config.syncing.peerChainHeightGranularity,
+          ),
       )
 
     val maru =
