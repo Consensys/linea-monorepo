@@ -171,21 +171,23 @@ class ValidatingSealedBeaconBlockImporter(
           }
         }.whenException {
           log.error(
-            "exception during block import: clBlockNumber={} elBlockNumber={}  clBlockHash={} ",
+            "exception during block import: clBlockNumber={} elBlockNumber={}  clBlockHash={} errorMessage={}",
             sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
             sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber,
             sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
               .encodeHex(),
+            it.message,
             it,
           )
         }
     } catch (ex: Throwable) {
       log.error(
-        "exception during block import: clBlockNumber={} elBlockNumber={} clBlockHash={}",
+        "exception during block import: clBlockNumber={} elBlockNumber={} clBlockHash={} errorMessage={}",
         sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
         sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber,
         sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
           .encodeHex(),
+        ex.message,
         ex,
       )
       throw ex
