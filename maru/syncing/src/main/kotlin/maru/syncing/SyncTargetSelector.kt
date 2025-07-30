@@ -17,7 +17,16 @@ fun interface SyncTargetSelector {
 
 class MostFrequentHeadTargetSelector : SyncTargetSelector {
   override fun selectBestSyncTarget(peerHeads: List<ULong>): ULong {
-    TODO("Not implemented yet")
+    require(peerHeads.isNotEmpty()) { "Peer heads list cannot be empty" }
+
+    val frequencyMap = peerHeads.groupingBy { it }.eachCount()
+    val maxFrequency = frequencyMap.values.max()
+
+    // Among all heads with max frequency, return the highest value
+    return frequencyMap
+      .filterValues { it == maxFrequency }
+      .keys
+      .max()
   }
 }
 
