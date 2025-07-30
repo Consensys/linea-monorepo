@@ -300,10 +300,10 @@ public abstract class SelfdestructSection extends TraceSection
         this.addFragment(finalUnexceptionalContextFragment);
 
         hub.defers().scheduleForAfterTransactionFinalization(this);
+      } else {
+        selfdestructScenarioFragment.setScenario(SELFDESTRUCT_WONT_REVERT_ALREADY_MARKED);
+        this.addFragment(finalUnexceptionalContextFragment);
       }
-    } else {
-      selfdestructScenarioFragment.setScenario(SELFDESTRUCT_WONT_REVERT_ALREADY_MARKED);
-      this.addFragment(finalUnexceptionalContextFragment);
     }
   }
 
