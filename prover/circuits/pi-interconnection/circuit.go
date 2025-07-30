@@ -102,8 +102,10 @@ func (c *Circuit) Define(api frontend.API) error {
 	if c.UseGkrMimc {
 		hFac := gkrmimc.NewHasherFactory(api)
 		hshM = hFac.NewHasher()
-		c.Keccak.Wc.HasherFactory = hFac
-		c.Keccak.Wc.FS = fiatshamir.NewGnarkFiatShamir(api, hFac)
+		if c.Keccak.Wc != nil {
+			c.Keccak.Wc.HasherFactory = hFac
+			c.Keccak.Wc.FS = fiatshamir.NewGnarkFiatShamir(api, hFac)
+		}
 	} else {
 		if hsh, err := mimc.NewMiMC(api); err != nil {
 			return err
