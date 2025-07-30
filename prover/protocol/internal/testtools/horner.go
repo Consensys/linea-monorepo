@@ -47,22 +47,22 @@ type HornerTestcase struct {
 }
 
 var ListOfHornerTestcasePositive = []*HornerTestcase{
-	/*
-		{
-			NameStr:           "positive/none-selected-single",
-			SignNegativeParts: []bool{false},
-			Coefficients: [][]smartvectors.SmartVector{{
-				smartvectors.NewConstant(field.One(), 8),
-			}},
-			Selectors: [][]smartvectors.SmartVector{{
-				smartvectors.NewConstant(field.Zero(), 8),
-			}},
-			N0s:         []int{0},
-			N1s:         []int{0},
-			Xs:          []fext.Element{fext.One()},
-			FinalResult: fext.Zero(),
-		},*/
-
+	/* ok
+	{
+		NameStr:           "positive/none-selected-single",
+		SignNegativeParts: []bool{false},
+		Coefficients: [][]smartvectors.SmartVector{{
+			smartvectors.NewConstant(field.One(), 8),
+		}},
+		Selectors: [][]smartvectors.SmartVector{{
+			smartvectors.NewConstant(field.Zero(), 8),
+		}},
+		N0s:         []int{0},
+		N1s:         []int{0},
+		Xs:          []fext.Element{fext.One()},
+		FinalResult: fext.Zero(),
+	},
+	*/
 	{
 		NameStr:           "positive/two-parts-cancelling",
 		SignNegativeParts: []bool{false, true},

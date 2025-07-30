@@ -237,6 +237,8 @@ func (ctx *evaluationVerifier) Run(run wizard.Runtime) error {
 			default:
 				utils.Panic("Not a variable type %v in global query (ratio %v)", reflect.TypeOf(metadataInterface), ratio)
 			}
+			//fmt.Printf("evalInputs[k] %v\n", evalInputs[k].Pretty())
+
 		}
 
 		left := board.Evaluate(evalInputs).GetExt(0)
@@ -246,8 +248,8 @@ func (ctx *evaluationVerifier) Run(run wizard.Runtime) error {
 		var right fext.Element
 		right.Mul(&annulator, &qr)
 
-		// left = q(x) * (x^n - 1)
-		// right = P(x) - Z(x)
+		fmt.Printf("global constraint - ratio %v - at random point - %v != %v\n", ratio, left.String(), right.String())
+
 		if left != right {
 			return fmt.Errorf("global constraint - ratio %v - mismatch at random point - %v != %v", ratio, left.String(), right.String())
 		}
