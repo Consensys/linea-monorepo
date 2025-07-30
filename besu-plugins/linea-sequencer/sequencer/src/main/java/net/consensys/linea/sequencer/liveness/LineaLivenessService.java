@@ -127,14 +127,14 @@ public class LineaLivenessService implements LivenessService {
       log.debug("Retrieved valid nonce: {} for address: {}", nonce, signerAddress);
 
       // First transaction: mark as down with last block timestamp
-      Transaction upTimeTransaction =
+      Transaction downTimeTransaction =
           livenessTxBuilder.buildUptimeTransaction(false, lastBlockTimestamp, nonce);
 
       // Second transaction: mark as up with current timestamp
-      Transaction downTimeTransaction =
+      Transaction upTimeTransaction =
           livenessTxBuilder.buildUptimeTransaction(true, currentTimestamp, nonce + 1);
 
-      List<Transaction> transactions = List.of(upTimeTransaction, downTimeTransaction);
+      List<Transaction> transactions = List.of(downTimeTransaction, upTimeTransaction);
 
       Hash bundleHash = Hash.hash(Bytes32.random());
 
