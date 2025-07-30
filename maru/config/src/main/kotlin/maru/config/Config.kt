@@ -143,7 +143,15 @@ data class ApiConfig(
 data class SyncingConfig(
   val peerChainHeightPollingInterval: Duration,
   val peerChainHeightGranularity: UInt,
-)
+  val download: Download? = Download(),
+) {
+  data class Download(
+    val blockRangeRequestTimeout: Duration = 5.seconds,
+    val blocksBatchSize: UInt = 10u,
+    val blocksParallelism: UInt = 1u,
+    val maxRetries: UInt = 5u,
+  )
+}
 
 data class MaruConfig(
   val allowEmptyBlocks: Boolean = false,
