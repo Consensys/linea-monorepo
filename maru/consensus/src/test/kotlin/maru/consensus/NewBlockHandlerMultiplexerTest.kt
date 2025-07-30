@@ -67,6 +67,7 @@ class NewBlockHandlerMultiplexerTest {
       eq(block.beaconBlockHeader.number),
       eq(block.beaconBlockBody.executionPayload.blockNumber),
       eq(block.beaconBlockHeader.hash.encodeHex()),
+      eq("fail"),
       any<Throwable>(),
     )
   }

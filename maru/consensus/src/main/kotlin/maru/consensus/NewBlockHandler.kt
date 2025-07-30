@@ -103,6 +103,7 @@ class NewBlockHandlerMultiplexer(
       input.beaconBlockHeader.number,
       input.beaconBlockBody.executionPayload.blockNumber,
       input.beaconBlockHeader.hash.encodeHex(),
+      ex.message,
       ex,
     )
   }
