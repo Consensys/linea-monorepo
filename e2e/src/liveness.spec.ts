@@ -7,7 +7,7 @@ describe.skip("Liveness test suite", () => {
   const l2AccountManager = config.getL2AccountManager();
 
   it.concurrent(
-    "Should succeed to send liveness transactions after sequencer restared",
+    "Should succeed to send liveness transactions after sequencer restarted",
     async () => {
       const account = await l2AccountManager.generateAccount();
       const livenessContract = config.getL2LineaSequencerUptimeFeedContract(account);
