@@ -80,8 +80,7 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
           "LineaTransactionSelectorPlugin",
           "LineaBundleEndpointsPlugin",
           "ForwardBundlesPlugin",
-          "LineaTransactionValidatorPlugin",
-          "LivenessPlugin");
+          "LineaTransactionValidatorPlugin");
 
   protected static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
   protected BesuNode minerNode;

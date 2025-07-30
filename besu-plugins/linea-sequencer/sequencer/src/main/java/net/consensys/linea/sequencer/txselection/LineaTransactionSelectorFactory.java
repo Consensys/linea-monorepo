@@ -9,16 +9,20 @@
 
 package net.consensys.linea.sequencer.txselection;
 
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bundles.BundlePoolService;
+import net.consensys.linea.bundles.TransactionBundle;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.jsonrpc.JsonRpcManager;
 import net.consensys.linea.metrics.HistogramMetrics;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
+import net.consensys.linea.sequencer.liveness.LivenessService;
 import net.consensys.linea.sequencer.txselection.selectors.LineaTransactionSelector;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.services.BlockchainService;
@@ -43,6 +47,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
   private final LineaTracerConfiguration tracerConfiguration;
   private final Optional<HistogramMetrics> maybeProfitabilityMetrics;
   private final BundlePoolService bundlePoolService;
+  private final Optional<LivenessService> livenessManager;
   private final AtomicReference<LineaTransactionSelector> currSelector = new AtomicReference<>();
 
   public LineaTransactionSelectorFactory(
@@ -51,6 +56,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
       final LineaProfitabilityConfiguration profitabilityConfiguration,
       final LineaTracerConfiguration tracerConfiguration,
+      final Optional<LivenessService> livenessManager,
       final Optional<JsonRpcManager> rejectedTxJsonRpcManager,
       final Optional<HistogramMetrics> maybeProfitabilityMetrics,
       final BundlePoolService bundlePoolService) {
@@ -62,6 +68,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
     this.maybeProfitabilityMetrics = maybeProfitabilityMetrics;
     this.bundlePoolService = bundlePoolService;
+    this.livenessManager = livenessManager;
   }
 
   @Override
@@ -82,8 +89,22 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
 
   public void selectPendingTransactions(
       final BlockTransactionSelectionService bts, final ProcessableBlockHeader pendingBlockHeader) {
-    final var bundlesByBlockNumber =
-        bundlePoolService.getBundlesByBlockNumber(pendingBlockHeader.getNumber());
+    final var bundlesByBlockNumber = new ArrayList<TransactionBundle>();
+    final long headBlockTimestamp = blockchainService.getChainHeadHeader().getTimestamp();
+
+    Optional<TransactionBundle> livenessBundle =
+        livenessManager.isPresent() && headBlockTimestamp > 0
+            ? livenessManager
+                .get()
+                .checkBlockTimestampAndBuildBundle(
+                    Instant.now().getEpochSecond(),
+                    headBlockTimestamp,
+                    pendingBlockHeader.getNumber())
+            : Optional.empty();
+
+    livenessBundle.ifPresent(bundlesByBlockNumber::add);
+    bundlesByBlockNumber.addAll(
+        bundlePoolService.getBundlesByBlockNumber(pendingBlockHeader.getNumber()));
 
     log.atDebug()
         .setMessage("Bundle pool stats: total={}, for block #{}={}")
@@ -95,6 +116,14 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
     bundlesByBlockNumber.forEach(
         bundle -> {
           log.trace("Starting evaluation of bundle {}", bundle);
+
+          boolean isLivenessBundle =
+              livenessBundle.isPresent()
+                  && bundle
+                      .toBundleParameter()
+                      .replacementUUID()
+                      .equals(livenessBundle.get().toBundleParameter().replacementUUID());
+
           var badBundleRes =
               bundle.pendingTransactions().stream()
                   .map(bts::evaluatePendingTransaction)
@@ -102,10 +131,16 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
                   .findFirst();
 
           if (badBundleRes.isPresent()) {
-            log.trace("Failed bundle {}, reason {}", bundle, badBundleRes);
+            log.debug("Failed bundle {}, reason {}", bundle, badBundleRes);
+            if (isLivenessBundle) {
+              livenessManager.get().updateUptimeMetrics(false, headBlockTimestamp);
+            }
             rollback(bts);
           } else {
-            log.trace("Selected bundle {}", bundle);
+            log.debug("Selected bundle {}", bundle);
+            if (isLivenessBundle) {
+              livenessManager.get().updateUptimeMetrics(true, headBlockTimestamp);
+            }
             commit(bts);
           }
         });

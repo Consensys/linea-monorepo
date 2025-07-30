@@ -30,6 +30,7 @@ import net.consensys.linea.bundles.TransactionBundle;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
+import net.consensys.linea.config.LivenessPluginConfiguration;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
 import net.consensys.linea.sequencer.txselection.selectors.TraceLineLimitTransactionSelectorTest;
@@ -66,6 +67,7 @@ class LineaTransactionSelectorFactoryTest {
   private LineaTransactionSelectorConfiguration mockTxSelectorConfiguration;
   private LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration;
   private LineaProfitabilityConfiguration mockProfitabilityConfiguration;
+  private LivenessPluginConfiguration mockLivenessPluginConfiguration;
   private BesuEvents mockEvents;
   private LineaLimitedBundlePool bundlePool;
   private BundlePoolService mockBundlePool;
@@ -103,6 +105,7 @@ class LineaTransactionSelectorFactoryTest {
     l1L2BridgeConfiguration =
         new LineaL1L2BridgeSharedConfiguration(BRIDGE_CONTRACT, BRIDGE_LOG_TOPIC);
     mockProfitabilityConfiguration = mock(LineaProfitabilityConfiguration.class);
+    mockLivenessPluginConfiguration = mock(LivenessPluginConfiguration.class);
     mockEvents = mock(BesuEvents.class);
     bundlePool = spy(new LineaLimitedBundlePool(dataDir, 4096, mockEvents, mockBlockchainService));
 
@@ -113,6 +116,7 @@ class LineaTransactionSelectorFactoryTest {
             l1L2BridgeConfiguration,
             mockProfitabilityConfiguration,
             lineaTracerConfiguration,
+            Optional.empty(),
             Optional.empty(),
             Optional.empty(),
             bundlePool);

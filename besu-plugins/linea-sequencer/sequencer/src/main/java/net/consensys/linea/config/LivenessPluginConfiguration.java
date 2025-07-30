@@ -15,15 +15,12 @@ import net.consensys.linea.plugins.LineaOptionsConfiguration;
 @Builder(toBuilder = true)
 public record LivenessPluginConfiguration(
     boolean enabled,
-    long maxBlockAgeMilliseconds,
-    long checkIntervalMilliseconds,
+    long maxBlockAgeSeconds,
     String contractAddress,
     String signerUrl,
     String signerKeyId,
     String signerAddress,
     long gasLimit,
-    long gasPriceGwei,
-    boolean metricCategoryEnabled,
-    int maxRetryAttempts,
-    long retryDelayMilliseconds)
+    long gasPrice,
+    boolean metricCategoryEnabled)
     implements LineaOptionsConfiguration {}
