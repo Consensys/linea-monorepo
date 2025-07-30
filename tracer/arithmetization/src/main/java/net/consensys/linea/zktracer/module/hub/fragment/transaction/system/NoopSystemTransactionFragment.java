@@ -13,20 +13,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.types;
+package net.consensys.linea.zktracer.module.hub.fragment.transaction.system;
 
-import net.consensys.linea.zktracer.module.hub.Hub;
-import org.hyperledger.besu.datatypes.Transaction;
-import org.hyperledger.besu.evm.worldstate.WorldView;
+import static net.consensys.linea.zktracer.module.hub.fragment.transaction.system.SystemTransactionFragmentType.NOOP;
 
-public class LondonTransactionProcessingMetadata extends TransactionProcessingMetadata {
+import net.consensys.linea.zktracer.Trace;
 
-  public LondonTransactionProcessingMetadata(
-      Hub hub,
-      WorldView world,
-      Transaction transaction,
-      int relativeTransactionNumber,
-      int absoluteTransactionNumber) {
-    super(hub, world, transaction, relativeTransactionNumber, absoluteTransactionNumber);
+public class NoopSystemTransactionFragment extends SystemTransactionFragment {
+
+  public NoopSystemTransactionFragment() {
+    super(NOOP);
+  }
+
+  @Override
+  public Trace.Hub trace(Trace.Hub trace) {
+    super.trace(trace);
+    return trace.pTransactionNoop(true);
   }
 }

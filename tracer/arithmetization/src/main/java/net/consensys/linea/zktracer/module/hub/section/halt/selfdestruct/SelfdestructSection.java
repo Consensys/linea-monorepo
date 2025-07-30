@@ -25,6 +25,7 @@ import java.util.Map;
 import lombok.Getter;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
 import net.consensys.linea.zktracer.module.hub.defer.AfterTransactionFinalizationDefer;
 import net.consensys.linea.zktracer.module.hub.defer.EndTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.defer.PostOpcodeDefer;
@@ -125,7 +126,8 @@ public abstract class SelfdestructSection extends TraceSection
               .make(
                   selfdestructor,
                   selfdestructor,
-                  DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0));
+                  DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0),
+                  TransactionProcessingType.USER);
 
       final AccountFragment recipientFirstAccountFragment =
           hub.factories()
@@ -134,7 +136,8 @@ public abstract class SelfdestructSection extends TraceSection
                   recipient,
                   recipient,
                   recipientAddressUntrimmed,
-                  DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 1));
+                  DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 1),
+                  TransactionProcessingType.USER);
 
       this.addFragment(selfdestructorFirstAccountFragment);
       this.addFragment(recipientFirstAccountFragment);
@@ -197,7 +200,8 @@ public abstract class SelfdestructSection extends TraceSection
             .make(
                 selfdestructor,
                 selfdestructorNew,
-                DomSubStampsSubFragment.standardDomSubStamps(hubStamp, 0));
+                DomSubStampsSubFragment.standardDomSubStamps(hubStamp, 0),
+                TransactionProcessingType.USER);
     final AccountFragment recipientFirstAccountFragment =
         hub.factories()
             .accountFragment()
@@ -205,7 +209,8 @@ public abstract class SelfdestructSection extends TraceSection
                 recipient,
                 recipientNew,
                 recipientAddressUntrimmed,
-                DomSubStampsSubFragment.standardDomSubStamps(hubStamp, 1));
+                DomSubStampsSubFragment.standardDomSubStamps(hubStamp, 1),
+                TransactionProcessingType.USER);
 
     this.addFragment(selfdestructorFirstAccountFragment);
     this.addFragment(recipientFirstAccountFragment);
@@ -222,7 +227,8 @@ public abstract class SelfdestructSection extends TraceSection
                 selfdestructorNew.deepCopy().setDeploymentNumber(hub),
                 selfdestructor.deepCopy().setDeploymentNumber(hub),
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
-                    hubStamp, callFrame.revertStamp(), 2));
+                    hubStamp, callFrame.revertStamp(), 2),
+                TransactionProcessingType.USER);
 
     final AccountFragment recipientUndoingAccountFragment =
         hub.factories()
@@ -231,7 +237,8 @@ public abstract class SelfdestructSection extends TraceSection
                 recipientNew.deepCopy().setDeploymentNumber(hub),
                 recipient.deepCopy().setDeploymentNumber(hub),
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
-                    hubStamp, callFrame.revertStamp(), 3));
+                    hubStamp, callFrame.revertStamp(), 3),
+                TransactionProcessingType.USER);
 
     this.addFragment(selfDestroyerUndoingAccountFragment);
     this.addFragment(recipientUndoingAccountFragment);
@@ -286,7 +293,8 @@ public abstract class SelfdestructSection extends TraceSection
                 .make(
                     accountWiping,
                     accountWipingNew,
-                    DomSubStampsSubFragment.selfdestructDomSubStamps(hub, hubStamp));
+                    DomSubStampsSubFragment.selfdestructDomSubStamps(hub, hubStamp),
+                    TransactionProcessingType.USER);
 
         this.addFragment(accountWipingFragment);
         this.addFragment(finalUnexceptionalContextFragment);

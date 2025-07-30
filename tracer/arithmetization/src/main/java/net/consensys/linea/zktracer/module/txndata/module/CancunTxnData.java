@@ -15,4 +15,33 @@
 
 package net.consensys.linea.zktracer.module.txndata.module;
 
-public class CancunTxnData {}
+import net.consensys.linea.zktracer.Trace;
+import net.consensys.linea.zktracer.module.euc.Euc;
+import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.fragment.transaction.system.SystemTransactionFragment;
+import net.consensys.linea.zktracer.module.wcp.Wcp;
+import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
+
+public class CancunTxnData extends TxnData {
+  public CancunTxnData(Hub hub, Wcp wcp, Euc euc) {
+    super(hub, wcp, euc);
+  }
+
+  @Override
+  public void traceEndTx(TransactionProcessingMetadata tx) {}
+
+  @Override
+  public int numberOfUserTransactionsInCurrentBlock() {
+    // TODO: implement me
+    return 0;
+  }
+
+  public void callTxnDataForSystemTransaction(final SystemTransactionFragment transactionFragment) {
+    // TODO: implement me
+  }
+
+  @Override
+  public void commit(Trace trace) {
+    // TODO: implement me
+  }
+}

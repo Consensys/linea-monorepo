@@ -361,7 +361,7 @@ public abstract class TxndataOperation extends ModuleOperation {
     for (int ct = 0; ct < nbLInes; ct++) {
       trace
           .absTxNumMax(absTxNumMax)
-          .absTxNum(tx.getAbsoluteTransactionNumber())
+          .absTxNum(tx.getUserTransactionNumber())
           .relBlock(tx.getRelativeBlockNumber())
           .relTxNumMax(block.getNbOfTxsInBlock())
           .relTxNum(tx.getRelativeTransactionNumber())

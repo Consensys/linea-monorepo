@@ -28,6 +28,7 @@ import java.util.Set;
 
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.storage.StorageFragment;
@@ -98,7 +99,8 @@ public class TxPreWarmingMacroSection {
                               preWarmingAccountSnapshot,
                               postWarmingAccountSnapshot,
                               address,
-                              domSubStampsSubFragment));
+                              domSubStampsSubFragment,
+                              TransactionProcessingType.USER));
 
                   final List<Bytes32> keys = entry.storageKeys();
                   for (Bytes32 k : keys) {

@@ -332,21 +332,21 @@ public class OutOfGasMemExpExceptionTest extends TracerTestBase {
     if (cornerCase <= -6419) {
       assertEquals(
           OUT_OF_GAS_EXCEPTION,
-          bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+          bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
     } else if (cornerCase <= 100) {
       assertNotEquals(
           OUT_OF_GAS_EXCEPTION,
-          bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+          bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
       assertEquals(
           OUT_OF_GAS_EXCEPTION,
-          bytecodeRunner.getHub().previousTraceSection(2).commonValues.tracedException());
+          bytecodeRunner.getHub().lastUserTransactionSection(2).commonValues.tracedException());
     } else {
       assertNotEquals(
           OUT_OF_GAS_EXCEPTION,
-          bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+          bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
       assertNotEquals(
           OUT_OF_GAS_EXCEPTION,
-          bytecodeRunner.getHub().previousTraceSection(2).commonValues.tracedException());
+          bytecodeRunner.getHub().lastUserTransactionSection(2).commonValues.tracedException());
     }
   }
 

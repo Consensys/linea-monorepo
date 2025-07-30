@@ -15,7 +15,6 @@
 
 package net.consensys.linea.zktracer.module.txndata.module;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import lombok.Getter;
@@ -26,14 +25,10 @@ import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.txndata.BlockSnapshot;
+import net.consensys.linea.zktracer.module.hub.fragment.transaction.system.SystemTransactionFragment;
 import net.consensys.linea.zktracer.module.txndata.moduleOperation.TxndataOperation;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
-import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.plugin.data.BlockBody;
-import org.hyperledger.besu.plugin.data.BlockHeader;
-import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 @RequiredArgsConstructor
 @Accessors(fluent = true)
@@ -46,8 +41,6 @@ public abstract class TxnData implements OperationListModule<TxndataOperation> {
   @Getter private final Wcp wcp;
   @Getter private final Euc euc;
 
-  private final List<BlockSnapshot> blocks = new ArrayList<>();
-
   @Override
   public String moduleKey() {
     return "TXN_DATA";
@@ -59,39 +52,11 @@ public abstract class TxnData implements OperationListModule<TxndataOperation> {
   }
 
   @Override
-  public final void traceStartBlock(
-      final ProcessableBlockHeader blockHeader, final Address miningBeneficiary) {
-    blocks.add(new BlockSnapshot(blockHeader));
-  }
-
-  @Override
-  public void traceEndTx(TransactionProcessingMetadata tx) {
-    throw new IllegalStateException("Should be implemented");
-  }
-
-  @Override
-  public void traceEndBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
-    currentBlock().setNbOfTxsInBlock(currentTx().tx.getRelativeTransactionNumber());
-    currentTx().setCallWcpLastTxOfBlock(currentBlock().getBlockGasLimit());
-  }
-
-  @Override
-  public int lineCount() {
-    // The last tx of each block has one more rows
-    return operations.lineCount() + blocks.size();
-  }
+  public abstract void traceEndTx(TransactionProcessingMetadata tx);
 
   @Override
   public int spillage(Trace trace) {
     return trace.txndata().spillage();
-  }
-
-  public BlockSnapshot currentBlock() {
-    return blocks.getLast();
-  }
-
-  private TxndataOperation currentTx() {
-    return operations.getLast();
   }
 
   @Override
@@ -99,12 +64,8 @@ public abstract class TxnData implements OperationListModule<TxndataOperation> {
     return trace.txndata().headers(this.lineCount());
   }
 
-  @Override
-  public void commit(Trace trace) {
-    final int absTxNumMax = operations.size();
+  public abstract int numberOfUserTransactionsInCurrentBlock();
 
-    for (TxndataOperation tx : operations.getAll()) {
-      tx.traceTx(trace.txndata(), blocks.get(tx.getTx().getRelativeBlockNumber() - 1), absTxNumMax);
-    }
-  }
+  public abstract void callTxnDataForSystemTransaction(
+      final SystemTransactionFragment transactionFragment);
 }

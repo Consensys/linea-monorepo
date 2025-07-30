@@ -20,6 +20,7 @@ import java.util.Optional;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import org.apache.tuweni.bytes.Bytes;
 
@@ -30,9 +31,10 @@ public class LondonAccountFragment extends AccountFragment {
       AccountSnapshot oldState,
       AccountSnapshot newState,
       Optional<Bytes> addressToTrim,
-      DomSubStampsSubFragment domSubStampsSubFragment) {
+      DomSubStampsSubFragment domSubStampsSubFragment,
+      TransactionProcessingType txProcessingType) {
 
-    super(hub, oldState, newState, addressToTrim, domSubStampsSubFragment);
+    super(hub, oldState, newState, addressToTrim, domSubStampsSubFragment, txProcessingType);
   }
 
   // Fragment always wiped in London

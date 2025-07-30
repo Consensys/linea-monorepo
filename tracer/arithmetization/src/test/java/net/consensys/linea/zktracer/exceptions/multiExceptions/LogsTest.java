@@ -73,7 +73,11 @@ public class LogsTest extends TracerTestBase {
     // Static check happens before OOGX in tracer
     assertEquals(
         STATIC_FAULT,
-        bytecodeRunnerStaticCall.getHub().previousTraceSection(2).commonValues.tracedException());
+        bytecodeRunnerStaticCall
+            .getHub()
+            .lastUserTransactionSection(2)
+            .commonValues
+            .tracedException());
   }
 
   @ParameterizedTest
@@ -101,7 +105,11 @@ public class LogsTest extends TracerTestBase {
       // Static check happens before MXPX
       assertEquals(
           STATIC_FAULT,
-          bytecodeRunnerStaticCall.getHub().previousTraceSection(2).commonValues.tracedException());
+          bytecodeRunnerStaticCall
+              .getHub()
+              .lastUserTransactionSection(2)
+              .commonValues
+              .tracedException());
     }
   }
 

@@ -50,6 +50,10 @@ public class Conversions {
     return Bytes32.leftPad(bigIntegerToBytes(input));
   }
 
+  public static Bytes16 bigIntegerToBytes16(final BigInteger input) {
+    return Bytes16.leftPad(bigIntegerToBytes(input));
+  }
+
   public static BigInteger booleanToBigInteger(final boolean input) {
     return input ? BigInteger.ONE : BigInteger.ZERO;
   }

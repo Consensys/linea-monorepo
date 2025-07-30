@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.fragment;
+package net.consensys.linea.zktracer.module.hub.fragment.transaction;
 
 import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
 import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
@@ -21,6 +21,7 @@ import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.Trace;
+import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
@@ -28,7 +29,7 @@ import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.TransactionType;
 
 @RequiredArgsConstructor
-public final class TransactionFragment implements TraceFragment {
+public final class UserTransactionFragment implements TraceFragment {
   private final TransactionProcessingMetadata transactionProcessingMetadata;
 
   @Override

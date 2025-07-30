@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.hub.fragment.account;
 
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.Trace.Hub.MULTIPLIER___DOM_SUB_STAMPS;
+import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.USER;
 import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
@@ -31,6 +32,7 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
 import net.consensys.linea.zktracer.module.hub.defer.DeferRegistry;
 import net.consensys.linea.zktracer.module.hub.defer.EndTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.defer.PostBlockDefer;
@@ -71,12 +73,13 @@ public abstract class AccountFragment
     public AccountFragment make(
         AccountSnapshot oldState,
         AccountSnapshot newState,
-        DomSubStampsSubFragment domSubStampsSubFragment) {
+        DomSubStampsSubFragment domSubStampsSubFragment,
+        TransactionProcessingType txProcessingType) {
       return switch (hub.fork) {
         case LONDON, PARIS, SHANGHAI -> new LondonAccountFragment(
-            hub, oldState, newState, Optional.empty(), domSubStampsSubFragment);
+            hub, oldState, newState, Optional.empty(), domSubStampsSubFragment, txProcessingType);
         case CANCUN, PRAGUE -> new CancunAccountFragment(
-            hub, oldState, newState, Optional.empty(), domSubStampsSubFragment);
+            hub, oldState, newState, Optional.empty(), domSubStampsSubFragment, txProcessingType);
       };
     }
 
@@ -84,13 +87,24 @@ public abstract class AccountFragment
         AccountSnapshot oldState,
         AccountSnapshot newState,
         Bytes toTrim,
-        DomSubStampsSubFragment domSubStampsSubFragment) {
+        DomSubStampsSubFragment domSubStampsSubFragment,
+        TransactionProcessingType txProcessingType) {
       hub.trm().callTrimming(toTrim);
       return switch (hub.fork) {
         case LONDON, PARIS, SHANGHAI -> new LondonAccountFragment(
-            hub, oldState, newState, Optional.of(toTrim), domSubStampsSubFragment);
+            hub,
+            oldState,
+            newState,
+            Optional.of(toTrim),
+            domSubStampsSubFragment,
+            txProcessingType);
         case CANCUN, PRAGUE -> new CancunAccountFragment(
-            hub, oldState, newState, Optional.of(toTrim), domSubStampsSubFragment);
+            hub,
+            oldState,
+            newState,
+            Optional.of(toTrim),
+            domSubStampsSubFragment,
+            txProcessingType);
       };
     }
   }
@@ -100,10 +114,11 @@ public abstract class AccountFragment
       AccountSnapshot oldState,
       AccountSnapshot newState,
       Optional<Bytes> addressToTrim,
-      DomSubStampsSubFragment domSubStampsSubFragment) {
+      DomSubStampsSubFragment domSubStampsSubFragment,
+      TransactionProcessingType txProcessingType) {
     checkArgument(oldState.address().equals(newState.address()));
 
-    transactionProcessingMetadata = hub.txStack().current();
+    transactionProcessingMetadata = txProcessingType == USER ? hub.txStack().current() : null;
     hubStamp = hub.stamp();
 
     this.oldState = oldState;
@@ -115,7 +130,9 @@ public abstract class AccountFragment
     hub.defers().scheduleForPostConflation(this);
 
     // This allows us to properly fill MARKED_FOR_SELFDESTRUCT/DELETION(_NEW), among other things
-    hub.defers().scheduleForEndTransaction(this);
+    if (txProcessingType == USER) {
+      hub.defers().scheduleForEndTransaction(this);
+    }
 
     // This allows us to keep track of account that are accessed by the HUB during the execution of
     // the block

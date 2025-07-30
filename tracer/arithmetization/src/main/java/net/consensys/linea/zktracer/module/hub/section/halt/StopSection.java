@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.module.hub.fragment.ContextFragment.r
 
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
 import net.consensys.linea.zktracer.module.hub.defer.EndTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.defer.PostRollbackDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
@@ -92,7 +93,8 @@ public class StopSection extends TraceSection implements PostRollbackDefer, EndT
             .make(
                 priorEmptyDeployment,
                 afterEmptyDeployment,
-                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0));
+                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0),
+                TransactionProcessingType.USER);
 
     this.addStackAndFragments(hub, readCurrentContextData(hub), doingAccountFragment);
   }
@@ -125,7 +127,8 @@ public class StopSection extends TraceSection implements PostRollbackDefer, EndT
             .make(
                 lastAccountFragment.newState(),
                 lastAccountFragment.oldState(),
-                undoingDomSubStamps));
+                undoingDomSubStamps,
+                TransactionProcessingType.USER));
   }
 
   /**

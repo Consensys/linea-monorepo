@@ -84,7 +84,11 @@ public class CreatesTest extends TracerTestBase {
     // Static check happens before OOGX in tracer
     assertEquals(
         STATIC_FAULT,
-        bytecodeRunnerStaticCall.getHub().previousTraceSection(2).commonValues.tracedException());
+        bytecodeRunnerStaticCall
+            .getHub()
+            .lastUserTransactionSection(2)
+            .commonValues
+            .tracedException());
   }
 
   @ParameterizedTest
@@ -112,7 +116,11 @@ public class CreatesTest extends TracerTestBase {
       // Static check happens before MXPX
       assertEquals(
           STATIC_FAULT,
-          bytecodeRunnerStaticCall.getHub().previousTraceSection(2).commonValues.tracedException());
+          bytecodeRunnerStaticCall
+              .getHub()
+              .lastUserTransactionSection(2)
+              .commonValues
+              .tracedException());
     }
   }
 
@@ -135,7 +143,11 @@ public class CreatesTest extends TracerTestBase {
     // Static check happens before MAX_CODE_SIZE_EXCEPTION
     assertEquals(
         STATIC_FAULT,
-        bytecodeRunnerStaticCall.getHub().previousTraceSection(2).commonValues.tracedException());
+        bytecodeRunnerStaticCall
+            .getHub()
+            .lastUserTransactionSection(2)
+            .commonValues
+            .tracedException());
   }
 
   @ParameterizedTest
@@ -172,7 +184,7 @@ public class CreatesTest extends TracerTestBase {
         isPostShanghai(fork) ? MAX_CODE_SIZE_EXCEPTION : OUT_OF_GAS_EXCEPTION;
     assertEquals(
         exceptionTriggered,
-        bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @ParameterizedTest
@@ -198,7 +210,7 @@ public class CreatesTest extends TracerTestBase {
           isPostShanghai(fork) ? MAX_CODE_SIZE_EXCEPTION : MEMORY_EXPANSION_EXCEPTION;
       assertEquals(
           exceptionTriggered,
-          bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+          bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
     }
   }
 

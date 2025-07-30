@@ -25,6 +25,7 @@ import java.util.Optional;
 import lombok.Getter;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
 import net.consensys.linea.zktracer.module.hub.defer.*;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
@@ -237,7 +238,8 @@ public abstract class CreateSection extends TraceSection
         accountFragmentFactory.make(
             firstCreator,
             firstCreatorNew,
-            DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0));
+            DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0),
+            TransactionProcessingType.USER);
     creatorAccountFragment.rlpAddrSubFragment(rlpAddrSubFragment);
 
     final AccountFragment createeAccountFragment =
@@ -245,7 +247,8 @@ public abstract class CreateSection extends TraceSection
             firstCreatee,
             firstCreateeNew,
             createeAddress.trimLeadingZeros(),
-            DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 1));
+            DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 1),
+            TransactionProcessingType.USER);
 
     createeAccountFragment.requiresRomlex(requiresRomLex);
 
@@ -272,7 +275,8 @@ public abstract class CreateSection extends TraceSection
             accountFragmentFactory.make(
                 firstCreator,
                 firstCreatorNew,
-                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0));
+                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0),
+                TransactionProcessingType.USER);
         firstCreatorFragment.rlpAddrSubFragment(rlpAddrSubFragment);
 
         final AccountFragment firstCreateeFragment =
@@ -280,7 +284,8 @@ public abstract class CreateSection extends TraceSection
                 firstCreatee,
                 firstCreateeNew,
                 createeAddress.trimLeadingZeros(),
-                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 1));
+                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 1),
+                TransactionProcessingType.USER);
 
         this.addFragments(firstCreatorFragment, firstCreateeFragment);
       }
@@ -302,14 +307,16 @@ public abstract class CreateSection extends TraceSection
                 secondCreator,
                 secondCreatorNew,
                 DomSubStampsSubFragment.revertsWithChildDomSubStamps(
-                    this.hubStamp(), childRevertStamp, 0));
+                    this.hubStamp(), childRevertStamp, 0),
+                TransactionProcessingType.USER);
 
         final AccountFragment undoCreateeAfterFailedDeployment =
             accountFragmentFactory.make(
                 secondCreatee,
                 secondCreateeNew,
                 DomSubStampsSubFragment.revertsWithChildDomSubStamps(
-                    this.hubStamp(), childRevertStamp, 1));
+                    this.hubStamp(), childRevertStamp, 1),
+                TransactionProcessingType.USER);
 
         this.addFragments(undoCreatorAfterFailedDeployment, undoCreateeAfterFailedDeployment);
       }
@@ -359,13 +366,15 @@ public abstract class CreateSection extends TraceSection
         accountFragmentFactory.make(
             secondCreator,
             secondCreatorNew,
-            DomSubStampsSubFragment.revertWithCurrentDomSubStamps(hubStamp, revertStamp, 0));
+            DomSubStampsSubFragment.revertWithCurrentDomSubStamps(hubStamp, revertStamp, 0),
+            TransactionProcessingType.USER);
 
     final AccountFragment undoCreatee =
         accountFragmentFactory.make(
             secondCreatee,
             secondCreateeNew,
-            DomSubStampsSubFragment.revertWithCurrentDomSubStamps(hubStamp, revertStamp, 1));
+            DomSubStampsSubFragment.revertWithCurrentDomSubStamps(hubStamp, revertStamp, 1),
+            TransactionProcessingType.USER);
 
     this.addFragments(undoCreator, undoCreatee);
   }
@@ -382,13 +391,15 @@ public abstract class CreateSection extends TraceSection
         accountFragmentFactory.make(
             thirdCreator,
             thirdCreatorNew,
-            DomSubStampsSubFragment.revertWithCurrentDomSubStamps(hubStamp, revertStamp, 2));
+            DomSubStampsSubFragment.revertWithCurrentDomSubStamps(hubStamp, revertStamp, 2),
+            TransactionProcessingType.USER);
 
     final AccountFragment undoCreateeFinal =
         accountFragmentFactory.make(
             thirdCreatee,
             thirdCreateeNew,
-            DomSubStampsSubFragment.revertWithCurrentDomSubStamps(hubStamp, revertStamp, 3));
+            DomSubStampsSubFragment.revertWithCurrentDomSubStamps(hubStamp, revertStamp, 3),
+            TransactionProcessingType.USER);
 
     this.addFragments(undoCreatorFinal, undoCreateeFinal);
   }
@@ -408,7 +419,8 @@ public abstract class CreateSection extends TraceSection
         accountFragmentFactory.make(
             firstCreator,
             firstCreator,
-            DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0));
+            DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0),
+            TransactionProcessingType.USER);
 
     finalContextFragmentSquashesReturnData(hub);
 

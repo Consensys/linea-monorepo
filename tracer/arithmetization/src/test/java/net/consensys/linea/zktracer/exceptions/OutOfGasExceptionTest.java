@@ -175,11 +175,11 @@ public class OutOfGasExceptionTest extends TracerTestBase {
       if (cornerCase == 2299) {
         assertEquals(
             OUT_OF_GAS_EXCEPTION,
-            bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+            bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
       } else {
         assertNotEquals(
             OUT_OF_GAS_EXCEPTION,
-            bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+            bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
       }
     }
   }

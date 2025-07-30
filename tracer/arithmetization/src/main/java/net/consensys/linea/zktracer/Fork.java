@@ -51,4 +51,8 @@ public enum Fork {
   public static boolean isPostCancun(Fork fork) {
     return fork.compareTo(CANCUN) >= 0;
   }
+
+  public static boolean isPostPrague(Fork fork) {
+    return fork.compareTo(PRAGUE) >= 0;
+  }
 }

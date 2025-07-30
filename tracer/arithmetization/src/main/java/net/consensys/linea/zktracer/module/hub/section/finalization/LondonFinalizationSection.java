@@ -13,21 +13,24 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.state;
+package net.consensys.linea.zktracer.module.hub.section.finalization;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.types.ShanghaiTransactionProcessingMetadata;
-import org.hyperledger.besu.datatypes.Transaction;
-import org.hyperledger.besu.evm.worldstate.WorldView;
+import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
+import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 
-public class ShanghaiTransactionStack extends LondonTransactionStack {
+public class LondonFinalizationSection extends TxFinalizationSection {
+  public LondonFinalizationSection(Hub hub) {
+    super(hub);
+  }
 
   @Override
-  public void addTransactionToStack(Hub hub, WorldView world, Transaction tx) {
-    final ShanghaiTransactionProcessingMetadata newTx =
-        new ShanghaiTransactionProcessingMetadata(
-            hub, world, tx, relativeTransactionNumber(), currentAbsNumber());
-
-    transactions().add(newTx);
+  protected void addFragments(
+      TransactionProcessingMetadata txMetadata,
+      AccountFragment senderAccountFragment,
+      AccountFragment coinbaseAccountFragment) {
+    addFragment(senderAccountFragment);
+    addFragment(coinbaseAccountFragment);
+    addFragment(txMetadata.userTransactionFragment());
   }
 }

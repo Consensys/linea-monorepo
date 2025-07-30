@@ -21,6 +21,7 @@ import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
 
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
 import net.consensys.linea.zktracer.module.hub.defer.PostRollbackDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
@@ -92,7 +93,12 @@ public class ExtCodeCopySection extends TraceSection implements PostRollbackDefe
       final AccountFragment accountReadingFragment =
           hub.factories()
               .accountFragment()
-              .makeWithTrm(firstForeign, firstForeign, rawAddress, doingDomSubStamps);
+              .makeWithTrm(
+                  firstForeign,
+                  firstForeign,
+                  rawAddress,
+                  doingDomSubStamps,
+                  TransactionProcessingType.USER);
 
       this.addFragment(accountReadingFragment);
       return;
@@ -115,7 +121,12 @@ public class ExtCodeCopySection extends TraceSection implements PostRollbackDefe
     final AccountFragment accountDoingFragment =
         hub.factories()
             .accountFragment()
-            .makeWithTrm(firstForeign, firstForeignNew, rawAddress, doingDomSubStamps);
+            .makeWithTrm(
+                firstForeign,
+                firstForeignNew,
+                rawAddress,
+                doingDomSubStamps,
+                TransactionProcessingType.USER);
     accountDoingFragment.requiresRomlex(triggerRomLex);
     if (triggerRomLex) {
       hub.romLex().callRomLex(frame);
@@ -140,7 +151,11 @@ public class ExtCodeCopySection extends TraceSection implements PostRollbackDefe
     final AccountFragment undoingAccountFragment =
         hub.factories()
             .accountFragment()
-            .make(secondForeign, secondForeignNew, undoingDomSubStamps);
+            .make(
+                secondForeign,
+                secondForeignNew,
+                undoingDomSubStamps,
+                TransactionProcessingType.USER);
 
     this.addFragment(undoingAccountFragment);
   }

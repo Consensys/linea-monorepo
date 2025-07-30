@@ -59,7 +59,11 @@ public class SstoreTest extends TracerTestBase {
     // Static check happens before outOfStore exception
     assertEquals(
         STATIC_FAULT,
-        bytecodeRunnerStaticCall.getHub().previousTraceSection(2).commonValues.tracedException());
+        bytecodeRunnerStaticCall
+            .getHub()
+            .lastUserTransactionSection(2)
+            .commonValues
+            .tracedException());
   }
 
   @Test
@@ -85,6 +89,10 @@ public class SstoreTest extends TracerTestBase {
     // Static check happens before OOGX in tracer
     assertEquals(
         STATIC_FAULT,
-        bytecodeRunnerStaticCall.getHub().previousTraceSection(2).commonValues.tracedException());
+        bytecodeRunnerStaticCall
+            .getHub()
+            .lastUserTransactionSection(2)
+            .commonValues
+            .tracedException());
   }
 }

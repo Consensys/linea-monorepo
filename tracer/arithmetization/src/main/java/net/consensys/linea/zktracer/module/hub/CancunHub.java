@@ -15,14 +15,24 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
+import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_SKIP;
+import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.SYSF;
+import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.SYSI;
+
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.module.blockdata.module.Blockdata;
 import net.consensys.linea.zktracer.module.blockdata.module.CancunBlockData;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.section.McopySection;
+import net.consensys.linea.zktracer.module.hub.section.finalization.CancunFinalizationSection;
 import net.consensys.linea.zktracer.module.hub.section.halt.selfdestruct.CancunSelfdestructSection;
+import net.consensys.linea.zktracer.module.hub.section.skip.CancunTxSkipSection;
+import net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP4788BeaconBlockRoot;
+import net.consensys.linea.zktracer.module.hub.section.systemTransaction.Noop;
 import net.consensys.linea.zktracer.module.hub.section.transients.TLoadSection;
 import net.consensys.linea.zktracer.module.hub.section.transients.TStoreSection;
+import net.consensys.linea.zktracer.module.hub.section.txInitializationSection.CancunInitializationSection;
+import net.consensys.linea.zktracer.module.hub.transients.Transients;
 import net.consensys.linea.zktracer.module.mxp.module.CancunMxp;
 import net.consensys.linea.zktracer.module.mxp.module.Mxp;
 import net.consensys.linea.zktracer.module.rlpUtils.RlpUtils;
@@ -31,10 +41,15 @@ import net.consensys.linea.zktracer.module.rlptxn.cancun.CancunRlpTxn;
 import net.consensys.linea.zktracer.module.tables.PowerRt;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.CancunInstructionDecoder;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.InstructionDecoder;
+import net.consensys.linea.zktracer.module.txndata.module.CancunTxnData;
+import net.consensys.linea.zktracer.module.txndata.module.TxnData;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
+import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.gascalculator.CancunGasCalculator;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
+import org.hyperledger.besu.evm.worldstate.WorldView;
+import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 public class CancunHub extends ShanghaiHub {
   public CancunHub(ChainConfig chain) {
@@ -49,6 +64,11 @@ public class CancunHub extends ShanghaiHub {
   @Override
   protected Mxp setMxp() {
     return new CancunMxp();
+  }
+
+  @Override
+  protected TxnData setTxnData() {
+    return new CancunTxnData(this, wcp(), euc());
   }
 
   @Override
@@ -77,6 +97,25 @@ public class CancunHub extends ShanghaiHub {
   }
 
   @Override
+  protected void setSkipSection(
+      Hub hub,
+      WorldView world,
+      TransactionProcessingMetadata transactionProcessingMetadata,
+      Transients transients) {
+    new CancunTxSkipSection(hub, world, transactionProcessingMetadata, transients);
+  }
+
+  @Override
+  protected void setInitializationSection(WorldView world) {
+    new CancunInitializationSection(this, world);
+  }
+
+  @Override
+  protected void setFinalizationSection(Hub hub) {
+    new CancunFinalizationSection(hub);
+  }
+
+  @Override
   protected void setTransientSection(final Hub hub) {
     switch (hub.opCode()) {
       case TLOAD -> new TLoadSection(hub);
@@ -89,6 +128,25 @@ public class CancunHub extends ShanghaiHub {
   @Override
   protected void setMcopySection(Hub hub) {
     new McopySection(hub);
+  }
+
+  @Override
+  protected void traceSystemInitialTransaction(
+      WorldView world, ProcessableBlockHeader blockHeader) {
+    state.transactionProcessingType(SYSI);
+    state.incrementSysiTransactionNumber();
+    state.processingPhase(TX_SKIP);
+    new EIP4788BeaconBlockRoot(this, world, blockHeader);
+  }
+
+  @Override
+  protected void traceSystemFinalTransaction() {
+    state.transactionProcessingType(SYSF);
+    // TODO: the two following should be done at the beginning of the none section, but requires
+    // java > 21
+    state.incrementSysfTransactionNumber();
+    state.processingPhase(TX_SKIP);
+    new Noop(this);
   }
 
   @Override

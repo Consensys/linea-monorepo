@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.section;
+package net.consensys.linea.zktracer.module.hub.section.skip;
 
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
@@ -23,9 +23,11 @@ import java.math.BigInteger;
 
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
 import net.consensys.linea.zktracer.module.hub.defer.EndTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
+import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.module.hub.transients.Transients;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.datatypes.Address;
@@ -39,7 +41,7 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
  * later, through a {@link EndTransactionDefer}, to generate the trace chunks required for the
  * proving of a pure transaction.
  */
-public class TxSkipSection extends TraceSection implements EndTransactionDefer {
+public abstract class TxSkipSection extends TraceSection implements EndTransactionDefer {
 
   final TransactionProcessingMetadata txMetadata;
 
@@ -152,7 +154,8 @@ public class TxSkipSection extends TraceSection implements EndTransactionDefer {
                 sender,
                 senderNew,
                 sender.address(),
-                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0));
+                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0),
+                TransactionProcessingType.USER);
 
     // "recipient" account fragment
     final AccountFragment recipientAccountFragment =
@@ -162,7 +165,8 @@ public class TxSkipSection extends TraceSection implements EndTransactionDefer {
                 recipient,
                 recipientNew,
                 recipient.address(),
-                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 1));
+                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 1),
+                TransactionProcessingType.USER);
 
     // "coinbase" account fragment
     final AccountFragment coinbaseAccountFragment =
@@ -172,11 +176,16 @@ public class TxSkipSection extends TraceSection implements EndTransactionDefer {
                 coinbase,
                 coinbaseNew,
                 coinbase.address(),
-                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 2));
+                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 2),
+                TransactionProcessingType.USER);
 
-    this.addFragment(senderAccountFragment);
-    this.addFragment(recipientAccountFragment);
-    this.addFragment(coinbaseAccountFragment);
-    this.addFragment(txMetadata.transactionFragment());
+    addFragments(
+        txMetadata, senderAccountFragment, recipientAccountFragment, coinbaseAccountFragment);
   }
+
+  protected abstract void addFragments(
+      TransactionProcessingMetadata txMetadata,
+      AccountFragment senderAccountFragment,
+      AccountFragment recipientAccountFragment,
+      AccountFragment coinbaseAccountFragment);
 }

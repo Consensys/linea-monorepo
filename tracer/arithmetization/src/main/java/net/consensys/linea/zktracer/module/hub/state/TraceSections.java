@@ -67,7 +67,7 @@ public class TraceSections {
    */
   public TraceSection previousSection(int n) {
     Preconditions.checkArgument(trace.size() > n);
-    return this.trace.get(this.size() - 1 - n);
+    return trace.get(size() - 1 - n);
   }
 
   /**

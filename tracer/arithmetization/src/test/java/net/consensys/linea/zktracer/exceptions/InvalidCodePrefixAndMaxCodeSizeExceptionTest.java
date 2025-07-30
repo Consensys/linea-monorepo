@@ -95,7 +95,11 @@ public class InvalidCodePrefixAndMaxCodeSizeExceptionTest extends TracerTestBase
 
     assertEquals(
         INVALID_CODE_PREFIX,
-        toyExecutionEnvironment.getHub().previousTraceSection(1).commonValues.tracedException());
+        toyExecutionEnvironment
+            .getHub()
+            .lastUserTransactionSection(1)
+            .commonValues
+            .tracedException());
   }
 
   // Here it is attempted to trigger the MAX_CODE_SIZE exception using a deployment transaction
@@ -135,7 +139,11 @@ public class InvalidCodePrefixAndMaxCodeSizeExceptionTest extends TracerTestBase
 
     assertEquals(
         TracedException.MAX_CODE_SIZE_EXCEPTION,
-        toyExecutionEnvironment.getHub().previousTraceSection(1).commonValues.tracedException());
+        toyExecutionEnvironment
+            .getHub()
+            .lastUserTransactionSection(1)
+            .commonValues
+            .tracedException());
   }
 
   // Here it is attempted to trigger the INVALID_CODE_PREFIX exception using a CREATE transaction
@@ -169,7 +177,7 @@ public class InvalidCodePrefixAndMaxCodeSizeExceptionTest extends TracerTestBase
 
     assertEquals(
         INVALID_CODE_PREFIX,
-        bytecodeRunner.getHub().previousTraceSection(2).commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection(2).commonValues.tracedException());
   }
 
   // Here it is attempted to trigger the MAX_CODE_SIZE exception using a CREATE transaction
@@ -197,7 +205,7 @@ public class InvalidCodePrefixAndMaxCodeSizeExceptionTest extends TracerTestBase
 
     assertEquals(
         MAX_CODE_SIZE_EXCEPTION,
-        bytecodeRunner.getHub().previousTraceSection(2).commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection(2).commonValues.tracedException());
   }
 
   @ParameterizedTest
@@ -216,7 +224,7 @@ public class InvalidCodePrefixAndMaxCodeSizeExceptionTest extends TracerTestBase
     TracedException exceptionTriggered = isPostShanghai(fork) ? MAX_CODE_SIZE_EXCEPTION : NONE;
     assertEquals(
         exceptionTriggered,
-        bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   static Stream<OpCode> createOpCodesList() {

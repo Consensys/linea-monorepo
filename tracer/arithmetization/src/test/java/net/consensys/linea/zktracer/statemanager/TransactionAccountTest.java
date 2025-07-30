@@ -105,7 +105,7 @@ public class TransactionAccountTest extends TracerTestBase {
     multiBlockEnv.run();
 
     // Total number of transactions
-    int txCount = multiBlockEnv.getHub().state().txCount();
+    int txCount = multiBlockEnv.getHub().state().getUserTransactionNumber();
 
     // Replay the transaction's trace from the hub to compute the first and last values for the
     // account fragment

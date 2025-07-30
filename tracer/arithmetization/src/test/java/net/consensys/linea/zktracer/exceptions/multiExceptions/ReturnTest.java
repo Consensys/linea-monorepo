@@ -63,7 +63,11 @@ public class ReturnTest extends TracerTestBase {
     // OOGX check is done prior to Invalid Code Prefix exception in tracer
     assertEquals(
         OUT_OF_GAS_EXCEPTION,
-        bytecodeRunnerWithICP.getHub().previousTraceSection(2).commonValues.tracedException());
+        bytecodeRunnerWithICP
+            .getHub()
+            .lastUserTransactionSection(2)
+            .commonValues
+            .tracedException());
   }
 
   @Test
@@ -83,7 +87,7 @@ public class ReturnTest extends TracerTestBase {
         MAX_CODE_SIZE_EXCEPTION,
         bytecodeRunnerWithICPXAndMCSX
             .getHub()
-            .previousTraceSection(2)
+            .lastUserTransactionSection(2)
             .commonValues
             .tracedException());
   }
@@ -120,7 +124,7 @@ public class ReturnTest extends TracerTestBase {
     // Max Code Size Exception check before OOGX in tracer
     assertEquals(
         MAX_CODE_SIZE_EXCEPTION,
-        bytecodeRunner.getHub().previousTraceSection(2).commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection(2).commonValues.tracedException());
   }
 
   @Test
@@ -150,7 +154,7 @@ public class ReturnTest extends TracerTestBase {
         MAX_CODE_SIZE_EXCEPTION,
         bytecodeRunnerWithICPXAndMCSX
             .getHub()
-            .previousTraceSection(2)
+            .lastUserTransactionSection(2)
             .commonValues
             .tracedException());
   }

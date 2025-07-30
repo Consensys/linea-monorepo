@@ -15,33 +15,39 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.account;
 
+import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.isUserTransaction;
+
 import java.util.Optional;
 
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
 
 public class CancunAccountFragment extends LondonAccountFragment {
   private final TransactionProcessingMetadata tx;
+  private final TransactionProcessingType txType;
 
   public CancunAccountFragment(
       Hub hub,
       AccountSnapshot oldState,
       AccountSnapshot newState,
       Optional<Bytes> addressToTrim,
-      DomSubStampsSubFragment domSubStampsSubFragment) {
-    super(hub, oldState, newState, addressToTrim, domSubStampsSubFragment);
-
-    tx = hub.txStack().current();
-
-    tx.updateHadCodeInitially(
-        oldState.address(),
-        domSubStampsSubFragment.domStamp(),
-        domSubStampsSubFragment.subStamp(),
-        oldState().tracedHasCode());
+      DomSubStampsSubFragment domSubStampsSubFragment,
+      TransactionProcessingType txProcessingType) {
+    super(hub, oldState, newState, addressToTrim, domSubStampsSubFragment, txProcessingType);
+    txType = txProcessingType;
+    tx = isUserTransaction(txType) ? hub.txStack().current() : null;
+    if (isUserTransaction(txType)) {
+      tx.updateHadCodeInitially(
+          oldState.address(),
+          domSubStampsSubFragment.domStamp(),
+          domSubStampsSubFragment.subStamp(),
+          oldState().tracedHasCode());
+    }
   }
 
   public boolean shouldBeMarkedForDeletion() {
@@ -62,6 +68,9 @@ public class CancunAccountFragment extends LondonAccountFragment {
 
   @Override
   void traceHadCodeInitially(Trace.Hub trace) {
-    trace.pAccountHadCodeInitially(tx.hadCodeInitiallyMap().get(oldState().address()).hadCode());
+    trace.pAccountHadCodeInitially(
+        isUserTransaction(txType)
+            ? tx.hadCodeInitiallyMap().get(oldState().address()).hadCode()
+            : true);
   }
 }

@@ -29,9 +29,9 @@ import org.apache.tuweni.bytes.Bytes;
 
 @Accessors(fluent = true, chain = false)
 @RequiredArgsConstructor
-public final class CommonFragment implements TraceFragment {
+public abstract class CommonFragment implements TraceFragment {
 
-  private final CommonFragmentValues commonFragmentValues;
+  final CommonFragmentValues commonFragmentValues;
   private final int nonStackRowsCounter;
   private final boolean twoLineInstructionCounter;
   private final int mmuStamp;
@@ -56,18 +56,20 @@ public final class CommonFragment implements TraceFragment {
 
   public Trace.Hub trace(Trace.Hub trace) {
     final CallFrame frame = commonFragmentValues.callFrame;
-    final TransactionProcessingMetadata tx = commonFragmentValues.txMetadata;
     final boolean isExec = commonFragmentValues.hubProcessingPhase == TX_EXEC;
-    return trace
-        .absoluteTransactionNumber(tx.getAbsoluteTransactionNumber())
-        .relativeBlockNumber(tx.getRelativeBlockNumber())
+    traceTransactionsAndBlockNumbers(trace);
+    traceTransactionProcessingType(trace);
+    trace
         .txSkip(commonFragmentValues.hubProcessingPhase == TX_SKIP)
         .txWarm(commonFragmentValues.hubProcessingPhase == TX_WARM)
         .txInit(commonFragmentValues.hubProcessingPhase == TX_INIT)
         .txExec(commonFragmentValues.hubProcessingPhase == TX_EXEC)
         .txFinl(commonFragmentValues.hubProcessingPhase == TX_FINL)
         .hubStamp(commonFragmentValues.hubStamp)
-        .hubStampTransactionEnd(tx.getHubStampTransactionEnd())
+        .hubStampTransactionEnd(
+            commonFragmentValues.hubProcessingPhase == TX_SKIP
+                ? 0
+                : tx().getHubStampTransactionEnd())
         .contextMayChange(commonFragmentValues.contextMayChange)
         .exceptionAhoy(Exceptions.any(commonFragmentValues.exceptions) && isExec)
         .logInfoStamp(commonFragmentValues.logStamp)
@@ -99,5 +101,14 @@ public final class CommonFragment implements TraceFragment {
         .counterTli(twoLineInstructionCounter)
         .nonStackRows((short) commonFragmentValues.numberOfNonStackRows)
         .counterNsr((short) nonStackRowsCounter);
+    return trace;
   }
+
+  protected TransactionProcessingMetadata tx() {
+    return commonFragmentValues.txMetadata;
+  }
+
+  protected abstract void traceTransactionsAndBlockNumbers(Trace.Hub trace);
+
+  protected abstract void traceTransactionProcessingType(Trace.Hub trace);
 }

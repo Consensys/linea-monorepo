@@ -144,8 +144,7 @@ public class BlockwiseDeplNoTest extends TracerTestBase {
                         true,
                         BigInteger.ONE)
                     // since the last self-destruct gets reverted, the last call will not increase
-                    // the
-                    // deplNo
+                    // the deplNo
                     ))
             .transactionProcessingResultValidator(resultValidator)
             .build();
@@ -162,7 +161,7 @@ public class BlockwiseDeplNoTest extends TracerTestBase {
     Map<Address, Map<Integer, Integer>> maxDeplNoBlock = new HashMap<>();
 
     // We count the number of transactions in the hub, here we have 11
-    int txCount = multiBlockEnv.getHub().state().txCount();
+    int txCount = multiBlockEnv.getHub().state().getUserTransactionNumber();
     for (int txNb = 0; txNb < txCount; txNb++) {
       // Relative block number is constant per transaction
       // Tx number starts from 1
@@ -174,14 +173,7 @@ public class BlockwiseDeplNoTest extends TracerTestBase {
               .getRelativeBlockNumber();
       // We retrieve the trace section list for each transaction
       List<TraceSection> traceSectionList =
-          multiBlockEnv
-              .getHub()
-              .state()
-              .getState()
-              .operationsInTransactionBundle()
-              .get(txNb)
-              .traceSections()
-              .trace();
+          multiBlockEnv.getHub().state().getUserTransaction(txNb + 1).traceSections().trace();
       // For each trace section
       for (TraceSection traceSection : traceSectionList) {
         // We iterate over the fragments

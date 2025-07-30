@@ -32,6 +32,7 @@ import lombok.Setter;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Factories;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
 import net.consensys.linea.zktracer.module.hub.defer.ContextEntryDefer;
 import net.consensys.linea.zktracer.module.hub.defer.ContextExitDefer;
 import net.consensys.linea.zktracer.module.hub.defer.ContextReEntryDefer;
@@ -257,7 +258,8 @@ public class CallSection extends TraceSection
             .make(
                 callerFirst,
                 callerFirst,
-                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0));
+                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0),
+                TransactionProcessingType.USER);
 
     final AccountFragment calleeAccountFragment =
         factory
@@ -266,7 +268,8 @@ public class CallSection extends TraceSection
                 calleeFirst,
                 calleeFirst,
                 rawCalleeAddress,
-                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 1));
+                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 1),
+                TransactionProcessingType.USER);
 
     this.addFragments(callerAccountFragment, calleeAccountFragment);
   }
@@ -281,7 +284,8 @@ public class CallSection extends TraceSection
             .make(
                 callerFirst,
                 callerFirstNew,
-                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0));
+                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0),
+                TransactionProcessingType.USER);
 
     final AccountFragment readingCalleeAccountAndWarmth =
         factory
@@ -290,7 +294,8 @@ public class CallSection extends TraceSection
                 calleeFirst,
                 calleeFirstNew,
                 rawCalleeAddress,
-                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 1));
+                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 1),
+                TransactionProcessingType.USER);
     finalContextFragment = ContextFragment.nonExecutionProvidesEmptyReturnData(hub);
     this.addFragments(readingCallerAccount, readingCalleeAccountAndWarmth);
     hub.defers().scheduleForPostExecution(this);
@@ -423,7 +428,8 @@ public class CallSection extends TraceSection
             .make(
                 callerFirst,
                 callerFirstNew,
-                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0));
+                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0),
+                TransactionProcessingType.USER);
 
     final AccountFragment firstCalleeAccountFragment =
         factory
@@ -432,7 +438,8 @@ public class CallSection extends TraceSection
                 calleeFirst,
                 calleeFirstNew,
                 rawCalleeAddress,
-                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 1));
+                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 1),
+                TransactionProcessingType.USER);
 
     firstCalleeAccountFragment.requiresRomlex(true);
 
@@ -502,7 +509,8 @@ public class CallSection extends TraceSection
                     callerSecond,
                     callerSecondNew,
                     DomSubStampsSubFragment.revertsWithChildDomSubStamps(
-                        this.hubStamp(), childContextRevertStamp, 2));
+                        this.hubStamp(), childContextRevertStamp, 2),
+                    TransactionProcessingType.USER);
 
         final AccountFragment postReEntryCalleeAccountFragment =
             factory
@@ -511,7 +519,8 @@ public class CallSection extends TraceSection
                     calleeSecond,
                     calleeSecondNew,
                     DomSubStampsSubFragment.revertsWithChildDomSubStamps(
-                        this.hubStamp(), childContextRevertStamp, 3));
+                        this.hubStamp(), childContextRevertStamp, 3),
+                    TransactionProcessingType.USER);
 
         this.addFragments(postReEntryCallerAccountFragment, postReEntryCalleeAccountFragment);
       }
@@ -570,7 +579,8 @@ public class CallSection extends TraceSection
                 calleeSecond,
                 calleeSecondNew,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
-                    this.hubStamp(), this.revertStamp(), 2));
+                    this.hubStamp(), this.revertStamp(), 2),
+                TransactionProcessingType.USER);
     this.addFragment(undoingCalleeAccountFragment);
   }
 
@@ -590,7 +600,8 @@ public class CallSection extends TraceSection
                 callerSecond,
                 callerSecondNew,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
-                    this.hubStamp(), this.revertStamp(), 2));
+                    this.hubStamp(), this.revertStamp(), 2),
+                TransactionProcessingType.USER);
 
     final AccountFragment undoingCalleeAccountFragment =
         factory
@@ -599,7 +610,8 @@ public class CallSection extends TraceSection
                 calleeSecond,
                 calleeSecondNew,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
-                    this.hubStamp(), this.revertStamp(), 3));
+                    this.hubStamp(), this.revertStamp(), 3),
+                TransactionProcessingType.USER);
 
     this.addFragments(undoingCallerAccountFragment, undoingCalleeAccountFragment);
   }
@@ -623,7 +635,8 @@ public class CallSection extends TraceSection
                 calleeThird,
                 calleeThirdNew,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
-                    this.hubStamp(), this.revertStamp(), 4));
+                    this.hubStamp(), this.revertStamp(), 4),
+                TransactionProcessingType.USER);
 
     this.addFragment(undoingCalleeWarmthAccountFragment);
   }
@@ -651,7 +664,8 @@ public class CallSection extends TraceSection
                 callerSecond,
                 callerSecondNew,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
-                    this.hubStamp(), this.revertStamp(), 2));
+                    this.hubStamp(), this.revertStamp(), 2),
+                TransactionProcessingType.USER);
     final AccountFragment undoingCalleeAccountFragment =
         factory
             .accountFragment()
@@ -659,7 +673,8 @@ public class CallSection extends TraceSection
                 calleeSecond,
                 calleeSecondNew,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
-                    this.hubStamp(), this.revertStamp(), 3));
+                    this.hubStamp(), this.revertStamp(), 3),
+                TransactionProcessingType.USER);
 
     this.addFragments(undoingCallerAccountFragment, undoingCalleeAccountFragment);
   }
@@ -675,7 +690,8 @@ public class CallSection extends TraceSection
             .make(
                 callerFirst,
                 callerFirstNew,
-                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0));
+                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0),
+                TransactionProcessingType.USER);
 
     final AccountFragment firstCalleeAccountFragment =
         factory
@@ -684,7 +700,8 @@ public class CallSection extends TraceSection
                 calleeFirst,
                 calleeFirstNew,
                 rawCalleeAddress,
-                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 1));
+                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 1),
+                TransactionProcessingType.USER);
 
     this.addFragments(firstCallerAccountFragment, firstCalleeAccountFragment);
   }

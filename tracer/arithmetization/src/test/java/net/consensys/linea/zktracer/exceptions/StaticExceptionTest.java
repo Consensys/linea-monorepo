@@ -76,7 +76,7 @@ public class StaticExceptionTest extends TracerTestBase {
     if (value != 0) {
       assertEquals(
           STATIC_FAULT,
-          bytecodeRunner.getHub().previousTraceSection(2).commonValues.tracedException());
+          bytecodeRunner.getHub().lastUserTransactionSection(2).commonValues.tracedException());
     }
   }
 
@@ -109,7 +109,7 @@ public class StaticExceptionTest extends TracerTestBase {
 
     assertEquals(
         STATIC_FAULT,
-        bytecodeRunner.getHub().previousTraceSection(2).commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection(2).commonValues.tracedException());
   }
 
   @Test
@@ -141,7 +141,7 @@ public class StaticExceptionTest extends TracerTestBase {
 
     assertEquals(
         STATIC_FAULT,
-        bytecodeRunner.getHub().previousTraceSection(2).commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection(2).commonValues.tracedException());
   }
 
   @ParameterizedTest
@@ -177,7 +177,7 @@ public class StaticExceptionTest extends TracerTestBase {
 
     assertEquals(
         STATIC_FAULT,
-        bytecodeRunner.getHub().previousTraceSection(2).commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection(2).commonValues.tracedException());
   }
 
   @ParameterizedTest
@@ -217,6 +217,6 @@ public class StaticExceptionTest extends TracerTestBase {
 
     assertEquals(
         STATIC_FAULT,
-        bytecodeRunner.getHub().previousTraceSection(2).commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection(2).commonValues.tracedException());
   }
 }
