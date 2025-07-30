@@ -9,6 +9,7 @@
 package maru.p2p.discovery
 
 import java.time.Duration
+import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
 import maru.config.P2P
 import maru.consensus.ForkIdHashProvider
@@ -97,7 +98,7 @@ class MaruDiscoveryService(
               )
             },
           )
-      }.get(30, java.util.concurrent.TimeUnit.SECONDS)
+      }.get(30, TimeUnit.SECONDS)
     return
   }
 

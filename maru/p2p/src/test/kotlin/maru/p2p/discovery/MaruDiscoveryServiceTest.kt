@@ -47,12 +47,12 @@ class MaruDiscoveryServiceTest {
   companion object {
     private const val IPV4 = "127.0.0.1"
 
-    private const val PORT1 = 9234u
-    private const val PORT2 = 9235u
-    private const val PORT3 = 9236u
-    private const val PORT4 = 9237u
-    private const val PORT5 = 9238u
-    private const val PORT6 = 9239u
+    private const val PORT1 = 9334u
+    private const val PORT2 = 9335u
+    private const val PORT3 = 9336u
+    private const val PORT4 = 9337u
+    private const val PORT5 = 9338u
+    private const val PORT6 = 9339u
 
     private val key1 = "0x12c0b113e2b0c37388e2b484112e13f05c92c4471e3ee1dfaa368fa5045325b2".decodeHex()
     private val key2 = "0xf3d2fffa99dc8906823866d96316492ebf7a8478713a89a58b7385af85b088a1".decodeHex()
