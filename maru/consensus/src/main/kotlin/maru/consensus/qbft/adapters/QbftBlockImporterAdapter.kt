@@ -23,7 +23,7 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockImporter
 class QbftBlockImporterAdapter(
   private val sealedBeaconBlockImporter: SealedBeaconBlockImporter<*>,
 ) : QbftBlockImporter {
-  private val log: Logger = LogManager.getLogger(this::javaClass)
+  private val log: Logger = LogManager.getLogger(this.javaClass)
 
   override fun importBlock(qbftBlock: QbftBlock): Boolean {
     val sealedBeaconBlock = qbftBlock.toSealedBeaconBlock()

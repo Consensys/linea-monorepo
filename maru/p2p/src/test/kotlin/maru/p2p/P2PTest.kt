@@ -12,6 +12,7 @@ import io.libp2p.core.PeerId
 import io.libp2p.etc.types.fromHex
 import java.lang.Thread.sleep
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.seconds
 import maru.config.P2P
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
@@ -32,6 +33,8 @@ import maru.p2p.messages.Status
 import maru.p2p.messages.StatusMessageFactory
 import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatNoException
 import org.awaitility.Awaitility.await
@@ -47,6 +50,8 @@ import maru.p2p.ext.DataGenerators as P2P2DataGenerators
 
 @Execution(ExecutionMode.SAME_THREAD)
 class P2PTest {
+  private val log: Logger = LogManager.getLogger(this.javaClass)
+
   companion object {
     private val chainId = 1337u
 
@@ -667,6 +672,7 @@ class P2PTest {
 
   @Test
   fun `peer can be discovered and disconnected peers can be rediscovered`() {
+    val refreshInterval = 5.seconds
     val p2pNetworkImpl1 =
       P2PNetworkImpl(
         privateKeyBytes = key1,
@@ -679,6 +685,7 @@ class P2PTest {
             discovery =
               P2P.Discovery(
                 port = PORT2,
+                refreshInterval = refreshInterval,
               ),
           ),
         chainId = chainId,
@@ -713,6 +720,7 @@ class P2PTest {
               P2P.Discovery(
                 port = PORT4,
                 bootnodes = listOf(bootnodeEnrString),
+                refreshInterval = refreshInterval,
               ),
           ),
         chainId = chainId,
@@ -738,6 +746,7 @@ class P2PTest {
               P2P.Discovery(
                 port = PORT6,
                 bootnodes = listOf(bootnodeEnrString),
+                refreshInterval = refreshInterval,
               ),
           ),
         chainId = chainId,
@@ -755,44 +764,47 @@ class P2PTest {
       p2pNetworkImpl2.start()
       p2pNetworkImpl3.start()
 
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+      val awaitTimeoutInSeconds = 30L
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl1, PEER_ID_NODE_2)
       }
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl2, PEER_ID_NODE_1)
       }
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl3, PEER_ID_NODE_2)
       }
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl1, PEER_ID_NODE_3)
       }
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl2, PEER_ID_NODE_3)
       }
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl3, PEER_ID_NODE_1)
       }
 
-      p2pNetworkImpl2.dropPeer(PEER_ID_NODE_1, DisconnectReason.TOO_MANY_PEERS)
-      p2pNetworkImpl2.dropPeer(PEER_ID_NODE_3, DisconnectReason.TOO_MANY_PEERS)
+      log.info("Dropping peers from p2pNetworkImpl2")
+      p2pNetworkImpl2.dropPeer(PEER_ID_NODE_1, DisconnectReason.TOO_MANY_PEERS).get()
+      p2pNetworkImpl2.dropPeer(PEER_ID_NODE_3, DisconnectReason.TOO_MANY_PEERS).get()
 
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl1, PEER_ID_NODE_2)
       }
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl2, PEER_ID_NODE_1)
       }
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl3, PEER_ID_NODE_2)
       }
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl1, PEER_ID_NODE_3)
       }
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl2, PEER_ID_NODE_3)
       }
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl3, PEER_ID_NODE_1)
       }
     } finally {

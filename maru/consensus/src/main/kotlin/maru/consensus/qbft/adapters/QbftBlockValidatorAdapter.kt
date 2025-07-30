@@ -20,7 +20,7 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockValidator
 class QbftBlockValidatorAdapter(
   private val blockValidator: BlockValidator,
 ) : QbftBlockValidator {
-  private val log: Logger = LogManager.getLogger(this::javaClass)
+  private val log: Logger = LogManager.getLogger(this.javaClass)
 
   override fun validateBlock(qbftBlock: QbftBlock): QbftBlockValidator.ValidationResult {
     log.trace("validating ${blockValidator.javaClass.canonicalName}")

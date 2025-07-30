@@ -62,7 +62,7 @@ class DefaultMaruPeer(
   private val rpcMethods: RpcMethods,
   private val statusMessageFactory: StatusMessageFactory,
 ) : MaruPeer {
-  private val log: Logger = LogManager.getLogger(this::javaClass)
+  private val log: Logger = LogManager.getLogger(this.javaClass)
   private val status = AtomicReference<Status?>(null)
 
   override fun getStatus(): Status? = status.get()
