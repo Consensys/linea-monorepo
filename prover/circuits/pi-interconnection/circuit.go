@@ -102,10 +102,8 @@ func (c *Circuit) Define(api frontend.API) error {
 	if c.UseGkrMimc {
 		hFac := gkrmimc.NewHasherFactory(api)
 		hshM = hFac.NewHasher()
-		if c.Keccak.Wc != nil {
-			c.Keccak.Wc.HasherFactory = hFac
-			c.Keccak.Wc.FS = fiatshamir.NewGnarkFiatShamir(api, hFac)
-		}
+		c.Keccak.Wc.HasherFactory = hFac
+		c.Keccak.Wc.FS = fiatshamir.NewGnarkFiatShamir(api, hFac)
 	} else {
 		if hsh, err := mimc.NewMiMC(api); err != nil {
 			return err
@@ -425,6 +423,7 @@ func WizardCompilationParameters() []func(iop *wizard.CompiledIOP) {
 			vortex.Compile(
 				8,
 				vortex.ForceNumOpenedColumns(64),
+				vortex.WithOptionalSISHashingThreshold(1<<20),
 			),
 		}
 	)

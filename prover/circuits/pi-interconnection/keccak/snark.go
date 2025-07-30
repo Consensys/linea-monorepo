@@ -337,9 +337,15 @@ func NewWizardVerifierSubCircuit(maxNbKeccakF int, compilationOpts ...func(iop *
 }
 
 func (c *HashWizardVerifierSubCircuit) prove(ins [][]byte) wizard.Proof {
-	return wizard.Prove(c.compiled, func(r *wizard.ProverRuntime) {
+	proof := wizard.Prove(c.compiled, func(r *wizard.ProverRuntime) {
 		c.m.AssignCustomizedKeccak(r, ins)
 	})
+
+	if err := wizard.Verify(c.compiled, proof); err != nil {
+		utils.Panic("wizard sanity-checking returned an error")
+	}
+
+	return proof
 }
 
 func (c *HashWizardVerifierSubCircuit) Compile() (*wizard.VerifierCircuit, error) {
