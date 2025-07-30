@@ -17,6 +17,8 @@ import net.consensys.linea.bundles.BundlePoolService;
 import net.consensys.linea.bundles.LineaLimitedBundlePool;
 import net.consensys.linea.config.LineaBundleCliOptions;
 import net.consensys.linea.config.LineaBundleConfiguration;
+import net.consensys.linea.config.LineaLivenessServiceCliOptions;
+import net.consensys.linea.config.LineaLivenessServiceConfiguration;
 import net.consensys.linea.config.LineaProfitabilityCliOptions;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaRejectedTxReportingCliOptions;
@@ -32,8 +34,6 @@ import net.consensys.linea.config.LineaTransactionSelectorCliOptions;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.config.LineaTransactionValidatorCliOptions;
 import net.consensys.linea.config.LineaTransactionValidatorConfiguration;
-import net.consensys.linea.config.LivenessPluginCliOptions;
-import net.consensys.linea.config.LivenessPluginConfiguration;
 import net.consensys.linea.plugins.AbstractLineaSharedOptionsPlugin;
 import net.consensys.linea.plugins.LineaOptionsPluginConfiguration;
 import net.consensys.linea.plugins.config.LineaTracerSharedCliOptions;
@@ -106,7 +106,8 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
         LineaTransactionValidatorCliOptions.CONFIG_KEY,
         LineaTransactionValidatorCliOptions.create().asPluginConfig());
     configMap.put(
-        LivenessPluginCliOptions.CONFIG_KEY, LivenessPluginCliOptions.create().asPluginConfig());
+        LineaLivenessServiceCliOptions.CONFIG_KEY,
+        LineaLivenessServiceCliOptions.create().asPluginConfig());
     return configMap;
   }
 
@@ -158,9 +159,9 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
         getConfigurationByKey(LineaTransactionValidatorCliOptions.CONFIG_KEY).optionsConfig();
   }
 
-  public LivenessPluginConfiguration livenessPluginConfiguration() {
-    return (LivenessPluginConfiguration)
-        getConfigurationByKey(LivenessPluginCliOptions.CONFIG_KEY).optionsConfig();
+  public LineaLivenessServiceConfiguration livenessServiceConfiguration() {
+    return (LineaLivenessServiceConfiguration)
+        getConfigurationByKey(LineaLivenessServiceCliOptions.CONFIG_KEY).optionsConfig();
   }
 
   @Override

@@ -13,7 +13,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bundles.TransactionBundle;
-import net.consensys.linea.config.LivenessPluginConfiguration;
+import net.consensys.linea.config.LineaLivenessServiceConfiguration;
 import net.consensys.linea.metrics.LineaMetricCategory;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Hash;
@@ -50,27 +50,27 @@ public class LineaLivenessService implements LivenessService {
   private final AtomicLong uptimeTransactionDownCount = new AtomicLong(0);
   private final AtomicLong uptimeTransactionUpCount = new AtomicLong(0);
 
-  private final LivenessPluginConfiguration livenessPluginConfiguration;
+  private final LineaLivenessServiceConfiguration lineaLivenessServiceConfiguration;
   private final RpcEndpointService rpcEndpointService;
   private final LivenessTxBuilder livenessTxBuilder;
   private final MetricCategoryRegistry metricCategoryRegistry;
   private final MetricsSystem metricsSystem;
 
   public LineaLivenessService(
-      final LivenessPluginConfiguration livenessPluginConfiguration,
+      final LineaLivenessServiceConfiguration lineaLivenessServiceConfiguration,
       final RpcEndpointService rpcEndpointService,
       final LivenessTxBuilder livenessTxBuilder,
       final MetricCategoryRegistry metricCategoryRegistry,
       final MetricsSystem metricsSystem) {
-    this.livenessPluginConfiguration = livenessPluginConfiguration;
+    this.lineaLivenessServiceConfiguration = lineaLivenessServiceConfiguration;
     this.rpcEndpointService = rpcEndpointService;
     this.livenessTxBuilder = livenessTxBuilder;
     this.metricCategoryRegistry = metricCategoryRegistry;
     this.metricsSystem = metricsSystem;
 
-    if (this.livenessPluginConfiguration.enabled()) {
+    if (this.lineaLivenessServiceConfiguration.enabled()) {
       // Initialize metrics if enabled
-      if (livenessPluginConfiguration.metricCategoryEnabled()) {
+      if (lineaLivenessServiceConfiguration.metricCategoryEnabled()) {
         // Register metric category
         this.metricCategoryRegistry.addMetricCategory(SEQUENCER_LIVENESS_CATEGORY);
 
@@ -112,7 +112,7 @@ public class LineaLivenessService implements LivenessService {
           currentTimestamp);
 
       // Get nonce for the signer address
-      String signerAddress = livenessPluginConfiguration.signerAddress();
+      String signerAddress = lineaLivenessServiceConfiguration.signerAddress();
 
       final var resp =
           rpcEndpointService.call(
@@ -169,7 +169,7 @@ public class LineaLivenessService implements LivenessService {
     if (cachedLastBlockTimestamp > 0
         && cachedLastDownBlockTimestamp <= cachedLastReportedDownBlockTimestamp
         && cachedLastBlockTimestamp > cachedLastDownBlockTimestamp
-        && elapsedTimeSinceLastBlock > livenessPluginConfiguration.maxBlockAgeSeconds()) {
+        && elapsedTimeSinceLastBlock > lineaLivenessServiceConfiguration.maxBlockAgeSeconds()) {
       this.lastDownBlockTimestamp.set(cachedLastBlockTimestamp);
       shouldBuild = true;
     } else {
@@ -183,7 +183,7 @@ public class LineaLivenessService implements LivenessService {
 
       elapsedTimeSinceLastBlock = currentTimestamp - adjustedLastBlockTimestamp;
 
-      if (elapsedTimeSinceLastBlock > livenessPluginConfiguration.maxBlockAgeSeconds()) {
+      if (elapsedTimeSinceLastBlock > lineaLivenessServiceConfiguration.maxBlockAgeSeconds()) {
         // only update lastDownBlockTimestamp if the last late block was reported
         // should only happen for first lastBlockTimestamp check
         if (cachedLastDownBlockTimestamp <= cachedLastReportedDownBlockTimestamp) {
@@ -216,7 +216,7 @@ public class LineaLivenessService implements LivenessService {
   @Override
   public Optional<TransactionBundle> checkBlockTimestampAndBuildBundle(
       long currentTimestamp, long lastBlockTimestamp, long targetBlockNumber) {
-    if (!livenessPluginConfiguration.enabled()) return Optional.empty();
+    if (!lineaLivenessServiceConfiguration.enabled()) return Optional.empty();
 
     // skip if the same block timestamp had been checked or lastBlockTimestamp is from genesis block
     if (this.lastBlockTimestamp.get() == lastBlockTimestamp || targetBlockNumber <= 1) {
@@ -228,7 +228,7 @@ public class LineaLivenessService implements LivenessService {
         log.info(
             "Need to send liveness bundled txs at targetBlockNumber={} as last block elapsed time is greater than {}",
             targetBlockNumber,
-            livenessPluginConfiguration.maxBlockAgeSeconds());
+            lineaLivenessServiceConfiguration.maxBlockAgeSeconds());
         return Optional.of(
             buildTransactionBundle(
                 this.lastDownBlockTimestamp.get(),
@@ -248,14 +248,14 @@ public class LineaLivenessService implements LivenessService {
   @Override
   public void updateUptimeMetrics(boolean isSucceeded, long blockTimestamp) {
     if (isSucceeded) {
-      if (livenessPluginConfiguration.metricCategoryEnabled()) {
+      if (lineaLivenessServiceConfiguration.metricCategoryEnabled()) {
         uptimeTransactionUpCount.incrementAndGet();
         uptimeTransactionDownCount.incrementAndGet();
         uptimeTransactionsCounter.inc(2);
       }
       lastReportedDownBlockTimestamp.set(blockTimestamp);
     } else if (transactionFailureCounter != null) {
-      if (livenessPluginConfiguration.metricCategoryEnabled()) {
+      if (lineaLivenessServiceConfiguration.metricCategoryEnabled()) {
         transactionFailureCounter.inc(2);
       }
     }

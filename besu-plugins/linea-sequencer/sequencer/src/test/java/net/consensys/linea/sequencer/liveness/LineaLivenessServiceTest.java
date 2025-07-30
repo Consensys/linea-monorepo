@@ -18,7 +18,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Optional;
 import net.consensys.linea.bundles.TransactionBundle;
-import net.consensys.linea.config.LivenessPluginConfiguration;
+import net.consensys.linea.config.LineaLivenessServiceConfiguration;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.plugin.services.*;
 import org.hyperledger.besu.plugin.services.metrics.Counter;
@@ -47,7 +47,7 @@ public class LineaLivenessServiceTest {
   @Mock private LivenessTxBuilder livenessTxBuilder;
   @Mock private Counter counter;
   @Mock private LabelledSuppliedMetric labelledSuppliedMetric;
-  @Mock private LivenessPluginConfiguration livenessPluginConfiguration;
+  @Mock private LineaLivenessServiceConfiguration lineaLivenessServiceConfiguration;
   @Mock private Transaction transaction;
 
   private LivenessService livenessService;
@@ -90,24 +90,24 @@ public class LineaLivenessServiceTest {
   }
 
   private void setupDefaultConfiguration() {
-    when(livenessPluginConfiguration.enabled()).thenReturn(true);
-    when(livenessPluginConfiguration.metricCategoryEnabled()).thenReturn(true);
-    when(livenessPluginConfiguration.contractAddress()).thenReturn(CONTRACT_ADDRESS);
-    when(livenessPluginConfiguration.signerUrl()).thenReturn(SIGNER_URL);
-    when(livenessPluginConfiguration.signerKeyId()).thenReturn(SIGNER_KEY_ID);
-    when(livenessPluginConfiguration.signerAddress()).thenReturn(SIGNER_ADDRESS);
-    when(livenessPluginConfiguration.maxBlockAgeSeconds()).thenReturn(MAX_BLOCK_AGE_SECONDS);
-    when(livenessPluginConfiguration.gasLimit()).thenReturn(GAS_LIMIT);
-    when(livenessPluginConfiguration.gasPrice()).thenReturn(GAS_PRICE);
+    when(lineaLivenessServiceConfiguration.enabled()).thenReturn(true);
+    when(lineaLivenessServiceConfiguration.metricCategoryEnabled()).thenReturn(true);
+    when(lineaLivenessServiceConfiguration.contractAddress()).thenReturn(CONTRACT_ADDRESS);
+    when(lineaLivenessServiceConfiguration.signerUrl()).thenReturn(SIGNER_URL);
+    when(lineaLivenessServiceConfiguration.signerKeyId()).thenReturn(SIGNER_KEY_ID);
+    when(lineaLivenessServiceConfiguration.signerAddress()).thenReturn(SIGNER_ADDRESS);
+    when(lineaLivenessServiceConfiguration.maxBlockAgeSeconds()).thenReturn(MAX_BLOCK_AGE_SECONDS);
+    when(lineaLivenessServiceConfiguration.gasLimit()).thenReturn(GAS_LIMIT);
+    when(lineaLivenessServiceConfiguration.gasPrice()).thenReturn(GAS_PRICE);
   }
 
   @Test
   public void shouldReturnEmptyIfLivenessIsDisabled() {
-    when(livenessPluginConfiguration.enabled()).thenReturn(false);
+    when(lineaLivenessServiceConfiguration.enabled()).thenReturn(false);
 
     livenessService =
         new LineaLivenessService(
-            livenessPluginConfiguration,
+            lineaLivenessServiceConfiguration,
             rpcEndpointService,
             livenessTxBuilder,
             metricCategoryRegistry,
@@ -122,12 +122,12 @@ public class LineaLivenessServiceTest {
 
   @Test
   public void shouldNotCallMetricFunctionsIfMetricIsDisabled() {
-    when(livenessPluginConfiguration.enabled()).thenReturn(true);
-    when(livenessPluginConfiguration.metricCategoryEnabled()).thenReturn(false);
+    when(lineaLivenessServiceConfiguration.enabled()).thenReturn(true);
+    when(lineaLivenessServiceConfiguration.metricCategoryEnabled()).thenReturn(false);
 
     livenessService =
         new LineaLivenessService(
-            livenessPluginConfiguration,
+            lineaLivenessServiceConfiguration,
             rpcEndpointService,
             livenessTxBuilder,
             metricCategoryRegistry,
@@ -141,7 +141,7 @@ public class LineaLivenessServiceTest {
   public void shouldReturnEmptyBundleIfLastBlockTimestampHasBeenChecked() {
     livenessService =
         new LineaLivenessService(
-            livenessPluginConfiguration,
+            lineaLivenessServiceConfiguration,
             rpcEndpointService,
             livenessTxBuilder,
             metricCategoryRegistry,
@@ -166,7 +166,7 @@ public class LineaLivenessServiceTest {
   public void shouldReturnEmptyBundleIfTargetBlockNumberIsOne() {
     livenessService =
         new LineaLivenessService(
-            livenessPluginConfiguration,
+            lineaLivenessServiceConfiguration,
             rpcEndpointService,
             livenessTxBuilder,
             metricCategoryRegistry,
@@ -189,7 +189,7 @@ public class LineaLivenessServiceTest {
   public void shouldReturnValidBundleIfFirstBlockIsLate() throws IOException {
     livenessService =
         new LineaLivenessService(
-            livenessPluginConfiguration,
+            lineaLivenessServiceConfiguration,
             rpcEndpointService,
             livenessTxBuilder,
             metricCategoryRegistry,
@@ -216,7 +216,7 @@ public class LineaLivenessServiceTest {
   public void shouldReturnValidBundleWhenSecondBlockArrivedLate() throws Exception {
     livenessService =
         new LineaLivenessService(
-            livenessPluginConfiguration,
+            lineaLivenessServiceConfiguration,
             rpcEndpointService,
             livenessTxBuilder,
             metricCategoryRegistry,
@@ -256,7 +256,7 @@ public class LineaLivenessServiceTest {
   public void shouldReturnValidBundleWhenFirstLateBlockWasNotReported() throws Exception {
     livenessService =
         new LineaLivenessService(
-            livenessPluginConfiguration,
+            lineaLivenessServiceConfiguration,
             rpcEndpointService,
             livenessTxBuilder,
             metricCategoryRegistry,
@@ -315,7 +315,7 @@ public class LineaLivenessServiceTest {
   public void shouldReturnValidBundleWhenMultipleLateBlocks() throws Exception {
     livenessService =
         new LineaLivenessService(
-            livenessPluginConfiguration,
+            lineaLivenessServiceConfiguration,
             rpcEndpointService,
             livenessTxBuilder,
             metricCategoryRegistry,
@@ -392,7 +392,7 @@ public class LineaLivenessServiceTest {
   public void shouldReturnValidBundleWhenMultipleLateBlocksNotReported() throws Exception {
     livenessService =
         new LineaLivenessService(
-            livenessPluginConfiguration,
+            lineaLivenessServiceConfiguration,
             rpcEndpointService,
             livenessTxBuilder,
             metricCategoryRegistry,

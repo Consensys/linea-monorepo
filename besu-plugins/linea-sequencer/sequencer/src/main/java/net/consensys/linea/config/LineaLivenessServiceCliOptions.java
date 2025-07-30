@@ -17,7 +17,7 @@ import net.consensys.linea.plugins.LineaCliOptions;
 import picocli.CommandLine.Option;
 
 @Getter
-public class LivenessPluginCliOptions implements LineaCliOptions {
+public class LineaLivenessServiceCliOptions implements LineaCliOptions {
   public static final String CONFIG_KEY = "linea-liveness";
 
   public static final String ENABLED = "--plugin-linea-liveness-enabled";
@@ -47,7 +47,7 @@ public class LivenessPluginCliOptions implements LineaCliOptions {
   @Option(
       names = {ENABLED},
       paramLabel = "<BOOLEAN>",
-      description = "Enable the liveness plugin (default: ${DEFAULT-VALUE})",
+      description = "Enable the Linea liveness service (default: ${DEFAULT-VALUE})",
       arity = "0..1")
   private boolean enabled = DEFAULT_ENABLED;
 
@@ -122,25 +122,26 @@ public class LivenessPluginCliOptions implements LineaCliOptions {
       defaultValue = "" + DEFAULT_METRICS_ENABLED)
   private boolean metricCategoryEnabled = DEFAULT_METRICS_ENABLED;
 
-  private LivenessPluginCliOptions() {}
+  private LineaLivenessServiceCliOptions() {}
 
   /**
-   * Create Liveness Plugin cli options.
+   * Create Linea liveness service cli options.
    *
-   * @return the Liveness Plugin cli options
+   * @return the Linea liveness service cli options
    */
-  public static LivenessPluginCliOptions create() {
-    return new LivenessPluginCliOptions();
+  public static LineaLivenessServiceCliOptions create() {
+    return new LineaLivenessServiceCliOptions();
   }
 
   /**
-   * Liveness Plugin CLI options from config.
+   * Linea liveness Service CLI options from config.
    *
    * @param config the config
-   * @return the Liveness Plugin CLI options
+   * @return the Linea liveness service CLI options
    */
-  public static LivenessPluginCliOptions fromConfig(final LivenessPluginCliOptions config) {
-    final LivenessPluginCliOptions options = create();
+  public static LineaLivenessServiceCliOptions fromConfig(
+      final LineaLivenessServiceCliOptions config) {
+    final LineaLivenessServiceCliOptions options = create();
     options.enabled = config.enabled;
     options.maxBlockAgeSeconds = config.maxBlockAgeSeconds;
     options.contractAddress = config.contractAddress;
@@ -159,8 +160,8 @@ public class LivenessPluginCliOptions implements LineaCliOptions {
    * @return the Linea factory configuration
    */
   @Override
-  public LivenessPluginConfiguration toDomainObject() {
-    return LivenessPluginConfiguration.builder()
+  public LineaLivenessServiceConfiguration toDomainObject() {
+    return LineaLivenessServiceConfiguration.builder()
         .enabled(enabled)
         .maxBlockAgeSeconds(maxBlockAgeSeconds)
         .contractAddress(contractAddress)

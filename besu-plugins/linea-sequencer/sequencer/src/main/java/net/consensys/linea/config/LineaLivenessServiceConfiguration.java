@@ -11,9 +11,9 @@ package net.consensys.linea.config;
 import lombok.Builder;
 import net.consensys.linea.plugins.LineaOptionsConfiguration;
 
-/** The Liveness Plugin validation configuration. */
+/** The Linea liveness service validation configuration. */
 @Builder(toBuilder = true)
-public record LivenessPluginConfiguration(
+public record LineaLivenessServiceConfiguration(
     boolean enabled,
     long maxBlockAgeSeconds,
     String contractAddress,

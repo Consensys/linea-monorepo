@@ -19,7 +19,7 @@ import java.security.SignatureException;
 import java.time.Duration;
 import java.util.*;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.config.LivenessPluginConfiguration;
+import net.consensys.linea.config.LineaLivenessServiceConfiguration;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
@@ -47,13 +47,14 @@ public class LineaLivenessTxBuilder implements LivenessTxBuilder {
   private final long chainId;
 
   public LineaLivenessTxBuilder(
-      final LivenessPluginConfiguration livenessPluginConfiguration, final long chainId) {
+      final LineaLivenessServiceConfiguration lineaLivenessServiceConfiguration,
+      final long chainId) {
     this.chainId = chainId;
-    this.signerKeyId = livenessPluginConfiguration.signerKeyId();
-    this.signerUrl = livenessPluginConfiguration.signerUrl();
-    this.livenessContractAddress = livenessPluginConfiguration.contractAddress();
-    this.gasPrice = livenessPluginConfiguration.gasPrice();
-    this.gasLimit = livenessPluginConfiguration.gasLimit();
+    this.signerKeyId = lineaLivenessServiceConfiguration.signerKeyId();
+    this.signerUrl = lineaLivenessServiceConfiguration.signerUrl();
+    this.livenessContractAddress = lineaLivenessServiceConfiguration.contractAddress();
+    this.gasPrice = lineaLivenessServiceConfiguration.gasPrice();
+    this.gasLimit = lineaLivenessServiceConfiguration.gasLimit();
 
     // Initialize HTTP client and JSON mapper for Web3Signer API calls
     httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
