@@ -32,7 +32,7 @@ class GoNativeCompressorAndShnarfCalculatorIntTest {
   inner class CompressorV0 {
     @BeforeEach
     fun beforeEach() {
-      compressor = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V1_2)
+      compressor = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V2_0)
         .apply {
           this.Init(DATA_LIMIT, GoNativeBlobCompressorFactory.dictionaryPath.toString())
           this.Reset()
@@ -60,12 +60,12 @@ class GoNativeCompressorAndShnarfCalculatorIntTest {
   inner class CompressorV1 {
     @BeforeEach
     fun beforeEach() {
-      compressor = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V1_2)
+      compressor = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V2_0)
         .apply {
           this.Init(DATA_LIMIT, GoNativeBlobCompressorFactory.dictionaryPath.toString())
           this.Reset()
         }
-      shnarfCalculator = GoNativeShnarfCalculatorFactory.getInstance(ShnarfCalculatorVersion.V1_2)
+      shnarfCalculator = GoNativeShnarfCalculatorFactory.getInstance(ShnarfCalculatorVersion.V2_0)
     }
 
     @Test
@@ -88,13 +88,13 @@ class GoNativeCompressorAndShnarfCalculatorIntTest {
   inner class CompressorSupportsMultipleInstances {
     @Disabled("we only have v1 Atm, but keepin this for future")
     fun `should support multiple instances`() {
-      val compressorInstance1 = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V1_2)
+      val compressorInstance1 = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V2_0)
         .apply {
           this.Init(DATA_LIMIT, GoNativeBlobCompressorFactory.dictionaryPath.toString())
           this.Reset()
         }
 
-      val compressorInstance2 = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V1_2)
+      val compressorInstance2 = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V2_0)
         .apply {
           this.Init(DATA_LIMIT, GoNativeBlobCompressorFactory.dictionaryPath.toString())
           this.Reset()
