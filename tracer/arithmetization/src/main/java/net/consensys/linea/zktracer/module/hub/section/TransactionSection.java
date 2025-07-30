@@ -25,6 +25,6 @@ public class TransactionSection extends TraceSection {
     // 3 = 1 + 1 + 1 (stack, transaction, context)
     super(hub, Exceptions.none(hub.pch().exceptions()) ? (short) 2 : (short) 3);
 
-    this.addStackAndFragments(hub, hub.txStack().current().transactionFragment());
+    this.addStackAndFragments(hub, hub.txStack().current().userTransactionFragment());
   }
 }

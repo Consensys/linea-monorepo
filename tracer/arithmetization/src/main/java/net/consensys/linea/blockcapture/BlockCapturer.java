@@ -70,7 +70,7 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
 
   @Override
   public void traceStartBlock(
-      final WorldView worldView,
+      final WorldView world,
       BlockHeader blockHeader,
       BlockBody blockBody,
       final Address miningBeneficiary) {

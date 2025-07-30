@@ -28,7 +28,7 @@ import org.hyperledger.besu.datatypes.Address;
 public class StateManagerUtils {
 
   public static int getTxCount(Hub hub) {
-    return hub.state().txCount();
+    return hub.state().getUserTransactionNumber();
   }
 
   public static int getBlockOperationsLength(Hub hub) {
@@ -45,17 +45,18 @@ public class StateManagerUtils {
 
   public static List<Map<Address, FragmentFirstAndLast<AccountFragment>>>
       computeAccountFirstAndLastMapList(Hub hub) {
-    List<Map<Address, FragmentFirstAndLast<AccountFragment>>> accountFirstAndLastMapList =
+
+    final List<Map<Address, FragmentFirstAndLast<AccountFragment>>> accountFirstAndLastMapList =
         new ArrayList<>();
 
-    int txCount = getTxCount(hub);
+    final int txCount = getTxCount(hub);
     // We iterate over the transactions
     for (int txNb = 0; txNb < txCount; txNb++) {
       // We create an accountFirstAndLastMap for each transaction
       accountFirstAndLastMapList.add(new HashMap<>());
       // We retrieve the trace section list
-      List<TraceSection> traceSectionList =
-          hub.state().getState().operationsInTransactionBundle().get(txNb).traceSections().trace();
+      final List<TraceSection> traceSectionList =
+          hub.state().getUserTransaction(txNb + 1).traceSections().trace();
       // For each trace section
       for (TraceSection traceSection : traceSectionList) {
         // We iterate over the fragments
@@ -80,17 +81,18 @@ public class StateManagerUtils {
 
   public static List<Map<Map<Address, Bytes32>, FragmentFirstAndLast<StorageFragment>>>
       computeStorageFirstAndLastMapList(Hub hub) {
-    List<Map<Map<Address, Bytes32>, FragmentFirstAndLast<StorageFragment>>>
-        storageFirstAndLastMapList = new ArrayList<>();
+    final int txCount = getTxCount(hub);
 
-    int txCount = getTxCount(hub);
+    final List<Map<Map<Address, Bytes32>, FragmentFirstAndLast<StorageFragment>>>
+        storageFirstAndLastMapList = new ArrayList<>(txCount);
+
     // We iterate over the transactions
-    for (int txNb = 0; txNb < txCount; txNb++) {
+    for (int txNb = 1; txNb <= txCount; txNb++) {
       // We create an storageFirstAndLastMap for each transaction
       storageFirstAndLastMapList.add(new HashMap<>());
       // We retrieve the trace section list
-      List<TraceSection> traceSectionList =
-          hub.state().getState().operationsInTransactionBundle().get(txNb).traceSections().trace();
+      final List<TraceSection> traceSectionList =
+          hub.state().getUserTransaction(txNb).traceSections().trace();
       // For each trace section
       for (TraceSection traceSection : traceSectionList) {
         // We iterate over the fragments
@@ -99,11 +101,12 @@ public class StateManagerUtils {
           // If an exception occurs, it means the Fragment is not a StorageFragment so we
           // disregard it and continue
           try {
-            StorageFragment storageFragment = (StorageFragment) traceFragment;
+            final StorageFragment storageFragment = (StorageFragment) traceFragment;
             // We update the storageFirstAndLastMapList
+            final int index = txNb - 1; // txNb is 1-based, index is 0-based
             storageFirstAndLastMapList.set(
-                txNb,
-                updateStorageFirstAndLast(storageFragment, storageFirstAndLastMapList.get(txNb)));
+                index,
+                updateStorageFirstAndLast(storageFragment, storageFirstAndLastMapList.get(index)));
           } catch (Exception e) {
             // ignore
           }
@@ -174,23 +177,23 @@ public class StateManagerUtils {
       computeBlockMapAccount(
           Hub hub,
           List<Map<Address, FragmentFirstAndLast<AccountFragment>>> accountFirstAndLastMapList) {
-    Map<Address, Map<Integer, FragmentFirstAndLast<AccountFragment>>> blockMapAccount =
-        new HashMap<>();
-    int blockCount = getBlockCount(hub);
-    int txCount = getTxCount(hub);
+    final int blockCount = getBlockCount(hub);
+    final Map<Address, Map<Integer, FragmentFirstAndLast<AccountFragment>>> blockMapAccount =
+        new HashMap<>(blockCount);
+
+    final int txCount = getTxCount(hub);
     for (int i = 0; i < blockCount; i++) {
-      int relBlokNoFromBlock = getRelBlockNoFromBlock(hub, i);
+      final int relBlokNoFromBlock = getRelBlockNoFromBlock(hub, i);
 
       for (int txNb = 0; txNb < txCount; txNb++) {
-        int relBlokNoFromTx =
+        final int relBlokNoFromTx =
             hub.txStack().getByAbsoluteTransactionNumber(txNb + 1).getRelativeBlockNumber();
-
         if (relBlokNoFromTx == relBlokNoFromBlock) {
-          Map<Address, FragmentFirstAndLast<AccountFragment>> accountFirstAndLastMap =
+          final Map<Address, FragmentFirstAndLast<AccountFragment>> accountFirstAndLastMap =
               accountFirstAndLastMapList.get(txNb);
           for (var entry : accountFirstAndLastMap.entrySet()) {
-            Address addr = entry.getKey();
-            FragmentFirstAndLast<AccountFragment> localValueAccount = entry.getValue();
+            final Address addr = entry.getKey();
+            final FragmentFirstAndLast<AccountFragment> localValueAccount = entry.getValue();
 
             if (!blockMapAccount.containsKey(addr)) {
               // the pair is not present in the map
@@ -205,7 +208,7 @@ public class StateManagerUtils {
               // we make a copy that will be modified to not change the values already present in
               // the
               // transaction maps
-              FragmentFirstAndLast<AccountFragment> blockValue = fetchedValue.copy();
+              final FragmentFirstAndLast<AccountFragment> blockValue = fetchedValue.copy();
               // update the first part of the blockValue
               // Todo: Refactor and remove code duplication
               if (FragmentFirstAndLast.strictlySmallerStamps(
@@ -321,16 +324,18 @@ public class StateManagerUtils {
       Hub hub,
       List<Map<Address, FragmentFirstAndLast<AccountFragment>>> accountFirstAndLastMapList,
       Map<Address, Map<Integer, FragmentFirstAndLast<AccountFragment>>> blockMapAccount) {
-    Map<Address, FragmentFirstAndLast<AccountFragment>> conflationMapAccount = new HashMap<>();
 
-    int txCount = getTxCount(hub);
-    int blockCount = getBlockCount(hub);
-    HashSet<Address> allAccounts = new HashSet<Address>();
+    final Map<Address, FragmentFirstAndLast<AccountFragment>> conflationMapAccount =
+        new HashMap<>();
+
+    final int txCount = getTxCount(hub);
+    final int blockCount = getBlockCount(hub);
+    final HashSet<Address> allAccounts = new HashSet<>();
 
     // We iterate over the transactions
     for (int txNb = 0; txNb < txCount; txNb++) {
 
-      Map<Address, FragmentFirstAndLast<AccountFragment>> txnMapAccount =
+      final Map<Address, FragmentFirstAndLast<AccountFragment>> txnMapAccount =
           accountFirstAndLastMapList.get(txNb);
 
       allAccounts.addAll(txnMapAccount.keySet());
@@ -354,9 +359,9 @@ public class StateManagerUtils {
       // if some address is not present in the last block, we ignore the corresponding account
       for (int i = blockCount; i >= 1; i--) {
         if (blockMapAccount.containsKey(addr) && blockMapAccount.get(addr).containsKey(i)) {
-          FragmentFirstAndLast<AccountFragment> blockValue = blockMapAccount.get(addr).get(i);
+          final FragmentFirstAndLast<AccountFragment> blockValue = blockMapAccount.get(addr).get(i);
 
-          FragmentFirstAndLast<AccountFragment> updatedValue =
+          final FragmentFirstAndLast<AccountFragment> updatedValue =
               new FragmentFirstAndLast<AccountFragment>(
                   firstValue.getFirst(),
                   blockValue.getLast(),

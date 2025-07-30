@@ -63,7 +63,7 @@ public class CancunBlockData extends ParisBlockData {
         hub,
         blockHeader,
         previousBlockHeader,
-        txnData().currentBlock().getNbOfTxsInBlock(),
+        txnData().numberOfUserTransactionsInCurrentBlock(),
         wcp,
         euc,
         chain,

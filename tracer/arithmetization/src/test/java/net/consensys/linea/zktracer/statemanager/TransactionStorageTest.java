@@ -86,17 +86,16 @@ public class TransactionStorageTest extends TracerTestBase {
     multiBlockEnv.run();
 
     // Total number of transactions
-    int txCount = multiBlockEnv.getHub().state().txCount();
+    final int txCount = multiBlockEnv.getHub().state().getUserTransactionNumber();
 
     // Replay the transaction's trace from the hub to compute the first and last values for the
     // storage fragment
-    List<Map<Map<Address, Bytes32>, FragmentFirstAndLast<StorageFragment>>>
+    final List<Map<Map<Address, Bytes32>, FragmentFirstAndLast<StorageFragment>>>
         storageFirstAndLastMapList = computeStorageFirstAndLastMapList(multiBlockEnv.getHub());
 
     // prepare data for asserts
     // expected first values for the keys we are testing
-    int noBlocks = 3;
-    EWord[][] expectedFirst = {
+    final EWord[][] expectedFirst = {
       {
         EWord.of(0L),
       },
@@ -105,7 +104,7 @@ public class TransactionStorageTest extends TracerTestBase {
       },
     };
     // expected last values for the keys we are testing
-    EWord[][] expectedLast = {
+    final EWord[][] expectedLast = {
       {
         EWord.of(3L),
       },
@@ -114,14 +113,14 @@ public class TransactionStorageTest extends TracerTestBase {
       },
     };
     // prepare the key pairs
-    List<Map<Address, Bytes32>> addrStorageKeyMapList =
+    final List<Map<Address, Bytes32>> addrStorageKeyMapList =
         List.of(Map.of(tc.initialAccounts[0].getAddress(), EWord.of(3L)));
 
     for (int txCounter = 0; txCounter < txCount; txCounter++) {
-      Map<Map<Address, Bytes32>, FragmentFirstAndLast<StorageFragment>> storageMap =
+      final Map<Map<Address, Bytes32>, FragmentFirstAndLast<StorageFragment>> storageMap =
           storageFirstAndLastMapList.get(txCounter);
       for (int i = 0; i < addrStorageKeyMapList.size(); i++) {
-        FragmentFirstAndLast<StorageFragment> storageData =
+        final FragmentFirstAndLast<StorageFragment> storageData =
             storageMap.get(addrStorageKeyMapList.get(i));
         // asserts for the first and last storage values in conflation
         // -1 due to block numbering

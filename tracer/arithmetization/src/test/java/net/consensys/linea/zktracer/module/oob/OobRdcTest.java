@@ -121,7 +121,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -136,7 +136,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -151,7 +151,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   // offset just greater cases
@@ -168,7 +168,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -184,7 +184,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -199,7 +199,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -214,7 +214,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   // offset big left cases
@@ -230,7 +230,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -245,7 +245,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -260,7 +260,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -275,7 +275,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   // offset big right cases
@@ -291,7 +291,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -306,7 +306,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -321,7 +321,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -336,7 +336,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   // Same cases but using identity precompile
@@ -428,7 +428,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -445,7 +445,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -462,7 +462,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   // offset just greater cases
@@ -481,7 +481,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -499,7 +499,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -516,7 +516,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -533,7 +533,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   // offset big left cases
@@ -550,7 +550,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -566,7 +566,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -583,7 +583,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -600,7 +600,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   // offset big right cases
@@ -617,7 +617,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -634,7 +634,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -651,7 +651,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -668,7 +668,7 @@ public class OobRdcTest extends TracerTestBase {
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   // Support methods

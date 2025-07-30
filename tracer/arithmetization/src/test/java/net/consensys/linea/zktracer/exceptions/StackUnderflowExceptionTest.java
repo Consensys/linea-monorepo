@@ -53,7 +53,7 @@ public class StackUnderflowExceptionTest extends TracerTestBase {
     if (triggersStackUnderflowExceptions) {
       assertEquals(
           STACK_UNDERFLOW,
-          bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+          bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
     }
   }
 

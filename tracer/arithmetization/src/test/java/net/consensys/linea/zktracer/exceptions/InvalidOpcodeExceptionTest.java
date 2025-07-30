@@ -44,7 +44,7 @@ public class InvalidOpcodeExceptionTest extends TracerTestBase {
     bytecodeRunner.run(testInfo);
     assertEquals(
         TracedException.INVALID_OPCODE,
-        bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @ParameterizedTest
@@ -56,7 +56,7 @@ public class InvalidOpcodeExceptionTest extends TracerTestBase {
     bytecodeRunner.run(testInfo);
     assertEquals(
         TracedException.INVALID_OPCODE,
-        bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   static Stream<Arguments> nonOpcodeExceptionSource() {

@@ -56,7 +56,7 @@ public class MemoryExpansionExceptionTest extends TracerTestBase {
     bytecodeRunner.run(testInfo);
     assertEquals(
         MEMORY_EXPANSION_EXCEPTION,
-        bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
 
     assertTrue(bytecodeRunner.getHub().mxp().operations().getLast().getMxpCall().isMxpx());
 
@@ -81,7 +81,7 @@ public class MemoryExpansionExceptionTest extends TracerTestBase {
     bytecodeRunner.run(testInfo);
     assertEquals(
         MEMORY_EXPANSION_EXCEPTION,
-        bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
 
     assertTrue(bytecodeRunner.getHub().mxp().operations().getLast().getMxpCall().isMxpx());
 

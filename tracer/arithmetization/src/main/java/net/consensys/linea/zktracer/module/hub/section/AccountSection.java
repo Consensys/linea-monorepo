@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
 import net.consensys.linea.zktracer.module.hub.defer.PostRollbackDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
@@ -93,10 +94,15 @@ public class AccountSection extends TraceSection implements PostRollbackDefer {
                   firstAccountSnapshot,
                   firstAccountSnapshotNew,
                   rawTargetAddress,
-                  doingDomSubStamps);
+                  doingDomSubStamps,
+                  TransactionProcessingType.USER);
           case SELFBALANCE, CODESIZE -> hub.factories()
               .accountFragment()
-              .make(firstAccountSnapshot, firstAccountSnapshotNew, doingDomSubStamps);
+              .make(
+                  firstAccountSnapshot,
+                  firstAccountSnapshotNew,
+                  doingDomSubStamps,
+                  TransactionProcessingType.USER);
           default -> throw new IllegalStateException("Not an ACCOUNT instruction");
         };
     this.addFragment(doingAccountFragment);
@@ -113,7 +119,11 @@ public class AccountSection extends TraceSection implements PostRollbackDefer {
     this.addFragment(
         hub.factories()
             .accountFragment()
-            .make(secondAccountSnapshot, secondAccountSnapshotNew, undoingDomSubStamps));
+            .make(
+                secondAccountSnapshot,
+                secondAccountSnapshotNew,
+                undoingDomSubStamps,
+                TransactionProcessingType.USER));
   }
 
   private static short maxNumberOfRows(Hub hub) {

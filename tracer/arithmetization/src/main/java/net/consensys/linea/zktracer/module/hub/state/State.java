@@ -15,6 +15,9 @@
 
 package net.consensys.linea.zktracer.module.hub.state;
 
+import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.USER;
+import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.isUserTransaction;
+
 import java.util.*;
 
 import lombok.EqualsAndHashCode;
@@ -26,6 +29,7 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import net.consensys.linea.zktracer.container.stacked.StackedList;
 import net.consensys.linea.zktracer.module.hub.HubProcessingPhase;
+import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
 import net.consensys.linea.zktracer.module.hub.fragment.storage.StorageFragment;
 import net.consensys.linea.zktracer.module.hub.state.State.HubTransactionState.Stamps;
 import org.apache.tuweni.bytes.Bytes32;
@@ -38,14 +42,6 @@ public class State {
   @Getter
   @Accessors(fluent = true)
   private final CountOnlyOperation lineCounter = new CountOnlyOperation();
-
-  public HubTransactionState current() {
-    return state.getLast();
-  }
-
-  public Stamps stamps() {
-    return current().stamps;
-  }
 
   /** Increments at commit time */
   @Getter
@@ -70,6 +66,26 @@ public class State {
   @Accessors(fluent = true)
   HubProcessingPhase processingPhase;
 
+  @Getter
+  @Setter
+  @Accessors(fluent = true)
+  TransactionProcessingType transactionProcessingType;
+
+  @Getter
+  @Accessors(fluent = true)
+  short sysiTransactionNumber;
+
+  @Accessors(fluent = true)
+  CountOnlyOperation userTransactionNumber = new CountOnlyOperation();
+
+  public short getUserTransactionNumber() {
+    return (short) userTransactionNumber.lineCount();
+  }
+
+  @Getter
+  @Accessors(fluent = true)
+  short sysfTransactionNumber;
+
   @RequiredArgsConstructor
   @EqualsAndHashCode
   @Getter
@@ -77,6 +93,26 @@ public class State {
     final Address address;
     final int deploymentNumber;
     final Bytes32 storageKey;
+  }
+
+  public HubTransactionState current() {
+    return state.getLast();
+  }
+
+  public Stamps stamps() {
+    return current().stamps;
+  }
+
+  public void incrementSysiTransactionNumber() {
+    sysiTransactionNumber++;
+  }
+
+  public void incrementUserTransactionNumber() {
+    userTransactionNumber.add(1);
+  }
+
+  public void incrementSysfTransactionNumber() {
+    sysfTransactionNumber++;
   }
 
   public void updateOrInsertStorageSlotOccurrence(
@@ -116,6 +152,40 @@ public class State {
     return current().traceSections;
   }
 
+  public TraceSections lastUserTransactionHubSections() {
+    final int stateSize = state.size();
+    // Search for a user transaction trace section starting from the most recent. If this function
+    // is called after traceEndBlock, the last sections will be sysf transactions, or null if before
+    // cancun
+    for (int s = stateSize - 1; s >= 0; s--) {
+      final HubTransactionState tx = state.get(s);
+      if (!tx.traceSections().isEmpty()
+          && isUserTransaction(
+              tx.traceSections.currentSection().commonValues.transactionProcessingType)) {
+        return tx.traceSections();
+      }
+    }
+    // If no user transaction was found, return an error
+    throw new IllegalStateException("No user transaction found in the state.");
+  }
+
+  public HubTransactionState getUserTransaction(int userTransactionNumber) {
+    final List<HubTransactionState> allTransactions = state.getAll();
+    int userTxNumberCounter = 0;
+    for (int i = 0; i < allTransactions.size(); i++) {
+      final HubTransactionState tx = allTransactions.get(i);
+      if (!tx.traceSections.isEmpty()
+          && tx.traceSections.trace().getLast().commonValues.transactionProcessingType == USER) {
+        userTxNumberCounter++;
+      }
+      if (userTxNumberCounter == userTransactionNumber) {
+        return tx;
+      }
+    }
+    throw new IllegalArgumentException(
+        "User transaction number " + userTransactionNumber + " not found.");
+  }
+
   /**
    * Concretize the traces of all the accumulated transactions.
    *
@@ -129,11 +199,7 @@ public class State {
     return hubTrace;
   }
 
-  public int txCount() {
-    return state.size();
-  }
-
-  public void enterTransaction() {
+  public void enterSectionsStack() {
     if (state.isEmpty()) {
       state.add(new HubTransactionState());
     } else {
@@ -141,14 +207,21 @@ public class State {
     }
   }
 
+  public void enterTransaction() {
+    enterSectionsStack();
+    incrementUserTransactionNumber();
+  }
+
   public void popTransactionBundle() {
     state.popTransactionBundle();
     lineCounter.popTransactionBundle();
+    userTransactionNumber.popTransactionBundle();
   }
 
   public void commitTransactionBundle() {
     state.commitTransactionBundle();
     lineCounter.commitTransactionBundle();
+    userTransactionNumber.commitTransactionBundle();
   }
 
   /** Describes the Hub state during a given transaction. */

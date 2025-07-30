@@ -24,10 +24,11 @@ import net.consensys.linea.zktracer.module.blockdata.module.Blockdata;
 import net.consensys.linea.zktracer.module.blockdata.module.LondonBlockData;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.section.create.LondonCreateSection;
+import net.consensys.linea.zktracer.module.hub.section.finalization.LondonFinalizationSection;
 import net.consensys.linea.zktracer.module.hub.section.halt.selfdestruct.LondonSelfdestructSection;
+import net.consensys.linea.zktracer.module.hub.section.skip.LondonTxSkipSection;
 import net.consensys.linea.zktracer.module.hub.section.txInitializationSection.LondonInitializationSection;
-import net.consensys.linea.zktracer.module.hub.state.LondonTransactionStack;
-import net.consensys.linea.zktracer.module.hub.state.TransactionStack;
+import net.consensys.linea.zktracer.module.hub.transients.Transients;
 import net.consensys.linea.zktracer.module.mxp.module.LondonMxp;
 import net.consensys.linea.zktracer.module.mxp.module.Mxp;
 import net.consensys.linea.zktracer.module.rlpUtils.RlpUtils;
@@ -44,6 +45,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.gascalculator.LondonGasCalculator;
 import org.hyperledger.besu.evm.worldstate.WorldView;
+import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 public class LondonHub extends Hub {
   public LondonHub(ChainConfig chain) {
@@ -53,11 +55,6 @@ public class LondonHub extends Hub {
   @Override
   protected GasCalculator setGasCalculator() {
     return new LondonGasCalculator();
-  }
-
-  @Override
-  protected TransactionStack setTransactionStack() {
-    return new LondonTransactionStack();
   }
 
   @Override
@@ -98,8 +95,22 @@ public class LondonHub extends Hub {
   }
 
   @Override
+  protected void setSkipSection(
+      Hub hub,
+      WorldView world,
+      TransactionProcessingMetadata transactionProcessingMetadata,
+      Transients transients) {
+    new LondonTxSkipSection(hub, world, transactionProcessingMetadata, transients);
+  }
+
+  @Override
   protected void setInitializationSection(WorldView world) {
     new LondonInitializationSection(this, world);
+  }
+
+  @Override
+  protected void setFinalizationSection(Hub hub) {
+    new LondonFinalizationSection(hub);
   }
 
   @Override
@@ -128,6 +139,17 @@ public class LondonHub extends Hub {
   @Override
   protected void setMcopySection(Hub hub) {
     throw new IllegalStateException("MCOPY opcode appears in Cancun");
+  }
+
+  @Override
+  protected void traceSystemInitialTransaction(
+      WorldView world, ProcessableBlockHeader blockHeader) {
+    // Nothing to do, appears in Cancun
+  }
+
+  @Override
+  protected void traceSystemFinalTransaction() {
+    // Nothing to do, appears in Cancun
   }
 
   @Override

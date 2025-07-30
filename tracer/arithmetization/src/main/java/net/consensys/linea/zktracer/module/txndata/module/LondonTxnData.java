@@ -19,18 +19,44 @@ import static net.consensys.linea.zktracer.TraceLondon.Txndata.NB_ROWS_TYPE_0;
 import static net.consensys.linea.zktracer.TraceLondon.Txndata.NB_ROWS_TYPE_1;
 import static net.consensys.linea.zktracer.TraceLondon.Txndata.NB_ROWS_TYPE_2;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.fragment.transaction.system.SystemTransactionFragment;
+import net.consensys.linea.zktracer.module.txndata.BlockSnapshot;
 import net.consensys.linea.zktracer.module.txndata.moduleOperation.LondonTxndataOperation;
+import net.consensys.linea.zktracer.module.txndata.moduleOperation.TxndataOperation;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
+import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.evm.worldstate.WorldView;
+import org.hyperledger.besu.plugin.data.BlockBody;
+import org.hyperledger.besu.plugin.data.BlockHeader;
+import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 public class LondonTxnData extends TxnData {
 
   private static final int NB_WCP_EUC_ROWS_FRONTIER_ACCESS_LIST_LONDON = 7;
 
+  private final List<BlockSnapshot> blocks = new ArrayList<>();
+
   public LondonTxnData(Hub hub, Wcp wcp, Euc euc) {
     super(hub, wcp, euc);
+  }
+
+  @Override
+  public final void traceStartBlock(
+      WorldView world, final ProcessableBlockHeader blockHeader, final Address miningBeneficiary) {
+    blocks.add(new BlockSnapshot(blockHeader));
+  }
+
+  @Override
+  public void traceEndBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
+    currentBlock().setNbOfTxsInBlock(currentTx().tx.getRelativeTransactionNumber());
+    currentTx().setCallWcpLastTxOfBlock(currentBlock().getBlockGasLimit());
   }
 
   @Override
@@ -45,5 +71,38 @@ public class LondonTxnData extends TxnData {
                 NB_ROWS_TYPE_1,
                 NB_ROWS_TYPE_2,
                 NB_WCP_EUC_ROWS_FRONTIER_ACCESS_LIST_LONDON));
+  }
+
+  public BlockSnapshot currentBlock() {
+    return blocks.getLast();
+  }
+
+  private TxndataOperation currentTx() {
+    return operations().getLast();
+  }
+
+  @Override
+  public int numberOfUserTransactionsInCurrentBlock() {
+    return currentBlock().getNbOfTxsInBlock();
+  }
+
+  @Override
+  public void callTxnDataForSystemTransaction(SystemTransactionFragment transactionFragment) {
+    throw new IllegalStateException("System transactions appear in Cancun.");
+  }
+
+  @Override
+  public int lineCount() {
+    // The last tx of each block has one more rows
+    return operations().lineCount() + blocks.size();
+  }
+
+  @Override
+  public void commit(Trace trace) {
+    final int absTxNumMax = operations().size();
+
+    for (TxndataOperation tx : operations().getAll()) {
+      tx.traceTx(trace.txndata(), blocks.get(tx.getTx().getRelativeBlockNumber() - 1), absTxNumMax);
+    }
   }
 }

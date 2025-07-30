@@ -23,6 +23,7 @@ import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_FINL
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_INIT;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_SKIP;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_WARM;
+import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.USER;
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.RETURN;
 import static net.consensys.linea.zktracer.opcode.OpCode.REVERT;
@@ -62,6 +63,7 @@ import net.consensys.linea.zktracer.module.hub.section.create.CreateSection;
 import net.consensys.linea.zktracer.module.hub.section.halt.ReturnSection;
 import net.consensys.linea.zktracer.module.hub.section.halt.RevertSection;
 import net.consensys.linea.zktracer.module.hub.section.halt.StopSection;
+import net.consensys.linea.zktracer.module.hub.section.skip.TxSkipSection;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.module.hub.signals.PlatformController;
 import net.consensys.linea.zktracer.module.hub.state.BlockStack;
@@ -161,7 +163,7 @@ public abstract class Hub implements Module {
   @Getter CallStack callStack = new CallStack();
 
   /** Stores the transaction Metadata of all the transaction of the conflated block */
-  @Getter TransactionStack txStack = setTransactionStack();
+  @Getter TransactionStack txStack = new TransactionStack();
 
   /** Stores the block Metadata of all the blocks of the conflation */
   @Getter BlockStack blockStack = new BlockStack();
@@ -474,17 +476,29 @@ public abstract class Hub implements Module {
 
   @Override
   public void traceStartBlock(
-      final ProcessableBlockHeader processableBlockHeader, final Address miningBeneficiary) {
+      WorldView world,
+      final ProcessableBlockHeader processableBlockHeader,
+      final Address miningBeneficiary) {
     state.firstAndLastStorageSlotOccurrences.add(new HashMap<>());
     blockStack.newBlock(processableBlockHeader, miningBeneficiary);
     txStack.resetBlock();
+    state.enterSectionsStack();
+    traceSystemInitialTransaction(world, processableBlockHeader);
+    // Compute the line counting of the HUB of the current transaction TODO: this is ugly but will
+    // disappear with limitless refacto
+    state.lineCounter().add(state.currentTransactionHubSections().lineCount());
     for (Module m : modules) {
-      m.traceStartBlock(processableBlockHeader, miningBeneficiary);
+      m.traceStartBlock(world, processableBlockHeader, miningBeneficiary);
     }
   }
 
   @Override
   public void traceEndBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
+    state.enterSectionsStack();
+    traceSystemFinalTransaction();
+    // Compute the line counting of the HUB of the current transaction TODO: this is ugly but will
+    // disappear with limitless refacto
+    state.lineCounter().add(state.currentTransactionHubSections().lineCount());
     for (Module m : modules) {
       m.traceEndBlock(blockHeader, blockBody);
     }
@@ -492,16 +506,15 @@ public abstract class Hub implements Module {
   }
 
   public void traceStartTransaction(final WorldView world, final Transaction tx) {
+    state.transactionProcessingType(USER);
     pch.reset();
     txStack.enterTransaction(this, world, tx);
-
     final TransactionProcessingMetadata transactionProcessingMetadata = txStack.current();
-
     state.enterTransaction();
 
     if (!transactionProcessingMetadata.requiresEvmExecution()) {
       state.processingPhase(TX_SKIP);
-      new TxSkipSection(this, world, transactionProcessingMetadata, transients);
+      setSkipSection(this, world, transactionProcessingMetadata, transients);
     } else {
       if (transactionProcessingMetadata.requiresPrewarming()) {
         state.processingPhase(TX_WARM);
@@ -667,7 +680,7 @@ public abstract class Hub implements Module {
 
       if (state.processingPhase() != TX_SKIP) {
         state.processingPhase(TX_FINL);
-        new TxFinalizationSection(this);
+        setFinalizationSection(this);
       }
     }
 
@@ -850,12 +863,12 @@ public abstract class Hub implements Module {
     return state.currentTransactionHubSections().currentSection();
   }
 
-  public TraceSection previousTraceSection() {
-    return state.currentTransactionHubSections().previousSection();
+  public TraceSection lastUserTransactionSection() {
+    return lastUserTransactionSection(1);
   }
 
-  public TraceSection previousTraceSection(int n) {
-    return state.currentTransactionHubSections().previousSection(n);
+  public TraceSection lastUserTransactionSection(int n) {
+    return state.lastUserTransactionHubSections().previousSection(n);
   }
 
   public void addTraceSection(TraceSection section) {
@@ -1048,8 +1061,6 @@ public abstract class Hub implements Module {
 
   protected abstract GasCalculator setGasCalculator();
 
-  protected abstract TransactionStack setTransactionStack();
-
   protected abstract TxnData setTxnData();
 
   protected abstract Mxp setMxp();
@@ -1064,7 +1075,15 @@ public abstract class Hub implements Module {
 
   protected abstract PowerRt setPower();
 
+  protected abstract void setSkipSection(
+      Hub hub,
+      WorldView world,
+      TransactionProcessingMetadata transactionProcessingMetadata,
+      Transients transients);
+
   protected abstract void setInitializationSection(WorldView world);
+
+  protected abstract void setFinalizationSection(Hub hub);
 
   protected abstract boolean coinbaseWarmthAtTxEnd();
 
@@ -1073,6 +1092,11 @@ public abstract class Hub implements Module {
   protected abstract void setTransientSection(Hub hub);
 
   protected abstract void setMcopySection(Hub hub);
+
+  protected abstract void traceSystemInitialTransaction(
+      WorldView world, ProcessableBlockHeader blockHeader);
+
+  protected abstract void traceSystemFinalTransaction();
 
   protected abstract void setSelfdestructSection(Hub hub, final MessageFrame frame);
 }

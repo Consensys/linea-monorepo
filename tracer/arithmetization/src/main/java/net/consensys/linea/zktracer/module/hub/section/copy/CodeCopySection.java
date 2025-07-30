@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.module.hub.signals.Exceptions.OUT_OF_
 
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
@@ -73,7 +74,11 @@ public class CodeCopySection extends TraceSection {
     final AccountFragment accountReadingFragment =
         hub.factories()
             .accountFragment()
-            .make(codeAccountSnapshot, codeAccountSnapshot, doingDomSubStamps)
+            .make(
+                codeAccountSnapshot,
+                codeAccountSnapshot,
+                doingDomSubStamps,
+                TransactionProcessingType.USER)
             .requiresRomlex(true);
 
     this.addFragment(accountReadingFragment);

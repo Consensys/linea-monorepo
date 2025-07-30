@@ -38,7 +38,7 @@ public class ConflationAccountTest extends TracerTestBase {
     this.tc = new TestContext();
     this.tc.initializeTestContext();
     // prepare the transaction validator
-    TransactionProcessingResultValidator resultValidator =
+    final TransactionProcessingResultValidator resultValidator =
         new StateManagerTestValidator(
             tc.frameworkEntryPointAccount,
             // Creates and self-destructs generate 2 logs,
@@ -204,24 +204,24 @@ public class ConflationAccountTest extends TracerTestBase {
 
     // Replay the transaction's trace from the hub to compute the first and last values for the
     // account storage
-    List<Map<Address, FragmentFirstAndLast<AccountFragment>>> accountFirstAndLastMapList =
+    final List<Map<Address, FragmentFirstAndLast<AccountFragment>>> accountFirstAndLastMapList =
         computeAccountFirstAndLastMapList(multiBlockEnv.getHub());
 
     // Replay trace from the hub to compute blockMapAccount
-    Map<Address, Map<Integer, FragmentFirstAndLast<AccountFragment>>> blockMapAccount =
+    final Map<Address, Map<Integer, FragmentFirstAndLast<AccountFragment>>> blockMapAccount =
         computeBlockMapAccount(multiBlockEnv.getHub(), accountFirstAndLastMapList);
 
-    Map<Address, FragmentFirstAndLast<AccountFragment>> conflationMapAccount =
+    final Map<Address, FragmentFirstAndLast<AccountFragment>> conflationMapAccount =
         computeConflationMapAccount(
             multiBlockEnv.getHub(), accountFirstAndLastMapList, blockMapAccount);
 
     // prepare data for asserts
     // expected first values for the keys we are testing
-    Wei[] expectedFirst = {
+    final Wei[] expectedFirst = {
       TestContext.defaultBalance, TestContext.defaultBalance, Wei.of(0L), Wei.of(0L), Wei.of(0L)
     };
     // expected last values for the keys we are testing
-    Wei[] expectedLast = {
+    final Wei[] expectedLast = {
       TestContext.defaultBalance
           .subtract(8L)
           .add(20L)
@@ -241,7 +241,7 @@ public class ConflationAccountTest extends TracerTestBase {
     };
 
     // prepare the key pairs
-    Address[] keys = {
+    final Address[] keys = {
       tc.initialAccounts[0].getAddress(),
       tc.initialAccounts[2].getAddress(),
       tc.newAddresses[0],
@@ -250,8 +250,7 @@ public class ConflationAccountTest extends TracerTestBase {
     };
 
     for (int i = 0; i < keys.length; i++) {
-      System.out.println("Index is " + i);
-      FragmentFirstAndLast<AccountFragment> accountData = conflationMapAccount.get(keys[i]);
+      final FragmentFirstAndLast<AccountFragment> accountData = conflationMapAccount.get(keys[i]);
       // asserts for the first and last storage values in conflation
       assertEquals(expectedFirst[i], accountData.getFirst().oldState().balance());
       assertEquals(expectedLast[i], accountData.getLast().newState().balance());

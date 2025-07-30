@@ -177,7 +177,7 @@ public class SixtyThreeSixtyFourthsTests extends TracerTestBase {
 
     assertNotEquals(
         OUT_OF_GAS_EXCEPTION,
-        bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   static Stream<Arguments> fixedCostEcAddTestSource() {
@@ -226,7 +226,7 @@ public class SixtyThreeSixtyFourthsTests extends TracerTestBase {
 
     assertNotEquals(
         OUT_OF_GAS_EXCEPTION,
-        bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   static Stream<Arguments> costGEQStipendTest() {

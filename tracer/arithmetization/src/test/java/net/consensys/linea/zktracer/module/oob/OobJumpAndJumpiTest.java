@@ -129,7 +129,8 @@ public class OobJumpAndJumpiTest extends TracerTestBase {
 
     assertTrue(Exceptions.jumpFault(hub.pch().exceptions()));
     assertEquals(
-        JUMP_FAULT, bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        JUMP_FAULT,
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -158,7 +159,8 @@ public class OobJumpAndJumpiTest extends TracerTestBase {
 
     assertTrue(Exceptions.jumpFault(hub.pch().exceptions()));
     assertEquals(
-        JUMP_FAULT, bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        JUMP_FAULT,
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -339,7 +341,8 @@ public class OobJumpAndJumpiTest extends TracerTestBase {
 
     assertTrue(Exceptions.jumpFault(hub.pch().exceptions()));
     assertEquals(
-        JUMP_FAULT, bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        JUMP_FAULT,
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -369,7 +372,8 @@ public class OobJumpAndJumpiTest extends TracerTestBase {
 
     assertTrue(Exceptions.jumpFault(hub.pch().exceptions()));
     assertEquals(
-        JUMP_FAULT, bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
+        JUMP_FAULT,
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test

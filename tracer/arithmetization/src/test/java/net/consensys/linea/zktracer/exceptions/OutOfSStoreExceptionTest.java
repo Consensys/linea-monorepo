@@ -49,7 +49,7 @@ public class OutOfSStoreExceptionTest extends TracerTestBase {
     if (remainingGasAfterPushes <= Trace.GAS_CONST_G_CALL_STIPEND) {
       assertEquals(
           OUT_OF_SSTORE,
-          bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+          bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
     }
   }
 }

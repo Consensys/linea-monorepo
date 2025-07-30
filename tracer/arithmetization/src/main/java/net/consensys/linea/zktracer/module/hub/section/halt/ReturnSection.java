@@ -24,6 +24,7 @@ import static org.hyperledger.besu.evm.frame.MessageFrame.Type.*;
 import lombok.Getter;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
 import net.consensys.linea.zktracer.module.hub.defer.ContextReEntryDefer;
 import net.consensys.linea.zktracer.module.hub.defer.EndTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.defer.PostRollbackDefer;
@@ -264,7 +265,8 @@ public class ReturnSection extends TraceSection
             .make(
                 firstCreatee,
                 firstCreateeNew,
-                DomSubStampsSubFragment.standardDomSubStamps(hubStamp, 0));
+                DomSubStampsSubFragment.standardDomSubStamps(hubStamp, 0),
+                TransactionProcessingType.USER);
 
     if (nonemptyByteCode) {
       deploymentAccountFragment.requiresRomlex(true);
@@ -292,7 +294,8 @@ public class ReturnSection extends TraceSection
                 firstCreateeNew,
                 secondCreateeNew,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
-                    hubStamp, hub.callStack().currentCallFrame().revertStamp(), 1));
+                    hubStamp, hub.callStack().currentCallFrame().revertStamp(), 1),
+                TransactionProcessingType.USER);
 
     this.addFragment(undoingDeploymentAccountFragment);
   }
@@ -322,7 +325,8 @@ public class ReturnSection extends TraceSection
             .make(
                 firstCreatee,
                 firstCreateeNew,
-                DomSubStampsSubFragment.standardDomSubStamps(hubStamp, 0));
+                DomSubStampsSubFragment.standardDomSubStamps(hubStamp, 0),
+                TransactionProcessingType.USER);
 
     if (nonemptyByteCode) {
       deploymentAccountFragment.requiresRomlex(true);

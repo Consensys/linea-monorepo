@@ -70,7 +70,7 @@ public class JumpTest extends TracerTestBase {
     // OOGX check happens before JUMPX in tracer
     assertEquals(
         OUT_OF_GAS_EXCEPTION,
-        bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   /**
@@ -102,6 +102,6 @@ public class JumpTest extends TracerTestBase {
     // JUMPX check happens before OOGX in tracer
     assertEquals(
         OUT_OF_GAS_EXCEPTION,
-        bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 }

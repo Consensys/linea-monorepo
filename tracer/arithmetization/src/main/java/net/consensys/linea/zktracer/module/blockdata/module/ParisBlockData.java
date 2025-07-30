@@ -58,7 +58,7 @@ public class ParisBlockData extends LondonBlockData {
         hub,
         blockHeader,
         previousBlockHeader,
-        txnData().currentBlock().getNbOfTxsInBlock(),
+        txnData().numberOfUserTransactionsInCurrentBlock(),
         wcp,
         euc,
         chain,

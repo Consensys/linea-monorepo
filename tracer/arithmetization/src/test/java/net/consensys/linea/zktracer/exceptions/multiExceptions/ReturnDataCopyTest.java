@@ -65,7 +65,7 @@ public class ReturnDataCopyTest extends TracerTestBase {
     // RDCX check happens before OOGX in tracer
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   @Test
@@ -84,6 +84,6 @@ public class ReturnDataCopyTest extends TracerTestBase {
     // RDCX check happens before MXPX in tracer
     assertEquals(
         RETURN_DATA_COPY_FAULT,
-        bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 }

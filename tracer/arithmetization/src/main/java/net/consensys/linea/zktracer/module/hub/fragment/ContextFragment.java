@@ -51,6 +51,10 @@ public class ContextFragment implements TraceFragment {
         hub, Either.left(callFrame.id()), callFrame.returnDataRange().snapshot(), false);
   }
 
+  public static ContextFragment readZeroContextData(final Hub hub) {
+    return readContextData(hub, CallFrame.EMPTY);
+  }
+
   public static ContextFragment readCurrentContextData(final Hub hub) {
     return readContextData(hub, hub.currentFrame());
   }

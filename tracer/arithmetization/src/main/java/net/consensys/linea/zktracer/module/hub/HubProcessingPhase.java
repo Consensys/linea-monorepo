@@ -20,5 +20,5 @@ public enum HubProcessingPhase {
   TX_FINL,
   TX_INIT,
   TX_SKIP,
-  TX_WARM,
+  TX_WARM
 }

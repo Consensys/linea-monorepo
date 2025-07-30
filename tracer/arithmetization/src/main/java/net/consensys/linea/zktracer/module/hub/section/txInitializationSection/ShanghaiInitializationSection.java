@@ -19,6 +19,7 @@ import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
 
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
@@ -43,7 +44,8 @@ public class ShanghaiInitializationSection extends LondonInitializationSection {
         coinbase,
         coinbase.deepCopy().turnOnWarmth(),
         coinbase.address(),
-        DomSubStampsSubFragment.standardDomSubStamps(getHubStamp(), domSubOffset()));
+        DomSubStampsSubFragment.standardDomSubStamps(getHubStamp(), domSubOffset()),
+        TransactionProcessingType.USER);
   }
 
   @Override

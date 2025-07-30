@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.*;
 
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
@@ -62,7 +63,8 @@ public class JumpSection extends TraceSection {
             .make(
                 codeAccount,
                 codeAccount,
-                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0));
+                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0),
+                TransactionProcessingType.USER);
 
     // MISCELLANEOUS fragment
     /////////////////////////

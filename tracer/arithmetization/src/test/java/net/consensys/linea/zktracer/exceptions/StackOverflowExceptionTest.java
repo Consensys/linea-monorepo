@@ -51,7 +51,7 @@ public class StackOverflowExceptionTest extends TracerTestBase {
 
     assertEquals(
         STACK_OVERFLOW,
-        bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
+        bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
   }
 
   static Stream<Arguments> stackOverflowExceptionSource() {

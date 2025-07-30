@@ -15,20 +15,19 @@
 
 package net.consensys.linea.zktracer.module.limits;
 
-import java.util.List;
-
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.Trace;
-import net.consensys.linea.zktracer.container.module.Module;
+import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
+import org.hyperledger.besu.evm.worldstate.WorldView;
 
 @Getter
 @Accessors(fluent = true)
 @RequiredArgsConstructor
-public class BlockTransactions implements Module {
+public class BlockTransactions implements CountingOnlyModule {
   private final Hub hub;
   private final CountOnlyOperation counts = new CountOnlyOperation();
 
@@ -38,27 +37,8 @@ public class BlockTransactions implements Module {
   }
 
   @Override
-  public void popTransactionBundle() {}
-
-  @Override
-  public void commitTransactionBundle() {}
-
-  @Override
-  public int lineCount() {
-    final int hubNumberOfTx = hub.state.txCount();
-    final int txnDataNumberOfTx = hub.txnData().operations().size();
-    assert (hubNumberOfTx == txnDataNumberOfTx);
-
-    return txnDataNumberOfTx;
-  }
-
-  @Override
-  public int spillage(Trace trace) {
-    return 0;
-  }
-
-  @Override
-  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
-    throw new UnsupportedOperationException("Not implemented");
+  public void traceStartTx(
+      WorldView worldView, TransactionProcessingMetadata transactionProcessingMetadata) {
+    updateTally(1);
   }
 }

@@ -101,7 +101,9 @@ public class Wcp implements Module {
 
   @Override
   public void traceStartBlock(
-      final ProcessableBlockHeader processableBlockHeader, final Address miningBeneficiary) {
+      WorldView world,
+      final ProcessableBlockHeader processableBlockHeader,
+      final Address miningBeneficiary) {
     additionalRows.commitTransactionBundle();
   }
 
