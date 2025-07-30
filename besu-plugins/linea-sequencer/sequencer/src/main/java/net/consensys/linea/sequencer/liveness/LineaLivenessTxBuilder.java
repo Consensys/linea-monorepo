@@ -132,7 +132,7 @@ public class LineaLivenessTxBuilder implements LivenessTxBuilder {
    */
   private Wei getGasPrice() {
     // Use configured gas price
-    long adjustedGasPrice = Math.min(gasPrice, 7);
+    long adjustedGasPrice = Math.max(gasPrice, 7);
     log.debug("Adjusted gas price: {} Wei (configured as {} Wei)", adjustedGasPrice, gasPrice);
     return Wei.of(adjustedGasPrice);
   }
