@@ -340,11 +340,6 @@ func (c *HashWizardVerifierSubCircuit) prove(ins [][]byte) wizard.Proof {
 	proof := wizard.Prove(c.compiled, func(r *wizard.ProverRuntime) {
 		c.m.AssignCustomizedKeccak(r, ins)
 	})
-
-	if err := wizard.Verify(c.compiled, proof); err != nil {
-		utils.Panic("wizard sanity-checking returned an error")
-	}
-
 	return proof
 }
 
