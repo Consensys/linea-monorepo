@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
+import maru.core.ext.DataGenerators.randomSealedBeaconBlock
 import maru.p2p.MaruPeer
 import maru.p2p.PeerLookup
 import maru.p2p.ValidationResult
@@ -30,6 +31,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import tech.pegasys.teku.infrastructure.async.SafeFuture.completedFuture
 
 class BeaconChainDownloadPipelineFactoryTest {
   private lateinit var blockImporter: SealedBeaconBlockImporter<ValidationResult>
@@ -47,8 +49,7 @@ class BeaconChainDownloadPipelineFactoryTest {
         blockImporter = blockImporter,
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
-        downloaderParallelism = 1,
-        requestSize = 10u,
+        config = BeaconChainDownloadPipelineFactory.Config(),
       )
   }
 
@@ -120,8 +121,7 @@ class BeaconChainDownloadPipelineFactoryTest {
         blockImporter = blockImporter,
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
-        downloaderParallelism = 1,
-        requestSize = 100u,
+        config = BeaconChainDownloadPipelineFactory.Config(blocksBatchSize = 100u),
       )
 
     val peer = mock<MaruPeer>()
@@ -171,8 +171,7 @@ class BeaconChainDownloadPipelineFactoryTest {
         blockImporter = blockImporter,
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
-        downloaderParallelism = 2,
-        requestSize = 0u,
+        config = BeaconChainDownloadPipelineFactory.Config(blocksBatchSize = 0u),
       )
     }.isInstanceOf(IllegalArgumentException::class.java)
       .hasMessageContaining("Request size must be greater than 0")
@@ -183,20 +182,23 @@ class BeaconChainDownloadPipelineFactoryTest {
     val peer = mock<MaruPeer>()
     whenever(peerLookup.getPeers()).thenReturn(listOf(peer))
 
+    val block1 = randomSealedBeaconBlock(ULong.MAX_VALUE - 2uL)
+    val block2 = randomSealedBeaconBlock(ULong.MAX_VALUE - 1uL)
+
     // Test with a range very close to ULong.MAX_VALUE
-    val startBlock = ULong.MAX_VALUE - 20uL
+    val startBlock = ULong.MAX_VALUE - 2uL
     val endBlock = ULong.MAX_VALUE - 1uL
 
-    // The expected ranges with request size 10
-    val response1 = mock<BeaconBlocksByRangeResponse>()
-    whenever(response1.blocks).thenReturn(emptyList())
-    whenever(peer.sendBeaconBlocksByRange(startBlock, 10uL)).thenReturn(SafeFuture.completedFuture(response1))
-
-    val response2 = mock<BeaconBlocksByRangeResponse>()
-    whenever(response2.blocks).thenReturn(emptyList())
+    // The expected ranges with request size 2
     whenever(
-      peer.sendBeaconBlocksByRange(ULong.MAX_VALUE - 10uL, 10uL),
-    ).thenReturn(SafeFuture.completedFuture(response2))
+      peer.sendBeaconBlocksByRange(startBlock, 2uL),
+    ).thenReturn(completedFuture(BeaconBlocksByRangeResponse(listOf(block1))))
+
+    whenever(
+      peer.sendBeaconBlocksByRange(startBlock + 1uL, 1uL),
+    ).thenReturn(completedFuture(BeaconBlocksByRangeResponse(listOf(block2))))
+
+    whenever(blockImporter.importBlock(any())).thenReturn(completedFuture(ValidationResult.Companion.Valid))
 
     val pipeline = factory.createPipeline(startBlock, endBlock)
     val completionFuture = pipeline.start(executorService)
