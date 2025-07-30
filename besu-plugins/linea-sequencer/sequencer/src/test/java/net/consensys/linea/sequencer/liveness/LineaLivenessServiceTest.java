@@ -72,10 +72,12 @@ public class LineaLivenessServiceTest {
     when(rpcEndpointService.call(eq("eth_getTransactionCount"), any()))
         .thenReturn(
             new PluginRpcResponse() {
+              @Override
               public Object getResult() {
                 return "0x" + Long.toHexString(nonce += 2);
               }
 
+              @Override
               public RpcResponseType getType() {
                 return RpcResponseType.SUCCESS;
               }
