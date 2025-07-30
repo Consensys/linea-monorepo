@@ -1,6 +1,7 @@
 package smartvectors
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
@@ -166,6 +167,7 @@ func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, co
 
 	var shift field.Element
 	if cosetID != 0 || cosetRatio != 0 {
+		fmt.Printf("cosetID = %d, cosetRatio = %d\n", cosetID, cosetRatio)
 		omega, _ := fft.Generator(domain.Cardinality * uint64(cosetRatio))
 		omega.Exp(omega, big.NewInt(int64(cosetID)))
 

@@ -59,7 +59,7 @@ func TestCompilers(t *testing.T) {
 
 	//panic: global constraint - mismatch - at random point -
 	//runTestList(t, "horner", testtools.ListOfHornerTestcasePositive)
-	//runTestList(t, "projection", testtools.ListOfProjectionTestcasePositive)
+	runTestList(t, "projection", testtools.ListOfProjectionTestcasePositive)
 
 	//panic: unreachable
 	//runTestList(t, "mimc", testtools.ListOfMiMCTestcase)

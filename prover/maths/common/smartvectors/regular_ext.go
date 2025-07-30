@@ -87,7 +87,12 @@ func (r *RegularExt) RotateRight(offset int) SmartVector {
 }
 
 func (r *RegularExt) WriteInSlice(s []field.Element) {
-	panic(conversionError)
+	assertHasLength(len(s), len(*r))
+	for i := 0; i < len(s); i++ {
+		elem, _ := r.GetBase(i)
+		s[i].Set(&elem)
+	}
+
 }
 
 func (r *RegularExt) WriteInSliceExt(s []fext.Element) {
@@ -171,8 +176,7 @@ func (r *RegularExt) IntoRegVecSaveAllocBase() ([]field.Element, error) {
 func (r *RegularExt) IntoRegVecSaveAllocExt() []fext.Element {
 	temp := make([]fext.Element, r.Len())
 	for i := 0; i < r.Len(); i++ {
-		elem := r.GetExt(i)
-		temp[i].Set(&elem)
+		temp[i] = r.GetExt(i)
 	}
 	return temp
 }
