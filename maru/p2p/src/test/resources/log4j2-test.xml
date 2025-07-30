@@ -9,6 +9,9 @@
     <Logger name="maru" level="INFO" additivity="false">
       <AppenderRef ref="console"/>
     </Logger>
+    <Logger name="maru.p2p" level="DEBUG" additivity="false">
+      <AppenderRef ref="console"/>
+    </Logger>
     <Root level="INFO" additivity="false">
       <appender-ref ref="console"/>
     </Root>

@@ -48,7 +48,7 @@ class TopicHandlerWithInOrderDelivering<T>(
   private val isHandlingEnabled: () -> Boolean,
   private val nextExpectedSequenceNumberProvider: () -> ULong,
 ) : TopicHandler {
-  private val log: Logger = LogManager.getLogger(this::javaClass)
+  private val log: Logger = LogManager.getLogger(this.javaClass)
 
   companion object {
     fun ValidationResultCode.toLibP2P(): Libp2pValidationResult =

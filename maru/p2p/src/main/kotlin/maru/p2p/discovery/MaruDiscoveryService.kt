@@ -8,9 +8,9 @@
  */
 package maru.p2p.discovery
 
-import java.time.Duration
 import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
+import kotlin.time.toJavaDuration
 import maru.config.P2P
 import maru.consensus.ForkIdHashProvider
 import net.consensys.linea.async.toSafeFuture
@@ -38,12 +38,18 @@ class MaruDiscoveryService(
   private val forkIdHashProvider: ForkIdHashProvider,
   metricsSystem: MetricsSystem,
 ) {
-  companion object {
-    val BOOTNODE_REFRESH_DELAY: Duration = Duration.ofMinutes(2L)
-    const val FORK_ID_HASH_FIELD_NAME = "mfidh"
+  init {
+    require(p2pConfig.discovery != null) {
+      "MaruDiscoveryService is being initialized without the discovery section in the P2P config!"
+    }
   }
 
-  private val log: Logger = LogManager.getLogger(this::javaClass)
+  companion object {
+    const val FORK_ID_HASH_FIELD_NAME = "mfidh"
+    const val DISCOVERY_TIMEOUT_SECONDS = 30L
+  }
+
+  private val log: Logger = LogManager.getLogger(this.javaClass)
 
   private val privateKey = SecretKeyParser.fromLibP2pPrivKey(Bytes.wrap(privateKeyBytes))
 
@@ -90,7 +96,7 @@ class MaruDiscoveryService(
         this.bootnodeRefreshTask =
           delayedExecutor.runWithFixedDelay(
             { this.pingBootnodes(bootnodes) },
-            BOOTNODE_REFRESH_DELAY,
+            p2pConfig.discovery!!.refreshInterval.toJavaDuration(),
             { error: Throwable ->
               log.error(
                 "Failed to contact discovery bootnodes",
@@ -98,7 +104,7 @@ class MaruDiscoveryService(
               )
             },
           )
-      }.get(30, TimeUnit.SECONDS)
+      }.get(DISCOVERY_TIMEOUT_SECONDS, TimeUnit.SECONDS)
     return
   }
 
@@ -128,6 +134,7 @@ class MaruDiscoveryService(
       .map { node: NodeRecord ->
         convertSafeNodeRecordToDiscoveryPeer(node)
       }.toList()
+      .toSet()
 
   private fun convertSafeNodeRecordToDiscoveryPeer(node: NodeRecord): MaruDiscoveryPeer {
     // node record has been checked in checkNodeRecord, so we can convert to MaruDiscoveryPeer safely
@@ -141,16 +148,16 @@ class MaruDiscoveryService(
 
   private fun checkNodeRecord(node: NodeRecord): Boolean {
     if (node.get(FORK_ID_HASH_FIELD_NAME) == null) {
-      log.info("Node record is missing forkId field: {}", node)
+      log.trace("Node record is missing forkId field: {}", node)
       return false
     }
     val forkId =
       (node.get(FORK_ID_HASH_FIELD_NAME) as? Bytes) ?: run {
-        log.info("Failed to cast value for the forkId hash to Bytes")
+        log.trace("Failed to cast value for the forkId hash to Bytes")
         return false
       }
     if (forkId != Bytes.wrap(forkIdHashProvider.currentForkIdHash())) {
-      log.info(
+      log.trace(
         "Peer {} is on a different chain. Expected: {}, Found: {}",
         node.nodeId,
         Bytes.wrap(forkIdHashProvider.currentForkIdHash()),
@@ -159,15 +166,15 @@ class MaruDiscoveryService(
       return false
     }
     if (node.get(EnrField.PKEY_SECP256K1) == null) {
-      log.info("Node record is missing public key field: {}", node)
+      log.trace("Node record is missing public key field: {}", node)
       return false
     }
     (node.get(EnrField.PKEY_SECP256K1) as? Bytes) ?: run {
-      log.info("Failed to cast value for the public key to Bytes")
+      log.trace("Failed to cast value for the public key to Bytes")
       return false
     }
     if (node.tcpAddress.isEmpty) {
-      log.info(
+      log.trace(
         "node record doesn't have a TCP address: {}",
         node,
       )
@@ -177,6 +184,7 @@ class MaruDiscoveryService(
   }
 
   private fun pingBootnodes(bootnodeRecords: List<NodeRecord>) {
+    log.debug("Pinging bootnodes")
     bootnodeRecords.forEach(
       Consumer { bootnode: NodeRecord? ->
         SafeFuture

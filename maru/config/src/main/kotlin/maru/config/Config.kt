@@ -47,6 +47,7 @@ data class P2P(
   data class Discovery(
     val port: UInt,
     val bootnodes: List<String> = emptyList(),
+    val refreshInterval: Duration,
   )
 }
 

@@ -79,7 +79,7 @@ class TransactionalSealedBeaconBlockImporter(
   private val stateTransition: StateTransition,
   private val beaconBlockImporter: BeaconBlockImporter,
 ) : SealedBeaconBlockImporter<ValidationResult> {
-  private val log: Logger = LogManager.getLogger(this::javaClass)
+  private val log: Logger = LogManager.getLogger(this.javaClass)
 
   override fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<ValidationResult> {
     val updater = beaconChain.newUpdater()

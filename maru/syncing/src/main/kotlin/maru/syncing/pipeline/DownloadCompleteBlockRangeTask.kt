@@ -25,7 +25,7 @@ class DownloadCompleteBlockRangeTask(
   private val maxRetries: UInt,
   private val blockRangeRequestTimeout: Duration,
 ) : Function<SyncTargetRange, CompletableFuture<List<SealedBlockWithPeer>>> {
-  private val log: Logger = LogManager.getLogger(this::javaClass)
+  private val log: Logger = LogManager.getLogger(this.javaClass)
 
   override fun apply(targetRange: SyncTargetRange): CompletableFuture<List<SealedBlockWithPeer>> =
     CompletableFuture.supplyAsync {
