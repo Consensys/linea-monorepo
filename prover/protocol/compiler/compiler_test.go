@@ -58,6 +58,7 @@ func TestCompilers(t *testing.T) {
 	// ok basic runTestList(t, "global", testtools.ListOfGlobalTestcasePositive)
 
 	//panic: global constraint - mismatch - at random point -
+	// observation from ListOfLogDerivativeSumTestcasePositive and ListOfGrandProductTestcasePositive: left values are usually the correct ones
 	//runTestList(t, "horner", testtools.ListOfHornerTestcasePositive)
 	runTestList(t, "projection", testtools.ListOfProjectionTestcasePositive)
 
