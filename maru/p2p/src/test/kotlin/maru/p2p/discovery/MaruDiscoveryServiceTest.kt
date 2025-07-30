@@ -12,6 +12,7 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.Optional
 import java.util.concurrent.TimeUnit
+import linea.kotlin.decodeHex
 import maru.config.P2P
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
@@ -28,17 +29,19 @@ import maru.p2p.discovery.MaruDiscoveryService.Companion.FORK_ID_HASH_FIELD_NAME
 import maru.p2p.getBootnodeEnrString
 import maru.serialization.ForkIdSerializers
 import org.apache.tuweni.bytes.Bytes
+import org.apache.tuweni.crypto.SECP256K1
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility
-import org.ethereum.beacon.discovery.schema.EnrField
+import org.ethereum.beacon.discovery.schema.IdentitySchemaInterpreter
 import org.ethereum.beacon.discovery.schema.NodeRecord
+import org.ethereum.beacon.discovery.schema.NodeRecordBuilder
+import org.ethereum.beacon.discovery.schema.NodeRecordFactory
+import org.ethereum.beacon.discovery.util.Functions
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito.mock
-import org.mockito.kotlin.whenever
 
 class MaruDiscoveryServiceTest {
   companion object {
@@ -51,16 +54,9 @@ class MaruDiscoveryServiceTest {
     private const val PORT5 = 9238u
     private const val PORT6 = 9239u
 
-    private const val PRIVATE_KEY1: String =
-      "0x12c0b113e2b0c37388e2b484112e13f05c92c4471e3ee1dfaa368fa5045325b2"
-    private const val PRIVATE_KEY2: String =
-      "0xf3d2fffa99dc8906823866d96316492ebf7a8478713a89a58b7385af85b088a1"
-    private const val PRIVATE_KEY3: String =
-      "0x4437acb8e84bc346f7640f239da84abe99bc6f97b7855f204e34688d2977fd57"
-
-    private val key1 = Bytes.fromHexString(PRIVATE_KEY1).toArray()
-    private val key2 = Bytes.fromHexString(PRIVATE_KEY2).toArray()
-    private val key3 = Bytes.fromHexString(PRIVATE_KEY3).toArray()
+    private val key1 = "0x12c0b113e2b0c37388e2b484112e13f05c92c4471e3ee1dfaa368fa5045325b2".decodeHex()
+    private val key2 = "0xf3d2fffa99dc8906823866d96316492ebf7a8478713a89a58b7385af85b088a1".decodeHex()
+    private val key3 = "0x4437acb8e84bc346f7640f239da84abe99bc6f97b7855f204e34688d2977fd57".decodeHex()
 
     private val chainId = 1337u
     private val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
@@ -84,14 +80,6 @@ class MaruDiscoveryServiceTest {
         forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
       )
 
-    private val forkIdHashProvider2 =
-      ForkIdHashProvider(
-        chainId = chainId + 1u,
-        beaconChain = beaconChain,
-        forksSchedule = forksSchedule,
-        forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
-      )
-
     val otherForkSpec = ForkSpec(1L, 1, consensusConfig)
 
     val forkId =
@@ -104,93 +92,89 @@ class MaruDiscoveryServiceTest {
 
   private lateinit var service: MaruDiscoveryService
 
-  private val dummyPrivKey = ByteArray(32) { 1 }
-  private val dummyNodeId = Bytes.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 0)
+  private val keyPair = SECP256K1.KeyPair.random()
+  private val publicKey = Functions.deriveCompressedPublicKeyFromPrivate(keyPair.secretKey())
   private val dummyAddr = Optional.of(InetSocketAddress(InetAddress.getByName("1.1.1.1"), 1234))
+
+  /**
+   * Creates a valid node record with the specified values.
+   *
+   * @param pubKey The public key to use for the node record. Defaults to dummyPubKey.
+   * @param forkIdHash The fork ID hash to use for the node record. Defaults to the current fork ID hash.
+   * @param nodeId The node ID to use for the node record. Defaults to dummyNodeId.
+   * @param tcpAddress The TCP address to use for the node record. Defaults to dummyAddr.
+   * @return A real NodeRecord with the specified values, wrapped in a mock to allow property overrides.
+   */
+  private fun createValidNodeRecord(
+    forkIdHash: ByteArray? = forkIdHashProvider.currentForkIdHash(),
+    tcpAddress: Optional<InetSocketAddress> = dummyAddr,
+  ): NodeRecord {
+    val nrBuilder =
+      NodeRecordBuilder()
+        .nodeRecordFactory(NodeRecordFactory(IdentitySchemaInterpreter.V4))
+        .seq(1)
+        .secretKey(keyPair.secretKey())
+    if (forkIdHash != null) {
+      nrBuilder.customField(FORK_ID_HASH_FIELD_NAME, Bytes.wrap(forkIdHash))
+    }
+    if (tcpAddress.isPresent) {
+      nrBuilder.address(tcpAddress.get().address.hostAddress, tcpAddress.get().port)
+    }
+
+    return nrBuilder.build()
+  }
 
   @BeforeEach
   fun setUp() {
-    val p2pDiscovery = mock(P2P.Discovery::class.java)
-    whenever(p2pDiscovery.port).thenReturn(9000.toUInt())
-    whenever(p2pDiscovery.bootnodes).thenReturn(listOf())
-    val p2pConfig = mock(P2P::class.java)
-    whenever(p2pConfig.ipAddress).thenReturn("127.0.0.1")
-    whenever(p2pConfig.port).thenReturn(9001.toUInt())
-    whenever(p2pConfig.discovery).thenReturn(p2pDiscovery)
-    service = MaruDiscoveryService(dummyPrivKey, p2pConfig, forkIdHashProvider, NoOpMetricsSystem())
+    val p2pConfig =
+      P2P(
+        ipAddress = "127.0.0.1",
+        port = 9001u,
+        discovery =
+          P2P.Discovery(
+            port = 9000u,
+            bootnodes = listOf(),
+          ),
+      )
+    service = MaruDiscoveryService(keyPair.secretKey().bytesArray(), p2pConfig, forkIdHashProvider, NoOpMetricsSystem())
   }
 
   @Test
   fun `converts node record with valid forkId`() {
-    val node = mock(NodeRecord::class.java)
-    val pubKey = Bytes.of(9, 9, 9)
-    whenever(node.get(EnrField.PKEY_SECP256K1)).thenReturn(pubKey)
-    whenever(node.get(FORK_ID_HASH_FIELD_NAME)).thenReturn(Bytes.wrap(forkIdHashProvider.currentForkIdHash()))
-    whenever(node.nodeId).thenReturn(dummyNodeId)
-    whenever(node.tcpAddress).thenReturn(dummyAddr)
+    val node = createValidNodeRecord()
 
     val peer =
       service.run {
-        val method = this::class.java.getDeclaredMethod("convertNodeRecordToDiscoveryPeer", NodeRecord::class.java)
+        val method = this::class.java.getDeclaredMethod("convertSafeNodeRecordToDiscoveryPeer", NodeRecord::class.java)
         method.isAccessible = true
         method.invoke(this, node) as MaruDiscoveryPeer
       }
 
-    assertEquals(pubKey, peer.publicKey)
-    assertEquals(dummyNodeId, peer.nodeId)
+    assertEquals(publicKey, peer.publicKey)
     assertEquals(dummyAddr.get(), peer.addr)
-    assertTrue(peer.forkIdBytes.isPresent)
-    assertEquals(Bytes.wrap(forkIdHashProvider.currentForkIdHash()), Bytes.wrap(peer.forkIdBytes.get()))
+    assertEquals(Bytes.wrap(forkIdHashProvider.currentForkIdHash()), peer.forkIdBytes)
   }
 
   @Test
-  fun `returns empty forkId if forkId field is missing`() {
-    val node = mock(NodeRecord::class.java)
-    whenever(node.get(FORK_ID_HASH_FIELD_NAME)).thenReturn(null)
-    whenever(node.get(EnrField.PKEY_SECP256K1)).thenReturn(null)
-    whenever(node.nodeId).thenReturn(dummyNodeId)
-    whenever(node.tcpAddress).thenReturn(dummyAddr)
-
-    val peer =
-      service.run {
-        val method = this::class.java.getDeclaredMethod("convertNodeRecordToDiscoveryPeer", NodeRecord::class.java)
-        method.isAccessible = true
-        method.invoke(this, node) as MaruDiscoveryPeer
-      }
-
-    assertTrue(peer.forkIdBytes.isEmpty)
-  }
-
-  @Test
-  fun `returns empty forkId if forkId field is not Bytes`() {
-    val node = mock(NodeRecord::class.java)
-    whenever(node.get(FORK_ID_HASH_FIELD_NAME)).thenReturn("notBytes")
-    whenever(node.get(EnrField.PKEY_SECP256K1)).thenReturn(null)
-    whenever(node.nodeId).thenReturn(dummyNodeId)
-    whenever(node.tcpAddress).thenReturn(dummyAddr)
-
-    val peer =
-      service.run {
-        val method = this::class.java.getDeclaredMethod("convertNodeRecordToDiscoveryPeer", NodeRecord::class.java)
-        method.isAccessible = true
-        method.invoke(this, node) as MaruDiscoveryPeer
-      }
-
-    assertTrue(peer.forkIdBytes.isEmpty)
-  }
-
-  @Test
-  fun `updateForkId updates local `() {
+  fun `updateForkIdHash updates local`() {
     val localNodeRecordBefore = service.getLocalNodeRecord()
 
-    service.updateForkId(forkId)
+    val differentForkId =
+      ForkId(
+        chainId = chainId + 2u,
+        forkSpec = otherForkSpec,
+        genesisRootHash = ByteArray(32),
+      )
+    val differentForkIdHash =
+      Bytes.wrap(
+        ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash).hash(differentForkId),
+      )
+    service.updateForkIdHash(differentForkIdHash)
 
     val localNodeRecordAfter = service.getLocalNodeRecord()
     val actual = localNodeRecordAfter.get(FORK_ID_HASH_FIELD_NAME)
     assertThat(actual).isNotEqualTo(localNodeRecordBefore.get(FORK_ID_HASH_FIELD_NAME))
-    assertThat(
-      actual,
-    ).isEqualTo(Bytes.wrap(ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash).hash(forkId)))
+    assertThat(actual).isEqualTo(differentForkIdHash)
   }
 
   @Test
@@ -286,5 +270,47 @@ class MaruDiscoveryServiceTest {
             .count(),
         ).isGreaterThan(0L)
       }
+  }
+
+  @Test
+  fun `checkNodeRecord returns true for valid node record`() {
+    val node = createValidNodeRecord()
+
+    val result =
+      service.run {
+        val method = this::class.java.getDeclaredMethod("checkNodeRecord", NodeRecord::class.java)
+        method.isAccessible = true
+        method.invoke(this, node) as Boolean
+      }
+
+    assertTrue(result)
+  }
+
+  @Test
+  fun `checkNodeRecord returns false when forkId field is missing`() {
+    val node = createValidNodeRecord(forkIdHash = null)
+
+    val result =
+      service.run {
+        val method = this::class.java.getDeclaredMethod("checkNodeRecord", NodeRecord::class.java)
+        method.isAccessible = true
+        method.invoke(this, node) as Boolean
+      }
+
+    assertThat(result).isFalse()
+  }
+
+  @Test
+  fun `checkNodeRecord returns false when address is missing`() {
+    val node = createValidNodeRecord(tcpAddress = Optional.empty())
+
+    val result =
+      service.run {
+        val method = this::class.java.getDeclaredMethod("checkNodeRecord", NodeRecord::class.java)
+        method.isAccessible = true
+        method.invoke(this, node) as Boolean
+      }
+
+    assertThat(result).isFalse()
   }
 }

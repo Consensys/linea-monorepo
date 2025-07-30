@@ -45,7 +45,9 @@ class MaruPeerManager(
   private val connectionInProgress = mutableListOf<Bytes>()
 
   private var discoveryService: MaruDiscoveryService? = null
-  private lateinit var p2pNetwork: tech.pegasys.teku.networking.p2p.network.P2PNetwork<Peer>
+  private lateinit var p2pNetwork: P2PNetwork<Peer>
+
+  @Volatile
   private var stopCalled = false
 
   fun start(
@@ -59,7 +61,7 @@ class MaruPeerManager(
 
   fun stop(): SafeFuture<Unit> {
     stopCalled = true
-    return SafeFuture.completedFuture<Unit>(null)
+    return SafeFuture.completedFuture(Unit)
   }
 
   private fun searchForPeersUntilMaxReached() {
@@ -72,7 +74,7 @@ class MaruPeerManager(
             log.debug("Finished searching for peers. Found {} peers.", availablePeers.size)
             if (!stopCalled) {
               if (throwable != null) {
-                log.debug("Failed to discover peers: {}\n{}", throwable.message, throwable.stackTraceToString())
+                log.debug("Failed to discover peers: {}", throwable.message, throwable)
                 discoveryService.getKnownPeers()
               } else {
                 availablePeers

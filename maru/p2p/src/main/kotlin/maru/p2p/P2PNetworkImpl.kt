@@ -17,6 +17,7 @@ import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
 import maru.consensus.ForkIdHashProvider
 import maru.core.SealedBeaconBlock
+import maru.crypto.Crypto.privateKeyBytesWithoutPrefix
 import maru.database.BeaconChain
 import maru.metrics.MaruMetricsCategory
 import maru.p2p.discovery.MaruDiscoveryService
@@ -102,11 +103,7 @@ class P2PNetworkImpl(
   private val discoveryService: MaruDiscoveryService? =
     p2pConfig.discovery?.let {
       MaruDiscoveryService(
-        privateKeyBytes =
-          privateKeyBytes
-            .slice(
-              (privateKeyBytes.size - 32).rangeTo(privateKeyBytes.size - 1),
-            ).toByteArray(),
+        privateKeyBytes = privateKeyBytesWithoutPrefix(privateKeyBytes),
         p2pConfig = p2pConfig,
         forkIdHashProvider = forkIdHashProvider,
         metricsSystem = metricsSystem,

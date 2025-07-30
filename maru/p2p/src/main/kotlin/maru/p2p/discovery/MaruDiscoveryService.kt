@@ -9,15 +9,9 @@
 package maru.p2p.discovery
 
 import java.time.Duration
-import java.util.Optional
 import java.util.function.Consumer
 import maru.config.P2P
-import maru.consensus.ForkId
 import maru.consensus.ForkIdHashProvider
-import maru.consensus.ForkIdHasher
-import maru.crypto.Hashing
-import maru.crypto.Hashing.shortShaHash
-import maru.serialization.ForkIdSerializers
 import net.consensys.linea.async.toSafeFuture
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -55,7 +49,6 @@ class MaruDiscoveryService(
   private val bootnodes =
     p2pConfig.discovery!!
       .bootnodes
-      .stream()
       .map { NodeRecordFactory.DEFAULT.fromEnr(it) }
       .toList()
 
@@ -113,8 +106,7 @@ class MaruDiscoveryService(
     discoverySystem.stop()
   }
 
-  fun updateForkId(forkId: ForkId) { // TODO: Need to call this when the fork id changes
-    val forkIdHash = Bytes.wrap(ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash).hash(forkId))
+  fun updateForkIdHash(forkIdHash: Bytes) { // TODO: Need to call this when the fork id changes
     discoverySystem.updateCustomFieldValue(
       FORK_ID_HASH_FIELD_NAME,
       forkIdHash,
@@ -131,19 +123,56 @@ class MaruDiscoveryService(
   fun getKnownPeers(): Collection<MaruDiscoveryPeer> =
     discoverySystem
       .streamLiveNodes()
+      .filter(this::checkNodeRecord)
       .map { node: NodeRecord ->
-        convertNodeRecordToDiscoveryPeer(node)
-      }.filter { checkPeer(it) }
-      .toList()
+        convertSafeNodeRecordToDiscoveryPeer(node)
+      }.toList()
 
-  private fun convertNodeRecordToDiscoveryPeer(node: NodeRecord): MaruDiscoveryPeer {
-    val forkIdHash = node.get(FORK_ID_HASH_FIELD_NAME) as? Bytes?
+  private fun convertSafeNodeRecordToDiscoveryPeer(node: NodeRecord): MaruDiscoveryPeer {
+    // node record has been checked in checkNodeRecord, so we can convert to MaruDiscoveryPeer safely
     return MaruDiscoveryPeer(
-      (node.get(EnrField.PKEY_SECP256K1) as? Bytes),
+      (node.get(EnrField.PKEY_SECP256K1) as Bytes),
       node.nodeId,
-      node.tcpAddress.orElse(null),
-      Optional.ofNullable(forkIdHash),
+      node.tcpAddress.get(),
+      node.get(FORK_ID_HASH_FIELD_NAME) as Bytes,
     )
+  }
+
+  private fun checkNodeRecord(node: NodeRecord): Boolean {
+    if (node.get(FORK_ID_HASH_FIELD_NAME) == null) {
+      log.info("Node record is missing forkId field: {}", node)
+      return false
+    }
+    val forkId =
+      (node.get(FORK_ID_HASH_FIELD_NAME) as? Bytes) ?: run {
+        log.info("Failed to cast value for the forkId hash to Bytes")
+        return false
+      }
+    if (forkId != Bytes.wrap(forkIdHashProvider.currentForkIdHash())) {
+      log.info(
+        "Peer {} is on a different chain. Expected: {}, Found: {}",
+        node.nodeId,
+        Bytes.wrap(forkIdHashProvider.currentForkIdHash()),
+        forkId,
+      )
+      return false
+    }
+    if (node.get(EnrField.PKEY_SECP256K1) == null) {
+      log.info("Node record is missing public key field: {}", node)
+      return false
+    }
+    (node.get(EnrField.PKEY_SECP256K1) as? Bytes) ?: run {
+      log.info("Failed to cast value for the public key to Bytes")
+      return false
+    }
+    if (node.tcpAddress.isEmpty) {
+      log.info(
+        "node record doesn't have a TCP address: {}",
+        node,
+      )
+      return false
+    }
+    return true
   }
 
   private fun pingBootnodes(bootnodeRecords: List<NodeRecord>) {
@@ -173,26 +202,5 @@ class MaruDiscoveryService(
     // TODO: do we want more custom fields to identify version/topics/role/something else?
 
     return nodeRecordBuilder.build()
-  }
-
-  private fun checkPeer(peer: MaruDiscoveryPeer): Boolean {
-    if (peer.nodeIdBytes == null ||
-      peer.publicKey == null ||
-      peer.addr == null ||
-      peer.forkIdBytes.isEmpty
-    ) {
-      return false
-    }
-    if (peer.forkIdBytes.get() != Bytes.wrap(forkIdHashProvider.currentForkIdHash())) {
-      log.debug(
-        "Peer {} is on a different chain. Expected: {}, Found: {}",
-        peer.nodeId,
-        Bytes.wrap(forkIdHashProvider.currentForkIdHash()),
-        peer.forkIdBytes.get(),
-      )
-      return false
-    } else {
-      return true
-    }
   }
 }

@@ -9,6 +9,7 @@
 package maru.p2p
 
 import io.libp2p.core.PeerId
+import io.libp2p.etc.types.fromHex
 import java.lang.Thread.sleep
 import java.util.concurrent.TimeUnit
 import maru.config.P2P
@@ -31,7 +32,6 @@ import maru.p2p.messages.Status
 import maru.p2p.messages.StatusMessageFactory
 import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
-import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatNoException
 import org.awaitility.Awaitility.await
@@ -59,13 +59,6 @@ class P2PTest {
     private const val PORT5 = 9238u
     private const val PORT6 = 9239u
 
-    private const val PRIVATE_KEY1: String =
-      "0x0802122012c0b113e2b0c37388e2b484112e13f05c92c4471e3ee1dfaa368fa5045325b2"
-    private const val PRIVATE_KEY2: String =
-      "0x0802122100f3d2fffa99dc8906823866d96316492ebf7a8478713a89a58b7385af85b088a1"
-    private const val PRIVATE_KEY3: String =
-      "0x080212204437acb8e84bc346f7640f239da84abe99bc6f97b7855f204e34688d2977fd57"
-
     private const val PEER_ID_NODE_1: String = "16Uiu2HAmPRfinavM2jE9BSkCagBGStJ2SEkPPm6fxFVMdCQebzt6"
     private const val PEER_ID_NODE_2: String = "16Uiu2HAmVXtqhevTAJqZucPbR2W4nCMpetrQASgjZpcxDEDaUPPt"
     private const val PEER_ID_NODE_3: String = "16Uiu2HAkzq767a82zfyUz4VLgPbFrxSQBrdmUYxgNDbwgvmjwWo5"
@@ -75,9 +68,10 @@ class P2PTest {
     private const val PEER_ADDRESS_NODE_2: String = "/ip4/$IPV4/tcp/$PORT2/p2p/$PEER_ID_NODE_2"
     private const val PEER_ADDRESS_NODE_3: String = "/ip4/$IPV4/tcp/$PORT3/p2p/$PEER_ID_NODE_3"
 
-    private val key1 = Bytes.fromHexString(PRIVATE_KEY1).toArray()
-    private val key2 = Bytes.fromHexString(PRIVATE_KEY2).toArray()
-    private val key3 = Bytes.fromHexString(PRIVATE_KEY3).toArray()
+    private val key1 = "0802122012c0b113e2b0c37388e2b484112e13f05c92c4471e3ee1dfaa368fa5045325b2".fromHex()
+    private val key2 = "0802122100f3d2fffa99dc8906823866d96316492ebf7a8478713a89a58b7385af85b088a1".fromHex()
+    private val key3 = "080212204437acb8e84bc346f7640f239da84abe99bc6f97b7855f204e34688d2977fd57".fromHex()
+    private val initialExpectedBeaconBlockNumber = 1UL
     private val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
     private val forkIdHashProvider =
       createForkIdHashProvider()
