@@ -47,7 +47,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
   private final LineaTracerConfiguration tracerConfiguration;
   private final Optional<HistogramMetrics> maybeProfitabilityMetrics;
   private final BundlePoolService bundlePoolService;
-  private final Optional<LivenessService> livenessManager;
+  private final Optional<LivenessService> livenessService;
   private final AtomicReference<LineaTransactionSelector> currSelector = new AtomicReference<>();
 
   public LineaTransactionSelectorFactory(
@@ -56,7 +56,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
       final LineaProfitabilityConfiguration profitabilityConfiguration,
       final LineaTracerConfiguration tracerConfiguration,
-      final Optional<LivenessService> livenessManager,
+      final Optional<LivenessService> livenessService,
       final Optional<JsonRpcManager> rejectedTxJsonRpcManager,
       final Optional<HistogramMetrics> maybeProfitabilityMetrics,
       final BundlePoolService bundlePoolService) {
@@ -68,7 +68,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
     this.maybeProfitabilityMetrics = maybeProfitabilityMetrics;
     this.bundlePoolService = bundlePoolService;
-    this.livenessManager = livenessManager;
+    this.livenessService = livenessService;
   }
 
   @Override
@@ -93,8 +93,8 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
     final long headBlockTimestamp = blockchainService.getChainHeadHeader().getTimestamp();
 
     Optional<TransactionBundle> livenessBundle =
-        livenessManager.isPresent() && headBlockTimestamp > 0
-            ? livenessManager
+        livenessService.isPresent() && headBlockTimestamp > 0
+            ? livenessService
                 .get()
                 .checkBlockTimestampAndBuildBundle(
                     Instant.now().getEpochSecond(),
@@ -133,13 +133,13 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
           if (badBundleRes.isPresent()) {
             log.debug("Failed bundle {}, reason {}", bundle, badBundleRes);
             if (isLivenessBundle) {
-              livenessManager.get().updateUptimeMetrics(false, headBlockTimestamp);
+              livenessService.get().updateUptimeMetrics(false, headBlockTimestamp);
             }
             rollback(bts);
           } else {
             log.debug("Selected bundle {}", bundle);
             if (isLivenessBundle) {
-              livenessManager.get().updateUptimeMetrics(true, headBlockTimestamp);
+              livenessService.get().updateUptimeMetrics(true, headBlockTimestamp);
             }
             commit(bts);
           }

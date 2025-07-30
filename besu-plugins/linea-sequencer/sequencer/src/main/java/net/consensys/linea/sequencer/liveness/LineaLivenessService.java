@@ -24,10 +24,9 @@ import org.hyperledger.besu.plugin.services.metrics.Counter;
 import org.hyperledger.besu.plugin.services.metrics.MetricCategory;
 import org.hyperledger.besu.plugin.services.metrics.MetricCategoryRegistry;
 import org.hyperledger.besu.plugin.services.rpc.RpcResponseType;
-import org.web3j.crypto.*;
 
 /**
- * The LivenessManager is monitoring the blockchain and sending transactions to update the
+ * The LineaLivenessService is monitoring the blockchain and sending transactions to update the
  * LineaSequencerUptimeFeed contract when the sequencer is down/up.
  *
  * <p>This plugin works by checking the timestamp of the last block and comparing it to the current
@@ -39,7 +38,7 @@ import org.web3j.crypto.*;
  * downtime.
  */
 @Slf4j
-public class LivenessManager implements LivenessService {
+public class LineaLivenessService implements LivenessService {
   private static final MetricCategory SEQUENCER_LIVENESS_CATEGORY =
       LineaMetricCategory.SEQUENCER_LIVENESS;
 
@@ -57,7 +56,7 @@ public class LivenessManager implements LivenessService {
   private final MetricCategoryRegistry metricCategoryRegistry;
   private final MetricsSystem metricsSystem;
 
-  public LivenessManager(
+  public LineaLivenessService(
       final LivenessPluginConfiguration livenessPluginConfiguration,
       final RpcEndpointService rpcEndpointService,
       final LivenessTxBuilder livenessTxBuilder,

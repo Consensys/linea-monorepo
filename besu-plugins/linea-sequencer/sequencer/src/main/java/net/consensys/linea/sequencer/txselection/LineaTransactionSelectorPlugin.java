@@ -21,8 +21,8 @@ import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.jsonrpc.JsonRpcManager;
 import net.consensys.linea.metrics.HistogramMetrics;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
+import net.consensys.linea.sequencer.liveness.LineaLivenessService;
 import net.consensys.linea.sequencer.liveness.LineaLivenessTxBuilder;
-import net.consensys.linea.sequencer.liveness.LivenessManager;
 import net.consensys.linea.sequencer.liveness.LivenessService;
 import net.consensys.linea.sequencer.liveness.LivenessTxBuilder;
 import net.consensys.linea.sequencer.txselection.selectors.ProfitableTransactionSelector;
@@ -94,10 +94,10 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
                 () -> new RuntimeException("Failed to get chain Id from the BlockchainService."));
     final LivenessTxBuilder livenessTxBuilder =
         new LineaLivenessTxBuilder(livenessPluginConfiguration(), chainId.longValue());
-    final Optional<LivenessService> livenessManager =
+    final Optional<LivenessService> livenessService =
         livenessPluginConfiguration().enabled()
             ? Optional.of(
-                new LivenessManager(
+                new LineaLivenessService(
                     livenessPluginConfiguration(),
                     rpcEndpointService,
                     livenessTxBuilder,
@@ -112,7 +112,7 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
             l1L2BridgeSharedConfiguration(),
             profitabilityConfiguration(),
             tracerConfiguration(),
-            livenessManager,
+            livenessService,
             rejectedTxJsonRpcManager,
             maybeProfitabilityMetrics,
             bundlePoolService));

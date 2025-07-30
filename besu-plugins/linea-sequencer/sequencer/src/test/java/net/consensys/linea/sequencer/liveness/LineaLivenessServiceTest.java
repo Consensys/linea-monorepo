@@ -37,7 +37,7 @@ import org.mockito.quality.Strictness;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-public class LivenessManagerTest {
+public class LineaLivenessServiceTest {
 
   @TempDir private Path tempDir;
 
@@ -50,7 +50,7 @@ public class LivenessManagerTest {
   @Mock private LivenessPluginConfiguration livenessPluginConfiguration;
   @Mock private Transaction transaction;
 
-  private LivenessService livenessManager;
+  private LivenessService livenessService;
   private long nonce = 100L;
 
   private static final String CONTRACT_ADDRESS = "0x1234567890123456789012345678901234567890";
@@ -105,8 +105,8 @@ public class LivenessManagerTest {
   public void shouldReturnEmptyIfLivenessIsDisabled() {
     when(livenessPluginConfiguration.enabled()).thenReturn(false);
 
-    livenessManager =
-        new LivenessManager(
+    livenessService =
+        new LineaLivenessService(
             livenessPluginConfiguration,
             rpcEndpointService,
             livenessTxBuilder,
@@ -115,7 +115,7 @@ public class LivenessManagerTest {
 
     long currentTime = Instant.now().getEpochSecond();
     Optional<TransactionBundle> bundle =
-        livenessManager.checkBlockTimestampAndBuildBundle(currentTime, 10000000, 10);
+        livenessService.checkBlockTimestampAndBuildBundle(currentTime, 10000000, 10);
 
     assertThat(bundle.isPresent()).isFalse();
   }
@@ -125,8 +125,8 @@ public class LivenessManagerTest {
     when(livenessPluginConfiguration.enabled()).thenReturn(true);
     when(livenessPluginConfiguration.metricCategoryEnabled()).thenReturn(false);
 
-    livenessManager =
-        new LivenessManager(
+    livenessService =
+        new LineaLivenessService(
             livenessPluginConfiguration,
             rpcEndpointService,
             livenessTxBuilder,
@@ -139,8 +139,8 @@ public class LivenessManagerTest {
 
   @Test
   public void shouldReturnEmptyBundleIfLastBlockTimestampHasBeenChecked() {
-    livenessManager =
-        new LivenessManager(
+    livenessService =
+        new LineaLivenessService(
             livenessPluginConfiguration,
             rpcEndpointService,
             livenessTxBuilder,
@@ -151,12 +151,12 @@ public class LivenessManagerTest {
     long lastBlockTimestamp = currentTime - 11; // 10 sec is the max block timestamp lag allowed
     long targetBlockNumber = 10;
 
-    livenessManager.checkBlockTimestampAndBuildBundle(
+    livenessService.checkBlockTimestampAndBuildBundle(
         currentTime, lastBlockTimestamp, targetBlockNumber);
 
     // simulate when the same last block had been checked
     Optional<TransactionBundle> bundle =
-        livenessManager.checkBlockTimestampAndBuildBundle(
+        livenessService.checkBlockTimestampAndBuildBundle(
             currentTime + 10, lastBlockTimestamp, targetBlockNumber);
 
     assertThat(bundle.isPresent()).isFalse();
@@ -164,8 +164,8 @@ public class LivenessManagerTest {
 
   @Test
   public void shouldReturnEmptyBundleIfTargetBlockNumberIsOne() {
-    livenessManager =
-        new LivenessManager(
+    livenessService =
+        new LineaLivenessService(
             livenessPluginConfiguration,
             rpcEndpointService,
             livenessTxBuilder,
@@ -178,7 +178,7 @@ public class LivenessManagerTest {
 
     // simulate when targetBlockNumber is 1 and last block is the genesis block
     Optional<TransactionBundle> bundle =
-        livenessManager.checkBlockTimestampAndBuildBundle(
+        livenessService.checkBlockTimestampAndBuildBundle(
             currentTime, lastBlockTimestamp, targetBlockNumber);
 
     // should not return any liveness bundle
@@ -187,8 +187,8 @@ public class LivenessManagerTest {
 
   @Test
   public void shouldReturnValidBundleIfFirstBlockIsLate() throws IOException {
-    livenessManager =
-        new LivenessManager(
+    livenessService =
+        new LineaLivenessService(
             livenessPluginConfiguration,
             rpcEndpointService,
             livenessTxBuilder,
@@ -201,7 +201,7 @@ public class LivenessManagerTest {
     long targetBlockNumber = 10;
 
     Optional<TransactionBundle> bundle =
-        livenessManager.checkBlockTimestampAndBuildBundle(
+        livenessService.checkBlockTimestampAndBuildBundle(
             currentTime, lastBlockTimestamp, targetBlockNumber);
 
     assertThat(bundle.isPresent()).isTrue();
@@ -214,8 +214,8 @@ public class LivenessManagerTest {
 
   @Test
   public void shouldReturnValidBundleWhenSecondBlockArrivedLate() throws Exception {
-    livenessManager =
-        new LivenessManager(
+    livenessService =
+        new LineaLivenessService(
             livenessPluginConfiguration,
             rpcEndpointService,
             livenessTxBuilder,
@@ -228,7 +228,7 @@ public class LivenessManagerTest {
     long targetBlockNumber = 10;
 
     Optional<TransactionBundle> bundle =
-        livenessManager.checkBlockTimestampAndBuildBundle(
+        livenessService.checkBlockTimestampAndBuildBundle(
             currentTime, firstLastBlockTimestamp, targetBlockNumber);
 
     // should not return any liveness bundle
@@ -241,7 +241,7 @@ public class LivenessManagerTest {
     targetBlockNumber = 11;
 
     bundle =
-        livenessManager.checkBlockTimestampAndBuildBundle(
+        livenessService.checkBlockTimestampAndBuildBundle(
             currentTime, secondLastBlockTimestamp, targetBlockNumber);
 
     assertThat(bundle.isPresent()).isTrue();
@@ -254,8 +254,8 @@ public class LivenessManagerTest {
 
   @Test
   public void shouldReturnValidBundleWhenFirstLateBlockWasNotReported() throws Exception {
-    livenessManager =
-        new LivenessManager(
+    livenessService =
+        new LineaLivenessService(
             livenessPluginConfiguration,
             rpcEndpointService,
             livenessTxBuilder,
@@ -268,7 +268,7 @@ public class LivenessManagerTest {
     long targetBlockNumber = 10;
 
     Optional<TransactionBundle> bundle =
-        livenessManager.checkBlockTimestampAndBuildBundle(
+        livenessService.checkBlockTimestampAndBuildBundle(
             currentTime, firstLastBlockTimestamp, targetBlockNumber);
 
     // should not return any liveness bundle
@@ -281,7 +281,7 @@ public class LivenessManagerTest {
     targetBlockNumber = 11;
 
     bundle =
-        livenessManager.checkBlockTimestampAndBuildBundle(
+        livenessService.checkBlockTimestampAndBuildBundle(
             currentTime, secondLastBlockTimestamp, targetBlockNumber);
 
     assertThat(bundle.isPresent()).isTrue();
@@ -292,7 +292,7 @@ public class LivenessManagerTest {
     verify(livenessTxBuilder, times(1)).buildUptimeTransaction(eq(true), eq(currentTime), eq(103L));
 
     // notify that the first late block was failed to report
-    livenessManager.updateUptimeMetrics(false, firstLastBlockTimestamp);
+    livenessService.updateUptimeMetrics(false, firstLastBlockTimestamp);
 
     // simulate the third block arrived on time
     currentTime = currentTime + 2;
@@ -300,7 +300,7 @@ public class LivenessManagerTest {
     targetBlockNumber = 12;
 
     bundle =
-        livenessManager.checkBlockTimestampAndBuildBundle(
+        livenessService.checkBlockTimestampAndBuildBundle(
             currentTime, thirdLastBlockTimestamp, targetBlockNumber);
 
     assertThat(bundle.isPresent()).isTrue();
@@ -313,8 +313,8 @@ public class LivenessManagerTest {
 
   @Test
   public void shouldReturnValidBundleWhenMultipleLateBlocks() throws Exception {
-    livenessManager =
-        new LivenessManager(
+    livenessService =
+        new LineaLivenessService(
             livenessPluginConfiguration,
             rpcEndpointService,
             livenessTxBuilder,
@@ -327,7 +327,7 @@ public class LivenessManagerTest {
     long targetBlockNumber = 10;
 
     Optional<TransactionBundle> bundle =
-        livenessManager.checkBlockTimestampAndBuildBundle(
+        livenessService.checkBlockTimestampAndBuildBundle(
             currentTime, firstLastBlockTimestamp, targetBlockNumber);
 
     // no liveness bundle should send
@@ -339,7 +339,7 @@ public class LivenessManagerTest {
     targetBlockNumber = 11;
 
     bundle =
-        livenessManager.checkBlockTimestampAndBuildBundle(
+        livenessService.checkBlockTimestampAndBuildBundle(
             currentTime, secondLastBlockTimestamp, targetBlockNumber);
     assertThat(bundle.isPresent()).isTrue();
 
@@ -349,7 +349,7 @@ public class LivenessManagerTest {
     verify(livenessTxBuilder, times(1)).buildUptimeTransaction(eq(true), eq(currentTime), eq(103L));
 
     // notify that the first late block was succeeded to report
-    livenessManager.updateUptimeMetrics(true, secondLastBlockTimestamp);
+    livenessService.updateUptimeMetrics(true, secondLastBlockTimestamp);
 
     // simulate the third block arrived late
     currentTime = currentTime + 10;
@@ -357,7 +357,7 @@ public class LivenessManagerTest {
     targetBlockNumber = 12;
 
     bundle =
-        livenessManager.checkBlockTimestampAndBuildBundle(
+        livenessService.checkBlockTimestampAndBuildBundle(
             currentTime, thirdLastBlockTimestamp, targetBlockNumber);
     assertThat(bundle.isPresent()).isTrue();
 
@@ -367,7 +367,7 @@ public class LivenessManagerTest {
     verify(livenessTxBuilder, times(1)).buildUptimeTransaction(eq(true), eq(currentTime), eq(105L));
 
     // notify that the second late block was succeeded to report
-    livenessManager.updateUptimeMetrics(true, thirdLastBlockTimestamp);
+    livenessService.updateUptimeMetrics(true, thirdLastBlockTimestamp);
 
     // simulate the fourth block arrived late
     currentTime = currentTime + 10;
@@ -375,7 +375,7 @@ public class LivenessManagerTest {
     targetBlockNumber = 13;
 
     bundle =
-        livenessManager.checkBlockTimestampAndBuildBundle(
+        livenessService.checkBlockTimestampAndBuildBundle(
             currentTime, fourthLastBlockTimestamp, targetBlockNumber);
     assertThat(bundle.isPresent()).isTrue();
 
@@ -385,13 +385,13 @@ public class LivenessManagerTest {
     verify(livenessTxBuilder, times(1)).buildUptimeTransaction(eq(true), eq(currentTime), eq(107L));
 
     // notify that the third late block was succeeded to report
-    livenessManager.updateUptimeMetrics(true, fourthLastBlockTimestamp);
+    livenessService.updateUptimeMetrics(true, fourthLastBlockTimestamp);
   }
 
   @Test
   public void shouldReturnValidBundleWhenMultipleLateBlocksNotReported() throws Exception {
-    livenessManager =
-        new LivenessManager(
+    livenessService =
+        new LineaLivenessService(
             livenessPluginConfiguration,
             rpcEndpointService,
             livenessTxBuilder,
@@ -404,7 +404,7 @@ public class LivenessManagerTest {
     long targetBlockNumber = 10;
 
     Optional<TransactionBundle> bundle =
-        livenessManager.checkBlockTimestampAndBuildBundle(
+        livenessService.checkBlockTimestampAndBuildBundle(
             currentTime, firstLastBlockTimestamp, targetBlockNumber);
 
     // no liveness bundle should send
@@ -416,7 +416,7 @@ public class LivenessManagerTest {
     targetBlockNumber = 11;
 
     bundle =
-        livenessManager.checkBlockTimestampAndBuildBundle(
+        livenessService.checkBlockTimestampAndBuildBundle(
             currentTime, secondLastBlockTimestamp, targetBlockNumber);
 
     assertThat(bundle.isPresent()).isTrue();
@@ -427,7 +427,7 @@ public class LivenessManagerTest {
     verify(livenessTxBuilder, times(1)).buildUptimeTransaction(eq(true), eq(currentTime), eq(103L));
 
     // notify that the first late block was failed to report
-    livenessManager.updateUptimeMetrics(false, secondLastBlockTimestamp);
+    livenessService.updateUptimeMetrics(false, secondLastBlockTimestamp);
 
     // simulate the third block arrived late
     currentTime = currentTime + 10;
@@ -435,7 +435,7 @@ public class LivenessManagerTest {
     targetBlockNumber = 12;
 
     bundle =
-        livenessManager.checkBlockTimestampAndBuildBundle(
+        livenessService.checkBlockTimestampAndBuildBundle(
             currentTime, thirdLastBlockTimestamp, targetBlockNumber);
 
     assertThat(bundle.isPresent()).isTrue();
@@ -446,7 +446,7 @@ public class LivenessManagerTest {
     verify(livenessTxBuilder, times(1)).buildUptimeTransaction(eq(true), eq(currentTime), eq(105L));
 
     // notify that the first late block was failed to report
-    livenessManager.updateUptimeMetrics(false, thirdLastBlockTimestamp);
+    livenessService.updateUptimeMetrics(false, thirdLastBlockTimestamp);
 
     // simulate the fourth block on time
     currentTime = currentTime + 2;
@@ -454,7 +454,7 @@ public class LivenessManagerTest {
     targetBlockNumber = 13;
 
     bundle =
-        livenessManager.checkBlockTimestampAndBuildBundle(
+        livenessService.checkBlockTimestampAndBuildBundle(
             currentTime, fourthLastBlockTimestamp, targetBlockNumber);
 
     assertThat(bundle.isPresent()).isTrue();
@@ -465,7 +465,7 @@ public class LivenessManagerTest {
     verify(livenessTxBuilder, times(1)).buildUptimeTransaction(eq(true), eq(currentTime), eq(107L));
 
     // notify that the first late block was finally succeeded to report
-    livenessManager.updateUptimeMetrics(true, fourthLastBlockTimestamp);
+    livenessService.updateUptimeMetrics(true, fourthLastBlockTimestamp);
 
     // simulate the fifth block on time
     currentTime = currentTime + 2;
@@ -473,7 +473,7 @@ public class LivenessManagerTest {
     targetBlockNumber = 14;
 
     bundle =
-        livenessManager.checkBlockTimestampAndBuildBundle(
+        livenessService.checkBlockTimestampAndBuildBundle(
             currentTime, fifthLastBlockTimestamp, targetBlockNumber);
 
     // no liveness bundle should send
@@ -485,7 +485,7 @@ public class LivenessManagerTest {
     targetBlockNumber = 15;
 
     bundle =
-        livenessManager.checkBlockTimestampAndBuildBundle(
+        livenessService.checkBlockTimestampAndBuildBundle(
             currentTime, sixthLastBlockTimestamp, targetBlockNumber);
 
     assertThat(bundle.isPresent()).isTrue();
