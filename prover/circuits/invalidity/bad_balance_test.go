@@ -1,4 +1,4 @@
-package invalidity_proof_test
+package invalidity_test
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	inval "github.com/consensys/linea-monorepo/prover/circuits/invalidity_proof"
+	inval "github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"

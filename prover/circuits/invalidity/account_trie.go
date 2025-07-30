@@ -1,4 +1,4 @@
-package invalidity_proof
+package invalidity
 
 import (
 	"github.com/consensys/gnark/frontend"

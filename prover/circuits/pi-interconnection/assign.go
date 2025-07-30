@@ -15,8 +15,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
 	decompression "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
-	"github.com/consensys/linea-monorepo/prover/circuits/invalidity_proof"
-	inval "github.com/consensys/linea-monorepo/prover/circuits/invalidity_proof"
+	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -416,9 +415,9 @@ func MerkleRoot(hsh hash.Hash, treeNbLeaves int, data [][32]byte) [32]byte {
 
 	return b[0]
 }
-func assignInvalidity(r Request, n int) (invalidityFPI []invalidity_proof.FunctionalPublicInputsGnark, invalidityPI []frontend.Variable) {
+func assignInvalidity(r Request, n int) (invalidityFPI []invalidity.FunctionalPublicInputsGnark, invalidityPI []frontend.Variable) {
 
-	invalidityFPI = make([]inval.FunctionalPublicInputsGnark, n)
+	invalidityFPI = make([]invalidity.FunctionalPublicInputsGnark, n)
 	invalidityPI = make([]frontend.Variable, n)
 	hshM := mimc.NewMiMC()
 

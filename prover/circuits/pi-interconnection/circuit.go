@@ -24,7 +24,7 @@ import (
 	decompression "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
-	"github.com/consensys/linea-monorepo/prover/circuits/invalidity_proof"
+	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
@@ -45,7 +45,7 @@ type Circuit struct {
 
 	DecompressionFPIQ []decompression.FunctionalPublicInputQSnark
 	ExecutionFPIQ     []execution.FunctionalPublicInputQSnark
-	InvalidityFPI     []invalidity_proof.FunctionalPublicInputsGnark // to connected invalidityFPI to the aggregationFPI
+	InvalidityFPI     []invalidity.FunctionalPublicInputsGnark // to connected invalidityFPI to the aggregationFPI
 
 	public_input.AggregationFPIQSnark
 
@@ -360,7 +360,7 @@ func allocateCircuit(cfg config.PublicInput) Circuit {
 		InvalidityPublicInput:    make([]frontend.Variable, cfg.MaxNbInvalidity),
 		DecompressionFPIQ:        make([]decompression.FunctionalPublicInputQSnark, cfg.MaxNbDecompression),
 		ExecutionFPIQ:            make([]execution.FunctionalPublicInputQSnark, cfg.MaxNbExecution),
-		InvalidityFPI:            make([]invalidity_proof.FunctionalPublicInputsGnark, cfg.MaxNbInvalidity),
+		InvalidityFPI:            make([]invalidity.FunctionalPublicInputsGnark, cfg.MaxNbInvalidity),
 		L2MessageMerkleDepth:     cfg.L2MsgMerkleDepth,
 		L2MessageMaxNbMerkle:     cfg.L2MsgMaxNbMerkle,
 		MaxNbCircuits:            cfg.MaxNbCircuits,

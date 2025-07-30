@@ -1,4 +1,4 @@
-package invalidity_proof_test
+package invalidity_test
 
 import (
 	"math/big"
@@ -7,7 +7,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	badnonce "github.com/consensys/linea-monorepo/prover/circuits/invalidity_proof"
+	badnonce "github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"

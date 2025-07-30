@@ -1,4 +1,4 @@
-package invalidity_proof
+package invalidity
 
 import (
 	"math/big"
@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
-	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/crate-crypto/go-ipa/bandersnatch/fr"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/sirupsen/logrus"
@@ -39,9 +38,6 @@ type AssigningInputs struct {
 	AccountTrieInputs AccountTrieInputs
 	Transaction       *types.Transaction
 	FuncInputs        public_input.Invalidity
-	// the address of the sender
-	// gateway contract on L1 extract it via ecrevovery over the signature
-	FromAddress EthAddress
 }
 
 // Define the constraints
@@ -121,3 +117,10 @@ func makeCS(config Config, circuit *CircuitInvalidity) constraint.ConstraintSyst
 	}
 	return scs
 }
+
+type InvalidityType uint8
+
+const (
+	BadNonce   InvalidityType = 0
+	BadBalance InvalidityType = 1
+)
