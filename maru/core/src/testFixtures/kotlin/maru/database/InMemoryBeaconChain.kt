@@ -11,30 +11,45 @@ package maru.database
 import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
 
+// Wrapper class for ByteArray to use as a key in maps. This is necessary because ByteArray does not implement
+// equals/hashCode correctly for content comparison
+private class ByteArrayWrapper(
+  val bytes: ByteArray,
+) {
+  override fun equals(other: Any?): Boolean = other is ByteArrayWrapper && bytes.contentEquals(other.bytes)
+
+  override fun hashCode(): Int = bytes.contentHashCode()
+}
+
 class InMemoryBeaconChain(
   initialBeaconState: BeaconState,
+  initialBeaconBlock: SealedBeaconBlock? = null,
 ) : BeaconChain {
-  private val beaconStateByBlockRoot = mutableMapOf<ByteArray, BeaconState>()
+  private val beaconStateByBlockRoot = mutableMapOf<ByteArrayWrapper, BeaconState>()
   private val beaconStateByBlockNumber = mutableMapOf<ULong, BeaconState>()
-  private val sealedBeaconBlockByBlockRoot = mutableMapOf<ByteArray, SealedBeaconBlock>()
+  private val sealedBeaconBlockByBlockRoot = mutableMapOf<ByteArrayWrapper, SealedBeaconBlock>()
   private val sealedBeaconBlockByBlockNumber = mutableMapOf<ULong, SealedBeaconBlock>()
 
   private var latestBeaconState: BeaconState = initialBeaconState
 
   init {
-    newUpdater().putBeaconState(initialBeaconState).commit()
+    val updater = newUpdater()
+    updater.putBeaconState(initialBeaconState)
+    initialBeaconBlock?.let { updater.putSealedBeaconBlock(initialBeaconBlock) }
+    updater.commit()
   }
 
   override fun isInitialized(): Boolean = true
 
   override fun getLatestBeaconState(): BeaconState = latestBeaconState
 
-  override fun getBeaconState(beaconBlockRoot: ByteArray): BeaconState? = beaconStateByBlockRoot[beaconBlockRoot]
+  override fun getBeaconState(beaconBlockRoot: ByteArray): BeaconState? =
+    beaconStateByBlockRoot[ByteArrayWrapper(beaconBlockRoot)]
 
   override fun getBeaconState(beaconBlockNumber: ULong): BeaconState? = beaconStateByBlockNumber[beaconBlockNumber]
 
   override fun getSealedBeaconBlock(beaconBlockRoot: ByteArray): SealedBeaconBlock? =
-    sealedBeaconBlockByBlockRoot[beaconBlockRoot]
+    sealedBeaconBlockByBlockRoot[ByteArrayWrapper(beaconBlockRoot)]
 
   override fun getSealedBeaconBlock(beaconBlockNumber: ULong): SealedBeaconBlock? =
     sealedBeaconBlockByBlockNumber[beaconBlockNumber]
@@ -48,22 +63,23 @@ class InMemoryBeaconChain(
   private class InMemoryUpdater(
     private val beaconChain: InMemoryBeaconChain,
   ) : BeaconChain.Updater {
-    private val beaconStateByBlockRoot = mutableMapOf<ByteArray, BeaconState>()
+    private val beaconStateByBlockRoot = mutableMapOf<ByteArrayWrapper, BeaconState>()
     private val beaconStateByBlockNumber = mutableMapOf<ULong, BeaconState>()
-    private val sealedBeaconBlockByBlockRoot = mutableMapOf<ByteArray, SealedBeaconBlock>()
+    private val sealedBeaconBlockByBlockRoot = mutableMapOf<ByteArrayWrapper, SealedBeaconBlock>()
     private val sealedBeaconBlockByBlockNumber = mutableMapOf<ULong, SealedBeaconBlock>()
 
     private var newBeaconState: BeaconState? = null
 
     override fun putBeaconState(beaconState: BeaconState): BeaconChain.Updater {
-      beaconStateByBlockRoot[beaconState.latestBeaconBlockHeader.hash] = beaconState
+      beaconStateByBlockRoot[ByteArrayWrapper(beaconState.latestBeaconBlockHeader.hash)] = beaconState
       beaconStateByBlockNumber[beaconState.latestBeaconBlockHeader.number] = beaconState
       newBeaconState = beaconState
       return this
     }
 
     override fun putSealedBeaconBlock(sealedBeaconBlock: SealedBeaconBlock): BeaconChain.Updater {
-      sealedBeaconBlockByBlockRoot[sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash] = sealedBeaconBlock
+      sealedBeaconBlockByBlockRoot[ByteArrayWrapper(sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash)] =
+        sealedBeaconBlock
       sealedBeaconBlockByBlockNumber[sealedBeaconBlock.beaconBlock.beaconBlockHeader.number] = sealedBeaconBlock
       return this
     }
@@ -80,6 +96,7 @@ class InMemoryBeaconChain(
 
     override fun rollback() {
       beaconStateByBlockRoot.clear()
+      beaconStateByBlockNumber.clear()
       sealedBeaconBlockByBlockRoot.clear()
       sealedBeaconBlockByBlockNumber.clear()
       newBeaconState = null

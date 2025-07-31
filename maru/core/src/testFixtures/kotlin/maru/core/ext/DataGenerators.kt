@@ -36,7 +36,7 @@ import org.hyperledger.besu.ethereum.core.Transaction
 object DataGenerators {
   fun randomBeaconState(
     number: ULong,
-    timestamp: ULong = Random.nextULong(),
+    timestamp: ULong = randomTimestamp(),
   ): BeaconState {
     val validators = randomValidators()
     val beaconBlockHeader =
@@ -91,7 +91,7 @@ object DataGenerators {
     BeaconBlockHeader(
       number = number,
       round = Random.nextUInt(),
-      timestamp = Random.nextULong(),
+      timestamp = randomTimestamp(),
       proposer = proposer,
       parentRoot = Random.nextBytes(32),
       stateRoot = Random.nextBytes(32),
@@ -127,7 +127,7 @@ object DataGenerators {
       blockNumber = Random.nextULong(),
       gasLimit = Random.nextULong(),
       gasUsed = Random.nextULong(),
-      timestamp = Random.nextULong(),
+      timestamp = randomTimestamp(),
       extraData = Random.nextBytes(32),
       baseFeePerGas = BigInteger.valueOf(Random.nextLong(0, Long.MAX_VALUE)),
       blockHash = Random.nextBytes(32),
@@ -151,4 +151,7 @@ object DataGenerators {
 
   fun randomValidPayloadStatus(): PayloadStatus =
     PayloadStatus(ExecutionPayloadStatus.VALID, latestValidHash = Random.nextBytes(32), validationError = null)
+
+  // Generates a random timestamp restricted to range of 0 to Long.MAX_VALUE as value is converted to a Java long for the ForkSpec
+  fun randomTimestamp(): ULong = Random.nextLong(0, Long.MAX_VALUE).toULong()
 }

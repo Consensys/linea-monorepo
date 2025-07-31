@@ -191,6 +191,7 @@ class P2PNetworkImpl(
 
   fun addStaticPeer(peerAddress: MultiaddrPeerAddress) {
     if (peerAddress.id == p2pNetwork.nodeId) { // Don't connect to self
+      log.debug("Not adding static peer as it is the local node")
       return
     }
     synchronized(this) {

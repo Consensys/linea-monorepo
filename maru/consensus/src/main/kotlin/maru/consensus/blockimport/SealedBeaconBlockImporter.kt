@@ -13,6 +13,7 @@ import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.flatMap
 import com.github.michaelbull.result.mapError
+import java.util.concurrent.atomic.AtomicBoolean
 import maru.consensus.AsyncFunction
 import maru.consensus.CallAndForgetFutureMultiplexer
 import maru.consensus.state.StateTransition
@@ -25,6 +26,7 @@ import maru.p2p.SealedBeaconBlockHandler
 import maru.p2p.ValidationResult
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.hyperledger.besu.util.log.LogUtil
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 // This is basically Chain of Responsibility design pattern, except it doesn't allow multiple children
@@ -125,16 +127,17 @@ class ValidatingSealedBeaconBlockImporter(
   }
 
   private val log = LogManager.getLogger(this.javaClass)
+  private val shouldLog = AtomicBoolean(true)
 
   override fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<ValidationResult> {
     try {
       val beaconBlock = sealedBeaconBlock.beaconBlock
       val beaconBlockHeader = beaconBlock.beaconBlockHeader
-      log.info(
-        "block received: clBlockNumber={} elBlockNumber={} clBlockHash={}",
-        beaconBlockHeader.number,
-        beaconBlock.beaconBlockBody.executionPayload.blockNumber,
-        beaconBlockHeader.hash.encodeHex(),
+      LogUtil.throttledLog(
+        log::info,
+        "block received: clBlockNumber=${beaconBlockHeader.number} elBlockNumber=${beaconBlock.beaconBlockBody.executionPayload.blockNumber} clBlockHash=${beaconBlockHeader.hash.encodeHex()}",
+        shouldLog,
+        30,
       )
       val blockValidators =
         beaconBlockValidatorFactory
