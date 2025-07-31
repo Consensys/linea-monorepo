@@ -132,7 +132,7 @@ func (pa evaluationProver) Run(run *wizard.ProverRuntime) {
 		quotientEvalPoint fext.Element
 		wg                = &sync.WaitGroup{}
 	)
-
+	fmt.Printf("mulGenInv %v\n", fft.NewDomain(uint64(maxRatio*pa.DomainSize)).FrMultiplicativeGen.String())
 	rootInv.Inverse(&rootInv)
 	quotientEvalPoint.MulByElement(&r, &mulGenInv)
 
@@ -148,7 +148,7 @@ func (pa evaluationProver) Run(run *wizard.ProverRuntime) {
 				for i := start; i < stop; i++ {
 					c := q.Pols[i].GetColAssignment(run)
 					ys[i] = sv.EvaluateLagrangeFullFext(c, evalPoint)
-
+					fmt.Printf("ys[%v] %v\n", i, ys[i].String())
 				}
 			})
 
@@ -362,6 +362,7 @@ func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 	}
 
 	for i, ratio := range ctx.Ratios {
+		fmt.Printf("recombineQuotientSharesEvaluation ratio %v\n", ratio)
 		var (
 			jumpBy = maxRatio / ratio
 			ys     = make([]fext.Element, ratio)
@@ -384,6 +385,7 @@ func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 			res           fext.Element
 			ratioInvField = field.NewElement(uint64(ratio))
 		)
+		fmt.Printf("omegaRatio%v\n", omegaRatio.String())
 
 		rPowM.Exp(shiftedR, big.NewInt(int64(m)))
 		ratioInvField.Inverse(&ratioInvField)

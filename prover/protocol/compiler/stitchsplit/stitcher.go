@@ -107,14 +107,29 @@ func (a *stitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
 			witnesses[i] = subColumns[i].GetColAssignment(run)
 			//TODO@yao: fix witness has both base and ext elements
 		}
-		assignement := smartvectors.
-			AllocateRegular(maxSizeGroup * witnesses[0].Len()).(*smartvectors.Regular)
-		for i := range subColumns {
-			for j := 0; j < witnesses[0].Len(); j++ {
-				(*assignement)[i+j*maxSizeGroup] = witnesses[i].Get(j)
+		switch witnesses[0].(type) {
+		case *smartvectors.Regular:
+			assignement := smartvectors.
+				AllocateRegular(maxSizeGroup * witnesses[0].Len()).(*smartvectors.Regular)
+			for i := range subColumns {
+				for j := 0; j < witnesses[0].Len(); j++ {
+					(*assignement)[i+j*maxSizeGroup] = witnesses[i].Get(j)
+				}
 			}
+			run.AssignColumn(idBigCol, assignement)
+
+		case *smartvectors.RegularExt:
+			assignement := smartvectors.
+				AllocateRegularExt(maxSizeGroup * witnesses[0].Len()).(*smartvectors.RegularExt)
+			for i := range subColumns {
+				for j := 0; j < witnesses[0].Len(); j++ {
+					(*assignement)[i+j*maxSizeGroup] = witnesses[i].GetExt(j)
+				}
+			}
+			run.AssignColumn(idBigCol, assignement)
+
 		}
-		run.AssignColumn(idBigCol, assignement)
+
 	}
 }
 

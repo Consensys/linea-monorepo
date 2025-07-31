@@ -46,6 +46,7 @@ var totalSuite = []func(comp *wizard.CompiledIOP){
 func TestCompilers(t *testing.T) {
 
 	logrus.SetLevel(logrus.FatalLevel)
+	// ok runTestList(t, "global", testtools.ListOfGlobalTestcasePositive)
 	// ok runTestList(t, "global", testtools.ListOfGlobalTestcaseNegative)
 	// ok runTestList(t, "horner", testtools.ListOfHornerTestcaseNegative)
 	// ok runTestList(t, "grand-product", testtools.ListOfGrandProductTestcasePositive)
@@ -55,19 +56,16 @@ func TestCompilers(t *testing.T) {
 	// ok runTestList(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
 	// ok runTestList(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcaseNegative)
 
-	// ok basic runTestList(t, "global", testtools.ListOfGlobalTestcasePositive)
-
 	//panic: global constraint - mismatch - at random point -
 	// observation from ListOfLogDerivativeSumTestcasePositive and ListOfGrandProductTestcasePositive: left values are usually the correct ones
-	//runTestList(t, "horner", testtools.ListOfHornerTestcasePositive)
-	runTestList(t, "projection", testtools.ListOfProjectionTestcasePositive)
+	runTestList(t, "horner", testtools.ListOfHornerTestcasePositive)
+	//runTestList(t, "projection", testtools.ListOfProjectionTestcasePositive)
+	//runTestList(t, "permutation", testtools.ListOfPermutationTestcasePositive)
+	//runTestList(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
 
 	//panic: unreachable
 	//runTestList(t, "mimc", testtools.ListOfMiMCTestcase)
 
-	//  panic: smartvector holds field extensions, but a base element was requested
-	//runTestList(t, "permutation", testtools.ListOfPermutationTestcasePositive)
-	//runTestList(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
 }
 
 func TestCompilersWithGnarkVerifier(t *testing.T) {

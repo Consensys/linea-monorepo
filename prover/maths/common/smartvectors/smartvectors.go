@@ -90,6 +90,11 @@ func AllocateRegular(n int) SmartVector {
 	return NewRegular(make([]field.Element, n))
 }
 
+// AllocateRegularExt returns a newly allocated smart-vector
+func AllocateRegularExt(n int) SmartVector {
+	return NewRegularExt(make([]fext.Element, n))
+}
+
 // Copy into a smart-vector, will panic if into is not a regular
 // Mainly used as a sugar for refactoring
 func Copy(into *SmartVector, x SmartVector) {

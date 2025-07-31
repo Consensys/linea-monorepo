@@ -47,7 +47,6 @@ type HornerTestcase struct {
 }
 
 var ListOfHornerTestcasePositive = []*HornerTestcase{
-	/* ok
 	{
 		NameStr:           "positive/none-selected-single",
 		SignNegativeParts: []bool{false},
@@ -55,39 +54,39 @@ var ListOfHornerTestcasePositive = []*HornerTestcase{
 			smartvectors.NewConstant(field.One(), 8),
 		}},
 		Selectors: [][]smartvectors.SmartVector{{
-			smartvectors.NewConstant(field.Zero(), 8),
+			smartvectors.NewConstant(field.One(), 8),
 		}},
 		N0s:         []int{0},
-		N1s:         []int{0},
+		N1s:         []int{8},
 		Xs:          []fext.Element{fext.One()},
-		FinalResult: fext.Zero(),
-	},
-	*/
-	{
-		NameStr:           "positive/two-parts-cancelling",
-		SignNegativeParts: []bool{false, true},
-		Coefficients: [][]smartvectors.SmartVector{
-			{
-				RandomFromSeed(8, 1),
-			},
-			{
-				RandomFromSeed(8, 1),
-			},
-		},
-		Selectors: [][]smartvectors.SmartVector{
-			{
-				smartvectors.NewConstant(field.One(), 8),
-			},
-			{
-				smartvectors.NewConstant(field.One(), 8),
-			},
-		},
-		N0s:         []int{0, 0},
-		N1s:         []int{8, 8},
-		Xs:          []fext.Element{fext.One(), fext.One()},
-		FinalResult: fext.Zero(),
+		FinalResult: fext.NewFromUint(8, 0, 0, 0),
 	},
 	/*
+		{
+			NameStr:           "positive/two-parts-cancelling",
+			SignNegativeParts: []bool{false, true},
+			Coefficients: [][]smartvectors.SmartVector{
+				{
+					smartvectors.NewConstant(field.One(), 8),
+				},
+				{
+					smartvectors.NewConstant(field.One(), 8),
+				},
+			},
+			Selectors: [][]smartvectors.SmartVector{
+				{
+					smartvectors.NewConstant(field.One(), 8),
+				},
+				{
+					smartvectors.NewConstant(field.One(), 8),
+				},
+			},
+			N0s:         []int{0, 0},
+			N1s:         []int{8, 8},
+			Xs:          []fext.Element{fext.One(), fext.One()},
+			FinalResult: fext.Zero(),
+		},
+
 		{
 			NameStr:           "positive/just-counting",
 			SignNegativeParts: []bool{false},
