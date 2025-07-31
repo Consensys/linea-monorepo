@@ -18,6 +18,7 @@ import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
 import maru.core.EMPTY_HASH
+import maru.core.ExecutionPayload
 import maru.core.HashUtil
 import maru.core.Seal
 import maru.core.SealedBeaconBlock
@@ -64,6 +65,38 @@ class DelayedQbftBlockCreator(
         )
       return QbftSealedBlockAdapter(sealedBlockBody)
     }
+
+    // Visible for testing
+    fun createBeaconBlock(
+      parentSealedBeaconBlock: SealedBeaconBlock,
+      executionPayload: ExecutionPayload,
+      round: Int,
+      timestamp: ULong,
+      proposer: ByteArray,
+      validators: Set<Validator>,
+    ): BeaconBlock {
+      val parentBeaconBlockHeader =
+        parentSealedBeaconBlock.beaconBlock.beaconBlockHeader
+      val beaconBlockBody =
+        BeaconBlockBody(parentSealedBeaconBlock.commitSeals, executionPayload)
+      val stateRootBlockHeader =
+        BeaconBlockHeader(
+          number = parentBeaconBlockHeader.number + 1UL,
+          round = round.toUInt(),
+          timestamp = timestamp,
+          proposer = Validator(proposer),
+          parentRoot = parentBeaconBlockHeader.hash(),
+          stateRoot = EMPTY_HASH, // temporary state root to avoid circular dependency
+          bodyRoot = HashUtil.bodyRoot(beaconBlockBody),
+          headerHashFunction = HashUtil::headerHash,
+        )
+      val stateRoot =
+        HashUtil.stateRoot(
+          BeaconState(stateRootBlockHeader, validators),
+        )
+      val finalBlockHeader = stateRootBlockHeader.copy(stateRoot = stateRoot)
+      return BeaconBlock(finalBlockHeader, beaconBlockBody)
+    }
   }
 
   override fun createBlock(
@@ -77,38 +110,27 @@ class DelayedQbftBlockCreator(
       } catch (e: Exception) {
         throw IllegalStateException("Execution payload unavailable, unable to create block", e)
       }
-    val latestBeaconBlock =
+    val parentSealedBeaconBlock =
       beaconChain.getSealedBeaconBlock(parentBeaconBlockHeader.hash())
         ?: throw IllegalStateException("Parent beacon block unavailable, unable to create block")
-    val beaconBlockBody =
-      BeaconBlockBody(latestBeaconBlock.commitSeals, executionPayload)
     val proposer =
       proposerSelector.selectProposerForRound(
         ConsensusRoundIdentifier((parentBeaconBlockHeader.number + 1UL).toLong(), round),
-      )
-    val stateRootBlockHeader =
-      BeaconBlockHeader(
-        number = parentBeaconBlockHeader.number + 1UL,
-        round = round.toUInt(),
-        timestamp = headerTimeStampSeconds.toULong(),
-        proposer = Validator(proposer.toArrayUnsafe()),
-        parentRoot = parentBeaconBlockHeader.hash(),
-        stateRoot = EMPTY_HASH, // temporary state root to avoid circular dependency
-        bodyRoot = HashUtil.bodyRoot(beaconBlockBody),
-        headerHashFunction = HashUtil::headerHash,
       )
     val validators =
       validatorProvider
         .getValidatorsAfterBlock(
           parentBeaconBlockHeader.number,
         ).get()
-    val stateRoot =
-      HashUtil.stateRoot(
-        BeaconState(stateRootBlockHeader, validators),
-      )
-    val finalBlockHeader = stateRootBlockHeader.copy(stateRoot = stateRoot)
     val beaconBlock =
-      BeaconBlock(finalBlockHeader, beaconBlockBody)
+      createBeaconBlock(
+        parentSealedBeaconBlock = parentSealedBeaconBlock,
+        executionPayload = executionPayload,
+        round = round,
+        timestamp = headerTimeStampSeconds.toULong(),
+        proposer = proposer.toArrayUnsafe(),
+        validators = validators,
+      )
     return QbftBlockAdapter(beaconBlock)
   }
 

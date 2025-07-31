@@ -219,4 +219,26 @@ class InMemoryBeaconChainTest {
     assertThat(blocks).hasSize(3)
     assertThat(blocks).isEqualTo(testBlocks)
   }
+
+  @Test
+  fun `getBeaconState finds state by block root with different byte arrays`() {
+    val newBeaconState = DataGenerators.randomBeaconState(3UL)
+    val updater = inMemoryBeaconChain.newUpdater()
+    updater.putBeaconState(newBeaconState).commit()
+    val blockRootCopy = newBeaconState.latestBeaconBlockHeader.hash.copyOf() // new instance, same content
+    val found = inMemoryBeaconChain.getBeaconState(blockRootCopy)
+    assertThat(found).isEqualTo(newBeaconState)
+  }
+
+  @Test
+  fun `getSealedBeaconBlock finds block by block root with different byte arrays`() {
+    val newBlock = DataGenerators.randomSealedBeaconBlock(4UL)
+    val updater = inMemoryBeaconChain.newUpdater()
+    updater.putSealedBeaconBlock(newBlock).commit()
+    val blockRootCopy =
+      newBlock.beaconBlock.beaconBlockHeader.hash
+        .copyOf() // new instance, same content
+    val found = inMemoryBeaconChain.getSealedBeaconBlock(blockRootCopy)
+    assertThat(found).isEqualTo(newBlock)
+  }
 }

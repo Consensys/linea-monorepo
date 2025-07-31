@@ -8,14 +8,21 @@
  */
 package maru.syncing
 
+import java.util.concurrent.Executors
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 import kotlin.time.Duration.Companion.milliseconds
+import maru.consensus.ValidatorProvider
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
+import maru.p2p.PeerLookup
 import maru.p2p.PeersHeadBlockProvider
 import maru.services.LongRunningService
+import maru.syncing.beaconchain.CLSyncServiceImpl
+import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory
+import net.consensys.linea.metrics.MetricsFacade
+import org.hyperledger.besu.plugin.services.MetricsSystem
 
 internal data class SyncState(
   val clStatus: CLSyncStatus,
@@ -180,6 +187,11 @@ class BeaconSyncControllerImpl(
       peersHeadsProvider: PeersHeadBlockProvider,
       targetChainHeadCalculator: SyncTargetSelector = MostFrequentHeadTargetSelector(),
       peerChainTrackerConfig: PeerChainTracker.Config,
+      validatorProvider: ValidatorProvider,
+      peerLookup: PeerLookup,
+      besuMetrics: MetricsSystem,
+      metricsFacade: MetricsFacade,
+      allowEmptyBlocks: Boolean = true,
     ): SyncControllerManager {
       val clSyncPipeline = CLSyncPipelineImpl()
 
@@ -199,6 +211,17 @@ class BeaconSyncControllerImpl(
               pollingInterval = 5000.milliseconds,
             ),
         )
+      val clSyncService =
+        CLSyncServiceImpl(
+          beaconChain = beaconChain,
+          validatorProvider = validatorProvider,
+          allowEmptyBlocks = allowEmptyBlocks,
+          executorService = Executors.newCachedThreadPool(),
+          pipelineConfig = BeaconChainDownloadPipelineFactory.Config(),
+          peerLookup = peerLookup,
+          besuMetrics = besuMetrics,
+          metricsFacade = metricsFacade,
+        )
 
       val peerChainTracker =
         PeerChainTracker(
@@ -211,7 +234,7 @@ class BeaconSyncControllerImpl(
       return SyncControllerManager(
         syncStatusController = controller,
         elSyncService = elSyncService,
-        clSyncPipeline = clSyncPipeline,
+        clSyncService = clSyncService,
         peerChainTracker = peerChainTracker,
       )
     }
@@ -221,7 +244,7 @@ class BeaconSyncControllerImpl(
 class SyncControllerManager(
   val syncStatusController: BeaconSyncControllerImpl,
   val elSyncService: LongRunningService,
-  val clSyncPipeline: LongRunningService,
+  val clSyncService: LongRunningService,
   val peerChainTracker: PeerChainTracker,
 ) : SyncStatusProvider by syncStatusController,
   LongRunningService {
@@ -230,13 +253,13 @@ class SyncControllerManager(
     syncStatusController.updateClSyncStatus(CLSyncStatus.SYNCED)
     // TODO: remove when elSyncService is implemented
     syncStatusController.updateElSyncStatus(ELSyncStatus.SYNCED)
-    clSyncPipeline.start()
+    clSyncService.start()
     elSyncService.start()
     peerChainTracker.start()
   }
 
   override fun stop() {
-    clSyncPipeline.stop()
+    clSyncService.stop()
     elSyncService.stop()
     peerChainTracker.stop()
     // Setting to default status so that SYNCING -> SYNCED will actually trigger the callbacks

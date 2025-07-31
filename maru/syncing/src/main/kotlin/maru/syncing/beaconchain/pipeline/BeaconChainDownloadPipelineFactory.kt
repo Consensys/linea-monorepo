@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.syncing.pipeline
+package maru.syncing.beaconchain.pipeline
 
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -25,6 +25,7 @@ class BeaconChainDownloadPipelineFactory(
   private val metricsSystem: MetricsSystem,
   private val peerLookup: PeerLookup,
   private val config: Config = Config(),
+  private val syncTargetProvider: () -> ULong,
 ) {
   init {
     require(config.blocksBatchSize > 0u) { "Request size must be greater than 0" }
@@ -43,16 +44,10 @@ class BeaconChainDownloadPipelineFactory(
     val maxRetries: UInt = 5u,
   )
 
-  fun createPipeline(
-    startBlock: ULong,
-    endBlock: ULong,
-  ): Pipeline<SyncTargetRange?> {
-    check(startBlock <= endBlock) { "Start block ($startBlock) must be less than or equal to end block ($endBlock)" }
-    check(endBlock < ULong.MAX_VALUE) { "End block ($endBlock) must be less than ULong max value" }
-
-    val syncTargetRangeSequence = createTargetRangeSequence(startBlock, endBlock)
+  fun createPipeline(startBlock: ULong): Pipeline<SyncTargetRange?> {
+    val syncTargetRangeSequence = createTargetRangeSequence(startBlock, syncTargetProvider)
     val downloadBlocksStep =
-      DownloadCompleteBlockRangeTask(peerLookup, config.maxRetries, config.blockRangeRequestTimeout)
+      DownloadBlocksStep(peerLookup, config.maxRetries, config.blockRangeRequestTimeout)
     val importBlocksStep = ImportBlocksStep(blockImporter)
 
     return PipelineBuilder
@@ -75,17 +70,19 @@ class BeaconChainDownloadPipelineFactory(
 
   private fun createTargetRangeSequence(
     startBlock: ULong,
-    endBlock: ULong,
+    syncTargetProvider: () -> ULong,
   ): Sequence<SyncTargetRange> =
     sequence {
       var currentStart = startBlock
       val rangeSize = config.blocksBatchSize.toULong()
 
-      while (currentStart <= endBlock) {
+      var syncTarget = syncTargetProvider()
+      while (currentStart <= syncTarget) {
         val nextEnd = currentStart.clampedAdd(rangeSize) - 1uL
-        val currentEnd = minOf(nextEnd, endBlock)
+        val currentEnd = minOf(nextEnd, syncTarget)
         yield(SyncTargetRange(currentStart, currentEnd))
         currentStart = currentEnd + 1uL
+        syncTarget = syncTargetProvider()
       }
     }
 }

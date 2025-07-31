@@ -6,26 +6,29 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.syncing.pipeline
+package maru.syncing.beaconchain.pipeline
 
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.function.Function
 import kotlin.time.Duration
 import maru.p2p.MaruPeer
 import maru.p2p.PeerLookup
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.hyperledger.besu.util.log.LogUtil
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.reputation.ReputationAdjustment
 
-class DownloadCompleteBlockRangeTask(
+class DownloadBlocksStep(
   private val peerLookup: PeerLookup,
   private val maxRetries: UInt,
   private val blockRangeRequestTimeout: Duration,
 ) : Function<SyncTargetRange, CompletableFuture<List<SealedBlockWithPeer>>> {
   private val log: Logger = LogManager.getLogger(this.javaClass)
+  private val shouldLog = AtomicBoolean(true)
 
   override fun apply(targetRange: SyncTargetRange): CompletableFuture<List<SealedBlockWithPeer>> =
     CompletableFuture.supplyAsync {
@@ -35,6 +38,14 @@ class DownloadCompleteBlockRangeTask(
       val downloadedBlocks = mutableListOf<SealedBlockWithPeer>()
       var retries = 0u
       var peer: MaruPeer?
+
+      LogUtil.throttledLog(
+        log::info,
+        "Downloading blocks: start clBlockNumber=$startBlockNumber count=$count",
+        shouldLog,
+        30,
+      )
+
       do {
         peer = peerLookup.getPeers().random() // TODO: filter peers? Do we want to use least busy peer?
         try {

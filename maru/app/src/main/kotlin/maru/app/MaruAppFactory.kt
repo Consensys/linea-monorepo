@@ -31,6 +31,7 @@ import maru.consensus.ForkIdHashProvider
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForksSchedule
 import maru.consensus.LatestElBlockMetadataCache
+import maru.consensus.StaticValidatorProvider
 import maru.consensus.Web3jMetadataProvider
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.InstantFinalizationProvider
@@ -164,6 +165,10 @@ class MaruAppFactory {
         beaconChain = beaconChain,
         elManager = executionLayerManager,
         peersHeadsProvider = peersHeadBlockProvider,
+        validatorProvider = StaticValidatorProvider(qbftConfig.validatorSet),
+        peerLookup = p2pNetwork.getPeerLookup(),
+        besuMetrics = besuMetricsSystemAdapter,
+        metricsFacade = metricsFacade,
         peerChainTrackerConfig =
           PeerChainTracker.Config(
             config.syncing.peerChainHeightPollingInterval,
