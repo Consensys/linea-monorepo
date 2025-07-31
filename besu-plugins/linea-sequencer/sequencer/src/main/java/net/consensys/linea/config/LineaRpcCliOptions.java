@@ -138,13 +138,14 @@ public class LineaRpcCliOptions implements LineaCliOptions {
   }
 
   /**
-   * This version of toDomainObject is not supported for LineaRpcCliOptions as it requires
-   * LineaSharedGaslessConfiguration to be fully constructed.
+   * Converts CLI options to LineaRpcConfiguration using default shared gasless config. For custom
+   * shared gasless configuration, use toDomainObject(LineaSharedGaslessConfiguration).
+   *
+   * @return The LineaRpcConfiguration domain object with default shared gasless config.
    */
   @Override
   public LineaRpcConfiguration toDomainObject() {
-    throw new UnsupportedOperationException(
-        "LineaRpcCliOptions requires LineaSharedGaslessConfiguration. Call toDomainObject(LineaSharedGaslessConfiguration sharedConfig) instead.");
+    return toDomainObject(LineaSharedGaslessConfiguration.V1_DEFAULT);
   }
 
   @Override

@@ -766,35 +766,7 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
     }
     LOG.debug("RLN proof found in cache for txHash: {}", txHashString);
 
-    // Validate nullifier uniqueness before any other processing to prevent replay attacks.
-    String currentEpochId = getCurrentEpochIdentifier();
-    if (nullifierTracker != null) {
-      boolean isNullifierNew =
-          nullifierTracker.checkAndMarkNullifier(proof.nullifierHex(), currentEpochId);
-      if (!isNullifierNew) {
-        LOG.error(
-            "CRITICAL SECURITY VIOLATION: Nullifier reuse detected for tx {}. Nullifier: {}, Epoch: {}",
-            txHashString,
-            proof.nullifierHex(),
-            currentEpochId);
-        return Optional.of(
-            "RLN validation failed: Nullifier already used (potential double-spend attack)");
-      }
-      LOG.debug(
-          "Nullifier {} verified as unique for epoch {}", proof.nullifierHex(), currentEpochId);
-    } else {
-      LOG.error("NullifierTracker not available - SECURITY RISK: Cannot prevent nullifier reuse!");
-      return Optional.of("RLN validation failed: Nullifier tracking unavailable");
-    }
-
-    // The proof's epoch must match the current epoch to be valid.
-    // However, RLN proofs contain the actual epoch used during proof generation,
-    // so we need to be flexible here while still maintaining security.
-    LOG.debug("Proof epoch: {}, Current epoch: {}", proof.epochHex(), currentEpochId);
-
-    // For now, we'll accept the proof's epoch if it's a valid field element
-    // In production, you might want to add more sophisticated epoch validation
-    // such as checking if the epoch is within a reasonable time window
+    // Validate proof epoch format first
     if (proof.epochHex() == null || proof.epochHex().trim().isEmpty()) {
       LOG.warn("Invalid proof epoch for tx {}: epoch is null or empty", txHashString);
       return Optional.of("RLN validation failed: Invalid proof epoch");
@@ -806,20 +778,49 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
       return Optional.of("RLN validation failed: Invalid proof epoch format");
     }
 
-    // For debugging/development, log when epochs don't match
-    if (!currentEpochId.equals(proof.epochHex())) {
-      LOG.debug(
-          "Epoch mismatch for tx {} (this is expected during development). Proof epoch: {}, Current epoch: {}",
-          txHashString,
-          proof.epochHex(),
-          currentEpochId);
+    String currentEpochId = getCurrentEpochIdentifier();
+    String proofEpochId = proof.epochHex();
+    LOG.debug("Proof epoch: {}, Current epoch: {}", proofEpochId, currentEpochId);
 
-      // In development mode, we accept the proof's epoch
-      // In production, you might want to enforce stricter epoch validation
-      LOG.debug("Accepting proof's epoch for verification: {}", proof.epochHex());
+    // CRITICAL SECURITY FIX: Use the proof's epoch for nullifier tracking, not current epoch
+    // This prevents nullifier reuse across different epochs
+    if (nullifierTracker != null) {
+      boolean isNullifierNew =
+          nullifierTracker.checkAndMarkNullifier(proof.nullifierHex(), proofEpochId);
+      if (!isNullifierNew) {
+        LOG.error(
+            "CRITICAL SECURITY VIOLATION: Nullifier reuse detected for tx {}. Nullifier: {}, Proof Epoch: {}",
+            txHashString,
+            proof.nullifierHex(),
+            proofEpochId);
+        return Optional.of(
+            "RLN validation failed: Nullifier already used in epoch "
+                + proofEpochId
+                + " (potential double-spend attack)");
+      }
+      LOG.debug(
+          "Nullifier {} verified as unique for proof epoch {}", proof.nullifierHex(), proofEpochId);
     } else {
-      LOG.debug("Epoch validation passed for tx {}: {}", txHashString, currentEpochId);
+      LOG.error("NullifierTracker not available - SECURITY RISK: Cannot prevent nullifier reuse!");
+      return Optional.of("RLN validation failed: Nullifier tracking unavailable");
     }
+
+    // Strict epoch validation: proof epoch must match current epoch for production security
+    // This prevents accepting old proofs that could enable replay attacks
+    if (!currentEpochId.equals(proofEpochId)) {
+      LOG.warn(
+          "SECURITY WARNING: Epoch mismatch for tx {}. Proof epoch: {}, Current epoch: {}. Rejecting for security.",
+          txHashString,
+          proofEpochId,
+          currentEpochId);
+      return Optional.of(
+          "RLN validation failed: Proof epoch "
+              + proofEpochId
+              + " does not match current epoch "
+              + currentEpochId);
+    }
+
+    LOG.debug("Epoch validation passed for tx {}: {}", txHashString, currentEpochId);
 
     // Since the proof was already verified and public inputs extracted during caching,
     // we can skip the verification step here as the proof is already validated.

@@ -10,10 +10,18 @@
 plugins {
   id 'java'
   id 'java-library-distribution'
+  id 'com.google.protobuf' version '0.9.4'
   alias(libs.plugins.lombok)
   alias(libs.plugins.gradleVersions)
   alias(libs.plugins.dependencyManagement)
   alias(libs.plugins.download)
+}
+
+// Define versions for gRPC and Protobuf
+ext {
+  grpcVersion = '1.70.0' // Align with Besu's BOM
+  protobufVersion = '3.24.4'
+  protocVersion = protobufVersion
 }
 
 group = 'net.consensys.linea.besu.plugin'
@@ -57,10 +65,50 @@ dependencies {
 
   implementation 'org.hibernate.validator:hibernate-validator'
 
+  // gRPC and Protobuf dependencies for gasless functionality
+  implementation "io.grpc:grpc-netty:${grpcVersion}"
+  implementation "io.grpc:grpc-protobuf:${grpcVersion}"
+  implementation "io.grpc:grpc-stub:${grpcVersion}"
+  implementation "io.grpc:grpc-api:${grpcVersion}"
+  implementation "com.google.protobuf:protobuf-java:${protobufVersion}"
+  implementation 'javax.annotation:javax.annotation-api:1.3.2'
+
   testImplementation "${besuArtifactGroup}.internal:besu-app"
   testImplementation group: "${besuArtifactGroup}.internal", name: "besu-ethereum-core", classifier: "test-support"
 
   testImplementation 'org.awaitility:awaitility'
+  testImplementation "io.grpc:grpc-testing:${grpcVersion}"
+  testImplementation "io.grpc:grpc-core:${grpcVersion}"
+  testImplementation "io.grpc:grpc-inprocess:${grpcVersion}"
+}
+
+// Protobuf configuration for gRPC code generation
+protobuf {
+  protoc {
+    artifact = "com.google.protobuf:protoc:${protocVersion}"
+  }
+  plugins {
+    grpc {
+      artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}"
+    }
+  }
+  generateProtoTasks {
+    all().each { task ->
+      task.plugins {
+        grpc {}
+      }
+    }
+  }
+}
+
+// Configure source sets to include generated protobuf code
+sourceSets {
+  main {
+    java {
+      srcDir 'build/generated/source/proto/main/grpc'
+      srcDir 'build/generated/source/proto/main/java'
+    }
+  }
 }
 
 apply from: lineaSequencerProject.file("gradle/dist.gradle")
@@ -76,4 +124,6 @@ test {
   useJUnitPlatform()
   // Disable parallel execution for this module due to WireMock test interference
   systemProperty "junit.jupiter.execution.parallel.enabled", "false"
+  // Add system property to disable macOS DNS resolver for Netty in tests
+  systemProperty 'io.netty.resolver.dns.macos.disabled', 'true'
 }
