@@ -22,9 +22,11 @@ import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
 import net.consensys.linea.config.LineaRejectedTxReportingConfiguration;
+import net.consensys.linea.config.LineaRlnValidatorConfiguration;
 import net.consensys.linea.jsonrpc.JsonRpcManager;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.txpoolvalidation.metrics.TransactionPoolProfitabilityMetrics;
+import net.consensys.linea.sequencer.txpoolvalidation.shared.SharedServiceManager;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
@@ -46,6 +48,8 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
   private TransactionPoolValidatorService transactionPoolValidatorService;
   private TransactionSimulationService transactionSimulationService;
   private Optional<JsonRpcManager> rejectedTxJsonRpcManager = Optional.empty();
+  private LineaRlnValidatorConfiguration rlnValidatorConfiguration;
+  private SharedServiceManager sharedServiceManager;
 
   @Override
   public void doRegister(final ServiceManager serviceManager) {
@@ -72,9 +76,14 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
 
   @Override
   public void doStart() {
+    log.info(
+        "🚀 CUSTOM LINEA CODE IS RUNNING - LineaTransactionPoolValidatorPlugin starting up! 🚀");
+
     if (l1L2BridgeSharedConfiguration().equals(LineaL1L2BridgeSharedConfiguration.TEST_DEFAULT)) {
       throw new IllegalArgumentException("L1L2 bridge settings have not been defined.");
     }
+
+    this.rlnValidatorConfiguration = rlnValidatorConfiguration();
 
     try (Stream<String> lines =
         Files.lines(
@@ -95,6 +104,9 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
                               lineaRejectedTxReportingConfiguration)
                           .start());
 
+      // Initialize shared services
+      sharedServiceManager = new SharedServiceManager(rlnValidatorConfiguration, null);
+
       transactionPoolValidatorService.registerPluginTransactionValidatorFactory(
           new LineaTransactionPoolValidatorFactory(
               besuConfiguration,
@@ -105,7 +117,10 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
               deniedAddresses,
               tracerConfiguration(),
               l1L2BridgeSharedConfiguration(),
-              rejectedTxJsonRpcManager));
+              rejectedTxJsonRpcManager,
+              rlnValidatorConfiguration,
+              sharedServiceManager,
+              lineaRpcConfiguration().rlnProverForwarderEnabled()));
 
       if (metricCategoryRegistry.isMetricCategoryEnabled(TX_POOL_PROFITABILITY)) {
         final var besuEventsService =
@@ -156,5 +171,13 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
   public void stop() {
     super.stop();
     rejectedTxJsonRpcManager.ifPresent(JsonRpcManager::shutdown);
+
+    if (sharedServiceManager != null) {
+      try {
+        sharedServiceManager.close();
+      } catch (Exception e) {
+        log.error("Error closing shared service manager: {}", e.getMessage(), e);
+      }
+    }
   }
 }

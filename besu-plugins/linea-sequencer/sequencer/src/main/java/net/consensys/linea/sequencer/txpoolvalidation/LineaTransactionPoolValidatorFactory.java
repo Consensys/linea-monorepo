@@ -9,18 +9,23 @@
 
 package net.consensys.linea.sequencer.txpoolvalidation;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
+import net.consensys.linea.config.LineaRlnValidatorConfiguration;
 import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
 import net.consensys.linea.jsonrpc.JsonRpcManager;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
+import net.consensys.linea.sequencer.txpoolvalidation.shared.SharedServiceManager;
 import net.consensys.linea.sequencer.txpoolvalidation.validators.AllowedAddressValidator;
 import net.consensys.linea.sequencer.txpoolvalidation.validators.CalldataValidator;
 import net.consensys.linea.sequencer.txpoolvalidation.validators.GasLimitValidator;
 import net.consensys.linea.sequencer.txpoolvalidation.validators.ProfitabilityValidator;
+import net.consensys.linea.sequencer.txpoolvalidation.validators.RlnProverForwarderValidator;
+import net.consensys.linea.sequencer.txpoolvalidation.validators.RlnVerifierValidator;
 import net.consensys.linea.sequencer.txpoolvalidation.validators.SimulationValidator;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
@@ -41,6 +46,9 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
   private final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration;
   private final LineaTracerConfiguration tracerConfiguration;
   private final Optional<JsonRpcManager> rejectedTxJsonRpcManager;
+  private final LineaRlnValidatorConfiguration rlnValidatorConf;
+  private final SharedServiceManager sharedServiceManager;
+  private final boolean rlnProverForwarderEnabled;
 
   public LineaTransactionPoolValidatorFactory(
       final BesuConfiguration besuConfiguration,
@@ -51,7 +59,10 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
       final Set<Address> deniedAddresses,
       final LineaTracerConfiguration tracerConfiguration,
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
-      final Optional<JsonRpcManager> rejectedTxJsonRpcManager) {
+      final Optional<JsonRpcManager> rejectedTxJsonRpcManager,
+      final LineaRlnValidatorConfiguration rlnValidatorConf,
+      final SharedServiceManager sharedServiceManager,
+      final boolean rlnProverForwarderEnabled) {
     this.besuConfiguration = besuConfiguration;
     this.blockchainService = blockchainService;
     this.transactionSimulationService = transactionSimulationService;
@@ -61,6 +72,9 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
     this.tracerConfiguration = tracerConfiguration;
     this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
+    this.rlnValidatorConf = rlnValidatorConf;
+    this.sharedServiceManager = sharedServiceManager;
+    this.rlnProverForwarderEnabled = rlnProverForwarderEnabled;
   }
 
   /**
@@ -71,20 +85,45 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
    */
   @Override
   public PluginTransactionPoolValidator createTransactionValidator() {
-    final var validators =
-        new PluginTransactionPoolValidator[] {
-          new AllowedAddressValidator(denied),
-          new GasLimitValidator(txPoolValidatorConf),
-          new CalldataValidator(txPoolValidatorConf),
-          new ProfitabilityValidator(besuConfiguration, blockchainService, profitabilityConf),
-          new SimulationValidator(
+    final var validatorsList = new ArrayList<PluginTransactionPoolValidator>();
+
+    validatorsList.add(new AllowedAddressValidator(denied));
+    validatorsList.add(new GasLimitValidator(txPoolValidatorConf));
+    validatorsList.add(new CalldataValidator(txPoolValidatorConf));
+    validatorsList.add(
+        new ProfitabilityValidator(besuConfiguration, blockchainService, profitabilityConf));
+
+    // Conditionally add RLN Prover Forwarder (enabled via configuration flag)
+    if (rlnProverForwarderEnabled) {
+      validatorsList.add(
+          new RlnProverForwarderValidator(
+              rlnValidatorConf,
+              true, // enabled
+              sharedServiceManager.getKarmaServiceClient()));
+    }
+
+    // Conditionally add RLN Validator (for proof verification)
+    if (rlnValidatorConf.rlnValidationEnabled()) {
+      validatorsList.add(
+          new RlnVerifierValidator(
+              rlnValidatorConf,
               blockchainService,
-              transactionSimulationService,
-              txPoolValidatorConf,
-              tracerConfiguration,
-              l1L2BridgeConfiguration,
-              rejectedTxJsonRpcManager)
-        };
+              sharedServiceManager.getDenyListManager(),
+              sharedServiceManager.getKarmaServiceClient(),
+              sharedServiceManager.getNullifierTracker()));
+    }
+
+    validatorsList.add(
+        new SimulationValidator(
+            blockchainService,
+            transactionSimulationService,
+            txPoolValidatorConf,
+            tracerConfiguration,
+            l1L2BridgeConfiguration,
+            rejectedTxJsonRpcManager));
+
+    final PluginTransactionPoolValidator[] validators =
+        validatorsList.toArray(new PluginTransactionPoolValidator[0]);
 
     return (transaction, isLocal, hasPriority) ->
         Arrays.stream(validators)

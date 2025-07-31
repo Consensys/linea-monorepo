@@ -21,6 +21,8 @@ import net.consensys.linea.config.LineaProfitabilityCliOptions;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaRejectedTxReportingCliOptions;
 import net.consensys.linea.config.LineaRejectedTxReportingConfiguration;
+import net.consensys.linea.config.LineaRlnValidatorCliOptions;
+import net.consensys.linea.config.LineaRlnValidatorConfiguration;
 import net.consensys.linea.config.LineaRpcCliOptions;
 import net.consensys.linea.config.LineaRpcConfiguration;
 import net.consensys.linea.config.LineaTracerCliOptions;
@@ -103,6 +105,9 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
     configMap.put(
         LineaTransactionValidatorCliOptions.CONFIG_KEY,
         LineaTransactionValidatorCliOptions.create().asPluginConfig());
+    configMap.put(
+        LineaRlnValidatorCliOptions.CONFIG_KEY,
+        LineaRlnValidatorCliOptions.create().asPluginConfig());
     return configMap;
   }
 
@@ -152,6 +157,11 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   public LineaTransactionValidatorConfiguration transactionValidatorConfiguration() {
     return (LineaTransactionValidatorConfiguration)
         getConfigurationByKey(LineaTransactionValidatorCliOptions.CONFIG_KEY).optionsConfig();
+  }
+
+  public LineaRlnValidatorConfiguration rlnValidatorConfiguration() {
+    return (LineaRlnValidatorConfiguration)
+        getConfigurationByKey(LineaRlnValidatorCliOptions.CONFIG_KEY).optionsConfig();
   }
 
   @Override
