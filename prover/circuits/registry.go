@@ -15,6 +15,7 @@ const (
 	ExecutionDummyCircuitID             CircuitID = "execution-dummy"
 	BlobDecompressionDummyCircuitID     CircuitID = "blob-decompression-dummy"
 	PublicInputInterconnectionCircuitID CircuitID = "public-input-interconnection"
+	InvalidityCircuitID                 CircuitID = "invalidity"
 )
 
 // MockCircuitID is a type to represent the different mock circuits.
