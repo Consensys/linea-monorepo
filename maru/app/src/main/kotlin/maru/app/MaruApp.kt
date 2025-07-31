@@ -64,7 +64,6 @@ class MaruApp(
   private val apiServer: ApiServer,
   private val syncStatusProvider: SyncStatusProvider,
   private val syncControllerManager: LongRunningService,
-  private val peerChainTracker: LongRunningService,
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 

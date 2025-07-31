@@ -37,6 +37,8 @@ import maru.consensus.state.InstantFinalizationProvider
 import maru.crypto.Hashing
 import maru.database.BeaconChain
 import maru.database.kv.KvDatabaseFactory
+import maru.executionlayer.client.PragueWeb3JJsonRpcExecutionLayerEngineApiClient
+import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.finalization.LineaFinalizationProvider
 import maru.metrics.BesuMetricsCategoryAdapter
 import maru.metrics.BesuMetricsSystemAdapter
@@ -49,11 +51,9 @@ import maru.p2p.P2PPeersHeadBlockProvider
 import maru.p2p.messages.StatusMessageFactory
 import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
-import maru.services.LongRunningService
-import maru.syncing.ELSyncStatus
+import maru.syncing.BeaconSyncControllerImpl
 import maru.syncing.PeerChainTracker
-import maru.syncing.SyncControllerImpl
-import maru.syncing.SyncStatusProvider
+import maru.syncing.SyncControllerManager
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
@@ -135,19 +135,16 @@ class MaruAppFactory {
     val latestElBlockMetadataCache =
       LatestElBlockMetadataCache(asyncMetadataProvider.getLatestBlockMetadata())
     val statusMessageFactory = StatusMessageFactory(beaconChain, forkIdHashProvider)
-
-    val syncStatusProvider = SyncControllerImpl()
-    // Should be a SyncControllerManager instance returned by SyncControllerImpl::create
-    val syncControllerManager: LongRunningService =
-
-      object : LongRunningService {
-        override fun start() {
-          syncStatusProvider.elSyncStatusWasUpdated(ELSyncStatus.SYNCED)
-        }
-
-        override fun stop() {
-        }
-      }
+    val engineApiClient =
+      PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
+        Helpers.createWeb3jClient(
+          config.validatorElNode.engineApiEndpoint,
+        ),
+        metricsFacade,
+      )
+    val executionLayerManager = JsonRpcExecutionLayerManager(engineApiClient)
+    // Because of the circular dependency between SyncStatusProvider, P2PNetwork and P2PPeersHeadBlockProvider
+    var syncControllerImpl: SyncControllerManager? = null
 
     val p2pNetwork =
       overridingP2PNetwork ?: setupP2PNetwork(
@@ -159,7 +156,19 @@ class MaruAppFactory {
         statusMessageFactory = statusMessageFactory,
         besuMetricsSystem = besuMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
-        syncStatusProvider = syncStatusProvider,
+        isBlockImportEnabledProvider = { syncControllerImpl!!.isBeaconChainSynced() },
+      )
+    val peersHeadBlockProvider = P2PPeersHeadBlockProvider(p2pNetwork.getPeerLookup())
+    syncControllerImpl =
+      BeaconSyncControllerImpl.create(
+        beaconChain = beaconChain,
+        elManager = executionLayerManager,
+        peersHeadsProvider = peersHeadBlockProvider,
+        peerChainTrackerConfig =
+          PeerChainTracker.Config(
+            config.syncing.peerChainHeightPollingInterval,
+            config.syncing.peerChainHeightGranularity,
+          ),
       )
     val finalizationProvider =
       overridingFinalizationProvider
@@ -176,17 +185,6 @@ class MaruAppFactory {
           versionProvider = MaruVersionProvider(),
           chainDataProvider = ChainDataProviderImpl(beaconChain),
         )
-    val peerChainTracker =
-      PeerChainTracker(
-        peersHeadsProvider = P2PPeersHeadBlockProvider(peerLookup = p2pNetwork.getPeerLookup()),
-        syncTargetUpdateHandler = {},
-        targetChainHeadCalculator = { it.first() },
-        config =
-          PeerChainTracker.Config(
-            config.syncing.peerChainHeightPollingInterval,
-            config.syncing.peerChainHeightGranularity,
-          ),
-      )
 
     val maru =
       MaruApp(
@@ -203,9 +201,8 @@ class MaruAppFactory {
         lastElBlockMetadataCache = latestElBlockMetadataCache,
         ethereumJsonRpcClient = ethereumJsonRpcClient,
         apiServer = apiServer,
-        syncControllerManager = syncControllerManager,
-        syncStatusProvider = syncStatusProvider,
-        peerChainTracker = peerChainTracker,
+        syncControllerManager = syncControllerImpl,
+        syncStatusProvider = syncControllerImpl,
       )
 
     return maru
@@ -253,7 +250,7 @@ class MaruAppFactory {
       privateKey: ByteArray,
       chainId: UInt,
       beaconChain: BeaconChain,
-      syncStatusProvider: SyncStatusProvider,
+      isBlockImportEnabledProvider: () -> Boolean,
       metricsFacade: MetricsFacade,
       statusMessageFactory: StatusMessageFactory,
       besuMetricsSystem: BesuMetricsSystem,
@@ -268,7 +265,7 @@ class MaruAppFactory {
           metricsFacade = metricsFacade,
           statusMessageFactory = statusMessageFactory,
           beaconChain = beaconChain,
-          isBlockImportEnabledProvider = { syncStatusProvider.isNodeFullInSync() },
+          isBlockImportEnabledProvider = isBlockImportEnabledProvider,
           metricsSystem = besuMetricsSystem,
           forkIdHashProvider = forkIdHashProvider,
         )

@@ -122,7 +122,7 @@ class ProtocolStarter(
   }
 
   override fun stop() {
-    currentProtocolWithForkReference.get().protocol.stop()
+    currentProtocolWithForkReference.get()?.protocol?.stop()
     currentProtocolWithForkReference.set(null)
   }
 }

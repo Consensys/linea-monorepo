@@ -26,7 +26,7 @@ import org.apache.logging.log4j.LogManager
  */
 class PeerChainTracker(
   private val peersHeadsProvider: PeersHeadBlockProvider,
-  private val syncTargetUpdateHandler: SyncTargetUpdateHandler,
+  private val beaconSyncTargetUpdateHandler: BeaconSyncTargetUpdateHandler,
   private val targetChainHeadCalculator: SyncTargetSelector,
   private val config: Config,
   private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon -> Timer(name, isDaemon) },
@@ -73,7 +73,7 @@ class PeerChainTracker(
       val newSyncTarget = targetChainHeadCalculator.selectBestSyncTarget(peers.values.toList())
       log.trace("Selected best syncTarget={} lastNotifiedTarget={}", newSyncTarget, lastNotifiedTarget)
       if (newSyncTarget != lastNotifiedTarget) { // Only send an update if there's an actual target change
-        syncTargetUpdateHandler.onChainHeadUpdated(newSyncTarget)
+        beaconSyncTargetUpdateHandler.onBeaconChainSyncTargetUpdated(newSyncTarget)
         log.trace("Notified about the new syncTarget={}", newSyncTarget)
         lastNotifiedTarget = newSyncTarget
       }
