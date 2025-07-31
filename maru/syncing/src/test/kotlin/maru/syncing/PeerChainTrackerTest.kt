@@ -37,11 +37,11 @@ class PeerChainTrackerTest {
   }
 
   // Dummy implementation of SyncTargetUpdateHandler for testing
-  private class TestSyncTargetUpdateHandler : SyncTargetUpdateHandler {
+  private class TestBeaconSyncTargetUpdateHandler : BeaconSyncTargetUpdateHandler {
     val receivedTargets = mutableListOf<ULong>()
 
-    override fun onChainHeadUpdated(beaconBlockNumber: ULong) {
-      receivedTargets.add(beaconBlockNumber)
+    override fun onBeaconChainSyncTargetUpdated(syncTargetBlockNumber: ULong) {
+      receivedTargets.add(syncTargetBlockNumber)
     }
 
     fun reset() {
@@ -81,7 +81,7 @@ class PeerChainTrackerTest {
   }
 
   private lateinit var peersHeadsProvider: TestPeersHeadBlockProvider
-  private lateinit var syncTargetUpdateHandler: TestSyncTargetUpdateHandler
+  private lateinit var syncTargetUpdateHandler: TestBeaconSyncTargetUpdateHandler
   private lateinit var targetChainHeadCalculator: TestSyncTargetSelector
   private lateinit var config: PeerChainTracker.Config
   private lateinit var timer: TestableTimer
@@ -90,7 +90,7 @@ class PeerChainTrackerTest {
   @BeforeEach
   fun setUp() {
     peersHeadsProvider = TestPeersHeadBlockProvider()
-    syncTargetUpdateHandler = TestSyncTargetUpdateHandler()
+    syncTargetUpdateHandler = TestBeaconSyncTargetUpdateHandler()
     targetChainHeadCalculator = TestSyncTargetSelector()
     timer = TestableTimer()
 
