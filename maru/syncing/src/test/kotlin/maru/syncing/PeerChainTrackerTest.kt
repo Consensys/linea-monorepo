@@ -50,7 +50,7 @@ class PeerChainTrackerTest {
   }
 
   // Test implementation that allows controlling the timer execution
-  private class TestableTimer : Timer("test-timer", true) {
+  internal class TestableTimer : Timer("test-timer", true) {
     val scheduledTasks = mutableListOf<TimerTask>()
     val delays = mutableListOf<Long>()
     val periods = mutableListOf<Long>()
