@@ -10,6 +10,7 @@ import (
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
+	"github.com/consensys/linea-monorepo/prover/backend/invalidity"
 
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 
@@ -47,10 +48,12 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 			ParentAggregationLastBlockTimestamp:     uint(req.ParentAggregationLastBlockTimestamp),
 			LastFinalizedL1RollingHash:              req.ParentAggregationLastL1RollingHash,
 			LastFinalizedL1RollingHashMessageNumber: uint(req.ParentAggregationLastL1RollingHashMessageNumber),
+			LastFinalizedRollingHashNumberTx:        uint(req.ParentAggregationLastRollingHashNumberTx),
 		}
 	)
 
 	cf.ExecutionPI = make([]public_input.Execution, 0, len(req.ExecutionProofs))
+	cf.InvalidityPI = make([]public_input.Invalidity, 0, len(req.InvalidityProofs))
 	cf.InnerCircuitTypes = make([]pi_interconnection.InnerCircuitType, 0, len(req.ExecutionProofs)+len(req.DecompressionProofs))
 
 	hshM := mimc.NewMiMC()
@@ -193,6 +196,8 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 
 	cf.L2MessagingBlocksOffsets = utils.HexEncodeToString(PackOffsets(l2MsgBlockOffsets))
 	cf.L2MsgRootHashes = PackInMiniTrees(allL2MessageHashes)
+
+	cf.collectInvalidityInfo(cfg, req)
 
 	return cf, nil
 
@@ -375,4 +380,40 @@ func parseProofClaim(
 	}
 
 	return res, nil
+}
+
+func (cf *CollectedFields) collectInvalidityInfo(cfg *config.Config, req *Request) error {
+	var (
+		hshM = mimc.NewMiMC()
+		po   invalidity.Response
+	)
+
+	for i, invalReqFPath := range req.InvalidityProofs {
+		var (
+			fpath = path.Join(cfg.Invalidity.DirTo(), invalReqFPath)
+			f     = files.MustRead(fpath)
+		)
+
+		if err := json.NewDecoder(f).Decode(&po); err != nil {
+			return fmt.Errorf("fields collection, decoding %s, %w", invalReqFPath, err)
+		}
+
+		cf.InnerCircuitTypes = append(cf.InnerCircuitTypes, pi_interconnection.Invalidity)
+
+		pClaim, err := parseProofClaim(po.Proof, po.PublicInput.Hex(), po.VerifyingKeyShaSum)
+		if err != nil {
+			return fmt.Errorf("could not parse the proof claim %v for `%v` : %w", i, fpath, err)
+		}
+		cf.ProofClaims = append(cf.ProofClaims, *pClaim)
+
+		pi := po.FuncInput(i)
+
+		// make sure public input and collected values match
+		if pi := po.FuncInput(i).Sum(hshM); !bytes.Equal(pi, po.PublicInput[:]) {
+			return fmt.Errorf("einvalidity #%d: public input mismatch: given %x, computed %x", i, po.PublicInput, pi)
+		}
+
+		cf.InvalidityPI = append(cf.InvalidityPI, *pi)
+	}
+	return nil
 }
