@@ -3,9 +3,11 @@ package invalidity
 import (
 	"math/big"
 
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/crate-crypto/go-ipa/bandersnatch/fr"
@@ -38,6 +40,7 @@ type AssigningInputs struct {
 	AccountTrieInputs AccountTrieInputs
 	Transaction       *types.Transaction
 	FuncInputs        public_input.Invalidity
+	InvalidityType    InvalidityType
 }
 
 // Define the constraints
@@ -69,12 +72,24 @@ func (c *CircuitInvalidity) Assign(assi AssigningInputs) {
 
 // MakeProof and solve the circuit.
 func (c *CircuitInvalidity) MakeProof(setup circuits.Setup, assi AssigningInputs, FuncInputs public_input.Invalidity) string {
+
+	switch assi.InvalidityType {
+	case BadNonce:
+		c.SubCircuit = &BadNonceCircuit{}
+	case BadBalance:
+		c.SubCircuit = &BadBalanceCircuit{}
+	default:
+		panic("unsupported invalidity type")
+	}
+
 	c.Assign(assi)
 
 	//@azam what options should I add?
 	proof, err := circuits.ProveCheck(
 		&setup,
 		c,
+		emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
+		emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
 	)
 
 	if err != nil {
