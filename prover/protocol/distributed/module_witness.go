@@ -116,7 +116,6 @@ func SegmentRuntime(
 
 		for _, stats := range qbmStats {
 			loggableQbmStats[string(stats.ModuleName)] = map[string]any{
-				"module-name":      stats.ModuleName,
 				"segment-size":     stats.SegmentSize,
 				"nb-segment":       utils.DivCeil(stats.NbActiveRows, stats.SegmentSize),
 				"total-number-row": stats.NbActiveRows,
