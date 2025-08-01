@@ -378,8 +378,7 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 	// but would be doubly redundant. We can remove it then.
 
 	a.ChainConfigurationFPISnark.ChainID = r.Aggregation.ChainID
-	// todo: add base fee?
-	// a.ChainConfigurationFPISnark.BaseFee = r.Aggregation.BaseFee
+	a.ChainConfigurationFPISnark.BaseFee = cfg.BaseFee
 	a.ChainConfigurationFPISnark.L2MessageServiceAddress = r.Aggregation.L2MessageServiceAddr
 
 	return
