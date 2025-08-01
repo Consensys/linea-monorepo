@@ -14,6 +14,10 @@ type Request struct {
 	// aggregate.
 	ExecutionProofs []string `json:"executionProofs"`
 
+	// List of Invalidity proofs prover responses containing the proofs to
+	// aggregate.
+	InvalidityProofs []string `json:"invalidityProofs"`
+
 	// List of the compression proofs prover responses containing the
 	// compression proofs to aggregate.
 	DecompressionProofs []string `json:"compressionProofs"`
@@ -33,6 +37,9 @@ type Request struct {
 	// this field.
 	ParentAggregationLastL1RollingHash              string `json:"parentAggregationLastL1RollingHash"`
 	ParentAggregationLastL1RollingHashMessageNumber int    `json:"parentAggregationLastL1RollingHashMessageNumber"`
+
+	// last finalized forced transaction number
+	ParentAggregationLastRollingHashNumberTx int `json:"parentAggregationLastRollingHashNumberTx"`
 }
 
 // This struct contains a collection of fields that are to be extracted from the
@@ -102,5 +109,10 @@ type CollectedFields struct {
 
 	ExecutionPI       []public_input.Execution
 	DecompressionPI   []blobdecompression.Request
+	InvalidityPI      []public_input.Invalidity
 	InnerCircuitTypes []pi_interconnection.InnerCircuitType // a hint to the aggregation circuit detailing which public input correspond to which actual public input
+
+	// last finalized (forced) transaction number
+	LastFinalizedRollingHashNumberTx uint
+	RollingHashNumberTx              uint
 }

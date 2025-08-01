@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/blobdecompression"
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
+	"github.com/consensys/linea-monorepo/prover/backend/invalidity"
 	"github.com/consensys/linea-monorepo/prover/config"
 )
 
@@ -35,6 +36,7 @@ func Prove(args ProverArgs) error {
 	// discover the type of the job from the input file name
 	jobExecution := strings.Contains(args.Input, "getZkProof")
 	jobBlobDecompression := strings.Contains(args.Input, "getZkBlobCompressionProof")
+	jobInvalidity := strings.Contains(args.Input, "getZkInvalidityProof") // one file per aggregation
 	jobAggregation := strings.Contains(args.Input, "getZkAggregatedProof")
 
 	if jobExecution {
@@ -79,6 +81,20 @@ func Prove(args ProverArgs) error {
 		resp, err := aggregation.Prove(cfg, req)
 		if err != nil {
 			return fmt.Errorf("could not prove the aggregation: %w", err)
+		}
+
+		return writeResponse(args.Output, resp)
+	}
+
+	if jobInvalidity {
+		req := &invalidity.Request{}
+		if err := readRequest(args.Input, req); err != nil {
+			return fmt.Errorf("could not read the input file (%v): %w", args.Input, err)
+		}
+
+		resp, err := invalidity.Prove(cfg, req)
+		if err != nil {
+			return fmt.Errorf("could not prove the invalidity: %w", err)
 		}
 
 		return writeResponse(args.Output, resp)
