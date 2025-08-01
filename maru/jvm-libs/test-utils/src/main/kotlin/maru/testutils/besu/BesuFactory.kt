@@ -28,7 +28,10 @@ object BesuFactory {
   const val MIN_BLOCK_TIME = 1L
   const val BLOCK_REBUILD_TIME = 50L
 
-  fun buildTestBesu(genesisFile: String = GenesisConfigurationFactory.readGenesisFile(PRAGUE_GENESIS)): BesuNode =
+  fun buildTestBesu(
+    genesisFile: String = GenesisConfigurationFactory.readGenesisFile(PRAGUE_GENESIS),
+    validator: Boolean = true,
+  ): BesuNode =
     BesuNodeFactory().createNode("miner") { builder: BesuNodeConfigurationBuilder ->
       val persistentStorageFactory: KeyValueStorageFactory =
         RocksDBKeyValueStorageFactory(
@@ -36,22 +39,6 @@ object BesuFactory {
           KeyValueSegmentIdentifier.entries,
           RocksDBMetricsFactory.PUBLIC_ROCKS_DB_METRICS,
         )
-      val defaultSigner = KeyPairUtil.loadKeyPairFromResource("default-signer-key")
-      val miningConfiguration =
-        ImmutableMiningConfiguration
-          .builder()
-          .mutableInitValues(
-            MutableInitValues
-              .builder()
-              .coinbase(AddressHelpers.ofValue(1))
-              .isMiningEnabled(true)
-              .build(),
-          ).unstable(
-            ImmutableMiningConfiguration.Unstable
-              .builder()
-              .posBlockCreationRepetitionMinDuration(BLOCK_REBUILD_TIME)
-              .build(),
-          ).build()
       builder
         .storageImplementation(persistentStorageFactory)
         .genesisConfigProvider {
@@ -59,17 +46,39 @@ object BesuFactory {
             genesisFile,
           )
         }.devMode(false)
-        .bootnodeEligible(false)
         .engineRpcEnabled(true)
-        .keyPair(defaultSigner)
         .jsonRpcEnabled()
         .webSocketEnabled()
-        .miningConfiguration(miningConfiguration)
+
+      if (validator) {
+        val defaultSigner = KeyPairUtil.loadKeyPairFromResource("default-signer-key")
+        val miningConfiguration =
+          ImmutableMiningConfiguration
+            .builder()
+            .mutableInitValues(
+              MutableInitValues
+                .builder()
+                .coinbase(AddressHelpers.ofValue(1))
+                .isMiningEnabled(true)
+                .build(),
+            ).unstable(
+              ImmutableMiningConfiguration.Unstable
+                .builder()
+                .posBlockCreationRepetitionMinDuration(BLOCK_REBUILD_TIME)
+                .build(),
+            ).build()
+        builder
+          .miningConfiguration(miningConfiguration)
+          .keyPair(defaultSigner)
+      } else {
+        builder
+      }
     }
 
   fun buildSwitchableBesu(
     switchTimestamp: Long = 0,
     expectedBlocksInClique: Int = 0,
+    validator: Boolean,
   ): BesuNode {
     val genesisContent =
       BesuFactory::class.java
@@ -85,6 +94,6 @@ object BesuFactory {
         .replace("\"cancunTime\": 0", "\"cancunTime\": $switchTimestamp")
         .replace("\"pragueTime\": 0", "\"pragueTime\": $switchTimestamp")
         .replace("\"terminalTotalDifficulty\": 0", "\"terminalTotalDifficulty\": $ttd")
-    return buildTestBesu(genesisFile)
+    return buildTestBesu(genesisFile = genesisFile, validator = validator)
   }
 }

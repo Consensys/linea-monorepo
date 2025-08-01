@@ -48,12 +48,12 @@ fun BesuNode.latestBlock(returnFullTransactionObjects: Boolean = true): EthBlock
     returnFullTransactionObjects,
   )
 
-fun Cluster.startWithRetry(besu: BesuNode) {
+fun Cluster.startWithRetry(vararg besuNodes: BesuNode) {
   val maxAttempts = 10
   var lastException: IllegalStateException? = null
   repeat(maxAttempts) { attempt ->
     try {
-      this.start(besu)
+      this.start(*besuNodes)
       return
     } catch (e: IllegalStateException) {
       lastException = e
@@ -62,5 +62,5 @@ fun Cluster.startWithRetry(besu: BesuNode) {
       }
     }
   }
-  throw lastException ?: IllegalStateException("Failed to start BesuNode after $maxAttempts attempts.")
+  throw lastException ?: IllegalStateException("Failed to start BesuNode after $maxAttempts attempts")
 }
