@@ -109,12 +109,14 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 		StateRootHash:       stateRootHashes[2],
 		ExpectedBlockHeight: 11,
 		FromAddress:         types.DummyAddress(32),
+		RollingHashTx:       types.Bytes32FromHex("0x23"),
 	}, {
 		TxHash:              internal.Uint64To32Bytes(2),
 		TxNumber:            4,
 		StateRootHash:       stateRootHashes[2],
 		ExpectedBlockHeight: 11,
 		FromAddress:         types.DummyAddress(32),
+		RollingHashTx:       types.Bytes32FromHex("0x03"),
 	}}
 
 	blobReq := blobsubmission.Request{
@@ -150,6 +152,8 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 			L2MsgMerkleTreeDepth:                    5,
 			LastFinalizedRollingHashNumberTx:        2,
 			RollingHashNumberTx:                     4,
+			LastFinalizedRollingHashTx:              utils.FmtIntHex32Bytes(0x0356),
+			RollingHashTx:                           utils.FmtIntHex32Bytes(0x03),
 		},
 	}
 
@@ -210,6 +214,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 			TxNumber:            3,
 			ExpectedBlockHeight: 23,
 			StateRootHash:       internal.Uint64To32Bytes(22),
+			RollingHashTx:       types.Bytes32FromHex("0x034456"),
 		}}
 
 	blobReq0 := blobsubmission.Request{
@@ -256,6 +261,8 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 			L2MsgMerkleTreeDepth:                    5,
 			LastFinalizedRollingHashNumberTx:        2,
 			RollingHashNumberTx:                     3,
+			LastFinalizedRollingHashTx:              utils.FmtIntHex32Bytes(0x03),
+			RollingHashTx:                           utils.FmtIntHex32Bytes(0x034456),
 		},
 	}
 

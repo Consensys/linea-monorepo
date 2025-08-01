@@ -48,6 +48,8 @@ func TestPublicInput(t *testing.T) {
 			L2MsgMerkleTreeDepth:                    5,
 			LastFinalizedRollingHashNumberTx:        3,
 			RollingHashNumberTx:                     5,
+			LastFinalizedRollingHashTx:              utils.FmtIntHex32Bytes(0x0345),
+			RollingHashTx:                           utils.FmtIntHex32Bytes(0x45),
 		},
 	}
 

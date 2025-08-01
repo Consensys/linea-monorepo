@@ -247,6 +247,8 @@ func (c *Circuit) Define(api frontend.API) error {
 	api.AssertIsLessOrEqual(c.NbInvalidity, maxNbInvalidity) // @Azam check if it is neccassary here
 	rInvalidity := internal.NewRange(api, c.NbInvalidity, maxNbInvalidity)
 	lastFinalizedTxNum := c.AggregationFPIQSnark.LastFinalizedRollingHashNumberTx
+	finalRollingHashNumberTx := c.AggregationFPIQSnark.LastFinalizedRollingHashNumberTx
+	finalRollingHashTx := c.AggregationFPIQSnark.LastFinalizedRollingHashTx
 	for i, invalidityFPI := range c.InvalidityFPI {
 
 		api.AssertIsEqual(invalidityFPI.SateRootHash, finalState) // @Azam make sure it really give the finalState
@@ -258,22 +260,23 @@ func (c *Circuit) Define(api frontend.API) error {
 			expr := api.Mul(rInvalidity.InRange[i], api.Sub(invalidityFPI.TxNumber, c.InvalidityFPI[i-1].TxNumber, 1))
 
 			api.AssertIsEqual(expr, 0)
-
-			//@Azam check if we need ; if rInvalidity.InRange[i] = 0 ----> c.InvalidityFPI[i] == c.InvalidityFPI[i-1]
 		}
+
+		finalRollingHashTx = api.Select(rInvalidity.InRange[i], invalidityFPI.RollingHashTx, finalRollingHashTx)
+		finalRollingHashNumberTx = api.Select(rInvalidity.InRange[i], invalidityFPI.TxNumber, finalRollingHashNumberTx)
 
 	}
 
 	// for i == 0 check it against the lastFinalizedTxNum
-	shouldUpdate := api.Mul(rInvalidity.InRange[0], api.Sub(c.InvalidityFPI[0].TxNumber, lastFinalizedTxNum, 1))
-	api.AssertIsEqual(shouldUpdate, 0)
+	api.AssertIsEqual(0,
+		api.Mul(
+			rInvalidity.InRange[0],
+			api.Sub(c.InvalidityFPI[0].TxNumber, lastFinalizedTxNum, 1),
+		))
 
 	// set the FinalRollingHashNumberFtx for the aggregation circuit.
-	pi.FinalRollingHashNumberTx =
-		api.Add(
-			api.Mul(api.Sub(1, rInvalidity.InRange[0]), pi.LastFinalizedRollingHashNumberTx),
-			api.Mul(rInvalidity.InRange[0], c.InvalidityFPI[len(c.InvalidityFPI)-1].TxNumber),
-		)
+	pi.FinalRollingHashNumberTx = finalRollingHashNumberTx
+	pi.FinalRollingHashTx = finalRollingHashTx
 
 	twoPow8 := big.NewInt(256)
 	// "open" aggregation public input
