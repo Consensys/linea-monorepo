@@ -48,7 +48,7 @@ public class OpCodes {
   public static void loadOpcodes(Fork fork) {
     // Handle fast case where fork already loaded
     if (fork.equals(forkLoaded)) {
-      log.info("opCodeDataList has already been initialized for " + fork + " fork.");
+      log.debug("opCodeDataList has already been initialized for {} fork.", fork);
       return;
     } else if (forkLoaded != null) {
       throw new IllegalArgumentException(
