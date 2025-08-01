@@ -184,7 +184,7 @@ class MaruDiscoveryService(
   }
 
   private fun pingBootnodes(bootnodeRecords: List<NodeRecord>) {
-    log.debug("Pinging bootnodes")
+    log.trace("Pinging bootnodes")
     bootnodeRecords.forEach(
       Consumer { bootnode: NodeRecord? ->
         SafeFuture
