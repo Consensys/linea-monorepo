@@ -115,8 +115,9 @@ class SyncControllerThreadSafetyTest {
     // Monitor for invariant violations: when CL starts syncing, EL should never be SYNCED
     executor.submit {
       repeat(iterations * 3) {
-        val clStatus = syncController.getCLSyncStatus()
-        val elStatus = syncController.getElSyncStatus()
+        val stateSnapshot = syncController.captureStateSnapshot()
+        val elStatus = stateSnapshot.elStatus
+        val clStatus = stateSnapshot.clStatus
 
         // This should never happen: CL syncing while EL is synced
         if (clStatus == CLSyncStatus.SYNCING && elStatus == ELSyncStatus.SYNCED) {
