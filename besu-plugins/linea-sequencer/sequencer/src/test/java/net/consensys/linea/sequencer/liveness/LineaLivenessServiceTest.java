@@ -15,10 +15,12 @@ import static org.mockito.Mockito.*;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import net.consensys.linea.bundles.TransactionBundle;
 import net.consensys.linea.config.LineaLivenessServiceConfiguration;
+import net.consensys.linea.metrics.LineaMetricCategory;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.plugin.services.*;
 import org.hyperledger.besu.plugin.services.metrics.Counter;
@@ -58,6 +60,7 @@ public class LineaLivenessServiceTest {
   private static final String SIGNER_KEY_ID = "test-key";
   private static final String SIGNER_ADDRESS = "0x1234567890123456789012345678901234567890";
   private static final long MAX_BLOCK_AGE_SECONDS = 10;
+  private static final long BUNDLE_MAX_TIMESTAMP_SURPLUS_SECONDS = 12;
   private static final long GAS_LIMIT = 100000;
   private static final long GAS_PRICE = 1000000000; // 1Gwei
 
@@ -67,6 +70,10 @@ public class LineaLivenessServiceTest {
     when(metricsSystem.createCounter(any(), anyString(), anyString())).thenReturn(counter);
     when(metricsSystem.createLabelledSuppliedGauge(any(), anyString(), anyString(), anyString()))
         .thenReturn(labelledSuppliedMetric);
+
+    // Mock metric category registry
+    when(metricCategoryRegistry.isMetricCategoryEnabled(eq(LineaMetricCategory.SEQUENCER_LIVENESS)))
+        .thenReturn(true);
 
     // Mock rpc endpoint service
     when(rpcEndpointService.call(eq("eth_getTransactionCount"), any()))
@@ -93,12 +100,14 @@ public class LineaLivenessServiceTest {
 
   private void setupDefaultConfiguration() {
     when(lineaLivenessServiceConfiguration.enabled()).thenReturn(true);
-    when(lineaLivenessServiceConfiguration.metricCategoryEnabled()).thenReturn(true);
     when(lineaLivenessServiceConfiguration.contractAddress()).thenReturn(CONTRACT_ADDRESS);
     when(lineaLivenessServiceConfiguration.signerUrl()).thenReturn(SIGNER_URL);
     when(lineaLivenessServiceConfiguration.signerKeyId()).thenReturn(SIGNER_KEY_ID);
     when(lineaLivenessServiceConfiguration.signerAddress()).thenReturn(SIGNER_ADDRESS);
-    when(lineaLivenessServiceConfiguration.maxBlockAgeSeconds()).thenReturn(MAX_BLOCK_AGE_SECONDS);
+    when(lineaLivenessServiceConfiguration.maxBlockAgeSeconds())
+        .thenReturn(Duration.ofSeconds(MAX_BLOCK_AGE_SECONDS));
+    when(lineaLivenessServiceConfiguration.bundleMaxTimestampSurplusSecond())
+        .thenReturn(Duration.ofSeconds(BUNDLE_MAX_TIMESTAMP_SURPLUS_SECONDS));
     when(lineaLivenessServiceConfiguration.gasLimit()).thenReturn(GAS_LIMIT);
     when(lineaLivenessServiceConfiguration.gasPrice()).thenReturn(GAS_PRICE);
   }
@@ -125,7 +134,8 @@ public class LineaLivenessServiceTest {
   @Test
   public void shouldNotCallMetricFunctionsIfMetricIsDisabled() {
     when(lineaLivenessServiceConfiguration.enabled()).thenReturn(true);
-    when(lineaLivenessServiceConfiguration.metricCategoryEnabled()).thenReturn(false);
+    when(metricCategoryRegistry.isMetricCategoryEnabled(eq(LineaMetricCategory.SEQUENCER_LIVENESS)))
+        .thenReturn(false);
 
     livenessService =
         new LineaLivenessService(
@@ -135,7 +145,6 @@ public class LineaLivenessServiceTest {
             metricCategoryRegistry,
             metricsSystem);
 
-    verify(metricCategoryRegistry, never()).addMetricCategory(any());
     verify(metricsSystem, never()).createCounter(any(), any(), any());
   }
 

@@ -29,7 +29,7 @@ import org.hyperledger.besu.plugin.services.rpc.RpcResponseType;
  * The LineaLivenessService is monitoring the blockchain and sending transactions to update the
  * LineaSequencerUptimeFeed contract when the sequencer is down/up.
  *
- * <p>This plugin works by checking the timestamp of the last block and comparing it to the current
+ * <p>This service works by checking the timestamp of the last block and comparing it to the current
  * time. If the last block is older than a configurable threshold, it sends two transactions: 1. A
  * 'down' transaction with the timestamp of the last block 2. An 'up' transaction with the current
  * timestamp
@@ -68,34 +68,33 @@ public class LineaLivenessService implements LivenessService {
     this.metricCategoryRegistry = metricCategoryRegistry;
     this.metricsSystem = metricsSystem;
 
-    if (this.lineaLivenessServiceConfiguration.enabled()) {
-      // Initialize metrics if enabled
-      if (lineaLivenessServiceConfiguration.metricCategoryEnabled()) {
-        // Register metric category
-        this.metricCategoryRegistry.addMetricCategory(SEQUENCER_LIVENESS_CATEGORY);
+    this.metricCategoryRegistry.addMetricCategory(SEQUENCER_LIVENESS_CATEGORY);
 
-        uptimeTransactionsCounter =
-            this.metricsSystem.createCounter(
-                SEQUENCER_LIVENESS_CATEGORY,
-                "uptime_transactions",
-                "Number of sequencer uptime transactions sent");
+    // Initialize metrics if enabled
+    if (this.lineaLivenessServiceConfiguration.enabled()
+        && this.metricCategoryRegistry.isMetricCategoryEnabled(SEQUENCER_LIVENESS_CATEGORY)) {
+      // Register metric category
+      uptimeTransactionsCounter =
+          this.metricsSystem.createCounter(
+              SEQUENCER_LIVENESS_CATEGORY,
+              "uptime_transactions",
+              "Number of sequencer uptime transactions sent");
 
-        transactionFailureCounter =
-            this.metricsSystem.createCounter(
-                SEQUENCER_LIVENESS_CATEGORY,
-                "transaction_failures",
-                "Number of transaction submission failures after");
+      transactionFailureCounter =
+          this.metricsSystem.createCounter(
+              SEQUENCER_LIVENESS_CATEGORY,
+              "transaction_failures",
+              "Number of transaction submission failures after");
 
-        // Labeled gauge for better aggregation across instances
-        final var labelledUptimeGauge =
-            this.metricsSystem.createLabelledSuppliedGauge(
-                SEQUENCER_LIVENESS_CATEGORY,
-                "uptime_transactions",
-                "Total number of sequencer uptime transactions sent by status",
-                "status");
-        labelledUptimeGauge.labels(uptimeTransactionDownCount::doubleValue, "down");
-        labelledUptimeGauge.labels(uptimeTransactionUpCount::doubleValue, "up");
-      }
+      // Labeled gauge for better aggregation across instances
+      final var labelledUptimeGauge =
+          this.metricsSystem.createLabelledSuppliedGauge(
+              SEQUENCER_LIVENESS_CATEGORY,
+              "uptime_transactions",
+              "Total number of sequencer uptime transactions sent by status",
+              "status");
+      labelledUptimeGauge.labels(uptimeTransactionDownCount::doubleValue, "down");
+      labelledUptimeGauge.labels(uptimeTransactionUpCount::doubleValue, "up");
     }
   }
 
@@ -169,7 +168,8 @@ public class LineaLivenessService implements LivenessService {
     if (cachedLastBlockTimestamp > 0
         && cachedLastDownBlockTimestamp <= cachedLastReportedDownBlockTimestamp
         && cachedLastBlockTimestamp > cachedLastDownBlockTimestamp
-        && elapsedTimeSinceLastBlock > lineaLivenessServiceConfiguration.maxBlockAgeSeconds()) {
+        && elapsedTimeSinceLastBlock
+            > lineaLivenessServiceConfiguration.maxBlockAgeSeconds().getSeconds()) {
       this.lastDownBlockTimestamp.set(cachedLastBlockTimestamp);
       shouldBuild = true;
     } else {
@@ -183,7 +183,8 @@ public class LineaLivenessService implements LivenessService {
 
       elapsedTimeSinceLastBlock = currentTimestamp - adjustedLastBlockTimestamp;
 
-      if (elapsedTimeSinceLastBlock > lineaLivenessServiceConfiguration.maxBlockAgeSeconds()) {
+      if (elapsedTimeSinceLastBlock
+          > lineaLivenessServiceConfiguration.maxBlockAgeSeconds().getSeconds()) {
         // only update lastDownBlockTimestamp if the last late block was reported
         // should only happen for first lastBlockTimestamp check
         if (cachedLastDownBlockTimestamp <= cachedLastReportedDownBlockTimestamp) {
@@ -196,7 +197,7 @@ public class LineaLivenessService implements LivenessService {
     log.debug(
         " targetBlockNumber={} lastBlockTimestamp={} cachedLastBlockTimestamp={}"
             + " cachedLastDownBlockTimestamp={} cachedLastReportedDownBlockTimestamp={} lastDownBlockTimestamp={}"
-            + " currentTimestamp={} adjustedLastBlockTimestamp={} elapsedTimeSinceLastBlock={}",
+            + " currentTimestamp={} adjustedLastBlockTimestamp={} elapsedTimeSinceLastBlock={} shouldBuild={}",
         targetBlockNumber,
         lastBlockTimestamp,
         cachedLastBlockTimestamp,
@@ -205,7 +206,8 @@ public class LineaLivenessService implements LivenessService {
         lastDownBlockTimestamp.get(),
         currentTimestamp,
         adjustedLastBlockTimestamp,
-        elapsedTimeSinceLastBlock);
+        elapsedTimeSinceLastBlock,
+        shouldBuild);
 
     this.lastBlockTimestamp.set(lastBlockTimestamp);
 
@@ -228,14 +230,17 @@ public class LineaLivenessService implements LivenessService {
         log.info(
             "Need to send liveness bundled txs at targetBlockNumber={} as last block elapsed time is greater than {}",
             targetBlockNumber,
-            lineaLivenessServiceConfiguration.maxBlockAgeSeconds());
+            lineaLivenessServiceConfiguration.maxBlockAgeSeconds().getSeconds());
         return Optional.of(
             buildTransactionBundle(
                 this.lastDownBlockTimestamp.get(),
                 currentTimestamp,
                 targetBlockNumber,
                 currentTimestamp - 1,
-                currentTimestamp + 12));
+                currentTimestamp
+                    + lineaLivenessServiceConfiguration
+                        .bundleMaxTimestampSurplusSecond()
+                        .getSeconds()));
       } else {
         return Optional.empty();
       }
@@ -248,14 +253,14 @@ public class LineaLivenessService implements LivenessService {
   @Override
   public void updateUptimeMetrics(boolean isSucceeded, long blockTimestamp) {
     if (isSucceeded) {
-      if (lineaLivenessServiceConfiguration.metricCategoryEnabled()) {
+      if (this.metricCategoryRegistry.isMetricCategoryEnabled(SEQUENCER_LIVENESS_CATEGORY)) {
         uptimeTransactionUpCount.incrementAndGet();
         uptimeTransactionDownCount.incrementAndGet();
         uptimeTransactionsCounter.inc(2);
       }
       lastReportedDownBlockTimestamp.set(blockTimestamp);
     } else if (transactionFailureCounter != null) {
-      if (lineaLivenessServiceConfiguration.metricCategoryEnabled()) {
+      if (this.metricCategoryRegistry.isMetricCategoryEnabled(SEQUENCER_LIVENESS_CATEGORY)) {
         transactionFailureCounter.inc(2);
       }
     }

@@ -25,6 +25,7 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.api.util.DomainObjectDecodeUtils;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.web3j.abi.FunctionEncoder;
 import org.web3j.abi.datatypes.Bool;
 import org.web3j.abi.datatypes.Function;
@@ -39,22 +40,25 @@ public class LineaLivenessTxBuilder implements LivenessTxBuilder {
   public static final BigInteger ZERO_TRANSACTION_VALUE = BigInteger.ZERO;
   private final HttpClient httpClient;
   private final ObjectMapper objectMapper;
+  private final BlockchainService blockchainService;
   private final String signerKeyId;
   private final String signerUrl;
   private final String livenessContractAddress;
   private final long gasPrice;
   private final long gasLimit;
-  private final long chainId;
+  private final BigInteger chainId;
 
   public LineaLivenessTxBuilder(
       final LineaLivenessServiceConfiguration lineaLivenessServiceConfiguration,
-      final long chainId) {
+      final BlockchainService blockchainService,
+      final BigInteger chainId) {
     this.chainId = chainId;
     this.signerKeyId = lineaLivenessServiceConfiguration.signerKeyId();
     this.signerUrl = lineaLivenessServiceConfiguration.signerUrl();
     this.livenessContractAddress = lineaLivenessServiceConfiguration.contractAddress();
     this.gasPrice = lineaLivenessServiceConfiguration.gasPrice();
     this.gasLimit = lineaLivenessServiceConfiguration.gasLimit();
+    this.blockchainService = blockchainService;
 
     // Initialize HTTP client and JSON mapper for Web3Signer API calls
     httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
@@ -111,11 +115,11 @@ public class LineaLivenessTxBuilder implements LivenessTxBuilder {
     Wei gasPrice = getGasPrice();
 
     // Validate and get gas limit
-    long gasLimit = getValidatedGasLimit();
+    long gasLimit = this.gasLimit;
 
     // Create transaction
     return RawTransaction.createTransaction(
-        chainId,
+        chainId.longValue(),
         BigInteger.valueOf(nonce),
         BigInteger.valueOf(gasLimit),
         Address.fromHexString(livenessContractAddress).toString(),
@@ -132,48 +136,10 @@ public class LineaLivenessTxBuilder implements LivenessTxBuilder {
    */
   private Wei getGasPrice() {
     // Use configured gas price
-    long adjustedGasPrice = Math.max(gasPrice, 7);
+    long adjustedGasPrice =
+        Math.max(gasPrice, blockchainService.getNextBlockBaseFee().orElse(Wei.ONE).toLong());
     log.debug("Adjusted gas price: {} Wei (configured as {} Wei)", adjustedGasPrice, gasPrice);
     return Wei.of(adjustedGasPrice);
-  }
-
-  /**
-   * Validates and returns the gas limit for transactions. Ensures the gas limit is positive and
-   * within reasonable bounds.
-   *
-   * @return the validated gas limit
-   * @throws IOException if the gas limit is invalid
-   */
-  private long getValidatedGasLimit() throws IOException {
-    long configuredGasLimit = gasLimit;
-
-    // Minimum gas limit for a contract call (21_000 for simple transfer plus some overhead)
-    long minimumGasLimit = 21000L;
-    // Maximum reasonable gas limit (to prevent accidentally high values)
-    long maximumGasLimit = 10_000_000L;
-
-    if (configuredGasLimit <= 0) {
-      throw new IOException("Gas limit must be positive, but was: " + configuredGasLimit);
-    }
-
-    if (configuredGasLimit < minimumGasLimit) {
-      log.warn(
-          "Configured gas limit ({}) is below minimum ({}), using minimum",
-          configuredGasLimit,
-          minimumGasLimit);
-      return minimumGasLimit;
-    }
-
-    if (configuredGasLimit > maximumGasLimit) {
-      log.warn(
-          "Configured gas limit ({}) exceeds maximum ({}), using maximum",
-          configuredGasLimit,
-          maximumGasLimit);
-      return maximumGasLimit;
-    }
-
-    log.debug("Using validated gas limit: {}", configuredGasLimit);
-    return configuredGasLimit;
   }
 
   /**

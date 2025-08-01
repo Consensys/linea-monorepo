@@ -24,10 +24,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
-import net.consensys.linea.bundles.BundlePoolService;
 import net.consensys.linea.bundles.LineaLimitedBundlePool;
 import net.consensys.linea.bundles.TransactionBundle;
-import net.consensys.linea.config.LineaLivenessServiceConfiguration;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
@@ -67,10 +65,8 @@ class LineaTransactionSelectorFactoryTest {
   private LineaTransactionSelectorConfiguration mockTxSelectorConfiguration;
   private LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration;
   private LineaProfitabilityConfiguration mockProfitabilityConfiguration;
-  private LineaLivenessServiceConfiguration mockLineaLivenessServiceConfiguration;
   private BesuEvents mockEvents;
   private LineaLimitedBundlePool bundlePool;
-  private BundlePoolService mockBundlePool;
   private LineaTracerConfiguration lineaTracerConfiguration;
   private LineaTransactionSelectorFactory factory;
 
@@ -106,7 +102,6 @@ class LineaTransactionSelectorFactoryTest {
     l1L2BridgeConfiguration =
         new LineaL1L2BridgeSharedConfiguration(BRIDGE_CONTRACT, BRIDGE_LOG_TOPIC);
     mockProfitabilityConfiguration = mock(LineaProfitabilityConfiguration.class);
-    mockLineaLivenessServiceConfiguration = mock(LineaLivenessServiceConfiguration.class);
     mockEvents = mock(BesuEvents.class);
     bundlePool = spy(new LineaLimitedBundlePool(dataDir, 4096, mockEvents, mockBlockchainService));
 

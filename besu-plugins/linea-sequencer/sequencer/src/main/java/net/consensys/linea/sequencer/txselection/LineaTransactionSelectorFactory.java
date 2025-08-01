@@ -10,7 +10,6 @@
 package net.consensys.linea.sequencer.txselection;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
@@ -89,22 +88,12 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
 
   public void selectPendingTransactions(
       final BlockTransactionSelectionService bts, final ProcessableBlockHeader pendingBlockHeader) {
-    final var bundlesByBlockNumber = new ArrayList<TransactionBundle>();
-    final long headBlockTimestamp = blockchainService.getChainHeadHeader().getTimestamp();
 
-    Optional<TransactionBundle> livenessBundle =
-        livenessService.isPresent() && headBlockTimestamp > 0
-            ? livenessService
-                .get()
-                .checkBlockTimestampAndBuildBundle(
-                    Instant.now().getEpochSecond(),
-                    headBlockTimestamp,
-                    pendingBlockHeader.getNumber())
-            : Optional.empty();
+    // check and send liveness bundle if any
+    checkAndSendLivenessBundle(bts, pendingBlockHeader.getNumber());
 
-    livenessBundle.ifPresent(bundlesByBlockNumber::add);
-    bundlesByBlockNumber.addAll(
-        bundlePoolService.getBundlesByBlockNumber(pendingBlockHeader.getNumber()));
+    final var bundlesByBlockNumber =
+        bundlePoolService.getBundlesByBlockNumber(pendingBlockHeader.getNumber());
 
     log.atDebug()
         .setMessage("Bundle pool stats: total={}, for block #{}={}")
@@ -117,13 +106,6 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
         bundle -> {
           log.trace("Starting evaluation of bundle {}", bundle);
 
-          boolean isLivenessBundle =
-              livenessBundle.isPresent()
-                  && bundle
-                      .toBundleParameter()
-                      .replacementUUID()
-                      .equals(livenessBundle.get().toBundleParameter().replacementUUID());
-
           var badBundleRes =
               bundle.pendingTransactions().stream()
                   .map(bts::evaluatePendingTransaction)
@@ -132,19 +114,45 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
 
           if (badBundleRes.isPresent()) {
             log.debug("Failed bundle {}, reason {}", bundle, badBundleRes);
-            if (isLivenessBundle) {
-              livenessService.get().updateUptimeMetrics(false, headBlockTimestamp);
-            }
             rollback(bts);
           } else {
             log.debug("Selected bundle {}", bundle);
-            if (isLivenessBundle) {
-              livenessService.get().updateUptimeMetrics(true, headBlockTimestamp);
-            }
             commit(bts);
           }
         });
     currSelector.set(null);
+  }
+
+  private void checkAndSendLivenessBundle(
+      BlockTransactionSelectionService bts, long pendingBlockNumber) {
+    final long headBlockTimestamp = blockchainService.getChainHeadHeader().getTimestamp();
+
+    Optional<TransactionBundle> livenessBundle =
+        livenessService.isPresent() && headBlockTimestamp > 0
+            ? livenessService
+                .get()
+                .checkBlockTimestampAndBuildBundle(
+                    Instant.now().getEpochSecond(), headBlockTimestamp, pendingBlockNumber)
+            : Optional.empty();
+
+    if (livenessBundle.isPresent()) {
+      log.trace("Starting evaluation of liveness bundle {}", livenessBundle.get());
+      var badBundleRes =
+          livenessBundle.get().pendingTransactions().stream()
+              .map(bts::evaluatePendingTransaction)
+              .filter(evalRes -> !evalRes.selected())
+              .findFirst();
+
+      if (badBundleRes.isPresent()) {
+        log.debug("Failed liveness bundle {}, reason {}", livenessBundle.get(), badBundleRes);
+        livenessService.get().updateUptimeMetrics(false, headBlockTimestamp);
+        rollback(bts);
+      } else {
+        log.debug("Selected liveness bundle {}", livenessBundle.get());
+        livenessService.get().updateUptimeMetrics(true, headBlockTimestamp);
+        commit(bts);
+      }
+    }
   }
 
   private void commit(final BlockTransactionSelectionService bts) {

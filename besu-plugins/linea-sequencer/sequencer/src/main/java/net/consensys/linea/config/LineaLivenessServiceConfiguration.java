@@ -8,6 +8,7 @@
  */
 package net.consensys.linea.config;
 
+import java.time.Duration;
 import lombok.Builder;
 import net.consensys.linea.plugins.LineaOptionsConfiguration;
 
@@ -15,12 +16,12 @@ import net.consensys.linea.plugins.LineaOptionsConfiguration;
 @Builder(toBuilder = true)
 public record LineaLivenessServiceConfiguration(
     boolean enabled,
-    long maxBlockAgeSeconds,
+    Duration maxBlockAgeSeconds,
+    Duration bundleMaxTimestampSurplusSecond,
     String contractAddress,
     String signerUrl,
     String signerKeyId,
     String signerAddress,
     long gasLimit,
-    long gasPrice,
-    boolean metricCategoryEnabled)
+    long gasPrice)
     implements LineaOptionsConfiguration {}

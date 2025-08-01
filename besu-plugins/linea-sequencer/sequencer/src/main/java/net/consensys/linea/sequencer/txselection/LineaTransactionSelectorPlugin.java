@@ -93,7 +93,7 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
             .orElseThrow(
                 () -> new RuntimeException("Failed to get chain Id from the BlockchainService."));
     final LivenessTxBuilder livenessTxBuilder =
-        new LineaLivenessTxBuilder(livenessServiceConfiguration(), chainId.longValue());
+        new LineaLivenessTxBuilder(livenessServiceConfiguration(), blockchainService, chainId);
     final Optional<LivenessService> livenessService =
         livenessServiceConfiguration().enabled()
             ? Optional.of(
