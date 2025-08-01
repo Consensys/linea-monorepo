@@ -26,8 +26,8 @@ contract LineaSequencerUptimeFeed is
 	 uint80 latestRoundId; // Dummy roundId for backward compatibility
 	 	 /* 
 		  latestStatus: A variable with a value of either true or false
-		  true: The sequencer is up
-		  false: The sequencer is down
+		  false: The sequencer is up
+		  true: The sequencer is down
 		 */
 	 bool latestStatus; 
 	 uint64 startedAt;

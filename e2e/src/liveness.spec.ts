@@ -48,7 +48,7 @@ describe.skip("Liveness test suite", () => {
       // The latest status should be true to indicate sequencer is up
       // and the startedAt and updatedAt should be greater than or equal to the target block timestamp
       const latestRoundData = await livenessContract.latestRoundData();
-      expect(latestRoundData.answer).toEqual(1n);
+      expect(latestRoundData.answer).toEqual(0n); // which mean sequencer is currently reported as up
       expect(latestRoundData.startedAt).toBeGreaterThanOrEqual(BigInt(targetBlockTimestamp!));
       expect(latestRoundData.updatedAt).toBeGreaterThanOrEqual(BigInt(targetBlockTimestamp!));
 
@@ -76,12 +76,12 @@ describe.skip("Liveness test suite", () => {
       // check the first AnswerUpdated event is for downtime
       expect(downtimeEvent?.transactionIndex).toEqual(0);
       expect(downtimeEvent?.index).toEqual(0);
-      expect(parseInt(downtimeEvent?.topics[1] ?? "", 16)).toEqual(0); // topics[1] was the given status to update, should be 0 for downtime
+      expect(parseInt(downtimeEvent?.topics[1] ?? "", 16)).toEqual(1); // topics[1] was the given status to update, should be 1 for downtime
 
       // check the second AnswerUpdated event is for uptime
       expect(uptimeEvent?.transactionIndex).toEqual(1);
       expect(uptimeEvent?.index).toEqual(1);
-      expect(parseInt(uptimeEvent?.topics[1] ?? "", 16)).toEqual(1); // topics[1] was the given status to update, should be 1 for uptime
+      expect(parseInt(uptimeEvent?.topics[1] ?? "", 16)).toEqual(0); // topics[1] was the given status to update, should be 0 for uptime
     },
     60000,
   );

@@ -94,7 +94,7 @@ public class LineaLivenessTxBuilder implements LivenessTxBuilder {
     Function function =
         new Function(
             "updateStatus",
-            Arrays.asList(new Bool(isUp), new Uint64(timestamp)),
+            Arrays.asList(new Bool(!isUp), new Uint64(timestamp)),
             Collections.emptyList());
 
     String encodedFunction = FunctionEncoder.encode(function);
