@@ -16,6 +16,7 @@ import linea.ethapi.EthApiClient
 import linea.web3j.ethapi.createEthApiClient
 import maru.testutils.MaruFactory
 import maru.testutils.NetworkParticipantStack
+import maru.testutils.besu.BesuFactory
 import maru.testutils.besu.BesuTransactionsHelper
 import maru.testutils.besu.ethGetBlockByNumber
 import org.apache.logging.log4j.LogManager
@@ -67,6 +68,7 @@ class MaruLineaFinalizationTest {
     followerStack =
       NetworkParticipantStack(
         cluster = cluster,
+        besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
       ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
         maruFactory.buildTestMaruFollowerWithP2pPeering(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
@@ -115,9 +117,11 @@ class MaruLineaFinalizationTest {
 
   @AfterEach
   fun tearDown() {
+    followerStack.maruApp.stop()
+    validatorStack.maruApp.stop()
+    followerStack.maruApp.close()
+    validatorStack.maruApp.close()
     cluster.close()
-    followerStack.stop()
-    validatorStack.stop()
   }
 
   @Test

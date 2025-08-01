@@ -58,6 +58,7 @@ class MaruStartFromPragueTest {
   fun tearDown() {
     cluster.close()
     maruNode.stop()
+    maruNode.close()
   }
 
   @OptIn(ExperimentalTime::class)

@@ -76,6 +76,7 @@ class MaruQbftValidatorTest {
   fun tearDown() {
     cluster.close()
     networkParticipantStack.maruApp.stop()
+    networkParticipantStack.maruApp.close()
   }
 
   @Test

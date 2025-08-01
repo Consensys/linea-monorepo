@@ -268,42 +268,83 @@ class MaruFactory {
     return buildApp(config, overridingP2PNetwork = p2pNetwork)
   }
 
-  fun buildTestMaruValidatorWithConsensusSwitch(
+  private fun switchableGenesis(switchTimestamp: Long): String =
+    """
+    {
+      "chainId": 1337,
+      "config": {
+        "0": {
+          "type": "delegated",
+          "blockTimeSeconds": 1
+        },
+        "$switchTimestamp": {
+          "type": "qbft",
+          "blockTimeSeconds": 1,
+          "validatorSet": ["$validatorAddress"],
+          "elFork": "Prague"
+        }
+      }
+    }
+    """.trimIndent()
+
+  fun buildSwitchableTestMaruValidatorWithP2pPeering(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
     dataDir: Path,
     switchTimestamp: Long,
-    p2pNetwork: P2PNetwork = NoOpP2PNetwork,
+    overridingP2PNetwork: P2PNetwork? = null,
+    overridingFinalizationProvider: FinalizationProvider? = null,
+    overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
+    p2pPort: UInt = 0u,
     allowEmptyBlocks: Boolean = false,
   ): MaruApp {
+    val beaconGenesisConfig = Utils.parseBeaconChainConfig(switchableGenesis(switchTimestamp)).domainFriendly()
+    val p2pConfig = buildP2pConfig(p2pPort = p2pPort, validatorPortForStaticPeering = null)
     val config =
       buildMaruConfig(
         ethereumJsonRpcUrl = ethereumJsonRpcUrl,
         engineApiRpc = engineApiRpc,
         dataDir = dataDir,
+        p2pConfig = p2pConfig,
+        followers = FollowersConfig(emptyMap()),
         qbftOptions = validatorQbftOptions,
+        overridingLineaContractClient = overridingLineaContractClient,
         allowEmptyBlocks = allowEmptyBlocks,
       )
     writeValidatorPrivateKey(config)
-    val genesisContent =
-      """
-      {
-        "chainId": 1337,
-        "config": {
-          "0": {
-            "type": "delegated",
-            "blockTimeSeconds": 1
-          },
-          "$switchTimestamp": {
-            "type": "qbft",
-            "blockTimeSeconds": 1,
-            "validatorSet": ["$validatorAddress"],
-            "elFork": "Prague"
-          }
-        }
-      }
-      """.trimIndent()
-    val beaconGenesisConfig = Utils.parseBeaconChainConfig(genesisContent).domainFriendly()
-    return buildApp(config, beaconGenesisConfig = beaconGenesisConfig, overridingP2PNetwork = p2pNetwork)
+
+    return buildApp(
+      config = config,
+      beaconGenesisConfig = beaconGenesisConfig,
+      overridingP2PNetwork = overridingP2PNetwork,
+      overridingFinalizationProvider = overridingFinalizationProvider,
+      overridingLineaContractClient = overridingLineaContractClient,
+    )
+  }
+
+  fun buildTestMaruFollowerWithConsensusSwitch(
+    ethereumJsonRpcUrl: String,
+    engineApiRpc: String,
+    dataDir: Path,
+    switchTimestamp: Long,
+    validatorPortForStaticPeering: UInt? = null,
+    overridingP2PNetwork: P2PNetwork? = null,
+  ): MaruApp {
+    val p2pConfig = buildP2pConfig(validatorPortForStaticPeering = validatorPortForStaticPeering)
+    val followersConfig = buildFollowersConfig(engineApiRpc)
+    val beaconGenesisConfig = Utils.parseBeaconChainConfig(switchableGenesis(switchTimestamp)).domainFriendly()
+    val config =
+      buildMaruConfig(
+        ethereumJsonRpcUrl = ethereumJsonRpcUrl,
+        engineApiRpc = engineApiRpc,
+        dataDir = dataDir,
+        p2pConfig = p2pConfig,
+        followers = followersConfig,
+      )
+    return buildApp(
+      config = config,
+      beaconGenesisConfig = beaconGenesisConfig,
+      overridingP2PNetwork = overridingP2PNetwork,
+    )
   }
 }

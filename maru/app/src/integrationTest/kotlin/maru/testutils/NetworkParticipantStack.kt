@@ -13,13 +13,15 @@ import java.nio.file.Path
 import maru.app.MaruApp
 import maru.testutils.besu.BesuFactory
 import maru.testutils.besu.startWithRetry
+import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
 
 class NetworkParticipantStack(
   cluster: Cluster,
+  besuBuilder: (() -> BesuNode)? = null,
   maruBuilder: (ethereumJsonRpcBaseUrl: String, engineRpcUrl: String, tmpDir: Path) -> MaruApp,
 ) {
-  val besuNode = BesuFactory.buildTestBesu()
+  val besuNode = besuBuilder?.invoke() ?: BesuFactory.buildTestBesu()
   val tmpDir: Path =
     Files.createTempDirectory("maru-app").also {
       it.toFile().deleteOnExit()
