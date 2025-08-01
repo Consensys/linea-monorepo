@@ -10,15 +10,11 @@ package maru.p2p
 
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
-import java.util.concurrent.TimeUnit
 import maru.config.P2P
-import maru.p2p.messages.Status
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
-import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.doReturn
-import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
@@ -28,67 +24,6 @@ import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
 
 class MaruPeerManagerTest {
-  @Test
-  fun `disconnects peer if status not received within timeout`() {
-    val mockScheduler = mock<ScheduledExecutorService>()
-    val mockTimeoutFuture = mock<ScheduledFuture<*>>()
-    val runnableCaptor = argumentCaptor<Runnable>()
-    val nodeId = mock<NodeId>()
-    val peer = mock<Peer>()
-    val maruPeerFactory = mock<MaruPeerFactory>()
-    val maruPeer = mock<MaruPeer>()
-    val p2pConfig = mock<P2P>()
-
-    whenever(peer.id).thenReturn(nodeId)
-    whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
-    whenever(maruPeer.connectionInitiatedLocally()).thenReturn(false)
-    whenever(maruPeer.getStatus()).thenReturn(null)
-    whenever(p2pConfig.maxPeers).thenReturn(10)
-    doReturn(
-      mockTimeoutFuture,
-    ).whenever(mockScheduler).schedule(runnableCaptor.capture(), eq(10L), eq(TimeUnit.SECONDS))
-
-    val manager = MaruPeerManager(mockScheduler, maruPeerFactory, p2pConfig)
-    manager.start(discoveryService = null, p2pNetwork = mock())
-    manager.onConnect(peer)
-
-    // Simulate timeout by executing the captured runnable
-    runnableCaptor.firstValue.run()
-
-    verify(maruPeer).disconnectImmediately(any(), eq(false))
-  }
-
-  @Test
-  fun `does not disconnect peer if status is received before timeout`() {
-    val mockScheduler = mock<ScheduledExecutorService>()
-    val mockTimeoutFuture = mock<ScheduledFuture<*>>()
-    val runnableCaptor = argumentCaptor<Runnable>()
-    val nodeId = mock<NodeId>()
-    val peer = mock<Peer>()
-    val maruPeerFactory = mock<MaruPeerFactory>()
-    val maruPeer = mock<MaruPeer>()
-    val status = mock<Status>()
-    val p2pConfig = mock<P2P>()
-
-    whenever(peer.id).thenReturn(nodeId)
-    whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
-    whenever(maruPeer.connectionInitiatedLocally()).thenReturn(false)
-    whenever(maruPeer.getStatus()).thenReturn(status)
-    whenever(p2pConfig.maxPeers).thenReturn(10)
-    doReturn(
-      mockTimeoutFuture,
-    ).whenever(mockScheduler).schedule(runnableCaptor.capture(), eq(10L), eq(TimeUnit.SECONDS))
-
-    val manager = MaruPeerManager(mockScheduler, maruPeerFactory, p2pConfig)
-    manager.start(discoveryService = null, p2pNetwork = mock())
-    manager.onConnect(peer)
-
-    // Simulate timeout by executing the captured runnable
-    runnableCaptor.firstValue.run()
-
-    verify(maruPeer, never()).disconnectImmediately(any(), any())
-  }
-
   @Test
   fun `does not schedule timeout when connection is initiated locally`() {
     val mockScheduler = mock<ScheduledExecutorService>()
@@ -119,7 +54,7 @@ class MaruPeerManagerTest {
     val peer = mock<Peer>()
     val maruPeerFactory = mock<MaruPeerFactory>()
     val maruPeer = mock<MaruPeer>()
-    val mockFutureStatus = mock<SafeFuture<Status>>()
+    val mockFutureStatus = mock<SafeFuture<Unit>>()
     val p2pConfig = mock<P2P>()
 
     whenever(peer.id).thenReturn(nodeId)
@@ -138,8 +73,6 @@ class MaruPeerManagerTest {
 
   @Test
   fun `does not send status message for remotely initiated connections`() {
-    val mockScheduler = mock<ScheduledExecutorService>()
-    val mockTimeoutFuture = mock<ScheduledFuture<*>>()
     val nodeId = mock<NodeId>()
     val peer = mock<Peer>()
     val maruPeerFactory = mock<MaruPeerFactory>()
@@ -151,14 +84,13 @@ class MaruPeerManagerTest {
     whenever(maruPeer.connectionInitiatedLocally()).thenReturn(false)
     whenever(maruPeer.getStatus()).thenReturn(null)
     whenever(p2pConfig.maxPeers).thenReturn(10)
-    doReturn(mockTimeoutFuture).whenever(mockScheduler).schedule(any<Runnable>(), eq(10L), eq(TimeUnit.SECONDS))
+    whenever(p2pConfig.statusUpdate).thenReturn(P2P.StatusUpdateConfig())
 
-    val manager = MaruPeerManager(mockScheduler, maruPeerFactory, p2pConfig)
+    val manager = MaruPeerManager(maruPeerFactory = maruPeerFactory, p2pConfig = p2pConfig)
     manager.start(discoveryService = null, p2pNetwork = mock())
     manager.onConnect(peer)
 
     verify(maruPeer, never()).sendStatus()
-    verify(mockScheduler).schedule(any<Runnable>(), eq(10L), eq(TimeUnit.SECONDS))
   }
 
   @Test
@@ -196,6 +128,7 @@ class MaruPeerManagerTest {
     whenever(maruPeer.connectionInitiatedLocally()).thenReturn(false)
     whenever(maruPeer.getStatus()).thenReturn(null)
     whenever(p2pConfig.maxPeers).thenReturn(10)
+    whenever(p2pConfig.statusUpdate).thenReturn(P2P.StatusUpdateConfig())
     doReturn(mock<ScheduledFuture<*>>()).whenever(mockScheduler).schedule(any<Runnable>(), any(), any())
 
     val manager = MaruPeerManager(mockScheduler, maruPeerFactory, p2pConfig)

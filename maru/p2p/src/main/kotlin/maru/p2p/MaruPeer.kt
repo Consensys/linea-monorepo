@@ -9,7 +9,13 @@
 package maru.p2p
 
 import java.util.Optional
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.time.Duration
+import maru.config.P2P
 import maru.p2p.messages.BeaconBlocksByRangeRequest
 import maru.p2p.messages.BeaconBlocksByRangeResponse
 import maru.p2p.messages.Status
@@ -21,6 +27,7 @@ import tech.pegasys.teku.networking.p2p.network.PeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.DisconnectRequestHandler
 import tech.pegasys.teku.networking.p2p.peer.Peer
+import tech.pegasys.teku.networking.p2p.peer.PeerDisconnectedException
 import tech.pegasys.teku.networking.p2p.peer.PeerDisconnectedSubscriber
 import tech.pegasys.teku.networking.p2p.reputation.ReputationAdjustment
 import tech.pegasys.teku.networking.p2p.rpc.RpcMethod
@@ -31,14 +38,16 @@ import tech.pegasys.teku.networking.p2p.rpc.RpcStreamController
 interface MaruPeer : Peer {
   fun getStatus(): Status?
 
-  fun sendStatus(): SafeFuture<Status>
+  fun sendStatus(): SafeFuture<Unit>
 
-  fun updateStatus(status: Status)
+  fun updateStatus(newStatus: Status)
 
   fun sendBeaconBlocksByRange(
     startBlockNumber: ULong,
     count: ULong,
   ): SafeFuture<BeaconBlocksByRangeResponse>
+
+  fun scheduleDisconnectIfStatusNotReceived(delay: Duration)
 }
 
 interface MaruPeerFactory {
@@ -48,12 +57,14 @@ interface MaruPeerFactory {
 class DefaultMaruPeerFactory(
   private val rpcMethods: RpcMethods,
   private val statusMessageFactory: StatusMessageFactory,
+  private val p2pConfig: P2P,
 ) : MaruPeerFactory {
   override fun createMaruPeer(delegatePeer: Peer): MaruPeer =
     DefaultMaruPeer(
       delegatePeer = delegatePeer,
       rpcMethods = rpcMethods,
       statusMessageFactory = statusMessageFactory,
+      p2pConfig = p2pConfig,
     )
 }
 
@@ -61,26 +72,68 @@ class DefaultMaruPeer(
   private val delegatePeer: Peer,
   private val rpcMethods: RpcMethods,
   private val statusMessageFactory: StatusMessageFactory,
+  private val scheduler: ScheduledExecutorService =
+    Executors.newSingleThreadScheduledExecutor(
+      Thread.ofVirtual().factory(),
+    ),
+  private val p2pConfig: P2P,
 ) : MaruPeer {
+  init {
+    delegatePeer.subscribeDisconnect { _, _ -> scheduler.shutdown() }
+  }
+
   private val log: Logger = LogManager.getLogger(this.javaClass)
   private val status = AtomicReference<Status?>(null)
+  private var scheduledDisconnect: Optional<ScheduledFuture<*>> = Optional.empty()
 
   override fun getStatus(): Status? = status.get()
 
-  override fun sendStatus(): SafeFuture<Status> {
+  override fun sendStatus(): SafeFuture<Unit> {
     try {
       val statusMessage = statusMessageFactory.createStatusMessage()
       val sendRpcMessage: SafeFuture<Message<Status, RpcMessageType>> =
         sendRpcMessage(statusMessage, rpcMethods.status())
-      return sendRpcMessage.thenApply { message -> message.payload }
+      scheduleDisconnectIfStatusNotReceived(p2pConfig.statusUpdate.timeout)
+      return sendRpcMessage
+        .thenApply { message -> message.payload }
+        .whenComplete { status, error ->
+          if (error != null) {
+            disconnectImmediately(Optional.of(DisconnectReason.REMOTE_FAULT), false)
+            if (error.cause !is PeerDisconnectedException) {
+              log.debug("Failed to send status message to peer={}: errorMessage={}", this.id, error.message, error)
+            }
+          } else {
+            updateStatus(status)
+            scheduler.schedule(this::sendStatus, p2pConfig.statusUpdate.renewal.inWholeSeconds, TimeUnit.SECONDS)
+          }
+        }.thenApply {}
     } catch (e: Exception) {
-      log.error("Failed to send status message to peer ${delegatePeer.id}", e)
+      if (e.cause !is PeerDisconnectedException) {
+        log.error("Failed to send status message to peer={}", id, e)
+      }
       return SafeFuture.failedFuture(e)
     }
   }
 
-  override fun updateStatus(status: Status) {
-    this.status.set(status)
+  override fun updateStatus(newStatus: Status) {
+    scheduledDisconnect.ifPresent { it.cancel(false) }
+    status.set(newStatus)
+    log.trace("Received status update from peer={}: status={}", id, newStatus)
+    if (connectionInitiatedRemotely()) {
+      scheduleDisconnectIfStatusNotReceived(p2pConfig.statusUpdate.renewal + p2pConfig.statusUpdate.renewalLeeway)
+    }
+  }
+
+  override fun scheduleDisconnectIfStatusNotReceived(delay: Duration) {
+    scheduledDisconnect.ifPresent { it.cancel(false) }
+    scheduledDisconnect =
+      Optional.of(
+        scheduler.schedule(
+          { disconnectCleanly(DisconnectReason.REMOTE_FAULT) },
+          delay.inWholeSeconds,
+          TimeUnit.SECONDS,
+        ),
+      )
   }
 
   override fun sendBeaconBlocksByRange(
