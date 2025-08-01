@@ -377,9 +377,9 @@ func extractRLPFieldZkGeneral(api frontend.API, rawTx []frontend.Variable, offse
 	longValue := getValueAtOffset(api, rawTx, api.Add(offset, api.Add(frontend.Variable(1), longLengthOfLength)))
 
 	// Select the correct value based on the field type
-	nonce := api.Select(isSingleByte, singleByteValue, api.Select(isShortLength, shortValue, api.Select(isLongLength, longValue, frontend.Variable(0))))
+	field := api.Select(isSingleByte, singleByteValue, api.Select(isShortLength, shortValue, api.Select(isLongLength, longValue, frontend.Variable(0))))
 
-	return nonce
+	return field
 }
 
 func getValueAtOffset(api frontend.API, array []frontend.Variable, offset frontend.Variable) frontend.Variable {
