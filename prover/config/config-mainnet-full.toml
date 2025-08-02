@@ -9,20 +9,20 @@ retry_delays = [0, 1]
 [execution]
 prover_mode = "full"
 conflated_traces_dir = "/home/ubuntu/mainnet-test-2/conflated"
-requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/execution"
+requests_root_dir = "./shared/v3/prover-execution"
 
 
 [blob_decompression]
 prover_mode = "full"
-requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/compression"
+requests_root_dir = "./shared/v3/prover-compression"
 dict_paths = ["lib/compressor/compressor_dict.bin", "lib/compressor/dict/25-04-21.bin"]
 
 [aggregation]
 prover_mode = "full"
-requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/aggregation"
-num_proofs = [10, 20, 50, 100, 200, 400]
+requests_root_dir = "./shared/v3/prover-aggregation"
+num_proofs = [10]
 allowed_inputs = ["execution-dummy", "execution", "execution-large", "blob-decompression-dummy", "blob-decompression-v0", "blob-decompression-v1"]
-verifier_id = 1
+verifier_id = 0
 
 [public_input_interconnection]
 max_nb_decompression = 400
