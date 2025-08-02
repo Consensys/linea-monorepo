@@ -70,11 +70,12 @@ func (c *ChainConfigurationTestCircuit) Define(api frontend.API) error {
 
 	computedHash := chainConfig.Sum(api)
 
+	computedHashBytes := utils.ToBytes(api, computedHash)
 	// Enforce that the computed hash matches the expected hash
 
 	for i := 0; i < 32; i++ {
 
-		api.AssertIsEqual(computedHash[i], c.ExpectedHash[i])
+		api.AssertIsEqual(computedHashBytes[i], c.ExpectedHash[i])
 
 	}
 
