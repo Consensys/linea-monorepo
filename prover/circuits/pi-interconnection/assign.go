@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"hash"
+	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 
@@ -378,8 +379,8 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 	// but would be doubly redundant. We can remove it then.
 
 	a.ChainConfigurationFPISnark.ChainID = r.Aggregation.ChainID
-	a.ChainConfigurationFPISnark.BaseFee = cfg.BaseFee
-	a.ChainConfigurationFPISnark.L2MessageServiceAddress = r.Aggregation.L2MessageServiceAddr
+	a.ChainConfigurationFPISnark.BaseFee = 7
+	a.ChainConfigurationFPISnark.L2MessageServiceAddress = new(big.Int).SetBytes(r.Aggregation.L2MessageServiceAddr[:])
 
 	return
 }

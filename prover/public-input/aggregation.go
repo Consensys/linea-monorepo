@@ -2,6 +2,7 @@ package public_input
 
 import (
 	"hash"
+	"math/big"
 
 	"slices"
 
@@ -61,89 +62,58 @@ type Aggregation struct {
 }
 
 func (p Aggregation) Sum(hsh hash.Hash) []byte {
-
 	if hsh == nil {
-
 		hsh = sha3.NewLegacyKeccak256()
-
 	}
 
 	writeHex := func(hex string) {
-
 		b, err := utils.HexDecodeString(hex)
-
 		if err != nil {
-
 			panic(err)
-
 		}
-
 		hsh.Write(b)
-
 	}
 
 	writeInt := func(i int) {
-
 		b := utils.FmtInt32Bytes(i)
-
 		hsh.Write(b[:])
-
 	}
 
 	writeUint := func(i uint) {
-
 		b := utils.FmtUint32Bytes(i)
-
 		hsh.Write(b[:])
-
 	}
 
 	hsh.Reset()
-
 	for _, hex := range p.L2MsgRootHashes {
-
 		writeHex(hex)
-
 	}
-
 	l2Msgs := hsh.Sum(nil)
 
+	// Compute chain configuration hash using MiMC first
+	chainConfigHash := computeChainConfigurationHash(p.ChainID, 7, p.L2MessageServiceAddr)
+
 	hsh.Reset()
-
 	writeHex(p.ParentAggregationFinalShnarf)
-
 	writeHex(p.FinalShnarf)
-
 	writeUint(p.ParentAggregationLastBlockTimestamp)
-
 	writeUint(p.FinalTimestamp)
-
 	writeUint(p.LastFinalizedBlockNumber)
-
 	writeUint(p.FinalBlockNumber)
-
 	writeHex(p.LastFinalizedL1RollingHash)
-
 	writeHex(p.L1RollingHash)
-
 	writeUint(p.LastFinalizedL1RollingHashMessageNumber)
-
 	writeUint(p.L1RollingHashMessageNumber)
-
 	writeInt(p.L2MsgMerkleTreeDepth)
-
 	hsh.Write(l2Msgs)
+	// Add the chain configuration hash - exactly 32 bytes
+	hsh.Write(chainConfigHash[:])
 
 	// represent canonically as a bn254 scalar
-
 	var x bn254fr.Element
-
 	x.SetBytes(hsh.Sum(nil))
-
 	res := x.Bytes()
-
 	return res[:]
-
 }
 
 // GetPublicInputHex computes the public input of the finalization proof
@@ -212,9 +182,9 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 
 				ChainID: pi.ChainID,
 
-				// BaseFee: pi.BaseFee,
+				BaseFee: 7,
 
-				L2MessageServiceAddress: pi.L2MessageServiceAddr,
+				L2MessageServiceAddress: new(big.Int).SetBytes(pi.L2MessageServiceAddr[:]),
 			},
 		},
 
@@ -555,4 +525,32 @@ func (pi *ChainConfigurationFPISnark) Sum(api frontend.API) frontend.Variable {
 
 	return state
 
+}
+
+// computeChainConfigurationHash computes the MiMC hash of chain configuration
+func computeChainConfigurationHash(chainID uint64, baseFee uint64, l2MessageServiceAddr types.EthAddress) [32]byte {
+	h := mimc.NewMiMC()
+	h.Reset()
+
+	// Helper to write value to MiMC
+	writeValue := func(value *big.Int) {
+		var b [32]byte
+		value.FillBytes(b[:])
+		h.Write(b[:])
+	}
+
+	// Process chain ID
+	writeValue(new(big.Int).SetUint64(chainID))
+
+	// Process base fee
+	writeValue(new(big.Int).SetUint64(baseFee))
+
+	// Process L2 message service address
+	var addrBytes [32]byte
+	copy(addrBytes[12:], l2MessageServiceAddr[:]) // 주소는 20바이트, 32바이트로 패딩
+	h.Write(addrBytes[:])
+
+	var result [32]byte
+	copy(result[:], h.Sum(nil))
+	return result
 }
