@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 	blobtesting "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -45,11 +46,21 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 		InitialStateRootHash:         internal.Uint64To32Bytes(1),
 	}
 
+	invalReq := public_input.Invalidity{
+		TxHash:              internal.Uint64To32Bytes(2),
+		TxNumber:            4,
+		StateRootHash:       finalStateRootHash,
+		ExpectedBlockHeight: 9,
+		FromAddress:         types.DummyAddress(32),
+		RollingHashTx:       types.Bytes32FromHex("0x012345"),
+	}
+
 	merkleRoots := aggregation.PackInMiniTrees(test_utils.BlocksToHex(execReq.L2MessageHashes))
 
 	return pi_interconnection.Request{
 		Decompressions: []blobsubmission.Response{*blobResp},
 		Executions:     []public_input.Execution{execReq},
+		Invalidity:     []public_input.Invalidity{invalReq},
 		Aggregation: public_input.Aggregation{
 			FinalShnarf:                             blobResp.ExpectedShnarf,
 			ParentAggregationFinalShnarf:            blobReq.PrevShnarf,
@@ -64,6 +75,10 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 			L1RollingHashMessageNumber:              uint(execReq.LastRollingHashUpdateNumber),
 			L2MsgRootHashes:                         merkleRoots,
 			L2MsgMerkleTreeDepth:                    5,
+			LastFinalizedRollingHashNumberTx:        3,
+			RollingHashNumberTx:                     4,
+			LastFinalizedRollingHashTx:              utils.FmtIntHex32Bytes(0x0123),
+			RollingHashTx:                           utils.FmtIntHex32Bytes(0x012345),
 		},
 	}
 }
