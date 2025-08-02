@@ -34,6 +34,7 @@ l2_msg_max_nb_merkle = 200
 
 [layer2]
 chain_id = 59141
+base_fee = 7
 message_service_contract = "0x971e727e956690b9957be6d51Ec16E73AcAC83A7"
 
 [traces_limits]
