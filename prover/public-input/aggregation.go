@@ -370,7 +370,7 @@ func NewAggregationFPI(fpi *Aggregation) (s *AggregationFPI, err error) {
 
 func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [32]frontend.Variable {
 
-	// number of hashes: 12
+	// number of hashes: 13
 
 	sum := hash.Sum(nil,
 
@@ -400,7 +400,7 @@ func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [3
 
 		//include a hash of the chain configuration
 
-		pi.ChainConfigurationFPISnark.Sum(api),
+		utils.ToBytes(api, pi.ChainConfigurationFPISnark.Sum(api)),
 	)
 
 	// turn the hash into a bn254 element
@@ -461,7 +461,7 @@ func copyFromHex(dst []byte, src string) error {
 
 // matching the Solidity implementation's computeChainConfigurationHash
 
-func (pi *ChainConfigurationFPISnark) Sum(api frontend.API) [32]frontend.Variable {
+func (pi *ChainConfigurationFPISnark) Sum(api frontend.API) frontend.Variable {
 
 	// Initialize MiMC state to zero (like hasher.Reset() in Go)
 
@@ -553,20 +553,6 @@ func (pi *ChainConfigurationFPISnark) Sum(api frontend.API) [32]frontend.Variabl
 
 	// Use the existing utils.ToBytes function
 
-	stateBytes := utils.ToBytes(api, state)
-
-	api.Println("Final bytes length:", len(stateBytes))
-
-	for i, b := range stateBytes {
-
-		api.Println("final_byte[", i, "] =", b)
-
-	}
-
-	// stateBytes is already [32]frontend.Variable
-
-	api.Println("=== Finished ChainConfigurationFPISnark.Sum() ===")
-
-	return stateBytes
+	return state
 
 }
