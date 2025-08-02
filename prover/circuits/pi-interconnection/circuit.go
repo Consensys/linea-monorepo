@@ -343,8 +343,7 @@ func newKeccakCompiler(c config.PublicInput) *keccak.StrictHasherCompiler {
 
 	// aggregation PI opening
 	res.WithFlexibleHashLengths(32 * c.L2MsgMaxNbMerkle)
-	res.WithStrictHashLengths(384)
-
+	res.WithStrictHashLengths(416) // 416 (13 × 32 bytes)
 	return &res
 }
 
