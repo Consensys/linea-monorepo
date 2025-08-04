@@ -9,15 +9,21 @@
 package net.consensys.linea.sequencer.liveness;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Path;
+import java.security.KeyStore;
 import java.security.SignatureException;
 import java.time.Duration;
 import java.util.*;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.config.LineaLivenessServiceConfiguration;
 import org.apache.tuweni.bytes.Bytes;
@@ -43,6 +49,11 @@ public class LineaLivenessTxBuilder implements LivenessTxBuilder {
   private final BlockchainService blockchainService;
   private final String signerKeyId;
   private final String signerUrl;
+  private final boolean tlsEnabled;
+  private final Path tlsKeyStorePath;
+  private final String tlsKeyStorePassword;
+  private final Path tlsTrustStorePath;
+  private final String tlsTrustStorePassword;
   private final String livenessContractAddress;
   private final long gasPrice;
   private final long gasLimit;
@@ -55,14 +66,68 @@ public class LineaLivenessTxBuilder implements LivenessTxBuilder {
     this.chainId = chainId;
     this.signerKeyId = lineaLivenessServiceConfiguration.signerKeyId();
     this.signerUrl = lineaLivenessServiceConfiguration.signerUrl();
+    this.tlsEnabled = lineaLivenessServiceConfiguration.tlsEnabled();
+    this.tlsKeyStorePath = lineaLivenessServiceConfiguration.tlsKeyStorePath();
+    this.tlsKeyStorePassword = lineaLivenessServiceConfiguration.tlsKeyStorePassword();
+    this.tlsTrustStorePath = lineaLivenessServiceConfiguration.tlsTrustStorePath();
+    this.tlsTrustStorePassword = lineaLivenessServiceConfiguration.tlsTrustStorePassword();
     this.livenessContractAddress = lineaLivenessServiceConfiguration.contractAddress();
     this.gasPrice = lineaLivenessServiceConfiguration.gasPrice();
     this.gasLimit = lineaLivenessServiceConfiguration.gasLimit();
     this.blockchainService = blockchainService;
 
+    // Build SSLContext instance
+    Optional<SSLContext> sslContext =
+        tlsEnabled
+            ? buildSSLContext(
+                tlsKeyStorePath, tlsKeyStorePassword, tlsTrustStorePath, tlsTrustStorePassword
+                )
+            : Optional.empty();
+
     // Initialize HTTP client and JSON mapper for Web3Signer API calls
-    httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
+    HttpClient.Builder httpBuilder = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30));
+    sslContext.ifPresent(httpBuilder::sslContext);
+
+    httpClient = httpBuilder.build();
     objectMapper = new ObjectMapper();
+  }
+
+  private Optional<SSLContext> buildSSLContext(
+      Path clientKeystorePath,
+      String clientKeystorePassword,
+      Path trustStorePath,
+      String trustStorePassword) {
+    try {
+      // Load client keystore
+      KeyStore keyStore = KeyStore.getInstance("PKCS12");
+      FileInputStream keyStoreFis =
+          new FileInputStream(clientKeystorePath.toAbsolutePath().toString());
+      keyStore.load(keyStoreFis, clientKeystorePassword.toCharArray());
+
+      // Initialize KeyManagerFactory for client certificate
+      KeyManagerFactory keyManagerFactory =
+          KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+      keyManagerFactory.init(keyStore, clientKeystorePassword.toCharArray());
+
+      // Load truststore
+      KeyStore trustStore = KeyStore.getInstance("PKCS12");
+      FileInputStream trustStoreFis =
+          new FileInputStream(trustStorePath.toAbsolutePath().toString());
+      trustStore.load(trustStoreFis, trustStorePassword.toCharArray());
+
+      // Initialize TrustManagerFactory for server certificate
+      TrustManagerFactory trustManagerFactory =
+          TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+      trustManagerFactory.init(trustStore);
+
+      // Initialize SSLContext
+      SSLContext sslContext = SSLContext.getInstance("TLS");
+      sslContext.init(
+          keyManagerFactory.getKeyManagers(), trustManagerFactory.getTrustManagers(), null);
+      return Optional.of(sslContext);
+    } catch (Exception ex) {
+      return Optional.empty();
+    }
   }
 
   /**
