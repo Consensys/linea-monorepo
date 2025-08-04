@@ -17,12 +17,7 @@ type testCase struct {
 	size             int
 
 	// original vector that we want to split defined over E4
-	toSplitName []ifaces.ColID
-	toSplit     []smartvectors.SmartVector
-
-	// result of the splitting, which correspond to the real and imaginary parts of the column defined over E4
-	splittedName []ifaces.ColID
-	// splittedVec  []smartvectors.SmartVector
+	toSplit []smartvectors.SmartVector
 
 	challenge fext.Element
 }
@@ -66,13 +61,8 @@ func createSplittingTestCase(
 		nbColumnsToSplit: nbColumnsToSplit,
 		size:             sizeColumns,
 
-		// result of the splitting, which correspond to the real and imaginary parts of the column defined over E4
-		splittedName: splittedNames,
-		// splittedVec:  smSplittedVector,
-
 		// original vector that we want to split defined over E4
-		toSplitName: toSplitnames,
-		toSplit:     smToSplit,
+		toSplit: smToSplit,
 
 		challenge: x,
 	}
@@ -89,7 +79,8 @@ func TestSplitextension(t *testing.T) {
 	define := func(b *wizard.Builder) {
 		toSplit := make([]ifaces.Column, nbColumnsToSplit)
 		for i := 0; i < nbColumnsToSplit; i++ {
-			toSplit[i] = b.RegisterCommit(testCase.toSplitName[i], sizeColumns)
+			curName := fmt.Sprintf("%s_%d", baseNameToSplit, i)
+			toSplit[i] = b.RegisterCommit(ifaces.ColID(curName), sizeColumns)
 		}
 		b.InsertUnivariate(0, fextQuery, toSplit)
 
@@ -98,7 +89,8 @@ func TestSplitextension(t *testing.T) {
 	witness := func(run *wizard.ProverRuntime) {
 		y := make([]fext.Element, testCase.nbColumnsToSplit)
 		for i := 0; i < nbColumnsToSplit; i++ {
-			run.AssignColumn(testCase.toSplitName[i], testCase.toSplit[i])
+			curName := fmt.Sprintf("%s_%d", baseNameToSplit, i)
+			run.AssignColumn(ifaces.ColID(curName), testCase.toSplit[i])
 			y[i] = smartvectors.EvaluateLagrangeFullFext(testCase.toSplit[i], testCase.challenge)
 		}
 		run.AssignUnivariate(fextQuery, testCase.challenge, y...)

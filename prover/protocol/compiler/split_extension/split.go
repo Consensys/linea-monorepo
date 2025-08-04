@@ -18,6 +18,7 @@ import (
 )
 
 var (
+	baseNameToSplit     = "to_split_col_"
 	baseNameSplit       = "splitted_col_"
 	errUnconsistentEval = errors.New("unconsistent evaluation")
 	fextQuery           = ifaces.QueryID("fextUnivariate")
@@ -74,19 +75,24 @@ func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
 			var ctx SplitCtx
 			ctx.QueryFext = fextQuery
 			ctx.QueryBaseField = basefieldQuery
-			ctx.InputPolynomials = make([]ifaces.Column, len(q.Pols))
-			ctx.OutputPolynomials = make([]ifaces.Column, 4*len(q.Pols))
+			ctx.InputPolynomials = make([]ifaces.Column, 0, len(q.Pols))
+			ctx.OutputPolynomials = make([]ifaces.Column, 0, 4*len(q.Pols))
 
 			for i, pol := range q.Pols {
 				if pol.IsComposite() {
 					panic(fmt.Sprintf("column %d should be natural", i)) // TODO use utils package
 				}
-				// if pol.IsBase() {
-				// 	continue
-				// }
-				// ctx.InputPolynomials = append(ctx.InputPolynomials, pol)
-				ctx.InputPolynomials[i] = pol
+				if pol.IsBase() {
+					continue
+				}
+				ctx.InputPolynomials = append(ctx.InputPolynomials, pol)
+				for j := 0; j < 4; j++ {
+					curName := fmt.Sprintf("%s_%d", baseNameSplit, 4*i+j)
+					ctx.OutputPolynomials = append(ctx.OutputPolynomials, comp.InsertCommit(roundID, ifaces.ColID(curName), pol.Size()))
+				}
 			}
+			comp.InsertUnivariate(0, basefieldQuery, ctx.OutputPolynomials)
+
 			var proverCtx ProverCtx
 			proverCtx.Ctx = ctx
 
@@ -94,15 +100,6 @@ func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
 			if comp.QueriesParams.MarkAsIgnored(qName) {
 				continue
 			}
-
-			for i := 0; i < len(ctx.InputPolynomials); i++ {
-				for j := 0; j < 4; j++ {
-					curName := fmt.Sprintf("%s_%d", baseNameSplit, 4*i+j)
-					// ctx.OutputPolynomials = append(ctx.OutputPolynomials, comp.InsertCommit(roundID, ifaces.ColID(curName), ctx.InputPolynomials[i].Size()))
-					ctx.OutputPolynomials[4*i+j] = comp.InsertCommit(roundID, ifaces.ColID(curName), ctx.InputPolynomials[i].Size())
-				}
-			}
-			comp.InsertUnivariate(0, basefieldQuery, ctx.OutputPolynomials)
 
 			comp.RegisterProverAction(0, &proverCtx)
 
@@ -135,7 +132,6 @@ func (pctx *ProverCtx) Run(runtime *wizard.ProverRuntime) {
 			y[4*i+j] = smartvectors.EvaluateLagrangeFullFext(sv[j], evalFextParams.X)
 		}
 	}
-
 	runtime.AssignUnivariate(basefieldQuery, evalFextParams.X, y...)
 }
 
