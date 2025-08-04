@@ -64,15 +64,15 @@ tasks.register('acceptanceTest', Test) { test ->
   testLogging {
     events TestLogEvent.FAILED,
       TestLogEvent.SKIPPED,
-      TestLogEvent.STANDARD_ERROR,
-      TestLogEvent.STARTED,
-      TestLogEvent.PASSED
+      TestLogEvent.STANDARD_ERROR
+    // TestLogEvent.STARTED,
+    // TestLogEvent.PASSED
     exceptionFormat TestExceptionFormat.FULL
     showCauses true
     showExceptions true
     showStackTraces true
     // set showStandardStreams if you need to see test logs
-    showStandardStreams true
+    showStandardStreams false
   }
 
   systemProperties["junit.jupiter.execution.parallel.enabled"] = false
