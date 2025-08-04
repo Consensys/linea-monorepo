@@ -8,18 +8,16 @@ import linea.log4j.configureLoggers
 import linea.web3j.ethapi.createEthApiClient
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
-import org.junit.jupiter.api.Test
 import java.lang.IllegalStateException
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * This is mean to be run Manually with FakeL2 Contract to debug anchoring issues.
- * It is not a test in the sense of being run automatically.
+ * This is meant to run Manually with FakeL2 Contract to troubleshoot anchoring issues against a production environment.
  */
 class ManualMessageAnchoringTest {
 
-  @Test
+  // @Test
   fun `should anchor messages`() {
     val vertx = Vertx.vertx()
     val fakeL2MessageService = FakeL2MessageService(contractAddress = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
