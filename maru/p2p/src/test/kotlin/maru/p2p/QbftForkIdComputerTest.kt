@@ -12,7 +12,7 @@ import kotlin.random.Random
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkId
-import maru.consensus.ForkIdHashProvider
+import maru.consensus.ForkIdHashProviderImpl
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
@@ -119,7 +119,7 @@ class QbftForkIdComputerTest {
     val beaconChain = InMemoryBeaconChain(genesisBeaconState)
     val forksSchedule = ForksSchedule(dummyChainId, listOf(forkSpec))
     val currentForkIdHash =
-      ForkIdHashProvider(dummyChainId, beaconChain, forksSchedule, forkIdHasher)
+      ForkIdHashProviderImpl(dummyChainId, beaconChain, forksSchedule, forkIdHasher)
         .currentForkIdHash()
     Assertions.assertThat(currentForkIdHash).isEqualTo(hash)
   }
