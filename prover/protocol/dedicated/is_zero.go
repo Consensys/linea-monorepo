@@ -160,11 +160,14 @@ func (ctx *IsZeroCtx) Run(run *wizard.ProverRuntime) {
 	if minOffset < 0 {
 		paddingVal := c[-minOffset]
 
-		if ctx.PaddingVal != nil && !paddingVal.IsOne() {
+		if ctx.PaddingVal != nil && ctx.PaddingVal.IsOne() {
+			// When using a padding value of 1, we mean the isZero column should
+			// be padded with 1s. To obtain this, we pad the base column with 0s
+			// and [smartvectors.IsZero] will return 1s.
 			paddingVal = field.Zero()
 		}
 
-		if ctx.PaddingVal != nil && !paddingVal.IsZero() {
+		if ctx.PaddingVal != nil && ctx.PaddingVal.IsZero() {
 			paddingVal = field.One()
 		}
 
@@ -176,11 +179,14 @@ func (ctx *IsZeroCtx) Run(run *wizard.ProverRuntime) {
 	if maxOffset > 0 {
 		paddingVal := c[len(c)-maxOffset-1]
 
-		if ctx.PaddingVal != nil && !paddingVal.IsOne() {
+		if ctx.PaddingVal != nil && ctx.PaddingVal.IsOne() {
+			// When using a padding value of 1, we mean the isZero column should
+			// be padded with 1s. To obtain this, we pad the base column with 0s
+			// and [smartvectors.IsZero] will return 1s.
 			paddingVal = field.Zero()
 		}
 
-		if ctx.PaddingVal != nil && !paddingVal.IsZero() {
+		if ctx.PaddingVal != nil && ctx.PaddingVal.IsZero() {
 			paddingVal = field.One()
 		}
 
