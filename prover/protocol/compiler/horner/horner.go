@@ -205,7 +205,7 @@ func (a assignHornerCtx) Run(run *wizard.ProverRuntime) {
 
 		for row := numRow - 1; row >= 0; row-- {
 			for k := 0; k < arity; k++ {
-				sel := selectors[k].GetExt(row)
+				sel := selectors[k].Get(row)
 				if sel.IsOne() {
 					count++
 				}

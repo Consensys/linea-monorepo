@@ -231,7 +231,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 			if !isNatural {
 				witness = pol.GetColAssignment(run)
 			}
-			witness = sv.FFTInverseExt(witness, fft.DIF, false, 0, 0, nil) //TODO@yao why witness is ext element
+			witness = sv.FFTInverseExt(witness, fft.DIF, false, 0, 0, nil)
 			coeffs.Store(name, witness)
 		})
 	})
