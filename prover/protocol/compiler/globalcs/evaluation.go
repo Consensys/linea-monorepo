@@ -132,7 +132,6 @@ func (pa evaluationProver) Run(run *wizard.ProverRuntime) {
 		quotientEvalPoint fext.Element
 		wg                = &sync.WaitGroup{}
 	)
-	fmt.Printf("mulGenInv %v\n", fft.NewDomain(uint64(maxRatio*pa.DomainSize)).FrMultiplicativeGen.String())
 	rootInv.Inverse(&rootInv)
 	quotientEvalPoint.MulByElement(&r, &mulGenInv)
 
@@ -148,7 +147,6 @@ func (pa evaluationProver) Run(run *wizard.ProverRuntime) {
 				for i := start; i < stop; i++ {
 					c := q.Pols[i].GetColAssignment(run)
 					ys[i] = sv.EvaluateLagrangeFullFext(c, evalPoint)
-					fmt.Printf("ys[%v] %v\n", i, ys[i].String())
 				}
 			})
 
@@ -247,8 +245,6 @@ func (ctx *evaluationVerifier) Run(run wizard.Runtime) error {
 		qr := quotientYs[i]
 		var right fext.Element
 		right.Mul(&annulator, &qr)
-
-		fmt.Printf("global constraint - ratio %v - at random point - %v != %v\n", ratio, left.String(), right.String())
 
 		if left != right {
 			return fmt.Errorf("global constraint - ratio %v - mismatch at random point - %v != %v", ratio, left.String(), right.String())
@@ -362,7 +358,6 @@ func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 	}
 
 	for i, ratio := range ctx.Ratios {
-		fmt.Printf("recombineQuotientSharesEvaluation ratio %v\n", ratio)
 		var (
 			jumpBy = maxRatio / ratio
 			ys     = make([]fext.Element, ratio)
@@ -385,7 +380,6 @@ func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 			res           fext.Element
 			ratioInvField = field.NewElement(uint64(ratio))
 		)
-		fmt.Printf("omegaRatio%v\n", omegaRatio.String())
 
 		rPowM.Exp(shiftedR, big.NewInt(int64(m)))
 		ratioInvField.Inverse(&ratioInvField)
