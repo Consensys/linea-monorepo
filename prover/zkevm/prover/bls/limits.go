@@ -45,6 +45,9 @@ type Limits struct {
 	NbC1MembershipCircuitInstances int
 	NbC2MembershipInputInstances   int
 	NbC2MembershipCircuitInstances int
+
+	NbPointEvalInputInstances   int
+	NbPointEvalCircuitInstances int
 }
 
 func (l *Limits) sizeAddIntegration(g group) int {
