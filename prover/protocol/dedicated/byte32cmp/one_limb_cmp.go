@@ -141,8 +141,8 @@ func (ol *OneLimbCmpCtx) Run(run *wizard.ProverRuntime) {
 		rc         = make([]field.Element, length)
 		minOffsetA = min(column.StackOffsets(ol.A))
 		minOffsetB = min(column.StackOffsets(ol.B))
-		maxOffsetA = min(column.StackOffsets(ol.A))
-		maxOffsetB = min(column.StackOffsets(ol.B))
+		maxOffsetA = max(column.StackOffsets(ol.A))
+		maxOffsetB = max(column.StackOffsets(ol.B))
 	)
 
 	for i := 0; i < a.Len(); i++ {
