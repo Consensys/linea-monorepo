@@ -141,18 +141,13 @@ func (l *Limits) nbGroupMembershipCircuitInstances(g group) int {
 	}
 }
 
-func (l *Limits) nbMillerLoops() int {
-	return l.NbMillerLoopInputInstances * l.NbMillerLoopCircuitInstances
-}
-
-func (l *Limits) nbFinalExps() int {
-	return l.NbFinalExpInputInstances * l.NbFinalExpCircuitInstances
-}
-
-func (l *Limits) nbG1MembershipChecks() int {
-	return l.NbG1MembershipInputInstances * l.NbG1MembershipCircuitInstances
-}
-
-func (l *Limits) nbG2MembershipChecks() int {
-	return l.NbG2MembershipInputInstances * l.NbG2MembershipCircuitInstances
+func (l *Limits) nbMapCircuitInstances(g group) int {
+	switch g {
+	case G1:
+		return l.NbG1MapToCircuitInstances
+	case G2:
+		return l.NbG2MapToCircuitInstances
+	default:
+		panic("unknown group for bls map circuit instances")
+	}
 }

@@ -19,6 +19,8 @@ func init() {
 	plonk.RegisterInputFiller(membershipInputFillerKey(G2, GROUP), newMembershipInputFiller(G2, GROUP))
 	plonk.RegisterInputFiller(millerLoopInputFillerKey, inputfillerMillerLoop)
 	plonk.RegisterInputFiller(finalExpInputFillerKey, inputFillerFinalExp)
+	plonk.RegisterInputFiller(mapToGroupInputFillerKey(G1), inputFillerMapToG1)
+	plonk.RegisterInputFiller(mapToGroupInputFillerKey(G2), inputFillerMapToG2)
 }
 
 func membershipInputFillerKey(g group, m membership) string {
@@ -95,7 +97,7 @@ func inputfillerMillerLoop(circuitInstance, inputIndex int) field.Element {
 		"0x00000000000000000000000000000000", "0x1891075ace9a85eed267d68f8e22e5d7", "0x93fd8cdd0c5603894509467df02ef6be", "0xc739546f6d55695a4d5bb24999e2fe20",
 	}
 	var res field.Element
-	_, err := res.SetString(tbl[inputIndex%(nbG1Limbs+nbG2Limbs+2*nbGtLimbs)])
+	_, err := res.SetString(tbl[inputIndex%nbRowsPerMillerLoop])
 	if err != nil {
 		panic(fmt.Sprintf("failed to set string: %v", err))
 	}
@@ -128,7 +130,71 @@ func inputFillerFinalExp(circuitInstance, inputIndex int) field.Element {
 		"0x0", "0x1",
 	}
 	var res field.Element
-	_, err := res.SetString(tbl[inputIndex%(nbG1Limbs+nbG2Limbs+nbGtLimbs+2)])
+	_, err := res.SetString(tbl[inputIndex%nbRowsPerFinalExp])
+	if err != nil {
+		panic(fmt.Sprintf("failed to set string: %v", err))
+	}
+	return res
+}
+
+func mapToGroupInputFillerKey(g group) string {
+	return fmt.Sprintf("bls12381-map-%s-to-%s-input-filler", g.StringMap(), g.String())
+}
+
+func inputFillerMapToG1(circuitInstance, inputIndex int) field.Element {
+	// map of 0
+	tbl := []string{
+		"0x00000000000000000000000000000000",
+		"0x00000000000000000000000000000000",
+		"0x00000000000000000000000000000000",
+		"0x00000000000000000000000000000000",
+		"0x00000000000000000000000000000000",
+		"0x11a9a0372b8f332d5c30de9ad14e5037",
+		"0x2a73fa4c45d5f2fa5097f2d6fb93bcac",
+		"0x592f2e1711ac43db0519870c7d0ea415",
+		"0x00000000000000000000000000000000",
+		"0x092c0f994164a0719f51c24ba3788de2",
+		"0x40ff926b55f58c445116e8bc6a47cd63",
+		"0x392fd4e8e22bdf9feaa96ee773222133",
+	}
+	var res field.Element
+	_, err := res.SetString(tbl[inputIndex%nbRowsPerG1Map])
+	if err != nil {
+		panic(fmt.Sprintf("failed to set string: %v", err))
+	}
+	return res
+}
+
+func inputFillerMapToG2(circuitInstance, inputIndex int) field.Element {
+	// map of (0, 0)
+	tbl := []string{
+		"0x00000000000000000000000000000000",
+		"0x00000000000000000000000000000000",
+		"0x00000000000000000000000000000000",
+		"0x00000000000000000000000000000000",
+		"0x00000000000000000000000000000000",
+		"0x00000000000000000000000000000000",
+		"0x00000000000000000000000000000000",
+		"0x00000000000000000000000000000000",
+		"0x00000000000000000000000000000000",
+		"0x0a67d12118b5a35bb02d2e86b3ebfa7e",
+		"0x23410db93de39fb06d7025fa95e96ffa",
+		"0x428a7a27c3ae4dd4b40bd251ac658892",
+		"0x00000000000000000000000000000000",
+		"0x018320896ec9eef9d5e619848dc29ce2",
+		"0x66f413d02dd31d9b9d44ec0c79cd61f1",
+		"0x8b075ddba6d7bd20b7ff27a4b324bfce",
+		"0x00000000000000000000000000000000",
+		"0x04c69777a43f0bda07679d5805e63f18",
+		"0xcf4e0e7c6112ac7f70266d199b4f76ae",
+		"0x27c6269a3ceebdae30806e9a76aadf5c",
+		"0x00000000000000000000000000000000",
+		"0x0260e03644d1a2c321256b3246bad2b8",
+		"0x95cad13890cbe6f85df55106a0d33460",
+		"0x4fb143c7a042d878006271865bc35941",
+	}
+	var res field.Element
+	_, err := res.SetString(tbl[inputIndex%nbRowsPerG2Map])
 	if err != nil {
 		panic(fmt.Sprintf("failed to set string: %v", err))
 	}

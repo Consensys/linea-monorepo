@@ -54,6 +54,19 @@ func (c scalarElementWizard) ToElement(api frontend.API, fr *emulated.Field[sw_b
 	return *fr.NewElement(Slimbs)
 }
 
+type baseElementWizard struct {
+	P [nbFpLimbs]frontend.Variable
+}
+
+func (c baseElementWizard) ToElement(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField]) emulated.Element[sw_bls12381.BaseField] {
+	// gnark represents the BLS12-381 Fp elements on 6 limbs of 64 bits.
+	Plimbs := make([]frontend.Variable, fpParams.NbLimbs())
+	Plimbs[4], Plimbs[5] = bitslice.Partition(api, c.P[1], 64, bitslice.WithNbDigits(128))
+	Plimbs[2], Plimbs[3] = bitslice.Partition(api, c.P[2], 64, bitslice.WithNbDigits(128))
+	Plimbs[0], Plimbs[1] = bitslice.Partition(api, c.P[3], 64, bitslice.WithNbDigits(128))
+	return *fp.NewElement(Plimbs)
+}
+
 type g1ElementWizard struct {
 	P [nbG1Limbs]frontend.Variable
 }

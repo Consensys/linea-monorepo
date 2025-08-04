@@ -20,6 +20,14 @@ func NewG2MsmZkEvm(comp *wizard.CompiledIOP, limits *Limits) *BlsMsm {
 	return newMsm(comp, G2, limits, newMsmDataSource(comp, G2))
 }
 
-func NewPairing(comp *wizard.CompiledIOP, limits *Limits) *BlsPair {
+func NewPairingZkEvm(comp *wizard.CompiledIOP, limits *Limits) *BlsPair {
 	return newPair(comp, limits, newPairDataSource(comp))
+}
+
+func NewG1MapZkEvm(comp *wizard.CompiledIOP, limits *Limits) *BlsMap {
+	return newMap(comp, G1, limits, newMapDataSource(comp, G1))
+}
+
+func NewG2MapZkEvm(comp *wizard.CompiledIOP, limits *Limits) *BlsMap {
+	return newMap(comp, G2, limits, newMapDataSource(comp, G2))
 }

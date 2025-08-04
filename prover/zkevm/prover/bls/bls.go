@@ -43,6 +43,17 @@ func (g group) StringCurve() string {
 	}
 }
 
+func (g group) StringMap() string {
+	switch g {
+	case G1:
+		return "FP"
+	case G2:
+		return "FP2"
+	default:
+		panic("unknown group")
+	}
+}
+
 func createColFn(comp *wizard.CompiledIOP, rootName string, size int) func(name string) ifaces.Column {
 	return func(name string) ifaces.Column {
 		return comp.InsertCommit(ROUND_NR, ifaces.ColIDf("%s_%s", rootName, name), size)

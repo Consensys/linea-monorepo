@@ -10,8 +10,13 @@ import (
 	"github.com/consensys/gnark/std/math/emulated"
 )
 
+const (
+	nbRowsPerG1Map = nbFpLimbs + nbG1Limbs   // input is Fp element and expected output is G1 element
+	nbRowsPerG2Map = 2*nbFpLimbs + nbG2Limbs // input is Fp2 element and expected output is G2 element
+)
+
 type mapInstance[C convertable[T], T element] struct {
-	Input  []emulated.Element[sw_bls12381.BaseField] // len==1 for G1, len==2 for G2
+	Input  []baseElementWizard // len==1 for G1, len==2 for G2
 	Mapped C
 }
 type multiMapCircuit[C convertable[T], T element] struct {
@@ -29,8 +34,9 @@ func (c *multiMapCircuit[C, T]) Define(api frontend.API) error {
 			if len(c.Instances[i].Input) != 1 {
 				return fmt.Errorf("instance %d expected 1 input for G1 map to G1, got %d", i, len(c.Instances[i].Input))
 			}
+			toMap := vv[i].Input[0].ToElement(api, fp)
 			tMapped := vv[i].Mapped.ToElement(api, fp)
-			if err := evmprecompiles.ECMapToG1BLS(api, &c.Instances[i].Input[0], &tMapped); err != nil {
+			if err := evmprecompiles.ECMapToG1BLS(api, &toMap, &tMapped); err != nil {
 				return fmt.Errorf("instance %d map to G1: %w", i, err)
 			}
 		}
@@ -39,11 +45,11 @@ func (c *multiMapCircuit[C, T]) Define(api frontend.API) error {
 			if len(c.Instances[i].Input) != 2 {
 				return fmt.Errorf("expected 2 inputs for G2 map to G1, got %d", len(c.Instances[i].Input))
 			}
-			tMapped := vv[i].Mapped.ToElement(api, fp)
 			toMap := fields_bls12381.E2{
-				A0: c.Instances[i].Input[0],
-				A1: c.Instances[i].Input[1],
+				A0: c.Instances[i].Input[0].ToElement(api, fp),
+				A1: c.Instances[i].Input[1].ToElement(api, fp),
 			}
+			tMapped := vv[i].Mapped.ToElement(api, fp)
 			if err := evmprecompiles.ECMapToG2BLS(api, &toMap, &tMapped); err != nil {
 				return fmt.Errorf("instance %d map to G2: %w", i, err)
 			}
@@ -61,7 +67,7 @@ func NewMapCircuit(g group, limits *Limits) frontend.Circuit {
 			Instances: make([]mapInstance[g1ElementWizard, sw_bls12381.G1Affine], limits.NbG1MapToInputInstances),
 		}
 		for i := range res.Instances {
-			res.Instances[i].Input = make([]emulated.Element[sw_bls12381.BaseField], 1)
+			res.Instances[i].Input = make([]baseElementWizard, 1)
 		}
 		return res
 	case G2:
@@ -69,7 +75,7 @@ func NewMapCircuit(g group, limits *Limits) frontend.Circuit {
 			Instances: make([]mapInstance[g2ElementWizard, sw_bls12381.G2Affine], limits.NbG2MapToInputInstances),
 		}
 		for i := range res.Instances {
-			res.Instances[i].Input = make([]emulated.Element[sw_bls12381.BaseField], 2)
+			res.Instances[i].Input = make([]baseElementWizard, 2)
 		}
 		return res
 	default:
