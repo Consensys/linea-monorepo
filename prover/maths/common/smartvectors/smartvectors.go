@@ -122,6 +122,12 @@ func PseudoRand(rng *rand.Rand, n int) SmartVector {
 	return NewRegular(vector.PseudoRand(rng, n))
 }
 
+// PseudoRandExt creates a vector with random entries. Used for testing. Should
+// not be used to generate secrets. Takes a math.Rand as input for reproducibility.
+func PseudoRandExt(rng *rand.Rand, n int) SmartVector {
+	return NewRegularExt(vectorext.PseudoRand(rng, n))
+}
+
 // ForTest returns a witness from a explicit litteral assignement
 func ForTest(xs ...int) SmartVector {
 	return NewRegular(vector.ForTest(xs...))

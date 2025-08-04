@@ -4,6 +4,7 @@ package vectorext
 
 import (
 	"fmt"
+	"math/rand/v2"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -318,10 +319,10 @@ func Equal(a, b []fext.Element) bool {
 
 // PseudoRand generates a vector of field element with a given size using the
 // provided random number generator
-func PseudoRand(size int) []fext.Element {
+func PseudoRand(rng *rand.Rand, size int) []fext.Element {
 	slice := make([]fext.Element, size)
 	for i := range slice {
-		slice[i] = fext.RandomElement()
+		slice[i] = fext.PseudoRand(rng)
 	}
 	return slice
 }

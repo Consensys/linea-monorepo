@@ -18,6 +18,12 @@ func RandomVec(size int) smartvectors.SmartVector {
 	return smartvectors.PseudoRand(rng, size)
 }
 
+// RandomVecFext returns a random vector of size "size" defined over the
+// extension field
+func RandomVecFext(size int) smartvectors.SmartVector {
+	return smartvectors.PseudoRandExt(rng, size)
+}
+
 // RandomVecPadded returns a random vector of size "size" such that the
 // last "size-density" are zero.
 func RandomVecPadded(density, size int) smartvectors.SmartVector {
