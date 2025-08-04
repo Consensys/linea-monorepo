@@ -2,9 +2,9 @@ package splitextension
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -18,11 +18,9 @@ import (
 )
 
 var (
-	baseNameToSplit     = "to_split_col_"
-	baseNameSplit       = "splitted_col_"
-	errUnconsistentEval = errors.New("unconsistent evaluation")
-	fextQuery           = ifaces.QueryID("fextUnivariate")
-	basefieldQuery      = ifaces.QueryID("baseUnivariate")
+	fextSplitTag        = "FEXT2BASE"
+	errInconsistentEval = errors.New("unconsistent evaluation claim")
+	errInconsistentX    = errors.New("unconsistent evaluation point")
 )
 
 type ProverCtx struct {
@@ -37,17 +35,23 @@ type VerifierCtx struct {
 type SplitCtx struct {
 
 	// QueryFext Univariate query for field ext columns
-	QueryFext ifaces.QueryID
+	QueryFext query.UnivariateEval
 
-	// QueryBaseField Univariate query for base field columns
-	QueryBaseField ifaces.QueryID
+	// QueryBaseField Univariate query for base field columns. The first
+	// polynomials showing up in the query are the splitted ones and they are
+	// followed by those that were already on the base field.
+	QueryBaseField query.UnivariateEval
 
-	// InputPolynomials polynomials to split
+	// ToSplitPolynomials polynomials to split
 	// i-th column goes to 4*i, 4*i+1, etc
-	InputPolynomials []ifaces.Column
+	ToSplitPolynomials []ifaces.Column
 
-	// OutputPolynomials splitted polynomials
-	OutputPolynomials []ifaces.Column
+	// AlreadyOnBasePolynomials is the list of columns that were already on
+	// the base field in the order in which they show up in QueryFext.
+	AlreadyOnBasePolynomials []ifaces.Column
+
+	// SplittedPolynomials splitted polynomials
+	SplittedPolynomials []ifaces.Column
 }
 
 func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
@@ -55,58 +59,76 @@ func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
 	logrus.Trace("started naturalization compiler")
 	defer logrus.Trace("finished naturalization compiler")
 
+	// Expectedly, there should be only one query to compile as this compiler
+	// is meant to be run after the MPTS compiler. This variable will detect
+	// if more than one queries have been compiled.
+	var numFoundQueries int
+
 	// The compilation process is applied separately for each query
 	for roundID := 0; roundID < comp.NumRounds(); roundID++ {
-
 		for _, qName := range comp.QueriesParams.AllKeysAt(roundID) {
 
 			if comp.QueriesParams.IsIgnored(qName) {
 				continue
 			}
 
-			q_ := comp.QueriesParams.Data(qName)
-			// TODO add a check to verify that the univariate query corresponds to split ext to base query (see queryID in testcase)
-			if _, ok := q_.(query.UnivariateEval); !ok {
-				utils.Panic("query %v has type %v expected only univariate", qName, reflect.TypeOf(q_))
+			q, ok := comp.QueriesParams.Data(qName).(query.UnivariateEval)
+			if !ok {
+				utils.Panic("query %v has type %v expected only univariate", qName, reflect.TypeOf(q))
 			}
 
-			q := q_.(query.UnivariateEval)
+			numFoundQueries++
+			if numFoundQueries > 1 {
+				utils.Panic("expected only one query to compile")
+			}
 
-			var ctx SplitCtx
-			ctx.QueryFext = fextQuery
-			ctx.QueryBaseField = basefieldQuery
-			ctx.InputPolynomials = make([]ifaces.Column, 0, len(q.Pols))
-			ctx.OutputPolynomials = make([]ifaces.Column, 0, 4*len(q.Pols))
+			basefieldQName := ifaces.QueryIDf("%s_%s", qName, fextSplitTag)
+
+			ctx := SplitCtx{
+				QueryFext:           q,
+				ToSplitPolynomials:  make([]ifaces.Column, 0, len(q.Pols)),
+				SplittedPolynomials: make([]ifaces.Column, 0, 4*len(q.Pols)),
+			}
 
 			for i, pol := range q.Pols {
 				if pol.IsComposite() {
-					panic(fmt.Sprintf("column %d should be natural", i)) // TODO use utils package
+					utils.Panic("column %d should be natural", i)
 				}
+
 				if pol.IsBase() {
+					ctx.AlreadyOnBasePolynomials = append(ctx.AlreadyOnBasePolynomials, pol)
 					continue
 				}
-				ctx.InputPolynomials = append(ctx.InputPolynomials, pol)
+
+				ctx.ToSplitPolynomials = append(ctx.ToSplitPolynomials, pol)
 				for j := 0; j < 4; j++ {
-					curName := fmt.Sprintf("%s_%d", baseNameSplit, 4*i+j)
-					ctx.OutputPolynomials = append(ctx.OutputPolynomials, comp.InsertCommit(roundID, ifaces.ColID(curName), pol.Size()))
+					curName := ifaces.ColIDf("%s_%s_%d", pol.String(), fextSplitTag, 4*i+j)
+					ctx.SplittedPolynomials = append(
+						ctx.SplittedPolynomials,
+						comp.InsertCommit(roundID, ifaces.ColID(curName), pol.Size()))
 				}
 			}
-			comp.InsertUnivariate(0, basefieldQuery, ctx.OutputPolynomials)
 
-			var proverCtx ProverCtx
-			proverCtx.Ctx = ctx
+			// toEval is constructed using append over an empty slice to ensure
+			// that it will do a deep-copy. Otherwise, it could have side-effects
+			// over [ctx.ToSplitPolynomials] potentially causing
+			// complex-to-diagnose issues in the future if the code came to evolve.
+			toEval := append([]ifaces.Column{}, ctx.SplittedPolynomials...)
+			toEval = append(toEval, ctx.AlreadyOnBasePolynomials...)
 
-			// Skip if it was already compiled, else insert.
-			if comp.QueriesParams.MarkAsIgnored(qName) {
-				continue
-			}
+			ctx.QueryBaseField = comp.InsertUnivariate(
+				roundID,
+				basefieldQName,
+				toEval,
+			)
 
-			comp.RegisterProverAction(0, &proverCtx)
+			comp.RegisterProverAction(roundID, &ProverCtx{
+				Ctx: ctx,
+			})
 
-			var vctx VerifierCtx
-			vctx.Ctx = ctx
-			comp.RegisterVerifierAction(0, &vctx)
-
+			comp.RegisterVerifierAction(roundID, &VerifierCtx{
+				Ctx: ctx,
+			})
 		}
 	}
 }
@@ -114,26 +136,61 @@ func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
 // Run implements ProverAction interface
 func (pctx *ProverCtx) Run(runtime *wizard.ProverRuntime) {
 
-	ctx := pctx.Ctx
+	var (
+		ctx            = pctx.Ctx
+		evalFextParams = runtime.GetUnivariateParams(ctx.QueryFext.Name())
+		x              = evalFextParams.ExtX
+		y              = make([]fext.Element, 0, len(ctx.QueryBaseField.Pols))
+	)
 
-	// filter cols defined over fext and split them, ignore other columns
-	evalFextParams := runtime.GetUnivariateParams(ctx.QueryFext)
-	y := make([]fext.Element, 4*len(ctx.InputPolynomials))
-	for i, pol := range ctx.InputPolynomials {
+	// This loop evaluates and assigns the polynomials that have been split and
+	// append their evaluation "y" the assignment to the evaluation on the new
+	// query. The implementation relies on the fact that these polynomials are
+	// positionned at the beginning of the list of evaluated polynomials in the
+	// new query.
+	for i, pol := range ctx.ToSplitPolynomials {
 		cc := pol.GetColAssignment(runtime)
 		sv := splitVector(cc)
 
-		runtime.AssignColumn(ctx.OutputPolynomials[4*i].GetColID(), sv[0])
-		runtime.AssignColumn(ctx.OutputPolynomials[4*i+1].GetColID(), sv[1])
-		runtime.AssignColumn(ctx.OutputPolynomials[4*i+2].GetColID(), sv[2])
-		runtime.AssignColumn(ctx.OutputPolynomials[4*i+3].GetColID(), sv[3])
+		runtime.AssignColumn(ctx.SplittedPolynomials[4*i].GetColID(), sv[0])
+		runtime.AssignColumn(ctx.SplittedPolynomials[4*i+1].GetColID(), sv[1])
+		runtime.AssignColumn(ctx.SplittedPolynomials[4*i+2].GetColID(), sv[2])
+		runtime.AssignColumn(ctx.SplittedPolynomials[4*i+3].GetColID(), sv[3])
 
 		for j := 0; j < 4; j++ {
-			y[4*i+j] = smartvectors.EvaluateLagrangeFullFext(sv[j], evalFextParams.ExtX)
+			newY := smartvectors.EvaluateLagrangeFullFext(sv[j], x)
+			y = append(y, newY)
 		}
 	}
-	runtime.AssignUnivariateExt(basefieldQuery, evalFextParams.ExtX, y...)
+
+	// This loops collect the evaluation claims of the already-on-base polynomials
+	// from the new query to append them to the claims on the new query. This
+	// relies on the fact that they appear in the new query *after* the splitted
+	// polynomials and in the same order as in the original query.
+	for i, pol := range ctx.QueryFext.Pols {
+
+		if !pol.IsBase() {
+			continue
+		}
+
+		oldY := evalFextParams.ExtYs[i]
+		y = append(y, oldY)
+	}
+
+	runtime.AssignUnivariateExt(ctx.QueryBaseField.QueryID, evalFextParams.ExtX, y...)
 }
+
+var (
+	_one = field.One()
+	// fieldExtensionBasis is the list of the field extension basis elements.
+	// 1, u, v, uv. The limbs are decomposed according to this basis.
+	fieldExtensionBasis = [4]fext.Element{
+		{B0: extensions.E2{A0: _one}},
+		{B0: extensions.E2{A1: _one}},
+		{B1: extensions.E2{A0: _one}},
+		{B1: extensions.E2{A1: _one}},
+	}
+)
 
 func (vctx *VerifierCtx) Run(run wizard.Runtime) error {
 	ctx := vctx.Ctx
@@ -141,39 +198,36 @@ func (vctx *VerifierCtx) Run(run wizard.Runtime) error {
 	// checks that P(x) = P_0(x) + w*P_1(x) + w**2*P_2(x) + w**3*P_3(x)
 	// where P is the polynomial to split, and the P_i are the splitted
 	// polynomials, corrersponding to the imaginary parts of P
-	evalFextParams := run.GetUnivariateParams(ctx.QueryFext)
+	var (
+		evalFextParams      = run.GetUnivariateParams(ctx.QueryFext.QueryID)
+		evalBaseFieldParams = run.GetUnivariateParams(ctx.QueryBaseField.QueryID)
+		nbPolyToSplit       = len(evalFextParams.ExtYs)
+	)
 
-	evalBaseFieldParams := run.GetUnivariateParams(ctx.QueryBaseField)
-
-	nbPolyToSplit := len(evalFextParams.ExtYs)
+	if evalBaseFieldParams.ExtX != evalFextParams.ExtX {
+		return errInconsistentX
+	}
 
 	for i := 0; i < nbPolyToSplit; i++ {
-		var purportedEval [4]field.Element
-		purportedEval[0].Set(&evalFextParams.ExtYs[i].B0.A0)
-		purportedEval[1].Set(&evalFextParams.ExtYs[i].B0.A1)
-		purportedEval[2].Set(&evalFextParams.ExtYs[i].B1.A0)
-		purportedEval[3].Set(&evalFextParams.ExtYs[i].B1.A1)
+
+		var tmp, reconstructedEval fext.Element
 
 		for j := 0; j < 4; j++ {
-			// TODO check that evalBaseFieldParams.Ys[4*i+j] is real
-			if !evalBaseFieldParams.ExtYs[4*i+j].B0.A0.Equal(&purportedEval[j]) {
-				return errUnconsistentEval
-			}
+			tmp.Mul(&fieldExtensionBasis[j], &evalBaseFieldParams.ExtYs[4*i+j])
+			reconstructedEval.Add(&reconstructedEval, &tmp)
+		}
+
+		// TODO check that evalBaseFieldParams.Ys[4*i+j] is real
+		if !evalFextParams.ExtYs[i].Equal(&reconstructedEval) {
+			return errInconsistentEval
 		}
 	}
 
 	return nil
-
 }
 
 func (vctx *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	panic("todo")
-}
-
-func printVector(v []field.Element) {
-	for i := 0; i < len(v); i++ {
-		fmt.Printf("%s\n", v[i].String())
-	}
+	panic("RunGnark is unimplemented for split extension")
 }
 
 func splitVector(sv smartvectors.SmartVector) [4]smartvectors.SmartVector {
