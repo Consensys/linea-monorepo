@@ -8,97 +8,164 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/internal/testtools"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/assert"
 )
 
 type testCase struct {
-	nbColumnsToSplit int
-	size             int
-
+	// name of the test-case to recognize it
+	name string
 	// original vector that we want to split defined over E4
-	toSplit []smartvectors.SmartVector
-
-	challenge fext.Element
+	Columns []smartvectors.SmartVector
+	X       fext.Element
 }
 
-// createMultiIPTestCase generates a testCase for multiple inner products (linear combination).
-func createSplittingTestCase(
-	splittedName string,
-	toSplitName string,
-	sizeColumns int,
-	nbColumnsToSplit int,
-) testCase {
-
-	toSplit := make([][]fext.Element, nbColumnsToSplit)
-	for i := 0; i < nbColumnsToSplit; i++ {
-		toSplit[i] = make([]fext.Element, sizeColumns)
-		for k := 0; k < sizeColumns; k++ {
-			toSplit[i][k].SetRandom()
-		}
-	}
-
-	smToSplit := make([]smartvectors.SmartVector, nbColumnsToSplit)
-	for i := 0; i < nbColumnsToSplit; i++ {
-		smToSplit[i] = smartvectors.NewRegularExt(toSplit[i])
-	}
-
-	toSplitnames := make([]ifaces.ColID, nbColumnsToSplit)
-	splittedNames := make([]ifaces.ColID, 4*nbColumnsToSplit)
-	for i := 0; i < nbColumnsToSplit; i++ {
-		toSplitnames[i] = ifaces.ColID(fmt.Sprintf("%s_%d", toSplitName, i))
-		for j := 0; j < 4; j++ {
-			splittedNames[4*i+j] = ifaces.ColID(fmt.Sprintf("%s_%d", splittedName, 4*i+j))
-		}
-	}
-
-	// TODO use PRNG
-	var x fext.Element
-	x.B0.A0.SetUint64(2)
-
-	return testCase{
-
-		nbColumnsToSplit: nbColumnsToSplit,
-		size:             sizeColumns,
-
-		// original vector that we want to split defined over E4
-		toSplit: smToSplit,
-
-		challenge: x,
-	}
-
+var testCases = []testCase{
+	{
+		name: "2-fext-vectors-with-fr-x",
+		Columns: []smartvectors.SmartVector{
+			testtools.RandomVecFext(64),
+			testtools.RandomVecFext(64),
+		},
+		X: fext.NewFromUintBase(2),
+	},
+	{
+		name: "3-fext-vectors-with-fr-x",
+		Columns: []smartvectors.SmartVector{
+			testtools.RandomVecFext(64),
+			testtools.RandomVecFext(64),
+			testtools.RandomVecFext(64),
+		},
+		X: fext.NewFromUintBase(2),
+	},
+	{
+		name: "2-fext-vectors-and-1-fr-vector-with-fr-x",
+		Columns: []smartvectors.SmartVector{
+			testtools.RandomVecFext(64),
+			testtools.RandomVecFext(64),
+			testtools.RandomVec(64),
+		},
+		X: fext.NewFromUintBase(2),
+	},
+	{
+		name: "1-fr-vector-and-2-fext-vectors-with-fr-x",
+		Columns: []smartvectors.SmartVector{
+			testtools.RandomVec(64),
+			testtools.RandomVecFext(64),
+			testtools.RandomVecFext(64),
+		},
+		X: fext.NewFromUintBase(2),
+	},
+	{
+		name: "fext-sandwich-with-fr-x",
+		Columns: []smartvectors.SmartVector{
+			testtools.RandomVec(64),
+			testtools.RandomVecFext(64),
+			testtools.RandomVec(64),
+		},
+		X: fext.NewFromUintBase(2),
+	},
+	{
+		name: "fr-field-sandwich-with-fr-x",
+		Columns: []smartvectors.SmartVector{
+			testtools.RandomVecFext(64),
+			testtools.RandomVec(64),
+			testtools.RandomVecFext(64),
+		},
+		X: fext.NewFromUintBase(2),
+	},
+	{
+		name: "2-fext-vectors-with-fext-x",
+		Columns: []smartvectors.SmartVector{
+			testtools.RandomVecFext(64),
+			testtools.RandomVecFext(64),
+		},
+		X: fext.NewFromInt(1, 2, 3, 4),
+	},
+	{
+		name: "3-fext-vectors-with-fext-x",
+		Columns: []smartvectors.SmartVector{
+			testtools.RandomVecFext(64),
+			testtools.RandomVecFext(64),
+			testtools.RandomVecFext(64),
+		},
+		X: fext.NewFromInt(1, 2, 3, 4),
+	},
+	{
+		name: "2-fext-vectors-and-1-fr-vector-with-fext-x",
+		Columns: []smartvectors.SmartVector{
+			testtools.RandomVecFext(64),
+			testtools.RandomVecFext(64),
+			testtools.RandomVec(64),
+		},
+		X: fext.NewFromInt(1, 2, 3, 4),
+	},
+	{
+		name: "1-fr-vector-and-2-fext-vectors-with-fext-x",
+		Columns: []smartvectors.SmartVector{
+			testtools.RandomVec(64),
+			testtools.RandomVecFext(64),
+			testtools.RandomVecFext(64),
+		},
+		X: fext.NewFromInt(1, 2, 3, 4),
+	},
+	{
+		name: "fext-sandwich-with-fext-x",
+		Columns: []smartvectors.SmartVector{
+			testtools.RandomVec(64),
+			testtools.RandomVecFext(64),
+			testtools.RandomVec(64),
+		},
+		X: fext.NewFromInt(1, 2, 3, 4),
+	},
+	{
+		name: "fr-field-sandwich-with-fext-x",
+		Columns: []smartvectors.SmartVector{
+			testtools.RandomVecFext(64),
+			testtools.RandomVec(64),
+			testtools.RandomVecFext(64),
+		},
+		X: fext.NewFromInt(1, 2, 3, 4),
+	},
 }
 
 func TestSplitextension(t *testing.T) {
 
 	// size of the columns
-	sizeColumns := 64
-	nbColumnsToSplit := 2
-	testCase := createSplittingTestCase("splitted_cols", "to_split", sizeColumns, nbColumnsToSplit)
+	var (
+		baseNameToSplit = "to_split"
+		qName           = ifaces.QueryID("q")
+	)
 
-	define := func(b *wizard.Builder) {
-		toSplit := make([]ifaces.Column, nbColumnsToSplit)
-		for i := 0; i < nbColumnsToSplit; i++ {
-			curName := fmt.Sprintf("%s_%d", baseNameToSplit, i)
-			toSplit[i] = b.RegisterCommit(ifaces.ColID(curName), sizeColumns)
-		}
-		b.InsertUnivariate(0, fextQuery, toSplit)
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
 
+			numColumns := len(testCase.Columns)
+
+			define := func(b *wizard.Builder) {
+				toSplit := make([]ifaces.Column, numColumns)
+				for i := 0; i < len(testCase.Columns); i++ {
+					curName := fmt.Sprintf("%s_%d", baseNameToSplit, i)
+					toSplit[i] = b.RegisterCommit(ifaces.ColID(curName), testCase.Columns[i].Len())
+				}
+
+				b.InsertUnivariate(0, qName, toSplit)
+			}
+
+			genWitness := func(run *wizard.ProverRuntime) {
+				y := make([]fext.Element, numColumns)
+				for i := 0; i < numColumns; i++ {
+					curName := fmt.Sprintf("%s_%d", baseNameToSplit, i)
+					run.AssignColumn(ifaces.ColID(curName), testCase.Columns[i])
+					y[i] = smartvectors.EvaluateLagrangeFullFext(testCase.Columns[i], testCase.X)
+				}
+				run.AssignUnivariateExt(qName, testCase.X, y...)
+			}
+
+			comp := wizard.Compile(define, CompileSplitExtToBase, dummy.Compile)
+			proof := wizard.Prove(comp, genWitness)
+			assert.NoErrorf(t, wizard.Verify(comp, proof), "invalid proof")
+		})
 	}
-
-	witness := func(run *wizard.ProverRuntime) {
-		y := make([]fext.Element, testCase.nbColumnsToSplit)
-		for i := 0; i < nbColumnsToSplit; i++ {
-			curName := fmt.Sprintf("%s_%d", baseNameToSplit, i)
-			run.AssignColumn(ifaces.ColID(curName), testCase.toSplit[i])
-			y[i] = smartvectors.EvaluateLagrangeFullFext(testCase.toSplit[i], testCase.challenge)
-		}
-		run.AssignUnivariateExt(fextQuery, testCase.challenge, y...)
-	}
-
-	comp := wizard.Compile(define, CompileSplitExtToBase, dummy.Compile)
-
-	proof := wizard.Prove(comp, witness)
-	assert.NoErrorf(t, wizard.Verify(comp, proof), "invalid proof")
-
 }
