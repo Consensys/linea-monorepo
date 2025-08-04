@@ -111,6 +111,13 @@ func SegmentRuntime(
 		wGL := SegmentModuleGL(runtime, disc, &blueprintGLs[i])
 		witnessesGL = append(witnessesGL, wGL...)
 
+		// Expectedly, the blueprintGLs[i] is for the disc.Module[i] as the
+		// blueprintGLs list is constructed from them in the same order.  We
+		// sanity-check this assumption to ensure the line-up is correct.
+		if blueprintGLs[i].ModuleNames[0] != disc.Modules[i].ModuleName {
+			utils.Panic("blueprintGLs[i].ModuleNames[0] != disc.Modules[i].Name")
+		}
+
 		qbmStats := disc.Modules[i].RecordAssignmentStats(runtime)
 		loggableQbmStats := map[string]map[string]any{}
 
