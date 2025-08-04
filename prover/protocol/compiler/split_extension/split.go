@@ -129,10 +129,10 @@ func (pctx *ProverCtx) Run(runtime *wizard.ProverRuntime) {
 		runtime.AssignColumn(ctx.OutputPolynomials[4*i+3].GetColID(), sv[3])
 
 		for j := 0; j < 4; j++ {
-			y[4*i+j] = smartvectors.EvaluateLagrangeFullFext(sv[j], evalFextParams.X)
+			y[4*i+j] = smartvectors.EvaluateLagrangeFullFext(sv[j], evalFextParams.ExtX)
 		}
 	}
-	runtime.AssignUnivariate(basefieldQuery, evalFextParams.X, y...)
+	runtime.AssignUnivariateExt(basefieldQuery, evalFextParams.ExtX, y...)
 }
 
 func (vctx *VerifierCtx) Run(run wizard.Runtime) error {
@@ -150,14 +150,14 @@ func (vctx *VerifierCtx) Run(run wizard.Runtime) error {
 
 	for i := 0; i < nbPolyToSplit; i++ {
 		var purportedEval [4]field.Element
-		purportedEval[0].Set(&evalFextParams.Ys[i].B0.A0)
-		purportedEval[1].Set(&evalFextParams.Ys[i].B0.A1)
-		purportedEval[2].Set(&evalFextParams.Ys[i].B1.A0)
-		purportedEval[3].Set(&evalFextParams.Ys[i].B1.A1)
+		purportedEval[0].Set(&evalFextParams.ExtYs[i].B0.A0)
+		purportedEval[1].Set(&evalFextParams.ExtYs[i].B0.A1)
+		purportedEval[2].Set(&evalFextParams.ExtYs[i].B1.A0)
+		purportedEval[3].Set(&evalFextParams.ExtYs[i].B1.A1)
 		for j := 0; j < 4; j++ {
 
 			// TODO check that evalBaseFieldParams.Ys[4*i+j] is real
-			if !evalBaseFieldParams.Ys[4*i+j].B0.A0.Equal(&purportedEval[j]) {
+			if !evalBaseFieldParams.Ys[4*i+j].Equal(&purportedEval[j]) {
 				return errUnconsistentEval
 			}
 		}

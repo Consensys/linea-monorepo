@@ -93,7 +93,7 @@ func TestSplitextension(t *testing.T) {
 			run.AssignColumn(ifaces.ColID(curName), testCase.toSplit[i])
 			y[i] = smartvectors.EvaluateLagrangeFullFext(testCase.toSplit[i], testCase.challenge)
 		}
-		run.AssignUnivariate(fextQuery, testCase.challenge, y...)
+		run.AssignUnivariateExt(fextQuery, testCase.challenge, y...)
 	}
 
 	comp := wizard.Compile(define, CompileSplitExtToBase, dummy.Compile)
