@@ -11,7 +11,6 @@ package maru.consensus.qbft
 import maru.consensus.PrevRandaoProvider
 import maru.consensus.ValidatorProvider
 import maru.consensus.state.FinalizationProvider
-import maru.core.Validator
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import org.apache.logging.log4j.LogManager
@@ -30,7 +29,7 @@ class QbftBlockCreatorFactory(
   private val beaconChain: BeaconChain,
   private val finalizationStateProvider: FinalizationProvider,
   private val prevRandaoProvider: PrevRandaoProvider<ULong>,
-  private val blockBuilderIdentity: Validator,
+  private val feeRecipient: ByteArray,
   private val eagerQbftBlockCreatorConfig: EagerQbftBlockCreator.Config,
 ) : QbftBlockCreatorFactory {
   private val log: Logger = LogManager.getLogger(this.javaClass)
@@ -66,7 +65,7 @@ class QbftBlockCreatorFactory(
         delegate = delayedQbftBlockCreator,
         finalizationStateProvider = finalizationStateProvider,
         prevRandaoProvider = prevRandaoProvider,
-        blockBuilderIdentity = blockBuilderIdentity,
+        feeRecipient = feeRecipient,
         beaconChain = beaconChain,
         config = eagerQbftBlockCreatorConfig,
       )

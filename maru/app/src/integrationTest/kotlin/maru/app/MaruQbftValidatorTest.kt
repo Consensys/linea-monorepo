@@ -9,6 +9,7 @@
 package maru.app
 
 import com.github.michaelbull.result.Ok
+import linea.kotlin.decodeHex
 import maru.consensus.StaticValidatorProvider
 import maru.consensus.qbft.toAddress
 import maru.consensus.validation.QuorumOfSealsVerifier
@@ -94,6 +95,12 @@ class MaruQbftValidatorTest {
 
     val blocks = networkParticipantStack.besuNode.getMinedBlocks(blocksToProduce)
     blocks.verifyBlockTime()
+    blocks.forEach {
+      assertThat(it.miner.decodeHex()).isEqualTo(
+        networkParticipantStack.maruApp.config.qbftOptions!!
+          .feeRecipient,
+      )
+    }
 
     // Need to wait because otherwise not all of the messages might be emitted at the time of a block being mined
     await.untilAsserted {

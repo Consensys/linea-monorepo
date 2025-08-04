@@ -75,6 +75,7 @@ class EagerQbftBlockCreatorTest {
   private val beaconChain = Mockito.mock(BeaconChain::class.java)
   private val clock = Mockito.mock(Clock::class.java)
   private val validator = Validator(Random.nextBytes(20))
+  private val feeRecipient = Random.nextBytes(20)
   private val prevRandaoProvider = { a: ULong, b: ByteArray -> Bytes32.random().toArray() }
   private lateinit var executionLayerManager: ExecutionLayerManager
   private val validatorSet = DataGenerators.randomValidators() + validator
@@ -145,7 +146,7 @@ class EagerQbftBlockCreatorTest {
           )
         },
         prevRandaoProvider = prevRandaoProvider,
-        blockBuilderIdentity = validator,
+        feeRecipient = feeRecipient,
         config =
           EagerQbftBlockCreator.Config(
             minBlockBuildTime = 500.milliseconds,

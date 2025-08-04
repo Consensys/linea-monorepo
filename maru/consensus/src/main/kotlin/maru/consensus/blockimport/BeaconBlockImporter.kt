@@ -14,7 +14,6 @@ import maru.consensus.PrevRandaoProvider
 import maru.consensus.state.FinalizationProvider
 import maru.core.BeaconBlock
 import maru.core.BeaconState
-import maru.core.Validator
 import maru.executionlayer.client.ExecutionLayerEngineApiClient
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
@@ -83,7 +82,7 @@ class BlockBuildingBeaconBlockImporter(
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val prevRandaoProvider: PrevRandaoProvider<ULong>,
   private val shouldBuildNextBlock: (BeaconState, ConsensusRoundIdentifier) -> Boolean,
-  private val blockBuilderIdentity: Validator,
+  private val feeRecipient: ByteArray,
 ) : BeaconBlockImporter {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
@@ -114,7 +113,7 @@ class BlockBuildingBeaconBlockImporter(
         safeHash = finalizationState.safeBlockHash,
         finalizedHash = finalizationState.finalizedBlockHash,
         nextBlockTimestamp = nextBlockTimestamp,
-        feeRecipient = blockBuilderIdentity.address,
+        feeRecipient = feeRecipient,
         prevRandao =
           prevRandaoProvider.calculateNextPrevRandao(
             signee =
