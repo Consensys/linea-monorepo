@@ -136,7 +136,6 @@ func (pctx *ProverCtx) Run(runtime *wizard.ProverRuntime) {
 }
 
 func (vctx *VerifierCtx) Run(run wizard.Runtime) error {
-
 	ctx := vctx.Ctx
 
 	// checks that P(x) = P_0(x) + w*P_1(x) + w**2*P_2(x) + w**3*P_3(x)
@@ -146,7 +145,7 @@ func (vctx *VerifierCtx) Run(run wizard.Runtime) error {
 
 	evalBaseFieldParams := run.GetUnivariateParams(ctx.QueryBaseField)
 
-	nbPolyToSplit := len(evalFextParams.Ys)
+	nbPolyToSplit := len(evalFextParams.ExtYs)
 
 	for i := 0; i < nbPolyToSplit; i++ {
 		var purportedEval [4]field.Element
@@ -154,10 +153,10 @@ func (vctx *VerifierCtx) Run(run wizard.Runtime) error {
 		purportedEval[1].Set(&evalFextParams.ExtYs[i].B0.A1)
 		purportedEval[2].Set(&evalFextParams.ExtYs[i].B1.A0)
 		purportedEval[3].Set(&evalFextParams.ExtYs[i].B1.A1)
-		for j := 0; j < 4; j++ {
 
+		for j := 0; j < 4; j++ {
 			// TODO check that evalBaseFieldParams.Ys[4*i+j] is real
-			if !evalBaseFieldParams.Ys[4*i+j].Equal(&purportedEval[j]) {
+			if !evalBaseFieldParams.ExtYs[4*i+j].B0.A0.Equal(&purportedEval[j]) {
 				return errUnconsistentEval
 			}
 		}
