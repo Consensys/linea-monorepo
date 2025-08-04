@@ -80,8 +80,7 @@ public class LineaLivenessTxBuilder implements LivenessTxBuilder {
     Optional<SSLContext> sslContext =
         tlsEnabled
             ? buildSSLContext(
-                tlsKeyStorePath, tlsKeyStorePassword, tlsTrustStorePath, tlsTrustStorePassword
-                )
+                tlsKeyStorePath, tlsKeyStorePassword, tlsTrustStorePath, tlsTrustStorePassword)
             : Optional.empty();
 
     // Initialize HTTP client and JSON mapper for Web3Signer API calls
