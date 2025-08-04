@@ -49,11 +49,6 @@ public class LineaLivenessTxBuilder implements LivenessTxBuilder {
   private final BlockchainService blockchainService;
   private final String signerKeyId;
   private final String signerUrl;
-  private final boolean tlsEnabled;
-  private final Path tlsKeyStorePath;
-  private final String tlsKeyStorePassword;
-  private final Path tlsTrustStorePath;
-  private final String tlsTrustStorePassword;
   private final String livenessContractAddress;
   private final long gasPrice;
   private final long gasLimit;
@@ -66,15 +61,16 @@ public class LineaLivenessTxBuilder implements LivenessTxBuilder {
     this.chainId = chainId;
     this.signerKeyId = lineaLivenessServiceConfiguration.signerKeyId();
     this.signerUrl = lineaLivenessServiceConfiguration.signerUrl();
-    this.tlsEnabled = lineaLivenessServiceConfiguration.tlsEnabled();
-    this.tlsKeyStorePath = lineaLivenessServiceConfiguration.tlsKeyStorePath();
-    this.tlsKeyStorePassword = lineaLivenessServiceConfiguration.tlsKeyStorePassword();
-    this.tlsTrustStorePath = lineaLivenessServiceConfiguration.tlsTrustStorePath();
-    this.tlsTrustStorePassword = lineaLivenessServiceConfiguration.tlsTrustStorePassword();
     this.livenessContractAddress = lineaLivenessServiceConfiguration.contractAddress();
     this.gasPrice = lineaLivenessServiceConfiguration.gasPrice();
     this.gasLimit = lineaLivenessServiceConfiguration.gasLimit();
     this.blockchainService = blockchainService;
+
+    boolean tlsEnabled = lineaLivenessServiceConfiguration.tlsEnabled();
+    Path tlsKeyStorePath = lineaLivenessServiceConfiguration.tlsKeyStorePath();
+    String tlsKeyStorePassword = lineaLivenessServiceConfiguration.tlsKeyStorePassword();
+    Path tlsTrustStorePath = lineaLivenessServiceConfiguration.tlsTrustStorePath();
+    String tlsTrustStorePassword = lineaLivenessServiceConfiguration.tlsTrustStorePassword();
 
     // Build SSLContext instance
     Optional<SSLContext> sslContext =
@@ -96,11 +92,12 @@ public class LineaLivenessTxBuilder implements LivenessTxBuilder {
       String clientKeystorePassword,
       Path trustStorePath,
       String trustStorePassword) {
-    try {
+    try (FileInputStream keyStoreFis =
+            new FileInputStream(clientKeystorePath.toAbsolutePath().toString());
+        FileInputStream trustStoreFis =
+            new FileInputStream(trustStorePath.toAbsolutePath().toString())) {
       // Load client keystore
       KeyStore keyStore = KeyStore.getInstance("PKCS12");
-      FileInputStream keyStoreFis =
-          new FileInputStream(clientKeystorePath.toAbsolutePath().toString());
       keyStore.load(keyStoreFis, clientKeystorePassword.toCharArray());
 
       // Initialize KeyManagerFactory for client certificate
@@ -110,8 +107,6 @@ public class LineaLivenessTxBuilder implements LivenessTxBuilder {
 
       // Load truststore
       KeyStore trustStore = KeyStore.getInstance("PKCS12");
-      FileInputStream trustStoreFis =
-          new FileInputStream(trustStorePath.toAbsolutePath().toString());
       trustStore.load(trustStoreFis, trustStorePassword.toCharArray());
 
       // Initialize TrustManagerFactory for server certificate
@@ -125,7 +120,7 @@ public class LineaLivenessTxBuilder implements LivenessTxBuilder {
           keyManagerFactory.getKeyManagers(), trustManagerFactory.getTrustManagers(), null);
       return Optional.of(sslContext);
     } catch (Exception ex) {
-      return Optional.empty();
+      throw new RuntimeException("Failed to initialize SSL context: " + ex.getMessage());
     }
   }
 
