@@ -164,7 +164,7 @@ func (ol *OneLimbCmpCtx) Run(run *wizard.ProverRuntime) {
 		}
 
 		if minOffsetB < 0 && i < -minOffsetB {
-			biF = a.Get(-minOffsetB)
+			biF = b.Get(-minOffsetB)
 			bi = biF.Uint64()
 		}
 
