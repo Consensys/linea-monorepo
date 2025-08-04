@@ -35,10 +35,9 @@ func testBlsPair(t *testing.T, withCircuit bool) {
 		t.Fatal("failed to create csv trace", err)
 	}
 	var blsPair *BlsPair
-	var blsPairSource *BlsPairDataSource
 	cmp := wizard.Compile(
 		func(b *wizard.Builder) {
-			blsPairSource = &BlsPairDataSource{
+			blsPairSource := &BlsPairDataSource{
 				ID:             ct.GetCommit(b, "ID"),
 				CsPair:         ct.GetCommit(b, "CS_PAIRING_CHECK"),
 				CsG1Membership: ct.GetCommit(b, "CS_G1_MEMBERSHIP"),
