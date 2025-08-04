@@ -8,9 +8,9 @@
  */
 package maru.consensus.qbft
 
+import kotlin.random.Random
 import maru.consensus.ValidatorProvider
 import maru.consensus.state.FinalizationState
-import maru.core.Validator
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
@@ -27,7 +27,7 @@ class QbftBlockCreatorFactoryTest {
   private val validatorProvider = Mockito.mock(ValidatorProvider::class.java)
   private val beaconChain = Mockito.mock(BeaconChain::class.java)
   private val finalizationState = Mockito.mock(FinalizationState::class.java)
-  private val blockBuilderIdentity = Mockito.mock(Validator::class.java)
+  private val feeRecipient = Random.nextBytes(20)
   private val eagerQbftBlockCreatorConfig = Mockito.mock(EagerQbftBlockCreator.Config::class.java)
   private val prevRandaoProvider = { a: ULong, b: ByteArray -> Bytes32.random().toArray() }
 
@@ -45,7 +45,7 @@ class QbftBlockCreatorFactoryTest {
         beaconChain = beaconChain,
         finalizationStateProvider = { (_) -> finalizationState },
         prevRandaoProvider = prevRandaoProvider,
-        blockBuilderIdentity = blockBuilderIdentity,
+        feeRecipient = feeRecipient,
         eagerQbftBlockCreatorConfig = eagerQbftBlockCreatorConfig,
       )
 
@@ -67,7 +67,7 @@ class QbftBlockCreatorFactoryTest {
         beaconChain = beaconChain,
         finalizationStateProvider = { (_) -> finalizationState },
         prevRandaoProvider = prevRandaoProvider,
-        blockBuilderIdentity = blockBuilderIdentity,
+        feeRecipient = feeRecipient,
         eagerQbftBlockCreatorConfig = eagerQbftBlockCreatorConfig,
       )
 
@@ -89,7 +89,7 @@ class QbftBlockCreatorFactoryTest {
         beaconChain = beaconChain,
         finalizationStateProvider = { (_) -> finalizationState },
         prevRandaoProvider = prevRandaoProvider,
-        blockBuilderIdentity = blockBuilderIdentity,
+        feeRecipient = feeRecipient,
         eagerQbftBlockCreatorConfig = eagerQbftBlockCreatorConfig,
       )
 

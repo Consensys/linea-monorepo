@@ -12,7 +12,6 @@ import kotlin.time.Duration
 import maru.consensus.PrevRandaoProvider
 import maru.consensus.qbft.adapters.toBeaconBlockHeader
 import maru.consensus.state.FinalizationProvider
-import maru.core.Validator
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import org.apache.logging.log4j.LogManager
@@ -32,7 +31,7 @@ class EagerQbftBlockCreator(
   private val delegate: QbftBlockCreator,
   private val finalizationStateProvider: FinalizationProvider,
   private val prevRandaoProvider: PrevRandaoProvider<ULong>,
-  private val blockBuilderIdentity: Validator,
+  private val feeRecipient: ByteArray,
   private val beaconChain: BeaconChain,
   private val config: Config,
 ) : QbftBlockCreator {
@@ -69,7 +68,7 @@ class EagerQbftBlockCreator(
           safeHash = finalizedState.safeBlockHash,
           finalizedHash = finalizedState.finalizedBlockHash,
           nextBlockTimestamp = headerTimeStampSeconds,
-          feeRecipient = blockBuilderIdentity.address,
+          feeRecipient = feeRecipient,
           prevRandao =
             prevRandaoProvider.calculateNextPrevRandao(
               signee =

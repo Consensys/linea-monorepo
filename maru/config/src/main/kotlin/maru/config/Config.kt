@@ -17,6 +17,7 @@ import kotlin.time.Duration.Companion.seconds
 import linea.domain.BlockParameter
 import linea.domain.RetryConfig
 import linea.kotlin.assertIs20Bytes
+import maru.extensions.encodeHex
 
 data class Persistence(
   val dataPath: Path,
@@ -104,6 +105,17 @@ data class QbftOptions(
     result = 31 * result + feeRecipient.contentHashCode()
     return result
   }
+
+  override fun toString(): String =
+    "QbftOptions(" +
+      "minBlockBuildTime=$minBlockBuildTime, " +
+      "messageQueueLimit=$messageQueueLimit, " +
+      "roundExpiry=$roundExpiry, " +
+      "duplicateMessageLimit=$duplicateMessageLimit, " +
+      "futureMessageMaxDistance=$futureMessageMaxDistance, " +
+      "futureMessagesLimit=$futureMessagesLimit, " +
+      "feeRecipient=${feeRecipient.encodeHex()}" +
+      ")"
 }
 
 data class ObservabilityOptions(

@@ -14,7 +14,6 @@ import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.blockimport.BlockBuildingBeaconBlockImporter
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconState
-import maru.core.Validator
 import maru.core.ext.DataGenerators
 import maru.executionlayer.manager.ExecutionLayerManager
 import org.apache.tuweni.bytes.Bytes32
@@ -33,10 +32,10 @@ class FollowerBeaconBlockImporterTest {
   private lateinit var executionLayerManager: ExecutionLayerManager
   private var nextBlockTimestamp: Long = 123456789L
   private var shouldBuildNextBlock: Boolean = false
-  private var blockBuilderIdentity: Validator = Validator(Random.nextBytes(20))
   private lateinit var beaconBlockImporter: BlockBuildingBeaconBlockImporter
   private lateinit var finalizationState: FinalizationState
   private val prevRandaoProvider = { a: ULong, b: ByteArray -> Bytes32.random().toArray() }
+  private val feeRecipient = Random.nextBytes(20)
 
   @BeforeEach
   fun setUp() {
@@ -52,7 +51,7 @@ class FollowerBeaconBlockImporterTest {
         shouldBuildNextBlock = { _: BeaconState, _: ConsensusRoundIdentifier ->
           shouldBuildNextBlock
         },
-        blockBuilderIdentity = blockBuilderIdentity,
+        feeRecipient = feeRecipient,
       )
   }
 
@@ -69,7 +68,7 @@ class FollowerBeaconBlockImporterTest {
         safeHash = eq(finalizationState.safeBlockHash),
         finalizedHash = eq(finalizationState.finalizedBlockHash),
         nextBlockTimestamp = eq(nextBlockTimestamp),
-        feeRecipient = eq(blockBuilderIdentity.address),
+        feeRecipient = eq(feeRecipient),
         prevRandao = any(),
       ),
     ).thenReturn(expectedResponse)
@@ -81,7 +80,7 @@ class FollowerBeaconBlockImporterTest {
       safeHash = eq(finalizationState.safeBlockHash),
       finalizedHash = eq(finalizationState.finalizedBlockHash),
       nextBlockTimestamp = eq(nextBlockTimestamp),
-      feeRecipient = eq(blockBuilderIdentity.address),
+      feeRecipient = eq(feeRecipient),
       prevRandao = any(),
     )
   }
@@ -130,7 +129,7 @@ class FollowerBeaconBlockImporterTest {
         nextBlockTimestampProvider = nextBlockTimestampProvider,
         prevRandaoProvider = prevRandaoProvider,
         shouldBuildNextBlock = shouldBuildNextBlockPredicate,
-        blockBuilderIdentity = blockBuilderIdentity,
+        feeRecipient = feeRecipient,
       )
 
     beaconBlockImporter.importBlock(randomBeaconState, randomBeaconBlock)

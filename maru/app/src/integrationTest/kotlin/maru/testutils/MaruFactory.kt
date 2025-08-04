@@ -39,7 +39,6 @@ import maru.consensus.ForksSchedule
 import maru.consensus.state.FinalizationProvider
 import maru.crypto.Crypto
 import maru.extensions.encodeHex
-import maru.extensions.fromHexToByteArray
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 
@@ -74,7 +73,7 @@ class MaruFactory {
     """.trimIndent()
   private val validatorQbftOptions =
     QbftOptions(
-      feeRecipient = validatorAddress.fromHexToByteArray(),
+      feeRecipient = qbftValidator.address.reversedArray(),
       minBlockBuildTime = 200.milliseconds,
     )
 
