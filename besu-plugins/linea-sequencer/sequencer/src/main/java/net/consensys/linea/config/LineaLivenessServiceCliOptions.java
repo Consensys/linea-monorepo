@@ -266,21 +266,27 @@ public class LineaLivenessServiceCliOptions implements LineaCliOptions {
                 + "] when liveness service is enabled");
       }
 
-      if (tlsEnabled
-          && (tlsKeyStorePath == null
-              || tlsKeyStorePassword == null
-              || tlsTrustStorePath == null
-              || tlsTrustStorePassword == null)) {
-        throw new IllegalArgumentException(
-            "Error: Missing some or all of these required argument(s) when TLS connection is enabled: "
-                + TLS_KEY_STORE_PATH
-                + "=<FILE_PATH>, "
-                + TLS_KEY_STORE_PASSWORD
-                + "=<PASSWORD>, "
-                + TLS_TRUST_STORE_PATH
-                + "=<FILE_PATH>, "
-                + TLS_TRUST_STORE_PASSWORD
-                + "=<PASSWORD>");
+      if (tlsEnabled) {
+        if (tlsKeyStorePath == null
+            || tlsKeyStorePassword == null
+            || tlsTrustStorePath == null
+            || tlsTrustStorePassword == null) {
+          throw new IllegalArgumentException(
+              "Error: Missing some or all of these required argument(s) when TLS connection is enabled: "
+                  + TLS_KEY_STORE_PATH
+                  + "=<FILE_PATH>, "
+                  + TLS_KEY_STORE_PASSWORD
+                  + "=<PASSWORD>, "
+                  + TLS_TRUST_STORE_PATH
+                  + "=<FILE_PATH>, "
+                  + TLS_TRUST_STORE_PASSWORD
+                  + "=<PASSWORD>");
+        }
+
+        if (!signerUrl.toLowerCase().startsWith("https://")) {
+          throw new IllegalArgumentException(
+              "Error: " + SIGNER_URL + " needs to use HTTPS schema when TLS connection is enabled");
+        }
       }
     }
 
