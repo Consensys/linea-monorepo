@@ -55,6 +55,9 @@ allprojects {
     }
   }
 
+  // suppress warnings, see https://youtrack.jetbrains.com/issue/KT-73255
+  kotlin.compilerOptions.freeCompilerArgs.add("-Xannotation-default-target=param-property")
+
   tasks.withType(JavaCompile).configureEach {
     options.compilerArgs += [
       '-Xlint:unchecked',
@@ -148,8 +151,8 @@ allprojects {
     useJUnitPlatform {}
     testLogging {
       exceptionFormat TestExceptionFormat.FULL
-      events 'passed', 'skipped', 'failed'
-      showStandardStreams = true
+      events 'skipped', 'failed'
+      showStandardStreams = false
     }
   }
 

@@ -116,9 +116,9 @@ task integrationTest(type: Test) {
   testLogging {
     events TestLogEvent.FAILED,
     TestLogEvent.SKIPPED,
-    TestLogEvent.STANDARD_ERROR,
-    //    TestLogEvent.STARTED,
-    TestLogEvent.PASSED
+    TestLogEvent.STANDARD_ERROR
+    // TestLogEvent.STARTED,
+    // TestLogEvent.PASSED
     exceptionFormat TestExceptionFormat.FULL
     showCauses true
     showExceptions true
