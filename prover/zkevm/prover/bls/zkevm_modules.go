@@ -31,3 +31,7 @@ func NewG1MapZkEvm(comp *wizard.CompiledIOP, limits *Limits) *BlsMap {
 func NewG2MapZkEvm(comp *wizard.CompiledIOP, limits *Limits) *BlsMap {
 	return newMap(comp, G2, limits, newMapDataSource(comp, G2))
 }
+
+func NewPointEvalZkEvm(comp *wizard.CompiledIOP, limits *Limits) *BlsPointEval {
+	return newPointEval(comp, limits, newPointEvalDataSource(comp))
+}
