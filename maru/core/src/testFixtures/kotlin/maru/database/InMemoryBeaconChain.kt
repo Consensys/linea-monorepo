@@ -33,10 +33,11 @@ class InMemoryBeaconChain(
   private var latestBeaconState: BeaconState = initialBeaconState
 
   init {
-    val updater = newUpdater()
-    updater.putBeaconState(initialBeaconState)
-    initialBeaconBlock?.let { updater.putSealedBeaconBlock(initialBeaconBlock) }
-    updater.commit()
+    newUpdater().run {
+      putBeaconState(initialBeaconState)
+      initialBeaconBlock?.let { putSealedBeaconBlock(it) }
+      commit()
+    }
   }
 
   override fun isInitialized(): Boolean = true

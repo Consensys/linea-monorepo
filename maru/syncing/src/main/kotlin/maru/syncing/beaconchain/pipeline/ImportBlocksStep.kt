@@ -29,6 +29,7 @@ class ImportBlocksStep(
   override fun accept(blocksWithPeers: List<SealedBlockWithPeer>) {
     // Process blocks sequentially
     blocksWithPeers.forEach { blockAndPeer ->
+      val beaconBlockHeader = blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader
       try {
         val result = blockImporter.importBlock(blockAndPeer.sealedBeaconBlock).join()
         when (result.code) {
@@ -36,9 +37,8 @@ class ImportBlocksStep(
             LogUtil.throttledLog(
               log::info,
               "Imported block: " +
-                "clBlockNumber=${blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.number} " +
-                "clBlockHash=${blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
-                  .encodeHex()}",
+                "clBlockNumber=${beaconBlockHeader.number} " +
+                "clBlockHash=${beaconBlockHeader.hash.encodeHex()}",
               shouldLog,
               30,
             )
@@ -47,18 +47,16 @@ class ImportBlocksStep(
             blockAndPeer.peer.disconnectCleanly(DisconnectReason.REMOTE_FAULT)
             log.error(
               "Block validation failed for block: clBlockNumber:{} clBlockHash={}",
-              blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
-              blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
-                .encodeHex(),
+              beaconBlockHeader.number,
+              beaconBlockHeader.hash.encodeHex(),
             )
             return
           }
           ValidationResultCode.IGNORE -> {
             log.warn(
               "Block validation ignored for block: clBlockNumber:{}, clBlockHash={}",
-              blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
-              blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
-                .encodeHex(),
+              beaconBlockHeader.number,
+              beaconBlockHeader.hash.encodeHex(),
             )
             return
           }
@@ -66,8 +64,8 @@ class ImportBlocksStep(
       } catch (e: Exception) {
         log.error(
           "Exception importing block: clBlockNumber:{}, clBlockHash={}",
-          blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
-          blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
+          beaconBlockHeader.number,
+          beaconBlockHeader.hash
             .encodeHex(),
           e,
         )

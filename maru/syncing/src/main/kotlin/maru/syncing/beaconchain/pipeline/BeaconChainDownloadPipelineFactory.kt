@@ -8,6 +8,7 @@
  */
 package maru.syncing.beaconchain.pipeline
 
+import kotlin.text.toInt
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import maru.consensus.blockimport.SealedBeaconBlockImporter
@@ -19,6 +20,11 @@ import org.hyperledger.besu.metrics.BesuMetricCategory
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import org.hyperledger.besu.services.pipeline.Pipeline
 import org.hyperledger.besu.services.pipeline.PipelineBuilder
+
+data class BeaconChainPipeline(
+  val pipline: Pipeline<SyncTargetRange>,
+  val target: () -> ULong,
+)
 
 class BeaconChainDownloadPipelineFactory(
   private val blockImporter: SealedBeaconBlockImporter<ValidationResult>,
@@ -44,45 +50,50 @@ class BeaconChainDownloadPipelineFactory(
     val maxRetries: UInt = 5u,
   )
 
-  fun createPipeline(startBlock: ULong): Pipeline<SyncTargetRange?> {
-    val syncTargetRangeSequence = createTargetRangeSequence(startBlock, syncTargetProvider)
+  fun createPipeline(startBlock: ULong): BeaconChainPipeline {
+    var latestEndBlock = startBlock
+
+    val syncTargetRangeSequence =
+      sequence {
+        var currentStart = startBlock
+        val rangeSize = config.blocksBatchSize.toULong()
+
+        var syncTarget = syncTargetProvider()
+        while (currentStart <= syncTarget) {
+          val nextEnd = currentStart.clampedAdd(rangeSize) - 1uL
+          val currentEnd = minOf(nextEnd, syncTarget)
+          latestEndBlock = currentEnd
+          yield(SyncTargetRange(currentStart, currentEnd))
+          currentStart = currentEnd + 1uL
+          syncTarget = syncTargetProvider()
+        }
+      }
+
     val downloadBlocksStep =
       DownloadBlocksStep(peerLookup, config.maxRetries, config.blockRangeRequestTimeout)
     val importBlocksStep = ImportBlocksStep(blockImporter)
 
-    return PipelineBuilder
-      .createPipelineFrom(
-        "blockNumbers",
-        syncTargetRangeSequence.iterator(),
-        config.blocksParallelism.toInt(),
-        metricsSystem.createLabelledCounter(
-          BesuMetricCategory.SYNCHRONIZER,
-          "chain_download_pipeline_processed_total",
-          "Number of entries process by each chain download pipeline stage",
-          "step",
-          "action",
-        ),
-        true,
-        "importBlocks",
-      ).thenProcessAsyncOrdered("downloadBlocks", downloadBlocksStep, config.blocksParallelism.toInt())
-      .andFinishWith("importBlocks", importBlocksStep)
+    val pipeline =
+      PipelineBuilder
+        .createPipelineFrom(
+          "blockNumbers",
+          syncTargetRangeSequence.iterator(),
+          config.blocksParallelism.toInt(),
+          metricsSystem.createLabelledCounter(
+            BesuMetricCategory.SYNCHRONIZER,
+            "chain_download_pipeline_processed_total",
+            "Number of entries process by each chain download pipeline stage",
+            "step",
+            "action",
+          ),
+          true,
+          "importBlocks",
+        ).thenProcessAsyncOrdered("downloadBlocks", downloadBlocksStep, config.blocksParallelism.toInt())
+        .andFinishWith("importBlocks", importBlocksStep)
+
+    return BeaconChainPipeline(
+      pipline = pipeline,
+      target = { latestEndBlock },
+    )
   }
-
-  private fun createTargetRangeSequence(
-    startBlock: ULong,
-    syncTargetProvider: () -> ULong,
-  ): Sequence<SyncTargetRange> =
-    sequence {
-      var currentStart = startBlock
-      val rangeSize = config.blocksBatchSize.toULong()
-
-      var syncTarget = syncTargetProvider()
-      while (currentStart <= syncTarget) {
-        val nextEnd = currentStart.clampedAdd(rangeSize) - 1uL
-        val currentEnd = minOf(nextEnd, syncTarget)
-        yield(SyncTargetRange(currentStart, currentEnd))
-        currentStart = currentEnd + 1uL
-        syncTarget = syncTargetProvider()
-      }
-    }
 }
