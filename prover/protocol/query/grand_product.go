@@ -7,6 +7,8 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -33,7 +35,9 @@ type GrandProduct struct {
 }
 
 type GrandProductParams struct {
-	Y fext.Element
+	BaseY  field.Element
+	ExtY   fext.Element
+	IsBase bool
 }
 
 // NewGrandProduct creates a new instance of a GrandProduct query.
@@ -88,8 +92,20 @@ func NewGrandProduct(round int, inp map[int]*GrandProductInput, id ifaces.QueryI
 }
 
 // Constructor for grand product query parameters
-func NewGrandProductParams(y fext.Element) GrandProductParams {
-	return GrandProductParams{Y: y}
+func NewGrandProductParams(y field.Element) GrandProductParams {
+	return GrandProductParams{
+		BaseY:  y,
+		ExtY:   *fext.SetFromBase(new(fext.Element), &y),
+		IsBase: true,
+	}
+}
+
+func NewGrandProductParamsExt(yExt fext.Element) GrandProductParams {
+	return GrandProductParams{
+		BaseY:  field.Zero(),
+		ExtY:   yExt,
+		IsBase: false,
+	}
 }
 
 // Name returns the unique identifier of the GrandProduct query.
@@ -99,24 +115,29 @@ func (g GrandProduct) Name() ifaces.QueryID {
 
 // Updates a Fiat-Shamir state
 func (gp GrandProductParams) UpdateFS(fs hash.StateStorer) {
-	fiatshamir.UpdateExt(fs, gp.Y)
+	fiatshamir.Update(fs, gp.BaseY)
+}
+
+func (gp GrandProductParams) UpdateFSExt(fs hash.StateStorer) {
+	fiatshamir.UpdateExt(fs, gp.ExtY)
 }
 
 // Compute returns the result value of the [GrandProduct] query. It
 // should be run by a runtime with access to the query columns. i.e
 // either by a [wizard.ProverRuntime] or a [wizard.VerifierRuntime]
 // but then the involved columns should all be public.
-func (g GrandProduct) Compute(run ifaces.Runtime) fext.Element {
+func (g GrandProduct) Compute(run ifaces.Runtime) fext.GenericFieldElem {
 
-	result := fext.One()
+	result := fext.GenericFieldOne()
 
 	for size := range g.Inputs {
 		for _, factor := range g.Inputs[size].Numerators {
 
 			var (
-				numBoard          = factor.Board()
-				numeratorMetadata = numBoard.ListVariableMetadata()
-				numerator         []fext.Element
+				numBoard           = factor.Board()
+				numeratorMetadata  = numBoard.ListVariableMetadata()
+				numerator          smartvectors.SmartVector
+				intermediateResult = fext.GenericFieldOne()
 			)
 
 			if len(numeratorMetadata) == 0 {
@@ -124,20 +145,36 @@ func (g GrandProduct) Compute(run ifaces.Runtime) fext.Element {
 			}
 
 			if len(numeratorMetadata) > 0 {
-				numerator = column.EvalExprColumn(run, numBoard).IntoRegVecSaveAllocExt()
+				numerator = column.EvalExprColumn(run, numBoard)
 			}
-			for k := range numerator {
-				result.Mul(&result, &numerator[k])
+
+			if smartvectors.IsBase(numerator) {
+				numeratorSlice, _ := numerator.IntoRegVecSaveAllocBase()
+				tempResult := field.One()
+				for k := range numeratorSlice {
+					tempResult.Mul(&tempResult, &numeratorSlice[k])
+				}
+				intermediateResult = fext.NewESHashFromBase(tempResult)
+			} else {
+				// for field extensions
+				numeratorSlice := numerator.IntoRegVecSaveAllocExt()
+				tempResult := fext.One()
+				for k := range numeratorSlice {
+					tempResult.Mul(&tempResult, &numeratorSlice[k])
+				}
+				intermediateResult = fext.NewESHashFromExt(tempResult)
 			}
+			result.Mul(&intermediateResult)
 		}
+		// numertaors are processed, now process denominators
 
 		for _, factor := range g.Inputs[size].Denominators {
 
 			var (
 				denBoard            = factor.Board()
 				denominatorMetadata = denBoard.ListVariableMetadata()
-				denominator         []fext.Element
-				tmp                 = fext.One()
+				denominator         smartvectors.SmartVector
+				intermediateResult  = fext.GenericFieldOne()
 			)
 
 			if len(denominatorMetadata) == 0 {
@@ -145,19 +182,38 @@ func (g GrandProduct) Compute(run ifaces.Runtime) fext.Element {
 			}
 
 			if len(denominatorMetadata) > 0 {
-				denominator = column.EvalExprColumn(run, denBoard).IntoRegVecSaveAllocExt()
+				denominator = column.EvalExprColumn(run, denBoard)
 			}
 
-			for k := range denominator {
+			if smartvectors.IsBase(denominator) {
+				tmp := field.NewElement(1)
+				denominatorSlice, _ := denominator.IntoRegVecSaveAllocBase()
+				for k := range denominatorSlice {
 
-				if denominator[k].IsZero() {
-					panic("denominator contains zeroes")
+					if denominatorSlice[k].IsZero() {
+						panic("denominator contains zeroes")
+					}
+
+					tmp.Mul(&tmp, &denominatorSlice[k])
 				}
+				intermediateResult = fext.NewESHashFromBase(tmp)
+			} else {
+				// for field extensions
+				tmp := fext.One()
+				denominatorSlice := denominator.IntoRegVecSaveAllocExt()
+				for k := range denominatorSlice {
 
-				tmp.Mul(&tmp, &denominator[k])
+					if denominatorSlice[k].IsZero() {
+						panic("denominator contains zeroes")
+					}
+
+					tmp.Mul(&tmp, &denominatorSlice[k])
+				}
+				intermediateResult = fext.NewESHashFromExt(tmp)
 			}
 
-			result.Div(&result, &tmp)
+			result.Div(&intermediateResult)
+
 		}
 	}
 
@@ -192,9 +248,9 @@ func (g GrandProduct) Check(run ifaces.Runtime) error {
 			}
 		}
 	}
-
-	if actualProd != params.Y {
-		return fmt.Errorf("the grand product query %v is not satisfied, actualProd = %v, param.Y = %v", g.ID, actualProd.String(), params.Y.String())
+	actualProdElem := actualProd.GetExt()
+	if actualProdElem != params.ExtY {
+		return fmt.Errorf("the grand product query %v is not satisfied, actualProdElem = %v, params.ExtY = %v", g.ID, actualProdElem.String(), params.ExtY.String())
 	}
 
 	return nil

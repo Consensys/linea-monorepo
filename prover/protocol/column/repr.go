@@ -71,6 +71,50 @@ func DeriveEvaluationPoint(
 	panic("unreachable")
 }
 
+func DeriveEvaluationPointExt(
+	h ifaces.Column,
+	upstream string,
+	cachedXs collection.Mapping[string, fext.Element],
+	x fext.Element,
+) (xRes fext.Element) {
+
+	if !h.IsComposite() {
+		// Just return x and cache it if necessary
+		newUpstream := appendNodeToUpstream(upstream, h)
+		// Store in the cache if necessary
+		if !cachedXs.Exists(newUpstream) {
+			// Else register the result in the cache
+			cachedXs.InsertNew(newUpstream, x)
+		}
+		return x
+	}
+
+	switch inner := h.(type) {
+	case Shifted:
+		newUpstream := appendNodeToUpstream(upstream, inner)
+		var derivedX fext.Element
+		// Early return if the result is cached
+		if cachedXs.Exists(newUpstream) {
+			derivedX = cachedXs.MustGet(newUpstream)
+		} else {
+			// If not, compute the shift on x and cache the result
+			n := h.Size()
+			omegaN, _ := fft.Generator(uint64(n))
+			omegaN.Exp(omegaN, big.NewInt(int64(inner.Offset)))
+
+			var omegaNExt fext.Element
+			omegaNExt = *fext.SetFromBase(&omegaNExt, &omegaN)
+			derivedX.Mul(&x, &omegaNExt)
+			cachedXs.InsertNew(newUpstream, derivedX)
+		}
+		return DeriveEvaluationPointExt(inner.Parent, newUpstream, cachedXs, derivedX)
+
+	default:
+		utils.Panic("unexpected type %v", reflect.TypeOf(inner))
+	}
+	panic("unreachable")
+}
+
 /*
 VerifyYConsistency verifies that the claimed values for y
   - upstream is a repr of the branch leading to the current node

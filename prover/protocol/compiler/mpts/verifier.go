@@ -29,9 +29,9 @@ func (va verifierAction) Run(run wizard.Runtime) error {
 		//
 		// However, the other values cannot be directly used by the verifier
 		// and should instead use the ysMap.
-		qr       = queryParams.Ys[len(va.NewQuery.Pols)-1]
-		polysAtR = va.cptEvaluationMap(run)
-		r        = queryParams.X
+		qr       = queryParams.ExtYs[len(va.NewQuery.Pols)-1]
+		polysAtR = va.cptEvaluationMapExt(run)
+		r        = queryParams.ExtX
 		rCoin    = run.GetRandomCoinFieldExt(va.EvaluationPoint.Name)
 
 		// zetasOfR stores the values zetas[i] = lambda^i / (r - xi).
@@ -57,7 +57,7 @@ func (va verifierAction) Run(run wizard.Runtime) error {
 
 	for i, q := range va.Queries {
 
-		xi := run.GetUnivariateParams(q.Name()).X
+		xi := run.GetUnivariateParams(q.Name()).ExtX
 		zetasOfR[i].Sub(&r, &xi)
 		// NB: this is very sub-optimal. We should use a batch-inverse instead
 		// but the native verifier time is not very important in this context.
@@ -73,7 +73,7 @@ func (va verifierAction) Run(run wizard.Runtime) error {
 		for _, i := range va.EvalPointOfPolys[k] {
 			// This sets tmp with the value of yik
 			posOfYik := getPositionOfPolyInQueryYs(va.Queries[i], va.Polys[k])
-			tmp := run.GetUnivariateParams(va.Queries[i].Name()).Ys[posOfYik]
+			tmp := run.GetUnivariateParams(va.Queries[i].Name()).ExtYs[posOfYik]
 			tmp.Sub(&pr, &tmp) // Pk(r) - y_{ik}
 			tmp.Mul(&tmp, &zetasOfR[i])
 			tmp.Mul(&tmp, &rhoK)
@@ -100,7 +100,7 @@ func (va verifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		// is the quotient polynomial.
 		qr       = queryParams.Ys[len(va.NewQuery.Pols)-1]
 		polysAtR = va.cptEvaluationMapGnark(api, run)
-		r        = queryParams.X
+		r        = queryParams.ExtX
 		rCoin    = run.GetRandomCoinFieldExt(va.EvaluationPoint.Name)
 
 		// zetasOfR stores the values zetas[i] = lambda^i / (r - xi).
@@ -126,7 +126,7 @@ func (va verifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	for i, q := range va.Queries {
 
-		xi := run.GetUnivariateParams(q.Name()).X
+		xi := run.GetUnivariateParams(q.Name()).ExtX
 		zetasOfR[i].Sub(api, r, xi)
 		// NB: this is very sub-optimal. We should use a batch-inverse instead
 		// but the native verifier time is not very important in this context.
@@ -141,7 +141,7 @@ func (va verifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		for _, i := range va.EvalPointOfPolys[k] {
 			// This sets tmp with the value of yik
 			posOfYik := getPositionOfPolyInQueryYs(va.Queries[i], va.Polys[k])
-			tmp := run.GetUnivariateParams(va.Queries[i].Name()).Ys[posOfYik]
+			tmp := run.GetUnivariateParams(va.Queries[i].Name()).ExtYs[posOfYik]
 			tmp.Sub(api, pr, tmp) // Pk(r) - y_{ik}
 			tmp.Mul(api, tmp, zetasOfR[i])
 			tmp.Mul(api, tmp, rhoK)
@@ -157,17 +157,17 @@ func (va verifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 // cptEvaluationMap returns an evaluation map [Column] -> [Y] for all the
 // polynomials handled by [ctx]. This includes the columns of the new query
 // but also the explictly evaluated columns.
-func (ctx *MultipointToSinglepointCompilation) cptEvaluationMap(run wizard.Runtime) map[ifaces.ColID]fext.Element {
+func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapExt(run wizard.Runtime) map[ifaces.ColID]fext.Element {
 
 	var (
 		evaluationMap = make(map[ifaces.ColID]fext.Element)
 		univParams    = run.GetParams(ctx.NewQuery.QueryID).(query.UnivariateEvalParams)
-		x             = univParams.X
+		x             = univParams.ExtX
 	)
 
 	for i := range ctx.NewQuery.Pols {
 		colID := ctx.NewQuery.Pols[i].GetColID()
-		evaluationMap[colID] = univParams.Ys[i]
+		evaluationMap[colID] = univParams.ExtYs[i]
 	}
 
 	for i, c := range ctx.ExplicitlyEvaluated {
@@ -185,13 +185,13 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api fronten
 	var (
 		evaluationMap = make(map[ifaces.ColID]gnarkfext.Element)
 		univParams    = run.GetUnivariateParams(ctx.NewQuery.QueryID)
-		x             = univParams.X
+		x             = univParams.ExtX
 		polys         = make([][]frontend.Variable, 0)
 	)
 
 	for i := range ctx.NewQuery.Pols {
 		colID := ctx.NewQuery.Pols[i].GetColID()
-		evaluationMap[colID] = univParams.Ys[i]
+		evaluationMap[colID] = univParams.ExtYs[i]
 	}
 
 	for _, c := range ctx.ExplicitlyEvaluated {
@@ -207,3 +207,34 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api fronten
 
 	return evaluationMap
 }
+
+/*TODO@yao: fix the gnarkfext version of this function
+// cptEvaluationMapGnark is the same as [cptEvaluationMap] but for a gnark circuit.
+func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api gnarkfext.API, run wizard.GnarkRuntime) map[ifaces.ColID]gnarkfext.Variable {
+
+	var (
+		evaluationMap = make(map[ifaces.ColID]gnarkfext.Variable)
+		univParams    = run.GetUnivariateParams(ctx.NewQuery.QueryID)
+		x             = univParams.ExtX
+		polys         = make([][]gnarkfext.Variable, 0)
+	)
+
+	for i := range ctx.NewQuery.Pols {
+		colID := ctx.NewQuery.Pols[i].GetColID()
+		evaluationMap[colID] = univParams.ExtYs[i]
+	}
+
+	for _, c := range ctx.ExplicitlyEvaluated {
+		poly := c.GetColAssignmentGnarkExt(run)
+		polys = append(polys, poly)
+	}
+
+	ys := fastpoly.BatchInterpolateGnarkExt(api, polys, x)
+
+	for i := range ctx.ExplicitlyEvaluated {
+		colID := ctx.ExplicitlyEvaluated[i].GetColID()
+		evaluationMap[colID] = ys[i]
+	}
+
+	return evaluationMap
+}*/

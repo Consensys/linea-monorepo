@@ -37,7 +37,7 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 		// where xi is the i-th evaluation point. Having these values precomputed
 		// allows to greatly speed-up the computation. This comes with a trade-off
 		// in space as these can be big if the number of queries is big.
-		zetas = qa.computeZetas(run)
+		zetas = qa.computeZetasExt(run)
 
 		// quotient stores the assignment of the quotient polynomial as it is
 		// being computed.
@@ -95,7 +95,7 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 			)
 
 			if len(poly) < qa.getNumRow() {
-				polyPtr = ldeOf(poly, memPool)
+				polyPtr = ldeOfExt(poly, memPool)
 				poly = *polyPtr
 			}
 
@@ -182,7 +182,7 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 				var (
 					paramsI  = run.GetUnivariateParams(qa.Queries[i].Name())
 					posOfYik = getPositionOfPolyInQueryYs(qa.Queries[i], qa.Polys[k])
-					yik      = paramsI.Ys[posOfYik]
+					yik      = paramsI.ExtYs[posOfYik]
 				)
 
 				// This reuses the memory slot of yik to compute the temporary
@@ -226,17 +226,14 @@ func (re randomPointEvaluation) Run(run *wizard.ProverRuntime) {
 	for i := 0; i < len(ys); i++ {
 		ys[i] = smartvectors.EvaluateLagrangeFullFext(polyVals[i], r) //TODO@yao : check here EvaluateLagrangeMixed or EvaluateLagrangeFullFext, check witness and poly type,
 	}
-	run.AssignUnivariate(re.NewQuery.QueryID, r, ys...)
+	run.AssignUnivariateExt(re.NewQuery.QueryID, r, ys...)
 }
 
-// computeZetas returns the values of zeta_i = lambda^i / (X - xi)
-// for each query. And returns an evaluation vector for each query for all powers
-// of omega.
-func (qa quotientAccumulation) computeZetas(run *wizard.ProverRuntime) [][]fext.Element {
+func (qa quotientAccumulation) computeZetasExt(run *wizard.ProverRuntime) [][]fext.Element {
 
 	var (
 		// powersOfOmega is the list of the powers of omega starting from 0.
-		powersOfOmega = getPowersOfOmega(qa.getNumRow())
+		powersOfOmega = getPowersOfOmegaExt(qa.getNumRow())
 		zetaI         = make([][]fext.Element, len(qa.Queries))
 		lambda        = run.GetRandomCoinFieldExt(qa.LinCombCoeffLambda.Name)
 		// powersOfLambda are precomputed outside of the loop to allow for
@@ -250,56 +247,44 @@ func (qa quotientAccumulation) computeZetas(run *wizard.ProverRuntime) [][]fext.
 			var (
 				q      = qa.Queries[i]
 				params = run.GetUnivariateParams(q.Name())
-				xi     = params.X
+				xi     = params.ExtX
 
-				// zetaI is the value of lambda^i / (omega^j - xi). It is computed by:
+				// l is the value of lambda^i / (X - xi). It is computed by:
 				// 	1 - Deep copying the powers of omega
 				//  2 - Substracting xi to each entry
 				//  3 - Batch inverting the result
 				//  4 - Multiplying the result by lambdaPowi
+				l = append([]fext.Element{}, powersOfOmega...)
 			)
 
-			// Sanity check : all xi should not be a powersOfOmega
-			for j := range powersOfOmega {
-				if xi.B0.A0 == powersOfOmega[j] && xi.B0.A1 == field.Zero() && xi.B1.A0 == field.Zero() && xi.B1.A1 == field.Zero() {
-					utils.Panic("bad value %v, should not equal to a powersOfOmega", xi)
-				}
+			for j := range l {
+				l[j].Sub(&l[j], &xi)
 			}
 
-			lext := make([]fext.Element, len(powersOfOmega))
-			for j := range powersOfOmega {
-				if xi.B0.A0 == powersOfOmega[j] && xi.B0.A1 == field.Zero() && xi.B1.A0 == field.Zero() && xi.B1.A1 == field.Zero() {
-					utils.Panic("bad value %v, should not equal to a powersOfOmega", xi)
-				}
-				lext[j] = fext.Lift(powersOfOmega[j])
-				lext[j].Sub(&lext[j], &xi)
+			l = fext.BatchInvert(l)
+
+			for j := range l {
+				l[j].Mul(&l[j], &powersOfLambda[i])
 			}
 
-			lext = fext.BatchInvert(lext)
-
-			for j := range powersOfOmega {
-				lext[j].Mul(&lext[j], &powersOfLambda[i])
-			}
-			zetaI[i] = lext
+			zetaI[i] = l
 		}
 	})
 
 	return zetaI
 }
 
-// getPowersOfOmega returns the list of the powers of omega, where omega is a root
-// of unity of order n.
-func getPowersOfOmega(n int) []field.Element {
+func getPowersOfOmegaExt(n int) []fext.Element {
 
 	var (
 		omega, _ = fft.Generator(uint64(n))
-		res      = make([]field.Element, n)
+		res      = make([]fext.Element, n)
 	)
 
-	res[0] = field.One()
+	res[0] = fext.One()
 
 	for i := 1; i < n; i++ {
-		res[i].Mul(&res[i-1], &omega)
+		res[i].MulByElement(&res[i-1], &omega)
 	}
 
 	return res
@@ -307,7 +292,7 @@ func getPowersOfOmega(n int) []field.Element {
 
 // ldeOf computes the low-degree extension of a vector and allocates the result
 // in the pool. The size of the result is the same as the size of the pool.
-func ldeOf(v []fext.Element, pool mempool.MemPool) *[]fext.Element {
+func ldeOfExt(v []fext.Element, pool mempool.MemPool) *[]fext.Element {
 
 	var (
 		sizeLarge   = pool.Size()

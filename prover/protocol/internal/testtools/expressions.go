@@ -3,6 +3,7 @@ package testtools
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -69,6 +70,27 @@ var ListOfGlobalTestcasePositive = []*ExpressionTestcase{
 	},
 
 	{
+		NameStr: "positive/fibonacci-over-extensions",
+		Expr: sym.Sub(
+			columnA,
+			column.Shift(columnA, -1),
+			column.Shift(columnA, -2),
+		),
+		Columns: map[ifaces.ColID]smartvectors.SmartVector{
+			"A": smartvectors.ForTestFromQuads(
+				1, 2, 5, 13,
+				1, 3, 8, 21,
+				2, 5, 13, 34,
+				3, 8, 21, 55,
+				5, 13, 34, 89,
+				8, 21, 55, 144,
+				13, 34, 89, 233,
+				21, 55, 144, 377,
+			),
+		},
+	},
+
+	{
 		NameStr: "positive/geometric-progression",
 		Expr: sym.Sub(
 			columnA,
@@ -79,6 +101,28 @@ var ListOfGlobalTestcasePositive = []*ExpressionTestcase{
 		),
 		Columns: map[ifaces.ColID]smartvectors.SmartVector{
 			"A": smartvectors.ForTest(1, 2, 4, 8, 16, 32, 64, 128),
+		},
+	},
+	{
+		NameStr: "positive/geometric-progression-over-extensions",
+		Expr: sym.Sub(
+			columnA,
+			sym.Mul(
+				2,
+				column.Shift(columnA, -1),
+			),
+		),
+		Columns: map[ifaces.ColID]smartvectors.SmartVector{
+			"A": smartvectors.ForTestFromQuads(
+				1, 2, 3, 4,
+				2, 4, 6, 8,
+				4, 8, 12, 16,
+				8, 16, 24, 32,
+				16, 32, 48, 64,
+				32, 64, 96, 128,
+				64, 128, 192, 256,
+				128, 256, 384, 512,
+			),
 		},
 	},
 
@@ -95,6 +139,22 @@ var ListOfGlobalTestcasePositive = []*ExpressionTestcase{
 		Columns: map[ifaces.ColID]smartvectors.SmartVector{
 			"A": smartvectors.NewConstant(field.Zero(), 16),
 			"B": smartvectors.NewConstant(field.Zero(), 16),
+			"C": smartvectors.NewConstant(field.Zero(), 16),
+		},
+	},
+	{
+		NameStr: "positive/random-linear-combination-over-extensions",
+		Expr: sym.NewPolyEval(
+			sym.NewVariable(coinCoin),
+			[]*sym.Expression{
+				sym.NewVariable(columnA),
+				sym.NewVariable(columnB),
+				sym.NewVariable(columnC),
+			},
+		),
+		Columns: map[ifaces.ColID]smartvectors.SmartVector{
+			"A": smartvectors.NewConstant(field.Zero(), 16),
+			"B": smartvectors.NewConstantExt(fext.Zero(), 16),
 			"C": smartvectors.NewConstant(field.Zero(), 16),
 		},
 	},
@@ -117,6 +177,43 @@ var ListOfGlobalTestcasePositive = []*ExpressionTestcase{
 			"B": smartvectors.ForTest(0, 1, 0, 0, 1, 1, 0, 0),
 		},
 	},
+	{
+		NameStr: "positive/conditional-counter-extensions",
+		// A = A_prev + B
+		Expr: sym.Sub(
+			columnA,
+			sym.Mul(
+				sym.Sub(1, columnB),
+				column.Shift(columnA, -1),
+			),
+			sym.Mul(
+				columnB,
+				sym.Add(column.Shift(columnA, -1), 1),
+			),
+		),
+		Columns: map[ifaces.ColID]smartvectors.SmartVector{
+			"A": smartvectors.ForTestFromQuads(
+				0, 3, 5, 10,
+				1, 5, 8, 17,
+				1, 5, 8, 17,
+				1, 5, 6, 22,
+				2, 6, 14, 10,
+				3, 6, 15, 11,
+				3, 8, 15, 11,
+				3, 8, 9, 3,
+			),
+			"B": smartvectors.ForTestFromQuads(
+				0, 3, 5, 10,
+				1, 2, 3, 7,
+				0, 0, 0, 0,
+				0, 0, -2, 5,
+				1, 1, 8, -12,
+				1, 0, 1, 1,
+				0, 2, 0, 0,
+				0, 0, -6, -8,
+			),
+		},
+	},
 
 	{
 		NameStr: "positive/pythagorean-triplet",
@@ -129,6 +226,47 @@ var ListOfGlobalTestcasePositive = []*ExpressionTestcase{
 			"A": smartvectors.ForTest(0, 5, 1, 17, 5, 13, 0, 0),
 			"B": smartvectors.ForTest(0, 3, 0, 15, 4, 5, 0, 0),
 			"C": smartvectors.ForTest(0, 4, 1, 8, 3, 12, 0, 0),
+		},
+	},
+	{
+		NameStr: "positive/pythagorean-triplet-extensions",
+		// A^2 = B^2 + C^2
+		Expr: sym.Sub(
+			sym.Mul(columnA, columnA),
+			sym.Mul(columnB, columnB),
+			sym.Mul(columnC, columnC),
+		),
+		Columns: map[ifaces.ColID]smartvectors.SmartVector{
+			"A": smartvectors.ForTestFromQuads(
+				0, 0, 0, 29,
+				0, 5, 0, 5,
+				1, 0, 1, 1,
+				17, 0, 17, 0,
+				5, 0, 5, 0,
+				0, 13, 0, 13,
+				1, 1, 1, 1,
+				0, 0, 0, 0,
+			),
+			"B": smartvectors.ForTestFromQuads(
+				0, 0, 0, 20,
+				0, 3, 0, 3,
+				0, 0, 0, 0,
+				15, 0, 15, 0,
+				4, 0, 4, 0,
+				0, 5, 0, 5,
+				0, 0, 0, 0,
+				0, 0, 0, 0,
+			),
+			"C": smartvectors.ForTestFromQuads(
+				0, 0, 0, 21,
+				0, 4, 0, 4,
+				1, 0, 1, 1,
+				8, 0, 8, 0,
+				3, 0, 3, 0,
+				0, 12, 0, 12,
+				1, 1, 1, 1,
+				0, 0, 0, 0,
+			),
 		},
 	},
 }

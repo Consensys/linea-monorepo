@@ -13,11 +13,11 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
+	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -231,7 +231,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 			if !isNatural {
 				witness = pol.GetColAssignment(run)
 			}
-			witness = sv.FFTInverseExt(witness, fft.DIF, false, 0, 0, nil) //TODO@yao why witness is ext element
+			witness = sv.FFTInverseExt(witness, fft.DIF, false, 0, 0, nil)
 			coeffs.Store(name, witness)
 		})
 	})
@@ -249,8 +249,8 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 		The first value is ignored because it correspond to the case where w^N = 1
 		(i.e. w is in the smaller subgroup)
 	*/
-	annulatorInvVals := fastpoly.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
-	annulatorInvVals = field.ParBatchInvert(annulatorInvVals, runtime.GOMAXPROCS(0))
+	annulatorInvVals := fastpolyext.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
+	annulatorInvVals = fext.ParBatchInvert(annulatorInvVals, runtime.GOMAXPROCS(0))
 
 	/*
 		Also returns the evaluations of
@@ -333,7 +333,6 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 
 					// else it's the first value of j that sees it. so we compute the
 					// coset reevaluation.
-
 					v, _ := coeffs.Load(name)
 					reevaledRoot := sv.FFTExt(v.(sv.SmartVector), fft.DIT, false, ratio, share, localPool)
 					computedReeval.Store(name, reevaledRoot)
@@ -405,6 +404,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 						//evalInputs[k] = computedReeval[name]
 						value, _ := computedReeval.Load(metadata.GetColID())
 						evalInputs[k] = value.(sv.SmartVector)
+
 					case coin.Info:
 						if metadata.IsBase() {
 							evalInputs[k] = sv.NewConstant(run.GetRandomCoinField(metadata.Name), ctx.DomainSize)
@@ -416,7 +416,15 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 					case variables.PeriodicSample:
 						evalInputs[k] = metadata.EvalCoset(ctx.DomainSize, i, maxRatio, true)
 					case ifaces.Accessor:
-						evalInputs[k] = sv.NewConstant(metadata.GetVal(run), ctx.DomainSize)
+						if metadata.IsBase() {
+							// This is a base accessor, we can use the constant
+							// value directly.
+							elem, _ := metadata.GetValBase(run)
+							evalInputs[k] = sv.NewConstant(elem, ctx.DomainSize)
+						} else {
+							// This is a non-base accessor
+							evalInputs[k] = sv.NewConstantExt(metadata.GetValExt(run), ctx.DomainSize)
+						}
 					default:
 						utils.Panic("Not a variable type %v", reflect.TypeOf(metadataInterface))
 					}
@@ -432,7 +440,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 				// Note that this will panic if the expression contains "no commitment"
 				// This should be caught already by the constructor of the constraint.
 				quotientShare := ctx.AggregateExpressionsBoard[j].EvaluateMixed(evalInputs, pool)
-				quotientShare = smartvectors_mixed.ScalarMul(quotientShare, annulatorInvVals[i])
+				quotientShare = sv.ScalarMulExt(quotientShare, annulatorInvVals[i])
 				run.AssignColumn(ctx.QuotientShares[j][share].GetColID(), quotientShare)
 			})
 

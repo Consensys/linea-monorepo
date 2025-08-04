@@ -118,7 +118,7 @@ func (pa evaluationProver) Run(run *wizard.ProverRuntime) {
 	})
 
 	ys := sv.BatchEvaluateLagrangeExt(witnesses, r)
-	run.AssignUnivariate(pa.WitnessEval.QueryID, r, ys...)
+	run.AssignUnivariateExt(pa.WitnessEval.QueryID, r, ys...)
 
 	/*
 		For the quotient evaluate it on `x = r / g`, where g is the coset
@@ -132,7 +132,6 @@ func (pa evaluationProver) Run(run *wizard.ProverRuntime) {
 		quotientEvalPoint fext.Element
 		wg                = &sync.WaitGroup{}
 	)
-
 	rootInv.Inverse(&rootInv)
 	quotientEvalPoint.MulByElement(&r, &mulGenInv)
 
@@ -148,11 +147,10 @@ func (pa evaluationProver) Run(run *wizard.ProverRuntime) {
 				for i := start; i < stop; i++ {
 					c := q.Pols[i].GetColAssignment(run)
 					ys[i] = sv.EvaluateLagrangeFullFext(c, evalPoint)
-
 				}
 			})
 
-			run.AssignUnivariate(q.Name(), evalPoint, ys...)
+			run.AssignUnivariateExt(q.Name(), evalPoint, ys...)
 			wg.Done()
 		}(i, quotientEvalPoint)
 		quotientEvalPoint.MulByElement(&quotientEvalPoint, &rootInv)
@@ -174,7 +172,7 @@ func (ctx *evaluationVerifier) Run(run wizard.Runtime) error {
 		// Will be assigned to "X", the random point at which we check the constraint.
 		r = run.GetRandomCoinFieldExt(ctx.EvalCoin.Name)
 		// Map all the evaluations and checks the evaluations points
-		mapYs = make(map[ifaces.ColID]fext.Element)
+		mapYs = make(map[ifaces.ColID]fext.GenericFieldElem)
 		// Get the parameters
 		params           = run.GetUnivariateParams(ctx.WitnessEval.QueryID)
 		univQuery        = run.GetUnivariateEval(ctx.WitnessEval.QueryID)
@@ -186,14 +184,20 @@ func (ctx *evaluationVerifier) Run(run wizard.Runtime) error {
 	}
 
 	// Check the evaluation point is consistent with r
-	if params.X != r {
+	if params.ExtX != r {
 		return fmt.Errorf("(verifier of global queries) : Evaluation point of %v is incorrect (%v, expected %v)",
 			ctx.WitnessEval.QueryID, params.X.String(), r.String())
 	}
 
 	// Collect the evaluation points
 	for j, handle := range univQuery.Pols {
-		mapYs[handle.GetColID()] = params.Ys[j]
+		var genericElem fext.GenericFieldElem
+		if params.IsBase {
+			genericElem = fext.NewESHashFromBase(params.Ys[j])
+		} else {
+			genericElem = fext.NewESHashFromExt(params.ExtYs[j])
+		}
+		mapYs[handle.GetColID()] = genericElem
 	}
 
 	// Annulator = r^n - 1, common for all ratios
@@ -212,18 +216,27 @@ func (ctx *evaluationVerifier) Run(run wizard.Runtime) error {
 		for k, metadataInterface := range metadatas {
 			switch metadata := metadataInterface.(type) {
 			case ifaces.Column:
-				evalInputs[k] = sv.NewConstantExt(mapYs[metadata.GetColID()], 1)
+				entry := mapYs[metadata.GetColID()]
+				if metadata.IsBase() {
+					elem, _ := entry.GetBase()
+					evalInputs[k] = sv.NewConstant(elem, 1)
+				} else {
+					elem := entry.GetExt()
+					evalInputs[k] = sv.NewConstantExt(elem, 1)
+				}
 			case coin.Info:
 				evalInputs[k] = sv.NewConstantExt(run.GetRandomCoinFieldExt(metadata.Name), 1)
 			case variables.X:
 				evalInputs[k] = sv.NewConstantExt(r, 1)
 			case variables.PeriodicSample:
-				evalInputs[k] = sv.NewConstantExt(metadata.EvalAtOutOfDomain(ctx.DomainSize, r), 1)
+				evalInputs[k] = sv.NewConstantExt(metadata.EvalAtOutOfDomainExt(ctx.DomainSize, r), 1)
 			case ifaces.Accessor:
 				evalInputs[k] = sv.NewConstantExt(metadata.GetValExt(run), 1)
 			default:
 				utils.Panic("Not a variable type %v in global query (ratio %v)", reflect.TypeOf(metadataInterface), ratio)
 			}
+			//fmt.Printf("evalInputs[k] %v\n", evalInputs[k].Pretty())
+
 		}
 
 		left := board.Evaluate(evalInputs).GetExt(0)
@@ -233,9 +246,6 @@ func (ctx *evaluationVerifier) Run(run wizard.Runtime) error {
 		var right fext.Element
 		right.Mul(&annulator, &qr)
 
-		fmt.Printf("\nleft= %v right= %v\n", left.String(), right.String())
-		// left = q(x) * (x^n - 1)
-		// right = P(x) - Z(x)
 		if left != right {
 			return fmt.Errorf("global constraint - ratio %v - mismatch at random point - %v != %v", ratio, left.String(), right.String())
 		}
@@ -331,10 +341,10 @@ func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 
 	for i, q := range ctx.QuotientEvals {
 		params := run.GetUnivariateParams(q.Name())
-		qYs[i] = params.Ys
+		qYs[i] = params.ExtYs
 
 		// Check that the provided value for x is the right one
-		providedX := params.X
+		providedX := params.ExtX
 		var expectedXinit field.Element
 		var expectedX fext.Element
 
@@ -342,7 +352,7 @@ func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 		expectedXinit.Exp(expectedXinit, big.NewInt(int64(i)))
 		expectedX.MulByElement(&shiftedR, &expectedXinit)
 
-		if providedX != expectedX {
+		if !providedX.Equal(&expectedX) {
 			return nil, fmt.Errorf("bad X value")
 		}
 	}
@@ -421,7 +431,7 @@ func (ctx evaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 
 	for i, q := range ctx.QuotientEvals {
 		params := run.GetUnivariateParams(q.Name())
-		qYs[i] = params.Ys
+		qYs[i] = params.ExtYs
 
 		// Check that the provided value for x is the right one
 		providedX := params.X

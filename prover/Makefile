@@ -19,6 +19,7 @@ PACKAGES := \
 	github.com/consensys/linea-monorepo/prover/protocol/query/... \
 	github.com/consensys/linea-monorepo/prover/protocol/wizard/... \
 	github.com/consensys/linea-monorepo/prover/protocol/wizardutils/... \
+  github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs/... \
 	github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct/... \
 	github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts/... \
 	github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum/... \

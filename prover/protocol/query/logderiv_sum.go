@@ -189,7 +189,7 @@ func (r LogDerivativeSum) Check(run ifaces.Runtime) error {
 		return errors.New("expected a denominator without zeroes")
 	}
 
-	if actualSum != params.Sum {
+	if !actualSum.IsEqual(&params.Sum) {
 		return fmt.Errorf("expected LogDerivativeSum = %s but got %s for the query %v", params.Sum.String(), actualSum.String(), r.ID)
 	}
 

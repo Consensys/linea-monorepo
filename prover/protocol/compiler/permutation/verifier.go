@@ -78,7 +78,7 @@ type CheckGrandProductIsOne struct {
 func (c *CheckGrandProductIsOne) Run(run wizard.Runtime) error {
 
 	var (
-		y = run.GetGrandProductParams(c.Query.ID).Y
+		y = run.GetGrandProductParams(c.Query.ID).ExtY
 		d = fext.One()
 	)
 
@@ -199,7 +199,7 @@ func (f *FinalProductCheck) Run(run wizard.Runtime) error {
 		}
 	}
 
-	claimedProd := run.GetGrandProductParams(f.GrandProductID).Y
+	claimedProd := run.GetGrandProductParams(f.GrandProductID).ExtY
 	if zProd != claimedProd {
 		return fmt.Errorf("grand product: the final evaluation check failed for %v\n"+
 			"given %v but calculated %v,",

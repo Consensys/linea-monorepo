@@ -90,6 +90,11 @@ func AllocateRegular(n int) SmartVector {
 	return NewRegular(make([]field.Element, n))
 }
 
+// AllocateRegularExt returns a newly allocated smart-vector
+func AllocateRegularExt(n int) SmartVector {
+	return NewRegularExt(make([]fext.Element, n))
+}
+
 // Copy into a smart-vector, will panic if into is not a regular
 // Mainly used as a sugar for refactoring
 func Copy(into *SmartVector, x SmartVector) {
@@ -385,7 +390,9 @@ func PaddingValExt(v SmartVector) (val fext.Element, hasPadding bool) {
 func TryReduceSize(v SmartVector) (new SmartVector, totalSaving int) {
 
 	switch w := v.(type) {
-	case *Constant, *Rotated, *Pooled, *PaddedCircularWindow, *RegularExt, *ConstantExt, *PooledExt:
+	case *Constant, *Rotated, *Pooled, *PaddedCircularWindow:
+		return v, 0
+	case *ConstantExt, *RotatedExt, *PooledExt, *PaddedCircularWindowExt:
 		return v, 0
 	case *Regular:
 
@@ -398,10 +405,79 @@ func TryReduceSize(v SmartVector) (new SmartVector, totalSaving int) {
 		}
 
 		return v, 0
+	case *RegularExt:
+
+		if res, ok := tryIntoConstantExt(*w); ok {
+			return res, len(*w)
+		}
+
+		if res, ok := tryIntoRightPaddedExt(*w); ok {
+			return res, len(*w) - len(res.window)
+		}
+
+		return v, 0
 	default:
 		panic(fmt.Sprintf("unexpected type %T", v))
 	}
 
+}
+
+func tryIntoConstantExt(w RegularExt) (*ConstantExt, bool) {
+
+	// to detect if a regular vector can be reduced to a constant, we need to
+	// check if all the values are equals. That's an expensive, so we instead
+	// by comparing values that would be likely to be unequal if it was not a
+	// constant. Also, we need to rule out the case where len(*w) because it
+	// is irrelevant to reducing the size.
+	if len(w) <= 1 {
+		return nil, false
+	}
+
+	if w[0] != w[1] {
+		return nil, false
+	}
+
+	if w[0] != w[len(w)-1] {
+		return nil, false
+	}
+
+	if w[0] != w[len(w)/2] {
+		return nil, false
+	}
+
+	// This is expensive check where we check all the values in the vector
+	// to see if they are all equal. This is not the most efficient way to
+	// detect if a vector is a constant but the only reliable one.
+	for i := range w {
+		if w[i] != w[0] {
+			return nil, false
+		}
+	}
+
+	return NewConstantExt(w[0], len(w)), true
+}
+
+func tryIntoRightPaddedExt(v RegularExt) (*PaddedCircularWindowExt, bool) {
+
+	var (
+		bestPos = len(v) - 1
+		last    = v[len(v)-1]
+	)
+
+	for i := len(v) - 2; i >= 0; i-- {
+		if v[i] != last {
+			bestPos = i + 1
+			break
+		}
+	}
+
+	// 1000 is arbitrary value but is justified by the fact that saving less
+	// than 1000 field element is not interesting performance-wise.
+	if len(v)-bestPos < 1000 {
+		return nil, false
+	}
+
+	return RightPaddedExt(v[:bestPos], last, len(v)).(*PaddedCircularWindowExt), true
 }
 
 // tryIntoConstant attemps to rewrite the smart-vector into a constant smart-vector.

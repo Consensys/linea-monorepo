@@ -316,14 +316,14 @@ func (u *UnivariateTestcase) assignUnivariate(run *wizard.ProverRuntime, i int) 
 	)
 
 	if len(u.QueryYs) > 0 {
-		run.AssignUnivariate(name, x, u.QueryYs[i]...)
+		run.AssignUnivariateExt(name, x, u.QueryYs[i]...)
 		return
 	}
 	for j := range q.Pols {
 		p := q.Pols[j].GetColAssignment(run)
 		ys[j] = smartvectors.EvaluateLagrangeMixed(p, x)
 	}
-	run.AssignUnivariate(q.QueryID, x, ys...)
+	run.AssignUnivariateExt(q.QueryID, x, ys...)
 }
 
 // assignUnivariatePA is a ProverAction to assign a univariate query.

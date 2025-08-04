@@ -788,7 +788,7 @@ func (c *VerifierCircuit) AssignLogDerivativeSum(qName ifaces.QueryID, params qu
 func (c *VerifierCircuit) AssignGrandProduct(qName ifaces.QueryID, params query.GrandProductParams) {
 	// Note that nil is the default value for frontend.Variable
 	c.grandProductIDs.InsertNew(qName, len(c.GrandProductParams))
-	c.GrandProductParams = append(c.GrandProductParams, query.GnarkGrandProductParams{Prod: params.Y})
+	c.GrandProductParams = append(c.GrandProductParams, query.GnarkGrandProductParams{Prod: params.ExtY})
 }
 
 // AssignHorner assigns the parameters of a [query.Horner] into the witness

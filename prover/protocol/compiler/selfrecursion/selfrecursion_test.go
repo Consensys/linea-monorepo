@@ -179,7 +179,7 @@ func generateProtocol(tc TestCase) (define func(*wizard.Builder), prove func(*wi
 			}
 		}
 
-		run.AssignUnivariate(QNAME, x, ys...)
+		run.AssignUnivariateExt(QNAME, x, ys...)
 	}
 	return define, prove
 }

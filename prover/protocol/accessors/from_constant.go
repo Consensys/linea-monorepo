@@ -19,32 +19,32 @@ var _ ifaces.Accessor = &FromConstAccessor{}
 // where the caller is only interested in passing a constant value.
 type FromConstAccessor struct {
 	// F is the constant served by the accessor
-	Base   field.Element
-	Ext    fext.Element
-	isBase bool
+	Base       field.Element
+	Ext        fext.Element
+	IsBaseFlag bool
 }
 
 // NewConstant returns an [ifaces.Accessor] object representing a constant value.
 func NewConstant(f field.Element) ifaces.Accessor {
 	return &FromConstAccessor{
-		Base:   f,
-		Ext:    fext.Lift(f),
-		isBase: true,
+		Base:       f,
+		Ext:        fext.Lift(f),
+		IsBaseFlag: true,
 	}
 }
 
 // NewConstant returns an [ifaces.Accessor] object representing a constant value.
 func NewConstantExt(f fext.Element) ifaces.Accessor {
 	return &FromConstAccessor{
-		Base:   field.Zero(),
-		Ext:    f,
-		isBase: false,
+		Base:       field.Zero(),
+		Ext:        f,
+		IsBaseFlag: false,
 	}
 }
 
 // Name implements [ifaces.Accessor]
 func (c *FromConstAccessor) Name() string {
-	if c.isBase {
+	if c.IsBaseFlag {
 		return fmt.Sprintf("CONST_ACCESSOR_%v", c.Base.String())
 	} else {
 		return fmt.Sprintf("CONST_ACCESSOR_%v", c.Ext.String())
@@ -62,7 +62,7 @@ func (c *FromConstAccessor) GetVal(run ifaces.Runtime) field.Element {
 }
 
 func (c *FromConstAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
-	if c.isBase {
+	if c.IsBaseFlag {
 		return c.Base, nil
 	} else {
 		panic("Requested a base field element from an accessor defined over field extensions.")
@@ -74,7 +74,7 @@ func (c *FromConstAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 }
 
 func (c *FromConstAccessor) GetFrontendVariable(_ frontend.API, _ ifaces.GnarkRuntime) frontend.Variable {
-	if c.isBase {
+	if c.IsBaseFlag {
 		return c.Base
 	} else {
 		panic("Requested a base field element from an accessor defined over field extensions.")
@@ -82,7 +82,7 @@ func (c *FromConstAccessor) GetFrontendVariable(_ frontend.API, _ ifaces.GnarkRu
 }
 
 func (c *FromConstAccessor) GetFrontendVariableBase(_ frontend.API, _ ifaces.GnarkRuntime) (frontend.Variable, error) {
-	if c.isBase {
+	if c.IsBaseFlag {
 		return c.Base, nil
 	} else {
 		panic("Requested a base field element from an accessor defined over field extensions.")
@@ -97,7 +97,7 @@ func (c *FromConstAccessor) GetFrontendVariableExt(_ frontend.API, _ ifaces.Gnar
 
 // AsVariable implements the [ifaces.Accessor] interface
 func (c *FromConstAccessor) AsVariable() *symbolic.Expression {
-	if c.isBase {
+	if c.IsBaseFlag {
 		return symbolic.NewConstant(c.Base)
 	} else {
 		return symbolic.NewConstant(c.Ext)
@@ -110,5 +110,5 @@ func (c *FromConstAccessor) Round() int {
 }
 
 func (c *FromConstAccessor) IsBase() bool {
-	return c.isBase
+	return c.IsBaseFlag
 }

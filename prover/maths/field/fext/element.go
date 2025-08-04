@@ -6,9 +6,11 @@ import (
 	"math/big"
 	"math/rand/v2"
 	"reflect"
+	"runtime"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 const ExtensionDegree int = 4
@@ -104,12 +106,12 @@ func SetInterface(z *Element, i1 interface{}) (*Element, error) {
 		}
 		return z.Set(c1), nil
 	case GenericFieldElem:
-		return z.Set(&c1.ext), nil
+		return z.Set(&c1.Ext), nil
 	case *GenericFieldElem:
 		if c1 == nil {
 			return nil, errors.New("can't set fext.Element with <nil>")
 		}
-		return z.Set(&c1.ext), nil
+		return z.Set(&c1.Ext), nil
 	case field.Element:
 		return SetFromBase(z, &c1), nil
 	case *field.Element:
@@ -168,5 +170,21 @@ func Text(z *Element, base int) string {
 	}
 
 	res := fmt.Sprintf("%s + %s*u + (%s + %s*u)*v", z.B0.A0.Text(base), z.B0.A1.Text(base), z.B1.A0.Text(base), z.B1.A1.Text(base))
+	return res
+}
+
+func ParBatchInvert(a []Element, numCPU int) []Element {
+
+	if numCPU == 0 {
+		numCPU = runtime.NumCPU()
+	}
+
+	res := make([]Element, len(a))
+
+	parallel.Execute(len(a), func(start, stop int) {
+		subRes := BatchInvert(a[start:stop])
+		copy(res[start:stop], subRes)
+	}, numCPU)
+
 	return res
 }

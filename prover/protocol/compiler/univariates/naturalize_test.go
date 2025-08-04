@@ -61,7 +61,7 @@ func TestNaturalize(t *testing.T) {
 		p1s2 := P1S2.GetColAssignment(assi)
 
 		require.Equal(t, p1s2.Pretty(), p2.Pretty())
-		assi.AssignUnivariate(EVAL, x, y1, y2, y2, y3, y4)
+		assi.AssignUnivariateExt(EVAL, x, y1, y2, y2, y3, y4)
 	}
 
 	proof := wizard.Prove(comp, hLProver)

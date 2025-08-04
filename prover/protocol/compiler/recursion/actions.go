@@ -108,7 +108,7 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 		pcsMRoot := pcsCtx.Items.MerkleRoots
 
 		//TODO@yao fix SplitPublicInputs first
-		if circX != params.X {
+		if circX != params.ExtX {
 			return fmt.Errorf("proof no=%v, x value does not match %v != %v", i, circX.String(), params.X.String())
 		}
 
@@ -117,7 +117,7 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 		}
 
 		for i := range circYs {
-			if circYs[i] != params.Ys[i] {
+			if circYs[i] != params.ExtYs[i] {
 				return fmt.Errorf("proof no=%v, Y[%v] does not match; %v != %v", i, i, circYs[i].String(), params.Ys[i].String())
 			}
 		}

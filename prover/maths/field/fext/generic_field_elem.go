@@ -7,44 +7,44 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
-// GenericFieldElem is a generic field element that can either be a base field element or an extension field element.
+// GenericFieldElem is a generic field element that can either be a Base field element or an extension field element.
 // It should only be used in places where performance is not critical, as it incurs overhead due to the
-// storing both a base and extension field version, as well as checks and conversions between base and extension elements.
+// storing both a Base and extension field version, as well as checks and conversions between Base and extension elements.
 type GenericFieldElem struct {
-	base   field.Element
-	ext    Element
-	isBase bool
+	Base   field.Element
+	Ext    Element
+	IsBase bool
 }
 
 func NewESHashFromBase(base field.Element) GenericFieldElem {
 	var res GenericFieldElem
-	res.base.Set(&base)
-	SetFromBase(&res.ext, &base)
-	res.isBase = true
+	res.Base.Set(&base)
+	SetFromBase(&res.Ext, &base)
+	res.IsBase = true
 	return res
 }
 
 func (e *GenericFieldElem) GetBase() (field.Element, error) {
-	if e.isBase {
-		return e.base, nil
+	if e.IsBase {
+		return e.Base, nil
 	} else {
-		return field.Zero(), fmt.Errorf("cannot get base element from an extension element")
+		return field.Zero(), fmt.Errorf("cannot get Base element from an extension element")
 	}
 }
 
 func (e *GenericFieldElem) GetExt() Element {
-	if e.isBase {
-		SetFromBase(&e.ext, &e.base)
-		return e.ext
+	if e.IsBase {
+		SetFromBase(&e.Ext, &e.Base)
+		return e.Ext
 	} else {
-		return e.ext
+		return e.Ext
 	}
 }
 
 func NewESHashFromExt(ext Element) GenericFieldElem {
 	var res GenericFieldElem
-	res.ext.Set(&ext)
-	res.isBase = false
+	res.Ext.Set(&ext)
+	res.IsBase = false
 	return res
 }
 
@@ -52,169 +52,169 @@ func NewMinimalESHashFromExt(ext *Element) *GenericFieldElem {
 	if IsBase(ext) {
 		baseElem, _ := GetBase(ext)
 		return &GenericFieldElem{
-			base:   *new(field.Element).Set(&baseElem),
-			ext:    *new(Element).Set(ext),
-			isBase: true,
+			Base:   *new(field.Element).Set(&baseElem),
+			Ext:    *new(Element).Set(ext),
+			IsBase: true,
 		}
 	} else {
 		return &GenericFieldElem{
-			base:   field.Zero(),
-			ext:    *new(Element).Set(ext),
-			isBase: false,
+			Base:   field.Zero(),
+			Ext:    *new(Element).Set(ext),
+			IsBase: false,
 		}
 	}
 
 }
 
-func (e *GenericFieldElem) IsBase() bool {
-	return e.isBase
+func (e *GenericFieldElem) GetIsBase() bool {
+	return e.IsBase
 }
 
 func (e *GenericFieldElem) IsEqual(inp *GenericFieldElem) bool {
-	// first check if both are actual base elements
-	if IsBase(&e.ext) && IsBase(&inp.ext) {
-		return e.ext.B0.A0.Equal(&inp.ext.B0.A0)
+	// first check if both are actual Base elements
+	if IsBase(&e.Ext) && IsBase(&inp.Ext) {
+		return e.Ext.B0.A0.Equal(&inp.Ext.B0.A0)
 	} else {
-		return e.ext.Equal(&inp.ext)
+		return e.Ext.Equal(&inp.Ext)
 	}
 }
 
 func (e *GenericFieldElem) IsEqualBase(inp *field.Element) bool {
-	if e.isBase {
-		return e.base.Equal(inp)
+	if e.IsBase {
+		return e.Base.Equal(inp)
 	}
-	if IsBase(&e.ext) {
-		actualBase, _ := GetBase(&e.ext)
+	if IsBase(&e.Ext) {
+		actualBase, _ := GetBase(&e.Ext)
 		return actualBase.Equal(inp)
 	}
 	return false
 }
 
 func (e *GenericFieldElem) IsEqualExt(inp *Element) bool {
-	return e.ext.Equal(inp)
+	return e.Ext.Equal(inp)
 }
 
 func (e *GenericFieldElem) Set(inp *GenericFieldElem) *GenericFieldElem {
-	e.isBase = inp.isBase
-	e.ext.Set(&inp.ext)
-	e.base.Set(&inp.base)
+	e.IsBase = inp.IsBase
+	e.Ext.Set(&inp.Ext)
+	e.Base.Set(&inp.Base)
 	return e
 }
 
 func (e *GenericFieldElem) Mul(inp *GenericFieldElem) *GenericFieldElem {
-	if e.isBase && inp.isBase {
-		e.base.Mul(&e.base, &inp.base)
-		e.isBase = true
-		SetFromBase(&e.ext, &e.base)
+	if e.IsBase && inp.IsBase {
+		e.Base.Mul(&e.Base, &inp.Base)
+		e.IsBase = true
+		SetFromBase(&e.Ext, &e.Base)
 		return e
 	} else {
-		// not both are base elements
-		if e.isBase {
-			e.ext.MulByElement(&inp.ext, &e.base)
+		// not both are Base elements
+		if e.IsBase {
+			e.Ext.MulByElement(&inp.Ext, &e.Base)
 		}
-		if inp.isBase {
-			e.ext.MulByElement(&e.ext, &inp.base)
+		if inp.IsBase {
+			e.Ext.MulByElement(&e.Ext, &inp.Base)
 		}
-		if !e.isBase && !inp.isBase {
+		if !e.IsBase && !inp.IsBase {
 			// both are extensions
-			e.ext.Mul(&e.ext, &inp.ext)
+			e.Ext.Mul(&e.Ext, &inp.Ext)
 		}
 
-		// Check if the final result is a base element
-		if IsBase(&e.ext) {
-			actualBase, _ := GetBase(&e.ext)
-			e.base.Set(&actualBase)
-			e.isBase = true
+		// Check if the final result is a Base element
+		if IsBase(&e.Ext) {
+			actualBase, _ := GetBase(&e.Ext)
+			e.Base.Set(&actualBase)
+			e.IsBase = true
 		} else {
-			e.base.SetZero()
-			e.isBase = false
+			e.Base.SetZero()
+			e.IsBase = false
 		}
 		return e
 	}
 }
 
 func (e *GenericFieldElem) Add(inp *GenericFieldElem) *GenericFieldElem {
-	if e.isBase && inp.isBase {
-		e.base.Add(&e.base, &inp.base)
-		SetFromBase(&e.ext, &e.base)
-		e.isBase = true
+	if e.IsBase && inp.IsBase {
+		e.Base.Add(&e.Base, &inp.Base)
+		SetFromBase(&e.Ext, &e.Base)
+		e.IsBase = true
 	} else {
-		// not both are base elements
-		if e.isBase {
-			AddByBase(&e.ext, &inp.ext, &e.base)
+		// not both are Base elements
+		if e.IsBase {
+			AddByBase(&e.Ext, &inp.Ext, &e.Base)
 		}
-		if inp.isBase {
-			AddByBase(&e.ext, &e.ext, &inp.base)
+		if inp.IsBase {
+			AddByBase(&e.Ext, &e.Ext, &inp.Base)
 		}
-		if !e.isBase && !inp.isBase {
+		if !e.IsBase && !inp.IsBase {
 			// both are extensions
-			e.ext.Add(&e.ext, &inp.ext)
+			e.Ext.Add(&e.Ext, &inp.Ext)
 		}
 
-		// Check if the final result is a base element
-		if IsBase(&e.ext) {
-			actualBase, _ := GetBase(&e.ext)
-			e.base.Set(&actualBase)
-			e.isBase = true
+		// Check if the final result is a Base element
+		if IsBase(&e.Ext) {
+			actualBase, _ := GetBase(&e.Ext)
+			e.Base.Set(&actualBase)
+			e.IsBase = true
 		} else {
-			e.base.SetZero()
-			e.isBase = false
+			e.Base.SetZero()
+			e.IsBase = false
 		}
 	}
 	return e
 }
 
 func (e *GenericFieldElem) Div(inp *GenericFieldElem) *GenericFieldElem {
-	if e.isBase && inp.isBase {
-		e.base.Div(&e.base, &inp.base)
-		SetFromBase(&e.ext, &e.base)
-		e.isBase = true
+	if e.IsBase && inp.IsBase {
+		e.Base.Div(&e.Base, &inp.Base)
+		SetFromBase(&e.Ext, &e.Base)
+		e.IsBase = true
 	} else {
-		// not both are base elements
-		if e.isBase {
-			DivByBase(&e.ext, &inp.ext, &e.base)
+		// not both are Base elements
+		if e.IsBase {
+			DivByBase(&e.Ext, &inp.Ext, &e.Base)
 		}
-		if inp.isBase {
-			DivByBase(&e.ext, &e.ext, &inp.base)
+		if inp.IsBase {
+			DivByBase(&e.Ext, &e.Ext, &inp.Base)
 		}
-		if !e.isBase && !inp.isBase {
+		if !e.IsBase && !inp.IsBase {
 			// both are extensions
-			e.ext.Div(&e.ext, &inp.ext)
+			e.Ext.Div(&e.Ext, &inp.Ext)
 		}
 
-		// Check if the final result is a base element
-		if IsBase(&e.ext) {
-			actualBase, _ := GetBase(&e.ext)
-			e.base.Set(&actualBase)
-			e.isBase = true
+		// Check if the final result is a Base element
+		if IsBase(&e.Ext) {
+			actualBase, _ := GetBase(&e.Ext)
+			e.Base.Set(&actualBase)
+			e.IsBase = true
 		} else {
-			e.base.SetZero()
-			e.isBase = false
+			e.Base.SetZero()
+			e.IsBase = false
 		}
 	}
 	return e
 }
 
 func (e *GenericFieldElem) String() string {
-	if e.isBase {
-		return e.base.String()
+	if e.IsBase {
+		return e.Base.String()
 	}
-	return e.ext.String()
+	return e.Ext.String()
 }
 
 func (e *GenericFieldElem) IsZero() bool {
-	if e.isBase {
-		return e.base.IsZero()
+	if e.IsBase {
+		return e.Base.IsZero()
 	} else {
-		return e.ext.IsZero()
+		return e.Ext.IsZero()
 	}
 }
 
 func (e *GenericFieldElem) IsOne() bool {
-	if e.isBase {
-		return e.base.IsOne()
+	if e.IsBase {
+		return e.Base.IsOne()
 	} else {
-		return e.ext.IsOne()
+		return e.Ext.IsOne()
 	}
 }
 
@@ -227,75 +227,83 @@ func GenericFieldZero() GenericFieldElem {
 }
 
 func (e *GenericFieldElem) Square(inp *GenericFieldElem) *GenericFieldElem {
-	if inp.isBase {
-		// inp is a base element
-		e.base.Square(&inp.base)
-		SetFromBase(&e.ext, &e.base)
-		e.isBase = true
+	if inp.IsBase {
+		// inp is a Base element
+		e.Base.Square(&inp.Base)
+		SetFromBase(&e.Ext, &e.Base)
+		e.IsBase = true
 		return e
 	} else {
 		// inp is an extension
-		e.ext.Square(&inp.ext)
-		if IsBase(&e.ext) {
-			actualBase, _ := GetBase(&e.ext)
-			e.base.Set(&actualBase)
-			e.isBase = true
+		e.Ext.Square(&inp.Ext)
+		if IsBase(&e.Ext) {
+			actualBase, _ := GetBase(&e.Ext)
+			e.Base.Set(&actualBase)
+			e.IsBase = true
 		} else {
-			e.base.SetZero()
-			e.isBase = false
+			e.Base.SetZero()
+			e.IsBase = false
 		}
 		return e
 	}
 }
 
 func (e *GenericFieldElem) Exp(inp *GenericFieldElem, exponent *big.Int) *GenericFieldElem {
-	if inp.isBase {
-		e.base.Exp(inp.base, exponent)
-		SetFromBase(&e.ext, &e.base)
+	if inp.IsBase {
+		e.Base.Exp(inp.Base, exponent)
+		SetFromBase(&e.Ext, &e.Base)
 		return e
 	} else {
-		e.ext.Exp(inp.ext, exponent)
-		if IsBase(&e.ext) {
-			actualBase, _ := GetBase(&e.ext)
-			e.base.Set(&actualBase)
-			e.isBase = true
+		e.Ext.Exp(inp.Ext, exponent)
+		if IsBase(&e.Ext) {
+			actualBase, _ := GetBase(&e.Ext)
+			e.Base.Set(&actualBase)
+			e.IsBase = true
 		} else {
-			e.base.SetZero()
-			e.isBase = false
+			e.Base.SetZero()
+			e.IsBase = false
 		}
 		return e
 	}
 }
 
 func (e *GenericFieldElem) SetInt64(v int64) *GenericFieldElem {
-	e.base.SetInt64(v)
-	SetFromBase(&e.ext, &e.base)
-	e.isBase = true
+	e.Base.SetInt64(v)
+	SetFromBase(&e.Ext, &e.Base)
+	e.IsBase = true
 	return e
+}
+
+func (e *GenericFieldElem) GenericText(base int) string {
+	if e.GetIsBase() {
+		return e.Base.Text(base)
+	} else {
+		return Text(&e.Ext, base)
+	}
 }
 
 func SetGenericInt64(v int64) GenericFieldElem {
 	var e GenericFieldElem
-	e.base.SetInt64(v)
-	SetFromBase(&e.ext, &e.base)
-	e.isBase = true
+	e.Base.SetInt64(v)
+	SetFromBase(&e.Ext, &e.Base)
+	e.IsBase = true
 	return e
 }
 func (z *GenericFieldElem) GenericBytes() []byte {
-	if z.IsBase() {
-		res := z.base.Bytes()
+	if z.GetIsBase() {
+		res := z.Base.Bytes()
 		return res[:]
 	} else {
-		res := Bytes(&z.ext)
+		res := Bytes(&z.Ext)
 		return res[:]
 	}
 }
 
 func (z *GenericFieldElem) Inverse(x *GenericFieldElem) *GenericFieldElem {
-	if x.IsBase() {
-		z.base.Inverse(&x.base)
+	if x.GetIsBase() {
+		z.Base.Inverse(&x.Base)
 	} else {
-		z.ext.Inverse(&x.ext)
+		z.Ext.Inverse(&x.Ext)
 	}
 	return z
 }

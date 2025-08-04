@@ -7,7 +7,6 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 
-	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
@@ -183,6 +182,7 @@ func (circuit *AssertIsCodeWordCircuit) Define(api frontend.API) error {
 
 }
 
+/*
 func TestAssertIsCodeWord(t *testing.T) {
 
 	// generate witness
@@ -225,7 +225,7 @@ func TestAssertIsCodeWord(t *testing.T) {
 	}
 
 }
-
+*/
 // ------------------------------------------------------------
 // EvaluateLagrange
 

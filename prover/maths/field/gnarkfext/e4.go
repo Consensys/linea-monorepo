@@ -207,6 +207,14 @@ func (e *Element) Assign(a fext.Element) {
 	e.B1.Assign(a.B1)
 }
 
+// Assign a value to self (witness assignment)
+func SetFromExt(a fext.Element) Element {
+	var e Element
+	e.B0.Assign(a.B0)
+	e.B1.Assign(a.B1)
+	return e
+}
+
 // Select sets e to r1 if b=1, r2 otherwise
 func (e *Element) Select(api frontend.API, b frontend.Variable, r1, r2 Element) *Element {
 

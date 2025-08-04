@@ -118,8 +118,8 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 		params         = wizardVerifier.GetUnivariateParams(polyQuery.Name())
 		circuit        = &RecursionCircuit{
 			WizardVerifier: wizard.AssignVerifierCircuit(comp, proof, numRound),
-			X:              params.X,
-			Ys:             params.Ys,
+			X:              params.ExtX,
+			Ys:             params.ExtYs,
 			Pubs:           vector.IntoGnarkAssignment(pubs),
 			PolyQuery:      polyQuery,
 		}
