@@ -194,12 +194,22 @@ class BeaconSyncControllerImpl(
       metricsFacade: MetricsFacade,
       allowEmptyBlocks: Boolean = true,
     ): SyncControllerManager {
-      val clSyncPipeline = CLSyncPipelineImpl()
+      val clSyncService =
+        CLSyncServiceImpl(
+          beaconChain = beaconChain,
+          validatorProvider = validatorProvider,
+          allowEmptyBlocks = allowEmptyBlocks,
+          executorService = Executors.newCachedThreadPool(),
+          pipelineConfig = BeaconChainDownloadPipelineFactory.Config(),
+          peerLookup = peerLookup,
+          besuMetrics = besuMetrics,
+          metricsFacade = metricsFacade,
+        )
 
       val controller =
         BeaconSyncControllerImpl(
           beaconChain = beaconChain,
-          clSyncService = clSyncPipeline,
+          clSyncService = clSyncService,
         )
 
       val elSyncService =
@@ -211,17 +221,6 @@ class BeaconSyncControllerImpl(
             ELSyncService.Config(
               pollingInterval = 5000.milliseconds,
             ),
-        )
-      val clSyncService =
-        CLSyncServiceImpl(
-          beaconChain = beaconChain,
-          validatorProvider = validatorProvider,
-          allowEmptyBlocks = allowEmptyBlocks,
-          executorService = Executors.newCachedThreadPool(),
-          pipelineConfig = BeaconChainDownloadPipelineFactory.Config(),
-          peerLookup = peerLookup,
-          besuMetrics = besuMetrics,
-          metricsFacade = metricsFacade,
         )
 
       val peerChainTracker =
