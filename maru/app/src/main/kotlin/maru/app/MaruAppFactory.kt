@@ -28,6 +28,7 @@ import maru.config.MaruConfig
 import maru.config.P2P
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkIdHashProvider
+import maru.consensus.ForkIdHashProviderImpl
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForksSchedule
 import maru.consensus.LatestElBlockMetadataCache
@@ -122,7 +123,7 @@ class MaruAppFactory {
         Hashing::shortShaHash,
       )
     val forkIdHashProvider =
-      ForkIdHashProvider(
+      ForkIdHashProviderImpl(
         chainId = beaconGenesisConfig.chainId,
         beaconChain = beaconChain,
         forksSchedule = beaconGenesisConfig,

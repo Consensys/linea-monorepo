@@ -45,13 +45,17 @@ class ForkIdHasher(
   fun hash(forkId: ForkId): ByteArray = hasher.hash(forkIdSerializer.serialize(forkId)).takeLast(4).toByteArray()
 }
 
-class ForkIdHashProvider(
+fun interface ForkIdHashProvider {
+  fun currentForkIdHash(): ByteArray
+}
+
+class ForkIdHashProviderImpl(
   private val chainId: UInt,
   private val beaconChain: BeaconChain,
   private val forksSchedule: ForksSchedule,
   private val forkIdHasher: ForkIdHasher,
-) {
-  fun currentForkIdHash(): ByteArray {
+) : ForkIdHashProvider {
+  override fun currentForkIdHash(): ByteArray {
     val forkId =
       ForkId(
         chainId = chainId,

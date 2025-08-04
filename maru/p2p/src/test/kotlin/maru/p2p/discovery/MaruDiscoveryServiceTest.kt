@@ -19,7 +19,7 @@ import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ConsensusConfig
 import maru.consensus.ForkId
-import maru.consensus.ForkIdHashProvider
+import maru.consensus.ForkIdHashProviderImpl
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
@@ -74,7 +74,7 @@ class MaruDiscoveryServiceTest {
     val forksSchedule = ForksSchedule(chainId = chainId, forks = listOf(forkSpec))
 
     private val forkIdHashProvider =
-      ForkIdHashProvider(
+      ForkIdHashProviderImpl(
         chainId = chainId,
         beaconChain = beaconChain,
         forksSchedule = forksSchedule,

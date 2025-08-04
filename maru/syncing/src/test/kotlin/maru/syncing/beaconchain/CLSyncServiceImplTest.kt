@@ -18,6 +18,7 @@ import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ConsensusConfig
 import maru.consensus.ForkIdHashProvider
+import maru.consensus.ForkIdHashProviderImpl
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
@@ -456,7 +457,7 @@ class CLSyncServiceImplTest {
       )
     val forksSchedule = ForksSchedule(CHAIN_ID, listOf(ForkSpec(0L, 1, consensusConfig)))
 
-    return ForkIdHashProvider(
+    return ForkIdHashProviderImpl(
       chainId = CHAIN_ID,
       beaconChain = beaconChain,
       forksSchedule = forksSchedule,
