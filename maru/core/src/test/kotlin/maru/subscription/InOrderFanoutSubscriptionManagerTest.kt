@@ -53,6 +53,106 @@ class InOrderFanoutSubscriptionManagerTest {
     }
   }
 
+  class SubscriberInnerClass(
+    subscriptionManager: SubscriptionManager<String>,
+    notifications: MutableList<String> = CopyOnWriteArrayList(),
+    subscriberLabel: String = "SubscriberInnerClass",
+  ) : SubscriberRootClass(
+      subscriptionManager = subscriptionManager,
+      notifications = notifications,
+      subscriberLabel = subscriberLabel,
+    )
+
+  @Test
+  fun `should assign id when not provided and remove them`() {
+    val notifications = CopyOnWriteArrayList<String>()
+    val subscribersIds = mutableListOf<String>()
+
+    SubscriberRootClass(subscriptionManager, notifications, "subscriberRootClass1")
+      .also {
+        val ids = it.subscribe()
+        subscribersIds.addAll(ids)
+        assertThat(ids[0]).startsWith("maru.subscription.SubscriberRootClass.syncHandler")
+        assertThat(ids[1]).startsWith("maru.subscription.SubscriberRootClass.asyncHandler")
+      }
+
+    SubscriberRootClass(subscriptionManager, notifications, "subscriberRootClass2")
+      .also {
+        val id1 = subscriptionManager.addSyncSubscriber(it::syncHandler).also { subscribersIds.add(it) }
+        val id2 = subscriptionManager.addAsyncSubscriber(it::asyncHandler).also { subscribersIds.add(it) }
+
+        assertThat(id1).startsWith("maru.subscription.SubscriberRootClass.syncHandler")
+        assertThat(id2).startsWith("maru.subscription.SubscriberRootClass.asyncHandler")
+      }
+
+    SubscriberInnerClass(subscriptionManager, notifications, "subscriberRootClass2")
+      .also {
+        val id1 = subscriptionManager.addSyncSubscriber(it::syncHandler).also { subscribersIds.add(it) }
+        val id2 = subscriptionManager.addAsyncSubscriber(it::asyncHandler).also { subscribersIds.add(it) }
+        assertThat(
+          id1.split("@").first(),
+        ).isEqualTo("maru.subscription.InOrderFanoutSubscriptionManagerTest\$SubscriberInnerClass.syncHandler")
+        assertThat(
+          id2.split("@").first(),
+        ).isEqualTo("maru.subscription.InOrderFanoutSubscriptionManagerTest\$SubscriberInnerClass.asyncHandler")
+      }
+
+    val lambdaSubscriberIdPrefix =
+      "maru.subscription.InOrderFanoutSubscriptionManagerTest.should assign id when not provided and remove them(InOrderFanoutSubscriptionManagerTest.kt"
+    SubscriberRootClass(subscriptionManager, notifications, "subscriberRootClass3")
+      .also { subscriber ->
+        val id1 =
+          subscriptionManager
+            .addSyncSubscriber(syncHandler = { data -> subscriber.syncHandler(data) })
+            .also { subscribersIds.add(it) }
+        val id2 =
+          subscriptionManager
+            .addAsyncSubscriber(asyncHandler = { data -> subscriber.asyncHandler(data) })
+            .also { subscribersIds.add(it) }
+
+        assertThat(id1).startsWith(lambdaSubscriberIdPrefix)
+        assertThat(id2).startsWith(lambdaSubscriberIdPrefix)
+      }
+
+    val lambdaHandler = { data: String ->
+      notifications.add("lambda1 sync handler called with: $data")
+    }
+    subscriptionManager.addSyncSubscriber(lambdaHandler).also { id ->
+      assertThat(id).startsWith(lambdaSubscriberIdPrefix)
+      subscribersIds.add(id)
+    }
+
+    class MyObservable(
+      val subscriptionManager: SubscriptionManager<String>,
+    ) : Observable<String> by subscriptionManager
+
+    // using interface implementation delegation
+    MyObservable(subscriptionManager)
+      .addSyncSubscriber({ data -> notifications.add("lambda2 sync handler called with: $data") })
+      .also { subscribersIds.add(it) }
+
+    /**
+     * Examples of subscriberIds if we log them:
+     subscriberRootClass1
+     "maru.subscription.SubscriberRootClass.syncHandler1808826734",
+     "maru.subscription.SubscriberRootClass.asyncHandler1808826734",
+     subscriberRootClass2
+     "maru.subscription.SubscriberRootClass.syncHandler133845838",
+     "maru.subscription.SubscriberRootClass.asyncHandler133845838",
+     lambdas:
+     "maru.subscription.InOrderFanoutSubscriptionManagerTest.should assign id when not provided and remove them by reference - root class(InOrderFanoutSubscriptionManagerTest.kt:88)",
+     "maru.subscription.InOrderFanoutSubscriptionManagerTest.should assign id when not provided and remove them by reference - root class(InOrderFanoutSubscriptionManagerTest.kt:89)",
+     "maru.subscription.InOrderFanoutSubscriptionManagerTest.should assign id when not provided and remove them by reference - root class(InOrderFanoutSubscriptionManagerTest.kt:92)"
+     "maru.subscription.InOrderFanoutSubscriptionManagerTest.should assign id when not provided and remove them by reference - root class(InOrderFanoutSubscriptionManagerTest.kt:108)"
+     */
+
+    subscriptionManager.notifySubscribers("d1")
+    subscribersIds.forEach { subscriptionManager.removeSubscriber(it) }
+
+    subscriptionManager.notifySubscribers("d2")
+    assertThat(notifications.filter { it.contains("d2") }).isEmpty()
+  }
+
   @Test
   fun `should notify in subscription order`() {
     val notifications = CopyOnWriteArrayList<String>()
@@ -186,6 +286,43 @@ class InOrderFanoutSubscriptionManagerTest {
 
     subscriptionManager.notifySubscribers("d2")
     assertThat(notifications).isEqualTo(listOf("handler1 called with: d1"))
+  }
+
+  @Test
+  fun `should remove subscriber by handler reference`() {
+    val notifications = CopyOnWriteArrayList<String>()
+    val syncHandler1 = { data: String -> notifications.add("sync handler1 called with: $data") }
+    val asyncHandler2 = { data: String ->
+      notifications.add("sync handler2 called with: $data")
+      SafeFuture.completedFuture("async handler2 completed with: $data")
+    }
+    subscriptionManager.addSyncSubscriber(subscriberId = "sync handler1", syncHandler = syncHandler1)
+    subscriptionManager.addSyncSubscriber(syncHandler = asyncHandler2)
+    subscriptionManager.notifySubscribers("d1")
+    assertThat(notifications).hasSize(2)
+
+    subscriptionManager.removeSubscriber(syncHandler1)
+    subscriptionManager.removeSubscriber(asyncHandler2)
+    subscriptionManager.notifySubscribers("d2")
+
+    assertThat(notifications).hasSize(2)
+  }
+
+  @Test
+  fun `should remove subscribers by observer object reference`() {
+    val notifications = CopyOnWriteArrayList<String>()
+    val observer =
+      SubscriberRootClass(
+        subscriptionManager = subscriptionManager,
+        notifications = notifications,
+        subscriberLabel = "Observer",
+      ).also { it.subscribe() }
+
+    subscriptionManager.notifySubscribers("d1")
+    assertThat(notifications).hasSize(2)
+    subscriptionManager.removeSubscriber(observer)
+    subscriptionManager.notifySubscribers("d2")
+    assertThat(notifications).hasSize(2)
   }
 
   @Test

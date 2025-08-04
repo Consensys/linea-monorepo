@@ -23,6 +23,7 @@ dependencies {
   implementation "build.linea.internal:metrics"
   implementation "build.linea.internal:metrics"
   implementation "io.tmio:tuweni-bytes"
+  implementation "org.jetbrains.kotlin:kotlin-reflect"
   testImplementation(project(":serialization"))
   testFixturesImplementation("org.hyperledger.besu:besu-datatypes")
   testFixturesImplementation("org.hyperledger.besu:besu-plugin-api")
