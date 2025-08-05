@@ -11,9 +11,7 @@ package maru.subscription
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.jvm.internal.CallableReference
-import kotlin.random.Random
 import kotlin.reflect.jvm.ExperimentalReflectionOnLambdas
-import maru.extensions.encodeHex
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -39,25 +37,19 @@ private fun <T> getSubscriberId(subscriber: (T) -> Any?): String {
         val receiverObj = findReceiverObjRef(subscriber)
         "${subscriber.owner.toString().replace("class ", "")}.${subscriber.name}@${receiverObj.hashCode()}"
       }
-      subscriber is kotlin.reflect.KFunction<*> -> {
-        println("is KFunction: ${subscriber.name}")
-        println("${subscriber.javaClass.name}@${subscriber.hashCode()}")
-        Random.nextBytes(8).encodeHex()
-      }
-
       else -> {
         // this a Lambda function, so we will use stack trace to get it declaration point
         val className =
           subscriber.javaClass.name
             .split("$")
             .first()
-        val id =
+        val lambdaDeclarationSite =
           Thread
             .currentThread()
             .stackTrace
             .find { it.className == className }
             .toString()
-        id
+        "$lambdaDeclarationSite@${subscriber.hashCode()}"
       }
     }
   return subscriberId

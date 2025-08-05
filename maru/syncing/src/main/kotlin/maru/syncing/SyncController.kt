@@ -63,11 +63,11 @@ class BeaconSyncControllerImpl(
   override fun isELSynced(): Boolean = lock.read { currentState.elStatus == ELSyncStatus.SYNCED }
 
   override fun onClSyncStatusUpdate(handler: (CLSyncStatus) -> Unit) {
-    clSyncHandlers.addSyncSubscriber(handler.toString(), handler)
+    clSyncHandlers.addSyncSubscriber(handler)
   }
 
   override fun onElSyncStatusUpdate(handler: (ELSyncStatus) -> Unit) {
-    elSyncHandlers.addSyncSubscriber(handler.toString(), handler)
+    elSyncHandlers.addSyncSubscriber(handler)
   }
 
   override fun onBeaconSyncComplete(handler: () -> Unit) {
@@ -269,19 +269,19 @@ class AlwaysSyncedController : SyncController {
   override fun getElSyncStatus(): ELSyncStatus = ELSyncStatus.SYNCED
 
   override fun onClSyncStatusUpdate(handler: (CLSyncStatus) -> Unit) {
-    clSyncHandlers.addSyncSubscriber(handler.toString(), handler)
+    clSyncHandlers.addSyncSubscriber(handler)
   }
 
   override fun onElSyncStatusUpdate(handler: (ELSyncStatus) -> Unit) {
-    elSyncHandlers.addSyncSubscriber(handler.toString(), handler)
+    elSyncHandlers.addSyncSubscriber(handler)
   }
 
   override fun onBeaconSyncComplete(handler: () -> Unit) {
-    beaconSyncCompleteHandlers.addSyncSubscriber(handler.toString()) { handler() }
+    beaconSyncCompleteHandlers.addSyncSubscriber { handler() }
   }
 
   override fun onFullSyncComplete(handler: () -> Unit) {
-    fullSyncCompleteHandlers.addSyncSubscriber(handler.toString()) { handler() }
+    fullSyncCompleteHandlers.addSyncSubscriber { handler() }
   }
 
   override fun isBeaconChainSynced(): Boolean = true
