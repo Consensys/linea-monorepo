@@ -25,11 +25,11 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import testutils.MaruFactory
 import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
 import testutils.besu.latestBlock
 import testutils.besu.startWithRetry
+import testutils.maru.MaruFactory
 
 class MaruStartFromPragueTest {
   private lateinit var cluster: Cluster

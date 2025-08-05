@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.config.consensus
+package maru.config
 
 import com.sksamuel.hoplite.ConfigLoaderBuilder
 import com.sksamuel.hoplite.ExperimentalHoplite
@@ -17,7 +17,7 @@ import maru.config.consensus.JsonFriendlyForksSchedule
 @OptIn(ExperimentalHoplite::class)
 object Utils {
   fun parseBeaconChainConfig(json: String): JsonFriendlyForksSchedule =
-    ConfigLoaderBuilder
+    ConfigLoaderBuilder.Companion
       .default()
       .addDecoder(ForkConfigDecoder)
       .withExplicitSealedTypes()

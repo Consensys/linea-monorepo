@@ -24,12 +24,12 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import testutils.Checks.getMinedBlocks
-import testutils.MaruFactory
 import testutils.PeeringNodeNetworkStack
 import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
 import testutils.besu.ethGetBlockByNumber
 import testutils.besu.startWithRetry
+import testutils.maru.MaruFactory
 import testutils.maru.awaitTillMaruHasPeers
 
 class MaruFollowerTest {

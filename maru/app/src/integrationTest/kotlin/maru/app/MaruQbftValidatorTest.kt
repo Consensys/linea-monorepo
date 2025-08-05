@@ -36,11 +36,11 @@ import org.junit.jupiter.api.Test
 import testutils.Checks.getMinedBlocks
 import testutils.Checks.verifyBlockTime
 import testutils.Checks.verifyBlockTimeWithAGapOn
-import testutils.MaruFactory
 import testutils.SingleNodeNetworkStack
 import testutils.SpyingP2PNetwork
 import testutils.besu.BesuTransactionsHelper
 import testutils.besu.startWithRetry
+import testutils.maru.MaruFactory
 
 class MaruQbftValidatorTest {
   private lateinit var cluster: Cluster

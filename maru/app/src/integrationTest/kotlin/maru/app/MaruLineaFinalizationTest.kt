@@ -26,11 +26,11 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import testutils.MaruFactory
 import testutils.PeeringNodeNetworkStack
 import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
 import testutils.besu.ethGetBlockByNumber
+import testutils.maru.MaruFactory
 import testutils.maru.awaitTillMaruHasPeers
 
 class MaruLineaFinalizationTest {
