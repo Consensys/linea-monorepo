@@ -17,7 +17,7 @@ type ProjectionTestcase struct {
 }
 
 var ListOfProjectionTestcasePositive = []*ProjectionTestcase{
-	/*ok
+
 	{
 		NameStr: "positive/selector-full-zeroes",
 		FilterA: []smartvectors.SmartVector{smartvectors.NewConstant(field.Zero(), 16)},
@@ -29,7 +29,7 @@ var ListOfProjectionTestcasePositive = []*ProjectionTestcase{
 			smartvectors.PseudoRand(rng, 8),
 		}},
 	},
-	*/
+
 	{
 		NameStr: "positive/counting-values",
 		FilterA: []smartvectors.SmartVector{OnesAt(16, []int{2, 4, 6, 8, 10})},
