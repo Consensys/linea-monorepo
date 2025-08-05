@@ -15,7 +15,7 @@ import org.apache.logging.log4j.LogManager
 typealias FinalizationProvider = (BeaconBlockBody) -> FinalizationState
 
 object InstantFinalizationProvider : FinalizationProvider {
-  private val log = LogManager.getLogger(InstantFinalizationProvider::class.java)
+  private val log = LogManager.getLogger(this.javaClass)
 
   override fun invoke(beaconBlockBody: BeaconBlockBody): FinalizationState {
     log.debug(

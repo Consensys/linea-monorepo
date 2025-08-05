@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.testutils
+package testutils
 
 import java.math.BigInteger
 import java.util.concurrent.TimeUnit

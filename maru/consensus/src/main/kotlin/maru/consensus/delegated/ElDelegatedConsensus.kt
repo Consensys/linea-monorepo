@@ -44,7 +44,7 @@ class ElDelegatedConsensus(
   private val onNewBlock: NewBlockHandler<*>,
   private val blockTimeSeconds: Int,
 ) : Protocol {
-  private val log: Logger = LogManager.getLogger(this::class.java)
+  private val log: Logger = LogManager.getLogger(this.javaClass)
 
   @Volatile
   private var currentTask: SafeFuture<Unit>? = null

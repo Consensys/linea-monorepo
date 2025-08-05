@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.testutils.besu
+package testutils.besu
 
 import java.util.Optional
 import org.hyperledger.besu.crypto.KeyPairUtil

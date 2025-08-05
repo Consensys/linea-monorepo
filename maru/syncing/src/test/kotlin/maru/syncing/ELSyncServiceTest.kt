@@ -9,6 +9,9 @@
 package maru.syncing
 
 import kotlin.time.Duration.Companion.seconds
+import maru.consensus.state.FinalizationProvider
+import maru.consensus.state.FinalizationState
+import maru.consensus.state.InstantFinalizationProvider
 import maru.core.ext.DataGenerators
 import maru.database.InMemoryBeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
@@ -18,7 +21,9 @@ import maru.executionlayer.manager.PayloadStatus
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.verify
 import org.mockito.kotlin.any
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
@@ -28,9 +33,10 @@ class ELSyncServiceTest {
     var elSyncStatus: ELSyncStatus? = null
     val onStatusChange: (ELSyncStatus) -> Unit = { elSyncStatus = it }
     val config = ELSyncService.Config(pollingInterval = 1.seconds)
-    val timer = PeerChainTrackerTest.TestableTimer()
+    val timer = TestablePeriodicTimer()
     val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(0uL))
     val executionLayerManager = mock<ExecutionLayerManager>()
+    val finalizationProvider: FinalizationProvider = InstantFinalizationProvider
 
     val elSyncService =
       ELSyncService(
@@ -38,6 +44,7 @@ class ELSyncServiceTest {
         executionLayerManager = executionLayerManager,
         onStatusChange = onStatusChange,
         config = config,
+        finalizationProvider = finalizationProvider,
         timerFactory = { _, _ -> timer },
       )
 
@@ -54,16 +61,17 @@ class ELSyncServiceTest {
     var elSyncStatus: ELSyncStatus? = null
     val onStatusChange: (ELSyncStatus) -> Unit = { elSyncStatus = it }
     val config = ELSyncService.Config(pollingInterval = 1.seconds)
-    val timer = PeerChainTrackerTest.TestableTimer()
+    val timer = TestablePeriodicTimer()
     val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(0uL))
     val executionLayerManager = mock<ExecutionLayerManager>()
-
+    val finalizationProvider: FinalizationProvider = InstantFinalizationProvider
     val elSyncService =
       ELSyncService(
         beaconChain = beaconChain,
         executionLayerManager = executionLayerManager,
         onStatusChange = onStatusChange,
         config = config,
+        finalizationProvider = finalizationProvider,
         timerFactory = { _, _ -> timer },
       )
 
@@ -94,6 +102,61 @@ class ELSyncServiceTest {
       )
     timer.runNextTask()
     assertThat(elSyncStatus).isEqualTo(ELSyncStatus.SYNCED)
+    elSyncService.stop()
+  }
+
+  @Test
+  fun `should respect finalization provider when calling setHead`() {
+    val config = ELSyncService.Config(pollingInterval = 1.seconds)
+    val timer = TestablePeriodicTimer()
+    val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(0uL))
+    val executionLayerManager = mock<ExecutionLayerManager>()
+
+    // Create custom finalization provider that returns specific values
+    val customSafeBlockHash = ByteArray(32) { 0xAA.toByte() }
+    val customFinalizedBlockHash = ByteArray(32) { 0xBB.toByte() }
+    val finalizationProvider: FinalizationProvider = {
+      FinalizationState(
+        safeBlockHash = customSafeBlockHash,
+        finalizedBlockHash = customFinalizedBlockHash,
+      )
+    }
+
+    val elSyncService =
+      ELSyncService(
+        beaconChain = beaconChain,
+        executionLayerManager = executionLayerManager,
+        onStatusChange = { },
+        config = config,
+        finalizationProvider = finalizationProvider,
+        timerFactory = { _, _ -> timer },
+      )
+
+    // Add a block to the beacon chain to trigger EL sync
+    val sealedBlock = DataGenerators.randomSealedBeaconBlock(3UL)
+    beaconChain
+      .newUpdater()
+      .putBeaconState(DataGenerators.randomBeaconState(3uL))
+      .putSealedBeaconBlock(sealedBlock)
+      .commit()
+
+    whenever(executionLayerManager.setHead(any(), any(), any()))
+      .thenReturn(
+        SafeFuture.completedFuture(
+          ForkChoiceUpdatedResult(PayloadStatus(ExecutionPayloadStatus.VALID, null, null), null),
+        ),
+      )
+
+    elSyncService.start()
+    timer.runNextTask()
+
+    // Verify that setHead was called with the finalization provider's values
+    verify(executionLayerManager).setHead(
+      eq(sealedBlock.beaconBlock.beaconBlockBody.executionPayload.blockHash),
+      eq(customSafeBlockHash),
+      eq(customFinalizedBlockHash),
+    )
+
     elSyncService.stop()
   }
 }

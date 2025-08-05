@@ -8,8 +8,6 @@
  */
 package maru.syncing
 
-import java.util.Timer
-import java.util.TimerTask
 import kotlin.time.Duration.Companion.seconds
 import maru.p2p.PeersHeadBlockProvider
 import org.assertj.core.api.Assertions.assertThat
@@ -49,42 +47,11 @@ class PeerChainTrackerTest {
     }
   }
 
-  // Test implementation that allows controlling the timer execution
-  internal class TestableTimer : Timer("test-timer", true) {
-    val scheduledTasks = mutableListOf<TimerTask>()
-    val delays = mutableListOf<Long>()
-    val periods = mutableListOf<Long>()
-
-    override fun scheduleAtFixedRate(
-      task: TimerTask,
-      delay: Long,
-      period: Long,
-    ) {
-      scheduledTasks.add(task)
-      delays.add(delay)
-      periods.add(period)
-    }
-
-    fun runNextTask() {
-      if (scheduledTasks.isNotEmpty()) {
-        scheduledTasks[0].run()
-      }
-    }
-
-    // Ensuring that cancel() works properly for cleanup
-    override fun cancel() {
-      super.cancel()
-      scheduledTasks.clear()
-      delays.clear()
-      periods.clear()
-    }
-  }
-
   private lateinit var peersHeadsProvider: TestPeersHeadBlockProvider
   private lateinit var syncTargetUpdateHandler: TestBeaconSyncTargetUpdateHandler
   private lateinit var targetChainHeadCalculator: TestSyncTargetSelector
   private lateinit var config: PeerChainTracker.Config
-  private lateinit var timer: TestableTimer
+  private lateinit var timer: TestablePeriodicTimer
   private lateinit var peerChainTracker: PeerChainTracker
 
   @BeforeEach
@@ -92,7 +59,7 @@ class PeerChainTrackerTest {
     peersHeadsProvider = TestPeersHeadBlockProvider()
     syncTargetUpdateHandler = TestBeaconSyncTargetUpdateHandler()
     targetChainHeadCalculator = TestSyncTargetSelector()
-    timer = TestableTimer()
+    timer = TestablePeriodicTimer()
 
     config =
       PeerChainTracker.Config(
@@ -122,9 +89,9 @@ class PeerChainTrackerTest {
     peerChainTracker.start()
 
     // Assert
-    assertThat(timer.scheduledTasks).hasSize(1)
-    assertThat(timer.delays[0]).isEqualTo(0L)
-    assertThat(timer.periods[0]).isEqualTo(1000L)
+    assertThat(timer.scheduledTask).isNotNull
+    assertThat(timer.delay).isEqualTo(0L)
+    assertThat(timer.period).isEqualTo(1000L)
   }
 
   @Test
@@ -136,7 +103,7 @@ class PeerChainTrackerTest {
     peerChainTracker.stop()
 
     // Assert
-    assertThat(timer.scheduledTasks).isEmpty()
+    assertThat(timer.scheduledTask).isNull()
   }
 
   @Test
@@ -321,8 +288,8 @@ class PeerChainTrackerTest {
     peerChainTracker.start()
     timer.runNextTask()
 
-    // Assert - No updates should occur with empty peer list
-    assertThat(syncTargetUpdateHandler.receivedTargets).isEmpty()
+    // Assert - When there are no peers it should just set the sync target to 0
+    assertThat(syncTargetUpdateHandler.receivedTargets).hasSameElementsAs(listOf(0UL))
 
     // Arrange - Add peers
     val peersHeads =
@@ -335,7 +302,6 @@ class PeerChainTrackerTest {
     timer.runNextTask()
 
     // Assert - Update should occur when peers are added
-    assertThat(syncTargetUpdateHandler.receivedTargets).hasSize(1)
-    assertThat(syncTargetUpdateHandler.receivedTargets[0]).isEqualTo(100UL)
+    assertThat(syncTargetUpdateHandler.receivedTargets).hasSameElementsAs(listOf(0UL, 100UL))
   }
 }

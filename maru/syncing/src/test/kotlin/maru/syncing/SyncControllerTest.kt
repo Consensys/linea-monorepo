@@ -308,30 +308,6 @@ class SyncControllerTest {
     assertThat(fakeClSyncService.lastSyncTarget).isEqualTo(180UL)
     assertThat(controller.getCLSyncStatus()).isEqualTo(CLSyncStatus.SYNCING)
   }
-
-  @Test
-  fun `should not set redundant sync targets for same value`() {
-    val trackingClSyncService = TrackingCLSyncService()
-    val controller = createController(50UL, trackingClSyncService)
-
-    // Given: sync is triggered to target 100
-    controller.onBeaconChainSyncTargetUpdated(100UL)
-    assertThat(trackingClSyncService.setSyncTargetCalls).hasSize(1)
-    assertThat(trackingClSyncService.setSyncTargetCalls[0]).isEqualTo(100UL)
-
-    // When: same sync target is provided again
-    controller.onBeaconChainSyncTargetUpdated(100UL)
-
-    // Then: should NOT call setSyncTarget again due to early return
-    assertThat(trackingClSyncService.setSyncTargetCalls).hasSize(1)
-    assertThat(trackingClSyncService.setSyncTargetCalls[0]).isEqualTo(100UL)
-
-    // When: same target provided third time
-    controller.onBeaconChainSyncTargetUpdated(100UL)
-
-    // Then: still no additional calls
-    assertThat(trackingClSyncService.setSyncTargetCalls).hasSize(1) // Fixed: no redundant call
-  }
 }
 
 // Additional test double to track method calls

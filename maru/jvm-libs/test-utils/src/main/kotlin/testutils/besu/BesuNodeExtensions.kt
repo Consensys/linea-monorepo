@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.testutils.besu
+package testutils.besu
 
 import java.math.BigInteger
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode

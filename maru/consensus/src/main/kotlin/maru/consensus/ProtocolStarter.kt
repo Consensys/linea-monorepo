@@ -77,7 +77,7 @@ class ProtocolStarter(
     override fun toString(): String = "protocol=${protocol.javaClass.simpleName}, fork=$fork"
   }
 
-  private val log: Logger = LogManager.getLogger(this::class.java)
+  private val log: Logger = LogManager.getLogger(this.javaClass)
 
   internal val currentProtocolWithForkReference: AtomicReference<ProtocolWithFork> = AtomicReference()
 

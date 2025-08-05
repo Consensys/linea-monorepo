@@ -51,7 +51,7 @@ class P2PNetworkImpl(
   private val forkIdHashProvider: ForkIdHashProvider,
   isBlockImportEnabledProvider: () -> Boolean,
 ) : P2PNetwork {
-  lateinit var maruPeerManager: MaruPeerManager
+  internal lateinit var maruPeerManager: MaruPeerManager
   private val topicIdGenerator = LineaMessageIdGenerator(chainId)
   private val sealedBlocksTopicId = topicIdGenerator.id(GossipMessageType.BEACON_BLOCK.name, Version.V1)
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
@@ -127,9 +127,10 @@ class P2PNetworkImpl(
       .start()
       .thenApply {
         log.info(
-          "Starting P2P network. port=$port, nodeId=${
-            p2pNetwork.nodeId
-          }",
+          "Starting P2P network. port={}, nodeId={}, instance={}",
+          port,
+          p2pNetwork.nodeId,
+          p2pNetwork.toString(),
         )
         p2pConfig.staticPeers.forEach { peer ->
           p2pNetwork
@@ -148,6 +149,7 @@ class P2PNetworkImpl(
       }
 
   override fun stop(): SafeFuture<Unit> {
+    log.trace("Stopping {}", this::class.simpleName)
     val pmStop = maruPeerManager.stop()
     discoveryService?.stop()
     val p2pStop = p2pNetwork.stop()
@@ -155,6 +157,7 @@ class P2PNetworkImpl(
   }
 
   override fun broadcastMessage(message: Message<*, GossipMessageType>): SafeFuture<*> {
+    log.trace("Broadcasting message={}", message)
     broadcastMessageCounterFactory
       .create(
         listOf(
@@ -173,10 +176,15 @@ class P2PNetworkImpl(
   }
 
   override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int {
+    log.trace("Subscribing on new sealed blocks")
     val subscriptionManagerHadSubscriptions = sealedBlocksSubscriptionManager.hasSubscriptions()
 
     return sealedBlocksSubscriptionManager.subscribeToBlocks(subscriber::handleSealedBlock).also {
       if (!subscriptionManagerHadSubscriptions) {
+        log.trace(
+          "First ever subscription on new sealed blocks topicId={}. Subscribing on network level",
+          sealedBlocksTopicId,
+        )
         p2pNetwork.subscribe(sealedBlocksTopicId, sealedBlocksTopicHandler)
       }
     }
@@ -225,8 +233,10 @@ class P2PNetworkImpl(
               p2pConfig.reconnectDelay,
               t.message,
             )
-            SafeFuture
-              .runAsync({ maintainPersistentConnection(peerAddress) }, delayedExecutor)
+            if (t.cause?.message != "Transport is closed") {
+              SafeFuture
+                .runAsync({ maintainPersistentConnection(peerAddress) }, delayedExecutor)
+            }
           }
         } else {
           log.trace("Created persistent connection to {}", peerAddress)

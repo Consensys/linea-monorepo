@@ -14,13 +14,6 @@ import kotlin.time.toJavaDuration
 import maru.core.Seal
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.ValidationResult
-import maru.testutils.Checks.getMinedBlocks
-import maru.testutils.InjectableSealedBlocksFakeNetwork
-import maru.testutils.MaruFactory
-import maru.testutils.NetworkParticipantStack
-import maru.testutils.SpyingP2PNetwork
-import maru.testutils.besu.BesuFactory
-import maru.testutils.besu.BesuTransactionsHelper
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -32,6 +25,13 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurati
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.Test
 import org.web3j.protocol.core.DefaultBlockParameter
+import testutils.Checks.getMinedBlocks
+import testutils.InjectableSealedBlocksFakeNetwork
+import testutils.MaruFactory
+import testutils.SingleNodeNetworkStack
+import testutils.SpyingP2PNetwork
+import testutils.besu.BesuFactory
+import testutils.besu.BesuTransactionsHelper
 
 class MaruFollowerNegativeTest {
   private val cluster: Cluster =
@@ -49,7 +49,7 @@ class MaruFollowerNegativeTest {
   fun `Maru follower doesn't import blocks without proper signature`() {
     val spyingP2PNetwork = SpyingP2PNetwork(NoOpP2PNetwork)
     val validatorStack =
-      NetworkParticipantStack(
+      SingleNodeNetworkStack(
         cluster = cluster,
       ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
         maruFactory.buildTestMaruValidatorWithoutP2pPeering(
@@ -60,6 +60,7 @@ class MaruFollowerNegativeTest {
         )
       }
     validatorStack.maruApp.start()
+
     val validatorGenesis =
       validatorStack.besuNode
         .nodeRequests()
@@ -72,7 +73,7 @@ class MaruFollowerNegativeTest {
 
     val followerP2PNetwork = InjectableSealedBlocksFakeNetwork()
     val followerStack =
-      NetworkParticipantStack(
+      SingleNodeNetworkStack(
         cluster = cluster,
         besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
       ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
@@ -84,6 +85,7 @@ class MaruFollowerNegativeTest {
         )
       }
     followerStack.maruApp.start()
+
     val followerGenesis =
       followerStack.besuNode
         .nodeRequests()

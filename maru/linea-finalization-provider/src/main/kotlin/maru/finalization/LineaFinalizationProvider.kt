@@ -53,7 +53,7 @@ class LineaFinalizationProvider(
     }
   }
 
-  private val log = LogManager.getLogger(LineaFinalizationProvider::class.java)
+  private val log = LogManager.getLogger(this.javaClass)
   private val lastFinalizedBlock: AtomicReference<BlockHeader>
 
   init {

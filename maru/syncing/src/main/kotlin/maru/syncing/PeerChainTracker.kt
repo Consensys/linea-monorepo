@@ -43,7 +43,7 @@ class PeerChainTracker(
   }
 
   private var peers = mutableMapOf<String, ULong>()
-  private var lastNotifiedTarget: ULong = 0UL // 0 is an Ok magic number, since it represents Genesis
+  private var lastNotifiedTarget: ULong? = null // 0 is an Ok magic number, since it represents Genesis
   private var isRunning = false
 
   // Marked as volatile to ensure visibility across threads
@@ -69,14 +69,17 @@ class PeerChainTracker(
     peers = roundedNewPeerHeads.toMutableMap()
     log.debug("Rounded peers peersSize={}", peers.size)
     // Update the state and recalculate the sync target
-    if (peers.isNotEmpty()) {
-      val newSyncTarget = targetChainHeadCalculator.selectBestSyncTarget(peers.values.toList())
-      log.trace("Selected best syncTarget={} lastNotifiedTarget={}", newSyncTarget, lastNotifiedTarget)
-      if (newSyncTarget != lastNotifiedTarget) { // Only send an update if there's an actual target change
-        beaconSyncTargetUpdateHandler.onBeaconChainSyncTargetUpdated(newSyncTarget)
-        log.trace("Notified about the new syncTarget={}", newSyncTarget)
-        lastNotifiedTarget = newSyncTarget
+    val newSyncTarget =
+      if (peers.isNotEmpty()) {
+        targetChainHeadCalculator.selectBestSyncTarget(peers.values.toList())
+      } else {
+        0UL // If there are no peers, let's just say we're synced, because we don't know better
       }
+    log.trace("Selected best syncTarget={} lastNotifiedTarget={}", newSyncTarget, lastNotifiedTarget)
+    if (newSyncTarget != lastNotifiedTarget) { // Only send an update if there's an actual target change
+      beaconSyncTargetUpdateHandler.onBeaconChainSyncTargetUpdated(newSyncTarget)
+      log.debug("Notified about the new syncTarget={}", newSyncTarget)
+      lastNotifiedTarget = newSyncTarget
     }
   }
 
@@ -109,6 +112,7 @@ class PeerChainTracker(
       poller?.cancel()
       poller = null
       isRunning = false
+      lastNotifiedTarget = null
       log.info("PeerChainTracker is stopped")
     }
   }

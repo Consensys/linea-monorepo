@@ -21,7 +21,7 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftNewChainHead
 class QbftEventMultiplexer(
   private val eventHandler: QbftEventHandler,
 ) {
-  private val log: Logger = LogManager.getLogger(this::class.java)
+  private val log: Logger = LogManager.getLogger(this.javaClass)
 
   fun handleEvent(event: BftEvent) {
     try {
