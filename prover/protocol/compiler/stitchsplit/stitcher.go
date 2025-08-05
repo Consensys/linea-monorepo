@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -101,35 +103,37 @@ func (a *stitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
 			continue
 		}
 
-		// get the assignment of the subColumns and interleave them
+		// Get the assignment of the subColumns and interleave them
 		witnesses := make([]smartvectors.SmartVector, len(subColumns))
 		for i := range witnesses {
 			witnesses[i] = subColumns[i].GetColAssignment(run)
-			//TODO@yao: fix witness has both base and ext elements
-		}
-		switch witnesses[0].(type) {
-		case *smartvectors.Regular:
-			assignement := smartvectors.
-				AllocateRegular(maxSizeGroup * witnesses[0].Len()).(*smartvectors.Regular)
-			for i := range subColumns {
-				for j := 0; j < witnesses[0].Len(); j++ {
-					(*assignement)[i+j*maxSizeGroup] = witnesses[i].Get(j)
-				}
-			}
-			run.AssignColumn(idBigCol, assignement)
-
-		case *smartvectors.RegularExt:
-			assignement := smartvectors.
-				AllocateRegularExt(maxSizeGroup * witnesses[0].Len()).(*smartvectors.RegularExt)
-			for i := range subColumns {
-				for j := 0; j < witnesses[0].Len(); j++ {
-					(*assignement)[i+j*maxSizeGroup] = witnesses[i].GetExt(j)
-				}
-			}
-			run.AssignColumn(idBigCol, assignement)
-
 		}
 
+		if smartvectors.AreAllBase(witnesses) {
+
+			newSize := maxSizeGroup * witnesses[0].Len()
+			assignementSlice := make([]field.Element, newSize)
+
+			for i := range subColumns {
+				for j := 0; j < witnesses[0].Len(); j++ {
+					assignementSlice[i+j*maxSizeGroup] = witnesses[i].Get(j)
+				}
+			}
+
+			run.AssignColumn(idBigCol, smartvectors.NewRegular(assignementSlice))
+			continue
+		}
+
+		newSize := maxSizeGroup * witnesses[0].Len()
+		assignementSlice := make([]fext.Element, newSize)
+
+		for i := range subColumns {
+			for j := 0; j < witnesses[0].Len(); j++ {
+				assignementSlice[i+j*maxSizeGroup] = witnesses[i].GetExt(j)
+			}
+		}
+
+		run.AssignColumn(idBigCol, smartvectors.NewRegularExt(assignementSlice))
 	}
 }
 
