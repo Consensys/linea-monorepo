@@ -97,7 +97,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | Parameter name             | Required | Input Value | Description |
 | -------------------------- | -------- | ---------- | ----------- |
 | \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
-| BLOCKCHAIN_NODE     | true     | key | RPC URL endpoint, use `https://rpc.devnet.linea.build` |
+| BLOCKCHAIN_NODE     | true     | key | RPC URL endpoint` |
 
 <br />
 
@@ -107,13 +107,13 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 
 Base command:
 ```shell
-npx hardhat deploy --network devnet --tags EIP2935SystemContract
+npx hardhat deploy --network sepolia --tags EIP2935SystemContract
 ```
 
 Base command with cli arguments:
 
 ```shell
-PRIVATE_KEY=<key> BLOCKCHAIN_NODE=https://rpc.devnet.linea.build npx hardhat deploy --network sepolia --tags EIP2935SystemContract
+PRIVATE_KEY=<key> BLOCKCHAIN_NODE=<node_rpc_url> npx hardhat deploy --network sepolia --tags EIP2935SystemContract
 ```
 
 (make sure to replace `<key>` with actual values)
