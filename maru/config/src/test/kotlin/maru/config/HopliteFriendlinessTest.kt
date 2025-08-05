@@ -52,6 +52,7 @@ class HopliteFriendlinessTest {
     [syncing]
     peer-chain-height-polling-interval = "5 seconds"
     peer-chain-height-granularity = 10
+    el-sync-status-refresh-interval = "6 seconds"
 
     [syncing.download]
     block-range-request-timeout = "10 seconds"
@@ -141,6 +142,7 @@ class HopliteFriendlinessTest {
     SyncingConfig(
       peerChainHeightPollingInterval = 5.seconds,
       peerChainHeightGranularity = 10u,
+      elSyncStatusRefreshInterval = 6.seconds,
       SyncingConfig.Download(
         blockRangeRequestTimeout = 10.seconds,
         blocksBatchSize = 64u,

@@ -129,7 +129,10 @@ class DefaultMaruPeer(
     scheduledDisconnect =
       Optional.of(
         scheduler.schedule(
-          { disconnectCleanly(DisconnectReason.REMOTE_FAULT) },
+          {
+            log.debug("Disconnecting from peerId={} by timeout", this.id)
+            disconnectCleanly(DisconnectReason.REMOTE_FAULT)
+          },
           delay.inWholeSeconds,
           TimeUnit.SECONDS,
         ),

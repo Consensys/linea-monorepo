@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.testutils
+package testutils
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.KeyType
@@ -95,6 +95,12 @@ class MaruFactory {
       ObservabilityOptions(port = 0u, prometheusMetricsEnabled = true, jvmMetricsEnabled = true),
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     apiConfig: ApiConfig = ApiConfig(port = 0u),
+    syncingConfig: SyncingConfig =
+      SyncingConfig(
+        peerChainHeightPollingInterval = 1.seconds,
+        peerChainHeightGranularity = 1u,
+        elSyncStatusRefreshInterval = 500.milliseconds,
+      ),
     allowEmptyBlocks: Boolean = false,
   ): MaruConfig {
     val lineaConfig =
@@ -120,7 +126,7 @@ class MaruFactory {
       observabilityOptions = observabilityOptions,
       linea = lineaConfig,
       apiConfig = apiConfig,
-      syncing = SyncingConfig(5.seconds, 10u),
+      syncing = syncingConfig,
     )
   }
 
@@ -167,6 +173,7 @@ class MaruFactory {
       port = p2pPort,
       staticPeers = staticPeers,
       reconnectDelay = defaultReconnectDelay,
+      statusUpdate = P2P.StatusUpdateConfig(renewal = 1.seconds), // For faster syncing in the tests
     )
   }
 
@@ -178,6 +185,7 @@ class MaruFactory {
     engineApiRpc: String,
     dataDir: Path,
     overridingP2PNetwork: P2PNetwork? = null,
+    allowEmptyBlocks: Boolean = false,
   ): MaruApp {
     val config =
       buildMaruConfig(
@@ -185,6 +193,7 @@ class MaruFactory {
         engineApiRpc = engineApiRpc,
         dataDir = dataDir,
         qbftOptions = validatorQbftOptions,
+        allowEmptyBlocks = allowEmptyBlocks,
       )
     writeValidatorPrivateKey(config)
     return buildApp(config, overridingP2PNetwork = overridingP2PNetwork)

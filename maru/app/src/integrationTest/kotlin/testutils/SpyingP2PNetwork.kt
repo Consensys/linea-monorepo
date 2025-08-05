@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.testutils
+package testutils
 
 import java.util.concurrent.CopyOnWriteArrayList
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter

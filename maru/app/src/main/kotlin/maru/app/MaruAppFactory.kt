@@ -53,9 +53,11 @@ import maru.p2p.P2PPeersHeadBlockProvider
 import maru.p2p.messages.StatusMessageFactory
 import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
+import maru.syncing.AlwaysSyncedController
 import maru.syncing.BeaconSyncControllerImpl
+import maru.syncing.ELSyncService
 import maru.syncing.PeerChainTracker
-import maru.syncing.SyncControllerManager
+import maru.syncing.SyncController
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
@@ -65,7 +67,7 @@ import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeyS
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
 class MaruAppFactory {
-  private val log = LogManager.getLogger(MaruAppFactory::class.java)
+  private val log = LogManager.getLogger(this.javaClass)
 
   fun create(
     config: MaruConfig,
@@ -104,7 +106,9 @@ class MaruAppFactory {
           databasePath = config.persistence.dataPath,
           metricsSystem = besuMetricsSystemAdapter,
           metricCategory = BesuMetricsCategoryAdapter.from(MaruMetricsCategory.STORAGE),
-        )
+        ).also {
+          dbInitialization(beaconGenesisConfig, it)
+        }
 
     val qbftFork = beaconGenesisConfig.getForkByConfigType(QbftConsensusConfig::class)
     val qbftForkTimestamp = qbftFork.timestampSeconds.toULong()
@@ -146,7 +150,7 @@ class MaruAppFactory {
       )
     val executionLayerManager = JsonRpcExecutionLayerManager(engineApiClient)
     // Because of the circular dependency between SyncStatusProvider, P2PNetwork and P2PPeersHeadBlockProvider
-    var syncControllerImpl: SyncControllerManager? = null
+    var syncControllerImpl: SyncController? = null
 
     val p2pNetwork =
       overridingP2PNetwork ?: setupP2PNetwork(
@@ -161,24 +165,31 @@ class MaruAppFactory {
         isBlockImportEnabledProvider = { syncControllerImpl!!.isBeaconChainSynced() },
       )
     val peersHeadBlockProvider = P2PPeersHeadBlockProvider(p2pNetwork.getPeerLookup())
-    syncControllerImpl =
-      BeaconSyncControllerImpl.create(
-        beaconChain = beaconChain,
-        elManager = executionLayerManager,
-        peersHeadsProvider = peersHeadBlockProvider,
-        validatorProvider = StaticValidatorProvider(qbftConfig.validatorSet),
-        peerLookup = p2pNetwork.getPeerLookup(),
-        besuMetrics = besuMetricsSystemAdapter,
-        metricsFacade = metricsFacade,
-        peerChainTrackerConfig =
-          PeerChainTracker.Config(
-            config.syncing.peerChainHeightPollingInterval,
-            config.syncing.peerChainHeightGranularity,
-          ),
-      )
     val finalizationProvider =
       overridingFinalizationProvider
         ?: setupFinalizationProvider(config, overridingLineaContractClient, vertx)
+    syncControllerImpl =
+      if (config.p2pConfig != null) {
+        BeaconSyncControllerImpl.create(
+          beaconChain = beaconChain,
+          elManager = executionLayerManager,
+          peersHeadsProvider = peersHeadBlockProvider,
+          validatorProvider = StaticValidatorProvider(qbftConfig.validatorSet),
+          peerLookup = p2pNetwork.getPeerLookup(),
+          besuMetrics = besuMetricsSystemAdapter,
+          metricsFacade = metricsFacade,
+          peerChainTrackerConfig =
+            PeerChainTracker.Config(
+              config.syncing.peerChainHeightPollingInterval,
+              config.syncing.peerChainHeightGranularity,
+            ),
+          elSyncServiceConfig = ELSyncService.Config(config.syncing.elSyncStatusRefreshInterval),
+          finalizationProvider = finalizationProvider,
+          allowEmptyBlocks = config.allowEmptyBlocks,
+        )
+      } else {
+        AlwaysSyncedController()
+      }
 
     val apiServer =
       overridingApiServer
@@ -215,7 +226,7 @@ class MaruAppFactory {
   }
 
   companion object {
-    private val log = LogManager.getLogger(MaruApp::class.java)
+    private val log = LogManager.getLogger(MaruAppFactory::class.java)
 
     private fun setupFinalizationProvider(
       config: MaruConfig,
@@ -299,5 +310,23 @@ class MaruAppFactory {
 
   private fun ensureDirectoryExists(path: Path) {
     if (!path.exists()) Files.createDirectories(path)
+  }
+
+  private fun dbInitialization(
+    beaconGenesisConfig: ForksSchedule,
+    beaconChain: BeaconChain,
+  ) {
+    val qbftForkConfig = beaconGenesisConfig.getForkByConfigType(QbftConsensusConfig::class)
+    val qbftForkTimestamp =
+      qbftForkConfig
+        .timestampSeconds
+        .toULong()
+    val beaconChainInitialization =
+      BeaconChainInitialization(
+        beaconChain = beaconChain,
+        genesisTimestamp = qbftForkTimestamp,
+      )
+    val qbftConsensusConfig = qbftForkConfig.configuration as QbftConsensusConfig
+    beaconChainInitialization.ensureDbIsInitialized(qbftConsensusConfig.validatorSet)
   }
 }

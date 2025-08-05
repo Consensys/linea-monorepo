@@ -12,6 +12,7 @@ import java.lang.Exception
 import java.util.Timer
 import kotlin.concurrent.timerTask
 import kotlin.time.Duration
+import maru.consensus.state.FinalizationProvider
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ExecutionPayloadStatus
@@ -52,6 +53,7 @@ class ELSyncService(
   private val executionLayerManager: ExecutionLayerManager,
   private val onStatusChange: (ELSyncStatus) -> Unit,
   private val config: Config,
+  private val finalizationProvider: FinalizationProvider,
   private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon -> Timer(name, isDaemon) },
 ) : LongRunningService {
   data class Config(
@@ -61,7 +63,6 @@ class ELSyncService(
   private val log = LogManager.getLogger(this.javaClass)
 
   private var poller: Timer? = null
-  private var lastELSyncTarget: ElBlockInfo? = null
   private var currentELSyncStatus: ELSyncStatus? = null
 
   private fun pollTask() {
@@ -69,10 +70,8 @@ class ELSyncService(
     val latestBeaconBlockNumber = latestBeaconBlockHeader.number
     if (latestBeaconBlockNumber == 0UL) {
       val newELSyncStatus = ELSyncStatus.SYNCED
-      if (currentELSyncStatus != newELSyncStatus) {
-        currentELSyncStatus = newELSyncStatus
-        onStatusChange(newELSyncStatus)
-      }
+      currentELSyncStatus = newELSyncStatus
+      onStatusChange(newELSyncStatus)
       return
     }
 
@@ -80,22 +79,21 @@ class ELSyncService(
       beaconChain.getSealedBeaconBlock(
         beaconBlockNumber = latestBeaconBlockHeader.number,
       )!!
+    val latestBeaconBlockBody = latestSealedBeaconBlock.beaconBlock.beaconBlockBody
     val newELSyncTarget =
       ElBlockInfo(
-        blockNumber = latestSealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber,
-        blockHash = latestSealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockHash,
+        blockNumber = latestBeaconBlockBody.executionPayload.blockNumber,
+        blockHash = latestBeaconBlockBody.executionPayload.blockHash,
       )
-    if (lastELSyncTarget != newELSyncTarget) {
-      lastELSyncTarget = newELSyncTarget
-      log.info("New EL sync target = {}", newELSyncTarget)
-    }
+    log.debug("New EL sync target = {}", newELSyncTarget)
 
+    val finalizationState = finalizationProvider(latestBeaconBlockBody)
     val fcuResponse =
       executionLayerManager
         .setHead(
           headHash = newELSyncTarget.blockHash,
-          safeHash = newELSyncTarget.blockHash,
-          finalizedHash = newELSyncTarget.blockHash,
+          safeHash = finalizationState.safeBlockHash,
+          finalizedHash = finalizationState.finalizedBlockHash,
         ).get()
 
     val newELSyncStatus =
@@ -105,10 +103,8 @@ class ELSyncService(
         else -> throw IllegalStateException("Unexpected payload status: ${fcuResponse.payloadStatus.status}")
       }
 
-    if (currentELSyncStatus != newELSyncStatus) {
-      currentELSyncStatus = newELSyncStatus
-      onStatusChange(newELSyncStatus)
-    }
+    currentELSyncStatus = newELSyncStatus
+    onStatusChange(newELSyncStatus)
   }
 
   override fun start() {
@@ -138,7 +134,6 @@ class ELSyncService(
       }
       poller?.cancel()
       poller = null
-      lastELSyncTarget = null
       currentELSyncStatus = null
     }
   }

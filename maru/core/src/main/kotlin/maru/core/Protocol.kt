@@ -13,3 +13,11 @@ interface Protocol {
 
   fun stop()
 }
+
+class NoOpProtocol : Protocol {
+  override fun start() {
+  }
+
+  override fun stop() {
+  }
+}

@@ -37,7 +37,6 @@ import maru.core.Validator
 import maru.extensions.encodeHex
 import maru.mappers.Mappers.toDomain
 import maru.serialization.rlp.RLPSerializers
-import maru.testutils.Web3jTransactionsHelper
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
@@ -53,6 +52,7 @@ import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
 import org.web3j.protocol.core.methods.response.EthBlock
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import testutils.Web3jTransactionsHelper
 
 class CliqueToPosTest {
   companion object {
@@ -75,7 +75,7 @@ class CliqueToPosTest {
     private val genesisDir = File("../docker/initialization")
     private val dataDir = File("/tmp/maru-db").also { it.deleteOnExit() }
     private val transactionsHelper = Web3jTransactionsHelper(TestEnvironment.sequencerL2Client)
-    private val log: Logger = LogManager.getLogger(this.javaClass)
+    private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
 
     private fun parsePragueSwitchTimestamp(): Long {
       val objectMapper = ObjectMapper()

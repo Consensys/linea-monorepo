@@ -19,7 +19,7 @@ class QbftEventProcessor(
   private val incomingQueue: BftEventQueue,
   private val eventMultiplexer: QbftEventMultiplexer,
 ) : Runnable {
-  private val log: org.apache.logging.log4j.Logger = LogManager.getLogger(this::class.java)
+  private val log: org.apache.logging.log4j.Logger = LogManager.getLogger(this.javaClass)
   private val shutdownLatch = CountDownLatch(1)
 
   @Volatile private var shutdown = false

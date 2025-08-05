@@ -31,7 +31,7 @@ class BesuMetricsSystemAdapter(
         BesuMetricsCategoryAdapter.from(it)
       }.toSet(),
 ) : BesuMetricsSystem {
-  private val logger = LogManager.getLogger(BesuMetricsSystemAdapter::class.java)
+  private val logger = LogManager.getLogger(this.javaClass)
   private val noOpMetricsSystem = NoOpMetricsSystem()
 
   private fun String.toValidMicrometerName(): String = this.lowercase().replace('_', '.')
