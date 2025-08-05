@@ -10,14 +10,18 @@ package maru.p2p
 
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.ByteBufUtil
-import maru.serialization.SerDe
+import maru.p2p.messages.RpcExceptionSerDe
+import maru.serialization.Deserializer
+import tech.pegasys.teku.networking.eth2.rpc.core.RpcException
+import tech.pegasys.teku.networking.eth2.rpc.core.RpcResponseStatus
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.rpc.RpcRequestHandler
 import tech.pegasys.teku.networking.p2p.rpc.RpcStream
 
 class MaruOutgoingRpcRequestHandler<TResponse>(
   private val responseHandler: MaruRpcResponseHandler<TResponse>,
-  private val responseMessageSerDe: SerDe<TResponse>,
+  private val responseMessageDeserialize: Deserializer<TResponse>,
+  private val rpcExceptionDeserializer: Deserializer<RpcException> = RpcExceptionSerDe(),
 ) : RpcRequestHandler {
   override fun active(
     nodeId: NodeId,
@@ -30,10 +34,19 @@ class MaruOutgoingRpcRequestHandler<TResponse>(
     rpcStream: RpcStream,
     byteBuf: ByteBuf,
   ) {
+    val respCode = byteBuf.readByte()
     val bytes = ByteBufUtil.getBytes(byteBuf)
     rpcStream.closeWriteStream()
-    val response = responseMessageSerDe.deserialize(bytes)
-    responseHandler.onResponse(response)
+    when (respCode) {
+      RpcResponseStatus.SUCCESS_RESPONSE_CODE -> {
+        val response = responseMessageDeserialize.deserialize(bytes)
+        responseHandler.onResponse(response)
+      }
+      else -> {
+        val rpcException = rpcExceptionDeserializer.deserialize(bytes)
+        responseHandler.onCompleted(rpcException)
+      }
+    }
   }
 
   override fun readComplete(

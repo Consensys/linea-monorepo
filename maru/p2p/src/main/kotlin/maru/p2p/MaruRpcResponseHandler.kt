@@ -22,9 +22,9 @@ class MaruRpcResponseHandler<TResponse> : RpcResponseHandler<TResponse> {
 
   override fun onCompleted(error: Optional<out Throwable>) {
     if (error.isEmpty) {
-      return // if needed do something when the response is completed successfully
+      return // if needed to do something when the response is completed successfully
     } else {
-      throw error.get()
+      future.completeExceptionally(error.get())
     }
   }
 

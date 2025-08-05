@@ -19,6 +19,8 @@ import org.mockito.Mockito.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.networking.eth2.rpc.core.ResponseCallback
+import tech.pegasys.teku.networking.eth2.rpc.core.RpcException
+import tech.pegasys.teku.networking.eth2.rpc.core.RpcResponseStatus
 
 class StatusHandlerTest {
   @Test
@@ -75,5 +77,69 @@ class StatusHandlerTest {
       )
     statusHandler.handleIncomingMessage(peer, remoteStatusMessage, callback)
     verify(peer).updateStatus(remoteStatusMessage.payload)
+  }
+
+  @Test
+  fun `handles request with Rpc exception`() {
+    val statusMessageFactory = mock<StatusMessageFactory>()
+    whenever(statusMessageFactory.createStatusMessage()).thenAnswer {
+      throw RpcException(RpcResponseStatus.RESOURCE_UNAVAILABLE, "createStatusMessage exception testing")
+    }
+
+    val peer = mock<MaruPeer>()
+    val callback = mock<ResponseCallback<Message<Status, RpcMessageType>>>()
+    val statusHandler = StatusHandler(statusMessageFactory)
+    val remoteBeaconState = DataGenerators.randomBeaconState(0U)
+    val remoteStatusMessage =
+      Message(
+        RpcMessageType.STATUS,
+        Version.V1,
+        Status(
+          Random.nextBytes(32),
+          remoteBeaconState.latestBeaconBlockHeader.hash,
+          remoteBeaconState.latestBeaconBlockHeader.number,
+        ),
+      )
+
+    statusHandler.handleIncomingMessage(peer, remoteStatusMessage, callback)
+
+    verify(callback).completeWithErrorResponse(
+      RpcException(
+        RpcResponseStatus.RESOURCE_UNAVAILABLE,
+        "createStatusMessage exception testing",
+      ),
+    )
+  }
+
+  @Test
+  fun `handles request with exception`() {
+    val statusMessageFactory = mock<StatusMessageFactory>()
+    whenever(statusMessageFactory.createStatusMessage()).thenThrow(
+      IllegalStateException("createStatusMessage exception testing"),
+    )
+
+    val peer = mock<MaruPeer>()
+    val callback = mock<ResponseCallback<Message<Status, RpcMessageType>>>()
+    val statusHandler = StatusHandler(statusMessageFactory)
+    val remoteBeaconState = DataGenerators.randomBeaconState(0U)
+    val remoteStatusMessage =
+      Message(
+        RpcMessageType.STATUS,
+        Version.V1,
+        Status(
+          Random.nextBytes(32),
+          remoteBeaconState.latestBeaconBlockHeader.hash,
+          remoteBeaconState.latestBeaconBlockHeader.number,
+        ),
+      )
+
+    statusHandler.handleIncomingMessage(peer, remoteStatusMessage, callback)
+
+    verify(callback).completeWithUnexpectedError(
+      RpcException(
+        RpcResponseStatus.SERVER_ERROR_CODE,
+        "Handling request failed with unexpected error: createStatusMessage exception testing",
+      ),
+    )
   }
 }
