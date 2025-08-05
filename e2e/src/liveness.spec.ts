@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { config } from "./config/tests-config";
 import { execDockerCommand, getBlockByNumberOrBlockTag, pollForBlockNumber, wait } from "./common/utils";
+import { Wallet } from "ethers";
 
 // should remove skip only when the linea-sequencer plugin supports liveness
 describe.skip("Liveness test suite", () => {
@@ -10,6 +11,19 @@ describe.skip("Liveness test suite", () => {
     "Should succeed to send liveness transactions after sequencer restarted",
     async () => {
       const account = await l2AccountManager.generateAccount();
+      const lineaSequencerUptimeFeedAdmin = config
+        .getL2AccountManager()
+        .whaleAccount(21)
+        .connect(config.getL2SequencerProvider()!);
+      const livenessContractForSetup = config.getL2LineaSequencerUptimeFeedContract(
+        lineaSequencerUptimeFeedAdmin.signer as Wallet,
+      );
+
+      await livenessContractForSetup.grantRole(
+        await livenessContractForSetup.FEED_UPDATER_ROLE(),
+        account.getAddress(),
+      );
+
       const livenessContract = config.getL2LineaSequencerUptimeFeedContract(account);
       const livenessContractAddress = await livenessContract.getAddress();
 
