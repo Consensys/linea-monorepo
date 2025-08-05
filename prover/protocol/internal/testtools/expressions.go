@@ -21,7 +21,7 @@ var (
 	columnB = _comp.InsertColumn(0, "B", 8, column.Committed)
 	columnC = _comp.InsertColumn(0, "C", 8, column.Committed)
 
-	coinCoin = coin.Info{Name: "coin", Type: coin.Field, Round: 1}
+	coinCoin = coin.Info{Name: "coin", Type: coin.FieldExt, Round: 1}
 )
 
 // ExpressionTestcase can be used to generate a global constraint
