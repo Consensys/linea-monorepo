@@ -1,13 +1,14 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+// SPDX-License-Identifier: AGPL-3.0
+pragma solidity ^0.8.30;
 
 import { AggregatorInterface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorInterface.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV2V3Interface.sol";
+import { ISequencerUptimeFeed } from "@chainlink/contracts/src/v0.8/l2ep/interfaces/ISequencerUptimeFeed.sol";
 import { ITypeAndVersion } from "@chainlink/contracts/src/v0.8/shared/interfaces/ITypeAndVersion.sol";
-import { LineaSequencerUptimeFeedInterface } from "./LineaSequencerUptimeFeedInterface.sol";
 import { SimpleReadAccessController } from "@chainlink/contracts/src/v0.8/shared/access/SimpleReadAccessController.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { ILineaSequencerUptimeFeed } from "./interfaces/ILineaSequencerUptimeFeed.sol";
 
 /**
  * @title LineaSequencerUptimeFeed - L2 sequencer uptime status aggregator.
@@ -16,35 +17,12 @@ import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol"
  */
 contract LineaSequencerUptimeFeed is
   AggregatorV2V3Interface,
-  LineaSequencerUptimeFeedInterface,
+  ISequencerUptimeFeed,
+  ILineaSequencerUptimeFeed,
   ITypeAndVersion,
   SimpleReadAccessController,
   AccessControl
 {
-  /// @dev Packed state struct to save sloads.
-  struct FeedState {
-    /// @dev Dummy roundId for backward compatibility.
-    uint80 latestRoundId;
-    /**
-     * @dev  A variable with a value of either true or false.
-     * @dev  false: The sequencer is up.
-     * @dev  true: The sequencer is down.
-     */
-    bool latestStatus;
-    uint64 startedAt;
-    uint64 updatedAt;
-  }
-
-  /// @notice Sender is not allowed to update the status.
-  error InvalidSender();
-  /// @notice The address is zero.
-  error ZeroAddressNotAllowed();
-
-  /// @dev Emitted when an `updateStatus` call is ignored due to unchanged status or stale timestamp.
-  event UpdateIgnored(bool latestStatus, uint64 latestTimestamp, bool incomingStatus, uint64 incomingTimestamp);
-  /// @dev Emitted when a updateStatus is called without the status changing.
-  event RoundUpdated(int256 status, uint64 updatedAt);
-
   bytes32 public constant FEED_UPDATER_ROLE = keccak256("FEED_UPDATER_ROLE");
 
   // solhint-disable-next-line chainlink-solidity/all-caps-constant-storage-variables
@@ -103,7 +81,7 @@ contract LineaSequencerUptimeFeed is
   }
 
   /**
-   * @notice Helper function to record a round and set the latest feed state.
+   * @notice Helper function to set the latest feed state.
    *
    * @param _status Sequencer status.
    * @param _timestamp The L2 block timestamp of status update.
@@ -125,9 +103,35 @@ contract LineaSequencerUptimeFeed is
     emit RoundUpdated(_getStatusAnswer(_status), updatedAt);
   }
 
+  /// @inheritdoc AggregatorInterface
+  function latestAnswer() external view override checkAccess returns (int256) {
+    FeedState memory feedState = s_feedState;
+    return _getStatusAnswer(feedState.latestStatus);
+  }
+
+  /// @inheritdoc AggregatorInterface
+  function latestTimestamp() external view override checkAccess returns (uint256) {
+    return s_feedState.updatedAt;
+  }
+
+  /// @inheritdoc AggregatorInterface
+  function latestRound() external view override checkAccess returns (uint256) {
+    return s_feedState.latestRoundId;
+  }
+
+  /// @inheritdoc AggregatorInterface
+  function getAnswer(uint256) external view override checkAccess returns (int256) {
+    return _getStatusAnswer(s_feedState.latestStatus);
+  }
+
+  /// @inheritdoc AggregatorInterface
+  function getTimestamp(uint256) external view override checkAccess returns (uint256) {
+    return s_feedState.updatedAt;
+  }
+
   /**
    * @notice Record a new status and timestamp if it has changed since the last round.
-   * @dev This function will revert if not called from `l1Sender` via the L1->L2 messenger.
+   * @dev This function will revert if not called from an account with the `FEED_UPDATER_ROLE`.
    * @param _status Sequencer status.
    * @param _timestamp Block timestamp of status update.
    */
@@ -149,10 +153,17 @@ contract LineaSequencerUptimeFeed is
     }
   }
 
-  /// @inheritdoc AggregatorInterface
-  function latestAnswer() external view override checkAccess returns (int256) {
-    FeedState memory feedState = s_feedState;
-    return _getStatusAnswer(feedState.latestStatus);
+  /// @inheritdoc AggregatorV3Interface
+  function getRoundData(
+    uint80
+  )
+    external
+    view
+    override
+    checkAccess
+    returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
+  {
+    return (0, _getStatusAnswer(s_feedState.latestStatus), s_feedState.startedAt, s_feedState.updatedAt, 0);
   }
 
   /// @inheritdoc AggregatorV3Interface
@@ -170,32 +181,5 @@ contract LineaSequencerUptimeFeed is
     startedAt = feedState.startedAt;
     updatedAt = feedState.updatedAt;
     answeredInRound = roundId;
-  }
-
-  function getAnswer(uint256 _roundId) external view override returns (int256) {
-    return _getStatusAnswer(s_feedState.latestStatus);
-  }
-
-  function getRoundData(
-    uint80 _roundId
-  )
-    external
-    view
-    override
-    returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
-  {
-    return (0, _getStatusAnswer(s_feedState.latestStatus), s_feedState.startedAt, s_feedState.updatedAt, 0);
-  }
-
-  function getTimestamp(uint256 _roundId) external view override returns (uint256) {
-    return s_feedState.updatedAt;
-  }
-
-  function latestTimestamp() external view override returns (uint256) {
-    return s_feedState.updatedAt;
-  }
-
-  function latestRound() external view override returns (uint256) {
-    return s_feedState.latestRoundId;
   }
 }
