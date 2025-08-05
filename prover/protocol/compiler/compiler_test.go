@@ -10,12 +10,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
 	"github.com/consensys/linea-monorepo/prover/protocol/internal/testtools"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/sirupsen/logrus"
@@ -37,8 +35,8 @@ var totalSuite = []func(comp *wizard.CompiledIOP){
 	stitchsplit.Splitter(8),
 	localcs.Compile,
 	globalcs.Compile,
-	univariates.Naturalize,
-	mpts.Compile(),
+	// univariates.Naturalize,
+	// mpts.Compile(),
 	dummy.Compile,
 
 	// vortex.Compile(2, vortex.ReplaceSisByMimc(), vortex.ForceNumOpenedColumns(2)),
@@ -47,25 +45,21 @@ var totalSuite = []func(comp *wizard.CompiledIOP){
 func TestCompilers(t *testing.T) {
 
 	logrus.SetLevel(logrus.FatalLevel)
-	// ok
-	//runTestList(t, "global", testtools.ListOfGlobalTestcasePositive)
-	//  runTestList(t, "global", testtools.ListOfGlobalTestcaseNegative)
-	//  runTestList(t, "horner", testtools.ListOfHornerTestcaseNegative)
-	//runTestList(t, "grand-product", testtools.ListOfGrandProductTestcasePositive)
-	//  runTestList(t, "grand-product", testtools.ListOfGrandProductTestcaseNegative)
-	//  runTestList(t, "projection", testtools.ListOfProjectionTestcaseNegative)
-	//	runTestList(t, "permutation", testtools.ListOfPermutationTestcasePositive)
 
-	//  runTestList(t, "permutation", testtools.ListOfPermutationTestcaseNegative)
-	//runTestList(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
-	//  runTestList(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcaseNegative)
-	//runTestList(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
-
-	//panic: global constraint - mismatch - at random point -
-	// observation from ListOfLogDerivativeSumTestcasePositive and ListOfGrandProductTestcasePositive: left values are usually the correct ones
-	// potential bug: summation, selectors
-	//runTestList(t, "horner", testtools.ListOfHornerTestcasePositive)
-	//runTestList(t, "projection", testtools.ListOfProjectionTestcasePositive)
+	// runTestList(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
+	// runTestList(t, "global", testtools.ListOfGlobalTestcasePositive)
+	// runTestList(t, "global", testtools.ListOfGlobalTestcaseNegative)
+	// runTestList(t, "grand-product", testtools.ListOfGrandProductTestcasePositive)
+	// runTestList(t, "grand-product", testtools.ListOfGrandProductTestcaseNegative)
+	// runTestList(t, "horner", testtools.ListOfHornerTestcaseNegative)
+	// runTestList(t, "horner", testtools.ListOfHornerTestcasePositive)
+	runTestList(t, "innerproduct", testtools.ListOfInnerProductTestcasePositive)
+	// runTestList(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
+	// runTestList(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcaseNegative)
+	// runTestList(t, "permutation", testtools.ListOfPermutationTestcasePositive)
+	// runTestList(t, "permutation", testtools.ListOfPermutationTestcaseNegative)
+	// runTestList(t, "projection", testtools.ListOfProjectionTestcasePositive)
+	// runTestList(t, "projection", testtools.ListOfProjectionTestcaseNegative)
 
 	//panic: unreachable
 	//runTestList(t, "mimc", testtools.ListOfMiMCTestcase)

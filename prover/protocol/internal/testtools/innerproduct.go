@@ -4,13 +4,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
-// InnerProductTestcase specifies a protocol with an inner-product
-// relationship and the assignment to provide to it.
+// InnerProductTestcase specifies a protocol with an inner-product relationship
+// and the assignment to provide to it.
 type InnerProductTestcase struct {
 	// Name is the name of the testcase.
 	NameStr string
@@ -25,9 +26,35 @@ type InnerProductTestcase struct {
 	Q query.InnerProduct
 	// MustFailFlag is true if the testcase must fail.
 	MustFailFlag bool
+	// AsIsConstCol is an optional flag to force the A column to be defined
+	// as a verifiercol.Constant instead of a plain column.
+	AsIsConstCol bool
 }
 
 var ListOfInnerProductTestcasePositive = []*InnerProductTestcase{
+
+	{
+		NameStr: "positive/counting",
+		A:       smartvectors.NewConstant(field.One(), 16),
+		Bs: []smartvectors.SmartVector{
+			smartvectors.NewConstant(field.One(), 16),
+		},
+		Values: []fext.Element{
+			fext.Lift(field.NewElement(16)),
+		},
+	},
+
+	{
+		NameStr: "positive/counting-with-constcol",
+		A:       smartvectors.NewConstant(field.One(), 16),
+		Bs: []smartvectors.SmartVector{
+			smartvectors.NewConstant(field.One(), 16),
+		},
+		Values: []fext.Element{
+			fext.Lift(field.NewElement(16)),
+		},
+		AsIsConstCol: true,
+	},
 
 	{
 		NameStr: "positive/query-1",
@@ -158,11 +185,17 @@ func (ip *InnerProductTestcase) Define(comp *wizard.CompiledIOP) {
 
 	bs := make([]ifaces.Column, len(ip.Bs))
 
-	a := comp.InsertCommit(
-		0,
-		formatName[ifaces.ColID]("InnerProduct", ip.Name, "A"),
-		ip.A.Len(),
-	)
+	var a ifaces.Column
+
+	if ip.AsIsConstCol {
+		a = verifiercol.NewConstantCol(ip.A.Get(0), ip.A.Len())
+	} else {
+		a = comp.InsertCommit(
+			0,
+			formatName[ifaces.ColID]("InnerProduct", ip.Name, "A"),
+			ip.A.Len(),
+		)
+	}
 
 	for i := range ip.Bs {
 		bs[i] = comp.InsertCommit(
@@ -182,10 +215,12 @@ func (ip *InnerProductTestcase) Define(comp *wizard.CompiledIOP) {
 
 func (ip *InnerProductTestcase) Assign(run *wizard.ProverRuntime) {
 
-	run.AssignColumn(
-		formatName[ifaces.ColID]("InnerProduct", ip.Name, "A"),
-		ip.A,
-	)
+	if !ip.AsIsConstCol {
+		run.AssignColumn(
+			formatName[ifaces.ColID]("InnerProduct", ip.Name, "A"),
+			ip.A,
+		)
+	}
 
 	for i := range ip.Bs {
 		run.AssignColumn(
