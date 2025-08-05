@@ -307,8 +307,8 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 	var state koalabear.Element
 	state.SetBytes(stateBytes)
 	runtime.FiatShamirHistory[0] = [2][]field.Element{
-		[]field.Element{state},
-		[]field.Element{state},
+		{state},
+		{state},
 	}
 
 	// Pass the precomputed polynomials
@@ -537,10 +537,23 @@ func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssi
 
 	// Sanity-check: Make sure, it is done at the right round
 	handle := run.Spec.Columns.GetHandle(name).(column.Natural)
+
 	// if round is empty, we expect it to assign the column at the current round,
 	// otherwise it assigns it in the round the column was declared.
 	// This is useful when we have for loop over rounds.
 	ifaces.MustBeInRound(handle, run.currRound)
+
+	// This sanity-check here is to ensure that if we declare a column as "IsBase"
+	// , then it's assignment should be done on the base field. If the provides
+	// a field extension witness, then the function will try to cast it into
+	// a [smartvectors.Regular] and will panic if that is not possible.
+	if handle.IsBase() && !smartvectors.IsBase(witness) {
+		w_, err := smartvectors.IntoBase(witness)
+		if err != nil {
+			utils.Panic("could not convert witness into base smartvector: %v", err)
+		}
+		witness = w_
+	}
 
 	if witness.Len() != handle.Size() {
 		utils.Panic("Bad length for %v, expected %v got %v\n", handle, handle.Size(), witness.Len())
@@ -877,6 +890,11 @@ func (run *ProverRuntime) AssignLocalPoint(name ifaces.QueryID, y field.Element)
 	// Make sure, it is done at the right round
 	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
 
+	q := run.Spec.QueriesParams.Data(name).(query.LocalOpening)
+	if !q.IsBase() {
+		utils.Panic("Query %v is not a base query, you should call AssignLocalPointExt", name)
+	}
+
 	// Adds it to the assignments
 	params := query.NewLocalOpeningParams(y)
 	run.QueriesParams.InsertNew(name, params)
@@ -890,6 +908,11 @@ func (run *ProverRuntime) AssignLocalPointExt(name ifaces.QueryID, y fext.Elemen
 
 	// Make sure, it is done at the right round
 	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
+
+	q := run.Spec.QueriesParams.Data(name).(query.LocalOpening)
+	if q.IsBase() {
+		utils.Panic("Query %v is a base query, you should call AssignLocalPoint", name)
+	}
 
 	// Adds it to the assignments
 	params := query.NewLocalOpeningParamsExt(y)

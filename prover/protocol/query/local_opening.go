@@ -51,7 +51,12 @@ func (r LocalOpening) Name() ifaces.QueryID {
 	return r.ID
 }
 
-// Constructor for non-fixed point univariate evaluation query parameters
+// IsBase returns if the column is a base-field column
+func (r LocalOpening) IsBase() bool {
+	return r.Pol.IsBase()
+}
+
+// Constructor for [LocalOpeningParams] when y is a base field element.
 func NewLocalOpeningParams(y field.Element) LocalOpeningParams {
 	return LocalOpeningParams{
 		BaseY:  y,
@@ -59,18 +64,20 @@ func NewLocalOpeningParams(y field.Element) LocalOpeningParams {
 		IsBase: true,
 	}
 }
+
+// Constructor for [LocalOpeningParams] when y is a base field element.
+func NewLocalOpeningParamsExt(z fext.Element) LocalOpeningParams {
+	return LocalOpeningParams{
+		ExtY:   z,
+		IsBase: false,
+	}
+}
+
 func (lop LocalOpeningParams) ToGenericGroupElement() fext.GenericFieldElem {
 	if lop.IsBase {
 		return fext.NewESHashFromBase(lop.BaseY)
 	} else {
 		return fext.NewESHashFromExt(lop.ExtY)
-	}
-}
-func NewLocalOpeningParamsExt(z fext.Element) LocalOpeningParams {
-	return LocalOpeningParams{
-		BaseY:  field.Zero(),
-		ExtY:   z,
-		IsBase: false,
 	}
 }
 
