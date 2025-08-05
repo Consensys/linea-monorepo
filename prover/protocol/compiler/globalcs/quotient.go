@@ -224,11 +224,11 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 
 			// gets directly a shallow copy in the map of the runtime
 			var witness sv.SmartVector
-			witness, isNatural := run.Columns.TryGet(name)
+			witness, isAssigned := run.Columns.TryGet(name)
 
 			// can happen if the column is verifier defined. In that case, no
 			// need to protect with a lock. This will not touch run.Columns.
-			if !isNatural {
+			if !isAssigned {
 				witness = pol.GetColAssignment(run)
 			}
 			witness = sv.FFTInverseExt(witness, fft.DIF, false, 0, 0, nil)
