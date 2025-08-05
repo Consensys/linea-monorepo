@@ -11,6 +11,7 @@ package maru.p2p
 import io.libp2p.core.PeerId
 import io.libp2p.etc.types.fromHex
 import java.lang.Thread.sleep
+import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.seconds
 import maru.config.P2P
@@ -38,14 +39,19 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatNoException
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.awaitility.Awaitility.await
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
+import org.mockito.Mockito.RETURNS_DEEP_STUBS
 import org.mockito.Mockito.mock
+import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import tech.pegasys.teku.networking.eth2.rpc.core.RpcException
+import tech.pegasys.teku.networking.eth2.rpc.core.RpcResponseStatus
 import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
@@ -586,6 +592,78 @@ class P2PTest {
   }
 
   @Test
+  fun `peer send a status request and receive exception when callee throws error`() {
+    val p2PNetworkImpl1 =
+      P2PNetworkImpl(
+        privateKeyBytes = key1,
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = PORT1,
+            staticPeers = emptyList(),
+          ),
+        chainId = chainId,
+        serDe = RLPSerializers.SealedBeaconBlockSerializer,
+        metricsFacade = TestMetrics.TestMetricsFacade,
+        statusMessageFactory =
+          StatusMessageFactory(
+            beaconChain = beaconChain,
+            forkIdHashProvider = { throw IllegalStateException("currentForkIdHash exception testing") },
+          ),
+        beaconChain = beaconChain,
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
+        forkIdHashProvider = forkIdHashProvider,
+        isBlockImportEnabledProvider = { true },
+      )
+    val p2pManagerImpl2 =
+      P2PNetworkImpl(
+        privateKeyBytes = key2,
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = PORT2,
+            staticPeers = listOf(PEER_ADDRESS_NODE_1),
+          ),
+        chainId = chainId,
+        serDe = RLPSerializers.SealedBeaconBlockSerializer,
+        metricsFacade = TestMetrics.TestMetricsFacade,
+        statusMessageFactory =
+          StatusMessageFactory(
+            beaconChain = beaconChain,
+            forkIdHashProvider = { throw IllegalStateException("currentForkIdHash exception testing") },
+          ),
+        beaconChain = beaconChain,
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
+        forkIdHashProvider = forkIdHashProvider,
+        isBlockImportEnabledProvider = { true },
+      )
+    try {
+      p2PNetworkImpl1.start()
+      p2pManagerImpl2.start()
+
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pManagerImpl2, peers = 1) }
+
+      val peer1 =
+        p2pManagerImpl2.getPeerLookup().getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_1)))
+          ?: throw IllegalStateException("Peer with ID $PEER_ID_NODE_1 not found in p2pManagerImpl2")
+      val maruPeer1 =
+        DefaultMaruPeer(peer1, rpcMethods, statusMessageFactory, p2pConfig = P2P(ipAddress = IPV4, port = PORT1))
+
+      val responseFuture = maruPeer1.sendStatus()
+
+      assertThatThrownBy { responseFuture.get() }
+        .isInstanceOf(ExecutionException::class.java)
+        .hasCauseInstanceOf(RpcException::class.java)
+        .hasMessageContaining("currentForkIdHash exception testing")
+        .matches { (it.cause as RpcException).responseCode == RpcResponseStatus.SERVER_ERROR_CODE }
+    } finally {
+      p2PNetworkImpl1.stop()
+      p2pManagerImpl2.stop()
+    }
+  }
+
+  @Test
   fun `peer can send beacon blocks by range request`() {
     // Set up beacon chain with some blocks
     val testBeaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
@@ -663,6 +741,70 @@ class P2PTest {
       val expectedBlocks = storedBlocks.subList(startBlockNumber.toInt(), startBlockNumber.toInt() + count.toInt())
       assertThat(response.blocks).hasSize(5)
       assertThat(response.blocks).isEqualTo(expectedBlocks)
+    } finally {
+      p2PNetworkImpl1.stop()
+      p2pManagerImpl2.stop()
+    }
+  }
+
+  @Test
+  fun `peer send a beacon blocks by range request and receive exception when callee throws error`() {
+    val p2PNetworkImpl1 =
+      P2PNetworkImpl(
+        privateKeyBytes = key1,
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = PORT1,
+            staticPeers = emptyList(),
+          ),
+        chainId = chainId,
+        serDe = RLPSerializers.SealedBeaconBlockSerializer,
+        metricsFacade = TestMetrics.TestMetricsFacade,
+        statusMessageFactory = statusMessageFactory,
+        beaconChain = getMockedBeaconChain(),
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
+        forkIdHashProvider = forkIdHashProvider,
+        isBlockImportEnabledProvider = { true },
+      )
+    val p2pManagerImpl2 =
+      P2PNetworkImpl(
+        privateKeyBytes = key2,
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = PORT2,
+            staticPeers = listOf(PEER_ADDRESS_NODE_1),
+          ),
+        chainId = chainId,
+        serDe = RLPSerializers.SealedBeaconBlockSerializer,
+        metricsFacade = TestMetrics.TestMetricsFacade,
+        statusMessageFactory = statusMessageFactory,
+        beaconChain = beaconChain,
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
+        forkIdHashProvider = forkIdHashProvider,
+        isBlockImportEnabledProvider = { true },
+      )
+    try {
+      p2PNetworkImpl1.start()
+      p2pManagerImpl2.start()
+
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pManagerImpl2, peers = 1) }
+
+      val peer1 =
+        p2pManagerImpl2.getPeerLookup().getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_1)))
+          ?: throw IllegalStateException("Peer with ID $PEER_ID_NODE_1 not found in p2pManagerImpl2")
+
+      val startBlockNumber = 3UL
+      val count = 5UL
+      val responseFuture = peer1.sendBeaconBlocksByRange(startBlockNumber, count)
+
+      assertThatThrownBy { responseFuture.get() }
+        .isInstanceOf(ExecutionException::class.java)
+        .hasCauseInstanceOf(RpcException::class.java)
+        .hasMessageContaining("Missing sealed beacon block")
+        .matches { (it.cause as RpcException).responseCode == RpcResponseStatus.RESOURCE_UNAVAILABLE }
     } finally {
       p2PNetworkImpl1.stop()
       p2pManagerImpl2.stop()
@@ -1031,5 +1173,13 @@ class P2PTest {
 
     val statusMessageFactory = StatusMessageFactory(beaconChain, forkIdHashProvider)
     return statusMessageFactory
+  }
+
+  private fun getMockedBeaconChain(): BeaconChain {
+    val mockedBeaconChain = mock<BeaconChain>(RETURNS_DEEP_STUBS)
+    whenever(mockedBeaconChain.getSealedBeaconBlocks(any(), any())).thenThrow(
+      IllegalStateException("Missing sealed beacon block"),
+    )
+    return mockedBeaconChain
   }
 }

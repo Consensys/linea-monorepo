@@ -9,6 +9,7 @@
 package maru.p2p
 
 import java.nio.channels.ClosedChannelException
+import maru.p2p.messages.RpcExceptionSerDe
 import maru.serialization.Serializer
 import org.apache.logging.log4j.LogManager
 import org.apache.tuweni.bytes.Bytes
@@ -16,16 +17,25 @@ import tech.pegasys.teku.infrastructure.async.RootCauseExceptionHandler
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.eth2.rpc.core.ResponseCallback
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcException
+import tech.pegasys.teku.networking.eth2.rpc.core.RpcResponseStatus.SUCCESS_RESPONSE_CODE
+import tech.pegasys.teku.networking.p2p.peer.PeerDisconnectedException
 import tech.pegasys.teku.networking.p2p.rpc.RpcStream
+import tech.pegasys.teku.networking.p2p.rpc.StreamClosedException
 
 class MaruRpcResponseCallback<TResponse : Message<*, *>>(
   private val rpcStream: RpcStream,
   private val messageSerializer: Serializer<TResponse>,
+  private val rpcExceptionSerializer: Serializer<RpcException> = RpcExceptionSerDe(),
 ) : ResponseCallback<TResponse> {
   private val log = LogManager.getLogger(this.javaClass)
 
   override fun respond(data: TResponse): SafeFuture<Void> =
-    rpcStream.writeBytes(Bytes.wrap(messageSerializer.serialize(data)))
+    rpcStream.writeBytes(
+      Bytes.concatenate(
+        Bytes.of(SUCCESS_RESPONSE_CODE),
+        Bytes.wrap(messageSerializer.serialize(data)),
+      ),
+    )
 
   override fun respondAndCompleteSuccessfully(data: TResponse) {
     respond(data)
@@ -45,8 +55,41 @@ class MaruRpcResponseCallback<TResponse : Message<*, *>>(
   }
 
   override fun completeWithErrorResponse(error: RpcException) {
+    log.debug("Responding to RPC request with error: {}", error.errorMessageString)
+    try {
+      rpcStream
+        .writeBytes(
+          Bytes.concatenate(
+            Bytes.of(error.responseCode),
+            Bytes.wrap(rpcExceptionSerializer.serialize(error)),
+          ),
+        ).ifExceptionGetsHereRaiseABug()
+    } catch (e: StreamClosedException) {
+      log.debug(
+        "Unable to send error message ({}) to peer, rpc stream already closed: {}",
+        error,
+        rpcStream,
+      )
+    }
+    rpcStream.closeWriteStream().ifExceptionGetsHereRaiseABug()
   }
 
   override fun completeWithUnexpectedError(error: Throwable) {
+    when (error) {
+      is PeerDisconnectedException -> {
+        log.trace("Not sending RPC response as peer has already disconnected")
+        // But close the stream just to be completely sure we don't leak any resources.
+        rpcStream.closeAbruptly().ifExceptionGetsHereRaiseABug()
+      }
+
+      is RpcException -> {
+        completeWithErrorResponse(error)
+      }
+
+      else -> {
+        log.error("Encountered unexpected error from server", error)
+        completeWithErrorResponse(RpcException.ServerErrorException())
+      }
+    }
   }
 }
