@@ -34,20 +34,23 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 		numRoundSis += 1
 	}
 	// The number of non SIS rounds is the difference
-	// between the total number of rounds and the number of SIS rounds
-	// It is after considering the precomputed round
+	// between the total number of rounds and the number of SIS rounds.
+	// It is after considering the precomputed round.
 	numRoundNonSis := numRound - numRoundSis
 
 	// The total SIS hash length = size of a single SIS hash *
 	// total number of SIS hash per SIS round * number of SIS rounds
 	concatDhQSizeUnpadded := ctx.VortexCtx.SisParams.OutputSize() * ctx.VortexCtx.NbColsToOpen() * numRoundSis
 	concatDhQSize := utils.NextPowerOfTwo(concatDhQSizeUnpadded)
+
 	// The leaves are computed for both SIS and non SIS rounds
 	leavesSizeUnpadded := ctx.VortexCtx.NbColsToOpen() * numRound
 	leavesSize := utils.NextPowerOfTwo(leavesSizeUnpadded)
+
 	// The leaves size for SIS rounds
 	sisRoundLeavesSizeUnpadded := ctx.VortexCtx.NbColsToOpen() * numRoundSis
 	sisRoundLeavesSize := utils.NextPowerOfTwo(sisRoundLeavesSizeUnpadded)
+	
 	// The leaves size for non SIS rounds
 	nonSisRoundLeavesSizeUnpadded := ctx.VortexCtx.NbColsToOpen() * numRoundNonSis
 
@@ -62,7 +65,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 		for i := 0; i < numRoundSis; i++ {
 			// Register the SIS round leaves
 			ctx.Columns.SisRoundLeaves = append(ctx.Columns.SisRoundLeaves, ctx.Comp.InsertCommit(
-				roundQ, ctx.sisRoundLeavesName(i), ctx.VortexCtx.NbColsToOpen()))
+				roundQ, ctx.sisRoundLeavesName(i), utils.NextPowerOfTwo(ctx.VortexCtx.NbColsToOpen())))
 		}
 	}
 
@@ -408,6 +411,8 @@ func processPrecomputedRound(
 			lmp.MerkleSisRoots = append(lmp.MerkleSisRoots, rootPrecomp)
 			lmp.MerkleSisPositions = append(lmp.MerkleSisPositions, field.NewElement(uint64(selectedCol)))
 		}
+		// make the size of the precompSisLeaves a power of two
+		precompSisLeaves = rightPadWithZero(precompSisLeaves)
 		lmp.SisLeaves = append(lmp.SisLeaves, precompSisLeaves)
 		lmp.CommittedRound++
 		lmp.TotalNumRounds++
@@ -508,6 +513,8 @@ func processRound(
 				lmp.MerkleSisRoots = append(lmp.MerkleSisRoots, rooth)
 				lmp.MerkleSisPositions = append(lmp.MerkleSisPositions, field.NewElement(uint64(selectedCol)))
 			}
+			// Make the size of the sisRoundLeaves a power of two
+			sisRoundLeaves = rightPadWithZero(sisRoundLeaves)
 			// Append the sis leaves
 			lmp.SisLeaves = append(lmp.SisLeaves, sisRoundLeaves)
 			sisRoundCount++
@@ -556,4 +563,17 @@ func processRound(
 	}
 	// We can delete the non SIS opened columns now
 	run.State.TryDel(nonSisOpenedColsName)
+}
+
+// rightPadWithZero pads the input slice with zeroes
+// to make its size a power of two
+func rightPadWithZero(input []field.Element) []field.Element {
+	size := len(input)
+	if utils.IsPowerOfTwo(size) {
+		return input
+	}
+	paddedSize := utils.NextPowerOfTwo(size)
+	padded := make([]field.Element, paddedSize)
+	copy(padded, input)
+	return padded
 }

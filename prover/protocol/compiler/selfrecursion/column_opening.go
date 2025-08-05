@@ -98,6 +98,7 @@ func (a *PreimageLimbsProverAction) Run(run *wizard.ProverRuntime) {
 type ColSelectionProverAction struct {
 	Ctx       *SelfRecursionCtx
 	UAlphaQID ifaces.ColID
+	UAlphaQFilterID ifaces.ColID
 }
 
 func (a *ColSelectionProverAction) Run(run *wizard.ProverRuntime) {
@@ -105,8 +106,10 @@ func (a *ColSelectionProverAction) Run(run *wizard.ProverRuntime) {
 	uAlpha := smartvectors.IntoRegVec(run.GetColumn(a.Ctx.Columns.Ualpha.GetColID()))
 
 	uAlphaQ := make([]field.Element, 0, a.Ctx.Columns.UalphaQ.Size())
+	uAlphaQFilter := make([]field.Element, 0, a.Ctx.Columns.UalphaQFilter.Size())
 	for _, qi := range q {
 		uAlphaQ = append(uAlphaQ, uAlpha[qi])
+		uAlphaQFilter = append(uAlphaQFilter, field.One())
 	}
 
 	// If the size of q is not a power of two, we pad it with zeros
@@ -117,10 +120,12 @@ func (a *ColSelectionProverAction) Run(run *wizard.ProverRuntime) {
 		}
 		for i := len(q); i < utils.NextPowerOfTwo(len(q)); i++ {
 			uAlphaQ = append(uAlphaQ, field.Zero())
+			uAlphaQFilter = append(uAlphaQFilter, field.Zero())
 		}
 	}
 
 	run.AssignColumn(a.UAlphaQID, smartvectors.NewRegular(uAlphaQ))
+	run.AssignColumn(a.UAlphaQFilterID, smartvectors.NewRegular(uAlphaQFilter))
 }
 
 // Declare the queries justifying the column selection:
@@ -147,14 +152,22 @@ func (ctx *SelfRecursionCtx) ColSelection() {
 		ctx.Columns.Q.Size(),
 	)
 
+	// Declare the UAlphaQFilter column
+	ctx.Columns.UalphaQFilter = ctx.Comp.InsertCommit(
+		roundQ,
+		ctx.uAlphaQFilterName(),
+		ctx.Columns.Q.Size(),
+	)
+
 	// And registers the assignment function
 	ctx.Comp.RegisterProverAction(roundQ, &ColSelectionProverAction{
 		Ctx:       ctx,
 		UAlphaQID: ctx.Columns.UalphaQ.GetColID(),
+		UAlphaQFilterID: ctx.Columns.UalphaQFilter.GetColID(),
 	})
 
 	// Declare an inclusion query to finalize the selection check
-	ctx.Comp.InsertInclusion(
+	ctx.Comp.InsertInclusionConditionalOnIncluded(
 		roundQ,
 		ctx.selectQInclusion(),
 		[]ifaces.Column{
@@ -165,6 +178,7 @@ func (ctx *SelfRecursionCtx) ColSelection() {
 			ctx.Columns.Q,
 			ctx.Columns.UalphaQ,
 		},
+		ctx.Columns.UalphaQFilter,
 	)
 }
 
