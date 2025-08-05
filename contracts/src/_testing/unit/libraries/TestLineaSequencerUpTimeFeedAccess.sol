@@ -4,10 +4,12 @@ pragma solidity ^0.8.30;
 import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV2V3Interface.sol";
 
 contract TestLineaSequencerUptimeFeedAccess {
-    AggregatorV2V3Interface private target;
-    constructor(address _targetAddress) {
-        target = AggregatorV2V3Interface(_targetAddress);
-    }
+  AggregatorV2V3Interface private target;
+
+  constructor(address _targetAddress) {
+    target = AggregatorV2V3Interface(_targetAddress);
+  }
+
   function callLatestAnswer() external view {
     target.latestAnswer();
   }

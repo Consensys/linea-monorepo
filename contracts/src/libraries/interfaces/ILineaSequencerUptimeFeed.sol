@@ -6,11 +6,11 @@ interface ILineaSequencerUptimeFeed {
    * @notice Current sequencer uptime status.
    * @dev Packed state struct to save sloads.
    * @param latestRoundId The ID of the latest round.
-    * @dev Always 0 because we are not storing rounds history.
-    * @dev Here for backward compatibility.
+   * @dev Always 0 because we are not storing rounds history.
+   * @dev Here for backward compatibility.
    * @param latestStatus The latest sequencer status.
-    * @dev false: The sequencer is up.
-    * @dev true: The sequencer is down.
+   * @dev false: The sequencer is up.
+   * @dev true: The sequencer is down.
    * @param startedAt The timestamp when the feed was started.
    * @param updatedAt The timestamp when the feed was last updated.
    */
