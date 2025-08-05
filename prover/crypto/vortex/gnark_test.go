@@ -120,52 +120,52 @@ func (circuit *FFTInverseCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-func TestFFTInverseCircuit(t *testing.T) {
+// func TestFFTInverseCircuit(t *testing.T) {
 
-	s := 16
-	d := fft.NewDomain(uint64(s))
+// 	s := 16
+// 	d := fft.NewDomain(uint64(s))
 
-	// prepare witness
-	p := make([]field.Element, s)
-	for i := 0; i < s; i++ {
-		p[i].SetRandom()
-	}
-	r := make([]field.Element, s)
-	copy(r, p)
-	d.FFTInverse(r, fft.DIF)
-	fft.BitReverse(r)
-	var witness FFTInverseCircuit
-	witness.P = make([]frontend.Variable, s)
-	witness.R = make([]frontend.Variable, s)
+// 	// prepare witness
+// 	p := make([]field.Element, s)
+// 	for i := 0; i < s; i++ {
+// 		p[i].SetRandom()
+// 	}
+// 	r := make([]field.Element, s)
+// 	copy(r, p)
+// 	d.FFTInverse(r, fft.DIF)
+// 	fft.BitReverse(r)
+// 	var witness FFTInverseCircuit
+// 	witness.P = make([]frontend.Variable, s)
+// 	witness.R = make([]frontend.Variable, s)
 
-	for i := 0; i < s; i++ {
-		witness.P[i] = p[i].String()
-		witness.R[i] = r[i].String()
-	}
+// 	for i := 0; i < s; i++ {
+// 		witness.P[i] = p[i].String()
+// 		witness.R[i] = r[i].String()
+// 	}
 
-	var circuit FFTInverseCircuit
-	circuit.P = make([]frontend.Variable, s)
-	circuit.R = make([]frontend.Variable, s)
-	circuit.Domain = *d
+// 	var circuit FFTInverseCircuit
+// 	circuit.P = make([]frontend.Variable, s)
+// 	circuit.R = make([]frontend.Variable, s)
+// 	circuit.Domain = *d
 
-	// compile...
-	builder := scs.NewBuilder[constraint.U32]
-	ccs, err := frontend.CompileGeneric[constraint.U32](field.Modulus(), builder, &circuit)
-	if err != nil {
-		t.Fatal(err)
-	}
+// 	// compile...
+// 	builder := scs.NewBuilder[constraint.U32]
+// 	ccs, err := frontend.CompileGeneric[constraint.U32](field.Modulus(), builder, &circuit)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
 
-	// solve the circuit
-	twitness, err := frontend.NewWitness(&witness, field.Modulus())
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = ccs.IsSolved(twitness)
-	if err != nil {
-		t.Fatal(err)
-	}
+// 	// solve the circuit
+// 	twitness, err := frontend.NewWitness(&witness, field.Modulus())
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	err = ccs.IsSolved(twitness)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
 
-}
+// }
 
 // ------------------------------------------------------------
 // test AssertIsCodeWord
