@@ -70,16 +70,25 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     s: deploymentTx.s,
   });
 
-  const tx = await ethers.provider.broadcastTransaction(rawTx.serialized);
-  const receipt = await tx.wait();
-  console.log(
-    `contract=${contractName} deployed: address=${receipt?.contractAddress} blockNumber=${receipt?.blockNumber} chainId=${getChainId()}`,
-  );
-  if (receipt?.contractAddress !== expectedAddress) {
-    throw new Error(`Contract deployed to ${receipt?.contractAddress}, expected ${expectedAddress}`);
-  }
+  try {
+    const tx = await ethers.provider.broadcastTransaction(rawTx.serialized);
+    console.log(`Transaction=${tx.hash} broadcasted`);
+    console.log("Waiting for transaction receipt...");
+    const receipt = await tx.wait();
 
-  await tryStoreAddress(hre.network.name, contractName, expectedAddress, tx.hash);
+    console.log(
+      `contract=${contractName} deployed: address=${receipt?.contractAddress} blockNumber=${receipt?.blockNumber} chainId=${getChainId()}`,
+    );
+
+    if (receipt?.contractAddress !== expectedAddress) {
+      throw new Error(`Contract deployed to ${receipt?.contractAddress}, expected ${expectedAddress}`);
+    }
+
+    await tryStoreAddress(hre.network.name, contractName, expectedAddress, tx.hash);
+  } catch (error) {
+    console.error(`Error during contract=${contractName} deployment: ${(error as Error).message}`);
+    throw error; // Re-throw to fail the deployment
+  }
 };
 export default func;
 func.tags = ["EIP2935SystemContract"];
