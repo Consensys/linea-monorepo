@@ -109,6 +109,17 @@ func (a *ColSelectionProverAction) Run(run *wizard.ProverRuntime) {
 		uAlphaQ = append(uAlphaQ, uAlpha[qi])
 	}
 
+	// If the size of q is not a power of two, we pad it with zeros
+	if !utils.IsPowerOfTwo(len(q)) {
+		// Sanity check
+		if a.Ctx.Columns.UalphaQ.Size() != utils.NextPowerOfTwo(len(q)) {
+			utils.Panic("uAlphaQ size (%v) must be equal to the next power of two of q size (%v)", a.Ctx.Columns.UalphaQ.Size(), utils.NextPowerOfTwo(len(q)))
+		}
+		for i := len(q); i < utils.NextPowerOfTwo(len(q)); i++ {
+			uAlphaQ = append(uAlphaQ, field.Zero())
+		}
+	}
+
 	run.AssignColumn(a.UAlphaQID, smartvectors.NewRegular(uAlphaQ))
 }
 
@@ -125,7 +136,7 @@ func (a *ColSelectionProverAction) Run(run *wizard.ProverRuntime) {
 func (ctx *SelfRecursionCtx) ColSelection() {
 
 	// Build the column q, (auto-assigned)
-	ctx.Columns.Q = verifiercol.NewFromIntVecCoin(ctx.Comp, ctx.Coins.Q)
+	ctx.Columns.Q = verifiercol.NewFromIntVecCoin(ctx.Comp, ctx.Coins.Q, verifiercol.RightPadZeroToNextPowerOfTwo)
 
 	// Declaration round of the coin Q
 	roundQ := ctx.Columns.Q.Round()
@@ -133,7 +144,7 @@ func (ctx *SelfRecursionCtx) ColSelection() {
 	ctx.Columns.UalphaQ = ctx.Comp.InsertCommit(
 		roundQ,
 		ctx.uAlphaQName(),
-		ctx.Coins.Q.Size,
+		ctx.Columns.Q.Size(),
 	)
 
 	// And registers the assignment function
@@ -383,10 +394,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 		// Create an accessor for collapse^t, where t is the number of opened columns
 		collapsePowT := accessors.NewExponent(ctx.Coins.Collapse, ctx.VortexCtx.NbColsToOpen())
 
-		// ToDo(arijit): We may not need this any more, after the optional SIS hash feature
-		// since some of the Ah and Dh can be nil, we compactify the slice by
-		// only retaining the non-nil elements before sending it to the
-		// linear combination operator.
+		// We check Ah is not nil
 		nonNilAh := []ifaces.Column{}
 		for _, ah := range ctx.Columns.Ah {
 			if ah != nil {
