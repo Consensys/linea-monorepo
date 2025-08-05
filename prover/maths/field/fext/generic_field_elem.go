@@ -172,7 +172,7 @@ func (e *GenericFieldElem) Div(inp *GenericFieldElem) *GenericFieldElem {
 	} else {
 		// not both are Base elements
 		if e.IsBase {
-			DivByBase(&e.Ext, &inp.Ext, &e.Base)
+			e.Ext.Div(&e.Ext, &inp.Ext)
 		}
 		if inp.IsBase {
 			DivByBase(&e.Ext, &e.Ext, &inp.Base)

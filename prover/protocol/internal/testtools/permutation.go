@@ -33,144 +33,143 @@ var ListOfPermutationTestcasePositive = []*PermutationTestcase{
 		},
 		B: [][]smartvectors.SmartVector{
 			{
-				smartvectors.ForTest(4, 2, 3, 1),
+				smartvectors.ForTest(4, 3, 2, 1),
 			},
 		},
 	},
-	/*
-		{
-			NameStr: "positive/1234-multi-column",
-			A: [][]smartvectors.SmartVector{
-				{
-					smartvectors.ForTest(1, 2, 3, 4),
-					smartvectors.ForTest(5, 6, 7, 8),
-				},
-			},
-			B: [][]smartvectors.SmartVector{
-				{
-					smartvectors.ForTest(4, 2, 3, 1),
-					smartvectors.ForTest(8, 6, 7, 5),
-				},
-			},
-		},
 
-		{
-			NameStr: "positive/1234-split",
-			A: [][]smartvectors.SmartVector{
-				{
-					smartvectors.ForTest(1, 2, 3, 4, 9, 10, 11, 12),
-				},
-				{
-					smartvectors.ForTest(5, 6, 7, 8, 13, 14, 15, 16),
-				},
-			},
-			B: [][]smartvectors.SmartVector{
-				{
-					smartvectors.ForTest(4, 2, 3, 1, 8, 6, 7, 5, 9, 10, 11, 12, 13, 14, 15, 16),
-				},
+	{
+		NameStr: "positive/1234-multi-column",
+		A: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(1, 2, 3, 4),
+				smartvectors.ForTest(5, 6, 7, 8),
 			},
 		},
+		B: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(4, 2, 3, 1),
+				smartvectors.ForTest(8, 6, 7, 5),
+			},
+		},
+	},
 
-		{
-			NameStr: "positive/1234-with-proofs",
-			A: [][]smartvectors.SmartVector{
-				{
-					smartvectors.ForTest(1, 2, 3, 4),
-				},
+	{
+		NameStr: "positive/1234-split",
+		A: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(1, 2, 3, 4, 9, 10, 11, 12),
 			},
-			B: [][]smartvectors.SmartVector{
-				{
-					smartvectors.ForTest(4, 2, 3, 1),
-				},
+			{
+				smartvectors.ForTest(5, 6, 7, 8, 13, 14, 15, 16),
 			},
-			AIsProof: []bool{true},
 		},
+		B: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(4, 2, 3, 1, 8, 6, 7, 5, 9, 10, 11, 12, 13, 14, 15, 16),
+			},
+		},
+	},
 
-		{
-			NameStr: "positive/1234-multi-column-with-proofs",
-			A: [][]smartvectors.SmartVector{
-				{
-					smartvectors.ForTest(1, 2, 3, 4),
-					smartvectors.ForTest(5, 6, 7, 8),
-				},
+	{
+		NameStr: "positive/1234-with-proofs",
+		A: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(1, 2, 3, 4),
 			},
-			B: [][]smartvectors.SmartVector{
-				{
-					smartvectors.ForTest(4, 2, 3, 1),
-					smartvectors.ForTest(8, 6, 7, 5),
-				},
-			},
-			AIsProof: []bool{true},
 		},
+		B: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(4, 2, 3, 1),
+			},
+		},
+		AIsProof: []bool{true},
+	},
 
-		{
-			NameStr: "positive/1234-split-with-proofs",
-			A: [][]smartvectors.SmartVector{
-				{
-					smartvectors.ForTest(1, 2, 3, 4, 9, 10, 11, 12),
-				},
-				{
-					smartvectors.ForTest(5, 6, 7, 8, 13, 14, 15, 16),
-				},
+	{
+		NameStr: "positive/1234-multi-column-with-proofs",
+		A: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(1, 2, 3, 4),
+				smartvectors.ForTest(5, 6, 7, 8),
 			},
-			B: [][]smartvectors.SmartVector{
-				{
-					smartvectors.ForTest(4, 2, 3, 1, 8, 6, 7, 5, 9, 10, 11, 12, 13, 14, 15, 16),
-				},
-			},
-			AIsProof: []bool{true, true},
 		},
+		B: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(4, 2, 3, 1),
+				smartvectors.ForTest(8, 6, 7, 5),
+			},
+		},
+		AIsProof: []bool{true},
+	},
 
-		{
-			NameStr: "positive/1234-with-proofs-b",
-			A: [][]smartvectors.SmartVector{
-				{
-					smartvectors.ForTest(1, 2, 3, 4),
-				},
+	{
+		NameStr: "positive/1234-split-with-proofs",
+		A: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(1, 2, 3, 4, 9, 10, 11, 12),
 			},
-			B: [][]smartvectors.SmartVector{
-				{
-					smartvectors.ForTest(4, 2, 3, 1),
-				},
+			{
+				smartvectors.ForTest(5, 6, 7, 8, 13, 14, 15, 16),
 			},
-			BIsProof: []bool{true},
 		},
+		B: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(4, 2, 3, 1, 8, 6, 7, 5, 9, 10, 11, 12, 13, 14, 15, 16),
+			},
+		},
+		AIsProof: []bool{true, true},
+	},
 
-		{
-			NameStr: "positive/1234-multi-column-with-proofs-b",
-			A: [][]smartvectors.SmartVector{
-				{
-					smartvectors.ForTest(1, 2, 3, 4),
-					smartvectors.ForTest(5, 6, 7, 8),
-				},
+	{
+		NameStr: "positive/1234-with-proofs-b",
+		A: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(1, 2, 3, 4),
 			},
-			B: [][]smartvectors.SmartVector{
-				{
-					smartvectors.ForTest(4, 2, 3, 1),
-					smartvectors.ForTest(8, 6, 7, 5),
-				},
-			},
-			BIsProof: []bool{true},
 		},
+		B: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(4, 2, 3, 1),
+			},
+		},
+		BIsProof: []bool{true},
+	},
 
-		{
-			NameStr: "positive/1234-split-with-proofs-b",
-			A: [][]smartvectors.SmartVector{
-				{
-					smartvectors.ForTest(1, 2, 3, 4, 9, 10, 11, 12),
-				},
-				{
-					smartvectors.ForTest(5, 6, 7, 8, 13, 14, 15, 16),
-				},
+	{
+		NameStr: "positive/1234-multi-column-with-proofs-b",
+		A: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(1, 2, 3, 4),
+				smartvectors.ForTest(5, 6, 7, 8),
 			},
-			B: [][]smartvectors.SmartVector{
-				{
-					smartvectors.ForTest(4, 2, 3, 1, 8, 6, 7, 5, 9, 10, 11, 12, 13, 14, 15, 16),
-				},
-			},
-			BIsProof: []bool{true},
 		},
-	*/
+		B: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(4, 2, 3, 1),
+				smartvectors.ForTest(8, 6, 7, 5),
+			},
+		},
+		BIsProof: []bool{true},
+	},
+
+	{
+		NameStr: "positive/1234-split-with-proofs-b",
+		A: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(1, 2, 3, 4, 9, 10, 11, 12),
+			},
+			{
+				smartvectors.ForTest(5, 6, 7, 8, 13, 14, 15, 16),
+			},
+		},
+		B: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(4, 2, 3, 1, 8, 6, 7, 5, 9, 10, 11, 12, 13, 14, 15, 16),
+			},
+		},
+		BIsProof: []bool{true},
+	},
 }
 
 // ListOfPermutationTestcasePositive lists standard permutation testcases

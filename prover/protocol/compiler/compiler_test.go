@@ -54,19 +54,18 @@ func TestCompilers(t *testing.T) {
 	//runTestList(t, "grand-product", testtools.ListOfGrandProductTestcasePositive)
 	//  runTestList(t, "grand-product", testtools.ListOfGrandProductTestcaseNegative)
 	//  runTestList(t, "projection", testtools.ListOfProjectionTestcaseNegative)
+	//	runTestList(t, "permutation", testtools.ListOfPermutationTestcasePositive)
+
 	//  runTestList(t, "permutation", testtools.ListOfPermutationTestcaseNegative)
 	//runTestList(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
 	//  runTestList(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcaseNegative)
-	// runTestList(t, "inner-product", testtools.ListOfInnerProductTestcasePositive)
-	// runTestList(t, "inner-product", testtools.ListOfInnerProductTestcaseNegative)
+	//runTestList(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
 
 	//panic: global constraint - mismatch - at random point -
 	// observation from ListOfLogDerivativeSumTestcasePositive and ListOfGrandProductTestcasePositive: left values are usually the correct ones
 	// potential bug: summation, selectors
 	//runTestList(t, "horner", testtools.ListOfHornerTestcasePositive)
 	//runTestList(t, "projection", testtools.ListOfProjectionTestcasePositive)
-	runTestList(t, "permutation", testtools.ListOfPermutationTestcasePositive)
-	//runTestList(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
 
 	//panic: unreachable
 	//runTestList(t, "mimc", testtools.ListOfMiMCTestcase)
