@@ -43,4 +43,10 @@ func main() {
 		logger.Error("Failed to generate MAP test data", "error", err)
 		return
 	}
+	logger.Info("Generating POINT EVALUATION test data", "path_pointeval", path_pointeval)
+	if err := mainPointEval(); err != nil {
+		logger.Error("Failed to generate POINT EVALUATION test data", "error", err)
+		return
+	}
+	logger.Info("Test data generation completed successfully")
 }

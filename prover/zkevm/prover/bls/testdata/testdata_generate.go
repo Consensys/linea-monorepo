@@ -259,3 +259,20 @@ func formatBoolAsInt(b bool) string {
 	}
 	return "0"
 }
+
+func splitG1CompressedLimbs(bts [bls12381.SizeOfG1AffineCompressed]byte) []string {
+	limbs := []string{
+		fmt.Sprintf("0x%x", bts[32:48]),
+		fmt.Sprintf("0x%x", bts[16:32]),
+		fmt.Sprintf("0x%x", bts[0:16]),
+	}
+	return limbs
+}
+
+func splitVersionedHashToLimbs(h [32]byte) []string {
+	limbs := []string{
+		fmt.Sprintf("0x%x", h[16:32]),
+		fmt.Sprintf("0x%x", h[0:16]),
+	}
+	return limbs
+}
