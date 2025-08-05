@@ -217,7 +217,7 @@ func (ctx *evaluationVerifier) Run(run wizard.Runtime) error {
 			switch metadata := metadataInterface.(type) {
 			case ifaces.Column:
 				entry := mapYs[metadata.GetColID()]
-				if metadata.IsBase() {
+				if entry.IsBase {
 					elem, _ := entry.GetBase()
 					evalInputs[k] = sv.NewConstant(elem, 1)
 				} else {
@@ -235,8 +235,6 @@ func (ctx *evaluationVerifier) Run(run wizard.Runtime) error {
 			default:
 				utils.Panic("Not a variable type %v in global query (ratio %v)", reflect.TypeOf(metadataInterface), ratio)
 			}
-			//fmt.Printf("evalInputs[k] %v\n", evalInputs[k].Pretty())
-
 		}
 
 		left := board.Evaluate(evalInputs).GetExt(0)
