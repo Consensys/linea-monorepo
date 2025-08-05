@@ -87,6 +87,39 @@ SAVE_ADDRESS=true VERIFY_CONTRACT=true SEPOLIA_PRIVATE_KEY=<key> ETHERSCAN_API_K
 <br />
 <br />
 
+### EIP2935SystemContract
+<br />
+
+The EIP2935SystemContract is a system contract for historical block hashes according to [EIP-2935](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-2935.md). This contract deploys to a predetermined address using a specific deployment transaction format. The deployment script automatically funds the required sender address if needed.
+
+Parameters that should be filled either in .env or passed as CLI arguments:
+
+| Parameter name             | Required | Input Value | Description |
+| -------------------------- | -------- | ---------- | ----------- |
+| \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
+| BLOCKCHAIN_NODE     | true     | key | RPC URL endpoint, use `https://rpc.devnet.linea.build` |
+
+<br />
+
+**Prerequisites:**
+- The deployment script automatically funds the predetermined sender address (0x3462413Af4609098e1E27A490f554f260213D685) if needed
+- The contract deploys to the fixed address: 0x0000F90827F1C53a10cb7A02335B175320002935
+
+Base command:
+```shell
+npx hardhat deploy --network devnet --tags EIP2935SystemContract
+```
+
+Base command with cli arguments:
+
+```shell
+PRIVATE_KEY=<key> BLOCKCHAIN_NODE=https://rpc.devnet.linea.build npx hardhat deploy --network sepolia --tags EIP2935SystemContract
+```
+
+(make sure to replace `<key>` with actual values)
+<br />
+<br />
+
 ### LineaRollup
 <br />
 
