@@ -62,6 +62,10 @@ func (z *ZCtx) run(run *wizard.ProverRuntime) {
 			denominator = smartvectors.NewConstant(field.One(), z.Size)
 		}
 
+		// This case does not corresponds to actual production use of the compiler
+		// because due to how grand-product queries are constructed, the Zs
+		// column is always dependant on a randomness and is therefore over a
+		// field extension.
 		if smartvectors.IsBase(numerator) && smartvectors.IsBase(denominator) {
 			// If both numerator and denominator are base
 			denominatorSlice, _ := denominator.IntoRegVecSaveAllocBase()
@@ -77,7 +81,13 @@ func (z *ZCtx) run(run *wizard.ProverRuntime) {
 			}
 
 			run.AssignColumn(z.Zs[i].GetColID(), smartvectors.NewRegular(numeratorSlice))
-			run.AssignLocalPoint(z.ZOpenings[i].Name(), numeratorSlice[len(numeratorSlice)-1])
+
+			// Regardless of the assignment, the local opening will always be
+			// defined as a field extension column.
+			run.AssignLocalPointExt(
+				z.ZOpenings[i].Name(),
+				fext.Lift(numeratorSlice[len(numeratorSlice)-1]),
+			)
 		} else {
 			// at least one of the numerator or denominator is over field extensions
 			denominatorSlice := denominator.IntoRegVecSaveAllocExt()

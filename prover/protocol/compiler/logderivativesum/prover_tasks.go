@@ -340,6 +340,10 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 
 			svDenominator := column.EvalExprColumn(run, z.ZDenominatorBoarded[frag])
 
+			// This case does not corresponds to an actual production case
+			// because log-derivative sums are always defined in such a way that
+			// the denominator depends on a randomness. The case is still here
+			// for completeness but we don't optimize for it.
 			if sv.IsBase(svDenominator) {
 				var numerator []field.Element
 				denominator := svDenominator.IntoRegVecSaveAlloc()
@@ -361,7 +365,7 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 				}
 
 				run.AssignColumn(z.Zs[frag].GetColID(), sv.NewRegular(packedZ))
-				run.AssignLocalPoint(z.ZOpenings[frag].ID, packedZ[len(packedZ)-1])
+				run.AssignLocalPointExt(z.ZOpenings[frag].ID, fext.Lift(packedZ[len(packedZ)-1]))
 			} else {
 				// we are dealing with extension denominators
 				var numerator []fext.Element
