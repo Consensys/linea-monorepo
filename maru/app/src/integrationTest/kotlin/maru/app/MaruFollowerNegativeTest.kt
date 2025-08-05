@@ -27,11 +27,11 @@ import org.junit.jupiter.api.Test
 import org.web3j.protocol.core.DefaultBlockParameter
 import testutils.Checks.getMinedBlocks
 import testutils.InjectableSealedBlocksFakeNetwork
-import testutils.MaruFactory
 import testutils.SingleNodeNetworkStack
 import testutils.SpyingP2PNetwork
 import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
+import testutils.maru.MaruFactory
 
 class MaruFollowerNegativeTest {
   private val cluster: Cluster =

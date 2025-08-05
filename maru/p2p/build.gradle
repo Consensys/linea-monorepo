@@ -24,7 +24,7 @@ dependencies {
   implementation project(":crypto")
   implementation project(":core")
 
-  implementation "io.libp2p:jvm-libp2p"
+  api "io.libp2p:jvm-libp2p"
 
   implementation "tech.pegasys.teku.internal:p2p"
   implementation "tech.pegasys.teku.internal:eth2"

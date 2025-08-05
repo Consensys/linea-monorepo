@@ -25,11 +25,11 @@ import org.junit.jupiter.api.io.TempDir
 import org.web3j.protocol.core.methods.response.EthBlock
 import testutils.Checks.getMinedBlocks
 import testutils.Checks.verifyBlockTimeWithAGapOn
-import testutils.MaruFactory
 import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
 import testutils.besu.ethGetBlockByNumber
 import testutils.besu.startWithRetry
+import testutils.maru.MaruFactory
 import testutils.maru.awaitTillMaruHasPeers
 
 class MaruConsensusSwitchTest {

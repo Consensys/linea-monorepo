@@ -8,6 +8,7 @@
  */
 package maru.config.consensus
 
+import maru.config.Utils
 import maru.config.consensus.delegated.ElDelegatedConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec

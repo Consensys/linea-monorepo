@@ -24,16 +24,16 @@ import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 
 object TestEnvironment {
+  const val JWT_CONFIG_PATH = "../docker/jwt"
   val testMetricsFacade =
     MicrometerMetricsFacade(
       registry = SimpleMeterRegistry(),
       metricsPrefix = "maru.e2e",
     )
-  private val jwtConfigPath = "../docker/jwt"
   private val jwtConfig: Optional<JwtConfig> =
     JwtConfig.createIfNeeded(
       true,
-      Optional.of(jwtConfigPath),
+      Optional.of(JWT_CONFIG_PATH),
       Optional.of(UUID.randomUUID().toString()),
       Path("/tmp"),
     )
@@ -65,11 +65,11 @@ object TestEnvironment {
 
   private val besuFollowerExecutionEngineClient = createExecutionClientConfig("http://localhost:9550")
   private val nethermindFollowerExecutionEngineClient =
-    createExecutionClientConfig("http://localhost:10550", jwtConfigPath)
+    createExecutionClientConfig("http://localhost:10550", JWT_CONFIG_PATH)
   private val erigonFollowerExecutionEngineClient =
-    createExecutionClientConfig("http://localhost:11551", jwtConfigPath)
-  private val geth1ExecutionEngineClient = createExecutionClientConfig("http://localhost:8561", jwtConfigPath)
-  private val geth2ExecutionEngineClient = createExecutionClientConfig("http://localhost:8571", jwtConfigPath)
+    createExecutionClientConfig("http://localhost:11551", JWT_CONFIG_PATH)
+  private val geth1ExecutionEngineClient = createExecutionClientConfig("http://localhost:8561", JWT_CONFIG_PATH)
+  private val geth2ExecutionEngineClient = createExecutionClientConfig("http://localhost:8571", JWT_CONFIG_PATH)
   private val gethExecutionEngineClients =
     mapOf(
       "follower-geth-2" to geth2ExecutionEngineClient,

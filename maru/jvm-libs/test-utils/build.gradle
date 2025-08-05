@@ -5,6 +5,10 @@ plugins {
 dependencies {
   implementation(project(":consensus"))
   implementation(project(":app"))
+  implementation(project(":crypto"))
+  implementation(project(":p2p"))
+  implementation(project(":config"))
+  implementation(project(":jvm-libs:extensions"))
 
   api "org.hyperledger.besu.internal:besu-acceptance-tests-dsl"
   implementation("org.hyperledger.besu.internal:besu-ethereum-core")
