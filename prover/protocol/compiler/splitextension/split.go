@@ -217,7 +217,6 @@ func (vctx *VerifierCtx) Run(run wizard.Runtime) error {
 			reconstructedEval.Add(&reconstructedEval, &tmp)
 		}
 
-		// TODO check that evalBaseFieldParams.Ys[4*i+j] is real
 		if !evalFextParams.ExtYs[i].Equal(&reconstructedEval) {
 			return errInconsistentEval
 		}
