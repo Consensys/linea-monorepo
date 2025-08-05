@@ -37,7 +37,8 @@ func newPointEvalDataSource(comp *wizard.CompiledIOP) *blsPointEvalDataSource {
 
 type BlsPointEval struct {
 	*blsPointEvalDataSource
-	alignedGnarkData *plonk.Alignment
+	alignedGnarkData        *plonk.Alignment
+	alignedFailureGnarkData *plonk.Alignment
 	*Limits
 }
 
@@ -64,8 +65,15 @@ func (bp *BlsPointEval) WithPointEvalCircuit(comp *wizard.CompiledIOP, options .
 	return bp
 }
 
+func (bp *BlsPointEval) WithPointEvalFailureCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsPointEval {
+	return bp
+}
+
 func (bp *BlsPointEval) Assign(run *wizard.ProverRuntime) {
 	if bp.alignedGnarkData != nil {
 		bp.alignedGnarkData.Assign(run)
+	}
+	if bp.alignedFailureGnarkData != nil {
+		bp.alignedFailureGnarkData.Assign(run)
 	}
 }

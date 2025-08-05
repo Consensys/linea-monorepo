@@ -22,6 +22,7 @@ const (
 )
 
 var srsPk *kzg_bls12381.ProvingKey
+var srsVk *kzg_bls12381.VerifyingKey
 
 func init() {
 	f, err := os.Open(locTrustedSetup)
@@ -36,6 +37,10 @@ func init() {
 	srsPk, err = setup.toProvingKey()
 	if err != nil {
 		panic(fmt.Sprintf("failed to convert trusted setup to proving key: %v", err))
+	}
+	srsVk, err = setup.toVerifyingKey()
+	if err != nil {
+		panic(fmt.Sprintf("failed to convert trusted setup to verifying key: %v", err))
 	}
 }
 

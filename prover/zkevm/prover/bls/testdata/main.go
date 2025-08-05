@@ -3,13 +3,14 @@ package main
 import "log/slog"
 
 const (
-	path_add_g1  = "bls_g1_add_input.csv"
-	path_add_g2  = "bls_g2_add_input.csv"
-	path_msm_g1  = "bls_g1_msm_inputs.csv"
-	path_msm_g2  = "bls_g2_msm_inputs.csv"
-	path_pairing = "bls_pairing_inputs.csv"
-	path_map_g1  = "bls_g1_map_inputs.csv"
-	path_map_g2  = "bls_g2_map_inputs.csv"
+	path_add_g1    = "bls_g1_add_input.csv"
+	path_add_g2    = "bls_g2_add_input.csv"
+	path_msm_g1    = "bls_g1_msm_inputs.csv"
+	path_msm_g2    = "bls_g2_msm_inputs.csv"
+	path_pairing   = "bls_pairing_inputs.csv"
+	path_map_g1    = "bls_g1_map_inputs.csv"
+	path_map_g2    = "bls_g2_map_inputs.csv"
+	path_pointeval = "bls_pointeval_inputs.csv"
 )
 
 const (

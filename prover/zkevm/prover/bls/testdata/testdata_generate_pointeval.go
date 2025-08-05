@@ -89,10 +89,15 @@ func (i *pointEvalInput) generate() (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed to open random polynomial: %w", err)
 	}
+	// sanity check
+	if err = kzg_bls12381.Verify(&kzgCommitment, &kzgProof, evaluationPoint, *srsVk); err != nil {
+		return false, fmt.Errorf("failed to verify KZG proof: %w", err)
+	}
+
 	// TODO: we should mutate bytes such that the encoded proof is as needed
 	i.Proof = kzgProof.H.Bytes()
 	// TODO: modify according to the test case
-	i.ClaimedValue = evaluationPoint.BigInt(new(big.Int))
+	i.ClaimedValue = kzgProof.ClaimedValue.BigInt(new(big.Int))
 	// TODO: modify hash according to the test case
 	i.VersionedHash = sha256.Sum256(i.Commitment[:])
 	i.VersionedHash[0] = blobCommitmentVersionKZG
