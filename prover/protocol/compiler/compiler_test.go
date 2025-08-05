@@ -14,6 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
 	"github.com/consensys/linea-monorepo/prover/protocol/internal/testtools"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -32,8 +33,8 @@ var totalSuite = []func(comp *wizard.CompiledIOP){
 	horner.ProjectionToHorner,
 	horner.CompileHorner,
 	innerproduct.Compile(),
-	//stitchsplit.Stitcher(1, 8),
-	//stitchsplit.Splitter(8),
+	stitchsplit.Stitcher(1, 8),
+	stitchsplit.Splitter(8),
 	localcs.Compile,
 	globalcs.Compile,
 	univariates.Naturalize,
@@ -56,6 +57,8 @@ func TestCompilers(t *testing.T) {
 	//  runTestList(t, "permutation", testtools.ListOfPermutationTestcaseNegative)
 	//runTestList(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
 	//  runTestList(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcaseNegative)
+	// runTestList(t, "inner-product", testtools.ListOfInnerProductTestcasePositive)
+	// runTestList(t, "inner-product", testtools.ListOfInnerProductTestcaseNegative)
 
 	//panic: global constraint - mismatch - at random point -
 	// observation from ListOfLogDerivativeSumTestcasePositive and ListOfGrandProductTestcasePositive: left values are usually the correct ones

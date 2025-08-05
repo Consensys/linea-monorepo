@@ -13,7 +13,7 @@ import (
 // relationship and the assignment to provide to it.
 type InnerProductTestcase struct {
 	// Name is the name of the testcase.
-	Name string
+	NameStr string
 	// A is the assignment to provide to the A column of the smartvector
 	A smartvectors.SmartVector
 	// Bs is the assignment to provide the Bs columns of the smartvector
@@ -27,11 +27,11 @@ type InnerProductTestcase struct {
 	MustFailFlag bool
 }
 
-var ListOfInnerProductTestcasePositive = []InnerProductTestcase{
+var ListOfInnerProductTestcasePositive = []*InnerProductTestcase{
 
 	{
-		Name: "positive/query-1",
-		A:    smartvectors.ForTest(1, 1, 1, 1),
+		NameStr: "positive/query-1",
+		A:       smartvectors.ForTest(1, 1, 1, 1),
 		Bs: []smartvectors.SmartVector{
 			smartvectors.ForTest(0, 3, 0, 2),
 		},
@@ -41,8 +41,8 @@ var ListOfInnerProductTestcasePositive = []InnerProductTestcase{
 	},
 
 	{
-		Name: "positive/query-2",
-		A:    smartvectors.ForTest(1, 1, 1, 1),
+		NameStr: "positive/query-2",
+		A:       smartvectors.ForTest(1, 1, 1, 1),
 		Bs: []smartvectors.SmartVector{
 			smartvectors.ForTest(0, 3, 0, 2),
 			smartvectors.ForTest(1, 0, 0, 2),
@@ -51,8 +51,8 @@ var ListOfInnerProductTestcasePositive = []InnerProductTestcase{
 	},
 
 	{
-		Name: "positive/query-3",
-		A:    smartvectors.ForTest(1, 1, 1, 1, 2, 0, 2, 0),
+		NameStr: "positive/query-3",
+		A:       smartvectors.ForTest(1, 1, 1, 1, 2, 0, 2, 0),
 		Bs: []smartvectors.SmartVector{
 			smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0),
 			smartvectors.ForTest(1, 0, 0, 2, 1, 0, 0, 0),
@@ -61,8 +61,8 @@ var ListOfInnerProductTestcasePositive = []InnerProductTestcase{
 	},
 
 	{
-		Name: "positive/query-4",
-		A:    smartvectors.ForTest(1, 1, 1, 1, 2, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1),
+		NameStr: "positive/query-4",
+		A:       smartvectors.ForTest(1, 1, 1, 1, 2, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1),
 		Bs: []smartvectors.SmartVector{
 			smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1),
 		},
@@ -70,8 +70,8 @@ var ListOfInnerProductTestcasePositive = []InnerProductTestcase{
 	},
 
 	{
-		Name: "positive/query-5",
-		A:    smartvectors.ForTest(1, 1, 1, 1, 2, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1),
+		NameStr: "positive/query-5",
+		A:       smartvectors.ForTest(1, 1, 1, 1, 2, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1),
 		Bs: []smartvectors.SmartVector{
 			smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1),
 		},
@@ -79,8 +79,8 @@ var ListOfInnerProductTestcasePositive = []InnerProductTestcase{
 	},
 
 	{
-		Name: "positive/random-full",
-		A:    RandomFromSeed(8, 1),
+		NameStr: "positive/random-full",
+		A:       RandomFromSeed(8, 1),
 		Bs: []smartvectors.SmartVector{
 			RandomFromSeed(8, 2),
 		},
@@ -90,8 +90,8 @@ var ListOfInnerProductTestcasePositive = []InnerProductTestcase{
 var ListOfInnerProductTestcaseNegative = []*InnerProductTestcase{
 
 	{
-		Name: "negative/query-1/bad-result",
-		A:    smartvectors.ForTest(1, 1, 1, 1),
+		NameStr: "negative/query-1/bad-result",
+		A:       smartvectors.ForTest(1, 1, 1, 1),
 		Bs: []smartvectors.SmartVector{
 			smartvectors.ForTest(0, 3, 0, 2),
 		},
@@ -102,8 +102,8 @@ var ListOfInnerProductTestcaseNegative = []*InnerProductTestcase{
 	},
 
 	{
-		Name: "negative/query-2",
-		A:    smartvectors.ForTest(1, 1, 1, 1),
+		NameStr: "negative/query-2",
+		A:       smartvectors.ForTest(1, 1, 1, 1),
 		Bs: []smartvectors.SmartVector{
 			smartvectors.ForTest(0, 3, 0, 2),
 			smartvectors.ForTest(1, 0, 0, 2),
@@ -113,8 +113,8 @@ var ListOfInnerProductTestcaseNegative = []*InnerProductTestcase{
 	},
 
 	{
-		Name: "negative/query-3",
-		A:    smartvectors.ForTest(1, 1, 1, 1, 2, 0, 2, 0),
+		NameStr: "negative/query-3",
+		A:       smartvectors.ForTest(1, 1, 1, 1, 2, 0, 2, 0),
 		Bs: []smartvectors.SmartVector{
 			smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0),
 			smartvectors.ForTest(1, 0, 0, 2, 1, 0, 0, 0),
@@ -124,8 +124,8 @@ var ListOfInnerProductTestcaseNegative = []*InnerProductTestcase{
 	},
 
 	{
-		Name: "negative/query-4",
-		A:    smartvectors.ForTest(1, 1, 1, 1, 2, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1),
+		NameStr: "negative/query-4",
+		A:       smartvectors.ForTest(1, 1, 1, 1, 2, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1),
 		Bs: []smartvectors.SmartVector{
 			smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1),
 		},
@@ -134,8 +134,8 @@ var ListOfInnerProductTestcaseNegative = []*InnerProductTestcase{
 	},
 
 	{
-		Name: "negative/query-5",
-		A:    smartvectors.ForTest(1, 1, 1, 1, 2, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1),
+		NameStr: "negative/query-5",
+		A:       smartvectors.ForTest(1, 1, 1, 1, 2, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1),
 		Bs: []smartvectors.SmartVector{
 			smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1),
 		},
@@ -144,8 +144,8 @@ var ListOfInnerProductTestcaseNegative = []*InnerProductTestcase{
 	},
 
 	{
-		Name: "negative/random-full",
-		A:    RandomFromSeed(8, 1),
+		NameStr: "negative/random-full",
+		A:       RandomFromSeed(8, 1),
 		Bs: []smartvectors.SmartVector{
 			RandomFromSeed(8, 2),
 		},
@@ -205,4 +205,8 @@ func (ip *InnerProductTestcase) Assign(run *wizard.ProverRuntime) {
 
 func (ip *InnerProductTestcase) MustFail() bool {
 	return ip.MustFailFlag
+}
+
+func (ip *InnerProductTestcase) Name() string {
+	return ip.NameStr
 }
