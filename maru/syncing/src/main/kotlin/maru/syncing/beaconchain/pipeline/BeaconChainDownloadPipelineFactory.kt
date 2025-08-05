@@ -8,7 +8,6 @@
  */
 package maru.syncing.beaconchain.pipeline
 
-import kotlin.text.toInt
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import maru.consensus.blockimport.SealedBeaconBlockImporter
@@ -22,7 +21,7 @@ import org.hyperledger.besu.services.pipeline.Pipeline
 import org.hyperledger.besu.services.pipeline.PipelineBuilder
 
 data class BeaconChainPipeline(
-  val pipline: Pipeline<SyncTargetRange>,
+  val pipeline: Pipeline<SyncTargetRange>,
   val target: () -> ULong,
 )
 
@@ -92,7 +91,7 @@ class BeaconChainDownloadPipelineFactory(
         .andFinishWith("importBlocks", importBlocksStep)
 
     return BeaconChainPipeline(
-      pipline = pipeline,
+      pipeline = pipeline,
       target = { latestEndBlock },
     )
   }

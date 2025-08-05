@@ -131,6 +131,21 @@ class InOrderFanoutSubscriptionManagerTest {
       .addSyncSubscriber({ data -> notifications.add("lambda2 sync handler called with: $data") })
       .also { subscribersIds.add(it) }
 
+    val lambdaSubscriberIdPrefix2 =
+      "maru.subscription.InOrderFanoutSubscriptionManagerTest.should_assign_id_when_not_provided_and_remove_them\$addSubscriber(InOrderFanoutSubscriptionManagerTest.kt"
+
+    fun addSubscriber(handlerName: String) {
+      val subsId =
+        subscriptionManager.addSyncSubscriber({ data ->
+          notifications.add("$handlerName called with: $data")
+        })
+      subscribersIds.add(subsId)
+      assertThat(subsId).startsWith(lambdaSubscriberIdPrefix2)
+    }
+
+    addSubscriber("inline lambada1")
+    addSubscriber("inline lambada2")
+
     /**
      * Examples of subscriberIds if we log them:
      subscriberRootClass1
