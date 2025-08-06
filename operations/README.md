@@ -80,7 +80,7 @@ EXAMPLES
   $ synctx  --source=http://geth-archive-1:8545 --target=http://geth-validator-1:8545 --concurrency=10
 ```
 
-_See code: [dist/index.ts](https://github.com/scripts/synctx/blob/v0.0.0/dist/index.ts)_
+_See code: [dist/index.ts](src/index.ts)_
 
 ## `synctx help [COMMANDS]`
 
