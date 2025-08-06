@@ -341,10 +341,6 @@ func (ctx *Ctx) compileRound(round int) {
 	// List all of the commitments
 	allComs := ctx.comp.Columns.AllKeysCommittedAt(round)
 
-	if len(ctx.RoundStatus) != round {
-		utils.Panic("round status size (%v) should be the same as the round id %v", len(ctx.RoundStatus), round)
-	}
-
 	// edge-case : no commitment for the round = nothing to do
 	if len(allComs) == 0 {
 		// We add the default value as 0 in the empty round
