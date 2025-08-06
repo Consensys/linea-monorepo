@@ -10,7 +10,9 @@ package maru.app
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.unmarshalPrivateKey
+import io.micrometer.core.instrument.MeterRegistry
 import io.vertx.core.Vertx
+import io.vertx.micrometer.MicrometerMetricsOptions
 import io.vertx.micrometer.backends.BackendRegistries
 import java.nio.file.Files
 import java.nio.file.Path
@@ -89,8 +91,8 @@ class MaruAppFactory {
     val nodeId = PeerId.fromPubKey(unmarshalPrivateKey(privateKey).publicKey())
     val metricsFacade =
       MicrometerMetricsFacade(
-        BackendRegistries.getDefaultNow(),
-        "maru",
+        registry = getMetricsRegistry(),
+        metricsPrefix = "maru",
         allMetricsCommonTags = listOf(Tag("nodeid", nodeId.toBase58())),
       )
     val besuMetricsSystemAdapter =
@@ -141,11 +143,13 @@ class MaruAppFactory {
     val latestElBlockMetadataCache =
       LatestElBlockMetadataCache(asyncMetadataProvider.getLatestBlockMetadata())
     val statusMessageFactory = StatusMessageFactory(beaconChain, forkIdHashProvider)
+    val engineApiWeb3jClient =
+      Helpers.createWeb3jClient(
+        config.validatorElNode.engineApiEndpoint,
+      )
     val engineApiClient =
       PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
-        Helpers.createWeb3jClient(
-          config.validatorElNode.engineApiEndpoint,
-        ),
+        engineApiWeb3jClient,
         metricsFacade,
       )
     val executionLayerManager = JsonRpcExecutionLayerManager(engineApiClient)
@@ -217,6 +221,7 @@ class MaruAppFactory {
         metricsSystem = besuMetricsSystemAdapter,
         lastElBlockMetadataCache = latestElBlockMetadataCache,
         ethereumJsonRpcClient = ethereumJsonRpcClient,
+        engineApiWeb3jService = engineApiWeb3jClient,
         apiServer = apiServer,
         syncControllerManager = syncControllerImpl,
         syncStatusProvider = syncControllerImpl,
@@ -227,6 +232,14 @@ class MaruAppFactory {
 
   companion object {
     private val log = LogManager.getLogger(MaruAppFactory::class.java)
+
+    // the second case can happen in case of concurrent access i.e. in the tests
+    private fun getMetricsRegistry(): MeterRegistry =
+      BackendRegistries.getDefaultNow() ?: BackendRegistries
+        .setupBackend(
+          MicrometerMetricsOptions(),
+          null,
+        ).let { BackendRegistries.getDefaultNow() }
 
     private fun setupFinalizationProvider(
       config: MaruConfig,

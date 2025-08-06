@@ -85,6 +85,14 @@ class ELSyncServiceTest {
       .putBeaconState(DataGenerators.randomBeaconState(3uL))
       .putSealedBeaconBlock(DataGenerators.randomSealedBeaconBlock(3UL))
       .commit()
+
+    whenever(executionLayerManager.newPayload(any()))
+      .thenReturn(
+        SafeFuture.completedFuture(
+          PayloadStatus(ExecutionPayloadStatus.VALID, null, null),
+        ),
+      )
+
     whenever(executionLayerManager.setHead(any(), any(), any()))
       .thenReturn(
         SafeFuture.completedFuture(
@@ -93,6 +101,13 @@ class ELSyncServiceTest {
       )
     timer.runNextTask()
     assertThat(elSyncStatus).isEqualTo(ELSyncStatus.SYNCING)
+
+    whenever(executionLayerManager.newPayload(any()))
+      .thenReturn(
+        SafeFuture.completedFuture(
+          PayloadStatus(ExecutionPayloadStatus.VALID, null, null),
+        ),
+      )
 
     whenever(executionLayerManager.setHead(any(), any(), any()))
       .thenReturn(
@@ -140,6 +155,14 @@ class ELSyncServiceTest {
       .putSealedBeaconBlock(sealedBlock)
       .commit()
 
+    // Mock newPayload to return a valid PayloadStatus
+    whenever(executionLayerManager.newPayload(any()))
+      .thenReturn(
+        SafeFuture.completedFuture(
+          PayloadStatus(ExecutionPayloadStatus.VALID, null, null),
+        ),
+      )
+
     whenever(executionLayerManager.setHead(any(), any(), any()))
       .thenReturn(
         SafeFuture.completedFuture(
@@ -149,6 +172,9 @@ class ELSyncServiceTest {
 
     elSyncService.start()
     timer.runNextTask()
+
+    // Verify that newPayload was called with the execution payload
+    verify(executionLayerManager).newPayload(eq(sealedBlock.beaconBlock.beaconBlockBody.executionPayload))
 
     // Verify that setHead was called with the finalization provider's values
     verify(executionLayerManager).setHead(

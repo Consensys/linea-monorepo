@@ -26,7 +26,6 @@ import maru.core.Protocol
 import maru.database.BeaconChain
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.p2p.P2PNetwork
-import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
 
 class QbftFollowerFactory(
@@ -36,7 +35,6 @@ class QbftFollowerFactory(
   private val validatorElNodeConfig: ValidatorElNode,
   private val metricsFacade: MetricsFacade,
   private val allowEmptyBlocks: Boolean,
-  private val syncStatusProvider: SyncStatusProvider,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     val qbftConsensusConfig = (forkSpec.configuration as QbftConsensusConfig)

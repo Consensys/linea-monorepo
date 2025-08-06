@@ -10,12 +10,14 @@ package maru.syncing
 
 import java.lang.Exception
 import java.util.Timer
+import java.util.UUID
 import kotlin.concurrent.timerTask
 import kotlin.time.Duration
 import maru.consensus.state.FinalizationProvider
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ExecutionPayloadStatus
+import maru.extensions.encodeHex
 import maru.services.LongRunningService
 import org.apache.logging.log4j.LogManager
 
@@ -54,7 +56,12 @@ class ELSyncService(
   private val onStatusChange: (ELSyncStatus) -> Unit,
   private val config: Config,
   private val finalizationProvider: FinalizationProvider,
-  private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon -> Timer(name, isDaemon) },
+  private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon ->
+    Timer(
+      "$name-${UUID.randomUUID()}",
+      isDaemon,
+    )
+  },
 ) : LongRunningService {
   data class Config(
     val pollingInterval: Duration,
@@ -85,21 +92,37 @@ class ELSyncService(
         blockNumber = latestBeaconBlockBody.executionPayload.blockNumber,
         blockHash = latestBeaconBlockBody.executionPayload.blockHash,
       )
-    log.debug("New EL sync target = {}", newELSyncTarget)
+    log.debug("New elSyncTarget={}", newELSyncTarget)
 
     val finalizationState = finalizationProvider(latestBeaconBlockBody)
     val fcuResponse =
       executionLayerManager
-        .setHead(
-          headHash = newELSyncTarget.blockHash,
-          safeHash = finalizationState.safeBlockHash,
-          finalizedHash = finalizationState.finalizedBlockHash,
-        ).get()
+        .newPayload(latestBeaconBlockBody.executionPayload)
+        .thenCompose {
+          executionLayerManager
+            .setHead(
+              headHash = newELSyncTarget.blockHash,
+              safeHash = finalizationState.safeBlockHash,
+              finalizedHash = finalizationState.finalizedBlockHash,
+            )
+        }.get()
 
     val newELSyncStatus =
       when (fcuResponse.payloadStatus.status) {
-        ExecutionPayloadStatus.SYNCING -> ELSyncStatus.SYNCING
-        ExecutionPayloadStatus.VALID -> ELSyncStatus.SYNCED
+        ExecutionPayloadStatus.SYNCING -> {
+          log.debug("EL client went out of sync")
+          ELSyncStatus.SYNCING
+        }
+
+        ExecutionPayloadStatus.VALID -> {
+          log.debug(
+            "EL client is synced elBlockHash={} elBlockNumber={}",
+            newELSyncTarget.blockHash.encodeHex(),
+            latestBeaconBlockBody.executionPayload.blockNumber,
+          )
+          ELSyncStatus.SYNCED
+        }
+
         else -> throw IllegalStateException("Unexpected payload status: ${fcuResponse.payloadStatus.status}")
       }
 
