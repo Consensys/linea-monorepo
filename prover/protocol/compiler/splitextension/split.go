@@ -23,8 +23,17 @@ var (
 	errInconsistentX    = errors.New("unconsistent evaluation point")
 )
 
-type ProverCtx struct {
+// AssignUnivProverAction implements the [wizard.ProverAction] interface and is
+// responsible for assigning the new univariate query.
+type AssignUnivProverAction struct {
 	Ctx SplitCtx
+}
+
+// AssignSplitColumnProverAction implements the [wizard.ProverAction] interface
+// and is responsible for assigning the splitted columns.
+type AssignSplitColumnProverAction struct {
+	Round int
+	Ctx   SplitCtx
 }
 
 type VerifierCtx struct {
@@ -103,13 +112,14 @@ func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
 				}
 
 				comp.Columns.MarkAsIgnored(pol.GetColID())
-
 				ctx.ToSplitPolynomials = append(ctx.ToSplitPolynomials, pol)
+				polRound := pol.Round()
+
 				for j := 0; j < 4; j++ {
-					curName := ifaces.ColIDf("%s_%s_%d", pol.String(), fextSplitTag, 4*i+j)
+					splittedColName := ifaces.ColIDf("%s_%s_%d", pol.String(), fextSplitTag, 4*i+j)
 					ctx.SplittedPolynomials = append(
 						ctx.SplittedPolynomials,
-						comp.InsertCommit(roundID, ifaces.ColID(curName), pol.Size()))
+						comp.InsertCommit(polRound, ifaces.ColID(splittedColName), pol.Size()))
 				}
 			}
 
@@ -126,7 +136,14 @@ func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
 				toEval,
 			)
 
-			comp.RegisterProverAction(roundID, &ProverCtx{
+			for r := 0; r <= roundID; r++ {
+				comp.RegisterProverAction(r, &AssignSplitColumnProverAction{
+					Ctx:   ctx,
+					Round: r,
+				})
+			}
+
+			comp.RegisterProverAction(roundID, &AssignUnivProverAction{
 				Ctx: ctx,
 			})
 
@@ -137,8 +154,29 @@ func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
 	}
 }
 
+// Run implements the [wizard.ProverAction] interface
+func (a *AssignSplitColumnProverAction) Run(runtime *wizard.ProverRuntime) {
+
+	ctx := a.Ctx
+
+	for i, pol := range ctx.ToSplitPolynomials {
+
+		if pol.Round() != a.Round {
+			continue
+		}
+
+		cc := pol.GetColAssignment(runtime)
+		sv := splitVector(cc)
+
+		runtime.AssignColumn(ctx.SplittedPolynomials[4*i].GetColID(), sv[0])
+		runtime.AssignColumn(ctx.SplittedPolynomials[4*i+1].GetColID(), sv[1])
+		runtime.AssignColumn(ctx.SplittedPolynomials[4*i+2].GetColID(), sv[2])
+		runtime.AssignColumn(ctx.SplittedPolynomials[4*i+3].GetColID(), sv[3])
+	}
+}
+
 // Run implements ProverAction interface
-func (pctx *ProverCtx) Run(runtime *wizard.ProverRuntime) {
+func (pctx *AssignUnivProverAction) Run(runtime *wizard.ProverRuntime) {
 
 	var (
 		ctx            = pctx.Ctx
@@ -152,19 +190,10 @@ func (pctx *ProverCtx) Run(runtime *wizard.ProverRuntime) {
 	// query. The implementation relies on the fact that these polynomials are
 	// positionned at the beginning of the list of evaluated polynomials in the
 	// new query.
-	for i, pol := range ctx.ToSplitPolynomials {
-		cc := pol.GetColAssignment(runtime)
-		sv := splitVector(cc)
-
-		runtime.AssignColumn(ctx.SplittedPolynomials[4*i].GetColID(), sv[0])
-		runtime.AssignColumn(ctx.SplittedPolynomials[4*i+1].GetColID(), sv[1])
-		runtime.AssignColumn(ctx.SplittedPolynomials[4*i+2].GetColID(), sv[2])
-		runtime.AssignColumn(ctx.SplittedPolynomials[4*i+3].GetColID(), sv[3])
-
-		for j := 0; j < 4; j++ {
-			newY := smartvectors.EvaluateLagrangeFullFext(sv[j], x)
-			y = append(y, newY)
-		}
+	for _, pol := range ctx.SplittedPolynomials {
+		sv := pol.GetColAssignment(runtime)
+		newY := smartvectors.EvaluateLagrangeFullFext(sv, x)
+		y = append(y, newY)
 	}
 
 	// This loops collect the evaluation claims of the already-on-base polynomials
