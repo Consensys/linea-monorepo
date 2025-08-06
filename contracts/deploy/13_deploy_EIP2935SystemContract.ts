@@ -1,13 +1,14 @@
 import { ethers, getChainId } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { tryStoreAddress } from "../common/helpers";
 
 // Deploy EIP-2935 Historical Block Hashes system contract - https://github.com/ethereum/EIPs/blob/master/EIPS/eip-2935.md
 // Prerequisite - Fund the predetermined sender address with enough ETH to cover the deployment cost
-// npx hardhat deploy --tags EIP2935SystemContract
 
-const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+// Can test against local anvil node with
+// One terminal `anvil --hardfork london`
+// Another terminal `npx hardhat deploy --network custom --tags EIP2935SystemContract`
+
+const func: DeployFunction = async function () {
   const contractName = "EIP2935SystemContract";
   const expectedAddress = "0x0000F90827F1C53a10cb7A02335B175320002935";
 
@@ -77,14 +78,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const receipt = await tx.wait();
 
     console.log(
-      `contract=${contractName} deployed: address=${receipt?.contractAddress} blockNumber=${receipt?.blockNumber} chainId=${getChainId()}`,
+      `contract=${contractName} deployed: address=${receipt?.contractAddress} blockNumber=${receipt?.blockNumber} chainId=${await getChainId()}`,
     );
 
     if (receipt?.contractAddress !== expectedAddress) {
       throw new Error(`Contract deployed to ${receipt?.contractAddress}, expected ${expectedAddress}`);
     }
-
-    await tryStoreAddress(hre.network.name, contractName, expectedAddress, tx.hash);
   } catch (error) {
     console.error(`Error during contract=${contractName} deployment: ${(error as Error).message}`);
     throw error; // Re-throw to fail the deployment
