@@ -118,19 +118,19 @@ export default class EthTransfer extends Command {
       env: "ETH_TRANSFER_GAS_ESTIMATION_PERCENTILE",
     }),
     "web3-signer-keystore-path": Flags.string({
-      description: "Path to the PFX file for HTTPS agent",
+      description: "Path to the web3 signer keystore file",
       required: true,
-      env: "ETH_TRANSFER_PFX_PATH",
+      env: "ETH_TRANSFER_WEB3_SIGNER_KEYSTORE_PATH",
     }),
     "web3-signer-passphrase": Flags.string({
-      description: "Passphrase for the PFX file",
+      description: "Passphrase for the web3 signer keystore",
       required: true,
-      env: "ETH_TRANSFER_PFX_PASSPHRASE",
+      env: "ETH_TRANSFER_WEB3_SIGNER_KEYSTORE_PASSPHRASE",
     }),
-    "web3-signer-trustedStore-path": Flags.string({
-      description: "Path to the CA file for HTTPS agent",
+    "web3-signer-trusted-store-path": Flags.string({
+      description: "Path to the web3 signer trusted store file",
       required: true,
-      env: "ETH_TRANSFER_CA_PATH",
+      env: "ETH_TRANSFER_WEB3_SIGNER_TRUSTED_STORE_PATH",
     }),
   };
 
