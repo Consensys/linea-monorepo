@@ -69,7 +69,12 @@ class BeaconChainDownloadPipelineFactory(
       }
 
     val downloadBlocksStep =
-      DownloadBlocksStep(peerLookup, config.maxRetries, config.blockRangeRequestTimeout)
+      DownloadBlocksStep(
+        peerLookup = peerLookup,
+        maxRetries = config.maxRetries,
+        blockRangeRequestTimeout = config.blockRangeRequestTimeout,
+        syncTargetProvider = syncTargetProvider,
+      )
     val importBlocksStep = ImportBlocksStep(blockImporter)
 
     val pipeline =

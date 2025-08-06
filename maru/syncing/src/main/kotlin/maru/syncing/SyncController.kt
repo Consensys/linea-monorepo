@@ -176,7 +176,7 @@ class BeaconSyncControllerImpl(
       beaconChain: BeaconChain,
       elManager: ExecutionLayerManager,
       peersHeadsProvider: PeersHeadBlockProvider,
-      targetChainHeadCalculator: SyncTargetSelector = MostFrequentHeadTargetSelector(),
+      targetChainHeadCalculator: SyncTargetSelector = HighestHeadTargetSelector(),
       peerChainTrackerConfig: PeerChainTracker.Config,
       validatorProvider: ValidatorProvider,
       peerLookup: PeerLookup,

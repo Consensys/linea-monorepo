@@ -73,7 +73,7 @@ class PeerChainTracker(
 
     val roundedNewPeerHeads = newPeerHeads.mapValues { roundHeight(it.value) }
     peers = roundedNewPeerHeads.toMutableMap()
-    log.debug("Rounded peers peersSize={}", peers.size)
+    log.debug("Rounded peers peers={}", peers)
     // Update the state and recalculate the sync target
     val newSyncTarget =
       if (peers.isNotEmpty()) {
