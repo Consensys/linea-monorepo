@@ -98,6 +98,12 @@ class PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
   override fun getLatestBlockHash(): SafeFuture<ByteArray> =
     web3jEngineClient.powChainHead.thenApply { powBlock -> powBlock.blockHash.toArray() }
 
+  override fun isOnline(): SafeFuture<Boolean> =
+    this
+      .getLatestBlockHash()
+      .thenApply { true }
+      .exceptionally { false }
+
   private fun PayloadAttributesV1.toV3(): PayloadAttributesV3 =
     PayloadAttributesV3(
       this.timestamp,

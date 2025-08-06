@@ -80,6 +80,8 @@ class BeaconSyncControllerImpl(
     fullSyncCompleteHandlers.addSyncSubscriber(handler.toString()) { handler() }
   }
 
+  override fun getBeaconSyncDistance(): ULong = clSyncService.getSyncDistance()
+
   fun updateClSyncStatus(newStatus: CLSyncStatus) {
     val callbacks: List<() -> Unit> =
       lock.write {
@@ -171,6 +173,8 @@ class BeaconSyncControllerImpl(
   // Helper method for testing
   internal fun captureStateSnapshot(): SyncState = lock.read { currentState }
 
+  override fun getCLSyncTarget(): ULong = clSyncService.getSyncTarget()
+
   companion object {
     fun create(
       beaconChain: BeaconChain,
@@ -261,7 +265,9 @@ class SyncControllerManager(
   }
 }
 
-class AlwaysSyncedController : SyncController {
+class AlwaysSyncedController(
+  val beaconChain: BeaconChain,
+) : SyncController {
   private val clSyncHandlers = InOrderFanoutSubscriptionManager<CLSyncStatus>()
   private val elSyncHandlers = InOrderFanoutSubscriptionManager<ELSyncStatus>()
   private val beaconSyncCompleteHandlers = InOrderFanoutSubscriptionManager<Unit>()
@@ -291,12 +297,16 @@ class AlwaysSyncedController : SyncController {
 
   override fun isELSynced(): Boolean = true
 
+  override fun getBeaconSyncDistance(): ULong = 0UL
+
   override fun start() {
     elSyncHandlers.notifySubscribers(getElSyncStatus())
     clSyncHandlers.notifySubscribers(getCLSyncStatus())
     fullSyncCompleteHandlers.notifySubscribers(Unit)
     beaconSyncCompleteHandlers.notifySubscribers(Unit)
   }
+
+  override fun getCLSyncTarget(): ULong = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number
 
   override fun stop() {
   }

@@ -11,6 +11,7 @@ package maru.api.node
 import com.fasterxml.jackson.annotation.JsonProperty
 import io.javalin.http.Context
 import io.javalin.http.Handler
+import maru.syncing.SyncStatusProvider
 
 data class GetSyncingStatusResponse(
   val data: SyncingStatusData,
@@ -24,19 +25,20 @@ data class SyncingStatusData(
   @JsonProperty("el_offline") val elOffline: Boolean,
 )
 
-class GetSyncingStatus : Handler {
+class GetSyncingStatus(
+  private val syncStatusProvider: SyncStatusProvider,
+  private val isElOnlineProvider: () -> Boolean,
+) : Handler {
   override fun handle(ctx: Context) {
-    // This is a placeholder implementation. Replace it with actual logic to retrieve syncing status.
-    // TODO(Implement actual syncing status retrieval logic when we have syncing in place)
     ctx.status(200).json(
       GetSyncingStatusResponse(
         data =
           SyncingStatusData(
-            headSlot = "12345678",
-            syncDistance = "0",
-            isSyncing = false,
-            isOptimistic = false,
-            elOffline = false,
+            headSlot = syncStatusProvider.getCLSyncTarget().toString(),
+            syncDistance = syncStatusProvider.getBeaconSyncDistance().toString(),
+            isSyncing = !syncStatusProvider.isBeaconChainSynced(),
+            isOptimistic = true, // we only support optimistic mode for now
+            elOffline = !isElOnlineProvider.invoke(),
           ),
       ),
     )

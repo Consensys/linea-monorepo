@@ -22,12 +22,15 @@ import maru.api.node.GetPeers
 import maru.api.node.GetSyncingStatus
 import maru.api.node.GetVersion
 import maru.p2p.NetworkDataProvider
+import maru.syncing.SyncStatusProvider
 
 class ApiServerImpl(
   val config: Config,
   val networkDataProvider: NetworkDataProvider,
   val versionProvider: VersionProvider,
   val chainDataProvider: ChainDataProvider,
+  val syncStatusProvider: SyncStatusProvider,
+  val isElOnlineProvider: () -> Boolean,
 ) : ApiServer {
   data class Config(
     val port: UInt,
@@ -53,8 +56,13 @@ class ApiServerImpl(
           .get(GetPeer.ROUTE, GetPeer(networkDataProvider))
           .get(GetPeerCount.ROUTE, GetPeerCount(networkDataProvider))
           .get(GetVersion.ROUTE, GetVersion(versionProvider))
-          .get(GetSyncingStatus.ROUTE, GetSyncingStatus())
-          .get(GetHealth.ROUTE, GetHealth())
+          .get(
+            GetSyncingStatus.ROUTE,
+            GetSyncingStatus(
+              syncStatusProvider = syncStatusProvider,
+              isElOnlineProvider = isElOnlineProvider,
+            ),
+          ).get(GetHealth.ROUTE, GetHealth())
           .get(GetBlockHeader.ROUTE, GetBlockHeader(chainDataProvider))
           .get(GetBlock.ROUTE, GetBlock(chainDataProvider))
           .get(GetStateValidator.ROUTE, GetStateValidator(chainDataProvider))
