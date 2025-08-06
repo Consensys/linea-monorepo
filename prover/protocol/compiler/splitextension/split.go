@@ -182,7 +182,7 @@ func (pctx *AssignUnivProverAction) Run(runtime *wizard.ProverRuntime) {
 		ctx            = pctx.Ctx
 		evalFextParams = runtime.GetUnivariateParams(ctx.QueryFext.Name())
 		x              = evalFextParams.ExtX
-		y              = make([]fext.Element, 0, len(ctx.QueryBaseField.Pols))
+		svToEval       = make([]smartvectors.SmartVector, 0, len(ctx.QueryBaseField.Pols))
 	)
 
 	// This loop evaluates and assigns the polynomials that have been split and
@@ -192,9 +192,10 @@ func (pctx *AssignUnivProverAction) Run(runtime *wizard.ProverRuntime) {
 	// new query.
 	for _, pol := range ctx.SplittedPolynomials {
 		sv := pol.GetColAssignment(runtime)
-		newY := smartvectors.EvaluateLagrangeFullFext(sv, x)
-		y = append(y, newY)
+		svToEval = append(svToEval, sv)
 	}
+
+	y := smartvectors.BatchEvaluateLagrangeMixed(svToEval, x)
 
 	// This loops collect the evaluation claims of the already-on-base polynomials
 	// from the new query to append them to the claims on the new query. This
