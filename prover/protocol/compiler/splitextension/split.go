@@ -82,6 +82,8 @@ func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
 				utils.Panic("expected only one query to compile")
 			}
 
+			comp.QueriesParams.MarkAsIgnored(qName)
+
 			basefieldQName := ifaces.QueryIDf("%s_%s", qName, fextSplitTag)
 
 			ctx := SplitCtx{
@@ -99,6 +101,8 @@ func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
 					ctx.AlreadyOnBasePolynomials = append(ctx.AlreadyOnBasePolynomials, pol)
 					continue
 				}
+
+				comp.Columns.MarkAsIgnored(pol.GetColID())
 
 				ctx.ToSplitPolynomials = append(ctx.ToSplitPolynomials, pol)
 				for j := 0; j < 4; j++ {
