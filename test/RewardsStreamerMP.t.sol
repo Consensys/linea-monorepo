@@ -2277,12 +2277,6 @@ contract LeaveTest is StakeManagerTest {
         super.setUp();
     }
 
-    function test_RevertWhenStakeManagerIsTrusted() public {
-        _stake(alice, 10e18, 0);
-        vm.expectRevert(StakeVault.StakeVault__NotAllowedToLeave.selector);
-        _leave(alice);
-    }
-
     function test_LeaveShouldProperlyUpdateAccounting() public {
         uint256 aliceInitialBalance = stakingToken.balanceOf(alice);
 
@@ -2358,37 +2352,6 @@ contract LeaveTest is StakeManagerTest {
         vault.withdrawFromVault(stakeAmount, alice);
 
         assertEq(stakingToken.balanceOf(alice), aliceInitialBalance, "Alice has withdrawn her funds");
-    }
-
-    function test_TrustNewStakeManager() public {
-        // first, upgrade to new stake manager, marking it as not trusted
-        _upgradeStakeManager();
-
-        // ensure vault functions revert if stake manager is not trusted
-        vm.expectRevert(StakeVault.StakeVault__StakeManagerImplementationNotTrusted.selector);
-        _stake(alice, 100e18, 0);
-
-        // ensure vault functions revert if stake manager is not trusted
-        StakeVault vault = StakeVault(vaults[alice]);
-        vm.prank(alice);
-        vm.expectRevert(StakeVault.StakeVault__StakeManagerImplementationNotTrusted.selector);
-        vault.lock(365 days);
-
-        // ensure vault functions revert if stake manager is not trusted
-        vm.expectRevert(StakeVault.StakeVault__StakeManagerImplementationNotTrusted.selector);
-        _unstake(alice, 100e18);
-
-        // now, trust the new stake manager
-        address newStakeManagerImpl = IStakeManagerProxy(address(streamer)).implementation();
-        vm.prank(alice);
-        vault.trustStakeManager(newStakeManagerImpl);
-
-        // stake manager is now trusted, so functions are enabeled again
-        _stake(alice, 100e18, 0);
-
-        // however, a trusted manager cannot be left
-        vm.expectRevert(StakeVault.StakeVault__NotAllowedToLeave.selector);
-        _leave(alice);
     }
 }
 

@@ -70,22 +70,6 @@ contract StakeVaultCoverageTest is StakeVaultTest {
         stakeVault.stake(1e18, 90 days);
     }
 
-    function test_StakeRevertsIfManagerNotTrusted() public {
-        vm.prank(alice);
-        stakeVault.trustStakeManager(address(0xDEAD));
-        vm.prank(alice);
-        vm.expectRevert(StakeVault.StakeVault__StakeManagerImplementationNotTrusted.selector);
-        stakeVault.stake(1e18, 3600);
-    }
-
-    function test_LockRevertsIfManagerNotTrusted() public {
-        vm.prank(alice);
-        stakeVault.trustStakeManager(address(0xBEEF));
-        vm.prank(alice);
-        vm.expectRevert(StakeVault.StakeVault__StakeManagerImplementationNotTrusted.selector);
-        stakeVault.lock(3600);
-    }
-
     function test_UnstakeTransfersTokensBackToOwner() public {
         uint256 startBalance = stakingToken.balanceOf(alice);
         vm.prank(alice);
@@ -107,17 +91,9 @@ contract StakeVaultCoverageTest is StakeVaultTest {
                           TESTES PARA leave()
     ////////////////////////////////////////////////////////////*/
 
-    function test_LeaveRevertsWhenManagerTrusted() public {
-        vm.prank(alice);
-        vm.expectRevert(StakeVault.StakeVault__NotAllowedToLeave.selector);
-        stakeVault.leave(alice);
-    }
-
-    function test_LeaveTransfersAllFundsAfterUntrustingManager() public {
+    function test_LeaveTransfersAllFunds() public {
         vm.prank(alice);
         stakeVault.stake(2e18, 0);
-        vm.prank(alice);
-        stakeVault.trustStakeManager(address(1));
         vm.prank(alice);
         stakeVault.leave(bob);
         assertEq(stakingToken.balanceOf(bob), 2e18);
