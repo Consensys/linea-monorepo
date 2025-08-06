@@ -6,7 +6,9 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -60,6 +62,25 @@ func RandomFromSeed(size int, seed int64) smartvectors.SmartVector {
 	// #nosec G404 --we don't need a cryptographic RNG for testing purpose
 	rng := rand.New(utils.NewRandSource(seed))
 	return smartvectors.PseudoRand(rng, size)
+}
+
+// Reverse returns a smartvector with reverted entries. It expects a Regular
+// or RegularExt smartvector.
+func Reverse(v smartvectors.SmartVector) smartvectors.SmartVector {
+	switch w := v.(type) {
+	case *smartvectors.Regular:
+		u := []field.Element(*w)
+		u = vector.DeepCopy(u)
+		vector.Reverse(u)
+		return smartvectors.NewRegular(u)
+	case *smartvectors.RegularExt:
+		u := []fext.Element(*w)
+		u = vectorext.DeepCopy(u)
+		vectorext.Reverse(u)
+		return smartvectors.NewRegularExt(u)
+	default:
+		panic(fmt.Sprintf("unexpected type %T", v))
+	}
 }
 
 // OnesAt returns a vector of size "size" with ones at the positions
