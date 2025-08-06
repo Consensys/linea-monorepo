@@ -41,76 +41,75 @@ var ListOfProjectionTestcasePositive = []*ProjectionTestcase{
 			CountingAt(8, 0, []int{1, 2, 3, 4, 5}),
 		}},
 	},
-	/*
-		{
-			NameStr: "positive/selector-full-zeroes-multicolumn",
-			FilterA: []smartvectors.SmartVector{smartvectors.NewConstant(field.Zero(), 16)},
-			FilterB: []smartvectors.SmartVector{smartvectors.NewConstant(field.Zero(), 8)},
-			As: [][]smartvectors.SmartVector{{
-				smartvectors.PseudoRand(rng, 16),
-				smartvectors.PseudoRand(rng, 16),
-			}},
-			Bs: [][]smartvectors.SmartVector{{
-				smartvectors.PseudoRand(rng, 8),
-				smartvectors.PseudoRand(rng, 8),
-			}},
-		},
+	{
+		NameStr: "positive/selector-full-zeroes-multicolumn",
+		FilterA: []smartvectors.SmartVector{smartvectors.NewConstant(field.Zero(), 16)},
+		FilterB: []smartvectors.SmartVector{smartvectors.NewConstant(field.Zero(), 8)},
+		As: [][]smartvectors.SmartVector{{
+			smartvectors.PseudoRand(rng, 16),
+			smartvectors.PseudoRand(rng, 16),
+		}},
+		Bs: [][]smartvectors.SmartVector{{
+			smartvectors.PseudoRand(rng, 8),
+			smartvectors.PseudoRand(rng, 8),
+		}},
+	},
 
-		{
-			NameStr: "positive/counting-values-multicolumn",
-			FilterA: []smartvectors.SmartVector{OnesAt(16, []int{2, 4, 6, 8, 10})},
-			FilterB: []smartvectors.SmartVector{OnesAt(8, []int{1, 2, 3, 4, 5})},
-			As: [][]smartvectors.SmartVector{{
-				CountingAt(16, 0, []int{2, 4, 6, 8, 10}),
-				CountingAt(16, 5, []int{2, 4, 6, 8, 10}),
-			}},
-			Bs: [][]smartvectors.SmartVector{{
-				CountingAt(8, 0, []int{1, 2, 3, 4, 5}),
-				CountingAt(8, 5, []int{1, 2, 3, 4, 5}),
-			}},
-		},
+	{
+		NameStr: "positive/counting-values-multicolumn",
+		FilterA: []smartvectors.SmartVector{OnesAt(16, []int{2, 4, 6, 8, 10})},
+		FilterB: []smartvectors.SmartVector{OnesAt(8, []int{1, 2, 3, 4, 5})},
+		As: [][]smartvectors.SmartVector{{
+			CountingAt(16, 0, []int{2, 4, 6, 8, 10}),
+			CountingAt(16, 5, []int{2, 4, 6, 8, 10}),
+		}},
+		Bs: [][]smartvectors.SmartVector{{
+			CountingAt(8, 0, []int{1, 2, 3, 4, 5}),
+			CountingAt(8, 5, []int{1, 2, 3, 4, 5}),
+		}},
+	},
 
-		{
-			NameStr: "positive/spaghettification",
-			FilterA: []smartvectors.SmartVector{smartvectors.NewConstant(field.One(), 16)},
-			FilterB: []smartvectors.SmartVector{
-				smartvectors.NewConstant(field.One(), 8),
-				smartvectors.NewConstant(field.One(), 8),
+	{
+		NameStr: "positive/spaghettification",
+		FilterA: []smartvectors.SmartVector{smartvectors.NewConstant(field.One(), 16)},
+		FilterB: []smartvectors.SmartVector{
+			smartvectors.NewConstant(field.One(), 8),
+			smartvectors.NewConstant(field.One(), 8),
+		},
+		As: [][]smartvectors.SmartVector{{
+			smartvectors.ForTest(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16),
+		}},
+		Bs: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(1, 3, 5, 7, 9, 11, 13, 15),
 			},
-			As: [][]smartvectors.SmartVector{{
-				smartvectors.ForTest(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16),
-			}},
-			Bs: [][]smartvectors.SmartVector{
-				{
-					smartvectors.ForTest(1, 3, 5, 7, 9, 11, 13, 15),
-				},
-				{
-					smartvectors.ForTest(2, 4, 6, 8, 10, 12, 14, 16),
-				},
+			{
+				smartvectors.ForTest(2, 4, 6, 8, 10, 12, 14, 16),
 			},
 		},
+	},
 
-		{
-			NameStr: "positive/spaghettification-with-selectors",
-			FilterA: []smartvectors.SmartVector{
-				smartvectors.NewConstant(field.One(), 8),
+	{
+		NameStr: "positive/spaghettification-with-selectors",
+		FilterA: []smartvectors.SmartVector{
+			smartvectors.NewConstant(field.One(), 8),
+		},
+		FilterB: []smartvectors.SmartVector{
+			smartvectors.ForTest(1, 1, 1, 1, 0, 0, 0, 0),
+			smartvectors.ForTest(1, 1, 1, 1, 0, 0, 0, 0),
+		},
+		As: [][]smartvectors.SmartVector{{
+			smartvectors.ForTest(1, 2, 3, 4, 5, 6, 7, 8),
+		}},
+		Bs: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(1, 3, 5, 7, -1, -1, -1, -1),
 			},
-			FilterB: []smartvectors.SmartVector{
-				smartvectors.ForTest(1, 1, 1, 1, 0, 0, 0, 0),
-				smartvectors.ForTest(1, 1, 1, 1, 0, 0, 0, 0),
+			{
+				smartvectors.ForTest(2, 4, 6, 8, -1, -1, -1, -1),
 			},
-			As: [][]smartvectors.SmartVector{{
-				smartvectors.ForTest(1, 2, 3, 4, 5, 6, 7, 8),
-			}},
-			Bs: [][]smartvectors.SmartVector{
-				{
-					smartvectors.ForTest(1, 3, 5, 7, -1, -1, -1, -1),
-				},
-				{
-					smartvectors.ForTest(2, 4, 6, 8, -1, -1, -1, -1),
-				},
-			},
-		},*/
+		},
+	},
 }
 
 var ListOfProjectionTestcaseNegative = []*ProjectionTestcase{
