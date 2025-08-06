@@ -10,6 +10,9 @@ export type Config = {
   maxFeePerGas: bigint;
   gasEstimationPercentile: number;
   dryRun: boolean;
+  web3SignerKeystorePath: string;
+  web3SignerPassphrase: string;
+  web3SignerTrustedStorePath: string;
 };
 
 export function validateConfig(flags: FlagOutput): Config {
@@ -23,6 +26,9 @@ export function validateConfig(flags: FlagOutput): Config {
     dryRun,
     maxFeePerGas: maxFeePerGasArg,
     gasEstimationPercentile,
+    web3SignerKeystorePath,
+    web3SignerPassphrase,
+    web3SignerTrustedStorePath,
   } = flags;
 
   const requiredFlags = [
@@ -32,6 +38,9 @@ export function validateConfig(flags: FlagOutput): Config {
     "blockchainRpcUrl",
     "web3SignerUrl",
     "web3SignerPublicKey",
+    "web3SignerKeystorePath",
+    "web3SignerPassphrase",
+    "web3SignerTrustedStorePath",
   ];
 
   for (const flagName of requiredFlags) {
@@ -56,6 +65,14 @@ export function validateConfig(flags: FlagOutput): Config {
     );
   }
 
+  if (!web3SignerKeystorePath.endsWith(".p12")) {
+    throw new Error(`Invalid PFX file path: ${web3SignerKeystorePath}. Must end with .p12.`);
+  }
+
+  if (!web3SignerTrustedStorePath.endsWith(".p12")) {
+    throw new Error(`Invalid CA file path: ${web3SignerTrustedStorePath}. Must end with .p12.`);
+  }
+
   return {
     senderAddress,
     destinationAddress,
@@ -66,5 +83,8 @@ export function validateConfig(flags: FlagOutput): Config {
     maxFeePerGas,
     gasEstimationPercentile,
     dryRun,
+    web3SignerKeystorePath,
+    web3SignerPassphrase,
+    web3SignerTrustedStorePath,
   };
 }
