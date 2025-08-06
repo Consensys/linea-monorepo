@@ -3,7 +3,7 @@ import { config } from "./config/tests-config";
 import { execDockerCommand, getBlockByNumberOrBlockTag, pollForBlockNumber, wait } from "./common/utils";
 
 // should remove skip only when the linea-sequencer plugin supports liveness
-describe.skip("Liveness test suite", () => {
+describe("Liveness test suite", () => {
   const l2AccountManager = config.getL2AccountManager();
 
   it.concurrent(
