@@ -30,6 +30,14 @@ class MostFrequentHeadTargetSelector : SyncTargetSelector {
   }
 }
 
+class HighestHeadTargetSelector : SyncTargetSelector {
+  override fun selectBestSyncTarget(peerHeads: List<ULong>): ULong {
+    require(peerHeads.isNotEmpty()) { "Peer heads list cannot be empty" }
+
+    return peerHeads.max()
+  }
+}
+
 fun interface BeaconSyncTargetUpdateHandler {
   fun onBeaconChainSyncTargetUpdated(syncTargetBlockNumber: ULong)
 }

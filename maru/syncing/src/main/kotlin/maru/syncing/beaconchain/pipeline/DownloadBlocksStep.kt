@@ -26,6 +26,7 @@ class DownloadBlocksStep(
   private val peerLookup: PeerLookup,
   private val maxRetries: UInt,
   private val blockRangeRequestTimeout: Duration,
+  private val syncTargetProvider: () -> ULong,
 ) : Function<SyncTargetRange, CompletableFuture<List<SealedBlockWithPeer>>> {
   private val log: Logger = LogManager.getLogger(this.javaClass)
   private val shouldLog = AtomicBoolean(true)
@@ -47,7 +48,14 @@ class DownloadBlocksStep(
       )
 
       do {
-        peer = peerLookup.getPeers().random() // TODO: filter peers? Do we want to use least busy peer?
+        val currentSyncTarget = syncTargetProvider()
+        peer =
+          peerLookup
+            .getPeers()
+            .filter {
+              it.getStatus() != null && it.getStatus()!!.latestBlockNumber >=
+                currentSyncTarget
+            }.random()
         try {
           peer
             .sendBeaconBlocksByRange(startBlockNumber, remaining)

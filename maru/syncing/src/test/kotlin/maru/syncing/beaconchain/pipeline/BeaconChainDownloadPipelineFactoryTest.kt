@@ -18,6 +18,7 @@ import maru.p2p.MaruPeer
 import maru.p2p.PeerLookup
 import maru.p2p.ValidationResult
 import maru.p2p.messages.BeaconBlocksByRangeResponse
+import maru.syncing.beaconchain.pipeline.DataGenerators.randomStatus
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
@@ -75,6 +76,7 @@ class BeaconChainDownloadPipelineFactoryTest {
       val response = mock<BeaconBlocksByRangeResponse>()
       whenever(response.blocks).thenReturn(blocks)
       whenever(peer.sendBeaconBlocksByRange(range.first, range.second)).thenReturn(completedFuture(response))
+      whenever(peer.getStatus()).thenReturn(randomStatus(125uL))
     }
 
     whenever(blockImporter.importBlock(any())).thenReturn(
@@ -110,6 +112,7 @@ class BeaconChainDownloadPipelineFactoryTest {
       val response = mock<BeaconBlocksByRangeResponse>()
       whenever(response.blocks).thenReturn(blocks)
       whenever(peer.sendBeaconBlocksByRange(range.first, range.second)).thenReturn(completedFuture(response))
+      whenever(peer.getStatus()).thenReturn(randomStatus(125uL))
     }
 
     whenever(blockImporter.importBlock(any())).thenReturn(
@@ -139,6 +142,7 @@ class BeaconChainDownloadPipelineFactoryTest {
     val response = mock<BeaconBlocksByRangeResponse>()
     whenever(response.blocks).thenReturn(blocks)
     whenever(peer.sendBeaconBlocksByRange(42uL, 1uL)).thenReturn(completedFuture(response))
+    whenever(peer.getStatus()).thenReturn(randomStatus(43uL))
 
     whenever(blockImporter.importBlock(any())).thenReturn(
       completedFuture(ValidationResult.Companion.Valid),
@@ -174,6 +178,7 @@ class BeaconChainDownloadPipelineFactoryTest {
     val response = mock<BeaconBlocksByRangeResponse>()
     whenever(response.blocks).thenReturn(blocks)
     whenever(peer.sendBeaconBlocksByRange(0uL, 51uL)).thenReturn(completedFuture(response))
+    whenever(peer.getStatus()).thenReturn(randomStatus(50uL))
 
     whenever(blockImporter.importBlock(any())).thenReturn(
       completedFuture(ValidationResult.Companion.Valid),
@@ -232,6 +237,7 @@ class BeaconChainDownloadPipelineFactoryTest {
       peer.sendBeaconBlocksByRange(startBlock + 1uL, 1uL),
     ).thenReturn(completedFuture(BeaconBlocksByRangeResponse(listOf(block2))))
 
+    whenever(peer.getStatus()).thenReturn(randomStatus(ULong.MAX_VALUE))
     whenever(blockImporter.importBlock(any())).thenReturn(completedFuture(ValidationResult.Companion.Valid))
     whenever(syncTargetProvider.invoke()).thenReturn(ULong.MAX_VALUE - 1uL)
 
