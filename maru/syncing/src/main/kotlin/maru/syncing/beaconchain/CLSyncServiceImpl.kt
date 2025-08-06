@@ -12,6 +12,7 @@ import java.util.concurrent.CancellationException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
+import linea.kotlin.minusCoercingUnderflow
 import maru.consensus.ValidatorProvider
 import maru.database.BeaconChain
 import maru.metrics.MaruMetricsCategory
@@ -74,6 +75,20 @@ class CLSyncServiceImpl(
       startSync()
     }
   }
+
+  override fun getSyncDistance(): ULong {
+    if (!started.get()) {
+      // we need to return a number to the BeaconAPI that indicates the sync distance
+      // so we will optimistically return 0UL if the service is not started
+      return 0UL
+    }
+
+    return syncTarget
+      .get()
+      .minusCoercingUnderflow(beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number)
+  }
+
+  override fun getSyncTarget(): ULong = syncTarget.get()
 
   @Synchronized
   private fun startSync() {

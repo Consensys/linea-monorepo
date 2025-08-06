@@ -192,7 +192,7 @@ class MaruAppFactory {
           allowEmptyBlocks = config.allowEmptyBlocks,
         )
       } else {
-        AlwaysSyncedController()
+        AlwaysSyncedController(beaconChain)
       }
 
     val apiServer =
@@ -205,6 +205,8 @@ class MaruAppFactory {
           networkDataProvider = P2PNetworkDataProvider(p2pNetwork),
           versionProvider = MaruVersionProvider(),
           chainDataProvider = ChainDataProviderImpl(beaconChain),
+          syncStatusProvider = syncControllerImpl,
+          isElOnlineProvider = { engineApiClient.isOnline().get() },
         )
 
     val maru =

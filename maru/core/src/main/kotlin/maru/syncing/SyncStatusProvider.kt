@@ -42,4 +42,8 @@ interface SyncStatusProvider {
   fun onBeaconSyncComplete(handler: () -> Unit)
 
   fun onFullSyncComplete(handler: () -> Unit)
+
+  fun getBeaconSyncDistance(): ULong
+
+  fun getCLSyncTarget(): ULong
 }

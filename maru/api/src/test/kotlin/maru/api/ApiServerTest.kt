@@ -48,9 +48,11 @@ import maru.api.node.VersionData
 import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
+import maru.database.InMemoryBeaconChain
 import maru.extensions.encodeHex
 import maru.p2p.NetworkDataProvider
 import maru.p2p.PeerInfo
+import maru.syncing.AlwaysSyncedController
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -97,8 +99,8 @@ class ApiServerTest {
 
   private val fakeChainDataProvider =
     object : ChainDataProvider {
-      public val SEALED_BEACON_BLOCK = DataGenerators.randomSealedBeaconBlock(1u)
-      public val BEACON_STATE = DataGenerators.randomBeaconState(1u)
+      val SEALED_BEACON_BLOCK = DataGenerators.randomSealedBeaconBlock(1u)
+      val BEACON_STATE = DataGenerators.randomBeaconState(1u)
 
       override fun getLatestBeaconState(): BeaconState = BEACON_STATE
 
@@ -130,6 +132,14 @@ class ApiServerTest {
       }
     }
 
+  private val fakeBeaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
+  private val fakeElOnlineProvider =
+    object : () -> Boolean {
+      var isElOnline: Boolean = false
+
+      override fun invoke(): Boolean = isElOnline
+    }
+
   @BeforeEach
   fun beforeEach() {
     apiServer =
@@ -138,6 +148,8 @@ class ApiServerTest {
         networkDataProvider = fakeNetworkDataProvider,
         versionProvider = fakeVersionProvider,
         chainDataProvider = fakeChainDataProvider,
+        syncStatusProvider = AlwaysSyncedController(beaconChain = fakeBeaconChain),
+        isElOnlineProvider = fakeElOnlineProvider,
       )
     apiServer.start()
     apiServerUrl = "http://localhost:${apiServer.port()}"
@@ -149,10 +161,43 @@ class ApiServerTest {
     apiServer.stop()
   }
 
+  fun makeRequest(
+    apiPath: String,
+    expectedStatusCode: Int = 200,
+  ): String? {
+    val url = (apiServerUrl + apiPath).toHttpUrl()
+    val request = Request.Builder().url(url).build()
+    val httpResponse = client.newCall(request).execute()
+    assertThat(httpResponse).isNotNull
+    assertThat(httpResponse.code).isEqualTo(expectedStatusCode)
+    return httpResponse.body?.string()
+  }
+
+  fun assertResponse(
+    apiPath: String,
+    expectedStatusCode: Int = 200,
+    expectedResponse: Any,
+  ) {
+    val responseBody = makeRequest(apiPath, expectedStatusCode)
+    val response =
+      defaultObjectMapper.readValue(
+        responseBody,
+        expectedResponse::class.java,
+      )
+    assertThat(response).isEqualTo(expectedResponse)
+  }
+
+  fun assert200okResponse(
+    apiPath: String,
+    expectedResponse: Any,
+  ) = assertResponse(
+    apiPath = apiPath,
+    expectedStatusCode = 200,
+    expectedResponse = expectedResponse,
+  )
+
   @Test
   fun `test GetNetworkIdentity method`() {
-    val url = (apiServerUrl + GetNetworkIdentity.ROUTE).toHttpUrl()
-    val request = Request.Builder().url(url).build()
     val networkIdentity =
       NetworkIdentity(
         peerId = fakeNetworkDataProvider.getNodeId(),
@@ -167,23 +212,11 @@ class ApiServerTest {
           ),
       )
 
-    val expectedGetNetworkIdentityResponse = GetNetworkIdentityResponse(networkIdentity)
-    val response = client.newCall(request).execute()
-    assertThat(response).isNotNull
-    assertThat(response.code).isEqualTo(200)
-    val responseBody = response.body?.string()
-    val getNetworkIdentityResponse =
-      defaultObjectMapper.readValue(
-        responseBody,
-        GetNetworkIdentityResponse::class.java,
-      )
-    assertThat(getNetworkIdentityResponse).isEqualTo(expectedGetNetworkIdentityResponse)
+    assert200okResponse(GetNetworkIdentity.ROUTE, GetNetworkIdentityResponse(networkIdentity))
   }
 
   @Test
   fun `test GetPeers method`() {
-    val url = (apiServerUrl + GetPeers.ROUTE).toHttpUrl()
-    val request = Request.Builder().url(url).build()
     val peerData =
       PeerData(
         peerId = "TEST_PEER_ID",
@@ -194,22 +227,11 @@ class ApiServerTest {
       )
 
     val expectedResponse = GetPeersResponse(data = listOf(peerData), meta = PeerMetaData(count = 1))
-    val httpResponse = client.newCall(request).execute()
-    assertThat(httpResponse).isNotNull
-    assertThat(httpResponse.code).isEqualTo(200)
-    val responseBody = httpResponse.body?.string()
-    val response =
-      defaultObjectMapper.readValue(
-        responseBody,
-        GetPeersResponse::class.java,
-      )
-    assertThat(response).isEqualTo(expectedResponse)
+    assert200okResponse(GetPeers.ROUTE, expectedResponse)
   }
 
   @Test
   fun `test GetPeerById method`() {
-    val url = (apiServerUrl + GetPeer.ROUTE.replace("{${GetPeer.PEER_ID}}", "TEST_PEER_ID")).toHttpUrl()
-    val request = Request.Builder().url(url).build()
     val peerData =
       PeerData(
         peerId = "TEST_PEER_ID",
@@ -220,39 +242,21 @@ class ApiServerTest {
       )
 
     val expectedResponse = GetPeerResponse(data = peerData)
-    val httpResponse = client.newCall(request).execute()
-    assertThat(httpResponse).isNotNull
-    assertThat(httpResponse.code).isEqualTo(200)
-    val responseBody = httpResponse.body?.string()
-    val response =
-      defaultObjectMapper.readValue(
-        responseBody,
-        GetPeerResponse::class.java,
-      )
-    assertThat(response).isEqualTo(expectedResponse)
+
+    assert200okResponse(GetPeer.ROUTE.replace("{${GetPeer.PEER_ID}}", "TEST_PEER_ID"), expectedResponse)
   }
 
   @Test
   fun `test GetPeerById method when peer not found`() {
-    val url = (apiServerUrl + GetPeer.ROUTE.replace("{${GetPeer.PEER_ID}}", "TEST_PEER_ID_2")).toHttpUrl()
-    val request = Request.Builder().url(url).build()
-
-    val httpResponse = client.newCall(request).execute()
-    assertThat(httpResponse).isNotNull
-    assertThat(httpResponse.code).isEqualTo(404)
-    val responseBody = httpResponse.body?.string()
-    val response =
-      defaultObjectMapper.readValue(
-        responseBody,
-        ApiExceptionResponse::class.java,
-      )
-    assertThat(response).isEqualTo(ApiExceptionResponse(404, "Peer not found"))
+    assertResponse(
+      GetPeer.ROUTE.replace("{${GetPeer.PEER_ID}}", "TEST_PEER_ID_2"),
+      expectedStatusCode = 404,
+      expectedResponse = ApiExceptionResponse(404, "Peer not found"),
+    )
   }
 
   @Test
   fun `test GetPeerCount method`() {
-    val url = (apiServerUrl + GetPeerCount.ROUTE).toHttpUrl()
-    val request = Request.Builder().url(url).build()
     val peerCountData =
       PeerCountData(
         disconnected = "0",
@@ -262,60 +266,56 @@ class ApiServerTest {
       )
 
     val expectedResponse = GetPeerCountResponse(data = peerCountData)
-    val httpResponse = client.newCall(request).execute()
-    assertThat(httpResponse).isNotNull
-    assertThat(httpResponse.code).isEqualTo(200)
-    val responseBody = httpResponse.body?.string()
-    val response =
-      defaultObjectMapper.readValue(
-        responseBody,
-        GetPeerCountResponse::class.java,
-      )
-    assertThat(response).isEqualTo(expectedResponse)
+    assert200okResponse(GetPeerCount.ROUTE, expectedResponse)
   }
 
   @Test
   fun `test GetVersion method`() {
-    val url = (apiServerUrl + GetVersion.ROUTE).toHttpUrl()
-    val request = Request.Builder().url(url).build()
     val expectedResponse = GetVersionResponse(data = VersionData(version = fakeVersionProvider.getVersion()))
-    val httpResponse = client.newCall(request).execute()
-    assertThat(httpResponse).isNotNull
-    assertThat(httpResponse.code).isEqualTo(200)
-    val responseBody = httpResponse.body?.string()
-    val response =
-      defaultObjectMapper.readValue(
-        responseBody,
-        GetVersionResponse::class.java,
-      )
-    assertThat(response).isEqualTo(expectedResponse)
+    assert200okResponse(GetVersion.ROUTE, expectedResponse)
   }
 
   @Test
   fun `test GetSyncingStatus method`() {
-    val url = (apiServerUrl + GetSyncingStatus.ROUTE).toHttpUrl()
-    val request = Request.Builder().url(url).build()
-    val expectedResponse =
+    fakeBeaconChain.newUpdater().apply {
+      putBeaconState(DataGenerators.randomBeaconState(number = 100u, timestamp = 100u))
+      commit()
+    }
+    fakeElOnlineProvider.isElOnline = true
+
+    assert200okResponse(
+      GetSyncingStatus.ROUTE,
       GetSyncingStatusResponse(
         data =
           SyncingStatusData(
-            headSlot = "12345678",
+            headSlot = "100",
             syncDistance = "0",
             isSyncing = false,
-            isOptimistic = false,
+            isOptimistic = true,
             elOffline = false,
           ),
-      )
-    val httpResponse = client.newCall(request).execute()
-    assertThat(httpResponse).isNotNull
-    assertThat(httpResponse.code).isEqualTo(200)
-    val responseBody = httpResponse.body?.string()
-    val response =
-      defaultObjectMapper.readValue(
-        responseBody,
-        GetSyncingStatusResponse::class.java,
-      )
-    assertThat(response).isEqualTo(expectedResponse)
+      ),
+    )
+
+    fakeBeaconChain.newUpdater().apply {
+      putBeaconState(DataGenerators.randomBeaconState(number = 200u, timestamp = 100u))
+      commit()
+    }
+    fakeElOnlineProvider.isElOnline = false
+
+    assert200okResponse(
+      GetSyncingStatus.ROUTE,
+      GetSyncingStatusResponse(
+        data =
+          SyncingStatusData(
+            headSlot = "200",
+            syncDistance = "0",
+            isSyncing = false,
+            isOptimistic = true,
+            elOffline = true,
+          ),
+      ),
+    )
   }
 
   @Test
@@ -332,16 +332,6 @@ class ApiServerTest {
 
   @Test
   fun `test GetBlockHeader method`() {
-    val url =
-      (
-        apiServerUrl +
-          GetBlockHeader.ROUTE.replace(
-            "{${GetBlockHeader.BLOCK_ID}}",
-            fakeChainDataProvider.SEALED_BEACON_BLOCK.beaconBlock.beaconBlockHeader.number
-              .toString(),
-          )
-      ).toHttpUrl()
-    val request = Request.Builder().url(url).build()
     val expectedResponse =
       GetBlockHeaderResponse(
         executionOptimistic = false,
@@ -354,29 +344,19 @@ class ApiServerTest {
             signature = "0x",
           ),
       )
-    val httpResponse = client.newCall(request).execute()
-    assertThat(httpResponse).isNotNull
-    assertThat(httpResponse.code).isEqualTo(200)
-    val responseBody = httpResponse.body?.string()
-    val response =
-      defaultObjectMapper.readValue(
-        responseBody,
-        GetBlockHeaderResponse::class.java,
-      )
-    assertThat(response).isEqualTo(expectedResponse)
+
+    assert200okResponse(
+      GetBlockHeader.ROUTE.replace(
+        "{${GetBlockHeader.BLOCK_ID}}",
+        fakeChainDataProvider.SEALED_BEACON_BLOCK.beaconBlock.beaconBlockHeader.number
+          .toString(),
+      ),
+      expectedResponse,
+    )
   }
 
   @Test
   fun `test GetBlock method`() {
-    val url =
-      (
-        apiServerUrl +
-          GetBlock.ROUTE.replace(
-            "{${GetBlock.BLOCK_ID}}",
-            "head",
-          )
-      ).toHttpUrl()
-    val request = Request.Builder().url(url).build()
     val expectedResponse =
       GetBlockResponse(
         executionOptimistic = false,
@@ -388,29 +368,18 @@ class ApiServerTest {
           ),
         version = "maru",
       )
-    val httpResponse = client.newCall(request).execute()
-    assertThat(httpResponse).isNotNull
-    assertThat(httpResponse.code).isEqualTo(200)
-    val responseBody = httpResponse.body?.string()
-    val response =
-      defaultObjectMapper.readValue(
-        responseBody,
-        GetBlockResponse::class.java,
-      )
-    assertThat(response).isEqualTo(expectedResponse)
+    assert200okResponse(
+      GetBlock.ROUTE.replace(
+        "{${GetBlock.BLOCK_ID}}",
+        "head",
+      ),
+      expectedResponse,
+    )
   }
 
   @Test
   fun `test GetStateValidator method`() {
     val validator = fakeChainDataProvider.BEACON_STATE.validators.first()
-    val url =
-      (
-        apiServerUrl +
-          GetStateValidator.ROUTE
-            .replace("{${GetStateValidator.STATE_ID}}", "head")
-            .replace("{${GetStateValidator.VALIDATOR_ID}}", validator.address.encodeHex())
-      ).toHttpUrl()
-    val request = Request.Builder().url(url).build()
     val expectedResponse =
       GetStateValidatorResponse(
         executionOptimistic = false,
@@ -433,25 +402,16 @@ class ApiServerTest {
               ),
           ),
       )
-    val httpResponse = client.newCall(request).execute()
-    assertThat(httpResponse).isNotNull
-    assertThat(httpResponse.code).isEqualTo(200)
-    val responseBody = httpResponse.body?.string()
-    val response =
-      defaultObjectMapper.readValue(
-        responseBody,
-        expectedResponse::class.java,
-      )
-    assertThat(response).isEqualTo(expectedResponse)
+
+    val path =
+      GetStateValidator.ROUTE
+        .replace("{${GetStateValidator.STATE_ID}}", "head")
+        .replace("{${GetStateValidator.VALIDATOR_ID}}", validator.address.encodeHex())
+    assert200okResponse(path, expectedResponse)
   }
 
   @Test
   fun `test GetStateValidators method`() {
-    val url =
-      (
-        apiServerUrl + GetStateValidators.ROUTE.replace("{${GetStateValidators.STATE_ID}}", "head")
-      ).toHttpUrl()
-    val request = Request.Builder().url(url).build()
     val validators =
       fakeChainDataProvider.BEACON_STATE.validators.mapIndexed { index, validator ->
         ValidatorResponse(
@@ -477,15 +437,7 @@ class ApiServerTest {
         finalized = false,
         data = validators,
       )
-    val httpResponse = client.newCall(request).execute()
-    assertThat(httpResponse).isNotNull
-    assertThat(httpResponse.code).isEqualTo(200)
-    val responseBody = httpResponse.body?.string()
-    val response =
-      defaultObjectMapper.readValue(
-        responseBody,
-        expectedResponse::class.java,
-      )
-    assertThat(response).isEqualTo(expectedResponse)
+
+    assert200okResponse(GetStateValidators.ROUTE.replace("{${GetStateValidators.STATE_ID}}", "head"), expectedResponse)
   }
 }

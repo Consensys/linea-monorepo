@@ -322,4 +322,8 @@ private class TrackingCLSyncService : CLSyncService {
   override fun onSyncComplete(handler: (ULong) -> Unit) {
     syncCompleteHandlers.add(handler)
   }
+
+  override fun getSyncDistance(): ULong = 0UL
+
+  override fun getSyncTarget(): ULong = 0UL
 }

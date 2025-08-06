@@ -11,5 +11,6 @@ dependencies {
   implementation project(":jvm-libs:extensions")
 
   testImplementation(testFixtures(project(":core")))
+  testImplementation(project(":syncing"))
   testImplementation("com.squareup.okhttp3:okhttp")
 }

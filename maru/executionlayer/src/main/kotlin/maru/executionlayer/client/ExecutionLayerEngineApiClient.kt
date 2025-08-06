@@ -28,4 +28,6 @@ interface ExecutionLayerEngineApiClient {
   ): SafeFuture<Response<ForkChoiceUpdatedResult>>
 
   fun getLatestBlockHash(): SafeFuture<ByteArray>
+
+  fun isOnline(): SafeFuture<Boolean>
 }

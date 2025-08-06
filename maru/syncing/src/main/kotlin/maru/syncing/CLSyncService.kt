@@ -26,4 +26,8 @@ interface CLSyncService {
    * If the target is updated, onSyncComplete won't be called for previous targets
    */
   fun onSyncComplete(handler: (syncTarget: ULong) -> Unit)
+
+  fun getSyncTarget(): ULong
+
+  fun getSyncDistance(): ULong
 }
