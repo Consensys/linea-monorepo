@@ -3,17 +3,10 @@ package compiler_test
 import (
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
 	"github.com/consensys/linea-monorepo/prover/protocol/internal/testtools"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/sirupsen/logrus"
@@ -22,21 +15,11 @@ import (
 var totalSuite = []func(comp *wizard.CompiledIOP){
 	mimc.CompileMiMC,
 	plonkinwizard.Compile,
-	specialqueries.RangeProof,
-	specialqueries.CompileFixedPermutations,
-	permutation.CompileIntoGdProduct,
-	permutation.CompileGrandProduct,
-	logderivativesum.LookupIntoLogDerivativeSum,
-	logderivativesum.CompileLogDerivativeSum,
-	horner.ProjectionToHorner,
-	horner.CompileHorner,
-	innerproduct.Compile(),
-	stitchsplit.Stitcher(1, 8),
-	stitchsplit.Splitter(8),
-	localcs.Compile,
-	globalcs.Compile,
-	// univariates.Naturalize,
-	// mpts.Compile(),
+	compiler.Arcane(
+		compiler.WithDebugMode("debug"),
+		compiler.WithStitcherMinSize(1),
+		compiler.WithTargetColSize(8),
+	),
 	dummy.Compile,
 
 	// vortex.Compile(2, vortex.ReplaceSisByMimc(), vortex.ForceNumOpenedColumns(2)),

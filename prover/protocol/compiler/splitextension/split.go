@@ -23,8 +23,17 @@ var (
 	errInconsistentX    = errors.New("unconsistent evaluation point")
 )
 
-type ProverCtx struct {
+// AssignUnivProverAction implements the [wizard.ProverAction] interface and is
+// responsible for assigning the new univariate query.
+type AssignUnivProverAction struct {
 	Ctx SplitCtx
+}
+
+// AssignSplitColumnProverAction implements the [wizard.ProverAction] interface
+// and is responsible for assigning the splitted columns.
+type AssignSplitColumnProverAction struct {
+	Round int
+	Ctx   SplitCtx
 }
 
 type VerifierCtx struct {
@@ -82,6 +91,8 @@ func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
 				utils.Panic("expected only one query to compile")
 			}
 
+			comp.QueriesParams.MarkAsIgnored(qName)
+
 			basefieldQName := ifaces.QueryIDf("%s_%s", qName, fextSplitTag)
 
 			ctx := SplitCtx{
@@ -100,12 +111,15 @@ func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
 					continue
 				}
 
+				comp.Columns.MarkAsIgnored(pol.GetColID())
 				ctx.ToSplitPolynomials = append(ctx.ToSplitPolynomials, pol)
+				polRound := pol.Round()
+
 				for j := 0; j < 4; j++ {
-					curName := ifaces.ColIDf("%s_%s_%d", pol.String(), fextSplitTag, 4*i+j)
+					splittedColName := ifaces.ColIDf("%s_%s_%d", pol.String(), fextSplitTag, 4*i+j)
 					ctx.SplittedPolynomials = append(
 						ctx.SplittedPolynomials,
-						comp.InsertCommit(roundID, ifaces.ColID(curName), pol.Size()))
+						comp.InsertCommit(polRound, ifaces.ColID(splittedColName), pol.Size()))
 				}
 			}
 
@@ -122,7 +136,14 @@ func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
 				toEval,
 			)
 
-			comp.RegisterProverAction(roundID, &ProverCtx{
+			for r := 0; r <= roundID; r++ {
+				comp.RegisterProverAction(r, &AssignSplitColumnProverAction{
+					Ctx:   ctx,
+					Round: r,
+				})
+			}
+
+			comp.RegisterProverAction(roundID, &AssignUnivProverAction{
 				Ctx: ctx,
 			})
 
@@ -133,22 +154,17 @@ func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
 	}
 }
 
-// Run implements ProverAction interface
-func (pctx *ProverCtx) Run(runtime *wizard.ProverRuntime) {
+// Run implements the [wizard.ProverAction] interface
+func (a *AssignSplitColumnProverAction) Run(runtime *wizard.ProverRuntime) {
 
-	var (
-		ctx            = pctx.Ctx
-		evalFextParams = runtime.GetUnivariateParams(ctx.QueryFext.Name())
-		x              = evalFextParams.ExtX
-		y              = make([]fext.Element, 0, len(ctx.QueryBaseField.Pols))
-	)
+	ctx := a.Ctx
 
-	// This loop evaluates and assigns the polynomials that have been split and
-	// append their evaluation "y" the assignment to the evaluation on the new
-	// query. The implementation relies on the fact that these polynomials are
-	// positionned at the beginning of the list of evaluated polynomials in the
-	// new query.
 	for i, pol := range ctx.ToSplitPolynomials {
+
+		if pol.Round() != a.Round {
+			continue
+		}
+
 		cc := pol.GetColAssignment(runtime)
 		sv := splitVector(cc)
 
@@ -156,12 +172,30 @@ func (pctx *ProverCtx) Run(runtime *wizard.ProverRuntime) {
 		runtime.AssignColumn(ctx.SplittedPolynomials[4*i+1].GetColID(), sv[1])
 		runtime.AssignColumn(ctx.SplittedPolynomials[4*i+2].GetColID(), sv[2])
 		runtime.AssignColumn(ctx.SplittedPolynomials[4*i+3].GetColID(), sv[3])
-
-		for j := 0; j < 4; j++ {
-			newY := smartvectors.EvaluateLagrangeFullFext(sv[j], x)
-			y = append(y, newY)
-		}
 	}
+}
+
+// Run implements ProverAction interface
+func (pctx *AssignUnivProverAction) Run(runtime *wizard.ProverRuntime) {
+
+	var (
+		ctx            = pctx.Ctx
+		evalFextParams = runtime.GetUnivariateParams(ctx.QueryFext.Name())
+		x              = evalFextParams.ExtX
+		svToEval       = make([]smartvectors.SmartVector, 0, len(ctx.QueryBaseField.Pols))
+	)
+
+	// This loop evaluates and assigns the polynomials that have been split and
+	// append their evaluation "y" the assignment to the evaluation on the new
+	// query. The implementation relies on the fact that these polynomials are
+	// positionned at the beginning of the list of evaluated polynomials in the
+	// new query.
+	for _, pol := range ctx.SplittedPolynomials {
+		sv := pol.GetColAssignment(runtime)
+		svToEval = append(svToEval, sv)
+	}
+
+	y := smartvectors.BatchEvaluateLagrangeMixed(svToEval, x)
 
 	// This loops collect the evaluation claims of the already-on-base polynomials
 	// from the new query to append them to the claims on the new query. This

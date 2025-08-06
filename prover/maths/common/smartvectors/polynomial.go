@@ -135,6 +135,11 @@ func BatchEvaluateLagrangeMixed(vs []SmartVector, x fext.Element, oncoset ...boo
 	indexNonConstantVector := -1
 	parallel.Execute(len(vs), func(start, stop int) {
 		for i := start; i < stop; i++ {
+
+			if !IsBase(vs[i]) {
+				utils.Panic("expected a base-field smart-vector, got %T", vs[i])
+			}
+
 			switch con := vs[i].(type) {
 			case *Constant:
 				fext.SetFromBase(&results[i], &con.val)
