@@ -91,7 +91,7 @@ func benchmarkCompiler(b *testing.B, sbc StdBenchmarkCase) {
 		),
 		vortex.Compile(
 			2,
-			vortex.WithOptionalSISHashingThreshold(64),
+			vortex.WithOptionalSISHashingThreshold(0),
 			vortex.ForceNumOpenedColumns(256),
 			vortex.WithSISParams(&ringsis.StdParams),
 		),
