@@ -241,7 +241,7 @@ class QbftValidatorFactory(
 
     val eventMultiplexer = QbftEventMultiplexer(qbftController)
     val eventProcessor = QbftEventProcessor(bftEventQueue, eventMultiplexer)
-    val eventQueueExecutor = Executors.newSingleThreadExecutor()
+    val eventQueueExecutor = Executors.newSingleThreadExecutor(Thread.ofPlatform().daemon().factory())
 
     return QbftConsensusValidator(
       qbftController = qbftController,

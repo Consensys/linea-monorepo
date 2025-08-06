@@ -52,6 +52,7 @@ import maru.p2p.P2PNetwork
  */
 class MaruFactory(
   validatorPrivateKey: ByteArray = generatePrivateKey(),
+  switchTimestamp: Long? = null,
 ) {
   companion object {
     val defaultReconnectDelay = 500.milliseconds
@@ -73,20 +74,43 @@ class MaruFactory(
     )
 
   private val beaconGenesisConfig: ForksSchedule =
-    ForksSchedule(
-      1337u,
-      setOf(
-        ForkSpec(
-          timestampSeconds = 0,
-          blockTimeSeconds = 1,
-          configuration =
-            QbftConsensusConfig(
-              validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
-              elFork = ElFork.Prague,
-            ),
+    if (switchTimestamp != null) {
+      ForksSchedule(
+        1337u,
+        setOf(
+          ForkSpec(
+            timestampSeconds = 0,
+            blockTimeSeconds = 1,
+            configuration =
+            ElDelegatedConfig,
+          ),
+          ForkSpec(
+            timestampSeconds = switchTimestamp,
+            blockTimeSeconds = 1,
+            configuration =
+              QbftConsensusConfig(
+                validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
+                elFork = ElFork.Prague,
+              ),
+          ),
         ),
-      ),
-    )
+      )
+    } else {
+      ForksSchedule(
+        1337u,
+        setOf(
+          ForkSpec(
+            timestampSeconds = 0,
+            blockTimeSeconds = 1,
+            configuration =
+              QbftConsensusConfig(
+                validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
+                elFork = ElFork.Prague,
+              ),
+          ),
+        ),
+      )
+    }
 
   private fun buildMaruConfig(
     ethereumJsonRpcUrl: String,
@@ -124,6 +148,75 @@ class MaruFactory(
         ValidatorElNode(
           ethApiEndpoint = ApiEndpointConfig(URI.create(ethereumJsonRpcUrl).toURL()),
           engineApiEndpoint = ApiEndpointConfig(URI.create(engineApiRpc).toURL()),
+        ),
+      p2pConfig = p2pConfig,
+      followers = followers,
+      observabilityOptions = observabilityOptions,
+      linea = lineaConfig,
+      apiConfig = apiConfig,
+      syncing = syncingConfig,
+    )
+  }
+
+  fun buildTestMaruFollowerWithConsensusSwitch(
+    dataDir: Path,
+    engineApiConfig: ApiEndpointConfig,
+    ethereumApiConfig: ApiEndpointConfig,
+    validatorPortForStaticPeering: UInt? = null,
+    overridingP2PNetwork: P2PNetwork? = null,
+  ): MaruApp {
+    val p2pConfig = buildP2pConfig(validatorPortForStaticPeering = validatorPortForStaticPeering)
+    val beaconGenesisConfig = beaconGenesisConfig
+    val config =
+      buildMaruConfig(
+        engineApiEndpointConfig = engineApiConfig,
+        ethereumApiEndpointConfig = ethereumApiConfig,
+        dataDir = dataDir,
+        p2pConfig = p2pConfig,
+      )
+    return buildApp(
+      config = config,
+      beaconGenesisConfig = beaconGenesisConfig,
+      overridingP2PNetwork = overridingP2PNetwork,
+    )
+  }
+
+  private fun buildMaruConfig(
+    engineApiEndpointConfig: ApiEndpointConfig,
+    ethereumApiEndpointConfig: ApiEndpointConfig,
+    dataDir: Path,
+    p2pConfig: P2P? = null,
+    followers: FollowersConfig = FollowersConfig(emptyMap()),
+    qbftOptions: QbftOptions? = null,
+    observabilityOptions: ObservabilityOptions =
+      ObservabilityOptions(port = 0u, prometheusMetricsEnabled = true, jvmMetricsEnabled = true),
+    overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
+    apiConfig: ApiConfig = ApiConfig(port = 0u),
+    syncingConfig: SyncingConfig =
+      SyncingConfig(
+        peerChainHeightPollingInterval = 1.seconds,
+        peerChainHeightGranularity = 1u,
+        elSyncStatusRefreshInterval = 500.milliseconds,
+      ),
+    allowEmptyBlocks: Boolean = false,
+  ): MaruConfig {
+    val lineaConfig =
+      overridingLineaContractClient?.let {
+        LineaConfig(
+          contractAddress = overridingLineaContractClient.getAddress().decodeHex(),
+          l1EthApi = ethereumApiEndpointConfig,
+          l1PollingInterval = 100.milliseconds,
+        )
+      }
+
+    return MaruConfig(
+      allowEmptyBlocks = allowEmptyBlocks,
+      persistence = Persistence(dataPath = dataDir),
+      qbftOptions = qbftOptions,
+      validatorElNode =
+        ValidatorElNode(
+          ethApiEndpoint = ethereumApiEndpointConfig,
+          engineApiEndpoint = engineApiEndpointConfig,
         ),
       p2pConfig = p2pConfig,
       followers = followers,
@@ -280,33 +373,10 @@ class MaruFactory(
     return buildApp(config, overridingP2PNetwork = p2pNetwork)
   }
 
-  private fun switchableGenesis(switchTimestamp: Long): ForksSchedule =
-    ForksSchedule(
-      1337u,
-      setOf(
-        ForkSpec(
-          timestampSeconds = 0,
-          blockTimeSeconds = 1,
-          configuration =
-          ElDelegatedConfig,
-        ),
-        ForkSpec(
-          timestampSeconds = switchTimestamp,
-          blockTimeSeconds = 1,
-          configuration =
-            QbftConsensusConfig(
-              validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
-              elFork = ElFork.Prague,
-            ),
-        ),
-      ),
-    )
-
   fun buildSwitchableTestMaruValidatorWithP2pPeering(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
     dataDir: Path,
-    switchTimestamp: Long,
     overridingP2PNetwork: P2PNetwork? = null,
     overridingFinalizationProvider: FinalizationProvider? = null,
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
@@ -314,7 +384,7 @@ class MaruFactory(
     allowEmptyBlocks: Boolean = false,
     followers: FollowersConfig = FollowersConfig(emptyMap()),
   ): MaruApp {
-    val beaconGenesisConfig = switchableGenesis(switchTimestamp)
+    val beaconGenesisConfig = beaconGenesisConfig
     val p2pConfig = buildP2pConfig(p2pPort = p2pPort, validatorPortForStaticPeering = null)
     val config =
       buildMaruConfig(
@@ -342,13 +412,12 @@ class MaruFactory(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
     dataDir: Path,
-    switchTimestamp: Long,
     validatorPortForStaticPeering: UInt? = null,
     overridingP2PNetwork: P2PNetwork? = null,
   ): MaruApp {
     val p2pConfig = buildP2pConfig(validatorPortForStaticPeering = validatorPortForStaticPeering)
     val followersConfig = buildFollowersConfig(engineApiRpc)
-    val beaconGenesisConfig = switchableGenesis(switchTimestamp)
+    val beaconGenesisConfig = beaconGenesisConfig
     val config =
       buildMaruConfig(
         ethereumJsonRpcUrl = ethereumJsonRpcUrl,

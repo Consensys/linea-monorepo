@@ -68,4 +68,7 @@ object NoOpP2PNetwork : P2PNetwork {
       }
     }
   }
+
+  override fun close() {
+  }
 }

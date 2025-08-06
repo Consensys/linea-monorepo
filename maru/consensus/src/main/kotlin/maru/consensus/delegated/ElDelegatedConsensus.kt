@@ -8,6 +8,8 @@
  */
 package maru.consensus.delegated
 
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import maru.consensus.ForkSpec
 import maru.consensus.NewBlockHandler
@@ -43,6 +45,10 @@ class ElDelegatedConsensus(
   private val ethereumJsonRpcClient: Web3j,
   private val onNewBlock: NewBlockHandler<*>,
   private val blockTimeSeconds: Int,
+  private val executor: ScheduledExecutorService =
+    Executors.newSingleThreadScheduledExecutor(
+      Thread.ofVirtual().factory(),
+    ),
 ) : Protocol {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
@@ -87,7 +93,7 @@ class ElDelegatedConsensus(
               {
                 poll()
               },
-              SafeFuture.delayedExecutor(blockTimeSeconds.toLong(), TimeUnit.SECONDS),
+              SafeFuture.delayedExecutor(blockTimeSeconds.toLong(), TimeUnit.SECONDS, executor),
             ).thenApply { }
         }
 

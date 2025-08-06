@@ -44,7 +44,6 @@ class MaruConsensusSwitchTest {
   private lateinit var followerMaruNode: MaruApp
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
-  private val maruFactory = MaruFactory()
 
   @TempDir
   private lateinit var validatorMaruTmpDir: File
@@ -118,12 +117,12 @@ class MaruConsensusSwitchTest {
     val validatorEthereumJsonRpcBaseUrl = validatorBesuNode.jsonRpcBaseUrl().get()
     val validatorEngineRpcUrl = validatorBesuNode.engineRpcUrl().get()
 
+    val maruFactory = MaruFactory(switchTimestamp = switchTimestamp)
     validatorMaruNode =
       maruFactory.buildSwitchableTestMaruValidatorWithP2pPeering(
         ethereumJsonRpcUrl = validatorEthereumJsonRpcBaseUrl,
         engineApiRpc = validatorEngineRpcUrl,
         dataDir = validatorMaruTmpDir.toPath(),
-        switchTimestamp = switchTimestamp,
       )
     validatorMaruNode.start()
 
@@ -136,7 +135,6 @@ class MaruConsensusSwitchTest {
         engineApiRpc = followerEngineRpcUrl,
         dataDir = followerMaruTmpDir.toPath(),
         validatorPortForStaticPeering = validatorMaruNode.p2pPort(),
-        switchTimestamp = switchTimestamp,
       )
     followerMaruNode.start()
 

@@ -11,6 +11,8 @@ package maru.p2p
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.unmarshalPrivateKey
 import java.util.Optional
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrElse
 import kotlin.jvm.optionals.getOrNull
@@ -29,6 +31,8 @@ import net.consensys.linea.metrics.Tag
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
+import tech.pegasys.teku.infrastructure.async.AsyncRunnerFactory
+import tech.pegasys.teku.infrastructure.async.MetricTrackingExecutorFactory
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
@@ -71,6 +75,9 @@ class P2PNetworkImpl(
       description = "Count of messages broadcasted over the P2P network",
     )
 
+  private val metricTrackingExecutorFactory = MetricTrackingExecutorFactory(metricsSystem)
+  private val asyncRunner = AsyncRunnerFactory.createDefault(metricTrackingExecutorFactory).create("maru", 2)
+
   private fun buildP2PNetwork(
     privateKeyBytes: ByteArray,
     p2pConfig: P2P,
@@ -95,6 +102,7 @@ class P2PNetworkImpl(
       rpcMethods = rpcMethods.all(),
       maruPeerManager = maruPeerManager,
       metricsSystem = besuMetricsSystem,
+      asyncRunner = asyncRunner,
     )
   }
 
@@ -113,8 +121,12 @@ class P2PNetworkImpl(
   // TODO: We need to call the updateForkId method on the discovery service when the forkId changes internal
   private val peerLookup = builtNetwork.peerLookup
   private val log: Logger = LogManager.getLogger(this.javaClass)
+  private val executor: ScheduledExecutorService =
+    Executors.newSingleThreadScheduledExecutor(
+      Thread.ofVirtual().factory(),
+    )
   private val delayedExecutor =
-    SafeFuture.delayedExecutor(p2pConfig.reconnectDelay.inWholeMilliseconds, TimeUnit.MILLISECONDS)
+    SafeFuture.delayedExecutor(p2pConfig.reconnectDelay.inWholeMilliseconds, TimeUnit.MILLISECONDS, executor)
   private val staticPeerMap = mutableMapOf<NodeId, MultiaddrPeerAddress>()
 
   override val nodeId: String = p2pNetwork.nodeId.toBase58()
@@ -154,6 +166,11 @@ class P2PNetworkImpl(
     discoveryService?.stop()
     val p2pStop = p2pNetwork.stop()
     return SafeFuture.allOf(p2pStop, pmStop).thenApply {}
+  }
+
+  override fun close() {
+    asyncRunner.shutdown()
+    executor.shutdown()
   }
 
   override fun broadcastMessage(message: Message<*, GossipMessageType>): SafeFuture<*> {

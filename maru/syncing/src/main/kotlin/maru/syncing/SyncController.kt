@@ -38,6 +38,7 @@ class BeaconSyncControllerImpl(
   elState: ELSyncStatus = ELSyncStatus.SYNCING,
 ) : SyncStatusProvider,
   BeaconSyncTargetUpdateHandler {
+  private val log = LogManager.getLogger(this.javaClass)
   private val lock = ReentrantReadWriteLock()
   private var currentState = SyncState(clState, elState)
 
@@ -50,6 +51,7 @@ class BeaconSyncControllerImpl(
     clSyncService.onSyncComplete { syncTarget ->
       updateClSyncStatus(CLSyncStatus.SYNCED)
     }
+    onFullSyncComplete { log.info("El client is synced now") }
   }
 
   override fun getCLSyncStatus(): CLSyncStatus = lock.read { currentState.clStatus }
@@ -189,7 +191,8 @@ class BeaconSyncControllerImpl(
           beaconChain = beaconChain,
           validatorProvider = validatorProvider,
           allowEmptyBlocks = allowEmptyBlocks,
-          executorService = Executors.newCachedThreadPool(),
+          executorService =
+            Executors.newCachedThreadPool(Thread.ofPlatform().daemon().factory()),
           pipelineConfig = BeaconChainDownloadPipelineFactory.Config(),
           peerLookup = peerLookup,
           besuMetrics = besuMetrics,

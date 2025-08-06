@@ -31,8 +31,7 @@ import maru.core.SealedBeaconBlock
 import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import org.apache.tuweni.bytes.Bytes
 import pubsub.pb.Rpc
-import tech.pegasys.teku.infrastructure.async.AsyncRunnerFactory
-import tech.pegasys.teku.infrastructure.async.MetricTrackingExecutorFactory
+import tech.pegasys.teku.infrastructure.async.AsyncRunner
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
 import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNetwork
 import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
@@ -66,6 +65,7 @@ class Libp2pNetworkFactory(
     rpcMethods: List<RpcMethod<*, *, *>>,
     maruPeerManager: MaruPeerManager,
     metricsSystem: BesuMetricsSystem,
+    asyncRunner: AsyncRunner,
   ): TekuLibP2PNetwork {
     val ipv4Address = Multiaddr("/ip4/$ipAddress/tcp/$port")
     val gossipTopicHandlers = GossipTopicHandlers()
@@ -92,8 +92,6 @@ class Libp2pNetworkFactory(
     val peerId = PeerId.fromPubKey(privateKey.publicKey())
     val libP2PNodeId = LibP2PNodeId(peerId)
 
-    val metricTrackingExecutorFactory = MetricTrackingExecutorFactory(metricsSystem)
-    val asyncRunner = AsyncRunnerFactory.createDefault(metricTrackingExecutorFactory).create("maru", 2)
     val rpcHandlers =
       rpcMethods.map { rpcMethod ->
         RpcHandler(asyncRunner, rpcMethod)

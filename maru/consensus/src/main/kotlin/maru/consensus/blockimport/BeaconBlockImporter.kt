@@ -34,11 +34,13 @@ fun interface BeaconBlockImporter {
 class FollowerBeaconBlockImporter(
   private val executionLayerManager: ExecutionLayerManager,
   private val finalizationStateProvider: FinalizationProvider,
+  private val importerName: String,
 ) : NewBlockHandler<ValidationResult> {
   companion object {
     fun create(
       executionLayerEngineApiClient: ExecutionLayerEngineApiClient,
       finalizationStateProvider: FinalizationProvider,
+      importerName: String,
     ): NewBlockHandler<ValidationResult> {
       val executionLayerManager =
         JsonRpcExecutionLayerManager(
@@ -47,6 +49,7 @@ class FollowerBeaconBlockImporter(
       return FollowerBeaconBlockImporter(
         executionLayerManager = executionLayerManager,
         finalizationStateProvider = finalizationStateProvider,
+        importerName = importerName,
       )
     }
   }
@@ -59,7 +62,9 @@ class FollowerBeaconBlockImporter(
       .newPayload(executionPayload)
       .handleException { e ->
         log.error(
-          "Error importing execution payload for blockNumber=${executionPayload.blockNumber}",
+          "Error importing execution payload to {} for elBlockNumber={}",
+          importerName,
+          executionPayload.blockNumber,
           e,
         )
       }.thenCompose {
@@ -70,6 +75,7 @@ class FollowerBeaconBlockImporter(
             safeHash = finalizationState.safeBlockHash,
             finalizedHash = finalizationState.finalizedBlockHash,
           ).thenApply {
+            log.debug("Imported elBlockNumber={} to {}", executionPayload.blockNumber, importerName)
             ValidationResult.fromForkChoiceUpdatedResult(it)
           }
       }

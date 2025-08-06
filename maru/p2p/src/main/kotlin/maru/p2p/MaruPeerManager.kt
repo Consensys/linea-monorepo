@@ -33,7 +33,8 @@ import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
 
 class MaruPeerManager(
-  private val scheduler: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor(),
+  private val scheduler: ScheduledExecutorService =
+    Executors.newSingleThreadScheduledExecutor(Thread.ofPlatform().daemon().factory()),
   private val maruPeerFactory: MaruPeerFactory,
   private val p2pConfig: P2P,
 ) : PeerHandler,
