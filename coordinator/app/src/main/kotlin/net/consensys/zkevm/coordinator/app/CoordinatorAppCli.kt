@@ -118,7 +118,7 @@ internal constructor(private val errorWriter: PrintWriter, private val startActi
   }
 
   fun reportUserError(ex: Throwable) {
-    logger.fatal(ex.message)
+    logger.fatal(ex.message, ex)
     errorWriter.println(ex.message)
     printUsage(errorWriter)
   }
@@ -126,7 +126,7 @@ internal constructor(private val errorWriter: PrintWriter, private val startActi
   private fun printUsage(outputWriter: PrintWriter) {
     outputWriter.println()
     outputWriter.println("To display full help:")
-    outputWriter.println(COMMAND_NAME + " --help")
+    outputWriter.println("$COMMAND_NAME --help")
   }
 
   /**
