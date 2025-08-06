@@ -70,6 +70,54 @@ var (
 				NumRow: 1 << 10,
 			},
 		},
+		// 	{
+		// 		Name: "realistic-segment",
+		// 		Permutations: SubModuleParameters{
+		// 			Count:  5,
+		// 			NumCol: 3,
+		// 			NumRow: 1 << 20,
+		// 		},
+		// 		Lookup: SubModuleParameters{
+		// 			Count:     50,
+		// 			NumCol:    3,
+		// 			NumRow:    1 << 20,
+		// 			NumRowAux: 1 << 20,
+		// 		},
+		// 		Projection: SubModuleParameters{
+		// 			Count:     5,
+		// 			NumCol:    3,
+		// 			NumRow:    1 << 20,
+		// 			NumRowAux: 1 << 20,
+		// 		},
+		// 		Fibo: SubModuleParameters{
+		// 			Count:  200,
+		// 			NumRow: 1 << 20,
+		// 		},
+		// 	},
+		{
+			Name: "smaller-segment",
+			Permutations: SubModuleParameters{
+				Count:  1,
+				NumCol: 3,
+				NumRow: 1 << 19,
+			},
+			Lookup: SubModuleParameters{
+				Count:     5,
+				NumCol:    3,
+				NumRow:    1 << 19,
+				NumRowAux: 1 << 19,
+			},
+			Projection: SubModuleParameters{
+				Count:     1,
+				NumCol:    3,
+				NumRow:    1 << 19,
+				NumRowAux: 1 << 19,
+			},
+			Fibo: SubModuleParameters{
+				Count:  20,
+				NumRow: 1 << 19,
+			},
+		},
 	}
 )
 
