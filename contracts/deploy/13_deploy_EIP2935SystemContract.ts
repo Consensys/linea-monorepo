@@ -4,10 +4,10 @@ import { DeployFunction } from "hardhat-deploy/types";
 // Deploy EIP-2935 Historical Block Hashes system contract - https://github.com/ethereum/EIPs/blob/master/EIPS/eip-2935.md
 // Prerequisite - Fund the predetermined sender address with enough ETH to cover the deployment cost
 
-// Run deploy script against anvil
+// Run deploy script against anvil `anvil --hardfork london`
 // CUSTOM_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 CUSTOM_BLOCKCHAIN_URL=http://127.0.0.1:8545 npx hardhat deploy --network custom --tags EIP2935SystemContract
 
-// Run deploy script against local stack
+// Run deploy script against local stack `make start-env-with-tracing-v2-ci CLEAN_PREVIOUS_ENV=true`
 // CUSTOM_PRIVATE_KEY=1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae CUSTOM_BLOCKCHAIN_URL=http://127.0.0.1:9045 npx hardhat deploy --network custom --tags EIP2935SystemContract
 
 const func: DeployFunction = async function () {
