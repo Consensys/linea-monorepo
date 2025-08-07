@@ -16,6 +16,8 @@
     <Logger name="org.hyperledger.besu.ethereum.api.jsonrpc" level="TRACE" />
     <Logger name="io.opentelemetry" level="WARN" />
     <Logger name="net.consensys.linea.bl.TransactionProfitabilityCalculator" level="DEBUG" />
+    <Logger name="net.consensys.linea.sequencer.txselection" level="DEBUG" />
+    <Logger name=" net.consensys.linea.sequencer.liveness" level="DEBUG" />
     <Logger name="net.consensys.linea.sequencer.txselection.selectors" level="DEBUG" />
     <Logger name="org.hyperledger.besu.ethereum.eth.transactions.TransactionPool" level="TRACE" />
     <Logger name="org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.EthSendRawTransaction" level="DEBUG" />
