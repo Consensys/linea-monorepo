@@ -65,14 +65,6 @@ export function validateConfig(flags: ParserOutput["flags"]): Config {
     );
   }
 
-  if (!web3SignerKeystorePath.endsWith(".p12")) {
-    throw new Error(`Invalid PFX file path: ${web3SignerKeystorePath}. Must end with .p12.`);
-  }
-
-  if (!web3SignerTrustedStorePath.endsWith(".p12")) {
-    throw new Error(`Invalid CA file path: ${web3SignerTrustedStorePath}. Must end with .p12.`);
-  }
-
   return {
     senderAddress,
     destinationAddress,
