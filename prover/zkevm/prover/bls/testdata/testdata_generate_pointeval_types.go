@@ -57,8 +57,8 @@ const (
 	invalidPointEvalG1_MaskYLarge_YSmall                                               // mask for large y, but encoded small y
 	invalidPointEvalG1_MaskYSmall_YLarge                                               // mask for small y, but encoded large y
 	invalidPointEvalG1_MaskInfinity_NotInfinity                                        // mask for infinity, but encoded not infinity
-	invalidPointEvalG1_MaskSmall_YInfinity                                             // mask for small y, but encoded infinity
-	invalidPointEvalG1_MaskLarge_YInfinity                                             // mask for large y, but encoded infinity
+	invalidPointEvalG1_MaskSmallY_Infinity                                             // mask for small y, but encoded infinity
+	invalidPointEvalG1_MaskLargeY_Infinity                                             // mask for large y, but encoded infinity
 	invalidPointEvalG1_MaskValid_NotInGroup                                            // mask for valid point, but not in the group
 	invalidPointEvalG1_MaskValid_NotOnCurve                                            // mask for valid point, but not on the curve
 	invalidPointEvalG1_Mask0b000_Random                                                // mask for invalid mask 0b000, encoded random point
