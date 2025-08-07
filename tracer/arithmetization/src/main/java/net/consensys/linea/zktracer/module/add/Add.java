@@ -36,9 +36,9 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 @RequiredArgsConstructor
 @Getter
 @Accessors(fluent = true)
-public class Add implements OperationSetModule<AddOperation> {
+public abstract class Add implements OperationSetModule<AddOperation> {
 
-  private final ModuleOperationStackedSet<AddOperation> operations =
+  protected final ModuleOperationStackedSet<AddOperation> operations =
       new ModuleOperationStackedSet<>();
 
   @Override
@@ -49,11 +49,8 @@ public class Add implements OperationSetModule<AddOperation> {
   @Override
   public void tracePreOpcode(MessageFrame frame, OpCode opcode) {
     if ((opcode == ADD || opcode == SUB)) {
-      operations.add(
-          new AddOperation(
-              opcode,
-              Bytes32.leftPad(frame.getStackItem(0)),
-              Bytes32.leftPad(frame.getStackItem(1))));
+      this.call(
+          opcode, Bytes32.leftPad(frame.getStackItem(0)), Bytes32.leftPad(frame.getStackItem(1)));
     }
   }
 
@@ -70,13 +67,33 @@ public class Add implements OperationSetModule<AddOperation> {
   @Override
   public void commit(Trace trace) {
     int stamp = 0;
-    for (AddOperation op : sortOperations(new AddOperationComparator())) {
+    for (AddOperation op : sortOperations(new AddOperation.Comparator())) {
       op.trace(++stamp, trace.add());
     }
   }
 
-  public BigInteger callADD(Bytes32 arg1, Bytes32 arg2) {
-    operations.add(new AddOperation(ADD, arg1, arg2));
-    return arg1.toUnsignedBigInteger().add(arg2.toUnsignedBigInteger());
+  /**
+   * Register a call into the Add module for a given opcode and argument pairing. This returns the
+   * expected result.
+   *
+   * @param opcode Opcode for operation, which must be either ADD or SUB.
+   * @param arg1 First argument.
+   * @param arg2 Second argument.
+   * @return Result of the addition / subtraction.
+   */
+  public BigInteger call(OpCode opcode, Bytes32 arg1, Bytes32 arg2) {
+    if (opcode != ADD && opcode != SUB) {
+      throw new IllegalArgumentException("invalid opcode for Add: " + opcode);
+    }
+    // Register the operation
+    this.addOperation(opcode, arg1, arg2);
+    // Compute the expected result
+    if (opcode == ADD) {
+      return arg1.toUnsignedBigInteger().add(arg2.toUnsignedBigInteger());
+    } else {
+      return arg1.toUnsignedBigInteger().subtract(arg2.toUnsignedBigInteger());
+    }
   }
+
+  protected abstract void addOperation(OpCode opcode, Bytes32 arg1, Bytes32 arg2);
 }

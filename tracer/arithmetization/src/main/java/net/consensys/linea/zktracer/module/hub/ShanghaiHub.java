@@ -16,6 +16,8 @@
 package net.consensys.linea.zktracer.module.hub;
 
 import net.consensys.linea.zktracer.ChainConfig;
+import net.consensys.linea.zktracer.module.add.Add;
+import net.consensys.linea.zktracer.module.add.ShanghaiAdd;
 import net.consensys.linea.zktracer.module.hub.section.create.ShanghaiCreateSection;
 import net.consensys.linea.zktracer.module.hub.section.txInitializationSection.ShanghaiInitializationSection;
 import net.consensys.linea.zktracer.module.txndata.module.ShanghaiTxnData;
@@ -28,6 +30,11 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 public class ShanghaiHub extends ParisHub {
   public ShanghaiHub(ChainConfig chain) {
     super(chain);
+  }
+
+  @Override
+  protected Add setAdd() {
+    return new ShanghaiAdd();
   }
 
   @Override
