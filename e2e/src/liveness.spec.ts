@@ -55,10 +55,11 @@ describe("Liveness test suite", () => {
         },
         (ethLogs: Array<Log>) => ethLogs.length >= 2,
         1000,
-        100000,
+        120000,
       );
 
       logger.debug(`livenessEvents=${JSON.stringify(livenessEvents)}`);
+      expect(livenessEvents?.length).toBeGreaterThanOrEqual(2);
 
       // The first two transactions of the target block should be the transactions
       // with "to" as the liveness contract address
