@@ -23,13 +23,13 @@ type StackedColumn struct {
 	// rows is not a power of two, then
 	// we pad with zeros up to the next power of two.
 	Source []ifaces.Column
-	// UnpaddedColumn is the column that was built using the unpadded portions
+	// UnpaddedColumn is the column that is built using the unpadded portions
 	// of the source columns. This is useful for stacking the zero padded source columns
 	UnpaddedColumn column.Natural
-	// ColumnFilter is the filter used for the conditional lookup between
+	// ColumnFilter is the filter used for the projection query between
 	// Column and UnpaddedColumn.
 	ColumnFilter column.Natural
-	// UnpaddedColumnFilter is the filter used for the conditional lookup
+	// UnpaddedColumnFilter is the filter used for the projection query
 	// between Column and UnpaddedColumn.
 	UnpaddedColumnFilter column.Natural
 	// UnpaddedSize is the size of the non zero portions of the source columns.
@@ -140,7 +140,7 @@ func StackColumn(comp *wizard.CompiledIOP, srcs []ifaces.Column, opts ...StackCo
 			stkCol.UnpaddedColumn.Size(),
 		).(column.Natural)
 
-		// Insert a conditional inclusion query on the
+		// Insert a projection query on the
 		// stacked and unpadded stacked columns
 		comp.InsertProjection(
 			ifaces.QueryID(name)+"_PROJECTION",
@@ -159,22 +159,21 @@ func StackColumn(comp *wizard.CompiledIOP, srcs []ifaces.Column, opts ...StackCo
 
 // Assigns assigns the stack column
 func (s StackedColumn) Run(run *wizard.ProverRuntime) {
-
-	column := make([]field.Element, 0, s.Column.Size())
-	// Preallocate filter elements
 	var (
+		column = make([]field.Element, 0, s.Column.Size())
 		// slice of 1 representing the non padding portion of the column
-		filterElemNonPadding   = make([]field.Element, 0, s.UnpaddedSize)
+		filterElemNonPadding = make([]field.Element, 0, s.UnpaddedSize)
+		// slice of 0 representing the padding portion of the column
 		filterElemPadding      = make([]field.Element, 0, s.Source[0].Size()-s.UnpaddedSize)
-		unpadded_col           = make([]field.Element, 0, s.UnpaddedColumn.Size())
+		unpadded_column        = make([]field.Element, 0, s.UnpaddedColumn.Size())
 		column_filter          = make([]field.Element, 0, s.ColumnFilter.Size())
 		unpadded_column_filter = make([]field.Element, 0, s.UnpaddedColumnFilter.Size())
 	)
-	// populate the filter elements
+	// preallocate the filter elements
 	for i := 0; i < s.UnpaddedSize; i++ {
 		filterElemNonPadding = append(filterElemNonPadding, field.One())
 	}
-	for i := 0; i < s.Source[0].Size(); i++ {
+	for i := 0; i < s.Source[0].Size()-s.UnpaddedSize; i++ {
 		filterElemPadding = append(filterElemPadding, field.Zero())
 	}
 	// Assign the columns
@@ -185,7 +184,7 @@ func (s StackedColumn) Run(run *wizard.ProverRuntime) {
 			var (
 				source_assignment_unpadded = source_assignment[:s.UnpaddedSize]
 			)
-			unpadded_col = append(unpadded_col, source_assignment_unpadded...)
+			unpadded_column = append(unpadded_column, source_assignment_unpadded...)
 			// Assign the filter elements for the padded column
 			column_filter = append(column_filter, filterElemNonPadding...)
 			column_filter = append(column_filter, filterElemPadding...)
@@ -194,7 +193,7 @@ func (s StackedColumn) Run(run *wizard.ProverRuntime) {
 	}
 	run.AssignColumn(s.Column.ID, smartvectors.RightZeroPadded(column, s.Column.Size()))
 	if s.IsPadded {
-		run.AssignColumn(s.UnpaddedColumn.ID, smartvectors.RightZeroPadded(unpadded_col, s.UnpaddedColumn.Size()))
+		run.AssignColumn(s.UnpaddedColumn.ID, smartvectors.RightZeroPadded(unpadded_column, s.UnpaddedColumn.Size()))
 		run.AssignColumn(s.ColumnFilter.ID, smartvectors.RightZeroPadded(column_filter, s.Column.Size()))
 		run.AssignColumn(s.UnpaddedColumnFilter.ID, smartvectors.RightZeroPadded(unpadded_column_filter, s.UnpaddedColumn.Size()))
 	}
@@ -203,6 +202,15 @@ func (s StackedColumn) Run(run *wizard.ProverRuntime) {
 // Handles the padded source columns for the stacked column
 func HandleSourcePaddedColumns(unpaddedSourceColSize int) StackColumnOp {
 	return func(stkCol *StackedColumn) {
+		// Sanity check: the unpadded source column size should not be a power of two
+		if utils.IsPowerOfTwo(unpaddedSourceColSize) {
+			utils.Panic("unpaddedSourceColSize is already a power of two %v", unpaddedSourceColSize)
+		}
+		// Sanity check: the source column size should be the next power of two
+		// of the unpaddedSourceColSize
+		if stkCol.Source[0].Size() != utils.NextPowerOfTwo(unpaddedSourceColSize) {
+			utils.Panic("unpaddedSourceColSize %v is not the next power of two of source size %v", unpaddedSourceColSize, stkCol.Source[0].Size())
+		}
 		stkCol.UnpaddedSize = unpaddedSourceColSize
 		stkCol.IsPadded = true
 	}
