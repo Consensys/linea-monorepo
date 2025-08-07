@@ -19,6 +19,8 @@ plugins {
 
 dependencies {
   implementation(project(":core"))
+  implementation(project(":config"))
+
   implementation(project(":jvm-libs:mappers"))
   implementation(project(":jvm-libs:extensions"))
 

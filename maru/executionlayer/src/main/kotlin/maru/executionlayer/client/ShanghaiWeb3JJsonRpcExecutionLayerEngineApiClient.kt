@@ -13,28 +13,28 @@ import maru.config.consensus.ElFork
 import maru.core.ExecutionPayload
 import maru.extensions.captureTimeSafeFuture
 import maru.mappers.Mappers.toDomainExecutionPayload
-import maru.mappers.Mappers.toExecutionPayloadV3
+import maru.mappers.Mappers.toExecutionPayloadV2
 import net.consensys.linea.metrics.MetricsFacade
-import org.apache.tuweni.bytes.Bytes32
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
-import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV3
+import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV2
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadStatusV1
 import tech.pegasys.teku.ethereum.executionclient.schema.Response
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.bytes.Bytes8
 
-class PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
+// https://github.com/ethereum/execution-apis/blob/main/src/engine/shanghai.md
+class ShanghaiWeb3JJsonRpcExecutionLayerEngineApiClient(
   web3jClient: Web3JClient,
   metricsFacade: MetricsFacade,
 ) : BaseWeb3JJsonRpcExecutionLayerEngineApiClient(web3jClient = web3jClient, metricsFacade = metricsFacade) {
-  override fun getFork(): ElFork = ElFork.Prague
+  override fun getFork(): ElFork = ElFork.Shanghai
 
   override fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayload>> =
     createRequestTimer<ExecutionPayload>(method = "getPayload").captureTimeSafeFuture(
-      web3jEngineClient.getPayloadV4(payloadId).thenApply {
+      web3jEngineClient.getPayloadV2(payloadId).thenApply {
         when {
           it.payload != null ->
             Response.fromPayloadReceivedAsJson(it.payload.executionPayload.toDomainExecutionPayload())
@@ -51,7 +51,7 @@ class PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
   override fun newPayload(executionPayload: ExecutionPayload): SafeFuture<Response<PayloadStatusV1>> =
     createRequestTimer<PayloadStatusV1>(method = "newPayload").captureTimeSafeFuture(
       web3jEngineClient
-        .newPayloadV4(executionPayload.toExecutionPayloadV3(), emptyList(), Bytes32.ZERO, emptyList())
+        .newPayloadV2(executionPayload.toExecutionPayloadV2())
         .thenApply {
           if (it.payload != null) {
             Response.fromPayloadReceivedAsJson(it.payload)
@@ -68,15 +68,14 @@ class PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
     createRequestTimer<ForkChoiceUpdatedResult>(
       method = "forkChoiceUpdate",
     ).captureTimeSafeFuture(
-      web3jEngineClient.forkChoiceUpdatedV3(forkChoiceState, Optional.ofNullable(payloadAttributes?.toV3())),
+      web3jEngineClient.forkChoiceUpdatedV2(forkChoiceState, Optional.ofNullable(payloadAttributes?.toV2())),
     )
 
-  private fun PayloadAttributesV1.toV3(): PayloadAttributesV3 =
-    PayloadAttributesV3(
+  private fun PayloadAttributesV1.toV2(): PayloadAttributesV2 =
+    PayloadAttributesV2(
       this.timestamp,
       this.prevRandao,
       this.suggestedFeeRecipient,
       emptyList(),
-      Bytes32.ZERO,
     )
 }
