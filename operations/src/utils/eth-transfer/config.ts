@@ -1,4 +1,4 @@
-import { FlagOutput } from "@oclif/core/lib/interfaces/parser";
+import { ParserOutput } from "@oclif/core/interfaces";
 
 export type Config = {
   senderAddress: string;
@@ -15,7 +15,7 @@ export type Config = {
   web3SignerTrustedStorePath: string;
 };
 
-export function validateConfig(flags: FlagOutput): Config {
+export function validateConfig(flags: ParserOutput["flags"]): Config {
   const {
     senderAddress,
     destinationAddress,
