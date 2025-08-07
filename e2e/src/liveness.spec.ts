@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { config } from "./config/tests-config";
-import { awaitUntil, execDockerCommand, getBlockByNumberOrBlockTag, wait } from "./common/utils";
+import { awaitUntil, execDockerCommand, getBlockByNumberOrBlockTag, pollForBlockNumber, wait } from "./common/utils";
 import { Log } from "ethers";
 
 // should remove skip only when the linea-sequencer plugin supports liveness
@@ -42,6 +42,15 @@ describe("Liveness test suite", () => {
       const targetBlockNumber = lastBlockNumber! + 1;
       logger.debug(`targetBlockNumber=${JSON.stringify(targetBlockNumber)}`);
 
+      // wait until the target block is available
+      await pollForBlockNumber(config.getL2Provider(), targetBlockNumber);
+
+      // The first two transactions of the target block should be the transactions
+      // with "to" as the liveness contract address
+      const targetBlock = await getBlockByNumberOrBlockTag(config.getL2BesuNodeEndpoint()!, lastBlockNumber! + 1, true);
+      logger.debug(`targetBlock=${JSON.stringify(targetBlock)}`);
+      expect(targetBlock?.transactions.length).toBeGreaterThanOrEqual(2);
+
       const livenessEvents = await awaitUntil(
         async () => {
           return config.getL2Provider().getLogs({
@@ -60,11 +69,6 @@ describe("Liveness test suite", () => {
 
       logger.debug(`livenessEvents=${JSON.stringify(livenessEvents)}`);
       expect(livenessEvents?.length).toBeGreaterThanOrEqual(2);
-
-      // The first two transactions of the target block should be the transactions
-      // with "to" as the liveness contract address
-      const targetBlock = await getBlockByNumberOrBlockTag(config.getL2BesuNodeEndpoint()!, targetBlockNumber, true);
-      expect(targetBlock?.transactions.length).toBeGreaterThanOrEqual(2);
 
       const downtimeTransaction = targetBlock?.transactions.at(0);
       const uptimeTransaction = targetBlock?.transactions.at(1);
