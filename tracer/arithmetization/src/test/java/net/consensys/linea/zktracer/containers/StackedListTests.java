@@ -24,7 +24,7 @@ import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
-import net.consensys.linea.zktracer.module.add.AddOperation;
+import net.consensys.linea.zktracer.module.add.LondonAdd;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -34,14 +34,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
 public class StackedListTests extends TracerTestBase {
-  private static final AddOperation ONE_PLUS_ONE =
-      new AddOperation(
+  private static final LondonAdd.Operation ONE_PLUS_ONE =
+      new LondonAdd.Operation(
           OpCode.ADD,
           Bytes32.leftPad(Bytes.wrap(BigInteger.ONE.toByteArray())),
           Bytes32.leftPad(Bytes.wrap(BigInteger.ONE.toByteArray())));
 
-  private static final AddOperation ONE_PLUS_TWO =
-      new AddOperation(
+  private static final LondonAdd.Operation ONE_PLUS_TWO =
+      new LondonAdd.Operation(
           OpCode.ADD,
           Bytes32.leftPad(Bytes.wrap(BigInteger.ONE.toByteArray())),
           Bytes32.leftPad(Bytes.wrap(BigInteger.TWO.toByteArray())));
@@ -74,7 +74,7 @@ public class StackedListTests extends TracerTestBase {
 
   @Test
   public void push() {
-    ModuleOperationStackedList<AddOperation> chunks = new ModuleOperationStackedList<>();
+    ModuleOperationStackedList<LondonAdd.Operation> chunks = new ModuleOperationStackedList<>();
 
     chunks.add(ONE_PLUS_ONE);
     chunks.add(ONE_PLUS_ONE);
@@ -86,7 +86,7 @@ public class StackedListTests extends TracerTestBase {
 
   @Test
   public void multiplePushPop() {
-    ModuleOperationStackedList<AddOperation> chunks = new ModuleOperationStackedList<>();
+    ModuleOperationStackedList<LondonAdd.Operation> chunks = new ModuleOperationStackedList<>();
     chunks.add(ONE_PLUS_ONE);
     chunks.add(ONE_PLUS_ONE);
     Assertions.assertEquals(2, chunks.size());

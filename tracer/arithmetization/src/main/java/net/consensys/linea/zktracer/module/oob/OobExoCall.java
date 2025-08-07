@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.oob;
 
 import static net.consensys.linea.zktracer.Trace.*;
+import static net.consensys.linea.zktracer.opcode.OpCode.ADD;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 
 import lombok.Builder;
@@ -63,7 +64,7 @@ public class OobExoCall {
         .instruction(EVM_INST_ADD)
         .arg1(arg1B32)
         .arg2(arg2B32)
-        .result(bigIntegerToBytes(add.callADD(arg1B32, arg2B32)))
+        .result(bigIntegerToBytes(add.call(ADD, arg1B32, arg2B32)))
         .build();
   }
 

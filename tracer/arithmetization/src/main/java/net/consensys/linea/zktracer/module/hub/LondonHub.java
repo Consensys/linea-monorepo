@@ -20,6 +20,8 @@ import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
 import net.consensys.linea.zktracer.ChainConfig;
+import net.consensys.linea.zktracer.module.add.Add;
+import net.consensys.linea.zktracer.module.add.LondonAdd;
 import net.consensys.linea.zktracer.module.blockdata.module.Blockdata;
 import net.consensys.linea.zktracer.module.blockdata.module.LondonBlockData;
 import net.consensys.linea.zktracer.module.euc.Euc;
@@ -50,6 +52,11 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 public class LondonHub extends Hub {
   public LondonHub(ChainConfig chain) {
     super(chain);
+  }
+
+  @Override
+  protected Add setAdd() {
+    return new LondonAdd();
   }
 
   @Override
