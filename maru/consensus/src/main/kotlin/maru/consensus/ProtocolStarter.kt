@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.max
 import maru.core.BeaconBlock
 import maru.core.Protocol
-import maru.syncing.ELSyncStatus
+import maru.syncing.CLSyncStatus
 import maru.syncing.SyncStatusProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -54,16 +54,16 @@ class ProtocolStarter(
           elMetadataProvider = elMetadataProvider,
           nextBlockTimestampProvider = nextBlockTimestampProvider,
         )
-      syncStatusProvider.onElSyncStatusUpdate {
-        when (it) {
-          ELSyncStatus.SYNCING -> protocolStarter.stop()
-          ELSyncStatus.SYNCED -> {
-            try {
-              protocolStarter.start()
-            } catch (th: Throwable) {
-              throw th
-            }
-          }
+      syncStatusProvider.onClSyncStatusUpdate {
+        if (it == CLSyncStatus.SYNCING) {
+          protocolStarter.stop()
+        }
+      }
+      syncStatusProvider.onFullSyncComplete {
+        try {
+          protocolStarter.start()
+        } catch (th: Throwable) {
+          throw th
         }
       }
       return protocolStarter

@@ -16,7 +16,9 @@ import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
+import maru.core.EMPTY_HASH
 import maru.core.ExecutionPayload
+import maru.core.GENESIS_EXECUTION_PAYLOAD
 import maru.core.HashUtil
 import maru.core.Seal
 import maru.core.SealedBeaconBlock
@@ -26,6 +28,7 @@ import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import maru.executionlayer.manager.PayloadStatus
 import maru.serialization.rlp.RLPSerializers
 import maru.serialization.rlp.bodyRoot
+import maru.serialization.rlp.stateRoot
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.crypto.SECP256K1
 import org.hyperledger.besu.datatypes.Address
@@ -34,6 +37,40 @@ import org.hyperledger.besu.datatypes.Wei
 import org.hyperledger.besu.ethereum.core.Transaction
 
 object DataGenerators {
+  fun genesisState(
+    genesisTimestamp: ULong,
+    validators: Set<Validator>,
+  ): Pair<BeaconState, SealedBeaconBlock> {
+    val genesisExecutionPayload = GENESIS_EXECUTION_PAYLOAD
+    val beaconBlockBody = BeaconBlockBody(prevCommitSeals = emptySet(), executionPayload = genesisExecutionPayload)
+
+    val beaconBlockHeader =
+      BeaconBlockHeader(
+        number = 0u,
+        round = 0u,
+        timestamp = genesisTimestamp,
+        proposer = Validator(genesisExecutionPayload.feeRecipient),
+        parentRoot = EMPTY_HASH,
+        stateRoot = EMPTY_HASH,
+        bodyRoot = EMPTY_HASH,
+        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+      )
+
+    val tmpGenesisStateRoot =
+      BeaconState(
+        latestBeaconBlockHeader = beaconBlockHeader,
+        validators = validators,
+      )
+    val stateRootHash = HashUtil.stateRoot(tmpGenesisStateRoot)
+
+    val genesisBlockHeader = beaconBlockHeader.copy(stateRoot = stateRootHash)
+    val genesisBlock = BeaconBlock(genesisBlockHeader, beaconBlockBody)
+    val genesisState = BeaconState(genesisBlockHeader, validators)
+    val genesisSealedBeaconBlock = SealedBeaconBlock(genesisBlock, emptySet())
+
+    return Pair(genesisState, genesisSealedBeaconBlock)
+  }
+
   fun randomBeaconState(
     number: ULong,
     timestamp: ULong = randomTimestamp(),

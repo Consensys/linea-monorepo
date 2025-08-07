@@ -22,7 +22,7 @@ import maru.database.BeaconChain
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockHandler
-import maru.syncing.ELSyncStatus
+import maru.syncing.CLSyncStatus
 import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
 import org.hyperledger.besu.plugin.services.MetricsSystem
@@ -77,12 +77,15 @@ class QbftProtocolValidatorFactory(
         allowEmptyBlocks = allowEmptyBlocks,
       )
     val qbftProtocol = qbftValidatorFactory.create(forkSpec)
-    syncStatusProvider.onElSyncStatusUpdate {
-      when (it) {
-        ELSyncStatus.SYNCING -> qbftProtocol.stop()
-        ELSyncStatus.SYNCED -> qbftProtocol.start()
+    syncStatusProvider.onFullSyncComplete {
+      qbftProtocol.start()
+    }
+    syncStatusProvider.onClSyncStatusUpdate {
+      if (it == CLSyncStatus.SYNCING) {
+        qbftProtocol.stop()
       }
     }
+
     return qbftProtocol
   }
 }
