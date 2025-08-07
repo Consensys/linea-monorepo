@@ -104,7 +104,11 @@ class DefaultMaruPeer(
             }
           } else {
             updateStatus(status)
-            scheduler.schedule(this::sendStatus, p2pConfig.statusUpdate.renewal.inWholeSeconds, TimeUnit.SECONDS)
+            scheduler.schedule(
+              this::sendStatus,
+              p2pConfig.statusUpdate.refreshInterval.inWholeSeconds,
+              TimeUnit.SECONDS,
+            )
           }
         }.thenApply {}
     } catch (e: Exception) {
@@ -120,7 +124,9 @@ class DefaultMaruPeer(
     status.set(newStatus)
     log.trace("Received status update from peer={}: status={}", id, newStatus)
     if (connectionInitiatedRemotely()) {
-      scheduleDisconnectIfStatusNotReceived(p2pConfig.statusUpdate.renewal + p2pConfig.statusUpdate.renewalLeeway)
+      scheduleDisconnectIfStatusNotReceived(
+        p2pConfig.statusUpdate.refreshInterval + p2pConfig.statusUpdate.refreshIntervalLeeway,
+      )
     }
   }
 

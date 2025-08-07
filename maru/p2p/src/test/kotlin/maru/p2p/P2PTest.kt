@@ -85,7 +85,6 @@ class P2PTest {
     private val key1 = "0802122012c0b113e2b0c37388e2b484112e13f05c92c4471e3ee1dfaa368fa5045325b2".fromHex()
     private val key2 = "0802122100f3d2fffa99dc8906823866d96316492ebf7a8478713a89a58b7385af85b088a1".fromHex()
     private val key3 = "080212204437acb8e84bc346f7640f239da84abe99bc6f97b7855f204e34688d2977fd57".fromHex()
-    private val initialExpectedBeaconBlockNumber = 1UL
     private val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
     private val forkIdHashProvider =
       createForkIdHashProvider()
@@ -972,7 +971,12 @@ class P2PTest {
                 port = PORT2,
                 refreshInterval = refreshInterval,
               ),
-            statusUpdate = P2P.StatusUpdateConfig(renewal = 1.seconds, renewalLeeway = 1.seconds, timeout = 1.seconds),
+            statusUpdate =
+              P2P.StatusUpdateConfig(
+                refreshInterval = 1.seconds,
+                refreshIntervalLeeway = 1.seconds,
+                timeout = 1.seconds,
+              ),
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -1008,7 +1012,12 @@ class P2PTest {
                 bootnodes = listOf(bootnodeEnrString),
                 refreshInterval = refreshInterval,
               ),
-            statusUpdate = P2P.StatusUpdateConfig(renewal = 1.seconds, renewalLeeway = 1.seconds, timeout = 1.seconds),
+            statusUpdate =
+              P2P.StatusUpdateConfig(
+                refreshInterval = 1.seconds,
+                refreshIntervalLeeway = 1.seconds,
+                timeout = 1.seconds,
+              ),
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -1066,7 +1075,12 @@ class P2PTest {
             staticPeers = emptyList(),
             maxPeers = 2,
             reconnectDelay = 1.seconds,
-            statusUpdate = P2P.StatusUpdateConfig(renewal = 1.seconds, renewalLeeway = 0.seconds, timeout = 1.seconds),
+            statusUpdate =
+              P2P.StatusUpdateConfig(
+                refreshInterval = 1.seconds,
+                refreshIntervalLeeway = 0.seconds,
+                timeout = 1.seconds,
+              ),
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -1090,7 +1104,12 @@ class P2PTest {
             listOf(PEER_ADDRESS_NODE_1),
             maxPeers = 2,
             reconnectDelay = 1.seconds,
-            statusUpdate = P2P.StatusUpdateConfig(renewal = 2.seconds, renewalLeeway = 1.seconds, timeout = 1.seconds),
+            statusUpdate =
+              P2P.StatusUpdateConfig(
+                refreshInterval = 2.seconds,
+                refreshIntervalLeeway = 1.seconds,
+                timeout = 1.seconds,
+              ),
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
