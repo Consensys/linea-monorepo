@@ -1,13 +1,13 @@
 import axios from "axios";
 import { ethers, TransactionLike } from "ethers";
-import { readFileSync } from "fs";
 import { Agent } from "https";
+import { readFile } from "./misc.js";
 
-export function getHttpsAgent(pfxPath: string, passphrase: string, caPath: string): Agent {
+export function getWeb3SignerHttpsAgent(keystorePath: string, passphrase: string, trustedStorePath: string): Agent {
   return new Agent({
-    pfx: readFileSync(pfxPath),
+    pfx: readFile(keystorePath),
     passphrase,
-    ca: readFileSync(caPath),
+    ca: readFile(trustedStorePath),
   });
 }
 

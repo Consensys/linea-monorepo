@@ -11,7 +11,7 @@ import {
   DEFAULT_GAS_ESTIMATION_PERCENTILE,
   DEFAULT_MAX_FEE_PER_GAS,
   WEB3_SIGNER_PUBLIC_KEY_LENGTH,
-  getHttpsAgent,
+  getWeb3SignerHttpsAgent,
 } from "../utils/eth-transfer/index.js";
 import { Agent } from "https";
 
@@ -204,7 +204,7 @@ export default class EthTransfer extends Command {
     let httpsAgent: Agent | undefined;
     if (tls) {
       this.log(`Using TLS for secure communication with Web3 Signer.`);
-      httpsAgent = getHttpsAgent(web3SignerKeystorePath, web3SignerPassphrase, web3SignerTrustedStorePath);
+      httpsAgent = getWeb3SignerHttpsAgent(web3SignerKeystorePath, web3SignerPassphrase, web3SignerTrustedStorePath);
     }
 
     const signature = await getWeb3SignerSignature(web3SignerUrl, web3SignerPublicKey, transaction, httpsAgent);
