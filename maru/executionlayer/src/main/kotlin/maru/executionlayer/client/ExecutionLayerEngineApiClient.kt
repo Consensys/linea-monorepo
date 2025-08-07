@@ -8,6 +8,7 @@
  */
 package maru.executionlayer.client
 
+import maru.config.consensus.ElFork
 import maru.core.ExecutionPayload
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult
@@ -30,4 +31,6 @@ interface ExecutionLayerEngineApiClient {
   fun getLatestBlockHash(): SafeFuture<ByteArray>
 
   fun isOnline(): SafeFuture<Boolean>
+
+  fun getFork(): ElFork
 }
