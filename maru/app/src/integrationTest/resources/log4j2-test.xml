@@ -16,6 +16,7 @@
 <!--            level="TRACE"/>-->
     <Logger name="clients.l2.eth" level="DEBUG"/>
     <Logger name="maru.executionlayer.manager" level="DEBUG"/>
+    <Logger name="maru.syncing" level="DEBUG"/>
     <Logger name="org.hyperledger.besu" level="DEBUG"/>
     <Logger name="org.hyperledger.besu.consensus.qbft" level="INFO"/>
     <Root level="INFO" additivity="false">

@@ -9,6 +9,9 @@
 package maru.syncing
 
 import kotlin.time.Duration.Companion.seconds
+import maru.core.ext.DataGenerators
+import maru.database.BeaconChain
+import maru.database.InMemoryBeaconChain
 import maru.p2p.PeersHeadBlockProvider
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
@@ -53,6 +56,7 @@ class PeerChainTrackerTest {
   private lateinit var config: PeerChainTracker.Config
   private lateinit var timer: TestablePeriodicTimer
   private lateinit var peerChainTracker: PeerChainTracker
+  private val beaconChain: BeaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(7uL))
 
   @BeforeEach
   fun setUp() {
@@ -75,6 +79,7 @@ class PeerChainTrackerTest {
         targetChainHeadCalculator,
         config,
         timerFactory = { _, _ -> timer },
+        beaconChain = beaconChain,
       )
   }
 
@@ -281,6 +286,7 @@ class PeerChainTrackerTest {
 
   @Test
   fun `should handle empty peer list`() {
+    val latestBeaconBlockNumber = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number
     // Arrange - Start with no peers
     peersHeadsProvider.setPeersHeads(emptyMap())
 
@@ -289,7 +295,7 @@ class PeerChainTrackerTest {
     timer.runNextTask()
 
     // Assert - When there are no peers it should just set the sync target to 0
-    assertThat(syncTargetUpdateHandler.receivedTargets).hasSameElementsAs(listOf(0UL))
+    assertThat(syncTargetUpdateHandler.receivedTargets).hasSameElementsAs(listOf(latestBeaconBlockNumber))
 
     // Arrange - Add peers
     val peersHeads =
@@ -302,6 +308,6 @@ class PeerChainTrackerTest {
     timer.runNextTask()
 
     // Assert - Update should occur when peers are added
-    assertThat(syncTargetUpdateHandler.receivedTargets).hasSameElementsAs(listOf(0UL, 100UL))
+    assertThat(syncTargetUpdateHandler.receivedTargets).hasSameElementsAs(listOf(latestBeaconBlockNumber, 100UL))
   }
 }

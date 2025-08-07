@@ -85,38 +85,31 @@ class BeaconSyncControllerImpl(
   fun updateClSyncStatus(newStatus: CLSyncStatus) {
     val callbacks: List<() -> Unit> =
       lock.write {
+        log.debug("Updating CL sync status to {}", newStatus)
+
         val previousState = currentState
 
         if (previousState.clStatus == newStatus) return@write emptyList()
 
-        // When CL starts syncing, EL must also be syncing (EL follows CL rule)
-        val newElStatus =
-          when {
-            newStatus == CLSyncStatus.SYNCING -> ELSyncStatus.SYNCING
-            else -> previousState.elStatus
-          }
-
-        currentState = SyncState(newStatus, newElStatus)
+        currentState = SyncState(newStatus, previousState.elStatus)
 
         buildList {
           add { clSyncHandlers.notifySubscribers(newStatus) }
 
-          // If EL status changed due to CL change, notify EL handlers
-          if (newElStatus != previousState.elStatus) {
-            add { elSyncHandlers.notifySubscribers(newElStatus) }
+          // If CL is SYNCED, beacon sync is complete
+          if (isBeaconChainSynced()) {
+            log.debug("Beacon chain is synced now")
+            add { beaconSyncCompleteHandlers.notifySubscribers(Unit) }
           }
 
-          // If CL moved from SYNCING to SYNCED, beacon sync is complete
-          if (previousState.clStatus == CLSyncStatus.SYNCING && newStatus == CLSyncStatus.SYNCED) {
-            add { beaconSyncCompleteHandlers.notifySubscribers(Unit) }
-
-            // Check if this makes the node fully synced
-            if (isNodeFullInSync()) {
-              add { fullSyncCompleteHandlers.notifySubscribers(Unit) }
-            }
+          // Check if this makes the node fully synced
+          if (isNodeFullInSync()) {
+            log.debug("Node is fully synced now")
+            add { fullSyncCompleteHandlers.notifySubscribers(Unit) }
           }
         }
       }
+    log.trace("firing CL sync status update callbacks: {}", callbacks.size)
 
     // Fire callbacks outside of lock
     callbacks.forEach { it() }
@@ -125,12 +118,10 @@ class BeaconSyncControllerImpl(
   fun updateElSyncStatus(newStatus: ELSyncStatus) {
     val callbacks: List<() -> Unit> =
       lock.write {
+        log.debug("Updating EL sync status to {}", newStatus)
         val previousState = currentState
 
-        // EL can't be synced if CL is still syncing (EL follows CL rule)
-        if (previousState.clStatus == CLSyncStatus.SYNCING ||
-          previousState.elStatus == newStatus
-        ) {
+        if (previousState.elStatus == newStatus) {
           return@write emptyList()
         }
 
@@ -139,15 +130,15 @@ class BeaconSyncControllerImpl(
         buildList {
           add { elSyncHandlers.notifySubscribers(newStatus) }
 
-          // Check if this transition from EL SYNCING->SYNCED when CL is already SYNCED makes us fully synced
-          if (previousState.elStatus == ELSyncStatus.SYNCING &&
-            newStatus == ELSyncStatus.SYNCED &&
-            currentState.clStatus == CLSyncStatus.SYNCED
-          ) {
+          // Check if this makes the node fully synced
+          if (isNodeFullInSync()) {
+            log.debug("Node is fully synced now")
             add { fullSyncCompleteHandlers.notifySubscribers(Unit) }
           }
         }
       }
+
+    log.trace("firing EL sync status update callbacks: {}", callbacks.size)
 
     // Fire callbacks outside of lock
     callbacks.forEach { it() }
@@ -223,6 +214,7 @@ class BeaconSyncControllerImpl(
           beaconSyncTargetUpdateHandler = controller,
           targetChainHeadCalculator = targetChainHeadCalculator,
           config = peerChainTrackerConfig,
+          beaconChain = beaconChain,
         )
 
       return SyncControllerManager(

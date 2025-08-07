@@ -13,6 +13,7 @@ import java.util.UUID
 import kotlin.concurrent.timerTask
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import maru.database.BeaconChain
 import maru.p2p.PeersHeadBlockProvider
 import maru.services.LongRunningService
 import org.apache.logging.log4j.LogManager
@@ -36,6 +37,7 @@ class PeerChainTracker(
       isDaemon,
     )
   },
+  private val beaconChain: BeaconChain,
 ) : LongRunningService {
   private val log = LogManager.getLogger(this.javaClass)
 
@@ -79,7 +81,8 @@ class PeerChainTracker(
       if (peers.isNotEmpty()) {
         targetChainHeadCalculator.selectBestSyncTarget(peers.values.toList())
       } else {
-        0UL // If there are no peers, let's just say we're synced, because we don't know better
+        // If there are no peers, we return the chain head of current node, because we don't know better
+        beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number
       }
     log.trace("Selected best syncTarget={} lastNotifiedTarget={}", newSyncTarget, lastNotifiedTarget)
     if (newSyncTarget != lastNotifiedTarget) { // Only send an update if there's an actual target change

@@ -53,7 +53,8 @@ class DownloadBlocksStep(
           peerLookup
             .getPeers()
             .filter {
-              it.getStatus() != null && it.getStatus()!!.latestBlockNumber >=
+              it.getStatus() != null &&
+                it.getStatus()!!.latestBlockNumber >=
                 currentSyncTarget
             }.random()
         try {

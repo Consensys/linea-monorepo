@@ -182,6 +182,7 @@ class InOrderFanoutSubscriptionManager<T>(
     logIfEmptySubscribers(data)
     subscribers.forEach { subscriber ->
       try {
+        log.trace("Notifying subscriber={} with data={}", subscriber.id, data)
         subscriber.syncHandler?.invoke(data)
           ?: subscriber.asyncHandler?.invoke(data)?.join()
       } catch (th: Throwable) {
@@ -199,6 +200,7 @@ class InOrderFanoutSubscriptionManager<T>(
     val futures =
       subscribers.map { subscriber ->
         try {
+          log.trace("Notifying subscriber={} with data={}", subscriber.id, data)
           subscriber.syncHandler
             ?.let { SafeFuture.completedFuture(it.invoke(data)) }
             ?: subscriber.asyncHandler?.invoke(data)!!
@@ -256,4 +258,6 @@ class InOrderFanoutSubscriptionManager<T>(
       th,
     )
   }
+
+  override fun toString(): String = "InOrderFanoutSubscriptionManager(subscribers=${subscribers.map { it.id }})"
 }

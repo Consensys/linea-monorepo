@@ -13,7 +13,6 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.random.Random
 import maru.config.P2P
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
@@ -25,8 +24,6 @@ import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.StaticValidatorProvider
 import maru.consensus.qbft.DelayedQbftBlockCreator
-import maru.core.BeaconBlock
-import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
 import maru.core.Seal
 import maru.core.SealedBeaconBlock
@@ -103,7 +100,7 @@ class CLSyncServiceImplTest {
     validators = setOf(Validator(Util.publicKeyToAddress(keypair.publicKey).toArray()))
 
     val genesisTimestamp = DataGenerators.randomTimestamp()
-    val (genesisBeaconState, genesisBeaconBlock) = genesisState(genesisTimestamp, validators)
+    val (genesisBeaconState, genesisBeaconBlock) = DataGenerators.genesisState(genesisTimestamp, validators)
     targetBeaconChain = spy(InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock))
     sourceBeaconChain = spy(InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock))
 
@@ -356,39 +353,6 @@ class CLSyncServiceImplTest {
 
   private fun createPeerAddress(port: UInt): MultiaddrPeerAddress =
     MultiaddrPeerAddress.fromAddress("/ip4/$IPV4/tcp/$port/p2p/$PEER_ID_NODE_2")
-
-  private fun genesisState(
-    genesisTimestamp: ULong,
-    validators: Set<Validator>,
-  ): Pair<BeaconState, SealedBeaconBlock> {
-    val genesisBeaconBlockHeader =
-      BeaconBlockHeader(
-        number = 0uL,
-        round = 0u,
-        timestamp = genesisTimestamp,
-        proposer = validators.first(),
-        parentRoot = Random.nextBytes(32),
-        stateRoot = Random.nextBytes(32),
-        bodyRoot = Random.nextBytes(32),
-        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      )
-    val genesisBeaconState =
-      BeaconState(
-        latestBeaconBlockHeader = genesisBeaconBlockHeader,
-        validators = validators,
-      )
-
-    val genesisBeaconBlock =
-      SealedBeaconBlock(
-        beaconBlock =
-          BeaconBlock(
-            beaconBlockHeader = genesisBeaconBlockHeader,
-            beaconBlockBody = DataGenerators.randomBeaconBlockBody(),
-          ),
-        commitSeals = setOf(Seal(Random.nextBytes(96))),
-      )
-    return Pair(genesisBeaconState, genesisBeaconBlock)
-  }
 
   private fun createNetwork(
     beaconChain: BeaconChain,
