@@ -83,6 +83,7 @@ public class MmioData {
   private final boolean exoIsRom;
   private final boolean exoIsBlake2fModexp;
   private final boolean exoIsEcData;
+  private final boolean exoIsBls;
   private final boolean exoIsRipSha;
   private final boolean exoIsKeccak;
   private final boolean exoIsLog;
@@ -140,6 +141,7 @@ public class MmioData {
         hubToMmuValues.exoIsRom(),
         hubToMmuValues.exoIsBlake2fModexp(),
         hubToMmuValues.exoIsEcData(),
+        hubToMmuValues.exoIsBls(),
         hubToMmuValues.exoIsRipSha(),
         hubToMmuValues.exoIsKeccak(),
         hubToMmuValues.exoIsLog(),

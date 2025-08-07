@@ -119,6 +119,7 @@ public class Mmio implements Module {
     final boolean effectiveExoIsRom = requiresExoFlag && mmioData.exoIsRom();
     final boolean effectiveExoIsLog = requiresExoFlag && mmioData.exoIsLog();
     final boolean effectiveExoIsEcData = requiresExoFlag && mmioData.exoIsEcData();
+    final boolean effectiveExoIsBls = requiresExoFlag && mmioData.exoIsBls();
     final boolean effectiveExoIsBlakeModexp = requiresExoFlag && mmioData.exoIsBlake2fModexp();
     final boolean effectiveExoIsRipSha = requiresExoFlag && mmioData.exoIsRipSha();
     final boolean effectiveExoIsKeccak = requiresExoFlag && mmioData.exoIsKeccak();
@@ -183,7 +184,14 @@ public class Mmio implements Module {
           .exoIsEcdata(effectiveExoIsEcData)
           .exoIsBlakemodexp(effectiveExoIsBlakeModexp)
           .exoIsRipsha(effectiveExoIsRipSha)
-          .exoIsKec(effectiveExoIsKeccak)
+          .exoIsKec(effectiveExoIsKeccak);
+      try {
+        trace.exoIsBls(effectiveExoIsBls);
+      }
+      // ignore exception, this columns appears in cancun
+      catch (final Exception ignored) {
+      }
+      trace
           .kecId(mmioData.kecId())
           .phase(mmioData.phase())
           .successBit(mmioData.successBit())

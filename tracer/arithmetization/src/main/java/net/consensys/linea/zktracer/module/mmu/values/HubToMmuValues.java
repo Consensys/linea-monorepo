@@ -44,6 +44,7 @@ public class HubToMmuValues {
   private final boolean exoIsRom;
   private final boolean exoIsBlake2fModexp;
   private final boolean exoIsEcData;
+  private final boolean exoIsBls;
   private final boolean exoIsRipSha;
   private final boolean exoIsKeccak;
   private final boolean exoIsLog;
@@ -56,6 +57,7 @@ public class HubToMmuValues {
     this.exoIsRom = mmuCall.exoIsRom();
     this.exoIsBlake2fModexp = mmuCall.exoIsBlakeModexp();
     this.exoIsEcData = mmuCall.exoIsEcData();
+    this.exoIsBls = mmuCall.exoIsBls();
     this.exoIsRipSha = mmuCall.exoIsRipSha();
     this.exoIsKeccak = mmuCall.exoIsKec();
     this.exoIsLog = mmuCall.exoIsLog();
