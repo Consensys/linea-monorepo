@@ -95,6 +95,7 @@ public class MmuCall implements TraceSubFragment, EndTransactionDefer {
   protected boolean exoIsRipSha = false;
   protected boolean exoIsBlakeModexp = false;
   protected boolean exoIsEcData = false;
+  protected boolean exoIsBls = false;
   private int exoSum = 0;
 
   public void dontTraceMe() {
@@ -136,6 +137,10 @@ public class MmuCall implements TraceSubFragment, EndTransactionDefer {
 
   final MmuCall setEcData() {
     return this.exoIsEcData(true).updateExoSum(EXO_SUM_WEIGHT_ECDATA);
+  }
+
+  final MmuCall setBls() {
+    return this.exoIsBls(true).updateExoSum(EXO_SUM_WEIGHT_BLSDATA);
   }
 
   public MmuCall(final Hub hub, final int instruction) {

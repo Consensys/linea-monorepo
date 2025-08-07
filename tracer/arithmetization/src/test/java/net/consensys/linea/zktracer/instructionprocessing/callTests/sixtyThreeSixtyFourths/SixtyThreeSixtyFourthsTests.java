@@ -16,12 +16,7 @@
 package net.consensys.linea.zktracer.instructionprocessing.callTests.sixtyThreeSixtyFourths;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_CALL_STIPEND;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_CALL_VALUE;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_NEW_ACCOUNT;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_WARM_ACCESS;
-import static net.consensys.linea.zktracer.Trace.PRC_BLAKE2F_SIZE;
-import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
+import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.OUT_OF_GAS_EXCEPTION;
 import static net.consensys.linea.zktracer.opcode.OpCode.CALL;
 import static net.consensys.linea.zktracer.opcode.OpCode.MLOAD;
@@ -301,7 +296,7 @@ public class SixtyThreeSixtyFourthsTests extends TracerTestBase {
         INFINITE_GAS,
         address,
         address == BLAKE2B_F_COMPRESSION
-            ? PRC_BLAKE2F_SIZE
+            ? PRECOMPILE_CALL_DATA_SIZE___BLAKE2F
             : 0, // For BLAKE2F we need a meaningful cds for the call to succeed
         true);
   }
@@ -386,7 +381,8 @@ public class SixtyThreeSixtyFourthsTests extends TracerTestBase {
     } else if (address == MODEXP) {
       return 96 + bbs + ebs + mbs; // Ensures cost is greater than stipend with non-zero non-trivial
     } else if (address == BLAKE2B_F_COMPRESSION) {
-      return PRC_BLAKE2F_SIZE; // Ensures cost is greater than stipend with non-zero non-trivial
+      return PRECOMPILE_CALL_DATA_SIZE___BLAKE2F; // Ensures cost is greater than stipend with
+      // non-zero non-trivial
       // input
     } else {
       return 0;

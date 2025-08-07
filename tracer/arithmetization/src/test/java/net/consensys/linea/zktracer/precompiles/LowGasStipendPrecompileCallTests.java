@@ -17,10 +17,7 @@ package net.consensys.linea.zktracer.precompiles;
 
 import static com.google.common.math.BigIntegerMath.log2;
 import static java.lang.Math.min;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_CALL_STIPEND;
-import static net.consensys.linea.zktracer.Trace.PRC_BLAKE2F_SIZE;
-import static net.consensys.linea.zktracer.Trace.PRC_ECPAIRING_SIZE;
-import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
+import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.generateModexpInput;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.getExpectedReturnAtCapacity;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.getPrecompileCost;
@@ -133,7 +130,7 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
     if (precompileAddress == BLAKE2B_F_COMPRESSION) {
       rLeadingByte = modexpCostGT200OrBlake2fRoundsGT0 ? 0x12 : 0;
       r = rLeadingByte << 8;
-      callDataSize = PRC_BLAKE2F_SIZE;
+      callDataSize = PRECOMPILE_CALL_DATA_SIZE___BLAKE2F;
       prepareBlake2F(program, rLeadingByte, callDataOffset + 2);
     } else if (precompileAddress == ALTBN128_PAIRING) {
       callDataSize = PRC_ECPAIRING_SIZE;
