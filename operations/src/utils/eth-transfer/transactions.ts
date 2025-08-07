@@ -15,7 +15,7 @@ export async function getWeb3SignerSignature(
   web3SignerUrl: string,
   web3SignerPublicKey: string,
   transaction: TransactionLike,
-  agent: Agent,
+  agent?: Agent,
 ): Promise<string> {
   try {
     const { data } = await axios.post(

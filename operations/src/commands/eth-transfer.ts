@@ -13,6 +13,7 @@ import {
   WEB3_SIGNER_PUBLIC_KEY_LENGTH,
   getHttpsAgent,
 } from "../utils/eth-transfer/index.js";
+import { Agent } from "https";
 
 export default class EthTransfer extends Command {
   static examples = [
@@ -117,19 +118,25 @@ export default class EthTransfer extends Command {
       default: DEFAULT_GAS_ESTIMATION_PERCENTILE,
       env: "ETH_TRANSFER_GAS_ESTIMATION_PERCENTILE",
     }),
+    tls: Flags.boolean({
+      description: "Enable TLS",
+      required: false,
+      default: false,
+      env: "ETH_TRANSFER_TLS",
+    }),
     "web3-signer-keystore-path": Flags.string({
       description: "Path to the web3 signer keystore file",
-      required: true,
+      required: false,
       env: "ETH_TRANSFER_WEB3_SIGNER_KEYSTORE_PATH",
     }),
     "web3-signer-passphrase": Flags.string({
       description: "Passphrase for the web3 signer keystore",
-      required: true,
+      required: false,
       env: "ETH_TRANSFER_WEB3_SIGNER_KEYSTORE_PASSPHRASE",
     }),
     "web3-signer-trusted-store-path": Flags.string({
       description: "Path to the web3 signer trusted store file",
-      required: true,
+      required: false,
       env: "ETH_TRANSFER_WEB3_SIGNER_TRUSTED_STORE_PATH",
     }),
   };
@@ -147,6 +154,7 @@ export default class EthTransfer extends Command {
       maxFeePerGas,
       gasEstimationPercentile,
       dryRun,
+      tls,
       web3SignerKeystorePath,
       web3SignerPassphrase,
       web3SignerTrustedStorePath,
@@ -193,7 +201,11 @@ export default class EthTransfer extends Command {
       gasLimit: transactionGasLimit,
     };
 
-    const httpsAgent = getHttpsAgent(web3SignerKeystorePath, web3SignerPassphrase, web3SignerTrustedStorePath);
+    let httpsAgent: Agent | undefined;
+    if (tls) {
+      this.log(`Using TLS for secure communication with Web3 Signer.`);
+      httpsAgent = getHttpsAgent(web3SignerKeystorePath, web3SignerPassphrase, web3SignerTrustedStorePath);
+    }
 
     const signature = await getWeb3SignerSignature(web3SignerUrl, web3SignerPublicKey, transaction, httpsAgent);
 

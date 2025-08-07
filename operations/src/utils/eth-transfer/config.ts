@@ -10,6 +10,7 @@ export type Config = {
   maxFeePerGas: bigint;
   gasEstimationPercentile: number;
   dryRun: boolean;
+  tls: boolean;
   web3SignerKeystorePath: string;
   web3SignerPassphrase: string;
   web3SignerTrustedStorePath: string;
@@ -26,6 +27,7 @@ export function validateConfig(flags: ParserOutput["flags"]): Config {
     dryRun,
     maxFeePerGas: maxFeePerGasArg,
     gasEstimationPercentile,
+    tls,
     web3SignerKeystorePath,
     web3SignerPassphrase,
     web3SignerTrustedStorePath,
@@ -38,9 +40,7 @@ export function validateConfig(flags: ParserOutput["flags"]): Config {
     "blockchainRpcUrl",
     "web3SignerUrl",
     "web3SignerPublicKey",
-    "web3SignerKeystorePath",
-    "web3SignerPassphrase",
-    "web3SignerTrustedStorePath",
+    ...(tls ? ["web3SignerKeystorePath", "web3SignerPassphrase", "web3SignerTrustedStorePath"] : []),
   ];
 
   for (const flagName of requiredFlags) {
@@ -75,6 +75,7 @@ export function validateConfig(flags: ParserOutput["flags"]): Config {
     maxFeePerGas,
     gasEstimationPercentile,
     dryRun,
+    tls,
     web3SignerKeystorePath,
     web3SignerPassphrase,
     web3SignerTrustedStorePath,
