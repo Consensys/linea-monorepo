@@ -49,19 +49,20 @@ type HornerTestcase struct {
 }
 
 var ListOfHornerTestcasePositive = []*HornerTestcase{
+
 	{
-		NameStr:           "positive/12...",
+		NameStr:           "positive/none-selected-single",
 		SignNegativeParts: []bool{false},
 		Coefficients: [][]smartvectors.SmartVector{{
-			smartvectors.ForTest(1, 2, 0, 0, 0, 0, 0, 0),
-		}},
-		Selectors: [][]smartvectors.SmartVector{{
 			smartvectors.NewConstant(field.One(), 8),
 		}},
+		Selectors: [][]smartvectors.SmartVector{{
+			smartvectors.NewConstant(field.Zero(), 8),
+		}},
 		N0s:         []int{0},
-		N1s:         []int{8},
-		Xs:          []fext.Element{fext.NewFromUint(2, 0, 0, 0)},
-		FinalResult: fext.NewFromUint(5, 0, 0, 0),
+		N1s:         []int{0},
+		Xs:          []fext.Element{fext.One()},
+		FinalResult: fext.Zero(),
 	},
 
 	{
@@ -84,10 +85,10 @@ var ListOfHornerTestcasePositive = []*HornerTestcase{
 		SignNegativeParts: []bool{false, true},
 		Coefficients: [][]smartvectors.SmartVector{
 			{
-				smartvectors.NewConstant(field.One(), 8),
+				RandomFromSeed(8, 1),
 			},
 			{
-				smartvectors.NewConstant(field.One(), 8),
+				RandomFromSeed(8, 1),
 			},
 		},
 		Selectors: [][]smartvectors.SmartVector{

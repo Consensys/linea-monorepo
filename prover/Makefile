@@ -50,10 +50,11 @@ PACKAGES := \
 	go-corset \
 	testdata \
   test \
+  test-compilers \
   clean
 
 # Default target: runs all tests
-all: test
+all: test test-compilers
 
 ##
 ## This rule produces the go-corset binary
@@ -163,6 +164,8 @@ test:
 	done
 	@echo "All tests completed successfully."
 
+test-compilers:
+	go test -timeout 30s -run ^TestCompilers$$ github.com/consensys/linea-monorepo/prover/protocol/compiler
 ##
 ## Run the CI linting
 ##
