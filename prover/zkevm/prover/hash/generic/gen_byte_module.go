@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // GenericByteModule encodes the limbs with a left alignment approach
@@ -45,12 +46,12 @@ type GenInfoModule struct {
 func (gdm *GenDataModule) ScanStreams(run *wizard.ProverRuntime) [][]byte {
 
 	var (
-		numRow      = gdm.Limb.Size()
-		index       = gdm.Index.GetColAssignment(run).IntoRegVecSaveAlloc()
-		limbs       = gdm.Limb.GetColAssignment(run).IntoRegVecSaveAlloc()
-		toHash      = gdm.ToHash.GetColAssignment(run).IntoRegVecSaveAlloc()
-		hashNum     = gdm.HashNum.GetColAssignment(run).IntoRegVecSaveAlloc()
-		nByte       = gdm.NBytes.GetColAssignment(run).IntoRegVecSaveAlloc()
+		numRow = gdm.Limb.Size()
+		index  = gdm.Index.GetColAssignment(run).IntoRegVecSaveAlloc()
+		// limbs       = gdm.Limb.GetColAssignment(run).IntoRegVecSaveAlloc()
+		toHash  = gdm.ToHash.GetColAssignment(run).IntoRegVecSaveAlloc()
+		hashNum = gdm.HashNum.GetColAssignment(run).IntoRegVecSaveAlloc()
+		// nByte       = gdm.NBytes.GetColAssignment(run).IntoRegVecSaveAlloc()
 		streams     = [][]byte(nil)
 		buffer      = &bytes.Buffer{}
 		currHashNum field.Element
@@ -70,10 +71,13 @@ func (gdm *GenDataModule) ScanStreams(run *wizard.ProverRuntime) [][]byte {
 			currHashNum = hashNum[row]
 		}
 
+		utils.Panic("fix the koalabear integration issue and fix the currLimb")
+
 		var (
-			currLimbLA  = limbs[row].Bytes() // LA = left-aligned on the 16-th byte
-			currNbBytes = nByte[row].Uint64()
-			currLimb    = currLimbLA[16 : 16+currNbBytes]
+			currLimb []byte
+			// currLimbLA  = limbs[row].Bytes() // LA = left-aligned on the 16-th byte
+			// currNbBytes = nByte[row].Uint64()
+			// currLimb    = currLimbLA[16 : 16+currNbBytes]
 		)
 
 		buffer.Write(currLimb)

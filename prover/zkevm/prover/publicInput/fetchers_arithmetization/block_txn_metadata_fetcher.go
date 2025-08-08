@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -35,6 +36,10 @@ func NewBlockTxnMetadata(comp *wizard.CompiledIOP, name string, td *arith.TxnDat
 		FirstAbsTxId:    util.CreateCol(name, "FIRST_ABS_TX_ID", td.Ct.Size(), comp),
 		LastAbsTxId:     util.CreateCol(name, "LAST_ABS_TX_ID", td.Ct.Size(), comp),
 	}
+
+	pragmas.MarkRightPadded(res.BlockID)
+	pragmas.MarkLeftPadded(res.FilterArith)
+
 	return res
 }
 
@@ -42,7 +47,7 @@ func DefineBlockTxnMetaData(comp *wizard.CompiledIOP, btm *BlockTxnMetadata, nam
 	btm.SelectorCt, btm.ComputeSelectorCt = dedicated.IsZero(
 		comp,
 		td.Ct, // select the columns where td.Ct = 0
-	)
+	).GetColumnAndProverAction()
 
 	// constrain the arithmetization filter
 	comp.InsertGlobal(0, ifaces.QueryIDf("%s_%s", name, "FILTER_ARITH"),

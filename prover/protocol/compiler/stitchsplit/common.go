@@ -1,11 +1,13 @@
 package stitchsplit
 
 import (
+	"strconv"
+
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 // It stores the information regarding an alliance between a BigCol and a set of SubColumns.
@@ -78,14 +80,13 @@ func IsExprEligible(
 	isColEligible func(MultiSummary, ifaces.Column) bool,
 	stitchings MultiSummary,
 	board symbolic.ExpressionBoard,
-) bool {
+) (isEligible bool, isUnsupported bool) {
 
 	var (
 		metadata              = board.ListVariableMetadata()
 		hasAtLeastOneEligible = false
 		allAreEligible        = true
 		allAreVeriferCol      = true
-		rootCols              = []ifaces.Column{}
 		statusMap             = map[ifaces.ColID]string{}
 	)
 
@@ -94,22 +95,21 @@ func IsExprEligible(
 		// reminder: [verifiercol.VerifierCol] , [column.Natural] and [column.Shifted]
 		// all implement [ifaces.Column]
 		case ifaces.Column: // it is a Committed, Precomputed or verifierCol
-			rootCols = append(rootCols, m)
-			natural := column.RootParents(m)
+			rootColumn := column.RootParents(m)
 
-			switch nat := natural.(type) {
+			switch nat := rootColumn.(type) {
 			case column.Natural: // then it is not a verifiercol
-				statusMap[natural.GetColID()] = nat.Status().String()
+				statusMap[rootColumn.GetColID()] = nat.Status().String() + "/" + strconv.Itoa(nat.Size())
 				allAreVeriferCol = false
 				b := isColEligible(stitchings, m)
 
 				hasAtLeastOneEligible = hasAtLeastOneEligible || b
 				allAreEligible = allAreEligible && b
 				if m.Size() == 0 {
-					panic("found no columns in the expression")
+					panic("found a column with a size of 0")
 				}
 			case verifiercol.VerifierCol:
-				statusMap[natural.GetColID()] = column.VerifierDefined.String()
+				statusMap[rootColumn.GetColID()] = column.VerifierDefined.String() + "/" + strconv.Itoa(nat.Size())
 			}
 		}
 	}
@@ -118,8 +118,10 @@ func IsExprEligible(
 		// 1. we expect no expression including Proof columns
 		// 2. we expect no expression over ignored columns
 		// 3. we expect no VerifiyingKey withing the stitching range.
-		utils.Panic("the expression is not valid, it is mixed with invalid columns of status Proof/Ignored/verifierKey, %v", statusMap)
+		logrus.Errorf("the expression is not valid, it is mixed with invalid columns of status Proof/Ignored/verifierKey, %v", statusMap)
+		return false, true
 	}
+
 	if allAreVeriferCol {
 		// 4. we expect no expression involving only and only the verifierCols.
 		// We expect that this case wont happen.
@@ -128,5 +130,5 @@ func IsExprEligible(
 		panic("all the columns in the expression are verifierCols, unsupported by the compiler")
 	}
 
-	return hasAtLeastOneEligible
+	return hasAtLeastOneEligible, false
 }

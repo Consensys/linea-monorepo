@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // The verifier gets all the query openings and multiply them together and
@@ -175,7 +176,7 @@ type FinalProductCheck struct {
 	// query ID
 	GrandProductID ifaces.QueryID
 	// skip the verifer action
-	skipped bool
+	skipped bool `serde:"omit"`
 	// ToExplicitlyEvaluate list all the terms that are publicly
 	// evaluated by the verifier.
 	ToExplicitlyEvaluate []*symbolic.Expression
@@ -217,6 +218,7 @@ func (f *FinalProductCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 	// zProd stores the product of the ending values of the z columns
 	zProd := frontend.Variable(field.One())
 	for k := range f.ZOpenings {
+		utils.Panic("this should be expected to be extension fields")
 		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).BaseY
 		zProd = api.Mul(zProd, temp)
 	}

@@ -327,7 +327,7 @@ func (e *Expression) ReconstructBottomUpSingleThreaded(
 			panic(x)
 		}
 		return x
-	// LinCombExt or ProductExt or LinearCombinationExt. This is an intermediate expression.
+	// LinComb or Product or PolyEval. This is an intermediate expression.
 	case LinComb, Product, PolyEval:
 		children := make([]*Expression, len(e.Children))
 		for i, c := range e.Children {

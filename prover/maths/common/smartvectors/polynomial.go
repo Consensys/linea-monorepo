@@ -1,7 +1,10 @@
 package smartvectors
 
 import (
+	"sync/atomic"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -90,11 +93,14 @@ func RuffiniQuoRem(p SmartVector, q field.Element) (quo SmartVector, rem field.E
 
 // EvaluateLagrange a polynomial in Lagrange basis at an field point
 func EvaluateLagrange(v SmartVector, x field.Element, oncoset ...bool) field.Element {
-	switch v.(type) {
+
+	if !IsBase(v) {
+		utils.Panic("Provided a non-base smart-vector")
+	}
+
+	switch con := v.(type) {
 	case *Constant:
-		var res field.Element
-		// fext.FromBase(&res, &con.val)
-		return res
+		return con.Value
 	}
 
 	// Maybe there is an optim for windowed here
@@ -110,7 +116,7 @@ func EvaluateLagrangeMixed(v SmartVector, x fext.Element, oncoset ...bool) fext.
 	switch con := v.(type) {
 	case *Constant:
 		var res fext.Element
-		fext.SetFromBase(&res, &con.val)
+		fext.SetFromBase(&res, &con.Value)
 		return res
 	}
 
@@ -126,9 +132,10 @@ func EvaluateLagrangeMixed(v SmartVector, x fext.Element, oncoset ...bool) fext.
 func BatchEvaluateLagrangeMixed(vs []SmartVector, x fext.Element, oncoset ...bool) []fext.Element {
 
 	var (
-		polys    = make([][]field.Element, len(vs))
-		results  = make([]fext.Element, len(vs))
-		computed = make([]bool, len(vs))
+		polys         = make([][]field.Element, len(vs))
+		results       = make([]fext.Element, len(vs))
+		computed      = make([]bool, len(vs))
+		totalConstant = uint64(0)
 	)
 
 	// filter out constant vectors
@@ -142,9 +149,9 @@ func BatchEvaluateLagrangeMixed(vs []SmartVector, x fext.Element, oncoset ...boo
 
 			switch con := vs[i].(type) {
 			case *Constant:
-				fext.SetFromBase(&results[i], &con.val)
-
+				fext.SetFromBase(&results[i], &con.Value)
 				computed[i] = true
+				atomic.AddUint64(&totalConstant, 1)
 				continue
 			}
 
@@ -155,7 +162,7 @@ func BatchEvaluateLagrangeMixed(vs []SmartVector, x fext.Element, oncoset ...boo
 	})
 
 	// all the vectors are constant, nothing to do more
-	if indexNonConstantVector == -1 {
+	if int(totalConstant) == len(vs) {
 		return results
 	}
 

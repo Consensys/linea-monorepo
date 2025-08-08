@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/utils"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -26,8 +27,7 @@ type FromLogDerivSumAccessor struct {
 }
 
 func (l *FromLogDerivSumAccessor) IsBase() bool {
-	//TODO implement me
-	panic("implement me")
+	return false
 }
 
 func (l *FromLogDerivSumAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
@@ -68,12 +68,8 @@ func (l *FromLogDerivSumAccessor) String() string {
 
 // GetVal implements [ifaces.Accessor]
 func (l *FromLogDerivSumAccessor) GetVal(run ifaces.Runtime) field.Element {
-	params := run.GetParams(l.Q.ID).(query.LogDerivSumParams)
-	res, err := params.Sum.GetBase()
-	if err != nil {
-		panic(err)
-	}
-	return res
+	utils.Panic("Called GetVal on a FromLogDerivSumAccessor, %v, but it should call GetValExt", l.Name())
+	return field.Element{} // not reachable
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]

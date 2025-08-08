@@ -139,7 +139,7 @@ func verifyWithRuntimeUntilRound(comp *CompiledIOP, proof Proof, stopRound int) 
 
 		runtime.GenerateCoinsFromRound(round)
 
-		verifierSteps := runtime.Spec.subVerifiers.MustGet(round)
+		verifierSteps := runtime.Spec.SubVerifiers.MustGet(round)
 		for _, step := range verifierSteps {
 			if err := step.Run(&runtime); err != nil {
 				errs = append(errs, err)
@@ -198,7 +198,6 @@ func (proof Proof) GetPublicInput(comp *CompiledIOP, name string) field.Element 
 		} else {
 			panic("Requested a base element from a public input that is a field extension")
 		}
-
 	case *accessors.FromPublicColumn:
 		if a.Col.Status() == column.Proof {
 			return proof.Messages.MustGet(a.Col.ID).Get(a.Pos)
@@ -216,7 +215,6 @@ func (proof Proof) GetPublicInput(comp *CompiledIOP, name string) field.Element 
 	// run the verifier and extract them from the runtime.
 	verifierRuntime, _ := VerifyWithRuntime(comp, proof)
 	return verifierRuntime.GetPublicInput(name)
-
 }
 
 // GenerateCoinsFromRound generates all the random coins for the given round.
@@ -271,7 +269,6 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 		}
 	}
 
-	// seed := run.FS.State()[0]
 	seed := run.FS.State()
 	var kSeed koalabear.Element
 	kSeed.SetBytes(seed[:1]) // TODO @thomas why take only the first byte ?

@@ -25,7 +25,7 @@ import (
 // more or less be used in the same way. It will need to need to be assigned
 // if the value is already available.
 type ManuallyShifted struct {
-	column.Natural
+	Natural column.Natural
 	// Root points to the original "unshifted version" of the column.
 	Root ifaces.Column
 	// Offset is the shift to apply to Root. A negative value is a "forward"
@@ -35,10 +35,13 @@ type ManuallyShifted struct {
 
 // ManuallyShift returns a cyclically version of root by offset. See
 // [ManuallyShifted] for more details.
-func ManuallyShift(comp *wizard.CompiledIOP, root ifaces.Column, offset int) *ManuallyShifted {
+func ManuallyShift(comp *wizard.CompiledIOP, root ifaces.Column, offset int, name string) *ManuallyShifted {
+
+	if len(name) == 0 {
+		name = fmt.Sprintf("ManualShift/%v", len(comp.Columns.AllKeys()))
+	}
 
 	var (
-		name = fmt.Sprintf("ManualShift/%v", len(comp.Columns.AllKeys()))
 		size = root.Size()
 		res  = ManuallyShifted{
 			Natural: comp.InsertCommit(root.Round(), ifaces.ColID(name)+"_COL", size).(column.Natural),
@@ -87,13 +90,13 @@ func (m ManuallyShifted) Assign(run *wizard.ProverRuntime) {
 		res = smartvectors.NewRegular(shiftedVal)
 	}
 
-	run.AssignColumn(m.ID, res)
+	run.AssignColumn(m.Natural.ID, res)
 }
 
 // GetColAssignment overrides the main [Natural.GetColAssignment] by
 // running [Assign] if needed.
 func (m ManuallyShifted) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
-	if pr, isPR := run.(*wizard.ProverRuntime); isPR && !pr.Columns.Exists(m.ID) {
+	if pr, isPR := run.(*wizard.ProverRuntime); isPR && !pr.Columns.Exists(m.Natural.ID) {
 		m.Assign(pr)
 	}
 	return m.Natural.GetColAssignment(run)
@@ -102,7 +105,7 @@ func (m ManuallyShifted) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignme
 // GetColAssignmentAt overrides the main [Natural.GetColAssignmentAt] by
 // running [Assign] if needed.
 func (m ManuallyShifted) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element {
-	if pr, isPR := run.(*wizard.ProverRuntime); isPR && !pr.Columns.Exists(m.ID) {
+	if pr, isPR := run.(*wizard.ProverRuntime); isPR && !pr.Columns.Exists(m.Natural.ID) {
 		m.Assign(pr)
 	}
 	return m.Natural.GetColAssignmentAt(run, pos)

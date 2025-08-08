@@ -25,19 +25,21 @@ type FromGrandProductAccessor struct {
 	Q query.GrandProduct
 }
 
+// IsBase implements [ifaces.Accessor] and always returns false as grand-product
+// always returns an extension field as they depends on randomness in a sound
+// setting. For testing it is always possible to mock the FS to return base
+// fields to make debugging easier but by default this is not possible.
 func (l *FromGrandProductAccessor) IsBase() bool {
-	//TODO implement me
-	panic("implement me")
+	return false
 }
 
 func (l *FromGrandProductAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
-	//TODO implement me
-	panic("implement me")
+	panic(fmt.Sprintf("Called GetValBase on a FromGrandProductAccessor, %v", l.Name()))
+
 }
 
 func (l *FromGrandProductAccessor) GetValExt(run ifaces.Runtime) fext.Element {
-	//TODO implement me
-	panic("implement me")
+	return run.GetParams(l.Q.ID).(query.GrandProductParams).ExtY
 }
 
 func (l *FromGrandProductAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {
@@ -66,10 +68,10 @@ func (l *FromGrandProductAccessor) String() string {
 	return l.Name()
 }
 
-// GetVal implements [ifaces.Accessor]
+// GetVal implements [ifaces.Accessor] and returns the opening point of a
+// grand product opening.
 func (l *FromGrandProductAccessor) GetVal(run ifaces.Runtime) field.Element {
-	params := run.GetParams(l.Q.ID).(query.GrandProductParams)
-	return params.ExtY.B0.A0
+	panic(fmt.Sprintf("Called GetVal on a FromGrandProductAccessor, %v", l.Name()))
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]

@@ -22,7 +22,7 @@ import (
 // CosetRatio > CosetID:
 //   - Specifies on which coset to perform the operation
 //   - 0, 0 to assert that the transformation should not be done over a coset
-func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, pool mempool.MemPool) SmartVector {
+func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, pool mempool.MemPool, opts ...fft.Option) SmartVector {
 
 	// Sanity-check on the size of the vector v
 	assertPowerOfTwoLen(v.Len())
@@ -36,7 +36,7 @@ func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRati
 	*/
 	switch x := v.(type) {
 	case *ConstantExt:
-		if x.val.IsZero() {
+		if x.Value.IsZero() {
 			// The fft of the zero vec is zero
 			return x.DeepCopy()
 		}
@@ -45,16 +45,16 @@ func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRati
 			// The FFT is a (c*N, 0, 0, ...), no matter the bitReverse or decimation
 			// It's a multiple of the first Lagrange polynomial.
 			constTerm := fext.NewFromUint(uint64(x.length), 0, 0, 0)
-			constTerm.Mul(&constTerm, &x.val)
+			constTerm.Mul(&constTerm, &x.Value)
 			return NewPaddedCircularWindowExt([]fext.Element{constTerm}, fext.Zero(), 0, x.length)
 		}
 	case *PaddedCircularWindowExt:
 		// The polynomial is the constant polynomial, response does not depends on the decimation
 		// or bitReverse
 		interval := x.interval()
-		if interval.IntervalLen == 1 && interval.Start() == 0 && x.paddingVal.IsZero() {
+		if interval.IntervalLen == 1 && interval.Start() == 0 && x.PaddingVal_.IsZero() {
 			// In this case, the response is a constant vector
-			return NewConstantExt(x.window[0], x.Len())
+			return NewConstantExt(x.Window_[0], x.Len())
 		}
 	}
 
@@ -84,16 +84,16 @@ func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRati
 			fft.BitReverse(res.RegularExt)
 		}
 		if cosetID != 0 || cosetRatio != 0 {
-			domain.FFTExt(res.RegularExt, fft.DIT, fft.OnCoset())
+			domain.FFTExt(res.RegularExt, fft.DIT, append(opts, fft.OnCoset())...)
 		} else {
-			domain.FFTExt(res.RegularExt, fft.DIT)
+			domain.FFTExt(res.RegularExt, fft.DIT, opts...)
 		}
 	} else {
 		// Likewise, the optionally rearrange the input in correct order
 		if cosetID != 0 || cosetRatio != 0 {
-			domain.FFTExt(res.RegularExt, fft.DIF, fft.OnCoset())
+			domain.FFTExt(res.RegularExt, fft.DIF, append(opts, fft.OnCoset())...)
 		} else {
-			domain.FFTExt(res.RegularExt, fft.DIF)
+			domain.FFTExt(res.RegularExt, fft.DIF, opts...)
 		}
 		if bitReverse {
 			fft.BitReverse(res.RegularExt)
@@ -115,7 +115,7 @@ func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRati
 // CosetRatio > CosetID:
 //   - Specifies on which coset to perform the operation
 //   - 0, 0 to assert that the transformation should not be done over a coset
-func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, pool mempool.MemPool) SmartVector {
+func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, pool mempool.MemPool, opts ...fft.Option) SmartVector {
 
 	// Sanity-check on the size of the vector v
 	assertPowerOfTwoLen(v.Len())
@@ -129,24 +129,24 @@ func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, co
 	*/
 	switch x := v.(type) {
 	case *ConstantExt:
-		if x.val.IsZero() {
+		if x.Value.IsZero() {
 			// The fft inverse of the zero vec is zero
 			return x.DeepCopy()
 		}
 
 		if cosetID == 0 && cosetRatio == 0 {
 			// It's the constant polynomial. If it is not on coset then there is a trick
-			return NewPaddedCircularWindowExt([]fext.Element{x.val}, fext.Zero(), 0, x.length)
+			return NewPaddedCircularWindowExt([]fext.Element{x.Value}, fext.Zero(), 0, x.length)
 		}
 
 	case *PaddedCircularWindowExt:
 		// It's a multiple of the first Lagrange polynomial c * (1 + x + x^2 + x^3 + ...)
 		// The response is (c) = (c/N, c/N, c/N, ...)
 		interval := x.interval()
-		if interval.IntervalLen == 1 && interval.Start() == 0 && x.paddingVal.IsZero() {
+		if interval.IntervalLen == 1 && interval.Start() == 0 && x.PaddingVal_.IsZero() {
 			constTerm := fext.NewFromUint(uint64(x.Len()), 0, 0, 0)
 			constTerm.Inverse(&constTerm)
-			constTerm.Mul(&constTerm, &x.window[0])
+			constTerm.Mul(&constTerm, &x.Window_[0])
 			// In this case, the response is a constant vector
 			return NewConstantExt(constTerm, x.Len())
 		}
@@ -176,9 +176,9 @@ func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, co
 	if decimation == fft.DIF {
 		// Optionally, bitReverse the output
 		if cosetID != 0 || cosetRatio != 0 {
-			domain.FFTInverseExt(res.RegularExt, fft.DIF, fft.OnCoset())
+			domain.FFTInverseExt(res.RegularExt, fft.DIF, append(opts, fft.OnCoset())...)
 		} else {
-			domain.FFTInverseExt(res.RegularExt, fft.DIF)
+			domain.FFTInverseExt(res.RegularExt, fft.DIF, opts...)
 		}
 		if bitReverse {
 			fft.BitReverse(res.RegularExt)
@@ -189,9 +189,9 @@ func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, co
 			fft.BitReverse(res.RegularExt)
 		}
 		if cosetID != 0 || cosetRatio != 0 {
-			domain.FFTInverseExt(res.RegularExt, fft.DIT, fft.OnCoset())
+			domain.FFTInverseExt(res.RegularExt, fft.DIT, append(opts, fft.OnCoset())...)
 		} else {
-			domain.FFTInverseExt(res.RegularExt, fft.DIT)
+			domain.FFTInverseExt(res.RegularExt, fft.DIT, opts...)
 		}
 	}
 	return res

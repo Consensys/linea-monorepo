@@ -188,7 +188,7 @@ func (ip *InnerProductTestcase) Define(comp *wizard.CompiledIOP) {
 	var a ifaces.Column
 
 	if ip.AsIsConstCol {
-		a = verifiercol.NewConstantCol(ip.A.Get(0), ip.A.Len())
+		a = verifiercol.NewConstantCol(ip.A.Get(0), ip.A.Len(), "")
 	} else {
 		a = comp.InsertCommit(
 			0,

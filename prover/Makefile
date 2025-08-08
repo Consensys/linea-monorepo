@@ -2,7 +2,7 @@
 SHELL := /usr/bin/env bash
 CORSET_ROOT := $(shell pwd)/../go-corset
 
-VERSION := $(shell git rev-parse --short HEAD)
+VERSION := $(shell git rev-parse --short=7 HEAD)
 
 LINUX_AMD64_FLAGS := CGO_ENABLED=1 CC="x86_64-linux-musl-gcc" CXX="x86_64-linux-musl-g++" GOOS="linux" GOARCH="amd64"
 DARWIN_ARM64_FLAGS := CGO_ENABLED=1 GOOS="linux" GOARCH="arm64"
@@ -65,13 +65,19 @@ go-corset:
 ## Build and bundle the go-corset trace-expander dependency
 ##
 zkevm/arithmetization/zkevm.bin: go-corset
-	cd ../constraints && $(GO_CORSET) make zkevm.bin && mv zkevm.bin ../prover/zkevm/arithmetization
+	cd ../constraints && $(GO_CORSET) make zkevm_london.bin && mv zkevm_london.bin ../prover/zkevm/arithmetization/zkevm.bin
 
 ##
-## Generate the setup for the execution prover (to be run with S3 access)
+## Generate the setup for all provers job for sepolia (to be run with S3 access)
 ##
-setup: bin/prover
-	bin/prover setup --config ./config/config-sepolia-full.toml --dict ./lib/compressor/compressor_dict.bin --assets-dir ./prover-assets
+setup-sepolia: bin/prover
+	bin/prover setup --config ./config/config-sepolia-limitless.toml --dict ./lib/compressor/compressor_dict.bin --assets-dir ./prover-assets
+
+##
+## Generate the setup for all provers job for mainnet (to be run with S3 access)
+##
+setup-mainnet: bin/prover
+	bin/prover setup --config ./config/config-mainnet-limitless.toml --dict ./lib/compressor/compressor_dict.bin --assets-dir ./prover-assets
 
 ##
 ## Copy the prover assets to the S3 bucket (zkuat)
@@ -80,7 +86,7 @@ copy-prover-assets:
 	aws s3 sync --exclude "*prover/dev*" --exclude "*05b9ef1*" --exclude "*05b9ef1*" --exclude "*96e3a19*" --exclude "*a9e4681*" prover-assets s3://zk-uat-prover/prover-assets/ --profile=zk-uat-s3-access
 
 download-srs:
-	aws s3 sync s3://gnark-ignition/with_lines/ ./prover-assets/kzgsrs --exclude "*" --include "*.memdump"
+	aws s3 sync s3://prover-assets/kzgsrs/ ./prover-assets/kzgsrs --exclude "*" --include "*.memdump"
 
 ###
 ### Controller
@@ -153,7 +159,7 @@ test:
 	@echo "Running all Go tests for Linea Monorepo prover packages..."
 	@for pkg in $(PACKAGES); do \
 		echo "--> Running tests for $$pkg"; \
-		go test $$pkg || exit 1; \
+		go test -tags debug $$pkg || exit 1; \
 	done
 	@echo "All tests completed successfully."
 

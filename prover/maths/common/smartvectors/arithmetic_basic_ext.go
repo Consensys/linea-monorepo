@@ -116,11 +116,11 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPo
 		switch casted := v.(type) {
 		case *Constant:
 			anyCon = true
-			tmpF.MulByElement(&xPow, &casted.val)
+			tmpF.MulByElement(&xPow, &casted.Value)
 			resCon.Add(&resCon, &tmpF)
 		case *ConstantExt:
 			anyCon = true
-			tmpF.Mul(&casted.val, &xPow)
+			tmpF.Mul(&casted.Value, &xPow)
 			resCon.Add(&resCon, &tmpF)
 		case *Regular:
 			anyReg = true
@@ -175,15 +175,15 @@ func BatchInvertExt(x SmartVector) SmartVector {
 	switch v := x.(type) {
 	case *ConstantExt:
 		res := &ConstantExt{length: v.length}
-		res.val.Inverse(&v.val)
+		res.Value.Inverse(&v.Value)
 		return res
 	case *PaddedCircularWindowExt:
 		res := &PaddedCircularWindowExt{
-			totLen: v.totLen,
-			offset: v.offset,
-			window: fext.BatchInvert(v.window),
+			totLen:  v.totLen,
+			offset:  v.offset,
+			Window_: fext.BatchInvert(v.Window_),
 		}
-		res.paddingVal.Inverse(&v.paddingVal)
+		res.PaddingVal_.Inverse(&v.PaddingVal_)
 		return res
 	case *RotatedExt:
 		return NewRotatedExt(
@@ -206,25 +206,25 @@ func IsZeroExt(x SmartVector) SmartVector {
 
 	case *ConstantExt:
 		res := &ConstantExt{length: v.length}
-		if v.val == fext.Zero() {
-			res.val = fext.One()
+		if v.Value == fext.Zero() {
+			res.Value = fext.One()
 		}
 		return res
 
 	case *PaddedCircularWindowExt:
 		res := &PaddedCircularWindowExt{
-			totLen: v.totLen,
-			offset: v.offset,
-			window: make([]fext.Element, len(v.window)),
+			totLen:  v.totLen,
+			offset:  v.offset,
+			Window_: make([]fext.Element, len(v.Window_)),
 		}
 
-		if v.paddingVal == fext.Zero() {
-			res.paddingVal = fext.One()
+		if v.PaddingVal_ == fext.Zero() {
+			res.PaddingVal_ = fext.One()
 		}
 
-		for i := range res.window {
-			if v.window[i] == fext.Zero() {
-				res.window[i] = fext.One()
+		for i := range res.Window_ {
+			if v.Window_[i] == fext.Zero() {
+				res.Window_[i] = fext.One()
 			}
 		}
 		return res
@@ -276,17 +276,17 @@ func SumExt(a SmartVector) (res fext.Element) {
 
 	case *PaddedCircularWindowExt:
 		res := fext.Zero()
-		for i := range v.window {
-			res.Add(&res, &v.window[i])
+		for i := range v.Window_ {
+			res.Add(&res, &v.Window_[i])
 		}
-		constTerm := fext.NewFromUint(uint64(v.totLen-len(v.window)), 0, 0, 0)
-		constTerm.Mul(&constTerm, &v.paddingVal)
+		constTerm := fext.NewFromUint(uint64(v.totLen-len(v.Window_)), 0, 0, 0)
+		constTerm.Mul(&constTerm, &v.PaddingVal_)
 		res.Add(&res, &constTerm)
 		return res
 
 	case *ConstantExt:
 		res := fext.NewFromUint(uint64(v.length), 0, 0, 0)
-		res.Mul(&res, &v.val)
+		res.Mul(&res, &v.Value)
 		return res
 
 	case *RotatedExt:

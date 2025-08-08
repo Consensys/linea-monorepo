@@ -4,7 +4,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
@@ -37,7 +37,7 @@ func (ss *Module) Assign(run *wizard.ProverRuntime, traces [][]statemanager.Deco
 
 	assignmentBuilder := newStateSummaryAssignmentBuilder(ss, run)
 
-	if ss.arithmetizationLink != nil {
+	if ss.ArithmetizationLink != nil {
 		assignmentBuilder.arithmetizationStorage.Process()
 	}
 
@@ -48,7 +48,7 @@ func (ss *Module) Assign(run *wizard.ProverRuntime, traces [][]statemanager.Deco
 
 	assignmentBuilder.finalize(run)
 
-	if ss.arithmetizationLink != nil {
+	if ss.ArithmetizationLink != nil {
 		ss.assignArithmetizationLink(run)
 	}
 }
@@ -199,42 +199,48 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 				switch t := stoTrace.(type) {
 				case statemanager.ReadZeroTraceST:
 					if isDeleteSegment {
-						/*
-							Special case: the Shomei compactification process automatically sets storage values to zero if the account later gets deleted
-							which might not be the case in the arithmetization
-							in this particular case, for the consistency lookups to work,
-							we fetch and use the last corresponding storage value/block from the arithmetization columns using
-							an ArithmetizationStorageParser
-						*/
-						x := *(&field.Element{}).SetBytes(accountAddress[:])
-						keysAndBlock := KeysAndBlock{
-							address:    x.Bytes(),
-							storageKey: t.Key,
-							block:      batchNumber,
-						}
-						arithStorage := ss.arithmetizationStorage.Values[keysAndBlock]
 
-						ss.storage.push(t.Key, types.FullBytes32{}, arithStorage)
-						ss.accumulatorStatement.PushReadZero(oldRoot, hash(t.Key))
+						// utils.Panic("Adjust for koalabear")
+
+						// /*
+						// 	Special case: the Shomei compactification process automatically sets storage values to zero if the account later gets deleted
+						// 	which might not be the case in the arithmetization
+						// 	in this particular case, for the consistency lookups to work,
+						// 	we fetch and use the last corresponding storage value/block from the arithmetization columns using
+						// 	an ArithmetizationStorageParser
+						// */
+						// x := *(&field.Element{}).SetBytes(accountAddress[:])
+						// keysAndBlock := KeysAndBlock{
+						// 	address:    x.Bytes(),
+						// 	storageKey: t.Key,
+						// 	block:      batchNumber,
+						// }
+						// arithStorage := ss.arithmetizationStorage.Values[keysAndBlock]
+
+						// ss.storage.push(t.Key, types.FullBytes32{}, arithStorage)
+						// ss.accumulatorStatement.PushReadZero(oldRoot, hash(t.Key))
 					} else {
 						ss.storage.pushOnlyKey(t.Key)
 						ss.accumulatorStatement.PushReadZero(oldRoot, hash(t.Key))
 					}
 				case statemanager.ReadNonZeroTraceST:
 					if isDeleteSegment {
-						/*
-							Special case, same motivation and fix as in the case of ReadZeroTraceST
-						*/
-						x := *(&field.Element{}).SetBytes(accountAddress[:])
-						keysAndBlock := KeysAndBlock{
-							address:    x.Bytes(),
-							storageKey: t.Key,
-							block:      batchNumber,
-						}
-						arithStorage := ss.arithmetizationStorage.Values[keysAndBlock]
 
-						ss.storage.push(t.Key, t.Value, arithStorage)
-						ss.accumulatorStatement.PushReadNonZero(oldRoot, hash(t.Key), hash(t.Value))
+						utils.Panic("ReadNonZeroTraceST is not supported for deletion segments")
+
+						// /*
+						// 	Special case, same motivation and fix as in the case of ReadZeroTraceST
+						// */
+						// x := *(&field.Element{}).SetBytes(accountAddress[:])
+						// keysAndBlock := KeysAndBlock{
+						// 	// address:    x.Bytes(),
+						// 	storageKey: t.Key,
+						// 	block:      batchNumber,
+						// }
+						// arithStorage := ss.arithmetizationStorage.Values[keysAndBlock]
+
+						// ss.storage.push(t.Key, t.Value, arithStorage)
+						// ss.accumulatorStatement.PushReadNonZero(oldRoot, hash(t.Key), hash(t.Value))
 
 					} else {
 						ss.storage.push(t.Key, t.Value, t.Value)

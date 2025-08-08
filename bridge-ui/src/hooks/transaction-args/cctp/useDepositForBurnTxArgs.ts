@@ -1,33 +1,30 @@
 import { useMemo } from "react";
-import { useAccount } from "wagmi";
 import { encodeFunctionData, padHex, zeroHash } from "viem";
 import { useFormStore, useChainStore } from "@/stores";
 import { isCctp } from "@/utils/tokens";
 import { useCctpFee, useCctpDestinationDomain } from "./useCctpUtilHooks";
 import { CCTP_MIN_FINALITY_THRESHOLD } from "@/constants";
+import { isNull, isUndefined, isUndefinedOrEmptyString } from "@/utils";
 
 type UseDepositForBurnTxArgs = {
   allowance?: bigint;
 };
 
 const useDepositForBurnTxArgs = ({ allowance }: UseDepositForBurnTxArgs) => {
-  const { address } = useAccount();
   const fromChain = useChainStore.useFromChain();
   const cctpDestinationDomain = useCctpDestinationDomain();
   const token = useFormStore((state) => state.token);
   const amount = useFormStore((state) => state.amount);
   const recipient = useFormStore((state) => state.recipient);
-  const fee = useCctpFee();
+  const fee = useCctpFee(amount, token.decimals);
 
   return useMemo(() => {
     if (
-      !address ||
-      !fromChain ||
-      !token ||
-      !amount ||
-      allowance === undefined ||
+      isNull(amount) ||
+      isNull(fee) ||
+      isUndefined(allowance) ||
       allowance < amount ||
-      !recipient ||
+      isUndefinedOrEmptyString(recipient) ||
       !isCctp(token)
     ) {
       return;
@@ -70,7 +67,7 @@ const useDepositForBurnTxArgs = ({ allowance }: UseDepositForBurnTxArgs) => {
         chainId: fromChain.id,
       },
     };
-  }, [address, allowance, amount, fee, cctpDestinationDomain, fromChain, recipient, token]);
+  }, [allowance, amount, fee, cctpDestinationDomain, fromChain, recipient, token]);
 };
 
 export default useDepositForBurnTxArgs;

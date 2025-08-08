@@ -14,10 +14,15 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/google/uuid"
 )
 
 // HornerPart represents a part of a Horner evaluation query.
 type HornerPart struct {
+	// Name is an optional name for the part. It does not play a role in itself
+	// but comes up in potential error messages to help figuring where the part
+	// originates in case the Horner parts comes from a projection.
+	Name string
 	// SignNegative indicates that the result should be negated.
 	SignNegative bool
 	// Coefficient is the coefficient of the term. It may be a
@@ -34,7 +39,7 @@ type HornerPart struct {
 	X ifaces.Accessor
 	// size indicates the size of which the horner part is running.
 	// It is lazily computed thanks to the Size() column.
-	size int
+	size int `serde:"omit"`
 }
 
 // Horner represents a Horner evaluation query. The query returns
@@ -69,6 +74,7 @@ type Horner struct {
 	ID ifaces.QueryID
 	// Parts are the parts of the query
 	Parts []HornerPart
+	uuid  uuid.UUID `serde:"omit"`
 }
 
 // HornerParamsParts represents the parameters for a part of a [Horner]
@@ -106,15 +112,15 @@ func NewHorner(round int, id ifaces.QueryID, parts []HornerPart) Horner {
 			)
 
 			if size == 0 {
-				utils.Panic("Horner part %v has a coefficient of size 0", i)
+				utils.Panic("Horner part %v has a coefficient of size 0, part=%v", i, parts[i].Name)
 			}
 
 			if parts[i].Selectors[j].Size() != size {
-				utils.Panic("Horner part %v has a selector of size %v and a coefficient of size %v", i, parts[i].Selectors[j].Size(), size)
+				utils.Panic("Horner part %v has a selector of size %v and a coefficient of size %v, part=%v", i, parts[i].Selectors[j].Size(), size, parts[i].Name)
 			}
 
 			if parts[i].size > 0 && size != parts[i].size {
-				utils.Panic("Horner part %v has a selector of size %v and a coefficient of size %v", i, parts[i].Selectors[j].Size(), size)
+				utils.Panic("Horner part %v has a selector of size %v and a coefficient of size %v, part=%v", i, parts[i].Selectors[j].Size(), size, parts[i].Name)
 			}
 
 			parts[i].size = size
@@ -125,6 +131,7 @@ func NewHorner(round int, id ifaces.QueryID, parts []HornerPart) Horner {
 		Round: round,
 		ID:    id,
 		Parts: parts,
+		uuid:  uuid.New(),
 	}
 }
 
@@ -219,7 +226,7 @@ func getResultOfParts(run ifaces.Runtime, q *HornerPart) (fext.Element, int) {
 
 		if size != len(data) {
 			// Note, this is already check at the constructor level.
-			utils.Panic("All data must have the same size")
+			utils.Panic("All data must have the same size, part=%v", q.Name)
 		}
 	}
 
@@ -272,7 +279,7 @@ func (h Horner) Check(run ifaces.Runtime) error {
 
 	for i, n1 := range n1s {
 		if n1 != params.Parts[i].N1 {
-			return fmt.Errorf("expected N1 %v but got %v", params.Parts[i].N1, n1)
+			return fmt.Errorf("expected N1 %v but got %v, (part %v)", params.Parts[i].N1, n1, h.Parts[i].Name)
 		}
 	}
 
@@ -288,5 +295,13 @@ func (h *Horner) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 
 // Size returns the size of the columns taking part in a [HornerPart].
 func (h *HornerPart) Size() int {
+	if h.size == 0 {
+		board := h.Coefficients[0].Board()
+		h.size = column.ExprIsOnSameLengthHandles(&board)
+	}
 	return h.size
+}
+
+func (h *Horner) UUID() uuid.UUID {
+	return h.uuid
 }

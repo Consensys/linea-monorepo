@@ -20,6 +20,7 @@ func MakeTestCaseCustomizedKeccak(t *testing.T, providers [][]byte) (
 	define wizard.DefineFunc,
 	prover wizard.MainProverStep,
 ) {
+
 	mod := &KeccakOverBlocks{}
 	maxNumKeccakF := 16
 	size := utils.NextPowerOfTwo(maxNumKeccakF * generic.KeccakUsecase.NbOfLanesPerBlock())
@@ -50,13 +51,14 @@ func MakeTestCaseCustomizedKeccak(t *testing.T, providers [][]byte) (
 		permTrace := keccak.GenerateTrace(mod.Inputs.Provider)
 		hi := mod.HashHi.GetColAssignment(run).IntoRegVecSaveAlloc()
 		lo := mod.HashLo.GetColAssignment(run).IntoRegVecSaveAlloc()
-		for i, expectedHash := range permTrace.HashOutPut {
-			// hashHi := hash[:16] ,  hashLo := hash[16:]
-			gotHashHi := hi[i].Bytes()
-			gotHashLo := lo[i].Bytes()
-			assert.Equal(t, expectedHash[:16], gotHashHi[16:])
-			assert.Equal(t, expectedHash[16:], gotHashLo[16:])
-		}
+		utils.Panic("adjust for the koalabear migration")
+		// for i, expectedHash := range permTrace.HashOutPut {
+		// 	// hashHi := hash[:16] ,  hashLo := hash[16:]
+		// 	gotHashHi := hi[i].Bytes()
+		// 	gotHashLo := lo[i].Bytes()
+		// 	assert.Equal(t, expectedHash[:16], gotHashHi[16:])
+		// 	assert.Equal(t, expectedHash[16:], gotHashLo[16:])
+		// }
 
 		for i := len(permTrace.HashOutPut); i < len(hi); i++ {
 			assert.Equal(t, field.Zero(), hi[i])

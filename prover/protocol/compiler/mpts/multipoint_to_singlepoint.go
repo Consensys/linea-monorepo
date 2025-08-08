@@ -1,6 +1,7 @@
 package mpts
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 
@@ -65,12 +66,12 @@ type MultipointToSinglepointCompilation struct {
 	// newQuery.
 	AddUnconstrainedColumnsOpt bool
 
-	// numRow is the number of rows in the columns that are compiled. The
+	// NumRow is the number of rows in the columns that are compiled. The
 	// value is lazily evaluated and the evaluation procedure sanity-checks
 	// that all the columns has the same number of rows. The value of this
 	// field should not be accessed directly and the caller should instead
 	// use getNumRow().
-	numRow int
+	NumRow int
 
 	// NewQuery is the query that is produced by the compilation, also named
 	// the "Grail" query in the paper. The evaluation spans overall the
@@ -115,20 +116,42 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 		append(polysByRound, polyPrecomputed, direct)...),
 	)
 
+	var (
+		err, errLocal error
+	)
+
 	if ctx.NumColumnProfileOpt != nil {
 
 		// startingRound is the first round that is not empty in polyRound
 		// ignoring precomputed columns.
 		startingRound := getStartingRound(comp, polysByRound)
 
-		polyPrecomputed = extendPWithShadowColumns(comp, 0,
-			ctx.numRow, polyPrecomputed, ctx.NumColumnProfilePrecomputed, true)
+		polyPrecomputed, errLocal = extendPWithShadowColumns(comp, 0,
+			ctx.NumRow, polyPrecomputed, ctx.NumColumnProfilePrecomputed, true)
+
+		err = errors.Join(err, errLocal)
 
 		for round := startingRound; round < len(polysByRound); round++ {
-			polysByRound[round] = extendPWithShadowColumns(comp, round,
-				ctx.numRow, polysByRound[round], ctx.NumColumnProfileOpt[round-startingRound], false)
-		}
 
+			// This panic routine is useful as it gives all the informations for
+			// the dev to fix the value of the mpts profile in use if needs be.
+			if round-startingRound >= len(ctx.NumColumnProfileOpt) {
+				numPolPerRounds := []int{}
+				for round := startingRound; round < len(polysByRound); round++ {
+					numPolPerRounds = append(numPolPerRounds, len(polysByRound[round]))
+				}
+				utils.Panic("the number of polynomials in every round is not set. Got %v", numPolPerRounds)
+			}
+
+			polysByRound[round], errLocal = extendPWithShadowColumns(comp, round,
+				ctx.NumRow, polysByRound[round], ctx.NumColumnProfileOpt[round-startingRound], false)
+
+			err = errors.Join(err, errLocal)
+		}
+	}
+
+	if err != nil {
+		panic(err)
 	}
 
 	ctx.Polys = slices.Concat(append([][]ifaces.Column{polyPrecomputed, direct}, polysByRound...)...)
@@ -149,7 +172,7 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 	ctx.Quotient = comp.InsertCommit(
 		ctx.getNumRound(comp),
 		ifaces.ColIDf("MPTS_QUOTIENT_%v", comp.SelfRecursionCount),
-		ctx.numRow,
+		ctx.NumRow,
 	)
 
 	ctx.EvaluationPoint = comp.InsertCoin(
@@ -166,9 +189,9 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 
 	ctx.EvalPointOfPolys, ctx.PolysOfEvalPoint = indexPolysAndPoints(ctx.Polys, ctx.Queries)
 
-	comp.RegisterProverAction(ctx.getNumRound(comp), quotientAccumulation{ctx})
-	comp.RegisterProverAction(ctx.getNumRound(comp)+1, randomPointEvaluation{ctx})
-	comp.RegisterVerifierAction(ctx.getNumRound(comp)+1, verifierAction{ctx})
+	comp.RegisterProverAction(ctx.getNumRound(comp), QuotientAccumulation{ctx})
+	comp.RegisterProverAction(ctx.getNumRound(comp)+1, RandomPointEvaluation{ctx})
+	comp.RegisterVerifierAction(ctx.getNumRound(comp)+1, VerifierAction{ctx})
 
 	return ctx
 }
@@ -185,17 +208,17 @@ func (ctx *MultipointToSinglepointCompilation) setMaxNumberOfRowsOf(columns []if
 	for i := 1; i < len(columns); i++ {
 		numRow = max(numRow, columns[i].Size())
 	}
-	ctx.numRow = numRow
+	ctx.NumRow = numRow
 	return numRow
 }
 
 // getNumRow returns the number of rows and panics if the field is not set
 // in the context.
 func (ctx *MultipointToSinglepointCompilation) getNumRow() int {
-	if ctx.numRow == 0 {
+	if ctx.NumRow == 0 {
 		utils.Panic("the number of rows is not set")
 	}
-	return ctx.numRow
+	return ctx.NumRow
 }
 
 // getNumRound returns the number of rounds that are compiled. This is also
@@ -334,10 +357,10 @@ func sortPolynomialsByRoundAndName(comp *wizard.CompiledIOP, queries []query.Uni
 // extendPWithShadowColumns adds shadow columns to the given list of polynomials
 // to match a given profile. The profile corresponds to a target number of columns
 // to meet in "p". The function will ignore the verifiercol from the count.
-func extendPWithShadowColumns(comp *wizard.CompiledIOP, round int, numRow int, p []ifaces.Column, profile int, precomputed bool) []ifaces.Column {
+func extendPWithShadowColumns(comp *wizard.CompiledIOP, round int, numRow int, p []ifaces.Column, profile int, precomputed bool) ([]ifaces.Column, error) {
 
 	if len(p) > profile {
-		utils.Panic("the profile is too small for the given polynomials list")
+		return nil, fmt.Errorf("the profile is too small for the given polynomials list, round=%v len(p)=%v profile=%v", round, len(p), profile)
 	}
 
 	numP := len(p)
@@ -363,7 +386,7 @@ func extendPWithShadowColumns(comp *wizard.CompiledIOP, round int, numRow int, p
 		p = append(p, newShadowCol)
 	}
 
-	return p
+	return p, nil
 }
 
 // getStartingRound returns the first position in s with a non-empty

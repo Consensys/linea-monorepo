@@ -61,7 +61,7 @@ func LinearCombinationMixed(vecs []SmartVector, x fext.Element, p ...mempool.Mem
 		switch casted := v.(type) {
 		case *Constant:
 			anyCon = true
-			tmpF.MulByElement(&xPow, &casted.val)
+			tmpF.MulByElement(&xPow, &casted.Value)
 			resCon.Add(&resCon, &tmpF)
 		case *Regular:
 			anyReg = true

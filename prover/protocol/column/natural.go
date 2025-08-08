@@ -2,6 +2,7 @@ package column
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -125,7 +126,7 @@ func (n Natural) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gn
 // String returns the ID of the column as a string and implements [ifaces.Column]
 // and [github.com/consensys/linea-monorepo/prover/symbolic.Metadata]
 func (n Natural) String() string {
-	return string(n.GetColID())
+	return string(n.GetColID()) + "_" + strconv.Itoa(n.Round()) + "_" + strconv.Itoa(n.Size())
 }
 
 // Status returns the status of the column. It is only implemented for Natural
@@ -146,4 +147,10 @@ func (n Natural) SetPragma(pragma string, data any) {
 // GetPragma returns the pragma for a given column name.
 func (n Natural) GetPragma(pragma string) (any, bool) {
 	return n.store.GetPragma(n.ID, pragma)
+}
+
+// GetStoreUnsafe returns the internal store pointer of the column. It is unsafe to
+// use.
+func (n Natural) GetStoreUnsafe() *Store {
+	return n.store
 }

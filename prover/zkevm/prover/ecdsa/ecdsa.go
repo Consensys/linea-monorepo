@@ -7,7 +7,7 @@ import (
 )
 
 type EcdsaZkEvm struct {
-	ant *antichamber
+	Ant *antichamber
 }
 
 func NewEcdsaZkEvm(
@@ -15,25 +15,25 @@ func NewEcdsaZkEvm(
 	settings *Settings,
 ) *EcdsaZkEvm {
 	return &EcdsaZkEvm{
-		ant: newAntichamber(
+		Ant: newAntichamber(
 			comp,
 			&antichamberInput{
-				settings:     settings,
-				ecSource:     getEcdataArithmetization(comp),
-				txSource:     getTxnDataArithmetization(comp),
-				rlpTxn:       getRlpTxnArithmetization(comp),
-				plonkOptions: []query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)},
+				Settings:     settings,
+				EcSource:     getEcdataArithmetization(comp),
+				TxSource:     getTxnDataArithmetization(comp),
+				RlpTxn:       getRlpTxnArithmetization(comp),
+				PlonkOptions: []query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)},
 			},
 		),
 	}
 }
 
 func (e *EcdsaZkEvm) Assign(run *wizard.ProverRuntime, txSig TxSignatureGetter, nbTx int) {
-	e.ant.assign(run, txSig, nbTx)
+	e.Ant.assign(run, txSig, nbTx)
 }
 
 func (e *EcdsaZkEvm) GetProviders() []generic.GenericByteModule {
-	return e.ant.Providers
+	return e.Ant.Providers
 }
 
 func getEcdataArithmetization(comp *wizard.CompiledIOP) *ecDataSource {
@@ -50,9 +50,9 @@ func getEcdataArithmetization(comp *wizard.CompiledIOP) *ecDataSource {
 
 func getTxnDataArithmetization(comp *wizard.CompiledIOP) *txnData {
 	td := &txnData{
-		fromHi: comp.Columns.GetHandle("txndata.FROM_HI"),
-		fromLo: comp.Columns.GetHandle("txndata.FROM_LO"),
-		ct:     comp.Columns.GetHandle("txndata.CT"),
+		FromHi: comp.Columns.GetHandle("txndata.FROM_HI"),
+		FromLo: comp.Columns.GetHandle("txndata.FROM_LO"),
+		Ct:     comp.Columns.GetHandle("txndata.CT"),
 	}
 	return td
 }

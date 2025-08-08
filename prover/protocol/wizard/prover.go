@@ -34,7 +34,7 @@ import (
 // methods of the [wizard.ProverRuntime] struct. These are used to
 // enable/disable some of the optimization that are done by the prover
 // internally.
-type ProverRuntimeOption uint32
+type ProverRuntimeOption uint64
 
 const (
 	// DisableAssignmentSizeReduction is used to disable the
@@ -228,19 +228,6 @@ func RunProverUntilRound(c *CompiledIOP, highLevelProver MainProverStep, round i
 	return &runtime
 }
 
-// func RunProverUntilRound(c *CompiledIOP, highLevelprover MainProverStep, round int) *ProverRuntime {
-// 	runtime := c.createProver()
-// 	runtime.exec("high-level-prover", highLevelprover)
-// 	runtime.exec(fmt.Sprintf("prover-steps-round%d", runtime.currRound), runtime.runProverSteps)
-
-// 	for runtime.currRound+1 < round {
-// 		runtime.exec(fmt.Sprintf("next-after-round-%d", runtime.currRound), runtime.goNextRound)
-// 		runtime.exec(fmt.Sprintf("prover-steps-round-%d", runtime.currRound), runtime.runProverSteps)
-// 	}
-
-// 	return &runtime
-// }
-
 // ExtractProof extracts the proof from a [ProverRuntime]. If the runtime has
 // been obtained via a [RunProverUntilRound], then it may be the case that
 // some columns have not been assigned at all. Those won't be included in the
@@ -312,7 +299,7 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 	}
 
 	// Pass the precomputed polynomials
-	for key, val := range c.Precomputed.InnerMap() {
+	for key, val := range c.Precomputed.GetInnerMap() {
 		runtime.Columns.InsertNew(key, val)
 	}
 
@@ -469,21 +456,29 @@ func (run ProverRuntime) GetColumnAtExt(name ifaces.ColID, pos int) fext.Element
 // than once. The coin should also have been registered as a field element
 // before doing this call. Will also trigger the "goNextRound" logic if
 // appropriate.
+//
+// The coin must also be of type [coin.FieldFromSeed] or [coin.Field].
 func (run *ProverRuntime) GetRandomCoinField(name coin.Name) field.Element {
 	mycoin := run.Spec.Coins.Data(name)
-
-	if mycoin.Type == 0 {
-		return run.getRandomCoinGeneric(name, coin.Field).(field.Element)
+	if mycoin.Type != coin.Field && mycoin.Type != coin.FieldFromSeed {
+		utils.Panic("coin %v is not a field randomness", name)
 	}
-	return run.getRandomCoinGeneric(name, coin.FieldFromSeed).(field.Element)
+	return run.getRandomCoinGeneric(name, mycoin.Type).(field.Element)
 }
 
+// GetRandomCoinFieldExt returns a field extension randomness. The coin should
+// be isseued at the same round as it was registered. The same coin can't be
+// retrieved more than once. The coin should also have been registered as a
+// field extension randomness before doing this call. Will also trigger the
+// "goNextRound" logic if appropriate.
+//
+// The type must also be of type [coin.FieldExtFromSeed] or [coin.FieldExt].
 func (run *ProverRuntime) GetRandomCoinFieldExt(name coin.Name) fext.Element {
 	mycoin := run.Spec.Coins.Data(name)
-	if mycoin.Type == coin.FieldExtFromSeed {
-		return run.getRandomCoinGeneric(name, coin.FieldExtFromSeed).(fext.Element)
+	if mycoin.Type != coin.FieldExt && mycoin.Type != coin.FieldExtFromSeed {
+		utils.Panic("coin %v is not a field extension randomness", name)
 	}
-	return run.getRandomCoinGeneric(name, coin.FieldExt).(fext.Element)
+	return run.getRandomCoinGeneric(name, mycoin.Type).(fext.Element)
 }
 
 // GetRandomCoinIntegerVec returns a pre-sampled integer vec random coin. The
@@ -566,23 +561,77 @@ func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssi
 		utils.Panic("Witness with non-power of two sizes, should have been caught earlier")
 	}
 
+	// If the column is generated after the first round, there is no need
+	// optimizing the assignment because it is likely created by wizard
+	// compilation and its representation is already optimized.
+	if run.currRound > 0 {
+		// Adds it to the assignments
+		run.Columns.InsertNew(handle.GetColID(), witness)
+		return
+	}
+
 	start, stop := smartvectors.CoWindowRange(witness)
-	if _, isLeftPadded := handle.GetPragma(pragmas.LeftPadded); isLeftPadded && stop < witness.Len() && start == 0 {
-		logrus.Errorf("Left-padded column with non-left-padded witness: %v, start: %v, stop: %v", name, start, stop)
-	}
 
-	if _, isRightPadded := handle.GetPragma(pragmas.RightPadded); isRightPadded && start > 0 && stop == witness.Len() {
-		logrus.Errorf("Right-padded column with non-right-padded witness: %v, start: %v, stop: %v", name, start, stop)
-	}
+	var (
+		hasRightPaddedRange  = stop < witness.Len()
+		hasLeftPaddedRange   = start > 0
+		hasRightPaddedPragma = pragmas.IsRightPadded(handle)
+		hasLeftPaddedPragma  = pragmas.IsLeftPadded(handle)
+		hasFullColumnPragma  = pragmas.IsFullColumn(handle)
+	)
 
-	if _, isFull := handle.GetPragma(pragmas.FullColumnPragma); isFull && (start > 0 || stop < witness.Len()) {
-		logrus.Errorf("Full column with non-full witness: %v, start: %v, stop: %v", name, start, stop)
-	}
+	switch {
+	case hasLeftPaddedPragma:
 
-	// This reduction is a trade-off between runtime and memory. It costs CPU
-	// but can save a significant amount of memory.
-	if opts_&DisableAssignmentSizeReduction == 0 {
-		witness, _ = smartvectors.TryReduceSize(witness)
+		if !hasLeftPaddedRange {
+			// logrus.Warnf("Left-padded column with non-left-padded witness: %v, start: %v, stop: %v", name, start, stop)
+			// This conversion to regular ensures that the witness won't be
+			// stored as a right-padded column. The size reduction might later
+			// find a padding opportunity in the right direction. The conversion
+			// is ineffective in case the column is a regular column (which
+			// might be caught by the condition)
+			witness = smartvectors.NewRegular(witness.IntoRegVecSaveAlloc())
+		}
+
+		// This reduction is a trade-off between runtime and memory. It costs CPU
+		// but can save a significant amount of memory.
+		if opts_&DisableAssignmentSizeReduction == 0 {
+			witness, _ = smartvectors.TryReduceSizeLeft(witness)
+		}
+
+	case hasRightPaddedPragma:
+
+		if !hasRightPaddedRange {
+			// logrus.Warnf("Right-padded column with non-right-padded witness: %v, start: %v, stop: %v", name, start, stop)
+			// This conversion to regular ensures that the witness won't be
+			// stored as a left-padded column. The size reduction might later
+			// find a padding opportunity in the right direction. The conversion
+			// is ineffective in case the column is a regular column (which
+			// might be caught by the condition)
+			witness = smartvectors.NewRegular(witness.IntoRegVecSaveAlloc())
+		}
+
+		// This reduction is a trade-off between runtime and memory. It costs CPU
+		// but can save a significant amount of memory.
+		if opts_&DisableAssignmentSizeReduction == 0 {
+			witness, _ = smartvectors.TryReduceSizeRight(witness)
+		}
+
+	case hasFullColumnPragma:
+
+		if hasLeftPaddedRange || hasRightPaddedRange {
+			logrus.Errorf("Full column with non-full witness: %v, start: %v, stop: %v", name, start, stop)
+		}
+
+		witness = smartvectors.NewRegular(witness.IntoRegVecSaveAlloc())
+
+	default:
+
+		// This reduction is a trade-off between runtime and memory. It costs CPU
+		// but can save a significant amount of memory.
+		if opts_&DisableAssignmentSizeReduction == 0 {
+			witness, _ = smartvectors.TryReduceSizeRight(witness)
+		}
 	}
 
 	// Adds it to the assignments
@@ -749,7 +798,7 @@ func (run *ProverRuntime) goNextRound() {
 // [CompiledIOP] object for the current round.
 func (run *ProverRuntime) runProverSteps() {
 	// Run all the assigners
-	subProverSteps := run.Spec.subProvers.MustGet(run.currRound)
+	subProverSteps := run.Spec.SubProvers.MustGet(run.currRound)
 	for idx, step := range subProverSteps {
 
 		// Profile individual prover steps
@@ -946,19 +995,6 @@ func (run *ProverRuntime) GetLocalPointEvalParams(name ifaces.QueryID) query.Loc
 //   - the specified query is not registered
 //   - the assignment round is incorrect
 func (run *ProverRuntime) AssignLogDerivSum(name ifaces.QueryID, y fext.GenericFieldElem) {
-
-	// Global prover locks for accessing the maps
-	run.lock.Lock()
-	defer run.lock.Unlock()
-
-	// Make sure, it is done at the right round
-	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
-
-	// Adds it to the assignments
-	params := query.NewLogDerivSumParams(y)
-	run.QueriesParams.InsertNew(name, params)
-}
-func (run *ProverRuntime) AssignLogDerivSumGeneric(name ifaces.QueryID, y fext.GenericFieldElem) {
 
 	// Global prover locks for accessing the maps
 	run.lock.Lock()

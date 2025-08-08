@@ -1,17 +1,17 @@
 import { useState } from "react";
 import Image from "next/image";
-import { useAccount } from "wagmi";
-import TokenModal from "@/components/bridge/modal/token-modal";
+import dynamic from "next/dynamic";
 import Button from "@/components/ui/button";
 import CaretDownIcon from "@/assets/icons/caret-down.svg";
 import styles from "./token-list.module.scss";
 import { useFormStore } from "@/stores";
 
+const TokenModal = dynamic(() => import("@/components/bridge/modal/token-modal"), {
+  ssr: false,
+});
+
 export default function TokenList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const { isConnected } = useAccount();
-
   const token = useFormStore((state) => state.token);
 
   const openModal = () => setIsModalOpen(true);
@@ -20,13 +20,17 @@ export default function TokenList() {
   return (
     <div className={styles["wrapper"]}>
       {token && (
-        <Button className={styles["token-select-btn"]} disabled={!isConnected} onClick={openModal}>
+        <Button
+          className={styles["token-select-btn"]}
+          onClick={openModal}
+          data-testid="native-bridge-open-token-list-modal"
+        >
           <Image src={token.image} alt={token.name} width={24} height={24} />
           {token.symbol}
           <CaretDownIcon className={styles["arrow-down-icon"]} />
         </Button>
       )}
-      <TokenModal isModalOpen={isModalOpen} onCloseModal={closeModal} />
+      {isModalOpen && <TokenModal isModalOpen={isModalOpen} onCloseModal={closeModal} />}
     </div>
   );
 }

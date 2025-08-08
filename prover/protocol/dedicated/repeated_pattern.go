@@ -64,7 +64,7 @@ func NewRepeatedPattern(comp *wizard.CompiledIOP, round int, pattern []field.Ele
 func (rp RepeatedPattern) Assign(run *wizard.ProverRuntime) {
 
 	var (
-		isActive      []field.Element //TODO@yao: fext?
+		isActive      []field.Element
 		size          = rp.Counter.ColumnSize
 		isFullyActive = rp.Counter.FullyActive
 		res           = make([]field.Element, 0, size)

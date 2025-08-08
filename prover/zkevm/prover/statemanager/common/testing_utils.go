@@ -3,7 +3,7 @@ package common
 import (
 	"math/big"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/mock"
 )
@@ -21,8 +21,11 @@ type TestContext struct {
 }
 
 func InitializeContext(initialBlock int) *TestContext {
-	fieldOne := field.One()
-	oneBytes := fieldOne.Bytes()
+
+	utils.Panic("adjust for koalabear")
+
+	// fieldOne := field.One()
+	// oneBytes := fieldOne.Bytes()
 	var (
 		addresses = []types.EthAddress{
 			types.DummyAddress(32),
@@ -43,7 +46,7 @@ func InitializeContext(initialBlock int) *TestContext {
 			types.DummyFullByte(2002),
 			types.DummyFullByte(2012),
 			types.DummyFullByte(2023),
-			oneBytes,
+			// oneBytes,
 		}
 	)
 

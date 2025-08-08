@@ -366,7 +366,7 @@ func TestMixedConditionalLogDerivativeLookupMultiXor(t *testing.T) {
 		b.InclusionDoubleConditional("LOOKUP", []ifaces.Column{xorX, xorY, xorXY}, []ifaces.Column{wX, wY, wXY}, filterT, filterS1)
 		b.InclusionDoubleConditional("LOOKUP2", []ifaces.Column{xorX, xorY, xorXY}, []ifaces.Column{w2X, w2Y, w2XY}, filterT, filterS2)
 		b.InclusionConditionalOnIncluding("LOOKUP3", []ifaces.Column{xorX, xorY, xorXY}, []ifaces.Column{w3X, w3Y, w3XY}, filterT)
-		constantOne := verifiercol.NewConstantCol(field.One(), sizeCheckeds)
+		constantOne := verifiercol.NewConstantCol(field.One(), sizeCheckeds, "")
 		b.Inclusion("LOOKUP4", []ifaces.Column{xorX, xorY, xorXY, filterT}, []ifaces.Column{w4X, w4Y, w4XY, constantOne})
 		// next query will use w4X, w4Y, w4XY again (to prevent the code from getting too verbose)
 		b.InclusionConditionalOnIncluded("LOOKUP5", []ifaces.Column{xorX, xorY, xorXY, filterT}, []ifaces.Column{w4X, w4Y, w4XY, constantOne}, filterS4)

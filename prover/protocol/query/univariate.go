@@ -14,12 +14,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
+	"github.com/google/uuid"
 )
 
 // Multiple polynomials, one point
 type UnivariateEval struct {
 	Pols    []ifaces.Column
 	QueryID ifaces.QueryID
+	uuid    uuid.UUID `serde:"omit"`
 }
 
 // Parameters for an univariate evaluation
@@ -54,7 +56,7 @@ func NewUnivariateEval(id ifaces.QueryID, pols ...ifaces.Column) UnivariateEval 
 		}
 	}
 
-	return UnivariateEval{QueryID: id, Pols: pols}
+	return UnivariateEval{QueryID: id, Pols: pols, uuid: uuid.New()}
 }
 
 // Name implements the [ifaces.Query] interface
@@ -120,4 +122,8 @@ func (r UnivariateEval) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 		actualY := fastpoly.EvaluateLagrangeGnark(api, wit, params.X)
 		api.AssertIsEqual(actualY, params.Ys[k])
 	}
+}
+
+func (r UnivariateEval) UUID() uuid.UUID {
+	return r.uuid
 }

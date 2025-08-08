@@ -2,7 +2,6 @@ package smartvectors
 
 import (
 	"fmt"
-	"math/rand/v2"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
@@ -23,8 +22,6 @@ const (
 	RotatedMixedT
 )
 
-var smartVecTypeListMixed = []smartVecTypeMixed{constantMixedT, windowMixedT, RegularMixedT, RotatedMixedT}
-
 type testCaseMixed struct {
 	name            string
 	svecs           []SmartVector
@@ -44,44 +41,6 @@ func (tc testCaseMixed) String() string {
 	return res
 }
 
-type testCaseGenMixed struct {
-	// Randomness parameters
-	seed int
-	gen  *rand.Rand
-	// Length and number of target vectors
-	fullLen, numVec int
-	// Parameters relevant for creating windows. This enforces the windows
-	// to be included in a certain (which can possible roll over fullLen)
-	windowWithLen        int
-	windowMustStartAfter int
-	// Allowed smart-vector types for this testcase
-	allowedTypes []smartVecTypeMixed
-}
-
-func newTestBuilderMixed(seed int) *testCaseGenMixed {
-	// Use a deterministic randomness source
-	res := &testCaseGenMixed{seed: seed}
-	// #nosec G404 --we don't need a cryptographic RNG for fuzzing purpose
-	res.gen = rand.New(utils.NewRandSource(int64(seed)))
-
-	// We should have some quarantee that the length is not too small
-	// for the test generation
-	res.fullLen = 1 << (res.gen.IntN(5) + 3)
-	res.numVec = res.gen.IntN(8) + 1
-
-	// In the test, we may restrict the inputs vectors to have a certain type
-	allowedTypes := append([]smartVecTypeMixed{}, smartVecTypeListMixed...)
-	res.gen.Shuffle(len(allowedTypes), func(i, j int) {
-		allowedTypes[i], allowedTypes[j] = allowedTypes[j], allowedTypes[i]
-	})
-	res.allowedTypes = allowedTypes[:res.gen.IntN(len(allowedTypes)-1)+1]
-
-	// Generating the window : it should be roughly half of the total length
-	// this aims at maximizing the coverage.
-	res.windowWithLen = res.gen.IntN(res.fullLen-4)/2 + 2
-	res.windowMustStartAfter = res.gen.IntN(res.fullLen)
-	return res
-}
 func (gen *testCaseGen) NewTestCaseForLinearCombinationMixed() (tcase testCaseMixed) {
 
 	tcase.name = fmt.Sprintf("fuzzy-with-seed-%v-poly-eval", gen.seed)

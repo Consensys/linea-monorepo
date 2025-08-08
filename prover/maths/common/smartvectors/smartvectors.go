@@ -17,7 +17,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-const conversionError = "smartvector holds field extensions, but a base element was requested"
+var errConversion = errors.New("smartvector holds field extensions, but a base element was requested")
 
 // SmartVector is an abstraction over vectors of field elements that can be
 // optimized for structured vectors. For instance, if we have a vector of
@@ -147,7 +147,7 @@ func IntoRegVec(s SmartVector) []field.Element {
 		s.WriteInSlice(res)
 		return res
 	} else {
-		panic(conversionError)
+		panic(errConversion)
 	}
 }
 
@@ -195,13 +195,13 @@ func IntoGnarkAssignmentExt(sv SmartVector) []gnarkfext.Element {
 func PaddingValGeneric(v SmartVector) (val fext.GenericFieldElem, hasPadding bool) {
 	switch w := v.(type) {
 	case *Constant:
-		return fext.NewESHashFromBase(w.val), true
+		return fext.NewESHashFromBase(w.Value), true
 	case *PaddedCircularWindow:
-		return fext.NewESHashFromBase(w.paddingVal), true
+		return fext.NewESHashFromBase(w.PaddingVal_), true
 	case *ConstantExt:
-		return fext.NewESHashFromExt(w.val), true
+		return fext.NewESHashFromExt(w.Value), true
 	case *PaddedCircularWindowExt:
-		return fext.NewESHashFromExt(w.paddingVal), true
+		return fext.NewESHashFromExt(w.PaddingVal_), true
 	default:
 		return fext.GenericFieldZero(), false
 	}
@@ -261,7 +261,7 @@ func Density(v SmartVector) int {
 	case *Constant:
 		return 0
 	case *PaddedCircularWindow:
-		return len(w.window)
+		return len(w.Window_)
 	case *Regular:
 		return len(*w)
 	case *Rotated:
@@ -271,7 +271,7 @@ func Density(v SmartVector) int {
 	case *ConstantExt:
 		return 0
 	case *PaddedCircularWindowExt:
-		return len(w.window)
+		return len(w.Window_)
 	case *RegularExt:
 		return len(*w)
 	case *RotatedExt:
@@ -292,10 +292,10 @@ func PaddingOrientationOf(v SmartVector) (int, error) {
 
 	switch w := v.(type) {
 	case *PaddedCircularWindow:
-		if w.offset == 0 {
+		if w.Offset_ == 0 {
 			return 1, nil
 		}
-		if w.offset+len(w.window) == w.totLen {
+		if w.Offset_+len(w.Window_) == w.TotLen_ {
 			return -1, nil
 		}
 	default:
@@ -311,7 +311,7 @@ func PaddingOrientationOf(v SmartVector) (int, error) {
 func Window(v SmartVector) []field.Element {
 	res, err := WindowBase(v)
 	if err != nil {
-		panic(conversionError)
+		panic(errConversion)
 	}
 	return res
 }
@@ -321,7 +321,7 @@ func WindowBase(v SmartVector) ([]field.Element, error) {
 	case *Constant:
 		return []field.Element{}, nil
 	case *PaddedCircularWindow:
-		return w.window, nil
+		return w.Window_, nil
 	case *Regular:
 		return *w, nil
 	case *Rotated:
@@ -336,9 +336,9 @@ func WindowExt(v SmartVector) []fext.Element {
 	case *Constant:
 		return []fext.Element{}
 	case *PaddedCircularWindow:
-		temp := make([]fext.Element, len(w.window))
-		for i := 0; i < len(w.window); i++ {
-			elem := w.window[i]
+		temp := make([]fext.Element, len(w.Window_))
+		for i := 0; i < len(w.Window_); i++ {
+			elem := w.Window_[i]
 			fext.SetFromBase(&temp[i], &elem)
 		}
 		return temp
@@ -355,7 +355,7 @@ func WindowExt(v SmartVector) []fext.Element {
 	case *ConstantExt:
 		return w.IntoRegVecSaveAllocExt()
 	case *PaddedCircularWindowExt:
-		return w.window
+		return w.Window_
 	case *RegularExt:
 		return *w
 	case *RotatedExt:
@@ -372,9 +372,9 @@ func WindowExt(v SmartVector) []fext.Element {
 func PaddingVal(v SmartVector) (val field.Element, hasPadding bool) {
 	switch w := v.(type) {
 	case *Constant:
-		return w.val, true
+		return w.Value, true
 	case *PaddedCircularWindow:
-		return w.paddingVal, true
+		return w.PaddingVal_, true
 	default:
 		return field.Element{}, false
 	}
@@ -383,22 +383,21 @@ func PaddingVal(v SmartVector) (val field.Element, hasPadding bool) {
 func PaddingValExt(v SmartVector) (val fext.Element, hasPadding bool) {
 	switch w := v.(type) {
 	case *ConstantExt:
-		return w.val, true
+		return w.Value, true
 	case *PaddedCircularWindowExt:
-		return w.paddingVal, true
+		return w.PaddingVal_, true
 	default:
 		return fext.Element{}, false
 	}
 }
 
-// TryReduceSize detects if the input smart-vector can be reduced to a constant
+// TryReduceSizeRight detects if the input smart-vector can be reduced to a constant
 // smart-vector. It will only apply over the following types: [Regular].
-func TryReduceSize(v SmartVector) (new SmartVector, totalSaving int) {
+func TryReduceSizeRight(v SmartVector) (new SmartVector, totalSaving int) {
 
 	switch w := v.(type) {
-	case *Constant, *Rotated, *Pooled, *PaddedCircularWindow:
-		return v, 0
-	case *ConstantExt, *RotatedExt, *PooledExt, *PaddedCircularWindowExt:
+	case *Constant, *Rotated, *Pooled, *PaddedCircularWindow, *ConstantExt,
+		*RotatedExt, *PooledExt, *PaddedCircularWindowExt:
 		return v, 0
 	case *Regular:
 
@@ -407,7 +406,7 @@ func TryReduceSize(v SmartVector) (new SmartVector, totalSaving int) {
 		}
 
 		if res, ok := tryIntoRightPadded(*w); ok {
-			return res, len(*w) - len(res.window)
+			return res, len(*w) - len(res.Window_)
 		}
 
 		return v, 0
@@ -418,14 +417,124 @@ func TryReduceSize(v SmartVector) (new SmartVector, totalSaving int) {
 		}
 
 		if res, ok := tryIntoRightPaddedExt(*w); ok {
-			return res, len(*w) - len(res.window)
+			return res, len(*w) - len(res.Window_)
 		}
 
 		return v, 0
 	default:
 		panic(fmt.Sprintf("unexpected type %T", v))
 	}
+}
 
+// TryReduceSizeLeft detects if the input smart-vector can be reduced to a
+// left-padded smart-vector. It will only apply over the following types:
+// [Regular].
+func TryReduceSizeLeft(v SmartVector) (new SmartVector, totalSaving int) {
+
+	switch w := v.(type) {
+	case *Constant, *Rotated, *Pooled, *PaddedCircularWindow:
+		return v, 0
+	case *Regular:
+
+		if res, ok := tryIntoConstant(*w); ok {
+			return res, len(*w)
+		}
+
+		if res, ok := tryIntoLeftPadded(*w); ok {
+			return res, len(*w) - len(res.Window_)
+		}
+
+		return v, 0
+
+	default:
+		panic(fmt.Sprintf("unexpected type %T", v))
+	}
+}
+
+// tryIntoLeftPadded scans the smartvector and attempts to rewrite it into a
+// a more space-efficient left padded circular windows.
+func tryIntoLeftPadded(v Regular) (*PaddedCircularWindow, bool) {
+
+	var (
+		bestPos = 0
+		first   = v[0]
+	)
+
+	for i := 1; i < len(v); i++ {
+		if v[i] != first {
+			break
+		}
+		bestPos = i
+	}
+
+	if bestPos == 0 {
+		return nil, false
+	}
+
+	if bestPos == len(v)-1 {
+		utils.Panic("passed a constant vector to tryIntoLeftPadded, it should have been handled by tryIntoConstant")
+	}
+
+	return LeftPadded(v[bestPos+1:], first, len(v)).(*PaddedCircularWindow), true
+}
+
+// FromCompactWithShape creates a new smart-vector with the same shape as the
+// sameAs smart-vector and the values provided in the compact slice.
+//
+//   - If sameAs is left-padded, then the new smart-vector will be left-padded
+//     also, it will take the first value of compact as the padding value and the
+//     following one as the "plain" values. The function asserts that the window
+//     of len(sameAs.window) == len(compact) - 1.
+//   - If sameAs is right-padded, then the new smart-vector will be right-padded
+//     also, it will take the last value of compact as the padding value and the
+//     previous one as the "plain" values. The function asserts that the window
+//     of len(sameAs.window) == len(compact) - 1.
+//   - If sameAs is constant, then the new smart-vector will be constant as well
+//     and the function asserts that compact has the length 1.
+//   - If sameAs is regular, then the new smart-vector will be regular as well
+//     and have all its values from compact.
+//
+// In other situations, the function will panic.
+func FromCompactWithShape(v SmartVector, compact []field.Element) SmartVector {
+	switch w := v.(type) {
+	case *Constant:
+		return NewConstant(compact[0], v.Len())
+	case *PaddedCircularWindow:
+		// right-padded
+		if w.Offset_ == 0 {
+
+			if len(w.Window_) != len(compact)-1 {
+				panic("unexpected shape for padded circular window")
+			}
+
+			last := compact[len(compact)-1]
+			window := compact[:len(compact)-1]
+			return RightPadded(window, last, w.Len())
+		}
+
+		// left-padded
+		if w.Offset_+len(w.Window_) == w.TotLen_ {
+
+			if len(w.Window_) != len(compact)-1 {
+				panic("unexpected shape for padded circular window")
+			}
+
+			first := compact[0]
+			window := compact[1:]
+			return LeftPadded(window, first, w.Len())
+		}
+
+		panic("unexpected shape for padded circular window")
+	case *Regular:
+
+		if len(*w) != len(compact) {
+			panic("unexpected shape for regular vector")
+		}
+
+		return NewRegular(compact)
+	default:
+		panic(fmt.Sprintf("unexpected type %T", v))
+	}
 }
 
 func tryIntoConstantExt(w RegularExt) (*ConstantExt, bool) {
@@ -545,65 +654,6 @@ func tryIntoRightPadded(v Regular) (*PaddedCircularWindow, bool) {
 	}
 
 	return RightPadded(v[:bestPos], last, len(v)).(*PaddedCircularWindow), true
-}
-
-// FromCompactWithShape creates a new smart-vector with the same shape as the
-// sameAs smart-vector and the values provided in the compact slice.
-//
-//   - If sameAs is left-padded, then the new smart-vector will be left-padded
-//     also, it will take the first value of compact as the padding value and the
-//     following one as the "plain" values. The function asserts that the window
-//     of len(sameAs.window) == len(compact) - 1.
-//   - If sameAs is right-padded, then the new smart-vector will be right-padded
-//     also, it will take the last value of compact as the padding value and the
-//     previous one as the "plain" values. The function asserts that the window
-//     of len(sameAs.window) == len(compact) - 1.
-//   - If sameAs is constant, then the new smart-vector will be constant as well
-//     and the function asserts that compact has the length 1.
-//   - If sameAs is regular, then the new smart-vector will be regular as well
-//     and have all its values from compact.
-//
-// In other situations, the function will panic.
-func FromCompactWithShape(v SmartVector, compact []field.Element) SmartVector {
-	switch w := v.(type) {
-	case *Constant:
-		return NewConstant(compact[0], v.Len())
-	case *PaddedCircularWindow:
-		// right-padded
-		if w.offset == 0 {
-
-			if len(w.window) != len(compact)-1 {
-				panic("unexpected shape for padded circular window")
-			}
-
-			last := compact[len(compact)-1]
-			window := compact[:len(compact)-1]
-			return RightPadded(window, last, w.Len())
-		}
-
-		// left-padded
-		if w.offset+len(w.window) == w.totLen {
-
-			if len(w.window) != len(compact)-1 {
-				panic("unexpected shape for padded circular window")
-			}
-
-			first := compact[0]
-			window := compact[1:]
-			return LeftPadded(window, first, w.Len())
-		}
-
-		panic("unexpected shape for padded circular window")
-	case *Regular:
-
-		if len(*w) != len(compact) {
-			panic("unexpected shape for regular vector")
-		}
-
-		return NewRegular(compact)
-	default:
-		panic(fmt.Sprintf("unexpected type %T", v))
-	}
 }
 
 // CoWindowRange scans the windows range of all the provided smartvectors

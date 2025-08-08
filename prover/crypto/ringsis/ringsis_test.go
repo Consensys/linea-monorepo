@@ -94,7 +94,7 @@ func TestHashModXnMinusOne(t *testing.T) {
 		key := GenerateKey(testCasesKey[i].Params, testCase.Size)
 
 		t.Run(fmt.Sprintf("case-%++v/all-ones", i), func(t *testing.T) {
-			runTest(t, &key, vector.Repeat(field.One(), key.maxNumLimbsHashable()))
+			runTest(t, key, vector.Repeat(field.One(), key.maxNumLimbsHashable()))
 		})
 
 	}
@@ -129,7 +129,7 @@ func TestLimbSplit(t *testing.T) {
 			t.Run(
 				fmt.Sprintf("array-#%v-key-#%v", arrID, keyID),
 				func(t *testing.T) {
-					coreTest(t, arr, key)
+					coreTest(t, arr, *key)
 				},
 			)
 		}
@@ -160,7 +160,7 @@ func TestHashFromLimbs(t *testing.T) {
 		for vecId, tcVec := range testCaseVecs {
 			key := GenerateKey(tcParams.Params, len(tcVec))
 			t.Run(fmt.Sprintf("params-#%v-vec-1%v", pId, vecId), func(t *testing.T) {
-				coreTest(t, &key, tcVec)
+				coreTest(t, key, tcVec)
 			})
 		}
 	}

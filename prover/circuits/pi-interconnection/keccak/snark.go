@@ -329,15 +329,18 @@ func NewWizardVerifierSubCircuit(maxNbKeccakF int, compilationOpts ...func(iop *
 			Title:   "prover-interconnection/keccak-strict-hasher",
 			Version: "beta-v1",
 		},
-		serialization.SerializeCompiledIOP,
+		func(wiop *wizard.CompiledIOP) ([]byte, error) {
+			return serialization.Serialize(wiop)
+		},
 	)
 	return &c
 }
 
 func (c *HashWizardVerifierSubCircuit) prove(ins [][]byte) wizard.Proof {
-	return wizard.Prove(c.compiled, func(r *wizard.ProverRuntime) {
+	proof := wizard.Prove(c.compiled, func(r *wizard.ProverRuntime) {
 		c.m.AssignCustomizedKeccak(r, ins)
 	})
+	return proof
 }
 
 func (c *HashWizardVerifierSubCircuit) Compile() (*wizard.VerifierCircuit, error) {

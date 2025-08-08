@@ -1,6 +1,8 @@
 package common
 
 import (
+	"strconv"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -15,7 +17,7 @@ import (
 // HashingCtx is the wizard context responsible for hashing a table row-wise.
 // It implements the [wizard.ProverAction] interface and is used to assign the
 // InputColumns field.
-type hashingCtx struct {
+type HashingCtx struct {
 	// InputCols is the list of columns forming a table for which the current
 	// context is computing the rows.
 	InputCols []ifaces.Column
@@ -30,14 +32,14 @@ type hashingCtx struct {
 func HashOf(comp *wizard.CompiledIOP, inputCols []ifaces.Column) (ifaces.Column, wizard.ProverAction) {
 
 	var (
-		ctx = &hashingCtx{
+		ctx = &HashingCtx{
 			InputCols:          inputCols,
 			IntermediateHashes: make([]ifaces.Column, len(inputCols)),
 		}
 		round     = column.MaxRound(inputCols...)
 		ctxID     = len(comp.ListCommitments())
 		numRows   = ifaces.AssertSameLength(inputCols...)
-		prevState = verifiercol.NewConstantCol(field.Zero(), numRows)
+		prevState = verifiercol.NewConstantCol(field.Zero(), numRows, "hash-of-"+strconv.Itoa(ctxID))
 	)
 
 	for i := range ctx.IntermediateHashes {
@@ -61,7 +63,7 @@ func HashOf(comp *wizard.CompiledIOP, inputCols []ifaces.Column) (ifaces.Column,
 }
 
 // Run implements the [wizard.ProverAction] interface
-func (ctx *hashingCtx) Run(run *wizard.ProverRuntime) {
+func (ctx *HashingCtx) Run(run *wizard.ProverRuntime) {
 
 	var (
 		numRow = ctx.InputCols[0].Size()

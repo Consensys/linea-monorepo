@@ -7,7 +7,7 @@ import (
 
 // Standard parameter that we use for ring-SIS they are benchmarked at achieve
 // more than the 128 level of security.
-var StdParams = Params{LogTwoBound: 16, LogTwoDegree: 5}
+var StdParams = Params{LogTwoBound: 16, LogTwoDegree: 9}
 
 // Params encapsulates the parameters of a ring SIS instance
 type Params struct {

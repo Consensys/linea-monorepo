@@ -69,18 +69,17 @@ func CreateHeartBeat(comp *wizard.CompiledIOP, round, period, offset int, isActi
 
 	var (
 		_, isFullyActive, _ = cleanIsActive(isActive)
-		isZero              ifaces.Column
-		cptIsZero           wizard.ProverAction
+		cptIsZero           *IsZeroCtx
 	)
 
 	if !isFullyActive {
-		isZero, cptIsZero = IsZeroMask(comp, sym.Sub(hb.Counter.Natural, offset), isActive)
+		cptIsZero = IsZeroMask(comp, sym.Sub(hb.Counter.Natural, offset), isActive)
 	} else {
-		isZero, cptIsZero = IsZero(comp, sym.Sub(hb.Counter.Natural, offset))
+		cptIsZero = IsZero(comp, sym.Sub(hb.Counter.Natural, offset))
 	}
 
 	hb.PAs = append(hb.PAs, cptIsZero)
-	hb.Natural = isZero.(column.Natural)
+	hb.Natural = cptIsZero.IsZero.(column.Natural)
 
 	return hb
 }
@@ -105,15 +104,14 @@ func cleanIsActive(isActiveAny any) (isActive *sym.Expression, fullyActive bool,
 		board := act.Board()
 		size = column.ExprIsOnSameLengthHandles(&board)
 	case verifiercol.ConstCol:
-		if act.IsBase() {
-			isActive = sym.NewConstant(act.Base)
-			fullyActive = act.Base.IsOne()
-			size = act.Size()
-		} else {
-			isActive = sym.NewConstant(act.Ext)
-			fullyActive = act.Ext.IsOne()
-			size = act.Size()
+		if !act.IsBase() {
+			utils.Panic("activator column is defined over field extensions with value=%v", act.Ext.String())
+			return
 		}
+
+		isActive = sym.NewConstant(act.Base)
+		fullyActive = act.Base.IsOne()
+		size = act.Size()
 	case ifaces.Column:
 		isActive = sym.NewVariable(act)
 		size = act.Size()

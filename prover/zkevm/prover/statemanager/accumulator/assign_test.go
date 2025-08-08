@@ -201,10 +201,13 @@ func TestAssignReadNonZero(t *testing.T) {
 }
 
 func assertCorrectMerkleProof(t *testing.T, builder *assignmentBuilder) {
-	proofs := builder.proofs
-	for i, proof := range proofs {
-		assert.Equal(t, true, proof.Verify(statemanager.MIMC_CONFIG, builder.leaves[i].Bytes(), builder.roots[i].Bytes()))
-	}
+
+	utils.Panic("adjust the test case to verify the correct merkle proof")
+
+	// proofs := builder.proofs
+	// for i, proof := range proofs {
+	// 	assert.Equal(t, true, proof.Verify(statemanager.MIMC_CONFIG, builder.leaves[i].Bytes(), builder.roots[i].Bytes()))
+	// }
 }
 
 func assertCorrectMerkleProofsUsingWizard(t *testing.T, builder *assignmentBuilder) {

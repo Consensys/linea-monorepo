@@ -35,12 +35,15 @@ type Settings struct {
 // signature verification.
 type Arithmetization struct {
 	Settings *Settings
+	// ZkEVMBin contains the zkevm.bin file as a byte array. It is kept in the
+	// struct as it is used for serialization.
+	ZkEVMBin []byte
 	// Schema defines the columns, constraints and computations used to expand a
 	// given trace, and to subsequently to check satisfiability.
-	Schema *air.Schema
+	Schema *air.Schema `serde:"omit"`
 	// Metadata embedded in the zkevm.bin file, as needed to check
 	// compatibility.  Guaranteed non-nil.
-	Metadata typed.Map
+	Metadata typed.Map `serde:"omit"`
 }
 
 // NewArithmetization is the function that declares all the columns and the constraints of
@@ -57,6 +60,7 @@ func NewArithmetization(builder *wizard.Builder, settings Settings) *Arithmetiza
 		Schema:   schema,
 		Settings: &settings,
 		Metadata: metadata,
+		ZkEVMBin: []byte(zkevmStr),
 	}
 }
 
@@ -74,7 +78,7 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 	// Performs a compatibility check by comparing the constraints
 	// commit of zkevm.bin with the constraints commit of the trace file.
 	// Panics if an incompatibility is detected.
-	if *a.Settings.IgnoreCompatibilityCheck == false {
+	if !*a.Settings.IgnoreCompatibilityCheck {
 		var errors []string
 
 		zkevmBinCommit, ok := a.Metadata.String("commit")

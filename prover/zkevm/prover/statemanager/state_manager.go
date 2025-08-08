@@ -2,10 +2,8 @@ package statemanager
 
 import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulator"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulatorsummary"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/codehashconsistency"
@@ -17,11 +15,11 @@ import (
 // correctness of the state-transitions occuring in Linea w.r.t. to the
 // arithmetization.
 type StateManager struct {
-	accumulator                 accumulator.Module
-	accumulatorSummaryConnector accumulatorsummary.Module
+	Accumulator                 accumulator.Module
+	AccumulatorSummaryConnector accumulatorsummary.Module
 	StateSummary                statesummary.Module // exported because needed by the public input module
-	mimcCodeHash                mimccodehash.Module
-	codeHashConsistency         codehashconsistency.Module
+	MimcCodeHash                mimccodehash.Module
+	CodeHashConsistency         codehashconsistency.Module
 }
 
 // Settings stores all the setting to construct a StateManager and is passed to
@@ -37,25 +35,25 @@ func NewStateManager(comp *wizard.CompiledIOP, settings Settings) *StateManager 
 
 	sm := &StateManager{
 		StateSummary: statesummary.NewModule(comp, settings.stateSummarySize()),
-		accumulator:  accumulator.NewModule(comp, settings.AccSettings),
-		mimcCodeHash: mimccodehash.NewModule(comp, mimccodehash.Inputs{
+		Accumulator:  accumulator.NewModule(comp, settings.AccSettings),
+		MimcCodeHash: mimccodehash.NewModule(comp, mimccodehash.Inputs{
 			Name: "MiMCCodeHash",
 			Size: settings.MiMCCodeHashSize,
 		}),
 	}
 
-	sm.accumulatorSummaryConnector = *accumulatorsummary.NewModule(
+	sm.AccumulatorSummaryConnector = *accumulatorsummary.NewModule(
 		comp,
 		accumulatorsummary.Inputs{
 			Name:        "ACCUMULATOR_SUMMARY",
-			Accumulator: sm.accumulator,
+			Accumulator: sm.Accumulator,
 		},
 	)
 
-	sm.accumulatorSummaryConnector.ConnectToStateSummary(comp, &sm.StateSummary)
-	sm.mimcCodeHash.ConnectToRom(comp, rom(comp), romLex(comp))
+	sm.AccumulatorSummaryConnector.ConnectToStateSummary(comp, &sm.StateSummary)
+	sm.MimcCodeHash.ConnectToRom(comp, rom(comp), romLex(comp))
 	sm.StateSummary.ConnectToHub(comp, acp(comp), scp(comp))
-	sm.codeHashConsistency = codehashconsistency.NewModule(comp, "CODEHASHCONSISTENCY", &sm.StateSummary, &sm.mimcCodeHash)
+	sm.CodeHashConsistency = codehashconsistency.NewModule(comp, "CODEHASHCONSISTENCY", &sm.StateSummary, &sm.MimcCodeHash)
 
 	return sm
 }
@@ -67,107 +65,10 @@ func (sm *StateManager) Assign(run *wizard.ProverRuntime, shomeiTraces [][]state
 	assignHubAddresses(run)
 	addSkipFlags(&shomeiTraces)
 	sm.StateSummary.Assign(run, shomeiTraces)
-	sm.accumulator.Assign(run, utils.Join(shomeiTraces...))
-	sm.accumulatorSummaryConnector.Assign(run)
-	sm.mimcCodeHash.Assign(run)
-	sm.codeHashConsistency.Assign(run)
-
-	// csvtraces.FmtCsv(
-	// 	files.MustOverwrite("arith.csv"),
-	// 	run,
-	// 	[]ifaces.Column{
-	// 		run.Spec.Columns.GetHandle("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
-	// 		run.Spec.Columns.GetHandle("hub.acp_ADDRESS_HI"),
-	// 		run.Spec.Columns.GetHandle("hub.acp_ADDRESS_LO"),
-	// 		run.Spec.Columns.GetHandle("hub.acp_BALANCE"),
-	// 		run.Spec.Columns.GetHandle("hub.acp_NONCE"),
-	// 		run.Spec.Columns.GetHandle("hub.acp_CODE_SIZE"),
-	// 		run.Spec.Columns.GetHandle("hub.acp_CODE_HASH_HI"),
-	// 		run.Spec.Columns.GetHandle("hub.acp_CODE_HASH_LO"),
-	// 		run.Spec.Columns.GetHandle("hub.acp_REL_BLK_NUM"),
-	// 		run.Spec.Columns.GetHandle("hub.acp_EXISTS"),
-	// 		run.Spec.Columns.GetHandle("hub.acp_EXISTS_NEW"),
-	// 		run.Spec.Columns.GetHandle("hub.acp_PEEK_AT_ACCOUNT"),
-	// 		run.Spec.Columns.GetHandle("hub.acp_FIRST_IN_BLK"),
-	// 		run.Spec.Columns.GetHandle("hub.acp_IS_PRECOMPILE"),
-	// 	},
-	// 	[]csvtraces.Option{},
-	// )
-	// csvtraces.FmtCsv(
-	// 	files.MustOverwrite("ss.csv"),
-	// 	run,
-	// 	[]ifaces.Column{
-	// 		sm.StateSummary.Account.Address,
-	// 		sm.StateSummary.Account.Initial.Balance,
-	// 		sm.StateSummary.Account.Initial.Nonce,
-	// 		sm.StateSummary.Account.Initial.CodeSize,
-	// 		sm.StateSummary.Account.Initial.KeccakCodeHash.Hi,
-	// 		sm.StateSummary.Account.Initial.KeccakCodeHash.Lo,
-	// 		sm.StateSummary.BatchNumber,
-	// 		sm.StateSummary.Account.Initial.Exists,
-	// 		sm.StateSummary.Account.Final.Exists,
-	// 		sm.StateSummary.IsInitialDeployment,
-	// 		sm.StateSummary.IsStorage,
-	// 	},
-	// 	[]csvtraces.Option{},
-	// )
-	// csvtraces.FmtCsv(
-	// 	files.MustOverwrite("hub.csv"),
-	// 	run,
-	// 	[]ifaces.Column{
-	// 		run.Spec.Columns.GetHandle("hub.RELATIVE_BLOCK_NUMBER"),
-	// 	},
-	// 	[]csvtraces.Option{},
-	// )
-
-	// csvtraces.FmtCsv(
-	// 	files.MustOverwrite("./scparith.csv"),
-	// 	run,
-	// 	[]ifaces.Column{
-	// 		run.Spec.Columns.GetHandle("HUB_scp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
-	// 		run.Spec.Columns.GetHandle("hub.scp_ADDRESS_HI"),
-	// 		run.Spec.Columns.GetHandle("hub.scp_ADDRESS_LO"),
-	// 		run.Spec.Columns.GetHandle("hub.scp_STORAGE_KEY_HI"),
-	// 		run.Spec.Columns.GetHandle("hub.scp_STORAGE_KEY_LO"),
-	// 		run.Spec.Columns.GetHandle("hub.scp_VALUE_CURR_HI"),
-	// 		run.Spec.Columns.GetHandle("hub.scp_VALUE_CURR_LO"),
-	// 		run.Spec.Columns.GetHandle("hub.scp_VALUE_NEXT_HI"),
-	// 		run.Spec.Columns.GetHandle("hub.scp_VALUE_NEXT_LO"),
-	// 		run.Spec.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER"),
-	// 		run.Spec.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER"),
-	// 		run.Spec.Columns.GetHandle("hub.scp_REL_BLK_NUM"),
-	// 		run.Spec.Columns.GetHandle("hub.scp_PEEK_AT_STORAGE"),
-	// 		run.Spec.Columns.GetHandle("hub.scp_FIRST_IN_CNF"),
-	// 		run.Spec.Columns.GetHandle("hub.scp_FINAL_IN_CNF"),
-	// 		run.Spec.Columns.GetHandle("hub.scp_FIRST_IN_BLK"),
-	// 		run.Spec.Columns.GetHandle("hub.scp_FINAL_IN_BLK"),
-	// 		run.Spec.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER_FIRST_IN_BLOCK"),
-	// 		run.Spec.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER_FINAL_IN_BLOCK"),
-	// 		run.Spec.Columns.GetHandle("hub.scp_EXISTS_FIRST_IN_BLOCK"),
-	// 		run.Spec.Columns.GetHandle("hub.scp_EXISTS_FINAL_IN_BLOCK"),
-	// 		//run.Spec.Columns.GetHandle("hub.scp_TX_EXEC"),
-	// 	},
-	// 	[]csvtraces.Option{},
-	// )
-
-	// csvtraces.FmtCsv(
-	// 	files.MustOverwrite("./scpss.csv"),
-	// 	run,
-	// 	[]ifaces.Column{
-	// 		sm.StateSummary.Account.Address,
-	// 		sm.StateSummary.Storage.Key.Hi,
-	// 		sm.StateSummary.Storage.Key.Lo,
-	// 		sm.StateSummary.Storage.OldValue.Hi,
-	// 		sm.StateSummary.Storage.OldValue.Lo,
-	// 		sm.StateSummary.Storage.NewValue.Hi,
-	// 		sm.StateSummary.Storage.NewValue.Lo,
-	// 		sm.StateSummary.BatchNumber,
-	// 		sm.StateSummary.IsFinalDeployment,
-	// 		sm.StateSummary.Account.Final.Exists,
-	// 		sm.StateSummary.IsStorage,
-	// 	},
-	// 	[]csvtraces.Option{},
-	// )
+	sm.Accumulator.Assign(run, utils.Join(shomeiTraces...))
+	sm.AccumulatorSummaryConnector.Assign(run)
+	sm.MimcCodeHash.Assign(run)
+	sm.CodeHashConsistency.Assign(run)
 }
 
 // stateSummarySize returns the number of rows to give to the state-summary
@@ -178,47 +79,52 @@ func (s *Settings) stateSummarySize() int {
 
 // addSkipFlags adds skip flags to redundant shomei traces
 func addSkipFlags(shomeiTraces *[][]statemanager.DecodedTrace) {
-	// AddressAndKey is a struct used as a key in order to identify skippable traces
-	// in our maps
-	type AddressAndKey struct {
-		address    types.Bytes32
-		storageKey types.Bytes32
-	}
-	// iterate over all the Shomei blocks
-	for blockNo, vec := range *shomeiTraces {
-		var (
-			curAddress = types.EthAddress{}
-			err        error
-		)
 
-		// instantiate the map for the current block
-		traceMap := make(map[AddressAndKey]int)
-		// now we process the traces themselves
-		for i, trace := range vec {
-			// compute the current address account
-			curAddress, err = trace.GetRelatedAccount()
-			if err != nil {
-				panic(err)
-			}
-			x := *(&field.Element{}).SetBytes(curAddress[:])
+	utils.Panic("missing update for koalabear")
 
-			if trace.Location != statemanager.WS_LOCATION {
-				// we have a STORAGE trace
-				// prepare the search key
-				searchKey := AddressAndKey{
-					address:    x.Bytes(),
-					storageKey: trace.Underlying.HKey(statemanager.MIMC_CONFIG),
-				}
-				previousIndex, isFound := traceMap[searchKey]
-				if isFound {
-					// set the previous trace as a skippable trace
-					(*shomeiTraces)[blockNo][previousIndex].IsSkipped = true
-				} else {
-					// when not found, add its index to the map (if a duplicate is found later)
-					// this stored index will be then used to make the current trace skippable
-					traceMap[searchKey] = i
-				}
-			}
-		}
-	}
+	// // AddressAndKey is a struct used as a key in order to identify skippable traces
+	// // in our maps
+	// type AddressAndKey struct {
+	// 	address    types.Bytes32
+	// 	storageKey types.Bytes32
+	// }
+
+	// // iterate over all the Shomei blocks
+	// for blockNo, vec := range *shomeiTraces {
+	// 	var (
+	// 		curAddress = types.EthAddress{}
+	// 		err        error
+	// 	)
+
+	// 	// instantiate the map for the current block
+	// 	traceMap := make(map[AddressAndKey]int)
+	// 	// now we process the traces themselves
+	// 	for i, trace := range vec {
+	// 		// compute the current address account
+	// 		curAddress, err = trace.GetRelatedAccount()
+	// 		if err != nil {
+	// 			panic(err)
+	// 		}
+	// 		x := *(&field.Element{}).SetBytes(curAddress[:])
+
+	// 		if trace.Location != statemanager.WS_LOCATION {
+
+	// 			// we have a STORAGE trace
+	// 			// prepare the search key
+	// 			searchKey := AddressAndKey{
+	// 				address:    x.Bytes(),
+	// 				storageKey: trace.Underlying.HKey(statemanager.MIMC_CONFIG),
+	// 			}
+	// 			previousIndex, isFound := traceMap[searchKey]
+	// 			if isFound {
+	// 				// set the previous trace as a skippable trace
+	// 				(*shomeiTraces)[blockNo][previousIndex].IsSkipped = true
+	// 			} else {
+	// 				// when not found, add its index to the map (if a duplicate is found later)
+	// 				// this stored index will be then used to make the current trace skippable
+	// 				traceMap[searchKey] = i
+	// 			}
+	// 		}
+	// 	}
+	// }
 }

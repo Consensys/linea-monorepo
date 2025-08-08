@@ -18,9 +18,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
 
-// hornerCtx is a compilation artefact generated during the execution of the
+// HornerCtx is a compilation artefact generated during the execution of the
 // [CompileHorner] compiler.
-type hornerCtx struct {
+type HornerCtx struct {
 	// Column is the accumulating column used to check the computation of a
 	// horner value for one [HornerPart].
 	AccumulatingCols [][]ifaces.Column
@@ -38,26 +38,26 @@ type hornerCtx struct {
 	Q *query.Horner
 }
 
-// assignHornerCtx is a [wizard.ProverAction] assigning the local openings of
+// AssignHornerCtx is a [wizard.ProverAction] assigning the local openings of
 // the Horner accumulating columns and the accumulating columns themselves.
 // The function also sanity-checks the parameters assignment.
-type assignHornerCtx struct {
-	hornerCtx
+type AssignHornerCtx struct {
+	HornerCtx
 }
 
-// assignHornerIP is a [wizard.ProverAction] assigning the inner-products of
+// AssignHornerIP is a [wizard.ProverAction] assigning the inner-products of
 // the Horner compilation.
-type assignHornerIP struct {
-	hornerCtx
+type AssignHornerIP struct {
+	HornerCtx
 }
 
-// checkHornerResult is [wizard.VerifierAction] responsible for checking that
+// CheckHornerResult is [wizard.VerifierAction] responsible for checking that
 // the values of n1 are correct (by checking the consistency with the IP queries)
 // and checking that the final result is correctly computed by inspecting the
 // local openings.
-type checkHornerResult struct {
-	hornerCtx
-	skipped bool
+type CheckHornerResult struct {
+	HornerCtx
+	skipped bool `serde:"omit"`
 }
 
 // CompileHoner compiles the [query.Horner] queries one by one by "transforming"
@@ -84,7 +84,7 @@ func compileHornerQuery(comp *wizard.CompiledIOP, q *query.Horner) {
 
 	var (
 		round = q.Round
-		ctx   = hornerCtx{
+		ctx   = HornerCtx{
 			Q: q,
 		}
 		iPRound = 0
@@ -163,19 +163,19 @@ func compileHornerQuery(comp *wizard.CompiledIOP, q *query.Horner) {
 		ip := comp.InsertInnerProduct(
 			iPRound,
 			ifaces.QueryIDf("HORNER_%v_COUNTING_%v_SRCNT_%v_%v", q.ID, size, comp.SelfRecursionCount, i),
-			verifiercol.NewConstantCol(field.One(), size),
+			verifiercol.NewConstantCol(field.One(), size, ""),
 			ctx.Q.Parts[i].Selectors,
 		)
 
 		ctx.CountingInnerProducts = append(ctx.CountingInnerProducts, ip)
 	}
 
-	comp.RegisterProverAction(iPRound, assignHornerIP{ctx})
-	comp.RegisterProverAction(q.Round, assignHornerCtx{ctx})
-	comp.RegisterVerifierAction(q.Round, &checkHornerResult{hornerCtx: ctx})
+	comp.RegisterProverAction(iPRound, AssignHornerIP{ctx})
+	comp.RegisterProverAction(q.Round, AssignHornerCtx{ctx})
+	comp.RegisterVerifierAction(q.Round, &CheckHornerResult{HornerCtx: ctx})
 }
 
-func (a assignHornerCtx) Run(run *wizard.ProverRuntime) {
+func (a AssignHornerCtx) Run(run *wizard.ProverRuntime) {
 
 	var (
 		params = run.GetHornerParams(a.Q.ID)
@@ -216,7 +216,7 @@ func (a assignHornerCtx) Run(run *wizard.ProverRuntime) {
 
 		if n0+count != params.Parts[i].N1 {
 			// To update once we merge with the "code 78" branch as it means that a constraint is not satisfied.
-			utils.Panic("the counting of the 1s in the filter does not match the one in the local-opening: (%v-%v) != %v", params.Parts[i].N1, n0, count)
+			utils.Panic("the counting of the 1s in the filter does not match the one in the local-opening: (%v-%v) != %v, part=%v", params.Parts[i].N1, n0, count, part.Name)
 		}
 
 		for k := 0; k < arity; k++ {
@@ -243,7 +243,7 @@ func (a assignHornerCtx) Run(run *wizard.ProverRuntime) {
 	}
 }
 
-func (a assignHornerIP) Run(run *wizard.ProverRuntime) {
+func (a AssignHornerIP) Run(run *wizard.ProverRuntime) {
 
 	for i := range a.Q.Parts {
 
@@ -265,13 +265,34 @@ func (a assignHornerIP) Run(run *wizard.ProverRuntime) {
 
 }
 
-func (c *checkHornerResult) Run(run wizard.Runtime) error {
+func (c *CheckHornerResult) Run(run wizard.Runtime) error {
 
 	var (
 		hornerQuery  = c.Q
 		hornerParams = run.GetHornerParams(hornerQuery.ID)
 		res          = fext.Zero()
 	)
+
+	for i := range c.Q.Parts {
+
+		var (
+			ipQuery  = c.CountingInnerProducts[i]
+			ipParams = run.GetInnerProductParams(c.CountingInnerProducts[i].ID)
+			ipCount  = 0
+		)
+
+		for k := range ipQuery.Bs {
+			y := ipParams.Ys[k]
+			if !fext.IsBase(&y) {
+				return fmt.Errorf("the y of the inner product %v is not a base element", ipQuery.ID)
+			}
+			ipCount += int(y.B0.A0.Uint64())
+		}
+
+		if hornerParams.Parts[i].N0+ipCount != hornerParams.Parts[i].N1 {
+			return fmt.Errorf("the counting of the 1s in the filter does not match the one in the local-opening: (%v-%v) != %v", hornerParams.Parts[i].N1, hornerParams.Parts[i].N0, ipCount)
+		}
+	}
 
 	// This loop is responsible for checking that the final result is correctly
 	// computed by inspecting the local openings.
@@ -302,7 +323,7 @@ func (c *checkHornerResult) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (c *checkHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	var (
 		hornerQuery  = c.Q
@@ -348,11 +369,11 @@ func (c *checkHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 	api.AssertIsEqual(res, hornerParams.FinalResult)
 }
 
-func (c *checkHornerResult) Skip() {
+func (c *CheckHornerResult) Skip() {
 	c.skipped = true
 }
 
-func (c *checkHornerResult) IsSkipped() bool {
+func (c *CheckHornerResult) IsSkipped() bool {
 	return c.skipped
 }
 

@@ -5,7 +5,6 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
-	"github.com/consensys/gnark/std/hash/mimc"
 	locmimc "github.com/consensys/linea-monorepo/prover/crypto/mimc"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -33,21 +32,11 @@ type GnarkFiatShamir struct {
 // used in the scope of a [frontend.Define] function.
 func NewGnarkFiatShamir(api frontend.API, factory locmimc.HasherFactory) *GnarkFiatShamir {
 
-	var hasher hash.StateStorer
-	if factory != nil {
-		h := factory.NewHasher()
-		hasher = h
-	} else {
-		h, err := mimc.NewMiMC(api)
-		if err != nil {
-			// There is no real case where this can happen. The only case I
-			// can think of is when the function is called outside of the scope
-			// of a Define function and `api == nil` but then, there is no way
-			// the user can do anything useful with this function anyway.
-			panic(err)
-		}
-		hasher = &h
+	if factory == nil {
+		factory = &locmimc.BasicHasherFactory{Api: api}
 	}
+
+	hasher := factory.NewHasher()
 
 	return &GnarkFiatShamir{
 		hasher: hasher,
@@ -62,6 +51,7 @@ func (fs *GnarkFiatShamir) SetState(state []frontend.Variable) {
 	case interface {
 		SetState([]frontend.Variable) error
 	}:
+		fs.hasher.Reset()
 		if err := hsh.SetState(state); err != nil {
 			panic(err)
 		}
@@ -70,7 +60,8 @@ func (fs *GnarkFiatShamir) SetState(state []frontend.Variable) {
 	}
 }
 
-// State mutates the fiat-shamir state of
+// State mutates returns the state of the fiat-shamir hasher. The
+// function will also updates its own state with unprocessed inputs.
 func (fs *GnarkFiatShamir) State() []frontend.Variable {
 
 	switch hsh := fs.hasher.(type) {
@@ -186,7 +177,6 @@ func (fs *GnarkFiatShamir) RandomManyIntegers(num, upperBound int) []frontend.Va
 
 		fs.safeguardUpdate()
 	}
-
 }
 
 // RandomFieldFromSeed generates a new field element from the given seed

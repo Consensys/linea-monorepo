@@ -177,6 +177,21 @@ var ListOfLogDerivativeSumTestcaseNegative = []*LogDerivativeSumTestcase{
 		},
 		MustFailFlag: true,
 	},
+
+	{
+		NameStr: "negative/random-result",
+		Numerators: []smartvectors.SmartVector{
+			RandomVec(8),
+		},
+		Denominators: []smartvectors.SmartVector{
+			RandomVec(8),
+		},
+		Value: func() *fext.Element {
+			x := fext.PseudoRand(rng)
+			return &x
+		}(),
+		MustFailFlag: true,
+	},
 }
 
 func (t *LogDerivativeSumTestcase) Define(comp *wizard.CompiledIOP) {
@@ -184,7 +199,7 @@ func (t *LogDerivativeSumTestcase) Define(comp *wizard.CompiledIOP) {
 	var (
 		numerators   = make([]ifaces.Column, len(t.Numerators))
 		denominators = make([]ifaces.Column, len(t.Denominators))
-		queryInputs  = make(map[int]*query.LogDerivativeSumInput)
+		queryInputs  = make([]query.LogDerivativeSumPart, 0)
 	)
 
 	for i := range numerators {
@@ -203,22 +218,20 @@ func (t *LogDerivativeSumTestcase) Define(comp *wizard.CompiledIOP) {
 
 		size := numerators[i].Size()
 
-		if _, ok := queryInputs[size]; !ok {
-			queryInputs[size] = &query.LogDerivativeSumInput{
-				Size: size,
-			}
-		}
-
-		queryInput := queryInputs[size]
-
-		queryInput.Numerator = append(queryInput.Numerator, symbolic.NewVariable(numerators[i]))
-		queryInput.Denominator = append(queryInput.Denominator, symbolic.NewVariable(denominators[i]))
+		queryInputs = append(queryInputs, query.LogDerivativeSumPart{
+			Size: size,
+			Name: formatName[string]("LogDerivative", t.NameStr, "Part", i),
+			Num:  symbolic.NewVariable(numerators[i]),
+			Den:  symbolic.NewVariable(denominators[i]),
+		})
 	}
 
 	t.Q = comp.InsertLogDerivativeSum(
 		0,
 		formatName[ifaces.QueryID]("LogDerivative", t.NameStr),
-		queryInputs,
+		query.LogDerivativeSumInput{
+			Parts: queryInputs,
+		},
 	)
 }
 
@@ -247,7 +260,7 @@ func (t *LogDerivativeSumTestcase) Assign(run *wizard.ProverRuntime) {
 	}
 
 	genValue := fext.NewESHashFromExt(*t.Value)
-	run.AssignLogDerivSumGeneric(t.Q.ID, genValue)
+	run.AssignLogDerivSum(t.Q.ID, genValue)
 }
 
 func (t *LogDerivativeSumTestcase) MustFail() bool {

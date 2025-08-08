@@ -1,6 +1,8 @@
 package verifiercol
 
 import (
+	"errors"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -19,18 +21,27 @@ type RepeatedAccessor struct {
 }
 
 func (f RepeatedAccessor) IsBase() bool {
-	//TODO implement me
-	panic("implement me")
+	return f.Accessor.IsBase()
 }
 
 func (f RepeatedAccessor) GetColAssignmentAtBase(run ifaces.Runtime, pos int) (field.Element, error) {
-	//TODO implement me
-	panic("implement me")
+	if !f.IsBase() {
+		return field.Element{}, errors.New("not base")
+	}
+
+	return f.Accessor.GetVal(run), nil
 }
 
 func (f RepeatedAccessor) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element {
-	//TODO implement me
-	panic("implement me")
+	if f.IsBase() {
+		v, err := f.Accessor.GetValBase(run)
+		if err != nil {
+			panic(err)
+		}
+		return fext.Lift(v)
+	}
+
+	return f.Accessor.GetValExt(run)
 }
 
 func (f RepeatedAccessor) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {

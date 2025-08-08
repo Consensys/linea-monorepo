@@ -12,6 +12,7 @@ import (
 
 type Element = koalabear.Element
 type Vector []Element
+type Octuplet [8]Element
 
 const (
 	// RmaxOrderRoot
@@ -140,4 +141,25 @@ func FromBool(b bool) Element {
 		return One()
 	}
 	return Zero()
+}
+
+// ParseOctuplet parses a [32]byte into an octuplet of field element
+func ParseOctuplet(data [32]byte) [8]Element {
+	var res [8]Element
+	for i := range res {
+		if err := res[i].SetBytesCanonical(data[i*4 : i*4+4]); err != nil {
+			utils.Panic("could not parse octuplet: %v, data: %v", err, data)
+		}
+	}
+	return res
+}
+
+// OctupletToBytes converts an octuplet of field elements to a [32]byte
+func OctupletToBytes(octuplet [8]Element) [32]byte {
+	var res [32]byte
+	for i := range octuplet {
+		x := octuplet[i].Bytes()
+		copy(res[i*4:i*4+4], x[:])
+	}
+	return res
 }

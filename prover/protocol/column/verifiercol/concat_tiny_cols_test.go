@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -79,7 +78,6 @@ func TestConcatTinyColRange(t *testing.T) {
 
 				// Compile with the full suite
 				compiled := wizard.Compile(define,
-					compiler.Arcane(compiler.WithTargetColSize(16)),
 					dummy.Compile,
 				)
 
@@ -158,7 +156,6 @@ func TestConcatTinyColWithPaddingRange(t *testing.T) {
 
 				// Compile with the full suite
 				compiled := wizard.Compile(define,
-					compiler.Arcane(compiler.WithTargetColSize(tc.Split)),
 					dummy.Compile,
 				)
 

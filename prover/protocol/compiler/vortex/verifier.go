@@ -14,7 +14,23 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
-func (ctx *Ctx) Verify(vr wizard.Runtime) error {
+// ExplicitPolynomialEval is a [wizard.VerifierAction] that evaluates the
+// public polynomial.
+type ExplicitPolynomialEval struct {
+	*Ctx
+}
+
+// VortexVerifierAction is a [wizard.VerifierAction] that runs the verifier of
+// the Vortex protocol.
+type VortexVerifierAction struct {
+	*Ctx
+}
+
+func (a *ExplicitPolynomialEval) Run(run wizard.Runtime) error {
+	return a.explicitPublicEvaluation(run) // Adjust based on context; see note below
+}
+
+func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 
 	// The skip verification flag may be on, if the current vortex
 	// context get self-recursed. In this case, the verifier does
@@ -22,6 +38,7 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 	if ctx.IsSelfrecursed {
 		return nil
 	}
+
 	var (
 		// The roots of the merkle trees. We stack the no SIS round
 		// roots before the SIS roots. The precomputed root is the
@@ -29,66 +46,88 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 		// precomputed. Otherwise, it is the first root of the no SIS roots.
 		noSisRoots = []types.Bytes32{}
 		sisRoots   = []types.Bytes32{}
+		// Slice of true value of length equal to the number of no SIS round
+		// + 1 (if SIS is not applied to precomputed)
+		flagForNoSISRounds = []bool{}
+		// Slice of false value of length equal to the number of SIS round
+		// + 1 (if SIS is applied to precomputed)
+		flagForSISRounds = []bool{}
 	)
 
 	// Append the precomputed roots and the corresponding flag
 	if ctx.IsNonEmptyPrecomputed() {
-		precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID()) // len 1 smart vector
-		var precompRootF [8]field.Element
-		for j := 0; j < 8; j++ {
-			precompRootF[j] = precompRootSv.Get(j)
-		}
+		precompRootSv := run.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID())
+		precompRootF := field.Octuplet(precompRootSv.IntoRegVecSaveAlloc())
 
 		if ctx.IsSISAppliedToPrecomputed() {
 			sisRoots = append(sisRoots, types.HashToBytes32(precompRootF))
+			flagForSISRounds = append(flagForSISRounds, false)
 		} else {
 			noSisRoots = append(noSisRoots, types.HashToBytes32(precompRootF))
+			flagForNoSISRounds = append(flagForNoSISRounds, true)
 		}
 	}
+
 	// Collect all the roots: rounds by rounds
 	// and append them to the sis or no sis roots
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		rootSv := vr.GetColumn(ctx.Items.MerkleRoots[round].GetColID()) // len 1 smart vector
-		var rootF [8]field.Element
-		for j := 0; j < 8; j++ {
-			rootF[j] = rootSv.Get(j)
+
+		// If the round is empty (i.e. the wizard does not have any committed
+		// columns associated to this round), then the rootSv and rootF will not
+		// be defined so this case cannot be handled as a "switch-case" as in
+		// the "if" clause below.
+		if ctx.RoundStatus[round] == IsEmpty {
+			continue
 		}
 
-		// Append the isSISApplied flag
+		rootSv := run.GetColumn(ctx.Items.MerkleRoots[round].GetColID())
+		precompRootF := field.Octuplet(rootSv.IntoRegVecSaveAlloc())
+
 		switch ctx.RoundStatus[round] {
 		case IsOnlyPoseidon2Applied:
-			noSisRoots = append(noSisRoots, types.HashToBytes32(rootF))
+			noSisRoots = append(noSisRoots, types.HashToBytes32(precompRootF))
+			flagForNoSISRounds = append(flagForNoSISRounds, true)
 		case IsSISApplied:
-			sisRoots = append(sisRoots, types.HashToBytes32(rootF))
+			sisRoots = append(sisRoots, types.HashToBytes32(precompRootF))
+			flagForSISRounds = append(flagForSISRounds, false)
+		default:
+			utils.Panic("Unexpected round status: %v", ctx.RoundStatus[round])
 		}
 	}
-	// assign the roots
+
+	// assign the roots and the isSisReplacedByMiMC flags
 	roots := append(noSisRoots, sisRoots...)
+	isSISReplacedByMiMC := append(flagForNoSISRounds, flagForSISRounds...)
 
 	proof := &vortex.OpeningProof{}
-	randomCoin := vr.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
+	randomCoin := run.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
 
 	// Collect the linear combination
-	proof.LinearCombination = vr.GetColumn(ctx.LinCombName())
+	proof.LinearCombination = run.GetColumn(ctx.LinCombName())
 
 	// Collect the random entry List and the random coin
-	entryList := vr.GetRandomCoinIntegerVec(ctx.RandColSelectionName())
+	entryList := run.GetRandomCoinIntegerVec(ctx.RandColSelectionName())
 
 	// Collect the opened columns and split them "by-commitment-rounds"
-	proof.Columns = ctx.RecoverSelectedColumns(vr, entryList)
-	x := vr.GetUnivariateParams(ctx.Query.QueryID).ExtX
+	proof.Columns = ctx.RecoverSelectedColumns(run, entryList)
+	x := run.GetUnivariateParams(ctx.Query.QueryID).ExtX
 
-	packedMProofs := vr.GetColumn(ctx.MerkleProofName())
+	packedMProofs := [8]smartvectors.SmartVector{}
+	for i := range packedMProofs {
+		packedMProofs[i] = run.GetColumn(ctx.MerkleProofName(i))
+	}
+
 	proof.MerkleProofs = ctx.unpackMerkleProofs(packedMProofs, entryList)
 
 	return vortex.VerifyOpening(&vortex.VerifierInputs{
-		Params:       *ctx.VortexParams,
-		MerkleRoots:  roots,
-		X:            x,
-		Ys:           ctx.getYs(vr),
-		OpeningProof: *proof,
-		RandomCoin:   randomCoin,
-		EntryList:    entryList,
+		Params:              *ctx.VortexParams,
+		MerkleRoots:         roots,
+		X:                   x,
+		Ys:                  ctx.getYs(run),
+		OpeningProof:        *proof,
+		RandomCoin:          randomCoin,
+		EntryList:           entryList,
+		IsSISReplacedByMiMC: isSISReplacedByMiMC,
 	})
 }
 
@@ -99,11 +138,11 @@ func (ctx *Ctx) getNbCommittedRows(round int) int {
 }
 
 // returns the Ys as a vector
-func (ctx *Ctx) getYs(vr wizard.Runtime) (ys [][]fext.Element) {
+func (ctx *Ctx) getYs(run wizard.Runtime) (ys [][]fext.Element) {
 
 	var (
 		query   = ctx.Query
-		params  = vr.GetUnivariateParams(ctx.Query.QueryID)
+		params  = run.GetUnivariateParams(ctx.Query.QueryID)
 		ysNoSIS = [][]fext.Element{}
 		ysSIS   = [][]fext.Element{}
 	)
@@ -149,6 +188,13 @@ func (ctx *Ctx) getYs(vr wizard.Runtime) (ys [][]fext.Element) {
 	// Get the list of the polynomials rounds by rounds
 	// and append them to the sis or no sis lists
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		// If the round is empty (i.e. the wizard does not have any committed
+		// columns associated to this round), then the ysRounds will not
+		// be defined so this case cannot be handled as a "switch-case" as in
+		// the "if" clause below.
+		if ctx.RoundStatus[round] == IsEmpty {
+			continue
+		}
 		names := ctx.CommitmentsByRounds.MustGet(round)
 		ysRounds := make([]fext.Element, len(names))
 		for i, name := range names {
@@ -170,61 +216,69 @@ func (ctx *Ctx) getYs(vr wizard.Runtime) (ys [][]fext.Element) {
 
 // Returns the opened columns from the messages. The returned columns are
 // split "by-commitment-round".
-func (ctx *Ctx) RecoverSelectedColumns(vr wizard.Runtime, entryList []int) [][][]field.Element {
-	// We assign as below:
-	// openedSubColumns = (openedSubColumnsNoSIS, openedSubColumnsSIS)
+func (ctx *Ctx) RecoverSelectedColumns(run wizard.Runtime, entryList []int) [][][]field.Element {
 	var (
-		openedSubColumnsNoSIS = [][][]field.Element{}
-		openedSubColumnsSIS   = [][][]field.Element{}
+		openedSubColumns = [][][]field.Element{}
+		// slice containing the number of rows per SIS round
+		numRowsPerSisRound = []int{}
+		// slice containing the number of rows per non SIS round
+		numRowsPerNonSisRound = []int{}
+		// the running offset of rows count
+		roundStartAt = 0
 	)
 	// Collect the columns : first extract the full columns
 	// Bear in mind that the prover messages are zero-padded
 	fullSelectedCols := make([][]field.Element, len(entryList))
 	for j := range entryList {
-		fullSelectedCol := vr.GetColumn(ctx.SelectedColName(j))
+		fullSelectedCol := run.GetColumn(ctx.SelectedColName(j))
 		fullSelectedCols[j] = smartvectors.IntoRegVec(fullSelectedCol)
 	}
 
-	// Split the columns per commitment for the verification
-	roundStartAt := 0
-
+	// Next we compute numRowsPerRound
 	// Process precomputed
 	if ctx.IsNonEmptyPrecomputed() {
-		openedPrecompCols := make([][]field.Element, len(entryList))
 		numPrecomputeds := len(ctx.Items.Precomputeds.PrecomputedColums)
-		for j := range entryList {
-			openedPrecompCols[j] = fullSelectedCols[j][roundStartAt : roundStartAt+numPrecomputeds]
-		}
-		// update the start counter to ensure we do not pass twice the same row
-		roundStartAt += numPrecomputeds
-		// conditionally append the opened precomputed columns
+		// conditionally append numPrecomputeds
 		// to the SIS or no SIS list
 		if ctx.IsSISAppliedToPrecomputed() {
-			openedSubColumnsSIS = append(openedSubColumnsSIS, openedPrecompCols)
+			numRowsPerSisRound = append(numRowsPerSisRound, numPrecomputeds)
 		} else {
-			openedSubColumnsNoSIS = append(openedSubColumnsNoSIS, openedPrecompCols)
+			numRowsPerNonSisRound = append(numRowsPerNonSisRound, numPrecomputeds)
 		}
 	}
 
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		openedSubColumnsForRound := make([][]field.Element, len(entryList))
+		// If the round is empty (i.e. the wizard does not have any committed
+		// columns associated to this round), then the openedSubColumnsForRound
+		// will not be defined so this case cannot be handled as a "switch-case" as in
+		// the "if" clause below.
+		if ctx.RoundStatus[round] == IsEmpty {
+			continue
+		}
 		numRowsForRound := ctx.getNbCommittedRows(round)
+		// conditionally append the numRowsForRound
+		// to the SIS or no SIS list
+		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
+			numRowsPerNonSisRound = append(numRowsPerNonSisRound, numRowsForRound)
+		} else if ctx.RoundStatus[round] == IsSISApplied {
+			numRowsPerSisRound = append(numRowsPerSisRound, numRowsForRound)
+		}
+	}
+	// Append the no SIS and SIS rows counts
+	// numRowsPerRound = (numRowsPerNonSisRound, numRowsPerSisRound)
+	numRowsPerRound := append(numRowsPerNonSisRound, numRowsPerSisRound...)
+
+	// Next compute the openedSubColumns
+	for _, numRows := range numRowsPerRound {
+		openedSubColumnsForRound := make([][]field.Element, len(entryList))
 		for j := range entryList {
-			openedSubColumnsForRound[j] = fullSelectedCols[j][roundStartAt : roundStartAt+numRowsForRound]
+			openedSubColumnsForRound[j] = fullSelectedCols[j][roundStartAt : roundStartAt+numRows]
 		}
 
 		// update the start counter to ensure we do not pass twice the same row
-		roundStartAt += numRowsForRound
-		// conditionally append the opened columns
-		// to the SIS or no SIS list
-		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
-			openedSubColumnsNoSIS = append(openedSubColumnsNoSIS, openedSubColumnsForRound)
-		} else if ctx.RoundStatus[round] == IsSISApplied {
-			openedSubColumnsSIS = append(openedSubColumnsSIS, openedSubColumnsForRound)
-		}
+		roundStartAt += numRows
+		openedSubColumns = append(openedSubColumns, openedSubColumnsForRound)
 	}
-	// Append the no SIS and SIS opened sub columns
-	openedSubColumns := append(openedSubColumnsNoSIS, openedSubColumnsSIS...)
 
 	// sanity-check : make sure we have not forgotten any column
 	// We need to treat the precomputed separately if they are committed
@@ -236,9 +290,9 @@ func (ctx *Ctx) RecoverSelectedColumns(vr wizard.Runtime, entryList []int) [][][
 }
 
 // Evaluates explicitly the public polynomials (proof, vk, public inputs)
-func (ctx *Ctx) explicitPublicEvaluation(vr wizard.Runtime) error {
+func (ctx *Ctx) explicitPublicEvaluation(run wizard.Runtime) error {
 
-	params := vr.GetUnivariateParams(ctx.Query.QueryID)
+	params := run.GetUnivariateParams(ctx.Query.QueryID)
 
 	for i, pol := range ctx.Query.Pols {
 
@@ -246,14 +300,14 @@ func (ctx *Ctx) explicitPublicEvaluation(vr wizard.Runtime) error {
 		// directly concerned by direct verification but we can
 		// access its witness or status so we need a specific check.
 		if _, ok := pol.(verifiercol.VerifierCol); !ok {
-			status := ctx.comp.Columns.Status(pol.GetColID())
+			status := ctx.Comp.Columns.Status(pol.GetColID())
 			if !status.IsPublic() {
 				// then, its not concerned by direct evaluation
 				continue
 			}
 		}
 
-		val := pol.GetColAssignment(vr)
+		val := pol.GetColAssignment(run)
 
 		y := smartvectors.EvaluateLagrangeFullFext(val, params.ExtX)
 		if y != params.ExtYs[i] {
@@ -264,13 +318,14 @@ func (ctx *Ctx) explicitPublicEvaluation(vr wizard.Runtime) error {
 	return nil
 }
 
-type shadowRowProverAction struct {
-	name ifaces.ColID
-	size int
+type ShadowRowProverAction struct {
+	Name ifaces.ColID
+	Size int
 }
 
-func (a *shadowRowProverAction) Run(run *wizard.ProverRuntime) {
-	run.AssignColumn(a.name, smartvectors.NewConstant(field.Zero(), a.size))
+// Run assigns the column to a constant column of zeros, which is a shadow row.
+func (a *ShadowRowProverAction) Run(run *wizard.ProverRuntime) {
+	run.AssignColumn(a.Name, smartvectors.NewConstant(field.Zero(), a.Size))
 }
 
 // A shadow row is a row filled with zeroes that we **may** add at the end of
@@ -281,9 +336,9 @@ func autoAssignedShadowRow(comp *wizard.CompiledIOP, size, round, id int) ifaces
 	name := ifaces.ColIDf("VORTEX_%v_SHADOW_ROUND_%v_ID_%v", comp.SelfRecursionCount, round, id)
 	col := comp.InsertCommit(round, name, size)
 
-	comp.RegisterProverAction(round, &shadowRowProverAction{
-		name: name,
-		size: size,
+	comp.RegisterProverAction(round, &ShadowRowProverAction{
+		Name: name,
+		Size: size,
 	})
 
 	return col

@@ -2,19 +2,13 @@ import Link from "next/link";
 import styles from "./faq-help.module.scss";
 import clsx from "clsx";
 
-type Props = {
-  isMobile?: boolean;
-};
-
-export default function FaqHelp({ isMobile }: Props) {
+export default function FaqHelp() {
   return (
-    <div
-      className={clsx(styles["faq-help"], {
-        [styles["is-mobile"]]: isMobile,
-        [styles["is-desktop"]]: !isMobile,
-      })}
-    >
-      Need help? <Link href="/faq">Check our FAQ</Link>
+    <div className={clsx(styles["faq-help"])}>
+      Need help?{" "}
+      <Link data-testid="faq-page-link" href="/faq">
+        Check our FAQ
+      </Link>
     </div>
   );
 }

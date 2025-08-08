@@ -26,7 +26,7 @@ const (
 	// fixedNbRowPlonkCircuit is the number of rows in the plonk circuit,
 	// the value is empirical and corresponds to the lowest value that works.
 	fixedNbRowPlonkCircuit   = 1 << 20
-	fixedNbRowExternalHasher = 1 << 16
+	fixedNbRowExternalHasher = 1 << 17
 	verifyingKeyPublicInput  = "VERIFYING_KEY"
 	verifyingKey2PublicInput = "VERIFYING_KEY_2"
 	lppMerkleRootPublicInput = "LPP_COLUMNS_MERKLE_ROOTS"
@@ -41,8 +41,8 @@ var (
 	// numColumnProfileMpts tells the last invokation of Vortex prior to the self-
 	// recursion to use a plonk circuit with a fixed number of rows. The values
 	// are completely empirical and set to make the compilation work.
-	numColumnProfileMpts            = []int{68, 1596, 218, 5, 17, 7, 0, 1}
-	numColumnProfileMptsPrecomputed = 81
+	numColumnProfileMpts            = []int{17, 361, 42, 3, 9, 7, 0, 1}
+	numColumnProfileMptsPrecomputed = 36
 )
 
 // RecursedSegmentCompilation collects all the wizard compilation artefacts
@@ -57,10 +57,10 @@ type RecursedSegmentCompilation struct {
 	// ModuleDefault is optional and is set if the segment is default module
 	// segment.
 	DefaultModule *DefaultModule
-	// Recursion is the wizard construction context of the recursed wizard.
-	Recursion *recursion.Recursion
 	// RecursionComp is the compiled IOP of the recursed wizard.
 	RecursionComp *wizard.CompiledIOP
+	// Recursion is the wizard construction context of the recursed wizard.
+	Recursion *recursion.Recursion
 }
 
 // CompileSegment applies all the compilation steps required to compile an LPP
@@ -80,7 +80,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 	case *ModuleGL:
 		modIOP = m.Wiop
 		res.ModuleGL = m
-		subscript = string(m.definitionInput.ModuleName)
+		subscript = string(m.DefinitionInput.ModuleName)
 	case *ModuleLPP:
 		modIOP = m.Wiop
 		res.ModuleLPP = m
@@ -134,6 +134,10 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		mpts.Compile(mpts.AddUnconstrainedColumns()),
 	)
 
+	initialWizardStats := logdata.GetWizardStats(modIOP)
+	logrus.Infof("[Before first Vortex] module=%v numCellsCommitted=%v numCellsPrecomputed=%v numCellsProof=%v",
+		subscript, initialWizardStats.NumCellsCommitted, initialWizardStats.NumCellsPrecomputed, initialWizardStats.NumCellsProof)
+
 	if !isLPP {
 
 		wizard.ContinueCompilation(modIOP,
@@ -142,6 +146,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 				vortex.ForceNumOpenedColumns(256),
 				vortex.WithSISParams(&sisInstance),
 				vortex.AddMerkleRootToPublicInputs(lppMerkleRootPublicInput, []int{0}),
+				vortex.WithOptionalSISHashingThreshold(64),
 			),
 		)
 
@@ -157,6 +162,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 				vortex.ForceNumOpenedColumns(256),
 				vortex.WithSISParams(&sisInstance),
 				vortex.AddMerkleRootToPublicInputs(lppMerkleRootPublicInput, utils.RangeSlice(numActualLppRound, 0)),
+				vortex.WithOptionalSISHashingThreshold(64),
 			),
 		)
 
@@ -174,8 +180,9 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		),
 		vortex.Compile(
 			8,
-			vortex.ForceNumOpenedColumns(64),
+			vortex.ForceNumOpenedColumns(32),
 			vortex.WithSISParams(&sisInstance),
+			vortex.WithOptionalSISHashingThreshold(64),
 		),
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
@@ -188,9 +195,22 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		// large inputs.
 		vortex.Compile(
 			8,
-			vortex.ForceNumOpenedColumns(64),
+			vortex.ForceNumOpenedColumns(32),
 			vortex.WithSISParams(&sisInstance),
-			vortex.PremarkAsSelfRecursed(),
+			vortex.WithOptionalSISHashingThreshold(64),
+		),
+		selfrecursion.SelfRecurse,
+		cleanup.CleanUp,
+		mimc.CompileMiMC,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<13),
+		),
+		// This final step expectedly always generate always the same profile.
+		vortex.Compile(
+			8,
+			vortex.ForceNumOpenedColumns(32),
+			vortex.WithSISParams(&sisInstance),
+			vortex.WithOptionalSISHashingThreshold(64),
 		),
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
@@ -204,10 +224,11 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		mpts.Compile(mpts.WithNumColumnProfileOpt(numColumnProfileMpts, numColumnProfileMptsPrecomputed)),
 		vortex.Compile(
 			8,
-			vortex.ForceNumOpenedColumns(64),
+			vortex.ForceNumOpenedColumns(32),
 			vortex.WithSISParams(&sisInstance),
 			vortex.PremarkAsSelfRecursed(),
 			vortex.AddPrecomputedMerkleRootToPublicInputs(verifyingKeyPublicInput),
+			vortex.WithOptionalSISHashingThreshold(64),
 		),
 	)
 
@@ -234,36 +255,42 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		plonkinwizard.Compile,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<15),
+			// compiler.WithDebugMode("post-recursion-arcane"),
 		),
 		logdata.Log("just-after-recursion-expanded"),
 		vortex.Compile(
 			8,
-			vortex.ForceNumOpenedColumns(64),
+			vortex.ForceNumOpenedColumns(32),
 			vortex.WithSISParams(&sisInstance),
 			vortex.AddPrecomputedMerkleRootToPublicInputs(verifyingKey2PublicInput),
+			vortex.WithOptionalSISHashingThreshold(64),
 		),
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<13),
+			// compiler.WithDebugMode("post-recursion-arcane-2"),
 		),
 		vortex.Compile(
 			8,
-			vortex.ForceNumOpenedColumns(64),
+			vortex.ForceNumOpenedColumns(32),
 			vortex.WithSISParams(&sisInstance),
+			vortex.WithOptionalSISHashingThreshold(64),
 		),
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<13),
+			// compiler.WithDebugMode("post-recursion-arcane-3"),
 		),
 		vortex.Compile(
 			8,
-			vortex.ForceNumOpenedColumns(64),
+			vortex.ForceNumOpenedColumns(32),
 			vortex.WithSISParams(&sisInstance),
 			vortex.PremarkAsSelfRecursed(),
+			vortex.WithOptionalSISHashingThreshold(64),
 		),
 	)
 
@@ -291,7 +318,7 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *wizard.ProverRuntime
 	case *ModuleWitnessLPP:
 		comp = r.ModuleLPP.Wiop
 		proverStep = r.ModuleLPP.GetMainProverStep(m)
-		moduleName = m.ModuleNames
+		moduleName = m.ModuleName
 		moduleIndex = m.ModuleIndex
 	case *ModuleWitnessGL:
 		comp = r.ModuleGL.Wiop

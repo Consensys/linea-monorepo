@@ -1,6 +1,7 @@
 package plonkinternal
 
 import (
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/backend/witness"
 	cs "github.com/consensys/gnark/constraint/koalabear"
 	"github.com/consensys/gnark/constraint/solver"
@@ -19,13 +20,13 @@ type PlonkInWizardProverAction interface {
 	Run(run *wizard.ProverRuntime, fullWitness []witness.Witness)
 }
 
-// noCommitProverAction is a wrapper-type for [compilationCtx] implementing the
-// [PlonkInWizardProverAction].
-type noCommitProverAction CompilationCtx
-
 var (
-	_ PlonkInWizardProverAction = noCommitProverAction{}
+	_ PlonkInWizardProverAction = PlonkNoCommitProverAction{}
 )
+
+type PlonkNoCommitProverAction struct {
+	GenericPlonkProverAction
+}
 
 // Run is responsible for scheduling the assignment of the Wizard
 // columns related to the currently compiled Plonk circuit. It is used
@@ -37,11 +38,11 @@ var (
 // solution.
 //
 // It implements the [PlonkInWizardProverAction] interface.
-func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []witness.Witness) {
+func (pa PlonkNoCommitProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []witness.Witness) {
 
 	var (
-		ctx             = CompilationCtx(pa)
-		maxNbInstance   = pa.maxNbInstances
+		ctx             = pa
+		maxNbInstance   = pa.MaxNbInstances
 		numEffInstances = len(fullWitnesses)
 	)
 
@@ -67,12 +68,17 @@ func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []wi
 				utils.Panic("[witness.Public] returned an error: %v", err)
 			}
 
-			if ctx.TinyPISize() > 0 {
+			if tinyPISize(pa.SPR) > 0 {
+
+				v, ok := pubWitness.Vector().(koalabear.Vector)
+				if !ok {
+					utils.Panic("Public witness is not a vector")
+				}
 
 				// Converts it as a smart-vector
 				pubWitSV := smartvectors.RightZeroPadded(
-					[]field.Element(pubWitness.Vector().(field.Vector)),
-					ctx.TinyPISize(),
+					[]field.Element(v),
+					tinyPISize(pa.SPR),
 				)
 
 				// Assign the public witness
@@ -80,7 +86,7 @@ func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []wi
 			}
 
 			// Solve the circuit
-			sol_, err := ctx.Plonk.SPR.Solve(fullWitnesses[i])
+			sol_, err := ctx.SPR.Solve(fullWitnesses[i])
 			if err != nil {
 				utils.Panic("Error in the solver, err=%v", err)
 			}
@@ -98,7 +104,7 @@ func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []wi
 		}
 	})
 
-	if ctx.RangeCheckOption.Enabled && !ctx.RangeCheckOption.wasCancelled {
+	if ctx.RangeCheckOption.Enabled && !ctx.RangeCheckOption.WasCancelled {
 		ctx.assignRangeChecked(run)
 	}
 

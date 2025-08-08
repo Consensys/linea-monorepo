@@ -18,27 +18,27 @@ const (
 	EVAL_COEFF_GLOBAL               string = "EVAL_COEFF_GLOBAL"
 )
 
-type coeffEvalProverAction struct {
-	name   string
-	x      coin.Info
-	pol    ifaces.Column
-	length int
+type CoeffEvalProverAction struct {
+	Name   string
+	X      coin.Info
+	Pol    ifaces.Column
+	Length int
 }
 
-func (a *coeffEvalProverAction) Run(assi *wizard.ProverRuntime) {
-	x := assi.GetRandomCoinFieldExt(a.x.Name)
-	p := a.pol.GetColAssignment(assi)
+func (a *CoeffEvalProverAction) Run(assi *wizard.ProverRuntime) {
+	x := assi.GetRandomCoinFieldExt(a.X.Name)
+	p := a.Pol.GetColAssignment(assi)
 
-	h := make([]fext.Element, a.length)
-	h[a.length-1] = p.GetExt(a.length - 1)
+	h := make([]fext.Element, a.Length)
+	h[a.Length-1] = p.GetExt(a.Length - 1)
 
-	for i := a.length - 2; i >= 0; i-- {
+	for i := a.Length - 2; i >= 0; i-- {
 		pi := p.GetExt(i)
 		h[i].Mul(&h[i+1], &x).Add(&h[i], &pi)
 	}
 
-	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.name, EVAL_COEFF_POLY), smartvectors.NewRegularExt(h))
-	assi.AssignLocalPointExt(ifaces.QueryIDf("%v_%v", a.name, EVAL_COEFF_FIXED_POINT_BEGIN), h[0])
+	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.Name, EVAL_COEFF_POLY), smartvectors.NewRegularExt(h))
+	assi.AssignLocalPointExt(ifaces.QueryIDf("%v_%v", a.Name, EVAL_COEFF_FIXED_POINT_BEGIN), h[0])
 }
 
 // Create a dedicated wizard to perform an evaluation in coefficient basis.
@@ -83,11 +83,11 @@ func CoeffEval(comp *wizard.CompiledIOP, name string, x coin.Info, pol ifaces.Co
 		hornerPoly,
 	)
 
-	comp.RegisterProverAction(maxRound, &coeffEvalProverAction{
-		name:   name,
-		x:      x,
-		pol:    pol,
-		length: length,
+	comp.RegisterProverAction(maxRound, &CoeffEvalProverAction{
+		Name:   name,
+		X:      x,
+		Pol:    pol,
+		Length: length,
 	})
 
 	return accessors.NewLocalOpeningAccessor(localOpening, maxRound)

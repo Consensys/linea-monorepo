@@ -3,7 +3,7 @@ export enum CctpAttestationMessageStatus {
   COMPLETE = "complete",
 }
 export type CctpAttestationMessage = {
-  attestation: `0x${string}`;
+  attestation: `0x${string}` | "PENDING";
   message: `0x${string}`;
   eventNonce: `0x${string}`;
   cctpVersion: 1 | 2;
@@ -20,5 +20,6 @@ export type CctpV2ReattestationApiResponse = {
 };
 
 export type CctpFeeApiResponse = {
+  finalityThreshold: number;
   minimumFee: number;
-};
+}[];

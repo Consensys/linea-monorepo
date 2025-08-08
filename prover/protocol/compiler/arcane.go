@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
@@ -30,6 +31,7 @@ type arcaneParamSet struct {
 	debugMode                bool
 	name                     string
 	innerProductMinimalRound int
+	genCSVAfterExpansion     string
 }
 
 // WithStitcherMinSize sets the minimum size for the stitcher. All columns
@@ -76,6 +78,15 @@ func WithDebugMode(name string) ArcaneParams {
 func WithInnerProductMinimalRound(minRound int) ArcaneParams {
 	return func(set *arcaneParamSet) {
 		set.innerProductMinimalRound = minRound
+	}
+}
+
+// GenCSVAfterExpansion tells the compiler to generate a CSV file containing all
+// the column informations after the expansion. The provided string is the path
+// where to write the CSV file.
+func GenCSVAfterExpansion(genCSVAfterExpansion string) ArcaneParams {
+	return func(set *arcaneParamSet) {
+		set.genCSVAfterExpansion = genCSVAfterExpansion
 	}
 }
 
@@ -132,6 +143,10 @@ func Arcane(options ...ArcaneParams) func(comp *wizard.CompiledIOP) {
 
 		if params.withLogs {
 			logdata.Log("after-expansion")(comp)
+		}
+
+		if len(params.genCSVAfterExpansion) > 0 {
+			logdata.GenCSV(files.MustOverwrite(params.genCSVAfterExpansion), logdata.IncludeAllFilter)(comp)
 		}
 
 		stitchsplit.Stitcher(params.minStickSize, params.targetColSize)(comp)

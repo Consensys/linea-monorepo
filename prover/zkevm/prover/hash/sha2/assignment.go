@@ -110,11 +110,11 @@ func (sbh *sha2BlockModule) Run(run *wizard.ProverRuntime) {
 	sbh.CanBeBlockOfInstance.Assign(run)
 	sbh.CanBeEndOfInstance.Assign(run)
 
-	for i := range sbh.proverActions {
-		sbh.proverActions[i].Run(run)
+	for i := range sbh.ProverActions {
+		sbh.ProverActions[i].Run(run)
 	}
 
-	if sbh.hasCircuit {
+	if sbh.HasCircuit {
 		// this is guarded by a once, so it is safe to call multiple times
 		registerGnarkHint()
 		sbh.GnarkCircuitConnector.Assign(run)
@@ -195,15 +195,16 @@ func sha2Compress(oldState [2]field.Element, block [16]field.Element) (newState 
 		blockBytes    = [64]byte{}
 	)
 
-	for i := range oldState {
-		osI := oldState[i].Bytes()
-		copy(oldStateBytes[16*i:], osI[16:])
-	}
+	utils.Panic("missing update for koalabear")
+	// for i := range oldState {
+	// 	// osI := oldState[i].Bytes()
+	// 	// copy(oldStateBytes[16*i:], osI[16:])
+	// }
 
-	for i := range block {
-		bI := block[i].Bytes()
-		copy(blockBytes[4*i:], bI[32-4:])
-	}
+	// for i := range block {
+	// 	bI := block[i].Bytes()
+	// 	copy(blockBytes[4*i:], bI[32-4:])
+	// }
 
 	newStateBytes := sha2.Compress(oldStateBytes, blockBytes)
 

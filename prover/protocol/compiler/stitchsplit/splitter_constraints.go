@@ -15,98 +15,113 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
 
-func (ctx splitterContext) constraints() {
+func (ctx SplitterContext) constraints() {
 	ctx.LocalOpening()
 	ctx.LocalGlobalConstraints()
 }
 
-type assignLocalPointProverAction struct {
-	qID  ifaces.QueryID
-	newQ ifaces.QueryID
+type AssignLocalPointProverAction struct {
+	QID  ifaces.QueryID
+	NewQ ifaces.QueryID
 }
 
-func (a *assignLocalPointProverAction) Run(run *wizard.ProverRuntime) {
+func (a *AssignLocalPointProverAction) Run(run *wizard.ProverRuntime) {
 
 	var (
-		oldQ    = run.Spec.QueriesParams.Data(a.qID).(query.LocalOpening)
-		oldQRes = run.QueriesParams.MustGet(a.qID).(query.LocalOpeningParams)
+		oldQ    = run.Spec.QueriesParams.Data(a.QID).(query.LocalOpening)
+		oldQRes = run.QueriesParams.MustGet(a.QID).(query.LocalOpeningParams)
 	)
 
 	if oldQ.IsBase() {
-		run.AssignLocalPoint(a.newQ, oldQRes.BaseY)
+		run.AssignLocalPoint(a.NewQ, oldQRes.BaseY)
 		return
 	}
 
-	run.AssignLocalPointExt(a.newQ, oldQRes.ExtY)
+	run.AssignLocalPointExt(a.NewQ, oldQRes.ExtY)
 }
 
-func (ctx splitterContext) LocalOpening() {
-	for _, qName := range ctx.comp.QueriesParams.AllUnignoredKeys() {
+func (ctx SplitterContext) LocalOpening() {
+	for _, qName := range ctx.Comp.QueriesParams.AllUnignoredKeys() {
 		// Filters out only the LocalOpening
-		q, ok := ctx.comp.QueriesParams.Data(qName).(query.LocalOpening)
+		q, ok := ctx.Comp.QueriesParams.Data(qName).(query.LocalOpening)
 		if !ok {
 			utils.Panic("got an uncompilable query %v", qName)
 		}
 
-		round := ctx.comp.QueriesParams.Round(q.ID)
+		round := ctx.Comp.QueriesParams.Round(q.ID)
 
 		if !isColEligibleSplitting(ctx.Splittings, q.Pol) {
 			continue
 		}
 		// mark the query as ignored
-		ctx.comp.QueriesParams.MarkAsIgnored(qName)
+		ctx.Comp.QueriesParams.MarkAsIgnored(qName)
 		// Get the sub column
 		subCol := getSubColForLocal(ctx, q.Pol, 0)
 		// apply the local constrain over the subCol
-		newQ := ctx.comp.InsertLocalOpening(round, queryNameSplitter(q.ID), subCol)
+		newQ := ctx.Comp.InsertLocalOpening(round, queryNameSplitter(q.ID), subCol)
 
 		// Registers the prover's step responsible for assigning the new query
-		ctx.comp.RegisterProverAction(round, &assignLocalPointProverAction{
-			qID:  q.ID,
-			newQ: newQ.ID,
+		ctx.Comp.RegisterProverAction(round, &AssignLocalPointProverAction{
+			QID:  q.ID,
+			NewQ: newQ.ID,
 		})
 	}
 }
 
-func (ctx splitterContext) LocalGlobalConstraints() {
-	for _, qName := range ctx.comp.QueriesNoParams.AllUnignoredKeys() {
+func (ctx SplitterContext) LocalGlobalConstraints() {
+	for _, qName := range ctx.Comp.QueriesNoParams.AllUnignoredKeys() {
 
-		q := ctx.comp.QueriesNoParams.Data(qName)
+		q := ctx.Comp.QueriesNoParams.Data(qName)
 		// round of definition of the query to compile
-		round := ctx.comp.QueriesNoParams.Round(qName)
+		round := ctx.Comp.QueriesNoParams.Round(qName)
 
 		var board symbolic.ExpressionBoard
 
 		switch q := q.(type) {
 		case query.LocalConstraint:
 			board = q.Board()
+
 			// detect if the expression is eligible;
 			// i.e., it contains columns of proper size with status Precomputed, committed, or verifiercol.
-			if !IsExprEligible(isColEligibleSplitting, ctx.Splittings, board) {
+			isEligible, unSupported := IsExprEligible(isColEligibleSplitting, ctx.Splittings, board)
+
+			if unSupported {
+				panic("unSupported")
+			}
+
+			if !isEligible {
 				continue
 			}
 
 			// if the associated expression is eligible to the stitching, mark the query, over the sub columns, as ignored.
-			ctx.comp.QueriesNoParams.MarkAsIgnored(qName)
+			ctx.Comp.QueriesNoParams.MarkAsIgnored(qName)
 
 			// adjust the query over the sub columns
-			ctx.comp.InsertLocal(round, queryNameSplitter(qName), ctx.adjustExpressionForLocal(q.Expression, 0))
+			ctx.Comp.InsertLocal(round, queryNameSplitter(qName), ctx.adjustExpressionForLocal(q.Expression, 0))
 
 		case query.GlobalConstraint:
 			board = q.Board()
-			// detect if the expression is over the eligible columns.
-			if !IsExprEligible(isColEligibleSplitting, ctx.Splittings, board) {
+
+			// detect if the expression is eligible;
+			// i.e., it contains columns of proper size with status Precomputed, committed, or verifiercol.
+			isEligible, unSupported := IsExprEligible(isColEligibleSplitting, ctx.Splittings, board)
+
+			if unSupported {
+				panic("unSupported")
+			}
+
+			if !isEligible {
 				continue
 			}
 
 			// if the associated expression is eligible to the splitting, mark the query as ignored.
-			ctx.comp.QueriesNoParams.MarkAsIgnored(qName)
+			ctx.Comp.QueriesNoParams.MarkAsIgnored(qName)
 
 			// adjust the query over the sub columns
-			numSlots := q.DomainSize / ctx.size
+			numSlots := q.DomainSize / ctx.Size
 			for slot := 0; slot < numSlots; slot++ {
 
-				ctx.comp.InsertGlobal(round,
+				ctx.Comp.InsertGlobal(round,
 					ifaces.QueryIDf("%v_SPLITTER_GLOBALQ_SLOT_%v", q.ID, slot),
 					ctx.adjustExpressionForGlobal(q.Expression, slot),
 				)
@@ -129,18 +144,18 @@ func isColEligibleSplitting(splittings MultiSummary, col ifaces.Column) bool {
 
 // It finds the subCol containing the first row of col,
 // it then shifts the subCol so that its first row equals with the first row of col.
-func getSubColForLocal(ctx splitterContext, col ifaces.Column, posInCol int) ifaces.Column {
+func getSubColForLocal(ctx SplitterContext, col ifaces.Column, posInCol int) ifaces.Column {
 	round := col.Round()
 	// Sanity-check : only for the edge-case h.Size() < ctx.size
-	if col.Size() < ctx.size && posInCol != 0 {
-		utils.Panic("We have h.Size (%v) < ctx.size (%v) but num (%v) != 0 for %v", col.Size(), ctx.size, posInCol, col.GetColID())
+	if col.Size() < ctx.Size && posInCol != 0 {
+		utils.Panic("We have h.Size (%v) < ctx.size (%v) but num (%v) != 0 for %v", col.Size(), ctx.Size, posInCol, col.GetColID())
 	}
 
 	if !col.IsComposite() {
 		switch col := col.(type) {
 		case verifiercol.VerifierCol:
 			// Create the split in live
-			return col.Split(ctx.comp, posInCol*ctx.size, (posInCol+1)*ctx.size)
+			return col.Split(ctx.Comp, posInCol*ctx.Size, (posInCol+1)*ctx.Size)
 		default:
 			// No changes : it means this is a normal column and
 			// we shall take the corresponding slice.
@@ -152,13 +167,13 @@ func getSubColForLocal(ctx splitterContext, col ifaces.Column, posInCol int) ifa
 	case column.Shifted:
 		// Shift the subparent, if the offset is larger than the subparent
 		// we repercute it on the num
-		if inner.Offset < -ctx.size {
+		if inner.Offset < -ctx.Size {
 			utils.Panic("unsupported, the offset is too negative")
 		}
 
 		// find the subCol that contain the first row of col
 		position := utils.PositiveMod(column.StackOffsets(col), col.Size())
-		subColID, offsetOfSubCol := position/ctx.size, position%ctx.size
+		subColID, offsetOfSubCol := position/ctx.Size, position%ctx.Size
 
 		// The subCol is linked to the "root" of q.Pol (i.e., natural column associated with col)
 		parent := getSubColForLocal(ctx, inner.Parent, posInCol+subColID)
@@ -173,10 +188,10 @@ func getSubColForLocal(ctx splitterContext, col ifaces.Column, posInCol int) ifa
 // For the column 'col' and the given 'posInCol',
 // it returns the subColumn from the natural column located in position 'posInNatural'.
 // where the posInNatural is calculated via the offset in Col.
-func getSubColForGlobal(ctx splitterContext, col ifaces.Column, posInCol int) ifaces.Column {
+func getSubColForGlobal(ctx SplitterContext, col ifaces.Column, posInCol int) ifaces.Column {
 	// Sanity-check : only for the edge-case h.Size() < ctx.size
 	round := col.Round()
-	if col.Size() < ctx.size {
+	if col.Size() < ctx.Size {
 		if posInCol > 0 {
 			utils.Panic(
 				"tried to get share #%v of column %v, but this is an undersized column %v",
@@ -192,7 +207,7 @@ func getSubColForGlobal(ctx splitterContext, col ifaces.Column, posInCol int) if
 		switch m := col.(type) {
 		case verifiercol.VerifierCol:
 			// Create the split in live
-			return m.Split(ctx.comp, posInCol*ctx.size, (posInCol+1)*ctx.size)
+			return m.Split(ctx.Comp, posInCol*ctx.Size, (posInCol+1)*ctx.Size)
 		default:
 			// No changes; natural column
 			return ctx.Splittings[round].ByBigCol[col.GetColID()][posInCol]
@@ -207,19 +222,19 @@ func getSubColForGlobal(ctx splitterContext, col ifaces.Column, posInCol int) if
 		// This works fine assuming h.Size() > ctx.size
 		var (
 			offset         = inner.Offset
-			maxNumSubCol   = col.Size() / ctx.size
-			subColID       = (posInCol + (offset / ctx.size)) % maxNumSubCol
-			offsetOfSubCol = utils.PositiveMod(offset, ctx.size)
+			maxNumSubCol   = col.Size() / ctx.Size
+			subColID       = (posInCol + (offset / ctx.Size)) % maxNumSubCol
+			offsetOfSubCol = utils.PositiveMod(offset, ctx.Size)
 		)
 		// This indicates that the offset is so large
 		if subColID < 0 {
-			subColID = (col.Size() / ctx.size) + subColID
+			subColID = (col.Size() / ctx.Size) + subColID
 		}
 		// The resulting offset should keep the same sign as the old one. This is
 		// because the sign indicates which range of position is touched by
 		// bound cancellation.
 		if offsetOfSubCol*offset < 0 {
-			offsetOfSubCol -= ctx.size
+			offsetOfSubCol -= ctx.Size
 		}
 		parent := getSubColForGlobal(ctx, inner.Parent, subColID)
 		return column.Shift(parent, offsetOfSubCol)
@@ -235,7 +250,7 @@ func queryNameSplitter(oldQ ifaces.QueryID) ifaces.QueryID {
 }
 
 // it shift all the columns inside the expression by shift and then applies the local constraints.
-func (ctx splitterContext) adjustExpressionForLocal(
+func (ctx SplitterContext) adjustExpressionForLocal(
 	expr *symbolic.Expression, shift int,
 ) *symbolic.Expression {
 
@@ -269,7 +284,7 @@ func (ctx splitterContext) adjustExpressionForLocal(
 	return newExpr
 }
 
-func (ctx splitterContext) adjustExpressionForGlobal(
+func (ctx SplitterContext) adjustExpressionForGlobal(
 	expr *symbolic.Expression, slot int,
 ) *symbolic.Expression {
 	board := expr.Board()
@@ -286,10 +301,10 @@ func (ctx splitterContext) adjustExpressionForGlobal(
 			// Pass the same variable
 			subCol := getSubColForGlobal(ctx, m, slot)
 			// Sanity-check : the subHandle should have the target size
-			if subCol.Size() != ctx.size {
+			if subCol.Size() != ctx.Size {
 				utils.Panic(
 					"outgoing column %v should have size %v but has size %v (ingoing column was %v, with size %v)",
-					subCol.GetColID(), ctx.size, subCol.Size(), m.GetColID(), m.Size(),
+					subCol.GetColID(), ctx.Size, subCol.Size(), m.GetColID(), m.Size(),
 				)
 			}
 			translationMap.InsertNew(m.String(), ifaces.ColumnAsVariable(subCol))
@@ -301,7 +316,7 @@ func (ctx splitterContext) adjustExpressionForGlobal(
 			// not change.
 			translated := symbolic.NewVariable(metadata)
 
-			if m.T > ctx.size {
+			if m.T > ctx.Size {
 
 				// Here, there are two possibilities. (1) The current slot is
 				// on a portion of the Periodic sample where everything is
@@ -310,12 +325,12 @@ func (ctx splitterContext) adjustExpressionForGlobal(
 				// the current situation, we need to find out where the slot
 				// is located compared to the period.
 				var (
-					slotStartAt = (slot * ctx.size) % m.T
-					slotStopAt  = slotStartAt + ctx.size
+					slotStartAt = (slot * ctx.Size) % m.T
+					slotStopAt  = slotStartAt + ctx.Size
 				)
 
 				if m.Offset >= slotStartAt && m.Offset < slotStopAt {
-					translated = variables.NewPeriodicSample(ctx.size, m.Offset%ctx.size)
+					translated = variables.NewPeriodicSample(ctx.Size, m.Offset%ctx.Size)
 				} else {
 					translated = symbolic.NewConstant(0)
 				}
@@ -332,23 +347,28 @@ func (ctx splitterContext) adjustExpressionForGlobal(
 	return expr.Replay(translationMap)
 }
 
-func (ctx splitterContext) localQueriesForGapsInGlobal(q query.GlobalConstraint, slot, numSlots int) {
+func (ctx SplitterContext) localQueriesForGapsInGlobal(q query.GlobalConstraint, slot, numSlots int) {
 
 	// Now, we need to cancel the expression at the beginning and/or the end
 	// For the first one, only cancel the end. For the last one, only cancel
 	// the beginning.
 	offsetRange := query.MinMaxOffset(q.Expression)
-	round := ctx.comp.QueriesNoParams.Round(q.ID)
+	round := ctx.Comp.QueriesNoParams.Round(q.ID)
 	nextStart := 0
 
 	if offsetRange.Min < 0 {
-		for i := 0; i < offsetRange.Min; i-- {
-			// And fill the gap with a local constraint
+		for i := 0; i > offsetRange.Min; i-- {
+
 			if slot > 0 || q.NoBoundCancel {
+				// And fill the gap with a local constraint
+				newQName := ifaces.QueryIDf("%v_LOCAL_GAPS_NEG_OFFSET_%v", q.ID, i)
+				if ctx.Comp.QueriesNoParams.Exists(newQName) {
+					continue
+				}
 				// adjust the query over the sub columns
-				ctx.comp.InsertLocal(round,
-					ifaces.QueryIDf("%v_LOCAL_GAPS_NEG_OFFSET_%v", q.ID, i),
-					ctx.adjustExpressionForLocal(q.Expression, slot*ctx.size-i))
+				ctx.Comp.InsertLocal(round,
+					newQName,
+					ctx.adjustExpressionForLocal(q.Expression, slot*ctx.Size-i))
 			}
 		}
 		if offsetRange.Max > 0 {
@@ -358,12 +378,17 @@ func (ctx splitterContext) localQueriesForGapsInGlobal(q query.GlobalConstraint,
 
 	if offsetRange.Max > 0 {
 		for i := nextStart; i < offsetRange.Max; i++ {
-			point := ctx.size - i - 1 // point at which we want to cancel the constraint
+			point := ctx.Size - i - 1 // point at which we want to cancel the constraint
 			// And fill the gap with a local constraint
 			if slot < numSlots-1 || q.NoBoundCancel {
-				shift := slot*ctx.size + point
-				ctx.comp.InsertLocal(round,
-					ifaces.QueryIDf("%v_LOCAL_GAPS_POS_OFFSET_%v_%v", q.ID, slot, i),
+				newQName := ifaces.QueryIDf("%v_LOCAL_GAPS_POS_OFFSET_%v_%v", q.ID, slot, i)
+				if ctx.Comp.QueriesNoParams.Exists(newQName) {
+					continue
+				}
+
+				shift := slot*ctx.Size + point
+				ctx.Comp.InsertLocal(round,
+					newQName,
 					ctx.adjustExpressionForLocal(q.Expression, shift))
 			}
 		}

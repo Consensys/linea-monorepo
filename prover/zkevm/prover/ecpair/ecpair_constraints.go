@@ -109,7 +109,7 @@ func (ec *ECPair) csInstanceIDChangeWhenNewInstance(comp *wizard.CompiledIOP) {
 			ec.UnalignedPairingData.InstanceID,
 			column.Shift(ec.UnalignedPairingData.InstanceID, -1),
 		),
-	)
+	).GetColumnAndProverAction()
 
 	ec.CptPrevEqualCurrID = cptPrevEqualCurrID
 
@@ -119,7 +119,7 @@ func (ec *ECPair) csInstanceIDChangeWhenNewInstance(comp *wizard.CompiledIOP) {
 		roundNr,
 		ifaces.QueryIDf("%v_INSTANCE_ID_CHANGE", nameECPair),
 		sym.Mul(
-			column.Shift(verifiercol.NewConstantCol(field.One(), ec.UnalignedPairingData.IsActive.Size()), -1), // this "useless" line helps cancelling the constraint on the first row
+			column.Shift(verifiercol.NewConstantCol(field.One(), ec.UnalignedPairingData.IsActive.Size(), "ecpair-cancelling-first-row"), -1), // this "useless" line helps cancelling the constraint on the first row
 			ec.UnalignedPairingData.IsActive,
 			ec.UnalignedPairingData.IsFirstLineOfInstance,
 			ec.UnalignedPairingData.InstanceID,

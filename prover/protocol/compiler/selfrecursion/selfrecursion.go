@@ -11,7 +11,6 @@ func SelfRecurse(comp *wizard.CompiledIOP) {
 
 	logrus.Trace("started self-recursion compiler")
 	defer logrus.Trace("finished self-recursion compiler")
-
 	ctx := NewSelfRecursionCxt(comp)
 	ctx.Precomputations()
 	// the round-by-round commitment phase is implicit here

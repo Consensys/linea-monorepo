@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -25,34 +24,34 @@ const (
 	EVAL_BIVARIATE_GLOBAL               string = "GLOBAL"
 )
 
-type evalBivariateProverAction struct {
-	name     string
-	pCom     ifaces.Column
-	x        ifaces.Accessor
-	yxPow1mk XYPow1MinNAccessor
-	length   int
-	nPowX    int
+type EvalBivariateProverAction struct {
+	Name     string
+	PCom     ifaces.Column
+	X        ifaces.Accessor
+	YXPow1mk XYPow1MinNAccessor
+	Length   int
+	NPowX    int
 }
 
-func (a *evalBivariateProverAction) Run(assi *wizard.ProverRuntime) {
-	xVal := a.x.GetVal(assi)
-	yxPow1mkVal := a.yxPow1mk.GetVal(assi)
-	p := a.pCom.GetColAssignment(assi)
+func (a *EvalBivariateProverAction) Run(assi *wizard.ProverRuntime) {
+	xVal := a.X.GetVal(assi)
+	yxPow1mkVal := a.YXPow1mk.GetVal(assi)
+	p := a.PCom.GetColAssignment(assi)
 
-	h := make([]field.Element, a.length)
-	h[a.length-1] = p.Get(a.length - 1)
+	h := make([]field.Element, a.Length)
+	h[a.Length-1] = p.Get(a.Length - 1)
 
-	for i := a.length - 2; i >= 0; i-- {
+	for i := a.Length - 2; i >= 0; i-- {
 		pi := p.Get(i)
-		if (i+1)%a.nPowX == 0 {
+		if (i+1)%a.NPowX == 0 {
 			h[i].Mul(&h[i+1], &yxPow1mkVal).Add(&h[i], &pi)
 			continue
 		}
 		h[i].Mul(&h[i+1], &xVal).Add(&h[i], &pi)
 	}
 
-	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.name, EVAL_BIVARIATE_POLY), smartvectors.NewRegular(h))
-	assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", a.name, EVAL_BIVARIATE_FIXED_POINT_BEGIN), h[0])
+	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.Name, EVAL_BIVARIATE_POLY), smartvectors.NewRegular(h))
+	assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", a.Name, EVAL_BIVARIATE_FIXED_POINT_BEGIN), h[0])
 }
 
 /*
@@ -138,13 +137,13 @@ func EvalCoeffBivariate(
 		hCom,
 	)
 
-	comp.RegisterProverAction(maxRound, &evalBivariateProverAction{
-		name:     name,
-		pCom:     pCom,
-		x:        x,
-		yxPow1mk: yx_pow_1mk_acc,
-		length:   length,
-		nPowX:    nPowX,
+	comp.RegisterProverAction(maxRound, &EvalBivariateProverAction{
+		Name:     name,
+		PCom:     pCom,
+		X:        x,
+		YXPow1mk: yx_pow_1mk_acc,
+		Length:   length,
+		NPowX:    nPowX,
 	})
 
 	return accessors.NewLocalOpeningAccessor(finalLocalOpening, maxRound)
@@ -168,13 +167,6 @@ func (a *XYPow1MinNAccessor) IsBase() bool {
 	}
 	return false
 }
-
-// This makes the [XYPow1MinNAccessor] serializable. The return value is just
-// for making this compilable.
-var _ = func() int {
-	serialization.RegisterImplementation(XYPow1MinNAccessor{})
-	return 0
-}()
 
 // String implements [symbolic.Metadata] and thus [ifaces.Accessor].
 func (a *XYPow1MinNAccessor) String() string {

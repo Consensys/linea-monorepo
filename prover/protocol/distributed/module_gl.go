@@ -21,26 +21,26 @@ import (
 )
 
 const (
-	moduleGLReceiveGlobalKey  = "RECEIVE_GLOBAL"
-	moduleGLSendGlobalKey     = "SEND_GLOBAL"
-	globalSenderPublicInput   = "GLOBAL_PROVIDER"
-	globalReceiverPublicInput = "GLOBAL_RECEIVER"
-	isFirstPublicInput        = "IS_FIRST"
-	isLastPublicInput         = "IS_LAST"
+	ModuleGLReceiveGlobalKey  = "RECEIVE_GLOBAL"
+	ModuleGLSendGlobalKey     = "SEND_GLOBAL"
+	GlobalSenderPublicInput   = "GLOBAL_PROVIDER"
+	GlobalReceiverPublicInput = "GLOBAL_RECEIVER"
+	IsFirstPublicInput        = "IS_FIRST"
+	IsLastPublicInput         = "IS_LAST"
 )
 
 // ModuleGL is a compilation structure holding the central informations
 // of the GL part of a module.
 type ModuleGL struct {
 
-	// moduleTranslator is the translator for the GL part of the module
+	// ModuleTranslator is the translator for the GL part of the module
 	// it also has the ownership of the [wizard.Compiled] IOP built for
 	// this module.
-	moduleTranslator
+	ModuleTranslator
 
-	// definitionInput stores the [FilteredModuleInputs] that was used
+	// DefinitionInput stores the [FilteredModuleInputs] that was used
 	// to generate the module.
-	definitionInput *FilteredModuleInputs
+	DefinitionInput *FilteredModuleInputs
 
 	// IsFirst is a column of length one storing a binary value indicating
 	// if the current (vertical) instance of the module is the first one.
@@ -108,7 +108,7 @@ type ModuleGLAssignSendReceiveGlobal struct {
 // [ReceivedValuesGlobalHash] are correctly computed.
 type ModuleGLCheckSendReceiveGlobal struct {
 	*ModuleGL
-	skipped bool
+	skipped bool `serde:"omit"`
 }
 
 // ModuleGLAssignGL is a [wizard.ProverAction] responsible for assigning the
@@ -143,11 +143,11 @@ func BuildModuleGL(moduleInput *FilteredModuleInputs) *ModuleGL {
 func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *ModuleGL {
 
 	moduleGL := &ModuleGL{
-		moduleTranslator: moduleTranslator{
+		ModuleTranslator: ModuleTranslator{
 			Wiop: builder.CompiledIOP,
 			Disc: moduleInput.Disc,
 		},
-		definitionInput:         moduleInput,
+		DefinitionInput:         moduleInput,
 		IsFirst:                 builder.InsertProof(0, "GL_IS_FIRST", 1),
 		IsLast:                  builder.InsertProof(0, "GL_IS_LAST", 1),
 		SentValuesGlobalMap:     map[string]int{},
@@ -182,7 +182,7 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 	// there is no random coins in the GL module, we need to add at least one dummy coin
 	// otherwise the compiler will throw an error stating that we have several rounds for
 	// the columns and the queries but not for the coins.
-	_ = moduleGL.Wiop.InsertCoin(1, "DUMMY_GL_COIN", coin.FieldExt)
+	_ = moduleGL.Wiop.InsertCoin(1, "DUMMY_GL_COIN", coin.Field)
 
 	for _, globalCs := range moduleInput.GlobalConstraints {
 		moduleGL.InsertGlobal(*globalCs)
@@ -230,31 +230,31 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 		)
 	}
 
-	moduleGL.Wiop.InsertPublicInput(initialRandomnessPublicInput, accessors.NewConstant(field.Zero()))
-	moduleGL.Wiop.InsertPublicInput(isFirstPublicInput, accessors.NewFromPublicColumn(moduleGL.IsFirst, 0))
-	moduleGL.Wiop.InsertPublicInput(isLastPublicInput, accessors.NewFromPublicColumn(moduleGL.IsLast, 0))
+	moduleGL.Wiop.InsertPublicInput(InitialRandomnessPublicInput, accessors.NewConstant(field.Zero()))
+	moduleGL.Wiop.InsertPublicInput(IsFirstPublicInput, accessors.NewFromPublicColumn(moduleGL.IsFirst, 0))
+	moduleGL.Wiop.InsertPublicInput(IsLastPublicInput, accessors.NewFromPublicColumn(moduleGL.IsLast, 0))
 
 	if len(moduleGL.ReceivedValuesGlobalMap) > 0 {
-		moduleGL.Wiop.InsertPublicInput(globalSenderPublicInput, accessors.NewFromPublicColumn(moduleGL.SentValuesGlobalHash, 0))
-		moduleGL.Wiop.InsertPublicInput(globalReceiverPublicInput, accessors.NewFromPublicColumn(moduleGL.ReceivedValuesGlobalHash, 0))
+		moduleGL.Wiop.InsertPublicInput(GlobalSenderPublicInput, accessors.NewFromPublicColumn(moduleGL.SentValuesGlobalHash, 0))
+		moduleGL.Wiop.InsertPublicInput(GlobalReceiverPublicInput, accessors.NewFromPublicColumn(moduleGL.ReceivedValuesGlobalHash, 0))
 	} else {
-		moduleGL.Wiop.InsertPublicInput(globalSenderPublicInput, accessors.NewConstant(field.Zero()))
-		moduleGL.Wiop.InsertPublicInput(globalReceiverPublicInput, accessors.NewConstant(field.Zero()))
+		moduleGL.Wiop.InsertPublicInput(GlobalSenderPublicInput, accessors.NewConstant(field.Zero()))
+		moduleGL.Wiop.InsertPublicInput(GlobalReceiverPublicInput, accessors.NewConstant(field.Zero()))
 	}
 
 	// These public-inputs are the "dummy" ones and are only here so that the
 	// LPP and GL modules have exactly the same set of public inputs. The
 	// public-inputs are reordered a posteriori to ensure that the order
 	// match between GL and LPP.
-	moduleGL.Wiop.InsertPublicInput(logDerivativeSumPublicInput, accessors.NewConstant(field.Zero()))
-	moduleGL.Wiop.InsertPublicInput(grandProductPublicInput, accessors.NewConstant(field.One()))
-	moduleGL.Wiop.InsertPublicInput(hornerPublicInput, accessors.NewConstant(field.Zero()))
-	moduleGL.Wiop.InsertPublicInput(hornerN0HashPublicInput, accessors.NewConstant(field.Zero()))
-	moduleGL.Wiop.InsertPublicInput(hornerN1HashPublicInput, accessors.NewConstant(field.Zero()))
+	moduleGL.Wiop.InsertPublicInput(LogDerivativeSumPublicInput, accessors.NewConstant(field.Zero()))
+	moduleGL.Wiop.InsertPublicInput(GrandProductPublicInput, accessors.NewConstant(field.One()))
+	moduleGL.Wiop.InsertPublicInput(HornerPublicInput, accessors.NewConstant(field.Zero()))
+	moduleGL.Wiop.InsertPublicInput(HornerN0HashPublicInput, accessors.NewConstant(field.Zero()))
+	moduleGL.Wiop.InsertPublicInput(HornerN1HashPublicInput, accessors.NewConstant(field.Zero()))
 
-	moduleGL.Wiop.InsertPublicInput(isGlPublicInput, accessors.NewConstant(field.One()))
-	moduleGL.Wiop.InsertPublicInput(isLppPublicInput, accessors.NewConstant(field.Zero()))
-	moduleGL.Wiop.InsertPublicInput(nbActualLppPublicInput, accessors.NewConstant(field.Zero()))
+	moduleGL.Wiop.InsertPublicInput(IsGlPublicInput, accessors.NewConstant(field.One()))
+	moduleGL.Wiop.InsertPublicInput(IsLppPublicInput, accessors.NewConstant(field.Zero()))
+	moduleGL.Wiop.InsertPublicInput(NbActualLppPublicInput, accessors.NewConstant(field.Zero()))
 
 	moduleGL.Wiop.RegisterProverAction(1, &ModuleGLAssignGL{ModuleGL: moduleGL})
 	moduleGL.Wiop.RegisterProverAction(1, &ModuleGLAssignSendReceiveGlobal{ModuleGL: moduleGL})
@@ -262,6 +262,15 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 
 	return moduleGL
 }
+
+// func (m *ModuleGL) GetModuleTranslator() moduleTranslator {
+// 	return m.moduleTranslator
+// }
+
+// func (m *ModuleGL) SetModuleTranslator(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) {
+// 	m.moduleTranslator.Wiop = comp
+// 	m.moduleTranslator.Disc = disc
+// }
 
 // GetMainProverStep returns a [wizard.ProverStep] running [Assign] passing
 // the provided [ModuleWitness] argument.
@@ -289,7 +298,7 @@ func (m *ModuleGL) Assign(run *wizard.ProverRuntime, witness *ModuleWitnessGL) {
 		// stores the columns as in the origin CompiledIOP so we cannot
 		// directly use them to refer to columns of the current IOP.
 		// Yet, the column share the same names.
-		columns = m.definitionInput.Columns
+		columns = m.DefinitionInput.Columns
 	)
 
 	run.State.InsertNew(moduleWitnessKey, witness)
@@ -298,7 +307,7 @@ func (m *ModuleGL) Assign(run *wizard.ProverRuntime, witness *ModuleWitnessGL) {
 
 		colName := col.GetColID()
 
-		if _, ok := m.definitionInput.ColumnsLPPSet[colName]; !ok {
+		if _, ok := m.DefinitionInput.ColumnsLPPSet[colName]; !ok {
 			continue
 		}
 
@@ -372,6 +381,12 @@ func (m *ModuleGL) InsertGlobal(q query.GlobalConstraint) query.GlobalConstraint
 			colOffset = column.StackOffsets(col)
 			rootCol   = column.RootParents(col)
 		)
+
+		// If the column is a [verifiercol.ConstCol], then there is no need to
+		// send any missing value.
+		if _, isVCol := rootCol.(verifiercol.ConstCol); isVCol {
+			continue
+		}
 
 		for i := colOffset; i < offsetRange.Max; i++ {
 
@@ -462,23 +477,19 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 					return e
 				}
 
-				if cnst, isConst := col.(verifiercol.ConstCol); isConst {
-					if cnst.IsBase() {
-						return sym.NewConstant(cnst.Base)
-					} else {
-						return sym.NewConstant(cnst.Ext)
-					}
-				}
-
-				if _, isVCol := col.(verifiercol.ConstCol); isVCol {
-					utils.Panic("unexpected type of column: %T", col)
-				}
-
 				var (
 					colOffset = column.StackOffsets(col)
 					shfPos    = row + colOffset
 					rootCol   = column.RootParents(col)
 				)
+
+				if cnst, isConst := rootCol.(verifiercol.ConstCol); isConst {
+					return sym.NewConstant(cnst.F)
+				}
+
+				if _, isVCol := rootCol.(verifiercol.VerifierCol); isVCol {
+					utils.Panic("unexpected type of column: %T", col)
+				}
 
 				if shfPos < 0 {
 					rcvValue := m.getReceivedValueGlobal(rootCol, shfPos)
@@ -660,7 +671,7 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 
 	for i := range a.SentValuesGlobal {
 		v := run.GetLocalPointEvalParams(a.SentValuesGlobal[i].ID)
-		yBytes := v.BaseY.Bytes()
+		yBytes := v.Y.Bytes()
 		hsh.Write(yBytes[:])
 	}
 
@@ -717,7 +728,7 @@ func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.G
 
 	for i := range a.SentValuesGlobal {
 		v := run.GetLocalPointEvalParams(a.SentValuesGlobal[i].ID)
-		hsh.Write(v.BaseY)
+		hsh.Write(v.Y)
 	}
 
 	hashSendComputed := hsh.Sum()
@@ -755,14 +766,14 @@ func (a *ModuleGLAssignGL) Run(run *wizard.ProverRuntime) {
 		// stores the columns as in the origin CompiledIOP so we cannot
 		// directly use them to refer to columns of the current IOP.
 		// Yet, the column share the same names.
-		columns = a.definitionInput.Columns
+		columns = a.DefinitionInput.Columns
 	)
 
 	for _, col := range columns {
 
 		colName := col.GetColID()
 
-		if _, ok := a.definitionInput.ColumnsLPPSet[colName]; ok {
+		if _, ok := a.DefinitionInput.ColumnsLPPSet[colName]; ok {
 			// We can't assign LPP columns as they (normally) have already
 			// been assigned at this point.
 			continue
@@ -788,9 +799,9 @@ func (a *ModuleGLAssignGL) Run(run *wizard.ProverRuntime) {
 		delete(witness.Columns, colName)
 	}
 
-	for i := range a.definitionInput.LocalOpenings {
-		newLo := run.GetLocalPointEval(a.definitionInput.LocalOpenings[i].ID)
+	for i := range a.DefinitionInput.LocalOpenings {
+		newLo := run.GetLocalPointEval(a.DefinitionInput.LocalOpenings[i].ID)
 		y := newLo.Pol.GetColAssignmentAt(run, 0)
-		run.AssignLocalPoint(a.definitionInput.LocalOpenings[i].ID, y)
+		run.AssignLocalPoint(a.DefinitionInput.LocalOpenings[i].ID, y)
 	}
 }

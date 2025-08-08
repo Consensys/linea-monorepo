@@ -22,26 +22,36 @@ const (
 // Key encapsulates the public parameters of an instance of the ring-SIS hash
 // instance.
 type Key struct {
-	// lock guards the access to the SIS key and prevents the user from hashing
-	// concurrently with the same SIS key.
-	lock *sync.Mutex
 	// GnarkInternal stores the SIS key itself and some precomputed domain
 	// twiddles.
 	GnarkInternal *sis.RSis
 	// Params provides the parameters of the ring-SIS instance (logTwoBound,
 	// degree etc)
-	Params
+	*KeyGen
+
+	// lock guards the access to the SIS key and prevents the user from hashing
+	// concurrently with the same SIS key.
+	lock *sync.Mutex `serde:"omit"`
+	// gnarkInternal stores the SIS key itself and some precomputed domain
+	// twiddles.
+	gnarkInternal *sis.RSis `serde:"omit"`
+
 	// twiddleCosets stores the list of twiddles that we use to implement the
 	// SIS parameters. The twiddleAreInternally are only used when dealing with
 	// the parameters modulusDegree=64 and logTwoBound=8 and is passed as input
 	// to the specially unrolled [sis.FFT64] function. They are thus optionally
 	// constructed when [GenerateKey] is called.
-	twiddleCosets []field.Element
+	twiddleCosets []field.Element `serde:"omit"`
+}
+
+type KeyGen struct {
+	*Params
+	MaxNumFieldToHash int
 }
 
 // GenerateKey generates a ring-SIS key from a set of a [Params] and a max
 // number of elements to hash
-func GenerateKey(params Params, maxNumFieldToHash int) Key {
+func GenerateKey(params Params, maxNumFieldToHash int) *Key {
 
 	// Sanity-check : if the logTwoBound is larger or equal than 64 it can
 	// create overflows as we cast the small-norm limbs into
@@ -54,10 +64,10 @@ func GenerateKey(params Params, maxNumFieldToHash int) Key {
 		panic(err)
 	}
 
-	res := Key{
+	res := &Key{
 		lock:          &sync.Mutex{},
 		GnarkInternal: rsis,
-		Params:        params,
+		KeyGen:        &KeyGen{&params, maxNumFieldToHash},
 		twiddleCosets: nil,
 	}
 	return res

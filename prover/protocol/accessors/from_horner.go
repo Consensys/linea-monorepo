@@ -33,10 +33,11 @@ func (l *FromHornerAccessorFinalValue) String() string {
 	return l.Name()
 }
 
-// GetVal implements [ifaces.Accessor]
+// GetVal implements [ifaces.Accessor]. It is not implemented for this accessor
+// as it should always return an extension field due to its dependency on
+// randomness.
 func (l *FromHornerAccessorFinalValue) GetVal(run ifaces.Runtime) field.Element {
-	params := run.GetParams(l.Q.ID).(query.HornerParams)
-	return params.FinalResult.B0.A0
+	panic("should not be called as the result is an extension field")
 }
 
 // GetVal implements [ifaces.Accessor]
@@ -61,9 +62,11 @@ func (l *FromHornerAccessorFinalValue) Round() int {
 	return l.Q.Round
 }
 
+// GetValBase implements [ifaces.Accessor]. It panics as it should never be called
+// since the result is always an extension field.
 func (l *FromHornerAccessorFinalValue) GetValBase(run ifaces.Runtime) (field.Element, error) {
 	//TODO implement me
-	panic("implement me")
+	panic("should not be called as the result is an extension field")
 }
 
 func (l *FromHornerAccessorFinalValue) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {
@@ -77,6 +80,5 @@ func (l *FromHornerAccessorFinalValue) GetFrontendVariableExt(api frontend.API, 
 }
 
 func (l *FromHornerAccessorFinalValue) IsBase() bool {
-	//TODO implement me
-	panic("implement me")
+	return false
 }

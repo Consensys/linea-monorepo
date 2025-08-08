@@ -1,11 +1,14 @@
 package common
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
@@ -155,6 +158,16 @@ func (vb *VectorBuilder) PushAddr(addr types.EthAddress) {
 // PadAndAssign pads and assign the column built by `vb` using `v` as padding
 // value and assigning into `run`.
 func (vb *VectorBuilder) PadAndAssign(run *wizard.ProverRuntime, v ...field.Element) {
+
+	if len(vb.slice) > vb.column.Size() {
+		// We print the stack to help debugging
+		exit.OnLimitOverflow(
+			vb.column.Size(),
+			len(vb.slice),
+			fmt.Errorf("the slice size %v is larger than the column size %v", len(vb.slice), vb.column.Size()),
+		)
+	}
+
 	paddingValue := field.Zero()
 	if len(v) > 0 {
 		paddingValue = v[0]

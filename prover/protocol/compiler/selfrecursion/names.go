@@ -24,7 +24,7 @@ func (ctx *SelfRecursionCtx) ahName(key *ringsis.Key, start, length, maxSize int
 	}
 
 	subName := ifaces.ColIDf("SISKEY_%v_%v_%v", key.LogTwoBound, key.LogTwoDegree, key.MaxNumFieldHashable())
-	name := ifaces.ColIDf("%v_%v_%v_%v", subName, start, length, maxSize)
+	name := ifaces.ColIDf("%v_%v_%v_%v_%v", subName, start, length, maxSize, ctx.SelfRecursionCnt)
 	return maybePrefix(ctx, name)
 }
 
@@ -97,6 +97,30 @@ func (ctx *SelfRecursionCtx) concatenatedDhQ() ifaces.ColID {
 	return maybePrefix(ctx, name)
 }
 
+// Name of the concatenated MiMC hashes for the non SIS rounds
+func (ctx *SelfRecursionCtx) nonSisLeaves(round int) ifaces.ColID {
+	name := ifaces.ColIDf("SELFRECURSION_NON_SIS_LEAVES_%v_%v", ctx.SelfRecursionCnt, round)
+	return maybePrefix(ctx, name)
+}
+
+// Name of the concatenated preimages for the non SIS rounds
+func (ctx *SelfRecursionCtx) concatenatedMIMCPreimages(round int) ifaces.ColID {
+	name := ifaces.ColIDf("SELFRECURSION_CONCAT_MIMC_PREIMAGES_%v_%v", ctx.SelfRecursionCnt, round)
+	return maybePrefix(ctx, name)
+}
+
+// Name of the concatenated hashes for the precomputed rounds
+func (ctx *SelfRecursionCtx) concatenatedPrecomputedHashes() ifaces.ColID {
+	name := ifaces.ColIDf("SELFRECURSION_CONCAT_PRECOMPUTED_HASHES_%v", ctx.SelfRecursionCnt)
+	return maybePrefix(ctx, name)
+}
+
+// Name of the concatenated preimages for the precomputed rounds
+func (ctx *SelfRecursionCtx) concatenatedPrecomputedPreimages() ifaces.ColID {
+	name := ifaces.ColIDf("SELFRECURSION_CONCAT_PRECOMPUTED_PREIMAGES_%v", ctx.SelfRecursionCnt)
+	return maybePrefix(ctx, name)
+}
+
 // Name of the MerkleLeaves
 func (ctx *SelfRecursionCtx) merkleLeavesName() ifaces.ColID {
 	name := ifaces.ColIDf("SELFRECURSION_MERKLE_LEAVES_%v", ctx.SelfRecursionCnt)
@@ -104,7 +128,7 @@ func (ctx *SelfRecursionCtx) merkleLeavesName() ifaces.ColID {
 }
 
 // Name of the MerklePositions
-func (ctx *SelfRecursionCtx) merklePositionssName() ifaces.ColID {
+func (ctx *SelfRecursionCtx) merklePositionsName() ifaces.ColID {
 	name := ifaces.ColIDf("SELFRECURSION_MERKLE_POSITIONS_%v", ctx.SelfRecursionCnt)
 	return maybePrefix(ctx, name)
 }
@@ -112,6 +136,12 @@ func (ctx *SelfRecursionCtx) merklePositionssName() ifaces.ColID {
 // Name of the MerkleRoots
 func (ctx *SelfRecursionCtx) merkleRootsName() ifaces.ColID {
 	name := ifaces.ColIDf("SELFRECURSION_MERKLE_ROOTS_%v", ctx.SelfRecursionCnt)
+	return maybePrefix(ctx, name)
+}
+
+// Name of the SIS rounds leaves
+func (ctx *SelfRecursionCtx) sisRoundLeavesName(round int) ifaces.ColID {
+	name := ifaces.ColIDf("SELFRECURSION_SIS_ROUND_LEAVES_%v_%v", ctx.SelfRecursionCnt, round)
 	return maybePrefix(ctx, name)
 }
 
@@ -123,26 +153,40 @@ func (ctx *SelfRecursionCtx) merkleProofVerificationName() string {
 
 // Name of the collapsed key
 func (ctx *SelfRecursionCtx) aCollapsedName() string {
-	name := fmt.Sprintf("SELFRECURSION_ACOLLAPSE_%v", ctx.comp.SelfRecursionCount)
+	name := fmt.Sprintf("SELFRECURSION_ACOLLAPSE_%v", ctx.SelfRecursionCnt)
 	return maybePrefix(ctx, name)
 }
 
 // Name of the collapsed key
 func (ctx *SelfRecursionCtx) rootHasGlue() ifaces.QueryID {
-	name := ifaces.QueryIDf("SELFRECURSION_ROOT_HASH_GLUE_%v", ctx.comp.SelfRecursionCount)
+	name := ifaces.QueryIDf("SELFRECURSION_ROOT_HASH_GLUE_%v", ctx.SelfRecursionCnt)
 	return maybePrefix(ctx, name)
 }
 
 // Positions glue
 func (ctx *SelfRecursionCtx) positionGlue() ifaces.QueryID {
-	name := ifaces.QueryIDf("SELFRECURSION_POSITION_GLUE_%v", ctx.comp.SelfRecursionCount)
+	name := ifaces.QueryIDf("SELFRECURSION_POSITION_GLUE_%v", ctx.SelfRecursionCnt)
 	return maybePrefix(ctx, name)
 }
 
 // linearHashVerificatioName returns the name passed to the wizard helper building the
 // linear hash verifier.
 func (ctx *SelfRecursionCtx) linearHashVerificationName() string {
-	name := fmt.Sprintf("SELFRECURSION_LINEAR_HASH_VERIFICATION_%v", ctx.comp.SelfRecursionCount)
+	name := fmt.Sprintf("SELFRECURSION_LINEAR_HASH_VERIFICATION_%v", ctx.SelfRecursionCnt)
+	return maybePrefix(ctx, name)
+}
+
+// nonSisRoundLinearHashVerificationName returns the name passed to the wizard helper building the
+// non SIS round linear hash verifier.
+func (ctx *SelfRecursionCtx) nonSisRoundLinearHashVerificationName(round int) string {
+	name := fmt.Sprintf("SELFRECURSION_NON_SIS_ROUND_LINEAR_HASH_VERIFICATION_%v_%v", ctx.SelfRecursionCnt, round)
+	return maybePrefix(ctx, name)
+}
+
+// leafConsistencyName returns the name passed to the wizard helper building the
+// leaf consistency verifier.
+func (ctx *SelfRecursionCtx) leafConsistencyName() ifaces.QueryID {
+	name := ifaces.QueryIDf("SELFRECURSION_LINEAR_HASH_LEAF_CONSISTENCY_%v", ctx.SelfRecursionCnt)
 	return maybePrefix(ctx, name)
 }
 

@@ -2,7 +2,6 @@
 package pragmas
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 )
@@ -23,8 +22,10 @@ const (
 
 	None Pragma = "none-pragma"
 
-	// Paddable is used to indicate that a column is paddable
-	Paddable Pragma = "paddable-pragma"
+	// PadWithZeroes is used to indicate that column should be padded with zeroes
+	// only regardless of the default heuristic (which is to pad using the first
+	// or the last value).
+	PadWithZeroes Pragma = "pad-with-zeroes-pragma"
 )
 
 // MarkFullColumn marks a column as full-column.
@@ -66,19 +67,15 @@ func MarkLeftPadded(col ifaces.Column) {
 	nat.SetPragma(LeftPadded, true)
 }
 
-// IsPaddable checks if a column is paddable.
-func IsPaddable(col ifaces.Column) (field.Element, bool) {
+// IsZeroPadded checks if a column is zero-padded.
+func IsZeroPadded(col ifaces.Column) bool {
 	nat := col.(column.Natural)
-	v, ok := nat.GetPragma(Paddable)
-	var v_ field.Element
-	if ok {
-		v_ = v.(field.Element)
-	}
-	return v_, ok
+	_, ok := nat.GetPragma(PadWithZeroes)
+	return ok
 }
 
-// MarkPaddable marks a column as paddable.
-func MarkPaddable(col ifaces.Column, v field.Element) {
+// MarkZeroPadded marks a column as zero-padded.
+func MarkZeroPadded(col ifaces.Column) {
 	nat := col.(column.Natural)
-	nat.SetPragma(Paddable, v)
+	nat.SetPragma(PadWithZeroes, true)
 }

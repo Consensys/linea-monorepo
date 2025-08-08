@@ -15,7 +15,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-func (ctx *Ctx) GnarkVerify(api frontend.API, vr wizard.GnarkRuntime) {
+func (a *ExplicitPolynomialEval) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
+	a.gnarkExplicitPublicEvaluation(api, c) // Adjust based on context; see note below
+}
+
+func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRuntime) {
 
 	// The skip verification flag may be on, if the current vortex
 	// context get self-recursed. In this case, the verifier does
@@ -35,6 +39,9 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr wizard.GnarkRuntime) {
 
 	// Collect all the commitments : rounds by rounds
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		if ctx.RoundStatus[round] == IsEmpty {
+			continue // skip the dry rounds
+		}
 		rootSv := vr.GetColumn(ctx.MerkleRootName(round)) // len 1 smart vector
 		roots = append(roots, rootSv[0])
 	}
@@ -65,12 +72,17 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr wizard.GnarkRuntime) {
 		return &h, err
 	}
 
-	packedMProofs := vr.GetColumn(ctx.MerkleProofName())
+	packedMProofs := [8][]frontend.Variable{}
+	for i := range packedMProofs {
+		packedMProofs[i] = vr.GetColumn(ctx.MerkleProofName(i))
+	}
+
 	proof.MerkleProofs = ctx.unpackMerkleProofsGnark(packedMProofs, entryList)
 
 	// pass the parameters for a merkle-mode sis verification
 	params := vortex.GParams{}
 	params.HasherFunc = factoryHasherFunc
+	params.NoSisHasher = factoryHasherFunc
 	params.Key = ctx.VortexParams.Key
 
 	vortex.GnarkVerifyOpeningWithMerkleProof(
@@ -136,6 +148,9 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]front
 
 	// Get the list of the polynomials
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		if ctx.RoundStatus[round] == IsEmpty {
+			continue // skip the dry rounds
+		}
 		names := ctx.CommitmentsByRounds.MustGet(round)
 		ysRounds := make([]frontend.Variable, len(names))
 		for i, name := range names {
@@ -186,6 +201,9 @@ func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRun
 	}
 
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		if ctx.RoundStatus[round] == IsEmpty {
+			continue // skip the dry rounds
+		}
 		openedSubColumnsForRound := make([][]frontend.Variable, ctx.NbColsToOpen())
 		numRowsForRound := ctx.getNbCommittedRows(round)
 		for j := 0; j < ctx.NbColsToOpen(); j++ {
@@ -221,7 +239,7 @@ func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkR
 		// status so we need a hierarchical check to make sure we can access
 		// its status.
 		if _, isVerifierCol := pol.(verifiercol.VerifierCol); !isVerifierCol {
-			status := ctx.comp.Columns.Status(pol.GetColID())
+			status := ctx.Comp.Columns.Status(pol.GetColID())
 			if !status.IsPublic() {
 				// then, its not concerned by direct evaluation because the
 				// evaluation is implicitly checked by the invokation of the
@@ -242,7 +260,7 @@ func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkR
 }
 
 // unpack a list of merkle proofs from a vector as in
-func (ctx *Ctx) unpackMerkleProofsGnark(sv []frontend.Variable, entryList []frontend.Variable) (proofs [][]smt.GnarkProof) {
+func (ctx *Ctx) unpackMerkleProofsGnark(sv [8][]frontend.Variable, entryList []frontend.Variable) (proofs [][]smt.GnarkProof) {
 
 	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
 	numComs := ctx.NumCommittedRounds()
@@ -266,6 +284,11 @@ func (ctx *Ctx) unpackMerkleProofsGnark(sv []frontend.Variable, entryList []fron
 			// parse the siblings accounting for the fact that we
 			// are inversing the order.
 			for k := range proof.Siblings {
+
+				utils.Panic("gnark SMT does not currently support hashes that are arrays of field elements")
+
+				// this will fail because we are setting a []frontend.Variable
+				// to a frontend.Variable
 				proof.Siblings[depth-k-1] = sv[curr]
 				curr++
 			}

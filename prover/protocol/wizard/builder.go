@@ -75,11 +75,12 @@ func ContinueCompilation(rootComp *CompiledIOP, compilers ...func(*CompiledIOP))
 		comp.EqualizeRounds(numRounds)
 	}
 
-	if comp.subProvers.Len() < comp.NumRounds() {
+	if comp.SubProvers.Len() < comp.NumRounds() {
 		utils.Panic("There are coin sampling rounds that are not followed by an action of the prover. numRoundProver=%v numRoundCoins=%v",
-			comp.subProvers.Len(), comp.NumRounds(),
+			comp.SubProvers.Len(), comp.NumRounds(),
 		)
 	}
+
 	return comp
 }
 
@@ -304,18 +305,18 @@ func (comp *CompiledIOP) EqualizeRounds(numRounds int) {
 	/*
 		Check and reserve for the provers
 	*/
-	if comp.subProvers.Len() > numRounds {
-		utils.Panic("Bug : numRounds is %v but %v rounds are registered for the prover. %v", numRounds, comp.subProvers.Len(), helpMsg)
+	if comp.SubProvers.Len() > numRounds {
+		utils.Panic("Bug : numRounds is %v but %v rounds are registered for the prover. %v", numRounds, comp.SubProvers.Len(), helpMsg)
 	}
-	comp.subProvers.Reserve(numRounds)
+	comp.SubProvers.Reserve(numRounds)
 
 	/*
 		Check and reserve for the verifiers
 	*/
-	if comp.subVerifiers.Len() > numRounds {
-		utils.Panic("Bug : numRounds is %v but %v rounds are registered for the verifier. %v", numRounds, comp.subVerifiers.Len(), helpMsg)
+	if comp.SubVerifiers.Len() > numRounds {
+		utils.Panic("Bug : numRounds is %v but %v rounds are registered for the verifier. %v", numRounds, comp.SubVerifiers.Len(), helpMsg)
 	}
-	comp.subVerifiers.Reserve(numRounds)
+	comp.SubVerifiers.Reserve(numRounds)
 
 	/*
 		Check and reserve for the FiatShamirHooksPreSampling

@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
+	"github.com/google/uuid"
 )
 
 var _ ifaces.Query = &PlonkInWizard{}
@@ -65,12 +66,31 @@ type PlonkInWizard struct {
 	// nbPublicInput is a lazily-loaded variable representing the number of public
 	// inputs in the circuit provided by the query. The variable is computed the
 	// first time [PlonkInWizard.GetNbPublicInputs] is called and saved there.
-	nbPublicInputs int
+	nbPublicInputs int `serde:"omit"`
 
 	// nbPublicInputs loaded is a flag indicating whether we need to compute the
 	// number of public input. It is not using [sync.Once] that way we don't need
 	// to initialize the value.
-	nbPublicInputsLoaded bool
+	nbPublicInputsLoaded bool      `serde:"omit"`
+	uuid                 uuid.UUID `serde:"omit"`
+}
+
+func NewPlonkInWizard(
+	ID ifaces.QueryID,
+	Data ifaces.Column,
+	Selector ifaces.Column,
+	Circuit frontend.Circuit,
+	PlonkOptions []PlonkOption,
+) *PlonkInWizard {
+
+	return &PlonkInWizard{
+		ID:           ID,
+		Data:         Data,
+		Selector:     Selector,
+		Circuit:      Circuit,
+		PlonkOptions: PlonkOptions,
+		uuid:         uuid.New(),
+	}
 }
 
 // PlonkOption represents a an option for the compilation of the circuit. One
@@ -131,6 +151,12 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 
 		numEffInstances++
 
+		// This local variable (which could equivalently be defined as
+		// 'numEffInstance - 1') is needed because the value of numEffInstance
+		// might change when we go to the next iteration of the loop and print
+		// error messages from the goroutine.
+		currInstance := i / nbPublicPadded
+
 		wg.Add(1)
 
 		go func(i int) {
@@ -171,12 +197,12 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 			// be a panic instead. It bubbling up means there is a bug in the
 			// current function.
 			if err := witness.Fill(nbPublic, 0, witnessFiller); err != nil {
-				pushErr(fmt.Errorf("error in solver instance=%v err=%w", i, err))
+				pushErr(fmt.Errorf("error in witness filler instance=%v err=%w", currInstance, err))
 				return
 			}
 
 			if err := ccs.IsSolved(witness); err != nil {
-				pushErr(fmt.Errorf("error in solver instance=%v err=%w", i, err))
+				pushErr(fmt.Errorf("error in solver instance=%v err=%w", currInstance, err))
 				return
 			}
 
@@ -251,4 +277,8 @@ func (piw *PlonkInWizard) CheckMask(mask smartvectors.SmartVector) error {
 	}
 
 	return nil
+}
+
+func (piw *PlonkInWizard) UUID() uuid.UUID {
+	return piw.uuid
 }

@@ -6,7 +6,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
+	"slices"
+
 	"github.com/consensys/gnark/frontend"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -37,10 +40,16 @@ func CompileLogDerivativeSum(comp *wizard.CompiledIOP) {
 				LogDerivSumID: qName,
 			}
 			lastRound   = logDeriv.Round
-			proverTasks = make([]proverTaskAtRound, lastRound+1)
+			proverTasks = make([]ProverTaskAtRound, lastRound+1)
 		)
 
-		sizes := utils.SortedKeysOf(zEntries, func(i1, i2 int) bool { return i1 < i2 })
+		sizes := utils.MapFunc(zEntries.Parts, func(part query.LogDerivativeSumPart) int {
+			return part.Size
+		})
+
+		slices.SortFunc(sizes, func(a, b int) int { return a - b }) // sorts the slice of integers
+		sizes = slices.Compact(sizes)
+		sizes = slices.Clip(sizes)
 
 		for _, size := range sizes {
 
@@ -48,14 +57,18 @@ func CompileLogDerivativeSum(comp *wizard.CompiledIOP) {
 				utils.Panic("the size of a log-derivative cannot be a non-power of two: %v", size)
 			}
 
-			entry := zEntries[size]
-
 			// get the Numerator and Denominator from the input and prepare their compilation.
 			zC := ZCtx{
-				Round:            lastRound,
-				Size:             entry.Size,
-				SigmaNumerator:   entry.Numerator,
-				SigmaDenominator: entry.Denominator,
+				Round: lastRound,
+				Size:  size,
+			}
+
+			// This accumulates all the parts whose size is equal to size in zC
+			for _, part := range zEntries.Parts {
+				if part.Size == size {
+					zC.SigmaNumerator = append(zC.SigmaNumerator, part.Num)
+					zC.SigmaDenominator = append(zC.SigmaDenominator, part.Den)
+				}
 			}
 
 			// z-packing compile; it imposes the correct accumulation over Numerator and Denominator.
@@ -87,7 +100,7 @@ type FinalEvaluationCheck struct {
 	// query ID
 	LogDerivSumID ifaces.QueryID
 	// skip verifier action
-	skipped bool
+	skipped bool `serde:"omit"`
 }
 
 // Run implements the [wizard.VerifierAction]
@@ -128,7 +141,10 @@ func (f *FinalEvaluationCheck) RunGnark(api frontend.API, run wizard.GnarkRuntim
 	// in the protocol via the
 	zSum := frontend.Variable(field.Zero())
 	for k := range f.ZOpenings {
-		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).BaseY
+		// not using panic so that the compiler does not ask us to comment out
+		// the remainder of the loop
+		utils.Panic("this shoud default to extension fields")
+		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).ExtY
 		zSum = api.Add(zSum, temp)
 	}
 

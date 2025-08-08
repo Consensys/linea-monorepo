@@ -4,6 +4,8 @@ import (
 	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -47,6 +49,31 @@ func Allocate(zkevm *zkevm.ZkEvm) CircuitExecution {
 	}
 }
 
+// AllocateLimitless allocates the outer-proof circuit in the context of a
+// limitless execution. It works as [Allocate] but takes the conglomeration
+// wizard as input and uses it to allocate the outer circuit. The trace-limits
+// file is used to derive the maximal number of L2L1 logs.
+//
+// The proof generation can be done using the [MakeProof] function as we would
+// do for the non-limitless execution proof.
+func AllocateLimitless(congWiop *wizard.CompiledIOP, limits *config.TracesLimits) CircuitExecution {
+	logrus.Infof("Allocating the outer circuit with params: no_of_cong_wiop_rounds=%d "+
+		"limits_block_l2l1_logs=%d", congWiop.NumRounds(), limits.BlockL2L1Logs)
+
+	wverifier := wizard.AllocateWizardCircuit(congWiop, congWiop.NumRounds())
+	return CircuitExecution{
+		WizardVerifier: *wverifier,
+		FuncInputs: FunctionalPublicInputSnark{
+			FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
+				L2MessageHashes: L2MessageHashes{
+					Values: make([][32]frontend.Variable, limits.BlockL2L1Logs),
+					Length: nil,
+				},
+			},
+		},
+	}
+}
+
 // assign the wizard proof to the outer circuit
 func assign(
 	limits *config.TracesLimits,
@@ -61,7 +88,9 @@ func assign(
 			WizardVerifier: *wizardVerifier,
 			FuncInputs: FunctionalPublicInputSnark{
 				FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
-					L2MessageHashes: L2MessageHashes{Values: make([][32]frontend.Variable, limits.BlockL2L1Logs)}, // TODO use a maximum from config
+					L2MessageHashes: L2MessageHashes{
+						Values: make([][32]frontend.Variable, limits.BlockL2L1Logs),
+					},
 				},
 			},
 			PublicInput: new(big.Int).SetBytes(funcInputs.Sum(nil)),
@@ -69,12 +98,15 @@ func assign(
 	)
 
 	res.FuncInputs.Assign(&funcInputs)
-
 	return res
 }
 
 // Define of the wizard circuit
 func (c *CircuitExecution) Define(api frontend.API) error {
+
+	c.WizardVerifier.HasherFactory = gkrmimc.NewHasherFactory(api)
+	c.WizardVerifier.FS = fiatshamir.NewGnarkFiatShamir(api, c.WizardVerifier.HasherFactory)
+
 	c.WizardVerifier.Verify(api)
 	checkPublicInputs(
 		api,

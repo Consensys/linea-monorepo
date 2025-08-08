@@ -94,30 +94,30 @@ var (
 		// 			NumRow: 1 << 20,
 		// 		},
 		// 	},
-		{
-			Name: "smaller-segment",
-			Permutations: SubModuleParameters{
-				Count:  1,
-				NumCol: 3,
-				NumRow: 1 << 19,
-			},
-			Lookup: SubModuleParameters{
-				Count:     5,
-				NumCol:    3,
-				NumRow:    1 << 19,
-				NumRowAux: 1 << 19,
-			},
-			Projection: SubModuleParameters{
-				Count:     1,
-				NumCol:    3,
-				NumRow:    1 << 19,
-				NumRowAux: 1 << 19,
-			},
-			Fibo: SubModuleParameters{
-				Count:  20,
-				NumRow: 1 << 19,
-			},
-		},
+		// {
+		// 	Name: "smaller-segment",
+		// 	Permutations: SubModuleParameters{
+		// 		Count:  1,
+		// 		NumCol: 3,
+		// 		NumRow: 1 << 19,
+		// 	},
+		// 	Lookup: SubModuleParameters{
+		// 		Count:     5,
+		// 		NumCol:    3,
+		// 		NumRow:    1 << 19,
+		// 		NumRowAux: 1 << 19,
+		// 	},
+		// 	Projection: SubModuleParameters{
+		// 		Count:     1,
+		// 		NumCol:    3,
+		// 		NumRow:    1 << 19,
+		// 		NumRowAux: 1 << 19,
+		// 	},
+		// 	Fibo: SubModuleParameters{
+		// 		Count:  20,
+		// 		NumRow: 1 << 19,
+		// 	},
+		// },
 	}
 )
 

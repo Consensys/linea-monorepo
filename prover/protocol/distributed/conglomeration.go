@@ -12,7 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
@@ -24,6 +24,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/sirupsen/logrus"
@@ -43,7 +44,8 @@ type ConglomeratorCompilation struct {
 
 	// ModuleProofs lists the wizard whose proof are supported by the current
 	// instance of the conglomerator.
-	ModuleGLIops, ModuleLPPIops []*wizard.CompiledIOP
+	ModuleGLIops  []*wizard.CompiledIOP `serde:"omit"`
+	ModuleLPPIops []*wizard.CompiledIOP `serde:"omit"`
 
 	// DefaultIops is the wizard IOP used for filling
 	DefaultIops *RecursedSegmentCompilation
@@ -105,8 +107,6 @@ func conglomerate(maxNbProofs int, moduleGLs, moduleLpps []*RecursedSegmentCompi
 
 	cong := &ConglomeratorCompilation{
 		MaxNbProofs: maxNbProofs,
-		// ModuleGLIops:  moduleGLs,
-		// ModuleLPPIops: moduleLpps,
 		DefaultIops: moduleDefault,
 	}
 
@@ -128,13 +128,13 @@ func conglomerate(maxNbProofs int, moduleGLs, moduleLpps []*RecursedSegmentCompi
 		plonkinwizard.Compile,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<17),
-			compiler.WithDebugMode("conglomeration"),
 		),
+		logdata.Log("before first vortex"),
 		vortex.Compile(
 			2,
 			vortex.ForceNumOpenedColumns(256),
 			vortex.WithSISParams(&sisInstance),
-			vortex.AddMerkleRootToPublicInputs(lppMerkleRootPublicInput, []int{0}),
+			vortex.WithOptionalSISHashingThreshold(64),
 		),
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
@@ -144,8 +144,9 @@ func conglomerate(maxNbProofs int, moduleGLs, moduleLpps []*RecursedSegmentCompi
 		),
 		vortex.Compile(
 			8,
-			vortex.ForceNumOpenedColumns(64),
+			vortex.ForceNumOpenedColumns(32),
 			vortex.WithSISParams(&sisInstance),
+			vortex.WithOptionalSISHashingThreshold(64),
 		),
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
@@ -155,8 +156,8 @@ func conglomerate(maxNbProofs int, moduleGLs, moduleLpps []*RecursedSegmentCompi
 		),
 		vortex.Compile(
 			8,
-			vortex.ForceNumOpenedColumns(64),
-			vortex.WithSISParams(&sisInstance),
+			vortex.ForceNumOpenedColumns(32),
+			vortex.WithOptionalSISHashingThreshold(1<<20),
 		),
 	)
 
@@ -217,78 +218,104 @@ func (c *ConglomerateHolisticCheck) Run(run wizard.Runtime) error {
 		mainErr                   error
 	)
 
+	type proofPublicInput struct {
+		LPPCommitment    field.Element
+		SharedRandomness field.Element
+		VerifyingKey     field.Element
+		VerifyingKey2    field.Element
+		LogDerivativeSum field.Element
+		GrandProduct     field.Element
+		HornerSum        field.Element
+		HornerN0Hash     field.Element
+		HornerN1Hash     field.Element
+		GlobalReceived   field.Element
+		GlobalSent       field.Element
+		IsFirst          bool
+		IsLast           bool
+		IsLPP            bool
+		IsGL             bool
+		SameVkAsPrev     bool
+		SameVkAsNext     bool
+	}
+
+	allPis := []proofPublicInput{}
+
 	for i := 0; i < c.MaxNbProofs; i++ {
 
-		var (
-			lppCommitment    = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, 0), i)
-			sharedRandomness = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+initialRandomnessPublicInput, i)
-			verifyingKey     = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+verifyingKeyPublicInput, i)
-			verifyingKey2    = c.Recursion.GetPublicInputOfInstance(run, verifyingKey2PublicInput, i)
-			logDerivativeSum = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+logDerivativeSumPublicInput, i)
-			grandProduct     = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+grandProductPublicInput, i)
-			hornerSum        = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+hornerPublicInput, i)
-			hornerN0Hash     = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+hornerN0HashPublicInput, i)
-			hornerN1Hash     = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+hornerN1HashPublicInput, i)
-			globalReceived   = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+globalReceiverPublicInput, i)
-			globalSent       = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+globalSenderPublicInput, i)
-			isFirst          = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+isFirstPublicInput, i)
-			isLast           = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+isLastPublicInput, i)
-			isLPP            = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+isLppPublicInput, i)
-			isGL             = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+isGlPublicInput, i)
+		pi := proofPublicInput{
+			LPPCommitment:    c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, 0), i),
+			SharedRandomness: c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+InitialRandomnessPublicInput, i),
+			VerifyingKey:     c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+verifyingKeyPublicInput, i),
+			VerifyingKey2:    c.Recursion.GetPublicInputOfInstance(run, verifyingKey2PublicInput, i),
+			LogDerivativeSum: c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+LogDerivativeSumPublicInput, i),
+			GrandProduct:     c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+GrandProductPublicInput, i),
+			HornerSum:        c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+HornerPublicInput, i),
+			HornerN0Hash:     c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+HornerN0HashPublicInput, i),
+			HornerN1Hash:     c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+HornerN1HashPublicInput, i),
+			GlobalReceived:   c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+GlobalReceiverPublicInput, i),
+			GlobalSent:       c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+GlobalSenderPublicInput, i),
+			IsFirst:          c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+IsFirstPublicInput, i) == field.One(),
+			IsLast:           c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+IsLastPublicInput, i) == field.One(),
+			IsLPP:            c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+IsLppPublicInput, i) == field.One(),
+			IsGL:             c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+IsGlPublicInput, i) == field.One(),
+		}
 
+		allPis = append(allPis, pi)
+
+		var (
 			sameVerifyingKeyAsPrev, sameVerifyingKeyAsNext bool
 		)
 
 		if i > 0 {
 			prevVerifyingKey := c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+verifyingKeyPublicInput, i-1)
 			prevVerifyingKey2 := c.Recursion.GetPublicInputOfInstance(run, verifyingKey2PublicInput, i-1)
-			sameVerifyingKeyAsPrev = verifyingKey == prevVerifyingKey && verifyingKey2 == prevVerifyingKey2
+			sameVerifyingKeyAsPrev = pi.VerifyingKey == prevVerifyingKey && pi.VerifyingKey2 == prevVerifyingKey2
 		}
 
 		if i < c.MaxNbProofs-1 {
 			nextVerifyingKey := c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+verifyingKeyPublicInput, i+1)
 			nextVerifyingKey2 := c.Recursion.GetPublicInputOfInstance(run, verifyingKey2PublicInput, i+1)
-			sameVerifyingKeyAsNext = verifyingKey == nextVerifyingKey && verifyingKey2 == nextVerifyingKey2
+			sameVerifyingKeyAsNext = pi.VerifyingKey == nextVerifyingKey && pi.VerifyingKey2 == nextVerifyingKey2
 		}
 
-		if isLPP.IsOne() && sameVerifyingKeyAsPrev && hornerN0Hash != prevHornerN1Hash {
+		if pi.IsLPP && sameVerifyingKeyAsPrev && pi.HornerN0Hash != prevHornerN1Hash {
 			mainErr = errors.Join(mainErr, errors.New("horner-n0-hash mismatch"))
 		}
 
-		if isGL.IsOne() && !sameVerifyingKeyAsPrev != isFirst.IsOne() {
+		if pi.IsGL && !sameVerifyingKeyAsPrev != pi.IsFirst {
 			mainErr = errors.Join(mainErr, errors.New("isFirst is inconsistent with the verifying keys"))
 		}
 
-		if isGL.IsOne() && !sameVerifyingKeyAsNext != isLast.IsOne() {
+		if pi.IsGL && !sameVerifyingKeyAsNext != pi.IsLast {
 			mainErr = errors.Join(mainErr, errors.New("isLast is inconsistent with the verifying keys"))
 		}
 
-		if isGL.IsOne() && sameVerifyingKeyAsPrev && globalReceived != prevGlobalSent {
+		if pi.IsGL && sameVerifyingKeyAsPrev && pi.GlobalReceived != prevGlobalSent {
 			mainErr = errors.Join(mainErr, errors.New("global sent and receive don't match"))
 		}
 
-		if isLPP.IsOne() && !usedSharedRandomnessFound {
-			usedSharedRandomness = sharedRandomness
+		if pi.IsLPP && !usedSharedRandomnessFound {
+			usedSharedRandomness = pi.SharedRandomness
 			usedSharedRandomnessFound = true
 		}
 
-		if isLPP.IsOne() && usedSharedRandomnessFound {
-			if usedSharedRandomness != sharedRandomness {
-				mainErr = errors.Join(mainErr, fmt.Errorf("shared randomness mismatch between different LPP segments: %v and %v", usedSharedRandomness.String(), sharedRandomness.String()))
+		if pi.IsGL && usedSharedRandomnessFound {
+			if usedSharedRandomness != pi.SharedRandomness {
+				mainErr = errors.Join(mainErr, fmt.Errorf("shared randomness mismatch between different LPP segments: %v and %v", usedSharedRandomness.String(), pi.SharedRandomness.String()))
 			}
 		}
 
-		if isGL.IsOne() {
-			collectedLPPCommitments = append(collectedLPPCommitments, lppCommitment)
+		if pi.IsGL {
+			collectedLPPCommitments = append(collectedLPPCommitments, pi.LPPCommitment)
 		}
 
-		prevHornerN1Hash = hornerN1Hash
-		prevGlobalSent = globalSent
+		prevHornerN1Hash = pi.HornerN1Hash
+		prevGlobalSent = pi.GlobalSent
 
-		if isLPP.IsOne() {
-			allGrandProduct.Mul(&allGrandProduct, &grandProduct)
-			allHornerSum.Add(&allHornerSum, &hornerSum)
-			allLogDerivativeSum.Add(&allLogDerivativeSum, &logDerivativeSum)
+		if pi.IsLPP {
+			allGrandProduct.Mul(&allGrandProduct, &pi.GrandProduct)
+			allHornerSum.Add(&allHornerSum, &pi.HornerSum)
+			allLogDerivativeSum.Add(&allLogDerivativeSum, &pi.LogDerivativeSum)
 		}
 	}
 
@@ -298,15 +325,19 @@ func (c *ConglomerateHolisticCheck) Run(run wizard.Runtime) error {
 	}
 
 	if !allGrandProduct.IsOne() {
-		mainErr = errors.Join(mainErr, errors.New("grand product is not one"))
+		mainErr = errors.Join(mainErr, fmt.Errorf("grand product is not one: %v", allGrandProduct.String()))
 	}
 
 	if !allHornerSum.IsZero() {
-		mainErr = errors.Join(mainErr, errors.New("horner sum is not zero"))
+		mainErr = errors.Join(mainErr, fmt.Errorf("horner sum is not zero: %v", allHornerSum.String()))
 	}
 
 	if !allLogDerivativeSum.IsZero() {
-		mainErr = errors.Join(mainErr, errors.New("log derivative sum is not zero"))
+		mainErr = errors.Join(mainErr, fmt.Errorf("log derivative sum is not zero: %v", allLogDerivativeSum.String()))
+	}
+
+	if mainErr != nil {
+		fmt.Printf("conglomeration failed: err=%v pis=%++v\n", mainErr, allPis)
 	}
 
 	return mainErr
@@ -330,20 +361,20 @@ func (c *ConglomeratorCompilation) RunGnark(api frontend.API, run wizard.GnarkRu
 
 		var (
 			lppCommitment    = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, 0), i)
-			sharedRandomness = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+initialRandomnessPublicInput, i)
+			sharedRandomness = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+InitialRandomnessPublicInput, i)
 			verifyingKey     = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+verifyingKeyPublicInput, i)
 			verifyingKey2    = c.Recursion.GetPublicInputOfInstanceGnark(api, run, verifyingKey2PublicInput, i)
-			logDerivativeSum = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+logDerivativeSumPublicInput, i)
-			grandProduct     = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+grandProductPublicInput, i)
-			hornerSum        = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+hornerPublicInput, i)
-			hornerN0Hash     = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+hornerN0HashPublicInput, i)
-			hornerN1Hash     = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+hornerN1HashPublicInput, i)
-			globalReceived   = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+globalReceiverPublicInput, i)
-			globalSent       = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+globalSenderPublicInput, i)
-			isFirst          = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+isFirstPublicInput, i)
-			isLast           = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+isLastPublicInput, i)
-			isLPP            = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+isLppPublicInput, i)
-			isGL             = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+isGlPublicInput, i)
+			logDerivativeSum = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+LogDerivativeSumPublicInput, i)
+			grandProduct     = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+GrandProductPublicInput, i)
+			hornerSum        = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+HornerPublicInput, i)
+			hornerN0Hash     = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+HornerN0HashPublicInput, i)
+			hornerN1Hash     = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+HornerN1HashPublicInput, i)
+			globalReceived   = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+GlobalReceiverPublicInput, i)
+			globalSent       = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+GlobalSenderPublicInput, i)
+			isFirst          = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+IsFirstPublicInput, i)
+			isLast           = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+IsLastPublicInput, i)
+			isLPP            = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+IsLppPublicInput, i)
+			isGL             = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+IsGlPublicInput, i)
 
 			sameVerifyingKeyAsPrev, sameVerifyingKeyAsNext = frontend.Variable(0), frontend.Variable(0)
 		)
@@ -477,6 +508,19 @@ func (c *ConglomeratorCompilation) RunGnark(api frontend.API, run wizard.GnarkRu
 	api.AssertIsEqual(allGrandProduct, 1)
 	api.AssertIsEqual(allHornerSum, 0)
 	api.AssertIsEqual(allLogDerivativeSum, 0)
+}
+
+// BubbleUpPublicInput bubbles up the public inputs of a given name.
+func (c *ConglomeratorCompilation) BubbleUpPublicInput(name string) wizard.PublicInput {
+
+	pubInputSum := symbolic.NewConstant(0)
+	for i := 0; i < c.MaxNbProofs; i++ {
+		subPubInput := c.Recursion.GetPublicInputAccessorOfInstance(c.Wiop, preRecursionPrefix+name, i)
+		isFirst := c.Recursion.GetPublicInputAccessorOfInstance(c.Wiop, preRecursionPrefix+IsFirstPublicInput, i)
+		pubInputSum = symbolic.Add(pubInputSum, symbolic.Mul(isFirst, subPubInput))
+	}
+
+	return c.Wiop.InsertPublicInput(name, accessors.NewFromExpression(pubInputSum, name+"_SUMMATION_ACCESSOR"))
 }
 
 // Prove is the main entry point for the prover. It takes a compiled IOP and
@@ -733,8 +777,8 @@ func (cong *ConglomeratorCompilation) declareLookups() {
 		var (
 			verifyingKey  = cong.Recursion.GetPublicInputAccessorOfInstance(comp, preRecursionPrefix+verifyingKeyPublicInput, i)
 			verifyingKey2 = cong.Recursion.GetPublicInputAccessorOfInstance(comp, verifyingKey2PublicInput, i)
-			isLPP         = cong.Recursion.GetPublicInputAccessorOfInstance(comp, preRecursionPrefix+isLppPublicInput, i)
-			isGL          = cong.Recursion.GetPublicInputAccessorOfInstance(comp, preRecursionPrefix+isGlPublicInput, i)
+			isLPP         = cong.Recursion.GetPublicInputAccessorOfInstance(comp, preRecursionPrefix+IsLppPublicInput, i)
+			isGL          = cong.Recursion.GetPublicInputAccessorOfInstance(comp, preRecursionPrefix+IsGlPublicInput, i)
 		)
 
 		effectiveVksAccessors[0] = append(effectiveVksAccessors[0], verifyingKey)
@@ -757,12 +801,12 @@ func (cong *ConglomeratorCompilation) declareLookups() {
 
 	var (
 		vkColums = [2]ifaces.Column{
-			verifiercol.NewFromAccessors(effectiveVksAccessors[0], fext.Zero(), effectiveColumnSize),
-			verifiercol.NewFromAccessors(effectiveVksAccessors[1], fext.Zero(), effectiveColumnSize),
+			verifiercol.NewFromAccessors(effectiveVksAccessors[0], field.Zero(), effectiveColumnSize),
+			verifiercol.NewFromAccessors(effectiveVksAccessors[1], field.Zero(), effectiveColumnSize),
 		}
 
-		isGLCol  = verifiercol.NewFromAccessors(isGLAccessors, fext.Zero(), effectiveColumnSize)
-		isLPPCol = verifiercol.NewFromAccessors(isLPPAccessors, fext.Zero(), effectiveColumnSize)
+		isGLCol  = verifiercol.NewFromAccessors(isGLAccessors, field.Zero(), effectiveColumnSize)
+		isLPPCol = verifiercol.NewFromAccessors(isLPPAccessors, field.Zero(), effectiveColumnSize)
 	)
 
 	cong.IsGL = isGLCol
@@ -788,8 +832,8 @@ func (cong *ConglomeratorCompilation) declareLookups() {
 		})
 
 		includingLppLookup = append(includingLppLookup, []ifaces.Column{
-			verifiercol.NewConstantCol(field.NewElement(uint64(j)), effectiveColumnSize),
-			verifiercol.NewFromAccessors(lppColumnsAccessors[j], fext.Zero(), effectiveColumnSize),
+			verifiercol.NewConstantCol(field.NewElement(uint64(j)), effectiveColumnSize, ""),
+			verifiercol.NewFromAccessors(lppColumnsAccessors[j], field.Zero(), effectiveColumnSize),
 			vkColums[0],
 			vkColums[1],
 		})
@@ -803,7 +847,7 @@ func (cong *ConglomeratorCompilation) declareLookups() {
 		includingLppLookup,
 		[]ifaces.Column{
 			cong.HolisticLookupMappedLPPPostion,
-			verifiercol.NewFromAccessors(lppColumnsAccessors[0], fext.Zero(), effectiveColumnSize),
+			verifiercol.NewFromAccessors(lppColumnsAccessors[0], field.Zero(), effectiveColumnSize),
 			cong.HolisticLookupMappedLPPVK[0],
 			cong.HolisticLookupMappedLPPVK[1],
 		},
@@ -830,4 +874,120 @@ func (cong *ConglomeratorCompilation) declareLookups() {
 func getVerifyingKeyPair(wiop *wizard.CompiledIOP) (vkGL, vkLPP field.Element) {
 	return wiop.ExtraData[verifyingKeyPublicInput].(field.Element),
 		wiop.ExtraData[verifyingKey2PublicInput].(field.Element)
+}
+
+// SanityCheckPublicInputsForConglo checks that a list of runtime is compatible
+// with each other. The function will perform the same checks that the
+// conglomerator but can be used on debugging-circuits.
+func SanityCheckPublicInputsForConglo(runtimes []*wizard.ProverRuntime) error {
+
+	var (
+		allGrandProduct           = field.NewElement(1)
+		allLogDerivativeSum       = field.Element{}
+		allHornerSum              = field.Element{}
+		prevGlobalSent            = field.Element{}
+		usedSharedRandomness      = field.Element{}
+		usedSharedRandomnessFound bool
+		mainErr                   error
+	)
+
+	type proofPublicInput struct {
+		LPPCommitment    field.Element
+		SharedRandomness field.Element
+		LogDerivativeSum field.Element
+		GrandProduct     field.Element
+		HornerSum        field.Element
+		HornerN0Hash     field.Element
+		HornerN1Hash     field.Element
+		GlobalReceived   field.Element
+		GlobalSent       field.Element
+		IsFirst          bool
+		IsLast           bool
+		IsLPP            bool
+		IsGL             bool
+		SameVkAsPrev     bool
+		SameVkAsNext     bool
+	}
+
+	allPis := []proofPublicInput{}
+
+	for _, run := range runtimes {
+
+		pi := proofPublicInput{
+			LogDerivativeSum: run.GetPublicInput(LogDerivativeSumPublicInput),
+			GrandProduct:     run.GetPublicInput(GrandProductPublicInput),
+			HornerSum:        run.GetPublicInput(HornerPublicInput),
+			HornerN0Hash:     run.GetPublicInput(HornerN0HashPublicInput),
+			HornerN1Hash:     run.GetPublicInput(HornerN1HashPublicInput),
+			GlobalReceived:   run.GetPublicInput(GlobalReceiverPublicInput),
+			GlobalSent:       run.GetPublicInput(GlobalSenderPublicInput),
+			IsFirst:          run.GetPublicInput(IsFirstPublicInput) == field.One(),
+			IsLast:           run.GetPublicInput(IsLastPublicInput) == field.One(),
+			IsLPP:            run.GetPublicInput(IsLppPublicInput) == field.One(),
+			IsGL:             run.GetPublicInput(IsGlPublicInput) == field.One(),
+		}
+
+		allPis = append(allPis, pi)
+
+		var (
+			sameVerifyingKeyAsPrev = !pi.IsFirst
+			sameVerifyingKeyAsNext = !pi.IsLast
+		)
+
+		// @alex: actually IsFirst and IsLast are not set for LPP segments so
+		// this check is moot.
+		// if pi.IsLPP && sameVerifyingKeyAsPrev && pi.HornerN0Hash != prevHornerN1Hash {
+		// 	mainErr = errors.Join(mainErr, fmt.Errorf("horner-n0-hash mismatch: %v != %v; i=%v isFirst: %v; isLast: %v", i, pi.IsFirst, pi.IsLast, pi.HornerN0Hash.String(), prevHornerN1Hash.String()))
+		// }
+
+		if pi.IsGL && !sameVerifyingKeyAsPrev != pi.IsFirst {
+			mainErr = errors.Join(mainErr, errors.New("isFirst is inconsistent with the verifying keys"))
+		}
+
+		if pi.IsGL && !sameVerifyingKeyAsNext != pi.IsLast {
+			mainErr = errors.Join(mainErr, errors.New("isLast is inconsistent with the verifying keys"))
+		}
+
+		if pi.IsGL && sameVerifyingKeyAsPrev && pi.GlobalReceived != prevGlobalSent {
+			mainErr = errors.Join(mainErr, errors.New("global sent and receive don't match"))
+		}
+
+		if pi.IsLPP && !usedSharedRandomnessFound {
+			usedSharedRandomness = pi.SharedRandomness
+			usedSharedRandomnessFound = true
+		}
+
+		if pi.IsGL && usedSharedRandomnessFound {
+			if usedSharedRandomness != pi.SharedRandomness {
+				mainErr = errors.Join(mainErr, fmt.Errorf("shared randomness mismatch between different LPP segments: %v and %v", usedSharedRandomness.String(), pi.SharedRandomness.String()))
+			}
+		}
+
+		prevGlobalSent = pi.GlobalSent
+
+		if pi.IsLPP {
+			allGrandProduct.Mul(&allGrandProduct, &pi.GrandProduct)
+			allHornerSum.Add(&allHornerSum, &pi.HornerSum)
+			allLogDerivativeSum.Add(&allLogDerivativeSum, &pi.LogDerivativeSum)
+		}
+	}
+
+	if !allGrandProduct.IsOne() {
+		mainErr = errors.Join(mainErr, fmt.Errorf("grand product is not one: %v", allGrandProduct.String()))
+	}
+
+	if !allHornerSum.IsZero() {
+		mainErr = errors.Join(mainErr, fmt.Errorf("horner sum is not zero: %v", allHornerSum.String()))
+	}
+
+	if !allLogDerivativeSum.IsZero() {
+		mainErr = errors.Join(mainErr, fmt.Errorf("log derivative sum is not zero: %v", allLogDerivativeSum.String()))
+	}
+
+	if mainErr != nil {
+		fmt.Printf("conglomeration failed: err=%v pis=%++v\n", mainErr, allPis)
+	}
+
+	return mainErr
+
 }

@@ -8,19 +8,22 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// verifierAction implements [wizard.VerifierAction]. It is tasked with
+// VerifierAction implements [wizard.VerifierAction]. It is tasked with
 //   - (1) checking that the X value of the univariate query is correct.
 //   - (2) checking that q(r) = sum_{i,k \in claim} [\lambda^i \rho^k (Pk(r) - y_{ik})] / (r - xi).
-type verifierAction struct {
+type VerifierAction struct {
 	*MultipointToSinglepointCompilation
 }
 
-func (va verifierAction) Run(run wizard.Runtime) error {
+func (va VerifierAction) Run(run wizard.Runtime) error {
+
 	var (
 		queryParams = run.GetUnivariateParams(va.NewQuery.QueryID)
 		// _polyOfRs stores the values of P_k(r) as returned in the query.
@@ -91,7 +94,7 @@ func (va verifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (va verifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	var (
 		queryParams = run.GetUnivariateParams(va.NewQuery.QueryID)
@@ -195,6 +198,19 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api fronten
 	}
 
 	for _, c := range ctx.ExplicitlyEvaluated {
+
+		// When encountering a verifiercol.ConstCol, the optimization is to
+		// represent the column not to its full length but as a length 1 column
+		// which will yield the same result in the end.
+		if constCol, isConstCol := c.(verifiercol.ConstCol); isConstCol {
+			x, err := constCol.GetColAssignmentGnarkAtBase(run, 0)
+			if err != nil {
+				utils.Panic("err=%v", err)
+			}
+			polys = append(polys, []frontend.Variable{x})
+			continue
+		}
+
 		poly := c.GetColAssignmentGnark(run)
 		polys = append(polys, poly)
 	}

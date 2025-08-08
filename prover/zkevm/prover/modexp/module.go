@@ -3,6 +3,7 @@ package modexp
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
@@ -40,10 +41,10 @@ type Module struct {
 	// connection logic of the modexp circuit specialized for the small and
 	// large instances respectively
 	GnarkCircuitConnector256Bits, GnarkCircuitConnector4096Bits *plonk.Alignment
-	// hasCircuit indicates whether the circuit has been set in the module. In
+	// HasCircuit indicates whether the circuit has been set in the module. In
 	// production, it will be always set to true. But for convenience we omit
 	// the circuit in some of the test as this is CPU intensive.
-	hasCircuit bool
+	HasCircuit bool
 }
 
 // NewModuleZkEvm constructs an instance of the modexp module. It should be called
@@ -72,6 +73,8 @@ func newModule(comp *wizard.CompiledIOP, input Input) *Module {
 		}
 	)
 
+	pragmas.MarkRightPadded(mod.IsActive)
+
 	mod.Input.setIsModexp(comp)
 
 	mod.csIsActive(comp)
@@ -82,7 +85,7 @@ func newModule(comp *wizard.CompiledIOP, input Input) *Module {
 		"MODEXP_BLKMDXP_PROJECTION",
 		query.ProjectionInput{ColumnA: []ifaces.Column{mod.Input.Limbs},
 			ColumnB: []ifaces.Column{mod.Limbs},
-			FilterA: mod.Input.isModExp,
+			FilterA: mod.Input.IsModExp,
 			FilterB: mod.IsActive})
 	return mod
 }
@@ -91,7 +94,7 @@ func newModule(comp *wizard.CompiledIOP, input Input) *Module {
 // the anti-chamber.
 func (mod *Module) WithCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *Module {
 
-	mod.hasCircuit = true
+	mod.HasCircuit = true
 	settings := mod.Input.Settings
 
 	mod.GnarkCircuitConnector256Bits = plonk.DefineAlignment(

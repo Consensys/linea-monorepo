@@ -9,10 +9,12 @@ import {
   L2MessageServiceV1__factory as L2MessageService__factory,
   LineaRollupV6,
   LineaRollupV6__factory,
-  OpcodeTestContract,
-  OpcodeTestContract__factory,
+  LineaSequencerUptimeFeed,
+  LineaSequencerUptimeFeed__factory,
   ProxyAdmin,
   ProxyAdmin__factory,
+  SparseMerkleProof,
+  SparseMerkleProof__factory,
   TestContract,
   TestContract__factory,
   TestERC20,
@@ -81,6 +83,13 @@ export default class TestSetup {
       return undefined;
     }
     return this.config.L2.besuNodeRpcUrl;
+  }
+
+  public getL2BesuFollowerNodeEndpoint(): URL | undefined {
+    if (!this.isLocalL2Config(this.config.L2)) {
+      return undefined;
+    }
+    return this.config.L2.besuFollowerNodeRpcUrl;
   }
 
   public getTransactionExclusionEndpoint(): URL | undefined {
@@ -229,17 +238,21 @@ export default class TestSetup {
     }
   }
 
-  public getOpcodeTestContract(signer?: Wallet): OpcodeTestContract {
-    const opcodeTestContract = OpcodeTestContract__factory.connect(
-      this.config.L2.opcodeTestContractAddress,
+  public getL2SparseMerkleProofContract(): SparseMerkleProof {
+    return SparseMerkleProof__factory.connect(this.config.L2.l2SparseMerkleProofAddress, this.getL2Provider());
+  }
+
+  public getL2LineaSequencerUptimeFeedContract(signer?: Wallet): LineaSequencerUptimeFeed {
+    const livenessContract = LineaSequencerUptimeFeed__factory.connect(
+      this.config.L2.l2LineaSequencerUptimeFeedAddress,
       this.getL2Provider(),
     );
 
     if (signer) {
-      return opcodeTestContract.connect(signer);
+      return livenessContract.connect(signer);
     }
 
-    return opcodeTestContract;
+    return livenessContract;
   }
 
   public getL1AccountManager(): AccountManager {

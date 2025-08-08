@@ -169,7 +169,9 @@ func (f FromAccessors) String() string {
 func (f FromAccessors) Split(_ *wizard.CompiledIOP, from, to int) ifaces.Column {
 
 	if from >= len(f.Accessors) {
-		return NewConstantColExt(f.Padding, to-from)
+		// The reason we don't want to remove the size from the name here is that
+		// these columns tend to only exist as compilation artefacts.
+		return NewConstantColExt(f.Padding, to-from, "")
 	}
 
 	var subAccessors = f.Accessors[from:]

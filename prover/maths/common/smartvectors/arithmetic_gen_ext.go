@@ -69,7 +69,7 @@ func processOperatorExt(op operator, coeffs []int, svecs []SmartVector, p ...mem
 
 	// Special-case : if the operation is a product and the constRes is
 	// zero, we can early return zero ignoring the rest.
-	if _, ok := op.(productOp); ok && constRes != nil && constRes.val.IsZero() {
+	if _, ok := op.(productOp); ok && constRes != nil && constRes.Value.IsZero() {
 		return constRes
 	}
 
@@ -87,10 +87,10 @@ func processOperatorExt(op operator, coeffs []int, svecs []SmartVector, p ...mem
 	if matchedWindow > 0 && matchedConst > 0 {
 		switch w := windowRes.(type) {
 		case *PaddedCircularWindowExt:
-			op.constTermExtIntoVecExt(w.window, &constRes.val)
-			op.constTermExtIntoConstExt(&w.paddingVal, &constRes.val)
+			op.constTermExtIntoVecExt(w.Window_, &constRes.Value)
+			op.constTermExtIntoConstExt(&w.PaddingVal_, &constRes.Value)
 		case *RegularExt:
-			op.constTermExtIntoVecExt(*w, &constRes.val)
+			op.constTermExtIntoVecExt(*w, &constRes.Value)
 		}
 	}
 
@@ -114,7 +114,7 @@ func processOperatorExt(op operator, coeffs []int, svecs []SmartVector, p ...mem
 	case matchedRegular+matchedConst == totalToMatch:
 		// In this case, there are no windowed in the list. This means we only
 		// need to merge the const one into the regular one before returning
-		op.constTermExtIntoVecExt(regularRes.RegularExt, &constRes.val)
+		op.constTermExtIntoVecExt(regularRes.RegularExt, &constRes.Value)
 		return regularRes
 	default:
 
@@ -135,16 +135,16 @@ func processOperatorExt(op operator, coeffs []int, svecs []SmartVector, p ...mem
 
 		// The windows rolls over
 		if interval.DoesWrapAround() {
-			op.vecTermExtIntoVecExt(regvec[:interval.Stop()], windowRes.window[length-interval.Start():])
-			op.vecTermExtIntoVecExt(regvec[interval.Start():], windowRes.window[:length-interval.Start()])
-			op.constTermExtIntoVecExt(regvec[interval.Stop():interval.Start()], &windowRes.paddingVal)
+			op.vecTermExtIntoVecExt(regvec[:interval.Stop()], windowRes.Window_[length-interval.Start():])
+			op.vecTermExtIntoVecExt(regvec[interval.Start():], windowRes.Window_[:length-interval.Start()])
+			op.constTermExtIntoVecExt(regvec[interval.Stop():interval.Start()], &windowRes.PaddingVal_)
 			return regularRes
 		}
 
 		// Else, no roll-over
-		op.vecTermExtIntoVecExt(regvec[interval.Start():interval.Stop()], windowRes.window)
-		op.constTermExtIntoVecExt(regvec[:interval.Start()], &windowRes.paddingVal)
-		op.constTermExtIntoVecExt(regvec[interval.Stop():], &windowRes.paddingVal)
+		op.vecTermExtIntoVecExt(regvec[interval.Start():interval.Stop()], windowRes.Window_)
+		op.constTermExtIntoVecExt(regvec[:interval.Start()], &windowRes.PaddingVal_)
+		op.constTermExtIntoVecExt(regvec[interval.Stop():], &windowRes.PaddingVal_)
 		return regularRes
 	}
 }
@@ -157,11 +157,11 @@ func processConstOnlyExt(op operator, svecs []SmartVector, coeffs []int) (constR
 		if cnst, ok := svec.(*ConstantExt); ok {
 			if numMatches < 1 {
 				// First one, no need to add it into constVal since constVal is zero
-				op.constExtIntoTermExt(&constVal, &cnst.val, coeffs[i])
+				op.constExtIntoTermExt(&constVal, &cnst.Value, coeffs[i])
 				numMatches++
 				continue
 			}
-			op.constExtIntoConstExt(&constVal, &cnst.val, coeffs[i])
+			op.constExtIntoConstExt(&constVal, &cnst.Value, coeffs[i])
 			numMatches++
 		}
 	}
@@ -170,5 +170,5 @@ func processConstOnlyExt(op operator, svecs []SmartVector, coeffs []int) (constR
 		return nil, 0
 	}
 
-	return &ConstantExt{val: constVal, length: svecs[0].Len()}, numMatches
+	return &ConstantExt{Value: constVal, length: svecs[0].Len()}, numMatches
 }

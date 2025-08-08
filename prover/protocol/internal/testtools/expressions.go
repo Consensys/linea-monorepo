@@ -16,12 +16,11 @@ var (
 	// to have a space to be defined in. Without it, it would be impossible
 	// to do anything with the columns: shifting or calling String() would
 	// panic.
-	_comp   = wizard.NewCompiledIOP()
-	columnA = _comp.InsertColumn(0, "A", 8, column.Committed)
-	columnB = _comp.InsertColumn(0, "B", 8, column.Committed)
-	columnC = _comp.InsertColumn(0, "C", 8, column.Committed)
-
-	coinCoin = coin.Info{Name: "coin", Type: coin.FieldExt, Round: 1}
+	_comp    = wizard.NewCompiledIOP()
+	columnA  = _comp.InsertColumn(0, "A", 8, column.Committed)
+	columnB  = _comp.InsertColumn(0, "B", 8, column.Committed)
+	columnC  = _comp.InsertColumn(0, "C", 8, column.Committed)
+	coinCoin = coin.NewInfo("coinName", coin.FieldExt, 1)
 )
 
 // ExpressionTestcase can be used to generate a global constraint
@@ -484,8 +483,8 @@ func (etc *ExpressionTestcase) Define(comp *wizard.CompiledIOP) {
 		case coin.Info:
 			// the coin is inserted at round 1. Since there is only one coin
 			// we already know which one is needed.
-			if !comp.Coins.Exists("coin") {
-				comp.InsertCoin(1, "coin", coin.FieldExt)
+			if !comp.Coins.Exists(coinCoin.Name) {
+				comp.InsertCoin(1, coinCoin.Name, coinCoin.Type)
 			}
 			round = max(round, 1)
 
@@ -502,6 +501,10 @@ func (etc *ExpressionTestcase) Define(comp *wizard.CompiledIOP) {
 		vari, isVar := e.Operator.(sym.Variable)
 		if !isVar {
 			return e.SameWithNewChildren(children)
+		}
+
+		if coin, isCoin := vari.Metadata.(coin.Info); isCoin {
+			return sym.NewVariable(coin)
 		}
 
 		col, isCol := vari.Metadata.(ifaces.Column)

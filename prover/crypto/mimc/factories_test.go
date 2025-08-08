@@ -1,6 +1,5 @@
 package mimc
 
-/*TODO@yao
 import (
 	"testing"
 
@@ -100,4 +99,3 @@ func TestMiMCFactories(t *testing.T) {
 		}
 	}
 }
-*/

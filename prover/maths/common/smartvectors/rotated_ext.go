@@ -57,7 +57,7 @@ func (r *RotatedExt) Len() int {
 
 // Returns a particular element of the vector
 func (r *RotatedExt) GetBase(n int) (field.Element, error) {
-	return field.Zero(), fmt.Errorf(conversionError)
+	return field.Zero(), errConversion
 }
 
 // Returns a particular element of the vector
@@ -141,7 +141,7 @@ func (r *RotatedExt) DeepCopy() SmartVector {
 }
 
 func (r *RotatedExt) WriteInSlice(s []field.Element) {
-	panic(conversionError)
+	panic(errConversion)
 }
 
 func (r *RotatedExt) WriteInSliceExt(s []fext.Element) {
@@ -161,11 +161,11 @@ func rotatedAsRegularExt(r *RotatedExt) *RegularExt {
 }
 
 func (r *RotatedExt) IntoRegVecSaveAlloc() []field.Element {
-	panic(conversionError)
+	panic(errConversion)
 }
 
 func (r *RotatedExt) IntoRegVecSaveAllocBase() ([]field.Element, error) {
-	return nil, fmt.Errorf(conversionError)
+	return nil, errConversion
 }
 
 func (r *RotatedExt) IntoRegVecSaveAllocExt() []fext.Element {
@@ -202,8 +202,8 @@ func SoftRotateExt(v SmartVector, offset int) SmartVector {
 		return NewRotatedExt(casted.v.RegularExt, utils.PositiveMod(offset+casted.offset, v.Len()))
 	case *PaddedCircularWindowExt:
 		return NewPaddedCircularWindowExt(
-			casted.window,
-			casted.paddingVal,
+			casted.Window_,
+			casted.PaddingVal_,
 			utils.PositiveMod(casted.offset+offset, casted.Len()),
 			casted.Len(),
 		)

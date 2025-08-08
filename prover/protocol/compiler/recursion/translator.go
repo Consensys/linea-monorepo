@@ -24,7 +24,7 @@ func addPrefixToID[T ~string](prefix string, id T) T {
 }
 
 // AddPrecomputedColumn inserts a precomputed column. The inserted column is not
-// fakes and actually features a precomputed value. The inserted column retains
+// a fake one and actually features a precomputed value. The inserted column retains
 // the same status as the original one.
 func (comp *compTranslator) AddPrecomputed(srcComp *wizard.CompiledIOP, col ifaces.Column) ifaces.Column {
 
@@ -72,7 +72,7 @@ func (comp *compTranslator) AddColumnAtRound(col ifaces.Column, fake bool, round
 	prefixedName := addPrefixToID(comp.Prefix, col.GetColID())
 
 	if fake {
-		return &FakeColumn{ID: prefixedName}
+		return &column.FakeColumn{ID: prefixedName}
 	}
 
 	if _, isVCol := col.(verifiercol.VerifierCol); isVCol {
@@ -91,7 +91,7 @@ func (comp *compTranslator) AddColumnVecVec(cols collection.VecVec[ifaces.ColID]
 
 	res := collection.NewVecVec[ifaces.ColID]()
 
-	for r, vec := range cols.Inner() {
+	for r, vec := range cols.GetInner() {
 		for _, c := range vec {
 
 			prefixedName := addPrefixToID(comp.Prefix, c)
@@ -118,14 +118,9 @@ func (comp *compTranslator) TranslateColumnSet(cols map[ifaces.ColID]struct{}) m
 // AddUniEval returns a copied UnivariateEval query with fake columns
 // and names.
 func (comp *compTranslator) AddUniEval(round int, q query.UnivariateEval) query.UnivariateEval {
-
-	res := query.UnivariateEval{
-		Pols:    comp.AddColumnList(q.Pols, true, round),
-		QueryID: addPrefixToID(comp.Prefix, q.QueryID),
-	}
-
-	comp.Target.QueriesParams.AddToRound(round, res.QueryID, res)
-	return res
+	queryID := addPrefixToID(comp.Prefix, q.QueryID)
+	pols := comp.AddColumnList(q.Pols, true, round)
+	return comp.Target.InsertUnivariate(round, queryID, pols)
 }
 
 // AddCoin adds a random coin with a prefixed name in the compiled IOP
@@ -135,8 +130,6 @@ func (comp *compTranslator) AddCoinAtRound(info coin.Info, round int) coin.Info 
 	case coin.IntegerVec:
 		return comp.Target.InsertCoin(round, name, info.Type, info.Size, info.UpperBound)
 	case coin.Field:
-		return comp.Target.InsertCoin(round, name, info.Type)
-	case coin.FieldExt:
 		return comp.Target.InsertCoin(round, name, info.Type)
 	default:
 		panic("unknown coin type")

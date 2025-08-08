@@ -52,7 +52,7 @@ type Recursion struct {
 	// PlonkCtx is the [PlonkInWizard] context that we use to verify the
 	// non-vortex part of the input wizard proof. Namely, it runs all its
 	// verifier actions and the corresponding circuit assignments.
-	PlonkCtx *plonkinternal.CompilationCtx
+	PlonkCtx plonkinternal.PlonkInWizardProverAction
 
 	// PcsCtx represents the compilation context to pass to the self-recursion
 	// context. For clarity, this is not the compilation context of the
@@ -73,14 +73,16 @@ type Witness struct {
 	FinalFS field.Element
 
 	// CommittedMatrices are the list of the Reed-Solomon matrices
-	// for each committed round. They are needed by the prover of
-	// the prover of the self-recursion.
+	// for each committed round. They are needed by the prover of the self-recursion.
 	CommittedMatrices []vCom.EncodedMatrix
 
 	// SisHashes is the list of the SIS hashes of the vortex columns
-	// for each committed round. They are needed by the prover of
-	// the prover of the self-recursion.
+	// for each committed round. They are needed by the prover of the self-recursion.
 	SisHashes [][]field.Element
+
+	// MimcHashes is the list of the Vortex columns that are not
+	// hashed using SIS. They are needed by the prover of the self-recursion.
+	MimcHashes [][]field.Element
 
 	// Trees are the list of the commitment merkle trees. They are needed
 	// by the prover of the self-recursion.
@@ -129,7 +131,7 @@ type Parameters struct {
 // DefineRecursionOf builds a recursion sub-circuit into 'comp' for verifying
 // 'inputComp' and returns the recursion context. 'inputComp' is expected to
 // be compiled with the [vortex.Compile] compiler with the options
-// [MarkAsSelfRecursed] and without the option [ReplaceByMiMC].
+// [PremarkAsSelfRecursed].
 //
 // To assign the recursion, use [Assign] and make sure the input compiled
 // IOP is run using [wizard.RunProverUntil] passing the return value of
@@ -187,11 +189,11 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 	rec := &Recursion{
 		Name:             params.Name,
 		PcsCtx:           vortexCtxs,
-		PlonkCtx:         plonkCtx,
+		PlonkCtx:         plonkCtx.GetPlonkProverAction(),
 		InputCompiledIOP: inputComp,
 	}
 
-	comp.RegisterVerifierAction(0, &ConsistencyCheck{Ctx: rec})
+	comp.RegisterVerifierAction(0, &ConsistencyCheck{Ctx: rec, PIs: plonkCtx.Columns.PI})
 	comp.RegisterProverAction(1, AssignVortexUAlpha{Ctxs: rec})
 	comp.RegisterProverAction(2, AssignVortexOpenedCols{Ctxs: rec})
 
@@ -290,10 +292,14 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 			if round < len(wit[i].Trees) && wit[i].Trees[round] != nil {
 				run.State.InsertNew(r.PcsCtx[i].MerkleTreeName(round), wit[i].Trees[round])
 			}
+
+			if round < len(wit[i].MimcHashes) && wit[i].MimcHashes[round] != nil {
+				run.State.InsertNew(r.PcsCtx[i].MIMCHashName(round), wit[i].MimcHashes[round])
+			}
 		}
 	}
 
-	r.PlonkCtx.GetPlonkProverAction().Run(run, fullWitnesses)
+	r.PlonkCtx.Run(run, fullWitnesses)
 }
 
 // GetPublicInputOfInstance relative to one recursed module.
@@ -324,7 +330,7 @@ func VortexQueryRound(comp *wizard.CompiledIOP) int {
 	return comp.QueriesParams.Round(query.QueryID)
 }
 
-// createNewPcsCtx creates a mirror for a vortex compilation context in to
+// createNewPcsCtx creates a mirror for a vortex compilation context into
 // comp. The mirror has all its commitments defined at the initial round
 // and the "vortex proof" columns are inserted starting at round 1 (after
 // vortex.alpha has been sampled).
@@ -333,32 +339,33 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 	srcVortexCtx := srcComp.PcsCtxs.(*vortex.Ctx)
 
 	if !srcVortexCtx.IsSelfrecursed {
-		utils.Panic("the input vortex ctx is expected to be selfrecursed. Please make sure the input comp has been last compiled by Vortex with the option [vortex.MarkAsSelfRecursed]")
+		utils.Panic("the input vortex ctx is expected to be selfrecursed. Please make sure the input comp has been last compiled by Vortex with the option [vortex.PremarkAsSelfRecursed]")
 	}
 
 	dstVortexCtx := &vortex.Ctx{
+		// Direct Copy
 		RunStateNamePrefix:    translator.Prefix,
 		BlowUpFactor:          srcVortexCtx.BlowUpFactor,
 		ApplySISHashThreshold: srcVortexCtx.ApplySISHashThreshold,
 		CommittedRowsCount:    srcVortexCtx.CommittedRowsCount,
+		CommittedRowsCountSIS: srcVortexCtx.CommittedRowsCountSIS,
 		NumCols:               srcVortexCtx.NumCols,
 		MaxCommittedRound:     srcVortexCtx.MaxCommittedRound,
 		NumOpenedCol:          srcVortexCtx.NumOpenedCol,
 		VortexParams:          srcVortexCtx.VortexParams,
 		SisParams:             srcVortexCtx.SisParams,
 		RoundStatus:           srcVortexCtx.RoundStatus,
-		// Although the srcVor
-		IsSelfrecursed:                 true,
-		CommitmentsByRounds:            translator.AddColumnVecVec(srcVortexCtx.CommitmentsByRounds),
-		PolynomialsTouchedByTheQuery:   translator.TranslateColumnSet(srcVortexCtx.PolynomialsTouchedByTheQuery),
-		ShadowCols:                     translator.TranslateColumnSet(srcVortexCtx.ShadowCols),
-		Query:                          translator.AddUniEval(0, srcVortexCtx.Query),
-		AddMerkleRootToPublicInputsOpt: srcVortexCtx.AddMerkleRootToPublicInputsOpt,
-		AddPrecomputedMerkleRootToPublicInputsOpt: srcVortexCtx.AddPrecomputedMerkleRootToPublicInputsOpt,
-	}
 
-	if dstVortexCtx.ApplySISHashThreshold > 0 {
-		panic("SIS hashes are not yet supported in recursion")
+		// Copy via the translator
+		IsSelfrecursed:                            true,
+		CommitmentsByRounds:                       translator.AddColumnVecVec(srcVortexCtx.CommitmentsByRounds),
+		CommitmentsByRoundsSIS:                    translator.AddColumnVecVec(srcVortexCtx.CommitmentsByRoundsSIS),
+		CommitmentsByRoundsNonSIS:                 translator.AddColumnVecVec(srcVortexCtx.CommitmentsByRoundsNonSIS),
+		PolynomialsTouchedByTheQuery:              translator.TranslateColumnSet(srcVortexCtx.PolynomialsTouchedByTheQuery),
+		ShadowCols:                                translator.TranslateColumnSet(srcVortexCtx.ShadowCols),
+		Query:                                     translator.AddUniEval(0, srcVortexCtx.Query),
+		AddMerkleRootToPublicInputsOpt:            srcVortexCtx.AddMerkleRootToPublicInputsOpt,
+		AddPrecomputedMerkleRootToPublicInputsOpt: srcVortexCtx.AddPrecomputedMerkleRootToPublicInputsOpt,
 	}
 
 	translator.Target.QueriesParams.MarkAsIgnored(dstVortexCtx.Query.QueryID)
@@ -386,8 +393,10 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 	dstVortexCtx.Items.Alpha = translator.AddCoinAtRound(srcVortexCtx.Items.Alpha, 1)
 	dstVortexCtx.Items.Ualpha = translator.AddColumnAtRound(srcVortexCtx.Items.Ualpha, false, 1)
 	dstVortexCtx.Items.Q = translator.AddCoinAtRound(srcVortexCtx.Items.Q, 2)
-	dstVortexCtx.Items.OpenedColumns = translator.AddColumnList(srcVortexCtx.Items.OpenedColumns, false, 2)
 	dstVortexCtx.Items.MerkleProofs = translator.AddColumnAtRound(srcVortexCtx.Items.MerkleProofs, false, 2)
+	dstVortexCtx.Items.OpenedColumns = translator.AddColumnList(srcVortexCtx.Items.OpenedColumns, false, 2)
+	dstVortexCtx.Items.OpenedSISColumns = translator.AddColumnList(srcVortexCtx.Items.OpenedSISColumns, false, 2)
+	dstVortexCtx.Items.OpenedNonSISColumns = translator.AddColumnList(srcVortexCtx.Items.OpenedNonSISColumns, false, 2)
 
 	return dstVortexCtx
 }

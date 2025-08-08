@@ -5,7 +5,6 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -17,10 +16,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/merkle"
-	mimcW "github.com/consensys/linea-monorepo/prover/protocol/dedicated/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -29,21 +27,29 @@ import (
 // Specifies the column opening phase
 func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
 	// Registers the limb expanded version of the preimages
-	ctx.colSelection()
-	ctx.linearHashAndMerkle()
+	ctx.ColSelection()
+	ctx.LinearHashAndMerkle()
 	ctx.RootHashGlue()
 	ctx.GluePositions()
-	ctx.registersPreimageLimbs()
-	ctx.collapsingPhase()
-	ctx.foldPhase()
+	// We need this only when there are non zero number
+	// of SIS rounds
+	if ctx.Columns.ConcatenatedDhQ != nil {
+		ctx.RegistersSisPreimageLimbs()
+	}
+	ctx.CollapsingPhase()
+	// The fold phase is only needed if there are non-zero
+	// number of SIS rounds
+	if ctx.Columns.ConcatenatedDhQ != nil {
+		ctx.FoldPhase()
+	}
 }
 
-// Registers the preimage limbs
+// Registers the preimage limbs for the SIS rounds.
 //
-// Get the preimages (preimage0,preimage1,…,preimaget−1)And range-check
+// Get the preimages (preimage0,preimage1,…,preimaget−1) And range-check
 // each of them on the ring-SIS bound
-func (ctx *SelfRecursionCtx) registersPreimageLimbs() {
-	wholes := ctx.Columns.WholePreimages
+func (ctx *SelfRecursionCtx) RegistersSisPreimageLimbs() {
+	wholes := ctx.Columns.WholePreimagesSis
 	sisParams := ctx.VortexCtx.SisParams
 
 	limbs := make([]ifaces.Column, len(wholes))
@@ -51,12 +57,12 @@ func (ctx *SelfRecursionCtx) registersPreimageLimbs() {
 	limbSize := wholes[0].Size() * sisParams.NumLimbs()
 
 	for i := range limbs {
-		limbs[i] = ctx.comp.InsertCommit(
+		limbs[i] = ctx.Comp.InsertCommit(
 			round,
 			ctx.limbExpandedPreimageName(wholes[i].GetColID()),
 			limbSize,
 		)
-		ctx.comp.InsertRange(
+		ctx.Comp.InsertRange(
 			round,
 			ifaces.QueryIDf("SHORTNESS_%v", limbs[i].GetColID()),
 			limbs[i],
@@ -64,47 +70,47 @@ func (ctx *SelfRecursionCtx) registersPreimageLimbs() {
 		)
 	}
 
-	ctx.Columns.Preimages = limbs
+	ctx.Columns.PreimagesSis = limbs
 
-	ctx.comp.RegisterProverAction(round, &preimageLimbsProverAction{
-		ctx:   ctx,
-		limbs: limbs,
+	ctx.Comp.RegisterProverAction(round, &PreimageLimbsProverAction{
+		Ctx:   ctx,
+		Limbs: limbs,
 	})
 
 }
 
-type preimageLimbsProverAction struct {
-	ctx   *SelfRecursionCtx
-	limbs []ifaces.Column
+type PreimageLimbsProverAction struct {
+	Ctx   *SelfRecursionCtx
+	Limbs []ifaces.Column
 }
 
-func (a *preimageLimbsProverAction) Run(run *wizard.ProverRuntime) {
-	parallel.Execute(len(a.limbs), func(start, end int) {
+func (a *PreimageLimbsProverAction) Run(run *wizard.ProverRuntime) {
+	parallel.Execute(len(a.Limbs), func(start, end int) {
 		for i := start; i < end; i++ {
-			whole := a.ctx.Columns.WholePreimages[i].GetColAssignment(run)
+			whole := a.Ctx.Columns.WholePreimagesSis[i].GetColAssignment(run)
 			whole_ := smartvectors.IntoRegVec(whole)
-			expanded_ := a.ctx.SisKey().LimbSplit(whole_)
+			expanded_ := a.Ctx.SisKey().LimbSplit(whole_)
 			expanded := smartvectors.NewRegular(expanded_)
-			run.AssignColumn(a.limbs[i].GetColID(), expanded)
+			run.AssignColumn(a.Limbs[i].GetColID(), expanded)
 		}
 	})
 }
 
-type colSelectionProverAction struct {
-	ctx       *SelfRecursionCtx
-	uAlphaQID ifaces.ColID
+type ColSelectionProverAction struct {
+	Ctx       *SelfRecursionCtx
+	UAlphaQID ifaces.ColID
 }
 
-func (a *colSelectionProverAction) Run(run *wizard.ProverRuntime) {
-	q := run.GetRandomCoinIntegerVec(a.ctx.Coins.Q.Name)
-	uAlpha := smartvectors.IntoRegVec(run.GetColumn(a.ctx.Columns.Ualpha.GetColID()))
+func (a *ColSelectionProverAction) Run(run *wizard.ProverRuntime) {
+	q := run.GetRandomCoinIntegerVec(a.Ctx.Coins.Q.Name)
+	uAlpha := smartvectors.IntoRegVec(run.GetColumn(a.Ctx.Columns.Ualpha.GetColID()))
 
-	uAlphaQ := make([]field.Element, 0, a.ctx.Columns.UalphaQ.Size())
+	uAlphaQ := make([]field.Element, 0, a.Ctx.Columns.UalphaQ.Size())
 	for _, qi := range q {
 		uAlphaQ = append(uAlphaQ, uAlpha[qi])
 	}
 
-	run.AssignColumn(a.uAlphaQID, smartvectors.NewRegular(uAlphaQ))
+	run.AssignColumn(a.UAlphaQID, smartvectors.NewRegular(uAlphaQ))
 }
 
 // Declare the queries justifying the column selection:
@@ -117,28 +123,28 @@ func (a *colSelectionProverAction) Run(run *wizard.ProverRuntime) {
 //
 //   - Performs the following lookup constraint:
 //     `(q,Uα,q)⊂(I,Uα)`
-func (ctx *SelfRecursionCtx) colSelection() {
+func (ctx *SelfRecursionCtx) ColSelection() {
 
 	// Build the column q, (auto-assigned)
-	ctx.Columns.Q = verifiercol.NewFromIntVecCoin(ctx.comp, ctx.Coins.Q)
+	ctx.Columns.Q = verifiercol.NewFromIntVecCoin(ctx.Comp, ctx.Coins.Q)
 
 	// Declaration round of the coin Q
 	roundQ := ctx.Columns.Q.Round()
 
-	ctx.Columns.UalphaQ = ctx.comp.InsertCommit(
+	ctx.Columns.UalphaQ = ctx.Comp.InsertCommit(
 		roundQ,
 		ctx.uAlphaQName(),
 		ctx.Coins.Q.Size,
 	)
 
 	// And registers the assignment function
-	ctx.comp.RegisterProverAction(roundQ, &colSelectionProverAction{
-		ctx:       ctx,
-		uAlphaQID: ctx.Columns.UalphaQ.GetColID(),
+	ctx.Comp.RegisterProverAction(roundQ, &ColSelectionProverAction{
+		Ctx:       ctx,
+		UAlphaQID: ctx.Columns.UalphaQ.GetColID(),
 	})
 
 	// Declare an inclusion query to finalize the selection check
-	ctx.comp.InsertInclusion(
+	ctx.Comp.InsertInclusion(
 		roundQ,
 		ctx.selectQInclusion(),
 		[]ifaces.Column{
@@ -152,134 +158,23 @@ func (ctx *SelfRecursionCtx) colSelection() {
 	)
 }
 
-type linearHashMerkleProverAction struct {
-	ctx                *SelfRecursionCtx
-	concatDhQSize      int
-	leavesSize         int
-	leavesSizeUnpadded int
+type CollapsingProverAction struct {
+	Ctx     *SelfRecursionCtx
+	EDualID ifaces.ColID
+	SisKey  *ringsis.Key
 }
 
-func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
-	openingIndices := run.GetRandomCoinIntegerVec(a.ctx.Coins.Q.Name)
-	concatDhQ := make([]field.Element, a.leavesSizeUnpadded*a.ctx.VortexCtx.SisParams.OutputSize())
-	linearLeaves := make([]field.Element, a.leavesSizeUnpadded)
-	merkleLeaves := make([]field.Element, a.leavesSizeUnpadded)
-	merklePositions := make([]field.Element, a.leavesSizeUnpadded)
-	merkleRoots := make([]field.Element, a.leavesSizeUnpadded)
-
-	hashSize := a.ctx.VortexCtx.SisParams.OutputSize()
-	numOpenedCol := a.ctx.VortexCtx.NbColsToOpen()
-	// For some reason, using a.ctx.comp.NumRounds() here does not work well here.
-	totalNumRounds := a.ctx.VortexCtx.MaxCommittedRound
-	committedRound := 0
-
-	if a.ctx.VortexCtx.IsNonEmptyPrecomputed() {
-		rootPrecomp := a.ctx.Columns.precompRoot.GetColAssignment(run).Get(0)
-		precompColSisHash := a.ctx.VortexCtx.Items.Precomputeds.DhWithMerkle
-		for i, selectedCol := range openingIndices {
-			srcStart := selectedCol * hashSize
-			destStart := i * hashSize
-			sisHash := precompColSisHash[srcStart : srcStart+hashSize]
-			copy(concatDhQ[destStart:destStart+hashSize], sisHash)
-			leaf := mimc.HashVec(sisHash)
-			insertAt := i
-			linearLeaves[insertAt] = leaf
-			merkleLeaves[insertAt] = leaf
-			merkleRoots[insertAt] = rootPrecomp
-			merklePositions[insertAt].SetInt64(int64(selectedCol))
-		}
-		committedRound++
-		totalNumRounds++
-	}
-
-	for round := 0; round <= totalNumRounds; round++ {
-		colSisHashName := a.ctx.VortexCtx.SisHashName(round)
-		colSisHashSV, found := run.State.TryGet(colSisHashName)
-		if !found {
-			continue
-		}
-
-		rooth := a.ctx.Columns.Rooth[round].GetColAssignment(run).Get(0)
-		colSisHash := colSisHashSV.([]field.Element)
-
-		for i, selectedCol := range openingIndices {
-			srcStart := selectedCol * hashSize
-			destStart := committedRound*numOpenedCol*hashSize + i*hashSize
-			sisHash := colSisHash[srcStart : srcStart+hashSize]
-			copy(concatDhQ[destStart:destStart+hashSize], sisHash)
-			leaf := mimc.HashVec(sisHash)
-			insertAt := committedRound*numOpenedCol + i
-			linearLeaves[insertAt] = leaf
-			merkleLeaves[insertAt] = leaf
-			merkleRoots[insertAt] = rooth
-			merklePositions[insertAt].SetInt64(int64(selectedCol))
-		}
-
-		run.State.TryDel(colSisHashName)
-		committedRound++
-	}
-
-	numCommittedRound := a.ctx.VortexCtx.NumCommittedRounds()
-	if a.ctx.VortexCtx.IsNonEmptyPrecomputed() {
-		numCommittedRound += 1
-	}
-
-	if committedRound != numCommittedRound {
-		utils.Panic("Committed rounds %v does not match the total number of committed rounds %v", committedRound, numCommittedRound)
-	}
-
-	// Assign columns using IDs from ctx.Columns
-	run.AssignColumn(a.ctx.Columns.ConcatenatedDhQ.GetColID(), smartvectors.RightZeroPadded(concatDhQ, a.concatDhQSize))
-	run.AssignColumn(a.ctx.Columns.MerkleProofsLeaves.GetColID(), smartvectors.RightZeroPadded(merkleLeaves, a.leavesSize))
-	run.AssignColumn(a.ctx.Columns.MerkleProofPositions.GetColID(), smartvectors.RightZeroPadded(merklePositions, a.leavesSize))
-	run.AssignColumn(a.ctx.Columns.MerkleRoots.GetColID(), smartvectors.RightZeroPadded(merkleRoots, a.leavesSize))
-}
-
-func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
-	roundQ := ctx.Columns.Q.Round()
-	numRound := ctx.VortexCtx.NumCommittedRounds()
-	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
-		numRound += 1
-	}
-	concatDhQSizeUnpadded := ctx.VortexCtx.SisParams.OutputSize() * ctx.VortexCtx.NbColsToOpen() * numRound
-	concatDhQSize := utils.NextPowerOfTwo(concatDhQSizeUnpadded)
-	leavesSizeUnpadded := ctx.VortexCtx.NbColsToOpen() * numRound
-	leavesSize := utils.NextPowerOfTwo(leavesSizeUnpadded)
-
-	ctx.Columns.ConcatenatedDhQ = ctx.comp.InsertCommit(roundQ, ctx.concatenatedDhQ(), concatDhQSize)
-	ctx.Columns.MerkleProofsLeaves = ctx.comp.InsertCommit(roundQ, ctx.merkleLeavesName(), leavesSize)
-	ctx.Columns.MerkleProofPositions = ctx.comp.InsertCommit(roundQ, ctx.merklePositionssName(), leavesSize)
-	ctx.Columns.MerkleRoots = ctx.comp.InsertCommit(roundQ, ctx.merkleRootsName(), leavesSize)
-
-	ctx.comp.RegisterProverAction(roundQ, &linearHashMerkleProverAction{
-		ctx:                ctx,
-		concatDhQSize:      concatDhQSize,
-		leavesSize:         leavesSize,
-		leavesSizeUnpadded: leavesSizeUnpadded,
-	})
-
-	depth := utils.Log2Ceil(ctx.VortexCtx.NumEncodedCols())
-	merkle.MerkleProofCheck(ctx.comp, ctx.merkleProofVerificationName(), depth, leavesSizeUnpadded,
-		ctx.Columns.MerkleProofs, ctx.Columns.MerkleRoots, ctx.Columns.MerkleProofsLeaves, ctx.Columns.MerkleProofPositions)
-	mimcW.CheckLinearHash(ctx.comp, ctx.linearHashVerificationName(), ctx.Columns.ConcatenatedDhQ,
-		ctx.VortexCtx.SisParams.OutputSize(), leavesSizeUnpadded, ctx.Columns.MerkleProofsLeaves)
-}
-
-type collapsingProverAction struct {
-	ctx     *SelfRecursionCtx
-	eDualID ifaces.ColID
-	sisKey  *ringsis.Key
-}
-
-func (a *collapsingProverAction) Run(run *wizard.ProverRuntime) {
-	collapsedPreimage := a.ctx.Columns.PreimagesCollapse.GetColAssignment(run)
-	sisKey := a.sisKey
+func (a *CollapsingProverAction) Run(run *wizard.ProverRuntime) {
+	collapsedPreimage := a.Ctx.Columns.PreimagesSisCollapse.GetColAssignment(run)
+	sisKey := a.SisKey
 
 	subDuals := []smartvectors.SmartVector{}
 	roundStartAt := 0
 
-	if a.ctx.VortexCtx.IsNonEmptyPrecomputed() {
-		numPrecomputeds := len(a.ctx.VortexCtx.Items.Precomputeds.PrecomputedColums)
+	// We add precomputed columns in the calculation only if
+	// sis is applied to the precomputed columns
+	if a.Ctx.VortexCtx.IsNonEmptyPrecomputed() && a.Ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+		numPrecomputeds := len(a.Ctx.VortexCtx.Items.Precomputeds.PrecomputedColums)
 		if numPrecomputeds == 0 {
 			utils.Panic("The number of precomputeds must be non-zero!")
 		}
@@ -292,7 +187,7 @@ func (a *collapsingProverAction) Run(run *wizard.ProverRuntime) {
 		roundStartAt += numPrecomputeds
 	}
 
-	for _, comsInRoundI := range a.ctx.VortexCtx.CommitmentsByRounds.Inner() {
+	for _, comsInRoundI := range a.Ctx.VortexCtx.CommitmentsByRoundsSIS.GetInner() {
 		if len(comsInRoundI) == 0 {
 			continue
 		}
@@ -305,30 +200,31 @@ func (a *collapsingProverAction) Run(run *wizard.ProverRuntime) {
 		roundStartAt += len(comsInRoundI)
 	}
 
-	colPowT := accessors.NewExponent(a.ctx.Coins.Collapse, a.ctx.VortexCtx.NbColsToOpen()).GetVal(run)
-	eDual := smartvectors.LinearCombination(subDuals, colPowT)
+	colPowT := accessors.NewExponent(a.Ctx.Coins.Collapse, a.Ctx.VortexCtx.NbColsToOpen()).GetVal(run)
+	eDual := smartvectors.PolyEval(subDuals, colPowT)
 
-	run.AssignColumn(a.eDualID, eDual)
+	run.AssignColumn(a.EDualID, eDual)
+
 }
 
-type collapsingVerifierAction struct {
-	uAlphaQEval  ifaces.Accessor
-	preImageEval ifaces.Accessor
+type CollapsingVerifierAction struct {
+	UAlphaQEval  ifaces.Accessor
+	PreImageEval ifaces.Accessor
 }
 
-func (a *collapsingVerifierAction) Run(run wizard.Runtime) error {
-	if a.uAlphaQEval.GetVal(run) != a.preImageEval.GetVal(run) {
-		l, r := a.uAlphaQEval.GetVal(run), a.preImageEval.GetVal(run)
+func (a *CollapsingVerifierAction) Run(run wizard.Runtime) error {
+	if a.UAlphaQEval.GetVal(run) != a.PreImageEval.GetVal(run) {
+		l, r := a.UAlphaQEval.GetVal(run), a.PreImageEval.GetVal(run)
 		return fmt.Errorf("consistency between u_alpha and the preimage: mismatch between uAlphaQEval=%v preimages=%v",
 			l.String(), r.String())
 	}
 	return nil
 }
 
-func (a *collapsingVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (a *CollapsingVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	api.AssertIsEqual(
-		a.uAlphaQEval.GetFrontendVariable(api, run),
-		a.preImageEval.GetFrontendVariable(api, run),
+		a.UAlphaQEval.GetFrontendVariable(api, run),
+		a.PreImageEval.GetFrontendVariable(api, run),
 	)
 }
 
@@ -345,31 +241,67 @@ Collapsing phase
 - Collapse all the preimages
   - PreimageCollapse := \sum_{i} P_{i} (collapse)^i
 */
-func (ctx *SelfRecursionCtx) collapsingPhase() {
+func (ctx *SelfRecursionCtx) CollapsingPhase() {
 
 	// starting one round after Q is sampled
 	round := ctx.Columns.Q.Round() + 1
 
 	// Sampling of r_collapse
-	ctx.Coins.Collapse = ctx.comp.InsertCoin(round, ctx.collapseCoin(), coin.FieldExt)
+	ctx.Coins.Collapse = ctx.Comp.InsertCoin(round, ctx.collapseCoin(), coin.Field)
 
 	// Declare the linear combination of the preimages by collapse coin
 	// aka, the collapsed preimage
-	ctx.Columns.PreimagesCollapse = expr_handle.RandLinCombCol(
-		ctx.comp,
-		accessors.NewFromCoin(ctx.Coins.Collapse),
-		ctx.Columns.Preimages,
-	)
+	// We need this only if there are
+	// non-zero number of SIS rounds
+	if ctx.Columns.ConcatenatedDhQ != nil {
+		ctx.Columns.PreimagesSisCollapse = expr_handle.RandLinCombCol(
+			ctx.Comp,
+			accessors.NewFromCoin(ctx.Coins.Collapse),
+			ctx.Columns.PreimagesSis,
+		)
+	}
 
 	// Consistency check between the collapsed preimage and UalphaQ
 	{
 		uAlphaQEval := functionals.CoeffEval(
-			ctx.comp,
+			ctx.Comp,
 			ctx.constencyUalphaQPreimageLeft(),
 			ctx.Coins.Collapse,
 			ctx.Columns.UalphaQ,
 		)
 
+		// The collapsed preimage for the non SIS rounds
+		// Computed only if there are non zero number of non SIS rounds
+		var (
+			// The random linear combination of the collapsed preimage
+			// for the non SIS rounds
+			preImageNonSisEval ifaces.Accessor
+			preImageSisEval    ifaces.Accessor
+			// offset denotes the running power of alpha in the BivariateEval for the
+			// sis round preimages
+			offset       = 0
+			preImageEval ifaces.Accessor
+		)
+		if len(ctx.MIMCMetaData.ToHashSizes) > 0 {
+			ctx.Columns.CollapsedPreimagesNonSis = expr_handle.RandLinCombCol(
+				ctx.Comp,
+				accessors.NewFromCoin(ctx.Coins.Collapse),
+				ctx.Columns.WholePreimagesNonSis,
+			)
+
+			preImageNonSisEval = functionals.CoeffEval(
+				ctx.Comp,
+				ctx.constencyUalphaQPreimageRight(),
+				ctx.Coins.Alpha,
+				ctx.Columns.CollapsedPreimagesNonSis,
+			)
+
+			for i := range ctx.MIMCMetaData.ToHashSizes {
+				// We add the number of polynomials per non SIS round
+				// to the offset
+				offset += ctx.MIMCMetaData.ToHashSizes[i]
+			}
+		}
 		/*
 			- The preimages are given in the form of several columns of the form:
 			  [limb0, limb1, ..., limbL-1, limb0, ... limbL-1, ...], each field element is represented by
@@ -381,82 +313,189 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 			- Then making the double sum for all elements in an opened column using alpha as a second
 			  evaluation point, we get a bivariate polynomial evaluation
 		*/
+		// We only compute the preImageSisEval if there are any SIS rounds
+		// and the concatenated DhQ is not nil
+		if ctx.Columns.ConcatenatedDhQ != nil {
+			preImageSisEval = functionals.EvalCoeffBivariate(
+				ctx.Comp,
+				ctx.constencyUalphaQPreimageRight(),
+				ctx.Columns.PreimagesSisCollapse,
+				accessors.NewConstant(field.NewElement(1<<ctx.SisKey().LogTwoBound)),
+				accessors.NewFromCoin(ctx.Coins.Alpha),
+				ctx.VortexCtx.SisParams.NumLimbs(),
+				ctx.Columns.WholePreimagesSis[0].Size(),
+			)
+		}
 
-		preImageEval := functionals.EvalCoeffBivariate(
-			ctx.comp,
-			ctx.constencyUalphaQPreimageRight(),
-			ctx.Columns.PreimagesCollapse,
-			accessors.NewConstant(field.NewElement(1<<ctx.SisKey().LogTwoBound)),
-			accessors.NewFromCoin(ctx.Coins.Alpha),
-			ctx.VortexCtx.SisParams.NumLimbs(),
-			ctx.Columns.WholePreimages[0].Size(),
-		)
+		// preImageEval := preimageNonSisEval + alpha^offset * preImageSisEval
+		if len(ctx.MIMCMetaData.ToHashSizes) > 0 && ctx.Columns.ConcatenatedDhQ != nil {
+			preImageEvalSymb := symbolic.Add(
+				preImageNonSisEval,
+				symbolic.Mul(
+					symbolic.Pow(
+						accessors.NewFromCoin(ctx.Coins.Alpha),
+						offset,
+					),
+					preImageSisEval,
+				),
+			)
+			preImageEval = accessors.NewFromExpression(preImageEvalSymb, fmt.Sprintf("PREIMAGE_EVAL_%v", ctx.SelfRecursionCnt))
+		} else if len(ctx.MIMCMetaData.ToHashSizes) > 0 && ctx.Columns.ConcatenatedDhQ == nil {
+			preImageEval = preImageNonSisEval
+		} else if len(ctx.MIMCMetaData.ToHashSizes) == 0 && ctx.Columns.ConcatenatedDhQ != nil {
+			preImageEval = preImageSisEval
+		} else {
+			utils.Panic("There are neither SIS nor non SIS round, this should not happen")
+		}
 
-		ctx.comp.RegisterVerifierAction(uAlphaQEval.Round(), &collapsingVerifierAction{
-			uAlphaQEval:  uAlphaQEval,
-			preImageEval: preImageEval,
+		ctx.Comp.RegisterVerifierAction(uAlphaQEval.Round(), &CollapsingVerifierAction{
+			UAlphaQEval:  uAlphaQEval,
+			PreImageEval: preImageEval,
 		})
 	}
 
-	sisDeg := ctx.VortexCtx.SisParams.OutputSize()
-	// Currently, only powers of two SIS degree are allowed
-	// (in practice, we restrict ourselves to pure power of two)
-	// lattices instances.
-	if !utils.IsPowerOfTwo(sisDeg) {
-		utils.Panic("Attempting to fold to a non-power of two size : %v", sisDeg)
-	}
-
-	// Compute the collapsed hashes
-	ctx.Columns.DhQCollapse = functionals.FoldOuter(
-		ctx.comp,
-		ctx.Columns.ConcatenatedDhQ,
-		accessors.NewFromCoin(ctx.Coins.Collapse),
-		ctx.Columns.ConcatenatedDhQ.Size()/sisDeg,
-	)
-
-	// sanity-check : the size of DhQCollapse must equal to sisDeg
-	if ctx.Columns.DhQCollapse.Size() != sisDeg {
-		utils.Panic("the size of DhQ (%v) collapse must equal to the SIS modulus degree (%v)", ctx.Columns.DhQCollapse.Size(), sisDeg)
-	}
-
-	//
-	// Merging the SIS keys
-	//
-
-	// Create an accessor for collapse^t, where t is the number of opened columns
-	collapsePowT := accessors.NewExponent(ctx.Coins.Collapse, ctx.VortexCtx.NbColsToOpen())
-
-	// since some of the Ah and Dh can be nil, we compactify the slice by
-	// only retaining the non-nil elements before sending it to the
-	// linear combination operator.
-	nonNilAh := []ifaces.Column{}
-	for _, ah := range ctx.Columns.Ah {
-		if ah != nil {
-			nonNilAh = append(nonNilAh, ah)
+	// The below code is only executed only if there are non-zero SIS rounds
+	if ctx.Columns.ConcatenatedDhQ != nil {
+		sisDeg := ctx.VortexCtx.SisParams.OutputSize()
+		// Currently, only powers of two SIS degree are allowed
+		// (in practice, we restrict ourselves to pure power of two)
+		// lattices instances.
+		if !utils.IsPowerOfTwo(sisDeg) {
+			utils.Panic("Attempting to fold to a non-power of two size : %v", sisDeg)
 		}
+
+		// Compute the collapsed hashes
+		ctx.Columns.DhQCollapse = functionals.FoldOuter(
+			ctx.Comp,
+			ctx.Columns.ConcatenatedDhQ,
+			accessors.NewFromCoin(ctx.Coins.Collapse),
+			ctx.Columns.ConcatenatedDhQ.Size()/sisDeg,
+		)
+
+		// sanity-check : the size of DhQCollapse must equal to sisDeg
+		if ctx.Columns.DhQCollapse.Size() != sisDeg {
+			utils.Panic("the size of DhQ (%v) collapse must equal to the SIS modulus degree (%v)", ctx.Columns.DhQCollapse.Size(), sisDeg)
+		}
+
+		//
+		// Merging the SIS keys
+		//
+
+		// Create an accessor for collapse^t, where t is the number of opened columns
+		collapsePowT := accessors.NewExponent(ctx.Coins.Collapse, ctx.VortexCtx.NbColsToOpen())
+
+		// ToDo(arijit): We may not need this any more, after the optional SIS hash feature
+		// since some of the Ah and Dh can be nil, we compactify the slice by
+		// only retaining the non-nil elements before sending it to the
+		// linear combination operator.
+		nonNilAh := []ifaces.Column{}
+		for _, ah := range ctx.Columns.Ah {
+			if ah != nil {
+				nonNilAh = append(nonNilAh, ah)
+			} else {
+				utils.Panic("The Ah column is nil, this should not happen")
+			}
+		}
+
+		// If there is only a single SIS round, then there is no need for
+		// computing an additional linear-combination column. We can simply
+		// return the single column. If we were using the random linear
+		// combination in this case, then the randomness would be factored out
+		// of the linear combination expression and the resulting column would
+		// be associated with the round "0" and not as a precomputed column.
+		// This would introduces an entire round for just one column and has
+		// noticeable effects on the performance of the protocol.
+		if len(nonNilAh) > 1 {
+			// And computes the linear combination
+			ctx.Columns.ACollapsed = expr_handle.RandLinCombCol(
+				ctx.Comp,
+				collapsePowT,
+				nonNilAh,
+				ctx.aCollapsedName(),
+			)
+		}
+
+		if len(nonNilAh) == 1 {
+			ctx.Columns.ACollapsed = nonNilAh[0]
+		}
+
+		// Declare Edual
+		ctx.Columns.Edual = ctx.Comp.InsertCommit(
+			round, ctx.eDual(), ctx.VortexCtx.SisParams.OutputSize(),
+		)
+
+		// And assign it
+		ctx.Comp.RegisterProverAction(round, &CollapsingProverAction{
+			Ctx:     ctx,
+			EDualID: ctx.Columns.Edual.GetColID(),
+			SisKey:  ctx.SisKey(),
+		})
 	}
+}
 
-	// And computes the linear combination
-	ctx.Columns.ACollapsed = expr_handle.RandLinCombCol(
-		ctx.comp,
-		collapsePowT,
-		nonNilAh,
-		ctx.aCollapsedName(),
-	)
+type FoldPhaseProverAction struct {
+	Ctx       *SelfRecursionCtx
+	IpQueryID ifaces.QueryID // Changed to ifaces.QueryID explicitly
+}
 
-	// And edual
+func (a *FoldPhaseProverAction) Run(run *wizard.ProverRuntime) {
+	foldedKey := a.Ctx.Columns.ACollapseFold.GetColAssignment(run)
+	foldedPreimage := a.Ctx.Columns.PreimageCollapseFold.GetColAssignment(run)
+	y := smartvectors.InnerProduct(foldedKey, foldedPreimage)
+	run.AssignInnerProduct(a.IpQueryID, y)
+}
 
-	// Declare Edual
-	ctx.Columns.Edual = ctx.comp.InsertCommit(
-		round, ctx.eDual(), ctx.VortexCtx.SisParams.OutputSize(),
-	)
+type FoldPhaseVerifierAction struct {
+	Ctx       *SelfRecursionCtx
+	IpQueryID ifaces.QueryID
+	Degree    int
+}
 
-	// And assign it
-	ctx.comp.RegisterProverAction(round, &collapsingProverAction{
-		ctx:     ctx,
-		eDualID: ctx.Columns.Edual.GetColID(),
-		sisKey:  ctx.SisKey(),
-	})
+func (a *FoldPhaseVerifierAction) Run(run wizard.Runtime) error {
+	edual := a.Ctx.Columns.Edual.GetColAssignment(run)
+	dcollapse := a.Ctx.Columns.DhQCollapse.GetColAssignment(run)
+	rfold := run.GetRandomCoinField(a.Ctx.Coins.Fold.Name)
+	yAlleged := run.GetInnerProductParams(a.IpQueryID).Ys[0]
+	yDual := smartvectors.EvalCoeff(edual, rfold)
+	yActual := smartvectors.EvalCoeff(dcollapse, rfold)
+
+	var xN, xNminus1, xNplus1 field.Element
+	one := field.One()
+	xN.Exp(rfold, big.NewInt(int64(a.Degree)))
+	xNminus1.Sub(&xN, &one)
+	xNplus1.Add(&xN, &one)
+
+	var left, left0, left1, right field.Element
+	left0.Mul(&xNplus1, &yDual)
+	left1.Mul(&xNminus1, &yActual)
+	left.Sub(&left0, &left1)
+	right.Double(&yAlleged)
+
+	if left != right {
+		return fmt.Errorf("failed the consistency check of the ring-SIS : %v != %v", left.String(), right.String())
+	}
+	return nil
+}
+
+func (a *FoldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	edual := a.Ctx.Columns.Edual.GetColAssignmentGnark(run)
+	dcollapse := a.Ctx.Columns.DhQCollapse.GetColAssignmentGnark(run)
+	rfold := run.GetRandomCoinField(a.Ctx.Coins.Fold.Name)
+	yAlleged := run.GetInnerProductParams(a.IpQueryID).Ys[0]
+	yDual := poly.EvaluateUnivariateGnark(api, edual, rfold)
+	yActual := poly.EvaluateUnivariateGnark(api, dcollapse, rfold)
+
+	one := field.One()
+	xN := gnarkutil.Exp(api, rfold, a.Degree)
+	xNminus1 := api.Sub(xN, one)
+	xNplus1 := api.Add(xN, one)
+
+	left0 := api.Mul(xNplus1, yDual)
+	left1 := api.Mul(xNminus1, yActual)
+	left := api.Sub(left0, left1)
+	right := api.Mul(yAlleged, 2)
+
+	api.AssertIsEqual(left, right)
 }
 
 type foldPhaseProverAction struct {
@@ -537,136 +576,61 @@ func (a *foldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRun
 //
 //   - Perform the final check to evaluate the consistency vs
 //     Edual and D\merge,\collapse,q
-func (ctx *SelfRecursionCtx) foldPhase() {
+
+func (ctx *SelfRecursionCtx) FoldPhase() {
 
 	// The round of declaration should be one more than EDual
 	round := ctx.Columns.Edual.Round() + 1
 
 	// Sample rFold
-	ctx.Coins.Fold = ctx.comp.InsertCoin(round, ctx.foldCoinName(), coin.FieldExt)
+	ctx.Coins.Fold = ctx.Comp.InsertCoin(round, ctx.foldCoinName(), coin.Field)
 
 	// Constructs ACollapsedFold
 	ctx.Columns.ACollapseFold = functionals.Fold(
-		ctx.comp, ctx.Columns.ACollapsed,
+		ctx.Comp, ctx.Columns.ACollapsed,
 		accessors.NewFromCoin(ctx.Coins.Fold),
 		ctx.VortexCtx.SisParams.OutputSize(),
 	)
 
 	// Construct DmergeCollapseFold
 	ctx.Columns.PreimageCollapseFold = functionals.Fold(
-		ctx.comp, ctx.Columns.PreimagesCollapse,
+		ctx.Comp, ctx.Columns.PreimagesSisCollapse,
 		accessors.NewFromCoin(ctx.Coins.Fold),
 		ctx.VortexCtx.SisParams.OutputSize(),
 	)
 
 	// Mark Edual and the DmergeQCollapse fold as proof
-	ctx.comp.Columns.SetStatus(ctx.Columns.DhQCollapse.GetColID(), column.Proof)
-	ctx.comp.Columns.SetStatus(ctx.Columns.Edual.GetColID(), column.Proof)
+	ctx.Comp.Columns.SetStatus(ctx.Columns.DhQCollapse.GetColID(), column.Proof)
+	ctx.Comp.Columns.SetStatus(ctx.Columns.Edual.GetColID(), column.Proof)
 
 	// Declare and assign the inner-product
-	ctx.Queries.LatticeInnerProd = ctx.comp.InsertInnerProduct(
+	ctx.Queries.LatticeInnerProd = ctx.Comp.InsertInnerProduct(
 		round, ctx.preimagesAndAmergeIP(), ctx.Columns.ACollapseFold,
 		[]ifaces.Column{ctx.Columns.PreimageCollapseFold})
 
 	// Assignment part of the inner product
-	ctx.comp.RegisterProverAction(round, &foldPhaseProverAction{
-		ctx:       ctx,
-		ipQueryID: ctx.Queries.LatticeInnerProd.Name(),
+	ctx.Comp.RegisterProverAction(round, &FoldPhaseProverAction{
+		Ctx:       ctx,
+		IpQueryID: ctx.Queries.LatticeInnerProd.Name(),
 	})
 
 	degree := ctx.SisKey().OutputSize()
 
-	// And the final check
-	// check the folding of the polynomial is correct
-	// ctx.comp.InsertVerifier(round, func(run wizard.Runtime) error {
-
-	// 	// fetch the assignments to edual and dcollapse
-	// 	edual := ctx.Columns.Edual.GetColAssignment(run)
-	// 	dcollapse := ctx.Columns.DhQCollapse.GetColAssignment(run)
-
-	// 	// the folding coin
-	// 	rfold := run.GetRandomCoinField(ctx.Coins.Fold.Name)
-
-	// 	// evaluates both edual and dcollapse (seen as polynomial) by
-	// 	// coefficients and fetch the result of the inner-product
-	// 	yAlleged := run.GetInnerProductParams(ctx.preimagesAndAmergeIP()).Ys[0]
-	// 	yDual := smartvectors.EvalCoeff(edual, rfold)
-	// 	yActual := smartvectors.EvalCoeff(dcollapse, rfold)
-
-	// 	/*
 	// 		If P(X) is of degree 2n
 
-	// 		And
-	// 			- Q(X) = P(X) mod X^n - 1
-	// 			- R(X) = P(X) mod X^n + 1
+	//	And
+	//		- Q(X) = P(X) mod X^n - 1
+	//		- R(X) = P(X) mod X^n + 1
 
-	// 		Then, with CRT we have: 2P(X) = (X^n+1)Q(X) - (X^n-1)R(X)
-	// 		Here, we can identify at the point x
+	//	Then, with CRT we have: 2P(X) = (X^n+1)Q(X) - (X^n-1)R(X)
+	//	Here, we can identify at the point x
 
-	// 		yDual * (x^n+1) - yActual * (x^n-1) == 2 * yAlleged
-	// 	*/
-	// 	var xN, xNminus1, xNplus1 field.Element
-	// 	one := field.One()
-	// 	xN.Exp(rfold, big.NewInt(int64(degree)))
-	// 	xNminus1.Sub(&xN, &one)
-	// 	xNplus1.Add(&xN, &one)
+	//	yDual * (x^n+1) - yActual * (x^n-1) == 2 * yAlleged
+	//	We perform this check in the verifier action below.
 
-	// 	var left, left0, left1, right field.Element
-	// 	left0.Mul(&xNplus1, &yDual)
-	// 	left1.Mul(&xNminus1, &yActual)
-	// 	left.Sub(&left0, &left1)
-
-	// 	right.Double(&yAlleged)
-
-	// 	if left != right {
-	// 		return fmt.Errorf("failed the consistency check of the ring-SIS : %v != %v", left.String(), right.String())
-	// 	}
-
-	// 	return nil
-	// }, func(api frontend.API, run wizard.GnarkRuntime) {
-
-	// 	// fetch the assignments to edual and dcollapse
-	// 	edual := ctx.Columns.Edual.GetColAssignmentGnark(run)
-	// 	dcollapse := ctx.Columns.DhQCollapse.GetColAssignmentGnark(run)
-
-	// 	// the folding coin
-	// 	rfold := run.GetRandomCoinField(ctx.Coins.Fold.Name)
-
-	// 	// evaluates both edual and dcollapse (seen as polynomial) by
-	// 	// coefficients and fetch the result of the inner-product
-	// 	yAlleged := run.GetInnerProductParams(ctx.preimagesAndAmergeIP()).Ys[0]
-	// 	yDual := poly.EvaluateUnivariateGnark(api, edual, rfold)
-	// 	yActual := poly.EvaluateUnivariateGnark(api, dcollapse, rfold)
-
-	// 	/*
-	// 	   If P(X) is of degree 2n
-
-	// 	   And
-	// 	     - Q(X) = P(X) mod X^n - 1
-	// 	     - R(X) = P(X) mod X^n + 1
-
-	// 	   Then, with CRT we have: 2P(X) = (X^n+1)Q(X) - (X^n-1)R(X)
-	// 	   Here, we can identify at the point x
-
-	// 	   yDual * (x^n+1) - yActual * (x^n-1) == 2 * yAlleged
-	// 	*/
-	// 	one := field.One()
-	// 	xN := gnarkutil.Exp(api, rfold, degree)
-	// 	xNminus1 := api.Sub(xN, one)
-	// 	xNplus1 := api.Add(xN, one)
-
-	// 	left0 := api.Mul(xNplus1, yDual)
-	// 	left1 := api.Mul(xNminus1, yActual)
-	// 	left := api.Sub(left0, left1)
-
-	// 	right := api.Mul(yAlleged, 2)
-
-	// 	api.AssertIsEqual(left, right)
-	// })
-
-	ctx.comp.RegisterVerifierAction(round, &foldPhaseVerifierAction{
-		ctx:       ctx,
-		ipQueryID: ctx.Queries.LatticeInnerProd.Name(),
-		degree:    degree,
+	ctx.Comp.RegisterVerifierAction(round, &FoldPhaseVerifierAction{
+		Ctx:       ctx,
+		IpQueryID: ctx.Queries.LatticeInnerProd.Name(),
+		Degree:    degree,
 	})
 }

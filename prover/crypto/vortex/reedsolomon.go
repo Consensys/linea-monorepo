@@ -7,15 +7,16 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 )
 
-// rsEncode encodes a vector `v` and returns the corresponding the Reed-Solomon
+// _rsEncodeBase encodes a vector `v` and returns the corresponding the Reed-Solomon
 // codeword. The input vector is interpreted as a polynomial in Lagrange basis
 // over a domain of n-roots of unity Omega_n and returns its representation in
 // the Lagrange basis Omega_{n * blow-up} where blow-up corresponds to the
 // inverse-rate of the code. The code is systematic as the original vector is
 // interleaved within the encoded vector.
-func (p *Params) rsEncode(v smartvectors.SmartVector, pool mempool.MemPool) smartvectors.SmartVector {
+func (p *Params) _rsEncodeBase(v smartvectors.SmartVector, pool mempool.MemPool) smartvectors.SmartVector {
 
 	// Short path, v is a constant vector. It's encoding is also a constant vector
 	// with the same value.
@@ -40,6 +41,39 @@ func (p *Params) rsEncode(v smartvectors.SmartVector, pool mempool.MemPool) smar
 
 	// This is not memory that will be recycled easily
 	return smartvectors.FFT(smartvectors.NewRegular(expandedCoeffs), fft.DIT, true, 0, 0, nil)
+}
+
+// _rsEncodeExt encodes a vector `v` and returns the corresponding the Reed-Solomon
+// codeword. The input vector is interpreted as a polynomial in Lagrange basis
+// over a domain of n-roots of unity Omega_n and returns its representation in
+// the Lagrange basis Omega_{n * blow-up} where blow-up corresponds to the
+// inverse-rate of the code. The code is systematic as the original vector is
+// interleaved within the encoded vector.
+func (p *Params) _rsEncodeExt(v smartvectors.SmartVector, pool mempool.MemPool) smartvectors.SmartVector {
+
+	// Short path, v is a constant vector. It's encoding is also a constant vector
+	// with the same value.
+	if cons, ok := v.(*smartvectors.ConstantExt); ok {
+		return smartvectors.NewConstantExt(cons.Val(), p.NumEncodedCols())
+	}
+
+	// Interpret the smart-vectors as a polynomial in Lagrange form
+	// and returns a vector of coefficients.
+	asCoeffs := smartvectors.FFTInverseExt(v, fft.DIT, true, 0, 0, pool)
+	if pool != nil {
+		defer func() {
+			if pooled, ok := asCoeffs.(*smartvectors.PooledExt); ok {
+				pooled.Free(pool)
+			}
+		}()
+	}
+
+	// Pad the coefficients
+	expandedCoeffs := make([]fext.Element, p.NumEncodedCols())
+	asCoeffs.WriteInSliceExt(expandedCoeffs[:asCoeffs.Len()])
+
+	// This is not memory that will be recycled easily
+	return smartvectors.FFTExt(smartvectors.NewRegularExt(expandedCoeffs), fft.DIT, true, 0, 0, nil)
 }
 
 // IsCodeword returns nil iff the argument `v` is a correct codeword and an

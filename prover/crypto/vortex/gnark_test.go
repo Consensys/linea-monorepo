@@ -6,13 +6,12 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/std/hash"
-	gmimc "github.com/consensys/gnark/std/hash/mimc"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -177,7 +176,6 @@ type AssertIsCodeWordCircuit struct {
 }
 
 func (circuit *AssertIsCodeWordCircuit) Define(api frontend.API) error {
-
 	return assertIsCodeWord(api, circuit.P, circuit.d.GeneratorInv, circuit.d.Cardinality, circuit.rate)
 
 }
@@ -312,8 +310,7 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	randomCoin = fext.RandomElement()
 	entryList = []int{1, 5, 19, 645}
 
-	params := NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, mimc.NewMiMC, nil)
-	params.RemoveSis(mimc.NewMiMC)
+	params := NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, poseidon2.NewMerkleDamgardHasher)
 
 	polyLists := make([][]smartvectors.SmartVector, nCommitments)
 	yLists = make([][]fext.Element, nCommitments)
@@ -333,24 +330,29 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	roots = make([]types.Bytes32, nCommitments)
 	trees := make([]*smt.Tree, nCommitments)
 	committedMatrices := make([]EncodedMatrix, nCommitments)
+	isSISReplacedByMiMC := make([]bool, nCommitments)
 	for j := range trees {
-		committedMatrices[j], trees[j], _ = params.Commit(polyLists[j])
+		// As Gnark does not support SIS, we commit without SIS hashing
+		committedMatrices[j], trees[j], _ = params.CommitMerkleWithoutSIS(polyLists[j])
 		roots[j] = trees[j].Root
+		// We set the SIS replaced by MiMC to true, as Gnark does not support SIS
+		isSISReplacedByMiMC[j] = true
 	}
 
 	// Generate the proof
-	proof = params.Open(utils.Join(polyLists...), randomCoin)
+	proof = params.InitOpeningWithLC(utils.Join(polyLists...), randomCoin)
 	proof.Complete(entryList, committedMatrices, trees)
 
 	// Check the proof
 	err := VerifyOpening(&VerifierInputs{
-		Params:       *params,
-		MerkleRoots:  roots,
-		X:            x,
-		Ys:           yLists,
-		OpeningProof: *proof,
-		RandomCoin:   randomCoin,
-		EntryList:    entryList,
+		Params:              *params,
+		MerkleRoots:         roots,
+		X:                   x,
+		Ys:                  yLists,
+		OpeningProof:        *proof,
+		RandomCoin:          randomCoin,
+		EntryList:           entryList,
+		IsSISReplacedByMiMC: isSISReplacedByMiMC,
 	})
 	require.NoError(t, err)
 
@@ -404,7 +406,8 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 // 	}
 // }
 
-func makeMimcHasherfunc(api frontend.API) (hash.FieldHasher, error) {
-	h, err := gmimc.NewMiMC(api)
-	return &h, err
+func makePoseidonHasher(api frontend.API) (hash.FieldHasher, error) {
+	panic("not implemented")
+	// h, err := gposeidon2.NewMerkleDamgardHasher(api)
+	// return &h, err
 }

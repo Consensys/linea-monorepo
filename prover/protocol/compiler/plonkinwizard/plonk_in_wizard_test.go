@@ -150,12 +150,13 @@ func TestPlonkWizardCompiler(t *testing.T) {
 							sel  = b.RegisterCommit("SEL", size)
 						)
 
-						b.InsertPlonkInWizard(&query.PlonkInWizard{
-							ID:       ifaces.QueryID("PIW"),
-							Data:     data,
-							Selector: sel,
-							Circuit:  &testCircuit{},
-						})
+						b.InsertPlonkInWizard(query.NewPlonkInWizard(
+							ifaces.QueryID("PIW"),
+							data,
+							sel,
+							&testCircuit{},
+							nil,
+						))
 					}
 
 					prover := func(run *wizard.ProverRuntime) {

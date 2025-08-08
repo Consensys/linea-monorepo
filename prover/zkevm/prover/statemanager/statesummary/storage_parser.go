@@ -39,8 +39,8 @@ func newArithmetizationStorageParser(ss *Module, run *wizard.ProverRuntime) *Ari
 	// In case the SCP module is not activated (for instance, for testing). We
 	// still need to instantiate the storage parser but we can return one that
 	// does not feature the SCP module.
-	if ss.arithmetizationLink != nil {
-		res.scp = &ss.arithmetizationLink.Scp
+	if ss.ArithmetizationLink != nil {
+		res.scp = &ss.ArithmetizationLink.Scp
 	}
 
 	return res
@@ -52,38 +52,41 @@ for each address, storage key and block number, it uses the last key occurrence 
 to find out the last corresponding storage value present in the arithmetization's scp.
 */
 func (sr *ArithmetizationStorageParser) Process() {
-	if sr.scp == nil {
-		// for testing without using an scp (storage consistency permutation) table
-		return
-	}
-	for index := 0; index < sr.scp.PeekAtStorage.Size(); index++ {
-		isLastKOCBlock := sr.scp.LastKOCBlock.GetColAssignmentAt(sr.run, index)
-		if isLastKOCBlock.IsOne() {
-			blockFieldElem := sr.scp.BlockNumber.GetColAssignmentAt(sr.run, index)
-			block := blockFieldElem.Uint64()
-			keyHI := sr.scp.KeyHI.GetColAssignmentAt(sr.run, index)
-			keyHIBytes := keyHI.Bytes()
-			keyLO := sr.scp.KeyLO.GetColAssignmentAt(sr.run, index)
-			keyLOBytes := keyLO.Bytes()
-			keyBytes := make([]byte, 0, 32)
-			keyBytes = append(keyBytes, keyHIBytes[16:]...)
-			keyBytes = append(keyBytes, keyLOBytes[16:]...)
-			address := sr.scp.Address.GetColAssignmentAt(sr.run, index)
-			mapKey := KeysAndBlock{
-				address:    address.Bytes(),
-				storageKey: types.FullBytes32(keyBytes),
-				block:      utils.ToInt(block),
-			}
 
-			valueHI := sr.scp.ValueHINext.GetColAssignmentAt(sr.run, index)
-			valueHIBytes := valueHI.Bytes()
-			valueLO := sr.scp.ValueLONext.GetColAssignmentAt(sr.run, index)
-			valueLOBytes := valueLO.Bytes()
+	utils.Panic("adjust for koalabear")
 
-			valueBytes := make([]byte, 0, 32)
-			valueBytes = append(valueBytes, valueHIBytes[16:]...)
-			valueBytes = append(valueBytes, valueLOBytes[16:]...)
-			sr.Values[mapKey] = types.FullBytes32(valueBytes)
-		}
-	}
+	// if sr.scp == nil {
+	// 	// for testing without using an scp (storage consistency permutation) table
+	// 	return
+	// }
+	// for index := 0; index < sr.scp.PeekAtStorage.Size(); index++ {
+	// 	isLastKOCBlock := sr.scp.LastKOCBlock.GetColAssignmentAt(sr.run, index)
+	// 	if isLastKOCBlock.IsOne() {
+	// 		blockFieldElem := sr.scp.BlockNumber.GetColAssignmentAt(sr.run, index)
+	// 		block := blockFieldElem.Uint64()
+	// 		keyHI := sr.scp.KeyHI.GetColAssignmentAt(sr.run, index)
+	// 		keyHIBytes := keyHI.Bytes()
+	// 		keyLO := sr.scp.KeyLO.GetColAssignmentAt(sr.run, index)
+	// 		keyLOBytes := keyLO.Bytes()
+	// 		keyBytes := make([]byte, 0, 32)
+	// 		keyBytes = append(keyBytes, keyHIBytes[16:]...)
+	// 		keyBytes = append(keyBytes, keyLOBytes[16:]...)
+	// 		address := sr.scp.Address.GetColAssignmentAt(sr.run, index)
+	// 		mapKey := KeysAndBlock{
+	// 			address:    address.Bytes(),
+	// 			storageKey: types.FullBytes32(keyBytes),
+	// 			block:      utils.ToInt(block),
+	// 		}
+
+	// 		valueHI := sr.scp.ValueHINext.GetColAssignmentAt(sr.run, index)
+	// 		valueHIBytes := valueHI.Bytes()
+	// 		valueLO := sr.scp.ValueLONext.GetColAssignmentAt(sr.run, index)
+	// 		valueLOBytes := valueLO.Bytes()
+
+	// 		valueBytes := make([]byte, 0, 32)
+	// 		valueBytes = append(valueBytes, valueHIBytes[16:]...)
+	// 		valueBytes = append(valueBytes, valueLOBytes[16:]...)
+	// 		sr.Values[mapKey] = types.FullBytes32(valueBytes)
+	// 	}
+	// }
 }

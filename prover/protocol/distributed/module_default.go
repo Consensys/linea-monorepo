@@ -54,19 +54,19 @@ func DefineDefaultModule(builder *wizard.Builder, moduleInputs *FilteredModuleIn
 	// moduleGL and moduleLPP have identical set of public inputs. The order
 	// of declaration is also important. Namely, these needs to be declared before
 	// the non-dummy ones.
-	md.Wiop.InsertPublicInput(initialRandomnessPublicInput, accessors.NewConstant(field.Zero()))
-	md.Wiop.InsertPublicInput(isFirstPublicInput, accessors.NewConstant(field.Zero()))
-	md.Wiop.InsertPublicInput(isLastPublicInput, accessors.NewConstant(field.Zero()))
-	md.Wiop.InsertPublicInput(globalSenderPublicInput, accessors.NewConstant(field.Zero()))
-	md.Wiop.InsertPublicInput(globalReceiverPublicInput, accessors.NewConstant(field.Zero()))
-	md.Wiop.InsertPublicInput(logDerivativeSumPublicInput, accessors.NewConstant(field.Zero()))
-	md.Wiop.InsertPublicInput(grandProductPublicInput, accessors.NewConstant(field.One()))
-	md.Wiop.InsertPublicInput(hornerPublicInput, accessors.NewConstant(field.Zero()))
-	md.Wiop.InsertPublicInput(hornerN0HashPublicInput, accessors.NewConstant(field.Zero()))
-	md.Wiop.InsertPublicInput(hornerN1HashPublicInput, accessors.NewConstant(field.Zero()))
-	md.Wiop.InsertPublicInput(isGlPublicInput, accessors.NewConstant(field.Zero()))
-	md.Wiop.InsertPublicInput(isLppPublicInput, accessors.NewConstant(field.Zero()))
-	md.Wiop.InsertPublicInput(nbActualLppPublicInput, accessors.NewConstant(field.Zero()))
+	md.Wiop.InsertPublicInput(InitialRandomnessPublicInput, accessors.NewConstant(field.Zero()))
+	md.Wiop.InsertPublicInput(IsFirstPublicInput, accessors.NewConstant(field.Zero()))
+	md.Wiop.InsertPublicInput(IsLastPublicInput, accessors.NewConstant(field.Zero()))
+	md.Wiop.InsertPublicInput(GlobalSenderPublicInput, accessors.NewConstant(field.Zero()))
+	md.Wiop.InsertPublicInput(GlobalReceiverPublicInput, accessors.NewConstant(field.Zero()))
+	md.Wiop.InsertPublicInput(LogDerivativeSumPublicInput, accessors.NewConstant(field.Zero()))
+	md.Wiop.InsertPublicInput(GrandProductPublicInput, accessors.NewConstant(field.One()))
+	md.Wiop.InsertPublicInput(HornerPublicInput, accessors.NewConstant(field.Zero()))
+	md.Wiop.InsertPublicInput(HornerN0HashPublicInput, accessors.NewConstant(field.Zero()))
+	md.Wiop.InsertPublicInput(HornerN1HashPublicInput, accessors.NewConstant(field.Zero()))
+	md.Wiop.InsertPublicInput(IsGlPublicInput, accessors.NewConstant(field.Zero()))
+	md.Wiop.InsertPublicInput(IsLppPublicInput, accessors.NewConstant(field.Zero()))
+	md.Wiop.InsertPublicInput(NbActualLppPublicInput, accessors.NewConstant(field.Zero()))
 
 	return md
 }

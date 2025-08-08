@@ -9,7 +9,6 @@ import (
 	plonkKoalabear "github.com/consensys/gnark/backend/plonk/koalabear"
 	"github.com/consensys/gnark/constraint"
 	cs "github.com/consensys/gnark/constraint/koalabear"
-	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/profile"
@@ -20,6 +19,20 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
+
+type Plonk struct {
+	// The plonk circuit being integrated
+	Circuit frontend.Circuit `serde:"omit"`
+	// The traces of the compiled circuit
+	trace *plonkKoalabear.Trace `serde:"omit"`
+	// The sparse constrained system
+	SPR *cs.SparseR1CS
+	// Receives the list of rows which have to be marked containing range checks.
+	rcGetter func() [][2]int `serde:"omit"`
+	// hashedGetter is a function that returns the list of rows which are tagged
+	// as range-checked.
+	hashedGetter func() [][3][2]int `serde:"omit"`
+}
 
 // This flag control whether to activate the gnark profiling for the circuits. Please leave it
 // to "false" because (1) it generates a lot of data (2) it is extremely time consuming.
@@ -36,35 +49,17 @@ type CompilationCtx struct {
 	// Name of the context. It is used to generate the column names and the
 	// queries name so that we can understad where they come from. Two instances
 	// of Plonk in wizard cannot have the same name.
-	name string
-	// subscript allows providing more context than [name]. It is used in the
+	Name string
+	// Subscript allows providing more context than [name]. It is used in the
 	// logs and in the name of the profiling assets. It is however not used as
 	// part of the name of generated wizard items.
-	subscript string
+	Subscript string
 	// Round at which we create the ctx
-	round int
+	Round int
 	// Number of instances of the circuit
-	maxNbInstances int
+	MaxNbInstances int
 
-	// Gnark related data
-	Plonk struct {
-		// The plonk circuit being integrated
-		Circuit frontend.Circuit
-		// The compiled circuit
-		Trace *plonkKoalabear.Trace
-		// The sparse constrained system
-		SPR *cs.SparseR1CS
-		// Domain to gets the polynomials in lagrange form
-		Domain *fft.Domain
-		// Options for the solver, may contain hint informations
-		// and so on.
-		SolverOpts []solver.Option
-		// Receives the list of rows which have to be marked containing range checks.
-		RcGetter func() [][2]int // the same for all circuits
-		// HashedGetter is a function that returns the list of rows which are tagged
-		// as range-checked.
-		HashedGetter func() [][3][2]int
-	}
+	Plonk Plonk
 
 	// Columns
 	Columns struct {
@@ -93,7 +88,7 @@ type CompilationCtx struct {
 		NbBits               int
 		NbLimbs              int
 		AddGateForRangeCheck bool
-		limbDecomposition    []wizard.ProverAction
+		LimbDecomposition    []wizard.ProverAction
 		// Selector for range checking from a column
 		RcL, RcR, RcO ifaces.Column
 		// RangeChecked stores the values to be range-checked
@@ -137,9 +132,9 @@ func createCtx(
 
 	ctx = CompilationCtx{
 		comp:           comp,
-		name:           name,
-		round:          round,
-		maxNbInstances: maxNbInstance,
+		Name:           name,
+		Round:          round,
+		MaxNbInstances: maxNbInstance,
 	}
 
 	ctx.Plonk.Circuit = circuit
@@ -149,10 +144,10 @@ func createCtx(
 	}
 
 	logger := logrus.
-		WithField("subscript", ctx.subscript).
-		WithField("round", ctx.round).
-		WithField("maxNbInstances", ctx.maxNbInstances).
-		WithField("name", name)
+		WithField("subscript", ctx.Subscript).
+		WithField("round", ctx.Round).
+		WithField("maxNbInstances", ctx.MaxNbInstances).
+		WithField("name", ctx.Name)
 
 	logger.Debug("Plonk in Wizard compiling the circuit")
 
@@ -162,8 +157,8 @@ func createCtx(
 
 		fname := name
 
-		if len(ctx.subscript) > 0 {
-			fname = fname + "-" + ctx.subscript
+		if len(ctx.Subscript) > 0 {
+			fname = fname + "-" + ctx.Subscript
 		}
 
 		// This adds a nice pprof suffix
@@ -180,11 +175,11 @@ func createCtx(
 	case ctx.RangeCheckOption.Enabled:
 		var rcGetter func() [][2]int
 		ccs, rcGetter, compileErr = CompileCircuitWithRangeCheck(ctx.Plonk.Circuit, ctx.RangeCheckOption.AddGateForRangeCheck)
-		ctx.Plonk.RcGetter = rcGetter
+		ctx.Plonk.rcGetter = rcGetter
 	case ctx.ExternalHasherOption.Enabled:
 		var hshGetter func() [][3][2]int
 		ccs, hshGetter, compileErr = CompileCircuitWithExternalHasher(ctx.Plonk.Circuit, true)
-		ctx.Plonk.HashedGetter = hshGetter
+		ctx.Plonk.hashedGetter = hshGetter
 	case !ctx.ExternalHasherOption.Enabled && !ctx.RangeCheckOption.Enabled:
 		ccs, compileErr = CompileCircuitDefault(ctx.Plonk.Circuit)
 	}
@@ -198,15 +193,15 @@ func createCtx(
 	}
 
 	ctx.Plonk.SPR = ccs
-	ctx.Plonk.Domain = fft.NewDomain(uint64(ctx.DomainSize()))
+	fftDomain := fft.NewDomain(uint64(ctx.DomainSize()))
 
 	if ctx.FixedNbRowsOption.Enabled && ctx.FixedNbRowsOption.NbRow < ctx.DomainSizePlonk() {
-		utils.Panic("plonk-in-wizard: the number of constraints of the circuit outweight the fixed number of rows. fixed-nb-row=%v domain-size=%v", ctx.FixedNbRowsOption.NbRow, ctx.DomainSizePlonk())
+		utils.Panic("plonk-in-wizard: the number of constraints of the circuit outweight the fixed number of rows. fixed-nb-row=%v domain-size=%v nb-constraints=%v", ctx.FixedNbRowsOption.NbRow, ctx.DomainSizePlonk(), ccs.NbConstraints)
 	}
 
-	ctx.Plonk.Trace = plonkKoalabear.NewTrace(ctx.Plonk.SPR, ctx.Plonk.Domain)
+	ctx.Plonk.trace = plonkKoalabear.NewTrace(ctx.Plonk.SPR, fftDomain)
 
-	ctx.buildPermutation(ctx.Plonk.SPR, ctx.Plonk.Trace) // no part of BuildTrace
+	ctx.buildPermutation(ctx.Plonk.SPR, ctx.Plonk.trace) // no part of BuildTrace
 
 	logger.
 		WithField("nbConstraints", ccs.GetNbConstraints()).
@@ -280,9 +275,9 @@ func (ctx *CompilationCtx) DomainSizePlonk() int {
 }
 
 // Returns the size of the public input tiny column
-func (ctx *CompilationCtx) TinyPISize() int {
+func tinyPISize(spr *cs.SparseR1CS) int {
 	return utils.NextPowerOfTwo(
-		ctx.Plonk.SPR.GetNbPublicVariables(),
+		spr.GetNbPublicVariables(),
 	)
 }
 
@@ -373,10 +368,116 @@ func (ctx *CompilationCtx) buildPermutation(spr *cs.SparseR1CS, pt *plonkKoalabe
 // contrary case.
 func (ctx CompilationCtx) GetPlonkProverAction() PlonkInWizardProverAction {
 	if ctx.HasCommitment() {
-		return initialBBSProverAction{
-			CompilationCtx:  ctx,
-			proverStateLock: &sync.Mutex{},
+		return InitialBBSProverAction{
+			GenericPlonkProverAction: ctx.GenericPlonkProverAction(),
+			ProverStateLock:          &sync.Mutex{},
 		}
 	}
-	return noCommitProverAction(ctx)
+	return PlonkNoCommitProverAction{
+		GenericPlonkProverAction: ctx.GenericPlonkProverAction(),
+	}
+}
+
+func (ctx CompilationCtx) GenericPlonkProverAction() GenericPlonkProverAction {
+	return GenericPlonkProverAction{
+		Name:           ctx.Name,
+		SPR:            ctx.Plonk.SPR,
+		MaxNbInstances: ctx.MaxNbInstances,
+		DomainSize:     ctx.DomainSize(),
+		Columns: struct {
+			L          []ifaces.Column
+			R          []ifaces.Column
+			O          []ifaces.Column
+			Cp         []ifaces.Column
+			Hcp        coin.Info
+			Activators []ifaces.Column
+			TinyPI     []ifaces.Column
+		}{
+			L:          ctx.Columns.L,
+			R:          ctx.Columns.R,
+			O:          ctx.Columns.O,
+			Cp:         ctx.Columns.Cp,
+			Hcp:        ctx.Columns.Hcp,
+			Activators: ctx.Columns.Activators,
+			TinyPI:     ctx.Columns.TinyPI,
+		},
+		RangeCheckOption: struct {
+			WasCancelled         bool
+			Enabled              bool
+			NbBits               int
+			NbLimbs              int
+			AddGateForRangeCheck bool
+			LimbDecomposition    []wizard.ProverAction
+			RcL                  ifaces.Column
+			RcR                  ifaces.Column
+			RcO                  ifaces.Column
+			RangeChecked         []ifaces.Column
+		}{
+			WasCancelled:         ctx.RangeCheckOption.wasCancelled,
+			Enabled:              ctx.RangeCheckOption.Enabled,
+			NbBits:               ctx.RangeCheckOption.NbBits,
+			NbLimbs:              ctx.RangeCheckOption.NbLimbs,
+			AddGateForRangeCheck: ctx.RangeCheckOption.AddGateForRangeCheck,
+			LimbDecomposition:    ctx.RangeCheckOption.LimbDecomposition,
+			RcL:                  ctx.RangeCheckOption.RcL,
+			RcR:                  ctx.RangeCheckOption.RcR,
+			RcO:                  ctx.RangeCheckOption.RcO,
+			RangeChecked:         ctx.RangeCheckOption.RangeChecked,
+		},
+		ExternalHasherOption: struct {
+			Enabled     bool
+			PosOldState ifaces.Column
+			PosBlock    ifaces.Column
+			PosNewState ifaces.Column
+			OldStates   []ifaces.Column
+			Blocks      []ifaces.Column
+			NewStates   []ifaces.Column
+		}{
+			Enabled:     ctx.ExternalHasherOption.Enabled,
+			PosOldState: ctx.ExternalHasherOption.PosOldState,
+			PosBlock:    ctx.ExternalHasherOption.PosBlock,
+			PosNewState: ctx.ExternalHasherOption.PosNewState,
+			OldStates:   ctx.ExternalHasherOption.OldStates,
+			Blocks:      ctx.ExternalHasherOption.Blocks,
+			NewStates:   ctx.ExternalHasherOption.NewStates,
+		},
+	}
+}
+
+// GenericPlonkProverAction is a collection data-structure which contains the
+// elements used by the prover. It is wrapped by the actual prover actions
+// taking place in the [PlonkInWizardProverAction] interface.
+type GenericPlonkProverAction struct {
+	Name           string
+	SPR            *cs.SparseR1CS
+	MaxNbInstances int
+	DomainSize     int
+	Columns        struct {
+		L          []ifaces.Column
+		R          []ifaces.Column
+		O          []ifaces.Column
+		Cp         []ifaces.Column
+		Hcp        coin.Info
+		Activators []ifaces.Column
+		TinyPI     []ifaces.Column
+	}
+	RangeCheckOption struct {
+		// WasCancelled is set if no wires need to be constrained
+		WasCancelled         bool
+		Enabled              bool
+		NbBits               int
+		NbLimbs              int
+		AddGateForRangeCheck bool
+		LimbDecomposition    []wizard.ProverAction
+		// Selector for range checking from a column
+		RcL, RcR, RcO ifaces.Column
+		// RangeChecked stores the values to be range-checked
+		RangeChecked []ifaces.Column
+	}
+	ExternalHasherOption struct {
+		Enabled                            bool
+		PosOldState, PosBlock, PosNewState ifaces.Column
+		OldStates, Blocks, NewStates       []ifaces.Column
+	}
+	FixedNbRows int
 }

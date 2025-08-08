@@ -51,19 +51,19 @@ func makeTestCaseLaneRepacking(uc generic.HashingUsecase) (
 		createCol := common.CreateColFn(comp, "TEST_SPAGHETTI", size, pragmas.RightPadded)
 		cleaning = cleaningCtx{
 			CleanLimb: createCol("CleanLimb"),
-			Inputs:    &cleaningInputs{imported: imported},
+			Inputs:    &cleaningInputs{Imported: imported},
 		}
 
 		inp := &decompositionInputs{
-			param:       pckInp.PackingParam,
-			cleaningCtx: cleaning,
+			Param:       pckInp.PackingParam,
+			CleaningCtx: cleaning,
 		}
 
 		decomposed = decomposition{
 			Inputs:   inp,
-			size:     size,
-			nbSlices: maxLanesFromLimbs(inp.param.LaneSizeBytes()),
-			maxLen:   inp.param.LaneSizeBytes(),
+			Size:     size,
+			NbSlices: maxLanesFromLimbs(inp.Param.LaneSizeBytes()),
+			MaxLen:   inp.Param.LaneSizeBytes(),
 		}
 
 		// commit to decomposition Columns; no constraint
@@ -101,12 +101,12 @@ func TestLaneRepacking(t *testing.T) {
 
 func assignFilter(run *wizard.ProverRuntime, decomposed decomposition) {
 	var (
-		size   = decomposed.size
-		filter = make([]*common.VectorBuilder, decomposed.nbSlices)
+		size   = decomposed.Size
+		filter = make([]*common.VectorBuilder, decomposed.NbSlices)
 	)
-	for j := range decomposed.decomposedLen {
-		filter[j] = common.NewVectorBuilder(decomposed.filter[j])
-		decomposedLen := decomposed.decomposedLen[j].GetColAssignment(run).IntoRegVecSaveAlloc()
+	for j := range decomposed.DecomposedLen {
+		filter[j] = common.NewVectorBuilder(decomposed.Filter[j])
+		decomposedLen := decomposed.DecomposedLen[j].GetColAssignment(run).IntoRegVecSaveAlloc()
 		for row := 0; row < size; row++ {
 			if decomposedLen[row].IsZero() {
 				filter[j].PushInt(0)

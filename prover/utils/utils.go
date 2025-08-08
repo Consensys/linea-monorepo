@@ -174,7 +174,7 @@ func Digest(src io.Reader) (string, error) {
 }
 
 // RightPadWith copies `s` and returns a vector padded up to length `n` using
-// `padWith` as a filling value. The function panics if len(s) < n and returns
+// `padWith` as a filling value. The function panics if len(s) > n and returns
 // a copy of s if len(s) == n.
 func RightPadWith[T any](s []T, n int, padWith T) []T {
 	if len(s) > n {
@@ -462,6 +462,16 @@ func SortedKeysOf[K comparable, V any](m map[K]V, less func(K, K) bool) []K {
 	})
 
 	return keys
+}
+
+// MapFunc maps f to every entries of the slice and return an array with the
+// result.
+func MapFunc[T, U any](slice []T, f func(T) U) []U {
+	res := make([]U, len(slice))
+	for i, v := range slice {
+		res[i] = f(v)
+	}
+	return res
 }
 
 // Ternary returns "a" if cond is true, else b

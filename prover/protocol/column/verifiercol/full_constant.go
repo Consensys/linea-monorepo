@@ -19,24 +19,27 @@ type ConstCol struct {
 	Ext        fext.Element
 	IsBaseFlag bool
 	Size_      int
+	Name       string
 }
 
 // NewConstantCol creates a new ConstCol column
-func NewConstantCol(elem field.Element, size int) ifaces.Column {
+func NewConstantCol(elem field.Element, size int, name string) ifaces.Column {
 	return ConstCol{
 		Base:       elem,
 		Ext:        fext.Lift(elem),
 		IsBaseFlag: true,
 		Size_:      size,
+		Name:       name,
 	}
 }
 
-func NewConstantColExt(elem fext.Element, size int) ifaces.Column {
+func NewConstantColExt(elem fext.Element, size int, name string) ifaces.Column {
 	return ConstCol{
 		Base:       field.Zero(),
 		Ext:        elem,
 		IsBaseFlag: false,
 		Size_:      size,
+		Name:       name,
 	}
 }
 
@@ -49,11 +52,17 @@ func (cc ConstCol) Round() int {
 
 // Returns a generic name from the column. Defined from the coin's.
 func (cc ConstCol) GetColID() ifaces.ColID {
-	if cc.IsBaseFlag {
-		return ifaces.ColIDf("CONSTCOL_%v_%v", cc.Base.String(), cc.Size_)
-	} else {
-		return ifaces.ColIDf("CONSTCOL_%v_%v", cc.Ext.String(), cc.Size_)
+
+	val := cc.Base.String()
+	if !cc.IsBaseFlag {
+		val = cc.Ext.String()
 	}
+
+	if len(cc.Name) > 0 {
+		return ifaces.ColIDf("CONSTCOL_%v_%v", val, cc.Name)
+	}
+
+	return ifaces.ColIDf("CONSTCOL_%v_%v", val, cc.Size_)
 }
 
 // Always return true
@@ -162,15 +171,11 @@ func (cc ConstCol) Split(comp *wizard.CompiledIOP, from, to int) ifaces.Column {
 	}
 
 	// Copy the underlying cc, and assigns the new from and to
-	return NewConstantCol(cc.Base, to-from)
+	return NewConstantCol(cc.Base, to-from, cc.Name)
 }
 
 func (cc ConstCol) IsBase() bool {
-	if cc.IsBaseFlag {
-		return true
-	} else {
-		return false
-	}
+	return cc.IsBaseFlag
 }
 
 func (cc ConstCol) IsZero() bool {

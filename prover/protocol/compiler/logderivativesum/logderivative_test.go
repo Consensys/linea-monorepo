@@ -44,11 +44,14 @@ func TestLogDerivativeSum(t *testing.T) {
 		}
 
 		size := 4
-		zCat1 := map[int]*query.LogDerivativeSumInput{}
-		zCat1[size] = &query.LogDerivativeSumInput{
-			Size:        size,
-			Numerator:   numerators,
-			Denominator: denominators,
+		zCat1 := query.LogDerivativeSumInput{}
+		for i := range numerators {
+
+			zCat1.Parts = append(zCat1.Parts, query.LogDerivativeSumPart{
+				Size: size,
+				Num:  numerators[i],
+				Den:  denominators[i],
+			})
 		}
 		comp.InsertLogDerivativeSum(0, "LogDerivSum_Test", zCat1)
 
@@ -106,11 +109,14 @@ func TestLogDerivativeSumMixed(t *testing.T) {
 		}
 
 		size := 4
-		zCat1 := map[int]*query.LogDerivativeSumInput{}
-		zCat1[size] = &query.LogDerivativeSumInput{
-			Size:        size,
-			Numerator:   numerators,
-			Denominator: denominators,
+		zCat1 := query.LogDerivativeSumInput{}
+
+		for i := range numerators {
+			zCat1.Parts = append(zCat1.Parts, query.LogDerivativeSumPart{
+				Size: size,
+				Num:  numerators[i],
+				Den:  denominators[i],
+			})
 		}
 		comp.InsertLogDerivativeSum(0, "LogDerivSum_Test", zCat1)
 
@@ -129,7 +135,7 @@ func TestLogDerivativeSumMixed(t *testing.T) {
 		run.AssignColumn("Den_3", smartvectors.ForTest(3, 4, 3, 4))
 
 		expectedResult := field.NewElement(0)
-		run.AssignLogDerivSumGeneric("LogDerivSum_Test", fext.NewESHashFromBase(expectedResult))
+		run.AssignLogDerivSum("LogDerivSum_Test", fext.NewESHashFromBase(expectedResult))
 
 	}
 
@@ -167,14 +173,16 @@ func TestLogDerivativeSumMixed2(t *testing.T) {
 		}
 
 		size := 4
-		zCat1 := map[int]*query.LogDerivativeSumInput{}
-		zCat1[size] = &query.LogDerivativeSumInput{
-			Size:        size,
-			Numerator:   numerators,
-			Denominator: denominators,
+		zCat1 := query.LogDerivativeSumInput{}
+		for i := range numerators {
+			zCat1.Parts = append(zCat1.Parts, query.LogDerivativeSumPart{
+				Size: size,
+				Num:  numerators[i],
+				Den:  denominators[i],
+			})
 		}
-		comp.InsertLogDerivativeSum(0, "LogDerivSum_Test", zCat1)
 
+		comp.InsertLogDerivativeSum(0, "LogDerivSum_Test", zCat1)
 	}
 
 	prover := func(run *wizard.ProverRuntime) {

@@ -133,27 +133,27 @@ func TestSamplingFromSeed(t *testing.T) {
 		}
 	})
 
-	// t.Run("non-dependance-curr-state", func(t *testing.T) {
+	t.Run("non-dependance-curr-state", func(t *testing.T) {
 
-	// 	var s1, s2, seed field.Element
-	// 	seed.SetRandom()
-	// 	s1.SetRandom()
-	// 	s2.SetRandom()
+		var s1, s2, seed field.Element
+		seed.SetRandom()
+		s1.SetRandom()
+		s2.SetRandom()
 
-	// 	name := "string-name"
-	// 	fs1 := poseidon2.NewMerkleDamgardHasher()
-	// 	fs2 := poseidon2.NewMerkleDamgardHasher()
+		name := "string-name"
+		fs1 := poseidon2.NewMerkleDamgardHasher()
+		fs2 := poseidon2.NewMerkleDamgardHasher()
 
-	// 	fs1.SetState(s1.Marshal())
-	// 	fs2.SetState(s2.Marshal())
+		fs1.SetState(s1.Marshal())
+		fs2.SetState(s2.Marshal())
 
-	// 	y1 := RandomFieldFromSeed(fs1, seed, name)
-	// 	y2 := RandomFieldFromSeed(fs2, seed, name)
+		y1 := RandomFieldFromSeed(fs1, seed, name)
+		y2 := RandomFieldFromSeed(fs2, seed, name)
 
-	// 	if y1 != y2 {
-	// 		t.Errorf("starting from different state does not give the same results")
-	// 	}
-	// })
+		if y1 != y2 {
+			t.Errorf("starting from different state does not give the same results")
+		}
+	})
 
 	t.Run("does-not-modify-state", func(t *testing.T) {
 

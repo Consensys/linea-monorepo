@@ -12,7 +12,7 @@ import (
 
 // A constant vector is a vector obtained by repeated "length" time the same value
 type ConstantExt struct {
-	val    fext.Element
+	Value  fext.Element
 	length int
 }
 
@@ -21,7 +21,7 @@ func NewConstantExt(val fext.Element, length int) *ConstantExt {
 	if length <= 0 {
 		utils.Panic("zero or negative length are not allowed")
 	}
-	return &ConstantExt{val: val, length: length}
+	return &ConstantExt{Value: val, length: length}
 }
 
 // Return the length of the smart-vector
@@ -29,10 +29,10 @@ func (c *ConstantExt) Len() int { return c.length }
 
 // Returns an entry of the constant
 func (c *ConstantExt) GetBase(int) (field.Element, error) {
-	return field.Zero(), fmt.Errorf(conversionError)
+	return field.Zero(), errConversion
 }
 
-func (c *ConstantExt) GetExt(int) fext.Element { return c.val }
+func (c *ConstantExt) GetExt(int) fext.Element { return c.Value }
 
 func (r *ConstantExt) Get(n int) field.Element {
 	res, err := r.GetBase(n)
@@ -53,43 +53,43 @@ func (c *ConstantExt) SubVector(start, stop int) SmartVector {
 	assertCorrectBound(start, c.length)
 	// The +1 is because we accept if "stop = length"
 	assertCorrectBound(stop, c.length+1)
-	return NewConstantExt(c.val, stop-start)
+	return NewConstantExt(c.Value, stop-start)
 }
 
 // Returns a rotated version of the slice
 func (c *ConstantExt) RotateRight(int) SmartVector {
-	return NewConstantExt(c.val, c.length)
+	return NewConstantExt(c.Value, c.length)
 }
 
 // Write the constant vector in a slice
 func (c *ConstantExt) WriteInSlice(s []field.Element) {
-	panic(conversionError)
+	panic(errConversion)
 }
 
 func (c *ConstantExt) WriteInSliceExt(s []fext.Element) {
 	for i := 0; i < len(s); i++ {
-		s[i].Set(&c.val)
+		s[i].Set(&c.Value)
 	}
 }
 
 func (c *ConstantExt) Val() fext.Element {
-	return c.val
+	return c.Value
 }
 
 func (c *ConstantExt) Pretty() string {
-	return fmt.Sprintf("Constant[%v;%v]", c.val.String(), c.length)
+	return fmt.Sprintf("Constant[%v;%v]", c.Value.String(), c.length)
 }
 
 func (c *ConstantExt) DeepCopy() SmartVector {
-	return NewConstantExt(c.val, c.length)
+	return NewConstantExt(c.Value, c.length)
 }
 
 func (c *ConstantExt) IntoRegVecSaveAlloc() []field.Element {
-	panic(conversionError)
+	panic(errConversion)
 }
 
 func (c *ConstantExt) IntoRegVecSaveAllocBase() ([]field.Element, error) {
-	return nil, fmt.Errorf(conversionError)
+	return nil, errConversion
 }
 
 func (c *ConstantExt) IntoRegVecSaveAllocExt() []fext.Element {

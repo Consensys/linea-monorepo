@@ -2,8 +2,7 @@ package plonk
 
 import (
 	"fmt"
-	"os"
-	"sync"
+	"path"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/witness"
@@ -11,12 +10,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"golang.org/x/sync/errgroup"
 )
@@ -59,19 +59,47 @@ type CircuitAlignmentInput struct {
 	// PlonkOptions are optional options to the plonk-in-wizard checker. See [Option].
 	PlonkOptions []query.PlonkOption
 
-	// InputFiller returns an element to pad in the public input for the
-	// circuit in case DataToCircuitMask is not full length of the circuit
-	// input. If it is nil, then we use zero value.
-	InputFiller func(circuitInstance, inputIndex int) field.Element
+	// InputFillerKey is the key used to retrieve the input filler from the
+	// registry.
+	InputFillerKey string
 
-	witnesses       []witness.Witness
-	witnessesOnce   sync.Once
-	numEffWitnesses int
-
-	// circMaskOpenings are local opening queries over the ToCircuitMask that
+	// CircMaskOpenings are local opening queries over the ToCircuitMask that
 	// we use to checks that the "activators" of the Plonk in Wizard are
 	// correctly set w.r.t. circMaskOpening
-	circMaskOpenings []query.LocalOpening
+	CircMaskOpenings []query.LocalOpening
+}
+
+// InputFiller is a function that is used to fill the public inputs of
+// incomplete circuits.
+type InputFiller func(circuitInstance, inputIndex int) field.Element
+
+// plonkInputFillerRegistry is a registry for plonk input fillers.
+var plonkInputFillerRegistry = map[string]func(circuitInstance, inputIndex int) field.Element{}
+
+// witnessRuntimeKey is a key used to store and retrieve the plonk witnesses
+// in the runtime's state.
+var (
+	witnessRuntimeKey       = "plonk-witnesses"
+	numEffWitnessRuntimeKey = "plonk-num-eff-witnesses"
+)
+
+// RegisterInputFiller registers an input filler for the given key. Passing it
+// the input filler to the register allows using it in a PlonkAlignedInput.
+func RegisterInputFiller(key string, inpFiller InputFiller) {
+	plonkInputFillerRegistry[key] = inpFiller
+}
+
+// retrieveInputFiler retrieves the input filler for the given key. If the key
+// is the empty string then the default input filler is returned. The default
+// input filler is a function that returns zero. Otherwise, the function
+// returns the nil value.
+func retrieveInputFiler(key string) InputFiller {
+	if len(key) == 0 {
+		return func(circuitInstance, inputIndex int) field.Element {
+			return field.Zero()
+		}
+	}
+	return plonkInputFillerRegistry[key]
 }
 
 func (ci *CircuitAlignmentInput) NbInstances() int {
@@ -85,108 +113,116 @@ func (ci *CircuitAlignmentInput) NbInstances() int {
 // if this uncovers an overflow.
 func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 
+	// This checks if the witness already exists
+	if run.State.Exists(path.Join(ci.Name, witnessRuntimeKey)) {
+		return
+	}
+
 	nbPublicInputs, _ := gnarkutil.CountVariables(ci.Circuit)
 
-	ci.witnessesOnce.Do(func() {
+	// This call may panic or exit the program
+	ci.checkNbCircuitInvocation(run)
 
-		if err := ci.checkNbCircuitInvocation(run); err != nil {
-			// Don't use the fatal level here because we want to control the exit code
-			// to be 77.
-			logrus.Errorf("fatal=%v", err)
-			os.Exit(77)
+	inputFiller := retrieveInputFiler(ci.InputFillerKey)
+	if inputFiller == nil {
+		panic(fmt.Sprintf("could not find input filler for key %s", ci.InputFillerKey))
+	}
+
+	// the number of inputs here we deduce -- we divide all masked values by the number of instances.
+	dataCol := ci.DataToCircuit.GetColAssignment(run)
+	maskCol := ci.DataToCircuitMask.GetColAssignment(run)
+	// first we count how many inputs we actually have
+	totalInputs := 0
+	for i := 0; i < maskCol.Len() && totalInputs < nbPublicInputs*ci.NbCircuitInstances; i++ {
+		selector := maskCol.Get(i)
+		if selector.IsOne() {
+			totalInputs++
 		}
+	}
 
-		if ci.InputFiller == nil {
-			ci.InputFiller = func(_, _ int) field.Element { return field.Zero() }
-		}
-		// the number of inputs here we deduce -- we divide all masked values by the number of instances.
-		dataCol := ci.DataToCircuit.GetColAssignment(run)
-		maskCol := ci.DataToCircuitMask.GetColAssignment(run)
-		// first we count how many inputs we actually have
-		totalInputs := 0
-		for i := 0; i < maskCol.Len() && totalInputs < nbPublicInputs*ci.NbCircuitInstances; i++ {
-			selector := maskCol.Get(i)
-			if selector.IsOne() {
-				totalInputs++
-			}
-		}
-
-		// prepare witness for every circuit instance NB! keep in mind that we only
-		// have public inputs. So the public and private inputs match. Due to
-		// interface definition we have to return both but in practice have only a
-		// single one.
-		ci.witnesses = make([]witness.Witness, ci.NbCircuitInstances)
-		witnessFillers := make([]chan any, ci.NbCircuitInstances)
-		var err error
-		wg, ctx := errgroup.WithContext(context.Background())
-		for i := range ci.witnesses {
-			ii := i // capture the value. Pre Go 1.22
-			ci.witnesses[i], err = witness.New(ecc.BLS12_377.ScalarField())
-			if err != nil {
-				utils.Panic("new witness: %v", err)
-				return
-			}
-			witnessFillers[i] = make(chan any)
-			wg.Go(func() error {
-				return ci.witnesses[ii].Fill(nbPublicInputs, 0, witnessFillers[ii])
-			})
-		}
-		go func() {
-			var filled int
-			for j := 0; j < dataCol.Len(); j++ {
-				mask := maskCol.Get(j)
-				if mask.IsZero() {
-					continue
-				}
-				data := dataCol.Get(j)
-				select {
-				case <-ctx.Done():
-					return
-				case witnessFillers[filled/nbPublicInputs] <- data:
-				}
-				filled++
-				if filled%nbPublicInputs == 0 {
-					close(witnessFillers[(filled-1)/nbPublicInputs])
-				}
-			}
-
-			if filled > 0 {
-				ci.numEffWitnesses = utils.DivCeil(filled-1, nbPublicInputs)
-			}
-
-			for filled < nbPublicInputs*ci.NbCircuitInstances {
-				select {
-				case <-ctx.Done():
-					return
-				case witnessFillers[filled/nbPublicInputs] <- ci.InputFiller(filled/nbPublicInputs, filled%nbPublicInputs):
-				}
-				filled++
-				if filled%nbPublicInputs == 0 {
-					close(witnessFillers[(filled-1)/nbPublicInputs])
-				}
-			}
-		}()
-		if err := wg.Wait(); err != nil {
-			utils.Panic("fill witness: %v", err.Error())
+	// prepare witness for every circuit instance NB! keep in mind that we only
+	// have public inputs. So the public and private inputs match. Due to
+	// interface definition we have to return both but in practice have only a
+	// single one.
+	witnesses := make([]witness.Witness, ci.NbCircuitInstances)
+	witnessFillers := make([]chan any, ci.NbCircuitInstances)
+	numEffWitnesses := 0
+	var err error
+	wg, ctx := errgroup.WithContext(context.Background())
+	for i := range witnesses {
+		ii := i // capture the value. Pre Go 1.22
+		witnesses[i], err = witness.New(ecc.BLS12_377.ScalarField())
+		if err != nil {
+			utils.Panic("new witness: %v", err)
 			return
 		}
+		witnessFillers[i] = make(chan any)
+		wg.Go(func() error {
+			return witnesses[ii].Fill(nbPublicInputs, 0, witnessFillers[ii])
+		})
+	}
+
+	wg.Go(func() error {
+		var filled int
+		for j := 0; j < dataCol.Len(); j++ {
+			mask := maskCol.Get(j)
+			if mask.IsZero() {
+				continue
+			}
+			data := dataCol.Get(j)
+			select {
+			case <-ctx.Done():
+				return nil
+			case witnessFillers[filled/nbPublicInputs] <- data:
+			}
+			filled++
+			if filled%nbPublicInputs == 0 {
+				close(witnessFillers[(filled-1)/nbPublicInputs])
+			}
+		}
+
+		if filled > 0 {
+			numEffWitnesses = utils.DivCeil(filled-1, nbPublicInputs)
+		}
+
+		for filled < nbPublicInputs*ci.NbCircuitInstances {
+			select {
+			case <-ctx.Done():
+				return nil
+			case witnessFillers[filled/nbPublicInputs] <- inputFiller(filled/nbPublicInputs, filled%nbPublicInputs):
+			}
+			filled++
+			if filled%nbPublicInputs == 0 {
+				close(witnessFillers[(filled-1)/nbPublicInputs])
+			}
+		}
+
+		return nil
 	})
+
+	if err := wg.Wait(); err != nil {
+		utils.Panic("fill witness: %v", err.Error())
+		return
+	}
+
+	run.State.InsertNew(path.Join(ci.Name, witnessRuntimeKey), witnesses)
+	run.State.InsertNew(path.Join(ci.Name, numEffWitnessRuntimeKey), numEffWitnesses)
 }
 
 // Assign returns the witness for the circuit for solving. The witness is read
 // from the columns and if it is not long enough, then filled with dummy values.
 // Implements [WitnessAssigner].
 func (ci *CircuitAlignmentInput) Assign(run *wizard.ProverRuntime, i int) (private, public witness.Witness, err error) {
-	// done inside Once, so can always call without overhead
 	ci.prepareWitnesses(run)
-	return ci.witnesses[i], ci.witnesses[i], nil
+	witnesses := run.State.MustGet(path.Join(ci.Name, witnessRuntimeKey)).([]witness.Witness)
+	return witnesses[i], witnesses[i], nil
 }
 
 // NumEffWitnesses returns the effective number of Plonk witnesses that are
 // collected from the assignment of the AlignmentModule.
 func (ci *CircuitAlignmentInput) NumEffWitnesses(run *wizard.ProverRuntime) int {
 	ci.prepareWitnesses(run)
-	return ci.numEffWitnesses
+	return run.State.MustGet(path.Join(ci.Name, numEffWitnessRuntimeKey)).(int)
 }
 
 // checkNbCircuitInvocation checks that the number of time the circuit is called
@@ -206,9 +242,15 @@ func (ci *CircuitAlignmentInput) checkNbCircuitInvocation(run *wizard.ProverRunt
 	}
 
 	if count > nbPublicInputs*ci.NbCircuitInstances {
-		return fmt.Errorf(
-			"[circuit-alignement] too many inputs circuit=%v nb-public-input-required=%v nb-public-input-per-circuit=%v nb-circuits-available=%v nb-circuit-required=%v",
-			ci.Name, count, nbPublicInputs, ci.NbCircuitInstances, utils.DivCeil(count, nbPublicInputs),
+
+		// This will either panic or exit the program.
+		exit.OnLimitOverflow(
+			nbPublicInputs*ci.NbCircuitInstances,
+			count,
+			fmt.Errorf(
+				"[circuit-alignement] too many inputs circuit=%v nb-public-input-required=%v nb-public-input-per-circuit=%v nb-circuits-available=%v nb-circuit-required=%v",
+				ci.Name, count, nbPublicInputs, ci.NbCircuitInstances, utils.DivCeil(count, nbPublicInputs),
+			),
 		)
 	}
 
@@ -252,14 +294,16 @@ func DefineAlignment(comp *wizard.CompiledIOP, toAlign *CircuitAlignmentInput) *
 
 		// This has to be the first thing we declare as this runs [frontend.Compile]
 		// internally.
-		plonkInWizardQ = &query.PlonkInWizard{
-			ID:           ifaces.QueryID(toAlign.Name),
-			Circuit:      toAlign.Circuit,
-			PlonkOptions: toAlign.PlonkOptions,
-			Selector:     isActive,
-			Data:         alignedData,
-		}
+		plonkInWizardQ = query.NewPlonkInWizard(
+			ifaces.QueryID(toAlign.Name),
+			alignedData,
+			isActive,
+			toAlign.Circuit,
+			toAlign.PlonkOptions,
+		)
 	)
+
+	pragmas.MarkRightPadded(isActive)
 
 	comp.InsertPlonkInWizard(plonkInWizardQ)
 
@@ -326,7 +370,6 @@ func (a *Alignment) assignMasks(run *wizard.ProverRuntime) {
 		}
 
 		isActiveAssignment[i].SetOne()
-
 		if i%nbPublicInputsPadded < nbPublicInputs {
 			totalAligned++
 		}
@@ -360,15 +403,12 @@ func (a *Alignment) assignCircData(run *wizard.ProverRuntime) {
 	var (
 		lastEffInstance    = nbActualData / nbInput
 		nbDataLastInstance = nbActualData % nbInput
+		inputFiller        = retrieveInputFiler(a.InputFillerKey)
 	)
 
 	if nbDataLastInstance > 0 {
 		for i := nbDataLastInstance; i < nbInput; i++ {
-			if a.InputFiller != nil {
-				dataChan <- a.InputFiller(lastEffInstance, i)
-			} else {
-				dataChan <- field.Zero()
-			}
+			dataChan <- inputFiller(lastEffInstance, i)
 		}
 	}
 
@@ -396,9 +436,9 @@ assignmentLoop:
 
 // assignCircMaskOpenings assigns the openings queries over the actualCircMaskAssignment
 func (a *Alignment) assignCircMaskOpenings(run *wizard.ProverRuntime) {
-	for i := range a.circMaskOpenings {
-		v := a.circMaskOpenings[i].Pol.GetColAssignmentAt(run, 0)
-		run.AssignLocalPoint(a.circMaskOpenings[i].ID, v)
+	for i := range a.CircMaskOpenings {
+		v := a.CircMaskOpenings[i].Pol.GetColAssignmentAt(run, 0)
+		run.AssignLocalPoint(a.CircMaskOpenings[i].ID, v)
 	}
 }
 

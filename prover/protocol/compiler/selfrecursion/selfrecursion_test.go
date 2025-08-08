@@ -6,16 +6,19 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -42,7 +45,7 @@ const QNAME ifaces.QueryID = "EVAL"
 // sis instances
 var sisInstances = []ringsis.Params{
 	{LogTwoBound: 8, LogTwoDegree: 1},
-	{LogTwoBound: 4, LogTwoDegree: 2},
+	{LogTwoBound: 8, LogTwoDegree: 2},
 	{LogTwoBound: 8, LogTwoDegree: 3},
 	{LogTwoBound: 8, LogTwoDegree: 6},
 	{LogTwoBound: 8, LogTwoDegree: 5},
@@ -338,4 +341,110 @@ func TestSelfRecursionPrecompMultiLayered(t *testing.T) {
 		err := wizard.Verify(comp, proof)
 		require.NoError(subT, err)
 	})
+}
+
+// Test the compiler of self-recursion with really many layers for a sample
+// dummy protocol.
+func TestSelfRecursionManyLayers(t *testing.T) {
+
+	define, prove := generateProtocol(testcases[0])
+	n := 6
+
+	comp := wizard.Compile(
+		define,
+		vortex.Compile(
+			8,
+			vortex.ForceNumOpenedColumns(32),
+			vortex.WithSISParams(&ringsis.StdParams),
+			vortex.WithOptionalSISHashingThreshold(64),
+		),
+	)
+
+	for i := 0; i < n; i++ {
+		comp = wizard.ContinueCompilation(
+			comp,
+			selfrecursion.SelfRecurse,
+			mimc.CompileMiMC,
+			compiler.Arcane(
+				compiler.WithTargetColSize(1<<13),
+			),
+			// logdata.Log("before-vortex"),
+			logdata.GenCSV(files.MustOverwrite(fmt.Sprintf("selfrecursion-%v.csv", i)), logdata.IncludeAllFilter),
+			vortex.Compile(
+				8,
+				vortex.ForceNumOpenedColumns(32),
+				vortex.WithSISParams(&ringsis.StdParams),
+				vortex.WithOptionalSISHashingThreshold(64),
+			),
+		)
+	}
+
+	proof := wizard.Prove(comp, prove)
+	err := wizard.Verify(comp, proof)
+	require.NoError(t, err)
+}
+
+// Test the compiler of self-recursion with really many layers for a sample
+// dummy protocol.
+func TestSelfRecursionManyLayersWithSerde(t *testing.T) {
+
+	define, prove := generateProtocol(testcases[0])
+	n := 6
+
+	comp := wizard.Compile(
+		define,
+		vortex.Compile(
+			8,
+			vortex.ForceNumOpenedColumns(32),
+			vortex.WithSISParams(&ringsis.StdParams),
+			vortex.WithOptionalSISHashingThreshold(64),
+		),
+	)
+
+	for i := 0; i < n; i++ {
+		comp = wizard.ContinueCompilation(
+			comp,
+			selfrecursion.SelfRecurse,
+			mimc.CompileMiMC,
+			compiler.Arcane(
+				compiler.WithTargetColSize(1<<13),
+			),
+			vortex.Compile(
+				8,
+				vortex.ForceNumOpenedColumns(32),
+				vortex.WithSISParams(&ringsis.StdParams),
+				vortex.WithOptionalSISHashingThreshold(64),
+			),
+		)
+	}
+
+	buf, err := serialization.Serialize(comp)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	comp2 := &wizard.CompiledIOP{}
+	err = serialization.Deserialize(buf, &comp2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	toCheck := []ifaces.ColID{
+		"CYCLIC_COUNTER_121_8_256_COUNTER",
+		"CYCLIC_COUNTER_1902_16_4096_COUNTER",
+	}
+
+	for i := range toCheck {
+
+		n0 := comp.Columns.GetSize(toCheck[i])
+		n1 := comp2.Columns.GetSize(toCheck[i])
+
+		if n0 != n1 {
+			t.Errorf("Mismatch at %v: %v != %v\n", toCheck[i], n0, n1)
+		}
+	}
+
+	proof := wizard.Prove(comp2, prove)
+	err = wizard.Verify(comp2, proof)
+	require.NoError(t, err)
 }

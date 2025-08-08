@@ -7,27 +7,39 @@ package keccak
 
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 	gen_acc "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/acc_module"
 )
+
+// ShakiraProverAction is a ProverAction for the SHAKIRA module, serializable for
+// KeccakZkEVM. It assigns the ManuallyShifted column.
+type ShakiraProverAction struct {
+	SelectorKeccakResLo *dedicated.ManuallyShifted
+}
+
+// Run implements the wizard.ProverAction interface.
+func (s *ShakiraProverAction) Run(run *wizard.ProverRuntime) {
+	s.SelectorKeccakResLo.Assign(run)
+}
 
 type KeccakZkEVM struct {
 	Settings *Settings
 
 	// SuppProverSteps is a list of prover steps to be run
 	// by the KeccakZKEvm at the beginning of the assignment.
-	SuppProverSteps []func(*wizard.ProverRuntime)
+	SuppProverSteps []wizard.ProverAction
 
 	// The [wizard.ProverAction] for submodules.
-	pa_accData wizard.ProverAction
-	pa_accInfo wizard.ProverAction
-	pa_keccak  wizard.ProverAction
+	Pa_accData wizard.ProverAction
+	Pa_accInfo wizard.ProverAction
+	Pa_keccak  wizard.ProverAction
 }
 
 func NewKeccakZkEVM(comp *wizard.CompiledIOP, settings Settings, providersFromEcdsa []generic.GenericByteModule) *KeccakZkEVM {
 
-	shakira, shakiraSupp := getShakiraArithmetization(comp)
+	shakira, isHashLoManualShf := getShakiraArithmetization(comp)
 
 	res := newKeccakZkEvm(
 		comp,
@@ -38,7 +50,8 @@ func NewKeccakZkEVM(comp *wizard.CompiledIOP, settings Settings, providersFromEc
 		),
 	)
 
-	res.SuppProverSteps = append(res.SuppProverSteps, shakiraSupp)
+	shakiraProverAction := &ShakiraProverAction{SelectorKeccakResLo: isHashLoManualShf}
+	res.SuppProverSteps = append(res.SuppProverSteps, shakiraProverAction)
 
 	return res
 }
@@ -79,9 +92,9 @@ func newKeccakZkEvm(comp *wizard.CompiledIOP, settings Settings, providers []gen
 	)
 
 	res := &KeccakZkEVM{
-		pa_accData: accData,
-		pa_accInfo: accInfo,
-		pa_keccak:  keccak,
+		Pa_accData: accData,
+		Pa_accInfo: accInfo,
+		Pa_keccak:  keccak,
 		Settings:   &settings,
 	}
 	return res
@@ -90,21 +103,20 @@ func newKeccakZkEvm(comp *wizard.CompiledIOP, settings Settings, providers []gen
 
 func (k *KeccakZkEVM) Run(run *wizard.ProverRuntime) {
 
-	for i := range k.SuppProverSteps {
-		k.SuppProverSteps[i](run)
+	for _, action := range k.SuppProverSteps {
+		action.Run(run)
 	}
 
-	k.pa_accData.Run(run)
-	k.pa_accInfo.Run(run)
-	k.pa_keccak.Run(run)
+	k.Pa_accData.Run(run)
+	k.Pa_accInfo.Run(run)
+	k.Pa_keccak.Run(run)
 }
 
 // getShakiraArithmetization returns a [generic.GenericByteModule] representing
 // the data to hash using SHA3 in the SHAKIRA module of the arithmetization. The
 // returned module contains an [Info.IsHashLo] that is a column to assign: e.g
 // it does not come from the arithmetization directly but is derived from.
-// The function returns a closure doing the assignment of the defined column.
-func getShakiraArithmetization(comp *wizard.CompiledIOP) (generic.GenericByteModule, func(run *wizard.ProverRuntime)) {
+func getShakiraArithmetization(comp *wizard.CompiledIOP) (generic.GenericByteModule, *dedicated.ManuallyShifted) {
 
 	res := generic.GenericByteModule{
 		Data: generic.GenDataModule{
@@ -125,10 +137,10 @@ func getShakiraArithmetization(comp *wizard.CompiledIOP) (generic.GenericByteMod
 		},
 	}
 
-	supp := dedicated.ManuallyShift(comp, res.Info.IsHashHi, -1)
+	supp := dedicated.ManuallyShift(comp, res.Info.IsHashHi, -1, "shakiradata.SELECTOR_KECCAK_RES_LO")
+	pragmas.MarkLeftPadded(supp.Natural)
 	res.Info.IsHashLo = supp.Natural
-
-	return res, func(run *wizard.ProverRuntime) { supp.Assign(run) }
+	return res, supp
 }
 
 func getRlpAddArithmetization(comp *wizard.CompiledIOP) generic.GenericByteModule {

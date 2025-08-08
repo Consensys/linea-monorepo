@@ -42,13 +42,14 @@ const config: Config = {
     tokenBridgeAddress: "0x93DcAdf238932e6e6a85852caC89cBd71798F463",
     l2TokenAddress: "",
     l2TestContractAddress: "",
+    l2SparseMerkleProofAddress: "",
+    l2LineaSequencerUptimeFeedAddress: "",
     accountManager: new EnvironmentBasedAccountManager(
       new ethers.JsonRpcProvider(L2_RPC_URL.toString()),
       L2_WHALE_ACCOUNTS,
       L2_CHAIN_ID,
     ),
     dummyContractAddress: "",
-    opcodeTestContractAddress: "",
   },
 };
 

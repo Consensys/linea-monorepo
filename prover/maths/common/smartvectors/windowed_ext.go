@@ -1,7 +1,6 @@
 package smartvectors
 
 import (
-	"errors"
 	"fmt"
 	"iter"
 
@@ -13,8 +12,8 @@ import (
 
 // It's a slice - zero padded up to a certain length - and RotatedExt
 type PaddedCircularWindowExt struct {
-	window     []fext.Element
-	paddingVal fext.Element
+	Window_     []fext.Element
+	PaddingVal_ fext.Element
 	// Totlen is the length of the represented vector
 	totLen, offset int
 }
@@ -37,10 +36,10 @@ func NewPaddedCircularWindowExt(window []fext.Element, paddingVal fext.Element, 
 	// Normalize the offset to be in range [0:totlen)
 	offset = utils.PositiveMod(offset, totLen)
 	return &PaddedCircularWindowExt{
-		window:     window,
-		paddingVal: paddingVal,
-		offset:     offset,
-		totLen:     totLen,
+		Window_:     window,
+		PaddingVal_: paddingVal,
+		offset:      offset,
+		totLen:      totLen,
 	}
 }
 
@@ -51,17 +50,17 @@ func (p *PaddedCircularWindowExt) Len() int {
 
 // Returns a queries position
 func (p *PaddedCircularWindowExt) GetBase(n int) (field.Element, error) {
-	return field.Zero(), errors.New(conversionError)
+	return field.Zero(), errConversion
 }
 
 func (p *PaddedCircularWindowExt) GetExt(n int) fext.Element {
 	// Check if the queried index is in the window
 	posFromWindowsPoV := utils.PositiveMod(n-p.offset, p.totLen)
-	if posFromWindowsPoV < len(p.window) {
-		return p.window[posFromWindowsPoV]
+	if posFromWindowsPoV < len(p.Window_) {
+		return p.Window_[posFromWindowsPoV]
 	}
 	// Else, return the padding value
-	return p.paddingVal
+	return p.PaddingVal_
 }
 
 func (r *PaddedCircularWindowExt) Get(n int) field.Element {
@@ -124,50 +123,50 @@ func (p *PaddedCircularWindowExt) SubVector(start, stop int) SmartVector {
 
 	// Case 1 : return a ConstantExt vector
 	if b <= c && c < d {
-		return NewConstantExt(p.paddingVal, b)
+		return NewConstantExt(p.PaddingVal_, b)
 	}
 
 	// Case 2 : return a RegularExt vector
 	if b <= d && d < c {
-		reg := RegularExt(p.window[n-c : n-c+b])
+		reg := RegularExt(p.Window_[n-c : n-c+b])
 		return &reg
 	}
 
 	// Case 2* : same as 2 but c == 0
 	if b <= d && c == 0 {
-		reg := RegularExt(p.window[:b])
+		reg := RegularExt(p.Window_[:b])
 		return &reg
 	}
 
 	// Case 3 : the window is fully contained in the subvector
 	if c < d && d <= b {
-		return NewPaddedCircularWindowExt(p.window, p.paddingVal, c, b)
+		return NewPaddedCircularWindowExt(p.Window_, p.PaddingVal_, c, b)
 	}
 
 	// Case 4 : left-ended
 	if c < b && c <= d {
-		return NewPaddedCircularWindowExt(p.window[:b-c], p.paddingVal, c, b)
+		return NewPaddedCircularWindowExt(p.Window_[:b-c], p.PaddingVal_, c, b)
 	}
 
 	// Case 5 : the window is double ended (we skip some element in the center of the window)
 	if d < c && c < b {
-		left := p.window[:b-c]
-		right := p.window[n-c:]
+		left := p.Window_[:b-c]
+		right := p.Window_[n-c:]
 
 		// The deep-copy of left ensures that we do not append
 		// on the same concrete slice.
 		w := append(vectorext.DeepCopy(left), right...)
-		return NewPaddedCircularWindowExt(w, p.paddingVal, c, b)
+		return NewPaddedCircularWindowExt(w, p.PaddingVal_, c, b)
 	}
 
 	// Case 6 : right-ended
 	if 0 < d && d < b && b <= c {
-		return NewPaddedCircularWindowExt(p.window[n-c:], p.paddingVal, 0, b)
+		return NewPaddedCircularWindowExt(p.Window_[n-c:], p.PaddingVal_, 0, b)
 	}
 
 	// Case 7 : d == 0 and c is out
 	if d == 0 && b <= c {
-		return NewConstantExt(p.paddingVal, b)
+		return NewConstantExt(p.PaddingVal_, b)
 	}
 
 	panic(fmt.Sprintf("unsupported case : b %v, c %v, d %v", b, c, d))
@@ -176,33 +175,33 @@ func (p *PaddedCircularWindowExt) SubVector(start, stop int) SmartVector {
 
 // Rotate the vector
 func (p *PaddedCircularWindowExt) RotateRight(offset int) SmartVector {
-	return NewPaddedCircularWindowExt(vectorext.DeepCopy(p.window), p.paddingVal, p.offset+offset, p.totLen)
+	return NewPaddedCircularWindowExt(vectorext.DeepCopy(p.Window_), p.PaddingVal_, p.offset+offset, p.totLen)
 }
 
 func (p *PaddedCircularWindowExt) WriteInSlice(buff []field.Element) {
-	panic(conversionError)
+	panic(errConversion)
 }
 
 func (p *PaddedCircularWindowExt) WriteInSliceExt(buff []fext.Element) {
 	assertHasLength(len(buff), p.totLen)
 
-	for i := range p.window {
+	for i := range p.Window_ {
 		pos := utils.PositiveMod(i+p.offset, p.totLen)
-		buff[pos] = p.window[i]
+		buff[pos] = p.Window_[i]
 	}
 
-	for i := len(p.window); i < p.totLen; i++ {
+	for i := len(p.Window_); i < p.totLen; i++ {
 		pos := utils.PositiveMod(i+p.offset, p.totLen)
-		buff[pos] = p.paddingVal
+		buff[pos] = p.PaddingVal_
 	}
 }
 
 func (p *PaddedCircularWindowExt) Pretty() string {
-	return fmt.Sprintf("Windowed[totlen=%v offset=%v, paddingVal=%v, window=%v]", p.totLen, p.offset, p.paddingVal.String(), vectorext.Prettify(p.window))
+	return fmt.Sprintf("Windowed[totlen=%v offset=%v, paddingVal=%v, window=%v]", p.totLen, p.offset, p.PaddingVal_.String(), vectorext.Prettify(p.Window_))
 }
 
 func (p *PaddedCircularWindowExt) interval() CircularInterval {
-	return IvalWithStartLen(p.offset, len(p.window), p.totLen)
+	return IvalWithStartLen(p.offset, len(p.Window_), p.totLen)
 }
 
 // processWindowedOnlyExt applies the operator `op` to all the smartvectors
@@ -288,34 +287,34 @@ func processWindowedOnlyExt(op operator, svecs []SmartVector, coeffs_ []int) (re
 		// multiplying / adding
 		if isFirst {
 			isFirst = false
-			op.vecExtIntoTermExt(unionWindow[start_:stop_], pcw.window, coeffs[i])
+			op.vecExtIntoTermExt(unionWindow[start_:stop_], pcw.Window_, coeffs[i])
 			// #nosec G601 -- Deliberate pass by reference. (We trust the pointed object is not mutated)
-			op.constExtIntoTermExt(&paddedTerm, &pcw.paddingVal, coeffs[i])
+			op.constExtIntoTermExt(&paddedTerm, &pcw.PaddingVal_, coeffs[i])
 			vectorext.Fill(unionWindow[:start_], paddedTerm)
 			vectorext.Fill(unionWindow[stop_:], paddedTerm)
 			continue
 		}
 
 		// sanity-check : start and stop are consistent with the size of pcw
-		if stop_-start_ != len(pcw.window) {
+		if stop_-start_ != len(pcw.Window_) {
 			utils.Panic(
 				"sanity-check failed. The renormalized coordinates (start=%v, stop=%v) are inconsistent with pcw : (len=%v)",
-				start_, stop_, len(pcw.window),
+				start_, stop_, len(pcw.Window_),
 			)
 		}
 
-		op.vecExtIntoVecExt(unionWindow[start_:stop_], pcw.window, coeffs[i])
+		op.vecExtIntoVecExt(unionWindow[start_:stop_], pcw.Window_, coeffs[i])
 
 		// Update the padded term
 		// #nosec G601 -- Deliberate pass by reference. (We trust the pointed object is not mutated)
-		op.constExtIntoConstExt(&paddedTerm, &pcw.paddingVal, coeffs[i])
+		op.constExtIntoConstExt(&paddedTerm, &pcw.PaddingVal_, coeffs[i])
 
 		// Complete the left and the right-side of the window (i.e) the part
 		// of unionWindow that does not overlap with pcw.window.
 		// #nosec G601 -- Deliberate pass by reference. (We trust the pointed object is not mutated)
-		op.constExtIntoVecExt(unionWindow[:start_], &pcw.paddingVal, coeffs[i])
+		op.constExtIntoVecExt(unionWindow[:start_], &pcw.PaddingVal_, coeffs[i])
 		// #nosec G601 -- Deliberate pass by reference. (We trust the pointed object is not mutated)
-		op.constExtIntoVecExt(unionWindow[stop_:], &pcw.paddingVal, coeffs[i])
+		op.constExtIntoVecExt(unionWindow[stop_:], &pcw.PaddingVal_, coeffs[i])
 	}
 
 	if smallestCover.IsFullCircle() {
@@ -326,18 +325,18 @@ func processWindowedOnlyExt(op operator, svecs []SmartVector, coeffs_ []int) (re
 }
 
 func (w *PaddedCircularWindowExt) DeepCopy() SmartVector {
-	window := vectorext.DeepCopy(w.window)
-	return NewPaddedCircularWindowExt(window, w.paddingVal, w.offset, w.totLen)
+	window := vectorext.DeepCopy(w.Window_)
+	return NewPaddedCircularWindowExt(window, w.PaddingVal_, w.offset, w.totLen)
 }
 
 // Converts a smart-vector into a normal vec. The implementation minimizes
 // then number of copies.
 func (w *PaddedCircularWindowExt) IntoRegVecSaveAlloc() []field.Element {
-	panic(conversionError)
+	panic(errConversion)
 }
 
 func (w *PaddedCircularWindowExt) IntoRegVecSaveAllocBase() ([]field.Element, error) {
-	return nil, errors.New(conversionError)
+	return nil, errConversion
 }
 
 func (w *PaddedCircularWindowExt) IntoRegVecSaveAllocExt() []fext.Element {

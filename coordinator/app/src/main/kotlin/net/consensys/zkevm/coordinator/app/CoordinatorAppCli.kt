@@ -1,6 +1,7 @@
 package net.consensys.zkevm.coordinator.app
 
-import net.consensys.zkevm.coordinator.app.config.CoordinatorConfig
+import linea.coordinator.config.v2.CoordinatorConfig
+import linea.coordinator.config.v2.toml.loadConfigs
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import picocli.CommandLine
@@ -20,7 +21,7 @@ import java.util.concurrent.Callable
   synopsisHeading = "%n",
   descriptionHeading = "%nDescription:%n%n",
   optionListHeading = "%nOptions:%n",
-  footerHeading = "%n"
+  footerHeading = "%n",
 )
 class CoordinatorAppCli
 internal constructor(private val errorWriter: PrintWriter, private val startAction: StartAction) :
@@ -29,18 +30,10 @@ internal constructor(private val errorWriter: PrintWriter, private val startActi
   private val configFiles: List<File>? = null
 
   @CommandLine.Option(
-    names = ["--traces-limits"],
-    paramLabel = "<FILE>",
-    description = ["Prover traces limits"],
-    arity = "1"
-  )
-  private val tracesLimitsFile: File? = null
-
-  @CommandLine.Option(
     names = ["--traces-limits-v2"],
     paramLabel = "<FILE>",
     description = ["Prover traces limits for linea besu"],
-    arity = "1"
+    arity = "1",
   )
   private val tracesLimitsV2File: File? = null
 
@@ -48,27 +41,24 @@ internal constructor(private val errorWriter: PrintWriter, private val startActi
     names = ["--smart-contract-errors"],
     paramLabel = "<FILE>",
     description = ["Smart contract error codes"],
-    arity = "1"
+    arity = "1",
   )
-
   private val smartContractErrorsFile: File? = null
 
   @CommandLine.Option(
     names = ["--gas-price-cap-time-of-day-multipliers"],
     paramLabel = "<FILE>",
     description = ["Time-of-day multipliers for calculation of L1 dynamic gas price caps"],
-    arity = "1"
+    arity = "1",
   )
-
   private val gasPriceCapTimeOfDayMultipliersFile: File? = null
 
   @CommandLine.Option(
     names = ["--check-configs-only"],
     paramLabel = "<BOOLEAN>",
     description = ["Validates configuration files only, without starting the application."],
-    arity = "0..1"
+    arity = "0..1",
   )
-
   private var checkConfigsOnly: Boolean = false
 
   override fun call(): Int {
@@ -78,8 +68,8 @@ internal constructor(private val errorWriter: PrintWriter, private val startActi
         printUsage(errorWriter)
         return 1
       }
-      if (tracesLimitsFile == null && tracesLimitsV2File == null) {
-        errorWriter.println("Please provide traces-limits or traces-limits-v2 file!")
+      if (tracesLimitsV2File == null) {
+        errorWriter.println("Please provide traces-limits-v2 file!")
         printUsage(errorWriter)
         return 1
       }
@@ -100,13 +90,12 @@ internal constructor(private val errorWriter: PrintWriter, private val startActi
         }
       }
 
-      val configs = linea.coordinator.config.loadConfigs(
+      val configs = loadConfigs(
         coordinatorConfigFiles = configFiles.map { it.toPath() },
-        tracesLimitsFileV1 = tracesLimitsFile?.toPath(),
-        tracesLimitsFileV2 = tracesLimitsV2File?.toPath(),
+        tracesLimitsFileV2 = tracesLimitsV2File.toPath(),
         smartContractErrorsFile = smartContractErrorsFile.toPath(),
         gasPriceCapTimeOfDayMultipliersFile = gasPriceCapTimeOfDayMultipliersFile.toPath(),
-        logger = logger
+        logger = logger,
       )
 
       if (checkConfigsOnly) {
@@ -130,7 +119,7 @@ internal constructor(private val errorWriter: PrintWriter, private val startActi
   }
 
   fun reportUserError(ex: Throwable) {
-    logger.fatal(ex.message)
+    logger.fatal(ex.message, ex)
     errorWriter.println(ex.message)
     printUsage(errorWriter)
   }
@@ -138,7 +127,7 @@ internal constructor(private val errorWriter: PrintWriter, private val startActi
   private fun printUsage(outputWriter: PrintWriter) {
     outputWriter.println()
     outputWriter.println("To display full help:")
-    outputWriter.println(COMMAND_NAME + " --help")
+    outputWriter.println("$COMMAND_NAME --help")
   }
 
   /**

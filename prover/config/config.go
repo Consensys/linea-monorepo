@@ -19,6 +19,19 @@ import (
 // NewConfigFromFile reads the configuration from the given file path and returns a new Config.
 // It also sets default value and validate the configuration.
 func NewConfigFromFile(path string) (*Config, error) {
+	return newConfigFromFile(path, true)
+}
+
+// NewConfigFromFileUnchecked is as [NewConfigFromFile] but does not run
+// the config validation. It will return an error if it fails reading
+// the file or if the config contains unknown fields.
+func NewConfigFromFileUnchecked(path string) (*Config, error) {
+	return newConfigFromFile(path, false)
+}
+
+// NewConfigFromFile reads the configuration from the given file path and returns a new Config.
+// It also sets default value and validate the configuration.
+func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 	viper.SetConfigFile(path)
 
 	// Parse the config
@@ -38,23 +51,25 @@ func NewConfigFromFile(path string) (*Config, error) {
 		return nil, err
 	}
 
-	// Validate the config
-	validate := validator.New(validator.WithRequiredStructEnabled())
-	if err = validate.RegisterValidation("power_of_2", validateIsPowerOfTwo); err != nil {
-		return nil, err
-	}
+	if withValidation {
+		// Validate the config
+		validate := validator.New(validator.WithRequiredStructEnabled())
+		if err = validate.RegisterValidation("power_of_2", validateIsPowerOfTwo); err != nil {
+			return nil, err
+		}
 
-	if err = validate.Struct(cfg); err != nil {
-		return nil, err
+		if err = validate.Struct(cfg); err != nil {
+			return nil, err
+		}
 	}
 
 	// Ensure cmdTmpl and cmdLargeTmpl are parsed
 	cfg.Controller.WorkerCmdTmpl, err = template.New("worker_cmd").Parse(cfg.Controller.WorkerCmd)
-	if err != nil {
+	if withValidation && err != nil {
 		return nil, fmt.Errorf("failed to parse worker_cmd template: %w", err)
 	}
 	cfg.Controller.WorkerCmdLargeTmpl, err = template.New("worker_cmd_large").Parse(cfg.Controller.WorkerCmdLarge)
-	if err != nil {
+	if withValidation && err != nil {
 		return nil, fmt.Errorf("failed to parse worker_cmd_large template: %w", err)
 	}
 
@@ -63,47 +78,20 @@ func NewConfigFromFile(path string) (*Config, error) {
 
 	// Extract the Layer2.MsgSvcContract address from the string
 	addr, err := common.NewMixedcaseAddressFromString(cfg.Layer2.MsgSvcContractStr)
-	if err != nil {
+	if withValidation && err != nil {
 		return nil, fmt.Errorf("failed to extract Layer2.MsgSvcContract address: %w", err)
 	}
 	cfg.Layer2.MsgSvcContract = addr.Address()
 
 	// ensure that asset dir / kzgsrs exists using os.Stat
 	srsDir := cfg.PathForSRS()
-	if _, err := os.Stat(srsDir); os.IsNotExist(err) {
+	if _, err := os.Stat(srsDir); withValidation && os.IsNotExist(err) {
 		return nil, fmt.Errorf("kzgsrs directory (%s) does not exist: %w", srsDir, err)
 	}
 
 	// duplicate L2 hardcoded values for PI
 	cfg.PublicInputInterconnection.ChainID = uint64(cfg.Layer2.ChainID)
 	cfg.PublicInputInterconnection.L2MsgServiceAddr = cfg.Layer2.MsgSvcContract
-
-	return &cfg, nil
-}
-
-// NewConfigFromFileUnchecked is as [NewConfigFromFile] but does not run
-// the config validation. It will return an error if it fails reading
-// the file or if the config contains unknown fields.
-func NewConfigFromFileUnchecked(path string) (*Config, error) {
-
-	viper.SetConfigFile(path)
-
-	// Parse the config
-	err := viper.ReadInConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	// Set the default values
-	setDefaultValues()
-
-	// Unmarshal the config; note that UnmarshalExact will error if there are any fields in the config
-	// that are not present in the struct.
-	var cfg Config
-	err = viper.UnmarshalExact(&cfg)
-	if err != nil {
-		return nil, err
-	}
 
 	return &cfg, nil
 }
@@ -133,7 +121,7 @@ type Config struct {
 
 	// AssetsDir stores the root of the directory where the assets are stored (setup) or
 	// accessed (prover). The file structure is described in TODO @gbotrel.
-	AssetsDir string `mapstructure:"assets_dir" validate:"required,dir"`
+	AssetsDir string `mapstructure:"assets_dir"`
 
 	Controller                 Controller
 	Execution                  Execution
@@ -208,6 +196,10 @@ type Controller struct {
 	WorkerCmdLarge     string             `mapstructure:"worker_cmd_large_tmpl"`
 	WorkerCmdTmpl      *template.Template `mapstructure:"-"`
 	WorkerCmdLargeTmpl *template.Template `mapstructure:"-"`
+
+	// SpotInstanceMode tells the controller to gracefully exit as soon as it
+	// receives a SIGTERM.
+	SpotInstanceMode bool `mapstructure:"spot_instance_mode"`
 }
 
 type Prometheus struct {
@@ -220,11 +212,17 @@ type Prometheus struct {
 	Route string
 }
 
+// type LimitlessParams struct {
+// 	DiscTargetWeight  int `mapstructure:"disc_target_weight"`
+// 	DiscPreDivision   int `mapstructure:"disc_pre_division"`
+// 	CongloMaxSegments int `mapstructure:"conglo_max_segments"`
+// }
+
 type Execution struct {
 	WithRequestDir `mapstructure:",squash"`
 
 	// ProverMode stores the kind of prover to use.
-	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev partial full proofless bench check-only encode-only"`
+	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev partial full proofless bench check-only limitless"`
 
 	// CanRunFullLarge indicates whether the prover is running on a large machine (and can run full large traces).
 	CanRunFullLarge bool `mapstructure:"can_run_full_large"`
@@ -237,6 +235,13 @@ type Execution struct {
 	// used within the prover was generated from the same commit of linea-constraints as the generated lt trace file.
 	// Set this to true to disable compatibility checks (default: false).
 	IgnoreCompatibilityCheck bool `mapstructure:"ignore_compatibility_check"`
+
+	// LimitlessWithDebug is only looked at when the limitless prover is
+	// activated. When set to true, the limitless prover will only run in
+	// debug mode and not produce any proof. This is useful to investigate
+	// bugs in the limitless prover. The field is optional and defaults to
+	// false.
+	LimitlessWithDebug bool `mapstructure:"limitless_with_debug"`
 }
 
 type BlobDecompression struct {
@@ -265,7 +270,7 @@ type Aggregation struct {
 
 	// AllowedInputs determines the "inner" plonk circuits the "outer" aggregation circuit can aggregate.
 	// Order matters.
-	AllowedInputs []string `mapstructure:"allowed_inputs" validate:"required,dive,oneof=execution-dummy execution execution-large blob-decompression-dummy blob-decompression-v0 blob-decompression-v1 emulation-dummy aggregation emulation public-input-interconnection"`
+	AllowedInputs []string `mapstructure:"allowed_inputs" validate:"required,dive,oneof=execution-dummy execution execution-large execution-limitless blob-decompression-dummy blob-decompression-v0 blob-decompression-v1 emulation-dummy aggregation emulation public-input-interconnection"`
 
 	// note @gbotrel keeping that around in case we need to support two emulation contract
 	// during a migration.

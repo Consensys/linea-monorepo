@@ -157,7 +157,7 @@ func (p GnarkUnivariateEvalParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
 	fs.Update(p.Ys...)
 }
 
-// Update the fiat-shamir state with the the present parameters
+// Update the fiat-shamir state with the the present field extension parameters
 func (p GnarkUnivariateEvalParams) UpdateFSExt(fs *fiatshamir.GnarkFiatShamir) {
 	fs.UpdateExt(p.ExtYs...)
 }

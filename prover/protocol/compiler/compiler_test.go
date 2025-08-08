@@ -68,6 +68,13 @@ func runTestList[T testtools.Testcase](t *testing.T, prefix string, list []T) {
 	t.Run(prefix, func(t *testing.T) {
 		for _, tc := range list {
 			t.Run(tc.Name(), func(t *testing.T) {
+
+				defer func() {
+					if r := recover(); r != nil {
+						t.Errorf("Test got a panic: %v", r)
+					}
+				}()
+
 				testtools.RunTestcase(t, tc, totalSuite)
 			})
 		}

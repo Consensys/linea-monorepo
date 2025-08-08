@@ -105,9 +105,12 @@ func RandomField(h hash.StateStorer) field.Element {
 	return res
 }
 
+// RandomField generates and returns a single field element from the seed and the given name.
 func RandomFieldFromSeed(h hash.StateStorer, seed field.Element, name string) field.Element {
 
-	// map name to a field elmt
+	// The first step encodes the 'name' into a single field element. The
+	// field element is obtained by hashing and taking the modulo of the
+	// result to fit into a field element.
 	tmpFr := field.Element{}
 	nameBytes := []byte(name)
 	hasher, _ := blake2b.New256(nil)

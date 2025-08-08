@@ -95,7 +95,7 @@ func RuffiniQuoRemExt(p SmartVector, q fext.Element) (quo SmartVector, rem fext.
 func EvaluateLagrangeFullFext(v SmartVector, x fext.Element, oncoset ...bool) fext.Element {
 	switch con := v.(type) {
 	case *ConstantExt:
-		return con.val
+		return con.Value
 	}
 
 	// Maybe there is an optim for windowed here
@@ -120,7 +120,7 @@ func BatchEvaluateLagrangeExt(vs []SmartVector, x fext.Element, oncoset ...bool)
 			switch con := vs[i].(type) {
 			case *ConstantExt:
 				// constant vectors
-				results[i] = con.val
+				results[i] = con.Value
 				computed[i] = true
 				totalConstant++
 				continue

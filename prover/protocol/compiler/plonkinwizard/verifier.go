@@ -7,20 +7,19 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
-// checkActivatorAndMask is an implementation of [wizard.VerifierAction] and is
+// CheckActivatorAndMask is an implementation of [wizard.VerifierAction] and is
 // used to embody the verifier checks added by [checkActivators].
-type checkActivatorAndMask struct {
-	*context
-	skipped bool
+type CheckActivatorAndMask struct {
+	*Context
+	skipped bool `serde:"omit"`
 }
 
-func (c *checkActivatorAndMask) Run(run wizard.Runtime) error {
-
+func (c *CheckActivatorAndMask) Run(run wizard.Runtime) error {
 	for i := range c.SelOpenings {
 		var (
 			localOpening = run.GetLocalPointEvalParams(c.SelOpenings[i].ID)
 			valOpened    = localOpening.BaseY
-			valActiv     = c.PlonkCtx.Columns.Activators[i].GetColAssignment(run).Get(0)
+			valActiv     = c.Activators[i].GetColAssignment(run).Get(0)
 		)
 
 		if valOpened != valActiv {
@@ -34,21 +33,21 @@ func (c *checkActivatorAndMask) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (c *checkActivatorAndMask) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (c *CheckActivatorAndMask) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	for i := range c.SelOpenings {
 		var (
 			valOpened = run.GetLocalPointEvalParams(c.SelOpenings[i].ID).BaseY
-			valActiv  = c.PlonkCtx.Columns.Activators[i].GetColAssignmentGnarkAt(run, 0)
+			valActiv  = c.Activators[i].GetColAssignmentGnarkAt(run, 0)
 		)
 
 		api.AssertIsEqual(valOpened, valActiv)
 	}
 }
 
-func (c *checkActivatorAndMask) Skip() {
+func (c *CheckActivatorAndMask) Skip() {
 	c.skipped = true
 }
 
-func (c *checkActivatorAndMask) IsSkipped() bool {
+func (c *CheckActivatorAndMask) IsSkipped() bool {
 	return c.skipped
 }

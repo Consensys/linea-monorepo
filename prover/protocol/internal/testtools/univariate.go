@@ -29,7 +29,6 @@ type UnivariateTestcase struct {
 // ListOfUnivariateTestcasesPositive lists standard univariate testcases
 // that are supposed to pass.
 var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
-
 	{
 		NameStr: "constant-poly",
 		Polys: []smartvectors.SmartVector{
@@ -42,7 +41,6 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 			{0},
 		},
 	},
-
 	{
 		NameStr: "one-poly-one-point-non-simple-values",
 		Polys: []smartvectors.SmartVector{
@@ -55,7 +53,6 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 			{0},
 		},
 	},
-
 	{
 		NameStr: "one-poly-one-point",
 		Polys: []smartvectors.SmartVector{
@@ -68,7 +65,6 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 			{0},
 		},
 	},
-
 	{
 		NameStr: "one-poly-one-point-precomputed",
 		Polys: []smartvectors.SmartVector{
@@ -135,7 +131,6 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 			{0, 1},
 		},
 	},
-
 	{
 		NameStr: "two-poly-one-point",
 		Polys: []smartvectors.SmartVector{
@@ -149,7 +144,6 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 			{0, 1},
 		},
 	},
-
 	{
 		NameStr: "one-poly-two-points",
 		Polys: []smartvectors.SmartVector{
@@ -267,7 +261,6 @@ func (u *UnivariateTestcase) Define(comp *wizard.CompiledIOP) {
 			comp.RegisterProverAction(maxRound, assignUnivariatePA{u, i})
 		}
 	}
-
 }
 
 func (u *UnivariateTestcase) Assign(run *wizard.ProverRuntime) {
@@ -319,10 +312,12 @@ func (u *UnivariateTestcase) assignUnivariate(run *wizard.ProverRuntime, i int) 
 		run.AssignUnivariateExt(name, x, u.QueryYs[i]...)
 		return
 	}
+
 	for j := range q.Pols {
 		p := q.Pols[j].GetColAssignment(run)
 		ys[j] = smartvectors.EvaluateLagrangeMixed(p, x)
 	}
+
 	run.AssignUnivariateExt(q.QueryID, x, ys...)
 }
 

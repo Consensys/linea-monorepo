@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -112,18 +113,18 @@ type sha2BlockModule struct {
 	HashHi, HashLo ifaces.Column
 
 	HashHiIsZero, HashLoIsZero ifaces.Column
-	proverActions              []wizard.ProverAction
+	ProverActions              []wizard.ProverAction
 
 	// GnarkCircuitConnector is the result of the Plonk alignement module. It
 	// handles all the Plonk logic responsible for verifying the correctness of
 	// each instance of the Sha2 compression function.
 	GnarkCircuitConnector *plonk.Alignment
 
-	// hasCircuit indicates whether the circuit has been set in the current module.
+	// HasCircuit indicates whether the circuit has been set in the current module.
 	// In production, it will always be set to true but for testing it is more
 	// convenient to invoke the circuit in all the tests as this is a very a CPU
 	// greedy part.
-	hasCircuit bool
+	HasCircuit bool
 }
 
 // newSha2BlockModule generates all the constraints necessary to ensure that the
@@ -152,6 +153,8 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 		}
 	)
 
+	pragmas.MarkRightPadded(res.IsActive)
+
 	res.CanBeBeginningOfInstance = dedicated.CreateHeartBeat(
 		comp,
 		0,
@@ -175,7 +178,7 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 		res.IsActive,
 	)
 
-	res.IsEffFirstLaneOfNewHashShiftMin2 = dedicated.ManuallyShift(comp, res.IsEffFirstLaneOfNewHash, -2)
+	res.IsEffFirstLaneOfNewHashShiftMin2 = dedicated.ManuallyShift(comp, res.IsEffFirstLaneOfNewHash, -2, "IS_EFF_FIRST_LANE_OF_NEW_HASH_SHIFT_MIN_2")
 
 	commonconstraints.MustBeActivationColumns(comp, res.IsActive)
 
@@ -333,9 +336,9 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 	// be zero when isActive.
 	var ctxLo, ctxHi wizard.ProverAction
 
-	res.HashHiIsZero, ctxHi = dedicated.IsZero(comp, res.HashHi)
-	res.HashLoIsZero, ctxLo = dedicated.IsZero(comp, res.HashLo)
-	res.proverActions = append(res.proverActions, ctxHi, ctxLo)
+	res.HashHiIsZero, ctxHi = dedicated.IsZero(comp, res.HashHi).GetColumnAndProverAction()
+	res.HashLoIsZero, ctxLo = dedicated.IsZero(comp, res.HashLo).GetColumnAndProverAction()
+	res.ProverActions = append(res.ProverActions, ctxHi, ctxLo)
 
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%v_HASH_CANT_BE_BOTH_ZERO", inp.Name),
@@ -350,7 +353,7 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 
 func (sbh *sha2BlockModule) WithCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *sha2BlockModule {
 
-	sbh.hasCircuit = true
+	sbh.HasCircuit = true
 
 	sbh.GnarkCircuitConnector = plonk.DefineAlignment(
 		comp,

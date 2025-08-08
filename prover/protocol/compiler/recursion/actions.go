@@ -8,6 +8,7 @@ import (
 	vCom "github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -30,7 +31,8 @@ type AssignVortexOpenedCols struct {
 // the public-inputs of the plonk-in-wizard circuits.
 type ConsistencyCheck struct {
 	Ctx       *Recursion
-	isSkipped bool
+	isSkipped bool `serde:"omit"`
+	PIs       []ifaces.Column
 }
 
 // ExtractWitness extracts a [Witness] from a prover runtime toward being conglomerated.
@@ -41,6 +43,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 		committedMatrices []vCom.EncodedMatrix
 		sisHashes         [][]field.Element
 		trees             []*smt.Tree
+		mimcHashes        [][]field.Element
 		lastRound         = run.Spec.QueriesParams.Round(pcs.Query.QueryID)
 		pubs              = []field.Element{}
 	)
@@ -51,30 +54,44 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 			committedMatrix, _ = run.State.TryGet(pcs.VortexProverStateName(round))
 			sisHash, _         = run.State.TryGet(pcs.SisHashName(round))
 			tree, _            = run.State.TryGet(pcs.MerkleTreeName(round))
+			mimcHash, _        = run.State.TryGet(pcs.MIMCHashName(round))
 		)
 
 		if committedMatrix != nil {
 			committedMatrices = append(committedMatrices, committedMatrix.(vCom.EncodedMatrix))
-			sisHashes = append(sisHashes, sisHash.([]field.Element))
-			trees = append(trees, tree.(*smt.Tree))
 		} else {
 			committedMatrices = append(committedMatrices, nil)
+		}
+
+		if sisHash != nil {
+			sisHashes = append(sisHashes, sisHash.([]field.Element))
+		} else {
 			sisHashes = append(sisHashes, nil)
+		}
+
+		if tree != nil {
+			trees = append(trees, tree.(*smt.Tree))
+		} else {
 			trees = append(trees, nil)
+		}
+
+		if mimcHash != nil {
+			mimcHashes = append(mimcHashes, mimcHash.([]field.Element))
+		} else {
+			mimcHashes = append(mimcHashes, nil)
 		}
 	}
 
 	for i := range run.Spec.PublicInputs {
 		pubs = append(pubs, run.Spec.PublicInputs[i].Acc.GetVal(run))
 	}
-	var finalState field.Element
-	finalState.SetBytes(run.FS.State())
 	return Witness{
 		Proof:             run.ExtractProof(),
 		CommittedMatrices: committedMatrices,
 		SisHashes:         sisHashes,
+		MimcHashes:        mimcHashes,
 		Trees:             trees,
-		FinalFS:           finalState,
+		FinalFS:           run.FS.State()[0],
 		Pub:               pubs,
 	}
 }
@@ -91,13 +108,14 @@ func (pa AssignVortexOpenedCols) Run(run *wizard.ProverRuntime) {
 	for _, ctx := range pa.Ctxs.PcsCtx {
 		// Since all the context of the pcs is translated, this does not
 		// need to run over a translated prover runtime.
-		ctx.OpenSelectedColumns(run)
+		pa := vortex.OpenSelectedColumnsProverAction{Ctx: ctx}
+		pa.Run(run)
 	}
 }
 
 func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 
-	pis := cc.Ctx.PlonkCtx.Columns.PI
+	pis := cc.PIs
 
 	for i := range pis {
 
@@ -107,12 +125,11 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 		params := run.GetUnivariateParams(pcsCtx.Query.QueryID)
 		pcsMRoot := pcsCtx.Items.MerkleRoots
 
-		//TODO@yao fix SplitPublicInputs first
-		if circX != params.ExtX {
+		if circX != params.X {
 			return fmt.Errorf("proof no=%v, x value does not match %v != %v", i, circX.String(), params.X.String())
 		}
 
-		if len(circYs) != len(params.Ys) {
+		if len(circYs) != len(params.ExtYs) {
 			return fmt.Errorf("proof no=%v, number of Ys does not match; %v != %v", i, len(circYs), len(params.Ys))
 		}
 
@@ -153,14 +170,14 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 
 func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
-	pis := cc.Ctx.PlonkCtx.Columns.PI
+	pis := cc.PIs
 
 	for i := range pis {
 
 		var (
 			pcsCtx                       = cc.Ctx.PcsCtx[i]
 			piWitness                    = pis[i].GetColAssignmentGnark(run)
-			circX, circYs, circMRoots, _ = SplitPublicInputsGnark(cc.Ctx, piWitness)
+			circX, circYs, circMRoots, _ = SplitPublicInputs(cc.Ctx, piWitness)
 			params                       = run.GetUnivariateParams(pcsCtx.Query.QueryID)
 			pcsMRoot                     = pcsCtx.Items.MerkleRoots
 		)
