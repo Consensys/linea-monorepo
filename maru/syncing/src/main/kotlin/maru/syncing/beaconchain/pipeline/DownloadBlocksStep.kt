@@ -19,6 +19,7 @@ import maru.p2p.PeerLookup
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.util.log.LogUtil
+import tech.pegasys.teku.networking.eth2.rpc.core.RpcException
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.reputation.ReputationAdjustment
 
@@ -26,7 +27,6 @@ class DownloadBlocksStep(
   private val peerLookup: PeerLookup,
   private val maxRetries: UInt,
   private val blockRangeRequestTimeout: Duration,
-  private val syncTargetProvider: () -> ULong,
 ) : Function<SyncTargetRange, CompletableFuture<List<SealedBlockWithPeer>>> {
   private val log: Logger = LogManager.getLogger(this.javaClass)
   private val shouldLog = AtomicBoolean(true)
@@ -48,14 +48,13 @@ class DownloadBlocksStep(
       )
 
       do {
-        val currentSyncTarget = syncTargetProvider()
         peer =
           peerLookup
             .getPeers()
             .filter {
               it.getStatus() != null &&
                 it.getStatus()!!.latestBlockNumber >=
-                currentSyncTarget
+                targetRange.endBlock
             }.random()
         try {
           peer
@@ -87,11 +86,18 @@ class DownloadBlocksStep(
               }
             }.join()
         } catch (e: Exception) {
-          if (e.cause is TimeoutException) {
-            log.debug("Timed out while downloading blocks from peer: {}", peer.id)
-            peer.adjustReputation(ReputationAdjustment.LARGE_PENALTY)
-          } else {
-            log.debug("Failed to download blocks from peer: {}", peer.id, e)
+          when (e.cause) {
+            is TimeoutException -> {
+              log.debug("Timed out while downloading blocks from peer: {}", peer.id)
+              peer.adjustReputation(ReputationAdjustment.LARGE_PENALTY)
+            }
+
+            is RpcException -> {
+              log.warn("RpcException while downloading blocks from peer: {}", peer.id, e.cause)
+              peer.adjustReputation(ReputationAdjustment.SMALL_PENALTY)
+            }
+
+            else -> log.debug("Failed to download blocks from peer: {}", peer.id, e)
           }
           retries++
         }
