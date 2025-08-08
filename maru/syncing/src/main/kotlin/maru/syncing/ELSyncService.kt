@@ -84,7 +84,7 @@ class ELSyncService(
         blockHash = latestBeaconBlockBody.executionPayload.blockHash,
       )
     if (newElSyncTarget != currentElSyncTarget) {
-      log.info("New elSyncTarget={}", newElSyncTarget)
+      log.debug("New elSyncTarget={}", newElSyncTarget)
       currentElSyncTarget = newElSyncTarget
     } else {
       log.trace("Current elSyncTarget={}", currentElSyncTarget)
