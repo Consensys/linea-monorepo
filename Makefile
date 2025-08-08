@@ -97,3 +97,29 @@ stop_pid:
 		fi
 
 
+##
+## Credible Layer Commands
+##
+
+start-credible: ## Start environment with Credible Layer sidecar
+	make start-env COMPOSE_PROFILES=l1,l2,credible COMPOSE_FILE=docker/compose-credible-sidecar.yml
+
+stop-credible: ## Stop Credible Layer sidecar
+	docker compose -f docker/compose-credible-sidecar.yml --profile credible stop
+
+clean-credible: ## Clean Credible Layer sidecar and volumes
+	docker compose -f docker/compose-credible-sidecar.yml --profile credible down -v
+
+logs-credible: ## Show logs for Credible Layer sidecar
+	docker compose -f docker/compose-credible-sidecar.yml logs -f credible-sidecar
+
+test-credible: ## Test Credible Layer sidecar endpoints
+	@echo "Testing Credible Layer Sidecar..."
+	@echo "\nPing test (currently the only implemented method):"
+	@curl -s -X POST -H "Content-Type: application/json" \
+		--data '{"jsonrpc":"2.0","method":"ping","params":[],"id":1}' \
+		http://localhost:9546 | jq . || echo "RPC endpoint not available"
+	@echo "\nMetrics endpoint (if configured):"
+	@curl -s http://localhost:9000/metrics | head -n 5 || echo "Metrics not available"
+
+

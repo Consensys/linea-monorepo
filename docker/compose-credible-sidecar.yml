@@ -1,0 +1,51 @@
+# Credible Layer Sidecar Service Extension
+# This adds the Credible Layer sidecar to the Linea stack
+
+include:
+  - compose-tracing-v2.yml
+
+services:
+  # Credible Layer Sidecar (currently a dummy/placeholder implementation)
+  credible-sidecar:
+    container_name: credible-sidecar
+    hostname: credible-sidecar
+    image: ghcr.io/phylaxsystems/credible-sdk/sidecar:main
+    profiles: ["credible", "l2"]
+    depends_on:
+      sequencer:
+        condition: service_healthy
+
+    # Command line arguments for the sidecar
+    command:
+      - "--chain.transport-url=http://0.0.0.0:9546"
+      - "--chain.chain-block-time=1000"
+      - "--ae.rpc_url=ws://sequencer:8546"
+      - "--ae.rpc_da_url=http://assertion-da:5001"  # If you have assertion DA running
+      - "--ae.oracle_contract=0x6dD3f12ce435f69DCeDA7e31605C02Bb5422597b"
+
+    environment:
+      # Tracing/metrics configuration (optional)
+      - OTEL_SERVICE_NAME=credible-sidecar
+      - TRACING_METRICS_PORT=9000
+
+      # Chain configuration
+      - CHAIN_RPC_URL=http://sequencer:8545
+      - CHAIN_BLOCK_TIME=1000
+
+      # Assertion executor configuration
+      - AE_BLOCK_TIME_LIMIT=650
+      - AE_ASSERTION_GAS_LIMIT=3000000
+      - AE_RPC_STORE_URL=ws://sequencer:8546
+      - AE_BLOCK_TAG=finalized
+
+    ports:
+      # RPC server (currently only responds to "ping" method)
+      - "9546:9546"
+      # Metrics port (if configured)
+      - "9000:9000"
+
+    restart: unless-stopped
+
+    networks:
+      linea:
+        ipv4_address: 11.11.11.205
