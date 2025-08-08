@@ -33,6 +33,7 @@ dependencies {
   implementation 'org.hyperledger.besu.internal:besu-util'
   implementation 'tech.pegasys.teku.internal:async'
   implementation 'tech.pegasys.teku.internal:p2p'
+  implementation "tech.pegasys.teku.internal:eth2"
 
   testImplementation project(':config')
   testImplementation project(':crypto')

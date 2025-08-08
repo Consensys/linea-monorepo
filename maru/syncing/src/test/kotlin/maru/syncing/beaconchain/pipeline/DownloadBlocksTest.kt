@@ -33,7 +33,6 @@ import tech.pegasys.teku.networking.p2p.reputation.ReputationAdjustment
 
 class DownloadBlocksTest {
   private val defaultEndBlock = 11UL
-  private val syncTargetProvider = { defaultEndBlock }
 
   @Test
   fun `downloads blocks successfully from peer`() {
@@ -49,7 +48,6 @@ class DownloadBlocksTest {
         peerLookup = peerLookup,
         maxRetries = 5u,
         blockRangeRequestTimeout = 5.seconds,
-        syncTargetProvider = syncTargetProvider,
       )
     val range = SyncTargetRange(10uL, defaultEndBlock)
     val result = task.apply(range).get()
@@ -80,7 +78,6 @@ class DownloadBlocksTest {
         peerLookup = peerLookup,
         maxRetries = 5u,
         blockRangeRequestTimeout = 5.seconds,
-        syncTargetProvider = { endBlock },
       )
     val range = SyncTargetRange(10uL, endBlock)
     val result = task.apply(range).get()
@@ -106,7 +103,6 @@ class DownloadBlocksTest {
         peerLookup = peerLookup,
         maxRetries = 5u,
         blockRangeRequestTimeout = 5.seconds,
-        syncTargetProvider = { endBlock },
       )
     val range = SyncTargetRange(1uL, endBlock)
 
@@ -130,7 +126,6 @@ class DownloadBlocksTest {
         peerLookup = peerLookup,
         maxRetries = 5u,
         blockRangeRequestTimeout = 5.seconds,
-        syncTargetProvider = { endBlock },
       )
     val range = SyncTargetRange(1uL, endBlock)
 
@@ -156,7 +151,6 @@ class DownloadBlocksTest {
         peerLookup = peerLookup,
         maxRetries = 5u,
         blockRangeRequestTimeout = 5.seconds,
-        syncTargetProvider = { endBlock },
       )
     val range = SyncTargetRange(1uL, endBlock)
 
@@ -174,7 +168,6 @@ class DownloadBlocksTest {
         peerLookup = peerLookup,
         maxRetries = 5u,
         blockRangeRequestTimeout = 5.seconds,
-        syncTargetProvider = syncTargetProvider,
       )
     val range = SyncTargetRange(1uL, 1uL)
 
@@ -197,7 +190,6 @@ class DownloadBlocksTest {
         peerLookup = peerLookup,
         maxRetries = 5u,
         blockRangeRequestTimeout = 5.seconds,
-        syncTargetProvider = syncTargetProvider,
       )
     val range = SyncTargetRange(10u, defaultEndBlock)
     val result = step.apply(range).get()
@@ -227,7 +219,6 @@ class DownloadBlocksTest {
         peerLookup = peerLookup,
         maxRetries = 5u,
         blockRangeRequestTimeout = 5.seconds,
-        syncTargetProvider = syncTargetProvider,
       )
     val range = SyncTargetRange(10u, defaultEndBlock)
     val result = step.apply(range).get()
@@ -244,7 +235,6 @@ class DownloadBlocksTest {
         peerLookup = peerLookup,
         maxRetries = 5u,
         blockRangeRequestTimeout = 5.seconds,
-        syncTargetProvider = { 0u },
       )
     val range = SyncTargetRange(0u, 0u)
     try {
