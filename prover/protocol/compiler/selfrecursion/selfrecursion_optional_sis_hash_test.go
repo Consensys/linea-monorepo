@@ -489,7 +489,7 @@ func TestSelfRecursionOpsSisSingleLayered(t *testing.T) {
 			compiled := wizard.Compile(tc.Define,
 				vortex.Compile(
 					2,
-					vortex.ForceNumOpenedColumns(8),
+					vortex.ForceNumOpenedColumns(10),
 					vortex.WithOptionalSISHashingThreshold(10),
 				),
 				selfrecursion.SelfRecurse,

@@ -98,6 +98,7 @@ func (a *PreimageLimbsProverAction) Run(run *wizard.ProverRuntime) {
 type ColSelectionProverAction struct {
 	Ctx       *SelfRecursionCtx
 	UAlphaQID ifaces.ColID
+	UAlphaQFilterID ifaces.ColID
 }
 
 func (a *ColSelectionProverAction) Run(run *wizard.ProverRuntime) {
@@ -105,11 +106,26 @@ func (a *ColSelectionProverAction) Run(run *wizard.ProverRuntime) {
 	uAlpha := smartvectors.IntoRegVec(run.GetColumn(a.Ctx.Columns.Ualpha.GetColID()))
 
 	uAlphaQ := make([]field.Element, 0, a.Ctx.Columns.UalphaQ.Size())
+	uAlphaQFilter := make([]field.Element, 0, a.Ctx.Columns.UalphaQFilter.Size())
 	for _, qi := range q {
 		uAlphaQ = append(uAlphaQ, uAlpha[qi])
+		uAlphaQFilter = append(uAlphaQFilter, field.One())
+	}
+
+	// If the size of q is not a power of two, we pad it with zeros
+	if !utils.IsPowerOfTwo(len(q)) {
+		// Sanity check
+		if a.Ctx.Columns.UalphaQ.Size() != utils.NextPowerOfTwo(len(q)) {
+			utils.Panic("uAlphaQ size (%v) must be equal to the next power of two of q size (%v)", a.Ctx.Columns.UalphaQ.Size(), utils.NextPowerOfTwo(len(q)))
+		}
+		for i := len(q); i < utils.NextPowerOfTwo(len(q)); i++ {
+			uAlphaQ = append(uAlphaQ, field.Zero())
+			uAlphaQFilter = append(uAlphaQFilter, field.Zero())
+		}
 	}
 
 	run.AssignColumn(a.UAlphaQID, smartvectors.NewRegular(uAlphaQ))
+	run.AssignColumn(a.UAlphaQFilterID, smartvectors.NewRegular(uAlphaQFilter))
 }
 
 // Declare the queries justifying the column selection:
@@ -125,7 +141,7 @@ func (a *ColSelectionProverAction) Run(run *wizard.ProverRuntime) {
 func (ctx *SelfRecursionCtx) ColSelection() {
 
 	// Build the column q, (auto-assigned)
-	ctx.Columns.Q = verifiercol.NewFromIntVecCoin(ctx.Comp, ctx.Coins.Q)
+	ctx.Columns.Q = verifiercol.NewFromIntVecCoin(ctx.Comp, ctx.Coins.Q, verifiercol.RightPadZeroToNextPowerOfTwo)
 
 	// Declaration round of the coin Q
 	roundQ := ctx.Columns.Q.Round()
@@ -133,17 +149,25 @@ func (ctx *SelfRecursionCtx) ColSelection() {
 	ctx.Columns.UalphaQ = ctx.Comp.InsertCommit(
 		roundQ,
 		ctx.uAlphaQName(),
-		ctx.Coins.Q.Size,
+		ctx.Columns.Q.Size(),
+	)
+
+	// Declare the UAlphaQFilter column
+	ctx.Columns.UalphaQFilter = ctx.Comp.InsertCommit(
+		roundQ,
+		ctx.uAlphaQFilterName(),
+		ctx.Columns.Q.Size(),
 	)
 
 	// And registers the assignment function
 	ctx.Comp.RegisterProverAction(roundQ, &ColSelectionProverAction{
 		Ctx:       ctx,
 		UAlphaQID: ctx.Columns.UalphaQ.GetColID(),
+		UAlphaQFilterID: ctx.Columns.UalphaQFilter.GetColID(),
 	})
 
 	// Declare an inclusion query to finalize the selection check
-	ctx.Comp.InsertInclusion(
+	ctx.Comp.InsertInclusionConditionalOnIncluded(
 		roundQ,
 		ctx.selectQInclusion(),
 		[]ifaces.Column{
@@ -154,6 +178,7 @@ func (ctx *SelfRecursionCtx) ColSelection() {
 			ctx.Columns.Q,
 			ctx.Columns.UalphaQ,
 		},
+		ctx.Columns.UalphaQFilter,
 	)
 }
 
@@ -383,10 +408,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 		// Create an accessor for collapse^t, where t is the number of opened columns
 		collapsePowT := accessors.NewExponent(ctx.Coins.Collapse, ctx.VortexCtx.NbColsToOpen())
 
-		// ToDo(arijit): We may not need this any more, after the optional SIS hash feature
-		// since some of the Ah and Dh can be nil, we compactify the slice by
-		// only retaining the non-nil elements before sending it to the
-		// linear combination operator.
+		// We check Ah is not nil
 		nonNilAh := []ifaces.Column{}
 		for _, ah := range ctx.Columns.Ah {
 			if ah != nil {
