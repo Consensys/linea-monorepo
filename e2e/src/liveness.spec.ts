@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { config } from "./config/tests-config";
-import { awaitUntil, execDockerCommand, getBlockByNumberOrBlockTag, pollForBlockNumber, wait } from "./common/utils";
+import { awaitUntil, execDockerCommand, getBlockByNumberOrBlockTag, wait } from "./common/utils";
 import { Log } from "ethers";
 
 // should remove skip only when the linea-sequencer plugin supports liveness
@@ -15,7 +15,7 @@ describe("Liveness test suite", () => {
       const livenessContractAddress = await livenessContract.getAddress();
 
       const latestAnswer = await livenessContract.latestAnswer();
-      logger.debug(`Latest Status is ${latestAnswer == 1n ? true : false}`);
+      logger.debug(`Latest Status is ${latestAnswer == 1n ? "Down" : "Up"}`);
 
       let lastBlockTimestamp: number | undefined = 0;
       let lastBlockNumber: number | undefined = 0;
@@ -42,33 +42,34 @@ describe("Liveness test suite", () => {
       const targetBlockNumber = lastBlockNumber! + 1;
       logger.debug(`targetBlockNumber=${JSON.stringify(targetBlockNumber)}`);
 
-      // wait until the target block is available
-      await pollForBlockNumber(config.getL2Provider(), targetBlockNumber);
-
-      // The first two transactions of the target block should be the transactions
-      // with "to" as the liveness contract address
-      const targetBlock = await getBlockByNumberOrBlockTag(config.getL2BesuNodeEndpoint()!, lastBlockNumber! + 1, true);
-      logger.debug(`targetBlock=${JSON.stringify(targetBlock)}`);
-      expect(targetBlock?.transactions.length).toBeGreaterThanOrEqual(2);
-
       const livenessEvents = await awaitUntil(
         async () => {
-          return config.getL2Provider().getLogs({
-            topics: [
-              "0x0559884fd3a460db3073b7fc896cc77986f16e378210ded43186175bf646fc5f", // AnswerUpdated event
-            ],
-            fromBlock: targetBlockNumber,
-            toBlock: targetBlockNumber,
-            address: livenessContractAddress,
-          });
+          try {
+            return config.getL2Provider().getLogs({
+              topics: [
+                "0x0559884fd3a460db3073b7fc896cc77986f16e378210ded43186175bf646fc5f", // AnswerUpdated event
+              ],
+              fromBlock: targetBlockNumber,
+              toBlock: targetBlockNumber,
+              address: livenessContractAddress,
+            });
+          } catch (e) {
+            return null;
+          }
         },
-        (ethLogs: Array<Log>) => ethLogs.length >= 2,
+        (ethLogs: Array<Log> | null) => ethLogs != null && ethLogs.length >= 2,
         1000,
         120000,
       );
 
       logger.debug(`livenessEvents=${JSON.stringify(livenessEvents)}`);
       expect(livenessEvents?.length).toBeGreaterThanOrEqual(2);
+
+      // The first two transactions of the target block should be the transactions
+      // with "to" as the liveness contract address
+      const targetBlock = await getBlockByNumberOrBlockTag(config.getL2BesuNodeEndpoint()!, targetBlockNumber, true);
+      logger.debug(`targetBlock=${JSON.stringify(targetBlock)}`);
+      expect(targetBlock?.transactions.length).toBeGreaterThanOrEqual(2);
 
       const downtimeTransaction = targetBlock?.transactions.at(0);
       const uptimeTransaction = targetBlock?.transactions.at(1);
@@ -79,11 +80,14 @@ describe("Liveness test suite", () => {
       expect(downtimeEvent?.transactionIndex).toEqual(0);
       expect(downtimeEvent?.index).toEqual(0);
       expect(parseInt(downtimeEvent?.topics[1] ?? "", 16)).toEqual(1); // topics[1] was the given status to update, should be 1 for downtime
+      expect(parseInt(downtimeEvent?.data ?? "", 16)).toEqual(lastBlockTimestamp); // data should contain the timestamp of the last block before restart as downtime
 
       // check the second AnswerUpdated event is for uptime
       expect(uptimeEvent?.transactionIndex).toEqual(1);
       expect(uptimeEvent?.index).toEqual(1);
       expect(parseInt(uptimeEvent?.topics[1] ?? "", 16)).toEqual(0); // topics[1] was the given status to update, should be 0 for uptime
+      expect(targetBlock?.timestamp).toBeDefined;
+      expect(parseInt(downtimeEvent?.data ?? "", 16)).toBeLessThanOrEqual(targetBlock?.timestamp ?? 0); // data should contain a timestamp no earlier than the first block after restart as uptime
     },
     120000,
   );
