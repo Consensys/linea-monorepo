@@ -43,7 +43,7 @@ type StackedColumn struct {
 type StackColumnOp func(stkCol *StackedColumn)
 
 // StackColumn defines and constrains a [StackedColumn] wizard element.
-func StackColumn(comp *wizard.CompiledIOP, srcs []ifaces.Column, opts ...StackColumnOp) StackedColumn {
+func StackColumn(comp *wizard.CompiledIOP, srcs []ifaces.Column, opts ...StackColumnOp) *StackedColumn {
 
 	var (
 		srcs_length = srcs[0].Size()
@@ -151,14 +151,14 @@ func StackColumn(comp *wizard.CompiledIOP, srcs []ifaces.Column, opts ...StackCo
 				FilterB: stkCol.UnpaddedColumnFilter,
 			},
 		)
-		return *stkCol
+		return stkCol
 	} else {
-		return *stkCol
+		return stkCol
 	}
 }
 
 // Assigns assigns the stack column
-func (s StackedColumn) Run(run *wizard.ProverRuntime) {
+func (s *StackedColumn) Run(run *wizard.ProverRuntime) {
 	var (
 		column = make([]field.Element, 0, s.Column.Size())
 		// slice of 1 representing the non padding portion of the column

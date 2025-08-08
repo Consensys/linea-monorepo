@@ -50,7 +50,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	// The leaves size for SIS rounds
 	sisRoundLeavesSizeUnpadded := ctx.VortexCtx.NbColsToOpen() * numRoundSis
 	sisRoundLeavesSize := utils.NextPowerOfTwo(sisRoundLeavesSizeUnpadded)
-	
+
 	// The leaves size for non SIS rounds
 	nonSisRoundLeavesSizeUnpadded := ctx.VortexCtx.NbColsToOpen() * numRoundNonSis
 
@@ -111,14 +111,22 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 			cleanSisLeaves = append(cleanSisLeaves, ctx.Columns.SisRoundLeaves[i])
 		}
 		// We stack the sis round leaves
-		stackedSisLeaves := dedicated.StackColumn(ctx.Comp, cleanSisLeaves)
+		stackedSisLeaves := dedicated.StackColumn(
+			ctx.Comp,
+			cleanSisLeaves,
+			dedicated.HandleSourcePaddedColumns(ctx.VortexCtx.NbColsToOpen()))
 		// Register the prover action for the stacked column
 		ctx.Comp.RegisterProverAction(roundQ, &dedicated.StackedColumn{
 			Column: stackedSisLeaves.Column,
 			Source: cleanSisLeaves,
+			UnpaddedColumn: stackedSisLeaves.UnpaddedColumn,
+			ColumnFilter: stackedSisLeaves.ColumnFilter,
+			UnpaddedColumnFilter: stackedSisLeaves.UnpaddedColumnFilter,
+			UnpaddedSize: stackedSisLeaves.UnpaddedSize,
+			IsPadded: stackedSisLeaves.IsPadded,
 		})
 		mimcW.CheckLinearHash(ctx.Comp, ctx.linearHashVerificationName(), ctx.Columns.ConcatenatedDhQ,
-			ctx.VortexCtx.SisParams.OutputSize(), sisRoundLeavesSizeUnpadded, stackedSisLeaves.Column)
+			ctx.VortexCtx.SisParams.OutputSize(), sisRoundLeavesSizeUnpadded, stackedSisLeaves.UnpaddedColumn)
 	}
 
 	// Register the linear hash verification for the non sis rounds
@@ -227,16 +235,23 @@ func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 	if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 		cleanLeaves = append(cleanLeaves, ctx.Columns.SisRoundLeaves...)
 	}
-	stackedCleanLeaves := dedicated.StackColumn(ctx.Comp, cleanLeaves)
+	stackedCleanLeaves := dedicated.StackColumn(ctx.Comp,
+		cleanLeaves,
+		dedicated.HandleSourcePaddedColumns(ctx.VortexCtx.NbColsToOpen()))
 
 	// Register prover action for the stacked column
 	ctx.Comp.RegisterProverAction(round, &dedicated.StackedColumn{
 		Column: stackedCleanLeaves.Column,
 		Source: cleanLeaves,
+		UnpaddedColumn: stackedCleanLeaves.UnpaddedColumn,
+		ColumnFilter: stackedCleanLeaves.ColumnFilter,
+		UnpaddedColumnFilter: stackedCleanLeaves.UnpaddedColumnFilter,
+		UnpaddedSize: stackedCleanLeaves.UnpaddedSize,
+		IsPadded: stackedCleanLeaves.IsPadded,
 	})
 
 	// Next we compute the identity permutation
-	s := make([]field.Element, stackedCleanLeaves.Column.Size())
+	s := make([]field.Element, stackedCleanLeaves.UnpaddedColumn.Size())
 	for i := range s {
 		s[i].SetInt64(int64(i))
 	}
@@ -250,7 +265,7 @@ func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 		round,
 		ctx.leafConsistencyName(),
 		[]smartvectors.SmartVector{s_smart},
-		[]ifaces.Column{stackedCleanLeaves.Column},
+		[]ifaces.Column{stackedCleanLeaves.UnpaddedColumn},
 		[]ifaces.Column{ctx.Columns.MerkleProofsLeaves},
 	)
 
