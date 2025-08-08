@@ -86,8 +86,7 @@ describe("Liveness test suite", () => {
       expect(uptimeEvent?.transactionIndex).toEqual(1);
       expect(uptimeEvent?.index).toEqual(1);
       expect(parseInt(uptimeEvent?.topics[1] ?? "", 16)).toEqual(0); // topics[1] was the given status to update, should be 0 for uptime
-      expect(targetBlock?.timestamp).toBeDefined;
-      expect(parseInt(downtimeEvent?.data ?? "", 16)).toBeLessThanOrEqual(targetBlock?.timestamp ?? 0); // data should contain a timestamp no earlier than the first block after restart as uptime
+      expect(parseInt(uptimeEvent?.data ?? "", 16)).toBeGreaterThan(lastBlockTimestamp ?? 0); // data should contain a timestamp later than the last block before restart as uptime
     },
     120000,
   );
