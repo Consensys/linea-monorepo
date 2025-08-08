@@ -45,7 +45,7 @@ describe("Liveness test suite", () => {
       const livenessEvents = await awaitUntil(
         async () => {
           try {
-            return config.getL2Provider().getLogs({
+            return await config.getL2SequencerProvider()!.getLogs({
               topics: [
                 "0x0559884fd3a460db3073b7fc896cc77986f16e378210ded43186175bf646fc5f", // AnswerUpdated event
               ],
@@ -67,7 +67,7 @@ describe("Liveness test suite", () => {
 
       // The first two transactions of the target block should be the transactions
       // with "to" as the liveness contract address
-      const targetBlock = await getBlockByNumberOrBlockTag(config.getL2BesuNodeEndpoint()!, targetBlockNumber, true);
+      const targetBlock = await getBlockByNumberOrBlockTag(config.getSequencerEndpoint()!, targetBlockNumber, true);
       logger.debug(`targetBlock=${JSON.stringify(targetBlock)}`);
       expect(targetBlock?.transactions.length).toBeGreaterThanOrEqual(2);
 
