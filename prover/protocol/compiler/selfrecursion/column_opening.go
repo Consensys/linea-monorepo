@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -486,6 +487,71 @@ func (a *FoldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRun
 
 	one := field.One()
 	xN := gnarkutil.Exp(api, rfold, a.Degree)
+	xNminus1 := api.Sub(xN, one)
+	xNplus1 := api.Add(xN, one)
+
+	left0 := api.Mul(xNplus1, yDual)
+	left1 := api.Mul(xNminus1, yActual)
+	left := api.Sub(left0, left1)
+	right := api.Mul(yAlleged, 2)
+
+	api.AssertIsEqual(left, right)
+}
+
+type foldPhaseProverAction struct {
+	ctx       *SelfRecursionCtx
+	ipQueryID ifaces.QueryID // Changed to ifaces.QueryID explicitly
+}
+
+func (a *foldPhaseProverAction) Run(run *wizard.ProverRuntime) {
+	foldedKey := a.ctx.Columns.ACollapseFold.GetColAssignment(run)
+	foldedPreimage := a.ctx.Columns.PreimageCollapseFold.GetColAssignment(run)
+	y := smartvectors.InnerProductExt(foldedKey, foldedPreimage)
+	run.AssignInnerProduct(a.ipQueryID, y)
+}
+
+type foldPhaseVerifierAction struct {
+	ctx       *SelfRecursionCtx
+	ipQueryID ifaces.QueryID
+	degree    int
+}
+
+func (a *foldPhaseVerifierAction) Run(run wizard.Runtime) error {
+	edual := a.ctx.Columns.Edual.GetColAssignment(run)
+	dcollapse := a.ctx.Columns.DhQCollapse.GetColAssignment(run)
+	rfold := run.GetRandomCoinFieldExt(a.ctx.Coins.Fold.Name)
+	yAlleged := run.GetInnerProductParams(a.ipQueryID).Ys[0]
+	yDual := smartvectors.EvalCoeffExt(edual, rfold)
+	yActual := smartvectors.EvalCoeffExt(dcollapse, rfold)
+
+	var xN, xNminus1, xNplus1 fext.Element
+	one := fext.One()
+	xN.Exp(rfold, big.NewInt(int64(a.degree)))
+	xNminus1.Sub(&xN, &one)
+	xNplus1.Add(&xN, &one)
+
+	var left, left0, left1, right fext.Element
+	left0.Mul(&xNplus1, &yDual)
+	left1.Mul(&xNminus1, &yActual)
+	left.Sub(&left0, &left1)
+	right.Double(&yAlleged)
+
+	if left != right {
+		return fmt.Errorf("failed the consistency check of the ring-SIS : %v != %v", left.String(), right.String())
+	}
+	return nil
+}
+
+func (a *foldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	edual := a.ctx.Columns.Edual.GetColAssignmentGnark(run)
+	dcollapse := a.ctx.Columns.DhQCollapse.GetColAssignmentGnark(run)
+	rfold := run.GetRandomCoinFieldExt(a.ctx.Coins.Fold.Name)
+	yAlleged := run.GetInnerProductParams(a.ipQueryID).Ys[0]
+	yDual := poly.EvaluateUnivariateGnarkMixed(api, edual, rfold)
+	yActual := poly.EvaluateUnivariateGnarkMixed(api, dcollapse, rfold)
+
+	one := field.One()
+	xN := gnarkutil.Exp(api, rfold, a.degree)
 	xNminus1 := api.Sub(xN, one)
 	xNplus1 := api.Add(xN, one)
 

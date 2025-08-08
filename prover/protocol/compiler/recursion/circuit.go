@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -24,8 +25,8 @@ import (
 // Alex: please don't change the ordering of the arguments as this
 // affects the parsing of the witness.
 type RecursionCircuit struct {
-	X                  frontend.Variable   `gnark:",public"`
-	Ys                 []frontend.Variable `gnark:",public"`
+	X                  gnarkfext.Element   `gnark:",public"`
+	Ys                 []gnarkfext.Element `gnark:",public"`
 	Commitments        []frontend.Variable `gnark:",public"`
 	Pubs               []frontend.Variable `gnark:",public"`
 	WizardVerifier     *wizard.VerifierCircuit
@@ -64,7 +65,7 @@ func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExtern
 		WizardVerifier:     wizard.AllocateWizardCircuit(comp, numRound),
 		Pubs:               make([]frontend.Variable, len(comp.PublicInputs)),
 		Commitments:        make([]frontend.Variable, len(merkleRoots)),
-		Ys:                 make([]frontend.Variable, len(polyQuery.Pols)),
+		Ys:                 make([]gnarkfext.Element, len(polyQuery.Pols)),
 	}
 }
 
@@ -74,15 +75,15 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	w := r.WizardVerifier
 
 	if !r.withoutGkr {
-		w.HasherFactory = gkrmimc.NewHasherFactory(api)
+		temp := gkrmimc.NewHasherFactory(api)
+		w.HasherFactory = temp
 		w.FS = fiatshamir.NewGnarkFiatShamir(api, w.HasherFactory)
 	}
 
 	if r.withExternalHasher {
-		w.HasherFactory = &mimc.ExternalHasherFactory{Api: api}
+		w.HasherFactory = &mimc.ExternalHasherFactory{Api: api} // TODO: fix in crypto/mimc/factories.go
 	}
-	// The below step is responsible for verifying all
-	// the verifier actions of all compilation steps.
+
 	w.Verify(api)
 
 	for i := range r.Pubs {
@@ -115,9 +116,9 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 		wizardVerifier = wizard.AssignVerifierCircuit(comp, proof, numRound)
 		params         = wizardVerifier.GetUnivariateParams(polyQuery.Name())
 		circuit        = &RecursionCircuit{
-			WizardVerifier: wizardVerifier,
-			X:              params.X,
-			Ys:             params.Ys,
+			WizardVerifier: wizard.AssignVerifierCircuit(comp, proof, numRound),
+			X:              params.ExtX,
+			Ys:             params.ExtYs,
 			Pubs:           vector.IntoGnarkAssignment(pubs),
 			PolyQuery:      polyQuery,
 		}

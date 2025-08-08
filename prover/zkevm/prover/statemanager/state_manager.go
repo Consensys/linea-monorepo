@@ -2,10 +2,8 @@ package statemanager
 
 import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulator"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulatorsummary"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/codehashconsistency"
@@ -81,47 +79,52 @@ func (s *Settings) stateSummarySize() int {
 
 // addSkipFlags adds skip flags to redundant shomei traces
 func addSkipFlags(shomeiTraces *[][]statemanager.DecodedTrace) {
-	// AddressAndKey is a struct used as a key in order to identify skippable traces
-	// in our maps
-	type AddressAndKey struct {
-		address    types.Bytes32
-		storageKey types.Bytes32
-	}
-	// iterate over all the Shomei blocks
-	for blockNo, vec := range *shomeiTraces {
-		var (
-			curAddress = types.EthAddress{}
-			err        error
-		)
 
-		// instantiate the map for the current block
-		traceMap := make(map[AddressAndKey]int)
-		// now we process the traces themselves
-		for i, trace := range vec {
-			// compute the current address account
-			curAddress, err = trace.GetRelatedAccount()
-			if err != nil {
-				panic(err)
-			}
-			x := *(&field.Element{}).SetBytes(curAddress[:])
+	utils.Panic("missing update for koalabear")
 
-			if trace.Location != statemanager.WS_LOCATION {
-				// we have a STORAGE trace
-				// prepare the search key
-				searchKey := AddressAndKey{
-					address:    x.Bytes(),
-					storageKey: trace.Underlying.HKey(statemanager.MIMC_CONFIG),
-				}
-				previousIndex, isFound := traceMap[searchKey]
-				if isFound {
-					// set the previous trace as a skippable trace
-					(*shomeiTraces)[blockNo][previousIndex].IsSkipped = true
-				} else {
-					// when not found, add its index to the map (if a duplicate is found later)
-					// this stored index will be then used to make the current trace skippable
-					traceMap[searchKey] = i
-				}
-			}
-		}
-	}
+	// // AddressAndKey is a struct used as a key in order to identify skippable traces
+	// // in our maps
+	// type AddressAndKey struct {
+	// 	address    types.Bytes32
+	// 	storageKey types.Bytes32
+	// }
+
+	// // iterate over all the Shomei blocks
+	// for blockNo, vec := range *shomeiTraces {
+	// 	var (
+	// 		curAddress = types.EthAddress{}
+	// 		err        error
+	// 	)
+
+	// 	// instantiate the map for the current block
+	// 	traceMap := make(map[AddressAndKey]int)
+	// 	// now we process the traces themselves
+	// 	for i, trace := range vec {
+	// 		// compute the current address account
+	// 		curAddress, err = trace.GetRelatedAccount()
+	// 		if err != nil {
+	// 			panic(err)
+	// 		}
+	// 		x := *(&field.Element{}).SetBytes(curAddress[:])
+
+	// 		if trace.Location != statemanager.WS_LOCATION {
+
+	// 			// we have a STORAGE trace
+	// 			// prepare the search key
+	// 			searchKey := AddressAndKey{
+	// 				address:    x.Bytes(),
+	// 				storageKey: trace.Underlying.HKey(statemanager.MIMC_CONFIG),
+	// 			}
+	// 			previousIndex, isFound := traceMap[searchKey]
+	// 			if isFound {
+	// 				// set the previous trace as a skippable trace
+	// 				(*shomeiTraces)[blockNo][previousIndex].IsSkipped = true
+	// 			} else {
+	// 				// when not found, add its index to the map (if a duplicate is found later)
+	// 				// this stored index will be then used to make the current trace skippable
+	// 				traceMap[searchKey] = i
+	// 			}
+	// 		}
+	// 	}
+	// }
 }

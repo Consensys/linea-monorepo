@@ -238,7 +238,7 @@ func (gen *testCaseGen) NewTestCaseForLinComb() (tcase testCase) {
 	return tcase
 }
 
-func (gen *testCaseGen) NewTestCaseForPolyEval() (tcase testCase) {
+func (gen *testCaseGen) NewTestCaseForLinearCombination() (tcase testCase) {
 
 	tcase.name = fmt.Sprintf("fuzzy-with-seed-%v-poly-eval", gen.seed)
 	tcase.svecs = make([]SmartVector, gen.numVec)
@@ -289,7 +289,7 @@ func (gen *testCaseGen) NewTestCaseForPolyEval() (tcase testCase) {
 		utils.Panic("inconsistent window dimension %v %v with gen %++v", winMinStart, winMaxStop, gen)
 	}
 
-	resVal := poly.EvalUnivariate(vals, x)
+	resVal := poly.Eval(vals, x)
 
 	switch {
 	case maxType == constantT:

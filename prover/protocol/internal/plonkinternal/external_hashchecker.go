@@ -15,7 +15,7 @@ import (
 // It checks that the assignment of the hash column is consistent with the
 // LRO columns using a lookup and then it uses a MiMC query to enforce the
 // hash.
-func (ctx *compilationCtx) addHashConstraint() {
+func (ctx *CompilationCtx) addHashConstraint() {
 
 	var (
 		numRowLRO = ctx.DomainSize()
@@ -167,7 +167,7 @@ func (ctx *GenericPlonkProverAction) assignHashColumns(run *wizard.ProverRuntime
 
 // getHashCheckedPositionSV returns the smartvectors containing the position
 // of the hash claims in the LRO columns.
-func (ctx *compilationCtx) getHashCheckedPositionSV() (posOS, posBl, posNS smartvectors.SmartVector) {
+func (ctx *CompilationCtx) getHashCheckedPositionSV() (posOS, posBl, posNS smartvectors.SmartVector) {
 
 	var (
 		sls         = ctx.Plonk.hashedGetter()

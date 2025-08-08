@@ -1,6 +1,7 @@
 package packing
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -141,6 +142,8 @@ func (decomposed *decomposition) csDecomposLen(
 	s := sym.NewConstant(0)
 	for j := range decomposed.DecomposedLimbs {
 		s = sym.Add(s, decomposed.DecomposedLen[j])
+
+		fmt.Printf("lu.colNumber = %v, size = %v\n", lu.ColNumber.GetColID(), lu.ColNumber.Size())
 
 		// Equivalence of "decomposedLenPowers" with "2^(decomposedLen * 8)"
 		comp.InsertInclusion(0,

@@ -3,7 +3,9 @@ package smt
 import (
 	"fmt"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -11,7 +13,7 @@ import (
 
 // Config specifies the parameters of the tree (choice of hash function, depth).
 type Config struct {
-	// HashFunc is a function returning initialized hashers
+	// HashFunc is a function returning initialized hashers. If nil, use poseidon2 by default.
 	HashFunc func() hashtypes.Hasher
 	// Depth is the depth of the tree
 	Depth int
@@ -51,10 +53,22 @@ func EmptyLeaf() types.Bytes32 {
 // hashLR is used for hashing the leaf-right children. It returns H(nodeL, nodeR)
 // taking H as the HashFunc of the config.
 func hashLR(config *Config, nodeL, nodeR types.Bytes32) types.Bytes32 {
-	hasher := config.HashFunc()
-	nodeL.WriteTo(hasher)
-	nodeR.WriteTo(hasher)
-	d := types.AsBytes32(hasher.Sum(nil))
+
+	var d types.Bytes32
+	if config.HashFunc != nil {
+		hasher := config.HashFunc()
+		nodeL.WriteTo(hasher)
+		nodeR.WriteTo(hasher)
+		d = types.AsBytes32(hasher.Sum(nil))
+	} else {
+		knodeL := types.Bytes32ToHash(nodeL)
+		knodeR := types.Bytes32ToHash(nodeR)
+		var toHash [16]field.Element
+		copy(toHash[:], knodeL[:])
+		copy(toHash[8:], knodeR[:])
+		h := vortex.HashPoseidon2(toHash[:])
+		d = types.HashToBytes32(h)
+	}
 	return d
 }
 
@@ -267,19 +281,16 @@ func BuildComplete(leaves []types.Bytes32, hashFunc func() hashtypes.Hasher) *Tr
 
 	numLeaves := len(leaves)
 
-	// Sanity check : there should be a power of two number of leaves
+	// TODO handle panic
 	if !utils.IsPowerOfTwo(numLeaves) || numLeaves == 0 {
 		utils.Panic("expected power of two number of leaves, got %v", numLeaves)
 	}
 
 	depth := utils.Log2Ceil(numLeaves)
-	config := &Config{HashFunc: hashFunc, Depth: depth}
+	config := &Config{HashFunc: hashFunc, Depth: depth} // TODO no pointer
 
-	// Builds an empty tree and passes the leaves
 	tree := NewEmptyTree(config)
 	tree.OccupiedLeaves = leaves
-
-	// Builds the tree bottom-up
 	currLevels := leaves
 
 	for i := 0; i < depth-1; i++ {

@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/iop"
+	"github.com/consensys/gnark-crypto/field/koalabear/iop"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -47,7 +48,7 @@ func PlonkCheck(
 	maxNbInstance int,
 	// function to call to get an assignment
 	options ...Option,
-) *compilationCtx {
+) *CompilationCtx {
 
 	// Create the ctx
 	ctx := createCtx(comp, name, Round, circuit, maxNbInstance, options...)
@@ -87,7 +88,7 @@ func PlonkCheck(
 
 // This function registers the Plonk gate's columns inside of the wizard. It
 // does not add any constraints whatsoever.
-func (ctx *compilationCtx) commitGateColumns() {
+func (ctx *CompilationCtx) commitGateColumns() {
 
 	nbRow := ctx.DomainSize()
 
@@ -122,7 +123,7 @@ func (ctx *compilationCtx) commitGateColumns() {
 		for i := 0; i < ctx.MaxNbInstances; i++ {
 			if tinyPISize(ctx.Plonk.SPR) > 0 {
 				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("PI_%v", i), tinyPISize(ctx.Plonk.SPR))
-				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, field.Zero(), ctx.Columns.TinyPI[i])
+				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, fext.Zero(), ctx.Columns.TinyPI[i])
 			} else {
 				ctx.Columns.PI[i] = verifiercol.NewConstantCol(field.Zero(), nbRow, "")
 			}
@@ -144,7 +145,7 @@ func (ctx *compilationCtx) commitGateColumns() {
 		for i := 0; i < ctx.MaxNbInstances; i++ {
 			if tinyPISize(ctx.Plonk.SPR) > 0 {
 				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("PI_%v", i), tinyPISize(ctx.Plonk.SPR))
-				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, field.Zero(), ctx.Columns.TinyPI[i])
+				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, fext.Zero(), ctx.Columns.TinyPI[i])
 			} else {
 				ctx.Columns.PI[i] = verifiercol.NewConstantCol(field.Zero(), nbRow, "")
 			}
@@ -176,7 +177,7 @@ func iopToSV(pol *iop.Polynomial, nbRow int) smartvectors.SmartVector {
 // [plonk.newExternalRangeChecker] to obtain the result in "[]field.Element"
 // form and then it converts it into assignable smartvectors after having
 // checked a few hypothesis.
-func (ctx *compilationCtx) rcGetterToSV() (PcRcL, PcRcR, PcRcO []field.Element) {
+func (ctx *CompilationCtx) rcGetterToSV() (PcRcL, PcRcR, PcRcO []field.Element) {
 	v := [3][]field.Element{
 		make([]field.Element, ctx.DomainSize()),
 		make([]field.Element, ctx.DomainSize()),
@@ -191,7 +192,7 @@ func (ctx *compilationCtx) rcGetterToSV() (PcRcL, PcRcR, PcRcO []field.Element) 
 }
 
 // extractPermutationColumns computes and tracks the values for ctx.Columns.S
-func (ctx *compilationCtx) extractPermutationColumns() {
+func (ctx *CompilationCtx) extractPermutationColumns() {
 	for i := range ctx.Columns.S {
 		// Directly use the ints from the trace instead of the fresh Plonk ones
 		si := ctx.Plonk.trace.S[i*ctx.DomainSize() : (i+1)*ctx.DomainSize()]
@@ -207,7 +208,7 @@ func (ctx *compilationCtx) extractPermutationColumns() {
 }
 
 // add gate constraint
-func (ctx *compilationCtx) addGateConstraint() {
+func (ctx *CompilationCtx) addGateConstraint() {
 
 	for i := 0; i < ctx.MaxNbInstances; i++ {
 
@@ -257,7 +258,7 @@ func (ctx *compilationCtx) addGateConstraint() {
 }
 
 // add add the copy constraint
-func (ctx *compilationCtx) addCopyConstraint() {
+func (ctx *CompilationCtx) addCopyConstraint() {
 
 	// Creates a special handle for the permutation by
 	// computing a linear combination of the columns
@@ -277,7 +278,7 @@ func (ctx *compilationCtx) addCopyConstraint() {
 		randLin := ctx.comp.InsertCoin(
 			roundPermutation,
 			coin.Name(ctx.Sprintf("PERMUTATION_RANDLIN")),
-			coin.Field,
+			coin.FieldExt,
 		)
 		// And declare special columns for the linear combination
 		l = expr_handle.RandLinCombCol(

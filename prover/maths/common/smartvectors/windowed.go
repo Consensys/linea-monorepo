@@ -78,7 +78,8 @@ func (p *PaddedCircularWindow) GetBase(n int) (field.Element, error) {
 
 func (p *PaddedCircularWindow) GetExt(n int) fext.Element {
 	elem, _ := p.GetBase(n)
-	return *new(fext.Element).SetFromBase(&elem)
+	return fext.Lift(elem)
+
 }
 
 func (r *PaddedCircularWindow) Get(n int) field.Element {
@@ -215,7 +216,7 @@ func (p *PaddedCircularWindow) WriteInSliceExt(buff []fext.Element) {
 	p.WriteInSlice(temp)
 	for i := 0; i < len(buff); i++ {
 		elem := temp[i]
-		buff[i].SetFromBase(&elem)
+		fext.SetFromBase(&buff[i], &elem)
 	}
 
 }
@@ -399,7 +400,7 @@ func (w *PaddedCircularWindow) DeepCopy() SmartVector {
 func (w *PaddedCircularWindow) IntoRegVecSaveAlloc() []field.Element {
 	res, err := w.IntoRegVecSaveAllocBase()
 	if err != nil {
-		panic(conversionError)
+		panic(errConversion)
 	}
 	return res
 
@@ -414,7 +415,7 @@ func (w *PaddedCircularWindow) IntoRegVecSaveAllocExt() []fext.Element {
 	res := make([]fext.Element, len(temp))
 	for i := 0; i < len(temp); i++ {
 		elem := temp[i]
-		res[i].SetFromBase(&elem)
+		fext.SetFromBase(&res[i], &elem)
 	}
 	return res
 }

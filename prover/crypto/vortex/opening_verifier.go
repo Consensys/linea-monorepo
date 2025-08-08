@@ -7,8 +7,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
+	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
@@ -35,14 +38,14 @@ type VerifierInputs struct {
 	// MerkleRoots are the commitment to verify the opening for
 	MerkleRoots []types.Bytes32
 	// X is the univariate evaluation point
-	X field.Element
+	X fext.Element
 	// Ys are the alleged evaluation at point X
-	Ys [][]field.Element
+	Ys [][]fext.Element
 	// OpeningProof contains the messages of the prover
 	OpeningProof OpeningProof
 	// RandomCoin is the random coin sampled by the verifier to be used to
 	// construct the linear combination of the columns.
-	RandomCoin field.Element
+	RandomCoin fext.Element
 	// EntryList is the random coin representing the columns to open.
 	EntryList []int
 	// Flag indicating if the SIS hash is replaced for the particular round
@@ -92,7 +95,7 @@ func VerifyOpening(v *VerifierInputs) error {
 		}
 	}
 
-	if err := v.Params.isCodeword(v.OpeningProof.LinearCombination); err != nil {
+	if err := v.Params.isCodewordExt(v.OpeningProof.LinearCombination); err != nil {
 		return err
 	}
 
@@ -107,7 +110,6 @@ func VerifyOpening(v *VerifierInputs) error {
 	if err := v.checkColumnInclusion(); err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -129,14 +131,15 @@ func (v *VerifierInputs) checkColLinCombination() (err error) {
 		}
 
 		// Check the linear combination is consistent with the opened column
-		y := poly.EvalUnivariate(fullCol, v.RandomCoin)
+
+		y := poly.EvalMixed(fullCol, v.RandomCoin)
 
 		if selectedColID > linearCombination.Len() {
 			return fmt.Errorf("entry overflows the size of the linear combination")
 		}
 
-		if y != linearCombination.Get(selectedColID) {
-			other := linearCombination.Get(selectedColID)
+		if y != linearCombination.GetExt(selectedColID) {
+			other := linearCombination.GetExt(selectedColID)
 			return fmt.Errorf("the linear combination is inconsistent %v : %v", y.String(), other.String())
 		}
 	}
@@ -148,14 +151,14 @@ func (v *VerifierInputs) checkColLinCombination() (err error) {
 // with the statement. The function returns an error if the check fails.
 func (v *VerifierInputs) checkStatement() (err error) {
 
-	// Check the consistency of Ys and proof.Linear combination
-	var (
-		Yjoined     = utils.Join(v.Ys...)
-		alphaY      = smartvectors.Interpolate(v.OpeningProof.LinearCombination, v.X)
-		alphaYProme = poly.EvalUnivariate(Yjoined, v.RandomCoin)
-	)
+	smartvectors_mixed.IsBase(v.OpeningProof.LinearCombination)
 
-	if alphaY != alphaYProme {
+	// Check the consistency of Ys and proof.Linear combination
+	Yjoined := utils.Join(v.Ys...)
+	alphaY := smartvectors.EvaluateLagrangeFullFext(v.OpeningProof.LinearCombination, v.X)
+	alphaYPrime := polyext.Eval(Yjoined, v.RandomCoin)
+
+	if alphaY != alphaYPrime {
 		return fmt.Errorf("RowLincomb and Y are inconsistent")
 	}
 

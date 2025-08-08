@@ -9,7 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
@@ -138,12 +138,12 @@ func generateProtocol(tc TestCase) (define func(*wizard.Builder), prove func(*wi
 	// and the columns with random values
 	prove = func(run *wizard.ProverRuntime) {
 		// the evaluation point
-		x := field.NewElement(42)
-		var ys []field.Element
+		x := fext.RandomElement()
+		var ys []fext.Element
 		if tc.IsCommitPrecomp {
-			ys = make([]field.Element, (tc.Numpoly + tc.NumPrecomp))
+			ys = make([]fext.Element, (tc.Numpoly + tc.NumPrecomp))
 		} else {
-			ys = make([]field.Element, tc.Numpoly)
+			ys = make([]fext.Element, tc.Numpoly)
 		}
 		numColPerRound := tc.Numpoly / tc.NumRound
 
@@ -151,7 +151,7 @@ func generateProtocol(tc TestCase) (define func(*wizard.Builder), prove func(*wi
 		if tc.IsCommitPrecomp {
 			for i := 0; i < tc.NumPrecomp; i++ {
 				p := run.Spec.Precomputed.MustGet(precompColName(i))
-				ys[i] = smartvectors.Interpolate(p, x)
+				ys[i] = smartvectors.EvaluateLagrangeMixed(p, x)
 			}
 		}
 
@@ -174,15 +174,15 @@ func generateProtocol(tc TestCase) (define func(*wizard.Builder), prove func(*wi
 			for i := start; i < stop; i++ {
 				v := smartvectors.Rand(tc.PolSize)
 				run.AssignColumn(dummyColName(i), v)
-				ys[i] = smartvectors.Interpolate(v, x)
+				ys[i] = smartvectors.EvaluateLagrangeMixed(v, x)
 			}
 
 			if round < tc.NumRound-1 {
-				_ = run.GetRandomCoinField(dummyCoinName(round))
+				_ = run.GetRandomCoinFieldExt(dummyCoinName(round))
 			}
 		}
 
-		run.AssignUnivariate(QNAME, x, ys...)
+		run.AssignUnivariateExt(QNAME, x, ys...)
 	}
 	return define, prove
 }

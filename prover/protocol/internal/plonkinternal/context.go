@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
-	plonkBLS12_377 "github.com/consensys/gnark/backend/plonk/bls12-377"
-	cs "github.com/consensys/gnark/constraint/bls12-377"
+	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	plonkKoalabear "github.com/consensys/gnark/backend/plonk/koalabear"
+	"github.com/consensys/gnark/constraint"
+	cs "github.com/consensys/gnark/constraint/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/profile"
@@ -23,7 +24,7 @@ type Plonk struct {
 	// The plonk circuit being integrated
 	Circuit frontend.Circuit `serde:"omit"`
 	// The traces of the compiled circuit
-	trace *plonkBLS12_377.Trace
+	trace *plonkKoalabear.Trace `serde:"omit"`
 	// The sparse constrained system
 	SPR *cs.SparseR1CS
 	// Receives the list of rows which have to be marked containing range checks.
@@ -37,12 +38,12 @@ type Plonk struct {
 // to "false" because (1) it generates a lot of data (2) it is extremely time consuming.
 const activateGnarkProfiling = false
 
-// The compilationCtx (context) carries all the compilation informations about a call to
+// The CompilationCtx (context) carries all the compilation informations about a call to
 // Plonk in Wizard. Namely, (non-exhaustively) it contains the gnark's internal
 // informations about it, the generated Wizard columns and the compilation
 // parameters that are used for the compilation. The context is also the
 // receiver of all the methods allowing to construct the Plonk in Wizard module.
-type compilationCtx struct {
+type CompilationCtx struct {
 	// The compiled IOP
 	comp *wizard.CompiledIOP
 	// Name of the context. It is used to generate the column names and the
@@ -127,9 +128,9 @@ func createCtx(
 	circuit frontend.Circuit,
 	maxNbInstance int,
 	opts ...Option,
-) (ctx compilationCtx) {
+) (ctx CompilationCtx) {
 
-	ctx = compilationCtx{
+	ctx = CompilationCtx{
 		comp:           comp,
 		Name:           name,
 		Round:          round,
@@ -198,7 +199,7 @@ func createCtx(
 		utils.Panic("plonk-in-wizard: the number of constraints of the circuit outweight the fixed number of rows. fixed-nb-row=%v domain-size=%v nb-constraints=%v", ctx.FixedNbRowsOption.NbRow, ctx.DomainSizePlonk(), ccs.NbConstraints)
 	}
 
-	ctx.Plonk.trace = plonkBLS12_377.NewTrace(ctx.Plonk.SPR, fftDomain)
+	ctx.Plonk.trace = plonkKoalabear.NewTrace(ctx.Plonk.SPR, fftDomain)
 
 	ctx.buildPermutation(ctx.Plonk.SPR, ctx.Plonk.trace) // no part of BuildTrace
 
@@ -215,12 +216,12 @@ func createCtx(
 // of gnark.
 func CompileCircuitDefault(circ frontend.Circuit) (*cs.SparseR1CS, error) {
 
-	ccsIface, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circ)
+	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circ)
 	if err != nil {
 		return nil, fmt.Errorf("frontend.Compile returned an err=%v", err)
 	}
 
-	return ccsIface.(*cs.SparseR1CS), err
+	return ccs.(*cs.SparseR1CS), err
 }
 
 // CompileCircuitWithRangeCheck compiles the circuit and returns the compiled
@@ -229,12 +230,13 @@ func CompileCircuitWithRangeCheck(circ frontend.Circuit, addGates bool) (*cs.Spa
 
 	gnarkBuilder, rcGetter := newExternalRangeChecker(addGates)
 
-	ccsIface, err := frontend.Compile(ecc.BLS12_377.ScalarField(), gnarkBuilder, circ)
+	// ccsIface, err := frontend.Compile(ecc.BLS12_377.ScalarField(), gnarkBuilder, circ)
+	ccs, err := frontend.CompileU32(koalabear.Modulus(), gnarkBuilder, circ)
 	if err != nil {
 		return nil, nil, fmt.Errorf("frontend.Compile returned an err=%v", err)
 	}
 
-	return ccsIface.(*cs.SparseR1CS), rcGetter, err
+	return ccs.(*cs.SparseR1CS), rcGetter, err
 }
 
 // CompileCircuitWithExternalHasher compiles the circuit and returns the compiled
@@ -243,19 +245,19 @@ func CompileCircuitWithExternalHasher(circ frontend.Circuit, addGates bool) (*cs
 
 	gnarkBuilder, hshGetter := mimc.NewExternalHasherBuilder(addGates)
 
-	ccsIface, err := frontend.Compile(ecc.BLS12_377.ScalarField(), gnarkBuilder, circ)
+	ccs, err := frontend.CompileGeneric[constraint.U32](koalabear.Modulus(), gnarkBuilder, circ)
 	if err != nil {
 		return nil, nil, fmt.Errorf("frontend.Compile returned an err=%v", err)
 	}
 
-	return ccsIface.(*cs.SparseR1CS), hshGetter, err
+	return ccs.(*cs.SparseR1CS), hshGetter, err
 }
 
 // DomainSize returns the size of the domain. Meaning the size of the columns
 // taking part in the wizard for the current Plonk instance. The function
 // returns the next power of two of the number of constraints. Or, if the
 // option [WithFixedNbRows] is used, the fixed number of rows.
-func (ctx *compilationCtx) DomainSize() int {
+func (ctx *CompilationCtx) DomainSize() int {
 
 	if ctx.FixedNbRowsOption.Enabled {
 		return ctx.FixedNbRowsOption.NbRow
@@ -266,7 +268,7 @@ func (ctx *compilationCtx) DomainSize() int {
 
 // DomainSizePlonk returns the total size of the domain according to gnark.
 // Ignoring the [FixedNbRowsOption].
-func (ctx *compilationCtx) DomainSizePlonk() int {
+func (ctx *CompilationCtx) DomainSizePlonk() int {
 	return utils.NextPowerOfTwo(
 		ctx.Plonk.SPR.NbConstraints + len(ctx.Plonk.SPR.Public),
 	)
@@ -294,7 +296,7 @@ func tinyPISize(spr *cs.SparseR1CS) int {
 // The permutation is encoded as a slice s of size 3*size(l), where the
 // i-th entry of l∥r∥o is sent to the s[i]-th entry, so it acts on a tab
 // like this: for i in tab: tab[i] = tab[permutation[i]]
-func (ctx *compilationCtx) buildPermutation(spr *cs.SparseR1CS, pt *plonkBLS12_377.Trace) {
+func (ctx *CompilationCtx) buildPermutation(spr *cs.SparseR1CS, pt *plonkKoalabear.Trace) {
 
 	// nbVariables counts the number of variables occuring in the Plonk circuit. The
 	// +1 is to account for a "special" variable that we use for padding. It is
@@ -364,7 +366,7 @@ func (ctx *compilationCtx) buildPermutation(spr *cs.SparseR1CS, pt *plonkBLS12_3
 // assigning the first round of the wizard. In case we use the BBS commitment
 // this stands for [initialBBSProverAction] or [noCommitProverAction] in the
 // contrary case.
-func (ctx compilationCtx) GetPlonkProverAction() PlonkInWizardProverAction {
+func (ctx CompilationCtx) GetPlonkProverAction() PlonkInWizardProverAction {
 	if ctx.HasCommitment() {
 		return InitialBBSProverAction{
 			GenericPlonkProverAction: ctx.GenericPlonkProverAction(),
@@ -376,7 +378,7 @@ func (ctx compilationCtx) GetPlonkProverAction() PlonkInWizardProverAction {
 	}
 }
 
-func (ctx compilationCtx) GenericPlonkProverAction() GenericPlonkProverAction {
+func (ctx CompilationCtx) GenericPlonkProverAction() GenericPlonkProverAction {
 	return GenericPlonkProverAction{
 		Name:           ctx.Name,
 		SPR:            ctx.Plonk.SPR,

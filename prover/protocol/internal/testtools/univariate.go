@@ -2,7 +2,7 @@ package testtools
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -14,12 +14,12 @@ import (
 type UnivariateTestcase struct {
 	NameStr string
 	Polys   []smartvectors.SmartVector
-	QueryXs []field.Element
+	QueryXs []fext.Element
 	// QueryPols[i] indexes the polynomials in [Polys] that are queried. In the i-th query.
 	QueryPols [][]int
 	// This parameter is optionally set. If not set, the test case computes the
 	// correct value.
-	QueryYs [][]field.Element
+	QueryYs [][]fext.Element
 	// Round indicates the round definition of [Polys]. -1 indicates that the column
 	// is precomputed. If the field is empty, the testcase assumes that the all
 	// the columns are for round zero.
@@ -34,8 +34,8 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 		Polys: []smartvectors.SmartVector{
 			smartvectors.ForTest(10, 10, 10, 10, 10, 10, 10, 10),
 		},
-		QueryXs: []field.Element{
-			field.PseudoRand(rng),
+		QueryXs: []fext.Element{
+			fext.PseudoRand(rng),
 		},
 		QueryPols: [][]int{
 			{0},
@@ -46,8 +46,8 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 		Polys: []smartvectors.SmartVector{
 			smartvectors.ForTest(0, 0, 0, 0, 0, 1, 0, 0),
 		},
-		QueryXs: []field.Element{
-			field.NewElement(0),
+		QueryXs: []fext.Element{
+			fext.Zero(),
 		},
 		QueryPols: [][]int{
 			{0},
@@ -58,8 +58,8 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 		Polys: []smartvectors.SmartVector{
 			RandomVec(8),
 		},
-		QueryXs: []field.Element{
-			field.NewElement(0),
+		QueryXs: []fext.Element{
+			fext.Zero(),
 		},
 		QueryPols: [][]int{
 			{0},
@@ -70,8 +70,8 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 		Polys: []smartvectors.SmartVector{
 			RandomVec(8),
 		},
-		QueryXs: []field.Element{
-			field.NewElement(0),
+		QueryXs: []fext.Element{
+			fext.Zero(),
 		},
 		QueryPols: [][]int{
 			{0},
@@ -83,8 +83,8 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 		Polys: []smartvectors.SmartVector{
 			RandomVec(8),
 		},
-		QueryXs: []field.Element{
-			field.NewElement(0),
+		QueryXs: []fext.Element{
+			fext.Zero(),
 		},
 		QueryPols: [][]int{
 			{0},
@@ -97,8 +97,8 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 			smartvectors.ForTest(0, 0, 0, 0, 0, 1, 0, 0),
 			smartvectors.ForTest(0, 0, 0, 0, 0, 1, 0, 0),
 		},
-		QueryXs: []field.Element{
-			field.Zero(),
+		QueryXs: []fext.Element{
+			fext.Zero(),
 		},
 		QueryPols: [][]int{
 			{0, 1},
@@ -110,8 +110,8 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 			smartvectors.ForTest(0, 0, 0, 0, 0, 1, 0, 0),
 			smartvectors.ForTest(0, 0, 0, 0, 0, 1, 0, 0),
 		},
-		QueryXs: []field.Element{
-			field.Zero(),
+		QueryXs: []fext.Element{
+			fext.Zero(),
 		},
 		QueryPols: [][]int{
 			{0, 1},
@@ -124,8 +124,8 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 			smartvectors.ForTest(0, 0, 0, 0, 0, 1, 0, 0),
 			smartvectors.ForTest(0, 1, 0, 0),
 		},
-		QueryXs: []field.Element{
-			field.Zero(),
+		QueryXs: []fext.Element{
+			fext.Zero(),
 		},
 		QueryPols: [][]int{
 			{0, 1},
@@ -137,8 +137,8 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 			RandomVec(8),
 			RandomVec(8),
 		},
-		QueryXs: []field.Element{
-			field.PseudoRand(rng),
+		QueryXs: []fext.Element{
+			fext.PseudoRand(rng),
 		},
 		QueryPols: [][]int{
 			{0, 1},
@@ -149,9 +149,9 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 		Polys: []smartvectors.SmartVector{
 			RandomVec(8),
 		},
-		QueryXs: []field.Element{
-			field.PseudoRand(rng),
-			field.PseudoRand(rng),
+		QueryXs: []fext.Element{
+			fext.PseudoRand(rng),
+			fext.PseudoRand(rng),
 		},
 		QueryPols: [][]int{
 			{0},
@@ -164,9 +164,9 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 			RandomVec(8),
 			RandomVec(8),
 		},
-		QueryXs: []field.Element{
-			field.PseudoRand(rng),
-			field.PseudoRand(rng),
+		QueryXs: []fext.Element{
+			fext.PseudoRand(rng),
+			fext.PseudoRand(rng),
 		},
 		QueryPols: [][]int{
 			{0, 1},
@@ -184,12 +184,12 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 			RandomVec(8),
 			RandomVec(8),
 		},
-		QueryXs: []field.Element{
-			field.PseudoRand(rng),
-			field.PseudoRand(rng),
-			field.PseudoRand(rng),
-			field.PseudoRand(rng),
-			field.PseudoRand(rng),
+		QueryXs: []fext.Element{
+			fext.PseudoRand(rng),
+			fext.PseudoRand(rng),
+			fext.PseudoRand(rng),
+			fext.PseudoRand(rng),
+			fext.PseudoRand(rng),
 		},
 		QueryPols: [][]int{
 			{0, 1, 2, 3},
@@ -230,7 +230,6 @@ func (u *UnivariateTestcase) Define(comp *wizard.CompiledIOP) {
 			polys[i] = comp.InsertPrecomputed(name, u.Polys[i])
 			continue
 		}
-
 		maxRound = max(maxRound, round)
 		polys[i] = comp.InsertCommit(round, name, u.Polys[i].Len())
 
@@ -243,7 +242,7 @@ func (u *UnivariateTestcase) Define(comp *wizard.CompiledIOP) {
 	}
 
 	for round := 1; round <= maxRound; round++ {
-		_ = comp.InsertCoin(round, formatName[coin.Name]("Univariate", u.NameStr, "Coin", round), coin.Field)
+		_ = comp.InsertCoin(round, formatName[coin.Name]("Univariate", u.NameStr, "Coin", round), coin.FieldExt)
 	}
 
 	for i := range u.QueryXs {
@@ -258,7 +257,6 @@ func (u *UnivariateTestcase) Define(comp *wizard.CompiledIOP) {
 			formatName[ifaces.QueryID]("Univariate", u.NameStr, "Query", i),
 			queryPols,
 		)
-
 		if maxRound > 0 {
 			comp.RegisterProverAction(maxRound, assignUnivariatePA{u, i})
 		}
@@ -273,7 +271,6 @@ func (u *UnivariateTestcase) Assign(run *wizard.ProverRuntime) {
 			maxRound = max(maxRound, r)
 		}
 	}
-
 	for i := range u.Polys {
 
 		round := 0
@@ -306,22 +303,22 @@ func (u *UnivariateTestcase) assignUnivariate(run *wizard.ProverRuntime, i int) 
 
 	var (
 		name = formatName[ifaces.QueryID]("Univariate", u.NameStr, "Query", i)
-		ys   = make([]field.Element, len(u.QueryPols[i]))
+		ys   = make([]fext.Element, len(u.QueryPols[i]))
 		x    = u.QueryXs[i]
 		q    = run.Spec.QueriesParams.Data(name).(query.UnivariateEval)
 	)
 
 	if len(u.QueryYs) > 0 {
-		run.AssignUnivariate(name, x, u.QueryYs[i]...)
+		run.AssignUnivariateExt(name, x, u.QueryYs[i]...)
 		return
 	}
 
 	for j := range q.Pols {
 		p := q.Pols[j].GetColAssignment(run)
-		ys[j] = smartvectors.Interpolate(p, x)
+		ys[j] = smartvectors.EvaluateLagrangeMixed(p, x)
 	}
 
-	run.AssignUnivariate(q.QueryID, x, ys...)
+	run.AssignUnivariateExt(q.QueryID, x, ys...)
 }
 
 // assignUnivariatePA is a ProverAction to assign a univariate query.

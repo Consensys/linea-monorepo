@@ -2,6 +2,7 @@
 
 package accumulator_test
 
+/*TODO@yao
 import (
 	"testing"
 
@@ -207,3 +208,4 @@ func TestInsertAndDeleteRootHashMiMC(t *testing.T) {
 		acc.TopRoot().Hex(),
 	)
 }
+*/

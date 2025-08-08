@@ -1,10 +1,10 @@
 package vortex
 
 import (
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
@@ -24,7 +24,7 @@ type VerifyOpeningCircuitMerkleTree struct {
 func AllocateCircuitVariablesWithMerkleTree(
 	verifyCircuit *VerifyOpeningCircuitMerkleTree,
 	proof OpeningProof,
-	ys [][]field.Element,
+	ys [][]fext.Element,
 	entryList []int,
 	roots []types.Bytes32) {
 
@@ -61,11 +61,11 @@ func AllocateCircuitVariablesWithMerkleTree(
 func AssignCicuitVariablesWithMerkleTree(
 	verifyCircuit *VerifyOpeningCircuitMerkleTree,
 	proof OpeningProof,
-	ys [][]field.Element,
+	ys [][]fext.Element,
 	entryList []int,
 	roots []types.Bytes32) {
 
-	frLinComb := make([]fr.Element, proof.LinearCombination.Len())
+	frLinComb := make([]field.Element, proof.LinearCombination.Len())
 	proof.LinearCombination.WriteInSlice(frLinComb)
 	for i := 0; i < proof.LinearCombination.Len(); i++ {
 		verifyCircuit.Proof.LinearCombination[i] = frLinComb[i].String()
@@ -79,7 +79,7 @@ func AssignCicuitVariablesWithMerkleTree(
 		}
 	}
 
-	var buf fr.Element
+	var buf field.Element
 	for i := 0; i < len(proof.MerkleProofs); i++ {
 		for j := 0; j < len(proof.MerkleProofs[i]); j++ {
 			verifyCircuit.Proof.MerkleProofs[i][j].Path = proof.MerkleProofs[i][j].Path

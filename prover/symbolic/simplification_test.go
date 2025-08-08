@@ -3,7 +3,8 @@ package symbolic
 import (
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -103,7 +104,7 @@ func TestRegroupTerms(t *testing.T) {
 		InputMagn  []int
 		OutputVars []*Expression
 		OutputMagn []int
-		ConstVars  []field.Element
+		ConstVars  []fext.GenericFieldElem
 		ConstMagn  []int
 		Op         Operator
 	}{
@@ -112,7 +113,7 @@ func TestRegroupTerms(t *testing.T) {
 			InputMagn:  []int{1, 1, 1, 1, 1, 1, 1},
 			OutputVars: []*Expression{a, b, c},
 			OutputMagn: []int{2, 2, 2},
-			ConstVars:  []field.Element{field.Zero()},
+			ConstVars:  []fext.GenericFieldElem{fext.GenericFieldZero()},
 			ConstMagn:  []int{1},
 		},
 	}

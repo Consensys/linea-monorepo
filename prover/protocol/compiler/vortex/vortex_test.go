@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -22,8 +22,8 @@ func TestCompiler(t *testing.T) {
 		rows       = make([]ifaces.Column, nPols)
 		// variables for multi-round
 		// Threshold for SIS hashing is 10, so we have 2 rounds with SIS and 2 without
-		nPolsMultiRound = []int{14, 8, 9, 16}
 		numRounds       = 4
+		nPolsMultiRound = []int{14, 8, 9, 16}
 		rowsMultiRound  = make([][]ifaces.Column, numRounds)
 		// variables for precomputed columns
 		numPrecomputedsNoSIS = 4
@@ -45,17 +45,17 @@ func TestCompiler(t *testing.T) {
 				b.UnivariateEval("EVAL", rows[:nPolsNoSIS]...)
 			},
 			Prove: func(pr *wizard.ProverRuntime) {
-				ys := make([]field.Element, nPolsNoSIS)
-				x := field.NewElement(57) // the evaluation point
+				ys := make([]fext.Element, nPolsNoSIS)
+				x := fext.NewFromInt(57, 1, 2, 4) // the evaluation point
 
 				// assign the rows with random polynomials and collect the ys
 				for i, row := range rows[:nPolsNoSIS] {
 					p := smartvectors.Rand(polSize)
-					ys[i] = smartvectors.Interpolate(p, x)
+					ys[i] = smartvectors.EvaluateLagrangeMixed(p, x)
 					pr.AssignColumn(row.GetColID(), p)
 				}
 
-				pr.AssignUnivariate("EVAL", x, ys...)
+				pr.AssignUnivariateExt("EVAL", x, ys...)
 			},
 		},
 		{
@@ -67,17 +67,17 @@ func TestCompiler(t *testing.T) {
 				b.UnivariateEval("EVAL", rows...)
 			},
 			Prove: func(pr *wizard.ProverRuntime) {
-				ys := make([]field.Element, len(rows))
-				x := field.NewElement(57) // the evaluation point
+				ys := make([]fext.Element, len(rows))
+				x := fext.NewFromInt(57, 1, 2, 4) // the evaluation point
 
 				// assign the rows with random polynomials and collect the ys
 				for i, row := range rows {
 					p := smartvectors.Rand(polSize)
-					ys[i] = smartvectors.Interpolate(p, x)
+					ys[i] = smartvectors.EvaluateLagrangeMixed(p, x)
 					pr.AssignColumn(row.GetColID(), p)
 				}
 
-				pr.AssignUnivariate("EVAL", x, ys...)
+				pr.AssignUnivariateExt("EVAL", x, ys...)
 			},
 		},
 		{
@@ -105,8 +105,8 @@ func TestCompiler(t *testing.T) {
 			Prove: func(pr *wizard.ProverRuntime) {
 				// Count the total number of polynomials
 				numPolys := numRounds * nPols
-				ys := make([]field.Element, numPolys)
-				x := field.NewElement(57) // the evaluation point
+				ys := make([]fext.Element, numPolys)
+				x := fext.NewFromInt(57, 1, 2, 4) // the evaluation point
 
 				// assign the rows with random polynomials and collect the ys
 				for round := 0; round < numRounds; round++ {
@@ -121,64 +121,64 @@ func TestCompiler(t *testing.T) {
 
 					for i, row := range rowsMultiRound[round] {
 						p := smartvectors.Rand(polSize)
-						ys[offsetIndex+i] = smartvectors.Interpolate(p, x)
+						ys[offsetIndex+i] = smartvectors.EvalCoeffMixed(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
 				}
 
-				pr.AssignUnivariate("EVAL", x, ys...)
+				pr.AssignUnivariateExt("EVAL", x, ys...)
 			},
 		},
-		// {
-		// 	Explainer: "Multiple round w/o pre-computed column starting at round2",
-		// 	Define: func(b *wizard.Builder) {
-		// 		for round := 1; round < 2; round++ {
-		// 			_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
-		// 		}
-		// 		for round := 2; round < numRounds+2; round++ {
-		// 			var offsetIndex = 0
-		// 			// trigger the creation of a new round by declaring a dummy coin
+		{
+			Explainer: "Multiple round w/o pre-computed column starting at round2",
+			Define: func(b *wizard.Builder) {
+				for round := 1; round < 2; round++ {
+					_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
+				}
+				for round := 2; round < numRounds+2; round++ {
+					var offsetIndex = 0
+					// trigger the creation of a new round by declaring a dummy coin
 
-		// 			_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
-		// 			// Compute the offsetIndex
-		// 			for i := 2; i < round; i++ {
-		// 				offsetIndex += nPols
-		// 			}
+					_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
+					// Compute the offsetIndex
+					for i := 2; i < round; i++ {
+						offsetIndex += nPols
+					}
 
-		// 			rowsMultiRound[round-2] = make([]ifaces.Column, nPols)
-		// 			for i := 0; i < nPols; i++ {
-		// 				rowsMultiRound[round-2][i] = b.RegisterCommit(ifaces.ColIDf("P_%v", offsetIndex+i), polSize)
-		// 			}
-		// 		}
+					rowsMultiRound[round-2] = make([]ifaces.Column, nPols)
+					for i := 0; i < nPols; i++ {
+						rowsMultiRound[round-2][i] = b.RegisterCommit(ifaces.ColIDf("P_%v", offsetIndex+i), polSize)
+					}
+				}
 
-		// 		b.UnivariateEval("EVAL", utils.Join(rowsMultiRound...)...)
-		// 	},
-		// 	Prove: func(pr *wizard.ProverRuntime) {
-		// 		// Count the total number of polynomials
-		// 		numPolys := numRounds * nPols
-		// 		ys := make([]field.Element, numPolys)
-		// 		x := field.NewElement(57) // the evaluation point
+				b.UnivariateEval("EVAL", utils.Join(rowsMultiRound...)...)
+			},
+			Prove: func(pr *wizard.ProverRuntime) {
+				// Count the total number of polynomials
+				numPolys := numRounds * nPols
+				ys := make([]fext.Element, numPolys)
+				x := fext.NewFromInt(57, 1, 2, 4) // the evaluation point
 
-		// 		// assign the rows with random polynomials and collect the ys
-		// 		for round := 2; round < numRounds+2; round++ {
-		// 			var offsetIndex = 0
+				// assign the rows with random polynomials and collect the ys
+				for round := 2; round < numRounds+2; round++ {
+					var offsetIndex = 0
 
-		// 			// let the prover know that it is free to go to the next
-		// 			// round by sampling the coin.
-		// 			_ = pr.GetRandomCoinField(coin.Namef("COIN_%v", round))
-		// 			// Compute the offsetIndex
-		// 			offsetIndex = nPols * (round - 2)
+					// let the prover know that it is free to go to the next
+					// round by sampling the coin.
+					_ = pr.GetRandomCoinField(coin.Namef("COIN_%v", round))
+					// Compute the offsetIndex
+					offsetIndex = nPols * (round - 2)
 
-		// 			for i, row := range rowsMultiRound[round-2] {
-		// 				p := smartvectors.Rand(polSize)
-		// 				ys[offsetIndex+i] = smartvectors.Interpolate(p, x)
-		// 				pr.AssignColumn(row.GetColID(), p)
-		// 			}
-		// 		}
+					for i, row := range rowsMultiRound[round-2] {
+						p := smartvectors.Rand(polSize)
+						ys[offsetIndex+i] = smartvectors.EvalCoeffMixed(p, x)
+						pr.AssignColumn(row.GetColID(), p)
+					}
+				}
 
-		// 		pr.AssignUnivariate("EVAL", x, ys...)
-		// 	},
-		// },
+				pr.AssignUnivariateExt("EVAL", x, ys...)
+			},
+		},
 		{
 			Explainer: "Vortex with multiple round and never SIS, without precomputed columns",
 			Define: func(b *wizard.Builder) {
@@ -204,8 +204,8 @@ func TestCompiler(t *testing.T) {
 			Prove: func(pr *wizard.ProverRuntime) {
 				// Count the total number of polynomials
 				numPolys := numRounds * nPolsNoSIS
-				ys := make([]field.Element, numPolys)
-				x := field.NewElement(57) // the evaluation point
+				ys := make([]fext.Element, numPolys)
+				x := fext.NewFromInt(57, 1, 2, 4)
 
 				// assign the rows with random polynomials and collect the ys
 				for round := 0; round < numRounds; round++ {
@@ -220,12 +220,12 @@ func TestCompiler(t *testing.T) {
 
 					for i, row := range rowsMultiRound[round] {
 						p := smartvectors.Rand(polSize)
-						ys[offsetIndex+i] = smartvectors.Interpolate(p, x)
+						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
 				}
 
-				pr.AssignUnivariate("EVAL", x, ys...)
+				pr.AssignUnivariateExt("EVAL", x, ys...)
 			},
 		},
 		{
@@ -235,7 +235,7 @@ func TestCompiler(t *testing.T) {
 					var offsetIndex = 0
 					// trigger the creation of a new round by declaring a dummy coin
 					if round != 0 {
-						_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
+						_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
 						// Compute the offsetIndex
 						for i := 0; i < round; i++ {
 							offsetIndex += nPolsMultiRound[i]
@@ -256,8 +256,8 @@ func TestCompiler(t *testing.T) {
 				for i := range nPolsMultiRound {
 					numPolys += nPolsMultiRound[i]
 				}
-				ys := make([]field.Element, numPolys)
-				x := field.NewElement(57) // the evaluation point
+				ys := make([]fext.Element, numPolys)
+				x := fext.NewFromInt(57, 1, 4, 2) // the evaluation point
 
 				// assign the rows with random polynomials and collect the ys
 				for round := range rowsMultiRound {
@@ -265,7 +265,7 @@ func TestCompiler(t *testing.T) {
 					if round != 0 {
 						// let the prover know that it is free to go to the next
 						// round by sampling the coin.
-						_ = pr.GetRandomCoinField(coin.Namef("COIN_%v", round))
+						_ = pr.GetRandomCoinFieldExt(coin.Namef("COIN_%v", round))
 						// Compute the offsetIndex
 						for i := 0; i < round; i++ {
 							offsetIndex += nPolsMultiRound[i]
@@ -274,14 +274,15 @@ func TestCompiler(t *testing.T) {
 
 					for i, row := range rowsMultiRound[round] {
 						p := smartvectors.Rand(polSize)
-						ys[offsetIndex+i] = smartvectors.Interpolate(p, x)
+						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
 				}
 
-				pr.AssignUnivariate("EVAL", x, ys...)
+				pr.AssignUnivariateExt("EVAL", x, ys...)
 			},
 		},
+
 		{
 			Explainer: "Vortex with multiple rounds with both SIS and non-SIS, with precomputeds committed with no SIS",
 			Define: func(b *wizard.Builder) {
@@ -289,7 +290,7 @@ func TestCompiler(t *testing.T) {
 					var offsetIndex = 0
 					// trigger the creation of a new round by declaring a dummy coin
 					if round != 0 {
-						_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
+						_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
 						// Compute the offsetIndex
 						for i := 0; i < round; i++ {
 							offsetIndex += nPolsMultiRound[i]
@@ -320,8 +321,8 @@ func TestCompiler(t *testing.T) {
 				for i := range nPolsMultiRound {
 					numPolys += nPolsMultiRound[i]
 				}
-				ys := make([]field.Element, numPolys)
-				x := field.NewElement(57) // the evaluation point
+				ys := make([]fext.Element, numPolys)
+				x := fext.NewFromInt(57, 1, 4, 2) // the evaluation point
 
 				// assign the rows with random polynomials and collect the ys
 				for round := range rowsMultiRound {
@@ -329,7 +330,7 @@ func TestCompiler(t *testing.T) {
 					if round != 0 {
 						// let the prover know that it is free to go to the next
 						// round by sampling the coin.
-						_ = pr.GetRandomCoinField(coin.Namef("COIN_%v", round))
+						_ = pr.GetRandomCoinFieldExt(coin.Namef("COIN_%v", round))
 						// Compute the offsetIndex
 						for i := 0; i < round; i++ {
 							offsetIndex += nPolsMultiRound[i]
@@ -341,18 +342,19 @@ func TestCompiler(t *testing.T) {
 						// assigned in the define phase
 						if i < numPrecomputedsNoSIS && round == 0 {
 							p := pr.Spec.Precomputed.MustGet(row.GetColID())
-							ys[i] = smartvectors.Interpolate(p, x)
+							ys[i] = smartvectors.EvaluateLagrangeMixed(p, x)
 							continue
 						}
 						p := smartvectors.Rand(polSize)
-						ys[offsetIndex+i] = smartvectors.Interpolate(p, x)
+						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
 				}
 
-				pr.AssignUnivariate("EVAL", x, ys...)
+				pr.AssignUnivariateExt("EVAL", x, ys...)
 			},
 		},
+
 		{
 			Explainer: "Vortex with multiple rounds with both SIS and non-SIS, with precomputeds committed with SIS",
 			Define: func(b *wizard.Builder) {
@@ -360,7 +362,7 @@ func TestCompiler(t *testing.T) {
 					var offsetIndex = 0
 					// trigger the creation of a new round by declaring a dummy coin
 					if round != 0 {
-						_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
+						_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
 						// Compute the offsetIndex
 						for i := 0; i < round; i++ {
 							offsetIndex += nPolsMultiRound[i]
@@ -391,8 +393,8 @@ func TestCompiler(t *testing.T) {
 				for i := range nPolsMultiRound {
 					numPolys += nPolsMultiRound[i]
 				}
-				ys := make([]field.Element, numPolys)
-				x := field.NewElement(57) // the evaluation point
+				ys := make([]fext.Element, numPolys)
+				x := fext.NewFromInt(57, 1, 4, 2) // the evaluation point
 
 				// assign the rows with random polynomials and collect the ys
 				for round := range rowsMultiRound {
@@ -400,7 +402,7 @@ func TestCompiler(t *testing.T) {
 					if round != 0 {
 						// let the prover know that it is free to go to the next
 						// round by sampling the coin.
-						_ = pr.GetRandomCoinField(coin.Namef("COIN_%v", round))
+						_ = pr.GetRandomCoinFieldExt(coin.Namef("COIN_%v", round))
 						// Compute the offsetIndex
 						for i := 0; i < round; i++ {
 							offsetIndex += nPolsMultiRound[i]
@@ -412,16 +414,16 @@ func TestCompiler(t *testing.T) {
 						// assigned in the define phase
 						if i < numPrecomputedsSIS && round == 0 {
 							p := pr.Spec.Precomputed.MustGet(row.GetColID())
-							ys[i] = smartvectors.Interpolate(p, x)
+							ys[i] = smartvectors.EvaluateLagrangeMixed(p, x)
 							continue
 						}
 						p := smartvectors.Rand(polSize)
-						ys[offsetIndex+i] = smartvectors.Interpolate(p, x)
+						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
 				}
 
-				pr.AssignUnivariate("EVAL", x, ys...)
+				pr.AssignUnivariateExt("EVAL", x, ys...)
 			},
 		},
 		{
@@ -462,8 +464,8 @@ func TestCompiler(t *testing.T) {
 				for i := range nPolsMultiRoundEmpty {
 					numPolys += nPolsMultiRoundEmpty[i]
 				}
-				ys := make([]field.Element, numPolys)
-				x := field.NewElement(57) // the evaluation point
+				ys := make([]fext.Element, numPolys)
+				x := fext.NewFromInt(57, 1, 4, 2) // the evaluation point
 
 				// assign the rows with random polynomials and collect the ys
 				for round := range rowsMultiRound {
@@ -483,16 +485,16 @@ func TestCompiler(t *testing.T) {
 						// assigned in the define phase
 						if i < numPrecomputedsNoSIS && round == 0 {
 							p := pr.Spec.Precomputed.MustGet(row.GetColID())
-							ys[i] = smartvectors.Interpolate(p, x)
+							ys[i] = smartvectors.EvaluateLagrangeMixed(p, x)
 							continue
 						}
 						p := smartvectors.Rand(polSize)
-						ys[offsetIndex+i] = smartvectors.Interpolate(p, x)
+						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
 				}
 
-				pr.AssignUnivariate("EVAL", x, ys...)
+				pr.AssignUnivariateExt("EVAL", x, ys...)
 			},
 		},
 	}

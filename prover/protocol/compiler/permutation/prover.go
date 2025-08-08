@@ -4,8 +4,8 @@ import (
 	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -40,37 +40,72 @@ func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
 
 // run assigns all the Zs in parallel and set the parameters for their
 // corresponding last values openings.
-func (z *ZCtx) run(run *wizard.ProverRuntime) {
 
+// run assigns all the Zs in parallel and set the parameters for their
+// corresponding last values openings.
+func (z *ZCtx) run(run *wizard.ProverRuntime) {
 	for i := range z.Zs {
 		var (
-			numerator   []field.Element
-			denominator []field.Element
+			numerator   smartvectors.SmartVector
+			denominator smartvectors.SmartVector
 		)
 
 		if packingArity*i < len(z.NumeratorFactors) {
-			numerator = column.EvalExprColumn(run, z.NumeratorFactorsBoarded[i]).IntoRegVecSaveAlloc()
+			numerator = column.EvalExprColumn(run, z.NumeratorFactorsBoarded[i])
 		} else {
-			numerator = vector.Repeat(field.One(), z.Size)
+			numerator = smartvectors.NewConstant(field.One(), z.Size)
 		}
 
 		if packingArity*i < len(z.DenominatorFactors) {
-			denominator = column.EvalExprColumn(run, z.DenominatorFactorsBoarded[i]).IntoRegVecSaveAlloc()
+			denominator = column.EvalExprColumn(run, z.DenominatorFactorsBoarded[i])
 		} else {
-			denominator = vector.Repeat(field.One(), z.Size)
+			denominator = smartvectors.NewConstant(field.One(), z.Size)
 		}
 
-		denominator = field.BatchInvert(denominator)
+		// This case does not corresponds to actual production use of the compiler
+		// because due to how grand-product queries are constructed, the Zs
+		// column is always dependant on a randomness and is therefore over a
+		// field extension.
+		if smartvectors.IsBase(numerator) && smartvectors.IsBase(denominator) {
+			// If both numerator and denominator are base
+			denominatorSlice, _ := denominator.IntoRegVecSaveAllocBase()
+			denominatorSlice = field.BatchInvert(denominatorSlice)
 
-		for i := range denominator {
-			numerator[i].Mul(&numerator[i], &denominator[i])
-			if i > 0 {
-				numerator[i].Mul(&numerator[i], &numerator[i-1])
+			numeratorSlice, _ := numerator.IntoRegVecSaveAllocBase()
+
+			for i := range denominatorSlice {
+				numeratorSlice[i].Mul(&numeratorSlice[i], &denominatorSlice[i])
+				if i > 0 {
+					numeratorSlice[i].Mul(&numeratorSlice[i], &numeratorSlice[i-1])
+				}
 			}
+
+			run.AssignColumn(z.Zs[i].GetColID(), smartvectors.NewRegular(numeratorSlice))
+
+			// Regardless of the assignment, the local opening will always be
+			// defined as a field extension column.
+			run.AssignLocalPointExt(
+				z.ZOpenings[i].Name(),
+				fext.Lift(numeratorSlice[len(numeratorSlice)-1]),
+			)
+		} else {
+			// at least one of the numerator or denominator is over field extensions
+			denominatorSlice := denominator.IntoRegVecSaveAllocExt()
+			denominatorSlice = fext.BatchInvert(denominatorSlice)
+
+			numeratorSlice := numerator.IntoRegVecSaveAllocExt()
+
+			for i := range denominatorSlice {
+				numeratorSlice[i].Mul(&numeratorSlice[i], &denominatorSlice[i])
+				if i > 0 {
+					numeratorSlice[i].Mul(&numeratorSlice[i], &numeratorSlice[i-1])
+				}
+			}
+
+			run.AssignColumn(z.Zs[i].GetColID(), smartvectors.NewRegularExt(numeratorSlice))
+			run.AssignLocalPointExt(z.ZOpenings[i].Name(), numeratorSlice[len(numeratorSlice)-1])
 		}
 
-		run.AssignColumn(z.Zs[i].GetColID(), smartvectors.NewRegular(numerator))
-		run.AssignLocalPoint(z.ZOpenings[i].Name(), numerator[len(numerator)-1])
 	}
 }
 
@@ -84,9 +119,16 @@ type AssignPermutationGrandProduct struct {
 }
 
 func (a AssignPermutationGrandProduct) Run(run *wizard.ProverRuntime) {
-	y := field.One()
+	y := fext.GenericFieldOne()
 	if a.IsPartial {
-		y = a.Query.Compute(run)
+		res := a.Query.Compute(run)
+		y = res
 	}
-	run.AssignGrandProduct(a.Query.ID, y)
+	if y.GetIsBase() {
+		baseRes, _ := y.GetBase()
+		run.AssignGrandProduct(a.Query.ID, baseRes)
+	} else {
+		extRes := y.GetExt()
+		run.AssignGrandProductExt(a.Query.ID, extRes)
+	}
 }

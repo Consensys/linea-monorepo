@@ -151,11 +151,23 @@ func EvalExprColumn(run ifaces.Runtime, board symbolic.ExpressionBoard) smartvec
 		case ifaces.Column:
 			inputs[i] = m.GetColAssignment(run)
 		case coin.Info:
-			v = run.GetRandomCoinField(m.Name)
-			inputs[i] = smartvectors.NewConstant(v, length)
+			if m.IsBase() {
+				v = run.GetRandomCoinField(m.Name)
+				inputs[i] = smartvectors.NewConstant(v, length)
+			} else {
+				vExt := run.GetRandomCoinFieldExt(m.Name)
+				inputs[i] = smartvectors.NewConstantExt(vExt, length)
+			}
+
 		case ifaces.Accessor:
-			v := m.GetVal(run)
-			inputs[i] = smartvectors.NewConstant(v, length)
+			if m.IsBase() {
+				v, _ := m.GetValBase(run)
+				inputs[i] = smartvectors.NewConstant(v, length)
+			} else {
+				v := m.GetValExt(run)
+				inputs[i] = smartvectors.NewConstantExt(v, length)
+			}
+
 		case variables.PeriodicSample:
 			v := m.EvalCoset(length, 0, 1, false)
 			inputs[i] = v
@@ -165,7 +177,7 @@ func EvalExprColumn(run ifaces.Runtime, board symbolic.ExpressionBoard) smartvec
 		}
 	}
 
-	return board.Evaluate(inputs)
+	return board.EvaluateMixed(inputs)
 }
 
 // GnarkEvalExprColumn evaluates an expression in a gnark circuit setting
@@ -186,7 +198,11 @@ func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbol
 			case ifaces.Column:
 				inputs[i] = m.GetColAssignmentGnarkAt(run, k)
 			case coin.Info:
-				inputs[i] = run.GetRandomCoinField(m.Name)
+				if m.IsBase() {
+					inputs[i] = run.GetRandomCoinField(m.Name)
+				} else {
+					inputs[i] = run.GetRandomCoinFieldExt(m.Name)
+				}
 			case ifaces.Accessor:
 				inputs[i] = m.GetFrontendVariable(api, run)
 			case variables.PeriodicSample:

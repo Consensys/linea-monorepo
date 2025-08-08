@@ -85,7 +85,6 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 	for i := range run.Spec.PublicInputs {
 		pubs = append(pubs, run.Spec.PublicInputs[i].Acc.GetVal(run))
 	}
-
 	return Witness{
 		Proof:             run.ExtractProof(),
 		CommittedMatrices: committedMatrices,
@@ -130,12 +129,12 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 			return fmt.Errorf("proof no=%v, x value does not match %v != %v", i, circX.String(), params.X.String())
 		}
 
-		if len(circYs) != len(params.Ys) {
+		if len(circYs) != len(params.ExtYs) {
 			return fmt.Errorf("proof no=%v, number of Ys does not match; %v != %v", i, len(circYs), len(params.Ys))
 		}
 
 		for i := range circYs {
-			if circYs[i] != params.Ys[i] {
+			if circYs[i] != params.ExtYs[i] {
 				return fmt.Errorf("proof no=%v, Y[%v] does not match; %v != %v", i, i, circYs[i].String(), params.Ys[i].String())
 			}
 		}

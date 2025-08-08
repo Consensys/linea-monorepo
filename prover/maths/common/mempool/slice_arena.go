@@ -2,6 +2,7 @@ package mempool
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -9,14 +10,16 @@ import (
 // mempool to carry its allocation. It will only put back free memory in the
 // the parent pool when TearDown is called.
 type SliceArena struct {
-	frees  []*[]field.Element
-	parent MemPool
+	freesBase []*[]field.Element
+	freesExt  []*[]fext.Element
+	parent    MemPool
 }
 
 func WrapsWithMemCache(pool MemPool) *SliceArena {
 	return &SliceArena{
-		frees:  make([]*[]field.Element, 0, 1<<7),
-		parent: pool,
+		freesBase: make([]*[]field.Element, 0, 1<<7),
+		freesExt:  make([]*[]fext.Element, 0, 1<<7),
+		parent:    pool,
 	}
 }
 
@@ -27,27 +30,65 @@ func (m *SliceArena) Prewarm(nbPrewarm int) MemPool {
 
 func (m *SliceArena) Alloc() *[]field.Element {
 
-	if len(m.frees) == 0 {
+	if len(m.freesBase) == 0 {
 		return m.parent.Alloc()
 	}
 
-	last := m.frees[len(m.frees)-1]
-	m.frees = m.frees[:len(m.frees)-1]
+	last := m.freesBase[len(m.freesBase)-1]
+	m.freesBase = m.freesBase[:len(m.freesBase)-1]
+	return last
+}
+
+func (m *SliceArena) AllocBase() *[]field.Element {
+
+	if len(m.freesBase) == 0 {
+		return m.parent.AllocBase()
+	}
+
+	last := m.freesBase[len(m.freesBase)-1]
+	m.freesBase = m.freesBase[:len(m.freesBase)-1]
+	return last
+}
+
+func (m *SliceArena) AllocExt() *[]fext.Element {
+
+	if len(m.freesExt) == 0 {
+		return m.parent.AllocExt()
+	}
+
+	last := m.freesExt[len(m.freesBase)-1]
+	m.freesBase = m.freesBase[:len(m.freesBase)-1]
 	return last
 }
 
 func (m *SliceArena) Free(v *[]field.Element) error {
-	m.frees = append(m.frees, v)
+	m.freesBase = append(m.freesBase, v)
 	return nil
 }
 
+func (m *SliceArena) FreeBase(v *[]field.Element) error {
+	m.freesBase = append(m.freesBase, v)
+	return nil
+}
+
+func (m *SliceArena) FreeExt(v *[]fext.Element) error {
+	m.freesExt = append(m.freesExt, v)
+	return nil
+}
 func (m *SliceArena) Size() int {
 	return m.parent.Size()
 }
 
 func (m *SliceArena) TearDown() {
-	for i := range m.frees {
-		if err := m.parent.Free(m.frees[i]); err != nil {
+	// free the base vectors
+	for i := range m.freesBase {
+		if err := m.parent.FreeBase(m.freesBase[i]); err != nil {
+			utils.Panic("failed to free slice in arena: %v", err)
+		}
+	}
+	// free the extension vectors
+	for i := range m.freesExt {
+		if err := m.parent.FreeExt(m.freesExt[i]); err != nil {
 			utils.Panic("failed to free slice in arena: %v", err)
 		}
 	}

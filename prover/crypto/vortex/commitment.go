@@ -33,7 +33,8 @@ type EncodedMatrix []smartvectors.SmartVector
 func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
 
 	if len(ps) > p.MaxNbRows {
-		utils.Panic("too many rows: %v, capacity is %v\n", len(ps), p.MaxNbRows)
+		utils.
+			Panic("too many rows: %v, capacity is %v\n", len(ps), p.MaxNbRows)
 	}
 
 	timeEncoding := profiling.TimeIt(func() {
@@ -46,7 +47,12 @@ func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatr
 
 	timeTree := profiling.TimeIt(func() {
 		// Hash the SIS digests to obtain the leaves of the Merkle tree.
-		leaves := p.hashSisHash(colHashes)
+		leavesOcts := p.hashSisHash(colHashes)
+		leaves := make([]types.Bytes32, len(leavesOcts))
+
+		for i := range leaves {
+			leaves[i] = types.HashToBytes32(leavesOcts[i])
+		}
 
 		tree = smt.BuildComplete(
 			leaves,
@@ -87,10 +93,12 @@ func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedM
 	timeTree := profiling.TimeIt(func() {
 		// colHashes stores the MiMC hashes
 		// of the columns.
-		colHashes = p.noSisTransversalHash(encodedMatrix)
-		leaves := make([]types.Bytes32, len(colHashes))
+		colHashesOcts := p.noSisTransversalHash(encodedMatrix)
+		leaves := make([]types.Bytes32, len(colHashesOcts))
+		colHashes = make([]field.Element, 0, len(colHashesOcts)*len(field.Octuplet{}))
 		for i := range leaves {
-			leaves[i] = colHashes[i].Bytes()
+			leaves[i] = types.HashToBytes32(colHashesOcts[i])
+			colHashes = append(colHashes, colHashesOcts[i][:]...)
 		}
 
 		tree = smt.BuildComplete(
@@ -131,7 +139,7 @@ func (params *Params) encodeRows(ps []smartvectors.SmartVector) (encodedMatrix E
 	parallel.Execute(len(ps), func(start, stop int) {
 		localPool := mempool.WrapsWithMemCache(pool)
 		for i := start; i < stop; i++ {
-			encodedMatrix[i] = params.rsEncode(ps[i], localPool)
+			encodedMatrix[i] = params._rsEncodeBase(ps[i], localPool)
 		}
 		localPool.TearDown()
 	})
@@ -142,13 +150,13 @@ func (params *Params) encodeRows(ps []smartvectors.SmartVector) (encodedMatrix E
 // hashSisHash is used to hash the individual SIS hashes stored in colHashes.
 // The function is reserved for the case where no NoSisHasher is provided to
 // parameters of Vortex.
-func (p *Params) hashSisHash(colHashes []field.Element) (leaves []types.Bytes32) {
+func (p *Params) hashSisHash(colHashes []field.Element) (leaves []field.Octuplet) {
 
 	// Case with SIS, the columns hashes all fit on several field.element
 	// in that case, we need to hash them further. before merkleizing them.
 	chunkSize := p.Key.OutputSize()
 	numChunks := p.NumEncodedCols()
-	leaves = make([]types.Bytes32, numChunks)
+	leaves = make([]field.Octuplet, numChunks)
 
 	parallel.Execute(numChunks, func(start, stop int) {
 		// Create the hasher in the parallel setting to avoid race conditions.
@@ -164,15 +172,17 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []types.Bytes32)
 
 			// Manually copies the hasher's digest into the leaves to
 			// skip a verbose type conversion.
-			copy(leaves[chunkID][:], hasher.Sum(nil))
+			digest := hasher.Sum(nil)
+			leaves[chunkID] = field.ParseOctuplet([32]byte(digest))
 		}
 	})
 
 	return leaves
 }
 
-// Uses the no-sis hash function to hash the columns
-func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Element {
+// Uses the no-sis hash function to hash the columns. It uses the leafHasher
+// function to hash the columns.
+func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octuplet {
 
 	// Assert that all smart-vectors have the same numCols
 	numCols := v[0].Len()
@@ -185,7 +195,7 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Elem
 
 	numRows := len(v)
 
-	res := make([]field.Element, numCols)
+	res := make([]field.Octuplet, numCols)
 	hashers := make([]hash.Hash, runtime.GOMAXPROCS(0))
 
 	parallel.ExecuteThreadAware(
@@ -203,7 +213,7 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Elem
 			}
 
 			digest := hasher.Sum(nil)
-			res[col].SetBytes(digest)
+			res[col] = field.ParseOctuplet([32]byte(digest))
 		},
 	)
 

@@ -1,13 +1,13 @@
 package horner
 
 import (
-	"errors"
 	"fmt"
 	"math/big"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -179,7 +179,7 @@ func (a AssignHornerCtx) Run(run *wizard.ProverRuntime) {
 
 	var (
 		params = run.GetHornerParams(a.Q.ID)
-		res    = field.Zero()
+		res    = fext.Zero()
 	)
 
 	for i, part := range a.Q.Parts {
@@ -188,30 +188,28 @@ func (a AssignHornerCtx) Run(run *wizard.ProverRuntime) {
 			arity        = len(part.Selectors)
 			datas        = make([]smartvectors.SmartVector, arity)
 			selectors    = make([]smartvectors.SmartVector, arity)
-			x            = part.X.GetVal(run)
+			x            = part.X.GetValExt(run)
 			n0           = params.Parts[i].N0
 			count        = 0
 			numRow       = part.Size()
-			acc          = field.Zero()
-			accumulators = make([][]field.Element, arity)
+			acc          = fext.Zero()
+			accumulators = make([][]fext.Element, arity)
 		)
 
 		for k := 0; k < arity; k++ {
 			board := part.Coefficients[k].Board()
 			datas[k] = column.EvalExprColumn(run, board)
 			selectors[k] = part.Selectors[k].GetColAssignment(run)
-			accumulators[k] = make([]field.Element, numRow)
+			accumulators[k] = make([]fext.Element, numRow)
 		}
 
 		for row := numRow - 1; row >= 0; row-- {
 			for k := 0; k < arity; k++ {
-
 				sel := selectors[k].Get(row)
 				if sel.IsOne() {
 					count++
 				}
-
-				acc = computeMicroAccumulate(selectors[k].Get(row), acc, x, datas[k].Get(row))
+				acc = computeMicroAccumulate(selectors[k].Get(row), acc, x, datas[k].GetExt(row))
 				accumulators[k][row] = acc
 			}
 		}
@@ -222,14 +220,14 @@ func (a AssignHornerCtx) Run(run *wizard.ProverRuntime) {
 		}
 
 		for k := 0; k < arity; k++ {
-			run.AssignColumn(a.AccumulatingCols[i][k].GetColID(), smartvectors.NewRegular(accumulators[k]))
+			run.AssignColumn(a.AccumulatingCols[i][k].GetColID(), smartvectors.NewRegularExt(accumulators[k]))
 		}
 
 		tmp := accumulators[arity-1][0]
-		run.AssignLocalPoint(a.LocOpenings[i].ID, tmp)
+		run.AssignLocalPointExt(a.LocOpenings[i].ID, tmp) //TODO@yao: tmp.B0.A0 or tmp?
 
 		if n0 > 0 {
-			xN0 := new(field.Element).Exp(x, big.NewInt(int64(n0)))
+			xN0 := new(fext.Element).Exp(x, big.NewInt(int64(n0)))
 			tmp.Mul(&tmp, xN0)
 		}
 
@@ -252,13 +250,13 @@ func (a AssignHornerIP) Run(run *wizard.ProverRuntime) {
 		var (
 			ip        = a.CountingInnerProducts[i]
 			selectors = a.Q.Parts[i].Selectors
-			res       = make([]field.Element, len(selectors))
+			res       = make([]fext.Element, len(selectors))
 		)
 
 		for i, selector := range selectors {
 			sel := selector.GetColAssignment(run).IntoRegVecSaveAlloc()
 			for j := range sel {
-				res[i].Add(&res[i], &sel[j])
+				fext.AddByBase(&res[i], &res[i], &sel[j])
 			}
 		}
 
@@ -272,7 +270,7 @@ func (c *CheckHornerResult) Run(run wizard.Runtime) error {
 	var (
 		hornerQuery  = c.Q
 		hornerParams = run.GetHornerParams(hornerQuery.ID)
-		res          = field.Zero()
+		res          = fext.Zero()
 	)
 
 	for i := range c.Q.Parts {
@@ -284,18 +282,11 @@ func (c *CheckHornerResult) Run(run wizard.Runtime) error {
 		)
 
 		for k := range ipQuery.Bs {
-
-			// Note: this check is not purely necessary from the verifier viewpoint. If
-			// the result is not a uint64, then it means the query was malformed: the
-			// result of the inner-product is the inner-product of two binary vectors
-			// and there is no way they are big enough to overflow the 2**64.
-			//
-			// Still, it is useful information as it indicates the protocol is malformed.
-			if !ipParams.Ys[k].IsUint64() {
-				return errors.New("ip result does not fit on a uint64")
+			y := ipParams.Ys[k]
+			if !fext.IsBase(&y) {
+				return fmt.Errorf("the y of the inner product %v is not a base element", ipQuery.ID)
 			}
-
-			ipCount += int(ipParams.Ys[k].Uint64())
+			ipCount += int(y.B0.A0.Uint64())
 		}
 
 		if hornerParams.Parts[i].N0+ipCount != hornerParams.Parts[i].N1 {
@@ -308,13 +299,13 @@ func (c *CheckHornerResult) Run(run wizard.Runtime) error {
 	for i, lo := range c.LocOpenings {
 
 		var (
-			tmp = run.GetLocalPointEvalParams(lo.ID).Y
+			tmp = run.GetLocalPointEvalParams(lo.ID).ExtY
 			n0  = hornerParams.Parts[i].N0
-			x   = hornerQuery.Parts[i].X.GetVal(run)
+			x   = hornerQuery.Parts[i].X.GetValExt(run)
 		)
 
 		if n0 > 0 {
-			xN0 := new(field.Element).Exp(x, big.NewInt(int64(n0)))
+			xN0 := new(fext.Element).Exp(x, big.NewInt(int64(n0)))
 			tmp.Mul(&tmp, xN0)
 		}
 
@@ -360,7 +351,7 @@ func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 	for i, lo := range c.LocOpenings {
 
 		var (
-			tmp = run.GetLocalPointEvalParams(lo.ID).Y
+			tmp = run.GetLocalPointEvalParams(lo.ID).BaseY
 			n0  = hornerParams.Parts[i].N0
 			x   = hornerQuery.Parts[i].X.GetFrontendVariable(api, run)
 		)
@@ -409,14 +400,14 @@ func microAccumulate(sel, acc, x, p any) *sym.Expression {
 	)
 }
 
-func computeMicroAccumulate(sel, acc, x, p field.Element) field.Element {
+func computeMicroAccumulate(sel field.Element, acc, x, p fext.Element) fext.Element {
 
 	if sel.IsZero() {
 		return acc
 	}
 
 	if sel.IsOne() {
-		var tmp field.Element
+		var tmp fext.Element
 		tmp.Mul(&x, &acc)
 		tmp.Add(&tmp, &p)
 		return tmp

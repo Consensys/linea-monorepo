@@ -3,9 +3,9 @@ package reedsolomon
 import (
 	"fmt"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
@@ -67,7 +67,7 @@ func CheckReedSolomon(comp *wizard.CompiledIOP, rate int, h ifaces.Column) {
 	beta := comp.InsertCoin(
 		round+1,
 		coin.Namef("%v_%v", REED_SOLOMON_BETA, h.GetColID()),
-		coin.Field,
+		coin.FieldExt,
 	)
 
 	// Inserts the prover before calling the sub-wizard so that it is executed

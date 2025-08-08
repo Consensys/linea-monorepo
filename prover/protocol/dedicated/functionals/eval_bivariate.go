@@ -161,6 +161,13 @@ type XYPow1MinNAccessor struct {
 	AccessName string
 }
 
+func (a *XYPow1MinNAccessor) IsBase() bool {
+	if a.X.IsBase() && a.Y.IsBase() {
+		return true
+	}
+	return false
+}
+
 // String implements [symbolic.Metadata] and thus [ifaces.Accessor].
 func (a *XYPow1MinNAccessor) String() string {
 	return fmt.Sprintf("YX_POW_1_MIN_n_%v", a.AccessName)

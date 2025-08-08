@@ -61,12 +61,12 @@ func InnerProduct(a, b SmartVector) field.Element {
 	return res
 }
 
-// PolyEval returns a [SmartVector] computed as:
+// LinearCombination returns a [SmartVector] computed as:
 //
 //	result = vecs[0] + vecs[1] * x + vecs[2] * x^2 + vecs[3] * x^3 + ...
 //
 // where `x` is a scalar and `vecs[i]` are [SmartVector]
-func PolyEval(vecs []SmartVector, x field.Element, p ...mempool.MemPool) (result SmartVector) {
+func LinearCombination(vecs []SmartVector, x field.Element, p ...mempool.MemPool) (result SmartVector) {
 
 	if len(vecs) == 0 {
 		panic("no input vectors")
@@ -90,7 +90,7 @@ func PolyEval(vecs []SmartVector, x field.Element, p ...mempool.MemPool) (result
 			v[i] = vecs[i].(*Constant).Value
 		}
 
-		y := poly.EvalUnivariate(v, x)
+		y := poly.Eval(v, x)
 		return NewConstant(y, length)
 	}
 

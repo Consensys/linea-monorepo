@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -63,10 +64,10 @@ func fixedPointOpening() (wizard.DefineFunc, wizard.MainProverStep) {
 		}
 		p1 := smartvectors.NewRegular(p1_)
 		run.AssignColumn(P1, p1)
-		run.AssignLocalPoint("O1", p1.Get(0))
-		run.AssignLocalPoint("O2", p1.Get(3))
-		run.AssignLocalPoint("O3", p1.Get(4))
-		run.AssignLocalPoint("O4", p1.Get(n-1))
+		run.AssignLocalPointExt("O1", p1.GetExt(0))
+		run.AssignLocalPointExt("O2", p1.GetExt(3))
+		run.AssignLocalPointExt("O3", p1.GetExt(4))
+		run.AssignLocalPointExt("O4", p1.GetExt(n-1))
 	}
 
 	return definer, prover
@@ -231,14 +232,14 @@ func TestLocalEvalWithStatus(t *testing.T) {
 		assi.AssignColumn(c.GetColID(), smartvectors.ForTest(6, 7, 8, 9, 10, 11, 12, 13))
 
 		// And the alleged results
-		assi.AssignLocalPoint("Q01", field.NewElement(2))
-		assi.AssignLocalPoint("Q02", field.NewElement(6))
+		assi.AssignLocalPointExt("Q01", fext.NewFromInt(2, 0, 0, 0))
+		assi.AssignLocalPointExt("Q02", fext.NewFromInt(6, 0, 0, 0))
 
-		assi.AssignLocalPoint("Q11", field.NewElement(3))
-		assi.AssignLocalPoint("Q12", field.NewElement(7))
+		assi.AssignLocalPointExt("Q11", fext.NewFromInt(3, 0, 0, 0))
+		assi.AssignLocalPointExt("Q12", fext.NewFromInt(7, 0, 0, 0))
 
-		assi.AssignLocalPoint("Q21", field.NewElement(5))
-		assi.AssignLocalPoint("Q22", field.NewElement(13))
+		assi.AssignLocalPointExt("Q21", fext.NewFromInt(5, 0, 0, 0))
+		assi.AssignLocalPointExt("Q22", fext.NewFromInt(13, 0, 0, 0))
 
 	})
 

@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
@@ -121,10 +122,10 @@ func compileLookupIntoLogDerivativeSum(comp *wizard.CompiledIOP, seg ColumnSegme
 		Segmenter: seg,
 	})
 
-	// This verifier action checks that the log-derivative sum result is zero.
-	// We cancel it in case the segmenter is used because it invalidates the
-	// result.
 	if seg == nil {
+		// This verifier action checks that the log-derivative sum result is zero.
+		// We cancel it in case the segmenter is used because it invalidates the
+		// result.
 		comp.RegisterVerifierAction(lastRound+1, &CheckLogDerivativeSumMustBeZero{
 			Q: q,
 		})
@@ -142,7 +143,7 @@ type AssignLogDerivativeSumProverAction struct {
 // Run executes the assignment of the log-derivative sum result.
 func (a *AssignLogDerivativeSumProverAction) Run(run *wizard.ProverRuntime) {
 	if a.Segmenter == nil {
-		run.AssignLogDerivSum(a.QName, field.Zero())
+		run.AssignLogDerivSum(a.QName, fext.GenericFieldElem{})
 		return
 	}
 
@@ -360,7 +361,7 @@ func compileLookupTable(
 		alpha := comp.InsertCoin(
 			round+1,
 			DeriveTableName[coin.Name](LogDerivativePrefix, lookupTable, "ALPHA"),
-			coin.Field,
+			coin.FieldExt,
 		)
 
 		for frag := range ctx.T {
@@ -385,7 +386,7 @@ func compileLookupTable(
 	ctx.Gamma = comp.InsertCoin(
 		round+1,
 		DeriveTableName[coin.Name](LogDerivativePrefix, lookupTable, "GAMMA"),
-		coin.Field,
+		coin.FieldExt,
 	)
 
 	return ctx

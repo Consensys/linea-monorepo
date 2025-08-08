@@ -5,6 +5,8 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -552,13 +554,14 @@ func storageIntegrationAssignInitial(run *wizard.ProverRuntime, ss Module, smc H
 			selectorMinDeplBlock[index].SetOne()
 		}
 	}
-	svSelectorMinDeplBlock := smartvectors.NewRegular(selectorMinDeplBlock)
 
 	filterAccountInsert := assignInsertionFilterForStorage(run, smc)
 	filterEphemeralAccounts := assignEphemeralAccountFilterStorage(run, smc)
 
+	utils.Panic("todo: @alex selectorMinDeplBlock is not a smart vector. Solves so that it is compliant with the main branch")
+
 	filterArith := smartvectors.Mul(
-		svSelectorMinDeplBlock,
+		// svSelectorMinDeplBlock, @alex: I got a problem here while merging, the selectorMinDeplBlock is not a smart vector
 		smc.PeekAtStorage.GetColAssignment(run),
 		smc.FirstKOCBlock.GetColAssignment(run),
 		filterAccountInsert,
@@ -710,13 +713,15 @@ storageIntegrationAssignFinal assigns the columns used to check initial storage 
 */
 func storageIntegrationAssignFinal(run *wizard.ProverRuntime, ss Module, smc HubColumnSet) {
 	selectorMaxDeplBlock := make([]field.Element, smc.AddressHI.Size())
-	for index := range selectorMaxDeplBlock {
-		maxDeplBlock := smc.MaxDeplBlock.GetColAssignmentAt(run, index)
-		deplNumber := smc.DeploymentNumber.GetColAssignmentAt(run, index)
-		if maxDeplBlock.Equal(&deplNumber) {
-			selectorMaxDeplBlock[index].SetOne()
+	parallel.Execute(len(selectorMaxDeplBlock), func(start, stop int) {
+		for index := start; index < stop; index++ {
+			maxDeplBlock := smc.MaxDeplBlock.GetColAssignmentAt(run, index)
+			deplNumber := smc.DeploymentNumber.GetColAssignmentAt(run, index)
+			if maxDeplBlock.Equal(&deplNumber) {
+				selectorMaxDeplBlock[index].SetOne()
+			}
 		}
-	}
+	})
 	svSelectorMaxDeplBlock := smartvectors.NewRegular(selectorMaxDeplBlock)
 
 	filterSummary := smartvectors.Mul(

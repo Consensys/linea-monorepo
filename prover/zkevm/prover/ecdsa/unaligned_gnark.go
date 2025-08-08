@@ -116,15 +116,15 @@ func (d *UnalignedGnarkData) assignUnalignedGnarkData(run *wizard.ProverRuntime,
 	}
 
 	var resIsPublicKey, resGnarkIndex, resGnarkPkIndex, resGnarkData []field.Element
-	txCount := 0
+	// txCount := 0
 
 	for i := 0; i < d.Size; {
 
 		var (
-			isActive         = sourceIsActive.Get(i)
-			source           = sourceSource.Get(i)
-			rows             = make([]field.Element, nbRowsPerGnarkPushing)
-			buf              [32]byte
+			isActive = sourceIsActive.Get(i)
+			source   = sourceSource.Get(i)
+			rows     = make([]field.Element, nbRowsPerGnarkPushing)
+			// buf              [32]byte
 			prehashedMsg     [32]byte
 			r, s, v          = new(big.Int), new(big.Int), new(big.Int)
 			err              error
@@ -141,27 +141,29 @@ func (d *UnalignedGnarkData) assignUnalignedGnarkData(run *wizard.ProverRuntime,
 			for j := 0; j < 8; j++ {
 				rows[4+j] = sourceLimb.Get(i + j)
 			}
-			txHighBts := rows[4].Bytes()
-			txLowBts := rows[5].Bytes()
-			copy(prehashedMsg[:16], txHighBts[16:])
-			copy(prehashedMsg[16:], txLowBts[16:])
-			v0Bts := rows[6].Bytes()
-			v1Bts := rows[7].Bytes()
-			copy(buf[:16], v0Bts[16:])
-			copy(buf[16:], v1Bts[16:])
-			v.SetBytes(buf[:])
-			r0Bts := rows[8].Bytes()
-			r1Bts := rows[9].Bytes()
-			copy(buf[:16], r0Bts[16:])
-			copy(buf[16:], r1Bts[16:])
-			r.SetBytes(buf[:])
-			s0Bts := rows[10].Bytes()
-			s1Bts := rows[11].Bytes()
-			copy(buf[:16], s0Bts[16:])
-			copy(buf[16:], s1Bts[16:])
-			s.SetBytes(buf[:])
 
-			i += NB_ECRECOVER_INPUTS
+			utils.Panic("missing update for koalabear")
+
+			// txHighBts := rows[4].Bytes()
+			// txLowBts := rows[5].Bytes()
+			// copy(prehashedMsg[:16], txHighBts[16:])
+			// copy(prehashedMsg[16:], txLowBts[16:])
+			// v0Bts := rows[6].Bytes()
+			// v1Bts := rows[7].Bytes()
+			// copy(buf[:16], v0Bts[16:])
+			// copy(buf[16:], v1Bts[16:])
+			// v.SetBytes(buf[:])
+			// r0Bts := rows[8].Bytes()
+			// r1Bts := rows[9].Bytes()
+			// copy(buf[:16], r0Bts[16:])
+			// copy(buf[16:], r1Bts[16:])
+			// r.SetBytes(buf[:])
+			// s0Bts := rows[10].Bytes()
+			// s1Bts := rows[11].Bytes()
+			// copy(buf[:16], s0Bts[16:])
+			// copy(buf[16:], s1Bts[16:])
+			// s.SetBytes(buf[:])
+			// i += NB_ECRECOVER_INPUTS
 		} else if isActive.IsOne() && source.Cmp(&SOURCE_TX) == 0 {
 			prependZeroCount = nbRowsPerTxSignFetching
 			// we copy the data from the transcation
@@ -172,29 +174,31 @@ func (d *UnalignedGnarkData) assignUnalignedGnarkData(run *wizard.ProverRuntime,
 			rows[4] = sourceTxHashHi.Get(i)
 			rows[5] = sourceTxHashLo.Get(i)
 
-			// get r, s, v corresponding to the transaction hash from the provider
-			txLow := sourceTxHashLo.Get(i)
-			txHigh := sourceTxHashHi.Get(i)
-			txLowBts := txLow.Bytes()
-			txHighBts := txHigh.Bytes()
-			copy(prehashedMsg[:16], txHighBts[16:])
-			copy(prehashedMsg[16:], txLowBts[16:])
-			r, s, v, err = txSigs(txCount, prehashedMsg[:])
-			if err != nil {
-				utils.Panic("error getting tx-signature err=%v, txNum=%v", err, txCount)
-			}
-			v.FillBytes(buf[:])
-			rows[6].SetBytes(buf[:16])
-			rows[7].SetBytes(buf[16:])
-			r.FillBytes(buf[:])
-			rows[8].SetBytes(buf[:16])
-			rows[9].SetBytes(buf[16:])
-			s.FillBytes(buf[:])
-			rows[10].SetBytes(buf[:16])
-			rows[11].SetBytes(buf[16:])
+			utils.Panic("missing update for koalabear")
 
-			i += NB_TX_INPUTS
-			txCount++
+			// get r, s, v corresponding to the transaction hash from the provider
+			// txLow := sourceTxHashLo.Get(i)
+			// txHigh := sourceTxHashHi.Get(i)
+			// txLowBts := txLow.Bytes()
+			// txHighBts := txHigh.Bytes()
+			// copy(prehashedMsg[:16], txHighBts[16:])
+			// copy(prehashedMsg[16:], txLowBts[16:])
+			// r, s, v, err = txSigs(txCount, prehashedMsg[:])
+			// if err != nil {
+			// 	utils.Panic("error getting tx-signature err=%v, txNum=%v", err, txCount)
+			// }
+			// v.FillBytes(buf[:])
+			// rows[6].SetBytes(buf[:16])
+			// rows[7].SetBytes(buf[16:])
+			// r.FillBytes(buf[:])
+			// rows[8].SetBytes(buf[:16])
+			// rows[9].SetBytes(buf[16:])
+			// s.FillBytes(buf[:])
+			// rows[10].SetBytes(buf[:16])
+			// rows[11].SetBytes(buf[16:])
+
+			// i += NB_TX_INPUTS
+			// txCount++
 		} else {
 			// we have run out of inputs.
 			break

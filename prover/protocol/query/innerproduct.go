@@ -4,10 +4,13 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/consensys/gnark-crypto/hash"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
@@ -24,12 +27,12 @@ type InnerProduct struct {
 
 // Inner product params
 type InnerProductParams struct {
-	Ys []field.Element
+	Ys []fext.Element
 }
 
 // Update the fiat-shamir state with inner-product params
-func (ipp InnerProductParams) UpdateFS(state *fiatshamir.State) {
-	state.UpdateVec(ipp.Ys)
+func (ipp InnerProductParams) UpdateFS(state hash.StateStorer) {
+	fiatshamir.UpdateVecExt(state, ipp.Ys)
 }
 
 // Constructor for inner-product.
@@ -65,7 +68,7 @@ func NewInnerProduct(id ifaces.QueryID, a ifaces.Column, bs ...ifaces.Column) In
 }
 
 // Constructor for fixed point univariate evaluation query parameters
-func NewInnerProductParams(ys ...field.Element) InnerProductParams {
+func NewInnerProductParams(ys ...fext.Element) InnerProductParams {
 	return InnerProductParams{Ys: ys}
 }
 
@@ -101,16 +104,18 @@ func (r InnerProduct) Check(run ifaces.Runtime) error {
 	return nil
 }
 
-func (r InnerProduct) Compute(run ifaces.Runtime) []field.Element {
+func (r InnerProduct) Compute(run ifaces.Runtime) []fext.Element {
 
-	res := make([]field.Element, len(r.Bs))
+	res := make([]fext.Element, len(r.Bs))
 	a := r.A.GetColAssignment(run)
+	a = smartvectors_mixed.LiftToExt(a)
 
 	for i := range r.Bs {
 
 		b := r.Bs[i].GetColAssignment(run)
-		ab := smartvectors.Mul(a, b)
-		res[i] = smartvectors.Sum(ab)
+		b = smartvectors_mixed.LiftToExt(b)
+		ab := smartvectors_mixed.Mul(a, b)
+		res[i] = smartvectors.SumExt(ab)
 	}
 
 	return res

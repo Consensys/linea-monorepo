@@ -30,7 +30,7 @@ func TestCompiler(t *testing.T) {
 		// Sample a random alpha
 		// Evaluates P in alpha (evaluation point not yet specified)
 		P := build.RegisterCommit(P, SIZE) // Overshadows P with something not of the same type
-		build.RegisterRandomCoin(COIN, coin.Field)
+		build.RegisterRandomCoin(COIN, coin.FieldExt)
 		build.UnivariateEval(U, P)
 	}
 
@@ -49,9 +49,9 @@ func TestCompiler(t *testing.T) {
 	prover := func(run *wizard.ProverRuntime) {
 		p := smartvectors.ForTest(1, 2, 3, 3)
 		run.AssignColumn(P, p)
-		u := run.GetRandomCoinField(COIN)
-		y := smartvectors.Interpolate(p, u)
-		run.AssignUnivariate(U, u, y)
+		u := run.GetRandomCoinFieldExt(COIN)
+		y := smartvectors.EvaluateLagrangeMixed(p, u)
+		run.AssignUnivariateExt(U, u, y)
 	}
 
 	proof := wizard.Prove(compiled, prover)
