@@ -1,10 +1,15 @@
 {
-    "newPackageName": "fields",
+    "newPackageName": "field",
     "generatedFilename": "gnark_crypto_copy.go",
     "mappings": [
         {
             "newType": "Fr",
             "srcType": "Element",
+            "srcPkg": "github.com/consensys/gnark-crypto/field/koalabear"
+        },
+        {
+            "newType": "VectorFr",
+            "srcType": "Vector",
             "srcPkg": "github.com/consensys/gnark-crypto/field/koalabear"
         },
         {
@@ -14,6 +19,7 @@
         }
     ],
     "extraImports": [
-        "math/big"
+        "math/big",
+        "io"
     ]
 }

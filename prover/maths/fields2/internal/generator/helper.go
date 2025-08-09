@@ -97,6 +97,11 @@ func NewFromTypesPkg(typ types.Type) *Type {
 			}
 		}
 		panic(fmt.Sprintf("cannot manage referencing interfaces that are not empty: %v", typ.String()))
+	case *types.Chan:
+		return &Type{
+			Kind: BasicKind,
+			Name: types.TypeString(typ, nil),
+		}
 	default:
 		panic(fmt.Sprintf("unexpected type: %v", typ.String()))
 	}
@@ -157,6 +162,11 @@ func NewMappedType(typ types.Type, mapping []TypeMapping) *Type {
 			}
 		}
 		panic(fmt.Sprintf("cannot manage referencing interfaces that are not empty: %v", typ.String()))
+	case *types.Chan:
+		return &Type{
+			Kind: BasicKind,
+			Name: types.TypeString(typ, nil),
+		}
 	default:
 		panic(fmt.Sprintf("unexpected type: %v", typ.String()))
 	}
