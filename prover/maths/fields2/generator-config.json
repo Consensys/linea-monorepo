@@ -1,0 +1,19 @@
+{
+    "newPackageName": "fields",
+    "generatedFilename": "gnark_crypto_copy.go",
+    "mappings": [
+        {
+            "newType": "Fr",
+            "srcType": "Element",
+            "srcPkg": "github.com/consensys/gnark-crypto/field/koalabear"
+        },
+        {
+            "newType": "Ext",
+            "srcType": "E4",
+            "srcPkg": "github.com/consensys/gnark-crypto/field/koalabear/extensions"
+        }
+    ],
+    "extraImports": [
+        "math/big"
+    ]
+}
