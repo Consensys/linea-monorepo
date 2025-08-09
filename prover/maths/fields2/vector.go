@@ -3,6 +3,7 @@ package field
 import (
 	"fmt"
 	"math/rand/v2"
+	"reflect"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -135,12 +136,12 @@ func VecAdd(res, vec1, vec2 any) {
 
 	case isResExt && isVec1Fr && isVec2Ext:
 		for i := range resExt {
-			resExt[i].AddMixed(&vec2Ext[i], &vec1Fr[i])
+			resExt[i].AddFr(&vec2Ext[i], &vec1Fr[i])
 		}
 
 	case isResExt && isVec1Ext && isVec2Fr:
 		for i := range resExt {
-			resExt[i].AddMixed(&vec1Ext[i], &vec2Fr[i])
+			resExt[i].AddFr(&vec1Ext[i], &vec2Fr[i])
 		}
 
 	case isResExt && isVec1Fr && isVec2Fr:
@@ -373,8 +374,8 @@ func VecPrettify[F interface{ String() string }](a []F) string {
 	return res
 }
 
-// Reverse the elements of a vector inplace
-func Reverse[F any](v []F) {
+// VecReverse the elements of a vector inplace
+func VecReverse[F any](v []F) {
 	n := len(v) - 1
 	for i := 0; i < len(v)/2; i++ {
 		v[i], v[n-i] = v[n-i], v[i]
@@ -567,4 +568,10 @@ func VecPseudoRand[F interface{ SetPseudoRand(*rand.Rand) }](rng *rand.Rand, siz
 		slice[i].SetPseudoRand(rng)
 	}
 	return slice
+}
+
+// VecLen cast the empty interface parameters to a slice and return its length.
+// The function will work with any type supported by reflect.ValueOf.
+func VecLen(v interface{}) int {
+	return reflect.ValueOf(v).Len()
 }

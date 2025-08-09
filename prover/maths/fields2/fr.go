@@ -214,3 +214,8 @@ func ParBatchInvertFr(a []Fr, numCPU int) []Fr {
 
 	return res
 }
+
+// AddFr is as Add and is implemented for genericity reasons
+func (z *Fr) AddFr(x, y Fr) *Fr {
+	return z.Add(&x, &y)
+}

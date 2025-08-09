@@ -89,9 +89,9 @@ func (z *Ext) SetFr(x *Fr) *Ext {
 	return z
 }
 
-// AddMixed adds a base field and an extension field and set the result in the
+// AddFr adds a base field and an extension field and set the result in the
 // receiver and then returns the receiver pointer.
-func (z *Ext) AddMixed(x *Ext, y *Fr) *Ext {
+func (z *Ext) AddFr(x *Ext, y *Fr) *Ext {
 	z.B0.A0.Add(&x.B0.A0, unsafeCast[Fr, koalabear.Element](y))
 	z.B0.A1 = x.B0.A1
 	z.B1 = x.B1
