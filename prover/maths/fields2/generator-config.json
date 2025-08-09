@@ -8,18 +8,12 @@
             "srcPkg": "github.com/consensys/gnark-crypto/field/koalabear"
         },
         {
-            "newType": "VectorFr",
-            "srcType": "Vector",
-            "srcPkg": "github.com/consensys/gnark-crypto/field/koalabear"
-        },
-        {
             "newType": "Ext",
             "srcType": "E4",
             "srcPkg": "github.com/consensys/gnark-crypto/field/koalabear/extensions"
         }
     ],
     "extraImports": [
-        "math/big",
-        "io"
+        "math/big"
     ]
 }

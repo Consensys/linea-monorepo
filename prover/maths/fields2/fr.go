@@ -133,6 +133,12 @@ func PseudoRand(rng *rand.Rand) Fr {
 	return res
 }
 
+// SetPseudoRand sets the field element to a pseudo-random value
+func (z *Fr) SetPseudoRand(rng *rand.Rand) *Fr {
+	*z = PseudoRand(rng)
+	return z
+}
+
 // PseudoRandTruncated generates a field using a pseudo-random number generator
 func PseudoRandTruncated(rng *rand.Rand, sizeByte int) Fr {
 

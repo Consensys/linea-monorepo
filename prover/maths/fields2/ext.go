@@ -93,6 +93,26 @@ func (z *Ext) SetFr(x *Fr) *Ext {
 // receiver and then returns the receiver pointer.
 func (z *Ext) AddMixed(x *Ext, y *Fr) *Ext {
 	z.B0.A0.Add(&x.B0.A0, unsafeCast[Fr, koalabear.Element](y))
+	z.B0.A1 = x.B0.A1
+	z.B1 = x.B1
+	return z
+}
+
+// SubFrFromBase substracts a base field from an extension field and set the result in the
+// receiver and then returns the receiver pointer.
+func (z *Ext) SubFrFromBase(x *Ext, y *Fr) *Ext {
+	z.B0.A0.Sub(&x.B0.A0, unsafeCast[Fr, koalabear.Element](y))
+	z.B0.A1 = x.B0.A1
+	z.B1 = x.B1
+	return z
+}
+
+// SubExtFromFr substracts a field extension from a base field and sets the result
+// in the receiver and then returns the receiver pointer.
+func (z *Ext) SubExtFromFr(x *Fr, y *Ext) *Ext {
+	z.B0.A0.Sub(unsafeCast[Fr, koalabear.Element](x), &y.B0.A0)
+	z.B0.A1.Neg(&y.B0.A1)
+	z.B1.Neg(&y.B1)
 	return z
 }
 
@@ -175,17 +195,18 @@ func (z *Ext) SetInterface(i1 interface{}) (*Ext, error) {
 		return z.SetFromInt(int64(c1)), nil
 	case string:
 		z.B0.A0.SetString(c1)
-		z.B0.A1.SetZero()
-		z.B1.SetZero()
+		z.zeroesImaginaryPart()
 		return z, nil
 	case *big.Int:
 		if c1 == nil {
 			return nil, errors.New("can't set fr.Ext with <nil>")
 		}
 		z.B0.A0.SetBigInt(c1)
+		z.zeroesImaginaryPart()
 		return z, nil
 	case big.Int:
 		z.B0.A0.SetBigInt(&c1)
+		z.zeroesImaginaryPart()
 		return z, nil
 	case []byte:
 		z := SetBytes(c1)
@@ -213,10 +234,16 @@ func (z *Ext) SetFromInt(v int64) *Ext {
 	return z // z.toMont()
 }
 
+// Lift converts a base field element to an extension field element
 func (z *Fr) Lift() Ext {
 	var res Ext
 	res.B0.A0.Set(unsafeCast[Fr, koalabear.Element](z))
 	return res
+}
+
+// Lift returns a copy of z. It is only implemented for genericity reasons.
+func (z *Ext) Lift() Ext {
+	return *z
 }
 
 // RandomExt generates a random and non-reproducible field extension element.
@@ -319,4 +346,10 @@ func ParBatchInvertExt(a []Ext, numCPU int) []Ext {
 	}, numCPU)
 
 	return res
+}
+
+// SetPseudoRand sets the field element to a pseudo-random value
+func (z *Ext) SetPseudoRand(rng *rand.Rand) *Ext {
+	*z = PseudoRandExt(rng)
+	return z
 }
