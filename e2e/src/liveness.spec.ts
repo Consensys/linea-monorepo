@@ -19,6 +19,8 @@ describe("Liveness test suite", () => {
 
       let lastBlockTimestamp: number | undefined = 0;
       let lastBlockNumber: number | undefined = 0;
+      const l2BesuNodeProvider = config.getL2Provider();
+      const l2SequencerProvider = config.getL2SequencerProvider()!;
 
       try {
         await execDockerCommand("stop", "sequencer");
@@ -27,7 +29,7 @@ describe("Liveness test suite", () => {
         // sleep for 6 sec
         await wait(6000);
 
-        const block = await config.getL2Provider().getBlock("latest");
+        const block = await l2BesuNodeProvider.getBlock("latest");
         lastBlockTimestamp = block?.timestamp;
         lastBlockNumber = block?.number;
         logger.debug(`lastBlockNumber=${lastBlockNumber} lastBlockTimestamp=${lastBlockTimestamp}`);
@@ -46,7 +48,7 @@ describe("Liveness test suite", () => {
       const livenessEvents = await awaitUntil(
         async () => {
           try {
-            return await (i++ % 2 == 0 ? config.getL2Provider() : config.getL2SequencerProvider()!).getLogs({
+            return await (i++ % 2 == 0 ? l2BesuNodeProvider : l2SequencerProvider).getLogs({
               topics: [
                 "0x0559884fd3a460db3073b7fc896cc77986f16e378210ded43186175bf646fc5f", // AnswerUpdated event
               ],
