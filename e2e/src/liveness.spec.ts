@@ -26,8 +26,8 @@ describe("Liveness test suite", () => {
         await execDockerCommand("stop", "sequencer");
         logger.debug("Sequencer stopped.");
 
-        // sleep for 6 sec
-        await wait(6000);
+        // sleep for 10 sec
+        await wait(10000);
 
         const block = await l2BesuNodeProvider.getBlock("latest");
         lastBlockTimestamp = block?.timestamp;
