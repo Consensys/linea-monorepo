@@ -42,10 +42,11 @@ describe("Liveness test suite", () => {
       const targetBlockNumber = lastBlockNumber! + 1;
       logger.debug(`targetBlockNumber=${JSON.stringify(targetBlockNumber)}`);
 
+      let i = 0;
       const livenessEvents = await awaitUntil(
         async () => {
           try {
-            return await config.getL2SequencerProvider()!.getLogs({
+            return await (i++ % 2 == 0 ? config.getL2Provider() : config.getL2SequencerProvider()!).getLogs({
               topics: [
                 "0x0559884fd3a460db3073b7fc896cc77986f16e378210ded43186175bf646fc5f", // AnswerUpdated event
               ],
