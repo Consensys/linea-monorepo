@@ -185,6 +185,11 @@ func (fs *State) RandomManyIntegers(num, upperBound int) []int {
 		return []int{}
 	}
 
+	// Add bounds checking to prevent excessive memory allocation
+	if num > 1000000 { // Reasonable upper limit
+		utils.Panic("Requested too many integers: %v", num)
+	}
+
 	defer fs.safeguardUpdate()
 
 	var (
@@ -201,6 +206,11 @@ func (fs *State) RandomManyIntegers(num, upperBound int) []int {
 		// small integers will be appended.
 		res = make([]int, 0, num)
 	)
+
+	// Add safety check for maxNumChallsPerDigest
+	if maxNumChallsPerDigest <= 0 {
+		utils.Panic("Invalid maxNumChallsPerDigest: %v", maxNumChallsPerDigest)
+	}
 
 	for {
 		digest := fs.hasher.Sum(nil)
