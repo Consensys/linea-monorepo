@@ -125,6 +125,13 @@ func PseudoRand(rng *rand.Rand) Element {
 		bareBytes = *(*[32]byte)(unsafe.Pointer(&bareU64))
 	)
 
+	// Validate that the random values are within expected bounds
+	for _, val := range bareU64 {
+		if val > 0xFFFFFFFFFFFFFFFF {
+			panic("random value exceeds expected bounds")
+		}
+	}
+
 	bigInt.SetBytes(bareBytes[:]).Mod(bigInt, Modulus())
 	res.SetBigInt(bigInt)
 	return res
@@ -137,12 +144,23 @@ func PseudoRandTruncated(rng *rand.Rand, sizeByte int) Element {
 		utils.Panic("supplied a byteSize larger than 32 (%v), this must be a mistake. Please check that the supplied value is not instead a BIT-size.", sizeByte)
 	}
 
+	if sizeByte <= 0 {
+		utils.Panic("sizeByte must be positive, got %v", sizeByte)
+	}
+
 	var (
 		bigInt    = &big.Int{}
 		res       = Element{}
 		bareU64   = [4]uint64{rng.Uint64(), rng.Uint64(), rng.Uint64(), rng.Uint64()}
 		bareBytes = *(*[32]byte)(unsafe.Pointer(&bareU64))
 	)
+
+	// Validate that the random values are within expected bounds
+	for _, val := range bareU64 {
+		if val > 0xFFFFFFFFFFFFFFFF {
+			panic("random value exceeds expected bounds")
+		}
+	}
 
 	bigInt.SetBytes(bareBytes[:sizeByte]).Mod(bigInt, Modulus())
 	res.SetBigInt(bigInt)
