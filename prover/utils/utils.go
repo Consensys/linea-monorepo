@@ -88,6 +88,12 @@ func NextPowerOfTwo[T ~int64 | ~uint64 | ~uintptr | ~int | ~uint](in T) T {
 	if in < 0 || uint64(in) > 1<<62 {
 		panic("input out of range")
 	}
+
+	// Handle edge case for zero
+	if in == 0 {
+		return 0
+	}
+
 	v := in
 	v--
 	v |= v >> (1 << 0)
@@ -97,6 +103,12 @@ func NextPowerOfTwo[T ~int64 | ~uint64 | ~uintptr | ~int | ~uint](in T) T {
 	v |= v >> (1 << 4)
 	v |= v >> (1 << 5)
 	v++
+
+	// Final bounds check
+	if v < in {
+		panic("overflow detected in NextPowerOfTwo")
+	}
+
 	return v
 }
 
@@ -225,26 +237,25 @@ func BigsToInts(ints []*big.Int) []int {
 }
 
 // ToInt converts a uint, uint64 or int64 to an int, panicking on overflow.
-// Due to its use of generics, it is inefficient to use in loops than run a "cryptographic" number of iterations. Use type-specific functions in such cases.
 func ToInt[T ~uint | ~uint64 | ~int64](i T) int {
-	if i > math.MaxInt {
+	if uint64(i) > uint64(^uint(0)>>1) {
 		panic("overflow")
 	}
 	return int(i) // #nosec G115 -- Checked for overflow
 }
 
-// ToUint64 converts a signed integer into a uint64, panicking on negative values.
-// Due to its use of generics, it is inefficient to use in loops than run a "cryptographic" number of iterations. Use type-specific functions in such cases.
+// ToUint64 converts a signed integer to uint64, panicking on overflow.
 func ToUint64[T constraints.Signed](i T) uint64 {
 	if i < 0 {
-		panic("negative")
+		panic("overflow")
 	}
 	return uint64(i)
 }
 
+// ToUint16 converts an integer to uint16, panicking on overflow.
 func ToUint16[T ~int | ~uint](i T) uint16 {
-	if i < 0 || i > math.MaxUint16 {
-		panic("out of range")
+	if i < 0 || i > 65535 {
+		panic("overflow")
 	}
 	return uint16(i) // #nosec G115 -- Checked for overflow
 }
