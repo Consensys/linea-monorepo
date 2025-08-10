@@ -43,6 +43,10 @@ type PermTraces struct {
 // pass a PermTraces to which the function will append the generated permutation
 // traces throughout the hashing process.
 func Hash(stream []byte, maybeTraces ...*PermTraces) (digest Digest) {
+	// Validate input parameters
+	if stream == nil {
+		panic("input stream cannot be nil")
+	}
 
 	state := State{}
 	var block *Block
@@ -58,6 +62,9 @@ func Hash(stream []byte, maybeTraces ...*PermTraces) (digest Digest) {
 	// absorb the stream
 	for len(stream) >= Rate {
 		block, stream = ExtractBlock(stream)
+		if block == nil {
+			panic("failed to extract block from stream")
+		}
 		state.XorIn(block, traces)
 		state.Permute(traces)
 
@@ -70,6 +77,9 @@ func Hash(stream []byte, maybeTraces ...*PermTraces) (digest Digest) {
 
 	// absorb the padding block
 	block = PaddingBlock(stream)
+	if block == nil {
+		panic("failed to create padding block")
+	}
 	state.XorIn(block, traces)
 	state.Permute(traces)
 
