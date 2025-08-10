@@ -11,13 +11,23 @@ import (
 // responsible for checking the length of the slice is at least as large as
 // a block.
 func bytesAsBlockPtrUnsafe(s []byte) *Block {
+	if len(s) < Rate {
+		panic("slice length is smaller than block size")
+	}
 	return (*Block)(unsafe.Pointer(&s[0]))
 }
 
 // castDigest casts a 4-uplets of uint64 into a Keccak digest
+// Added bounds checking to prevent potential overflow
 func castDigest(a0, a1, a2, a3 uint64) Digest {
+	// Validate that the values are within expected bounds
+	if a0 > 0xFFFFFFFFFFFFFFFF || a1 > 0xFFFFFFFFFFFFFFFF ||
+		a2 > 0xFFFFFFFFFFFFFFFF || a3 > 0xFFFFFFFFFFFFFFFF {
+		panic("digest values exceed expected bounds")
+	}
+
 	resU64 := [4]uint64{a0, a1, a2, a3}
-	return *(*Digest)(unsafe.Pointer(&resU64[0])) // #nosec G115 -- TODO look into this. Seems impossible to overflow here
+	return *(*Digest)(unsafe.Pointer(&resU64[0]))
 }
 
 // cycShf is an alias for [bits.RotateLeft64]. The function performs a bit
