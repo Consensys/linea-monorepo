@@ -98,18 +98,18 @@ func (z *Ext) AddFr(x *Ext, y *Fr) *Ext {
 	return z
 }
 
-// SubFrFromBase substracts a base field from an extension field and set the result in the
+// SubExtByFr substracts a base field from an extension field and set the result in the
 // receiver and then returns the receiver pointer.
-func (z *Ext) SubFrFromBase(x *Ext, y *Fr) *Ext {
+func (z *Ext) SubExtByFr(x *Ext, y *Fr) *Ext {
 	z.B0.A0.Sub(&x.B0.A0, unsafeCast[Fr, koalabear.Element](y))
 	z.B0.A1 = x.B0.A1
 	z.B1 = x.B1
 	return z
 }
 
-// SubExtFromFr substracts a field extension from a base field and sets the result
+// SubFrByExt substracts a field extension from a base field and sets the result
 // in the receiver and then returns the receiver pointer.
-func (z *Ext) SubExtFromFr(x *Fr, y *Ext) *Ext {
+func (z *Ext) SubFrByExt(x *Fr, y *Ext) *Ext {
 	z.B0.A0.Sub(unsafeCast[Fr, koalabear.Element](x), &y.B0.A0)
 	z.B0.A1.Neg(&y.B0.A1)
 	z.B1.Neg(&y.B1)
@@ -159,13 +159,13 @@ func (z *Ext) SetInterface(i1 interface{}) (*Ext, error) {
 			return nil, errors.New("can't set fext.Ext with <nil>")
 		}
 		return z.Set(c1), nil
-	case GenericFieldElem:
-		return z.Set(&c1.Ext), nil
-	case *GenericFieldElem:
+	case Gen:
+		return z.Set(&c1.Ext_), nil
+	case *Gen:
 		if c1 == nil {
 			return nil, errors.New("can't set fext.Ext with <nil>")
 		}
-		return z.Set(&c1.Ext), nil
+		return z.Set(&c1.Ext_), nil
 	case Fr:
 		return z.SetFr(&c1), nil
 	case *Fr:

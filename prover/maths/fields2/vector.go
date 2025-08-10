@@ -207,12 +207,12 @@ func VecSub(res, vec1, vec2 any) {
 
 	case isResExt && isVec1Fr && isVec2Ext:
 		for i := range resExt {
-			resExt[i].SubFrFromBase(&vec2Ext[i], &vec1Fr[i])
+			resExt[i].SubExtByFr(&vec2Ext[i], &vec1Fr[i])
 		}
 
 	case isResExt && isVec1Ext && isVec2Fr:
 		for i := range resExt {
-			resExt[i].SubExtFromFr(&vec1Fr[i], &vec2Ext[i])
+			resExt[i].SubFrByExt(&vec1Fr[i], &vec2Ext[i])
 		}
 
 	case isResExt && isVec1Fr && isVec2Fr:
