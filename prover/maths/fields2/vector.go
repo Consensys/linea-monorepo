@@ -30,7 +30,11 @@ func DeepCopy[F anyF](pol []F) []F {
 //
 // The case res=[]Ext, vec=[]Fr, scalar=Fr is implemented but not optimized as
 // it is unlikely to appear IRL.
+//
+// The scalar can be any of the following types: Fr, *Fr, *Ext, *Ext, Gen, *Gen
 func VecScalarMul(res, vec, scalar any) {
+
+	scalar = unwrapFieldAny(scalar)
 
 	var (
 		resFr, isResFr   = res.([]Fr)
@@ -292,7 +296,7 @@ func VecMul(res, vec1, vec2 any) {
 }
 
 // InnerProduct computes the inner-product of a vector and returns the result
-func InnerProduct(vec1, vec2 any) any {
+func InnerProduct(vec1, vec2 any) Gen {
 
 	var (
 		vec1Fr, isVec1Fr   = vec1.([]Fr)
@@ -314,7 +318,7 @@ func InnerProduct(vec1, vec2 any) any {
 			vec1 := *unsafeCast[[]Fr, koalabear.Vector](&vec1Fr)
 			vec2 := *unsafeCast[[]Fr, koalabear.Vector](&vec2Fr)
 			res := vec1.InnerProduct(vec2)
-			return Fr(res)
+			return NewGen(Fr(res))
 		}
 
 	case isVec1Fr && isVec2Ext:
@@ -323,7 +327,7 @@ func InnerProduct(vec1, vec2 any) any {
 			tmp.MulByElement(&vec2Ext[i], &vec1Fr[i])
 			res.Add(&res, &tmp)
 		}
-		return res
+		return NewGen(res)
 
 	case isVec1Ext && isVec2Fr:
 		var res, tmp Ext
@@ -331,7 +335,7 @@ func InnerProduct(vec1, vec2 any) any {
 			tmp.MulByElement(&vec1Ext[i], &vec2Fr[i])
 			res.Add(&res, &tmp)
 		}
-		return res
+		return NewGen(res)
 
 	case isVec1Ext && isVec2Ext:
 		var res, tmp Ext
@@ -339,13 +343,13 @@ func InnerProduct(vec1, vec2 any) any {
 			tmp.Mul(&vec1Ext[i], &vec2Ext[i])
 			res.Add(&res, &tmp)
 		}
-		return res
+		return NewGen(res)
 
 	default:
 		utils.Panic("Invalid combination of types for InnerProduct: vec1=%T vec2=%T", vec1, vec2)
 	}
 
-	return nil // This is unreachable
+	panic("unreachable")
 }
 
 // VecRand returns a random vector of the given length

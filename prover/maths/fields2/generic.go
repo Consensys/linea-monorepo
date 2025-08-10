@@ -27,6 +27,9 @@ func (z *Gen) Set(x any) *Gen {
 	defer z.maybeSimplify()
 	defer z.assertWellFormed()
 
+	// Here we can't relie on unwrapAny because the function also accepts non
+	// field inputs and does the conversion.
+
 	switch x := x.(type) {
 	case Fr:
 		z.IsExt_ = false
@@ -92,6 +95,14 @@ func (z *Gen) AsFr() (Fr, bool) {
 	return z.Base_, true
 }
 
+func (z *Gen) AsExt() Ext {
+	z.assertWellFormed()
+	if !z.IsExt_ {
+		return z.Base_.Lift()
+	}
+	return z.Ext_
+}
+
 func (z *Gen) Underlying() any {
 	z.assertWellFormed()
 	z.maybeSimplify()
@@ -147,18 +158,12 @@ func (z *Gen) IsEqual(x any) bool {
 	// represents an Fr value.
 	z.maybeSimplify()
 
+	x = unwrapFieldAny(x)
+
 	switch x := x.(type) {
-	case Fr:
-		return z.IsBase() && z.Base_ == x
 
 	case *Fr:
 		return z.IsBase() && z.Base_ == *x
-
-	case Ext:
-		if x.IsFr() {
-			return z.IsBase() && z.Base_ == Fr(x.B0.A0)
-		}
-		return z.IsExt() && z.Ext_ == x
 
 	case *Ext:
 		if x.IsFr() {
@@ -166,23 +171,6 @@ func (z *Gen) IsEqual(x any) bool {
 		}
 		return z.IsExt() && z.Ext_ == *x
 
-	case Gen:
-		if z.IsExt_ != x.IsExt_ {
-			return false
-		}
-		if !z.IsExt_ && z.Base_ == x.Base_ {
-			return true
-		}
-		return z.Ext_ == x.Ext_
-
-	case *Gen:
-		if z.IsExt_ != x.IsExt_ {
-			return false
-		}
-		if !z.IsExt_ && z.Base_ == x.Base_ {
-			return true
-		}
-		return z.Ext_ == x.Ext_
 	default:
 		return false
 	}
@@ -193,25 +181,13 @@ func (z *Gen) Neg(x any) *Gen {
 
 	defer z.assertWellFormed()
 
+	x = unwrapFieldAny(x)
+
 	switch x := x.(type) {
-	case Fr:
-		return z.negFr(&x)
-	case Ext:
-		return z.negExt(&x)
 	case *Fr:
 		return z.negFr(x)
 	case *Ext:
 		return z.negExt(x)
-	case Gen:
-		if x.IsExt_ {
-			z.negExt(&x.Ext_)
-		}
-		z.negFr(&x.Base_)
-	case *Gen:
-		if x.IsExt_ {
-			z.negExt(&x.Ext_)
-		}
-		z.negFr(&x.Base_)
 	default:
 		utils.Panic("can't negate %T", x)
 	}
@@ -222,26 +198,13 @@ func (z *Gen) Neg(x any) *Gen {
 func (z *Gen) Inverse(x any) *Gen {
 
 	defer z.assertWellFormed()
+	x = unwrapFieldAny(x)
 
 	switch x := x.(type) {
-	case Fr:
-		return z.inverseFr(&x)
-	case Ext:
-		return z.inverseExt(&x)
 	case *Fr:
 		return z.inverseFr(x)
 	case *Ext:
 		return z.inverseExt(x)
-	case Gen:
-		if x.IsExt_ {
-			z.inverseExt(&x.Ext_)
-		}
-		z.inverseFr(&x.Base_)
-	case *Gen:
-		if x.IsExt_ {
-			z.inverseExt(&x.Ext_)
-		}
-		z.inverseFr(&x.Base_)
 	default:
 		utils.Panic("can't negate %T", x)
 	}
@@ -256,28 +219,13 @@ func (z *Gen) Square(x any) *Gen {
 func (z *Gen) Mul(x, y any) *Gen {
 
 	z.Set(x)
+	y = unwrapFieldAny(y)
 
 	switch y := y.(type) {
-	case Fr:
-		z.mulAssignFr(&y)
-	case Ext:
-		z.mulAssignExt(&y)
 	case *Fr:
 		z.mulAssignFr(y)
 	case *Ext:
 		z.mulAssignExt(y)
-	case Gen:
-		if y.IsExt_ {
-			z.mulAssignExt(&y.Ext_)
-		} else {
-			z.mulAssignFr(&y.Base_)
-		}
-	case *Gen:
-		if y.IsExt_ {
-			z.mulAssignExt(&y.Ext_)
-		} else {
-			z.mulAssignFr(&y.Base_)
-		}
 	default:
 		utils.Panic("can't multiply %T with %T", x, y)
 	}
@@ -304,28 +252,13 @@ func (z *Gen) Exp(x any, n int) *Gen {
 func (z *Gen) Add(x, y any) *Gen {
 
 	z.Set(x)
+	y = unwrapFieldAny(y)
 
 	switch y := y.(type) {
-	case Fr:
-		z.addAssignFr(&y)
-	case Ext:
-		z.addAssignExt(&y)
 	case *Fr:
 		z.addAssignFr(y)
 	case *Ext:
 		z.addAssignExt(y)
-	case Gen:
-		if y.IsExt_ {
-			z.addAssignExt(&y.Ext_)
-		} else {
-			z.addAssignFr(&y.Base_)
-		}
-	case *Gen:
-		if y.IsExt_ {
-			z.addAssignExt(&y.Ext_)
-		} else {
-			z.addAssignFr(&y.Base_)
-		}
 	default:
 		utils.Panic("can't multiply %T with %T", x, y)
 	}
@@ -336,28 +269,13 @@ func (z *Gen) Add(x, y any) *Gen {
 func (z *Gen) Sub(x, y any) *Gen {
 
 	z.Set(x)
+	y = unwrapFieldAny(y)
 
 	switch y := y.(type) {
-	case Fr:
-		z.subAssignFr(&y)
-	case Ext:
-		z.subAssignExt(&y)
 	case *Fr:
 		z.subAssignFr(y)
 	case *Ext:
 		z.subAssignExt(y)
-	case Gen:
-		if y.IsExt_ {
-			z.subAssignExt(&y.Ext_)
-		} else {
-			z.subAssignFr(&y.Base_)
-		}
-	case *Gen:
-		if y.IsExt_ {
-			z.subAssignExt(&y.Ext_)
-		} else {
-			z.subAssignFr(&y.Base_)
-		}
 	default:
 		utils.Panic("can't multiply %T with %T", x, y)
 	}
@@ -368,28 +286,13 @@ func (z *Gen) Sub(x, y any) *Gen {
 func (z *Gen) Div(x, y any) *Gen {
 
 	z.Set(x)
+	y = unwrapFieldAny(y)
 
 	switch y := y.(type) {
-	case Fr:
-		z.divAssignFr(&y)
-	case Ext:
-		z.divAssignExt(&y)
 	case *Fr:
 		z.divAssignFr(y)
 	case *Ext:
 		z.divAssignExt(y)
-	case Gen:
-		if y.IsExt_ {
-			z.divAssignExt(&y.Ext_)
-		} else {
-			z.divAssignFr(&y.Base_)
-		}
-	case *Gen:
-		if y.IsExt_ {
-			z.divAssignExt(&y.Ext_)
-		} else {
-			z.divAssignFr(&y.Base_)
-		}
 	default:
 		utils.Panic("can't multiply %T with %T", x, y)
 	}
@@ -533,5 +436,27 @@ func (z *Gen) maybeSimplify() {
 		z.IsExt_ = false
 		z.Base_ = Fr(z.Ext_.B0.A0)
 		z.Ext_.SetZero()
+	}
+}
+
+// unwrapFieldAny takes a value of any either [*Fr, Fr, *Ext, Ext, Gen, *Gen] and
+// returns a value of either *Fr or *Ext depending on the instance. The function
+// panics if any other case is provided.
+func unwrapFieldAny(x any) any {
+	switch x := x.(type) {
+	case *Fr:
+		return x
+	case Fr:
+		return &x
+	case *Ext:
+		return x
+	case Ext:
+		return &x
+	case *Gen:
+		return x.Underlying()
+	case Gen:
+		return x.Underlying()
+	default:
+		panic("unsupported type")
 	}
 }

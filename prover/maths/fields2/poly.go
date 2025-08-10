@@ -147,7 +147,8 @@ func UnivariateBatchEvaluateLagrange(polys []any, x_ canExt, oncoset ...bool) []
 
 	parallel.Execute(len(polys), func(start, stop int) {
 		for k := start; k < stop; k++ {
-			results[k] = InnerProduct(lagrangeAtX, polys[k]).(Ext)
+			res := InnerProduct(lagrangeAtX, polys[k])
+			results[k] = res.AsExt()
 		}
 	})
 	return results
