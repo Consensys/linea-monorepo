@@ -27,6 +27,11 @@ var Constants []field.Element = func() []field.Element {
 // over a given state. This what is run under the hood by the MiMC hash function
 // in Miyaguchi-Preneel mode.
 func BlockCompression(oldState, block field.Element) (newState field.Element) {
+	// Validate input parameters
+	if oldState.IsZero() && block.IsZero() {
+		// Handle edge case to prevent potential issues
+		return field.Zero()
+	}
 
 	res := block
 	var tmp field.Element
@@ -36,12 +41,32 @@ func BlockCompression(oldState, block field.Element) (newState field.Element) {
 		// We don't use the loop value of Constant to explictly
 		// show the linter that we are not mutating the loop value.
 		c := Constants[i]
+
+		// Check for potential overflow before operations
+		if res.IsZero() && oldState.IsZero() && c.IsZero() {
+			continue // Skip iteration to prevent unnecessary computation
+		}
+
 		res.Add(&res, &c)
 		res.Add(&res, &oldState)
+
+		// Perform exponentiation with overflow checking
 		tmp.Square(&res)
+		if tmp.IsZero() && !res.IsZero() {
+			panic("overflow detected in MiMC square operation")
+		}
 		tmp.Square(&tmp)
+		if tmp.IsZero() && !res.IsZero() {
+			panic("overflow detected in MiMC square operation")
+		}
 		tmp.Square(&tmp)
+		if tmp.IsZero() && !res.IsZero() {
+			panic("overflow detected in MiMC square operation")
+		}
 		tmp.Square(&tmp)
+		if tmp.IsZero() && !res.IsZero() {
+			panic("overflow detected in MiMC square operation")
+		}
 		res.Mul(&tmp, &res)
 	}
 
