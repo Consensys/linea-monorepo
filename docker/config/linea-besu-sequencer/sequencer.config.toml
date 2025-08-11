@@ -71,7 +71,7 @@ strict-tx-replay-protection-enabled=false
 
 # should uncomment only when the linea-sequencer plugin supports liveness 
 plugin-linea-liveness-enabled=true
-plugin-linea-liveness-max-block-age-seconds=10
+plugin-linea-liveness-max-block-age-seconds=8
 plugin-linea-liveness-bundle-max-timestamp-surplus-seconds=12
 plugin-linea-liveness-contract-address="0x7917AbB0cDbf3D3C4057d6a2808eE85ec16260C1"
 plugin-linea-liveness-signer-url="https://web3signer:9000"
