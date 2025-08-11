@@ -116,15 +116,15 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 			cleanSisLeaves,
 			dedicated.HandleSourcePaddedColumns(ctx.VortexCtx.NbColsToOpen()))
 		// Register the prover action for the stacked column
-		if stackedSisLeaves.IsPadded {
+		if stackedSisLeaves.IsSourceColsArePadded {
 			ctx.Comp.RegisterProverAction(roundQ, &dedicated.StackedColumn{
-				Column:               stackedSisLeaves.Column,
-				Source:               cleanSisLeaves,
-				UnpaddedColumn:       stackedSisLeaves.UnpaddedColumn,
-				ColumnFilter:         stackedSisLeaves.ColumnFilter,
-				UnpaddedColumnFilter: stackedSisLeaves.UnpaddedColumnFilter,
-				UnpaddedSize:         stackedSisLeaves.UnpaddedSize,
-				IsPadded:             stackedSisLeaves.IsPadded,
+				Column:                stackedSisLeaves.Column,
+				Source:                cleanSisLeaves,
+				UnpaddedColumn:        stackedSisLeaves.UnpaddedColumn,
+				ColumnFilter:          stackedSisLeaves.ColumnFilter,
+				UnpaddedColumnFilter:  stackedSisLeaves.UnpaddedColumnFilter,
+				UnpaddedSize:          stackedSisLeaves.UnpaddedSize,
+				IsSourceColsArePadded: stackedSisLeaves.IsSourceColsArePadded,
 			})
 		} else {
 			ctx.Comp.RegisterProverAction(roundQ, &dedicated.StackedColumn{
@@ -132,7 +132,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 				Source: cleanSisLeaves,
 			})
 		}
-		if stackedSisLeaves.IsPadded {
+		if stackedSisLeaves.IsSourceColsArePadded {
 			mimcW.CheckLinearHash(ctx.Comp, ctx.linearHashVerificationName(), ctx.Columns.ConcatenatedDhQ,
 				ctx.VortexCtx.SisParams.OutputSize(), sisRoundLeavesSizeUnpadded, stackedSisLeaves.UnpaddedColumn)
 		} else {
@@ -252,15 +252,15 @@ func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 		dedicated.HandleSourcePaddedColumns(ctx.VortexCtx.NbColsToOpen()))
 
 	// Register prover action for the stacked column
-	if stackedCleanLeaves.IsPadded {
+	if stackedCleanLeaves.IsSourceColsArePadded {
 		ctx.Comp.RegisterProverAction(round, &dedicated.StackedColumn{
-			Column:               stackedCleanLeaves.Column,
-			Source:               cleanLeaves,
-			UnpaddedColumn:       stackedCleanLeaves.UnpaddedColumn,
-			ColumnFilter:         stackedCleanLeaves.ColumnFilter,
-			UnpaddedColumnFilter: stackedCleanLeaves.UnpaddedColumnFilter,
-			UnpaddedSize:         stackedCleanLeaves.UnpaddedSize,
-			IsPadded:             stackedCleanLeaves.IsPadded,
+			Column:                stackedCleanLeaves.Column,
+			Source:                cleanLeaves,
+			UnpaddedColumn:        stackedCleanLeaves.UnpaddedColumn,
+			ColumnFilter:          stackedCleanLeaves.ColumnFilter,
+			UnpaddedColumnFilter:  stackedCleanLeaves.UnpaddedColumnFilter,
+			UnpaddedSize:          stackedCleanLeaves.UnpaddedSize,
+			IsSourceColsArePadded: stackedCleanLeaves.IsSourceColsArePadded,
 		})
 	} else {
 		ctx.Comp.RegisterProverAction(round, &dedicated.StackedColumn{
@@ -271,7 +271,7 @@ func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 
 	// Next we compute the identity permutation
 	s := make([]field.Element, stackedCleanLeaves.Column.Size())
-	if stackedCleanLeaves.IsPadded {
+	if stackedCleanLeaves.IsSourceColsArePadded {
 		s = make([]field.Element, stackedCleanLeaves.UnpaddedColumn.Size())
 	}
 	for i := range s {
@@ -280,7 +280,7 @@ func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 	s_smart := smartvectors.NewRegular(s)
 
 	// Insert the fixed permutation constraint.
-	if stackedCleanLeaves.IsPadded {
+	if stackedCleanLeaves.IsSourceColsArePadded {
 		ctx.Comp.InsertFixedPermutation(
 			round,
 			ctx.leafConsistencyName(),

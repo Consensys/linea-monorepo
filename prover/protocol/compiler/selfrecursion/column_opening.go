@@ -29,7 +29,7 @@ func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
 	ctx.ColSelection()
 	ctx.LinearHashAndMerkle()
 	ctx.RootHashGlue()
-	ctx.GluePositions()
+	ctx.GluePositionsStacked()
 	// We need this only when there are non zero number
 	// of SIS rounds
 	if ctx.Columns.ConcatenatedDhQ != nil {

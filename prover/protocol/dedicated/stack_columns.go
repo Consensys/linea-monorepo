@@ -34,9 +34,9 @@ type StackedColumn struct {
 	UnpaddedColumnFilter column.Natural
 	// UnpaddedSize is the size of the non zero portions of the source columns.
 	UnpaddedSize int
-	// IsPadded indicates whether the source columns are padded or not.
+	// IsSourceColsArePadded indicates whether the source columns are padded or not.
 	// We assume the padding size is the same for all source columns.
-	IsPadded bool
+	IsSourceColsArePadded bool
 }
 
 // Options for the StackedColumn
@@ -123,7 +123,7 @@ func StackColumn(comp *wizard.CompiledIOP, srcs []ifaces.Column, opts ...StackCo
 	}
 
 	// Handle the padding of the source columns
-	if stkCol.IsPadded {
+	if stkCol.IsSourceColsArePadded {
 		stkCol.UnpaddedColumn = comp.InsertCommit(
 			round,
 			ifaces.ColID(name+"_UNPADDED"),
@@ -159,52 +159,52 @@ func StackColumn(comp *wizard.CompiledIOP, srcs []ifaces.Column, opts ...StackCo
 
 // Assigns assigns the stack column
 func (s *StackedColumn) Run(run *wizard.ProverRuntime) {
-    var (
-        column = make([]field.Element, 0, s.Column.Size())
-    )
+	var (
+		column = make([]field.Element, 0, s.Column.Size())
+	)
 	// Variables needed only when IsPadded is true
-    var (
-        unpadded_column        []field.Element
-        column_filter          []field.Element
-        unpadded_column_filter []field.Element
-        filterElemNonPadding   []field.Element
-        filterElemPadding      []field.Element
-    )
+	var (
+		unpadded_column        []field.Element
+		column_filter          []field.Element
+		unpadded_column_filter []field.Element
+		filterElemNonPadding   []field.Element
+		filterElemPadding      []field.Element
+	)
 
-    if s.IsPadded {
-        // Only declare and use these variables if IsPadded is true
-        filterElemNonPadding = make([]field.Element, 0, s.UnpaddedSize)
-        filterElemPadding = make([]field.Element, 0, s.Source[0].Size()-s.UnpaddedSize)
-        unpadded_column = make([]field.Element, 0, s.UnpaddedColumn.Size())
-        column_filter = make([]field.Element, 0, s.ColumnFilter.Size())
-        unpadded_column_filter = make([]field.Element, 0, s.UnpaddedColumnFilter.Size())
+	if s.IsSourceColsArePadded {
+		// Only declare and use these variables if IsPadded is true
+		filterElemNonPadding = make([]field.Element, 0, s.UnpaddedSize)
+		filterElemPadding = make([]field.Element, 0, s.Source[0].Size()-s.UnpaddedSize)
+		unpadded_column = make([]field.Element, 0, s.UnpaddedColumn.Size())
+		column_filter = make([]field.Element, 0, s.ColumnFilter.Size())
+		unpadded_column_filter = make([]field.Element, 0, s.UnpaddedColumnFilter.Size())
 
-        for i := 0; i < s.UnpaddedSize; i++ {
-            filterElemNonPadding = append(filterElemNonPadding, field.One())
-        }
-        for i := 0; i < s.Source[0].Size()-s.UnpaddedSize; i++ {
-            filterElemPadding = append(filterElemPadding, field.Zero())
-        }
-    }
+		for i := 0; i < s.UnpaddedSize; i++ {
+			filterElemNonPadding = append(filterElemNonPadding, field.One())
+		}
+		for i := 0; i < s.Source[0].Size()-s.UnpaddedSize; i++ {
+			filterElemPadding = append(filterElemPadding, field.Zero())
+		}
+	}
 
-    // Assign the columns
-    for i := range s.Source {
-        source_assignment := s.Source[i].GetColAssignment(run).IntoRegVecSaveAlloc()
-        column = append(column, source_assignment...)
-        if s.IsPadded {
-            source_assignment_unpadded := source_assignment[:s.UnpaddedSize]
-            unpadded_column = append(unpadded_column, source_assignment_unpadded...)
-            column_filter = append(column_filter, filterElemNonPadding...)
-            column_filter = append(column_filter, filterElemPadding...)
-            unpadded_column_filter = append(unpadded_column_filter, filterElemNonPadding...)
-        }
-    }
-    run.AssignColumn(s.Column.ID, smartvectors.RightZeroPadded(column, s.Column.Size()))
-    if s.IsPadded {
-        run.AssignColumn(s.UnpaddedColumn.ID, smartvectors.RightZeroPadded(unpadded_column, s.UnpaddedColumn.Size()))
-        run.AssignColumn(s.ColumnFilter.ID, smartvectors.RightZeroPadded(column_filter, s.Column.Size()))
-        run.AssignColumn(s.UnpaddedColumnFilter.ID, smartvectors.RightZeroPadded(unpadded_column_filter, s.UnpaddedColumnFilter.Size()))
-    }
+	// Assign the columns
+	for i := range s.Source {
+		source_assignment := s.Source[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+		column = append(column, source_assignment...)
+		if s.IsSourceColsArePadded {
+			source_assignment_unpadded := source_assignment[:s.UnpaddedSize]
+			unpadded_column = append(unpadded_column, source_assignment_unpadded...)
+			column_filter = append(column_filter, filterElemNonPadding...)
+			column_filter = append(column_filter, filterElemPadding...)
+			unpadded_column_filter = append(unpadded_column_filter, filterElemNonPadding...)
+		}
+	}
+	run.AssignColumn(s.Column.ID, smartvectors.RightZeroPadded(column, s.Column.Size()))
+	if s.IsSourceColsArePadded {
+		run.AssignColumn(s.UnpaddedColumn.ID, smartvectors.RightZeroPadded(unpadded_column, s.UnpaddedColumn.Size()))
+		run.AssignColumn(s.ColumnFilter.ID, smartvectors.RightZeroPadded(column_filter, s.Column.Size()))
+		run.AssignColumn(s.UnpaddedColumnFilter.ID, smartvectors.RightZeroPadded(unpadded_column_filter, s.UnpaddedColumnFilter.Size()))
+	}
 }
 
 // Handles the padded source columns for the stacked column
@@ -217,10 +217,10 @@ func HandleSourcePaddedColumns(unpaddedSourceColSize int) StackColumnOp {
 		}
 		// If the unpaddedSourceColSize is already a power of two, we dont need anything special
 		if utils.IsPowerOfTwo(unpaddedSourceColSize) {
-			stkCol.IsPadded = false
+			stkCol.IsSourceColsArePadded = false
 		} else {
 			stkCol.UnpaddedSize = unpaddedSourceColSize
-			stkCol.IsPadded = true
+			stkCol.IsSourceColsArePadded = true
 		}
 	}
 }

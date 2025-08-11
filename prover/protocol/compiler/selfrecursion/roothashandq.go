@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -239,4 +240,85 @@ func (ctx SelfRecursionCtx) GluePositions() {
 		},
 	)
 
+}
+
+// GluePositions using stackColumn
+func (ctx SelfRecursionCtx) GluePositionsStacked() {
+	// The vector that the verifier trusts
+	positionVec := verifiercol.NewFromIntVecCoin(
+		ctx.Comp,
+		ctx.Coins.Q,
+		verifiercol.RightPadZeroToNextPowerOfTwo,
+	)
+
+	// The vector that the verifier wants to audit w.r.t. position vec
+	merklePos := ctx.Columns.MerkleProofPositions
+	round := merklePos.Round()
+	// Indicates the number of repetitions of the position vector
+	// in the merklePos column
+	numCommittedRound := ctx.VortexCtx.NumCommittedRounds()
+	// numCommittedRound increses by 1 if we commit to the precomputeds
+	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
+		numCommittedRound += 1
+	}
+	// The source position columns
+	var cleanPosCols []ifaces.Column
+	for i := 0; i < numCommittedRound; i++ {
+		cleanPosCols = append(cleanPosCols, positionVec)
+	}
+	stackedPosCols := dedicated.StackColumn(
+		ctx.Comp,
+		cleanPosCols,
+		dedicated.HandleSourcePaddedColumns(ctx.VortexCtx.NbColsToOpen()),
+	)
+	// Register the prover action for the stacked columns
+	if stackedPosCols.IsSourceColsArePadded {
+		ctx.Comp.RegisterProverAction(
+			round,
+			&dedicated.StackedColumn{
+				Column:                stackedPosCols.Column,
+				Source:                cleanPosCols,
+				UnpaddedColumn:        stackedPosCols.UnpaddedColumn,
+				ColumnFilter:          stackedPosCols.ColumnFilter,
+				UnpaddedColumnFilter:  stackedPosCols.UnpaddedColumnFilter,
+				UnpaddedSize:          stackedPosCols.UnpaddedSize,
+				IsSourceColsArePadded: stackedPosCols.IsSourceColsArePadded,
+			},
+		)
+	} else {
+		ctx.Comp.RegisterProverAction(
+			round,
+			&dedicated.StackedColumn{
+				Column: stackedPosCols.Column,
+				Source: cleanPosCols,
+			},
+		)
+	}
+	// Next we compute the identity permutation
+	s := make([]field.Element, stackedPosCols.Column.Size())
+	if stackedPosCols.IsSourceColsArePadded {
+		s = make([]field.Element, stackedPosCols.UnpaddedColumn.Size())
+	}
+	for i := range s {
+		s[i].SetInt64(int64(i))
+	}
+	s_smart := smartvectors.NewRegular(s)
+	// Insert the fixed permutation constraint.
+	if stackedPosCols.IsSourceColsArePadded {
+		ctx.Comp.InsertFixedPermutation(
+			round,
+			ctx.positionGlue(),
+			[]smartvectors.SmartVector{s_smart},
+			[]ifaces.Column{stackedPosCols.UnpaddedColumn},
+			[]ifaces.Column{merklePos},
+		)
+	} else {
+		ctx.Comp.InsertFixedPermutation(
+			round,
+			ctx.positionGlue(),
+			[]smartvectors.SmartVector{s_smart},
+			[]ifaces.Column{stackedPosCols.Column},
+			[]ifaces.Column{merklePos},
+		)
+	}
 }
