@@ -1,7 +1,7 @@
 package common
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -102,6 +102,6 @@ func mimcVecCompression(oldState, block, newState []field.Element) {
 	}
 
 	for i := range oldState {
-		newState[i] = mimc.BlockCompression(oldState[i], block[i])
+		newState[i] = poseidon2.BlockCompression(oldState[i], block[i])
 	}
 }

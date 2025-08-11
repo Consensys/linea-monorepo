@@ -173,7 +173,7 @@ func (c *CompiledIOP) createVerifier(proof Proof) VerifierRuntime {
 		State:         make(map[string]interface{}),
 	}
 
-	fiatshamir.Update(runtime.FS, c.FiatShamirSetup)
+	fiatshamir.Update(runtime.FS, c.FiatShamirSetup[:]...)
 
 	/*
 		Insert the verifying key into the messages

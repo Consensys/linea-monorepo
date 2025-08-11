@@ -1,7 +1,7 @@
 package execution_data_collector
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -154,14 +154,14 @@ func (hasher *MIMCHasher) AssignHasher(run *wizard.ProverRuntime) {
 	isActive.PushOne()
 	state.PushZero()
 	data.PushField(hasher.inputData.GetColAssignmentAt(run, 0))
-	hash.PushField(mimc.BlockCompression(state.Last(), data.Last()))
+	hash.PushField(poseidon2.BlockCompression(state.Last(), data.Last()))
 
 	// Writing the second row
 	isData.PushOne()
 	isActive.PushOne()
 	state.PushField(hash.Last())
 	data.PushField(hasher.inputData.GetColAssignmentAt(run, 1))
-	hash.PushField(mimc.BlockCompression(state.Last(), data.Last()))
+	hash.PushField(poseidon2.BlockCompression(state.Last(), data.Last()))
 
 	for j := 2; j < inputSize; j++ {
 
@@ -178,7 +178,7 @@ func (hasher *MIMCHasher) AssignHasher(run *wizard.ProverRuntime) {
 		isActive.PushOne()
 		state.PushZero()
 		data.PushField(hash.Last())
-		hash.PushField(mimc.BlockCompression(state.Last(), data.Last()))
+		hash.PushField(poseidon2.BlockCompression(state.Last(), data.Last()))
 
 		// Evens rows, we continue the hash by adding the input data corresponding
 		// to "j".
@@ -186,7 +186,7 @@ func (hasher *MIMCHasher) AssignHasher(run *wizard.ProverRuntime) {
 		isActive.PushOne()
 		state.PushField(hash.Last())
 		data.PushField(hasher.inputData.GetColAssignmentAt(run, j))
-		hash.PushField(mimc.BlockCompression(state.Last(), data.Last()))
+		hash.PushField(poseidon2.BlockCompression(state.Last(), data.Last()))
 	}
 
 	// assign the hasher columns
@@ -194,7 +194,7 @@ func (hasher *MIMCHasher) AssignHasher(run *wizard.ProverRuntime) {
 	isActive.PadAndAssign(run, field.Zero())
 	state.PadAndAssign(run, field.Zero())
 	data.PadAndAssign(run, field.Zero())
-	hash.PadAndAssign(run, mimc.BlockCompression(field.Zero(), field.Zero()))
+	hash.PadAndAssign(run, poseidon2.BlockCompression(field.Zero(), field.Zero()))
 	run.AssignColumn(hasher.HashFinal.GetColID(), smartvectors.NewConstant(finalHash, hasher.HashFinal.Size()))
 
 	hasher.isDataFirstRow.Assign(run)

@@ -4,7 +4,7 @@ import (
 	"io"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -261,10 +261,10 @@ func (am *Module) assignLeaf(
 	var (
 		cols       = am.Cols
 		paddedSize = am.NumRows()
-		intermZero = mimc.BlockCompression(field.Zero(), field.Zero())
-		intermOne  = mimc.BlockCompression(intermZero, field.Zero())
-		intermTwo  = mimc.BlockCompression(intermOne, field.Zero())
-		leaf       = mimc.BlockCompression(intermTwo, field.Zero())
+		intermZero = poseidon2.BlockCompression(field.Zero(), field.Zero())
+		intermOne  = poseidon2.BlockCompression(intermZero, field.Zero())
+		intermTwo  = poseidon2.BlockCompression(intermOne, field.Zero())
+		leaf       = poseidon2.BlockCompression(intermTwo, field.Zero())
 	)
 
 	run.AssignColumn(cols.IsEmptyLeaf.GetColID(), smartvectors.RightZeroPadded(builder.isEmptyLeaf, paddedSize))
@@ -287,8 +287,8 @@ func (am *Module) assignTopRootCols(
 	paddedSize := am.NumRows()
 
 	// compute the padding values for intermTopRoot and topRoot
-	intermTopRootPad := mimc.BlockCompression(field.Zero(), field.Zero())
-	topRootPad := mimc.BlockCompression(intermTopRootPad, field.Zero())
+	intermTopRootPad := poseidon2.BlockCompression(field.Zero(), field.Zero())
+	topRootPad := poseidon2.BlockCompression(intermTopRootPad, field.Zero())
 
 	run.AssignColumn(cols.IntermTopRoot.GetColID(), smartvectors.RightPadded(builder.intermTopRoot, intermTopRootPad, paddedSize))
 	run.AssignColumn(cols.TopRoot.GetColID(), smartvectors.RightPadded(builder.topRoot, topRootPad, paddedSize))
@@ -326,8 +326,8 @@ func (a *assignmentBuilder) pushRow(
 	a.nextFreeNode = append(a.nextFreeNode, nextFreeNodeFr)
 
 	// We assign intermTopRoot = MiMC(zero, root), and topRoot = MiMC(interm, nextFreeNode)
-	intermTopRootFr := mimc.BlockCompression(field.Zero(), nextFreeNodeFr)
-	topRootFr := mimc.BlockCompression(intermTopRootFr, rootFr)
+	intermTopRootFr := poseidon2.BlockCompression(field.Zero(), nextFreeNodeFr)
+	topRootFr := poseidon2.BlockCompression(intermTopRootFr, rootFr)
 	a.intermTopRoot = append(a.intermTopRoot, intermTopRootFr)
 	a.topRoot = append(a.topRoot, topRootFr)
 
@@ -430,10 +430,10 @@ func (a *assignmentBuilder) computeLeaf(leafOpening accumulator.LeafOpening, isE
 		if err := hValFr.SetBytesCanonical(leafOpening.HVal[:]); err != nil {
 			panic(err)
 		}
-		intermZero := mimc.BlockCompression(field.Zero(), prevFr)
-		intermOne := mimc.BlockCompression(intermZero, nextFr)
-		intermTwo := mimc.BlockCompression(intermOne, hKeyFr)
-		leaf := mimc.BlockCompression(intermTwo, hValFr)
+		intermZero := poseidon2.BlockCompression(field.Zero(), prevFr)
+		intermOne := poseidon2.BlockCompression(intermZero, nextFr)
+		intermTwo := poseidon2.BlockCompression(intermOne, hKeyFr)
+		leaf := poseidon2.BlockCompression(intermTwo, hValFr)
 		a.leafOpening.prev = append(a.leafOpening.prev, prevFr)
 		a.leafOpening.next = append(a.leafOpening.next, nextFr)
 		a.leafOpening.hKey = append(a.leafOpening.hKey, hKeyFr)
@@ -446,10 +446,10 @@ func (a *assignmentBuilder) computeLeaf(leafOpening accumulator.LeafOpening, isE
 		isEmpty := field.Zero()
 		a.isEmptyLeaf = append(a.isEmptyLeaf, isEmpty)
 	} else {
-		intermZero := mimc.BlockCompression(field.Zero(), field.Zero())
-		intermOne := mimc.BlockCompression(intermZero, field.Zero())
-		intermTwo := mimc.BlockCompression(intermOne, field.Zero())
-		leaf := mimc.BlockCompression(intermTwo, field.Zero())
+		intermZero := poseidon2.BlockCompression(field.Zero(), field.Zero())
+		intermOne := poseidon2.BlockCompression(intermZero, field.Zero())
+		intermTwo := poseidon2.BlockCompression(intermOne, field.Zero())
+		leaf := poseidon2.BlockCompression(intermTwo, field.Zero())
 		a.leafOpening.prev = append(a.leafOpening.prev, field.Zero())
 		a.leafOpening.next = append(a.leafOpening.next, field.Zero())
 		a.leafOpening.hKey = append(a.leafOpening.hKey, field.Zero())

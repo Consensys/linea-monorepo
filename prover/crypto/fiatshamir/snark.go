@@ -6,7 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/hash/mimc"
-	locmimc "github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	locmimc "github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"

@@ -56,7 +56,7 @@ func (p *FlatProof) Assign(run *wizard.ProverRuntime, proofs []smt.Proof) {
 	for i := range proofs {
 		for j := range proofs[i].Siblings {
 			nodeAsFr := types.Bytes32ToHash(proofs[i].Siblings[j])
-			assignment[j] = append(assignment[j], nodeAsFr...)
+			assignment[j] = append(assignment[j], nodeAsFr[:]...)
 		}
 	}
 

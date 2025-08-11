@@ -287,7 +287,7 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 
 	// Create a new fresh FS state and bootstrap it
 	fs := poseidon2.NewMerkleDamgardHasher()
-	fiatshamir.Update(fs, c.FiatShamirSetup)
+	fiatshamir.Update(fs, c.FiatShamirSetup[:]...)
 
 	// Instantiates an empty Assignment (but link it to the CompiledIOP)
 	runtime := ProverRuntime{

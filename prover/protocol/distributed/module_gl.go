@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
@@ -611,7 +611,7 @@ func (a *ModuleGLAssignSendReceiveGlobal) Run(run *wizard.ProverRuntime) {
 		lo := a.SentValuesGlobal[i]
 		v := lo.Pol.GetColAssignmentAt(run, 0)
 		run.AssignLocalPoint(lo.ID, v)
-		hashSend = mimc.BlockCompression(hashSend, v)
+		hashSend = poseidon2.BlockCompression(hashSend, v)
 	}
 
 	run.AssignColumn(
@@ -634,7 +634,7 @@ func (a *ModuleGLAssignSendReceiveGlobal) Run(run *wizard.ProverRuntime) {
 	hashRcv := field.Element{}
 	for i := range rcvData {
 		v := rcvData[i]
-		hashRcv = mimc.BlockCompression(hashRcv, v)
+		hashRcv = poseidon2.BlockCompression(hashRcv, v)
 	}
 
 	run.AssignColumn(
@@ -654,7 +654,7 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 
 	var (
 		sendGlobalHash   = a.SentValuesGlobalHash.GetColAssignmentAt(run, 0)
-		hsh              = mimc.NewMiMC()
+		hsh              = poseidon2.NewPoseidon2()
 		hashSendComputed = field.Element{}
 	)
 

@@ -23,10 +23,12 @@ type ReassignPrecomputedRootAction struct {
 }
 
 func (r ReassignPrecomputedRootAction) Run(run *wizard.ProverRuntime) {
-	run.AssignColumn(
-		r.Items.Precomputeds.MerkleRoot.GetColID(),
-		smartvectors.NewConstant(r.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedValue, 1),
-	)
+	for pos := 0; pos < 8; pos++ {
+		run.AssignColumn(
+			r.Items.Precomputeds.MerkleRoot[pos].GetColID(),
+			smartvectors.NewConstant(r.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedValue[pos], 1),
+		)
+	}
 }
 
 // Prover steps of Vortex that is run in place of committing to polynomials
@@ -63,14 +65,10 @@ func (ctx *Ctx) AssignColumn(round int) func(*wizard.ProverRuntime) {
 
 		// And assign the 1-sized column to contain the root
 		root := types.Bytes32ToHash(tree.Root)
-		// TODO@yao: fix, how to assign the whole root? 8 field.Element?
-		pr.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round)), smartvectors.NewConstant(root[0], 1))
-
-		/*
-			for i, r := range root {
-				pr.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round)), smartvectors.NewConstant(r, 1))
-			}
-		*/
+		// TODO@yao: assign the whole root, 8 field.Element?
+		for pos := 0; pos < len(root); pos++ {
+			pr.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round, pos)), smartvectors.NewConstant(root[pos], 1))
+		}
 	}
 }
 

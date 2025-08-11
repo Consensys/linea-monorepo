@@ -4,7 +4,7 @@ import (
 	"github.com/consensys/gnark/backend/witness"
 	cs "github.com/consensys/gnark/constraint/koalabear"
 	"github.com/consensys/gnark/constraint/solver"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -46,7 +46,7 @@ func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []wi
 	)
 
 	if ctx.ExternalHasherOption.Enabled {
-		solver.RegisterHint(mimc.MimcHintfunc)
+		solver.RegisterHint(poseidon2.MimcHintfunc)
 	}
 
 	parallel.Execute(maxNbInstance, func(start, stop int) {

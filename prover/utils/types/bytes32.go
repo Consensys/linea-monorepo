@@ -58,8 +58,8 @@ func HashToBytes32(hash vortex.Hash) Bytes32 {
 	return result
 }
 
-// Bytes32ToHash converts Bytes32 to []koalabear.Element
-func Bytes32ToHash(input Bytes32) []koalabear.Element { // Changed koalabear.Element to Element
+// Bytes32ToHash converts Bytes32 to [8]koalabear.Element
+func Bytes32ToHash(input Bytes32) [8]koalabear.Element { // Changed koalabear.Element to Element
 	var result [8]koalabear.Element // Array to store the 8 reconstructed Elements
 
 	for i := 0; i < 8; i++ {
@@ -71,13 +71,14 @@ func Bytes32ToHash(input Bytes32) []koalabear.Element { // Changed koalabear.Ele
 
 	}
 
-	return result[:]
+	return result
 }
 
 // Writes the bytes32 into the given write.
 func (b Bytes32) WriteTo(w io.Writer) (int64, error) {
 	_, err := w.Write(b[:])
 	if err != nil {
+		fmt.Printf("here %v,b=%v\n", err.Error(), b)
 		panic(err) // hard forbid any error
 	}
 	return 32, nil

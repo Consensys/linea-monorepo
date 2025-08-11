@@ -24,7 +24,7 @@ func RandBytes32(pos int) Bytes32 {
 func TestTreeInitialization(t *testing.T) {
 
 	config := &smt.Config{
-		HashFunc: hashtypes.Keccak,
+		HashFunc: hashtypes.Poseidon2,
 		Depth:    40,
 	}
 
@@ -39,7 +39,7 @@ func TestTreeInitialization(t *testing.T) {
 
 func TestTreeUpdateLeaf(t *testing.T) {
 	config := &smt.Config{
-		HashFunc: hashtypes.Keccak,
+		HashFunc: hashtypes.Poseidon2,
 		Depth:    40,
 	}
 
@@ -57,7 +57,7 @@ func TestTreeUpdateLeaf(t *testing.T) {
 
 func TestMerkleProofNative(t *testing.T) {
 	config := &smt.Config{
-		HashFunc: hashtypes.Keccak,
+		HashFunc: hashtypes.Poseidon2,
 		Depth:    40,
 	}
 
@@ -77,8 +77,8 @@ func TestMerkleProofNative(t *testing.T) {
 
 func TestMerkleProofWithUpdate(t *testing.T) {
 	config := &smt.Config{
-		HashFunc: hashtypes.Keccak,
-		Depth:    40,
+		HashFunc: hashtypes.Poseidon2,
+		Depth:    4,
 	}
 
 	tree := smt.NewEmptyTree(config)
@@ -102,7 +102,7 @@ func TestMerkleProofWithUpdate(t *testing.T) {
 func TestBuildFromScratch(t *testing.T) {
 
 	config := &smt.Config{
-		HashFunc: hashtypes.Keccak,
+		HashFunc: hashtypes.Poseidon2,
 		Depth:    8,
 	}
 

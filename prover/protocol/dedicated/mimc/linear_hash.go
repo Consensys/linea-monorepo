@@ -3,7 +3,7 @@ package mimc
 import (
 	"fmt"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -124,7 +124,7 @@ func (a *linearHashProverAction) Run(run *wizard.ProverRuntime) {
 			for i := 0; i < a.ctx.Period; i++ {
 				pos := hashID*a.ctx.Period + i
 				currentBlock := blocksWit.Get(pos)
-				new := mimc.BlockCompression(old, currentBlock)
+				new := poseidon2.BlockCompression(old, currentBlock)
 				olds[pos] = old
 				news[pos] = new
 				old = new
@@ -132,7 +132,7 @@ func (a *linearHashProverAction) Run(run *wizard.ProverRuntime) {
 		}
 	})
 
-	padNew := mimc.BlockCompression(field.Zero(), field.Zero())
+	padNew := poseidon2.BlockCompression(field.Zero(), field.Zero())
 	oldSV := smartvectors.RightZeroPadded(olds, a.ctx.ToHash.Size())
 	newSV := smartvectors.RightPadded(news, padNew, a.ctx.ToHash.Size())
 	newCleanSV := smartvectors.RightZeroPadded(vector.DeepCopy(news), a.ctx.ToHash.Size())

@@ -41,14 +41,24 @@ func TestProver(t *testing.T) {
 		hasher_Column func() hash.Hash
 	}{
 		{
+			name:          "Default: With Poseidon2 for Merkle and SIS for Column",
+			hasher_Merkle: nil, // use Poseidon2 for Merkle hash
+			hasher_Column: nil, // use SIS for column hash
+		},
+		{
 			name:          "With SHA256 for both Merkle and Column",
-			hasher_Merkle: sha256.New,
+			hasher_Merkle: sha256.New, // use sha256 for Merkle hash
 			hasher_Column: sha256.New, // use sha256 for column hash
 		},
 		{
 			name:          "With SHA256 for Merkle and SIS for Column",
-			hasher_Merkle: sha256.New,
-			hasher_Column: nil, // use SIS for column hash
+			hasher_Merkle: sha256.New, // use sha256 for Merkle hash
+			hasher_Column: nil,        // use SIS for column hash
+		},
+		{
+			name:          "With Poseidon2 for Merkle and SHA256 for Column",
+			hasher_Merkle: nil,        // use Poseidon2 for Merkle hash
+			hasher_Column: sha256.New, // use sha256 for column hash
 		},
 	}
 

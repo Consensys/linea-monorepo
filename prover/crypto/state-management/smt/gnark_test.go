@@ -16,7 +16,7 @@ import (
 func getMerkleProof(t *testing.T) ([]Proof, []Bytes32, Bytes32) {
 
 	config := &Config{
-		HashFunc: hashtypes.MiMC,
+		HashFunc: hashtypes.Poseidon2,
 		Depth:    40,
 	}
 

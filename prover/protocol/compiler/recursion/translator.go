@@ -60,6 +60,25 @@ func (comp *compTranslator) AddColumnList(cols []ifaces.Column, fake bool, round
 	return res
 }
 
+func (comp *compTranslator) AddMerkleColumnList(cols [][8]ifaces.Column, fake bool, round int) [][8]ifaces.Column {
+
+	res := make([][8]ifaces.Column, len(cols))
+
+	for i, col := range cols {
+		for pos := 0; pos < 8; pos++ {
+
+			colRound := round
+			if colRound < 0 && col[pos] != nil {
+				colRound = col[pos].Round()
+			}
+
+			res[i][pos] = comp.AddColumnAtRound(col[pos], fake, colRound)
+		}
+	}
+
+	return res
+}
+
 // AddColumn inserts in the translator. If the column is already inserted, then the
 // function returns the already inserted column. If "fake" is true, the returned
 // column is a [FakeColumn].

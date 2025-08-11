@@ -166,14 +166,22 @@ func (v *VerifierInputs) checkStatement() (err error) {
 // an error if a proof does not pass.
 func (v *VerifierInputs) checkColumnInclusion() error {
 
-	var (
+	var mTreeHashConfig *smt.Config
+
+	if v.Params.MerkleHasher == nil {
+		mTreeHashConfig = &smt.Config{
+			HashFunc: nil,
+			Depth:    utils.Log2Ceil(v.Params.NumEncodedCols()),
+		}
+	} else {
 		mTreeHashConfig = &smt.Config{
 			HashFunc: func() hashtypes.Hasher {
 				return hashtypes.Hasher{Hash: v.Params.MerkleHasher()}
 			},
 			Depth: utils.Log2Ceil(v.Params.NumEncodedCols()),
 		}
-	)
+
+	}
 
 	for i := 0; i < len(v.MerkleRoots); i++ {
 		for j := 0; j < len(v.EntryList); j++ {

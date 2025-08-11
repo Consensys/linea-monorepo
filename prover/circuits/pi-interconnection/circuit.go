@@ -25,7 +25,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"

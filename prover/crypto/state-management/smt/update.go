@@ -23,6 +23,7 @@ func (t *Tree) Update(pos int, newVal types.Bytes32) {
 		if idx&1 == 1 {
 			left, right = right, left
 		}
+
 		current = hashLR(t.Config, left, right)
 		idx >>= 1
 	}

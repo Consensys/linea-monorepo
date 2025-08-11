@@ -30,13 +30,14 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 		noSisRoots = []types.Bytes32{}
 		sisRoots   = []types.Bytes32{}
 	)
-
+	fmt.Printf("Verify vortex \n")
 	// Append the precomputed roots and the corresponding flag
 	if ctx.IsNonEmptyPrecomputed() {
-		precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID()) // len 1 smart vector
+
 		var precompRootF [8]field.Element
 		for j := 0; j < 8; j++ {
-			precompRootF[j] = precompRootSv.Get(j)
+			precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot[j].GetColID())
+			precompRootF[j] = precompRootSv.Get(0)
 		}
 
 		if ctx.IsSISAppliedToPrecomputed() {
@@ -48,10 +49,11 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 	// Collect all the roots: rounds by rounds
 	// and append them to the sis or no sis roots
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		rootSv := vr.GetColumn(ctx.Items.MerkleRoots[round].GetColID()) // len 1 smart vector
+
 		var rootF [8]field.Element
 		for j := 0; j < 8; j++ {
-			rootF[j] = rootSv.Get(j)
+			rootSv := vr.GetColumn(ctx.Items.MerkleRoots[round][j].GetColID())
+			rootF[j] = rootSv.Get(0)
 		}
 
 		// Append the isSISApplied flag
@@ -78,7 +80,8 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 	proof.Columns = ctx.RecoverSelectedColumns(vr, entryList)
 	x := vr.GetUnivariateParams(ctx.Query.QueryID).ExtX
 
-	packedMProofs := vr.GetColumn(ctx.MerkleProofName())
+	packedMProofs := vr.GetColumn(ctx.MerkleProofName()) //TODO@yao: get the whole root
+	fmt.Printf("the packed Merkle proofs = %v\n", packedMProofs.Pretty())
 	proof.MerkleProofs = ctx.unpackMerkleProofs(packedMProofs, entryList)
 
 	return vortex.VerifyOpening(&vortex.VerifierInputs{
@@ -100,6 +103,7 @@ func (ctx *Ctx) getNbCommittedRows(round int) int {
 
 // returns the Ys as a vector
 func (ctx *Ctx) getYs(vr wizard.Runtime) (ys [][]fext.Element) {
+	fmt.Printf("Verify vortex \n")
 
 	var (
 		query   = ctx.Query

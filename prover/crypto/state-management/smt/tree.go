@@ -5,7 +5,6 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -59,14 +58,12 @@ func hashLR(config *Config, nodeL, nodeR types.Bytes32) types.Bytes32 {
 		hasher := config.HashFunc()
 		nodeL.WriteTo(hasher)
 		nodeR.WriteTo(hasher)
+
 		d = types.AsBytes32(hasher.Sum(nil))
 	} else {
-		knodeL := types.Bytes32ToHash(nodeL)
-		knodeR := types.Bytes32ToHash(nodeR)
-		var toHash [16]field.Element
-		copy(toHash[:], knodeL[:])
-		copy(toHash[8:], knodeR[:])
-		h := vortex.HashPoseidon2(toHash[:])
+		leafL := vortex.Hash(types.Bytes32ToHash(nodeL))
+		leafR := vortex.Hash(types.Bytes32ToHash(nodeR))
+		h := vortex.CompressPoseidon2(leafL, leafR)
 		d = types.HashToBytes32(h)
 	}
 	return d
@@ -83,7 +80,6 @@ func NewEmptyTree(conf *Config) *Tree {
 		emptyNodes[i] = newNode
 		prevNode = newNode
 	}
-
 	// Stores the initial root separately
 	root := hashLR(conf, prevNode, prevNode)
 
@@ -280,14 +276,13 @@ func (t *Tree) reserveLevel(level, newSize int) {
 func BuildComplete(leaves []types.Bytes32, hashFunc func() hashtypes.Hasher) *Tree {
 
 	numLeaves := len(leaves)
-
 	// TODO handle panic
 	if !utils.IsPowerOfTwo(numLeaves) || numLeaves == 0 {
 		utils.Panic("expected power of two number of leaves, got %v", numLeaves)
 	}
 
 	depth := utils.Log2Ceil(numLeaves)
-	config := &Config{HashFunc: hashFunc, Depth: depth} // TODO no pointer
+	config := &Config{HashFunc: hashFunc, Depth: depth} // TODO@yao: default setting, no pointer
 
 	tree := NewEmptyTree(config)
 	tree.OccupiedLeaves = leaves
@@ -297,6 +292,7 @@ func BuildComplete(leaves []types.Bytes32, hashFunc func() hashtypes.Hasher) *Tr
 		nextLevel := make([]types.Bytes32, len(currLevels)/2)
 		parallel.Execute(len(nextLevel), func(start, stop int) {
 			for k := start; k < stop; k++ {
+
 				nextLevel[k] = hashLR(config, currLevels[2*k], currLevels[2*k+1])
 			}
 		})

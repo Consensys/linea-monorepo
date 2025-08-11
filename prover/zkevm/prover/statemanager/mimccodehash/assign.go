@@ -1,7 +1,7 @@
 package mimccodehash
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -109,7 +109,7 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 		}
 
 		builder.prevState = append(builder.prevState, field.Zero())
-		builder.newState = append(builder.newState, mimc.BlockCompression(builder.prevState[0], builder.limb[0]))
+		builder.newState = append(builder.newState, poseidon2.BlockCompression(builder.prevState[0], builder.limb[0]))
 
 		// Assign other rows of the remaining columns
 		for i := 1; i < len(builder.cfi); i++ {
@@ -150,7 +150,7 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 				builder.isNewHash = append(builder.isNewHash, field.One())
 				builder.isHashEnd = append(builder.isHashEnd, field.Zero())
 				builder.prevState = append(builder.prevState, field.Zero())
-				builder.newState = append(builder.newState, mimc.BlockCompression(builder.prevState[i], builder.limb[i]))
+				builder.newState = append(builder.newState, poseidon2.BlockCompression(builder.prevState[i], builder.limb[i]))
 				continue
 			}
 
@@ -159,7 +159,7 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 				builder.isNewHash = append(builder.isNewHash, field.Zero())
 				builder.isHashEnd = append(builder.isHashEnd, field.Zero())
 				builder.prevState = append(builder.prevState, builder.newState[i-1])
-				builder.newState = append(builder.newState, mimc.BlockCompression(builder.prevState[i], builder.limb[i]))
+				builder.newState = append(builder.newState, poseidon2.BlockCompression(builder.prevState[i], builder.limb[i]))
 				continue
 			}
 
@@ -168,7 +168,7 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 				builder.isNewHash = append(builder.isNewHash, field.Zero())
 				builder.isHashEnd = append(builder.isHashEnd, field.One())
 				builder.prevState = append(builder.prevState, builder.newState[i-1])
-				builder.newState = append(builder.newState, mimc.BlockCompression(builder.prevState[i], builder.limb[i]))
+				builder.newState = append(builder.newState, poseidon2.BlockCompression(builder.prevState[i], builder.limb[i]))
 				continue
 			}
 
@@ -177,7 +177,7 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 				builder.isNewHash = append(builder.isNewHash, field.One())
 				builder.isHashEnd = append(builder.isHashEnd, field.One())
 				builder.prevState = append(builder.prevState, field.Zero())
-				builder.newState = append(builder.newState, mimc.BlockCompression(builder.prevState[i], builder.limb[i]))
+				builder.newState = append(builder.newState, poseidon2.BlockCompression(builder.prevState[i], builder.limb[i]))
 				continue
 			}
 		}
@@ -230,7 +230,7 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 	run.AssignColumn(mh.IsForConsistency.GetColID(), smartvectors.RightZeroPadded(builder.isNonEmptyKeccak, mh.inputs.Size))
 
 	// Assignment of new state with the zero hash padding
-	newStatePad := mimc.BlockCompression(field.Zero(), field.Zero())
+	newStatePad := poseidon2.BlockCompression(field.Zero(), field.Zero())
 	run.AssignColumn(mh.NewState.GetColID(), smartvectors.RightPadded(builder.newState, newStatePad, mh.inputs.Size))
 
 	mh.CptIsEmptyKeccakHi.Run(run)

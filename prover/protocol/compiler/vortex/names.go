@@ -66,8 +66,8 @@ func (ctx *Ctx) MerkleProofName() ifaces.ColID {
 }
 
 // returns the name of the vector containing all the Merkle proofs
-func (ctx *Ctx) MerkleRootName(round int) ifaces.ColID {
-	return ifaces.ColIDf("VORTEX_%v_MERKLEROOT_%v", ctx.SelfRecursionCount, round-ctx.startingRound())
+func (ctx *Ctx) MerkleRootName(round int, pos int) ifaces.ColID {
+	return ifaces.ColIDf("VORTEX_%v_MERKLEROOT_%vPOS_%v", ctx.SelfRecursionCount, round-ctx.startingRound(), pos)
 }
 
 // returns the name of the precomputed commitment when Merkle is not applied
@@ -81,6 +81,6 @@ func (ctx *Ctx) PrecomputedSisDigestNameWithMerkle() ifaces.ColID {
 }
 
 // returns the name of the precomputed Merkle root when Merkle is applied
-func (ctx *Ctx) PrecomputedMerkleRootName() ifaces.ColID {
-	return ifaces.ColIDf("VORTEX_PRECOMPUTED_MERKLE_ROOT_%d", ctx.SelfRecursionCount)
+func (ctx *Ctx) PrecomputedMerkleRootName(pos int) ifaces.ColID {
+	return ifaces.ColIDf("VORTEX_PRECOMPUTED_MERKLE_ROOT_%d_%d", ctx.SelfRecursionCount, pos)
 }

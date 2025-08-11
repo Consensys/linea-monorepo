@@ -9,7 +9,7 @@ import (
 	cs "github.com/consensys/gnark/constraint/koalabear"
 	"github.com/consensys/gnark/constraint/solver"
 	fcs "github.com/consensys/gnark/frontend/cs"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -52,7 +52,7 @@ type (
 func (pa initialBBSProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []witness.Witness) {
 
 	if pa.ExternalHasherOption.Enabled {
-		solver.RegisterHint(mimc.MimcHintfunc)
+		solver.RegisterHint(poseidon2.MimcHintfunc)
 	}
 
 	var (

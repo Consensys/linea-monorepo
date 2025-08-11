@@ -13,8 +13,8 @@ import (
 	snarkMiMC "github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/math/emulated"
 	public_input "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/public-input"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2/gkrmimc"
 
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
 )
@@ -210,7 +210,7 @@ func mimcHashAnyGnark(
 }
 
 func mimcHashAny(fs ...any) fr377.Element {
-	h := mimc.NewMiMC()
+	h := poseidon2.NewPoseidon2()
 	for i := range fs {
 		switch f := fs[i].(type) {
 		case fr377.Element:
@@ -242,7 +242,7 @@ func mimcHashAny(fs ...any) fr377.Element {
 }
 
 func mimcHash(fs ...fr377.Element) fr377.Element {
-	h := mimc.NewMiMC()
+	h := poseidon2.NewPoseidon2()
 	for i := range fs {
 		buf := fs[i].Bytes()
 		h.Write(buf[:])

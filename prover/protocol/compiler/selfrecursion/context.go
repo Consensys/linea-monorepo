@@ -99,10 +99,10 @@ type SelfRecursionCtx struct {
 		//
 		// Round-by-rounds commitments root hashes. Since some rounds
 		// may be dried some of the RoundDigest can be `nil`
-		Rooth []ifaces.Column
+		Rooth [][8]ifaces.Column
 
 		// Precomputed roots
-		precompRoot ifaces.Column
+		precompRoot [8]ifaces.Column
 
 		// (Verifier column)
 		//
@@ -233,18 +233,20 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 	// Asserts all the roots have the status proof.
 	for _, rooth := range ctx.Columns.Rooth {
 
-		if rooth == nil {
+		if rooth[0] == nil {
 			// Skip it, it is a dry round
 			continue
 		}
 
 		// Assume that the rounds commitments have a `Proof` status
-		if comp.Columns.Status(rooth.GetColID()) != column.Proof {
-			utils.Panic(
-				"Assumed the rootH to be %v but status is %v",
-				column.Proof.String(),
-				comp.Columns.Status(rooth.GetColID()),
-			)
+		for pos := 0; pos < 8; pos++ {
+			if comp.Columns.Status(rooth[pos].GetColID()) != column.Proof {
+				utils.Panic(
+					"Assumed the rootH to be %v but status is %v",
+					column.Proof.String(),
+					comp.Columns.Status(rooth[pos].GetColID()),
+				)
+			}
 		}
 	}
 

@@ -1,7 +1,7 @@
 package statesummary
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
@@ -191,6 +191,6 @@ func (sh *storagePeekAssignmentBuilder) padAssign(run *wizard.ProverRuntime) {
 // storage slots.
 func hashOfZeroStorage() field.Element {
 	res := field.Zero()
-	res = mimc.BlockCompression(res, field.Zero())
-	return mimc.BlockCompression(res, field.Zero())
+	res = poseidon2.BlockCompression(res, field.Zero())
+	return poseidon2.BlockCompression(res, field.Zero())
 }

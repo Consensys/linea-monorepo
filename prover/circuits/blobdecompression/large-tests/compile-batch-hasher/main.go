@@ -6,7 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/profile"
 	v1 "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2/gkrmimc"
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 )
 

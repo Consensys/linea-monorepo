@@ -29,14 +29,18 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr wizard.GnarkRuntime) {
 
 	// Append the precomputed roots when IsCommitToPrecomputed is true
 	if ctx.IsNonEmptyPrecomputed() {
-		precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID()) // len 1 smart vector
-		roots = append(roots, precompRootSv[0])
+		for pos := 0; pos < 8; pos++ {
+			precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot[pos].GetColID()) // len 1 smart vector
+			roots = append(roots, precompRootSv[0])
+		}
 	}
 
 	// Collect all the commitments : rounds by rounds
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		rootSv := vr.GetColumn(ctx.MerkleRootName(round)) // len 1 smart vector
-		roots = append(roots, rootSv[0])
+		for pos := 0; pos < 8; pos++ {
+			rootSv := vr.GetColumn(ctx.MerkleRootName(round, pos))
+			roots = append(roots, rootSv[0])
+		}
 	}
 
 	randomCoin := vr.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())

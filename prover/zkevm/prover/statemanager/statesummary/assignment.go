@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
@@ -379,7 +379,7 @@ func getOldAndNewAccount(trace any) (old, new types.Account) {
 func getOldAndNewTopRoot(trace any) (old, new types.Bytes32) {
 
 	getTopRoot := func(subRoot types.Bytes32, nextFreeNode int64) types.Bytes32 {
-		hasher := mimc.NewMiMC()
+		hasher := poseidon2.NewPoseidon2()
 		types.WriteInt64On32Bytes(hasher, nextFreeNode)
 		subRoot.WriteTo(hasher)
 		b32 := hasher.Sum(nil)
@@ -441,7 +441,7 @@ func getOldAndNewTopRoot(trace any) (old, new types.Bytes32) {
 }
 
 func hash(x io.WriterTo) types.Bytes32 {
-	hasher := mimc.NewMiMC()
+	hasher := poseidon2.NewPoseidon2()
 	x.WriteTo(hasher)
 	return types.AsBytes32(hasher.Sum(nil))
 }

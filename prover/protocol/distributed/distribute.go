@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	cmimc "github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	cmimc "github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
@@ -171,7 +171,7 @@ func (dist *DistributedWizard) Conglomerate(maxNumSegment int) *DistributedWizar
 // The result of this function is to be used as the shared randomness for
 // the LPP provers.
 func GetSharedRandomness(lppCommitments []field.Element) field.Element {
-	return cmimc.HashVec(lppCommitments)
+	return cmimc.Poseidon2HashVec(lppCommitments)
 }
 
 // GetSharedRandomnessFromRuntime returns the shared randomness used by the protocol

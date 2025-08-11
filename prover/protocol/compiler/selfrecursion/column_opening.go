@@ -5,7 +5,7 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -162,10 +162,13 @@ type linearHashMerkleProverAction struct {
 func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 	openingIndices := run.GetRandomCoinIntegerVec(a.ctx.Coins.Q.Name)
 	concatDhQ := make([]field.Element, a.leavesSizeUnpadded*a.ctx.VortexCtx.SisParams.OutputSize())
-	linearLeaves := make([]field.Element, a.leavesSizeUnpadded)
-	merkleLeaves := make([]field.Element, a.leavesSizeUnpadded)
-	merklePositions := make([]field.Element, a.leavesSizeUnpadded)
-	merkleRoots := make([]field.Element, a.leavesSizeUnpadded)
+	linearLeaves := make([][8]field.Element, a.leavesSizeUnpadded)
+	merkleLeaves := make([][8]field.Element, a.leavesSizeUnpadded)
+	merkleLeavesSlice := make([]field.Element, a.leavesSizeUnpadded*8)
+
+	merklePositions := make([]field.Element, a.leavesSizeUnpadded) // TODO@yao: what is leavesSizeUnpadded?
+	merkleRoots := make([][8]field.Element, a.leavesSizeUnpadded)
+	merkleRootsSlice := make([]field.Element, a.leavesSizeUnpadded*8)
 
 	hashSize := a.ctx.VortexCtx.SisParams.OutputSize()
 	numOpenedCol := a.ctx.VortexCtx.NbColsToOpen()
@@ -174,15 +177,17 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 	committedRound := 0
 
 	if a.ctx.VortexCtx.IsNonEmptyPrecomputed() {
-		rootPrecomp := a.ctx.Columns.precompRoot.GetColAssignment(run).Get(0)
+		var rootPrecomp [8]field.Element
+		for pos := 0; pos < 8; pos++ {
+			rootPrecomp[pos] = a.ctx.Columns.precompRoot[pos].GetColAssignment(run).Get(0)
+		}
 		precompColSisHash := a.ctx.VortexCtx.Items.Precomputeds.DhWithMerkle
-		for i, selectedCol := range openingIndices {
+		for insertAt, selectedCol := range openingIndices {
 			srcStart := selectedCol * hashSize
-			destStart := i * hashSize
+			destStart := insertAt * hashSize
 			sisHash := precompColSisHash[srcStart : srcStart+hashSize]
 			copy(concatDhQ[destStart:destStart+hashSize], sisHash)
-			leaf := mimc.HashVec(sisHash)
-			insertAt := i
+			leaf := poseidon2.Poseidon2HashVec(sisHash) // TODO@yao: check, deafult is Poseidon2
 			linearLeaves[insertAt] = leaf
 			merkleLeaves[insertAt] = leaf
 			merkleRoots[insertAt] = rootPrecomp
@@ -199,7 +204,10 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 			continue
 		}
 
-		rooth := a.ctx.Columns.Rooth[round].GetColAssignment(run).Get(0)
+		var rooth [8]field.Element
+		for pos := 0; pos < 8; pos++ {
+			rooth[pos] = a.ctx.Columns.Rooth[round][pos].GetColAssignment(run).Get(0)
+		}
 		colSisHash := colSisHashSV.([]field.Element)
 
 		for i, selectedCol := range openingIndices {
@@ -207,7 +215,7 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 			destStart := committedRound*numOpenedCol*hashSize + i*hashSize
 			sisHash := colSisHash[srcStart : srcStart+hashSize]
 			copy(concatDhQ[destStart:destStart+hashSize], sisHash)
-			leaf := mimc.HashVec(sisHash)
+			leaf := poseidon2.Poseidon2HashVec(sisHash)
 			insertAt := committedRound*numOpenedCol + i
 			linearLeaves[insertAt] = leaf
 			merkleLeaves[insertAt] = leaf
@@ -229,10 +237,14 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 	}
 
 	// Assign columns using IDs from ctx.Columns
+	for i := 0; i < a.leavesSizeUnpadded; i++ {
+		merkleLeavesSlice = append(merkleLeavesSlice, merkleLeaves[i][:]...)
+		merkleRootsSlice = append(merkleRootsSlice, merkleRoots[i][:]...)
+	}
 	run.AssignColumn(a.ctx.Columns.ConcatenatedDhQ.GetColID(), smartvectors.RightZeroPadded(concatDhQ, a.concatDhQSize))
-	run.AssignColumn(a.ctx.Columns.MerkleProofsLeaves.GetColID(), smartvectors.RightZeroPadded(merkleLeaves, a.leavesSize))
+	run.AssignColumn(a.ctx.Columns.MerkleProofsLeaves.GetColID(), smartvectors.RightZeroPadded(merkleLeavesSlice, a.leavesSize*8))
 	run.AssignColumn(a.ctx.Columns.MerkleProofPositions.GetColID(), smartvectors.RightZeroPadded(merklePositions, a.leavesSize))
-	run.AssignColumn(a.ctx.Columns.MerkleRoots.GetColID(), smartvectors.RightZeroPadded(merkleRoots, a.leavesSize))
+	run.AssignColumn(a.ctx.Columns.MerkleRoots.GetColID(), smartvectors.RightZeroPadded(merkleRootsSlice, a.leavesSize*8))
 }
 
 func (ctx *SelfRecursionCtx) linearHashAndMerkle() {

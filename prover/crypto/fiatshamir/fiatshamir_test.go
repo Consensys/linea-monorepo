@@ -35,6 +35,7 @@ func TestFiatShamirRandomVec(t *testing.T) {
 			var oldState, newState field.Element
 
 			ss := fs.Sum(nil)
+			fmt.Printf("the state = %v\n", len(ss))
 			if err := oldState.SetBytesCanonical(ss[:4]); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}

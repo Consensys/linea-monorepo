@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -671,7 +671,7 @@ func AssertShomeiAgree(t *testing.T, state State, traces [][]StateAccessLog) {
 }
 
 func mimcHash(m io.WriterTo) types.Bytes32 {
-	h := mimc.NewMiMC()
+	h := poseidon2.NewPoseidon2()
 	m.WriteTo(h)
 	d := h.Sum(nil)
 	return types.AsBytes32(d)

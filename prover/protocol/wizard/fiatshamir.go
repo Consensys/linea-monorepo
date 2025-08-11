@@ -3,6 +3,8 @@ package wizard
 import (
 	"crypto/sha256"
 	"io"
+
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // CompiledIOPSerializer is a function capable of serializing a Compiled-IOP
@@ -34,7 +36,9 @@ func (comp *CompiledIOP) BootstrapFiatShamir(vm VersionMetadata, ser CompiledIOP
 	// hasher.Write(compBlob)
 	digest := hasher.Sum(nil)
 	digest[0] = 0 // This is to prevent potential errors due to overflowing the field
-	comp.FiatShamirSetup.SetBytes(digest)
+	var digestBytes32 types.Bytes32
+	copy(digestBytes32[:], digest)
+	comp.FiatShamirSetup = types.Bytes32ToHash(digestBytes32)
 
 	return comp
 }

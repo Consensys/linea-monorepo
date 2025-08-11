@@ -55,7 +55,7 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 		}
 		leaves[i] = types.HashToBytes32(x)
 	}
-	tree := smt.BuildComplete(leaves, hashtypes.MiMC)
+	tree := smt.BuildComplete(leaves, hashtypes.Poseidon2)
 	root := tree.Root
 	if !isReuse {
 		for i := 0; i < numProofs; i++ {

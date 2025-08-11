@@ -3,8 +3,8 @@ package recursion
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -34,7 +34,7 @@ type RecursionCircuit struct {
 	withoutGkr         bool                 `gnark:"-"`
 	withExternalHasher bool                 `gnark:"-"`
 	PolyQuery          query.UnivariateEval `gnark:"-"`
-	MerkleRoots        []ifaces.Column      `gnark:"-"`
+	MerkleRoots        [][8]ifaces.Column   `gnark:"-"`
 }
 
 // AllocRecursionCircuit allocates a new RecursionCircuit with the
@@ -45,15 +45,15 @@ func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExtern
 		pcsCtx      = comp.PcsCtxs.(*vortex.Ctx)
 		polyQuery   = pcsCtx.Query
 		numRound    = comp.QueriesParams.Round(polyQuery.QueryID) + 1
-		merkleRoots = []ifaces.Column{}
+		merkleRoots = [][8]ifaces.Column{}
 	)
 
-	if pcsCtx.Items.Precomputeds.MerkleRoot != nil {
+	if pcsCtx.Items.Precomputeds.MerkleRoot[0] != nil {
 		merkleRoots = append(merkleRoots, pcsCtx.Items.Precomputeds.MerkleRoot)
 	}
 
 	for i := range pcsCtx.Items.MerkleRoots {
-		if pcsCtx.Items.MerkleRoots[i] != nil {
+		if pcsCtx.Items.MerkleRoots[i][0] != nil {
 			merkleRoots = append(merkleRoots, pcsCtx.Items.MerkleRoots[i])
 		}
 	}
@@ -65,7 +65,7 @@ func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExtern
 		MerkleRoots:        merkleRoots,
 		WizardVerifier:     wizard.AllocateWizardCircuit(comp, numRound),
 		Pubs:               make([]frontend.Variable, len(comp.PublicInputs)),
-		Commitments:        make([]frontend.Variable, len(merkleRoots)),
+		Commitments:        make([]frontend.Variable, len(merkleRoots)*8),
 		Ys:                 make([]gnarkfext.Element, len(polyQuery.Pols)),
 	}
 }
@@ -82,7 +82,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	}
 
 	if r.withExternalHasher {
-		w.HasherFactory = &mimc.ExternalHasherFactory{Api: api} // TODO: fix in crypto/mimc/factories.go
+		w.HasherFactory = &poseidon2.ExternalHasherFactory{Api: api} // TODO: fix in crypto/mimc/factories.go
 	}
 
 	w.Verify(api)
@@ -100,7 +100,9 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	}
 
 	for i := range r.Commitments {
-		api.AssertIsEqual(r.Commitments[i], r.MerkleRoots[i].GetColAssignmentGnarkAt(w, 0))
+		for pos := 0; pos < 8; pos++ {
+			api.AssertIsEqual(r.Commitments[i*8+pos], r.MerkleRoots[i][pos].GetColAssignmentGnarkAt(w, 0))
+		}
 	}
 
 	return nil
@@ -125,17 +127,21 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 		}
 	)
 
-	if pcsCtx.Items.Precomputeds.MerkleRoot != nil {
+	if pcsCtx.Items.Precomputeds.MerkleRoot[0] != nil {
 		mRoot := pcsCtx.Items.Precomputeds.MerkleRoot
 		circuit.MerkleRoots = append(circuit.MerkleRoots, mRoot)
-		circuit.Commitments = append(circuit.Commitments, mRoot.GetColAssignmentGnarkAt(circuit.WizardVerifier, 0))
+		for pos := 0; pos < 8; pos++ {
+			circuit.Commitments = append(circuit.Commitments, mRoot[pos].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0))
+		}
 	}
 
 	for i := range pcsCtx.Items.MerkleRoots {
-		if pcsCtx.Items.MerkleRoots[i] != nil {
+		if pcsCtx.Items.MerkleRoots[i][0] != nil {
 			mRoot := pcsCtx.Items.MerkleRoots[i]
 			circuit.MerkleRoots = append(circuit.MerkleRoots, mRoot)
-			circuit.Commitments = append(circuit.Commitments, mRoot.GetColAssignmentGnarkAt(circuit.WizardVerifier, 0))
+			for pos := 0; pos < 8; pos++ {
+				circuit.Commitments = append(circuit.Commitments, mRoot[pos].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0))
+			}
 		}
 	}
 
@@ -148,7 +154,7 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 // x,y in fext,
 // mRoot in [8]Base
 
-// TODO@yao check the type, x, ys in fext, mRoots in [8]field?
+// TODO@yao check the type, x, ys in fext, mRoots should be in [][8]field?
 // they are all from allPubs, if they share different data types, what type does allPubs have
 func SplitPublicInputs(r *Recursion, allPubs []field.Element) (x fext.Element, ys []fext.Element, mRoots, pubs []field.Element) {
 
@@ -160,12 +166,12 @@ func SplitPublicInputs(r *Recursion, allPubs []field.Element) (x fext.Element, y
 		allPubDrain = allPubs
 	)
 
-	if pcsCtx.Items.Precomputeds.MerkleRoot != nil {
+	if pcsCtx.Items.Precomputeds.MerkleRoot[0] != nil {
 		numMRoots++
 	}
 
 	for i := range pcsCtx.Items.MerkleRoots {
-		if pcsCtx.Items.MerkleRoots[i] != nil {
+		if pcsCtx.Items.MerkleRoots[i][0] != nil {
 			numMRoots++
 		}
 	}
@@ -201,12 +207,12 @@ func SplitPublicInputsGnark(r *Recursion, allPubs []frontend.Variable) (x gnarkf
 		allPubDrain = allPubs
 	)
 
-	if pcsCtx.Items.Precomputeds.MerkleRoot != nil {
+	if pcsCtx.Items.Precomputeds.MerkleRoot[0] != nil {
 		numMRoots++
 	}
 
 	for i := range pcsCtx.Items.MerkleRoots {
-		if pcsCtx.Items.MerkleRoots[i] != nil {
+		if pcsCtx.Items.MerkleRoots[i][0] != nil {
 			numMRoots++
 		}
 	}

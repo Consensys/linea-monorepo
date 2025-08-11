@@ -18,15 +18,15 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 	rootHashesClean := []ifaces.Column{}
 	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		precompRoots := ctx.Columns.precompRoot
-		if precompRoots == nil {
+		if precompRoots[0] == nil {
 			utils.Panic("Precomputed root should not be nil! That's because, we are in commit to precomputed mode.")
 		}
-		rootHashesClean = append(rootHashesClean, precompRoots)
+		rootHashesClean = append(rootHashesClean, precompRoots[:]...)
 	}
 
 	for _, rh := range ctx.Columns.Rooth {
-		if rh != nil {
-			rootHashesClean = append(rootHashesClean, rh)
+		if rh[0] != nil {
+			rootHashesClean = append(rootHashesClean, rh[:]...)
 		}
 	}
 
@@ -36,11 +36,11 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 		numCommittedRound += 1
 	}
 
-	if len(rootHashesClean) != numCommittedRound {
+	if len(rootHashesClean) != numCommittedRound*8 {
 		utils.Panic(
 			"unexpected %v != %v",
 			len(rootHashesClean),
-			numCommittedRound,
+			numCommittedRound*8,
 		)
 	}
 

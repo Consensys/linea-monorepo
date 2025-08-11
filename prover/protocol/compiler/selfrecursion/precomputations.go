@@ -61,7 +61,7 @@ func (ctx *SelfRecursionCtx) registersAh() {
 
 		// Sanity-check : if coms in precomputeds have length zero then the
 		// associated Dh should be nil
-		if (numPrecomputeds == 0) != (ctx.Columns.precompRoot == nil) {
+		if (numPrecomputeds == 0) != (ctx.Columns.precompRoot[0] == nil) {
 			panic("nilness mismatch for precomputeds")
 		}
 
@@ -94,8 +94,8 @@ func (ctx *SelfRecursionCtx) registersAh() {
 		// Sanity-check : if coms in rounds has length zero then the
 		// associated Dh should be nil. That happens when the examinated round
 		// is a "dry" round or when it has been self-recursed already.
-		if (len(comsInRoundsI) == 0) != (ctx.Columns.Rooth[i] == nil) {
-			utils.Panic("nilness mismatch for round=%v #coms-in-round=%v vs root-is-nil=%v", i, len(comsInRoundsI), ctx.Columns.Rooth[i] == nil)
+		if (len(comsInRoundsI) == 0) != (ctx.Columns.Rooth[i][0] == nil) {
+			utils.Panic("nilness mismatch for round=%v #coms-in-round=%v vs root-is-nil=%v", i, len(comsInRoundsI), ctx.Columns.Rooth[i][0] == nil)
 		}
 
 		// Check if there is no rows to commit
@@ -133,7 +133,8 @@ func (ctx *SelfRecursionCtx) registersAh() {
 	}
 
 	for len(ctx.Columns.Rooth) < len(ctx.Columns.Ah) {
-		ctx.Columns.Rooth = append(ctx.Columns.Rooth, nil)
+		//TODO@yao:check
+		ctx.Columns.Rooth[len(ctx.Columns.Rooth)][0] = nil
 	}
 
 	// And normally, they have the same length now

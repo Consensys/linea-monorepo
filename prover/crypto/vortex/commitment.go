@@ -12,6 +12,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
+const (
+	blockSize = 8
+)
+
 // EncodedMatrix represents the witness of a Vortex matrix commitment, it is
 // represented as an array of rows.
 type EncodedMatrix []smartvectors.SmartVector
@@ -33,20 +37,26 @@ func (p *Params) Commit(ps []smartvectors.SmartVector) (encodedMatrix EncodedMat
 	for i := 0; i < nbColumns; i++ {
 		leaves[i] = p.computeLeaf(colHashes[i*sizeChunk : (i+1)*sizeChunk])
 	}
-
-	tree = smt.BuildComplete(
-		leaves,
-		func() hashtypes.Hasher {
-			return hashtypes.Hasher{Hash: p.MerkleHasher()}
-		},
-	)
+	if p.MerkleHasher != nil {
+		tree = smt.BuildComplete(
+			leaves,
+			func() hashtypes.Hasher {
+				return hashtypes.Hasher{Hash: p.MerkleHasher()}
+			},
+		)
+	} else {
+		tree = smt.BuildComplete(
+			leaves,
+			nil, // use poseidon2 by default
+		)
+	}
 
 	return encodedMatrix, tree, colHashes
 }
 
 func (p *Params) computeLeaf(leaf []field.Element) types.Bytes32 {
-
 	var res types.Bytes32
+
 	if p.MerkleHasher == nil { // by default, we use poseidon2
 		h := vortex.HashPoseidon2(leaf)
 		res = types.HashToBytes32(h)
@@ -55,8 +65,15 @@ func (p *Params) computeLeaf(leaf []field.Element) types.Bytes32 {
 		merkleHasher := p.MerkleHasher()
 
 		merkleHasher.Reset()
-		for j := 0; j < len(leaf); j++ {
-			merkleHasher.Write(leaf[j].Marshal())
+		for j := 0; j < len(leaf); j += blockSize {
+			end := j + blockSize
+			if end >= len(leaf) {
+				end = len(leaf)
+			}
+			var leafBlock [blockSize]field.Element
+			copy(leafBlock[:], leaf[j:end])
+			leafBytes := types.HashToBytes32(leafBlock)
+			merkleHasher.Write(leafBytes[:]) // write every 32 bytes into hasher
 		}
 		h := merkleHasher.Sum(nil)
 		copy(res[:], h)
@@ -70,8 +87,17 @@ func (p *Params) hashColumn(column []field.Element) []field.Element {
 		hasher := p.ColumnHasher()
 		res = make([]field.Element, 8)
 		hasher.Reset()
-		for k := 0; k < len(column); k++ {
-			hasher.Write(column[k].Marshal())
+		for k := 0; k < len(column); k += blockSize {
+			end := k + blockSize
+			if end >= len(column) {
+				end = len(column)
+			}
+
+			var columnBlock [blockSize]field.Element
+			copy(columnBlock[:], column[k:end])
+			columnBytes := types.HashToBytes32(columnBlock)
+			hasher.Write(columnBytes[:]) // write every 32 bytes into hasher
+
 		}
 		h := hasher.Sum(nil)
 		for j := 0; j < 8; j++ {

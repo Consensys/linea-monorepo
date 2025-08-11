@@ -3,7 +3,7 @@ package hashtypes
 import (
 	"hash"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/mimc"
+	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -37,12 +37,14 @@ func Keccak() Hasher {
 	}
 }
 
-// Create a new MiMC hasher
-func MiMC() Hasher {
+// Create a new Poseidon2 hasher
+func Poseidon2() Hasher {
 	var maxVal [8]field.Element
-	maxVal[7] = field.NewFromString("-1")
+	for i := range maxVal {
+		maxVal[i] = field.NewFromString("-1")
+	}
 	return Hasher{
-		Hash:     mimc.NewMiMC(),
-		maxValue: HashToBytes32(maxVal), // TODO@yao: what's the maxValue of MiMC hasher
+		Hash:     poseidon2.NewMerkleDamgardHasher(),
+		maxValue: HashToBytes32(maxVal),
 	}
 }

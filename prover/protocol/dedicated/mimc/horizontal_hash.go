@@ -1,7 +1,7 @@
 package mimc
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -94,7 +94,7 @@ func (ctx *HashingCtx) Run(run *wizard.ProverRuntime) {
 
 		for i := range interm {
 			for k := start; k < stop; k++ {
-				interm[i][k] = mimc.BlockCompression(prevState[k-start], inputs[i].Get(k))
+				interm[i][k] = poseidon2.BlockCompression(prevState[k-start], inputs[i].Get(k))
 			}
 			prevState = interm[i][start:stop]
 		}

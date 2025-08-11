@@ -1,7 +1,7 @@
 package logs
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -87,11 +87,11 @@ func AssignHasher(run *wizard.ProverRuntime, hasher LogHasher, fetched Extracted
 	state := field.Zero() // the initial state is zero
 	for i := 0; i < len(hashFirst); i++ {
 		// first, hash the HI part of the fetched log message
-		state = mimc.BlockCompression(state, fetched.Hi.GetColAssignmentAt(run, i))
+		state = poseidon2.BlockCompression(state, fetched.Hi.GetColAssignmentAt(run, i))
 		hashFirst[i].Set(&state)
 
 		// secondly, hash the Lo part of the fetched log message
-		state = mimc.BlockCompression(state, fetched.Lo.GetColAssignmentAt(run, i))
+		state = poseidon2.BlockCompression(state, fetched.Lo.GetColAssignmentAt(run, i))
 		hashSecond[i].Set(&state)
 
 		// the data in hashSecond is used to initialize the next initial state, stored in the inter column

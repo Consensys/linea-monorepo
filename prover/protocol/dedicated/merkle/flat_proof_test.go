@@ -15,7 +15,7 @@ import (
 
 const (
 	merkleTestDepth  = 16
-	merkleTestNumRow = 16
+	merkleTestNumRow = 32
 )
 
 // testcases is a list of test-cases scenarios for the merkle tree
@@ -50,7 +50,9 @@ func TestMerkleTreeFlat(t *testing.T) {
 			var (
 				tr   = &merkleTestRunnerFlat{}
 				comp = wizard.Compile(tr.Define, dummy.CompileAtProverLvl())
-				_    = wizard.Prove(comp, func(run *wizard.ProverRuntime) { tr.Assign(run, tree) })
+				_    = wizard.Prove(comp, func(run *wizard.ProverRuntime) {
+					tr.Assign(run, tree)
+				})
 			)
 
 		})
@@ -135,7 +137,7 @@ type merkleTestBuilderRow struct {
 
 func newMerkleTestBuilder(depth int) *merkleTestBuilder {
 	return &merkleTestBuilder{
-		tree: *smt.BuildComplete(make([]types.Bytes32, 1<<depth), hashtypes.MiMC),
+		tree: *smt.BuildComplete(make([]types.Bytes32, 1<<depth), hashtypes.Poseidon2),
 	}
 }
 
@@ -184,8 +186,10 @@ func (mt *merkleTestBuilder) pushRow(row merkleTestBuilderRow) {
 	mt.counter = append(mt.counter, field.NewElement(uint64(len(mt.counter))))
 	mt.proofs = append(mt.proofs, row.proof)
 	mt.pos = append(mt.pos, field.NewElement(uint64(row.pos)))
-	mt.leaves = append(mt.leaves, types.Bytes32ToHash(row.leaf)...)
-	mt.roots = append(mt.roots, types.Bytes32ToHash(row.root)...)
+	leaf := types.Bytes32ToHash(row.leaf)
+	root := types.Bytes32ToHash(row.root)
+	mt.leaves = append(mt.leaves, leaf[:]...)
+	mt.roots = append(mt.roots, root[:]...)
 	mt.useNextMerkleProof = append(mt.useNextMerkleProof, field.FromBool(row.useNextMerkleProof))
 	mt.isActive = append(mt.isActive, field.One())
 }

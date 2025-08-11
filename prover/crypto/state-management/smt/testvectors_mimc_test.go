@@ -12,7 +12,7 @@ import (
 // Root hash of the empty tree
 func TestEmptyRootHashMiMC(t *testing.T) {
 	config := &smt.Config{
-		HashFunc: hashtypes.MiMC,
+		HashFunc: hashtypes.Poseidon2,
 		Depth:    40,
 	}
 
@@ -30,7 +30,7 @@ func TestEmptyRootHashMiMC(t *testing.T) {
 func TestOneLeafRootHashMiMC(t *testing.T) {
 
 	config := &smt.Config{
-		HashFunc: hashtypes.MiMC,
+		HashFunc: hashtypes.Poseidon2,
 		Depth:    40,
 	}
 
@@ -52,7 +52,7 @@ func TestOneLeafRootHashMiMC(t *testing.T) {
 func TestDefaultMerkleProofMiMC(t *testing.T) {
 
 	config := &smt.Config{
-		HashFunc: hashtypes.MiMC,
+		HashFunc: hashtypes.Poseidon2,
 		Depth:    40,
 	}
 
@@ -69,7 +69,7 @@ func TestDefaultMerkleProofMiMC(t *testing.T) {
 func TestMerkleProofAfterUpdateMiMC(t *testing.T) {
 
 	config := &smt.Config{
-		HashFunc: hashtypes.MiMC,
+		HashFunc: hashtypes.Poseidon2,
 		Depth:    40,
 	}
 

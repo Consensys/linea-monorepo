@@ -64,9 +64,9 @@ func NewParams(
 		utils.Panic("The number of columns has to be a power of two, got %v", nbColumns)
 	}
 
-	if merkleHashFunc == nil {
-		utils.Panic("`nil` merkle hash function provided")
-	}
+	// if merkleHashFunc == nil {
+	// 	utils.Panic("`nil` merkle hash function provided")
+	// }
 
 	if maxNbRows < 1 {
 		utils.Panic("The number of rows per matrix cannot be zero of negative: %v", maxNbRows)

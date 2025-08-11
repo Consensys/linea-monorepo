@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
@@ -510,7 +510,7 @@ func (a *SetInitialFSHash) IsSkipped() bool {
 // (pass x=0, to compute the hash of the N0s and x=1 for the N1s).
 func hashNxs(params query.HornerParams, x int) field.Element {
 
-	hsh := mimc.NewMiMC()
+	hsh := poseidon2.NewPoseidon2()
 
 	for _, part := range params.Parts {
 
@@ -535,7 +535,7 @@ func hashNxs(params query.HornerParams, x int) field.Element {
 }
 
 // hashNxsGnark is as [hashNxs] but in a gnark circuit
-func hashNxsGnark(factory mimc.HasherFactory, params query.GnarkHornerParams, x int) frontend.Variable {
+func hashNxsGnark(factory poseidon2.HasherFactory, params query.GnarkHornerParams, x int) frontend.Variable {
 
 	hsh := factory.NewHasher()
 
