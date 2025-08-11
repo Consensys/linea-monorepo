@@ -6,7 +6,6 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -101,9 +100,8 @@ func TestHashModXnMinusOne(t *testing.T) {
 }
 
 func TestLimbSplit(t *testing.T) {
-
-	randX := mimc.BlockCompression(field.Zero(), field.Zero())
-	randX.Inverse(&randX)
+	var randX field.Element
+	randX.SetRandom()
 
 	arrays := [][]field.Element{
 		{field.One()},

@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -61,12 +61,10 @@ func hashLR(config *Config, nodeL, nodeR types.Bytes32) types.Bytes32 {
 		nodeR.WriteTo(hasher)
 		d = types.AsBytes32(hasher.Sum(nil))
 	} else {
-		knodeL := types.Bytes32ToHash(nodeL)
-		knodeR := types.Bytes32ToHash(nodeR)
-		var toHash [16]field.Element
-		copy(toHash[:], knodeL[:])
-		copy(toHash[8:], knodeR[:])
-		h := vortex.HashPoseidon2(toHash[:])
+		// default hash compression using Poseidon2
+		leafL := vortex.Hash(types.Bytes32ToHash(nodeL))
+		leafR := vortex.Hash(types.Bytes32ToHash(nodeR))
+		h := poseidon2.BlockCompressionMekle(leafL, leafR)
 		d = types.HashToBytes32(h)
 	}
 	return d
@@ -287,7 +285,7 @@ func BuildComplete(leaves []types.Bytes32, hashFunc func() hashtypes.Hasher) *Tr
 	}
 
 	depth := utils.Log2Ceil(numLeaves)
-	config := &Config{HashFunc: hashFunc, Depth: depth} // TODO no pointer
+	config := &Config{HashFunc: hashFunc, Depth: depth}
 
 	tree := NewEmptyTree(config)
 	tree.OccupiedLeaves = leaves
