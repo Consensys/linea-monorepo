@@ -13,8 +13,8 @@ type anyF interface {
 	Fr | Ext
 }
 
-// DeepCopy deep-copies the input vector
-func DeepCopy[F anyF](pol []F) []F {
+// VecDeepCopy deep-copies the input vector
+func VecDeepCopy[F anyF](pol []F) []F {
 	return append([]F{}, pol...)
 }
 
@@ -353,16 +353,22 @@ func InnerProduct(vec1, vec2 any) Gen {
 }
 
 // VecRand returns a random vector of the given length
-func VecRand[F interface{ SetRandom() }](length int) []F {
+func VecRand[F any, PT interface {
+	SetRandom() (*F, error)
+	*F
+}](length int) []F {
 	vec := make([]F, length)
 	for i := range vec {
-		vec[i].SetRandom()
+		PT(&vec[i]).SetRandom()
 	}
 	return vec
 }
 
 // VecPrettify returns a string representation of the vector
-func VecPrettify[F interface{ String() string }](a []F) string {
+func VecPrettify[F any, PT interface {
+	String() string
+	*F
+}](a []F) string {
 	res := "["
 
 	for i := range a {
@@ -371,7 +377,7 @@ func VecPrettify[F interface{ String() string }](a []F) string {
 			res += ", "
 		}
 
-		res += fmt.Sprintf("%v", a[i].String())
+		res += fmt.Sprintf("%v", PT(&a[i]).String())
 	}
 	res += "]"
 
@@ -396,7 +402,7 @@ func Repeat[F any](x F, n int) []F {
 }
 
 // IntToVec returns a vector instantiated from a list of integers.
-func IntToVecFr[F interface{ SetInt64(int64) }](xs ...int) []Fr {
+func IntToVecFr(xs ...int) []Fr {
 	res := make([]Fr, len(xs))
 	for i, x := range xs {
 		res[i].SetInt64(int64(x))
@@ -524,13 +530,14 @@ func VecSum[F interface{ Add(*F, *F) }](v []F) (res F) {
 // PowerVec allocates and returns a vector of size n consisting of consecutive
 // powers of x, starting from x^0 = 1 and ending on x^{n-1}. The function panics
 // if given x=0 and returns an empty vector if n=0.
-func PowerVec[F interface {
-	Mul(*F, *F)
+func PowerVec[F any, PT interface {
+	Mul(*F, *F) *F
 	SetOne()
 	IsZero() bool
+	*F
 }](x F, n int) []F {
 
-	if x.IsZero() {
+	if PT(&x).IsZero() {
 		utils.Panic("cannot build a power vec for x=0")
 	}
 
@@ -539,10 +546,10 @@ func PowerVec[F interface {
 	}
 
 	res := make([]F, n)
-	res[0].SetOne()
+	PT(&res[0]).SetOne()
 
 	for i := 1; i < n; i++ {
-		res[i].Mul(&res[i-1], &x)
+		PT(&res[i]).Mul(&res[i-1], &x)
 	}
 
 	return res

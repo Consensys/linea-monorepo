@@ -24,8 +24,6 @@ func TestGenerator(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	t.Fail()
 }
 
 func TestCollect(t *testing.T) {
@@ -215,6 +213,4 @@ func TestTemplate(t *testing.T) {
 	if err := fillTemplate(os.Stdout, values); err != nil {
 		t.Fatal(err)
 	}
-
-	t.Fail()
 }

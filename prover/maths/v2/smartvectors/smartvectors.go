@@ -1,10 +1,16 @@
-package smartvectors2
+package smartvectors
 
 import (
 	"math/rand/v2"
 
 	field "github.com/consensys/linea-monorepo/prover/maths/v2/field"
 )
+
+// anyField is a union between field.Fr and field.Ext. It is used as type
+// parameters for the implementations of [SmartVector].
+type anyField interface {
+	field.Fr | field.Ext
+}
 
 // SmartVector is an abstraction over vectors of field elements that can be
 // optimized for structured vectors. For instance, if we have a vector of
@@ -32,6 +38,8 @@ type SmartVector interface {
 	SubVector(int, int) SmartVector
 	// RotateRight cyclically rotates the SmartVector
 	RotateRight(int) SmartVector
+	// DeepCopy returns a deep copy of the SmartVector
+	DeepCopy() SmartVector
 }
 
 // WriteIntoSlice writes the smartvector into a slice

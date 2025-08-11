@@ -197,7 +197,7 @@ func EvalXnMinusOneOnACoset(n, N int) []Fr {
 		res[i].Mul(&res[i-1], &t)
 	}
 
-	one := One()
+	one := One[Fr]()
 	for i := 0; i < N/n; i++ {
 		res[i].Sub(&res[i], &one)
 	}

@@ -121,7 +121,7 @@ func (z *Gen) Bytes() []byte {
 }
 
 func GenOne() Gen {
-	return Gen{IsExt_: false, Base_: One()}
+	return Gen{IsExt_: false, Base_: One[Fr]()}
 }
 
 func GenZero() Gen {

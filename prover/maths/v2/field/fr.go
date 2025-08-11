@@ -44,15 +44,18 @@ func NewFr(v uint64) Fr {
 }
 
 // Zero returns the zero field element
-func Zero() Fr {
-	var res Fr
+func Zero[T anyF]() T {
+	var res T
 	return res
 }
 
 // One returns the one field element
-func One() Fr {
-	var res Fr
-	res.SetOne()
+func One[T anyF, PT interface {
+	SetOne() *T
+	*T
+}]() T {
+	var res T
+	PT(&res).SetOne()
 	return res
 }
 
@@ -89,7 +92,7 @@ func (e *Fr) ToInt() int {
 }
 
 // ExpToInt sets z to x**k
-func ExpToInt(z *Fr, x Fr, k int) *Fr {
+func (z *Fr) ExpToInt(x Fr, k int) *Fr {
 	if k == 0 {
 		return z.SetOne()
 	}
@@ -158,12 +161,15 @@ func PseudoRandTruncated(rng *rand.Rand, sizeByte int) Fr {
 	return res
 }
 
-// BoolToFr returns 1 if true and zero if false
-func BoolToFr(b bool) Fr {
+// BoolTo returns 1 if true and zero if false
+func BoolTo[F anyF, PT interface {
+	SetOne() *F
+	*F
+}](b bool) F {
 	if b {
-		return One()
+		return One[F, PT]()
 	}
-	return Zero()
+	return Zero[F]()
 }
 
 // ParseOctuplet parses a [32]byte into an octuplet of field element
