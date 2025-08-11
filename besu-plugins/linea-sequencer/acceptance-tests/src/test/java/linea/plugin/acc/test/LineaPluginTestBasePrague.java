@@ -27,7 +27,11 @@ import lombok.extern.slf4j.Slf4j;
 import okhttp3.Response;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.consensus.clique.CliqueExtraData;
+import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.TransactionType;
+import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.eth.transactions.ImmutableTransactionPoolConfiguration;
 import org.hyperledger.besu.ethereum.eth.transactions.TransactionPoolConfiguration;
 import org.hyperledger.besu.tests.acceptance.dsl.EngineAPIService;
@@ -57,6 +61,7 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
   private static final BigInteger GAS_LIMIT = DefaultGasProvider.GAS_LIMIT;
   private static final BigInteger VALUE = BigInteger.ZERO;
   private static final String DATA = "0x";
+  private static final SECP256K1 secp256k1 = new SECP256K1();
 
   // Override this in subclasses to use a different genesis file template
   protected String getGenesisFileTemplatePath() {
@@ -167,6 +172,49 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
     byte[] signedMessage = TransactionEncoder.signMessage(rawTransaction, credentials);
     String hexValue = Numeric.toHexString(signedMessage);
     return web3j.ethSendRawTransaction(hexValue).send();
+  }
+
+  /**
+   * Creates and sends EIP7702 delegate code transaction. This method is designed to be stateless
+   * and should not rely on any class properties or instance methods. All required data should be
+   * passed as parameters. This makes it easier to test and reuse in different contexts.
+   */
+  protected void sendRawEIP7702Transaction(Web3j web3j, Credentials credentials, String recipient)
+      throws IOException {
+    BigInteger nonce =
+        web3j
+            .ethGetTransactionCount(credentials.getAddress(), DefaultBlockParameterName.PENDING)
+            .send()
+            .getTransactionCount();
+
+    // 7702 transaction
+    final org.hyperledger.besu.datatypes.CodeDelegation codeDelegation =
+        org.hyperledger.besu.ethereum.core.CodeDelegation.builder()
+            .chainId(BigInteger.valueOf(CHAIN_ID))
+            .address(Address.fromHexStringStrict(recipient))
+            .nonce(0)
+            .signAndBuild(
+                secp256k1.createKeyPair(
+                    secp256k1.createPrivateKey(credentials.getEcKeyPair().getPrivateKey())));
+
+    final Transaction tx =
+        Transaction.builder()
+            .type(TransactionType.DELEGATE_CODE)
+            .chainId(BigInteger.valueOf(CHAIN_ID))
+            .nonce(nonce.longValue())
+            .maxPriorityFeePerGas(Wei.of(GAS_PRICE))
+            .maxFeePerGas(Wei.of(GAS_PRICE))
+            .gasLimit(GAS_LIMIT.longValue())
+            .to(Address.fromHexStringStrict(credentials.getAddress()))
+            .value(Wei.ZERO)
+            .payload(Bytes.EMPTY)
+            .accessList(List.of())
+            .codeDelegations(List.of(codeDelegation))
+            .signAndBuild(
+                secp256k1.createKeyPair(
+                    secp256k1.createPrivateKey(credentials.getEcKeyPair().getPrivateKey())));
+
+    minerNode.execute(ethTransactions.sendRawTransaction(tx.encoded().toHexString()));
   }
 
   protected Response importPremadeBlock(
