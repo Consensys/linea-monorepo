@@ -15,6 +15,7 @@
 
 package net.consensys.linea.testing;
 
+import static net.consensys.linea.testing.ToyExecutionTools.addSystemAccountsIfRequired;
 import static net.consensys.linea.zktracer.ChainConfig.OLD_MAINNET_TESTCONFIG;
 import static net.consensys.linea.zktracer.ChainConfig.OLD_SEPOLIA_TESTCONFIG;
 
@@ -247,6 +248,10 @@ public class ReplayExecutionEnvironment {
     final BlockHashLookup blockHashLookup = conflation.toBlockHashLookup();
     // Initialise world state from conflation
     final MutableWorldState world = initWorld(conflation);
+
+    // Add system accounts if the fork requires it and not already present in the state.
+    addSystemAccountsIfRequired(world.updater(), chain.fork);
+
     world.persist(null);
     // Construct the transaction processor
     final MainnetTransactionProcessor transactionProcessor =
