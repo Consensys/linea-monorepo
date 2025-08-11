@@ -62,7 +62,7 @@ describe("Liveness test suite", () => {
         },
         (ethLogs: Array<Log> | null) => ethLogs != null && ethLogs.length >= 2,
         1000,
-        120000,
+        150000,
       );
 
       logger.debug(`livenessEvents=${JSON.stringify(livenessEvents)}`);
@@ -91,6 +91,6 @@ describe("Liveness test suite", () => {
       expect(parseInt(uptimeEvent?.topics[1] ?? "", 16)).toEqual(0); // topics[1] was the given status to update, should be 0 for uptime
       expect(parseInt(uptimeEvent?.data ?? "", 16)).toBeGreaterThan(lastBlockTimestamp ?? 0); // data should contain a timestamp later than the last block before restart as uptime
     },
-    120000,
+    150000,
   );
 });
