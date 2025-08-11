@@ -116,17 +116,29 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 			cleanSisLeaves,
 			dedicated.HandleSourcePaddedColumns(ctx.VortexCtx.NbColsToOpen()))
 		// Register the prover action for the stacked column
-		ctx.Comp.RegisterProverAction(roundQ, &dedicated.StackedColumn{
-			Column: stackedSisLeaves.Column,
-			Source: cleanSisLeaves,
-			UnpaddedColumn: stackedSisLeaves.UnpaddedColumn,
-			ColumnFilter: stackedSisLeaves.ColumnFilter,
-			UnpaddedColumnFilter: stackedSisLeaves.UnpaddedColumnFilter,
-			UnpaddedSize: stackedSisLeaves.UnpaddedSize,
-			IsPadded: stackedSisLeaves.IsPadded,
-		})
-		mimcW.CheckLinearHash(ctx.Comp, ctx.linearHashVerificationName(), ctx.Columns.ConcatenatedDhQ,
-			ctx.VortexCtx.SisParams.OutputSize(), sisRoundLeavesSizeUnpadded, stackedSisLeaves.UnpaddedColumn)
+		if stackedSisLeaves.IsPadded {
+			ctx.Comp.RegisterProverAction(roundQ, &dedicated.StackedColumn{
+				Column:               stackedSisLeaves.Column,
+				Source:               cleanSisLeaves,
+				UnpaddedColumn:       stackedSisLeaves.UnpaddedColumn,
+				ColumnFilter:         stackedSisLeaves.ColumnFilter,
+				UnpaddedColumnFilter: stackedSisLeaves.UnpaddedColumnFilter,
+				UnpaddedSize:         stackedSisLeaves.UnpaddedSize,
+				IsPadded:             stackedSisLeaves.IsPadded,
+			})
+		} else {
+			ctx.Comp.RegisterProverAction(roundQ, &dedicated.StackedColumn{
+				Column: stackedSisLeaves.Column,
+				Source: cleanSisLeaves,
+			})
+		}
+		if stackedSisLeaves.IsPadded {
+			mimcW.CheckLinearHash(ctx.Comp, ctx.linearHashVerificationName(), ctx.Columns.ConcatenatedDhQ,
+				ctx.VortexCtx.SisParams.OutputSize(), sisRoundLeavesSizeUnpadded, stackedSisLeaves.UnpaddedColumn)
+		} else {
+			mimcW.CheckLinearHash(ctx.Comp, ctx.linearHashVerificationName(), ctx.Columns.ConcatenatedDhQ,
+				ctx.VortexCtx.SisParams.OutputSize(), sisRoundLeavesSizeUnpadded, stackedSisLeaves.Column)
+		}
 	}
 
 	// Register the linear hash verification for the non sis rounds
@@ -240,34 +252,51 @@ func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 		dedicated.HandleSourcePaddedColumns(ctx.VortexCtx.NbColsToOpen()))
 
 	// Register prover action for the stacked column
-	ctx.Comp.RegisterProverAction(round, &dedicated.StackedColumn{
-		Column: stackedCleanLeaves.Column,
-		Source: cleanLeaves,
-		UnpaddedColumn: stackedCleanLeaves.UnpaddedColumn,
-		ColumnFilter: stackedCleanLeaves.ColumnFilter,
-		UnpaddedColumnFilter: stackedCleanLeaves.UnpaddedColumnFilter,
-		UnpaddedSize: stackedCleanLeaves.UnpaddedSize,
-		IsPadded: stackedCleanLeaves.IsPadded,
-	})
+	if stackedCleanLeaves.IsPadded {
+		ctx.Comp.RegisterProverAction(round, &dedicated.StackedColumn{
+			Column:               stackedCleanLeaves.Column,
+			Source:               cleanLeaves,
+			UnpaddedColumn:       stackedCleanLeaves.UnpaddedColumn,
+			ColumnFilter:         stackedCleanLeaves.ColumnFilter,
+			UnpaddedColumnFilter: stackedCleanLeaves.UnpaddedColumnFilter,
+			UnpaddedSize:         stackedCleanLeaves.UnpaddedSize,
+			IsPadded:             stackedCleanLeaves.IsPadded,
+		})
+	} else {
+		ctx.Comp.RegisterProverAction(round, &dedicated.StackedColumn{
+			Column: stackedCleanLeaves.Column,
+			Source: cleanLeaves,
+		})
+	}
 
 	// Next we compute the identity permutation
-	s := make([]field.Element, stackedCleanLeaves.UnpaddedColumn.Size())
+	s := make([]field.Element, stackedCleanLeaves.Column.Size())
+	if stackedCleanLeaves.IsPadded {
+		s = make([]field.Element, stackedCleanLeaves.UnpaddedColumn.Size())
+	}
 	for i := range s {
 		s[i].SetInt64(int64(i))
 	}
 	s_smart := smartvectors.NewRegular(s)
 
 	// Insert the fixed permutation constraint.
-	// Here we assume that the number of opened columns for Vortex
-	// is a power of two. If that is not the case, the below
-	// constraint is supposed to fail
-	ctx.Comp.InsertFixedPermutation(
-		round,
-		ctx.leafConsistencyName(),
-		[]smartvectors.SmartVector{s_smart},
-		[]ifaces.Column{stackedCleanLeaves.UnpaddedColumn},
-		[]ifaces.Column{ctx.Columns.MerkleProofsLeaves},
-	)
+	if stackedCleanLeaves.IsPadded {
+		ctx.Comp.InsertFixedPermutation(
+			round,
+			ctx.leafConsistencyName(),
+			[]smartvectors.SmartVector{s_smart},
+			[]ifaces.Column{stackedCleanLeaves.UnpaddedColumn},
+			[]ifaces.Column{ctx.Columns.MerkleProofsLeaves},
+		)
+	} else {
+		ctx.Comp.InsertFixedPermutation(
+			round,
+			ctx.leafConsistencyName(),
+			[]smartvectors.SmartVector{s_smart},
+			[]ifaces.Column{stackedCleanLeaves.Column},
+			[]ifaces.Column{ctx.Columns.MerkleProofsLeaves},
+		)
+	}
 
 }
 
