@@ -32,6 +32,21 @@ public class CancunTxSkipSection extends LondonTxSkipSection {
   }
 
   @Override
+  protected short senderDomStamp() {
+    return 1;
+  }
+
+  @Override
+  protected short recipientDomStamp() {
+    return 2;
+  }
+
+  @Override
+  protected short coinbaseDomStamp() {
+    return 3;
+  }
+
+  @Override
   protected void addFragments(
       TransactionProcessingMetadata txMetadata,
       AccountFragment senderAccountFragment,
