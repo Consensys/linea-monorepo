@@ -154,7 +154,7 @@ public abstract class TxSkipSection extends TraceSection implements EndTransacti
                 sender,
                 senderNew,
                 sender.address(),
-                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0),
+                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), senderDomStamp()),
                 TransactionProcessingType.USER);
 
     // "recipient" account fragment
@@ -165,7 +165,7 @@ public abstract class TxSkipSection extends TraceSection implements EndTransacti
                 recipient,
                 recipientNew,
                 recipient.address(),
-                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 1),
+                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), recipientDomStamp()),
                 TransactionProcessingType.USER);
 
     // "coinbase" account fragment
@@ -176,12 +176,18 @@ public abstract class TxSkipSection extends TraceSection implements EndTransacti
                 coinbase,
                 coinbaseNew,
                 coinbase.address(),
-                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 2),
+                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), coinbaseDomStamp()),
                 TransactionProcessingType.USER);
 
     addFragments(
         txMetadata, senderAccountFragment, recipientAccountFragment, coinbaseAccountFragment);
   }
+
+  protected abstract short senderDomStamp();
+
+  protected abstract short recipientDomStamp();
+
+  protected abstract short coinbaseDomStamp();
 
   protected abstract void addFragments(
       TransactionProcessingMetadata txMetadata,

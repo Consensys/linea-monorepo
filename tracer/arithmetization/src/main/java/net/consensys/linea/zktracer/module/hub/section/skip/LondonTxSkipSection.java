@@ -31,6 +31,21 @@ public class LondonTxSkipSection extends TxSkipSection {
   }
 
   @Override
+  protected short senderDomStamp() {
+    return 0;
+  }
+
+  @Override
+  protected short recipientDomStamp() {
+    return 1;
+  }
+
+  @Override
+  protected short coinbaseDomStamp() {
+    return 2;
+  }
+
+  @Override
   protected void addFragments(
       TransactionProcessingMetadata txMetadata,
       AccountFragment senderAccountFragment,
