@@ -75,7 +75,6 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
   // 2. Import the premade block using 'engine_newPayloadV4' Engine API call
 
   @Test
-  // @Disabled
   public void EIP7702TransactionIsRejectedFromNodeImport() throws Exception {
     // Arrange
     EngineNewPayloadRequest blockWithEIP7702TxRequest =
