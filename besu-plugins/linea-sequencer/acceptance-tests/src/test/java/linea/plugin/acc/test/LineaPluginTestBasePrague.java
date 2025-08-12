@@ -179,7 +179,7 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
    * and should not rely on any class properties or instance methods. All required data should be
    * passed as parameters. This makes it easier to test and reuse in different contexts.
    */
-  protected void sendRawEIP7702Transaction(Web3j web3j, Credentials credentials, String recipient)
+  protected String sendRawEIP7702Transaction(Web3j web3j, Credentials credentials, String recipient)
       throws IOException {
     BigInteger nonce =
         web3j
@@ -192,7 +192,7 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
         org.hyperledger.besu.ethereum.core.CodeDelegation.builder()
             .chainId(BigInteger.valueOf(CHAIN_ID))
             .address(Address.fromHexStringStrict(recipient))
-            .nonce(0)
+            .nonce(1)
             .signAndBuild(
                 secp256k1.createKeyPair(
                     secp256k1.createPrivateKey(credentials.getEcKeyPair().getPrivateKey())));
@@ -214,7 +214,8 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
                 secp256k1.createKeyPair(
                     secp256k1.createPrivateKey(credentials.getEcKeyPair().getPrivateKey())));
 
-    minerNode.execute(ethTransactions.sendRawTransaction(tx.encoded().toHexString()));
+    String txHash = minerNode.execute(ethTransactions.sendRawTransaction(tx.encoded().toHexString()));
+    return txHash;
   }
 
   protected Response importPremadeBlock(

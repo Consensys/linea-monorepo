@@ -59,6 +59,7 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
   }
 
   @Test
+  // @Disabled
   public void eip7702TransactionIsRejectedFromTransactionPool() throws Exception {
     // Act - Send a blob transaction to transaction pool and expect it to be rejected
     // We use 'minerNode.execute' here which throw us a RuntimeException directly
@@ -66,7 +67,7 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
         assertThrows(
             RuntimeException.class,
             () -> {
-              sendRawEIP7702Transaction(web3j, credentials, recipient);
+              String txHash = sendRawEIP7702Transaction(web3j, credentials, recipient);
             });
     // No need to build new block.
 
@@ -77,7 +78,7 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
   // Ideally the block import test would be conducted with two nodes as follows:
   // 1. Start an additional minimal node with Prague config
   // 2. Ensure additional node is peered to minerNode
-  // 3. Send blob tx to additional node
+  // 3. Send EIP7702 tx to additional node
   // 4. Construct block on additional node
   // 5. Send 'debug_getBadBlocks' RPC request to minerNode, confirm that block is rejected from
   // import
@@ -86,29 +87,29 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
   // being
   // singleton options and this implemented in dependency repository - linea tracer.
   // Thus simulate the block import as below:
-  // 1. Create a premade block containing a blob tx
+  // 1. Create a premade block containing a EIP7702 tx
   // 2. Import the premade block using 'engine_newPayloadV4' Engine API call
 
   @Test
   @Disabled
-  public void blobTransactionsIsRejectedFromNodeImport() throws Exception {
+  public void EIP7702TransactionIsRejectedFromNodeImport() throws Exception {
     // Arrange
-    EngineNewPayloadRequest blockWithBlobTxRequest = getBlockWithBlobTxRequest(mapper);
+    EngineNewPayloadRequest blockWithEIP7702TxRequest = getBlockWithEIP7702TxRequest(mapper);
 
     // Act
     Response response =
         this.importPremadeBlock(
-            blockWithBlobTxRequest.executionPayload(),
-            blockWithBlobTxRequest.expectedBlobVersionedHashes(),
-            blockWithBlobTxRequest.parentBeaconBlockRoot(),
-            blockWithBlobTxRequest.executionRequests());
+            blockWithEIP7702TxRequest.executionPayload(),
+            blockWithEIP7702TxRequest.expectedBlobVersionedHashes(),
+            blockWithEIP7702TxRequest.parentBeaconBlockRoot(),
+            blockWithEIP7702TxRequest.executionRequests());
 
     // Assert
     JsonNode result = mapper.readTree(response.body().string()).get("result");
     String status = result.get("status").asText();
     String validationError = result.get("validationError").asText();
     assertThat(status).isEqualTo("INVALID");
-    assertThat(validationError).contains("LineaTransactionValidatorPlugin - BLOB_TX_NOT_ALLOWED");
+    assertThat(validationError).contains("LineaTransactionValidatorPlugin - DELEGATE_CODE_TX_NOT_ALLOWED");
   }
 
   private record EngineNewPayloadRequest(
@@ -117,37 +118,34 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
       String parentBeaconBlockRoot,
       ArrayNode executionRequests) {}
 
-  private EngineNewPayloadRequest getBlockWithBlobTxRequest(ObjectMapper mapper) throws Exception {
+  private EngineNewPayloadRequest getBlockWithEIP7702TxRequest(ObjectMapper mapper) throws Exception {
     // Obtained following values by running `blobTransactionsIsRejectedFromTransactionPool` test
     // without the LineaTransactionSelectorPlugin and LineaTransactionValidatorPlugin plugins.
     Map<String, String> blockWithBlockTxParams = new HashMap<>();
     blockWithBlockTxParams.put(
-        "STATE_ROOT", "0x2c1457760c057cf42f2d509648d725ec1f557b9d8729a5361e517952f91d050e");
+        "STATE_ROOT", "0x217cc246352b4a22254ab139cc4a5a37e1dbe75b63fcf12161674773f5043bbe");
     blockWithBlockTxParams.put(
         "LOGS_BLOOM",
         "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
     blockWithBlockTxParams.put(
-        "RECEIPTS_ROOT", "0xeaa8c40899a61ae59615cf9985f5e2194f8fd2b57d273be63bde6733e89b12ab");
-    blockWithBlockTxParams.put("EXTRA_DATA", "0x626573752032352e362e302d6c696e656131");
+        "RECEIPTS_ROOT", "0x036c7d20420edbce24b5062148bce80563b48fd4532fb1c068b2c96a53117019");
+    blockWithBlockTxParams.put("EXTRA_DATA", "0x626573752032352e372e302d6c696e656134");
     blockWithBlockTxParams.put(
-        "BLOB_TX",
-        "0x03f8908205398084f461090084f46109008389544094627306090abab3a6e1400e9345bc60c78a8bef578080c001e1a0018ef96865998238a5e1783b6cafbc1253235d636f15d318f1fb50ef6a5b8f6a80a0576a95756f32ab705a22b591ab464d5affc8c1c7fcd14d777bac24d83bc44821a01f93b26f4f9989c3fe764f4a58d264bcd71b9deab72d6852f5dcdf19d55494f1");
-    blockWithBlockTxParams.put(
-        "BLOB_VERSIONED_HASH",
-        "0x018ef96865998238a5e1783b6cafbc1253235d636f15d318f1fb50ef6a5b8f6a");
+        "DELEGATE_CALL_TX",
+        "0x04f8cd8205398084f461090084f46109008389544094fe3b557e8fb62b89f4916b721be55ceb828dbd738080c0f85ef85c82053994627306090abab3a6e1400e9345bc60c78a8bef570101a0972498bc9ef3b18ec9f16f3dd59e7b622cc07fce1459d7485f424658e4013aa6a038dfeeaaa952cf3eb3fb81ccac2b57a69f57b457d1350353ac80d11ddc5dfeb180a0713d685d1b0fd47e7e7e75d9d8aaf2fa0d4a8811aec37fa54cb0ca4deb632dcaa01a66a49c9bbd92f11a0e67fb096a6e862a5da8bf05af32f6390ee431011fba81");
     blockWithBlockTxParams.put(
         "EXECUTION_REQUEST",
         "0x01a4664c40aacebd82a2db79f0ea36c06bc6a19adbb10a4a15bf67b328c9b101d09e5c6ee6672978fdad9ef0d9e2ceffaee99223555d8601f0cb3bcc4ce1af9864779a416e0000000000000000");
     blockWithBlockTxParams.put(
-        "TRANSACTIONS_ROOT", "0x7a430a1c9da1f6e25ff8e6e96217c359784f3438dc1d983b4695355d66437f8f");
+        "TRANSACTIONS_ROOT", "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421");
     blockWithBlockTxParams.put(
         "WITHDRAWALS_ROOT", "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421");
     blockWithBlockTxParams.put("GAS_LIMIT", "0x1ca35ef");
-    blockWithBlockTxParams.put("GAS_USED", "0x5208");
+    blockWithBlockTxParams.put("GAS_USED", "0x8fc0");
     blockWithBlockTxParams.put("TIMESTAMP", "0x5");
     blockWithBlockTxParams.put("BASE_FEE_PER_GAS", "0x7");
     blockWithBlockTxParams.put("EXCESS_BLOB_GAS", "0x0");
-    blockWithBlockTxParams.put("BLOB_GAS_USED", "0x20000");
+    blockWithBlockTxParams.put("BLOB_GAS_USED", "0x0");
     blockWithBlockTxParams.put("BLOCK_NUMBER", "0x1");
     blockWithBlockTxParams.put("FEE_RECIPIENT", Address.ZERO.toHexString());
     blockWithBlockTxParams.put("PREV_RANDAO", Hash.ZERO.toHexString());
@@ -158,15 +156,13 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
 
     ObjectNode executionPayload =
         createExecutionPayload(mapper, genesisBlockHash, blockWithBlockTxParams);
-    ArrayNode expectedBlobVersionedHashes =
-        createBlobVersionedHashes(mapper, blockWithBlockTxParams);
     ArrayNode executionRequests = createExecutionRequests(mapper, blockWithBlockTxParams);
     // Compute block hash and update payload
     BlockHeader blockHeader = computeBlockHeader(executionPayload, mapper, blockWithBlockTxParams);
     updateExecutionPayloadWithBlockHash(executionPayload, blockHeader);
     return new EngineNewPayloadRequest(
         executionPayload,
-        expectedBlobVersionedHashes,
+        mapper.createArrayNode(),
         blockWithBlockTxParams.get("PARENT_BEACON_BLOCK_ROOT"),
         executionRequests);
   }
@@ -199,22 +195,15 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
             .put("receiptsRoot", blockParams.get("RECEIPTS_ROOT"))
             .put("blockNumber", blockParams.get("BLOCK_NUMBER"));
 
-    // Add transactions (blob tx)
+    // Add transactions
     ArrayNode transactions = mapper.createArrayNode();
-    transactions.add(blockParams.get("BLOB_TX"));
+    transactions.add(blockParams.get("DELEGATE_CALL_TX"));
     payload.set("transactions", transactions);
     // Add withdrawals (empty list)
     ArrayNode withdrawals = mapper.createArrayNode();
     payload.set("withdrawals", withdrawals);
 
     return payload;
-  }
-
-  private ArrayNode createBlobVersionedHashes(
-      ObjectMapper mapper, Map<String, String> blockParams) {
-    ArrayNode hashes = mapper.createArrayNode();
-    hashes.add(blockParams.get("BLOB_VERSIONED_HASH"));
-    return hashes;
   }
 
   private ArrayNode createExecutionRequests(ObjectMapper mapper, Map<String, String> blockParams) {
