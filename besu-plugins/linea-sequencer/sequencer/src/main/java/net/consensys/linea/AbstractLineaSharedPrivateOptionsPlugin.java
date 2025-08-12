@@ -168,7 +168,7 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
         getConfigurationByKey(LineaLivenessServiceCliOptions.CONFIG_KEY).optionsConfig();
   }
 
-  public static InvalidTransactionByLineCountCache getInvalidTransactionByLineCountCache() {
+  protected InvalidTransactionByLineCountCache getInvalidTransactionByLineCountCache() {
     return invalidTransactionByLineCountCache;
   }
 
