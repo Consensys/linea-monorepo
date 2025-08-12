@@ -10,6 +10,8 @@ package maru.p2p
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.unmarshalPrivateKey
+import java.net.Inet4Address
+import java.net.NetworkInterface
 import java.util.Optional
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
@@ -44,7 +46,7 @@ import tech.pegasys.teku.networking.p2p.peer.Peer
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
 class P2PNetworkImpl(
-  privateKeyBytes: ByteArray,
+  private val privateKeyBytes: ByteArray,
   private val p2pConfig: P2P,
   private val chainId: UInt,
   private val serDe: SerDe<SealedBeaconBlock>,
@@ -130,7 +132,10 @@ class P2PNetworkImpl(
 
   override val nodeId: String = p2pNetwork.nodeId.toBase58()
   override val discoveryAddresses: List<String> = p2pNetwork.discoveryAddresses.getOrElse { emptyList() }
-  override val enr: String? = discoveryService?.getLocalNodeRecord()?.asEnr()
+  override val enr: String =
+    enrs()
+      .first()
+      .also { log.info("enr={}", it) }
   override val nodeAddresses: List<String> = p2pNetwork.nodeAddresses
 
   override fun start(): SafeFuture<Unit> =
@@ -138,17 +143,16 @@ class P2PNetworkImpl(
       .start()
       .thenApply {
         log.info(
-          "Starting P2P network. port={}, nodeId={}, instance={}",
+          "Starting P2P network: port={}, nodeId={}, enr={}",
           port,
           p2pNetwork.nodeId,
-          p2pNetwork.toString(),
+          enr,
         )
         p2pConfig.staticPeers.forEach { peer ->
           p2pNetwork
             .createPeerAddress(peer)
             ?.let { address -> addStaticPeer(address as MultiaddrPeerAddress) }
         }
-      }.thenPeek {
         discoveryService?.start()
         maruPeerManager.start(discoveryService, p2pNetwork)
         metricsFacade.createGauge(
@@ -158,6 +162,34 @@ class P2PNetworkImpl(
           measurementSupplier = { peerCount.toLong() },
         )
       }
+
+  private fun enrs(): List<String> {
+    val enrs =
+      (listIps() + discoveryAddresses)
+        .toSet()
+        .map {
+          ENR.enrString(
+            privateKeyBytes = privateKeyBytes,
+            seq = 0,
+            ipv4 = it,
+            ipv4UdpPort = p2pConfig.discovery?.port?.toInt() ?: p2pConfig.port.toInt(),
+            ipv4TcpPort = p2pConfig.port.toInt(),
+          )
+        }
+    return enrs + listOfNotNull(discoveryService?.getLocalNodeRecord()?.asEnr())
+  }
+
+  private fun listIps(): List<String> {
+    val ips =
+      NetworkInterface
+        .getNetworkInterfaces()
+        .toList()
+        .flatMap { it.inetAddresses.toList() }
+        .filter {
+          !it.isLoopbackAddress && it is Inet4Address
+        }.map { it.hostAddress }
+    return ips
+  }
 
   override fun stop(): SafeFuture<Unit> {
     log.info("Stopping {}", this::class.simpleName)
