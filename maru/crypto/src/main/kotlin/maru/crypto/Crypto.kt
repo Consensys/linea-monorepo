@@ -22,9 +22,5 @@ object Crypto {
     return Validator(Util.publicKeyToAddress(keyPair.publicKey).toArray())
   }
 
-  fun privateKeyBytesWithoutPrefix(privateKey: ByteArray) =
-    privateKey
-      .slice(
-        privateKey.size - 32..privateKey.size - 1,
-      ).toByteArray()
+  fun privateKeyBytesWithoutPrefix(privateKey: ByteArray) = privateKey.takeLast(32).toByteArray()
 }

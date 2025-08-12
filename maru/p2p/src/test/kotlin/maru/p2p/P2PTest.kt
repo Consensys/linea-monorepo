@@ -839,15 +839,6 @@ class P2PTest {
         isBlockImportEnabledProvider = { true },
       )
 
-    val key1Only32Bytes = key1.slice((key1.size - 32).rangeTo(key1.size - 1)).toByteArray()
-    val bootnodeEnrString =
-      getBootnodeEnrString(
-        privateKeyBytes = key1Only32Bytes,
-        ipv4 = IPV4,
-        discPort = PORT2.toInt(),
-        tcpPort = PORT1.toInt(),
-      )
-
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
         privateKeyBytes = key2,
@@ -860,7 +851,7 @@ class P2PTest {
             discovery =
               P2P.Discovery(
                 port = PORT4,
-                bootnodes = listOf(bootnodeEnrString),
+                bootnodes = listOf(p2pNetworkImpl1.enr),
                 refreshInterval = refreshInterval,
               ),
           ),
@@ -886,7 +877,7 @@ class P2PTest {
             discovery =
               P2P.Discovery(
                 port = PORT6,
-                bootnodes = listOf(bootnodeEnrString),
+                bootnodes = listOf(p2pNetworkImpl1.enr),
                 refreshInterval = refreshInterval,
               ),
           ),
@@ -989,15 +980,6 @@ class P2PTest {
         isBlockImportEnabledProvider = { true },
       )
 
-    val key1Only32Bytes = key1.slice((key1.size - 32).rangeTo(key1.size - 1)).toByteArray()
-    val bootnodeEnrString =
-      getBootnodeEnrString(
-        privateKeyBytes = key1Only32Bytes,
-        ipv4 = IPV4,
-        discPort = PORT2.toInt(),
-        tcpPort = PORT1.toInt(),
-      )
-
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
         privateKeyBytes = key2,
@@ -1010,7 +992,7 @@ class P2PTest {
             discovery =
               P2P.Discovery(
                 port = PORT4,
-                bootnodes = listOf(bootnodeEnrString),
+                bootnodes = listOf(p2pNetworkImpl1.enr),
                 refreshInterval = refreshInterval,
               ),
             statusUpdate =
