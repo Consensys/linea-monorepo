@@ -7,12 +7,6 @@ configFiles:
     [qbft]
     fee-recipient = "0x0000000000000000000000000000000000000000"
 
-    [p2p]
-    static-peers = [
-      "/dns4/maru-follower-0/tcp/3322/p2p/16Uiu2HAm5t3cGzbzjy5wE8u1siwkeCWtyob1kinEmNrcRsKXX8Z6",
-      "/dns4/maru-follower-1/tcp/3322/p2p/16Uiu2HAmLRVrc12TDbFM27MBi4fVvtjbiRKAYcXAMv3q5DpK6TVX"
-    ]
-
     [payload-validator]
     engine-api-endpoint = { endpoint = "http://besu-sequencer-0.besu-sequencer.default.svc.cluster.local:8550" }
     eth-api-endpoint = { endpoint = "http://besu-sequencer-0.besu-sequencer.default.svc.cluster.local:8545" }
@@ -31,6 +25,7 @@ configFiles:
      <Logger name="org.hyperledger.besu" level="INFO"/>
       <Logger name="tech.pegasys.teku" level="INFO"/>
       <Logger name="maru" level="INFO"/>
+      <Logger name="maru.syncing" level="DEBUG"/>
       <Logger name="clients" level="DEBUG"/>
       <Root level="INFO">
         <AppenderRef ref="Console"/>

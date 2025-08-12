@@ -19,6 +19,15 @@ spec:
         - name: maru
           image: "{{ .Values.image.name }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            {{- if .Values.bootnodes }}
+            - name: config__override__p2p__discovery__bootnodes
+              value: {{ .Values.bootnodes | quote }}
+            {{- end }}
+            {{- with .Values.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+
           command:
             - java
             - -Dlog4j2.configurationFile=configs/log4j.xml

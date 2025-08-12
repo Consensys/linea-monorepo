@@ -5,6 +5,8 @@ helm-clean-releases:
 	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-validator
 	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-0
 	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-1
+	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-2
+	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-3
 	KUBECONFIG=$(KUBECONFIG) kubectl delete pvc --all
 	KUBECONFIG=$(KUBECONFIG) kubectl delete pv --all
 
@@ -24,6 +26,11 @@ wait_pods:
 		sleep 5; \
 	done
 
+wait-for-log-entry:
+	@until kubectl logs $(pod_name) | grep -q "$(log_entry)"; do \
+		sleep 1; \
+	done
+
 helm-deploy-besu:
 		@echo "Deploying Besu"
 		@helm --kubeconfig $(KUBECONFIG) upgrade --install besu-sequencer ./helm/charts/besu --force -f ./helm/charts/besu/values.yaml -f ./helm/values/besu-local-dev-sequencer.yaml
@@ -33,24 +40,29 @@ helm-deploy-besu:
 		@$(MAKE) wait_pods pod_name=besu-follower pod_count=3
 
 helm-redeploy-besu:
-		@echo "Redeploying Besu"
 		-@helm --kubeconfig $(KUBECONFIG) uninstall besu-sequencer
 		-@helm --kubeconfig $(KUBECONFIG) uninstall besu-follower
 		@sleep 3 # Wait for a second to ensure the previous release is fully uninstalled
 		@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-deploy-besu
 
 helm-redeploy-maru:
-	@echo "Redeploying Maru"
 	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-validator
 	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-0
 	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-1
+	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-2
+	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-3
 	@sleep 2 # Wait for a second to ensure the previous release is fully uninstalled
-	@echo "Deploying Maru Followers"
+	@echo "Deploying Maru Nodes"
 	@helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-0 ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-follower-0.yaml
-	@helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-1 ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-follower-1.yaml
-	@$(MAKE) wait_pods pod_name=maru-follower-1 pod_count=1
-	@echo "Deploying Maru Validator"
-	@helm --kubeconfig $(KUBECONFIG) upgrade --install maru-validator ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-validator.yaml
+	@$(MAKE) wait_pods pod_name=maru-follower-0 pod_count=1
+	@$(MAKE) wait-for-log-entry pod_name=maru-follower-0-0 log_entry="enr"
+	BOOTNODE_ENR=$$(kubectl logs maru-follower-0-0 | grep -o 'enr=[^ ]*' | head -1 | cut -d= -f2); \
+	echo "Bootnode ENR: $$BOOTNODE_ENR"; \
+	helm --kubeconfig $(KUBECONFIG) upgrade --install maru-validator ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-validator.yaml --set bootnodes=$$BOOTNODE_ENR ; \
+	helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-1 ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-follower-1.yaml --set bootnodes=$$BOOTNODE_ENR ; \
+	helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-2 ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-follower-2.yaml --set bootnodes=$$BOOTNODE_ENR ; \
+	helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-3 ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-follower-3.yaml --set bootnodes=$$BOOTNODE_ENR
+
 	@$(MAKE) wait_pods pod_name=maru-validator pod_count=1
 
 helm-redeploy-maru-and-besu:

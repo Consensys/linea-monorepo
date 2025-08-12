@@ -1,12 +1,13 @@
 replicaCount: 1
-fullnameOverride: maru-follower-0
+fullnameOverride: maru-follower-2
 configFiles:
   privateKey: |
-    0x08021220064974d5f62a7ab9b76ea97fc6451d2dd6416cb8150625ccb15640a57b96510e
+    0x0802122007ff78e0ad0e7c04553bceeb52d0962980c7b1406320515c5baabfe9951fd424
   configsToml: |
     [payload-validator]
-    engine-api-endpoint = { endpoint = "http://besu-follower-0.besu-follower.default.svc.cluster.local:8550" }
-    eth-api-endpoint = { endpoint = "http://besu-follower-0.besu-follower.default.svc.cluster.local:8545" }
+    engine-api-endpoint = { endpoint = "http://besu-follower-2.besu-follower.default.svc.cluster.local:8550" }
+    eth-api-endpoint = { endpoint = "http://besu-follower-2.besu-follower.default.svc.cluster.local:8545" }
+
   log4j: |
     <?xml version="1.0" encoding="UTF-8"?>
     <Configuration status="INFO" monitorInterval="2">
@@ -16,9 +17,9 @@ configFiles:
       </Console>
     </Appenders>
     <Loggers>
-      <Logger name="org.hyperledger.besu" level="TRACE"/>
-      <Logger name="tech.pegasys.teku" level="DEBUG"/>
-      <Logger name="maru" level="DEBUG"/>
+      <Logger name="org.hyperledger.besu" level="INFO"/>
+      <Logger name="tech.pegasys.teku" level="INFO"/>
+      <Logger name="maru" level="INFO"/>
       <Logger name="maru.syncing" level="DEBUG"/>
       <Logger name="clients" level="DEBUG"/>
       <Root level="INFO">
