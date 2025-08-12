@@ -16,7 +16,7 @@ func TestStdParams(t *testing.T) {
 	}{
 		{
 			Params:        StdParams,
-			ModulusDegree: 32,
+			ModulusDegree: 512,
 			NumLimbs:      2,
 		},
 		{
