@@ -8,14 +8,15 @@
  */
 package net.consensys.linea.sequencer.txselection;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.hyperledger.besu.datatypes.Hash;
 
 /**
- * Cache for tracking transaction hashes that are known to exceed trace line count limits.
- * This cache is shared between transaction selection and transaction pool validation to avoid
+ * Cache for tracking transaction hashes that are known to exceed trace line count limits. This
+ * cache is shared between transaction selection and transaction pool validation to avoid
  * reprocessing transactions that are already known to be invalid.
  */
 @Slf4j
@@ -38,7 +39,8 @@ public class InvalidTransactionByLineCountCache {
   }
 
   /**
-   * Add a transaction hash to the cache, removing oldest entries if necessary to maintain size limit.
+   * Add a transaction hash to the cache, removing oldest entries if necessary to maintain size
+   * limit.
    *
    * @param transactionHash the transaction hash to remember as invalid
    */
@@ -73,5 +75,11 @@ public class InvalidTransactionByLineCountCache {
    */
   public int getMaxSize() {
     return maxSize;
+  }
+
+  /** Clear all entries from the cache. This method is primarily intended for testing. */
+  @VisibleForTesting
+  public void clear() {
+    cache.clear();
   }
 }

@@ -10,12 +10,8 @@
 package net.consensys.linea;
 
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bundles.BundlePoolService;
 import net.consensys.linea.bundles.LineaLimitedBundlePool;
@@ -88,7 +84,6 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   }
 
   private ServiceManager serviceManager;
-
 
   @Override
   public Map<String, LineaOptionsPluginConfiguration> getLineaPluginConfigMap() {
@@ -176,7 +171,6 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   public static InvalidTransactionByLineCountCache getInvalidTransactionByLineCountCache() {
     return invalidTransactionByLineCountCache;
   }
-
 
   @Override
   public synchronized void register(final ServiceManager serviceManager) {

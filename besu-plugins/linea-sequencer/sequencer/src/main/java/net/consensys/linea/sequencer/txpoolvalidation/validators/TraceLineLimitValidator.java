@@ -24,27 +24,26 @@ public class TraceLineLimitValidator implements PluginTransactionPoolValidator {
 
   private final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
 
-  public TraceLineLimitValidator(final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache) {
+  public TraceLineLimitValidator(
+      final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache) {
     this.invalidTransactionByLineCountCache = invalidTransactionByLineCountCache;
   }
 
   @Override
   public Optional<String> validateTransaction(
       final Transaction transaction, final boolean isLocal, final boolean hasPriority) {
-    
+
     if (invalidTransactionByLineCountCache.contains(transaction.getHash())) {
-      final String reason = String.format(
-          "Transaction %s was already identified to go over line count limit", 
-          transaction.getHash());
-      
-      log.atTrace()
-          .setMessage("Transaction {} rejected due to cached line count limit overflow")
-          .addArgument(transaction::getHash)
-          .log();
-          
+      final String reason =
+          String.format(
+              "Transaction %s was already identified to go over line count limit",
+              transaction.getHash());
+
+      log.trace(reason);
+
       return Optional.of(reason);
     }
-    
+
     return Optional.empty();
   }
 }
