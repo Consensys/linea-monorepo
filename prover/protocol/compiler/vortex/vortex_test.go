@@ -121,7 +121,7 @@ func TestCompiler(t *testing.T) {
 
 					for i, row := range rowsMultiRound[round] {
 						p := smartvectors.Rand(polSize)
-						ys[offsetIndex+i] = smartvectors.EvalCoeffMixed(p, x)
+						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
 				}
@@ -171,7 +171,7 @@ func TestCompiler(t *testing.T) {
 
 					for i, row := range rowsMultiRound[round-2] {
 						p := smartvectors.Rand(polSize)
-						ys[offsetIndex+i] = smartvectors.EvalCoeffMixed(p, x)
+						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
 				}
