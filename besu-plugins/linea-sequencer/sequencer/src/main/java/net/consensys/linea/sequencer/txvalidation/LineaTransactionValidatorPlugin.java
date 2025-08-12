@@ -64,8 +64,10 @@ public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin
         (tx) -> {
           if (tx.getType() == TransactionType.BLOB && !config.blobTxEnabled()) {
             return Optional.of(LineaTransactionValidatorError.BLOB_TX_NOT_ALLOWED.toString());
-          } else if (tx.getType() == TransactionType.DELEGATE_CODE && !config.delegateCodeTxEnabled()) {
-            return Optional.of(LineaTransactionValidatorError.DELEGATE_CODE_TX_NOT_ALLOWED.toString()); 
+          } else if (tx.getType() == TransactionType.DELEGATE_CODE
+              && !config.delegateCodeTxEnabled()) {
+            return Optional.of(
+                LineaTransactionValidatorError.DELEGATE_CODE_TX_NOT_ALLOWED.toString());
           } else {
             return Optional.empty();
           }
