@@ -94,7 +94,7 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
     String validationError = result.get("validationError").asText();
     assertThat(status).isEqualTo("INVALID");
     assertThat(validationError)
-        .contains("LineaTransactionValidatorPlugin - DELEGATE_CODE_TX_NOT_ALLOWED");
+        .contains(LineaTransactionValidatorPluginErrors.DELEGATE_CODE_TX_NOT_ALLOWED);
   }
 
   private EngineNewPayloadRequest getBlockWithEIP7702TxRequest(ObjectMapper mapper)
@@ -103,40 +103,40 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
     // without the LineaTransactionSelectorPlugin and LineaTransactionValidatorPlugin plugins.
     Map<String, String> blockWithBlockTxParams = new HashMap<>();
     blockWithBlockTxParams.put(
-        "STATE_ROOT", "0x217cc246352b4a22254ab139cc4a5a37e1dbe75b63fcf12161674773f5043bbe");
+        BlockParams.STATE_ROOT, "0x217cc246352b4a22254ab139cc4a5a37e1dbe75b63fcf12161674773f5043bbe");
     blockWithBlockTxParams.put(
-        "LOGS_BLOOM",
+        BlockParams.LOGS_BLOOM,
         "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
     blockWithBlockTxParams.put(
-        "RECEIPTS_ROOT", "0x036c7d20420edbce24b5062148bce80563b48fd4532fb1c068b2c96a53117019");
-    blockWithBlockTxParams.put("EXTRA_DATA", "0x626573752032352e372e302d6c696e656134");
+        BlockParams.RECEIPTS_ROOT, "0x036c7d20420edbce24b5062148bce80563b48fd4532fb1c068b2c96a53117019");
+    blockWithBlockTxParams.put(BlockParams.EXTRA_DATA, "0x626573752032352e372e302d6c696e656134");
     blockWithBlockTxParams.put(
-        "DELEGATE_CALL_TX",
+        TransactionDataKeys.DELEGATE_CALL_TX,
         "0x04f8cd8205398084f461090084f46109008389544094fe3b557e8fb62b89f4916b721be55ceb828dbd738080c0f85ef85c82053994627306090abab3a6e1400e9345bc60c78a8bef570101a0972498bc9ef3b18ec9f16f3dd59e7b622cc07fce1459d7485f424658e4013aa6a038dfeeaaa952cf3eb3fb81ccac2b57a69f57b457d1350353ac80d11ddc5dfeb180a0713d685d1b0fd47e7e7e75d9d8aaf2fa0d4a8811aec37fa54cb0ca4deb632dcaa01a66a49c9bbd92f11a0e67fb096a6e862a5da8bf05af32f6390ee431011fba81");
     blockWithBlockTxParams.put(
-        "EXECUTION_REQUEST",
+        BlockParams.EXECUTION_REQUEST,
         "0x01a4664c40aacebd82a2db79f0ea36c06bc6a19adbb10a4a15bf67b328c9b101d09e5c6ee6672978fdad9ef0d9e2ceffaee99223555d8601f0cb3bcc4ce1af9864779a416e0000000000000000");
     blockWithBlockTxParams.put(
-        "TRANSACTIONS_ROOT", "0xb84030d9aae336c44f284a9710bc8f6771a38d0bccdeb1d837f871bacd1d07c9");
+        BlockParams.TRANSACTIONS_ROOT, "0xb84030d9aae336c44f284a9710bc8f6771a38d0bccdeb1d837f871bacd1d07c9");
     blockWithBlockTxParams.put(
-        "WITHDRAWALS_ROOT", "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421");
-    blockWithBlockTxParams.put("GAS_LIMIT", "0x1ca35ef");
-    blockWithBlockTxParams.put("GAS_USED", "0x8fc0");
-    blockWithBlockTxParams.put("TIMESTAMP", "0x5");
-    blockWithBlockTxParams.put("BASE_FEE_PER_GAS", "0x7");
-    blockWithBlockTxParams.put("EXCESS_BLOB_GAS", "0x0");
-    blockWithBlockTxParams.put("BLOB_GAS_USED", "0x0");
-    blockWithBlockTxParams.put("BLOCK_NUMBER", "0x1");
-    blockWithBlockTxParams.put("FEE_RECIPIENT", Address.ZERO.toHexString());
-    blockWithBlockTxParams.put("PREV_RANDAO", Hash.ZERO.toHexString());
-    blockWithBlockTxParams.put("PARENT_BEACON_BLOCK_ROOT", Hash.ZERO.toHexString());
+        BlockParams.WITHDRAWALS_ROOT, "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421");
+    blockWithBlockTxParams.put(BlockParams.GAS_LIMIT, "0x1ca35ef");
+    blockWithBlockTxParams.put(BlockParams.GAS_USED, "0x8fc0");
+    blockWithBlockTxParams.put(BlockParams.TIMESTAMP, "0x5");
+    blockWithBlockTxParams.put(BlockParams.BASE_FEE_PER_GAS, "0x7");
+    blockWithBlockTxParams.put(BlockParams.EXCESS_BLOB_GAS, "0x0");
+    blockWithBlockTxParams.put(BlockParams.BLOB_GAS_USED, "0x0");
+    blockWithBlockTxParams.put(BlockParams.BLOCK_NUMBER, "0x1");
+    blockWithBlockTxParams.put(BlockParams.FEE_RECIPIENT, Address.ZERO.toHexString());
+    blockWithBlockTxParams.put(BlockParams.PREV_RANDAO, Hash.ZERO.toHexString());
+    blockWithBlockTxParams.put(BlockParams.PARENT_BEACON_BLOCK_ROOT, Hash.ZERO.toHexString());
     blockWithBlockTxParams = Collections.unmodifiableMap(blockWithBlockTxParams);
     // Seems that the genesis block hash change with each run, despite a constant genesis file
     String genesisBlockHash = getLatestBlockHash();
 
     var executionPayload =
         createExecutionPayload(
-            mapper, genesisBlockHash, blockWithBlockTxParams, "DELEGATE_CALL_TX");
+            mapper, genesisBlockHash, blockWithBlockTxParams, TransactionDataKeys.DELEGATE_CALL_TX);
     var expectedBlobVersionedHashes = createVersionedHashes(mapper, blockWithBlockTxParams, "");
     var executionRequests = createExecutionRequests(mapper, blockWithBlockTxParams);
     // Compute block hash and update payload
@@ -145,7 +145,7 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
     return new EngineNewPayloadRequest(
         executionPayload,
         expectedBlobVersionedHashes,
-        blockWithBlockTxParams.get("PARENT_BEACON_BLOCK_ROOT"),
+        blockWithBlockTxParams.get(BlockParams.PARENT_BEACON_BLOCK_ROOT),
         executionRequests);
   }
 }

@@ -267,19 +267,19 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
         mapper
             .createObjectNode()
             .put("parentHash", genesisBlockHash)
-            .put("feeRecipient", blockParams.get("FEE_RECIPIENT"))
-            .put("stateRoot", blockParams.get("STATE_ROOT"))
-            .put("logsBloom", blockParams.get("LOGS_BLOOM"))
-            .put("prevRandao", blockParams.get("PREV_RANDAO"))
-            .put("gasLimit", blockParams.get("GAS_LIMIT"))
-            .put("gasUsed", blockParams.get("GAS_USED"))
-            .put("timestamp", blockParams.get("TIMESTAMP"))
-            .put("extraData", blockParams.get("EXTRA_DATA"))
-            .put("baseFeePerGas", blockParams.get("BASE_FEE_PER_GAS"))
-            .put("excessBlobGas", blockParams.get("EXCESS_BLOB_GAS"))
-            .put("blobGasUsed", blockParams.get("BLOB_GAS_USED"))
-            .put("receiptsRoot", blockParams.get("RECEIPTS_ROOT"))
-            .put("blockNumber", blockParams.get("BLOCK_NUMBER"));
+            .put("feeRecipient", blockParams.get(BlockParams.FEE_RECIPIENT))
+            .put("stateRoot", blockParams.get(BlockParams.STATE_ROOT))
+            .put("logsBloom", blockParams.get(BlockParams.LOGS_BLOOM))
+            .put("prevRandao", blockParams.get(BlockParams.PREV_RANDAO))
+            .put("gasLimit", blockParams.get(BlockParams.GAS_LIMIT))
+            .put("gasUsed", blockParams.get(BlockParams.GAS_USED))
+            .put("timestamp", blockParams.get(BlockParams.TIMESTAMP))
+            .put("extraData", blockParams.get(BlockParams.EXTRA_DATA))
+            .put("baseFeePerGas", blockParams.get(BlockParams.BASE_FEE_PER_GAS))
+            .put("excessBlobGas", blockParams.get(BlockParams.EXCESS_BLOB_GAS))
+            .put("blobGasUsed", blockParams.get(BlockParams.BLOB_GAS_USED))
+            .put("receiptsRoot", blockParams.get(BlockParams.RECEIPTS_ROOT))
+            .put("blockNumber", blockParams.get(BlockParams.BLOCK_NUMBER));
 
     // Add transactions
     ArrayNode transactions = mapper.createArrayNode();
@@ -307,7 +307,7 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
   protected ArrayNode createExecutionRequests(
       ObjectMapper mapper, Map<String, String> blockParams) {
     ArrayNode requests = mapper.createArrayNode();
-    requests.add(blockParams.get("EXECUTION_REQUEST"));
+    requests.add(blockParams.get(BlockParams.EXECUTION_REQUEST));
     return requests;
   }
 
@@ -317,11 +317,11 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
     EnginePayloadParameter blockParam =
         mapper.readValue(executionPayload.toString(), EnginePayloadParameter.class);
 
-    Hash transactionsRoot = Hash.fromHexString(blockParams.get("TRANSACTIONS_ROOT"));
-    Hash withdrawalsRoot = Hash.fromHexString(blockParams.get("WITHDRAWALS_ROOT"));
+    Hash transactionsRoot = Hash.fromHexString(blockParams.get(BlockParams.TRANSACTIONS_ROOT));
+    Hash withdrawalsRoot = Hash.fromHexString(blockParams.get(BlockParams.WITHDRAWALS_ROOT));
 
     // Take code from AbstractEngineNewPayload in Besu codebase
-    Bytes executionRequestBytes = Bytes.fromHexString(blockParams.get("EXECUTION_REQUEST"));
+    Bytes executionRequestBytes = Bytes.fromHexString(blockParams.get(BlockParams.EXECUTION_REQUEST));
     Bytes executionRequestBytesData = executionRequestBytes.slice(1);
     Request executionRequest =
         new Request(RequestType.of(executionRequestBytes.get(0)), executionRequestBytesData);
@@ -347,7 +347,7 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
         withdrawalsRoot,
         blockParam.getBlobGasUsed(),
         BlobGas.fromHexString(blockParam.getExcessBlobGas()),
-        Bytes32.fromHexString(blockParams.get("PARENT_BEACON_BLOCK_ROOT")),
+        Bytes32.fromHexString(blockParams.get(BlockParams.PARENT_BEACON_BLOCK_ROOT)),
         maybeRequests.map(BodyValidation::requestsHash).orElse(null),
         new MainnetBlockHeaderFunctions());
   }
@@ -355,5 +355,39 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
   protected void updateExecutionPayloadWithBlockHash(
       ObjectNode executionPayload, BlockHeader blockHeader) {
     executionPayload.put("blockHash", blockHeader.getBlockHash().toHexString());
+  }
+
+  // Constants for transaction-related data keys
+  public static final class TransactionDataKeys {
+    public static final String BLOB_TX = "BLOB_TX";
+    public static final String DELEGATE_CALL_TX = "DELEGATE_CALL_TX";
+    public static final String BLOB_VERSIONED_HASH = "BLOB_VERSIONED_HASH";
+  }
+
+  // Constants for block parameter keys
+  public static final class BlockParams {
+    public static final String STATE_ROOT = "STATE_ROOT";
+    public static final String LOGS_BLOOM = "LOGS_BLOOM";
+    public static final String RECEIPTS_ROOT = "RECEIPTS_ROOT";
+    public static final String EXTRA_DATA = "EXTRA_DATA";
+    public static final String EXECUTION_REQUEST = "EXECUTION_REQUEST";
+    public static final String TRANSACTIONS_ROOT = "TRANSACTIONS_ROOT";
+    public static final String WITHDRAWALS_ROOT = "WITHDRAWALS_ROOT";
+    public static final String GAS_LIMIT = "GAS_LIMIT";
+    public static final String GAS_USED = "GAS_USED";
+    public static final String TIMESTAMP = "TIMESTAMP";
+    public static final String BASE_FEE_PER_GAS = "BASE_FEE_PER_GAS";
+    public static final String EXCESS_BLOB_GAS = "EXCESS_BLOB_GAS";
+    public static final String BLOB_GAS_USED = "BLOB_GAS_USED";
+    public static final String BLOCK_NUMBER = "BLOCK_NUMBER";
+    public static final String FEE_RECIPIENT = "FEE_RECIPIENT";
+    public static final String PREV_RANDAO = "PREV_RANDAO";
+    public static final String PARENT_BEACON_BLOCK_ROOT = "PARENT_BEACON_BLOCK_ROOT";
+  }
+
+  // Constants for validation error messages
+  public static final class LineaTransactionValidatorPluginErrors {
+    public static final String BLOB_TX_NOT_ALLOWED = "LineaTransactionValidatorPlugin - BLOB_TX_NOT_ALLOWED";
+    public static final String DELEGATE_CODE_TX_NOT_ALLOWED = "LineaTransactionValidatorPlugin - DELEGATE_CODE_TX_NOT_ALLOWED";
   }
 }
