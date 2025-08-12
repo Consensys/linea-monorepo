@@ -217,6 +217,6 @@ func (mh *Module) qname(name string, args ...any) ifaces.QueryID {
 // Function inserting a query that col is zero when IsActive is zero
 func (mh *Module) colZeroAtInactive(comp *wizard.CompiledIOP, col ifaces.Column, name string) {
 	// col zero at inactive area, e.g., (1-IsActive[i]) * col[i] = 0
-	comp.InsertGlobal(mh.Inputs.Round, mh.qname(name),
+	comp.InsertGlobal(mh.Inputs.Round, mh.qname("%s", name),
 		sym.Mul(sym.Sub(1, mh.IsActive), col))
 }

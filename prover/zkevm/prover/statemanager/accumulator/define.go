@@ -679,6 +679,6 @@ func (am *Module) qname(name string, args ...any) ifaces.QueryID {
 // Function inserting a query that col is zero when IsActive is zero
 func (am *Module) colZeroAtInactive(col ifaces.Column, name string) {
 	// col zero at inactive area, e.g., (1-IsActiveAccumulator[i]) * col[i] = 0
-	am.Comp.InsertGlobal(am.Round, am.qname(name),
+	am.Comp.InsertGlobal(am.Round, am.qname("%s", name),
 		symbolic.Mul(symbolic.Sub(1, am.Cols.IsActiveAccumulator), col))
 }
