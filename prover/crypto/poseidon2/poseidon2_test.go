@@ -10,67 +10,54 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
-func TestPoseidon2TwoBlockCompressions(t *testing.T) {
+func TestPoseidon2BlockCompressionHashAny(t *testing.T) {
 	// This test ensures that the CompressPoseidon2 function is correctly implemented and produces the same output as
 	// the poseidon2.NewMerkleDamgardHasher(), which uses Write and Sum methods to get the final hash output
 
+	// We hash and compress one Element at a time
 	for i := 0; i < 100; i++ {
-		var zero, blockOne, blocktwo [8]field.Element
 
-		var input [16]field.Element
+		elementNumber := 50
 
-		var inputBytesone, inputbytestwo [32]byte
-		for i := 0; i < 16; i++ {
+		var state field.Octuplet
+		var input field.Octuplet
 
-			if i < 8 {
-				startIndex := i * 4
-				input[i].SetRandom()
-				blockOne[i] = input[i]
-				valBytes := input[i].Bytes()
-				copy(inputBytesone[startIndex:startIndex+4], valBytes[:])
-
-			} else {
-				startIndex := i*4 - 32
-				input[i].SetRandom()
-				blocktwo[i-8] = input[i]
-				valBytes := input[i].Bytes()
-				copy(inputbytestwo[startIndex:startIndex+4], valBytes[:])
-			}
-
-		}
-		// Compute the hash using the iterative chaining method calling BlockCompressionMekle.
-		state := poseidon2.BlockCompressionMekle(zero, blockOne)
-		h := poseidon2.BlockCompressionMekle(state, blocktwo)
-
-		// Compute the hash using the standard `Write`/`Sum` interface.
 		merkleHasher := poseidon2.NewPoseidon2()
 		merkleHasher.Reset()
-		merkleHasher.Write(inputBytesone[:])
-		merkleHasher.Write(inputbytestwo[:])
+
+		for i := 0; i < elementNumber; i++ {
+			input[7].SetRandom()
+			state = poseidon2.BlockCompressionMekle(state, input)
+			inputBytes := input[7].Bytes()
+			merkleHasher.Write(inputBytes[:]) // Write one Element at a time
+
+		}
 
 		newBytes := merkleHasher.Sum(nil)
 
-		var result [8]field.Element
+		var result field.Octuplet
 
 		for i := 0; i < 8; i++ {
 			startIndex := i * 4
 			segment := newBytes[startIndex : startIndex+4]
-			var newElement field.Element
+			var newElement koalabear.Element
 			newElement.SetBytes(segment)
 			result[i] = newElement
-			require.Equal(t, result[i].String(), h[i].String())
+			require.Equal(t, result[i].String(), state[i].String())
+
 		}
 
 	}
 }
 
-func TestPoseidon2BlockCompression(t *testing.T) {
+func TestPoseidon2BlockCompressionHashOctuplet(t *testing.T) {
 	// This test ensures that the CompressPoseidon2 function is correctly implemented and produces the same output as
 	// the poseidon2.NewMerkleDamgardHasher(), which uses Write and Sum methods to get the final hash output
 
+	// We hash and compress one Octuplet at a time
 	for i := 0; i < 100; i++ {
-		var zero [8]koalabear.Element
-		var input [8]koalabear.Element
+		var state field.Octuplet
+		var input field.Octuplet
 
 		var inputBytes [32]byte
 		for i := 0; i < 8; i++ {
@@ -80,14 +67,14 @@ func TestPoseidon2BlockCompression(t *testing.T) {
 			copy(inputBytes[startIndex:startIndex+4], valBytes[:])
 		}
 
-		h := poseidon2.BlockCompressionMekle(zero, input)
+		h := poseidon2.BlockCompressionMekle(state, input)
 
 		merkleHasher := poseidon2.NewPoseidon2()
 		merkleHasher.Reset()
-		merkleHasher.Write(inputBytes[:])
+		merkleHasher.Write(inputBytes[:]) // write one 32 bytes (equivalent to one Octuplet)
 		newBytes := merkleHasher.Sum(nil)
 
-		var result [8]koalabear.Element // Array to store the 8 reconstructed Elements
+		var result field.Octuplet
 
 		for i := 0; i < 8; i++ {
 			startIndex := i * 4
