@@ -25,8 +25,8 @@ import org.web3j.crypto.Credentials;
 import org.web3j.protocol.Web3j;
 
 /**
- * Tests that verify the LineaTransactionValidationPlugin correctly rejects BLOB transactions from
- * being executed
+ * Tests that verify the LineaTransactionValidationPlugin correctly rejects EIP7702 DELEGATE_CODE
+ * transactions from being executed
  */
 public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
   private Web3j web3j;
@@ -44,7 +44,8 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
 
   @Test
   public void eip7702TransactionIsRejectedFromTransactionPool() throws Exception {
-    // Act - Send a blob transaction to transaction pool and expect it to be rejected
+    // Act - Send an EIP7702 DELEGATE_CODE transaction to transaction pool and expect it to be
+    // rejected
     // We use 'minerNode.execute' here which throw us a RuntimeException directly
     RuntimeException exception =
         assertThrows(
@@ -77,7 +78,8 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
   // @Disabled
   public void EIP7702TransactionIsRejectedFromNodeImport() throws Exception {
     // Arrange
-    EngineNewPayloadRequest blockWithEIP7702TxRequest = createEIP7702TransactionBlockRequest(mapper);
+    EngineNewPayloadRequest blockWithEIP7702TxRequest =
+        createEIP7702TransactionBlockRequest(mapper);
 
     // Act
     Response response =
@@ -88,7 +90,8 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
             blockWithEIP7702TxRequest.executionRequests());
 
     // Assert
-    assertBlockImportRejected(response, LineaTransactionValidatorPluginErrors.DELEGATE_CODE_TX_NOT_ALLOWED);
+    assertBlockImportRejected(
+        response, LineaTransactionValidatorPluginErrors.DELEGATE_CODE_TX_NOT_ALLOWED);
   }
 
   private EngineNewPayloadRequest createEIP7702TransactionBlockRequest(ObjectMapper mapper)
@@ -97,12 +100,14 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
     // without the LineaTransactionSelectorPlugin and LineaTransactionValidatorPlugin plugins.
     Map<String, String> blockWithBlockTxParams = new HashMap<>();
     blockWithBlockTxParams.put(
-        BlockParams.STATE_ROOT, "0x217cc246352b4a22254ab139cc4a5a37e1dbe75b63fcf12161674773f5043bbe");
+        BlockParams.STATE_ROOT,
+        "0x217cc246352b4a22254ab139cc4a5a37e1dbe75b63fcf12161674773f5043bbe");
     blockWithBlockTxParams.put(
         BlockParams.LOGS_BLOOM,
         "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
     blockWithBlockTxParams.put(
-        BlockParams.RECEIPTS_ROOT, "0x036c7d20420edbce24b5062148bce80563b48fd4532fb1c068b2c96a53117019");
+        BlockParams.RECEIPTS_ROOT,
+        "0x036c7d20420edbce24b5062148bce80563b48fd4532fb1c068b2c96a53117019");
     blockWithBlockTxParams.put(BlockParams.EXTRA_DATA, "0x626573752032352e372e302d6c696e656134");
     blockWithBlockTxParams.put(
         TransactionDataKeys.DELEGATE_CALL_TX,
@@ -111,9 +116,11 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
         BlockParams.EXECUTION_REQUEST,
         "0x01a4664c40aacebd82a2db79f0ea36c06bc6a19adbb10a4a15bf67b328c9b101d09e5c6ee6672978fdad9ef0d9e2ceffaee99223555d8601f0cb3bcc4ce1af9864779a416e0000000000000000");
     blockWithBlockTxParams.put(
-        BlockParams.TRANSACTIONS_ROOT, "0xb84030d9aae336c44f284a9710bc8f6771a38d0bccdeb1d837f871bacd1d07c9");
+        BlockParams.TRANSACTIONS_ROOT,
+        "0xb84030d9aae336c44f284a9710bc8f6771a38d0bccdeb1d837f871bacd1d07c9");
     blockWithBlockTxParams.put(
-        BlockParams.WITHDRAWALS_ROOT, "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421");
+        BlockParams.WITHDRAWALS_ROOT,
+        "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421");
     blockWithBlockTxParams.put(BlockParams.GAS_LIMIT, "0x1ca35ef");
     blockWithBlockTxParams.put(BlockParams.GAS_USED, "0x8fc0");
     blockWithBlockTxParams.put(BlockParams.TIMESTAMP, "0x5");

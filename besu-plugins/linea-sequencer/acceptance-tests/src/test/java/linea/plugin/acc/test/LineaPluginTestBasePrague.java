@@ -235,7 +235,7 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
 
   /**
    * Imports a premade block using the Engine API to the test node.
-   * 
+   *
    * @param executionPayload Complete execution payload with block data
    * @param expectedBlobVersionedHashes Array of expected blob hashes
    * @param parentBeaconBlockRoot Root hash of the parent beacon block
@@ -256,7 +256,7 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
 
   /**
    * Record containing all parameters required for engine_newPayloadV4 API calls.
-   * 
+   *
    * @param executionPayload ExecutionPayloadV3-compatible block data
    * @param expectedBlobVersionedHashes Array of 32-byte blob versioned hashes for validation
    * @param parentBeaconBlockRoot 32-byte root of the parent beacon block
@@ -270,7 +270,7 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
 
   /**
    * Retrieves the hash of the latest block from the test node.
-   * 
+   *
    * @return The hexadecimal hash string of the latest block
    * @throws Exception if the RPC call to the node fails or returns invalid data
    */
@@ -286,18 +286,22 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
 
   /**
    * Creates an execution payload for block import testing.
-   * 
-   * <p>Constructs an ExecutionPayloadV3-compatible JSON object that can be used with
-   * the engine_newPayloadV4 method as defined in the Prague fork specification.
-   * The payload includes all required block header fields and an optional transaction.
-   * 
+   *
+   * <p>Constructs an ExecutionPayloadV3-compatible JSON object that can be used with the
+   * engine_newPayloadV4 method as defined in the Prague fork specification. The payload includes
+   * all required block header fields and an optional transaction.
+   *
    * @param mapper JSON object mapper for creating Jackson nodes
    * @param genesisBlockHash Hash of the genesis/parent block to reference
-   * @param blockParams Map containing all block parameters using {@link BlockParams} constants as keys
-   * @param transactionKey Key in blockParams map containing transaction data, or empty string for no transactions
+   * @param blockParams Map containing all block parameters using {@link BlockParams} constants as
+   *     keys
+   * @param transactionKey Key in blockParams map containing transaction data, or empty string for
+   *     no transactions
    * @return ObjectNode representing the execution payload compatible with engine_newPayloadV4
-   * @throws IllegalArgumentException if mapper, genesisBlockHash, blockParams, or transactionKey is null
-   * @see <a href="https://github.com/ethereum/execution-apis/blob/main/src/engine/prague.md">Prague Engine API Specification</a>
+   * @throws IllegalArgumentException if mapper, genesisBlockHash, blockParams, or transactionKey is
+   *     null
+   * @see <a href="https://github.com/ethereum/execution-apis/blob/main/src/engine/prague.md">Prague
+   *     Engine API Specification</a>
    */
   protected ObjectNode createExecutionPayload(
       ObjectMapper mapper,
@@ -338,10 +342,10 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
 
   /**
    * Creates blob versioned hashes array from block parameters.
-   * 
-   * <p>Extracts blob versioned hashes from block parameters for transactions that include
-   * blob data. Each hash is 32 bytes and used to validate blob data integrity.
-   * 
+   *
+   * <p>Extracts blob versioned hashes from block parameters for transactions that include blob
+   * data. Each hash is 32 bytes and used to validate blob data integrity.
+   *
    * @param mapper JSON object mapper for creating Jackson nodes
    * @param blockParams Map containing block parameters with blob hash data
    * @param versionedHashKey Key in blockParams for accessing the blob versioned hash
@@ -359,7 +363,7 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
 
   /**
    * Creates an empty versioned hashes array for non-blob transactions.
-   * 
+   *
    * @param mapper JSON object mapper for creating Jackson nodes
    * @return Empty ArrayNode for blocks without blob transactions
    * @throws IllegalArgumentException if mapper is null
@@ -370,7 +374,7 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
 
   /**
    * Creates EIP-7685 execution requests array for Engine API block import.
-   * 
+   *
    * @param mapper JSON object mapper for creating Jackson nodes
    * @param blockParams Map containing block parameters with execution request data
    * @return ArrayNode containing execution requests as hex-encoded byte arrays
@@ -384,11 +388,11 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
 
   /**
    * Computes a complete block header from execution payload and block parameters.
-   * 
+   *
    * <p>Creates a Besu BlockHeader instance that includes all required fields for Prague fork
-   * including execution requests commitment. The computed header is used to generate the
-   * correct blockHash for Engine API validation.
-   * 
+   * including execution requests commitment. The computed header is used to generate the correct
+   * blockHash for Engine API validation.
+   *
    * @param executionPayload JSON execution payload created by {@link #createExecutionPayload}
    * @param mapper JSON object mapper for parsing the payload
    * @param blockParams Map containing all block parameters and roots
@@ -405,7 +409,8 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
     Hash withdrawalsRoot = Hash.fromHexString(blockParams.get(BlockParams.WITHDRAWALS_ROOT));
 
     // Take code from AbstractEngineNewPayload in Besu codebase
-    Bytes executionRequestBytes = Bytes.fromHexString(blockParams.get(BlockParams.EXECUTION_REQUEST));
+    Bytes executionRequestBytes =
+        Bytes.fromHexString(blockParams.get(BlockParams.EXECUTION_REQUEST));
     Bytes executionRequestBytesData = executionRequestBytes.slice(1);
     Request executionRequest =
         new Request(RequestType.of(executionRequestBytes.get(0)), executionRequestBytesData);
@@ -438,7 +443,7 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
 
   /**
    * Updates the execution payload with the computed block hash.
-   * 
+   *
    * @param executionPayload JSON execution payload to update
    * @param blockHeader Block header containing the computed hash
    */
@@ -449,11 +454,12 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
 
   /**
    * Asserts that a block import was rejected with the expected validation error.
-   * 
+   *
    * @param response HTTP response from the Engine API call
    * @param expectedValidationError Expected validation error message to check for
    */
-  protected void assertBlockImportRejected(Response response, String expectedValidationError) throws Exception {
+  protected void assertBlockImportRejected(Response response, String expectedValidationError)
+      throws Exception {
     JsonNode result = mapper.readTree(response.body().string()).get("result");
     String status = result.get("status").asText();
     String validationError = result.get("validationError").asText();
@@ -491,7 +497,9 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
 
   // Constants for validation error messages
   public static final class LineaTransactionValidatorPluginErrors {
-    public static final String BLOB_TX_NOT_ALLOWED = "LineaTransactionValidatorPlugin - BLOB_TX_NOT_ALLOWED";
-    public static final String DELEGATE_CODE_TX_NOT_ALLOWED = "LineaTransactionValidatorPlugin - DELEGATE_CODE_TX_NOT_ALLOWED";
+    public static final String BLOB_TX_NOT_ALLOWED =
+        "LineaTransactionValidatorPlugin - BLOB_TX_NOT_ALLOWED";
+    public static final String DELEGATE_CODE_TX_NOT_ALLOWED =
+        "LineaTransactionValidatorPlugin - DELEGATE_CODE_TX_NOT_ALLOWED";
   }
 }
