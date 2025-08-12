@@ -214,7 +214,8 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
                 secp256k1.createKeyPair(
                     secp256k1.createPrivateKey(credentials.getEcKeyPair().getPrivateKey())));
 
-    String txHash = minerNode.execute(ethTransactions.sendRawTransaction(tx.encoded().toHexString()));
+    String txHash =
+        minerNode.execute(ethTransactions.sendRawTransaction(tx.encoded().toHexString()));
     return txHash;
   }
 

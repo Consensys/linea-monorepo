@@ -35,7 +35,6 @@ import org.hyperledger.besu.ethereum.mainnet.BodyValidation;
 import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.web3j.crypto.Credentials;
 import org.web3j.protocol.Web3j;
@@ -59,7 +58,6 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
   }
 
   @Test
-  // @Disabled
   public void eip7702TransactionIsRejectedFromTransactionPool() throws Exception {
     // Act - Send a blob transaction to transaction pool and expect it to be rejected
     // We use 'minerNode.execute' here which throw us a RuntimeException directly
@@ -67,7 +65,7 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
         assertThrows(
             RuntimeException.class,
             () -> {
-              String txHash = sendRawEIP7702Transaction(web3j, credentials, recipient);
+              sendRawEIP7702Transaction(web3j, credentials, recipient);
             });
     // No need to build new block.
 
@@ -91,7 +89,7 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
   // 2. Import the premade block using 'engine_newPayloadV4' Engine API call
 
   @Test
-  @Disabled
+  // @Disabled
   public void EIP7702TransactionIsRejectedFromNodeImport() throws Exception {
     // Arrange
     EngineNewPayloadRequest blockWithEIP7702TxRequest = getBlockWithEIP7702TxRequest(mapper);
@@ -109,7 +107,8 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
     String status = result.get("status").asText();
     String validationError = result.get("validationError").asText();
     assertThat(status).isEqualTo("INVALID");
-    assertThat(validationError).contains("LineaTransactionValidatorPlugin - DELEGATE_CODE_TX_NOT_ALLOWED");
+    assertThat(validationError)
+        .contains("LineaTransactionValidatorPlugin - DELEGATE_CODE_TX_NOT_ALLOWED");
   }
 
   private record EngineNewPayloadRequest(
@@ -118,7 +117,8 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
       String parentBeaconBlockRoot,
       ArrayNode executionRequests) {}
 
-  private EngineNewPayloadRequest getBlockWithEIP7702TxRequest(ObjectMapper mapper) throws Exception {
+  private EngineNewPayloadRequest getBlockWithEIP7702TxRequest(ObjectMapper mapper)
+      throws Exception {
     // Obtained following values by running `blobTransactionsIsRejectedFromTransactionPool` test
     // without the LineaTransactionSelectorPlugin and LineaTransactionValidatorPlugin plugins.
     Map<String, String> blockWithBlockTxParams = new HashMap<>();
@@ -137,7 +137,7 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
         "EXECUTION_REQUEST",
         "0x01a4664c40aacebd82a2db79f0ea36c06bc6a19adbb10a4a15bf67b328c9b101d09e5c6ee6672978fdad9ef0d9e2ceffaee99223555d8601f0cb3bcc4ce1af9864779a416e0000000000000000");
     blockWithBlockTxParams.put(
-        "TRANSACTIONS_ROOT", "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421");
+        "TRANSACTIONS_ROOT", "0xb84030d9aae336c44f284a9710bc8f6771a38d0bccdeb1d837f871bacd1d07c9");
     blockWithBlockTxParams.put(
         "WITHDRAWALS_ROOT", "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421");
     blockWithBlockTxParams.put("GAS_LIMIT", "0x1ca35ef");
