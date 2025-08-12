@@ -25,6 +25,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.config.LineaTracerConfiguration;
+import net.consensys.linea.sequencer.txselection.InvalidTransactionByLineCountCache;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.modulelimit.ModuleLimitsValidationResult;
@@ -64,19 +65,19 @@ import org.slf4j.MarkerFactory;
 public class TraceLineLimitTransactionSelector
     extends AbstractStatefulPluginTransactionSelector<Map<String, Integer>> {
   private static final Marker BLOCK_LINE_COUNT_MARKER = MarkerFactory.getMarker("BLOCK_LINE_COUNT");
-  @VisibleForTesting protected static Set<Hash> overLineCountLimitCache = new LinkedHashSet<>();
   private final LineaTracerConfiguration tracerConfiguration;
   private final LineCountingTracer lineCountingTracer;
   private final BigInteger chainId;
-  private final int overLimitCacheSize;
   private final ModuleLineCountValidator moduleLineCountValidator;
+  private final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
 
   public TraceLineLimitTransactionSelector(
       final SelectorsStateManager stateManager,
       final BigInteger chainId,
       final LineaTransactionSelectorConfiguration txSelectorConfiguration,
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
-      final LineaTracerConfiguration tracerConfiguration) {
+      final LineaTracerConfiguration tracerConfiguration,
+      final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache) {
     super(
         stateManager,
         tracerConfiguration.moduleLimitsMap().keySet().stream()
@@ -85,7 +86,7 @@ public class TraceLineLimitTransactionSelector
 
     this.chainId = chainId;
     this.tracerConfiguration = tracerConfiguration;
-    this.overLimitCacheSize = txSelectorConfiguration.overLinesLimitCacheSize();
+    this.invalidTransactionByLineCountCache = invalidTransactionByLineCountCache;
 
     lineCountingTracer =
         new LineCountingTracerWithLog(tracerConfiguration, l1L2BridgeConfiguration);
@@ -109,7 +110,7 @@ public class TraceLineLimitTransactionSelector
   @Override
   public TransactionSelectionResult evaluateTransactionPreProcessing(
       final TransactionEvaluationContext evaluationContext) {
-    if (overLineCountLimitCache.contains(
+    if (invalidTransactionByLineCountCache.contains(
         evaluationContext.getPendingTransaction().getTransaction().getHash())) {
       log.atTrace()
           .setMessage(
@@ -194,17 +195,10 @@ public class TraceLineLimitTransactionSelector
   }
 
   private void rememberOverLineCountLimitTransaction(final Transaction transaction) {
-    while (overLineCountLimitCache.size() >= overLimitCacheSize) {
-      final var it = overLineCountLimitCache.iterator();
-      if (it.hasNext()) {
-        it.next();
-        it.remove();
-      }
-    }
-    overLineCountLimitCache.add(transaction.getHash());
+    invalidTransactionByLineCountCache.remember(transaction.getHash());
     log.atTrace()
-        .setMessage("overLineCountLimitCache={}")
-        .addArgument(overLineCountLimitCache::size)
+        .setMessage("invalidTransactionByLineCountCache={}")
+        .addArgument(invalidTransactionByLineCountCache::size)
         .log();
   }
 

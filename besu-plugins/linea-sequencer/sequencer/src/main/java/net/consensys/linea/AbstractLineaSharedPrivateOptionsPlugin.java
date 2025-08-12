@@ -10,8 +10,12 @@
 package net.consensys.linea;
 
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bundles.BundlePoolService;
 import net.consensys.linea.bundles.LineaLimitedBundlePool;
@@ -38,6 +42,7 @@ import net.consensys.linea.plugins.AbstractLineaSharedOptionsPlugin;
 import net.consensys.linea.plugins.LineaOptionsPluginConfiguration;
 import net.consensys.linea.plugins.config.LineaTracerSharedCliOptions;
 import net.consensys.linea.plugins.config.LineaTracerSharedConfiguration;
+import net.consensys.linea.sequencer.txselection.InvalidTransactionByLineCountCache;
 import net.consensys.linea.utils.Compressor;
 import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
@@ -72,6 +77,7 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   protected static BundlePoolService bundlePoolService;
   protected static MetricCategoryRegistry metricCategoryRegistry;
   protected static RpcEndpointService rpcEndpointService;
+  protected static InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
 
   private static final AtomicBoolean sharedRegisterTasksDone = new AtomicBoolean(false);
   private static final AtomicBoolean sharedStartTasksDone = new AtomicBoolean(false);
@@ -82,6 +88,7 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   }
 
   private ServiceManager serviceManager;
+
 
   @Override
   public Map<String, LineaOptionsPluginConfiguration> getLineaPluginConfigMap() {
@@ -165,6 +172,11 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
     return (LineaLivenessServiceConfiguration)
         getConfigurationByKey(LineaLivenessServiceCliOptions.CONFIG_KEY).optionsConfig();
   }
+
+  public static InvalidTransactionByLineCountCache getInvalidTransactionByLineCountCache() {
+    return invalidTransactionByLineCountCache;
+  }
+
 
   @Override
   public synchronized void register(final ServiceManager serviceManager) {
@@ -261,6 +273,10 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
             besuEvents,
             blockchainService);
     bundlePoolService.loadFromDisk();
+
+    invalidTransactionByLineCountCache =
+        new InvalidTransactionByLineCountCache(
+            transactionSelectorConfiguration().overLinesLimitCacheSize());
   }
 
   @Override
