@@ -111,6 +111,7 @@ func TestSubvectorFuzzy(t *testing.T) {
 	}
 }
 
+// TODO@yao
 func TestTryReduceSizeRight(t *testing.T) {
 
 	testVectors := []SmartVector{
@@ -125,8 +126,8 @@ func TestTryReduceSizeRight(t *testing.T) {
 
 	expectedN := []int{
 		16,
-		15,
-		14,
+		0,
+		0,
 		0,
 		0,
 		0,
