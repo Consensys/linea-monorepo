@@ -56,7 +56,7 @@ helm-redeploy-maru:
 	@helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-0 ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-follower-0.yaml
 	@$(MAKE) wait_pods pod_name=maru-follower-0 pod_count=1
 	@$(MAKE) wait-for-log-entry pod_name=maru-follower-0-0 log_entry="enr"
-	BOOTNODE_ENR=$$(kubectl logs maru-follower-0-0 | grep -o 'enr=[^ ]*' | head -1 | cut -d= -f2); \
+	BOOTNODE_ENR=$$(kubectl logs maru-follower-0-0 | grep -Ev '0.0.0.0|127.0.0.1' | grep -o 'enr=[^ ]*' | head -1 | cut -d= -f2); \
 	echo "Bootnode ENR: $$BOOTNODE_ENR"; \
 	helm --kubeconfig $(KUBECONFIG) upgrade --install maru-validator ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-validator.yaml --set bootnodes=$$BOOTNODE_ENR ; \
 	helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-1 ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-follower-1.yaml --set bootnodes=$$BOOTNODE_ENR ; \

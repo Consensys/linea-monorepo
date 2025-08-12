@@ -12,26 +12,27 @@ import maru.crypto.Crypto.privateKeyBytesWithoutPrefix
 import org.apache.tuweni.bytes.Bytes32
 import org.apache.tuweni.crypto.SECP256K1
 import org.ethereum.beacon.discovery.schema.IdentitySchemaInterpreter
+import org.ethereum.beacon.discovery.schema.NodeRecord
 import org.ethereum.beacon.discovery.schema.NodeRecordBuilder
 import org.ethereum.beacon.discovery.schema.NodeRecordFactory
 
 object ENR {
-  fun enrString(
+  val factory = NodeRecordFactory(IdentitySchemaInterpreter.V4)
+
+  fun nodeRecord(
     privateKeyBytes: ByteArray,
     seq: Int = 0,
     ipv4: String,
     ipv4UdpPort: Int,
     ipv4TcpPort: Int = ipv4UdpPort,
-  ): String {
+  ): NodeRecord {
     val secretKey = SECP256K1.SecretKey.fromBytes(Bytes32.wrap(privateKeyBytesWithoutPrefix(privateKeyBytes)))
-    val nodeRecord =
-      NodeRecordBuilder()
-        .nodeRecordFactory(NodeRecordFactory(IdentitySchemaInterpreter.V4))
-        .seq(seq)
-        .secretKey(secretKey)
-        .address(ipv4, ipv4UdpPort, ipv4TcpPort)
-        .build()
-    nodeRecord.sign(secretKey)
-    return nodeRecord.asEnr()
+    return NodeRecordBuilder()
+      .nodeRecordFactory(factory)
+      .seq(seq)
+      .secretKey(secretKey)
+      .address(ipv4, ipv4UdpPort, ipv4TcpPort)
+      .build()
+      .apply { sign(secretKey) }
   }
 }

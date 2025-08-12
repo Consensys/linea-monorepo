@@ -33,6 +33,7 @@ import net.consensys.linea.metrics.Tag
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
+import org.ethereum.beacon.discovery.schema.NodeRecord
 import tech.pegasys.teku.infrastructure.async.AsyncRunnerFactory
 import tech.pegasys.teku.infrastructure.async.MetricTrackingExecutorFactory
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -131,22 +132,30 @@ class P2PNetworkImpl(
   private val staticPeerMap = mutableMapOf<NodeId, MultiaddrPeerAddress>()
 
   override val nodeId: String = p2pNetwork.nodeId.toBase58()
-  override val discoveryAddresses: List<String> = p2pNetwork.discoveryAddresses.getOrElse { emptyList() }
+  override val discoveryAddresses: List<String>
+    get() = p2pNetwork.discoveryAddresses.getOrElse { emptyList() }
   override val enr: String =
-    enrs()
+    nodeRecords()
       .first()
-      .also { log.info("enr={}", it) }
+      .asEnr()
   override val nodeAddresses: List<String> = p2pNetwork.nodeAddresses
+
+  private fun logEnr(nodeRecord: NodeRecord) {
+    log.info(
+      "tcpAddr={} udpAddr={} enr={} ",
+      nodeRecord.tcpAddress.getOrNull(),
+      nodeRecord.udpAddress.getOrNull(),
+      nodeRecord.asEnr(),
+    )
+  }
 
   override fun start(): SafeFuture<Unit> =
     p2pNetwork
       .start()
       .thenApply {
         log.info(
-          "Starting P2P network: port={}, nodeId={}, enr={}",
-          port,
+          "starting P2P network: nodeId={}",
           p2pNetwork.nodeId,
-          enr,
         )
         p2pConfig.staticPeers.forEach { peer ->
           p2pNetwork
@@ -161,14 +170,15 @@ class P2PNetworkImpl(
           description = "Number of peers connected to the P2P network",
           measurementSupplier = { peerCount.toLong() },
         )
+        nodeRecords().forEach(::logEnr)
       }
 
-  private fun enrs(): List<String> {
-    val enrs =
+  private fun nodeRecords(): List<NodeRecord> {
+    val enrs: List<NodeRecord> =
       (listIps() + discoveryAddresses)
         .toSet()
         .map {
-          ENR.enrString(
+          ENR.nodeRecord(
             privateKeyBytes = privateKeyBytes,
             seq = 0,
             ipv4 = it,
@@ -176,7 +186,7 @@ class P2PNetworkImpl(
             ipv4TcpPort = p2pConfig.port.toInt(),
           )
         }
-    return enrs + listOfNotNull(discoveryService?.getLocalNodeRecord()?.asEnr())
+    return enrs + listOfNotNull(discoveryService?.getLocalNodeRecord())
   }
 
   private fun listIps(): List<String> {

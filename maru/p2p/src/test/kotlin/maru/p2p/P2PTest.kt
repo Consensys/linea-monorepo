@@ -508,6 +508,58 @@ class P2PTest {
     }
   }
 
+  @Test
+  fun `should expose discovery enr properly - discovery disabled`() {
+    val p2pNetworkImpl1 =
+      createP2PNetwork(
+        privateKey = key1,
+        port = PORT1,
+        discovery = null,
+      )
+    try {
+      p2pNetworkImpl1.start()
+      val enr = ENR.factory.fromEnr(p2pNetworkImpl1.enr)
+      assertThat(enr.tcpAddress.get().port).isEqualTo(PORT1.toInt())
+      assertThat(enr.udpAddress.get().port).isEqualTo(PORT1.toInt())
+      assertThat(
+        enr.udpAddress
+          .get()
+          .address
+          .toString(),
+      ).doesNotContain("0.0.0.0")
+    } finally {
+      p2pNetworkImpl1.stop().get()
+    }
+  }
+
+  @Test
+  fun `should expose discovery enr properly - discovery enabled`() {
+    val p2pNetworkImpl1 =
+      createP2PNetwork(
+        privateKey = key1,
+        port = PORT1,
+        discovery =
+          P2P.Discovery(
+            port = PORT2,
+            refreshInterval = 1.seconds,
+          ),
+      )
+    try {
+      p2pNetworkImpl1.start()
+      val enr = ENR.factory.fromEnr(p2pNetworkImpl1.enr)
+      assertThat(enr.tcpAddress.get().port).isEqualTo(PORT1.toInt())
+      assertThat(enr.udpAddress.get().port).isEqualTo(PORT2.toInt())
+      assertThat(
+        enr.udpAddress
+          .get()
+          .address
+          .toString(),
+      ).doesNotContain("0.0.0.0")
+    } finally {
+      p2pNetworkImpl1.stop().get()
+    }
+  }
+
   @Disabled("FIXME: this test fails 100% of the time. Needs to be fixed")
   fun `peer can be discovered and disconnected peers can be rediscovered`() {
     val refreshInterval = 5.seconds
