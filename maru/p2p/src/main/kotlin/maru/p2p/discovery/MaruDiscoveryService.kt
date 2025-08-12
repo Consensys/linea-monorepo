@@ -43,6 +43,7 @@ class MaruDiscoveryService(
   }
 
   companion object {
+    private val log = LogManager.getLogger(MaruDiscoveryService::class.java)
     const val FORK_ID_HASH_FIELD_NAME = "mfidh"
 
     fun createTimer(
@@ -53,6 +54,56 @@ class MaruDiscoveryService(
         "$namePrefix-${UUID.randomUUID()}",
         isDaemon,
       )
+
+    internal fun isValidNodeRecord(
+      forkIdHashProvider: ForkIdHashProvider,
+      node: NodeRecord,
+    ): Boolean {
+      if (node.get(FORK_ID_HASH_FIELD_NAME) == null) {
+        log.trace("Node record is missing forkId field: {}", node)
+        return false
+      }
+      val forkId =
+        (node.get(FORK_ID_HASH_FIELD_NAME) as? Bytes) ?: run {
+          log.trace("Failed to cast value for the forkId hash to Bytes")
+          return false
+        }
+      if (forkId != Bytes.wrap(forkIdHashProvider.currentForkIdHash())) {
+        log.trace(
+          "Peer {} is on a different chain. Expected: {}, Found: {}",
+          node.nodeId,
+          Bytes.wrap(forkIdHashProvider.currentForkIdHash()),
+          forkId,
+        )
+        return false
+      }
+      if (node.get(EnrField.PKEY_SECP256K1) == null) {
+        log.trace("Node record is missing public key field: {}", node)
+        return false
+      }
+      (node.get(EnrField.PKEY_SECP256K1) as? Bytes) ?: run {
+        log.trace("Failed to cast value for the public key to Bytes")
+        return false
+      }
+      if (node.tcpAddress.isEmpty) {
+        log.trace(
+          "node record doesn't have a TCP address: {}",
+          node,
+        )
+        return false
+      }
+      return true
+    }
+
+    internal fun convertSafeNodeRecordToDiscoveryPeer(node: NodeRecord): MaruDiscoveryPeer {
+      // node record has been checked in checkNodeRecord, so we can convert to MaruDiscoveryPeer safely
+      return MaruDiscoveryPeer(
+        publicKeyBytes = (node.get(EnrField.PKEY_SECP256K1) as Bytes),
+        nodeId = node.nodeId,
+        nodeAddress = node.tcpAddress.get(),
+        forkIdBytes = node.get(FORK_ID_HASH_FIELD_NAME) as Bytes,
+      )
+    }
   }
 
   private val log: Logger = LogManager.getLogger(this.javaClass)
@@ -133,68 +184,19 @@ class MaruDiscoveryService(
   fun getKnownPeers(): Collection<MaruDiscoveryPeer> =
     discoverySystem
       .streamLiveNodes()
-      .filter(this::checkNodeRecord)
+      .filter { isValidNodeRecord(forkIdHashProvider, it) }
       .map { node: NodeRecord ->
         convertSafeNodeRecordToDiscoveryPeer(node)
       }.toList()
       .toSet()
-
-  private fun convertSafeNodeRecordToDiscoveryPeer(node: NodeRecord): MaruDiscoveryPeer {
-    // node record has been checked in checkNodeRecord, so we can convert to MaruDiscoveryPeer safely
-    return MaruDiscoveryPeer(
-      publicKeyBytes = (node.get(EnrField.PKEY_SECP256K1) as Bytes),
-      nodeId = node.nodeId,
-      nodeAddress = node.tcpAddress.get(),
-      forkIdBytes = node.get(FORK_ID_HASH_FIELD_NAME) as Bytes,
-    )
-  }
-
-  private fun checkNodeRecord(node: NodeRecord): Boolean {
-    if (node.get(FORK_ID_HASH_FIELD_NAME) == null) {
-      log.trace("Node record is missing forkId field: {}", node)
-      return false
-    }
-    val forkId =
-      (node.get(FORK_ID_HASH_FIELD_NAME) as? Bytes) ?: run {
-        log.trace("Failed to cast value for the forkId hash to Bytes")
-        return false
-      }
-    if (forkId != Bytes.wrap(forkIdHashProvider.currentForkIdHash())) {
-      log.trace(
-        "Peer {} is on a different chain. Expected: {}, Found: {}",
-        node.nodeId,
-        Bytes.wrap(forkIdHashProvider.currentForkIdHash()),
-        forkId,
-      )
-      return false
-    }
-    if (node.get(EnrField.PKEY_SECP256K1) == null) {
-      log.trace("Node record is missing public key field: {}", node)
-      return false
-    }
-    (node.get(EnrField.PKEY_SECP256K1) as? Bytes) ?: run {
-      log.trace("Failed to cast value for the public key to Bytes")
-      return false
-    }
-    if (node.tcpAddress.isEmpty) {
-      log.trace(
-        "node record doesn't have a TCP address: {}",
-        node,
-      )
-      return false
-    }
-    return true
-  }
 
   private fun pingBootnodes() {
     log.trace("Pinging bootnodes")
     bootnodes.forEach {
       SafeFuture
         .of(discoverySystem.ping(it))
-        .whenComplete { _, e ->
-          if (e != null) {
-            log.warn("Bootnode {} is unresponsive", it)
-          }
+        .whenException { e ->
+          log.warn("bootnode={} is unresponsive: errorMessage={}", it, e.message, e)
         }
     }
   }
