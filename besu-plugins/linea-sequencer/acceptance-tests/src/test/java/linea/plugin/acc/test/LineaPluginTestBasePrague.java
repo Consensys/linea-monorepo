@@ -231,6 +231,17 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
     return txHash;
   }
 
+  /**
+   * Imports a premade block using the Engine API to the test node.
+   * 
+   * @param executionPayload Complete execution payload with block data
+   * @param expectedBlobVersionedHashes Array of expected blob hashes
+   * @param parentBeaconBlockRoot Root hash of the parent beacon block
+   * @param executionRequests Array of execution layer requests
+   * @return HTTP response from the Engine API call containing validation results
+   * @throws IOException if the HTTP request fails
+   * @throws InterruptedException if the request is interrupted
+   */
   protected Response importPremadeBlock(
       final ObjectNode executionPayload,
       final ArrayNode expectedBlobVersionedHashes,
@@ -241,13 +252,26 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
         executionPayload, expectedBlobVersionedHashes, parentBeaconBlockRoot, executionRequests);
   }
 
-  // Common record for Engine API requests
+  /**
+   * Record containing all parameters required for engine_newPayloadV4 API calls.
+   * 
+   * @param executionPayload ExecutionPayloadV3-compatible block data
+   * @param expectedBlobVersionedHashes Array of 32-byte blob versioned hashes for validation
+   * @param parentBeaconBlockRoot 32-byte root of the parent beacon block
+   * @param executionRequests Array of execution layer triggered requests per EIP-7685
+   */
   protected record EngineNewPayloadRequest(
       ObjectNode executionPayload,
       ArrayNode expectedBlobVersionedHashes,
       String parentBeaconBlockRoot,
       ArrayNode executionRequests) {}
 
+  /**
+   * Retrieves the hash of the latest block from the test node.
+   * 
+   * @return The hexadecimal hash string of the latest block
+   * @throws Exception if the RPC call to the node fails or returns invalid data
+   */
   protected String getLatestBlockHash() throws Exception {
     return minerNode
         .nodeRequests()
@@ -258,6 +282,21 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
         .getHash();
   }
 
+  /**
+   * Creates an execution payload for block import testing.
+   * 
+   * <p>Constructs an ExecutionPayloadV3-compatible JSON object that can be used with
+   * the engine_newPayloadV4 method as defined in the Prague fork specification.
+   * The payload includes all required block header fields and an optional transaction.
+   * 
+   * @param mapper JSON object mapper for creating Jackson nodes
+   * @param genesisBlockHash Hash of the genesis/parent block to reference
+   * @param blockParams Map containing all block parameters using {@link BlockParams} constants as keys
+   * @param transactionKey Key in blockParams map containing transaction data, or empty string for no transactions
+   * @return ObjectNode representing the execution payload compatible with engine_newPayloadV4
+   * @throws IllegalArgumentException if mapper, genesisBlockHash, blockParams, or transactionKey is null
+   * @see <a href="https://github.com/ethereum/execution-apis/blob/main/src/engine/prague.md">Prague Engine API Specification</a>
+   */
   protected ObjectNode createExecutionPayload(
       ObjectMapper mapper,
       String genesisBlockHash,
@@ -295,7 +334,19 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
     return payload;
   }
 
-  protected ArrayNode createVersionedHashes(
+  /**
+   * Creates blob versioned hashes array from block parameters.
+   * 
+   * <p>Extracts blob versioned hashes from block parameters for transactions that include
+   * blob data. Each hash is 32 bytes and used to validate blob data integrity.
+   * 
+   * @param mapper JSON object mapper for creating Jackson nodes
+   * @param blockParams Map containing block parameters with blob hash data
+   * @param versionedHashKey Key in blockParams for accessing the blob versioned hash
+   * @return ArrayNode containing the blob versioned hash (32 bytes)
+   * @throws IllegalArgumentException if mapper, blockParams, or versionedHashKey is null
+   */
+  protected ArrayNode createBlobVersionedHashes(
       ObjectMapper mapper, Map<String, String> blockParams, String versionedHashKey) {
     ArrayNode hashes = mapper.createArrayNode();
     if (blockParams.containsKey(versionedHashKey)) {
@@ -304,6 +355,24 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
     return hashes;
   }
 
+  /**
+   * Creates an empty versioned hashes array for non-blob transactions.
+   * 
+   * @param mapper JSON object mapper for creating Jackson nodes
+   * @return Empty ArrayNode for blocks without blob transactions
+   * @throws IllegalArgumentException if mapper is null
+   */
+  protected ArrayNode createEmptyVersionedHashes(ObjectMapper mapper) {
+    return mapper.createArrayNode();
+  }
+
+  /**
+   * Creates EIP-7685 execution requests array for Engine API block import.
+   * 
+   * @param mapper JSON object mapper for creating Jackson nodes
+   * @param blockParams Map containing block parameters with execution request data
+   * @return ArrayNode containing execution requests as hex-encoded byte arrays
+   */
   protected ArrayNode createExecutionRequests(
       ObjectMapper mapper, Map<String, String> blockParams) {
     ArrayNode requests = mapper.createArrayNode();
@@ -311,6 +380,19 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
     return requests;
   }
 
+  /**
+   * Computes a complete block header from execution payload and block parameters.
+   * 
+   * <p>Creates a Besu BlockHeader instance that includes all required fields for Prague fork
+   * including execution requests commitment. The computed header is used to generate the
+   * correct blockHash for Engine API validation.
+   * 
+   * @param executionPayload JSON execution payload created by {@link #createExecutionPayload}
+   * @param mapper JSON object mapper for parsing the payload
+   * @param blockParams Map containing all block parameters and roots
+   * @return Complete BlockHeader instance with computed hash
+   * @throws Exception if JSON parsing fails or block header construction fails
+   */
   protected BlockHeader computeBlockHeader(
       ObjectNode executionPayload, ObjectMapper mapper, Map<String, String> blockParams)
       throws Exception {
@@ -352,6 +434,12 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
         new MainnetBlockHeaderFunctions());
   }
 
+  /**
+   * Updates the execution payload with the computed block hash.
+   * 
+   * @param executionPayload JSON execution payload to update
+   * @param blockHeader Block header containing the computed hash
+   */
   protected void updateExecutionPayloadWithBlockHash(
       ObjectNode executionPayload, BlockHeader blockHeader) {
     executionPayload.put("blockHash", blockHeader.getBlockHash().toHexString());

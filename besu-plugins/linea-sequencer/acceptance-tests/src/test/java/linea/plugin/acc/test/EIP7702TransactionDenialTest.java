@@ -78,7 +78,7 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
   // @Disabled
   public void EIP7702TransactionIsRejectedFromNodeImport() throws Exception {
     // Arrange
-    EngineNewPayloadRequest blockWithEIP7702TxRequest = getBlockWithEIP7702TxRequest(mapper);
+    EngineNewPayloadRequest blockWithEIP7702TxRequest = createEIP7702TransactionBlockRequest(mapper);
 
     // Act
     Response response =
@@ -97,9 +97,9 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
         .contains(LineaTransactionValidatorPluginErrors.DELEGATE_CODE_TX_NOT_ALLOWED);
   }
 
-  private EngineNewPayloadRequest getBlockWithEIP7702TxRequest(ObjectMapper mapper)
+  private EngineNewPayloadRequest createEIP7702TransactionBlockRequest(ObjectMapper mapper)
       throws Exception {
-    // Obtained following values by running `blobTransactionsIsRejectedFromTransactionPool` test
+    // Block parameters obtained by running `EIP7702TransactionIsRejectedFromNodeImport` test
     // without the LineaTransactionSelectorPlugin and LineaTransactionValidatorPlugin plugins.
     Map<String, String> blockWithBlockTxParams = new HashMap<>();
     blockWithBlockTxParams.put(
@@ -137,7 +137,7 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
     var executionPayload =
         createExecutionPayload(
             mapper, genesisBlockHash, blockWithBlockTxParams, TransactionDataKeys.DELEGATE_CALL_TX);
-    var expectedBlobVersionedHashes = createVersionedHashes(mapper, blockWithBlockTxParams, "");
+    var expectedBlobVersionedHashes = createEmptyVersionedHashes(mapper);
     var executionRequests = createExecutionRequests(mapper, blockWithBlockTxParams);
     // Compute block hash and update payload
     var blockHeader = computeBlockHeader(executionPayload, mapper, blockWithBlockTxParams);

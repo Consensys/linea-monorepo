@@ -80,7 +80,7 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
   @Test
   public void blobTransactionsIsRejectedFromNodeImport() throws Exception {
     // Arrange
-    EngineNewPayloadRequest blockWithBlobTxRequest = getBlockWithBlobTxRequest(mapper);
+    EngineNewPayloadRequest blockWithBlobTxRequest = createBlobTransactionBlockRequest(mapper);
 
     // Act
     Response response =
@@ -98,8 +98,8 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
     assertThat(validationError).contains(LineaTransactionValidatorPluginErrors.BLOB_TX_NOT_ALLOWED);
   }
 
-  private EngineNewPayloadRequest getBlockWithBlobTxRequest(ObjectMapper mapper) throws Exception {
-    // Obtained following values by running `blobTransactionsIsRejectedFromTransactionPool` test
+  private EngineNewPayloadRequest createBlobTransactionBlockRequest(ObjectMapper mapper) throws Exception {
+    // Block parameters obtained by running `blobTransactionsIsRejectedFromTransactionPool` test
     // without the LineaTransactionSelectorPlugin and LineaTransactionValidatorPlugin plugins.
     Map<String, String> blockWithBlockTxParams = new HashMap<>();
     blockWithBlockTxParams.put(
@@ -140,7 +140,7 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
     var executionPayload =
         createExecutionPayload(mapper, genesisBlockHash, blockWithBlockTxParams, TransactionDataKeys.BLOB_TX);
     var expectedBlobVersionedHashes =
-        createVersionedHashes(mapper, blockWithBlockTxParams, TransactionDataKeys.BLOB_VERSIONED_HASH);
+        createBlobVersionedHashes(mapper, blockWithBlockTxParams, TransactionDataKeys.BLOB_VERSIONED_HASH);
     var executionRequests = createExecutionRequests(mapper, blockWithBlockTxParams);
     // Compute block hash and update payload
     var blockHeader = computeBlockHeader(executionPayload, mapper, blockWithBlockTxParams);
