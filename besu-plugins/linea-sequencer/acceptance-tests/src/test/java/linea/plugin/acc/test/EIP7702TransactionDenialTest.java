@@ -13,26 +13,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import okhttp3.Response;
-import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.BlobGas;
 import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.datatypes.RequestType;
-import org.hyperledger.besu.ethereum.api.jsonrpc.internal.parameters.EnginePayloadParameter;
-import org.hyperledger.besu.ethereum.core.BlockHeader;
-import org.hyperledger.besu.ethereum.core.Difficulty;
-import org.hyperledger.besu.ethereum.core.Request;
-import org.hyperledger.besu.ethereum.mainnet.BodyValidation;
-import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -111,12 +97,6 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
         .contains("LineaTransactionValidatorPlugin - DELEGATE_CODE_TX_NOT_ALLOWED");
   }
 
-  private record EngineNewPayloadRequest(
-      ObjectNode executionPayload,
-      ArrayNode expectedBlobVersionedHashes,
-      String parentBeaconBlockRoot,
-      ArrayNode executionRequests) {}
-
   private EngineNewPayloadRequest getBlockWithEIP7702TxRequest(ObjectMapper mapper)
       throws Exception {
     // Obtained following values by running `blobTransactionsIsRejectedFromTransactionPool` test
@@ -154,107 +134,18 @@ public class EIP7702TransactionDenialTest extends LineaPluginTestBasePrague {
     // Seems that the genesis block hash change with each run, despite a constant genesis file
     String genesisBlockHash = getLatestBlockHash();
 
-    ObjectNode executionPayload =
-        createExecutionPayload(mapper, genesisBlockHash, blockWithBlockTxParams);
-    ArrayNode executionRequests = createExecutionRequests(mapper, blockWithBlockTxParams);
+    var executionPayload =
+        createExecutionPayload(
+            mapper, genesisBlockHash, blockWithBlockTxParams, "DELEGATE_CALL_TX");
+    var expectedBlobVersionedHashes = createVersionedHashes(mapper, blockWithBlockTxParams, "");
+    var executionRequests = createExecutionRequests(mapper, blockWithBlockTxParams);
     // Compute block hash and update payload
-    BlockHeader blockHeader = computeBlockHeader(executionPayload, mapper, blockWithBlockTxParams);
+    var blockHeader = computeBlockHeader(executionPayload, mapper, blockWithBlockTxParams);
     updateExecutionPayloadWithBlockHash(executionPayload, blockHeader);
     return new EngineNewPayloadRequest(
         executionPayload,
-        mapper.createArrayNode(),
+        expectedBlobVersionedHashes,
         blockWithBlockTxParams.get("PARENT_BEACON_BLOCK_ROOT"),
         executionRequests);
-  }
-
-  private String getLatestBlockHash() throws Exception {
-    return web3j
-        .ethGetBlockByNumber(org.web3j.protocol.core.DefaultBlockParameterName.LATEST, false)
-        .send()
-        .getBlock()
-        .getHash();
-  }
-
-  private ObjectNode createExecutionPayload(
-      ObjectMapper mapper, String genesisBlockHash, Map<String, String> blockParams) {
-    ObjectNode payload =
-        mapper
-            .createObjectNode()
-            .put("parentHash", genesisBlockHash)
-            .put("feeRecipient", blockParams.get("FEE_RECIPIENT"))
-            .put("stateRoot", blockParams.get("STATE_ROOT"))
-            .put("logsBloom", blockParams.get("LOGS_BLOOM"))
-            .put("prevRandao", blockParams.get("PREV_RANDAO"))
-            .put("gasLimit", blockParams.get("GAS_LIMIT"))
-            .put("gasUsed", blockParams.get("GAS_USED"))
-            .put("timestamp", blockParams.get("TIMESTAMP"))
-            .put("extraData", blockParams.get("EXTRA_DATA"))
-            .put("baseFeePerGas", blockParams.get("BASE_FEE_PER_GAS"))
-            .put("excessBlobGas", blockParams.get("EXCESS_BLOB_GAS"))
-            .put("blobGasUsed", blockParams.get("BLOB_GAS_USED"))
-            .put("receiptsRoot", blockParams.get("RECEIPTS_ROOT"))
-            .put("blockNumber", blockParams.get("BLOCK_NUMBER"));
-
-    // Add transactions
-    ArrayNode transactions = mapper.createArrayNode();
-    transactions.add(blockParams.get("DELEGATE_CALL_TX"));
-    payload.set("transactions", transactions);
-    // Add withdrawals (empty list)
-    ArrayNode withdrawals = mapper.createArrayNode();
-    payload.set("withdrawals", withdrawals);
-
-    return payload;
-  }
-
-  private ArrayNode createExecutionRequests(ObjectMapper mapper, Map<String, String> blockParams) {
-    ArrayNode requests = mapper.createArrayNode();
-    requests.add(blockParams.get("EXECUTION_REQUEST"));
-    return requests;
-  }
-
-  private BlockHeader computeBlockHeader(
-      ObjectNode executionPayload, ObjectMapper mapper, Map<String, String> blockParams)
-      throws Exception {
-    EnginePayloadParameter blockParam =
-        mapper.readValue(executionPayload.toString(), EnginePayloadParameter.class);
-
-    Hash transactionsRoot = Hash.fromHexString(blockParams.get("TRANSACTIONS_ROOT"));
-    Hash withdrawalsRoot = Hash.fromHexString(blockParams.get("WITHDRAWALS_ROOT"));
-
-    // Take code from AbstractEngineNewPayload in Besu codebase
-    Bytes executionRequestBytes = Bytes.fromHexString(blockParams.get("EXECUTION_REQUEST"));
-    Bytes executionRequestBytesData = executionRequestBytes.slice(1);
-    Request executionRequest =
-        new Request(RequestType.of(executionRequestBytes.get(0)), executionRequestBytesData);
-    Optional<List<Request>> maybeRequests = Optional.of(List.of(executionRequest));
-
-    return new BlockHeader(
-        blockParam.getParentHash(),
-        Hash.EMPTY_LIST_HASH, // OMMERS_HASH_CONSTANT
-        blockParam.getFeeRecipient(),
-        blockParam.getStateRoot(),
-        transactionsRoot,
-        blockParam.getReceiptsRoot(),
-        blockParam.getLogsBloom(),
-        Difficulty.ZERO,
-        blockParam.getBlockNumber(),
-        blockParam.getGasLimit(),
-        blockParam.getGasUsed(),
-        blockParam.getTimestamp(),
-        Bytes.fromHexString(blockParam.getExtraData()),
-        blockParam.getBaseFeePerGas(),
-        blockParam.getPrevRandao(),
-        0, // Nonce
-        withdrawalsRoot,
-        blockParam.getBlobGasUsed(),
-        BlobGas.fromHexString(blockParam.getExcessBlobGas()),
-        Bytes32.fromHexString(blockParams.get("PARENT_BEACON_BLOCK_ROOT")),
-        maybeRequests.map(BodyValidation::requestsHash).orElse(null),
-        new MainnetBlockHeaderFunctions());
-  }
-
-  private void updateExecutionPayloadWithBlockHash(
-      ObjectNode executionPayload, BlockHeader blockHeader) {
-    executionPayload.put("blockHash", blockHeader.getBlockHash().toHexString());
   }
 }

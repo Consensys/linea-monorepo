@@ -21,19 +21,31 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Response;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.consensus.clique.CliqueExtraData;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.BlobGas;
+import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.datatypes.RequestType;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.ethereum.api.jsonrpc.internal.parameters.EnginePayloadParameter;
+import org.hyperledger.besu.ethereum.core.BlockHeader;
+import org.hyperledger.besu.ethereum.core.Difficulty;
+import org.hyperledger.besu.ethereum.core.Request;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.eth.transactions.ImmutableTransactionPoolConfiguration;
 import org.hyperledger.besu.ethereum.eth.transactions.TransactionPoolConfiguration;
+import org.hyperledger.besu.ethereum.mainnet.BodyValidation;
+import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions;
 import org.hyperledger.besu.tests.acceptance.dsl.EngineAPIService;
 import org.hyperledger.besu.tests.acceptance.dsl.node.RunnableNode;
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory;
@@ -227,5 +239,121 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
       throws IOException, InterruptedException {
     return this.engineApiService.importPremadeBlock(
         executionPayload, expectedBlobVersionedHashes, parentBeaconBlockRoot, executionRequests);
+  }
+
+  // Common record for Engine API requests
+  protected record EngineNewPayloadRequest(
+      ObjectNode executionPayload,
+      ArrayNode expectedBlobVersionedHashes,
+      String parentBeaconBlockRoot,
+      ArrayNode executionRequests) {}
+
+  protected String getLatestBlockHash() throws Exception {
+    return minerNode
+        .nodeRequests()
+        .eth()
+        .ethGetBlockByNumber(org.web3j.protocol.core.DefaultBlockParameterName.LATEST, false)
+        .send()
+        .getBlock()
+        .getHash();
+  }
+
+  protected ObjectNode createExecutionPayload(
+      ObjectMapper mapper,
+      String genesisBlockHash,
+      Map<String, String> blockParams,
+      String transactionKey) {
+    ObjectNode payload =
+        mapper
+            .createObjectNode()
+            .put("parentHash", genesisBlockHash)
+            .put("feeRecipient", blockParams.get("FEE_RECIPIENT"))
+            .put("stateRoot", blockParams.get("STATE_ROOT"))
+            .put("logsBloom", blockParams.get("LOGS_BLOOM"))
+            .put("prevRandao", blockParams.get("PREV_RANDAO"))
+            .put("gasLimit", blockParams.get("GAS_LIMIT"))
+            .put("gasUsed", blockParams.get("GAS_USED"))
+            .put("timestamp", blockParams.get("TIMESTAMP"))
+            .put("extraData", blockParams.get("EXTRA_DATA"))
+            .put("baseFeePerGas", blockParams.get("BASE_FEE_PER_GAS"))
+            .put("excessBlobGas", blockParams.get("EXCESS_BLOB_GAS"))
+            .put("blobGasUsed", blockParams.get("BLOB_GAS_USED"))
+            .put("receiptsRoot", blockParams.get("RECEIPTS_ROOT"))
+            .put("blockNumber", blockParams.get("BLOCK_NUMBER"));
+
+    // Add transactions
+    ArrayNode transactions = mapper.createArrayNode();
+    if (blockParams.containsKey(transactionKey)) {
+      transactions.add(blockParams.get(transactionKey));
+    }
+    payload.set("transactions", transactions);
+
+    // Add withdrawals (empty list)
+    ArrayNode withdrawals = mapper.createArrayNode();
+    payload.set("withdrawals", withdrawals);
+
+    return payload;
+  }
+
+  protected ArrayNode createVersionedHashes(
+      ObjectMapper mapper, Map<String, String> blockParams, String versionedHashKey) {
+    ArrayNode hashes = mapper.createArrayNode();
+    if (blockParams.containsKey(versionedHashKey)) {
+      hashes.add(blockParams.get(versionedHashKey));
+    }
+    return hashes;
+  }
+
+  protected ArrayNode createExecutionRequests(
+      ObjectMapper mapper, Map<String, String> blockParams) {
+    ArrayNode requests = mapper.createArrayNode();
+    requests.add(blockParams.get("EXECUTION_REQUEST"));
+    return requests;
+  }
+
+  protected BlockHeader computeBlockHeader(
+      ObjectNode executionPayload, ObjectMapper mapper, Map<String, String> blockParams)
+      throws Exception {
+    EnginePayloadParameter blockParam =
+        mapper.readValue(executionPayload.toString(), EnginePayloadParameter.class);
+
+    Hash transactionsRoot = Hash.fromHexString(blockParams.get("TRANSACTIONS_ROOT"));
+    Hash withdrawalsRoot = Hash.fromHexString(blockParams.get("WITHDRAWALS_ROOT"));
+
+    // Take code from AbstractEngineNewPayload in Besu codebase
+    Bytes executionRequestBytes = Bytes.fromHexString(blockParams.get("EXECUTION_REQUEST"));
+    Bytes executionRequestBytesData = executionRequestBytes.slice(1);
+    Request executionRequest =
+        new Request(RequestType.of(executionRequestBytes.get(0)), executionRequestBytesData);
+    Optional<List<Request>> maybeRequests = Optional.of(List.of(executionRequest));
+
+    return new BlockHeader(
+        blockParam.getParentHash(),
+        Hash.EMPTY_LIST_HASH, // OMMERS_HASH_CONSTANT
+        blockParam.getFeeRecipient(),
+        blockParam.getStateRoot(),
+        transactionsRoot,
+        blockParam.getReceiptsRoot(),
+        blockParam.getLogsBloom(),
+        Difficulty.ZERO,
+        blockParam.getBlockNumber(),
+        blockParam.getGasLimit(),
+        blockParam.getGasUsed(),
+        blockParam.getTimestamp(),
+        Bytes.fromHexString(blockParam.getExtraData()),
+        blockParam.getBaseFeePerGas(),
+        blockParam.getPrevRandao(),
+        0, // Nonce
+        withdrawalsRoot,
+        blockParam.getBlobGasUsed(),
+        BlobGas.fromHexString(blockParam.getExcessBlobGas()),
+        Bytes32.fromHexString(blockParams.get("PARENT_BEACON_BLOCK_ROOT")),
+        maybeRequests.map(BodyValidation::requestsHash).orElse(null),
+        new MainnetBlockHeaderFunctions());
+  }
+
+  protected void updateExecutionPayloadWithBlockHash(
+      ObjectNode executionPayload, BlockHeader blockHeader) {
+    executionPayload.put("blockHash", blockHeader.getBlockHash().toHexString());
   }
 }
