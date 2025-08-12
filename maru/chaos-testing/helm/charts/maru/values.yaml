@@ -1,6 +1,7 @@
 replicaCount: 1
 image:
-  name: consensys/maru:2985fa7
+#  name: consensys/maru:fc93b7d
+  name: consensys/maru:local
   pullPolicy: IfNotPresent
 service:
   type: ClusterIP
@@ -30,6 +31,15 @@ configFiles:
     [p2p]
     port = 3322
     ip-address = "0.0.0.0"
+
+    [p2p.discovery]
+    port = 3323
+    refresh-interval = "5 seconds"
+
+    [syncing]
+    peer-chain-height-polling-interval = "5 seconds"
+    peer-chain-height-granularity = 10
+    el-sync-status-refresh-interval = "5 seconds"
 
     [observability]
     port = 9545
