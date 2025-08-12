@@ -111,7 +111,6 @@ func TestSubvectorFuzzy(t *testing.T) {
 	}
 }
 
-// TODO@yao
 func TestTryReduceSizeRight(t *testing.T) {
 
 	testVectors := []SmartVector{
