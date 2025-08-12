@@ -160,7 +160,7 @@ func (ctx *linearHashCtx) HashingCols() {
 
 	ctx.NewStateClean = ctx.Comp.InsertCommit(
 		ctx.Round,
-		ifaces.ColIDf("%s.LINEAR_HASH_%d_NEW_STATE_CLEAN_%s", ctx.Name, ctx.Comp.SelfRecursionCount, ctx.ToHash.GetColID()),
+		ifaces.ColIDf("%s", prefixWithLinearHash(ctx.Comp, ctx.Name, "NEW_STATE_CLEAN_%v", ctx.ToHash.GetColID())),
 		ctx.ToHash.Size(),
 	)
 
@@ -193,7 +193,7 @@ func (ctx *linearHashCtx) HashingCols() {
 	//
 	ctx.Comp.InsertGlobal(
 		ctx.Round,
-		ifaces.QueryIDf("%s.LINEAR_HASH_%d_CLEAN_NEW_STATE_%s", ctx.Name, ctx.Comp.SelfRecursionCount, ctx.ToHash.GetColID()),
+		ifaces.QueryIDf("%s", prefixWithLinearHash(ctx.Comp, ctx.Name, "CLEAN_NEW_STATE_%v", ctx.ToHash.GetColID())),
 		ctx.IsActiveVar().
 			Mul(ifaces.ColumnAsVariable(ctx.NewState)).
 			Sub(ifaces.ColumnAsVariable(ctx.NewStateClean)),
@@ -231,7 +231,7 @@ func (ctx *linearHashCtx) IsActiveExpected() ifaces.Column {
 		}
 
 		ctx.IsActiveRowExpected = ctx.Comp.InsertPrecomputed(
-			ifaces.ColIDf("%s.LINEAR_HASH_%d_IS_ACTIVE_EXPECTED_%s", ctx.Name, ctx.Comp.SelfRecursionCount, ctx.ToHash.GetColID()),
+			ifaces.ColIDf("%s", prefixWithLinearHash(ctx.Comp, ctx.Name, "IS_ACTIVE_EXPECTED_%v", ctx.ToHash.GetColID())),
 			assignment,
 		)
 	}
@@ -248,7 +248,7 @@ func (ctx *linearHashCtx) IsActiveVar() *symbolic.Expression {
 	// Lazily registers the columns
 	if ctx.IsActiveLarge == nil {
 		ctx.IsActiveLarge = ctx.Comp.InsertPrecomputed(
-			ifaces.ColIDf("%s.LINEAR_HASH_%d_IS_ACTIVE_%s", ctx.Name, ctx.Comp.SelfRecursionCount, ctx.ToHash.GetColID()),
+			ifaces.ColIDf("%s", prefixWithLinearHash(ctx.Comp, ctx.Name, "IS_ACTIVE_%v", ctx.ToHash.GetColID())),
 			smartvectors.RightZeroPadded(
 				vector.Repeat(field.One(), ctx.NumHash*ctx.Period),
 				ctx.ToHash.Size(),
@@ -276,8 +276,7 @@ func (ctx *linearHashCtx) IsEndOfHashVar() *symbolic.Expression {
 		}
 
 		ctx.IsEndOfHash = ctx.Comp.InsertPrecomputed(
-			// ifaces.ColIDf(prefixWithLinearHash(ctx.Comp, ctx.Name, "IS_END_OF_HASH_%v", ctx.ToHash.GetColID())),
-			ifaces.ColIDf("%s.LINEAR_HASH_%d_IS_END_OF_HASH_%s", ctx.Name, ctx.Comp.SelfRecursionCount, ctx.ToHash.GetColID()),
+			ifaces.ColIDf("%s", prefixWithLinearHash(ctx.Comp, ctx.Name, "IS_END_OF_HASH_%v", ctx.ToHash.GetColID())),
 			smartvectors.RightZeroPadded(window, ctx.ToHash.Size()),
 		)
 	}
