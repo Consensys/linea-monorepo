@@ -35,7 +35,7 @@ public class LineaTransactionValidatorCliOptions implements LineaCliOptions {
       arity = "0..1",
       hidden = true,
       paramLabel = "<BOOLEAN>",
-      description = "Enable delegate code transactions? (default: ${DEFAULT-VALUE})")
+      description = "Enable EIP7702 delegate code transactions? (default: ${DEFAULT-VALUE})")
   private boolean delegateCodeTxEnabled = DEFAULT_DELEGATE_CODE_TX_ENABLED;
 
   public LineaTransactionValidatorCliOptions() {}
