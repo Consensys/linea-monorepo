@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 )
 
 /*
@@ -11,6 +12,13 @@ Allocate a slice of field element
 */
 func AllocateSlice(n int) []frontend.Variable {
 	return make([]frontend.Variable, n)
+}
+
+/*
+AllocateSliceExt allocates a slice of field extension elements
+*/
+func AllocateSliceExt(n int) []gnarkfext.Element {
+	return make([]gnarkfext.Element, n)
 }
 
 // AsWitness converts a slice of field elements to a slice of witness variables

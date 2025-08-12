@@ -1,9 +1,13 @@
 package verifiercol
 
 import (
+	"errors"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
@@ -14,6 +18,50 @@ import (
 type RepeatedAccessor struct {
 	Accessor ifaces.Accessor
 	ColSize  int
+}
+
+func (f RepeatedAccessor) IsBase() bool {
+	return f.Accessor.IsBase()
+}
+
+func (f RepeatedAccessor) GetColAssignmentAtBase(run ifaces.Runtime, pos int) (field.Element, error) {
+	if !f.IsBase() {
+		return field.Element{}, errors.New("not base")
+	}
+
+	return f.Accessor.GetVal(run), nil
+}
+
+func (f RepeatedAccessor) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element {
+	if f.IsBase() {
+		v, err := f.Accessor.GetValBase(run)
+		if err != nil {
+			panic(err)
+		}
+		return fext.Lift(v)
+	}
+
+	return f.Accessor.GetValExt(run)
+}
+
+func (f RepeatedAccessor) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (f RepeatedAccessor) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Element {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (f RepeatedAccessor) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (f RepeatedAccessor) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Element {
+	//TODO implement me
+	panic("implement me")
 }
 
 // NewRepeatedAccessor instantiates a [RepeatedAccessor] column from an

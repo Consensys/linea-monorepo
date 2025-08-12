@@ -31,7 +31,7 @@ func (a *FoldOuterProverAction) Run(assi *wizard.ProverRuntime) {
 		innerChunks[i] = h.SubVector(i*a.InnerDegree, (i+1)*a.InnerDegree)
 	}
 
-	foldedVal := smartvectors.PolyEval(innerChunks, x)
+	foldedVal := smartvectors.LinearCombination(innerChunks, x)
 	assi.AssignColumn(a.FoldedName, foldedVal)
 }
 
@@ -78,7 +78,7 @@ func FoldOuter(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, out
 	})
 
 	innerCoinName := coin.Namef("INNER_COIN_%v", folded.GetColID())
-	innerCoin := comp.InsertCoin(round+1, innerCoinName, coin.Field)
+	innerCoin := comp.InsertCoin(round+1, innerCoinName, coin.FieldExt)
 	innerCoinAcc := accessors.NewFromCoin(innerCoin)
 
 	foldedEvalAcc := CoeffEval(comp, folded.String(), innerCoin, folded)

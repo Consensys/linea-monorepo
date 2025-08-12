@@ -7,7 +7,7 @@ import (
 
 // Standard parameter that we use for ring-SIS they are benchmarked at achieve
 // more than the 128 level of security.
-var StdParams = Params{LogTwoBound: 16, LogTwoDegree: 6}
+var StdParams = Params{LogTwoBound: 16, LogTwoDegree: 9}
 
 // Params encapsulates the parameters of a ring SIS instance
 type Params struct {
@@ -56,7 +56,7 @@ func (key *Key) MaxNumFieldHashable() int {
 // be hashed together in a single hash. This coincides with the total size of
 // the SIS key counting the field elements composing it.
 func (key *Key) maxNumLimbsHashable() int {
-	return key.modulusDegree() * len(key.gnarkInternal.A)
+	return key.modulusDegree() * len(key.GnarkInternal.A)
 }
 
 // NumFieldPerPoly returns the number of field elements that can be hashed with

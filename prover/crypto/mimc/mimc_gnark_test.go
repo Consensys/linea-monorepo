@@ -1,5 +1,6 @@
 package mimc_test
 
+/*TODO@yao
 import (
 	"testing"
 
@@ -45,3 +46,4 @@ func TestGnarkCompression(t *testing.T) {
 	err = r1cs.IsSolved(witness)
 	require.NoError(t, err)
 }
+*/

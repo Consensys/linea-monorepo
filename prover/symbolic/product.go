@@ -6,10 +6,13 @@ import (
 	"math/big"
 	"reflect"
 
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
@@ -70,11 +73,11 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 
 	// This regroups all the constants into a global constant with a coefficient
 	// of 1.
-	var c, t field.Element
-	c.SetOne()
+	var t fext.GenericFieldElem
+	c := fext.GenericFieldOne()
 	for i := range constExponents {
-		t.Exp(constVal[i], big.NewInt(int64(constExponents[i])))
-		c.Mul(&c, &t)
+		t.Exp(&constVal[i], big.NewInt(int64(constExponents[i])))
+		c.Mul(&t)
 	}
 
 	if !c.IsOne() {
@@ -95,29 +98,30 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 	e := &Expression{
 		Operator: Product{Exponents: exponents},
 		Children: items,
-		ESHash:   field.One(),
+		ESHash:   fext.GenericFieldOne(),
+		IsBase:   computeIsBaseFromChildren(items),
 	}
 
 	for i := range e.Children {
-		var tmp field.Element
+		tmp := fext.GenericFieldOne()
 		switch {
 		case exponents[i] == 1:
-			e.ESHash.Mul(&e.ESHash, &e.Children[i].ESHash)
+			e.ESHash.Mul(&e.Children[i].ESHash)
 		case exponents[i] == 2:
 			tmp.Square(&e.Children[i].ESHash)
-			e.ESHash.Mul(&e.ESHash, &tmp)
+			e.ESHash.Mul(&tmp)
 		case exponents[i] == 3:
 			tmp.Square(&e.Children[i].ESHash)
-			tmp.Mul(&tmp, &e.Children[i].ESHash)
-			e.ESHash.Mul(&e.ESHash, &tmp)
+			tmp.Mul(&e.Children[i].ESHash)
+			e.ESHash.Mul(&tmp)
 		case exponents[i] == 4:
 			tmp.Square(&e.Children[i].ESHash)
 			tmp.Square(&tmp)
-			e.ESHash.Mul(&e.ESHash, &tmp)
+			e.ESHash.Mul(&tmp)
 		default:
 			exponent := big.NewInt(int64(exponents[i]))
-			tmp.Exp(e.Children[i].ESHash, exponent)
-			e.ESHash.Mul(&e.ESHash, &tmp)
+			tmp.Exp(&e.Children[i].ESHash, exponent)
+			e.ESHash.Mul(&tmp)
 		}
 	}
 
@@ -178,4 +182,34 @@ func (prod Product) GnarkEval(api frontend.API, inputs []frontend.Variable) fron
 	}
 
 	return res
+}
+
+// GnarkEval implements the [Operator] interface.
+func (prod Product) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gnarkfext.Element {
+
+	res := gnarkfext.NewFromBase(1)
+
+	// There should be as many inputs as there are coeffs
+	if len(inputs) != len(prod.Exponents) {
+		utils.Panic("%v inputs but %v coeffs", len(inputs), len(prod.Exponents))
+	}
+
+	// outerApi := gnarkfext.NewExtApi(api)
+	/*
+		Accumulate the scalars
+	*/
+	for i, input := range inputs {
+		term := gnarkfext.Exp(api, input, prod.Exponents[i])
+		res.Mul(api, res, term)
+	}
+
+	return res
+}
+
+func (prod Product) EvaluateExt(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
+	return sv.ProductExt(prod.Exponents, inputs, p...)
+}
+
+func (prod Product) EvaluateMixed(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
+	return smartvectors_mixed.ProductMixed(prod.Exponents, inputs, p...)
 }

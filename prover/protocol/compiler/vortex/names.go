@@ -90,8 +90,8 @@ func (ctx *Ctx) MerkleTreeName(round int) string {
 }
 
 // returns the name of the vector containing all the Merkle proofs
-func (ctx *Ctx) MerkleProofName() ifaces.ColID {
-	return ifaces.ColIDf("VORTEX_%v_MERKLEPROOF", ctx.SelfRecursionCount)
+func (ctx *Ctx) MerkleProofName(i int) ifaces.ColID {
+	return ifaces.ColIDf("VORTEX_%v_MERKLEPROOF_%v", ctx.SelfRecursionCount, i)
 }
 
 // returns the name of the vector containing all the Merkle proofs

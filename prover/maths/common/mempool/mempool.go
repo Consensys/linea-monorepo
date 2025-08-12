@@ -2,13 +2,18 @@ package mempool
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 type MemPool interface {
 	Prewarm(nbPrewarm int) MemPool
 	Alloc() *[]field.Element
+	AllocBase() *[]field.Element
+	AllocExt() *[]fext.Element
 	Free(vec *[]field.Element) error
+	FreeBase(vec *[]field.Element) error
+	FreeExt(vec *[]fext.Element) error
 	Size() int
 }
 

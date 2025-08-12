@@ -5,8 +5,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
-	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -69,45 +69,49 @@ func ComputeSize(logs []LogInfo) int {
 // fees, value, salt, offset and calldata
 func (logInfo LogInfo) ConvertToL2L1Log() types.Log {
 
-	// compute the topics
-	var topics []ethCommon.Hash
-	for i := 0; i < len(logInfo.TopicsHi); i++ {
-		bytesHi := logInfo.TopicsHi[i].Bytes()
-		bytesLo := logInfo.TopicsLo[i].Bytes()
-		hashBytes := make([]byte, 0, 32)
-		hashBytes = append(hashBytes, bytesHi[16:]...)
-		hashBytes = append(hashBytes, bytesLo[16:]...)
-		topics = append(topics, ethCommon.BytesToHash(hashBytes))
-	}
-	var data []byte
+	utils.Panic("adjust for koalabear")
 
-	// add dummy bytes for fees, value and salt
-	var dummy field.Element
-	dummy.SetInt64(21) // 21 is a dummy value
-	dummyBytes := dummy.Bytes()
-	data = append(data, dummyBytes[:]...)
-	data = append(data, dummyBytes[:]...)
-	data = append(data, dummyBytes[:]...)
+	// // compute the topics
+	// var topics []ethCommon.Hash
+	// for i := 0; i < len(logInfo.TopicsHi); i++ {
+	// 	bytesHi := logInfo.TopicsHi[i].Bytes()
+	// 	bytesLo := logInfo.TopicsLo[i].Bytes()
+	// 	hashBytes := make([]byte, 0, 32)
+	// 	hashBytes = append(hashBytes, bytesHi[16:]...)
+	// 	hashBytes = append(hashBytes, bytesLo[16:]...)
+	// 	topics = append(topics, ethCommon.BytesToHash(hashBytes))
+	// }
+	// var data []byte
 
-	// add bytes for the offset, offset must have the following for
-	var offsetBytes = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4 * 32}
-	data = append(data, offsetBytes[:]...)
-	// add calldata
-	var callData = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-	data = append(data, callData[:]...)
+	// // add dummy bytes for fees, value and salt
+	// var dummy field.Element
+	// dummy.SetInt64(21) // 21 is a dummy value
+	// dummyBytes := dummy.Bytes()
+	// data = append(data, dummyBytes[:]...)
+	// data = append(data, dummyBytes[:]...)
+	// data = append(data, dummyBytes[:]...)
 
-	res := types.Log{
-		Address:     ethCommon.HexToAddress("DUMMY"),
-		Topics:      topics,
-		Data:        data,
-		BlockNumber: 0,
-		TxHash:      ethCommon.Hash{},
-		TxIndex:     0,
-		BlockHash:   ethCommon.Hash{},
-		Index:       0,
-		Removed:     false,
-	}
-	return res
+	// // add bytes for the offset, offset must have the following for
+	// var offsetBytes = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4 * 32}
+	// data = append(data, offsetBytes[:]...)
+	// // add calldata
+	// var callData = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	// data = append(data, callData[:]...)
+
+	// res := types.Log{
+	// 	Address:     ethCommon.HexToAddress("DUMMY"),
+	// 	Topics:      topics,
+	// 	Data:        data,
+	// 	BlockNumber: 0,
+	// 	TxHash:      ethCommon.Hash{},
+	// 	TxIndex:     0,
+	// 	BlockHash:   ethCommon.Hash{},
+	// 	Index:       0,
+	// 	Removed:     false,
+	// }
+	// return res
+
+	return types.Log{} // remove this when uncommenting the above
 }
 
 // NewLogColumns returns a new LogColumns with initialized

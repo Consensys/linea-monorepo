@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
+// TODO@yao: check if mimc is still needed? or should we update U32 to U64
 // NewMiMC wraps [mimc.NewMiMC], this is used to limit the number of gnark-crypto imports.
 func NewMiMC() hash.Hash {
 	return mimc.NewMiMC()

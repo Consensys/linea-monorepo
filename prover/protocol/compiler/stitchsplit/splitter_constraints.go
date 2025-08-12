@@ -26,8 +26,18 @@ type AssignLocalPointProverAction struct {
 }
 
 func (a *AssignLocalPointProverAction) Run(run *wizard.ProverRuntime) {
-	y := run.QueriesParams.MustGet(a.QID).(query.LocalOpeningParams).Y
-	run.AssignLocalPoint(a.NewQ, y)
+
+	var (
+		oldQ    = run.Spec.QueriesParams.Data(a.QID).(query.LocalOpening)
+		oldQRes = run.QueriesParams.MustGet(a.QID).(query.LocalOpeningParams)
+	)
+
+	if oldQ.IsBase() {
+		run.AssignLocalPoint(a.NewQ, oldQRes.BaseY)
+		return
+	}
+
+	run.AssignLocalPointExt(a.NewQ, oldQRes.ExtY)
 }
 
 func (ctx SplitterContext) LocalOpening() {

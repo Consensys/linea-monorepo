@@ -4,15 +4,26 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 )
 
 // A gnark circuit version of the LocalOpeningResult
 type GnarkLocalOpeningParams struct {
-	Y frontend.Variable
+	BaseY  frontend.Variable
+	ExtY   gnarkfext.Element
+	IsBase bool
 }
 
 func (p LocalOpeningParams) GnarkAssign() GnarkLocalOpeningParams {
-	return GnarkLocalOpeningParams{Y: p.Y}
+	var exty gnarkfext.Element
+	exty.Assign(p.ExtY)
+	return GnarkLocalOpeningParams{
+		BaseY:  p.BaseY,
+		ExtY:   exty,
+		IsBase: p.IsBase,
+	}
 }
 
 // A gnark circuit version of LogDerivSumParams
@@ -49,31 +60,52 @@ func (p LogDerivSumParams) GnarkAssign() GnarkLogDerivSumParams {
 
 // A gnark circuit version of InnerProductParams
 type GnarkInnerProductParams struct {
-	Ys []frontend.Variable
+	Ys []gnarkfext.Element
 }
 
 func (p InnerProduct) GnarkAllocate() GnarkInnerProductParams {
-	return GnarkInnerProductParams{Ys: make([]frontend.Variable, len(p.Bs))}
+	return GnarkInnerProductParams{Ys: make([]gnarkfext.Element, len(p.Bs))}
 }
 
 func (p InnerProductParams) GnarkAssign() GnarkInnerProductParams {
-	return GnarkInnerProductParams{Ys: vector.IntoGnarkAssignment(p.Ys)}
+	return GnarkInnerProductParams{Ys: vectorext.IntoGnarkAssignment(p.Ys)}
 }
 
 // A gnark circuit version of univariate eval params
 type GnarkUnivariateEvalParams struct {
-	X  frontend.Variable
-	Ys []frontend.Variable
+	X      frontend.Variable
+	Ys     []frontend.Variable
+	ExtX   gnarkfext.Element
+	ExtYs  []gnarkfext.Element
+	IsBase bool
 }
 
 func (p UnivariateEval) GnarkAllocate() GnarkUnivariateEvalParams {
 	// no need to preallocate the x because its size is already known
-	return GnarkUnivariateEvalParams{Ys: make([]frontend.Variable, len(p.Pols))}
+	return GnarkUnivariateEvalParams{
+		Ys:    make([]frontend.Variable, len(p.Pols)),
+		ExtYs: make([]gnarkfext.Element, len(p.Pols)),
+	}
 }
 
 // Returns a gnark assignment for the present parameters
 func (p UnivariateEvalParams) GnarkAssign() GnarkUnivariateEvalParams {
-	return GnarkUnivariateEvalParams{Ys: vector.IntoGnarkAssignment(p.Ys), X: p.X}
+	if p.IsBase {
+		return GnarkUnivariateEvalParams{
+			Ys:    vector.IntoGnarkAssignment(p.Ys),
+			X:     p.X,
+			ExtYs: vectorext.IntoGnarkAssignment(p.ExtYs),
+			ExtX:  gnarkfext.SetFromExt(p.ExtX),
+		}
+	} else {
+		// extension query
+		return GnarkUnivariateEvalParams{
+			Ys:    nil,
+			X:     field.Zero(),
+			ExtYs: vectorext.IntoGnarkAssignment(p.ExtYs),
+			ExtX:  gnarkfext.SetFromExt(p.ExtX),
+		}
+	}
 }
 
 // GnarkAllocate allocates a [GnarkHornerParams] with the right dimensions
@@ -102,12 +134,12 @@ func (p HornerParams) GnarkAssign() GnarkHornerParams {
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkInnerProductParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
-	fs.Update(p.Ys...)
+	fs.UpdateExt(p.Ys...)
 }
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkLocalOpeningParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
-	fs.Update(p.Y)
+	fs.Update(p.BaseY)
 }
 
 // Update the fiat-shamir state with the the present parameters
@@ -123,6 +155,11 @@ func (p GnarkGrandProductParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkUnivariateEvalParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
 	fs.Update(p.Ys...)
+}
+
+// Update the fiat-shamir state with the the present field extension parameters
+func (p GnarkUnivariateEvalParams) UpdateFSExt(fs *fiatshamir.GnarkFiatShamir) {
+	fs.UpdateExt(p.ExtYs...)
 }
 
 // Update the fiat-shamir state with the the present parameters

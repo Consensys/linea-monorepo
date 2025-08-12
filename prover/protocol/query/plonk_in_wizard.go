@@ -71,9 +71,8 @@ type PlonkInWizard struct {
 	// nbPublicInputs loaded is a flag indicating whether we need to compute the
 	// number of public input. It is not using [sync.Once] that way we don't need
 	// to initialize the value.
-	nbPublicInputsLoaded bool `serde:"omit"`
-
-	uuid uuid.UUID `serde:"omit"`
+	nbPublicInputsLoaded bool      `serde:"omit"`
+	uuid                 uuid.UUID `serde:"omit"`
 }
 
 func NewPlonkInWizard(

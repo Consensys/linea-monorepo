@@ -3,6 +3,9 @@ package accessors
 import (
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -18,6 +21,31 @@ type FromIntVecCoinPositionAccessor struct {
 	Info coin.Info
 	// Pos indexes the pointed position in the coin.
 	Pos int
+}
+
+func (c *FromIntVecCoinPositionAccessor) IsBase() bool {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *FromIntVecCoinPositionAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *FromIntVecCoinPositionAccessor) GetValExt(run ifaces.Runtime) fext.Element {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces.GnarkRuntime) (frontend.Variable, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Element {
+	//TODO implement me
+	panic("implement me")
 }
 
 // NewFromIntegerVecCoinPosition constructs an [ifaces.Accessor] object refering

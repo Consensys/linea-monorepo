@@ -6,15 +6,89 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+func TestEvaluateLagrange(t *testing.T) {
+
+	var x fext.Element
+	x.SetRandom()
+	size := 64
+	poly := make([]field.Element, size)
+	for i := 0; i < size; i++ {
+		poly[i].SetRandom()
+	}
+
+	d := fft.NewDomain(64)
+	polyLagrange := make([]field.Element, size)
+	copy(polyLagrange, poly)
+	d.FFT(polyLagrange, fft.DIF)
+	fft.BitReverse(polyLagrange)
+
+	var evalCan fext.Element
+	var tmp fext.Element
+	for i := size - 1; i >= 0; i-- {
+		fext.SetFromBase(&tmp, &poly[i])
+		evalCan.Mul(&evalCan, &x)
+		evalCan.Add(&evalCan, &tmp)
+	}
+
+	var evalLag fext.Element
+	polyLagrangeSv := NewRegular(polyLagrange)
+	evalLag = EvaluateLagrangeMixed(polyLagrangeSv, x)
+
+	if !evalLag.Equal(&evalCan) {
+		t.Fatal("error")
+	}
+
+}
+
+func TestBatchEvaluateLagrange(t *testing.T) {
+
+	x := fext.RandomElement()
+
+	nbPoly := 8
+	size := 64
+
+	polys := make([][]field.Element, nbPoly)
+	for i := 0; i < nbPoly; i++ {
+		polys[i] = make([]field.Element, size)
+		for j := 0; j < size; j++ {
+			polys[i][j].SetRandom()
+		}
+	}
+
+	evalCan := make([]fext.Element, nbPoly)
+	for i := 0; i < nbPoly; i++ {
+		evalCan[i] = poly.EvalMixed(polys[i], x)
+	}
+
+	d := fft.NewDomain(uint64(size))
+	polyLagranges := make([][]field.Element, nbPoly)
+	copy(polyLagranges, polys)
+
+	polyLagrangeSv := make([]SmartVector, nbPoly)
+	for i := 0; i < nbPoly; i++ {
+		d.FFT(polyLagranges[i], fft.DIF)
+		fft.BitReverse(polyLagranges[i])
+		polyLagrangeSv[i] = NewRegular(polyLagranges[i])
+
+	}
+	evalLag := BatchEvaluateLagrangeMixed(polyLagrangeSv, x)
+
+	// check the result
+	for i := 0; i < nbPoly; i++ {
+		require.Equal(t, evalLag[i].String(), evalCan[i].String())
+	}
+
+}
 func TestRuffini(t *testing.T) {
 
 	testCases := []struct {
@@ -62,20 +136,22 @@ func TestFuzzPolynomial(t *testing.T) {
 			a := tcaseA.svecs[0]
 			b := tcaseB.svecs[0]
 
-			// Try interpolating by one (should return the first element)
-			xa := Interpolate(a, field.One())
-			expecteda0 := a.Get(0)
+			// Try interpolating by zero (should return the first element)
+			var zeroExt fext.Element
+			zeroExt.SetZero()
+			xa := EvaluateLagrangeMixed(a, zeroExt)
+			expecteda0 := a.GetExt(0)
 			assert.Equal(t, xa.String(), expecteda0.String())
 
 			// Get a random x to use as an evaluation point to check polynomial
 			// identities
-			var x field.Element
+			var x fext.Element
 			x.SetRandom()
-			aX := EvalCoeff(a, x)
-			bX := EvalCoeff(b, x)
+			aX := EvalCoeffMixed(a, x)
+			bX := EvalCoeffMixed(b, x)
 
 			// Get the evaluations of a-n, b-a, a+b
-			var aSubBx, bSubAx, aPlusBx field.Element
+			var aSubBx, bSubAx, aPlusBx fext.Element
 			aSubBx.Sub(&aX, &bX)
 			bSubAx.Sub(&bX, &aX)
 			aPlusBx.Add(&aX, &bX)
@@ -87,10 +163,10 @@ func TestFuzzPolynomial(t *testing.T) {
 			aPlusb := PolyAdd(a, b)
 			bPlusa := PolyAdd(b, a)
 
-			aSubBxActual := EvalCoeff(aSubb, x)
-			bSubAxActual := EvalCoeff(bSuba, x)
-			aPlusbxActual := EvalCoeff(aPlusb, x)
-			bPlusaxActual := EvalCoeff(bPlusa, x)
+			aSubBxActual := EvalCoeffMixed(aSubb, x)
+			bSubAxActual := EvalCoeffMixed(bSuba, x)
+			aPlusbxActual := EvalCoeffMixed(aPlusb, x)
+			bPlusaxActual := EvalCoeffMixed(bPlusa, x)
 
 			t.Logf(
 				"Len of a %v, b %v, a+b %v, a-b %v, b-a %v",
@@ -146,15 +222,13 @@ func TestBivariatePolynomial(t *testing.T) {
 
 func TestBatchInterpolationWithConstantVector(t *testing.T) {
 	n := 4
-	randPoly := vector.ForTest(1, 2, 3, 4)
-	randPoly2 := vector.ForTest(1, 1, 1, 1)
+	randPoly := vector.ForTest(1, 1, 1, 1)
+	randPoly2 := vector.ForTest(2, 2, 2, 2)
+	x := fext.RandomElement()
 
-	x := field.NewElement(51)
-
-	expectedY := poly.EvalUnivariate(randPoly, x)
-	expectedY2 := poly.EvalUnivariate(randPoly2, x)
-	domain := fft.NewDomain(n).WithCoset()
-
+	expectedY := poly.EvalMixed(randPoly, x)
+	expectedY2 := poly.EvalMixed(randPoly2, x)
+	domain := fft.NewDomain(uint64(n))
 	/*
 		Test without coset
 	*/
@@ -169,7 +243,7 @@ func TestBatchInterpolationWithConstantVector(t *testing.T) {
 	fft.BitReverse(polys[0])
 	fft.BitReverse(polys[1])
 
-	yOnRoots := fastpoly.BatchInterpolate(polys, x)
+	yOnRoots := fastpoly.BatchEvaluateLagrangeMixed(polys, x)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
 	require.Equal(t, expectedY2.String(), yOnRoots[1].String())
 
@@ -187,22 +261,20 @@ func TestBatchInterpolationWithConstantVector(t *testing.T) {
 	fft.BitReverse(onCosets[0])
 	fft.BitReverse(onCosets[1])
 
-	yOnCosets := fastpoly.BatchInterpolate(onCosets, x, true)
+	yOnCosets := fastpoly.BatchEvaluateLagrangeMixed(onCosets, x, true)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
 	require.Equal(t, expectedY2.String(), yOnCosets[1].String())
-
 }
 
-func TestBatchInterpolateOnlyConstantVector(t *testing.T) {
+func TestBatchEvaluateLagrangeOnFextOnlyConstantVector(t *testing.T) {
 	n := 4
 	randPoly := vector.ForTest(1, 1, 1, 1)
 	randPoly2 := vector.ForTest(2, 2, 2, 2)
-	x := field.NewElement(51)
+	x := fext.NewFromUint(51, 1, 2, 3)
 
-	expectedY := poly.EvalUnivariate(randPoly, x)
-	expectedY2 := poly.EvalUnivariate(randPoly2, x)
-	domain := fft.NewDomain(n).WithCoset()
-
+	expectedY := poly.EvalMixed(randPoly, x)
+	expectedY2 := poly.EvalMixed(randPoly2, x)
+	domain := fft.NewDomain(uint64(n))
 	/*
 		Test without coset
 	*/
@@ -217,7 +289,7 @@ func TestBatchInterpolateOnlyConstantVector(t *testing.T) {
 	fft.BitReverse(polys[0])
 	fft.BitReverse(polys[1])
 
-	yOnRoots := fastpoly.BatchInterpolate(polys, x)
+	yOnRoots := fastpoly.BatchEvaluateLagrangeMixed(polys, x)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
 	require.Equal(t, expectedY2.String(), yOnRoots[1].String())
 
@@ -235,7 +307,7 @@ func TestBatchInterpolateOnlyConstantVector(t *testing.T) {
 	fft.BitReverse(onCosets[0])
 	fft.BitReverse(onCosets[1])
 
-	yOnCosets := fastpoly.BatchInterpolate(onCosets, x, true)
+	yOnCosets := fastpoly.BatchEvaluateLagrangeMixed(onCosets, x, true)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
 	require.Equal(t, expectedY2.String(), yOnCosets[1].String())
 }
@@ -248,12 +320,12 @@ func TestBatchInterpolationThreeVectors(t *testing.T) {
 	randPoly2 := vector.ForTest(1, 1, 1, 1)
 	randPoly3 := vector.ForTest(1, 2, 3, 4)
 
-	x := field.NewElement(51)
+	x := fext.NewFromUint(51, 1, 2, 3)
 
-	expectedY := poly.EvalUnivariate(randPoly, x)
-	expectedY2 := poly.EvalUnivariate(randPoly2, x)
-	expectedY3 := poly.EvalUnivariate(randPoly3, x)
-	domain := fft.NewDomain(n).WithCoset()
+	expectedY := poly.EvalMixed(randPoly, x)
+	expectedY2 := poly.EvalMixed(randPoly2, x)
+	expectedY3 := poly.EvalMixed(randPoly3, x)
+	domain := fft.NewDomain(uint64(n))
 
 	/*
 		Test without coset
@@ -273,7 +345,7 @@ func TestBatchInterpolationThreeVectors(t *testing.T) {
 	fft.BitReverse(polys[1])
 	fft.BitReverse(polys[2])
 
-	yOnRoots := fastpoly.BatchInterpolate(polys, x)
+	yOnRoots := fastpoly.BatchEvaluateLagrangeMixed(polys, x)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
 	require.Equal(t, expectedY2.String(), yOnRoots[1].String())
 	require.Equal(t, expectedY3.String(), yOnRoots[2].String())
@@ -296,7 +368,7 @@ func TestBatchInterpolationThreeVectors(t *testing.T) {
 	fft.BitReverse(onCosets[1])
 	fft.BitReverse(onCosets[2])
 
-	yOnCosets := fastpoly.BatchInterpolate(onCosets, x, true)
+	yOnCosets := fastpoly.BatchEvaluateLagrangeMixed(onCosets, x, true)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
 	require.Equal(t, expectedY2.String(), yOnCosets[1].String())
 	require.Equal(t, expectedY3.String(), yOnCosets[2].String())

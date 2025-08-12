@@ -5,9 +5,9 @@ import (
 	"math"
 	"reflect"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -125,7 +125,10 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 		of the constraint. Its size coincide with the size of the domain
 		of evaluation. For each value of `i`, X will evaluate to omega^i.
 	*/
-	omega := fft.GetOmega(cs.DomainSize)
+	omega, err := fft.Generator(uint64(cs.DomainSize))
+	if err != nil {
+		panic(err)
+	}
 	omegaI := field.One()
 
 	// precomputations of the powers of omega, can be optimized if useful
@@ -144,20 +147,30 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 			w := meta.GetColAssignment(run)
 			evalInputs[k] = w
 		case coin.Info:
-			evalInputs[k] = sv.NewConstant(run.GetRandomCoinField(meta.Name), cs.DomainSize)
+			if meta.IsBase() {
+				evalInputs[k] = sv.NewConstant(run.GetRandomCoinField(meta.Name), cs.DomainSize)
+			} else {
+				evalInputs[k] = sv.NewConstantExt(run.GetRandomCoinFieldExt(meta.Name), cs.DomainSize)
+			}
 		case variables.X:
 			evalInputs[k] = meta.EvalCoset(cs.DomainSize, 0, 1, false)
 		case variables.PeriodicSample:
 			evalInputs[k] = meta.EvalCoset(cs.DomainSize, 0, 1, false)
 		case ifaces.Accessor:
-			evalInputs[k] = sv.NewConstant(meta.GetVal(run), cs.DomainSize)
+			if meta.IsBase() {
+				baseElem, _ := meta.GetValBase(run)
+				evalInputs[k] = sv.NewConstant(baseElem, cs.DomainSize)
+			} else {
+				evalInputs[k] = sv.NewConstantExt(meta.GetValExt(run), cs.DomainSize)
+			}
+
 		default:
 			utils.Panic("Not a variable type %v in query %v", reflect.TypeOf(metadataInterface), cs.ID)
 		}
 	}
 
 	// This panics if the global constraints doesn't use any commitment
-	res := boarded.Evaluate(evalInputs)
+	res := boarded.EvaluateMixed(evalInputs)
 
 	offsetRange := MinMaxOffset(cs.Expression)
 
@@ -171,8 +184,7 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 	stop = min(stop, cs.DomainSize)
 
 	for i := start; i < stop; i++ {
-
-		resx := res.Get(i)
+		resx := sv.GetGenericElemOfSmartvector(res, i)
 		// The proper test
 		if !resx.IsZero() {
 			s := ""
@@ -180,8 +192,13 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 			for j := utils.Max(start, i-15); j < utils.Min(stop, i+15); j++ {
 				debugMap := make(map[string]string)
 				for k, metadataInterface := range metadatas {
-					inpx := evalInputs[k].Get(j)
-					debugMap[string(metadataInterface.String())] = fmt.Sprintf("%v", inpx.String())
+					if sv.IsBase(evalInputs[k]) {
+						inpx, _ := evalInputs[k].GetBase(j)
+						debugMap[string(metadataInterface.String())] = fmt.Sprintf("%v", inpx.String())
+					} else {
+						inpx := evalInputs[k].GetExt(j)
+						debugMap[string(metadataInterface.String())] = fmt.Sprintf("%v", inpx.String())
+					}
 				}
 				if j == i {
 					s += "\n"
@@ -325,7 +342,10 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 		of the constraint. Its size coincide with the size of the domain
 		of evaluation. For each value of `i`, X will evaluate to omega^i.
 	*/
-	omega := fft.GetOmega(cs.DomainSize)
+	omega, err := fft.Generator(uint64(cs.DomainSize))
+	if err != nil {
+		panic(err)
+	}
 	omegaI := field.One()
 
 	// precomputations of the powers of omega, can be optimized if useful

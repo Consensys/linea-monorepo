@@ -1,8 +1,11 @@
 package smartvectors
 
 import (
+	"math/big"
+
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -65,11 +68,18 @@ func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio i
 
 	v.WriteInSlice(res.Regular)
 
-	domain := fft.NewDomain(v.Len())
+	domain := fft.NewDomain(uint64(v.Len()))
 
+	var shift field.Element
 	if cosetID != 0 || cosetRatio != 0 {
-		opts = append(opts, fft.OnCoset())
-		domain = domain.WithCustomCoset(cosetRatio, cosetID)
+		omega, err := fft.Generator(domain.Cardinality * uint64(cosetRatio))
+		if err != nil {
+			panic(err)
+		}
+		omega.Exp(omega, big.NewInt(int64(cosetID)))
+
+		shift.Mul(&domain.FrMultiplicativeGen, &omega)
+		domain = fft.NewDomain(uint64(v.Len()), fft.WithShift(shift))
 	}
 
 	if decimation == fft.DIT {
@@ -77,15 +87,22 @@ func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio i
 		if bitReverse {
 			fft.BitReverse(res.Regular)
 		}
-		domain.FFT(res.Regular, fft.DIT, opts...)
+		if cosetID != 0 || cosetRatio != 0 {
+			domain.FFT(res.Regular, fft.DIT, fft.OnCoset())
+		} else {
+			domain.FFT(res.Regular, fft.DIT)
+		}
 	} else {
 		// Likewise, the optionally rearrange the input in correct order
-		domain.FFT(res.Regular, fft.DIF, opts...)
+		if cosetID != 0 || cosetRatio != 0 {
+			domain.FFT(res.Regular, fft.DIF, fft.OnCoset())
+		} else {
+			domain.FFT(res.Regular, fft.DIF)
+		}
 		if bitReverse {
 			fft.BitReverse(res.Regular)
 		}
 	}
-
 	return res
 }
 
@@ -102,6 +119,10 @@ func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio i
 //   - Specifies on which coset to perform the operation
 //   - 0, 0 to assert that the transformation should not be done over a coset
 func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, pool mempool.MemPool, opts ...fft.Option) SmartVector {
+
+	if !IsBase(v) {
+		utils.Panic("FFT inverse is only defined for base vectors")
+	}
 
 	// Sanity-check on the size of the vector v
 	assertPowerOfTwoLen(v.Len())
@@ -148,16 +169,26 @@ func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, coset
 
 	v.WriteInSlice(res.Regular)
 
-	domain := fft.NewDomain(v.Len())
+	domain := fft.NewDomain(uint64(v.Len()))
+	var shift field.Element
 	if cosetID != 0 || cosetRatio != 0 {
-		// Optionally equip the domain with a coset
-		opts = append(opts, fft.OnCoset())
-		domain = domain.WithCustomCoset(cosetRatio, cosetID)
+		omega, err := fft.Generator(domain.Cardinality * uint64(cosetRatio))
+		if err != nil {
+			panic(err)
+		}
+		omega.Exp(omega, big.NewInt(int64(cosetID)))
+
+		shift.Mul(&domain.FrMultiplicativeGen, &omega)
+		domain = fft.NewDomain(uint64(v.Len()), fft.WithShift(shift))
 	}
 
 	if decimation == fft.DIF {
 		// Optionally, bitReverse the output
-		domain.FFTInverse(res.Regular, fft.DIF, opts...)
+		if cosetID != 0 || cosetRatio != 0 {
+			domain.FFTInverse(res.Regular, fft.DIF, fft.OnCoset())
+		} else {
+			domain.FFTInverse(res.Regular, fft.DIF)
+		}
 		if bitReverse {
 			fft.BitReverse(res.Regular)
 		}
@@ -166,7 +197,11 @@ func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, coset
 		if bitReverse {
 			fft.BitReverse(res.Regular)
 		}
-		domain.FFTInverse(res.Regular, fft.DIT, opts...)
+		if cosetID != 0 || cosetRatio != 0 {
+			domain.FFTInverse(res.Regular, fft.DIT, fft.OnCoset())
+		} else {
+			domain.FFTInverse(res.Regular, fft.DIT)
+		}
 	}
 	return res
 }

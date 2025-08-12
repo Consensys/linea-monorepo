@@ -255,7 +255,7 @@ func (l *laneRepacking) getBlocks(run *wizard.ProverRuntime, inp PackingInput) (
 		s = s + nbyte
 
 		// Extract the limb, which is left aligned to the 16-th byte
-		limbSerialized = limbs[pos].Bytes()
+		utils.Panic("missing update for koalabear") // limbSerialized = limbs[pos].Bytes()
 
 		usefulByte := limbSerialized[LEFT_ALIGNMENT : LEFT_ALIGNMENT+nbyte]
 		if s > blockSize || s == blockSize {

@@ -12,7 +12,6 @@ import (
 // compiler. This aims at testing the [Check] function of the queries
 // and ensuring the implementations are both complete and sound.
 func TestQuery(t *testing.T) {
-
 	runTestList(t, "global", testtools.ListOfGlobalTestcasePositive)
 	runTestList(t, "global", testtools.ListOfGlobalTestcaseNegative)
 	runTestList(t, "horner", testtools.ListOfHornerTestcasePositive)

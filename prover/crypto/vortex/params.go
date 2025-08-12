@@ -1,10 +1,9 @@
 package vortex
 
 import (
-	"hash"
-
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -35,10 +34,10 @@ type Params struct {
 	MaxNbRows int
 	// LeafHashFunc returns a `hash.Hash` which is used
 	// to compute the leaves of the Merkle tree.
-	LeafHashFunc func() hash.Hash
+	LeafHashFunc func() hash.StateStorer
 	// MerkleHashFunc returns a `hash.Hash` which is used
 	// to hash the nodes of the Merkle tree.
-	MerkleHashFunc func() hash.Hash
+	MerkleHashFunc func() hash.StateStorer
 }
 
 // NewParams creates and returns a [Params]:
@@ -56,8 +55,8 @@ func NewParams(
 	nbColumns int,
 	maxNbRows int,
 	sisParams ringsis.Params,
-	leafHashFunc func() hash.Hash,
-	merkleHashFunc func() hash.Hash,
+	merkleHashFunc func() hash.StateStorer,
+	leafHashFunc func() hash.StateStorer,
 ) *Params {
 
 	if !utils.IsPowerOfTwo(nbColumns) {
@@ -82,8 +81,8 @@ func NewParams(
 
 	res := &Params{
 		Domains: [2]*fft.Domain{
-			fft.NewDomain(nbColumns),
-			fft.NewDomain(blowUpFactor * nbColumns),
+			fft.NewDomain(uint64(nbColumns)),
+			fft.NewDomain(uint64(blowUpFactor * nbColumns)),
 		},
 		NbColumns:      nbColumns,
 		MaxNbRows:      maxNbRows,

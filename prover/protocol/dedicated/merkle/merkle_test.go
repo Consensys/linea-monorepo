@@ -3,6 +3,7 @@ package merkle_test
 import (
 	"testing"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -48,9 +49,11 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 	leaves := make([]types.Bytes32, 1<<depth)
 	for i := range leaves {
 		// #nosec G404 -- no need for a cryptographically strong PRNG for testing purposes
-		var x field.Element
-		x.SetRandom()
-		leaves[i] = x.Bytes()
+		var x vortex.Hash
+		for i := 0; i < 8; i++ {
+			x[i].SetRandom()
+		}
+		leaves[i] = types.HashToBytes32(x)
 	}
 	tree := smt.BuildComplete(leaves, hashtypes.MiMC)
 	root := tree.Root
@@ -100,10 +103,13 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 				b.isActive = append(b.isActive, field.One())
 
 				// Update the tree by changing the leaf value at position j
-				var newVal field.Element
-				newVal.SetRandom()
-				tree.Update(j, newVal.Bytes())
-				leaves[j] = newVal.Bytes()
+				var newVal [8]field.Element
+				for i := 0; i < 8; i++ {
+					newVal[i].SetRandom()
+				}
+
+				tree.Update(j, types.HashToBytes32(newVal))
+				leaves[j] = types.HashToBytes32(newVal)
 				proof_new := tree.MustProve(j)
 				root_new := tree.Root
 				b.proofs = append(b.proofs, proof_new)
@@ -189,10 +195,13 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 				b.isActive = append(b.isActive, field.One())
 
 				// Update the tree by changing the leaf value at position j
-				var newVal field.Element
-				newVal.SetRandom()
-				tree.Update(j, newVal.Bytes())
-				leaves[j] = newVal.Bytes()
+				var newVal [8]field.Element
+				for i := 0; i < 8; i++ {
+					newVal[i].SetRandom()
+				}
+
+				tree.Update(j, types.HashToBytes32(newVal))
+				leaves[j] = types.HashToBytes32(newVal)
 				proof_new := tree.MustProve(j)
 				root_new := tree.Root
 				b.proofs = append(b.proofs, proof_new)
@@ -238,10 +247,13 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 				b.isActive = append(b.isActive, field.One())
 
 				// Update the tree by changing the leaf value at position j
-				var newVal field.Element
-				newVal.SetRandom()
-				tree.Update(j, newVal.Bytes())
-				leaves[j] = newVal.Bytes()
+				var newVal [8]field.Element
+				for i := 0; i < 8; i++ {
+					newVal[i].SetRandom()
+				}
+
+				tree.Update(j, types.HashToBytes32(newVal))
+				leaves[j] = types.HashToBytes32(newVal)
 				proof_new := tree.MustProve(j)
 				root_new := tree.Root
 				b.proofs = append(b.proofs, proof_new)
@@ -305,10 +317,13 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 				b.isActive = append(b.isActive, field.One())
 
 				// Update the tree by changing the leaf value at position j
-				var newVal field.Element
-				newVal.SetRandom()
-				tree.Update(j, newVal.Bytes())
-				leaves[j] = newVal.Bytes()
+				var newVal [8]field.Element
+				for i := 0; i < 8; i++ {
+					newVal[i].SetRandom()
+				}
+
+				tree.Update(j, types.HashToBytes32(newVal))
+				leaves[j] = types.HashToBytes32(newVal)
 				proof_new := tree.MustProve(j)
 				root_new := tree.Root
 				b.proofs = append(b.proofs, proof_new)

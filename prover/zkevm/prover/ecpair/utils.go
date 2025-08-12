@@ -9,42 +9,48 @@ import (
 )
 
 func convG1WizardToGnark(limbs [nbG1Limbs]field.Element) bn254.G1Affine {
-	var res bn254.G1Affine
-	var buf [fp.Bytes]byte
 
-	copyTo := func(i int, dst *fp.Element) {
-		l0 := limbs[i].Bytes()
-		l1 := limbs[i+1].Bytes()
-		copy(buf[0:16], l0[16:32])
-		copy(buf[16:32], l1[16:32])
-		dst.SetBytes(buf[:])
-	}
-	copyTo(0, &res.X)
-	copyTo(2, &res.Y)
+	utils.Panic("adjust for the koalabear migration")
+
+	var res bn254.G1Affine
+	// var buf [fp.Bytes]byte
+
+	// copyTo := func(i int, dst *fp.Element) {
+	// 	l0 := limbs[i].Bytes()
+	// 	l1 := limbs[i+1].Bytes()
+	// 	copy(buf[0:16], l0[16:32])
+	// 	copy(buf[16:32], l1[16:32])
+	// 	dst.SetBytes(buf[:])
+	// }
+	// copyTo(0, &res.X)
+	// copyTo(2, &res.Y)
 
 	return res
 }
 
 func convG2WizardToGnark(limbs [nbG2Limbs]field.Element) bn254.G2Affine {
-	var res bn254.G2Affine
-	var buf [fp.Bytes]byte
 
-	copyTo := func(i int, dst *fp.Element) {
-		l0 := limbs[i].Bytes()
-		l1 := limbs[i+1].Bytes()
-		copy(buf[0:16], l0[16:32])
-		copy(buf[16:32], l1[16:32])
-		dst.SetBytes(buf[:])
-	}
-	// arithmetization provides G2 coordinates in the following order:
-	//   X_Im, X_Re, Y_Im, Y_Re
-	// but in gnark we expect
-	//   X_Re, X_Im, Y_Re, Y_Im
-	// so we need to swap the limbs.
-	copyTo(0, &res.X.A1)
-	copyTo(2, &res.X.A0)
-	copyTo(4, &res.Y.A1)
-	copyTo(6, &res.Y.A0)
+	utils.Panic("adjust for the koalabear migration")
+
+	var res bn254.G2Affine
+	// var buf [fp.Bytes]byte
+
+	// copyTo := func(i int, dst *fp.Element) {
+	// 	l0 := limbs[i].Bytes()
+	// 	l1 := limbs[i+1].Bytes()
+	// 	copy(buf[0:16], l0[16:32])
+	// 	copy(buf[16:32], l1[16:32])
+	// 	dst.SetBytes(buf[:])
+	// }
+	// // arithmetization provides G2 coordinates in the following order:
+	// //   X_Im, X_Re, Y_Im, Y_Re
+	// // but in gnark we expect
+	// //   X_Re, X_Im, Y_Re, Y_Im
+	// // so we need to swap the limbs.
+	// copyTo(0, &res.X.A1)
+	// copyTo(2, &res.X.A0)
+	// copyTo(4, &res.Y.A1)
+	// copyTo(6, &res.Y.A0)
 
 	return res
 }

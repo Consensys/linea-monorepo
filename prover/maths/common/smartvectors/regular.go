@@ -31,7 +31,9 @@ func (r *Regular) Len() int { return len(*r) }
 func (r *Regular) GetBase(n int) (field.Element, error) { return (*r)[n], nil }
 
 func (r *Regular) GetExt(n int) fext.Element {
-	return *new(fext.Element).SetFromBase(&(*r)[n])
+	var res fext.Element
+	fext.SetFromBase(&res, &(*r)[n])
+	return res
 }
 
 func (r *Regular) Get(n int) field.Element {
@@ -85,7 +87,7 @@ func (r *Regular) WriteInSliceExt(s []fext.Element) {
 	assertHasLength(len(s), len(*r))
 	for i := 0; i < len(s); i++ {
 		elem, _ := r.GetBase(i)
-		s[i].SetFromBase(&elem)
+		fext.SetFromBase(&s[i], &elem)
 	}
 }
 
@@ -165,7 +167,7 @@ func (r *Regular) DeepCopy() SmartVector {
 func (r *Regular) IntoRegVecSaveAlloc() []field.Element {
 	res, err := r.IntoRegVecSaveAllocBase()
 	if err != nil {
-		panic(conversionError)
+		panic(errConversion)
 	}
 	return res
 }
@@ -178,7 +180,7 @@ func (r *Regular) IntoRegVecSaveAllocExt() []fext.Element {
 	temp := make([]fext.Element, r.Len())
 	for i := 0; i < r.Len(); i++ {
 		elem, _ := r.GetBase(i)
-		temp[i].SetFromBase(&elem)
+		fext.SetFromBase(&temp[i], &elem)
 	}
 	return temp
 }

@@ -7,10 +7,8 @@ import (
 	"github.com/consensys/go-corset/pkg/air"
 	"github.com/consensys/go-corset/pkg/trace"
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/sirupsen/logrus"
 )
@@ -67,23 +65,24 @@ func AssignFromLtTraces(run *wizard.ProverRuntime, schema *air.Schema, expTraces
 
 	for id := uint(0); id < numCols; id++ {
 
-		var (
-			col     = expTraces.Column(id)
-			name    = ifaces.ColID(wizardName(getModuleName(schema, col), col.Name()))
-			wCol    = run.Spec.Columns.GetHandle(name)
-			padding = col.Padding()
-			data    = col.Data()
-			plain   = make([]field.Element, data.Len())
-		)
+		utils.Panic("adjust for the koalabear migration")
+		// var (
+		// 	col     = expTraces.Column(id)
+		// 	name    = ifaces.ColID(wizardName(getModuleName(schema, col), col.Name()))
+		// 	wCol    = run.Spec.Columns.GetHandle(name)
+		// 	padding = col.Padding()
+		// 	data    = col.Data()
+		// 	plain   = make([]field.Element, data.Len())
+		// )
 
-		if !run.Spec.Columns.Exists(name) {
-			continue
-		}
+		// if !run.Spec.Columns.Exists(name) {
+		// 	continue
+		// }
 
-		for i := range plain {
-			plain[i] = data.Get(uint(i))
-		}
+		// for i := range plain {
+		// 	// plain[i] = data.Get(uint(i))
+		// }
 
-		run.AssignColumn(ifaces.ColID(name), smartvectors.LeftPadded(plain, padding, wCol.Size()))
+		// run.AssignColumn(ifaces.ColID(name), smartvectors.LeftPadded(plain, padding, wCol.Size()))
 	}
 }

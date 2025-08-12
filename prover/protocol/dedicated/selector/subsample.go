@@ -39,7 +39,7 @@ func (a *SubsampleProverAction) Run(run *wizard.ProverRuntime) {
 			largeWit[i] = a.Large[i].GetColAssignment(run)
 		}
 		gamma := run.GetRandomCoinField(a.Gamma.Name)
-		r = smartvectors.PolyEval(largeWit, gamma)
+		r = smartvectors.LinearCombination(largeWit, gamma)
 	}
 
 	prev := field.Zero()
@@ -71,7 +71,7 @@ func (a *SubsampleProverAction) Run(run *wizard.ProverRuntime) {
 			smallWit[i] = a.Small[i].GetColAssignment(run)
 		}
 		gamma := run.GetRandomCoinField(a.Gamma.Name)
-		rPrime = smartvectors.PolyEval(smallWit, gamma)
+		rPrime = smartvectors.LinearCombination(smallWit, gamma)
 	}
 
 	accSmallWit := make([]field.Element, a.LenSmall)
@@ -96,8 +96,8 @@ type SubsampleVerifierAction struct {
 func (a *SubsampleVerifierAction) Run(run wizard.Runtime) error {
 	resAccLast := run.GetLocalPointEvalParams(a.AccLargeLast)
 	expectedResAccLast := run.GetLocalPointEvalParams(a.AccSmallLast)
-	if resAccLast.Y != expectedResAccLast.Y {
-		return fmt.Errorf("linear hashing failed : the ResAcc and ExpectedResAcc do not match on their last inputs %v, %v", resAccLast.Y.String(), expectedResAccLast.Y.String())
+	if resAccLast.ExtY != expectedResAccLast.ExtY {
+		return fmt.Errorf("linear hashing failed : the ResAcc and ExpectedResAcc do not match on their last inputs %v, %v", resAccLast.ExtY.String(), expectedResAccLast.ExtY.String())
 	}
 	return nil
 }
@@ -105,7 +105,7 @@ func (a *SubsampleVerifierAction) Run(run wizard.Runtime) error {
 func (a *SubsampleVerifierAction) RunGnark(frontend frontend.API, run wizard.GnarkRuntime) {
 	resAccLast := run.GetLocalPointEvalParams(a.AccLargeLast)
 	expectedResAccLast := run.GetLocalPointEvalParams(a.AccSmallLast)
-	frontend.AssertIsEqual(resAccLast.Y, expectedResAccLast.Y)
+	frontend.AssertIsEqual(resAccLast.ExtY, expectedResAccLast.ExtY)
 }
 
 // Tests that a small table is obtained from subsampling a larger column with a given offset
@@ -148,10 +148,10 @@ func CheckSubsample(comp *wizard.CompiledIOP, name string, large, small []ifaces
 	var gamma coin.Info
 
 	if needGamma {
-		gamma = comp.InsertCoin(round+1, coin.Namef("%v_GAMMA", name), coin.Field)
+		gamma = comp.InsertCoin(round+1, coin.Namef("%v_GAMMA", name), coin.FieldExt)
 	}
 
-	alpha := comp.InsertCoin(round+1, coin.Namef("%v_ALPHA", name), coin.Field)
+	alpha := comp.InsertCoin(round+1, coin.Namef("%v_ALPHA", name), coin.FieldExt)
 
 	// Registers the two accumulators
 	accSmall := comp.InsertCommit(

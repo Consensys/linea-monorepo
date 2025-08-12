@@ -1,9 +1,13 @@
 package wizard
 
 import (
+	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
+	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -50,7 +54,7 @@ type Runtime interface {
 	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
 	GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams
 	GetQuery(name ifaces.QueryID) ifaces.Query
-	Fs() *fiatshamir.State
+	Fs() hash.StateStorer
 	InsertCoin(name coin.Name, value any)
 	GetState(name string) (any, bool)
 	SetState(name string, value any)
@@ -90,7 +94,7 @@ type VerifierRuntime struct {
 	// it to update the FS hash, this can potentially result in the prover and
 	// the verifer end up having different state or the same message being
 	// included a second time. Use it externally at your own risks.
-	FS *fiatshamir.State
+	FS hash.StateStorer
 
 	// State stores arbitrary data that can be used by the verifier. This
 	// can be used to communicate values between verifier states.
@@ -165,11 +169,11 @@ func (c *CompiledIOP) createVerifier(proof Proof) VerifierRuntime {
 		Coins:         collection.NewMapping[coin.Name, interface{}](),
 		Columns:       proof.Messages,
 		QueriesParams: proof.QueriesParams,
-		FS:            fiatshamir.NewMiMCFiatShamir(),
+		FS:            poseidon2.NewMerkleDamgardHasher(),
 		State:         make(map[string]interface{}),
 	}
 
-	runtime.FS.Update(c.FiatShamirSetup)
+	fiatshamir.Update(runtime.FS, c.FiatShamirSetup)
 
 	/*
 		Insert the verifying key into the messages
@@ -189,13 +193,17 @@ func (proof Proof) GetPublicInput(comp *CompiledIOP, name string) field.Element 
 
 	switch a := publicInputsAccessor.(type) {
 	case *accessors.FromConstAccessor:
-		return a.F
+		if a.IsBase() {
+			return a.Base
+		} else {
+			panic("Requested a base element from a public input that is a field extension")
+		}
 	case *accessors.FromPublicColumn:
 		if a.Col.Status() == column.Proof {
 			return proof.Messages.MustGet(a.Col.ID).Get(a.Pos)
 		}
 	case *accessors.FromLocalOpeningYAccessor:
-		return proof.QueriesParams.MustGet(a.Q.ID).(query.LocalOpeningParams).Y
+		return proof.QueriesParams.MustGet(a.Q.ID).(query.LocalOpeningParams).BaseY
 	}
 
 	// This generically returns the value of a public input by extracting
@@ -207,7 +215,6 @@ func (proof Proof) GetPublicInput(comp *CompiledIOP, name string) field.Element 
 	// run the verifier and extract them from the runtime.
 	verifierRuntime, _ := VerifyWithRuntime(comp, proof)
 	return verifierRuntime.GetPublicInput(name)
-
 }
 
 // GenerateCoinsFromRound generates all the random coins for the given round.
@@ -233,7 +240,7 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 				}
 
 				instance := run.GetColumn(msgName)
-				run.FS.UpdateSV(instance)
+				fiatshamir.UpdateSV(run.FS, instance)
 			}
 
 			/*
@@ -262,7 +269,9 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 		}
 	}
 
-	seed := run.FS.State()[0]
+	seed := run.FS.State()
+	var kSeed koalabear.Element
+	kSeed.SetBytes(seed[:1]) // TODO @thomas why take only the first byte ?
 
 	/*
 		Then assigns the coins for the new round. As the round incrementation
@@ -275,7 +284,7 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 		}
 
 		info := run.Spec.Coins.Data(myCoin)
-		value := info.Sample(run.FS, seed)
+		value := info.Sample(run.FS, kSeed)
 		run.Coins.InsertNew(myCoin, value)
 	}
 }
@@ -291,11 +300,20 @@ func (run *VerifierRuntime) GetRandomCoinField(name coin.Name) field.Element {
 		and that it has the correct type
 	*/
 	infos := run.Spec.Coins.Data(name)
-	if infos.Type != coin.Field && infos.Type != coin.FieldFromSeed {
+	if infos.Type != coin.Field && infos.Type != coin.FieldFromSeed && infos.Type != coin.FieldExt {
 		utils.Panic("Coin %v was registered with type %v but got %v", name, infos.Type, coin.Field)
 	}
 	// If this panics, it means we generates the coins wrongly
 	return run.Coins.MustGet(name).(field.Element)
+}
+
+func (run *VerifierRuntime) GetRandomCoinFieldExt(name coin.Name) fext.Element {
+	infos := run.Spec.Coins.Data(name)
+	if infos.Type != coin.FieldExt {
+		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.FieldExt)
+	}
+	// If this panics, it means we generates the coins wrongly
+	return run.Coins.MustGet(name).(fext.Element)
 }
 
 // GetRandomCoinFromSeed returns a field element random based on the seed.
@@ -453,6 +471,31 @@ func (run VerifierRuntime) GetColumnAt(name ifaces.ColID, pos int) field.Element
 	return wit.Get(pos)
 }
 
+func (run *VerifierRuntime) GetColumnAtBase(name ifaces.ColID, pos int) (field.Element, error) {
+	run.Spec.Columns.MustHaveName(name)
+	wit := run.Columns.MustGet(name)
+
+	if pos >= wit.Len() || pos < 0 {
+		utils.Panic("asked pos %v for vector of size %v", pos, wit)
+	}
+
+	if _, err := wit.GetBase(0); err == nil {
+		return wit.GetBase(pos)
+	} else {
+		return field.Zero(), err
+	}
+
+}
+func (run *VerifierRuntime) GetColumnAtExt(name ifaces.ColID, pos int) fext.Element {
+	run.Spec.Columns.MustHaveName(name)
+	wit := run.Columns.MustGet(name)
+
+	if pos >= wit.Len() || pos < 0 {
+		utils.Panic("asked pos %v for vector of size %v", pos, wit)
+	}
+	return wit.GetExt(pos)
+}
+
 // GetParams extracts the parameters of a query. Will panic if no
 // parameters are found
 //
@@ -475,7 +518,7 @@ func (run *VerifierRuntime) GetPublicInput(name string) field.Element {
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *VerifierRuntime) Fs() *fiatshamir.State {
+func (run *VerifierRuntime) Fs() hash.StateStorer {
 	return run.FS
 }
 

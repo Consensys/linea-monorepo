@@ -3,10 +3,11 @@ package vortex
 import (
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,17 +18,17 @@ func TestReedSolomonDoesNotChangeEvaluation(t *testing.T) {
 	_nPolys := 15
 	_blowUpFactor := 2
 
-	x := field.NewElement(478)
+	x := fext.RandomElement()
 
-	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC)
+	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, poseidon2.NewMerkleDamgardHasher)
 	vec := smartvectors.Rand(1 << 10)
-	rsEncoded := params.rsEncode(vec, nil)
+	rsEncoded := params._rsEncodeBase(vec, nil)
 
 	err := params.isCodeword(rsEncoded)
 	require.NoError(t, err)
 
-	y0 := smartvectors.Interpolate(vec, x)
-	y1 := smartvectors.Interpolate(rsEncoded, x)
+	y0 := smartvectors.EvaluateLagrangeMixed(vec, x)
+	y1 := smartvectors.EvaluateLagrangeMixed(rsEncoded, x)
 
 	require.Equal(t, y0.String(), y1.String())
 }
@@ -39,17 +40,17 @@ func TestReedSolomonConstant(t *testing.T) {
 	_nPolys := 15
 	_blowUpFactor := 2
 
-	x := field.NewElement(478)
+	x := fext.RandomElement()
 
-	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC)
+	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, poseidon2.NewMerkleDamgardHasher)
 	vec := smartvectors.NewConstant(field.NewElement(42), polySize)
-	rsEncoded := params.rsEncode(vec, nil)
+	rsEncoded := params._rsEncodeBase(vec, nil)
 
 	err := params.isCodeword(rsEncoded)
 	require.NoError(t, err)
 
-	y0 := smartvectors.Interpolate(vec, x)
-	y1 := smartvectors.Interpolate(rsEncoded, x)
+	y0 := smartvectors.EvaluateLagrangeMixed(vec, x)
+	y1 := smartvectors.EvaluateLagrangeMixed(rsEncoded, x)
 
 	require.Equal(t, y0.String(), y1.String())
 

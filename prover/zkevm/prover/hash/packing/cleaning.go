@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 )
@@ -110,7 +111,7 @@ func (ctx *cleaningCtx) assignCleanLimbs(run *wizard.ProverRuntime) {
 	var f field.Element
 	for pos := 0; pos < len(limbs); pos++ {
 		// Extract the limb, which is left aligned to the 16-th byte
-		limbSerialized = limbs[pos].Bytes()
+		utils.Panic("missing update for koalabear") // limbSerialized = limbs[pos].Bytes()
 		nbyte := field.ToInt(&nByte[pos])
 		res := limbSerialized[LEFT_ALIGNMENT : LEFT_ALIGNMENT+nbyte]
 		cleanLimbs.PushField(*(f.SetBytes(res)))

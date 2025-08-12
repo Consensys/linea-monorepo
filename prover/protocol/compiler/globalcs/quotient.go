@@ -1,6 +1,7 @@
 package globalcs
 
 import (
+	"errors"
 	"math/big"
 	"reflect"
 	"runtime"
@@ -12,11 +13,12 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -229,15 +231,14 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 
 			// gets directly a shallow copy in the map of the runtime
 			var witness sv.SmartVector
-			witness, isNatural := run.Columns.TryGet(name)
+			witness, isAssigned := run.Columns.TryGet(name)
 
 			// can happen if the column is verifier defined. In that case, no
 			// need to protect with a lock. This will not touch run.Columns.
-			if !isNatural {
+			if !isAssigned {
 				witness = pol.GetColAssignment(run)
 			}
-
-			witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil, fft.WithNbTasks(2))
+			witness = sv.FFTInverseExt(witness, fft.DIF, false, 0, 0, nil, fft.WithNbTasks(2))
 			coeffs.Store(name, threadSafeVector{&sync.Mutex{}, witness})
 		})
 	})
@@ -255,8 +256,8 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 		The first value is ignored because it correspond to the case where w^N = 1
 		(i.e. w is in the smaller subgroup)
 	*/
-	annulatorInvVals := fastpoly.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
-	annulatorInvVals = field.ParBatchInvert(annulatorInvVals, runtime.GOMAXPROCS(0))
+	annulatorInvVals := fastpolyext.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
+	annulatorInvVals = fext.ParBatchInvert(annulatorInvVals, runtime.GOMAXPROCS(0))
 
 	/*
 		Also returns the evaluations of
@@ -275,10 +276,14 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 			// For each value of `i`, X will evaluate to gen*omegaQ^numCoset*omega^i.
 			// Gen is a generator of F^*
 			var (
-				omega        = fft.GetOmega(ctx.DomainSize)
-				omegaQNumCos = fft.GetOmega(ctx.DomainSize * maxRatio)
-				omegaI       = field.NewElement(field.MultiplicativeGen)
+				omega, err1        = fft.Generator(uint64(ctx.DomainSize))
+				omegaQNumCos, err2 = fft.Generator(uint64(ctx.DomainSize * maxRatio))
+				omegaI             = field.NewElement(field.MultiplicativeGen)
 			)
+
+			if err1 != nil || err2 != nil {
+				utils.Panic("failed to generate generators: %v", errors.Join(err1, err2))
+			}
 
 			omegaQNumCos.Exp(omegaQNumCos, big.NewInt(int64(i)))
 			omegaI.Mul(&omegaI, &omegaQNumCos)
@@ -353,7 +358,7 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 						return
 					}
 
-					reevaledRoot := sv.FFT(v.(threadSafeVector).SmartVector, fft.DIT, false, ratio, share, localPool, fft.WithNbTasks(2))
+					reevaledRoot := sv.FFTExt(v.(threadSafeVector).SmartVector, fft.DIT, false, ratio, share, localPool, fft.WithNbTasks(2))
 					computedReeval.Store(name, reevaledRoot)
 				})
 
@@ -381,7 +386,7 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 
 					if shifted, isShifted := pol.(column.Shifted); isShifted {
 						polName := pol.GetColID()
-						res := sv.SoftRotate(reevaledRoot.(sv.SmartVector), shifted.Offset)
+						res := sv.SoftRotateExt(reevaledRoot.(sv.SmartVector), shifted.Offset)
 						computedReeval.Store(polName, res)
 						return
 					}
@@ -426,21 +431,40 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 				evalInputs := make([]sv.SmartVector, len(metadatas))
 
 				for k, metadataInterface := range metadatas {
+
 					switch metadata := metadataInterface.(type) {
 					case ifaces.Column:
+						//name := metadata.GetColID()
+						//evalInputs[k] = computedReeval[name]
 						value, ok := computedReeval.Load(metadata.GetColID())
 						if !ok {
 							utils.Panic("did not find the reevaluation of %v", metadata.GetColID())
 						}
 						evalInputs[k] = value.(sv.SmartVector)
+
 					case coin.Info:
-						evalInputs[k] = sv.NewConstant(run.GetRandomCoinField(metadata.Name), ctx.DomainSize)
+						if metadata.IsBase() {
+							evalInputs[k] = sv.NewConstant(run.GetRandomCoinField(metadata.Name), ctx.DomainSize)
+						} else {
+							evalInputs[k] = sv.NewConstantExt(run.GetRandomCoinFieldExt(metadata.Name), ctx.DomainSize)
+						}
 					case variables.X:
 						evalInputs[k] = metadata.EvalCoset(ctx.DomainSize, i, maxRatio, true)
 					case variables.PeriodicSample:
 						evalInputs[k] = metadata.EvalCoset(ctx.DomainSize, i, maxRatio, true)
 					case ifaces.Accessor:
-						evalInputs[k] = sv.NewConstant(metadata.GetVal(run), ctx.DomainSize)
+						if metadata.IsBase() {
+							// This is a base accessor, we can use the constant
+							// value directly.
+							elem, err := metadata.GetValBase(run)
+							if err != nil {
+								panic(err)
+							}
+							evalInputs[k] = sv.NewConstant(elem, ctx.DomainSize)
+						} else {
+							// This is a non-base accessor
+							evalInputs[k] = sv.NewConstantExt(metadata.GetValExt(run), ctx.DomainSize)
+						}
 					default:
 						utils.Panic("Not a variable type %v", reflect.TypeOf(metadataInterface))
 					}
@@ -455,8 +479,8 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 
 				// Note that this will panic if the expression contains "no commitment"
 				// This should be caught already by the constructor of the constraint.
-				quotientShare := ctx.AggregateExpressionsBoard[j].Evaluate(evalInputs, pool)
-				quotientShare = sv.ScalarMul(quotientShare, annulatorInvVals[i])
+				quotientShare := ctx.AggregateExpressionsBoard[j].EvaluateMixed(evalInputs, pool)
+				quotientShare = sv.ScalarMulExt(quotientShare, annulatorInvVals[i])
 				run.AssignColumn(ctx.QuotientShares[j][share].GetColID(), quotientShare)
 			})
 
