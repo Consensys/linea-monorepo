@@ -9,12 +9,10 @@
 package maru.p2p
 
 import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.ScheduledFuture
 import maru.config.P2P
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
-import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
@@ -39,7 +37,8 @@ class MaruPeerManagerTest {
     whenever(maruPeer.connectionInitiatedLocally()).thenReturn(true)
     whenever(p2pConfig.maxPeers).thenReturn(10)
 
-    val manager = MaruPeerManager(mockScheduler, maruPeerFactory, p2pConfig)
+    val manager = MaruPeerManager(maruPeerFactory = maruPeerFactory, p2pConfig = p2pConfig)
+    manager.scheduler = mockScheduler
     manager.start(discoveryService = null, p2pNetwork = mock())
     manager.onConnect(peer)
 
@@ -63,7 +62,8 @@ class MaruPeerManagerTest {
     whenever(maruPeer.sendStatus()).thenReturn(mockFutureStatus)
     whenever(p2pConfig.maxPeers).thenReturn(10)
 
-    val manager = MaruPeerManager(mockScheduler, maruPeerFactory, p2pConfig)
+    val manager = MaruPeerManager(maruPeerFactory = maruPeerFactory, p2pConfig = p2pConfig)
+    manager.scheduler = mockScheduler
     manager.start(discoveryService = null, p2pNetwork = mock())
     manager.onConnect(peer)
 
@@ -95,7 +95,6 @@ class MaruPeerManagerTest {
 
   @Test
   fun `creates maru peer through factory when peer connects`() {
-    val mockScheduler = mock<ScheduledExecutorService>()
     val nodeId = mock<NodeId>()
     val peer = mock<Peer>()
     val maruPeerFactory = mock<MaruPeerFactory>()
@@ -107,7 +106,7 @@ class MaruPeerManagerTest {
     whenever(maruPeer.connectionInitiatedLocally()).thenReturn(true)
     whenever(p2pConfig.maxPeers).thenReturn(10)
 
-    val manager = MaruPeerManager(mockScheduler, maruPeerFactory, p2pConfig)
+    val manager = MaruPeerManager(maruPeerFactory = maruPeerFactory, p2pConfig = p2pConfig)
     manager.start(discoveryService = null, p2pNetwork = mock())
     manager.onConnect(peer)
 
@@ -116,7 +115,6 @@ class MaruPeerManagerTest {
 
   @Test
   fun `stores connected peer in manager for retrieval`() {
-    val mockScheduler = mock<ScheduledExecutorService>()
     val nodeId = mock<NodeId>()
     val peer = mock<Peer>()
     val maruPeerFactory = mock<MaruPeerFactory>()
@@ -129,9 +127,8 @@ class MaruPeerManagerTest {
     whenever(maruPeer.getStatus()).thenReturn(null)
     whenever(p2pConfig.maxPeers).thenReturn(10)
     whenever(p2pConfig.statusUpdate).thenReturn(P2P.StatusUpdateConfig())
-    doReturn(mock<ScheduledFuture<*>>()).whenever(mockScheduler).schedule(any<Runnable>(), any(), any())
 
-    val manager = MaruPeerManager(mockScheduler, maruPeerFactory, p2pConfig)
+    val manager = MaruPeerManager(maruPeerFactory = maruPeerFactory, p2pConfig = p2pConfig)
     manager.start(discoveryService = null, p2pNetwork = mock())
     manager.onConnect(peer)
 

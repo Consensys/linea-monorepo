@@ -25,7 +25,7 @@ fun getBootnodeEnrString(
   val bootnodeNR =
     NodeRecordBuilder()
       .nodeRecordFactory(NodeRecordFactory(IdentitySchemaInterpreter.V4))
-      .seq(1)
+      .seq(0)
       .secretKey(secretKey)
       .address(ipv4, discPort, tcpPort)
       .build()

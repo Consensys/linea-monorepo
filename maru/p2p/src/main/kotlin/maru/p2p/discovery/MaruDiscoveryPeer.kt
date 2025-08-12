@@ -14,9 +14,10 @@ import tech.pegasys.teku.networking.p2p.discovery.DiscoveryPeer
 
 class MaruDiscoveryPeer(
   publicKeyBytes: Bytes,
-  val nodeIdBytes: Bytes,
-  val addr: InetSocketAddress,
+  nodeId: Bytes,
+  nodeAddress: InetSocketAddress,
   val forkIdBytes: Bytes,
-) : DiscoveryPeer(publicKeyBytes, nodeIdBytes, addr, null, null, null) {
-  override fun toString(): String = "MaruDiscoveryPeer(nodeId=$nodeIdBytes, address=$addr, maruForkId=$forkIdBytes)"
+) : DiscoveryPeer(publicKeyBytes, nodeId, nodeAddress, null, null, null) {
+  override fun toString(): String =
+    "MaruDiscoveryPeer(nodeId=$nodeId, nodeAddress=$nodeAddress, maruForkId=$forkIdBytes)"
 }

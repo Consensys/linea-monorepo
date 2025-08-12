@@ -8,11 +8,14 @@
  */
 package maru.p2p.discovery
 
-import java.util.concurrent.TimeUnit
-import java.util.function.Consumer
-import kotlin.time.toJavaDuration
+import java.util.Timer
+import java.util.TimerTask
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.concurrent.timerTask
 import maru.config.P2P
 import maru.consensus.ForkIdHashProvider
+import maru.services.LongRunningService
 import net.consensys.linea.async.toSafeFuture
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -24,20 +27,15 @@ import org.ethereum.beacon.discovery.schema.EnrField
 import org.ethereum.beacon.discovery.schema.NodeRecord
 import org.ethereum.beacon.discovery.schema.NodeRecordBuilder
 import org.ethereum.beacon.discovery.schema.NodeRecordFactory
-import org.hyperledger.besu.plugin.services.MetricsSystem
-import tech.pegasys.teku.infrastructure.async.AsyncRunner
-import tech.pegasys.teku.infrastructure.async.Cancellable
-import tech.pegasys.teku.infrastructure.async.MetricTrackingExecutorFactory
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import tech.pegasys.teku.infrastructure.async.ScheduledExecutorAsyncRunner
 import tech.pegasys.teku.networking.p2p.discovery.discv5.SecretKeyParser
 
 class MaruDiscoveryService(
   privateKeyBytes: ByteArray,
   private val p2pConfig: P2P,
   private val forkIdHashProvider: ForkIdHashProvider,
-  metricsSystem: MetricsSystem,
-) {
+  private val timerFactory: (String, Boolean) -> Timer = { namePrefix, isDaemon -> createTimer(namePrefix, isDaemon) },
+) : LongRunningService {
   init {
     require(p2pConfig.discovery != null) {
       "MaruDiscoveryService is being initialized without the discovery section in the P2P config!"
@@ -46,7 +44,15 @@ class MaruDiscoveryService(
 
   companion object {
     const val FORK_ID_HASH_FIELD_NAME = "mfidh"
-    const val DISCOVERY_TIMEOUT_SECONDS = 30L
+
+    fun createTimer(
+      namePrefix: String,
+      isDaemon: Boolean,
+    ): Timer =
+      Timer(
+        "$namePrefix-${UUID.randomUUID()}",
+        isDaemon,
+      )
   }
 
   private val log: Logger = LogManager.getLogger(this.javaClass)
@@ -63,58 +69,55 @@ class MaruDiscoveryService(
     DiscoverySystemBuilder()
       .listen(p2pConfig.ipAddress, p2pConfig.discovery!!.port.toInt())
       .secretKey(privateKey)
-      .localNodeRecord(localNodeRecord())
-      .bootnodes(bootnodes)
+      .localNodeRecord(createLocalNodeRecord())
       .build()
 
-  private val delayedExecutor: AsyncRunner =
-    ScheduledExecutorAsyncRunner.create(
-      "DiscoveryService",
-      1,
-      1,
-      5,
-      MetricTrackingExecutorFactory(metricsSystem),
-    )
+  private var poller: Timer? = null
 
-  private lateinit var bootnodeRefreshTask: Cancellable
+  private val isStarted = AtomicBoolean(false)
 
-  fun getLocalNodeRecord(): NodeRecord = discoverySystem.getLocalNodeRecord()
+  fun getLocalNodeRecord(): NodeRecord = discoverySystem.localNodeRecord
 
-  init {
-    val discoveryNetworkBuilder = DiscoverySystemBuilder()
-
-    discoveryNetworkBuilder.listen(p2pConfig.ipAddress, p2pConfig.discovery!!.port.toInt())
-    discoveryNetworkBuilder.secretKey(privateKey)
-    discoveryNetworkBuilder.localNodeRecord(localNodeRecord())
-    discoveryNetworkBuilder.bootnodes(bootnodes)
-  }
-
-  fun start() {
+  override fun start() {
+    if (!isStarted.compareAndSet(false, true)) {
+      log.warn("MaruDiscoveryService has already been started!")
+      return
+    }
     discoverySystem
       .start()
       .thenRun {
-        this.bootnodeRefreshTask =
-          delayedExecutor.runWithFixedDelay(
-            { this.pingBootnodes(bootnodes) },
-            p2pConfig.discovery!!.refreshInterval.toJavaDuration(),
-            { error: Throwable ->
-              log.error(
-                "Failed to contact discovery bootnodes",
-                error,
-              )
-            },
-          )
-      }.get(DISCOVERY_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        poller = timerFactory("boot-node-refresher", true)
+        poller!!.scheduleAtFixedRate(
+          /* task = */ pingBootnodesTask(),
+          /* delay = */ 0,
+          /* period = */ p2pConfig.discovery!!.refreshInterval.inWholeMilliseconds,
+        )
+      }
     return
   }
 
-  fun stop() {
-    bootnodeRefreshTask.cancel()
+  private fun pingBootnodesTask(): TimerTask {
+    var task: TimerTask? = null
+    try {
+      task = timerTask { pingBootnodes() }
+    } catch (e: Exception) {
+      log.warn("Failed to ping bootnodes", e)
+    }
+    return task!!
+  }
+
+  override fun stop() {
+    if (!isStarted.compareAndSet(true, false)) {
+      log.warn("Calling stop on MaruDiscoveryService that has not been started!")
+      return
+    }
+    poller?.cancel()
     discoverySystem.stop()
   }
 
   fun updateForkIdHash(forkIdHash: Bytes) { // TODO: Need to call this when the fork id changes
     discoverySystem.updateCustomFieldValue(
+      // TODO: needs to increment the sequence number in the local node record as well
       FORK_ID_HASH_FIELD_NAME,
       forkIdHash,
     )
@@ -139,10 +142,10 @@ class MaruDiscoveryService(
   private fun convertSafeNodeRecordToDiscoveryPeer(node: NodeRecord): MaruDiscoveryPeer {
     // node record has been checked in checkNodeRecord, so we can convert to MaruDiscoveryPeer safely
     return MaruDiscoveryPeer(
-      (node.get(EnrField.PKEY_SECP256K1) as Bytes),
-      node.nodeId,
-      node.tcpAddress.get(),
-      node.get(FORK_ID_HASH_FIELD_NAME) as Bytes,
+      publicKeyBytes = (node.get(EnrField.PKEY_SECP256K1) as Bytes),
+      nodeId = node.nodeId,
+      nodeAddress = node.tcpAddress.get(),
+      forkIdBytes = node.get(FORK_ID_HASH_FIELD_NAME) as Bytes,
     )
   }
 
@@ -183,26 +186,26 @@ class MaruDiscoveryService(
     return true
   }
 
-  private fun pingBootnodes(bootnodeRecords: List<NodeRecord>) {
+  private fun pingBootnodes() {
     log.trace("Pinging bootnodes")
-    bootnodeRecords.forEach(
-      Consumer { bootnode: NodeRecord? ->
-        SafeFuture
-          .of(discoverySystem.ping(bootnode))
-          .whenComplete { _, e ->
-            if (e != null) {
-              log.warn("Bootnode {} is unresponsive", bootnode)
-            }
+    bootnodes.forEach {
+      SafeFuture
+        .of(discoverySystem.ping(it))
+        .whenComplete { _, e ->
+          if (e != null) {
+            log.warn("Bootnode {} is unresponsive", it)
           }
-      },
-    )
+        }
+    }
   }
 
-  private fun localNodeRecord(): NodeRecord {
+  private fun createLocalNodeRecord(): NodeRecord {
     val nodeRecordBuilder: NodeRecordBuilder =
       NodeRecordBuilder()
         .secretKey(privateKey)
         .seq(UInt64.ONE)
+        // TODO: we need to store the sequence number in the DB?
+        //  and increment it after changing the record and after each restart!
         .address(
           p2pConfig.ipAddress,
           p2pConfig.discovery!!.port.toInt(),

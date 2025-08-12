@@ -132,17 +132,19 @@ class DefaultMaruPeer(
 
   override fun scheduleDisconnectIfStatusNotReceived(delay: Duration) {
     scheduledDisconnect.ifPresent { it.cancel(false) }
-    scheduledDisconnect =
-      Optional.of(
-        scheduler.schedule(
-          {
-            log.debug("Disconnecting from peerId={} by timeout", this.id)
-            disconnectCleanly(DisconnectReason.REMOTE_FAULT)
-          },
-          delay.inWholeSeconds,
-          TimeUnit.SECONDS,
-        ),
-      )
+    if (!scheduler.isShutdown) {
+      scheduledDisconnect =
+        Optional.of(
+          scheduler.schedule(
+            {
+              log.debug("Disconnecting from peerId={} by timeout", this.id)
+              disconnectCleanly(DisconnectReason.REMOTE_FAULT)
+            },
+            delay.inWholeSeconds,
+            TimeUnit.SECONDS,
+          ),
+        )
+    }
   }
 
   override fun sendBeaconBlocksByRange(

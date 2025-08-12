@@ -8,10 +8,11 @@
  */
 package maru.p2p.discovery
 
+import java.lang.Thread.sleep
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.Optional
-import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import linea.kotlin.decodeHex
 import maru.config.P2P
@@ -32,13 +33,11 @@ import maru.serialization.ForkIdSerializers
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.crypto.SECP256K1
 import org.assertj.core.api.Assertions.assertThat
-import org.awaitility.Awaitility
 import org.ethereum.beacon.discovery.schema.IdentitySchemaInterpreter
 import org.ethereum.beacon.discovery.schema.NodeRecord
 import org.ethereum.beacon.discovery.schema.NodeRecordBuilder
 import org.ethereum.beacon.discovery.schema.NodeRecordFactory
 import org.ethereum.beacon.discovery.util.Functions
-import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
@@ -82,13 +81,6 @@ class MaruDiscoveryServiceTest {
       )
 
     val otherForkSpec = ForkSpec(1L, 1, consensusConfig)
-
-    val forkId =
-      ForkId(
-        chainId = chainId + 2u,
-        forkSpec = otherForkSpec,
-        genesisRootHash = ByteArray(32),
-      )
   }
 
   private lateinit var service: MaruDiscoveryService
@@ -97,15 +89,6 @@ class MaruDiscoveryServiceTest {
   private val publicKey = Functions.deriveCompressedPublicKeyFromPrivate(keyPair.secretKey())
   private val dummyAddr = Optional.of(InetSocketAddress(InetAddress.getByName("1.1.1.1"), 1234))
 
-  /**
-   * Creates a valid node record with the specified values.
-   *
-   * @param pubKey The public key to use for the node record. Defaults to dummyPubKey.
-   * @param forkIdHash The fork ID hash to use for the node record. Defaults to the current fork ID hash.
-   * @param nodeId The node ID to use for the node record. Defaults to dummyNodeId.
-   * @param tcpAddress The TCP address to use for the node record. Defaults to dummyAddr.
-   * @return A real NodeRecord with the specified values, wrapped in a mock to allow property overrides.
-   */
   private fun createValidNodeRecord(
     forkIdHash: ByteArray? = forkIdHashProvider.currentForkIdHash(),
     tcpAddress: Optional<InetSocketAddress> = dummyAddr,
@@ -135,10 +118,15 @@ class MaruDiscoveryServiceTest {
           P2P.Discovery(
             port = 9000u,
             bootnodes = listOf(),
-            refreshInterval = 5.seconds,
+            refreshInterval = 10.seconds,
           ),
       )
-    service = MaruDiscoveryService(keyPair.secretKey().bytesArray(), p2pConfig, forkIdHashProvider, NoOpMetricsSystem())
+    service =
+      MaruDiscoveryService(
+        privateKeyBytes = keyPair.secretKey().bytesArray(),
+        p2pConfig = p2pConfig,
+        forkIdHashProvider = forkIdHashProvider,
+      )
   }
 
   @Test
@@ -153,7 +141,7 @@ class MaruDiscoveryServiceTest {
       }
 
     assertEquals(publicKey, peer.publicKey)
-    assertEquals(dummyAddr.get(), peer.addr)
+    assertEquals(dummyAddr.get(), peer.nodeAddress)
     assertEquals(Bytes.wrap(forkIdHashProvider.currentForkIdHash()), peer.forkIdBytes)
   }
 
@@ -192,11 +180,10 @@ class MaruDiscoveryServiceTest {
               P2P.Discovery(
                 port = PORT2,
                 bootnodes = emptyList(),
-                refreshInterval = 5.seconds,
+                refreshInterval = 10.seconds,
               ),
           ),
         forkIdHashProvider = forkIdHashProvider,
-        metricsSystem = NoOpMetricsSystem(),
       )
 
     val enrString =
@@ -218,11 +205,10 @@ class MaruDiscoveryServiceTest {
               P2P.Discovery(
                 port = PORT4,
                 bootnodes = listOf(enrString),
-                refreshInterval = 5.seconds,
+                refreshInterval = 500.milliseconds,
               ),
           ),
         forkIdHashProvider = forkIdHashProvider,
-        metricsSystem = NoOpMetricsSystem(),
       )
 
     val discoveryService3 =
@@ -236,11 +222,10 @@ class MaruDiscoveryServiceTest {
               P2P.Discovery(
                 port = PORT6,
                 bootnodes = listOf(enrString),
-                refreshInterval = 5.seconds,
+                refreshInterval = 500.milliseconds,
               ),
           ),
         forkIdHashProvider = forkIdHashProvider,
-        metricsSystem = NoOpMetricsSystem(),
       )
 
     try {
@@ -248,10 +233,19 @@ class MaruDiscoveryServiceTest {
       discoveryService2.start()
       discoveryService3.start()
 
-      awaitPeerFound(bootnode, discoveryService2.getLocalNodeRecord().nodeId)
-      awaitPeerFound(discoveryService2, discoveryService3.getLocalNodeRecord().nodeId)
-      awaitPeerFound(discoveryService3, discoveryService2.getLocalNodeRecord().nodeId)
-      awaitPeerFound(bootnode, discoveryService3.getLocalNodeRecord().nodeId)
+      // make sure services are started and bootnodes have been pinged
+      sleep(1000)
+
+      discoveryService2
+        .searchForPeers()
+        .thenAccept { foundPeers ->
+          foundPeersContains(foundPeers, bootnode, discoveryService3)
+        }.join()
+      discoveryService3
+        .searchForPeers()
+        .thenAccept { foundPeers ->
+          foundPeersContains(foundPeers, bootnode, discoveryService2)
+        }.join()
     } finally {
       bootnode.stop()
       discoveryService2.stop()
@@ -259,22 +253,11 @@ class MaruDiscoveryServiceTest {
     }
   }
 
-  private fun awaitPeerFound(
-    discoveryService: MaruDiscoveryService,
-    expectedNodeId: Bytes,
+  private fun foundPeersContains(
+    foundPeers: Collection<MaruDiscoveryPeer>,
+    vararg nodes: MaruDiscoveryService,
   ) {
-    Awaitility
-      .await()
-      .timeout(10, TimeUnit.SECONDS)
-      .untilAsserted {
-        val get = discoveryService.searchForPeers().get()
-        assertThat(
-          get
-            .stream()
-            .filter { it.nodeIdBytes == expectedNodeId }
-            .count(),
-        ).isGreaterThan(0L)
-      }
+    nodes.forEach { node -> assertThat(foundPeers.any { it.nodeId == node.getLocalNodeRecord().nodeId }).isTrue }
   }
 
   @Test
