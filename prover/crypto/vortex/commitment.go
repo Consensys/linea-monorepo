@@ -16,10 +16,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const (
-	blockSize = 8
-)
-
 // EncodedMatrix represents the witness of a Vortex matrix commitment, it is
 // represented as an array of rows.
 type EncodedMatrix []smartvectors.SmartVector

@@ -100,7 +100,7 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 
 	// And assign the 1-sized column to contain the root
 	var root = types.Bytes32ToHash(tree.Root)
-	run.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round)), smartvectors.NewRegular(root))
+	run.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round)), smartvectors.NewRegular(root[:]))
 }
 
 type LinearCombinationComputationProverAction struct {

@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 const (
@@ -38,4 +39,15 @@ func BlockCompressionMekle(oldState, block [blockSize]field.Element) (newState [
 		res[i].Add(&res[i], &x[8+i])
 	}
 	return res
+}
+
+// Poseidon2HashVec hashes a vector of field elements to a leaf
+func Poseidon2HashVec(v []field.Element) (h [8]field.Element) {
+	state := poseidon2.NewMerkleDamgardHasher()
+	for i := range v {
+		vBytes := v[i].Bytes()
+		state.Write(vBytes[:])
+	}
+	h = types.Bytes32ToHash(types.Bytes32(state.Sum(nil)))
+	return h
 }
