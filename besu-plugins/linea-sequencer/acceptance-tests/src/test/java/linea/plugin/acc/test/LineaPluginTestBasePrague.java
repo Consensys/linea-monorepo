@@ -9,6 +9,8 @@
 
 package linea.plugin.acc.test;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -443,6 +445,20 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
   protected void updateExecutionPayloadWithBlockHash(
       ObjectNode executionPayload, BlockHeader blockHeader) {
     executionPayload.put("blockHash", blockHeader.getBlockHash().toHexString());
+  }
+
+  /**
+   * Asserts that a block import was rejected with the expected validation error.
+   * 
+   * @param response HTTP response from the Engine API call
+   * @param expectedValidationError Expected validation error message to check for
+   */
+  protected void assertBlockImportRejected(Response response, String expectedValidationError) throws Exception {
+    JsonNode result = mapper.readTree(response.body().string()).get("result");
+    String status = result.get("status").asText();
+    String validationError = result.get("validationError").asText();
+    assertThat(status).isEqualTo("INVALID");
+    assertThat(validationError).contains(expectedValidationError);
   }
 
   // Constants for transaction-related data keys

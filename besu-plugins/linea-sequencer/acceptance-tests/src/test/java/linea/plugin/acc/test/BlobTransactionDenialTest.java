@@ -10,7 +10,6 @@ package linea.plugin.acc.test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Collections;
 import java.util.HashMap;
@@ -91,11 +90,7 @@ public class BlobTransactionDenialTest extends LineaPluginTestBasePrague {
             blockWithBlobTxRequest.executionRequests());
 
     // Assert
-    JsonNode result = mapper.readTree(response.body().string()).get("result");
-    String status = result.get("status").asText();
-    String validationError = result.get("validationError").asText();
-    assertThat(status).isEqualTo("INVALID");
-    assertThat(validationError).contains(LineaTransactionValidatorPluginErrors.BLOB_TX_NOT_ALLOWED);
+    assertBlockImportRejected(response, LineaTransactionValidatorPluginErrors.BLOB_TX_NOT_ALLOWED);
   }
 
   private EngineNewPayloadRequest createBlobTransactionBlockRequest(ObjectMapper mapper) throws Exception {
