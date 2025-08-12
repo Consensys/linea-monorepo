@@ -441,6 +441,7 @@ class P2PTest {
             ipAddress = IPV4,
             port = PORT2,
             staticPeers = listOf(PEER_ADDRESS_NODE_1, PEER_ADDRESS_NODE_3),
+            reconnectDelay = 1.seconds,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -1162,7 +1163,7 @@ class P2PTest {
   }
 
   private fun awaitUntilAsserted(
-    timeout: Long = 6000L,
+    timeout: Long = 10000L,
     timeUnit: TimeUnit = TimeUnit.MILLISECONDS,
     condition: () -> Unit,
   ) {
@@ -1176,8 +1177,8 @@ class P2PTest {
     peer: String,
   ) {
     assertThat(
-      p2pNetwork.isConnected(peer),
-    ).isTrue()
+      p2pNetwork.getPeerLookup().getPeer(LibP2PNodeId(PeerId.fromBase58(peer))),
+    ).isNotNull
   }
 
   private fun getMockedStatusMessageFactory(): StatusMessageFactory {

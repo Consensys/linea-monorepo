@@ -9,7 +9,6 @@
 package maru.p2p
 
 import java.util.Optional
-import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import kotlin.time.Duration.Companion.seconds
 import maru.config.P2P
@@ -37,7 +36,6 @@ class DefaultMaruPeerTest {
   private val delegatePeer = mock<Peer>()
   private val rpcMethods = mock<RpcMethods>()
   private val statusMessageFactory = mock<StatusMessageFactory>()
-  private val scheduler = mock<ScheduledExecutorService>()
   private val maruPeer =
     DefaultMaruPeer(
       delegatePeer,
