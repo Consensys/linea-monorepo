@@ -168,8 +168,8 @@ class P2PTest {
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl1, peers = 1) }
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
     } finally {
-      p2pNetworkImpl1.stop()
-      p2pNetworkImpl2.stop()
+      p2pNetworkImpl1.stop().get()
+      p2pNetworkImpl2.stop().get()
     }
   }
 
@@ -192,8 +192,8 @@ class P2PTest {
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl1, peers = 0) }
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 0) }
     } finally {
-      p2pNetworkImpl1.stop()
-      p2pNetworkImpl2.stop()
+      p2pNetworkImpl1.stop().get()
+      p2pNetworkImpl2.stop().get()
     }
   }
 
@@ -209,8 +209,8 @@ class P2PTest {
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl1, peers = 1) }
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
     } finally {
-      p2pNetworkImpl1.stop()
-      p2pNetworkImpl2.stop()
+      p2pNetworkImpl1.stop().get()
+      p2pNetworkImpl2.stop().get()
     }
   }
 
@@ -232,8 +232,8 @@ class P2PTest {
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl1, peers = 1) }
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
     } finally {
-      p2pNetworkImpl1.stop()
-      p2pNetworkImpl2.stop()
+      p2pNetworkImpl1.stop().get()
+      p2pNetworkImpl2.stop().get()
     }
   }
 
@@ -273,8 +273,8 @@ class P2PTest {
         assertThat(blocksReceived).hasSameElementsAs(listOf(randomBlockMessage1.payload, randomBlockMessage2.payload))
       }
     } finally {
-      p2pNetworkImpl1.stop()
-      p2pNetworkImpl2.stop()
+      p2pNetworkImpl1.stop().get()
+      p2pNetworkImpl2.stop().get()
     }
   }
 
@@ -294,7 +294,6 @@ class P2PTest {
       createP2PNetwork(privateKey = key3, port = PORT3, staticPeers = emptyList(), beaconChain = beaconChain3)
     try {
       p2pNetworkImpl1.start()
-
       p2pNetworkImpl2.start()
       p2pNetworkImpl2.subscribeToBlocks {
         updateBeaconChainState(beaconChain2, it.beaconBlock.beaconBlockHeader)
@@ -326,9 +325,9 @@ class P2PTest {
         blockReceived.get(200, TimeUnit.MILLISECONDS),
       ).isEqualTo(randomBlockMessage.payload)
     } finally {
-      p2pNetworkImpl1.stop()
-      p2pNetworkImpl2.stop()
-      p2pNetworkImpl3.stop()
+      p2pNetworkImpl1.stop().get()
+      p2pNetworkImpl2.stop().get()
+      p2pNetworkImpl3.stop().get()
     }
   }
 
@@ -374,8 +373,8 @@ class P2PTest {
       assertThatNoException().isThrownBy { responseFuture.get(500L, TimeUnit.MILLISECONDS) }
       assertThat(peer1.getStatus()).isEqualTo(expectedStatus)
     } finally {
-      p2pNetworkImpl1.stop()
-      p2pNetworkImpl2.stop()
+      p2pNetworkImpl1.stop().get()
+      p2pNetworkImpl2.stop().get()
     }
   }
 
@@ -424,8 +423,8 @@ class P2PTest {
         .hasMessageContaining("currentForkIdHash exception testing")
         .matches { (it.cause as RpcException).responseCode == RpcResponseStatus.SERVER_ERROR_CODE }
     } finally {
-      p2pNetworkImpl1.stop()
-      p2pNetworkImpl2.stop()
+      p2pNetworkImpl1.stop().get()
+      p2pNetworkImpl2.stop().get()
     }
   }
 
@@ -474,8 +473,8 @@ class P2PTest {
       assertThat(response.blocks).hasSize(5)
       assertThat(response.blocks).isEqualTo(expectedBlocks)
     } finally {
-      p2pNetworkImpl1.stop()
-      p2pNetworkImpl2.stop()
+      p2pNetworkImpl1.stop().get()
+      p2pNetworkImpl2.stop().get()
     }
   }
 
@@ -504,8 +503,8 @@ class P2PTest {
         .hasMessageContaining("Missing sealed beacon block")
         .matches { (it.cause as RpcException).responseCode == RpcResponseStatus.RESOURCE_UNAVAILABLE }
     } finally {
-      p2pNetworkImpl1.stop()
-      p2pNetworkImpl2.stop()
+      p2pNetworkImpl1.stop().get()
+      p2pNetworkImpl2.stop().get()
     }
   }
 
@@ -597,9 +596,9 @@ class P2PTest {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl3, PEER_ID_NODE_1)
       }
     } finally {
-      p2pNetworkImpl1.stop()
-      p2pNetworkImpl2.stop()
-      p2pNetworkImpl3.stop()
+      p2pNetworkImpl1.stop().get()
+      p2pNetworkImpl2.stop().get()
+      p2pNetworkImpl3.stop().get()
     }
   }
 
@@ -673,8 +672,8 @@ class P2PTest {
         currentBlockNumber++
       }
     } finally {
-      p2pNetworkImpl1.stop()
-      p2pNetworkImpl2.stop()
+      p2pNetworkImpl1.stop().get()
+      p2pNetworkImpl2.stop().get()
     }
   }
 
@@ -736,8 +735,8 @@ class P2PTest {
 
       assertThat(disconnectCount).isGreaterThanOrEqualTo(2)
     } finally {
-      p2pNetworkImpl1.stop()
-      p2pNetworkImpl2.stop()
+      p2pNetworkImpl1.stop().get()
+      p2pNetworkImpl2.stop().get()
     }
   }
 
