@@ -1,6 +1,8 @@
 package smartvectors
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -143,6 +145,8 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPo
 			anyReg = true
 			casted.WriteInSliceExt(tmpVec)
 			accumulateRegExt(resReg, tmpVec, xPow)
+		default:
+			panic(fmt.Sprintf("unexpected type %T", v))
 		}
 		xPow.Mul(&x, &xPow)
 	}

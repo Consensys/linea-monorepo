@@ -5,6 +5,7 @@ import (
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 func IsBase(vec sv.SmartVector) bool {
@@ -51,6 +52,8 @@ func LiftToExt(vec sv.SmartVector) sv.SmartVector {
 		vecExt := make([]fext.Element, v.Len())
 		v.WriteInSliceExt(vecExt)
 		return sv.NewRegularExt(vecExt)
+	default:
+		utils.Panic("unknown type %T", v)
 	}
 	panic("unsupported type")
 }

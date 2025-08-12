@@ -136,6 +136,8 @@ func (gen *testCaseGenExt) NewTestCaseForProdExt() (tcase testCaseExt) {
 			tcase.svecs[i] = gen.genRegularExt(val)
 		case RotatedExtT:
 			tcase.svecs[i] = gen.genRotatedExt(val)
+		default:
+			panic(fmt.Sprintf("unexpected type %T", chosenType))
 		}
 	}
 
@@ -162,6 +164,8 @@ func (gen *testCaseGenExt) NewTestCaseForProdExt() (tcase testCaseExt) {
 		)
 	case maxType == RegularExtT || maxType == RotatedExtT:
 		tcase.expectedValue = NewRegularExt(vectorext.Repeat(resVal, gen.fullLen))
+	default:
+		panic("unexpected case")
 	}
 
 	return tcase
@@ -213,6 +217,8 @@ func (gen *testCaseGenExt) NewTestCaseForLinCombExt() (tcase testCaseExt) {
 			tcase.svecs[i] = gen.genRegularExt(val)
 		case RotatedExtT:
 			tcase.svecs[i] = gen.genRotatedExt(val)
+		default:
+			panic(fmt.Sprintf("unexpected type %T", chosenType))
 		}
 	}
 
@@ -234,6 +240,8 @@ func (gen *testCaseGenExt) NewTestCaseForLinCombExt() (tcase testCaseExt) {
 		)
 	case maxType == RegularExtT || maxType == RotatedExtT:
 		tcase.expectedValue = NewRegularExt(vectorext.Repeat(resVal, gen.fullLen))
+	default:
+		panic("unexpected case")
 	}
 
 	return tcase
@@ -281,6 +289,8 @@ func (gen *testCaseGenExt) NewTestCaseForLinearCombinationExt() (tcase testCaseE
 			tcase.svecs[i] = gen.genRegularExt(val)
 		case RotatedExtT:
 			tcase.svecs[i] = gen.genRotatedExt(val)
+		default:
+			panic(fmt.Sprintf("unexpected type %T", chosenType))
 		}
 	}
 
@@ -296,6 +306,8 @@ func (gen *testCaseGenExt) NewTestCaseForLinearCombinationExt() (tcase testCaseE
 		tcase.expectedValue = NewConstantExt(resVal, gen.fullLen)
 	case maxType == RegularExtT || maxType == windowExtT || maxType == RotatedExtT:
 		tcase.expectedValue = NewRegularExt(vectorext.Repeat(resVal, gen.fullLen))
+	default:
+		panic("unexpected case")
 	}
 
 	return tcase

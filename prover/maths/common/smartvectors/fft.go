@@ -1,6 +1,7 @@
 package smartvectors
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
@@ -56,6 +57,8 @@ func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio i
 			// In this case, the response is a constant vector
 			return NewConstant(x.Window_[0], x.Len())
 		}
+	default:
+		panic(fmt.Sprintf("unexpected type %T", v))
 	}
 
 	// Else : we run the FFT directly
