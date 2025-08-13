@@ -224,7 +224,7 @@ type Ctx struct {
 			// the precomputed flag is set.
 			PrecomputedColums []ifaces.Column
 			// Merkle Root of the precomputeds columns
-			MerkleRoot [8]ifaces.Column
+			MerkleRoot ifaces.Column
 			// Committed matrix (rs encoded) of the precomputed columns
 			CommittedMatrix vortex.EncodedMatrix
 			// Tree in case of Merkle mode
@@ -249,7 +249,7 @@ type Ctx struct {
 		MerkleProofs [8]ifaces.Column
 		// The Merkle roots are represented by a size 1 column
 		// in the wizard.//TODO@yao: size 8?
-		MerkleRoots [][8]ifaces.Column
+		MerkleRoots []ifaces.Column
 	}
 
 	// IsSelfrecursed is a flag that tells the verifier Vortex to perform a
