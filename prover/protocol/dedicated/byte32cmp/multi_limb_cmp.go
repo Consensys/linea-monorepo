@@ -145,7 +145,7 @@ func CmpMultiLimbs(comp *wizard.CompiledIOP, a, b LimbColumns) (isGreater, isEqu
 
 	comp.InsertGlobal(
 		round,
-		ifaces.QueryIDf("%s", ctxName("FLAGS_MUTUALLY_EXCLUSIVE")),
+		ifaces.QueryID(ctxName("FLAGS_MUTUALLY_EXCLUSIVE")),
 		sym.Sub(1, ctx.IsGreater, isEqual, ctx.IsLower),
 	)
 

@@ -160,7 +160,7 @@ func (ctx *linearHashCtx) HashingCols() {
 
 	ctx.NewStateClean = ctx.Comp.InsertCommit(
 		ctx.Round,
-		ifaces.ColIDf("%s", prefixWithLinearHash(ctx.Comp, ctx.Name, "NEW_STATE_CLEAN_%v", ctx.ToHash.GetColID())),
+		ifaces.ColID(prefixWithLinearHash(ctx.Comp, ctx.Name, "NEW_STATE_CLEAN_%v", ctx.ToHash.GetColID())),
 		ctx.ToHash.Size(),
 	)
 
