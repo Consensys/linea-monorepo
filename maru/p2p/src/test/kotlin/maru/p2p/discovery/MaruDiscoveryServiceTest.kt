@@ -27,7 +27,6 @@ import maru.consensus.ForksSchedule
 import maru.core.ext.DataGenerators
 import maru.crypto.Hashing
 import maru.database.InMemoryBeaconChain
-import maru.p2p.NetworkHelper
 import maru.p2p.discovery.MaruDiscoveryService.Companion.FORK_ID_HASH_FIELD_NAME
 import maru.p2p.discovery.MaruDiscoveryService.Companion.convertSafeNodeRecordToDiscoveryPeer
 import maru.p2p.discovery.MaruDiscoveryService.Companion.isValidNodeRecord
@@ -117,7 +116,7 @@ class MaruDiscoveryServiceTest {
   fun setUp() {
     val p2pConfig =
       P2P(
-        ipAddress = NetworkHelper.listIpsV4(excludeLoopback = true).first(),
+        ipAddress = "127.0.0.1",
         port = 9001u,
         discovery =
           P2P.Discovery(
