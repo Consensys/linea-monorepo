@@ -9,6 +9,7 @@
 package net.consensys.linea.sequencer.txselection;
 
 import com.google.common.annotations.VisibleForTesting;
+import java.util.ConcurrentModificationException;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +36,14 @@ public class InvalidTransactionByLineCountCache {
    * @return true if the transaction is cached as invalid
    */
   public boolean contains(final Hash transactionHash) {
-    return cache.contains(transactionHash);
+    try {
+      return cache.contains(transactionHash);
+    } catch (ConcurrentModificationException e) {
+      log.atTrace()
+          .setMessage("ConcurrentModificationException during cache read, returning false")
+          .log();
+      return false;
+    }
   }
 
   /**
@@ -45,6 +53,24 @@ public class InvalidTransactionByLineCountCache {
    * @param transactionHash the transaction hash to remember as invalid
    */
   public void remember(final Hash transactionHash) {
+    try {
+      internalRemember(transactionHash);
+    } catch (ConcurrentModificationException e) {
+      log.atTrace()
+          .setMessage("ConcurrentModificationException during cache write, retrying")
+          .log();
+      // Retry the operation once
+      try {
+        internalRemember(transactionHash);
+      } catch (ConcurrentModificationException retryException) {
+        log.atDebug()
+            .setMessage("Failed to add to cache after retry due to concurrent modification")
+            .log();
+      }
+    }
+  }
+
+  private void internalRemember(final Hash transactionHash) throws ConcurrentModificationException {
     while (cache.size() >= maxSize) {
       final var it = cache.iterator();
       if (it.hasNext()) {
