@@ -70,7 +70,7 @@ func newBlock(comp *wizard.CompiledIOP, inp blockInput) block {
 			b.AccNumLane,
 		)
 
-	comp.InsertGlobal(0, ifaces.QueryIDf("%s", name+"_AccNumLane_Glob"), expr)
+	comp.InsertGlobal(0, ifaces.QueryID(name+"_AccNumLane_Glob"), expr)
 
 	// isBlockComplete[0] = 1
 	// NB: this guarantees that the total sum of  nybtes ,given via imported.Nbytes,

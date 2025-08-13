@@ -211,7 +211,7 @@ func (mh *Module) checkConsistency(comp *wizard.CompiledIOP) {
 
 // Function returning a query name
 func (mh *Module) qname(name string) ifaces.QueryID {
-	return ifaces.QueryIDf("%v", mh.Inputs.Name) + "_" + ifaces.QueryID(name)
+	return ifaces.QueryIDf("%s", mh.Inputs.Name) + "_" + ifaces.QueryID(name)
 }
 
 // Function inserting a query that col is zero when IsActive is zero
