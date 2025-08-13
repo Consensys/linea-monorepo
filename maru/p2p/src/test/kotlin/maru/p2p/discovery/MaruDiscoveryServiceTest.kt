@@ -8,7 +8,6 @@
  */
 package maru.p2p.discovery
 
-import java.lang.Thread.sleep
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.Optional
@@ -28,6 +27,7 @@ import maru.consensus.ForksSchedule
 import maru.core.ext.DataGenerators
 import maru.crypto.Hashing
 import maru.database.InMemoryBeaconChain
+import maru.p2p.NetworkHelper
 import maru.p2p.discovery.MaruDiscoveryService.Companion.FORK_ID_HASH_FIELD_NAME
 import maru.p2p.discovery.MaruDiscoveryService.Companion.convertSafeNodeRecordToDiscoveryPeer
 import maru.p2p.discovery.MaruDiscoveryService.Companion.isValidNodeRecord
@@ -48,7 +48,9 @@ import org.junit.jupiter.api.Test
 
 class MaruDiscoveryServiceTest {
   companion object {
-    private const val IPV4 = "127.0.0.1"
+    // private val IPV4 = NetworkHelper.listIpsV4(excludeLoopback = true).first()
+    // Tests seem to fail when using IP address of the machine... ¯\_(ツ)_/¯
+    private val IPV4 = "127.0.0.1"
 
     private const val PORT1 = 9334u
     private const val PORT2 = 9335u
@@ -115,7 +117,7 @@ class MaruDiscoveryServiceTest {
   fun setUp() {
     val p2pConfig =
       P2P(
-        ipAddress = "127.0.0.1",
+        ipAddress = NetworkHelper.listIpsV4(excludeLoopback = true).first(),
         port = 9001u,
         discovery =
           P2P.Discovery(
@@ -223,8 +225,6 @@ class MaruDiscoveryServiceTest {
       discoveryService2.start()
       discoveryService3.start()
 
-      // make sure services are started and bootnodes have been pinged
-      sleep(1000)
       await
         .timeout(10.seconds.toJavaDuration())
         .untilAsserted {

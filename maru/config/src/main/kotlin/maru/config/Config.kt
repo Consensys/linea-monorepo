@@ -8,6 +8,7 @@
  */
 package maru.config
 
+import java.net.InetAddress
 import java.net.URL
 import java.nio.file.Path
 import kotlin.time.Duration
@@ -38,16 +39,26 @@ data class FollowersConfig(
 )
 
 data class P2P(
-  val ipAddress: String,
-  val port: UInt,
+  val ipAddress: String = "0.0.0.0",
+  val port: UInt = 9000u,
   val staticPeers: List<String> = emptyList(),
   val reconnectDelay: Duration = 5.seconds,
   val maxPeers: Int = 25,
   val discovery: Discovery? = null,
   val statusUpdate: StatusUpdateConfig = StatusUpdateConfig(),
 ) {
+  init {
+    // just a sanity check to ensure the IP address is valid
+    InetAddress.getByName(ipAddress)
+    // TODO: consider checking if the IP address is a loopback address
+    // once all test run reliably on the same machine
+    // require(!InetAddress.getByName(ipAddress).isLoopbackAddress) {
+    //   "P2P ipAddress must not be a loopback address, got: $ipAddress"
+    // }
+  }
+
   data class Discovery(
-    val port: UInt,
+    val port: UInt = 9000u,
     val bootnodes: List<String> = emptyList(),
     val refreshInterval: Duration,
   )

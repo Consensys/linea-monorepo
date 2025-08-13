@@ -9,7 +9,7 @@ fee-recipient = "0x0000000000000000000000000000000000000000"
 
 [p2p]
 port = 3322
-ip-address = "127.0.0.1"
+ip-address = "0.0.0.0"
 static-peers = []
 reconnect-delay = "500 ms"
 

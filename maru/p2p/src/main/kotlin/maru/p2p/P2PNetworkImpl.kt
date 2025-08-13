@@ -10,8 +10,6 @@ package maru.p2p
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.unmarshalPrivateKey
-import java.net.Inet4Address
-import java.net.NetworkInterface
 import java.util.Optional
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
@@ -24,6 +22,7 @@ import maru.core.SealedBeaconBlock
 import maru.crypto.Crypto.privateKeyBytesWithoutPrefix
 import maru.database.BeaconChain
 import maru.metrics.MaruMetricsCategory
+import maru.p2p.NetworkHelper.listIpsV4
 import maru.p2p.discovery.MaruDiscoveryService
 import maru.p2p.messages.StatusMessageFactory
 import maru.p2p.topics.TopicHandlerWithInOrderDelivering
@@ -58,6 +57,7 @@ class P2PNetworkImpl(
   private val forkIdHashProvider: ForkIdHashProvider,
   isBlockImportEnabledProvider: () -> Boolean,
 ) : P2PNetwork {
+  private val log: Logger = LogManager.getLogger(this.javaClass)
   internal lateinit var maruPeerManager: MaruPeerManager
   private val topicIdGenerator = LineaMessageIdGenerator(chainId)
   private val sealedBlocksTopicId = topicIdGenerator.id(GossipMessageType.BEACON_BLOCK.name, Version.V1)
@@ -122,7 +122,6 @@ class P2PNetworkImpl(
 
   // TODO: We need to call the updateForkId method on the discovery service when the forkId changes internal
   private val peerLookup = builtNetwork.peerLookup
-  private val log: Logger = LogManager.getLogger(this.javaClass)
   private val executor: ScheduledExecutorService =
     Executors.newSingleThreadScheduledExecutor(
       Thread.ofVirtual().factory(),
@@ -175,7 +174,7 @@ class P2PNetworkImpl(
 
   private fun nodeRecords(): List<NodeRecord> {
     val enrs: List<NodeRecord> =
-      (listIps() + discoveryAddresses)
+      (listIpsV4(excludeLoopback = true) + discoveryAddresses)
         .toSet()
         .map {
           ENR.nodeRecord(
@@ -187,18 +186,6 @@ class P2PNetworkImpl(
           )
         }
     return enrs + listOfNotNull(discoveryService?.getLocalNodeRecord())
-  }
-
-  private fun listIps(): List<String> {
-    val ips =
-      NetworkInterface
-        .getNetworkInterfaces()
-        .toList()
-        .flatMap { it.inetAddresses.toList() }
-        .filter {
-          !it.isLoopbackAddress && it is Inet4Address
-        }.map { it.hostAddress }
-    return ips
   }
 
   override fun stop(): SafeFuture<Unit> {

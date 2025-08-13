@@ -47,6 +47,7 @@ import maru.finalization.LineaFinalizationProvider
 import maru.metrics.BesuMetricsCategoryAdapter
 import maru.metrics.BesuMetricsSystemAdapter
 import maru.metrics.MaruMetricsCategory
+import maru.p2p.NetworkHelper
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkDataProvider
@@ -291,7 +292,13 @@ class MaruAppFactory {
       p2pConfig?.let {
         P2PNetworkImpl(
           privateKeyBytes = privateKey,
-          p2pConfig = p2pConfig,
+          p2pConfig =
+            NetworkHelper
+              .selectIpV4ForP2P(
+                targetIpV4 = p2pConfig.ipAddress,
+                excludeLoopback = true,
+              ).also { log.info("using p2p ip={}", it) }
+              .let { p2pConfig.copy(ipAddress = it) },
           chainId = chainId,
           serDe = RLPSerializers.SealedBeaconBlockSerializer,
           metricsFacade = metricsFacade,
