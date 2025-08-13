@@ -79,8 +79,8 @@ async function configureOnceOffPrerequisities() {
       undefined,
       new LineaSequencerUptimeFeed__factory().interface.encodeDeploy([
         false,
-        livenessSignerAccount.getAddress(),
-        livenessSignerAccount.getAddress(),
+        await livenessSignerAccount.getAddress(),
+        await livenessSignerAccount.getAddress(),
       ]),
       toBeHex(0),
     ),
@@ -104,8 +104,8 @@ async function configureOnceOffPrerequisities() {
       ]),
       deployContract(new LineaSequencerUptimeFeed__factory(), l2Account, [
         false,
-        l2Account.getAddress(),
-        l2Account.getAddress(),
+        await livenessSignerAccount.getAddress(),
+        await livenessSignerAccount.getAddress(),
         {
           nonce: l2AccountNonce + 3,
           maxPriorityFeePerGas: maxPriorityFeePerGasLineaSequencerUptimeFeed,
