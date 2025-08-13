@@ -5,26 +5,12 @@ import { Wallet } from "ethers";
 
 // should remove skip only when the linea-sequencer plugin supports liveness
 describe("Liveness test suite", () => {
-  const l2AccountManager = config.getL2AccountManager();
-
   it.concurrent(
     "Should succeed to send liveness transactions after sequencer restarted",
     async () => {
-      const account = await l2AccountManager.generateAccount();
-      const lineaSequencerUptimeFeedAdmin = config
-        .getL2AccountManager()
-        .whaleAccount(21)
-        .connect(config.getL2SequencerProvider()!);
-      const livenessContractForSetup = config.getL2LineaSequencerUptimeFeedContract(
-        lineaSequencerUptimeFeedAdmin.signer as Wallet,
-      );
+      const livenessSigner = config.getLivenessSigner();
 
-      await livenessContractForSetup.grantRole(
-        await livenessContractForSetup.FEED_UPDATER_ROLE(),
-        account.getAddress(),
-      );
-
-      const livenessContract = config.getL2LineaSequencerUptimeFeedContract(account);
+      const livenessContract = config.getL2LineaSequencerUptimeFeedContract(livenessSigner.signer as Wallet);
       const livenessContractAddress = await livenessContract.getAddress();
 
       const latestAnswer = await livenessContract.latestAnswer();

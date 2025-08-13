@@ -1,6 +1,9 @@
 import { ethers } from "ethers";
 import { generateKeccak256 } from "./utils";
 
+// @WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
+export const LIVENESS_SIGNER_PRIVATE_KEY = "0x234d87442cf7d43841fbe280febcdfabfb646added67bc19f7e42a5483f614c4";
+
 export const ROLLING_HASH_UPDATED_EVENT_SIGNATURE =
   "0xea3b023b4c8680d4b4824f0143132c95476359a2bb70a81d6c5a36f6918f6339";
 export const OPERATOR_ROLE = "0x97667070c54ef182b0f5858b034beac1b6f3089aa2d3188bb1e8929f4fa9b929";

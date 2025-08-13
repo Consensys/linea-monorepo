@@ -36,10 +36,7 @@ export default async (): Promise<void> => {
 async function configureOnceOffPrerequisities() {
   const account = config.getL1AccountManager().whaleAccount(0);
   const l2Account = config.getL2AccountManager().whaleAccount(0).connect(config.getL2SequencerProvider()!);
-  const lineaSequencerUptimeFeedAdmin = config
-    .getL2AccountManager()
-    .whaleAccount(21)
-    .connect(config.getL2SequencerProvider()!);
+  const livenessSignerAccount = config.getLivenessSigner();
 
   const lineaRollup = config.getLineaRollupContract(account);
 
@@ -82,8 +79,8 @@ async function configureOnceOffPrerequisities() {
       undefined,
       new LineaSequencerUptimeFeed__factory().interface.encodeDeploy([
         false,
-        lineaSequencerUptimeFeedAdmin.getAddress(),
-        lineaSequencerUptimeFeedAdmin.getAddress(),
+        livenessSignerAccount.getAddress(),
+        livenessSignerAccount.getAddress(),
       ]),
       toBeHex(0),
     ),
