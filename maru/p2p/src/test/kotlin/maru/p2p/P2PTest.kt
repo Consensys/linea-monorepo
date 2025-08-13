@@ -65,7 +65,7 @@ class P2PTest {
   companion object {
     private val chainId = 1337u
 
-    private val IPV4: String = NetworkHelper.listIpsV4(excludeLoopback = true).first()
+    private val IPV4: String = "127.0.0.1"
 
     private const val PORT1 = 9234u
     private const val PORT2 = 9235u
