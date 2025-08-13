@@ -3,11 +3,21 @@ pragma solidity ^0.8.30;
 
 interface ILineaSequencerUptimeFeed {
   /**
+   * @dev Round info for uptime history.
+   * @param startedAt The timestamp at which the round started.
+   * @param updatedAt The timestamp at which the round was updated.
+   * @param status The sequencer status for the round.
+   */
+  struct Round {
+    uint64 startedAt;
+    uint64 updatedAt;
+    bool status;
+  }
+
+  /**
    * @notice Current sequencer uptime status.
    * @dev Packed state struct to save sloads.
    * @param latestRoundId The ID of the latest round.
-   * @dev Always 0 because we are not storing rounds history.
-   * @dev Here for backward compatibility.
    * @param latestStatus The latest sequencer status.
    * @dev false: The sequencer is up.
    * @dev true: The sequencer is down.
@@ -41,8 +51,14 @@ interface ILineaSequencerUptimeFeed {
    * @dev Thrown when sender is not allowed to update the status.
    */
   error InvalidSender();
+
   /**
    * @dev Thrown when a parameter is the zero address.
    */
   error ZeroAddressNotAllowed();
+
+  /**
+   * @dev Thrown when no data is present for a given roundId.
+   */
+  error NoDataPresent();
 }

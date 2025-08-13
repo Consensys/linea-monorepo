@@ -35,22 +35,33 @@ contract LineaSequencerUptimeFeed is
   /// @dev s_latestRoundId == 0 means this contract is uninitialized.
   FeedState private s_feedState = FeedState({ latestRoundId: 0, latestStatus: false, startedAt: 0, updatedAt: 0 });
 
+  mapping(uint80 roundId => Round round) private s_rounds;
+
   /**
    * @param _initialStatus The initial status of the feed.
    * @param _admin The address of the admin that can manage the feed.
-   * @param _l2Sender The address of the L2 sender that can update the status.
+   * @param _feedUpdater The address of the feed updater that can update the status.
    */
-  constructor(bool _initialStatus, address _admin, address _l2Sender) {
+  constructor(bool _initialStatus, address _admin, address _feedUpdater) {
     require(_admin != address(0), ZeroAddressNotAllowed());
-    require(_l2Sender != address(0), ZeroAddressNotAllowed());
+    require(_feedUpdater != address(0), ZeroAddressNotAllowed());
 
     uint64 timestamp = uint64(block.timestamp);
 
-    /// @dev Initialise dummy roundId == 0.
-    _recordRound(_initialStatus, timestamp);
+    /// @dev Initialise roundId == 1 as the first round
+    _recordRound(1, _initialStatus, timestamp);
 
     _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-    _grantRole(FEED_UPDATER_ROLE, _l2Sender);
+    _grantRole(FEED_UPDATER_ROLE, _feedUpdater);
+  }
+
+  /**
+   * @notice Check if a roundId is valid in this current contract state.
+   * @dev Mainly used for AggregatorV2V3Interface functions.
+   * @param _roundId Round ID to check.
+   */
+  function _isValidRound(uint256 _roundId) private view returns (bool) {
+    return _roundId > 0 && _roundId <= type(uint80).max && s_feedState.latestRoundId >= _roundId;
   }
 
   /**
@@ -86,27 +97,33 @@ contract LineaSequencerUptimeFeed is
    * @param _status Sequencer status.
    * @param _timestamp The L2 block timestamp of status update.
    */
-  function _recordRound(bool _status, uint64 _timestamp) private {
-    uint64 updatedAt = uint64(block.timestamp);
-    FeedState memory feedState = FeedState(0, _status, _timestamp, updatedAt);
-    s_feedState = feedState;
-    emit AnswerUpdated(_getStatusAnswer(_status), 0, _timestamp);
+  function _recordRound(uint80 _roundId, bool _status, uint64 _timestamp) private {
+    s_rounds[_roundId] = Round({ status: _status, startedAt: _timestamp, updatedAt: uint64(block.timestamp) });
+    s_feedState = FeedState({
+      latestRoundId: _roundId,
+      latestStatus: _status,
+      startedAt: _timestamp,
+      updatedAt: uint64(block.timestamp)
+    });
+
+    emit NewRound(_roundId, msg.sender, _timestamp);
+    emit AnswerUpdated(_getStatusAnswer(_status), _roundId, _timestamp);
   }
 
   /**
    * @notice Helper function to update when a round was last updated.
+   * @param _roundId The round ID to update.
    * @param _status Sequencer status.
    */
-  function _updateRound(bool _status) private {
-    uint64 updatedAt = uint64(block.timestamp);
-    s_feedState.updatedAt = updatedAt;
-    emit RoundUpdated(_getStatusAnswer(_status), updatedAt);
+  function _updateRound(uint80 _roundId, bool _status) private {
+    s_rounds[_roundId].updatedAt = uint64(block.timestamp);
+    s_feedState.updatedAt = uint64(block.timestamp);
+    emit RoundUpdated(_getStatusAnswer(_status), uint64(block.timestamp));
   }
 
   /// @inheritdoc AggregatorInterface
   function latestAnswer() external view override checkAccess returns (int256) {
-    FeedState memory feedState = s_feedState;
-    return _getStatusAnswer(feedState.latestStatus);
+    return _getStatusAnswer(s_feedState.latestStatus);
   }
 
   /// @inheritdoc AggregatorInterface
@@ -120,13 +137,19 @@ contract LineaSequencerUptimeFeed is
   }
 
   /// @inheritdoc AggregatorInterface
-  function getAnswer(uint256) external view override checkAccess returns (int256) {
-    return _getStatusAnswer(s_feedState.latestStatus);
+  function getAnswer(uint256 _roundId) external view override checkAccess returns (int256) {
+    if (!_isValidRound(_roundId)) {
+      revert NoDataPresent();
+    }
+    return _getStatusAnswer(s_rounds[uint80(_roundId)].status);
   }
 
   /// @inheritdoc AggregatorInterface
-  function getTimestamp(uint256) external view override checkAccess returns (uint256) {
-    return s_feedState.updatedAt;
+  function getTimestamp(uint256 _roundId) external view override checkAccess returns (uint256) {
+    if (!_isValidRound(_roundId)) {
+      revert NoDataPresent();
+    }
+    return s_rounds[uint80(_roundId)].startedAt;
   }
 
   /**
@@ -136,9 +159,9 @@ contract LineaSequencerUptimeFeed is
    * @param _timestamp Block timestamp of status update.
    */
   function updateStatus(bool _status, uint64 _timestamp) external override {
-    FeedState memory feedState = s_feedState;
-
     require(_isValidSender(msg.sender), InvalidSender());
+
+    FeedState memory feedState = s_feedState;
 
     /// @dev Ignore if latest recorded timestamp is newer
     if (feedState.startedAt > _timestamp) {
@@ -147,15 +170,16 @@ contract LineaSequencerUptimeFeed is
     }
 
     if (feedState.latestStatus == _status) {
-      _updateRound(_status);
+      _updateRound(feedState.latestRoundId, _status);
     } else {
-      _recordRound(_status, _timestamp);
+      feedState.latestRoundId += 1;
+      _recordRound(feedState.latestRoundId, _status, _timestamp);
     }
   }
 
   /// @inheritdoc AggregatorV3Interface
   function getRoundData(
-    uint80
+    uint80 _roundId
   )
     external
     view
@@ -163,7 +187,12 @@ contract LineaSequencerUptimeFeed is
     checkAccess
     returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
   {
-    return (0, _getStatusAnswer(s_feedState.latestStatus), s_feedState.startedAt, s_feedState.updatedAt, 0);
+    if (!_isValidRound(_roundId)) {
+      revert NoDataPresent();
+    }
+
+    Round storage round = s_rounds[_roundId];
+    return (_roundId, _getStatusAnswer(round.status), round.startedAt, round.updatedAt, _roundId);
   }
 
   /// @inheritdoc AggregatorV3Interface
@@ -174,7 +203,7 @@ contract LineaSequencerUptimeFeed is
     checkAccess
     returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
   {
-    FeedState memory feedState = s_feedState;
+    FeedState storage feedState = s_feedState;
 
     roundId = feedState.latestRoundId;
     answer = _getStatusAnswer(feedState.latestStatus);

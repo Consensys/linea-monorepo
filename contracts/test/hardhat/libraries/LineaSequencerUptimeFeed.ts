@@ -4,7 +4,7 @@ import { expect } from "chai";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { deployFromFactory } from "../common/deployment";
-import { expectEvent, expectRevertWithCustomError, expectRevertWithReason } from "../common/helpers";
+import { expectEvent, expectEvents, expectRevertWithCustomError, expectRevertWithReason } from "../common/helpers";
 import { LineaSequencerUptimeFeed, TestLineaSequencerUptimeFeedAccess } from "../../../typechain-types";
 
 describe("LineaSequencerUptimeFeed", () => {
@@ -15,7 +15,7 @@ describe("LineaSequencerUptimeFeed", () => {
   let notAuthorized: SignerWithAddress;
 
   async function deployLineaSequencerUptimeFeedFixture() {
-    const initialStatus = true;
+    const initialStatus = false; // Sequencer is up
     const adminAddress = admin.address;
     const l2SenderAddress = l2Sender.address;
     return deployFromFactory("LineaSequencerUptimeFeed", initialStatus, adminAddress, l2SenderAddress);
@@ -31,7 +31,7 @@ describe("LineaSequencerUptimeFeed", () => {
 
   describe("constructor", () => {
     it("should revert when admin address is zero", async () => {
-      const initialStatus = true;
+      const initialStatus = false;
       const adminAddress = ZeroAddress;
       await expectRevertWithCustomError(
         contract,
@@ -41,7 +41,7 @@ describe("LineaSequencerUptimeFeed", () => {
     });
 
     it("should revert when l2Sender address is zero", async () => {
-      const initialStatus = true;
+      const initialStatus = false;
 
       const l2SenderAddress = ZeroAddress;
       await expectRevertWithCustomError(
@@ -52,7 +52,7 @@ describe("LineaSequencerUptimeFeed", () => {
     });
 
     it("should set initial status correctly", async () => {
-      const initialStatus = true;
+      const initialStatus = false;
       const contract = (await deployFromFactory(
         "LineaSequencerUptimeFeed",
         initialStatus,
@@ -63,13 +63,13 @@ describe("LineaSequencerUptimeFeed", () => {
       const block = await ethers.provider.getBlock(deployTx!.blockNumber!);
 
       const latestAnswer = await contract.latestAnswer();
-      expect(latestAnswer).to.equal(1n);
+      expect(latestAnswer).to.equal(0n);
       expect(await contract.latestTimestamp()).to.be.equal(block!.timestamp);
-      expect(await contract.latestRound()).to.be.equal(0n);
+      expect(await contract.latestRound()).to.be.equal(1n);
     });
 
     it("should set admin and l2Sender roles correctly", async () => {
-      const initialStatus = true;
+      const initialStatus = false;
       const contract = (await deployFromFactory(
         "LineaSequencerUptimeFeed",
         initialStatus,
@@ -91,7 +91,7 @@ describe("LineaSequencerUptimeFeed", () => {
 
   describe("updateStatus", () => {
     it("should revert if caller does not have the FEED_UPDATER_ROLE", async () => {
-      const newStatus = true;
+      const newStatus = false;
       const currentBlockTs = await time.latest();
       const timestamp = currentBlockTs + 10;
 
@@ -103,7 +103,7 @@ describe("LineaSequencerUptimeFeed", () => {
     });
 
     it("should ignore update if latest recorded timestamp is newer", async () => {
-      const newStatus = false;
+      const newStatus = true;
       const currentBlockTs = await time.latest();
       const timestamp = currentBlockTs + 10;
 
@@ -120,7 +120,7 @@ describe("LineaSequencerUptimeFeed", () => {
       await expectEvent(contract, contract.connect(l2Sender).updateStatus(newStatus, oldTimestamp), "UpdateIgnored", [
         newStatus,
         updatedAt,
-        false,
+        true,
         oldTimestamp,
       ]);
 
@@ -129,33 +129,39 @@ describe("LineaSequencerUptimeFeed", () => {
     });
 
     it("should update round and emit RoundUpdated event when latestStatus === _status", async () => {
-      const newStatus = true;
-      const currentBlockTs = await time.latest();
-      const timestamp = currentBlockTs + 10;
-      await time.setNextBlockTimestamp(timestamp);
-
-      await expectEvent(contract, contract.connect(l2Sender).updateStatus(newStatus, timestamp), "RoundUpdated", [
-        1n,
-        timestamp,
-      ]);
-      const latestAnswer = await contract.latestAnswer();
-      expect(latestAnswer).to.equal(1n);
-      expect(await contract.latestTimestamp()).to.be.equal(timestamp);
-    });
-
-    it("should record round and emit AnswerUpdated event when latestStatus !== _status", async () => {
       const newStatus = false;
       const currentBlockTs = await time.latest();
       const timestamp = currentBlockTs + 10;
       await time.setNextBlockTimestamp(timestamp);
 
-      await expectEvent(contract, contract.connect(l2Sender).updateStatus(newStatus, timestamp), "AnswerUpdated", [
-        0n,
+      await expectEvent(contract, contract.connect(l2Sender).updateStatus(newStatus, timestamp), "RoundUpdated", [
         0n,
         timestamp,
       ]);
       const latestAnswer = await contract.latestAnswer();
       expect(latestAnswer).to.equal(0n);
+      expect(await contract.latestTimestamp()).to.be.equal(timestamp);
+    });
+
+    it("should record round and emit AnswerUpdated event when latestStatus !== _status", async () => {
+      const newStatus = true;
+      const currentBlockTs = await time.latest();
+      const timestamp = currentBlockTs + 10;
+      await time.setNextBlockTimestamp(timestamp);
+
+      await expectEvents(contract, contract.connect(l2Sender).updateStatus(newStatus, timestamp), [
+        {
+          name: "NewRound",
+          args: [2n, l2Sender.address, timestamp],
+        },
+        {
+          name: "AnswerUpdated",
+          args: [1n, 2n, timestamp],
+        },
+      ]);
+
+      const latestAnswer = await contract.latestAnswer();
+      expect(latestAnswer).to.equal(1n);
       expect(await contract.latestTimestamp()).to.be.equal(timestamp);
     });
   });
@@ -172,7 +178,7 @@ describe("LineaSequencerUptimeFeed", () => {
 
     it("should return the latest answer", async () => {
       const latestAnswer = await contract.latestAnswer();
-      expect(latestAnswer).to.equal(1n);
+      expect(latestAnswer).to.equal(0n);
     });
   });
 
@@ -188,11 +194,11 @@ describe("LineaSequencerUptimeFeed", () => {
 
     it("should return the latest round data", async () => {
       const latestRoundData = await contract.latestRoundData();
-      expect(latestRoundData.roundId).to.equal(0n);
-      expect(latestRoundData.answer).to.equal(1n);
+      expect(latestRoundData.roundId).to.equal(1n);
+      expect(latestRoundData.answer).to.equal(0n);
       expect(latestRoundData.startedAt).to.be.greaterThan(0n);
       expect(latestRoundData.updatedAt).to.be.greaterThan(0n);
-      expect(latestRoundData.answeredInRound).to.equal(0n);
+      expect(latestRoundData.answeredInRound).to.equal(1n);
     });
   });
 
@@ -206,16 +212,21 @@ describe("LineaSequencerUptimeFeed", () => {
       await expectRevertWithReason(callerContract.callGetAnswer(0n), "No access");
     });
 
+    it("should revert if roundId does not exist", async () => {
+      const roundId = 2n;
+      await expectRevertWithCustomError(contract, contract.getAnswer(roundId), "NoDataPresent");
+    });
+
     it("should return the correct answer for a given roundId", async () => {
-      const newStatus = true;
+      const newStatus = false;
       const currentBlockTs = await time.latest();
       const timestamp = currentBlockTs + 10;
       await time.setNextBlockTimestamp(timestamp);
       await contract.connect(l2Sender).updateStatus(newStatus, timestamp);
 
-      const roundId = 0n; // RoundId is always 0
+      const roundId = 1n;
       const answer = await contract.getAnswer(roundId);
-      expect(answer).to.equal(1n);
+      expect(answer).to.equal(0n);
     });
   });
 
@@ -229,8 +240,13 @@ describe("LineaSequencerUptimeFeed", () => {
       await expectRevertWithReason(callerContract.callGetRoundData(0n), "No access");
     });
 
+    it("should revert if roundId does not exist", async () => {
+      const roundId = 2n;
+      await expectRevertWithCustomError(contract, contract.getRoundData(roundId), "NoDataPresent");
+    });
+
     it("should return the correct round data for a given roundId", async () => {
-      const newStatus = false;
+      const newStatus = true;
       const currentBlockTs = await time.latest();
       const timestamp = currentBlockTs + 10;
       await time.setNextBlockTimestamp(timestamp);
@@ -239,12 +255,12 @@ describe("LineaSequencerUptimeFeed", () => {
       const block = await ethers.provider.getBlock("latest");
       expect(block!.timestamp).to.equal(timestamp);
 
-      const [roundId, answer, startedAt, updatedAt, answeredInRound] = await contract.getRoundData(0n);
-      expect(roundId).to.equal(0n);
-      expect(answer).to.equal(0n);
+      const [roundId, answer, startedAt, updatedAt, answeredInRound] = await contract.getRoundData(2n);
+      expect(roundId).to.equal(2n);
+      expect(answer).to.equal(1n);
       expect(startedAt).to.equal(timestamp);
       expect(updatedAt).to.equal(timestamp);
-      expect(answeredInRound).to.equal(0n);
+      expect(answeredInRound).to.equal(2n);
     });
   });
 
@@ -258,6 +274,11 @@ describe("LineaSequencerUptimeFeed", () => {
       await expectRevertWithReason(callerContract.callGetTimestamp(0n), "No access");
     });
 
+    it("should revert if roundId does not exist", async () => {
+      const roundId = 2n;
+      await expectRevertWithCustomError(contract, contract.getTimestamp(roundId), "NoDataPresent");
+    });
+
     it("should return the correct timestamp for a given roundId", async () => {
       const newStatus = true;
       const currentBlockTs = await time.latest();
@@ -265,7 +286,7 @@ describe("LineaSequencerUptimeFeed", () => {
       await time.setNextBlockTimestamp(timestamp);
       await contract.connect(l2Sender).updateStatus(newStatus, timestamp);
 
-      const roundId = 0n;
+      const roundId = 2n;
       const roundTimestamp = await contract.getTimestamp(roundId);
       expect(roundTimestamp).to.equal(timestamp);
     });
@@ -311,7 +332,7 @@ describe("LineaSequencerUptimeFeed", () => {
       await contract.connect(l2Sender).updateStatus(newStatus, timestamp);
 
       const latestRound = await contract.latestRound();
-      expect(latestRound).to.equal(0n); // RoundId is always 0
+      expect(latestRound).to.equal(2n);
     });
   });
 });
