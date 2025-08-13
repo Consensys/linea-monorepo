@@ -43,9 +43,7 @@ func TestCompilers(t *testing.T) {
 	runTestList(t, "permutation", testtools.ListOfPermutationTestcaseNegative)
 	runTestList(t, "projection", testtools.ListOfProjectionTestcasePositive)
 	runTestList(t, "projection", testtools.ListOfProjectionTestcaseNegative)
-
-	//panic: unreachable
-	//runTestList(t, "mimc", testtools.ListOfMiMCTestcase)
+	runTestList(t, "mimc", testtools.ListOfMiMCTestcase)
 
 }
 

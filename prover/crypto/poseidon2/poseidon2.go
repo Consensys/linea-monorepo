@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
+	"github.com/consensys/gnark/frontend"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -39,6 +40,12 @@ func BlockCompressionMekle(oldState, block [blockSize]field.Element) (newState [
 		res[i].Add(&res[i], &x[8+i])
 	}
 	return res
+}
+
+// GnarkBlockCompression applies the MiMC permutation to a given block within
+// a gnark circuit and mirrors exactly [BlockCompression].
+func GnarkBlockCompressionMekle(api frontend.API, oldState, block [blockSize]frontend.Variable) (newState [blockSize]frontend.Variable) {
+	panic("unimplemented")
 }
 
 // Poseidon2HashVec hashes a vector of field elements to a leaf
