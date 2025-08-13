@@ -35,8 +35,9 @@ class JsonRpcExecutionLayerManager(
     prevRandao: ByteArray,
   ): SafeFuture<ForkChoiceUpdatedResult> {
     log.debug(
-      "Trying to create a new block with timestamp={}",
+      "Trying to create a new block with timestamp={}, fork={}",
       nextBlockTimestamp,
+      executionLayerEngineApiClient.getFork(),
     )
     val payloadAttributes =
       PayloadAttributes(
@@ -44,9 +45,17 @@ class JsonRpcExecutionLayerManager(
         suggestedFeeRecipient = feeRecipient,
         prevRandao = prevRandao,
       )
-    log.debug("Starting block building with payloadAttributes={}", payloadAttributes)
+    log.debug(
+      "Starting block building with payloadAttributes={}, fork={}",
+      payloadAttributes,
+      executionLayerEngineApiClient.getFork(),
+    )
     return forkChoiceUpdate(headHash, safeHash, finalizedHash, payloadAttributes).thenPeek {
-      log.debug("Setting payload Id, nextBlockTimestamp={}", nextBlockTimestamp)
+      log.debug(
+        "Setting payload Id, nextBlockTimestamp={}, fork={}",
+        nextBlockTimestamp,
+        executionLayerEngineApiClient.getFork(),
+      )
       payloadId = it.payloadId
     }
   }
@@ -63,7 +72,11 @@ class JsonRpcExecutionLayerManager(
       if (payloadResponse.isSuccess) {
         payloadResponse.payload
       } else {
-        throw IllegalStateException("engine_getPayload request failed! Cause: " + payloadResponse.errorMessage)
+        throw IllegalStateException(
+          "engine_getPayload request failed! " +
+            "fork=${executionLayerEngineApiClient.getFork()} " +
+            "Cause: " + payloadResponse.errorMessage,
+        )
       }
     }
   }
@@ -95,12 +108,16 @@ class JsonRpcExecutionLayerManager(
         ),
         payloadAttributes?.toPayloadAttributesV1(),
       ).thenApply { response ->
-        log.debug("Forkchoice update response with payload attributes {}", response)
+        log.debug(
+          "Forkchoice update response with payload attributes {} fork={}",
+          response,
+          executionLayerEngineApiClient.getFork(),
+        )
         if (response.isFailure) {
           throw IllegalStateException(
-            "forkChoiceUpdate request failed! nextBlockTimestamp=${
-              payloadAttributes?.timestamp
-            } " + response.errorMessage,
+            "forkChoiceUpdate request failed! nextBlockTimestamp=${payloadAttributes?.timestamp} " +
+              "fork=${executionLayerEngineApiClient.getFork()} " +
+              "Cause: " + response.errorMessage,
           )
         } else {
           response.payload.toDomain()
@@ -112,17 +129,28 @@ class JsonRpcExecutionLayerManager(
       if (payloadStatusResponse.isSuccess) {
         if (payloadStatusResponse.payload == null) {
           throw IllegalStateException(
-            "engine_newPayload request failed! blockNumber=${executionPayload.blockNumber} " + "response=" +
-              payloadStatusResponse,
+            "engine_newPayload request failed! blockNumber=${executionPayload.blockNumber} " +
+              "fork=${executionLayerEngineApiClient.getFork()} " +
+              "response=" + payloadStatusResponse,
           )
         }
-        log.debug("Unsetting payload id, after importing blockNumber={}", executionPayload.blockNumber)
+        log.debug(
+          "Unsetting payload id, after importing blockNumber={}, fork={}",
+          executionPayload.blockNumber,
+          executionLayerEngineApiClient.getFork(),
+        )
         payloadId = null // Not necessary, but it helps to reinforce the order of calls
         payloadStatusResponse.payload.asInternalExecutionPayload().toDomain()
       } else {
-        throw IllegalStateException("engine_newPayload request failed! Cause: " + payloadStatusResponse.errorMessage)
+        throw IllegalStateException(
+          "engine_newPayload request failed! " +
+            "fork=${executionLayerEngineApiClient.getFork()} " +
+            "Cause: " + payloadStatusResponse.errorMessage,
+        )
       }
     }
 
   override fun getLatestBlockHash(): SafeFuture<ByteArray> = executionLayerEngineApiClient.getLatestBlockHash()
+
+  override fun isOnline(): SafeFuture<Boolean> = executionLayerEngineApiClient.isOnline()
 }

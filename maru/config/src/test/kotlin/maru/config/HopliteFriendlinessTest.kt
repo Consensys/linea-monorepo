@@ -19,8 +19,11 @@ import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalHoplite::class)
 class HopliteFriendlinessTest {
+  private val protocolTransitionPollingInterval = 2.seconds
   private val emptyFollowersConfigToml =
     """
+    protocol-transition-polling-interval = "2s"
+
     [persistence]
     data-path="/some/path"
     private-key-path = "/private-key/path"
@@ -156,6 +159,7 @@ class HopliteFriendlinessTest {
     val config = parseConfig<MaruConfigDtoToml>(rawConfigToml)
     assertThat(config).isEqualTo(
       MaruConfigDtoToml(
+        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = false,
         persistence = persistence,
         qbft = qbftOptions,
@@ -174,6 +178,7 @@ class HopliteFriendlinessTest {
     val config = parseConfig<MaruConfigDtoToml>(emptyFollowersConfigToml)
     assertThat(config).isEqualTo(
       MaruConfigDtoToml(
+        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = false,
         persistence = persistence,
         qbft = qbftOptions,
@@ -192,6 +197,7 @@ class HopliteFriendlinessTest {
     val config = parseConfig<MaruConfigDtoToml>(rawConfigToml)
     assertThat(config.domainFriendly()).isEqualTo(
       MaruConfig(
+        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = false,
         persistence = persistence,
         p2pConfig = p2pConfig,
@@ -214,6 +220,7 @@ class HopliteFriendlinessTest {
     val config = parseConfig<MaruConfigDtoToml>(emptyFollowersConfigToml)
     assertThat(config.domainFriendly()).isEqualTo(
       MaruConfig(
+        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = false,
         persistence = persistence,
         qbftOptions = qbftOptions.toDomain(),
@@ -270,6 +277,7 @@ class HopliteFriendlinessTest {
     assertThat(config)
       .isEqualTo(
         MaruConfigDtoToml(
+          protocolTransitionPollingInterval = protocolTransitionPollingInterval,
           allowEmptyBlocks = true,
           persistence = persistence,
           qbft = qbftOptions,
@@ -285,6 +293,7 @@ class HopliteFriendlinessTest {
     assertThat(config.domainFriendly())
       .isEqualTo(
         MaruConfig(
+          protocolTransitionPollingInterval = protocolTransitionPollingInterval,
           allowEmptyBlocks = true,
           persistence = persistence,
           p2pConfig = p2pConfig,

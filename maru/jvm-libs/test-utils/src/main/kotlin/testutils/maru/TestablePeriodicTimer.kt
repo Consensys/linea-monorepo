@@ -6,13 +6,13 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.syncing
+package testutils.maru
 
 import java.util.Timer
 import java.util.TimerTask
 
 // Test implementation that allows controlling the timer execution. Supports only scheduleAtFixedRate
-internal class TestablePeriodicTimer : Timer("test-timer", true) {
+class TestablePeriodicTimer : Timer("test-timer", true) {
   var scheduledTask: TimerTask? = null
   var delay: Long? = null
   var period: Long? = null

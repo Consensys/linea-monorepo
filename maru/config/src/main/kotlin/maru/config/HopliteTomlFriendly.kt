@@ -81,6 +81,7 @@ data class QbftOptionsDtoToml(
 }
 
 data class MaruConfigDtoToml(
+  private val protocolTransitionPollingInterval: Duration = 1.seconds,
   private val allowEmptyBlocks: Boolean = false,
   private val persistence: Persistence,
   private val qbft: QbftOptionsDtoToml?,
@@ -93,6 +94,7 @@ data class MaruConfigDtoToml(
 ) {
   fun domainFriendly(): MaruConfig =
     MaruConfig(
+      protocolTransitionPollingInterval = protocolTransitionPollingInterval,
       allowEmptyBlocks = allowEmptyBlocks,
       persistence = persistence,
       qbftOptions = qbft?.toDomain(),

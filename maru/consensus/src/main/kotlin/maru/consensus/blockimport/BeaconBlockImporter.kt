@@ -14,10 +14,8 @@ import maru.consensus.PrevRandaoProvider
 import maru.consensus.state.FinalizationProvider
 import maru.core.BeaconBlock
 import maru.core.BeaconState
-import maru.executionlayer.client.ExecutionLayerEngineApiClient
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
-import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.p2p.ValidationResult
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -38,20 +36,15 @@ class FollowerBeaconBlockImporter(
 ) : NewBlockHandler<ValidationResult> {
   companion object {
     fun create(
-      executionLayerEngineApiClient: ExecutionLayerEngineApiClient,
+      executionLayerManager: ExecutionLayerManager,
       finalizationStateProvider: FinalizationProvider,
       importerName: String,
-    ): NewBlockHandler<ValidationResult> {
-      val executionLayerManager =
-        JsonRpcExecutionLayerManager(
-          executionLayerEngineApiClient = executionLayerEngineApiClient,
-        )
-      return FollowerBeaconBlockImporter(
+    ): NewBlockHandler<ValidationResult> =
+      FollowerBeaconBlockImporter(
         executionLayerManager = executionLayerManager,
         finalizationStateProvider = finalizationStateProvider,
         importerName = importerName,
       )
-    }
   }
 
   private val log = LogManager.getLogger(this.javaClass)
