@@ -39,7 +39,7 @@ data class FollowersConfig(
 )
 
 data class P2P(
-  val ipAddress: String = "0.0.0.0",
+  val ipAddress: String = "127.0.0.1", // default to localhost for security
   val port: UInt = 9000u,
   val staticPeers: List<String> = emptyList(),
   val reconnectDelay: Duration = 5.seconds,
@@ -50,11 +50,6 @@ data class P2P(
   init {
     // just a sanity check to ensure the IP address is valid
     InetAddress.getByName(ipAddress)
-    // TODO: consider checking if the IP address is a loopback address
-    // once all test run reliably on the same machine
-    // require(!InetAddress.getByName(ipAddress).isLoopbackAddress) {
-    //   "P2P ipAddress must not be a loopback address, got: $ipAddress"
-    // }
   }
 
   data class Discovery(
