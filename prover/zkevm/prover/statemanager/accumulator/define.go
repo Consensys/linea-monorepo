@@ -672,13 +672,13 @@ func (am *Module) checkZeroInInactive() {
 }
 
 // Function returning a query name
-func (am *Module) qname(name string, args ...any) ifaces.QueryID {
-	return ifaces.QueryIDf("%v_%v", am.Name, am.Comp.SelfRecursionCount) + "_" + ifaces.QueryIDf(name, args...)
+func (am *Module) qname(name string) ifaces.QueryID {
+	return ifaces.QueryIDf("%s_%d", am.Name, am.Comp.SelfRecursionCount) + "_" + ifaces.QueryID(name)
 }
 
 // Function inserting a query that col is zero when IsActive is zero
 func (am *Module) colZeroAtInactive(col ifaces.Column, name string) {
 	// col zero at inactive area, e.g., (1-IsActiveAccumulator[i]) * col[i] = 0
-	am.Comp.InsertGlobal(am.Round, am.qname("%s", name),
+	am.Comp.InsertGlobal(am.Round, am.qname(name),
 		symbolic.Mul(symbolic.Sub(1, am.Cols.IsActiveAccumulator), col))
 }

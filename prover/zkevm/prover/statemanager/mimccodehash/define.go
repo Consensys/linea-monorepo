@@ -210,13 +210,13 @@ func (mh *Module) checkConsistency(comp *wizard.CompiledIOP) {
 }
 
 // Function returning a query name
-func (mh *Module) qname(name string, args ...any) ifaces.QueryID {
-	return ifaces.QueryIDf("%v", mh.Inputs.Name) + "_" + ifaces.QueryIDf(name, args...)
+func (mh *Module) qname(name string) ifaces.QueryID {
+	return ifaces.QueryIDf("%v", mh.Inputs.Name) + "_" + ifaces.QueryID(name)
 }
 
 // Function inserting a query that col is zero when IsActive is zero
 func (mh *Module) colZeroAtInactive(comp *wizard.CompiledIOP, col ifaces.Column, name string) {
 	// col zero at inactive area, e.g., (1-IsActive[i]) * col[i] = 0
-	comp.InsertGlobal(mh.Inputs.Round, mh.qname("%s", name),
+	comp.InsertGlobal(mh.Inputs.Round, mh.qname(name),
 		sym.Mul(sym.Sub(1, mh.IsActive), col))
 }
