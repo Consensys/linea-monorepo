@@ -24,8 +24,8 @@ const (
 	// self recursion and commit using SIS
 	SelfRecursionSIS
 	// Denotes the Vortex mode when we apply
-	// self recursion and commit using only MiMC
-	SelfRecursionMiMCOnly
+	// self recursion and commit using only Poseidon2
+	SelfRecursionPoseidon2Only
 )
 
 // ReassignPrecomputedRootAction is a [wizard.ProverAction] that assigns the
@@ -62,10 +62,10 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 	}
 
 	var (
-		committedMatrix  vortex.EncodedMatrix
-		tree             *smt.Tree
-		sisAndMimcDigest []field.Element
-		mimcDigest       []field.Element
+		committedMatrix vortex.EncodedMatrix
+		tree            *smt.Tree
+		sisColHashes    []field.Element // column hashes generated from SisTransversalHash
+		noSisColHashes  []field.Element // column hashes generated from noSisTransversalHash, using LeafHashFunc
 	)
 
 	pols := ctx.getPols(run, round)
@@ -79,9 +79,9 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 	// We commit to the polynomials with SIS hashing if the number of polynomials
 	// is greater than the [ApplyToSISThreshold].
 	if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
-		committedMatrix, tree, mimcDigest = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
+		committedMatrix, tree, noSisColHashes = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
 	} else if ctx.RoundStatus[round] == IsSISApplied {
-		committedMatrix, tree, sisAndMimcDigest = ctx.VortexParams.CommitMerkleWithSIS(pols)
+		committedMatrix, tree, sisColHashes = ctx.VortexParams.CommitMerkleWithSIS(pols)
 	}
 
 	run.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
@@ -89,12 +89,12 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 
 	// Only to be read by the self-recursion compiler.
 	if ctx.IsSelfrecursed {
-		// We need to store the SIS and MiMC digests in the prover state
+		// We need to store the SIS and non-SIS column hashes in the prover state
 		// so that we can use them in the self-recursion compiler.
 		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
-			run.State.InsertNew(ctx.MIMCHashName(round), mimcDigest)
+			run.State.InsertNew(ctx.NoSisHashName(round), noSisColHashes)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
-			run.State.InsertNew(ctx.SisHashName(round), sisAndMimcDigest)
+			run.State.InsertNew(ctx.SisHashName(round), sisColHashes)
 		}
 	}
 
@@ -301,7 +301,7 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	if len(committedMatricesNoSIS) > 0 {
 		nonSisProof.Complete(entryList, committedMatricesNoSIS, treesNoSIS)
 		nonSisSelectedCols := nonSisProof.Columns
-		ctx.assignOpenedColumns(run, entryList, nonSisSelectedCols, SelfRecursionMiMCOnly)
+		ctx.assignOpenedColumns(run, entryList, nonSisSelectedCols, SelfRecursionPoseidon2Only)
 		// Store the selected columns for the non sis round
 		//  in the prover state
 		ctx.storeSelectedColumnsForNonSisRounds(run, nonSisSelectedCols)
@@ -447,7 +447,7 @@ func (ctx *Ctx) assignOpenedColumns(
 			pr.AssignColumn(ctx.Items.OpenedColumns[j].GetColID(), assignable)
 		} else if mode == SelfRecursionSIS {
 			pr.AssignColumn(ctx.Items.OpenedSISColumns[j].GetColID(), assignable)
-		} else if mode == SelfRecursionMiMCOnly {
+		} else if mode == SelfRecursionPoseidon2Only {
 			pr.AssignColumn(ctx.Items.OpenedNonSISColumns[j].GetColID(), assignable)
 		}
 	}
