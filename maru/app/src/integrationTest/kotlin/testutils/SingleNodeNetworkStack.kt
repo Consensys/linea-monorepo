@@ -25,7 +25,7 @@ class SingleNodeNetworkStack(
   besuBuilder: (() -> BesuNode)? = null,
   private val maruBuilder: (ethereumJsonRpcBaseUrl: String, engineRpcUrl: String, tmpDir: Path) -> MaruApp,
 ) {
-  val besuNode = besuBuilder?.invoke() ?: BesuFactory.buildTestBesu(validator = false)
+  val besuNode = besuBuilder?.invoke() ?: BesuFactory.buildTestBesu(validator = true)
   val tmpDir: Path =
     Files.createTempDirectory("maru-app").also {
       it.toFile().deleteOnExit()
