@@ -35,4 +35,5 @@ dependencies {
 
   testImplementation (group: 'tech.pegasys.teku.internal', name: 'spec', classifier: 'test-fixtures')
   testImplementation(testFixtures(project(":core")))
+  testImplementation(testFixtures('build.linea.internal:kotlin'))
 }

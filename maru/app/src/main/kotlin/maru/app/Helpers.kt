@@ -50,17 +50,28 @@ object Helpers {
     metricsFacade: MetricsFacade,
   ): ExecutionLayerEngineApiClient {
     val web3JEngineApiClient: Web3JClient = createWeb3jClient(endpoint)
-    return when (elFork) {
-      ElFork.Prague ->
-        PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
-          web3jClient = web3JEngineApiClient,
-          metricsFacade = metricsFacade,
-        )
+    return buildExecutionEngineClient(
+      web3JEngineApiClient = web3JEngineApiClient,
+      elFork = elFork,
+      metricsFacade = metricsFacade,
+    )
+  }
+
+  fun buildExecutionEngineClient(
+    web3JEngineApiClient: Web3JClient,
+    elFork: ElFork,
+    metricsFacade: MetricsFacade,
+  ): ExecutionLayerEngineApiClient =
+    when (elFork) {
       ElFork.Shanghai ->
         ShanghaiWeb3JJsonRpcExecutionLayerEngineApiClient(
           web3jClient = web3JEngineApiClient,
           metricsFacade = metricsFacade,
         )
+      ElFork.Prague ->
+        PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
+          web3jClient = web3JEngineApiClient,
+          metricsFacade = metricsFacade,
+        )
     }
-  }
 }

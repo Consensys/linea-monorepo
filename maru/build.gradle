@@ -50,7 +50,7 @@ allprojects {
     // spotless check applied to build.gradle (groovy) files
     groovyGradle {
       target '*.gradle'
-      greclipse('4.31').configFile(rootProject.file('gradle/spotless/greclipse.properties'))
+      greclipse().configFile(rootProject.file('gradle/spotless/greclipse.properties'))
       endWithNewline()
     }
   }

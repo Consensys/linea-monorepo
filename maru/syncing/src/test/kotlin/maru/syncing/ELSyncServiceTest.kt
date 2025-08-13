@@ -29,6 +29,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import testutils.maru.TestablePeriodicTimer
 
 @OptIn(ExperimentalAtomicApi::class)
 class ELSyncServiceTest {

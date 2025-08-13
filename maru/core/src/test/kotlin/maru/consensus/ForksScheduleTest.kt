@@ -19,6 +19,17 @@ class ForksScheduleTest {
   private val expectedChainId = 1337u
 
   @Test
+  fun `throws exception on duplicate timestamps`() {
+    val fork1 = ForkSpec(1L, 1, consensusConfig)
+    val fork2 = ForkSpec(1L, 2, consensusConfig)
+    val fork3 = ForkSpec(3L, 3, consensusConfig)
+    val forks = listOf(fork1, fork2, fork3)
+
+    val exception = assertThrows<IllegalArgumentException> { ForksSchedule(expectedChainId, forks) }
+    assertThat(exception).hasMessageContaining("Fork timestamps must be unique")
+  }
+
+  @Test
   fun `test getForkByTimestamp returns correct fork`() {
     val fork1 = ForkSpec(1L, 1, consensusConfig)
     val fork2 = ForkSpec(2L, 2, consensusConfig)

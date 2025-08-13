@@ -5,6 +5,12 @@
       "type": "delegated",
       "blockTimeSeconds": 1
     },
+    "%SHANGHAI_TIME%": {
+      "type": "qbft",
+      "validatorSet": ["0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"],
+      "blockTimeSeconds": 7,
+      "elFork": "Shanghai"
+    },
     "%PRAGUE_TIME%": {
       "type": "qbft",
       "validatorSet": ["0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"],

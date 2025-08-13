@@ -181,6 +181,7 @@ data class SyncingConfig(
 }
 
 data class MaruConfig(
+  val protocolTransitionPollingInterval: Duration = 1.seconds,
   val allowEmptyBlocks: Boolean = false,
   val persistence: Persistence,
   val qbftOptions: QbftOptions?,

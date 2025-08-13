@@ -28,7 +28,6 @@ import maru.app.MaruApp
 import maru.config.ApiEndpointConfig
 import maru.config.FollowersConfig
 import maru.config.consensus.ElFork
-import maru.consensus.NewBlockHandler
 import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.state.InstantFinalizationProvider
 import maru.core.BeaconBlock
@@ -36,6 +35,7 @@ import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
 import maru.core.EMPTY_HASH
 import maru.core.Validator
+import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.extensions.encodeHex
 import maru.extensions.fromHexToByteArray
 import maru.mappers.Mappers.toDomain
@@ -72,11 +72,13 @@ class CliqueToPosTest {
         .projectName(ProjectName.random())
         .waitingForService("sequencer", HealthChecks.toHaveAllPortsOpen())
         .build()
-    private var pragueSwitchTimestamp: Long = 0
+    private var shanghaiTimestamp: Long = 0
+    private var pragueTimestamp: Long = 0
     private lateinit var maruFactory: MaruFactory
 
     @TempDir
     private lateinit var sequencerMaruTmpDir: File
+
     private val genesisDir = File("../docker/initialization")
     private val transactionsHelper = Web3jTransactionsHelper(TestEnvironment.sequencerL2Client)
     private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
@@ -89,10 +91,10 @@ class CliqueToPosTest {
     // Will only be used in the sync from scratch tests
     private var maruFollower: MaruApp? = null
 
-    private fun parsePragueSwitchTimestamp(): Long {
+    private fun parseTimestamp(timestampFork: String): Long {
       val objectMapper = ObjectMapper()
       val genesisTree = objectMapper.readTree(File(genesisDir, "genesis-besu.json"))
-      val switchTime = genesisTree.at("/config/pragueTime").asLong()
+      val switchTime = genesisTree.at("/config/$timestampFork").asLong()
       return if (switchTime == 0L) System.currentTimeMillis() / 1000 else switchTime
     }
 
@@ -112,8 +114,14 @@ class CliqueToPosTest {
     fun beforeAll() {
       deleteGenesisFiles()
       qbftCluster.before()
-      pragueSwitchTimestamp = parsePragueSwitchTimestamp()
-      maruFactory = MaruFactory(VALIDATOR_PRIVATE_KEY_WITH_PREFIX.fromHexToByteArray(), pragueSwitchTimestamp)
+      shanghaiTimestamp = parseTimestamp("shanghaiTime")
+      pragueTimestamp = parseTimestamp("pragueTime")
+      maruFactory =
+        MaruFactory(
+          validatorPrivateKey = VALIDATOR_PRIVATE_KEY_WITH_PREFIX.fromHexToByteArray(),
+          shanghaiTimestamp = shanghaiTimestamp,
+          pragueTimestamp = pragueTimestamp,
+        )
     }
 
     @AfterAll
@@ -227,7 +235,7 @@ class CliqueToPosTest {
     maruSequencer.start()
     sendCliqueTransactions()
     everyoneArePeered()
-    waitTillSwitchTimestamp()
+    waitTillTimestamp(shanghaiTimestamp, "shanghaiTime")
 
     log.info("Sequencer has switched to PoS")
     repeat(4) {
@@ -235,8 +243,15 @@ class CliqueToPosTest {
     }
 
     val postMergeBlock = getBlockByNumber(6)!!
-    assertThat(postMergeBlock.timestamp.toLong()).isGreaterThanOrEqualTo(parsePragueSwitchTimestamp())
-    assertNodeBlockHeight(TestEnvironment.sequencerL2Client, 9)
+    assertThat(postMergeBlock.timestamp.toLong()).isGreaterThanOrEqualTo(shanghaiTimestamp)
+
+    waitTillTimestamp(pragueTimestamp, "pragueTime")
+    log.info("Sequencer has switched to Prague")
+    repeat(4) {
+      transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
+    }
+
+    assertNodeBlockHeight(TestEnvironment.sequencerL2Client, 13)
 
     waitForAllBlockHeightsToMatch()
   }
@@ -315,29 +330,14 @@ class CliqueToPosTest {
       }
   }
 
-  private fun buildBlockImportHandler(
-    engineApiConfig: ApiEndpointConfig,
-    name: String,
-  ): NewBlockHandler<*> =
-    FollowerBeaconBlockImporter.create(
-      executionLayerEngineApiClient =
-        Helpers.buildExecutionEngineClient(
-          engineApiConfig,
-          ElFork.Prague,
-          TestEnvironment.testMetricsFacade,
-        ),
-      finalizationStateProvider = InstantFinalizationProvider,
-      importerName = name,
-    )
-
-  private fun waitTillSwitchTimestamp() {
+  private fun waitTillTimestamp(
+    timestamp: Long,
+    timestampFork: String,
+  ) {
     await.timeout(2.minutes.toJavaDuration()).pollInterval(500.milliseconds.toJavaDuration()).untilAsserted {
       val unixTimestamp = System.currentTimeMillis() / 1000
-      log.info(
-        "Waiting {} seconds for the Prague switch at timestamp $pragueSwitchTimestamp",
-        pragueSwitchTimestamp - unixTimestamp,
-      )
-      assertThat(unixTimestamp).isGreaterThanOrEqualTo(pragueSwitchTimestamp)
+      log.info("Waiting ${timestamp - unixTimestamp} seconds for the $timestampFork at timestamp $timestamp")
+      assertThat(unixTimestamp).isGreaterThanOrEqualTo(timestamp)
     }
   }
 
@@ -395,7 +395,6 @@ class CliqueToPosTest {
     followerName: String,
   ) {
     val latestBlock = getBlockByNumber(headBlockNumber, retreiveTransactions = true)!!
-
     val latestExecutionPayload = latestBlock.toDomain()
     val stubBeaconBlock =
       BeaconBlock(
@@ -411,7 +410,20 @@ class CliqueToPosTest {
         ),
         BeaconBlockBody(emptySet(), latestExecutionPayload),
       )
-    buildBlockImportHandler(engineApiConfig = engineApiConfig, name = followerName)
+    val engineApiClient =
+      Helpers.buildExecutionEngineClient(
+        endpoint = engineApiConfig,
+        elFork = ElFork.Prague,
+        metricsFacade = TestEnvironment.testMetricsFacade,
+      )
+    val executionLayerManager = JsonRpcExecutionLayerManager(engineApiClient)
+    val blockImporter =
+      FollowerBeaconBlockImporter.create(
+        executionLayerManager = executionLayerManager,
+        finalizationStateProvider = InstantFinalizationProvider,
+        importerName = followerName,
+      )
+    blockImporter
       .handleNewBlock(stubBeaconBlock)
       .get()
   }

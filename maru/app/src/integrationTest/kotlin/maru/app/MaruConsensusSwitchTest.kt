@@ -90,24 +90,30 @@ class MaruConsensusSwitchTest {
   }
 
   @Test
-  fun `Follower node correctly switches from Clique to Prague after peering with Sequencer validator`() {
+  fun `Follower node correctly switches from Clique to POS after peering with Sequencer validator`() {
     val stackStartupMargin = 30
     val expectedBlocksInClique = 5
     val totalBlocksToProduce = expectedBlocksInClique * 2
     var currentTimestamp = System.currentTimeMillis() / 1000
-    val switchTimestamp = currentTimestamp + stackStartupMargin + expectedBlocksInClique
-    log.info("Setting Prague switch timestamp to $switchTimestamp, current timestamp: $currentTimestamp")
+    val shanghaiTimestamp = currentTimestamp + stackStartupMargin + expectedBlocksInClique
+    val pragueTimestamp = shanghaiTimestamp + 10L
+    log.info(
+      "Setting Shanghai switch timestamp to $shanghaiTimestamp, Prague switch timestamp to $pragueTimestamp, " +
+        "current timestamp: $currentTimestamp",
+    )
 
     // Initialize Besu with the same switch timestamp
     validatorBesuNode =
       BesuFactory.buildSwitchableBesu(
-        switchTimestamp = switchTimestamp,
+        switchTimestamp = shanghaiTimestamp,
+        pragueTimestamp = pragueTimestamp,
         expectedBlocksInClique = expectedBlocksInClique,
         validator = true,
       )
     followerBesuNode =
       BesuFactory.buildSwitchableBesu(
-        switchTimestamp = switchTimestamp,
+        switchTimestamp = shanghaiTimestamp,
+        pragueTimestamp = pragueTimestamp,
         expectedBlocksInClique = expectedBlocksInClique,
         validator = false,
       )
@@ -117,7 +123,7 @@ class MaruConsensusSwitchTest {
     val validatorEthereumJsonRpcBaseUrl = validatorBesuNode.jsonRpcBaseUrl().get()
     val validatorEngineRpcUrl = validatorBesuNode.engineRpcUrl().get()
 
-    val maruFactory = MaruFactory(switchTimestamp = switchTimestamp)
+    val maruFactory = MaruFactory(shanghaiTimestamp = shanghaiTimestamp, pragueTimestamp = pragueTimestamp)
     validatorMaruNode =
       maruFactory.buildSwitchableTestMaruValidatorWithP2pPeering(
         ethereumJsonRpcUrl = validatorEthereumJsonRpcBaseUrl,
@@ -152,11 +158,11 @@ class MaruConsensusSwitchTest {
     }
 
     currentTimestamp = System.currentTimeMillis() / 1000
-    log.info("Current timestamp: $currentTimestamp, switch timestamp: $switchTimestamp")
-    assertThat(currentTimestamp).isGreaterThan(switchTimestamp)
+    log.info("Current timestamp: $currentTimestamp, switch timestamp: $shanghaiTimestamp")
+    assertThat(currentTimestamp).isGreaterThan(shanghaiTimestamp)
 
-    verifyConsensusSwitch(validatorBesuNode, totalBlocksToProduce, switchTimestamp)
-    verifyConsensusSwitch(followerBesuNode, totalBlocksToProduce, switchTimestamp)
+    verifyConsensusSwitch(validatorBesuNode, totalBlocksToProduce, shanghaiTimestamp)
+    verifyConsensusSwitch(followerBesuNode, totalBlocksToProduce, shanghaiTimestamp)
   }
 
   private fun List<EthBlock.Block>.findPragueBlock(expectedSwitchTimestamp: Long): Int? =
