@@ -3,8 +3,6 @@ package smt
 import (
 	"fmt"
 
-	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -13,7 +11,7 @@ import (
 
 // Config specifies the parameters of the tree (choice of hash function, depth).
 type Config struct {
-	// HashFunc is a function returning initialized hashers. If nil, use poseidon2 by default.
+	// HashFunc is a function returning initialized hashers.
 	HashFunc func() hashtypes.Hasher
 	// Depth is the depth of the tree
 	Depth int
@@ -61,11 +59,7 @@ func hashLR(config *Config, nodeL, nodeR types.Bytes32) types.Bytes32 {
 		nodeR.WriteTo(hasher)
 		d = types.AsBytes32(hasher.Sum(nil))
 	} else {
-		// default hash compression using Poseidon2
-		leafL := vortex.Hash(types.Bytes32ToHash(nodeL))
-		leafR := vortex.Hash(types.Bytes32ToHash(nodeR))
-		h := poseidon2.BlockCompressionMekle(leafL, leafR)
-		d = types.HashToBytes32(h)
+		panic("missing a hash function")
 	}
 	return d
 }
@@ -279,11 +273,13 @@ func BuildComplete(leaves []types.Bytes32, hashFunc func() hashtypes.Hasher) *Tr
 
 	numLeaves := len(leaves)
 
-	// TODO handle panic
 	if !utils.IsPowerOfTwo(numLeaves) || numLeaves == 0 {
 		utils.Panic("expected power of two number of leaves, got %v", numLeaves)
 	}
 
+	if hashFunc == nil {
+		panic("missing a hash function")
+	}
 	depth := utils.Log2Ceil(numLeaves)
 	config := &Config{HashFunc: hashFunc, Depth: depth}
 
