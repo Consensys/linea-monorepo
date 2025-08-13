@@ -30,7 +30,7 @@ class HopliteFriendlinessTest {
 
     [p2p]
     port = 3322
-    ip-address = "127.0.0.1"
+    ip-address = "10.11.12.13"
     static-peers = ["/dns4/bootnode.linea.build/tcp/3322/p2p/16Uiu2HAmFjVuJoKD6sobrxwyJyysM1rgCsfWKzFLwvdB2HKuHwTg"]
     reconnect-delay = "500 ms"
 
@@ -73,7 +73,7 @@ class HopliteFriendlinessTest {
   private val persistence = Persistence(dataPath, privateKeyPath)
   private val p2pConfig =
     P2P(
-      ipAddress = "127.0.0.1",
+      ipAddress = "10.11.12.13",
       port = 3322u,
       staticPeers =
         listOf(

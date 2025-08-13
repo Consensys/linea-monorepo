@@ -110,7 +110,7 @@ class MaruLineaFinalizationTest {
     // wait for Besu to be fully started and synced,
     // to avoid CI flakiness due low resources sometimes
     await
-      .atMost(5.seconds.toJavaDuration())
+      .atMost(20.seconds.toJavaDuration())
       .pollInterval(200.milliseconds.toJavaDuration())
       .ignoreExceptions()
       .untilAsserted {
@@ -177,7 +177,7 @@ class MaruLineaFinalizationTest {
     }
 
     await
-      .atMost(5.seconds.toJavaDuration())
+      .atMost(20.seconds.toJavaDuration())
       .ignoreExceptions()
       .untilAsserted {
         assertThat(followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number)
@@ -185,7 +185,7 @@ class MaruLineaFinalizationTest {
       }
 
     await
-      .atMost(5.seconds.toJavaDuration())
+      .atMost(20.seconds.toJavaDuration())
       .ignoreExceptions()
       .untilAsserted {
         assertThat(

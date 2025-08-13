@@ -44,6 +44,7 @@ import maru.consensus.state.FinalizationProvider
 import maru.core.Validator
 import maru.crypto.Crypto
 import maru.extensions.fromHexToByteArray
+import maru.p2p.NetworkHelper
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 
@@ -258,15 +259,16 @@ class MaruFactory(
     p2pPort: UInt = 0u,
     validatorPortForStaticPeering: UInt? = null,
   ): P2P {
+    val ip = NetworkHelper.listIpsV4().first()
     val staticPeers =
       if (validatorPortForStaticPeering != null) {
-        val validatorPeer = "/ip4/127.0.0.1/tcp/$validatorPortForStaticPeering/p2p/$validatorNodeId"
+        val validatorPeer = "/ip4/$ip/tcp/$validatorPortForStaticPeering/p2p/$validatorNodeId"
         listOf(validatorPeer)
       } else {
         emptyList()
       }
     return P2P(
-      "127.0.0.1",
+      ip,
       port = p2pPort,
       staticPeers = staticPeers,
       reconnectDelay = defaultReconnectDelay,
