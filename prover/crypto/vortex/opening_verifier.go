@@ -50,8 +50,8 @@ type VerifierInputs struct {
 	EntryList []int
 	// Flag indicating if the SIS hash is replaced for the particular round
 	// the default behavior is to use the SIS hash function along with the
-	// MiMC hash function
-	IsSISReplacedByMiMC []bool
+	// Poseidon2 hash function
+	IsSISReplacedByPoseidon2 []bool
 }
 
 // VerifyOpening verifies a Vortex opening proof, see [VerifierInputs] for
@@ -179,9 +179,9 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 		}
 	)
 
-	// If IsSISReplacedByMiMC is not assigned, we assign them with default false values
-	if v.IsSISReplacedByMiMC == nil {
-		v.IsSISReplacedByMiMC = make([]bool, len(v.MerkleRoots))
+	// If IsSISReplacedByPoseidon2 is not assigned, we assign them with default false values
+	if v.IsSISReplacedByPoseidon2 == nil {
+		v.IsSISReplacedByPoseidon2 = make([]bool, len(v.MerkleRoots))
 	}
 
 	for i := 0; i < len(v.MerkleRoots); i++ {
@@ -197,7 +197,7 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 			)
 			// We verify the SIS hash of the current sub-column
 			// only if the SIS hash is applied for the current round.
-			if !v.IsSISReplacedByMiMC[i] {
+			if !v.IsSISReplacedByPoseidon2[i] {
 				var (
 					// SIS hash of the current sub-column
 					sisHash = v.Params.Key.Hash(selectedSubCol)
@@ -215,7 +215,7 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 
 			} else {
 				// We assume that HashFunc (to be used for Merkle Tree) and NoSisHashFunc()
-				// (to be used for in place of SIS hash) are the same i.e. the MiMC hash function
+				// (to be used for in place of SIS hash) are the same i.e. the Poseidon2 hash function
 				hasher := v.Params.LeafHashFunc()
 				hasher.Reset()
 				for k := range selectedSubCol {
