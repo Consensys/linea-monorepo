@@ -437,15 +437,15 @@ func (cm *ComputeMod) colname(name string, args ...any) ifaces.ColID {
 	return ifaces.ColIDf("%v_%v", cm.Name, cm.Comp.SelfRecursionCount) + "_" + ifaces.ColIDf(name, args...)
 }
 
-func (cm *ComputeMod) qname(name string, args ...any) ifaces.QueryID {
-	return ifaces.QueryIDf("%v_%v", cm.Name, cm.Comp.SelfRecursionCount) + "_" + ifaces.QueryIDf(name, args...)
+func (cm *ComputeMod) qname(name string) ifaces.QueryID {
+	return ifaces.QueryIDf("%s_%d", cm.Name, cm.Comp.SelfRecursionCount) + "_" + ifaces.QueryID(name)
 }
 
 // Function inserting a query that col is zero when IsActive is zero
 func (cm *ComputeMod) colZeroAtInactive(col ifaces.Column, name string) {
 	// col zero at inactive area, e.g., IsInactive[i]) * col[i] = 0
 	sug := cm.SugarVar
-	cm.Comp.InsertGlobal(cm.Round, cm.qname("%s", name),
+	cm.Comp.InsertGlobal(cm.Round, cm.qname(name),
 		symbolic.Mul(sug.IsInactive, col))
 }
 

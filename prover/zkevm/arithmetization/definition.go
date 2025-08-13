@@ -86,9 +86,6 @@ func (s *schemaScanner) scanColumns() {
 		}
 
 		// #nosec G115 -- this bound will not overflow
-		if size == 0 {
-			fmt.Printf("%s", name)
-		}
 		col := s.Comp.InsertCommit(0, ifaces.ColID(name), size)
 		pragmas.MarkLeftPadded(col)
 	}

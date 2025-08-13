@@ -53,7 +53,7 @@ func newBlock(comp *wizard.CompiledIOP, inp blockInput) block {
 	b.IsBlockComplete, b.PA = dedicated.IsZero(comp, sym.Sub(b.AccNumLane, nbLanesPerBlock)).GetColumnAndProverAction()
 
 	// constraints over accNumLanes (accumulate backward)
-	comp.InsertLocal(0, ifaces.QueryIDf("%s", name+"_AccNumLane_Last"),
+	comp.InsertLocal(0, ifaces.QueryID(name+"_AccNumLane_Last"),
 		sym.Sub(column.Shift(b.AccNumLane, -1),
 			column.Shift(isLaneActive, -1)),
 	)
