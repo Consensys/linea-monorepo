@@ -4,6 +4,7 @@ import (
 	"math/rand/v2"
 
 	field "github.com/consensys/linea-monorepo/prover/maths/v2/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // anyField is a union between field.Fr and field.Ext. It is used as type
@@ -43,12 +44,64 @@ type SmartVector interface {
 }
 
 // WriteIntoSlice writes the smartvector into a slice
-func WriteIntoSlice[T field.Gen | field.Fr | field.Ext](s []T, sv SmartVector) {
-	panic("to be implemented")
+func WriteIntoSlice[T field.Gen | field.Fr | field.Ext](s_ []T, sv SmartVector) {
+
+	if len(s_) != sv.Len() {
+		utils.Panic("length mismatch: %v != %v", len(s_), sv.Len())
+	}
+
+	s := any(s_)
+
+	switch {
+	case utils.AreOfType[Regular[field.Ext], []field.Ext](sv, s):
+		sv, s := utils.MustCastPair[Regular[field.Ext], []field.Ext](sv, s)
+		copy(s, sv)
+
+	case utils.AreOfType[Regular[field.Fr], []field.Ext](sv, s):
+		sv, s := utils.MustCastPair[Regular[field.Fr], []field.Ext](sv, s)
+		for i := range s {
+			s[i] = sv[i].Lift()
+		}
+
+	case utils.AreOfType[Constant[field.Ext], []field.Ext](sv, s):
+		sv, s := utils.MustCastPair[Constant[field.Ext], []field.Ext](sv, s)
+		field.VecFill(s, sv.Value)
+
+	case utils.AreOfType[Constant[field.Fr], []field.Ext](sv, s):
+		sv, s := utils.MustCastPair[Constant[field.Fr], []field.Ext](sv, s)
+		field.VecFill(s, sv.Value.Lift())
+
+	case utils.AreOfType[PaddedCircularWindow[field.Ext], []field.Ext](sv, s):
+		sv, s := utils.MustCastPair[PaddedCircularWindow[field.Ext], []field.Ext](sv, s)
+		// Because of the wrap-around possibilty we don't use VecFill but there
+		// might be a more efficient way to account for the wrap-around.
+		for i := range sv.Window_ {
+			pos := utils.PositiveMod(i+sv.Offset_, sv.TotLen_)
+			s[pos] = sv.Window_[i]
+		}
+		for i := len(sv.Window_); i < sv.TotLen_; i++ {
+			pos := utils.PositiveMod(i+sv.Offset_, sv.TotLen_)
+			s[pos] = sv.PaddingVal_
+		}
+
+	case utils.AreOfType[PaddedCircularWindow[field.Fr], []field.Ext](sv, s):
+		sv, s := utils.MustCastPair[PaddedCircularWindow[field.Fr], []field.Ext](sv, s)
+		// Because of the wrap-around possibilty we don't use VecFill but there
+		// might be a more efficient way to account for the wrap-around.
+		for i := range sv.Window_ {
+			pos := utils.PositiveMod(i+sv.Offset_, sv.TotLen_)
+			s[pos] = sv.Window_[i].Lift()
+		}
+		for i := len(sv.Window_); i < sv.TotLen_; i++ {
+			pos := utils.PositiveMod(i+sv.Offset_, sv.TotLen_)
+			s[pos] = sv.PaddingVal_.Lift()
+		}
+	}
 }
 
-// SmartvectorToSlice converts a smartvector into a slice of the requested type.
-func SmartvectorToSlice[T field.Gen | field.Fr | field.Ext](sv SmartVector) []T {
+// SmartVectorToSlice converts a smartvector into a slice of the requested type.
+// The function deep-copies the smartvector and will never save allocations.
+func SmartVectorToSlice[T field.Gen | field.Fr | field.Ext](sv SmartVector) []T {
 	panic("to be implemented")
 }
 
