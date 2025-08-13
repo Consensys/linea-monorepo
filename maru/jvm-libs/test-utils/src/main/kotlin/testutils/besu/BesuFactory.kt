@@ -26,7 +26,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.Gene
 object BesuFactory {
   private const val PRAGUE_GENESIS = "/el_prague.json"
   const val MIN_BLOCK_TIME = 1L
-  const val BLOCK_REBUILD_TIME = 50L
+  const val BLOCK_REBUILD_TIME = 100L
 
   fun buildTestBesu(
     genesisFile: String = GenesisConfigurationFactory.readGenesisFile(PRAGUE_GENESIS),
