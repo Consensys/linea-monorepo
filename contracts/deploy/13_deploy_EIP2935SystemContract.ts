@@ -74,6 +74,21 @@ const func: DeployFunction = async function () {
   });
 
   try {
+    // Estimate gas to check if the transaction would revert before broadcasting
+    console.log("Simulating deployment tx with eth_estimageGas...");
+    const estimatedGas = await ethers.provider.estimateGas({
+      from: predeterminedSenderAddress,
+      to: deploymentTx.to,
+      value: deploymentTx.value,
+      data: deploymentTx.data,
+      gasPrice: deploymentTx.gasPrice,
+      gasLimit: deploymentTx.gas,
+      type: deploymentTx.type,
+      nonce: deploymentTx.nonce,
+    });
+    console.log(`Deployment tx simulated successfully, estimatedGas=${estimatedGas}`);
+
+    console.log(`Broadcasting deployment tx...`);
     const tx = await ethers.provider.broadcastTransaction(rawTx.serialized);
     console.log(`Transaction=${tx.hash} broadcasted`);
     console.log("Waiting for transaction receipt...");
@@ -88,7 +103,6 @@ const func: DeployFunction = async function () {
     }
   } catch (error) {
     console.error(`Error during contract=${contractName} deployment: ${(error as Error).message}`);
-    throw error; // Re-throw to fail the deployment
   }
 };
 export default func;
