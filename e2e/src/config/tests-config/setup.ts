@@ -23,7 +23,6 @@ import {
   TokenBridgeV1_1__factory as TokenBridge__factory,
 } from "../../typechain";
 import { AccountManager } from "./accounts/account-manager";
-import { LIVENESS_SIGNER_PRIVATE_KEY } from "e2e/src/common/constants";
 
 export default class TestSetup {
   constructor(private readonly config: Config) {}
@@ -269,6 +268,8 @@ export default class TestSetup {
   }
 
   public getLivenessSigner(): NonceManager {
+    // @WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
+    const LIVENESS_SIGNER_PRIVATE_KEY = "0x234d87442cf7d43841fbe280febcdfabfb646added67bc19f7e42a5483f614c4";
     const signer = new Wallet(LIVENESS_SIGNER_PRIVATE_KEY, this.getL2SequencerProvider());
     return new NonceManager(signer);
   }
