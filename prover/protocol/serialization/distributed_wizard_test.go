@@ -144,6 +144,66 @@ func TestSerdeDistWizard(t *testing.T) {
 	})
 }
 
+func TestSerdeDistWizardPerf(t *testing.T) {
+
+	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+
+	dist := GetDistWizard()
+
+	t.Run("ModuleNames", func(t *testing.T) {
+		runSerdeTestPerf(t, dist.ModuleNames, "DistributedWizard.ModuleNames")
+	})
+
+	for i := range dist.GLs {
+		t.Run(fmt.Sprintf("GLModule-%d", i), func(t *testing.T) {
+			runSerdeTestPerf(t, dist.GLs[i], "DistributedWizard.GLs")
+		})
+	}
+
+	for i := range dist.LPPs {
+		t.Run(fmt.Sprintf("LPPModule-%d", i), func(t *testing.T) {
+			runSerdeTestPerf(t, dist.LPPs[i], "DistributedWizard.LPPs")
+		})
+	}
+
+	t.Run("DefaultModule", func(t *testing.T) {
+		runSerdeTestPerf(t, dist.DefaultModule, "DistributedWizard.DefaultModule")
+	})
+
+	t.Run("Bootstrapper", func(t *testing.T) {
+		runSerdeTestPerf(t, dist.Bootstrapper, "DistributedWizard.Bootstrapper")
+	})
+
+	t.Run("Discoverer", func(t *testing.T) {
+		runSerdeTestPerf(t, dist.Disc, "DistributedWizard.Discoverer")
+	})
+
+	t.Run("CompiledDefault", func(t *testing.T) {
+		runSerdeTestPerf(t, dist.CompiledDefault, "DistributedWizard.CompiledDefault")
+	})
+
+	for i := range dist.CompiledGLs {
+		t.Run(fmt.Sprintf("CompiledGL-%v", i), func(t *testing.T) {
+			runSerdeTestPerf(t, dist.CompiledGLs[i], fmt.Sprintf("DistributedWizard.CompiledGL-%v", i))
+		})
+	}
+
+	for i := range dist.CompiledLPPs {
+		t.Run(fmt.Sprintf("CompiledLPP-%v", i), func(t *testing.T) {
+			runSerdeTestPerf(t, dist.CompiledLPPs[i], fmt.Sprintf("DistributedWizard.CompiledLPP-%v", i))
+		})
+	}
+
+	// To save memory
+	cong := dist.CompiledConglomeration
+	dist = nil
+	runtime.GC()
+
+	t.Run("CompiledConglomeration", func(t *testing.T) {
+		runSerdeTestPerf(t, cong, "DistributedWizard.CompiledConglomeration")
+	})
+}
+
 func TestSerdeDWCong(t *testing.T) {
 
 	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")

@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"runtime/debug"
 	"testing"
+	"time"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
@@ -67,6 +68,55 @@ func runSerdeTest(t *testing.T, input any, name string, isSanityCheck, failFast 
 			t.Logf("Sanity checks passed for %s", name)
 		}
 	}
+}
+
+func runSerdeTestPerf(t *testing.T, input any, name string) {
+
+	// In case the test panics, log the error but do not let the panic
+	// interrupt the test.
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("Panic during serialization/deserialization of %s: %v", name, r)
+			debug.PrintStack()
+		}
+	}()
+
+	if input == nil {
+		t.Error("test input is nil")
+		return
+	}
+
+	var output = reflect.New(reflect.TypeOf(input)).Interface()
+	var b []byte
+	var err error
+
+	monitor, err := profiling.StartPerformanceMonitor("prof-serde", 100*time.Millisecond, "perf-serde")
+	if err != nil {
+		t.Fatalf("Error setting up performance monitor: %v", err)
+	}
+
+	func() {
+		logrus.Printf("Starting to serialize:%s \n", name)
+		b, err = serialization.Serialize(input)
+		if err != nil {
+			t.Fatalf("Error during serialization of %s: %v", name, err)
+		}
+	}()
+
+	func() {
+		// Measure deserialization time
+		logrus.Printf("Starting to deserialize:%s\n", name)
+		err = serialization.Deserialize(b, output)
+		if err != nil {
+			t.Fatalf("Error during deserialization of %s: %v", name, err)
+		}
+	}()
+
+	_, err = monitor.Stop()
+	if err != nil {
+		t.Fatalf("Error stopping performance monitor: %v", err)
+	}
+
 }
 
 func TestSerdeZkEVM(t *testing.T) {
