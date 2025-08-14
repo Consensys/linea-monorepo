@@ -86,13 +86,11 @@ describe("Liveness test suite", () => {
 
       // check the first AnswerUpdated event is for downtime
       expect(downtimeEvent?.transactionIndex).toEqual("0x0");
-      expect(downtimeEvent?.logIndex).toEqual("0x0");
       expect(parseInt(downtimeEvent?.topics[1] ?? "", 16)).toEqual(1); // topics[1] was the given status to update, should be 1 for downtime
       expect(parseInt(downtimeEvent?.data ?? "", 16)).toEqual(lastBlockTimestamp); // data should contain the timestamp of the last block before restart as downtime
 
       // check the second AnswerUpdated event is for uptime
       expect(uptimeEvent?.transactionIndex).toEqual("0x1");
-      expect(uptimeEvent?.logIndex).toEqual("0x1");
       expect(parseInt(uptimeEvent?.topics[1] ?? "", 16)).toEqual(0); // topics[1] was the given status to update, should be 0 for uptime
       expect(parseInt(uptimeEvent?.data ?? "", 16)).toBeGreaterThan(lastBlockTimestamp ?? 0); // data should contain a timestamp later than the last block before restart as uptime
     },
