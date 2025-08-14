@@ -26,7 +26,6 @@ func AssignFromLtTraces(run *wizard.ProverRuntime, schema *air.Schema, expTraces
 		modules           = expTraces.Modules().Collect()
 		moduleLimits      = mapModuleLimits(limits)
 		err77             error
-		numCols           = expTraces.Width()
 		maxRatio          = float64(0)
 		argMaxRatioLimit  = 0
 		argMaxRatioHeight = uint(0)
@@ -65,26 +64,29 @@ func AssignFromLtTraces(run *wizard.ProverRuntime, schema *air.Schema, expTraces
 	if err77 != nil {
 		exit.OnLimitOverflow(argMaxRatioLimit, int(argMaxRatioHeight), err77)
 	}
+	// Iterate each module of trace
+	for modId := range expTraces.Width() {
+		var trMod = expTraces.Module(modId)
+		// Iterate each column in module
+		for colId := range trMod.Width() {
+			var (
+				trCol   = trMod.Column(colId)
+				name    = ifaces.ColID(wizardName(trMod.Name(), trCol.Name()))
+				wCol    = run.Spec.Columns.GetHandle(name)
+				padding = trCol.Padding()
+				data    = trCol.Data()
+				plain   = make([]field.Element, data.Len())
+			)
 
-	for id := uint(0); id < numCols; id++ {
+			if !run.Spec.Columns.Exists(name) {
+				continue
+			}
 
-		var (
-			col     = expTraces.Column(id)
-			name    = ifaces.ColID(wizardName(getModuleName(schema, col), col.Name()))
-			wCol    = run.Spec.Columns.GetHandle(name)
-			padding = col.Padding()
-			data    = col.Data()
-			plain   = make([]field.Element, data.Len())
-		)
+			for i := range plain {
+				plain[i] = data.Get(uint(i))
+			}
 
-		if !run.Spec.Columns.Exists(name) {
-			continue
+			run.AssignColumn(ifaces.ColID(name), smartvectors.LeftPadded(plain, padding, wCol.Size()))
 		}
-
-		for i := range plain {
-			plain[i] = data.Get(uint(i))
-		}
-
-		run.AssignColumn(ifaces.ColID(name), smartvectors.LeftPadded(plain, padding, wCol.Size()))
 	}
 }

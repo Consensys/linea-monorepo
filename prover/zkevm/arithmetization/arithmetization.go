@@ -111,7 +111,10 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 		fmt.Printf("error loading the trace fpath=%q err=%v", traceFile, errT.Error())
 	}
 	// Perform trace expansion
-	expandedTrace, errs := ir.NewTraceBuilder().Build(a.Schema, rawColumns)
+	expandedTrace, errs := ir.NewTraceBuilder().
+		WithBatchSize(1024).
+		Build(a.Schema, rawColumns)
+	//
 	if len(errs) > 0 {
 		logrus.Warnf("corset expansion gave the following errors: %v", errors.Join(errs...).Error())
 	}
