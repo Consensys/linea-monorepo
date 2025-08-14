@@ -20,6 +20,28 @@ func RandomVec(size int) smartvectors.SmartVector {
 	return smartvectors.PseudoRand(rng, size)
 }
 
+// RandomOctupletVec returns 8 random vectors of size "size".
+func RandomOctupletVec(size int) [8]smartvectors.SmartVector {
+	var res [8]smartvectors.SmartVector
+
+	for i := range res {
+		res[i] = smartvectors.PseudoRand(rng, size)
+	}
+
+	return res
+}
+
+// ZeroOctupletVec returns 8 random zero vectors of size "size".
+func ZeroOctupletVec(size int) [8]smartvectors.SmartVector {
+	var res [8]smartvectors.SmartVector
+
+	for i := range res {
+		res[i] = smartvectors.NewConstant(field.NewElement(uint64(1)), size)
+	}
+
+	return res
+}
+
 // RandomVecFext returns a random vector of size "size" defined over the
 // extension field
 func RandomVecFext(size int) smartvectors.SmartVector {
@@ -31,6 +53,19 @@ func RandomVecFext(size int) smartvectors.SmartVector {
 func RandomVecPadded(density, size int) smartvectors.SmartVector {
 	v := vector.PseudoRand(rng, density)
 	return smartvectors.RightZeroPadded(v, size)
+}
+
+// RandomOctupletVecPadded returns a random vector of size "size" such that the
+// last "size-density" are zero.
+func RandomOctupletVecPadded(density, size int) [8]smartvectors.SmartVector {
+	var res [8]smartvectors.SmartVector
+
+	for i := range res {
+		v := vector.PseudoRand(rng, density)
+		res[i] = smartvectors.RightZeroPadded(v, size)
+	}
+
+	return res
 }
 
 // RandomMatrix returns a random matrix of size "rows x cols" as a list
