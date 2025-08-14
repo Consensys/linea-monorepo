@@ -16,12 +16,6 @@ class MinerExtraDataV1Test {
     assertThat(minerExtraData.encode().lowercase()).isEqualTo(encodedMinerExtraData.lowercase())
   }
 
-  @Test
-  fun encodeExtraData() {
-    val extraData = MinerExtraDataV1(variableCostInKWei = 5000000U, fixedCostInKWei = 30000U, ethGasPriceInKWei = 89523U)
-    extraData.encode()
-  }
-
   @ParameterizedTest
   @MethodSource("minerExtraDataPositiveTestCases")
   fun decode(encodedMinerExtraData: String, minerExtraData: MinerExtraDataV1) {

@@ -246,7 +246,7 @@ class WalletsFunding(
     chainId: Int,
   ): Map<Wallet, MutableList<TransactionDetail>> {
     val transactions: MutableMap<Wallet, MutableList<TransactionDetail>> = HashMap()
-    val gasPrice = ethConnection.ethGasPrice().multiply(BigInteger.valueOf(4))
+    val gasPrice = ethConnection.ethGasPrice()
     for ((wallet) in initialNoncePerWallet) {
       transactions[wallet] = ArrayList()
       logger.info("[TRANSFER] Preparing transactions for wallet " + wallet.address + " id: " + wallet.id)

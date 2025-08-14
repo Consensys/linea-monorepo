@@ -107,11 +107,11 @@ class EthConnectionImpl(url: String?) : EthConnection {
   override fun estimateGasPriceAndLimit(transactionForEstimation: Transaction): Pair<BigInteger, BigInteger> {
     val gasEstimation = lineaEstimateGas(transactionForEstimation).getGasEstimation()
     return if (gasEstimation != null) {
-      val gasPrice = gasEstimation.priorityFeePerGas.multiply(BigInteger.valueOf(4)) + gasEstimation.baseFeePerGas.multiply(BigInteger.valueOf(4))
+      val gasPrice = gasEstimation.priorityFeePerGas + gasEstimation.baseFeePerGas
       val gasLimit = gasEstimation.gasLimit
       gasPrice to gasLimit
     } else {
-      val gasPrice = ethGasPrice() * BigInteger.valueOf(10)
+      val gasPrice = ethGasPrice()
       val gasLimit = estimateGas(transactionForEstimation)
       gasPrice to gasLimit
     }
