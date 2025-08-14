@@ -294,7 +294,7 @@ class TestExecutor(request: String, pk: String) {
       is ContractCall -> {
         if (scenario.wallet == NEW) {
           // TODO: gas estimation for funding more precise
-          val gasPrice = ethConnection.ethGasPrice()
+          val gasPrice = ethConnection.ethGasPrice().multiply(BigInteger.valueOf(4))
           prepareWallets(
             nbWallets = 1,
             nbTransferPerWallets = scenario.contract.nbCalls(),
