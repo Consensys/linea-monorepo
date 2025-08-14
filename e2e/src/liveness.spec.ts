@@ -19,7 +19,8 @@ describe("Liveness test suite", () => {
       let lastBlockTimestamp: number | undefined = 0;
       let lastBlockNumber: number | undefined = 0;
       const l2BesuNodeProvider = config.getL2Provider();
-      const ethGetLogsClient = new GetEthLogsClient(config.getL2BesuNodeEndpoint()!);
+      const ethGetLogsClientBesu = new GetEthLogsClient(config.getL2BesuNodeEndpoint()!);
+      const ethGetLogsClientSequencer = new GetEthLogsClient(config.getSequencerEndpoint()!);
 
       try {
         await execDockerCommand("stop", "sequencer");
@@ -51,7 +52,7 @@ describe("Liveness test suite", () => {
             // using fetch JSON-RPC call to get logs instead of JsonRpcProvider to aviod flaky issue
             // where logs would fail to be retrieve from time to time
             return (
-              await ethGetLogsClient.getLogs(
+              await (i % 2 == 0 ? ethGetLogsClientBesu : ethGetLogsClientSequencer).getLogs(
                 livenessContractAddress,
                 [
                   "0x0559884fd3a460db3073b7fc896cc77986f16e378210ded43186175bf646fc5f", // AnswerUpdated event
@@ -75,7 +76,11 @@ describe("Liveness test suite", () => {
 
       // The first two transactions of the target block should be the transactions
       // with "to" as the liveness contract address
-      const targetBlock = await getBlockByNumberOrBlockTag(config.getL2BesuNodeEndpoint()!, targetBlockNumber, true);
+      const targetBlock = await getBlockByNumberOrBlockTag(
+        i % 2 == 0 ? config.getL2BesuNodeEndpoint()! : config.getSequencerEndpoint()!,
+        targetBlockNumber,
+        true,
+      );
       logger.debug(`targetBlock=${JSON.stringify(targetBlock)}`);
       expect(targetBlock?.transactions.length).toBeGreaterThanOrEqual(2);
 
