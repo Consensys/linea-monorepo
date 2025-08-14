@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -96,8 +97,8 @@ func (a *PreimageLimbsProverAction) Run(run *wizard.ProverRuntime) {
 }
 
 type ColSelectionProverAction struct {
-	Ctx       *SelfRecursionCtx
-	UAlphaQID ifaces.ColID
+	Ctx             *SelfRecursionCtx
+	UAlphaQID       ifaces.ColID
 	UAlphaQFilterID ifaces.ColID
 }
 
@@ -161,8 +162,8 @@ func (ctx *SelfRecursionCtx) ColSelection() {
 
 	// And registers the assignment function
 	ctx.Comp.RegisterProverAction(roundQ, &ColSelectionProverAction{
-		Ctx:       ctx,
-		UAlphaQID: ctx.Columns.UalphaQ.GetColID(),
+		Ctx:             ctx,
+		UAlphaQID:       ctx.Columns.UalphaQ.GetColID(),
 		UAlphaQFilterID: ctx.Columns.UalphaQFilter.GetColID(),
 	})
 
@@ -180,6 +181,8 @@ func (ctx *SelfRecursionCtx) ColSelection() {
 		},
 		ctx.Columns.UalphaQFilter,
 	)
+	// Add a binarity constraint for UAlphaQFilter
+	dedicated.MustBeBinary(ctx.Comp, ctx.Columns.UalphaQFilter, roundQ)
 }
 
 type CollapsingProverAction struct {

@@ -10,18 +10,24 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // StackedColumn is a dedicated wizard computing a column by stacking other
 // columns on top of each others.
+// When source columns are padded with zeros, the Column field gives the
+// stacked column with the padding included. Whereas UnpaddedColumn gives
+// the stacking of the source columns without the padding. For example,
+// if we have two source columns A and B, with A being [1, 2, 3, 0] and B
+// being [4, 5, 6, 0], the stacked column will be [1, 2, 3, 0, 4, 5, 6, 0],
+// while the unpadded column will be [1, 2, 3, 4, 5, 6, 0, 0]. Notice that
+// stacking sometimes needs zero padding to make the stacked column size a power of two.
 type StackedColumn struct {
 	// Column is the built column
 	Column column.Natural
 	// Source is the list of columns to stack. All of them should have the
-	// same number of rows. If after stacking all the rows, the total number of
-	// rows is not a power of two, then
-	// we pad with zeros up to the next power of two.
+	// same number of rows.
 	Source []ifaces.Column
 	// UnpaddedColumn is the column that is built using the unpadded portions
 	// of the source columns. This is useful for stacking the zero padded source columns
@@ -151,6 +157,10 @@ func StackColumn(comp *wizard.CompiledIOP, srcs []ifaces.Column, opts ...StackCo
 				FilterB: stkCol.UnpaddedColumnFilter,
 			},
 		)
+		// Insert a binarity constraint for ColumnFilter and
+		// UnpaddedColumnFilter
+		MustBeBinary(comp, stkCol.ColumnFilter, round)
+		MustBeBinary(comp, stkCol.UnpaddedColumnFilter, round)
 		return stkCol
 	} else {
 		return stkCol
@@ -223,4 +233,13 @@ func HandleSourcePaddedColumns(unpaddedSourceColSize int) StackColumnOp {
 			stkCol.IsSourceColsArePadded = true
 		}
 	}
+}
+
+// MustBeBinary constraints c to be binary
+func MustBeBinary(comp *wizard.CompiledIOP, c ifaces.Column, round int) {
+	comp.InsertGlobal(
+		round,
+		ifaces.QueryIDf("%v_IS_BINARY", c.GetColID()),
+		sym.Mul(c, sym.Sub(c, 1)),
+	)
 }
