@@ -2,15 +2,15 @@ package arithmetization
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"math/big"
 	"reflect"
 	"strings"
 
-	"github.com/consensys/go-corset/pkg/air"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+
+	"github.com/consensys/go-corset/pkg/ir/air"
+	"github.com/consensys/go-corset/pkg/ir/assignment"
 	"github.com/consensys/go-corset/pkg/schema"
-	"github.com/consensys/go-corset/pkg/schema/assignment"
-	"github.com/consensys/go-corset/pkg/schema/constraint"
 	"github.com/consensys/go-corset/pkg/trace"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -71,7 +71,7 @@ func (s *schemaScanner) scanColumns() {
 			name        = wizardName(getModuleNameFromColumn(s.Schema, colDecl), colDecl.Name)
 			ctx         = colDecl.Context
 			module      = s.Modules[ctx.Module()]
-			moduleLimit = s.LimitMap[module.Name]
+			moduleLimit = s.LimitMap[module.Name()]
 			mult        = ctx.LengthMultiplier()
 			size        = int(mult) * moduleLimit
 		)
@@ -152,7 +152,7 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 			s.Comp.InsertInclusionDoubleConditional(0, ifaces.QueryID(name), wTargets, wSources, selectorTarget, selectorSource)
 		}
 
-	case *constraint.PermutationConstraint:
+	case air.PermutationConstraint:
 
 		var (
 			numCol   = len(cs.Sources)
@@ -210,7 +210,7 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 
 		s.Comp.InsertLocal(0, ifaces.QueryID(name), wExpr)
 
-	case *constraint.RangeConstraint[*air.ColumnAccess]:
+	case air.RangeConstraint:
 		bound := field.NewElement(2)
 		bound.Exp(bound, big.NewInt(int64(cs.Bitwidth)))
 		// #nosec G115 -- this bound will not overflow

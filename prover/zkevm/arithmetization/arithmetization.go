@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/consensys/go-corset/pkg/air"
-	"github.com/consensys/go-corset/pkg/mir"
-	"github.com/consensys/go-corset/pkg/schema"
+	"github.com/consensys/go-corset/pkg/ir"
+	"github.com/consensys/go-corset/pkg/ir/air"
+	"github.com/consensys/go-corset/pkg/ir/mir"
 	"github.com/consensys/go-corset/pkg/util/collection/typed"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
@@ -111,7 +111,7 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 		fmt.Printf("error loading the trace fpath=%q err=%v", traceFile, errT.Error())
 	}
 	// Perform trace expansion
-	expandedTrace, errs := schema.NewTraceBuilder(a.Schema).Build(rawColumns)
+	expandedTrace, errs := ir.NewTraceBuilder().Build(a.Schema, rawColumns)
 	if len(errs) > 0 {
 		logrus.Warnf("corset expansion gave the following errors: %v", errors.Join(errs...).Error())
 	}

@@ -4,8 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/consensys/go-corset/pkg/air"
+	"github.com/consensys/go-corset/pkg/ir/air"
 	"github.com/consensys/go-corset/pkg/trace"
+	bls12_377 "github.com/consensys/go-corset/pkg/util/field/bls12-377"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -17,7 +18,7 @@ import (
 
 // ReadExpandedTraces parses the provided trace file, expands it and returns the
 // corset object holding the expanded traces.
-func AssignFromLtTraces(run *wizard.ProverRuntime, schema *air.Schema, expTraces trace.Trace, limits *config.TracesLimits) {
+func AssignFromLtTraces(run *wizard.ProverRuntime, schema *air.Schema, expTraces trace.Trace[bls12_377.Element], limits *config.TracesLimits) {
 
 	// This loops checks the module assignment to see if we have created a 77
 	// error.
