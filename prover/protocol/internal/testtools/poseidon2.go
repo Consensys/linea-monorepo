@@ -41,39 +41,39 @@ var ListOfPoseidon2Testcase = []*Poseidon2Testcase{
 		},
 	},
 
-	// {
-	// 	NameStr: "positive/random-full-2-vectors",
-	// 	OldStates: [][8]smartvectors.SmartVector{
-	// 		RandomOctupletVec(8),
-	// 		RandomOctupletVec(16),
-	// 	},
-	// 	Blocks: [][8]smartvectors.SmartVector{
-	// 		RandomOctupletVec(8),
-	// 		RandomOctupletVec(16),
-	// 	},
-	// },
+	{
+		NameStr: "positive/random-full-2-vectors",
+		OldStates: [][8]smartvectors.SmartVector{
+			RandomOctupletVec(8),
+			RandomOctupletVec(16),
+		},
+		Blocks: [][8]smartvectors.SmartVector{
+			RandomOctupletVec(8),
+			RandomOctupletVec(16),
+		},
+	},
 
-	// {
-	// 	NameStr: "positive/random-padded",
-	// 	OldStates: [][8]smartvectors.SmartVector{
-	// 		RandomOctupletVecPadded(5, 8),
-	// 	},
-	// 	Blocks: [][8]smartvectors.SmartVector{
-	// 		RandomOctupletVecPadded(5, 8),
-	// 	},
-	// },
+	{
+		NameStr: "positive/random-padded",
+		OldStates: [][8]smartvectors.SmartVector{
+			RandomOctupletVecPadded(5, 8),
+		},
+		Blocks: [][8]smartvectors.SmartVector{
+			RandomOctupletVecPadded(5, 8),
+		},
+	},
 
-	// {
-	// 	NameStr: "positive/random-padded-2-vectors",
-	// 	OldStates: [][8]smartvectors.SmartVector{
-	// 		RandomOctupletVecPadded(5, 8),
-	// 		RandomOctupletVecPadded(2, 16),
-	// 	},
-	// 	Blocks: [][8]smartvectors.SmartVector{
-	// 		RandomOctupletVecPadded(5, 8),
-	// 		RandomOctupletVecPadded(2, 16),
-	// 	},
-	// },
+	{
+		NameStr: "positive/random-padded-2-vectors",
+		OldStates: [][8]smartvectors.SmartVector{
+			RandomOctupletVecPadded(5, 8),
+			RandomOctupletVecPadded(2, 16),
+		},
+		Blocks: [][8]smartvectors.SmartVector{
+			RandomOctupletVecPadded(5, 8),
+			RandomOctupletVecPadded(2, 16),
+		},
+	},
 
 	{
 		NameStr: "positive/constant-zero",
