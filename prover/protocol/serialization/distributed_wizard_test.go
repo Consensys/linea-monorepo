@@ -47,22 +47,22 @@ func (d distributeTestCase) define(comp *wizard.CompiledIOP) {
 // ZkEVM's compiled IOP and a StandardModuleDiscoverer with preset parameters.
 // The function compiles the necessary segments and produces a conglomerated
 // distributed wizard, which is then returned.
-func GetDW() *distributed.DistributedWizard {
-	var (
-		z    = zkevm.GetTestZkEVM()
-		disc = &distributed.StandardModuleDiscoverer{
-			TargetWeight: 1 << 28,
-			Affinities:   zkevm.GetAffinities(z),
-			Predivision:  1,
-		}
+func GetDW(cfg *config.Config) *distributed.DistributedWizard {
 
-		// This tests the compilation of the compiled-IOP
-		distWizard = distributed.DistributeWizard(z.WizardIOP, disc).
-				CompileSegments().
-				Conglomerate(20)
+	var (
+		traceLimits = cfg.TracesLimits
+		zkEVM       = zkevm.FullZKEVMWithSuite(&traceLimits, zkevm.CompilationSuite{}, cfg)
+		disc        = &distributed.StandardModuleDiscoverer{
+			TargetWeight: 1 << 29,
+			Predivision:  1,
+			Advices:      zkevm.DiscoveryAdvices,
+		}
+		dw = distributed.DistributeWizard(zkEVM.WizardIOP, disc)
 	)
 
-	return distWizard
+	// These are the slow and expensive operations.
+	dw.CompileSegments().Conglomerate(100)
+	return dw
 }
 
 func GetBasicDW() *distributed.DistributedWizard {
@@ -87,43 +87,29 @@ func GetBasicDW() *distributed.DistributedWizard {
 	return distWizard
 }
 
-func GetDWPerf(cfg *config.Config) *distributed.DistributedWizard {
-
-	var (
-		traceLimits = cfg.TracesLimits
-		zkEVM       = zkevm.FullZKEVMWithSuite(&traceLimits, zkevm.CompilationSuite{}, cfg)
-		disc        = &distributed.StandardModuleDiscoverer{
-			TargetWeight: 1 << 29,
-			Predivision:  1,
-			Advices:      zkevm.DiscoveryAdvices,
-		}
-		dw = distributed.DistributeWizard(zkEVM.WizardIOP, disc)
-	)
-
-	// These are the slow and expensive operations.
-	dw.CompileSegments().Conglomerate(100)
-	return dw
-}
-
 func TestSerdeDW(t *testing.T) {
 
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
-	dist := GetDW()
+	cfg, err := config.NewConfigFromFileUnchecked("/home/ubuntu/linea-monorepo/prover/config/config-sepolia-limitless.toml")
+	if err != nil {
+		t.Fatalf("failed to read config file: %s", err)
+	}
+	dist := GetDW(cfg)
 
 	t.Run("ModuleNames", func(t *testing.T) {
 		runSerdeTest(t, dist.ModuleNames, "DW.ModuleNames", true, false)
 	})
 
 	for i := range dist.GLs {
-		t.Run(fmt.Sprintf("GLModule-%d", i), func(t *testing.T) {
-			runSerdeTest(t, dist.GLs[i], "DW.GLs", true, false)
+		t.Run(fmt.Sprintf("DW.GLModule-%d", i), func(t *testing.T) {
+			runSerdeTest(t, dist.GLs[i], fmt.Sprintf("DW.GLModule-%d", i), true, false)
 		})
 	}
 
 	for i := range dist.LPPs {
-		t.Run(fmt.Sprintf("LPPModule-%d", i), func(t *testing.T) {
-			runSerdeTest(t, dist.LPPs[i], "DW.LPPs", true, false)
+		t.Run(fmt.Sprintf("DW.LPPModule-%d", i), func(t *testing.T) {
+			runSerdeTest(t, dist.LPPs[i], fmt.Sprintf("DW.LPPModule-%d", i), true, false)
 		})
 	}
 
@@ -176,7 +162,7 @@ func TestSerdeDWPerf(t *testing.T) {
 	}
 
 	var perfLogs profiling.PerfLogs
-	dw := GetDWPerf(cfg)
+	dw := GetDW(cfg)
 
 	t.Run("ModuleNames", func(t *testing.T) {
 		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.ModuleNames, "DW.ModuleNames"))
