@@ -98,8 +98,7 @@ func EvaluateLagrange(v SmartVector, x field.Element, oncoset ...bool) field.Ele
 		utils.Panic("Provided a non-base smart-vector")
 	}
 
-	switch con := v.(type) {
-	case *Constant:
+	if con, ok := v.(*Constant); ok {
 		return con.Value
 	}
 
@@ -113,8 +112,7 @@ func EvaluateLagrange(v SmartVector, x field.Element, oncoset ...bool) field.Ele
 
 // EvaluateLagrangeMixed a polynomial in Lagrange basis at an E4 point
 func EvaluateLagrangeMixed(v SmartVector, x fext.Element, oncoset ...bool) fext.Element {
-	switch con := v.(type) {
-	case *Constant:
+	if con, ok := v.(*Constant); ok {
 		var res fext.Element
 		fext.SetFromBase(&res, &con.Value)
 		return res
@@ -147,8 +145,7 @@ func BatchEvaluateLagrangeMixed(vs []SmartVector, x fext.Element, oncoset ...boo
 				utils.Panic("expected a base-field smart-vector, got %T", vs[i])
 			}
 
-			switch con := vs[i].(type) {
-			case *Constant:
+			if con, ok := vs[i].(*Constant); ok {
 				fext.SetFromBase(&results[i], &con.Value)
 				computed[i] = true
 				atomic.AddUint64(&totalConstant, 1)

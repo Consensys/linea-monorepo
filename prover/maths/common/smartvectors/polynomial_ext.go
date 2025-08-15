@@ -93,8 +93,7 @@ func RuffiniQuoRemExt(p SmartVector, q fext.Element) (quo SmartVector, rem fext.
 
 // Evaluate a polynomial in Lagrange basis
 func EvaluateLagrangeFullFext(v SmartVector, x fext.Element, oncoset ...bool) fext.Element {
-	switch con := v.(type) {
-	case *ConstantExt:
+	if con, ok := v.(*ConstantExt); ok {
 		return con.Value
 	}
 
@@ -117,8 +116,7 @@ func BatchEvaluateLagrangeExt(vs []SmartVector, x fext.Element, oncoset ...bool)
 	// smartvector to []fr.element
 	parallel.Execute(len(vs), func(start, stop int) {
 		for i := start; i < stop; i++ {
-			switch con := vs[i].(type) {
-			case *ConstantExt:
+			if con, ok := vs[i].(*ConstantExt); ok {
 				// constant vectors
 				results[i] = con.Value
 				computed[i] = true

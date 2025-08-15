@@ -143,6 +143,8 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPo
 			anyReg = true
 			casted.WriteInSliceExt(tmpVec)
 			accumulateRegExt(resReg, tmpVec, xPow)
+		default:
+			utils.Panic("unexpected type %T", v)
 		}
 		xPow.Mul(&x, &xPow)
 	}

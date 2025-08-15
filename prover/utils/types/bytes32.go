@@ -59,22 +59,16 @@ func HashToBytes32(hash vortex.Hash) Bytes32 {
 }
 
 // Bytes32ToHash converts Bytes32 to []koalabear.Element
-func Bytes32ToHash(input Bytes32) []koalabear.Element {
+func Bytes32ToHash(input Bytes32) field.Octuplet {
 
-	// Array to store the 8 reconstructed Elements
-	result := make([]koalabear.Element, 8)
-
+	var result field.Octuplet
 	for i := 0; i < 8; i++ {
 		startIndex := i * 4
 		segment := input[startIndex : startIndex+4]
 		var newElement koalabear.Element
-		if err := newElement.SetBytesCanonical(segment); err != nil {
-			panic(err)
-		}
+		newElement.SetBytes(segment)
 		result[i] = newElement
-
 	}
-
 	return result
 }
 
