@@ -71,10 +71,12 @@ const config: HardhatUserConfig = {
     linea_mainnet: {
       accounts: [process.env.LINEA_MAINNET_PRIVATE_KEY || EMPTY_HASH],
       url: "https://linea-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
+      chainId: 59144,
     },
     linea_sepolia: {
       accounts: [process.env.LINEA_SEPOLIA_PRIVATE_KEY || EMPTY_HASH],
       url: "https://linea-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY,
+      chainId: 59141,
     },
     custom: {
       accounts: [process.env.CUSTOM_PRIVATE_KEY || EMPTY_HASH],
@@ -85,6 +87,7 @@ const config: HardhatUserConfig = {
       url: blockchainNode,
       accounts: [process.env.PRIVATE_KEY || EMPTY_HASH],
       timeout: BLOCKCHAIN_TIMEOUT,
+      chainId: 59139,
     },
     l2: {
       url: l2BlockchainNode ?? "",
@@ -99,18 +102,15 @@ const config: HardhatUserConfig = {
     timeout: 20000,
   },
   etherscan: {
-    apiKey: {
-      mainnet: process.env.ETHERSCAN_API_KEY ?? "",
-      sepolia: process.env.ETHERSCAN_API_KEY ?? "",
-      linea_sepolia: process.env.LINEASCAN_API_KEY ?? "",
-      linea_mainnet: process.env.LINEASCAN_API_KEY ?? "",
-    },
+    // Must provide single API key to use Etherscan V2 - https://github.com/NomicFoundation/hardhat/pull/6727
+    // Multiple API keys -> Will use Etherscan V1
+    apiKey: process.env.ETHERSCAN_API_KEY ?? "",
     customChains: [
       {
         network: "linea_sepolia",
         chainId: 59141,
         urls: {
-          apiURL: "https://api-sepolia.lineascan.build/api",
+          apiURL: "https://api.etherscan.io/v2/api?chainid=59141",
           browserURL: "https://sepolia.lineascan.build/",
         },
       },
@@ -118,7 +118,7 @@ const config: HardhatUserConfig = {
         network: "linea_mainnet",
         chainId: 59144,
         urls: {
-          apiURL: "https://api.lineascan.build/api",
+          apiURL: "https://api.etherscan.io/v2/api?chainid=59144",
           browserURL: "https://lineascan.build/",
         },
       },
