@@ -120,7 +120,7 @@ type PackedObject struct {
 	CompiledIOP   []PackedStructObject `cbor:"k"` // Serialized CompiledIOPs.
 	Circuits      [][]byte             `cbor:"l"` // Serialized circuits.
 	Expressions   []PackedStructObject `cbor:"m"` // Serialized expressions
-	Payload       []byte               `cbor:"n"` // CBOR-encoded root value.
+	Payload       any                  `cbor:"n"` // CBOR-encoded root value.
 }
 
 // PackedIFace serializes an interface value, storing its type index and concrete value.
@@ -177,23 +177,17 @@ func Serialize(v any) (bytesOfV []byte, err error) {
 		fmt.Println(ser.Warnings[i])
 	}
 
-	// CBOR-encode the payload.
-	bytesOfPayload, err := encodeWithCBOR(payload)
-	if err != nil {
-		return nil, fmt.Errorf("could not encode the payload with CBOR: %v", err)
-	}
-
-	// Store the encoded payload in PackedObject.
+	// Store the packed (already serialized) payload directly
 	packedObject := ser.PackedObject
-	packedObject.Payload = bytesOfPayload
+	packedObject.Payload = payload
 
-	// CBOR-encode the entire PackedObject.
+	// Single CBOR encode of the whole PackedObject
 	bytesOfV, err = encodeWithCBOR(packedObject)
 	if err != nil {
 		return nil, fmt.Errorf("could not encode the packedObject with CBOR: %v", err)
 	}
-
 	return bytesOfV, nil
+
 }
 
 func NewDeserializer(packedObject *PackedObject) *Deserializer {
@@ -213,47 +207,30 @@ func NewDeserializer(packedObject *PackedObject) *Deserializer {
 // Deserialize is the entry point for deserializing CBOR-encoded bytes into a pointer.
 // It decodes the bytes into a PackedObject, unpacks the Payload, and sets the result into v.
 // Warnings are printed for debugging.
-func Deserialize(bytes []byte, v any) error {
-	// Create a new PackedObject to decode into.
+func Deserialize(b []byte, v any) error {
 	packedObject := &PackedObject{}
 
-	// Ensure v is a pointer.
 	if reflect.TypeOf(v).Kind() != reflect.Ptr {
 		return fmt.Errorf("invalid type: %v, expected a pointer", reflect.TypeOf(v).String())
 	}
-
-	// Decode the bytes into PackedObject.
-	if err := decodeWithCBOR(bytes, packedObject); err != nil {
+	// Decode the CBOR-encoded PackedObject once
+	if err := decodeWithCBOR(b, packedObject); err != nil {
 		return fmt.Errorf("the serialized object does not have the [PackedObject] format, err=%w", err)
 	}
 
-	// Initialize a Deserializer with pre-allocated caches.
 	deser := NewDeserializer(packedObject)
+	payloadType := reflect.TypeOf(v).Elem()
 
-	var (
-		payloadRoot any
-		payloadType = reflect.TypeOf(v).Elem() // Target type (dereferenced).
-	)
-
-	// Decode the Payload into a root value.
-	if err := decodeWithCBOR(packedObject.Payload, &payloadRoot); err != nil {
-		return fmt.Errorf("could not deserialize the payload, payload=%v, err=%w", string(packedObject.Payload), err)
-	}
-
-	// Unpack the root value into the target type.
-	res, err := deser.UnpackValue(payloadRoot, payloadType)
+	// Directly unpack the already-decoded payload (no CBOR decode here)
+	res, err := deser.UnpackValue(packedObject.Payload, payloadType)
 	if err != nil {
 		return fmt.Errorf("could not deserialize the payload, err=%w", err)
 	}
-
-	// Print warnings.
 	for i := range deser.Warnings {
 		fmt.Println(deser.Warnings[i])
 	}
 
-	// Set the result into the provided pointer.
-	valueOfV := reflect.ValueOf(v)
-	valueOfV.Elem().Set(res)
+	reflect.ValueOf(v).Elem().Set(res)
 	return nil
 }
 
@@ -998,7 +975,7 @@ func (de *Deserializer) UnpackStructObject(v PackedStructObject, t reflect.Type)
 			continue
 		}
 
-		field := res.FieldByName(structField.Name)
+		field := res.Field(i)
 		value, err := de.UnpackValue(v[i], field.Type())
 		if err != nil {
 			prefix := "." + structField.Name
