@@ -1,8 +1,6 @@
 package testtools
 
 import (
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -87,17 +85,17 @@ var ListOfPoseidon2Testcase = []*Poseidon2Testcase{
 		},
 	},
 
-	// {
-	// 	NameStr: "positive/constant-zero-2-vectors",
-	// 	OldStates: []smartvectors.SmartVector{
-	// 		smartvectors.NewConstant(field.Zero(), 8),
-	// 		smartvectors.NewConstant(field.Zero(), 16),
-	// 	},
-	// 	Blocks: []smartvectors.SmartVector{
-	// 		smartvectors.NewConstant(field.Zero(), 8),
-	// 		smartvectors.NewConstant(field.Zero(), 16),
-	// 	},
-	// },
+	{
+		NameStr: "positive/constant-zero-2-vectors",
+		OldStates: [][8]smartvectors.SmartVector{
+			ZeroOctupletVec(8),
+			ZeroOctupletVec(16),
+		},
+		Blocks: [][8]smartvectors.SmartVector{
+			ZeroOctupletVec(8),
+			ZeroOctupletVec(16),
+		},
+	},
 }
 
 func (m *Poseidon2Testcase) Define(comp *wizard.CompiledIOP) {
@@ -163,38 +161,27 @@ func (m *Poseidon2Testcase) Assign(run *wizard.ProverRuntime) {
 		if newStates[0] == nil {
 
 			size := m.Blocks[i][0].Len()
-			fmt.Printf("size=%v\n", size)
 			var blocksPadding, oldStatesPadding field.Octuplet
-			blocksWindow := make([][8]field.Element, size)
-			oldStatesWindow := make([][8]field.Element, size)
+			var blocksWindow, oldStatesWindow [][8]field.Element
 
 			var rotatedBlocksWindow, rotatedOldStatesWindow [8][]field.Element
 
 			for j := 0; j < 8; j++ {
 				rotatedBlocksWindow[j] = smartvectors.Window(m.Blocks[i][j])
-				fmt.Printf("rotatedBlocksWindow=%v\n", rotatedBlocksWindow[j])
-
 				blocksPadding[j], _ = smartvectors.PaddingVal(m.Blocks[i][j])
 
 				rotatedOldStatesWindow[j] = smartvectors.Window(m.OldStates[i][j])
 				oldStatesPadding[j], _ = smartvectors.PaddingVal(m.OldStates[i][j])
 			}
 
-			for s := 0; s < size; s++ {
-				fmt.Printf("rotatedBlocksWindow=%v\n", len(rotatedBlocksWindow))
-				fmt.Printf("rotatedBlocksWindow0=%v\n", len(rotatedBlocksWindow[0]))
+			blocksWindow = make([][8]field.Element, len(rotatedBlocksWindow[0]))
+			oldStatesWindow = make([][8]field.Element, len(rotatedOldStatesWindow[0]))
 
-				for t := 0; t < 8; t++ {
-					if len(rotatedBlocksWindow[t]) == 0 {
-						blocksWindow[s][t] = rotatedBlocksWindow[t][0]
-					} else {
-						blocksWindow[s][t] = rotatedBlocksWindow[t][s]
-					}
-
+			for s := range blocksWindow {
+				for t := range blocksWindow[s] {
+					blocksWindow[s][t] = rotatedBlocksWindow[t][s]
 				}
 			}
-
-			fmt.Printf("len=%v\n", len(rotatedOldStatesWindow))
 
 			for s := range oldStatesWindow {
 				for t := range oldStatesWindow[s] {
@@ -215,11 +202,10 @@ func (m *Poseidon2Testcase) Assign(run *wizard.ProverRuntime) {
 			}
 
 			for s := range rotatedNewStatesWindow {
-				rotatedNewStatesWindow[s] = make([]field.Element, size)
+				rotatedNewStatesWindow[s] = make([]field.Element, len(newStatesWindow))
 				for t := range rotatedNewStatesWindow[s] {
 					rotatedNewStatesWindow[s][t] = newStatesWindow[t][s]
 				}
-
 			}
 
 			for j := 0; j < 8; j++ {

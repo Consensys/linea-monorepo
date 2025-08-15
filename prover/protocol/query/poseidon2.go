@@ -107,8 +107,8 @@ func (p Poseidon2) Check(run ifaces.Runtime) error {
 		recomputed := poseidon2.BlockCompressionMekle(oldState, block)
 		if recomputed != newState {
 			return fmt.Errorf(
-				"Poseidon2 compression check failed for row #%v : block %v, oldState %v, newState %v",
-				i, block, oldState, newState,
+				"Poseidon2 compression check failed for row #%v : block %v, oldState %v, newState %v, recomputed%v\n",
+				i, block, oldState, newState, recomputed,
 			)
 		}
 	}
