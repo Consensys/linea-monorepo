@@ -95,12 +95,6 @@ func AllocateRegularExt(n int) SmartVector {
 	return NewRegularExt(make([]fext.Element, n))
 }
 
-// Copy into a smart-vector, will panic if into is not a regular
-// Mainly used as a sugar for refactoring
-func Copy(into *SmartVector, x SmartVector) {
-	*into = x.DeepCopy()
-}
-
 // Rand creates a base vector with random entries. Used for testing. Should not be
 // used to generate secrets. Not reproducible.
 func Rand(n int) SmartVector {

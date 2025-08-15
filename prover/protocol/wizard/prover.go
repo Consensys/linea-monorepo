@@ -360,29 +360,6 @@ func (run ProverRuntime) HasColumn(name ifaces.ColID) bool {
 	return run.Columns.Exists(name)
 }
 
-// CopyColumnInto implements `column.GetWitness`. Copies the witness into a slice
-// Deprecated: this is deadcode
-func (run ProverRuntime) CopyColumnInto(name ifaces.ColID, buff *ifaces.ColAssignment) {
-
-	// global prover's lock before accessing the witnesses
-	run.lock.Lock()
-	defer run.lock.Unlock()
-
-	/*
-		Make sure the column is registered. If the name is the one specified
-		does not correcpond to a natural column, this will panic. And this is
-		expected behaviour.
-	*/
-	run.Spec.Columns.MustHaveName(name)
-	toCopy := run.Columns.MustGet(name)
-
-	if toCopy.Len() != (*buff).Len() {
-		utils.Panic("buffer has the wrong length %v, witness has length %v", (*buff).Len(), toCopy.Len())
-	}
-
-	smartvectors.Copy(buff, toCopy)
-}
-
 // GetColumnAt does the same as [GetColumn] but only returns a single position
 // instead of returning the whole vector; i.e. it returns the assignment of
 // an explictly assigned column at a requested position.

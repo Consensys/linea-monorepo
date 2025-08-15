@@ -630,3 +630,15 @@ func GrowSliceSize[T any](slice []T, size int) []T {
 	}
 	return slice
 }
+
+// AreTypePair allows to simultaneously cast two interfaces objects
+func AreOfType[T, U any](a, b any) bool {
+	_, isT := a.(T)
+	_, isU := b.(U)
+	return isT && isU
+}
+
+// MustCastPair allows casting two interfaces objects
+func MustCastPair[T, U any](a, b any) (T, U) {
+	return a.(T), b.(U)
+}
