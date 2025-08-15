@@ -112,46 +112,46 @@ func TestSerdeDW(t *testing.T) {
 	dist := GetDW()
 
 	t.Run("ModuleNames", func(t *testing.T) {
-		runSerdeTest(t, dist.ModuleNames, "DistributedWizard.ModuleNames", true, false)
+		runSerdeTest(t, dist.ModuleNames, "DW.ModuleNames", true, false)
 	})
 
 	for i := range dist.GLs {
 		t.Run(fmt.Sprintf("GLModule-%d", i), func(t *testing.T) {
-			runSerdeTest(t, dist.GLs[i], "DistributedWizard.GLs", true, false)
+			runSerdeTest(t, dist.GLs[i], "DW.GLs", true, false)
 		})
 	}
 
 	for i := range dist.LPPs {
 		t.Run(fmt.Sprintf("LPPModule-%d", i), func(t *testing.T) {
-			runSerdeTest(t, dist.LPPs[i], "DistributedWizard.LPPs", true, false)
+			runSerdeTest(t, dist.LPPs[i], "DW.LPPs", true, false)
 		})
 	}
 
 	t.Run("DefaultModule", func(t *testing.T) {
-		runSerdeTest(t, dist.DefaultModule, "DistributedWizard.DefaultModule", true, false)
+		runSerdeTest(t, dist.DefaultModule, "DW.DefaultModule", true, false)
 	})
 
 	t.Run("Bootstrapper", func(t *testing.T) {
-		runSerdeTest(t, dist.Bootstrapper, "DistributedWizard.Bootstrapper", true, false)
+		runSerdeTest(t, dist.Bootstrapper, "DW.Bootstrapper", true, false)
 	})
 
 	t.Run("Discoverer", func(t *testing.T) {
-		runSerdeTest(t, dist.Disc, "DistributedWizard.Discoverer", true, false)
+		runSerdeTest(t, dist.Disc, "DW.Discoverer", true, false)
 	})
 
 	t.Run("CompiledDefault", func(t *testing.T) {
-		runSerdeTest(t, dist.CompiledDefault, "DistributedWizard.CompiledDefault", true, false)
+		runSerdeTest(t, dist.CompiledDefault, "DW.CompiledDefault", true, false)
 	})
 
 	for i := range dist.CompiledGLs {
 		t.Run(fmt.Sprintf("CompiledGL-%v", i), func(t *testing.T) {
-			runSerdeTest(t, dist.CompiledGLs[i], fmt.Sprintf("DistributedWizard.CompiledGL-%v", i), true, false)
+			runSerdeTest(t, dist.CompiledGLs[i], fmt.Sprintf("DW.CompiledGL-%v", i), true, false)
 		})
 	}
 
 	for i := range dist.CompiledLPPs {
 		t.Run(fmt.Sprintf("CompiledLPP-%v", i), func(t *testing.T) {
-			runSerdeTest(t, dist.CompiledLPPs[i], fmt.Sprintf("DistributedWizard.CompiledLPP-%v", i), true, false)
+			runSerdeTest(t, dist.CompiledLPPs[i], fmt.Sprintf("DW.CompiledLPP-%v", i), true, false)
 		})
 	}
 
@@ -161,7 +161,7 @@ func TestSerdeDW(t *testing.T) {
 	runtime.GC()
 
 	t.Run("CompiledConglomeration", func(t *testing.T) {
-		runSerdeTest(t, cong, "DistributedWizard.CompiledConglomeration", true, false)
+		runSerdeTest(t, cong, "DW.CompiledConglomeration", true, false)
 	})
 }
 
@@ -179,46 +179,46 @@ func TestSerdeDWPerf(t *testing.T) {
 	dw := GetDWPerf(cfg)
 
 	t.Run("ModuleNames", func(t *testing.T) {
-		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.ModuleNames, "DistributedWizard.ModuleNames"))
+		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.ModuleNames, "DW.ModuleNames"))
 	})
 
 	for i := range dw.GLs {
 		t.Run(fmt.Sprintf("GLModule-%d", i), func(t *testing.T) {
-			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.GLs[i], fmt.Sprintf("DistributedWizard.GLModule-%v", i)))
+			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.GLs[i], fmt.Sprintf("DW.GLModule-%v", i)))
 		})
 	}
 
 	for i := range dw.LPPs {
 		t.Run(fmt.Sprintf("LPPModule-%d", i), func(t *testing.T) {
-			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.LPPs[i], fmt.Sprintf("LPPModule-%d", i)))
+			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.LPPs[i], fmt.Sprintf("DW.LPPModule-%d", i)))
 		})
 	}
 
 	t.Run("DefaultModule", func(t *testing.T) {
-		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.DefaultModule, "DistributedWizard.DefaultModule"))
+		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.DefaultModule, "DW.DefaultModule"))
 	})
 
 	t.Run("Bootstrapper", func(t *testing.T) {
-		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.Bootstrapper, "DistributedWizard.Bootstrapper"))
+		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.Bootstrapper, "DW.Bootstrapper"))
 	})
 
 	t.Run("Discoverer", func(t *testing.T) {
-		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.Disc, "DistributedWizard.Discoverer"))
+		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.Disc, "DW.Discoverer"))
 	})
 
 	t.Run("CompiledDefault", func(t *testing.T) {
-		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledDefault, "DistributedWizard.CompiledDefault"))
+		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledDefault, "DW.CompiledDefault"))
 	})
 
 	for i := range dw.CompiledGLs {
 		t.Run(fmt.Sprintf("CompiledGL-%v", i), func(t *testing.T) {
-			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledGLs[i], fmt.Sprintf("DistributedWizard.CompiledGL-%v", i)))
+			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledGLs[i], fmt.Sprintf("DW.CompiledGL-%v", i)))
 		})
 	}
 
 	for i := range dw.CompiledLPPs {
 		t.Run(fmt.Sprintf("CompiledLPP-%v", i), func(t *testing.T) {
-			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledLPPs[i], fmt.Sprintf("DistributedWizard.CompiledLPP-%v", i)))
+			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledLPPs[i], fmt.Sprintf("DW.CompiledLPP-%v", i)))
 		})
 	}
 
@@ -228,7 +228,7 @@ func TestSerdeDWPerf(t *testing.T) {
 	runtime.GC()
 
 	t.Run("CompiledConglomeration", func(t *testing.T) {
-		perfLogs = append(perfLogs, runSerdeTestPerf(t, cong, "DistributedWizard.CompiledConglomeration"))
+		perfLogs = append(perfLogs, runSerdeTestPerf(t, cong, "DW.CompiledConglomeration"))
 	})
 
 	// Write performance logs to CSV
