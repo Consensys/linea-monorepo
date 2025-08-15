@@ -137,7 +137,7 @@ func (gen *testCaseGenExt) NewTestCaseForProdExt() (tcase testCaseExt) {
 		case RotatedExtT:
 			tcase.svecs[i] = gen.genRotatedExt(val)
 		default:
-			panic(fmt.Sprintf("unexpected type %T", chosenType))
+			utils.Panic("unexpected type %T", chosenType)
 		}
 	}
 
@@ -218,7 +218,7 @@ func (gen *testCaseGenExt) NewTestCaseForLinCombExt() (tcase testCaseExt) {
 		case RotatedExtT:
 			tcase.svecs[i] = gen.genRotatedExt(val)
 		default:
-			panic(fmt.Sprintf("unexpected type %T", chosenType))
+			utils.Panic("unexpected type %T", chosenType)
 		}
 	}
 
@@ -290,7 +290,7 @@ func (gen *testCaseGenExt) NewTestCaseForLinearCombinationExt() (tcase testCaseE
 		case RotatedExtT:
 			tcase.svecs[i] = gen.genRotatedExt(val)
 		default:
-			panic(fmt.Sprintf("unexpected type %T", chosenType))
+			utils.Panic("unexpected type %T", chosenType)
 		}
 	}
 
