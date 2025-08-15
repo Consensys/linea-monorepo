@@ -257,10 +257,6 @@ class MaruApp(
           allowEmptyBlocks = config.allowEmptyBlocks,
         )
       }
-    val delegatedConsensusNewBlockHandler =
-      NewBlockHandlerMultiplexer(
-        mapOf(metadataCacheUpdaterHandlerEntry),
-      )
 
     val protocolStarter =
       ProtocolStarter.create(

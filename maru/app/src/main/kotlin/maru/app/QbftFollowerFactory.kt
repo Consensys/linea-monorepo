@@ -27,6 +27,7 @@ import maru.database.BeaconChain
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.p2p.P2PNetwork
 import net.consensys.linea.metrics.MetricsFacade
+import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class QbftFollowerFactory(
   private val p2pNetwork: P2PNetwork,
@@ -42,7 +43,8 @@ class QbftFollowerFactory(
     val stateTransition = StateTransitionImpl(validatorProvider)
     val transactionalSealedBeaconBlockImporter =
       TransactionalSealedBeaconBlockImporter(beaconChain, stateTransition) { _, beaconBlock ->
-        newBlockHandler.handleNewBlock(beaconBlock)
+        newBlockHandler.handleNewBlock(beaconBlock) // Don't wait for the result
+        SafeFuture.completedFuture(Unit)
       }
     val sealsVerifier = QuorumOfSealsVerifier(validatorProvider, SCEP256SealVerifier())
     val engineApiExecutionLayerClient =
