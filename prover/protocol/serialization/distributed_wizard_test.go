@@ -184,13 +184,13 @@ func TestSerdeDWPerf(t *testing.T) {
 
 	for i := range dw.GLs {
 		t.Run(fmt.Sprintf("GLModule-%d", i), func(t *testing.T) {
-			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.GLs[i], "DistributedWizard.GLs"))
+			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.GLs[i], fmt.Sprintf("DistributedWizard.GLModule-%v", i)))
 		})
 	}
 
 	for i := range dw.LPPs {
 		t.Run(fmt.Sprintf("LPPModule-%d", i), func(t *testing.T) {
-			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.LPPs[i], "DistributedWizard.LPPs"))
+			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.LPPs[i], fmt.Sprintf("LPPModule-%d", i)))
 		})
 	}
 
