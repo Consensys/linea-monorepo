@@ -2,6 +2,7 @@ package serialization_test
 
 import (
 	"fmt"
+	"path"
 	"runtime"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
 
@@ -173,49 +175,50 @@ func TestSerdeDWPerf(t *testing.T) {
 		t.Fatalf("failed to read config file: %s", err)
 	}
 
+	var perfLogs profiling.PerfLogs
 	dw := GetDWPerf(cfg)
 
 	t.Run("ModuleNames", func(t *testing.T) {
-		runSerdeTestPerf(t, dw.ModuleNames, "DistributedWizard.ModuleNames")
+		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.ModuleNames, "DistributedWizard.ModuleNames"))
 	})
 
 	for i := range dw.GLs {
 		t.Run(fmt.Sprintf("GLModule-%d", i), func(t *testing.T) {
-			runSerdeTestPerf(t, dw.GLs[i], "DistributedWizard.GLs")
+			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.GLs[i], "DistributedWizard.GLs"))
 		})
 	}
 
 	for i := range dw.LPPs {
 		t.Run(fmt.Sprintf("LPPModule-%d", i), func(t *testing.T) {
-			runSerdeTestPerf(t, dw.LPPs[i], "DistributedWizard.LPPs")
+			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.LPPs[i], "DistributedWizard.LPPs"))
 		})
 	}
 
 	t.Run("DefaultModule", func(t *testing.T) {
-		runSerdeTestPerf(t, dw.DefaultModule, "DistributedWizard.DefaultModule")
+		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.DefaultModule, "DistributedWizard.DefaultModule"))
 	})
 
 	t.Run("Bootstrapper", func(t *testing.T) {
-		runSerdeTestPerf(t, dw.Bootstrapper, "DistributedWizard.Bootstrapper")
+		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.Bootstrapper, "DistributedWizard.Bootstrapper"))
 	})
 
 	t.Run("Discoverer", func(t *testing.T) {
-		runSerdeTestPerf(t, dw.Disc, "DistributedWizard.Discoverer")
+		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.Disc, "DistributedWizard.Discoverer"))
 	})
 
 	t.Run("CompiledDefault", func(t *testing.T) {
-		runSerdeTestPerf(t, dw.CompiledDefault, "DistributedWizard.CompiledDefault")
+		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledDefault, "DistributedWizard.CompiledDefault"))
 	})
 
 	for i := range dw.CompiledGLs {
 		t.Run(fmt.Sprintf("CompiledGL-%v", i), func(t *testing.T) {
-			runSerdeTestPerf(t, dw.CompiledGLs[i], fmt.Sprintf("DistributedWizard.CompiledGL-%v", i))
+			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledGLs[i], fmt.Sprintf("DistributedWizard.CompiledGL-%v", i)))
 		})
 	}
 
 	for i := range dw.CompiledLPPs {
 		t.Run(fmt.Sprintf("CompiledLPP-%v", i), func(t *testing.T) {
-			runSerdeTestPerf(t, dw.CompiledLPPs[i], fmt.Sprintf("DistributedWizard.CompiledLPP-%v", i))
+			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledLPPs[i], fmt.Sprintf("DistributedWizard.CompiledLPP-%v", i)))
 		})
 	}
 
@@ -225,8 +228,13 @@ func TestSerdeDWPerf(t *testing.T) {
 	runtime.GC()
 
 	t.Run("CompiledConglomeration", func(t *testing.T) {
-		runSerdeTestPerf(t, cong, "DistributedWizard.CompiledConglomeration")
+		perfLogs = append(perfLogs, runSerdeTestPerf(t, cong, "DistributedWizard.CompiledConglomeration"))
 	})
+
+	// Write performance logs to CSV
+	if err := perfLogs.WritePerformanceLogsToCSV(path.Join("perf", "dw-perf-logs.csv")); err != nil {
+		t.Fatalf("Error writing performance logs to csv: %v", err)
+	}
 }
 
 func TestSerdeDWCong(t *testing.T) {

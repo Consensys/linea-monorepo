@@ -1,6 +1,7 @@
 package serialization_test
 
 import (
+	"path"
 	"reflect"
 	"runtime/debug"
 	"testing"
@@ -70,7 +71,7 @@ func runSerdeTest(t *testing.T, input any, name string, isSanityCheck, failFast 
 	}
 }
 
-func runSerdeTestPerf(t *testing.T, input any, name string) {
+func runSerdeTestPerf(t *testing.T, input any, name string) *profiling.PerformanceLog {
 
 	// In case the test panics, log the error but do not let the panic
 	// interrupt the test.
@@ -82,15 +83,14 @@ func runSerdeTestPerf(t *testing.T, input any, name string) {
 	}()
 
 	if input == nil {
-		t.Error("test input is nil")
-		return
+		t.Fatal("test input is nil")
 	}
 
 	var output = reflect.New(reflect.TypeOf(input)).Interface()
 	var b []byte
 	var err error
 
-	monitor, err := profiling.StartPerformanceMonitor("prof-serde", 100*time.Millisecond, "perf-serde")
+	monitor, err := profiling.StartPerformanceMonitor(name, 100*time.Millisecond, path.Join("perf", name))
 	if err != nil {
 		t.Fatalf("Error setting up performance monitor: %v", err)
 	}
@@ -112,11 +112,12 @@ func runSerdeTestPerf(t *testing.T, input any, name string) {
 		}
 	}()
 
-	_, err = monitor.Stop()
+	perfLog, err := monitor.Stop()
 	if err != nil {
 		t.Fatalf("Error stopping performance monitor: %v", err)
 	}
 
+	return perfLog
 }
 
 func TestSerdeZkEVM(t *testing.T) {
