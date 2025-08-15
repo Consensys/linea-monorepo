@@ -2,6 +2,7 @@ package ringsis
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
@@ -100,8 +101,8 @@ func TestHashModXnMinusOne(t *testing.T) {
 }
 
 func TestLimbSplit(t *testing.T) {
-	var randX field.Element
-	randX.SetRandom()
+	var rng = rand.New(utils.NewRandSource(0))
+	randX := field.PseudoRand(rng)
 
 	arrays := [][]field.Element{
 		{field.One()},
