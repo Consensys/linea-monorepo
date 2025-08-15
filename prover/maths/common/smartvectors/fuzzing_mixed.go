@@ -84,7 +84,7 @@ func (gen *testCaseGen) NewTestCaseForLinearCombinationMixed() (tcase testCaseMi
 		case rotatedT:
 			tcase.svecs[i] = gen.genRotated(val)
 		default:
-			panic(fmt.Sprintf("unexpected type %T", chosenType))
+			utils.Panic("unexpected type %T", chosenType))
 		}
 	}
 
