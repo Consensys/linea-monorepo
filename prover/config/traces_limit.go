@@ -44,11 +44,11 @@ type TracesLimits struct {
 	Txndata           int `mapstructure:"TXN_DATA" validate:"power_of_2" corset:"txndata"`
 	Wcp               int `mapstructure:"WCP" validate:"power_of_2" corset:"wcp"`
 
-	U128 int `mapstructure:"U128" validate:"power_of_2" corset:":u128"`
-	U20  int `mapstructure:"U20" validate:"power_of_2" corset:":u20"`
-	U32  int `mapstructure:"U32" validate:"power_of_2" corset:":u32"`
-	U36  int `mapstructure:"U36" validate:"power_of_2" corset:":u36"`
-	U64  int `mapstructure:"U64" validate:"power_of_2" corset:":u64"`
+	U128 int `mapstructure:"U128" validate:"power_of_2" corset:"u128"`
+	U20  int `mapstructure:"U20" validate:"power_of_2" corset:"u20"`
+	U32  int `mapstructure:"U32" validate:"power_of_2" corset:"u32"`
+	U36  int `mapstructure:"U36" validate:"power_of_2" corset:"u36"`
+	U64  int `mapstructure:"U64" validate:"power_of_2" corset:"u64"`
 
 	Binreftable int `mapstructure:"BIN_REFERENCE_TABLE" validate:"power_of_2" corset:"binreftable"`
 	Shfreftable int `mapstructure:"SHF_REFERENCE_TABLE" validate:"power_of_2" corset:"shfreftable"`

@@ -327,6 +327,9 @@ func mapModuleLimits(limit *config.TracesLimits) map[string]int {
 		}
 
 		res[corsetTag] = limit
+		// FIXME: following hack for limits of interleaved modules.
+		res[fmt.Sprintf("%s×3", corsetTag)] = limit * 3
+		res[fmt.Sprintf("%s×4", corsetTag)] = limit * 4
 	}
 
 	return res
