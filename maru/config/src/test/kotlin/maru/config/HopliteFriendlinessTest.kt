@@ -13,6 +13,7 @@ import java.net.URI
 import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import linea.domain.RetryConfig
 import linea.kotlin.decodeHex
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -96,11 +97,21 @@ class HopliteFriendlinessTest {
   private val ethApiEndpoint =
     ApiEndpointConfig(
       endpoint = URI.create("http://localhost:8545").toURL(),
+      requestRetries =
+        RetryConfig.endlessRetry(
+          backoffDelay = 1.seconds,
+          failuresWarningThreshold = 3u,
+        ),
     )
   private val engineApiEndpoint =
     ApiEndpointConfig(
       endpoint = URI.create("http://localhost:8555").toURL(),
       jwtSecretPath = "/secret/path",
+      requestRetries =
+        RetryConfig.endlessRetry(
+          backoffDelay = 1.seconds,
+          failuresWarningThreshold = 3u,
+        ),
     )
   private val payloadValidator =
     PayloadValidatorDto(
