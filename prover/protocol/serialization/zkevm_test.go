@@ -104,7 +104,6 @@ func runSerdeTestPerf(t *testing.T, input any, name string) *profiling.Performan
 	}()
 
 	func() {
-		// Measure deserialization time
 		logrus.Printf("Starting to deserialize:%s\n", name)
 		err = serialization.Deserialize(b, output)
 		if err != nil {

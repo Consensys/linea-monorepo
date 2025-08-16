@@ -89,8 +89,7 @@ func GetBasicDW() *distributed.DistributedWizard {
 
 func TestSerdeDW(t *testing.T) {
 
-	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
-
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	cfg, err := config.NewConfigFromFileUnchecked("/home/ubuntu/linea-monorepo/prover/config/config-sepolia-limitless.toml")
 	if err != nil {
 		t.Fatalf("failed to read config file: %s", err)
@@ -155,7 +154,7 @@ func TestSerdeDW(t *testing.T) {
 // verified to be correct in the previous test (TestSerdeDW).
 func TestSerdeDWPerf(t *testing.T) {
 
-	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	cfg, err := config.NewConfigFromFileUnchecked("/home/ubuntu/linea-monorepo/prover/config/config-sepolia-limitless.toml")
 	if err != nil {
 		t.Fatalf("failed to read config file: %s", err)
