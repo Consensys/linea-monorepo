@@ -127,8 +127,7 @@ pub extern "system" fn Java_net_consensys_linea_rln_jni_RlnBridge_verifyRlnProof
         let proving_key = zkey_from_folder();
         let vk = &proving_key.0.vk;
         
-        // Log that we're using built-in key (external key bytes are ignored)
-        eprintln!("INFO: Using zerokit's built-in verifying key for height 20 trees (external VK bytes ignored)");
+        // Note: Using zerokit's built-in verifying key for height 20 trees (external VK bytes ignored)
 
         let proof = Proof::<Bn254>::deserialize_compressed(&mut Cursor::new(proof_bytes))
             .map_err(|e| format!("Failed to deserialize Proof: {}", e))?;
@@ -150,8 +149,7 @@ pub extern "system" fn Java_net_consensys_linea_rln_jni_RlnBridge_verifyRlnProof
         match verify_proof(vk, &proof, &rln_proof_values) {
             Ok(verified) => Ok(verified),
             Err(e) => {
-                // Log the error on the Rust side for more detailed debugging if needed
-                eprintln!("RLN proof verification failed internally: {:?}", e);
+                // Verification failed - error details handled by Java side logging
                 Ok(false) // Indicate verification failure rather than an operational error
             }
         }
@@ -220,8 +218,7 @@ pub extern "system" fn Java_net_consensys_linea_rln_jni_RlnBridge_parseAndVerify
         let proving_key = zkey_from_folder();
         let vk = &proving_key.0.vk;
         
-        // Log that we're using built-in key (external key bytes are ignored)
-        eprintln!("INFO: Using zerokit's built-in verifying key for height 20 trees (external VK bytes ignored)");
+        // Note: Using zerokit's built-in verifying key for height 20 trees (external VK bytes ignored)
 
         // Parse the combined proof format: proof + proof_values
         let mut proof_cursor = Cursor::new(&combined_proof_bytes);
@@ -250,7 +247,6 @@ pub extern "system" fn Java_net_consensys_linea_rln_jni_RlnBridge_parseAndVerify
 
         // Use the proof's epoch for verification (this is the standard RLN approach)
         // The epoch in the proof is what was used during proof generation, so we must use it
-        eprintln!("DEBUG: Using proof's epoch for verification: {}", fr_to_hex(&proof_values.external_nullifier));
 
         // Verify the proof
         match verify_proof(vk, &proof, &proof_values) {

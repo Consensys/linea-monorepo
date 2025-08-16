@@ -20,8 +20,11 @@ import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import java.io.Closeable;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import net.vac.prover.GetUserTierInfoReply;
 import net.vac.prover.GetUserTierInfoRequest;
 import net.vac.prover.RlnProverGrpc;
@@ -68,6 +71,12 @@ public class KarmaServiceClient implements Closeable {
   private final long timeoutMs;
   private ManagedChannel channel;
   private RlnProverGrpc.RlnProverBlockingStub baseStub;
+
+  // Circuit breaker state
+  private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
+  private final AtomicLong lastFailureTime = new AtomicLong(0);
+  private final int failureThreshold = 5;
+  private final long circuitBreakerRecoveryMs = 30000; // 30 seconds
 
   /**
    * Creates a new Karma Service client with the specified configuration.
@@ -146,6 +155,13 @@ public class KarmaServiceClient implements Closeable {
       return Optional.empty();
     }
 
+    // Circuit breaker: check if service is temporarily disabled due to failures
+    if (isCircuitBreakerOpen()) {
+      LOG.debug("{}: Circuit breaker open, skipping karma service call for {}", 
+          serviceName, userAddress.toHexString());
+      return Optional.empty();
+    }
+
     // Convert Besu Address to protobuf Address
     net.vac.prover.Address protoAddress =
         net.vac.prover.Address.newBuilder()
@@ -158,18 +174,34 @@ public class KarmaServiceClient implements Closeable {
     try {
       LOG.debug(
           "{}: Fetching karma info for user {} via gRPC", serviceName, userAddress.toHexString());
-      // Create a new stub with deadline for each call to avoid deadline expiry
-      RlnProverGrpc.RlnProverBlockingStub stubWithDeadline =
-          baseStub.withDeadlineAfter(timeoutMs, TimeUnit.MILLISECONDS);
-      GetUserTierInfoReply response = stubWithDeadline.getUserTierInfo(request);
+      
+      // Retry logic with exponential backoff
+      GetUserTierInfoReply response = fetchKarmaInfoWithRetry(request);
+      if (response == null) {
+        return Optional.empty();
+      }
 
       // Handle the oneof response structure
       if (response.hasRes()) {
         UserTierInfoResult result = response.getRes();
 
-        // Extract tier info
+        // Validate response structure
+        if (!validateUserTierInfoResult(result)) {
+          LOG.warn("{}: Invalid karma service response structure for user {}", 
+              serviceName, userAddress.toHexString());
+          return Optional.empty();
+        }
+
+        // Extract tier info with additional validation
         String tierName = result.hasTier() ? result.getTier().getName() : "Unknown";
         int dailyQuota = result.hasTier() ? (int) result.getTier().getQuota() : 0;
+        
+        // Validate extracted values
+        if (!isValidTierName(tierName) || dailyQuota < 0 || result.getTxCount() < 0) {
+          LOG.warn("{}: Invalid karma data for user {}: tier={}, quota={}, txCount={}", 
+              serviceName, userAddress.toHexString(), tierName, dailyQuota, result.getTxCount());
+          return Optional.empty();
+        }
 
         LOG.debug(
             "{}: Karma service response for {}: tier={}, epochTxCount={}, dailyQuota={}, epoch={}, epochSlice={}",
@@ -181,6 +213,9 @@ public class KarmaServiceClient implements Closeable {
             result.getCurrentEpoch(),
             result.getCurrentEpochSlice());
 
+        // Reset circuit breaker on successful response
+        consecutiveFailures.set(0);
+        
         return Optional.of(
             new KarmaInfo(
                 tierName,
@@ -208,6 +243,12 @@ public class KarmaServiceClient implements Closeable {
 
     } catch (StatusRuntimeException e) {
       Status.Code code = e.getStatus().getCode();
+      
+      // Track failures for circuit breaker (except NOT_FOUND which is expected)
+      if (code != Status.Code.NOT_FOUND) {
+        recordFailure();
+      }
+      
       if (code == Status.Code.NOT_FOUND) {
         LOG.debug("{}: User {} not found in karma service", serviceName, userAddress.toHexString());
         return Optional.empty();
@@ -233,6 +274,7 @@ public class KarmaServiceClient implements Closeable {
         return Optional.empty();
       }
     } catch (Exception e) {
+      recordFailure();
       LOG.error(
           "{}: Unexpected error calling karma service for user {}: {}",
           serviceName,
@@ -249,7 +291,161 @@ public class KarmaServiceClient implements Closeable {
    * @return true if the client is ready to make requests, false otherwise
    */
   public boolean isAvailable() {
-    return channel != null && !channel.isShutdown() && baseStub != null;
+    return channel != null && !channel.isShutdown() && baseStub != null && !isCircuitBreakerOpen();
+  }
+
+  /**
+   * Checks if the circuit breaker is currently open due to consecutive failures.
+   *
+   * @return true if circuit breaker is open and calls should be skipped
+   */
+  private boolean isCircuitBreakerOpen() {
+    int failures = consecutiveFailures.get();
+    if (failures < failureThreshold) {
+      return false;
+    }
+    
+    long lastFailure = lastFailureTime.get();
+    long currentTime = Instant.now().toEpochMilli();
+    
+    // Check if recovery window has passed
+    if (currentTime - lastFailure > circuitBreakerRecoveryMs) {
+      LOG.info("{}: Circuit breaker recovery window passed, allowing retry", serviceName);
+      // Reset on recovery attempt
+      consecutiveFailures.set(0);
+      return false;
+    }
+    
+    return true;
+  }
+
+  /**
+   * Records a service failure for circuit breaker tracking.
+   */
+  private void recordFailure() {
+    int failures = consecutiveFailures.incrementAndGet();
+    lastFailureTime.set(Instant.now().toEpochMilli());
+    
+    if (failures == failureThreshold) {
+      LOG.warn("{}: Circuit breaker opened after {} consecutive failures", serviceName, failures);
+    } else if (failures > failureThreshold) {
+      LOG.debug("{}: Circuit breaker remains open, failure count: {}", serviceName, failures);
+    }
+  }
+
+  /**
+   * Fetches karma info with retry logic and exponential backoff.
+   *
+   * @param request The gRPC request to retry
+   * @return The response if successful, null if all retries failed
+   */
+  private GetUserTierInfoReply fetchKarmaInfoWithRetry(GetUserTierInfoRequest request) {
+    final int maxRetries = 3;
+    final long baseDelayMs = 100;
+    
+    for (int attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        // Create a new stub with deadline for each attempt
+        RlnProverGrpc.RlnProverBlockingStub stubWithDeadline =
+            baseStub.withDeadlineAfter(timeoutMs, TimeUnit.MILLISECONDS);
+        
+        GetUserTierInfoReply response = stubWithDeadline.getUserTierInfo(request);
+        
+        // Success - reset circuit breaker and return
+        consecutiveFailures.set(0);
+        return response;
+        
+      } catch (StatusRuntimeException e) {
+        boolean shouldRetry = isRetriableError(e.getStatus().getCode());
+        
+        if (!shouldRetry || attempt == maxRetries - 1) {
+          // Non-retriable error or final attempt - give up
+          throw e;
+        }
+        
+        // Exponential backoff for retriable errors
+        long delayMs = baseDelayMs * (1L << attempt); // 100ms, 200ms, 400ms
+        LOG.debug("{}: Retriable error on attempt {}, retrying in {}ms: {}", 
+            serviceName, attempt + 1, delayMs, e.getStatus().getCode());
+        
+        try {
+          Thread.sleep(delayMs);
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          throw new StatusRuntimeException(Status.CANCELLED.withDescription("Interrupted during retry"));
+        }
+      }
+    }
+    
+    return null; // Should never reach here
+  }
+
+  /**
+   * Determines if a gRPC error is retriable.
+   *
+   * @param statusCode The gRPC status code
+   * @return true if the error should be retried
+   */
+  private boolean isRetriableError(Status.Code statusCode) {
+    return switch (statusCode) {
+      case UNAVAILABLE, DEADLINE_EXCEEDED, RESOURCE_EXHAUSTED, ABORTED -> true;
+      case NOT_FOUND, INVALID_ARGUMENT, PERMISSION_DENIED, UNAUTHENTICATED -> false;
+      default -> false; // Conservative approach for unknown errors
+    };
+  }
+
+  /**
+   * Validates the structure and content of UserTierInfoResult from karma service.
+   *
+   * @param result The result to validate
+   * @return true if the result is valid and safe to use
+   */
+  private boolean validateUserTierInfoResult(UserTierInfoResult result) {
+    if (result == null) {
+      return false;
+    }
+    
+    // Check for reasonable bounds on transaction count
+    if (result.getTxCount() < 0 || result.getTxCount() > 1_000_000) {
+      return false;
+    }
+    
+    // Validate tier information if present
+    if (result.hasTier()) {
+      var tier = result.getTier();
+      if (tier.getQuota() < 0 || tier.getQuota() > 10_000) {
+        return false;
+      }
+      if (tier.getName() == null || tier.getName().trim().isEmpty()) {
+        return false;
+      }
+    }
+    
+    return true;
+  }
+
+  /**
+   * Validates tier name for security and reasonable values.
+   *
+   * @param tierName The tier name to validate
+   * @return true if the tier name is valid
+   */
+  private boolean isValidTierName(String tierName) {
+    if (tierName == null || tierName.trim().isEmpty()) {
+      return false;
+    }
+    
+    // Allow only alphanumeric characters and basic punctuation
+    if (!tierName.matches("^[a-zA-Z0-9_\\-\\s]+$")) {
+      return false;
+    }
+    
+    // Reasonable length limits
+    if (tierName.length() > 50) {
+      return false;
+    }
+    
+    return true;
   }
 
   /**

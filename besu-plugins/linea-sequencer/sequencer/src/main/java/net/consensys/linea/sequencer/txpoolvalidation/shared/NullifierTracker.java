@@ -23,6 +23,9 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -180,6 +183,50 @@ public class NullifierTracker implements Closeable {
     }
     String epochScopedKey = nullifierHex.toLowerCase().trim() + ":" + epochId.trim();
     return nullifierCache.getIfPresent(epochScopedKey) != null;
+  }
+
+  /**
+   * Batch validation of multiple nullifiers for improved performance.
+   * Optimized for scenarios where multiple transactions need validation simultaneously.
+   *
+   * @param nullifierEpochPairs List of nullifier-epoch pairs to validate
+   * @return Map of results where key is "nullifier:epoch" and value is validation result
+   */
+  public Map<String, Boolean> checkAndMarkNullifiersBatch(
+      List<Map.Entry<String, String>> nullifierEpochPairs) {
+    
+    Map<String, Boolean> results = new ConcurrentHashMap<>();
+    Instant now = Instant.now();
+    
+    // Process all pairs in a single pass for better cache efficiency
+    for (Map.Entry<String, String> pair : nullifierEpochPairs) {
+      String nullifierHex = pair.getKey();
+      String epochId = pair.getValue();
+      
+      if (nullifierHex == null || nullifierHex.trim().isEmpty() || 
+          epochId == null || epochId.trim().isEmpty()) {
+        results.put(nullifierHex + ":" + epochId, false);
+        continue;
+      }
+      
+      String normalizedNullifier = nullifierHex.toLowerCase().trim();
+      String normalizedEpochId = epochId.trim();
+      String epochScopedKey = normalizedNullifier + ":" + normalizedEpochId;
+      
+      NullifierData nullifierData = new NullifierData(normalizedNullifier, normalizedEpochId, now);
+      NullifierData existingData = nullifierCache.get(epochScopedKey, key -> nullifierData);
+      
+      boolean isNew = (existingData == nullifierData);
+      results.put(epochScopedKey, isNew);
+      
+      if (isNew) {
+        totalNullifiersTracked.incrementAndGet();
+      } else {
+        nullifierHits.incrementAndGet();
+      }
+    }
+    
+    return results;
   }
 
   /**

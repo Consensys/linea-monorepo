@@ -248,16 +248,16 @@ public class RlnProverForwarderValidator implements PluginTransactionPoolValidat
               isEligibleTier);
 
           if (hasQuotaAvailable && isEligibleTier) {
-            // User has available karma quota - bypass ALL validation for gasless transaction
+            // User has available karma quota - prioritize for gasless but still validate through prover
             karmaBypassCount.incrementAndGet();
             LOG.info(
-                "🎯 GASLESS BYPASS: Sender {} has tier '{}' with available quota ({}/{}). Bypassing ALL validation for gasless transaction {}",
+                "⚡ GASLESS PRIORITY: Sender {} has tier '{}' with available quota ({}/{}). Prioritizing gasless transaction {} for prover validation",
                 transaction.getSender().toHexString(),
                 karmaInfo.tier(),
                 karmaInfo.epochTxCount(),
                 karmaInfo.dailyQuota(),
                 transaction.getHash().toHexString());
-            return Optional.empty(); // Allow transaction without any further validation
+            // Continue with prover validation but with priority handling
           } else {
             LOG.debug(
                 "Sender {} does not qualify for gasless bypass. HasQuota={}, IsEligibleTier={}",

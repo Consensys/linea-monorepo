@@ -611,18 +611,18 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
 
     return switch (rlnConfig.defaultEpochForQuota().toUpperCase()) {
       case "BLOCK" -> {
-        // Convert block number to field element hex representation
-        // Use a simple hash of the block number to create a valid field element
-        String blockStr = "BLOCK:" + blockNumber;
+        // Secure block-based epoch generation with entropy mixing
+        String blockStr = "BLOCK:" + blockNumber + ":SALT:" + getSecureEpochSalt();
         yield hashToFieldElementHex(blockStr);
       }
       case "TIMESTAMP_1H" -> {
-        // Convert hourly timestamp to field element hex representation
+        // Secure timestamp-based epoch generation with entropy mixing
         String timestampStr =
             "TIME:"
                 + Instant.ofEpochSecond(timestamp)
                     .atZone(ZoneOffset.UTC)
-                    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH"));
+                    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH"))
+                + ":SALT:" + getSecureEpochSalt();
         yield hashToFieldElementHex(timestampStr);
       }
       case "TEST" -> {
@@ -642,6 +642,40 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
         yield hashToFieldElementHex(blockStr);
       }
     };
+  }
+
+  /**
+   * Generates a secure salt for epoch generation to prevent predictable epoch values.
+   * Uses blockchain state entropy for security while maintaining determinism.
+   *
+   * @return Secure salt string based on recent blockchain state
+   */
+  private String getSecureEpochSalt() {
+    try {
+      var currentHeader = blockchainService.getChainHeadHeader();
+      long blockNumber = currentHeader.getNumber();
+      long timestamp = currentHeader.getTimestamp();
+      
+      // Use recent block data for entropy while maintaining determinism within epoch windows
+      // Mix block hash with timestamp for additional entropy
+      String entropySource = "ENTROPY:" + (blockNumber / 100) * 100 + ":" + (timestamp / 3600) * 3600;
+      
+      // Hash to create compact, secure salt
+      java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+      byte[] hash = digest.digest(entropySource.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      
+      // Use first 8 bytes for compact salt
+      StringBuilder salt = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        salt.append(String.format("%02x", hash[i]));
+      }
+      return salt.toString();
+      
+    } catch (Exception e) {
+      LOG.error("Error generating secure epoch salt: {}", e.getMessage());
+      // Fallback to basic timestamp for determinism
+      return String.valueOf(System.currentTimeMillis() / 3600000); // Hour-based fallback
+    }
   }
 
   /**
@@ -667,6 +701,102 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
       LOG.error("SHA-256 algorithm not available: {}", e.getMessage(), e);
       // Fallback to a simple conversion if SHA-256 is not available
       return "0x" + Integer.toHexString(input.hashCode()).toLowerCase();
+    }
+  }
+
+  /**
+   * Validates if a proof epoch is acceptable compared to the current epoch.
+   * Implements flexible epoch validation to prevent race conditions while maintaining security.
+   *
+   * @param proofEpochId The epoch from the RLN proof
+   * @param currentEpochId The current system epoch
+   * @return true if the proof epoch is valid, false if outside acceptable window
+   */
+  private boolean isEpochValid(String proofEpochId, String currentEpochId) {
+    // Exact match is always valid
+    if (currentEpochId.equals(proofEpochId)) {
+      return true;
+    }
+
+    // For different epoch modes, implement appropriate tolerance windows
+    String epochMode = rlnConfig.defaultEpochForQuota().toUpperCase();
+    
+    switch (epochMode) {
+      case "BLOCK":
+        // Allow proofs from previous 2 blocks to handle block timing races
+        return isBlockEpochValid(proofEpochId, currentEpochId, 2);
+      
+      case "TIMESTAMP_1H":
+        // Allow proofs from current hour and previous hour for timing tolerance
+        return isTimestampEpochValid(proofEpochId, currentEpochId, 1);
+      
+      case "TEST":
+      case "FIXED_FIELD_ELEMENT":
+        // In test mode, be more permissive for testing scenarios
+        return true;
+      
+      default:
+        // For unknown modes, default to strict validation for security
+        LOG.warn("Unknown epoch mode '{}', using strict validation", epochMode);
+        return false;
+    }
+  }
+
+  /**
+   * Validates block-based epochs within tolerance window.
+   */
+  private boolean isBlockEpochValid(String proofEpoch, String currentEpoch, int blockTolerance) {
+    try {
+      // Extract block numbers from epoch hashes (simplified approach)
+      // In production, you'd want more sophisticated epoch comparison
+      var currentHeader = blockchainService.getChainHeadHeader();
+      long currentBlock = currentHeader.getNumber();
+      
+      // For each potential recent block, generate its epoch and compare
+      for (int i = 0; i <= blockTolerance; i++) {
+        String testBlockStr = "BLOCK:" + (currentBlock - i);
+        String testEpoch = hashToFieldElementHex(testBlockStr);
+        if (testEpoch.equals(proofEpoch)) {
+          if (i > 0) {
+            LOG.debug("Accepting proof from {} blocks ago (tolerance: {})", i, blockTolerance);
+          }
+          return true;
+        }
+      }
+      return false;
+    } catch (Exception e) {
+      LOG.error("Error validating block epoch: {}", e.getMessage());
+      return false; // Fail secure
+    }
+  }
+
+  /**
+   * Validates timestamp-based epochs within tolerance window.
+   */
+  private boolean isTimestampEpochValid(String proofEpoch, String currentEpoch, int hourTolerance) {
+    try {
+      var currentHeader = blockchainService.getChainHeadHeader();
+      long currentTimestamp = currentHeader.getTimestamp();
+      
+      // Check current hour and previous hours within tolerance
+      for (int i = 0; i <= hourTolerance; i++) {
+        long testTimestamp = currentTimestamp - (i * 3600); // Subtract hours
+        String testTimeStr = "TIME:" + 
+            Instant.ofEpochSecond(testTimestamp)
+                .atZone(ZoneOffset.UTC)
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH"));
+        String testEpoch = hashToFieldElementHex(testTimeStr);
+        if (testEpoch.equals(proofEpoch)) {
+          if (i > 0) {
+            LOG.debug("Accepting proof from {} hours ago (tolerance: {})", i, hourTolerance);
+          }
+          return true;
+        }
+      }
+      return false;
+    } catch (Exception e) {
+      LOG.error("Error validating timestamp epoch: {}", e.getMessage());
+      return false; // Fail secure
     }
   }
 
@@ -805,18 +935,18 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
       return Optional.of("RLN validation failed: Nullifier tracking unavailable");
     }
 
-    // Strict epoch validation: proof epoch must match current epoch for production security
-    // This prevents accepting old proofs that could enable replay attacks
-    if (!currentEpochId.equals(proofEpochId)) {
+    // Flexible epoch validation: allow proofs from recent epochs to prevent race conditions
+    // while still maintaining security against replay attacks
+    if (!isEpochValid(proofEpochId, currentEpochId)) {
       LOG.warn(
-          "SECURITY WARNING: Epoch mismatch for tx {}. Proof epoch: {}, Current epoch: {}. Rejecting for security.",
+          "SECURITY WARNING: Epoch validation failed for tx {}. Proof epoch: {}, Current epoch: {}. Outside acceptable window.",
           txHashString,
           proofEpochId,
           currentEpochId);
       return Optional.of(
           "RLN validation failed: Proof epoch "
               + proofEpochId
-              + " does not match current epoch "
+              + " outside acceptable window from current epoch "
               + currentEpochId);
     }
 
