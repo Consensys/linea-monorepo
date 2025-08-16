@@ -2,13 +2,16 @@ package serialization_test
 
 import (
 	"fmt"
+	"path"
 	"runtime"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
 
@@ -40,29 +43,29 @@ func (d distributeTestCase) define(comp *wizard.CompiledIOP) {
 	comp.InsertInclusion(0, "inclusion-0", []ifaces.Column{c0, b0, a0}, []ifaces.Column{c1, b1, a1})
 }
 
-// GetDistWizard initializes a distributed wizard configuration using the
+// GetDW initializes a distributed wizard configuration using the
 // ZkEVM's compiled IOP and a StandardModuleDiscoverer with preset parameters.
 // The function compiles the necessary segments and produces a conglomerated
 // distributed wizard, which is then returned.
-func GetDistWizard() *distributed.DistributedWizard {
-	var (
-		z    = zkevm.GetTestZkEVM()
-		disc = &distributed.StandardModuleDiscoverer{
-			TargetWeight: 1 << 28,
-			Affinities:   zkevm.GetAffinities(z),
-			Predivision:  1,
-		}
+func GetDW(cfg *config.Config) *distributed.DistributedWizard {
 
-		// This tests the compilation of the compiled-IOP
-		distWizard = distributed.DistributeWizard(z.WizardIOP, disc).
-				CompileSegments().
-				Conglomerate(20)
+	var (
+		traceLimits = cfg.TracesLimits
+		zkEVM       = zkevm.FullZKEVMWithSuite(&traceLimits, zkevm.CompilationSuite{}, cfg)
+		disc        = &distributed.StandardModuleDiscoverer{
+			TargetWeight: 1 << 29,
+			Predivision:  1,
+			Advices:      zkevm.DiscoveryAdvices,
+		}
+		dw = distributed.DistributeWizard(zkEVM.WizardIOP, disc)
 	)
 
-	return distWizard
+	// These are the slow and expensive operations.
+	dw.CompileSegments().Conglomerate(100)
+	return dw
 }
 
-func GetBasicDistWizard() *distributed.DistributedWizard {
+func GetBasicDW() *distributed.DistributedWizard {
 
 	var (
 		numRow = 1 << 10
@@ -84,53 +87,56 @@ func GetBasicDistWizard() *distributed.DistributedWizard {
 	return distWizard
 }
 
-func TestSerdeDistWizard(t *testing.T) {
+func TestSerdeDW(t *testing.T) {
 
 	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
-
-	dist := GetDistWizard()
+	cfg, err := config.NewConfigFromFileUnchecked("/home/ubuntu/linea-monorepo/prover/config/config-sepolia-limitless.toml")
+	if err != nil {
+		t.Fatalf("failed to read config file: %s", err)
+	}
+	dist := GetDW(cfg)
 
 	t.Run("ModuleNames", func(t *testing.T) {
-		runSerdeTest(t, dist.ModuleNames, "DistributedWizard.ModuleNames", true, false)
+		runSerdeTest(t, dist.ModuleNames, "DW.ModuleNames", true, false)
 	})
 
 	for i := range dist.GLs {
-		t.Run(fmt.Sprintf("GLModule-%d", i), func(t *testing.T) {
-			runSerdeTest(t, dist.GLs[i], "DistributedWizard.GLs", true, false)
+		t.Run(fmt.Sprintf("DW.GLModule-%d", i), func(t *testing.T) {
+			runSerdeTest(t, dist.GLs[i], fmt.Sprintf("DW.GLModule-%d", i), true, false)
 		})
 	}
 
 	for i := range dist.LPPs {
-		t.Run(fmt.Sprintf("LPPModule-%d", i), func(t *testing.T) {
-			runSerdeTest(t, dist.LPPs[i], "DistributedWizard.LPPs", true, false)
+		t.Run(fmt.Sprintf("DW.LPPModule-%d", i), func(t *testing.T) {
+			runSerdeTest(t, dist.LPPs[i], fmt.Sprintf("DW.LPPModule-%d", i), true, false)
 		})
 	}
 
 	t.Run("DefaultModule", func(t *testing.T) {
-		runSerdeTest(t, dist.DefaultModule, "DistributedWizard.DefaultModule", true, false)
+		runSerdeTest(t, dist.DefaultModule, "DW.DefaultModule", true, false)
 	})
 
 	t.Run("Bootstrapper", func(t *testing.T) {
-		runSerdeTest(t, dist.Bootstrapper, "DistributedWizard.Bootstrapper", true, false)
+		runSerdeTest(t, dist.Bootstrapper, "DW.Bootstrapper", true, false)
 	})
 
 	t.Run("Discoverer", func(t *testing.T) {
-		runSerdeTest(t, dist.Disc, "DistributedWizard.Discoverer", true, false)
+		runSerdeTest(t, dist.Disc, "DW.Discoverer", true, false)
 	})
 
 	t.Run("CompiledDefault", func(t *testing.T) {
-		runSerdeTest(t, dist.CompiledDefault, "DistributedWizard.CompiledDefault", true, false)
+		runSerdeTest(t, dist.CompiledDefault, "DW.CompiledDefault", true, false)
 	})
 
 	for i := range dist.CompiledGLs {
 		t.Run(fmt.Sprintf("CompiledGL-%v", i), func(t *testing.T) {
-			runSerdeTest(t, dist.CompiledGLs[i], fmt.Sprintf("DistributedWizard.CompiledGL-%v", i), true, false)
+			runSerdeTest(t, dist.CompiledGLs[i], fmt.Sprintf("DW.CompiledGL-%v", i), true, false)
 		})
 	}
 
 	for i := range dist.CompiledLPPs {
 		t.Run(fmt.Sprintf("CompiledLPP-%v", i), func(t *testing.T) {
-			runSerdeTest(t, dist.CompiledLPPs[i], fmt.Sprintf("DistributedWizard.CompiledLPP-%v", i), true, false)
+			runSerdeTest(t, dist.CompiledLPPs[i], fmt.Sprintf("DW.CompiledLPP-%v", i), true, false)
 		})
 	}
 
@@ -140,8 +146,80 @@ func TestSerdeDistWizard(t *testing.T) {
 	runtime.GC()
 
 	t.Run("CompiledConglomeration", func(t *testing.T) {
-		runSerdeTest(t, cong, "DistributedWizard.CompiledConglomeration", true, false)
+		runSerdeTest(t, cong, "DW.CompiledConglomeration", true, false)
 	})
+}
+
+// TestSerdeDWPerf: This test assumes that serialization and deserialization (ser/de) have already been
+// verified to be correct in the previous test (TestSerdeDW).
+func TestSerdeDWPerf(t *testing.T) {
+
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	cfg, err := config.NewConfigFromFileUnchecked("/home/ubuntu/linea-monorepo/prover/config/config-sepolia-limitless.toml")
+	if err != nil {
+		t.Fatalf("failed to read config file: %s", err)
+	}
+
+	var perfLogs profiling.PerfLogs
+	dw := GetDW(cfg)
+
+	t.Run("ModuleNames", func(t *testing.T) {
+		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.ModuleNames, "DW.ModuleNames"))
+	})
+
+	for i := range dw.GLs {
+		t.Run(fmt.Sprintf("GLModule-%d", i), func(t *testing.T) {
+			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.GLs[i], fmt.Sprintf("DW.GLModule-%v", i)))
+		})
+	}
+
+	for i := range dw.LPPs {
+		t.Run(fmt.Sprintf("LPPModule-%d", i), func(t *testing.T) {
+			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.LPPs[i], fmt.Sprintf("DW.LPPModule-%d", i)))
+		})
+	}
+
+	t.Run("DefaultModule", func(t *testing.T) {
+		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.DefaultModule, "DW.DefaultModule"))
+	})
+
+	t.Run("Bootstrapper", func(t *testing.T) {
+		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.Bootstrapper, "DW.Bootstrapper"))
+	})
+
+	t.Run("Discoverer", func(t *testing.T) {
+		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.Disc, "DW.Discoverer"))
+	})
+
+	t.Run("CompiledDefault", func(t *testing.T) {
+		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledDefault, "DW.CompiledDefault"))
+	})
+
+	for i := range dw.CompiledGLs {
+		t.Run(fmt.Sprintf("CompiledGL-%v", i), func(t *testing.T) {
+			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledGLs[i], fmt.Sprintf("DW.CompiledGL-%v", i)))
+		})
+	}
+
+	for i := range dw.CompiledLPPs {
+		t.Run(fmt.Sprintf("CompiledLPP-%v", i), func(t *testing.T) {
+			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledLPPs[i], fmt.Sprintf("DW.CompiledLPP-%v", i)))
+		})
+	}
+
+	// To save memory
+	cong := dw.CompiledConglomeration
+	dw = nil
+	runtime.GC()
+
+	t.Run("CompiledConglomeration", func(t *testing.T) {
+		perfLogs = append(perfLogs, runSerdeTestPerf(t, cong, "DW.CompiledConglomeration"))
+	})
+
+	// Write performance logs to CSV
+	if err := perfLogs.WritePerformanceLogsToCSV(path.Join("perf", "dw-perf-logs.csv")); err != nil {
+		t.Fatalf("Error writing performance logs to csv: %v", err)
+	}
 }
 
 func TestSerdeDWCong(t *testing.T) {
@@ -149,7 +227,7 @@ func TestSerdeDWCong(t *testing.T) {
 	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
 	// Setup
-	distWizard := GetBasicDistWizard()
+	distWizard := GetBasicDW()
 	cong := distWizard.CompiledConglomeration
 	distWizard = nil
 	runtime.GC()
