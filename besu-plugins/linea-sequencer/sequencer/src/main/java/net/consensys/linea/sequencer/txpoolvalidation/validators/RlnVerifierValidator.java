@@ -38,8 +38,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.consensys.linea.config.LineaRlnValidatorConfiguration;
+import net.consensys.linea.rln.JniRlnVerificationService;
 import net.consensys.linea.rln.RlnVerificationService;
-import net.consensys.linea.rln.RlnVerificationServiceFactory;
 import net.consensys.linea.sequencer.txpoolvalidation.shared.DenyListManager;
 import net.consensys.linea.sequencer.txpoolvalidation.shared.KarmaServiceClient;
 import net.consensys.linea.sequencer.txpoolvalidation.shared.KarmaServiceClient.KarmaInfo;
@@ -216,7 +216,7 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
     if (providedRlnService != null) {
       this.rlnVerificationService = providedRlnService;
     } else {
-      this.rlnVerificationService = RlnVerificationServiceFactory.createAutoService();
+      this.rlnVerificationService = new JniRlnVerificationService();
     }
 
     // Initialize LRU cache with TTL support
