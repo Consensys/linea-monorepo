@@ -25,4 +25,11 @@ import net.consensys.linea.plugins.LineaOptionsConfiguration;
 public class LineaRpcConfiguration implements LineaOptionsConfiguration {
   @Setter private volatile boolean estimateGasCompatibilityModeEnabled;
   private BigDecimal estimateGasCompatibilityMultiplier;
+
+  // Gasless transaction features
+  private boolean gaslessTransactionsEnabled;
+  private boolean rlnProverForwarderEnabled;
+  private double premiumGasMultiplier;
+  private boolean allowZeroGasEstimationForGasless;
+  private LineaSharedGaslessConfiguration sharedGaslessConfig;
 }

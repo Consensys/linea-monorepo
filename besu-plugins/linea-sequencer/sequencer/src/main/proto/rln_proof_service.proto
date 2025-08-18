@@ -1,0 +1,221 @@
+syntax = "proto3";
+package prover;
+
+import "google/protobuf/descriptor.proto";
+
+option java_package = "net.vac.prover";
+option java_outer_classname = "OuterSample";
+option java_multiple_files = true;
+
+service RlnProver {
+
+  rpc SendTransaction (SendTransactionRequest) returns (SendTransactionReply);
+  rpc RegisterUser (RegisterUserRequest) returns (RegisterUserReply);
+  // Server side streaming RPC: 1 request -> X responses (stream)
+  rpc GetProofs(RlnProofFilter) returns (stream RlnProofReply);
+
+  rpc GetUserTierInfo(GetUserTierInfoRequest) returns (GetUserTierInfoReply);
+  // rpc SetTierLimits(SetTierLimitsRequest) returns (SetTierLimitsReply);
+}
+
+/*
+// TransactionType: https://github.com/Consensys/linea-besu/blob/09cbed1142cfe4d29b50ecf2f156639a4bc8c854/datatypes/src/main/java/org/hyperledger/besu/datatypes/TransactionType.java#L22
+enum TransactionType {
+  // The Frontier
+  //  FRONTIER(0xf8),
+  // FIXME: is this 0xF8 or 0x00 ?
+  FRONTIER = 0;
+  // Access list transaction type
+  ACCESS_LIST = 1; // 0x01
+  // Eip1559 transaction type
+  EIP1559 = 2; // 0x02
+  // Blob transaction type
+  BLOB = 3; // 0x03
+  // Eip7702 transaction type
+  DELEGATE_CODE = 4; // 0x04
+}
+*/
+
+extend google.protobuf.FieldOptions {
+  optional uint32 max_size = 50000;
+}
+
+message Wei {
+  // https://github.com/Consensys/linea-besu/blob/zkbesu/datatypes/src/main/java/org/hyperledger/besu/datatypes/Wei.java#L26
+  bytes value = 1 [(max_size) = 32];
+}
+
+message U256 {
+  // for chain id
+  bytes value = 1 [(max_size) = 32];
+}
+
+message Address {
+  // https://github.com/Consensys/linea-besu/blob/zkbesu/datatypes/src/main/java/org/hyperledger/besu/datatypes/Address.java#L37
+  bytes value = 1 [(max_size) = 20];
+}
+
+/*
+message SECPSignature {
+  // https://github.com/Consensys/linea-besu/blob/zkbesu/crypto/algorithms/src/main/java/org/hyperledger/besu/crypto/SECPSignature.java#L30
+  bytes value = 1 [(max_size) = 65];
+}
+*/
+
+/*
+message StorageKey {
+  bytes value = 1 [(max_size) = 32];
+}
+*/
+
+/*
+message AccessListEntry {
+  Address address = 1;
+  repeated StorageKey storageKeys = 2;
+}
+*/
+
+/*
+message AccessListEntries {
+  // https://github.com/Consensys/linea-besu/blob/zkbesu/datatypes/src/main/java/org/hyperledger/besu/datatypes/AccessListEntry.java#L31
+  repeated AccessListEntry entries = 1;
+}
+*/
+
+/*
+message VersionedHash {
+  // https://github.com/Consensys/linea-besu/blob/zkbesu/datatypes/src/main/java/org/hyperledger/besu/datatypes/VersionedHash.java#L28
+  bytes value = 1 [(max_size) = 32];
+}
+*/
+
+/*
+message BlobsWithCommitments {
+  // https://github.com/Consensys/linea-besu/blob/zkbesu/datatypes/src/main/java/org/hyperledger/besu/datatypes/BlobsWithCommitments.java#L23
+  // TODO: need this?
+}
+*/
+
+/*
+message CodeDelegation {
+  // https://github.com/Consensys/linea-besu/blob/zkbesu/ethereum/core/src/main/java/org/hyperledger/besu/ethereum/core/CodeDelegation.java#L40
+  // TODO: need this?
+}
+*/
+
+// Transaction: https://github.com/Consensys/linea-besu/blob/c99bdbd533707a45fad97017fb964578c3e87fde/ethereum/core/src/main/java/org/hyperledger/besu/ethereum/core/Transaction.java#L168
+message SendTransactionRequest {
+  /*
+  bool forCopy = 1;
+  TransactionType transactionType = 2;
+  // Java long == signed 64-bit integer
+  // https://docs.oracle.com/javase/tutorial/java/nutsandbolts/datatypes.html
+  // XXX: "In Java SE 8 and later, you can use the long data type to represent an unsigned 64-bit long"
+  sint64 nonce = 3;
+  optional Wei gasPrice = 4;
+  optional Wei maxPriorityFeePerGas = 5;
+  optional Wei maxFeePerGas = 6;
+  optional Wei maxFeePerBlobGas = 7;
+  optional sint64 gasLimit = 8;
+  optional Address to = 9;
+  Wei value = 10;
+  SECPSignature signature = 11;
+  bytes payload = 12;
+  repeated AccessListEntries maybeAccessList = 13;
+  optional Address sender = 14;
+  // chain id bounds: https://ethereum-magicians.org/t/eip-2294-explicit-bound-to-chain-id/11090/27
+  // Should be enough for Java BigInteger
+  optional U256 chainId = 15;
+  repeated VersionedHash versionedHashes = 16;
+  repeated BlobsWithCommitments blobsWithCommitments = 17;
+  repeated CodeDelegation maybeCodeDelegationList = 18;
+  optional bytes rawRlp = 19;
+  */
+  optional Wei gasPrice = 1;
+  optional Address sender = 2;
+  optional U256 chainId = 3;
+  bytes transactionHash = 4 [(max_size) = 32];
+}
+
+message SendTransactionReply {
+  bool result = 1;
+}
+
+message RlnProofFilter {
+  optional string address = 1;
+}
+
+message RlnProofReply {
+  oneof resp {
+    // variant for success
+    RlnProof proof = 1;
+    // variant for error
+    RlnProofError error = 2;
+  }
+}
+
+message RlnProof {
+  // From https://rfc.vac.dev/vac/32/rln-v1#sending-the-output-message
+  bytes sender = 1;
+  bytes tx_hash = 2;              // Transaction hash for the proof (non hash signal)
+  bytes proof = 3;                // The RLN proof itself, hex encoded
+}
+
+message RlnProofError {
+  string error = 2;
+}
+
+message RegisterUserRequest {
+  Address user = 14;
+}
+
+enum RegistrationStatus {
+  Success = 0;
+  Failure = 1;
+  AlreadyRegistered = 2;
+}
+
+message RegisterUserReply {
+  RegistrationStatus status = 1;
+}
+
+message GetUserTierInfoRequest {
+  Address user = 1;
+}
+
+message GetUserTierInfoReply {
+  oneof resp {
+    // variant for success
+    UserTierInfoResult res = 1;
+    // variant for error
+    UserTierInfoError error = 2;
+  }
+}
+
+message UserTierInfoError {
+  string message = 1;
+}
+
+message UserTierInfoResult {
+  sint64 current_epoch = 1;
+  sint64 current_epoch_slice = 2;
+  uint64 tx_count = 3;
+  optional Tier tier = 4;
+}
+
+message Tier {
+  string name = 1;
+  uint64 quota = 2;
+}
+
+/*
+message SetTierLimitsRequest {
+  repeated U256 karmaAmounts = 1;
+  repeated Tier tiers = 2;
+}
+
+message SetTierLimitsReply {
+  bool status = 1;
+  string error = 2;
+}
+*/ 

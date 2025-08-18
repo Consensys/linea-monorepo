@@ -25,11 +25,15 @@ import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaRpcConfiguration;
+import net.consensys.linea.config.LineaSharedGaslessConfiguration;
 import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.modulelimit.ModuleLimitsValidationResult;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
+import net.consensys.linea.sequencer.txpoolvalidation.shared.DenyListManager;
+import net.consensys.linea.sequencer.txpoolvalidation.shared.KarmaServiceClient;
+import net.consensys.linea.sequencer.txpoolvalidation.shared.KarmaServiceClient.KarmaInfo;
 import net.consensys.linea.zktracer.LineCountingTracer;
 import net.consensys.linea.zktracer.ZkCounter;
 import net.consensys.linea.zktracer.ZkTracer;
@@ -91,6 +95,14 @@ public class LineaEstimateGas {
   private LineaTracerConfiguration tracerConfiguration;
   private ModuleLineCountValidator moduleLineCountValidator;
 
+  private boolean gaslessTransactionsEnabled;
+  private LineaSharedGaslessConfiguration sharedGaslessConfig;
+  private double premiumGasMultiplier;
+  private boolean allowZeroGasEstimationForGasless;
+
+  private DenyListManager denyListManager;
+  private KarmaServiceClient karmaServiceClient;
+
   public LineaEstimateGas(
       final BesuConfiguration besuConfiguration,
       final TransactionSimulationService transactionSimulationService,
@@ -108,6 +120,24 @@ public class LineaEstimateGas {
       final LineaProfitabilityConfiguration profitabilityConf,
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
       final LineaTracerConfiguration tracerConfiguration) {
+    init(
+        rpcConfiguration,
+        transactionValidatorConfiguration,
+        profitabilityConf,
+        l1L2BridgeConfiguration,
+        tracerConfiguration,
+        null,
+        null);
+  }
+
+  public void init(
+      final LineaRpcConfiguration rpcConfiguration,
+      final LineaTransactionPoolValidatorConfiguration transactionValidatorConfiguration,
+      final LineaProfitabilityConfiguration profitabilityConf,
+      final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
+      final LineaTracerConfiguration tracerConfiguration,
+      final DenyListManager denyListManager,
+      final KarmaServiceClient karmaServiceClient) {
     this.rpcConfiguration = rpcConfiguration;
     this.txValidatorConf = transactionValidatorConfiguration;
     this.profitabilityConf = profitabilityConf;
@@ -116,6 +146,36 @@ public class LineaEstimateGas {
     this.tracerConfiguration = tracerConfiguration;
     this.moduleLineCountValidator =
         new ModuleLineCountValidator(tracerConfiguration.moduleLimitsMap());
+
+    // Initialize gasless config fields
+    this.gaslessTransactionsEnabled = rpcConfiguration.gaslessTransactionsEnabled();
+    if (this.gaslessTransactionsEnabled) {
+      this.sharedGaslessConfig = rpcConfiguration.sharedGaslessConfig();
+      if (this.sharedGaslessConfig == null) {
+        log.warn(
+            "LineaRpcConfiguration provided null sharedGaslessConfig while gasless transactions are enabled.");
+      }
+      this.premiumGasMultiplier = rpcConfiguration.premiumGasMultiplier();
+      this.allowZeroGasEstimationForGasless = rpcConfiguration.allowZeroGasEstimationForGasless();
+
+      // Inject shared services
+      this.denyListManager = denyListManager;
+      this.karmaServiceClient = karmaServiceClient;
+
+      if (this.denyListManager == null) {
+        log.warn(
+            "DenyListManager not provided while gasless transactions are enabled. Deny list checks will be skipped.");
+      }
+      if (this.karmaServiceClient == null) {
+        log.warn(
+            "KarmaServiceClient not provided while gasless transactions are enabled. Karma checks will be skipped.");
+      }
+
+      log.info(
+          "Gasless transaction features for linea_estimateGas are ENABLED with shared services.");
+    } else {
+      log.info("Gasless transaction features for linea_estimateGas are DISABLED.");
+    }
   }
 
   public String getNamespace() {
@@ -141,6 +201,99 @@ public class LineaEstimateGas {
       final var callParameters = parseCallParameters(request.getParams());
       final var maybeStateOverrides = getStateOverrideMap(request.getParams());
       final var minGasPrice = besuConfiguration.getMinGasPrice();
+
+      // --- Linea Gasless Logic Start ---
+      if (gaslessTransactionsEnabled && callParameters.getSender().isPresent()) {
+        Address sender = callParameters.getSender().get();
+
+        // Check if sender is on deny list (read-only operation)
+        boolean isOnDenyList = denyListManager != null && denyListManager.isDenied(sender);
+
+        if (isOnDenyList) {
+          log.info(
+              "[{}] Sender {} is on the deny list. Applying premium gas multiplier of {}.",
+              logId,
+              sender.toHexString(),
+              premiumGasMultiplier);
+          // Proceed to estimate gas, then multiply.
+          final long originalGasEstimate =
+              getGasEstimation(callParameters, maybeStateOverrides, logId);
+          final long premiumGasEstimate = (long) (originalGasEstimate * premiumGasMultiplier);
+
+          final Wei baseFee =
+              blockchainService
+                  .getNextBlockBaseFee()
+                  .orElseThrow(
+                      () ->
+                          new PluginRpcEndpointException(
+                              RpcErrorType.INVALID_REQUEST, "Not on a baseFee market"));
+
+          final Transaction tempTxForFeeEstimation =
+              createTransactionForSimulation(callParameters, premiumGasEstimate, baseFee, logId);
+          final Wei estimatedPriorityFee =
+              getEstimatedPriorityFee(
+                  tempTxForFeeEstimation, baseFee, minGasPrice, premiumGasEstimate);
+
+          log.info(
+              "[{}] Deny list sender {}: Original estimate {}, Premium estimate {}.",
+              logId,
+              sender.toHexString(),
+              originalGasEstimate,
+              premiumGasEstimate);
+          return new Response(
+              create(premiumGasEstimate), create(baseFee), create(estimatedPriorityFee));
+        }
+
+        // Not on deny list - check if user has quota available for gasless eligibility
+        Optional<KarmaInfo> karmaInfoOpt = fetchKarmaInfoFromService(sender);
+
+        if (karmaInfoOpt.isPresent()) {
+          KarmaInfo karmaInfo = karmaInfoOpt.get();
+          boolean hasQuotaAvailable = karmaInfo.epochTxCount() < karmaInfo.dailyQuota();
+          boolean isEligibleTier =
+              !"Unknown".equals(karmaInfo.tier()) && karmaInfo.dailyQuota() > 0;
+
+          log.debug(
+              "[{}] Karma info for sender {}: Tier={}, TxCount={}, Quota={}, HasQuota={}, IsEligibleTier={}",
+              logId,
+              sender.toHexString(),
+              karmaInfo.tier(),
+              karmaInfo.epochTxCount(),
+              karmaInfo.dailyQuota(),
+              hasQuotaAvailable,
+              isEligibleTier);
+
+          if (hasQuotaAvailable && isEligibleTier && allowZeroGasEstimationForGasless) {
+            // User has available quota - eligible for gasless (0 gas estimation)
+            log.info(
+                "[{}] Sender {} has tier '{}' with available quota ({}/{}) and is eligible for gasless estimation. Returning 0 gas.",
+                logId,
+                sender.toHexString(),
+                karmaInfo.tier(),
+                karmaInfo.epochTxCount(),
+                karmaInfo.dailyQuota());
+            return new Response(create(0L), create(Wei.ZERO), create(Wei.ZERO));
+          }
+          // User has no quota available or ineligible tier - proceed to normal gas estimation below
+          log.info(
+              "[{}] Sender {} has tier '{}' with quota usage ({}/{}) but will receive standard gas estimation.",
+              logId,
+              sender.toHexString(),
+              karmaInfo.tier(),
+              karmaInfo.epochTxCount(),
+              karmaInfo.dailyQuota());
+        } else {
+          // SECURITY: When karma service is unavailable, we should be more cautious
+          // For gas estimation, we can proceed with standard estimation since it's not validation
+          // But we should log this for monitoring purposes
+          log.debug(
+              "[{}] Karma service unavailable for user {}. Proceeding with standard gas estimation.",
+              logId,
+              sender.toHexString());
+        }
+      }
+      // --- Linea Gasless Logic End ---
+
       final Wei baseFee =
           blockchainService
               .getNextBlockBaseFee()
@@ -436,6 +589,30 @@ public class LineaEstimateGas {
         String.format("Do not know what to do with result %s", moduleLimitResult.getResult());
     log.error(internalErrorMsg);
     throw new PluginRpcEndpointException(RpcErrorType.PLUGIN_INTERNAL_ERROR, internalErrorMsg);
+  }
+
+  /**
+   * Fetches karma information for a user via shared Karma Service client. Used only to check if
+   * user has karma balance > 0 for gasless eligibility. The karma service handles all transaction
+   * counting internally.
+   */
+  private Optional<KarmaInfo> fetchKarmaInfoFromService(Address userAddress) {
+    if (karmaServiceClient == null || !karmaServiceClient.isAvailable()) {
+      log.debug(
+          "Karma service client not available. Cannot fetch karma info for {}",
+          userAddress.toHexString());
+      return Optional.empty();
+    }
+
+    return karmaServiceClient.fetchKarmaInfo(userAddress);
+  }
+
+  // Method to stop when the plugin stops (needs to be called from plugin's stop lifecycle)
+  public void stop() {
+    // Note: DenyListManager and KarmaServiceClient are now shared services
+    // and should be closed by their managing component (e.g., the component
+    // that created them), not by individual consumers like LineaEstimateGas
+    log.info("LineaEstimateGas stopped. Shared services are managed externally.");
   }
 
   public record Response(
