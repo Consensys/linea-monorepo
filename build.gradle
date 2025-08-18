@@ -24,6 +24,10 @@ allprojects {
   apply plugin: 'java' // do not add kotlin plugin here, it will add unnecessary Kotlin runtime dependencies
   apply plugin: 'jacoco'
 
+  configurations.configureEach {
+    exclude group: 'org.slf4j', module: 'slf4j-nop'
+  }
+
   tasks.withType(KotlinCompile).configureEach {
     compileAll.dependsOn it
     compilerOptions {
