@@ -128,7 +128,7 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      * @param _seconds The time period to lock the staked amount for.
      */
     function lock(uint256 _seconds) external onlyOwner {
-        stakeManager.lock(_seconds);
+        lockUntil = stakeManager.lock(_seconds, lockUntil);
     }
 
     /**
@@ -193,6 +193,18 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
     }
 
     /**
+     * @notice Updates the lock until timestamp.
+     * @dev This function is only callable by the stake manager.
+     * @param _lockUntil The new lock until timestamp.
+     */
+    function migrateFromVault(uint256 _lockUntil) external {
+        if (msg.sender != address(stakeManager)) {
+            revert StakeVault__NotAuthorized();
+        }
+        lockUntil = _lockUntil;
+    }
+
+    /**
      * @notice Withdraw tokens from the contract.
      * @dev This function is only callable by the owner.
      * @dev Only withdraws excess staking token amounts.
@@ -254,18 +266,6 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
         return _token.balanceOf(address(this));
     }
 
-    /**
-     * @notice Updates the lock until timestamp.
-     * @dev This function is only callable by the trusted stake manager.
-     * @param _lockUntil The new lock until timestamp.
-     */
-    function updateLockUntil(uint256 _lockUntil) external {
-        if (msg.sender != address(stakeManager)) {
-            revert StakeVault__NotAuthorized();
-        }
-        lockUntil = _lockUntil;
-    }
-
     /*//////////////////////////////////////////////////////////////////////////
                            INTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/
@@ -278,7 +278,7 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      * @param _source The address from which tokens will be transferred.
      */
     function _stake(uint256 _amount, uint256 _seconds, address _source) internal {
-        stakeManager.stake(_amount, _seconds);
+        lockUntil = stakeManager.stake(_amount, _seconds, lockUntil);
         bool success = STAKING_TOKEN.transferFrom(_source, address(this), _amount);
         if (!success) {
             revert StakeVault__StakingFailed();
@@ -292,6 +292,9 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      * @param _destination The address to receive the unstaked tokens.
      */
     function _unstake(uint256 _amount, address _destination) internal {
+        if (lockUntil > block.timestamp) {
+            revert StakeVault__FundsLocked();
+        }
         stakeManager.unstake(_amount);
         bool success = STAKING_TOKEN.transfer(_destination, _amount);
         if (!success) {

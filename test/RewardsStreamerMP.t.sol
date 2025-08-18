@@ -1401,7 +1401,7 @@ contract UnstakeTest is StakeTest {
         _stake(alice, stakeAmount, lockUpPeriod);
 
         // Alice tries to unstake before lock up period has expired
-        vm.expectRevert(IStakeManager.StakeManager__FundsLocked.selector);
+        vm.expectRevert(StakeVault.StakeVault__FundsLocked.selector);
         _unstake(alice, stakeAmount);
 
         vm.warp(vm.getBlockTimestamp() + lockUpPeriod);
@@ -2962,8 +2962,8 @@ contract FuzzTests is StakeManagerTest {
     function _expectUnstake(address account, uint256 amount) internal {
         CheckVaultParams storage expectedAccountParams = expectedAccountState[account];
         expectedAccountParams.account = vaults[account];
-        if (expectedVaultLockState[expectedAccountParams.account].lockEnd >= vm.getBlockTimestamp()) {
-            expectedRevert = IStakeManager.StakeManager__FundsLocked.selector;
+        if (expectedVaultLockState[expectedAccountParams.account].lockEnd > vm.getBlockTimestamp()) {
+            expectedRevert = StakeVault.StakeVault__FundsLocked.selector;
             return;
         }
         if (amount == 0) {
@@ -3031,8 +3031,8 @@ contract FuzzTests is StakeManagerTest {
                 if (lockUpPeriod > 0) {
                     //update lockup end
                     expectedVaultLockState[expectedAccountParams.account].totalLockUp += lockUpPeriod;
-                    expectedVaultLockState[expectedAccountParams.account].lockEnd = calcLockEnd;
                 }
+                expectedVaultLockState[expectedAccountParams.account].lockEnd = calcLockEnd;
                 expectedAccountParams.stakedBalance = stakeAmount;
                 expectedAccountParams.vaultBalance = stakeAmount;
                 expectedSystemState.stakingBalance += stakeAmount;

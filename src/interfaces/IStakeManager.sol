@@ -54,8 +54,14 @@ interface IStakeManager is ITrustedCodehashAccess, IStakeConstants {
     event VaultUpdated(address indexed vault, uint256 rewardsAccrued, uint256 mpAccrued);
 
     function registerVault() external;
-    function stake(uint256 _amount, uint256 _seconds) external;
-    function lock(uint256 _seconds) external;
+    function stake(
+        uint256 _amount,
+        uint256 _seconds,
+        uint256 _currentLockUntil
+    )
+        external
+        returns (uint256 _lockUntil);
+    function lock(uint256 _seconds, uint256 _currentLockUntil) external returns (uint256 _lockUntil);
     function unstake(uint256 _amount) external;
     function leave() external;
     function migrateToVault(address migrateTo) external;

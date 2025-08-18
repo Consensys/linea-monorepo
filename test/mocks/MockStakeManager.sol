@@ -21,12 +21,12 @@ contract MockStakeManager is ITrustedCodehashAccess, IStakeManager {
         return;
     }
 
-    function stake(uint256, uint256) external {
-        return;
+    function stake(uint256, uint256, uint256) external returns (uint256) {
+        return 0;
     }
 
-    function lock(uint256) external {
-        return;
+    function lock(uint256, uint256) external returns (uint256) {
+        return 0;
     }
 
     function unstake(uint256) external {
