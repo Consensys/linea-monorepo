@@ -1,6 +1,6 @@
 [plugins]
 docker = { id = "com.avast.gradle.docker-compose", version = "0.17.7" }
-web3j = { id = "org.web3j", version.ref = "web3j" }
+web3j = { id = "org.web3j", version.ref = "web3jPlugin" }
 web3jSolidity = { id = "org.web3j.solidity", version = "0.5.0" }
 spotless = { id = "com.diffplug.spotless", version = "6.25.0" }
 jreleaser = {id = "org.jreleaser", version = "1.15.0"}
@@ -48,7 +48,8 @@ slf4j="1.7.36"
 teku = "23.1.1"
 tuweni = "2.7.1"
 vertx = "4.5.14"
-web3j = "4.12.2"
+web3j = "4.14.0"
+web3jPlugin = "4.12.2"
 
 # Other
 googleJavaFormat = "1.27.0"
