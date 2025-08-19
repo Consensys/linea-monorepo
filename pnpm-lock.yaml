@@ -397,7 +397,7 @@ importers:
         specifier: 'catalog:'
         version: 6.13.7(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       node-forge:
-        specifier: ^1.3.1
+        specifier: 1.3.1
         version: 1.3.1
     devDependencies:
       '@jest/globals':
@@ -410,7 +410,7 @@ importers:
         specifier: 'catalog:'
         version: 29.5.14
       '@types/node-forge':
-        specifier: ^1.3.13
+        specifier: 1.3.13
         version: 1.3.13
       jest:
         specifier: 'catalog:'
@@ -4843,9 +4843,6 @@ packages:
 
   '@types/ms@0.7.34':
     resolution: {integrity: sha512-nG96G3Wp6acyAgJqGasjODb+acrI7KltPiRxzHPXnP3NgI28bpQDRv53olbqGXbfcgF5aiiHmO3xpwEpS5Ld9g==}
-
-  '@types/node-forge@1.3.11':
-    resolution: {integrity: sha512-FQx220y22OKNTqaByeBGqHWYz4cl94tpcxeFdvBo3wjG6XPBuZ0BNgNZRV5J5TFmmcsJ4IzsLkmGRiQbnYsBEQ==}
 
   '@types/node-forge@1.3.13':
     resolution: {integrity: sha512-zePQJSW5QkwSHKRApqWCVKeKoSOt4xvEnLENZPjyvm9Ezdf/EyDeJM7jqLzOwjVICQQzvLZ63T55MKdJB5H6ww==}
@@ -18663,10 +18660,6 @@ snapshots:
 
   '@types/ms@0.7.34': {}
 
-  '@types/node-forge@1.3.11':
-    dependencies:
-      '@types/node': 20.12.7
-
   '@types/node-forge@1.3.13':
     dependencies:
       '@types/node': 20.12.7
@@ -26280,7 +26273,7 @@ snapshots:
 
   selfsigned@2.4.1:
     dependencies:
-      '@types/node-forge': 1.3.11
+      '@types/node-forge': 1.3.13
       node-forge: 1.3.1
 
   semver@5.7.2: {}
