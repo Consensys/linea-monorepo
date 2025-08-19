@@ -406,10 +406,10 @@ func (cf *CollectedFields) collectInvalidityInfo(cfg *config.Config, req *Reques
 		}
 		cf.ProofClaims = append(cf.ProofClaims, *pClaim)
 
-		pi := po.FuncInput(i)
+		pi := po.FuncInput()
 
 		// make sure public input and collected values match
-		if pi := po.FuncInput(i).Sum(hshM); !bytes.Equal(pi, po.PublicInput[:]) {
+		if pi := po.FuncInput().Sum(hshM); !bytes.Equal(pi, po.PublicInput[:]) {
 			return fmt.Errorf("einvalidity #%d: public input mismatch: given %x, computed %x", i, po.PublicInput, pi)
 		}
 

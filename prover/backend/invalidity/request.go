@@ -13,7 +13,7 @@ type Request struct {
 	// @azam replace its type with a payload type since we do'nt need the signature part.
 	ForcedTransactionPayLoad *ethtypes.Transaction
 	// transaction number assigned by L1 contract
-	ForcedTransactionNumbers uint64
+	ForcedTransactionNumber uint64
 	// from address as given by L1 contract
 	FromAddresses types.EthAddress
 	// the type of invalidity for each forced transaction;
@@ -25,7 +25,6 @@ type Request struct {
 	ExpectedBlockHeights uint64
 	// state root hash of the current aggregation, so this is the same for all the request files relevant to the same aggregation
 	StateRootHash types.Bytes32
-	// note that for the first request file ForcedTransactionNumbers[0] = LastFinalizedRollingHashNumber + 1.
-	// again this is the same for all the request relevant to the same aggregation
-	LastFinalizedRollingHashNumber int
+	// RollingHash associated with the transaction
+	RollingHashTx types.Bytes32
 }
