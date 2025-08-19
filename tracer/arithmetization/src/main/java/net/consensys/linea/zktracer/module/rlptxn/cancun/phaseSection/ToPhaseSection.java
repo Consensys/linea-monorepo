@@ -16,6 +16,8 @@
 package net.consensys.linea.zktracer.module.rlptxn.cancun.phaseSection;
 
 import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.TraceCancun.Rlptxn.RLP_TXN_CT_MAX_ADDRESS;
+import static net.consensys.linea.zktracer.module.rlpUtils.RlpUtils.BYTES16_PREFIX_ADDRESS;
 import static net.consensys.linea.zktracer.module.rlpUtils.RlpUtils.BYTES_PREFIX_SHORT_INT;
 import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
 
@@ -23,7 +25,6 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.rlptxn.cancun.GenericTracedValue;
 import net.consensys.linea.zktracer.types.Bytes16;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
-import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 
 public class ToPhaseSection extends PhaseSection {
@@ -37,48 +38,60 @@ public class ToPhaseSection extends PhaseSection {
   protected void traceComputationsRows(
       Trace.Rlptxn trace, TransactionProcessingMetadata tx, GenericTracedValue tracedValues) {
     if (tx.isDeployment()) {
-      tracePreValues(trace, tracedValues);
+      traceTransactionConstantValues(trace, tracedValues);
       trace
           .cmp(true)
           .limbConstructed(true)
           .lt(true)
           .lx(true)
-          .limb(Bytes16.rightPad(BYTES_PREFIX_SHORT_INT))
-          .nBytes(1)
-          .phaseEnd(true);
+          .pCmpLimb(Bytes16.rightPad(BYTES_PREFIX_SHORT_INT))
+          .pCmpLimbSize(1);
       tracedValues.decrementLtAndLxSizeBy(1);
       tracePostValues(trace, tracedValues);
     } else {
       final Address to = tx.getBesuTransaction().getTo().get();
 
-      // first row for deployment
-      tracePreValues(trace, tracedValues);
+      // first row for deployment : rlp prefix
+      traceTransactionConstantValues(trace, tracedValues);
       trace
           .cmp(true)
-          .ctMax(1)
+          .ctMax(RLP_TXN_CT_MAX_ADDRESS)
           .pCmpTrmFlag(true)
           .pCmpExoData1(to.slice(0, 4))
           .pCmpExoData2(lowPart(to))
           .limbConstructed(true)
           .lt(true)
           .lx(true)
-          .pCmpLimb(Bytes16.rightPad(Bytes.concatenate(BYTES_PREFIX_SHORT_INT, to.slice(0, 4))))
-          .pCmpNbytes(5);
-      tracedValues.decrementLtAndLxSizeBy(5);
+          .pCmpLimb(BYTES16_PREFIX_ADDRESS)
+          .pCmpLimbSize(1);
+      tracedValues.decrementLtAndLxSizeBy(1);
       tracePostValues(trace, tracedValues);
 
-      // second row for deployment
-      tracePreValues(trace, tracedValues);
+      // second row for deployment : address hi
+      traceTransactionConstantValues(trace, tracedValues);
       trace
           .cmp(true)
           .ct(1)
-          .ctMax(1)
+          .ctMax(RLP_TXN_CT_MAX_ADDRESS)
+          .limbConstructed(true)
+          .lt(true)
+          .lx(true)
+          .pCmpLimb(Bytes16.rightPad(to.slice(0, 4)))
+          .pCmpLimbSize(4);
+      tracedValues.decrementLtAndLxSizeBy(4);
+      tracePostValues(trace, tracedValues);
+
+      // third row for deployment : address lo
+      traceTransactionConstantValues(trace, tracedValues);
+      trace
+          .cmp(true)
+          .ct(2)
+          .ctMax(RLP_TXN_CT_MAX_ADDRESS)
           .limbConstructed(true)
           .lt(true)
           .lx(true)
           .pCmpLimb(to.slice(4, LLARGE))
-          .pCmpNbytes(LLARGE)
-          .phaseEnd(true);
+          .pCmpLimbSize(LLARGE);
       tracedValues.decrementLtAndLxSizeBy(LLARGE);
       tracePostValues(trace, tracedValues);
     }
@@ -91,6 +104,6 @@ public class ToPhaseSection extends PhaseSection {
 
   @Override
   public int lineCount() {
-    return 1 + (isDeployment ? 1 : 2);
+    return 1 + (isDeployment ? 1 : (RLP_TXN_CT_MAX_ADDRESS + 1));
   }
 }

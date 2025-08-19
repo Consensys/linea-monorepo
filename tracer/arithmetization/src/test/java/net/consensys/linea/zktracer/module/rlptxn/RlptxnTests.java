@@ -148,6 +148,8 @@ public class RlptxnTests extends TracerTestBase {
             Bytes.random(55, SEED),
             Bytes.random(56, SEED),
             Bytes.random(57, SEED),
+            Bytes.random(255, SEED),
+            Bytes.random(256, SEED),
             Bytes.random(257, SEED));
 
     final Address address1 = Address.wrap(Bytes.random(Address.SIZE, SEED));

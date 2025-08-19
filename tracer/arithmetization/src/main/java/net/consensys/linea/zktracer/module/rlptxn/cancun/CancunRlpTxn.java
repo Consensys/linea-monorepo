@@ -33,7 +33,7 @@ public class CancunRlpTxn extends RlpTxn {
 
   @Override
   protected void traceOperation(RlpTxnOperation op, int userTxNumber, Trace.Rlptxn trace) {
-    // final CancunRlpTxnOperation cancunOp = (CancunRlpTxnOperation) op;
-    // cancunOp.trace(trace);
+    final CancunRlpTxnOperation cancunOp = (CancunRlpTxnOperation) op;
+    cancunOp.trace(trace);
   }
 }

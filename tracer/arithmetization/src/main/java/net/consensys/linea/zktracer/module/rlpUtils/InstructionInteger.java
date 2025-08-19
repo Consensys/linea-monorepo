@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.rlpUtils;
 
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.Trace.Rlputils.CT_MAX_INST_INTEGER;
+import static net.consensys.linea.zktracer.TraceCancun.Rlptxn.RLP_TXN_CT_MAX_INTEGER;
 import static net.consensys.linea.zktracer.module.rlpUtils.RlpUtils.BYTES32_PREFIX_SHORT_INT;
 
 import lombok.Getter;
@@ -46,14 +47,14 @@ public class InstructionInteger extends RlpUtilsCall {
     wcpCalls.add(firstCall);
     integerIsZero = firstCall.result;
 
-    final WcpExoCall secondCall = WcpExoCall.callToGt(wcp, Bytes32.leftPad(data1()), Bytes32.ZERO);
+    final WcpExoCall secondCall = WcpExoCall.callToGt(wcp, Bytes32.leftPad(intHi()), Bytes32.ZERO);
     wcpCalls.add(secondCall);
     integerHiIsNonZero = secondCall.result;
 
     final WcpExoCall thirdCall =
-        WcpExoCall.callToLt(wcp, Bytes32.leftPad(data2()), BYTES32_PREFIX_SHORT_INT);
+        WcpExoCall.callToLt(wcp, Bytes32.leftPad(intLo()), BYTES32_PREFIX_SHORT_INT);
     wcpCalls.add(thirdCall);
-    rlpPrefixRequired = !integerIsZero && !integerHiIsNonZero && thirdCall.result;
+    rlpPrefixRequired = integerIsZero || integerHiIsNonZero || !thirdCall.result;
   }
 
   @Override
@@ -64,91 +65,96 @@ public class InstructionInteger extends RlpUtilsCall {
       boolean lx,
       boolean updateTracedValue,
       int ct) {
-    trace.cmp(true).ct(ct).ctMax(2).lt(lt).lx(lx);
+    trace.cmp(true).ct(ct).ctMax(RLP_TXN_CT_MAX_INTEGER).lt(lt).lx(lx);
 
-    if (ct == 0) {
-      trace
-          .pCmpRlpUtilsFlag(true)
-          .pCmpInst(RLP_UTILS_INST_INTEGER)
-          .pCmpExoData1(data1())
-          .pCmpExoData2(data2())
-          .pCmpExoData3(!integerIsZero)
-          .pCmpExoData4(!integerHiIsNonZero)
-          .pCmpExoData5(rlpPrefixRequired)
-          .pCmpExoData6(rlpPrefix())
-          .pCmpExoData7(leadingLimbShifted())
-          .pCmpExoData8(leadingLimbBytesize());
-    }
-
-    if (ct == 0) {
-      if (rlpPrefixRequired) {
-        trace.limbConstructed(true).pCmpLimb(rlpPrefix()).pCmpNbytes(1);
-        if (lt && updateTracedValue) {
-          tracedValues.decrementLtSizeBy(1);
-        }
-        if (lx && updateTracedValue) {
-          tracedValues.decrementLxSizeBy(1);
-        }
-      }
-    }
-
-    if (ct == 1) {
-      if (integerHiIsNonZero) {
+    switch (ct) {
+      case 0 -> {
+        // rlpUtils call:
         trace
-            .limbConstructed(true)
-            .pCmpLimb(leadingLimbShifted())
-            .pCmpNbytes(leadingLimbBytesize());
-        if (lt && updateTracedValue) {
-          tracedValues.decrementLtSizeBy(leadingLimbBytesize());
-        }
-        if (lx && updateTracedValue) {
-          tracedValues.decrementLxSizeBy(leadingLimbBytesize());
-        }
-      }
-    }
+            .pCmpRlputilsFlag(true)
+            .pCmpRlputilsInst(RLP_UTILS_INST_INTEGER)
+            .pCmpExoData1(intHi())
+            .pCmpExoData2(intLo())
+            .pCmpExoData3(!integerIsZero)
+            .pCmpExoData4(integerHiIsNonZero)
+            .pCmpExoData5(rlpPrefixRequired)
+            .pCmpExoData6(rlpPrefix())
+            .pCmpExoData7(leadingLimbShifted())
+            .pCmpExoData8(leadingLimbByteSize());
 
-    if (ct == 2) {
-      if (!integerIsZero) {
-        final int limbLoSize = integerHiIsNonZero ? LLARGE : leadingLimbBytesize();
-        trace.limbConstructed(true).pCmpLimb(data2()).pCmpNbytes(limbLoSize);
-        if (lt & updateTracedValue) {
-          tracedValues.decrementLtSizeBy(limbLoSize);
-        }
-        if (lx && updateTracedValue) {
-          tracedValues.decrementLxSizeBy(limbLoSize);
+        if (updateTracedValue && rlpPrefixRequired) {
+          trace.limbConstructed(true).pCmpLimb(rlpPrefix()).pCmpLimbSize(1);
+          if (lt) {
+            tracedValues.decrementLtSizeBy(1);
+          }
+          if (lx) {
+            tracedValues.decrementLxSizeBy(1);
+          }
         }
       }
+
+      case 1 -> {
+        if (integerHiIsNonZero) {
+          trace
+              .limbConstructed(true)
+              .pCmpLimb(leadingLimbShifted())
+              .pCmpLimbSize(leadingLimbByteSize());
+          if (lt && updateTracedValue) {
+            tracedValues.decrementLtSizeBy(leadingLimbByteSize());
+          }
+          if (lx && updateTracedValue) {
+            tracedValues.decrementLxSizeBy(leadingLimbByteSize());
+          }
+        }
+      }
+
+      case 2 -> {
+        if (!integerIsZero) {
+          final int limbLoSize = integerHiIsNonZero ? LLARGE : leadingLimbByteSize();
+          trace
+              .limbConstructed(true)
+              .pCmpLimb(integerHiIsNonZero ? intLo() : leadingLimbShifted())
+              .pCmpLimbSize(limbLoSize);
+          if (lt & updateTracedValue) {
+            tracedValues.decrementLtSizeBy(limbLoSize);
+          }
+          if (lx && updateTracedValue) {
+            tracedValues.decrementLxSizeBy(limbLoSize);
+          }
+        }
+      }
+      default -> throw new IllegalArgumentException("Invalid counter: " + ct);
     }
   }
 
   @Override
   protected void traceMacro(Trace.Rlputils trace) {
     trace
-        .iomf(true)
         .macro(true)
+        .pMacroInst(RLP_UTILS_INST_INTEGER)
         .isInteger(true)
-        .pMacroData1(data1())
-        .pMacroData2(data2())
+        .pMacroData1(intHi())
+        .pMacroData2(intLo())
         .pMacroData3(!integerIsZero)
-        .pMacroData4(!integerHiIsNonZero)
+        .pMacroData4(integerHiIsNonZero)
         .pMacroData5(rlpPrefixRequired)
         .pMacroData6(rlpPrefix())
         .pMacroData7(leadingLimbShifted())
-        .pMacroData8(leadingLimbBytesize())
+        .pMacroData8(leadingLimbByteSize())
         .fillAndValidateRow();
   }
 
   @Override
   protected void traceCompt(Trace.Rlputils trace, short ct) {
-    final boolean lastRow = ct == CT_MAX_INST_INTEGER;
-    trace.iomf(true).macro(true).isInteger(true).ct(ct).ctMax(CT_MAX_INST_INTEGER);
+    final boolean callPower = (ct == CT_MAX_INST_INTEGER) && !integerIsZero;
+    trace.compt(true).isInteger(true).ct(ct).ctMax(CT_MAX_INST_INTEGER);
     // related to WCP call
     wcpCalls.get(ct).traceWcpCall(trace);
     // call to POWER ref table for the last row
     trace
-        .pComptShfFlag(lastRow)
-        .pComptShfArg(lastRow ? 0 : LLARGE - leadingLimbBytesize())
-        .pComptShfPower(lastRow ? power(leadingLimbBytesize()) : Bytes.EMPTY)
+        .pComptShfFlag(callPower)
+        .pComptShfArg(callPower ? LLARGE - leadingLimbByteSize() : 0)
+        .pComptShfPower(callPower ? power(leadingLimbByteSize()) : Bytes.EMPTY)
         .fillAndValidateRow();
   }
 
@@ -170,25 +176,29 @@ public class InstructionInteger extends RlpUtilsCall {
     return 1 + CT_MAX_INST_INTEGER + 1;
   }
 
-  private Bytes data1() {
+  private Bytes intHi() {
     return integer.slice(0, LLARGE);
   }
 
-  private Bytes data2() {
+  private Bytes intLo() {
     return integer.slice(LLARGE, LLARGE);
   }
 
   private Bytes leadingLimbShifted() {
-    return integerHiIsNonZero ? data1() : data2();
+    return Bytes16.rightPad(leadingBytesNotShifted());
   }
 
-  private int leadingLimbBytesize() {
-    return leadingLimbShifted().trimLeadingZeros().size();
+  private int leadingLimbByteSize() {
+    return leadingBytesNotShifted().size();
+  }
+
+  private Bytes leadingBytesNotShifted() {
+    return (integerHiIsNonZero ? intHi() : intLo()).trimLeadingZeros();
   }
 
   private Bytes rlpPrefix() {
     return rlpPrefixRequired
-        ? Bytes16.leftPad(Bytes.of(RLP_PREFIX_INT_SHORT + integer.trimLeadingZeros().size()))
+        ? Bytes16.rightPad(Bytes.of(RLP_PREFIX_INT_SHORT + integer.trimLeadingZeros().size()))
         : Bytes.EMPTY;
   }
 }

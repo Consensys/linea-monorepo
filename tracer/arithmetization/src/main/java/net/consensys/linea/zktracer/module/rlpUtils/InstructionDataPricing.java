@@ -79,46 +79,59 @@ public class InstructionDataPricing extends RlpUtilsCall {
       int ct) {
     trace
         .cmp(true)
-        .pCmpRlpUtilsFlag(true)
-        .pCmpInst(RLP_UTILS_INST_DATA_PRICING)
+        .ct(ct)
+        .pCmpRlputilsFlag(true)
+        .pCmpRlputilsInst(RLP_UTILS_INST_DATA_PRICING)
         .pCmpExoData1(limb)
         .pCmpExoData2(Bytes.ofUnsignedShort(nBytes))
-        .pCmpExoData6(data6())
-        .pCmpExoData7(data7())
-        .pCmpExoData8(data8())
+        .pCmpExoData6(Bytes.ofUnsignedShort(zerosCount()))
+        .pCmpExoData7(Bytes.ofUnsignedShort(nonZerosCount()))
+        .pCmpExoData8(firstByte())
         .limbConstructed(true)
-        .limb(limb)
-        .nBytes(nBytes);
+        .lt(true)
+        .lx(true)
+        .pCmpLimb(limb)
+        .pCmpLimbSize(nBytes);
+
+    if (updateTracedValue) {
+      if (lt) {
+        tracedValues.decrementLtSizeBy(nBytes);
+      }
+      if (lx) {
+        tracedValues.decrementLxSizeBy(nBytes);
+      }
+    }
   }
 
   @Override
   protected void traceMacro(Trace.Rlputils trace) {
     trace
-        .iomf(true)
         .macro(true)
         .pMacroInst(RLP_UTILS_INST_DATA_PRICING)
         .isDataPricing(true)
         .pMacroData1(limb)
         .pMacroData2(Bytes.ofUnsignedShort(nBytes))
-        .pMacroData6(data6())
-        .pMacroData7(data7())
-        .pMacroData8(data8())
+        .pMacroData6(Bytes.ofUnsignedShort(zerosCount()))
+        .pMacroData7(Bytes.ofUnsignedShort(nonZerosCount()))
+        .pMacroData8(firstByte())
+        .zeroCounter(zeros.getFirst())
+        .nonzCounter(nonZeros.getFirst())
         .fillAndValidateRow();
   }
 
   @Override
   protected void traceCompt(Trace.Rlputils trace, short ct) {
     final boolean lastRow = ct == nBytes - 1;
-    trace.iomf(true).compt(true).isDataPricing(true).ct(ct).ctMax(nBytes);
+    trace.compt(true).isDataPricing(true).ct(ct).ctMax(nBytes - 1);
     // related to WCP call
     wcpCalls.get(ct).traceWcpCall(trace);
     // byte decomposition of the limb
     trace
         .pComptLimb(limb)
-        .pComptAcc(limb.slice(0, ct))
+        .pComptAcc(limb.slice(0, ct + 1))
         // call to POWER ref table for the last row
         .pComptShfFlag(lastRow)
-        .pComptShfArg(lastRow ? 0 : LLARGE - nBytes)
+        .pComptShfArg(lastRow ? LLARGE - nBytes : 0)
         .pComptShfPower(lastRow ? power(nBytes) : Bytes.EMPTY)
         // decrementing zeros and nonzeros counter
         .zeroCounter(zeros.get(ct + 1))
@@ -140,17 +153,9 @@ public class InstructionDataPricing extends RlpUtilsCall {
   @Override
   protected int computeLineCount() {
     return 1 + nBytes;
-  }
+  } // 1 for MACRO and nBytes for CMPs
 
-  private Bytes data6() {
-    return Bytes.ofUnsignedShort(zerosCount());
-  }
-
-  private Bytes data7() {
-    return Bytes.ofUnsignedShort(nonZerosCount());
-  }
-
-  private byte data8() {
+  private byte firstByte() {
     return limb.get(0);
   }
 

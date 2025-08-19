@@ -34,8 +34,6 @@ public class GenericTracedValue {
   private final boolean type4;
   private int rlpLtByteSize;
   private int rlpLxByteSize;
-  private int indexLx = 0;
-  private int indexLt = 0;
 
   public GenericTracedValue(TransactionProcessingMetadata tx) {
     this.tx = tx;
@@ -53,11 +51,9 @@ public class GenericTracedValue {
 
   public void decrementLtSizeBy(int size) {
     rlpLtByteSize -= size;
-    indexLt += 1;
   }
 
   public void decrementLxSizeBy(int size) {
     rlpLxByteSize -= size;
-    indexLx += 1;
   }
 }

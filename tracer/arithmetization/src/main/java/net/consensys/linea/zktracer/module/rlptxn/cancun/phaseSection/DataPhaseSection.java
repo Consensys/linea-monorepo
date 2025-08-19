@@ -39,12 +39,13 @@ public class DataPhaseSection extends PhaseSection {
 
     final InstructionByteStringPrefix prefixCall =
         new InstructionByteStringPrefix(
-            data.size(), data.isEmpty() ? (byte) 0x00 : data.get(0), true);
+            data.size(), data.isEmpty() ? (byte) 0x00 : data.get(0), false);
     prefix = (InstructionByteStringPrefix) rlpUtils.call(prefixCall);
 
     final int dataSize = data.size();
     final int numberOfLimbs = (dataSize + LLARGEMO) / LLARGE; // Each limb is 16 bytes
-    final int nBytesLastLimb = dataSize % LLARGE;
+    final int remaining = dataSize % LLARGE;
+    final int nBytesLastLimb = remaining == 0 ? LLARGE : remaining;
 
     limbs = new ArrayList<>(numberOfLimbs);
 
@@ -62,24 +63,23 @@ public class DataPhaseSection extends PhaseSection {
   protected void traceComputationsRows(
       Trace.Rlptxn trace, TransactionProcessingMetadata tx, GenericTracedValue tracedValues) {
     // Trace the prefix
-    tracePreValues(trace, tracedValues);
+    traceTransactionConstantValues(trace, tracedValues);
     prefix.traceRlpTxn(trace, tracedValues, true, true, true, 0);
-    trace
-        .pCmpIsPrefix(true)
-        .pCmpTmp1(tx.numberOfZeroBytesInPayload())
-        .pCmpTmp2(tx.numberOfNonZeroBytesInPayload())
-        .phaseEnd(limbs.isEmpty());
+    trace.pCmpAux1(tx.numberOfZeroBytesInPayload()).pCmpAux2(tx.numberOfNonZeroBytesInPayload());
     tracePostValues(trace, tracedValues);
 
-    // trace the limb
+    // trace the limbs
     int zeros = tx.numberOfZeroBytesInPayload();
     int nonZeros = tx.numberOfNonZeroBytesInPayload();
-    for (int ct = 0; ct < limbs.size(); ct++) {
-      tracePreValues(trace, tracedValues);
-      limbs.get(ct).traceRlpTxn(trace, tracedValues, true, true, true, ct);
-      zeros -= limbs.get(ct).zerosCount();
-      nonZeros -= limbs.get(ct).nonZerosCount();
-      trace.pCmpTmp1(zeros).pCmpTmp2(nonZeros).phaseEnd(ct == limbs.size() - 1);
+    final short ctMax = (short) (limbs.size() - 1);
+    for (int ct = 0; ct <= ctMax; ct++) {
+      final InstructionDataPricing currentLimb = limbs.get(ct);
+      traceTransactionConstantValues(trace, tracedValues);
+      trace.ctMax(ctMax);
+      currentLimb.traceRlpTxn(trace, tracedValues, true, true, true, ct);
+      zeros -= currentLimb.zerosCount();
+      nonZeros -= currentLimb.nonZerosCount();
+      trace.pCmpAux1(zeros).pCmpAux2(nonZeros);
       tracePostValues(trace, tracedValues);
     }
   }

@@ -109,7 +109,15 @@ public class Conversions {
   }
 
   public static long bytesToLong(final Bytes input) {
-    return input.trimLeadingZeros().toLong();
+    final Bytes trimmedBytes = input.trimLeadingZeros();
+    checkArgument(trimmedBytes.size() <= 8, "Input bytes must be at most 8 bytes long");
+    return trimmedBytes.toLong();
+  }
+
+  public static short bytesToShort(final Bytes input) {
+    final Bytes trimmedBytes = input.trimLeadingZeros();
+    checkArgument(trimmedBytes.size() <= 2, "Input bytes must be at most 2 bytes long");
+    return (short) trimmedBytes.toInt();
   }
 
   public static BigInteger hiPart(final BigInteger input) {

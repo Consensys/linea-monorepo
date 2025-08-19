@@ -21,6 +21,7 @@ import java.util.List;
 
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
+import net.consensys.linea.zktracer.types.Bytes16;
 import org.apache.tuweni.bytes.Bytes;
 
 public class PowerRt implements Module {
@@ -56,7 +57,7 @@ public class PowerRt implements Module {
           .power()
           .iomf(true)
           .exponent(exponent)
-          .power(Bytes.minimalBytes(1).shiftLeft(8 * exponent))
+          .power(Bytes16.leftPad(Bytes.minimalBytes(1)).shiftLeft(8 * exponent))
           .validateRow();
     }
   }

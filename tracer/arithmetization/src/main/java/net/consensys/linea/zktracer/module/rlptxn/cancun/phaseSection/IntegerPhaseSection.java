@@ -58,9 +58,8 @@ public class IntegerPhaseSection extends PhaseSection {
   protected void traceComputationsRows(
       Trace.Rlptxn trace, TransactionProcessingMetadata tx, GenericTracedValue tracedValues) {
     for (int ct = 0; ct <= 2; ct++) {
-      tracePreValues(trace, tracedValues);
-      intCall.traceRlpTxn(trace, tracedValues, true, true, true, ct);
-      trace.phaseEnd(ct == 2);
+      traceTransactionConstantValues(trace, tracedValues);
+      intCall.traceRlpTxn(trace, tracedValues, true, lx, true, ct);
       tracePostValues(trace, tracedValues);
     }
   }
@@ -78,6 +77,11 @@ public class IntegerPhaseSection extends PhaseSection {
         .isY(entry == Y)
         .isR(entry == R)
         .isS(entry == S);
+  }
+
+  @Override
+  protected void traceLtLx(Trace.Rlptxn trace) {
+    trace.lt(true).lx(lx);
   }
 
   @Override

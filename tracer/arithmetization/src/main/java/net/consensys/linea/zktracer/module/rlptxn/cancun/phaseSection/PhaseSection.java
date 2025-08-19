@@ -34,11 +34,11 @@ public abstract class PhaseSection {
 
   private void traceTransactionRow(
       Trace.Rlptxn trace, TransactionProcessingMetadata tx, GenericTracedValue tracedValues) {
-    tracePreValues(trace, tracedValues);
+    traceTransactionConstantValues(trace, tracedValues);
+    traceLtLx(trace);
     trace
         .txn(true)
         .pTxnTxType(tx.type())
-        .pTxnIsDeployment(tx.isDeployment())
         .pTxnChainId(tx.chainId())
         .pTxnNonce(Bytes.ofUnsignedLong(tx.getBesuTransaction().getNonce()))
         .pTxnGasPrice(tx.gasPrice())
@@ -52,7 +52,6 @@ public abstract class PhaseSection {
                 ? Bytes.EMPTY
                 : tx.getBesuTransaction().getTo().get().slice(4, LLARGE))
         .pTxnValue(bigIntegerToBytes(tx.getBesuTransaction().getValue().getAsBigInteger()))
-        .pTxnRequiresEvmExecution(tx.requiresEvmExecution())
         .pTxnNumberOfZeroBytes(tx.numberOfZeroBytesInPayload())
         .pTxnNumberOfNonzeroBytes(tx.numberOfNonZeroBytesInPayload())
         .pTxnNumberOfPrewarmedAddresses(tx.numberOfWarmedAddresses())
@@ -65,26 +64,29 @@ public abstract class PhaseSection {
 
   protected abstract void traceIsPhaseX(Trace.Rlptxn trace);
 
-  public void tracePreValues(Trace.Rlptxn trace, GenericTracedValue tracedValues) {
+  protected void traceLtLx(Trace.Rlptxn trace) {
+    trace.lt(true).lx(true);
+  }
+
+  public void traceTransactionConstantValues(Trace.Rlptxn trace, GenericTracedValue tracedValues) {
     traceIsPhaseX(trace);
     trace
-        .userTxnNumber(tracedValues.tx().getUserTransactionNumber())
-        .indexLt(tracedValues.indexLt())
-        .indexLx(tracedValues.indexLx())
         .codeFragmentIndex(tracedValues.tx().getCodeFragmentIndex())
         .type0(tracedValues.type0())
         .type1(tracedValues.type1())
         .type2(tracedValues.type2())
-        .type3(tracedValues.type3())
-        .type4(tracedValues.type4())
+        // .type3(tracedValues.type3())
+        // .type4(tracedValues.type4())
         .replayProtection(tracedValues.tx().replayProtection())
-        .yParity(tracedValues.tx().yParity());
+        .yParity(tracedValues.tx().yParity())
+        .requiresEvmExecution(tracedValues.tx().requiresEvmExecution())
+        .isDeployment(tracedValues.tx().isDeployment());
   }
 
   public void tracePostValues(Trace.Rlptxn trace, GenericTracedValue tracedValues) {
     trace
-        .rlpLtBytesize(tracedValues.rlpLtByteSize())
-        .rlpLxBytesize(tracedValues.rlpLxByteSize())
+        .ltByteSizeCountdown(tracedValues.rlpLtByteSize())
+        .lxByteSizeCountdown(tracedValues.rlpLxByteSize())
         .fillAndValidateRow();
   }
 
