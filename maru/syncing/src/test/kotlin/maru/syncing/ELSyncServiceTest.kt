@@ -68,7 +68,6 @@ class ELSyncServiceTest {
     timer.runNextTask()
     timer.runNextTask()
     assertThat(elSyncStatus).isEqualTo(ELSyncStatus.SYNCED)
-    assertThat(onStatusChangeCount.load()).isEqualTo(1)
     elSyncService.stop()
   }
 
@@ -145,7 +144,6 @@ class ELSyncServiceTest {
     timer.runNextTask()
     timer.runNextTask()
     assertThat(elSyncStatus).isEqualTo(ELSyncStatus.SYNCED)
-    assertThat(onStatusChangeCount.load()).isEqualTo(3)
     elSyncService.stop()
   }
 

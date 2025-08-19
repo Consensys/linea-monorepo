@@ -19,14 +19,12 @@ import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
 import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreatorFactory
 import org.hyperledger.besu.consensus.qbft.core.types.QbftFinalState
-import org.hyperledger.besu.consensus.qbft.core.types.QbftValidatorProvider
 import org.hyperledger.besu.cryptoservices.NodeKey
 import org.hyperledger.besu.datatypes.Address
 
 class QbftFinalStateAdapter(
   private val localAddress: Address,
   private val nodeKey: NodeKey,
-  private val validatorProvider: QbftValidatorProvider,
   private val proposerSelector: ProposerSelector,
   private val validatorMulticaster: ValidatorMulticaster,
   private val roundTimer: RoundTimer,

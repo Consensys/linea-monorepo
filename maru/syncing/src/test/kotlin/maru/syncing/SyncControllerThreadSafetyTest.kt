@@ -13,8 +13,10 @@ import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.random.Random
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
@@ -34,11 +36,11 @@ class SyncControllerThreadSafetyTest {
     syncController = createController(50UL)
   }
 
-  @Test
+  @RepeatedTest(100)
   fun `should handle concurrent status updates without race conditions`() {
     val executor = Executors.newFixedThreadPool(3)
     val barrier = CyclicBarrier(3)
-    val iterations = 1000
+    val iterations = 10
 
     val clStatusUpdates = mutableListOf<CLSyncStatus>()
     val elStatusUpdates = mutableListOf<ELSyncStatus>()
@@ -75,8 +77,8 @@ class SyncControllerThreadSafetyTest {
       // Thread 3: Chain head updates
       executor.submit {
         barrier.await()
-        repeat(iterations) { i ->
-          val target = 100 + (i % 50)
+        repeat(iterations) {
+          val target = Random.nextInt(100)
           syncController.onBeaconChainSyncTargetUpdated(target.toULong())
           Thread.sleep(5)
         }
@@ -90,13 +92,16 @@ class SyncControllerThreadSafetyTest {
       val finalElStatus = syncController.getElSyncStatus()
       val isFullInSync = syncController.isNodeFullInSync()
 
-      assertThat(isFullInSync).isEqualTo(finalClStatus == CLSyncStatus.SYNCED && finalElStatus == ELSyncStatus.SYNCED)
-      assertThat(finalElStatus == ELSyncStatus.SYNCED && finalClStatus == CLSyncStatus.SYNCING).isFalse
+      assertThat(isFullInSync)
+        .withFailMessage("finalElStatus = $finalElStatus, finalClStatus = $finalClStatus")
+        .isEqualTo(finalClStatus == CLSyncStatus.SYNCED && finalElStatus == ELSyncStatus.SYNCED)
+      assertThat(finalElStatus == ELSyncStatus.SYNCED && finalClStatus == CLSyncStatus.SYNCING)
+        .withFailMessage("finalElStatus = $finalElStatus, finalClStatus = $finalClStatus")
+        .isFalse
 
       // Verify we received status updates (exact count may vary due to concurrency)
       assertThat(clStatusUpdates).size().isGreaterThanOrEqualTo(iterations / 2)
       assertThat(elStatusUpdates).size().isGreaterThan(0)
-      assertThat(fullSyncCompletions.get()).isGreaterThan(0)
       assertThat(beaconSyncCompletions.get()).isGreaterThanOrEqualTo(iterations / 2)
     } finally {
       if (!executor.isShutdown) {

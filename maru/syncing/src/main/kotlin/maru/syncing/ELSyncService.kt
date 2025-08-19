@@ -73,7 +73,6 @@ class ELSyncService(
   private val log = LogManager.getLogger(this.javaClass)
 
   private var poller: Timer? = null
-  private var currentELSyncStatus: ELSyncStatus? = null
   private var currentElSyncTarget: ElBlockInfo? = null
 
   private fun pollTask() {
@@ -94,10 +93,7 @@ class ELSyncService(
 
     if (currentElSyncTarget!!.blockNumber == GENESIS_EXECUTION_PAYLOAD.blockNumber) {
       val newELSyncStatus = ELSyncStatus.SYNCED
-      if (currentELSyncStatus != newELSyncStatus) {
-        currentELSyncStatus = newELSyncStatus
-        onStatusChange(newELSyncStatus)
-      }
+      onStatusChange(newELSyncStatus)
       return
     }
 
@@ -133,10 +129,7 @@ class ELSyncService(
         else -> throw IllegalStateException("Unexpected payload status: ${fcuResponse.payloadStatus.status}")
       }
 
-    if (currentELSyncStatus != newELSyncStatus) {
-      currentELSyncStatus = newELSyncStatus
-      onStatusChange(newELSyncStatus)
-    }
+    onStatusChange(newELSyncStatus)
   }
 
   override fun start() {
@@ -167,7 +160,6 @@ class ELSyncService(
       }
       poller?.cancel()
       poller = null
-      currentELSyncStatus = null
     }
   }
 }
