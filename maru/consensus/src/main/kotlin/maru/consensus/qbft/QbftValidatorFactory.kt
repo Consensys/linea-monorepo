@@ -153,7 +153,6 @@ class QbftValidatorFactory(
       QbftFinalStateAdapter(
         localAddress = localAddress,
         nodeKey = nodeKey,
-        validatorProvider = besuValidatorProvider,
         proposerSelector = qbftProposerSelector,
         validatorMulticaster = validatorMulticaster,
         roundTimer = roundTimer,
