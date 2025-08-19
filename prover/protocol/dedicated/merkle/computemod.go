@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -453,7 +454,8 @@ func (cm *ComputeMod) colZeroAtInactive(col ifaces.Column, name string) {
 // roots and leaves
 func (cm *ComputeMod) assign(
 	run *wizard.ProverRuntime,
-	leaves, pos smartvectors.SmartVector,
+	leaves [8]smartvectors.SmartVector,
+	pos smartvectors.SmartVector,
 ) {
 
 	// Function responsible for post-padding with zeroes
@@ -471,15 +473,15 @@ func (cm *ComputeMod) assign(
 
 	// List of columns to assign
 	var (
-		roots    = make([]field.Element, numActiveRows)
-		curr     = make([]field.Element, numActiveRows)
+		roots    = make([][8]field.Element, numActiveRows)
+		curr     = make([][8]field.Element, numActiveRows)
 		proof    = cm.Cols.Proof.GetColAssignment(run)
 		posbit   = make([]field.Element, numActiveRows)
 		posacc   = make([]field.Element, numActiveRows)
-		left     = make([]field.Element, numActiveRows)
-		right    = make([]field.Element, numActiveRows)
-		interm   = make([]field.Element, numActiveRows)
-		nodehash = make([]field.Element, numActiveRows)
+		left     = make([][8]field.Element, numActiveRows)
+		right    = make([][8]field.Element, numActiveRows)
+		interm   = make([][8]field.Element, numActiveRows)
+		nodehash = make([][8]field.Element, numActiveRows)
 		// optional columns coming from the Accumulator module
 		useNextMerkleProof = func() smartvectors.SmartVector {
 			if cm.WithOptProofReuseCheck {
@@ -532,17 +534,19 @@ func (cm *ComputeMod) assign(
 		for proofNo := start; proofNo < stop; proofNo++ {
 
 			// placeholder for the root of the current proof
-			var root field.Element
+			var root [8]field.Element
 
 			// recall that we fill the trace bottom up for every proof
 			for level := 0; level < cm.Depth; level++ {
 				row := (proofNo+1)*cm.Depth - level - 1
 
 				// assign curr
-				if level == 0 {
-					curr[row] = leaves.Get(proofNo)
-				} else {
-					curr[row] = nodehash[row+1]
+				for i := 0; i < 8; i++ {
+					if level == 0 {
+						curr[row][i] = leaves[i].Get(proofNo)
+					} else {
+						curr[row][i] = nodehash[row+1][i]
+					}
 				}
 
 				// Assign posbit
@@ -561,9 +565,10 @@ func (cm *ComputeMod) assign(
 					utils.Panic("not a bit")
 				}
 
-				// And run the mimc compression function
-				interm[row] = mimc.BlockCompression(field.Zero(), left[row])
-				nodehash[row] = mimc.BlockCompression(interm[row], right[row])
+				// And run the poseidon2 compression function
+				var zeroBlock [8]field.Element
+				interm[row] = poseidon2.Poseidon2BlockCompression(zeroBlock, zeroBlock)
+				nodehash[row] = poseidon2.Poseidon2BlockCompression(interm[row], right[row])
 			}
 
 			root = nodehash[proofNo*cm.Depth]

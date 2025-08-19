@@ -29,9 +29,9 @@ type ResultMod struct {
 	Depth int
 
 	// Leaf contains the alleged leaves
-	Leaf ifaces.Column
+	Leaf [8]ifaces.Column
 	// Roots contains the Merkle roots
-	Roots ifaces.Column
+	Roots [8]ifaces.Column
 	// Pos contains the positions of the alleged leaves
 	Pos ifaces.Column
 	// Use for looking up and selecting only the

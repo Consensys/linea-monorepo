@@ -24,9 +24,11 @@ func MerkleProofCheck(
 	// column representing the proofs. If the number
 	// of proof is a non-power of two, roots, leaves and pos
 	// should be padded by zeros.
-	proofs, roots, leaves, pos ifaces.Column,
+	roots, leaves [8]ifaces.Column,
+
+	proofs, pos ifaces.Column,
 ) {
-	merkleProofCheck(comp, name, depth, numProofs, proofs, roots, leaves, pos, nil, nil, nil, false)
+	merkleProofCheck(comp, name, depth, numProofs, roots, leaves, proofs, pos, nil, nil, nil, false)
 }
 
 // The merkle proof check function with the reuse merkle proof check feature, used in the
@@ -42,19 +44,24 @@ func MerkleProofCheckWithReuse(
 	// column representing the proofs. If the number
 	// of proof is a non-power of two, all columns are padded
 	// by zeros to the right so that the length becomes the next power of two.
-	proofs, roots, leaves, pos, UseNextMerkleProof, IsActive, counter ifaces.Column,
+	roots, leaves [8]ifaces.Column,
+	proofs, pos, UseNextMerkleProof, IsActive, counter ifaces.Column,
 ) {
-	merkleProofCheck(comp, name, depth, numProofs, proofs, roots, leaves, pos, UseNextMerkleProof, IsActive, counter, true)
+	merkleProofCheck(comp, name, depth, numProofs, roots, leaves, proofs, pos, UseNextMerkleProof, IsActive, counter, true)
 }
 
 type MerkleProofProverAction struct {
 	Cm     *ComputeMod
-	Leaves ifaces.Column
+	Leaves [8]ifaces.Column
 	Pos    ifaces.Column
 }
 
 func (a *MerkleProofProverAction) Run(run *wizard.ProverRuntime) {
-	leaves := a.Leaves.GetColAssignment(run)
+	var leaves [8]ifaces.ColAssignment
+	for i := range a.Leaves {
+		leaves[i] = a.Leaves[i].GetColAssignment(run)
+
+	}
 	pos := a.Pos.GetColAssignment(run)
 	a.Cm.assign(run, leaves, pos)
 }
@@ -69,13 +76,18 @@ func merkleProofCheck(
 	// column representing the proofs. If the number
 	// of proof is a non-power of two, all columns are padded
 	// by zeros to the right so that the length becomes the next power of two.
-	proofs, roots, leaves, pos, useNextMerkleProof, isActiveAccumulator, counter ifaces.Column,
+	roots, leaves [8]ifaces.Column,
+	proofs, pos, useNextMerkleProof, isActiveAccumulator, counter ifaces.Column,
 	// variable indicating whether we want to check if the contiguous Merkle
 	// proofs are from the same tree
 	useNextProof bool,
 ) {
 
-	round := column.MaxRound(proofs, roots, leaves, pos)
+	var allColumns []ifaces.Column
+	allColumns = append(allColumns, proofs, pos)
+	allColumns = append(allColumns, leaves[:]...)
+	allColumns = append(allColumns, roots[:]...)
+	round := column.MaxRound(allColumns...)
 	// define the compute module
 	cm := ComputeMod{}
 	cm.Cols.Proof = proofs
@@ -97,11 +109,17 @@ func merkleProofCheck(
 	rm.Define(comp, round, name, numProofs, depth, useNextMerkleProof, isActiveAccumulator, counter)
 
 	// define the lookup relation
+
+	included := []ifaces.Column{rm.IsActive}
+	included = append(included, rm.Leaf[:]...)
+	included = append(included, rm.Pos)
+	included = append(included, rm.Roots[:]...)
+
 	comp.InsertInclusion(
 		round,
 		ifaces.QueryIDf("MERKLE_MODULE_LOOKUP_%v", name),
 		[]ifaces.Column{cm.Cols.NewProof.Natural, cm.Cols.Curr, cm.Cols.PosAcc, cm.Cols.Root},
-		[]ifaces.Column{rm.IsActive, rm.Leaf, rm.Pos, rm.Roots},
+		included,
 	)
 
 	// define the optional lookup relation for columns coming from the accumulator module
