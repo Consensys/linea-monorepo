@@ -13,6 +13,7 @@ import java.net.URI
 import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import linea.domain.BlockParameter
 import linea.domain.RetryConfig
 import linea.kotlin.decodeHex
 import org.assertj.core.api.Assertions.assertThat
@@ -281,7 +282,7 @@ class HopliteFriendlinessTest {
     val configToml =
       """
       allow-empty-blocks = true
-      $rawConfigToml
+      $emptyFollowersConfigToml
       """.trimIndent()
     val config = parseConfig<MaruConfigDtoToml>(configToml)
 
@@ -294,7 +295,7 @@ class HopliteFriendlinessTest {
           qbft = qbftOptions,
           p2p = p2pConfig,
           payloadValidator = payloadValidator,
-          followerEngineApis = mapOf("follower1" to follower1, "follower2" to follower2),
+          followerEngineApis = null,
           observability = ObservabilityOptions(port = 9090u),
           api = ApiConfig(port = 8080u),
           syncing = syncingConfig,
@@ -314,7 +315,81 @@ class HopliteFriendlinessTest {
               ethApiEndpoint = ethApiEndpoint,
             ),
           qbftOptions = qbftOptions.toDomain(),
-          followers = followersConfig,
+          followers = emptyFollowersConfig,
+          observabilityOptions = ObservabilityOptions(port = 9090u),
+          apiConfig = ApiConfig(port = 8080u),
+          syncing = syncingConfig,
+        ),
+      )
+  }
+
+  @Test
+  fun `should parse config with linea settings`() {
+    val contractAddress = "0xB218f8A4Bc926cF1cA7b3423c154a0D627Bdb7E5"
+    val l1EthApi = "http://ethereum-mainnet"
+    val l1PollingInterval = 6.seconds
+    val l1HighestBlockTag = "latest"
+    val configToml =
+      """
+      $emptyFollowersConfigToml
+
+      [linea]
+      contract-address = "$contractAddress"
+      l1-eth-api = { endpoint = "$l1EthApi" }
+      l1-polling-interval = "6 seconds"
+      l1-highest-block-tag = "$l1HighestBlockTag"
+      """.trimIndent()
+    val l1EthApiEndpoint =
+      ApiEndpointDto(
+        endpoint = URI.create("http://ethereum-mainnet").toURL(),
+      )
+    val contractAddressBytes = contractAddress.decodeHex()
+    val expectedTomlConfig =
+      LineaConfigDtoToml(
+        contractAddress = contractAddressBytes,
+        l1EthApi = l1EthApiEndpoint,
+        l1PollingInterval,
+        l1HighestBlockTag = l1HighestBlockTag,
+      )
+    val expectedLineaConfig =
+      LineaConfig(
+        contractAddress = contractAddressBytes,
+        l1EthApi = l1EthApiEndpoint.domainFriendly(),
+        l1PollingInterval = l1PollingInterval,
+        l1HighestBlockTag = BlockParameter.Tag.LATEST,
+      )
+    val config = parseConfig<MaruConfigDtoToml>(configToml)
+
+    assertThat(config)
+      .isEqualTo(
+        MaruConfigDtoToml(
+          linea = expectedTomlConfig,
+          protocolTransitionPollingInterval = protocolTransitionPollingInterval,
+          persistence = persistence,
+          qbft = qbftOptions,
+          p2p = p2pConfig,
+          payloadValidator = payloadValidator,
+          observability = ObservabilityOptions(port = 9090u),
+          api = ApiConfig(port = 8080u),
+          syncing = syncingConfig,
+          followerEngineApis = null,
+        ),
+      )
+
+    assertThat(config.domainFriendly())
+      .isEqualTo(
+        MaruConfig(
+          linea = expectedLineaConfig,
+          protocolTransitionPollingInterval = protocolTransitionPollingInterval,
+          persistence = persistence,
+          p2pConfig = p2pConfig,
+          validatorElNode =
+            ValidatorElNode(
+              engineApiEndpoint = engineApiEndpoint,
+              ethApiEndpoint = ethApiEndpoint,
+            ),
+          qbftOptions = qbftOptions.toDomain(),
+          followers = emptyFollowersConfig,
           observabilityOptions = ObservabilityOptions(port = 9090u),
           apiConfig = ApiConfig(port = 8080u),
           syncing = syncingConfig,
