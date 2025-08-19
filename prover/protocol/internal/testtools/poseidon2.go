@@ -192,10 +192,10 @@ func (m *Poseidon2Testcase) Assign(run *wizard.ProverRuntime) {
 			newStatesWindow := make([][8]field.Element, len(blocksWindow))
 			var rotatedNewStatesWindow [8][]field.Element
 
-			newStatesPadding := poseidon2.BlockCompressionMekle(oldStatesPadding, blocksPadding)
+			newStatesPadding := poseidon2.Poseidon2BlockCompression(oldStatesPadding, blocksPadding)
 
 			for k := range blocksWindow {
-				newStatesWindow[k] = poseidon2.BlockCompressionMekle(
+				newStatesWindow[k] = poseidon2.Poseidon2BlockCompression(
 					oldStatesWindow[k],
 					blocksWindow[k],
 				)

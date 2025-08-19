@@ -20,11 +20,20 @@ func NewPoseidon2() hash.Hash {
 	return poseidon2.NewMerkleDamgardHasher()
 }
 
-// TODO@yao Sponge and Merkle
+// Poseidon2Sponge returns a Poseidon2 hash of an array of field elements
+func Poseidon2Sponge(x []field.Element) (newState [blockSize]field.Element) {
+	var state, xBlock [blockSize]field.Element
 
-// BlockCompressionMekle applies the Poseidon2 block compression function to a given block
+	for i := 0; i < len(x); i++ {
+		xBlock[blockSize-1] = x[i]
+		state = Poseidon2BlockCompression(state, xBlock)
+	}
+	return state
+}
+
+// Poseidon2BlockCompression applies the Poseidon2 block compression function to a given block
 // over a given state. This what is run under the hood by the Poseidon2 hash function
-func BlockCompressionMekle(oldState, block [blockSize]field.Element) (newState [blockSize]field.Element) {
+func Poseidon2BlockCompression(oldState, block [blockSize]field.Element) (newState [blockSize]field.Element) {
 	res := vortex.Hash{}
 	var x [2 * blockSize]field.Element
 	copy(x[:], oldState[:])

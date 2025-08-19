@@ -167,6 +167,7 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []field.Octuplet
 
 			for i := 0; i < chunkSize; i++ {
 				fbytes := colHashes[startChunk+i].Bytes()
+				// Write one Element (4 bytes) at a time
 				hasher.Write(fbytes[:])
 			}
 
@@ -209,6 +210,7 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 			for row := 0; row < numRows; row++ {
 				x := v[row].Get(col)
 				xBytes := x.Bytes()
+				// Write one Element (4 bytes) at a time
 				hasher.Write(xBytes[:])
 			}
 

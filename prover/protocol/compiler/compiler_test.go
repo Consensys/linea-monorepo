@@ -5,15 +5,16 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/internal/testtools"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/sirupsen/logrus"
 )
 
 var totalSuite = []func(comp *wizard.CompiledIOP){
-	mimc.CompileMiMC,
+	poseidon2.CompilePoseidon2,
+
 	plonkinwizard.Compile,
 	compiler.Arcane(
 		compiler.WithDebugMode("debug"),
@@ -43,7 +44,8 @@ func TestCompilers(t *testing.T) {
 	runTestList(t, "permutation", testtools.ListOfPermutationTestcaseNegative)
 	runTestList(t, "projection", testtools.ListOfProjectionTestcasePositive)
 	runTestList(t, "projection", testtools.ListOfProjectionTestcaseNegative)
-	runTestList(t, "mimc", testtools.ListOfMiMCTestcase)
+	// runTestList(t, "mimc", testtools.ListOfMiMCTestcase)
+	runTestList(t, "poseidon2", testtools.ListOfPoseidon2Testcase)
 
 }
 

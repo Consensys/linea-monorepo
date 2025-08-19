@@ -55,6 +55,7 @@ func hashLR(config *Config, nodeL, nodeR types.Bytes32) types.Bytes32 {
 	var d types.Bytes32
 	if config.HashFunc != nil {
 		hasher := config.HashFunc()
+		// Write one Octuplet (32 bytes) at a time
 		nodeL.WriteTo(hasher)
 		nodeR.WriteTo(hasher)
 		d = types.AsBytes32(hasher.Sum(nil))
