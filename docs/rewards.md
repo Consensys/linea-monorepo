@@ -14,7 +14,7 @@ For example, if 1000 tokens are to be distributed over the next 10 days, the rat
 tokens are then distributed to accounts based on their relative weights in the system.
 
 In other words, if Alice and Bob both own exactly 50% of the total stake in the system (including MP), they would each
-receive 50% of the rewards, or 5 tokens per day in this example.
+receive 50% of the rewards, or 50 tokens per day in this example.
 
 This is a rather trivial example. In practice we'll run into much more complex scenarios. Alice and Bob might have the
 same stake, but participated in the system for different amounts of time. Or, one of them might have unstaked some
@@ -90,7 +90,7 @@ We consider any real-time rewards "pending" rewards until the account interacts 
 are calculated as:
 
 $$
-\text{Pending Rewards} = \text{Account Weight} \times \left( \text{Current Reward Index} \minus \text{Account's Last Reward Index} \right)
+\text{Pending Rewards} = \text{Account Weight} \times \left( \text{Current Reward Index} - \text{Account's Last Reward Index} \right)
 $$
 
 The indicies are a new concept we'll cover next.
@@ -104,9 +104,10 @@ approach ensures fair distribution even as accounts enter and exit the system or
 
 The global reward index represents the cumulative rewards per unit of weight since the system's inception. It increases
 whenever new rewards are added to the system:
-$
+
+$$
 \text{New Index} = \text{Current Index} + \frac{\text{New Rewards} \times \text{Scale Factor}}{\text{Total System Weight}}
-$
+$$
 
 Where:
 
