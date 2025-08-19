@@ -55,7 +55,8 @@ public class TxWarmTest extends TracerTestBase {
       ToyAccount.builder()
           .balance(Wei.fromEth(1))
           .address(Address.fromHexString("0xdead000000000000000000000000000beef"))
-          .code(BytecodeCompiler.newProgram(testInfo).push(1).push(0).op(OpCode.ADD).compile())
+          .code(Bytes.fromHexString("0x6001600001"))
+          // eq: BytecodeCompiler.newProgram(testInfo).push(1).push(0).op(OpCode.ADD).compile()
           .build();
 
   @Test

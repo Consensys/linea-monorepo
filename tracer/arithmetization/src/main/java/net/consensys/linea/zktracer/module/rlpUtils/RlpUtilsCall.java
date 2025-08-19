@@ -24,6 +24,7 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.rlptxn.cancun.GenericTracedValue;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
+import net.consensys.linea.zktracer.types.Bytes16;
 import org.apache.tuweni.bytes.Bytes;
 
 public abstract class RlpUtilsCall extends ModuleOperation {
@@ -55,7 +56,7 @@ public abstract class RlpUtilsCall extends ModuleOperation {
   protected abstract void traceCompt(Trace.Rlputils trace, short ct);
 
   protected Bytes power(int exponentComplementary) {
-    return Bytes.minimalBytes(1).shiftLeft(8 * (LLARGE - exponentComplementary));
+    return Bytes16.leftPad(Bytes.minimalBytes(1)).shiftLeft(8 * (LLARGE - exponentComplementary));
   }
 
   protected abstract short instruction();

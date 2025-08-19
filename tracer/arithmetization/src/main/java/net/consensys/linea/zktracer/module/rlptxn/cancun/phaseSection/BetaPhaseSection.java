@@ -50,9 +50,8 @@ public class BetaPhaseSection extends PhaseSection {
       Trace.Rlptxn trace, TransactionProcessingMetadata tx, GenericTracedValue tracedValues) {
     // trace rlpTw
     for (int ct = 0; ct <= 2; ct++) {
-      tracePreValues(trace, tracedValues);
+      traceTransactionConstantValues(trace, tracedValues);
       rlpTw.traceRlpTxn(trace, tracedValues, true, false, true, ct);
-      trace.phaseEnd(!tx.replayProtection() && ct == 2);
       tracePostValues(trace, tracedValues);
     }
 
@@ -60,23 +59,28 @@ public class BetaPhaseSection extends PhaseSection {
     if (tx.replayProtection()) {
       // trace rlpBeta
       for (int ct = 0; ct <= 2; ct++) {
-        tracePreValues(trace, tracedValues);
+        traceTransactionConstantValues(trace, tracedValues);
         rlpBeta.traceRlpTxn(trace, tracedValues, false, true, true, ct);
         tracePostValues(trace, tracedValues);
       }
 
       // trace rlp().rlp()
-      tracePreValues(trace, tracedValues);
+      traceTransactionConstantValues(trace, tracedValues);
       trace
+          .cmp(true)
           .lx(true)
           .limbConstructed(true)
           .pCmpLimb(
               Bytes16.rightPad(Bytes.concatenate(BYTES_PREFIX_SHORT_INT, BYTES_PREFIX_SHORT_INT)))
-          .pCmpNbytes(2)
-          .phaseEnd(true);
+          .pCmpLimbSize(2);
       tracedValues.decrementLxSizeBy(2);
       tracePostValues(trace, tracedValues);
     }
+  }
+
+  @Override
+  protected void traceLtLx(Trace.Rlptxn trace) {
+    // nothing to trace
   }
 
   @Override

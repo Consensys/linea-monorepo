@@ -27,18 +27,24 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
+import net.consensys.linea.zktracer.types.Bytes16;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.hyperledger.besu.datatypes.Address;
 
 @RequiredArgsConstructor
 @Accessors(fluent = true)
 public class RlpUtils implements OperationSetModule<RlpUtilsCall> {
-  public static final Bytes BYTES_PREFIX_SHORT_INT = Bytes.of(RLP_PREFIX_INT_SHORT);
-  public static final Bytes BYTES_PREFIX_LONG_INT = Bytes.of(RLP_PREFIX_INT_LONG);
-  public static final Bytes BYTES_PREFIX_SHORT_LIST = Bytes.of(RLP_PREFIX_LIST_SHORT);
+  public static final Bytes BYTES_PREFIX_SHORT_INT = Bytes.minimalBytes(RLP_PREFIX_INT_SHORT);
+  public static final Bytes BYTES_PREFIX_LONG_INT = Bytes.minimalBytes(RLP_PREFIX_INT_LONG);
+  public static final Bytes BYTES_PREFIX_SHORT_LIST = Bytes.minimalBytes(RLP_PREFIX_LIST_SHORT);
   public static final Bytes BYTES_PREFIX_LONG_LIST =
-      Bytes.ofUnsignedLong(RLP_PREFIX_LIST_LONG).trimLeadingZeros();
+      Bytes.minimalBytes(RLP_PREFIX_LIST_LONG).trimLeadingZeros();
   public static final Bytes32 BYTES32_PREFIX_SHORT_INT = Bytes32.leftPad(BYTES_PREFIX_SHORT_INT);
+  public static final Bytes16 BYTES16_PREFIX_ADDRESS =
+      Bytes16.rightPad(Bytes.minimalBytes(RLP_PREFIX_INT_SHORT + Address.SIZE));
+  public static final Bytes16 BYTES16_PREFIX_BYTES32 =
+      Bytes16.rightPad(Bytes.minimalBytes(RLP_PREFIX_INT_SHORT + WORD_SIZE));
 
   private final Wcp wcp;
 

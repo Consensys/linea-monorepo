@@ -64,35 +64,25 @@ public class GlobalPrefixPhaseSection extends PhaseSection {
   protected void traceComputationsRows(
       Trace.Rlptxn trace, TransactionProcessingMetadata tx, GenericTracedValue tracedValues) {
     // First Computation Row: byte type prefix
-    tracePreValues(trace, tracedValues);
+    traceTransactionConstantValues(trace, tracedValues);
     trace
+        .cmp(true)
         .lt(true)
         .lx(true)
         .limbConstructed(!tracedValues.type0())
         .pCmpLimb(
             tracedValues.type0() ? Bytes.EMPTY : Bytes16.rightPad(Bytes.minimalBytes(tx.type())))
-        .pCmpNbytes(tracedValues.type0() ? 0 : 1);
-    if (!tracedValues.type0()) {
-      tracedValues.indexLt(1);
-      tracedValues.indexLx(1);
-    }
+        .pCmpLimbSize(tracedValues.type0() ? 0 : 1);
     tracePostValues(trace, tracedValues);
 
     // Second Computation Row: RLP Prefix for Lt
-    tracePreValues(trace, tracedValues);
+    traceTransactionConstantValues(trace, tracedValues);
     ltByteSizeCall.traceRlpTxn(trace, tracedValues, true, false, false, 0);
-    if (ltByteSizeCall.rlpPrefixRequired()) {
-      tracedValues.indexLt(tracedValues.indexLt() + 1);
-    }
     tracePostValues(trace, tracedValues);
 
     // Third Computation Row: RLP Prefix for Lx
-    tracePreValues(trace, tracedValues);
+    traceTransactionConstantValues(trace, tracedValues);
     lxByteSizeCall.traceRlpTxn(trace, tracedValues, false, true, false, 0);
-    if (lxByteSizeCall.rlpPrefixRequired()) {
-      tracedValues.indexLx(tracedValues.indexLt() + 1);
-    }
-    trace.phaseEnd(true);
     tracePostValues(trace, tracedValues);
   }
 
