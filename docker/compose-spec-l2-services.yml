@@ -5,7 +5,7 @@ services:
   sequencer:
     hostname: sequencer
     container_name: sequencer
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v2.1-rc16.2-20250521134911-f6cb0f2}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v3.1-rc8-20250814093645-ddebbf0}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     ports:
       - "8545:8545"
@@ -34,9 +34,10 @@ services:
     volumes:
       - ./config/linea-besu-sequencer/sequencer.config.toml:/var/lib/besu/sequencer.config.toml:ro
       - ./config/linea-besu-sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
-      - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
       - ./config/linea-besu-sequencer/key:/var/lib/besu/key:ro
       - ./config/linea-besu-sequencer/log4j.xml:/var/lib/besu/log4j.xml:ro
+      - ./config/linea-besu-sequencer/tls-files:/var/lib/besu/tls-files/
+      - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
       - ../config/common/traces-limits-v2.toml:/var/lib/besu/traces-limits.toml:ro
     networks:
       l1network:
@@ -79,7 +80,7 @@ services:
   l2-node-besu:
     hostname: l2-node-besu
     container_name: l2-node-besu
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v2.1-rc16.2-20250521134911-f6cb0f2}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v3.1-rc8-20250814093645-ddebbf0}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
@@ -119,11 +120,55 @@ services:
       l1network:
       linea:
         ipv4_address: 11.11.11.119
+  
+  l2-node-besu-follower:
+    hostname: l2-node-besu-follower
+    container_name: l2-node-besu-follower
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v3.1-rc8-20250814093645-ddebbf0}
+    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
+    depends_on:
+      sequencer:
+        condition: service_healthy
+    ports:
+      - "9245:8545"
+      - "9246:8546"
+      - "9250:8550"
+      - "9251:8548"
+      - "30310:30303"
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
+      interval: 1s
+      timeout: 1s
+      retries: 120
+    restart: "no"
+    environment:
+      LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+    entrypoint: besu-untuned
+    command:
+      - --config-file=/var/lib/besu/l2-node-besu.config.toml
+      - --genesis-file=/var/lib/besu/genesis.json
+      - --plugin-linea-l1-polling-interval=PT12S
+      - --plugin-linea-l1-smart-contract-address=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
+      - --plugin-linea-l1-rpc-endpoint=http://l1-el-node:8545
+      - --plugin-linea-rejected-tx-endpoint=http://transaction-exclusion-api:8080
+      - --plugin-linea-node-type=RPC
+      - --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
+    volumes:
+      - ./config/l2-node-besu/l2-node-besu-config.toml:/var/lib/besu/l2-node-besu.config.toml:ro
+      - ./config/linea-besu-sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
+      - ./config/l2-node-besu/log4j.xml:/var/lib/besu/log4j.xml:ro
+      - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
+      - ../config/common/traces-limits-v2.toml:/var/lib/besu/traces-limits.toml:ro
+      - ../tmp/local/:/data/:rw
+    networks:
+      l1network:
+      linea:
+        ipv4_address: 11.11.11.120
 
   traces-node:
     hostname: traces-node
     container_name: traces-node
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v2.1-rc16.2-20250521134911-f6cb0f2}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v3.1-rc8-20250814093645-ddebbf0}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
@@ -141,7 +186,7 @@ services:
       retries: 120
     restart: "no"
     environment:
-      JAVA_OPTS: -Xmx1g -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
+      JAVA_OPTS: -Xmx1g
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
     entrypoint: besu-untuned
     command:
@@ -201,7 +246,7 @@ services:
   coordinator:
     hostname: coordinator
     container_name: coordinator
-    image: consensys/linea-coordinator:${COORDINATOR_TAG:-a9bc257}
+    image: consensys/linea-coordinator:${COORDINATOR_TAG:-418d5c9}
     profiles: [ "l2", "debug" ]
     depends_on:
       postgres:
@@ -231,6 +276,7 @@ services:
       - ../config/common/gas-price-cap-time-of-day-multipliers.toml:/opt/consensys/linea/coordinator/config/gas-price-cap-time-of-day-multipliers.toml:ro
       - ../config/coordinator/vertx-options.json:/var/lib/coordinator/vertx-options.json:ro
       - ../config/coordinator/log4j2-dev.xml:/var/lib/coordinator/log4j2-dev.xml:ro
+      - ../config/coordinator/tls-files/:/tls-files/
       - ../tmp/local/:/data/
     networks:
       l1network:
@@ -241,16 +287,21 @@ services:
   web3signer:
     hostname: web3signer
     container_name: web3signer
-    image: consensys/web3signer:23.3-jdk17
+    image: consensys/web3signer:25.2
     profiles: [ "l2", "debug", "external-to-monorepo" ]
     ports:
       - "9000:9000"
     command:
-      - --key-store-path=/keyFiles/
+      - --key-store-path=/key-files/
+      - --tls-keystore-file=/tls-files/web3signer-keystore.p12
+      - --tls-keystore-password-file=/tls-files/web3signer-keystore-password.txt
+      - --tls-known-clients-file=/tls-files/known-clients.txt
       - --http-host-allowlist=*
       - eth1
+      - --chain-id=1337 #required but no impact as only used for proxying eth_sendTransaction
     volumes:
-      - ./web3signer/keyFiles/:/keyFiles/
+      - ./web3signer/key-files/:/key-files/
+      - ./web3signer/tls-files/:/tls-files/
     networks:
       - linea
 
@@ -285,7 +336,7 @@ services:
       - l1network
 
   zkbesu-shomei:
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v2.1-rc16.2-20250521134911-f6cb0f2}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v3.1-rc8-20250814093645-ddebbf0}
     hostname: zkbesu-shomei
     container_name: zkbesu-shomei
     profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
@@ -310,7 +361,7 @@ services:
         ipv4_address: 11.11.11.113
     environment:
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
-      JAVA_OPTS: -Xmx512m -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
+      JAVA_OPTS: -Xmx512m
     entrypoint:
       - /bin/bash
       - -c
@@ -502,7 +553,7 @@ services:
         ipv4_address: 10.10.10.205
 
   zkbesu-shomei-sr:
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v2.1-rc16.2-20250521134911-f6cb0f2}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v3.1-rc8-20250814093645-ddebbf0}
     hostname: zkbesu-shomei-sr
     container_name: zkbesu-shomei-sr
     profiles: [ "external-to-monorepo", "staterecovery" ]

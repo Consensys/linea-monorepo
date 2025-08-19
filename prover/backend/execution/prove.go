@@ -29,7 +29,7 @@ func Prove(cfg *config.Config, req *Request, large bool) (*Response, error) {
 
 	// This instructs the [exit] package to actually exit when [OnLimitOverflow]
 	// or [OnSatisfiedConstraints] are called.
-	exit.ActivateExitOnIssue()
+	exit.SetIssueHandlingMode(exit.ExitAlways)
 
 	var resp Response
 
@@ -105,12 +105,12 @@ func mustProveAndPass(
 
 		srsProvider, err := circuits.NewSRSStore(cfg.PathForSRS())
 		if err != nil {
-			utils.Panic(err.Error())
+			panic(err.Error())
 		}
 
 		setup, err := dummy.MakeUnsafeSetup(srsProvider, circuits.MockCircuitIDExecution, ecc.BLS12_377.ScalarField())
 		if err != nil {
-			utils.Panic(err.Error())
+			panic(err.Error())
 		}
 
 		return dummy.MakeProof(&setup, w.FuncInp.SumAsField(), circuits.MockCircuitIDExecution), setup.VerifyingKeyDigest()
@@ -151,8 +151,7 @@ func mustProveAndPass(
 
 		logrus.Info("Sanity-checking the inner-proof")
 		if err := fullZkEvm.VerifyInner(proof); err != nil {
-			logrus.Errorf("The sanity-check of the inner-proof did not pass: %v", err)
-			exit.OnUnsatisfiedConstraints()
+			exit.OnUnsatisfiedConstraints(fmt.Errorf("the sanity-check of the inner-proof did not pass: %v", err))
 		}
 
 		// wait for setup to be loaded

@@ -1,4 +1,9 @@
 name: Reusable run e2e tests
+
+permissions:
+  contents: read
+  actions: read
+
 on:
   workflow_call:
     inputs:
@@ -25,6 +30,11 @@ on:
         required: false
         type: boolean
         default: true
+      e2e-tests-with-besu-fleet:
+        description: Run end to end tests with Besu fleet nodes
+        required: false
+        type: boolean
+        default: false
     outputs:
       tests_outcome:
         value: ${{ jobs.run-e2e-tests.outputs.tests_outcome }}
@@ -49,7 +59,7 @@ jobs:
     steps:
       - name: Setup upterm session
         if: ${{ inputs.e2e-tests-with-ssh }}
-        uses: lhotari/action-upterm@v1
+        uses: lhotari/action-upterm@b0357f23233f5ea6d58947c0c402e0631bab7334 #v1
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup nodejs environment
@@ -58,7 +68,7 @@ jobs:
           pnpm-install-options: '-F contracts -F e2e --frozen-lockfile --prefer-offline'
       - name: Login to Docker Hub
         if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
-        uses: docker/login-action@v3
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 #v3.4.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -83,7 +93,8 @@ jobs:
           echo "BESU_PACKAGE_TAG=${{ env.BESU_PACKAGE_TAG }}"
           echo "$(grep expected-traces-api-version config/coordinator/coordinator-config-v2.toml)"
       - name: Spin up fresh environment with besu tracing with retry
-        uses: nick-fields/retry@v3
+        if: ${{ !inputs.e2e-tests-with-besu-fleet }}
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 #v3.0.2
         with:
           max_attempts: 10
           retry_on: error
@@ -91,6 +102,18 @@ jobs:
           timeout_minutes: 10
           command: |
             make start-env-with-tracing-v2-ci CLEAN_PREVIOUS_ENV=false
+          on_retry_command: |
+            make clean-environment
+      - name: Spin up fresh environment with besu tracing and fleet nodes with retry
+        if: ${{ inputs.e2e-tests-with-besu-fleet }}
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 #v3.0.2
+        with:
+          max_attempts: 10
+          retry_on: error
+          retry_wait_seconds: 30
+          timeout_minutes: 10
+          command: |
+            make start-env-with-tracing-v2-fleet-ci CLEAN_PREVIOUS_ENV=false
           on_retry_command: |
             make clean-environment
       - name: List docker containers/images
@@ -101,9 +124,15 @@ jobs:
           docker container ls -a
       - name: Run e2e tests
         id: run_e2e_tests
-        timeout-minutes: 4
+        timeout-minutes: 6
         run: |
           pnpm run -F e2e test:e2e:local
+      - name: Run extra e2e tests for Besu fleet nodes
+        id: run_e2e_tests_fleet
+        if: ${{ inputs.e2e-tests-with-besu-fleet }}
+        timeout-minutes: 4
+        run: |
+          pnpm run -F e2e test:e2e:fleet:local
       - name: Show e2e tests result
         if: always()
         run: |
@@ -120,10 +149,14 @@ jobs:
           docker logs zkbesu-shomei --since 1h &>> docker_logs/zkbesu-shomei.txt || true
           docker logs shomei-frontend --since 1h &>> docker_logs/shomei-frontend.txt || true
           docker logs postman --since 1h &>> docker_logs/postman.txt || true
-          docker logs traces-node-v2 --since 1h &>> docker_logs/traces-node-v2.txt || true
+          docker logs traces-node --since 1h &>> docker_logs/traces-node.txt || true
           docker logs l2-node-besu --since 1h &>> docker_logs/l2-node-besu.txt || true
           docker logs transaction-exclusion-api --since 1h &>> docker_logs/transaction-exclusion-api.txt || true
           docker logs sequencer --since 1h &>> docker_logs/sequencer.txt || true
+          docker logs l1-el-node --since 1h &>> docker_logs/l1-el-node.txt || true
+          if [[ "${{ inputs.e2e-tests-with-besu-fleet }}" == "true" ]]; then
+            docker logs l2-node-besu-follower --since 1h &>> docker_logs/l2-node-besu-follower.txt || true
+          fi
       - name: Archive debug logs
         uses: actions/upload-artifact@v4
         if: ${{ failure() && inputs.e2e-tests-logs-dump }}

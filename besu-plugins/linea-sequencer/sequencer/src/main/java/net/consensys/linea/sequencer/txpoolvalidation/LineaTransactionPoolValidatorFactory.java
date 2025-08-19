@@ -11,7 +11,6 @@ package net.consensys.linea.sequencer.txpoolvalidation;
 
 import java.util.Arrays;
 import java.util.Optional;
-import java.util.Set;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
@@ -22,10 +21,10 @@ import net.consensys.linea.sequencer.txpoolvalidation.validators.CalldataValidat
 import net.consensys.linea.sequencer.txpoolvalidation.validators.GasLimitValidator;
 import net.consensys.linea.sequencer.txpoolvalidation.validators.ProfitabilityValidator;
 import net.consensys.linea.sequencer.txpoolvalidation.validators.SimulationValidator;
-import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TransactionSimulationService;
+import org.hyperledger.besu.plugin.services.WorldStateService;
 import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidator;
 import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidatorFactory;
 
@@ -34,10 +33,10 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
 
   private final BesuConfiguration besuConfiguration;
   private final BlockchainService blockchainService;
+  private final WorldStateService worldStateService;
   private final TransactionSimulationService transactionSimulationService;
   private final LineaTransactionPoolValidatorConfiguration txPoolValidatorConf;
   private final LineaProfitabilityConfiguration profitabilityConf;
-  private final Set<Address> denied;
   private final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration;
   private final LineaTracerConfiguration tracerConfiguration;
   private final Optional<JsonRpcManager> rejectedTxJsonRpcManager;
@@ -45,19 +44,19 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
   public LineaTransactionPoolValidatorFactory(
       final BesuConfiguration besuConfiguration,
       final BlockchainService blockchainService,
+      final WorldStateService worldStateService,
       final TransactionSimulationService transactionSimulationService,
       final LineaTransactionPoolValidatorConfiguration txPoolValidatorConf,
       final LineaProfitabilityConfiguration profitabilityConf,
-      final Set<Address> deniedAddresses,
       final LineaTracerConfiguration tracerConfiguration,
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
       final Optional<JsonRpcManager> rejectedTxJsonRpcManager) {
     this.besuConfiguration = besuConfiguration;
     this.blockchainService = blockchainService;
+    this.worldStateService = worldStateService;
     this.transactionSimulationService = transactionSimulationService;
     this.txPoolValidatorConf = txPoolValidatorConf;
     this.profitabilityConf = profitabilityConf;
-    this.denied = deniedAddresses;
     this.tracerConfiguration = tracerConfiguration;
     this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
@@ -73,12 +72,13 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
   public PluginTransactionPoolValidator createTransactionValidator() {
     final var validators =
         new PluginTransactionPoolValidator[] {
-          new AllowedAddressValidator(denied),
-          new GasLimitValidator(txPoolValidatorConf),
-          new CalldataValidator(txPoolValidatorConf),
+          new AllowedAddressValidator(txPoolValidatorConf.deniedAddresses()),
+          new GasLimitValidator(txPoolValidatorConf.maxTxGasLimit()),
+          new CalldataValidator(txPoolValidatorConf.maxTxCalldataSize()),
           new ProfitabilityValidator(besuConfiguration, blockchainService, profitabilityConf),
           new SimulationValidator(
               blockchainService,
+              worldStateService,
               transactionSimulationService,
               txPoolValidatorConf,
               tracerConfiguration,

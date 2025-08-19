@@ -1,11 +1,17 @@
 name: Maven Release all JVM-Libs
+
+permissions:
+  contents: write
+  actions: read
+  packages: write
+
 on:
   workflow_dispatch:
     inputs:
       version:
         required: false
         type: string
-        description: 'Release version: e.g "1.0.0". Defaults to 0.0.<YYYYmmDDHHMMSS> if not provided'
+        description: 'Release version: e.g "1.0.0". Defaults to 0.0.1-v<YYYYmmDDHHMMSS> if not provided'
 
 jobs:
   release:
@@ -17,7 +23,7 @@ jobs:
           TIMESTAMP=`date -u +'%Y%m%d%H%M%S'`
           INPUT_VERSION=${{ github.event.inputs.version }}
           if [ -z "$INPUT_VERSION" ]; then
-            VERSION="0.0.$TIMESTAMP"
+            VERSION="0.0.1-v$TIMESTAMP"
           else
             VERSION=$INPUT_VERSION
           fi
@@ -33,7 +39,7 @@ jobs:
           fetch-depth: 1
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b #v4.5.0
         with:
           java-version: '21'
           distribution: 'temurin'

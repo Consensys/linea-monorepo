@@ -2,8 +2,11 @@ package arithmetization
 
 import (
 	"fmt"
+	"math/big"
 	"reflect"
 	"strings"
+
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 
 	"github.com/consensys/go-corset/pkg/air"
 	"github.com/consensys/go-corset/pkg/schema"
@@ -12,6 +15,7 @@ import (
 	"github.com/consensys/go-corset/pkg/trace"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -82,7 +86,8 @@ func (s *schemaScanner) scanColumns() {
 		}
 
 		// #nosec G115 -- this bound will not overflow
-		s.Comp.InsertCommit(0, ifaces.ColID(name), size)
+		col := s.Comp.InsertCommit(0, ifaces.ColID(name), size)
+		pragmas.MarkLeftPadded(col)
 	}
 }
 
@@ -109,9 +114,9 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 	case air.LookupConstraint:
 
 		var (
-			numCol   = len(cs.Sources)
-			cSources = cs.Sources
-			cTargets = cs.Targets
+			numCol   = len(cs.Source.Terms)
+			cSources = cs.Source.Terms
+			cTargets = cs.Target.Terms
 			wSources = make([]ifaces.Column, numCol)
 			wTargets = make([]ifaces.Column, numCol)
 		)
@@ -122,7 +127,28 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 			wTargets[i] = s.compColumnByCorsetID(cTargets[i].Column)
 		}
 
-		s.Comp.InsertInclusion(0, ifaces.QueryID(name), wTargets, wSources)
+		if !cs.Source.HasSelector() && !cs.Target.HasSelector() {
+			s.Comp.InsertInclusion(0, ifaces.QueryID(name), wTargets, wSources)
+		}
+		if cs.Source.HasSelector() && !cs.Target.HasSelector() {
+			selectorSourceRaw := cs.Source.Selector.Unwrap()
+			selectorSource := s.compColumnByCorsetID(selectorSourceRaw.Column)
+			s.Comp.InsertInclusionConditionalOnIncluded(0, ifaces.QueryID(name), wTargets, wSources, selectorSource)
+		}
+		if !cs.Source.HasSelector() && cs.Target.HasSelector() {
+			selectorTargetRaw := cs.Target.Selector.Unwrap()
+			selectorTarget := s.compColumnByCorsetID(selectorTargetRaw.Column)
+			s.Comp.InsertInclusionConditionalOnIncluding(0, ifaces.QueryID(name), wTargets, wSources, selectorTarget)
+		}
+		if cs.Source.HasSelector() && cs.Target.HasSelector() {
+			selectorSourceRaw := cs.Source.Selector.Unwrap()
+			selectorSource := s.compColumnByCorsetID(selectorSourceRaw.Column)
+
+			selectorTargetRaw := cs.Target.Selector.Unwrap()
+			selectorTarget := s.compColumnByCorsetID(selectorTargetRaw.Column)
+
+			s.Comp.InsertInclusionDoubleConditional(0, ifaces.QueryID(name), wTargets, wSources, selectorTarget, selectorSource)
+		}
 
 	case *constraint.PermutationConstraint:
 
@@ -183,8 +209,8 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 		s.Comp.InsertLocal(0, ifaces.QueryID(name), wExpr)
 
 	case *constraint.RangeConstraint[*air.ColumnAccess]:
-
-		bound := cs.Bound
+		bound := field.NewElement(2)
+		bound.Exp(bound, big.NewInt(int64(cs.Bitwidth)))
 		// #nosec G115 -- this bound will not overflow
 		s.Comp.InsertRange(0, ifaces.QueryID(name), s.compColumnByCorsetID(cs.Expr.Column), int(bound.Uint64()))
 

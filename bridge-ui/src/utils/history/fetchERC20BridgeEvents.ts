@@ -1,6 +1,10 @@
-import { Address, decodeAbiParameters } from "viem";
+import { Address, Client, decodeAbiParameters } from "viem";
 import { getPublicClient } from "@wagmi/core";
-import { LineaSDK } from "@consensys/linea-sdk";
+import {
+  getL1ToL2MessageStatus,
+  getL2ToL1MessageStatus,
+  getMessagesByTransactionHash,
+} from "@consensys/linea-sdk-viem";
 import { config as wagmiConfig } from "@/lib/wagmi";
 import {
   BridgeTransaction,
@@ -16,10 +20,10 @@ import { HistoryActionsForCompleteTxCaching } from "@/stores";
 import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
 import { isBlockTooOld } from "./isBlockTooOld";
 import { isUndefined, isUndefinedOrNull } from "@/utils";
+import { config } from "@/config";
 
 export async function fetchERC20BridgeEvents(
   historyStoreActions: HistoryActionsForCompleteTxCaching,
-  lineaSDK: LineaSDK,
   address: Address,
   fromChain: Chain,
   toChain: Chain,
@@ -27,18 +31,17 @@ export async function fetchERC20BridgeEvents(
 ): Promise<BridgeTransaction[]> {
   const transactionsMap = new Map<string, BridgeTransaction>();
 
-  const client = getPublicClient(wagmiConfig, {
+  const originLayerClient = getPublicClient(wagmiConfig, {
     chainId: fromChain.id,
   });
 
-  const [originContract, destinationContract] =
-    fromChain.layer === ChainLayer.L1
-      ? [lineaSDK.getL1Contract(), lineaSDK.getL2Contract()]
-      : [lineaSDK.getL2Contract(), lineaSDK.getL1Contract()];
+  const destinationLayerClient = getPublicClient(wagmiConfig, {
+    chainId: toChain.id,
+  });
 
   const tokenBridgeAddress = fromChain.tokenBridgeAddress;
   const [erc20LogsForSender, erc20LogsForRecipient] = await Promise.all([
-    client.getLogs({
+    originLayerClient.getLogs({
       event: BridgingInitiatedV2ABIEvent,
       fromBlock: "earliest",
       toBlock: "latest",
@@ -47,7 +50,7 @@ export async function fetchERC20BridgeEvents(
         sender: address,
       },
     }),
-    client.getLogs({
+    originLayerClient.getLogs({
       event: BridgingInitiatedV2ABIEvent,
       fromBlock: "earliest",
       toBlock: "latest",
@@ -80,15 +83,38 @@ export async function fetchERC20BridgeEvents(
         return;
       }
 
-      const block = await client.getBlock({ blockNumber: log.blockNumber, includeTransactions: false });
+      const block = await originLayerClient.getBlock({ blockNumber: log.blockNumber, includeTransactions: false });
       if (isBlockTooOld(block)) return;
 
-      const message = await originContract.getMessagesByTransactionHash(transactionHash);
+      const message = await getMessagesByTransactionHash(originLayerClient as Client, {
+        transactionHash,
+        ...(config.e2eTestMode
+          ? { messageServiceAddress: config.chains[fromChain.id].messageServiceAddress as Address }
+          : {}),
+      });
+
       if (isUndefinedOrNull(message) || message.length === 0) {
         return;
       }
 
-      const messageStatus = await destinationContract.getMessageStatus(message[0].messageHash);
+      const messageStatus =
+        fromChain.layer === ChainLayer.L1
+          ? await getL1ToL2MessageStatus(destinationLayerClient as Client, {
+              messageHash: message[0].messageHash,
+              ...(config.e2eTestMode
+                ? { l2MessageServiceAddress: config.chains[toChain.id].messageServiceAddress as Address }
+                : {}),
+            })
+          : await getL2ToL1MessageStatus(destinationLayerClient as Client, {
+              messageHash: message[0].messageHash,
+              l2Client: originLayerClient as Client,
+              ...(config.e2eTestMode
+                ? {
+                    lineaRollupAddress: config.chains[toChain.id].messageServiceAddress as Address,
+                    l2MessageServiceAddress: config.chains[fromChain.id].messageServiceAddress as Address,
+                  }
+                : {}),
+            });
 
       const token = tokens.find(
         (token) =>
@@ -110,11 +136,11 @@ export async function fetchERC20BridgeEvents(
         timestamp: block.timestamp,
         bridgingTx: log.transactionHash,
         message: {
-          from: message[0].messageSender as Address,
-          to: message[0].destination as Address,
+          from: message[0].from as Address,
+          to: message[0].to as Address,
           fee: message[0].fee,
           value: message[0].value,
-          nonce: message[0].messageNonce,
+          nonce: message[0].nonce,
           calldata: message[0].calldata,
           messageHash: message[0].messageHash,
           amountSent: amount,

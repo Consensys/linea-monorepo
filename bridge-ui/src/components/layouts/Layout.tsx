@@ -1,60 +1,64 @@
 "use client";
 
+import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
 import { usePathname } from "next/navigation";
-import { useDynamicContext } from "@/lib/dynamic";
-import Header from "../header";
 import { useInitialiseChain } from "@/hooks";
-import { Theme } from "@/types";
-import Image from "next/image";
+import { LinkBlock } from "@/types";
+import Header from "@/components/header";
+import InternalNav from "@/components/internal-nav";
+import SideBar from "@/components/side-bar";
+import SideBarMobile from "@/components/side-bar-mobile";
+import PageBack from "@/components/page-back";
 import styles from "./layout.module.scss";
-import InternalNav from "../internal-nav";
+import { isHomePage } from "@/utils";
 
-export function Layout({ children }: { children: React.ReactNode }) {
+export function Layout({ children, navData }: { children: React.ReactNode; navData: LinkBlock[] }) {
   const { sdkHasLoaded } = useDynamicContext();
   useInitialiseChain();
 
   const pathname = usePathname();
 
   if (!sdkHasLoaded) {
-    return <CommonLayout pathname={pathname}>{children}</CommonLayout>;
+    return (
+      <CommonLayout navData={navData} pathname={pathname}>
+        {children}
+      </CommonLayout>
+    );
   }
 
-  return <CommonLayout pathname={pathname}>{children}</CommonLayout>;
+  return (
+    <CommonLayout navData={navData} pathname={pathname}>
+      {children}
+    </CommonLayout>
+  );
 }
 
-function CommonLayout({ children, pathname }: { children: React.ReactNode; pathname: string }) {
+function CommonLayout({
+  children,
+  pathname,
+  navData,
+}: {
+  children: React.ReactNode;
+  pathname: string;
+  navData: LinkBlock[];
+}) {
   return (
-    <div className="layout">
-      <div className="container-v2">
-        <Header theme={Theme.navy} />
-        <main>
-          {pathname !== "/faq" && (
-            <div className={styles["content-wrapper"]}>
-              <InternalNav hide={pathname === "/"} />
-            </div>
-          )}
-          {children}
-        </main>
-      </div>
-      <div>
-        <Image
-          className="left-illustration"
-          src={`${process.env.NEXT_PUBLIC_BASE_PATH}/images/illustration/illustration-left.svg`}
-          role="presentation"
-          alt="illustration left"
-          width={300}
-          height={445}
-          priority
-        />
-        <Image
-          className="right-illustration"
-          src={`${process.env.NEXT_PUBLIC_BASE_PATH}/images/illustration/illustration-right.svg`}
-          role="presentation"
-          alt="illustration right"
-          width={610}
-          height={842}
-          priority
-        />
+    <div className={styles.layout}>
+      <div className={styles.container}>
+        <SideBar />
+        <SideBarMobile />
+        <div className={styles.right}>
+          <Header navData={navData} />
+          <main>
+            {!isHomePage(pathname) && <PageBack />}
+            {pathname !== "/faq" && (
+              <div className={styles["content-wrapper"]}>
+                <InternalNav hide={isHomePage(pathname)} />
+              </div>
+            )}
+            {children}
+          </main>
+        </div>
       </div>
     </div>
   );

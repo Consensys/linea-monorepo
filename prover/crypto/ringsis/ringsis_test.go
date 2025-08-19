@@ -44,7 +44,21 @@ var testCasesKey = []struct {
 		Size: 43,
 		Params: Params{
 			LogTwoBound:  8,
-			LogTwoDegree: 6,
+			LogTwoDegree: 1,
+		},
+	},
+	{
+		Size: 23,
+		Params: Params{
+			LogTwoBound:  8,
+			LogTwoDegree: 1,
+		},
+	},
+	{
+		Size: 256,
+		Params: Params{
+			LogTwoBound:  8,
+			LogTwoDegree: 1,
 		},
 	},
 }
@@ -93,41 +107,41 @@ func TestHashModXnMinusOne(t *testing.T) {
 		key := GenerateKey(testCasesKey[i].Params, testCase.Size)
 
 		t.Run(fmt.Sprintf("case-%++v/all-ones", i), func(t *testing.T) {
-			runTest(t, &key, vector.Repeat(field.One(), key.maxNumLimbsHashable()))
+			runTest(t, key, vector.Repeat(field.One(), key.maxNumLimbsHashable()))
 		})
 
 		t.Run(fmt.Sprintf("case-%++v/all-zeroes", i), func(t *testing.T) {
-			runTest(t, &key, vector.Repeat(field.Zero(), key.maxNumLimbsHashable()))
+			runTest(t, key, vector.Repeat(field.Zero(), key.maxNumLimbsHashable()))
 		})
 
 		t.Run(fmt.Sprintf("case-%++v/rand-constant", i), func(t *testing.T) {
 			var r field.Element
 			r.SetRandom()
-			runTest(t, &key, vector.Repeat(r, key.maxNumLimbsHashable()))
+			runTest(t, key, vector.Repeat(r, key.maxNumLimbsHashable()))
 		})
 
 		t.Run(fmt.Sprintf("case-%++v/full-rand", i), func(t *testing.T) {
-			runTest(t, &key, vector.Rand(key.maxNumLimbsHashable()))
+			runTest(t, key, vector.Rand(key.maxNumLimbsHashable()))
 		})
 
 		// ==== passing shorter vectors
 
 		t.Run(fmt.Sprintf("case-%++v/all-ones-shorter", i), func(t *testing.T) {
-			runTest(t, &key, vector.Repeat(field.One(), key.maxNumLimbsHashable()-1))
+			runTest(t, key, vector.Repeat(field.One(), key.maxNumLimbsHashable()-1))
 		})
 
 		t.Run(fmt.Sprintf("case-%++v/all-zeroes-shorter", i), func(t *testing.T) {
-			runTest(t, &key, vector.Repeat(field.Zero(), key.maxNumLimbsHashable()-1))
+			runTest(t, key, vector.Repeat(field.Zero(), key.maxNumLimbsHashable()-1))
 		})
 
 		t.Run(fmt.Sprintf("case-%++v/rand-constant-shorter", i), func(t *testing.T) {
 			var r field.Element
 			r.SetRandom()
-			runTest(t, &key, vector.Repeat(r, key.maxNumLimbsHashable()-1))
+			runTest(t, key, vector.Repeat(r, key.maxNumLimbsHashable()-1))
 		})
 
 		t.Run(fmt.Sprintf("case-%++v/full-rand-shorter", i), func(t *testing.T) {
-			runTest(t, &key, vector.Rand(key.maxNumLimbsHashable()-1))
+			runTest(t, key, vector.Rand(key.maxNumLimbsHashable()-1))
 		})
 	}
 }
@@ -161,7 +175,7 @@ func TestLimbSplit(t *testing.T) {
 			t.Run(
 				fmt.Sprintf("array-#%v-key-#%v", arrID, keyID),
 				func(t *testing.T) {
-					coreTest(t, arr, key)
+					coreTest(t, arr, *key)
 				},
 			)
 		}
@@ -192,7 +206,7 @@ func TestHashFromLimbs(t *testing.T) {
 		for vecId, tcVec := range testCaseVecs {
 			key := GenerateKey(tcParams.Params, len(tcVec))
 			t.Run(fmt.Sprintf("params-#%v-vec-1%v", pId, vecId), func(t *testing.T) {
-				coreTest(t, &key, tcVec)
+				coreTest(t, key, tcVec)
 			})
 		}
 	}
@@ -261,40 +275,35 @@ func TestTransveralHashFromLimbs(t *testing.T) {
 		},
 	}
 
-	for _, tcKeyParams := range testCasesKey {
+	for pId, tcKeyParams := range testCasesKey {
 		for _, tcDim := range testCaseDimensions {
-			t.Logf("params-%v-numRow=%v-nCols=%v", tcKeyParams.Size, tcDim.NumRows, tcDim.NumCols)
-			// t.Run(
-			// 	fmt.Sprintf("params-%v-numRow=%v-nCols=%v", pId, tcDim.NumRows, tcDim.NumCols),
-			// 	func(t *testing.T) {
-			assert := require.New(t)
+			t.Run(
+				fmt.Sprintf("params-%v-numRow=%v-nCols=%v", pId, tcDim.NumRows, tcDim.NumCols),
+				func(t *testing.T) {
 
-			key := GenerateKey(tcKeyParams.Params, tcDim.NumRows)
+					key := GenerateKey(tcKeyParams.Params, tcDim.NumRows)
 
-			inputs := make([]smartvectors.SmartVector, 4)
-			for i := range inputs {
-				inputs[i] = smartvectors.Rand(16)
-			}
+					inputs := make([]smartvectors.SmartVector, 4)
+					for i := range inputs {
+						inputs[i] = smartvectors.Rand(16)
+					}
 
-			transposed := make([][]field.Element, 16)
-			for i := range transposed {
-				transposed[i] = make([]fr.Element, 4)
-				for j := range transposed[i] {
-					transposed[i][j] = inputs[j].Get(i)
-				}
-			}
+					transposed := make([][]field.Element, 16)
+					for i := range transposed {
+						transposed[i] = make([]fr.Element, 4)
+						for j := range transposed[i] {
+							transposed[i][j] = inputs[j].Get(i)
+						}
+					}
 
-			res := key.TransversalHash(inputs)
-			for i := range transposed {
-				baseline := key.Hash(transposed[i])
-				for j := range baseline {
-					assert.Equal(baseline[j], res[i*key.OutputSize()+j], "transversal hash does not match col hash at %d %d", i, j)
-				}
-				// assert.Equal(baseline, res[i*key.OutputSize():(i+1)*key.OutputSize()])
-			}
-			// t.FailNow()
-			// 	},
-			// )
+					res := key.TransversalHash(inputs)
+					for i := range transposed {
+						baseline := key.Hash(transposed[i])
+						assert.Equal(t, baseline, res[i*key.OutputSize():(i+1)*key.OutputSize()])
+					}
+
+				},
+			)
 		}
 	}
 }
