@@ -10,11 +10,6 @@ import (
 )
 
 func TestSerdeFE(t *testing.T) {
-	newFieldElement := func(n int64) field.Element {
-		var f field.Element
-		f.SetBigInt(big.NewInt(n))
-		return f
-	}
 
 	// Test cases for single field.Element
 	singleTests := []struct {
@@ -173,5 +168,65 @@ func TestFieldElementLimbMismatch(t *testing.T) {
 		if result[i] != original[i] {
 			t.Errorf("field.Element limb mismatch at [%d]: got %d, want %d", i, result[i], original[i])
 		}
+	}
+}
+func newFieldElement(n int64) field.Element {
+	var f field.Element
+	f.SetBigInt(big.NewInt(n))
+	return f
+}
+
+func BenchmarkSerdeArrayOfFieldElement(b *testing.B) {
+	tests := []struct {
+		name string
+		val  []field.Element
+	}{
+		{"Empty", []field.Element{}},
+		{"Single", []field.Element{newFieldElement(42)}},
+		{"Multiple", []field.Element{
+			newFieldElement(0),
+			newFieldElement(42),
+			newFieldElement(1 << 60),
+			func() field.Element {
+				var f field.Element
+				f.SetOne()
+				f.Neg(&f)
+				return f
+			}(),
+		}},
+		{"LargeArray", func() []field.Element {
+			arr := make([]field.Element, 1000)
+			for i := 0; i < len(arr); i++ {
+				arr[i] = newFieldElement(int64(i * i))
+			}
+			return arr
+		}()},
+		{"RandomElements", func() []field.Element {
+			arr := make([]field.Element, 100)
+			for i := range arr {
+				var f field.Element
+				b := make([]byte, 32)
+				_, _ = rand.Read(b)
+				f.SetBytes(b)
+				arr[i] = f
+			}
+			return arr
+		}()},
+	}
+
+	for _, tt := range tests {
+		b.Run("SerdeArrayOfFieldElement_"+tt.name, func(b *testing.B) {
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				bytes, err := serialization.Serialize(tt.val)
+				if err != nil {
+					b.Fatalf("serialization error error: %v", err)
+				}
+				var result []field.Element
+				if err := serialization.Deserialize(bytes, &result); err != nil {
+					b.Fatalf("deserialize error: %v", err)
+				}
+			}
+		})
 	}
 }

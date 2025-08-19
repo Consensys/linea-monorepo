@@ -183,10 +183,10 @@ func marshalArrayOfFieldElement(_ *Serializer, val reflect.Value) (any, *serdeEr
 func unmarshalArrayOfFieldElement(_ *Deserializer, val any, t reflect.Type) (reflect.Value, *serdeError) {
 
 	var (
-		buffer = bytes.NewReader(val.([]byte))
+		bufferReader = bytes.NewReader(val.([]byte))
 	)
 
-	v, _, err := unsafe.ReadSlice[[]field.Element, field.Element](buffer)
+	v, _, err := unsafe.ReadSlice[[]field.Element](bufferReader)
 	if err != nil {
 		return reflect.Value{}, newSerdeErrorf("could not unmarshal array of field element: %w", err)
 	}
