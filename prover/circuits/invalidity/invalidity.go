@@ -71,7 +71,7 @@ func (c *CircuitInvalidity) Assign(assi AssigningInputs) {
 }
 
 // MakeProof and solve the circuit.
-func (c *CircuitInvalidity) MakeProof(setup circuits.Setup, assi AssigningInputs, FuncInputs public_input.Invalidity) string {
+func (c *CircuitInvalidity) MakeProof(setup circuits.Setup, assi AssigningInputs, FuncInputs *public_input.Invalidity) string {
 
 	switch assi.InvalidityType {
 	case BadNonce:

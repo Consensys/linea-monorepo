@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/config"
-	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -45,13 +44,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 				Transaction:       req.ForcedTransactionPayLoad,
 				InvalidityType:    req.InvalidityTypes,
 			},
-			public_input.Invalidity{
-				TxNumber:            req.ForcedTransactionNumber,
-				FromAddress:         req.FromAddresses,
-				ExpectedBlockHeight: req.ExpectedBlockHeights,
-				StateRootHash:       req.StateRootHash,
-				RollingHashTx:       req.RollingHashTx,
-			})
+			req.FuncInput())
 	}
 
 	rsp := &Response{
