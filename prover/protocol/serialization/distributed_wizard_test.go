@@ -174,7 +174,7 @@ func TestSerdeDWPerf(t *testing.T) {
 
 func BenchmarkSerdeDW(b *testing.B) {
 
-	// b.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	b.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
 	cfg, err := config.NewConfigFromFileUnchecked("/home/ubuntu/linea-monorepo/prover/config/config-sepolia-limitless.toml")
 	if err != nil {
