@@ -10,37 +10,42 @@ package maru.app
 
 import java.time.Clock
 import maru.config.QbftOptions
-import maru.config.ValidatorElNode
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
+import maru.consensus.NewBlockHandler
+import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.ProtocolFactory
+import maru.consensus.SealedBeaconBlockHandlerAdapter
+import maru.consensus.blockimport.FollowerBeaconBlockImporter
+import maru.consensus.blockimport.NewSealedBeaconBlockHandlerMultiplexer
 import maru.consensus.qbft.QbftValidatorFactory
 import maru.consensus.state.FinalizationProvider
 import maru.core.Protocol
 import maru.database.BeaconChain
-import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.p2p.P2PNetwork
-import maru.p2p.SealedBeaconBlockHandler
+import maru.p2p.SealedBeaconBlockBroadcaster
 import maru.syncing.CLSyncStatus
 import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
 import org.hyperledger.besu.plugin.services.MetricsSystem
+import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 
 class QbftProtocolValidatorFactory(
   private val qbftOptions: QbftOptions,
   private val privateKeyBytes: ByteArray,
-  private val validatorElNodeConfig: ValidatorElNode,
+  private val validatorELNodeEngineApiWeb3JClient: Web3JClient,
+  private val followerELNodeEngineApiWeb3JClients: Map<String, Web3JClient>,
   private val metricsSystem: MetricsSystem,
   private val finalizationStateProvider: FinalizationProvider,
   private val beaconChain: BeaconChain,
   private val nextTargetBlockTimestampProvider: NextBlockTimestampProvider,
-  private val newBlockHandler: SealedBeaconBlockHandler<*>,
   private val clock: Clock,
   private val p2pNetwork: P2PNetwork,
   private val metricsFacade: MetricsFacade,
   private val allowEmptyBlocks: Boolean,
   private val syncStatusProvider: SyncStatusProvider,
+  private val metadataCacheUpdaterHandlerEntry: Pair<String, NewBlockHandler<*>>,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     require(forkSpec.configuration is QbftConsensusConfig) {
@@ -51,16 +56,35 @@ class QbftProtocolValidatorFactory(
     }
     val qbftConsensusConfig = forkSpec.configuration as QbftConsensusConfig
 
-    val engineApiExecutionLayerClient =
-      Helpers.buildExecutionEngineClient(
-        validatorElNodeConfig.engineApiEndpoint,
+    val payloadValidatorExecutionLayerManger =
+      Helpers.buildExecutionLayerManager(
+        web3JEngineApiClient = validatorELNodeEngineApiWeb3JClient,
         elFork = qbftConsensusConfig.elFork,
         metricsFacade = metricsFacade,
       )
-    val executionLayerManager =
-      JsonRpcExecutionLayerManager(
-        executionLayerEngineApiClient = engineApiExecutionLayerClient,
+    val elFollowersNewBlockHandlerMap =
+      followerELNodeEngineApiWeb3JClients.mapValues { (followerName, web3JClient) ->
+        val elFollowerExecutionLayerManager =
+          Helpers.buildExecutionLayerManager(
+            web3JEngineApiClient = web3JClient,
+            elFork = qbftConsensusConfig.elFork,
+            metricsFacade = metricsFacade,
+          )
+        FollowerBeaconBlockImporter.create(
+          executionLayerManager = elFollowerExecutionLayerManager,
+          finalizationStateProvider = finalizationStateProvider,
+          importerName = followerName,
+        )
+      }
+    val blockImportHandlers =
+      NewBlockHandlerMultiplexer(elFollowersNewBlockHandlerMap + metadataCacheUpdaterHandlerEntry)
+    val sealedBlockHandlers =
+      mutableMapOf(
+        "beacon block handlers" to SealedBeaconBlockHandlerAdapter(blockImportHandlers),
+        "p2p broadcast sealed beacon block handler" to
+          SealedBeaconBlockBroadcaster(p2pNetwork),
       )
+    val sealedBlockHandlerMultiplexer = NewSealedBeaconBlockHandlerMultiplexer<Unit>(handlersMap = sealedBlockHandlers)
 
     val qbftValidatorFactory =
       QbftValidatorFactory(
@@ -70,8 +94,8 @@ class QbftProtocolValidatorFactory(
         metricsSystem = metricsSystem,
         finalizationStateProvider = finalizationStateProvider,
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
-        newBlockHandler = newBlockHandler,
-        executionLayerManager = executionLayerManager,
+        newBlockHandler = sealedBlockHandlerMultiplexer,
+        executionLayerManager = payloadValidatorExecutionLayerManger,
         clock = clock,
         p2PNetwork = p2pNetwork,
         allowEmptyBlocks = allowEmptyBlocks,

@@ -45,7 +45,6 @@ import maru.crypto.Hashing
 import maru.crypto.Signing
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
-import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockHandler
 import maru.p2p.ValidationResult
@@ -80,7 +79,7 @@ class QbftValidatorFactory(
   private val finalizationStateProvider: FinalizationProvider,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val newBlockHandler: SealedBeaconBlockHandler<*>,
-  private val executionLayerManager: JsonRpcExecutionLayerManager,
+  private val executionLayerManager: ExecutionLayerManager,
   private val clock: Clock,
   private val p2PNetwork: P2PNetwork,
   private val allowEmptyBlocks: Boolean,
