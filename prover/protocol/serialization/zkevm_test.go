@@ -119,6 +119,36 @@ func runSerdeTestPerf(t *testing.T, input any, name string) *profiling.Performan
 	return perfLog
 }
 
+func runSerdeBenchmark(t *testing.B, input any, name string) {
+	// In case the test panics, log the error but do not let the panic
+	// interrupt the test.
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("Panic during serialization/deserialization of %s: %v", name, r)
+			debug.PrintStack()
+		}
+	}()
+
+	if input == nil {
+		t.Error("test input is nil")
+		return
+	}
+
+	var output = reflect.New(reflect.TypeOf(input)).Interface()
+	var b []byte
+	var err error
+
+	b, err = serialization.Serialize(input)
+	if err != nil {
+		t.Fatalf("Error during serialization of %s: %v", name, err)
+	}
+
+	err = serialization.Deserialize(b, output)
+	if err != nil {
+		t.Fatalf("Error during deserialization of %s: %v", name, err)
+	}
+}
+
 func TestSerdeZkEVM(t *testing.T) {
 	runSerdeTest(t, z, "ZkEVM", true, false)
 }

@@ -15,34 +15,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
 
-type distributeTestCase struct {
-	numRow int
-}
-
-func (d distributeTestCase) define(comp *wizard.CompiledIOP) {
-
-	// Define the first module
-	a0 := comp.InsertCommit(0, "a0", d.numRow)
-	b0 := comp.InsertCommit(0, "b0", d.numRow)
-	c0 := comp.InsertCommit(0, "c0", d.numRow)
-
-	// Importantly, the second module must be slightly different than the first
-	// one because else it will create a wierd edge case in the conglomeration:
-	// as we would have two GL modules with the same verifying key and we would
-	// not be able to infer a module from a VK.
-	//
-	// We differentiate the modules by adding a duplicate constraints for GL0
-	a1 := comp.InsertCommit(0, "a1", d.numRow)
-	b1 := comp.InsertCommit(0, "b1", d.numRow)
-	c1 := comp.InsertCommit(0, "c1", d.numRow)
-
-	comp.InsertGlobal(0, "global-0", symbolic.Sub(c0, b0, a0))
-	comp.InsertGlobal(0, "global-duplicate", symbolic.Sub(c0, b0, a0))
-	comp.InsertGlobal(0, "global-1", symbolic.Sub(c1, b1, a1))
-
-	comp.InsertInclusion(0, "inclusion-0", []ifaces.Column{c0, b0, a0}, []ifaces.Column{c1, b1, a1})
-}
-
 // GetDW initializes a distributed wizard configuration using the
 // ZkEVM's compiled IOP and a StandardModuleDiscoverer with preset parameters.
 // The function compiles the necessary segments and produces a conglomerated
@@ -63,28 +35,6 @@ func GetDW(cfg *config.Config) *distributed.DistributedWizard {
 	// These are the slow and expensive operations.
 	dw.CompileSegments().Conglomerate(100)
 	return dw
-}
-
-func GetBasicDW() *distributed.DistributedWizard {
-
-	var (
-		numRow = 1 << 10
-		tc     = distributeTestCase{numRow: numRow}
-		disc   = &distributed.StandardModuleDiscoverer{
-			TargetWeight: 3 * numRow,
-			Predivision:  1,
-		}
-		comp = wizard.Compile(func(build *wizard.Builder) {
-			tc.define(build.CompiledIOP)
-		})
-
-		// This tests the compilation of the compiled-IOP
-		distWizard = distributed.DistributeWizard(comp, disc).
-				CompileSegments().
-				Conglomerate(20)
-	)
-
-	return distWizard
 }
 
 func TestSerdeDW(t *testing.T) {
@@ -222,6 +172,141 @@ func TestSerdeDWPerf(t *testing.T) {
 	}
 }
 
+func BenchmarkSerdeDW(b *testing.B) {
+
+	// b.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+
+	cfg, err := config.NewConfigFromFileUnchecked("/home/ubuntu/linea-monorepo/prover/config/config-sepolia-limitless.toml")
+	if err != nil {
+		b.Fatalf("failed to read config file: %s", err)
+	}
+	dist := GetDW(cfg)
+	b.ResetTimer()
+
+	b.Run("ModuleNames", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			runSerdeBenchmark(b, dist.ModuleNames, "DW.ModuleNames")
+		}
+	})
+
+	for i := range dist.GLs {
+		b.Run(fmt.Sprintf("GLModule-%d", i), func(b *testing.B) {
+			for j := 0; j < b.N; j++ {
+				runSerdeBenchmark(b, dist.GLs[i], fmt.Sprintf("DW.GLModule-%d", i))
+			}
+		})
+	}
+
+	for i := range dist.LPPs {
+		b.Run(fmt.Sprintf("LPPModule-%d", i), func(b *testing.B) {
+			for j := 0; j < b.N; j++ {
+				runSerdeBenchmark(b, dist.LPPs[i], fmt.Sprintf("DW.LPPModule-%d", i))
+			}
+		})
+	}
+
+	b.Run("DefaultModule", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			runSerdeBenchmark(b, dist.DefaultModule, "DW.DefaultModule")
+		}
+	})
+
+	b.Run("Bootstrapper", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			runSerdeBenchmark(b, dist.Bootstrapper, "DW.Bootstrapper")
+		}
+	})
+
+	b.Run("Discoverer", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			runSerdeBenchmark(b, dist.Disc, "DW.Discoverer")
+		}
+	})
+
+	b.Run("CompiledDefault", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			runSerdeBenchmark(b, dist.CompiledDefault, "DW.CompiledDefault")
+		}
+	})
+
+	for i := range dist.CompiledGLs {
+
+		b.Run(fmt.Sprintf("CompiledGL-%v", i), func(b *testing.B) {
+			for j := 0; j < b.N; j++ {
+				runSerdeBenchmark(b, dist.CompiledGLs[i], fmt.Sprintf("DW.CompiledGL-%v", i))
+			}
+		})
+	}
+
+	for i := range dist.CompiledLPPs {
+
+		b.Run(fmt.Sprintf("CompiledLPP-%v", i), func(b *testing.B) {
+			for j := 0; j < b.N; j++ {
+				runSerdeBenchmark(b, dist.CompiledLPPs[i], fmt.Sprintf("DW.CompiledLPP-%v", i))
+			}
+		})
+	}
+
+	// To save memory
+	cong := dist.CompiledConglomeration
+	dist = nil
+	runtime.GC()
+
+	b.Run("CompiledConglomeration", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			runSerdeBenchmark(b, cong, "DW.CompiledConglomeration")
+		}
+	})
+}
+
+type distributeTestCase struct {
+	numRow int
+}
+
+func (d distributeTestCase) define(comp *wizard.CompiledIOP) {
+
+	// Define the first module
+	a0 := comp.InsertCommit(0, "a0", d.numRow)
+	b0 := comp.InsertCommit(0, "b0", d.numRow)
+	c0 := comp.InsertCommit(0, "c0", d.numRow)
+
+	// Importantly, the second module must be slightly different than the first
+	// one because else it will create a wierd edge case in the conglomeration:
+	// as we would have two GL modules with the same verifying key and we would
+	// not be able to infer a module from a VK.
+	//
+	// We differentiate the modules by adding a duplicate constraints for GL0
+	a1 := comp.InsertCommit(0, "a1", d.numRow)
+	b1 := comp.InsertCommit(0, "b1", d.numRow)
+	c1 := comp.InsertCommit(0, "c1", d.numRow)
+
+	comp.InsertGlobal(0, "global-0", symbolic.Sub(c0, b0, a0))
+	comp.InsertGlobal(0, "global-duplicate", symbolic.Sub(c0, b0, a0))
+	comp.InsertGlobal(0, "global-1", symbolic.Sub(c1, b1, a1))
+
+	comp.InsertInclusion(0, "inclusion-0", []ifaces.Column{c0, b0, a0}, []ifaces.Column{c1, b1, a1})
+}
+func GetBasicDW() *distributed.DistributedWizard {
+
+	var (
+		numRow = 1 << 10
+		tc     = distributeTestCase{numRow: numRow}
+		disc   = &distributed.StandardModuleDiscoverer{
+			TargetWeight: 3 * numRow,
+			Predivision:  1,
+		}
+		comp = wizard.Compile(func(build *wizard.Builder) {
+			tc.define(build.CompiledIOP)
+		})
+
+		// This tests the compilation of the compiled-IOP
+		distWizard = distributed.DistributeWizard(comp, disc).
+				CompileSegments().
+				Conglomerate(20)
+	)
+
+	return distWizard
+}
 func TestSerdeDWCong(t *testing.T) {
 
 	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
