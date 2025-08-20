@@ -85,8 +85,16 @@ class LogsSearcherTest {
   @Test
   fun `should return logs within block range with temporary errors`() {
     fakeElClient.setFinalizedBlockTag(450UL)
+    // The search should retry on errors when find logs (all will throw 5 times)
+    // and not to skip retrieving any of the event logs
     fakeElClient.errorBlockNumbersAndThrowTimes(
-      mutableMapOf(201UL to 10U, 301UL to 10U),
+      mutableMapOf(
+        1UL to 5U, // will throw error 5 times when find logs in range 1..100
+        101UL to 5U, // 101..200
+        201UL to 5U, // 201..300
+        301UL to 5U, // 301..400
+        401UL to 5U, // 401..450
+      ),
     )
     val result = searcher.getLogsRollingForward(
       fromBlock = BlockParameter.BlockNumber(1UL),
@@ -104,10 +112,12 @@ class LogsSearcherTest {
   }
 
   @Test
-  fun `should throw exception logs when search timeout`() {
+  fun `should throw exception logs when the search timeout reached`() {
     fakeElClient.setFinalizedBlockTag(450UL)
     fakeElClient.errorBlockNumbersAndThrowTimes(
-      mutableMapOf(301UL to null),
+      mutableMapOf(
+        301UL to null, // will always throw error when find logs in range 301..400
+      ),
     )
     assertThatThrownBy {
       searcher.getLogsRollingForward(

@@ -112,7 +112,7 @@ class EthLogsSearcherImpl(
     val logsCollected: MutableList<EthLog> = CopyOnWriteArrayList()
     val startTime = clock.now()
     val lastSearchedChunk = AtomicReference<ULongRange>(null)
-    var chunk = (0UL..0UL)
+    var chunk: ULongRange? = null
 
     return AsyncRetryer.retry(
       vertx,
@@ -126,7 +126,7 @@ class EthLogsSearcherImpl(
       },
       timeout = searchTimeout,
     ) {
-      if (lastSearchedChunk.get() == null || lastSearchedChunk.get() == chunk) {
+      if (chunk == null || lastSearchedChunk.get() == chunk) {
         chunk = cursor.next()
       }
 
