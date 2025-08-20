@@ -7,10 +7,12 @@ import (
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	gmimc "github.com/consensys/gnark/std/hash/mimc"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/crate-crypto/go-ipa/bandersnatch/fr"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -31,10 +33,10 @@ type CircuitInvalidity struct {
 
 // SubCircuit is the circuit for the invalidity case
 type SubCircuit interface {
-	Define(frontend.API) error       // define the constraints
-	Allocate(Config)                 //  allocate the circuit
-	Assign(AssigningInputs)          // generate assignment
-	ExecutionCtx() frontend.Variable // returns the execution context (FinalStateRootHash) used in the subcircuit
+	Define(frontend.API) error         // define the constraints
+	Allocate(Config)                   //  allocate the circuit
+	Assign(AssigningInputs)            // generate assignment
+	ExecutionCtx() []frontend.Variable // returns the execution context used in the subcircuit
 }
 
 // AssigningInputs collects the inputs used for the circuit assignment
@@ -47,9 +49,24 @@ type AssigningInputs struct {
 
 // Define the constraints
 func (c *CircuitInvalidity) Define(api frontend.API) error {
+	// subCircuit constraints
 	c.SubCircuit.Define(api)
-	api.AssertIsEqual(c.SubCircuit.ExecutionCtx(), c.FuncInputs.SateRootHash)
-	// @azam constraint on the hashing of functional public inputs
+
+	// sanity check
+	if len(c.SubCircuit.ExecutionCtx()) == 0 {
+		utils.Panic("did not expect an empty execution context")
+	}
+
+	// constraints on the execution context of the subCircuit, they should match the functional public inputs.
+	for i := range c.SubCircuit.ExecutionCtx() {
+		api.AssertIsEqual(c.SubCircuit.ExecutionCtx()[i], c.FuncInputs.ExecutionCtxFor(c.SubCircuit)[i])
+
+	}
+
+	//  constraint on the hashing of functional public inputs
+	hsh, _ := gmimc.NewMiMC(api)
+	api.AssertIsEqual(c.PublicInput, c.FuncInputs.Sum(api, &hsh))
+
 	return nil
 }
 
