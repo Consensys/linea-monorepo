@@ -52,7 +52,7 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 		StateRootHash:       finalStateRootHash,
 		ExpectedBlockHeight: 9,
 		FromAddress:         types.DummyAddress(32),
-		RollingHashTx:       types.Bytes32FromHex("0x012345"),
+		FtxStreamHash:       types.Bytes32FromHex("0x012345"),
 	}
 
 	merkleRoots := aggregation.PackInMiniTrees(test_utils.BlocksToHex(execReq.L2MessageHashes))
@@ -75,10 +75,10 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 			L1RollingHashMessageNumber:              uint(execReq.LastRollingHashUpdateNumber),
 			L2MsgRootHashes:                         merkleRoots,
 			L2MsgMerkleTreeDepth:                    5,
-			LastFinalizedRollingHashNumberTx:        3,
-			RollingHashNumberTx:                     4,
-			LastFinalizedRollingHashTx:              utils.FmtIntHex32Bytes(0x0123),
-			RollingHashTx:                           utils.FmtIntHex32Bytes(0x012345),
+			LastFinalizedFtxNumber:                  3,
+			FtxNumber:                               4,
+			LastFinalizedFtxStreamHash:              utils.FmtIntHex32Bytes(0x0123),
+			FtxStreamHash:                           utils.FmtIntHex32Bytes(0x012345),
 		},
 	}
 }

@@ -13,7 +13,7 @@ type FunctionalPublicInputsGnark struct {
 	FromAddress         frontend.Variable
 	SateRootHash        frontend.Variable
 	ExpectedBlockNumber frontend.Variable
-	RollingHashTx       frontend.Variable
+	FtxStreamHash       frontend.Variable
 }
 
 // Assign the functional public inputs
@@ -23,8 +23,7 @@ func (gpi *FunctionalPublicInputsGnark) Assign(pi public_input.Invalidity) {
 	gpi.ExpectedBlockNumber = pi.ExpectedBlockHeight
 	gpi.SateRootHash = pi.StateRootHash[:]
 	gpi.TxNumber = pi.TxNumber
-	gpi.RollingHashTx = [32]frontend.Variable{}
-	gpi.RollingHashTx = pi.RollingHashTx[:]
+	gpi.FtxStreamHash = pi.FtxStreamHash[:]
 }
 
 // Sum computes the hash over the functional inputs
@@ -37,7 +36,7 @@ func (spi *FunctionalPublicInputsGnark) Sum(api frontend.API, hsh gnarkHash.Fiel
 		spi.FromAddress,
 		spi.ExpectedBlockNumber,
 		spi.SateRootHash,
-		spi.RollingHashTx,
+		spi.FtxStreamHash,
 	)
 
 	return hsh.Sum()

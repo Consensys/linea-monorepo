@@ -253,9 +253,9 @@ func (c *Circuit) Define(api frontend.API) error {
 	maxNbInvalidity := len(c.InvalidityFPI)
 	api.AssertIsLessOrEqual(c.NbInvalidity, maxNbInvalidity) // @Azam check if it is neccassary here
 	rInvalidity := internal.NewRange(api, c.NbInvalidity, maxNbInvalidity)
-	lastFinalizedTxNum := c.AggregationFPIQSnark.LastFinalizedRollingHashNumberTx
-	finalRollingHashNumberTx := c.AggregationFPIQSnark.LastFinalizedRollingHashNumberTx
-	finalRollingHashTx := c.AggregationFPIQSnark.LastFinalizedRollingHashTx
+	lastFinalizedTxNum := c.AggregationFPIQSnark.LastFinalizedFtxNumber
+	finalFtxNumber := c.AggregationFPIQSnark.LastFinalizedFtxNumber
+	finalFtxStreamHash := c.AggregationFPIQSnark.LastFinalizedFtxStreamHash
 	for i, invalidityFPI := range c.InvalidityFPI {
 
 		api.AssertIsEqual(invalidityFPI.SateRootHash, finalState) // @Azam make sure it really give the finalState
@@ -269,8 +269,8 @@ func (c *Circuit) Define(api frontend.API) error {
 			api.AssertIsEqual(expr, 0)
 		}
 
-		finalRollingHashTx = api.Select(rInvalidity.InRange[i], invalidityFPI.RollingHashTx, finalRollingHashTx)
-		finalRollingHashNumberTx = api.Select(rInvalidity.InRange[i], invalidityFPI.TxNumber, finalRollingHashNumberTx)
+		finalFtxStreamHash = api.Select(rInvalidity.InRange[i], invalidityFPI.FtxStreamHash, finalFtxStreamHash)
+		finalFtxNumber = api.Select(rInvalidity.InRange[i], invalidityFPI.TxNumber, finalFtxNumber)
 
 	}
 
@@ -282,8 +282,8 @@ func (c *Circuit) Define(api frontend.API) error {
 		))
 
 	// set the FinalRollingHashNumberFtx for the aggregation circuit.
-	pi.FinalRollingHashNumberTx = finalRollingHashNumberTx
-	pi.FinalRollingHashTx = finalRollingHashTx
+	pi.FinalFtxNumber = finalFtxNumber
+	pi.FinalFtxStreamHash = finalFtxStreamHash
 
 	twoPow8 := big.NewInt(256)
 	// "open" aggregation public input

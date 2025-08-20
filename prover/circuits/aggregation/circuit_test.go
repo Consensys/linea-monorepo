@@ -46,10 +46,10 @@ func TestPublicInput(t *testing.T) {
 			L1RollingHashMessageNumber:              549263,
 			L2MsgRootHashes:                         []string{"0xfb7ce9c89be905d39bfa2f6ecdf312f127f8984cf313cbea91bca882fca340cd"},
 			L2MsgMerkleTreeDepth:                    5,
-			LastFinalizedRollingHashNumberTx:        3,
-			RollingHashNumberTx:                     5,
-			LastFinalizedRollingHashTx:              utils.FmtIntHex32Bytes(0x0345),
-			RollingHashTx:                           utils.FmtIntHex32Bytes(0x45),
+			LastFinalizedFtxNumber:                  3,
+			FtxNumber:                               5,
+			LastFinalizedFtxStreamHash:              utils.FmtIntHex32Bytes(0x0345),
+			FtxStreamHash:                           utils.FmtIntHex32Bytes(0x45),
 		},
 	}
 
