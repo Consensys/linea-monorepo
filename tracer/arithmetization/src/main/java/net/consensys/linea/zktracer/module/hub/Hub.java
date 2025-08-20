@@ -212,7 +212,7 @@ public abstract class Hub implements Module {
   private final Mul mul = new Mul(this);
   private final Mod mod = new Mod();
   private final Shf shf = new Shf();
-  @Getter private final Trm trm = new Trm(wcp);
+  @Getter private final Trm trm = new Trm(this, wcp);
   @Getter private final RlpUtils rlpUtils = setRlpUtils(wcp);
 
   // other
