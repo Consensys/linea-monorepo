@@ -13,6 +13,7 @@ import java.net.URL
 import java.nio.file.Path
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import linea.domain.BlockParameter
 import linea.domain.RetryConfig
@@ -28,6 +29,7 @@ data class ApiEndpointConfig(
   val endpoint: URL,
   val jwtSecretPath: String? = null,
   val requestRetries: RetryConfig = RetryConfig.noRetries,
+  val timeout: Duration = 1.minutes,
 )
 
 data class FollowersConfig(
