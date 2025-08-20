@@ -38,24 +38,6 @@ const func: DeployFunction = async function () {
   // The predetermined sender address from EIP-4788
   const predeterminedSenderAddress = "0x0B799C86a49DEeb90402691F1041aa3AF2d3C875";
 
-  const [deployer] = await ethers.getSigners();
-
-  // Fund the sender address if needed
-  const predeterminedSenderBalance = await ethers.provider.getBalance(predeterminedSenderAddress);
-  const requiredBalance = BigInt(deploymentTx.gas) * BigInt(deploymentTx.gasPrice);
-
-  if (predeterminedSenderBalance < requiredBalance) {
-    const fundingAmount = requiredBalance - predeterminedSenderBalance + 1n; // Add a small buffer
-    console.log(
-      `Funding predetermined sender address ${predeterminedSenderAddress} with ${ethers.formatEther(fundingAmount)} ETH`,
-    );
-    const fundingTx = await deployer.sendTransaction({
-      to: predeterminedSenderAddress,
-      value: fundingAmount,
-    });
-    await fundingTx.wait();
-  }
-
   // Serialize the raw transaction with signature
   const rawTx = ethers.Transaction.from({
     type: deploymentTx.type,
