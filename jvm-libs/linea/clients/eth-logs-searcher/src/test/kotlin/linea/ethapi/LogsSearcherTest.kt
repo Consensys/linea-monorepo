@@ -6,6 +6,7 @@ import linea.domain.BlockParameter
 import linea.domain.EthLog
 import linea.kotlin.decodeHex
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -79,6 +80,47 @@ class LogsSearcherTest {
     assertThat(result.logs).isEqualTo(initialLogs.take(3))
     assertThat(result.startBlockNumber).isEqualTo(10UL)
     assertThat(result.endBlockNumber).isEqualTo(450UL)
+  }
+
+  @Test
+  fun `should return logs within block range with temporary errors`() {
+    fakeElClient.setFinalizedBlockTag(450UL)
+    fakeElClient.errorBlockNumbersAndThrowTimes(
+      mutableMapOf(201UL to 10U, 301UL to 10U),
+    )
+    val result = searcher.getLogsRollingForward(
+      fromBlock = BlockParameter.BlockNumber(1UL),
+      toBlock = BlockParameter.Tag.FINALIZED,
+      address = testAddress,
+      topics = emptyList(),
+      chunkSize = 100U,
+      searchTimeout = 1000000.seconds,
+      stopAfterTargetLogsCount = null,
+    ).get()
+
+    assertThat(result.logs).isEqualTo(initialLogs.take(3))
+    assertThat(result.startBlockNumber).isEqualTo(1UL)
+    assertThat(result.endBlockNumber).isEqualTo(450UL)
+  }
+
+  @Test
+  fun `should throw exception logs when search timeout`() {
+    fakeElClient.setFinalizedBlockTag(450UL)
+    fakeElClient.errorBlockNumbersAndThrowTimes(
+      mutableMapOf(301UL to null),
+    )
+    assertThatThrownBy {
+      searcher.getLogsRollingForward(
+        fromBlock = BlockParameter.BlockNumber(1UL),
+        toBlock = BlockParameter.Tag.FINALIZED,
+        address = testAddress,
+        topics = emptyList(),
+        chunkSize = 100U,
+        searchTimeout = 2.seconds,
+        stopAfterTargetLogsCount = null,
+      ).get()
+    }.hasCauseInstanceOf(IllegalStateException::class.java)
+      .hasMessageContaining("for error testing during event log search")
   }
 
   @Test

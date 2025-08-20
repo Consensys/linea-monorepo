@@ -112,6 +112,7 @@ class EthLogsSearcherImpl(
     val logsCollected: MutableList<EthLog> = CopyOnWriteArrayList()
     val startTime = clock.now()
     val lastSearchedChunk = AtomicReference<ULongRange>(null)
+    var chunk = (0UL..0UL)
 
     return AsyncRetryer.retry(
       vertx,
@@ -123,8 +124,12 @@ class EthLogsSearcherImpl(
 
         enoughLogsCollected || collectionTimeoutElapsed || noMoreChunksToCollect
       },
+      timeout = searchTimeout,
     ) {
-      val chunk = cursor.next()
+      if (lastSearchedChunk.get() == null || lastSearchedChunk.get() == chunk) {
+        chunk = cursor.next()
+      }
+
       val chunkInterval = CommonDomainFunctions.blockIntervalString(chunk.start, chunk.endInclusive)
 
       log.trace("searching in chunk={}", chunkInterval)

@@ -34,6 +34,9 @@ class FakeEthApiClient(
   private val logsDb: MutableList<EthLog> = mutableListOf()
   private val blocksDb: MutableMap<ULong, Block> = mutableMapOf()
 
+  // key = which block number to throw error
+  // value = how many times left to throw error, null means always throw
+  private var errorBlockNumbersAndThrowTimes: MutableMap<ULong, UInt?> = mutableMapOf()
   init {
     require(initialTagsBlocks.keys.size == BlockParameter.Tag.entries.size) {
       "Please specify all block tags: ${BlockParameter.Tag.entries.joinToString(", ")}"
@@ -69,6 +72,11 @@ class FakeEthApiClient(
       listOf(BlockParameter.Tag.FINALIZED, BlockParameter.Tag.SAFE, BlockParameter.Tag.PENDING),
       blockNumber,
     )
+  }
+
+  @Synchronized
+  fun errorBlockNumbersAndThrowTimes(errorBlockNumbersAndThrowTimes: MutableMap<ULong, UInt?>) {
+    this.errorBlockNumbersAndThrowTimes = errorBlockNumbersAndThrowTimes
   }
 
   @Synchronized
@@ -205,6 +213,20 @@ class FakeEthApiClient(
   ): Boolean {
     val fromBlockNumber: ULong = blockParameterToBlockNumber(fromBlock)
     val toBlockNumber: ULong = blockParameterToBlockNumber(toBlock)
+
+    var shouldThrow = false
+    errorBlockNumbersAndThrowTimes.forEach { errorBlockNumber, throwTimes ->
+      if ((fromBlockNumber..toBlockNumber).contains(errorBlockNumber)) {
+        if (throwTimes != null && throwTimes > 0UL) {
+          errorBlockNumbersAndThrowTimes[errorBlockNumber] = errorBlockNumbersAndThrowTimes[errorBlockNumber]!! - 1U
+        }
+        shouldThrow = shouldThrow || throwTimes == null || errorBlockNumbersAndThrowTimes[errorBlockNumber]!! > 0U
+      }
+    }
+
+    if (shouldThrow) {
+      throw IllegalStateException("for error testing during event log search")
+    }
 
     return blockNumber in fromBlockNumber..toBlockNumber
   }
