@@ -1,5 +1,6 @@
 package net.consensys.zkevm.coordinator.clients
 
+import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.mapEither
 import io.vertx.core.Vertx
@@ -10,6 +11,8 @@ import net.consensys.linea.jsonrpc.JsonRpcRequestListParams
 import net.consensys.linea.jsonrpc.client.JsonRpcClient
 import net.consensys.linea.jsonrpc.client.JsonRpcRequestRetryer
 import net.consensys.linea.jsonrpc.client.RequestRetryConfig
+import net.consensys.linea.jsonrpc.isSuccess
+import net.consensys.linea.traces.TracesCountersV2
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -41,6 +44,7 @@ class TracesGeneratorJsonRpcClientV2(
 
   data class Config(
     val expectedTracesApiVersion: String,
+    val ignoreTracesGeneratorErrors: Boolean = false,
   )
 
   private var id = AtomicInteger(0)
@@ -69,6 +73,18 @@ class TracesGeneratorJsonRpcClientV2(
           TracesClientResponsesParser::parseTracesCounterResponseV2,
           TracesClientResponsesParser::mapErrorResponseV2,
         )
+      }
+      .thenCompose { result ->
+        if (config.ignoreTracesGeneratorErrors && !result.isSuccess()) {
+          // Return default empty traces counters in dev mode
+          val defaultResponse = GetTracesCountersResponse(
+            tracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT,
+            tracesEngineVersion = config.expectedTracesApiVersion,
+          )
+          SafeFuture.completedFuture(Ok(defaultResponse))
+        } else {
+          SafeFuture.completedFuture(result)
+        }
       }
   }
 
@@ -99,6 +115,19 @@ class TracesGeneratorJsonRpcClientV2(
           TracesClientResponsesParser::parseConflatedTracesToFileResponse,
           TracesClientResponsesParser::mapErrorResponseV2,
         )
+      }
+      .thenCompose { result ->
+        if (config.ignoreTracesGeneratorErrors && !result.isSuccess()) {
+          // Return default filename in devnet mode
+          val defaultFileName = "$startBlockNumber-$endBlockNumber.conflated.${config.expectedTracesApiVersion}.lt"
+          val defaultResponse = GenerateTracesResponse(
+            tracesFileName = defaultFileName,
+            tracesEngineVersion = config.expectedTracesApiVersion,
+          )
+          SafeFuture.completedFuture(Ok(defaultResponse))
+        } else {
+          SafeFuture.completedFuture(result)
+        }
       }
   }
 
