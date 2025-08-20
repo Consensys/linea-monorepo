@@ -56,7 +56,7 @@ class QbftProtocolValidatorFactory(
     }
     val qbftConsensusConfig = forkSpec.configuration as QbftConsensusConfig
 
-    val payloadValidatorExecutionLayerManger =
+    val payloadValidatorExecutionLayerManager =
       Helpers.buildExecutionLayerManager(
         web3JEngineApiClient = validatorELNodeEngineApiWeb3JClient,
         elFork = qbftConsensusConfig.elFork,
@@ -95,7 +95,7 @@ class QbftProtocolValidatorFactory(
         finalizationStateProvider = finalizationStateProvider,
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
         newBlockHandler = sealedBlockHandlerMultiplexer,
-        executionLayerManager = payloadValidatorExecutionLayerManger,
+        executionLayerManager = payloadValidatorExecutionLayerManager,
         clock = clock,
         p2PNetwork = p2pNetwork,
         allowEmptyBlocks = allowEmptyBlocks,

@@ -42,7 +42,6 @@ import maru.consensus.state.InstantFinalizationProvider
 import maru.crypto.Hashing
 import maru.database.BeaconChain
 import maru.database.kv.KvDatabaseFactory
-import maru.executionlayer.manager.ForkScheduleAwareExecutionLayerManager
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.finalization.LineaFinalizationProvider
 import maru.metrics.BesuMetricsCategoryAdapter
@@ -162,11 +161,7 @@ class MaruAppFactory {
           )
         JsonRpcExecutionLayerManager(engineApiClient)
       }
-    val forkScheduleAwareExecutionLayerManager =
-      ForkScheduleAwareExecutionLayerManager(
-        forksSchedule = beaconGenesisConfig,
-        executionLayerManagerMap = elManagerMap,
-      )
+
     // Because of the circular dependency between SyncStatusProvider, P2PNetwork and P2PPeersHeadBlockProvider
     var syncControllerImpl: SyncController? = null
 
@@ -190,7 +185,8 @@ class MaruAppFactory {
       if (config.p2pConfig != null) {
         BeaconSyncControllerImpl.create(
           beaconChain = beaconChain,
-          elManager = forkScheduleAwareExecutionLayerManager,
+          forksSchedule = beaconGenesisConfig,
+          elManagerMap = elManagerMap,
           peersHeadsProvider = peersHeadBlockProvider,
           validatorProvider = StaticValidatorProvider(qbftConfig.validatorSet),
           peerLookup = p2pNetwork.getPeerLookup(),
@@ -220,7 +216,7 @@ class MaruAppFactory {
           versionProvider = MaruVersionProvider(),
           chainDataProvider = ChainDataProviderImpl(beaconChain),
           syncStatusProvider = syncControllerImpl,
-          isElOnlineProvider = { forkScheduleAwareExecutionLayerManager.isOnline().get() },
+          isElOnlineProvider = { elManagerMap[ElFork.Prague]!!.isOnline().get() },
         )
 
     val maru =

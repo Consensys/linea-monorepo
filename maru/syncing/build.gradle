@@ -20,6 +20,7 @@ plugins {
 dependencies {
   implementation project(':core')
   implementation project(':consensus')
+  implementation project(':config')
   implementation project(':observability')
   implementation project(':p2p')
   implementation project(':storage')

@@ -12,6 +12,10 @@ import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.incrementAndFetch
 import kotlin.time.Duration.Companion.seconds
+import maru.config.consensus.ElFork
+import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.ForkSpec
+import maru.consensus.ForksSchedule
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.FinalizationState
 import maru.consensus.state.InstantFinalizationProvider
@@ -33,6 +37,24 @@ import testutils.maru.TestablePeriodicTimer
 
 @OptIn(ExperimentalAtomicApi::class)
 class ELSyncServiceTest {
+  private val switchTimestamp = 3UL
+  private val forksSchedule =
+    ForksSchedule(
+      chainId = 1u,
+      forks =
+        listOf(
+          ForkSpec(
+            blockTimeSeconds = 1,
+            configuration =
+              QbftConsensusConfig(
+                elFork = ElFork.Shanghai,
+                validatorSet = emptySet(),
+              ),
+            timestampSeconds = switchTimestamp.toLong(),
+          ),
+        ),
+    )
+
   @Test
   fun `should set sync status to Synced for genesis block`() {
     var elSyncStatus: ELSyncStatus? = null
@@ -47,13 +69,13 @@ class ELSyncServiceTest {
       DataGenerators.genesisState(0uL, emptySet()).let {
         InMemoryBeaconChain(initialBeaconState = it.first, initialBeaconBlock = it.second)
       }
-    val executionLayerManager = mock<ExecutionLayerManager>()
     val finalizationProvider: FinalizationProvider = InstantFinalizationProvider
 
     val elSyncService =
       ELSyncService(
         beaconChain = beaconChain,
-        executionLayerManager = executionLayerManager,
+        forksSchedule = forksSchedule,
+        elManagerMap = emptyMap(),
         onStatusChange = onStatusChange,
         config = config,
         finalizationProvider = finalizationProvider,
@@ -85,12 +107,13 @@ class ELSyncServiceTest {
       DataGenerators.genesisState(0uL, emptySet()).let {
         InMemoryBeaconChain(initialBeaconState = it.first, initialBeaconBlock = it.second)
       }
-    val executionLayerManager = mock<ExecutionLayerManager>()
     val finalizationProvider: FinalizationProvider = InstantFinalizationProvider
+    val executionLayerManager = mock<ExecutionLayerManager>()
     val elSyncService =
       ELSyncService(
         beaconChain = beaconChain,
-        executionLayerManager = executionLayerManager,
+        forksSchedule = forksSchedule,
+        elManagerMap = mapOf(ElFork.Shanghai to executionLayerManager),
         onStatusChange = onStatusChange,
         config = config,
         finalizationProvider = finalizationProvider,
@@ -104,7 +127,7 @@ class ELSyncServiceTest {
 
     beaconChain
       .newUpdater()
-      .putBeaconState(DataGenerators.randomBeaconState(3uL))
+      .putBeaconState(DataGenerators.randomBeaconState(number = 3uL, timestamp = switchTimestamp))
       .putSealedBeaconBlock(DataGenerators.randomSealedBeaconBlock(3UL))
       .commit()
 
@@ -167,11 +190,11 @@ class ELSyncServiceTest {
         finalizedBlockHash = customFinalizedBlockHash,
       )
     }
-
     val elSyncService =
       ELSyncService(
         beaconChain = beaconChain,
-        executionLayerManager = executionLayerManager,
+        forksSchedule = forksSchedule,
+        elManagerMap = mapOf(ElFork.Shanghai to executionLayerManager),
         onStatusChange = { },
         config = config,
         finalizationProvider = finalizationProvider,
@@ -182,7 +205,7 @@ class ELSyncServiceTest {
     val sealedBlock = DataGenerators.randomSealedBeaconBlock(3UL)
     beaconChain
       .newUpdater()
-      .putBeaconState(DataGenerators.randomBeaconState(3uL))
+      .putBeaconState(DataGenerators.randomBeaconState(number = 3uL, timestamp = switchTimestamp))
       .putSealedBeaconBlock(sealedBlock)
       .commit()
 

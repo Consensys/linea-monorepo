@@ -13,6 +13,9 @@ import java.util.Timer
 import java.util.UUID
 import kotlin.concurrent.timerTask
 import kotlin.time.Duration
+import maru.config.consensus.ElFork
+import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.ForksSchedule
 import maru.consensus.state.FinalizationProvider
 import maru.core.GENESIS_EXECUTION_PAYLOAD
 import maru.database.BeaconChain
@@ -55,7 +58,8 @@ data class ElBlockInfo(
  */
 class ELSyncService(
   private val beaconChain: BeaconChain,
-  private val executionLayerManager: ExecutionLayerManager,
+  private val forksSchedule: ForksSchedule,
+  private val elManagerMap: Map<ElFork, ExecutionLayerManager>,
   private val onStatusChange: (ELSyncStatus) -> Unit,
   private val config: Config,
   private val finalizationProvider: FinalizationProvider,
@@ -98,6 +102,17 @@ class ELSyncService(
     }
 
     val finalizationState = finalizationProvider(latestBeaconBlockBody)
+    val forkSpec = forksSchedule.getForkByTimestamp(latestBeaconBlockHeader.timestamp.toLong())
+    val elFork =
+      when (forkSpec.configuration) {
+        is QbftConsensusConfig -> (forkSpec.configuration as QbftConsensusConfig).elFork
+        else -> throw IllegalStateException(
+          "Current fork isn't QBFT, this case is not supported yet! forkSpec=$forkSpec",
+        )
+      }
+    val executionLayerManager =
+      elManagerMap[elFork]
+        ?: throw IllegalStateException("No execution layer manager found for EL fork: $elFork")
     val fcuResponse =
       executionLayerManager
         .newPayload(latestBeaconBlockBody.executionPayload)

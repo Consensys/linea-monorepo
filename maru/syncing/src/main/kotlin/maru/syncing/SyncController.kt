@@ -12,6 +12,8 @@ import java.util.concurrent.Executors
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
+import maru.config.consensus.ElFork
+import maru.consensus.ForksSchedule
 import maru.consensus.ValidatorProvider
 import maru.consensus.state.FinalizationProvider
 import maru.database.BeaconChain
@@ -181,7 +183,8 @@ class BeaconSyncControllerImpl(
   companion object {
     fun create(
       beaconChain: BeaconChain,
-      elManager: ExecutionLayerManager,
+      forksSchedule: ForksSchedule,
+      elManagerMap: Map<ElFork, ExecutionLayerManager>,
       peersHeadsProvider: PeersHeadBlockProvider,
       targetChainHeadCalculator: SyncTargetSelector = HighestHeadTargetSelector(),
       peerChainTrackerConfig: PeerChainTracker.Config,
@@ -214,7 +217,8 @@ class BeaconSyncControllerImpl(
       val elSyncService =
         ELSyncService(
           beaconChain = beaconChain,
-          executionLayerManager = elManager,
+          forksSchedule = forksSchedule,
+          elManagerMap = elManagerMap,
           onStatusChange = controller::updateElSyncStatus,
           finalizationProvider = finalizationProvider,
           config = elSyncServiceConfig,
