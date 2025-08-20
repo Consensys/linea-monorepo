@@ -118,7 +118,7 @@ class TracesGeneratorJsonRpcClientV2(
       }
       .thenCompose { result ->
         if (config.ignoreTracesGeneratorErrors && !result.isSuccess()) {
-          // Return default filename in devnet mode
+          // Return default filename in dev mode
           val defaultFileName = "$startBlockNumber-$endBlockNumber.conflated.${config.expectedTracesApiVersion}.lt"
           val defaultResponse = GenerateTracesResponse(
             tracesFileName = defaultFileName,
