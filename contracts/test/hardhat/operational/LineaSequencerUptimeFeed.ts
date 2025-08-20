@@ -124,8 +124,11 @@ describe("LineaSequencerUptimeFeed", () => {
         oldTimestamp,
       ]);
 
-      const latestTimestamp = await contract.latestTimestamp();
-      expect(latestTimestamp).to.equal(timestamp);
+      const latestRoundData = await contract.latestRoundData();
+
+      expect(latestRoundData.roundId).to.equal(2n);
+      expect(latestRoundData.answer).to.equal(1n);
+      expect(latestRoundData.startedAt).to.be.equal(timestamp);
     });
 
     it("should update round and emit RoundUpdated event when latestStatus === _status", async () => {
@@ -138,9 +141,14 @@ describe("LineaSequencerUptimeFeed", () => {
         0n,
         timestamp,
       ]);
-      const latestAnswer = await contract.latestAnswer();
-      expect(latestAnswer).to.equal(0n);
-      expect(await contract.latestTimestamp()).to.be.equal(timestamp);
+
+      const latestRoundData = await contract.latestRoundData();
+
+      expect(latestRoundData.roundId).to.equal(1n);
+      expect(latestRoundData.answer).to.equal(0n);
+      expect(latestRoundData.startedAt).to.be.equal(timestamp - 10);
+      expect(latestRoundData.updatedAt).to.be.equal(timestamp);
+      expect(latestRoundData.answeredInRound).to.equal(1n);
     });
 
     it("should record round and emit AnswerUpdated event when latestStatus !== _status", async () => {
@@ -160,9 +168,13 @@ describe("LineaSequencerUptimeFeed", () => {
         },
       ]);
 
-      const latestAnswer = await contract.latestAnswer();
-      expect(latestAnswer).to.equal(1n);
-      expect(await contract.latestTimestamp()).to.be.equal(timestamp);
+      const latestRoundData = await contract.latestRoundData();
+
+      expect(latestRoundData.roundId).to.equal(2n);
+      expect(latestRoundData.answer).to.equal(1n);
+      expect(latestRoundData.startedAt).to.be.equal(timestamp);
+      expect(latestRoundData.updatedAt).to.be.equal(timestamp);
+      expect(latestRoundData.answeredInRound).to.equal(2n);
     });
   });
 
