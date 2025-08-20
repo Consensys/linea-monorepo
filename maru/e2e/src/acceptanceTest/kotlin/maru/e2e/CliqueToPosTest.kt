@@ -482,14 +482,14 @@ class CliqueToPosTest {
   }
 
   private fun waitForAllBlockHeightsToMatch() {
-    val sequencerBlockHeight =
-      TestEnvironment.sequencerL2Client
-        .ethBlockNumber()
-        .send()
-        .blockNumber
-        .toLong()
-
     await.untilAsserted {
+      val sequencerBlockHeight =
+        TestEnvironment.sequencerL2Client
+          .ethBlockNumber()
+          .send()
+          .blockNumber
+          .toLong()
+
       val blockHeights =
         TestEnvironment.clientsSyncablePreMergeAndPostMerge.entries
           .map { entry ->
@@ -498,6 +498,10 @@ class CliqueToPosTest {
                 entry.value.ethBlockNumber().sendAsync(),
               )
           }.map { it.first to it.second.get() }
+
+      // Send a transaction so that the Besu follower triggers a backward sync to sync to head.
+      // Besu doesn't adjust the pivot block during the initial sync and may end sync with a block below head.
+      transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
 
       blockHeights.forEach {
         assertThat(it.second.blockNumber)
