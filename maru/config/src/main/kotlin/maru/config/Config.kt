@@ -190,4 +190,14 @@ data class MaruConfig(
   val linea: LineaConfig? = null,
   val apiConfig: ApiConfig,
   val syncing: SyncingConfig,
-)
+) {
+  init {
+    require(
+      !followers.followers.values
+        .map { it.endpoint }
+        .contains(validatorElNode.engineApiEndpoint.endpoint),
+    ) {
+      "Validator EL node cannot be defined as a follower"
+    }
+  }
+}

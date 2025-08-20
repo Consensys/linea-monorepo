@@ -294,9 +294,6 @@ class MaruFactory(
     )
   }
 
-  private fun buildFollowersConfig(engineApiRpc: String): FollowersConfig =
-    FollowersConfig(mapOf("validator-el-node" to ApiEndpointConfig(URI.create(engineApiRpc).toURL())))
-
   fun buildTestMaruValidatorWithoutP2pPeering(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
@@ -358,7 +355,6 @@ class MaruFactory(
     allowEmptyBlocks: Boolean = false,
   ): MaruApp {
     val p2pConfig = buildP2pConfig(validatorPortForStaticPeering = validatorPortForStaticPeering)
-    val followers = buildFollowersConfig(engineApiRpc)
     val config =
       buildMaruConfig(
         allowEmptyBlocks = allowEmptyBlocks,
@@ -366,7 +362,6 @@ class MaruFactory(
         engineApiRpc = engineApiRpc,
         dataDir = dataDir,
         p2pConfig = p2pConfig,
-        followers = followers,
         overridingLineaContractClient = overridingLineaContractClient,
       )
     return buildApp(
@@ -382,13 +377,11 @@ class MaruFactory(
     dataDir: Path,
     p2pNetwork: P2PNetwork = NoOpP2PNetwork,
   ): MaruApp {
-    val followers = buildFollowersConfig(engineApiRpc)
     val config =
       buildMaruConfig(
         ethereumJsonRpcUrl = ethereumJsonRpcUrl,
         engineApiRpc = engineApiRpc,
         dataDir = dataDir,
-        followers = followers,
       )
     return buildApp(config, overridingP2PNetwork = p2pNetwork)
   }
@@ -436,7 +429,6 @@ class MaruFactory(
     overridingP2PNetwork: P2PNetwork? = null,
   ): MaruApp {
     val p2pConfig = buildP2pConfig(validatorPortForStaticPeering = validatorPortForStaticPeering)
-    val followersConfig = buildFollowersConfig(engineApiRpc)
     val beaconGenesisConfig = beaconGenesisConfig
     val config =
       buildMaruConfig(
@@ -444,7 +436,6 @@ class MaruFactory(
         engineApiRpc = engineApiRpc,
         dataDir = dataDir,
         p2pConfig = p2pConfig,
-        followers = followersConfig,
       )
     return buildApp(
       config = config,
