@@ -18,6 +18,7 @@ import linea.domain.RetryConfig
 import linea.kotlin.decodeHex
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 @OptIn(ExperimentalHoplite::class)
 class HopliteFriendlinessTest {
@@ -211,6 +212,27 @@ class HopliteFriendlinessTest {
         syncing = syncingConfig,
       ),
     )
+  }
+
+  @Test
+  fun `throws when el validator is also specified as follower`() {
+    val exception =
+      assertThrows<IllegalArgumentException> {
+        MaruConfig(
+          protocolTransitionPollingInterval = protocolTransitionPollingInterval,
+          allowEmptyBlocks = false,
+          persistence = persistence,
+          qbftOptions = qbftOptions.toDomain(),
+          p2pConfig = p2pConfig,
+          validatorElNode = payloadValidator.domainFriendly(),
+          followers = FollowersConfig(mapOf("el-validator" to payloadValidator.engineApiEndpoint.domainFriendly())),
+          observabilityOptions = ObservabilityOptions(port = 9090u),
+          linea = null,
+          apiConfig = ApiConfig(port = 8080u),
+          syncing = syncingConfig,
+        )
+      }
+    assertThat(exception.message).isEqualTo("Validator EL node cannot be defined as a follower")
   }
 
   @Test

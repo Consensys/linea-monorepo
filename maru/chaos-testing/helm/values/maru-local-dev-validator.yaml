@@ -11,8 +11,6 @@ configFiles:
     engine-api-endpoint = { endpoint = "http://besu-sequencer-0.besu-sequencer.default.svc.cluster.local:8550" }
     eth-api-endpoint = { endpoint = "http://besu-sequencer-0.besu-sequencer.default.svc.cluster.local:8545" }
 
-    [follower-engine-apis]
-    follower-besu = { endpoint = "http://besu-sequencer-0.besu-sequencer.default.svc.cluster.local:8550" }
   log4j: |
     <?xml version="1.0" encoding="UTF-8"?>
     <Configuration status="INFO" monitorInterval="2">
