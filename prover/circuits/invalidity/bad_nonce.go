@@ -15,7 +15,7 @@ type BadNonceCircuit struct {
 	AccountTrie AccountTrie
 }
 
-// Define represent the constraints relevant to [BadNonceCircuit]
+// Define represents the constraints relevant to [BadNonceCircuit]
 func (circuit *BadNonceCircuit) Define(api frontend.API) error {
 
 	var (
@@ -23,7 +23,7 @@ func (circuit *BadNonceCircuit) Define(api frontend.API) error {
 		diff    = api.Sub(circuit.TxNonce, api.Add(account.Nonce, 1))
 	)
 
-	// check that the FTx.Nonce = Account.Nonce + 1
+	// check that the FTx.Nonce != Account.Nonce + 1
 	api.AssertIsDifferent(diff, 0)
 
 	//@azam check that tx fields are related to  Tx.Hash  and then in the interconnection we show that
@@ -55,6 +55,6 @@ func (c *BadNonceCircuit) Assign(assi AssigningInputs) {
 	c.AccountTrie.Assign(assi.AccountTrieInputs)
 }
 
-func (c *BadNonceCircuit) ExecutionCtx() frontend.Variable {
-	return c.AccountTrie.MerkleProof.Root
+func (c *BadNonceCircuit) ExecutionCtx() []frontend.Variable {
+	return []frontend.Variable{c.AccountTrie.MerkleProof.Root}
 }

@@ -56,6 +56,6 @@ func (c *BadBalanceCircuit) Assign(assi AssigningInputs) {
 
 }
 
-func (c *BadBalanceCircuit) ExecutionCtx() frontend.Variable {
-	return c.AccountTrie.MerkleProof.Root
+func (c *BadBalanceCircuit) ExecutionCtx() []frontend.Variable {
+	return []frontend.Variable{c.AccountTrie.MerkleProof.Root}
 }
