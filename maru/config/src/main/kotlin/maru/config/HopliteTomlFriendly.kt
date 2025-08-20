@@ -11,6 +11,7 @@ package maru.config
 import java.net.URL
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import linea.domain.BlockParameter
 import linea.domain.RetryConfig
@@ -30,25 +31,25 @@ data class PayloadValidatorDto(
 data class ApiEndpointDto(
   val endpoint: URL,
   val jwtSecretPath: String? = null,
+  val timeout: Duration = 1.minutes,
 ) {
-  fun domainFriendly(endlessRetries: Boolean = false): ApiEndpointConfig =
-    if (endlessRetries) {
-      ApiEndpointConfig(
-        endpoint = endpoint,
-        jwtSecretPath = jwtSecretPath,
-        requestRetries =
-          RetryConfig.endlessRetry(
-            backoffDelay = 1.seconds,
-            failuresWarningThreshold = 3u,
-          ),
-      )
-    } else {
-      ApiEndpointConfig(
-        endpoint = endpoint,
-        jwtSecretPath = jwtSecretPath,
-        requestRetries = RetryConfig.noRetries,
-      )
-    }
+  fun domainFriendly(endlessRetries: Boolean = false): ApiEndpointConfig {
+    val retries =
+      if (endlessRetries) {
+        RetryConfig.endlessRetry(
+          backoffDelay = 1.seconds,
+          failuresWarningThreshold = 3u,
+        )
+      } else {
+        RetryConfig.noRetries
+      }
+    return ApiEndpointConfig(
+      endpoint = endpoint,
+      jwtSecretPath = jwtSecretPath,
+      requestRetries = retries,
+      timeout = timeout,
+    )
+  }
 }
 
 data class QbftOptionsDtoToml(

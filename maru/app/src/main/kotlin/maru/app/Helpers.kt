@@ -11,7 +11,6 @@ package maru.app
 import java.util.Optional
 import java.util.UUID
 import kotlin.io.path.Path
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 import maru.config.ApiEndpointConfig
 import maru.config.consensus.ElFork
@@ -39,7 +38,7 @@ object Helpers {
 
   fun createWeb3jClient(apiEndpointConfig: ApiEndpointConfig): Web3JClient =
     Web3jClientBuilder()
-      .timeout(1.minutes.toJavaDuration())
+      .timeout(apiEndpointConfig.timeout.toJavaDuration())
       .endpoint(apiEndpointConfig.endpoint.toString())
       .jwtConfigOpt(wrapJwtPath(apiEndpointConfig.jwtSecretPath))
       .timeProvider(SystemTimeProvider.SYSTEM_TIME_PROVIDER)
@@ -71,6 +70,7 @@ object Helpers {
           web3jClient = web3JEngineApiClient,
           metricsFacade = metricsFacade,
         )
+
       ElFork.Prague ->
         PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
           web3jClient = web3JEngineApiClient,
