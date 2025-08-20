@@ -482,35 +482,38 @@ class CliqueToPosTest {
   }
 
   private fun waitForAllBlockHeightsToMatch() {
-    await.untilAsserted {
-      val sequencerBlockHeight =
-        TestEnvironment.sequencerL2Client
-          .ethBlockNumber()
-          .send()
-          .blockNumber
-          .toLong()
+    await
+      .pollInterval(5.seconds.toJavaDuration())
+      .timeout(1.minutes.toJavaDuration())
+      .untilAsserted {
+        val sequencerBlockHeight =
+          TestEnvironment.sequencerL2Client
+            .ethBlockNumber()
+            .send()
+            .blockNumber
+            .toLong()
 
-      val blockHeights =
-        TestEnvironment.clientsSyncablePreMergeAndPostMerge.entries
-          .map { entry ->
-            entry.key to
-              SafeFuture.of(
-                entry.value.ethBlockNumber().sendAsync(),
-              )
-          }.map { it.first to it.second.get() }
+        val blockHeights =
+          TestEnvironment.clientsSyncablePreMergeAndPostMerge.entries
+            .map { entry ->
+              entry.key to
+                SafeFuture.of(
+                  entry.value.ethBlockNumber().sendAsync(),
+                )
+            }.map { it.first to it.second.get() }
 
-      // Send a transaction so that the Besu follower triggers a backward sync to sync to head.
-      // Besu doesn't adjust the pivot block during the initial sync and may end sync with a block below head.
-      transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
+        // Send a transaction so that the Besu follower triggers a backward sync to sync to head.
+        // Besu doesn't adjust the pivot block during the initial sync and may end sync with a block below head.
+        transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
 
-      blockHeights.forEach {
-        assertThat(it.second.blockNumber)
-          .withFailMessage {
-            "Block height doesn't match for ${it.first}. Found ${it.second.blockNumber} " +
-              "while expecting $sequencerBlockHeight."
-          }.isEqualTo(sequencerBlockHeight)
+        blockHeights.forEach {
+          assertThat(it.second.blockNumber)
+            .withFailMessage {
+              "Block height doesn't match for ${it.first}. Found ${it.second.blockNumber} " +
+                "while expecting $sequencerBlockHeight."
+            }.isEqualTo(sequencerBlockHeight)
+        }
       }
-    }
   }
 
   private fun everyoneArePeered() {

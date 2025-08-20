@@ -1,7 +1,7 @@
 {
   "Init": {
     "ChainSpecPath": "/initialization/genesis-nethermind.json",
-    "GenesisHash": "0xf22683eea61d84347899810e75e99d3f753f63f5d56d26fc6a568e4e7bb70cfa",
+    "GenesisHash": "0xd8137c4fcff28a19ad33ae547e8a4f8a56ed3ef7a5b0e5b7ba814cbbedde8bcd",
     "BaseDbPath": "nethermind_db/test",
     "LogFileName": "test.logs.txt"
   },

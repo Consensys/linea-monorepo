@@ -93,10 +93,10 @@ class MaruConsensusSwitchTest {
   fun `Follower node correctly switches from Clique to POS after peering with Sequencer validator`() {
     val stackStartupMargin = 30
     val expectedBlocksInClique = 5
-    val totalBlocksToProduce = expectedBlocksInClique * 2
+    val totalBlocksToProduce = expectedBlocksInClique * 4
     var currentTimestamp = System.currentTimeMillis() / 1000
     val shanghaiTimestamp = currentTimestamp + stackStartupMargin + expectedBlocksInClique
-    val pragueTimestamp = shanghaiTimestamp + 10L
+    val pragueTimestamp = shanghaiTimestamp + 5L
     log.info(
       "Setting Shanghai switch timestamp to $shanghaiTimestamp, Prague switch timestamp to $pragueTimestamp, " +
         "current timestamp: $currentTimestamp",
@@ -158,8 +158,10 @@ class MaruConsensusSwitchTest {
     }
 
     currentTimestamp = System.currentTimeMillis() / 1000
-    log.info("Current timestamp: $currentTimestamp, switch timestamp: $shanghaiTimestamp")
+    log.info("Current timestamp: $currentTimestamp, shanghai switch timestamp: $shanghaiTimestamp")
     assertThat(currentTimestamp).isGreaterThan(shanghaiTimestamp)
+    log.info("Current timestamp: $currentTimestamp, prague switch timestamp: $pragueTimestamp")
+    assertThat(currentTimestamp).isGreaterThan(pragueTimestamp)
 
     verifyConsensusSwitch(validatorBesuNode, totalBlocksToProduce, shanghaiTimestamp)
     verifyConsensusSwitch(followerBesuNode, totalBlocksToProduce, shanghaiTimestamp)
