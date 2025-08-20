@@ -17,7 +17,7 @@ func (req *Request) FuncInput() *public_input.Invalidity {
 			FromAddress:         req.FromAddresses,
 			ExpectedBlockHeight: uint64(req.ExpectedBlockHeights),
 			StateRootHash:       req.StateRootHash,
-			RollingHashTx:       req.RollingHashTx,
+			FtxStreamHash:       req.FtxStreamHash,
 		}
 	)
 

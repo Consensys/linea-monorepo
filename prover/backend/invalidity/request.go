@@ -26,5 +26,5 @@ type Request struct {
 	// state root hash of the current aggregation, so this is the same for all the request files relevant to the same aggregation
 	StateRootHash types.Bytes32
 	// RollingHash associated with the transaction
-	RollingHashTx types.Bytes32
+	FtxStreamHash types.Bytes32
 }
