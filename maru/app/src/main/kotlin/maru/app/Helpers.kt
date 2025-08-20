@@ -18,6 +18,8 @@ import maru.config.consensus.ElFork
 import maru.executionlayer.client.ExecutionLayerEngineApiClient
 import maru.executionlayer.client.PragueWeb3JJsonRpcExecutionLayerEngineApiClient
 import maru.executionlayer.client.ShanghaiWeb3JJsonRpcExecutionLayerEngineApiClient
+import maru.executionlayer.manager.ExecutionLayerManager
+import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import net.consensys.linea.metrics.MetricsFacade
 import tech.pegasys.teku.ethereum.executionclient.auth.JwtConfig
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
@@ -44,18 +46,19 @@ object Helpers {
       .executionClientEventsPublisher {}
       .build()
 
-  fun buildExecutionEngineClient(
-    endpoint: ApiEndpointConfig,
+  fun buildExecutionLayerManager(
+    web3JEngineApiClient: Web3JClient,
     elFork: ElFork,
     metricsFacade: MetricsFacade,
-  ): ExecutionLayerEngineApiClient {
-    val web3JEngineApiClient: Web3JClient = createWeb3jClient(endpoint)
-    return buildExecutionEngineClient(
-      web3JEngineApiClient = web3JEngineApiClient,
-      elFork = elFork,
-      metricsFacade = metricsFacade,
+  ): ExecutionLayerManager =
+    JsonRpcExecutionLayerManager(
+      executionLayerEngineApiClient =
+        buildExecutionEngineClient(
+          web3JEngineApiClient = web3JEngineApiClient,
+          elFork = elFork,
+          metricsFacade = metricsFacade,
+        ),
     )
-  }
 
   fun buildExecutionEngineClient(
     web3JEngineApiClient: Web3JClient,

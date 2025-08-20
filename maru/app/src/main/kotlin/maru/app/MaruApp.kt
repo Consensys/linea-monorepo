@@ -11,30 +11,21 @@ package maru.app
 import io.vertx.core.Vertx
 import java.time.Clock
 import maru.api.ApiServer
-import maru.config.FollowersConfig
 import maru.config.MaruConfig
-import maru.config.consensus.ElFork
 import maru.consensus.ElBlockMetadata
 import maru.consensus.ForksSchedule
 import maru.consensus.LatestElBlockMetadataCache
 import maru.consensus.NewBlockHandler
-import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.NextBlockTimestampProviderImpl
 import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
-import maru.consensus.SealedBeaconBlockHandlerAdapter
-import maru.consensus.blockimport.FollowerBeaconBlockImporter
-import maru.consensus.blockimport.NewSealedBeaconBlockHandlerMultiplexer
 import maru.consensus.state.FinalizationProvider
 import maru.core.Protocol
 import maru.crypto.Crypto
 import maru.database.BeaconChain
-import maru.executionlayer.manager.ForkScheduleAwareExecutionLayerManager
-import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.metrics.MaruMetricsCategory
 import maru.p2p.P2PNetwork
 import maru.p2p.PeerInfo
-import maru.p2p.SealedBeaconBlockBroadcaster
 import maru.services.LongRunningService
 import maru.syncing.SyncStatusProvider
 import net.consensys.linea.async.get
@@ -59,8 +50,8 @@ class MaruApp(
   private val beaconChain: BeaconChain,
   private val metricsSystem: MetricsSystem,
   private val lastElBlockMetadataCache: LatestElBlockMetadataCache,
-  private val ethereumJsonRpcClient: Web3JClient,
-  private val engineApiWeb3jService: Web3JClient,
+  private val validatorELNodeEthJsonRpcClient: Web3JClient,
+  private val validatorELNodeEngineApiWeb3JClient: Web3JClient,
   private val apiServer: ApiServer,
   private val syncStatusProvider: SyncStatusProvider,
   private val syncControllerManager: LongRunningService,
@@ -94,6 +85,11 @@ class MaruApp(
     )
   }
 
+  private val followerELNodeEngineApiWeb3JClients: Map<String, Web3JClient> =
+    config.followers.followers.mapValues { (_, apiEndpointConfig) ->
+      Helpers.createWeb3jClient(apiEndpointConfig)
+    }
+
   fun p2pPort(): UInt = p2pNetwork.port
 
   private val metadataProviderCacheUpdater =
@@ -108,36 +104,6 @@ class MaruApp(
       forksSchedule = beaconGenesisConfig,
     )
   private val protocolStarter = createProtocolStarter(config, beaconGenesisConfig, clock)
-
-  @Suppress("UNCHECKED_CAST")
-  private fun createFollowerHandlers(
-    followers: FollowersConfig,
-    forksSchedule: ForksSchedule,
-  ): Map<String, NewBlockHandler<Unit>> =
-    followers.followers
-      .mapValues {
-        val web3JClient = Helpers.createWeb3jClient(it.value)
-        val elManagerMap =
-          ElFork.entries.associateWith { elFork ->
-            val engineApiClient =
-              Helpers.buildExecutionEngineClient(
-                web3JEngineApiClient = web3JClient,
-                elFork = elFork,
-                metricsFacade = metricsFacade,
-              )
-            JsonRpcExecutionLayerManager(executionLayerEngineApiClient = engineApiClient)
-          }
-        val forkScheduleAwareExecutionLayerManager =
-          ForkScheduleAwareExecutionLayerManager(
-            forksSchedule = forksSchedule,
-            executionLayerManagerMap = elManagerMap,
-          )
-        FollowerBeaconBlockImporter.create(
-          forkScheduleAwareExecutionLayerManager,
-          finalizationProvider,
-          it.key,
-        ) as NewBlockHandler<Unit>
-      }
 
   fun start() {
     try {
@@ -193,8 +159,9 @@ class MaruApp(
 
   override fun close() {
     beaconChain.close()
-    engineApiWeb3jService.eth1Web3j.shutdown()
-    ethereumJsonRpcClient.eth1Web3j.shutdown()
+    validatorELNodeEngineApiWeb3JClient.eth1Web3j.shutdown()
+    validatorELNodeEthJsonRpcClient.eth1Web3j.shutdown()
+    followerELNodeEngineApiWeb3JClients.forEach { (_, web3jClient) -> web3jClient.eth1Web3j.shutdown() }
     p2pNetwork.close()
     vertx.close()
   }
@@ -212,49 +179,34 @@ class MaruApp(
     clock: Clock,
   ): Protocol {
     val metadataCacheUpdaterHandlerEntry = "latest block metadata updater" to metadataProviderCacheUpdater
-
-    val followerHandlersMap: Map<String, NewBlockHandler<Unit>> =
-      createFollowerHandlers(config.followers, beaconGenesisConfig)
-    val followerBlockHandlers = followerHandlersMap + metadataCacheUpdaterHandlerEntry
-    val blockImportHandlers =
-      NewBlockHandlerMultiplexer(followerBlockHandlers)
-    val adaptedBeaconBlockImporter = SealedBeaconBlockHandlerAdapter(blockImportHandlers)
-
     val qbftFactory =
       if (config.qbftOptions != null) {
-        val sealedBlockHandlers =
-          mutableMapOf(
-            "beacon block handlers" to adaptedBeaconBlockImporter,
-            "p2p broadcast sealed beacon block handler" to
-              SealedBeaconBlockBroadcaster(p2pNetwork),
-          )
-        val sealedBlockHandlerMultiplexer =
-          NewSealedBeaconBlockHandlerMultiplexer<Unit>(
-            handlersMap = sealedBlockHandlers,
-          )
         QbftProtocolValidatorFactory(
           qbftOptions = config.qbftOptions!!,
           privateKeyBytes = Crypto.privateKeyBytesWithoutPrefix(privateKeyProvider()),
-          validatorElNodeConfig = config.validatorElNode,
+          validatorELNodeEngineApiWeb3JClient = validatorELNodeEngineApiWeb3JClient,
+          followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
           metricsSystem = metricsSystem,
           finalizationStateProvider = finalizationProvider,
           nextTargetBlockTimestampProvider = nextTargetBlockTimestampProvider,
-          newBlockHandler = sealedBlockHandlerMultiplexer,
           beaconChain = beaconChain,
           clock = clock,
           p2pNetwork = p2pNetwork,
           metricsFacade = metricsFacade,
           allowEmptyBlocks = config.allowEmptyBlocks,
           syncStatusProvider = syncStatusProvider,
+          metadataCacheUpdaterHandlerEntry = metadataCacheUpdaterHandlerEntry,
         )
       } else {
         QbftFollowerFactory(
           p2pNetwork = p2pNetwork,
           beaconChain = beaconChain,
-          newBlockHandler = blockImportHandlers,
-          validatorElNodeConfig = config.validatorElNode,
+          validatorELNodeEngineApiWeb3JClient = validatorELNodeEngineApiWeb3JClient,
+          followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
           metricsFacade = metricsFacade,
           allowEmptyBlocks = config.allowEmptyBlocks,
+          metadataCacheUpdaterHandlerEntry = metadataCacheUpdaterHandlerEntry,
+          finalizationStateProvider = finalizationProvider,
         )
       }
 

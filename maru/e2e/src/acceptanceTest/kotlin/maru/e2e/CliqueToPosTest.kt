@@ -410,9 +410,13 @@ class CliqueToPosTest {
         ),
         BeaconBlockBody(emptySet(), latestExecutionPayload),
       )
+    val web3JEngineApiClient =
+      Helpers.createWeb3jClient(
+        apiEndpointConfig = engineApiConfig,
+      )
     val engineApiClient =
       Helpers.buildExecutionEngineClient(
-        endpoint = engineApiConfig,
+        web3JEngineApiClient = web3JEngineApiClient,
         elFork = ElFork.Prague,
         metricsFacade = TestEnvironment.testMetricsFacade,
       )
