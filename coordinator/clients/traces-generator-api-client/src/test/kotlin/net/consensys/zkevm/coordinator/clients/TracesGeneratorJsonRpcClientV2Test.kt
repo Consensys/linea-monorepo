@@ -207,7 +207,7 @@ class TracesGeneratorJsonRpcClientV2Test {
     val blockNumber = 1UL
     val resultFuture = tracesGeneratorClient.getTracesCounters(blockNumber)
     val exception = assertThrows<ExecutionException> { resultFuture.get() }
-    assertThat(exception.message).contains("missing modules: WCP")
+    assertThat(exception).hasMessageContaining("missing modules: WCP")
   }
 
   @Test
@@ -240,7 +240,7 @@ class TracesGeneratorJsonRpcClientV2Test {
     val blockNumber = 1UL
     val resultFuture = tracesGeneratorClient.getTracesCounters(blockNumber)
     val exception = assertThrows<ExecutionException> { resultFuture.get() }
-    assertThat(exception.message).contains("unsupported modules: NEW_EVM_MODULE")
+    assertThat(exception).hasMessageContaining("unsupported modules: NEW_EVM_MODULE")
   }
 
   @Test

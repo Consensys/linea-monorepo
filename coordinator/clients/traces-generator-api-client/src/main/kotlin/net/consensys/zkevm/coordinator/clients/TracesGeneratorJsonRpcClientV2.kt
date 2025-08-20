@@ -49,6 +49,24 @@ class TracesGeneratorJsonRpcClientV2(
 
   private var id = AtomicInteger(0)
 
+  private fun createFallbackTracesCountersResponse(): GetTracesCountersResponse {
+    return GetTracesCountersResponse(
+      tracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT,
+      tracesEngineVersion = config.expectedTracesApiVersion,
+    )
+  }
+
+  private fun createFallbackConflatedTracesResponse(
+    startBlockNumber: ULong,
+    endBlockNumber: ULong,
+  ): GenerateTracesResponse {
+    val defaultFileName = "$startBlockNumber-$endBlockNumber.conflated.${config.expectedTracesApiVersion}.lt"
+    return GenerateTracesResponse(
+      tracesFileName = defaultFileName,
+      tracesEngineVersion = config.expectedTracesApiVersion,
+    )
+  }
+
   override fun getTracesCounters(
     blockNumber: ULong,
   ): SafeFuture<Result<GetTracesCountersResponse, ErrorResponse<TracesServiceErrorType>>> {
@@ -69,21 +87,21 @@ class TracesGeneratorJsonRpcClientV2(
 
     return rpcClient.makeRequest(jsonRequest).toSafeFuture()
       .thenApply { responseResult ->
-        responseResult.mapEither(
+        val result = responseResult.mapEither(
           TracesClientResponsesParser::parseTracesCounterResponseV2,
           TracesClientResponsesParser::mapErrorResponseV2,
         )
-      }
-      .thenCompose { result ->
         if (config.ignoreTracesGeneratorErrors && !result.isSuccess()) {
-          // Return default empty traces counters in dev mode
-          val defaultResponse = GetTracesCountersResponse(
-            tracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT,
-            tracesEngineVersion = config.expectedTracesApiVersion,
-          )
-          SafeFuture.completedFuture(Ok(defaultResponse))
+          Ok(createFallbackTracesCountersResponse())
         } else {
-          SafeFuture.completedFuture(result)
+          result
+        }
+      }
+      .exceptionally { throwable ->
+        if (config.ignoreTracesGeneratorErrors) {
+          Ok(createFallbackTracesCountersResponse())
+        } else {
+          throw throwable
         }
       }
   }
@@ -111,22 +129,21 @@ class TracesGeneratorJsonRpcClientV2(
 
     return rpcClient.makeRequest(jsonRequest).toSafeFuture()
       .thenApply { responseResult ->
-        responseResult.mapEither(
+        val result = responseResult.mapEither(
           TracesClientResponsesParser::parseConflatedTracesToFileResponse,
           TracesClientResponsesParser::mapErrorResponseV2,
         )
-      }
-      .thenCompose { result ->
         if (config.ignoreTracesGeneratorErrors && !result.isSuccess()) {
-          // Return default filename in dev mode
-          val defaultFileName = "$startBlockNumber-$endBlockNumber.conflated.${config.expectedTracesApiVersion}.lt"
-          val defaultResponse = GenerateTracesResponse(
-            tracesFileName = defaultFileName,
-            tracesEngineVersion = config.expectedTracesApiVersion,
-          )
-          SafeFuture.completedFuture(Ok(defaultResponse))
+          Ok(createFallbackConflatedTracesResponse(startBlockNumber, endBlockNumber))
         } else {
-          SafeFuture.completedFuture(result)
+          result
+        }
+      }
+      .exceptionally { throwable ->
+        if (config.ignoreTracesGeneratorErrors) {
+          Ok(createFallbackConflatedTracesResponse(startBlockNumber, endBlockNumber))
+        } else {
+          throw throwable
         }
       }
   }
