@@ -324,10 +324,10 @@ func TestMerklePow2(t *testing.T) {
 
 		var rootscol, leavescol [8]ifaces.Column
 		for i := 0; i < 8; i++ {
-			rootscol[i] = b.RegisterCommit(name("ROOTS", i), numProofs)
+			rootscol[i] = b.RegisterCommit(ifaces.ColIDf("ROOTS_%v", i), numProofs)
 		}
 		for i := 0; i < 8; i++ {
-			leavescol[i] = b.RegisterCommit(name("LEAVES", i), numProofs)
+			leavescol[i] = b.RegisterCommit(ifaces.ColIDf("LEAVES", i), numProofs)
 		}
 
 		poscol := b.RegisterCommit("POS", numProofs)
@@ -343,10 +343,10 @@ func TestMerklePow2(t *testing.T) {
 		trRoot := transpose(builder.roots)
 		trLeaves := transpose(builder.leaves)
 		for i := 0; i < 8; i++ {
-			run.AssignColumn(name("ROOTS", i), smartvectors.NewRegular(trRoot[i]))
+			run.AssignColumn(ifaces.ColIDf("ROOTS", i), smartvectors.NewRegular(trRoot[i]))
 		}
 		for i := 0; i < 8; i++ {
-			run.AssignColumn(name("LEAVES", i), smartvectors.NewRegular(trLeaves[i]))
+			run.AssignColumn(ifaces.ColIDf("LEAVES", i), smartvectors.NewRegular(trLeaves[i]))
 		}
 
 		run.AssignColumn("POS", smartvectors.NewRegular(builder.pos))
@@ -705,7 +705,4 @@ func transpose(v [][8]field.Element) [8][]field.Element {
 	}
 
 	return transposed
-}
-func name(s string, i int) ifaces.ColID {
-	return ifaces.ColIDf("%v_%v", s, i)
 }
