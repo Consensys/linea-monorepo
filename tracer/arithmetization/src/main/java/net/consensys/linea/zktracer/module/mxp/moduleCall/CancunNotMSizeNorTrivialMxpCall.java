@@ -23,6 +23,7 @@ public class CancunNotMSizeNorTrivialMxpCall extends CancunMxpCall {
 
   public CancunNotMSizeNorTrivialMxpCall(Hub hub) {
     super(hub);
+    setWordsAndCMemNewToPrevValues();
     computeSize1Size2IsZero(hub.wcp());
     computeMxpxExpression(hub.wcp());
     setMxpxFromMxpxExpression();
