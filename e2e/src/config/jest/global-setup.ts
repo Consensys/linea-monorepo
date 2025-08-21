@@ -36,7 +36,7 @@ export default async (): Promise<void> => {
 async function configureOnceOffPrerequisities() {
   const account = config.getL1AccountManager().whaleAccount(0);
   const l2Account = config.getL2AccountManager().whaleAccount(0).connect(config.getL2SequencerProvider()!);
-  const livenessSignerAccount = config.getLivenessSigner();
+  const livenessSignerAccount = config.getL2AccountManager().whaleAccount(18).connect(config.getL2SequencerProvider()!);
 
   const lineaRollup = config.getLineaRollupContract(account);
 

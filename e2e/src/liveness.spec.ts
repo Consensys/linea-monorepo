@@ -8,7 +8,7 @@ describe("Liveness test suite", () => {
   it.concurrent(
     "Should succeed to send liveness transactions after sequencer restarted",
     async () => {
-      const livenessSigner = config.getLivenessSigner();
+      const livenessSigner = config.getL2AccountManager().whaleAccount(18);
 
       const livenessContract = config.getL2LineaSequencerUptimeFeedContract(livenessSigner.signer as Wallet);
       const livenessContractAddress = await livenessContract.getAddress();

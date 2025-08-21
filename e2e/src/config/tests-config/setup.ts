@@ -1,4 +1,4 @@
-import { AbstractSigner, JsonRpcProvider, NonceManager, Wallet } from "ethers";
+import { AbstractSigner, JsonRpcProvider, Wallet } from "ethers";
 import { Config, L2Config, LocalL2Config } from "./types";
 import {
   BridgedToken,
@@ -265,13 +265,6 @@ export default class TestSetup {
 
   public getL1DummyContractAddress(): string {
     return this.config.L1.dummyContractAddress;
-  }
-
-  public getLivenessSigner(): NonceManager {
-    // @WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
-    const LIVENESS_SIGNER_PRIVATE_KEY = "0x234d87442cf7d43841fbe280febcdfabfb646added67bc19f7e42a5483f614c4";
-    const signer = new Wallet(LIVENESS_SIGNER_PRIVATE_KEY, this.getL2SequencerProvider());
-    return new NonceManager(signer);
   }
 
   private isLocalL2Config(config: L2Config): config is LocalL2Config {
