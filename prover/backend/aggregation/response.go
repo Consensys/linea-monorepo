@@ -54,6 +54,11 @@ type Response struct {
 	// occuring in the frame of the current aggregation.
 	L1RollingHashMessageNumber uint `json:"l1RollingHashMessageNumber"`
 
+	// FtxStreamHash stores the last stream hash in the frame of the current aggregation.
+	FtxStreamHash string `json:"ftxStreamHash"`
+	// FtxNumber stores the number of last ftx in the frame of the current aggregation.
+	FtxNumber uint `json:"ftxNumber"`
+
 	// L2 messages related messages. L2MerkleRoots stores a sequences of Merkle
 	// roots containing the hashes of the messages emitted on layer 2.
 	L2MerkleRoots   []string `json:"l2MerkleRoots"` // 0x hexstring

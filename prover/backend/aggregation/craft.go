@@ -48,7 +48,8 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 			ParentAggregationLastBlockTimestamp:     uint(req.ParentAggregationLastBlockTimestamp),
 			LastFinalizedL1RollingHash:              req.ParentAggregationLastL1RollingHash,
 			LastFinalizedL1RollingHashMessageNumber: uint(req.ParentAggregationLastL1RollingHashMessageNumber),
-			LastFinalizedRollingHashNumberTx:        uint(req.ParentAggregationLastRollingHashNumberTx),
+			LastFinalizedFtxStreamHash:              req.ParentAggregationLastFtxStreamHash,
+			LastFinalizedFtxNumber:                  uint(req.ParentAggregationLastFtxNumber),
 		}
 	)
 
@@ -194,6 +195,12 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 		cf.L1RollingHashMessageNumber = uint(req.ParentAggregationLastL1RollingHashMessageNumber)
 	}
 
+	// similarly for the stream hash
+	if len(cf.FtxStreamHash) == 0 {
+		cf.FtxStreamHash = req.ParentAggregationLastFtxStreamHash
+		cf.FtxNumber = uint(req.ParentAggregationLastFtxNumber)
+	}
+
 	cf.L2MessagingBlocksOffsets = utils.HexEncodeToString(PackOffsets(l2MsgBlockOffsets))
 	cf.L2MsgRootHashes = PackInMiniTrees(allL2MessageHashes)
 
@@ -246,6 +253,10 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		L1RollingHash:                           cf.L1RollingHash,
 		LastFinalizedL1RollingHashMessageNumber: cf.LastFinalizedL1RollingHashMessageNumber,
 		L1RollingHashMessageNumber:              resp.L1RollingHashMessageNumber,
+		LastFinalizedFtxStreamHash:              cf.LastFinalizedFtxStreamHash,
+		FtxStreamHash:                           cf.FtxStreamHash,
+		LastFinalizedFtxNumber:                  cf.LastFinalizedFtxNumber,
+		FtxNumber:                               cf.FtxNumber,
 		L2MsgRootHashes:                         cf.L2MsgRootHashes,
 		L2MsgMerkleTreeDepth:                    l2MsgMerkleTreeDepth,
 	}

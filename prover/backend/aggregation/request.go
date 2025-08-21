@@ -38,8 +38,10 @@ type Request struct {
 	ParentAggregationLastL1RollingHash              string `json:"parentAggregationLastL1RollingHash"`
 	ParentAggregationLastL1RollingHashMessageNumber int    `json:"parentAggregationLastL1RollingHashMessageNumber"`
 
+	// last finalized stream hash
+	ParentAggregationLastFtxStreamHash string `json:"parentAggregationLastFtxStreamHash"`
 	// last finalized forced transaction number
-	ParentAggregationLastRollingHashNumberTx int `json:"parentAggregationLastRollingHashNumberTx"`
+	ParentAggregationLastFtxNumber int `json:"parentAggregationLastFtxNumber"`
 }
 
 // This struct contains a collection of fields that are to be extracted from the
@@ -113,6 +115,9 @@ type CollectedFields struct {
 	InnerCircuitTypes []pi_interconnection.InnerCircuitType // a hint to the aggregation circuit detailing which public input correspond to which actual public input
 
 	// last finalized (forced) transaction number
-	LastFinalizedRollingHashNumberTx uint
-	RollingHashNumberTx              uint
+	LastFinalizedFtxNumber uint
+	FtxNumber              uint
+
+	LastFinalizedFtxStreamHash string
+	FtxStreamHash              string
 }
