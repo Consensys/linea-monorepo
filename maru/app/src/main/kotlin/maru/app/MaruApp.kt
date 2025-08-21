@@ -224,4 +224,6 @@ class MaruApp(
 
     return protocolStarter
   }
+
+  fun p2pNetwork(): P2PNetwork = p2pNetwork
 }

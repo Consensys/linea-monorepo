@@ -69,6 +69,10 @@ object NoOpP2PNetwork : P2PNetwork {
     }
   }
 
+  override fun dropPeer(peer: PeerInfo) = Unit
+
+  override fun addPeer(address: String) = Unit
+
   override fun close() {
   }
 }
