@@ -8,10 +8,12 @@
  */
 package maru.finalization
 
+import java.lang.Exception
+import java.util.Timer
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.concurrent.timer
+import kotlin.concurrent.timerTask
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.domain.BlockData
 import linea.domain.BlockParameter
@@ -21,15 +23,23 @@ import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockBody
 import maru.extensions.encodeHex
+import maru.services.LongRunningService
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class LineaFinalizationProvider(
   private val lineaContract: LineaRollupSmartContractClientReadOnly,
   private val l2EthApi: EthApiClient,
-  pollingUpdateInterval: Duration,
+  private val pollingUpdateInterval: Duration,
   private val l1HighestBlock: BlockParameter = BlockParameter.Tag.FINALIZED,
-) : FinalizationProvider {
+  private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon ->
+    Timer(
+      "$name-${UUID.randomUUID()}",
+      isDaemon,
+    )
+  },
+) : FinalizationProvider,
+  LongRunningService {
   private data class BlockHeader(
     val blockNumber: ULong,
     val hash: ByteArray,
@@ -75,18 +85,37 @@ class LineaFinalizationProvider(
       }
   }
 
-  private val poller =
-    timer(
-      name = "l1-finalization-poller",
-      daemon = true,
-      initialDelay = 0.seconds.inWholeMilliseconds,
-      period = pollingUpdateInterval.inWholeMilliseconds,
-    ) {
-      update()
-    }
+  private var poller: Timer? = null
 
-  fun stop() {
-    poller.cancel()
+  override fun start() {
+    synchronized(this) {
+      if (poller != null) {
+        return
+      }
+      log.debug("Starting LineaFinalizationProvider with polling interval: {}", pollingUpdateInterval)
+      poller = timerFactory("l1-finalization-poller", true)
+      poller!!.scheduleAtFixedRate(
+        timerTask {
+          try {
+            update()
+          } catch (e: Exception) {
+            log.warn("LineaFinalizationProvider poll task exception", e)
+          }
+        },
+        0,
+        pollingUpdateInterval.inWholeMilliseconds,
+      )
+    }
+  }
+
+  override fun stop() {
+    synchronized(this) {
+      if (poller == null) {
+        return
+      }
+      poller?.cancel()
+      poller = null
+    }
   }
 
   fun update() {
