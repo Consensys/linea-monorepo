@@ -66,7 +66,9 @@ func Bytes32ToHash(input Bytes32) field.Octuplet {
 		startIndex := i * 4
 		segment := input[startIndex : startIndex+4]
 		var newElement koalabear.Element
-		newElement.SetBytes(segment)
+		if err := newElement.SetBytesCanonical(segment); err != nil {
+			panic(err)
+		}
 		result[i] = newElement
 	}
 	return result

@@ -20,6 +20,11 @@ func NewPoseidon2() hash.Hash {
 	return poseidon2.NewMerkleDamgardHasher()
 }
 
+// RoundKeys collects the Poseidon2 RoundKeys parsed as field elements
+var RoundKeys [][]field.Element = func() [][]field.Element {
+	return poseidon2.GetDefaultParameters().RoundKeys
+}()
+
 // Poseidon2Sponge returns a Poseidon2 hash of an array of field elements
 func Poseidon2Sponge(x []field.Element) (newState [blockSize]field.Element) {
 	var state, xBlock [blockSize]field.Element

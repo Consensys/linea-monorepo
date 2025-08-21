@@ -18,7 +18,7 @@ func TestPoseidon2Sponge(t *testing.T) {
 
 	// We write and compress one Element at a time
 	var rng = rand.New(utils.NewRandSource(0))
-	for i := 0; i < 1; i++ {
+	for i := 0; i < 100; i++ {
 
 		var state field.Octuplet
 		var input [512]field.Element
@@ -33,6 +33,7 @@ func TestPoseidon2Sponge(t *testing.T) {
 			merkleHasher.Write(inputBytes[:]) // Write one Element at a time
 		}
 		state = poseidon2.Poseidon2Sponge(input[:])
+		hVec := poseidon2.Poseidon2HashVec(input[:]) // it is the same as write and sum process
 
 		newBytes := merkleHasher.Sum(nil)
 
@@ -45,6 +46,7 @@ func TestPoseidon2Sponge(t *testing.T) {
 			newElement.SetBytes(segment)
 			result[i] = newElement
 			require.Equal(t, result[i].String(), state[i].String())
+			require.Equal(t, hVec[i].String(), state[i].String())
 
 		}
 
