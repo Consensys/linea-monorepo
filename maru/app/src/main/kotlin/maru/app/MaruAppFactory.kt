@@ -309,7 +309,7 @@ class MaruAppFactory {
               ).also { log.info("using p2p ip={}", it) }
               .let { p2pConfig.copy(ipAddress = it) },
           chainId = chainId,
-          serDe = RLPSerializers.SealedBeaconBlockSerializer,
+          serDe = RLPSerializers.SealedBeaconBlockCompressorSerializer,
           metricsFacade = metricsFacade,
           statusMessageFactory = statusMessageFactory,
           beaconChain = beaconChain,

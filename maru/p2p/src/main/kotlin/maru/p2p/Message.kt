@@ -22,6 +22,11 @@ enum class RpcMessageType : MessageType {
   BEACON_BLOCKS_BY_RANGE,
 }
 
+enum class Encoding {
+  RLP,
+  RLP_SNAPPY,
+}
+
 sealed interface MessageType
 
 data class Message<TPayload, TMessageType : MessageType>(
@@ -34,6 +39,7 @@ interface MessageIdGenerator {
   fun id(
     messageName: String,
     version: Version,
+    encoding: Encoding = Encoding.RLP,
   ): String
 }
 
@@ -43,7 +49,8 @@ class LineaMessageIdGenerator(
   override fun id(
     messageName: String,
     version: Version,
-  ): String = "/linea/$chainId/${messageName.lowercase()}/$version"
+    encoding: Encoding,
+  ): String = "/linea/$chainId/${messageName.lowercase()}/$version/${encoding.name.lowercase()}"
 }
 
 class LineaRpcProtocolIdGenerator(
@@ -52,5 +59,6 @@ class LineaRpcProtocolIdGenerator(
   override fun id(
     messageName: String,
     version: Version,
-  ): String = "/linea/req/$chainId/${messageName.lowercase()}/$version"
+    encoding: Encoding,
+  ): String = "/linea/req/$chainId/${messageName.lowercase()}/$version/${encoding.name.lowercase()}"
 }

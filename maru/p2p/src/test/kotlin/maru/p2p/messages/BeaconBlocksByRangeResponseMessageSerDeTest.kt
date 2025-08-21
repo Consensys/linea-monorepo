@@ -17,10 +17,14 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class BeaconBlocksByRangeResponseMessageSerDeTest {
-  private val messageSerDe = BeaconBlocksByRangeResponseMessageSerDe(RLPSerializers.SealedBeaconBlockSerializer)
-
   @Test
   fun `response message serDe serializes and deserializes correctly`() {
+    val messageSerDe =
+      BeaconBlocksByRangeResponseMessageSerDe(
+        beaconBlocksByRangeResponseSerDe =
+          BeaconBlocksByRangeResponseSerDe(RLPSerializers.SealedBeaconBlockSerializer),
+      )
+
     val response =
       BeaconBlocksByRangeResponse(
         blocks = listOf(DataGenerators.randomSealedBeaconBlock(number = 5UL)),

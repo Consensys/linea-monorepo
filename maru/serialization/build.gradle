@@ -23,7 +23,10 @@ dependencies {
   implementation(project(":crypto"))
   implementation(project(":jvm-libs:extensions"))
   implementation "io.tmio:tuweni-bytes"
+  implementation "io.libp2p:jvm-libp2p"
   implementation "org.hyperledger.besu:besu-datatypes"
   implementation "org.hyperledger.besu.internal:besu-ethereum-rlp"
+  implementation 'org.xerial.snappy:snappy-java'
+  implementation "tech.pegasys.teku.internal:eth2"
   testImplementation(testFixtures(project(":core")))
 }

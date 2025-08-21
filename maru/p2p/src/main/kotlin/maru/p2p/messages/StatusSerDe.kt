@@ -36,6 +36,10 @@ class StatusSerDe : RLPSerDe<Status> {
 
     rlpInput.leaveList()
 
-    return Status(forkIdHash = forkId, latestStateRoot = headStateRoot, latestBlockNumber = headBlockNumber)
+    return Status(
+      forkIdHash = forkId,
+      latestStateRoot = headStateRoot,
+      latestBlockNumber = headBlockNumber,
+    )
   }
 }

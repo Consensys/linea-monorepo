@@ -26,6 +26,7 @@ import maru.core.Validator
 import maru.executionlayer.manager.ExecutionPayloadStatus
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import maru.executionlayer.manager.PayloadStatus
+import maru.p2p.messages.Status
 import maru.serialization.rlp.RLPSerializers
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.stateRoot
@@ -70,6 +71,13 @@ object DataGenerators {
 
     return Pair(genesisState, genesisSealedBeaconBlock)
   }
+
+  fun randomStatus(latestBlockNumber: ULong): Status =
+    Status(
+      forkIdHash = Random.nextBytes(32),
+      latestStateRoot = Random.nextBytes(32),
+      latestBlockNumber = latestBlockNumber,
+    )
 
   fun randomBeaconState(
     number: ULong,

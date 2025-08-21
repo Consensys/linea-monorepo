@@ -20,7 +20,7 @@ import tech.pegasys.teku.networking.p2p.rpc.RpcStream
 
 class MaruOutgoingRpcRequestHandler<TResponse>(
   private val responseHandler: MaruRpcResponseHandler<TResponse>,
-  private val responseMessageDeserialize: Deserializer<TResponse>,
+  private val responseMessageDeserializer: Deserializer<TResponse>,
   private val rpcExceptionDeserializer: Deserializer<RpcException> = RpcExceptionSerDe(),
 ) : RpcRequestHandler {
   override fun active(
@@ -39,7 +39,7 @@ class MaruOutgoingRpcRequestHandler<TResponse>(
     rpcStream.closeWriteStream()
     when (respCode) {
       RpcResponseStatus.SUCCESS_RESPONSE_CODE -> {
-        val response = responseMessageDeserialize.deserialize(bytes)
+        val response = responseMessageDeserializer.deserialize(bytes)
         responseHandler.onResponse(response)
       }
       else -> {

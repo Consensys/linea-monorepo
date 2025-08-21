@@ -76,5 +76,4 @@ tasks.register('acceptanceTest', Test) { test ->
   }
 
   systemProperties["junit.jupiter.execution.parallel.enabled"] = false
-  systemProperty("useMaruContainer", project.findProperty("useMaruContainer"))
 }
