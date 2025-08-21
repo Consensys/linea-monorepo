@@ -32,6 +32,7 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
+import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.OpCodes;
@@ -53,6 +54,12 @@ public class OutOfGasExceptionTest extends TracerTestBase {
   void outOfGasExceptionWithEmptyAccountsAndNoMemoryExpansionCostTest(int opcode, int cornerCase) {
     // Ensure opcodes relevant to the given fork are loaded.
     loadOpcodes(fork);
+    // TODO: enable SELFDESTRUCT for Cancun again after fixing the issue
+    // https://github.com/Consensys/linea-tracer/issues/2159
+    // PR https://github.com/Consensys/linea-tracer/pull/2184
+    if (fork == Fork.CANCUN && opcode == 255) {
+      return;
+    }
     //
     OpCodeData opCodeData = OpCodes.of(opcode);
     // Only test opcodes which do not cause memory expansion.

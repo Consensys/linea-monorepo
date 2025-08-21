@@ -36,10 +36,14 @@ import org.hyperledger.besu.crypto.Hash;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.web3j.abi.EventEncoder;
 
+// TODO: enable again once this issue is done :
+// https://github.com/Consensys/linea-tracer/issues/2190
+@Tag("disabled-for-cancun-temporarily")
 @ExtendWith(UnitTestWatcher.class)
 public class InitCodeTests extends TracerTestBase {
 

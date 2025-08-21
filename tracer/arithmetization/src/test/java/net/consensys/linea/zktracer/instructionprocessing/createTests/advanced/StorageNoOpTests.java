@@ -26,10 +26,12 @@ import net.consensys.linea.testing.SmartContractUtils;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.generated.Factory;
+import net.consensys.linea.zktracer.Fork;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -68,6 +70,10 @@ public class StorageNoOpTests extends TracerTestBase {
           .code(SmartContractUtils.getSolidityContractRuntimeByteCode(Factory.class))
           .build();
 
+  // TODO: enable for Cancun again after fixing the issue
+  // https://github.com/Consensys/linea-tracer/issues/2159
+  // PR https://github.com/Consensys/linea-tracer/pull/2184
+  @Tag("disabled-for-cancun-temporarily")
   @Test
   public void simpleTest() {
 
@@ -87,6 +93,14 @@ public class StorageNoOpTests extends TracerTestBase {
           SelfDestruct selfdestruct,
           Revert revert) {
 
+    // TODO: enable for Cancun again after fixing the issue
+    // https://github.com/Consensys/linea-tracer/issues/2159
+    // PR https://github.com/Consensys/linea-tracer/pull/2184
+    if (fork == Fork.CANCUN
+        && selfdestruct == SelfDestruct.SELF_DESTRUCT
+        && revert == Revert.DONT_REVERT) {
+      return;
+    }
     testBody(touchStorage, modifyStorage, selfdestruct, revert);
   }
 

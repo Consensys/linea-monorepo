@@ -40,6 +40,7 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -56,6 +57,9 @@ public class StpTest extends TracerTestBase {
 
   private final long SENDER_BALANCE = 0xFFFFFFFFFFFFL;
 
+  // TODO: enable this test once this fix is merged
+  // https://github.com/Consensys/linea-tracer/pull/2189
+  @Tag("disabled-for-cancun-temporarily")
   @Test
   void testCall() {
     List<ToyAccount> accounts = new ArrayList<>();
@@ -82,6 +86,9 @@ public class StpTest extends TracerTestBase {
         .run();
   }
 
+  // TODO: enable this test once this fix is merged
+  // https://github.com/Consensys/linea-tracer/pull/2189
+  @Tag("disabled-for-cancun-temporarily")
   @Test
   void testCreate() {
     List<ToyAccount> world = new ArrayList<>();

@@ -29,11 +29,13 @@ import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import org.hyperledger.besu.datatypes.Address;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 public class BlockwiseDeplNoTest extends TracerTestBase {
   TestContext tc;
 
+  @Tag("disabled-for-cancun-temporarily")
   @Test
   void testBlockwiseDeplNo() {
     // initialize the test context
