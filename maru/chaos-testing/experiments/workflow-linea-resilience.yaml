@@ -1,0 +1,96 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: Workflow
+metadata:
+  name: linea-resilience
+  namespace: chaos-mesh
+  labels:
+    purpose: resilience-test
+spec:
+  entry: serial-tests
+  templates:
+    # Top-level serial orchestration of all chaos experiments
+    # This is WIP flow, many experiments are missing
+    - name: serial-tests
+      templateType: Serial
+      children:
+        - kill-besu-follower
+        - wait
+        - kill-maru-validator
+        - wait
+        - http-abort-engine-api
+        - wait
+
+    # Wait for a period of time
+    - name: wait
+      templateType: Suspend
+      deadline: 5s
+
+    # Kill (inject failure) on all besu follower pods
+    - name: kill-besu-follower
+      templateType: PodChaos
+      deadline: 10s
+      podChaos:
+        action: pod-failure
+        mode: all
+        selector:
+          namespaces:
+            - default
+          labelSelectors:
+            app.kubernetes.io/component: besu
+            app.kubernetes.io/instance: besu-follower
+
+    # Kill one validator (consensus client) pod
+    - name: kill-maru-validator
+      templateType: PodChaos
+      deadline: 10s
+      podChaos:
+        action: pod-kill
+        mode: one
+        selector:
+          namespaces:
+            - default
+          labelSelectors:
+            app.kubernetes.io/component: maru
+            app.kubernetes.io/instance: maru-validator
+        gracePeriod: 0
+
+    # Abort a percentage of Engine API HTTP requests (simulate execution <-> consensus issues)
+    - name: http-abort-engine-api
+      templateType: HTTPChaos
+      deadline: 30s
+      httpChaos:
+        selector:
+          namespaces:
+            - default
+          labelSelectors:
+            app.kubernetes.io/component: besu
+        mode: fixed-percent
+        value: "60"
+        target: Request
+        method: "POST"
+        path: "/" # adjust if Engine API served on subpath
+        port: 8545
+        abort: true
+
+    # Introduce network latency to any single maru pod
+    - name: network-latency
+      templateType: NetworkChaos
+      deadline: 30s
+      networkChaos:
+        action: delay
+        mode: one
+        selector:
+          namespaces:
+            - default
+          labelSelectors:
+            app.kubernetes.io/component: maru
+        delay:
+          latency: "300ms"
+          correlation: "100"
+          jitter: "500ms"
+
+# Usage:
+# kubectl apply -f workflow-network-clients.yaml
+# Observe with: kubectl describe workflows.chaos-mesh.org linea-resilience -n chaos-mesh; or via Chaos Mesh dashboard.
+# Tune durations & modes to fit SLOs. Add health-check integration externally (e.g., health-checker test) during Suspends.
+
