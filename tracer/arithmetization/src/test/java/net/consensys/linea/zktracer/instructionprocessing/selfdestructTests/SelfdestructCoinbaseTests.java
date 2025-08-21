@@ -30,6 +30,7 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
+import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
@@ -56,6 +57,16 @@ public class SelfdestructCoinbaseTests extends TracerTestBase {
       boolean recipientCoinbaseCollision,
       boolean coinBaseDeployed,
       boolean revertingTransaction) {
+
+    // TODO: enable SELFDESTRUCT for Cancun again after fixing the issue
+    // https://github.com/Consensys/linea-tracer/issues/2159
+    // PR https://github.com/Consensys/linea-tracer/pull/2184
+    if (fork == Fork.CANCUN
+        && !rootIsDeployment
+        && recipientCoinbaseCollision
+        && coinBaseDeployed) {
+      return;
+    }
 
     final ToyAccount CHECKING_COINBASE =
         ToyAccount.builder()

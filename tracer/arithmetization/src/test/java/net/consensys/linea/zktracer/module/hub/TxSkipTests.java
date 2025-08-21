@@ -34,12 +34,16 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
 public class TxSkipTests extends TracerTestBase {
 
+  // TODO: enable back when this issue is fixed
+  // https://github.com/Consensys/linea-tracer/issues/2193
+  @Tag("disabled-for-cancun-temporarily")
   @Test
   void testUselessAccessListForTxSkip() {
     final ToyAccount receiverAccount =

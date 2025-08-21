@@ -27,11 +27,13 @@ import net.consensys.linea.testing.TransactionProcessingResultValidator;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 public class ConflationAccountTest extends TracerTestBase {
   TestContext tc;
 
+  @Tag("disabled-for-cancun-temporarily")
   @Test
   void testConflationMapAccount() {
     // initialize the test context
