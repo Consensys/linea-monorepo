@@ -84,6 +84,13 @@ dependencyManagement {
       entry 'tuweni-units'
     }
 
+    dependencySet(group: 'org.http4k', version: '6.15.1.0') {
+      entry 'http4k-core'
+      entry 'http4k-client-okhttp'
+      entry 'http4k-format-jackson'
+      entry 'http4k-openapi'
+    }
+
     imports {
       mavenBom("io.vertx:vertx-stack-depchain:4.5.11")
     }
@@ -185,6 +192,7 @@ dependencyManagement {
     dependency "build.linea.internal:interfaces:$lineaPackagesVersion"
     dependency "build.linea.internal:linea-contract-clients:$lineaPackagesVersion"
     dependency "build.linea.internal:web3j-extensions:$lineaPackagesVersion"
+    dependency "build.linea.internal:file-system:$lineaPackagesVersion"
     dependency "build.linea.internal:linea-contract-clients$lineaPackagesVersion:test-fixtures"
   }
 }

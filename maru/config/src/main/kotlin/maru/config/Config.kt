@@ -161,7 +161,7 @@ data class LineaConfig(
 }
 
 data class ApiConfig(
-  val port: UInt,
+  val port: UInt = 5060u,
 )
 
 data class SyncingConfig(

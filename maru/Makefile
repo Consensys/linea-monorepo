@@ -11,7 +11,7 @@ pre-commit:
 	$(MAKE) build
 
 run-e2e-test:
-	./gradlew acceptanceTest
+	./gradlew e2e:acceptanceTest
 
 clean:
 	./gradlew clean

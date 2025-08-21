@@ -1,17 +1,18 @@
 replicaCount: 1
 image:
-#  name: consensys/maru:fc93b7d
-  name: consensys/maru:local
+  name: consensys/maru:1b02f6f
   pullPolicy: IfNotPresent
 service:
   type: ClusterIP
   ports:
     - name: api
-      port: 8080
+      port: 5060
     - name: p2p
-      port: 3322
+      port: 9000
+      protocol: TCP
     - name: discovery
-      port: 3323
+      port: 9000
+      protocol: UDP
     - name: metrics
       port: 9545
 persistence:
@@ -29,23 +30,21 @@ configFiles:
     private-key-path="/opt/consensys/maru/configs/private-key.txt"
 
     [p2p]
-    port = 3322
     ip-address = "0.0.0.0"
 
     [p2p.discovery]
-    port = 3323
     refresh-interval = "5 seconds"
 
     [syncing]
     peer-chain-height-polling-interval = "5 seconds"
-    peer-chain-height-granularity = 10
+    peer-chain-height-granularity = 1
     el-sync-status-refresh-interval = "5 seconds"
 
     [observability]
     port = 9545
 
     [api]
-    port = 8080
+    port = 5060
   configsToml: |
   genesisJson: |
     {
@@ -65,10 +64,14 @@ configFiles:
     <Configuration status="INFO" monitorInterval="2">
     <Appenders>
       <Console name="Console" target="SYSTEM_OUT">
-        <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSSZZZ} | %t | %-5level | %c{1} | %msg %throwable%n" />
+        <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS}{UTC} | %-5level | %c{1} | %msg %throwable%n" />
       </Console>
     </Appenders>
     <Loggers>
+     <Logger name="org.hyperledger.besu" level="INFO"/>
+      <Logger name="tech.pegasys.teku" level="INFO"/>
+      <Logger name="maru" level="INFO"/>
+      <Logger name="maru.syncing" level="DEBUG"/>
       <Logger name="clients" level="DEBUG"/>
       <Root level="INFO">
         <AppenderRef ref="Console"/>

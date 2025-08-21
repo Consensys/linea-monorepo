@@ -10,23 +10,3 @@ configFiles:
 
     [follower-engine-apis]
     follower-besu = { endpoint = "http://besu-follower-4.besu-follower.default.svc.cluster.local:8550" }
-
-  log4j: |
-    <?xml version="1.0" encoding="UTF-8"?>
-    <Configuration status="INFO" monitorInterval="2">
-    <Appenders>
-      <Console name="Console" target="SYSTEM_OUT">
-        <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSSZZZ} | %t | %-5level | %c{1} | %msg %throwable%n" />
-      </Console>
-    </Appenders>
-    <Loggers>
-      <Logger name="org.hyperledger.besu" level="INFO"/>
-      <Logger name="tech.pegasys.teku" level="INFO"/>
-      <Logger name="maru.syncing" level="DEBUG"/>
-      <Logger name="maru" level="INFO"/>
-      <Logger name="clients" level="DEBUG"/>
-      <Root level="INFO">
-        <AppenderRef ref="Console"/>
-      </Root>
-    </Loggers>
-    </Configuration>
