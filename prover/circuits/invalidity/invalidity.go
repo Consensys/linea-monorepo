@@ -9,7 +9,9 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/crate-crypto/go-ipa/bandersnatch/fr"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/sirupsen/logrus"
@@ -139,3 +141,29 @@ const (
 	BadNonce   InvalidityType = 0
 	BadBalance InvalidityType = 1
 )
+
+// UpdateFtxStreamHash updates the ftxStreamHash
+func UpdateFtxStreamHash(
+	prevStreamHash linTypes.Bytes32,
+	txPayload *types.Transaction,
+	expectedBlockHeight int,
+	fromAddress linTypes.EthAddress,
+) linTypes.Bytes32 {
+
+	signer := types.NewLondonSigner(txPayload.ChainId())
+	txHash := signer.Hash(txPayload)
+
+	hasher := mimc.NewMiMC()
+
+	hasher.Write(prevStreamHash[:])
+	hasher.Write(make([]byte, 16))
+	hasher.Write(txHash[:16])
+	hasher.Write(make([]byte, 16))
+	hasher.Write(txHash[16:])
+	linTypes.WriteBigIntOn32Bytes(hasher, big.NewInt(int64(expectedBlockHeight)))
+	hasher.Write(make([]byte, 12))
+	hasher.Write(fromAddress[:])
+
+	sum := hasher.Sum(nil)
+	return linTypes.Bytes32(sum)
+}

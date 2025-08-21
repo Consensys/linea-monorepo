@@ -5,7 +5,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Request collects all the fields used to perform an aggregation request.
@@ -104,8 +103,8 @@ type CollectedFields struct {
 	FinalBlockNumber         uint
 
 	// ParentAggregation block hash
-	ParentAggregationBlockHash types.FullBytes32
-	FinalBlockHash             types.FullBytes32
+	ParentAggregationBlockHash string
+	FinalBlockHash             string
 
 	// IsProoflessJob marks that the job is proofless and that the
 	// response is to be written in a dedicated folder.

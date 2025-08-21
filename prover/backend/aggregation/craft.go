@@ -75,7 +75,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 		if i == 0 {
 			cf.LastFinalizedBlockNumber = uint(po.FirstBlockNumber) - 1
 			cf.ParentStateRootHash = po.ParentStateRootHash
-			cf.ParentAggregationBlockHash = po.ParentBlockHash
+			cf.ParentAggregationBlockHash = po.ParentBlockHash.Hex()
 			cf.LastFinalizedFtxNumber = uint(req.ParentAggregationLastFtxNumber)
 			cf.LastFinalizedFtxStreamHash = req.ParentAggregationLastFtxStreamHash
 		}
@@ -124,7 +124,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 			}
 
 			cf.FinalTimestamp = uint(blockdata.TimeStamp)
-			cf.FinalBlockHash = blockdata.BlockHash
+			cf.FinalBlockHash = blockdata.BlockHash.Hex()
 		}
 
 		if len(rollingHashUpdateEvents) != 0 {
@@ -238,6 +238,12 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		FinalBlockNumber:                    cf.FinalBlockNumber,
 		ParentAggregationFinalShnarf:        cf.ParentAggregationFinalShnarf,
 		FinalShnarf:                         cf.FinalShnarf,
+		FinalBlockHash:                      cf.FinalBlockHash,
+		FtxStreamHash:                       cf.FinalFtxStreamHash,
+		FtxNumber:                           cf.FinalFtxNumber,
+		ParentAggregationBlockHash:          cf.ParentAggregationBlockHash,
+		ParentAggregationFtxNumber:          cf.LastFinalizedFtxNumber,
+		ParentAggregationFtxStreamHash:      cf.LastFinalizedFtxStreamHash,
 	}
 
 	// @alex: proofless jobs are triggered once during the migration introducing
