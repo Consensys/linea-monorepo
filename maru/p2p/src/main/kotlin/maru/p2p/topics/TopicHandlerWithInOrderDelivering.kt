@@ -15,6 +15,7 @@ import maru.p2p.MaruPreparedGossipMessage
 import maru.p2p.SubscriptionManager
 import maru.p2p.ValidationResultCode
 import maru.serialization.Deserializer
+import maru.serialization.MAX_MESSAGE_SIZE
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
@@ -192,5 +193,5 @@ class TopicHandlerWithInOrderDelivering<T>(
       },
     )
 
-  override fun getMaxMessageSize(): Int = 10485760
+  override fun getMaxMessageSize(): Int = MAX_MESSAGE_SIZE
 }

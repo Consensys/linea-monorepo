@@ -15,7 +15,10 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class BeaconBlocksByRangeRequestMessageSerDeTest {
-  private val messageSerDe = BeaconBlocksByRangeRequestMessageSerDe()
+  private val messageSerDe =
+    BeaconBlocksByRangeRequestMessageSerDe(
+      beaconBlocksByRangeRequestSerDe = BeaconBlocksByRangeRequestSerDe(),
+    )
 
   @Test
   fun `request message serDe serializes and deserializes correctly`() {

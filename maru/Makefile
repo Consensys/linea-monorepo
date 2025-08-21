@@ -13,9 +13,6 @@ pre-commit:
 run-e2e-test:
 	./gradlew acceptanceTest
 
-run-e2e-test-use-maru-container:
-	./gradlew acceptanceTest -PuseMaruContainer=true
-
 clean:
 	./gradlew clean
 

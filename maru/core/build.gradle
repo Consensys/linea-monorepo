@@ -33,4 +33,5 @@ dependencies {
   testFixturesImplementation("build.linea.internal:micrometer")
   testFixturesImplementation(project(":serialization"))
   testFixturesImplementation(project(":observability"))
+  testFixturesImplementation(project(":p2p"))
 }

@@ -37,6 +37,10 @@ object RLPSerializers {
       beaconBlockSerializer = BeaconBlockSerializer,
       sealSerializer = SealSerializer,
     )
+  val SealedBeaconBlockCompressorSerializer =
+    MaruCompressorRLPSerDe(
+      serDe = SealedBeaconBlockSerializer,
+    )
   val BeaconStateSerializer =
     BeaconStateSerDe(
       beaconBlockHeaderSerializer = BeaconBlockHeaderSerializer,

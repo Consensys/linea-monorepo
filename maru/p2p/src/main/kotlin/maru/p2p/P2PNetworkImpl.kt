@@ -60,7 +60,12 @@ class P2PNetworkImpl(
   private val log: Logger = LogManager.getLogger(this.javaClass)
   internal lateinit var maruPeerManager: MaruPeerManager
   private val topicIdGenerator = LineaMessageIdGenerator(chainId)
-  private val sealedBlocksTopicId = topicIdGenerator.id(GossipMessageType.BEACON_BLOCK.name, Version.V1)
+  private val sealedBlocksTopicId =
+    topicIdGenerator.id(
+      GossipMessageType.BEACON_BLOCK.name,
+      Version.V1,
+      Encoding.RLP_SNAPPY,
+    )
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
   private val sealedBlocksTopicHandler =
     TopicHandlerWithInOrderDelivering(
@@ -215,7 +220,10 @@ class P2PNetworkImpl(
       GossipMessageType.BEACON_BLOCK -> {
         require(message.payload is SealedBeaconBlock)
         val serializedSealedBeaconBlock = Bytes.wrap(serDe.serialize(message.payload))
-        p2pNetwork.gossip(topicIdGenerator.id(message.type.name, message.version), serializedSealedBeaconBlock)
+        p2pNetwork.gossip(
+          topicIdGenerator.id(message.type.name, message.version, Encoding.RLP_SNAPPY),
+          serializedSealedBeaconBlock,
+        )
       }
     }
   }

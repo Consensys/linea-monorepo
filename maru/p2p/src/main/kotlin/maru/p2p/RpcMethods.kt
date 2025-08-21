@@ -11,11 +11,14 @@ package maru.p2p
 import maru.database.BeaconChain
 import maru.p2p.messages.BeaconBlocksByRangeHandler
 import maru.p2p.messages.BeaconBlocksByRangeRequestMessageSerDe
+import maru.p2p.messages.BeaconBlocksByRangeRequestSerDe
 import maru.p2p.messages.BeaconBlocksByRangeResponseMessageSerDe
+import maru.p2p.messages.BeaconBlocksByRangeResponseSerDe
 import maru.p2p.messages.StatusHandler
 import maru.p2p.messages.StatusMessageFactory
 import maru.p2p.messages.StatusMessageSerDe
 import maru.p2p.messages.StatusSerDe
+import maru.serialization.rlp.MaruCompressorRLPSerDe
 import maru.serialization.rlp.RLPSerializers
 
 class RpcMethods(
@@ -34,11 +37,23 @@ class RpcMethods(
       peerLookup = peerLookup,
       protocolIdGenerator = lineaRpcProtocolIdGenerator,
       version = Version.V1,
+      encoding = Encoding.RLP,
     )
 
-  val beaconBlocksByRangeRequestMessageSerDe = BeaconBlocksByRangeRequestMessageSerDe()
+  val beaconBlocksByRangeRequestMessageSerDe =
+    BeaconBlocksByRangeRequestMessageSerDe(
+      beaconBlocksByRangeRequestSerDe =
+        MaruCompressorRLPSerDe(
+          serDe = BeaconBlocksByRangeRequestSerDe(),
+        ),
+    )
   val beaconBlocksByRangeResponseMessageSerDe =
-    BeaconBlocksByRangeResponseMessageSerDe(RLPSerializers.SealedBeaconBlockSerializer)
+    BeaconBlocksByRangeResponseMessageSerDe(
+      beaconBlocksByRangeResponseSerDe =
+        MaruCompressorRLPSerDe(
+          serDe = BeaconBlocksByRangeResponseSerDe(RLPSerializers.SealedBeaconBlockSerializer),
+        ),
+    )
 
   val beaconBlocksByRangeRpcMethod =
     MaruRpcMethod(
@@ -49,6 +64,7 @@ class RpcMethods(
       peerLookup = peerLookup,
       protocolIdGenerator = lineaRpcProtocolIdGenerator,
       version = Version.V1,
+      encoding = Encoding.RLP_SNAPPY,
     )
 
   fun status() = statusRpcMethod

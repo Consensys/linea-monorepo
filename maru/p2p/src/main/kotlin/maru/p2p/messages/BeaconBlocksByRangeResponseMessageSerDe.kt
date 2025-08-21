@@ -11,41 +11,34 @@ package maru.p2p.messages
 import maru.p2p.Message
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
-import maru.serialization.SerDe
-import maru.serialization.rlp.SealedBeaconBlockSerDe
-import org.apache.tuweni.bytes.Bytes
-import org.hyperledger.besu.ethereum.rlp.RLP
+import maru.serialization.rlp.RLPSerDe
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
 class BeaconBlocksByRangeResponseMessageSerDe(
-  private val sealedBeaconBlockSerDe: SealedBeaconBlockSerDe,
-) : SerDe<Message<BeaconBlocksByRangeResponse, RpcMessageType>> {
-  override fun serialize(value: Message<BeaconBlocksByRangeResponse, RpcMessageType>): ByteArray =
-    RLP
-      .encode { rlpOutput ->
-        writeTo(value.payload, rlpOutput)
-      }.toArray()
-
-  override fun deserialize(bytes: ByteArray): Message<BeaconBlocksByRangeResponse, RpcMessageType> =
-    Message(RpcMessageType.BEACON_BLOCKS_BY_RANGE, Version.V1, readFrom(RLP.input(Bytes.wrap(bytes))))
-
-  private fun writeTo(
-    value: BeaconBlocksByRangeResponse,
+  private val beaconBlocksByRangeResponseSerDe: RLPSerDe<BeaconBlocksByRangeResponse>,
+) : RLPSerDe<Message<BeaconBlocksByRangeResponse, RpcMessageType>> {
+  override fun writeTo(
+    value: Message<BeaconBlocksByRangeResponse, RpcMessageType>,
     rlpOutput: RLPOutput,
   ) {
-    rlpOutput.startList()
-    rlpOutput.writeList(value.blocks) { block, output ->
-      sealedBeaconBlockSerDe.writeTo(block, output)
-    }
-    rlpOutput.endList()
+    beaconBlocksByRangeResponseSerDe.writeTo(value.payload, rlpOutput)
   }
 
-  private fun readFrom(rlpInput: RLPInput): BeaconBlocksByRangeResponse {
-    rlpInput.enterList()
-    val blocks = rlpInput.readList { sealedBeaconBlockSerDe.readFrom(it) }
-    rlpInput.leaveList()
+  override fun readFrom(rlpInput: RLPInput): Message<BeaconBlocksByRangeResponse, RpcMessageType> =
+    Message(
+      RpcMessageType.BEACON_BLOCKS_BY_RANGE,
+      Version.V1,
+      beaconBlocksByRangeResponseSerDe.readFrom(rlpInput),
+    )
 
-    return BeaconBlocksByRangeResponse(blocks = blocks)
-  }
+  override fun serialize(value: Message<BeaconBlocksByRangeResponse, RpcMessageType>): ByteArray =
+    beaconBlocksByRangeResponseSerDe.serialize(value.payload)
+
+  override fun deserialize(bytes: ByteArray): Message<BeaconBlocksByRangeResponse, RpcMessageType> =
+    Message(
+      RpcMessageType.BEACON_BLOCKS_BY_RANGE,
+      Version.V1,
+      beaconBlocksByRangeResponseSerDe.deserialize(bytes),
+    )
 }
