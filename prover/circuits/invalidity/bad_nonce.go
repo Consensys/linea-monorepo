@@ -2,15 +2,18 @@ package invalidity
 
 import (
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // BadNonceCircuit defines the circuit for the transaction with a bad nonce.
 type BadNonceCircuit struct {
-	// Transaction Nonce
-	TxNonce frontend.Variable
+	// Transaction payload.
+	TxPayload TxPayloadGnark
+	// payload hash
+	PayloadHash frontend.Variable
 	// sender address
-	// TxFromAddress frontend.Variable
+	TxFromAddress frontend.Variable
 	// AccountTrie of the sender
 	AccountTrie AccountTrie
 }
@@ -19,12 +22,24 @@ type BadNonceCircuit struct {
 func (circuit *BadNonceCircuit) Define(api frontend.API) error {
 
 	var (
+		nonce   = circuit.TxPayload.Nonce
 		account = circuit.AccountTrie.Account
-		diff    = api.Sub(circuit.TxNonce, api.Add(account.Nonce, 1))
+		diff    = api.Sub(nonce, api.Add(account.Nonce, 1))
 	)
 
-	// check that the FTx.Nonce != Account.Nonce + 1
+	// check that the nonce != Account.Nonce + 1
 	api.AssertIsDifferent(diff, 0)
+
+	// check that the account matches the state root
+	circuit.AccountTrie.Define(api)
+
+	// check that sender address matches the account
+	api.AssertIsEqual(circuit.AccountTrie.LeafOpening.HKey, circuit.TxFromAddress)
+
+	// check that nonce matches payloadHash
+	// @azam I stoped here.
+	hsh := keccak.NewHasher(api, MaxNbKeccakF)
+	circuit.TxPayload.Sum(api, hsh)
 
 	//@azam check that tx fields are related to  Tx.Hash  and then in the interconnection we show that
 	//FTx.Hash and FromAddress  = HKey is included in the RollingHash
@@ -44,7 +59,7 @@ func (c *BadNonceCircuit) Assign(assi AssigningInputs) {
 		acNonce = assi.AccountTrieInputs.Account.Nonce
 	)
 	*c = BadNonceCircuit{
-		TxNonce: txNonce,
+		TxPayload: txNonce,
 	}
 
 	// sanity-check
