@@ -356,4 +356,17 @@ class P2PNetworkImpl(
     peerLookup.getPeer(LibP2PNodeId(PeerId.fromBase58(peerId)))?.toPeerInfo()
 
   override fun getPeerLookup(): PeerLookup = peerLookup
+
+  override fun dropPeer(peer: PeerInfo) {
+    staticPeerMap[LibP2PNodeId(PeerId.fromBase58(peer.nodeId))]?.let { staticPeer ->
+      removeStaticPeer(staticPeer)
+    } ?: dropPeer(
+      peer = peer.nodeId,
+      reason = DisconnectReason.SHUTTING_DOWN,
+    ).get()
+  }
+
+  override fun addPeer(address: String) {
+    addStaticPeer(MultiaddrPeerAddress.fromAddress(address))
+  }
 }

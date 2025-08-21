@@ -106,6 +106,10 @@ interface P2PNetwork : Closeable {
   fun getPeer(peerId: String): PeerInfo?
 
   fun getPeerLookup(): PeerLookup
+
+  fun dropPeer(peer: PeerInfo)
+
+  fun addPeer(address: String)
 }
 
 data class PeerInfo(

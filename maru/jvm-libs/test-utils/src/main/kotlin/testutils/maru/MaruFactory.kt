@@ -353,6 +353,7 @@ class MaruFactory(
     overridingFinalizationProvider: FinalizationProvider? = null,
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     allowEmptyBlocks: Boolean = false,
+    syncPeerChainGranularity: UInt = 1u,
   ): MaruApp {
     val p2pConfig = buildP2pConfig(validatorPortForStaticPeering = validatorPortForStaticPeering)
     val config =
@@ -363,6 +364,12 @@ class MaruFactory(
         dataDir = dataDir,
         p2pConfig = p2pConfig,
         overridingLineaContractClient = overridingLineaContractClient,
+        syncingConfig =
+          SyncingConfig(
+            peerChainHeightPollingInterval = 1.seconds,
+            peerChainHeightGranularity = syncPeerChainGranularity,
+            elSyncStatusRefreshInterval = 500.milliseconds,
+          ),
       )
     return buildApp(
       config,
