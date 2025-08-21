@@ -40,7 +40,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		}
 		serializedProof = c.MakeProof(setup,
 			invalidity.AssigningInputs{
-				AccountTrieInputs: req.AccountTri,
+				AccountTrieInputs: req.AccountTrie,
 				Transaction:       req.ForcedTransactionPayLoad,
 				InvalidityType:    req.InvalidityTypes,
 			},

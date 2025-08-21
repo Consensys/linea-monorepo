@@ -15,7 +15,7 @@ func (req *Request) FuncInput() *public_input.Invalidity {
 			TxHash:              req.ForcedTransactionPayLoad.Hash(),
 			TxNumber:            uint64(req.ForcedTransactionNumber),
 			FromAddress:         req.FromAddresses,
-			ExpectedBlockHeight: uint64(req.ExpectedBlockHeights),
+			ExpectedBlockHeight: uint64(req.ExpectedBlockHeight),
 			StateRootHash:       req.StateRootHash,
 			FtxStreamHash:       req.FtxStreamHash,
 		}

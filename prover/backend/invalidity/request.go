@@ -11,20 +11,22 @@ import (
 type Request struct {
 	// the forcedTransaction attempted to be included in the current aggregation,
 	// @azam replace its type with a payload type since we do'nt need the signature part.
-	ForcedTransactionPayLoad *ethtypes.Transaction
+	ForcedTransactionPayLoad *ethtypes.Transaction `json:"forcedTransactionPayload"`
 	// transaction number assigned by L1 contract
-	ForcedTransactionNumber uint64
+	ForcedTransactionNumber uint64 `json:"forcedTransactionNumber"`
 	// from address as given by L1 contract
-	FromAddresses types.EthAddress
+	FromAddresses types.EthAddress `json:"fromAddresses"`
 	// the type of invalidity for each forced transaction;
 	// for the executed valid transaction it is set to [invalidity.BadNonce]
-	InvalidityTypes invalidity.InvalidityType
+	InvalidityTypes invalidity.InvalidityType `json:"invalidityTypes"`
 	// account tri from the final state of the current aggregation.
-	AccountTri invalidity.AccountTrieInputs
+	AccountTrie invalidity.AccountTrieInputs `json:"accountTrie"`
 	// expected Block number as assigned by the L1 contract
-	ExpectedBlockHeights uint64
+	ExpectedBlockHeight uint64 `json:"expectedBlockHeight"`
 	// state root hash of the current aggregation, so this is the same for all the request files relevant to the same aggregation
-	StateRootHash types.Bytes32
+	StateRootHash types.Bytes32 `json:"stateRootHash"`
 	// RollingHash associated with the transaction
-	FtxStreamHash types.Bytes32
+	FtxStreamHash types.Bytes32 `json:"ftxStreamHash"`
+	// Parent block hash
+	ParentBlockHash types.Bytes32 `json:"parentBlockHash"`
 }

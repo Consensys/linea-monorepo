@@ -75,6 +75,9 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 		if i == 0 {
 			cf.LastFinalizedBlockNumber = uint(po.FirstBlockNumber) - 1
 			cf.ParentStateRootHash = po.ParentStateRootHash
+			cf.ParentAggregationBlockHash = po.ParentBlockHash
+			cf.LastFinalizedFtxNumber = uint(req.ParentAggregationLastFtxNumber)
+			cf.LastFinalizedFtxStreamHash = req.ParentAggregationLastFtxStreamHash
 		}
 
 		if po.ProverMode == config.ProverModeProofless {
@@ -121,7 +124,9 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 			}
 
 			cf.FinalTimestamp = uint(blockdata.TimeStamp)
+			cf.FinalBlockHash = blockdata.BlockHash
 		}
+
 		if len(rollingHashUpdateEvents) != 0 {
 			return nil, fmt.Errorf("data discrepancy: %d rolling hash updates in conflation object but only %d collected from blocks", len(po.AllRollingHashEvent), len(po.AllRollingHashEvent)-len(rollingHashUpdateEvents))
 		}
@@ -196,9 +201,9 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 	}
 
 	// similarly for the stream hash
-	if len(cf.FtxStreamHash) == 0 {
-		cf.FtxStreamHash = req.ParentAggregationLastFtxStreamHash
-		cf.FtxNumber = uint(req.ParentAggregationLastFtxNumber)
+	if len(cf.FinalFtxStreamHash) == 0 {
+		cf.FinalFtxStreamHash = req.ParentAggregationLastFtxStreamHash
+		cf.FinalFtxNumber = uint(req.ParentAggregationLastFtxNumber)
 	}
 
 	cf.L2MessagingBlocksOffsets = utils.HexEncodeToString(PackOffsets(l2MsgBlockOffsets))
@@ -254,9 +259,9 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		LastFinalizedL1RollingHashMessageNumber: cf.LastFinalizedL1RollingHashMessageNumber,
 		L1RollingHashMessageNumber:              resp.L1RollingHashMessageNumber,
 		LastFinalizedFtxStreamHash:              cf.LastFinalizedFtxStreamHash,
-		FtxStreamHash:                           cf.FtxStreamHash,
+		FtxStreamHash:                           cf.FinalFtxStreamHash,
 		LastFinalizedFtxNumber:                  cf.LastFinalizedFtxNumber,
-		FtxNumber:                               cf.FtxNumber,
+		FtxNumber:                               cf.FinalFtxNumber,
 		L2MsgRootHashes:                         cf.L2MsgRootHashes,
 		L2MsgMerkleTreeDepth:                    l2MsgMerkleTreeDepth,
 	}
@@ -400,6 +405,7 @@ func (cf *CollectedFields) collectInvalidityInfo(cfg *config.Config, req *Reques
 	)
 
 	for i, invalReqFPath := range req.InvalidityProofs {
+
 		var (
 			fpath = path.Join(cfg.Invalidity.DirTo(), invalReqFPath)
 			f     = files.MustRead(fpath)
@@ -425,6 +431,9 @@ func (cf *CollectedFields) collectInvalidityInfo(cfg *config.Config, req *Reques
 		}
 
 		cf.InvalidityPI = append(cf.InvalidityPI, *pi)
+
+		cf.FinalFtxNumber = uint(po.ForcedTransactionNumber)
+		cf.FinalFtxStreamHash = po.FtxStreamHash.Hex()
 	}
 	return nil
 }
