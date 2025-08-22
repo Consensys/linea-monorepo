@@ -57,8 +57,8 @@ type Response struct {
 	// FtxStreamHash stores the last stream hash in the frame of the current aggregation.
 	FtxStreamHash                  string `json:"ftxStreamHash"`
 	ParentAggregationFtxStreamHash string `json:"parentAggregationFtxStreamHash"`
-	// FtxNumber stores the number of last ftx in the frame of the current aggregation.
-	FtxNumber                  uint `json:"ftxNumber"`
+	// FinalFtxNumber stores the number of last ftx in the frame of the current aggregation.
+	FinalFtxNumber             uint `json:"ftxNumber"`
 	ParentAggregationFtxNumber uint `json:"parentAggregationFtxNumber"`
 
 	// L2 messages related messages. L2MerkleRoots stores a sequences of Merkle

@@ -240,7 +240,7 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		FinalShnarf:                         cf.FinalShnarf,
 		FinalBlockHash:                      cf.FinalBlockHash,
 		FtxStreamHash:                       cf.FinalFtxStreamHash,
-		FtxNumber:                           cf.FinalFtxNumber,
+		FinalFtxNumber:                      cf.FinalFtxNumber,
 		ParentAggregationBlockHash:          cf.ParentAggregationBlockHash,
 		ParentAggregationFtxNumber:          cf.LastFinalizedFtxNumber,
 		ParentAggregationFtxStreamHash:      cf.LastFinalizedFtxStreamHash,
@@ -265,9 +265,9 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		LastFinalizedL1RollingHashMessageNumber: cf.LastFinalizedL1RollingHashMessageNumber,
 		L1RollingHashMessageNumber:              resp.L1RollingHashMessageNumber,
 		LastFinalizedFtxStreamHash:              cf.LastFinalizedFtxStreamHash,
-		FtxStreamHash:                           cf.FinalFtxStreamHash,
+		FinalFtxStreamHash:                      cf.FinalFtxStreamHash,
 		LastFinalizedFtxNumber:                  cf.LastFinalizedFtxNumber,
-		FtxNumber:                               cf.FinalFtxNumber,
+		FinalFtxNumber:                          cf.FinalFtxNumber,
 		L2MsgRootHashes:                         cf.L2MsgRootHashes,
 		L2MsgMerkleTreeDepth:                    l2MsgMerkleTreeDepth,
 	}
@@ -300,6 +300,7 @@ func validate(cf *CollectedFields) (err error) {
 	utils.ValidateHexString(&err, cf.FinalShnarf, "FinalizedShnarf : %w", 32)
 	utils.ValidateHexString(&err, cf.ParentStateRootHash, "ParentStateRootHash : %w", 32)
 	utils.ValidateHexString(&err, cf.L1RollingHash, "L1RollingHash : %w", 32)
+	utils.ValidateHexString(&err, cf.FinalFtxStreamHash, "FinalFtxStreamHash : %w", 32)
 	utils.ValidateHexString(&err, cf.L2MessagingBlocksOffsets, "L2MessagingBlocksOffsets : %w", -1)
 	utils.ValidateTimestamps(&err, cf.ParentAggregationLastBlockTimestamp, cf.FinalTimestamp)
 	utils.ValidateHexString(&err, cf.DataParentHash, "DataParentHash : %w", 32)

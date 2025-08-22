@@ -143,6 +143,9 @@ type AggregationSpec struct {
 	// ParentStreamHash is the stream hash of the parent aggregation
 	ParentAggregationStreamHash       string `json:"parentAggregationStreamHash"`
 	ParentAggregationStreamHashNumber int    `json:"parentAggregationStreamHashNumber"`
+
+	FinalFtxStreamHash string `json:"finalFtxStreamHash"`
+	FinalFtxNumber     uint   `json:"finalFtxNumber"`
 }
 
 // Generates a random request file for a blob submission

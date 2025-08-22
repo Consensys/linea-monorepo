@@ -356,6 +356,8 @@ func ProcessAggregationSpec(
 			spec.LastFinalizedL1RollingHashMessageNumber = runningSpec.L1RollingHashMessageNumber
 			spec.LastFinalizedL1RollingHash = runningSpec.L1RollingHash
 		}
+
+		spec.InvalidityProofs = runningSpec.InvalidityProofs
 	}
 
 	collectedFields := RandAggregation(rng, spec)
@@ -371,7 +373,7 @@ func ProcessAggregationSpec(
 
 	runningSpec.ParentAggregationBlockHash = resp.FinalBlockHash
 	runningSpec.ParentAggregationStreamHash = resp.FtxStreamHash
-	runningSpec.ParentAggregationStreamHashNumber = int(resp.FtxNumber)
+	runningSpec.ParentAggregationStreamHashNumber = int(resp.FinalFtxNumber)
 	runningSpec.InvalidityProofs = []invalidity.Response{}
 
 	return resp
