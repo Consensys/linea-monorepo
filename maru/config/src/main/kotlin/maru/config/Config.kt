@@ -166,10 +166,25 @@ data class ApiConfig(
 
 data class SyncingConfig(
   val peerChainHeightPollingInterval: Duration,
-  val peerChainHeightGranularity: UInt,
+  val syncTargetSelection: SyncTargetSelection,
   val elSyncStatusRefreshInterval: Duration,
+  val useUnconditionalRandomDownloadPeer: Boolean = false,
   val download: Download? = Download(),
 ) {
+  sealed interface SyncTargetSelection {
+    data object Highest : SyncTargetSelection
+
+    data class MostFrequent(
+      val peerChainHeightGranularity: UInt,
+    ) : SyncTargetSelection {
+      init {
+        require(peerChainHeightGranularity > 0U) {
+          "peerChainHeightGranularity must be higher than 0"
+        }
+      }
+    }
+  }
+
   data class Download(
     val blockRangeRequestTimeout: Duration = 5.seconds,
     val blocksBatchSize: UInt = 10u,

@@ -43,14 +43,8 @@ class PeerChainTracker(
 
   data class Config(
     val pollingUpdateInterval: Duration,
-    val granularity: UInt, // Resolution of the peer heights
-  ) {
-    init {
-      require(granularity > 0U) { "Granularity should not be 0!" }
-    }
-  }
+  )
 
-  private var peers = mutableMapOf<String, ULong>()
   private var lastNotifiedTarget: ULong? = null // 0 is an Ok magic number, since it represents Genesis
   private var isRunning = false
 
@@ -58,28 +52,17 @@ class PeerChainTracker(
   private var poller: Timer? = null
 
   /**
-   * Rounds the block height according to the configured granularity
-   */
-  private fun roundHeight(height: ULong): ULong {
-    if (config.granularity <= 1u) return height
-
-    return (height / config.granularity.toULong()) * config.granularity.toULong()
-  }
-
-  /**
    * Updates the peer view and triggers sync target updates if needed
    */
   private fun updatePeerView() {
     log.trace("Updating peer view")
-    val newPeerHeads = peersHeadsProvider.getPeersHeads()
 
-    val roundedNewPeerHeads = newPeerHeads.mapValues { roundHeight(it.value) }
-    peers = roundedNewPeerHeads.toMutableMap()
-    log.debug("Rounded peers peers={}", peers)
+    val peersHeads = peersHeadsProvider.getPeersHeads().values.toList()
+
     // Update the state and recalculate the sync target
     val newSyncTarget =
-      if (peers.isNotEmpty()) {
-        targetChainHeadCalculator.selectBestSyncTarget(peers.values.toList())
+      if (peersHeads.isNotEmpty()) {
+        targetChainHeadCalculator.selectBestSyncTarget(peersHeads)
       } else {
         // If there are no peers, we return the chain head of current node, because we don't know better
         beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number

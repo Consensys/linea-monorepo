@@ -23,8 +23,32 @@ import tech.pegasys.teku.networking.eth2.rpc.core.RpcException
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.reputation.ReputationAdjustment
 
-class DownloadBlocksStep(
+interface DownloadPeerProvider {
+  fun getDownloadingPeer(downloadRangeEndBlockNumber: ULong): MaruPeer
+}
+
+class DownloadPeerProviderImpl(
   private val peerLookup: PeerLookup,
+  private val useUnconditionalRandomSelection: Boolean,
+) : DownloadPeerProvider {
+  override fun getDownloadingPeer(downloadRangeEndBlockNumber: ULong): MaruPeer =
+    peerLookup
+      .getPeers()
+      .let {
+        if (!useUnconditionalRandomSelection) {
+          it.filter { peer ->
+            peer.getStatus() != null &&
+              peer.getStatus()!!.latestBlockNumber >=
+              downloadRangeEndBlockNumber
+          }
+        } else {
+          it
+        }
+      }.random()
+}
+
+class DownloadBlocksStep(
+  private val downloadPeerProvider: DownloadPeerProvider,
   private val maxRetries: UInt,
   private val blockRangeRequestTimeout: Duration,
 ) : Function<SyncTargetRange, CompletableFuture<List<SealedBlockWithPeer>>> {
@@ -48,14 +72,7 @@ class DownloadBlocksStep(
       )
 
       do {
-        peer =
-          peerLookup
-            .getPeers()
-            .filter {
-              it.getStatus() != null &&
-                it.getStatus()!!.latestBlockNumber >=
-                targetRange.endBlock
-            }.random()
+        peer = downloadPeerProvider.getDownloadingPeer(targetRange.endBlock)
         try {
           peer
             .sendBeaconBlocksByRange(startBlockNumber, remaining)

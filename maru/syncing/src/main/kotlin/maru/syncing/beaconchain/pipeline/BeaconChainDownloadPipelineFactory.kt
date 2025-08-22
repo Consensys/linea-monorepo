@@ -47,6 +47,7 @@ class BeaconChainDownloadPipelineFactory(
     val blocksBatchSize: UInt = 10u,
     val blocksParallelism: UInt = 1u,
     val maxRetries: UInt = 5u,
+    val useUnconditionalRandomDownloadPeer: Boolean = false,
   )
 
   fun createPipeline(startBlock: ULong): BeaconChainPipeline {
@@ -70,7 +71,11 @@ class BeaconChainDownloadPipelineFactory(
 
     val downloadBlocksStep =
       DownloadBlocksStep(
-        peerLookup = peerLookup,
+        downloadPeerProvider =
+          DownloadPeerProviderImpl(
+            peerLookup = peerLookup,
+            useUnconditionalRandomSelection = config.useUnconditionalRandomDownloadPeer,
+          ),
         maxRetries = config.maxRetries,
         blockRangeRequestTimeout = config.blockRangeRequestTimeout,
       )
