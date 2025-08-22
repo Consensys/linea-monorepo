@@ -90,10 +90,9 @@ class LogsSearcherTest {
     fakeElClient.errorBlockNumbersAndThrowTimes(
       mutableMapOf(
         1UL to 5U, // will throw error 5 times when find logs in range 1..100
-        101UL to 5U, // 101..200
-        201UL to 5U, // 201..300
-        301UL to 5U, // 301..400
-        401UL to 5U, // 401..450
+        101UL to 5U, // will throw error 5 times when find logs in range 101..200
+        201UL to 5U, // will throw error 5 times when find logs in range 201..300
+        301UL to 5U, // will throw error 5 times when find logs in range 301..400
       ),
     )
     val result = searcher.getLogsRollingForward(
@@ -116,7 +115,7 @@ class LogsSearcherTest {
     fakeElClient.setFinalizedBlockTag(450UL)
     fakeElClient.errorBlockNumbersAndThrowTimes(
       mutableMapOf(
-        301UL to null, // will always throw error when find logs in range 301..400
+        401UL to null, // will always throw error when find logs in range 301..450
       ),
     )
     assertThatThrownBy {
