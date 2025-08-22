@@ -113,9 +113,10 @@ class MaruPeerManager(
   }
 
   private fun logConnectedPeers() {
-    val peerIds = connectedPeers.keys.joinToString(", ") { it.toString() }
-    log.info("Currently connected peers: [$peerIds]")
-    log.info("Discovered nodes: [${discoveryService?.getKnownPeers()}]")
+    log.info("Currently connected peers={}", connectedPeers.keys.toList())
+    discoveryService?.getKnownPeers()?.forEach { peer ->
+      log.info("discovered peer={}", peer)
+    }
   }
 
   override fun onConnect(peer: Peer) {

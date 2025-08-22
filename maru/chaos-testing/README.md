@@ -3,7 +3,7 @@
 
 - 1 maru validator: `maru-validator` -> `besu-sequencer` (starts with Clique then switch to QBFT)
 - 4 maru followers:
-  - `maru-follower-0-0` -> `besu-follower-0` (will also work as bootnode)
+  - `maru-bootnode-0-0` -> `besu-follower-0` (will also work as bootnode)
   - `maru-follower-1-0` -> `besu-follower-1`
   - `maru-follower-2-0` -> `besu-follower-2`
   - `maru-follower-3-0` -> [`besu-follower-3`, `besu-follower-4`]

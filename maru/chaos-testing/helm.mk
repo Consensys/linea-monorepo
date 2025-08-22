@@ -49,8 +49,12 @@ helm-deploy-besu:
 		@echo "Deploying Besu"
 		@kubectl config current-context
 		@helm --kubeconfig $(KUBECONFIG) upgrade --install besu-sequencer ./helm/charts/besu --force -f ./helm/charts/besu/values.yaml -f ./helm/values/besu-local-dev-sequencer.yaml --namespace default
-		@helm --kubeconfig $(KUBECONFIG) upgrade --install besu-follower ./helm/charts/besu --force -f ./helm/charts/besu/values.yaml -f ./helm/values/besu-local-dev-follower.yaml --namespace default
-		@echo "Waiting for Besu to be ready..."
+		@$(MAKE) wait-for-log-entry pod_name=besu-sequencer-0 log_entry="enode"
+		@BOOTNODE_IP=$$(kubectl describe pod besu-sequencer-0 | grep -E '^IP:' | awk '{print $$2}'); \
+		echo "Pod IP: $$BOOTNODE_IP"; \
+		BOOTNODE=$$(kubectl logs besu-sequencer-0 | grep -o 'enode://[^[:space:]]*' | sed "s/127\.0\.0\.1/$$BOOTNODE_IP/"); \
+		echo "Bootnode: $$BOOTNODE"; \
+		helm --kubeconfig $(KUBECONFIG) upgrade --install besu-follower ./helm/charts/besu --force -f ./helm/charts/besu/values.yaml -f ./helm/values/besu-local-dev-follower.yaml --namespace default --set bootnodes=$$BOOTNODE
 		@$(MAKE) wait_pods pod_name=besu-sequencer pod_count=1
 		@$(MAKE) wait_pods pod_name=besu-follower pod_count=3
 
@@ -126,13 +130,13 @@ build-and-redeploy-maru:
 
 # Port-forward component pods exposing each pod's <port> on incremental local ports
 # Usage:
-#   make port-forward-all component=besu port=8545          -> 18545, 28545, ...
-#   make port-forward-all component=maru port=8550          -> 18550, 28550, ...
-# Optional vars: start_index (default 1)
+#   make port-forward-all component=besu port=8545          -> 1000, 1001, ...
+#   make port-forward-all component=maru port=8550          -> 1000, 1001, ...
+# Optional vars: local_port_start_number (default 1000)
 # Backward compatibility: besu-port-forward-all still works (defaults component=besu remote_port=8545)
 component ?= besu
 port ?= 8545
-start_index ?= 1
+local_port_start_number ?= 1000
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 TMP_DIR := $(MAKEFILE_DIR)/tmp
 
@@ -144,25 +148,22 @@ port-forward-component:
 	echo "Discovering pods (label app.kubernetes.io/component=$(component))..."; \
 	pods=$$(kubectl get pods -l app.kubernetes.io/component=$(component) -o jsonpath='{.items[*].metadata.name}'); \
 	if [ -z "$$pods" ]; then echo "No pods found for component $(component)"; exit 1; fi; \
-	idx=$(start_index); \
+	current_port=$(local_port_start_number); \
 	for pod in $$pods; do \
-		local_port="$${idx}$(port)"; \
-		if [ -z "$$local_port" ]; then echo "[ERROR] local_port empty (idx=$$idx port=$(port))"; idx=$$((idx+1)); continue; fi; \
-		if lsof -i TCP:$$local_port -sTCP:LISTEN >/dev/null 2>&1; then \
-			echo "Local port $$local_port in use, skipping $$pod"; \
-			idx=$$((idx+1)); \
-			continue; \
-		fi; \
+		while lsof -i TCP:$$current_port -sTCP:LISTEN >/dev/null 2>&1; do \
+			echo "Local port $$current_port in use, trying next..."; \
+			current_port=$$((current_port + 1)); \
+		done; \
 		log_file="$(TMP_DIR)/port-forward-$$pod.log"; \
 		pid_file="$(TMP_DIR)/port-forward-$$pod.pid"; \
-		echo "Port-forwarding $$pod :$(port) -> 127.0.0.1:$$local_port"; \
-		kubectl port-forward $$pod $$local_port:$(port) > "$$log_file" 2>&1 & \
+		echo "Port-forwarding $$pod :$(port) -> 127.0.0.1:$$current_port"; \
+		kubectl port-forward $$pod $$current_port:$(port) > "$$log_file" 2>&1 & \
 		pf_pid=$$!; \
 		echo $$pf_pid > "$$pid_file"; \
-		url="$$pod = http://127.0.0.1:$$local_port"; \
+		url="$$pod = http://127.0.0.1:$$current_port"; \
 		echo "$$url" >> "$$summary_file"; \
 		echo "Started pid $$pf_pid (log: $$log_file, url: $$url)"; \
-		idx=$$((idx+1)); \
+		current_port=$$((current_port + 1)); \
 	done; \
 	echo "Active forwards:"; \
 	pids_files=$$(ls $(TMP_DIR)/port-forward-*.pid 2>/dev/null || true); \
@@ -170,8 +171,8 @@ port-forward-component:
 	echo "URL list written to $$summary_file";
 
 port-forward-linea:
-	$(MAKE) port-forward-component component=maru port=5060 start_index=1
-	$(MAKE) port-forward-component component=besu port=8545 start_index=1
+	$(MAKE) port-forward-component component=maru port=5060 local_port_start_number=1100
+	$(MAKE) port-forward-component component=besu port=8545 local_port_start_number=1200
 
 port-forward-stop-component:
 	@echo "Scanning for all kubectl port-forward processes..."; \
