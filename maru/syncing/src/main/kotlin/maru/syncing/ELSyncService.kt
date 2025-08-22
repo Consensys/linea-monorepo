@@ -47,7 +47,7 @@ data class ElBlockInfo(
     return result
   }
 
-  override fun toString(): String = "ElBlockInfo(blockNumber=$blockNumber, blockHash=${blockHash.encodeHex()})"
+  override fun toString(): String = "ElBlockInfo(elBlockNumber=$blockNumber, elBlockHash=${blockHash.encodeHex()})"
 }
 
 /**
@@ -134,11 +134,19 @@ class ELSyncService(
 
         ExecutionPayloadStatus.VALID -> {
           log.debug(
-            "EL client is synced elBlockNumber={} elBlockHash={}",
-            latestBeaconBlockBody.executionPayload.blockNumber,
-            newElSyncTarget.blockHash.encodeHex(),
+            "EL client is synced newSyncTarget={}",
+            newElSyncTarget,
           )
-          ELSyncStatus.SYNCED
+          val latestClBlockNumber = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number
+          val latestElBlockNumber =
+            beaconChain
+              .getSealedBeaconBlock(beaconBlockNumber = latestClBlockNumber)!!
+              .beaconBlock.beaconBlockBody.executionPayload.blockNumber
+          if (newElSyncTarget.blockNumber == latestElBlockNumber) {
+            ELSyncStatus.SYNCED
+          } else {
+            ELSyncStatus.SYNCING
+          }
         }
 
         else -> throw IllegalStateException("Unexpected payload status: ${fcuResponse.payloadStatus.status}")
