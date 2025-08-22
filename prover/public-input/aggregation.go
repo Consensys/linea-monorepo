@@ -34,9 +34,9 @@ type Aggregation struct {
 	LastFinalizedL1RollingHashMessageNumber uint
 	L1RollingHashMessageNumber              uint
 	LastFinalizedFtxStreamHash              string
-	FtxStreamHash                           string
+	FinalFtxStreamHash                      string
 	LastFinalizedFtxNumber                  uint
-	FtxNumber                               uint
+	FinalFtxNumber                          uint
 	L2MsgRootHashes                         []string
 	L2MsgMerkleTreeDepth                    int
 	ChainID                                 uint64
@@ -86,9 +86,9 @@ func (p Aggregation) Sum(hsh hash.Hash) []byte {
 	writeUint(p.LastFinalizedL1RollingHashMessageNumber)
 	writeUint(p.L1RollingHashMessageNumber)
 	writeHex(p.LastFinalizedFtxStreamHash)
-	writeHex(p.FtxStreamHash)
+	writeHex(p.FinalFtxStreamHash)
 	writeUint(p.LastFinalizedFtxNumber)
-	writeUint(p.FtxNumber)
+	writeUint(p.FinalFtxNumber)
 	writeInt(p.L2MsgMerkleTreeDepth)
 	hsh.Write(l2Msgs)
 
@@ -212,7 +212,7 @@ func NewAggregationFPI(fpi *Aggregation) (s *AggregationFPI, err error) {
 		FinalBlockNumber:                  uint64(fpi.FinalBlockNumber),
 		FinalBlockTimestamp:               uint64(fpi.FinalTimestamp),
 		FinalRollingHashNumber:            uint64(fpi.L1RollingHashMessageNumber),
-		FinalFtxNumber:                    uint64(fpi.FtxNumber),
+		FinalFtxNumber:                    uint64(fpi.FinalFtxNumber),
 		L2MsgMerkleTreeDepth:              fpi.L2MsgMerkleTreeDepth,
 		ChainID:                           fpi.ChainID,
 		L2MessageServiceAddr:              fpi.L2MessageServiceAddr,
@@ -227,7 +227,7 @@ func NewAggregationFPI(fpi *Aggregation) (s *AggregationFPI, err error) {
 	if err = copyFromHex(s.LastFinalizedRollingHash[:], fpi.LastFinalizedL1RollingHash); err != nil {
 		return
 	}
-	if err = copyFromHex(s.FinalFtxStreamHash[:], fpi.FtxStreamHash); err != nil {
+	if err = copyFromHex(s.FinalFtxStreamHash[:], fpi.FinalFtxStreamHash); err != nil {
 		return
 	}
 	if err = copyFromHex(s.LastFinalizedFtxStreamHash[:], fpi.LastFinalizedFtxStreamHash); err != nil {
