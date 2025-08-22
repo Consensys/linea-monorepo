@@ -83,7 +83,7 @@ class LogsSearcherTest {
   }
 
   @Test
-  fun `should return logs within block range with temporary errors`() {
+  fun `should return logs within block range in face of temporary errors`() {
     fakeElClient.setFinalizedBlockTag(450UL)
     // The search should retry on errors when find logs (all will throw 5 times)
     // and not to skip retrieving any of the event logs
@@ -112,7 +112,7 @@ class LogsSearcherTest {
   }
 
   @Test
-  fun `should throw exception logs when the search timeout reached`() {
+  fun `should throw exception when the search timeout reached in face of consistent errors`() {
     fakeElClient.setFinalizedBlockTag(450UL)
     fakeElClient.errorBlockNumbersAndThrowTimes(
       mutableMapOf(
