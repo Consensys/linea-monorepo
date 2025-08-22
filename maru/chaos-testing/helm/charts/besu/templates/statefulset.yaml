@@ -24,6 +24,9 @@ spec:
             - --config-file=/opt/besu/configs/configs.toml
             - --genesis-file=/opt/besu/configs/genesis.json
             - --node-private-key-file="/opt/besu/configs/private-key.txt"
+            {{- if $.Values.bootnodes }}
+            - --bootnodes={{ $.Values.bootnodes }}
+            {{- end }}
           volumeMounts:
             - name: data
               mountPath: /opt/besu/data
