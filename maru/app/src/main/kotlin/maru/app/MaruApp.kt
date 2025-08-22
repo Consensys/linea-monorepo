@@ -174,12 +174,13 @@ class MaruApp(
   }
 
   override fun close() {
-    beaconChain.close()
     validatorELNodeEngineApiWeb3JClient.eth1Web3j.shutdown()
     validatorELNodeEthJsonRpcClient.eth1Web3j.shutdown()
     followerELNodeEngineApiWeb3JClients.forEach { (_, web3jClient) -> web3jClient.eth1Web3j.shutdown() }
     p2pNetwork.close()
     vertx.close()
+    // close db last, otherwise other components may fail trying to save data
+    beaconChain.close()
   }
 
   fun peersConnected(): UInt =
