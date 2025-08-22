@@ -56,7 +56,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: maru-build-and-publish-${{ github.workflow }}-${{ github.ref }}
+  group: maru-docker-build-and-publish-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:

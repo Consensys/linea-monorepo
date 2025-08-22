@@ -8,7 +8,7 @@ on:
        type: string
 
 concurrency:
-  group: run-smoke-tests-${{ github.workflow }}-${{ github.ref }}
+  group: maru-smoke-tests-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:

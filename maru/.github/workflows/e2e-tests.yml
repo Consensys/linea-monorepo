@@ -43,7 +43,7 @@ on:
         required: false
 
 concurrency:
-  group: run-e2e-tests-${{ github.workflow }}-${{ github.ref }}
+  group: maru-e2e-tests-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
