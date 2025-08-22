@@ -36,7 +36,7 @@ class FakeEthApiClient(
 
   // key = which block number to throw error
   // value = how many times left to throw error, null means always throw
-  private var errorBlockNumbersAndThrowTimes: MutableMap<ULong, UInt?> = mutableMapOf()
+  private var errorBlockNumbersAndThrowTimes: MutableMap<ULong, ULong?> = mutableMapOf()
   init {
     require(initialTagsBlocks.keys.size == BlockParameter.Tag.entries.size) {
       "Please specify all block tags: ${BlockParameter.Tag.entries.joinToString(", ")}"
@@ -75,7 +75,7 @@ class FakeEthApiClient(
   }
 
   @Synchronized
-  fun errorBlockNumbersAndThrowTimes(errorBlockNumbersAndThrowTimes: MutableMap<ULong, UInt?>) {
+  fun errorBlockNumbersAndThrowTimes(errorBlockNumbersAndThrowTimes: MutableMap<ULong, ULong?>) {
     this.errorBlockNumbersAndThrowTimes = errorBlockNumbersAndThrowTimes
   }
 
@@ -218,9 +218,9 @@ class FakeEthApiClient(
     errorBlockNumbersAndThrowTimes.forEach { errorBlockNumber, throwTimes ->
       if ((fromBlockNumber..toBlockNumber).contains(errorBlockNumber)) {
         if (throwTimes != null && throwTimes > 0UL) {
-          errorBlockNumbersAndThrowTimes[errorBlockNumber] = errorBlockNumbersAndThrowTimes[errorBlockNumber]!! - 1U
+          errorBlockNumbersAndThrowTimes[errorBlockNumber] = errorBlockNumbersAndThrowTimes[errorBlockNumber]!! - 1UL
         }
-        shouldThrow = shouldThrow || throwTimes == null || errorBlockNumbersAndThrowTimes[errorBlockNumber]!! > 0U
+        shouldThrow = shouldThrow || throwTimes == null || errorBlockNumbersAndThrowTimes[errorBlockNumber]!! > 0UL
       }
     }
 
