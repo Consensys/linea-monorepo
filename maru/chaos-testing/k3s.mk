@@ -3,8 +3,7 @@
 # without need to setup a full Kubernetes cluster locally.
 
 k3s-clean:
-	-@docker stop k3s-server
-	-@docker rm k3s-server
+	-@docker rm -f k3s-server >/dev/null 2>&1
 
 # To debug the k3s server, you can run:
 # docker exec -it k3s-server sh

@@ -16,5 +16,5 @@ spec:
     - name: {{ .name }}
       port: {{ .port }}
       targetPort: {{ default .port .targetPort }}
-      protocol: {{ default "TCP" .protocol }}
+      protocol: {{ default "TCP" .protocol | upper }}
     {{- end }}
