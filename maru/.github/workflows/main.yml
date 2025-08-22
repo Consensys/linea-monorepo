@@ -56,6 +56,14 @@ jobs:
       has-changes-requiring-build: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}
     secrets: inherit
 
+  chaos-testing:
+    needs: [ filter-commit-changes ]
+    if: ${{ always() && !cancelled() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
+    uses: ./.github/workflows/chaos-testing.yml
+    with:
+      consensus-client-changed: ${{ needs.filter-commit-changes.outputs.consensus-client }}
+    secrets: inherit
+
   build-for-testing:
     if: ${{ always() && !cancelled() }}
     uses: ./.github/workflows/maru-build-and-publish.yml

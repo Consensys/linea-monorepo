@@ -1,4 +1,4 @@
-name: Testing CI
+name: Chaos Testing
 
 on:
   workflow_dispatch:
@@ -8,11 +8,29 @@ on:
         type: string
         default: 'true'
         description: 'when false, skips the job'
+      enable_ssh_debug:
+        description: 'Enable SSH debugging before tests start'
+        required: false
+        type: boolean
+        default: false
+      ssh_debug_on_failure:
+        required: false
+        type: boolean
+        default: false
+        description: 'Enable SSH debugging on test failure'
   workflow_call:
     inputs:
       consensus-client-changed:
         required: true
         type: string
+      enable_ssh_debug:
+        required: false
+        type: boolean
+        default: false
+      ssh_debug_on_failure:
+        required: false
+        type: boolean
+        default: false
     secrets:
       DOCKERHUB_USERNAME:
         required: false
@@ -51,10 +69,39 @@ jobs:
           java-version: 21
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@8379f6a1328ee0e06e2bb424dadb7b159856a326 # 4.4.0
+      - name: Install helm
+        uses: azure/setup-helm@v4.3.0
+        with:
+          version: 'v3.18.3'
+        id: install
+
+      # SSH debugging session - before tests (if explicitly requested)
+      - name: Setup upterm session (pre-test)
+        if: ${{ inputs.enable_ssh_debug }}
+        uses: lhotari/action-upterm@v1
+        with:
+          ## If no one connects shut down ssh server after timeout.
+          wait-timeout-minutes: 20
+
       - name: Run chaos tests
+        id: chaos-tests
         run: |
           cd chaos-testing
-          make chaos-full-reload-with-local-maru-image
+          mkdir -p ~/.kube
+          export KUBECONFIG=~/.kube/k3s-server
+          make k3s-reload    # installs k3s K8S implementation
+          kubectl config set-context --current --namespace=default
+          make chaos-redeploy-chaos-mesh-and-linea maru_image=consensys/maru:local
+          make chaos-health-check # just make sure that the cluster is healthy before starting the chaos tests
+          make chaos-experiment-workflow-and-health-check
+
+      # SSH debugging session - on failure (if requested)
+      - name: Setup upterm session after failure
+        if: ${{ (failure() || steps.chaos-tests.outcome == 'failure') && inputs.ssh_debug_on_failure == true }}
+        uses: lhotari/action-upterm@v1
+        with:
+          ## If no one connects shut down ssh server after timeout.
+          wait-timeout-minutes: 20
 
       - name: Store reports
         if: failure()
