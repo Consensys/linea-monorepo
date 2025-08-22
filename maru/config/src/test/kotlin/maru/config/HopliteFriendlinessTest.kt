@@ -58,6 +58,7 @@ class HopliteFriendlinessTest {
     port = 8080
 
     [syncing]
+    desync-tolerance = 10
     peer-chain-height-polling-interval = "5 seconds"
     el-sync-status-refresh-interval = "6 seconds"
     use-unconditional-random-download-peer = false
@@ -174,6 +175,7 @@ class HopliteFriendlinessTest {
           peerChainHeightGranularity = 10U,
         ),
       elSyncStatusRefreshInterval = 6.seconds,
+      desyncTolerance = 10UL,
       useUnconditionalRandomDownloadPeer = false,
       SyncingConfig.Download(
         blockRangeRequestTimeout = 10.seconds,

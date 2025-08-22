@@ -19,7 +19,8 @@ class SyncControllerTest {
   private fun createController(
     blockNumber: ULong,
     clSyncService: CLSyncService = fakeClSyncService,
-  ): BeaconSyncControllerImpl = createSyncController(blockNumber, clSyncService)
+    desyncTolerance: ULong = 1UL,
+  ): BeaconSyncControllerImpl = createSyncController(blockNumber, clSyncService, desyncTolerance)
 
   @BeforeEach
   fun setUp() {
@@ -285,22 +286,47 @@ class SyncControllerTest {
     assertThat(fakeClSyncService.lastSyncTarget).isEqualTo(180UL)
     assertThat(controller.getCLSyncStatus()).isEqualTo(CLSyncStatus.SYNCING)
   }
-}
 
-// Additional test double to track method calls
-private class TrackingCLSyncService : CLSyncService {
-  val setSyncTargetCalls = mutableListOf<ULong>()
-  private val syncCompleteHandlers = mutableListOf<(ULong) -> Unit>()
+  @Test
+  fun `should not trigger sync when within desync tolerance`() {
+    // Given: beacon chain at block 100 with desync tolerance of 5
+    val controller = createController(100UL, desyncTolerance = 5UL)
+    controller.updateClSyncStatus(CLSyncStatus.SYNCED)
 
-  override fun setSyncTarget(syncTarget: ULong) {
-    setSyncTargetCalls.add(syncTarget)
+    // When: sync target is 104 (difference of 4, within tolerance of 5)
+    controller.onBeaconChainSyncTargetUpdated(104UL)
+
+    // Then: should not trigger sync
+    assertThat(fakeClSyncService.lastSyncTarget).isNull()
+    assertThat(controller.getCLSyncStatus()).isEqualTo(CLSyncStatus.SYNCED)
   }
 
-  override fun onSyncComplete(handler: (ULong) -> Unit) {
-    syncCompleteHandlers.add(handler)
+  @Test
+  fun `should trigger sync when exceeding desync tolerance`() {
+    // Given: beacon chain at block 100 with desync tolerance of 5
+    val controller = createController(100UL, desyncTolerance = 5UL)
+    controller.updateClSyncStatus(CLSyncStatus.SYNCED)
+
+    // When: sync target is 106 (difference of 6, exceeds tolerance of 5)
+    controller.onBeaconChainSyncTargetUpdated(106UL)
+
+    // Then: should trigger sync
+    assertThat(fakeClSyncService.lastSyncTarget).isEqualTo(106UL)
+    assertThat(controller.getCLSyncStatus()).isEqualTo(CLSyncStatus.SYNCING)
   }
 
-  override fun getSyncDistance(): ULong = 0UL
+  @Test
+  fun `should transition from syncing to synced when within tolerance during ongoing sync`() {
+    // Given: beacon chain at block 100 with desync tolerance of 5, currently syncing
+    val controller = createController(100UL, desyncTolerance = 5UL)
+    controller.updateClSyncStatus(CLSyncStatus.SYNCING)
 
-  override fun getSyncTarget(): ULong = 0UL
+    // When: sync target is updated to 103 (within tolerance)
+    controller.onBeaconChainSyncTargetUpdated(103UL)
+
+    // Then: should set sync target but still remain in syncing state
+    // (the transition to SYNCED happens when onSyncComplete is called)
+    assertThat(fakeClSyncService.lastSyncTarget).isEqualTo(103UL)
+    assertThat(controller.getCLSyncStatus()).isEqualTo(CLSyncStatus.SYNCING)
+  }
 }

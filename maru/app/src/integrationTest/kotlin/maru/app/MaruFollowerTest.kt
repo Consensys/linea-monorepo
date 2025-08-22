@@ -8,7 +8,8 @@
  */
 package maru.app
 
-import kotlin.time.Duration.Companion.milliseconds
+import java.math.BigInteger
+import kotlin.collections.map
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import maru.config.SyncingConfig
@@ -26,6 +27,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
+import org.web3j.protocol.core.methods.response.EthBlock
 import testutils.Checks.getBlockNumber
 import testutils.Checks.getMinedBlocks
 import testutils.PeeringNodeNetworkStack
@@ -48,6 +50,7 @@ class MaruFollowerTest {
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
   private val maruFactory = MaruFactory()
+  private val desyncTolerance = 0UL
 
   private fun setupMaruHelper(syncingConfig: SyncingConfig = MaruFactory.defaultSyncingConfig) {
     // Create and start validator Maru app first
@@ -268,8 +271,9 @@ class MaruFollowerTest {
 
     val residueBlocks = 3 // residue of modulo peerChainHeightGranularity i.e. 10
     val blocksToProduceWithoutResidue = 20 // a block number dividable by 10
+    val blocksTotal = residueBlocks + blocksToProduceWithoutResidue
 
-    repeat(blocksToProduceWithoutResidue) {
+    repeat(blocksTotal) {
       transactionsHelper.run {
         validatorStack.besuNode.sendTransactionAndAssertExecution(
           logger = log,
@@ -280,7 +284,7 @@ class MaruFollowerTest {
     }
 
     // This is here mainly to wait until block propagation is complete
-    checkNetworkStacksBlocksProduced(blocksToProduceWithoutResidue, validatorStack)
+    checkNetworkStacksBlocksProduced(blocksTotal, validatorStack)
 
     followerStack.setMaruApp(
       maruFactory.buildTestMaruFollowerWithP2pPeering(
@@ -295,9 +299,8 @@ class MaruFollowerTest {
 
     when (syncingConfig.syncTargetSelection) {
       is SyncingConfig.SyncTargetSelection.Highest ->
-        checkValidatorAndFollowerBlocks(
-          blocksToProduceWithoutResidue + residueBlocks,
-        )
+        checkValidatorAndFollowerBlocks(blocksTotal)
+
       is SyncingConfig.SyncTargetSelection.MostFrequent -> {
         checkValidatorAndFollowerBlocks(blocksToProduceWithoutResidue)
         // ensure that the head of follower is blocksToProduceWithoutResidue
@@ -357,6 +360,7 @@ class MaruFollowerTest {
         checkValidatorAndFollowerBlocks(
           2 * blocksToProduceWithoutResidue + residueBlocks,
         )
+
       is SyncingConfig.SyncTargetSelection.MostFrequent -> {
         checkValidatorAndFollowerBlocks(2 * blocksToProduceWithoutResidue)
         // ensure that the head of follower is 2 * blocksToProduceWithoutResidue
@@ -413,6 +417,7 @@ class MaruFollowerTest {
         checkValidatorAndFollowerBlocks(
           2 * blocksToProduce + residueBlocks,
         )
+
       is SyncingConfig.SyncTargetSelection.MostFrequent -> {
         checkValidatorAndFollowerBlocks(2 * blocksToProduce)
         // ensure that the head of follower is at 2 * blocksToProduce
@@ -421,24 +426,43 @@ class MaruFollowerTest {
     }
   }
 
-  private fun checkValidatorAndFollowerBlocks(blocksToProduce: Int) =
-    checkNetworkStacksBlocksProduced(blocksToProduce, validatorStack, followerStack)
+  private fun checkValidatorAndFollowerBlocks(blocksToProduce: Int) {
+    await
+      .pollDelay(1.seconds.toJavaDuration())
+      .timeout(30.seconds.toJavaDuration())
+      .untilAsserted {
+        val blocksProducedByQbftValidator = blocksToMetadata(validatorStack.besuNode.getMinedBlocks(blocksToProduce))
+        val blocksImportedByFollower = blocksToMetadata(followerStack.besuNode.getMinedBlocks(blocksToProduce))
+        assertThat(blocksProducedByQbftValidator)
+          .hasSize(blocksToProduce)
+        assertThat(blocksImportedByFollower)
+          .hasSize(blocksToProduce)
+        assertThat(blocksImportedByFollower)
+          .isEqualTo(blocksProducedByQbftValidator)
+      }
+  }
+
+  private fun blocksToMetadata(blocks: List<EthBlock.Block>): List<Pair<BigInteger, String>> =
+    blocks.map {
+      it.number to it.hash
+    }
 
   private fun checkNetworkStacksBlocksProduced(
     blocksProduced: Int,
     vararg stacks: PeeringNodeNetworkStack,
   ) {
     await
-      .pollDelay(100.milliseconds.toJavaDuration())
+      .pollDelay(1.seconds.toJavaDuration())
       .timeout(30.seconds.toJavaDuration())
       .untilAsserted {
         if (stacks.isNotEmpty()) {
-          val referenceBlocks = stacks.first().besuNode.getMinedBlocks(blocksProduced)
+          val referenceBlocks = blocksToMetadata(stacks.first().besuNode.getMinedBlocks(blocksProduced))
           if (stacks.size == 1) {
             assertThat(referenceBlocks.size).isEqualTo(blocksProduced)
           } else {
             stacks.drop(1).map {
-              assertThat(it.besuNode.getMinedBlocks(blocksProduced)).isEqualTo(referenceBlocks)
+              val checkedBlocks = blocksToMetadata(it.besuNode.getMinedBlocks(blocksProduced))
+              assertThat(checkedBlocks).isEqualTo(referenceBlocks)
             }
           }
         }

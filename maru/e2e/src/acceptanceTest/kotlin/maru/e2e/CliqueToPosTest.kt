@@ -287,6 +287,7 @@ class CliqueToPosTest {
         ethereumApiConfig = engineApiConfig,
         dataDir = followerDataDir,
         validatorPortForStaticPeering = maruSequencer.p2pPort(),
+        desyncTolerance = 3UL,
       )
     if (nodeName.contains("besu")) {
       // Required to change validation rules from Clique to PostMerge

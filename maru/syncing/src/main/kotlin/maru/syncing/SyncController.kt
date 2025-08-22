@@ -12,6 +12,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
+import linea.kotlin.minusCoercingUnderflow
 import maru.config.consensus.ElFork
 import maru.consensus.ForksSchedule
 import maru.consensus.ValidatorProvider
@@ -36,6 +37,7 @@ internal data class SyncState(
 class BeaconSyncControllerImpl(
   private val beaconChain: BeaconChain,
   private val clSyncService: CLSyncService,
+  private val desyncTolerance: ULong,
   clState: CLSyncStatus = CLSyncStatus.SYNCING,
   elState: ELSyncStatus = ELSyncStatus.SYNCING,
 ) : SyncStatusProvider,
@@ -163,19 +165,31 @@ class BeaconSyncControllerImpl(
 
   override fun onBeaconChainSyncTargetUpdated(syncTargetBlockNumber: ULong) {
     val currentHead = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number
+    val blockDifference = syncTargetBlockNumber.minusCoercingUnderflow(currentHead)
 
-    if (syncTargetBlockNumber > currentHead) {
+    val currentClStatus = lock.read { currentState.clStatus }
+
+    if (currentClStatus == CLSyncStatus.SYNCING) {
+      // If already syncing, always update the sync target regardless of tolerance
+      log.debug(
+        "Updating target while node is syncing syncTarget={} currentHead={}",
+        syncTargetBlockNumber,
+        currentHead,
+      )
+      clSyncService.setSyncTarget(syncTargetBlockNumber)
+    } else if (blockDifference > desyncTolerance) {
+      // Only start new sync if difference exceeds tolerance
+      log.debug(
+        "Node got desynced updating sync target syncTarget={} blockDifference={} currentHead={} desyncTolerance={}",
+        syncTargetBlockNumber,
+        blockDifference,
+        currentHead,
+        desyncTolerance,
+      )
       updateClSyncStatus(CLSyncStatus.SYNCING)
       clSyncService.setSyncTarget(syncTargetBlockNumber)
-    } else {
-      // We're caught up or ahead, but check if we were previously syncing
-      val currentClStatus = lock.read { currentState.clStatus }
-      if (currentClStatus == CLSyncStatus.SYNCING) {
-        // Transition from SYNCING to SYNCED
-        clSyncService.setSyncTarget(syncTargetBlockNumber)
-      }
-      // If already SYNCED, do nothing
     }
+    // If not syncing and within tolerance, do nothing
   }
 
   override fun getCLSyncTarget(): ULong = clSyncService.getSyncTarget()
@@ -196,6 +210,7 @@ class BeaconSyncControllerImpl(
       finalizationProvider: FinalizationProvider,
       allowEmptyBlocks: Boolean = true,
       useUnconditionalRandomDownloadPeer: Boolean = false,
+      desyncTolerance: ULong,
     ): SyncController {
       val clSyncService =
         CLSyncServiceImpl(
@@ -216,6 +231,7 @@ class BeaconSyncControllerImpl(
         BeaconSyncControllerImpl(
           beaconChain = beaconChain,
           clSyncService = clSyncService,
+          desyncTolerance = desyncTolerance,
         )
 
       val elSyncService =

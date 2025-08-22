@@ -162,7 +162,6 @@ class ProtocolStarter(
       poller?.cancel()
       poller = null
       currentProtocolWithForkReference.get()?.protocol?.stop()
-      currentProtocolWithForkReference.set(null)
       log.debug("Stopped fork transition polling")
     }
   }

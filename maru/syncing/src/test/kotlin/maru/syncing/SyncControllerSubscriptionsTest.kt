@@ -19,7 +19,12 @@ class SyncControllerSubscriptionsTest {
   private fun createController(
     blockNumber: ULong,
     clSyncService: CLSyncService = fakeClSyncService,
-  ): BeaconSyncControllerImpl = createSyncController(blockNumber, clSyncService)
+  ): BeaconSyncControllerImpl =
+    createSyncController(
+      blockNumber = blockNumber,
+      clSyncService = clSyncService,
+      desyncTolerance = 1UL,
+    )
 
   @BeforeEach
   fun setUp() {

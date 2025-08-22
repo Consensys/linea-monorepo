@@ -29,7 +29,12 @@ class SyncControllerThreadSafetyTest {
   private fun createController(
     blockNumber: ULong,
     clSyncService: CLSyncService = FakeCLSyncService(),
-  ): BeaconSyncControllerImpl = createSyncController(blockNumber, clSyncService)
+  ): BeaconSyncControllerImpl =
+    createSyncController(
+      blockNumber = blockNumber,
+      clSyncService = clSyncService,
+      desyncTolerance = 1UL,
+    )
 
   @BeforeEach
   fun setUp() {

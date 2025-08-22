@@ -48,7 +48,7 @@ class FollowerBeaconBlockImporterTest {
         finalizationStateProvider = { finalizationState },
         nextBlockTimestampProvider = { nextBlockTimestamp },
         prevRandaoProvider = prevRandaoProvider,
-        shouldBuildNextBlock = { _: BeaconState, _: ConsensusRoundIdentifier ->
+        shouldBuildNextBlock = { _: BeaconState, _: ConsensusRoundIdentifier, _: Long ->
           shouldBuildNextBlock
         },
         feeRecipient = feeRecipient,
@@ -113,9 +113,13 @@ class FollowerBeaconBlockImporterTest {
     val randomBeaconBlock = DataGenerators.randomBeaconBlock(1UL)
     val randomBeaconState = DataGenerators.randomBeaconState(1UL)
     val expectedConsensusRoundIdentifier = ConsensusRoundIdentifier(2, 0)
-    val shouldBuildNextBlockPredicate: (BeaconState, ConsensusRoundIdentifier) -> Boolean = mock()
+    val shouldBuildNextBlockPredicate: (BeaconState, ConsensusRoundIdentifier, Long) -> Boolean = mock()
     whenever(
-      shouldBuildNextBlockPredicate.invoke(eq(randomBeaconState), eq(expectedConsensusRoundIdentifier)),
+      shouldBuildNextBlockPredicate.invoke(
+        eq(randomBeaconState),
+        eq(expectedConsensusRoundIdentifier),
+        eq(nextBlockTimestamp),
+      ),
     ).thenReturn(true)
     val nextBlockTimestampProvider: NextBlockTimestampProvider = mock()
     val expectedParentTimestamp = randomBeaconState.latestBeaconBlockHeader.timestamp.toLong()
@@ -134,7 +138,12 @@ class FollowerBeaconBlockImporterTest {
 
     beaconBlockImporter.importBlock(randomBeaconState, randomBeaconBlock)
 
-    verify(shouldBuildNextBlockPredicate, times(1)).invoke(eq(randomBeaconState), eq(expectedConsensusRoundIdentifier))
+    verify(shouldBuildNextBlockPredicate, times(1)).invoke(
+      eq(randomBeaconState),
+      eq
+        (expectedConsensusRoundIdentifier),
+      eq(nextBlockTimestamp),
+    )
     verify(nextBlockTimestampProvider, times(1)).nextTargetBlockUnixTimestamp(eq(expectedParentTimestamp))
   }
 }

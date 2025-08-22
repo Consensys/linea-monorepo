@@ -179,7 +179,7 @@ class MaruAppFactory {
         statusMessageFactory = statusMessageFactory,
         besuMetricsSystem = besuMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
-        isBlockImportEnabledProvider = { syncControllerImpl!!.isBeaconChainSynced() },
+        isBlockImportEnabledProvider = { syncControllerImpl!!.isNodeFullInSync() },
       )
     val peersHeadBlockProvider = P2PPeersHeadBlockProvider(p2pNetwork.getPeerLookup())
     val finalizationProvider =
@@ -204,6 +204,7 @@ class MaruAppFactory {
           elSyncServiceConfig = ELSyncService.Config(config.syncing.elSyncStatusRefreshInterval),
           finalizationProvider = finalizationProvider,
           allowEmptyBlocks = config.allowEmptyBlocks,
+          desyncTolerance = config.syncing.desyncTolerance,
           useUnconditionalRandomDownloadPeer = config.syncing.useUnconditionalRandomDownloadPeer,
         )
       } else {

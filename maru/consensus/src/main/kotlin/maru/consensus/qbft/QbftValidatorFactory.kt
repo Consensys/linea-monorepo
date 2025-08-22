@@ -14,6 +14,7 @@ import kotlin.time.toJavaDuration
 import maru.config.QbftOptions
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
+import maru.consensus.ForksSchedule
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.PrevRandaoProvider
 import maru.consensus.PrevRandaoProviderImpl
@@ -83,6 +84,7 @@ class QbftValidatorFactory(
   private val clock: Clock,
   private val p2PNetwork: P2PNetwork,
   private val allowEmptyBlocks: Boolean,
+  private val forksSchedule: ForksSchedule,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     val protocolConfig = forkSpec.configuration as QbftConsensusConfig
@@ -260,10 +262,18 @@ class QbftValidatorFactory(
     feeRecipient: ByteArray,
   ): SealedBeaconBlockImporter<ValidationResult> {
     val shouldBuildNextBlock =
-      { beaconState: BeaconState, roundIdentifier: ConsensusRoundIdentifier ->
-        val nextProposerAddress =
-          proposerSelector.getProposerForBlock(beaconState, roundIdentifier).get().address
-        nextProposerAddress.contentEquals(localNodeIdentity.address)
+      { beaconState: BeaconState, roundIdentifier: ConsensusRoundIdentifier, nextBlockTimestamp: Long ->
+        // We shouldn't build next block if this fork ends
+        val nextForkTimestamp =
+          forksSchedule.getNextForkByTimestamp(beaconState.latestBeaconBlockHeader.timestamp.toLong())?.timestampSeconds
+            ?: Long.MAX_VALUE
+        if (nextBlockTimestamp >= nextForkTimestamp) {
+          false
+        } else {
+          val nextProposerAddress =
+            proposerSelector.getProposerForBlock(beaconState, roundIdentifier).get().address
+          nextProposerAddress.contentEquals(localNodeIdentity.address)
+        }
       }
     val beaconBlockImporter =
       BlockBuildingBeaconBlockImporter(
