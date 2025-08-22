@@ -38,11 +38,13 @@ class FakeCLSyncService : CLSyncService {
 fun createSyncController(
   blockNumber: ULong,
   clSyncService: CLSyncService = FakeCLSyncService(),
+  desyncTolerance: ULong,
 ): BeaconSyncControllerImpl {
   val state = DataGenerators.randomBeaconState(blockNumber)
   val beaconChain = InMemoryBeaconChain(state)
   return BeaconSyncControllerImpl(
     beaconChain = beaconChain,
     clSyncService = clSyncService,
+    desyncTolerance = desyncTolerance,
   )
 }

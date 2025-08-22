@@ -26,7 +26,7 @@ object Checks {
             DefaultBlockParameter.valueOf(BigInteger.valueOf(it.toLong())),
             false,
           ).sendAsync()
-      }.mapNotNull { it.get().block }
+      }.mapNotNull { it?.get()?.block }
 
   fun BesuNode.getBlockNumber(): BigInteger =
     this

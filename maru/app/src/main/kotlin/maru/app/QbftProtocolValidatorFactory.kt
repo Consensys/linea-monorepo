@@ -12,6 +12,7 @@ import java.time.Clock
 import maru.config.QbftOptions
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
+import maru.consensus.ForksSchedule
 import maru.consensus.NewBlockHandler
 import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.NextBlockTimestampProvider
@@ -46,6 +47,7 @@ class QbftProtocolValidatorFactory(
   private val allowEmptyBlocks: Boolean,
   private val syncStatusProvider: SyncStatusProvider,
   private val metadataCacheUpdaterHandlerEntry: Pair<String, NewBlockHandler<*>>,
+  private val forksSchedule: ForksSchedule,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     require(forkSpec.configuration is QbftConsensusConfig) {
@@ -99,6 +101,7 @@ class QbftProtocolValidatorFactory(
         clock = clock,
         p2PNetwork = p2pNetwork,
         allowEmptyBlocks = allowEmptyBlocks,
+        forksSchedule = forksSchedule,
       )
     val qbftProtocol = qbftValidatorFactory.create(forkSpec)
     syncStatusProvider.onFullSyncComplete {

@@ -64,6 +64,7 @@ class MaruFactory(
         syncTargetSelection = SyncTargetSelection.Highest,
         elSyncStatusRefreshInterval = 500.milliseconds,
         useUnconditionalRandomDownloadPeer = false,
+        desyncTolerance = 0UL,
       )
 
     fun enumeratingSyncingConfigs(): List<SyncingConfig> {
@@ -200,15 +201,26 @@ class MaruFactory(
     ethereumApiConfig: ApiEndpointConfig,
     validatorPortForStaticPeering: UInt? = null,
     overridingP2PNetwork: P2PNetwork? = null,
+    desyncTolerance: ULong = 10UL,
   ): MaruApp {
     val p2pConfig = buildP2pConfig(validatorPortForStaticPeering = validatorPortForStaticPeering)
     val beaconGenesisConfig = beaconGenesisConfig
+
+    val syncingConfig =
+      SyncingConfig(
+        peerChainHeightPollingInterval = 1.seconds,
+        syncTargetSelection = SyncTargetSelection.Highest,
+        elSyncStatusRefreshInterval = 500.milliseconds,
+        useUnconditionalRandomDownloadPeer = false,
+        desyncTolerance = desyncTolerance,
+      )
     val config =
       buildMaruConfig(
         engineApiEndpointConfig = engineApiConfig,
         ethereumApiEndpointConfig = ethereumApiConfig,
         dataDir = dataDir,
         p2pConfig = p2pConfig,
+        syncingConfig = syncingConfig,
       )
     return buildApp(
       config = config,
@@ -449,22 +461,14 @@ class MaruFactory(
     dataDir: Path,
     validatorPortForStaticPeering: UInt? = null,
     overridingP2PNetwork: P2PNetwork? = null,
-    syncingConfig: SyncingConfig = defaultSyncingConfig,
-  ): MaruApp {
-    val p2pConfig = buildP2pConfig(validatorPortForStaticPeering = validatorPortForStaticPeering)
-    val beaconGenesisConfig = beaconGenesisConfig
-    val config =
-      buildMaruConfig(
-        ethereumJsonRpcUrl = ethereumJsonRpcUrl,
-        engineApiRpc = engineApiRpc,
-        dataDir = dataDir,
-        p2pConfig = p2pConfig,
-        syncingConfig = syncingConfig,
-      )
-    return buildApp(
-      config = config,
-      beaconGenesisConfig = beaconGenesisConfig,
+    desyncTolerance: ULong = 10UL,
+  ): MaruApp =
+    buildTestMaruFollowerWithConsensusSwitch(
+      ethereumApiConfig = ApiEndpointConfig(endpoint = URI.create(ethereumJsonRpcUrl).toURL()),
+      engineApiConfig = ApiEndpointConfig(endpoint = URI.create(engineApiRpc).toURL()),
+      dataDir = dataDir,
+      validatorPortForStaticPeering = validatorPortForStaticPeering,
       overridingP2PNetwork = overridingP2PNetwork,
+      desyncTolerance = desyncTolerance,
     )
-  }
 }

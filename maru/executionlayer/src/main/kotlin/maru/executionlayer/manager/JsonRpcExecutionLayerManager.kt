@@ -56,7 +56,11 @@ class JsonRpcExecutionLayerManager(
         nextBlockTimestamp,
         executionLayerEngineApiClient.getFork(),
       )
-      payloadId = it.payloadId
+      if (it.payloadId == null) {
+        throw IllegalStateException("Unexpected FCU result. Payload ID is null! $it")
+      } else {
+        payloadId = it.payloadId
+      }
     }
   }
 
