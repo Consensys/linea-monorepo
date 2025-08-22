@@ -38,7 +38,7 @@ on:
         required: false
 
 concurrency:
-  group: consensus-client-testing-${{ github.workflow }}-${{ github.ref }}
+  group: maru-chaos-testing-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:

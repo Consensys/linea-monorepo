@@ -7,6 +7,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: maru-main-workflow-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   filter-commit-changes:
     runs-on: [gha-runner-scale-set-ubuntu-22.04-amd64-small]
@@ -21,7 +25,8 @@ jobs:
         uses: dorny/paths-filter@v3
         id: filter
         with:
-          base: ${{ github.ref }}
+          # Use proper base for comparison - target branch for PRs, previous commit for push
+          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || 'HEAD~1' }}
           list-files: "json"
           filters: |
             consensus-client:
@@ -31,7 +36,8 @@ jobs:
         uses: dorny/paths-filter@v3
         id: filter-out
         with:
-          base: ${{ github.ref }}
+          # Use proper base for comparison - target branch for PRs, previous commit for push
+          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || 'HEAD~1' }}
           list-files: "json"
           filters: |
             has-changes-requiring-build:
