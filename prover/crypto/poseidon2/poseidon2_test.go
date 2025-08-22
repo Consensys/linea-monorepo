@@ -16,7 +16,44 @@ func TestPoseidon2Sponge(t *testing.T) {
 	// This test ensures that the Poseidon2Sponge function is correctly implemented and produces the same output as
 	// the poseidon2.NewMerkleDamgardHasher(), which uses Write and Sum methods to get the final hash output
 
-	// We write and compress one Element at a time
+	// We write and compress the 'whole slice'
+	var rng = rand.New(utils.NewRandSource(0))
+	for i := 0; i < 100; i++ {
+
+		var state field.Octuplet
+		var input [10]field.Element
+		var inputBytes []byte
+
+		elementNumber := len(input)
+
+		merkleHasher := poseidon2.NewPoseidon2()
+		merkleHasher.Reset()
+		for i := 0; i < elementNumber; i++ {
+			input[i] = field.PseudoRand(rng)
+			bytes := input[i].Bytes()
+			inputBytes = append(inputBytes, bytes[:]...)
+		}
+		state = poseidon2.Poseidon2Sponge(input[:])
+
+		merkleHasher.Write(inputBytes[:])
+		newBytes := merkleHasher.Sum(nil)
+		var result field.Octuplet
+		for i := 0; i < 8; i++ {
+			startIndex := i * 4
+			segment := newBytes[startIndex : startIndex+4]
+			var newElement koalabear.Element
+			newElement.SetBytes(segment)
+			result[i] = newElement
+			require.Equal(t, result[i].String(), state[i].String())
+		}
+	}
+}
+
+func TestPoseidon2SpongeElement(t *testing.T) {
+	// This test ensures that the Poseidon2SpongeElement function is correctly implemented and produces the same output as
+	// the poseidon2.NewMerkleDamgardHasher(), which uses Write and Sum methods to get the final hash output,
+
+	// We write and compress 'one Element' at a time
 	var rng = rand.New(utils.NewRandSource(0))
 	for i := 0; i < 100; i++ {
 
@@ -29,25 +66,12 @@ func TestPoseidon2Sponge(t *testing.T) {
 		merkleHasher.Reset()
 		for i := 0; i < elementNumber; i++ {
 			input[i] = field.PseudoRand(rng)
-			inputBytes := input[i].Bytes()
-			merkleHasher.Write(inputBytes[:]) // Write one Element at a time
 		}
-		state = poseidon2.Poseidon2Sponge(input[:])
-		hVec := poseidon2.Poseidon2HashVec(input[:]) // it is the same as write and sum process
-
-		newBytes := merkleHasher.Sum(nil)
-
-		var result field.Octuplet
+		state = poseidon2.Poseidon2SpongeElement(input[:])
+		hVec := poseidon2.Poseidon2HashVecElement(input[:]) // it is the same as write and sum process
 
 		for i := 0; i < 8; i++ {
-			startIndex := i * 4
-			segment := newBytes[startIndex : startIndex+4]
-			var newElement koalabear.Element
-			newElement.SetBytes(segment)
-			result[i] = newElement
-			require.Equal(t, result[i].String(), state[i].String())
 			require.Equal(t, hVec[i].String(), state[i].String())
-
 		}
 
 	}

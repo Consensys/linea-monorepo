@@ -183,27 +183,45 @@ func defineRoundInternal(comp *wizard.CompiledIOP, ctx *Poseidon2Context, round,
 	return matMulInternal[:]
 }
 
-// defineAddRoundKeyAndSBox abstracts the logic for AddRoundKey + SBox
-func defineAddRoundKeyAndSBox(comp *wizard.CompiledIOP, ctx *Poseidon2Context, round, totalSize int, input []ifaces.Column, roundID int) []ifaces.Column {
+// defineAddRoundKey abstracts the logic for AddRoundKey
+func defineAddRoundKey(comp *wizard.CompiledIOP, ctx *Poseidon2Context, round, totalSize int, input []ifaces.Column, roundID int) []ifaces.Column {
 	addRoundKey := [16]ifaces.Column{}
-	sBox := [16]ifaces.Column{}
 
-	// Add Round Key
 	for col := 0; col < 16; col++ {
 		addRoundKey[col] = comp.InsertCommit(round, ifaces.ColIDf("Poseidon2_ROUND_%v_AddRoundKey_%v_%v_%v", roundID, comp.SelfRecursionCount, uniqueID(comp), col), totalSize)
 		ctx.AddRoundKey[col] = append(ctx.AddRoundKey[col], addRoundKey[col])
 		comp.InsertGlobal(round, ifaces.QueryIDf("Poseidon2_ROUND_%v_AddRoundKey_COMPUTATION_%v_%v_%v", roundID, comp.SelfRecursionCount, uniqueID(comp), col),
-			sym.Sub(addRoundKey[col], sym.Add(input[col], poseidon2.RoundKeys[roundID][col])))
+			sym.Sub(addRoundKey[col], sym.Add(input[col], poseidon2.RoundKeys[roundID-1][col])))
+	}
+	// Add Round Key
+	for col := 0; col < len(poseidon2.RoundKeys[roundID-1]); col++ {
+		addRoundKey[col] = comp.InsertCommit(round, ifaces.ColIDf("Poseidon2_ROUND_%v_AddRoundKey_%v_%v_%v", roundID, comp.SelfRecursionCount, uniqueID(comp), col), totalSize)
+		ctx.AddRoundKey[col] = append(ctx.AddRoundKey[col], addRoundKey[col])
+		comp.InsertGlobal(round, ifaces.QueryIDf("Poseidon2_ROUND_%v_AddRoundKey_COMPUTATION_%v_%v_%v", roundID, comp.SelfRecursionCount, uniqueID(comp), col),
+			sym.Sub(addRoundKey[col], sym.Add(input[col], poseidon2.RoundKeys[roundID-1][col]))) // Adjust the roundID because the initial round starts from 1, while the round key starts from 0.
 	}
 
-	// S-Box
-	for col := 0; col < 16; col++ {
-		sBox[col] = comp.InsertCommit(round, ifaces.ColIDf("Poseidon2_ROUND_%v_SBox_%v_%v_%v", roundID, comp.SelfRecursionCount, uniqueID(comp), col), totalSize)
-		ctx.SBox[col] = append(ctx.SBox[col], sBox[col])
-		comp.InsertGlobal(round, ifaces.QueryIDf("Poseidon2_ROUND_%v_SBox_COMPUTATION_%v_%v_%v", roundID, comp.SelfRecursionCount, uniqueID(comp), col),
-			sym.Sub(sBox[col], sym.Mul(sym.Square(addRoundKey[col]), addRoundKey[col])))
+	for col := len(poseidon2.RoundKeys[roundID-1]); col < 16; col++ {
+		addRoundKey[col] = comp.InsertCommit(round, ifaces.ColIDf("Poseidon2_ROUND_%v_AddRoundKey_%v_%v_%v", roundID, comp.SelfRecursionCount, uniqueID(comp), col), totalSize)
+		ctx.AddRoundKey[col] = append(ctx.AddRoundKey[col], addRoundKey[col])
+		comp.InsertGlobal(round, ifaces.QueryIDf("Poseidon2_ROUND_%v_AddRoundKey_COMPUTATION_%v_%v_%v", roundID, comp.SelfRecursionCount, uniqueID(comp), col),
+			sym.Sub(addRoundKey[col], input[col]))
 	}
-	return sBox[:] // The output of this round becomes the input for the next one.
+
+	return addRoundKey[:] // The output of this round becomes the input for the next one.
+}
+
+// defineSBox abstracts the logic for SBox
+func defineSBox(comp *wizard.CompiledIOP, ctx *Poseidon2Context, round, totalSize, index int, input []ifaces.Column, roundID int) ifaces.Column {
+	var sBox ifaces.Column
+
+	// S-Box
+	sBox = comp.InsertCommit(round, ifaces.ColIDf("Poseidon2_ROUND_%v_SBox_%v_%v_%v", roundID, comp.SelfRecursionCount, uniqueID(comp), index), totalSize)
+	ctx.SBox[index] = append(ctx.SBox[index], sBox)
+	comp.InsertGlobal(round, ifaces.QueryIDf("Poseidon2_ROUND_%v_SBox_COMPUTATION_%v_%v_%v", roundID, comp.SelfRecursionCount, uniqueID(comp), index),
+		sym.Sub(sBox, sym.Mul(sym.Square(input[index]), input[index])))
+
+	return sBox // The output of this round becomes the input for the next one.
 }
 
 // defineContext generates the constraints for the Poseidon2 computation and returns
@@ -257,52 +275,69 @@ func defineContext(comp *wizard.CompiledIOP) *Poseidon2Context {
 			totalSize)
 	}
 
-	var input []ifaces.Column
+	var input, output, copy_input []ifaces.Column
 	input = append(input, ctx.StackedOldStates[:]...)
 	input = append(input, ctx.StackedBlocks[:]...)
+	output = append(input, ctx.StackedNewStates[:]...)
+
+	copy_input = append(input[8:]) // saved to feed forward later
 
 	// 3. Define the constraints for the Poseidon2 permutation rounds.
 	// Initial matMulExternalInPlace
-	input = defineMatMulExternalInPlace(comp, ctx, round, totalSize, input, -1)
+	input = defineMatMulExternalInPlace(comp, ctx, round, totalSize, input, 0)
 
-	// Full rounds (e.g., 0 to 2)
-	for i := 0; i < 3; i++ {
-		input = defineAddRoundKeyAndSBox(comp, ctx, round, totalSize, input, i)
+	// Rounds 1 - 3
+	for i := 1; i < 4; i++ {
+		input = defineAddRoundKey(comp, ctx, round, totalSize, input, i)
+		for col := 0; col < 16; col++ {
+			input[col] = defineSBox(comp, ctx, round, totalSize, col, input, i)
+		}
 		input = defineMatMulExternalInPlace(comp, ctx, round, totalSize, input, i)
 	}
 
-	// Partial rounds (e.g., 3 to 23)
-	for i := 3; i < 24; i++ {
-		input = defineAddRoundKeyAndSBox(comp, ctx, round, totalSize, input, i)
+	// Rounds 4 - 24
+	for i := 4; i < 25; i++ {
+		input = defineAddRoundKey(comp, ctx, round, totalSize, input, i)
+		input[0] = defineSBox(comp, ctx, round, totalSize, 0, input, i)
 		input = defineRoundInternal(comp, ctx, round, totalSize, input, i)
 	}
 
-	// Final full rounds (e.g., 24 to 26)
-	for i := 24; i < 27; i++ {
-		input = defineAddRoundKeyAndSBox(comp, ctx, round, totalSize, input, i)
+	// Rounds 24 - 27
+	for i := 25; i < 28; i++ {
+		input = defineAddRoundKey(comp, ctx, round, totalSize, input, i)
+		for col := 0; col < 16; col++ {
+			input[col] = defineSBox(comp, ctx, round, totalSize, col, input, i)
+		}
 		input = defineMatMulExternalInPlace(comp, ctx, round, totalSize, input, i)
+	}
+
+	for i := range copy_input {
+		comp.InsertGlobal(round, ifaces.QueryIDf("Poseidon2_Feed_Forward_COMPUTATION_%v_%v_%v", comp.SelfRecursionCount, uniqueID(comp), i),
+			sym.Sub(output[i], sym.Add(input[i+8], copy_input[i])))
 	}
 
 	for i := range ctx.CompiledQueries {
 
-		comp.GenericFragmentedConditionalInclusion(
-			round,
-			ifaces.QueryIDf("Poseidon2_QUERY_%v_INCLUSION_%v_%v", i, comp.SelfRecursionCount, uniqueID(comp)),
-			[][]ifaces.Column{
-				{
-					ctx.StackedBlocks,
-					ctx.StackedOldStates,
-					ctx.StackedNewStates,
+		for col := 0; col < 8; col++ {
+			comp.GenericFragmentedConditionalInclusion(
+				round,
+				ifaces.QueryIDf("Poseidon2_QUERY_%v_INCLUSION_%v_%v_%v", i, comp.SelfRecursionCount, uniqueID(comp), col),
+				[][]ifaces.Column{
+					{
+						ctx.StackedBlocks[col],
+						ctx.StackedOldStates[col],
+						ctx.StackedNewStates[col],
+					},
 				},
-			},
-			[]ifaces.Column{
-				ctx.CompiledQueries[i].Blocks,
-				ctx.CompiledQueries[i].OldState,
-				ctx.CompiledQueries[i].NewState,
-			},
-			nil,
-			ctx.CompiledQueries[i].Selector,
-		)
+				[]ifaces.Column{
+					ctx.CompiledQueries[i].Blocks[col],
+					ctx.CompiledQueries[i].OldState[col],
+					ctx.CompiledQueries[i].NewState[col],
+				},
+				nil,
+				ctx.CompiledQueries[i].Selector,
+			)
+		}
 	}
 
 	comp.RegisterProverAction(round, ctx)
@@ -321,59 +356,63 @@ func defineContext(comp *wizard.CompiledIOP) *Poseidon2Context {
 func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 
 	var (
-		zeroBlock        [8]field.Element
-		stackedOldStates = make([]field.Element, 0)
-		stackedBlocks    = make([]field.Element, 0)
-		stackedNewStates = make([]field.Element, 0)
-		totalSize        = ctx.StackedOldStates.Size()
+		zeroBlock        field.Octuplet
+		stackedOldStates = make([][]field.Element, 8)
+		stackedBlocks    = make([][]field.Element, 8)
+		stackedNewStates = make([][]field.Element, 8)
+		totalSize        = ctx.StackedOldStates[0].Size()
 		poseidon2OfZero  = poseidon2.Poseidon2BlockCompression(zeroBlock, zeroBlock)
 	)
 
 	for i := range ctx.CompiledQueries {
 
 		var (
-			q   = ctx.CompiledQueries[i]
-			os  = q.OldState.GetColAssignment(run)
-			b   = q.Blocks.GetColAssignment(run)
-			ns  = q.NewState.GetColAssignment(run)
-			sel smartvectors.SmartVector
+			q         = ctx.CompiledQueries[i]
+			os, b, ns [8]smartvectors.SmartVector
+			sel       smartvectors.SmartVector
 		)
 
 		if q.Selector != nil {
 			sel = q.Selector.GetColAssignment(run)
 		}
 
-		start, stop := smartvectors.CoWindowRange(os, b, ns, sel)
+		for col := 0; col < 8; col++ {
+			os[col] = q.OldState[col].GetColAssignment(run)
+			b[col] = q.Blocks[col].GetColAssignment(run)
+			ns[col] = q.NewState[col].GetColAssignment(run)
 
-		// tryPushToStacked looks at the selector at position "j" and appends
-		// the corresponding triplet (old state, block, new state) to the "stacked"
-		// columns if the selector is not nil and is not zero at this position.
-		tryPushToStacked := func(j int) {
-			if sel != nil && sel.GetPtr(j).IsZero() {
-				return
+			start, stop := smartvectors.CoWindowRange(os[col], b[col], ns[col], sel)
+
+			// tryPushToStacked looks at the selector at position "j" and appends
+			// the corresponding triplet (old state, block, new state) to the "stacked"
+			// columns if the selector is not nil and is not zero at this position.
+			tryPushToStacked := func(j int) {
+				if sel != nil && sel.GetPtr(j).IsZero() {
+					return
+				}
+
+				stackedOldStates[col] = append(stackedOldStates[col], os[col].Get(j))
+				stackedBlocks[col] = append(stackedBlocks[col], b[col].Get(j))
+				stackedNewStates[col] = append(stackedNewStates[col], ns[col].Get(j))
 			}
 
-			stackedOldStates = append(stackedOldStates, os.Get(j))
-			stackedBlocks = append(stackedBlocks, b.Get(j))
-			stackedNewStates = append(stackedNewStates, ns.Get(j))
-		}
+			for j := start; j < stop; j++ {
+				tryPushToStacked(j)
+			}
 
-		for j := start; j < stop; j++ {
-			tryPushToStacked(j)
-		}
+			// The padding is done in the left, the first value is understood
+			// by the query as a padding row.
+			if start > 0 {
+				tryPushToStacked(0)
+				continue
+			}
 
-		// The padding is done in the left, the first value is understood
-		// by the query as a padding row.
-		if start > 0 {
-			tryPushToStacked(0)
-			continue
-		}
-
-		// The padding is done on the right, the last value is understood
-		// by the query as a padding row.
-		if stop < os.Len() {
-			tryPushToStacked(os.Len() - 1)
-			continue
+			// The padding is done on the right, the last value is understood
+			// by the query as a padding row.
+			if stop < os[col].Len() {
+				tryPushToStacked(os[col].Len() - 1)
+				continue
+			}
 		}
 	}
 
@@ -381,75 +420,106 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 	// because it allows us to specify the padding of all intermediate rows
 	// as their last value. We can then simplify the code by not having a code
 	// path dedicated to handling the padding.
-	if len(stackedOldStates) < totalSize {
+	for col := 0; col < 8; col++ {
+		if len(stackedOldStates[col]) < totalSize {
 
-		stackedOldStates = append(stackedOldStates, field.NewElement(0))
-		stackedBlocks = append(stackedBlocks, field.NewElement(0))
-		stackedNewStates = append(stackedNewStates, poseidon2OfZero)
+			stackedOldStates[col] = append(stackedOldStates[col], field.NewElement(0))
+			stackedBlocks[col] = append(stackedBlocks[col], field.NewElement(0))
+			stackedNewStates[col] = append(stackedNewStates[col], poseidon2OfZero[col])
+		}
+
+		run.AssignColumn(
+			ctx.StackedOldStates[col].GetColID(),
+			smartvectors.RightZeroPadded(stackedOldStates[col], totalSize))
+
+		run.AssignColumn(
+			ctx.StackedBlocks[col].GetColID(),
+			smartvectors.RightZeroPadded(stackedBlocks[col], totalSize))
+
+		run.AssignColumn(
+			ctx.StackedNewStates[col].GetColID(),
+			smartvectors.RightPadded(stackedNewStates[col], poseidon2OfZero[col], totalSize))
 	}
 
-	run.AssignColumn(
-		ctx.StackedOldStates.GetColID(),
-		smartvectors.RightZeroPadded(stackedOldStates, totalSize))
-
-	run.AssignColumn(
-		ctx.StackedBlocks.GetColID(),
-		smartvectors.RightZeroPadded(stackedBlocks, totalSize))
-
-	run.AssignColumn(
-		ctx.StackedNewStates.GetColID(),
-		smartvectors.RightPadded(stackedNewStates, poseidon2OfZero, totalSize))
-
 	var (
-		effectiveSize = len(stackedOldStates)
-		sumPow4s      = make([][]field.Element, len(poseidon2.Constants))
-		roundResults  = make([][]field.Element, len(poseidon2.Constants))
+		effectiveSize = len(stackedOldStates[0])
+		matMulM4Tmp   = make([][][20]field.Element, 28)
+		matMulM4      = make([][][16]field.Element, 28)
+
+		t              = make([][][4]field.Element, 28)
+		matMulExternal = make([][][16]field.Element, 28)
+
+		addRoundKey = make([][][16]field.Element, 28)
+
+		sBox = make([][][16]field.Element, 28)
+
+		sBoxSum = make([][]field.Element, 28)
+
+		matMulInternal = make([][][16]field.Element, 28)
 	)
 
-	for i := range sumPow4s {
-		sumPow4s[i] = make([]field.Element, effectiveSize)
-		roundResults[i] = make([]field.Element, effectiveSize)
+	for i := range matMulM4Tmp {
+		matMulM4Tmp[i] = make([][20]field.Element, effectiveSize)
+
 	}
 
 	parallel.Execute(effectiveSize, func(start, stop int) {
 
 		for row := start; row < stop; row++ {
 
-			var (
-				s = stackedBlocks[row]
-				k = stackedOldStates[row]
-			)
+			var input [16]field.Element
 
-			for poseidon2Round := 0; poseidon2Round < len(poseidon2.Constants); poseidon2Round++ {
+			for col := 0; col < 8; col++ {
+				input[col] = stackedOldStates[col][row]
+				input[col+8] = stackedBlocks[col][row]
+			}
 
-				ark := poseidon2.Constants[poseidon2Round]
+			matMulM4Tmp[0][row], matMulM4[0][row], t[0][row], matMulExternal[0][row] = matMulExternalInPlace(input)
+			input = matMulExternal[0][row]
 
-				var (
-					// sum = (s + k + ark)
-					sum field.Element
-					// sp4 will be set as sp4 = sum^4.
-					sp4 = &sumPow4s[poseidon2Round][row]
-					// rr will be set as rr = sp4^4 * sum
-					rr = &roundResults[poseidon2Round][row]
-				)
+			// Rounds 1 - 3
+			for round := 1; round < 4; round++ {
+				addRoundKey[round][row] = addRoundKeyCompute(round-1, input)
+				for col := 0; col < 16; col++ {
+					sBox[round][row][col] = sBoxCompute(col, addRoundKey[round][row])
+				}
+				matMulM4Tmp[round][row], matMulM4[round][row], t[round][row], matMulExternal[round][row] = matMulExternalInPlace(sBox[round][row])
+				input = matMulExternal[round][row]
+			}
 
-				// This computes "sum"
-				sum.Add(&s, &k)
-				sum.Add(&sum, &ark)
+			// Rounds 4 - 24
+			for round := 4; round < 25; round++ {
+				addRoundKey[round][row] = addRoundKeyCompute(round-1, input)
+				sBox[round][row] = addRoundKey[round][row]
+				sBox[round][row][0] = sBoxCompute(0, addRoundKey[round][row])
+				sBoxSum[round][row], matMulInternal[round][row] = matMulInternalInPlace(sBox[round][row])
+				input = matMulInternal[round][row]
+			}
 
-				// This computes "sp4"
-				sp4.Square(&sum)
-				sp4.Square(sp4)
-
-				// This computes "rr"
-				rr.Square(sp4)
-				rr.Square(rr)
-				rr.Mul(rr, &sum)
-
-				s = *rr
+			// Rounds 24 - 27
+			for round := 25; round < 28; round++ {
+				addRoundKey[round][row] = addRoundKeyCompute(round-1, input)
+				for col := 0; col < 16; col++ {
+					sBox[round][row][col] = sBoxCompute(col, addRoundKey[round][row])
+				}
+				matMulM4Tmp[round][row], matMulM4[round][row], t[round][row], matMulExternal[round][row] = matMulExternalInPlace(sBox[round][row])
+				input = matMulExternal[round][row]
 			}
 		}
 	})
+	for i := range matMulM4 {
+
+		// As a reminder, the last value of sumPow4s[i] is the padding value. (if need be).
+		// If it does not, the function [RightPadded] will simply ditch the provided value.
+		run.AssignColumn(
+			ctx.matMulM4Tmp[i].GetColID(),
+			smartvectors.RightPadded(sumPow4s[i], sumPow4s[i][effectiveSize-1], totalSize))
+
+		run.AssignColumn(
+			ctx.RoundResults[i].GetColID(),
+			smartvectors.RightPadded(roundResults[i], roundResults[i][effectiveSize-1], totalSize))
+	}
+	/////
 
 	for i := range sumPow4s {
 
