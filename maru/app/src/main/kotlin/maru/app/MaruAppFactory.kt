@@ -28,6 +28,7 @@ import maru.api.ApiServerImpl
 import maru.api.ChainDataProviderImpl
 import maru.config.MaruConfig
 import maru.config.P2P
+import maru.config.SyncingConfig
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkIdHashProvider
@@ -59,8 +60,11 @@ import maru.serialization.rlp.RLPSerializers
 import maru.syncing.AlwaysSyncedController
 import maru.syncing.BeaconSyncControllerImpl
 import maru.syncing.ELSyncService
+import maru.syncing.HighestHeadTargetSelector
+import maru.syncing.MostFrequentHeadTargetSelector
 import maru.syncing.PeerChainTracker
 import maru.syncing.SyncController
+import maru.syncing.SyncTargetSelector
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
@@ -188,6 +192,7 @@ class MaruAppFactory {
           forksSchedule = beaconGenesisConfig,
           elManagerMap = elManagerMap,
           peersHeadsProvider = peersHeadBlockProvider,
+          targetChainHeadCalculator = createSyncTargetSelector(config.syncing.syncTargetSelection),
           validatorProvider = StaticValidatorProvider(qbftConfig.validatorSet),
           peerLookup = p2pNetwork.getPeerLookup(),
           besuMetrics = besuMetricsSystemAdapter,
@@ -195,11 +200,11 @@ class MaruAppFactory {
           peerChainTrackerConfig =
             PeerChainTracker.Config(
               config.syncing.peerChainHeightPollingInterval,
-              config.syncing.peerChainHeightGranularity,
             ),
           elSyncServiceConfig = ELSyncService.Config(config.syncing.elSyncStatusRefreshInterval),
           finalizationProvider = finalizationProvider,
           allowEmptyBlocks = config.allowEmptyBlocks,
+          useUnconditionalRandomDownloadPeer = config.syncing.useUnconditionalRandomDownloadPeer,
         )
       } else {
         AlwaysSyncedController(beaconChain)
@@ -320,6 +325,14 @@ class MaruAppFactory {
       } ?: run {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")
         NoOpP2PNetwork
+      }
+
+    private fun createSyncTargetSelector(config: SyncingConfig.SyncTargetSelection): SyncTargetSelector =
+      when (config) {
+        is SyncingConfig.SyncTargetSelection.Highest ->
+          HighestHeadTargetSelector()
+        is SyncingConfig.SyncTargetSelection.MostFrequent ->
+          MostFrequentHeadTargetSelector(config.peerChainHeightGranularity)
       }
 
     private fun getOrGeneratePrivateKey(privateKeyPath: Path): ByteArray {

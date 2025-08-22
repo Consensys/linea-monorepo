@@ -13,7 +13,10 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
 class MostFrequentHeadTargetSelectorTest {
-  private val selector = MostFrequentHeadTargetSelector()
+  private val selector =
+    MostFrequentHeadTargetSelector(
+      granularity = 10U,
+    )
 
   @Test
   fun `should throw exception when peer heads list is empty`() {
@@ -32,7 +35,7 @@ class MostFrequentHeadTargetSelectorTest {
 
   @Test
   fun `should return most frequent element`() {
-    val peerHeads = listOf(100UL, 200UL, 100UL, 300UL, 100UL)
+    val peerHeads = listOf(101UL, 204UL, 105UL, 303UL, 109UL, 110UL)
     val result = selector.selectBestSyncTarget(peerHeads)
     assertEquals(100UL, result)
   }
@@ -56,12 +59,12 @@ class MostFrequentHeadTargetSelectorTest {
     val peerHeads =
       listOf(
         ULong.MAX_VALUE,
-        ULong.MAX_VALUE - 1UL,
+        ULong.MAX_VALUE - 10UL,
         ULong.MAX_VALUE,
-        ULong.MAX_VALUE - 2UL,
+        ULong.MAX_VALUE - 20UL,
       )
     val result = selector.selectBestSyncTarget(peerHeads)
-    assertEquals(ULong.MAX_VALUE, result) // MAX_VALUE appears twice
+    assertEquals(ULong.MAX_VALUE - (ULong.MAX_VALUE % 10UL), result) // MAX_VALUE appears twice
   }
 
   @Test

@@ -34,7 +34,7 @@ fun ConfigLoaderBuilder.addTomlDecoders(strict: Boolean): ConfigLoaderBuilder =
 @OptIn(ExperimentalHoplite::class)
 inline fun <reified T : Any> parseConfig(
   toml: String,
-  strict: Boolean = true,
+  strict: Boolean = false,
 ): T =
   ConfigLoaderBuilder
     .default()

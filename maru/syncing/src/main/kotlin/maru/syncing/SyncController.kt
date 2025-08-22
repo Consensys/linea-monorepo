@@ -186,7 +186,7 @@ class BeaconSyncControllerImpl(
       forksSchedule: ForksSchedule,
       elManagerMap: Map<ElFork, ExecutionLayerManager>,
       peersHeadsProvider: PeersHeadBlockProvider,
-      targetChainHeadCalculator: SyncTargetSelector = HighestHeadTargetSelector(),
+      targetChainHeadCalculator: SyncTargetSelector,
       peerChainTrackerConfig: PeerChainTracker.Config,
       validatorProvider: ValidatorProvider,
       peerLookup: PeerLookup,
@@ -195,6 +195,7 @@ class BeaconSyncControllerImpl(
       elSyncServiceConfig: ELSyncService.Config,
       finalizationProvider: FinalizationProvider,
       allowEmptyBlocks: Boolean = true,
+      useUnconditionalRandomDownloadPeer: Boolean = false,
     ): SyncController {
       val clSyncService =
         CLSyncServiceImpl(
@@ -203,7 +204,10 @@ class BeaconSyncControllerImpl(
           allowEmptyBlocks = allowEmptyBlocks,
           executorService =
             Executors.newCachedThreadPool(Thread.ofPlatform().daemon().factory()),
-          pipelineConfig = BeaconChainDownloadPipelineFactory.Config(),
+          pipelineConfig =
+            BeaconChainDownloadPipelineFactory.Config(
+              useUnconditionalRandomDownloadPeer = useUnconditionalRandomDownloadPeer,
+            ),
           peerLookup = peerLookup,
           besuMetrics = besuMetrics,
           metricsFacade = metricsFacade,

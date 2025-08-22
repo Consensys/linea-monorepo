@@ -45,7 +45,7 @@ class DownloadBlocksTest {
 
     val task =
       DownloadBlocksStep(
-        peerLookup = peerLookup,
+        downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
         maxRetries = 5u,
         blockRangeRequestTimeout = 5.seconds,
       )
@@ -75,7 +75,7 @@ class DownloadBlocksTest {
 
     val task =
       DownloadBlocksStep(
-        peerLookup = peerLookup,
+        downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
         maxRetries = 5u,
         blockRangeRequestTimeout = 5.seconds,
       )
@@ -100,7 +100,7 @@ class DownloadBlocksTest {
 
     val task =
       DownloadBlocksStep(
-        peerLookup = peerLookup,
+        downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
         maxRetries = 5u,
         blockRangeRequestTimeout = 5.seconds,
       )
@@ -123,7 +123,7 @@ class DownloadBlocksTest {
 
     val task =
       DownloadBlocksStep(
-        peerLookup = peerLookup,
+        downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
         maxRetries = 5u,
         blockRangeRequestTimeout = 5.seconds,
       )
@@ -148,7 +148,7 @@ class DownloadBlocksTest {
 
     val task =
       DownloadBlocksStep(
-        peerLookup = peerLookup,
+        downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
         maxRetries = 5u,
         blockRangeRequestTimeout = 5.seconds,
       )
@@ -165,7 +165,7 @@ class DownloadBlocksTest {
 
     val task =
       DownloadBlocksStep(
-        peerLookup = peerLookup,
+        downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
         maxRetries = 5u,
         blockRangeRequestTimeout = 5.seconds,
       )
@@ -187,7 +187,7 @@ class DownloadBlocksTest {
 
     val step =
       DownloadBlocksStep(
-        peerLookup = peerLookup,
+        downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
         maxRetries = 5u,
         blockRangeRequestTimeout = 5.seconds,
       )
@@ -216,7 +216,7 @@ class DownloadBlocksTest {
 
     val step =
       DownloadBlocksStep(
-        peerLookup = peerLookup,
+        downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
         maxRetries = 5u,
         blockRangeRequestTimeout = 5.seconds,
       )
@@ -227,12 +227,12 @@ class DownloadBlocksTest {
   }
 
   @Test
-  fun `throws if no peers are available`() {
+  fun `throws if no peers are returned from DownloadPeerProvider`() {
     val peerLookup = mock<PeerLookup>()
     whenever(peerLookup.getPeers()).thenReturn(emptyList())
     val step =
       DownloadBlocksStep(
-        peerLookup = peerLookup,
+        downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
         maxRetries = 5u,
         blockRangeRequestTimeout = 5.seconds,
       )
@@ -242,6 +242,61 @@ class DownloadBlocksTest {
       assert(false) { "Expected exception" }
     } catch (e: Exception) {
       assertThat(e.cause).isInstanceOf(NoSuchElementException::class.java)
+    }
+  }
+
+  @Test
+  fun `always select a random peer if there are available peers when purely random selection is true`() {
+    val peer1 = mock<MaruPeer>()
+    whenever(peer1.getStatus()).thenReturn(randomStatus(0U))
+
+    val peerLookup = mock<PeerLookup>()
+    whenever(peerLookup.getPeers()).thenReturn(listOf(peer1))
+
+    val selectedPeer = DownloadPeerProviderImpl(peerLookup, true).getDownloadingPeer(100U)
+    assertThat(selectedPeer).isEqualTo(peer1)
+    verify(peer1, never()).getStatus()
+  }
+
+  @Test
+  fun `throws if no peers have latest block number higher or equal to 100U when purely random selection is false`() {
+    val peerLookup = mock<PeerLookup>()
+
+    val peer1 = mock<MaruPeer>()
+    whenever(peer1.getStatus()).thenReturn(randomStatus(50U))
+
+    val peer2 = mock<MaruPeer>()
+    whenever(peer2.getStatus()).thenReturn(randomStatus(80U))
+
+    val peer3 = mock<MaruPeer>()
+    whenever(peer3.getStatus()).thenReturn(randomStatus(99U))
+
+    whenever(peerLookup.getPeers()).thenReturn(listOf(peer1, peer2, peer3))
+
+    try {
+      DownloadPeerProviderImpl(peerLookup, false).getDownloadingPeer(100U)
+      assert(false) { "Expected exception" }
+    } catch (e: Exception) {
+      assertThat(e).isInstanceOf(NoSuchElementException::class.java)
+    }
+  }
+
+  @Test
+  fun `throws if no peers are available regardless of purely random selection or not`() {
+    val peerLookup = mock<PeerLookup>()
+    whenever(peerLookup.getPeers()).thenReturn(emptyList())
+    try {
+      DownloadPeerProviderImpl(peerLookup, false).getDownloadingPeer(100U)
+      assert(false) { "Expected exception" }
+    } catch (e: Exception) {
+      assertThat(e).isInstanceOf(NoSuchElementException::class.java)
+    }
+
+    try {
+      DownloadPeerProviderImpl(peerLookup, true).getDownloadingPeer(100U)
+      assert(false) { "Expected exception" }
+    } catch (e: Exception) {
+      assertThat(e).isInstanceOf(NoSuchElementException::class.java)
     }
   }
 

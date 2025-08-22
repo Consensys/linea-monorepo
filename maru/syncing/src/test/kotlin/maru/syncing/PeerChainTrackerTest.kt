@@ -69,7 +69,6 @@ class PeerChainTrackerTest {
     config =
       PeerChainTracker.Config(
         pollingUpdateInterval = 1.seconds,
-        granularity = 10u,
       )
 
     // Use the lambda to inject our testable timer
@@ -113,28 +112,7 @@ class PeerChainTrackerTest {
   }
 
   @Test
-  fun `should round heights according to granularity`() {
-    // Arrange
-    val peersHeads =
-      mapOf(
-        "peer1" to 105UL,
-        "peer2" to 110UL,
-        "peer3" to 119UL,
-      )
-    peersHeadsProvider.setPeersHeads(peersHeads)
-
-    // Act
-    peerChainTracker.start()
-    timer.runNextTask()
-
-    // Assert - since we're using a max value selector,
-    // the result should be the max rounded value (110UL)
-    assertThat(syncTargetUpdateHandler.receivedTargets).hasSize(1)
-    assertThat(syncTargetUpdateHandler.receivedTargets[0]).isEqualTo(110UL)
-  }
-
-  @Test
-  fun `should not notify if no changes in rounded heights`() {
+  fun `should not notify if no changes in heights`() {
     // Arrange - Initial state
     val initialPeersHeads =
       mapOf(
@@ -151,11 +129,11 @@ class PeerChainTrackerTest {
     assertThat(syncTargetUpdateHandler.receivedTargets).hasSize(1)
     syncTargetUpdateHandler.reset()
 
-    // Arrange - Subsequent state with small changes that don't affect rounded values
+    // Arrange - Subsequent state with small changes but not on the highest height
     val subsequentPeersHeads =
       mapOf(
         "peer1" to 101UL,
-        "peer2" to 111UL,
+        "peer2" to 110UL,
       )
     peersHeadsProvider.setPeersHeads(subsequentPeersHeads)
 
@@ -179,7 +157,7 @@ class PeerChainTrackerTest {
 
     // Assert - New target should be received
     assertThat(syncTargetUpdateHandler.receivedTargets).hasSize(1)
-    assertThat(syncTargetUpdateHandler.receivedTargets[0]).isEqualTo(120UL)
+    assertThat(syncTargetUpdateHandler.receivedTargets[0]).isEqualTo(122UL)
   }
 
   @Test
@@ -273,8 +251,8 @@ class PeerChainTrackerTest {
     val subsequentPeersHeads =
       mapOf(
         "peer1" to 100UL,
-        "peer2" to 115UL, // Different height but same rounded value (110)
-        "peer3" to 105UL, // New peer but with height that rounds to 100
+        "peer2" to 110UL,
+        "peer3" to 105UL,
       )
     peersHeadsProvider.setPeersHeads(subsequentPeersHeads)
 
