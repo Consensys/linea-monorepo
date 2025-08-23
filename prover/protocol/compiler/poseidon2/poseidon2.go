@@ -443,95 +443,171 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 
 	var (
 		effectiveSize = len(stackedOldStates[0])
-		matMulM4Tmp   = make([][][20]field.Element, 28)
-		matMulM4      = make([][][16]field.Element, 28)
 
-		t              = make([][][4]field.Element, 28)
-		matMulExternal = make([][][16]field.Element, 28)
+		// round, col, row
+		matMulM4Tmp = make([][][]field.Element, 28) //[][20][]
+		matMulM4    = make([][][]field.Element, 28) // [][16][]
 
-		addRoundKey = make([][][16]field.Element, 28)
+		t              = make([][][]field.Element, 28) //[][4][]
+		matMulExternal = make([][][]field.Element, 28) // [][16][]
 
-		sBox = make([][][16]field.Element, 28)
+		addRoundKey = make([][][]field.Element, 28) // [][16][]
+
+		sBox = make([][][]field.Element, 28) // [][16][]
 
 		sBoxSum = make([][]field.Element, 28)
 
-		matMulInternal = make([][][16]field.Element, 28)
+		matMulInternal = make([][][]field.Element, 28) // [][16][]
+
+		/// transposed values
+		tMatMulM4Tmp = make([][][]field.Element, 28) //[][][20]
+		tMatMulM4    = make([][][]field.Element, 28) //[][][16]
+
+		tT              = make([][][]field.Element, 28) //[][][4]
+		tMatMulExternal = make([][][]field.Element, 28) //[][][16]
+
+		tAddRoundKey = make([][][]field.Element, 28) //[][][16]
+
+		tSBox = make([][][]field.Element, 28) //[][][16]
+
+		tMatMulInternal = make([][][]field.Element, 28) //[][][16]
 	)
 
 	for i := range matMulM4Tmp {
-		matMulM4Tmp[i] = make([][20]field.Element, effectiveSize)
+		for col := 0; col < 20; col++ {
+			matMulM4Tmp[i][col] = make([]field.Element, effectiveSize)
+		}
 
+		for col := 0; col < 16; col++ {
+			matMulM4[i][col] = make([]field.Element, effectiveSize)
+			matMulExternal[i][col] = make([]field.Element, effectiveSize)
+			addRoundKey[i][col] = make([]field.Element, effectiveSize)
+			sBox[i][col] = make([]field.Element, effectiveSize)
+			matMulInternal[i][col] = make([]field.Element, effectiveSize)
+		}
+
+		for col := 0; col < 4; col++ {
+			t[i][col] = make([]field.Element, effectiveSize)
+		}
+		sBoxSum[i] = make([]field.Element, effectiveSize)
 	}
 
 	parallel.Execute(effectiveSize, func(start, stop int) {
 
 		for row := start; row < stop; row++ {
 
-			var input [16]field.Element
+			var input []field.Element
 
 			for col := 0; col < 8; col++ {
 				input[col] = stackedOldStates[col][row]
 				input[col+8] = stackedBlocks[col][row]
 			}
 
-			matMulM4Tmp[0][row], matMulM4[0][row], t[0][row], matMulExternal[0][row] = matMulExternalInPlace(input)
-			input = matMulExternal[0][row]
+			//TODO@yao: need a transpose??
+			// Round 0
+			tMatMulM4Tmp[0][row], tMatMulM4[0][row], tT[0][row], tMatMulExternal[0][row] = matMulExternalInPlace(input)
+			input = tMatMulExternal[0][row]
 
 			// Rounds 1 - 3
 			for round := 1; round < 4; round++ {
-				addRoundKey[round][row] = addRoundKeyCompute(round-1, input)
+				tAddRoundKey[round][row] = addRoundKeyCompute(round-1, input)
 				for col := 0; col < 16; col++ {
-					sBox[round][row][col] = sBoxCompute(col, addRoundKey[round][row])
+					tSBox[round][row][col] = sBoxCompute(col, tAddRoundKey[round][row])
 				}
-				matMulM4Tmp[round][row], matMulM4[round][row], t[round][row], matMulExternal[round][row] = matMulExternalInPlace(sBox[round][row])
-				input = matMulExternal[round][row]
+				tMatMulM4Tmp[round][row], tMatMulM4[round][row], tT[round][row], tMatMulExternal[round][row] = matMulExternalInPlace(tSBox[round][row])
+				input = tMatMulExternal[round][row]
 			}
 
 			// Rounds 4 - 24
 			for round := 4; round < 25; round++ {
-				addRoundKey[round][row] = addRoundKeyCompute(round-1, input)
-				sBox[round][row] = addRoundKey[round][row]
-				sBox[round][row][0] = sBoxCompute(0, addRoundKey[round][row])
-				sBoxSum[round][row], matMulInternal[round][row] = matMulInternalInPlace(sBox[round][row])
-				input = matMulInternal[round][row]
+				tAddRoundKey[round][row] = addRoundKeyCompute(round-1, input)
+				tSBox[round][row] = tAddRoundKey[round][row]
+				tSBox[round][row][0] = sBoxCompute(0, tAddRoundKey[round][row])
+				sBoxSum[round][row], tMatMulInternal[round][row] = matMulInternalInPlace(tSBox[round][row])
+				input = tMatMulInternal[round][row]
 			}
 
 			// Rounds 24 - 27
 			for round := 25; round < 28; round++ {
-				addRoundKey[round][row] = addRoundKeyCompute(round-1, input)
+				tAddRoundKey[round][row] = addRoundKeyCompute(round-1, input)
 				for col := 0; col < 16; col++ {
-					sBox[round][row][col] = sBoxCompute(col, addRoundKey[round][row])
+					tSBox[round][row][col] = sBoxCompute(col, tAddRoundKey[round][row])
 				}
-				matMulM4Tmp[round][row], matMulM4[round][row], t[round][row], matMulExternal[round][row] = matMulExternalInPlace(sBox[round][row])
-				input = matMulExternal[round][row]
+				tMatMulM4Tmp[round][row], tMatMulM4[round][row], tT[round][row], tMatMulExternal[round][row] = matMulExternalInPlace(tSBox[round][row])
+				input = tMatMulExternal[round][row]
 			}
 		}
 	})
-	for i := range matMulM4 {
 
-		// As a reminder, the last value of sumPow4s[i] is the padding value. (if need be).
-		// If it does not, the function [RightPadded] will simply ditch the provided value.
-		run.AssignColumn(
-			ctx.matMulM4Tmp[i].GetColID(),
-			smartvectors.RightPadded(sumPow4s[i], sumPow4s[i][effectiveSize-1], totalSize))
+	for round := 0; round < 28; round++ {
+		if round < 4 || round > 23 {
+			matMulM4Tmp[round] = transpose(tMatMulM4Tmp[round])
+			matMulM4[round] = transpose(tMatMulM4[round])
+			t[round] = transpose(tT[round])
+			matMulExternal[round] = transpose(tMatMulExternal[round])
+		}
 
-		run.AssignColumn(
-			ctx.RoundResults[i].GetColID(),
-			smartvectors.RightPadded(roundResults[i], roundResults[i][effectiveSize-1], totalSize))
+		if round > 0 {
+			addRoundKey[round] = transpose(tAddRoundKey[round])
+			sBox[round] = transpose(tSBox[round])
+		}
+		if round > 3 && round < 25 {
+			matMulInternal[round] = transpose(tMatMulInternal[round])
+		}
 	}
-	/////
 
-	for i := range sumPow4s {
+	for round := 0; round < 28; round++ {
 
-		// As a reminder, the last value of sumPow4s[i] is the padding value. (if need be).
+		// As a reminder, the last value of XXX[i] is the padding value. (if need be).
 		// If it does not, the function [RightPadded] will simply ditch the provided value.
-		run.AssignColumn(
-			ctx.SumPow4s[i].GetColID(),
-			smartvectors.RightPadded(sumPow4s[i], sumPow4s[i][effectiveSize-1], totalSize))
+		if round < 4 || round > 23 {
+			for col := range ctx.MatMulM4Tmp[round] {
+				run.AssignColumn(
+					ctx.MatMulM4Tmp[round][col].GetColID(),
+					smartvectors.RightPadded(matMulM4Tmp[round][col], matMulM4Tmp[round][col][effectiveSize-1], totalSize))
+			}
+			for col := range ctx.MatMulM4[round] {
+				run.AssignColumn(
+					ctx.MatMulM4[round][col].GetColID(),
+					smartvectors.RightPadded(matMulM4[round][col], matMulM4[round][col][effectiveSize-1], totalSize))
+			}
+			for col := range ctx.T[round] {
+				run.AssignColumn(
+					ctx.T[round][col].GetColID(),
+					smartvectors.RightPadded(t[round][col], t[round][col][effectiveSize-1], totalSize))
+			}
+			for col := range ctx.MatMulExternal[round] {
+				run.AssignColumn(
+					ctx.MatMulExternal[round][col].GetColID(),
+					smartvectors.RightPadded(matMulExternal[round][col], matMulExternal[round][col][effectiveSize-1], totalSize))
+			}
+		}
 
-		run.AssignColumn(
-			ctx.RoundResults[i].GetColID(),
-			smartvectors.RightPadded(roundResults[i], roundResults[i][effectiveSize-1], totalSize))
+		if round > 0 {
+			for col := range ctx.AddRoundKey[round] {
+				run.AssignColumn(
+					ctx.AddRoundKey[round][col].GetColID(),
+					smartvectors.RightPadded(addRoundKey[round][col], addRoundKey[round][col][effectiveSize-1], totalSize))
+			}
+			for col := range ctx.SBox[round] {
+				run.AssignColumn(
+					ctx.SBox[round][col].GetColID(),
+					smartvectors.RightPadded(sBox[round][col], sBox[round][col][effectiveSize-1], totalSize))
+			}
+		}
+		if round > 3 && round < 25 {
+
+			run.AssignColumn(
+				ctx.SBoxSum[round].GetColID(),
+				smartvectors.RightPadded(sBoxSum[round], sBoxSum[round][effectiveSize-1], totalSize))
+
+			for col := range ctx.MatMulInternal[round] {
+				run.AssignColumn(
+					ctx.MatMulInternal[round][col].GetColID(),
+					smartvectors.RightPadded(matMulInternal[round][col], matMulInternal[round][col][effectiveSize-1], totalSize))
+			}
+
+		}
 	}
 
 }

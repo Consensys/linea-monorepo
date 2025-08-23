@@ -12,9 +12,9 @@ const blockSize = 8
 
 // Poseidon2BlockCompression applies the Poseidon2 block compression function to a given block
 // over a given state. This what is run under the hood by the Poseidon2 hash function
-func Poseidon2BlockCompression(oldState, block [blockSize]field.Element) (newState [16]field.Element) {
+func Poseidon2BlockCompression(oldState, block [blockSize]field.Element) (newState []field.Element) {
 	res := vortex.Hash{}
-	var input [2 * blockSize]field.Element
+	var input []field.Element
 	copy(input[:], oldState[:])
 	copy(input[8:], block[:])
 
@@ -22,19 +22,19 @@ func Poseidon2BlockCompression(oldState, block [blockSize]field.Element) (newSta
 	copy(res[:], input[8:])
 
 	var (
-		matMulM4Tmp = make([][20]field.Element, 28)
-		matMulM4    = make([][16]field.Element, 28)
+		matMulM4Tmp = make([][]field.Element, 28) // [28][20]field.Element
+		matMulM4    = make([][]field.Element, 28) // [28][16]field.Element
 
-		t              = make([][4]field.Element, 28)
-		matMulExternal = make([][16]field.Element, 28)
+		t              = make([][]field.Element, 28) // [28][4]field.Element
+		matMulExternal = make([][]field.Element, 28) // [28][16]field.Element
 
-		addRoundKey = make([][16]field.Element, 28)
+		addRoundKey = make([][]field.Element, 28) // [28][16]field.Element
 
-		sBox = make([][16]field.Element, 28)
+		sBox = make([][]field.Element, 28) // [28][16]field.Element
 
 		sBoxSum = make([]field.Element, 28)
 
-		matMulInternal = make([][16]field.Element, 28)
+		matMulInternal = make([][]field.Element, 28) // [28][16]field.Element
 	)
 	matMulM4Tmp[0], matMulM4[0], t[0], matMulExternal[0] = matMulExternalInPlace(input)
 	input = matMulExternal[0]
@@ -78,11 +78,16 @@ func Poseidon2BlockCompression(oldState, block [blockSize]field.Element) (newSta
 
 // when Width = 0 mod 4, the buffer is multiplied by circ(2M4,M4,..,M4)
 // see https://eprint.iacr.org/2023/323.pdf
-func matMulExternalInPlace(input [16]field.Element) (matMulM4Tmp [20]field.Element, matMulM4 [16]field.Element, t [4]field.Element, matMulExternal [16]field.Element) {
+func matMulExternalInPlace(input []field.Element) (matMulM4Tmp []field.Element, matMulM4 []field.Element, t []field.Element, matMulExternal []field.Element) {
 
 	if len(input) != 16 {
 		panic("Input slice length must be 16")
 	}
+	matMulM4Tmp = make([]field.Element, 20)
+	matMulM4 = make([]field.Element, 16)
+	t = make([]field.Element, 4)
+	matMulExternal = make([]field.Element, 16)
+
 	for i := 0; i < 4; i++ {
 		matMulM4Tmp[5*i].Add(&input[4*i], &input[4*i+1])
 		matMulM4Tmp[5*i+1].Add(&input[4*i+2], &input[4*i+3])
@@ -113,7 +118,11 @@ func matMulExternalInPlace(input [16]field.Element) (matMulM4Tmp [20]field.Eleme
 }
 
 // when Width = 0 mod 4 the matrix is filled with ones except on the diagonal
-func matMulInternalInPlace(input [16]field.Element) (sBoxSum field.Element, matMulInternal [16]field.Element) {
+func matMulInternalInPlace(input []field.Element) (sBoxSum field.Element, matMulInternal []field.Element) {
+	if len(input) != 16 {
+		panic("Input slice length must be 16")
+	}
+	matMulInternal = make([]field.Element, 16)
 
 	sBoxSum.Set(&input[0])
 	for i := 1; i < 16; i++ {
@@ -145,7 +154,11 @@ func matMulInternalInPlace(input [16]field.Element) (sBoxSum field.Element, matM
 }
 
 // addRoundKey adds the round-th key to the buffer
-func addRoundKeyCompute(round int, input [16]field.Element) (addRoundKey [16]field.Element) {
+func addRoundKeyCompute(round int, input []field.Element) (addRoundKey []field.Element) {
+	if len(input) != 16 {
+		panic("Input slice length must be 16")
+	}
+	addRoundKey = make([]field.Element, 16)
 	for i := 0; i < len(poseidon2.RoundKeys[round]); i++ {
 		addRoundKey[i].Add(&input[i], &poseidon2.RoundKeys[round][i])
 	}
@@ -156,9 +169,42 @@ func addRoundKeyCompute(round int, input [16]field.Element) (addRoundKey [16]fie
 }
 
 // SBoxCompute applies the SBoxCompute on buffer[index]
-func sBoxCompute(index int, input [16]field.Element) (sBox field.Element) {
+func sBoxCompute(index int, input []field.Element) (sBox field.Element) {
+	if len(input) != 16 {
+		panic("Input slice length must be 16")
+	}
 	// sbox degree is 3
 	sBox.Square(&input[index]).
 		Mul(&sBox, &input[index])
 	return sBox
+}
+
+// transpose takes a 2D slice (matrix) of integers and returns its transpose.
+// It assumes the input matrix is rectangular (all rows have the same number of columns).
+func transpose(matrix [][]field.Element) [][]field.Element {
+	// Handle edge cases for an empty or non-rectangular matrix.
+	if len(matrix) == 0 || len(matrix[0]) == 0 {
+		return [][]field.Element{}
+	}
+
+	// Get the dimensions of the original matrix.
+	rows := len(matrix)
+	cols := len(matrix[0])
+
+	// Create a new matrix for the transposed result.
+	// The dimensions are swapped: rows become columns, and columns become rows.
+	transposed := make([][]field.Element, cols)
+	for i := range transposed {
+		transposed[i] = make([]field.Element, rows)
+	}
+
+	// Iterate over the original matrix and fill the transposed matrix.
+	// The element at `matrix[i][j]` goes to `transposed[j][i]`.
+	for i := 0; i < rows; i++ {
+		for j := 0; j < cols; j++ {
+			transposed[j][i] = matrix[i][j]
+		}
+	}
+
+	return transposed
 }
