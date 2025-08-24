@@ -138,7 +138,7 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPo
 			anyReg = true
 			v := casted.RegularExt
 			accumulateRegExt(resReg, v, xPow)
-		case *PaddedCircularWindowExt, *PaddedCircularWindow:
+		case *PaddedCircularWindowExt:
 			// treat it as a regular, reusing the buffer
 			anyReg = true
 			casted.WriteInSliceExt(tmpVec)
