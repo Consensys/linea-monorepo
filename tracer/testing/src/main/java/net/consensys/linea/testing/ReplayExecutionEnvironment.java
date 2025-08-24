@@ -173,7 +173,7 @@ public class ReplayExecutionEnvironment {
     if (debugBlockCapturer) {
       // Initialise world state from conflation
       MutableWorldState world = initWorld(conflation);
-      capturer = new BlockCapturer();
+      capturer = new BlockCapturer(chain.fork);
       capturer.setWorld(world.updater());
       // Sequence zktracer and capturer
       tracer = ConflationAwareOperationTracer.sequence(tracer, capturer);
