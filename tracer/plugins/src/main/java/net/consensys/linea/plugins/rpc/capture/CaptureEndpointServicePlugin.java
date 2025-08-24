@@ -43,7 +43,7 @@ public class CaptureEndpointServicePlugin extends AbstractLineaRequiredPlugin {
    */
   @Override
   public void doRegister(final ServiceManager context) {
-    CaptureToFile method = new CaptureToFile(context);
+    CaptureToFile method = new CaptureToFile(context, fork());
 
     RpcEndpointService service = BesuServiceProvider.getRpcEndpointService(context);
     createAndRegister(method, service);

@@ -21,7 +21,9 @@ import java.util.Set;
 import com.google.gson.Gson;
 import net.consensys.linea.blockcapture.reapers.Reaper;
 import net.consensys.linea.zktracer.ConflationAwareOperationTracer;
+import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 import net.consensys.linea.zktracer.types.AddressUtils;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -52,6 +54,16 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
    * minimal required information to replay the conflation.
    */
   private WorldUpdater worldUpdater;
+
+  /**
+   * Construct a BlockCapturer instance for a specific fork. This is necessary to ensure opcodes are
+   * loaded before hand.
+   *
+   * @param fork
+   */
+  public BlockCapturer(Fork fork) {
+    OpCodes.loadOpcodes(fork);
+  }
 
   /**
    * Must be called **before** any tracing activity.
