@@ -1,0 +1,721 @@
+# Enhanced Docker Compose for Linea L2 Services with RLN Support
+# To debug inside the network and volumes:
+# docker run --rm -it --network=docker_linea -v=linea-local-dev:/data -v=linea-logs:/logs weibeld/ubuntu-networking bash
+
+services:
+  # RLN Prover Service - Core component for gasless transaction validation
+  rln-prover:
+    hostname: rln-prover
+    container_name: rln-prover
+    image: status-rln-prover:20250624221538
+    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo", "rln" ]
+    ports:
+      - "50051:50051"  # RLN proof service
+      - "50052:50052"  # Karma service (optional, can be same port)
+    restart: unless-stopped
+    environment:
+      SERVICE_IP: "0.0.0.0"
+      SERVICE_PORT: "50051"
+      RUST_LOG: "debug"
+      # Mock mode for testing (set to true for local development)
+      MOCK_SC: "true"
+      MOCK_USER: "/app/mock_users.json"
+      # Real blockchain connection (uncomment for production)
+      # WS_RPC_URL: "wss://eth-mainnet.g.alchemy.com/v2/YOUR_TOKEN"
+      # KARMA_SC_ADDRESS: "0x..."
+      # RLN_SC_ADDRESS: "0x..."
+    volumes:
+      - local-dev:/app/data
+      - ./config/rln-prover/mock_users.json:/app/mock_users.json:ro
+    healthcheck:
+      test: ["CMD", "sh", "-c", "ps aux | grep status_rln_prover | grep -v grep"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      linea:
+        ipv4_address: 11.11.11.120
+
+  # Karma Service (separate from prover for scalability)
+  karma-service:
+    hostname: karma-service  
+    container_name: karma-service
+    image: status-rln-prover:20250624221538
+    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo", "rln" ]
+    ports:
+      - "50053:50052"
+    restart: unless-stopped
+    environment:
+      SERVICE_IP: "0.0.0.0"
+      SERVICE_PORT: "50052"
+      RUST_LOG: "debug"
+      MOCK_SC: "true"
+      MOCK_USER: "/app/mock_users.json"
+    volumes:
+      - local-dev:/app/data
+      - ./config/rln-prover/mock_users.json:/app/mock_users.json:ro
+    healthcheck:
+      test: ["CMD", "sh", "-c", "ps aux | grep status_rln_prover | grep -v grep"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      linea:
+        ipv4_address: 11.11.11.121
+
+  sequencer:
+    hostname: sequencer
+    container_name: sequencer
+    image: linea-besu-custom-sequencer:20250624221538
+    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
+    ports:
+      - "8545:8545"
+      - "8546:8546"
+      - "8550:8550"
+      - "19545:9545" # metrics
+      - "30301:30301"
+      - "30305:30303"
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
+      interval: 1s
+      timeout: 1s
+      retries: 120
+    restart: "no"
+    depends_on:
+      rln-prover:
+        condition: service_healthy
+      karma-service:
+        condition: service_healthy
+    environment:
+      LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+      # RLN native library path - critical for JNI
+      LD_LIBRARY_PATH: "/opt/besu/lib/native:/usr/local/lib:/usr/lib"
+      JAVA_LIBRARY_PATH: "/opt/besu/lib/native"
+      # Debug logging for RLN components
+      JAVA_OPTS: "-Dlog4j2.logger.net.consensys.linea.sequencer.txpoolvalidation=DEBUG"
+    entrypoint: besu-untuned
+    command:
+      - --config-file=/var/lib/besu/sequencer.config.toml
+      - --node-private-key-file=/var/lib/besu/key
+      - --plugin-linea-l1-polling-interval=PT12S
+      - --plugin-linea-l1-smart-contract-address=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
+      - --plugin-linea-l1-rpc-endpoint=http://l1-el-node:8545
+      - --plugin-linea-rejected-tx-endpoint=http://transaction-exclusion-api:8080
+      - --plugin-linea-node-type=SEQUENCER
+      # === RLN Configuration (ENABLED for Sequencer) ===
+      - --plugin-linea-rln-enabled=true
+      - --plugin-linea-rln-proof-service=rln-prover:50051
+      - --plugin-linea-rln-karma-service=karma-service:50052
+      - --plugin-linea-rln-verifying-key=/var/lib/besu/rln/verifying_key.dat
+      - --plugin-linea-rln-deny-list-path=/var/lib/besu/gasless-deny-list.txt
+      - --plugin-linea-rln-use-tls=false
+      - --plugin-linea-rln-premium-gas-threshold-gwei=10
+      - --plugin-linea-rln-timeouts-ms=30000
+      - --plugin-linea-rln-proof-wait-timeout-ms=2000
+      # === RPC Configuration ===
+      - --plugin-linea-rpc-gasless-enabled=true
+      - --plugin-linea-rpc-rln-prover-forwarder-enabled=false
+      - --plugin-linea-rpc-allow-zero-gas-estimation-gasless=true
+      - --plugin-linea-rpc-premium-gas-multiplier=1.5
+    volumes:
+      - ./config/linea-besu-sequencer/sequencer.config.toml:/var/lib/besu/sequencer.config.toml:ro
+      - ./config/linea-besu-sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
+      - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
+      - ./config/linea-besu-sequencer/key:/var/lib/besu/key:ro
+      - ./config/linea-besu-sequencer/log4j.xml:/var/lib/besu/log4j.xml:ro
+      - ../config/common/traces-limits-v2.toml:/var/lib/besu/traces-limits.toml:ro
+      - ./config/linea-besu-sequencer/gasless-deny-list.txt:/var/lib/besu/gasless-deny-list.txt:ro
+      - ./config/linea-besu-sequencer/rln/:/var/lib/besu/rln/:ro
+    networks:
+      l1network:
+      linea:
+        ipv4_address: 11.11.11.101
+
+  l2-node:
+    container_name: l2-node
+    hostname: l2-node
+    image: consensys/linea-geth:${ZKGETH_TAG:-0588665}
+    platform: linux/amd64
+    profiles: [ "l2", "debug" ]
+    depends_on:
+      sequencer:
+        condition: service_healthy
+    ports:
+      - "8845:8545"
+      - "8846:8546"
+      - "30306:30303"
+    environment:
+      DATA_DIR: "/data/l2-zkgeth-l2-node/"
+      BOOTNODES: "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"
+      NETRESTRICT: "11.11.11.0/24"
+      DISABLE_ZKEVM: "true"
+      MAX_BLOCK_GAS: 10000000  #10M
+      MAX_BLOCKDATA_BYTES: 35000 #35 KBytes
+      MAX_TXDATA_BYTES: 30000 #30 KBytes
+      ZKGETH_LOWER_GAS_MARGIN_PERCENTS: 120
+      ZKGETH_UPPER_GAS_MARGIN_PERCENTS: 300
+    entrypoint: [ "sh", "/scripts/node.sh", "1337", "/genesis.json", "0x0", "0x1C9C380", "0xF4240" ]
+    volumes:
+      - ./geth/scripts:/scripts:ro
+      - ./config/linea-local-dev-genesis-PoA-geth.json:/genesis.json:ro
+      - ./geth/geth-l2-node.key:/boot.key:ro
+      - local-dev:/data/
+    networks:
+      linea:
+        ipv4_address: 11.11.11.209
+
+  l2-node-besu:
+    hostname: l2-node-besu
+    container_name: l2-node-besu
+    image: linea-besu-custom-sequencer:20250624221538
+    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
+    depends_on:
+      sequencer:
+        condition: service_healthy
+      karma-service:
+        condition: service_healthy
+    ports:
+      - "9045:8545"
+      - "9046:8546"
+      - "9050:8550"
+      - "9051:8548"
+      - "30309:30303"
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
+      interval: 1s
+      timeout: 1s
+      retries: 120
+    restart: "no"
+    environment:
+      LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+      # RLN native library path for l2-node-besu
+      LD_LIBRARY_PATH: "/opt/besu/lib/native:/usr/local/lib:/usr/lib"
+      JAVA_LIBRARY_PATH: "/opt/besu/lib/native"
+      # Debug logging for RLN and karma service interactions
+      JAVA_OPTS: "-Dlog4j2.logger.net.consensys.linea.sequencer.txpoolvalidation=DEBUG -Dlog4j2.logger.net.consensys.linea.rpc=DEBUG"
+    entrypoint: besu-untuned
+    command:
+      - --config-file=/var/lib/besu/l2-node-besu.config.toml
+      - --genesis-file=/var/lib/besu/genesis.json
+      - --plugin-linea-l1-polling-interval=PT12S
+      - --plugin-linea-l1-smart-contract-address=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
+      - --plugin-linea-l1-rpc-endpoint=http://l1-el-node:8545
+      - --plugin-linea-rejected-tx-endpoint=http://transaction-exclusion-api:8080
+      - --plugin-linea-node-type=RPC
+      - --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
+      # === RLN Configuration ===
+      - --plugin-linea-rln-enabled=false
+      - --plugin-linea-rln-proof-service=rln-prover:50051
+      - --plugin-linea-rln-karma-service=karma-service:50052
+      - --plugin-linea-rln-timeouts-ms=30000
+      - --plugin-linea-rpc-gasless-enabled=true
+      - --plugin-linea-rpc-rln-prover-forwarder-enabled=true
+      - --plugin-linea-rpc-allow-zero-gas-estimation-gasless=true
+      - --plugin-linea-rpc-premium-gas-multiplier=1.5
+      # Estimate Gas Compatibility for linea_estimateGas RPC method
+      - --plugin-linea-estimate-gas-compatibility-mode-enabled=true
+      - --plugin-linea-estimate-gas-compatibility-mode-multiplier=1.2
+    volumes:
+      - ./config/l2-node-besu/l2-node-besu-config.toml:/var/lib/besu/l2-node-besu.config.toml:ro
+      - ./config/linea-besu-sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
+      - ./config/l2-node-besu/log4j.xml:/var/lib/besu/log4j.xml:ro
+      - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
+      - ../config/common/traces-limits-v2.toml:/var/lib/besu/traces-limits.toml:ro
+      - ./config/linea-besu-sequencer/gasless-deny-list.txt:/var/lib/besu/gasless-deny-list.txt:ro
+      # RLN verifying key not needed for RPC mode (no validation)
+      # - ./config/linea-besu-sequencer/rln/:/var/lib/besu/rln/:ro
+      - ../tmp/local/:/data/:rw
+    networks:
+      l1network:
+      linea:
+        ipv4_address: 11.11.11.119
+
+  traces-node:
+    hostname: traces-node
+    container_name: traces-node
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v2.1-rc16.2-20250521134911-f6cb0f2}
+    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
+    depends_on:
+      sequencer:
+        condition: service_healthy
+    ports:
+      - "8745:8545"
+      - "8746:8546"
+      - "8750:8550"
+      - "8751:8548"
+      - "30308:30303"
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
+      interval: 1s
+      timeout: 1s
+      retries: 120
+    restart: "no"
+    environment:
+      JAVA_OPTS: -Xmx1g
+      LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+    entrypoint: besu-untuned
+    command:
+      - --config-file=/var/lib/besu/traces-node.config.toml
+      - --genesis-file=/var/lib/besu/genesis.json
+      - --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
+    volumes:
+      - ./config/traces-node/traces-node-config.toml:/var/lib/besu/traces-node.config.toml:ro
+      - ./config/traces-node/log4j.xml:/var/lib/besu/log4j.xml:ro
+      - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
+      - ../tmp/local/:/data/:rw
+    networks:
+      linea:
+        ipv4_address: 11.11.11.115
+
+  prover-v3: # prover compatible with the traces from zkbesu
+    container_name: prover-v3
+    hostname: prover-v3
+    image: consensys/linea-prover:${PROVER_TAG:-56c4809}
+    platform: linux/amd64
+    # to avoid spinning up on CI for now
+    profiles: [ "l2" ]
+    environment:
+      GOMAXPROCS: 16
+      CONFIG_FILE: "/opt/linea/prover/config.toml"
+      GOMEMLIMIT: "10GiB"
+      WORKER_ID: prover-i1 # keep this prover- to mimic prod env prover-aggregation-91
+    volumes:
+      - ../tmp/local/:/data/
+      - logs:/logs
+      - ./config/prover/v3/prover-config.toml:/opt/linea/prover/config.toml:ro
+      - ../prover/prover-assets:/opt/linea/prover/prover-assets:ro
+    networks:
+      linea:
+        ipv4_address: 11.11.11.109
+
+  postman:
+    container_name: postman
+    hostname: postman
+    image: consensys/linea-postman:${POSTMAN_TAG:-19735ce}
+    profiles: [ "l2", "debug" ]
+    restart: on-failure
+    ports:
+      - "9090:3000"
+    depends_on:
+      sequencer:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    env_file: "./config/postman/env"
+    networks:
+      l1network:
+        ipv4_address: 10.10.10.222
+      linea:
+        ipv4_address: 11.11.11.222
+
+  coordinator:
+    hostname: coordinator
+    container_name: coordinator
+    image: consensys/linea-coordinator:${COORDINATOR_TAG:-a9bc257}
+    profiles: [ "l2", "debug" ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      l1-el-node:
+        condition: service_started
+      sequencer:
+        condition: service_started
+      shomei:
+        condition: service_started
+#      shomei-frontend:
+#        condition: service_started
+    ports:
+      - "9545:9545"
+    restart: on-failure
+    environment:
+      config__override__type2-state-proof-provider__disabled: ${LINEA_COORDINATOR_DISABLE_TYPE2_STATE_PROOF_PROVIDER:-true}
+      config__override__l1-submission__blob__signer__type: ${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
+      config__override__l1-submission__aggregation__signer__type: ${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
+      config__override__message-anchoring__signer__type: ${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
+    command: [ 'java', '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005','-Dvertx.configurationFile=/var/lib/coordinator/vertx-options.json', '-Dlog4j2.configurationFile=/var/lib/coordinator/log4j2-dev.xml', '-jar', 'libs/coordinator.jar', '--traces-limits-v2', 'config/traces-limits-v2.toml', '--smart-contract-errors', 'config/smart-contract-errors.toml', '--gas-price-cap-time-of-day-multipliers', 'config/gas-price-cap-time-of-day-multipliers.toml', 'config/coordinator-config.toml']
+    #command: [ 'echo', 'forced exit' ]
+    volumes:
+      - ../config/coordinator/coordinator-config-v2.toml:/opt/consensys/linea/coordinator/config/coordinator-config.toml:ro
+      - ../config/common/traces-limits-v2.toml:/opt/consensys/linea/coordinator/config/traces-limits-v2.toml:ro
+      - ../config/common/smart-contract-errors.toml:/opt/consensys/linea/coordinator/config/smart-contract-errors.toml:ro
+      - ../config/common/gas-price-cap-time-of-day-multipliers.toml:/opt/consensys/linea/coordinator/config/gas-price-cap-time-of-day-multipliers.toml:ro
+      - ../config/coordinator/vertx-options.json:/var/lib/coordinator/vertx-options.json:ro
+      - ../config/coordinator/log4j2-dev.xml:/var/lib/coordinator/log4j2-dev.xml:ro
+      - ../tmp/local/:/data/
+    networks:
+      l1network:
+        ipv4_address: 10.10.10.106
+      linea:
+        ipv4_address: 11.11.11.106
+
+  web3signer:
+    hostname: web3signer
+    container_name: web3signer
+    image: consensys/web3signer:23.3-jdk17
+    profiles: [ "l2", "debug", "external-to-monorepo" ]
+    ports:
+      - "9000:9000"
+    command:
+      - --key-store-path=/keyFiles/
+      - --http-host-allowlist=*
+      - eth1
+    volumes:
+      - ./web3signer/keyFiles/:/keyFiles/
+    networks:
+      - linea
+
+  postgres:
+    image: postgres:16.0
+    hostname: postgres
+    container_name: postgres
+    profiles: [ "l2", "debug", "external-to-monorepo", "staterecovery" ]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGDATA: /data/postgres
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    # uncomment command below if you need to log and debug queries to PG
+    #    command:
+    #      - postgres
+    #      - -c
+    #      - config_file=/etc/postgresql/postgresql.conf
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready" ]
+      interval: 1s
+      timeout: 1s
+      retries: 120
+    restart: unless-stopped
+    volumes:
+      - ./postgres/init:/docker-entrypoint-initdb.d/
+      - ./postgres/conf/:/etc/postgresql/
+    networks:
+      - linea
+      - l1network
+
+  zkbesu-shomei:
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v2.1-rc16.2-20250521134911-f6cb0f2}
+    hostname: zkbesu-shomei
+    container_name: zkbesu-shomei
+    profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
+    depends_on:
+      sequencer:
+        condition: service_healthy
+    privileged: true
+    restart: always
+    user: root
+    ports:
+      - "8945:8545" # http
+      - "8946:8546" # websockets
+      - "8950:8550"
+      - "30307:30303"
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
+      interval: 1s
+      timeout: 1s
+      retries: 120
+    networks:
+      linea:
+        ipv4_address: 11.11.11.113
+    environment:
+      LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+      JAVA_OPTS: -Xmx512m
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        /opt/besu/bin/besu \
+        --config-file=/var/lib/besu/zkbesu-config.toml \
+        --genesis-file=/var/lib/besu/genesis.json \
+        --plugin-shomei-http-host="11.11.11.114" \
+        --plugin-shomei-http-port=8888 \
+        --bonsai-limit-trie-logs-enabled=false \
+        --plugin-shomei-zktrace-comparison-mode=31 \
+        --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
+
+    volumes:
+      - ./config/zkbesu-shomei/zkbesu-config.toml:/var/lib/besu/zkbesu-config.toml:ro
+      - ./config/zkbesu-shomei/log4j.xml:/var/lib/besu/log4j.xml:ro
+      - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
+
+  shomei:
+    image: consensys/linea-shomei:2.3.0
+    hostname: shomei
+    container_name: shomei
+    profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
+    depends_on:
+      zkbesu-shomei:
+        condition: service_started
+    privileged: true
+    user: root
+    ports:
+      - "8998:8888"
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c \"[ -f /data/shomei/LOCK ]\"" ]
+      interval: 1s
+      timeout: 1s
+      retries: 60
+    networks:
+      linea:
+        ipv4_address: 11.11.11.114
+    environment:
+      LOG4J_CONFIGURATION_FILE: /log4j.xml
+    command:
+      - --besu-rpc-http-host=11.11.11.113
+      - --besu-rpc-http-port=8545
+      - --rpc-http-host=11.11.11.114
+      - --rpc-http-host-allow-list=*
+      - --rpc-http-port=8888
+      - --min-confirmations-before-importing=0
+      - --trace-start-block-number=0
+      - --data-path=/data/shomei
+    volumes:
+      - ./config/shomei/log4j.xml:/log4j.xml:ro
+  #      - ../tmp/local/shomei:/data/shomei/:z
+
+  shomei-frontend:
+    image: consensys/linea-shomei:2.3.0
+    hostname: shomei-frontend
+    container_name: shomei-frontend
+    profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
+    depends_on:
+      zkbesu-shomei:
+        condition: service_started
+    privileged: true
+    user: root
+    restart: always
+    ports:
+      - "8889:8888"
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c \"[ -f /data/shomei/LOCK ]\"" ]
+      interval: 1s
+      timeout: 1s
+      retries: 60
+    networks:
+      linea:
+        ipv4_address: 11.11.11.107
+    environment:
+      LOG4J_CONFIGURATION_FILE: /log4j.xml
+    command:
+      - --besu-rpc-http-host=11.11.11.113
+      - --besu-rpc-http-port=8545
+      - --rpc-http-host=11.11.11.107
+      - --rpc-http-host-allow-list=*
+      - --rpc-http-port=8888
+      - --min-confirmations-before-importing=0
+      - --trace-start-block-number=0
+      - --data-path=/data/shomei-frontend
+      - --metrics-http-host=0.0.0.0
+      - --metrics-http-port=9545
+      - --enable-trace-generation=false
+      - --enable-finalized-block-limit=true
+      - --use-finalized-block-number=0
+      - --use-finalized-block-hash=0x0ca7c811d834d51a08e390bef9ae24db8623338bad13176d420b2f03bc282b90 #some unlikely hash
+
+    volumes:
+      - ./config/shomei/log4j.xml:/log4j.xml:ro
+
+  transaction-exclusion-api:
+    hostname: transaction-exclusion-api
+    container_name: transaction-exclusion-api
+    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-8a0bcc8}
+    profiles: [ "l2", "debug" ]
+    restart: on-failure
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8082:8080"
+    command: [ 'java', '-Dvertx.configurationFile=config/vertx-options.json', '-Dlog4j2.configurationFile=config/log4j2-dev.xml', '-jar', 'libs/transaction-exclusion-api.jar', 'config/transaction-exclusion-app-docker.config.toml', ]
+    volumes:
+      - ../config/transaction-exclusion-api/transaction-exclusion-app-docker.config.toml:/opt/consensys/linea/transaction-exclusion-api/config/transaction-exclusion-app-docker.config.toml:ro
+      - ../config/transaction-exclusion-api/vertx-options.json:/opt/consensys/linea/transaction-exclusion-api/config/vertx-options.json:ro
+      - ../config/transaction-exclusion-api/log4j2-dev.xml:/opt/consensys/linea/transaction-exclusion-api/config/log4j2-dev.xml:ro
+    networks:
+      linea:
+        ipv4_address: 11.11.11.110
+
+  ########################
+  # Blob Scan stack, used for state recover app
+  ########################
+  blobscan-api:
+    container_name: blobscan-api
+    hostname: blobscan-api
+    image: blossomlabs/blobscan-api:1.7.0
+    platform: linux/amd64 # only linux available
+    profiles: [ "staterecovery" ]
+    ports:
+      - "4001:4001"
+    env_file: "./config/blobscan/env"
+    restart: always
+    #    healthcheck:
+    #      test: [ "CMD", "curl", "-f", "http://localhost:4001/healthcheck" ]
+    #      disable: true
+    #      interval: 30s
+    #      timeout: 10s
+    #      retries: 20
+    #      start_period: 5s
+    networks:
+      l1network:
+        ipv4_address: 10.10.10.203
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      l1-cl-node:
+        condition: service_healthy
+      l1-el-node:
+        condition: service_healthy
+
+  blobscan-indexer:
+    container_name: blobscan-indexer
+    hostname: blobscan-indexer
+    image: blossomlabs/blobscan-indexer:0.3.1
+    platform: linux/amd64 # only linux available
+    profiles: [ "staterecovery" ]
+    env_file: "./config/blobscan/env"
+    networks:
+      l1network:
+        ipv4_address: 10.10.10.204
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      blobscan-api:
+        condition: service_started
+      l1-cl-node:
+        condition: service_healthy
+      l1-el-node:
+        condition: service_healthy
+
+  redis:
+    container_name: redis
+    hostname: redis
+    image: "redis:7.4.1-alpine"
+    profiles: [ "staterecovery" ]
+    ports:
+      - "6379:6379"
+    environment:
+      - REDIS_REPLICATION_MODE=master
+      - REDIS_PASSWORD=s3cr3t
+      - REDIS_USERNAME=blobscan
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      l1network:
+        ipv4_address: 10.10.10.205
+
+  zkbesu-shomei-sr:
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v2.1-rc16.2-20250521134911-f6cb0f2}
+    hostname: zkbesu-shomei-sr
+    container_name: zkbesu-shomei-sr
+    profiles: [ "external-to-monorepo", "staterecovery" ]
+    privileged: true
+    user: root
+    ports:
+      - "9145:8545" # http
+      - "9146:8546" # websockets
+      - "9150:8550"
+      - "10545:9545"
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
+      interval: 1s
+      timeout: 1s
+      retries: 120
+    restart: "no"
+    networks:
+      l1network:
+        ipv4_address: 10.10.10.206
+      linea:
+        ipv4_address: 11.11.11.116
+    environment:
+      LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+      L1_ROLLUP_CONTRACT_ADDRESS: ${L1_ROLLUP_CONTRACT_ADDRESS:-0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9}
+      STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER: ${STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER:-1}
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        (rm /opt/besu/plugins/linea-staterecovery-besu-plugin-v* || true) && \
+        (rm /opt/besu/plugins/linea-finalized-tag-updater* || true) && \
+        ls -lh /opt/besu/plugins && \
+        sed -i '/^CLASSPATH/c\CLASSPATH=/opt/besu/lib/\*\:/opt/besu/plugins/\*' /opt/besu/bin/besu-untuned && \
+        /opt/besu/bin/besu-untuned \
+        --config-file=/var/lib/besu/zkbesu-config.toml \
+        --genesis-file=/var/lib/besu/genesis.json \
+        --plugins=BesuShomeiRpcPlugin,ZkTrieLogPlugin,LineaStateRecoveryPlugin \
+        --rpc-http-api=ADMIN,DEBUG,NET,ETH,WEB3,PLUGINS,MINER,SHOMEI \
+        --bonsai-limit-trie-logs-enabled=false \
+        --plugin-shomei-http-host="11.11.11.117" \
+        --plugin-shomei-http-port=8888 \
+        --plugin-staterecovery-l1-endpoint=http://l1-el-node:8545 \
+        --plugin-staterecovery-l1-polling-interval=PT0.5S \
+        --plugin-staterecovery-l1-earliest-search-block=EARLIEST \
+        --plugin-staterecovery-l1-highest-search-block=LATEST \
+        --plugin-staterecovery-shomei-endpoint=http://shomei-sr:8888 \
+        --plugin-staterecovery-blobscan-endpoint=http://blobscan-api:4001 \
+        --plugin-staterecovery-linea-sequencer-beneficiary-address=0x6d976c9b8ceee705d4fe8699b44e5eb58242f484 \
+        --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
+    volumes:
+      - ./config/zkbesu-shomei/zkbesu-config.toml:/var/lib/besu/zkbesu-config.toml:ro
+      - ./config/zkbesu-shomei/log4j-staterecovery.xml:/var/lib/besu/log4j.xml:ro
+      - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
+      - ../besu-plugins/state-recovery/besu-plugin/build/libs/linea-staterecovery-besu-plugin-SNAPSHOT.jar:/opt/besu/plugins/linea-staterecovery-besu-plugin-SNAPSHOT.jar
+
+  shomei-sr:
+    image: consensys/linea-shomei:2.3.0
+    hostname: shomei-sr
+    container_name: shomei-sr
+    profiles: [ "external-to-monorepo", "staterecovery" ]
+    depends_on:
+      zkbesu-shomei-sr:
+        condition: service_started
+    privileged: true
+    user: root
+    ports:
+      - "8890:8888"
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c \"[ -f /data/shomei/LOCK ]\"" ]
+      interval: 1s
+      timeout: 1s
+      retries: 60
+    networks:
+      linea:
+        ipv4_address: 11.11.11.117
+    environment:
+      LOG4J_CONFIGURATION_FILE: /log4j.xml
+    command:
+      - --besu-rpc-http-host=11.11.11.116
+      - --besu-rpc-http-port=8545
+      - --rpc-http-host=11.11.11.117
+      - --rpc-http-host-allow-list=*
+      - --rpc-http-port=8888
+      - --min-confirmations-before-importing=0
+      - --trace-start-block-number=0
+    volumes:
+      - ./config/shomei/log4j.xml:/log4j.xml:ro
+
+volumes:
+  local-dev:
+  rln-data:
+  logs:
+
+networks:
+  l1network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.10.10.0/24
+  linea:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 11.11.11.0/24

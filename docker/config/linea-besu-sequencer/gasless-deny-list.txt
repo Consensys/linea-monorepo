@@ -1,0 +1,8 @@
+# Gasless Deny List
+# This file contains addresses that are temporarily restricted from gasless transactions
+# Format: one address per line
+# Lines starting with # are comments and will be ignored
+
+# Example denied addresses (for testing purposes):
+# 0x1234567890123456789012345678901234567890
+# 0xabcdefabcdefabcdefabcdefabcdefabcdefabcd

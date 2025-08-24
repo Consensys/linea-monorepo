@@ -1,0 +1,105 @@
+volumes:
+  local-dev:
+    name: "linea-local-dev"
+  logs:
+    name: "linea-logs"
+
+networks:
+  linea:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 11.11.11.0/24
+  l1network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.10.10.0/24
+
+# To debug inside the network and volumes
+# docker run --rm -it --network=docker_linea -v=linea-local-dev:/data -v=linea-logs:/logs weibeld/ubuntu-networking bash
+
+services:
+  l1-el-node:
+    extends:
+      file: compose-spec-l1-services.yml
+      service: l1-el-node
+
+  l1-cl-node:
+    extends:
+      file: compose-spec-l1-services.yml
+      service: l1-cl-node
+
+  l1-node-genesis-generator:
+    extends:
+      file: compose-spec-l1-services.yml
+      service: l1-node-genesis-generator
+
+  # RLN-enabled sequencer using our custom Besu image
+  sequencer:
+    extends:
+      file: compose-spec-l2-services-rln.yml
+      service: sequencer
+
+  # RLN Prover service
+  rln-prover:
+    extends:
+      file: compose-spec-l2-services-rln.yml
+      service: rln-prover
+
+  # Karma service for transaction quota management
+  karma-service:
+    extends:
+      file: compose-spec-l2-services-rln.yml
+      service: karma-service
+
+  # RPC node with gRPC transaction validator
+  l2-node-besu:
+    extends:
+      file: compose-spec-l2-services-rln.yml
+      service: l2-node-besu
+
+  traces-node:
+    extends:
+      file: compose-spec-l2-services.yml
+      service: traces-node
+
+  prover-v3:
+    extends:
+      file: compose-spec-l2-services.yml
+      service: prover-v3
+    volumes:
+      - ../tmp/local/:/data/
+      - logs:/logs
+      - ./config/prover/v3/prover-config.toml:/opt/linea/prover/config.toml:ro
+      - ../prover/prover-assets:/opt/linea/prover/prover-assets:ro
+
+  coordinator:
+    extends:
+      file: compose-spec-l2-services.yml
+      service: coordinator
+
+  web3signer:
+    extends:
+      file: compose-spec-l2-services.yml
+      service: web3signer
+
+  postgres:
+    extends:
+      file: compose-spec-l2-services.yml
+      service: postgres
+
+  zkbesu-shomei:
+    extends:
+      file: compose-spec-l2-services.yml
+      service: zkbesu-shomei
+
+  shomei:
+    extends:
+      file: compose-spec-l2-services.yml
+      service: shomei
+
+  transaction-exclusion-api:
+    extends:
+      file: compose-spec-l2-services.yml
+      service: transaction-exclusion-api
