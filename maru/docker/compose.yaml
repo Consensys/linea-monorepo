@@ -134,7 +134,7 @@ services:
     depends_on:
       sequencer:
         condition: service_healthy
-    image: nethermindeth/nethermind:clique-merge-fix
+    image: nethermind/nethermind:1.32.4
     container_name: follower-nethermind
     command: >
       --configs-dir /config/
