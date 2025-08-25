@@ -33,9 +33,9 @@ Status Network introduces **gasless transactions** through a **RLN technology** 
 
 ### Architecture Components
 
-#### Prover Components
+#### Besu Plugin Components
 - [**TxForwarder Transaction Pool Validator**](besu-plugins/linea-sequencer/sequencer/src/main/java/net/consensys/linea/sequencer/txpoolvalidation/validators/RlnProverForwarderValidator.java): Forwards incoming transaction data to the RLN prover service to generate RLN proofs
-- [**Enhanced LineaEstimateGas RPC**](besu-plugins/linea-sequencer/sequencer/src/main/java/net/consensys/linea/rpc/methods/LineaEstimateGas.java): Dynamically provides zero gas or premium gas estimates based on real-time user karma and usage quotas
+- [**Modified LineaEstimateGas RPC**](besu-plugins/linea-sequencer/sequencer/src/main/java/net/consensys/linea/rpc/methods/LineaEstimateGas.java): Dynamically provides zero gas or premium gas estimates based on real-time user karma and usage quotas
 - [**Karma Service Integration**](besu-plugins/linea-sequencer/sequencer/src/main/java/net/consensys/linea/sequencer/txpoolvalidation/shared/KarmaServiceClient.java): Real-time user tier and quota checking via gRPC
 
 #### Verifier (Sequencer) Components
