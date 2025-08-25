@@ -21,11 +21,11 @@ Open-sourced under the [Apache 2.0](LICENSE-APACHE) and the [MIT](LICENSE-MIT) l
 
 ## Gasless Transaction System
 
-Status Network introduces **gasless transactions** through a **RLN (Rate Limiting Nullifier) technology** and **Karma reputation system**. This allows users to submit transactions without paying gas fees while maintaining network security and preventing spam.
+Status Network introduces **gasless transactions** through a **RLN technology** and **Karma reputation system**. This allows users to submit transactions without paying gas fees while maintaining network security and preventing spam.
 
 ### How It Works
 
-**RLN (Rate Limiting Nullifier)**: A cryptographic system that prevents spam by limiting transaction rates through nullifier-based proofs. Implementation can be found [here](https://github.com/vacp2p/status-rln-prover).
+**Rate Limiting Nullifier**: A cryptographic system that prevents spam by limiting transaction rates through nullifier-based proofs. Implementation can be found [here](https://github.com/vacp2p/zerokit).
 
 **火 Karma System**: A reputation-based mechanism where users earn Karma soulbound tokens through positive network participation. Users will have different levels of daily gasless transaction quota depending on their Karma amount. Contract code implementation can be found [here](https://github.com/vacp2p/staking-reward-streamer).
 
@@ -82,5 +82,5 @@ Before contributing, ensure you're familiar with:
 
 - [Status Network home](https://status.network)
 - [Status Network docs](https://docs.status.network)
-- [Status blog](https://status.app/blog)
+- [Telegram builder's community](https://t.me/statusl2)
 - [X](https://x.com/StatusL2)
