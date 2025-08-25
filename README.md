@@ -10,7 +10,9 @@
   <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License" height="20">
 </a>
 
-This is the Status Network client repository. On top of the Linea stack, it adds the smart contracts and infrastructure for Status Network's **gasless transaction system** powered by **RLN (Rate Limiting Nullifier) technology of Vac**.
+This is the principal Status Network repository. 
+On top of the Linea stack, it adds the smart contracts and infrastructure for Status Network's **gasless transaction system** powered by **RLN (Rate Limiting Nullifier) technology of Vac**. 
+The additional Status Network features are optional, configurable using the CLI options (details provided under [Configuration Options](#configuration-options)).
 Open-sourced under the [Apache 2.0](LICENSE-APACHE) and the [MIT](LICENSE-MIT) licenses.
 
 ## What is Status Network?
@@ -46,7 +48,15 @@ Status Network introduces **gasless transactions** through a **RLN (Rate Limitin
 - [**Nullifier Tracking**](besu-plugins/linea-sequencer/sequencer/src/main/java/net/consensys/linea/sequencer/txpoolvalidation/shared/NullifierTracker.java): High-performance tracking to prevent double-spending and nullifier reuse
 - [**Deny List Management**](besu-plugins/linea-sequencer/sequencer/src/main/java/net/consensys/linea/sequencer/txpoolvalidation/shared/DenyListManager.java): Shared deny list manager providing single source of truth for deny list state
 
-For detailed configuration options, see the [Status Network Configuration CLI Options](besu-plugins/linea-sequencer/sequencer/src/main/java/net/consensys/linea/config/LineaRlnValidatorCliOptions.java).
+#### Configuration Options
+
+The Status Network RLN validator system can be configured using various CLI options defined in [LineaRlnValidatorCliOptions.java](besu-plugins/linea-sequencer/sequencer/src/main/java/net/consensys/linea/config/LineaRlnValidatorCliOptions.java).
+
+- **`--plugin-linea-rln-enabled`**: Enable/disable RLN validation for gasless transactions (default: `false`)
+- **`--plugin-linea-rln-verifying-key`**: Path to the RLN verifying key file (required when RLN is enabled)
+- **`--plugin-linea-rln-proof-service`**: RLN Proof service endpoint in `host:port` format (default: `localhost:50051`)
+- **`--plugin-linea-rln-karma-service`**: Karma service endpoint in `host:port` format (default: `localhost:50052`)
+- **`--plugin-linea-rln-deny-list-path`**: Path to the gasless deny list file (default: `/var/lib/besu/gasless-deny-list.txt`)
 
 ## How to contribute
 
