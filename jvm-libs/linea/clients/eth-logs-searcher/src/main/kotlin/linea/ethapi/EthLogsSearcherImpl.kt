@@ -126,6 +126,8 @@ class EthLogsSearcherImpl(
       },
       timeout = searchTimeout,
     ) {
+      // The check here is to make sure the cursor will only advance when the current
+      // chunk had been searched or when it's the beginning of the first search
       if (chunk == null || lastSearchedChunk.get() == chunk) {
         chunk = cursor.next()
       }
