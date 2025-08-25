@@ -148,6 +148,8 @@ func LinearCombination(vecs []SmartVector, x field.Element, p ...mempool.MemPool
 			anyReg = true
 			casted.WriteInSlice(tmpVec)
 			accumulateReg(resReg, tmpVec, xPow)
+		default:
+			utils.Panic("unexpected type %T", v)
 		}
 
 		xPow.Mul(&x, &xPow)

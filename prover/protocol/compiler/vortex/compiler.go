@@ -933,7 +933,7 @@ func (ctx *Ctx) commitPrecomputeds() {
 	rootOct := types.Bytes32ToHash(tree.Root)
 	ctx.Items.Precomputeds.MerkleRoot = ctx.Comp.RegisterVerifyingKey(
 		ctx.PrecomputedMerkleRootName(),
-		smartvectors.NewRegular(rootOct),
+		smartvectors.NewRegular(rootOct[:]),
 	)
 }
 

@@ -135,6 +135,8 @@ func (gen *testCaseGen) NewTestCaseForProd() (tcase testCase) {
 			tcase.svecs[i] = gen.genRegular(val)
 		case rotatedT:
 			tcase.svecs[i] = gen.genRotated(val)
+		default:
+			utils.Panic("unexpected type %T", chosenType)
 		}
 	}
 
@@ -161,6 +163,8 @@ func (gen *testCaseGen) NewTestCaseForProd() (tcase testCase) {
 		)
 	case maxType == regularT || maxType == rotatedT:
 		tcase.expectedValue = NewRegular(vector.Repeat(resVal, gen.fullLen))
+	default:
+		panic("unexpected case")
 	}
 
 	return tcase
@@ -212,6 +216,8 @@ func (gen *testCaseGen) NewTestCaseForLinComb() (tcase testCase) {
 			tcase.svecs[i] = gen.genRegular(val)
 		case rotatedT:
 			tcase.svecs[i] = gen.genRotated(val)
+		default:
+			utils.Panic("unexpected type %T", chosenType)
 		}
 	}
 
@@ -233,6 +239,8 @@ func (gen *testCaseGen) NewTestCaseForLinComb() (tcase testCase) {
 		)
 	case maxType == regularT || maxType == rotatedT:
 		tcase.expectedValue = NewRegular(vector.Repeat(resVal, gen.fullLen))
+	default:
+		panic("unexpected case")
 	}
 
 	return tcase
@@ -280,6 +288,8 @@ func (gen *testCaseGen) NewTestCaseForLinearCombination() (tcase testCase) {
 			tcase.svecs[i] = gen.genRegular(val)
 		case rotatedT:
 			tcase.svecs[i] = gen.genRotated(val)
+		default:
+			utils.Panic("unexpected type %T", chosenType)
 		}
 	}
 
@@ -296,6 +306,8 @@ func (gen *testCaseGen) NewTestCaseForLinearCombination() (tcase testCase) {
 		tcase.expectedValue = NewConstant(resVal, gen.fullLen)
 	case maxType == regularT || maxType == windowT || maxType == rotatedT:
 		tcase.expectedValue = NewRegular(vector.Repeat(resVal, gen.fullLen))
+	default:
+		panic("unexpected case")
 	}
 
 	return tcase

@@ -83,6 +83,8 @@ func (gen *testCaseGen) NewTestCaseForLinearCombinationMixed() (tcase testCaseMi
 			tcase.svecs[i] = gen.genRegular(val)
 		case rotatedT:
 			tcase.svecs[i] = gen.genRotated(val)
+		default:
+			utils.Panic("unexpected type %T", chosenType)
 		}
 	}
 
@@ -98,6 +100,8 @@ func (gen *testCaseGen) NewTestCaseForLinearCombinationMixed() (tcase testCaseMi
 		tcase.expectedValue = NewConstantExt(resVal, gen.fullLen)
 	case maxType == regularT || maxType == windowT || maxType == rotatedT:
 		tcase.expectedValue = NewRegularExt(vectorext.Repeat(resVal, gen.fullLen))
+	default:
+		panic("unexpected case")
 	}
 
 	return tcase

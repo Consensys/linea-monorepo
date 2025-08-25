@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // LinearCombinationMixed returns a [SmartVector] computed as:
@@ -76,6 +77,8 @@ func LinearCombinationMixed(vecs []SmartVector, x fext.Element, p ...mempool.Mem
 			anyReg = true
 			casted.WriteInSlice(tmpVec)
 			accumulateRegMixed(resReg, tmpVec, xPow)
+		default:
+			utils.Panic("unexpected type %T", v)
 		}
 
 		xPow.Mul(&x, &xPow)
