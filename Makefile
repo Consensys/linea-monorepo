@@ -42,7 +42,7 @@ start-env:
 	if [ "$(SKIP_CONTRACTS_DEPLOYMENT)" = "true" ]; then \
 		echo "Skipping contracts deployment"; \
 	else \
-		$(MAKE) deploy-contracts L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION) LINEA_PROTOCOL_CONTRACTS_ONLY=$(LINEA_PROTOCOL_CONTRACTS_ONLY); \
+		$(MAKE) deploy-contracts L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION) LINEA_PROTOCOL_CONTRACTS_ONLY=$(LINEA_PROTOCOL_CONTRACTS_ONLY) STATUS_NETWORK_CONTRACTS_ENABLED=$${STATUS_NETWORK_CONTRACTS_ENABLED:-false}; \
 	fi
 
 start-l1:
@@ -78,7 +78,7 @@ start-env-with-staterecovery:
 	make start-env COMPOSE_FILE=docker/compose-tracing-v2-staterecovery-extension.yml LINEA_PROTOCOL_CONTRACTS_ONLY=true L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION) COMPOSE_PROFILES=$(COMPOSE_PROFILES)
 
 start-env-with-rln:
-	make start-env COMPOSE_FILE=docker/compose-tracing-v2-rln.yml LINEA_PROTOCOL_CONTRACTS_ONLY=true
+	make start-env COMPOSE_FILE=docker/compose-tracing-v2-rln.yml LINEA_PROTOCOL_CONTRACTS_ONLY=true STATUS_NETWORK_CONTRACTS_ENABLED=true
 
 staterecovery-replay-from-block: L1_ROLLUP_CONTRACT_ADDRESS:=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
 staterecovery-replay-from-block: STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER:=1

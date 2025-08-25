@@ -93,17 +93,45 @@ deploy-l2-test-erc20:
 		TEST_ERC20_INITIAL_SUPPLY=100000 \
 		npx ts-node local-deployments-artifacts/deployTestERC20.ts
 
+deploy-status-network-contracts:
+		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
+		# Deploy Status Network contracts (Karma, StakeManager, RLN, etc.)
+		cd contracts/; \
+		PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae} \
+		RPC_URL=http:\\localhost:8545/ \
+		STATUS_NETWORK_DEPLOYER=$${STATUS_NETWORK_DEPLOYER:-0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266} \
+		STATUS_NETWORK_STAKING_TOKEN=$${STATUS_NETWORK_STAKING_TOKEN:-0x0000000000000000000000000000000000000001} \
+		STATUS_NETWORK_RLN_DEPTH=$${STATUS_NETWORK_RLN_DEPTH:-20} \
+		npx ts-node local-deployments-artifacts/deployStatusNetworkContracts.ts
+
+deploy-status-network-contracts-hardhat:
+		# Deploy using Hardhat deployment tags
+		cd contracts/; \
+		STATUS_NETWORK_DEPLOYER=$${STATUS_NETWORK_DEPLOYER:-0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266} \
+		STATUS_NETWORK_STAKING_TOKEN=$${STATUS_NETWORK_STAKING_TOKEN:-0x0000000000000000000000000000000000000001} \
+		STATUS_NETWORK_RLN_DEPTH=$${STATUS_NETWORK_RLN_DEPTH:-20} \
+		npx hardhat deploy --network l2 --tags StatusNetworkStakeManager,StatusNetworkVaultFactory,StatusNetworkKarma,StatusNetworkRLN,StatusNetworkKarmaNFT
+
 deploy-contracts: L1_CONTRACT_VERSION:=6
 deploy-contracts: LINEA_PROTOCOL_CONTRACTS_ONLY:=false
+deploy-contracts: STATUS_NETWORK_CONTRACTS_ENABLED:=false
 deploy-contracts:
 	cd contracts/; \
 	export L1_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --rpc-url http://localhost:8445) && \
 	export L2_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae --rpc-url http://localhost:8545) && \
 	cd .. && \
 	if [ "$(LINEA_PROTOCOL_CONTRACTS_ONLY)" = "false" ]; then \
-		$(MAKE) -j6 deploy-linea-rollup-v$(L1_CONTRACT_VERSION) deploy-token-bridge-l1 deploy-l1-test-erc20 deploy-l2messageservice deploy-token-bridge-l2 deploy-l2-test-erc20; \
+		if [ "$(STATUS_NETWORK_CONTRACTS_ENABLED)" = "true" ]; then \
+			$(MAKE) -j6 deploy-linea-rollup-v$(L1_CONTRACT_VERSION) deploy-token-bridge-l1 deploy-l1-test-erc20 deploy-l2messageservice deploy-token-bridge-l2 deploy-l2-test-erc20 deploy-status-network-contracts; \
+		else \
+			$(MAKE) -j6 deploy-linea-rollup-v$(L1_CONTRACT_VERSION) deploy-token-bridge-l1 deploy-l1-test-erc20 deploy-l2messageservice deploy-token-bridge-l2 deploy-l2-test-erc20; \
+		fi \
 	else \
-		$(MAKE) -j6 deploy-linea-rollup-v$(L1_CONTRACT_VERSION) deploy-l2messageservice; \
+		if [ "$(STATUS_NETWORK_CONTRACTS_ENABLED)" = "true" ]; then \
+			$(MAKE) -j6 deploy-linea-rollup-v$(L1_CONTRACT_VERSION) deploy-l2messageservice deploy-status-network-contracts; \
+		else \
+			$(MAKE) -j6 deploy-linea-rollup-v$(L1_CONTRACT_VERSION) deploy-l2messageservice; \
+		fi \
 	fi
 
 
