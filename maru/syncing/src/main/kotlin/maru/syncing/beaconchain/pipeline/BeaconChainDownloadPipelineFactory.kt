@@ -9,7 +9,6 @@
 package maru.syncing.beaconchain.pipeline
 
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.extensions.clampedAdd
 import maru.p2p.PeerLookup
@@ -29,7 +28,7 @@ class BeaconChainDownloadPipelineFactory(
   private val blockImporter: SealedBeaconBlockImporter<ValidationResult>,
   private val metricsSystem: MetricsSystem,
   private val peerLookup: PeerLookup,
-  private val config: Config = Config(),
+  private val config: Config,
   private val syncTargetProvider: () -> ULong,
 ) {
   init {
@@ -43,11 +42,12 @@ class BeaconChainDownloadPipelineFactory(
   }
 
   data class Config(
-    val blockRangeRequestTimeout: Duration = 5.seconds,
-    val blocksBatchSize: UInt = 10u,
-    val blocksParallelism: UInt = 1u,
-    val maxRetries: UInt = 5u,
-    val useUnconditionalRandomDownloadPeer: Boolean = false,
+    val blockRangeRequestTimeout: Duration,
+    val backoffDelay: Duration,
+    val blocksBatchSize: UInt,
+    val blocksParallelism: UInt,
+    val maxRetries: UInt,
+    val useUnconditionalRandomDownloadPeer: Boolean,
   )
 
   fun createPipeline(startBlock: ULong): BeaconChainPipeline {
@@ -76,8 +76,12 @@ class BeaconChainDownloadPipelineFactory(
             peerLookup = peerLookup,
             useUnconditionalRandomSelection = config.useUnconditionalRandomDownloadPeer,
           ),
-        maxRetries = config.maxRetries,
-        blockRangeRequestTimeout = config.blockRangeRequestTimeout,
+        config =
+          DownloadBlocksStep.Config(
+            maxRetries = config.maxRetries,
+            blockRangeRequestTimeout = config.blockRangeRequestTimeout,
+            backoffDelay = config.backoffDelay,
+          ),
       )
     val importBlocksStep = ImportBlocksStep(blockImporter)
 

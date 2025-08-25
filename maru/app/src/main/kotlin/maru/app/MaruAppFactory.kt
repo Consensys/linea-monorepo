@@ -65,6 +65,7 @@ import maru.syncing.MostFrequentHeadTargetSelector
 import maru.syncing.PeerChainTracker
 import maru.syncing.SyncController
 import maru.syncing.SyncTargetSelector
+import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
@@ -203,9 +204,17 @@ class MaruAppFactory {
             ),
           elSyncServiceConfig = ELSyncService.Config(config.syncing.elSyncStatusRefreshInterval),
           finalizationProvider = finalizationProvider,
-          allowEmptyBlocks = config.allowEmptyBlocks,
           desyncTolerance = config.syncing.desyncTolerance,
-          useUnconditionalRandomDownloadPeer = config.syncing.useUnconditionalRandomDownloadPeer,
+          pipelineConfig =
+            BeaconChainDownloadPipelineFactory.Config(
+              blockRangeRequestTimeout = config.syncing.download.blockRangeRequestTimeout,
+              backoffDelay = config.syncing.download.backoffDelay,
+              blocksBatchSize = config.syncing.download.blocksBatchSize,
+              blocksParallelism = config.syncing.download.blocksParallelism,
+              maxRetries = config.syncing.download.maxRetries,
+              useUnconditionalRandomDownloadPeer = config.syncing.download.useUnconditionalRandomDownloadPeer,
+            ),
+          allowEmptyBlocks = config.allowEmptyBlocks,
         )
       } else {
         AlwaysSyncedController(beaconChain)
@@ -332,6 +341,7 @@ class MaruAppFactory {
       when (config) {
         is SyncingConfig.SyncTargetSelection.Highest ->
           HighestHeadTargetSelector()
+
         is SyncingConfig.SyncTargetSelection.MostFrequent ->
           MostFrequentHeadTargetSelector(config.peerChainHeightGranularity)
       }

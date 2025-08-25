@@ -168,9 +168,8 @@ data class SyncingConfig(
   val peerChainHeightPollingInterval: Duration,
   val syncTargetSelection: SyncTargetSelection,
   val elSyncStatusRefreshInterval: Duration,
-  val desyncTolerance: ULong = 10UL,
-  val useUnconditionalRandomDownloadPeer: Boolean = false,
-  val download: Download? = Download(),
+  val desyncTolerance: ULong = 5UL,
+  val download: Download,
 ) {
   sealed interface SyncTargetSelection {
     data object Highest : SyncTargetSelection
@@ -191,6 +190,8 @@ data class SyncingConfig(
     val blocksBatchSize: UInt = 10u,
     val blocksParallelism: UInt = 1u,
     val maxRetries: UInt = 5u,
+    val backoffDelay: Duration = 1.seconds,
+    val useUnconditionalRandomDownloadPeer: Boolean = false,
   )
 }
 
