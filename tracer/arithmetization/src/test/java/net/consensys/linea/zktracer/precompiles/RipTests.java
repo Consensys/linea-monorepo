@@ -26,7 +26,6 @@ import java.util.stream.Stream;
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
-import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
@@ -39,13 +38,6 @@ public class RipTests extends TracerTestBase {
   @ParameterizedTest
   @MethodSource("sizes")
   void basicRipTest(int size) {
-
-    // TODO: reenable for Cancun once fix is merged
-    // https://github.com/Consensys/linea-constraints/pull/730
-    if (fork == Fork.CANCUN && size == HUGE_SIZE) {
-      return;
-    }
-
     final Bytes bytecode =
         BytecodeCompiler.newProgram(testInfo)
             .push(Bytes.fromHexString("0x0badb077")) // value, some random data to hash
