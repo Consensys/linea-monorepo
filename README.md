@@ -38,8 +38,9 @@ Status Network introduces **gasless transactions** through a **RLN technology** 
 - [**Modified LineaEstimateGas RPC**](besu-plugins/linea-sequencer/sequencer/src/main/java/net/consensys/linea/rpc/methods/LineaEstimateGas.java): Dynamically provides zero gas or premium gas estimates based on real-time user karma and usage quotas
 - [**Karma Service Integration**](besu-plugins/linea-sequencer/sequencer/src/main/java/net/consensys/linea/sequencer/txpoolvalidation/shared/KarmaServiceClient.java): Real-time user tier and quota checking via gRPC
 
-#### Verifier (Sequencer) Components
+#### Sequencer Components
 - [**RLNVerifier Transaction Pool Validator**](besu-plugins/linea-sequencer/sequencer/src/main/java/net/consensys/linea/sequencer/txpoolvalidation/validators/RlnVerifierValidator.java): Verifies incoming transactions from RPC nodes using RLN proofs received from the prover service
+- [**RLN Bridge**](besu-plugins/linea-sequencer/sequencer/src/main/rust/rln_bridge/src/lib.rs): JNI interface for RLN proof verification, providing high-performance cryptographic verification of rate limiting nullifiers
 - [**Nullifier Tracking**](besu-plugins/linea-sequencer/sequencer/src/main/java/net/consensys/linea/sequencer/txpoolvalidation/shared/NullifierTracker.java): High-performance tracking to prevent double-spending and nullifier reuse
 - [**Deny List Management**](besu-plugins/linea-sequencer/sequencer/src/main/java/net/consensys/linea/sequencer/txpoolvalidation/shared/DenyListManager.java): Shared deny list manager providing single source of truth for deny list state
 
