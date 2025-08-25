@@ -6,7 +6,7 @@ on:
 jobs:
   analyze:
     name: Analyze
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
+    runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: read
