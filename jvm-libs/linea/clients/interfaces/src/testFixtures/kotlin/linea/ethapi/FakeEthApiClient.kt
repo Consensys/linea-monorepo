@@ -34,6 +34,10 @@ class FakeEthApiClient(
   private val logsDb: MutableList<EthLog> = mutableListOf()
   private val blocksDb: MutableMap<ULong, Block> = mutableMapOf()
 
+  // key = which block number to throw error
+  // value = how many times left to throw error, null means always throw
+  private var getLogsThrowErrorAtAndTimes: MutableMap<ULong, ULong?> = mutableMapOf()
+
   init {
     require(initialTagsBlocks.keys.size == BlockParameter.Tag.entries.size) {
       "Please specify all block tags: ${BlockParameter.Tag.entries.joinToString(", ")}"
@@ -69,6 +73,11 @@ class FakeEthApiClient(
       listOf(BlockParameter.Tag.FINALIZED, BlockParameter.Tag.SAFE, BlockParameter.Tag.PENDING),
       blockNumber,
     )
+  }
+
+  @Synchronized
+  fun setGetLogsThrowErrorAtAndTimes(getLogsThrowErrorAtAndTimes: MutableMap<ULong, ULong?>) {
+    this.getLogsThrowErrorAtAndTimes = getLogsThrowErrorAtAndTimes
   }
 
   @Synchronized
@@ -163,6 +172,14 @@ class FakeEthApiClient(
     address: String,
     topics: List<String?>,
   ): SafeFuture<List<EthLog>> {
+    if (isAtBlockNumberToThrow(
+        fromBlockNumber = blockParameterToBlockNumber(fromBlock),
+        toBlockNumber = blockParameterToBlockNumber(toBlock),
+      )
+    ) {
+      throw IllegalStateException("for error testing when calling getLogs")
+    }
+
     val addressBytes = address.decodeHex()
     val topicsFilter = topics.map { it?.decodeHex() }
     val logsInBlockRange = findLogsInRange(fromBlock, toBlock)
@@ -196,6 +213,19 @@ class FakeEthApiClient(
     toBlock: BlockParameter,
   ): List<EthLog> {
     return logsDb.filter { isInRange(it.blockNumber, fromBlock, toBlock) }
+  }
+
+  private fun isAtBlockNumberToThrow(fromBlockNumber: ULong, toBlockNumber: ULong): Boolean {
+    var shouldThrow = false
+    getLogsThrowErrorAtAndTimes.forEach { errorBlockNumber, throwTimes ->
+      if ((fromBlockNumber..toBlockNumber).contains(errorBlockNumber)) {
+        if (throwTimes != null && throwTimes > 0UL) {
+          getLogsThrowErrorAtAndTimes[errorBlockNumber] = getLogsThrowErrorAtAndTimes[errorBlockNumber]!! - 1UL
+        }
+        shouldThrow = shouldThrow || throwTimes == null || getLogsThrowErrorAtAndTimes[errorBlockNumber]!! > 0UL
+      }
+    }
+    return shouldThrow
   }
 
   private fun isInRange(
