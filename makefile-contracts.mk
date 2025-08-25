@@ -110,7 +110,7 @@ deploy-status-network-contracts-hardhat:
 		STATUS_NETWORK_DEPLOYER=$${STATUS_NETWORK_DEPLOYER:-0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266} \
 		STATUS_NETWORK_STAKING_TOKEN=$${STATUS_NETWORK_STAKING_TOKEN:-0x0000000000000000000000000000000000000001} \
 		STATUS_NETWORK_RLN_DEPTH=$${STATUS_NETWORK_RLN_DEPTH:-20} \
-		npx hardhat deploy --network l2 --tags StatusNetworkStakeManager,StatusNetworkVaultFactory,StatusNetworkKarma,StatusNetworkRLN,StatusNetworkKarmaNFT
+		npx hardhat deploy --network l2 --tags StatusNetworkStakeManager,StatusNetworkVaultFactory,StatusNetworkKarma,StatusNetworkRLN,StatusNetworkKarmaNFT,StatusNetworkKarmaTiers
 
 deploy-contracts: L1_CONTRACT_VERSION:=6
 deploy-contracts: LINEA_PROTOCOL_CONTRACTS_ONLY:=false

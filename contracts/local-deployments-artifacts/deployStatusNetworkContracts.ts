@@ -14,6 +14,7 @@ interface StatusNetworkContracts {
   karma: string;
   rln: string;
   karmaNFT: string;
+  karmaTiers: string;
 }
 
 async function main(): Promise<StatusNetworkContracts> {
@@ -55,7 +56,8 @@ async function main(): Promise<StatusNetworkContracts> {
     vaultFactory: "0x1000000000000000000000000000000000000002", 
     karma: "0x1000000000000000000000000000000000000003",
     rln: "0x1000000000000000000000000000000000000004",
-    karmaNFT: "0x1000000000000000000000000000000000000005"
+    karmaNFT: "0x1000000000000000000000000000000000000005",
+    karmaTiers: "0x1000000000000000000000000000000000000006"
   };
 
   console.log("✅ Status Network Contracts deployment simulation completed:");
@@ -64,6 +66,7 @@ async function main(): Promise<StatusNetworkContracts> {
   console.log(`   Karma: ${mockDeployments.karma}`);
   console.log(`   RLN: ${mockDeployments.rln}`);
   console.log(`   KarmaNFT: ${mockDeployments.karmaNFT}`);
+  console.log(`   KarmaTiers: ${mockDeployments.karmaTiers}`);
 
   // Save deployment addresses to a file for reference
   const deploymentsFile = path.join(__dirname, "status-network-deployments.json");

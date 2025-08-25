@@ -11,6 +11,7 @@ The Status Network deployment includes the following contracts:
 3. **Karma** - Soulbound token for gasless transaction quotas
 4. **RLN (Rate Limiting Nullifier)** - Zero-knowledge rate limiting system
 5. **KarmaNFT** - NFT representation of Karma tokens
+6. **KarmaTiers** - Manages Karma token tiers and levels
 
 ## Quick Start
 
@@ -71,6 +72,7 @@ The contracts are deployed in the following order to respect dependencies:
 3. **Karma** (with proxy)
 4. **RLN** (depends on Karma)
 5. **KarmaNFT** (depends on Karma)
+6. **KarmaTiers** (independent)
 
 ## Integration with RLN Services
 
