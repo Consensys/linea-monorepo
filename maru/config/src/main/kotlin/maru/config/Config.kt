@@ -169,7 +169,7 @@ data class SyncingConfig(
   val syncTargetSelection: SyncTargetSelection,
   val elSyncStatusRefreshInterval: Duration,
   val desyncTolerance: ULong = 5UL,
-  val download: Download,
+  val download: Download = Download(),
 ) {
   sealed interface SyncTargetSelection {
     data object Highest : SyncTargetSelection
