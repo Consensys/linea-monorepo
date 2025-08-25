@@ -19,7 +19,7 @@ import secondCompressedDataContent from "../../_testData/compressedData/blocks-4
 import fourthCompressedDataContent from "../../_testData/compressedData/blocks-115-155.json";
 
 import { LINEA_ROLLUP_PAUSE_TYPES_ROLES, LINEA_ROLLUP_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
-import { TestLineaRollup } from "contracts/typechain-types";
+import { TestLineaRollup } from "../../../../typechain-types";
 import {
   deployLineaRollupFixture,
   deployPlonkVerifierMainnetFull,
