@@ -29,12 +29,7 @@ Status Network introduces **gasless transactions** through a **RLN technology** 
 
 **火 Karma System**: A reputation-based mechanism where users earn Karma soulbound tokens through positive network participation. Users will have different levels of daily gasless transaction quota depending on their Karma amount. Contract code implementation can be found [here](https://github.com/vacp2p/staking-reward-streamer).
 
-### Key Features
-
-- **🆓 Zero Gas Transactions**: Users with sufficient Karma balance can submit transactions without paying gas
-- **🛡️ Rate Limiting**: RLN-based rate limiting prevents spam and abuse through cryptographic proofs
-- **💰 Premium Gas Bypass**: Users who exceed their quota can bypass restrictions with premium gas payments
-- **📊 Reputation-Based Access**: Karma tokens determine user privileges and transaction quotas
+**Premium Gas Bypass**: When users exceed their daily gasless transaction quota, they can still submit transactions by paying premium gas fees. The premium gas threshold is configurable and allows users to bypass rate limiting restrictions when needed.
 
 ### Architecture Components
 
