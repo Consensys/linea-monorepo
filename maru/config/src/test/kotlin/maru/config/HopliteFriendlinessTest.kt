@@ -61,7 +61,6 @@ class HopliteFriendlinessTest {
     desync-tolerance = 10
     peer-chain-height-polling-interval = "5 seconds"
     el-sync-status-refresh-interval = "6 seconds"
-    use-unconditional-random-download-peer = false
     sync-target-selection = { _type = "MostFrequent", peer-chain-height-granularity = 10 }
 
     [syncing.download]
@@ -69,6 +68,8 @@ class HopliteFriendlinessTest {
     blocks-batch-size = 64
     blocks-parallelism = 10
     max-retries = 5
+    backoff-delay = "10 seconds"
+    use-unconditional-random-download-peer = true
     """.trimIndent()
   private val rawConfigToml =
     """
@@ -176,13 +177,15 @@ class HopliteFriendlinessTest {
         ),
       elSyncStatusRefreshInterval = 6.seconds,
       desyncTolerance = 10UL,
-      useUnconditionalRandomDownloadPeer = false,
-      SyncingConfig.Download(
-        blockRangeRequestTimeout = 10.seconds,
-        blocksBatchSize = 64u,
-        blocksParallelism = 10u,
-        maxRetries = 5u,
-      ),
+      download =
+        SyncingConfig.Download(
+          blockRangeRequestTimeout = 10.seconds,
+          blocksBatchSize = 64u,
+          blocksParallelism = 10u,
+          maxRetries = 5u,
+          backoffDelay = 10.seconds,
+          useUnconditionalRandomDownloadPeer = true,
+        ),
     )
 
   @Test

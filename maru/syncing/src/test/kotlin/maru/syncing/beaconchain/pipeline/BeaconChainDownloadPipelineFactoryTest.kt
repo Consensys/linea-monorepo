@@ -11,6 +11,7 @@ package maru.syncing.beaconchain.pipeline
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.seconds
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators.randomSealedBeaconBlock
@@ -19,6 +20,7 @@ import maru.p2p.MaruPeer
 import maru.p2p.PeerLookup
 import maru.p2p.ValidationResult
 import maru.p2p.messages.BeaconBlocksByRangeResponse
+import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory.Config
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
@@ -38,6 +40,16 @@ class BeaconChainDownloadPipelineFactoryTest {
   private lateinit var factory: BeaconChainDownloadPipelineFactory
   private lateinit var executorService: ExecutorService
   private lateinit var syncTargetProvider: () -> ULong
+  private val defaultBackoffDelay = 1.seconds
+  private val defaultPipelineConfig =
+    Config(
+      blockRangeRequestTimeout = 5.seconds,
+      blocksBatchSize = 10u,
+      blocksParallelism = 1u,
+      backoffDelay = defaultBackoffDelay,
+      maxRetries = 5u,
+      useUnconditionalRandomDownloadPeer = false,
+    )
 
   @BeforeEach
   fun setUp() {
@@ -50,7 +62,7 @@ class BeaconChainDownloadPipelineFactoryTest {
         blockImporter = blockImporter,
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
-        config = BeaconChainDownloadPipelineFactory.Config(),
+        config = defaultPipelineConfig,
         syncTargetProvider = syncTargetProvider,
       )
   }
@@ -166,7 +178,7 @@ class BeaconChainDownloadPipelineFactoryTest {
         blockImporter = blockImporter,
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
-        config = BeaconChainDownloadPipelineFactory.Config(blocksBatchSize = 100u),
+        config = defaultPipelineConfig.copy(blocksBatchSize = 100u),
         syncTargetProvider = { 50uL },
       )
 
@@ -210,7 +222,7 @@ class BeaconChainDownloadPipelineFactoryTest {
         blockImporter = blockImporter,
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
-        config = BeaconChainDownloadPipelineFactory.Config(blocksBatchSize = 0u),
+        config = defaultPipelineConfig.copy(blocksBatchSize = 0u),
         syncTargetProvider = { 0uL },
       )
     }.isInstanceOf(IllegalArgumentException::class.java)

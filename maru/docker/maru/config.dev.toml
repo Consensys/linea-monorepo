@@ -38,7 +38,14 @@ port = 8080
 [syncing]
 peer-chain-height-polling-interval = "5 seconds"
 el-sync-status-refresh-interval = "5 seconds"
-use-unconditional-random-download-peer = false
 sync-target-selection = "Highest"
 # sync-target-selection = { _type = "MostFrequent", peer-chain-height-granularity = 10 }
 desync-tolerance = 10
+
+[syncing.download]
+block-range-request-timeout = "10 seconds"
+blocks-batch-size = 10
+blocks-parallelism = 10
+max-retries = 5
+backoff-delay = "1 seconds"
+use-unconditional-random-download-peer = false

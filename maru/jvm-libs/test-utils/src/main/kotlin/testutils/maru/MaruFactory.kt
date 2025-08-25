@@ -63,8 +63,8 @@ class MaruFactory(
         peerChainHeightPollingInterval = 1.seconds,
         syncTargetSelection = SyncTargetSelection.Highest,
         elSyncStatusRefreshInterval = 500.milliseconds,
-        useUnconditionalRandomDownloadPeer = false,
         desyncTolerance = 0UL,
+        download = SyncingConfig.Download(),
       )
 
     fun enumeratingSyncingConfigs(): List<SyncingConfig> {
@@ -76,7 +76,7 @@ class MaruFactory(
         defaultSyncingConfig,
         defaultSyncingConfig.copy(
           syncTargetSelection = syncTargetSelectionForMostFrequent,
-          useUnconditionalRandomDownloadPeer = true,
+          download = SyncingConfig.Download(useUnconditionalRandomDownloadPeer = true),
         ),
       )
     }
@@ -211,8 +211,8 @@ class MaruFactory(
         peerChainHeightPollingInterval = 1.seconds,
         syncTargetSelection = SyncTargetSelection.Highest,
         elSyncStatusRefreshInterval = 500.milliseconds,
-        useUnconditionalRandomDownloadPeer = false,
         desyncTolerance = desyncTolerance,
+        download = SyncingConfig.Download(),
       )
     val config =
       buildMaruConfig(
