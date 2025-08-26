@@ -24,17 +24,8 @@ chaos-experiment-http-engine-api-error:
 	-@kubectl delete -f experiments/http-engine-api-error.yaml
 	@kubectl apply -f experiments/http-engine-api-error.yaml
 
-chaos-experiment-podkill-validator:
-	@kubectl apply -f experiments/podkill-validator.yaml
-	@kubectl get pods -l app.kubernetes.io/instance=maru-validator
-
-chaos-experiment-podkill-besu-nodes:
-	-@kubectl delete -f experiments/podkill-besu-once.yaml
-	@kubectl apply -f experiments/podkill-besu-once.yaml
-	@kubectl get pods -l app.kubernetes.io/component=besu
-
 chaos-experiment-workflow:
-	-@kubectl delete -f experiments/workflow-linea-resilience.yaml
+	-@kubectl delete -f experiments/workflow-linea-resilience.yaml >/dev/null 2>&1
 	@kubectl apply -f experiments/workflow-linea-resilience.yaml
 
 experiment_name ?= linea-resilience
@@ -53,6 +44,7 @@ wait-experiment-done:
 chaos-experiment-workflow-and-wait:
 	@$(MAKE) chaos-experiment-workflow
 	@$(MAKE) wait-experiment-done experiment_name=linea-resilience
+	@$(MAKE) wait-all-running
 
 .PHONY: chaos-mesh-install-with-curl \
 	chaos-mesh-install \

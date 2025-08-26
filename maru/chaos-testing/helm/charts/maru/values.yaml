@@ -20,6 +20,42 @@ persistence:
   accessMode: ReadWriteOnce
   size: 1Gi
   storageClass: ""
+
+# Health check probes configuration
+probes:
+  liveness:
+    enabled: true
+    type: httpGet  # Options: httpGet, tcpSocket, exec
+#    tcpSocket:
+#      port: api  # Use the API port for liveness check
+    httpGet:
+     path: /live
+     port: 9545
+     scheme: HTTP
+    # exec:
+    #   command: ["/bin/sh", "-c", "pgrep java"]
+    initialDelaySeconds: 2
+    periodSeconds: 1
+    timeoutSeconds: 10
+    successThreshold: 1
+    failureThreshold: 3
+  readiness:
+    enabled: true
+    type: httpGet  # Options: httpGet, tcpSocket, exec
+#    tcpSocket:
+#      port: api  # Use the API port for readiness check
+    httpGet:
+      path: /ready
+      port: 9545
+      scheme: HTTP
+    # exec:
+    #   command: ["/bin/sh", "-c", "nc -z localhost 5060"]
+    initialDelaySeconds: 2
+    periodSeconds: 1
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 3
+
 configFiles:
   privateKey: |
   configsDefaultsToml: |

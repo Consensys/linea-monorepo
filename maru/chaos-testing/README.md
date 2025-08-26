@@ -1,14 +1,14 @@
 
 # Maru test network topology
 
-- 1 maru validator: `maru-validator` -> `besu-sequencer` (starts with Clique then switch to QBFT)
-- 4 maru followers:
-  - `maru-bootnode-0-0` -> `besu-follower-0` (will also work as bootnode)
-  - `maru-follower-1-0` -> `besu-follower-1`
-  - `maru-follower-2-0` -> `besu-follower-2`
-  - `maru-follower-3-0` -> [`besu-follower-3`, `besu-follower-4`]
-     - `besu-follower-3` is the primary EL client
-     - `besu-follower-4` is just EL client replica
+- 1 maru bootnode: `maru-bootnode-0-0` -> `besu-bootnode-0-0`
+- 1 maru sequencer: `maru-sequencer-0-0` -> `besu-sequencer-0-0`
+- 3 maru followers:
+  - `maru-follower-1-0` -> `besu-follower-1-0`
+  - `maru-follower-2-0` -> `besu-follower-2-0`
+  - `maru-follower-3-0` -> [`besu-follower-3-0`, `besu-follower-3-1`]
+     - `besu-follower-3-0` is the primary EL client
+     - `besu-follower-3-1` is just EL client replica
 
 # Quick start
 
