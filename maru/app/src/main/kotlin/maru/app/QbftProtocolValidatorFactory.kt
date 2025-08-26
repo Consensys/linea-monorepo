@@ -9,7 +9,7 @@
 package maru.app
 
 import java.time.Clock
-import maru.config.QbftOptions
+import maru.config.QbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
@@ -33,7 +33,7 @@ import org.hyperledger.besu.plugin.services.MetricsSystem
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 
 class QbftProtocolValidatorFactory(
-  private val qbftOptions: QbftOptions,
+  private val qbftOptions: QbftConfig,
   private val privateKeyBytes: ByteArray,
   private val validatorELNodeEngineApiWeb3JClient: Web3JClient,
   private val followerELNodeEngineApiWeb3JClients: Map<String, Web3JClient>,

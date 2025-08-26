@@ -11,7 +11,7 @@ package maru.consensus.qbft
 import java.time.Clock
 import java.util.concurrent.Executors
 import kotlin.time.toJavaDuration
-import maru.config.QbftOptions
+import maru.config.QbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
@@ -75,7 +75,7 @@ import org.hyperledger.besu.util.Subscribers
 class QbftValidatorFactory(
   private val beaconChain: BeaconChain,
   private val privateKeyBytes: ByteArray,
-  private val qbftOptions: QbftOptions,
+  private val qbftOptions: QbftConfig,
   private val metricsSystem: MetricsSystem,
   private val finalizationStateProvider: FinalizationProvider,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,

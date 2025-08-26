@@ -14,7 +14,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration.Companion.seconds
-import maru.config.P2P
+import maru.config.P2PConfig
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ConsensusConfig
@@ -376,7 +376,7 @@ class CLSyncServiceImplTest {
       P2PNetworkImpl(
         privateKeyBytes = key,
         p2pConfig =
-          P2P(
+          P2PConfig(
             ipAddress = IPV4,
             port = port,
             staticPeers = emptyList(),

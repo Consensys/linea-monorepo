@@ -27,7 +27,7 @@ import maru.api.ApiServer
 import maru.api.ApiServerImpl
 import maru.api.ChainDataProviderImpl
 import maru.config.MaruConfig
-import maru.config.P2P
+import maru.config.P2PConfig
 import maru.config.SyncingConfig
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
@@ -91,8 +91,8 @@ class MaruAppFactory {
     val privateKey = getOrGeneratePrivateKey(config.persistence.privateKeyPath)
     val vertx =
       VertxFactory.createVertx(
-        jvmMetricsEnabled = config.observabilityOptions.jvmMetricsEnabled,
-        prometheusMetricsEnabled = config.observabilityOptions.prometheusMetricsEnabled,
+        jvmMetricsEnabled = config.observability.jvmMetricsEnabled,
+        prometheusMetricsEnabled = config.observability.prometheusMetricsEnabled,
       )
 
     val nodeId = PeerId.fromPubKey(unmarshalPrivateKey(privateKey).publicKey())
@@ -172,7 +172,7 @@ class MaruAppFactory {
 
     val p2pNetwork =
       overridingP2PNetwork ?: setupP2PNetwork(
-        p2pConfig = config.p2pConfig,
+        p2pConfig = config.p2p,
         privateKey = privateKey,
         chainId = beaconGenesisConfig.chainId,
         beaconChain = beaconChain,
@@ -187,7 +187,7 @@ class MaruAppFactory {
       overridingFinalizationProvider
         ?: setupFinalizationProvider(config, overridingLineaContractClient, vertx)
     syncControllerImpl =
-      if (config.p2pConfig != null) {
+      if (config.p2p != null) {
         BeaconSyncControllerImpl.create(
           beaconChain = beaconChain,
           forksSchedule = beaconGenesisConfig,
@@ -225,7 +225,7 @@ class MaruAppFactory {
         ?: ApiServerImpl(
           config =
             ApiServerImpl.Config(
-              port = config.apiConfig.port,
+              port = config.api.port,
             ),
           networkDataProvider = P2PNetworkDataProvider(p2pNetwork),
           versionProvider = MaruVersionProvider(),
@@ -303,7 +303,7 @@ class MaruAppFactory {
         } ?: InstantFinalizationProvider
 
     private fun setupP2PNetwork(
-      p2pConfig: P2P?,
+      p2pConfig: P2PConfig?,
       privateKey: ByteArray,
       chainId: UInt,
       beaconChain: BeaconChain,

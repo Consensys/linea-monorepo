@@ -16,7 +16,7 @@ import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrElse
 import kotlin.jvm.optionals.getOrNull
-import maru.config.P2P
+import maru.config.P2PConfig
 import maru.consensus.ForkIdHashProvider
 import maru.core.SealedBeaconBlock
 import maru.crypto.Crypto.privateKeyBytesWithoutPrefix
@@ -47,7 +47,7 @@ import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
 class P2PNetworkImpl(
   private val privateKeyBytes: ByteArray,
-  private val p2pConfig: P2P,
+  private val p2pConfig: P2PConfig,
   private val chainId: UInt,
   private val serDe: SerDe<SealedBeaconBlock>,
   private val metricsFacade: MetricsFacade,
@@ -88,7 +88,7 @@ class P2PNetworkImpl(
 
   private fun buildP2PNetwork(
     privateKeyBytes: ByteArray,
-    p2pConfig: P2P,
+    p2pConfig: P2PConfig,
     besuMetricsSystem: BesuMetricsSystem,
   ): TekuLibP2PNetwork {
     val privateKey = unmarshalPrivateKey(privateKeyBytes)

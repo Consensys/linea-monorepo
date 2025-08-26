@@ -83,7 +83,7 @@ class HopliteFriendlinessTest {
   private val privateKeyPath = Path("/private-key/path")
   private val persistence = Persistence(dataPath, privateKeyPath)
   private val p2pConfig =
-    P2P(
+    P2PConfig(
       ipAddress = "10.11.12.13",
       port = 3322u,
       staticPeers =
@@ -92,7 +92,7 @@ class HopliteFriendlinessTest {
         ),
       reconnectDelay = 500.milliseconds,
       discovery =
-        P2P.Discovery(
+        P2PConfig.Discovery(
           port = 3324u,
           bootnodes =
             listOf(
@@ -200,7 +200,7 @@ class HopliteFriendlinessTest {
         p2p = p2pConfig,
         payloadValidator = payloadValidator,
         followerEngineApis = mapOf("follower1" to follower1, "follower2" to follower2),
-        observability = ObservabilityOptions(port = 9090u),
+        observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
       ),
@@ -219,7 +219,7 @@ class HopliteFriendlinessTest {
         p2p = p2pConfig,
         payloadValidator = payloadValidator,
         followerEngineApis = null,
-        observability = ObservabilityOptions(port = 9090u),
+        observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
       ),
@@ -234,13 +234,13 @@ class HopliteFriendlinessTest {
           protocolTransitionPollingInterval = protocolTransitionPollingInterval,
           allowEmptyBlocks = false,
           persistence = persistence,
-          qbftOptions = qbftOptions.toDomain(),
-          p2pConfig = p2pConfig,
+          qbft = qbftOptions.toDomain(),
+          p2p = p2pConfig,
           validatorElNode = payloadValidator.domainFriendly(),
           followers = FollowersConfig(mapOf("el-validator" to payloadValidator.engineApiEndpoint.domainFriendly())),
-          observabilityOptions = ObservabilityOptions(port = 9090u),
+          observability = ObservabilityConfig(port = 9090u),
           linea = null,
-          apiConfig = ApiConfig(port = 8080u),
+          api = ApiConfig(port = 8080u),
           syncing = syncingConfig,
         )
       }
@@ -255,16 +255,16 @@ class HopliteFriendlinessTest {
         protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = false,
         persistence = persistence,
-        p2pConfig = p2pConfig,
+        p2p = p2pConfig,
         validatorElNode =
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
             ethApiEndpoint = ethApiEndpoint,
           ),
-        qbftOptions = qbftOptions.toDomain(),
+        qbft = qbftOptions.toDomain(),
         followers = followersConfig,
-        observabilityOptions = ObservabilityOptions(port = 9090u),
-        apiConfig = ApiConfig(port = 8080u),
+        observability = ObservabilityConfig(port = 9090u),
+        api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
       ),
     )
@@ -278,16 +278,16 @@ class HopliteFriendlinessTest {
         protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = false,
         persistence = persistence,
-        qbftOptions = qbftOptions.toDomain(),
-        p2pConfig = p2pConfig,
+        qbft = qbftOptions.toDomain(),
+        p2p = p2pConfig,
         validatorElNode =
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
             ethApiEndpoint = ethApiEndpoint,
           ),
         followers = emptyFollowersConfig,
-        observabilityOptions = ObservabilityOptions(port = 9090u),
-        apiConfig = ApiConfig(port = 8080u),
+        observability = ObservabilityConfig(port = 9090u),
+        api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
       ),
     )
@@ -306,9 +306,9 @@ class HopliteFriendlinessTest {
 
   @Test
   fun validatorDutiesAreParseable() {
-    val config = parseConfig<QbftOptions>(qbftOptionsToml)
+    val config = parseConfig<QbftConfig>(qbftOptionsToml)
     assertThat(config).isEqualTo(
-      QbftOptions(
+      QbftConfig(
         minBlockBuildTime = 200.milliseconds,
         messageQueueLimit = 1001,
         roundExpiry = 900.milliseconds,
@@ -410,7 +410,7 @@ class HopliteFriendlinessTest {
         p2p = p2pConfig,
         payloadValidator = payloadValidator,
         followerEngineApis = null,
-        observability = ObservabilityOptions(port = 9090u),
+        observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
       ),
@@ -421,16 +421,16 @@ class HopliteFriendlinessTest {
         protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = true,
         persistence = persistence,
-        p2pConfig = p2pConfig,
+        p2p = p2pConfig,
         validatorElNode =
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
             ethApiEndpoint = ethApiEndpoint,
           ),
-        qbftOptions = qbftOptions.toDomain(),
+        qbft = qbftOptions.toDomain(),
         followers = emptyFollowersConfig,
-        observabilityOptions = ObservabilityOptions(port = 9090u),
-        apiConfig = ApiConfig(port = 8080u),
+        observability = ObservabilityConfig(port = 9090u),
+        api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
       ),
     )
@@ -481,7 +481,7 @@ class HopliteFriendlinessTest {
         qbft = qbftOptions,
         p2p = p2pConfig,
         payloadValidator = payloadValidator,
-        observability = ObservabilityOptions(port = 9090u),
+        observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
         followerEngineApis = null,
@@ -493,16 +493,16 @@ class HopliteFriendlinessTest {
         linea = expectedLineaConfig,
         protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         persistence = persistence,
-        p2pConfig = p2pConfig,
+        p2p = p2pConfig,
         validatorElNode =
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
             ethApiEndpoint = ethApiEndpoint,
           ),
-        qbftOptions = qbftOptions.toDomain(),
+        qbft = qbftOptions.toDomain(),
         followers = emptyFollowersConfig,
-        observabilityOptions = ObservabilityOptions(port = 9090u),
-        apiConfig = ApiConfig(port = 8080u),
+        observability = ObservabilityConfig(port = 9090u),
+        api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
       ),
     )

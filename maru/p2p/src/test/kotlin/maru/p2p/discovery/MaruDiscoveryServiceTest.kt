@@ -15,7 +15,7 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import linea.kotlin.decodeHex
-import maru.config.P2P
+import maru.config.P2PConfig
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ConsensusConfig
@@ -115,11 +115,11 @@ class MaruDiscoveryServiceTest {
   @BeforeEach
   fun setUp() {
     val p2pConfig =
-      P2P(
+      P2PConfig(
         ipAddress = "127.0.0.1",
         port = 9001u,
         discovery =
-          P2P.Discovery(
+          P2PConfig.Discovery(
             port = 9000u,
             bootnodes = listOf(),
             refreshInterval = 10.seconds,
@@ -172,11 +172,11 @@ class MaruDiscoveryServiceTest {
       MaruDiscoveryService(
         privateKeyBytes = key1,
         p2pConfig =
-          P2P(
+          P2PConfig(
             ipAddress = IPV4,
             port = PORT1,
             discovery =
-              P2P.Discovery(
+              P2PConfig.Discovery(
                 port = PORT2,
                 bootnodes = emptyList(),
                 refreshInterval = 10.seconds,
@@ -189,11 +189,11 @@ class MaruDiscoveryServiceTest {
       MaruDiscoveryService(
         privateKeyBytes = key2,
         p2pConfig =
-          P2P(
+          P2PConfig(
             ipAddress = IPV4,
             port = PORT3,
             discovery =
-              P2P.Discovery(
+              P2PConfig.Discovery(
                 port = PORT4,
                 bootnodes = listOf(bootnode.getLocalNodeRecord().asEnr()),
                 refreshInterval = 500.milliseconds,
@@ -206,11 +206,11 @@ class MaruDiscoveryServiceTest {
       MaruDiscoveryService(
         privateKeyBytes = key3,
         p2pConfig =
-          P2P(
+          P2PConfig(
             ipAddress = IPV4,
             port = PORT5,
             discovery =
-              P2P.Discovery(
+              P2PConfig.Discovery(
                 port = PORT6,
                 bootnodes = listOf(bootnode.getLocalNodeRecord().asEnr()),
                 refreshInterval = 500.milliseconds,
