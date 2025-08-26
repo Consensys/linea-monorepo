@@ -7,6 +7,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IStakeManagerProxy } from "./interfaces/IStakeManagerProxy.sol";
 import { IStakeVault } from "./interfaces/IStakeVault.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /**
  * @title StakeVault
@@ -39,6 +40,8 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
     error StakeVault__WithdrawFromVaultFailed();
     /// @notice Emitted when trying to transfer ownership
     error StakeVault__NotAllowedToTransferOwnership();
+    /// @notice Emitted when receiving invalid lock end timestamp from stake manager
+    error StakeVault__InvalidLockEnd();
 
     /*//////////////////////////////////////////////////////////////////////////
                                   STATE VARIABLES
@@ -130,7 +133,9 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      * @param _seconds The time period to lock the staked amount for.
      */
     function lock(uint256 _seconds) external onlyOwner {
-        lockUntil = stakeManager.lock(_seconds, lockUntil);
+        uint256 newLockUntil = stakeManager.lock(_seconds, lockUntil);
+        _ensureLockUntilValid(newLockUntil, _seconds);
+        lockUntil = newLockUntil;
     }
 
     /**
@@ -291,7 +296,9 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      * @param _source The address from which tokens will be transferred.
      */
     function _stake(uint256 _amount, uint256 _seconds, address _source) internal {
-        lockUntil = stakeManager.stake(_amount, _seconds, lockUntil);
+        uint256 newLockUntil = stakeManager.stake(_amount, _seconds, lockUntil);
+        _ensureLockUntilValid(newLockUntil, _seconds);
+        lockUntil = newLockUntil;
         bool success = STAKING_TOKEN.transferFrom(_source, address(this), _amount);
         if (!success) {
             revert StakeVault__StakingFailed();
@@ -328,6 +335,25 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
             revert StakeVault__NotEnoughAvailableBalance();
         }
         _token.transfer(_destination, _amount);
+    }
+
+    /**
+     * @notice Ensures that the new lock until timestamp is valid.
+     * @dev Reverts if the new lock until timestamp is not as expected.
+     * @param _newLockUntil The new lock until timestamp.
+     * @param _seconds The time period to stake for.
+     */
+    function _ensureLockUntilValid(uint256 _newLockUntil, uint256 _seconds) internal {
+        uint256 expectedLockUntil = Math.max(lockUntil, block.timestamp) + _seconds;
+        if (_seconds > 0 && _newLockUntil != expectedLockUntil) {
+            // This should never happen, unless there was a malicious
+            // upgrade of stake manager which tries to lock funds for longer than expected.
+            // Also, there's no case where `newLockUntil < expectedLockUntil`.
+            // It should revert in `StakeManager` already.
+            // We still do a `!=` check to be extra safe, in case a stake manager upgrade
+            // removes all other checks.
+            revert StakeVault__InvalidLockEnd();
+        }
     }
 
     /**

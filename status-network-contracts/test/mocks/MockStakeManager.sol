@@ -3,6 +3,7 @@ pragma solidity 0.8.26;
 import { IStakeManager } from "../../src/interfaces/IStakeManager.sol";
 import { ITrustedCodehashAccess } from "../../src/interfaces/ITrustedCodehashAccess.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 contract MockStakeManager is ITrustedCodehashAccess, IStakeManager {
     function implementation() external view returns (address) {
@@ -21,8 +22,9 @@ contract MockStakeManager is ITrustedCodehashAccess, IStakeManager {
         return;
     }
 
-    function stake(uint256, uint256, uint256) external returns (uint256) {
-        return 0;
+    // solhint-disable-next-line no-unused-vars
+    function stake(uint256 _amount, uint256 _seconds, uint256 _lockUntil) external returns (uint256) {
+        return Math.max(_lockUntil, block.timestamp) + _seconds;
     }
 
     function lock(uint256, uint256) external returns (uint256) {
