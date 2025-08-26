@@ -67,6 +67,7 @@ public class BytecodeCompiler {
         loadOpcodes(Fork.PRAGUE);
         yield new BytecodeCompiler();
       }
+      default -> throw new IllegalArgumentException("Unknown fork: " + testInfo.chainConfig.fork);
     };
   }
 

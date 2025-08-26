@@ -20,7 +20,8 @@ public enum Fork {
   PARIS,
   SHANGHAI,
   CANCUN,
-  PRAGUE;
+  PRAGUE,
+  OSAKA; // OSAKA is a fork that is not yet released
 
   public static String toString(Fork fork) {
     return switch (fork) {
@@ -29,6 +30,8 @@ public enum Fork {
       case SHANGHAI -> "shanghai";
       case CANCUN -> "cancun";
       case PRAGUE -> "prague";
+      case OSAKA -> "osaka";
+      default -> throw new IllegalArgumentException("Unknown fork: " + fork);
     };
   }
 

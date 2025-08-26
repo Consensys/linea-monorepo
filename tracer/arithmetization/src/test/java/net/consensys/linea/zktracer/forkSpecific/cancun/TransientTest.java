@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.cancunTests;
+package net.consensys.linea.zktracer.forkSpecific.cancun;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -30,6 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.corset.CorsetValidator;
 import net.consensys.linea.zktracer.*;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.BlobGas;
 import org.hyperledger.besu.datatypes.Hash;
@@ -39,6 +40,7 @@ import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.mainnet.MainnetTransactionProcessor;
 import org.hyperledger.besu.ethereum.mainnet.ProtocolSpec;
 import org.hyperledger.besu.ethereum.mainnet.TransactionValidationParams;
+import org.hyperledger.besu.ethereum.mainnet.systemcall.BlockProcessingContext;
 import org.hyperledger.besu.ethereum.processing.TransactionProcessingResult;
 import org.hyperledger.besu.ethereum.referencetests.GeneralStateTestCaseEipSpec;
 import org.hyperledger.besu.ethereum.referencetests.ReferenceTestBlockchain;
@@ -47,15 +49,20 @@ import org.hyperledger.besu.ethereum.rlp.RLP;
 import org.hyperledger.besu.ethereum.vm.BlockchainBasedBlockHashLookup;
 import org.hyperledger.besu.evm.EVM;
 import org.hyperledger.besu.evm.account.Account;
+import org.hyperledger.besu.evm.blockhash.BlockHashLookup;
 import org.hyperledger.besu.evm.fluent.SimpleBlockValues;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
+import org.jetbrains.annotations.NotNull;
 
 @Slf4j
 public class ToyExecutionTools {
   private static final List<String> SPECS_PRIOR_TO_DELETING_EMPTY_ACCOUNTS =
       Arrays.asList("Frontier", "Homestead", "EIP150");
+
+  private static final Bytes32 DEFAULT_PARENT_BEACON_BLOCK_ROOT =
+      Bytes32.fromHexString("0x0011223344556677889900AABBCCDDEEFF0011223344556677889900AABBCCDD");
 
   private ToyExecutionTools() {
     // utility class
@@ -69,7 +76,8 @@ public class ToyExecutionTools {
       final TransactionProcessingResultValidator transactionProcessingResultValidator,
       final Consumer<ZkTracer> zkTracerValidator) {
 
-    final BlockHeader blockHeader = spec.getBlockHeader();
+    final BlockHeader blockHeader = getBlockHeader(spec, protocolSpec);
+
     final ReferenceTestWorldState initialWorldState = spec.getInitialWorldState();
     final List<Transaction> transactions = new ArrayList<>();
     for (int i = 0; i < spec.getTransactionsCount(); i++) {
@@ -104,6 +112,12 @@ public class ToyExecutionTools {
 
     tracer.traceStartConflation(1);
     tracer.traceStartBlock(worldStateUpdater, blockHeader, blockBody, blockHeader.getCoinbase());
+    if (isPostCancun(fork)) {
+      final BlockProcessingContext context =
+          new BlockProcessingContext(
+              blockHeader, initialWorldState, protocolSpec, (BlockHashLookup) null, tracer);
+      protocolSpec.getPreExecutionProcessor().process(context);
+    }
     TransactionProcessingResult result = null;
     for (Transaction transaction : blockBody.getTransactions()) {
       // Several of the GeneralStateTests check if the transaction could potentially
@@ -190,6 +204,41 @@ public class ToyExecutionTools {
           // block number for last block
           blockHeader.getNumber());
     }
+  }
+
+  /**
+   * This method creates a block header from spec - with the only difference that it sets the parent
+   * beacon block root to a default b-value if null
+   */
+  @NotNull
+  private static BlockHeader getBlockHeader(
+      GeneralStateTestCaseEipSpec spec, ProtocolSpec protocolSpec) {
+    final BlockHeader specBlockHeader = spec.getBlockHeader();
+    final BlockHeader blockHeader =
+        new BlockHeader(
+            specBlockHeader.getParentHash(),
+            specBlockHeader.getOmmersHash(),
+            specBlockHeader.getCoinbase(),
+            specBlockHeader.getStateRoot(),
+            specBlockHeader.getTransactionsRoot(),
+            specBlockHeader.getReceiptsRoot(),
+            specBlockHeader.getLogsBloom(),
+            specBlockHeader.getDifficulty(),
+            specBlockHeader.getNumber(),
+            specBlockHeader.getGasLimit(),
+            specBlockHeader.getGasUsed(),
+            specBlockHeader.getTimestamp(),
+            specBlockHeader.getExtraData(),
+            specBlockHeader.getBaseFee().orElse(Wei.ONE),
+            specBlockHeader.getMixHashOrPrevRandao(),
+            specBlockHeader.getNonce(),
+            specBlockHeader.getWithdrawalsRoot().orElse(Hash.ZERO),
+            specBlockHeader.getBlobGasUsed().orElse(null),
+            specBlockHeader.getExcessBlobGas().orElse(BlobGas.ZERO),
+            specBlockHeader.getParentBeaconBlockRoot().orElse(DEFAULT_PARENT_BEACON_BLOCK_ROOT),
+            specBlockHeader.getRequestsHash().orElse(Hash.ZERO),
+            protocolSpec.getBlockHeaderFunctions());
+    return blockHeader;
   }
 
   public static void addSystemAccountsIfRequired(WorldUpdater worldStateUpdater, Fork fork) {
