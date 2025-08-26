@@ -299,10 +299,6 @@ contract StakeManager is
      * @param duration The duration of the reward period.
      */
     function setReward(uint256 amount, uint256 duration) external onlyRewardsSupplier {
-        if (rewardEndTime > block.timestamp) {
-            revert StakeManager__RewardPeriodNotEnded();
-        }
-
         if (duration == 0) {
             revert StakeManager__DurationCannotBeZero();
         }
@@ -314,10 +310,19 @@ contract StakeManager is
         // this will call updateRewardIndex and update the totalRewardsAccrued
         _updateGlobalState();
 
+        uint256 remainingRewards = 0;
+
+        if (rewardEndTime > block.timestamp) {
+            uint256 elapsedTime = block.timestamp - rewardStartTime;
+            uint256 totalDuration = rewardEndTime - rewardStartTime;
+            uint256 distributedRewards = Math.mulDiv(elapsedTime, rewardAmount, totalDuration);
+            remainingRewards = rewardAmount - distributedRewards;
+        }
+
         // in case updateRewardIndex returns earlier,
         // we still update the lastRewardTime
         lastRewardTime = block.timestamp;
-        rewardAmount = amount;
+        rewardAmount = remainingRewards + amount;
         rewardStartTime = block.timestamp;
         rewardEndTime = block.timestamp + duration;
     }

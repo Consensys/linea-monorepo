@@ -2395,6 +2395,89 @@ contract StakeManager_RewardsTest is StakeManagerTest {
         super.setUp();
     }
 
+    function testSetRewardsAccumulatesRemainingRewards() public {
+        // Setup initial reward period
+        uint256 initialReward = 1000e18;
+        uint256 duration = 10 days;
+        uint256 startTime = vm.getBlockTimestamp();
+
+        _setRewards(initialReward, duration);
+
+        // Verify initial setup
+        assertEq(streamer.rewardAmount(), initialReward);
+        assertEq(streamer.rewardStartTime(), startTime);
+        assertEq(streamer.rewardEndTime(), startTime + duration);
+
+        // Advance time to halfway through the reward period
+        uint256 halfwayTime = startTime + duration / 2;
+        vm.warp(halfwayTime);
+
+        // Set new rewards before the current period ends
+        uint256 newRewardAmount = 500e18;
+        uint256 newDuration = 5 days;
+
+        _setRewards(newRewardAmount, newDuration);
+
+        // Calculate expected remaining rewards from first period
+        // At halfway point, 50% of rewards should remain
+        uint256 expectedRemainingRewards = initialReward / 2;
+        uint256 expectedTotalRewards = expectedRemainingRewards + newRewardAmount;
+
+        // Verify the reward amount is accumulated correctly
+        assertEq(streamer.rewardAmount(), expectedTotalRewards, "Total reward amount should be remaining + new");
+        assertEq(streamer.rewardStartTime(), halfwayTime, "Start time should be updated");
+        assertEq(streamer.rewardEndTime(), halfwayTime + newDuration, "End time should be updated");
+        assertEq(streamer.lastRewardTime(), halfwayTime, "Last reward time should be updated");
+    }
+
+    function testSetRewardsWithPartialElapsedTime() public {
+        // Setup initial reward period
+        uint256 initialReward = 1200e18;
+        uint256 duration = 12 days;
+        uint256 startTime = vm.getBlockTimestamp();
+
+        _setRewards(initialReward, duration);
+
+        // Advance time to 1/3 through the reward period (4 days out of 12)
+        uint256 oneThirdTime = startTime + duration / 3;
+        vm.warp(oneThirdTime);
+
+        // Set new rewards
+        uint256 newRewardAmount = 800e18;
+        uint256 newDuration = 8 days;
+
+        _setRewards(newRewardAmount, newDuration);
+
+        // Calculate expected remaining rewards
+        // After 1/3 of time, 2/3 of rewards should remain
+        uint256 expectedRemainingRewards = (initialReward * 2) / 3; // 800e18
+        uint256 expectedTotalRewards = expectedRemainingRewards + newRewardAmount; // 1600e18
+
+        assertEq(streamer.rewardAmount(), expectedTotalRewards, "Should accumulate remaining rewards correctly");
+    }
+
+    function testSetRewardsAfterPeriodEndedNoAccumulation() public {
+        // Setup initial reward period
+        uint256 initialReward = 1000e18;
+        uint256 duration = 10 days;
+        uint256 startTime = vm.getBlockTimestamp();
+
+        _setRewards(initialReward, duration);
+
+        // Advance time past the end of the reward period
+        uint256 afterEndTime = startTime + duration + 1 days;
+        vm.warp(afterEndTime);
+
+        // Set new rewards after the period has ended
+        uint256 newRewardAmount = 500e18;
+        uint256 newDuration = 5 days;
+
+        _setRewards(newRewardAmount, newDuration);
+
+        // Should not accumulate any remaining rewards since period ended
+        assertEq(streamer.rewardAmount(), newRewardAmount, "Should only use new reward amount when period has ended");
+    }
+
     function testSetRewards() public {
         assertEq(streamer.rewardStartTime(), 0);
         assertEq(streamer.rewardEndTime(), 0);
