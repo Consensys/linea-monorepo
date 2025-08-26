@@ -1,8 +1,6 @@
 package poseidon2
 
 import (
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -466,80 +464,91 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 	var (
 		effectiveSize = len(stackedOldStates[0])
 
-		// round, col, query
-		matMulM4Tmp = make([][][]field.Element, 28) //[][20][]
-		matMulM4    = make([][][]field.Element, 28) // [][16][]
+		// col, round, query
+		matMulM4Tmp = make([][][]field.Element, 20) //col, round, query: [20][][effectiveSize]
+		matMulM4    = make([][][]field.Element, 16) //col, round, query: [16][][effectiveSize]
 
-		t              = make([][][]field.Element, 28) //[][4][]
-		matMulExternal = make([][][]field.Element, 28) // [][16][]
+		t              = make([][][]field.Element, 4)  //col, round, query: [4][][effectiveSize]
+		matMulExternal = make([][][]field.Element, 16) //col, round, query: [16][][effectiveSize]
 
-		addRoundKey = make([][][]field.Element, 28) // [][16][]
+		addRoundKey = make([][][]field.Element, 16) //col, round, query: [16][][effectiveSize]
 
-		sBox = make([][][]field.Element, 28) // [][16][]
+		sBox = make([][][]field.Element, 16) //col, round, query: [16][][effectiveSize]
 
-		sBoxSum = make([][]field.Element, 28)
+		sBoxSum = make([][]field.Element, 28) // round, query: [][]
 
-		matMulInternal = make([][][]field.Element, 28) // [][16][]
+		matMulInternal = make([][][]field.Element, 16) //col, round, query: [16][][effectiveSize]
 
-		/// transposed values
+		/// Transposed values
 		// round, query, col
 
-		tMatMulM4Tmp = make([][][]field.Element, 28) //[][effectiveSize][20]
-		tMatMulM4    = make([][][]field.Element, 28) //[][effectiveSize][16]
+		tMatMulM4Tmp = make([][][]field.Element, 28) //round, query, col: [][effectiveSize][20]
+		tMatMulM4    = make([][][]field.Element, 28) //round, query, col: [][effectiveSize][16]
 
-		tT              = make([][][]field.Element, 28) //[][effectiveSize][4]
-		tMatMulExternal = make([][][]field.Element, 28) //[][effectiveSize][16]
+		tT              = make([][][]field.Element, 28) //round, query, col: [][effectiveSize][4]
+		tMatMulExternal = make([][][]field.Element, 28) //round, query, col: [][effectiveSize][16]
 
-		tAddRoundKey = make([][][]field.Element, 28) //[][effectiveSize][16]
+		tAddRoundKey = make([][][]field.Element, 28) //round, query, col: [][effectiveSize][16]
 
-		tSBox = make([][][]field.Element, 28) //[][effectiveSize][16]
+		tSBox = make([][][]field.Element, 28) //round, query, col: [][effectiveSize][16]
 
-		tMatMulInternal = make([][][]field.Element, 28) //[][effectiveSize][16]
+		tMatMulInternal = make([][][]field.Element, 28) //round, query, col: [][effectiveSize][16]
 	)
 
-	for i := range matMulM4Tmp {
-		matMulM4Tmp[i] = make([][]field.Element, 20)
-		matMulM4[i] = make([][]field.Element, 16)
-		matMulExternal[i] = make([][]field.Element, 16)
-		addRoundKey[i] = make([][]field.Element, 16)
-		sBox[i] = make([][]field.Element, 16)
-		matMulInternal[i] = make([][]field.Element, 16)
-		t[i] = make([][]field.Element, 4)
-
-		tMatMulM4Tmp[i] = make([][]field.Element, effectiveSize)
-		tMatMulM4[i] = make([][]field.Element, effectiveSize)       //[][effectiveSize][16]
-		tT[i] = make([][]field.Element, effectiveSize)              //[][effectiveSize][4]
-		tMatMulExternal[i] = make([][]field.Element, effectiveSize) //[][effectiveSize][16]
-		tAddRoundKey[i] = make([][]field.Element, effectiveSize)    //[][effectiveSize][16]
-		tSBox[i] = make([][]field.Element, effectiveSize)           //[][effectiveSize][16]
-		tMatMulInternal[i] = make([][]field.Element, effectiveSize) //[][effectiveSize][16]
-
-		for row := 0; row < effectiveSize; row++ {
-			tMatMulM4Tmp[i][row] = make([]field.Element, 20)
-			tMatMulM4[i][row] = make([]field.Element, 16)       //[][effectiveSize][16]
-			tT[i][row] = make([]field.Element, 4)               //[][effectiveSize][4]
-			tMatMulExternal[i][row] = make([]field.Element, 16) //[][effectiveSize][16]
-			tAddRoundKey[i][row] = make([]field.Element, 16)    //[][effectiveSize][16]
-			tSBox[i][row] = make([]field.Element, 16)           //[][effectiveSize][16]
-			tMatMulInternal[i][row] = make([]field.Element, 16) //[][effectiveSize][16]
-
-		}
-		for col := 0; col < 20; col++ {
-			matMulM4Tmp[i][col] = make([]field.Element, effectiveSize)
+	for col := range matMulM4Tmp {
+		matMulM4Tmp[col] = make([][]field.Element, 28)
+		for round := 0; round < 28; round++ {
+			matMulM4Tmp[col][round] = make([]field.Element, effectiveSize)
 		}
 
-		for col := 0; col < 16; col++ {
-			matMulM4[i][col] = make([]field.Element, effectiveSize)
-			matMulExternal[i][col] = make([]field.Element, effectiveSize)
-			addRoundKey[i][col] = make([]field.Element, effectiveSize)
-			sBox[i][col] = make([]field.Element, effectiveSize)
-			matMulInternal[i][col] = make([]field.Element, effectiveSize)
-		}
+	}
 
-		for col := 0; col < 4; col++ {
-			t[i][col] = make([]field.Element, effectiveSize)
+	for col := range matMulM4 {
+		matMulM4[col] = make([][]field.Element, 28)
+		matMulExternal[col] = make([][]field.Element, 28)
+		addRoundKey[col] = make([][]field.Element, 28)
+
+		sBox[col] = make([][]field.Element, 28)
+		matMulInternal[col] = make([][]field.Element, 28)
+
+		for round := 0; round < 28; round++ {
+			matMulM4[col][round] = make([]field.Element, effectiveSize)
+			matMulExternal[col][round] = make([]field.Element, effectiveSize)
+			addRoundKey[col][round] = make([]field.Element, effectiveSize)
+
+			sBox[col][round] = make([]field.Element, effectiveSize)
+			matMulInternal[col][round] = make([]field.Element, effectiveSize)
 		}
-		sBoxSum[i] = make([]field.Element, effectiveSize)
+	}
+	for col := range t {
+		t[col] = make([][]field.Element, 28)
+		for round := 0; round < 28; round++ {
+			t[col][round] = make([]field.Element, effectiveSize)
+		}
+	}
+	for round := 0; round < 28; round++ {
+		sBoxSum[round] = make([]field.Element, effectiveSize)
+	}
+
+	for round := 0; round < 28; round++ {
+		tMatMulM4Tmp[round] = make([][]field.Element, effectiveSize)
+		tMatMulM4[round] = make([][]field.Element, effectiveSize)       //[][effectiveSize][16]
+		tT[round] = make([][]field.Element, effectiveSize)              //[][effectiveSize][4]
+		tMatMulExternal[round] = make([][]field.Element, effectiveSize) //[][effectiveSize][16]
+		tAddRoundKey[round] = make([][]field.Element, effectiveSize)    //[][effectiveSize][16]
+		tSBox[round] = make([][]field.Element, effectiveSize)           //[][effectiveSize][16]
+		tMatMulInternal[round] = make([][]field.Element, effectiveSize) //[][effectiveSize][16]
+
+		for query := 0; query < effectiveSize; query++ {
+			tMatMulM4Tmp[round][query] = make([]field.Element, 20)
+			tMatMulM4[round][query] = make([]field.Element, 16)       //[][effectiveSize][16]
+			tT[round][query] = make([]field.Element, 4)               //[][effectiveSize][4]
+			tMatMulExternal[round][query] = make([]field.Element, 16) //[][effectiveSize][16]
+			tAddRoundKey[round][query] = make([]field.Element, 16)    //[][effectiveSize][16]
+			tSBox[round][query] = make([]field.Element, 16)           //[][effectiveSize][16]
+			tMatMulInternal[round][query] = make([]field.Element, 16) //[][effectiveSize][16]
+
+		}
 	}
 
 	parallel.Execute(effectiveSize, func(start, stop int) {
@@ -588,135 +597,103 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 	})
 
 	// data conversation
-	for round := 0; round < 28; round++ {
-		if round < 4 || round > 24 {
-			matMulM4Tmp[round] = transpose(tMatMulM4Tmp[round])
-			matMulM4[round] = transpose(tMatMulM4[round])
-			t[round] = transpose(tT[round])
-			matMulExternal[round] = transpose(tMatMulExternal[round])
+	for col := 0; col < 20; col++ {
+		for round := 0; round < 28; round++ {
+			for query := 0; query < effectiveSize; query++ {
+				matMulM4Tmp[col][round][query] = tMatMulM4Tmp[round][query][col]
+			}
 		}
+	}
+	for col := 0; col < 16; col++ {
+		for round := 0; round < 28; round++ {
+			for query := 0; query < effectiveSize; query++ {
+				matMulM4[col][round][query] = tMatMulM4[round][query][col]
+				matMulExternal[col][round][query] = tMatMulExternal[round][query][col]
+				addRoundKey[col][round][query] = tAddRoundKey[round][query][col]
+				sBox[col][round][query] = tSBox[round][query][col]
+				matMulInternal[col][round][query] = tMatMulInternal[round][query][col]
 
-		if round > 0 {
-			addRoundKey[round] = transpose(tAddRoundKey[round])
-			sBox[round] = transpose(tSBox[round])
+			}
 		}
-		if round > 3 && round < 25 {
-			matMulInternal[round] = transpose(tMatMulInternal[round])
+	}
+	for col := range t {
+		for round := 0; round < 28; round++ {
+			for query := 0; query < effectiveSize; query++ {
+				t[col][round][query] = tT[round][query][col]
+			}
 		}
 	}
 
-	for round := 0; round < 28; round++ {
-		fmt.Printf("\ntest Poseidon2Context round=%v\n", round)
-
-		// As a reminder, the last value of XXX[i] is the padding value. (if need be).
-		// If it does not, the function [RightPadded] will simply ditch the provided value.
-		if round < 4 {
-
-			for col := range matMulM4Tmp[round] {
-				run.AssignColumn(
-					ctx.MatMulM4Tmp[col][round].GetColID(),
-					smartvectors.RightPadded(matMulM4Tmp[round][col], matMulM4Tmp[round][col][effectiveSize-1], totalSize))
-			}
-			fmt.Printf("matMulM4Tmp=%v\n", round)
-
-			for col := range matMulM4[round] {
-
-				run.AssignColumn(
-					ctx.MatMulM4[col][round].GetColID(),
-					smartvectors.RightPadded(matMulM4[round][col], matMulM4[round][col][effectiveSize-1], totalSize))
-			}
-			fmt.Printf("MatMulM4=%v\n", round)
-
-			for col := range t[round] {
-
-				run.AssignColumn(
-					ctx.T[col][round].GetColID(), //TODO@yao: shift round and col
-					smartvectors.RightPadded(t[round][col], t[round][col][effectiveSize-1], totalSize))
-
-			}
-			fmt.Printf("T=%v\n", round)
-
-			for col := range matMulExternal[round] {
-				run.AssignColumn(
-					ctx.MatMulExternal[col][round].GetColID(),
-					smartvectors.RightPadded(matMulExternal[round][col], matMulExternal[round][col][effectiveSize-1], totalSize))
-			}
-			fmt.Printf("MatMulExternal=%v\n", round)
-
-		}
-
-		if round > 24 {
-
-			for col := range matMulM4Tmp[round-21] {
-				run.AssignColumn(
-					ctx.MatMulM4Tmp[col][round-21].GetColID(),
-					smartvectors.RightPadded(matMulM4Tmp[round-21][col], matMulM4Tmp[round-21][col][effectiveSize-1], totalSize))
-			}
-			fmt.Printf("matMulM4Tmp=%v\n", round)
-
-			for col := range matMulM4[round-21] {
-
-				run.AssignColumn(
-					ctx.MatMulM4[col][round-21].GetColID(),
-					smartvectors.RightPadded(matMulM4[round-21][col], matMulM4[round-21][col][effectiveSize-1], totalSize))
-			}
-			fmt.Printf("MatMulM4=%v\n", round)
-
-			for col := range t[round-21] {
-
-				run.AssignColumn(
-					ctx.T[col][round-21].GetColID(), //TODO@yao: shift round and col
-					smartvectors.RightPadded(t[round-21][col], t[round-21][col][effectiveSize-1], totalSize))
-
-			}
-			fmt.Printf("T=%v\n", round)
-
-			for col := range matMulExternal[round-21] {
-				run.AssignColumn(
-					ctx.MatMulExternal[col][round-21].GetColID(),
-					smartvectors.RightPadded(matMulExternal[round-21][col], matMulExternal[round-21][col][effectiveSize-1], totalSize))
-			}
-			fmt.Printf("MatMulExternal=%v\n", round)
-
-		}
-
-		if round > 0 {
-			for col := range addRoundKey[round-1] {
-
-				run.AssignColumn(
-					ctx.AddRoundKey[col][round-1].GetColID(),
-					smartvectors.RightPadded(addRoundKey[round-1][col], addRoundKey[round-1][col][effectiveSize-1], totalSize))
-			}
-			fmt.Printf("AddRoundKey=%v\n", round)
-
-			for col := range sBox[round-1] {
-
-				run.AssignColumn(
-					ctx.SBox[col][round-1].GetColID(),
-					smartvectors.RightPadded(sBox[round-1][col], sBox[round-1][col][effectiveSize-1], totalSize))
-			}
-			fmt.Printf("SBox=%v\n", round)
-
-		}
-
-		if round > 3 && round < 25 {
+	// AssignColumns
+	for col := 0; col < 20; col++ {
+		for round := 0; round < 4; round++ {
 			run.AssignColumn(
-				ctx.SBoxSum[round-4].GetColID(),
-				smartvectors.RightPadded(sBoxSum[round-4], sBoxSum[round-4][effectiveSize-1], totalSize))
-			fmt.Printf("SBoxSum=%v\n", round)
+				ctx.MatMulM4Tmp[col][round].GetColID(),
+				smartvectors.RightPadded(matMulM4Tmp[col][round], matMulM4Tmp[col][round][effectiveSize-1], totalSize))
+		}
+		for round := 25; round < 28; round++ {
+			run.AssignColumn(
+				ctx.MatMulM4Tmp[col][round-21].GetColID(),                                                              // we didn't assign 0 elements, need to adjust the round position
+				smartvectors.RightPadded(matMulM4Tmp[col][round], matMulM4Tmp[col][round][effectiveSize-1], totalSize)) // we compute and store the elements to their round position.
+		}
+	}
 
-			for col := range matMulInternal[round-4] {
-				run.AssignColumn(
-					ctx.MatMulInternal[col][round-4].GetColID(),
-					smartvectors.RightPadded(matMulInternal[round-4][col], matMulInternal[round-4][col][effectiveSize-1], totalSize))
-			}
-			fmt.Printf("MatMulInternal=%v\n", round)
+	for col := 0; col < 16; col++ {
+		for round := 0; round < 4; round++ {
+			run.AssignColumn(
+				ctx.MatMulM4[col][round].GetColID(),
+				smartvectors.RightPadded(matMulM4[col][round], matMulM4[col][round][effectiveSize-1], totalSize))
+
+			run.AssignColumn(
+				ctx.MatMulExternal[col][round].GetColID(),
+				smartvectors.RightPadded(matMulExternal[col][round], matMulExternal[col][round][effectiveSize-1], totalSize))
+		}
+		for round := 25; round < 28; round++ {
+			run.AssignColumn(
+				ctx.MatMulM4[col][round-21].GetColID(),
+				smartvectors.RightPadded(matMulM4[col][round], matMulM4[col][round][effectiveSize-1], totalSize))
+
+			run.AssignColumn(
+				ctx.MatMulExternal[col][round-21].GetColID(),
+				smartvectors.RightPadded(matMulExternal[col][round], matMulExternal[col][round][effectiveSize-1], totalSize))
+		}
+
+		for round := 1; round < 28; round++ {
+			run.AssignColumn(
+				ctx.AddRoundKey[col][round-1].GetColID(),
+				smartvectors.RightPadded(addRoundKey[col][round], addRoundKey[col][round][effectiveSize-1], totalSize))
+
+			run.AssignColumn(
+				ctx.SBox[col][round-1].GetColID(),
+				smartvectors.RightPadded(sBox[col][round], sBox[col][round][effectiveSize-1], totalSize))
+		}
+
+		for round := 4; round < 25; round++ {
+			run.AssignColumn(
+				ctx.MatMulInternal[col][round-4].GetColID(),
+				smartvectors.RightPadded(matMulInternal[col][round], matMulInternal[col][round][effectiveSize-1], totalSize))
 
 		}
-		fmt.Printf("test Poseidon2Context 63\n")
-
 	}
-	fmt.Printf("test Poseidon2Context end\n")
+	for col := range t {
+		for round := 0; round < 4; round++ {
+			run.AssignColumn(
+				ctx.T[col][round].GetColID(),
+				smartvectors.RightPadded(t[col][round], t[col][round][effectiveSize-1], totalSize))
+		}
+
+		for round := 25; round < 28; round++ {
+			run.AssignColumn(
+				ctx.T[col][round-21].GetColID(),
+				smartvectors.RightPadded(t[col][round], t[col][round][effectiveSize-1], totalSize))
+		}
+	}
+
+	for round := 4; round < 25; round++ {
+		run.AssignColumn(
+			ctx.SBoxSum[round-4].GetColID(),
+			smartvectors.RightPadded(sBoxSum[round], sBoxSum[round][effectiveSize-1], totalSize))
+	}
 
 }
 
