@@ -100,10 +100,10 @@ func defineMatMulExternalInPlace(comp *wizard.CompiledIOP, ctx *Poseidon2Context
 		comp.InsertGlobal(protocolRoundID, ifaces.QueryIDf("Poseidon2_ROUND_%v_MatMulM4Tmp_COMPUTATION_%v_%v_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), 5*chunk+3), sym.Sub(matMulM4Tmp[5*chunk+3], sym.Add(matMulM4Tmp[5*chunk+2], input[4*chunk+1])))
 		comp.InsertGlobal(protocolRoundID, ifaces.QueryIDf("Poseidon2_ROUND_%v_MatMulM4Tmp_COMPUTATION_%v_%v_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), 5*chunk+4), sym.Sub(matMulM4Tmp[5*chunk+4], sym.Add(matMulM4Tmp[5*chunk+2], input[4*chunk+3])))
 
-		comp.InsertGlobal(protocolRoundID, ifaces.QueryIDf("Poseidon2_ROUND_%v_MatMulM4_COMPUTATION_%v_%v_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), 4*chunk), sym.Sub(matMulM4[4*chunk], sym.Add(matMulM4Tmp[5*chunk], matMulM4Tmp[5*chunk+3])))
-		comp.InsertGlobal(protocolRoundID, ifaces.QueryIDf("Poseidon2_ROUND_%v_MatMulM4_COMPUTATION_%v_%v_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), 4*chunk+1), sym.Sub(matMulM4[4*chunk+1], sym.Add(input[4*chunk+2], input[4*chunk+2], matMulM4Tmp[5*chunk+3])))
-		comp.InsertGlobal(protocolRoundID, ifaces.QueryIDf("Poseidon2_ROUND_%v_MatMulM4_COMPUTATION_%v_%v_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), 4*chunk+2), sym.Sub(matMulM4[4*chunk+2], sym.Add(matMulM4Tmp[5*chunk+1], matMulM4Tmp[5*chunk+4])))
 		comp.InsertGlobal(protocolRoundID, ifaces.QueryIDf("Poseidon2_ROUND_%v_MatMulM4_COMPUTATION_%v_%v_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), 4*chunk+3), sym.Sub(matMulM4[4*chunk+3], sym.Add(input[4*chunk], input[4*chunk], matMulM4Tmp[5*chunk+4])))
+		comp.InsertGlobal(protocolRoundID, ifaces.QueryIDf("Poseidon2_ROUND_%v_MatMulM4_COMPUTATION_%v_%v_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), 4*chunk+1), sym.Sub(matMulM4[4*chunk+1], sym.Add(input[4*chunk+2], input[4*chunk+2], matMulM4Tmp[5*chunk+3])))
+		comp.InsertGlobal(protocolRoundID, ifaces.QueryIDf("Poseidon2_ROUND_%v_MatMulM4_COMPUTATION_%v_%v_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), 4*chunk), sym.Sub(matMulM4[4*chunk], sym.Add(matMulM4Tmp[5*chunk], matMulM4Tmp[5*chunk+3])))
+		comp.InsertGlobal(protocolRoundID, ifaces.QueryIDf("Poseidon2_ROUND_%v_MatMulM4_COMPUTATION_%v_%v_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), 4*chunk+2), sym.Sub(matMulM4[4*chunk+2], sym.Add(matMulM4Tmp[5*chunk+1], matMulM4Tmp[5*chunk+4])))
 	}
 	for i := 0; i < 4; i++ {
 		comp.InsertGlobal(protocolRoundID, ifaces.QueryIDf("Poseidon2_ROUND_%v_T_COMPUTATION_%v_%v_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), i), sym.Sub(t[i], sym.Add(matMulM4[i], matMulM4[i+4], matMulM4[i+8], matMulM4[i+12])))
@@ -383,7 +383,6 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 		totalSize        = ctx.StackedOldStates[0].Size()
 		poseidon2OfZero  = poseidon2.Poseidon2BlockCompression(zeroBlock, zeroBlock)
 	)
-
 	for i := range ctx.CompiledQueries {
 
 		var (
@@ -402,6 +401,9 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 			ns[col] = q.NewState[col].GetColAssignment(run)
 
 			start, stop := smartvectors.CoWindowRange(os[col], b[col], ns[col], sel)
+			// fmt.Printf("os[col]=-%v\n", os[col].Pretty())
+			// fmt.Printf("b[col]=-%v\n", b[col].Pretty())
+			// fmt.Printf("ns[col]=-%v\n", ns[col])
 
 			// tryPushToStacked looks at the selector at position "j" and appends
 			// the corresponding triplet (old state, block, new state) to the "stacked"
@@ -560,7 +562,6 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 				input[col] = stackedOldStates[col][query]
 				input[col+8] = stackedBlocks[col][query]
 			}
-
 			// poseidon2Round 0
 			tMatMulM4Tmp[0][query], tMatMulM4[0][query], tT[0][query], tMatMulExternal[0][query] = matMulExternalInPlace(input)
 			input = tMatMulExternal[0][query]

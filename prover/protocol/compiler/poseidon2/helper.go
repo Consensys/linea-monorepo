@@ -1,8 +1,6 @@
 package poseidon2
 
 import (
-	"fmt"
-
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -14,8 +12,8 @@ const blockSize = 8
 // over a given state. This what is run under the hood by the Poseidon2 hash function
 func Poseidon2BlockCompression(oldState, block [blockSize]field.Element) (newState []field.Element) {
 	res := vortex.Hash{}
-	var input []field.Element
-	copy(input[:], oldState[:])
+	input := make([]field.Element, 16)
+	copy(input[:8], oldState[:])
 	copy(input[8:], block[:])
 
 	// Create a buffer to hold the feed-forward input.
@@ -42,6 +40,7 @@ func Poseidon2BlockCompression(oldState, block [blockSize]field.Element) (newSta
 	// Rounds 1 - 3
 	for round := 1; round < 4; round++ {
 		addRoundKey[round] = addRoundKeyCompute(round-1, input)
+		sBox[round] = make([]field.Element, 16)
 		for col := 0; col < 16; col++ {
 			sBox[round][col] = sBoxCompute(col, addRoundKey[round])
 		}
@@ -61,19 +60,19 @@ func Poseidon2BlockCompression(oldState, block [blockSize]field.Element) (newSta
 	// Rounds 24 - 27
 	for round := 25; round < 28; round++ {
 		addRoundKey[round] = addRoundKeyCompute(round-1, input)
+		sBox[round] = make([]field.Element, 16)
+
 		for col := 0; col < 16; col++ {
 			sBox[round][col] = sBoxCompute(col, addRoundKey[round])
 		}
 		matMulM4Tmp[round], matMulM4[round], t[round], matMulExternal[round] = matMulExternalInPlace(sBox[round])
 		input = matMulExternal[round]
 	}
-	fmt.Printf("init matMulExternal= %v\n", input)
 
-	// for i := range res {
-	// 	res[i].Add(&res[i], &input[8+i])
-	// }
-	// return res
-	return input
+	for i := range res {
+		res[i].Add(&res[i], &input[8+i])
+	}
+	return res[:]
 }
 
 // when Width = 0 mod 4, the buffer is multiplied by circ(2M4,M4,..,M4)
@@ -96,12 +95,11 @@ func matMulExternalInPlace(input []field.Element) (matMulM4Tmp []field.Element, 
 		matMulM4Tmp[5*i+4].Add(&matMulM4Tmp[5*i+2], &input[4*i+3])
 
 		// The order here is important. Need to overwrite x[0] and x[2] after x[1] and x[3].
-		matMulM4[4*i].Add(&matMulM4Tmp[5*i], &matMulM4Tmp[5*i+3])
+		matMulM4[4*i+3].Double(&input[4*i]).Add(&matMulM4[4*i+3], &matMulM4Tmp[5*i+4])
 		matMulM4[4*i+1].Double(&input[4*i+2]).Add(&matMulM4[4*i+1], &matMulM4Tmp[5*i+3])
+		matMulM4[4*i].Add(&matMulM4Tmp[5*i], &matMulM4Tmp[5*i+3])
 		matMulM4[4*i+2].Add(&matMulM4Tmp[5*i+1], &matMulM4Tmp[5*i+4])
-		matMulM4[4*i+3].Double(&matMulM4[4*i]).Add(&matMulM4[4*i+3], &matMulM4Tmp[5*i+4])
 	}
-
 	for i := 0; i < 4; i++ {
 		t[0].Add(&t[0], &matMulM4[4*i])
 		t[1].Add(&t[1], &matMulM4[4*i+1])
