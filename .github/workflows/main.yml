@@ -249,5 +249,5 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           environment: docker-build-and-e2e
-          ref: ${{ github.ref }}
+          ref: main
           onlyRemoveDeployments: true
