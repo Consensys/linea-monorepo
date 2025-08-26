@@ -249,5 +249,6 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           environment: docker-build-and-e2e
-          ref: main
+          # ref_name is incorrect for PR trigger - https://github.com/strumwolf/delete-deployment-environment/issues/42
+          ref: ${{ github.head_ref != '' && github.head_ref || github.ref_name }}
           onlyRemoveDeployments: true
