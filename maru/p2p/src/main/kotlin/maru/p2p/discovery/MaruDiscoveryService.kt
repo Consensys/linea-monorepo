@@ -13,7 +13,7 @@ import java.util.TimerTask
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.timerTask
-import maru.config.P2P
+import maru.config.P2PConfig
 import maru.consensus.ForkIdHashProvider
 import maru.services.LongRunningService
 import net.consensys.linea.async.toSafeFuture
@@ -32,7 +32,7 @@ import tech.pegasys.teku.networking.p2p.discovery.discv5.SecretKeyParser
 
 class MaruDiscoveryService(
   privateKeyBytes: ByteArray,
-  private val p2pConfig: P2P,
+  private val p2pConfig: P2PConfig,
   private val forkIdHashProvider: ForkIdHashProvider,
   private val timerFactory: (String, Boolean) -> Timer = { namePrefix, isDaemon -> createTimer(namePrefix, isDaemon) },
 ) : LongRunningService {

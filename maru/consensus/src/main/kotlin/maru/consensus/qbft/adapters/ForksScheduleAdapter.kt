@@ -10,7 +10,7 @@ package maru.consensus.qbft.adapters
 
 import java.math.BigInteger
 import java.util.Optional
-import maru.config.QbftOptions
+import maru.config.QbftConfig
 import maru.consensus.ForkSpec
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.config.BftConfigOptions
@@ -20,18 +20,18 @@ import org.hyperledger.besu.consensus.common.ForksSchedule as BesuForksSchedule
 
 class ForksScheduleAdapter(
   currentSpec: ForkSpec,
-  config: QbftOptions,
+  config: QbftConfig,
 ) : BesuForksSchedule<BftConfigOptions>(maruForkSpecsToBesu(currentSpec, config)) {
   companion object {
     fun maruForkSpecsToBesu(
       currentSpec: ForkSpec,
-      config: QbftOptions,
+      config: QbftConfig,
     ): MutableCollection<BesuForkSpec<BftConfigOptions>> =
       mutableListOf(BesuForkSpec(0, createBftConfig(currentSpec, config)))
 
     private fun createBftConfig(
       spec: ForkSpec,
-      config: QbftOptions,
+      config: QbftConfig,
     ): BftConfigOptions =
       object : BftConfigOptions {
         override fun getEpochLength(): Long = 0

@@ -97,7 +97,7 @@ class MaruQbftValidatorTest {
     blocks.verifyBlockTime()
     blocks.forEach {
       assertThat(it.miner.decodeHex()).isEqualTo(
-        networkParticipantStack.maruApp.config.qbftOptions!!
+        networkParticipantStack.maruApp.config.qbft!!
           .feeRecipient,
       )
     }

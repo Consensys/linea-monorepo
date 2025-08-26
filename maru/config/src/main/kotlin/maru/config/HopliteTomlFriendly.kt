@@ -61,8 +61,8 @@ data class QbftOptionsDtoToml(
   val futureMessagesLimit: Long = 1000L,
   val feeRecipient: ByteArray,
 ) {
-  fun toDomain(): QbftOptions =
-    QbftOptions(
+  fun toDomain(): QbftConfig =
+    QbftConfig(
       minBlockBuildTime = minBlockBuildTime,
       messageQueueLimit = messageQueueLimit,
       roundExpiry = roundExpiry,
@@ -148,10 +148,10 @@ data class MaruConfigDtoToml(
   private val allowEmptyBlocks: Boolean = false,
   private val persistence: Persistence,
   private val qbft: QbftOptionsDtoToml?,
-  private val p2p: P2P?,
+  private val p2p: P2PConfig?,
   private val payloadValidator: PayloadValidatorDto,
   private val followerEngineApis: Map<String, ApiEndpointDto>?,
-  private val observability: ObservabilityOptions,
+  private val observability: ObservabilityConfig,
   private val api: ApiConfig,
   private val syncing: SyncingConfig,
 ) {
@@ -161,15 +161,15 @@ data class MaruConfigDtoToml(
       protocolTransitionPollingInterval = protocolTransitionPollingInterval,
       allowEmptyBlocks = allowEmptyBlocks,
       persistence = persistence,
-      qbftOptions = qbft?.toDomain(),
-      p2pConfig = p2p,
+      qbft = qbft?.toDomain(),
+      p2p = p2p,
       validatorElNode = payloadValidator.domainFriendly(),
       followers =
         FollowersConfig(
           followers = followerEngineApis?.mapValues { it.value.domainFriendly() } ?: emptyMap(),
         ),
-      observabilityOptions = observability,
-      apiConfig = api,
+      observability = observability,
+      api = api,
       syncing = syncing,
     )
 }

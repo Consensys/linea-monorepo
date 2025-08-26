@@ -29,10 +29,10 @@ import maru.config.ApiEndpointConfig
 import maru.config.FollowersConfig
 import maru.config.LineaConfig
 import maru.config.MaruConfig
-import maru.config.ObservabilityOptions
-import maru.config.P2P
+import maru.config.ObservabilityConfig
+import maru.config.P2PConfig
 import maru.config.Persistence
-import maru.config.QbftOptions
+import maru.config.QbftConfig
 import maru.config.SyncingConfig
 import maru.config.SyncingConfig.SyncTargetSelection
 import maru.config.ValidatorElNode
@@ -92,7 +92,7 @@ class MaruFactory(
   val validatorAddress = qbftValidator.address.encodeHex()
 
   private val validatorQbftOptions =
-    QbftOptions(
+    QbftConfig(
       feeRecipient = qbftValidator.address.reversedArray(),
       minBlockBuildTime = 200.milliseconds,
     )
@@ -158,11 +158,11 @@ class MaruFactory(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
     dataDir: Path,
-    p2pConfig: P2P? = null,
+    p2pConfig: P2PConfig? = null,
     followers: FollowersConfig = FollowersConfig(emptyMap()),
-    qbftOptions: QbftOptions? = null,
-    observabilityOptions: ObservabilityOptions =
-      ObservabilityOptions(port = 0u, prometheusMetricsEnabled = true, jvmMetricsEnabled = true),
+    qbftOptions: QbftConfig? = null,
+    observabilityOptions: ObservabilityConfig =
+      ObservabilityConfig(port = 0u, prometheusMetricsEnabled = true, jvmMetricsEnabled = true),
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     apiConfig: ApiConfig = ApiConfig(port = 0u),
     syncingConfig: SyncingConfig = defaultSyncingConfig,
@@ -180,17 +180,17 @@ class MaruFactory(
     return MaruConfig(
       allowEmptyBlocks = allowEmptyBlocks,
       persistence = Persistence(dataPath = dataDir),
-      qbftOptions = qbftOptions,
+      qbft = qbftOptions,
       validatorElNode =
         ValidatorElNode(
           ethApiEndpoint = ApiEndpointConfig(URI.create(ethereumJsonRpcUrl).toURL()),
           engineApiEndpoint = ApiEndpointConfig(URI.create(engineApiRpc).toURL()),
         ),
-      p2pConfig = p2pConfig,
+      p2p = p2pConfig,
       followers = followers,
-      observabilityOptions = observabilityOptions,
+      observability = observabilityOptions,
       linea = lineaConfig,
-      apiConfig = apiConfig,
+      api = apiConfig,
       syncing = syncingConfig,
     )
   }
@@ -233,11 +233,11 @@ class MaruFactory(
     engineApiEndpointConfig: ApiEndpointConfig,
     ethereumApiEndpointConfig: ApiEndpointConfig,
     dataDir: Path,
-    p2pConfig: P2P? = null,
+    p2pConfig: P2PConfig? = null,
     followers: FollowersConfig = FollowersConfig(emptyMap()),
-    qbftOptions: QbftOptions? = null,
-    observabilityOptions: ObservabilityOptions =
-      ObservabilityOptions(port = 0u, prometheusMetricsEnabled = true, jvmMetricsEnabled = true),
+    qbftOptions: QbftConfig? = null,
+    observabilityOptions: ObservabilityConfig =
+      ObservabilityConfig(port = 0u, prometheusMetricsEnabled = true, jvmMetricsEnabled = true),
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     apiConfig: ApiConfig = ApiConfig(port = 0u),
     syncingConfig: SyncingConfig = defaultSyncingConfig,
@@ -255,17 +255,17 @@ class MaruFactory(
     return MaruConfig(
       allowEmptyBlocks = allowEmptyBlocks,
       persistence = Persistence(dataPath = dataDir),
-      qbftOptions = qbftOptions,
+      qbft = qbftOptions,
       validatorElNode =
         ValidatorElNode(
           ethApiEndpoint = ethereumApiEndpointConfig,
           engineApiEndpoint = engineApiEndpointConfig,
         ),
-      p2pConfig = p2pConfig,
+      p2p = p2pConfig,
       followers = followers,
-      observabilityOptions = observabilityOptions,
+      observability = observabilityOptions,
       linea = lineaConfig,
-      apiConfig = apiConfig,
+      api = apiConfig,
       syncing = syncingConfig,
     )
   }
@@ -300,7 +300,7 @@ class MaruFactory(
   private fun buildP2pConfig(
     p2pPort: UInt = 0u,
     validatorPortForStaticPeering: UInt? = null,
-  ): P2P {
+  ): P2PConfig {
     val ip = "127.0.0.1"
     val staticPeers =
       if (validatorPortForStaticPeering != null) {
@@ -309,12 +309,12 @@ class MaruFactory(
       } else {
         emptyList()
       }
-    return P2P(
+    return P2PConfig(
       ip,
       port = p2pPort,
       staticPeers = staticPeers,
       reconnectDelay = defaultReconnectDelay,
-      statusUpdate = P2P.StatusUpdateConfig(refreshInterval = 1.seconds), // For faster syncing in the tests
+      statusUpdate = P2PConfig.StatusUpdateConfig(refreshInterval = 1.seconds), // For faster syncing in the tests
     )
   }
 

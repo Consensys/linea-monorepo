@@ -36,7 +36,7 @@ data class FollowersConfig(
   val followers: Map<String, ApiEndpointConfig>,
 )
 
-data class P2P(
+data class P2PConfig(
   val ipAddress: String = "127.0.0.1", // default to localhost for security
   val port: UInt = 9000u,
   val staticPeers: List<String> = emptyList(),
@@ -68,7 +68,7 @@ data class ValidatorElNode(
   val engineApiEndpoint: ApiEndpointConfig,
 )
 
-data class QbftOptions(
+data class QbftConfig(
   val minBlockBuildTime: Duration = 500.milliseconds,
   val messageQueueLimit: Int = 1000,
   val roundExpiry: Duration = 1.seconds,
@@ -85,7 +85,7 @@ data class QbftOptions(
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
 
-    other as QbftOptions
+    other as QbftConfig
 
     if (messageQueueLimit != other.messageQueueLimit) return false
     if (duplicateMessageLimit != other.duplicateMessageLimit) return false
@@ -121,8 +121,8 @@ data class QbftOptions(
       ")"
 }
 
-data class ObservabilityOptions(
-  val port: UInt,
+data class ObservabilityConfig(
+  val port: UInt = 9545u,
   val prometheusMetricsEnabled: Boolean = true,
   val jvmMetricsEnabled: Boolean = true,
 )
@@ -199,13 +199,13 @@ data class MaruConfig(
   val protocolTransitionPollingInterval: Duration = 1.seconds,
   val allowEmptyBlocks: Boolean = false,
   val persistence: Persistence,
-  val qbftOptions: QbftOptions?,
-  val p2pConfig: P2P?,
+  val qbft: QbftConfig?,
+  val p2p: P2PConfig?,
   val validatorElNode: ValidatorElNode,
   val followers: FollowersConfig,
-  val observabilityOptions: ObservabilityOptions,
+  val observability: ObservabilityConfig,
   val linea: LineaConfig? = null,
-  val apiConfig: ApiConfig,
+  val api: ApiConfig,
   val syncing: SyncingConfig,
 ) {
   init {

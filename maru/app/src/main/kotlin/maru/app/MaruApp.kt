@@ -60,7 +60,7 @@ class MaruApp(
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
   init {
-    if (config.qbftOptions == null) {
+    if (config.qbft == null) {
       log.info("Qbft options are not defined. Maru is running in follower-only node")
     }
 
@@ -107,69 +107,34 @@ class MaruApp(
   private val protocolStarter = createProtocolStarter(config, beaconGenesisConfig, clock)
 
   fun start() {
-    try {
-      vertx
-        .deployVerticle(
-          ObservabilityServer(
-            ObservabilityServer.Config(applicationName = "maru", port = config.observabilityOptions.port.toInt()),
-          ),
-        ).get()
-    } catch (th: Throwable) {
-      log.error("Error while trying to start the observability server", th)
-      throw th
+    if (finalizationProvider is LineaFinalizationProvider) {
+      start("Finalization Provider", finalizationProvider::start)
     }
-    try {
-      if (finalizationProvider is LineaFinalizationProvider) {
-        finalizationProvider.start()
-      }
-    } catch (th: Throwable) {
-      log.error("Error while trying to start the finalization provider", th)
-      throw th
+    start("P2P Network") { p2pNetwork.start().get() }
+    start("Sync Service", syncControllerManager::start)
+    start("beacon Api", apiServer::start)
+    // observability shall be the last to start because of liveness/readiness probe
+    start("Observability Server") {
+      ObservabilityServer(
+        ObservabilityServer.Config(applicationName = "maru", port = config.observability.port.toInt()),
+      ).let { vertx.deployVerticle(it).get() }
     }
-    try {
-      p2pNetwork.start().get()
-    } catch (th: Throwable) {
-      log.error("Error while trying to start the P2P network", th)
-      throw th
-    }
-    try {
-      syncControllerManager.start()
-    } catch (th: Throwable) {
-      log.error("Error while trying to start the Sync Service", th)
-      throw th
-    }
-    apiServer.start()
     log.info("Maru is up")
   }
 
   fun stop() {
-    try {
+    stop("Sync service", syncControllerManager::stop)
+    stop("P2P Network") { p2pNetwork.stop().get() }
+    if (finalizationProvider is LineaFinalizationProvider) {
+      stop("Finalization Provider", finalizationProvider::stop)
+    }
+    stop("Beacon API", apiServer::stop)
+    stop("Protocol", protocolStarter::stop)
+    stop("vertx verticles") {
       vertx.deploymentIDs().forEach {
         vertx.undeploy(it).get()
       }
-    } catch (th: Throwable) {
-      log.warn("Error while trying to stop the vertx verticles", th)
     }
-    try {
-      if (finalizationProvider is LineaFinalizationProvider) {
-        finalizationProvider.stop()
-      }
-    } catch (th: Throwable) {
-      log.warn("Error while trying to stop the finalization provider", th)
-    }
-    try {
-      p2pNetwork.stop().get()
-    } catch (th: Throwable) {
-      log.warn("Error while trying to stop the P2P network", th)
-    }
-    try {
-      syncControllerManager.stop()
-    } catch (th: Throwable) {
-      log.error("Error while trying to stop the Sync Service", th)
-    }
-    protocolStarter.stop()
-    apiServer.stop()
-
     log.info("Maru is down")
   }
 
@@ -182,6 +147,21 @@ class MaruApp(
     // close db last, otherwise other components may fail trying to save data
     beaconChain.close()
   }
+
+  private fun start(
+    serviceName: String,
+    action: () -> Unit,
+  ) {
+    runCatching(action)
+      .onFailure { log.error("Failed to start {}, errorMessage={}", serviceName, it.message, it) }
+      .getOrThrow()
+  }
+
+  private fun stop(
+    serviceName: String,
+    action: () -> Unit,
+  ) = runCatching(action)
+    .getOrElse { log.warn("Failed to stop {}, errorMessage={}", serviceName, it.message, it) }
 
   fun peersConnected(): UInt =
     p2pNetwork
@@ -197,9 +177,9 @@ class MaruApp(
   ): Protocol {
     val metadataCacheUpdaterHandlerEntry = "latest block metadata updater" to metadataProviderCacheUpdater
     val qbftFactory =
-      if (config.qbftOptions != null) {
+      if (config.qbft != null) {
         QbftProtocolValidatorFactory(
-          qbftOptions = config.qbftOptions!!,
+          qbftOptions = config.qbft!!,
           privateKeyBytes = Crypto.privateKeyBytesWithoutPrefix(privateKeyProvider()),
           validatorELNodeEngineApiWeb3JClient = validatorELNodeEngineApiWeb3JClient,
           followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,

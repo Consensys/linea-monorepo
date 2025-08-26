@@ -16,7 +16,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import maru.config.P2P
+import maru.config.P2PConfig
 import maru.p2p.discovery.MaruDiscoveryPeer
 import maru.p2p.discovery.MaruDiscoveryService
 import org.apache.logging.log4j.LogManager
@@ -34,7 +34,7 @@ import tech.pegasys.teku.networking.p2p.peer.Peer
 
 class MaruPeerManager(
   private val maruPeerFactory: MaruPeerFactory,
-  private val p2pConfig: P2P,
+  private val p2pConfig: P2PConfig,
 ) : PeerHandler,
   PeerLookup {
   var scheduler: ScheduledExecutorService? = null
