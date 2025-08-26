@@ -21,6 +21,13 @@ repositories {
     content { includeGroupByRegex('org\\.hyperledger\\..*') }
   }
   maven {
+    url "https://artifacts.consensys.net/public/linea-besu/maven/"
+    content {
+      includeGroupByRegex('io\\.consensys\\..*')
+      includeGroupByRegex('org\\.hyperledger\\..*')
+    }
+  }
+  maven {
     url 'https://artifacts.consensys.net/public/maven/maven/'
     content { includeGroupByRegex('tech\\.pegasys(\\..*)?') }
   }

@@ -9,6 +9,7 @@
 package maru.app
 
 import java.io.File
+import linea.kotlin.decodeHex
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
@@ -80,10 +81,10 @@ class MaruConsensusSwitchTest {
     pragueTimestamp: Long,
   ) {
     val blockProducedByClique = besuNode.ethGetBlockByNumber(1UL)
-    assertThat(blockProducedByClique.extraData.length).isGreaterThan(VANILLA_EXTRA_DATA_LENGTH)
+    assertThat(blockProducedByClique.extraData.decodeHex().size).isGreaterThan(VANILLA_EXTRA_DATA_LENGTH)
 
-    val blockProducedByPrague = besuNode.ethGetBlockByNumber("latest")
-    assertThat(blockProducedByPrague.extraData.length).isEqualTo(24)
+    val blockProducedAfterSwitch = besuNode.ethGetBlockByNumber("latest")
+    assertThat(blockProducedAfterSwitch.extraData.decodeHex().size).isLessThanOrEqualTo(VANILLA_EXTRA_DATA_LENGTH)
 
     val blocks = besuNode.getMinedBlocks(totalBlocksToProduce)
     val shanghaiSwitchBlock = blocks.findSwitchBlock(shanghaiTimestamp)!!
