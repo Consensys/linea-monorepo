@@ -7,7 +7,8 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	badnonce "github.com/consensys/linea-monorepo/prover/circuits/invalidity"
+	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
+	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
@@ -19,6 +20,53 @@ import (
 	"github.com/go-playground/assert/v2"
 	"github.com/stretchr/testify/require"
 )
+
+func TestNonceFromRLP(t *testing.T) {
+	var (
+		tx        = types.NewTx(&tcases[1].Tx)
+		encodedTx = ethereum.EncodeTxForSigning(tx)
+		a         byte
+	)
+	extractedNonce, _ := invalidity.ExtractNonceFromRLP(encodedTx)
+	require.Equal(t, tx.Nonce(), extractedNonce, "extractedNonce and actualNonce are different")
+
+	c := circuitExtractNonceFromRLP{
+		rlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
+		nonce:        tx.Nonce(),
+	}
+
+	for i := range encodedTx {
+		a = encodedTx[i]
+		c.rlpEncodedtx[i] = a
+	}
+
+	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &c, frontend.IgnoreUnconstrainedInputs())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// solve the circuit
+	twitness, err := frontend.NewWitness(&c, ecc.BLS12_377.ScalarField())
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = ccs.IsSolved(twitness)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+}
+
+type circuitExtractNonceFromRLP struct {
+	rlpEncodedtx []frontend.Variable
+	nonce        frontend.Variable
+}
+
+func (c circuitExtractNonceFromRLP) Define(api frontend.API) error {
+	gnarkExtractedNonce := invalidity.ExtractNonceFromRLPZk(api, c.rlpEncodedtx)
+	api.AssertIsEqual(gnarkExtractedNonce, c.nonce)
+	return nil
+}
 
 // generate a tree for testing
 func getMerkleProof(t *testing.T) (smt.Proof, Bytes32, Bytes32) {
@@ -55,7 +103,7 @@ func TestMerkleProofs(t *testing.T) {
 	// generate witness
 	proofs, leafs, root := getMerkleProof(t)
 
-	var witness badnonce.MerkleProofCircuit
+	var witness invalidity.MerkleProofCircuit
 
 	witness.Proofs.Siblings = make([]frontend.Variable, len(proofs.Siblings))
 	for j := 0; j < len(proofs.Siblings); j++ {
@@ -67,7 +115,7 @@ func TestMerkleProofs(t *testing.T) {
 	witness.Root = root[:]
 
 	// compile circuit
-	var circuit badnonce.MerkleProofCircuit
+	var circuit invalidity.MerkleProofCircuit
 	circuit.Proofs.Siblings = make([]frontend.Variable, len(proofs.Siblings))
 
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
@@ -93,14 +141,14 @@ func TestMimcCircuit(t *testing.T) {
 	scs, err := frontend.Compile(
 		ecc.BLS12_377.ScalarField(),
 		scs.NewBuilder,
-		&badnonce.MimcCircuit{PreImage: make([]frontend.Variable, 4)},
+		&invalidity.MimcCircuit{PreImage: make([]frontend.Variable, 4)},
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	require.NoError(t, err)
 
-	assignment := badnonce.MimcCircuit{
+	assignment := invalidity.MimcCircuit{
 		PreImage: []frontend.Variable{0, 1, 2, 3},
 		Hash:     mimc.HashVec(vector.ForTest(0, 1, 2, 3)),
 	}
@@ -121,7 +169,7 @@ func TestMimcAccount(t *testing.T) {
 		// generate Mimc witness for Hash(Account)
 		a = tcases[1].Account
 
-		witMimc badnonce.MimcCircuit
+		witMimc invalidity.MimcCircuit
 
 		account = GnarkAccount{
 			Nonce:    a.Nonce,
@@ -157,7 +205,7 @@ func TestMimcAccount(t *testing.T) {
 	scs, err := frontend.Compile(
 		ecc.BLS12_377.ScalarField(),
 		scs.NewBuilder,
-		&badnonce.MimcCircuit{PreImage: make([]frontend.Variable, len(witMimc.PreImage))},
+		&invalidity.MimcCircuit{PreImage: make([]frontend.Variable, len(witMimc.PreImage))},
 	)
 	if err != nil {
 		t.Fatal(err)

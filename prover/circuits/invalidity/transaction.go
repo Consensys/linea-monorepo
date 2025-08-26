@@ -3,7 +3,6 @@ package invalidity
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
-	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 const MaxNbKeccakF = 32 // for hashing the transaction
@@ -29,17 +28,15 @@ type AccessTupleGnark struct {
 	StorageKeys []frontend.Variable `json:"storageKeys" gencodec:"required"`
 }
 
-func (p *TxPayloadGnark) Sum(api frontend.API, hash keccak.BlockHasher) frontend.Variable {
-	sum := hash.Sum(nil,
-		utils.ToBytes(api, p.ChainID),
-		utils.ToBytes(api, p.Nonce),
-		utils.ToBytes(api, p.GasTipCap),
-		utils.ToBytes(api, p.GasFeeCap),
-		utils.ToBytes(api, p.Gas),
-		utils.ToBytes(api, p.To),
-		utils.ToBytes(api, p.Value),
-		utils.ToBytes(api, p.Data),
-		utils.ToBytes(api, p.AccessList),
+func Sum(api frontend.API, hash keccak.BlockHasher, b []frontend.Variable) frontend.Variable {
+	var (
+		v    [][32]frontend.Variable
+		temp [32]frontend.Variable
 	)
+	for i := range b {
+		copy(temp[:], b[i*32:i*32+32])
+		v = append(v, temp)
+	}
+	sum := hash.Sum(nil, v...)
 	return sum
 }
