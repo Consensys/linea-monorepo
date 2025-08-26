@@ -78,7 +78,7 @@ jobs:
         uses: gradle/actions/setup-gradle@8379f6a1328ee0e06e2bb424dadb7b159856a326 # 4.4.0
       - name: Run e2e tests
         id: run_e2e_tests
-        timeout-minutes: 8
+        timeout-minutes: 10
         run: |
           make run-e2e-test
       - name: Show e2e tests result

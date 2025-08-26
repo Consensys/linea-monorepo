@@ -55,7 +55,7 @@ data class ApiEndpointDto(
 data class QbftOptionsDtoToml(
   val minBlockBuildTime: Duration = 500.milliseconds,
   val messageQueueLimit: Int = 1000,
-  val roundExpiry: Duration = 1.seconds,
+  val roundExpiry: Duration? = null,
   val duplicateMessageLimit: Int = 100,
   val futureMessageMaxDistance: Long = 10L,
   val futureMessagesLimit: Long = 1000L,
