@@ -51,6 +51,46 @@ spec:
               containerPort: {{ .port }}
               protocol: {{ default "TCP" .protocol | upper }}
             {{- end }}
+          {{- if .Values.probes.liveness.enabled }}
+          livenessProbe:
+            {{- if eq .Values.probes.liveness.type "httpGet" }}
+            httpGet:
+              path: {{ .Values.probes.liveness.httpGet.path }}
+              port: {{ .Values.probes.liveness.httpGet.port }}
+              scheme: {{ .Values.probes.liveness.httpGet.scheme | default "HTTP" }}
+            {{- else if eq .Values.probes.liveness.type "tcpSocket" }}
+            tcpSocket:
+              port: {{ .Values.probes.liveness.tcpSocket.port }}
+            {{- else if eq .Values.probes.liveness.type "exec" }}
+            exec:
+              command: {{ .Values.probes.liveness.exec.command | toYaml | nindent 14 }}
+            {{- end }}
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+            successThreshold: {{ .Values.probes.liveness.successThreshold }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+          {{- end }}
+          {{- if .Values.probes.readiness.enabled }}
+          readinessProbe:
+            {{- if eq .Values.probes.readiness.type "httpGet" }}
+            httpGet:
+              path: {{ .Values.probes.readiness.httpGet.path }}
+              port: {{ .Values.probes.readiness.httpGet.port }}
+              scheme: {{ .Values.probes.readiness.httpGet.scheme | default "HTTP" }}
+            {{- else if eq .Values.probes.readiness.type "tcpSocket" }}
+            tcpSocket:
+              port: {{ .Values.probes.readiness.tcpSocket.port }}
+            {{- else if eq .Values.probes.readiness.type "exec" }}
+            exec:
+              command: {{ .Values.probes.readiness.exec.command | toYaml | nindent 14 }}
+            {{- end }}
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            successThreshold: {{ .Values.probes.readiness.successThreshold }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+          {{- end }}
       volumes:
         - name: configs
           configMap:
