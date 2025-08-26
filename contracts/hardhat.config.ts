@@ -8,6 +8,7 @@ import "hardhat-storage-layout";
 // import "hardhat-tracer"; // This plugin does not work with the latest hardhat version
 import { HardhatUserConfig } from "hardhat/config";
 import { getBlockchainNode, getL2BlockchainNode } from "./common";
+import { SupportedChainIds } from "./common/supportedNetworks";
 import "./scripts/operational/tasks/getCurrentFinalizedBlockNumberTask";
 import "./scripts/operational/tasks/grantContractRolesTask";
 import "./scripts/operational/tasks/renounceContractRolesTask";
@@ -76,7 +77,7 @@ const config: HardhatUserConfig = {
     linea_sepolia: {
       accounts: [process.env.LINEA_SEPOLIA_PRIVATE_KEY || EMPTY_HASH],
       url: "https://linea-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY,
-      chainId: 59141,
+      chainId: SupportedChainIds.LINEA_SEPOLIA,
     },
     custom: {
       accounts: [process.env.CUSTOM_PRIVATE_KEY || EMPTY_HASH],
@@ -87,7 +88,7 @@ const config: HardhatUserConfig = {
       url: blockchainNode,
       accounts: [process.env.PRIVATE_KEY || EMPTY_HASH],
       timeout: BLOCKCHAIN_TIMEOUT,
-      chainId: 59139,
+      chainId: SupportedChainIds.LINEA_DEVNET,
     },
     l2: {
       url: l2BlockchainNode ?? "",
@@ -108,17 +109,17 @@ const config: HardhatUserConfig = {
     customChains: [
       {
         network: "linea_sepolia",
-        chainId: 59141,
+        chainId: SupportedChainIds.LINEA_SEPOLIA,
         urls: {
-          apiURL: "https://api.etherscan.io/v2/api?chainid=59141",
+          apiURL: `https://api.etherscan.io/v2/api?chainid=${SupportedChainIds.LINEA_SEPOLIA}`,
           browserURL: "https://sepolia.lineascan.build/",
         },
       },
       {
         network: "linea_mainnet",
-        chainId: 59144,
+        chainId: SupportedChainIds.LINEA,
         urls: {
-          apiURL: "https://api.etherscan.io/v2/api?chainid=59144",
+          apiURL: `https://api.etherscan.io/v2/api?chainid=${SupportedChainIds.LINEA}`,
           browserURL: "https://lineascan.build/",
         },
       },
