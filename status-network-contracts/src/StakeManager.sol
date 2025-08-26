@@ -169,12 +169,14 @@ contract StakeManager is
      */
     function stake(
         uint256 amount,
-        uint256 lockPeriod
+        uint256 lockPeriod,
+        uint256 currentLockUntil
     )
         external
         onlyTrustedCodehash
         onlyNotEmergencyMode
         onlyRegisteredVault
+        returns (uint256 newLockUntil)
     {
         if (amount == 0) {
             revert StakeManager__AmountCannotBeZero();
@@ -185,17 +187,13 @@ contract StakeManager is
 
         VaultData storage vault = vaultData[msg.sender];
 
-        (uint256 _deltaMpTotal, uint256 _deltaMPMax, uint256 _newLockEnd) = _calculateStake(
-            vault.stakedBalance, vault.maxMP, IStakeVault(msg.sender).lockUntil(), block.timestamp, amount, lockPeriod
-        );
+        (uint256 _deltaMpTotal, uint256 _deltaMPMax, uint256 newLockEnd) =
+            _calculateStake(vault.stakedBalance, vault.maxMP, currentLockUntil, block.timestamp, amount, lockPeriod);
 
+        newLockUntil = newLockEnd;
         vault.stakedBalance += amount;
         totalStaked += amount;
         totalMPStaked += _deltaMpTotal;
-
-        if (lockPeriod != 0) {
-            IStakeVault(msg.sender).updateLockUntil(_newLockEnd);
-        }
 
         vault.mpAccrued += _deltaMpTotal;
         totalMPAccrued += _deltaMpTotal;
@@ -215,7 +213,16 @@ contract StakeManager is
      * @dev Only registered vaults are allowed to lock.
      * @param lockPeriod The duration to lock the stake
      */
-    function lock(uint256 lockPeriod) external onlyTrustedCodehash onlyNotEmergencyMode onlyRegisteredVault {
+    function lock(
+        uint256 lockPeriod,
+        uint256 currentLockUntil
+    )
+        external
+        onlyTrustedCodehash
+        onlyNotEmergencyMode
+        onlyRegisteredVault
+        returns (uint256 newLockUntil)
+    {
         VaultData storage vault = vaultData[msg.sender];
 
         if (lockPeriod == 0) {
@@ -224,14 +231,13 @@ contract StakeManager is
 
         _updateGlobalState();
         _updateVault(msg.sender, false);
-        (uint256 deltaMp, uint256 newLockEnd) = _calculateLock(
-            vault.stakedBalance, vault.maxMP, IStakeVault(msg.sender).lockUntil(), block.timestamp, lockPeriod
-        );
+        (uint256 deltaMp, uint256 newLockEnd) =
+            _calculateLock(vault.stakedBalance, vault.maxMP, currentLockUntil, block.timestamp, lockPeriod);
 
+        newLockUntil = newLockEnd;
         // Update account state
         vault.mpAccrued += deltaMp;
         vault.maxMP += deltaMp;
-        IStakeVault(msg.sender).updateLockUntil(newLockEnd);
 
         // Update global state
         totalMPAccrued += deltaMp;
@@ -252,9 +258,6 @@ contract StakeManager is
      * @param amount The amount of tokens to unstake
      */
     function unstake(uint256 amount) external onlyTrustedCodehash onlyNotEmergencyMode onlyRegisteredVault {
-        if (IStakeVault(msg.sender).lockUntil() > block.timestamp) {
-            revert StakeManager__FundsLocked();
-        }
         VaultData storage vault = vaultData[msg.sender];
         _unstake(amount, vault, msg.sender);
         emit Unstaked(msg.sender, amount);
@@ -386,7 +389,7 @@ contract StakeManager is
         newVault.maxMP = oldVault.maxMP;
         newVault.lastMPUpdateTime = oldVault.lastMPUpdateTime;
         newVault.rewardsAccrued = oldVault.rewardsAccrued;
-        IStakeVault(migrateTo).updateLockUntil(IStakeVault(msg.sender).lockUntil());
+        IStakeVault(migrateTo).migrateFromVault(IStakeVault(msg.sender).lockUntil());
 
         delete vaultData[msg.sender];
 

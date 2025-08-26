@@ -41,11 +41,19 @@ contract StackOverflowStakeManager is UUPSUpgradeable, IStakeManager, TrustedCod
         // implementation
     }
     // solhint-disable-next-line
-    function lock(uint256 _seconds) external override {
+    function lock(uint256 _seconds, uint256 _currentLockUntil) external override returns (uint256 _lockUntil) {
         // implementation
     }
     // solhint-disable-next-line
-    function stake(uint256 _amount, uint256 _seconds) external override {
+    function stake(
+        uint256 _amount,
+        uint256 _seconds,
+        uint256 _currentLockUntil
+    )
+        external
+        override
+        returns (uint256 _lockUntil)
+    {
         // implementation
     }
     // solhint-disable-next-line
@@ -76,7 +84,7 @@ contract StackOverflowStakeManager is UUPSUpgradeable, IStakeManager, TrustedCod
     }
 
     // solhint-disable-next-line
-    function migrateToVault(address _migrateTo) external {
+    function migrateToVault(address _migrateTo) external override {
         // implementation
     }
 }

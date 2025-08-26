@@ -16,7 +16,7 @@ methods {
     function leave() external;
     function Math.mulDiv(uint256 a, uint256 b, uint256 c) internal returns uint256 => mulDivSummary(a,b,c);
 
-    function _.updateLockUntil(uint256 _lockUntil) external => DISPATCHER(true);
+    function _.migrateFromVault(uint256 _lockUntil) external => DISPATCHER(true);
     function _.lockUntil() external => DISPATCHER(true);
 }
 
@@ -80,7 +80,7 @@ rule stakingMintsMultiplierPoints1To1Ratio {
 
   multiplierPointsBefore = getVaultMPAccrued(e.msg.sender);
 
-  stake(e, amount, lockupTime);
+  stake(e, amount, lockupTime, 0);
 
   // we need to ensure time has not progressed because that would accrue MP
   // which makes it harder to proof this rule
@@ -103,10 +103,10 @@ rule stakingGreaterLockupTimeMeansGreaterMPs {
 
   storage initalStorage = lastStorage;
 
-  stake(e, amount, lockupTime1);
+  stake(e, amount, lockupTime1, 0);
   multiplierPointsAfter1 = getVaultMPAccrued(e.msg.sender);
 
-  stake(e, amount, lockupTime2) at initalStorage;
+  stake(e, amount, lockupTime2, 0) at initalStorage;
   multiplierPointsAfter2 = getVaultMPAccrued(e.msg.sender);
 
   assert lockupTime1 >= lockupTime2 => to_mathint(multiplierPointsAfter1) >= to_mathint(multiplierPointsAfter2);

@@ -143,7 +143,7 @@ up.
 Generally, the maximum amount of MP an account can accrue is capped at:
 
 $$
-\text{MP}_\text{Maximum} = \text{MP}_ \text{Initial} + \text{MP}_ \text{Potential}
+\text{MP}_ \text{Maximum} = \text{MP}_ \text{Initial} + \text{MP}_ \text{Potential}
 $$
 
 - $\text{MP}_ \text{Initial}$: The initial MP an account receives when staking, \*_including the bonus MP_.
