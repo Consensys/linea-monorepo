@@ -7,9 +7,6 @@ permissions:
 on:
   workflow_call:
     inputs:
-      commit_tag:
-        required: true
-        type: string
       coordinator_changed:
         required: true
         type: string
@@ -38,8 +35,6 @@ jobs:
   coordinator:
     uses: ./.github/workflows/coordinator-testing.yml
     if: ${{ inputs.coordinator_changed == 'true' }}
-    with:
-      commit_tag: ${{ inputs.commit_tag }}
     secrets: inherit
 
   prover:
@@ -60,15 +55,11 @@ jobs:
   staterecovery:
     uses: ./.github/workflows/staterecovery-testing.yml
     if: ${{ inputs.staterecovery_changed == 'true' }}
-    with:
-      commit_tag: ${{ inputs.commit_tag }}
     secrets: inherit
 
   smart-contracts:
     uses: ./.github/workflows/run-smc-tests.yml
     if: ${{ inputs.smart_contracts_changed == 'true' }}
-    with:
-      commit_tag: ${{ inputs.commit_tag }}
     secrets: inherit
 
   linea-sequencer:
