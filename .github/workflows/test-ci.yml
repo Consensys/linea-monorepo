@@ -1,0 +1,13 @@
+name: Test CI
+
+on:
+  pull_request:
+  push:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test CI is working
+        run: echo "CI is working!"
