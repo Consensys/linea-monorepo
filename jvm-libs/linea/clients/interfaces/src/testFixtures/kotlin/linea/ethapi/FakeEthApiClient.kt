@@ -36,7 +36,7 @@ class FakeEthApiClient(
 
   // key = which block number to throw error
   // value = how many times left to throw error, null means always throw
-  private var getLogsThrowErrorAtAndTimes: MutableMap<ULong, ULong?> = mutableMapOf()
+  private var getLogsBlocksForcedErrorsCounts: MutableMap<ULong, ULong?> = mutableMapOf()
 
   init {
     require(initialTagsBlocks.keys.size == BlockParameter.Tag.entries.size) {
@@ -76,8 +76,8 @@ class FakeEthApiClient(
   }
 
   @Synchronized
-  fun setGetLogsThrowErrorAtAndTimes(getLogsThrowErrorAtAndTimes: MutableMap<ULong, ULong?>) {
-    this.getLogsThrowErrorAtAndTimes = getLogsThrowErrorAtAndTimes
+  fun setGetLogsBlocksForcedErrorsCounts(getLogsBlocksForcedErrorsCounts: MutableMap<ULong, ULong?>) {
+    this.getLogsBlocksForcedErrorsCounts = getLogsBlocksForcedErrorsCounts
   }
 
   @Synchronized
@@ -217,12 +217,13 @@ class FakeEthApiClient(
 
   private fun isAtBlockNumberToThrow(fromBlockNumber: ULong, toBlockNumber: ULong): Boolean {
     var shouldThrow = false
-    getLogsThrowErrorAtAndTimes.forEach { errorBlockNumber, throwTimes ->
-      if ((fromBlockNumber..toBlockNumber).contains(errorBlockNumber)) {
+    val targetRange = fromBlockNumber..toBlockNumber
+    getLogsBlocksForcedErrorsCounts.forEach { errorBlockNumber, throwTimes ->
+      if (targetRange.contains(errorBlockNumber)) {
         if (throwTimes != null && throwTimes > 0UL) {
-          getLogsThrowErrorAtAndTimes[errorBlockNumber] = getLogsThrowErrorAtAndTimes[errorBlockNumber]!! - 1UL
+          getLogsBlocksForcedErrorsCounts[errorBlockNumber] = getLogsBlocksForcedErrorsCounts[errorBlockNumber]!! - 1UL
         }
-        shouldThrow = shouldThrow || throwTimes == null || getLogsThrowErrorAtAndTimes[errorBlockNumber]!! > 0UL
+        shouldThrow = shouldThrow || throwTimes == null || getLogsBlocksForcedErrorsCounts[errorBlockNumber]!! > 0UL
       }
     }
     return shouldThrow

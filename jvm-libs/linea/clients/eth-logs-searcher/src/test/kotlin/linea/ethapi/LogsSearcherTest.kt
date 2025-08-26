@@ -87,7 +87,7 @@ class LogsSearcherTest {
     fakeElClient.setFinalizedBlockTag(450UL)
     // The search should retry on errors when find logs (all will throw 5 times)
     // and not to skip retrieving any of the event logs
-    fakeElClient.setGetLogsThrowErrorAtAndTimes(
+    fakeElClient.setGetLogsBlocksForcedErrorsCounts(
       mutableMapOf(
         1UL to 5U, // will throw error 5 times when find logs in range 1..100
         101UL to 5U, // will throw error 5 times when find logs in range 101..200
@@ -113,7 +113,7 @@ class LogsSearcherTest {
   @Test
   fun `should throw exception when the search timeout reached in face of consistent errors`() {
     fakeElClient.setFinalizedBlockTag(450UL)
-    fakeElClient.setGetLogsThrowErrorAtAndTimes(
+    fakeElClient.setGetLogsBlocksForcedErrorsCounts(
       mutableMapOf(
         401UL to null, // will always throw error when find logs in range 301..450
       ),
