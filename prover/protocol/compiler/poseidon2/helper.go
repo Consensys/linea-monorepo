@@ -128,25 +128,30 @@ func matMulInternalInPlace(input []field.Element) (sBoxSum field.Element, matMul
 	}
 	// mul by diag16:
 	// [-2, 1, 2, 1/2, 3, 4, -1/2, -3, -4, 1/2^8, 1/8, 1/2^24, -1/2^8, -1/8, -1/16, -1/2^24]
+	two := field.NewElement(2)
+	half := field.NewElement(1065353217)
+	halfExp3 := field.NewElement(1864368129)
+	halfExp4 := field.NewElement(1997537281)
+	halfExp8 := field.NewElement(2122383361)
+	halfExp24 := field.NewElement(127) // -127
+
 	var temp field.Element
 	matMulInternal[0].Sub(&sBoxSum, temp.Double(&input[0]))
 	matMulInternal[1].Add(&sBoxSum, &input[1])
-	matMulInternal[2].Add(&sBoxSum, temp.Double(&input[2]))
-	temp.Set(&input[3]).Halve()
-	matMulInternal[3].Add(&sBoxSum, &temp)
+	matMulInternal[2].Add(&sBoxSum, temp.Mul(&input[2], &two))
+	matMulInternal[3].Add(&sBoxSum, temp.Mul(&input[3], &half))
 	matMulInternal[4].Add(&sBoxSum, temp.Double(&input[4]).Add(&temp, &input[4]))
 	matMulInternal[5].Add(&sBoxSum, temp.Double(&input[5]).Double(&temp))
-	temp.Set(&input[6]).Halve()
-	matMulInternal[6].Sub(&sBoxSum, &temp)
+	matMulInternal[6].Sub(&sBoxSum, temp.Mul(&input[6], &half))
 	matMulInternal[7].Sub(&sBoxSum, temp.Double(&input[7]).Add(&temp, &input[7]))
 	matMulInternal[8].Sub(&sBoxSum, temp.Double(&input[8]).Double(&temp))
-	matMulInternal[9].Add(&sBoxSum, temp.Mul2ExpNegN(&input[9], 8))
-	matMulInternal[10].Add(&sBoxSum, temp.Mul2ExpNegN(&input[10], 3))
-	matMulInternal[11].Add(&sBoxSum, temp.Mul2ExpNegN(&input[11], 24))
-	matMulInternal[12].Sub(&sBoxSum, temp.Mul2ExpNegN(&input[12], 8))
-	matMulInternal[13].Sub(&sBoxSum, temp.Mul2ExpNegN(&input[13], 3))
-	matMulInternal[14].Sub(&sBoxSum, temp.Mul2ExpNegN(&input[14], 4))
-	matMulInternal[15].Sub(&sBoxSum, temp.Mul2ExpNegN(&input[15], 24))
+	matMulInternal[9].Add(&sBoxSum, temp.Mul(&input[9], &halfExp8))
+	matMulInternal[10].Add(&sBoxSum, temp.Mul(&input[10], &halfExp3))
+	matMulInternal[11].Sub(&sBoxSum, temp.Mul(&input[11], &halfExp24))
+	matMulInternal[12].Sub(&sBoxSum, temp.Mul(&input[12], &halfExp8))
+	matMulInternal[13].Sub(&sBoxSum, temp.Mul(&input[13], &halfExp3))
+	matMulInternal[14].Sub(&sBoxSum, temp.Mul(&input[14], &halfExp4))
+	matMulInternal[15].Add(&sBoxSum, temp.Mul(&input[15], &halfExp24))
 
 	return sBoxSum, matMulInternal
 }
