@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.cancunTests;
+package net.consensys.linea.zktracer.forkSpecific.cancun;
 
 import static net.consensys.linea.zktracer.Trace.LINEA_BLOB_PER_TRANSACTION_MAXIMUM;
 

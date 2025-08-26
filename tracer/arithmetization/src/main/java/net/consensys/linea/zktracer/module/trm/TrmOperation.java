@@ -39,7 +39,6 @@ import net.consensys.linea.zktracer.TraceCancun;
 import net.consensys.linea.zktracer.TraceLondon;
 import net.consensys.linea.zktracer.TracePrague;
 import net.consensys.linea.zktracer.container.ModuleOperation;
-import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.module.wcp.WcpCall;
 import net.consensys.linea.zktracer.types.EWord;
@@ -49,7 +48,6 @@ import org.hyperledger.besu.datatypes.Address;
 @Accessors(fluent = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class TrmOperation extends ModuleOperation {
-  private final Fork fork;
   @EqualsAndHashCode.Include @Getter private final EWord rawAddress;
   private final List<WcpCall> wcpCalls = new ArrayList<>(TRM_NB_ROWS);
   private static final Bytes TWOFIFTYSIX_TO_THE_TWENTY_BYTES =
@@ -57,16 +55,16 @@ public class TrmOperation extends ModuleOperation {
   private static final Bytes TWOFIFTYSIX_TO_THE_TWELVE_MO_BYTES =
       bigIntegerToBytes(TWOFIFTYSIX_TO_THE_TWELVE_MO);
 
-  public TrmOperation(Hub hub, EWord rawAddress, Wcp wcp) {
-    this.fork = hub.fork;
+  public TrmOperation(Fork fork, EWord rawAddress, Wcp wcp) {
     this.rawAddress = rawAddress;
     final Bytes trmAddress = rawAddress.toAddress();
 
     final int maxPrcAddressPerFork =
-        switch (this.fork) {
+        switch (fork) {
           case LONDON, PARIS, SHANGHAI -> TraceLondon.MAX_PRC_ADDRESS;
           case CANCUN -> TraceCancun.MAX_PRC_ADDRESS;
           case PRAGUE -> TracePrague.MAX_PRC_ADDRESS;
+          default -> throw new IllegalArgumentException("Unknown fork: " + fork);
         };
 
     wcpCalls.add(0, ltCall(wcp, trmAddress, TWOFIFTYSIX_TO_THE_TWENTY_BYTES));

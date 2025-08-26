@@ -45,7 +45,7 @@ public class Trm implements OperationSetModule<TrmOperation> {
   }
 
   public Address callTrimming(final Bytes32 rawAddress) {
-    operations.add(new TrmOperation(this.hub, EWord.of(rawAddress), wcp));
+    operations.add(new TrmOperation(hub.fork, EWord.of(rawAddress), wcp));
     return Address.extract(rawAddress);
   }
 

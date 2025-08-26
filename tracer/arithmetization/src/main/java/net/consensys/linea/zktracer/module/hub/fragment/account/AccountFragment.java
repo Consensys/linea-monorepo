@@ -80,6 +80,7 @@ public abstract class AccountFragment
             hub, oldState, newState, Optional.empty(), domSubStampsSubFragment, txProcessingType);
         case CANCUN, PRAGUE -> new CancunAccountFragment(
             hub, oldState, newState, Optional.empty(), domSubStampsSubFragment, txProcessingType);
+        default -> throw new IllegalArgumentException("Unknown fork: " + hub.fork);
       };
     }
 
@@ -105,6 +106,7 @@ public abstract class AccountFragment
             Optional.of(toTrim),
             domSubStampsSubFragment,
             txProcessingType);
+        default -> throw new IllegalArgumentException("Unknown fork: " + hub.fork);
       };
     }
   }

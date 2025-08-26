@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.shanghaiTests;
+package net.consensys.linea.zktracer.forkSpecific.shanghai;
 
 import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.DEFAULT_COINBASE_ADDRESS;
 import static net.consensys.linea.zktracer.module.rlpaddr.RlpAddr.CREATE2_SHIFT;

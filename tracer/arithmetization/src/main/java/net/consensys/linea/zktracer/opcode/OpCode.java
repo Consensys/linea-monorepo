@@ -323,6 +323,7 @@ public enum OpCode {
     return switch (fork) {
       case LONDON, PARIS, SHANGHAI -> this != MSIZE && this.getData().isMxpLondon();
       case CANCUN, PRAGUE -> this != MSIZE && this.getData().isMxp();
+      default -> throw new IllegalArgumentException("Unknown fork: " + fork);
     };
   }
 }
