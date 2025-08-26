@@ -372,8 +372,8 @@ func ProcessAggregationSpec(
 	runningSpec.LastFinalizedL1RollingHashMessageNumber = resp.L1RollingHashMessageNumber
 
 	runningSpec.ParentAggregationBlockHash = resp.FinalBlockHash
-	runningSpec.ParentAggregationStreamHash = resp.FtxStreamHash
-	runningSpec.ParentAggregationStreamHashNumber = int(resp.FinalFtxNumber)
+	runningSpec.ParentAggregationFtxStreamHash = resp.FtxStreamHash
+	runningSpec.ParentAggregationFtxNumber = int(resp.FinalFtxNumber)
 	runningSpec.InvalidityProofs = []invalidity.Response{}
 
 	return resp

@@ -141,8 +141,8 @@ type AggregationSpec struct {
 	FinalBlockHash string `json:"finalBlockHash"`
 
 	// ParentStreamHash is the stream hash of the parent aggregation
-	ParentAggregationStreamHash       string `json:"parentAggregationStreamHash"`
-	ParentAggregationStreamHashNumber int    `json:"parentAggregationStreamHashNumber"`
+	ParentAggregationFtxStreamHash string `json:"parentAggregationFtxStreamHash"`
+	ParentAggregationFtxNumber     int    `json:"parentAggregationFtxNumber"`
 
 	FinalFtxStreamHash string `json:"finalFtxStreamHash"`
 	FinalFtxNumber     uint   `json:"finalFtxNumber"`
@@ -194,12 +194,12 @@ func RandAggregation(rng *rand.Rand, spec AggregationSpec) *aggregation.Collecte
 		FinalBlockNumber:                        spec.FinalBlockNumber,
 		ParentAggregationBlockHash:              spec.ParentAggregationBlockHash,
 		FinalBlockHash:                          spec.FinalBlockHash,
-		LastFinalizedFtxStreamHash:              spec.ParentAggregationStreamHash,
-		LastFinalizedFtxNumber:                  uint(spec.ParentAggregationStreamHashNumber),
+		LastFinalizedFtxStreamHash:              spec.ParentAggregationFtxStreamHash,
+		LastFinalizedFtxNumber:                  uint(spec.ParentAggregationFtxNumber),
 		// By default the final stream hash is the same as the parent. We will
 		// overwrite it later if there is an invalidity proof in the spec.
-		FinalFtxStreamHash: spec.ParentAggregationStreamHash,
-		FinalFtxNumber:     uint(spec.ParentAggregationStreamHashNumber),
+		FinalFtxStreamHash: spec.ParentAggregationFtxStreamHash,
+		FinalFtxNumber:     uint(spec.ParentAggregationFtxNumber),
 	}
 
 	if len(spec.InvalidityProofs) > 0 {
