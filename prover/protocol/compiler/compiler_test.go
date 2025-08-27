@@ -30,37 +30,37 @@ func TestCompilers(t *testing.T) {
 
 	logrus.SetLevel(logrus.FatalLevel)
 
-	// runTestList(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
-	// runTestList(t, "global", testtools.ListOfGlobalTestcasePositive)
-	// runTestList(t, "global", testtools.ListOfGlobalTestcaseNegative)
-	// runTestList(t, "grand-product", testtools.ListOfGrandProductTestcasePositive)
-	// runTestList(t, "grand-product", testtools.ListOfGrandProductTestcaseNegative)
-	// runTestList(t, "horner", testtools.ListOfHornerTestcaseNegative)
-	// runTestList(t, "horner", testtools.ListOfHornerTestcasePositive)
-	// runTestList(t, "innerproduct", testtools.ListOfInnerProductTestcasePositive)
-	// runTestList(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
-	// runTestList(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcaseNegative)
-	// runTestList(t, "permutation", testtools.ListOfPermutationTestcasePositive)
-	// runTestList(t, "permutation", testtools.ListOfPermutationTestcaseNegative)
-	// runTestList(t, "projection", testtools.ListOfProjectionTestcasePositive)
-	// runTestList(t, "projection", testtools.ListOfProjectionTestcaseNegative)
+	runTestList(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
+	runTestList(t, "global", testtools.ListOfGlobalTestcasePositive)
+	runTestList(t, "global", testtools.ListOfGlobalTestcaseNegative)
+	runTestList(t, "grand-product", testtools.ListOfGrandProductTestcasePositive)
+	runTestList(t, "grand-product", testtools.ListOfGrandProductTestcaseNegative)
+	runTestList(t, "horner", testtools.ListOfHornerTestcaseNegative)
+	runTestList(t, "horner", testtools.ListOfHornerTestcasePositive)
+	runTestList(t, "innerproduct", testtools.ListOfInnerProductTestcasePositive)
+	runTestList(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
+	runTestList(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcaseNegative)
+	runTestList(t, "permutation", testtools.ListOfPermutationTestcasePositive)
+	runTestList(t, "permutation", testtools.ListOfPermutationTestcaseNegative)
+	runTestList(t, "projection", testtools.ListOfProjectionTestcasePositive)
+	runTestList(t, "projection", testtools.ListOfProjectionTestcaseNegative)
 	runTestList(t, "poseidon2", testtools.ListOfPoseidon2Testcase)
 
 }
 
-// func TestCompilersWithGnarkVerifier(t *testing.T) {
+func TestCompilersWithGnarkVerifier(t *testing.T) {
 
-// 	logrus.SetLevel(logrus.FatalLevel)
+	logrus.SetLevel(logrus.FatalLevel)
 
-// 	runTestListGnark(t, "global", testtools.ListOfGlobalTestcasePositive)
-// 	runTestListGnark(t, "horner", testtools.ListOfHornerTestcasePositive)
-// 	runTestListGnark(t, "grand-product", testtools.ListOfGrandProductTestcasePositive)
-// 	runTestListGnark(t, "projection", testtools.ListOfProjectionTestcasePositive)
-// 	runTestListGnark(t, "permutation", testtools.ListOfPermutationTestcasePositive)
-// 	runTestListGnark(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
-// 	runTestListGnark(t, "mimc", testtools.ListOfMiMCTestcase)
-// 	runTestListGnark(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
-// }
+	runTestListGnark(t, "global", testtools.ListOfGlobalTestcasePositive)
+	runTestListGnark(t, "horner", testtools.ListOfHornerTestcasePositive)
+	runTestListGnark(t, "grand-product", testtools.ListOfGrandProductTestcasePositive)
+	runTestListGnark(t, "projection", testtools.ListOfProjectionTestcasePositive)
+	runTestListGnark(t, "permutation", testtools.ListOfPermutationTestcasePositive)
+	runTestListGnark(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
+	runTestListGnark(t, "mimc", testtools.ListOfMiMCTestcase)
+	runTestListGnark(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
+}
 
 func runTestList[T testtools.Testcase](t *testing.T, prefix string, list []T) {
 
@@ -80,13 +80,13 @@ func runTestList[T testtools.Testcase](t *testing.T, prefix string, list []T) {
 	})
 }
 
-// func runTestListGnark[T testtools.Testcase](t *testing.T, prefix string, list []T) {
+func runTestListGnark[T testtools.Testcase](t *testing.T, prefix string, list []T) {
 
-// 	t.Run(prefix, func(t *testing.T) {
-// 		for _, tc := range list {
-// 			t.Run(tc.Name(), func(t *testing.T) {
-// 				testtools.RunTestShouldPassWithGnark(t, tc, totalSuite)
-// 			})
-// 		}
-// 	})
-// }
+	t.Run(prefix, func(t *testing.T) {
+		for _, tc := range list {
+			t.Run(tc.Name(), func(t *testing.T) {
+				testtools.RunTestShouldPassWithGnark(t, tc, totalSuite)
+			})
+		}
+	})
+}

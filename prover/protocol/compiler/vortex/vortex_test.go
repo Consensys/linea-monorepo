@@ -1,8 +1,10 @@
 package vortex_test
 
 import (
+	"math/rand/v2"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -30,6 +32,7 @@ func TestCompiler(t *testing.T) {
 		numPrecomputedsSIS   = 10
 		// variables for testing if we have an empty round
 		nPolsMultiRoundEmpty = []int{12, 0, 12, 8}
+		rng                  = rand.New(rand.NewPCG(0, 0))
 	)
 	testCases := []struct {
 		Explainer string
@@ -50,7 +53,7 @@ func TestCompiler(t *testing.T) {
 
 				// assign the rows with random polynomials and collect the ys
 				for i, row := range rows[:nPolsNoSIS] {
-					p := smartvectors.Rand(polSize)
+					p := smartvectors.PseudoRand(rng, polSize)
 					ys[i] = smartvectors.EvaluateLagrangeMixed(p, x)
 					pr.AssignColumn(row.GetColID(), p)
 				}
@@ -72,7 +75,7 @@ func TestCompiler(t *testing.T) {
 
 				// assign the rows with random polynomials and collect the ys
 				for i, row := range rows {
-					p := smartvectors.Rand(polSize)
+					p := smartvectors.PseudoRand(rng, polSize)
 					ys[i] = smartvectors.EvaluateLagrangeMixed(p, x)
 					pr.AssignColumn(row.GetColID(), p)
 				}
@@ -84,16 +87,12 @@ func TestCompiler(t *testing.T) {
 			Explainer: "Vortex with multiple round and only SIS, without precomputed columns",
 			Define: func(b *wizard.Builder) {
 				for round := 0; round < numRounds; round++ {
-					var offsetIndex = 0
 					// trigger the creation of a new round by declaring a dummy coin
 					if round != 0 {
 						_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
-						// Compute the offsetIndex
-						for i := 0; i < round; i++ {
-							offsetIndex += nPols
-						}
 					}
-
+					// Compute the offsetIndex
+					offsetIndex := nPols * round
 					rowsMultiRound[round] = make([]ifaces.Column, nPols)
 					for i := 0; i < nPols; i++ {
 						rowsMultiRound[round][i] = b.RegisterCommit(ifaces.ColIDf("P_%v", offsetIndex+i), polSize)
@@ -110,17 +109,15 @@ func TestCompiler(t *testing.T) {
 
 				// assign the rows with random polynomials and collect the ys
 				for round := 0; round < numRounds; round++ {
-					var offsetIndex = 0
 					if round != 0 {
 						// let the prover know that it is free to go to the next
 						// round by sampling the coin.
 						_ = pr.GetRandomCoinField(coin.Namef("COIN_%v", round))
-						// Compute the offsetIndex
-						offsetIndex = nPols * round
 					}
-
+					// Compute the offsetIndex
+					offsetIndex := nPols * round
 					for i, row := range rowsMultiRound[round] {
-						p := smartvectors.Rand(polSize)
+						p := smartvectors.PseudoRand(rng, polSize)
 						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
@@ -170,7 +167,7 @@ func TestCompiler(t *testing.T) {
 					offsetIndex = nPols * (round - 2)
 
 					for i, row := range rowsMultiRound[round-2] {
-						p := smartvectors.Rand(polSize)
+						p := smartvectors.PseudoRand(rng, polSize)
 						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
@@ -219,7 +216,7 @@ func TestCompiler(t *testing.T) {
 					}
 
 					for i, row := range rowsMultiRound[round] {
-						p := smartvectors.Rand(polSize)
+						p := smartvectors.PseudoRand(rng, polSize)
 						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
@@ -273,7 +270,7 @@ func TestCompiler(t *testing.T) {
 					}
 
 					for i, row := range rowsMultiRound[round] {
-						p := smartvectors.Rand(polSize)
+						p := smartvectors.PseudoRand(rng, polSize)
 						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
@@ -300,7 +297,7 @@ func TestCompiler(t *testing.T) {
 					rowsMultiRound[round] = make([]ifaces.Column, nPolsMultiRound[round])
 					if round == 0 {
 						for i := 0; i < numPrecomputedsNoSIS; i++ {
-							p := smartvectors.Rand(polSize)
+							p := smartvectors.PseudoRand(rng, polSize)
 							rowsMultiRound[round][i] = b.RegisterPrecomputed(ifaces.ColIDf("PRE_COMP_%v", i), p)
 						}
 						for i := numPrecomputedsNoSIS; i < nPolsMultiRound[round]; i++ {
@@ -345,7 +342,7 @@ func TestCompiler(t *testing.T) {
 							ys[i] = smartvectors.EvaluateLagrangeMixed(p, x)
 							continue
 						}
-						p := smartvectors.Rand(polSize)
+						p := smartvectors.PseudoRand(rng, polSize)
 						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
@@ -372,7 +369,7 @@ func TestCompiler(t *testing.T) {
 					rowsMultiRound[round] = make([]ifaces.Column, nPolsMultiRound[round])
 					if round == 0 {
 						for i := 0; i < numPrecomputedsSIS; i++ {
-							p := smartvectors.Rand(polSize)
+							p := smartvectors.PseudoRand(rng, polSize)
 							rowsMultiRound[round][i] = b.RegisterPrecomputed(ifaces.ColIDf("PRE_COMP_%v", i), p)
 						}
 						for i := numPrecomputedsSIS; i < nPolsMultiRound[round]; i++ {
@@ -417,7 +414,7 @@ func TestCompiler(t *testing.T) {
 							ys[i] = smartvectors.EvaluateLagrangeMixed(p, x)
 							continue
 						}
-						p := smartvectors.Rand(polSize)
+						p := smartvectors.PseudoRand(rng, polSize)
 						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
@@ -443,7 +440,7 @@ func TestCompiler(t *testing.T) {
 					rowsMultiRound[round] = make([]ifaces.Column, nPolsMultiRoundEmpty[round])
 					if round == 0 {
 						for i := 0; i < numPrecomputedsNoSIS; i++ {
-							p := smartvectors.Rand(polSize)
+							p := smartvectors.PseudoRand(rng, polSize)
 							rowsMultiRound[round][i] = b.RegisterPrecomputed(ifaces.ColIDf("PRE_COMP_%v", i), p)
 						}
 						for i := numPrecomputedsNoSIS; i < nPolsMultiRoundEmpty[round]; i++ {
@@ -488,7 +485,7 @@ func TestCompiler(t *testing.T) {
 							ys[i] = smartvectors.EvaluateLagrangeMixed(p, x)
 							continue
 						}
-						p := smartvectors.Rand(polSize)
+						p := smartvectors.PseudoRand(rng, polSize)
 						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
@@ -501,7 +498,17 @@ func TestCompiler(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.Explainer, func(t *testing.T) {
 			logrus.Infof("Testing %s", tc.Explainer)
-			compiled := wizard.Compile(tc.Define, vortex.Compile(4, vortex.WithOptionalSISHashingThreshold(9)))
+			compiled := wizard.Compile(
+				tc.Define,
+				vortex.Compile(
+					4,
+					vortex.WithOptionalSISHashingThreshold(9),
+					vortex.WithSISParams(&ringsis.Params{
+						LogTwoBound:  16,
+						LogTwoDegree: 4,
+					}),
+				),
+			)
 			proof := wizard.Prove(compiled, tc.Prove)
 			valid := wizard.Verify(compiled, proof)
 

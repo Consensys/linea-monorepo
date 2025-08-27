@@ -216,8 +216,10 @@ func RunProverUntilRound(c *CompiledIOP, highLevelProver MainProverStep, round i
 	if runtime.HighLevelProver != nil {
 		runtime.exec("high-level-prover", mainProverStepWrapper{step: highLevelProver})
 	}
+
 	// Run sub-prover steps for the initial round
 	runtime.exec(fmt.Sprintf("prover-steps-round%d", runtime.currRound), runtime.runProverSteps)
+
 	for runtime.currRound+1 < round {
 		runtime.exec(fmt.Sprintf("next-after-round-%d", runtime.currRound), runtime.goNextRound)
 		runtime.exec(fmt.Sprintf("prover-steps-round-%d", runtime.currRound), runtime.runProverSteps)
@@ -1150,13 +1152,13 @@ func (run *ProverRuntime) InsertCoin(name coin.Name, value any) {
 
 // exec: executes the `action` with the performance monitor if active
 func (runtime *ProverRuntime) exec(name string, action any) {
+
 	// Define helper excute function
 	execute := func() {
 		switch a := action.(type) {
 		case func():
 			a()
 		case ProverAction:
-
 			a.Run(runtime)
 		default:
 			utils.Panic("wizard.exec: unsupported action type: got %T; expected one of: func(), ProverAction", action)
