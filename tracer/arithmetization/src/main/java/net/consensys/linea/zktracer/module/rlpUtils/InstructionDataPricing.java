@@ -22,6 +22,7 @@ import static net.consensys.linea.zktracer.module.rlpUtils.WcpExoCall.callToLeq;
 import java.util.ArrayList;
 import java.util.List;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
@@ -32,10 +33,11 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 
 @Accessors(fluent = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class InstructionDataPricing extends RlpUtilsCall {
   private static final Bytes32 TWO_FIFTY_FIVE = Bytes32.leftPad(Bytes.fromHexString("0xff"));
-  @Getter private final Bytes16 limb;
-  @Getter private final short nBytes;
+  @EqualsAndHashCode.Include @Getter private final Bytes16 limb;
+  @EqualsAndHashCode.Include @Getter private final short nBytes;
   private final List<Short> zeros;
   private final List<Short> nonZeros;
 

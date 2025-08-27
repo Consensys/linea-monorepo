@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.Trace.Rlputils.CT_MAX_INST_BYTE_STRIN
 import static net.consensys.linea.zktracer.module.rlpUtils.RlpUtils.*;
 import static net.consensys.linea.zktracer.types.Conversions.bytesToLong;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
@@ -30,14 +31,15 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 
 @Accessors(fluent = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class InstructionByteStringPrefix extends RlpUtilsCall {
 
   private static final Bytes32 ONE = Bytes32.leftPad(Bytes.of(1));
 
   // inputs
-  @Getter private final Bytes32 byteStringLength;
-  @Getter private final byte firstByte;
-  @Getter private final boolean isList;
+  @EqualsAndHashCode.Include @Getter private final Bytes32 byteStringLength;
+  @EqualsAndHashCode.Include @Getter private final byte firstByte;
+  @EqualsAndHashCode.Include @Getter private final boolean isList;
 
   // outputs
   @Getter private boolean rlpPrefixRequired;

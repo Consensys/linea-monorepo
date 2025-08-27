@@ -25,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationAdder;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.Bytes16;
@@ -58,12 +59,12 @@ public class RlpUtils implements OperationSetModule<RlpUtilsCall> {
   }
 
   public RlpUtilsCall call(RlpUtilsCall call) {
-    final boolean isNew = operations.add(call);
-    if (isNew) {
-      call.compute(wcp);
-      return call;
+    final ModuleOperationAdder addedOp = operations.addAndGet(call);
+    final RlpUtilsCall addedCall = (RlpUtilsCall) addedOp.op();
+    if (addedOp.isNew()) {
+      addedCall.compute(wcp);
     }
-    return call; // TODO: should return the existing call
+    return addedCall;
   }
 
   @Override

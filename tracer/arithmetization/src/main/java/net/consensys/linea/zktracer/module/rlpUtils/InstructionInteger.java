@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.Trace.Rlputils.CT_MAX_INST_INTEGER;
 import static net.consensys.linea.zktracer.TraceCancun.Rlptxn.RLP_TXN_CT_MAX_INTEGER;
 import static net.consensys.linea.zktracer.module.rlpUtils.RlpUtils.BYTES32_PREFIX_SHORT_INT;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
@@ -30,8 +31,9 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 
 @Accessors(fluent = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class InstructionInteger extends RlpUtilsCall {
-  @Getter private final Bytes32 integer;
+  @EqualsAndHashCode.Include @Getter private final Bytes32 integer;
   private boolean integerIsZero;
   private boolean integerHiIsNonZero;
   private boolean rlpPrefixRequired;
@@ -166,7 +168,7 @@ public class InstructionInteger extends RlpUtilsCall {
   @Override
   protected short compareTo(RlpUtilsCall other) {
     return (short)
-        integer
+        this.integer
             .toUnsignedBigInteger()
             .compareTo(((InstructionInteger) other).integer.toUnsignedBigInteger());
   }
