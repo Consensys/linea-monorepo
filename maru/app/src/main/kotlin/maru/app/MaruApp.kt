@@ -82,7 +82,7 @@ class MaruApp(
       measurementSupplier = {
         beaconChain
           .getLatestBeaconState()
-          .latestBeaconBlockHeader.number
+          .beaconBlockHeader.number
           .toLong()
       },
     )

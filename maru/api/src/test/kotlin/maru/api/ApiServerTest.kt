@@ -105,7 +105,7 @@ class ApiServerTest {
       override fun getLatestBeaconState(): BeaconState = BEACON_STATE
 
       override fun getBeaconStateByStateRoot(stateRoot: ByteArray): BeaconState {
-        if (stateRoot.contentEquals(BEACON_STATE.latestBeaconBlockHeader.stateRoot)) {
+        if (stateRoot.contentEquals(BEACON_STATE.beaconBlockHeader.stateRoot)) {
           return BEACON_STATE
         }
         throw BeaconStateNotFoundException()

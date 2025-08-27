@@ -43,7 +43,7 @@ class BeaconChainInitialization(
 
     val tmpGenesisStateRoot =
       BeaconState(
-        latestBeaconBlockHeader = beaconBlockHeader,
+        beaconBlockHeader = beaconBlockHeader,
         validators = validatorSet,
       )
     val stateRootHash = HashUtil.stateRoot(tmpGenesisStateRoot)

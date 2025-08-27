@@ -24,7 +24,7 @@ class StateTransitionImpl(
     val validatorsForBlockFuture = validatorProvider.getValidatorsForBlock(block.beaconBlockHeader.number)
     return validatorsForBlockFuture.thenApply { validatorsForBlock ->
       BeaconState(
-        latestBeaconBlockHeader = block.beaconBlockHeader,
+        beaconBlockHeader = block.beaconBlockHeader,
         validators = validatorsForBlock,
       )
     }

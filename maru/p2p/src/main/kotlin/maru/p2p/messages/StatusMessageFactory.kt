@@ -20,7 +20,7 @@ class StatusMessageFactory(
 ) {
   fun createStatusMessage(): Message<Status, RpcMessageType> {
     val forkIdHash = forkIdHashProvider.currentForkIdHash()
-    val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().latestBeaconBlockHeader
+    val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().beaconBlockHeader
     val statusPayload = Status(forkIdHash = forkIdHash, latestBeaconBlockHeader.hash, latestBeaconBlockHeader.number)
     val statusMessage =
       Message(

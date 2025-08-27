@@ -25,7 +25,7 @@ class ChainDataProviderImpl(
     beaconChain.getSealedBeaconBlock(blockNumber) ?: throw BlockNotFoundException()
 
   override fun getLatestBeaconBlock(): SealedBeaconBlock {
-    val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().latestBeaconBlockHeader
+    val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().beaconBlockHeader
     return beaconChain.getSealedBeaconBlock(latestBeaconBlockHeader.number)
       ?: throw BlockNotFoundException()
   }

@@ -113,7 +113,7 @@ class QbftForkIdComputerTest {
       )
     val forkSpec = ForkSpec(0, 1, config)
     val genesisBeaconState = DataGenerators.randomBeaconState(number = 0u, timestamp = 0u)
-    val forkId = ForkId(dummyChainId, forkSpec, genesisBeaconState.latestBeaconBlockHeader.hash)
+    val forkId = ForkId(dummyChainId, forkSpec, genesisBeaconState.beaconBlockHeader.hash)
     val hash = forkIdHasher.hash(forkId)
 
     val beaconChain = InMemoryBeaconChain(genesisBeaconState)

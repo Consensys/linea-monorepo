@@ -95,7 +95,7 @@ class BlockBuildingBeaconBlockImporter(
     val nextBlockTimestamp =
       nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(
         beaconState
-          .latestBeaconBlockHeader.timestamp
+          .beaconBlockHeader.timestamp
           .toLong(),
       )
     return if (shouldBuildNextBlock(beaconState, nextBlocksRoundIdentifier, nextBlockTimestamp)) {

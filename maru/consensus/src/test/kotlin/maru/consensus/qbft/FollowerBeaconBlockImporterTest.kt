@@ -122,7 +122,7 @@ class FollowerBeaconBlockImporterTest {
       ),
     ).thenReturn(true)
     val nextBlockTimestampProvider: NextBlockTimestampProvider = mock()
-    val expectedParentTimestamp = randomBeaconState.latestBeaconBlockHeader.timestamp.toLong()
+    val expectedParentTimestamp = randomBeaconState.beaconBlockHeader.timestamp.toLong()
     whenever(
       nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(eq(expectedParentTimestamp)),
     ).thenReturn(nextBlockTimestamp)

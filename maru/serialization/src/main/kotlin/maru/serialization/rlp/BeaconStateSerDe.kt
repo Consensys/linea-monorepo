@@ -22,7 +22,7 @@ class BeaconStateSerDe(
   ) {
     rlpOutput.startList()
 
-    beaconBlockHeaderSerializer.writeTo(value.latestBeaconBlockHeader, rlpOutput)
+    beaconBlockHeaderSerializer.writeTo(value.beaconBlockHeader, rlpOutput)
     rlpOutput.writeList(value.validators) { validator, output ->
       validatorSerializer.writeTo(validator, output)
     }
@@ -39,7 +39,7 @@ class BeaconStateSerDe(
     rlpInput.leaveList()
 
     return BeaconState(
-      latestBeaconBlockHeader = latestBeaconBlockHeader,
+      beaconBlockHeader = latestBeaconBlockHeader,
       validators = validators,
     )
   }

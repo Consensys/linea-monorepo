@@ -219,7 +219,7 @@ class QbftValidatorFactory(
     val chainHeaderNumber =
       beaconChain
         .getLatestBeaconState()
-        .latestBeaconBlockHeader
+        .beaconBlockHeader
         .number
         .toLong()
     val futureMessageBuffer =
@@ -266,7 +266,7 @@ class QbftValidatorFactory(
       { beaconState: BeaconState, roundIdentifier: ConsensusRoundIdentifier, nextBlockTimestamp: Long ->
         // We shouldn't build next block if this fork ends
         val nextForkTimestamp =
-          forksSchedule.getNextForkByTimestamp(beaconState.latestBeaconBlockHeader.timestamp.toLong())?.timestampSeconds
+          forksSchedule.getNextForkByTimestamp(beaconState.beaconBlockHeader.timestamp.toLong())?.timestampSeconds
             ?: Long.MAX_VALUE
         if (nextBlockTimestamp >= nextForkTimestamp) {
           false

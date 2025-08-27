@@ -154,10 +154,10 @@ class StateRootValidator(
       .processBlock(block)
       .thenApply { postState ->
         val stateRootHeader =
-          postState.latestBeaconBlockHeader.copy(
+          postState.beaconBlockHeader.copy(
             stateRoot = EMPTY_HASH,
           )
-        val expectedStateRoot = HashUtil.stateRoot(postState.copy(latestBeaconBlockHeader = stateRootHeader))
+        val expectedStateRoot = HashUtil.stateRoot(postState.copy(beaconBlockHeader = stateRootHeader))
         BlockValidator.require(block.beaconBlockHeader.stateRoot.contentEquals(expectedStateRoot)) {
           "State root in header does not match state root stateRoot=${block.beaconBlockHeader.stateRoot.encodeHex()} " +
             "expectedStateRoot=${expectedStateRoot.encodeHex()}"

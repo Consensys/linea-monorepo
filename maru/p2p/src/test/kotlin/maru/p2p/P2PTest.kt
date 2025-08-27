@@ -338,7 +338,7 @@ class P2PTest {
       .newUpdater()
       .putBeaconState(
         beaconChain.getLatestBeaconState().copy(
-          latestBeaconBlockHeader = beaconBlockHeader,
+          beaconBlockHeader = beaconBlockHeader,
         ),
       ).commit()
   }
@@ -354,7 +354,7 @@ class P2PTest {
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl1, peers = 1) }
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
 
-      val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().latestBeaconBlockHeader
+      val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().beaconBlockHeader
       val expectedStatus =
         Status(
           forkIdHash = forkIdHashProvider.currentForkIdHash(),
@@ -442,7 +442,7 @@ class P2PTest {
       }
       updater.putBeaconState(
         BeaconState(
-          latestBeaconBlockHeader = storedBlocks.last().beaconBlock.beaconBlockHeader,
+          beaconBlockHeader = storedBlocks.last().beaconBlock.beaconBlockHeader,
           validators = DataGenerators.randomValidators(),
         ),
       )
@@ -822,7 +822,7 @@ class P2PTest {
     val beaconState = mock<BeaconState>()
     val beaconBlockHeader = mock<BeaconBlockHeader>()
     whenever(beaconChain.getLatestBeaconState()).thenReturn(beaconState)
-    whenever(beaconState.latestBeaconBlockHeader).thenReturn(beaconBlockHeader)
+    whenever(beaconState.beaconBlockHeader).thenReturn(beaconBlockHeader)
     whenever(beaconBlockHeader.hash).thenReturn(ByteArray(32))
     whenever(beaconBlockHeader.number).thenReturn(0uL, 1uL, 2uL, 3uL, 4uL, 5uL)
     val forkIdHashProvider = createForkIdHashProvider()

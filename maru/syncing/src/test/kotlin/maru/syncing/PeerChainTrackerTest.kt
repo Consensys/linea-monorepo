@@ -265,7 +265,7 @@ class PeerChainTrackerTest {
 
   @Test
   fun `should handle empty peer list`() {
-    val latestBeaconBlockNumber = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number
+    val latestBeaconBlockNumber = beaconChain.getLatestBeaconState().beaconBlockHeader.number
     // Arrange - Start with no peers
     peersHeadsProvider.setPeersHeads(emptyMap())
 

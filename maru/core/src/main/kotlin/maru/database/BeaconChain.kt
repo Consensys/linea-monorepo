@@ -37,7 +37,7 @@ interface BeaconChain : AutoCloseable {
     count: ULong,
   ): List<SealedBeaconBlock> =
     generateSequence(startBlockNumber) { it + 1UL }
-      .take(min(count, getLatestBeaconState().latestBeaconBlockHeader.number).toInt())
+      .take(min(count, getLatestBeaconState().beaconBlockHeader.number).toInt())
       .map { blockNumber ->
         getSealedBeaconBlock(blockNumber)
           ?: throw IllegalStateException("Missing sealed beacon block $blockNumber")

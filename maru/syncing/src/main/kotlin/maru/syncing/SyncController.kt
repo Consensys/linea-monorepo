@@ -164,7 +164,7 @@ class BeaconSyncControllerImpl(
   }
 
   override fun onBeaconChainSyncTargetUpdated(syncTargetBlockNumber: ULong) {
-    val currentHead = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number
+    val currentHead = beaconChain.getLatestBeaconState().beaconBlockHeader.number
     val blockDifference = syncTargetBlockNumber.minusCoercingUnderflow(currentHead)
 
     val currentClStatus = lock.read { currentState.clStatus }
@@ -331,7 +331,7 @@ class AlwaysSyncedController(
     beaconSyncCompleteHandlers.notifySubscribers(Unit)
   }
 
-  override fun getCLSyncTarget(): ULong = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number
+  override fun getCLSyncTarget(): ULong = beaconChain.getLatestBeaconState().beaconBlockHeader.number
 
   override fun stop() {
   }

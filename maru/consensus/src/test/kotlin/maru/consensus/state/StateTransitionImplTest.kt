@@ -25,7 +25,7 @@ class StateTransitionImplTest {
     val validators = List(3) { DataGenerators.randomValidator() }.toSet()
     val expectedPostState =
       BeaconState(
-        latestBeaconBlockHeader = newBlock.beaconBlockHeader,
+        beaconBlockHeader = newBlock.beaconBlockHeader,
         validators = validators,
       )
 

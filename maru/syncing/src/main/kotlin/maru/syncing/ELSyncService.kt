@@ -80,7 +80,7 @@ class ELSyncService(
   private var currentElSyncTarget: ElBlockInfo? = null
 
   private fun pollTask() {
-    val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().latestBeaconBlockHeader
+    val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().beaconBlockHeader
     val latestSealedBeaconBlock = beaconChain.getSealedBeaconBlock(beaconBlockNumber = latestBeaconBlockHeader.number)!!
     val latestBeaconBlockBody = latestSealedBeaconBlock.beaconBlock.beaconBlockBody
     val newElSyncTarget =
@@ -137,7 +137,7 @@ class ELSyncService(
             "EL client is synced newSyncTarget={}",
             newElSyncTarget,
           )
-          val latestClBlockNumber = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number
+          val latestClBlockNumber = beaconChain.getLatestBeaconState().beaconBlockHeader.number
           val latestElBlockNumber =
             beaconChain
               .getSealedBeaconBlock(beaconBlockNumber = latestClBlockNumber)!!

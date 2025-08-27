@@ -20,5 +20,5 @@ class QbftBlockchainAdapter(
 
   override fun getChainHeadBlockNumber(): Long = getLatestHeader().number.toLong()
 
-  private fun getLatestHeader(): BeaconBlockHeader = beaconChain.getLatestBeaconState().latestBeaconBlockHeader
+  private fun getLatestHeader(): BeaconBlockHeader = beaconChain.getLatestBeaconState().beaconBlockHeader
 }
