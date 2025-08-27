@@ -20,8 +20,14 @@ import static net.consensys.linea.zktracer.opcode.InstructionFamily.TRANSIENT;
 
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 
 public class CancunInstructionDecoder extends LondonInstructionDecoder {
+
+  public CancunInstructionDecoder(OpCodes opCodes) {
+    super(opCodes);
+  }
+
   @Override
   protected void traceTransientFamily(OpCodeData op, Trace.Instdecoder trace) {
     trace.familyTransient(op.instructionFamily() == TRANSIENT);

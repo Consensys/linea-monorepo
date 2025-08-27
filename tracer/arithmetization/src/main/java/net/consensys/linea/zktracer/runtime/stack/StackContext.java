@@ -23,6 +23,7 @@ import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 
 /**
@@ -34,7 +35,7 @@ import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 public final class StackContext {
 
   /** The opcode that triggered the stack operations. */
-  final OpCode opCode;
+  final OpCodeData opCode;
 
   /** One or two lines to be traced, representing the stack operations performed by the opcode. */
   @Getter final List<StackLine> lines;
@@ -44,7 +45,7 @@ public final class StackContext {
    *
    * @param opCode the {@link OpCode} triggering the lines creation
    */
-  public StackContext(OpCode opCode) {
+  public StackContext(OpCodeData opCode) {
     this.opCode = opCode;
     lines = new ArrayList<>(opCode.numberOfStackRows());
   }

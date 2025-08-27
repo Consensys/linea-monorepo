@@ -88,7 +88,7 @@ public class CancunHub extends ShanghaiHub {
 
   @Override
   protected InstructionDecoder setInstructionDecoder() {
-    return new CancunInstructionDecoder();
+    return new CancunInstructionDecoder(this.opCodes());
   }
 
   @Override

@@ -90,7 +90,7 @@ public class LogsTest extends TracerTestBase {
     for (boolean roob : triggerRoob) {
       // We prepare a program with an MXPX for the opcode
       BytecodeCompiler pg = BytecodeCompiler.newProgram(testInfo);
-      new MxpTestUtils()
+      new MxpTestUtils(opcodes)
           .triggerNonTrivialButMxpxOrRoobOrMaxCodeSizeExceptionForOpCode(
               fork, pg, roob, triggerMaxCodeSizeException, opCode);
 

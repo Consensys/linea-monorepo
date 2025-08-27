@@ -47,10 +47,10 @@ public class Stp implements OperationSetModule<StpOperation> {
     operations.add(stpOperation);
 
     checkArgument(
-        stpCall.opCode().isCall() || stpCall.opCode().isCreate(),
+        stpCall.opCodeData().isCall() || stpCall.opCodeData().isCreate(),
         "STP handles only Calls and CREATEs");
 
-    if (stpCall.opCode().isCreate()) {
+    if (stpCall.opCodeData().isCreate()) {
       wcp.callLT(longToBytes32(stpCall.gasActual()), Bytes32.ZERO);
       wcp.callLT(longToBytes32(stpCall.gasActual()), longToBytes32(stpCall.upfrontGasCost()));
       if (!stpCall.outOfGasException()) {
@@ -58,9 +58,9 @@ public class Stp implements OperationSetModule<StpOperation> {
       }
     }
 
-    if (stpCall.opCode().isCall()) {
+    if (stpCall.opCodeData().isCall()) {
       wcp.callLT(longToBytes32(stpCall.gasActual()), Bytes32.ZERO);
-      if (stpCall.opCode().callHasValueArgument()) {
+      if (stpCall.opCodeData().callHasValueArgument()) {
         wcp.callISZERO(Bytes32.leftPad(stpCall.value()));
       }
       wcp.callLT(longToBytes32(stpCall.gasActual()), longToBytes32(stpCall.upfrontGasCost()));

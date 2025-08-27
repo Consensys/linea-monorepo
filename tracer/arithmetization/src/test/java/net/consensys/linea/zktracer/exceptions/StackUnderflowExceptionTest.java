@@ -66,7 +66,9 @@ public class StackUnderflowExceptionTest extends TracerTestBase {
 
   static Stream<Arguments> stackUnderflowExceptionSource() {
     List<Arguments> arguments = new ArrayList<>();
-    for (OpCodeData opCodeData : OpCodes.iterator()) {
+    OpCodes opcodes = OpCodes.load(fork);
+    //
+    for (OpCodeData opCodeData : opcodes.iterator()) {
       if (opCodeData != null) {
         OpCode opCode = opCodeData.mnemonic();
         int delta = opCodeData.stackSettings().delta(); // number of items popped from the stack

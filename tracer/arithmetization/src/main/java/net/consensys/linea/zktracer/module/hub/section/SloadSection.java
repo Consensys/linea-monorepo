@@ -53,7 +53,8 @@ public class SloadSection extends TraceSection implements PostRollbackDefer {
     super(
         hub,
         (short)
-            (hub.opCode().numberOfStackRows() + (Exceptions.any(hub.pch().exceptions()) ? 5 : 4)));
+            (hub.opCodeData().numberOfStackRows()
+                + (Exceptions.any(hub.pch().exceptions()) ? 5 : 4)));
 
     world = worldView;
     hubStamp = hub.stamp();

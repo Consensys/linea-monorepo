@@ -61,7 +61,7 @@ public abstract class CreateOobCall extends OobCall {
   @Override
   public void setInputData(MessageFrame frame, Hub hub) {
     final Account creatorAccount = frame.getWorldUpdater().get(frame.getRecipientAddress());
-    final Address deploymentAddress = getDeploymentAddress(frame);
+    final Address deploymentAddress = getDeploymentAddress(frame, hub.opCodeData(frame));
     final Account deployedAccount = frame.getWorldUpdater().get(deploymentAddress);
 
     final boolean unaborted = hub.pch().abortingConditions().snapshot().none();

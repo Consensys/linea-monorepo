@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.hub.fragment.account;
 
 import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.opcode.OpCode.CREATE2;
 import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
 import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
 
@@ -24,7 +25,7 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
 import net.consensys.linea.zktracer.module.hub.transients.OperationAncillaries;
-import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.crypto.Hash;
@@ -39,12 +40,12 @@ public class RlpAddrSubFragment implements TraceSubFragment {
   private final Bytes32 keccak;
 
   public static RlpAddrSubFragment makeFragment(Hub hub, Address deploymentAddress) {
-    final OpCode currentOpCode = hub.opCode();
-    switch (currentOpCode) {
+    final OpCodeData opCode = hub.opCodeData();
+    switch (opCode.mnemonic()) {
       case CREATE2 -> {
         final MessageFrame frame = hub.currentFrame().frame();
         final Bytes32 salt = Bytes32.leftPad(frame.getStackItem(3));
-        final Bytes initCode = OperationAncillaries.initCode(frame);
+        final Bytes initCode = OperationAncillaries.initCode(frame, opCode);
         final Bytes32 hash = Hash.keccak256(initCode);
         hub.rlpAddr().callRlpAddrCreate2(frame, salt, hash);
         return new RlpAddrSubFragment((short) 2, deploymentAddress, salt, hash);
@@ -53,7 +54,7 @@ public class RlpAddrSubFragment implements TraceSubFragment {
         hub.rlpAddr().callRlpAddrCreate();
         return new RlpAddrSubFragment((short) 1, deploymentAddress, Bytes32.ZERO, Bytes32.ZERO);
       }
-      default -> throw new IllegalStateException("Unexpected value: " + currentOpCode);
+      default -> throw new IllegalStateException("Unexpected value: " + opCode);
     }
   }
 

@@ -20,12 +20,18 @@ import java.util.List;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
-import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 import net.consensys.linea.zktracer.opcode.gas.BillingRate;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 
 public abstract class InstructionDecoder implements Module {
+  private final OpCodes opCodes;
+
+  public InstructionDecoder(OpCodes opCodes) {
+    this.opCodes = opCodes;
+  }
+
   private void traceFamily(OpCodeData op, Trace.Instdecoder trace) {
     trace
         .familyAdd(op.instructionFamily() == InstructionFamily.ADD)
@@ -128,7 +134,7 @@ public abstract class InstructionDecoder implements Module {
   }
 
   private void traceOpcode(final int i, final Trace trace) {
-    final OpCodeData op = OpCode.of(i).getData();
+    final OpCodeData op = opCodes.of(i);
     traceFamily(op, trace.instdecoder());
     traceStackSettings(op, trace.instdecoder());
     traceBillingSettings(op, trace.instdecoder());

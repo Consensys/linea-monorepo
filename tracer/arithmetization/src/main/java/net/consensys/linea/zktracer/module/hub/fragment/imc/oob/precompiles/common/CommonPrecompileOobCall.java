@@ -16,7 +16,6 @@
 package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common;
 
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToIsZero;
-import static net.consensys.linea.zktracer.runtime.callstack.CallFrame.getOpCode;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 
 import java.math.BigInteger;
@@ -30,7 +29,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
 import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.oob.OobExoCall;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
-import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -52,7 +51,7 @@ public abstract class CommonPrecompileOobCall extends OobCall {
 
   @Override
   public void setInputData(MessageFrame frame, Hub hub) {
-    final OpCode opCode = getOpCode(frame);
+    final OpCodeData opCode = hub.opCodeData(frame);
 
     final EWord callDataSize = EWord.of(frame.getStackItem(opCode.callCdsStackIndex()));
     final EWord returnAtCapacity =

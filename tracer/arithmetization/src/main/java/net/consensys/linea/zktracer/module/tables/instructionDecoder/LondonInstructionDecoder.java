@@ -17,9 +17,15 @@ package net.consensys.linea.zktracer.module.tables.instructionDecoder;
 
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 import net.consensys.linea.zktracer.opcode.gas.MxpType;
 
 public class LondonInstructionDecoder extends InstructionDecoder {
+
+  public LondonInstructionDecoder(OpCodes opCodes) {
+    super(opCodes);
+  }
+
   @Override
   protected void traceTransientFamily(OpCodeData op, Trace.Instdecoder trace) {
     // London does not have any transient family opcodes, they appear in Cancun

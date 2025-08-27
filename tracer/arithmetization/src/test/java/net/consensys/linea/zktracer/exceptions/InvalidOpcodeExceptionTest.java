@@ -26,7 +26,6 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.module.hub.signals.TracedException;
 import net.consensys.linea.zktracer.opcode.OpCode;
-import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -61,9 +60,10 @@ public class InvalidOpcodeExceptionTest extends TracerTestBase {
 
   static Stream<Arguments> nonOpcodeExceptionSource() {
     List<Arguments> arguments = new ArrayList<>();
+    //
     for (int value = 0; value < 256; value++) {
       // If value is not in the map, then it is not an OpCode
-      if (!OpCodes.isValid(value)) {
+      if (!opcodes.isValid(value)) {
         arguments.add(Arguments.of(value));
       }
     }

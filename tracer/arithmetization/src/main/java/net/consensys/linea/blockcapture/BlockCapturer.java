@@ -22,7 +22,7 @@ import com.google.gson.Gson;
 import net.consensys.linea.blockcapture.reapers.Reaper;
 import net.consensys.linea.zktracer.ConflationAwareOperationTracer;
 import net.consensys.linea.zktracer.Fork;
-import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.OpCodes;
 import net.consensys.linea.zktracer.types.AddressUtils;
 import org.apache.tuweni.bytes.Bytes;
@@ -49,6 +49,9 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
    */
   private final Reaper reaper = new Reaper();
 
+  /** Opcode information for the given fork. */
+  private final OpCodes opcodes;
+
   /**
    * This keeps a pointer to the initial state (i.e. ) to be used at the end of tracing to store the
    * minimal required information to replay the conflation.
@@ -62,7 +65,7 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
    * @param fork
    */
   public BlockCapturer(Fork fork) {
-    OpCodes.loadOpcodes(fork);
+    this.opcodes = OpCodes.load(fork);
   }
 
   /**
@@ -115,9 +118,9 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
    */
   @Override
   public void tracePreExecution(MessageFrame frame) {
-    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    final OpCodeData opCode = opcodes.of(frame.getCurrentOperation().getOpcode());
 
-    switch (opCode) {
+    switch (opCode.mnemonic()) {
         // These access contracts potentially existing before the conflation played out.
       case EXTCODESIZE, EXTCODECOPY, EXTCODEHASH -> {
         if (frame.stackSize() > 0) {
@@ -164,7 +167,7 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
         // Failure condition if created address already exists
       case CREATE, CREATE2 -> {
         if (frame.stackSize() > 0) {
-          final Address target = AddressUtils.getDeploymentAddress(frame);
+          final Address target = AddressUtils.getDeploymentAddress(frame, opCode);
           this.reaper.touchAddress(target);
         }
       }

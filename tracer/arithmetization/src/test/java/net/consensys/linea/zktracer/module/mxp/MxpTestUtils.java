@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.mxp;
 
 import static net.consensys.linea.zktracer.Fork.isPostCancun;
+import static net.consensys.linea.zktracer.opcode.OpCode.MSTORE8;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -30,6 +31,8 @@ import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 import net.consensys.linea.zktracer.opcode.gas.MxpType;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
@@ -45,7 +48,7 @@ public class MxpTestUtils {
 
   public static final OpCode[] opCodesType1 = new OpCode[] {OpCode.MSIZE};
   public static final OpCode[] opCodesType2 = new OpCode[] {OpCode.MLOAD, OpCode.MSTORE};
-  public static final OpCode[] opCodesType3 = new OpCode[] {OpCode.MSTORE8};
+  public static final OpCode[] opCodesType3 = new OpCode[] {MSTORE8};
   public static final OpCode[] opCodesType4ExcludingHalting =
       new OpCode[] {
         OpCode.LOG0,
@@ -74,6 +77,12 @@ public class MxpTestUtils {
    * process.
    */
   private final Random RAND = new Random(123456789123456L);
+
+  private final OpCodes opCodes;
+
+  public MxpTestUtils(OpCodes opCodes) {
+    this.opCodes = opCodes;
+  }
 
   /**
    * Get the next integer between 0 (inclusive) and n (exclusive) from the random number generator.
@@ -119,22 +128,22 @@ public class MxpTestUtils {
     Address address = getRandomBigIntegerByBytesSize(20, 20).toAddress();
     EWord salt = getRandomBigIntegerByBytesSize(0, 4);
     EWord gas = EWord.of(1000);
-
+    OpCodeData opCodeData = this.opCodes.of(opCode);
     // Keep generating random values until we are in the mxpx && roob case or in the mxpx && !roob
     // case
     do {
       // For creates, we trigger mxpx with the offset to avoid triggering a max code size exception
       // that takes precedence on mxpx, so size1 is set to a small value (1)
       size1 =
-          (opCode.isCreate() && !triggerMaxCodeSizeException)
+          (opCodeData.isCreate() && !triggerMaxCodeSizeException)
               ? EWord.of(1)
               : getRandomBigIntegerByBytesSize(0, MAX_BYTE_SIZE);
       size2 = getRandomBigIntegerByBytesSize(0, MAX_BYTE_SIZE);
       offset1 = getRandomBigIntegerByBytesSize(0, MAX_BYTE_SIZE);
       offset2 = getRandomBigIntegerByBytesSize(0, MAX_BYTE_SIZE);
 
-      mxpx = isMxpx(fork, opCode, size1, offset1, size2, offset2);
-      roob = isRoob(fork, opCode, size1, offset1, size2, offset2);
+      mxpx = isMxpx(fork, opCodeData, size1, offset1, size2, offset2);
+      roob = isRoob(fork, opCodeData, size1, offset1, size2, offset2);
     } while (!(triggerRoob && mxpx && roob) && !(!triggerRoob && mxpx && !roob));
 
     switch (opCode) {
@@ -187,12 +196,12 @@ public class MxpTestUtils {
   }
 
   public static boolean isRoob(
-      Fork fork, OpCode opCode, EWord size1, EWord offset1, EWord size2, EWord offset2) {
+      Fork fork, OpCodeData opCode, EWord size1, EWord offset1, EWord size2, EWord offset2) {
     boolean roob;
     if (isPostCancun(fork)) {
       roob = isRoob(opCode, size1, offset1, size2, offset2);
     } else {
-      MxpType randomMxpType = opCode.getData().billing().type();
+      MxpType randomMxpType = opCode.billing().type();
       roob = isRoobLondon(randomMxpType, size1, offset1, size2, offset2);
     }
     return roob;
@@ -217,13 +226,13 @@ public class MxpTestUtils {
   }
 
   private static boolean isRoob(
-      OpCode opCode, EWord size1, EWord offset1, EWord size2, EWord offset2) {
+      OpCodeData opCode, EWord size1, EWord offset1, EWord size2, EWord offset2) {
     final boolean offsetIsEnormousAndSizeIsNonZero1 =
         offset1.compareTo(TWO_POW_128) >= 0 && !size1.isZero();
     final boolean offsetIsEnormousAndSizeIsNonZero2 =
         offset2.compareTo(TWO_POW_128) >= 0 && !size2.isZero();
 
-    return switch (opCode) {
+    return switch (opCode.mnemonic()) {
       case MLOAD, MSTORE, MSTORE8 -> offset1.compareTo(TWO_POW_128) >= 0;
       case LOG0,
           LOG1,
@@ -248,12 +257,12 @@ public class MxpTestUtils {
   }
 
   public static boolean isMxpx(
-      Fork fork, OpCode opCode, EWord size1, EWord offset1, EWord size2, EWord offset2) {
+      Fork fork, OpCodeData opCode, EWord size1, EWord offset1, EWord size2, EWord offset2) {
     boolean mxpx;
     if (isPostCancun(fork)) {
       mxpx = isMxpx(opCode, size1, offset1, size2, offset2);
     } else {
-      MxpType randomMxpType = opCode.getData().billing().type();
+      MxpType randomMxpType = opCode.billing().type();
       mxpx = isMxpxLondon(randomMxpType, size1, offset1, size2, offset2);
     }
     return mxpx;
@@ -288,12 +297,12 @@ public class MxpTestUtils {
   }
 
   public static boolean isMxpx(
-      OpCode opCode, EWord size1, EWord offset1, EWord size2, EWord offset2) {
+      OpCodeData opCode, EWord size1, EWord offset1, EWord size2, EWord offset2) {
     EWord maxOffset1 = EWord.ZERO;
     EWord maxOffset2 = EWord.ZERO;
     EWord maxOffset;
 
-    switch (opCode) {
+    switch (opCode.mnemonic()) {
       case MLOAD, MSTORE -> maxOffset1 = offset1.add(31);
       case MSTORE8 -> maxOffset1 = offset1;
       case LOG0,

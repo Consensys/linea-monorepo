@@ -82,7 +82,7 @@ public class LogSection extends TraceSection implements EndTransactionDefer {
 
   private static short maxNumberOfRows(Hub hub) {
     return (short)
-        (hub.opCode().numberOfStackRows()
+        (hub.opCodeData().numberOfStackRows()
             + (Exceptions.staticFault(hub.pch().exceptions()) ? 2 : 3));
   }
 

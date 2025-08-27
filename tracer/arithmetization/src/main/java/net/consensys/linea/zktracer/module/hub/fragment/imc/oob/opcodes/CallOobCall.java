@@ -30,7 +30,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
 import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.oob.OobExoCall;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
-import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.account.Account;
@@ -53,7 +53,7 @@ public class CallOobCall extends OobCall {
   @Override
   public void setInputData(MessageFrame frame, Hub hub) {
     final Account callerAccount = frame.getWorldUpdater().get(frame.getRecipientAddress());
-    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    final OpCodeData opCode = hub.opCodeData(frame);
 
     // DELEGATECALL, STATICCALL can't trasfer value,
     // CALL, CALLCODE may transfer value

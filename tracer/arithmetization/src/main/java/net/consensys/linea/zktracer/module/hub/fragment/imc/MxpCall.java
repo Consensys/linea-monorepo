@@ -70,7 +70,7 @@ public abstract class MxpCall implements TraceSubFragment {
     // set memorySizeInWords
     this.memorySizeInWords = this.hub.messageFrame().memoryWordSize();
     // set sizes and offsets
-    EWord[] sizesAndOffsets = getSizesAndOffsets(frame);
+    EWord[] sizesAndOffsets = getSizesAndOffsets(frame, this.opCodeData);
     this.size1 = sizesAndOffsets[0];
     this.offset1 = sizesAndOffsets[1];
     this.size2 = sizesAndOffsets[2];
@@ -97,11 +97,11 @@ public abstract class MxpCall implements TraceSubFragment {
    * @return CancunMxpCall instance corresponding to the Mxp scenario
    */
   public static CancunMxpCall getCancunMxpCall(Hub hub) {
-    final OpCodeData opCodeData = hub.currentFrame().opCodeData();
+    final OpCodeData opCodeData = hub.opCodeData();
     if (opCodeData.isMSize()) {
       return new CancunMSizeMxpCall(hub);
     }
-    EWord[] sizesAndOffsets = getSizesAndOffsets(hub.messageFrame());
+    EWord[] sizesAndOffsets = getSizesAndOffsets(hub.messageFrame(), opCodeData);
     EWord size1 = sizesAndOffsets[0];
     EWord size2 = sizesAndOffsets[2];
     if (size1.isZero() && size2.isZero()) {

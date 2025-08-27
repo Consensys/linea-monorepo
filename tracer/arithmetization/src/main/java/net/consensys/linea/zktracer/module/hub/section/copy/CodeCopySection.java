@@ -92,6 +92,6 @@ public class CodeCopySection extends TraceSection {
 
   // 4 = 1 (stack row) + 3 (up to 3 non-stack rows)
   private static short maxNumberOfRows(Hub hub) {
-    return (short) (hub.opCode().numberOfStackRows() + 3);
+    return (short) (hub.opCodeData().numberOfStackRows() + 3);
   }
 }

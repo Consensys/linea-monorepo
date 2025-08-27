@@ -92,7 +92,7 @@ public class LondonHub extends Hub {
 
   @Override
   protected InstructionDecoder setInstructionDecoder() {
-    return new LondonInstructionDecoder();
+    return new LondonInstructionDecoder(this.opCodes());
   }
 
   @Override

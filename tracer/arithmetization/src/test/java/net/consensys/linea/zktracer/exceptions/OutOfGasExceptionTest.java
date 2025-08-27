@@ -18,7 +18,6 @@ package net.consensys.linea.zktracer.exceptions;
 import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.DEFAULT_BLOCK_NUMBER;
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.OUT_OF_GAS_EXCEPTION;
-import static net.consensys.linea.zktracer.opcode.OpCodes.loadOpcodes;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
@@ -35,7 +34,6 @@ import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
-import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
@@ -52,16 +50,14 @@ public class OutOfGasExceptionTest extends TracerTestBase {
   @ParameterizedTest
   @MethodSource("outOfGasExceptionWithEmptyAccountsAndNoMemoryExpansionCostTestSource")
   void outOfGasExceptionWithEmptyAccountsAndNoMemoryExpansionCostTest(int opcode, int cornerCase) {
-    // Ensure opcodes relevant to the given fork are loaded.
-    loadOpcodes(fork);
     // TODO: enable SELFDESTRUCT for Cancun again after fixing the issue
     // https://github.com/Consensys/linea-tracer/issues/2159
     // PR https://github.com/Consensys/linea-tracer/pull/2184
     if (fork == Fork.CANCUN && opcode == 255) {
       return;
     }
-    //
-    OpCodeData opCodeData = OpCodes.of(opcode);
+    // Extract relevant opcode data
+    OpCodeData opCodeData = opcodes.of(opcode);
     // Only test opcodes which do not cause memory expansion.
     if (noMemoryExpansion(opCodeData)) {
       OpCode opCode = opCodeData.mnemonic();

@@ -23,6 +23,7 @@ import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.*;
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.framework.PrecompileCallMemoryContents;
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.framework.PrecompileCallParameters;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 
 public class CallParameters implements PrecompileCallParameters {
   public final OpCode call;
@@ -79,7 +80,7 @@ public class CallParameters implements PrecompileCallParameters {
 
   @Override
   public void appendCustomPrecompileCall(BytecodeCompiler program) {
-
+    OpCodeData callInfo = program.opCodeData(call);
     // if DISJOINT the "return at range"; it lives among words 2 and 3 of RAM
     switch (rac) {
       case ZERO -> program.push(0);
@@ -109,7 +110,7 @@ public class CallParameters implements PrecompileCallParameters {
       case INFINITY -> program.push("ff".repeat(32));
     }
 
-    if (call.callHasValueArgument()) {
+    if (callInfo.callHasValueArgument()) {
       switch (value) {
         case ZERO -> program.push(0);
         case ONE -> program.push(1);

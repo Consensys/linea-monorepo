@@ -26,6 +26,7 @@ import java.util.Random;
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -48,7 +49,7 @@ public class Utilities {
       int rao,
       int rac) {
     program.push(rac).push(rao).push(cds).push(cdo);
-    if (callOpcode.callHasValueArgument()) {
+    if (program.opCodeData(callOpcode).callHasValueArgument()) {
       program.push(value);
     }
     program.push(to).op(GAS).op(callOpcode).op(POP);
@@ -65,7 +66,7 @@ public class Utilities {
       int rao,
       int rac) {
     program.push(rac).push(rao).push(cds).push(cdo);
-    if (callOpcode.callHasValueArgument()) {
+    if (program.opCodeData(callOpcode).callHasValueArgument()) {
       program.push(value);
     }
     program.push(to).push(gas).op(callOpcode);
@@ -81,7 +82,7 @@ public class Utilities {
       int rao,
       int rac) {
     program.push(rac).push(rao).push(cds).push(cdo);
-    if (callOpcode.callHasValueArgument()) {
+    if (program.opCodeData(callOpcode).callHasValueArgument()) {
       program.push(value);
     }
     program.op(CALLER).push(gas).op(callOpcode);
@@ -96,7 +97,7 @@ public class Utilities {
       int cds,
       int rao,
       int rac) {
-    checkArgument(callOpcode.callHasValueArgument());
+    checkArgument(program.opCodeData(callOpcode).callHasValueArgument());
     program
         .push(rac)
         .push(rao)
@@ -245,10 +246,11 @@ public class Utilities {
    * @param callOpCode
    */
   public static void appendCallTo(BytecodeCompiler program, OpCode callOpCode, Address address) {
-    checkArgument(callOpCode.isCall());
+    OpCodeData callInfo = program.opCodeData(callOpCode);
+    checkArgument(callInfo.isCall());
 
     pushSeveral(program, 0, 0, 0, 0);
-    if (callOpCode.callHasValueArgument()) {
+    if (callInfo.callHasValueArgument()) {
       program.push(256); // value
     }
     program.push(address).op(GAS).op(callOpCode);

@@ -44,6 +44,7 @@ public class MultiCallAbortTests extends TracerTestBase {
   @Test
   void abortedCallNormalCallToEoaThenRevert() {
     BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+
     appendInsufficientBalanceCall(
         program, CALL, 1000, Address.fromHexString(eoaAddress), 0, 0, 0, 0);
     appendCall(program, CALL, 0, Address.fromHexString(eoaAddress), 1, 0, 0, 0, 0);
@@ -55,6 +56,7 @@ public class MultiCallAbortTests extends TracerTestBase {
   @Test
   void balanceThenAbortedCallToEoaThenRevert() {
     BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+
     program.push(eoaAddress).op(BALANCE).op(POP);
     appendInsufficientBalanceCall(
         program, CALL, 1000, Address.fromHexString(eoaAddress), 0, 0, 0, 0);
@@ -67,6 +69,7 @@ public class MultiCallAbortTests extends TracerTestBase {
   @Test
   void abortedCallThenBalanceToEoaThenRevert() {
     BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+
     appendInsufficientBalanceCall(
         program, CALL, 1000, Address.fromHexString(eoaAddress), 0, 0, 0, 0);
     appendCall(program, CALL, 0, Address.fromHexString(eoaAddress), 0, 0, 0, 0, 0);

@@ -161,7 +161,9 @@ public class StaticExceptionTest extends TracerTestBase {
     for (int i = 0; i < numberOfTopics; i++) {
       calleeProgram.push(0);
     }
-    calleeProgram.push(0).push(0).op(OpCode.of(OpCode.LOG0.getData().value() + numberOfTopics));
+    // Construct appropriate LOG bytecode for the given number of topics.
+    OpCode opCode = opcodes.of(OpCode.LOG0.getOpcode() + numberOfTopics).mnemonic();
+    calleeProgram.push(0).push(0).op(opCode);
 
     final ToyAccount calleeAccount =
         ToyAccount.builder()

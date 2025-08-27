@@ -26,6 +26,7 @@ import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.ReturnAt
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.framework.PrecompileCallMemoryContents;
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.framework.PrecompileCallParameters;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.hyperledger.besu.datatypes.Address;
 
 public class CallParameters implements PrecompileCallParameters {
@@ -63,6 +64,7 @@ public class CallParameters implements PrecompileCallParameters {
 
   @Override
   public void appendCustomPrecompileCall(BytecodeCompiler program) {
+    OpCodeData callInfo = program.opCodeData(call);
     // push r@c onto the stack
     switch (this.returnAt) {
       case EMPTY -> program.push(0);
@@ -84,14 +86,14 @@ public class CallParameters implements PrecompileCallParameters {
     program.push(cdo);
 
     // if appropriate, push the value onto the stack
-    if (call.callHasValueArgument()) {
+    if (callInfo.callHasValueArgument()) {
       program.push(0x0a00);
     }
 
     program.push(Address.ALTBN128_MUL);
 
     // push gas onto the stack
-    int callStipend = call.callHasValueArgument() ? 2_300 : 0;
+    int callStipend = callInfo.callHasValueArgument() ? 2_300 : 0;
     int prcCost =
         GAS_CONST_ECPAIRING + callDataRange.numberOfPairsOfPoints() * GAS_CONST_ECPAIRING_PAIR;
     switch (gas) {

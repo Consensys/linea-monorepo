@@ -73,6 +73,6 @@ public class CallDataCopySection extends TraceSection {
   }
 
   private static short maxNumberOfRows(Hub hub) {
-    return (short) (hub.opCode().numberOfStackRows() + 2);
+    return (short) (hub.opCodeData().numberOfStackRows() + 2);
   }
 }

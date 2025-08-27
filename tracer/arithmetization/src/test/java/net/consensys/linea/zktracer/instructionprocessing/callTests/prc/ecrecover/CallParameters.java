@@ -23,6 +23,7 @@ import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.ReturnAt
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.framework.PrecompileCallMemoryContents;
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.framework.PrecompileCallParameters;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.hyperledger.besu.datatypes.Address;
 
 public class CallParameters implements PrecompileCallParameters {
@@ -58,7 +59,7 @@ public class CallParameters implements PrecompileCallParameters {
   }
 
   public void appendCustomPrecompileCall(BytecodeCompiler program) {
-
+    OpCodeData callInfo = program.opCodeData(call);
     // push r@c onto the stack
     switch (returnAt) {
       case EMPTY -> program.push(0);
@@ -82,14 +83,14 @@ public class CallParameters implements PrecompileCallParameters {
     program.push(0);
 
     // if appropriate, push the value onto the stack
-    if (call.callHasValueArgument()) {
+    if (callInfo.callHasValueArgument()) {
       program.push(0x0600);
     }
 
     program.push(Address.ECREC);
 
     // push gas onto the stack
-    int callStipend = call.callHasValueArgument() ? 2_300 : 0;
+    int callStipend = callInfo.callHasValueArgument() ? 2_300 : 0;
     switch (gas) {
       case ZERO -> program.push(0); // interesting in the nonzero value case
       case COST_MO -> program.push(3000 - callStipend - 1);

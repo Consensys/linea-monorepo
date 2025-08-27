@@ -152,7 +152,7 @@ public class FailureWillRevertTest extends TracerTestBase {
 
   public void selfCall(BytecodeCompiler program, OpCode callOpCode, int gas, int value) {
     program.push(0x20).push(0x33).push(0x46).push(0x59); // just some random bullshit
-    if (callOpCode.callHasValueArgument()) {
+    if (opcodes.of(callOpCode).callHasValueArgument()) {
       program.push(value);
     }
     program.op(ADDRESS).push(gas).op(callOpCode);

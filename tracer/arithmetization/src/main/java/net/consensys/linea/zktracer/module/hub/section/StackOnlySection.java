@@ -19,7 +19,7 @@ import net.consensys.linea.zktracer.module.hub.Hub;
 
 public class StackOnlySection extends TraceSection {
   public StackOnlySection(Hub hub) {
-    super(hub, (short) (hub.opCode().getData().numberOfStackRows()));
+    super(hub, (short) (hub.opCodeData().numberOfStackRows()));
 
     this.addStack(hub);
   }
