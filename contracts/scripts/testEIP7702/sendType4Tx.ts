@@ -2,7 +2,7 @@ import { Authorization, ethers } from "ethers";
 import { get1559Fees } from "../utils";
 import * as dotenv from "dotenv";
 
-// Prerequisite - Deploy a contract with NON-VIEW initialize() function, e.g. https://viem.sh/docs/eip7702/contract-writes#1-set-up-smart-contract
+// Prerequisite - Deploy a contract with NON-VIEW initialize() function, e.g. TestEIP7702Delegation
 // Use this contract for TARGET_ADDRESS env
 
 // RPC_URL=<> PRIVATE_KEY=<> TARGET_ADDRESS=<> npx hardhat run scripts/testEIP7702/sendType4Tx.ts
@@ -54,8 +54,8 @@ class EIP7702TransactionSender {
       gasLimit: 500000n,
       value: 0n,
       //   Hardcoded values to pass Linea devnet
-      //   maxPriorityFeePerGas: 90000000000n,
-      //   maxFeePerGas: 90000000000n,
+      // maxPriorityFeePerGas: 90000000000n,
+      // maxFeePerGas: 90000000000n,
       maxPriorityFeePerGas: feeData.maxPriorityFeePerGas,
       maxFeePerGas: feeData.maxFeePerGas,
     };
