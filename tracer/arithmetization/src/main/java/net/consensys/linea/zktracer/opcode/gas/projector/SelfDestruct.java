@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.opcode.gas.projector;
 
 import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
 
+import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.Trace;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
@@ -26,11 +27,13 @@ import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.internal.Words;
 
 public final class SelfDestruct extends GasProjection {
+  final Fork fork;
   final GasCalculator gc;
   private final MessageFrame frame;
   private Address beneficiaryAddress = null;
 
-  public SelfDestruct(GasCalculator gc, MessageFrame frame) {
+  public SelfDestruct(Fork fork, GasCalculator gc, MessageFrame frame) {
+    this.fork = fork;
     this.gc = gc;
     this.frame = frame;
     if (frame.stackSize() > 0) {
@@ -53,7 +56,7 @@ public final class SelfDestruct extends GasProjection {
       return 0;
     }
 
-    if (isAddressWarm(frame, beneficiaryAddress)) {
+    if (isAddressWarm(fork, frame, beneficiaryAddress)) {
       return 0L;
     } else {
       return Trace.GAS_CONST_G_COLD_ACCOUNT_ACCESS;

@@ -90,7 +90,7 @@ public class StpCall implements TraceSubFragment {
           default -> throw new IllegalArgumentException(
               "STP module triggered for a non CALL-type instruction");
         };
-    this.warm = isAddressWarm(frame, to);
+    this.warm = isAddressWarm(hub.fork, frame, to);
     this.upfrontGasCost = upfrontGasCostForCalls();
     this.outOfGasException = gasActual < upfrontGasCost;
     this.gasPaidOutOfPocket = gasPaidOutOfPocketForCalls();

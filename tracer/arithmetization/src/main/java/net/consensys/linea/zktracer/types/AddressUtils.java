@@ -22,7 +22,9 @@ import static org.hyperledger.besu.crypto.Hash.keccak256;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import java.util.List;
+import java.util.stream.Stream;
 
+import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.module.hub.transients.OperationAncillaries;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
@@ -36,7 +38,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class AddressUtils {
   private static final Bytes CREATE2_PREFIX = Bytes.of(0xff);
-  public static final List<Address> precompileAddress =
+  public static final List<Address> precompileAddressLondon =
       List.of(
           Address.ECREC,
           Address.SHA256,
@@ -47,9 +49,28 @@ public class AddressUtils {
           Address.ALTBN128_MUL,
           Address.ALTBN128_PAIRING,
           Address.BLAKE2B_F_COMPRESSION);
+  public static final List<Address> precompileAddressCancun =
+      Stream.concat(precompileAddressLondon.stream(), Stream.of(Address.KZG_POINT_EVAL)).toList();
+  public static final List<Address> precompileAddressPrague =
+      Stream.concat(
+              precompileAddressCancun.stream(),
+              Stream.of(
+                  Address.BLS12_G1ADD,
+                  Address.BLS12_G1MULTIEXP,
+                  Address.BLS12_G2ADD,
+                  Address.BLS12_G2MULTIEXP,
+                  Address.BLS12_PAIRING,
+                  Address.BLS12_MAP_FP_TO_G1,
+                  Address.BLS12_MAP_FP2_TO_G2))
+          .toList();
 
-  public static boolean isPrecompile(Address to) {
-    return precompileAddress.contains(to);
+  public static boolean isPrecompile(Fork fork, Address to) {
+    return switch (fork) {
+      case LONDON, PARIS, SHANGHAI -> precompileAddressLondon.contains(to);
+      case CANCUN -> precompileAddressCancun.contains(to);
+      case PRAGUE -> precompileAddressPrague.contains(to);
+      default -> throw new IllegalArgumentException("Unknown fork: " + fork);
+    };
   }
 
   /**
@@ -135,7 +156,8 @@ public class AddressUtils {
     return address.slice(4, LLARGE);
   }
 
-  public static boolean isAddressWarm(final MessageFrame messageFrame, final Address address) {
-    return messageFrame.isAddressWarm(address) || isPrecompile(address);
+  public static boolean isAddressWarm(
+      final Fork fork, final MessageFrame messageFrame, final Address address) {
+    return messageFrame.isAddressWarm(address) || isPrecompile(fork, address);
   }
 }

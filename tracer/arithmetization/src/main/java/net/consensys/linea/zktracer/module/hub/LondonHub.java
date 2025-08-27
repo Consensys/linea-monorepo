@@ -125,12 +125,12 @@ public class LondonHub extends Hub {
     final TransactionProcessingMetadata currentTx = txStack().current();
     if (currentTx.senderIsCoinbase()
         || currentTx.recipientIsCoinbase()
-        || isPrecompile(currentTx.getCoinbaseAddress())) {
+        || isPrecompile(this.fork, currentTx.getCoinbaseAddress())) {
       return true;
     }
     return isExceptional() || opCode() == REVERT
         ? currentTx.isCoinbasePreWarmed()
-        : isAddressWarm(messageFrame(), coinbaseAddress());
+        : isAddressWarm(this.fork, messageFrame(), coinbaseAddress());
   }
 
   @Override
