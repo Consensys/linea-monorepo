@@ -85,14 +85,14 @@ class CLSyncServiceImpl(
 
     return syncTarget
       .get()
-      .minusCoercingUnderflow(beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number)
+      .minusCoercingUnderflow(beaconChain.getLatestBeaconState().beaconBlockHeader.number)
   }
 
   override fun getSyncTarget(): ULong = syncTarget.get()
 
   @Synchronized
   private fun startSync() {
-    val startBlock = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number + 1UL
+    val startBlock = beaconChain.getLatestBeaconState().beaconBlockHeader.number + 1UL
     val pipeline = pipelineFactory.createPipeline(startBlock)
 
     if (beaconChainPipeline.compareAndSet(null, pipeline)) {

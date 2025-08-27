@@ -39,14 +39,14 @@ class KvDatabaseTest {
         db.newUpdater().use {
           it.putBeaconState(testBeaconState).commit()
         }
-        assertThat(db.getBeaconState(testBeaconState.latestBeaconBlockHeader.hash))
+        assertThat(db.getBeaconState(testBeaconState.beaconBlockHeader.hash))
           .isEqualTo(testBeaconState)
       }
     }
 
     createDatabase(databasePath).use { db ->
       testBeaconStates.forEach { testBeaconState ->
-        assertThat(db.getBeaconState(testBeaconState.latestBeaconBlockHeader.hash))
+        assertThat(db.getBeaconState(testBeaconState.beaconBlockHeader.hash))
           .isEqualTo(testBeaconState)
       }
     }
@@ -193,7 +193,7 @@ class KvDatabaseTest {
         it
           .putBeaconState(
             BeaconState(
-              latestBeaconBlockHeader = testBlocks.last().beaconBlock.beaconBlockHeader,
+              beaconBlockHeader = testBlocks.last().beaconBlock.beaconBlockHeader,
               validators = DataGenerators.randomValidators(),
             ),
           ).commit()
@@ -222,7 +222,7 @@ class KvDatabaseTest {
         it
           .putBeaconState(
             BeaconState(
-              latestBeaconBlockHeader = testBlock.beaconBlock.beaconBlockHeader,
+              beaconBlockHeader = testBlock.beaconBlock.beaconBlockHeader,
               validators = DataGenerators.randomValidators(),
             ),
           ).commit()
@@ -254,7 +254,7 @@ class KvDatabaseTest {
         it
           .putBeaconState(
             BeaconState(
-              latestBeaconBlockHeader = block4.beaconBlock.beaconBlockHeader,
+              beaconBlockHeader = block4.beaconBlock.beaconBlockHeader,
               validators = DataGenerators.randomValidators(),
             ),
           ).commit()
@@ -284,7 +284,7 @@ class KvDatabaseTest {
         it
           .putBeaconState(
             BeaconState(
-              latestBeaconBlockHeader = testBlocks.last().beaconBlock.beaconBlockHeader,
+              beaconBlockHeader = testBlocks.last().beaconBlock.beaconBlockHeader,
               validators = DataGenerators.randomValidators(),
             ),
           ).commit()

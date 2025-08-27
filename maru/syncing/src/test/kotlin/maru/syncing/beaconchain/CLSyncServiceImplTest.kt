@@ -353,7 +353,7 @@ class CLSyncServiceImplTest {
     expectedHeadState: BeaconState,
   ) {
     assertThat(
-      targetBeaconChain.getLatestBeaconState().latestBeaconBlockHeader.number,
+      targetBeaconChain.getLatestBeaconState().beaconBlockHeader.number,
     ).isEqualTo(expectedHeadBlockNumber)
     assertThat(targetBeaconChain.getLatestBeaconState()).isEqualTo(expectedHeadState)
     for (i in 1uL..expectedHeadBlockNumber) {
@@ -422,7 +422,7 @@ class CLSyncServiceImplTest {
         )
       val beaconState =
         BeaconState(
-          latestBeaconBlockHeader = beaconBlock.beaconBlockHeader,
+          beaconBlockHeader = beaconBlock.beaconBlockHeader,
           validators = validators,
         )
       updater.putSealedBeaconBlock(sealedBlock)

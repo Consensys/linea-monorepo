@@ -63,11 +63,11 @@ class ForkIdHashProviderImpl(
           forksSchedule.getForkByTimestamp(
             beaconChain
               .getLatestBeaconState()
-              .latestBeaconBlockHeader.timestamp
+              .beaconBlockHeader.timestamp
               .toLong(),
           ),
         genesisRootHash =
-          beaconChain.getBeaconState(0u)?.latestBeaconBlockHeader?.hash
+          beaconChain.getBeaconState(0u)?.beaconBlockHeader?.hash
             ?: throw IllegalStateException("Genesis state not found"),
       )
     return forkIdHasher.hash(forkId)

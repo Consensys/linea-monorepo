@@ -78,7 +78,7 @@ class P2PNetworkImpl(
       deserializer = serDe,
       topicId = sealedBlocksTopicId,
       isHandlingEnabled = isBlockImportEnabledProvider,
-      nextExpectedSequenceNumberProvider = { beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number + 1UL },
+      nextExpectedSequenceNumberProvider = { beaconChain.getLatestBeaconState().beaconBlockHeader.number + 1UL },
     )
   private val broadcastMessageCounterFactory =
     metricsFacade.createCounterFactory(
@@ -380,7 +380,7 @@ class P2PNetworkImpl(
         chainId = chainId,
         forkSpec = forkSpec,
         genesisRootHash =
-          beaconChain.getBeaconState(0u)?.latestBeaconBlockHeader?.hash
+          beaconChain.getBeaconState(0u)?.beaconBlockHeader?.hash
             ?: throw IllegalStateException("Genesis state not found"),
       )
     val newForkIdHash = forkIdHasher.hash(forkId)

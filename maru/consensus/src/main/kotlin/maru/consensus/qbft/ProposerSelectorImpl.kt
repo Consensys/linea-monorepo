@@ -31,7 +31,7 @@ object ProposerSelectorImpl : ProposerSelector {
     roundIdentifier: ConsensusRoundIdentifier,
   ): SafeFuture<Validator> {
     log.trace("Get proposer for {}", roundIdentifier)
-    val prevBlockProposerAddress = parentBeaconState.latestBeaconBlockHeader.proposer.toAddress()
+    val prevBlockProposerAddress = parentBeaconState.beaconBlockHeader.proposer.toAddress()
     val validatorsForRound =
       parentBeaconState.validators.map { it.toAddress() }
     val proposer =

@@ -65,7 +65,7 @@ class PeerChainTracker(
         targetChainHeadCalculator.selectBestSyncTarget(peersHeads)
       } else {
         // If there are no peers, we return the chain head of current node, because we don't know better
-        beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number
+        beaconChain.getLatestBeaconState().beaconBlockHeader.number
       }
     log.trace("Selected best syncTarget={} lastNotifiedTarget={}", newSyncTarget, lastNotifiedTarget)
     if (newSyncTarget != lastNotifiedTarget) { // Only send an update if there's an actual target change

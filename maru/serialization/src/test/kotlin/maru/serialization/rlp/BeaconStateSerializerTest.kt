@@ -37,7 +37,7 @@ class BeaconStateSerializerTest {
     val beaconBLockHeader = DataGenerators.randomBeaconBlockHeader(Random.nextULong())
     val testValue =
       BeaconState(
-        latestBeaconBlockHeader = beaconBLockHeader,
+        beaconBlockHeader = beaconBLockHeader,
         validators = buildSet(3) { Validator(Random.nextBytes(20)) },
       )
     val serializedData = serializer.serialize(testValue)

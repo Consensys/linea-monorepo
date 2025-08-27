@@ -44,7 +44,7 @@ class QbftBlockCreatorFactory(
         beaconChain = beaconChain,
         round = round,
       )
-    val blockNumber = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number + 1u
+    val blockNumber = beaconChain.getLatestBeaconState().beaconBlockHeader.number + 1u
     val blockCreator = createBlockCreator(round, blockNumber, delayedQbftBlockCreator)
     hasCreatedFirstBlockCreator = true
     return blockCreator

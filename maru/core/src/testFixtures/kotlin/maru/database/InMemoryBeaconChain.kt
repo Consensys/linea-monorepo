@@ -72,8 +72,8 @@ class InMemoryBeaconChain(
     private var newBeaconState: BeaconState? = null
 
     override fun putBeaconState(beaconState: BeaconState): BeaconChain.Updater {
-      beaconStateByBlockRoot[ByteArrayWrapper(beaconState.latestBeaconBlockHeader.hash)] = beaconState
-      beaconStateByBlockNumber[beaconState.latestBeaconBlockHeader.number] = beaconState
+      beaconStateByBlockRoot[ByteArrayWrapper(beaconState.beaconBlockHeader.hash)] = beaconState
+      beaconStateByBlockNumber[beaconState.beaconBlockHeader.number] = beaconState
       newBeaconState = beaconState
       return this
     }

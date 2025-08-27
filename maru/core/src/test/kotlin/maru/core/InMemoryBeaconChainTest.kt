@@ -59,7 +59,7 @@ class InMemoryBeaconChainTest {
     val latestBeaconState = inMemoryBeaconChain.getLatestBeaconState()
     assertThat(latestBeaconState).isEqualTo(newBeaconState)
 
-    val retrievedBeaconState = inMemoryBeaconChain.getBeaconState(newBeaconState.latestBeaconBlockHeader.hash)
+    val retrievedBeaconState = inMemoryBeaconChain.getBeaconState(newBeaconState.beaconBlockHeader.hash)
     assertThat(retrievedBeaconState).isEqualTo(newBeaconState)
   }
 
@@ -92,7 +92,7 @@ class InMemoryBeaconChainTest {
     val latestBeaconState = inMemoryBeaconChain.getLatestBeaconState()
     assertThat(latestBeaconState).isEqualTo(initialBeaconState)
 
-    val retrievedBeaconState = inMemoryBeaconChain.getBeaconState(newBeaconState.latestBeaconBlockHeader.hash)
+    val retrievedBeaconState = inMemoryBeaconChain.getBeaconState(newBeaconState.beaconBlockHeader.hash)
     assertThat(retrievedBeaconState).isNull()
 
     val retrievedSealedBeaconBlockByBlockRoot = inMemoryBeaconChain.getSealedBeaconBlock(beaconBlockRoot)
@@ -116,7 +116,7 @@ class InMemoryBeaconChainTest {
     val latestBeaconState = inMemoryBeaconChain.getLatestBeaconState()
     assertThat(latestBeaconState).isEqualTo(initialBeaconState)
 
-    val retrievedBeaconState = inMemoryBeaconChain.getBeaconState(newBeaconState.latestBeaconBlockHeader.hash)
+    val retrievedBeaconState = inMemoryBeaconChain.getBeaconState(newBeaconState.beaconBlockHeader.hash)
     assertThat(retrievedBeaconState).isNull()
 
     val retrievedSealedBeaconBlockByBlockRoot = inMemoryBeaconChain.getSealedBeaconBlock(inflightBeaconBlockRoot)
@@ -130,14 +130,14 @@ class InMemoryBeaconChainTest {
 
   @Test
   fun `initial state can be found by hash`() {
-    val initialBeaconStateByHash = inMemoryBeaconChain.getBeaconState(initialBeaconState.latestBeaconBlockHeader.hash)
+    val initialBeaconStateByHash = inMemoryBeaconChain.getBeaconState(initialBeaconState.beaconBlockHeader.hash)
     assertThat(initialBeaconStateByHash).isEqualTo(initialBeaconState)
   }
 
   @Test
   fun `initial state can be found by number`() {
     val initialBeaconStateByNumber =
-      inMemoryBeaconChain.getBeaconState(initialBeaconState.latestBeaconBlockHeader.number)
+      inMemoryBeaconChain.getBeaconState(initialBeaconState.beaconBlockHeader.number)
     assertThat(initialBeaconStateByNumber).isEqualTo(initialBeaconState)
   }
 
@@ -151,7 +151,7 @@ class InMemoryBeaconChainTest {
     }
     updater.putBeaconState(
       BeaconState(
-        latestBeaconBlockHeader = testBlocks.last().beaconBlock.beaconBlockHeader,
+        beaconBlockHeader = testBlocks.last().beaconBlock.beaconBlockHeader,
         validators = DataGenerators.randomValidators(),
       ),
     )
@@ -188,7 +188,7 @@ class InMemoryBeaconChainTest {
       .putSealedBeaconBlock(block4)
       .putBeaconState(
         BeaconState(
-          latestBeaconBlockHeader = block4.beaconBlock.beaconBlockHeader,
+          beaconBlockHeader = block4.beaconBlock.beaconBlockHeader,
           validators = DataGenerators.randomValidators(),
         ),
       ).commit()
@@ -209,7 +209,7 @@ class InMemoryBeaconChainTest {
     }
     updater.putBeaconState(
       BeaconState(
-        latestBeaconBlockHeader = testBlocks.last().beaconBlock.beaconBlockHeader,
+        beaconBlockHeader = testBlocks.last().beaconBlock.beaconBlockHeader,
         validators = DataGenerators.randomValidators(),
       ),
     )
@@ -225,7 +225,7 @@ class InMemoryBeaconChainTest {
     val newBeaconState = DataGenerators.randomBeaconState(3UL)
     val updater = inMemoryBeaconChain.newUpdater()
     updater.putBeaconState(newBeaconState).commit()
-    val blockRootCopy = newBeaconState.latestBeaconBlockHeader.hash.copyOf() // new instance, same content
+    val blockRootCopy = newBeaconState.beaconBlockHeader.hash.copyOf() // new instance, same content
     val found = inMemoryBeaconChain.getBeaconState(blockRootCopy)
     assertThat(found).isEqualTo(newBeaconState)
   }

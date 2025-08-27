@@ -59,7 +59,7 @@ object DataGenerators {
 
     val tmpGenesisStateRoot =
       BeaconState(
-        latestBeaconBlockHeader = beaconBlockHeader,
+        beaconBlockHeader = beaconBlockHeader,
         validators = validators,
       )
     val stateRootHash = HashUtil.stateRoot(tmpGenesisStateRoot)
@@ -96,7 +96,7 @@ object DataGenerators {
         headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
       )
     return BeaconState(
-      latestBeaconBlockHeader = beaconBlockHeader,
+      beaconBlockHeader = beaconBlockHeader,
       validators = validators,
     )
   }

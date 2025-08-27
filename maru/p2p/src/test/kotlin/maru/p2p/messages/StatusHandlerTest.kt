@@ -33,8 +33,8 @@ class StatusHandlerTest {
         Version.V1,
         Status(
           Random.nextBytes(32),
-          localBeaconState.latestBeaconBlockHeader.hash,
-          localBeaconState.latestBeaconBlockHeader.number,
+          localBeaconState.beaconBlockHeader.hash,
+          localBeaconState.beaconBlockHeader.number,
         ),
       )
     whenever(statusMessageFactory.createStatusMessage()).thenReturn(localStatusMessage)
@@ -49,8 +49,8 @@ class StatusHandlerTest {
         Version.V1,
         Status(
           Random.nextBytes(32),
-          remoteBeaconState.latestBeaconBlockHeader.hash,
-          remoteBeaconState.latestBeaconBlockHeader.number,
+          remoteBeaconState.beaconBlockHeader.hash,
+          remoteBeaconState.beaconBlockHeader.number,
         ),
       )
     statusHandler.handleIncomingMessage(peer, remoteStatusMessage, callback)
@@ -71,8 +71,8 @@ class StatusHandlerTest {
         Version.V1,
         Status(
           Random.nextBytes(32),
-          remoteBeaconState.latestBeaconBlockHeader.hash,
-          remoteBeaconState.latestBeaconBlockHeader.number,
+          remoteBeaconState.beaconBlockHeader.hash,
+          remoteBeaconState.beaconBlockHeader.number,
         ),
       )
     statusHandler.handleIncomingMessage(peer, remoteStatusMessage, callback)
@@ -96,8 +96,8 @@ class StatusHandlerTest {
         Version.V1,
         Status(
           Random.nextBytes(32),
-          remoteBeaconState.latestBeaconBlockHeader.hash,
-          remoteBeaconState.latestBeaconBlockHeader.number,
+          remoteBeaconState.beaconBlockHeader.hash,
+          remoteBeaconState.beaconBlockHeader.number,
         ),
       )
 
@@ -128,8 +128,8 @@ class StatusHandlerTest {
         Version.V1,
         Status(
           Random.nextBytes(32),
-          remoteBeaconState.latestBeaconBlockHeader.hash,
-          remoteBeaconState.latestBeaconBlockHeader.number,
+          remoteBeaconState.beaconBlockHeader.hash,
+          remoteBeaconState.beaconBlockHeader.number,
         ),
       )
 
