@@ -21,17 +21,17 @@ import static net.consensys.linea.zktracer.opcode.InstructionFamily.INVALID;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.module.hub.signals.TracedException;
-import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 
 public class EarlyExceptionSection extends TraceSection {
   public EarlyExceptionSection(Hub hub) {
-    super(hub, (short) (hub.opCode().getData().stackSettings().twoLineInstruction() ? 2 : 1));
+    super(hub, (short) (hub.opCodeData().stackSettings().twoLineInstruction() ? 2 : 1));
 
     this.addStack(hub);
 
     final short exceptions = hub.pch().exceptions();
 
-    final OpCode opCode = hub.opCode();
+    final OpCodeData opCode = hub.opCodeData();
     if (Exceptions.stackUnderflow(exceptions)) {
       checkArgument(opCode.mayTriggerStackUnderflow());
       commonValues.setTracedException(TracedException.STACK_UNDERFLOW);
@@ -44,7 +44,7 @@ public class EarlyExceptionSection extends TraceSection {
       return;
     }
 
-    if (hub.opCode().getData().instructionFamily() == INVALID) {
+    if (hub.opCodeData().instructionFamily() == INVALID) {
       checkArgument(Exceptions.invalidOpcode(exceptions));
       commonValues.setTracedException(TracedException.INVALID_OPCODE);
     }

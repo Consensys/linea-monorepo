@@ -121,9 +121,9 @@ class ShfRtTracerTest extends TracerTestBase {
 
   public static Stream<Arguments> provideShiftOperators() {
     return Stream.of(
-        Arguments.of(Named.of("SAR", OpCode.SAR.getData().value())),
-        Arguments.of(Named.of("SHL", OpCode.SHL.getData().value())),
-        Arguments.of(Named.of("SHR", OpCode.SHR.getData().value())));
+        Arguments.of(Named.of("SAR", OpCode.SAR.getOpcode())),
+        Arguments.of(Named.of("SHL", OpCode.SHL.getOpcode())),
+        Arguments.of(Named.of("SHR", OpCode.SHR.getOpcode())));
   }
 
   private static byte[] concatenateArrays(byte[] a, byte[] b) {

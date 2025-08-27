@@ -39,6 +39,7 @@ import net.consensys.linea.zktracer.module.hub.signals.TracedException;
 import net.consensys.linea.zktracer.module.hub.state.State;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.gas.projector.GasProjection;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.runtime.callstack.CallStack;
@@ -110,7 +111,7 @@ public class CommonFragmentValues {
     this.gasNext = isExec ? computeGasNext(exceptions) : 0;
     this.gasCostExcluduingDeploymentCost = isExec ? computeGasCostExcludingDeploymentCost() : 0;
 
-    final InstructionFamily instructionFamily = hub.opCode().getData().instructionFamily();
+    final InstructionFamily instructionFamily = hub.opCodeData().instructionFamily();
     this.contextMayChange =
         hubProcessingPhase == HubProcessingPhase.TX_EXEC
             && ((instructionFamily == CALL
@@ -129,7 +130,7 @@ public class CommonFragmentValues {
       return;
     }
 
-    final OpCode opCode = hub.opCode();
+    final OpCodeData opCode = hub.opCodeData();
 
     if (Exceptions.staticFault(exceptions)) {
       checkArgument(opCode.mayTriggerStaticException());
@@ -138,13 +139,13 @@ public class CommonFragmentValues {
     }
 
     // RETURNDATACOPY opcode specific exception
-    if (opCode == OpCode.RETURNDATACOPY && Exceptions.returnDataCopyFault(exceptions)) {
+    if (opCode.mnemonic() == OpCode.RETURNDATACOPY && Exceptions.returnDataCopyFault(exceptions)) {
       setTracedException(TracedException.RETURN_DATA_COPY_FAULT);
       return;
     }
 
     // SSTORE opcode specific exception
-    if (opCode == OpCode.SSTORE && Exceptions.outOfSStore(exceptions)) {
+    if (opCode.mnemonic() == OpCode.SSTORE && Exceptions.outOfSStore(exceptions)) {
       setTracedException(TracedException.OUT_OF_SSTORE);
       return;
     }
@@ -152,7 +153,7 @@ public class CommonFragmentValues {
     // For RETURN, in case none of the above exceptions is the traced one,
     // we have a complex logic to determine the traced exception that is
     // implemented in the instruction processing
-    if (opCode == OpCode.RETURN) {
+    if (opCode.mnemonic() == OpCode.RETURN) {
       return;
     }
 
@@ -187,7 +188,7 @@ public class CommonFragmentValues {
   }
 
   static int computePcNew(final Hub hub, final int pc, boolean stackException, boolean isExec) {
-    final OpCode opCode = hub.opCode();
+    final OpCodeData opCode = hub.opCodeData();
     if (!isExec || stackException) {
       return 0;
     }
@@ -206,11 +207,11 @@ public class CommonFragmentValues {
       final int attemptedPcNew =
           codeSize.compareTo(prospectivePcNew) > 0 ? prospectivePcNew.intValueExact() : 0;
 
-      if (opCode.equals(OpCode.JUMP)) {
+      if (opCode.mnemonic().equals(OpCode.JUMP)) {
         return attemptedPcNew;
       }
 
-      if (opCode.equals(OpCode.JUMPI)) {
+      if (opCode.mnemonic().equals(OpCode.JUMPI)) {
         final BigInteger condition =
             hub.currentFrame().frame().getStackItem(1).toUnsignedBigInteger();
         if (!condition.equals(BigInteger.ZERO)) {
@@ -222,7 +223,7 @@ public class CommonFragmentValues {
     }
 
     throw new RuntimeException(
-        "Instruction not covered " + opCode.getData().mnemonic() + " unable to compute pcNew.");
+        "Instruction not covered " + opCode.mnemonic() + " unable to compute pcNew.");
   }
 
   public long computeGasRemaining() {
@@ -243,11 +244,13 @@ public class CommonFragmentValues {
   }
 
   private long computeGasCost() {
-    return hub.gasProjector.of(hub.messageFrame(), hub.opCode()).upfrontGasCost();
+    return hub.gasProjector.of(hub.messageFrame(), hub.opCodeData()).upfrontGasCost();
   }
 
   private long computeGasCostExcludingDeploymentCost() {
-    return hub.gasProjector.of(hub.messageFrame(), hub.opCode()).gasCostExcludingDeploymentCost();
+    return hub.gasProjector
+        .of(hub.messageFrame(), hub.opCodeData())
+        .gasCostExcludingDeploymentCost();
   }
 
   /**
@@ -297,11 +300,11 @@ public class CommonFragmentValues {
   }
 
   public void payGasPaidOutOfPocket(Hub hub) {
-    this.gasNext -= hub.gasProjector.of(hub.messageFrame(), hub.opCode()).gasPaidOutOfPocket();
+    this.gasNext -= hub.gasProjector.of(hub.messageFrame(), hub.opCodeData()).gasPaidOutOfPocket();
   }
 
   public void collectChildStipend(Hub hub) {
-    this.gasNext += hub.gasProjector.of(hub.messageFrame(), hub.opCode()).stipend();
+    this.gasNext += hub.gasProjector.of(hub.messageFrame(), hub.opCodeData()).stipend();
   }
 
   public long gasCostToTrace() {

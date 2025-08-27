@@ -294,7 +294,7 @@ public class Stack {
     Bytes val5 = getStack(frame, 4);
     Bytes val6 = getStack(frame, 5);
 
-    boolean callCanTransferValue = currentOpcodeData.mnemonic().callHasValueArgument();
+    boolean callCanTransferValue = currentOpcodeData.callHasValueArgument();
 
     if (callCanTransferValue) {
       Bytes val7 = getStack(frame, 6);
@@ -393,7 +393,7 @@ public class Stack {
     final CallFrame callFrame = hub.currentFrame();
     stamp = stackStamp;
     currentOpcodeData = hub.opCodeData();
-    callFrame.pending(new StackContext(currentOpcodeData.mnemonic()));
+    callFrame.pending(new StackContext(currentOpcodeData));
 
     final short delta = (short) currentOpcodeData.stackSettings().delta();
     final short alpha = (short) currentOpcodeData.stackSettings().alpha();

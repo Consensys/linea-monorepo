@@ -37,6 +37,7 @@ import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
 import net.consensys.linea.testing.TransactionProcessingResultValidator;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.gas.MxpType;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
@@ -59,7 +60,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 public class MxpTest extends TracerTestBase {
 
   /** Construct non-static instance to prevent sharing across tests. */
-  private MxpTestUtils util = new MxpTestUtils();
+  private MxpTestUtils util = new MxpTestUtils(opcodes);
 
   @Test
   void testMxpMinimalNonEmptyReturn() {
@@ -333,7 +334,7 @@ public class MxpTest extends TracerTestBase {
     EWord value = EWord.of(util.getRandomBigIntegerByBytesSize(0, 4));
     Address address = util.getRandomBigIntegerByBytesSize(20, 20).toAddress();
     EWord salt = EWord.of(util.getRandomBigIntegerByBytesSize(0, 4));
-
+    OpCodeData opCodeData = opcodes.of(opCode);
     // Keep generating random values until we are in the !roob && !mxpx case
     do {
       size1 = EWord.of(util.getRandomBigIntegerByBytesSize(0, MAX_BYTE_SIZE));
@@ -360,8 +361,8 @@ public class MxpTest extends TracerTestBase {
       }
 
       // size2 is irrelevant for this case
-      mxpx = isMxpx(fork, opCode, size1, offset1, EWord.ZERO, EWord.ZERO);
-      roob = isRoob(fork, opCode, size1, offset1, EWord.ZERO, EWord.ZERO);
+      mxpx = isMxpx(fork, opCodeData, size1, offset1, EWord.ZERO, EWord.ZERO);
+      roob = isRoob(fork, opCodeData, size1, offset1, EWord.ZERO, EWord.ZERO);
       if (roob || mxpx) {
         throw new RuntimeException("Unexpected ROOB or MXPX");
       }

@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 
@@ -38,7 +39,7 @@ public class Calls {
 
   public static void appendFullGasCall(
       BytecodeCompiler program,
-      OpCode callOpcode,
+      OpCodeData callOpcode,
       Address to,
       int value,
       int cdo,
@@ -49,13 +50,13 @@ public class Calls {
     if (callOpcode.callHasValueArgument()) {
       program.push(value);
     }
-    program.push(to).op(GAS).op(callOpcode);
+    program.push(to).op(GAS).op(callOpcode.mnemonic());
   }
 
   public static void fullBalanceCall(
       BytecodeCompiler program, OpCode callOpcode, Address to, int cdo, int cds, int rao, int rac) {
     program.push(rac).push(rao).push(cds).push(cdo);
-    if (callOpcode.callHasValueArgument()) {
+    if (program.opCodeData(callOpcode).callHasValueArgument()) {
       program.op(BALANCE);
     }
     program.push(to).op(GAS).op(callOpcode);
@@ -76,7 +77,7 @@ public class Calls {
       int rao,
       int rac) {
     program.push(rac).push(rao).push(cds).push(cdo);
-    if (callOpcode.callHasValueArgument()) {
+    if (program.opCodeData(callOpcode).callHasValueArgument()) {
       program.push(value);
     }
     program.push(to).push(gas).op(callOpcode);
@@ -105,7 +106,7 @@ public class Calls {
       program.push(258).push(259);
     }
 
-    if (callOpcode.callHasValueArgument()) {
+    if (program.opCodeData(callOpcode).callHasValueArgument()) {
       program.push(value);
     }
     program.push(toAccount.getAddress()).push(gas).op(callOpcode);
@@ -120,7 +121,8 @@ public class Calls {
       int cds,
       int rao,
       int rac) {
-    checkArgument(callOpcode.callHasValueArgument());
+    OpCodeData callInfo = program.opCodeData(callOpcode);
+    checkArgument(callInfo.callHasValueArgument());
     program
         .push(rac)
         .push(rao)
@@ -135,9 +137,10 @@ public class Calls {
   }
 
   public static void appendRecursiveSelfCall(BytecodeCompiler program, OpCode callOpCode) {
-    checkArgument(callOpCode.isCall());
+    OpCodeData callInfo = program.opCodeData(callOpCode);
+    checkArgument(callInfo.isCall());
     program.push(0).push(0).push(0).push(0);
-    if (callOpCode.callHasValueArgument()) {
+    if (callInfo.callHasValueArgument()) {
       program.push("1000"); // value
     }
     program

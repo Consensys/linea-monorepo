@@ -35,6 +35,7 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
@@ -58,15 +59,17 @@ public class StpCall implements TraceSubFragment {
   @EqualsAndHashCode.Include boolean outOfGasException;
   @EqualsAndHashCode.Include long gasPaidOutOfPocket;
   @EqualsAndHashCode.Include long stipend;
+  private final OpCodeData opCodeData;
 
   public StpCall(Hub hub, MessageFrame frame, long memoryExpansionGas) {
     this.opCode = hub.opCode();
-    checkArgument(this.opCode.isCall() || this.opCode.isCreate());
+    this.opCodeData = hub.opCodeData();
+    checkArgument(this.opCodeData.isCall() || this.opCodeData.isCreate());
 
     this.memoryExpansionGas = memoryExpansionGas;
     this.gasActual = frame.getRemainingGas();
 
-    if (this.opCode.isCall()) {
+    if (this.opCodeData.isCall()) {
       this.stpCallForCalls(hub);
     } else {
       this.stpCallForCreates(frame);
@@ -79,7 +82,7 @@ public class StpCall implements TraceSubFragment {
     final Address to = Words.toAddress(frame.getStackItem(1));
     final Account toAccount = frame.getWorldUpdater().get(to);
     this.gas = EWord.of(frame.getStackItem(0));
-    this.value = opCode.callHasValueArgument() ? EWord.of(frame.getStackItem(2)) : ZERO;
+    this.value = opCodeData.callHasValueArgument() ? EWord.of(frame.getStackItem(2)) : ZERO;
     this.exists =
         switch (hub.opCode()) {
           case CALL -> toAccount != null && !toAccount.isEmpty();
@@ -95,7 +98,7 @@ public class StpCall implements TraceSubFragment {
   }
 
   private boolean nonzeroValueTransfer() {
-    return opCode.callHasValueArgument() && !value.isZero();
+    return opCodeData.callHasValueArgument() && !value.isZero();
   }
 
   private boolean callWouldLeadToAccountCreation() {

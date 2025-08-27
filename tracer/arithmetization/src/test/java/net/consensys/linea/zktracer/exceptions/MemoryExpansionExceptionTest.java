@@ -49,7 +49,7 @@ public class MemoryExpansionExceptionTest extends TracerTestBase {
   public void memoryExpansionExceptionTest(boolean triggerRoob, OpCode opCode) {
     BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     boolean triggerMaxCodeSizeException = false;
-    new MxpTestUtils()
+    new MxpTestUtils(opcodes)
         .triggerNonTrivialButMxpxOrRoobOrMaxCodeSizeExceptionForOpCode(
             fork, program, triggerRoob, triggerMaxCodeSizeException, opCode);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
@@ -74,7 +74,7 @@ public class MemoryExpansionExceptionTest extends TracerTestBase {
     boolean triggerMaxCodeSizeException = false;
     OpCode opCode = OpCode.CODECOPY;
     BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
-    new MxpTestUtils()
+    new MxpTestUtils(opcodes)
         .triggerNonTrivialButMxpxOrRoobOrMaxCodeSizeExceptionForOpCode(
             fork, program, triggerRoob, triggerMaxCodeSizeException, opCode);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());

@@ -16,7 +16,6 @@
 package net.consensys.linea.testing;
 
 import static net.consensys.linea.zktracer.Trace.*;
-import static net.consensys.linea.zktracer.opcode.OpCodes.loadOpcodes;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import java.io.BufferedReader;
@@ -29,6 +28,8 @@ import java.util.List;
 import net.consensys.linea.reporting.TestInfoWithChainConfig;
 import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -36,9 +37,12 @@ import org.junit.platform.commons.util.Preconditions;
 
 /** Fluent API for constructing custom sequences of EVM bytecode. */
 public class BytecodeCompiler {
+  private final OpCodes opCodes;
   private final List<Bytes> byteCode = new ArrayList<>();
 
-  private BytecodeCompiler() {}
+  private BytecodeCompiler(Fork fork) {
+    this.opCodes = OpCodes.load(fork);
+  }
 
   /**
    * Create a new program instance that will contain a new bytecode sequence.
@@ -46,29 +50,17 @@ public class BytecodeCompiler {
    * @return an instance of {@link BytecodeCompiler}
    */
   public static BytecodeCompiler newProgram(TestInfoWithChainConfig testInfo) {
-    return switch (testInfo.chainConfig.fork) {
-      case Fork.LONDON -> {
-        loadOpcodes(Fork.LONDON);
-        yield new BytecodeCompiler();
-      }
-      case PARIS -> {
-        loadOpcodes(Fork.PARIS);
-        yield new BytecodeCompiler();
-      }
-      case SHANGHAI -> {
-        loadOpcodes(Fork.SHANGHAI);
-        yield new BytecodeCompiler();
-      }
-      case CANCUN -> {
-        loadOpcodes(Fork.CANCUN);
-        yield new BytecodeCompiler();
-      }
-      case PRAGUE -> {
-        loadOpcodes(Fork.PRAGUE);
-        yield new BytecodeCompiler();
-      }
-      default -> throw new IllegalArgumentException("Unknown fork: " + testInfo.chainConfig.fork);
-    };
+    return new BytecodeCompiler(testInfo.chainConfig.fork);
+  }
+
+  /**
+   * Return information about a given opcode for the given fork used in this compiler.
+   *
+   * @param opcode
+   * @return
+   */
+  public OpCodeData opCodeData(OpCode opcode) {
+    return opCodes.of(opcode);
   }
 
   private static Bytes toBytes(final int x) {
@@ -117,8 +109,10 @@ public class BytecodeCompiler {
    * @return current instance
    */
   public BytecodeCompiler op(final OpCode opCode) {
+    if (!opCodes.isValid(opCode)) {
+      throw new IllegalArgumentException("invalid opcode for fork: " + opCode);
+    }
     byteCode.add(Bytes.of(opCode.byteValue()));
-
     return this;
   }
 
@@ -243,7 +237,7 @@ public class BytecodeCompiler {
 
     final int padding = w - bs.length;
 
-    this.op(OpCode.of(0x5f + w));
+    this.op(opCodes.of(0x5f + w).mnemonic());
     this.byteCode.add(Bytes.repeat((byte) 0, padding));
     this.byteCode.add(Bytes.of(bs));
 
@@ -304,7 +298,7 @@ public class BytecodeCompiler {
     Preconditions.condition(w > 0 && w <= WORD_SIZE, "Invalid PUSH width");
     Preconditions.condition(bs.length <= w, "PUSH argument must be smaller than the width");
 
-    this.op(OpCode.of(EVM_INST_PUSH1 + w - 1));
+    this.op(opCodes.of(EVM_INST_PUSH1 + w - 1).mnemonic());
     this.byteCode.add(Bytes.of(bs));
 
     return this;

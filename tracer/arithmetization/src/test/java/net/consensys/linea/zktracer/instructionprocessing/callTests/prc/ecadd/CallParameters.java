@@ -26,7 +26,6 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.datatypes.Address;
 
 public class CallParameters implements PrecompileCallParameters {
-
   public final OpCode call;
   public final GasParameter gas;
   public final MemoryContents memoryContents;
@@ -93,7 +92,7 @@ public class CallParameters implements PrecompileCallParameters {
     program.push(0);
 
     // if appropriate, push the value onto the stack
-    if (call.callHasValueArgument()) {
+    if (program.opCodeData(call).callHasValueArgument()) {
       program.push(willRevert ? 0x0200 : 0);
     }
 

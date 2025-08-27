@@ -32,6 +32,7 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.module.limits.precompiles.Sha256Blocks;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
@@ -73,9 +74,10 @@ public class ShakiraInputsExtensiveTests extends TracerTestBase {
                 .immediate(instructionSpecificBytecode(size, offset, instruction))
                 .compile());
     bytecodeRunner.run(testInfo);
-
+    // extract relevant opcode data
+    OpCodeData opCode = opcodes.of(instruction);
     // check line Counting if SHA245 PRC is called
-    if (instruction.isCall()) {
+    if (opCode.isCall()) {
       final Sha256Blocks sha256Blocks = bytecodeRunner.getHub().sha256Blocks();
       assertEquals(size == 0 ? 0 : numberOfSha256Blocks(size), sha256Blocks.lineCount());
     }

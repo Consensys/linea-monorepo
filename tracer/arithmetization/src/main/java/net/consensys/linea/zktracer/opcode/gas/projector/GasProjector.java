@@ -19,7 +19,7 @@ import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.module.hub.transients.OperationAncillaries;
-import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
@@ -32,8 +32,8 @@ public class GasProjector {
 
   final GasCalculator gc;
 
-  public GasProjection of(MessageFrame frame, OpCode opCode) {
-    return switch (opCode) {
+  public GasProjection of(MessageFrame frame, OpCodeData opCode) {
+    return switch (opCode.mnemonic()) {
       case STOP -> new Zero(gc);
       case ADD,
           SUB,
@@ -172,8 +172,8 @@ public class GasProjector {
               gc,
               frame,
               maxGasAllowance,
-              OperationAncillaries.callDataSegment(frame),
-              OperationAncillaries.returnDataRequestedSegment(frame),
+              OperationAncillaries.callDataSegment(frame, opCode),
+              OperationAncillaries.returnDataRequestedSegment(frame, opCode),
               value,
               recipient,
               to);
@@ -191,8 +191,8 @@ public class GasProjector {
               gc,
               frame,
               stipend,
-              OperationAncillaries.callDataSegment(frame),
-              OperationAncillaries.returnDataRequestedSegment(frame),
+              OperationAncillaries.callDataSegment(frame, opCode),
+              OperationAncillaries.returnDataRequestedSegment(frame, opCode),
               value,
               recipient,
               to);
@@ -209,8 +209,8 @@ public class GasProjector {
               gc,
               frame,
               stipend,
-              OperationAncillaries.callDataSegment(frame),
-              OperationAncillaries.returnDataRequestedSegment(frame),
+              OperationAncillaries.callDataSegment(frame, opCode),
+              OperationAncillaries.returnDataRequestedSegment(frame, opCode),
               Wei.ZERO,
               recipient,
               to);
@@ -227,8 +227,8 @@ public class GasProjector {
               gc,
               frame,
               stipend,
-              OperationAncillaries.callDataSegment(frame),
-              OperationAncillaries.returnDataRequestedSegment(frame),
+              OperationAncillaries.callDataSegment(frame, opCode),
+              OperationAncillaries.returnDataRequestedSegment(frame, opCode),
               Wei.ZERO,
               recipient,
               to);

@@ -25,6 +25,7 @@ import java.util.List;
 
 import net.consensys.linea.zktracer.module.hub.transients.OperationAncillaries;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.crypto.Hash;
@@ -105,18 +106,19 @@ public class AddressUtils {
     return Hash.keccak256(Bytes.concatenate(CREATE2_PREFIX, sender, salt, hash));
   }
 
-  public static Address getCreate2Address(final MessageFrame frame) {
+  public static Address getCreate2Address(final MessageFrame frame, OpCodeData opCode) {
     final Address sender = frame.getRecipientAddress();
     final Bytes32 salt = Bytes32.leftPad(frame.getStackItem(3));
-    final Bytes initCode = OperationAncillaries.initCode(frame);
+    final Bytes initCode = OperationAncillaries.initCode(frame, opCode);
     final Bytes32 hash = Hash.keccak256(initCode);
     return Address.extract(getCreate2RawAddress(sender, salt, hash));
   }
 
-  public static Address getDeploymentAddress(final MessageFrame frame) {
-    final OpCode opcode = OpCode.of(frame.getCurrentOperation().getOpcode());
-    checkArgument(opcode.isCreate(), "Must be called only for CREATE/CREATE2 opcode");
-    return opcode.equals(OpCode.CREATE) ? getCreateAddress(frame) : getCreate2Address(frame);
+  public static Address getDeploymentAddress(final MessageFrame frame, final OpCodeData opCode) {
+    checkArgument(opCode.isCreate(), "Must be called only for CREATE/CREATE2 opcode");
+    return opCode.mnemonic() == OpCode.CREATE
+        ? getCreateAddress(frame)
+        : getCreate2Address(frame, opCode);
   }
 
   public static Address addressFromBytes(final Bytes input) {

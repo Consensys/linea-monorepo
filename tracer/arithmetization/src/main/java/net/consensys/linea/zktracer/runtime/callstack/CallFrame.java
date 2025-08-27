@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.runtime.callstack;
 
+import static net.consensys.linea.zktracer.Trace.EVM_INST_STOP;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,9 +27,6 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.module.romlex.ContractMetadata;
-import net.consensys.linea.zktracer.opcode.OpCode;
-import net.consensys.linea.zktracer.opcode.OpCodeData;
-import net.consensys.linea.zktracer.opcode.OpCodes;
 import net.consensys.linea.zktracer.runtime.stack.Stack;
 import net.consensys.linea.zktracer.runtime.stack.StackContext;
 import net.consensys.linea.zktracer.types.Bytecode;
@@ -79,8 +78,7 @@ public class CallFrame {
   }
 
   @Getter @Setter private int pc;
-  @Getter @Setter private OpCode opCode = OpCode.STOP;
-  @Getter @Setter private OpCodeData opCodeData = OpCodes.of(OpCode.STOP);
+  @Getter @Setter private int opCode = EVM_INST_STOP;
   @Getter private MessageFrame frame; // TODO: can we make this final ?
 
   // various memory ranges
@@ -260,8 +258,7 @@ public class CallFrame {
 
   public void frame(MessageFrame frame) {
     this.frame = frame;
-    opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
-    opCodeData = OpCodes.of(opCode);
+    opCode = frame.getCurrentOperation().getOpcode();
     pc = frame.getPC();
   }
 
@@ -269,13 +266,5 @@ public class CallFrame {
       final MessageFrame frame, final Range range) {
     // TODO: optimize me please. Need a review of the MMU operation handling.
     return range.isEmpty() ? Bytes.EMPTY : frame.shadowReadMemory(0, frame.memoryByteSize());
-  }
-
-  public OpCode getOpCode() {
-    return getOpCode(frame);
-  }
-
-  public static OpCode getOpCode(MessageFrame frame) {
-    return OpCode.of(0xFF & frame.getCurrentOperation().getOpcode());
   }
 }

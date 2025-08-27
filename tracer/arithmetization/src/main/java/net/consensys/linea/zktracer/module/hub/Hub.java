@@ -112,6 +112,7 @@ import net.consensys.linea.zktracer.module.txndata.module.TxnData;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 import net.consensys.linea.zktracer.opcode.gas.projector.GasProjector;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrameType;
@@ -139,8 +140,11 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 @Slf4j
 @Accessors(fluent = true)
 public abstract class Hub implements Module {
-
+  /** Active fork for this hub. */
   public final Fork fork;
+
+  /** Active opcode information for this hub. */
+  @Getter private final OpCodes opCodes;
 
   /** The {@link GasCalculator} used in this version of the arithmetization */
   public final GasCalculator gasCalculator = setGasCalculator();
@@ -371,6 +375,7 @@ public abstract class Hub implements Module {
 
   public Hub(final ChainConfig chain) {
     fork = chain.fork;
+    opCodes = OpCodes.load(fork);
     checkState(chain.id.signum() >= 0);
     Address l2l1ContractAddress = chain.bridgeConfiguration.contract();
     final Bytes l2l1Topic = chain.bridgeConfiguration.topic();
@@ -611,7 +616,7 @@ public abstract class Hub implements Module {
 
     // internal transaction (CALL) or internal deployment (CREATE)
     if (frame.getDepth() > 0) {
-      final OpCode currentOpCode = callStack.currentCallFrame().opCode();
+      final OpCodeData currentOpCode = opCodes.of(callStack.currentCallFrame().opCode());
       final boolean isDeployment = frame.getType() == CONTRACT_CREATION;
 
       checkState(currentOpCode.isCall() || currentOpCode.isCreate());
@@ -685,7 +690,7 @@ public abstract class Hub implements Module {
     }
 
     defers.resolveUponContextExit(this, this.currentFrame());
-    if (this.currentFrame().opCode() == REVERT || Exceptions.any(pch.exceptions())) {
+    if (this.opCode() == REVERT || Exceptions.any(pch.exceptions())) {
       defers.resolveUponRollback(this, frame, this.currentFrame());
     }
 
@@ -739,7 +744,7 @@ public abstract class Hub implements Module {
 
     defers.resolvePostExecution(this, frame, operationResult);
 
-    if (isExceptional() || !opCode().isCallOrCreate()) {
+    if (isExceptional() || !opCodeData().isCallOrCreate()) {
       this.unlatchStack(frame, currentSection);
     }
   }
@@ -851,12 +856,27 @@ public abstract class Hub implements Module {
     return state.stamps().hub();
   }
 
+  /**
+   * Return information about the opcode being executed in the current call frame.
+   *
+   * @return
+   */
   public OpCodeData opCodeData() {
-    return this.currentFrame().opCodeData();
+    return opCodes.of(this.currentFrame().opCode());
+  }
+
+  /**
+   * Return information about the opcode being executed in a given message frame.
+   *
+   * @param frame
+   * @return
+   */
+  public OpCodeData opCodeData(MessageFrame frame) {
+    return opCodes.of(frame.getCurrentOperation().getOpcode());
   }
 
   public OpCode opCode() {
-    return this.currentFrame().opCode();
+    return opCodeData().mnemonic();
   }
 
   public TraceSection currentTraceSection() {
@@ -984,14 +1004,14 @@ public abstract class Hub implements Module {
       case MCOPY -> setMcopySection(this);
       case TRANSACTION -> new TransactionSection(this);
       case STACK_RAM -> {
-        switch (this.currentFrame().opCode()) {
+        switch (this.opCode()) {
           case CALLDATALOAD -> new CallDataLoadSection(this);
           case MLOAD, MSTORE, MSTORE8 -> new StackRamSection(this);
           default -> throw new IllegalStateException("unexpected STACK_RAM opcode");
         }
       }
       case STORAGE -> {
-        switch (this.currentFrame().opCode()) {
+        switch (this.opCode()) {
           case SSTORE -> new SstoreSection(this, frame.getWorldUpdater());
           case SLOAD -> new SloadSection(this, frame.getWorldUpdater());
           default -> throw new IllegalStateException("invalid operation in family STORAGE");

@@ -20,13 +20,17 @@ import static org.hyperledger.besu.evm.internal.Words.clampedAdd;
 import static org.hyperledger.besu.evm.internal.Words.clampedMultiply;
 
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.types.EWord;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class MxpUtils {
 
-  public static boolean isWordPricingOpcode(OpCode opCode) {
-    return opCode == OpCode.SHA3 || opCode.isCopy() || opCode.isCreate() || opCode == OpCode.MCOPY;
+  public static boolean isWordPricingOpcode(OpCodeData opCode) {
+    return opCode.mnemonic() == OpCode.SHA3
+        || opCode.isCopy()
+        || opCode.isCreate()
+        || opCode.mnemonic() == OpCode.MCOPY;
   }
 
   /**
@@ -35,13 +39,12 @@ public class MxpUtils {
    * @param frame where stack items are retrieved
    * @return EWord[] array with [size1, offset1, size2, offset2]
    */
-  public static EWord[] getSizesAndOffsets(MessageFrame frame) {
-    OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+  public static EWord[] getSizesAndOffsets(MessageFrame frame, OpCodeData opCode) {
     EWord size1 = EWord.ZERO;
     EWord offset1 = EWord.ZERO;
     EWord size2 = EWord.ZERO;
     EWord offset2 = EWord.ZERO;
-    switch (opCode) {
+    switch (opCode.mnemonic()) {
       case MSIZE -> {}
       case MLOAD, MSTORE -> {
         offset1 = EWord.of(frame.getStackItem(0));

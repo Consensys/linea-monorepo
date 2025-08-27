@@ -79,7 +79,7 @@ public class TraceSection {
    * @param hub the execution context
    */
   public final void addStack(Hub hub) {
-    for (var stackFragment : this.makeStackFragments(hub, hub.currentFrame())) {
+    for (var stackFragment : this.makeStackFragments(hub)) {
       this.addFragment(stackFragment);
     }
   }
@@ -168,11 +168,12 @@ public class TraceSection {
         : 0;
   }
 
-  private List<TraceFragment> makeStackFragments(final Hub hub, CallFrame currentFrame) {
+  private List<TraceFragment> makeStackFragments(final Hub hub) {
+    final CallFrame currentFrame = hub.currentFrame();
     final List<TraceFragment> stackFragments = new ArrayList<>(2);
     final Stack snapshot = currentFrame.stack().snapshot();
     if (currentFrame.pending().lines().isEmpty()) {
-      for (int i = 0; i < (currentFrame.opCodeData().numberOfStackRows()); i++) {
+      for (int i = 0; i < (hub.opCodeData().numberOfStackRows()); i++) {
         stackFragments.add(
             StackFragment.prepare(
                 hub,
@@ -180,7 +181,7 @@ public class TraceSection {
                 new StackLine().asStackItems(),
                 hub.pch().exceptions(),
                 hub.pch().abortingConditions().snapshot(),
-                hub.gasProjector.of(currentFrame.frame(), currentFrame.opCode()),
+                hub.gasProjector.of(currentFrame.frame(), hub.opCodeData()),
                 currentFrame.isDeployment(),
                 commonValues));
       }
@@ -193,7 +194,7 @@ public class TraceSection {
                 line.asStackItems(),
                 hub.pch().exceptions(),
                 hub.pch().abortingConditions().snapshot(),
-                hub.gasProjector.of(currentFrame.frame(), currentFrame.opCode()),
+                hub.gasProjector.of(currentFrame.frame(), hub.opCodeData()),
                 currentFrame.isDeployment(),
                 commonValues));
       }

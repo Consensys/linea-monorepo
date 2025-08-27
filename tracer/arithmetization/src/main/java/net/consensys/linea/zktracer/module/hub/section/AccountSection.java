@@ -27,6 +27,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
@@ -127,9 +128,9 @@ public class AccountSection extends TraceSection implements PostRollbackDefer {
   }
 
   private static short maxNumberOfRows(Hub hub) {
-    final OpCode opCode = hub.opCode();
+    final OpCodeData opCode = hub.opCodeData();
 
-    if (opCode.isAnyOf(BALANCE, EXTCODESIZE, EXTCODEHASH)) {
+    if (opCode.mnemonic().isAnyOf(BALANCE, EXTCODESIZE, EXTCODEHASH)) {
       return (short) (opCode.numberOfStackRows() + 3);
     }
 

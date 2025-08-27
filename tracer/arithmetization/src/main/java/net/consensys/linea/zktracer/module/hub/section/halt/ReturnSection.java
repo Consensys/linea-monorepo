@@ -337,6 +337,6 @@ public class ReturnSection extends TraceSection
 
   private static short maxNumberOfRows(Hub hub) {
     return (short)
-        (hub.opCode().numberOfStackRows() + (Exceptions.any(hub.pch().exceptions()) ? 4 : 7));
+        (hub.opCodeData().numberOfStackRows() + (Exceptions.any(hub.pch().exceptions()) ? 4 : 7));
   }
 }

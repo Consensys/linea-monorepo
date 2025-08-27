@@ -57,7 +57,7 @@ public abstract class StackFragment implements TraceFragment {
   @Setter public boolean hashInfoFlag;
   private EWord hashInfoKeccak = EWord.ZERO;
   @Setter public Bytes hash;
-  @Getter private final OpCode opCode;
+  @Getter private final OpCodeData opCode;
   @Getter private final int rawOpCode;
   @Setter private boolean jumpDestinationVettingRequired;
   private final CommonFragmentValues commonFragmentValues;
@@ -75,8 +75,8 @@ public abstract class StackFragment implements TraceFragment {
     this.stack = stack;
     this.stackOps = stackOps;
     this.exceptions = exceptions;
-    this.opCode = stack.getCurrentOpcodeData().mnemonic();
-    if (this.opCode != OpCode.INVALID) {
+    this.opCode = stack.getCurrentOpcodeData();
+    if (this.opCode.mnemonic() != OpCode.INVALID) {
       this.rawOpCode = 0xff & this.opCode.byteValue();
     } else {
       final int codeSize = hub.messageFrame().getCode().getBytes().size();
@@ -84,7 +84,7 @@ public abstract class StackFragment implements TraceFragment {
       this.rawOpCode = (pc < codeSize) ? 0xff & hub.messageFrame().getCode().getBytes().get(pc) : 0;
     }
     this.hashInfoFlag =
-        switch (this.opCode) {
+        switch (this.opCode.mnemonic()) {
               case SHA3 -> true;
               case RETURN -> isDeploying;
               case CREATE2 -> aborts.none();
@@ -94,7 +94,7 @@ public abstract class StackFragment implements TraceFragment {
             && gp.messageSize() > 0;
     if (this.hashInfoFlag) {
       Bytes memorySegmentToHash;
-      switch (this.opCode) {
+      switch (this.opCode.mnemonic()) {
         case SHA3, RETURN -> {
           final long offset = Words.clampedToLong(hub.currentFrame().frame().getStackItem(0));
           final long size = Words.clampedToLong(hub.currentFrame().frame().getStackItem(1));
@@ -122,7 +122,7 @@ public abstract class StackFragment implements TraceFragment {
       boolean prospectivePcNewIsInBounds =
           codeSize.compareTo(prospectivePcNew) > 0 && noOutOfGasException;
 
-      if (opCode.equals(OpCode.JUMPI)) {
+      if (opCode.mnemonic().equals(OpCode.JUMPI)) {
         boolean nonzeroJumpCondition =
             !hub.currentFrame()
                 .frame()
@@ -142,7 +142,7 @@ public abstract class StackFragment implements TraceFragment {
   }
 
   private Bytes getPushValue(Hub hub) {
-    checkState(hub.opCode().isNonTrivialPush());
+    checkState(hub.opCodeData().isNonTrivialPush());
 
     final int pc = hub.messageFrame().getPC();
     if (pc + 1 >= hub.messageFrame().getCode().getSize()) {
@@ -328,7 +328,7 @@ public abstract class StackFragment implements TraceFragment {
       case MAX_CODE_SIZE_EXCEPTION -> checkArgument(Exceptions.maxCodeSizeException(exceptions));
       case UNDEFINED -> throw new RuntimeException(
           "tracedException remained UNDEFINED but "
-              + Exceptions.prettyStringOf(this.opCode, exceptions));
+              + Exceptions.prettyStringOf(this.opCode.mnemonic(), exceptions));
     }
   }
 }

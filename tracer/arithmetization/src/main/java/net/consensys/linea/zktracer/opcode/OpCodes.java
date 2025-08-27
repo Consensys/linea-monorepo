@@ -16,10 +16,10 @@
 package net.consensys.linea.zktracer.opcode;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.module.SimpleModule;
@@ -40,46 +40,112 @@ import net.consensys.linea.zktracer.opcode.gas.BillingDeserializer;
  */
 public class OpCodes {
   private static final short OPCODES_LIST_SIZE = 256;
-  private static volatile Fork forkLoaded;
-  private static final List<OpCodeData> opCodeDataList = new ArrayList<>(OPCODES_LIST_SIZE);
 
-  /** Loads all opcode metadata from src/main/resources/shanghaiOpcodes.yml. */
-  @SneakyThrows(IOException.class)
-  public static void loadOpcodes(Fork fork) {
-    // Handle fast case where fork already loaded
-    if (fork.equals(forkLoaded)) {
-      log.debug("opCodeDataList has already been initialized for {} fork.", fork);
-      return;
-    } else if (forkLoaded != null) {
-      throw new IllegalArgumentException(
-          "request to load opcodes for "
-              + fork
-              + " conflicts with those previously "
-              + "loaded for "
-              + forkLoaded);
+  /**
+   * Map of fork to loaded opcode information. The purpose of this map is to prevent a given YAML
+   * file from being loaded more than once. In actual fact, this could happen if we have concurrent
+   * accesses which are very close together --- but that is not a real concern.
+   */
+  private static final ConcurrentHashMap<Fork, OpCodes> opCodesMap = new ConcurrentHashMap<>();
+
+  /**
+   * Loads all opcode metadata for a given fork. This may result in loading the necessary
+   * information from a corresponding yaml file. Howwever, this method caches OpCodes instances to
+   * prevent this happening more than once.
+   *
+   * @param fork Fork for which opcode metadata is required.
+   * @return
+   */
+  public static OpCodes load(Fork fork) {
+    OpCodes instance = opCodesMap.get(fork);
+    //
+    if (instance == null) {
+      instance = new OpCodes(fork);
+      opCodesMap.put(fork, instance);
     }
-    // Slow case.  Acquire lock and load opcodes.
-    synchronized (opCodeDataList) {
-      if (forkLoaded != null) {
-        // Retry to get either an error or a warning above.
-        loadOpcodes(fork);
-        return;
-      }
-      // If we get here, then we are the only thread where forkLoaded == null.  Therefore, we can
-      // proceed in peace.
-      for (int i = 0; i < OPCODES_LIST_SIZE; i++) {
-        opCodeDataList.add(null);
-      }
-      for (OpCodeData opCodeData : opCodesLocal(fork)) {
-        opCodeDataList.set(opCodeData.value(), opCodeData);
-      }
-      // Finally, assign the fork.  Note, this must be done last.
-      forkLoaded = fork;
+    // Done
+    return instance;
+  }
+
+  /** Opcode data appropriate for a given fork. */
+  private final OpCodeData[] opcodes = new OpCodeData[OPCODES_LIST_SIZE];
+
+  /**
+   * Construct a new instance of OpCodes for a given fork. This necessarily loads the opcode
+   * information from the corresponding YAML file.
+   *
+   * @param fork
+   */
+  private OpCodes(Fork fork) {
+    for (OpCodeData opCodeData : opCodesLocal(fork)) {
+      opcodes[opCodeData.value()] = opCodeData;
     }
   }
 
+  /**
+   * isValid checks whether or not a given opcode index corresponds with a real opcode.
+   *
+   * @param value
+   * @return
+   */
+  public boolean isValid(final int value) {
+    if (value < 0 || value > 255) {
+      throw new IllegalArgumentException("No OpCode with value %s is defined.".formatted(value));
+    }
+    return opcodes[value] != null;
+  }
+
+  /**
+   * isValid checks whether or not a given opcode index corresponds with a real opcode.
+   *
+   * @param opcode
+   * @return
+   */
+  public boolean isValid(final OpCode opcode) {
+    return isValid(opcode.getOpcode());
+  }
+
+  /**
+   * Get opcode metadata per opcode long value.
+   *
+   * @param value opcode value.
+   * @return an instance of {@link OpCodeData} corresponding to the numeric value.
+   */
+  public OpCodeData of(final int value) {
+    if (value < 0 || value > 255) {
+      throw new IllegalArgumentException("No OpCode with value %s is defined.".formatted(value));
+    }
+    //
+    return Optional.ofNullable(opcodes[value]).orElse(OpCodeData.forNonOpCodes(value));
+  }
+
+  /**
+   * Get opcode metadata per opcode mnemonic of type {@link OpCode}.
+   *
+   * @param code opcode mnemonic of type {@link OpCode}.
+   * @return an instance of {@link OpCodeData} corresponding to mnemonic of type {@link OpCode}.
+   */
+  public OpCodeData of(final OpCode code) {
+    //
+    return Optional.ofNullable(opcodes[code.getOpcode()])
+        .orElseThrow(
+            () ->
+                new IllegalArgumentException(
+                    "No OpCode of mnemonic %s is defined.".formatted(code)));
+  }
+
+  /**
+   * Get an iterator over the underlying opcode data.
+   *
+   * @return
+   */
+  public Iterable<OpCodeData> iterator() {
+    return Arrays.asList(opcodes);
+  }
+
   // Load opcodedata from yaml file.
-  private static List<OpCodeData> opCodesLocal(Fork fork) throws IOException {
+  @SneakyThrows(IOException.class)
+  private static List<OpCodeData> opCodesLocal(Fork fork) {
     final JsonConverter yamlConverter = JsonConverter.builder().enableYaml().build();
 
     final String yamlFileName = Fork.toString(fork) + "Opcodes.yml";
@@ -108,88 +174,5 @@ public class OpCodes {
     yamlConverter.getObjectMapper().registerModule(module);
 
     return yamlConverter.getObjectMapper().treeToValue(rootNode, typeReference);
-  }
-
-  /**
-   * isValid checks whether or not a given opcode index corresponds with a real opcode.
-   *
-   * @param value
-   * @return
-   */
-  public static boolean isValid(final int value) {
-    if (value < 0 || value > 255) {
-      throw new IllegalArgumentException("No OpCode with value %s is defined.".formatted(value));
-    }
-    synchronized (opCodeDataList) {
-      if (opCodeDataList.isEmpty()) {
-        throw new IllegalArgumentException("opcodes not initialised!");
-      }
-      return opCodeDataList.get(value) != null;
-    }
-  }
-
-  /**
-   * Get opcode metadata per opcode long value.
-   *
-   * @param value opcode value.
-   * @return an instance of {@link OpCodeData} corresponding to the numeric value.
-   */
-  public static OpCodeData of(final int value) {
-    if (value < 0 || value > 255) {
-      throw new IllegalArgumentException("No OpCode with value %s is defined.".formatted(value));
-    }
-    synchronized (opCodeDataList) {
-      if (opCodeDataList.isEmpty()) {
-        throw new IllegalArgumentException("opcodes not initialised!");
-      }
-      //
-      return Optional.ofNullable(opCodeDataList.get(value)).orElse(OpCodeData.forNonOpCodes(value));
-    }
-  }
-
-  /**
-   * Get opcode metadata per opcode mnemonic of type {@link OpCode}.
-   *
-   * @param code opcode mnemonic of type {@link OpCode}.
-   * @return an instance of {@link OpCodeData} corresponding to mnemonic of type {@link OpCode}.
-   */
-  public static OpCodeData of(final OpCode code) {
-    synchronized (opCodeDataList) {
-      if (opCodeDataList.isEmpty()) {
-        throw new IllegalArgumentException("opcodes not initialised!");
-      }
-      //
-      return Optional.ofNullable(opCodeDataList.get(code.getOpcode()))
-          .orElseThrow(
-              () ->
-                  new IllegalArgumentException(
-                      "No OpCode of mnemonic %s is defined.".formatted(code)));
-    }
-  }
-
-  /**
-   * Get opcode metadata for a list of {@link OpCode}s.
-   *
-   * @param codes a list of opcode mnemonics of type {@link OpCode}.
-   * @return a list of {@link OpCodeData} items corresponding their mnemonics of type {@link
-   *     OpCode}.
-   */
-  public static List<OpCodeData> of(final OpCode... codes) {
-    return Arrays.stream(codes).map(OpCodes::of).toList();
-  }
-
-  /**
-   * Get an iterator over the underlying opcode data.
-   *
-   * @return
-   */
-  public static Iterable<OpCodeData> iterator() {
-    synchronized (opCodeDataList) {
-      if (opCodeDataList.isEmpty()) {
-        throw new IllegalArgumentException("opcodes not initialised!");
-      }
-      //
-      return opCodeDataList;
-    }
   }
 }

@@ -16,7 +16,9 @@ package net.consensys.linea.reporting;
 
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.Fork;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.hyperledger.besu.datatypes.Address;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
 
@@ -25,10 +27,11 @@ import static net.consensys.linea.zktracer.Fork.*;
 public class TracerTestBase {
   public static TestInfoWithChainConfig testInfo = new TestInfoWithChainConfig();
   public static Fork fork;
-  public Address add;
+  public static OpCodes opcodes;
 
-  @BeforeEach
-  public void init(TestInfo testInfo) {
+  @BeforeAll
+  public static void init() {
+      // Configure chain information and fork before any tests are run, including any methods used as MethodSource.
       TracerTestBase.testInfo.chainConfig =
               switch (getForkOrDefault("LONDON")) {
               case "LONDON" -> ChainConfig.MAINNET_TESTCONFIG(LONDON);
@@ -39,8 +42,14 @@ public class TracerTestBase {
               default -> throw new IllegalArgumentException(
                   "Unknown fork: " + System.getProperty("unit.replay.tests.fork"));
             };
-    TracerTestBase.testInfo.testInfo = testInfo;
     TracerTestBase.fork = TracerTestBase.testInfo.chainConfig.fork;
+    TracerTestBase.opcodes = OpCodes.load(fork);
+  }
+
+  @BeforeEach
+  public void init(TestInfo testInfo) {
+    // Record information about the specific test being run.
+    TracerTestBase.testInfo.testInfo = testInfo;
   }
 
   public static String getForkOrDefault(String defaultFork) {

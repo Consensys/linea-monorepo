@@ -24,7 +24,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
-import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 
@@ -39,6 +40,8 @@ public final class RomOperation extends ModuleOperation {
 
   @Getter @EqualsAndHashCode.Include private final ContractMetadata metadata;
   private final Bytes byteCode;
+
+  private final OpCodes opCodes;
 
   public void trace(Trace.Rom trace, int cfi, int cfiInfty) {
     // WARN this is the tracing used by the ROM, not by the ROMLEX
@@ -94,8 +97,8 @@ public final class RomOperation extends ModuleOperation {
       // Deal when not in a PUSH instruction
       if (pushParameter == 0) {
         final UnsignedByte opCodeUB = UnsignedByte.of(dataPadded.get(i));
-        final OpCode opcode = OpCode.of(opCodeUB.toInteger());
-        final boolean isPush = opcode.isNonTrivialPush();
+        final OpCodeData opCode = opCodes.of(opCodeUB.toInteger());
+        final boolean isPush = opCode.isNonTrivialPush();
 
         // The OpCode is a PUSH instruction
         if (isPush) {
@@ -118,7 +121,7 @@ public final class RomOperation extends ModuleOperation {
             .pushValueHi(pushValueHigh)
             .pushValueLo(pushValueLow)
             .pushFunnelBit(false)
-            .isJumpdest(opcode.getData().isJumpDest());
+            .isJumpdest(opCode.isJumpDest());
       }
       // Deal when in a PUSH instruction
       else {

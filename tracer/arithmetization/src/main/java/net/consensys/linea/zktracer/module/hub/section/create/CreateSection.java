@@ -105,7 +105,7 @@ public abstract class CreateSection extends TraceSection
     hubStamp = hub.stamp();
 
     creatorAddress = frame.getRecipientAddress();
-    createeAddress = getDeploymentAddress(frame);
+    createeAddress = getDeploymentAddress(frame, hub.opCodeData(frame));
     value = Wei.of(UInt256.fromBytes(frame.getStackItem(0)));
 
     scenarioFragment = new CreateScenarioFragment();

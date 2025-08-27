@@ -20,7 +20,7 @@ import static com.google.common.base.Preconditions.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.types.Range;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -54,8 +54,8 @@ public class OperationAncillaries {
    * @param frame the execution context
    * @return the input data segment
    */
-  public static Range callDataSegment(final MessageFrame frame) {
-    switch (OpCode.of(frame.getCurrentOperation().getOpcode())) {
+  public static Range callDataSegment(final MessageFrame frame, OpCodeData opCode) {
+    switch (opCode.mnemonic()) {
       case CALL, CALLCODE -> {
         long offset = Words.clampedToLong(frame.getStackItem(3));
         long length = Words.clampedToLong(frame.getStackItem(4));
@@ -71,8 +71,8 @@ public class OperationAncillaries {
     }
   }
 
-  public static Range initCodeSegment(final MessageFrame frame) {
-    switch (OpCode.of(frame.getCurrentOperation().getOpcode())) {
+  public static Range initCodeSegment(final MessageFrame frame, OpCodeData opCode) {
+    switch (opCode.mnemonic()) {
       case CREATE, CREATE2 -> {
         long offset = Words.clampedToLong(frame.getStackItem(1));
         long length = Words.clampedToLong(frame.getStackItem(2));
@@ -90,11 +90,11 @@ public class OperationAncillaries {
    * @return the input data segment
    */
   public Range callDataSegment() {
-    return callDataSegment(hub.messageFrame());
+    return callDataSegment(hub.messageFrame(), hub.opCodeData());
   }
 
   public Range initCodeSegment() {
-    return initCodeSegment(hub.messageFrame());
+    return initCodeSegment(hub.messageFrame(), hub.opCodeData());
   }
 
   /**
@@ -113,13 +113,13 @@ public class OperationAncillaries {
    * @param frame the execution context
    * @return the calldata content
    */
-  public static Bytes callData(final MessageFrame frame) {
-    final Range callDataSegment = callDataSegment(frame);
+  public static Bytes callData(final MessageFrame frame, OpCodeData opCode) {
+    final Range callDataSegment = callDataSegment(frame, opCode);
     return maybeShadowReadMemory(callDataSegment, frame);
   }
 
-  public static Bytes initCode(final MessageFrame frame) {
-    final Range initCodeSegment = initCodeSegment(frame);
+  public static Bytes initCode(final MessageFrame frame, OpCodeData opCode) {
+    final Range initCodeSegment = initCodeSegment(frame, opCode);
     return maybeShadowReadMemory(initCodeSegment, frame);
   }
 
@@ -130,8 +130,8 @@ public class OperationAncillaries {
    * @param frame the execution context
    * @return the return data target
    */
-  public static Range returnDataRequestedSegment(final MessageFrame frame) {
-    switch (OpCode.of(frame.getCurrentOperation().getOpcode())) {
+  public static Range returnDataRequestedSegment(final MessageFrame frame, OpCodeData opCode) {
+    switch (opCode.mnemonic()) {
       case CALL, CALLCODE -> {
         long offset = Words.clampedToLong(frame.getStackItem(5));
         long length = Words.clampedToLong(frame.getStackItem(6));

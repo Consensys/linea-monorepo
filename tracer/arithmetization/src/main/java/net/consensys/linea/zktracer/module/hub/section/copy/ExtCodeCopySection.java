@@ -161,6 +161,6 @@ public class ExtCodeCopySection extends TraceSection implements PostRollbackDefe
   }
 
   private static short maxNumberOfRows(Hub hub) {
-    return (short) (hub.opCode().numberOfStackRows() + 3);
+    return (short) (hub.opCodeData().numberOfStackRows() + 3);
   }
 }

@@ -44,7 +44,6 @@ public class GasTests extends TracerTestBase {
       value = OpCode.class,
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
   void sha2ProvidedWithLittleToNoneGasTest(OpCode callOpCode) {
-
     BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     appendCall(program, callOpCode, 0, Address.SHA256, 1_000_000, 0, 32 * 10 + 1, 7, 32);
     program.op(RETURNDATASIZE); // should return 0
@@ -57,7 +56,6 @@ public class GasTests extends TracerTestBase {
       value = OpCode.class,
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
   void sha2ProvidedWithLittleToNoneGasWillRevertTest(OpCode callOpCode) {
-
     BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     appendCall(program, callOpCode, 0, Address.SHA256, 1_000_000, 0, 32 * 10, 7, 32);
     program.op(RETURNDATASIZE); // should return 0
@@ -71,7 +69,6 @@ public class GasTests extends TracerTestBase {
       value = OpCode.class,
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
   void sha2ProvidedWithPlentifulGasTest(OpCode callOpCode) {
-
     BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     appendCall(program, callOpCode, 1_000_000, Address.SHA256, 1_000_000, 0, 32 * 10, 7, 32);
     program.op(RETURNDATASIZE); // should return 32
@@ -83,7 +80,6 @@ public class GasTests extends TracerTestBase {
       value = OpCode.class,
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
   void sha2ProvidedWithPlentifulGasWillRevertTest(OpCode callOpCode) {
-
     BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     appendCall(program, callOpCode, 1_000_000, Address.SHA256, 1_000_000, 0, 32 * 10, 7, 32);
     program.op(RETURNDATASIZE); // should return 32
