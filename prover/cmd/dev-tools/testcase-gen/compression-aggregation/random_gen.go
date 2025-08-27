@@ -90,6 +90,7 @@ type InvalidityTxJSON struct {
 
 type InvaliditySpecFile struct {
 	InvalidityProofSpec interface{}      `json:"invalidityProofSpec"`
+	FromAddress         string           `json:"fromAddress"`
 	InvalidityTx        InvalidityTxJSON `json:"invalidityTx"`
 	InvalidityTxHash    string           `json:"invalidityTxHash"`
 }
@@ -248,7 +249,7 @@ func RandAggregation(rng *rand.Rand, spec AggregationSpec) *aggregation.Collecte
 }
 
 // RandonInvalidTransaction returns a random invalid transaction from a random
-// from address that
+// from address and writes fromAddress, tx and txHash to the spec file
 func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specFile string) *invalidity.Request {
 
 	signer := types.NewLondonSigner(spec.ChainID)
@@ -256,6 +257,20 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 	TEST_ADDRESS_A := common.HexToAddress("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
 	TEST_HASH_F := common.HexToHash("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 	TEST_HASH_A := common.HexToHash("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+
+	// Generate the private key
+	privKey, err := ecdsa.GenerateKey(secp256k1.S256(), rng)
+	if err != nil {
+		panic(err)
+	}
+
+	// Get the fromAddress from the private key
+	publicKey := privKey.Public()
+	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+	if !ok {
+		panic("error casting public key to ECDSA")
+	}
+	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
 
 	tx := types.NewTx(&types.DynamicFeeTx{
 		ChainID:   spec.ChainID,
@@ -273,10 +288,9 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 
 	txHash := signer.Hash(tx)
 
-	// Add tx and txHash to the invalidity spec file
-	updateInvaliditySpecFile(specFile, tx, txHash)
+	// Add tx, txHash, and fromAddress to the invalidity spec file
+	updateInvaliditySpecFile(specFile, tx, txHash, fromAddress)
 
-	privKey, err := ecdsa.GenerateKey(secp256k1.S256(), rng)
 	if err != nil {
 		panic(err)
 	}

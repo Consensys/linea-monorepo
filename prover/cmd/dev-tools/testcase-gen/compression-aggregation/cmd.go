@@ -285,8 +285,8 @@ func parseSpecFile(file string) RandGenSpec {
 	return spec
 }
 
-// Helper function to update the invalidity spec file with tx and tx hash
-func updateInvaliditySpecFile(specFile string, tx *types.Transaction, txHash common.Hash) {
+// Helper function to update the invalidity spec file with fromAddress, tx and txHash
+func updateInvaliditySpecFile(specFile string, tx *types.Transaction, txHash common.Hash, fromAddress common.Address) {
 	// Read the existing spec file
 	var specData InvaliditySpecFile
 	f, err := os.Open(specFile)
@@ -299,19 +299,21 @@ func updateInvaliditySpecFile(specFile string, tx *types.Transaction, txHash com
 		panic(fmt.Errorf("could not parse spec file %v: %w", specFile, err))
 	}
 
-	// Marshal the transaction to JSON and unmarshal to our struct
+	// Marshal the transaction to JSON
 	txJSON, err := tx.MarshalJSON()
 	if err != nil {
 		panic(fmt.Errorf("could not marshal transaction: %w", err))
 	}
 
+	// Parse the transaction JSON into InvalidityTxJSON struct
 	var txData InvalidityTxJSON
 	if err := json.Unmarshal(txJSON, &txData); err != nil {
 		panic(fmt.Errorf("could not unmarshal transaction JSON: %w", err))
 	}
 
 	// Update the spec data
-	specData.InvalidityTx = txData
+	specData.FromAddress = fromAddress.Hex()
+	specData.InvalidityTx = txData // Now this works
 	specData.InvalidityTxHash = txHash.Hex()
 
 	// Write back to file
