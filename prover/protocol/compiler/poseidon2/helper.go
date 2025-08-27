@@ -1,93 +1,107 @@
 package poseidon2
 
 import (
-	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-const blockSize = 8
+const (
+	width           = 16
+	blockSize       = 8
+	fullRounds      = 28
+	partialRounds   = 3
+	matMulM4TmpSize = 20
+	tSize           = 4
+)
 
 // poseidon2BlockCompression applies the Poseidon2 block compression function to a given block
 // over a given state. This what is run under the hood by the Poseidon2 hash function
-func poseidon2BlockCompression(oldState, block [blockSize]field.Element) (newState []field.Element) {
-	res := vortex.Hash{}
-	input := make([]field.Element, 16)
-	copy(input[:8], oldState[:])
-	copy(input[8:], block[:])
+func poseidon2BlockCompression(oldState, block [blockSize]field.Element) (newState [blockSize]field.Element) {
+
+	state := make([]field.Element, width)
+	copy(state[:8], oldState[:])
+	copy(state[8:], block[:])
 
 	// Create a buffer to hold the feed-forward input.
-	copy(res[:], input[8:])
+	copy(newState[:], state[8:])
+
+	// Poseidon2 compression
+	// The `vortex.CompressPoseidon2` function is the canonical reference.
+	// This function implements the Poseidon2 algorithm from scratch for
+	// verification and clarity.
 
 	var (
-		matMulM4Tmp = make([][]field.Element, 28) // [28][20]field.Element
-		matMulM4    = make([][]field.Element, 28) // [28][16]field.Element
-
-		t              = make([][]field.Element, 28) // [28][4]field.Element
-		matMulExternal = make([][]field.Element, 28) // [28][16]field.Element
-
-		addRoundKey = make([][]field.Element, 28) // [28][16]field.Element
-
-		sBox = make([][]field.Element, 28) // [28][16]field.Element
-
-		sBoxSum = make([]field.Element, 28)
-
-		matMulInternal = make([][]field.Element, 28) // [28][16]field.Element
+		matMulM4Tmp    = make([][]field.Element, fullRounds) // [fullRounds][matMulM4TmpWidth]field.Element
+		matMulM4       = make([][]field.Element, fullRounds) // [fullRounds][width]field.Element
+		t              = make([][]field.Element, fullRounds) // [fullRounds][tWidth]field.Element
+		matMulExternal = make([][]field.Element, fullRounds) // [fullRounds][width]field.Element
+		addRoundKey    = make([][]field.Element, fullRounds) // [fullRounds][width]field.Element
+		sBox           = make([][]field.Element, fullRounds) // [fullRounds][width]field.Element
+		sBoxSum        = make([]field.Element, fullRounds)
+		matMulInternal = make([][]field.Element, fullRounds) // [fullRounds][width]field.Element
 	)
-	matMulM4Tmp[0], matMulM4[0], t[0], matMulExternal[0] = matMulExternalInPlace(input)
-	input = matMulExternal[0]
+
+	// Initial round
+	matMulM4Tmp[0], matMulM4[0], t[0], matMulExternal[0] = matMulExternalInPlace(state)
+	state = matMulExternal[0]
 
 	// Rounds 1 - 3
-	for round := 1; round < 4; round++ {
-		addRoundKey[round] = addRoundKeyCompute(round-1, input)
-		sBox[round] = make([]field.Element, 16)
-		for col := 0; col < 16; col++ {
+	// External rounds
+	for round := 1; round < 1+partialRounds; round++ {
+		addRoundKey[round] = addRoundKeyCompute(round-1, state)
+		sBox[round] = make([]field.Element, width)
+		for col := 0; col < width; col++ {
 			sBox[round][col] = sBoxCompute(col, round, addRoundKey[round])
 		}
 		matMulM4Tmp[round], matMulM4[round], t[round], matMulExternal[round] = matMulExternalInPlace(sBox[round])
-		input = matMulExternal[round]
+		state = matMulExternal[round]
 	}
 
 	// Rounds 4 - 24
-	for round := 4; round < 25; round++ {
-		addRoundKey[round] = addRoundKeyCompute(round-1, input)
-		sBox[round] = make([]field.Element, 16)
-		for col := 0; col < 16; col++ {
+	// Internal rounds
+	for round := 1 + partialRounds; round < fullRounds-partialRounds; round++ {
+		addRoundKey[round] = addRoundKeyCompute(round-1, state)
+		sBox[round] = make([]field.Element, width)
+		for col := 0; col < width; col++ {
 			sBox[round][col] = sBoxCompute(col, round, addRoundKey[round])
 		}
 		sBoxSum[round], matMulInternal[round] = matMulInternalInPlace(sBox[round])
-		input = matMulInternal[round]
+		state = matMulInternal[round]
 	}
 
 	// Rounds 24 - 27
-	for round := 25; round < 28; round++ {
-		addRoundKey[round] = addRoundKeyCompute(round-1, input)
-		sBox[round] = make([]field.Element, 16)
+	// External rounds
+	for round := fullRounds - partialRounds; round < fullRounds; round++ {
+		addRoundKey[round] = addRoundKeyCompute(round-1, state)
+		sBox[round] = make([]field.Element, width)
 
-		for col := 0; col < 16; col++ {
+		for col := 0; col < width; col++ {
 			sBox[round][col] = sBoxCompute(col, round, addRoundKey[round])
 		}
 		matMulM4Tmp[round], matMulM4[round], t[round], matMulExternal[round] = matMulExternalInPlace(sBox[round])
-		input = matMulExternal[round]
+		state = matMulExternal[round]
 	}
 
-	for i := range res {
-		res[i].Add(&res[i], &input[8+i])
+	// Final round
+	// Feed forward
+	for i := range newState {
+		newState[i].Add(&newState[i], &state[8+i])
 	}
-	return res[:]
+	return newState
 }
 
-// when Width = 0 mod 4, the buffer is multiplied by circ(2M4,M4,..,M4)
+// matMulExternalInPlace applies the external matrix multiplication.
 // see https://eprint.iacr.org/2023/323.pdf
 func matMulExternalInPlace(input []field.Element) (matMulM4Tmp []field.Element, matMulM4 []field.Element, t []field.Element, matMulExternal []field.Element) {
 
-	if len(input) != 16 {
-		panic("Input slice length must be 16")
+	if len(input) != width {
+		utils.Panic("Input slice length must be %v", width)
 	}
-	matMulM4Tmp = make([]field.Element, 20)
-	matMulM4 = make([]field.Element, 16)
-	t = make([]field.Element, 4)
-	matMulExternal = make([]field.Element, 16)
+	matMulM4Tmp = make([]field.Element, matMulM4TmpSize)
+	matMulM4 = make([]field.Element, width)
+	t = make([]field.Element, tSize)
+	matMulExternal = make([]field.Element, width)
 
 	for i := 0; i < 4; i++ {
 		matMulM4Tmp[5*i].Add(&input[4*i], &input[4*i+1])
@@ -117,15 +131,15 @@ func matMulExternalInPlace(input []field.Element) (matMulM4Tmp []field.Element, 
 	return matMulM4Tmp, matMulM4, t, matMulExternal
 }
 
-// when Width = 0 mod 4 the matrix is filled with ones except on the diagonal
+// matMulInternal applies the internal matrix multiplication.
 func matMulInternalInPlace(input []field.Element) (sBoxSum field.Element, matMulInternal []field.Element) {
-	if len(input) != 16 {
-		panic("Input slice length must be 16")
+	if len(input) != width {
+		utils.Panic("Input slice length must be %v", width)
 	}
 	matMulInternal = make([]field.Element, 16)
 
 	sBoxSum.Set(&input[0])
-	for i := 1; i < 16; i++ {
+	for i := 1; i < width; i++ {
 		sBoxSum.Add(&sBoxSum, &input[i])
 	}
 	// mul by diag16:
@@ -158,63 +172,34 @@ func matMulInternalInPlace(input []field.Element) (sBoxSum field.Element, matMul
 	return sBoxSum, matMulInternal
 }
 
-// addRoundKey adds the round-th key to the buffer
+// addRoundKey adds the round-th key to the input
 func addRoundKeyCompute(round int, input []field.Element) (addRoundKey []field.Element) {
-	if len(input) != 16 {
-		panic("Input slice length must be 16")
+	if len(input) != width {
+		utils.Panic("Input slice length must be %v", width)
 	}
-	addRoundKey = make([]field.Element, 16)
+	addRoundKey = make([]field.Element, width)
 	for i := 0; i < len(poseidon2.RoundKeys[round]); i++ {
 		addRoundKey[i].Add(&input[i], &poseidon2.RoundKeys[round][i])
 	}
-	for i := len(poseidon2.RoundKeys[round]); i < 16; i++ {
+	for i := len(poseidon2.RoundKeys[round]); i < width; i++ {
 		addRoundKey[i] = input[i]
 	}
 	return addRoundKey
 }
 
-// SBoxCompute applies the SBoxCompute on buffer[index]
+// SBoxCompute applies the  s-box on input[index]
 func sBoxCompute(index, poseidon2Round int, input []field.Element) (sBox field.Element) {
-	if len(input) != 16 {
-		panic("Input slice length must be 16")
+	if len(input) != width {
+		utils.Panic("Input slice length must be %v", width)
 	}
-	// sbox degree is 3
-	if poseidon2Round < 25 && poseidon2Round > 3 && index != 0 {
+
+	if poseidon2Round < fullRounds-partialRounds && poseidon2Round > partialRounds && index != 0 {
 		sBox = input[index]
 	} else {
+		// sbox degree is 3
 		sBox.Square(&input[index]).
 			Mul(&sBox, &input[index])
 	}
 
 	return sBox
-}
-
-// transpose takes a 2D slice (matrix) of integers and returns its transpose.
-// It assumes the input matrix is rectangular (all rows have the same number of columns).
-func transpose(matrix [][]field.Element) [][]field.Element {
-	// Handle edge cases for an empty or non-rectangular matrix.
-	if len(matrix) == 0 || len(matrix[0]) == 0 {
-		return [][]field.Element{}
-	}
-
-	// Get the dimensions of the original matrix.
-	rows := len(matrix)
-	cols := len(matrix[0])
-
-	// Create a new matrix for the transposed result.
-	// The dimensions are swapped: rows become columns, and columns become rows.
-	transposed := make([][]field.Element, cols)
-	for i := range transposed {
-		transposed[i] = make([]field.Element, rows)
-	}
-
-	// Iterate over the original matrix and fill the transposed matrix.
-	// The element at `matrix[i][j]` goes to `transposed[j][i]`.
-	for i := 0; i < rows; i++ {
-		for j := 0; j < cols; j++ {
-			transposed[j][i] = matrix[i][j]
-		}
-	}
-
-	return transposed
 }
