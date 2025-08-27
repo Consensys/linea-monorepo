@@ -46,7 +46,6 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.processing.TransactionProcessingResult;
 import org.hyperledger.besu.evm.log.Log;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.web3j.abi.EventEncoder;
@@ -58,9 +57,6 @@ import org.web3j.abi.datatypes.generated.Uint256;
 @ExtendWith(UnitTestWatcher.class)
 class ExampleMultiBlockTest extends TracerTestBase {
 
-  // TODO: enable back when this issue is fixed
-  // https://github.com/Consensys/linea-tracer/issues/2193
-  @Tag("disabled-for-cancun-temporarily")
   @Test
   void test() {
     final ToyAccount receiverAccount =

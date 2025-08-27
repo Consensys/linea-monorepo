@@ -50,6 +50,8 @@ public class ToPhaseSection extends PhaseSection {
       tracePostValues(trace, tracedValues);
     } else {
       final Address to = tx.getBesuTransaction().getTo().get();
+      // Note: no need to call TRM module. The HUB will already trace the "To" account fragment and
+      // call TRM. Calling it here would be a duplicate.
 
       // first row for deployment : rlp prefix
       traceTransactionConstantValues(trace, tracedValues);

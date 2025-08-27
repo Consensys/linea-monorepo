@@ -32,6 +32,7 @@ import net.consensys.linea.zktracer.module.rlpUtils.InstructionBytes32;
 import net.consensys.linea.zktracer.module.rlpUtils.RlpUtils;
 import net.consensys.linea.zktracer.module.rlptxn.cancun.GenericTracedValue;
 import net.consensys.linea.zktracer.module.rlputilsOld.Pattern;
+import net.consensys.linea.zktracer.module.trm.Trm;
 import net.consensys.linea.zktracer.types.Bytes16;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes32;
@@ -47,7 +48,7 @@ public class AccessListPhaseSection extends PhaseSection {
 
   private static final short RLP_ADDRESS_BYTE_SIZE = 1 + Address.SIZE;
 
-  public AccessListPhaseSection(RlpUtils rlpUtils, TransactionProcessingMetadata tx) {
+  public AccessListPhaseSection(RlpUtils rlpUtils, Trm trm, TransactionProcessingMetadata tx) {
     final List<AccessListEntry> accessList = tx.getBesuTransaction().getAccessList().get();
 
     final List<Short> accessListTupleSizes = new ArrayList<>(accessList.size());
@@ -63,7 +64,8 @@ public class AccessListPhaseSection extends PhaseSection {
 
     entries = new ArrayList<>(accessList.size());
     for (int i = 0; i < accessList.size(); i++) {
-      entries.add(new EntrySubSection(rlpUtils, accessList.get(i), accessListTupleSizes.get(i)));
+      entries.add(
+          new EntrySubSection(rlpUtils, trm, accessList.get(i), accessListTupleSizes.get(i)));
     }
   }
 
@@ -103,12 +105,16 @@ public class AccessListPhaseSection extends PhaseSection {
     private final InstructionByteStringPrefix keysRlpPrefix;
     private final List<InstructionBytes32> keys;
 
-    private EntrySubSection(RlpUtils rlpUtils, AccessListEntry entry, short tupleByteSize) {
+    private EntrySubSection(
+        RlpUtils rlpUtils, Trm trm, AccessListEntry entry, short tupleByteSize) {
       final InstructionByteStringPrefix entryRlpPrefixCall =
           new InstructionByteStringPrefix(tupleByteSize, (byte) 0x00, true);
       entryRlpPrefix = (InstructionByteStringPrefix) rlpUtils.call(entryRlpPrefixCall);
 
       address = entry.address();
+      // Note: add the address to the set of address to trim, only useful for SKIP transactions with
+      // access list (no warming section in the HUB)
+      trm.callTrimming(address);
 
       final InstructionByteStringPrefix keysRlpPrefixCall =
           new InstructionByteStringPrefix(33 * entry.storageKeys().size(), (byte) 0x00, true);

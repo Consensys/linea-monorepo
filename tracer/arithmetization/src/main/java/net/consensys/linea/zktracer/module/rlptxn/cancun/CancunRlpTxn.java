@@ -20,15 +20,17 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.rlpUtils.RlpUtils;
 import net.consensys.linea.zktracer.module.rlptxn.RlpTxn;
 import net.consensys.linea.zktracer.module.rlptxn.RlpTxnOperation;
+import net.consensys.linea.zktracer.module.trm.Trm;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 
 @RequiredArgsConstructor
 public class CancunRlpTxn extends RlpTxn {
   private final RlpUtils rlpUtils;
+  private final Trm trm;
 
   @Override
   public void traceEndTx(TransactionProcessingMetadata tx) {
-    operations.add(new CancunRlpTxnOperation(rlpUtils, tx));
+    operations.add(new CancunRlpTxnOperation(rlpUtils, trm, tx));
   }
 
   @Override
