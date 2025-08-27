@@ -16,7 +16,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
 
 // RandDataGen generates random data for the smart-contract
@@ -258,8 +257,10 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 	TEST_HASH_F := common.HexToHash("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 	TEST_HASH_A := common.HexToHash("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
 
-	// Generate the private key
-	privKey, err := ecdsa.GenerateKey(secp256k1.S256(), rng)
+	// Generate a FIXED/deterministic private key for consistent testing
+	deterministicSeed := "fixed_test_seed_for_invalidity_proof_123456"
+	hash := crypto.Keccak256([]byte(deterministicSeed))
+	privKey, err := crypto.ToECDSA(hash)
 	if err != nil {
 		panic(err)
 	}
