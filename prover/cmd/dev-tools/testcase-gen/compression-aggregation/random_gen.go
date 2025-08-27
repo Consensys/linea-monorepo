@@ -69,6 +69,31 @@ type InvalidityProofSpec struct {
 	ExpectedBlockHeight int      `json:"expectedBlockHeight"`
 }
 
+type InvalidityTxJSON struct {
+	Type                 string      `json:"type"`
+	ChainID              string      `json:"chainId"`
+	Nonce                string      `json:"nonce"`
+	To                   string      `json:"to"`
+	Gas                  string      `json:"gas"`
+	GasPrice             interface{} `json:"gasPrice"`
+	MaxPriorityFeePerGas string      `json:"maxPriorityFeePerGas"`
+	MaxFeePerGas         string      `json:"maxFeePerGas"`
+	Value                string      `json:"value"`
+	Input                string      `json:"input"`
+	AccessList           interface{} `json:"accessList"`
+	V                    string      `json:"v"`
+	R                    string      `json:"r"`
+	S                    string      `json:"s"`
+	YParity              string      `json:"yParity"`
+	Hash                 string      `json:"hash"`
+}
+
+type InvaliditySpecFile struct {
+	InvalidityProofSpec interface{}      `json:"invalidityProofSpec"`
+	InvalidityTx        InvalidityTxJSON `json:"invalidityTx"`
+	InvalidityTxHash    string           `json:"invalidityTxHash"`
+}
+
 // Aggregation spec
 type AggregationSpec struct {
 
@@ -224,7 +249,7 @@ func RandAggregation(rng *rand.Rand, spec AggregationSpec) *aggregation.Collecte
 
 // RandonInvalidTransaction returns a random invalid transaction from a random
 // from address that
-func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec) *invalidity.Request {
+func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specFile string) *invalidity.Request {
 
 	signer := types.NewLondonSigner(spec.ChainID)
 	address := common.HexToAddress("0xfeeddeadbeeffeeddeadbeeffeeddead01245678")
@@ -247,6 +272,9 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec) *inva
 	})
 
 	txHash := signer.Hash(tx)
+
+	// Add tx and txHash to the invalidity spec file
+	updateInvaliditySpecFile(specFile, tx, txHash)
 
 	privKey, err := ecdsa.GenerateKey(secp256k1.S256(), rng)
 	if err != nil {

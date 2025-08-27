@@ -22,6 +22,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/config"
 	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/spf13/cobra"
 )
 
@@ -172,6 +173,7 @@ func genFiles(cmd *cobra.Command, args []string) {
 				rng,
 				&spec.InvalidityProofSpec,
 				prevInvalidityProofResp,
+				specFile,
 			)
 			prevInvalidityProofResp = resp
 			runningSpec.InvalidityProofs = append(runningSpec.InvalidityProofs, *resp)
@@ -281,6 +283,49 @@ func parseSpecFile(file string) RandGenSpec {
 	}
 
 	return spec
+}
+
+// Helper function to update the invalidity spec file with tx and tx hash
+func updateInvaliditySpecFile(specFile string, tx *types.Transaction, txHash common.Hash) {
+	// Read the existing spec file
+	var specData InvaliditySpecFile
+	f, err := os.Open(specFile)
+	if err != nil {
+		panic(fmt.Errorf("could not open spec file %v: %w", specFile, err))
+	}
+	defer f.Close()
+
+	if err := json.NewDecoder(f).Decode(&specData); err != nil {
+		panic(fmt.Errorf("could not parse spec file %v: %w", specFile, err))
+	}
+
+	// Marshal the transaction to JSON and unmarshal to our struct
+	txJSON, err := tx.MarshalJSON()
+	if err != nil {
+		panic(fmt.Errorf("could not marshal transaction: %w", err))
+	}
+
+	var txData InvalidityTxJSON
+	if err := json.Unmarshal(txJSON, &txData); err != nil {
+		panic(fmt.Errorf("could not unmarshal transaction JSON: %w", err))
+	}
+
+	// Update the spec data
+	specData.InvalidityTx = txData
+	specData.InvalidityTxHash = txHash.Hex()
+
+	// Write back to file
+	outFile, err := os.Create(specFile)
+	if err != nil {
+		panic(fmt.Errorf("could not create spec file %v: %w", specFile, err))
+	}
+	defer outFile.Close()
+
+	encoder := json.NewEncoder(outFile)
+	encoder.SetIndent("", "    ")
+	if err := encoder.Encode(specData); err != nil {
+		panic(fmt.Errorf("could not write spec file %v: %w", specFile, err))
+	}
 }
 
 // Process a blob submission spec file
@@ -416,9 +461,9 @@ func dumpVerifierContract(odir string, circID circuits.MockCircuitID) {
 
 // ProcessInvaliditySpec processes an invalidity spec file. PrevNumber is the
 // previous ftx number generated (for consistency).
-func ProcessInvaliditySpec(rng *rand.Rand, spec *InvalidityProofSpec, prevResp *invalidity.Response) *invalidity.Response {
+func ProcessInvaliditySpec(rng *rand.Rand, spec *InvalidityProofSpec, prevResp *invalidity.Response, specFile string) *invalidity.Response {
 
-	invalidityReq := RandInvalidityProofRequest(rng, spec)
+	invalidityReq := RandInvalidityProofRequest(rng, spec, specFile)
 
 	if prevResp != nil {
 		invalidityReq.ForcedTransactionNumber = uint64(prevResp.ForcedTransactionNumber + 1)

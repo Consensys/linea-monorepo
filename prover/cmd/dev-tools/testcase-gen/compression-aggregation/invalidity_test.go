@@ -19,6 +19,6 @@ func TestInvalidity(t *testing.T) {
 		FtxNumber:           1678,
 	}
 
-	ProcessInvaliditySpec(rng, spec, nil)
+	ProcessInvaliditySpec(rng, spec, nil, "spec-invalidity.json")
 
 }
