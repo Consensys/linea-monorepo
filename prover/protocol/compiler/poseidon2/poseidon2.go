@@ -212,8 +212,14 @@ func defineSBox(comp *wizard.CompiledIOP, ctx *Poseidon2Context, protocolRoundID
 	// S-Box
 	sBox := comp.InsertCommit(protocolRoundID, ifaces.ColIDf("Poseidon2_ROUND_%v_SBox_SelfRecursionCount_%v_ID_%v_COL_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), index), totalSize)
 	ctx.SBox[index] = append(ctx.SBox[index], sBox)
-	comp.InsertGlobal(protocolRoundID, ifaces.QueryIDf("Poseidon2_ROUND_%v_SBox_COMPUTATION_SelfRecursionCount_%v_ID_%v_COL_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), index),
-		sym.Sub(sBox, sym.Mul(sym.Square(input[index]), input[index])))
+
+	if poseidon2Round < 25 && poseidon2Round > 3 && index != 0 {
+		comp.InsertGlobal(protocolRoundID, ifaces.QueryIDf("Poseidon2_ROUND_%v_SBox_COMPUTATION_SelfRecursionCount_%v_ID_%v_COL_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), index),
+			sym.Sub(sBox, input[index]))
+	} else {
+		comp.InsertGlobal(protocolRoundID, ifaces.QueryIDf("Poseidon2_ROUND_%v_SBox_COMPUTATION_SelfRecursionCount_%v_ID_%v_COL_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), index),
+			sym.Sub(sBox, sym.Mul(sym.Square(input[index]), input[index])))
+	}
 
 	return sBox // The output of this round becomes the input for the next one.
 }
@@ -318,7 +324,9 @@ func defineContext(comp *wizard.CompiledIOP) *Poseidon2Context {
 		// for col := 0; col < 16; col++ {
 		// 	input[col] = defineSBox(comp, ctx, round, totalSize, col, input, i)
 		// }
-		input = defineSBoxZero(comp, ctx, protocolRoundID, totalSize, input, poseidon2Round)
+		for col := 0; col < 16; col++ {
+			input[col] = defineSBox(comp, ctx, protocolRoundID, totalSize, col, input, poseidon2Round)
+		}
 		input = defineMatMulInternal(comp, ctx, protocolRoundID, totalSize, input, poseidon2Round)
 	}
 
@@ -567,7 +575,7 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 			for poseidon2Round := 1; poseidon2Round < 4; poseidon2Round++ {
 				tAddRoundKey[poseidon2Round][query] = addRoundKeyCompute(poseidon2Round-1, input)
 				for col := 0; col < 16; col++ {
-					tSBox[poseidon2Round][query][col] = sBoxCompute(col, tAddRoundKey[poseidon2Round][query])
+					tSBox[poseidon2Round][query][col] = sBoxCompute(col, poseidon2Round, tAddRoundKey[poseidon2Round][query])
 				}
 				tMatMulM4Tmp[poseidon2Round][query], tMatMulM4[poseidon2Round][query], tT[poseidon2Round][query], tMatMulExternal[poseidon2Round][query] = matMulExternalInPlace(tSBox[poseidon2Round][query])
 				input = tMatMulExternal[poseidon2Round][query]
@@ -576,8 +584,9 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 			// poseidon2Round 4 - 24
 			for poseidon2Round := 4; poseidon2Round < 25; poseidon2Round++ {
 				tAddRoundKey[poseidon2Round][query] = addRoundKeyCompute(poseidon2Round-1, input)
-				tSBox[poseidon2Round][query] = tAddRoundKey[poseidon2Round][query]
-				tSBox[poseidon2Round][query][0] = sBoxCompute(0, tAddRoundKey[poseidon2Round][query])
+				for col := 0; col < 16; col++ {
+					tSBox[poseidon2Round][query][col] = sBoxCompute(col, poseidon2Round, tAddRoundKey[poseidon2Round][query])
+				}
 				sBoxSum[poseidon2Round][query], tMatMulInternal[poseidon2Round][query] = matMulInternalInPlace(tSBox[poseidon2Round][query])
 				input = tMatMulInternal[poseidon2Round][query]
 			}
@@ -586,7 +595,7 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 			for poseidon2Round := 25; poseidon2Round < 28; poseidon2Round++ {
 				tAddRoundKey[poseidon2Round][query] = addRoundKeyCompute(poseidon2Round-1, input)
 				for col := 0; col < 16; col++ {
-					tSBox[poseidon2Round][query][col] = sBoxCompute(col, tAddRoundKey[poseidon2Round][query])
+					tSBox[poseidon2Round][query][col] = sBoxCompute(col, poseidon2Round, tAddRoundKey[poseidon2Round][query])
 				}
 				tMatMulM4Tmp[poseidon2Round][query], tMatMulM4[poseidon2Round][query], tT[poseidon2Round][query], tMatMulExternal[poseidon2Round][query] = matMulExternalInPlace(tSBox[poseidon2Round][query])
 				input = tMatMulExternal[poseidon2Round][query]

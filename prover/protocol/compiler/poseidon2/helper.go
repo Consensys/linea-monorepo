@@ -42,7 +42,7 @@ func poseidon2BlockCompression(oldState, block [blockSize]field.Element) (newSta
 		addRoundKey[round] = addRoundKeyCompute(round-1, input)
 		sBox[round] = make([]field.Element, 16)
 		for col := 0; col < 16; col++ {
-			sBox[round][col] = sBoxCompute(col, addRoundKey[round])
+			sBox[round][col] = sBoxCompute(col, round, addRoundKey[round])
 		}
 		matMulM4Tmp[round], matMulM4[round], t[round], matMulExternal[round] = matMulExternalInPlace(sBox[round])
 		input = matMulExternal[round]
@@ -51,8 +51,10 @@ func poseidon2BlockCompression(oldState, block [blockSize]field.Element) (newSta
 	// Rounds 4 - 24
 	for round := 4; round < 25; round++ {
 		addRoundKey[round] = addRoundKeyCompute(round-1, input)
-		sBox[round] = addRoundKey[round]
-		sBox[round][0] = sBoxCompute(0, addRoundKey[round])
+		sBox[round] = make([]field.Element, 16)
+		for col := 0; col < 16; col++ {
+			sBox[round][col] = sBoxCompute(col, round, addRoundKey[round])
+		}
 		sBoxSum[round], matMulInternal[round] = matMulInternalInPlace(sBox[round])
 		input = matMulInternal[round]
 	}
@@ -63,7 +65,7 @@ func poseidon2BlockCompression(oldState, block [blockSize]field.Element) (newSta
 		sBox[round] = make([]field.Element, 16)
 
 		for col := 0; col < 16; col++ {
-			sBox[round][col] = sBoxCompute(col, addRoundKey[round])
+			sBox[round][col] = sBoxCompute(col, round, addRoundKey[round])
 		}
 		matMulM4Tmp[round], matMulM4[round], t[round], matMulExternal[round] = matMulExternalInPlace(sBox[round])
 		input = matMulExternal[round]
@@ -172,13 +174,18 @@ func addRoundKeyCompute(round int, input []field.Element) (addRoundKey []field.E
 }
 
 // SBoxCompute applies the SBoxCompute on buffer[index]
-func sBoxCompute(index int, input []field.Element) (sBox field.Element) {
+func sBoxCompute(index, poseidon2Round int, input []field.Element) (sBox field.Element) {
 	if len(input) != 16 {
 		panic("Input slice length must be 16")
 	}
 	// sbox degree is 3
-	sBox.Square(&input[index]).
-		Mul(&sBox, &input[index])
+	if poseidon2Round < 25 && poseidon2Round > 3 && index != 0 {
+		sBox = input[index]
+	} else {
+		sBox.Square(&input[index]).
+			Mul(&sBox, &input[index])
+	}
+
 	return sBox
 }
 
