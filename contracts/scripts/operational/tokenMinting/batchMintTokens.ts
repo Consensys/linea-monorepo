@@ -17,7 +17,6 @@ const DEFAULT_GAS_PRICE_CAP = ethers.parseUnits("5", "gwei").toString();
 type Config = {
   inputFile: string;
   destinationAddress: string;
-  zodiacRolesModifierAddress: string;
   providerUrl: string;
   signerPrivateKey: string;
   waitTimeInSeconds: number;
@@ -27,7 +26,7 @@ type Config = {
 type Batch = {
   id: number;
   recipients: string[];
-  amount: number;
+  amounts: number[];
 };
 
 enum BatchStatuses {
@@ -38,10 +37,16 @@ enum BatchStatuses {
 
 type TrackingData = {
   recipients: string[];
-  tokenAmount: number;
+  tokenAmounts: number[];
   status: BatchStatuses;
-  transactionHash?: string;
+  transactionHash?: string | undefined;
   error?: unknown;
+};
+
+type LineaEstimateGasResponse = {
+  baseFeePerGas: string;
+  priorityFeePerGas: string;
+  gasLimit: string;
 };
 
 function isValidUrl(urlString: string): boolean {
@@ -63,17 +68,12 @@ function requireEnv(name: string): string {
 function getConfig(): Config {
   const inputFile = requireEnv("INPUT_FILE");
   const destinationAddress = requireEnv("DESTINATION_ADDRESS");
-  const zodiacRolesModifierAddress = requireEnv("ZODIAC_ROLES_MODIFIER_ADDRESS");
   const providerUrl = requireEnv("PROVIDER_URL");
   const signerPrivateKey = requireEnv("SIGNER_PRIVATE_KEY");
   const waitTimeInSeconds = requireEnv("WAIT_TIME_IN_SECONDS");
 
   if (!ethers.isAddress(destinationAddress)) {
     throw new Error(`Destination address is not a valid Ethereum address.`);
-  }
-
-  if (!ethers.isAddress(zodiacRolesModifierAddress)) {
-    throw new Error(`Zodiac roles modifier address is not a valid Ethereum address.`);
   }
 
   if (!isValidUrl(providerUrl)) {
@@ -99,7 +99,6 @@ function getConfig(): Config {
   return {
     inputFile,
     destinationAddress,
-    zodiacRolesModifierAddress,
     providerUrl,
     signerPrivateKey,
     waitTimeInSeconds: parseInt(waitTimeInSeconds),
@@ -112,14 +111,6 @@ function getConfig(): Config {
 // *********************************************************************************
 
 export const wait = (timeout: number) => new Promise((resolve) => setTimeout(resolve, timeout));
-
-async function estimateTransactionGas(signer: ethers.Wallet, transaction: ethers.TransactionRequest): Promise<bigint> {
-  try {
-    return signer.estimateGas(transaction);
-  } catch (error: unknown) {
-    throw new Error(`GasEstimationError: ${JSON.stringify(error)}`);
-  }
-}
 
 async function executeTransaction(
   signer: ethers.Wallet,
@@ -164,16 +155,16 @@ async function processPendingBatches(
 
   const remainingPendingBatches: (Batch & { transactionHash?: string })[] = [];
 
-  for (const { transactionHash, id, recipients, amount } of pendingBatches) {
+  for (const { transactionHash, id, recipients, amounts } of pendingBatches) {
     if (!transactionHash) {
-      remainingPendingBatches.push({ id, recipients, amount });
+      remainingPendingBatches.push({ id, recipients, amounts });
       continue;
     }
 
     const receipt = await provider.getTransactionReceipt(transactionHash);
 
     if (!receipt) {
-      remainingPendingBatches.push({ id, recipients, amount, transactionHash });
+      remainingPendingBatches.push({ id, recipients, amounts, transactionHash });
       continue;
     }
 
@@ -181,7 +172,7 @@ async function processPendingBatches(
       // track failing batches
       trackingData.set(id, {
         recipients,
-        tokenAmount: amount,
+        tokenAmounts: amounts,
         status: BatchStatuses.Failed,
         transactionHash,
       });
@@ -195,7 +186,7 @@ async function processPendingBatches(
     // track succeded batches
     trackingData.set(id, {
       recipients,
-      tokenAmount: amount,
+      tokenAmounts: amounts,
       status: BatchStatuses.Success,
       transactionHash: transactionHash,
     });
@@ -212,15 +203,7 @@ async function processPendingBatches(
 // *********************************************************************************
 
 async function main() {
-  const {
-    inputFile,
-    destinationAddress,
-    zodiacRolesModifierAddress,
-    providerUrl,
-    signerPrivateKey,
-    waitTimeInSeconds,
-    gasPriceCap,
-  } = getConfig();
+  const { inputFile, destinationAddress, providerUrl, signerPrivateKey, waitTimeInSeconds, gasPriceCap } = getConfig();
 
   const provider = new ethers.JsonRpcProvider(providerUrl);
   const { chainId } = await provider.getNetwork();
@@ -250,21 +233,13 @@ async function main() {
   console.log(`Total number of batches to process: ${filteredBatches.length}.`);
 
   for (const batch of filteredBatches) {
+    console.log(
+      `Processing batch with ID=${batch.id} recipients=${batch.recipients.length} amounts=${batch.amounts.length}`,
+    );
     try {
-      const encodedBatchMintCall = ethers.concat([
-        "0x83b74baa",
-        ethers.AbiCoder.defaultAbiCoder().encode(
-          ["address[]", "uint256"],
-          [batch.recipients, ethers.parseUnits(batch.amount.toString())],
-        ),
-      ]);
-
-      const encodedExecuteTransactionWithRole = ethers.concat([
-        "0x6928e74b",
-        ethers.AbiCoder.defaultAbiCoder().encode(
-          ["address", "uint256", "bytes", "uint8", "uint16", "bool"],
-          [destinationAddress, 0, encodedBatchMintCall, 0, 1, true],
-        ),
+      const encodedBatchMintMultipleCall = ethers.concat([
+        "0x4d05b4b9",
+        ethers.AbiCoder.defaultAbiCoder().encode(["address[]", "uint256[]"], [batch.recipients, batch.amounts]),
       ]);
 
       let fees = await get1559Fees(provider);
@@ -281,22 +256,32 @@ async function main() {
         fees = await get1559Fees(provider);
       }
 
-      const transactionRequest: ethers.TransactionRequest = {
-        to: zodiacRolesModifierAddress,
-        value: 0,
-        type: 2,
-        data: encodedExecuteTransactionWithRole,
-        chainId,
-        maxFeePerGas: fees.maxFeePerGas,
-        maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
-        nonce,
+      const params = {
+        from: signer.address,
+        to: destinationAddress,
+        value: "0x0",
+        data: encodedBatchMintMultipleCall,
       };
 
-      const transactionGasLimit = await estimateTransactionGas(signer, transactionRequest);
+      const { baseFeePerGas, priorityFeePerGas, gasLimit }: LineaEstimateGasResponse = await provider.send(
+        "linea_estimateGas",
+        [params],
+      );
+
+      console.log(
+        `Batch ID=${batch.id} estimated gas: ${gasLimit}, baseFeePerGas: ${baseFeePerGas}, priorityFeePerGas: ${priorityFeePerGas}`,
+      );
 
       const transaction: ethers.TransactionRequest = {
-        ...transactionRequest,
-        gasLimit: transactionGasLimit,
+        to: destinationAddress,
+        value: 0,
+        type: 2,
+        data: encodedBatchMintMultipleCall,
+        chainId,
+        nonce,
+        gasLimit,
+        maxPriorityFeePerGas: BigInt(priorityFeePerGas),
+        maxFeePerGas: BigInt(baseFeePerGas) + BigInt(priorityFeePerGas),
       };
 
       const transactionInfo = await executeTransaction(signer, transaction, batch);
@@ -304,7 +289,7 @@ async function main() {
 
       trackingData.set(batch.id, {
         recipients: batch.recipients,
-        tokenAmount: batch.amount,
+        tokenAmounts: batch.amounts,
         status: BatchStatuses.Pending,
         transactionHash: transactionInfo.transactionResponse.hash,
       });
@@ -318,9 +303,9 @@ async function main() {
     } catch (error) {
       trackingData.set(batch.id, {
         recipients: batch.recipients,
-        tokenAmount: batch.amount,
+        tokenAmounts: batch.amounts,
         status: BatchStatuses.Failed,
-        error,
+        error: error instanceof Error ? error.message : JSON.stringify(error),
       });
       updateTrackingFile(trackingData);
       console.error(`Batch with ID=${batch.id} failed.\n Stopping script execution.`);
@@ -348,7 +333,7 @@ async function main() {
     if (transactionReceipt && transactionReceipt.status == 0) {
       trackingData.set(batch.id, {
         recipients: batch.recipients,
-        tokenAmount: batch.amount,
+        tokenAmounts: batch.amounts,
         status: BatchStatuses.Failed,
         transactionHash: transactionReceipt.hash,
       });
@@ -360,7 +345,7 @@ async function main() {
 
     trackingData.set(batch.id, {
       recipients: batch.recipients,
-      tokenAmount: batch.amount,
+      tokenAmounts: batch.amounts,
       status: BatchStatuses.Success,
       transactionHash: transactionReceipt?.hash,
     });

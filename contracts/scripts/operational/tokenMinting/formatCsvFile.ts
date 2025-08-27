@@ -46,22 +46,42 @@ const argv = yargs(hideBin(process.argv))
       return arg;
     },
   })
+  .option("mode", {
+    alias: "m",
+    describe: "Batching mode",
+    choices: ["batch-mint", "batch-mint-multiple"],
+    type: "string",
+    default: "batch-mint",
+    demandOption: true,
+  })
+  .option("batch-size", {
+    alias: "bs",
+    describe: "Batch size for processing",
+    type: "number",
+    default: 700,
+  })
   .parseSync();
-
-const BATCH_SIZE = 700;
 
 type Element = {
   batches: string[][];
   numberOfBatches: number;
 };
 
-type Batch = {
+type BatchMint = {
   id: number;
   recipients: string[];
   amount: number;
 };
 
-function isValidAmount(amount: number, currentCsvAmount: number): boolean {
+type BatchMintMultiple = {
+  id: number;
+  recipients: string[];
+  amounts: number[];
+};
+
+type Batch = BatchMint | BatchMintMultiple;
+
+function isValidAmount(amount: number): boolean {
   const intAmount = Number(amount);
 
   if (!Number.isInteger(intAmount)) {
@@ -69,10 +89,6 @@ function isValidAmount(amount: number, currentCsvAmount: number): boolean {
   }
 
   if (intAmount == 0) {
-    return false;
-  }
-
-  if (intAmount < currentCsvAmount) {
     return false;
   }
 
@@ -90,7 +106,7 @@ function checkIfDuplicateExists(recipientArrayValidation: string[]) {
   return new Set(recipientArrayValidation).size !== recipientArrayValidation.length;
 }
 
-function checkIfValidAddresses(recipient: string): boolean {
+function isValidAddress(recipient: string): boolean {
   return ethers.isAddress(recipient) && recipient !== ethers.ZeroAddress;
 }
 
@@ -105,9 +121,14 @@ function arraysContainSameValues(array1: string[], array2: string[]): boolean {
   return sortedArray1.every((value, index) => value === sortedArray2[index]);
 }
 
-async function readAndFormatCSVFile(filePath: string): Promise<{ data: Batch[]; recipientAddressesInCsv: string[] }> {
-  const results: { [key: number]: Element } = {};
-  let currentCsvTokenAmount = 0;
+async function readAndFormatCSVFile(
+  filePath: string,
+  opts: { batchSize: number; mode: string },
+): Promise<{ data: Batch[]; recipientAddressesInCsv: string[] }> {
+  const batchMintResults: { [key: number]: Element } = {};
+  let batchMintMultipleAddress: string[] = [];
+  let batchMintMultipleAmounts: number[] = [];
+  const batchMintMultipleBatches: BatchMintMultiple[] = [];
   const recipientAddressesInCsv: string[] = [];
 
   return new Promise((resolve, reject) => {
@@ -116,61 +137,93 @@ async function readAndFormatCSVFile(filePath: string): Promise<{ data: Batch[]; 
       .on("data", ({ amount, recipient }) => {
         recipientAddressesInCsv.push(recipient);
 
-        if (!isValidAmount(amount, currentCsvTokenAmount)) {
+        if (!isValidAmount(amount)) {
           throw `Amount ${amount} must be an integer and must be higher than 0.`;
         }
 
-        if (!checkIfValidAddresses(recipient)) {
+        if (!isValidAddress(recipient)) {
           throw `Invalid recipient address ${recipient} found in the CSV file`;
         }
 
-        currentCsvTokenAmount = amount;
-
-        const element = results[amount];
-        if (element) {
-          if (element.batches[element.numberOfBatches - 1].length === BATCH_SIZE) {
-            element.batches[element.numberOfBatches] = [recipient];
-            element.numberOfBatches++;
+        if (opts.mode === "batch-mint") {
+          const element = batchMintResults[amount];
+          if (element) {
+            if (element.batches[element.numberOfBatches - 1].length === opts.batchSize) {
+              element.batches[element.numberOfBatches] = [recipient];
+              element.numberOfBatches++;
+              return;
+            }
+            element.batches[element.numberOfBatches - 1].push(recipient);
             return;
           }
-          element.batches[element.numberOfBatches - 1].push(recipient);
-          return;
+
+          batchMintResults[amount] = {
+            numberOfBatches: 1,
+            batches: [[recipient]],
+          };
         }
 
-        results[amount] = {
-          numberOfBatches: 1,
-          batches: [[recipient]],
-        };
-      })
-      .on("end", () => {
-        const resultObjectToArray = Object.entries(results).map(([amount, element]) => {
-          return {
-            ...element,
-            amount: parseInt(amount),
-          };
-        });
+        if (opts.mode === "batch-mint-multiple") {
+          batchMintMultipleAddress.push(recipient);
+          batchMintMultipleAmounts.push(amount);
 
-        // Split batches into different object with a unique batch id
-        let id = 1;
-        const data: Batch[] = [];
-
-        for (const item of resultObjectToArray) {
-          for (const batch of item.batches) {
-            data.push({
-              id: id++,
-              recipients: batch,
-              amount: item.amount,
+          if (batchMintMultipleAddress.length === opts.batchSize) {
+            batchMintMultipleBatches.push({
+              id: batchMintMultipleBatches.length + 1,
+              recipients: batchMintMultipleAddress,
+              amounts: batchMintMultipleAmounts,
             });
+            batchMintMultipleAddress = [];
+            batchMintMultipleAmounts = [];
           }
         }
-        return resolve({ data, recipientAddressesInCsv });
+      })
+      .on("end", () => {
+        if (opts.mode === "batch-mint") {
+          const resultObjectToArray = Object.entries(batchMintResults).map(([amount, element]) => {
+            return {
+              ...element,
+              amount: parseInt(amount),
+            };
+          });
+
+          // Split batches into different object with a unique batch id
+          let id = 1;
+          const data: Batch[] = [];
+
+          for (const item of resultObjectToArray) {
+            for (const batch of item.batches) {
+              data.push({
+                id: id++,
+                recipients: batch,
+                amount: item.amount,
+              });
+            }
+          }
+
+          return resolve({ data, recipientAddressesInCsv });
+        }
+
+        if (opts.mode === "batch-mint-multiple") {
+          if (batchMintMultipleAddress.length > 0) {
+            batchMintMultipleBatches.push({
+              id: batchMintMultipleBatches.length + 1,
+              recipients: batchMintMultipleAddress,
+              amounts: batchMintMultipleAmounts,
+            });
+          }
+          return resolve({ data: batchMintMultipleBatches, recipientAddressesInCsv });
+        }
       })
       .on("error", (error) => reject(error));
   });
 }
 
 async function main(args: typeof argv) {
-  const { data, recipientAddressesInCsv } = await readAndFormatCSVFile(args.path);
+  const { data, recipientAddressesInCsv } = await readAndFormatCSVFile(args.path, {
+    mode: args.mode,
+    batchSize: args.batchSize,
+  });
 
   const recipientAddresses = Object.values(data).flatMap((value) => value.recipients);
 
