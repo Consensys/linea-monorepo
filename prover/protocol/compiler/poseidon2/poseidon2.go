@@ -461,230 +461,155 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 			smartvectors.RightPadded(stackedNewStates[block], poseidon2OfZero[block], totalSize))
 	}
 
-	var (
-		effectiveSize = len(stackedOldStates[0])
+	effectiveSize := len(stackedOldStates[0])
 
-		// Intermediate data columns are organized by block location index, then by round index, and finally by query index.
-		matMulM4Tmp    = make([][][]field.Element, matMulM4TmpSize) //block, round, query: [20][][effectiveSize]
-		matMulM4       = make([][][]field.Element, width)           //block, round, query: [16][][effectiveSize]
-		t              = make([][][]field.Element, tSize)           //block, round, query: [4][][effectiveSize]
-		matMulExternal = make([][][]field.Element, width)           //block, round, query: [16][][effectiveSize]
-		addRoundKey    = make([][][]field.Element, width)           //block, round, query: [16][][effectiveSize]
-		sBox           = make([][][]field.Element, width)           //block, round, query: [16][][effectiveSize]
-		sBoxSum        = make([][]field.Element, fullRounds)        // round, query: [][]
-		matMulInternal = make([][][]field.Element, width)           //block, round, query: [16][][effectiveSize]
-	)
-
-	for block := range matMulM4Tmp {
-		matMulM4Tmp[block] = make([][]field.Element, fullRounds)
-		for round := 0; round < fullRounds; round++ {
-			matMulM4Tmp[block][round] = make([]field.Element, effectiveSize)
-		}
-
+	// Compute and store all intermediate values in a single, efficient pass.
+	// Intermediate columns are organized by `block -> round -> query`.
+	intermediates := make(map[string][][][]field.Element)
+	intermediateSlices := map[string]int{
+		"matMulM4Tmp":    matMulM4TmpSize,
+		"matMulM4":       width,
+		"t":              tSize,
+		"matMulExternal": width,
+		"addRoundKey":    width,
+		"sBox":           width,
+		"matMulInternal": width,
 	}
-
-	for block := range matMulM4 {
-		matMulM4[block] = make([][]field.Element, fullRounds)
-		matMulExternal[block] = make([][]field.Element, fullRounds)
-		addRoundKey[block] = make([][]field.Element, fullRounds)
-
-		sBox[block] = make([][]field.Element, fullRounds)
-		matMulInternal[block] = make([][]field.Element, fullRounds)
-
-		for round := 0; round < fullRounds; round++ {
-			matMulM4[block][round] = make([]field.Element, effectiveSize)
-			matMulExternal[block][round] = make([]field.Element, effectiveSize)
-			addRoundKey[block][round] = make([]field.Element, effectiveSize)
-
-			sBox[block][round] = make([]field.Element, effectiveSize)
-			matMulInternal[block][round] = make([]field.Element, effectiveSize)
+	for name, size := range intermediateSlices {
+		intermediates[name] = make([][][]field.Element, size)
+		for col := 0; col < size; col++ {
+			intermediates[name][col] = make([][]field.Element, fullRounds)
+			for round := 0; round < fullRounds; round++ {
+				intermediates[name][col][round] = make([]field.Element, effectiveSize)
+			}
 		}
 	}
-	for block := range t {
-		t[block] = make([][]field.Element, fullRounds)
-		for round := 0; round < fullRounds; round++ {
-			t[block][round] = make([]field.Element, effectiveSize)
-		}
-	}
+	sBoxSum := make([][]field.Element, fullRounds)
 	for round := 0; round < fullRounds; round++ {
 		sBoxSum[round] = make([]field.Element, effectiveSize)
 	}
 
+	// Use a single parallel loop for all computation.
 	parallel.Execute(effectiveSize, func(start, stop int) {
-
 		for query := start; query < stop; query++ {
-
-			input := make([]field.Element, width)
+			state := make([]field.Element, width)
 			for block := 0; block < blockSize; block++ {
-				input[block] = stackedOldStates[block][query]
-				input[block+8] = stackedBlocks[block][query]
-			}
-			// poseidon2Round 0
-			matMulM4TmpOut, matMulM4Out, tOut, matMulExternalOut := matMulExternalInPlace(input)
-			for block := range matMulM4TmpOut {
-				matMulM4Tmp[block][0][query] = matMulM4TmpOut[block]
-			}
-			for block := range matMulM4Out {
-				matMulM4[block][0][query] = matMulM4Out[block]
-			}
-			for block := range tOut {
-				t[block][0][query] = tOut[block]
-			}
-			for block := range matMulExternalOut {
-				matMulExternal[block][0][query] = matMulExternalOut[block]
+				state[block] = stackedOldStates[block][query]
+				state[block+blockSize] = stackedBlocks[block][query]
 			}
 
-			input = matMulExternalOut
-
-			// poseidon2Round 1 - 3
-			for poseidon2Round := 1; poseidon2Round < 4; poseidon2Round++ {
-				addRoundKeyOut := addRoundKeyCompute(poseidon2Round-1, input)
-				for block := range addRoundKeyOut {
-					addRoundKey[block][poseidon2Round][query] = addRoundKeyOut[block]
-				}
-				sBoxOut := make([]field.Element, width)
-				for block := 0; block < width; block++ {
-					sBoxOut[block] = sBoxCompute(block, poseidon2Round, addRoundKeyOut)
-					sBox[block][poseidon2Round][query] = sBoxOut[block]
-				}
-				matMulM4TmpOut, matMulM4Out, tOut, matMulExternalOut := matMulExternalInPlace(sBoxOut)
-				for block := range matMulM4TmpOut {
-					matMulM4Tmp[block][poseidon2Round][query] = matMulM4TmpOut[block]
-				}
-				for block := range matMulM4Out {
-					matMulM4[block][poseidon2Round][query] = matMulM4Out[block]
-				}
-				for block := range tOut {
-					t[block][poseidon2Round][query] = tOut[block]
-				}
-				for block := range matMulExternalOut {
-					matMulExternal[block][poseidon2Round][query] = matMulExternalOut[block]
+			for poseidon2Round := 0; poseidon2Round < fullRounds; poseidon2Round++ {
+				if poseidon2Round > 0 {
+					// Apply AddRoundKey
+					addRoundKeyOut := addRoundKeyCompute(poseidon2Round-1, state)
+					for block := range addRoundKeyOut {
+						intermediates["addRoundKey"][block][poseidon2Round][query] = addRoundKeyOut[block]
+					}
+					// Apply S-Box
+					sBoxOut := make([]field.Element, width)
+					for block := 0; block < width; block++ {
+						sBoxOut[block] = sBoxCompute(block, poseidon2Round, addRoundKeyOut)
+						intermediates["sBox"][block][poseidon2Round][query] = sBoxOut[block]
+					}
+					state = sBoxOut
 				}
 
-				input = matMulExternalOut
+				if poseidon2Round <= partialRounds || poseidon2Round >= fullRounds-partialRounds || poseidon2Round == 0 {
+					// External rounds: MatMulExternal
+					matMulM4TmpOut, matMulM4Out, tOut, matMulExternalOut := matMulExternalInPlace(state)
+					for block := range matMulM4TmpOut {
+						intermediates["matMulM4Tmp"][block][poseidon2Round][query] = matMulM4TmpOut[block]
+					}
+					for block := range matMulM4Out {
+						intermediates["matMulM4"][block][poseidon2Round][query] = matMulM4Out[block]
+					}
+					for block := range tOut {
+						intermediates["t"][block][poseidon2Round][query] = tOut[block]
+					}
+					for block := range matMulExternalOut {
+						intermediates["matMulExternal"][block][poseidon2Round][query] = matMulExternalOut[block]
+					}
+					state = matMulExternalOut
+				} else {
+					// Internal rounds: MatMulInternal.
+					var matMulInternalOut []field.Element
+					sBoxSum[poseidon2Round][query], matMulInternalOut = matMulInternalInPlace(state)
+					for block := range matMulInternalOut {
+						intermediates["matMulInternal"][block][poseidon2Round][query] = matMulInternalOut[block]
+					}
+					state = matMulInternalOut
+				}
 			}
 
-			// poseidon2Round 4 - 24
-			for poseidon2Round := 4; poseidon2Round < 25; poseidon2Round++ {
-				addRoundKeyOut := addRoundKeyCompute(poseidon2Round-1, input)
-				for block := range addRoundKeyOut {
-					addRoundKey[block][poseidon2Round][query] = addRoundKeyOut[block]
-				}
-
-				sBoxOut := make([]field.Element, width)
-				for block := 0; block < width; block++ {
-					sBoxOut[block] = sBoxCompute(block, poseidon2Round, addRoundKeyOut)
-					sBox[block][poseidon2Round][query] = sBoxOut[block]
-				}
-
-				var matMulInternalOut []field.Element
-				sBoxSum[poseidon2Round][query], matMulInternalOut = matMulInternalInPlace(sBoxOut)
-				for block := range matMulInternalOut {
-					matMulInternal[block][poseidon2Round][query] = matMulInternalOut[block]
-				}
-
-				input = matMulInternalOut
-			}
-
-			// poseidon2Round 24 - 27
-			for poseidon2Round := 25; poseidon2Round < 28; poseidon2Round++ {
-				addRoundKeyOut := addRoundKeyCompute(poseidon2Round-1, input)
-				for block := range addRoundKeyOut {
-					addRoundKey[block][poseidon2Round][query] = addRoundKeyOut[block]
-				}
-
-				sBoxOut := make([]field.Element, width)
-				for block := 0; block < width; block++ {
-					sBoxOut[block] = sBoxCompute(block, poseidon2Round, addRoundKeyOut)
-					sBox[block][poseidon2Round][query] = sBoxOut[block]
-				}
-
-				matMulM4TmpOut, matMulM4Out, tOut, matMulExternalOut := matMulExternalInPlace(sBoxOut)
-
-				for block := range matMulM4TmpOut {
-					matMulM4Tmp[block][poseidon2Round][query] = matMulM4TmpOut[block]
-				}
-				for block := range matMulM4Out {
-					matMulM4[block][poseidon2Round][query] = matMulM4Out[block]
-				}
-				for block := range tOut {
-					t[block][poseidon2Round][query] = tOut[block]
-				}
-				for block := range matMulExternalOut {
-					matMulExternal[block][poseidon2Round][query] = matMulExternalOut[block]
-				}
-
-				input = matMulExternalOut
-			}
 		}
 	})
 
 	// AssignColumns
-	for col := 0; col < 20; col++ {
-		for round := 0; round < 4; round++ {
+	for block := 0; block < matMulM4TmpSize; block++ {
+		for round := 0; round <= partialRounds; round++ {
 			run.AssignColumn(
-				ctx.MatMulM4Tmp[col][round].GetColID(),
-				smartvectors.RightPadded(matMulM4Tmp[col][round], matMulM4Tmp[col][round][effectiveSize-1], totalSize))
+				ctx.MatMulM4Tmp[block][round].GetColID(),
+				smartvectors.RightPadded(intermediates["matMulM4Tmp"][block][round], intermediates["matMulM4Tmp"][block][round][effectiveSize-1], totalSize))
 		}
-		for round := 25; round < 28; round++ {
+		for round := fullRounds - partialRounds; round < fullRounds; round++ {
 			run.AssignColumn(
-				ctx.MatMulM4Tmp[col][round-21].GetColID(),                                                              // we didn't assign 0 elements, need to adjust the round position
-				smartvectors.RightPadded(matMulM4Tmp[col][round], matMulM4Tmp[col][round][effectiveSize-1], totalSize)) // we compute and store the elements to their round position.
-		}
-	}
-
-	for col := 0; col < 16; col++ {
-		for round := 0; round < 4; round++ {
-			run.AssignColumn(
-				ctx.MatMulM4[col][round].GetColID(),
-				smartvectors.RightPadded(matMulM4[col][round], matMulM4[col][round][effectiveSize-1], totalSize))
-
-			run.AssignColumn(
-				ctx.MatMulExternal[col][round].GetColID(),
-				smartvectors.RightPadded(matMulExternal[col][round], matMulExternal[col][round][effectiveSize-1], totalSize))
-		}
-		for round := 25; round < 28; round++ {
-			run.AssignColumn(
-				ctx.MatMulM4[col][round-21].GetColID(),
-				smartvectors.RightPadded(matMulM4[col][round], matMulM4[col][round][effectiveSize-1], totalSize))
-
-			run.AssignColumn(
-				ctx.MatMulExternal[col][round-21].GetColID(),
-				smartvectors.RightPadded(matMulExternal[col][round], matMulExternal[col][round][effectiveSize-1], totalSize))
-		}
-
-		for round := 1; round < 28; round++ {
-			run.AssignColumn(
-				ctx.AddRoundKey[col][round-1].GetColID(),
-				smartvectors.RightPadded(addRoundKey[col][round], addRoundKey[col][round][effectiveSize-1], totalSize))
-
-			run.AssignColumn(
-				ctx.SBox[col][round-1].GetColID(),
-				smartvectors.RightPadded(sBox[col][round], sBox[col][round][effectiveSize-1], totalSize))
-		}
-
-		for round := 4; round < 25; round++ {
-			run.AssignColumn(
-				ctx.MatMulInternal[col][round-4].GetColID(),
-				smartvectors.RightPadded(matMulInternal[col][round], matMulInternal[col][round][effectiveSize-1], totalSize))
-
-		}
-	}
-	for col := range t {
-		for round := 0; round < 4; round++ {
-			run.AssignColumn(
-				ctx.T[col][round].GetColID(),
-				smartvectors.RightPadded(t[col][round], t[col][round][effectiveSize-1], totalSize))
-		}
-
-		for round := 25; round < 28; round++ {
-			run.AssignColumn(
-				ctx.T[col][round-21].GetColID(),
-				smartvectors.RightPadded(t[col][round], t[col][round][effectiveSize-1], totalSize))
+				ctx.MatMulM4Tmp[block][round-21].GetColID(), // we didn't assign 0 values, need to adjust the round position
+				smartvectors.RightPadded(intermediates["matMulM4Tmp"][block][round], intermediates["matMulM4Tmp"][block][round][effectiveSize-1], totalSize)) // we compute and store the elements to their round position.
 		}
 	}
 
-	for round := 4; round < 25; round++ {
+	for block := 0; block < width; block++ {
+		for round := 0; round <= partialRounds; round++ {
+			run.AssignColumn(
+				ctx.MatMulM4[block][round].GetColID(),
+				smartvectors.RightPadded(intermediates["matMulM4"][block][round], intermediates["matMulM4"][block][round][effectiveSize-1], totalSize))
+
+			run.AssignColumn(
+				ctx.MatMulExternal[block][round].GetColID(),
+				smartvectors.RightPadded(intermediates["matMulExternal"][block][round], intermediates["matMulExternal"][block][round][effectiveSize-1], totalSize))
+		}
+		for round := fullRounds - partialRounds; round < fullRounds; round++ {
+			run.AssignColumn(
+				ctx.MatMulM4[block][round-21].GetColID(),
+				smartvectors.RightPadded(intermediates["matMulM4"][block][round], intermediates["matMulM4"][block][round][effectiveSize-1], totalSize))
+
+			run.AssignColumn(
+				ctx.MatMulExternal[block][round-21].GetColID(),
+				smartvectors.RightPadded(intermediates["matMulExternal"][block][round], intermediates["matMulExternal"][block][round][effectiveSize-1], totalSize))
+		}
+
+		for round := 1; round < fullRounds; round++ {
+			run.AssignColumn(
+				ctx.AddRoundKey[block][round-1].GetColID(),
+				smartvectors.RightPadded(intermediates["addRoundKey"][block][round], intermediates["addRoundKey"][block][round][effectiveSize-1], totalSize))
+
+			run.AssignColumn(
+				ctx.SBox[block][round-1].GetColID(),
+				smartvectors.RightPadded(intermediates["sBox"][block][round], intermediates["sBox"][block][round][effectiveSize-1], totalSize))
+		}
+
+		for round := 1 + partialRounds; round < fullRounds-partialRounds; round++ {
+			run.AssignColumn(
+				ctx.MatMulInternal[block][round-4].GetColID(),
+				smartvectors.RightPadded(intermediates["matMulInternal"][block][round], intermediates["matMulInternal"][block][round][effectiveSize-1], totalSize))
+
+		}
+	}
+	for block := range intermediates["t"] {
+		for round := 0; round <= partialRounds; round++ {
+			run.AssignColumn(
+				ctx.T[block][round].GetColID(),
+				smartvectors.RightPadded(intermediates["t"][block][round], intermediates["t"][block][round][effectiveSize-1], totalSize))
+		}
+
+		for round := fullRounds - partialRounds; round < fullRounds; round++ {
+			run.AssignColumn(
+				ctx.T[block][round-21].GetColID(),
+				smartvectors.RightPadded(intermediates["t"][block][round], intermediates["t"][block][round][effectiveSize-1], totalSize))
+		}
+	}
+
+	for round := 1 + partialRounds; round < fullRounds-partialRounds; round++ {
 		run.AssignColumn(
 			ctx.SBoxSum[round-4].GetColID(),
 			smartvectors.RightPadded(sBoxSum[round], sBoxSum[round][effectiveSize-1], totalSize))
