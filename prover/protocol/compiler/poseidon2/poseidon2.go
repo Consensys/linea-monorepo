@@ -224,27 +224,6 @@ func defineSBox(comp *wizard.CompiledIOP, ctx *Poseidon2Context, protocolRoundID
 	return sBox // The output of this round becomes the input for the next one.
 }
 
-func defineSBoxZero(comp *wizard.CompiledIOP, ctx *Poseidon2Context, protocolRoundID, totalSize int, input []ifaces.Column, poseidon2Round int) (sBox []ifaces.Column) {
-	// Initialize the sBox slice with the required size
-	sBox = make([]ifaces.Column, 16)
-
-	// S-Box
-	sBox[0] = comp.InsertCommit(protocolRoundID, ifaces.ColIDf("Poseidon2_ROUND_%v_SBox_SelfRecursionCount_%v_ID_%v_COL_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), 0), totalSize)
-	ctx.SBox[0] = append(ctx.SBox[0], sBox[0])
-	comp.InsertGlobal(protocolRoundID, ifaces.QueryIDf("Poseidon2_ROUND_%v_SBox_COMPUTATION_SelfRecursionCount_%v_ID_%v_COL_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), 0),
-		sym.Sub(sBox[0], sym.Mul(sym.Square(input[0]), input[0])))
-
-	for index := 1; index < 16; index++ {
-		sBox[index] = comp.InsertCommit(protocolRoundID, ifaces.ColIDf("Poseidon2_ROUND_%v_SBox_SelfRecursionCount_%v_ID_%v_COL_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), index), totalSize)
-		ctx.SBox[index] = append(ctx.SBox[index], sBox[index])
-		comp.InsertGlobal(protocolRoundID, ifaces.QueryIDf("Poseidon2_ROUND_%v_SBox_COMPUTATION_SelfRecursionCount_%v_ID_%v_COL_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), index),
-			sym.Sub(sBox[index], input[index]))
-
-	}
-
-	return sBox // The output of this round becomes the input for the next one.
-}
-
 // defineContext generates the constraints for the Poseidon2 computation and returns
 // the compilation context. The function also registers the relevant prover
 // actions to assign the generated columns.
@@ -298,7 +277,7 @@ func defineContext(comp *wizard.CompiledIOP) *Poseidon2Context {
 	var input, output, copy_input []ifaces.Column
 	input = append(input, ctx.StackedOldStates[:]...)
 	input = append(input, ctx.StackedBlocks[:]...)
-	output = append(input, ctx.StackedNewStates[:]...)
+	output = append(output, ctx.StackedNewStates[:]...)
 
 	copy_input = append(copy_input, input[8:]...) // saved to feed forward later
 
