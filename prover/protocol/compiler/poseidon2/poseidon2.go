@@ -67,8 +67,8 @@ func CompilePoseidon2(comp *wizard.CompiledIOP) {
 	_ = defineContext(comp)
 }
 
-// defineMatMulExternalInPlace
-func defineMatMulExternalInPlace(comp *wizard.CompiledIOP, ctx *Poseidon2Context, protocolRoundID, totalSize int, input []ifaces.Column, poseidon2Round int) []ifaces.Column {
+// defineMatMulExternal
+func defineMatMulExternal(comp *wizard.CompiledIOP, ctx *Poseidon2Context, protocolRoundID, totalSize int, input []ifaces.Column, poseidon2Round int) []ifaces.Column {
 	matMulM4Tmp := [20]ifaces.Column{}
 	matMulM4 := [16]ifaces.Column{}
 	t := [4]ifaces.Column{}
@@ -114,8 +114,8 @@ func defineMatMulExternalInPlace(comp *wizard.CompiledIOP, ctx *Poseidon2Context
 	return matMulExternal[:]
 }
 
-// defineRoundInternal abstracts the logic for a partial Poseidon2 round.
-func defineRoundInternal(comp *wizard.CompiledIOP, ctx *Poseidon2Context, protocolRoundID, totalSize int, input []ifaces.Column, poseidon2Round int) []ifaces.Column {
+// defineMatMulInternal abstracts the logic for a partial Poseidon2 round.
+func defineMatMulInternal(comp *wizard.CompiledIOP, ctx *Poseidon2Context, protocolRoundID, totalSize int, input []ifaces.Column, poseidon2Round int) []ifaces.Column {
 	matMulInternal := [16]ifaces.Column{}
 	sBoxSum := comp.InsertCommit(protocolRoundID, ifaces.ColIDf("Poseidon2_ROUND_%v_SBoxSum_SelfRecursionCount_%v_ID_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp)), totalSize)
 	ctx.SBoxSum = append(ctx.SBoxSum, sBoxSum)
@@ -191,16 +191,16 @@ func defineAddRoundKey(comp *wizard.CompiledIOP, ctx *Poseidon2Context, protocol
 
 	// Add Round Key
 	for col := 0; col < len(poseidon2.RoundKeys[poseidon2Round-1]); col++ {
-		addRoundKey[col] = comp.InsertCommit(protocolRoundID, ifaces.ColIDf("Poseidon2_ROUND_%v_AddRoundKey_%v_%v_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), col), totalSize)
+		addRoundKey[col] = comp.InsertCommit(protocolRoundID, ifaces.ColIDf("Poseidon2_ROUND_%v_AddRoundKey_SelfRecursionCount_%v_ID_%v_COL_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), col), totalSize)
 		ctx.AddRoundKey[col] = append(ctx.AddRoundKey[col], addRoundKey[col])
-		comp.InsertGlobal(protocolRoundID, ifaces.QueryIDf("Poseidon2_ROUND_%v_AddRoundKey_COMPUTATION_%v_%v_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), col),
+		comp.InsertGlobal(protocolRoundID, ifaces.QueryIDf("Poseidon2_ROUND_%v_AddRoundKey_COMPUTATION_SelfRecursionCount_%v_ID_%v_COL_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), col),
 			sym.Sub(addRoundKey[col], sym.Add(input[col], poseidon2.RoundKeys[poseidon2Round-1][col]))) // Adjust the roundID because the initial round starts from 1, while the round key starts from 0.
 	}
 
 	for col := len(poseidon2.RoundKeys[poseidon2Round-1]); col < 16; col++ {
-		addRoundKey[col] = comp.InsertCommit(protocolRoundID, ifaces.ColIDf("Poseidon2_ROUND_%v_AddRoundKey_%v_%v_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), col), totalSize)
+		addRoundKey[col] = comp.InsertCommit(protocolRoundID, ifaces.ColIDf("Poseidon2_ROUND_%v_AddRoundKey_SelfRecursionCount_%v_ID_%v_COL_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), col), totalSize)
 		ctx.AddRoundKey[col] = append(ctx.AddRoundKey[col], addRoundKey[col])
-		comp.InsertGlobal(protocolRoundID, ifaces.QueryIDf("Poseidon2_ROUND_%v_AddRoundKey_COMPUTATION_%v_%v_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), col),
+		comp.InsertGlobal(protocolRoundID, ifaces.QueryIDf("Poseidon2_ROUND_%v_AddRoundKey_COMPUTATION_SelfRecursionCount_%v_ID_%v_COL_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), col),
 			sym.Sub(addRoundKey[col], input[col]))
 	}
 
@@ -299,7 +299,7 @@ func defineContext(comp *wizard.CompiledIOP) *Poseidon2Context {
 	// 3. Define the constraints for the Poseidon2 permutation rounds.
 	// poseidon2Round 0
 	// Initial matMulExternalInPlace
-	input = defineMatMulExternalInPlace(comp, ctx, protocolRoundID, totalSize, input, 0)
+	input = defineMatMulExternal(comp, ctx, protocolRoundID, totalSize, input, 0)
 
 	// poseidon2Round 1 - 3
 	for poseidon2Round := 1; poseidon2Round < 4; poseidon2Round++ {
@@ -307,7 +307,7 @@ func defineContext(comp *wizard.CompiledIOP) *Poseidon2Context {
 		for col := 0; col < 16; col++ {
 			input[col] = defineSBox(comp, ctx, protocolRoundID, totalSize, col, input, poseidon2Round)
 		}
-		input = defineMatMulExternalInPlace(comp, ctx, protocolRoundID, totalSize, input, poseidon2Round)
+		input = defineMatMulExternal(comp, ctx, protocolRoundID, totalSize, input, poseidon2Round)
 	}
 
 	// poseidon2Round 4 - 24
@@ -319,7 +319,7 @@ func defineContext(comp *wizard.CompiledIOP) *Poseidon2Context {
 		// 	input[col] = defineSBox(comp, ctx, round, totalSize, col, input, i)
 		// }
 		input = defineSBoxZero(comp, ctx, protocolRoundID, totalSize, input, poseidon2Round)
-		input = defineRoundInternal(comp, ctx, protocolRoundID, totalSize, input, poseidon2Round)
+		input = defineMatMulInternal(comp, ctx, protocolRoundID, totalSize, input, poseidon2Round)
 	}
 
 	// poseidon2Round 24 - 27
@@ -328,7 +328,7 @@ func defineContext(comp *wizard.CompiledIOP) *Poseidon2Context {
 		for col := 0; col < 16; col++ {
 			input[col] = defineSBox(comp, ctx, protocolRoundID, totalSize, col, input, poseidon2Round)
 		}
-		input = defineMatMulExternalInPlace(comp, ctx, protocolRoundID, totalSize, input, poseidon2Round)
+		input = defineMatMulExternal(comp, ctx, protocolRoundID, totalSize, input, poseidon2Round)
 	}
 
 	for i := range copy_input {
@@ -401,9 +401,6 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 			ns[col] = q.NewState[col].GetColAssignment(run)
 
 			start, stop := smartvectors.CoWindowRange(os[col], b[col], ns[col], sel)
-			// fmt.Printf("os[col]=-%v\n", os[col].Pretty())
-			// fmt.Printf("b[col]=-%v\n", b[col].Pretty())
-			// fmt.Printf("ns[col]=-%v\n", ns[col])
 
 			// tryPushToStacked looks at the selector at position "j" and appends
 			// the corresponding triplet (old state, block, new state) to the "stacked"

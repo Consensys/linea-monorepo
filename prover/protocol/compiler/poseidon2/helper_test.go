@@ -10,6 +10,7 @@ import (
 
 func TestPermutation(t *testing.T) {
 	var old, block [8]field.Element
+	//TODO@yao: generate random samples
 	old[0] = field.NewElement(uint64(703724752))
 	old[1] = field.NewElement(uint64(280040542))
 	old[2] = field.NewElement(uint64(1514240686))
@@ -28,7 +29,7 @@ func TestPermutation(t *testing.T) {
 	block[6] = field.NewElement(uint64(1853215757))
 	block[7] = field.NewElement(uint64(199352308))
 
-	state := Poseidon2BlockCompression(old, block)
+	state := poseidon2BlockCompression(old, block)
 
 	newstate := cryptoposeidon2.Poseidon2BlockCompression(old, block)
 

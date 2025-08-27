@@ -8,9 +8,9 @@ import (
 
 const blockSize = 8
 
-// Poseidon2BlockCompression applies the Poseidon2 block compression function to a given block
+// poseidon2BlockCompression applies the Poseidon2 block compression function to a given block
 // over a given state. This what is run under the hood by the Poseidon2 hash function
-func Poseidon2BlockCompression(oldState, block [blockSize]field.Element) (newState []field.Element) {
+func poseidon2BlockCompression(oldState, block [blockSize]field.Element) (newState []field.Element) {
 	res := vortex.Hash{}
 	input := make([]field.Element, 16)
 	copy(input[:8], oldState[:])
