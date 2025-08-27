@@ -9,6 +9,7 @@
 package maru.p2p
 
 import java.util.UUID
+import maru.consensus.ForkSpec
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.peer.NodeId
@@ -73,6 +74,7 @@ object NoOpP2PNetwork : P2PNetwork {
 
   override fun addPeer(address: String) = Unit
 
-  override fun close() {
-  }
+  override fun handleForkTransition(forkSpec: ForkSpec) = Unit
+
+  override fun close() = Unit
 }

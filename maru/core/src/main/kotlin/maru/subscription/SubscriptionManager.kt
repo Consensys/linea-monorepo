@@ -106,7 +106,7 @@ interface Observable<T> :
   SyncObservable<T>,
   AsyncObservable<T>
 
-interface SubscriptionManager<T> : Observable<T> {
+interface SubscriptionNotifier<T> {
   /**
    * It will notify all subscribers in a blocking manner, by order they were added.
    * If there sync and async subscribers, it will wait for async subscriber to complete
@@ -116,7 +116,7 @@ interface SubscriptionManager<T> : Observable<T> {
 
   /**
    * It will notify all subscribers asynchronously, without blocking the current thread.
-   * Subscribers notification order my not follow the order they were added.
+   * Subscriber notification order my not follow the order they were added.
    *
    * If the called does not wait on Future resolution,
    * the Order of notifications is not guaranteed, and may depend on the concrete implementation.
@@ -126,6 +126,10 @@ interface SubscriptionManager<T> : Observable<T> {
    */
   fun notifySubscribersAsync(data: T): SafeFuture<Unit>
 }
+
+interface SubscriptionManager<T> :
+  SubscriptionNotifier<T>,
+  Observable<T>
 
 /**
  * This is a simple implementation of SubscriptionManager that notifies all subscribers
