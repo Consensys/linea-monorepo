@@ -330,7 +330,7 @@ public class CallSection extends TraceSection
     }
 
     final WorldUpdater world = frame.getWorldUpdater();
-    if (isPrecompile(calleeAddress)) {
+    if (isPrecompile(hub.fork, calleeAddress)) {
       precompileAddress = Optional.of(calleeAddress);
       scenarioFragment.setScenario(CALL_PRC_UNDEFINED);
     } else {

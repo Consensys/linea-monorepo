@@ -60,7 +60,7 @@ public class AccountSnapshot {
         hub.messageFrame().getWorldUpdater(),
         address,
         hub.transients.conflation().deploymentInfo(),
-        isAddressWarm(hub.messageFrame(), address));
+        isAddressWarm(hub.fork, hub.messageFrame(), address));
   }
 
   public static AccountSnapshot canonical(Hub hub, Address address, boolean warmth) {
@@ -72,7 +72,7 @@ public class AccountSnapshot {
         world,
         address,
         hub.transients.conflation().deploymentInfo(),
-        isAddressWarm(hub.messageFrame(), address));
+        isAddressWarm(hub.fork, hub.messageFrame(), address));
   }
 
   public static AccountSnapshot canonical(

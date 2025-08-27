@@ -149,7 +149,7 @@ public abstract class Hub implements Module {
   /** The {@link GasCalculator} used in this version of the arithmetization */
   public final GasCalculator gasCalculator = setGasCalculator();
 
-  public final GasProjector gasProjector = new GasProjector(gasCalculator);
+  public final GasProjector gasProjector;
 
   /** accumulate the trace information for the Hub */
   @Getter public final State state = new State();
@@ -376,6 +376,7 @@ public abstract class Hub implements Module {
   public Hub(final ChainConfig chain) {
     fork = chain.fork;
     opCodes = OpCodes.load(fork);
+    gasProjector = new GasProjector(fork, gasCalculator);
     checkState(chain.id.signum() >= 0);
     Address l2l1ContractAddress = chain.bridgeConfiguration.contract();
     final Bytes l2l1Topic = chain.bridgeConfiguration.topic();

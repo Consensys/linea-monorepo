@@ -18,9 +18,7 @@ package net.consensys.linea.zktracer.module.hub.fragment.account;
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.Trace.Hub.MULTIPLIER___DOM_SUB_STAMPS;
 import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.USER;
-import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
-import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
-import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
+import static net.consensys.linea.zktracer.types.AddressUtils.*;
 
 import java.util.Map;
 import java.util.Optional;
@@ -29,6 +27,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -50,6 +49,7 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 public abstract class AccountFragment
     implements TraceFragment, EndTransactionDefer, PostBlockDefer, PostConflationDefer {
 
+  private final Fork fork;
   @Getter private final AccountSnapshot oldState;
   @Getter private final AccountSnapshot newState;
   @Setter private boolean requiresRomlex;
@@ -123,6 +123,7 @@ public abstract class AccountFragment
     transactionProcessingMetadata = txProcessingType == USER ? hub.txStack().current() : null;
     hubStamp = hub.stamp();
 
+    this.fork = hub.fork;
     this.oldState = oldState;
     this.newState = newState;
     this.addressToTrim = addressToTrim;
@@ -181,7 +182,7 @@ public abstract class AccountFragment
         .pAccountDeploymentStatusNew(newState.deploymentStatus())
         .pAccountTrmFlag(addressToTrim.isPresent())
         .pAccountTrmRawAddressHi(addressToTrim.map(a -> EWord.of(a).hi()).orElse(Bytes.EMPTY))
-        .pAccountIsPrecompile(isPrecompile(oldState.address()));
+        .pAccountIsPrecompile(isPrecompile(fork, oldState().address()));
     traceMarkedForSelfDestruct(trace);
     traceMarkedForDeletion(trace);
     traceHadCodeInitially(trace);

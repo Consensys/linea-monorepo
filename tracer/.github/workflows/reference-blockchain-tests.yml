@@ -40,7 +40,7 @@ jobs:
 
   blockchain-reference-tests-shanghai:
     uses: ./.github/workflows/reusable-blockchain-tests.yml
-    secrets: inherit    
+    secrets: inherit
     with:
       zkevm_fork: Shanghai
       test_filter: ${{ inputs.test_filter || 'BlockchainReferenceTest_*' }}

@@ -59,7 +59,7 @@ public class ExtCodeCopySection extends TraceSection implements PostRollbackDefe
     address = Address.extract(Bytes32.leftPad(rawAddress));
     incomingDeploymentNumber = hub.deploymentNumberOf(address);
     incomingDeploymentStatus = hub.deploymentStatusOf(address);
-    incomingWarmth = isAddressWarm(frame, address);
+    incomingWarmth = isAddressWarm(hub.fork, frame, address);
     final ImcFragment imcFragment = ImcFragment.empty(hub);
 
     this.addStack(hub);
