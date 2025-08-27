@@ -26,6 +26,13 @@ var RoundKeys [][]field.Element = func() [][]field.Element {
 	return poseidon2.GetDefaultParameters().RoundKeys
 }()
 
+// Poseidon2BlockCompression applies the Poseidon2 block compression function to a given block
+// over a given state. This what is run under the hood by the Poseidon2 hash function
+func Poseidon2BlockCompression(oldState, block [blockSize]field.Element) (newState [blockSize]field.Element) {
+	res := vortex.CompressPoseidon2(oldState, block)
+	return res
+}
+
 // Poseidon2Sponge returns a Poseidon2 hash of an array of field elements
 func Poseidon2Sponge(x []field.Element) (newState [blockSize]field.Element) {
 	var state, xBlock [blockSize]field.Element
@@ -41,7 +48,7 @@ func Poseidon2Sponge(x []field.Element) (newState [blockSize]field.Element) {
 	return state
 }
 
-// Poseidon2Sponge returns a Poseidon2 hash of an array of field elements,
+// Poseidon2SpongeElement returns a Poseidon2 hash of an array of field elements,
 // compute Poseidon2BlockCompression on one element at a time
 // Each element is left padded with zeros
 func Poseidon2SpongeElement(x []field.Element) (newState [blockSize]field.Element) {
@@ -56,13 +63,6 @@ func Poseidon2SpongeElement(x []field.Element) (newState [blockSize]field.Elemen
 	return state
 }
 
-// Poseidon2BlockCompression applies the Poseidon2 block compression function to a given block
-// over a given state. This what is run under the hood by the Poseidon2 hash function
-func Poseidon2BlockCompression(oldState, block [blockSize]field.Element) (newState [blockSize]field.Element) {
-	res := vortex.CompressPoseidon2(oldState, block)
-	return res
-}
-
 // GnarkBlockCompression applies the MiMC permutation to a given block within
 // a gnark circuit and mirrors exactly [BlockCompression].
 func GnarkBlockCompressionMekle(api frontend.API, oldState, block [blockSize]frontend.Variable) (newState [blockSize]frontend.Variable) {
@@ -71,7 +71,7 @@ func GnarkBlockCompressionMekle(api frontend.API, oldState, block [blockSize]fro
 
 // Poseidon2HashVecElement hashes a vector of field elements to a leaf,
 // Write one element at a time
-func Poseidon2HashVecElement(v []field.Element) (h [8]field.Element) {
+func Poseidon2HashVecElement(v []field.Element) (h [blockSize]field.Element) {
 	state := poseidon2.NewMerkleDamgardHasher()
 	for i := range v {
 		vBytes := v[i].Bytes()

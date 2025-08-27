@@ -44,7 +44,6 @@ func TestCompilers(t *testing.T) {
 	// runTestList(t, "permutation", testtools.ListOfPermutationTestcaseNegative)
 	// runTestList(t, "projection", testtools.ListOfProjectionTestcasePositive)
 	// runTestList(t, "projection", testtools.ListOfProjectionTestcaseNegative)
-	// runTestList(t, "mimc", testtools.ListOfMiMCTestcase)
 	runTestList(t, "poseidon2", testtools.ListOfPoseidon2Testcase)
 
 }

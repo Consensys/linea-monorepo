@@ -12,77 +12,23 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-func TestPoseidon2Sponge(t *testing.T) {
-	// This test ensures that the Poseidon2Sponge function is correctly implemented and produces the same output as
-	// the poseidon2.NewMerkleDamgardHasher(), which uses Write and Sum methods to get the final hash output
+var rng = rand.New(utils.NewRandSource(0))
 
-	// We write and compress the 'whole slice'
-	var rng = rand.New(utils.NewRandSource(0))
-	for i := 0; i < 100; i++ {
-
-		var state field.Octuplet
-		var input [10]field.Element
-		var inputBytes []byte
-
-		elementNumber := len(input)
-
-		merkleHasher := poseidon2.NewPoseidon2()
-		merkleHasher.Reset()
-		for i := 0; i < elementNumber; i++ {
-			input[i] = field.PseudoRand(rng)
-			bytes := input[i].Bytes()
-			inputBytes = append(inputBytes, bytes[:]...)
-		}
-		state = poseidon2.Poseidon2Sponge(input[:])
-
-		merkleHasher.Write(inputBytes[:])
-		newBytes := merkleHasher.Sum(nil)
-		var result field.Octuplet
-		for i := 0; i < 8; i++ {
-			startIndex := i * 4
-			segment := newBytes[startIndex : startIndex+4]
-			var newElement koalabear.Element
-			newElement.SetBytes(segment)
-			result[i] = newElement
-			require.Equal(t, result[i].String(), state[i].String())
-		}
-	}
+// Test different input sizes to ensure consistency with the Merkle-Damgard construction.
+var testCases = []struct {
+	name        string
+	numElements int
+}{
+	{"SmallInput", 10},
+	{"LargeInput", 512},
+	{"SingleBlock", 8},
 }
 
-func TestPoseidon2SpongeElement(t *testing.T) {
-	// This test ensures that the Poseidon2SpongeElement function is correctly implemented and produces the same output as
-	// the poseidon2.NewMerkleDamgardHasher(), which uses Write and Sum methods to get the final hash output,
-
-	// We write and compress 'one Element' at a time
-	var rng = rand.New(utils.NewRandSource(0))
-	for i := 0; i < 100; i++ {
-
-		var state field.Octuplet
-		var input [512]field.Element
-
-		elementNumber := len(input)
-
-		merkleHasher := poseidon2.NewPoseidon2()
-		merkleHasher.Reset()
-		for i := 0; i < elementNumber; i++ {
-			input[i] = field.PseudoRand(rng)
-		}
-		state = poseidon2.Poseidon2SpongeElement(input[:])
-		hVec := poseidon2.Poseidon2HashVecElement(input[:]) // it is the same as write and sum process
-
-		for i := 0; i < 8; i++ {
-			require.Equal(t, hVec[i].String(), state[i].String())
-		}
-
-	}
-}
-
+// This test ensures that the Poseidon2BlockCompression function is correctly implemented and produces the same output as
+// the poseidon2.NewMerkleDamgardHasher(), which uses Write and Sum methods to get the final hash output
+//
+// We hash and compress one Octuplet at a time
 func TestPoseidon2BlockCompression(t *testing.T) {
-	// This test ensures that the Poseidon2BlockCompression function is correctly implemented and produces the same output as
-	// the poseidon2.NewMerkleDamgardHasher(), which uses Write and Sum methods to get the final hash output
-
-	// We hash and compress one Octuplet at a time
-	var rng = rand.New(utils.NewRandSource(0))
 
 	for i := 0; i < 100; i++ {
 		var state field.Octuplet
@@ -96,15 +42,16 @@ func TestPoseidon2BlockCompression(t *testing.T) {
 			copy(inputBytes[startIndex:startIndex+4], valBytes[:])
 		}
 
+		// Compute hash using the Poseidon2BlockCompression.
 		h := poseidon2.Poseidon2BlockCompression(state, input)
 
+		// Compute hash using the NewMerkleDamgardHasher implementation.
 		merkleHasher := poseidon2.NewPoseidon2()
 		merkleHasher.Reset()
 		merkleHasher.Write(inputBytes[:]) // write one 32 bytes (equivalent to one Octuplet)
 		newBytes := merkleHasher.Sum(nil)
 
 		var result field.Octuplet
-
 		for i := 0; i < 8; i++ {
 			startIndex := i * 4
 			segment := newBytes[startIndex : startIndex+4]
@@ -116,4 +63,80 @@ func TestPoseidon2BlockCompression(t *testing.T) {
 		}
 
 	}
+}
+
+// This test ensures that the Poseidon2Sponge function is correctly implemented and produces the same output as
+// the poseidon2.NewMerkleDamgardHasher(), which uses Write and Sum methods to get the final hash output
+// We write and compress the 'whole slice'
+func TestPoseidon2SpongeConsistency(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			for i := 0; i < 10; i++ {
+				// Generate random input.
+				input := make([]field.Element, tc.numElements)
+				inputBytes := make([]byte, 0, tc.numElements*field.Bytes)
+				for j := 0; j < tc.numElements; j++ {
+					input[j] = field.PseudoRand(rng)
+					bytes := input[j].Bytes()
+					inputBytes = append(inputBytes, bytes[:]...)
+				}
+
+				// Compute hash using the Poseidon2Sponge function.
+				state := poseidon2.Poseidon2Sponge(input)
+
+				// Compute hash using the reference Merkle-Damgard hasher.
+				merkleHasher := poseidon2.NewPoseidon2()
+				merkleHasher.Reset()
+				merkleHasher.Write(inputBytes[:])
+				newBytes := merkleHasher.Sum(nil)
+
+				var result field.Octuplet
+				for i := 0; i < 8; i++ {
+					startIndex := i * 4
+					segment := newBytes[startIndex : startIndex+4]
+					var newElement koalabear.Element
+					newElement.SetBytes(segment)
+					result[i] = newElement
+					require.Equal(t, result[i].String(), state[i].String())
+				}
+
+			}
+		})
+	}
+}
+
+// This test ensures that the Poseidon2SpongeElement function is correctly implemented and produces the same output as
+// the poseidon2.NewMerkleDamgardHasher(), which uses Write and Sum methods to get the final hash output,
+//
+// We write and compress 'one Element' at a time
+func TestPoseidon2SpongeElement(t *testing.T) {
+
+	t.Parallel()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			for i := 0; i < 10; i++ {
+				// Generate random input.
+				input := make([]field.Element, tc.numElements)
+				for j := 0; j < tc.numElements; j++ {
+					input[j] = field.PseudoRand(rng)
+				}
+
+				state := poseidon2.Poseidon2SpongeElement(input[:])
+				hVec := poseidon2.Poseidon2HashVecElement(input[:]) // it is the same as write and sum process
+
+				for i := 0; i < 8; i++ {
+					require.Equal(t, hVec[i].String(), state[i].String())
+				}
+
+			}
+		})
+	}
+
 }
