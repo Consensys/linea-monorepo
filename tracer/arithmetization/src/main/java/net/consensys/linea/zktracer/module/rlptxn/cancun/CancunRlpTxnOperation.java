@@ -26,6 +26,7 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.rlpUtils.RlpUtils;
 import net.consensys.linea.zktracer.module.rlptxn.RlpTxnOperation;
 import net.consensys.linea.zktracer.module.rlptxn.cancun.phaseSection.*;
+import net.consensys.linea.zktracer.module.trm.Trm;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 
 public class CancunRlpTxnOperation extends RlpTxnOperation {
@@ -33,7 +34,7 @@ public class CancunRlpTxnOperation extends RlpTxnOperation {
   private final List<PhaseSection> phaseSectionList = new ArrayList<>();
   private final GenericTracedValue tracedValues;
 
-  public CancunRlpTxnOperation(RlpUtils rlpUtils, TransactionProcessingMetadata tx) {
+  public CancunRlpTxnOperation(RlpUtils rlpUtils, Trm trm, TransactionProcessingMetadata tx) {
     tracedValues = new GenericTracedValue(tx);
 
     // Phase RLP Prefix
@@ -76,7 +77,7 @@ public class CancunRlpTxnOperation extends RlpTxnOperation {
 
     // Phase Access List
     if (tx.getBesuTransaction().getType() != FRONTIER) {
-      phaseSectionList.add(new AccessListPhaseSection(rlpUtils, tx));
+      phaseSectionList.add(new AccessListPhaseSection(rlpUtils, trm, tx));
     }
 
     // Phase Beta
