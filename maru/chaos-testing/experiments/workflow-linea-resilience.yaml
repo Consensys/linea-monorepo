@@ -107,7 +107,7 @@ spec:
             - default
           labelSelectors:
             app.kubernetes.io/component: maru
-            app.kubernetes.io/instance: maru-sequencer-0
+            app.kubernetes.io/component-role: sequencer
 
     - name: kill-besu-sequencer
       templateType: PodChaos
@@ -120,7 +120,7 @@ spec:
             - default
           labelSelectors:
             app.kubernetes.io/component: besu
-            app.kubernetes.io/instance: besu-sequencer-0
+            app.kubernetes.io/component-role: sequencer
 
     - name: kill-maru-randomly
       templateType: PodChaos
@@ -134,6 +134,12 @@ spec:
             - default
           labelSelectors:
             app.kubernetes.io/component: maru
+          # We cannot kill bootnodes because they get new IP and other nodes cannot reconnect
+          expressionSelectors:
+            - key: app.kubernetes.io/component-role
+              operator: NotIn
+              values:
+                - bootnode
 
     - name: kill-besu-randomly
       templateType: PodChaos
@@ -147,6 +153,12 @@ spec:
             - default
           labelSelectors:
             app.kubernetes.io/component: besu
+          # We cannot kill bootnodes because they get new IP and other nodes cannot reconnect
+          expressionSelectors:
+            - key: app.kubernetes.io/component-role
+              operator: NotIn
+              values:
+                - bootnode
 
     - name: kill-maru-all
       templateType: PodChaos
@@ -159,6 +171,12 @@ spec:
             - default
           labelSelectors:
             app.kubernetes.io/component: maru
+          # We cannot kill bootnodes because they get new IP and other nodes cannot reconnect
+          expressionSelectors:
+            - key: app.kubernetes.io/component-role
+              operator: NotIn
+              values:
+                - bootnode
 
     - name: kill-besu-all
       templateType: PodChaos
@@ -171,6 +189,12 @@ spec:
             - default
           labelSelectors:
             app.kubernetes.io/component: besu
+          # We cannot kill bootnodes because they get new IP and other nodes cannot reconnect
+          expressionSelectors:
+            - key: app.kubernetes.io/component-role
+              operator: NotIn
+              values:
+                - bootnode
 
 # Usage:
 # kubectl apply -f workflow-network-clients.yaml

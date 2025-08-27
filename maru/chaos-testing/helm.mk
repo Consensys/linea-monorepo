@@ -55,6 +55,8 @@ wait-for-log-entry:
 
 
 # make helm-deploy-linea-node maru_release_name=maru-bootnode-0 maru_values=maru-bootnode-0.yaml besu_release_name=besu-bootnode-0 besu_values=besu-bootnode-0.yaml
+# to debug templates:
+# helm template maru-test ./helm/charts/maru -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-bootnode-0.yaml --debug
 helm-deploy-linea-node:
 	@if [ -z "$(maru_release_name)" ] || [ -z "$(maru_values)" ] || [ -z "$(besu_release_name)" ] || [ -z "$(besu_values)" ]; then \
 		echo "Usage: make helm-deploy-linea-node maru_release_name=<name> maru_values=<values_file> besu_release_name=<name> besu_values=<values_file> [maru_bootnode=<bootnode>] [besu_bootnode=<bootnode>]"; \
@@ -232,18 +234,59 @@ port-forward-restart-all-linea:
 	$(MAKE) port-forward-linea
 
 wait-all-running:
-	@echo "Waiting for all pods in default namespace to be running..."
-	@while true; do \
-		total_pods=$$(kubectl get pods --namespace=default --no-headers 2>/dev/null | wc -l | tr -d ' '); \
-		if [ "$$total_pods" -eq 0 ]; then \
-			echo "No pods found in default namespace."; \
+	@uptime_arg="$${uptime:-10s}"; \
+	echo "Waiting for all pods in default namespace to be running for at least $$uptime_arg since last restart..."; \
+	uptime_seconds=0; \
+	case "$$uptime_arg" in \
+		*s) uptime_seconds=$$(echo "$$uptime_arg" | sed 's/s$$//'); ;; \
+		*m) uptime_seconds=$$(echo "$$uptime_arg" | sed 's/m$$//' | awk '{print $$1 * 60}'); ;; \
+		*h) uptime_seconds=$$(echo "$$uptime_arg" | sed 's/h$$//' | awk '{print $$1 * 3600}'); ;; \
+		*) echo "Invalid uptime format. Use format like: 30s, 2m, 1h"; exit 1; ;; \
+	esac; \
+	while true; do \
+	  total_pods=$$(kubectl get pods --namespace=default -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | wc -l | tr -d ' '); \
+		pods_data=$$(kubectl get pods --namespace=default --field-selector=status.phase=Running -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.containerStatuses[*].state.running.startedAt}{"\n"}{end}' 2>/dev/null); \
+		if [ -z "$$pods_data" ] || [ $$(echo "$$pods_data" | wc -l | tr -d ' ') -lt "$$total_pods" ]; then \
+			echo "Not all pods are running in default namespace. Waiting..."; \
+			sleep 2; \
+			continue; \
+		fi; \
+		pods_ready=0; \
+		current_time=$$(date +%s); \
+		for line in $$pods_data; do \
+			if [ -z "$$line" ]; then continue; fi; \
+			pod_name=$$(echo "$$line" | awk '{print $$1}'); \
+			start_times=$$(echo "$$line" | cut -d' ' -f2-); \
+			if [ -z "$$pod_name" ]; then continue; fi; \
+			most_recent_seconds=0; \
+			for start_time in $$start_times; do \
+				if [ -n "$$start_time" ]; then \
+					start_time_clean=$$(echo "$$start_time" | sed 's/\.[0-9]*Z$$/Z/'); \
+					if date --version >/dev/null 2>&1; then \
+						start_seconds=$$(date -d "$$start_time_clean" +%s 2>/dev/null || echo "0"); \
+					else \
+						start_seconds=$$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$$start_time_clean" "+%s" 2>/dev/null || echo "0"); \
+					fi; \
+					if [ "$$start_seconds" -gt "$$most_recent_seconds" ]; then \
+						most_recent_seconds=$$start_seconds; \
+					fi; \
+				fi; \
+			done; \
+			if [ "$$most_recent_seconds" -gt 0 ]; then \
+				container_uptime=$$((current_time - most_recent_seconds)); \
+				if [ "$$container_uptime" -ge "$$uptime_seconds" ]; then \
+					pods_ready=$$((pods_ready + 1)); \
+				else \
+					echo "Pod $$pod_name: uptime $$container_uptime seconds < required $$uptime_seconds seconds"; \
+				fi; \
+			else \
+				echo "Pod $$pod_name: Could not parse container start time, skipping"; \
+			fi; \
+		done; \
+		if [ "$$pods_ready" -eq "$$total_pods" ]; then \
+			echo "All $$total_pods pods have been running for at least $$uptime_seconds seconds since last restart."; \
 			break; \
 		fi; \
-		running_pods=$$(kubectl get pods --namespace=default --field-selector=status.phase=Running --no-headers 2>/dev/null | wc -l | tr -d ' '); \
-		if [ "$$running_pods" -eq "$$total_pods" ]; then \
-			echo "All $$total_pods pods are running."; \
-			break; \
-		fi; \
-		echo "$$running_pods/$$total_pods pods are running. Waiting..."; \
+		echo "$$pods_ready/$$total_pods pods have been running for at least $$uptime_seconds seconds since last restart. Waiting..."; \
 		sleep 2; \
 	done

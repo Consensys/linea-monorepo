@@ -13,8 +13,8 @@
 app.kubernetes.io/name: {{ include "maru.fullname" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/component: maru
-{{- if .Values.componentRole -}}
-app.kubernetes.io/component-role: {{ .Values.componentRole -}}
+{{- if .Values.componentRole }}
+app.kubernetes.io/component-role: {{ .Values.componentRole }}
 {{- end }}
 {{- end }}
 

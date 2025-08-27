@@ -1,5 +1,6 @@
 replicaCount: 1
 fullnameOverride: maru-sequencer-0
+componentRole: sequencer
 configFiles:
   privateKey: |
     0x080212201dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae
