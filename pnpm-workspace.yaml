@@ -7,6 +7,8 @@ packages:
   - 'bridge-ui/**'
   - 'ts-libs/**'
   - '!contracts/lib/**'
+  - 'status-network-contracts/**'
+  - '!status-network-contracts/lib/**'
 
 catalog:
   "@jest/globals": 29.7.0
