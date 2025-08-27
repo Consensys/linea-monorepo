@@ -22,14 +22,16 @@ import static net.consensys.linea.zktracer.TraceCancun.Rlptxn.RLP_TXN_CT_MAX_BYT
 import static net.consensys.linea.zktracer.module.rlpUtils.RlpUtils.BYTES16_PREFIX_BYTES32;
 import static net.consensys.linea.zktracer.module.rlpUtils.WcpExoCall.callToGeq;
 
+import lombok.EqualsAndHashCode;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.rlptxn.cancun.GenericTracedValue;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class InstructionBytes32 extends RlpUtilsCall {
-  private final Bytes32 input1;
+  @EqualsAndHashCode.Include private final Bytes32 input1;
 
   public InstructionBytes32(Bytes32 input1) {
     super(CT_MAX_INST_BYTES32);
@@ -108,9 +110,5 @@ public class InstructionBytes32 extends RlpUtilsCall {
 
   private Bytes data2() {
     return input1.slice(LLARGE, LLARGE);
-  }
-
-  private int wcpCtMax() {
-    return Math.max(data1().trimLeadingZeros().size(), data2().trimLeadingZeros().size()) - 1;
   }
 }

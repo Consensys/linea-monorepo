@@ -15,6 +15,9 @@
 
 package net.consensys.linea.zktracer.container.stacked;
 
+import static net.consensys.linea.zktracer.container.stacked.ModuleOperationAdder.existingOperation;
+import static net.consensys.linea.zktracer.container.stacked.ModuleOperationAdder.newOperation;
+
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -85,6 +88,25 @@ public class ModuleOperationStackedSet<E extends ModuleOperation> extends Stacke
       return isNew;
     }
     return false;
+  }
+
+  public ModuleOperationAdder addAndGet(E e) {
+    // First search if the operation is already present
+    for (E op : operationsInTransactionBundle()) {
+      if (op.equals(e)) {
+        return existingOperation(op);
+      }
+    }
+    for (E op : operationsCommitedToTheConflation()) {
+      if (op.equals(e)) {
+        return existingOperation(op);
+      }
+    }
+
+    // Not found, add it
+    operationsInTransactionBundle().add(e);
+    lineCounter.add(e.lineCount());
+    return newOperation(e);
   }
 
   public void clear() {

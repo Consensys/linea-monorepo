@@ -29,7 +29,6 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -162,9 +161,6 @@ public class BlockhashTest extends TracerTestBase {
     multiBlocksTest(List.of(program1, program2));
   }
 
-  // TODO: enable this test once this fix is merged
-  // https://github.com/Consensys/linea-tracer/pull/2189
-  @Tag("disabled-for-cancun-temporarily")
   @Test
   void blockhashArgumentLowerRangeCheckMultiBlockTest() {
     Bytes fillerProgram = BytecodeCompiler.newProgram(testInfo).op(OpCode.COINBASE).compile();
