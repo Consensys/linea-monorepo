@@ -37,6 +37,8 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
     error StakeVault__NotAuthorized();
     /// @notice Emitted when withdrawing funds from vault fails
     error StakeVault__WithdrawFromVaultFailed();
+    /// @notice Emitted when trying to transfer ownership
+    error StakeVault__NotAllowedToTransferOwnership();
 
     /*//////////////////////////////////////////////////////////////////////////
                                   STATE VARIABLES
@@ -269,6 +271,17 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
     /*//////////////////////////////////////////////////////////////////////////
                            INTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/
+
+    /**
+     * @dev Overrides the `_transferOwnership` function to prevent ownership transfer.
+     * @param newOwner The address of the new owner.
+     */
+    function _transferOwnership(address newOwner) internal override {
+        if (!_isInitializing()) {
+            revert StakeVault__NotAllowedToTransferOwnership();
+        }
+        super._transferOwnership(newOwner);
+    }
 
     /**
      * @notice Stakes tokens for a specified time.

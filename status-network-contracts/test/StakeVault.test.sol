@@ -47,6 +47,18 @@ contract StakeVaultTest is Test {
     }
 }
 
+contract TransferOwnershipTest is StakeVaultTest {
+    function setUp() public override {
+        super.setUp();
+    }
+
+    function test_RevertWhen_TransferOwnership() public {
+        vm.prank(alice);
+        vm.expectRevert(StakeVault.StakeVault__NotAllowedToTransferOwnership.selector);
+        stakeVault.transferOwnership(bob);
+    }
+}
+
 contract StakingTokenTest is StakeVaultTest {
     function setUp() public override {
         super.setUp();
