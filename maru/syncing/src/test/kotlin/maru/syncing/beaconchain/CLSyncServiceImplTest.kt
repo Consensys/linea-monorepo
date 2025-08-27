@@ -389,6 +389,7 @@ class CLSyncServiceImplTest {
         metricsSystem = TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
+        forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
       )
     return p2pNetworkImpl
   }

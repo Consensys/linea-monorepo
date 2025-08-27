@@ -151,6 +151,7 @@ class P2PTest {
         metricsSystem = NoOpMetricsSystem(),
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
+        forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
       )
   }
 

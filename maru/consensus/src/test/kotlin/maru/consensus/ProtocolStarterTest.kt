@@ -10,11 +10,15 @@ package maru.consensus
 
 import java.time.Clock
 import java.time.Instant
+import java.time.ZoneId
 import java.time.ZoneOffset
 import kotlin.random.Random
 import kotlin.random.nextULong
 import kotlin.time.Duration.Companion.seconds
+import maru.consensus.ForkSpec
 import maru.core.Protocol
+import maru.subscription.InOrderFanoutSubscriptionManager
+import maru.subscription.SubscriptionNotifier
 import maru.syncing.SyncStatusProvider
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -43,17 +47,19 @@ class ProtocolStarterTest {
   private val protocolConfig1 = object : ConsensusConfig {}
   private val forkSpec1 = ForkSpec(0, 5, protocolConfig1)
   private val protocolConfig2 = object : ConsensusConfig {}
-  private val forkSpec2 =
-    ForkSpec(
-      15,
-      2,
-      protocolConfig2,
-    )
+  private val forkSpec2 = ForkSpec(15, 2, protocolConfig2)
 
   private val mockSyncStatusProvider = mock<SyncStatusProvider>()
 
+  val forkTransitions = mutableListOf<ForkSpec>()
+  val forkTransitionNotifier =
+    InOrderFanoutSubscriptionManager<ForkSpec>().also {
+      it.addSyncSubscriber(forkTransitions::add)
+    }
+
   @BeforeEach
   fun stopStubProtocols() {
+    forkTransitions.clear()
     protocol1.stop()
     protocol2.stop()
   }
@@ -72,9 +78,12 @@ class ProtocolStarterTest {
       createProtocolStarter(
         forksSchedule = forksSchedule,
         clockMilliseconds = 16000, // After fork transition at 15
+        forkTransitionNotifier = forkTransitionNotifier,
       )
     protocolStarter.start()
     assertActiveProtocol2(protocolStarter)
+    assertThat(forkTransitions.size).isEqualTo(1)
+    assertThat(forkTransitions.first()).isEqualTo(forkSpec2)
   }
 
   @Test
@@ -91,9 +100,12 @@ class ProtocolStarterTest {
       createProtocolStarter(
         forksSchedule = forksSchedule,
         clockMilliseconds = 5000, // Before fork transition at 15
+        forkTransitionNotifier = forkTransitionNotifier,
       )
     protocolStarter.start()
     assertActiveProtocol1(protocolStarter)
+    assertThat(forkTransitions.size).isEqualTo(1)
+    assertThat(forkTransitions.first()).isEqualTo(forkSpec1)
   }
 
   @Test
@@ -110,10 +122,13 @@ class ProtocolStarterTest {
       createProtocolStarter(
         forksSchedule = forksSchedule,
         clockMilliseconds = 10000, // 5 seconds before fork transition at 15
+        forkTransitionNotifier = forkTransitionNotifier,
       )
     protocolStarter.start()
 
     assertActiveProtocol2(protocolStarter)
+    assertThat(forkTransitions.size).isEqualTo(1)
+    assertThat(forkTransitions.first()).isEqualTo(forkSpec2)
   }
 
   @Test
@@ -130,10 +145,13 @@ class ProtocolStarterTest {
       createProtocolStarter(
         forksSchedule = forksSchedule,
         clockMilliseconds = 5000, // Before fork transition at 15, next block still in forkSpec1 period
+        forkTransitionNotifier = forkTransitionNotifier,
       )
     protocolStarter.start()
 
     assertActiveProtocol1(protocolStarter)
+    assertThat(forkTransitions.size).isEqualTo(1)
+    assertThat(forkTransitions.first()).isEqualTo(forkSpec1)
   }
 
   @Test
@@ -151,6 +169,7 @@ class ProtocolStarterTest {
         forksSchedule = forksSchedule,
         clockMilliseconds = currentTimeMillis,
         timer = timer,
+        forkTransitionNotifier = forkTransitionNotifier,
       ) { currentTimeMillis }
 
     protocolStarter.start()
@@ -163,6 +182,10 @@ class ProtocolStarterTest {
 
     // Should switch to second protocol since next block needs forkSpec2
     assertActiveProtocol2(protocolStarter)
+
+    assertThat(forkTransitions.size).isEqualTo(2)
+    assertThat(forkTransitions.first()).isEqualTo(forkSpec1)
+    assertThat(forkTransitions.last()).isEqualTo(forkSpec2)
   }
 
   @Test
@@ -180,6 +203,7 @@ class ProtocolStarterTest {
         forksSchedule = forksSchedule,
         clockMilliseconds = currentTimeMillis,
         timer = timer,
+        forkTransitionNotifier = forkTransitionNotifier,
       ) { currentTimeMillis }
 
     protocolStarter.start()
@@ -190,6 +214,8 @@ class ProtocolStarterTest {
     timer.runNextTask()
 
     assertActiveProtocol1(protocolStarter)
+    assertThat(forkTransitions.size).isEqualTo(1)
+    assertThat(forkTransitions.first()).isEqualTo(forkSpec1)
   }
 
   @Test
@@ -207,6 +233,7 @@ class ProtocolStarterTest {
         forksSchedule = forksSchedule,
         clockMilliseconds = currentTimeMillis,
         timer = timer,
+        forkTransitionNotifier = forkTransitionNotifier,
       ) { currentTimeMillis }
 
     protocolStarter.start()
@@ -217,6 +244,8 @@ class ProtocolStarterTest {
     timer.runNextTask()
 
     assertActiveProtocol2(protocolStarter)
+    assertThat(forkTransitions.size).isEqualTo(1)
+    assertThat(forkTransitions.first()).isEqualTo(forkSpec2)
   }
 
   private val protocolFactory =
@@ -233,6 +262,7 @@ class ProtocolStarterTest {
     forksSchedule: ForksSchedule,
     clockMilliseconds: Long,
     timer: TestablePeriodicTimer = TestablePeriodicTimer(),
+    forkTransitionNotifier: SubscriptionNotifier<ForkSpec>,
     timeProvider: (() -> Long)? = null,
   ): ProtocolStarter {
     val clock =
@@ -242,7 +272,7 @@ class ProtocolStarterTest {
 
           override fun instant() = Instant.ofEpochMilli(timeProvider())
 
-          override fun withZone(zone: java.time.ZoneId?) = this
+          override fun withZone(zone: ZoneId?) = this
         }
       } else {
         Clock.fixed(Instant.ofEpochMilli(clockMilliseconds), ZoneOffset.UTC)
@@ -260,6 +290,7 @@ class ProtocolStarterTest {
       forkTransitionCheckInterval = 1.seconds,
       clock = clock,
       timerFactory = { _, _ -> timer },
+      forkTransitionNotifier = forkTransitionNotifier,
     )
   }
 
