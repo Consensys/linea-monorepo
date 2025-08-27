@@ -95,9 +95,9 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 		}
 	}
 
-	// assign the roots and the isSisReplacedByMiMC flags
+	// assign the roots and the IsSISReplacedByPoseidon2 flags
 	roots := append(noSisRoots, sisRoots...)
-	isSISReplacedByMiMC := append(flagForNoSISRounds, flagForSISRounds...)
+	IsSISReplacedByPoseidon2 := append(flagForNoSISRounds, flagForSISRounds...)
 
 	proof := &vortex.OpeningProof{}
 	randomCoin := run.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
@@ -127,7 +127,7 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 		OpeningProof:             *proof,
 		RandomCoin:               randomCoin,
 		EntryList:                entryList,
-		IsSISReplacedByPoseidon2: isSISReplacedByMiMC,
+		IsSISReplacedByPoseidon2: IsSISReplacedByPoseidon2,
 	})
 }
 

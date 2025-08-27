@@ -36,7 +36,7 @@ func ZeroOctupletVec(size int) [8]smartvectors.SmartVector {
 	var res [8]smartvectors.SmartVector
 
 	for i := range res {
-		res[i] = smartvectors.NewConstant(field.NewElement(uint64(1)), size)
+		res[i] = smartvectors.NewConstant(field.Zero(), size)
 	}
 
 	return res

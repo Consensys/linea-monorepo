@@ -90,6 +90,7 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPo
 		tmpVec = bBase.Regular
 		vectorext.Fill(resReg, fext.Zero())
 		defer b.Free(pool)
+		defer bBase.Free(pool)
 	}
 
 	var tmpF, resCon fext.Element
