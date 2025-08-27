@@ -62,7 +62,7 @@ jobs:
 
   chaos-testing:
     needs: [ filter-commit-changes ]
-    if: ${{ always() && !cancelled() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' && github.ref == 'refs/heads/main' }}
+    if: ${{ always() && !cancelled() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
     uses: ./.github/workflows/chaos-testing.yml
     with:
       consensus-client-changed: ${{ needs.filter-commit-changes.outputs.consensus-client }}

@@ -30,16 +30,20 @@ chaos-experiment-workflow:
 
 experiment_name ?= linea-resilience
 wait-experiment-done:
-	@echo "Waiting for workflow $(experiment_name) to be accomplished..."
-	@timeout=$${WAIT_TIMEOUT_SECONDS:-3000}; interval=$${WAIT_INTERVAL_SECONDS:-10}; elapsed=0; \
+	@echo "Waiting for $(experiment_name) workflow to finish..."; \
+	timeout=$${WAIT_TIMEOUT_SECONDS:-3000}; interval=$${WAIT_INTERVAL_SECONDS:-10}; elapsed=0; \
 	while [ $$elapsed -lt $$timeout ]; do \
-	  out=$$(kubectl describe workflows.chaos-mesh.org $(experiment_name) -n chaos-mesh 2>/dev/null || true); \
-	  echo "--- status check (elapsed $$elapsed s) ---"; \
-	  echo "$$out" | grep -qi 'WorkflowAccomplished' && { echo "Workflow $(experiment_name) accomplished."; exit 0; }; \
-	  echo "$$out" | grep -qi 'Failed' && { echo "Workflow $(experiment_name) failed."; exit 1; }; \
-	  sleep $$interval; elapsed=$$((elapsed+interval)); \
+		out=$$(kubectl describe workflows.chaos-mesh.org $(experiment_name) -n chaos-mesh 2>/dev/null || true); \
+		echo "--- still running, no End Time found yet (elapsed $$elapsed s) ---"; \
+		if echo "$$out" | grep -q 'End Time:'; then \
+			end_time=$$(echo "$$out" | grep 'End Time:' | head -1); \
+			echo "Workflow $(experiment_name) completed: $$end_time"; \
+			exit 0; \
+		fi; \
+		echo "$$out" | grep -qi 'Failed' && { echo "Workflow $(experiment_name) failed."; exit 1; }; \
+		sleep $$interval; elapsed=$$((elapsed + interval)); \
 	done; \
-	echo "Timeout ($$timeout s) waiting for workflow $(experiment_name)."; exit 1
+	echo "Timeout ($$timeout s) waiting for workflow $(experiment_name) completion."; exit 1
 
 chaos-experiment-workflow-and-wait:
 	@$(MAKE) chaos-experiment-workflow
