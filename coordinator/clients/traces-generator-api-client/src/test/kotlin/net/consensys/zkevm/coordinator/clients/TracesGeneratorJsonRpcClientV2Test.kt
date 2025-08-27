@@ -450,13 +450,16 @@ class TracesGeneratorJsonRpcClientV2Test {
     val errorMessage = "Plugin internal error"
     val data = "Exceptions triggered while tracing!"
     val response = JsonObject.of(
-      "jsonrpc", "2.0",
-      "id", 835,
-      "error", mapOf(
+      "jsonrpc",
+      "2.0",
+      "id",
+      835,
+      "error",
+      mapOf(
         "code" to -32603,
         "message" to errorMessage,
-        "data" to data
-      )
+        "data" to data,
+      ),
     )
 
     wiremock.stubFor(
@@ -465,16 +468,16 @@ class TracesGeneratorJsonRpcClientV2Test {
         .willReturn(
           ok()
             .withHeader("Content-type", "application/json")
-            .withBody(response.toString().toByteArray())
-        )
+            .withBody(response.toString().toByteArray()),
+        ),
     )
 
     tracesGeneratorClient = TracesGeneratorJsonRpcClientV2(
       vertxHttpJsonRpcClient,
       TracesGeneratorJsonRpcClientV2.Config(
         expectedTracesApiVersion = expectedTracesApiVersion,
-        ignoreTracesGeneratorErrors = true
-      )
+        ignoreTracesGeneratorErrors = true,
+      ),
     )
 
     val blockNumber = 1UL
