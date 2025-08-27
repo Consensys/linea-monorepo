@@ -16,3 +16,24 @@
 plugins {
   id 'maru.kotlin-common-minimal-conventions'
 }
+
+dependencies {
+  implementation "io.libp2p:jvm-libp2p"
+  implementation "tech.pegasys.teku.internal:p2p"
+  implementation "build.linea.internal:kotlin"
+  implementation("org.slf4j:slf4j-nop") {
+    because "To suppress slf4j logs"
+  }
+}
+
+tasks.register('runDifficultyCalculator', JavaExec) {
+  classpath = sourceSets.main.runtimeClasspath
+  mainClass = 'DifficultyCalculator'
+  standardOutput = System.out
+}
+
+tasks.register('runPrivateKeyGenerator', JavaExec) {
+  classpath = sourceSets.main.runtimeClasspath
+  mainClass = 'PrivateKeyGenerator'
+  standardOutput = System.out
+}
