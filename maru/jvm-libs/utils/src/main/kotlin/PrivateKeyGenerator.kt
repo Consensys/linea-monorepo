@@ -18,6 +18,10 @@ import io.libp2p.core.crypto.KeyType
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.crypto.marshalPrivateKey
 import linea.kotlin.encodeHex
+import org.apache.tuweni.bytes.Bytes32
+import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
+import org.hyperledger.besu.datatypes.Address
+import org.hyperledger.besu.ethereum.core.Util
 import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 
 /**
@@ -28,11 +32,22 @@ object PrivateKeyGenerator {
     val keyPair = generateKeyPair(KeyType.SECP256K1)
     val privateKey = keyPair.component1()
     val privateKeyWithPrefixString = marshalPrivateKey(privateKey).encodeHex()
+    // Sometimes keyPair has 1 byte more so we just take the last 32 bytes ¯\_(ツ)_/¯
+    val address = privateKeyToAddress(privateKey.raw().takeLast(32).toByteArray())
     val peerId = PeerId.fromPubKey(privateKey.publicKey())
     val libP2PNodeId = LibP2PNodeId(peerId)
 
     println("Generated private key (prefixed): $privateKeyWithPrefixString")
+    println("Ethereum address: $address")
     println("Corresponding node ID: $libP2PNodeId")
+  }
+
+  fun privateKeyToAddress(privateKey: ByteArray): Address {
+    val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
+    val privateKey = signatureAlgorithm.createPrivateKey(Bytes32.wrap(privateKey))
+    val keyPair = signatureAlgorithm.createKeyPair(privateKey)
+
+    return Util.publicKeyToAddress(keyPair.publicKey)
   }
 
   @JvmStatic

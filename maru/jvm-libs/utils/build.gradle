@@ -21,6 +21,9 @@ dependencies {
   implementation "io.libp2p:jvm-libp2p"
   implementation "tech.pegasys.teku.internal:p2p"
   implementation "build.linea.internal:kotlin"
+  implementation("org.hyperledger.besu.internal:besu-crypto-algorithms")
+  implementation("org.hyperledger.besu.internal:besu-crypto-services")
+  implementation("org.hyperledger.besu.internal:besu-ethereum-core")
   implementation("org.slf4j:slf4j-nop") {
     because "To suppress slf4j logs"
   }
