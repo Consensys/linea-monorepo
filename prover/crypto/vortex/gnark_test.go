@@ -330,13 +330,13 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	roots = make([]types.Bytes32, nCommitments)
 	trees := make([]*smt.Tree, nCommitments)
 	committedMatrices := make([]EncodedMatrix, nCommitments)
-	isSISReplacedByMiMC := make([]bool, nCommitments)
+	isSISReplacedByPoseidon2 := make([]bool, nCommitments)
 	for j := range trees {
 		// As Gnark does not support SIS, we commit without SIS hashing
 		committedMatrices[j], trees[j], _ = params.CommitMerkleWithoutSIS(polyLists[j])
 		roots[j] = trees[j].Root
-		// We set the SIS replaced by MiMC to true, as Gnark does not support SIS
-		isSISReplacedByMiMC[j] = true
+		// We set the SIS replaced by Poseidon2 to true, as Gnark does not support SIS
+		isSISReplacedByPoseidon2[j] = true
 	}
 
 	// Generate the proof
@@ -345,14 +345,14 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 
 	// Check the proof
 	err := VerifyOpening(&VerifierInputs{
-		Params:              *params,
-		MerkleRoots:         roots,
-		X:                   x,
-		Ys:                  yLists,
-		OpeningProof:        *proof,
-		RandomCoin:          randomCoin,
-		EntryList:           entryList,
-		IsSISReplacedByMiMC: isSISReplacedByMiMC,
+		Params:                   *params,
+		MerkleRoots:              roots,
+		X:                        x,
+		Ys:                       yLists,
+		OpeningProof:             *proof,
+		RandomCoin:               randomCoin,
+		EntryList:                entryList,
+		IsSISReplacedByPoseidon2: isSISReplacedByPoseidon2,
 	})
 	require.NoError(t, err)
 

@@ -294,7 +294,7 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 			}
 
 			if round < len(wit[i].MimcHashes) && wit[i].MimcHashes[round] != nil {
-				run.State.InsertNew(r.PcsCtx[i].MIMCHashName(round), wit[i].MimcHashes[round])
+				run.State.InsertNew(r.PcsCtx[i].NoSisHashName(round), wit[i].MimcHashes[round])
 			}
 		}
 	}

@@ -515,10 +515,10 @@ func processRound(
 			lmp.CommittedRound++
 		} else if a.Ctx.VortexCtx.RoundStatus[round] == vortex.IsOnlyMiMCApplied {
 			// Fetch the MiMC hash values
-			colMimcHashName := a.Ctx.VortexCtx.MIMCHashName(round)
-			colMimcHashSV, found := run.State.TryGet(colMimcHashName)
+			colNoSisHashName := a.Ctx.VortexCtx.NoSisHashName(round)
+			colMimcHashSV, found := run.State.TryGet(colNoSisHashName)
 			if !found {
-				utils.Panic("colMimcHashName %v not found", colMimcHashName)
+				utils.Panic("colNoSisHashName %v not found", colNoSisHashName)
 			}
 			colMimcHash := colMimcHashSV.([]field.Element)
 
@@ -547,7 +547,7 @@ func processRound(
 			// Append the hash values and preimages
 			lmp.NonSisLeaves = append(lmp.NonSisLeaves, mimcHashValues)
 			lmp.NonSisHashPreimages = append(lmp.NonSisHashPreimages, mimcHashPreimages)
-			run.State.TryDel(colMimcHashName)
+			run.State.TryDel(colNoSisHashName)
 			lmp.CommittedRound++
 			nonSisRoundCount++
 		} else if a.Ctx.VortexCtx.RoundStatus[round] == vortex.IsEmpty {

@@ -54,7 +54,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 			committedMatrix, _ = run.State.TryGet(pcs.VortexProverStateName(round))
 			sisHash, _         = run.State.TryGet(pcs.SisHashName(round))
 			tree, _            = run.State.TryGet(pcs.MerkleTreeName(round))
-			mimcHash, _        = run.State.TryGet(pcs.MIMCHashName(round))
+			mimcHash, _        = run.State.TryGet(pcs.NoSisHashName(round))
 		)
 
 		if committedMatrix != nil {

@@ -52,10 +52,10 @@ func (ctx *Ctx) SisHashName(round int) string {
 	return ctx.RunStateNamePrefix + "." + name
 }
 
-// MIMCHashName returns a preformatted message representing the MiMC hash digests
+// NoSisHashName returns a preformatted message representing the no sis column hashes
 // for each round that we store in the state.
-func (ctx *Ctx) MIMCHashName(round int) string {
-	name := fmt.Sprintf("VORTEX_%v_MIMC_HASH_%v", ctx.SelfRecursionCount, round)
+func (ctx *Ctx) NoSisHashName(round int) string {
+	name := fmt.Sprintf("VORTEX_%v_NOSIS_COLUMN_HASH_%v", ctx.SelfRecursionCount, round)
 	if len(ctx.RunStateNamePrefix) == 0 {
 		return name
 	}
