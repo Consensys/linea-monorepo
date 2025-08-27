@@ -10,8 +10,8 @@ if [[ ! -f "initialization/genesis-besu.json" && ! -f "initialization/genesis-ge
     cp -T "genesis-geth.json.template" "genesis-geth.json"
     cp -T "genesis-nethermind.json.template" "genesis-nethermind.json"
 
-    shanghai_timestamp=$(($(date +%s) + 60))
-    prague_timestamp=$((shanghai_timestamp + 30))
+    shanghai_timestamp=$(($(date +%s) + 40))
+    prague_timestamp=$((shanghai_timestamp + 20))
     echo "Shanghai Timestamp: $shanghai_timestamp"
     echo "Prague Timestamp: $prague_timestamp"
     sed -i "s/%SHANGHAI_TIME%/$shanghai_timestamp/g" genesis-maru.json

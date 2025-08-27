@@ -24,7 +24,7 @@ services:
     depends_on:
       initialization:
         condition: service_completed_successfully
-    image: hyperledger/besu:${BESU_TAG:-25.6.0}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v3.1-rc8-20250826111259-ce5e036}
     container_name: sequencer
     healthcheck:
       test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
@@ -40,7 +40,8 @@ services:
       - |
         /opt/besu/bin/besu --config-file=/var/lib/besu/config.toml \
         --genesis-file=/initialization/genesis-besu.json \
-        --node-private-key-file="/var/lib/besu/key"
+        --node-private-key-file="/var/lib/besu/key" \
+        --Xplugins-external-enabled=false
     volumes:
       - ./sequencer/config.toml:/var/lib/besu/config.toml:ro
       - ./sequencer/log4j.xml:/var/lib/besu/log4j.xml:ro
@@ -104,7 +105,7 @@ services:
     depends_on:
       sequencer:
         condition: service_healthy
-    image: hyperledger/besu:${BESU_TAG:-25.6.0}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v3.1-rc8-20250826111259-ce5e036}
     container_name: follower-besu
     healthcheck:
       test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
@@ -119,7 +120,8 @@ services:
       - -c
       - |
         /opt/besu/bin/besu --config-file=/var/lib/besu/config.toml \
-        --genesis-file=/initialization/genesis-besu.json
+        --genesis-file=/initialization/genesis-besu.json \
+        --Xplugins-external-enabled=false
     volumes:
       - ./besu-follower/config.toml:/var/lib/besu/config.toml:ro
       - ./besu-follower/log4j.xml:/var/lib/besu/log4j.xml:ro

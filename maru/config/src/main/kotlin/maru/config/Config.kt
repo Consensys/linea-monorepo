@@ -110,7 +110,7 @@ data class QbftConfig(
   }
 
   override fun toString(): String =
-    "QbftOptions(" +
+    "QbftConfig(" +
       "minBlockBuildTime=$minBlockBuildTime, " +
       "messageQueueLimit=$messageQueueLimit, " +
       "roundExpiry=$roundExpiry, " +

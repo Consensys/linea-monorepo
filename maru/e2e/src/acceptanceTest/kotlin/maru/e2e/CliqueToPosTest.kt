@@ -19,27 +19,18 @@ import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
-import maru.app.Helpers
 import maru.app.MaruApp
 import maru.config.ApiEndpointConfig
 import maru.config.FollowersConfig
-import maru.config.consensus.ElFork
-import maru.consensus.blockimport.FollowerBeaconBlockImporter
-import maru.consensus.state.InstantFinalizationProvider
-import maru.core.BeaconBlock
-import maru.core.BeaconBlockBody
-import maru.core.BeaconBlockHeader
 import maru.core.EMPTY_HASH
-import maru.core.Validator
-import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.extensions.encodeHex
 import maru.extensions.fromHexToByteArray
-import maru.mappers.Mappers.toDomain
-import maru.serialization.rlp.RLPSerializers
+import net.consensys.linea.async.toSafeFuture
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
@@ -68,10 +59,12 @@ class CliqueToPosTest {
     private val qbftCluster =
       DockerComposeRule
         .Builder()
+        .pullOnStartup(true)
         .files(DockerComposeFiles.from(*dockerComposeFilePaths.toTypedArray()))
-        .projectName(ProjectName.random())
+        .projectName(ProjectName.fromString("maru-e2e-" + UUID.randomUUID().toString().take(8)))
         .waitingForService("sequencer", HealthChecks.toHaveAllPortsOpen())
         .build()
+    private var forksTimestamps = emptyMap<String, Long>()
     private var shanghaiTimestamp: Long = 0
     private var pragueTimestamp: Long = 0
     private lateinit var maruFactory: MaruFactory
@@ -91,11 +84,14 @@ class CliqueToPosTest {
     // Will only be used in the sync from scratch tests
     private var maruFollower: MaruApp? = null
 
-    private fun parseTimestamp(timestampFork: String): Long {
+    private fun parseForks(forks: List<String>): Map<String, Long> {
       val objectMapper = ObjectMapper()
       val genesisTree = objectMapper.readTree(File(genesisDir, "genesis-besu.json"))
-      val switchTime = genesisTree.at("/config/$timestampFork").asLong()
-      return if (switchTime == 0L) System.currentTimeMillis() / 1000 else switchTime
+      return forks
+        .map { forkId ->
+          val switchTime = genesisTree.at("/config/$forkId").asLong()
+          forkId to switchTime
+        }.associate { it }
     }
 
     private fun deleteGenesisFiles() {
@@ -114,8 +110,9 @@ class CliqueToPosTest {
     fun beforeAll() {
       deleteGenesisFiles()
       qbftCluster.before()
-      shanghaiTimestamp = parseTimestamp("shanghaiTime")
-      pragueTimestamp = parseTimestamp("pragueTime")
+      forksTimestamps = parseForks(listOf("shanghaiTime", "cancunTime", "pragueTime"))
+      shanghaiTimestamp = forksTimestamps["shanghaiTime"]!!
+      pragueTimestamp = forksTimestamps["pragueTime"]!!
       maruFactory =
         MaruFactory(
           validatorPrivateKey = VALIDATOR_PRIVATE_KEY_WITH_PREFIX.fromHexToByteArray(),
@@ -253,7 +250,7 @@ class CliqueToPosTest {
 
     assertNodeBlockHeight(TestEnvironment.sequencerL2Client, 13)
 
-    waitForAllBlockHeightsToMatch()
+    waitForAllNodesToBeInSyncToMatch()
   }
 
   // TODO: Explore parallelization of this test
@@ -289,17 +286,6 @@ class CliqueToPosTest {
         validatorPortForStaticPeering = maruSequencer.p2pPort(),
         desyncTolerance = 3UL,
       )
-    if (nodeName.contains("besu")) {
-      // Required to change validation rules from Clique to PostMerge
-      // TODO: investigate this issue more. It was working happen with Dummy Consensus
-      syncTarget(engineApiConfig = engineApiConfig, headBlockNumber = 5, followerName = nodeName)
-      awaitCondition
-        .ignoreExceptions()
-        .alias(nodeName)
-        .untilAsserted {
-          assertNodeBlockHeight(nodeEthereumClient, 5L)
-        }
-    }
 
     maruFollower!!.start()
 
@@ -335,11 +321,16 @@ class CliqueToPosTest {
     timestamp: Long,
     timestampFork: String,
   ) {
-    await.timeout(2.minutes.toJavaDuration()).pollInterval(500.milliseconds.toJavaDuration()).untilAsserted {
-      val unixTimestamp = System.currentTimeMillis() / 1000
-      log.info("Waiting ${timestamp - unixTimestamp} seconds for the $timestampFork at timestamp $timestamp")
-      assertThat(unixTimestamp).isGreaterThanOrEqualTo(timestamp)
-    }
+    val unixTimestamp = System.currentTimeMillis() / 1000
+    log.info("Waiting ${timestamp - unixTimestamp} seconds for the $timestampFork at timestamp $timestamp")
+    await
+      .timeout(2.minutes.toJavaDuration())
+      .pollInterval(500.milliseconds.toJavaDuration())
+      .untilAsserted {
+        val unixTimestamp = System.currentTimeMillis() / 1000
+        log.debug("Waiting ${timestamp - unixTimestamp} seconds for the $timestampFork at timestamp $timestamp")
+        assertThat(unixTimestamp).isGreaterThanOrEqualTo(timestamp)
+      }
   }
 
   private fun restartNodeFromScratch(
@@ -388,49 +379,6 @@ class CliqueToPosTest {
         ).isGreaterThanOrEqualTo(expectedBlockNumber)
           .withFailMessage("Node is unexpectedly synced after restart! Was its state flushed?")
       }
-  }
-
-  private fun syncTarget(
-    engineApiConfig: ApiEndpointConfig,
-    headBlockNumber: Long,
-    followerName: String,
-  ) {
-    val latestBlock = getBlockByNumber(headBlockNumber, retreiveTransactions = true)!!
-    val latestExecutionPayload = latestBlock.toDomain()
-    val stubBeaconBlock =
-      BeaconBlock(
-        BeaconBlockHeader(
-          number = 0u,
-          round = 0u,
-          timestamp = latestExecutionPayload.timestamp,
-          proposer = Validator(latestExecutionPayload.feeRecipient),
-          parentRoot = EMPTY_HASH,
-          stateRoot = EMPTY_HASH,
-          bodyRoot = EMPTY_HASH,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-        ),
-        BeaconBlockBody(emptySet(), latestExecutionPayload),
-      )
-    val web3JEngineApiClient =
-      Helpers.createWeb3jClient(
-        apiEndpointConfig = engineApiConfig,
-      )
-    val engineApiClient =
-      Helpers.buildExecutionEngineClient(
-        web3JEngineApiClient = web3JEngineApiClient,
-        elFork = ElFork.Prague,
-        metricsFacade = TestEnvironment.testMetricsFacade,
-      )
-    val executionLayerManager = JsonRpcExecutionLayerManager(engineApiClient)
-    val blockImporter =
-      FollowerBeaconBlockImporter.create(
-        executionLayerManager = executionLayerManager,
-        finalizationStateProvider = InstantFinalizationProvider,
-        importerName = followerName,
-      )
-    blockImporter
-      .handleNewBlock(stubBeaconBlock)
-      .get()
   }
 
   private fun sendCliqueTransactions() {
@@ -482,38 +430,62 @@ class CliqueToPosTest {
     }
   }
 
-  private fun waitForAllBlockHeightsToMatch() {
+  private fun waitForAllNodesToBeInSyncToMatch(liniency: Long = 1) {
+    // Send a transaction so that the Besu follower triggers a backward sync to sync to head.
+    // Besu doesn't adjust the pivot block during the initial sync and may end sync with a block below head.
+    transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
+
+    data class NodeHead(
+      val node: String,
+      val blockHeight: Long,
+      val blockTimestamp: Long,
+    )
+
     await
-      .pollInterval(5.seconds.toJavaDuration())
+      .pollInterval(1.seconds.toJavaDuration())
       .timeout(1.minutes.toJavaDuration())
       .untilAsserted {
-        val sequencerBlockHeight =
+        transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
+
+        val expectedMinBlockHeight =
           TestEnvironment.sequencerL2Client
             .ethBlockNumber()
             .send()
             .blockNumber
-            .toLong()
+            .toLong() - liniency
 
         val blockHeights =
           TestEnvironment.clientsSyncablePreMergeAndPostMerge.entries
             .map { entry ->
-              entry.key to
-                SafeFuture.of(
-                  entry.value.ethBlockNumber().sendAsync(),
-                )
-            }.map { it.first to it.second.get() }
+              entry.value
+                // this complex logic is necessary because besu has a bug
+                // eth_getBlockByNumber(latest) sometimes returns genesis block in follower nodes
+                .ethBlockNumber()
+                .sendAsync()
+                .toSafeFuture()
+                .thenCompose { bn ->
+                  entry.value
+                    .ethGetBlockByNumber(DefaultBlockParameter.valueOf(bn.blockNumber), false)
+                    .sendAsync()
+                    .thenApply {
+                      NodeHead(
+                        entry.key,
+                        bn.blockNumber.toLong(),
+                        it.block.timestamp.toLong(),
+                      )
+                    }
+                }
+            }.let { SafeFuture.collectAll(it.stream()).get() }
 
-        // Send a transaction so that the Besu follower triggers a backward sync to sync to head.
-        // Besu doesn't adjust the pivot block during the initial sync and may end sync with a block below head.
-        transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
+        val nodesOutOfSync = blockHeights.filter { it.blockHeight < expectedMinBlockHeight }
 
-        blockHeights.forEach {
-          assertThat(it.second.blockNumber)
-            .withFailMessage {
-              "Block height doesn't match for ${it.first}. Found ${it.second.blockNumber} " +
-                "while expecting $sequencerBlockHeight."
-            }.isEqualTo(sequencerBlockHeight)
-        }
+        assertThat(nodesOutOfSync)
+          .withFailMessage {
+            "Nodes out of sync:" +
+              "\nforks=$forksTimestamps" +
+              "\nexpectedMinBlockHeight= $expectedMinBlockHeight, " +
+              "\nout of sync nodes: $nodesOutOfSync"
+          }.isEmpty()
       }
   }
 
