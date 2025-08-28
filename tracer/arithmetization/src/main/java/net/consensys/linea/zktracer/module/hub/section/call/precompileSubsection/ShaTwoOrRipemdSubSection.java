@@ -26,6 +26,7 @@ import java.math.BigInteger;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.CommonPrecompileOobCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.shaRipId.RipOobCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.shaRipId.Sha2OobCall;
@@ -40,7 +41,7 @@ public class ShaTwoOrRipemdSubSection extends PrecompileSubsection {
     super(hub, callSection);
 
     final long calleeGas = callSection.stpCall.effectiveChildContextGasAllowance();
-    oobCall =
+    final OobCall call =
         switch (flag()) {
           case PRC_SHA2_256 -> new Sha2OobCall(BigInteger.valueOf(calleeGas));
           case PRC_RIPEMD_160 -> new RipOobCall(BigInteger.valueOf(calleeGas));
@@ -48,7 +49,7 @@ public class ShaTwoOrRipemdSubSection extends PrecompileSubsection {
               String.format(
                   "Precompile address %s not supported by constructor", this.flag().toString()));
         };
-    firstImcFragment.callOob(oobCall);
+    oobCall = (CommonPrecompileOobCall) firstImcFragment.callOob(call);
 
     if (!oobCall.isHubSuccess()) {
       this.setScenario(PRC_FAILURE_KNOWN_TO_HUB);

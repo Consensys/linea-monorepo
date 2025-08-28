@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc;
 
+import static com.google.common.base.Preconditions.checkState;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -79,59 +81,43 @@ public class ImcFragment implements TraceFragment, ContextReEntryDefer, ContextE
     return shouldCopyTxCallData ? miscFragment.callMmu(MmuCall.txInit(hub)) : miscFragment;
   }
 
-  public ImcFragment callOob(OobCall f) {
-    if (oobIsSet) {
-      throw new IllegalStateException("OOB already called");
-    } else {
-      oobIsSet = true;
-    }
-    hub.oob().call(f);
-    moduleCalls.add(f);
-    return this;
+  public OobCall callOob(OobCall f) {
+    checkState(!oobIsSet, "OOB already called");
+    oobIsSet = true;
+    final OobCall oobCall = hub.oob().call(f);
+    moduleCalls.add(oobCall);
+    return oobCall;
   }
 
   public ImcFragment callMmu(MmuCall f) {
-    if (mmuIsSet) {
-      throw new IllegalStateException("MMU already called");
-    } else {
-      mmuIsSet = true;
-    }
+    checkState(!mmuIsSet, "MMU already called");
+    mmuIsSet = true;
     // Note: the triggering of the MMU is made by the creation of the MmuCall
     moduleCalls.add(f);
     return this;
   }
 
   public ImcFragment callExp(ExpCall f) {
-    if (expIsSet) {
-      throw new IllegalStateException("EXP already called");
-    } else {
-      expIsSet = true;
-    }
+    checkState(!expIsSet, "EXP already called");
+    expIsSet = true;
     hub.exp().call(f);
     moduleCalls.add(f);
     return this;
   }
 
   public ImcFragment callMxp(MxpCall f) {
-    if (mxpIsSet) {
-      throw new IllegalStateException("MXP already called");
-    } else {
-      mxpIsSet = true;
-    }
+    checkState(!mxpIsSet, "MXP already called");
+    mxpIsSet = true;
     hub.mxp().call(f);
     moduleCalls.add(f);
     return this;
   }
 
-  public ImcFragment callStp(StpCall f) {
-    if (stpIsSet) {
-      throw new IllegalStateException("STP already called");
-    } else {
-      stpIsSet = true;
-    }
+  public void callStp(StpCall f) {
+    checkState(!stpIsSet, "STP already called");
+    stpIsSet = true;
     hub.stp().call(f);
     moduleCalls.add(f);
-    return this;
   }
 
   @Override
@@ -165,18 +151,4 @@ public class ImcFragment implements TraceFragment, ContextReEntryDefer, ContextE
   public void resolveUponContextEntry(Hub hub, MessageFrame frame) {
     childFrame = hub.currentFrame();
   }
-
-  /**
-   * The IMC fragment (or MISCELLANEOUS fragment in the specification) requires, for CALL and CREATE
-   * instructions, to record the following data
-   *
-   * <p>- whether the child context will or won't self-revert (i.e. CHILD_CONTEXT_SELF_REVERTS ≡
-   * CCSR)
-   *
-   * <p>- if it does, at what point in time (i.e. CHILD_CONTEXT_REVERT_STAMP ≡ CCRS)
-   *
-   * <p>In order to capture this information we will schedule IMC fragments for context-re-entry.
-   *
-   * @param hub
-   */
 }

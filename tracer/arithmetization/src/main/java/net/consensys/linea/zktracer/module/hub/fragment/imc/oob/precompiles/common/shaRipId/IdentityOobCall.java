@@ -24,7 +24,7 @@ import net.consensys.linea.zktracer.Trace;
 
 public class IdentityOobCall extends ShaRipIdOobCall {
   public IdentityOobCall(BigInteger calleeGas) {
-    super(calleeGas);
+    super(calleeGas, OOB_INST_IDENTITY);
   }
 
   @Override

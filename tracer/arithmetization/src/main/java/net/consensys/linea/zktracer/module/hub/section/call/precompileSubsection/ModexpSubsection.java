@@ -63,8 +63,7 @@ public class ModexpSubsection extends PrecompileSubsection {
       return;
     }
 
-    final ModexpCallDataSizeOobCall firstOobCall = new ModexpCallDataSizeOobCall(modexpMetaData);
-    firstImcFragment.callOob(firstOobCall);
+    firstImcFragment.callOob(new ModexpCallDataSizeOobCall(modexpMetaData));
 
     final ImcFragment secondImcFragment = ImcFragment.empty(hub);
     fragments().add(secondImcFragment);
@@ -73,9 +72,7 @@ public class ModexpSubsection extends PrecompileSubsection {
       secondImcFragment.callMmu(mmuCall);
     }
 
-    final ModexpXbsOobCall secondOobCall =
-        new ModexpXbsOobCall(modexpMetaData, OOB_INST_MODEXP_BBS);
-    secondImcFragment.callOob(secondOobCall);
+    secondImcFragment.callOob(new ModexpXbsOobCall(modexpMetaData, OOB_INST_MODEXP_BBS));
 
     final ImcFragment thirdImcFragment = ImcFragment.empty(hub);
     fragments().add(thirdImcFragment);
@@ -83,8 +80,7 @@ public class ModexpSubsection extends PrecompileSubsection {
       final MmuCall mmuCall = forModexpExtractEbs(hub, this, modexpMetaData);
       thirdImcFragment.callMmu(mmuCall);
     }
-    final ModexpXbsOobCall thirdOobCall = new ModexpXbsOobCall(modexpMetaData, OOB_INST_MODEXP_EBS);
-    thirdImcFragment.callOob(thirdOobCall);
+    thirdImcFragment.callOob(new ModexpXbsOobCall(modexpMetaData, OOB_INST_MODEXP_EBS));
 
     final ImcFragment fourthImcFragment = ImcFragment.empty(hub);
     fragments().add(fourthImcFragment);
@@ -92,14 +88,11 @@ public class ModexpSubsection extends PrecompileSubsection {
       final MmuCall mmuCall = forModexpExtractMbs(hub, this, modexpMetaData);
       fourthImcFragment.callMmu(mmuCall);
     }
-    final ModexpXbsOobCall fourthOobCall =
-        new ModexpXbsOobCall(modexpMetaData, OOB_INST_MODEXP_MBS);
-    fourthImcFragment.callOob(fourthOobCall);
+    fourthImcFragment.callOob(new ModexpXbsOobCall(modexpMetaData, OOB_INST_MODEXP_MBS));
 
     final ImcFragment fifthImcFragment = ImcFragment.empty(hub);
     fragments().add(fifthImcFragment);
-    final ModexpLeadOobCall fifthOobCall = new ModexpLeadOobCall(modexpMetaData);
-    fifthImcFragment.callOob(fifthOobCall);
+    fifthImcFragment.callOob(new ModexpLeadOobCall(modexpMetaData));
     if (modexpMetaData.loadRawLeadingWord()) {
       final MmuCall mmuCall = forModexpLoadLead(hub, this, modexpMetaData);
       fifthImcFragment.callMmu(mmuCall);
@@ -110,14 +103,14 @@ public class ModexpSubsection extends PrecompileSubsection {
     final ImcFragment sixthImcFragment = ImcFragment.empty(hub);
     fragments().add(sixthImcFragment);
     final long calleeGas = callSection.stpCall.effectiveChildContextGasAllowance();
-    sixthOobCall = new ModexpPricingOobCall(modexpMetaData, calleeGas);
-    sixthImcFragment.callOob(sixthOobCall);
+    sixthOobCall =
+        (ModexpPricingOobCall)
+            sixthImcFragment.callOob(new ModexpPricingOobCall(modexpMetaData, calleeGas));
 
     // We need to trigger the OOB before CALL's execution
     if (sixthOobCall.isRamSuccess()) {
       seventhImcFragment = ImcFragment.empty(hub);
-      final ModexpExtractOobCall seventhOobCall = new ModexpExtractOobCall(modexpMetaData);
-      seventhImcFragment.callOob(seventhOobCall);
+      seventhImcFragment.callOob(new ModexpExtractOobCall(modexpMetaData));
     }
   }
 

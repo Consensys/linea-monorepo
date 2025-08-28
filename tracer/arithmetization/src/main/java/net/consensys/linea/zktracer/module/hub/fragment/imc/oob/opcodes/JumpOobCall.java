@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.Trace.Oob.CT_MAX_JUMP;
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToLT;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.Trace;
@@ -35,9 +36,13 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Getter
 @Setter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class JumpOobCall extends OobCall {
-  EWord pcNew;
-  Bytes codeSize;
+  // Inputs
+  @EqualsAndHashCode.Include EWord pcNew;
+  @EqualsAndHashCode.Include Bytes codeSize;
+
+  // Outputs
   boolean jumpGuaranteedException;
   boolean jumpMustBeAttempted;
 
@@ -52,7 +57,7 @@ public class JumpOobCall extends OobCall {
   }
 
   @Override
-  public void callExoModules(final Add add, final Mod mod, final Wcp wcp) {
+  public void callExoModulesAndSetOutputs(final Add add, final Mod mod, final Wcp wcp) {
     final OobExoCall validPcNewCall = callToLT(wcp, pcNew, codeSize);
     exoCalls.add(validPcNewCall);
     final boolean validPcNew = bytesToBoolean(validPcNewCall.result());

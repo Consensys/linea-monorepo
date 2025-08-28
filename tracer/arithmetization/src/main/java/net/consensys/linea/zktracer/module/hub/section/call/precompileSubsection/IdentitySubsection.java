@@ -38,8 +38,9 @@ public class IdentitySubsection extends PrecompileSubsection {
     super(hub, callSection);
 
     final long calleeGas = callSection.stpCall.effectiveChildContextGasAllowance();
-    oobCall = new IdentityOobCall(BigInteger.valueOf(calleeGas));
-    firstImcFragment.callOob(oobCall);
+    oobCall =
+        (CommonPrecompileOobCall)
+            firstImcFragment.callOob(new IdentityOobCall(BigInteger.valueOf(calleeGas)));
 
     if (!oobCall.isHubSuccess()) {
       precompileScenarioFragment.scenario(PRC_FAILURE_KNOWN_TO_HUB);

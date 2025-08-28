@@ -45,11 +45,9 @@ public class JumpSection extends TraceSection {
     }
 
     // CONTEXT fragment
-    ///////////////////
     final ContextFragment contextRowCurrentContext = ContextFragment.readCurrentContextData(hub);
 
     // ACCOUNT fragment
-    ///////////////////
     final Address codeAddress = hub.messageFrame().getContractAddress();
 
     final boolean warmth = hub.messageFrame().isAddressWarm(codeAddress);
@@ -67,30 +65,26 @@ public class JumpSection extends TraceSection {
                 TransactionProcessingType.USER);
 
     // MISCELLANEOUS fragment
-    /////////////////////////
     final ImcFragment miscellaneousRow = ImcFragment.empty(hub);
     boolean mustAttemptJump;
     switch (hub.opCode()) {
       case OpCode.JUMP -> {
-        JumpOobCall jumpOobCall = new JumpOobCall();
-        miscellaneousRow.callOob(jumpOobCall);
+        final JumpOobCall jumpOobCall = (JumpOobCall) miscellaneousRow.callOob(new JumpOobCall());
         mustAttemptJump = jumpOobCall.isJumpMustBeAttempted();
       }
       case OpCode.JUMPI -> {
-        JumpiOobCall jumpiOobCall = new JumpiOobCall();
-        miscellaneousRow.callOob(jumpiOobCall);
+        final JumpiOobCall jumpiOobCall =
+            (JumpiOobCall) miscellaneousRow.callOob(new JumpiOobCall());
         mustAttemptJump = jumpiOobCall.isJumpMustBeAttempted();
       }
-      default -> throw new RuntimeException(
+      default -> throw new IllegalStateException(
           hub.opCode().name() + " not part of the JUMP instruction family");
     }
 
     // CONTEXT, ACCOUNT, MISCELLANEOUS
-    //////////////////////////////////
     this.addFragments(contextRowCurrentContext, accountRowCodeAccount, miscellaneousRow);
 
     // jump destination vetting
-    ///////////////////////////
     if (mustAttemptJump) {
       this.triggerJumpDestinationVetting();
     }

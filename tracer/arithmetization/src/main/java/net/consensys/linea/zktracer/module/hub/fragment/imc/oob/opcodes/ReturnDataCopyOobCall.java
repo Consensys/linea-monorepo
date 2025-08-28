@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.Trace.Oob.CT_MAX_RDC;
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.*;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.Trace;
@@ -35,10 +36,14 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Getter
 @Setter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class ReturnDataCopyOobCall extends OobCall {
-  EWord offset;
-  EWord size;
-  Bytes rds;
+  // Inputs
+  @EqualsAndHashCode.Include EWord offset;
+  @EqualsAndHashCode.Include EWord size;
+  @EqualsAndHashCode.Include Bytes rds;
+
+  // Outputs
   boolean rdcx;
 
   public ReturnDataCopyOobCall() {
@@ -53,7 +58,7 @@ public class ReturnDataCopyOobCall extends OobCall {
   }
 
   @Override
-  public void callExoModules(Add add, Mod mod, Wcp wcp) {
+  public void callExoModulesAndSetOutputs(Add add, Mod mod, Wcp wcp) {
     // row i
     final OobExoCall rdcOobCall = callToIsZero(wcp, Bytes.concatenate(offset.hi(), size.hi()));
     exoCalls.add(rdcOobCall);

@@ -25,7 +25,7 @@ import net.consensys.linea.zktracer.Trace;
 public class Sha2OobCall extends ShaRipIdOobCall {
 
   public Sha2OobCall(BigInteger calleeGas) {
-    super(calleeGas);
+    super(calleeGas, OOB_INST_SHA2);
   }
 
   @Override

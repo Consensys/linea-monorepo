@@ -31,15 +31,15 @@ import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.apache.tuweni.bytes.Bytes;
 
 public abstract class ShaRipIdOobCall extends CommonPrecompileOobCall {
-  protected ShaRipIdOobCall(BigInteger calleeGas) {
-    super(calleeGas);
+  protected ShaRipIdOobCall(BigInteger calleeGas, int oobInst) {
+    super(calleeGas, oobInst);
   }
 
   abstract long factor();
 
   @Override
-  public void callExoModules(Add add, Mod mod, Wcp wcp) {
-    super.callExoModules(add, mod, wcp);
+  public void callExoModulesAndSetOutputs(Add add, Mod mod, Wcp wcp) {
+    super.callExoModulesAndSetOutputs(add, mod, wcp);
 
     // row i + 2
     final OobExoCall ceilingCall =

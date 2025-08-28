@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.types.Conversions.*;
 
 import java.math.BigInteger;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.Trace;
@@ -36,17 +37,25 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Getter
 @Setter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public abstract class CommonPrecompileOobCall extends OobCall {
-  final Bytes calleeGas;
-  EWord cds;
-  EWord returnAtCapacity;
+  // type of precompile
+  @EqualsAndHashCode.Include final int oobInst;
+
+  // Inputs
+  @EqualsAndHashCode.Include final Bytes calleeGas;
+  @EqualsAndHashCode.Include EWord cds;
+  @EqualsAndHashCode.Include EWord returnAtCapacity;
+
+  // Outputs
   boolean hubSuccess;
   BigInteger returnGas;
   boolean returnAtCapacityNonZero;
   boolean cdsIsZero; // Necessary to compute extractCallData and emptyCallData
 
-  protected CommonPrecompileOobCall(final BigInteger calleeGas) {
+  protected CommonPrecompileOobCall(final BigInteger calleeGas, final int oobInst) {
     this.calleeGas = bigIntegerToBytes(calleeGas);
+    this.oobInst = oobInst;
   }
 
   @Override
@@ -62,7 +71,7 @@ public abstract class CommonPrecompileOobCall extends OobCall {
   }
 
   @Override
-  public void callExoModules(Add add, Mod mod, Wcp wcp) {
+  public void callExoModulesAndSetOutputs(Add add, Mod mod, Wcp wcp) {
     // row i
     final OobExoCall cdsIsZeroCall = callToIsZero(wcp, cds);
     exoCalls.add(cdsIsZeroCall);

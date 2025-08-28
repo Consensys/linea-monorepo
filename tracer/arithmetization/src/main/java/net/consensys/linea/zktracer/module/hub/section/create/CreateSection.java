@@ -153,8 +153,7 @@ public abstract class CreateSection extends TraceSection
     checkArgument(Exceptions.none(exceptions));
     hub.currentFrame().childSpanningSection(this);
 
-    final CreateOobCall oobCall = createOobCall();
-    imcFragment.callOob(oobCall);
+    final CreateOobCall oobCall = (CreateOobCall) imcFragment.callOob(createOobCall());
 
     firstCreator = AccountSnapshot.canonical(hub, frame.getWorldUpdater(), creatorAddress);
     firstCreatee = AccountSnapshot.canonical(hub, frame.getWorldUpdater(), createeAddress);
