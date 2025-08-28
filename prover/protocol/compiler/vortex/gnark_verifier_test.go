@@ -32,8 +32,8 @@ func assignTestCircuit(comp *wizard.CompiledIOP, proof wizard.Proof) *VortexTest
 	}
 }
 
-/*
-TODO@yao
+/*TODO@yao
+
 func TestVortexGnarkVerifier(t *testing.T) {
 
 	polSize := 1 << 4

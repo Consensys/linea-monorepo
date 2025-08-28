@@ -28,7 +28,7 @@ type EncodedMatrix []smartvectors.SmartVector
 //
 // And can be safely converted to a field Element via
 // [field.Element.SetBytesCanonical]
-// We apply SIS+MiMC hashing on the columns to compute leaves
+// We apply SIS+Poseidon2 hashing on the columns to compute leaves
 // Should be used when the number of rows to commit is more than the [ApplySISThreshold]
 func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
 
@@ -78,7 +78,7 @@ func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatr
 //
 // And can be safely converted to a field Element via
 // [field.Element.SetBytesCanonical]
-// We apply MiMC hashing on the columns to compute leaves.
+// We apply Poseidon2 hashing on the columns to compute leaves.
 // Should be used when the number of rows to commit is less than the [ApplySISThreshold]
 func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
 
@@ -91,7 +91,7 @@ func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedM
 	})
 
 	timeTree := profiling.TimeIt(func() {
-		// colHashes stores the MiMC hashes
+		// colHashes stores the Poseidon2 hashes
 		// of the columns.
 		colHashesOcts := p.noSisTransversalHash(encodedMatrix)
 		leaves := make([]types.Bytes32, len(colHashesOcts))
@@ -167,6 +167,7 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []field.Octuplet
 
 			for i := 0; i < chunkSize; i++ {
 				fbytes := colHashes[startChunk+i].Bytes()
+				// Write one Element (4 bytes) at a time
 				hasher.Write(fbytes[:])
 			}
 
@@ -209,6 +210,7 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 			for row := 0; row < numRows; row++ {
 				x := v[row].Get(col)
 				xBytes := x.Bytes()
+				// Write one Element (4 bytes) at a time
 				hasher.Write(xBytes[:])
 			}
 
