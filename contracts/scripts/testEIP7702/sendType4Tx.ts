@@ -88,7 +88,7 @@ class EIP7702TransactionSender {
       console.log(`📍 Delegated to: ${delegatedAddress}`);
       console.log(`📝 Full delegation code: ${code}`);
 
-      return { isDelegated: false, implementationAddress: delegatedAddress };
+      return { isDelegated: true, implementationAddress: delegatedAddress };
     } else {
       console.log(`❓ Address has code but not EIP-7702 delegation: ${code}`);
       return { isDelegated: false };
