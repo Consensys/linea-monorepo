@@ -29,6 +29,7 @@ dependencies {
   implementation(project(":serialization"))
   implementation(project(":observability"))
   implementation(project(":syncing"))
+  implementation(project(":jvm-libs:teku-web3j"))
   api(project(":linea-finalization-provider")) {
     exclude group: "build.linea", module: "besu-libs"
   }

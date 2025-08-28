@@ -145,6 +145,7 @@ class MaruAppFactory {
     val ethereumJsonRpcClient =
       Helpers.createWeb3jClient(
         apiEndpointConfig = config.validatorElNode.ethApiEndpoint,
+        log = LogManager.getLogger("maru.clients.el.ethapi"),
       )
     val asyncMetadataProvider = Web3jMetadataProvider(ethereumJsonRpcClient.eth1Web3j)
     val latestElBlockMetadataCache =
@@ -154,6 +155,7 @@ class MaruAppFactory {
     val engineApiWeb3jClient =
       Helpers.createWeb3jClient(
         apiEndpointConfig = config.validatorElNode.engineApiEndpoint,
+        log = LogManager.getLogger("maru.clients.el.engineapi"),
       )
 
     val elManagerMap =
