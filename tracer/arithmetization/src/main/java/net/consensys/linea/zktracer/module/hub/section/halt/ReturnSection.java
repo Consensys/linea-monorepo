@@ -35,7 +35,6 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.opcode.ReturnFromDeploymentMmuCall;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes.DeploymentOobCall;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.ReturnScenarioFragment;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
@@ -130,8 +129,7 @@ public class ReturnSection extends TraceSection
     // maxCodeSizeException case
     final boolean triggerOobForMaxCodeSizeException = Exceptions.maxCodeSizeException(exceptions);
     if (triggerOobForMaxCodeSizeException) {
-      final OobCall oobCall = new DeploymentOobCall();
-      firstImcFragment.callOob(oobCall);
+      firstImcFragment.callOob(new DeploymentOobCall());
       commonValues.setTracedException(TracedException.MAX_CODE_SIZE_EXCEPTION);
       return;
     }
@@ -231,8 +229,8 @@ public class ReturnSection extends TraceSection
       final MmuCall invalidCodePrefixCheckMmuCall = MmuCall.invalidCodePrefix(hub);
       firstImcFragment.callMmu(invalidCodePrefixCheckMmuCall);
 
-      final DeploymentOobCall maxCodeSizeOobCall = new DeploymentOobCall();
-      firstImcFragment.callOob(maxCodeSizeOobCall);
+      final DeploymentOobCall maxCodeSizeOobCall =
+          (DeploymentOobCall) firstImcFragment.callOob(new DeploymentOobCall());
 
       // sanity checks
       checkArgument(!invalidCodePrefixCheckMmuCall.successBit());

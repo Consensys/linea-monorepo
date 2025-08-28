@@ -34,8 +34,8 @@ public class ReturnDataCopySection extends TraceSection {
 
     final ContextFragment currentContext = ContextFragment.readCurrentContextData(hub);
     final ImcFragment imcFragment = ImcFragment.empty(hub);
-    final ReturnDataCopyOobCall oobCall = new ReturnDataCopyOobCall();
-    imcFragment.callOob(oobCall);
+    final ReturnDataCopyOobCall oobCall =
+        (ReturnDataCopyOobCall) imcFragment.callOob(new ReturnDataCopyOobCall());
 
     this.addStack(hub);
     this.addFragment(imcFragment);

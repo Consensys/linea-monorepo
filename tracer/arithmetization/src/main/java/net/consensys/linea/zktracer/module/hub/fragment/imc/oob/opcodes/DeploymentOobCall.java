@@ -21,6 +21,7 @@ import static net.consensys.linea.zktracer.Trace.Oob.CT_MAX_DEPLOYMENT;
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToLT;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.Trace;
@@ -36,9 +37,14 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Getter
 @Setter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class DeploymentOobCall extends OobCall {
   private static final Bytes MAX_CODE_SIZE_BYTES = Bytes.ofUnsignedLong(MAX_CODE_SIZE);
-  EWord size;
+
+  // Inputs
+  @EqualsAndHashCode.Include EWord size;
+
+  // Outputs
   boolean maxCodeSizeException;
 
   public DeploymentOobCall() {
@@ -51,7 +57,7 @@ public class DeploymentOobCall extends OobCall {
   }
 
   @Override
-  public void callExoModules(Add add, Mod mod, Wcp wcp) {
+  public void callExoModulesAndSetOutputs(Add add, Mod mod, Wcp wcp) {
     // row i
     final OobExoCall exceedsMaxCodeSizeCall = callToLT(wcp, MAX_CODE_SIZE_BYTES, size);
     exoCalls.add(exceedsMaxCodeSizeCall);

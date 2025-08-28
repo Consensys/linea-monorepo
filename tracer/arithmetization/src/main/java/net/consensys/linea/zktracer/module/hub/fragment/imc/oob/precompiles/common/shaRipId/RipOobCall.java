@@ -24,7 +24,7 @@ import net.consensys.linea.zktracer.Trace;
 
 public class RipOobCall extends ShaRipIdOobCall {
   public RipOobCall(BigInteger calleeGas) {
-    super(calleeGas);
+    super(calleeGas, OOB_INST_RIPEMD);
   }
 
   @Override

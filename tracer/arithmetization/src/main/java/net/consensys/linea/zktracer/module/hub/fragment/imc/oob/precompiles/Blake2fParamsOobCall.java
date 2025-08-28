@@ -25,6 +25,7 @@ import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import java.math.BigInteger;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.Trace;
@@ -40,12 +41,15 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Getter
 @Setter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class Blake2fParamsOobCall extends OobCall {
 
-  BigInteger calleeGas;
-  BigInteger blakeR;
-  BigInteger blakeF;
+  // Inputs
+  @EqualsAndHashCode.Include final BigInteger calleeGas;
+  @EqualsAndHashCode.Include BigInteger blakeR;
+  @EqualsAndHashCode.Include BigInteger blakeF;
 
+  // Outputs
   boolean ramSuccess;
   BigInteger returnGas;
 
@@ -72,7 +76,7 @@ public class Blake2fParamsOobCall extends OobCall {
   }
 
   @Override
-  public void callExoModules(Add add, Mod mod, Wcp wcp) {
+  public void callExoModulesAndSetOutputs(Add add, Mod mod, Wcp wcp) {
     // row i
     final OobExoCall sufficientGasCall =
         callToLT(wcp, bigIntegerToBytes(calleeGas), bigIntegerToBytes(blakeR));

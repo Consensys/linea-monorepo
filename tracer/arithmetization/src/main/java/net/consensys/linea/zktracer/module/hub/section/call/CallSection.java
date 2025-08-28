@@ -163,8 +163,7 @@ public class CallSection extends TraceSection
     if (Exceptions.any(exceptions)) {
       scenarioFragment.setScenario(CALL_EXCEPTION);
       if (opCode.mnemonic() == CALL) {
-        final XCallOobCall oobCall = new XCallOobCall();
-        firstImcFragment.callOob(oobCall);
+        firstImcFragment.callOob(new XCallOobCall());
       }
     }
 
@@ -219,8 +218,7 @@ public class CallSection extends TraceSection
             ? Wei.of(frame.getStackItem(2).toUnsignedBigInteger())
             : Wei.ZERO;
 
-    final CallOobCall oobCall = new CallOobCall();
-    firstImcFragment.callOob(oobCall);
+    final CallOobCall oobCall = (CallOobCall) firstImcFragment.callOob(new CallOobCall());
 
     final boolean aborts = hub.pch().abortingConditions().any();
     checkArgument(oobCall.isAbortingCondition() == aborts);

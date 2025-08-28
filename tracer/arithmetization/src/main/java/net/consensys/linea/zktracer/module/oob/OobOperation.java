@@ -27,17 +27,16 @@ import java.math.RoundingMode;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.ModuleOperation;
-import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
 import net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata;
-import net.consensys.linea.zktracer.module.mod.Mod;
-import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Getter
+@Accessors(fluent = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class OobOperation extends ModuleOperation {
   @EqualsAndHashCode.Include @Setter public OobCall oobCall;
@@ -50,17 +49,9 @@ public class OobOperation extends ModuleOperation {
     return ctMax() + 1;
   }
 
-  public OobOperation(
-      OobCall oobCall,
-      final Hub hub,
-      final MessageFrame frame,
-      final Add add,
-      final Mod mod,
-      final Wcp wcp) {
+  public OobOperation(OobCall oobCall, final Hub hub, final MessageFrame frame) {
     this.oobCall = oobCall;
-
     oobCall.setInputData(frame, hub);
-    oobCall.callExoModules(add, mod, wcp);
   }
 
   // Support method for MODEXP

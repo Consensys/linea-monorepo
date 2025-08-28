@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.TraceShanghai.Oob.CT_MAX_XCREATE;
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToLT;
 import static net.consensys.linea.zktracer.module.txndata.moduleOperation.ShanghaiTxndataOperation.MAX_INIT_CODE_SIZE_BYTES;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.Trace;
@@ -33,8 +34,10 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Getter
 @Setter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class XCreateOobCall extends OobCall {
-  EWord codeSize;
+  // Inputs
+  @EqualsAndHashCode.Include EWord codeSize;
 
   public XCreateOobCall() {
     super();
@@ -46,7 +49,7 @@ public class XCreateOobCall extends OobCall {
   }
 
   @Override
-  public void callExoModules(Add add, Mod mod, Wcp wcp) {
+  public void callExoModulesAndSetOutputs(Add add, Mod mod, Wcp wcp) {
     exoCalls.add(callToLT(wcp, MAX_INIT_CODE_SIZE_BYTES, codeSize));
   }
 

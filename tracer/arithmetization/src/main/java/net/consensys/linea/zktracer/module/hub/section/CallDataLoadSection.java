@@ -38,8 +38,8 @@ public class CallDataLoadSection extends TraceSection {
     final ImcFragment imcFragment = ImcFragment.empty(hub);
     this.addFragment(imcFragment);
 
-    final CallDataLoadOobCall oobCall = new CallDataLoadOobCall();
-    imcFragment.callOob(oobCall);
+    final CallDataLoadOobCall oobCall =
+        (CallDataLoadOobCall) imcFragment.callOob(new CallDataLoadOobCall());
 
     if (Exceptions.none(exception)) {
       if (!oobCall.isCdlOutOfBounds()) {

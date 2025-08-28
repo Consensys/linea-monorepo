@@ -31,8 +31,7 @@ public class ShanghaiCreateSection extends LondonCreateSection {
   protected boolean maxCodeSizeExceptionalCreate(final short exceptions) {
     final boolean haltCreateSection = Exceptions.maxCodeSizeException(exceptions);
     if (haltCreateSection) {
-      final XCreateOobCall oobCall = new XCreateOobCall();
-      imcFragment.callOob(oobCall);
+      imcFragment.callOob(new XCreateOobCall());
     }
     return haltCreateSection;
   }

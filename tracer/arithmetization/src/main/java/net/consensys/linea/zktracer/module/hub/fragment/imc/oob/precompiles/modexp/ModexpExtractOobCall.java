@@ -22,6 +22,7 @@ import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToIsZero;
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToLT;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.Trace;
@@ -39,11 +40,13 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Getter
 @Setter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class ModexpExtractOobCall extends OobCall {
+  // Inputs
+  @EqualsAndHashCode.Include final ModexpMetadata metadata;
+  @EqualsAndHashCode.Include EWord cds;
 
-  final ModexpMetadata metadata;
-  EWord cds;
-
+  // Outputs
   boolean extractBase;
   boolean extractExponent;
   boolean extractModulus;
@@ -60,7 +63,7 @@ public class ModexpExtractOobCall extends OobCall {
   }
 
   @Override
-  public void callExoModules(Add add, Mod mod, Wcp wcp) {
+  public void callExoModulesAndSetOutputs(Add add, Mod mod, Wcp wcp) {
     // row i
     final OobExoCall bbsIsZeroCall = callToIsZero(wcp, metadata.bbs());
     exoCalls.add(bbsIsZeroCall);

@@ -24,6 +24,7 @@ import static net.consensys.linea.zktracer.types.Conversions.*;
 
 import java.math.BigInteger;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.Trace;
@@ -41,18 +42,23 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Getter
 @Setter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public abstract class CreateOobCall extends OobCall {
 
   private static final Bytes EIP2681_MAX_NONCE_BYTES = bigIntegerToBytes(EIP2681_MAX_NONCE);
-  EWord value;
-  Bytes balance;
-  Bytes nonce;
-  boolean hasCode;
-  Bytes callStackDepth;
+
+  // Inputs
+  @EqualsAndHashCode.Include EWord value;
+  @EqualsAndHashCode.Include Bytes balance;
+  @EqualsAndHashCode.Include Bytes nonce;
+  @EqualsAndHashCode.Include boolean hasCode;
+  @EqualsAndHashCode.Include Bytes callStackDepth;
+  @EqualsAndHashCode.Include Bytes creatorNonce;
+  @EqualsAndHashCode.Include long codeSize;
+
+  // Outputs
   boolean abortingCondition;
   boolean failureCondition;
-  Bytes creatorNonce;
-  long codeSize;
 
   public CreateOobCall() {
     super();
@@ -84,7 +90,7 @@ public abstract class CreateOobCall extends OobCall {
   protected abstract void codeSizeSnapshot(final MessageFrame frame);
 
   @Override
-  public void callExoModules(Add add, Mod mod, Wcp wcp) {
+  public void callExoModulesAndSetOutputs(Add add, Mod mod, Wcp wcp) {
     // row i
     final OobExoCall insufficientBalanceCall = callToLT(wcp, balance, value);
     exoCalls.add(insufficientBalanceCall);

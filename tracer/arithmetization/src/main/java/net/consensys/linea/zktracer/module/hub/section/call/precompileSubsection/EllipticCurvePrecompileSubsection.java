@@ -25,6 +25,7 @@ import java.math.BigInteger;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.CommonPrecompileOobCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.EcPairingOobCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.ecAddMulRecover.EcAddOobCall;
@@ -42,7 +43,7 @@ public class EllipticCurvePrecompileSubsection extends PrecompileSubsection {
 
     final BigInteger calleeGas =
         BigInteger.valueOf(callSection.stpCall.effectiveChildContextGasAllowance());
-    oobCall =
+    final OobCall call =
         switch (flag()) {
           case PRC_ECRECOVER -> new EcRecoverOobCall(calleeGas);
           case PRC_ECADD -> new EcAddOobCall(calleeGas);
@@ -53,7 +54,7 @@ public class EllipticCurvePrecompileSubsection extends PrecompileSubsection {
                   "Precompile address %s not supported by constructor", this.flag().toString()));
         };
 
-    firstImcFragment.callOob(oobCall);
+    oobCall = (CommonPrecompileOobCall) firstImcFragment.callOob(call);
 
     // Recall that the default scenario is PRC_SUCCESS_WONT_REVERT
     if (!oobCall.isHubSuccess()) {

@@ -26,6 +26,7 @@ import static org.hyperledger.besu.evm.internal.Words.clampedToInt;
 
 import java.math.BigInteger;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.Trace;
@@ -43,15 +44,17 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Getter
 @Setter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class ModexpPricingOobCall extends OobCall {
+  // Inputs
+  @EqualsAndHashCode.Include final ModexpMetadata metadata;
+  @EqualsAndHashCode.Include final Bytes callGas;
+  @EqualsAndHashCode.Include EWord returnAtCapacity;
+  @EqualsAndHashCode.Include BigInteger exponentLog;
 
-  final ModexpMetadata metadata;
-  final Bytes callGas;
-  EWord returnAtCapacity;
+  // Outputs
   boolean ramSuccess;
-  BigInteger exponentLog;
   int maxMbsBbs;
-
   BigInteger returnGas;
   boolean returnAtCapacityNonZero;
 
@@ -67,15 +70,14 @@ public class ModexpPricingOobCall extends OobCall {
     setReturnAtCapacity(EWord.of(frame.getStackItem(opCode.callReturnAtCapacityStackIndex())));
 
     final int cds = clampedToInt(frame.getStackItem(opCode.callCdsStackIndex()));
-
     setExponentLog(BigInteger.valueOf(computeExponentLog(metadata, cds)));
-
-    final int maxMbsBbs = max(metadata.mbsInt(), metadata.bbsInt());
-    setMaxMbsBbs(maxMbsBbs);
   }
 
   @Override
-  public void callExoModules(Add add, Mod mod, Wcp wcp) {
+  public void callExoModulesAndSetOutputs(Add add, Mod mod, Wcp wcp) {
+    final int maxMbsBbs = max(metadata.mbsInt(), metadata.bbsInt());
+    setMaxMbsBbs(maxMbsBbs);
+
     // row i
     final OobExoCall returnAtCapacityIsZeroCall = callToIsZero(wcp, returnAtCapacity);
     exoCalls.add(returnAtCapacityIsZeroCall);

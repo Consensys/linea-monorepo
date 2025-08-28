@@ -40,7 +40,7 @@ public abstract class OobCall implements TraceSubFragment {
 
   public abstract void setInputData(MessageFrame frame, Hub hub);
 
-  public abstract void callExoModules(final Add add, final Mod mod, final Wcp wcp);
+  public abstract void callExoModulesAndSetOutputs(final Add add, final Mod mod, final Wcp wcp);
 
   public abstract int ctMax();
 }

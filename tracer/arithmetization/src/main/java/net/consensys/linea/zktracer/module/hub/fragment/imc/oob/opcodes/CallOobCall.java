@@ -21,6 +21,7 @@ import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToIsZero;
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToLT;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.Trace;
@@ -38,12 +39,16 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Getter
 @Setter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class CallOobCall extends OobCall {
   public static final Bytes MAX_CALL_STACK_DEPTH_BYTES = Bytes.ofUnsignedInt(1024);
 
-  public EWord value;
-  Bytes balance;
-  Bytes callStackDepth;
+  // Inputs
+  @EqualsAndHashCode.Include public EWord value;
+  @EqualsAndHashCode.Include Bytes balance;
+  @EqualsAndHashCode.Include Bytes callStackDepth;
+
+  // Outputs
   boolean abortingCondition;
 
   public CallOobCall() {
@@ -65,7 +70,7 @@ public class CallOobCall extends OobCall {
   }
 
   @Override
-  public void callExoModules(Add add, Mod mod, Wcp wcp) {
+  public void callExoModulesAndSetOutputs(Add add, Mod mod, Wcp wcp) {
     // row i
     final OobExoCall insufficientBalanceAbortCall = callToLT(wcp, balance, value);
     exoCalls.add(insufficientBalanceAbortCall);

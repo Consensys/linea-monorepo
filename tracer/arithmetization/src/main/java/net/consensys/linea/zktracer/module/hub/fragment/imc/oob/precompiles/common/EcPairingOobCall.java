@@ -32,12 +32,12 @@ import org.apache.tuweni.bytes.Bytes;
 
 public class EcPairingOobCall extends CommonPrecompileOobCall {
   public EcPairingOobCall(BigInteger calleeGas) {
-    super(calleeGas);
+    super(calleeGas, OOB_INST_ECPAIRING);
   }
 
   @Override
-  public void callExoModules(Add add, Mod mod, Wcp wcp) {
-    super.callExoModules(add, mod, wcp);
+  public void callExoModulesAndSetOutputs(Add add, Mod mod, Wcp wcp) {
+    super.callExoModulesAndSetOutputs(add, mod, wcp);
 
     // row i + 2
     final OobExoCall remainderCall = callToMOD(mod, cds, Bytes.ofUnsignedLong(192));

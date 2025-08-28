@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.Trace.Oob.CT_MAX_XCALL;
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToIsZero;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.Trace;
@@ -34,8 +35,12 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Getter
 @Setter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class XCallOobCall extends OobCall {
-  EWord value;
+  // Inputs
+  @EqualsAndHashCode.Include EWord value;
+
+  // Outputs
   boolean valueIsNonzero;
   boolean valueIsZero;
 
@@ -49,7 +54,7 @@ public class XCallOobCall extends OobCall {
   }
 
   @Override
-  public void callExoModules(Add add, Mod mod, Wcp wcp) {
+  public void callExoModulesAndSetOutputs(Add add, Mod mod, Wcp wcp) {
     // row i
     final OobExoCall valueIsZeroCall = callToIsZero(wcp, value);
     exoCalls.add(valueIsZeroCall);

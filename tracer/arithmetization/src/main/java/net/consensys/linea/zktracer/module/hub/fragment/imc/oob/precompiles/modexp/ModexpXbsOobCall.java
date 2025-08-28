@@ -21,6 +21,7 @@ import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToIsZero;
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToLT;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.Trace;
@@ -37,11 +38,13 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Getter
 @Setter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class ModexpXbsOobCall extends OobCall {
+  // Inputs
+  @EqualsAndHashCode.Include final ModexpMetadata modexpMetadata;
+  @EqualsAndHashCode.Include final ModexpXbsCase modexpXbsCase;
 
-  final ModexpMetadata modexpMetadata;
-  final ModexpXbsCase modexpXbsCase;
-
+  // Outputs
   Bytes maxXbsYbs;
   boolean xbsNonZero;
 
@@ -55,7 +58,7 @@ public class ModexpXbsOobCall extends OobCall {
   public void setInputData(MessageFrame frame, Hub hub) {}
 
   @Override
-  public void callExoModules(Add add, Mod mod, Wcp wcp) {
+  public void callExoModulesAndSetOutputs(Add add, Mod mod, Wcp wcp) {
     // row i
     exoCalls.add(callToLT(wcp, xbs(), Bytes.ofUnsignedInt(513)));
 

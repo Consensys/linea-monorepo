@@ -25,7 +25,7 @@ import net.consensys.linea.zktracer.Trace;
 public class EcRecoverOobCall extends EcRecEcAddEcMulOobCall {
 
   public EcRecoverOobCall(BigInteger calleeGas) {
-    super(calleeGas);
+    super(calleeGas, OOB_INST_ECRECOVER);
   }
 
   @Override
