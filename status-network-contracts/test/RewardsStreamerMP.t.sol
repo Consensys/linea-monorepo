@@ -2723,7 +2723,7 @@ contract StakeVaultMigrationTest is StakeManagerTest {
     function test_RevertWhenNotOwnerOfMigrationVault() public {
         // alice tries to migrate to a vault she doesn't own
         vm.prank(alice);
-        vm.expectRevert(IStakeManager.StakeManager__Unauthorized.selector);
+        vm.expectRevert(StakeVault.StakeVault__NotAuthorized.selector);
         StakeVault(vaults[alice]).migrateToVault(vaults[bob]);
     }
 
@@ -2745,6 +2745,7 @@ contract StakeVaultMigrationTest is StakeManagerTest {
         // alice creates vaults that's not registered with the stake manager
         vm.startPrank(alice);
         address faultyVault = address(Clones.clone(vaultFactory.vaultImplementation()));
+        StakeVault(faultyVault).initialize(alice, address(streamer));
 
         // alice tries to migrate to a vault that is not registered
         vm.expectRevert(IStakeManager.StakeManager__InvalidVault.selector);

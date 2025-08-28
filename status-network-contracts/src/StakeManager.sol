@@ -149,11 +149,6 @@ contract StakeManager is
             revert StakeManager__VaultAlreadyRegistered();
         }
 
-        // Verify this is a legitimate vault by checking it points to stakeManager
-        if (address(IStakeVault(vault).stakeManager()) != address(this)) {
-            revert StakeManager__InvalidVault();
-        }
-
         vaultOwners[vault] = owner;
         vaults[owner].push(vault);
         emit VaultRegistered(vault, owner);
@@ -370,11 +365,6 @@ contract StakeManager is
     function migrateToVault(address migrateTo) external onlyNotEmergencyMode onlyTrustedCodehash onlyRegisteredVault {
         if (vaultOwners[migrateTo] == address(0)) {
             revert StakeManager__InvalidVault();
-        }
-
-        // first ensure the vault to migrate to is actually owned by the same user
-        if (IStakeVault(msg.sender).owner() != IStakeVault(migrateTo).owner()) {
-            revert StakeManager__Unauthorized();
         }
 
         if (vaultData[migrateTo].stakedBalance > 0) {

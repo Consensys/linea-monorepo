@@ -192,6 +192,9 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      * @param migrateTo The address of the new vault.
      */
     function migrateToVault(address migrateTo) external onlyOwner {
+        if (IStakeVault(migrateTo).owner() != owner()) {
+            revert StakeVault__NotAuthorized();
+        }
         stakeManager.migrateToVault(migrateTo);
         bool success = STAKING_TOKEN.transfer(migrateTo, STAKING_TOKEN.balanceOf(address(this)));
         if (!success) {
