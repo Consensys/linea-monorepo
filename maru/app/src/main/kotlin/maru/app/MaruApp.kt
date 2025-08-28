@@ -89,8 +89,11 @@ class MaruApp(
   }
 
   private val followerELNodeEngineApiWeb3JClients: Map<String, Web3JClient> =
-    config.followers.followers.mapValues { (_, apiEndpointConfig) ->
-      Helpers.createWeb3jClient(apiEndpointConfig = apiEndpointConfig)
+    config.followers.followers.mapValues { (followerLabel, apiEndpointConfig) ->
+      Helpers.createWeb3jClient(
+        apiEndpointConfig = apiEndpointConfig,
+        log = LogManager.getLogger("maru.clients.follower.$followerLabel"),
+      )
     }
 
   fun p2pPort(): UInt = p2pNetwork.port
