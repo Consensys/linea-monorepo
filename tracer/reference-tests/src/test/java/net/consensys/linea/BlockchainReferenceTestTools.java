@@ -18,6 +18,7 @@ package net.consensys.linea;
 import static net.consensys.linea.BlockchainReferenceTestJson.readBlockchainReferenceTestsOutput;
 import static net.consensys.linea.ReferenceTestOutcomeRecorderTool.JSON_INPUT_FILENAME;
 import static net.consensys.linea.reporting.TracerTestBase.getForkOrDefault;
+import static net.consensys.linea.testing.ToyExecutionTools.addSystemAccountsIfRequired;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Paths;
@@ -91,7 +92,7 @@ public class BlockchainReferenceTestTools {
     PARAMS.ignore("dynamicAccountOverwriteEmpty_d0g0v0_*");
 
     // ignore tests that are failing because there is an account with nonce 0 and
-    // non empty code which can't happen in Linea since we are post LONDON
+    // non-empty code which can't happen in Linea since we are post LONDON
     PARAMS.ignore("InitCollision_d0g0v0_*");
     PARAMS.ignore("InitCollision_d1g0v0_*");
     PARAMS.ignore("InitCollision_d2g0v0_*");
@@ -393,10 +394,6 @@ public class BlockchainReferenceTestTools {
     PARAMS.ignore("create2collisionwithSelfdestructSameBlock.json");
   }
 
-  private BlockchainReferenceTestTools() {
-    // utility class
-  }
-
   public static CompletableFuture<Set<String>> getRecordedFailedTestsFromJson(
       String failedModule, String failedConstraint) {
     Set<String> failedTests = new HashSet<>();
@@ -480,6 +477,10 @@ public class BlockchainReferenceTestTools {
     final ChainConfig chain = ChainConfig.ETHEREUM_CHAIN(spec.getNetwork());
     final MutableBlockchain blockchain = spec.getBlockchain();
     final ProtocolContext context = spec.getProtocolContext();
+
+    // Add system accounts if the fork requires it.
+    addSystemAccountsIfRequired(worldState.updater(), chain.fork);
+
     final CorsetValidator corsetValidator = new CorsetValidator(chain);
     final ZkTracer zkTracer = new ZkTracer(chain);
     zkTracer.traceStartConflation(spec.getCandidateBlocks().length);
