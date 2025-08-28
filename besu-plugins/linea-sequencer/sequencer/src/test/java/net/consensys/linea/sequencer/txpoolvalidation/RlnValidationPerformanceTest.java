@@ -30,13 +30,11 @@ import java.util.concurrent.atomic.AtomicLong;
 import net.consensys.linea.sequencer.txpoolvalidation.shared.DenyListManager;
 import net.consensys.linea.sequencer.txpoolvalidation.shared.NullifierTracker;
 import net.consensys.linea.sequencer.txpoolvalidation.shared.NullifierTracker.NullifierStats;
-import org.apache.tuweni.bytes.Bytes;
 import org.bouncycastle.asn1.sec.SECNamedCurves;
 import org.bouncycastle.asn1.x9.X9ECParameters;
 import org.bouncycastle.crypto.params.ECDomainParameters;
 import org.hyperledger.besu.crypto.SECPSignature;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Wei;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,8 +42,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Performance and stress tests for RLN validation components.
- * 
- * Tests high-throughput scenarios and system behavior under load.
+ *
+ * <p>Tests high-throughput scenarios and system behavior under load.
  */
 class RlnValidationPerformanceTest {
 
@@ -59,8 +57,10 @@ class RlnValidationPerformanceTest {
         new ECDomainParameters(params.getCurve(), params.getG(), params.getN(), params.getH());
     FAKE_SIGNATURE =
         SECPSignature.create(
-            new BigInteger("66397251408932042429874251838229702988618145381408295790259650671563847073199"),
-            new BigInteger("24729624138373455972486746091821238755870276413282629437244319694880507882088"),
+            new BigInteger(
+                "66397251408932042429874251838229702988618145381408295790259650671563847073199"),
+            new BigInteger(
+                "24729624138373455972486746091821238755870276413282629437244319694880507882088"),
             (byte) 0,
             curve.getN());
   }
@@ -90,7 +90,7 @@ class RlnValidationPerformanceTest {
     int threadCount = 10;
     int operationsPerThread = 1000;
     int totalOperations = threadCount * operationsPerThread;
-    
+
     ExecutorService executor = Executors.newFixedThreadPool(threadCount);
     CountDownLatch latch = new CountDownLatch(threadCount);
     AtomicInteger successCount = new AtomicInteger(0);
@@ -101,27 +101,28 @@ class RlnValidationPerformanceTest {
 
     for (int t = 0; t < threadCount; t++) {
       final int threadId = t;
-      executor.submit(() -> {
-        try {
-          Instant threadStart = Instant.now();
-          
-          for (int i = 0; i < operationsPerThread; i++) {
-            String nullifier = String.format("0x%064d", threadId * operationsPerThread + i);
-            String epoch = "epoch-" + (i % 10); // Use different epochs to test scoping
-            
-            boolean isNew = nullifierTracker.checkAndMarkNullifier(nullifier, epoch);
-            if (isNew) {
-              successCount.incrementAndGet();
+      executor.submit(
+          () -> {
+            try {
+              Instant threadStart = Instant.now();
+
+              for (int i = 0; i < operationsPerThread; i++) {
+                String nullifier = String.format("0x%064d", threadId * operationsPerThread + i);
+                String epoch = "epoch-" + (i % 10); // Use different epochs to test scoping
+
+                boolean isNew = nullifierTracker.checkAndMarkNullifier(nullifier, epoch);
+                if (isNew) {
+                  successCount.incrementAndGet();
+                }
+              }
+
+              Instant threadEnd = Instant.now();
+              totalDuration.addAndGet(Duration.between(threadStart, threadEnd).toMillis());
+
+            } finally {
+              latch.countDown();
             }
-          }
-          
-          Instant threadEnd = Instant.now();
-          totalDuration.addAndGet(Duration.between(threadStart, threadEnd).toMillis());
-          
-        } finally {
-          latch.countDown();
-        }
-      });
+          });
     }
 
     boolean completed = latch.await(30, TimeUnit.SECONDS);
@@ -135,16 +136,17 @@ class RlnValidationPerformanceTest {
 
     // Verify performance metrics
     assertThat(successCount.get()).isEqualTo(totalOperations);
-    
+
     NullifierStats stats = nullifierTracker.getStats();
     assertThat(stats.totalTracked()).isEqualTo(totalOperations);
     assertThat(stats.duplicateAttempts()).isEqualTo(0);
 
     // Log performance results
     double throughput = (double) totalOperations / (totalWallClockTime / 1000.0);
-    System.out.printf("Nullifier tracking performance: %d operations in %d ms (%.2f ops/sec)%n", 
+    System.out.printf(
+        "Nullifier tracking performance: %d operations in %d ms (%.2f ops/sec)%n",
         totalOperations, totalWallClockTime, throughput);
-    
+
     // Performance assertion - should handle at least 1000 ops/sec
     assertThat(throughput).isGreaterThan(1000.0);
   }
@@ -154,7 +156,7 @@ class RlnValidationPerformanceTest {
     int threadCount = 5;
     int operationsPerThread = 200;
     int totalOperations = threadCount * operationsPerThread;
-    
+
     ExecutorService executor = Executors.newFixedThreadPool(threadCount);
     CountDownLatch latch = new CountDownLatch(threadCount);
     AtomicInteger addCount = new AtomicInteger(0);
@@ -164,27 +166,30 @@ class RlnValidationPerformanceTest {
 
     for (int t = 0; t < threadCount; t++) {
       final int threadId = t;
-      executor.submit(() -> {
-        try {
-          for (int i = 0; i < operationsPerThread; i++) {
-            Address testAddr = Address.fromHexString(String.format("0x%040d", threadId * operationsPerThread + i));
-            
-            // Add to deny list
-            boolean added = denyListManager.addToDenyList(testAddr);
-            if (added) {
-              addCount.incrementAndGet();
+      executor.submit(
+          () -> {
+            try {
+              for (int i = 0; i < operationsPerThread; i++) {
+                Address testAddr =
+                    Address.fromHexString(
+                        String.format("0x%040d", threadId * operationsPerThread + i));
+
+                // Add to deny list
+                boolean added = denyListManager.addToDenyList(testAddr);
+                if (added) {
+                  addCount.incrementAndGet();
+                }
+
+                // Check deny list
+                boolean isDenied = denyListManager.isDenied(testAddr);
+                if (isDenied) {
+                  checkCount.incrementAndGet();
+                }
+              }
+            } finally {
+              latch.countDown();
             }
-            
-            // Check deny list
-            boolean isDenied = denyListManager.isDenied(testAddr);
-            if (isDenied) {
-              checkCount.incrementAndGet();
-            }
-          }
-        } finally {
-          latch.countDown();
-        }
-      });
+          });
     }
 
     boolean completed = latch.await(60, TimeUnit.SECONDS);
@@ -202,8 +207,10 @@ class RlnValidationPerformanceTest {
     assertThat(denyListManager.size()).isEqualTo(totalOperations);
 
     // Log performance
-    double throughput = (double) (totalOperations * 2) / (totalTime / 1000.0); // 2 operations per iteration
-    System.out.printf("Deny list performance: %d operations in %d ms (%.2f ops/sec)%n", 
+    double throughput =
+        (double) (totalOperations * 2) / (totalTime / 1000.0); // 2 operations per iteration
+    System.out.printf(
+        "Deny list performance: %d operations in %d ms (%.2f ops/sec)%n",
         totalOperations * 2, totalTime, throughput);
   }
 
@@ -276,22 +283,23 @@ class RlnValidationPerformanceTest {
 
     for (int i = 0; i < operationCount; i++) {
       final int index = i;
-      executor.submit(() -> {
-        try {
-          Instant start = Instant.now();
-          
-          Address addr = Address.fromHexString(String.format("0x%040d", index));
-          denyListManager.addToDenyList(addr);
-          boolean isDenied = denyListManager.isDenied(addr);
-          assertThat(isDenied).isTrue();
-          
-          Instant end = Instant.now();
-          totalFileOpTime.addAndGet(Duration.between(start, end).toMillis());
-          
-        } finally {
-          latch.countDown();
-        }
-      });
+      executor.submit(
+          () -> {
+            try {
+              Instant start = Instant.now();
+
+              Address addr = Address.fromHexString(String.format("0x%040d", index));
+              denyListManager.addToDenyList(addr);
+              boolean isDenied = denyListManager.isDenied(addr);
+              assertThat(isDenied).isTrue();
+
+              Instant end = Instant.now();
+              totalFileOpTime.addAndGet(Duration.between(start, end).toMillis());
+
+            } finally {
+              latch.countDown();
+            }
+          });
     }
 
     boolean completed = latch.await(30, TimeUnit.SECONDS);
@@ -303,7 +311,7 @@ class RlnValidationPerformanceTest {
     // Calculate average file operation time
     double avgFileOpTime = (double) totalFileOpTime.get() / operationCount;
     System.out.printf("Average file operation time: %.2f ms%n", avgFileOpTime);
-    
+
     // File operations should be reasonably fast (under 100ms per operation)
     assertThat(avgFileOpTime).isLessThan(100.0);
   }
@@ -312,29 +320,32 @@ class RlnValidationPerformanceTest {
   void testConcurrentNullifierConflicts() throws InterruptedException {
     // Test behavior when many threads try to use the same nullifiers
     int threadCount = 20;
-    String conflictedNullifier = "0xconflicted000000000000000000000000000000000000000000000000000000";
-    
+    String conflictedNullifier =
+        "0xconflicted000000000000000000000000000000000000000000000000000000";
+
     ExecutorService executor = Executors.newFixedThreadPool(threadCount);
     CountDownLatch latch = new CountDownLatch(threadCount);
     AtomicInteger successCount = new AtomicInteger(0);
     AtomicInteger conflictCount = new AtomicInteger(0);
 
     for (int t = 0; t < threadCount; t++) {
-      executor.submit(() -> {
-        try {
-          // All threads try to use the same nullifier
-          boolean isNew = nullifierTracker.checkAndMarkNullifier(conflictedNullifier, "conflict-epoch");
-          
-          if (isNew) {
-            successCount.incrementAndGet();
-          } else {
-            conflictCount.incrementAndGet();
-          }
-          
-        } finally {
-          latch.countDown();
-        }
-      });
+      executor.submit(
+          () -> {
+            try {
+              // All threads try to use the same nullifier
+              boolean isNew =
+                  nullifierTracker.checkAndMarkNullifier(conflictedNullifier, "conflict-epoch");
+
+              if (isNew) {
+                successCount.incrementAndGet();
+              } else {
+                conflictCount.incrementAndGet();
+              }
+
+            } finally {
+              latch.countDown();
+            }
+          });
     }
 
     boolean completed = latch.await(10, TimeUnit.SECONDS);
@@ -361,46 +372,48 @@ class RlnValidationPerformanceTest {
     ExecutorService executor = Executors.newFixedThreadPool(4);
 
     // Nullifier operations
-    executor.submit(() -> {
-      int counter = 0;
-      while (keepRunning[0]) {
-        String nullifier = String.format("0x%064d", counter++);
-        String epoch = "load-epoch-" + (counter % 5);
-        nullifierTracker.checkAndMarkNullifier(nullifier, epoch);
-        operationCount.incrementAndGet();
-        
-        if (counter % 100 == 0) {
-          try {
-            Thread.sleep(1); // Small pause to prevent CPU overload
-          } catch (InterruptedException e) {
-            break;
-          }
-        }
-      }
-    });
+    executor.submit(
+        () -> {
+          int counter = 0;
+          while (keepRunning[0]) {
+            String nullifier = String.format("0x%064d", counter++);
+            String epoch = "load-epoch-" + (counter % 5);
+            nullifierTracker.checkAndMarkNullifier(nullifier, epoch);
+            operationCount.incrementAndGet();
 
-    // Deny list operations  
-    executor.submit(() -> {
-      int counter = 0;
-      while (keepRunning[0]) {
-        Address addr = Address.fromHexString(String.format("0x%040d", counter % 1000));
-        if (counter % 2 == 0) {
-          denyListManager.addToDenyList(addr);
-        } else {
-          denyListManager.isDenied(addr);
-        }
-        operationCount.incrementAndGet();
-        counter++;
-        
-        if (counter % 50 == 0) {
-          try {
-            Thread.sleep(1);
-          } catch (InterruptedException e) {
-            break;
+            if (counter % 100 == 0) {
+              try {
+                Thread.sleep(1); // Small pause to prevent CPU overload
+              } catch (InterruptedException e) {
+                break;
+              }
+            }
           }
-        }
-      }
-    });
+        });
+
+    // Deny list operations
+    executor.submit(
+        () -> {
+          int counter = 0;
+          while (keepRunning[0]) {
+            Address addr = Address.fromHexString(String.format("0x%040d", counter % 1000));
+            if (counter % 2 == 0) {
+              denyListManager.addToDenyList(addr);
+            } else {
+              denyListManager.isDenied(addr);
+            }
+            operationCount.incrementAndGet();
+            counter++;
+
+            if (counter % 50 == 0) {
+              try {
+                Thread.sleep(1);
+              } catch (InterruptedException e) {
+                break;
+              }
+            }
+          }
+        });
 
     // Run for specified duration
     Thread.sleep(duration * 1000);
@@ -411,12 +424,13 @@ class RlnValidationPerformanceTest {
 
     // Verify system performed operations without issues
     assertThat(operationCount.get()).isGreaterThan(1000); // Should have done substantial work
-    
+
     NullifierStats stats = nullifierTracker.getStats();
     assertThat(stats.currentNullifiers()).isGreaterThan(0);
     assertThat(denyListManager.size()).isGreaterThan(0);
 
-    System.out.printf("Sustained load test: %d operations in %d seconds (%.2f ops/sec)%n",
+    System.out.printf(
+        "Sustained load test: %d operations in %d seconds (%.2f ops/sec)%n",
         operationCount.get(), duration, (double) operationCount.get() / duration);
   }
 
@@ -424,7 +438,7 @@ class RlnValidationPerformanceTest {
   void testDenyListFileGrowthAndCompaction() throws IOException {
     // Test behavior as deny list file grows large
     int addressCount = 1000;
-    
+
     // Add many addresses
     Instant start = Instant.now();
     for (int i = 0; i < addressCount; i++) {
@@ -460,12 +474,13 @@ class RlnValidationPerformanceTest {
     long checkTime = Duration.between(checkStart, checkEnd).toMillis();
     long removeTime = Duration.between(removeStart, removeEnd).toMillis();
 
-    System.out.printf("Deny list performance - Add: %d ms, Check: %d ms, Remove: %d ms%n",
+    System.out.printf(
+        "Deny list performance - Add: %d ms, Check: %d ms, Remove: %d ms%n",
         addTime, checkTime, removeTime);
 
     // Performance assertions
     assertThat(addTime).isLessThan(5000); // Should add 1000 entries in under 5 seconds
-    assertThat(checkTime).isLessThan(1000); // Should check 1000 entries in under 1 second  
+    assertThat(checkTime).isLessThan(1000); // Should check 1000 entries in under 1 second
     assertThat(removeTime).isLessThan(2000); // Should remove 500 entries in under 2 seconds
   }
 
@@ -474,7 +489,7 @@ class RlnValidationPerformanceTest {
     // Test nullifier conflict detection under high concurrent load
     String conflictNullifier = "0xconflicted000000000000000000000000000000000000000000000000000000";
     String conflictEpoch = "high-load-epoch";
-    
+
     int threadCount = 50;
     ExecutorService executor = Executors.newFixedThreadPool(threadCount);
     CountDownLatch latch = new CountDownLatch(threadCount);
@@ -483,18 +498,20 @@ class RlnValidationPerformanceTest {
 
     // All threads compete for the same nullifier
     for (int t = 0; t < threadCount; t++) {
-      executor.submit(() -> {
-        try {
-          boolean won = nullifierTracker.checkAndMarkNullifier(conflictNullifier, conflictEpoch);
-          if (won) {
-            winners.incrementAndGet();
-          } else {
-            conflicts.incrementAndGet();
-          }
-        } finally {
-          latch.countDown();
-        }
-      });
+      executor.submit(
+          () -> {
+            try {
+              boolean won =
+                  nullifierTracker.checkAndMarkNullifier(conflictNullifier, conflictEpoch);
+              if (won) {
+                winners.incrementAndGet();
+              } else {
+                conflicts.incrementAndGet();
+              }
+            } finally {
+              latch.countDown();
+            }
+          });
     }
 
     boolean completed = latch.await(10, TimeUnit.SECONDS);
@@ -507,7 +524,8 @@ class RlnValidationPerformanceTest {
     assertThat(winners.get()).isEqualTo(1);
     assertThat(conflicts.get()).isEqualTo(threadCount - 1);
 
-    System.out.printf("High load conflict test: 1 winner, %d conflicts from %d threads%n",
+    System.out.printf(
+        "High load conflict test: 1 winner, %d conflicts from %d threads%n",
         conflicts.get(), threadCount);
   }
 }

@@ -36,15 +36,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Meaningful tests for RlnProverForwarderValidator critical scenarios.
- * Tests real forwarding logic and karma quota management.
+ * Meaningful tests for RlnProverForwarderValidator critical scenarios. Tests real forwarding logic
+ * and karma quota management.
  */
 class RlnProverForwarderValidatorMeaningfulTest {
 
   @TempDir Path tempDir;
 
-  private static final Address USER_SENDER = Address.fromHexString("0x1111111111111111111111111111111111111111");
-  private static final Address CONTRACT_TARGET = Address.fromHexString("0x2222222222222222222222222222222222222222");
+  private static final Address USER_SENDER =
+      Address.fromHexString("0x1111111111111111111111111111111111111111");
+  private static final Address CONTRACT_TARGET =
+      Address.fromHexString("0x2222222222222222222222222222222222222222");
 
   private static final SECPSignature FAKE_SIGNATURE;
 
@@ -54,8 +56,10 @@ class RlnProverForwarderValidatorMeaningfulTest {
         new ECDomainParameters(params.getCurve(), params.getG(), params.getN(), params.getH());
     FAKE_SIGNATURE =
         SECPSignature.create(
-            new BigInteger("66397251408932042429874251838229702988618145381408295790259650671563847073199"),
-            new BigInteger("24729624138373455972486746091821238755870276413282629437244319694880507882088"),
+            new BigInteger(
+                "66397251408932042429874251838229702988618145381408295790259650671563847073199"),
+            new BigInteger(
+                "24729624138373455972486746091821238755870276413282629437244319694880507882088"),
             (byte) 0,
             curve.getN());
   }
@@ -71,18 +75,31 @@ class RlnProverForwarderValidatorMeaningfulTest {
     karmaServiceClient = new KarmaServiceClient("ForwarderTest", "localhost", 8545, false, 5000);
 
     // Create configuration
-    LineaSharedGaslessConfiguration sharedConfig = new LineaSharedGaslessConfiguration(
-        tempDir.resolve("deny_list.txt").toString(),
-        300L, 5L, 10L
-    );
+    LineaSharedGaslessConfiguration sharedConfig =
+        new LineaSharedGaslessConfiguration(
+            tempDir.resolve("deny_list.txt").toString(), 300L, 5L, 10L);
 
-    rlnConfig = new LineaRlnValidatorConfiguration(
-        true,
-        "/tmp/test_vk.json",
-        "localhost", 8545, false, 1000L, 300L, 3, 1000L, 200L,
-        sharedConfig,
-        "localhost", 8546, false, 5000L, true, 30000L, "TEST", Optional.empty()
-    );
+    rlnConfig =
+        new LineaRlnValidatorConfiguration(
+            true,
+            "/tmp/test_vk.json",
+            "localhost",
+            8545,
+            false,
+            1000L,
+            300L,
+            3,
+            1000L,
+            200L,
+            sharedConfig,
+            "localhost",
+            8546,
+            false,
+            5000L,
+            true,
+            30000L,
+            "TEST",
+            Optional.empty());
 
     // Create both enabled (RPC mode) and disabled (sequencer mode) validators
     enabledValidator = new RlnProverForwarderValidator(rlnConfig, true, karmaServiceClient);
@@ -149,9 +166,9 @@ class RlnProverForwarderValidatorMeaningfulTest {
 
     // Karma service should be available as client but return empty results
     assertThat(karmaServiceClient.isAvailable()).isTrue();
-    
+
     // Fetch karma should return empty (no service running)
-    Optional<KarmaServiceClient.KarmaInfo> karmaInfo = 
+    Optional<KarmaServiceClient.KarmaInfo> karmaInfo =
         karmaServiceClient.fetchKarmaInfo(USER_SENDER);
     assertThat(karmaInfo).isEmpty();
 
@@ -164,16 +181,16 @@ class RlnProverForwarderValidatorMeaningfulTest {
   @Test
   void testValidatorResourceManagement() throws Exception {
     // Test that validator properly manages gRPC resources
-    
+
     // Create transaction to trigger channel creation
     org.hyperledger.besu.ethereum.core.Transaction tx = createTestTransaction();
-    
+
     // Trigger validation to initialize gRPC channel
     enabledValidator.validateTransaction(tx, true, false);
-    
+
     // Verify validator can be closed without errors
     enabledValidator.close();
-    
+
     // After closing, should handle gracefully
     Optional<String> resultAfterClose = enabledValidator.validateTransaction(tx, true, false);
     // Should either pass (if channel already closed) or fail gracefully
@@ -184,7 +201,7 @@ class RlnProverForwarderValidatorMeaningfulTest {
   @Test
   void testTransactionStatisticsTracking() {
     // Test that validator correctly tracks different types of transactions
-    
+
     org.hyperledger.besu.ethereum.core.Transaction tx1 = createTestTransaction();
     org.hyperledger.besu.ethereum.core.Transaction tx2 = createTestTransactionWithDifferentSender();
 
@@ -196,8 +213,8 @@ class RlnProverForwarderValidatorMeaningfulTest {
     // Process local transactions
     enabledValidator.validateTransaction(tx1, true, false);
     enabledValidator.validateTransaction(tx2, true, false);
-    
-    // Process peer transactions  
+
+    // Process peer transactions
     enabledValidator.validateTransaction(tx1, false, false);
     enabledValidator.validateTransaction(tx2, false, true); // with priority
 
@@ -219,7 +236,8 @@ class RlnProverForwarderValidatorMeaningfulTest {
         .build();
   }
 
-  private org.hyperledger.besu.ethereum.core.Transaction createTestTransactionWithDifferentSender() {
+  private org.hyperledger.besu.ethereum.core.Transaction
+      createTestTransactionWithDifferentSender() {
     return org.hyperledger.besu.ethereum.core.Transaction.builder()
         .sender(CONTRACT_TARGET) // Different sender
         .to(USER_SENDER)

@@ -18,7 +18,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.security.SecureRandom;
-import java.util.Arrays;
 import net.consensys.linea.rln.RlnVerificationService.RlnProofData;
 import net.consensys.linea.rln.RlnVerificationService.RlnVerificationException;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,9 +26,9 @@ import org.junit.jupiter.api.condition.EnabledIf;
 
 /**
  * Integration tests for JniRlnVerificationService.
- * 
- * Tests the actual JNI integration with the Rust RLN verification library.
- * These tests will only run if the native library is available.
+ *
+ * <p>Tests the actual JNI integration with the Rust RLN verification library. These tests will only
+ * run if the native library is available.
  */
 class JniRlnVerificationServiceTest {
 
@@ -37,11 +36,16 @@ class JniRlnVerificationServiceTest {
   private SecureRandom random;
 
   // Test data for RLN proofs
-  private static final String VALID_SHARE_X = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
-  private static final String VALID_SHARE_Y = "0xfedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321";
-  private static final String VALID_EPOCH = "0x1c61ef0b2ebc0235d85fe8537b4455549356e3895005ba7a03fbd4efc9ba3692";
-  private static final String VALID_ROOT = "0x19b4c972cda99dfd4d9c87f5c6f6c3f7b5f2e1d8a7b6c5e4f3e2d1c0b9a8f7e6";
-  private static final String VALID_NULLIFIER = "0xa1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456";
+  private static final String VALID_SHARE_X =
+      "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+  private static final String VALID_SHARE_Y =
+      "0xfedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321";
+  private static final String VALID_EPOCH =
+      "0x1c61ef0b2ebc0235d85fe8537b4455549356e3895005ba7a03fbd4efc9ba3692";
+  private static final String VALID_ROOT =
+      "0x19b4c972cda99dfd4d9c87f5c6f6c3f7b5f2e1d8a7b6c5e4f3e2d1c0b9a8f7e6";
+  private static final String VALID_NULLIFIER =
+      "0xa1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456";
 
   @BeforeEach
   void setUp() {
@@ -54,7 +58,7 @@ class JniRlnVerificationServiceTest {
     // Test whether the service can detect if JNI is available
     boolean isAvailable = service.isAvailable();
     String info = service.getImplementationInfo();
-    
+
     assertThat(info).isNotNull();
     if (isAvailable) {
       assertThat(info).contains("JNI-based RLN verification service");
@@ -71,11 +75,7 @@ class JniRlnVerificationServiceTest {
     byte[] dummyVkBytes = generateRandomBytes(100);
     byte[] dummyProofBytes = generateRandomBytes(200);
     String[] publicInputs = {
-      VALID_SHARE_X,
-      VALID_SHARE_Y, 
-      VALID_EPOCH,
-      VALID_ROOT,
-      VALID_NULLIFIER
+      VALID_SHARE_X, VALID_SHARE_Y, VALID_EPOCH, VALID_ROOT, VALID_NULLIFIER
     };
 
     // This will call the native method - result depends on proof validity
@@ -96,10 +96,10 @@ class JniRlnVerificationServiceTest {
     byte[] dummyProofBytes = generateRandomBytes(200);
     String[] invalidPublicInputs = {VALID_SHARE_X, VALID_SHARE_Y}; // Only 2 inputs instead of 5
 
-    assertThatThrownBy(() -> 
-      service.verifyRlnProof(dummyVkBytes, dummyProofBytes, invalidPublicInputs))
-      .isInstanceOf(RlnVerificationException.class)
-      .hasMessageContaining("Expected exactly 5 public inputs");
+    assertThatThrownBy(
+            () -> service.verifyRlnProof(dummyVkBytes, dummyProofBytes, invalidPublicInputs))
+        .isInstanceOf(RlnVerificationException.class)
+        .hasMessageContaining("Expected exactly 5 public inputs");
   }
 
   @Test
@@ -107,10 +107,9 @@ class JniRlnVerificationServiceTest {
     byte[] dummyVkBytes = generateRandomBytes(100);
     byte[] dummyProofBytes = generateRandomBytes(200);
 
-    assertThatThrownBy(() -> 
-      service.verifyRlnProof(dummyVkBytes, dummyProofBytes, null))
-      .isInstanceOf(RlnVerificationException.class)
-      .hasMessageContaining("Expected exactly 5 public inputs");
+    assertThatThrownBy(() -> service.verifyRlnProof(dummyVkBytes, dummyProofBytes, null))
+        .isInstanceOf(RlnVerificationException.class)
+        .hasMessageContaining("Expected exactly 5 public inputs");
   }
 
   @Test
@@ -121,8 +120,9 @@ class JniRlnVerificationServiceTest {
     String currentEpochHex = VALID_EPOCH;
 
     try {
-      RlnProofData result = service.parseAndVerifyRlnProof(dummyVkBytes, dummyCombinedProofBytes, currentEpochHex);
-      
+      RlnProofData result =
+          service.parseAndVerifyRlnProof(dummyVkBytes, dummyCombinedProofBytes, currentEpochHex);
+
       // Result can be valid or invalid - we're testing the API contract
       assertThat(result).isNotNull();
       assertThat(result.shareX()).isNotNull();
@@ -142,15 +142,13 @@ class JniRlnVerificationServiceTest {
     // This test will pass regardless of JNI availability
     // If JNI is not available, service should handle gracefully
     if (!service.isAvailable()) {
-      assertThatThrownBy(() -> 
-        service.verifyRlnProof(new byte[0], new byte[0], new String[5]))
-        .isInstanceOf(RlnVerificationException.class)
-        .hasMessageContaining("JNI RLN verification service is not available");
-        
-      assertThatThrownBy(() -> 
-        service.parseAndVerifyRlnProof(new byte[0], new byte[0], "0x123"))
-        .isInstanceOf(RlnVerificationException.class)
-        .hasMessageContaining("JNI RLN verification service is not available");
+      assertThatThrownBy(() -> service.verifyRlnProof(new byte[0], new byte[0], new String[5]))
+          .isInstanceOf(RlnVerificationException.class)
+          .hasMessageContaining("JNI RLN verification service is not available");
+
+      assertThatThrownBy(() -> service.parseAndVerifyRlnProof(new byte[0], new byte[0], "0x123"))
+          .isInstanceOf(RlnVerificationException.class)
+          .hasMessageContaining("JNI RLN verification service is not available");
     }
   }
 
@@ -159,7 +157,7 @@ class JniRlnVerificationServiceTest {
     String info = service.getImplementationInfo();
     assertThat(info).isNotNull();
     assertThat(info).contains("JNI-based RLN verification service");
-    
+
     if (service.isAvailable()) {
       assertThat(info).contains("native Rust implementation");
     } else {

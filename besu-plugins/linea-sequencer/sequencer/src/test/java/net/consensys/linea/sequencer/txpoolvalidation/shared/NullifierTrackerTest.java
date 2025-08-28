@@ -15,10 +15,8 @@
 package net.consensys.linea.sequencer.txpoolvalidation.shared;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.Awaitility.await;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -31,15 +29,19 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Comprehensive tests for NullifierTracker functionality.
- * 
- * Tests nullifier tracking, epoch scoping, TTL expiration, thread safety, and performance.
+ *
+ * <p>Tests nullifier tracking, epoch scoping, TTL expiration, thread safety, and performance.
  */
 class NullifierTrackerTest {
 
-  private static final String TEST_NULLIFIER_1 = "0xa1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456";
-  private static final String TEST_NULLIFIER_2 = "0xfedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321";
-  private static final String TEST_EPOCH_1 = "0x1c61ef0b2ebc0235d85fe8537b4455549356e3895005ba7a03fbd4efc9ba3692";
-  private static final String TEST_EPOCH_2 = "0x9999999999999999999999999999999999999999999999999999999999999999";
+  private static final String TEST_NULLIFIER_1 =
+      "0xa1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456";
+  private static final String TEST_NULLIFIER_2 =
+      "0xfedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321";
+  private static final String TEST_EPOCH_1 =
+      "0x1c61ef0b2ebc0235d85fe8537b4455549356e3895005ba7a03fbd4efc9ba3692";
+  private static final String TEST_EPOCH_2 =
+      "0x9999999999999999999999999999999999999999999999999999999999999999";
 
   private NullifierTracker tracker;
 
@@ -139,19 +141,20 @@ class NullifierTrackerTest {
 
     for (int t = 0; t < threadCount; t++) {
       final int threadId = t;
-      executor.submit(() -> {
-        try {
-          for (int i = 0; i < operationsPerThread; i++) {
-            String nullifier = String.format("0x%064d", threadId * operationsPerThread + i);
-            boolean isNew = tracker.checkAndMarkNullifier(nullifier, TEST_EPOCH_1);
-            if (isNew) {
-              successCount.incrementAndGet();
+      executor.submit(
+          () -> {
+            try {
+              for (int i = 0; i < operationsPerThread; i++) {
+                String nullifier = String.format("0x%064d", threadId * operationsPerThread + i);
+                boolean isNew = tracker.checkAndMarkNullifier(nullifier, TEST_EPOCH_1);
+                if (isNew) {
+                  successCount.incrementAndGet();
+                }
+              }
+            } finally {
+              latch.countDown();
             }
-          }
-        } finally {
-          latch.countDown();
-        }
-      });
+          });
     }
 
     boolean completed = latch.await(10, TimeUnit.SECONDS);
@@ -162,7 +165,7 @@ class NullifierTrackerTest {
 
     // All operations should have succeeded (unique nullifiers)
     assertThat(successCount.get()).isEqualTo(threadCount * operationsPerThread);
-    
+
     NullifierStats stats = tracker.getStats();
     assertThat(stats.totalTracked()).isEqualTo(threadCount * operationsPerThread);
     assertThat(stats.duplicateAttempts()).isEqualTo(0);
@@ -178,18 +181,19 @@ class NullifierTrackerTest {
 
     // All threads try to use the same nullifier in the same epoch
     for (int t = 0; t < threadCount; t++) {
-      executor.submit(() -> {
-        try {
-          boolean isNew = tracker.checkAndMarkNullifier(TEST_NULLIFIER_1, TEST_EPOCH_1);
-          if (isNew) {
-            successCount.incrementAndGet();
-          } else {
-            failureCount.incrementAndGet();
-          }
-        } finally {
-          latch.countDown();
-        }
-      });
+      executor.submit(
+          () -> {
+            try {
+              boolean isNew = tracker.checkAndMarkNullifier(TEST_NULLIFIER_1, TEST_EPOCH_1);
+              if (isNew) {
+                successCount.incrementAndGet();
+              } else {
+                failureCount.incrementAndGet();
+              }
+            } finally {
+              latch.countDown();
+            }
+          });
     }
 
     boolean completed = latch.await(10, TimeUnit.SECONDS);
@@ -201,7 +205,7 @@ class NullifierTrackerTest {
     // Only one thread should succeed
     assertThat(successCount.get()).isEqualTo(1);
     assertThat(failureCount.get()).isEqualTo(threadCount - 1);
-    
+
     NullifierStats stats = tracker.getStats();
     assertThat(stats.totalTracked()).isEqualTo(1);
     assertThat(stats.duplicateAttempts()).isEqualTo(threadCount - 1);
@@ -220,7 +224,8 @@ class NullifierTrackerTest {
     assertThat(secondResult).isFalse(); // Should be treated as same nullifier
 
     // Mixed case should also be detected
-    String mixedCaseNullifier = "0xA1B2c3D4e5F6789012345678901234567890abcdef1234567890abcdef123456";
+    String mixedCaseNullifier =
+        "0xA1B2c3D4e5F6789012345678901234567890abcdef1234567890abcdef123456";
     boolean thirdResult = tracker.checkAndMarkNullifier(mixedCaseNullifier, TEST_EPOCH_1);
     assertThat(thirdResult).isFalse();
   }
@@ -229,14 +234,14 @@ class NullifierTrackerTest {
   void testNullifierTrackerConfiguration() throws IOException {
     // Test that tracker can be configured with different parameters
     tracker.close(); // Close default tracker
-    
+
     // Create tracker with specific configuration
     tracker = new NullifierTracker("ConfigTest", 500L, 24L); // 500 max size, 24 hour TTL
-    
+
     // Verify it's working
     boolean isNew = tracker.checkAndMarkNullifier(TEST_NULLIFIER_1, TEST_EPOCH_1);
     assertThat(isNew).isTrue();
-    
+
     // Verify configuration is applied
     NullifierStats stats = tracker.getStats();
     assertThat(stats.totalTracked()).isEqualTo(1);
@@ -260,7 +265,7 @@ class NullifierTrackerTest {
   @Test
   void testLegacyConstructor() throws Exception {
     tracker.close(); // Close default tracker
-    
+
     // Test legacy constructor with file path (should be ignored)
     tracker = new NullifierTracker("Test", "/tmp/ignored_file.txt", 1L);
 

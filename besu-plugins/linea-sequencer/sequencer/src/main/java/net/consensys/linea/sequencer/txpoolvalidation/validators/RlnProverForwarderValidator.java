@@ -248,7 +248,8 @@ public class RlnProverForwarderValidator implements PluginTransactionPoolValidat
               isEligibleTier);
 
           if (hasQuotaAvailable && isEligibleTier) {
-            // User has available karma quota - prioritize for gasless but still validate through prover
+            // User has available karma quota - prioritize for gasless but still validate through
+            // prover
             karmaBypassCount.incrementAndGet();
             LOG.info(
                 "⚡ GASLESS PRIORITY: Sender {} has tier '{}' with available quota ({}/{}). Prioritizing gasless transaction {} for prover validation",

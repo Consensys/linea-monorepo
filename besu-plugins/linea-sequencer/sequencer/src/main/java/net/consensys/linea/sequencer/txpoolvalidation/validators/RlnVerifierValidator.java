@@ -622,7 +622,8 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
                 + Instant.ofEpochSecond(timestamp)
                     .atZone(ZoneOffset.UTC)
                     .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH"))
-                + ":SALT:" + getSecureEpochSalt();
+                + ":SALT:"
+                + getSecureEpochSalt();
         yield hashToFieldElementHex(timestampStr);
       }
       case "TEST" -> {
@@ -645,8 +646,8 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
   }
 
   /**
-   * Generates a secure salt for epoch generation to prevent predictable epoch values.
-   * Uses blockchain state entropy for security while maintaining determinism.
+   * Generates a secure salt for epoch generation to prevent predictable epoch values. Uses
+   * blockchain state entropy for security while maintaining determinism.
    *
    * @return Secure salt string based on recent blockchain state
    */
@@ -655,22 +656,23 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
       var currentHeader = blockchainService.getChainHeadHeader();
       long blockNumber = currentHeader.getNumber();
       long timestamp = currentHeader.getTimestamp();
-      
+
       // Use recent block data for entropy while maintaining determinism within epoch windows
       // Mix block hash with timestamp for additional entropy
-      String entropySource = "ENTROPY:" + (blockNumber / 100) * 100 + ":" + (timestamp / 3600) * 3600;
-      
+      String entropySource =
+          "ENTROPY:" + (blockNumber / 100) * 100 + ":" + (timestamp / 3600) * 3600;
+
       // Hash to create compact, secure salt
       java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
       byte[] hash = digest.digest(entropySource.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-      
+
       // Use first 8 bytes for compact salt
       StringBuilder salt = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         salt.append(String.format("%02x", hash[i]));
       }
       return salt.toString();
-      
+
     } catch (Exception e) {
       LOG.error("Error generating secure epoch salt: {}", e.getMessage());
       // Fallback to basic timestamp for determinism
@@ -705,8 +707,8 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
   }
 
   /**
-   * Validates if a proof epoch is acceptable compared to the current epoch.
-   * Implements flexible epoch validation to prevent race conditions while maintaining security.
+   * Validates if a proof epoch is acceptable compared to the current epoch. Implements flexible
+   * epoch validation to prevent race conditions while maintaining security.
    *
    * @param proofEpochId The epoch from the RLN proof
    * @param currentEpochId The current system epoch
@@ -720,21 +722,21 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
 
     // For different epoch modes, implement appropriate tolerance windows
     String epochMode = rlnConfig.defaultEpochForQuota().toUpperCase();
-    
+
     switch (epochMode) {
       case "BLOCK":
         // Allow proofs from previous 2 blocks to handle block timing races
         return isBlockEpochValid(proofEpochId, currentEpochId, 2);
-      
+
       case "TIMESTAMP_1H":
         // Allow proofs from current hour and previous hour for timing tolerance
         return isTimestampEpochValid(proofEpochId, currentEpochId, 1);
-      
+
       case "TEST":
       case "FIXED_FIELD_ELEMENT":
         // In test mode, be more permissive for testing scenarios
         return true;
-      
+
       default:
         // For unknown modes, default to strict validation for security
         LOG.warn("Unknown epoch mode '{}', using strict validation", epochMode);
@@ -742,16 +744,14 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
     }
   }
 
-  /**
-   * Validates block-based epochs within tolerance window.
-   */
+  /** Validates block-based epochs within tolerance window. */
   private boolean isBlockEpochValid(String proofEpoch, String currentEpoch, int blockTolerance) {
     try {
       // Extract block numbers from epoch hashes (simplified approach)
       // In production, you'd want more sophisticated epoch comparison
       var currentHeader = blockchainService.getChainHeadHeader();
       long currentBlock = currentHeader.getNumber();
-      
+
       // For each potential recent block, generate its epoch and compare
       for (int i = 0; i <= blockTolerance; i++) {
         String testBlockStr = "BLOCK:" + (currentBlock - i);
@@ -770,21 +770,20 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
     }
   }
 
-  /**
-   * Validates timestamp-based epochs within tolerance window.
-   */
+  /** Validates timestamp-based epochs within tolerance window. */
   private boolean isTimestampEpochValid(String proofEpoch, String currentEpoch, int hourTolerance) {
     try {
       var currentHeader = blockchainService.getChainHeadHeader();
       long currentTimestamp = currentHeader.getTimestamp();
-      
+
       // Check current hour and previous hours within tolerance
       for (int i = 0; i <= hourTolerance; i++) {
         long testTimestamp = currentTimestamp - (i * 3600); // Subtract hours
-        String testTimeStr = "TIME:" + 
-            Instant.ofEpochSecond(testTimestamp)
-                .atZone(ZoneOffset.UTC)
-                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH"));
+        String testTimeStr =
+            "TIME:"
+                + Instant.ofEpochSecond(testTimestamp)
+                    .atZone(ZoneOffset.UTC)
+                    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH"));
         String testEpoch = hashToFieldElementHex(testTimeStr);
         if (testEpoch.equals(proofEpoch)) {
           if (i > 0) {

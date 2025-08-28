@@ -19,9 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/**
- * Simple integration tests to verify RLN service availability and basic functionality.
- */
+/** Simple integration tests to verify RLN service availability and basic functionality. */
 class RlnServiceIntegrationTest {
 
   private JniRlnVerificationService service;
@@ -42,7 +40,7 @@ class RlnServiceIntegrationTest {
   void testServiceAvailabilityCheck() {
     boolean isAvailable = service.isAvailable();
     String info = service.getImplementationInfo();
-    
+
     if (isAvailable) {
       assertThat(info).contains("native Rust implementation");
       assertThat(info).doesNotContain("UNAVAILABLE");
