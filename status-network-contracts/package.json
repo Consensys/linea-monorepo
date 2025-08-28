@@ -23,8 +23,9 @@
   "scripts": {
     "clean": "rm -rf cache out",
     "lint": "pnpm lint:sol && pnpm prettier:check",
-    "verify": "pnpm verify:stake_manager && pnpm verify:mp_less_equal_max_mp && pnpm verify:karma && pnpm verify:emergency_mode",
+    "verify": "pnpm verify:stake_manager && pnpm verify:stake_vault && pnpm verify:mp_less_equal_max_mp && pnpm verify:karma && pnpm verify:emergency_mode",
     "verify:stake_manager": "certoraRun certora/confs/StakeManager.conf",
+    "verify:stake_vault": "certoraRun certora/confs/StakeVault.conf",
     "verify:mp_less_equal_max_mp": "certoraRun certora/confs/MPLessEqualMaxMP.conf",
     "verify:emergency_mode": "certoraRun certora/confs/EmergencyMode.conf",
     "verify:karma": "certoraRun certora/confs/Karma.conf",
