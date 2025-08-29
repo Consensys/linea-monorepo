@@ -13,8 +13,11 @@ import java.util.TimerTask
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.timerTask
+import linea.kotlin.toBigInteger
+import linea.kotlin.toULong
 import maru.config.P2PConfig
 import maru.consensus.ForkIdHashProvider
+import maru.database.P2PState
 import maru.services.LongRunningService
 import net.consensys.linea.async.toSafeFuture
 import org.apache.logging.log4j.LogManager
@@ -35,6 +38,7 @@ class MaruDiscoveryService(
   private val p2pConfig: P2PConfig,
   private val forkIdHashProvider: ForkIdHashProvider,
   private val timerFactory: (String, Boolean) -> Timer = { namePrefix, isDaemon -> createTimer(namePrefix, isDaemon) },
+  private val p2PState: P2PState,
 ) : LongRunningService {
   init {
     require(p2pConfig.discovery != null) {
@@ -121,6 +125,7 @@ class MaruDiscoveryService(
       .listen(p2pConfig.ipAddress, p2pConfig.discovery!!.port.toInt())
       .secretKey(privateKey)
       .localNodeRecord(createLocalNodeRecord())
+      .localNodeRecordListener(this::localNodeRecordUpdated)
       .build()
 
   private var poller: Timer? = null
@@ -202,10 +207,11 @@ class MaruDiscoveryService(
   }
 
   private fun createLocalNodeRecord(): NodeRecord {
+    val sequenceNumber = p2PState.getLocalNodeRecordSequenceNumber() + 1uL
     val nodeRecordBuilder: NodeRecordBuilder =
       NodeRecordBuilder()
         .secretKey(privateKey)
-        .seq(UInt64.ONE)
+        .seq(UInt64.valueOf(sequenceNumber.toBigInteger()))
         // TODO: we need to store the sequence number in the DB?
         //  and increment it after changing the record and after each restart!
         .address(
@@ -217,4 +223,12 @@ class MaruDiscoveryService(
 
     return nodeRecordBuilder.build()
   }
+
+  private fun localNodeRecordUpdated(
+    oldRecord: NodeRecord?,
+    newRecord: NodeRecord,
+  ) = p2PState
+    .newP2PStateUpdater()
+    .putDiscoverySequenceNumber(newRecord.seq.toBigInteger().toULong())
+    .commit()
 }

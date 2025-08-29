@@ -13,7 +13,6 @@ import kotlin.random.Random
 import maru.core.BeaconState
 import maru.core.ext.DataGenerators
 import maru.core.ext.metrics.TestMetrics
-import maru.database.BeaconChain
 import maru.metrics.BesuMetricsCategoryAdapter
 import maru.metrics.MaruMetricsCategory
 import org.assertj.core.api.Assertions.assertThat
@@ -22,7 +21,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class KvDatabaseTest {
-  private fun createDatabase(databasePath: Path): BeaconChain =
+  private fun createDatabase(databasePath: Path): KvDatabase =
     KvDatabaseFactory.createRocksDbDatabase(
       databasePath = databasePath,
       metricsSystem = TestMetrics.TestMetricsSystemAdapter,
@@ -36,7 +35,7 @@ class KvDatabaseTest {
     val testBeaconStates = (1..10).map { DataGenerators.randomBeaconState(it.toULong()) }
     createDatabase(databasePath).use { db ->
       testBeaconStates.forEach { testBeaconState ->
-        db.newUpdater().use {
+        db.newBeaconChainUpdater().use {
           it.putBeaconState(testBeaconState).commit()
         }
         assertThat(db.getBeaconState(testBeaconState.beaconBlockHeader.hash))
@@ -59,7 +58,7 @@ class KvDatabaseTest {
     val testBeaconStates = (1..10).map { DataGenerators.randomBeaconState(it.toULong()) }
     createDatabase(databasePath).use { db ->
       testBeaconStates.forEach { testBeaconState ->
-        db.newUpdater().use {
+        db.newBeaconChainUpdater().use {
           it.putBeaconState(testBeaconState).commit()
         }
         assertThat(db.getLatestBeaconState())
@@ -93,7 +92,7 @@ class KvDatabaseTest {
       (1..10).map { DataGenerators.randomSealedBeaconBlock(it.toULong()) }
     createDatabase(databasePath).use { db ->
       testBeaconBlocks.forEach { testBeaconBlock ->
-        db.newUpdater().use {
+        db.newBeaconChainUpdater().use {
           it.putSealedBeaconBlock(testBeaconBlock).commit()
         }
         assertThat(db.getSealedBeaconBlock(testBeaconBlock.beaconBlock.beaconBlockHeader.hash))
@@ -121,10 +120,10 @@ class KvDatabaseTest {
   ) {
     val testBeaconBlock = DataGenerators.randomSealedBeaconBlock(1uL)
     createDatabase(databasePath).use { db ->
-      db.newUpdater().use {
+      db.newBeaconChainUpdater().use {
         it.putSealedBeaconBlock(testBeaconBlock).commit()
       }
-      db.newUpdater().use {
+      db.newBeaconChainUpdater().use {
         it.putSealedBeaconBlock(testBeaconBlock).commit()
       }
     }
@@ -149,7 +148,7 @@ class KvDatabaseTest {
     val testBeaconBlock2Number = testBeaconBlock2.beaconBlock.beaconBlockHeader.number
     val testBeaconBlock2Root = testBeaconBlock2.beaconBlock.beaconBlockHeader.hash
     createDatabase(databasePath).use { db ->
-      db.newUpdater().use {
+      db.newBeaconChainUpdater().use {
         it.putSealedBeaconBlock(testBeaconBlock1).commit()
       }
       assertThat(db.getSealedBeaconBlock(testBeaconBlock1Root)).isEqualTo(testBeaconBlock1)
@@ -158,7 +157,7 @@ class KvDatabaseTest {
       assertThat(db.getSealedBeaconBlock(testBeaconBlock2Root)).isNull()
       assertThat(db.getSealedBeaconBlock(testBeaconBlock2Number)).isNull()
 
-      db.newUpdater().use { it.putSealedBeaconBlock(testBeaconBlock2).rollback() }
+      db.newBeaconChainUpdater().use { it.putSealedBeaconBlock(testBeaconBlock2).rollback() }
 
       assertThat(db.getSealedBeaconBlock(testBeaconBlock1Root)).isEqualTo(testBeaconBlock1)
       assertThat(db.getSealedBeaconBlock(testBeaconBlock1Number)).isEqualTo(testBeaconBlock1)
@@ -185,11 +184,11 @@ class KvDatabaseTest {
     createDatabase(databasePath).use { db ->
       // Store blocks
       testBlocks.forEach { block ->
-        db.newUpdater().use {
+        db.newBeaconChainUpdater().use {
           it.putSealedBeaconBlock(block).commit()
         }
       }
-      db.newUpdater().use {
+      db.newBeaconChainUpdater().use {
         it
           .putBeaconState(
             BeaconState(
@@ -215,10 +214,10 @@ class KvDatabaseTest {
     val testBlock = DataGenerators.randomSealedBeaconBlock(1uL)
 
     createDatabase(databasePath).use { db ->
-      db.newUpdater().use {
+      db.newBeaconChainUpdater().use {
         it.putSealedBeaconBlock(testBlock).commit()
       }
-      db.newUpdater().use {
+      db.newBeaconChainUpdater().use {
         it
           .putBeaconState(
             BeaconState(
@@ -243,14 +242,14 @@ class KvDatabaseTest {
     val block4 = DataGenerators.randomSealedBeaconBlock(4uL)
 
     createDatabase(databasePath).use { db ->
-      db.newUpdater().use {
+      db.newBeaconChainUpdater().use {
         it
           .putSealedBeaconBlock(block1)
           .putSealedBeaconBlock(block2)
           .putSealedBeaconBlock(block4)
           .commit()
       }
-      db.newUpdater().use {
+      db.newBeaconChainUpdater().use {
         it
           .putBeaconState(
             BeaconState(
@@ -276,11 +275,11 @@ class KvDatabaseTest {
 
     createDatabase(databasePath).use { db ->
       testBlocks.forEach { block ->
-        db.newUpdater().use {
+        db.newBeaconChainUpdater().use {
           it.putSealedBeaconBlock(block).commit()
         }
       }
-      db.newUpdater().use {
+      db.newBeaconChainUpdater().use {
         it
           .putBeaconState(
             BeaconState(
@@ -294,6 +293,23 @@ class KvDatabaseTest {
       val blocks = db.getSealedBeaconBlocks(startBlockNumber = 1uL, count = 10uL)
       assertThat(blocks).hasSize(3)
       assertThat(blocks).isEqualTo(testBlocks)
+    }
+  }
+
+  @Test
+  fun `test read and increment discovery sequence number`(
+    @TempDir databasePath: Path,
+  ) {
+    val maxIterations = 10uL
+    createDatabase(databasePath).use { db ->
+      assertThat(db.getLocalNodeRecordSequenceNumber()).isEqualTo(0uL)
+      (1uL..maxIterations).forEach { expectedSeqNumber ->
+        db.newP2PStateUpdater().putDiscoverySequenceNumber(expectedSeqNumber).commit()
+        assertThat(db.getLocalNodeRecordSequenceNumber()).isEqualTo(expectedSeqNumber)
+      }
+    }
+    createDatabase(databasePath).use { db ->
+      assertThat(db.getLocalNodeRecordSequenceNumber()).isEqualTo(maxIterations)
     }
   }
 }

@@ -83,7 +83,7 @@ class BlockValidatorTest {
   private val beaconChain =
     InMemoryBeaconChain(currBeaconState).also {
       it
-        .newUpdater()
+        .newBeaconChainUpdater()
         .putSealedBeaconBlock(SealedBeaconBlock(validCurrBlock, emptySet()))
         .commit()
     }

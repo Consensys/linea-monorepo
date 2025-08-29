@@ -126,7 +126,7 @@ class ELSyncServiceTest {
     assertThat(elSyncStatus).isEqualTo(ELSyncStatus.SYNCED)
 
     beaconChain
-      .newUpdater()
+      .newBeaconChainUpdater()
       .putBeaconState(DataGenerators.randomBeaconState(number = 3uL, timestamp = switchTimestamp))
       .putSealedBeaconBlock(DataGenerators.randomSealedBeaconBlock(3UL))
       .commit()
@@ -204,7 +204,7 @@ class ELSyncServiceTest {
     // Add a block to the beacon chain to trigger EL sync
     val sealedBlock = DataGenerators.randomSealedBeaconBlock(3UL)
     beaconChain
-      .newUpdater()
+      .newBeaconChainUpdater()
       .putBeaconState(DataGenerators.randomBeaconState(number = 3uL, timestamp = switchTimestamp))
       .putSealedBeaconBlock(sealedBlock)
       .commit()

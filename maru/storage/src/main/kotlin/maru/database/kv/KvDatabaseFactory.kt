@@ -9,7 +9,6 @@
 package maru.database.kv
 
 import java.nio.file.Path
-import maru.database.BeaconChain
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import org.hyperledger.besu.plugin.services.metrics.MetricCategory
 import tech.pegasys.teku.storage.server.kvstore.KvStoreConfiguration
@@ -20,7 +19,7 @@ object KvDatabaseFactory {
     databasePath: Path,
     metricsSystem: MetricsSystem,
     metricCategory: MetricCategory,
-  ): BeaconChain {
+  ): KvDatabase {
     val rocksDbInstance =
       RocksDbInstanceFactory.create(
         metricsSystem,

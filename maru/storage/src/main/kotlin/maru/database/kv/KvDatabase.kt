@@ -8,10 +8,12 @@
  */
 package maru.database.kv
 
+import kotlin.jvm.optionals.getOrDefault
 import kotlin.jvm.optionals.getOrNull
 import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
+import maru.database.P2PState
 import tech.pegasys.teku.storage.server.kvstore.KvStoreAccessor
 import tech.pegasys.teku.storage.server.kvstore.KvStoreAccessor.KvStoreTransaction
 import tech.pegasys.teku.storage.server.kvstore.schema.KvStoreColumn
@@ -19,7 +21,8 @@ import tech.pegasys.teku.storage.server.kvstore.schema.KvStoreVariable
 
 class KvDatabase(
   private val kvStoreAccessor: KvStoreAccessor,
-) : BeaconChain {
+) : BeaconChain,
+  P2PState {
   override fun isInitialized(): Boolean = kvStoreAccessor.get(Schema.LatestBeaconState).getOrNull() != null
 
   companion object {
@@ -50,6 +53,12 @@ class KvDatabase(
           1,
           KvStoreSerializers.BeaconStateSerializer,
         )
+
+      val DiscoverySequenceNumber: KvStoreVariable<ULong> =
+        KvStoreVariable.create(
+          2,
+          KvStoreSerializers.ULongSerializer,
+        )
     }
   }
 
@@ -73,7 +82,14 @@ class KvDatabase(
       .flatMap { blockRoot -> kvStoreAccessor.get(Schema.SealedBeaconBlockByBlockRoot, blockRoot) }
       .getOrNull()
 
-  override fun newUpdater(): BeaconChain.Updater = KvUpdater(this.kvStoreAccessor)
+  override fun newBeaconChainUpdater(): BeaconChain.Updater = KvUpdater(this.kvStoreAccessor)
+
+  override fun getLocalNodeRecordSequenceNumber(): ULong =
+    kvStoreAccessor
+      .get(Schema.DiscoverySequenceNumber)
+      .getOrDefault(0uL)
+
+  override fun newP2PStateUpdater(): P2PState.Updater = KvUpdater(this.kvStoreAccessor)
 
   override fun close() {
     kvStoreAccessor.close()
@@ -81,7 +97,8 @@ class KvDatabase(
 
   class KvUpdater(
     kvStoreAccessor: KvStoreAccessor,
-  ) : BeaconChain.Updater {
+  ) : BeaconChain.Updater,
+    P2PState.Updater {
     private val transaction: KvStoreTransaction = kvStoreAccessor.startTransaction()
 
     override fun putBeaconState(beaconState: BeaconState): BeaconChain.Updater {
@@ -102,6 +119,11 @@ class KvDatabase(
         sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash,
       )
 
+      return this
+    }
+
+    override fun putDiscoverySequenceNumber(newSequenceNumber: ULong): P2PState.Updater {
+      transaction.put(Schema.DiscoverySequenceNumber, newSequenceNumber)
       return this
     }
 
