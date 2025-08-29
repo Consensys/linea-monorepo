@@ -21,16 +21,11 @@ import java.util.List;
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.MultiBlockExecutionEnvironment;
 import net.consensys.linea.testing.TransactionProcessingResultValidator;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 public class UtilitiesTest extends TracerTestBase {
   TestContext tc;
 
-  // TODO: enable SELFDESTRUCT for Cancun again after fixing the issue
-  // https://github.com/Consensys/linea-tracer/issues/2159
-  // PR https://github.com/Consensys/linea-tracer/pull/2184
-  @Tag("disabled-for-cancun-temporarily")
   @Test
   void testBuildingBlockOperations() {
     // initialize the test context

@@ -304,6 +304,9 @@ public abstract class SelfdestructSection extends TraceSection
         selfdestructScenarioFragment.setScenario(SELFDESTRUCT_WONT_REVERT_ALREADY_MARKED);
         this.addFragment(finalUnexceptionalContextFragment);
       }
+    } else {
+      selfdestructScenarioFragment.setScenario(SELFDESTRUCT_WONT_REVERT_ALREADY_MARKED);
+      this.addFragment(finalUnexceptionalContextFragment);
     }
   }
 
