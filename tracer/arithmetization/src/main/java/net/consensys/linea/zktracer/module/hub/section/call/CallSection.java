@@ -19,7 +19,7 @@ import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment.CallScenario.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.CALL;
-import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
+import static net.consensys.linea.zktracer.types.AddressUtils.*;
 import static net.consensys.linea.zktracer.types.Conversions.bytesToBoolean;
 import static org.hyperledger.besu.datatypes.Address.*;
 
@@ -193,6 +193,14 @@ public class CallSection extends TraceSection
     callerAddress = frame.getRecipientAddress();
     rawCalleeAddress = frame.getStackItem(1);
     calleeAddress = Address.extract(EWord.of(rawCalleeAddress));
+
+    // TODO: remove me when Linea supports Cancun & Prague precompiles
+    if (isKzgPrecompileCall(calleeAddress, hub.fork)) {
+      hub.pointEval().detectEvent();
+    }
+    if (isBlsPrecompileCall(calleeAddress, hub.fork)) {
+      hub.bls().detectEvent();
+    }
 
     callerFirst = canonical(hub, callerAddress);
     calleeFirst = canonical(hub, calleeAddress);
