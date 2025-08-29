@@ -32,7 +32,7 @@ export function Amount() {
     const allowedKeys = ["Backspace", "Tab", "ArrowLeft", "ArrowRight", "Delete"];
     const decimalSeparators = [".", ","];
 
-    // If the key pressed is a decimal separator, allow it only if none is already present.
+    // If the key pressed is a decimal separator,  allow it only if none is already present.
     if (decimalSeparators.includes(key)) {
       if (decimalSeparators.some((sep) => inputValue.includes(sep))) {
         event.preventDefault();
