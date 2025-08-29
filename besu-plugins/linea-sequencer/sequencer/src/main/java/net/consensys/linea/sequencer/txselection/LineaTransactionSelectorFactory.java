@@ -43,6 +43,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
   private final LineaTracerConfiguration tracerConfiguration;
   private final Optional<HistogramMetrics> maybeProfitabilityMetrics;
   private final BundlePoolService bundlePoolService;
+  private final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
   private final AtomicReference<LineaTransactionSelector> currSelector = new AtomicReference<>();
 
   public LineaTransactionSelectorFactory(
@@ -53,7 +54,8 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
       final LineaTracerConfiguration tracerConfiguration,
       final Optional<JsonRpcManager> rejectedTxJsonRpcManager,
       final Optional<HistogramMetrics> maybeProfitabilityMetrics,
-      final BundlePoolService bundlePoolService) {
+      final BundlePoolService bundlePoolService,
+      final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache) {
     this.blockchainService = blockchainService;
     this.txSelectorConfiguration = txSelectorConfiguration;
     this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
@@ -62,6 +64,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
     this.maybeProfitabilityMetrics = maybeProfitabilityMetrics;
     this.bundlePoolService = bundlePoolService;
+    this.invalidTransactionByLineCountCache = invalidTransactionByLineCountCache;
   }
 
   @Override
@@ -74,15 +77,16 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
             l1L2BridgeConfiguration,
             profitabilityConfiguration,
             tracerConfiguration,
-            bundlePoolService,
             rejectedTxJsonRpcManager,
-            maybeProfitabilityMetrics);
+            maybeProfitabilityMetrics,
+            invalidTransactionByLineCountCache);
     currSelector.set(selector);
     return selector;
   }
 
   public void selectPendingTransactions(
       final BlockTransactionSelectionService bts, final ProcessableBlockHeader pendingBlockHeader) {
+
     final var bundlesByBlockNumber =
         bundlePoolService.getBundlesByBlockNumber(pendingBlockHeader.getNumber());
 
@@ -103,10 +107,10 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
                   .findFirst();
 
           if (badBundleRes.isPresent()) {
-            log.trace("Failed bundle {}, reason {}", bundle, badBundleRes);
+            log.debug("Failed bundle {}, reason {}", bundle, badBundleRes);
             rollback(bts);
           } else {
-            log.trace("Selected bundle {}", bundle);
+            log.debug("Selected bundle {}", bundle);
             commit(bts);
           }
         });
