@@ -4,6 +4,7 @@ import (
 	"hash"
 	"runtime"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
@@ -159,23 +160,33 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []field.Octuplet
 	leaves = make([]field.Octuplet, numChunks)
 
 	parallel.Execute(numChunks, func(start, stop int) {
-		// Create the hasher in the parallel setting to avoid race conditions.
-		hasher := p.LeafHashFunc()
 		for chunkID := start; chunkID < stop; chunkID++ {
 			startChunk := chunkID * chunkSize
-			hasher.Reset()
 
-			for i := 0; i < chunkSize; i++ {
-				fbytes := colHashes[startChunk+i].Bytes()
-				// Write one Element (4 bytes) at a time
-				hasher.Write(fbytes[:])
+			if p.LeafHashFunc != nil {
+				// Create the hasher in the parallel setting to avoid race conditions.
+				hasher := p.LeafHashFunc()
+				hasher.Reset()
+
+				// Convert a colHashes chunk to a byte slice
+				fCol := make([]byte, chunkSize*field.Bytes)
+				for i := 0; i < chunkSize; i++ {
+					startIndex := i * field.Bytes
+					fbytes := colHashes[startChunk+i].Bytes()
+					copy(fCol[startIndex:], fbytes[:])
+				}
+				hasher.Write(fCol[:])
+
+				// Manually copies the hasher's digest into the leaves to
+				// skip a verbose type conversion.
+				digest := hasher.Sum(nil)
+				leaves[chunkID] = field.ParseOctuplet([32]byte(digest))
+			} else {
+				// Default LeafHashFunc: Using Poseidon2Sponge directly to avoid data conversion.
+				leaves[chunkID] = poseidon2.Poseidon2Sponge(colHashes[startChunk : startChunk+chunkSize])
 			}
-
-			// Manually copies the hasher's digest into the leaves to
-			// skip a verbose type conversion.
-			digest := hasher.Sum(nil)
-			leaves[chunkID] = field.ParseOctuplet([32]byte(digest))
 		}
+
 	})
 
 	return leaves
@@ -197,27 +208,47 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 	numRows := len(v)
 
 	res := make([]field.Octuplet, numCols)
-	hashers := make([]hash.Hash, runtime.GOMAXPROCS(0))
 
-	parallel.ExecuteThreadAware(
-		numCols,
-		func(threadID int) {
-			hashers[threadID] = p.LeafHashFunc()
-		},
-		func(col, threadID int) {
-			hasher := hashers[threadID]
-			hasher.Reset()
-			for row := 0; row < numRows; row++ {
-				x := v[row].Get(col)
-				xBytes := x.Bytes()
-				// Write one Element (4 bytes) at a time
-				hasher.Write(xBytes[:])
-			}
+	if p.LeafHashFunc != nil {
+		hashers := make([]hash.Hash, runtime.GOMAXPROCS(0))
 
-			digest := hasher.Sum(nil)
-			res[col] = field.ParseOctuplet([32]byte(digest))
-		},
-	)
+		parallel.ExecuteThreadAware(
+			numCols,
+			func(threadID int) {
+				hashers[threadID] = p.LeafHashFunc()
+			},
+			func(col, threadID int) {
+				hasher := hashers[threadID]
+				hasher.Reset()
+
+				xCol := make([]byte, numRows*field.Bytes)
+				for row := 0; row < numRows; row++ {
+					startIndex := row * field.Bytes
+					x := v[row].Get(col)
+					xBytes := x.Bytes()
+					copy(xCol[startIndex:], xBytes[:])
+				}
+				hasher.Write(xCol[:])
+
+				digest := hasher.Sum(nil)
+				res[col] = field.ParseOctuplet([32]byte(digest))
+			},
+		)
+	} else {
+		// Default LeafHashFunc: Using Poseidon2Sponge directly to avoid data conversion.
+		parallel.ExecuteThreadAware(
+			numCols,
+			func(threadID int) {
+			},
+			func(col, threadID int) {
+				colElems := make([]field.Element, numRows)
+				for row := 0; row < numRows; row++ {
+					colElems[row] = v[row].Get(col)
+				}
+				res[col] = poseidon2.Poseidon2Sponge(colElems)
+			},
+		)
+	}
 
 	return res
 }

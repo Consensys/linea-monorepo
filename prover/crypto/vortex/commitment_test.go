@@ -53,6 +53,7 @@ func TestLinearCombination(t *testing.T) {
 var testCaseParameters = []*Params{
 	NewParams(2, 1<<4, 32, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, poseidon2.NewMerkleDamgardHasher),
 	NewParams(4, 1<<3, 32, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, poseidon2.NewMerkleDamgardHasher),
+	NewParams(4, 1<<3, 32, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, nil),
 }
 
 func TestProver(t *testing.T) {
@@ -273,6 +274,7 @@ func TestVerifierNegative(t *testing.T) {
 		params = []*Params{
 			NewParams(2, 8, 17, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, poseidon2.NewMerkleDamgardHasher),
 			NewParams(2, 8, 17, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, poseidon2.NewMerkleDamgardHasher),
+			NewParams(2, 8, 17, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, nil),
 		}
 
 		statementMutatorCorpus = []struct {
