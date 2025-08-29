@@ -82,6 +82,7 @@ class LoadBalancingJsonRpcClientTest {
   }
 
   @Test
+  @Suppress("UNCHECKED_CAST")
   fun should_fire_request_by_priority() {
     val requestsReceivedByClients = CopyOnWriteArrayList<JsonRpcRequest>()
     val requestHandler = { request: JsonRpcRequest ->
@@ -101,15 +102,10 @@ class LoadBalancingJsonRpcClientTest {
     loadBalancer = LoadBalancingJsonRpcClient.create(
       rpcClients = listOf(client1, client2),
       requestLimitPerEndpoint = 1u,
-      requestPriorityComparator = object : Comparator<JsonRpcRequest> {
-        override fun compare(
-          o1: JsonRpcRequest,
-          o2: JsonRpcRequest,
-        ): Int {
-          val bn1 = (o1.params as List<Map<String, Int>>).first()["blockNumber"]!!
-          val bn2 = (o2.params as List<Map<String, Int>>).first()["blockNumber"]!!
-          return bn1 - bn2
-        }
+      requestPriorityComparator = { o1, o2 ->
+        val bn1 = (o1.params as List<Map<String, Int>>).first()["blockNumber"]!!
+        val bn2 = (o2.params as List<Map<String, Int>>).first()["blockNumber"]!!
+        bn1 - bn2
       },
     )
     val requests = (1..10).map {
