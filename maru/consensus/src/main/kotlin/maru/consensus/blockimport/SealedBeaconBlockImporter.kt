@@ -84,7 +84,7 @@ class TransactionalSealedBeaconBlockImporter(
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
   override fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<ValidationResult> {
-    val updater = beaconChain.newUpdater()
+    val updater = beaconChain.newBeaconChainUpdater()
     val clBlockNumber = sealedBeaconBlock.beaconBlock.beaconBlockHeader.number
     val elBLockNumber = sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber
     try {

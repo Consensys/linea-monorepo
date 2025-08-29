@@ -43,7 +43,7 @@ interface BeaconChain : AutoCloseable {
           ?: throw IllegalStateException("Missing sealed beacon block $blockNumber")
       }.toList()
 
-  fun newUpdater(): Updater
+  fun newBeaconChainUpdater(): Updater
 
   interface Updater : AutoCloseable {
     fun putBeaconState(beaconState: BeaconState): Updater

@@ -277,7 +277,7 @@ class ApiServerTest {
 
   @Test
   fun `test GetSyncingStatus method`() {
-    fakeBeaconChain.newUpdater().apply {
+    fakeBeaconChain.newBeaconChainUpdater().apply {
       putBeaconState(DataGenerators.randomBeaconState(number = 100u, timestamp = 100u))
       commit()
     }
@@ -297,7 +297,7 @@ class ApiServerTest {
       ),
     )
 
-    fakeBeaconChain.newUpdater().apply {
+    fakeBeaconChain.newBeaconChainUpdater().apply {
       putBeaconState(DataGenerators.randomBeaconState(number = 200u, timestamp = 100u))
       commit()
     }

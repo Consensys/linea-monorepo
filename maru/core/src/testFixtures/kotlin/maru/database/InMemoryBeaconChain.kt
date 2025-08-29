@@ -33,7 +33,7 @@ class InMemoryBeaconChain(
   private var latestBeaconState: BeaconState = initialBeaconState
 
   init {
-    newUpdater().run {
+    newBeaconChainUpdater().run {
       putBeaconState(initialBeaconState)
       initialBeaconBlock?.let { putSealedBeaconBlock(it) }
       commit()
@@ -55,7 +55,7 @@ class InMemoryBeaconChain(
   override fun getSealedBeaconBlock(beaconBlockNumber: ULong): SealedBeaconBlock? =
     sealedBeaconBlockByBlockNumber[beaconBlockNumber]
 
-  override fun newUpdater(): BeaconChain.Updater = InMemoryUpdater(this)
+  override fun newBeaconChainUpdater(): BeaconChain.Updater = InMemoryUpdater(this)
 
   override fun close() {
     // No-op for in-memory beacon chain
