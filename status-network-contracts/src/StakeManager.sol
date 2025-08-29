@@ -77,6 +77,20 @@ contract StakeManager is
     /// @notice Flag to enable emergency mode.
     bool public emergencyModeEnabled;
 
+    /// @notice Guardian role keccak256("GUARDIAN_ROLE")
+    bytes32 public constant GUARDIAN_ROLE = 0x55435dd261a4b9b3364963f7738a7a662ad9c84396d64be3365284bb7f0a5041;
+
+    /// @notice Gap for upgrade safety.
+    // solhint-disable-next-line
+    uint256[30] private __gap_StakeManager;
+
+    modifier onlyAdminOrGuardian() {
+        if (!hasRole(GUARDIAN_ROLE, msg.sender) && !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
+            revert StakeManager__Unauthorized();
+        }
+        _;
+    }
+
     modifier onlyRegisteredVault() {
         if (vaultOwners[msg.sender] == address(0)) {
             revert StakeManager__VaultNotRegistered();
@@ -133,7 +147,7 @@ contract StakeManager is
      * @dev The supplier is going to be the `Karma` token.
      * @param _rewardsSupplier The address of the rewards supplier.
      */
-    function setRewardsSupplier(address _rewardsSupplier) external onlyOwner onlyNotEmergencyMode {
+    function setRewardsSupplier(address _rewardsSupplier) external onlyRole(DEFAULT_ADMIN_ROLE) onlyNotEmergencyMode {
         rewardsSupplier = _rewardsSupplier;
     }
 
@@ -293,7 +307,7 @@ contract StakeManager is
      * @param amount The amount of rewards to distribute.
      * @param duration The duration of the reward period.
      */
-    function setReward(uint256 amount, uint256 duration) external onlyRewardsSupplier {
+    function setReward(uint256 amount, uint256 duration) external onlyNotEmergencyMode onlyRewardsSupplier {
         if (duration == 0) {
             revert StakeManager__DurationCannotBeZero();
         }
@@ -350,7 +364,7 @@ contract StakeManager is
      * @dev This function is only callable when emergency mode is disabled.
      * @dev Only the owner of the contract can call this function.
      */
-    function enableEmergencyMode() external onlyOwner onlyNotEmergencyMode {
+    function enableEmergencyMode() external onlyAdminOrGuardian onlyNotEmergencyMode {
         emergencyModeEnabled = true;
         emit EmergencyModeEnabled();
     }
@@ -578,7 +592,9 @@ contract StakeManager is
      * @dev This function is only callable by the owner.
      */
     function _authorizeUpgrade(address) internal view override {
-        _checkOwner();
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
+            revert StakeManager__Unauthorized();
+        }
     }
 
     /*//////////////////////////////////////////////////////////////////////////

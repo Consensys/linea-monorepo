@@ -71,7 +71,9 @@ contract StackOverflowStakeManager is UUPSUpgradeable, IStakeManager, TrustedCod
     }
 
     function _authorizeUpgrade(address) internal view override {
-        _checkOwner();
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
+            revert StakeManager__Unauthorized();
+        }
     }
 
     function getAccount(address _account) external view returns (Account memory) {

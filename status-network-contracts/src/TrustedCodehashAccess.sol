@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { ITrustedCodehashAccess } from "./interfaces/ITrustedCodehashAccess.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 /**
  * @title TrustedCodehashAccess
@@ -11,7 +11,7 @@ import { ITrustedCodehashAccess } from "./interfaces/ITrustedCodehashAccess.sol"
  *         interact with the functions using the `onlyTrustedCodehash` modifier.
  * @dev This contract is used to restrict access to functions based on the codehash of the caller.
  */
-abstract contract TrustedCodehashAccess is ITrustedCodehashAccess, OwnableUpgradeable {
+abstract contract TrustedCodehashAccess is ITrustedCodehashAccess, AccessControlUpgradeable {
     /// @notice Whidelisted codehashes.
     mapping(bytes32 codehash => bool permission) private trustedCodehashes;
     /// @notice Gap for upgrade safety.
@@ -36,7 +36,7 @@ abstract contract TrustedCodehashAccess is ITrustedCodehashAccess, OwnableUpgrad
      * @param _initialOwner The address of the owner.
      */
     function __TrustedCodehashAccess_init(address _initialOwner) public onlyInitializing {
-        _transferOwnership(_initialOwner);
+        _setupRole(DEFAULT_ADMIN_ROLE, _initialOwner);
     }
 
     /**
@@ -45,7 +45,7 @@ abstract contract TrustedCodehashAccess is ITrustedCodehashAccess, OwnableUpgrad
      * @param _codehash The bytecode hash of the contract.
      * @param _trusted Boolean flag to designate the contract as trusted or not.
      */
-    function setTrustedCodehash(bytes32 _codehash, bool _trusted) external onlyOwner {
+    function setTrustedCodehash(bytes32 _codehash, bool _trusted) external onlyRole(DEFAULT_ADMIN_ROLE) {
         trustedCodehashes[_codehash] = _trusted;
         emit TrustedCodehashUpdated(_codehash, _trusted);
     }

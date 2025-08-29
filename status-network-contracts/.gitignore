@@ -16,3 +16,5 @@ broadcast/*
 broadcast/*/31337/
 
 .certora_internal
+
+.idea

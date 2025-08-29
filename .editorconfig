@@ -27,6 +27,10 @@ ij_any_add_a_space_at_line_comment_start = true
 indent_style = tab
 indent_size = tab
 
+[*.sol]
+indent_style = space
+indent_size = 4
+
 # line bellow should be like "[*.{kt,kts}]" if your editor adds spaces, it will break...
 # https://github.com/pinterest/ktlint#intellij-idea-editorconfig-autoformat-issue
 # [*.{kt,kts}]
