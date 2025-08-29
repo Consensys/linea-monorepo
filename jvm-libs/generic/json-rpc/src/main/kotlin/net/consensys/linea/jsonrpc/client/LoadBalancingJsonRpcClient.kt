@@ -8,6 +8,8 @@ import net.consensys.linea.jsonrpc.JsonRpcRequest
 import net.consensys.linea.jsonrpc.JsonRpcSuccessResponse
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import java.util.LinkedList
+import java.util.Queue
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.locks.Lock
 import java.util.concurrent.locks.ReadWriteLock
@@ -25,6 +27,7 @@ class LoadBalancingJsonRpcClient
 private constructor(
   rpcClients: List<JsonRpcClient>,
   private val maxInflightRequestsPerClient: UInt,
+  private val requestPriorityComparator: Comparator<JsonRpcRequest>? = null,
 ) : JsonRpcClient {
 
   companion object {
@@ -33,10 +36,12 @@ private constructor(
     fun create(
       rpcClients: List<JsonRpcClient>,
       requestLimitPerEndpoint: UInt,
+      requestPriorityComparator: Comparator<JsonRpcRequest>? = null,
     ): LoadBalancingJsonRpcClient {
       val loadBalancingJsonRpcClient = LoadBalancingJsonRpcClient(
-        rpcClients,
-        requestLimitPerEndpoint,
+        rpcClients = rpcClients,
+        maxInflightRequestsPerClient = requestLimitPerEndpoint,
+        requestPriorityComparator = requestPriorityComparator,
       )
       loadBalancingJsonRpcClients.add(loadBalancingJsonRpcClient)
       return loadBalancingJsonRpcClient
@@ -59,13 +64,25 @@ private constructor(
   )
 
   private val clientsPool: List<RpcClientContext> = rpcClients.map { RpcClientContext(it, 0u) }
-  private val waitingQueue: ConcurrentLinkedQueue<RpcRequestContext> =
-    ConcurrentLinkedQueue<RpcRequestContext>()
+  private val waitingQueue: Queue<RpcRequestContext> =
+    if (requestPriorityComparator != null) {
+      PriorityQueueWithFIFOFallback<RpcRequestContext>(comparator = { o1, o2 ->
+        requestPriorityComparator.compare(o1.request, o2.request)
+      })
+    } else {
+      LinkedList<RpcRequestContext>()
+    }
+
   private val readWriteLock: ReadWriteLock = ReentrantReadWriteLock()
   private val writeLock: Lock = readWriteLock.writeLock()
 
-  fun queuedRequests(): List<JsonRpcRequest> {
-    return waitingQueue.map { it.request }
+  internal fun queuedRequests(): List<JsonRpcRequest> {
+    try {
+      readWriteLock.readLock().lock()
+      return waitingQueue.map { it.request }
+    } finally {
+      readWriteLock.readLock().unlock()
+    }
   }
 
   fun inflightRequestsCount(): Long {
@@ -73,7 +90,13 @@ private constructor(
   }
 
   private fun serveNextWaitingInTheQueue() {
-    if (waitingQueue.isEmpty()) return
+    try {
+      readWriteLock.readLock().lock()
+      if (waitingQueue.isEmpty()) return
+    } finally {
+      readWriteLock.readLock().unlock()
+    }
+
     try {
       writeLock.lock()
       val client = clientsPool.sortedBy(RpcClientContext::inflightRequests).first()
@@ -90,6 +113,7 @@ private constructor(
       writeLock.unlock()
     }
       ?.let { (nextAvailableClient, waitingRequest) ->
+        log.trace("making request={}", waitingRequest)
         dispatchRequest(nextAvailableClient, waitingRequest)
       }
   }
@@ -100,7 +124,13 @@ private constructor(
   ): Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> {
     val resultPromise: Promise<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> =
       Promise.promise()
-    waitingQueue.add(RpcRequestContext(request, resultPromise, resultMapper))
+    try {
+      writeLock.lock()
+      log.trace("enqueuing request={}", request)
+      waitingQueue.add(RpcRequestContext(request, resultPromise, resultMapper))
+    } finally {
+      writeLock.unlock()
+    }
     return resultPromise.future()
   }
 
@@ -137,6 +167,11 @@ private constructor(
   }
 
   fun close() {
-    waitingQueue.clear()
+    try {
+      writeLock.lock()
+      waitingQueue.clear()
+    } finally {
+      writeLock.unlock()
+    }
   }
 }
