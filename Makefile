@@ -105,10 +105,10 @@ start-credible: ## Start environment with Credible Layer sidecar
 	make start-env COMPOSE_PROFILES=l1,l2,credible COMPOSE_FILE=docker/compose-credible-sidecar.yml
 
 stop-credible: ## Stop Credible Layer sidecar
-	docker compose -f docker/compose-credible-sidecar.yml --profile credible stop
+	docker compose -f docker/compose-credible-sidecar.yml --profile credible --profile l1 --profile l2 stop
 
 clean-credible: ## Clean Credible Layer sidecar and volumes
-	docker compose -f docker/compose-credible-sidecar.yml --profile credible down -v
+	docker compose -f docker/compose-credible-sidecar.yml --profile credible --profile l1 --profile l2 down || true;
 
 logs-credible: ## Show logs for Credible Layer sidecar
 	docker compose -f docker/compose-credible-sidecar.yml logs -f credible-sidecar

@@ -21,7 +21,6 @@ services:
       - DA_LISTEN_ADDR=0.0.0.0:5001
       - DA_CACHE_SIZE=1000000
       - DA_PRIVATE_KEY=0xdd7e619d26d7eef795e3b5144307204f2f5d7d08298d04b926e874c6d9d43e75
-
       # Telemetry
       - OTEL_SERVICE_NAME=assertion-da
       - DA_LOG_LEVEL=info
@@ -39,7 +38,7 @@ services:
       linea:
         ipv4_address: 11.11.11.206
 
-  # Credible Layer Sidecar (currently a dummy/placeholder implementation)
+  # Credible Layer Sidecar
   credible-sidecar:
     container_name: credible-sidecar
     hostname: credible-sidecar
@@ -48,7 +47,6 @@ services:
     depends_on:
       sequencer:
         condition: service_healthy
-
     # Command line arguments for the sidecar
     command:
       - "--chain.transport-url=http://0.0.0.0:9546"
@@ -56,30 +54,19 @@ services:
       - "--ae.rpc_url=ws://sequencer:8546"
       - "--ae.rpc_da_url=http://assertion-da:5001"  # If you have assertion DA running
       - "--ae.oracle_contract=0x6dD3f12ce435f69DCeDA7e31605C02Bb5422597b"
-
+      - "--ae.assertion-gas-limit=3000000"
+      - "--ae.soft-timeout-ms=650"
+      - "--ae.block_tag=finalized"
     environment:
-      # Tracing/metrics configuration (optional)
+      - RUST_LOG=info
       - OTEL_SERVICE_NAME=credible-sidecar
       - TRACING_METRICS_PORT=9000
-
-      # Chain configuration
-      - CHAIN_RPC_URL=http://sequencer:8545
-      - CHAIN_BLOCK_TIME=1000
-
-      # Assertion executor configuration
-      - AE_BLOCK_TIME_LIMIT=650
-      - AE_ASSERTION_GAS_LIMIT=3000000
-      - AE_RPC_STORE_URL=ws://sequencer:8546
-      - AE_BLOCK_TAG=finalized
-
     ports:
       # RPC server (currently only responds to "ping" method)
       - "9546:9546"
       # Metrics port (if configured)
       - "9000:9000"
-
     restart: unless-stopped
-
     networks:
       linea:
         ipv4_address: 11.11.11.205
