@@ -209,10 +209,13 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 					)
 
 					hasher.Reset()
+					var xBytes []byte
+
 					for _, x := range sisHash {
-						xBytes := x.Bytes()
-						hasher.Write(xBytes[:])
+						xB := x.Bytes()
+						xBytes = append(xBytes[:], xB[:]...)
 					}
+					hasher.Write(xBytes[:])
 					copy(leaf[:], hasher.Sum(nil))
 
 				} else {
@@ -220,10 +223,12 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 					// (to be used for in place of SIS hash) are the same i.e. the Poseidon2 hash function
 					hasher := v.Params.LeafHashFunc()
 					hasher.Reset()
+					var xBytes []byte
 					for k := range selectedSubCol {
-						xBytes := selectedSubCol[k].Bytes()
-						hasher.Write(xBytes[:])
+						x := selectedSubCol[k].Bytes()
+						xBytes = append(xBytes[:], x[:]...)
 					}
+					hasher.Write(xBytes[:])
 					copy(leaf[:], hasher.Sum(nil))
 				}
 			} else {
@@ -232,11 +237,11 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 						// SIS hash of the current sub-column
 						sisHash = v.Params.Key.Hash(selectedSubCol)
 					)
-					leaf = types.HashToBytes32(poseidon2.Poseidon2SpongeElement(sisHash))
+					leaf = types.HashToBytes32(poseidon2.Poseidon2Sponge(sisHash))
 				} else {
 					// We assume that HashFunc (to be used for Merkle Tree) and NoSisHashFunc()
 					// (to be used for in place of SIS hash) are the same i.e. the Poseidon2 hash function
-					leaf = types.HashToBytes32(poseidon2.Poseidon2SpongeElement(selectedSubCol))
+					leaf = types.HashToBytes32(poseidon2.Poseidon2Sponge(selectedSubCol))
 				}
 			}
 

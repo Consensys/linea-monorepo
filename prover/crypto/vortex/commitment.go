@@ -168,18 +168,20 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []field.Octuplet
 				hasher := p.LeafHashFunc()
 				hasher.Reset()
 
+				var fCol []byte
 				for i := 0; i < chunkSize; i++ {
 					fbytes := colHashes[startChunk+i].Bytes()
 					// Write one Element (4 bytes) at a time
-					hasher.Write(fbytes[:])
+					fCol = append(fCol, fbytes[:]...)
 				}
+				hasher.Write(fCol[:])
 
 				// Manually copies the hasher's digest into the leaves to
 				// skip a verbose type conversion.
 				digest := hasher.Sum(nil)
 				leaves[chunkID] = field.ParseOctuplet([32]byte(digest))
 			} else {
-				leaves[chunkID] = poseidon2.Poseidon2SpongeElement(colHashes[startChunk : startChunk+chunkSize])
+				leaves[chunkID] = poseidon2.Poseidon2Sponge(colHashes[startChunk : startChunk+chunkSize])
 			}
 		}
 
@@ -216,12 +218,14 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 			func(col, threadID int) {
 				hasher := hashers[threadID]
 				hasher.Reset()
+				var xCol []byte
 				for row := 0; row < numRows; row++ {
 					x := v[row].Get(col)
 					xBytes := x.Bytes()
+					xCol = append(xCol, xBytes[:]...)
 					// Write one Element (4 bytes) at a time
-					hasher.Write(xBytes[:])
 				}
+				hasher.Write(xCol[:])
 
 				digest := hasher.Sum(nil)
 				res[col] = field.ParseOctuplet([32]byte(digest))
@@ -237,7 +241,7 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 				for row := 0; row < numRows; row++ {
 					colElems[row] = v[row].Get(col)
 				}
-				res[col] = poseidon2.Poseidon2SpongeElement(colElems)
+				res[col] = poseidon2.Poseidon2Sponge(colElems)
 			},
 		)
 	}
