@@ -160,19 +160,20 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []field.Octuplet
 	leaves = make([]field.Octuplet, numChunks)
 
 	parallel.Execute(numChunks, func(start, stop int) {
-		// Create the hasher in the parallel setting to avoid race conditions.
 		for chunkID := start; chunkID < stop; chunkID++ {
 			startChunk := chunkID * chunkSize
 
 			if p.LeafHashFunc != nil {
+				// Create the hasher in the parallel setting to avoid race conditions.
 				hasher := p.LeafHashFunc()
 				hasher.Reset()
 
-				var fCol []byte
+				// Convert a colHashes chunk to a byte slice
+				fCol := make([]byte, chunkSize*field.Bytes)
 				for i := 0; i < chunkSize; i++ {
+					startIndex := i * field.Bytes
 					fbytes := colHashes[startChunk+i].Bytes()
-					// Write one Element (4 bytes) at a time
-					fCol = append(fCol, fbytes[:]...)
+					copy(fCol[startIndex:], fbytes[:])
 				}
 				hasher.Write(fCol[:])
 
@@ -181,6 +182,7 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []field.Octuplet
 				digest := hasher.Sum(nil)
 				leaves[chunkID] = field.ParseOctuplet([32]byte(digest))
 			} else {
+				// Default LeafHashFunc: Using Poseidon2Sponge directly to avoid data conversion.
 				leaves[chunkID] = poseidon2.Poseidon2Sponge(colHashes[startChunk : startChunk+chunkSize])
 			}
 		}
@@ -218,12 +220,13 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 			func(col, threadID int) {
 				hasher := hashers[threadID]
 				hasher.Reset()
-				var xCol []byte
+
+				xCol := make([]byte, numRows*field.Bytes)
 				for row := 0; row < numRows; row++ {
+					startIndex := row * field.Bytes
 					x := v[row].Get(col)
 					xBytes := x.Bytes()
-					xCol = append(xCol, xBytes[:]...)
-					// Write one Element (4 bytes) at a time
+					copy(xCol[startIndex:], xBytes[:])
 				}
 				hasher.Write(xCol[:])
 
@@ -232,6 +235,7 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 			},
 		)
 	} else {
+		// Default LeafHashFunc: Using Poseidon2Sponge directly to avoid data conversion.
 		parallel.ExecuteThreadAware(
 			numCols,
 			func(threadID int) {

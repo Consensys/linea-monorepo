@@ -132,7 +132,6 @@ func (v *VerifierInputs) checkColLinCombination() (err error) {
 		}
 
 		// Check the linear combination is consistent with the opened column
-
 		y := poly.EvalMixed(fullCol, v.RandomCoin)
 
 		if selectedColID > linearCombination.Len() {
@@ -209,13 +208,14 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 					)
 
 					hasher.Reset()
-					var xBytes []byte
-
-					for _, x := range sisHash {
-						xB := x.Bytes()
-						xBytes = append(xBytes[:], xB[:]...)
+					// Convert the sisHash chunk to a byte slice
+					xCol := make([]byte, len(sisHash)*field.Bytes)
+					for i, x := range sisHash {
+						startIndex := i * field.Bytes
+						xBytes := x.Bytes()
+						copy(xCol[startIndex:], xBytes[:])
 					}
-					hasher.Write(xBytes[:])
+					hasher.Write(xCol[:])
 					copy(leaf[:], hasher.Sum(nil))
 
 				} else {
@@ -223,15 +223,17 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 					// (to be used for in place of SIS hash) are the same i.e. the Poseidon2 hash function
 					hasher := v.Params.LeafHashFunc()
 					hasher.Reset()
-					var xBytes []byte
+					xCol := make([]byte, len(selectedSubCol)*field.Bytes)
 					for k := range selectedSubCol {
-						x := selectedSubCol[k].Bytes()
-						xBytes = append(xBytes[:], x[:]...)
+						startIndex := k * field.Bytes
+						xBytes := selectedSubCol[k].Bytes()
+						copy(xCol[startIndex:], xBytes[:])
 					}
-					hasher.Write(xBytes[:])
+					hasher.Write(xCol[:])
 					copy(leaf[:], hasher.Sum(nil))
 				}
 			} else {
+				// Default LeafHashFunc: Using Poseidon2Sponge directly to avoid data conversion.
 				if !v.IsSISReplacedByPoseidon2[i] {
 					var (
 						// SIS hash of the current sub-column
