@@ -16,12 +16,15 @@
 package net.consensys.linea;
 
 import static net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration.TEST_DEFAULT;
+import static net.consensys.linea.zktracer.Fork.isPostCancun;
 import static net.consensys.linea.zktracer.Utils.call;
 import static net.consensys.linea.zktracer.Utils.delegateCall;
 import static net.consensys.linea.zktracer.ZkCounter.*;
+import static net.consensys.linea.zktracer.ZkCounter.MODEXP;
 import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.*;
-import static org.hyperledger.besu.datatypes.Address.BLAKE2B_F_COMPRESSION;
-import static org.hyperledger.besu.datatypes.Address.RIPEMD160;
+import static net.consensys.linea.zktracer.types.AddressUtils.BLS_PRECOMPILES;
+import static net.consensys.linea.zktracer.types.AddressUtils.isBlsPrecompileCall;
+import static org.hyperledger.besu.datatypes.Address.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -31,10 +34,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import net.consensys.linea.reporting.TracerTestBase;
-import net.consensys.linea.testing.BytecodeCompiler;
-import net.consensys.linea.testing.ToyAccount;
-import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
-import net.consensys.linea.testing.ToyTransaction;
+import net.consensys.linea.testing.*;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
@@ -112,6 +112,8 @@ public class ZkCounterTest extends TracerTestBase {
     assertEquals(0, lineCountMap.get(MODEXP));
     assertEquals(0, lineCountMap.get(RIP));
     assertEquals(0, lineCountMap.get(BLAKE));
+    assertEquals(0, lineCountMap.get("POINT_EVAL"));
+    assertEquals(0, lineCountMap.get("BLS"));
 
     // L1 block size > 0
     assertTrue(lineCountMap.get("BLOCK_L1_SIZE") > 0);
@@ -208,6 +210,8 @@ public class ZkCounterTest extends TracerTestBase {
     assertEquals(0, lineCountMap.get(MODEXP));
     assertEquals(0, lineCountMap.get(RIP));
     assertEquals(0, lineCountMap.get(BLAKE));
+    assertEquals(0, lineCountMap.get("POINT_EVAL"));
+    assertEquals(0, lineCountMap.get("BLS"));
 
     // L1 block size > 0
     assertTrue(lineCountMap.get("BLOCK_L1_SIZE") > 0);
@@ -275,6 +279,8 @@ public class ZkCounterTest extends TracerTestBase {
     assertEquals(expectedRIP, lineCountMap.get(RIP));
     final int expectedBlake = prc.equals(BLAKE2B_F_COMPRESSION) ? Integer.MAX_VALUE : 0;
     assertEquals(expectedBlake, lineCountMap.get(BLAKE));
+    assertEquals(0, lineCountMap.get("POINT_EVAL"));
+    assertEquals(0, lineCountMap.get("BLS"));
 
     // L1 block size > 0
     assertTrue(lineCountMap.get("BLOCK_L1_SIZE") > 0);
@@ -360,6 +366,8 @@ public class ZkCounterTest extends TracerTestBase {
     assertEquals((!base && !exp && !mod) ? 0 : Integer.MAX_VALUE, lineCountMap.get(MODEXP));
     assertEquals(0, lineCountMap.get(RIP));
     assertEquals(0, lineCountMap.get(BLAKE));
+    assertEquals(0, lineCountMap.get("POINT_EVAL"));
+    assertEquals(0, lineCountMap.get("BLS"));
 
     // L1 block size > 0
     assertTrue(lineCountMap.get("BLOCK_L1_SIZE") > 0);
@@ -375,5 +383,84 @@ public class ZkCounterTest extends TracerTestBase {
       }
     }
     return arguments.stream();
+  }
+
+  private static Stream<Arguments> blsAndKzgInput() {
+    final List<Arguments> arguments = new ArrayList<>();
+    for (Address address : BLS_PRECOMPILES) {
+      arguments.add(Arguments.of(address));
+    }
+    arguments.add(Arguments.of(KZG_POINT_EVAL));
+    return arguments.stream();
+  }
+
+  @ParameterizedTest
+  @MethodSource("blsAndKzgInput")
+  void blsAndKzg(Address prc) {
+    // sender account
+    final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
+    final Address senderAddress =
+        Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
+    final ToyAccount senderAccount =
+        ToyAccount.builder().balance(Wei.fromEth(123)).nonce(12).address(senderAddress).build();
+
+    // receiver account: calls PRC
+    final ToyAccount callPRC =
+        ToyAccount.builder()
+            .balance(Wei.fromEth(1))
+            .address(Address.wrap(Bytes.repeat((byte) 1, Address.SIZE)))
+            .code(
+                BytecodeCompiler.newProgram(testInfo)
+                    // populate memory with some data
+                    .push(56) // value
+                    .push(3) //  offset
+                    .op(OpCode.MSTORE8)
+                    // call the precompile
+                    .push(1) // return size
+                    .push(0) // return offset
+                    .push(0) // cds
+                    .push(0) // offset
+                    .push(0) // value
+                    .push(prc) // address
+                    .push(100000) // gas
+                    .op(OpCode.CALL)
+                    .compile())
+            .build();
+
+    final Transaction tx =
+        ToyTransaction.builder()
+            .sender(senderAccount)
+            .to(callPRC)
+            .keyPair(senderKeyPair)
+            .gasLimit(300000L)
+            .value(Wei.of(10000))
+            .build();
+
+    final ToyExecutionEnvironmentV2 toyWorld =
+        ToyExecutionEnvironmentV2.builder(testInfo)
+            .accounts(List.of(senderAccount, callPRC))
+            .transaction(tx)
+            .zkTracerValidator(zkTracer -> {})
+            .build();
+
+    toyWorld.runForCounting();
+
+    final Map<String, Integer> lineCountMap = toyWorld.getZkCounter().getModulesLineCount();
+
+    // no LOG
+    assertEquals(0, lineCountMap.get("BLOCK_L2_L1_LOGS"));
+
+    final boolean isKzgCall = prc.equals(KZG_POINT_EVAL) && isPostCancun(testInfo.chainConfig.fork);
+    final boolean isBlsCall = isBlsPrecompileCall(prc, testInfo.chainConfig.fork);
+
+    // no precompile call, but a PRC:
+    assertEquals(0, lineCountMap.get(MODEXP));
+    assertEquals(0, lineCountMap.get(RIP));
+    assertEquals(0, lineCountMap.get(BLAKE));
+    assertEquals(isKzgCall ? Integer.MAX_VALUE : 0, lineCountMap.get("POINT_EVAL"));
+    assertEquals(isBlsCall ? Integer.MAX_VALUE : 0, lineCountMap.get("BLS"));
+
+    // L1 block size > 0
+    assertTrue(lineCountMap.get("BLOCK_L1_SIZE") > 0);
   }
 }

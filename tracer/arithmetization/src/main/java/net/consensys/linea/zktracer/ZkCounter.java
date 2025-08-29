@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer;
 
+import static net.consensys.linea.zktracer.types.AddressUtils.isBlsPrecompile;
 import static org.hyperledger.besu.datatypes.Address.*;
 
 import java.util.HashMap;
@@ -46,6 +47,8 @@ public class ZkCounter implements LineCountingTracer {
   final EventDetectorModule modexp = new EventDetectorModule(MODEXP) {};
   final EventDetectorModule rip = new EventDetectorModule(RIP) {};
   final EventDetectorModule blake = new EventDetectorModule(BLAKE) {};
+  final EventDetectorModule pointEval = new EventDetectorModule("POINT_EVAL") {};
+  final EventDetectorModule bls = new EventDetectorModule("BLS") {};
   final L1BlockSize l1BlockSize;
   final L2L1Logs l2l1Logs = new L2L1Logs();
   final List<Module> moduleToCount;
@@ -53,7 +56,7 @@ public class ZkCounter implements LineCountingTracer {
   public ZkCounter(LineaL1L2BridgeSharedConfiguration bridgeConfiguration) {
     l1BlockSize =
         new L1BlockSize(l2l1Logs, bridgeConfiguration.contract(), bridgeConfiguration.topic());
-    moduleToCount = List.of(modexp, rip, blake, l1BlockSize, l2l1Logs);
+    moduleToCount = List.of(modexp, rip, blake, bls, pointEval, l1BlockSize, l2l1Logs);
   }
 
   @Override
@@ -81,7 +84,11 @@ public class ZkCounter implements LineCountingTracer {
       long gasUsed,
       Set<Address> selfDestructs,
       long timeNs) {
-    l1BlockSize.traceEndTx(tx, logs);
+    switch (tx.getType()) {
+      case FRONTIER, ACCESS_LIST, EIP1559 -> l1BlockSize.traceEndTx(tx, logs);
+      case BLOB, DELEGATE_CODE -> throw new IllegalStateException(
+          "Unsupported tx type: " + tx.getType());
+    }
   }
 
   @Override
@@ -95,6 +102,16 @@ public class ZkCounter implements LineCountingTracer {
       if (modexpMetadata.unprovableModexp()) {
         modexp.detectEvent();
       }
+      return;
+    }
+
+    if (precompileAddress.equals(KZG_POINT_EVAL)) {
+      pointEval.detectEvent();
+      return;
+    }
+
+    if (isBlsPrecompile(precompileAddress)) {
+      bls.detectEvent();
       return;
     }
 

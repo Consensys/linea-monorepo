@@ -39,6 +39,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.Trace;
+import net.consensys.linea.zktracer.container.module.EventDetectorModule;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.bin.Bin;
@@ -270,6 +271,10 @@ public abstract class Hub implements Module {
   @Getter private final BlakeEffectiveCall blakeEffectiveCall = new BlakeEffectiveCall();
   @Getter private final BlakeRounds blakeRounds = new BlakeRounds();
 
+  // TODO: remove me when Linea supports Cancun & Prague precompiles
+  @Getter private final EventDetectorModule pointEval = new EventDetectorModule("POINT_EVAL") {};
+  @Getter private final EventDetectorModule bls = new EventDetectorModule("BLS") {};
+
   /** Those modules are used only by the sequencer, they don't have associated trace */
   public List<Module> getTracelessModules() {
     return List.of(
@@ -287,7 +292,9 @@ public abstract class Hub implements Module {
         blakeEffectiveCall,
         blakeRounds,
         l1BlockSize,
-        l2L1Logs);
+        l2L1Logs,
+        pointEval,
+        bls);
   }
 
   /*
