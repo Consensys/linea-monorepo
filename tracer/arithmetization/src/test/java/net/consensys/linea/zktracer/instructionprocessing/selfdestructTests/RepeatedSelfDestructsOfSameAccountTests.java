@@ -31,7 +31,6 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -323,10 +322,6 @@ public class RepeatedSelfDestructsOfSameAccountTests extends TracerTestBase {
     run(testInfo, heir);
   }
 
-  // TODO: enable for Cancun again after fixing the issue
-  // https://github.com/Consensys/linea-tracer/issues/2159
-  // PR https://github.com/Consensys/linea-tracer/pull/2184
-  @Tag("disabled-for-cancun-temporarily")
   @ParameterizedTest
   @EnumSource(Heir.class)
   public void basicSelfDestruct(Heir heir) {
