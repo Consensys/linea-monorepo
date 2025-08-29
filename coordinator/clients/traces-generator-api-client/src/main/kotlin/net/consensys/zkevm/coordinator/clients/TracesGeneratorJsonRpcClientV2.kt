@@ -127,6 +127,7 @@ class TracesGeneratorJsonRpcClientV2(
     internal val retryableMethods = setOf("linea_getBlockTracesCountersV2", "linea_generateConflatedTracesToFileV2")
 
     val requestPriorityComparator = object : Comparator<JsonRpcRequest> {
+      @Suppress("UNCHECKED_CAST")
       override fun compare(
         o1: JsonRpcRequest,
         o2: JsonRpcRequest,
