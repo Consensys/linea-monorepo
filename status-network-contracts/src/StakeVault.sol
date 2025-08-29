@@ -53,6 +53,8 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
     IStakeManagerProxy public stakeManager;
     /// @notice Timestamp until the funds are locked
     uint256 public lockUntil;
+    /// @notice Total amount deposited into the vault
+    uint256 public depositedBalance;
 
     modifier validDestination(address _destination) {
         if (_destination == address(0)) {
@@ -175,10 +177,12 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
         // its internal accounting before we move the funds out.
         try stakeManager.leave() {
             if (lockUntil <= block.timestamp) {
+                depositedBalance = 0;
                 STAKING_TOKEN.transfer(_destination, STAKING_TOKEN.balanceOf(address(this)));
             }
         } catch {
             if (lockUntil <= block.timestamp) {
+                depositedBalance = 0;
                 STAKING_TOKEN.transfer(_destination, STAKING_TOKEN.balanceOf(address(this)));
             }
         }
@@ -200,6 +204,7 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
         if (!success) {
             revert StakeVault__MigrationFailed();
         }
+        depositedBalance = 0;
     }
 
     /**
@@ -207,11 +212,12 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      * @dev This function is only callable by the stake manager.
      * @param _lockUntil The new lock until timestamp.
      */
-    function migrateFromVault(uint256 _lockUntil) external {
+    function migrateFromVault(uint256 _lockUntil, uint256 _depositedBalance) external {
         if (msg.sender != address(stakeManager)) {
             revert StakeVault__NotAuthorized();
         }
         lockUntil = _lockUntil;
+        depositedBalance = _depositedBalance;
     }
 
     /**
@@ -246,23 +252,6 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
         _withdraw(_token, _amount, _destination);
     }
 
-    function withdrawFromVault(
-        uint256 _amount,
-        address _destination
-    )
-        external
-        onlyOwner
-        validDestination(_destination)
-    {
-        if (lockUntil > block.timestamp) {
-            revert StakeVault__FundsLocked();
-        }
-        bool success = STAKING_TOKEN.transfer(_destination, _amount);
-        if (!success) {
-            revert StakeVault__WithdrawFromVaultFailed();
-        }
-    }
-
     /**
      * @notice Returns the available amount of a token that can be withdrawn.
      * @dev Returns only excess amount if token is staking token.
@@ -271,7 +260,7 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      */
     function availableWithdraw(IERC20 _token) external view returns (uint256) {
         if (_token == STAKING_TOKEN) {
-            return STAKING_TOKEN.balanceOf(address(this)) - amountStaked();
+            return _availableStakingTokens();
         }
         return _token.balanceOf(address(this));
     }
@@ -299,6 +288,7 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      * @param _source The address from which tokens will be transferred.
      */
     function _stake(uint256 _amount, uint256 _seconds, address _source) internal {
+        depositedBalance += _amount;
         uint256 newLockUntil = stakeManager.stake(_amount, _seconds, lockUntil);
         _ensureLockUntilValid(newLockUntil, _seconds);
         lockUntil = newLockUntil;
@@ -318,6 +308,10 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
         if (lockUntil > block.timestamp) {
             revert StakeVault__FundsLocked();
         }
+        if (_amount > depositedBalance) {
+            revert StakeVault__NotEnoughAvailableBalance();
+        }
+        depositedBalance -= _amount;
         stakeManager.unstake(_amount);
         bool success = STAKING_TOKEN.transfer(_destination, _amount);
         if (!success) {
@@ -328,16 +322,62 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
     /**
      * @notice Withdraws tokens to a specified address.
      * @dev Reverts if the staking token transfer fails.
-     * @dev Only withdraws excess staking token amounts.
+     * @dev Only withdraws excess staking token amounts, or unlocked deposited funds.
      * @param _token The IERC20 token to withdraw.
      * @param _amount The amount of tokens to withdraw.
      * @param _destination The address to receive the tokens.
      */
     function _withdraw(IERC20 _token, uint256 _amount, address _destination) internal {
-        if (_token == STAKING_TOKEN && STAKING_TOKEN.balanceOf(address(this)) - amountStaked() < _amount) {
-            revert StakeVault__NotEnoughAvailableBalance();
+        if (_token == STAKING_TOKEN) {
+            uint256 available = _availableStakingTokens();
+            if (_amount > available) {
+                revert StakeVault__NotEnoughAvailableBalance();
+            }
+
+            // If we're withdrawing from locked deposited funds, check lock period
+            uint256 excess = _excessStakingTokens();
+            if (_amount > excess && lockUntil > block.timestamp) {
+                revert StakeVault__FundsLocked();
+            }
+
+            // Update deposited balance if we're withdrawing from it
+            if (_amount > excess) {
+                uint256 fromDeposited = _amount - excess;
+                depositedBalance -= fromDeposited;
+            }
         }
-        _token.transfer(_destination, _amount);
+
+        bool success = _token.transfer(_destination, _amount);
+        if (!success) {
+            revert StakeVault__WithdrawFromVaultFailed();
+        }
+    }
+
+    /**
+     * @notice Returns the available amount of staking tokens that can be withdrawn.
+     * @dev Includes excess tokens + unlocked deposited funds.
+     * @return The amount of staking tokens available for withdrawal.
+     */
+    function _availableStakingTokens() internal view returns (uint256) {
+        uint256 totalBalance = STAKING_TOKEN.balanceOf(address(this));
+        uint256 excess = _excessStakingTokens();
+
+        if (lockUntil <= block.timestamp) {
+            // All funds are available (excess + all deposited)
+            return totalBalance;
+        } else {
+            return excess;
+        }
+    }
+
+    /**
+     * @notice Returns the excess amount of staking tokens in the vault.
+     * @dev Excess tokens are those that are not part of the deposited balance.
+     * @return The amount of excess staking tokens.
+     */
+    function _excessStakingTokens() internal view returns (uint256) {
+        uint256 totalBalance = STAKING_TOKEN.balanceOf(address(this));
+        return totalBalance > depositedBalance ? totalBalance - depositedBalance : 0;
     }
 
     /**
@@ -369,6 +409,7 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      * @dev Reverts when `emergencyModeEnabled()` returns false.
      */
     function emergencyExit(address _destination) external onlyOwner validDestination(_destination) {
+        depositedBalance = 0;
         try stakeManager.emergencyModeEnabled() returns (bool enabled) {
             if (!enabled) {
                 revert StakeVault__NotAllowedToExit();

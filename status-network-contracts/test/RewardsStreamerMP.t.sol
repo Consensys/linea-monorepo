@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import { Test, console } from "forge-std/Test.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { DeployKarmaScript } from "../script/DeployKarma.s.sol";
 import { DeployStakeManagerScript } from "../script/DeployStakeManager.s.sol";
 import { UpgradeStakeManagerScript } from "../script/UpgradeStakeManager.s.sol";
@@ -2347,9 +2348,10 @@ contract LeaveTest is StakeManagerTest {
 
         vm.warp(block.timestamp + lockUpPeriod);
 
-        vm.prank(alice);
         StakeVault vault = StakeVault(vaults[alice]);
-        vault.withdrawFromVault(stakeAmount, alice);
+        IERC20 token = vault.STAKING_TOKEN();
+        vm.prank(alice);
+        vault.withdraw(token, stakeAmount);
 
         assertEq(stakingToken.balanceOf(alice), aliceInitialBalance, "Alice has withdrawn her funds");
     }
@@ -2822,6 +2824,8 @@ contract StakeVaultMigrationTest is StakeManagerTest {
         vm.prank(alice);
         address newVault = address(vaultFactory.createVault());
 
+        uint256 prevVaultDepositedBalance = StakeVault(vaults[alice]).depositedBalance();
+
         // alice migrates to new vault
         vm.prank(alice);
         StakeVault(vaults[alice]).migrateToVault(newVault);
@@ -2853,6 +2857,10 @@ contract StakeVaultMigrationTest is StakeManagerTest {
             })
         );
 
+        assertEq(
+            StakeVault(newVault).depositedBalance(), prevVaultDepositedBalance, "deposited balance should be preserved"
+        );
+
         // check that alice's old vault is empty
         checkVault(
             CheckVaultParams({
@@ -2866,6 +2874,7 @@ contract StakeVaultMigrationTest is StakeManagerTest {
                 rewardsAccrued: 0
             })
         );
+        assertEq(StakeVault(vaults[alice]).depositedBalance(), 0, "old vault deposited balance should be 0");
     }
 }
 
@@ -3055,7 +3064,7 @@ contract FuzzTests is StakeManagerTest {
             return;
         }
         if (amount > expectedAccountParams.stakedBalance) {
-            expectedRevert = StakeMath.StakeMath__InsufficientBalance.selector;
+            expectedRevert = StakeVault.StakeVault__NotEnoughAvailableBalance.selector;
             return;
         }
         expectedRevert = NO_REVERT;
@@ -3240,7 +3249,10 @@ contract FuzzTests is StakeManagerTest {
     )
         public
     {
-        vm.assume(stakeAmount > 0 && stakeAmount <= MAX_BALANCE);
+        // we're assuming stakeAmount to be > 10 to avoid cases where
+        // balance and accrueAmount cause a deltaMP of 0,
+        // which causes the test to emit false negatives
+        vm.assume(stakeAmount > 1e1 && stakeAmount <= MAX_BALANCE);
 
         _expectStake(alice, stakeAmount, lockUpPeriod);
         _stake(alice, stakeAmount, lockUpPeriod, expectedRevert);

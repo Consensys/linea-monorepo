@@ -1,13 +1,37 @@
+using ERC20A as staked;
+using StakeManager as stakeManager;
+
 methods {
   function owner() external returns (address) envfree;
   function isInitializing() external returns (bool) envfree;
-  // function ERC20A.balanceOf(address) external returns (uint256) envfree;
+  function depositedBalance() external returns (uint256) envfree;
+  function lockUntil() external returns (uint256) envfree;
+  function ERC20A.balanceOf(address) external returns (uint256) envfree;
   // function ERC20A.allowance(address, address) external returns(uint256) envfree;
-  // function ERC20A.totalSupply() external returns(uint256) envfree;
+  function ERC20A.totalSupply() external returns(uint256) envfree;
   // // function StakeManager.accounts(address) external returns(uint256, uint256, uint256, uint256, uint256, uint256) envfree;
   // function _.owner() external => DISPATCHER(true);
-  // function _.transfer(address, uint256) external => DISPATCHER(true);
+  function _.transfer(address, uint256) external => DISPATCHER(true);
+  function _.unstake(uint256) external => DISPATCHER(true);
 }
+
+invariant depositedBalanceLessEqualToERC20Balance()
+  depositedBalance() <= staked.balanceOf(currentContract)
+  filtered {
+      f -> f.contract == currentContract &&
+        f.selector != sig:migrateFromVault(uint256, uint256).selector
+  }
+  { preserved with (env e) {
+      require e.msg.sender != currentContract;
+      require staked.balanceOf(currentContract) + staked.balanceOf(e.msg.sender) <= to_mathint(staked.totalSupply());
+    }
+    preserved stake(uint256 amount, uint256 duration, address from) with (env e) {
+      require e.msg.sender != currentContract;
+      require from != currentContract;
+      require staked.balanceOf(currentContract) + staked.balanceOf(from) <= to_mathint(staked.totalSupply());
+    }
+  }
+
 
 rule ownerCannotChange(method f) {
   address owner = owner();
@@ -21,6 +45,30 @@ rule ownerCannotChange(method f) {
   f(e, args);
 
   assert !initializing && !isInitializerFunction => owner() == owner;
+}
+
+rule ownerCanOnlyWithdrawStakedFundsWhenNotLocked(method f) filtered {
+    f -> f.selector != sig:renounceOwnership().selector &&
+    f.selector != sig:initialize(address,address).selector &&
+    f.selector != sig:emergencyExit(address).selector &&
+    f.contract == currentContract
+} {
+    env e;
+    calldataarg args;
+
+    require e.block.timestamp > 0;
+    require e.block.timestamp < max_uint64;
+    require lockUntil() < max_uint64;
+
+    uint256 ownerBalanceBefore = staked.balanceOf(owner());
+    uint256 depositedBefore = depositedBalance();
+
+    f(e, args);
+
+    uint256 ownerBalanceAfter = staked.balanceOf(owner());
+    uint256 depositedAfter = depositedBalance();
+
+    assert ownerBalanceAfter > ownerBalanceBefore && depositedAfter < depositedBefore => lockUntil() <= e.block.timestamp;
 }
 
 
