@@ -61,7 +61,7 @@ class TracesGeneratorJsonRpcClientV2(
     startBlockNumber: ULong,
     endBlockNumber: ULong,
   ): GenerateTracesResponse {
-    val defaultFileName = "$startBlockNumber-$endBlockNumber.conflated.${config.expectedTracesApiVersion}.lt"
+    val defaultFileName = "$startBlockNumber-$endBlockNumber.fake-empty.conflated.${config.expectedTracesApiVersion}.lt"
     return GenerateTracesResponse(
       tracesFileName = defaultFileName,
       tracesEngineVersion = config.expectedTracesApiVersion,
