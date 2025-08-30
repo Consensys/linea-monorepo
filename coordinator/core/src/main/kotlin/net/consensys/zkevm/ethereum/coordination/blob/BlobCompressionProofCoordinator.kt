@@ -102,14 +102,16 @@ class BlobCompressionProofCoordinator(
         kzgProofSideCar = rollingBlobShnarfResult.shnarfResult.kzgProofSideCar,
         blobStartBlockTime = blob.startBlockTime,
         blobEndBlockTime = blob.endBlockTime,
-      )
-    }.whenException { exception ->
-      log.error(
-        "Error in requesting blob compression proof: blob={} errorMessage={} ",
-        blob.intervalString(),
-        exception.message,
-        exception,
-      )
+      ).whenException { exception ->
+        log.error(
+          "Error in requesting blob compression proof: blob={} errorMessage={} ",
+          blob.intervalString(),
+          exception.message,
+          exception,
+        )
+      }
+    }.thenAccept {
+      log.debug("Blob compression proof blob={} was processed and persisted successfully", blob.intervalString())
     }
     // We want to process the next blob without waiting for the compression proof to finish and process the next
     // blob after shnarf calculation of current blob is done
@@ -165,14 +167,7 @@ class BlobCompressionProofCoordinator(
               blobCompressionProof = blobCompressionProof,
             ),
           ),
-        ).thenApply {}.whenException { exception ->
-          log.error(
-            "Error in requesting blob compression proof: blob={} errorMessage={} ",
-            proofRequest.intervalString(),
-            exception.message,
-            exception,
-          )
-        }
+        ).thenApply {}
       }
   }
 
