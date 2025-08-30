@@ -135,7 +135,9 @@ class TracesGeneratorJsonRpcClientV2(
         fun extractBlockNumber(req: JsonRpcRequest): ULong? {
           return when (req.method) {
             "linea_getBlockTracesCountersV2" -> (req.params as List<JsonObject>).first().get<ULong>("blockNumber")
-            "linea_generateConflatedTracesToFileV2" -> (req.params as List<JsonObject>).first().get<ULong>("startBlockNumber")
+            "linea_generateConflatedTracesToFileV2" -> (req.params as List<JsonObject>).first().get<ULong>(
+              "startBlockNumber",
+            )
             else -> null
           }
         }
