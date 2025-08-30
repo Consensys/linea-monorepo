@@ -24,7 +24,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 class BlobsPostgresDao(
   config: Config,
   connection: SqlClient,
-  log: Logger = LogManager.getLogger(BlobsPostgresDao::class.java),
+  private val log: Logger = LogManager.getLogger(BlobsPostgresDao::class.java),
   private val clock: Clock = Clock.System,
 ) : BlobsDao {
   private val queryLog = SQLQueryLogger(log)
@@ -156,7 +156,9 @@ class BlobsPostgresDao(
     queryLog.log(Level.TRACE, insertSql, params)
 
     return insertQuery.execute(Tuple.tuple(params))
-      .map { }
+      .map {
+        log.trace("Blob is persisted blob={}", blobRecord.intervalString())
+      }
       .recover { th ->
         if (isDuplicateKeyException(th)) {
           Future.failedFuture(
