@@ -132,25 +132,21 @@ class TracesGeneratorJsonRpcClientV2(
         o1: JsonRpcRequest,
         o2: JsonRpcRequest,
       ): Int {
-        // linea_generateConflatedTracesToFileV2 is always fired after linea_getBlockTracesCountersV2
-        // has successfully completed, so we should prioritize it.
-        return when {
-          o1.method == "linea_generateConflatedTracesToFileV2" && o2.method == "linea_getBlockTracesCountersV2" -> -1
-          o1.method == "linea_getBlockTracesCountersV2" && o2.method == "linea_generateConflatedTracesToFileV2" -> 1
-          o1.method == "linea_getBlockTracesCountersV2" && o2.method == "linea_getBlockTracesCountersV2" -> {
-            val bn1 = (o1.params as List<JsonObject>).first().get<ULong>("blockNumber")
-            val bn2 = (o2.params as List<JsonObject>).first().get<ULong>("blockNumber")
-            return (bn1 - bn2).toInt()
+        fun extractBlockNumber(req: JsonRpcRequest): ULong? {
+          return when (req.method) {
+            "linea_getBlockTracesCountersV2" -> (req.params as List<JsonObject>).first().get<ULong>("blockNumber")
+            "linea_generateConflatedTracesToFileV2" -> (req.params as List<JsonObject>).first().get<ULong>("startBlockNumber")
+            else -> null
           }
+        }
 
-          o1.method == "linea_generateConflatedTracesToFileV2" &&
-            o2.method == "linea_generateConflatedTracesToFileV2" -> {
-            val bn1 = (o1.params as List<JsonObject>).first().get<ULong>("startBlockNumber")
-            val bn2 = (o2.params as List<JsonObject>).first().get<ULong>("startBlockNumber")
-            return (bn1 - bn2).toInt()
-          }
+        val bn1 = extractBlockNumber(o1)
+        val bn2 = extractBlockNumber(o2)
 
-          else -> 0
+        return if (bn1 != null && bn2 != null) {
+          (bn1 - bn2).toInt()
+        } else {
+          0
         }
       }
     }
