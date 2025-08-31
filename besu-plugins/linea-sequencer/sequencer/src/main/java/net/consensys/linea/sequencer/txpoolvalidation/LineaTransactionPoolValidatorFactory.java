@@ -21,9 +21,12 @@ import net.consensys.linea.sequencer.txpoolvalidation.validators.CalldataValidat
 import net.consensys.linea.sequencer.txpoolvalidation.validators.GasLimitValidator;
 import net.consensys.linea.sequencer.txpoolvalidation.validators.ProfitabilityValidator;
 import net.consensys.linea.sequencer.txpoolvalidation.validators.SimulationValidator;
+import net.consensys.linea.sequencer.txpoolvalidation.validators.TraceLineLimitValidator;
+import net.consensys.linea.sequencer.txselection.InvalidTransactionByLineCountCache;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TransactionSimulationService;
+import org.hyperledger.besu.plugin.services.WorldStateService;
 import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidator;
 import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidatorFactory;
 
@@ -32,30 +35,36 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
 
   private final BesuConfiguration besuConfiguration;
   private final BlockchainService blockchainService;
+  private final WorldStateService worldStateService;
   private final TransactionSimulationService transactionSimulationService;
   private final LineaTransactionPoolValidatorConfiguration txPoolValidatorConf;
   private final LineaProfitabilityConfiguration profitabilityConf;
   private final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration;
   private final LineaTracerConfiguration tracerConfiguration;
   private final Optional<JsonRpcManager> rejectedTxJsonRpcManager;
+  private final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
 
   public LineaTransactionPoolValidatorFactory(
       final BesuConfiguration besuConfiguration,
       final BlockchainService blockchainService,
+      final WorldStateService worldStateService,
       final TransactionSimulationService transactionSimulationService,
       final LineaTransactionPoolValidatorConfiguration txPoolValidatorConf,
       final LineaProfitabilityConfiguration profitabilityConf,
       final LineaTracerConfiguration tracerConfiguration,
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
-      final Optional<JsonRpcManager> rejectedTxJsonRpcManager) {
+      final Optional<JsonRpcManager> rejectedTxJsonRpcManager,
+      final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache) {
     this.besuConfiguration = besuConfiguration;
     this.blockchainService = blockchainService;
+    this.worldStateService = worldStateService;
     this.transactionSimulationService = transactionSimulationService;
     this.txPoolValidatorConf = txPoolValidatorConf;
     this.profitabilityConf = profitabilityConf;
     this.tracerConfiguration = tracerConfiguration;
     this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
+    this.invalidTransactionByLineCountCache = invalidTransactionByLineCountCache;
   }
 
   /**
@@ -68,12 +77,14 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
   public PluginTransactionPoolValidator createTransactionValidator() {
     final var validators =
         new PluginTransactionPoolValidator[] {
+          new TraceLineLimitValidator(invalidTransactionByLineCountCache),
           new AllowedAddressValidator(txPoolValidatorConf.deniedAddresses()),
           new GasLimitValidator(txPoolValidatorConf.maxTxGasLimit()),
           new CalldataValidator(txPoolValidatorConf.maxTxCalldataSize()),
           new ProfitabilityValidator(besuConfiguration, blockchainService, profitabilityConf),
           new SimulationValidator(
               blockchainService,
+              worldStateService,
               transactionSimulationService,
               txPoolValidatorConf,
               tracerConfiguration,
