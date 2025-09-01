@@ -301,6 +301,7 @@ class MaruAppFactory {
                 log = LogManager.getLogger("clients.l2.eth.el"),
                 requestRetryConfig = config.validatorElNode.ethApiEndpoint.requestRetries,
                 vertx = vertx,
+                stopRetriesOnErrorPredicate = { true },
               ),
             pollingUpdateInterval = lineaConfig.l1PollingInterval,
             l1HighestBlock = lineaConfig.l1HighestBlockTag,
