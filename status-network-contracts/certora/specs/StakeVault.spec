@@ -32,6 +32,24 @@ invariant depositedBalanceLessEqualToERC20Balance()
     }
   }
 
+invariant depositedBalanceZeroIfERC20BalanceZero()
+  staked.balanceOf(currentContract) == 0 => depositedBalance() == 0
+  filtered {
+      f -> f.contract == currentContract &&
+        f.selector != sig:migrateFromVault(uint256, uint256).selector
+  }
+  {
+    preserved with (env e) {
+      requireInvariant depositedBalanceLessEqualToERC20Balance();
+      require e.msg.sender != currentContract;
+      require staked.balanceOf(currentContract) + staked.balanceOf(e.msg.sender) <= to_mathint(staked.totalSupply());
+    }
+    preserved stake(uint256 amount, uint256 duration, address from) with (env e) {
+      require e.msg.sender != currentContract;
+      require from != currentContract;
+      require staked.balanceOf(currentContract) + staked.balanceOf(from) <= to_mathint(staked.totalSupply());
+    }
+  }
 
 rule ownerCannotChange(method f) {
   address owner = owner();
