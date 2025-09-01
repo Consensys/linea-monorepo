@@ -126,9 +126,9 @@ type PackedObject struct {
 // PackedIFace serializes an interface value, storing its type index and concrete value.
 // PackedIFace encodes as [Type, Concrete] instead of a map.
 type PackedIFace struct {
-	// _        struct{} `cbor:",toarray"` // encode/decode as array
-	Type     int `cbor:"t"` // Index into PackedObject.Types.
-	Concrete any `cbor:"c"` // Serialized concrete value.
+	_        struct{} `cbor:",toarray"` // encode/decode as array
+	Type     int      `cbor:"t"`        // Index into PackedObject.Types.
+	Concrete any      `cbor:"c"`        // Serialized concrete value.
 }
 
 // PackedCoin is a compact representation of coin.Info, optimized for CBOR encoding.
@@ -370,11 +370,11 @@ func (d *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e *s
 		v := v.(map[any]any)
 		return d.UnpackMap(v, t)
 	case reflect.Interface:
-		v_, ok := v.(map[interface{}]any)
-		if !ok {
-			return reflect.Value{}, newSerdeErrorf("expected %v to be of type map[interface{}]any, was=%T", v, v)
-		}
-		return d.UnpackInterface(v_, t)
+		// v_, ok := v.(map[interface{}]any)
+		// if !ok {
+		// 	return reflect.Value{}, newSerdeErrorf("expected %v to be of type map[interface{}]any, was=%T", v, v)
+		// }
+		return d.UnpackInterface(v, t)
 	case reflect.Pointer:
 		return d.UnpackPointer(v, t)
 	case reflect.Struct:
@@ -881,17 +881,60 @@ func (s *Serializer) PackInterface(v reflect.Value) (any, *serdeError) {
 }
 
 // UnpackInterface deserializes an interface value from a map, resolving the concrete type and value.
-func (d *Deserializer) UnpackInterface(pi map[interface{}]interface{}, t reflect.Type) (reflect.Value, *serdeError) {
-	var (
-		ctype, ok = pi["t"].(uint64)
-		concrete  = pi["c"]
-	)
+// func (d *Deserializer) UnpackInterface(pi map[interface{}]interface{}, t reflect.Type) (reflect.Value, *serdeError) {
+// 	var (
+// 		ctype, ok = pi["t"].(uint64)
+// 		concrete  = pi["c"]
+// 	)
 
-	if !ok || int(ctype) >= len(d.PackedObject.Types) {
+// 	if !ok || int(ctype) >= len(d.PackedObject.Types) {
+// 		return reflect.Value{}, newSerdeErrorf("invalid packed interface, it does not have a valid type integer: %v", ctype)
+// 	}
+
+// 	cleanConcreteType := d.PackedObject.Types[ctype]
+// 	refType, err := findRegisteredImplementation(cleanConcreteType)
+// 	if err != nil {
+// 		return reflect.Value{}, newSerdeErrorf("unregistered type %q for interface: %w", cleanConcreteType, err)
+// 	}
+
+// 	if !refType.Implements(t) {
+// 		return reflect.Value{}, newSerdeErrorf("the resolved type does not implement the target interface, %v ~ %v", refType.String(), t.String())
+// 	}
+
+// 	cres, errV := d.UnpackValue(concrete, refType)
+// 	if errV != nil {
+// 		return reflect.Value{}, errV.wrapPath("(" + refType.String() + ")")
+// 	}
+
+// 	// Create a new reflect.Value for the interface type
+// 	// Reminder; here the important thing is to ensure that the returned
+// 	// Value actually bears the requested interface type and not the
+// 	// concrete type.
+// 	ifaceValue := reflect.New(t).Elem()
+// 	ifaceValue.Set(cres)
+
+// 	return ifaceValue, nil
+// }
+
+// UnpackInterface deserializes an interface value from a map, resolving the concrete type and value.
+// UnpackInterface deserializes an interface value from a map, resolving the concrete type and value.
+func (de *Deserializer) UnpackInterface(v any, t reflect.Type) (reflect.Value, *serdeError) {
+	v_, ok := v.([]interface{})
+	if !ok {
+		return reflect.Value{}, newSerdeErrorf("expected []interface{} for interface, was=%T", v)
+	}
+	if len(v_) != 2 {
+		return reflect.Value{}, newSerdeErrorf("expected array of length 2 for interface, got=%d", len(v_))
+	}
+	ctypeAny := v_[0]
+	ctype, ok := ctypeAny.(uint64)
+	concrete := v_[1]
+
+	if !ok || int(ctype) >= len(de.PackedObject.Types) {
 		return reflect.Value{}, newSerdeErrorf("invalid packed interface, it does not have a valid type integer: %v", ctype)
 	}
 
-	cleanConcreteType := d.PackedObject.Types[ctype]
+	cleanConcreteType := de.PackedObject.Types[ctype]
 	refType, err := findRegisteredImplementation(cleanConcreteType)
 	if err != nil {
 		return reflect.Value{}, newSerdeErrorf("unregistered type %q for interface: %w", cleanConcreteType, err)
@@ -901,7 +944,7 @@ func (d *Deserializer) UnpackInterface(pi map[interface{}]interface{}, t reflect
 		return reflect.Value{}, newSerdeErrorf("the resolved type does not implement the target interface, %v ~ %v", refType.String(), t.String())
 	}
 
-	cres, errV := d.UnpackValue(concrete, refType)
+	cres, errV := de.UnpackValue(concrete, refType)
 	if errV != nil {
 		return reflect.Value{}, errV.wrapPath("(" + refType.String() + ")")
 	}
