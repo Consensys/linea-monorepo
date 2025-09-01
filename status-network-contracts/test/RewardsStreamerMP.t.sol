@@ -2823,6 +2823,7 @@ contract StakeVaultMigrationTest is StakeManagerTest {
         // alice creates new vault
         vm.prank(alice);
         address newVault = address(vaultFactory.createVault());
+        uint256 prevVaultLockUntil = StakeVault(vaults[alice]).lockUntil();
 
         uint256 prevVaultDepositedBalance = StakeVault(vaults[alice]).depositedBalance();
 
@@ -2860,6 +2861,7 @@ contract StakeVaultMigrationTest is StakeManagerTest {
         assertEq(
             StakeVault(newVault).depositedBalance(), prevVaultDepositedBalance, "deposited balance should be preserved"
         );
+        assertEq(StakeVault(newVault).lockUntil(), prevVaultLockUntil, "lock time should be preserved");
 
         // check that alice's old vault is empty
         checkVault(
@@ -2874,7 +2876,9 @@ contract StakeVaultMigrationTest is StakeManagerTest {
                 rewardsAccrued: 0
             })
         );
+
         assertEq(StakeVault(vaults[alice]).depositedBalance(), 0, "old vault deposited balance should be 0");
+        assertEq(StakeVault(vaults[alice]).lockUntil(), 0, "old vault lock time should be reset");
     }
 }
 

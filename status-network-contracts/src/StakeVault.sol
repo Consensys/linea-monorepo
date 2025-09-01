@@ -205,6 +205,7 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
             revert StakeVault__MigrationFailed();
         }
         depositedBalance = 0;
+        lockUntil = 0;
     }
 
     /**
