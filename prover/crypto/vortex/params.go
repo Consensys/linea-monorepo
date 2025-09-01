@@ -67,10 +67,6 @@ func NewParams(
 		utils.Panic("The number of columns has to be a power of two, got %v", nbColumns)
 	}
 
-	if leafHashFunc == nil {
-		utils.Panic("`nil` leaf hash function provided")
-	}
-
 	if merkleHashFunc == nil {
 		utils.Panic("`nil` merkle hash function provided")
 	}
