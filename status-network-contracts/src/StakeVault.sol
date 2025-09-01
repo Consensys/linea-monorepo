@@ -261,7 +261,12 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      */
     function availableWithdraw(IERC20 _token) external view returns (uint256) {
         if (_token == STAKING_TOKEN) {
-            return _availableStakingTokens();
+            (uint256 totalBalance, uint256 excess) = _totalAndExcessStakingTokens();
+            if (lockUntil <= block.timestamp) {
+                return totalBalance;
+            } else {
+                return excess;
+            }
         }
         return _token.balanceOf(address(this));
     }
@@ -330,13 +335,12 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      */
     function _withdraw(IERC20 _token, uint256 _amount, address _destination) internal {
         if (_token == STAKING_TOKEN) {
-            uint256 available = _availableStakingTokens();
-            if (_amount > available) {
+            (uint256 total, uint256 excess) = _totalAndExcessStakingTokens();
+            if (_amount > total) {
                 revert StakeVault__NotEnoughAvailableBalance();
             }
 
             // If we're withdrawing from locked deposited funds, check lock period
-            uint256 excess = _excessStakingTokens();
             if (_amount > excess && lockUntil > block.timestamp) {
                 revert StakeVault__FundsLocked();
             }
@@ -359,26 +363,10 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      * @dev Includes excess tokens + unlocked deposited funds.
      * @return The amount of staking tokens available for withdrawal.
      */
-    function _availableStakingTokens() internal view returns (uint256) {
+    function _totalAndExcessStakingTokens() internal view returns (uint256, uint256) {
         uint256 totalBalance = STAKING_TOKEN.balanceOf(address(this));
-        uint256 excess = _excessStakingTokens();
-
-        if (lockUntil <= block.timestamp) {
-            // All funds are available (excess + all deposited)
-            return totalBalance;
-        } else {
-            return excess;
-        }
-    }
-
-    /**
-     * @notice Returns the excess amount of staking tokens in the vault.
-     * @dev Excess tokens are those that are not part of the deposited balance.
-     * @return The amount of excess staking tokens.
-     */
-    function _excessStakingTokens() internal view returns (uint256) {
-        uint256 totalBalance = STAKING_TOKEN.balanceOf(address(this));
-        return totalBalance > depositedBalance ? totalBalance - depositedBalance : 0;
+        uint256 excess = totalBalance > depositedBalance ? totalBalance - depositedBalance : 0;
+        return (totalBalance, excess);
     }
 
     /**
