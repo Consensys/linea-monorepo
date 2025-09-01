@@ -124,13 +124,16 @@ type PackedObject struct {
 }
 
 // PackedIFace serializes an interface value, storing its type index and concrete value.
+// PackedIFace encodes as [Type, Concrete] instead of a map.
 type PackedIFace struct {
+	// _        struct{} `cbor:",toarray"` // encode/decode as array
 	Type     int `cbor:"t"` // Index into PackedObject.Types.
 	Concrete any `cbor:"c"` // Serialized concrete value.
 }
 
 // PackedCoin is a compact representation of coin.Info, optimized for CBOR encoding.
 type PackedCoin struct {
+	// _          struct{} `cbor:",toarray"`    // encode/decode as array
 	Type       int8   `cbor:"t"`           // Coin type (e.g., Random, Fixed).
 	Size       int    `cbor:"s,omitempty"` // Coin size (optional).
 	UpperBound int32  `cbor:"u,omitempty"` // Upper bound for coin (optional).
@@ -182,12 +185,18 @@ func Serialize(v any) (bytesOfV []byte, err error) {
 	packedObject.Payload = payload
 
 	// Single CBOR encode of the whole PackedObject
-	bytesOfV, err = encodeWithCBOR(packedObject)
-	if err != nil {
+
+	// bytesOfV, err = encodeWithCBOR(packedObject)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("could not encode the packedObject with CBOR: %v", err)
+	// }
+	// return bytesOfV, nil
+
+	var buf bytes.Buffer
+	if err := encodeWithCBORToBuffer(&buf, ser.PackedObject); err != nil {
 		return nil, fmt.Errorf("could not encode the packedObject with CBOR: %v", err)
 	}
-	return bytesOfV, nil
-
+	return buf.Bytes(), nil
 }
 
 func NewDeserializer(packedObject *PackedObject) *Deserializer {

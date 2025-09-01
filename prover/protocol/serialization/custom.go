@@ -1,14 +1,12 @@
 package serialization
 
 import (
-	"bytes"
 	"hash"
 	"math/big"
 	"reflect"
 	"strings"
 	"sync"
 
-	"github.com/consensys/gnark-crypto/utils/unsafe"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
@@ -162,41 +160,41 @@ func unmarshalBigInt(_ *Deserializer, val any, _ reflect.Type) (reflect.Value, *
 	}
 }
 
-func marshalArrayOfFieldElement(_ *Serializer, val reflect.Value) (any, *serdeError) {
+// func marshalArrayOfFieldElement(_ *Serializer, val reflect.Value) (any, *serdeError) {
 
-	var (
-		buffer = &bytes.Buffer{}
-	)
+// 	var (
+// 		buffer = &bytes.Buffer{}
+// 	)
 
-	v, ok := val.Interface().([]field.Element)
-	if !ok {
-		v = []field.Element(val.Interface().(smartvectors.Regular))
-	}
+// 	v, ok := val.Interface().([]field.Element)
+// 	if !ok {
+// 		v = []field.Element(val.Interface().(smartvectors.Regular))
+// 	}
 
-	if err := unsafe.WriteSlice(buffer, v); err != nil {
-		return nil, newSerdeErrorf("could not marshal array of field element: %w", err)
-	}
+// 	if err := unsafe.WriteSlice(buffer, v); err != nil {
+// 		return nil, newSerdeErrorf("could not marshal array of field element: %w", err)
+// 	}
 
-	return buffer.Bytes(), nil
-}
+// 	return buffer.Bytes(), nil
+// }
 
-func unmarshalArrayOfFieldElement(_ *Deserializer, val any, t reflect.Type) (reflect.Value, *serdeError) {
+// func unmarshalArrayOfFieldElement(_ *Deserializer, val any, t reflect.Type) (reflect.Value, *serdeError) {
 
-	var (
-		buffer = bytes.NewReader(val.([]byte))
-	)
+// 	var (
+// 		buffer = bytes.NewReader(val.([]byte))
+// 	)
 
-	v, _, err := unsafe.ReadSlice[[]field.Element, field.Element](buffer)
-	if err != nil {
-		return reflect.Value{}, newSerdeErrorf("could not unmarshal array of field element: %w", err)
-	}
+// 	v, _, err := unsafe.ReadSlice[[]field.Element](buffer)
+// 	if err != nil {
+// 		return reflect.Value{}, newSerdeErrorf("could not unmarshal array of field element: %w", err)
+// 	}
 
-	if t == reflect.TypeOf(smartvectors.Regular{}) {
-		return reflect.ValueOf(smartvectors.Regular(v)), nil
-	}
+// 	if t == reflect.TypeOf(smartvectors.Regular{}) {
+// 		return reflect.ValueOf(smartvectors.Regular(v)), nil
+// 	}
 
-	return reflect.ValueOf(v), nil
-}
+// 	return reflect.ValueOf(v), nil
+// }
 
 func marshalArithmetization(ser *Serializer, val reflect.Value) (any, *serdeError) {
 
