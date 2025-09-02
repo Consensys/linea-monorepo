@@ -454,28 +454,31 @@ func (s *Serializer) PackCoin(c coin.Info) (BackReference, *serdeError) {
 	return BackReference(idx), nil
 }
 
-// UnpackCoin deserializes a coin.Info from a BackReference, caching the result.
+// UnpackCoin deserializes a coin.Info from a cbor array using BackReference to cache the result.
 func (d *Deserializer) UnpackCoin(v BackReference) (reflect.Value, *serdeError) {
 	if v < 0 || int(v) >= len(d.PackedObject.Coins) {
 		return reflect.Value{}, newSerdeErrorf("invalid coin back-reference=%v", v)
 	}
 
 	if d.Coins[v] == nil {
+		// Access the PackedCoin at the backreference index
 		packedCoin := d.PackedObject.Coins[v]
 
-		sizes := []int{}
-		if packedCoin.Size > 0 {
+		// Prepare sizes slice for coin.NewInfo variadic argument
+		var sizes []int
+		if packedCoin.Size > 0 { // Only include if non-zero due to omitempty
 			sizes = append(sizes, packedCoin.Size)
 		}
-		if packedCoin.UpperBound > 0 {
+		if packedCoin.UpperBound > 0 { // Only include if non-zero due to omitempty
 			sizes = append(sizes, int(packedCoin.UpperBound))
 		}
 
+		// Reconstruct coin.Info from PackedCoin
 		unpacked := coin.NewInfo(
 			coin.Name(packedCoin.Name),
 			coin.Type(packedCoin.Type),
 			packedCoin.Round,
-			sizes...,
+			sizes..., // Variadic argument for size and upperBound
 		)
 
 		d.Coins[v] = &unpacked
