@@ -183,8 +183,9 @@ func marshalArrayOfFieldElement(_ *Serializer, val reflect.Value) (any, *serdeEr
 	// Wrap in cbor.Tag so decoders know this is a homogeneous packed vector.
 	// Packing field elements as a single tagged byte string avoids element-by-element CBOR encoding/decoding,
 	// cutting per-element reflection, encoder work, intermediate allocations, and per-item headers;
-	// decoding becomes a single contiguous read into []field.Element via unsafe.ReadSlice, which is far cheaper than
-	// parsing a CBOR array of elements. Saves about 55GiB of runtime memory.
+	// The optimization replaces a CBOR array of N field.Element items with a single tagged byte string whose content is the N elements
+	// serialized contiguously in native limb form, then wrapped once with a private tag (e.g., 60001) indicating “packed field elements.”
+	// This changes the wire shape from O(N) separate CBOR items to one item containing O(N) bytes. Saves about 55GiB of runtime memory.
 	return cbor.Tag{
 		Number:  cborTagFieldElementsPacked,
 		Content: buf.Bytes(),
@@ -197,8 +198,10 @@ func unmarshalArrayOfFieldElement(_ *Deserializer, val any, t reflect.Type) (ref
 
 	switch x := val.(type) {
 	// The tagged byte string path simply extracts the []byte content and reconstructs []field.Element using unsafe.ReadSlice
-	// in one pass, which is the same streamlined path already showing up as a focused hotspot (unsafe.ReadSlice) but now
-	// replaces prev. O(n) CBOR parses with one contiguous read
+	// in one pass, instead of driving the decoder through N element decodes and reflection-based assignments.
+	// This is a single decode step on the CBOR side plus a single contiguous read on the application side.
+	// It avoids per-element CBOR encode/decode and reflection, replacing N items with a single tag+byte-string and a
+	// single-pass binary read.
 	case cbor.Tag:
 		// Accept our tag and extract the bytes content.
 		if x.Number != cborTagFieldElementsPacked {
