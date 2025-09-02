@@ -5,7 +5,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -39,11 +39,11 @@ func (a *SubsampleProverAction) Run(run *wizard.ProverRuntime) {
 			largeWit[i] = a.Large[i].GetColAssignment(run)
 		}
 		gamma := run.GetRandomCoinFieldExt(a.Gamma.Name)
-		r = smartvectors.LinearCombination(largeWit, gamma)
+		r = smartvectors.LinearCombinationExt(largeWit, gamma)
 	}
 
-	prev := field.Zero()
-	accLargeWit := make([]field.Element, a.Period*a.LenSmall)
+	prev := fext.Zero()
+	accLargeWit := make([]fext.Element, a.Period*a.LenSmall)
 	alpha_ := run.GetRandomCoinFieldExt(a.Alpha.Name)
 
 	for hashID := 0; hashID < a.LenSmall; hashID++ {
@@ -53,15 +53,15 @@ func (a *SubsampleProverAction) Run(run *wizard.ProverRuntime) {
 				accLargeWit[pos] = prev
 				continue
 			}
-			currentNewState := r.Get(pos)
+			currentNewState := r.GetExt(pos)
 			accLargeWit[pos].Mul(&alpha_, &prev)
 			accLargeWit[pos].Add(&accLargeWit[pos], &currentNewState)
 			prev = accLargeWit[pos]
 		}
 	}
 
-	run.AssignColumn(a.AccLarge.GetColID(), smartvectors.NewRegular(accLargeWit))
-	run.AssignLocalPoint(a.AccLargeLast, prev)
+	run.AssignColumn(a.AccLarge.GetColID(), smartvectors.NewRegularExt(accLargeWit))
+	run.AssignLocalPointExt(a.AccLargeLast, prev)
 
 	rPrime := a.Small[0].GetColAssignment(run)
 	if a.NeedGamma {
@@ -71,21 +71,21 @@ func (a *SubsampleProverAction) Run(run *wizard.ProverRuntime) {
 			smallWit[i] = a.Small[i].GetColAssignment(run)
 		}
 		gamma := run.GetRandomCoinFieldExt(a.Gamma.Name)
-		rPrime = smartvectors.LinearCombination(smallWit, gamma)
+		rPrime = smartvectors.LinearCombinationExt(smallWit, gamma)
 	}
 
-	accSmallWit := make([]field.Element, a.LenSmall)
-	prev = field.Zero()
+	accSmallWit := make([]fext.Element, a.LenSmall)
+	prev = fext.Zero()
 
 	for hashID := 0; hashID < a.LenSmall; hashID++ {
-		currExpectedHash := rPrime.Get(hashID)
+		currExpectedHash := rPrime.GetExt(hashID)
 		accSmallWit[hashID].Mul(&alpha_, &prev)
 		accSmallWit[hashID].Add(&accSmallWit[hashID], &currExpectedHash)
 		prev = accSmallWit[hashID]
 	}
 
-	run.AssignColumn(a.AccSmall.GetColID(), smartvectors.NewRegular(accSmallWit))
-	run.AssignLocalPoint(a.AccSmallLast, prev)
+	run.AssignColumn(a.AccSmall.GetColID(), smartvectors.NewRegularExt(accSmallWit))
+	run.AssignLocalPointExt(a.AccSmallLast, prev)
 }
 
 type SubsampleVerifierAction struct {
