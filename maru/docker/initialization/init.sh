@@ -10,19 +10,12 @@ if [[ ! -f "initialization/genesis-besu.json" && ! -f "initialization/genesis-ge
     cp -T "genesis-geth.json.template" "genesis-geth.json"
     cp -T "genesis-nethermind.json.template" "genesis-nethermind.json"
 
-    shanghai_timestamp=$(($(date +%s) + 40))
-    prague_timestamp=$((shanghai_timestamp + 20))
-    echo "Shanghai Timestamp: $shanghai_timestamp"
+    prague_timestamp=$(($(date +%s) + 43))
     echo "Prague Timestamp: $prague_timestamp"
-    sed -i "s/%SHANGHAI_TIME%/$shanghai_timestamp/g" genesis-maru.json
     sed -i "s/%PRAGUE_TIME%/$prague_timestamp/g" genesis-maru.json
-    sed -i "s/%SHANGHAI_TIME%/$shanghai_timestamp/g" genesis-besu.json
     sed -i "s/%PRAGUE_TIME%/$prague_timestamp/g" genesis-besu.json
-    sed -i "s/%SHANGHAI_TIME%/$shanghai_timestamp/g" genesis-geth.json
     sed -i "s/%PRAGUE_TIME%/$prague_timestamp/g" genesis-geth.json
-    shanghai_timestamp_hex=$(printf "0x%x" $shanghai_timestamp)
     prague_timestamp_hex=$(printf "0x%x" $prague_timestamp)
-    sed -i "s/%SHANGHAI_TIME%/$shanghai_timestamp_hex/g" genesis-nethermind.json
     sed -i "s/%PRAGUE_TIME%/$prague_timestamp_hex/g" genesis-nethermind.json
 
 

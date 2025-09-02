@@ -13,7 +13,7 @@
     "berlinBlock": 0,
     "londonBlock": 0,
     "terminalTotalDifficulty": 10,
-    "shanghaiTime": %SHANGHAI_TIME%,
+    "shanghaiTime": %PRAGUE_TIME%,
     "cancunTime": %PRAGUE_TIME%,
     "pragueTime": %PRAGUE_TIME%,
     "depositContractAddress": "0x3a69eD7FA6f6CA1dB2649327c4A2E666130823bE",

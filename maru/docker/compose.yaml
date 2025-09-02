@@ -24,7 +24,7 @@ services:
     depends_on:
       initialization:
         condition: service_completed_successfully
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v3.1-rc8-20250826111259-ce5e036}
+    image: hyperledger/besu:25.8.0
     container_name: sequencer
     healthcheck:
       test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
@@ -60,10 +60,10 @@ services:
     depends_on:
       sequencer:
         condition: service_healthy
-    image: ethereum/client-go:v1.15.7
+    image: ethereum/client-go:v1.16.3
     container_name: follower-geth
     restart: always
-    entrypoint: [ "sh", "/scripts/node.sh", "1337", "/initialization/genesis-geth.json", "0x0", "0x1C9C380", "/data" ]
+    entrypoint: [ "sh", "/scripts/node.sh", "/initialization/genesis-geth.json" ]
     environment:
       BOOTNODES: "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"
     volumes:
@@ -88,7 +88,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    entrypoint: [ "sh", "/scripts/node.sh", "1337", "/initialization/genesis-geth.json", "0x0", "0x1C9C380", "/data" ]
+    entrypoint: [ "sh", "/scripts/node.sh", "/initialization/genesis-geth.json" ]
     environment:
       BOOTNODES: "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"
     volumes:
@@ -105,7 +105,7 @@ services:
     depends_on:
       sequencer:
         condition: service_healthy
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v3.1-rc8-20250826111259-ce5e036}
+    image: hyperledger/besu:25.8.0
     container_name: follower-besu
     healthcheck:
       test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
