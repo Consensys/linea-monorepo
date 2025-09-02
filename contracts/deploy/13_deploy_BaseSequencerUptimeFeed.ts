@@ -1,42 +1,46 @@
+import { ethers } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
+import { deployFromFactory } from "../scripts/hardhat/utils";
 import {
-  tryVerifyContract,
+  tryVerifyContractWithConstructorArgs,
   getDeployedContractAddress,
   tryStoreAddress,
+  getRequiredEnvVar,
   LogContractDeployment,
 } from "../common/helpers";
-import { EMPTY_INITIALIZE_SIGNATURE } from "../common/constants";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;
 
-  const contractName = "UpgradeableWithdrawalQueuePredeploy";
+  const contractName = "LineaSequencerUptimeFeed";
   const existingContractAddress = await getDeployedContractAddress(contractName, deployments);
+  const provider = ethers.provider;
 
-  // UpgradeableWithdrawalQueuePredeploy DEPLOYED AS UPGRADEABLE PROXY
-  if (!existingContractAddress) {
+  const initialStatus = getRequiredEnvVar("LINEA_SEQUENCER_UPTIME_FEED_INITIAL_STATUS");
+  const adminAddress = getRequiredEnvVar("LINEA_SEQUENCER_UPTIME_FEED_ADMIN");
+  const feedUpdaterAddress = getRequiredEnvVar("LINEA_SEQUENCER_UPTIME_FEED_UPDATER");
+
+  if (existingContractAddress === undefined) {
     console.log(`Deploying initial version, NB: the address will be saved if env SAVE_ADDRESS=true.`);
   } else {
     console.log(`Deploying new version, NB: ${existingContractAddress} will be overwritten if env SAVE_ADDRESS=true.`);
   }
 
-  const contract = await deployUpgradableFromFactory("UpgradeableWithdrawalQueuePredeploy", [], {
-    initializer: EMPTY_INITIALIZE_SIGNATURE,
-    unsafeAllow: ["constructor"],
-  });
+  const args = [initialStatus, adminAddress, feedUpdaterAddress];
+
+  const contract = await deployFromFactory(contractName, provider, ...args);
 
   await LogContractDeployment(contractName, contract);
   const contractAddress = await contract.getAddress();
 
   await tryStoreAddress(hre.network.name, contractName, contractAddress, contract.deploymentTransaction()!.hash);
 
-  await tryVerifyContract(
+  await tryVerifyContractWithConstructorArgs(
     contractAddress,
-    "src/predeploy/UpgradeableWithdrawalQueuePredeploy.sol:UpgradeableWithdrawalQueuePredeploy",
+    "src/operational/LineaSequencerUptimeFeed.sol:LineaSequencerUptimeFeed",
+    args,
   );
 };
-
 export default func;
-func.tags = ["UpgradeableWithdrawalQueuePredeploy"];
+func.tags = ["LineaSequencerUptimeFeed"];

@@ -120,7 +120,7 @@ services:
       l1network:
       linea:
         ipv4_address: 11.11.11.119
-  
+
   l2-node-besu-follower:
     hostname: l2-node-besu-follower
     container_name: l2-node-besu-follower
@@ -328,6 +328,14 @@ services:
       timeout: 1s
       retries: 120
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
     volumes:
       - ./postgres/init:/docker-entrypoint-initdb.d/
       - ./postgres/conf/:/etc/postgresql/
@@ -483,7 +491,7 @@ services:
   blobscan-api:
     container_name: blobscan-api
     hostname: blobscan-api
-    image: blossomlabs/blobscan-api:1.7.0
+    image: blossomlabs/blobscan-api:1.23.0
     platform: linux/amd64 # only linux available
     profiles: [ "staterecovery" ]
     ports:
@@ -513,7 +521,7 @@ services:
   blobscan-indexer:
     container_name: blobscan-indexer
     hostname: blobscan-indexer
-    image: blossomlabs/blobscan-indexer:0.3.1
+    image: blossomlabs/blobscan-indexer:0.3.4
     platform: linux/amd64 # only linux available
     profiles: [ "staterecovery" ]
     env_file: "./config/blobscan/env"
