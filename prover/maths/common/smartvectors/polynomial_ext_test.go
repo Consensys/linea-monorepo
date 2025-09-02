@@ -184,7 +184,7 @@ func TestBatchEvaluateLagrangeExt(t *testing.T) {
 		evalCan[i] = polyext.Eval(polys[i], x)
 	}
 
-	d := fft.NewDomain(uint64(size))
+	d := fft.NewDomain(uint64(size), fft.WithoutPrecompute())
 	polyLagranges := make([][]fext.Element, nbPoly)
 	copy(polyLagranges, polys)
 
@@ -212,7 +212,7 @@ func TestBatchInterpolationWithConstantVectorExt(t *testing.T) {
 
 	expectedY := polyext.Eval(randPoly, x)
 	expectedY2 := polyext.Eval(randPoly2, x)
-	domain := fft.NewDomain(uint64(n))
+	domain := fft.NewDomain(uint64(n), fft.WithoutPrecompute())
 
 	/*
 		Test without coset
@@ -260,7 +260,7 @@ func TestBatchEvaluateLagrangeOnlyConstantVector(t *testing.T) {
 
 	expectedY := polyext.Eval(randPoly, x)
 	expectedY2 := polyext.Eval(randPoly2, x)
-	domain := fft.NewDomain(uint64(n))
+	domain := fft.NewDomain(uint64(n), fft.WithoutPrecompute())
 
 	/*
 		Test without coset
@@ -312,7 +312,7 @@ func TestBatchInterpolationThreeVectorsExt(t *testing.T) {
 	expectedY := polyext.Eval(randPoly, x)
 	expectedY2 := polyext.Eval(randPoly2, x)
 	expectedY3 := polyext.Eval(randPoly3, x)
-	domain := fft.NewDomain(uint64(n))
+	domain := fft.NewDomain(uint64(n), fft.WithoutPrecompute())
 
 	/*
 		Test without coset

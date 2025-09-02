@@ -22,7 +22,7 @@ func randomPoly(size int) []field.Element {
 func TestEvaluateLagrangeFext(t *testing.T) {
 
 	size := 64
-	domain := fft.NewDomain(uint64(size))
+	domain := fft.NewDomain(uint64(size), fft.WithoutPrecompute())
 	p := randomPoly(size)
 	pLagrange := make([]field.Element, size)
 
@@ -67,7 +67,7 @@ func TestBatchEvaluateLagrangeOnFext(t *testing.T) {
 	for i := 0; i < nbPoly; i++ {
 		Eval[i] = poly.EvalMixed(polys[i], x)
 	}
-	d := fft.NewDomain(uint64(sizePoly))
+	d := fft.NewDomain(uint64(sizePoly), fft.WithoutPrecompute())
 
 	/*
 		Test without coset
