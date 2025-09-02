@@ -68,7 +68,7 @@ func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio i
 
 	v.WriteInSlice(res.Regular)
 
-	domain := fft.GetDomainFromCache(uint64(v.Len()))
+	domain := fft.NewDomain(uint64(v.Len()))
 
 	var shift field.Element
 	if cosetID != 0 || cosetRatio != 0 {
@@ -169,7 +169,7 @@ func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, coset
 
 	v.WriteInSlice(res.Regular)
 
-	domain := fft.GetDomainFromCache(uint64(v.Len()))
+	domain := fft.NewDomain(uint64(v.Len()))
 	var shift field.Element
 	if cosetID != 0 || cosetRatio != 0 {
 		omega, err := fft.Generator(domain.Cardinality * uint64(cosetRatio))

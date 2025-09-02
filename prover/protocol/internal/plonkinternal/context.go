@@ -193,7 +193,7 @@ func createCtx(
 	}
 
 	ctx.Plonk.SPR = ccs
-	fftDomain := fft.GetDomainFromCache(uint64(ctx.DomainSize()))
+	fftDomain := fft.NewDomain(uint64(ctx.DomainSize()))
 
 	if ctx.FixedNbRowsOption.Enabled && ctx.FixedNbRowsOption.NbRow < ctx.DomainSizePlonk() {
 		utils.Panic("plonk-in-wizard: the number of constraints of the circuit outweight the fixed number of rows. fixed-nb-row=%v domain-size=%v nb-constraints=%v", ctx.FixedNbRowsOption.NbRow, ctx.DomainSizePlonk(), ccs.NbConstraints)

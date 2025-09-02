@@ -159,7 +159,7 @@ func BatchEvaluateLagrangeSVExt(results []fext.Element, computed []bool, polys [
 		utils.Panic("only support powers of two but poly has length %v", len(polys))
 	}
 
-	domain := fft.GetDomainFromCache(uint64(n))
+	domain := fft.NewDomain(uint64(n))
 	denominator := make([]fext.Element, n)
 
 	one := fext.One()

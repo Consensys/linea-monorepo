@@ -26,7 +26,7 @@ func TestEvaluateLagrange(t *testing.T) {
 		poly[i].SetRandom()
 	}
 
-	d := fft.GetDomainFromCache(64)
+	d := fft.NewDomain(64)
 	polyLagrange := make([]field.Element, size)
 	copy(polyLagrange, poly)
 	d.FFT(polyLagrange, fft.DIF)
@@ -70,7 +70,7 @@ func TestBatchEvaluateLagrange(t *testing.T) {
 		evalCan[i] = poly.EvalMixed(polys[i], x)
 	}
 
-	d := fft.GetDomainFromCache(uint64(size))
+	d := fft.NewDomain(uint64(size))
 	polyLagranges := make([][]field.Element, nbPoly)
 	copy(polyLagranges, polys)
 
@@ -228,7 +228,7 @@ func TestBatchInterpolationWithConstantVector(t *testing.T) {
 
 	expectedY := poly.EvalMixed(randPoly, x)
 	expectedY2 := poly.EvalMixed(randPoly2, x)
-	domain := fft.GetDomainFromCache(uint64(n))
+	domain := fft.NewDomain(uint64(n))
 	/*
 		Test without coset
 	*/
@@ -274,7 +274,7 @@ func TestBatchEvaluateLagrangeOnFextOnlyConstantVector(t *testing.T) {
 
 	expectedY := poly.EvalMixed(randPoly, x)
 	expectedY2 := poly.EvalMixed(randPoly2, x)
-	domain := fft.GetDomainFromCache(uint64(n))
+	domain := fft.NewDomain(uint64(n))
 	/*
 		Test without coset
 	*/
@@ -325,7 +325,7 @@ func TestBatchInterpolationThreeVectors(t *testing.T) {
 	expectedY := poly.EvalMixed(randPoly, x)
 	expectedY2 := poly.EvalMixed(randPoly2, x)
 	expectedY3 := poly.EvalMixed(randPoly3, x)
-	domain := fft.GetDomainFromCache(uint64(n))
+	domain := fft.NewDomain(uint64(n))
 
 	/*
 		Test without coset

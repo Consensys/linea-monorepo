@@ -68,7 +68,7 @@ func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRati
 
 	v.WriteInSliceExt(res.RegularExt)
 
-	domain := fft.GetDomainFromCache(uint64(v.Len()))
+	domain := fft.NewDomain(uint64(v.Len()))
 
 	var shift field.Element
 	if cosetID != 0 || cosetRatio != 0 {
@@ -162,7 +162,7 @@ func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, co
 
 	v.WriteInSliceExt(res.RegularExt)
 
-	domain := fft.GetDomainFromCache(uint64(v.Len()))
+	domain := fft.NewDomain(uint64(v.Len()))
 
 	var shift field.Element
 	if cosetID != 0 || cosetRatio != 0 {

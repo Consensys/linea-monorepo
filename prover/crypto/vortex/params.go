@@ -77,8 +77,8 @@ func NewParams(
 
 	res := &Params{
 		Domains: [2]*fft.Domain{
-			fft.GetDomainFromCache(uint64(nbColumns)),
-			fft.GetDomainFromCache(uint64(blowUpFactor * nbColumns)),
+			fft.NewDomain(uint64(nbColumns)),
+			fft.NewDomain(uint64(blowUpFactor * nbColumns)),
 		},
 		NbColumns:      nbColumns,
 		MaxNbRows:      maxNbRows,
