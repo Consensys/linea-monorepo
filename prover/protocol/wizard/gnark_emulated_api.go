@@ -5,6 +5,8 @@ import (
 	"github.com/consensys/gnark/std/math/emulated"
 )
 
+// EmulatedFieldOps struct implementing FieldOps[T FType].
+// It is a wrapper around emulatedApi for koalabear.
 type EmulatedFieldOps struct {
 	api frontend.API
 	ef  *emulated.Field[emulated.KoalaBear]

@@ -4,6 +4,8 @@ import (
 	"github.com/consensys/gnark/frontend"
 )
 
+// NativeFieldOps struct implementing FieldOps[T FType].
+// It is a wrapper around the native api.
 type NativeFieldOps struct{ api frontend.API }
 
 func (n NativeFieldOps) Mul(a, b *frontend.Variable) *frontend.Variable {

@@ -64,24 +64,24 @@ type FieldOps[T FType] interface {
 	Api() frontend.API
 }
 
-func (c *TestMixedCircuitMixed[T]) Define(api frontend.API) error {
+// func (c *TestMixedCircuitMixed[T]) Define(api frontend.API) error {
 
-	var wApi FieldOps[T]
-	t := getType[T]()
-	if t == Emulated {
-		tmpApi, err := getFieldOpEmulated(api)
-		if err != nil {
-			return err
-		}
-		wApi = any(tmpApi).(FieldOps[T])
-	} else {
-		tmpApi := getFieldOpNative(api)
-		wApi = any(tmpApi).(FieldOps[T])
-	}
+// 	var wApi FieldOps[T]
+// 	t := getType[T]()
+// 	if t == Emulated {
+// 		tmpApi, err := getFieldOpEmulated(api)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		wApi = any(tmpApi).(FieldOps[T])
+// 	} else {
+// 		tmpApi := getFieldOpNative(api)
+// 		wApi = any(tmpApi).(FieldOps[T])
+// 	}
 
-	wApi.Println(c.R)
-	a := wApi.Mul(&c.A, &c.B)
-	wApi.AssertIsEqual(a, &c.R)
+// 	wApi.Println(c.R)
+// 	a := wApi.Mul(&c.A, &c.B)
+// 	wApi.AssertIsEqual(a, &c.R)
 
-	return nil
-}
+// 	return nil
+// }
