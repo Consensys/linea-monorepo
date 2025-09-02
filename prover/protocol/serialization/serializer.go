@@ -133,12 +133,12 @@ type PackedIFace struct {
 
 // PackedCoin is a compact representation of coin.Info, optimized for CBOR encoding.
 type PackedCoin struct {
-	// _          struct{} `cbor:",toarray"`    // encode/decode as array
-	Type       int8   `cbor:"t"`           // Coin type (e.g., Random, Fixed).
-	Size       int    `cbor:"s,omitempty"` // Coin size (optional).
-	UpperBound int32  `cbor:"u,omitempty"` // Upper bound for coin (optional).
-	Name       string `cbor:"n"`           // Coin name.
-	Round      int    `cbor:"r"`           // Round number.
+	_          struct{} `cbor:",toarray"`    // encode/decode as array
+	Type       int8     `cbor:"t"`           // Coin type (e.g., Random, Fixed).
+	Size       int      `cbor:"s,omitempty"` // Coin size (optional).
+	UpperBound int32    `cbor:"u,omitempty"` // Upper bound for coin (optional).
+	Name       string   `cbor:"n"`           // Coin name.
+	Round      int      `cbor:"r"`           // Round number.
 }
 
 // PackedStructObject is a slice of serialized field values for a struct.
@@ -185,13 +185,6 @@ func Serialize(v any) (bytesOfV []byte, err error) {
 	packedObject.Payload = payload
 
 	// Single CBOR encode of the whole PackedObject
-
-	// bytesOfV, err = encodeWithCBOR(packedObject)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("could not encode the packedObject with CBOR: %v", err)
-	// }
-	// return bytesOfV, nil
-
 	var buf bytes.Buffer
 	if err := encodeWithCBORToBuffer(&buf, ser.PackedObject); err != nil {
 		return nil, fmt.Errorf("could not encode the packedObject with CBOR: %v", err)
@@ -370,10 +363,6 @@ func (d *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e *s
 		v := v.(map[any]any)
 		return d.UnpackMap(v, t)
 	case reflect.Interface:
-		// v_, ok := v.(map[interface{}]any)
-		// if !ok {
-		// 	return reflect.Value{}, newSerdeErrorf("expected %v to be of type map[interface{}]any, was=%T", v, v)
-		// }
 		return d.UnpackInterface(v, t)
 	case reflect.Pointer:
 		return d.UnpackPointer(v, t)
@@ -880,44 +869,7 @@ func (s *Serializer) PackInterface(v reflect.Value) (any, *serdeError) {
 	}, nil
 }
 
-// UnpackInterface deserializes an interface value from a map, resolving the concrete type and value.
-// func (d *Deserializer) UnpackInterface(pi map[interface{}]interface{}, t reflect.Type) (reflect.Value, *serdeError) {
-// 	var (
-// 		ctype, ok = pi["t"].(uint64)
-// 		concrete  = pi["c"]
-// 	)
-
-// 	if !ok || int(ctype) >= len(d.PackedObject.Types) {
-// 		return reflect.Value{}, newSerdeErrorf("invalid packed interface, it does not have a valid type integer: %v", ctype)
-// 	}
-
-// 	cleanConcreteType := d.PackedObject.Types[ctype]
-// 	refType, err := findRegisteredImplementation(cleanConcreteType)
-// 	if err != nil {
-// 		return reflect.Value{}, newSerdeErrorf("unregistered type %q for interface: %w", cleanConcreteType, err)
-// 	}
-
-// 	if !refType.Implements(t) {
-// 		return reflect.Value{}, newSerdeErrorf("the resolved type does not implement the target interface, %v ~ %v", refType.String(), t.String())
-// 	}
-
-// 	cres, errV := d.UnpackValue(concrete, refType)
-// 	if errV != nil {
-// 		return reflect.Value{}, errV.wrapPath("(" + refType.String() + ")")
-// 	}
-
-// 	// Create a new reflect.Value for the interface type
-// 	// Reminder; here the important thing is to ensure that the returned
-// 	// Value actually bears the requested interface type and not the
-// 	// concrete type.
-// 	ifaceValue := reflect.New(t).Elem()
-// 	ifaceValue.Set(cres)
-
-// 	return ifaceValue, nil
-// }
-
-// UnpackInterface deserializes an interface value from a map, resolving the concrete type and value.
-// UnpackInterface deserializes an interface value from a map, resolving the concrete type and value.
+// UnpackInterface deserializes an interface value from an array, resolving the concrete type and value.
 func (de *Deserializer) UnpackInterface(v any, t reflect.Type) (reflect.Value, *serdeError) {
 	v_, ok := v.([]interface{})
 	if !ok {
