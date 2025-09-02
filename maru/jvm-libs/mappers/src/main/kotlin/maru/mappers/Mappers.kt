@@ -28,6 +28,7 @@ import org.hyperledger.besu.ethereum.core.Transaction
 import org.hyperledger.besu.ethereum.core.encoding.EncodingContext
 import org.hyperledger.besu.ethereum.core.encoding.TransactionEncoder
 import org.web3j.protocol.core.methods.response.EthBlock
+import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV2
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
@@ -153,7 +154,7 @@ object Mappers {
       transactions = this.transactions.map { it.toArray() },
     )
 
-  fun ExecutionPayloadV2.toDomainExecutionPayload() =
+  fun ExecutionPayloadV1.toDomainExecutionPayload() =
     ExecutionPayload(
       parentHash = this.parentHash.toArray(),
       feeRecipient = this.feeRecipient.wrappedBytes.toArray(),
@@ -166,8 +167,7 @@ object Mappers {
       gasUsed = this.gasUsed.longValue().toULong(),
       timestamp = this.timestamp.longValue().toULong(),
       extraData = this.extraData.toArray(),
-      baseFeePerGas =
-        this.baseFeePerGas.toBigInteger(),
+      baseFeePerGas = this.baseFeePerGas.toBigInteger(),
       blockHash = this.blockHash.toArray(),
       transactions = this.transactions.map { it.toArray() },
     )
@@ -212,9 +212,27 @@ object Mappers {
       /* withdrawals */ emptyList(),
     )
 
+  fun ExecutionPayload.toExecutionPayloadV1() =
+    ExecutionPayloadV1(
+      /* parentHash */ Bytes32.wrap(this.parentHash),
+      /* feeRecipient */ Bytes20(Bytes.wrap(this.feeRecipient)),
+      /* stateRoot */ Bytes32.wrap(this.stateRoot),
+      /* receiptsRoot */ Bytes32.wrap(this.receiptsRoot),
+      /* logsBloom */ Bytes.wrap(this.logsBloom),
+      /* prevRandao */ Bytes32.wrap(this.prevRandao),
+      /* blockNumber */ UInt64.valueOf(this.blockNumber.toString()),
+      /* gasLimit */ UInt64.valueOf(this.gasLimit.toString()),
+      /* gasUsed */ UInt64.valueOf(this.gasUsed.toString()),
+      /* timestamp */ UInt64.valueOf(this.timestamp.toString()),
+      /* extraData */ Bytes.wrap(this.extraData),
+      /* baseFeePerGas */ UInt256.valueOf(this.baseFeePerGas),
+      /* blockHash */ Bytes32.wrap(this.blockHash),
+      /* transactions */ this.transactions.map { Bytes.wrap(it) },
+    )
+
   fun PayloadAttributes.toPayloadAttributesV1(): PayloadAttributesV1 =
     PayloadAttributesV1(
-      UInt64.fromLongBits(this.timestamp),
+      UInt64.fromLongBits(this.timestamp.toLong()),
       Bytes32.wrap(this.prevRandao),
       Bytes20(Bytes.wrap(this.suggestedFeeRecipient)),
     )

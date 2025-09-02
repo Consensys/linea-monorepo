@@ -29,8 +29,8 @@ class QbftConsensusConfigSerializerTest {
         validatorSet = setOf(v2, v1),
         elFork = ElFork.Prague,
       )
-    val bytes1 = ForkSpecSerializer.QbftConsensusConfigSerializer.serialize(config1)
-    val bytes2 = ForkSpecSerializer.QbftConsensusConfigSerializer.serialize(config2)
+    val bytes1 = QbftConsensusConfigSerializer.serialize(config1)
+    val bytes2 = QbftConsensusConfigSerializer.serialize(config2)
     assertThat(bytes1).isEqualTo(bytes2)
   }
 
@@ -48,8 +48,8 @@ class QbftConsensusConfigSerializerTest {
         validatorSet = setOf(v1, v2),
         elFork = ElFork.Prague,
       )
-    val bytes1 = ForkSpecSerializer.QbftConsensusConfigSerializer.serialize(config1)
-    val bytes2 = ForkSpecSerializer.QbftConsensusConfigSerializer.serialize(config2)
+    val bytes1 = QbftConsensusConfigSerializer.serialize(config1)
+    val bytes2 = QbftConsensusConfigSerializer.serialize(config2)
     assertThat(bytes1).isNotEqualTo(bytes2)
   }
 }

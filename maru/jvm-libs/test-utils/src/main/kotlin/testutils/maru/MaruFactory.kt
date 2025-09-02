@@ -53,8 +53,9 @@ import maru.p2p.P2PNetwork
  */
 class MaruFactory(
   validatorPrivateKey: ByteArray = generatePrivateKey(),
-  shanghaiTimestamp: Long? = null,
-  pragueTimestamp: Long? = null,
+  shanghaiTimestamp: ULong? = null,
+  pragueTimestamp: ULong? = null,
+  ttd: ULong? = null,
 ) {
   companion object {
     val defaultReconnectDelay = 500.milliseconds
@@ -103,14 +104,20 @@ class MaruFactory(
         1337u,
         setOf(
           ForkSpec(
-            timestampSeconds = 0,
-            blockTimeSeconds = 1,
+            timestampSeconds = 0UL,
+            blockTimeSeconds = 1u,
             configuration =
-            ElDelegatedConfig,
+              ElDelegatedConfig(
+                QbftConsensusConfig(
+                  validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
+                  elFork = ElFork.Paris,
+                ),
+                terminalTotalDifficulty = ttd!!,
+              ),
           ),
           ForkSpec(
             timestampSeconds = shanghaiTimestamp,
-            blockTimeSeconds = 1,
+            blockTimeSeconds = 1u,
             configuration =
               QbftConsensusConfig(
                 validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
@@ -119,7 +126,7 @@ class MaruFactory(
           ),
           ForkSpec(
             timestampSeconds = pragueTimestamp!!,
-            blockTimeSeconds = 1,
+            blockTimeSeconds = 1u,
             configuration =
               QbftConsensusConfig(
                 validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
@@ -133,8 +140,8 @@ class MaruFactory(
         1337u,
         setOf(
           ForkSpec(
-            timestampSeconds = 0,
-            blockTimeSeconds = 1,
+            timestampSeconds = 0UL,
+            blockTimeSeconds = 1u,
             configuration =
               QbftConsensusConfig(
                 validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
@@ -142,8 +149,8 @@ class MaruFactory(
               ),
           ),
           ForkSpec(
-            timestampSeconds = 1,
-            blockTimeSeconds = 1,
+            timestampSeconds = 1UL,
+            blockTimeSeconds = 1u,
             configuration =
               QbftConsensusConfig(
                 validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),

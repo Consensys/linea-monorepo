@@ -9,40 +9,58 @@
 package maru.serialization
 
 import java.nio.ByteBuffer
+import kotlin.text.toInt
+import kotlin.text.toLong
+import maru.config.consensus.delegated.ElDelegatedConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.extensions.encodeHex
 
-object ForkSpecSerializer {
-  object QbftConsensusConfigSerializer : Serializer<QbftConsensusConfig> {
-    override fun serialize(value: QbftConsensusConfig): ByteArray {
-      // Sort validators deterministically by address hex
-      val validatorsSorted = value.validatorSet.sortedBy { it.address.encodeHex(prefix = false) }
-      // Allocate buffer: 20 bytes per validator + 4 for elFork.ordinal
-      val buffer = ByteBuffer.allocate(validatorsSorted.size * 20 + 4)
-      for (validator in validatorsSorted) {
-        buffer.put(validator.address)
-      }
-      buffer.putInt(value.elFork.ordinal)
-      return buffer.array()
+object QbftConsensusConfigSerializer : Serializer<QbftConsensusConfig> {
+  override fun serialize(value: QbftConsensusConfig): ByteArray {
+    // Sort validators deterministically by address hex
+    val validatorsSorted = value.validatorSet.sortedBy { it.address.encodeHex(prefix = false) }
+    // Allocate buffer: 20 bytes per validator + 4 for elFork.ordinal
+    val buffer = ByteBuffer.allocate(validatorsSorted.size * 20 + 4)
+    for (validator in validatorsSorted) {
+      buffer.put(validator.address)
     }
+    buffer.putInt(value.elFork.ordinal)
+    return buffer.array()
   }
+}
 
-  object ForkSpecSerializer : Serializer<ForkSpec> {
-    override fun serialize(value: ForkSpec): ByteArray =
+object ElDelegatedConfigSerializer : Serializer<ElDelegatedConfig> {
+  override fun serialize(value: ElDelegatedConfig): ByteArray {
+    require(value.postTtdConfig is QbftConsensusConfig) {
+      "only QbftConsensusConfig serialization is implemented for postTtdConfig!"
+    }
+    val postTtdConfigBytes = QbftConsensusConfigSerializer.serialize(value.postTtdConfig as QbftConsensusConfig)
+    val buffer = ByteBuffer.allocate(postTtdConfigBytes.size + 8)
+    buffer.putLong(value.terminalTotalDifficulty.toLong())
+    buffer.put(postTtdConfigBytes)
+    return buffer.array()
+  }
+}
+
+object ForkSpecSerializer : Serializer<ForkSpec> {
+  override fun serialize(value: ForkSpec): ByteArray {
+    val serializedConsensusConfig =
       when (value.configuration) {
-        is QbftConsensusConfig -> {
-          val serializedConsensusConfig =
-            QbftConsensusConfigSerializer.serialize(value.configuration as QbftConsensusConfig)
-          ByteBuffer
-            .allocate(4 + 8 + serializedConsensusConfig.size)
-            .putInt(value.blockTimeSeconds)
-            .putLong(value.timestampSeconds)
-            .put(serializedConsensusConfig)
-            .array()
-        }
+        is QbftConsensusConfig ->
+          QbftConsensusConfigSerializer.serialize(value.configuration as QbftConsensusConfig)
+
+        is ElDelegatedConfig ->
+          ElDelegatedConfigSerializer.serialize(value.configuration as ElDelegatedConfig)
 
         else -> throw IllegalArgumentException("${value.configuration.javaClass.simpleName} is not supported!")
       }
+
+    return ByteBuffer
+      .allocate(4 + 8 + serializedConsensusConfig.size)
+      .putInt(value.blockTimeSeconds.toInt())
+      .putLong(value.timestampSeconds.toLong())
+      .put(serializedConsensusConfig)
+      .array()
   }
 }

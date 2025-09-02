@@ -10,7 +10,7 @@ package maru.consensus
 
 import maru.config.consensus.delegated.ElDelegatedConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
-import maru.core.NoOpProtocol
+import maru.consensus.delegated.ElDelegatedConsensusFactory
 import maru.core.Protocol
 
 interface ProtocolFactory {
@@ -19,6 +19,7 @@ interface ProtocolFactory {
 
 class OmniProtocolFactory(
   private val qbftConsensusFactory: ProtocolFactory,
+  private val elDelegatedConsensusFactory: ElDelegatedConsensusFactory,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol =
     when (forkSpec.configuration) {
@@ -27,7 +28,7 @@ class OmniProtocolFactory(
       }
 
       is ElDelegatedConfig -> {
-        NoOpProtocol()
+        elDelegatedConsensusFactory.create(forkSpec)
       }
 
       else -> {

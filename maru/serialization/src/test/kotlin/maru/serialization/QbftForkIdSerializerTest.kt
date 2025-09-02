@@ -34,12 +34,12 @@ class QbftForkIdSerializerTest {
         validatorSet = setOf(v2, v1),
         elFork = ElFork.Prague,
       )
-    val forkSpec1 = ForkSpec(1, 1, config1)
+    val forkSpec1 = ForkSpec(1UL, 1u, config1)
     val forkSpec2 = forkSpec1.copy(configuration = config2)
     val forkId1 = ForkId(dummyChainId, forkSpec1, Random.nextBytes(32))
     val forkId2 = forkId1.copy(forkSpec = forkSpec2)
-    val bytes1 = ForkIdSerializers.ForkIdSerializer.serialize(forkId1)
-    val bytes2 = ForkIdSerializers.ForkIdSerializer.serialize(forkId2)
+    val bytes1 = ForkIdSerializer.serialize(forkId1)
+    val bytes2 = ForkIdSerializer.serialize(forkId2)
     Assertions.assertThat(bytes1).isEqualTo(bytes2)
   }
 
@@ -52,12 +52,12 @@ class QbftForkIdSerializerTest {
         validatorSet = setOf(v1, v2),
         elFork = ElFork.Prague,
       )
-    val forkSpec1 = ForkSpec(1, 1, config)
-    val forkSpec2 = forkSpec1.copy(blockTimeSeconds = 2)
+    val forkSpec1 = ForkSpec(1UL, 1u, config)
+    val forkSpec2 = forkSpec1.copy(blockTimeSeconds = 2U)
     val forkId1 = ForkId(dummyChainId, forkSpec1, Random.nextBytes(32))
     val forkId2 = forkId1.copy(forkSpec = forkSpec2)
-    val bytes1 = ForkIdSerializers.ForkIdSerializer.serialize(forkId1)
-    val bytes2 = ForkIdSerializers.ForkIdSerializer.serialize(forkId2)
+    val bytes1 = ForkIdSerializer.serialize(forkId1)
+    val bytes2 = ForkIdSerializer.serialize(forkId2)
     Assertions.assertThat(bytes1).isNotEqualTo(bytes2)
   }
 
@@ -70,11 +70,11 @@ class QbftForkIdSerializerTest {
         validatorSet = setOf(v1, v2),
         elFork = ElFork.Prague,
       )
-    val forkSpec = ForkSpec(1, 1, config)
+    val forkSpec = ForkSpec(1UL, 1u, config)
     val forkId1 = ForkId(dummyChainId, forkSpec, Random.nextBytes(32))
     val forkId2 = forkId1.copy(chainId = 21U)
-    val bytes1 = ForkIdSerializers.ForkIdSerializer.serialize(forkId1)
-    val bytes2 = ForkIdSerializers.ForkIdSerializer.serialize(forkId2)
+    val bytes1 = ForkIdSerializer.serialize(forkId1)
+    val bytes2 = ForkIdSerializer.serialize(forkId2)
     Assertions.assertThat(bytes1).isNotEqualTo(bytes2)
   }
 
@@ -87,11 +87,11 @@ class QbftForkIdSerializerTest {
         validatorSet = setOf(v1, v2),
         elFork = ElFork.Prague,
       )
-    val forkSpec = ForkSpec(1, 1, config)
+    val forkSpec = ForkSpec(1UL, 1U, config)
     val forkId1 = ForkId(dummyChainId, forkSpec, Random.nextBytes(32))
     val forkId2 = forkId1.copy(genesisRootHash = Random.nextBytes(32))
-    val bytes1 = ForkIdSerializers.ForkIdSerializer.serialize(forkId1)
-    val bytes2 = ForkIdSerializers.ForkIdSerializer.serialize(forkId2)
+    val bytes1 = ForkIdSerializer.serialize(forkId1)
+    val bytes2 = ForkIdSerializer.serialize(forkId2)
     Assertions.assertThat(bytes1).isNotEqualTo(bytes2)
   }
 }

@@ -10,6 +10,7 @@ package maru.executionlayer.manager
 
 import java.util.concurrent.ExecutionException
 import kotlin.random.Random
+import kotlin.random.nextULong
 import maru.core.ExecutionPayload
 import maru.core.ext.DataGenerators
 import maru.executionlayer.client.ExecutionLayerEngineApiClient
@@ -107,7 +108,7 @@ class JsonRpcExecutionLayerManagerTest {
     val newHeadHash = Bytes32.random()
     val newSafeHash = Bytes32.random()
     val newFinalizedHash = Bytes32.random()
-    val nextTimestamp = 0L
+    val nextTimestamp = 0UL
 
     val payloadId = Bytes8(Bytes.random(8))
     val payloadStatus = mockForkChoiceUpdateWithValidStatus(payloadId)
@@ -149,7 +150,7 @@ class JsonRpcExecutionLayerManagerTest {
     val newHeadHash = Bytes32.random()
     val newSafeHash = Bytes32.random()
     val newFinalizedHash = Bytes32.random()
-    val nextTimestamp = Random.nextLong(0, Long.MAX_VALUE)
+    val nextTimestamp = Random.nextULong(0U, ULong.MAX_VALUE)
 
     val payloadId = Bytes8(Bytes.random(8))
     val payloadStatus = mockForkChoiceUpdateWithValidStatus(payloadId)
@@ -184,7 +185,7 @@ class JsonRpcExecutionLayerManagerTest {
       argThat { payloadAttributes ->
         payloadAttributes ==
           PayloadAttributesV1(
-            UInt64.fromLongBits(nextTimestamp),
+            UInt64.fromLongBits(nextTimestamp.toLong()),
             Bytes32.ZERO,
             Bytes20(Bytes.wrap(feeRecipient)),
           )

@@ -142,7 +142,7 @@ class QbftValidatorFactory(
 
     val bftExecutors = BftExecutors.create(metricsSystem, BftExecutors.ConsensusType.QBFT)
     val bftEventQueue = BftEventQueue(qbftOptions.messageQueueLimit)
-    val roundExpiry = qbftOptions.roundExpiry ?: forkSpec.blockTimeSeconds.seconds
+    val roundExpiry = qbftOptions.roundExpiry ?: forkSpec.blockTimeSeconds.toInt().seconds
     val roundTimer =
       RoundTimer(
         /* queue = */ bftEventQueue,
@@ -263,11 +263,11 @@ class QbftValidatorFactory(
     feeRecipient: ByteArray,
   ): SealedBeaconBlockImporter<ValidationResult> {
     val shouldBuildNextBlock =
-      { beaconState: BeaconState, roundIdentifier: ConsensusRoundIdentifier, nextBlockTimestamp: Long ->
+      { beaconState: BeaconState, roundIdentifier: ConsensusRoundIdentifier, nextBlockTimestamp: ULong ->
         // We shouldn't build next block if this fork ends
         val nextForkTimestamp =
-          forksSchedule.getNextForkByTimestamp(beaconState.beaconBlockHeader.timestamp.toLong())?.timestampSeconds
-            ?: Long.MAX_VALUE
+          forksSchedule.getNextForkByTimestamp(beaconState.beaconBlockHeader.timestamp)?.timestampSeconds
+            ?: ULong.MAX_VALUE
         if (nextBlockTimestamp >= nextForkTimestamp) {
           false
         } else {

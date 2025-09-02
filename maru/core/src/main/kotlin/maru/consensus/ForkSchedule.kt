@@ -13,12 +13,12 @@ import java.util.TreeSet
 import kotlin.reflect.KClass
 
 data class ForkSpec(
-  val timestampSeconds: Long,
-  val blockTimeSeconds: Int,
+  val timestampSeconds: ULong,
+  val blockTimeSeconds: UInt,
   val configuration: ConsensusConfig,
 ) {
   init {
-    require(blockTimeSeconds > 0) { "blockTimeSeconds must be greater or equal to 1 second" }
+    require(blockTimeSeconds > 0UL) { "blockTimeSeconds must be greater or equal to 1 second" }
   }
 }
 
@@ -39,12 +39,12 @@ class ForksSchedule(
       newForks
     }
 
-  fun getForkByTimestamp(timestamp: Long): ForkSpec =
+  fun getForkByTimestamp(timestamp: ULong): ForkSpec =
     forks.firstOrNull { timestamp >= it.timestampSeconds } ?: throw IllegalArgumentException(
       "No fork found for $timestamp, first known fork is at ${forks.last.timestampSeconds}",
     )
 
-  fun getNextForkByTimestamp(timestamp: Long): ForkSpec? {
+  fun getNextForkByTimestamp(timestamp: ULong): ForkSpec? {
     val nextFork =
       forks
         .filter { it.timestampSeconds > timestamp }

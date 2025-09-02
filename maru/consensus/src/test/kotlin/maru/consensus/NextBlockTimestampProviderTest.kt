@@ -22,11 +22,11 @@ class NextBlockTimestampProviderTest {
     ForksSchedule(
       chainId,
       listOf(
-        ForkSpec(0, 1, QbftConsensusConfig(validatorSet = emptySet(), ElFork.Prague)),
-        ForkSpec(10, 2, QbftConsensusConfig(validatorSet = emptySet(), ElFork.Prague)),
+        ForkSpec(0UL, 1u, QbftConsensusConfig(validatorSet = emptySet(), ElFork.Prague)),
+        ForkSpec(10UL, 2u, QbftConsensusConfig(validatorSet = emptySet(), ElFork.Prague)),
       ),
     )
-  private val baseLastBlockTimestamp = 9L
+  private val baseLastBlockTimestamp = 9UL
 
   private fun createCLockForTimestamp(timestamp: Long): Clock =
     Clock.fixed(Instant.ofEpochMilli(timestamp), ZoneId.of("UTC"))
@@ -41,7 +41,7 @@ class NextBlockTimestampProviderTest {
 
     val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(baseLastBlockTimestamp)
 
-    assertThat(result).isEqualTo(10L)
+    assertThat(result).isEqualTo(10UL)
   }
 
   @Test
@@ -54,7 +54,7 @@ class NextBlockTimestampProviderTest {
 
     val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(baseLastBlockTimestamp)
 
-    assertThat(result).isEqualTo(12L)
+    assertThat(result).isEqualTo(12UL)
   }
 
   @Test
@@ -64,8 +64,8 @@ class NextBlockTimestampProviderTest {
         createCLockForTimestamp(11123),
         forksSchedule,
       )
-    val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(10L)
+    val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(10UL)
 
-    assertThat(result).isEqualTo(12L)
+    assertThat(result).isEqualTo(12UL)
   }
 }

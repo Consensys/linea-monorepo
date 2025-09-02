@@ -36,7 +36,7 @@ class ForksScheduleAdapter(
       object : BftConfigOptions {
         override fun getEpochLength(): Long = 0
 
-        override fun getBlockPeriodSeconds(): Int = spec.blockTimeSeconds
+        override fun getBlockPeriodSeconds(): Int = spec.blockTimeSeconds.toInt()
 
         override fun getEmptyBlockPeriodSeconds(): Int = 0
 

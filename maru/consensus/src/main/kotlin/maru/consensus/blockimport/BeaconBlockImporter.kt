@@ -80,7 +80,7 @@ class BlockBuildingBeaconBlockImporter(
   private val finalizationStateProvider: FinalizationProvider,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val prevRandaoProvider: PrevRandaoProvider<ULong>,
-  private val shouldBuildNextBlock: (BeaconState, ConsensusRoundIdentifier, Long) -> Boolean,
+  private val shouldBuildNextBlock: (BeaconState, ConsensusRoundIdentifier, ULong) -> Boolean,
   private val feeRecipient: ByteArray,
 ) : BeaconBlockImporter {
   private val log: Logger = LogManager.getLogger(this.javaClass)
@@ -94,9 +94,7 @@ class BlockBuildingBeaconBlockImporter(
     val nextBlocksRoundIdentifier = ConsensusRoundIdentifier(beaconBlockHeader.number.toLong() + 1, 0)
     val nextBlockTimestamp =
       nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(
-        beaconState
-          .beaconBlockHeader.timestamp
-          .toLong(),
+        beaconState.beaconBlockHeader.timestamp,
       )
     return if (shouldBuildNextBlock(beaconState, nextBlocksRoundIdentifier, nextBlockTimestamp)) {
       log.info(

@@ -13,17 +13,17 @@ import kotlin.math.ceil
 import kotlin.math.max
 
 fun interface NextBlockTimestampProvider {
-  fun nextTargetBlockUnixTimestamp(lastBlockTimestamp: Long): Long
+  fun nextTargetBlockUnixTimestamp(lastBlockTimestamp: ULong): ULong
 }
 
 class NextBlockTimestampProviderImpl(
   private val clock: Clock,
   private val forksSchedule: ForksSchedule,
 ) : NextBlockTimestampProvider {
-  override fun nextTargetBlockUnixTimestamp(lastBlockTimestamp: Long): Long {
+  override fun nextTargetBlockUnixTimestamp(lastBlockTimestamp: ULong): ULong {
     val currentBlockTime = forksSchedule.getForkByTimestamp(lastBlockTimestamp).blockTimeSeconds
 
-    val nextIntegerSecond = ceil(clock.millis() / 1000.0).toLong()
+    val nextIntegerSecond = ceil(clock.millis() / 1000.0).toULong()
     return max(lastBlockTimestamp + currentBlockTime, nextIntegerSecond)
   }
 }

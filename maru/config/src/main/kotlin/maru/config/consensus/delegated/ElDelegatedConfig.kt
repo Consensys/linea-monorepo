@@ -10,5 +10,7 @@ package maru.config.consensus.delegated
 
 import maru.consensus.ConsensusConfig
 
-// Only for comparisons in the tests to set common ground
-data object ElDelegatedConfig : ConsensusConfig
+data class ElDelegatedConfig(
+  val postTtdConfig: ConsensusConfig,
+  val terminalTotalDifficulty: ULong,
+) : ConsensusConfig

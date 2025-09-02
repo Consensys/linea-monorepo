@@ -8,113 +8,153 @@
  */
 package maru.consensus.delegated
 
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.TimeUnit
+import java.lang.Exception
+import java.util.Timer
+import java.util.UUID
+import kotlin.concurrent.timerTask
+import kotlin.time.Duration.Companion.seconds
+import maru.config.consensus.delegated.ElDelegatedConfig
 import maru.consensus.ForkSpec
-import maru.consensus.NewBlockHandler
 import maru.consensus.ProtocolFactory
-import maru.core.BeaconBlock
-import maru.core.BeaconBlockBody
-import maru.core.BeaconBlockHeader
-import maru.core.EMPTY_HASH
-import maru.core.ExecutionPayload
 import maru.core.Protocol
-import maru.core.Validator
-import maru.mappers.Mappers.toDomain
-import maru.serialization.rlp.RLPSerializers
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
-import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class ElDelegatedConsensusFactory(
   private val ethereumJsonRpcClient: Web3j,
-  private val newBlockHandler: NewBlockHandler<*>,
+  private val postTtdProtocolFactory: ProtocolFactory,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): ElDelegatedConsensus =
     ElDelegatedConsensus(
       ethereumJsonRpcClient = ethereumJsonRpcClient,
-      onNewBlock = newBlockHandler,
-      blockTimeSeconds = forkSpec.blockTimeSeconds,
+      postTtdProtocolFactory = postTtdProtocolFactory,
+      forkSpec = forkSpec,
     )
 }
 
 class ElDelegatedConsensus(
   private val ethereumJsonRpcClient: Web3j,
-  private val onNewBlock: NewBlockHandler<*>,
-  private val blockTimeSeconds: Int,
-  private val executor: ScheduledExecutorService =
-    Executors.newSingleThreadScheduledExecutor(
-      Thread.ofVirtual().factory(),
-    ),
+  private val postTtdProtocolFactory: ProtocolFactory,
+  private val forkSpec: ForkSpec,
+  private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon ->
+    Timer(
+      "$name-${UUID.randomUUID()}",
+      isDaemon,
+    )
+  },
 ) : Protocol {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
-  @Volatile
-  private var currentTask: SafeFuture<Unit>? = null
+  private var poller: Timer? = null
+  private var postTtdProtocol: Protocol? = null
+
+  private fun pollTask() {
+    val elDelegatedConfig = forkSpec.configuration as ElDelegatedConfig
+    try {
+      if (postTtdProtocol != null) {
+        // Maybe it was stopped and started after the TTD was reached and poller stopped once
+        stopPoller()
+        return
+      }
+
+      val latestBlock =
+        ethereumJsonRpcClient
+          .ethGetBlockByNumber(DefaultBlockParameter.valueOf("latest"), false)
+          .send()
+          .block
+
+      if (latestBlock == null) {
+        log.warn("Failed to retrieve latest block from EL")
+        return
+      }
+
+      val totalDifficulty = latestBlock.totalDifficulty.toLong()
+      log.debug(
+        "Current elBlockNumber={}, totalDifficulty={}, terminalTotalDifficulty={}",
+        latestBlock.number,
+        totalDifficulty,
+        elDelegatedConfig.terminalTotalDifficulty,
+      )
+
+      if (totalDifficulty >= elDelegatedConfig.terminalTotalDifficulty.toLong()) {
+        log.info("TTD reached at elBlockNumber={}. Transitioning to post-TTD protocol.", latestBlock.number)
+        val postTtdForkSpec =
+          ForkSpec(
+            timestampSeconds = forkSpec.timestampSeconds,
+            blockTimeSeconds = forkSpec.blockTimeSeconds,
+            configuration = elDelegatedConfig.postTtdConfig,
+          )
+        transitionToPostTtdProtocol(postTtdForkSpec)
+        stopPoller()
+      }
+    } catch (e: Exception) {
+      log.error("Error during EL block polling", e)
+    }
+  }
+
+  @Synchronized
+  private fun transitionToPostTtdProtocol(postTtdForkSpec: ForkSpec) {
+    if (postTtdProtocol != null) {
+      throw IllegalStateException("This protocol is supposed to be stopped after reaching TTD")
+    }
+
+    try {
+      log.info("Creating post-TTD protocol forkSpec={}", postTtdForkSpec)
+      postTtdProtocol = postTtdProtocolFactory.create(postTtdForkSpec)
+      postTtdProtocol?.start()
+      log.info("Post-TTD protocol started successfully")
+    } catch (e: Exception) {
+      log.error("Failed to start post-TTD protocol", e)
+      throw e
+    }
+  }
 
   override fun start() {
-    if (currentTask == null) {
-      poll()
-    } else {
-      throw IllegalStateException("Timer has already been started!")
+    synchronized(this) {
+      if (poller != null) {
+        return
+      }
+      log.debug("Starting ElDelegatedConsensus with pollingInterval={} seconds", forkSpec.blockTimeSeconds)
+      poller = timerFactory("ElDelegatedConsensus", true)
+      poller!!.scheduleAtFixedRate(
+        timerTask {
+          try {
+            pollTask()
+          } catch (e: Exception) {
+            log.warn("ElDelegatedConsensus poll task exception", e)
+          }
+        },
+        0,
+        forkSpec.blockTimeSeconds
+          .toInt()
+          .seconds.inWholeMilliseconds,
+      )
+      postTtdProtocol?.start()
     }
   }
 
   override fun stop() {
-    if (currentTask != null) {
-      currentTask!!.cancel(false)
-      currentTask = null
-    } else {
-      throw IllegalStateException("EventProducer hasn't been started to stop it!")
-    }
-  }
+    synchronized(this) {
+      if (poller != null) {
+        stopPoller()
+      }
 
-  private fun poll(): SafeFuture<Unit> {
-    log.debug("Polling EL for new blocks")
-    if (currentTask != null && !currentTask!!.isDone) {
-      log.warn("Current task isn't done. Cancelling it before scheduling the next one.")
-      currentTask!!.cancel(false)
-    }
-
-    val future =
-      SafeFuture
-        .of(
-          ethereumJsonRpcClient.ethGetBlockByNumber(DefaultBlockParameter.valueOf("latest"), true).sendAsync(),
-        ).thenApply {
-          onNewBlock.handleNewBlock(wrapIntoDummyBeaconBlock(it.block.toDomain()))
-        }.handleException {
-          log.error(it.message, it)
-        }.thenCompose {
-          SafeFuture
-            .runAsync(
-              {
-                poll()
-              },
-              SafeFuture.delayedExecutor(blockTimeSeconds.toLong(), TimeUnit.SECONDS, executor),
-            ).thenApply { }
+      if (postTtdProtocol != null) {
+        log.debug("Stopping post-TTD protocol")
+        try {
+          postTtdProtocol?.stop()
+        } catch (e: Exception) {
+          log.warn("Error stopping post-TTD protocol", e)
         }
-
-    currentTask = future
-    return future
+      }
+    }
   }
 
-  private fun wrapIntoDummyBeaconBlock(executionPayload: ExecutionPayload): BeaconBlock {
-    val beaconBlockBody = BeaconBlockBody(prevCommitSeals = emptySet(), executionPayload = executionPayload)
-
-    val beaconBlockHeader =
-      BeaconBlockHeader(
-        number = 0u,
-        round = 0u,
-        timestamp = executionPayload.timestamp,
-        proposer = Validator(executionPayload.feeRecipient),
-        parentRoot = EMPTY_HASH,
-        stateRoot = EMPTY_HASH,
-        bodyRoot = EMPTY_HASH,
-        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      )
-    return BeaconBlock(beaconBlockHeader, beaconBlockBody)
+  private fun stopPoller() {
+    log.debug("Stopping ElDelegatedConsensus poller")
+    poller?.cancel()
+    poller = null
   }
 }

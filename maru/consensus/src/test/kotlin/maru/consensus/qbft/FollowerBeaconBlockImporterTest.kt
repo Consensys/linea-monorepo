@@ -10,45 +10,43 @@ package maru.consensus.qbft
 
 import kotlin.random.Random
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.blockimport.BlockBuildingBeaconBlockImporter
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconState
+import maru.core.ExecutionPayload
 import maru.core.ext.DataGenerators
 import maru.executionlayer.manager.ExecutionLayerManager
+import maru.executionlayer.manager.ForkChoiceUpdatedResult
+import maru.executionlayer.manager.PayloadStatus
 import org.apache.tuweni.bytes.Bytes32
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.times
-import org.mockito.Mockito.verify
-import org.mockito.kotlin.any
-import org.mockito.kotlin.eq
-import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class FollowerBeaconBlockImporterTest {
-  private lateinit var executionLayerManager: ExecutionLayerManager
-  private var nextBlockTimestamp: Long = 123456789L
+  private lateinit var executionLayerManagerDouble: FakeExecutionLayerManager
+  private var nextBlockTimestamp = 123456789UL
   private var shouldBuildNextBlock: Boolean = false
   private lateinit var beaconBlockImporter: BlockBuildingBeaconBlockImporter
   private lateinit var finalizationState: FinalizationState
-  private val prevRandaoProvider = { a: ULong, b: ByteArray -> Bytes32.random().toArray() }
+  private val prevRandaoProvider = { _: ULong, _: ByteArray -> Bytes32.random().toArray() }
   private val feeRecipient = Random.nextBytes(20)
 
   @BeforeEach
   fun setUp() {
-    executionLayerManager = mock(ExecutionLayerManager::class.java)
+    executionLayerManagerDouble = FakeExecutionLayerManager()
     finalizationState = FinalizationState(Random.nextBytes(32), Random.nextBytes(32))
 
     beaconBlockImporter =
       BlockBuildingBeaconBlockImporter(
-        executionLayerManager = executionLayerManager,
+        executionLayerManager = executionLayerManagerDouble,
         finalizationStateProvider = { finalizationState },
         nextBlockTimestampProvider = { nextBlockTimestamp },
         prevRandaoProvider = prevRandaoProvider,
-        shouldBuildNextBlock = { _: BeaconState, _: ConsensusRoundIdentifier, _: Long ->
+        shouldBuildNextBlock = { _: BeaconState, _: ConsensusRoundIdentifier, _: ULong ->
           shouldBuildNextBlock
         },
         feeRecipient = feeRecipient,
@@ -61,51 +59,36 @@ class FollowerBeaconBlockImporterTest {
     val randomBeaconBlock = DataGenerators.randomBeaconBlock(1UL)
     val randomBeaconState = DataGenerators.randomBeaconState(1UL)
 
-    val expectedResponse = SafeFuture.completedFuture(DataGenerators.randomValidForkChoiceUpdatedResult())
-    whenever(
-      executionLayerManager.setHeadAndStartBlockBuilding(
-        headHash = eq(randomBeaconBlock.beaconBlockBody.executionPayload.blockHash),
-        safeHash = eq(finalizationState.safeBlockHash),
-        finalizedHash = eq(finalizationState.finalizedBlockHash),
-        nextBlockTimestamp = eq(nextBlockTimestamp),
-        feeRecipient = eq(feeRecipient),
-        prevRandao = any(),
-      ),
-    ).thenReturn(expectedResponse)
-
     val result = beaconBlockImporter.importBlock(randomBeaconState, randomBeaconBlock)
-    assertEquals(expectedResponse, result)
-    verify(executionLayerManager).setHeadAndStartBlockBuilding(
-      headHash = eq(randomBeaconBlock.beaconBlockBody.executionPayload.blockHash),
-      safeHash = eq(finalizationState.safeBlockHash),
-      finalizedHash = eq(finalizationState.finalizedBlockHash),
-      nextBlockTimestamp = eq(nextBlockTimestamp),
-      feeRecipient = eq(feeRecipient),
-      prevRandao = any(),
-    )
+
+    assertEquals(executionLayerManagerDouble.expectedResponse, result)
+
+    val call = executionLayerManagerDouble.setHeadAndStartBlockBuildingCalls.single()
+    assertEquals(randomBeaconBlock.beaconBlockBody.executionPayload.blockHash, call.headHash)
+    assertEquals(finalizationState.safeBlockHash, call.safeHash)
+    assertEquals(finalizationState.finalizedBlockHash, call.finalizedHash)
+    assertEquals(nextBlockTimestamp, call.nextBlockTimestamp)
+    assertEquals(feeRecipient.contentToString(), call.feeRecipient.contentToString())
+
+    assertTrue(executionLayerManagerDouble.setHeadCalls.isEmpty())
   }
 
   @Test
   fun `importBlock should call setHead when shouldBuildNextBlock returns false`() {
+    shouldBuildNextBlock = false
     val randomBeaconBlock = DataGenerators.randomBeaconBlock(1UL)
     val randomBeaconState = DataGenerators.randomBeaconState(1UL)
 
-    val expectedResponse = SafeFuture.completedFuture(DataGenerators.randomValidForkChoiceUpdatedResult())
-    whenever(
-      executionLayerManager.setHead(
-        headHash = eq(randomBeaconBlock.beaconBlockBody.executionPayload.blockHash),
-        safeHash = eq(finalizationState.safeBlockHash),
-        finalizedHash = eq(finalizationState.finalizedBlockHash),
-      ),
-    ).thenReturn(expectedResponse)
-
     val result = beaconBlockImporter.importBlock(randomBeaconState, randomBeaconBlock)
-    assertEquals(expectedResponse, result)
-    verify(executionLayerManager).setHead(
-      headHash = eq(randomBeaconBlock.beaconBlockBody.executionPayload.blockHash),
-      safeHash = eq(finalizationState.safeBlockHash),
-      finalizedHash = eq(finalizationState.finalizedBlockHash),
-    )
+
+    assertEquals(executionLayerManagerDouble.expectedResponse, result)
+
+    val call = executionLayerManagerDouble.setHeadCalls.single()
+    assertEquals(randomBeaconBlock.beaconBlockBody.executionPayload.blockHash, call.headHash)
+    assertEquals(finalizationState.safeBlockHash, call.safeHash)
+    assertEquals(finalizationState.finalizedBlockHash, call.finalizedHash)
+
+    assertTrue(executionLayerManagerDouble.setHeadAndStartBlockBuildingCalls.isEmpty())
   }
 
   @Test
@@ -113,37 +96,173 @@ class FollowerBeaconBlockImporterTest {
     val randomBeaconBlock = DataGenerators.randomBeaconBlock(1UL)
     val randomBeaconState = DataGenerators.randomBeaconState(1UL)
     val expectedConsensusRoundIdentifier = ConsensusRoundIdentifier(2, 0)
-    val shouldBuildNextBlockPredicate: (BeaconState, ConsensusRoundIdentifier, Long) -> Boolean = mock()
-    whenever(
-      shouldBuildNextBlockPredicate.invoke(
-        eq(randomBeaconState),
-        eq(expectedConsensusRoundIdentifier),
-        eq(nextBlockTimestamp),
-      ),
-    ).thenReturn(true)
-    val nextBlockTimestampProvider: NextBlockTimestampProvider = mock()
-    val expectedParentTimestamp = randomBeaconState.beaconBlockHeader.timestamp.toLong()
-    whenever(
-      nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(eq(expectedParentTimestamp)),
-    ).thenReturn(nextBlockTimestamp)
+
+    val shouldBuildNextBlockDouble = FakeShouldBuildNextBlockPredicate()
+    val nextBlockTimestampProviderDouble = FakeNextBlockTimestampProvider(nextBlockTimestamp)
+    val expectedParentTimestamp = randomBeaconState.beaconBlockHeader.timestamp
+
     beaconBlockImporter =
       BlockBuildingBeaconBlockImporter(
-        executionLayerManager = executionLayerManager,
+        executionLayerManager = executionLayerManagerDouble,
         finalizationStateProvider = { finalizationState },
-        nextBlockTimestampProvider = nextBlockTimestampProvider,
+        nextBlockTimestampProvider = nextBlockTimestampProviderDouble,
         prevRandaoProvider = prevRandaoProvider,
-        shouldBuildNextBlock = shouldBuildNextBlockPredicate,
+        shouldBuildNextBlock = shouldBuildNextBlockDouble,
         feeRecipient = feeRecipient,
       )
 
     beaconBlockImporter.importBlock(randomBeaconState, randomBeaconBlock)
 
-    verify(shouldBuildNextBlockPredicate, times(1)).invoke(
-      eq(randomBeaconState),
-      eq
-        (expectedConsensusRoundIdentifier),
-      eq(nextBlockTimestamp),
-    )
-    verify(nextBlockTimestampProvider, times(1)).nextTargetBlockUnixTimestamp(eq(expectedParentTimestamp))
+    // Verify shouldBuildNextBlock was called with correct parameters
+    val shouldBuildCall = shouldBuildNextBlockDouble.calls.single()
+    assertEquals(randomBeaconState, shouldBuildCall.beaconState)
+    assertEquals(expectedConsensusRoundIdentifier, shouldBuildCall.roundIdentifier)
+    assertEquals(nextBlockTimestamp, shouldBuildCall.timestamp)
+
+    // Verify nextBlockTimestampProvider was called with correct parameter
+    val timestampCall = nextBlockTimestampProviderDouble.calls.single()
+    assertEquals(expectedParentTimestamp, timestampCall)
+  }
+
+  data class SetHeadAndStartBlockBuildingCall(
+    val headHash: ByteArray,
+    val safeHash: ByteArray,
+    val finalizedHash: ByteArray,
+    val nextBlockTimestamp: ULong,
+    val feeRecipient: ByteArray,
+    val prevRandao: ByteArray,
+  ) {
+    override fun equals(other: Any?): Boolean {
+      if (this === other) return true
+      if (javaClass != other?.javaClass) return false
+
+      other as SetHeadAndStartBlockBuildingCall
+
+      if (!headHash.contentEquals(other.headHash)) return false
+      if (!safeHash.contentEquals(other.safeHash)) return false
+      if (!finalizedHash.contentEquals(other.finalizedHash)) return false
+      if (nextBlockTimestamp != other.nextBlockTimestamp) return false
+      if (!feeRecipient.contentEquals(other.feeRecipient)) return false
+      if (!prevRandao.contentEquals(other.prevRandao)) return false
+
+      return true
+    }
+
+    override fun hashCode(): Int {
+      var result = headHash.contentHashCode()
+      result = 31 * result + safeHash.contentHashCode()
+      result = 31 * result + finalizedHash.contentHashCode()
+      result = 31 * result + nextBlockTimestamp.hashCode()
+      result = 31 * result + feeRecipient.contentHashCode()
+      result = 31 * result + prevRandao.contentHashCode()
+      return result
+    }
+  }
+
+  data class SetHeadCall(
+    val headHash: ByteArray,
+    val safeHash: ByteArray,
+    val finalizedHash: ByteArray,
+  ) {
+    override fun equals(other: Any?): Boolean {
+      if (this === other) return true
+      if (javaClass != other?.javaClass) return false
+
+      other as SetHeadCall
+
+      if (!headHash.contentEquals(other.headHash)) return false
+      if (!safeHash.contentEquals(other.safeHash)) return false
+      if (!finalizedHash.contentEquals(other.finalizedHash)) return false
+
+      return true
+    }
+
+    override fun hashCode(): Int {
+      var result = headHash.contentHashCode()
+      result = 31 * result + safeHash.contentHashCode()
+      result = 31 * result + finalizedHash.contentHashCode()
+      return result
+    }
+  }
+
+  class FakeExecutionLayerManager : ExecutionLayerManager {
+    val expectedResponse: SafeFuture<ForkChoiceUpdatedResult> =
+      SafeFuture.completedFuture(
+        DataGenerators.randomValidForkChoiceUpdatedResult(),
+      )
+    val setHeadAndStartBlockBuildingCalls = mutableListOf<SetHeadAndStartBlockBuildingCall>()
+    val setHeadCalls = mutableListOf<SetHeadCall>()
+
+    override fun setHeadAndStartBlockBuilding(
+      headHash: ByteArray,
+      safeHash: ByteArray,
+      finalizedHash: ByteArray,
+      nextBlockTimestamp: ULong,
+      feeRecipient: ByteArray,
+      prevRandao: ByteArray,
+    ): SafeFuture<ForkChoiceUpdatedResult> {
+      setHeadAndStartBlockBuildingCalls.add(
+        SetHeadAndStartBlockBuildingCall(
+          headHash,
+          safeHash,
+          finalizedHash,
+          nextBlockTimestamp,
+          feeRecipient,
+          prevRandao,
+        ),
+      )
+      return expectedResponse
+    }
+
+    override fun setHead(
+      headHash: ByteArray,
+      safeHash: ByteArray,
+      finalizedHash: ByteArray,
+    ): SafeFuture<ForkChoiceUpdatedResult> {
+      setHeadCalls.add(SetHeadCall(headHash, safeHash, finalizedHash))
+      return expectedResponse
+    }
+
+    // Implement required abstract methods that aren't used in tests
+    override fun finishBlockBuilding(): SafeFuture<ExecutionPayload> =
+      SafeFuture.completedFuture(DataGenerators.randomExecutionPayload())
+
+    override fun getLatestBlockHash(): SafeFuture<ByteArray> = SafeFuture.completedFuture(Random.nextBytes(32))
+
+    override fun isOnline(): SafeFuture<Boolean> = SafeFuture.completedFuture(true)
+
+    override fun newPayload(executionPayload: ExecutionPayload): SafeFuture<PayloadStatus> =
+      SafeFuture.completedFuture(DataGenerators.randomValidPayloadStatus())
+  }
+
+  data class ShouldBuildNextBlockCall(
+    val beaconState: BeaconState,
+    val roundIdentifier: ConsensusRoundIdentifier,
+    val timestamp: ULong,
+  )
+
+  class FakeShouldBuildNextBlockPredicate : (BeaconState, ConsensusRoundIdentifier, ULong) -> Boolean {
+    val calls = mutableListOf<ShouldBuildNextBlockCall>()
+    var returnValue = true
+
+    override fun invoke(
+      beaconState: BeaconState,
+      roundIdentifier: ConsensusRoundIdentifier,
+      timestamp: ULong,
+    ): Boolean {
+      calls.add(ShouldBuildNextBlockCall(beaconState, roundIdentifier, timestamp))
+      return returnValue
+    }
+  }
+
+  class FakeNextBlockTimestampProvider(
+    private val returnValue: ULong,
+  ) : NextBlockTimestampProvider {
+    val calls = mutableListOf<ULong>()
+
+    override fun nextTargetBlockUnixTimestamp(lastBlockTimestamp: ULong): ULong {
+      calls.add(lastBlockTimestamp)
+      return returnValue
+    }
   }
 }

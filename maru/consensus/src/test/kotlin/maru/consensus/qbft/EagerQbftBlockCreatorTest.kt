@@ -76,7 +76,7 @@ class EagerQbftBlockCreatorTest {
   private val clock = Mockito.mock(Clock::class.java)
   private val validator = Validator(Random.nextBytes(20))
   private val feeRecipient = Random.nextBytes(20)
-  private val prevRandaoProvider = { a: ULong, b: ByteArray -> Bytes32.random().toArray() }
+  private val prevRandaoProvider = { _: ULong, _: ByteArray -> Bytes32.random().toArray() }
   private lateinit var executionLayerManager: ExecutionLayerManager
   private val validatorSet = DataGenerators.randomValidators() + validator
 
@@ -284,7 +284,7 @@ class EagerQbftBlockCreatorTest {
         headHash = genesisBlockHash,
         safeHash = genesisBlockHash,
         finalizedHash = genesisBlockHash,
-        nextBlockTimestamp = rejectedBlockTimestamp,
+        nextBlockTimestamp = rejectedBlockTimestamp.toULong(),
         feeRecipient = validator.address,
       ).get()
     val transaction = BesuTransactionsHelper().createTransfers(1u)
