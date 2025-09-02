@@ -22,8 +22,11 @@ func testPointEval(t *testing.T, withCircuit bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(files) == 0 {
+	switch len(files) {
+	case 0:
 		t.Fatal("no csv files found, please run `go generate` to generate the test data")
+	case 1:
+		t.Log("single CSV file found. For complete testing, generate all test files with `go generate`")
 	}
 	// we test all files found
 	var cmp *wizard.CompiledIOP
