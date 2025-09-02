@@ -12,7 +12,6 @@ import net.consensys.linea.jsonrpc.JsonRpcRequest
 import net.consensys.linea.jsonrpc.JsonRpcRequestListParams
 import net.consensys.linea.jsonrpc.JsonRpcSuccessResponse
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -58,10 +57,6 @@ class LoadBalancingJsonRpcClientTest {
     rpcClient2 = mock()
     loadBalancer =
       LoadBalancingJsonRpcClient.create(listOf(rpcClient1, rpcClient2), maxInflightRequestsPerClient)
-  }
-
-  @AfterEach
-  fun afterEach() {
   }
 
   @Test
