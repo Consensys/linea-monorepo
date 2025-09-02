@@ -49,7 +49,6 @@ import org.hyperledger.besu.ethereum.rlp.RLP;
 import org.hyperledger.besu.ethereum.vm.BlockchainBasedBlockHashLookup;
 import org.hyperledger.besu.evm.EVM;
 import org.hyperledger.besu.evm.account.Account;
-import org.hyperledger.besu.evm.blockhash.BlockHashLookup;
 import org.hyperledger.besu.evm.fluent.SimpleBlockValues;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.log.Log;
@@ -112,11 +111,16 @@ public class ToyExecutionTools {
 
     tracer.traceStartConflation(1);
     tracer.traceStartBlock(worldStateUpdater, blockHeader, blockBody, blockHeader.getCoinbase());
+    final var preExecutionProcessor = protocolSpec.getPreExecutionProcessor();
     if (isPostCancun(fork)) {
       final BlockProcessingContext context =
           new BlockProcessingContext(
-              blockHeader, initialWorldState, protocolSpec, (BlockHashLookup) null, tracer);
-      protocolSpec.getPreExecutionProcessor().process(context);
+              blockHeader,
+              initialWorldState,
+              protocolSpec,
+              preExecutionProcessor.createBlockHashLookup(blockchain, blockHeader),
+              tracer);
+      preExecutionProcessor.process(context);
     }
     TransactionProcessingResult result = null;
     for (Transaction transaction : blockBody.getTransactions()) {
