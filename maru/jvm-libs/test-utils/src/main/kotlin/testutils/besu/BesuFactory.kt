@@ -76,7 +76,6 @@ object BesuFactory {
     }
 
   fun buildSwitchableBesu(
-    switchTimestamp: ULong = 0UL,
     pragueTimestamp: ULong = 0UL,
     ttd: ULong = 0UL,
     validator: Boolean,
@@ -90,7 +89,7 @@ object BesuFactory {
 
     val genesisFile =
       genesisContent
-        .replace("\"shanghaiTime\": 0", "\"shanghaiTime\": $switchTimestamp")
+        .replace("\"shanghaiTime\": 0", "\"shanghaiTime\": $pragueTimestamp")
         .replace("\"cancunTime\": 0", "\"cancunTime\": $pragueTimestamp")
         .replace("\"pragueTime\": 0", "\"pragueTime\": $pragueTimestamp")
         .replace("\"terminalTotalDifficulty\": 0", "\"terminalTotalDifficulty\": $ttd")

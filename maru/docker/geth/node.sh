@@ -1,44 +1,34 @@
 #!/usr/bin/env bash
 set -Eeu
 
-if [ $# -lt 4 ]; then
-    echo "Usage: $0 networkid genesisfile gasprice gaslimit datadir"
-    echo Example: $0 12345 /genesis.json
+if [ $# -lt 1 ]; then
+    echo "Usage: $0 genesisfile"
+    echo Example: "$0" /genesis.json
     exit
 fi
 
-source ./scripts/functions.sh
-networkid=$1
-genesisfile=$2
-gasprice=$3
-gaslimit=$4
-datadir=$5
+genesisfile=$1
 
-: ${ETHSTATS_URL:=""} #default to empty
+function prepareDatadir {
+  datadir=$1
+  genesisfile=$2
+  if [ ! -d "$datadir"/geth ]; then
+    echo -e "\n\n----------> A new data directory '$datadir' will be created!"
+    geth --datadir "$datadir" init "$genesisfile"
+    echo -e "----------> A new data directory '$datadir' created!\n\n"
+  else
+    echo -e "\n\n----------> Data directory '$datadir' already exists! Contents:"
+    find "$datadir"
+    echo -e "\n\n"
+  fi
+}
 
-echo datadir=$datadir
-echo networkid=$networkid
-echo genesisfile=$genesisfile
-echo gasprice=$gasprice
-echo gaslimit=$gaslimit
+echo genesisfile="$genesisfile"
 
-prepareDatadir $datadir $genesisfile
+prepareDatadir "/data" "$genesisfile"
 
-echo "Starting geth with BOOTNODE enabled on port '30301'"
-exec geth --datadir $datadir \
- --networkid $networkid \
- --miner.gasprice $gasprice \
- --miner.gaslimit $gaslimit \
- --http --http.addr '0.0.0.0' --http.port 8545 --http.corsdomain '*' --http.api 'admin,engine,eth,miner,net,web3,personal,txpool,debug' --http.vhosts="*" \
- --ws --ws.addr '0.0.0.0' --ws.port 8546 --ws.origins '*' --ws.api 'admin,eth,miner,net,web3,personal,txpool,debug' \
- --port 30301 \
- --ethstats "$ETHSTATS_URL" \
- --bootnodes $BOOTNODES \
- --netrestrict "11.11.11.0/24" \
- --log.vmodule eth/*=5 \
- --txpool.nolocals  \
- --authrpc.port 8551 \
- --authrpc.addr=0.0.0.0 \
- --authrpc.vhosts=* \
+echo "Starting geth"
+exec geth --config=/scripts/config.toml \
  --authrpc.jwtsecret /jwt \
- --syncmode "snap"
+ --bootnodes "$BOOTNODES" \
+ --log.vmodule eth/*=5

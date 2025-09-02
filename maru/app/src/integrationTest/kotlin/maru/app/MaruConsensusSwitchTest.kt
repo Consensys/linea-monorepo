@@ -79,7 +79,6 @@ class MaruConsensusSwitchTest {
     besuNode: BesuNode,
     expectedBlocksInClique: Int,
     totalBlocksToProduce: Int,
-    shanghaiTimestamp: ULong,
     pragueTimestamp: ULong,
   ) {
     val blockProducedByClique = besuNode.ethGetBlockByNumber(1UL)
@@ -89,13 +88,11 @@ class MaruConsensusSwitchTest {
     assertThat(blockProducedAfterSwitch.extraData.decodeHex().size).isLessThanOrEqualTo(VANILLA_EXTRA_DATA_LENGTH)
 
     val blocks = besuNode.getMinedBlocks(totalBlocksToProduce)
-    val shanghaiSwitchBlock = blocks.findSwitchBlock(shanghaiTimestamp)!!
-    val preShanghaiBlocks = blocks.subList(0, shanghaiSwitchBlock)
-    preShanghaiBlocks.verifyBlockTime()
-    assertThat(preShanghaiBlocks).hasSizeGreaterThan(expectedBlocksInClique)
-    // Check that there are Prague blocks
     val pragueSwitchBlock = blocks.findSwitchBlock(pragueTimestamp)!!
-    blocks.subList(shanghaiSwitchBlock, pragueSwitchBlock).verifyBlockTime()
+    val prePragueBlocks = blocks.subList(0, pragueSwitchBlock)
+    prePragueBlocks.verifyBlockTime()
+    assertThat(prePragueBlocks).hasSizeGreaterThan(expectedBlocksInClique)
+    // Check that there are Prague blocks
     blocks.subList(pragueSwitchBlock, blocks.size).verifyBlockTime()
   }
 
@@ -104,26 +101,22 @@ class MaruConsensusSwitchTest {
     val stackStartupMargin = 30UL
     val expectedBlocksInClique = 5
     var currentTimestamp = (System.currentTimeMillis() / 1000).toULong()
-    val shanghaiTimestamp = currentTimestamp + stackStartupMargin + expectedBlocksInClique.toULong()
-    val pragueTimestamp = shanghaiTimestamp + 5UL
+    val pragueTimestamp = currentTimestamp + stackStartupMargin + expectedBlocksInClique.toULong()
     val totalBlocksToProduce = (pragueTimestamp - currentTimestamp).toInt()
     val ttd = expectedBlocksInClique.toULong() * 2UL
     log.info(
-      "Setting Shanghai switch timestamp to $shanghaiTimestamp, Prague switch timestamp to $pragueTimestamp, " +
-        "current timestamp: $currentTimestamp",
+      "Setting Prague switch timestamp to $pragueTimestamp, current timestamp: $currentTimestamp",
     )
 
     // Initialize Besu with the same switch timestamp
     validatorBesuNode =
       BesuFactory.buildSwitchableBesu(
-        switchTimestamp = shanghaiTimestamp,
         pragueTimestamp = pragueTimestamp,
         ttd = ttd,
         validator = true,
       )
     followerBesuNode =
       BesuFactory.buildSwitchableBesu(
-        switchTimestamp = shanghaiTimestamp,
         pragueTimestamp = pragueTimestamp,
         ttd = ttd,
         validator = false,
@@ -134,7 +127,7 @@ class MaruConsensusSwitchTest {
     val validatorEthereumJsonRpcBaseUrl = validatorBesuNode.jsonRpcBaseUrl().get()
     val validatorEngineRpcUrl = validatorBesuNode.engineRpcUrl().get()
 
-    val maruFactory = MaruFactory(shanghaiTimestamp = shanghaiTimestamp, pragueTimestamp = pragueTimestamp, ttd = ttd)
+    val maruFactory = MaruFactory(pragueTimestamp = pragueTimestamp, ttd = ttd)
     validatorMaruNode =
       maruFactory.buildSwitchableTestMaruValidatorWithP2pPeering(
         ethereumJsonRpcUrl = validatorEthereumJsonRpcBaseUrl,
@@ -169,8 +162,6 @@ class MaruConsensusSwitchTest {
     }
 
     currentTimestamp = (System.currentTimeMillis() / 1000).toULong()
-    log.info("Current timestamp: $currentTimestamp, shanghai switch timestamp: $shanghaiTimestamp")
-    assertThat(currentTimestamp).isGreaterThan(shanghaiTimestamp)
     log.info("Current timestamp: $currentTimestamp, prague switch timestamp: $pragueTimestamp")
     assertThat(currentTimestamp).isGreaterThan(pragueTimestamp)
 
@@ -178,14 +169,12 @@ class MaruConsensusSwitchTest {
       besuNode = validatorBesuNode,
       expectedBlocksInClique = expectedBlocksInClique,
       totalBlocksToProduce = totalBlocksToProduce,
-      shanghaiTimestamp = shanghaiTimestamp,
       pragueTimestamp = pragueTimestamp,
     )
     verifyConsensusSwitch(
       besuNode = followerBesuNode,
       expectedBlocksInClique = expectedBlocksInClique,
       totalBlocksToProduce = totalBlocksToProduce,
-      shanghaiTimestamp = shanghaiTimestamp,
       pragueTimestamp = pragueTimestamp,
     )
   }
