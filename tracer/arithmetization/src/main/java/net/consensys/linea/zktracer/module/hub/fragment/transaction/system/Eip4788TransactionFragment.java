@@ -15,9 +15,9 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.transaction.system;
 
+import static net.consensys.linea.zktracer.Trace.HISTORY_SERVE_WINDOW;
 import static net.consensys.linea.zktracer.Trace.LLARGE;
 import static net.consensys.linea.zktracer.module.hub.fragment.transaction.system.SystemTransactionFragmentType.EIP4788_BEACON_BLOCK_ROOT;
-import static org.hyperledger.besu.ethereum.mainnet.ParentBeaconBlockRootHelper.HISTORY_BUFFER_LENGTH;
 
 import net.consensys.linea.zktracer.Trace;
 import org.apache.tuweni.bytes.Bytes;
@@ -40,7 +40,7 @@ public class Eip4788TransactionFragment extends SystemTransactionFragment {
     return trace
         .pTransactionEip4788(true)
         .pTransactionSystTxnData1(Bytes.ofUnsignedLong(timestamp))
-        .pTransactionSystTxnData2(Bytes.ofUnsignedLong(timestamp % HISTORY_BUFFER_LENGTH))
+        .pTransactionSystTxnData2(Bytes.ofUnsignedLong(timestamp % HISTORY_SERVE_WINDOW))
         .pTransactionSystTxnData3(beaconroot.slice(0, LLARGE))
         .pTransactionSystTxnData4(beaconroot.slice(LLARGE, LLARGE));
   }

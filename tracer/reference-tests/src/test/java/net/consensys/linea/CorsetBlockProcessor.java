@@ -36,11 +36,13 @@ import org.hyperledger.besu.ethereum.core.MutableWorldState;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.core.TransactionReceipt;
 import org.hyperledger.besu.ethereum.mainnet.*;
+import org.hyperledger.besu.ethereum.mainnet.systemcall.BlockProcessingContext;
 import org.hyperledger.besu.ethereum.processing.TransactionProcessingResult;
 import org.hyperledger.besu.ethereum.trie.pathbased.bonsai.worldview.BonsaiWorldState;
 import org.hyperledger.besu.ethereum.trie.pathbased.bonsai.worldview.BonsaiWorldStateUpdateAccumulator;
 import org.hyperledger.besu.ethereum.vm.BlockchainBasedBlockHashLookup;
 import org.hyperledger.besu.evm.blockhash.BlockHashLookup;
+import org.hyperledger.besu.evm.tracing.OperationTracer;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 
 @Slf4j
@@ -85,12 +87,16 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
     long currentGasUsed = 0;
 
     final ProtocolSpec protocolSpec = protocolSchedule.getByBlockHeader(blockHeader);
+    final var preExecutionProcessor = protocolSpec.getPreExecutionProcessor();
 
-    if (blockHeader.getParentBeaconBlockRoot().isPresent()) {
-      final WorldUpdater updater = worldState.updater();
-      ParentBeaconBlockRootHelper.storeParentBeaconBlockRoot(
-          updater, blockHeader.getTimestamp(), blockHeader.getParentBeaconBlockRoot().get());
-    }
+    final BlockProcessingContext blockProcessingContext =
+        new BlockProcessingContext(
+            blockHeader,
+            worldState,
+            protocolSpec,
+            preExecutionProcessor.createBlockHashLookup(blockchain, blockHeader),
+            OperationTracer.NO_TRACING);
+    preExecutionProcessor.process(blockProcessingContext);
 
     for (final Transaction transaction : transactions) {
       if (!hasAvailableBlockBudget(blockHeader, transaction, currentGasUsed)) {
