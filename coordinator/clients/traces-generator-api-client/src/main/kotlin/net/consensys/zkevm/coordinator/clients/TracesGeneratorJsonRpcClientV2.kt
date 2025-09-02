@@ -57,13 +57,10 @@ class TracesGeneratorJsonRpcClientV2(
   ): SafeFuture<Result<GetTracesCountersResponse, ErrorResponse<TracesServiceErrorType>>> {
     val jsonRequest = requestBuilder.buildGetTracesCountersV2Request(blockNumber)
 
-    return rpcClient.makeRequest(jsonRequest).toSafeFuture()
-      .thenApply { responseResult ->
-        responseResult.mapEither(
-          TracesClientResponsesParser::parseTracesCounterResponseV2,
-          TracesClientResponsesParser::mapErrorResponseV2,
-        )
-      }
+    return executeWithFallback(
+      jsonRequest,
+      TracesClientResponsesParser::parseTracesCounterResponseV2,
+    ) { createFallbackTracesCountersResponse() }
   }
 
   override fun generateConflatedTracesToFile(
