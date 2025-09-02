@@ -76,9 +76,9 @@ object BesuFactory {
     }
 
   fun buildSwitchableBesu(
-    switchTimestamp: Long = 0,
-    pragueTimestamp: Long = 0,
-    expectedBlocksInClique: Int = 0,
+    switchTimestamp: ULong = 0UL,
+    pragueTimestamp: ULong = 0UL,
+    ttd: ULong = 0UL,
     validator: Boolean,
   ): BesuNode {
     val genesisContent =
@@ -88,7 +88,6 @@ object BesuFactory {
         ?.use { it.readText() }
         ?: throw IllegalStateException("Could not read genesis file: $PRAGUE_GENESIS")
 
-    val ttd = expectedBlocksInClique * 2
     val genesisFile =
       genesisContent
         .replace("\"shanghaiTime\": 0", "\"shanghaiTime\": $switchTimestamp")

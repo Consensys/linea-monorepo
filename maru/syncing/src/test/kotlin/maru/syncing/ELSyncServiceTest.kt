@@ -44,13 +44,13 @@ class ELSyncServiceTest {
       forks =
         listOf(
           ForkSpec(
-            blockTimeSeconds = 1,
+            blockTimeSeconds = 1U,
             configuration =
               QbftConsensusConfig(
                 elFork = ElFork.Shanghai,
                 validatorSet = emptySet(),
               ),
-            timestampSeconds = switchTimestamp.toLong(),
+            timestampSeconds = switchTimestamp,
           ),
         ),
     )

@@ -27,7 +27,12 @@ class JsonFriendlyForksScheduleTest {
       "config": {
         "2": {
           "type": "delegated",
-          "blockTimeSeconds": 4
+          "blockTimeSeconds": 4,
+          "postTtdConfig": {
+            "validatorSet": ["0x121212ec3215d8ade8a33607f2cf0f4f60e5f0d0"],
+            "elFork": "Paris"
+          },
+          "terminalTotalDifficulty": 12
         },
         "4": {
           "type": "qbft",
@@ -51,13 +56,19 @@ class JsonFriendlyForksScheduleTest {
         1337u,
         setOf(
           ForkSpec(
-            timestampSeconds = 2,
-            blockTimeSeconds = 4,
-            ElDelegatedConfig,
+            timestampSeconds = 2UL,
+            blockTimeSeconds = 4U,
+            ElDelegatedConfig(
+              QbftConsensusConfig(
+                validatorSet = setOf(Validator("0x121212ec3215d8ade8a33607f2cf0f4f60e5f0d0".fromHexToByteArray())),
+                elFork = ElFork.Paris,
+              ),
+              terminalTotalDifficulty = 12U,
+            ),
           ),
           ForkSpec(
-            timestampSeconds = 4,
-            blockTimeSeconds = 6,
+            timestampSeconds = 4UL,
+            blockTimeSeconds = 6U,
             configuration =
               QbftConsensusConfig(
                 validatorSet = setOf(Validator("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0".fromHexToByteArray())),

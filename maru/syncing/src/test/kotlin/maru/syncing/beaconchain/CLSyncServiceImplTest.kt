@@ -41,7 +41,7 @@ import maru.extensions.fromHexToByteArray
 import maru.p2p.P2PNetworkImpl
 import maru.p2p.PeerLookup
 import maru.p2p.messages.StatusMessageFactory
-import maru.serialization.ForkIdSerializers
+import maru.serialization.ForkIdSerializer
 import maru.serialization.rlp.RLPSerializers
 import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory.Config
 import net.consensys.linea.metrics.Counter
@@ -392,7 +392,7 @@ class CLSyncServiceImplTest {
         metricsSystem = TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
-        forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
+        forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
         p2PState = p2PState,
       )
     return p2pNetworkImpl
@@ -446,13 +446,13 @@ class CLSyncServiceImplTest {
           ),
         elFork = ElFork.Prague,
       )
-    val forksSchedule = ForksSchedule(CHAIN_ID, listOf(ForkSpec(0L, 1, consensusConfig)))
+    val forksSchedule = ForksSchedule(CHAIN_ID, listOf(ForkSpec(0UL, 1u, consensusConfig)))
 
     return ForkIdHashProviderImpl(
       chainId = CHAIN_ID,
       beaconChain = beaconChain,
       forksSchedule = forksSchedule,
-      forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
+      forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
     )
   }
 

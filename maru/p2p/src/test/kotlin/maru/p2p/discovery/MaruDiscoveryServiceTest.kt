@@ -33,7 +33,7 @@ import maru.database.P2PState
 import maru.p2p.discovery.MaruDiscoveryService.Companion.FORK_ID_HASH_FIELD_NAME
 import maru.p2p.discovery.MaruDiscoveryService.Companion.convertSafeNodeRecordToDiscoveryPeer
 import maru.p2p.discovery.MaruDiscoveryService.Companion.isValidNodeRecord
-import maru.serialization.ForkIdSerializers
+import maru.serialization.ForkIdSerializer
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.crypto.SECP256K1
 import org.assertj.core.api.Assertions.assertThat
@@ -76,7 +76,7 @@ class MaruDiscoveryServiceTest {
           ),
         elFork = ElFork.Prague,
       )
-    val forkSpec = ForkSpec(0L, 1, consensusConfig)
+    val forkSpec = ForkSpec(0UL, 1u, consensusConfig)
     val forksSchedule = ForksSchedule(chainId = chainId, forks = listOf(forkSpec))
 
     private val forkIdHashProvider =
@@ -84,10 +84,10 @@ class MaruDiscoveryServiceTest {
         chainId = chainId,
         beaconChain = beaconChain,
         forksSchedule = forksSchedule,
-        forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
+        forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
       )
 
-    val otherForkSpec = ForkSpec(1L, 1, consensusConfig)
+    val otherForkSpec = ForkSpec(1UL, 1u, consensusConfig)
   }
 
   private lateinit var p2PState: P2PState
@@ -198,7 +198,7 @@ class MaruDiscoveryServiceTest {
       )
     val differentForkIdHash =
       Bytes.wrap(
-        ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash).hash(differentForkId),
+        ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash).hash(differentForkId),
       )
     service.updateForkIdHash(differentForkIdHash)
 

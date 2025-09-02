@@ -63,8 +63,7 @@ class ForkIdHashProviderImpl(
           forksSchedule.getForkByTimestamp(
             beaconChain
               .getLatestBeaconState()
-              .beaconBlockHeader.timestamp
-              .toLong(),
+              .beaconBlockHeader.timestamp,
           ),
         genesisRootHash =
           beaconChain.getBeaconState(0u)?.beaconBlockHeader?.hash

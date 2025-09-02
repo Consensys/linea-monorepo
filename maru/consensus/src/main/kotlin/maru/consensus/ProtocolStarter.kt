@@ -99,7 +99,7 @@ class ProtocolStarter(
   }
 
   private fun checkAndHandleForkTransition() {
-    val currentTimestamp = clock.instant().epochSecond
+    val currentTimestamp = clock.instant().epochSecond.toULong()
     val nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(currentTimestamp)
     val nextForkSpec = forksSchedule.getForkByTimestamp(nextBlockTimestamp)
 

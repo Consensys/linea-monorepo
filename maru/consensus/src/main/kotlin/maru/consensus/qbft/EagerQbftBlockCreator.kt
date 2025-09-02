@@ -67,7 +67,7 @@ class EagerQbftBlockCreator(
           headHash = headHash,
           safeHash = finalizedState.safeBlockHash,
           finalizedHash = finalizedState.finalizedBlockHash,
-          nextBlockTimestamp = headerTimeStampSeconds,
+          nextBlockTimestamp = headerTimeStampSeconds.toULong(),
           feeRecipient = feeRecipient,
           prevRandao =
             prevRandaoProvider.calculateNextPrevRandao(

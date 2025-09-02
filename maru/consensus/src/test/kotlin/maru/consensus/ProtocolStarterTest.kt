@@ -45,9 +45,9 @@ class ProtocolStarterTest {
   private val protocol2 = StubProtocol()
 
   private val protocolConfig1 = object : ConsensusConfig {}
-  private val forkSpec1 = ForkSpec(0, 5, protocolConfig1)
+  private val forkSpec1 = ForkSpec(0UL, 5u, protocolConfig1)
   private val protocolConfig2 = object : ConsensusConfig {}
-  private val forkSpec2 = ForkSpec(15, 2, protocolConfig2)
+  private val forkSpec2 = ForkSpec(15UL, 2u, protocolConfig2)
 
   private val mockSyncStatusProvider = mock<SyncStatusProvider>()
 

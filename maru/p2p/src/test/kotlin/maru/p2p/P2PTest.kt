@@ -34,7 +34,7 @@ import maru.database.InMemoryBeaconChain
 import maru.database.InMemoryP2PState
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusMessageFactory
-import maru.serialization.ForkIdSerializers
+import maru.serialization.ForkIdSerializer
 import maru.serialization.rlp.RLPSerializers
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -115,13 +115,13 @@ class P2PTest {
             ),
           elFork = ElFork.Prague,
         )
-      val forksSchedule = ForksSchedule(chainId, listOf(ForkSpec(0L, 1, consensusConfig)))
+      val forksSchedule = ForksSchedule(chainId, listOf(ForkSpec(0UL, 1u, consensusConfig)))
 
       return ForkIdHashProviderImpl(
         chainId = chainId,
         beaconChain = beaconChain,
         forksSchedule = forksSchedule,
-        forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
+        forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
       )
     }
 
@@ -153,7 +153,7 @@ class P2PTest {
         metricsSystem = NoOpMetricsSystem(),
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
-        forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
+        forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
         p2PState = p2PState,
       )
   }

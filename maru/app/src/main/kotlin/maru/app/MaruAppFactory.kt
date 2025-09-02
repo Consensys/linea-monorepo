@@ -56,7 +56,7 @@ import maru.p2p.P2PNetworkDataProvider
 import maru.p2p.P2PNetworkImpl
 import maru.p2p.P2PPeersHeadBlockProvider
 import maru.p2p.messages.StatusMessageFactory
-import maru.serialization.ForkIdSerializers
+import maru.serialization.ForkIdSerializer
 import maru.serialization.rlp.RLPSerializers
 import maru.syncing.AlwaysSyncedController
 import maru.syncing.BeaconSyncControllerImpl
@@ -121,19 +121,11 @@ class MaruAppFactory {
         }
 
     val qbftFork = beaconGenesisConfig.getForkByConfigType(QbftConsensusConfig::class)
-    val qbftForkTimestamp = qbftFork.timestampSeconds.toULong()
     val qbftConfig = qbftFork.configuration as QbftConsensusConfig
-    BeaconChainInitialization(
-      beaconChain = kvDatabase,
-      genesisTimestamp = qbftForkTimestamp,
-    ).ensureDbIsInitialized(
-      validatorSet = qbftConfig.validatorSet,
-    )
 
     val forkIdHasher =
       ForkIdHasher(
-        ForkIdSerializers
-          .ForkIdSerializer,
+        ForkIdSerializer,
         Hashing::shortShaHash,
       )
     val forkIdHashProvider =
@@ -382,14 +374,9 @@ class MaruAppFactory {
     beaconChain: BeaconChain,
   ) {
     val qbftForkConfig = beaconGenesisConfig.getForkByConfigType(QbftConsensusConfig::class)
-    val qbftForkTimestamp =
-      qbftForkConfig
-        .timestampSeconds
-        .toULong()
     val beaconChainInitialization =
       BeaconChainInitialization(
         beaconChain = beaconChain,
-        genesisTimestamp = qbftForkTimestamp,
       )
     val qbftConsensusConfig = qbftForkConfig.configuration as QbftConsensusConfig
     beaconChainInitialization.ensureDbIsInitialized(qbftConsensusConfig.validatorSet)

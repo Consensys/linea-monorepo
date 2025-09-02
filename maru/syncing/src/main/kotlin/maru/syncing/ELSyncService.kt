@@ -14,7 +14,9 @@ import java.util.UUID
 import kotlin.concurrent.timerTask
 import kotlin.time.Duration
 import maru.config.consensus.ElFork
+import maru.config.consensus.delegated.ElDelegatedConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.state.FinalizationProvider
 import maru.core.GENESIS_EXECUTION_PAYLOAD
@@ -102,12 +104,13 @@ class ELSyncService(
     }
 
     val finalizationState = finalizationProvider(latestBeaconBlockBody)
-    val forkSpec = forksSchedule.getForkByTimestamp(latestBeaconBlockHeader.timestamp.toLong())
+    val forkSpec = forksSchedule.getForkByTimestamp(latestBeaconBlockHeader.timestamp)
     val elFork =
       when (forkSpec.configuration) {
         is QbftConsensusConfig -> (forkSpec.configuration as QbftConsensusConfig).elFork
+        is ElDelegatedConfig -> extractEvmForkFromDelegatedConsensus(forkSpec)
         else -> throw IllegalStateException(
-          "Current fork isn't QBFT, this case is not supported yet! forkSpec=$forkSpec",
+          "Current fork isn't QBFT nor ElDelegated, this case is not supported yet! forkSpec=$forkSpec",
         )
       }
     val executionLayerManager =
@@ -154,6 +157,9 @@ class ELSyncService(
 
     onStatusChange(newELSyncStatus)
   }
+
+  private fun extractEvmForkFromDelegatedConsensus(forkSpec: ForkSpec): ElFork =
+    ((forkSpec.configuration as ElDelegatedConfig).postTtdConfig as QbftConsensusConfig).elFork
 
   override fun start() {
     synchronized(this) {

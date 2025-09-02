@@ -30,7 +30,7 @@ class JsonRpcExecutionLayerManager(
     headHash: ByteArray,
     safeHash: ByteArray,
     finalizedHash: ByteArray,
-    nextBlockTimestamp: Long,
+    nextBlockTimestamp: ULong,
     feeRecipient: ByteArray,
     prevRandao: ByteArray,
   ): SafeFuture<ForkChoiceUpdatedResult> {

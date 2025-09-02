@@ -45,7 +45,7 @@ data class ForkChoiceUpdatedResult(
 }
 
 data class PayloadAttributes(
-  val timestamp: Long,
+  val timestamp: ULong,
   val prevRandao: ByteArray = EMPTY_HASH,
   val suggestedFeeRecipient: ByteArray,
 ) {
@@ -79,7 +79,7 @@ interface ExecutionLayerManager {
     headHash: ByteArray,
     safeHash: ByteArray,
     finalizedHash: ByteArray,
-    nextBlockTimestamp: Long,
+    nextBlockTimestamp: ULong,
     feeRecipient: ByteArray,
     prevRandao: ByteArray = EMPTY_HASH,
   ): SafeFuture<ForkChoiceUpdatedResult>

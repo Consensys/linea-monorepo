@@ -24,6 +24,7 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
+import linea.kotlin.toULong
 import maru.app.MaruApp
 import maru.config.ApiEndpointConfig
 import maru.config.FollowersConfig
@@ -64,9 +65,10 @@ class CliqueToPosTest {
         .projectName(ProjectName.fromString("maru-e2e-" + UUID.randomUUID().toString().take(8)))
         .waitingForService("sequencer", HealthChecks.toHaveAllPortsOpen())
         .build()
-    private var forksTimestamps = emptyMap<String, Long>()
-    private var shanghaiTimestamp: Long = 0
-    private var pragueTimestamp: Long = 0
+    private var forksTimestamps = emptyMap<String, ULong>()
+    private var shanghaiTimestamp: ULong = 0UL
+    private var pragueTimestamp: ULong = 0UL
+    private var ttd: ULong = 0UL
     private lateinit var maruFactory: MaruFactory
 
     @TempDir
@@ -84,13 +86,13 @@ class CliqueToPosTest {
     // Will only be used in the sync from scratch tests
     private var maruFollower: MaruApp? = null
 
-    private fun parseForks(forks: List<String>): Map<String, Long> {
+    private fun parseForks(forks: List<String>): Map<String, ULong> {
       val objectMapper = ObjectMapper()
       val genesisTree = objectMapper.readTree(File(genesisDir, "genesis-besu.json"))
       return forks
         .map { forkId ->
           val switchTime = genesisTree.at("/config/$forkId").asLong()
-          forkId to switchTime
+          forkId to switchTime.toULong()
         }.associate { it }
     }
 
@@ -110,25 +112,27 @@ class CliqueToPosTest {
     fun beforeAll() {
       deleteGenesisFiles()
       qbftCluster.before()
-      forksTimestamps = parseForks(listOf("shanghaiTime", "cancunTime", "pragueTime"))
+      forksTimestamps = parseForks(listOf("shanghaiTime", "cancunTime", "pragueTime", "terminalTotalDifficulty"))
       shanghaiTimestamp = forksTimestamps["shanghaiTime"]!!
       pragueTimestamp = forksTimestamps["pragueTime"]!!
+      ttd = forksTimestamps["terminalTotalDifficulty"]!!
       maruFactory =
         MaruFactory(
           validatorPrivateKey = VALIDATOR_PRIVATE_KEY_WITH_PREFIX.fromHexToByteArray(),
           shanghaiTimestamp = shanghaiTimestamp,
           pragueTimestamp = pragueTimestamp,
+          ttd = ttd,
         )
     }
 
     @AfterAll
     @JvmStatic
     fun afterAll() {
-      qbftCluster.after()
       if (::maruSequencer.isInitialized) {
         maruSequencer.stop()
         maruSequencer.close()
       }
+      qbftCluster.after()
 
       TestEnvironment.allClients.values.forEach { web3j ->
         web3j.shutdown()
@@ -230,25 +234,29 @@ class CliqueToPosTest {
   fun networkCanBeSwitched() {
     maruSequencer = buildValidatorMaruWithMultipleFollowers()
     maruSequencer.start()
-    sendCliqueTransactions()
+    val cliqueTransactions = 10
+    sendCliqueTransactions(cliqueTransactions)
     everyoneArePeered()
     waitTillTimestamp(shanghaiTimestamp, "shanghaiTime")
 
+    val shanghaiTransactions = 4
     log.info("Sequencer has switched to PoS")
-    repeat(4) {
+    repeat(shanghaiTransactions) {
       transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
     }
 
-    val postMergeBlock = getBlockByNumber(6)!!
-    assertThat(postMergeBlock.timestamp.toLong()).isGreaterThanOrEqualTo(shanghaiTimestamp)
+    val postMergeBlock = getBlockByNumber(cliqueTransactions.toLong() + 1)!!
+    assertThat(postMergeBlock.timestamp.toULong()).isGreaterThanOrEqualTo(shanghaiTimestamp)
 
+    val pragueTransactions = 4
     waitTillTimestamp(pragueTimestamp, "pragueTime")
     log.info("Sequencer has switched to Prague")
-    repeat(4) {
+    repeat(pragueTransactions) {
       transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
     }
 
-    assertNodeBlockHeight(TestEnvironment.sequencerL2Client, 13)
+    val resultingBlockNumber = cliqueTransactions + shanghaiTransactions + pragueTransactions.toLong()
+    assertNodeBlockHeight(TestEnvironment.sequencerL2Client, resultingBlockNumber)
 
     waitForAllNodesToBeInSyncToMatch()
   }
@@ -318,20 +326,22 @@ class CliqueToPosTest {
   }
 
   private fun waitTillTimestamp(
-    timestamp: Long,
+    timestamp: ULong,
     timestampFork: String,
   ) {
-    val unixTimestamp = System.currentTimeMillis() / 1000
+    val unixTimestamp = currentTimestamp()
     log.info("Waiting ${timestamp - unixTimestamp} seconds for the $timestampFork at timestamp $timestamp")
     await
       .timeout(2.minutes.toJavaDuration())
       .pollInterval(500.milliseconds.toJavaDuration())
       .untilAsserted {
-        val unixTimestamp = System.currentTimeMillis() / 1000
+        val unixTimestamp = currentTimestamp()
         log.debug("Waiting ${timestamp - unixTimestamp} seconds for the $timestampFork at timestamp $timestamp")
         assertThat(unixTimestamp).isGreaterThanOrEqualTo(timestamp)
       }
   }
+
+  private fun currentTimestamp(): ULong = (System.currentTimeMillis() / 1000).toULong()
 
   private fun restartNodeFromScratch(
     nodeName: String,
@@ -381,12 +391,12 @@ class CliqueToPosTest {
       }
   }
 
-  private fun sendCliqueTransactions() {
+  private fun sendCliqueTransactions(cliqueTransactions: Int) {
     val sequencerBlock = TestEnvironment.sequencerL2Client.ethBlockNumber().send()
-    if (sequencerBlock.blockNumber >= BigInteger.valueOf(5)) {
+    if (sequencerBlock.blockNumber >= BigInteger.valueOf(cliqueTransactions.toLong())) {
       return
     }
-    repeat(5) { transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() } }
+    repeat(cliqueTransactions) { transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() } }
   }
 
   private fun assertNodeBlockHeight(
