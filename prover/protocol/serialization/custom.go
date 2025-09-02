@@ -168,7 +168,7 @@ func unmarshalBigInt(_ *Deserializer, val any, _ reflect.Type) (reflect.Value, *
 	}
 }
 
-// marshalArrayOfFieldElement: keep zero-copy-ish packing, add CBOR tag wrapper.
+// marshalArrayOfFieldElement: add CBOR tag wrapper.
 func marshalArrayOfFieldElement(_ *Serializer, val reflect.Value) (any, *serdeError) {
 	var buf = &bytes.Buffer{}
 

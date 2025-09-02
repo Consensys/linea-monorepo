@@ -35,23 +35,6 @@ func initCBORDecMode() {
 	}
 }
 
-/*
-
-// encodeWithCBOR: single-step Marshal, avoids buffer growth + extra copy
-func encodeWithCBOR(x any) (cbor.RawMessage, error) {
-	encInitOnce.Do(initCBOREncMode)
-	return cborEncMode.Marshal(x)
-}
-
-// encodeWithCBORTo streams directly to an io.Writer and avoids building a giant []byte.
-func encodeWithCBORTo(w io.Writer, x any) error {
-	encInitOnce.Do(initCBOREncMode)
-	enc := cborEncMode.NewEncoder(w)
-	return enc.Encode(x)
-}
-
-*/
-
 // encodeWithCBORToBuffer uses a user buffer (if supported by the library) to reduce realloc/copies.
 func encodeWithCBORToBuffer(buf *bytes.Buffer, x any) error {
 	encInitOnce.Do(initCBOREncMode)
