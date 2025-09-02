@@ -41,21 +41,6 @@ func (n NativeFieldOps) FromBinary(a ...frontend.Variable) *frontend.Variable {
 	return &r
 }
 
-func (n NativeFieldOps) Xor(a, b frontend.Variable) frontend.Variable {
-	r := n.api.Xor(a, b)
-	return r
-}
-
-func (n NativeFieldOps) Or(a, b frontend.Variable) frontend.Variable {
-	r := n.api.Or(a, b)
-	return r
-}
-
-func (n NativeFieldOps) And(a, b frontend.Variable) frontend.Variable {
-	r := n.api.And(a, b)
-	return r
-}
-
 func (n NativeFieldOps) Select(a frontend.Variable, i1, i2 *frontend.Variable) *frontend.Variable {
 	r := n.api.Select(a, *i1, *i2)
 	return &r
@@ -71,11 +56,6 @@ func (n NativeFieldOps) IsZero(a *frontend.Variable) frontend.Variable {
 	return r
 }
 
-func (n NativeFieldOps) Cmp(a, b *frontend.Variable) frontend.Variable {
-	r := n.api.Cmp(*a, *b)
-	return r
-}
-
 func (n NativeFieldOps) AssertIsEqual(a, b *frontend.Variable) {
 	n.api.AssertIsEqual(*a, *b)
 }
@@ -84,18 +64,18 @@ func (n NativeFieldOps) AssertIsDifferent(a, b *frontend.Variable) {
 	n.api.AssertIsEqual(*a, *b)
 }
 
-func (n NativeFieldOps) AssertIsBoolean(a frontend.Variable) {
-	n.api.AssertIsBoolean(a)
-}
-
-func (n NativeFieldOps) AssertIsCrumb(a *frontend.Variable) {
-	n.api.AssertIsCrumb(*a)
-}
-
 func (n NativeFieldOps) AssertIsLessOrEqual(v *frontend.Variable, bound *frontend.Variable) {
 	n.api.AssertIsLessOrEqual(*v, *bound)
 }
 
 func (n NativeFieldOps) Println(a ...frontend.Variable) {
 	n.api.Println(a...)
+}
+
+func (n NativeFieldOps) Api() frontend.API {
+	return n.api
+}
+
+func getFieldOpNative(api frontend.API) FieldOps[frontend.Variable] {
+	return NativeFieldOps{api: api}
 }
