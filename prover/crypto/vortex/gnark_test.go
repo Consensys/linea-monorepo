@@ -56,7 +56,7 @@ func (circuit *ComputeLagrangeCircuit) Define(api frontend.API) error {
 func TestComputeLagrangeCircuit(t *testing.T) {
 
 	s := 16
-	d := fft.NewDomain(uint64(s), fft.WithoutPrecompute())
+	d := fft.GetDomainFromCache(uint64(s))
 	var zeta field.Element
 	zeta.SetRandom()
 

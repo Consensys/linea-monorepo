@@ -24,7 +24,7 @@ func TestXMinusOneOnACoset(t *testing.T) {
 	*/
 	one := koalabear.One()
 	for i := 0; i < N; i++ {
-		domainN := fft.NewDomain(uint64(N), fft.WithoutPrecompute())
+		domainN := fft.GetDomainFromCache(uint64(N))
 		expected := domainN.Generator
 		expected.Exp(expected, big.NewInt(int64(i)))
 		expected.Mul(&expected, &domainN.FrMultiplicativeGen)
