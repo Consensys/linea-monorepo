@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -34,23 +35,23 @@ type EvalBivariateProverAction struct {
 }
 
 func (a *EvalBivariateProverAction) Run(assi *wizard.ProverRuntime) {
-	xVal := a.X.GetVal(assi)
+	xVal := a.X.GetValExt(assi)
 	yxPow1mkVal := a.YXPow1mk.GetVal(assi)
 	p := a.PCom.GetColAssignment(assi)
 
-	h := make([]field.Element, a.Length)
-	h[a.Length-1] = p.Get(a.Length - 1)
+	h := make([]fext.Element, a.Length)
+	h[a.Length-1] = p.GetExt(a.Length - 1)
 
 	for i := a.Length - 2; i >= 0; i-- {
-		pi := p.Get(i)
+		pi := p.GetExt(i)
 		if (i+1)%a.NPowX == 0 {
-			h[i].Mul(&h[i+1], &yxPow1mkVal).Add(&h[i], &pi)
+			h[i].MulByElement(&h[i+1], &yxPow1mkVal).Add(&h[i], &pi)
 			continue
 		}
 		h[i].Mul(&h[i+1], &xVal).Add(&h[i], &pi)
 	}
 
-	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.Name, EVAL_BIVARIATE_POLY), smartvectors.NewRegular(h))
+	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.Name, EVAL_BIVARIATE_POLY), smartvectors.NewRegularExt(h))
 	assi.AssignLocalPointExt(ifaces.QueryIDf("%v_%v", a.Name, EVAL_BIVARIATE_FIXED_POINT_BEGIN), h[0])
 }
 

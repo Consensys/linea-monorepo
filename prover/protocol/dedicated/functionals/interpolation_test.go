@@ -1,6 +1,7 @@
 package functionals_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -30,7 +31,7 @@ func TestEvaluateLagrangeMixed(t *testing.T) {
 
 	definer := func(b *wizard.Builder) {
 		p = b.RegisterCommit("P", wp.Len())
-		x = accessors.NewConstant(field.NewElement(2))
+		x = accessors.NewConstant(field.NewElement(0))
 		acc = functionals.Interpolation(b.CompiledIOP, "INTERPOLATE", x, p)
 
 	}
@@ -54,10 +55,14 @@ func TestEvaluateLagrangeMixed(t *testing.T) {
 
 	proof := wizard.Prove(compiled, prover)
 
-	xVal := x.GetValExt(savedRuntime)
+	xVal := x.GetValExt(run)
+	fmt.Printf("x=%v\n", xVal)
+	fmt.Printf("wp=%v\n", wp)
+
 	accY := acc.GetValExt(savedRuntime)
 	expectedY := smartvectors.EvaluateLagrangeMixed(wp, xVal)
 
+	fmt.Printf("acc=%v, exp=%v\n", accY, expectedY)
 	require.Equal(t, accY, expectedY)
 
 	err := wizard.Verify(compiled, proof)
