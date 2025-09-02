@@ -246,5 +246,20 @@ func (e *FromExprAccessor) Round() int {
 }
 
 func (e *FromExprAccessor) IsBase() bool {
-	return e.IsBase()
+	// Check all dependencies in the expression
+	metadata := e.Boarded.ListVariableMetadata()
+
+	for _, m := range metadata {
+		switch castedMetadata := m.(type) {
+		case ifaces.Accessor:
+			if castedMetadata.IsBase() {
+				return true
+			} else {
+				return false
+			}
+		default:
+			panic("unknown data type")
+		}
+	}
+	panic("unknown data type")
 }
