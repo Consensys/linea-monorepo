@@ -38,13 +38,16 @@ func initCBORDecMode() {
 // encodeWithCBORToBuffer uses a user buffer (if supported by the library) to reduce realloc/copies.
 func encodeWithCBORToBuffer(buf *bytes.Buffer, x any) error {
 	encInitOnce.Do(initCBOREncMode)
-	// If the EncMode supports MarshalToBuffer (fxamacker/cbor v2.7+), use it.
+	// If the EncMode supports MarshalToBuffer (fxamacker/cbor v2.7+), use it to encode x directly into buf,
+	// avoiding an intermediate allocation. The encoding is performed in a single pass directly into the buffer,
+	// eliminating the extra copy operation. This reduces CPU usage, particularly for frequent or large serializations.
 	if ub, ok := any(cborEncMode).(interface {
 		MarshalToBuffer(v any, b *bytes.Buffer) error
 	}); ok {
 		return ub.MarshalToBuffer(x, buf)
 	}
-	// Fallback to Marshal then write to the provided buffer.
+	// Fallback to std. Marshal then write to the provided buffer. Note The encoding process is followed by a manual buf.Write(b),
+	// which involves a memory copy from the allocated slice to the buffer. This additional copy adds CPU cycles.
 	b, err := cborEncMode.Marshal(x)
 	if err != nil {
 		return err
