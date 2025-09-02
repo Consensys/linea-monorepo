@@ -108,19 +108,19 @@ type Deserializer struct {
 // PackedObject is the serialized representation of data, designed for CBOR encoding.
 // It stores type metadata, objects, and a payload for the root serialized value.
 type PackedObject struct {
-	Types         []string             `cbor:"a"` // Type names for interfaces.
-	PointedValues []any                `cbor:"c"` // Serialized pointers (as PackedIFace).
-	ColumnIDs     []string             `cbor:"d"` // String IDs for columns.
-	Columns       []PackedStructObject `cbor:"e"` // Serialized columns (as PackedStructObject).
-	CoinIDs       []string             `cbor:"f"` // String IDs for coins.
-	Coins         []PackedCoin         `cbor:"g"` // Serialized coins.
-	QueryIDs      []string             `cbor:"h"` // String IDs for queries.
-	Queries       []PackedStructObject `cbor:"i"` // Serialized queries.
-	Store         [][]any              `cbor:"j"` // Serialized stores (as arrays).
-	CompiledIOP   []PackedStructObject `cbor:"k"` // Serialized CompiledIOPs.
-	Circuits      [][]byte             `cbor:"l"` // Serialized circuits.
-	Expressions   []PackedStructObject `cbor:"m"` // Serialized expressions
-	Payload       any                  `cbor:"n"` // CBOR-encoded root value.
+	Types         []string               `cbor:"a"` // Type names for interfaces.
+	PointedValues []any                  `cbor:"c"` // Serialized pointers (as PackedIFace).
+	ColumnIDs     []string               `cbor:"d"` // String IDs for columns.
+	Columns       []column.PackedNatural `cbor:"e"` // Serialized columns (as PackedNatural).
+	CoinIDs       []string               `cbor:"f"` // String IDs for coins.
+	Coins         []PackedCoin           `cbor:"g"` // Serialized coins.
+	QueryIDs      []string               `cbor:"h"` // String IDs for queries.
+	Queries       []PackedStructObject   `cbor:"i"` // Serialized queries.
+	Store         [][]any                `cbor:"j"` // Serialized stores (as arrays).
+	CompiledIOP   []PackedStructObject   `cbor:"k"` // Serialized CompiledIOPs.
+	Circuits      [][]byte               `cbor:"l"` // Serialized circuits.
+	Expressions   []PackedStructObject   `cbor:"m"` // Serialized expressions
+	Payload       any                    `cbor:"n"` // CBOR-encoded root value.
 }
 
 // PackedIFace serializes an interface value, storing its type index and concrete value.
@@ -385,14 +385,10 @@ func (s *Serializer) PackColumn(c column.Natural) (BackReference, *serdeError) {
 	}
 	idx := len(s.PackedObject.Columns)
 	s.columnMap[id] = idx
-	s.PackedObject.Columns = append(s.PackedObject.Columns, nil)
 
 	packed := c.Pack()
-	marshaled, err := s.PackStructObject(reflect.ValueOf(packed))
-	if err != nil {
-		return 0, err.wrapPath("(column)")
-	}
-	s.PackedObject.Columns[idx] = marshaled
+	s.PackedObject.Columns = append(s.PackedObject.Columns, packed)
+
 	return BackReference(idx), nil
 }
 
@@ -406,13 +402,7 @@ func (d *Deserializer) UnpackColumn(v BackReference) (reflect.Value, *serdeError
 	// It's the first time that 'd' sees the column: it unpacks it from the
 	// pre-unmarshalled object
 	if d.Columns[v] == nil {
-		packedStruct := d.PackedObject.Columns[v]
-		packedNatVal, err := d.UnpackStructObject(packedStruct, TypeOfPackedColumn)
-		if err != nil {
-			return reflect.Value{}, err.wrapPath("(column)")
-		}
-
-		packedNat := packedNatVal.Interface().(column.PackedNatural)
+		packedNat := d.PackedObject.Columns[v]
 		nat := packedNat.Unpack()
 		d.Columns[v] = &nat
 	}
