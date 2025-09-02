@@ -16,7 +16,7 @@ methods {
     function leave() external;
     function Math.mulDiv(uint256 a, uint256 b, uint256 c) internal returns uint256 => mulDivSummary(a,b,c);
 
-    function _.migrateFromVault(uint256 _lockUntil, uint256 _depositedBalance) external => DISPATCHER(true);
+    function _.migrateFromVault(IStakeVault.MigrationData) external => DISPATCHER(true);
     function _.lockUntil() external => DISPATCHER(true);
 }
 

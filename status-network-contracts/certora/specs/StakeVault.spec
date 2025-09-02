@@ -10,16 +10,19 @@ methods {
   // function ERC20A.allowance(address, address) external returns(uint256) envfree;
   function ERC20A.totalSupply() external returns(uint256) envfree;
   // // function StakeManager.accounts(address) external returns(uint256, uint256, uint256, uint256, uint256, uint256) envfree;
-  // function _.owner() external => DISPATCHER(true);
+  function _.owner() external => DISPATCHER(true);
   function _.transfer(address, uint256) external => DISPATCHER(true);
+  function _.lockUntil() external => DISPATCHER(true);
+  function _.depositedBalance() external => DISPATCHER(true);
   function _.unstake(uint256) external => DISPATCHER(true);
+  function _.migrateFromVault(IStakeVault.MigrationData) external => DISPATCHER(true);
 }
 
 invariant depositedBalanceLessEqualToERC20Balance()
   depositedBalance() <= staked.balanceOf(currentContract)
   filtered {
       f -> f.contract == currentContract &&
-        f.selector != sig:migrateFromVault(uint256, uint256).selector
+        f.selector != sig:migrateFromVault(IStakeVault.MigrationData).selector
   }
   { preserved with (env e) {
       require e.msg.sender != currentContract;

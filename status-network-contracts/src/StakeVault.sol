@@ -211,14 +211,14 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
     /**
      * @notice Updates the lock until timestamp.
      * @dev This function is only callable by the stake manager.
-     * @param _lockUntil The new lock until timestamp.
+     * @param data The migration data containing the new lock until timestamp and deposited balance.
      */
-    function migrateFromVault(uint256 _lockUntil, uint256 _depositedBalance) external {
+    function migrateFromVault(MigrationData calldata data) external {
         if (msg.sender != address(stakeManager)) {
             revert StakeVault__NotAuthorized();
         }
-        lockUntil = _lockUntil;
-        depositedBalance = _depositedBalance;
+        lockUntil = data.lockUntil;
+        depositedBalance = data.depositedBalance;
     }
 
     /**

@@ -384,9 +384,13 @@ contract StakeManager is
         newVault.maxMP = oldVault.maxMP;
         newVault.lastMPUpdateTime = oldVault.lastMPUpdateTime;
         newVault.rewardsAccrued = oldVault.rewardsAccrued;
-        IStakeVault(migrateTo).migrateFromVault(
-            IStakeVault(msg.sender).lockUntil(), IStakeVault(msg.sender).depositedBalance()
-        );
+
+        IStakeVault.MigrationData memory migrationData = IStakeVault.MigrationData({
+            lockUntil: IStakeVault(msg.sender).lockUntil(),
+            depositedBalance: IStakeVault(msg.sender).depositedBalance()
+        });
+
+        IStakeVault(migrateTo).migrateFromVault(migrationData);
 
         delete vaultData[msg.sender];
 
