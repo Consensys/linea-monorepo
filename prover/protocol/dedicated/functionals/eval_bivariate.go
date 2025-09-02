@@ -51,7 +51,7 @@ func (a *EvalBivariateProverAction) Run(assi *wizard.ProverRuntime) {
 	}
 
 	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.Name, EVAL_BIVARIATE_POLY), smartvectors.NewRegular(h))
-	assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", a.Name, EVAL_BIVARIATE_FIXED_POINT_BEGIN), h[0])
+	assi.AssignLocalPointExt(ifaces.QueryIDf("%v_%v", a.Name, EVAL_BIVARIATE_FIXED_POINT_BEGIN), h[0])
 }
 
 /*

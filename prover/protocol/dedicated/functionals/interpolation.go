@@ -68,7 +68,7 @@ func (a *InterpolationProverAction) Run(assi *wizard.ProverRuntime) {
 	}
 
 	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.Name, INTERPOLATION_POLY), smartvectors.NewRegular(witi))
-	assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", a.Name, INTERPOLATION_OPEN_END), witi[a.N-1])
+	assi.AssignLocalPointExt(ifaces.QueryIDf("%v_%v", a.Name, INTERPOLATION_OPEN_END), witi[a.N-1])
 }
 
 // See the explainer here : https://hackmd.io/S78bJUa0Tk-T256iduE22g#Evaluate-in-Lagrange-form

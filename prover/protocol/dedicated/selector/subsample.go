@@ -38,13 +38,13 @@ func (a *SubsampleProverAction) Run(run *wizard.ProverRuntime) {
 		for i := 1; i < len(a.Large); i++ {
 			largeWit[i] = a.Large[i].GetColAssignment(run)
 		}
-		gamma := run.GetRandomCoinField(a.Gamma.Name)
+		gamma := run.GetRandomCoinFieldExt(a.Gamma.Name)
 		r = smartvectors.LinearCombination(largeWit, gamma)
 	}
 
 	prev := field.Zero()
 	accLargeWit := make([]field.Element, a.Period*a.LenSmall)
-	alpha_ := run.GetRandomCoinField(a.Alpha.Name)
+	alpha_ := run.GetRandomCoinFieldExt(a.Alpha.Name)
 
 	for hashID := 0; hashID < a.LenSmall; hashID++ {
 		for i := 0; i < a.Period; i++ {
@@ -70,7 +70,7 @@ func (a *SubsampleProverAction) Run(run *wizard.ProverRuntime) {
 		for i := 1; i < len(a.Small); i++ {
 			smallWit[i] = a.Small[i].GetColAssignment(run)
 		}
-		gamma := run.GetRandomCoinField(a.Gamma.Name)
+		gamma := run.GetRandomCoinFieldExt(a.Gamma.Name)
 		rPrime = smartvectors.LinearCombination(smallWit, gamma)
 	}
 

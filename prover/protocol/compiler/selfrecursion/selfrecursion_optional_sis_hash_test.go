@@ -104,7 +104,7 @@ func testCaseGenerator() []testCase {
 				if round != 0 {
 					// let the prover know that it is free to go to the next
 					// round by sampling the coin.
-					_ = pr.GetRandomCoinField(coin.Namef("COIN_%v", round))
+					_ = pr.GetRandomCoinFieldExt(coin.Namef("COIN_%v", round))
 					// Compute the offsetIndex
 					for i := 0; i < round; i++ {
 						offsetIndex += nPolsMultiRound[i]
@@ -168,7 +168,7 @@ func testCaseGenerator() []testCase {
 				if round != 0 {
 					// let the prover know that it is free to go to the next
 					// round by sampling the coin.
-					_ = pr.GetRandomCoinField(coin.Namef("COIN_%v", round))
+					_ = pr.GetRandomCoinFieldExt(coin.Namef("COIN_%v", round))
 					// Compute the offsetIndex
 					for i := 0; i < round; i++ {
 						offsetIndex += nPolsMultiRound[i]
@@ -239,7 +239,7 @@ func testCaseGenerator() []testCase {
 				if round != 0 {
 					// let the prover know that it is free to go to the next
 					// round by sampling the coin.
-					_ = pr.GetRandomCoinField(coin.Namef("COIN_%v", round))
+					_ = pr.GetRandomCoinFieldExt(coin.Namef("COIN_%v", round))
 					// Compute the offsetIndex
 					for i := 0; i < round; i++ {
 						offsetIndex += nPolsMultiRound[i]
@@ -310,7 +310,7 @@ func testCaseGenerator() []testCase {
 				if round != 0 {
 					// let the prover know that it is free to go to the next
 					// round by sampling the coin.
-					_ = pr.GetRandomCoinField(coin.Namef("COIN_%v", round))
+					_ = pr.GetRandomCoinFieldExt(coin.Namef("COIN_%v", round))
 					// Compute the offsetIndex
 					for i := 0; i < round; i++ {
 						offsetIndex += nPolsMultiRoundNoSIS[i]
@@ -381,7 +381,7 @@ func testCaseGenerator() []testCase {
 				if round != 0 {
 					// let the prover know that it is free to go to the next
 					// round by sampling the coin.
-					_ = pr.GetRandomCoinField(coin.Namef("COIN_%v", round))
+					_ = pr.GetRandomCoinFieldExt(coin.Namef("COIN_%v", round))
 					// Compute the offsetIndex
 					for i := 0; i < round; i++ {
 						offsetIndex += nPolsMultiRoundSIS[i]
@@ -452,7 +452,7 @@ func testCaseGenerator() []testCase {
 				if round != 0 {
 					// let the prover know that it is free to go to the next
 					// round by sampling the coin.
-					_ = pr.GetRandomCoinField(coin.Namef("COIN_%v", round))
+					_ = pr.GetRandomCoinFieldExt(coin.Namef("COIN_%v", round))
 					// Compute the offsetIndex
 					for i := 0; i < round; i++ {
 						offsetIndex += nPolsMultiRoundEmpty[i]

@@ -1,6 +1,7 @@
 package merkle_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
@@ -55,23 +56,30 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 		}
 		leaves[i] = types.HashToBytes32(x)
 	}
-	tree := smt.BuildComplete(leaves, hashtypes.MiMC)
+	tree := smt.BuildComplete(leaves, hashtypes.Poseidon2)
+	fmt.Printf("tree ok\n")
 	root := tree.Root
 	if !isReuse {
+		fmt.Printf("new\n")
+
 		for i := 0; i < numProofs; i++ {
 			proof := tree.MustProve(i)
 			b.proofs = append(b.proofs, proof)
-			var le, ro, po field.Element
-			if err := le.SetBytesCanonical(leaves[i][:]); err != nil {
-				panic(err)
-			}
-			if err := ro.SetBytesCanonical(root[:]); err != nil {
-				panic(err)
+			var le, ro field.Octuplet
+			var po field.Element
+			for j := 0; j < 8; j++ {
+				if err := le[j].SetBytesCanonical(leaves[i][:]); err != nil {
+					panic(err)
+				}
+				if err := ro[j].SetBytesCanonical(root[:]); err != nil {
+					panic(err)
+				}
+				b.leaves = append(b.leaves, le[j])
+				b.roots = append(b.roots, ro[j])
 			}
 			po.SetUint64(uint64(i))
-			b.leaves = append(b.leaves, le)
 			b.pos = append(b.pos, po)
-			b.roots = append(b.roots, ro)
+
 		}
 	} else {
 		// We first assign the counter column

@@ -77,7 +77,7 @@ type ConsistencyYsUalphaVerifierAction struct {
 
 func (a *ConsistencyYsUalphaVerifierAction) Run(run wizard.Runtime) error {
 	ys := a.Ctx.Columns.Ys.GetColAssignment(run)
-	alpha := run.GetRandomCoinField(a.Ctx.Coins.Alpha.Name)
+	alpha := run.GetRandomCoinFieldExt(a.Ctx.Coins.Alpha.Name)
 	ysAlpha := smartvectors.EvalCoeff(ys, alpha)
 	uAlphaX := a.InterpolateUalphaX.GetVal(run)
 	if uAlphaX != ysAlpha {

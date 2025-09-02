@@ -454,7 +454,7 @@ type FoldPhaseVerifierAction struct {
 func (a *FoldPhaseVerifierAction) Run(run wizard.Runtime) error {
 	edual := a.Ctx.Columns.Edual.GetColAssignment(run)
 	dcollapse := a.Ctx.Columns.DhQCollapse.GetColAssignment(run)
-	rfold := run.GetRandomCoinField(a.Ctx.Coins.Fold.Name)
+	rfold := run.GetRandomCoinFieldExt(a.Ctx.Coins.Fold.Name)
 	yAlleged := run.GetInnerProductParams(a.IpQueryID).Ys[0]
 	yDual := smartvectors.EvalCoeff(edual, rfold)
 	yActual := smartvectors.EvalCoeff(dcollapse, rfold)
