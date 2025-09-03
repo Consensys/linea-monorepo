@@ -913,3 +913,12 @@ func divEuclideanHint(_ *big.Int, ins, outs []*big.Int) error {
 
 	return nil
 }
+
+// FromBytesToElements converts a slice of bytes to a slice of field elements, with no range check.
+func FromBytesToElements(b []byte) []frontend.Variable {
+	var res = make([]frontend.Variable, len(b))
+	for i := range b {
+		res[i] = b[i]
+	}
+	return res
+}

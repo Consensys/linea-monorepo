@@ -11,10 +11,12 @@ import (
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/crate-crypto/go-ipa/bandersnatch/fr"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/sirupsen/logrus"
 )
@@ -33,10 +35,10 @@ type CircuitInvalidity struct {
 
 // SubCircuit is the circuit for the invalidity case
 type SubCircuit interface {
-	Define(frontend.API) error         // define the constraints
-	Allocate(Config)                   //  allocate the circuit
-	Assign(AssigningInputs)            // generate assignment
-	ExecutionCtx() []frontend.Variable // returns the execution context used in the subcircuit
+	Define(frontend.API) error                                 // define the constraints
+	Allocate(Config, *wizard.CompiledIOP)                      //  allocate the circuit
+	Assign(AssigningInputs, *wizard.CompiledIOP, wizard.Proof) // generate assignment
+	ExecutionCtx() []frontend.Variable                         // returns the execution context used in the subcircuit
 }
 
 // AssigningInputs collects the inputs used for the circuit assignment
@@ -45,6 +47,8 @@ type AssigningInputs struct {
 	Transaction       *types.Transaction
 	FuncInputs        public_input.Invalidity
 	InvalidityType    InvalidityType
+	FromAddress       common.Address
+	RlpEncodedTx      []byte
 }
 
 // Define the constraints
@@ -71,16 +75,16 @@ func (c *CircuitInvalidity) Define(api frontend.API) error {
 }
 
 // Allocate the circuit
-func (c *CircuitInvalidity) Allocate(config Config) {
+func (c *CircuitInvalidity) Allocate(config Config, comp *wizard.CompiledIOP) {
 	// allocate the subCircuit
-	c.SubCircuit.Allocate(config)
+	c.SubCircuit.Allocate(config, comp)
 	// @azam: allocate the Functional Public Inputs
 }
 
 // Assign the circuit
-func (c *CircuitInvalidity) Assign(assi AssigningInputs) {
+func (c *CircuitInvalidity) Assign(assi AssigningInputs, comp *wizard.CompiledIOP, proof wizard.Proof) {
 	// assign the sub circuits
-	c.SubCircuit.Assign(assi)
+	c.SubCircuit.Assign(assi, comp, proof)
 	// assign the Functional Public Inputs
 	c.FuncInputs.Assign(assi.FuncInputs)
 	// assign the public input
@@ -90,7 +94,13 @@ func (c *CircuitInvalidity) Assign(assi AssigningInputs) {
 }
 
 // MakeProof and solve the circuit.
-func (c *CircuitInvalidity) MakeProof(setup circuits.Setup, assi AssigningInputs, FuncInputs *public_input.Invalidity) string {
+func (c *CircuitInvalidity) MakeProof(
+	setup circuits.Setup,
+	assi AssigningInputs,
+	FuncInputs public_input.Invalidity,
+	kcomp *wizard.CompiledIOP,
+	kproof wizard.Proof,
+) string {
 
 	switch assi.InvalidityType {
 	case BadNonce:
@@ -101,9 +111,8 @@ func (c *CircuitInvalidity) MakeProof(setup circuits.Setup, assi AssigningInputs
 		panic("unsupported invalidity type")
 	}
 
-	c.Assign(assi)
+	c.Assign(assi, kcomp, kproof)
 
-	//@azam what options should I add?
 	proof, err := circuits.ProveCheck(
 		&setup,
 		c,
@@ -130,6 +139,7 @@ type Config struct {
 type builder struct {
 	config  Config
 	circuit *CircuitInvalidity
+	comp    *wizard.CompiledIOP
 }
 
 func NewBuilder(config Config) *builder {
@@ -137,13 +147,13 @@ func NewBuilder(config Config) *builder {
 }
 
 func (b *builder) Compile() (constraint.ConstraintSystem, error) {
-	return makeCS(b.config, b.circuit), nil
+	return makeCS(b.config, b.circuit, b.comp), nil
 }
 
 // compile  the circuit to the constraints
-func makeCS(config Config, circuit *CircuitInvalidity) constraint.ConstraintSystem {
+func makeCS(config Config, circuit *CircuitInvalidity, comp *wizard.CompiledIOP) constraint.ConstraintSystem {
 
-	circuit.Allocate(config)
+	circuit.Allocate(config, comp)
 
 	scs, err := frontend.Compile(fr.Modulus(), scs.NewBuilder, circuit, frontend.WithCapacity(1<<24))
 	if err != nil {
