@@ -7,6 +7,9 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -104,7 +107,7 @@ func TestSerdeDW(t *testing.T) {
 // verified to be correct in the previous test (TestSerdeDW).
 func TestSerdeDWPerf(t *testing.T) {
 
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	//t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	cfg, err := config.NewConfigFromFileUnchecked("/home/ubuntu/linea-monorepo/prover/config/config-sepolia-limitless.toml")
 	if err != nil {
 		t.Fatalf("failed to read config file: %s", err)
@@ -113,49 +116,49 @@ func TestSerdeDWPerf(t *testing.T) {
 	var perfLogs profiling.PerfLogs
 	dw := GetDW(cfg)
 
-	t.Run("ModuleNames", func(t *testing.T) {
-		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.ModuleNames, "DW.ModuleNames"))
-	})
+	// t.Run("ModuleNames", func(t *testing.T) {
+	// 	perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.ModuleNames, "DW.ModuleNames"))
+	// })
 
-	for i := range dw.GLs {
-		t.Run(fmt.Sprintf("GLModule-%d", i), func(t *testing.T) {
-			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.GLs[i], fmt.Sprintf("DW.GLModule-%v", i)))
-		})
-	}
+	// for i := range dw.GLs {
+	// 	t.Run(fmt.Sprintf("GLModule-%d", i), func(t *testing.T) {
+	// 		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.GLs[i], fmt.Sprintf("DW.GLModule-%v", i)))
+	// 	})
+	// }
 
-	for i := range dw.LPPs {
-		t.Run(fmt.Sprintf("LPPModule-%d", i), func(t *testing.T) {
-			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.LPPs[i], fmt.Sprintf("DW.LPPModule-%d", i)))
-		})
-	}
+	// for i := range dw.LPPs {
+	// 	t.Run(fmt.Sprintf("LPPModule-%d", i), func(t *testing.T) {
+	// 		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.LPPs[i], fmt.Sprintf("DW.LPPModule-%d", i)))
+	// 	})
+	// }
 
-	t.Run("DefaultModule", func(t *testing.T) {
-		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.DefaultModule, "DW.DefaultModule"))
-	})
+	// t.Run("DefaultModule", func(t *testing.T) {
+	// 	perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.DefaultModule, "DW.DefaultModule"))
+	// })
 
-	t.Run("Bootstrapper", func(t *testing.T) {
-		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.Bootstrapper, "DW.Bootstrapper"))
-	})
+	// t.Run("Bootstrapper", func(t *testing.T) {
+	// 	perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.Bootstrapper, "DW.Bootstrapper"))
+	// })
 
-	t.Run("Discoverer", func(t *testing.T) {
-		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.Disc, "DW.Discoverer"))
-	})
+	// t.Run("Discoverer", func(t *testing.T) {
+	// 	perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.Disc, "DW.Discoverer"))
+	// })
 
-	t.Run("CompiledDefault", func(t *testing.T) {
-		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledDefault, "DW.CompiledDefault"))
-	})
+	// t.Run("CompiledDefault", func(t *testing.T) {
+	// 	perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledDefault, "DW.CompiledDefault"))
+	// })
 
-	for i := range dw.CompiledGLs {
-		t.Run(fmt.Sprintf("CompiledGL-%v", i), func(t *testing.T) {
-			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledGLs[i], fmt.Sprintf("DW.CompiledGL-%v", i)))
-		})
-	}
+	// for i := range dw.CompiledGLs {
+	// 	t.Run(fmt.Sprintf("CompiledGL-%v", i), func(t *testing.T) {
+	// 		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledGLs[i], fmt.Sprintf("DW.CompiledGL-%v", i)))
+	// 	})
+	// }
 
-	for i := range dw.CompiledLPPs {
-		t.Run(fmt.Sprintf("CompiledLPP-%v", i), func(t *testing.T) {
-			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledLPPs[i], fmt.Sprintf("DW.CompiledLPP-%v", i)))
-		})
-	}
+	// for i := range dw.CompiledLPPs {
+	// 	t.Run(fmt.Sprintf("CompiledLPP-%v", i), func(t *testing.T) {
+	// 		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledLPPs[i], fmt.Sprintf("DW.CompiledLPP-%v", i)))
+	// 	})
+	// }
 
 	// To save memory
 	cong := dw.CompiledConglomeration
@@ -285,6 +288,15 @@ func (d distributeTestCase) define(comp *wizard.CompiledIOP) {
 	comp.InsertGlobal(0, "global-1", symbolic.Sub(c1, b1, a1))
 
 	comp.InsertInclusion(0, "inclusion-0", []ifaces.Column{c0, b0, a0}, []ifaces.Column{c1, b1, a1})
+}
+
+func (d distributeTestCase) assign(run *wizard.ProverRuntime) {
+	run.AssignColumn("a0", smartvectors.RightZeroPadded(vector.Repeat(field.NewElement(1), d.numRow-2), d.numRow))
+	run.AssignColumn("b0", smartvectors.RightZeroPadded(vector.Repeat(field.NewElement(2), d.numRow-2), d.numRow))
+	run.AssignColumn("c0", smartvectors.RightZeroPadded(vector.Repeat(field.NewElement(3), d.numRow-2), d.numRow))
+	run.AssignColumn("a1", smartvectors.RightZeroPadded(vector.Repeat(field.NewElement(1), d.numRow-2), d.numRow))
+	run.AssignColumn("b1", smartvectors.RightZeroPadded(vector.Repeat(field.NewElement(2), d.numRow-2), d.numRow))
+	run.AssignColumn("c1", smartvectors.RightZeroPadded(vector.Repeat(field.NewElement(3), d.numRow-2), d.numRow))
 }
 func GetBasicDW() *distributed.DistributedWizard {
 
