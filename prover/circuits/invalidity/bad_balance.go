@@ -2,6 +2,7 @@ package invalidity
 
 import (
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -33,12 +34,12 @@ func (circuit *BadBalanceCircuit) Define(api frontend.API) error {
 }
 
 // Allocate the circuit
-func (c *BadBalanceCircuit) Allocate(config Config) {
+func (c *BadBalanceCircuit) Allocate(config Config, comp *wizard.CompiledIOP) {
 	c.AccountTrie.Allocate(config)
 }
 
 // Assign the circuit from [AssigningInputs]
-func (c *BadBalanceCircuit) Assign(assi AssigningInputs) {
+func (c *BadBalanceCircuit) Assign(assi AssigningInputs, comp *wizard.CompiledIOP, proof wizard.Proof) {
 	var (
 		txCost  = assi.Transaction.Cost()
 		balance = assi.AccountTrieInputs.Account.Balance

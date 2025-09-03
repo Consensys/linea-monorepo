@@ -16,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/go-playground/assert/v2"
 	"github.com/stretchr/testify/require"
@@ -290,9 +291,11 @@ func TestShomei(t *testing.T) {
 }
 
 type TestCases struct {
-	Account Account
-	Leaf    accumulator.LeafOpening
-	Tx      types.DynamicFeeTx
+	Account     Account
+	Leaf        accumulator.LeafOpening
+	Tx          types.DynamicFeeTx
+	FromAddress common.Address
+	TxHash      common.Hash
 }
 
 var tcases = []TestCases{
@@ -304,7 +307,10 @@ var tcases = []TestCases{
 		Leaf: accumulator.LeafOpening{
 			Prev: 0,
 			Next: 1,
-			HKey: Bytes32FromHex("0x00aed6"),
+			HKey: hKeyFromAddress(common.HexToAddress("0x00aed6")),
+			HVal: hValFromAccount(Account{
+				Balance: big.NewInt(0),
+			}),
 		},
 		Tx: types.DynamicFeeTx{
 			Nonce:     1, // valid nonce
@@ -312,6 +318,8 @@ var tcases = []TestCases{
 			Gas:       1,
 			GasFeeCap: big.NewInt(1), // gas price
 		},
+		FromAddress: common.HexToAddress("0x00aed6"),
+		TxHash:      common.HexToHash("0x3f1d2e2b4c3f4e5d6c7b8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d"),
 	},
 	{
 		// EOA
@@ -327,7 +335,15 @@ var tcases = []TestCases{
 		Leaf: accumulator.LeafOpening{
 			Prev: 0,
 			Next: 2,
-			HKey: Bytes32FromHex("0x00aed7"),
+			HKey: hKeyFromAddress(common.HexToAddress("0x00aed7")),
+			HVal: hValFromAccount(Account{
+				Nonce:          65,
+				Balance:        big.NewInt(5690),
+				StorageRoot:    Bytes32FromHex("0x00aed60bedfcad80c2a5e6a7a3100e837f875f9aa71d768291f68f894b0a3d11"),
+				MimcCodeHash:   Bytes32FromHex("0x007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6ee"),
+				KeccakCodeHash: FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
+				CodeSize:       0,
+			}),
 		},
 		Tx: types.DynamicFeeTx{
 			Nonce:     65,               // invalid nonce
@@ -335,6 +351,8 @@ var tcases = []TestCases{
 			Gas:       1,
 			GasFeeCap: big.NewInt(1), // gas price
 		},
+		FromAddress: common.HexToAddress("0x00aed7"),
+		TxHash:      common.HexToHash("0x4f1d2e2b4c3f4e5d6c7b8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9e"),
 	},
 	{
 		// Another EOA
@@ -349,7 +367,15 @@ var tcases = []TestCases{
 		Leaf: accumulator.LeafOpening{
 			Prev: 1,
 			Next: 3,
-			HKey: Bytes32FromHex("0x00aed8"),
+			HKey: hKeyFromAddress(common.HexToAddress("0x00aed8")),
+			HVal: hValFromAccount(Account{
+				Nonce:          65,
+				Balance:        big.NewInt(835),
+				StorageRoot:    Bytes32FromHex("0x007942bb21022172cbad3ffc38d1c59e998f1ab6ab52feb15345d04bbf859f14"),
+				MimcCodeHash:   Bytes32FromHex("0x007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6ee"),
+				KeccakCodeHash: FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
+				CodeSize:       0,
+			}),
 		},
 		Tx: types.DynamicFeeTx{
 			Nonce:     66,              // valid nonce
@@ -357,5 +383,19 @@ var tcases = []TestCases{
 			Gas:       1,
 			GasFeeCap: big.NewInt(1), // gas price
 		},
+		FromAddress: common.HexToAddress("0x00aed8"),
+		TxHash:      common.HexToHash("0x5f1d2e2b4c3f4e5d6c7b8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9f"),
 	},
+}
+
+func hKeyFromAddress(add common.Address) Bytes32 {
+	mimc := mimc.NewMiMC()
+	mimc.Write(add.Bytes())
+	return Bytes32(mimc.Sum(nil))
+}
+
+func hValFromAccount(a Account) Bytes32 {
+	mimc := mimc.NewMiMC()
+	a.WriteTo(mimc)
+	return Bytes32(mimc.Sum(nil))
 }

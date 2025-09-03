@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -97,13 +98,14 @@ func (vb *VectorBuilder) PushBytes32(b32 types.Bytes32) {
 	vb.PushField(f)
 }
 
-// PushBytes32 pushes a [types.Bytes32] as a single value onto `vb`. It panics
-// if the value overflows a field element.
-func (vb *VectorBuilder) PushBytes(b32 []byte) {
+// PushBytes pushes a slice of bytes as a single value onto `vb`. It panics
+// if the value has 32 bytes or more
+func (vb *VectorBuilder) PushBytes(b []byte) {
 	var f field.Element
-	if err := f.SetBytesCanonical(b32[:]); err != nil {
-		panic(err)
+	if len(b) >= 32 {
+		panic("cannot push more than 31 bytes")
 	}
+	f.SetBytes(b)
 	vb.PushField(f)
 }
 
@@ -204,4 +206,7 @@ func (vb *VectorBuilder) OverWriteInt(n int) {
 // Does not mutate the receiver.
 func (vb *VectorBuilder) Last() field.Element {
 	return vb.slice[len(vb.slice)-1]
+}
+func (vb *VectorBuilder) Prettify() string {
+	return vector.Prettify(vb.slice)
 }
