@@ -106,7 +106,6 @@ private constructor(
         // fetch waiting request from the queue
         waitingQueue.poll()?.let { request ->
           client.inflightRequests++
-          client to request
           log.trace("making request={}", request)
           // firing request inside the lock to guarantee order
           // otherwise thread scheduling may make them fire out of order,
