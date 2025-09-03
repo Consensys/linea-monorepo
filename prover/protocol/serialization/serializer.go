@@ -252,43 +252,45 @@ func (s *Serializer) PackValue(v reflect.Value) (any, *serdeError) {
 	}
 
 	// Handle protocol-specific types.
-	switch {
-	case typeOfV == TypeOfColumnNatural:
+	switch typeOfV {
+	case TypeOfColumnNatural:
 		return s.PackColumn(v.Interface().(column.Natural))
-	case typeOfV == TypeOfColumnID:
+	case TypeOfColumnID:
 		return s.PackColumnID(v.Interface().(ifaces.ColID))
-	case typeOfV == TypeOfCoin:
+	case TypeOfCoin:
 		return s.PackCoin(v.Interface().(coin.Info))
-	case typeOfV == TypeOfCoinID:
+	case TypeOfCoinID:
 		return s.PackCoinID(v.Interface().(coin.Name))
-	case typeOfV.Implements(TypeOfQuery) && typeOfV.Kind() != reflect.Interface && !(typeOfV.Kind() == reflect.Ptr && typeOfV.Elem().Implements(TypeOfQuery)):
-		return s.PackQuery(v.Interface().(ifaces.Query))
-	case typeOfV == TypeOfQueryID:
+	case TypeOfQueryID:
 		return s.PackQueryID(v.Interface().(ifaces.QueryID))
-	case typeOfV == TypeOfCompiledIOPPointer:
+	case TypeOfCompiledIOPPointer:
 		unpacked := v.Interface().(*wizard.CompiledIOP)
 		if unpacked == nil {
 			return nil, nil
 		}
 		return s.PackCompiledIOP(unpacked)
-	case typeOfV == TypeOfStorePtr:
+	case TypeOfStorePtr:
 		unpacked := v.Interface().(*column.Store)
 		if unpacked == nil {
 			return nil, nil
 		}
 		return s.PackStore(unpacked)
-	case typeOfV == TypeOfPlonkCirc:
+	case TypeOfPlonkCirc:
 		unpacked := v.Interface().(*cs.SparseR1CS)
 		if unpacked == nil {
 			return nil, nil
 		}
 		return s.PackPlonkCircuit(unpacked)
-	case typeOfV == TypeOfExpressionPtr:
+	case TypeOfExpressionPtr:
 		unpacked := v.Interface().(*symbolic.Expression)
 		if unpacked == nil {
 			return nil, nil
 		}
 		return s.PackExpression(unpacked)
+	default:
+		if typeOfV.Implements(TypeOfQuery) && typeOfV.Kind() != reflect.Interface && !(typeOfV.Kind() == reflect.Ptr && typeOfV.Elem().Implements(TypeOfQuery)) {
+			return s.PackQuery(v.Interface().(ifaces.Query))
+		}
 	}
 
 	// Handle generic Go types.
@@ -810,7 +812,7 @@ func (d *Deserializer) UnpackArrayOrSlice(v []any, t reflect.Type) (reflect.Valu
 			return reflect.Value{}, newSerdeErrorf("failed to deserialize to %q, size mismatch: %d != %d", t.String(), len(v), t.Len())
 		}
 	case reflect.Slice:
-		res = reflect.MakeSlice(t, len(v), len(v))
+		res = reflect.MakeSlice(t, len(v), cap(v))
 	default:
 		return reflect.Value{}, newSerdeErrorf("failed to deserialize to %q, expected array or slice", t.String())
 	}
