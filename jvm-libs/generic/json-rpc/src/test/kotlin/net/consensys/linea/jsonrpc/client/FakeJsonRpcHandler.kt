@@ -20,20 +20,29 @@ class FakeJsonRpcHandler(
   var defaultResponseDelay: Duration = 0.milliseconds,
   val defaultResponseSupplier: (JsonRpcRequest) -> JsonRpcResponse = { req -> JsonRpcSuccessResponse(req.id, null) },
 ) : JsonRpcClient {
-  private val responseSuppliers: MutableMap<JsonRpcRequest, Pair<Duration, () -> JsonRpcResponse>> = ConcurrentHashMap()
+  private val responseSuppliers: MutableMap<
+    JsonRpcRequest,
+    Pair<
+      Duration,
+      (
+        JsonRpcRequest,
+      ) -> JsonRpcResponse,
+      >,
+    > = ConcurrentHashMap()
 
   fun onRequest(
     request: JsonRpcRequest,
     delay: Duration = 0.milliseconds,
-    responseSupplier: () -> JsonRpcResponse,
+    responseSupplier: (JsonRpcRequest) -> JsonRpcResponse,
   ) {
     responseSuppliers[request] = delay to responseSupplier
   }
 
   private fun buildResponse(
-    responseSupplier: () -> JsonRpcResponse,
+    request: JsonRpcRequest,
+    responseSupplier: (JsonRpcRequest) -> JsonRpcResponse,
   ): Result<JsonRpcSuccessResponse, JsonRpcErrorResponse> {
-    return responseSupplier()
+    return responseSupplier(request)
       .let { response ->
         when (response) {
           is JsonRpcSuccessResponse -> Ok(response)
@@ -43,12 +52,12 @@ class FakeJsonRpcHandler(
       }
   }
 
-  private fun getResponseSupplier(request: JsonRpcRequest): Pair<Duration, () -> JsonRpcResponse> {
-    val delayedAndSupplier = responseSuppliers[request]
-    return if (delayedAndSupplier != null) {
-      delayedAndSupplier
+  private fun getResponseSupplier(request: JsonRpcRequest): Pair<Duration, (JsonRpcRequest) -> JsonRpcResponse> {
+    val delayAndSupplier = responseSuppliers[request]
+    return if (delayAndSupplier != null) {
+      delayAndSupplier
     } else {
-      defaultResponseDelay to { defaultResponseSupplier(request) }
+      defaultResponseDelay to defaultResponseSupplier
     }
   }
 
@@ -60,12 +69,12 @@ class FakeJsonRpcHandler(
 
     val (delay, responseSupplier) = getResponseSupplier(request)
     if (delay <= 0.milliseconds) {
-      return Future.succeededFuture(buildResponse(responseSupplier))
+      return Future.succeededFuture(buildResponse(request, responseSupplier))
     }
     val promise = Promise.promise<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>>()
     timer("rcp-client", false, delay.inWholeMilliseconds, 100L) {
       if (!promise.future().isComplete) {
-        promise.complete(buildResponse(responseSupplier))
+        promise.complete(buildResponse(request, responseSupplier))
       }
       this.cancel()
     }

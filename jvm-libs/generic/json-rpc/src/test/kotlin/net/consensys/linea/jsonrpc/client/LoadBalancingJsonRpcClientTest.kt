@@ -11,8 +11,11 @@ import net.consensys.linea.jsonrpc.JsonRpcErrorResponse
 import net.consensys.linea.jsonrpc.JsonRpcRequest
 import net.consensys.linea.jsonrpc.JsonRpcRequestListParams
 import net.consensys.linea.jsonrpc.JsonRpcSuccessResponse
+import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.RepeatedTest
+import org.junit.jupiter.api.RepetitionInfo
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
@@ -28,6 +31,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.ThreadLocalRandom
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.timer
+import kotlin.math.log
 import kotlin.time.Duration.Companion.milliseconds
 
 class LoadBalancingJsonRpcClientTest {
@@ -42,13 +46,13 @@ class LoadBalancingJsonRpcClientTest {
   ): JsonRpcRequestListParams = JsonRpcRequestListParams("2.0", requestId.incrementAndGet(), method, params)
 
   /**
-   * {"jsonrpc":"2.0","id":34923,"method":"linea_getBlockTracesCountersV2","params":[{"blockNumber":22644557,"expectedTracesEngineVersion":"beta-v2.1-rc16.2"}]} | logger=counters thread=vert.x-eventloop-thread-5 |
+   * {"jsonrpc":"2.0","id":34923,"method":"linea_getBlockTracesCountersV2","params":[{"blockNumber":22644557,"expectedTracesEngineVersion":"beta-v2.1-rc16.2"}]}
    */
   private fun tracesCountersRequest(
-    blockNumber: ULong,
+    blockNumber: Int,
   ): JsonRpcRequestListParams = rpcRequest(
     "linea_getBlockTracesCountersV2",
-    listOf(mapOf("blockNumber" to blockNumber.toInt(), "expectedTracesEngineVersion" to "beta-v2.1-rc16.2")),
+    listOf(mapOf("blockNumber" to blockNumber)),
   )
 
   @BeforeEach
@@ -76,39 +80,51 @@ class LoadBalancingJsonRpcClientTest {
     assertThat(future2.get()).isEqualTo(result(1, "client-2-result"))
   }
 
-  @Test
+  @RepeatedTest(2)
   @Suppress("UNCHECKED_CAST")
-  fun should_fire_request_by_priority() {
+  fun should_fire_request_by_priority(repetitionInfo: RepetitionInfo) {
+    val requests = (1..20).map { tracesCountersRequest(blockNumber = it) }
+    val requestsCallOrder = requests.reversed()
+
     val requestsReceivedByClients = CopyOnWriteArrayList<JsonRpcRequest>()
     val requestHandler = { request: JsonRpcRequest ->
       JsonRpcSuccessResponse(request.id, "success")
     }
     val client1 = FakeJsonRpcHandler(
       requestHandled = requestsReceivedByClients,
-      defaultResponseDelay = 50.milliseconds,
+      defaultResponseDelay = 10.milliseconds,
       defaultResponseSupplier = requestHandler,
-    )
+    ).apply {
+      // 1st N requests should have high delay, otherwise it's replies arrive before
+      // they all request are sent LoadBalancer queue
+      requestsCallOrder.take(4).forEach { onRequest(it, 300.milliseconds, requestHandler) }
+    }
     val client2 = FakeJsonRpcHandler(
       requestHandled = requestsReceivedByClients,
-      defaultResponseDelay = 70.milliseconds,
+      defaultResponseDelay = 20.milliseconds,
       defaultResponseSupplier = requestHandler,
+    ).apply {
+      requestsCallOrder.take(4).forEach { onRequest(it, 300.milliseconds, requestHandler) }
+    }
+    // Custom logger to help debugging
+    val log = LogManager.getLogger(
+      "net.consensys.linea.jsonrpc.LoadBalancingJsonRpcClient-${repetitionInfo.currentRepetition}-",
     )
-
     loadBalancer = LoadBalancingJsonRpcClient.create(
       rpcClients = listOf(client1, client2),
       requestLimitPerEndpoint = 1u,
       requestPriorityComparator = { o1, o2 ->
         val bn1 = (o1.params as List<Map<String, Int>>).first()["blockNumber"]!!
         val bn2 = (o2.params as List<Map<String, Int>>).first()["blockNumber"]!!
-        bn1 - bn2
+        bn1.compareTo(bn2)
       },
+      log = log,
     )
-    val requests = (1..20).map {
-      tracesCountersRequest(blockNumber = it.toULong())
-    }
+
     // send requests in reverse order
     requests.reversed()
       .map { loadBalancer.makeRequest(it).toSafeFuture() }
+      // .also { log.trace("before collection") }
       .let { SafeFuture.collectAll(it.stream()).get() }
 
     // assert that queued requests were fired in correct priority
@@ -152,7 +168,7 @@ class LoadBalancingJsonRpcClientTest {
       },
     )
     val requests = (1..10).map {
-      tracesCountersRequest(blockNumber = it.toULong())
+      tracesCountersRequest(blockNumber = it)
     }
     // send requests in reverse order
     requests.reversed()

@@ -30,6 +30,7 @@ private constructor(
   rpcClients: List<JsonRpcClient>,
   private val maxInflightRequestsPerClient: UInt,
   private val requestPriorityComparator: Comparator<JsonRpcRequest>? = null,
+  private val log: Logger = LogManager.getLogger(LoadBalancingJsonRpcClient::class.java),
 ) : JsonRpcClient {
 
   companion object {
@@ -39,11 +40,13 @@ private constructor(
       rpcClients: List<JsonRpcClient>,
       requestLimitPerEndpoint: UInt,
       requestPriorityComparator: Comparator<JsonRpcRequest>? = null,
+      log: Logger = LogManager.getLogger(LoadBalancingJsonRpcClient::class.java),
     ): LoadBalancingJsonRpcClient {
       val loadBalancingJsonRpcClient = LoadBalancingJsonRpcClient(
         rpcClients = rpcClients,
         maxInflightRequestsPerClient = requestLimitPerEndpoint,
         requestPriorityComparator = requestPriorityComparator,
+        log = log,
       )
       loadBalancingJsonRpcClients.add(loadBalancingJsonRpcClient)
       return loadBalancingJsonRpcClient
@@ -55,8 +58,6 @@ private constructor(
       }
     }
   }
-
-  private val log: Logger = LogManager.getLogger(this.javaClass)
 
   private data class RpcClientContext(val rpcClient: JsonRpcClient, var inflightRequests: UInt)
   internal data class RpcRequestContext(
@@ -106,7 +107,7 @@ private constructor(
         // fetch waiting request from the queue
         waitingQueue.poll()?.let { request ->
           client.inflightRequests++
-          log.trace("making request={}", request)
+          log.trace("making request={}", request.request)
           // firing request inside the lock to guarantee order
           // otherwise thread scheduling may make them fire out of order,
           // does not matter much in prod, but results in flaky tests...
@@ -114,8 +115,6 @@ private constructor(
             .makeRequest(request.request, request.resultMapper)
             .onComplete(requestResultHandler(client, request))
         }
-      } else {
-        null
       }
     }
   }
