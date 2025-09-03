@@ -50,7 +50,7 @@ func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, 
 	// Compute the linear combination
 	linComb := make([]fext.Element, params.NbColumns)
 
-	parallel.ExecuteChunky(len(linComb), func(start, stop int) {
+	parallel.Execute(len(linComb), func(start, stop int) {
 		subTask := make([]smartvectors.SmartVector, 0, len(committedSV))
 		for i := range committedSV {
 			subTask = append(subTask, committedSV[i].SubVector(start, stop))
@@ -83,7 +83,7 @@ func (params *Params) InitOpeningFromAlreadyEncodedLC(rsCommittedSV EncodedMatri
 	// Compute the linear combination
 	linComb := make([]fext.Element, params.NumEncodedCols())
 
-	parallel.ExecuteChunky(len(linComb), func(start, stop int) {
+	parallel.Execute(len(linComb), func(start, stop int) {
 		subTask := make([]smartvectors.SmartVector, 0, len(rsCommittedSV))
 		for i := range rsCommittedSV {
 			subTask = append(subTask, rsCommittedSV[i].SubVector(start, stop))
