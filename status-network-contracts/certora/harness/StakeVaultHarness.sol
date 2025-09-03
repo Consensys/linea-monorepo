@@ -11,4 +11,9 @@ contract StakeVaultHarness is StakeVault {
   function isInitializing() public view returns (bool) {
     return _isInitializing();
   }
+
+  function getInitializedVersion() public view returns (uint8) {
+    return _getInitializedVersion();
+  }
 }
+

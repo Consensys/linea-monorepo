@@ -42,6 +42,10 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
     error StakeVault__NotAllowedToTransferOwnership();
     /// @notice Emitted when receiving invalid lock end timestamp from stake manager
     error StakeVault__InvalidLockEnd();
+    /// @notice Emitted when trying to withdraw staked funds without having left first
+    error StakeVault__MustLeaveFirst();
+    /// @notice Emitted when trying to call functions that can't be called after leaving
+    error StakeVault__MarkedAsLeft();
 
     /*//////////////////////////////////////////////////////////////////////////
                                   STATE VARIABLES
@@ -55,10 +59,19 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
     uint256 public lockUntil;
     /// @notice Total amount deposited into the vault
     uint256 public depositedBalance;
+    /// @notice Flag to indicate if the vault has left the system
+    bool public hasLeft;
 
     modifier validDestination(address _destination) {
         if (_destination == address(0)) {
             revert StakeVault__InvalidDestinationAddress();
+        }
+        _;
+    }
+
+    modifier onlyNotLeft() {
+        if (hasLeft) {
+            revert StakeVault__MarkedAsLeft();
         }
         _;
     }
@@ -110,7 +123,7 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      * @param _amount The amount of tokens to stake.
      * @param _seconds The time period to stake for.
      */
-    function stake(uint256 _amount, uint256 _seconds) external onlyOwner {
+    function stake(uint256 _amount, uint256 _seconds) external onlyOwner onlyNotLeft {
         _stake(_amount, _seconds, msg.sender);
     }
 
@@ -124,7 +137,7 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      * @param _seconds The time period to stake for.
      * @param _from The address from which tokens will be transferred.
      */
-    function stake(uint256 _amount, uint256 _seconds, address _from) external onlyOwner {
+    function stake(uint256 _amount, uint256 _seconds, address _from) external onlyOwner onlyNotLeft {
         _stake(_amount, _seconds, _from);
     }
 
@@ -134,7 +147,7 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      * @dev Can only be called if the stake manager is trusted.
      * @param _seconds The time period to lock the staked amount for.
      */
-    function lock(uint256 _seconds) external onlyOwner {
+    function lock(uint256 _seconds) external onlyOwner onlyNotLeft {
         uint256 newLockUntil = stakeManager.lock(_seconds, lockUntil);
         _ensureLockUntilValid(newLockUntil, _seconds);
         lockUntil = newLockUntil;
@@ -171,6 +184,7 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      * @param _destination The address to receive the funds.
      */
     function leave(address _destination) external onlyOwner validDestination(_destination) {
+        hasLeft = true;
         // We have to `try/catch` here in case the upgrade was bad and `leave()`
         // either doesn't exist on the new stake manager or reverts for some reason.
         // If it was a good upgrade, it will cause the stake manager to properly update
@@ -195,7 +209,7 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      * @dev Reverts when the stake manager reverts or the funds can't be transferred.
      * @param migrateTo The address of the new vault.
      */
-    function migrateToVault(address migrateTo) external onlyOwner {
+    function migrateToVault(address migrateTo) external onlyOwner onlyNotLeft {
         if (IStakeVault(migrateTo).owner() != owner()) {
             revert StakeVault__NotAuthorized();
         }
@@ -345,8 +359,12 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
                 revert StakeVault__FundsLocked();
             }
 
-            // Update deposited balance if we're withdrawing from it
             if (_amount > excess) {
+                if (!hasLeft) {
+                    // Can't withdraw staked funds without having left first.
+                    // Use unstake() instead, or leave() if you want to withdraw everything.
+                    revert StakeVault__MustLeaveFirst();
+                }
                 uint256 fromDeposited = _amount - excess;
                 depositedBalance -= fromDeposited;
             }

@@ -1,17 +1,20 @@
+import "./shared.spec";
+
 using ERC20A as staked;
-using StakeManager as stakeManager;
 
 methods {
   function owner() external returns (address) envfree;
   function isInitializing() external returns (bool) envfree;
   function depositedBalance() external returns (uint256) envfree;
+  function hasLeft() external returns (bool) envfree;
   function lockUntil() external returns (uint256) envfree;
   function ERC20A.balanceOf(address) external returns (uint256) envfree;
-  // function ERC20A.allowance(address, address) external returns(uint256) envfree;
+  function ERC20A.allowance(address, address) external returns(uint256) envfree;
   function ERC20A.totalSupply() external returns(uint256) envfree;
-  // // function StakeManager.accounts(address) external returns(uint256, uint256, uint256, uint256, uint256, uint256) envfree;
+  function StakeManagerHarness.vaultData(address) external returns(uint256, uint256, uint256, uint256, uint256, uint256) envfree;
   function _.owner() external => DISPATCHER(true);
   function _.transfer(address, uint256) external => DISPATCHER(true);
+  function _.balanceOf(address) external => DISPATCHER(true);
   function _.lockUntil() external => DISPATCHER(true);
   function _.depositedBalance() external => DISPATCHER(true);
   function _.unstake(uint256) external => DISPATCHER(true);
@@ -39,7 +42,7 @@ invariant depositedBalanceZeroIfERC20BalanceZero()
   staked.balanceOf(currentContract) == 0 => depositedBalance() == 0
   filtered {
       f -> f.contract == currentContract &&
-        f.selector != sig:migrateFromVault(uint256, uint256).selector
+        f.selector != sig:migrateFromVault(IStakeVault.MigrationData).selector
   }
   {
     preserved with (env e) {
@@ -101,9 +104,9 @@ rule reachability(method f) {
 }
 
 
-// // check that the ERC20.balanceOf(vault) is >= to StakeManager.accounts[a].balance
-// invariant accountBalanceVsERC20Balance()
-//   staked.balanceOf(currentContract) >= getAccountStakedBalance(currentContract)
+// // check that the ERC20.balanceOf(vault) is >= to StakeManager.vaultData[a].stakedBalance
+// invariant vaultBalanceVsERC20Balance()
+//   staked.balanceOf(currentContract) >= getVaultStakedBalance(currentContract)
 //   { preserved with (env e) {
 //       // the sender can't be the vault otherwise it can transfer tokens
 //       require e.msg.sender != currentContract;
@@ -114,7 +117,7 @@ rule reachability(method f) {
 //       // if it's a transfer from the StakeManager to the vault as reward address, it can't overflow
 //       require staked.balanceOf(currentContract) + staked.balanceOf(stakeManager) <= to_mathint(staked.totalSupply());
 //     }
-
+//
 //     // the next blocked is run instead of the general one if the current function is staked.transferFrom.
 //     // if it's a transferFrom, we don't have the from in the first preserved block to check for an overflow
 //     preserved staked.transferFrom(address from, address to, uint256 amount) with (env e) {
@@ -125,14 +128,14 @@ rule reachability(method f) {
 //       require staked.allowance(currentContract, e.msg.sender) == 0;
 //       require staked.balanceOf(from) + staked.balanceOf(to) <= to_mathint(staked.totalSupply());
 //     }
-
+//
 //     preserved stake(uint256 amount, uint256 duration) with (env e) {
-
+//
 //       require e.msg.sender != currentContract;
-
+//
 //       require staked.balanceOf(currentContract) + staked.balanceOf(e.msg.sender) + staked.balanceOf(stakeManager) <= to_mathint(staked.totalSupply());
 //     }
-
+//
 //     preserved stake(uint256 amount, uint256 duration, address from) with (env e) {
 //       require e.msg.sender != currentContract;
 //       require from != currentContract;
