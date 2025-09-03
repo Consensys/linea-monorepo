@@ -93,8 +93,8 @@ type CompiledIOP struct {
 
 	// PcsCtxs stores the compilation context of the last used
 	// cryptographic compiler. Specifically, it is aimed to store the last
-	// Vortex compilation context (see [github.com/consensys/linea-monorepo/prover/protocol/compiler]) that was used. And
-	// its purpose is to provide the Vortex context to the self-recursion
+	// Vortex compilation context (see [github.com/consensys/linea-monorepo/prover/protocol/compiler]) that was used.
+	// And its purpose is to provide the Vortex context to the self-recursion
 	// compilation context; see [github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion]. This allows
 	// the self-recursion context to learn about the columns to use and the
 	// Vortex parameters.
@@ -126,7 +126,7 @@ type CompiledIOP struct {
 	PublicInputs []PublicInput
 
 	// ExtraData is a free field in which compilers can store whatever they want.
-	ExtraData map[string]any
+	ExtraData map[string]any `serde:"omit"`
 
 	// WithStorePointerChecks is a flag that controls whether or not the
 	// CompiledIOP should check that its columns and queries are registered in
