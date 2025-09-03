@@ -155,19 +155,23 @@ services:
     depends_on:
       sequencer:
         condition: service_healthy
-    image: ethpandaops/erigon:main-8baa373a
+    image: erigontech/erigon:v3.0.2 # versions after v3.0.2 doesn't work for switching from Clique to Prague
     container_name: follower-erigon
-    entrypoint: [ "sh", "/scripts/node.sh", "1337", "/initialization/genesis-geth.json", "0x1C9C380",
-                  "/home/erigon" ]
     environment:
       BOOTNODES: "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        erigon --datadir /home/erigon init /initialization/genesis-geth.json && \
+        erigon --config=/config.toml --bootnodes=$$BOOTNODES
     ports:
       - "11545:8545"
       - "11551:8551"
     volumes:
       # It's ok to mount sub-dirs of "datadir" to different drives
       - ./jwt:/jwt:ro
-      - ./erigon:/scripts:ro
+      - ./erigon/config.toml:/config.toml:ro
       - ./initialization/:/initialization/:ro
     networks:
       - linea
