@@ -1,4 +1,4 @@
-package wizard
+package zk
 
 import (
 	"github.com/consensys/gnark/frontend"
@@ -62,6 +62,10 @@ func (e EmulatedFieldOps) AssertIsDifferent(a, b *emulated.Element[emulated.Koal
 
 func (e EmulatedFieldOps) AssertIsLessOrEqual(a, b *emulated.Element[emulated.KoalaBear]) {
 	e.ef.AssertIsLessOrEqual(a, b)
+}
+
+func (e EmulatedFieldOps) SetFromUint(a *emulated.Element[emulated.KoalaBear], v uint64) {
+	*a = emulated.ValueOf[emulated.KoalaBear](v)
 }
 
 func (e EmulatedFieldOps) Println(a ...emulated.Element[emulated.KoalaBear]) {

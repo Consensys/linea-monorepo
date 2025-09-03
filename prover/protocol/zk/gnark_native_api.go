@@ -1,4 +1,4 @@
-package wizard
+package zk
 
 import (
 	"github.com/consensys/gnark/frontend"
@@ -68,6 +68,10 @@ func (n NativeFieldOps) AssertIsDifferent(a, b *frontend.Variable) {
 
 func (n NativeFieldOps) AssertIsLessOrEqual(v *frontend.Variable, bound *frontend.Variable) {
 	n.api.AssertIsLessOrEqual(*v, *bound)
+}
+
+func (n NativeFieldOps) SetFromUint(a *frontend.Variable, v uint64) {
+	*a = v
 }
 
 func (n NativeFieldOps) Println(a ...frontend.Variable) {

@@ -1,4 +1,4 @@
-package wizard
+package zk
 
 import (
 	"github.com/consensys/gnark/frontend"
@@ -19,12 +19,12 @@ const (
 	Undefined
 )
 
-// FType supported field types in gnark circuit
+// FType (for Field Type) supported field types in gnark circuit
 type FType interface {
 	emulated.Element[emulated.KoalaBear] | frontend.Variable
 }
 
-// FieldType returns the type of the circuit, emulated (koalabear over bls12-377) or native
+// getType returns the type of the circuit, emulated (koalabear over bls12-377) or native
 // (koalabear over koalabear).
 func getType[T FType]() FieldType {
 	var a T
@@ -58,6 +58,8 @@ type FieldOps[T FType] interface {
 	AssertIsDifferent(i1, i2 *T)
 
 	AssertIsLessOrEqual(v *T, bound *T)
+
+	SetFromUint(a *T, v uint64)
 
 	Println(a ...T)
 
