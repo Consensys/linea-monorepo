@@ -55,7 +55,7 @@ internal class PriorityQueueWithFIFOFallback<T>(
   }
 
   override fun clear() {
-    TODO("Not yet implemented")
+    priorityQueue.clear()
   }
 
   override fun iterator(): MutableIterator<T?> {
@@ -70,8 +70,8 @@ internal class PriorityQueueWithFIFOFallback<T>(
     TODO("Not yet implemented")
   }
 
-  override fun contains(element: T?): Boolean {
-    TODO("Not yet implemented")
+  override fun contains(element: T): Boolean {
+    return priorityQueue.any { it.item == element }
   }
 
   override fun containsAll(elements: Collection<T?>): Boolean {

@@ -280,7 +280,7 @@ class LoadBalancingJsonRpcClientTest {
     producersStartBarrier.await() // wait for all threads to make the requests;
     receivedResponsesLatch.await() // wait all threads to receive the responses;
     assertThat(loadBalancer.inflightRequestsCount()).isEqualTo(0L)
-    assertThat(loadBalancer.queuedRequests()).isEmpty()
+    assertThat(loadBalancer.queuedRequestsCount()).isEqualTo(0)
     requestProducers.forEach { requestProducer ->
       assertThat(requestProducer.responsesHandled()).isEqualTo(numberOfRequestPerThread)
     }

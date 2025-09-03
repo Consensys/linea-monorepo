@@ -76,9 +76,9 @@ private constructor(
     }
   private val readWriteLock: ReadWriteLock = ReentrantReadWriteLock()
 
-  internal fun queuedRequests(): List<JsonRpcRequest> {
+  internal fun queuedRequestsCount(): Int {
     readWriteLock.readLock().withLock {
-      return waitingQueue.map { it.request }
+      return waitingQueue.size
     }
   }
 
