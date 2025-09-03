@@ -103,7 +103,7 @@ class LoadBalancingJsonRpcClientTest {
         bn1 - bn2
       },
     )
-    val requests = (1..10).map {
+    val requests = (1..20).map {
       tracesCountersRequest(blockNumber = it.toULong())
     }
     // send requests in reverse order
@@ -113,11 +113,13 @@ class LoadBalancingJsonRpcClientTest {
 
     // assert that queued requests were fired in correct priority
     // Expected order:
-    // 10 -- fired right away to client1, que is empty
-    // 9 -- fired right away to client2, que is empty
-    // 1,2,3,...8 because were queued and fired regarding priority
+    // 20 -- fired right away to client1, que is empty
+    // 19 -- fired right away to client2, que is empty
+    // 18..17 -- may be queued or fired, depends on client1/client2 response time and thread scheduling
+    // 1,2,3,...17 were queued and fired regarding priority
     assertThat(requestsReceivedByClients.take(2)).isEqualTo(requests.takeLast(2).reversed())
-    assertThat(requestsReceivedByClients.drop(2)).isEqualTo(requests.dropLast(2))
+    assertThat(requestsReceivedByClients.drop(4))
+      .containsSubsequence(requests.drop(4).dropLast(4))
   }
 
   @Test
