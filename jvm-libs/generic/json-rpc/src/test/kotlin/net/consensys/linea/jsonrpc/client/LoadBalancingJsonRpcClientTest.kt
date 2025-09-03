@@ -85,12 +85,12 @@ class LoadBalancingJsonRpcClientTest {
     }
     val client1 = FakeJsonRpcHandler(
       requestHandled = requestsReceivedByClients,
-      defaultResponseDelay = 20.milliseconds,
+      defaultResponseDelay = 50.milliseconds,
       defaultResponseSupplier = requestHandler,
     )
     val client2 = FakeJsonRpcHandler(
       requestHandled = requestsReceivedByClients,
-      defaultResponseDelay = 30.milliseconds,
+      defaultResponseDelay = 70.milliseconds,
       defaultResponseSupplier = requestHandler,
     )
 
