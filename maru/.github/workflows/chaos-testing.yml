@@ -85,6 +85,7 @@ jobs:
 
       - name: Run chaos tests
         id: chaos-tests
+        timeout-minutes: 30
         run: |
           cd chaos-testing
           mkdir -p ~/.kube
