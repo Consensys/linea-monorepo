@@ -2,6 +2,7 @@ package serialization_test
 
 import (
 	"os"
+	"runtime"
 	"testing"
 	"time"
 
@@ -13,25 +14,28 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
-func TestProofSanity(t *testing.T) {
+// This test is necessary to do a quick check if omitting certain fields in certain
+// compiled objects has any effects on generating the proof
+func TestBasicProofSanity(t *testing.T) {
 
-	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
 	// Setup
 	dw := GetBasicDW()
-
 	testPath := "/tmp/dw"
 	defer os.RemoveAll(testPath)
 
 	// Serialize and load to file
-	if err := serialization.StoreToDisk(testPath, dw, false); err != nil {
+	if err := serialization.StoreToDisk(testPath, dw, true); err != nil {
 		t.Fatalf("could not serialize %s: %s", testPath, err)
 	}
 
+	dw = nil
+	runtime.GC()
+
 	// Load the deserialized wizard from the file and sanity check the proof
-	// We do this to check if omitting certain fields in certain compiled objects has any effects on generating the proof
 	distWizard := &distributed.DistributedWizard{}
-	if err := serialization.LoadFromDisk(testPath, distWizard, false); err != nil {
+	if err := serialization.LoadFromDisk(testPath, distWizard, true); err != nil {
 		t.Fatalf("could not deserialize %s: %s", testPath, err)
 	}
 

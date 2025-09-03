@@ -42,54 +42,55 @@ func GetDW(cfg *config.Config) *distributed.DistributedWizard {
 
 func TestSerdeDW(t *testing.T) {
 
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	cfg, err := config.NewConfigFromFileUnchecked("/home/ubuntu/linea-monorepo/prover/config/config-sepolia-limitless.toml")
 	if err != nil {
 		t.Fatalf("failed to read config file: %s", err)
 	}
 	dist := GetDW(cfg)
+	isSanityCheck := false
 
 	t.Run("ModuleNames", func(t *testing.T) {
-		runSerdeTest(t, dist.ModuleNames, "DW.ModuleNames", true, false)
+		runSerdeTest(t, dist.ModuleNames, "DW.ModuleNames", isSanityCheck, false)
 	})
 
 	for i := range dist.GLs {
 		t.Run(fmt.Sprintf("DW.GLModule-%d", i), func(t *testing.T) {
-			runSerdeTest(t, dist.GLs[i], fmt.Sprintf("DW.GLModule-%d", i), true, false)
+			runSerdeTest(t, dist.GLs[i], fmt.Sprintf("DW.GLModule-%d", i), isSanityCheck, false)
 		})
 	}
 
 	for i := range dist.LPPs {
 		t.Run(fmt.Sprintf("DW.LPPModule-%d", i), func(t *testing.T) {
-			runSerdeTest(t, dist.LPPs[i], fmt.Sprintf("DW.LPPModule-%d", i), true, false)
+			runSerdeTest(t, dist.LPPs[i], fmt.Sprintf("DW.LPPModule-%d", i), isSanityCheck, false)
 		})
 	}
 
 	t.Run("DefaultModule", func(t *testing.T) {
-		runSerdeTest(t, dist.DefaultModule, "DW.DefaultModule", true, false)
+		runSerdeTest(t, dist.DefaultModule, "DW.DefaultModule", isSanityCheck, false)
 	})
 
 	t.Run("Bootstrapper", func(t *testing.T) {
-		runSerdeTest(t, dist.Bootstrapper, "DW.Bootstrapper", true, false)
+		runSerdeTest(t, dist.Bootstrapper, "DW.Bootstrapper", isSanityCheck, false)
 	})
 
 	t.Run("Discoverer", func(t *testing.T) {
-		runSerdeTest(t, dist.Disc, "DW.Discoverer", true, false)
+		runSerdeTest(t, dist.Disc, "DW.Discoverer", isSanityCheck, false)
 	})
 
 	t.Run("CompiledDefault", func(t *testing.T) {
-		runSerdeTest(t, dist.CompiledDefault, "DW.CompiledDefault", true, false)
+		runSerdeTest(t, dist.CompiledDefault, "DW.CompiledDefault", isSanityCheck, false)
 	})
 
 	for i := range dist.CompiledGLs {
 		t.Run(fmt.Sprintf("CompiledGL-%v", i), func(t *testing.T) {
-			runSerdeTest(t, dist.CompiledGLs[i], fmt.Sprintf("DW.CompiledGL-%v", i), true, false)
+			runSerdeTest(t, dist.CompiledGLs[i], fmt.Sprintf("DW.CompiledGL-%v", i), isSanityCheck, false)
 		})
 	}
 
 	for i := range dist.CompiledLPPs {
 		t.Run(fmt.Sprintf("CompiledLPP-%v", i), func(t *testing.T) {
-			runSerdeTest(t, dist.CompiledLPPs[i], fmt.Sprintf("DW.CompiledLPP-%v", i), true, false)
+			runSerdeTest(t, dist.CompiledLPPs[i], fmt.Sprintf("DW.CompiledLPP-%v", i), isSanityCheck, false)
 		})
 	}
 
@@ -99,7 +100,7 @@ func TestSerdeDW(t *testing.T) {
 	runtime.GC()
 
 	t.Run("CompiledConglomeration", func(t *testing.T) {
-		runSerdeTest(t, cong, "DW.CompiledConglomeration", true, false)
+		runSerdeTest(t, cong, "DW.CompiledConglomeration", isSanityCheck, false)
 	})
 }
 
@@ -107,7 +108,7 @@ func TestSerdeDW(t *testing.T) {
 // verified to be correct in the previous test (TestSerdeDW).
 func TestSerdeDWPerf(t *testing.T) {
 
-	//t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	cfg, err := config.NewConfigFromFileUnchecked("/home/ubuntu/linea-monorepo/prover/config/config-sepolia-limitless.toml")
 	if err != nil {
 		t.Fatalf("failed to read config file: %s", err)
@@ -116,49 +117,49 @@ func TestSerdeDWPerf(t *testing.T) {
 	var perfLogs profiling.PerfLogs
 	dw := GetDW(cfg)
 
-	// t.Run("ModuleNames", func(t *testing.T) {
-	// 	perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.ModuleNames, "DW.ModuleNames"))
-	// })
+	t.Run("ModuleNames", func(t *testing.T) {
+		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.ModuleNames, "DW.ModuleNames"))
+	})
 
-	// for i := range dw.GLs {
-	// 	t.Run(fmt.Sprintf("GLModule-%d", i), func(t *testing.T) {
-	// 		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.GLs[i], fmt.Sprintf("DW.GLModule-%v", i)))
-	// 	})
-	// }
+	for i := range dw.GLs {
+		t.Run(fmt.Sprintf("GLModule-%d", i), func(t *testing.T) {
+			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.GLs[i], fmt.Sprintf("DW.GLModule-%v", i)))
+		})
+	}
 
-	// for i := range dw.LPPs {
-	// 	t.Run(fmt.Sprintf("LPPModule-%d", i), func(t *testing.T) {
-	// 		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.LPPs[i], fmt.Sprintf("DW.LPPModule-%d", i)))
-	// 	})
-	// }
+	for i := range dw.LPPs {
+		t.Run(fmt.Sprintf("LPPModule-%d", i), func(t *testing.T) {
+			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.LPPs[i], fmt.Sprintf("DW.LPPModule-%d", i)))
+		})
+	}
 
-	// t.Run("DefaultModule", func(t *testing.T) {
-	// 	perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.DefaultModule, "DW.DefaultModule"))
-	// })
+	t.Run("DefaultModule", func(t *testing.T) {
+		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.DefaultModule, "DW.DefaultModule"))
+	})
 
-	// t.Run("Bootstrapper", func(t *testing.T) {
-	// 	perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.Bootstrapper, "DW.Bootstrapper"))
-	// })
+	t.Run("Bootstrapper", func(t *testing.T) {
+		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.Bootstrapper, "DW.Bootstrapper"))
+	})
 
-	// t.Run("Discoverer", func(t *testing.T) {
-	// 	perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.Disc, "DW.Discoverer"))
-	// })
+	t.Run("Discoverer", func(t *testing.T) {
+		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.Disc, "DW.Discoverer"))
+	})
 
-	// t.Run("CompiledDefault", func(t *testing.T) {
-	// 	perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledDefault, "DW.CompiledDefault"))
-	// })
+	t.Run("CompiledDefault", func(t *testing.T) {
+		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledDefault, "DW.CompiledDefault"))
+	})
 
-	// for i := range dw.CompiledGLs {
-	// 	t.Run(fmt.Sprintf("CompiledGL-%v", i), func(t *testing.T) {
-	// 		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledGLs[i], fmt.Sprintf("DW.CompiledGL-%v", i)))
-	// 	})
-	// }
+	for i := range dw.CompiledGLs {
+		t.Run(fmt.Sprintf("CompiledGL-%v", i), func(t *testing.T) {
+			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledGLs[i], fmt.Sprintf("DW.CompiledGL-%v", i)))
+		})
+	}
 
-	// for i := range dw.CompiledLPPs {
-	// 	t.Run(fmt.Sprintf("CompiledLPP-%v", i), func(t *testing.T) {
-	// 		perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledLPPs[i], fmt.Sprintf("DW.CompiledLPP-%v", i)))
-	// 	})
-	// }
+	for i := range dw.CompiledLPPs {
+		t.Run(fmt.Sprintf("CompiledLPP-%v", i), func(t *testing.T) {
+			perfLogs = append(perfLogs, runSerdeTestPerf(t, dw.CompiledLPPs[i], fmt.Sprintf("DW.CompiledLPP-%v", i)))
+		})
+	}
 
 	// To save memory
 	cong := dw.CompiledConglomeration
