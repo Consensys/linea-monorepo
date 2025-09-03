@@ -200,12 +200,12 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
             revert StakeVault__NotAuthorized();
         }
         stakeManager.migrateToVault(migrateTo);
+        depositedBalance = 0;
+        lockUntil = 0;
         bool success = STAKING_TOKEN.transfer(migrateTo, STAKING_TOKEN.balanceOf(address(this)));
         if (!success) {
             revert StakeVault__MigrationFailed();
         }
-        depositedBalance = 0;
-        lockUntil = 0;
     }
 
     /**
