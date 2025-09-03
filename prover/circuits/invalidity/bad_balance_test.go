@@ -42,12 +42,18 @@ func TestInvalidityBadBalance(t *testing.T) {
 			FuncInputs: public_input.Invalidity{
 				StateRootHash: root,
 			},
+			FromAddress: tcases[1].FromAddress,
 		}
-
-		circuit = inval.CircuitInvalidity{
-			SubCircuit: &inval.BadBalanceCircuit{},
-		}
+		b, err = assi.Transaction.MarshalBinary()
 	)
+	require.NoError(t, err)
+	assi.RlpEncodedTx = make([]byte, len(b[:])) // include the type byte
+	copy(assi.RlpEncodedTx, b[:])
+
+	circuit := inval.CircuitInvalidity{
+		SubCircuit: &inval.BadBalanceCircuit{},
+	}
+
 	// generate keccak proof for the circuit
 	kcomp, kproof := inval.MakeKeccakProofs(assi.Transaction, 256, dummy.Compile)
 	// assign the circuit
