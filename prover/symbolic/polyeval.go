@@ -135,7 +135,8 @@ func (PolyEval) EvaluateExt(inputs []sv.SmartVector, p ...mempool.MemPool) sv.Sm
 
 func (PolyEval) EvaluateMixed(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
 	if sv.AreAllBase(inputs) {
-		return PolyEval{}.Evaluate(inputs, p...)
+		x := inputs[0].(*sv.ConstantExt).GetExt(0)
+		return sv.LinearCombinationMixed(inputs[1:], x, p...)
 	} else {
 		return PolyEval{}.EvaluateExt(inputs, p...)
 	}

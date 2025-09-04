@@ -1,8 +1,9 @@
 package symbolic
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
@@ -30,9 +31,9 @@ func TestReplayExpression(t *testing.T) {
 	r.SetRandom()
 
 	witnesses := map[string]smartvectors.SmartVector{
-		"a": smartvectors.ForTestExt(1, 2, 3, 4, 5, 6, 7, 8),
-		"b": smartvectors.ForTestExt(8, 16, 32, 64, 128, 256, 512, 1024),
-		"c": smartvectors.ForTestExt(1, 1, 2, 3, 5, 8, 13, 21),
+		"a": smartvectors.ForTest(1, 2, 3, 4, 5, 6, 7, 8),
+		"b": smartvectors.ForTest(8, 16, 32, 64, 128, 256, 512, 1024),
+		"c": smartvectors.ForTest(1, 1, 2, 3, 5, 8, 13, 21),
 		"x": smartvectors.NewConstantExt(r, 8),
 	}
 
