@@ -4,9 +4,72 @@ on:
   workflow_call:
 
 jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.changes.outputs.go }}
+      java-kotlin: ${{ steps.changes.outputs.java-kotlin }}
+      javascript-typescript: ${{ steps.changes.outputs.javascript-typescript }}
+      actions: ${{ steps.changes.outputs.actions }}
+      python: ${{ steps.changes.outputs.python }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            go:
+              - '**/*.go'
+              - '**/go.mod'
+              - '**/go.sum'
+            java-kotlin:
+              - '**/*.java'
+              - '**/*.kt'
+              - '**/*.gradle'
+              - '**/*.gradle.kts'
+              - '**/pom.xml'
+              - '**/build.gradle'
+              - '**/gradle.properties'
+              - '**/settings.gradle'
+              - 'build.gradle'
+              - 'gradle.properties'
+              - 'settings.gradle'
+            javascript-typescript:
+              - '**/*.js'
+              - '**/*.ts'
+              - '**/*.tsx'
+              - '**/*.jsx'
+              - '**/*.json'
+              - '**/package.json'
+              - '**/tsconfig.json'
+              - '**/pnpm-lock.yaml'
+              - '**/yarn.lock'
+              - '**/package-lock.json'
+            actions:
+              - '.github/workflows/**'
+              - '.github/actions/**'
+            python:
+              - '**/*.py'
+              - '**/requirements.txt'
+              - '**/pyproject.toml'
+              - '**/setup.py'
+              - '**/Pipfile'
+
   analyze:
     name: Analyze
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
+    needs: changes
+    if: |
+      needs.changes.outputs.go == 'true' ||
+      needs.changes.outputs.java-kotlin == 'true' ||
+      needs.changes.outputs.javascript-typescript == 'true' ||
+      needs.changes.outputs.actions == 'true' ||
+      needs.changes.outputs.python == 'true'
     permissions:
       actions: read
       contents: read
@@ -15,38 +78,56 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'go', 'java-kotlin', 'javascript-typescript', 'actions', 'python' ]
+        include:
+          - language: 'go'
+            condition: ${{ needs.changes.outputs.go == 'true' }}
+          - language: 'java-kotlin'
+            condition: ${{ needs.changes.outputs.java-kotlin == 'true' }}
+          - language: 'javascript-typescript'
+            condition: ${{ needs.changes.outputs.javascript-typescript == 'true' }}
+          - language: 'actions'
+            condition: ${{ needs.changes.outputs.actions == 'true' }}
+          - language: 'python'
+            condition: ${{ needs.changes.outputs.python == 'true' }}
 
     steps:
+      - name: Skip if no changes
+        if: matrix.condition != 'true'
+        run: echo "Skipping ${{ matrix.language }} - no relevant changes detected"
+
       - name: Checkout repository
+        if: matrix.condition == 'true'
         uses: actions/checkout@v4
 
       - name: Initialize CodeQL
+        if: matrix.condition == 'true'
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
 
       - name: Setup Java
-        if: matrix.language == 'java-kotlin'
+        if: matrix.language == 'java-kotlin' && matrix.condition == 'true'
         uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b #v4.5.0
         with:
           distribution: temurin
           java-version: 21
 
       - name: Autobuild
-        if: matrix.language != 'github-actions'
+        if: matrix.language != 'github-actions' && matrix.condition == 'true'
         uses: github/codeql-action/autobuild@v3
         env:
           GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
 
       - name: Perform CodeQL Analysis
+        if: matrix.condition == 'true'
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:${{matrix.language}}"
           output: sarif-results
 
       - name: Upload CodeQL Results
+        if: matrix.condition == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: codeql-results-${{ matrix.language }}
