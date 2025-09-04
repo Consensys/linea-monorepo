@@ -11,6 +11,8 @@
         "l2MessagingBlocksOffsets": "0x00000000000000000000000fffff",
         "verProofForCircuitID": 0,
         "genProofForCircuitID": 0,
-        "verifierContractID": 0
+        "verifierContractID": 0,
+        "parentAggregationFtxStreamHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+       "parentAggregationFtxStreamHashNumber": 122
     }
 }

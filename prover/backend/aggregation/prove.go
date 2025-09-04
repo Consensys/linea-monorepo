@@ -81,6 +81,10 @@ func (cf CollectedFields) AggregationPublicInput(cfg *config.Config) public_inpu
 		L1RollingHash:                           cf.L1RollingHash,
 		LastFinalizedL1RollingHashMessageNumber: cf.LastFinalizedL1RollingHashMessageNumber,
 		L1RollingHashMessageNumber:              cf.L1RollingHashMessageNumber,
+		LastFinalizedFtxStreamHash:              cf.LastFinalizedFtxStreamHash,
+		FinalFtxStreamHash:                      cf.FinalFtxStreamHash,
+		LastFinalizedFtxNumber:                  cf.LastFinalizedFtxNumber,
+		FinalFtxNumber:                          cf.FinalFtxNumber,
 		L2MsgRootHashes:                         cf.L2MsgRootHashes,
 		L2MsgMerkleTreeDepth:                    utils.ToInt(cf.L2MsgTreeDepth),
 		ChainID:                                 uint64(cfg.Layer2.ChainID),
@@ -108,6 +112,7 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 	assignment, err := c.Assign(pi_interconnection.Request{
 		Decompressions: cf.DecompressionPI,
 		Executions:     cf.ExecutionPI,
+		Invalidity:     cf.InvalidityPI,
 		Aggregation:    cf.AggregationPublicInput(cfg),
 	}, cfg.BlobDecompressionDictStore(string(circuits.BlobDecompressionV1CircuitID))) // TODO @Tabaie: when there is a version 2, input the compressor version to use here
 	if err != nil {

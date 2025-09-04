@@ -76,9 +76,9 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 			L2MsgRootHashes:                         merkleRoots,
 			L2MsgMerkleTreeDepth:                    5,
 			LastFinalizedFtxNumber:                  3,
-			FtxNumber:                               4,
+			FinalFtxNumber:                          4,
 			LastFinalizedFtxStreamHash:              utils.FmtIntHex32Bytes(0x0123),
-			FtxStreamHash:                           utils.FmtIntHex32Bytes(0x012345),
+			FinalFtxStreamHash:                      utils.FmtIntHex32Bytes(0x012345),
 		},
 	}
 }

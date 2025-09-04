@@ -151,9 +151,9 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 			L2MsgRootHashes:                         merkleRoots,
 			L2MsgMerkleTreeDepth:                    5,
 			LastFinalizedFtxNumber:                  2,
-			FtxNumber:                               4,
+			FinalFtxNumber:                          4,
 			LastFinalizedFtxStreamHash:              utils.FmtIntHex32Bytes(0x0356),
-			FtxStreamHash:                           utils.FmtIntHex32Bytes(0x03),
+			FinalFtxStreamHash:                      utils.FmtIntHex32Bytes(0x03),
 		},
 	}
 
@@ -260,9 +260,9 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 			L2MsgRootHashes:                         merkleRoots,
 			L2MsgMerkleTreeDepth:                    5,
 			LastFinalizedFtxNumber:                  2,
-			FtxNumber:                               3,
+			FinalFtxNumber:                          3,
 			LastFinalizedFtxStreamHash:              utils.FmtIntHex32Bytes(0x03),
-			FtxStreamHash:                           utils.FmtIntHex32Bytes(0x034456),
+			FinalFtxStreamHash:                      utils.FmtIntHex32Bytes(0x034456),
 		},
 	}
 

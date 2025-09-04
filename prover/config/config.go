@@ -126,6 +126,7 @@ type Config struct {
 	Controller                 Controller
 	Execution                  Execution
 	BlobDecompression          BlobDecompression `mapstructure:"blob_decompression"`
+	Invalidity                 Invalidity
 	Aggregation                Aggregation
 	PublicInputInterconnection PublicInput `mapstructure:"public_input_interconnection"` // TODO add wizard compilation params
 	Debug                      Debug       `mapstructure:"debug"`
@@ -257,6 +258,13 @@ type BlobDecompression struct {
 	// We stress that the feature should not be used in production and should
 	// only be used in E2E testing context. TODO @Tabaie @alexandre.belling revise this warning, seems to no longer apply
 	DictPaths []string `mapstructure:"dict_paths"`
+}
+
+type Invalidity struct {
+	WithRequestDir `mapstructure:",squash"`
+
+	// ProverMode stores the kind of prover to use.
+	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev full"`
 }
 
 type Aggregation struct {

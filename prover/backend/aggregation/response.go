@@ -54,6 +54,13 @@ type Response struct {
 	// occuring in the frame of the current aggregation.
 	L1RollingHashMessageNumber uint `json:"l1RollingHashMessageNumber"`
 
+	// FtxStreamHash stores the last stream hash in the frame of the current aggregation.
+	FtxStreamHash                  string `json:"ftxStreamHash"`
+	ParentAggregationFtxStreamHash string `json:"parentAggregationFtxStreamHash"`
+	// FinalFtxNumber stores the number of last ftx in the frame of the current aggregation.
+	FinalFtxNumber             uint `json:"ftxNumber"`
+	ParentAggregationFtxNumber uint `json:"parentAggregationFtxNumber"`
+
 	// L2 messages related messages. L2MerkleRoots stores a sequences of Merkle
 	// roots containing the hashes of the messages emitted on layer 2.
 	L2MerkleRoots   []string `json:"l2MerkleRoots"` // 0x hexstring
@@ -62,4 +69,10 @@ type Response struct {
 	// Hexstring encoding a bitmap of the block containing “MessageSent” events.
 	// events
 	L2MessagingBlocksOffsets string `json:"l2MessagingBlocksOffsets"`
+
+	// FinalBlockHash and ParentAggregationBlock are respectively the block hash
+	// of the final block being finalized and the block hash of the last block
+	// that was finalized before.
+	FinalBlockHash             string `json:"finalBlockHash"`
+	ParentAggregationBlockHash string `json:"parentAggregationBlockHash"`
 }

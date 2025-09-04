@@ -9,7 +9,9 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/crate-crypto/go-ipa/bandersnatch/fr"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/sirupsen/logrus"
@@ -71,7 +73,7 @@ func (c *CircuitInvalidity) Assign(assi AssigningInputs) {
 }
 
 // MakeProof and solve the circuit.
-func (c *CircuitInvalidity) MakeProof(setup circuits.Setup, assi AssigningInputs, FuncInputs public_input.Invalidity) string {
+func (c *CircuitInvalidity) MakeProof(setup circuits.Setup, assi AssigningInputs, FuncInputs *public_input.Invalidity) string {
 
 	switch assi.InvalidityType {
 	case BadNonce:
@@ -139,3 +141,26 @@ const (
 	BadNonce   InvalidityType = 0
 	BadBalance InvalidityType = 1
 )
+
+// UpdateFtxStreamHash updates the ftxStreamHash
+func UpdateFtxStreamHash(
+	prevStreamHash linTypes.Bytes32,
+	txPayload *types.Transaction,
+	expectedBlockHeight int,
+	fromAddress linTypes.EthAddress,
+) linTypes.Bytes32 {
+
+	signer := types.NewLondonSigner(txPayload.ChainId())
+	txHash := signer.Hash(txPayload)
+
+	hasher := mimc.NewMiMC()
+
+	hasher.Write(prevStreamHash[:])
+	hasher.Write(txHash[:16])
+	hasher.Write(txHash[16:])
+	linTypes.WriteInt64On32Bytes(hasher, int64(expectedBlockHeight))
+	hasher.Write(fromAddress[:])
+
+	sum := hasher.Sum(nil)
+	return linTypes.Bytes32(sum)
+}

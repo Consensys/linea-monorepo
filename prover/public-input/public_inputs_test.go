@@ -27,7 +27,7 @@ func TestAggregation(t *testing.T) {
 				L2MsgRootHashes:                         []string{"0xfb7ce9c89be905d39bfa2f6ecdf312f127f8984cf313cbea91bca882fca340cd"},
 				L2MsgMerkleTreeDepth:                    5,
 				LastFinalizedFtxNumber:                  0,
-				FtxNumber:                               0,
+				FinalFtxNumber:                          0,
 			},
 			Res: "0x2954fc0a3c59e63a536dc97ee483093b513da5d635c15c06b4dbd4f6ba1f18cb",
 		},
