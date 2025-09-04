@@ -13,6 +13,8 @@ jobs:
       javascript-typescript: ${{ steps.changes.outputs.javascript-typescript }}
       actions: ${{ steps.changes.outputs.actions }}
       python: ${{ steps.changes.outputs.python }}
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
