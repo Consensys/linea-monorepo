@@ -127,6 +127,7 @@ jobs:
               - '!**/*.mdx'
               - '!**/docs/**'
               - '!docs/**'
+              - '!.github/codeql.yml'
             contracts-excluding-local-deployment-artifacts:
               - 'contracts/**'
               - '!contracts/local-deployments-artifacts/**'
