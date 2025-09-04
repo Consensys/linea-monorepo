@@ -1,6 +1,7 @@
 package smartvectors
 
 import (
+	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -100,15 +101,12 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPo
 	accumulateRegExt := func(acc, v []fext.Element, x fext.Element) {
 		for i := 0; i < length; i++ {
 			tmpF.Mul(&v[i], &x)
-			acc[i].Add(&acc[i], &tmpF)
+			acc[i].Add(&acc[i], &tmpF) // TODO@yao: we don't have a MulAccByE4?
 		}
 	}
 
-	accumulateRegMixed := func(acc []fext.Element, v []field.Element, x fext.Element) {
-		for i := 0; i < length; i++ {
-			tmpF.MulByElement(&x, &v[i])
-			acc[i].Add(&acc[i], &tmpF)
-		}
+	accumulateRegMixed := func(acc extensions.Vector, v []field.Element, x fext.Element) {
+		acc.MulAccByElement(v, &x)
 	}
 	// Computes the polynomial operation separately on the const,
 	// windows and regular and the aggregate the results at the end.

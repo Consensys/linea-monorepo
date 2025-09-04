@@ -57,7 +57,7 @@ func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, 
 		}
 
 		// Collect the result in the larger slice at the end
-		subResult := smartvectors.LinearCombinationExt(subTask, randomCoin)
+		subResult := smartvectors.LinearCombinationMixed(subTask, randomCoin)
 		subResult.WriteInSliceExt(linComb[start:stop])
 	})
 
@@ -90,7 +90,7 @@ func (params *Params) InitOpeningFromAlreadyEncodedLC(rsCommittedSV EncodedMatri
 		}
 
 		// Collect the result in the larger slice at the end
-		subResult := smartvectors.LinearCombinationExt(subTask, randomCoin)
+		subResult := smartvectors.LinearCombinationMixed(subTask, randomCoin)
 		subResult.WriteInSliceExt(linComb[start:stop])
 	})
 
