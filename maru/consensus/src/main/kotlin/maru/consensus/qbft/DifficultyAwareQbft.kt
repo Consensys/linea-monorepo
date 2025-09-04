@@ -6,14 +6,14 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.consensus.delegated
+package maru.consensus.qbft
 
 import java.lang.Exception
 import java.util.Timer
 import java.util.UUID
 import kotlin.concurrent.timerTask
 import kotlin.time.Duration.Companion.seconds
-import maru.config.consensus.delegated.ElDelegatedConfig
+import maru.config.consensus.qbft.DifficultyAwareQbftConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ProtocolFactory
 import maru.core.Protocol
@@ -22,19 +22,19 @@ import org.apache.logging.log4j.Logger
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
 
-class ElDelegatedConsensusFactory(
+class DifficultyAwareQbftFactory(
   private val ethereumJsonRpcClient: Web3j,
   private val postTtdProtocolFactory: ProtocolFactory,
 ) : ProtocolFactory {
-  override fun create(forkSpec: ForkSpec): ElDelegatedConsensus =
-    ElDelegatedConsensus(
+  override fun create(forkSpec: ForkSpec): DifficultyAwareQbft =
+    DifficultyAwareQbft(
       ethereumJsonRpcClient = ethereumJsonRpcClient,
       postTtdProtocolFactory = postTtdProtocolFactory,
       forkSpec = forkSpec,
     )
 }
 
-class ElDelegatedConsensus(
+class DifficultyAwareQbft(
   private val ethereumJsonRpcClient: Web3j,
   private val postTtdProtocolFactory: ProtocolFactory,
   private val forkSpec: ForkSpec,
@@ -51,7 +51,7 @@ class ElDelegatedConsensus(
   private var postTtdProtocol: Protocol? = null
 
   private fun pollTask() {
-    val elDelegatedConfig = forkSpec.configuration as ElDelegatedConfig
+    val difficultyAwareQbftConfig = forkSpec.configuration as DifficultyAwareQbftConfig
     try {
       if (postTtdProtocol != null) {
         // Maybe it was stopped and started after the TTD was reached and poller stopped once
@@ -75,16 +75,16 @@ class ElDelegatedConsensus(
         "Current elBlockNumber={}, totalDifficulty={}, terminalTotalDifficulty={}",
         latestBlock.number,
         totalDifficulty,
-        elDelegatedConfig.terminalTotalDifficulty,
+        difficultyAwareQbftConfig.terminalTotalDifficulty,
       )
 
-      if (totalDifficulty >= elDelegatedConfig.terminalTotalDifficulty.toLong()) {
+      if (totalDifficulty >= difficultyAwareQbftConfig.terminalTotalDifficulty.toLong()) {
         log.info("TTD reached at elBlockNumber={}. Transitioning to post-TTD protocol.", latestBlock.number)
         val postTtdForkSpec =
           ForkSpec(
             timestampSeconds = forkSpec.timestampSeconds,
             blockTimeSeconds = forkSpec.blockTimeSeconds,
-            configuration = elDelegatedConfig.postTtdConfig,
+            configuration = difficultyAwareQbftConfig.postTtdConfig,
           )
         transitionToPostTtdProtocol(postTtdForkSpec)
         stopPoller()
@@ -116,14 +116,14 @@ class ElDelegatedConsensus(
       if (poller != null) {
         return
       }
-      log.debug("Starting ElDelegatedConsensus with pollingInterval={} seconds", forkSpec.blockTimeSeconds)
-      poller = timerFactory("ElDelegatedConsensus", true)
+      log.debug("Starting DifficultyAwareQbft with pollingInterval={} seconds", forkSpec.blockTimeSeconds)
+      poller = timerFactory("DifficultyAwareQbft", true)
       poller!!.scheduleAtFixedRate(
         timerTask {
           try {
             pollTask()
           } catch (e: Exception) {
-            log.warn("ElDelegatedConsensus poll task exception", e)
+            log.warn("DifficultyAwareQbft poll task exception", e)
           }
         },
         0,
@@ -153,7 +153,7 @@ class ElDelegatedConsensus(
   }
 
   private fun stopPoller() {
-    log.debug("Stopping ElDelegatedConsensus poller")
+    log.debug("Stopping DifficultyAwareQbft poller")
     poller?.cancel()
     poller = null
   }

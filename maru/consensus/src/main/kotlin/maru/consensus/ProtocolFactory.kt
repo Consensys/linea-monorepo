@@ -8,9 +8,9 @@
  */
 package maru.consensus
 
-import maru.config.consensus.delegated.ElDelegatedConfig
+import maru.config.consensus.qbft.DifficultyAwareQbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
-import maru.consensus.delegated.ElDelegatedConsensusFactory
+import maru.consensus.qbft.DifficultyAwareQbftFactory
 import maru.core.Protocol
 
 interface ProtocolFactory {
@@ -19,7 +19,7 @@ interface ProtocolFactory {
 
 class OmniProtocolFactory(
   private val qbftConsensusFactory: ProtocolFactory,
-  private val elDelegatedConsensusFactory: ElDelegatedConsensusFactory,
+  private val difficultyAwareQbftFactory: DifficultyAwareQbftFactory,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol =
     when (forkSpec.configuration) {
@@ -27,8 +27,8 @@ class OmniProtocolFactory(
         qbftConsensusFactory.create(forkSpec)
       }
 
-      is ElDelegatedConfig -> {
-        elDelegatedConsensusFactory.create(forkSpec)
+      is DifficultyAwareQbftConfig -> {
+        difficultyAwareQbftFactory.create(forkSpec)
       }
 
       else -> {

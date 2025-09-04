@@ -37,7 +37,7 @@ import maru.config.SyncingConfig
 import maru.config.SyncingConfig.SyncTargetSelection
 import maru.config.ValidatorElNode
 import maru.config.consensus.ElFork
-import maru.config.consensus.delegated.ElDelegatedConfig
+import maru.config.consensus.qbft.DifficultyAwareQbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
@@ -106,7 +106,7 @@ class MaruFactory(
             timestampSeconds = 0UL,
             blockTimeSeconds = 1u,
             configuration =
-              ElDelegatedConfig(
+              DifficultyAwareQbftConfig(
                 QbftConsensusConfig(
                   validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
                   elFork = ElFork.Paris,

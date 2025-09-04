@@ -9,7 +9,7 @@
 package maru.config.consensus
 
 import maru.config.Utils
-import maru.config.consensus.delegated.ElDelegatedConfig
+import maru.config.consensus.qbft.DifficultyAwareQbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
@@ -26,7 +26,7 @@ class JsonFriendlyForksScheduleTest {
       "chainId": 1337,
       "config": {
         "2": {
-          "type": "delegated",
+          "type": "difficultyAwareQbft",
           "blockTimeSeconds": 4,
           "postTtdConfig": {
             "validatorSet": ["0x121212ec3215d8ade8a33607f2cf0f4f60e5f0d0"],
@@ -58,7 +58,7 @@ class JsonFriendlyForksScheduleTest {
           ForkSpec(
             timestampSeconds = 2UL,
             blockTimeSeconds = 4U,
-            ElDelegatedConfig(
+            DifficultyAwareQbftConfig(
               QbftConsensusConfig(
                 validatorSet = setOf(Validator("0x121212ec3215d8ade8a33607f2cf0f4f60e5f0d0".fromHexToByteArray())),
                 elFork = ElFork.Paris,

@@ -9,9 +9,7 @@
 package maru.serialization
 
 import java.nio.ByteBuffer
-import kotlin.text.toInt
-import kotlin.text.toLong
-import maru.config.consensus.delegated.ElDelegatedConfig
+import maru.config.consensus.qbft.DifficultyAwareQbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.extensions.encodeHex
@@ -30,12 +28,9 @@ object QbftConsensusConfigSerializer : Serializer<QbftConsensusConfig> {
   }
 }
 
-object ElDelegatedConfigSerializer : Serializer<ElDelegatedConfig> {
-  override fun serialize(value: ElDelegatedConfig): ByteArray {
-    require(value.postTtdConfig is QbftConsensusConfig) {
-      "only QbftConsensusConfig serialization is implemented for postTtdConfig!"
-    }
-    val postTtdConfigBytes = QbftConsensusConfigSerializer.serialize(value.postTtdConfig as QbftConsensusConfig)
+object DifficultyAwareQbftConfigSerializer : Serializer<DifficultyAwareQbftConfig> {
+  override fun serialize(value: DifficultyAwareQbftConfig): ByteArray {
+    val postTtdConfigBytes = QbftConsensusConfigSerializer.serialize(value.postTtdConfig)
     val buffer = ByteBuffer.allocate(postTtdConfigBytes.size + 8)
     buffer.putLong(value.terminalTotalDifficulty.toLong())
     buffer.put(postTtdConfigBytes)
@@ -50,8 +45,8 @@ object ForkSpecSerializer : Serializer<ForkSpec> {
         is QbftConsensusConfig ->
           QbftConsensusConfigSerializer.serialize(value.configuration as QbftConsensusConfig)
 
-        is ElDelegatedConfig ->
-          ElDelegatedConfigSerializer.serialize(value.configuration as ElDelegatedConfig)
+        is DifficultyAwareQbftConfig ->
+          DifficultyAwareQbftConfigSerializer.serialize(value.configuration as DifficultyAwareQbftConfig)
 
         else -> throw IllegalArgumentException("${value.configuration.javaClass.simpleName} is not supported!")
       }

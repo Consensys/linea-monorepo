@@ -90,7 +90,7 @@ configFiles:
       "chainId": 1337,
       "config": {
         "0": {
-          "type": "delegated",
+          "type": "difficultyAwareQbft",
           "blockTimeSeconds": 1,
           "postTtdConfig": {
             "validatorSet": ["0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"],
