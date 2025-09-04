@@ -13,13 +13,13 @@ spec:
     - name: serial-tests
       templateType: Serial
       children:
+        - network-full-restart # simulate a full cluster restart (e.g blackout)
+        - wait-10s # wait 10s to allow all nodes to recover
         - podkill-randomly
         - wait
         - network-chaos-p2p
         - wait
-        - network-full-restart # simulate a full cluster restart (e.g blackout)
-        - wait-10s # wait 10s to allow all nodes to recover
-        - http-abort-engine-api
+        - network-http-rpc-failures
         - wait
     - name: podkill-randomly
       templateType: Parallel
@@ -32,6 +32,13 @@ spec:
       children:
         - kill-maru-all
         - kill-besu-all
+
+    - name: network-http-rpc-failures
+      templateType: Parallel
+      children:
+        - http-abort-engine-api
+        - http-abort-eth-api
+        - network-latency
 
     # Wait for a period of time
     - name: wait
@@ -56,6 +63,22 @@ spec:
         target: Request
         method: "POST"
         port: 8550
+        abort: true
+
+    - name: http-abort-eth-api
+      templateType: HTTPChaos
+      deadline: 40s
+      httpChaos:
+        selector:
+          namespaces:
+            - default
+          labelSelectors:
+            app.kubernetes.io/component: besu
+        mode: fixed-percent
+        value: "70"
+        target: Request
+        method: "POST"
+        port: 8545
         abort: true
 
     - name: network-chaos-p2p
