@@ -59,7 +59,6 @@ func (circuit *BadNonceCircuit) Define(api frontend.API) error {
 	// verify keccak computation
 	circuit.KeccakH.Verify(api)
 
-	//@azam   in the interconnection we show that Ftx Rolling hash is correctly bound into	FTx.Hash and FromAddress.
 	return nil
 }
 

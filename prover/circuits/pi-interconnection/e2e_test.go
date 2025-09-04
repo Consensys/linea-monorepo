@@ -22,6 +22,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	circuittesting "github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/test_utils"
 	pitesting "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/test_utils"
 	"github.com/consensys/linea-monorepo/prover/config"
 	blobtesting "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
@@ -103,20 +104,40 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 		InitialStateRootHash:         stateRootHashes[1],
 		InitialBlockNumber:           6,
 	}}
+
+	// assign the first ftxStreamHash
+	prevFtxStreamHash := types.Bytes32FromHex("0x0123")
+	ftxStreamHashBytes := test_utils.ComputeFtxStreamHash(
+		prevFtxStreamHash,
+		internal.Uint64To32Bytes(2),
+		11,
+		types.DummyAddress(32),
+	)
+	ftxStreamHash := types.Bytes32(ftxStreamHashBytes)
+
+	// assign the second ftxStreamHash
+	ftxStreamHashBytes1 := test_utils.ComputeFtxStreamHash(
+		ftxStreamHash,
+		internal.Uint64To32Bytes(2),
+		12,
+		types.DummyAddress(32),
+	)
+	ftxStreamHash1 := types.Bytes32(ftxStreamHashBytes1)
+
 	invalReq := []public_input.Invalidity{{
 		TxHash:              internal.Uint64To32Bytes(2),
 		TxNumber:            3,
 		StateRootHash:       stateRootHashes[2],
 		ExpectedBlockHeight: 11,
 		FromAddress:         types.DummyAddress(32),
-		FtxStreamHash:       types.Bytes32FromHex("0x23"),
+		FtxStreamHash:       ftxStreamHash,
 	}, {
 		TxHash:              internal.Uint64To32Bytes(2),
 		TxNumber:            4,
 		StateRootHash:       stateRootHashes[2],
-		ExpectedBlockHeight: 11,
+		ExpectedBlockHeight: 12,
 		FromAddress:         types.DummyAddress(32),
-		FtxStreamHash:       types.Bytes32FromHex("0x03"),
+		FtxStreamHash:       ftxStreamHash1,
 	}}
 
 	blobReq := blobsubmission.Request{
@@ -152,8 +173,8 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 			L2MsgMerkleTreeDepth:                    5,
 			LastFinalizedFtxNumber:                  2,
 			FinalFtxNumber:                          4,
-			LastFinalizedFtxStreamHash:              utils.FmtIntHex32Bytes(0x0356),
-			FinalFtxStreamHash:                      utils.FmtIntHex32Bytes(0x03),
+			LastFinalizedFtxStreamHash:              utils.HexEncodeToString(prevFtxStreamHash[:]),
+			FinalFtxStreamHash:                      utils.HexEncodeToString(invalReq[1].FtxStreamHash[:]),
 		},
 	}
 
@@ -209,13 +230,40 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 		LastRollingHashUpdateNumber:  26,
 	}}
 
-	invalReq := []public_input.Invalidity{
-		{
-			TxNumber:            3,
-			ExpectedBlockHeight: 23,
-			StateRootHash:       internal.Uint64To32Bytes(22),
-			FtxStreamHash:       types.Bytes32FromHex("0x034456"),
-		}}
+	// assign the first ftxStreamHash
+	prevFtxStreamHash := types.Bytes32FromHex("0x0123")
+	ftxStreamHashBytes := test_utils.ComputeFtxStreamHash(
+		prevFtxStreamHash,
+		internal.Uint64To32Bytes(2),
+		32,
+		types.DummyAddress(32),
+	)
+	ftxStreamHash := types.Bytes32(ftxStreamHashBytes)
+
+	// assign the second ftxStreamHash
+	ftxStreamHashBytes1 := test_utils.ComputeFtxStreamHash(
+		ftxStreamHash,
+		internal.Uint64To32Bytes(2),
+		41,
+		types.DummyAddress(32),
+	)
+	ftxStreamHash1 := types.Bytes32(ftxStreamHashBytes1)
+
+	invalReq := []public_input.Invalidity{{
+		TxHash:              internal.Uint64To32Bytes(2),
+		TxNumber:            3,
+		StateRootHash:       internal.Uint64To32Bytes(22),
+		ExpectedBlockHeight: 32,
+		FromAddress:         types.DummyAddress(32),
+		FtxStreamHash:       ftxStreamHash,
+	}, {
+		TxHash:              internal.Uint64To32Bytes(2),
+		TxNumber:            4,
+		StateRootHash:       internal.Uint64To32Bytes(22),
+		ExpectedBlockHeight: 41,
+		FromAddress:         types.DummyAddress(32),
+		FtxStreamHash:       ftxStreamHash1,
+	}}
 
 	blobReq0 := blobsubmission.Request{
 		Eip4844Enabled:      true,
@@ -260,9 +308,9 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 			L2MsgRootHashes:                         merkleRoots,
 			L2MsgMerkleTreeDepth:                    5,
 			LastFinalizedFtxNumber:                  2,
-			FinalFtxNumber:                          3,
-			LastFinalizedFtxStreamHash:              utils.FmtIntHex32Bytes(0x03),
-			FinalFtxStreamHash:                      utils.FmtIntHex32Bytes(0x034456),
+			FinalFtxNumber:                          4,
+			LastFinalizedFtxStreamHash:              utils.HexEncodeToString(prevFtxStreamHash[:]),
+			FinalFtxStreamHash:                      utils.HexEncodeToString(invalReq[1].FtxStreamHash[:]),
 		},
 	}
 

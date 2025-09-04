@@ -2,7 +2,6 @@ package invalidity
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
@@ -129,11 +128,6 @@ func AssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenDataModule, 
 	if !bytes.Equal(streams[0], expectedStream) {
 		panic("gdm stream does not match input")
 	}
-
-	fmt.Printf("nBytes: %v\n", nByteCol.Prettify())
-	fmt.Printf("hashNum: %v\n", hashNumCol.Prettify())
-	fmt.Printf("toHash: %v\n", toHashCol.Prettify())
-	fmt.Printf("index: %v\n", indexCol.Prettify())
 
 }
 
