@@ -74,9 +74,9 @@ func (e EmulatedFieldOps) AssertIsLessOrEqual(a, b *emulated.Element[emulated.Ko
 	e.ef.AssertIsLessOrEqual(a, b)
 }
 
-func (e EmulatedFieldOps) FromUint(v uint64) emulated.Element[emulated.KoalaBear] {
+func (e EmulatedFieldOps) FromUint(v uint64) *emulated.Element[emulated.KoalaBear] {
 	a := emulated.ValueOf[emulated.KoalaBear](v)
-	return a
+	return &a
 }
 
 func (e EmulatedFieldOps) FromKoalabear(v koalabear.Element) *emulated.Element[emulated.KoalaBear] {

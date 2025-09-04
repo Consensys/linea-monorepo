@@ -50,7 +50,7 @@ func (c *ApiCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-func TestAPI(t *testing.T) {
+func TestAPINative(t *testing.T) {
 
 	var witness ApiCircuit
 	var a, b, tmp fext.Element

@@ -81,10 +81,10 @@ func (n NativeFieldOps) AssertIsLessOrEqual(v *frontend.Variable, bound *fronten
 	n.api.AssertIsLessOrEqual(*v, *bound)
 }
 
-func (n NativeFieldOps) FromUint(v uint64) frontend.Variable {
+func (n NativeFieldOps) FromUint(v uint64) *frontend.Variable {
 	var a frontend.Variable
 	a = v
-	return a
+	return &a
 }
 
 func (n NativeFieldOps) FromKoalabear(v koalabear.Element) *frontend.Variable {

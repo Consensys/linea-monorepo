@@ -58,7 +58,7 @@ type FieldOps[T FType] interface {
 
 	AssertIsLessOrEqual(v *T, bound *T)
 
-	FromUint(v uint64) T
+	FromUint(v uint64) *T
 
 	FromKoalabear(v koalabear.Element) *T
 
@@ -67,6 +67,22 @@ type FieldOps[T FType] interface {
 	Println(a ...T)
 
 	NativeApi() frontend.API
+}
+
+func NewApi[T FType](api frontend.API) (FieldOps[T], error) {
+	var wApi FieldOps[T]
+	t := getType[T]()
+	if t == Emulated {
+		tmpApi, err := getFieldOpEmulated(api)
+		if err != nil {
+			return wApi, err
+		}
+		wApi = any(tmpApi).(FieldOps[T])
+	} else {
+		tmpApi := getFieldOpNative(api)
+		wApi = any(tmpApi).(FieldOps[T])
+	}
+	return wApi, nil
 }
 
 // Circuit 0: mixed
