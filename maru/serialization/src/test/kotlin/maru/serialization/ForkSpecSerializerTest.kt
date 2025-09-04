@@ -10,7 +10,7 @@ package maru.serialization
 
 import java.nio.ByteBuffer
 import maru.config.consensus.ElFork
-import maru.config.consensus.delegated.ElDelegatedConfig
+import maru.config.consensus.qbft.DifficultyAwareQbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.core.Validator
@@ -57,7 +57,7 @@ class ForkSpecSerializerTest {
   }
 
   @Test
-  fun `can serialize ForkSpec with ElDelegatedConfig`() {
+  fun `can serialize ForkSpec with DifficultyAwareQbftConfig`() {
     val validator1 = Validator(ByteArray(20) { 0x01 })
     val validator2 = Validator(ByteArray(20) { 0x02 })
     val qbftConfig =
@@ -66,8 +66,8 @@ class ForkSpecSerializerTest {
         elFork = ElFork.Shanghai,
       )
 
-    val elDelegatedConfig =
-      ElDelegatedConfig(
+    val difficultyAwareQbftConfig =
+      DifficultyAwareQbftConfig(
         postTtdConfig = qbftConfig,
         terminalTotalDifficulty = 5000UL,
       )
@@ -76,13 +76,13 @@ class ForkSpecSerializerTest {
       ForkSpec(
         timestampSeconds = 2000000UL,
         blockTimeSeconds = 15U,
-        configuration = elDelegatedConfig,
+        configuration = difficultyAwareQbftConfig,
       )
 
     val serializedData = serializer.serialize(forkSpec)
 
-    // Verify structure: 4 bytes blockTime + 8 bytes timestamp + ElDelegatedConfig serialization
-    val expectedConfigBytes = ElDelegatedConfigSerializer.serialize(elDelegatedConfig)
+    // Verify structure: 4 bytes blockTime + 8 bytes timestamp + DifficultyAwareQbftConfig serialization
+    val expectedConfigBytes = DifficultyAwareQbftConfigSerializer.serialize(difficultyAwareQbftConfig)
     val expectedSize = 4 + 8 + expectedConfigBytes.size
 
     assertThat(serializedData).hasSize(expectedSize)
@@ -108,8 +108,8 @@ class ForkSpecSerializerTest {
         elFork = ElFork.Prague,
       )
 
-    val elDelegatedConfig =
-      ElDelegatedConfig(
+    val difficultyAwareQbftConfig =
+      DifficultyAwareQbftConfig(
         postTtdConfig = qbftConfig,
         terminalTotalDifficulty = 1000UL,
       )
@@ -121,21 +121,21 @@ class ForkSpecSerializerTest {
         configuration = qbftConfig,
       )
 
-    val forkSpecWithElDelegated =
+    val forkSpecWithDifficultyAwareQbft =
       ForkSpec(
         timestampSeconds = 1000UL,
         blockTimeSeconds = 12U,
-        configuration = elDelegatedConfig,
+        configuration = difficultyAwareQbftConfig,
       )
 
     val serializedQbft = serializer.serialize(forkSpecWithQbft)
-    val serializedElDelegated = serializer.serialize(forkSpecWithElDelegated)
+    val serializedDifficultyAwareQbft = serializer.serialize(forkSpecWithDifficultyAwareQbft)
 
     // They should produce different serializations
-    assertThat(serializedQbft).isNotEqualTo(serializedElDelegated)
+    assertThat(serializedQbft).isNotEqualTo(serializedDifficultyAwareQbft)
 
-    // ElDelegated should be larger due to the additional TTD field
-    assertThat(serializedElDelegated.size).isGreaterThan(serializedQbft.size)
+    // DifficultyAwareQbft should be larger due to the additional TTD field
+    assertThat(serializedDifficultyAwareQbft.size).isGreaterThan(serializedQbft.size)
   }
 
   @Test
@@ -171,7 +171,7 @@ class ForkSpecSerializerTest {
   }
 
   @Test
-  fun `can serialize ForkSpec with ElDelegatedConfig containing different TTD values`() {
+  fun `can serialize ForkSpec with DifficultyAwareQbftConfig containing different TTD values`() {
     val validator = Validator(ByteArray(20) { 0x01 })
     val qbftConfig =
       QbftConsensusConfig(
@@ -182,8 +182,8 @@ class ForkSpecSerializerTest {
     val ttdValues = listOf(0UL, 1UL, 1000UL, ULong.MAX_VALUE)
 
     ttdValues.forEach { ttd ->
-      val elDelegatedConfig =
-        ElDelegatedConfig(
+      val difficultyAwareQbftConfig =
+        DifficultyAwareQbftConfig(
           postTtdConfig = qbftConfig,
           terminalTotalDifficulty = ttd,
         )
@@ -192,23 +192,23 @@ class ForkSpecSerializerTest {
         ForkSpec(
           timestampSeconds = 1000UL,
           blockTimeSeconds = 12U,
-          configuration = elDelegatedConfig,
+          configuration = difficultyAwareQbftConfig,
         )
 
       val serializedData = serializer.serialize(forkSpec)
 
-      // Skip ForkSpec fields and read the TTD from ElDelegatedConfig serialization
+      // Skip ForkSpec fields and read the TTD from DifficultyAwareQbftConfig serialization
       val buffer = ByteBuffer.wrap(serializedData)
       buffer.getInt() // skip blockTime
       buffer.getLong() // skip timestamp
-      val deserializedTtd = buffer.getLong() // TTD from ElDelegatedConfig
+      val deserializedTtd = buffer.getLong() // TTD from DifficultyAwareQbftConfig
 
       assertThat(deserializedTtd).isEqualTo(ttd.toLong())
     }
   }
 
   @Test
-  fun `serialization is deterministic for ElDelegatedConfig`() {
+  fun `serialization is deterministic for DifficultyAwareQbftConfig`() {
     val validator1 = Validator(ByteArray(20) { 0x01 })
     val validator2 = Validator(ByteArray(20) { 0x02 })
     val qbftConfig =
@@ -217,8 +217,8 @@ class ForkSpecSerializerTest {
         elFork = ElFork.Prague,
       )
 
-    val elDelegatedConfig =
-      ElDelegatedConfig(
+    val difficultyAwareQbftConfig =
+      DifficultyAwareQbftConfig(
         postTtdConfig = qbftConfig,
         terminalTotalDifficulty = 12345UL,
       )
@@ -227,7 +227,7 @@ class ForkSpecSerializerTest {
       ForkSpec(
         timestampSeconds = 5000UL,
         blockTimeSeconds = 8U,
-        configuration = elDelegatedConfig,
+        configuration = difficultyAwareQbftConfig,
       )
 
     val serialized1 = serializer.serialize(forkSpec)
@@ -237,18 +237,18 @@ class ForkSpecSerializerTest {
   }
 
   @Test
-  fun `can serialize ForkSpec with ElDelegatedConfig with different ElFork values`() {
+  fun `can serialize ForkSpec with DifficultyAwareQbftConfig with different ElFork values`() {
     val validator = Validator(ByteArray(20) { 0x01 })
 
-    ElFork.values().forEach { fork ->
+    ElFork.entries.forEach { fork ->
       val qbftConfig =
         QbftConsensusConfig(
           validatorSet = setOf(validator),
           elFork = fork,
         )
 
-      val elDelegatedConfig =
-        ElDelegatedConfig(
+      val difficultyAwareQbftConfig =
+        DifficultyAwareQbftConfig(
           postTtdConfig = qbftConfig,
           terminalTotalDifficulty = 1000UL,
         )
@@ -257,7 +257,7 @@ class ForkSpecSerializerTest {
         ForkSpec(
           timestampSeconds = 1000UL,
           blockTimeSeconds = 12U,
-          configuration = elDelegatedConfig,
+          configuration = difficultyAwareQbftConfig,
         )
 
       val serializedData = serializer.serialize(forkSpec)
@@ -290,7 +290,7 @@ class ForkSpecSerializerTest {
   }
 
   @Test
-  fun `can serialize large ForkSpec with ElDelegatedConfig and many validators`() {
+  fun `can serialize large ForkSpec with DifficultyAwareQbftConfig and many validators`() {
     val validators =
       (1..100)
         .map { i ->
@@ -303,8 +303,8 @@ class ForkSpecSerializerTest {
         elFork = ElFork.Shanghai,
       )
 
-    val elDelegatedConfig =
-      ElDelegatedConfig(
+    val difficultyAwareQbftConfig =
+      DifficultyAwareQbftConfig(
         postTtdConfig = qbftConfig,
         terminalTotalDifficulty = 999999UL,
       )
@@ -313,7 +313,7 @@ class ForkSpecSerializerTest {
       ForkSpec(
         timestampSeconds = 9999999UL,
         blockTimeSeconds = 30U,
-        configuration = elDelegatedConfig,
+        configuration = difficultyAwareQbftConfig,
       )
 
     val serializedData = serializer.serialize(forkSpec)
@@ -330,7 +330,7 @@ class ForkSpecSerializerTest {
   }
 
   private val config =
-    ElDelegatedConfig(
+    DifficultyAwareQbftConfig(
       postTtdConfig =
         QbftConsensusConfig(
           setOf(DataGenerators.randomValidator(), DataGenerators.randomValidator()),
@@ -371,7 +371,7 @@ class ForkSpecSerializerTest {
   }
 
   @Test
-  fun `serialization for ELDelegated is deterministic for same input`() {
+  fun `serialization for DifficultyAwareQbft is deterministic for same input`() {
     val forkSpec1 =
       ForkSpec(
         blockTimeSeconds = 5u,
@@ -390,7 +390,7 @@ class ForkSpecSerializerTest {
   }
 
   @Test
-  fun `serialization changes for ELDelegated when blockTimeSeconds changes`() {
+  fun `serialization changes for DifficultyAwareQbft when blockTimeSeconds changes`() {
     val forkSpec1 =
       ForkSpec(
         blockTimeSeconds = 5u,
@@ -446,7 +446,7 @@ class ForkSpecSerializerTest {
   }
 
   @Test
-  fun `serialization for ELDelegated changes when timestampSeconds changes`() {
+  fun `serialization for DifficultyAwareQbft changes when timestampSeconds changes`() {
     val forkSpec1 =
       ForkSpec(
         blockTimeSeconds = 5U,

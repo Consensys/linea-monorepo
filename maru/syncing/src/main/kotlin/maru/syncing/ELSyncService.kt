@@ -14,7 +14,7 @@ import java.util.UUID
 import kotlin.concurrent.timerTask
 import kotlin.time.Duration
 import maru.config.consensus.ElFork
-import maru.config.consensus.delegated.ElDelegatedConfig
+import maru.config.consensus.qbft.DifficultyAwareQbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
@@ -108,9 +108,9 @@ class ELSyncService(
     val elFork =
       when (forkSpec.configuration) {
         is QbftConsensusConfig -> (forkSpec.configuration as QbftConsensusConfig).elFork
-        is ElDelegatedConfig -> extractEvmForkFromDelegatedConsensus(forkSpec)
+        is DifficultyAwareQbftConfig -> extractEvmForkFromDifficultyAwareQbft(forkSpec)
         else -> throw IllegalStateException(
-          "Current fork isn't QBFT nor ElDelegated, this case is not supported yet! forkSpec=$forkSpec",
+          "Current fork isn't QBFT nor DifficultyAwareQbft, this case is not supported yet! forkSpec=$forkSpec",
         )
       }
     val executionLayerManager =
@@ -158,8 +158,8 @@ class ELSyncService(
     onStatusChange(newELSyncStatus)
   }
 
-  private fun extractEvmForkFromDelegatedConsensus(forkSpec: ForkSpec): ElFork =
-    ((forkSpec.configuration as ElDelegatedConfig).postTtdConfig as QbftConsensusConfig).elFork
+  private fun extractEvmForkFromDifficultyAwareQbft(forkSpec: ForkSpec): ElFork =
+    ((forkSpec.configuration as DifficultyAwareQbftConfig).postTtdConfig).elFork
 
   override fun start() {
     synchronized(this) {

@@ -20,7 +20,7 @@ import maru.consensus.NewBlockHandler
 import maru.consensus.NextBlockTimestampProviderImpl
 import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
-import maru.consensus.delegated.ElDelegatedConsensusFactory
+import maru.consensus.qbft.DifficultyAwareQbftFactory
 import maru.consensus.state.FinalizationProvider
 import maru.core.Protocol
 import maru.crypto.Crypto
@@ -216,8 +216,8 @@ class MaruApp(
       }
     val forkTransitionSubscriptionManager = InOrderFanoutSubscriptionManager<ForkSpec>()
     forkTransitionSubscriptionManager.addSyncSubscriber(p2pNetwork::handleForkTransition)
-    val elDelegatedConsensusFactory =
-      ElDelegatedConsensusFactory(
+    val difficultyAwareQbftFactory =
+      DifficultyAwareQbftFactory(
         ethereumJsonRpcClient = validatorELNodeEthJsonRpcClient.eth1Web3j,
         postTtdProtocolFactory = qbftFactory,
       )
@@ -227,7 +227,7 @@ class MaruApp(
         protocolFactory =
           OmniProtocolFactory(
             qbftConsensusFactory = qbftFactory,
-            elDelegatedConsensusFactory = elDelegatedConsensusFactory,
+            difficultyAwareQbftFactory = difficultyAwareQbftFactory,
           ),
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
         syncStatusProvider = syncStatusProvider,

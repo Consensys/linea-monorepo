@@ -16,3 +16,8 @@ data class QbftConsensusConfig(
   val validatorSet: Set<Validator>,
   val elFork: ElFork,
 ) : ConsensusConfig
+
+data class DifficultyAwareQbftConfig(
+  val postTtdConfig: QbftConsensusConfig,
+  val terminalTotalDifficulty: ULong,
+) : ConsensusConfig
