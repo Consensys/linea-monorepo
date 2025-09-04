@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/fftdomain"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/stretchr/testify/assert"
@@ -26,7 +27,7 @@ func TestEvaluateLagrange(t *testing.T) {
 		poly[i].SetRandom()
 	}
 
-	d := fft.NewDomain(64)
+	d := fftdomain.NewDomainWithCache(64, true, nil)
 	polyLagrange := make([]field.Element, size)
 	copy(polyLagrange, poly)
 	d.FFT(polyLagrange, fft.DIF)
@@ -70,7 +71,7 @@ func TestBatchEvaluateLagrange(t *testing.T) {
 		evalCan[i] = poly.EvalMixed(polys[i], x)
 	}
 
-	d := fft.NewDomain(uint64(size))
+	d := fftdomain.NewDomainWithCache(uint64(size), true, nil)
 	polyLagranges := make([][]field.Element, nbPoly)
 	copy(polyLagranges, polys)
 
@@ -228,7 +229,7 @@ func TestBatchInterpolationWithConstantVector(t *testing.T) {
 
 	expectedY := poly.EvalMixed(randPoly, x)
 	expectedY2 := poly.EvalMixed(randPoly2, x)
-	domain := fft.NewDomain(uint64(n))
+	domain := fftdomain.NewDomainWithCache(uint64(n), true, nil)
 	/*
 		Test without coset
 	*/
@@ -274,7 +275,7 @@ func TestBatchEvaluateLagrangeOnFextOnlyConstantVector(t *testing.T) {
 
 	expectedY := poly.EvalMixed(randPoly, x)
 	expectedY2 := poly.EvalMixed(randPoly2, x)
-	domain := fft.NewDomain(uint64(n))
+	domain := fftdomain.NewDomainWithCache(uint64(n), true, nil)
 	/*
 		Test without coset
 	*/
@@ -325,7 +326,7 @@ func TestBatchInterpolationThreeVectors(t *testing.T) {
 	expectedY := poly.EvalMixed(randPoly, x)
 	expectedY2 := poly.EvalMixed(randPoly2, x)
 	expectedY3 := poly.EvalMixed(randPoly3, x)
-	domain := fft.NewDomain(uint64(n))
+	domain := fftdomain.NewDomainWithCache(uint64(n), true, nil)
 
 	/*
 		Test without coset

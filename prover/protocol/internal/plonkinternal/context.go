@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
-	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	plonkKoalabear "github.com/consensys/gnark/backend/plonk/koalabear"
 	"github.com/consensys/gnark/constraint"
 	cs "github.com/consensys/gnark/constraint/koalabear"
@@ -13,6 +12,7 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/profile"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/maths/fftdomain"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -193,7 +193,7 @@ func createCtx(
 	}
 
 	ctx.Plonk.SPR = ccs
-	fftDomain := fft.NewDomain(uint64(ctx.DomainSize()))
+	fftDomain := fftdomain.NewDomainWithCache(uint64(ctx.DomainSize()), true, nil)
 
 	if ctx.FixedNbRowsOption.Enabled && ctx.FixedNbRowsOption.NbRow < ctx.DomainSizePlonk() {
 		utils.Panic("plonk-in-wizard: the number of constraints of the circuit outweight the fixed number of rows. fixed-nb-row=%v domain-size=%v nb-constraints=%v", ctx.FixedNbRowsOption.NbRow, ctx.DomainSizePlonk(), ccs.NbConstraints)

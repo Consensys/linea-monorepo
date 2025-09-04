@@ -15,6 +15,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/fftdomain"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -56,7 +57,7 @@ func (circuit *ComputeLagrangeCircuit) Define(api frontend.API) error {
 func TestComputeLagrangeCircuit(t *testing.T) {
 
 	s := 16
-	d := fft.NewDomain(uint64(s))
+	d := fftdomain.NewDomainWithCache(uint64(s), true, nil)
 	var zeta field.Element
 	zeta.SetRandom()
 

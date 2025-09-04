@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/maths/fftdomain"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -77,8 +78,8 @@ func NewParams(
 
 	res := &Params{
 		Domains: [2]*fft.Domain{
-			fft.NewDomain(uint64(nbColumns)),
-			fft.NewDomain(uint64(blowUpFactor * nbColumns)),
+			fftdomain.NewDomainWithCache(uint64(nbColumns), true, nil),
+			fftdomain.NewDomainWithCache(uint64(blowUpFactor*nbColumns), true, nil),
 		},
 		NbColumns:      nbColumns,
 		MaxNbRows:      maxNbRows,

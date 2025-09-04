@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/fftdomain"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -56,7 +57,7 @@ func BatchEvaluateLagrangeMixed(polys [][]field.Element, x fext.Element, oncoset
 		panic(err)
 	}
 
-	domain := fft.NewDomain(uint64(len(poly)))
+	domain := fftdomain.NewDomainWithCache(uint64(len(poly)), true, nil)
 
 	if len(oncoset) > 0 && oncoset[0] {
 		x.MulByElement(&x, &domain.FrMultiplicativeGenInv)

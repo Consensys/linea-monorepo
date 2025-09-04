@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
-	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
+	"github.com/consensys/linea-monorepo/prover/maths/fftdomain"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,7 +24,7 @@ func TestXMinusOneOnACoset(t *testing.T) {
 	*/
 	one := koalabear.One()
 	for i := 0; i < N; i++ {
-		domainN := fft.NewDomain(uint64(N))
+		domainN := fftdomain.NewDomainWithCache(uint64(N), true, nil)
 		expected := domainN.Generator
 		expected.Exp(expected, big.NewInt(int64(i)))
 		expected.Mul(&expected, &domainN.FrMultiplicativeGen)

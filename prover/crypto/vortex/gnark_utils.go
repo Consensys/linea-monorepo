@@ -14,6 +14,7 @@ import (
 	"github.com/consensys/gnark/std/multicommit"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/maths/fftdomain"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -31,7 +32,7 @@ func init() {
 func FFTInverseKoalaBear(_ *big.Int, inputs []*big.Int, results []*big.Int) error {
 
 	// TODO store this somewhere (global variable or something, shouldn't regenerate it at each call)
-	d := fft.NewDomain(uint64(len(inputs)), fft.WithoutPrecompute())
+	d := fftdomain.NewDomainWithCache(uint64(len(inputs)), false, nil)
 
 	v := make([]field.Element, len(inputs))
 	for i := 0; i < len(inputs); i++ {

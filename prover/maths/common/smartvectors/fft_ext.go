@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
+	"github.com/consensys/linea-monorepo/prover/maths/fftdomain"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -68,7 +69,7 @@ func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRati
 
 	v.WriteInSliceExt(res.RegularExt)
 
-	domain := fft.NewDomain(uint64(v.Len()))
+	domain := fftdomain.NewDomainWithCache(uint64(v.Len()), true, nil)
 
 	var shift field.Element
 	if cosetID != 0 || cosetRatio != 0 {
@@ -76,7 +77,7 @@ func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRati
 		omega.Exp(omega, big.NewInt(int64(cosetID)))
 
 		shift.Mul(&domain.FrMultiplicativeGen, &omega)
-		domain = fft.NewDomain(uint64(v.Len()), fft.WithShift(shift))
+		domain = fftdomain.NewDomainWithCache(uint64(v.Len()), true, &shift)
 	}
 	if decimation == fft.DIT {
 		// Optionally, bitReverse the input
@@ -162,7 +163,7 @@ func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, co
 
 	v.WriteInSliceExt(res.RegularExt)
 
-	domain := fft.NewDomain(uint64(v.Len()))
+	domain := fftdomain.NewDomainWithCache(uint64(v.Len()), true, nil)
 
 	var shift field.Element
 	if cosetID != 0 || cosetRatio != 0 {
@@ -170,7 +171,7 @@ func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, co
 		omega.Exp(omega, big.NewInt(int64(cosetID)))
 
 		shift.Mul(&domain.FrMultiplicativeGen, &omega)
-		domain = fft.NewDomain(uint64(v.Len()), fft.WithShift(shift))
+		domain = fftdomain.NewDomainWithCache(uint64(v.Len()), true, &shift)
 	}
 
 	if decimation == fft.DIF {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/fftdomain"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
@@ -22,7 +23,7 @@ func randomPoly(size int) []fext.Element {
 func TestEvaluateLagrange(t *testing.T) {
 
 	size := 16
-	domain := fft.NewDomain(uint64(size))
+	domain := fftdomain.NewDomainWithCache(uint64(size), true, nil)
 	p := randomPoly(size)
 	pLagrange := make([]fext.Element, size)
 
@@ -67,7 +68,7 @@ func TestBatchEvaluateLagrangeOnFext(t *testing.T) {
 	for i := 0; i < nbPoly; i++ {
 		Eval[i] = polyext.Eval(polys[i], x)
 	}
-	d := fft.NewDomain(uint64(sizePoly))
+	d := fftdomain.NewDomainWithCache(uint64(sizePoly), true, nil)
 
 	/*
 		Test without coset

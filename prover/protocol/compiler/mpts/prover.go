@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/fftdomain"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -296,8 +297,8 @@ func ldeOfExt(v []fext.Element, pool mempool.MemPool) *[]fext.Element {
 
 	var (
 		sizeLarge   = pool.Size()
-		domainSmall = fft.NewDomain(uint64(len(v)))
-		domainLarge = fft.NewDomain(uint64(sizeLarge))
+		domainSmall = fftdomain.NewDomainWithCache(uint64(len(v)), true, nil)
+		domainLarge = fftdomain.NewDomainWithCache(uint64(sizeLarge), true, nil)
 		resPtr      = pool.AllocExt()
 		res         = *resPtr
 	)

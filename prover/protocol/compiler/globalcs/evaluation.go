@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/fftdomain"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
@@ -127,7 +128,7 @@ func (pa EvaluationProver) Run(run *wizard.ProverRuntime) {
 
 	var (
 		maxRatio          = utils.Max(pa.Ratios...)
-		mulGenInv         = fft.NewDomain(uint64(maxRatio * pa.DomainSize)).FrMultiplicativeGenInv
+		mulGenInv         = fftdomain.NewDomainWithCache(uint64(maxRatio*pa.DomainSize), true, nil).FrMultiplicativeGenInv
 		rootInv, _        = fft.Generator(uint64(maxRatio * pa.DomainSize))
 		quotientEvalPoint fext.Element
 		wg                = &sync.WaitGroup{}
@@ -329,7 +330,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 		// shiftedR = r / g where g is the generator of the multiplicative group
 		shiftedR fext.Element
 		// mulGen is the generator of the multiplicative group
-		mulGenInv = fft.NewDomain(uint64(maxRatio * ctx.DomainSize)).FrMultiplicativeGenInv
+		mulGenInv = fftdomain.NewDomainWithCache(uint64(maxRatio*ctx.DomainSize), true, nil).FrMultiplicativeGenInv
 		// omegaN is a root of unity generating the domain of size `domainSize
 		// * maxRatio`
 		omegaN, _ = fft.Generator(uint64(ctx.DomainSize * maxRatio))
@@ -419,7 +420,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 		// shiftedR = r / g where g is the generator of the multiplicative group
 		shiftedR gnarkfext.Element
 		// mulGen is the generator of the multiplicative group
-		mulGenInv = fft.NewDomain(uint64(maxRatio * ctx.DomainSize)).FrMultiplicativeGenInv
+		mulGenInv = fftdomain.NewDomainWithCache(uint64(maxRatio*ctx.DomainSize), true, nil).FrMultiplicativeGenInv
 		// omegaN is a root of unity generating the domain of size `domainSize
 		// * maxRatio`
 		omegaN, _ = fft.Generator(uint64(ctx.DomainSize * maxRatio))
