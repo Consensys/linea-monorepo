@@ -156,12 +156,9 @@ func UpdateFtxStreamHash(
 	hasher := mimc.NewMiMC()
 
 	hasher.Write(prevStreamHash[:])
-	hasher.Write(make([]byte, 16))
 	hasher.Write(txHash[:16])
-	hasher.Write(make([]byte, 16))
 	hasher.Write(txHash[16:])
-	linTypes.WriteBigIntOn32Bytes(hasher, big.NewInt(int64(expectedBlockHeight)))
-	hasher.Write(make([]byte, 12))
+	linTypes.WriteInt64On32Bytes(hasher, int64(expectedBlockHeight))
 	hasher.Write(fromAddress[:])
 
 	sum := hasher.Sum(nil)

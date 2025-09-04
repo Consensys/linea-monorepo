@@ -251,11 +251,13 @@ func RandAggregation(rng *rand.Rand, spec AggregationSpec) *aggregation.Collecte
 // from address and writes fromAddress, tx and txHash to the spec file
 func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specFile string) *invalidity.Request {
 
-	signer := types.NewLondonSigner(spec.ChainID)
-	address := common.HexToAddress("0xfeeddeadbeeffeeddeadbeeffeeddead01245678")
-	TEST_ADDRESS_A := common.HexToAddress("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-	TEST_HASH_F := common.HexToHash("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
-	TEST_HASH_A := common.HexToHash("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	var (
+		signer         = types.NewLondonSigner(spec.ChainID)
+		address        = common.HexToAddress("0xfeeddeadbeeffeeddeadbeeffeeddead01245678")
+		TEST_ADDRESS_A = common.HexToAddress("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+		TEST_HASH_F    = common.HexToHash("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+		TEST_HASH_A    = common.HexToHash("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	)
 
 	// Generate a FIXED/deterministic private key for consistent testing
 	deterministicSeed := "fixed_test_seed_for_invalidity_proof_123456"
@@ -271,6 +273,7 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 	if !ok {
 		panic("error casting public key to ECDSA")
 	}
+
 	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
 
 	tx := types.NewTx(&types.DynamicFeeTx{
@@ -292,26 +295,10 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 	// Add tx, txHash, and fromAddress to the invalidity spec file
 	updateInvaliditySpecFile(specFile, tx, txHash, fromAddress)
 
-	if err != nil {
-		panic(err)
-	}
-	sig, err := crypto.Sign(txHash[:], privKey)
-	if err != nil {
-		panic(err)
-	}
-	tx, err = tx.WithSignature(signer, sig)
-	if err != nil {
-		panic(err)
-	}
-	from, err := signer.Sender(tx)
-	if err != nil {
-		panic(err)
-	}
-
 	return &invalidity.Request{
 		ForcedTransactionPayLoad: tx,
 		ForcedTransactionNumber:  uint64(spec.FtxNumber),
-		FromAddresses:            linTypes.EthAddress(from),
+		FromAddresses:            linTypes.EthAddress(fromAddress),
 		InvalidityTypes:          circInvalidity.BadNonce,
 		ExpectedBlockHeight:      uint64(spec.ExpectedBlockHeight),
 	}
