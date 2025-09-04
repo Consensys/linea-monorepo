@@ -1,16 +1,18 @@
 package zk
 
 import (
+	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/math/emulated"
 )
 
-// FieldType stores the circuit type: emulated or native.
-type FieldType int
+// fieldType stores the circuit type: emulated or native.
+type fieldType int
 
 const (
 	// Native koalabear circuit defined over koalabear
-	Native FieldType = iota
+	Native fieldType = iota
 
 	// Emulated koalabear circuit over bls12-377
 	Emulated
@@ -26,18 +28,12 @@ type FType interface {
 
 // getType returns the type of the circuit, emulated (koalabear over bls12-377) or native
 // (koalabear over koalabear).
-func getType[T FType]() FieldType {
+func getType[T FType]() fieldType {
 	var a T
 	if _, ok := any(a).(emulated.Element[emulated.KoalaBear]); ok {
 		return Emulated
 	}
 	return Native
-}
-
-// Circuit 0: mixed
-type TestMixedCircuitMixed[T FType] struct {
-	A, B T
-	R    T `gnark:",public"`
 }
 
 type FieldOps[T FType] interface {
@@ -46,9 +42,12 @@ type FieldOps[T FType] interface {
 	Neg(a *T) *T
 	Sub(a, b *T) *T
 	Inverse(a *T) *T
+	Div(a, b *T) *T
 
 	ToBinary(a *T, n ...int) []frontend.Variable
 	FromBinary(b ...frontend.Variable) *T
+
+	And(a, b frontend.Variable) frontend.Variable
 
 	Select(b frontend.Variable, i1, i2 *T) *T
 	Lookup2(b0, b1 frontend.Variable, i0, i1, i2, i3 *T) *T
@@ -59,12 +58,22 @@ type FieldOps[T FType] interface {
 
 	AssertIsLessOrEqual(v *T, bound *T)
 
-	SetFromUint(a *T, v uint64)
+	FromUint(v uint64) T
+
+	FromKoalabear(v koalabear.Element) *T
+
+	NewHint(f solver.Hint, nbOutputs int, inputs ...*T) ([]*T, error)
 
 	Println(a ...T)
 
-	Api() frontend.API
+	NativeApi() frontend.API
 }
+
+// Circuit 0: mixed
+// type TestMixedCircuitMixed[T FType] struct {
+// 	A, B T
+// 	R    T `gnark:",public"`
+// }
 
 // func (c *TestMixedCircuitMixed[T]) Define(api frontend.API) error {
 

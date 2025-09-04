@@ -1,6 +1,8 @@
 package zk
 
 import (
+	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 )
 
@@ -33,6 +35,11 @@ func (n NativeFieldOps) Inverse(a *frontend.Variable) *frontend.Variable {
 	return &r
 }
 
+func (n NativeFieldOps) Div(a, b *frontend.Variable) *frontend.Variable {
+	r := n.api.Div(*a, *b)
+	return &r
+}
+
 func (n NativeFieldOps) ToBinary(a *frontend.Variable, m ...int) []frontend.Variable {
 	r := n.api.ToBinary(*a, m...)
 	return r
@@ -41,6 +48,10 @@ func (n NativeFieldOps) ToBinary(a *frontend.Variable, m ...int) []frontend.Vari
 func (n NativeFieldOps) FromBinary(a ...frontend.Variable) *frontend.Variable {
 	r := n.api.FromBinary(a...)
 	return &r
+}
+
+func (n NativeFieldOps) And(a, b frontend.Variable) frontend.Variable {
+	return n.api.And(a, b)
 }
 
 func (n NativeFieldOps) Select(a frontend.Variable, i1, i2 *frontend.Variable) *frontend.Variable {
@@ -70,15 +81,39 @@ func (n NativeFieldOps) AssertIsLessOrEqual(v *frontend.Variable, bound *fronten
 	n.api.AssertIsLessOrEqual(*v, *bound)
 }
 
-func (n NativeFieldOps) SetFromUint(a *frontend.Variable, v uint64) {
-	*a = v
+func (n NativeFieldOps) FromUint(v uint64) frontend.Variable {
+	var a frontend.Variable
+	a = v
+	return a
+}
+
+func (n NativeFieldOps) FromKoalabear(v koalabear.Element) *frontend.Variable {
+	var a frontend.Variable
+	a = v
+	return &a
+}
+
+func (n NativeFieldOps) NewHint(f solver.Hint, nbOutputs int, inputs ...*frontend.Variable) ([]*frontend.Variable, error) {
+	_inputs := make([]frontend.Variable, len(inputs))
+	for i, r := range inputs {
+		_inputs[i] = *r
+	}
+	_r, err := n.api.NewHint(f, nbOutputs, _inputs)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*frontend.Variable, nbOutputs)
+	for i, r := range _r {
+		res[i] = &r
+	}
+	return res, nil
 }
 
 func (n NativeFieldOps) Println(a ...frontend.Variable) {
 	n.api.Println(a...)
 }
 
-func (n NativeFieldOps) Api() frontend.API {
+func (n NativeFieldOps) NativeApi() frontend.API {
 	return n.api
 }
 

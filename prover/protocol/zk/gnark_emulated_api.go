@@ -1,6 +1,8 @@
 package zk
 
 import (
+	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/math/emulated"
 )
@@ -32,12 +34,20 @@ func (e EmulatedFieldOps) Inverse(a *emulated.Element[emulated.KoalaBear]) *emul
 	return e.ef.Inverse(a)
 }
 
+func (e EmulatedFieldOps) Div(a, b *emulated.Element[emulated.KoalaBear]) *emulated.Element[emulated.KoalaBear] {
+	return e.ef.Div(a, b)
+}
+
 func (e EmulatedFieldOps) ToBinary(a *emulated.Element[emulated.KoalaBear], m ...int) []frontend.Variable {
 	return e.ef.ToBits(a)
 }
 
 func (e EmulatedFieldOps) FromBinary(a ...frontend.Variable) *emulated.Element[emulated.KoalaBear] {
 	return e.ef.FromBits(a...)
+}
+
+func (e EmulatedFieldOps) And(a, b frontend.Variable) frontend.Variable {
+	return e.api.And(a, b)
 }
 
 func (e EmulatedFieldOps) Select(a frontend.Variable, i1, i2 *emulated.Element[emulated.KoalaBear]) *emulated.Element[emulated.KoalaBear] {
@@ -64,8 +74,19 @@ func (e EmulatedFieldOps) AssertIsLessOrEqual(a, b *emulated.Element[emulated.Ko
 	e.ef.AssertIsLessOrEqual(a, b)
 }
 
-func (e EmulatedFieldOps) SetFromUint(a *emulated.Element[emulated.KoalaBear], v uint64) {
-	*a = emulated.ValueOf[emulated.KoalaBear](v)
+func (e EmulatedFieldOps) FromUint(v uint64) emulated.Element[emulated.KoalaBear] {
+	a := emulated.ValueOf[emulated.KoalaBear](v)
+	return a
+}
+
+func (e EmulatedFieldOps) FromKoalabear(v koalabear.Element) *emulated.Element[emulated.KoalaBear] {
+	a := emulated.ValueOf[emulated.KoalaBear](v)
+	return &a
+}
+
+func (e EmulatedFieldOps) NewHint(f solver.Hint, nbOutputs int, inputs ...*emulated.Element[emulated.KoalaBear]) ([]*emulated.Element[emulated.KoalaBear], error) {
+	res, err := e.ef.NewHint(f, nbOutputs, inputs...)
+	return res, err
 }
 
 func (e EmulatedFieldOps) Println(a ...emulated.Element[emulated.KoalaBear]) {
@@ -74,7 +95,7 @@ func (e EmulatedFieldOps) Println(a ...emulated.Element[emulated.KoalaBear]) {
 	}
 }
 
-func (e EmulatedFieldOps) Api() frontend.API {
+func (e EmulatedFieldOps) NativeApi() frontend.API {
 	return e.api
 }
 
