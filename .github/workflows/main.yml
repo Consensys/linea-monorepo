@@ -135,6 +135,7 @@ jobs:
               - '!docs/**'
               - '!contracts-tge/**'
               - '!.github/codeql.yml'
+              - '!.github/workflows/codeql.yml'
             contracts-excluding-local-deployment-artifacts:
               - 'contracts/**'
               - '!contracts/local-deployments-artifacts/**'
