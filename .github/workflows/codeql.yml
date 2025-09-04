@@ -95,22 +95,22 @@ jobs:
         run: echo "Runnig language=${{ matrix.language }} changes=${{ matrix.condition }}"
 
       - name: Skip if no changes
-        if: matrix.condition != 'true'
+        if: matrix.condition != true
         run: echo "Skipping ${{ matrix.language }} - no relevant changes detected"
 
       - name: Checkout repository
-        if: matrix.condition == 'true'
+        if: matrix.condition == true
         uses: actions/checkout@v4
 
       - name: Initialize CodeQL
-        if: matrix.condition == 'true'
+        if: matrix.condition == true
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
 
       - name: Setup Java
-        if: matrix.language == 'java-kotlin' && matrix.condition == 'true'
+        if: matrix.language == 'java-kotlin' && matrix.condition == true
         uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b #v4.5.0
         with:
           distribution: temurin
