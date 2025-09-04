@@ -152,8 +152,8 @@ class MaruDiscoveryServiceTest {
 
   @Test
   fun `seq number updates on local record updates`() {
-    val sequenceNumberInDBAtStartup = 0uL
-    assertThat(p2PState.getLocalNodeRecordSequenceNumber()).isEqualTo(sequenceNumberInDBAtStartup)
+    val sequenceNumberAfterInitialization = 1uL
+    assertThat(p2PState.getLocalNodeRecordSequenceNumber()).isEqualTo(sequenceNumberAfterInitialization)
     service.start()
     assertThat(
       service
@@ -161,27 +161,27 @@ class MaruDiscoveryServiceTest {
         .seq
         .toBigInteger()
         .toULong(),
-    ).isEqualTo(sequenceNumberInDBAtStartup + 1uL)
+    ).isEqualTo(sequenceNumberAfterInitialization)
 
     service.updateForkIdHash(Bytes.wrap("update 1".toByteArray()))
-    assertThat(p2PState.getLocalNodeRecordSequenceNumber()).isEqualTo(sequenceNumberInDBAtStartup + 2uL)
+    assertThat(p2PState.getLocalNodeRecordSequenceNumber()).isEqualTo(sequenceNumberAfterInitialization + 1uL)
     assertThat(
       service
         .getLocalNodeRecord()
         .seq
         .toBigInteger()
         .toULong(),
-    ).isEqualTo(sequenceNumberInDBAtStartup + 2uL)
+    ).isEqualTo(sequenceNumberAfterInitialization + 1uL)
 
     service.updateForkIdHash(Bytes.wrap("update 2".toByteArray()))
-    assertThat(p2PState.getLocalNodeRecordSequenceNumber()).isEqualTo(sequenceNumberInDBAtStartup + 3uL)
+    assertThat(p2PState.getLocalNodeRecordSequenceNumber()).isEqualTo(sequenceNumberAfterInitialization + 2uL)
     assertThat(
       service
         .getLocalNodeRecord()
         .seq
         .toBigInteger()
         .toULong(),
-    ).isEqualTo(sequenceNumberInDBAtStartup + 3uL)
+    ).isEqualTo(sequenceNumberAfterInitialization + 2uL)
 
     service.stop()
   }
