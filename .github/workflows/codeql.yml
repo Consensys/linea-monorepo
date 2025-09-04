@@ -34,6 +34,9 @@ jobs:
               - '**/*.gradle.kts'
               - '**/pom.xml'
               - '**/build.gradle'
+              - '**/gradle.properties'
+              - '**/settings.gradle'
+              - 'build.gradle'
               - 'gradle.properties'
               - 'settings.gradle'
             javascript-typescript:
