@@ -6,7 +6,7 @@ on:
 jobs:
   changes:
     name: Detect Changes
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     outputs:
       go: ${{ steps.changes.outputs.go }}
       java-kotlin: ${{ steps.changes.outputs.java-kotlin }}
@@ -91,6 +91,9 @@ jobs:
             condition: ${{ needs.changes.outputs.python == 'true' }}
 
     steps:
+      - name: Debug log matrix
+        run: echo "Runnig language=${{ matrix.language }} changes=${{ matrix.condition }}"
+
       - name: Skip if no changes
         if: matrix.condition != 'true'
         run: echo "Skipping ${{ matrix.language }} - no relevant changes detected"
