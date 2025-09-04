@@ -15,9 +15,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
+	"github.com/consensys/linea-monorepo/prover/backend/invalidity"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
+	circInvalidity "github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/config"
+	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/spf13/cobra"
 )
 
@@ -42,7 +47,23 @@ var cfg = &config.Config{
 		ProverMode: config.ProverModeDev,
 		VerifierID: 1,
 	},
-	AssetsDir: "./prover-assets", // TODO @gbotrel untested
+	Invalidity: config.Invalidity{
+		ProverMode: config.ProverModeDev,
+	},
+	AssetsDir: "./prover-assets",
+	Layer2: struct {
+		ChainID           uint           "mapstructure:\"chain_id\" validate:\"required\""
+		MsgSvcContractStr string         "mapstructure:\"message_service_contract\" validate:\"required,eth_addr\""
+		MsgSvcContract    common.Address "mapstructure:\"-\""
+	}{
+		MsgSvcContractStr: "0x0000000000000000000000000000000000000000",
+		MsgSvcContract: common.Address{
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00,
+		},
+		ChainID: 1,
+	},
 }
 
 func init() {
@@ -80,10 +101,14 @@ func genFiles(cmd *cobra.Command, args []string) {
 		// generation.
 		aggregationResponses *aggregation.Response
 
+		// The previous invalidity proof response
+		prevInvalidityProofResp *invalidity.Response
+
 		// Empty spec, handy for testing if a spec is for aggregation or blob
 		// submission.
 		emptyBlobSubmissionSpec BlobSubmissionSpec
 		emptyAggSpec            AggregationSpec
+		emptyInvaliditySpec     InvalidityProofSpec
 	)
 
 	for _, specFile := range specFiles {
@@ -92,6 +117,7 @@ func genFiles(cmd *cobra.Command, args []string) {
 
 		hasBlobSubmission := !reflect.DeepEqual(spec.BlobSubmissionSpec, emptyBlobSubmissionSpec)
 		hasAggregation := !reflect.DeepEqual(spec.AggregationSpec, emptyAggSpec)
+		hasInvalidity := !reflect.DeepEqual(spec.InvalidityProofSpec, emptyInvaliditySpec)
 
 		switch {
 		// It's a blob submission spec
@@ -141,6 +167,16 @@ func genFiles(cmd *cobra.Command, args []string) {
 				spec.AggregationSpec,
 			)
 			aggregationResponses = resp
+
+		case hasInvalidity:
+			resp := ProcessInvaliditySpec(
+				rng,
+				&spec.InvalidityProofSpec,
+				prevInvalidityProofResp,
+				specFile,
+			)
+			prevInvalidityProofResp = resp
+			runningSpec.InvalidityProofs = append(runningSpec.InvalidityProofs, *resp)
 
 		default:
 			printlnAndExit("Spec is neither a BlobSubmissionSpec nor an AggregationSpec : %++v", spec)
@@ -249,6 +285,51 @@ func parseSpecFile(file string) RandGenSpec {
 	return spec
 }
 
+// Helper function to update the invalidity spec file with fromAddress, tx and txHash
+func updateInvaliditySpecFile(specFile string, tx *types.Transaction, txHash common.Hash, fromAddress common.Address) {
+	// Read the existing spec file
+	var specData InvaliditySpecFile
+	f, err := os.Open(specFile)
+	if err != nil {
+		panic(fmt.Errorf("could not open spec file %v: %w", specFile, err))
+	}
+	defer f.Close()
+
+	if err := json.NewDecoder(f).Decode(&specData); err != nil {
+		panic(fmt.Errorf("could not parse spec file %v: %w", specFile, err))
+	}
+
+	// Marshal the transaction to JSON
+	txJSON, err := tx.MarshalJSON()
+	if err != nil {
+		panic(fmt.Errorf("could not marshal transaction: %w", err))
+	}
+
+	// Parse the transaction JSON into InvalidityTxJSON struct
+	var txData InvalidityTxJSON
+	if err := json.Unmarshal(txJSON, &txData); err != nil {
+		panic(fmt.Errorf("could not unmarshal transaction JSON: %w", err))
+	}
+
+	// Update the spec data
+	specData.FromAddress = fromAddress.Hex()
+	specData.InvalidityTx = txData // Now this works
+	specData.InvalidityTxHash = txHash.Hex()
+
+	// Write back to file
+	outFile, err := os.Create(specFile)
+	if err != nil {
+		panic(fmt.Errorf("could not create spec file %v: %w", specFile, err))
+	}
+	defer outFile.Close()
+
+	encoder := json.NewEncoder(outFile)
+	encoder.SetIndent("", "    ")
+	if err := encoder.Encode(specData); err != nil {
+		panic(fmt.Errorf("could not write spec file %v: %w", specFile, err))
+	}
+}
+
 // Process a blob submission spec file
 func ProcessBlobSubmissionSpec(
 	rng *rand.Rand,
@@ -322,6 +403,8 @@ func ProcessAggregationSpec(
 			spec.LastFinalizedL1RollingHashMessageNumber = runningSpec.L1RollingHashMessageNumber
 			spec.LastFinalizedL1RollingHash = runningSpec.L1RollingHash
 		}
+
+		spec.InvalidityProofs = runningSpec.InvalidityProofs
 	}
 
 	collectedFields := RandAggregation(rng, spec)
@@ -334,6 +417,11 @@ func ProcessAggregationSpec(
 	// Post-processing, stores the L1ROllingHash data
 	runningSpec.LastFinalizedL1RollingHash = resp.L1RollingHash
 	runningSpec.LastFinalizedL1RollingHashMessageNumber = resp.L1RollingHashMessageNumber
+
+	runningSpec.ParentAggregationBlockHash = resp.FinalBlockHash
+	runningSpec.ParentAggregationFtxStreamHash = resp.FtxStreamHash
+	runningSpec.ParentAggregationFtxNumber = int(resp.FinalFtxNumber)
+	runningSpec.InvalidityProofs = []invalidity.Response{}
 
 	return resp
 }
@@ -371,4 +459,31 @@ func dumpVerifierContract(odir string, circID circuits.MockCircuitID) {
 	if err := pp.VerifyingKey.ExportSolidity(f, solidity.WithPragmaVersion("0.8.26")); err != nil {
 		printlnAndExit("could not export verifying key to solidity: %v", err)
 	}
+}
+
+// ProcessInvaliditySpec processes an invalidity spec file. PrevNumber is the
+// previous ftx number generated (for consistency).
+func ProcessInvaliditySpec(rng *rand.Rand, spec *InvalidityProofSpec, prevResp *invalidity.Response, specFile string) *invalidity.Response {
+
+	invalidityReq := RandInvalidityProofRequest(rng, spec, specFile)
+
+	if prevResp != nil {
+		invalidityReq.ForcedTransactionNumber = uint64(prevResp.ForcedTransactionNumber + 1)
+		spec.FtxNumber = int(invalidityReq.ForcedTransactionNumber)
+		spec.PrevStreamHash = prevResp.FtxStreamHash.Hex()
+	}
+
+	invalidityReq.FtxStreamHash = circInvalidity.UpdateFtxStreamHash(
+		linTypes.Bytes32FromHex(spec.PrevStreamHash),
+		invalidityReq.ForcedTransactionPayLoad,
+		spec.ExpectedBlockHeight,
+		invalidityReq.FromAddresses,
+	)
+
+	resp, err := invalidity.Prove(cfg, invalidityReq)
+	if err != nil {
+		printlnAndExit("Could not prove invalidity : %s", err)
+	}
+
+	return resp
 }
