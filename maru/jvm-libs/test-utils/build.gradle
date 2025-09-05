@@ -18,6 +18,8 @@ dependencies {
   implementation("org.hyperledger.besu.internal:besu-plugins-rocksdb")
   implementation(group: 'org.hyperledger.besu.internal', name: 'besu-ethereum-core', classifier: 'test-support')
 
+  implementation "build.linea.internal:metrics"
+
   implementation "org.web3j:core"
   implementation 'org.assertj:assertj-core'
   implementation 'org.awaitility:awaitility-kotlin'

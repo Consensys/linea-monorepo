@@ -163,7 +163,7 @@ class DownloadBlocksStep(
       state.downloadedBlocks.add(SealedBlockWithPeer(block, peer))
     }
 
-    peer.adjustReputation(ReputationAdjustment.SMALL_REWARD)
+    // peers are rewarded for providing blocks in ImportBlockStep, when we know whether the blocks were valid
 
     return state.copy(
       startBlockNumber = state.startBlockNumber + numBlocks,

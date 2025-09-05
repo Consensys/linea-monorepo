@@ -13,7 +13,9 @@ import maru.consensus.ForkSpec
 import maru.core.SealedBeaconBlock
 import maru.executionlayer.manager.ExecutionPayloadStatus
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
+import org.ethereum.beacon.discovery.schema.NodeRecord
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import tech.pegasys.teku.networking.p2p.peer.NodeId
 
 const val LINEA_DOMAIN = "linea"
 
@@ -100,7 +102,11 @@ interface P2PNetwork : Closeable {
 
   val discoveryAddresses: List<String>
 
+  val localNodeRecord: NodeRecord?
+
   val enr: String?
+
+  val peerCount: Int
 
   fun getPeers(): List<PeerInfo>
 
@@ -113,6 +119,8 @@ interface P2PNetwork : Closeable {
   fun addPeer(address: String)
 
   fun handleForkTransition(forkSpec: ForkSpec): Unit
+
+  fun isStaticPeer(nodeId: NodeId): Boolean
 }
 
 data class PeerInfo(

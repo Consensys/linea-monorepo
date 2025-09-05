@@ -18,8 +18,13 @@ import tech.pegasys.teku.networking.eth2.rpc.core.ResponseCallback
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcException
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcResponseStatus
 
+/**
+ * A configurable handler that uses composition with BlockRetrievalStrategy
+ * instead of requiring inheritance.
+ */
 class BeaconBlocksByRangeHandler(
   private val beaconChain: BeaconChain,
+  private val blockRetrievalStrategy: BlockRetrievalStrategy = DefaultBlockRetrievalStrategy(),
 ) : RpcMessageHandler<
     Message<BeaconBlocksByRangeRequest, RpcMessageType>,
     Message<BeaconBlocksByRangeResponse, RpcMessageType>,
@@ -41,11 +46,7 @@ class BeaconBlocksByRangeHandler(
       // Limit the number of blocks to prevent excessive resource usage
       val maxBlocks = minOf(request.count, MAX_BLOCKS_PER_REQUEST)
 
-      val blocks =
-        beaconChain.getSealedBeaconBlocks(
-          startBlockNumber = request.startBlockNumber,
-          count = maxBlocks,
-        )
+      val blocks = blockRetrievalStrategy.getBlocks(beaconChain, request, maxBlocks)
 
       val response = BeaconBlocksByRangeResponse(blocks = blocks)
       val responseMessage =

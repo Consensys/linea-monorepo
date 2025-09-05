@@ -172,11 +172,9 @@ class DefaultMaruPeerTest {
 
   @Test
   fun `adjustReputation delegates to underlying peer`() {
-    val adjustment = mock<ReputationAdjustment>()
+    maruPeer.adjustReputation(ReputationAdjustment.SMALL_PENALTY)
 
-    maruPeer.adjustReputation(adjustment)
-
-    verify(delegatePeer).adjustReputation(adjustment)
+    verify(delegatePeer).adjustReputation(ReputationAdjustment.SMALL_PENALTY)
   }
 
   @Test

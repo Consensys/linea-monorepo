@@ -16,6 +16,7 @@ enum class MaruMetricsCategory : MetricsCategory {
   P2P_NETWORK,
   STORAGE,
   SYNCHRONIZER,
+  NETWORK,
 
   // TODO: Adding the following categories fixed a lot of exceptions thrown during testing. They are related to Teku
   LIBP2P,
