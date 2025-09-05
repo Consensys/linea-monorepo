@@ -56,12 +56,12 @@ func (circuit *BadBalanceCircuit) Define(api frontend.API) error {
 }
 
 // Allocate the circuit
-func (c *BadBalanceCircuit) Allocate(config Config, comp *wizard.CompiledIOP) {
+func (c *BadBalanceCircuit) Allocate(config Config) {
 	c.AccountTrie.Allocate(config)
 }
 
 // Assign the circuit from [AssigningInputs]
-func (c *BadBalanceCircuit) Assign(assi AssigningInputs, comp *wizard.CompiledIOP, proof wizard.Proof) {
+func (c *BadBalanceCircuit) Assign(assi AssigningInputs) {
 	var (
 		txCost  = assi.Transaction.Cost()
 		balance = assi.AccountTrieInputs.Account.Balance
@@ -74,7 +74,7 @@ func (c *BadBalanceCircuit) Assign(assi AssigningInputs, comp *wizard.CompiledIO
 	c.RLPEncodedTx = internal.FromBytesToElements(assi.RlpEncodedTx)
 	c.TxHash[0] = txHash[:16]
 	c.TxHash[1] = txHash[16:]
-	c.KeccakH = *wizard.AssignVerifierCircuit(comp, proof, 0)
+	c.KeccakH = *wizard.AssignVerifierCircuit(assi.KeccakCompiledIOP, assi.KeccakProof, 0)
 
 	//sanity-check:
 	if txCost.Cmp(balance) != 1 {

@@ -16,7 +16,7 @@ import (
 )
 
 func TestInvalidity(t *testing.T) {
-
+	const maxRlpByteSize = 1024
 	var (
 		config = &smt.Config{
 			HashFunc: hashtypes.MiMC,
@@ -42,32 +42,33 @@ func TestInvalidity(t *testing.T) {
 			FuncInputs: public_input.Invalidity{
 				StateRootHash: root,
 			},
-			FromAddress: tcases[1].FromAddress,
+			FromAddress:    tcases[1].FromAddress,
+			MaxRlpByteSize: maxRlpByteSize,
 		}
 
-		b, err = assi.Transaction.MarshalBinary()
+		b = inval.PrefixedRLPNoSignature(assi.Transaction)
 	)
-	require.NoError(t, err)
+
+	// RLP encode the transaction (with type byte)
 	assi.RlpEncodedTx = make([]byte, len(b[:])) // include the type byte
 	copy(assi.RlpEncodedTx, b[:])
+
+	// generate keccak proof for the circuit
+	kcomp, kproof := inval.MakeKeccakProofs(assi.Transaction, maxRlpByteSize, dummy.Compile)
+	assi.KeccakCompiledIOP = kcomp
+	assi.KeccakProof = kproof
 
 	// define the circuit
 	circuit := inval.CircuitInvalidity{
 		SubCircuit: &inval.BadNonceCircuit{},
 	}
 
-	// generate keccak proof for the circuit
-	kcomp, kproof := inval.MakeKeccakProofs(assi.Transaction, 256, dummy.Compile)
-	// assign the circuit
-	circuit.Assign(assi, kcomp, kproof)
-
-	witness, err := frontend.NewWitness(&circuit, ecc.BLS12_377.ScalarField())
-	require.NoError(t, err)
-
 	// allocate the circuit
 	circuit.Allocate(inval.Config{
-		Depth: config.Depth,
-	}, kcomp)
+		Depth:             config.Depth,
+		KeccakCompiledIOP: kcomp,
+		MaxRlpByteSize:    maxRlpByteSize,
+	})
 
 	// compile the circuit
 	scs, err := frontend.Compile(
@@ -75,6 +76,15 @@ func TestInvalidity(t *testing.T) {
 		scs.NewBuilder,
 		&circuit,
 	)
+	require.NoError(t, err)
+
+	// assign the circuit
+	assignment := inval.CircuitInvalidity{
+		SubCircuit: &inval.BadNonceCircuit{},
+	}
+	assignment.Assign(assi)
+
+	witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())
 	require.NoError(t, err)
 
 	err = scs.IsSolved(witness)

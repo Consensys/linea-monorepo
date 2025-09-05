@@ -56,8 +56,11 @@ func TestInvalidityBadBalance(t *testing.T) {
 
 	// generate keccak proof for the circuit
 	kcomp, kproof := inval.MakeKeccakProofs(assi.Transaction, 256, dummy.Compile)
+	assi.KeccakCompiledIOP = kcomp
+	assi.KeccakProof = kproof
+	assi.MaxRlpByteSize = 256
 	// assign the circuit
-	circuit.Assign(assi, kcomp, kproof)
+	circuit.Assign(assi)
 	// solve the circuit
 	witness, err := frontend.NewWitness(&circuit, ecc.BLS12_377.ScalarField())
 	require.NoError(t, err)
@@ -65,7 +68,7 @@ func TestInvalidityBadBalance(t *testing.T) {
 	// allocate the circuit
 	circuit.Allocate(inval.Config{
 		Depth: config.Depth,
-	}, kcomp)
+	})
 
 	// compile the circuit
 	scs, err := frontend.Compile(
