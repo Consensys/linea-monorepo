@@ -14,7 +14,7 @@ import {
 
 const clientApi: ClientApi = {
   geth: { api: "txpool_content", params: [] },
-  besu: { api: "txpool_besuPendingTransactions", params: [2000] },
+  besu: { api: "txpool_besuTransactions", params: [] },
 };
 
 export default class Synctx extends Command {
