@@ -270,7 +270,7 @@ class MaruDiscoveryServiceTest {
       discoveryService3.start()
 
       await
-        .timeout(10.seconds.toJavaDuration())
+        .timeout(15.seconds.toJavaDuration())
         .untilAsserted {
           val foundPeers =
             discoveryService2

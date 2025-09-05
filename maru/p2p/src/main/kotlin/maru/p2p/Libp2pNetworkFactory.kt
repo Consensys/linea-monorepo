@@ -66,6 +66,7 @@ class Libp2pNetworkFactory(
     maruPeerManager: MaruPeerManager,
     metricsSystem: BesuMetricsSystem,
     asyncRunner: AsyncRunner,
+    reputationManager: ReputationManager,
   ): TekuLibP2PNetwork {
     val ipv4Address = Multiaddr("/ip4/$ipAddress/tcp/$port")
     val gossipTopicHandlers = GossipTopicHandlers()
@@ -100,10 +101,10 @@ class Libp2pNetworkFactory(
     val peerManager =
       PeerManager(
         metricsSystem,
-        ReputationManager.NOOP,
+        reputationManager,
         listOf<PeerHandler>(maruPeerManager),
         rpcHandlers,
-        { _ -> 50.0 }, // TODO: I guess we need a scoring function here
+        { gossip.getGossipScore(it) },
       )
 
     val host =

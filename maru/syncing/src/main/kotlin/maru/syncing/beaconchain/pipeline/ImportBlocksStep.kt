@@ -19,6 +19,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.util.log.LogUtil
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
+import tech.pegasys.teku.networking.p2p.reputation.ReputationAdjustment
 
 class ImportBlocksStep(
   private val blockImporter: SealedBeaconBlockImporter<ValidationResult>,
@@ -71,6 +72,14 @@ class ImportBlocksStep(
         )
         throw e
       }
+    }
+    if (blocksWithPeers.isNotEmpty()) {
+      // get a list of peers that have provided at least one block and reward them
+      blocksWithPeers.stream().map({ it.peer }).distinct().forEach(
+        Consumer { peer ->
+          peer.adjustReputation(ReputationAdjustment.SMALL_REWARD)
+        },
+      )
     }
   }
 }

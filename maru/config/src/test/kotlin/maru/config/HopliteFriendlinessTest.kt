@@ -47,6 +47,19 @@ class HopliteFriendlinessTest {
     bootnodes = ["enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2yFBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toYDrgUyOhV4N0Y3CCJBKDdWRwgiQT"]
     refresh-interval = "30 seconds"
 
+    [p2p.reputation]
+    small-change = 1
+    large-change = 5
+    disconnect-score-threshold = -20
+    capacity = 100
+    cooldown-period = "2 seconds"
+    ban-period = "30 seconds"
+
+    [p2p.status-update]
+    refresh-interval = "30 seconds"
+    refresh-interval-leeway = "10 seconds"
+    timeout = "3 seconds"
+
     [payload-validator]
     engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
     eth-api-endpoint = { endpoint = "http://localhost:8545" }
@@ -99,6 +112,21 @@ class HopliteFriendlinessTest {
               "enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2yFBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toYDrgUyOhV4N0Y3CCJBKDdWRwgiQT",
             ),
           refreshInterval = 30.seconds,
+        ),
+      reputation =
+        P2PConfig.Reputation(
+          smallChange = 1,
+          largeChange = 5,
+          disconnectScoreThreshold = -20,
+          capacity = 100,
+          cooldownPeriod = 2.seconds,
+          banPeriod = 30.seconds,
+        ),
+      statusUpdate =
+        P2PConfig.StatusUpdate(
+          refreshInterval = 30.seconds,
+          refreshIntervalLeeway = 10.seconds,
+          timeout = 3.seconds,
         ),
     )
   private val ethApiEndpoint =
