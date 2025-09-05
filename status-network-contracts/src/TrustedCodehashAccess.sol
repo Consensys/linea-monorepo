@@ -13,7 +13,7 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
  */
 abstract contract TrustedCodehashAccess is ITrustedCodehashAccess, AccessControlUpgradeable {
     /// @notice Whidelisted codehashes.
-    mapping(bytes32 codehash => bool permission) private trustedCodehashes;
+    mapping(bytes32 codehash => bool permission) internal trustedCodehashes;
     /// @notice Gap for upgrade safety.
     // solhint-disable-next-line
     uint256[10] private __gap_TrustedcodehashAccess;

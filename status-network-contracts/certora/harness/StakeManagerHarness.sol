@@ -9,5 +9,9 @@ contract StakeManagerHarness is StakeManager {
     function getVaultLockUntil(address vault) public view returns (uint256) {
         return IStakeVault(vault).lockUntil();
     }
+
+    function isVaultTrusted(address vault) public view returns (bool) {
+        return trustedCodehashes[vault.codehash];
+    }
 }
 

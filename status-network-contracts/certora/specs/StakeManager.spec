@@ -34,18 +34,6 @@ hook Sstore vaultData[KEY address vault].stakedBalance uint256 newValue (uint256
     sumOfBalances = sumOfBalances - oldValue + newValue;
 }
 
-function getVaultMaxMP(address vault) returns uint256 {
-    uint256 maxMP;
-    _, _, _, maxMP, _, _= streamer.vaultData(vault);
-    return maxMP;
-}
-
-function getVaultMPAccrued(address vault) returns uint256 {
-    uint256 vaultMPAccrued;
-    _, _, vaultMPAccrued, _, _, _ = streamer.vaultData(vault);
-    return vaultMPAccrued;
-}
-
 invariant sumOfBalancesIsTotalStaked()
   sumOfBalances == to_mathint(totalStaked())
   filtered {
