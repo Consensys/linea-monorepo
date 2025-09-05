@@ -13,6 +13,9 @@
 app.kubernetes.io/name: {{ include "besu.fullname" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/component: besu
+{{- if .Values.componentRole }}
+app.kubernetes.io/component-role: {{ .Values.componentRole }}
+{{- end }}
 {{- end }}
 
 {{- define "besu.labels" -}}

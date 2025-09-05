@@ -21,10 +21,10 @@ import net.consensys.linea.testing.filesystem.getPathTo
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.fail
 import org.awaitility.kotlin.await
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.opentest4j.AssertionFailedError
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class NodesSyncTest {
@@ -88,7 +88,7 @@ class NodesSyncTest {
         logLevel = Level.INFO,
       )
 
-      throw AssertionFailedError(
+      fail<Nothing>(
         "Nodes are out of sync: maxHead=$maxHead, minHead=$minHead nodeWithMinHead=${nodeWithMinHead.label}",
       )
     } else {
