@@ -30,10 +30,11 @@ func (pi *Invalidity) Sum(hsh hash.Hash) []byte {
 	}
 
 	hsh.Reset()
-	hsh.Write(pi.TxHash[:])
-	writeNum(hsh, pi.TxNumber)
+	hsh.Write(pi.TxHash[:16])
+	hsh.Write(pi.TxHash[16:])
+	types.WriteInt64On32Bytes(hsh, int64(pi.TxNumber))
 	hsh.Write(pi.FromAddress[:])
-	writeNum(hsh, pi.ExpectedBlockHeight)
+	types.WriteInt64On32Bytes(hsh, int64(pi.ExpectedBlockHeight))
 	hsh.Write(pi.StateRootHash[:])
 	hsh.Write(pi.FtxStreamHash[:])
 

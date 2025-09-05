@@ -9,6 +9,7 @@ import (
 	inval "github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
@@ -41,13 +42,23 @@ func TestInvalidityBadBalance(t *testing.T) {
 			FuncInputs: public_input.Invalidity{
 				StateRootHash: root,
 			},
+			FromAddress: tcases[1].FromAddress,
 		}
-
-		circuit = inval.CircuitInvalidity{
-			SubCircuit: &inval.BadBalanceCircuit{},
-		}
+		b, err = assi.Transaction.MarshalBinary()
 	)
+	require.NoError(t, err)
+	assi.RlpEncodedTx = make([]byte, len(b[:])) // include the type byte
+	copy(assi.RlpEncodedTx, b[:])
 
+	circuit := inval.CircuitInvalidity{
+		SubCircuit: &inval.BadBalanceCircuit{},
+	}
+
+	// generate keccak proof for the circuit
+	kcomp, kproof := inval.MakeKeccakProofs(assi.Transaction, 256, dummy.Compile)
+	assi.KeccakCompiledIOP = kcomp
+	assi.KeccakProof = kproof
+	assi.MaxRlpByteSize = 256
 	// assign the circuit
 	circuit.Assign(assi)
 	// solve the circuit

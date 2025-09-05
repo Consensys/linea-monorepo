@@ -91,7 +91,10 @@ func (c *AccountTrie) Allocate(config Config) {
 func (c *AccountTrie) Assign(assi AccountTrieInputs) {
 
 	// assign the merkle proof
-	var witMerkle MerkleProofCircuit
+	var (
+		witMerkle MerkleProofCircuit
+		l         = assi.LeafOpening
+	)
 
 	witMerkle.Proofs.Siblings = make([]frontend.Variable, len(assi.Proof.Siblings))
 	for j := 0; j < len(assi.Proof.Siblings); j++ {
@@ -116,16 +119,13 @@ func (c *AccountTrie) Assign(assi AccountTrieInputs) {
 	account.KeccakCodeHashMSB = a.KeccakCodeHash[16:]
 	account.KeccakCodeHashLSB = a.KeccakCodeHash[:16]
 
-	hval := ac.Hash(assi.Config, a)
-
-	l := assi.LeafOpening
 	leafOpening := accumulator.GnarkLeafOpening{
 		Prev: l.Prev,
 		Next: l.Next,
 	}
 
 	leafOpening.HKey = l.HKey[:]
-	leafOpening.HVal = hval[:]
+	leafOpening.HVal = l.HVal[:]
 
 	*c = AccountTrie{
 		MerkleProof: witMerkle,

@@ -7,12 +7,16 @@ import (
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	gmimc "github.com/consensys/gnark/std/hash/mimc"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/crate-crypto/go-ipa/bandersnatch/fr"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/sirupsen/logrus"
 )
@@ -31,10 +35,10 @@ type CircuitInvalidity struct {
 
 // SubCircuit is the circuit for the invalidity case
 type SubCircuit interface {
-	Define(frontend.API) error       // define the constraints
-	Allocate(Config)                 //  allocate the circuit
-	Assign(AssigningInputs)          // generate assignment
-	ExecutionCtx() frontend.Variable // returns the execution context (FinalStateRootHash) used in the subcircuit
+	Define(frontend.API) error         // define the constraints
+	Allocate(Config)                   //  allocate the circuit
+	Assign(AssigningInputs)            // generate assignment
+	ExecutionCtx() []frontend.Variable // returns the execution context used in the subcircuit
 }
 
 // AssigningInputs collects the inputs used for the circuit assignment
@@ -43,13 +47,33 @@ type AssigningInputs struct {
 	Transaction       *types.Transaction
 	FuncInputs        public_input.Invalidity
 	InvalidityType    InvalidityType
+	FromAddress       common.Address
+	RlpEncodedTx      []byte
+	KeccakCompiledIOP *wizard.CompiledIOP
+	KeccakProof       wizard.Proof
+	MaxRlpByteSize    int
 }
 
 // Define the constraints
 func (c *CircuitInvalidity) Define(api frontend.API) error {
+	// subCircuit constraints
 	c.SubCircuit.Define(api)
-	api.AssertIsEqual(c.SubCircuit.ExecutionCtx(), c.FuncInputs.SateRootHash)
-	// @azam constraint on the hashing of functional public inputs
+
+	// sanity check
+	if len(c.SubCircuit.ExecutionCtx()) == 0 {
+		utils.Panic("did not expect an empty execution context")
+	}
+
+	// constraints on the execution context of the subCircuit, they should match the functional public inputs.
+	for i := range c.SubCircuit.ExecutionCtx() {
+		api.AssertIsEqual(c.SubCircuit.ExecutionCtx()[i], c.FuncInputs.ExecutionCtxFor(c.SubCircuit)[i])
+
+	}
+
+	//  constraint on the hashing of functional public inputs
+	hsh, _ := gmimc.NewMiMC(api)
+	api.AssertIsEqual(c.PublicInput, c.FuncInputs.Sum(api, &hsh))
+
 	return nil
 }
 
@@ -73,7 +97,13 @@ func (c *CircuitInvalidity) Assign(assi AssigningInputs) {
 }
 
 // MakeProof and solve the circuit.
-func (c *CircuitInvalidity) MakeProof(setup circuits.Setup, assi AssigningInputs, FuncInputs *public_input.Invalidity) string {
+func (c *CircuitInvalidity) MakeProof(
+	setup circuits.Setup,
+	assi AssigningInputs,
+	FuncInputs *public_input.Invalidity,
+	kcomp *wizard.CompiledIOP,
+	kproof wizard.Proof,
+) string {
 
 	switch assi.InvalidityType {
 	case BadNonce:
@@ -86,7 +116,6 @@ func (c *CircuitInvalidity) MakeProof(setup circuits.Setup, assi AssigningInputs
 
 	c.Assign(assi)
 
-	//@azam what options should I add?
 	proof, err := circuits.ProveCheck(
 		&setup,
 		c,
@@ -107,12 +136,15 @@ func (c *CircuitInvalidity) MakeProof(setup circuits.Setup, assi AssigningInputs
 // Config collects the data used for the sub circuits allocation
 type Config struct {
 	// depth of the merkle tree for the account trie
-	Depth int
+	Depth             int
+	KeccakCompiledIOP *wizard.CompiledIOP
+	MaxRlpByteSize    int
 }
 
 type builder struct {
 	config  Config
 	circuit *CircuitInvalidity
+	comp    *wizard.CompiledIOP
 }
 
 func NewBuilder(config Config) *builder {
@@ -120,11 +152,11 @@ func NewBuilder(config Config) *builder {
 }
 
 func (b *builder) Compile() (constraint.ConstraintSystem, error) {
-	return makeCS(b.config, b.circuit), nil
+	return makeCS(b.config, b.circuit, b.comp), nil
 }
 
 // compile  the circuit to the constraints
-func makeCS(config Config, circuit *CircuitInvalidity) constraint.ConstraintSystem {
+func makeCS(config Config, circuit *CircuitInvalidity, comp *wizard.CompiledIOP) constraint.ConstraintSystem {
 
 	circuit.Allocate(config)
 
