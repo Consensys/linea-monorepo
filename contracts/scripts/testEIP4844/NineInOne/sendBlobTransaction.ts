@@ -269,7 +269,7 @@ async function sendMessage() {
     maxPriorityFeePerGas: maxPriorityFeePerGas!,
     maxFeePerGas: maxFeePerGas!,
     to: destinationAddress,
-    chainId: chainId,
+    chainId,
     nonce,
     value: 1050000000000000000n,
     gasLimit: 5_000_000,
