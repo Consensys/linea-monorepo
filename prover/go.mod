@@ -1,8 +1,6 @@
 module github.com/consensys/linea-monorepo/prover
 
-go 1.23.0
-
-toolchain go1.23.4
+go 1.24.0
 
 require (
 	github.com/consensys/compress v0.2.5

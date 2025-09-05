@@ -1,7 +1,9 @@
 package fftdomain
 
 import (
+	"runtime"
 	"testing"
+	"time"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -12,9 +14,6 @@ func TestNewDomainGenerateCache(t *testing.T) {
 	assert := require.New(t)
 
 	// Reset cache to ensure tests are isolated.
-	domainMutex.Lock()
-	domainCache = make(map[domainCacheKey]*fft.Domain)
-	domainMutex.Unlock()
 
 	var gen field.Element
 	gen.SetUint64(field.MultiplicativeGen)
@@ -25,13 +24,13 @@ func TestNewDomainGenerateCache(t *testing.T) {
 		gen:            gen,
 		withPrecompute: true,
 	}
-	assert.Nil(domainCache[key1], "Before domain generation, domainCache[key1] should be nil")
+	assert.Nil(domainCache[key1].Value(), "Before domain generation, domainCache[key1] should be nil")
 
 	domain1 := NewDomainWithCache(256, true, nil)
 	expected1 := fft.NewDomain(256)
 
 	assert.Equal(domain1, expected1, "domain1 should equal expected1")
-	assert.Equal(domain1, domainCache[key1], "domain1 should be stored in cache")
+	assert.Equal(domain1, domainCache[key1].Value(), "domain1 should be stored in cache")
 
 	// Case 2: withPrecompute == true, with shift
 	shift := field.NewElement(5)
@@ -40,13 +39,13 @@ func TestNewDomainGenerateCache(t *testing.T) {
 		gen:            shift,
 		withPrecompute: true,
 	}
-	assert.Nil(domainCache[key2], "Before domain generation, domainCache[key2] should be nil")
+	assert.Nil(domainCache[key2].Value(), "Before domain generation, domainCache[key2] should be nil")
 
 	domain2 := NewDomainWithCache(512, true, &shift)
 	expected2 := fft.NewDomain(512, fft.WithShift(shift))
 
 	assert.Equal(domain2, expected2, "domain2 should equal expected2")
-	assert.Equal(domain2, domainCache[key2], "domain2 should be stored in cache")
+	assert.Equal(domain2, domainCache[key2].Value(), "domain2 should be stored in cache")
 	assert.NotSame(domain1, domain2, "Different domains should not be the same pointer")
 
 	// Case 3: withPrecompute == false
@@ -55,13 +54,13 @@ func TestNewDomainGenerateCache(t *testing.T) {
 		gen:            gen,
 		withPrecompute: false,
 	}
-	assert.Nil(domainCache[key3], "Before domain generation, domainCache[key3] should be nil")
+	assert.Nil(domainCache[key3].Value(), "Before domain generation, domainCache[key3] should be nil")
 
 	domain3 := NewDomainWithCache(256, false, nil)
 	expected3 := fft.NewDomain(256, fft.WithoutPrecompute())
 
 	assert.Equal(domain3, expected3, "domain3 should equal expected3")
-	assert.Equal(domain3, domainCache[key3], "domain3 should be stored in cache")
+	assert.Equal(domain3, domainCache[key3].Value(), "domain3 should be stored in cache")
 }
 
 func BenchmarkNewDomainCache(b *testing.B) {
@@ -80,6 +79,79 @@ func BenchmarkNewDomainCache(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
 			fft.NewDomain(1 << 20)
+		}
+	})
+}
+
+func TestGCBehavior(t *testing.T) {
+	// Helper function to get heap allocation in KB
+	getHeapKB := func() uint64 {
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
+		return m.HeapAlloc / 1024
+	}
+
+	// Helper function to force GC and wait for finalizers
+	forceGC := func() {
+		runtime.GC()
+		runtime.Gosched()
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	t.Run("SingleGC_VariableStillAlive", func(t *testing.T) {
+		initialHeap := getHeapKB()
+
+		// Create domain that should stay alive
+		domain1 := NewDomainWithCache(1<<19, true, nil)
+		afterCreateHeap := getHeapKB()
+
+		t.Logf("Created domain1 with cardinality: %d\n", domain1.Cardinality)
+		t.Logf("Heap: %d KB → %d KB (allocated %d KB)\n",
+			initialHeap, afterCreateHeap, afterCreateHeap-initialHeap)
+
+		// GC while domain1 is still alive
+		forceGC()
+		afterGCHeap := getHeapKB()
+
+		t.Logf("After GC (domain1 still alive): %d KB\n", afterGCHeap)
+
+		// Keep domain1 alive to prevent collection
+		runtime.KeepAlive(domain1)
+
+		// GC and domain1 is no longer alive
+		forceGC()
+		afterGCHeap2 := getHeapKB()
+
+		t.Logf("After GC (domain1 is no longer alive): %d KB\n", afterGCHeap2)
+	})
+
+	t.Run("MultipleGC_DropReferences", func(t *testing.T) {
+		initialHeap := getHeapKB()
+
+		// Create domains
+		domain1 := NewDomainWithCache(1<<19, true, nil)
+		domain2 := NewDomainWithCache(1<<20, true, nil)
+
+		t.Logf("Created domain1 with cardinality: %d\n", domain1.Cardinality)
+		t.Logf("Created domain2 with cardinality: %d\n", domain2.Cardinality)
+
+		afterCreateHeap := getHeapKB()
+		t.Logf("After creating all domains: %d KB → %d KB\n",
+			initialHeap, afterCreateHeap)
+
+		// Now domain1 and domain2 are no longer used
+		// First GC to mark objects
+		runtime.GC()
+		afterGC := getHeapKB()
+
+		t.Logf("After GC cycles: %d KB\n",
+			afterGC)
+		t.Logf("Total memory freed: %d KB\n", afterCreateHeap-afterGC)
+
+		// Verify significant memory was freed
+		if afterGC >= afterCreateHeap {
+			t.Errorf("Expected memory to be freed, but heap is still %d KB\n",
+				afterGC)
 		}
 	})
 }

@@ -1,7 +1,10 @@
 package fftdomain
 
 import (
+	"fmt"
+	"runtime"
 	"sync"
+	"weak"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -16,16 +19,15 @@ type domainCacheKey struct {
 }
 
 var (
-	domainCache = make(map[domainCacheKey]*fft.Domain)
+	domainCache = make(map[domainCacheKey]weak.Pointer[fft.Domain])
 	domainMutex sync.Mutex
 )
 
-// NewDomain returns a subgroup with a power of 2 cardinality
+// NewDomainWithCache returns a subgroup with a power of 2 cardinality
 // cardinality >= m
 // shift: when specified, it's the element by which the set of root of unity is shifted.
 // If domain is cached, it will directly returns the cached domain
 func NewDomainWithCache(m uint64, withPrecompute bool, shift *field.Element) *fft.Domain {
-
 	// Lock the mutex for the entire caching block.
 	domainMutex.Lock()
 	defer domainMutex.Unlock()
@@ -45,7 +47,7 @@ func NewDomainWithCache(m uint64, withPrecompute bool, shift *field.Element) *ff
 
 	// Return from cache if available.
 	if domain, ok := domainCache[key]; ok {
-		return domain
+		return domain.Value()
 	}
 
 	// Cache miss → create a new domain.
@@ -59,7 +61,20 @@ func NewDomainWithCache(m uint64, withPrecompute bool, shift *field.Element) *ff
 		domain = fft.NewDomain(m, fft.WithoutPrecompute())
 	}
 
+	weakDomain := weak.Make(domain)
+
 	// Store in cache.
-	domainCache[key] = domain
+	domainCache[key] = weakDomain
+
+	// Add cleanup to remove from cache when domain is garbage collected.
+	// IMPORTANT: Pass only the key data, not the domain itself
+	runtime.AddCleanup(domain, func(key domainCacheKey) {
+		fmt.Printf("AddCleanup called for data %v\n", key)
+
+		domainMutex.Lock()
+		delete(domainCache, key)
+		domainMutex.Unlock()
+	}, key)
+
 	return domain
 }
