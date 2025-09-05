@@ -45,7 +45,8 @@ public record BlockHeaderSnapshot(
     String extraData,
     String mixHashOrPrevRandao,
     long nonce,
-    Optional<String> baseFee) {
+    Optional<String> baseFee,
+    Bytes32 parentBeaconBlockRoot) {
   public static BlockHeaderSnapshot from(BlockHeader header) {
     return new BlockHeaderSnapshot(
         header.getParentHash().toHexString(),
@@ -63,7 +64,8 @@ public record BlockHeaderSnapshot(
         header.getExtraData().toHexString(),
         header.getMixHashOrPrevRandao().toHexString(),
         header.getNonce(),
-        header.getBaseFee().map(Quantity::toHexString));
+        header.getBaseFee().map(Quantity::toHexString),
+        header.getParentBeaconBlockRoot().orElse(null));
   }
 
   public BlockHeader toBlockHeader() {
@@ -85,7 +87,8 @@ public record BlockHeaderSnapshot(
             .mixHash(Hash.fromHexString(this.mixHashOrPrevRandao))
             .prevRandao(Bytes32.fromHexString(this.mixHashOrPrevRandao))
             .nonce(this.nonce)
-            .blockHeaderFunctions(new CliqueBlockHeaderFunctions());
+            .blockHeaderFunctions(new CliqueBlockHeaderFunctions())
+            .parentBeaconBlockRoot(parentBeaconBlockRoot);
 
     this.baseFee.ifPresent(baseFee -> builder.baseFee(Wei.fromHexString(baseFee)));
 

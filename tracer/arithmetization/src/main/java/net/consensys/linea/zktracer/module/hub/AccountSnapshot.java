@@ -87,7 +87,7 @@ public class AccountSnapshot {
       final boolean warmth) {
 
     final Account account = worldView.get(address);
-    Bytecode bytecode =
+    final Bytecode bytecode =
         deploymentInfo.getDeploymentStatus(address)
             ? new Bytecode(deploymentInfo.getInitializationCode(address))
             : (account == null) ? new Bytecode(Bytes.EMPTY) : new Bytecode(account.getCode());

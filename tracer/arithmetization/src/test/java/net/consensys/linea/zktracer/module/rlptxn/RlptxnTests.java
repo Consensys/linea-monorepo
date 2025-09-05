@@ -65,11 +65,9 @@ public class RlptxnTests extends TracerTestBase {
       BigInteger value,
       Bytes payload,
       List<AccessListEntry> accessList,
-      boolean chainLess,
-      BigInteger
-          s // TODO: how to generate arbitrary length signature ? Need to test for small values (0,
-      // < 128, 128, <= 16 bytes, <=32 bytes ...)
-      ) {
+      boolean chainLess) {
+    // Note: different values of signatures are not tested here, but some tests with "small" r/s can
+    // be seen here: SystemTransactionTests/genesisBlockTest
 
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
@@ -131,7 +129,6 @@ public class RlptxnTests extends TracerTestBase {
             BigInteger.valueOf(128),
             BigInteger.valueOf(129),
             Bytes.random(8, SEED).toUnsignedBigInteger() // random medium BigInt
-            // Bytes.random(12, SEED).toUnsignedBigInteger() // random 12 bytes BigInt
             );
 
     final List<Bytes> payloads =

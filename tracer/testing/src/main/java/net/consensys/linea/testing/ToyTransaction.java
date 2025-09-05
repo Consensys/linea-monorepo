@@ -15,7 +15,9 @@
 
 package net.consensys.linea.testing;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static net.consensys.linea.zktracer.Trace.LINEA_CHAIN_ID;
+import static org.hyperledger.besu.crypto.SECPSignature.BYTES_REQUIRED;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -24,19 +26,14 @@ import java.util.Optional;
 
 import lombok.Builder;
 import org.apache.tuweni.bytes.Bytes;
+import org.bouncycastle.math.ec.custom.sec.SecP256K1Curve;
 import org.hyperledger.besu.crypto.KeyPair;
+import org.hyperledger.besu.crypto.SECPSignature;
 import org.hyperledger.besu.datatypes.*;
 import org.hyperledger.besu.ethereum.core.Transaction;
 
 @Builder
 public class ToyTransaction {
-  private static final ToyAccount DEFAULT_SENDER =
-      ToyAccount.builder()
-          .nonce(1L)
-          .address(Address.fromHexString("0xe8f1b89"))
-          .balance(Wei.ONE)
-          .build();
-
   private static final Wei DEFAULT_VALUE = Wei.ZERO;
   private static final Bytes DEFAULT_INPUT_DATA = Bytes.EMPTY;
   private static final long DEFAULT_GAS_LIMIT = 50_000L; // i.e. 21 000 + a bit
@@ -47,6 +44,7 @@ public class ToyTransaction {
   private static final Wei DEFAULT_MAX_PRIORITY_FEE_PER_GAS = Wei.of(500_000_000L);
 
   private final ToyAccount to;
+  private final Address toAddress;
   private final ToyAccount sender;
   private final Wei gasPrice;
   private final Long gasLimit;
@@ -59,6 +57,7 @@ public class ToyTransaction {
   private final Wei maxPriorityFeePerGas;
   private final Wei maxFeePerGas;
   private final Long nonce;
+  private final Bytes signature;
 
   /** Customizations applied to the Lombok generated builder. */
   public static class ToyTransactionBuilder {
@@ -69,9 +68,14 @@ public class ToyTransaction {
      * @return an instance of {@link Transaction}
      */
     public Transaction build() {
+      checkArgument(to == null || toAddress == null, "Useless to provide both to and toAddress");
+      final Address recipientAddress =
+          to == null
+              ? toAddress
+              : to.getAddress(); // if both are null, it means it's a deployment transaction
       final Transaction.Builder builder =
           Transaction.builder()
-              .to(to != null ? to.getAddress() : null)
+              .to(recipientAddress)
               .nonce(nonce != null ? nonce : sender.getNonce())
               .accessList(accessList)
               .type(Optional.ofNullable(transactionType).orElse(DEFAULT_TX_TYPE))
@@ -87,7 +91,18 @@ public class ToyTransaction {
         builder.maxFeePerGas(Optional.ofNullable(maxFeePerGas).orElse(DEFAULT_MAX_FEE_PER_GAS));
       }
 
-      return builder.signAndBuild(keyPair);
+      if (signature != null) {
+        checkArgument(keyPair == null, "Cannot provide both signature and keyPair");
+        checkArgument(
+            signature.size() == BYTES_REQUIRED, "Signature must be % bytes", BYTES_REQUIRED);
+        checkArgument(sender.getAddress() != null, "Sender address must be provided");
+        return builder
+            .sender(sender.getAddress())
+            .signature(SECPSignature.decode(signature, SecP256K1Curve.q))
+            .build();
+      } else {
+        return builder.signAndBuild(keyPair);
+      }
     }
   }
 }

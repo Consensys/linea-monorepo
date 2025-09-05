@@ -39,65 +39,69 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 public class EIP4788BeaconBlockRoot extends TraceSection {
 
-  public static final Address BEACONROOT_ADDRESS =
+  public static final Address EIP4788_BEACONROOT_ADDRESS =
       AddressUtils.addressFromBytes(
           Bytes.concatenate(
               Bytes.minimalBytes(BEACON_ROOTS_ADDRESS_HI),
               bigIntegerToBytes16(BEACON_ROOTS_ADDRESS_LO)));
 
-  final long timestamp;
-  final Bytes32 beaconRoot;
-
   public EIP4788BeaconBlockRoot(Hub hub, WorldView world, ProcessableBlockHeader blockHeader) {
     super(hub, (short) 5);
-    timestamp = blockHeader.getTimestamp();
-    beaconRoot =
-        blockHeader.getParentBeaconBlockRoot().isPresent()
-            ? blockHeader.getParentBeaconBlockRoot().get()
-            : Bytes32.ZERO;
+    final AccountSnapshot beaconrootAccount =
+        AccountSnapshot.canonical(hub, world, EIP4788_BEACONROOT_ADDRESS, false);
+    final long timestamp = blockHeader.getTimestamp();
+    final boolean currentBlockIsGenesisBlock = blockHeader.getNumber() == 0;
+    final boolean isNonTrivialOperation =
+        !currentBlockIsGenesisBlock && !beaconrootAccount.code().isEmpty();
+    final Bytes32 beaconRoot =
+        isNonTrivialOperation ? blockHeader.getParentBeaconBlockRoot().get() : Bytes32.ZERO;
 
     final Eip4788TransactionFragment transactionFragment =
-        new Eip4788TransactionFragment(timestamp, beaconRoot);
+        new Eip4788TransactionFragment(timestamp, beaconRoot, currentBlockIsGenesisBlock);
     fragments().add(transactionFragment);
     hub.txnData().callTxnDataForSystemTransaction(transactionFragment);
 
-    final AccountSnapshot beaconrootAccount =
-        AccountSnapshot.canonical(hub, world, BEACONROOT_ADDRESS, false);
     final AccountFragment accountFragment =
         hub.factories()
             .accountFragment()
             .makeWithTrm(
                 beaconrootAccount,
                 beaconrootAccount,
-                BEACONROOT_ADDRESS,
+                EIP4788_BEACONROOT_ADDRESS,
                 DomSubStampsSubFragment.standardDomSubStamps(hubStamp(), 1),
                 SYSI);
     fragments().add(accountFragment);
 
-    final EWord keyTimestamp = EWord.of(timestamp % HISTORY_SERVE_WINDOW);
-    final StorageFragment storingTimestamp =
-        systemTransactionStoring(
-            hub,
-            BEACONROOT_ADDRESS,
-            keyTimestamp,
-            EWord.of(
-                world.get(BEACONROOT_ADDRESS).getStorageValue(UInt256.fromBytes(keyTimestamp))),
-            EWord.of(timestamp),
-            2);
-    fragments().add(storingTimestamp);
+    if (isNonTrivialOperation) {
+      final EWord keyTimestamp = EWord.of(timestamp % HISTORY_BUFFER_LENGTH);
+      final StorageFragment storingTimestamp =
+          systemTransactionStoring(
+              hub,
+              EIP4788_BEACONROOT_ADDRESS,
+              keyTimestamp,
+              EWord.of(
+                  world
+                      .get(EIP4788_BEACONROOT_ADDRESS)
+                      .getStorageValue(UInt256.fromBytes(keyTimestamp))),
+              EWord.of(timestamp),
+              2);
+      fragments().add(storingTimestamp);
 
-    final EWord keyBeaconRoot =
-        EWord.of((timestamp % HISTORY_BUFFER_LENGTH) + HISTORY_BUFFER_LENGTH);
-    final StorageFragment storingBeaconroot =
-        systemTransactionStoring(
-            hub,
-            BEACONROOT_ADDRESS,
-            keyBeaconRoot,
-            EWord.of(
-                world.get(BEACONROOT_ADDRESS).getStorageValue(UInt256.fromBytes(keyBeaconRoot))),
-            EWord.of(beaconRoot),
-            3);
-    fragments().add(storingBeaconroot);
+      final EWord keyBeaconRoot =
+          EWord.of((timestamp % HISTORY_BUFFER_LENGTH) + HISTORY_BUFFER_LENGTH);
+      final StorageFragment storingBeaconroot =
+          systemTransactionStoring(
+              hub,
+              EIP4788_BEACONROOT_ADDRESS,
+              keyBeaconRoot,
+              EWord.of(
+                  world
+                      .get(EIP4788_BEACONROOT_ADDRESS)
+                      .getStorageValue(UInt256.fromBytes(keyBeaconRoot))),
+              EWord.of(beaconRoot),
+              3);
+      fragments().add(storingBeaconroot);
+    }
 
     fragments().add(ContextFragment.readZeroContextData(hub));
   }

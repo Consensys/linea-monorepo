@@ -39,35 +39,20 @@ import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.account.AccountStorageEntry;
 import org.hyperledger.besu.evm.account.MutableAccount;
 
+@Builder
 public class ToyAccount implements MutableAccount {
   private final Account parent;
 
-  private boolean mutable = true;
+  @Builder.Default private boolean mutable = true;
 
   private Address address;
   private final Supplier<Hash> addressHash = Suppliers.memoize(() -> address.addressHash());
   private long nonce;
-  private Wei balance;
-  private Bytes code;
-  private Supplier<Hash> codeHash = Suppliers.memoize(() -> Hash.hash(code));
+  @Builder.Default private Wei balance = Wei.ZERO;
+  @Builder.Default private Bytes code = Bytes.EMPTY;
+  private Supplier<Hash> codeHash;
   final Map<UInt256, UInt256> storage = new HashMap<>();
   final KeyPair keyPair;
-
-  @Builder
-  public ToyAccount(
-      final Account parent,
-      final Address address,
-      final long nonce,
-      final Wei balance,
-      final Bytes code) {
-    checkArgument(nonce >= 0);
-    this.parent = parent;
-    this.address = address;
-    this.nonce = nonce;
-    this.balance = balance;
-    this.code = code == null ? Bytes.EMPTY : code;
-    this.keyPair = null;
-  }
 
   @Override
   public Address getAddress() {
@@ -101,7 +86,7 @@ public class ToyAccount implements MutableAccount {
 
   @Override
   public Hash getCodeHash() {
-    return codeHash.get();
+    return Suppliers.memoize(() -> Hash.hash(code)).get();
   }
 
   @Override

@@ -39,50 +39,55 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 public class EIP2935HistoricalHash extends TraceSection {
 
-  public static final Address HISTORY_STORAGE_ADDRESS =
+  public static final Address EIP2935_HISTORY_STORAGE_ADDRESS =
       AddressUtils.addressFromBytes(
           Bytes.concatenate(
               Bytes.minimalBytes(HISTORY_STORAGE_ADDRESS_HI),
               bigIntegerToBytes16(HISTORY_STORAGE_ADDRESS_LO)));
 
-  final short previousBlockNumberModulo;
-  final Bytes32 blockhash;
-
   public EIP2935HistoricalHash(final Hub hub, WorldView world, ProcessableBlockHeader blockHeader) {
     super(hub, (short) 4);
-    final boolean genesisBlock = blockHeader.getNumber() == 0;
-    previousBlockNumberModulo =
-        genesisBlock ? 0 : (short) ((blockHeader.getNumber() - 1) % HISTORY_SERVE_WINDOW);
-    blockhash = genesisBlock ? Bytes32.ZERO : blockHeader.getParentHash();
+    final boolean currentBlockIsGenesis = blockHeader.getNumber() == 0;
+    final short previousBlockNumberModulo =
+        currentBlockIsGenesis ? 0 : (short) ((blockHeader.getNumber() - 1) % HISTORY_SERVE_WINDOW);
+    final AccountSnapshot blockhashHistoryAccount =
+        AccountSnapshot.canonical(hub, EIP2935_HISTORY_STORAGE_ADDRESS);
+    final boolean isNonTrivialOperation =
+        !currentBlockIsGenesis && !blockhashHistoryAccount.code().isEmpty();
+
+    final Bytes32 blockhash = isNonTrivialOperation ? blockHeader.getParentHash() : Bytes32.ZERO;
 
     final EIP2935TransactionFragment transactionFragment =
-        new EIP2935TransactionFragment(previousBlockNumberModulo, blockhash);
+        new EIP2935TransactionFragment(previousBlockNumberModulo, blockhash, currentBlockIsGenesis);
     fragments().add(transactionFragment);
     hub.txnData().callTxnDataForSystemTransaction(transactionFragment);
 
-    final AccountSnapshot blockhashHistoryAccount =
-        AccountSnapshot.canonical(hub, HISTORY_STORAGE_ADDRESS);
     final AccountFragment accountFragment =
         hub.factories()
             .accountFragment()
             .makeWithTrm(
                 blockhashHistoryAccount,
                 blockhashHistoryAccount,
-                HISTORY_STORAGE_ADDRESS,
+                EIP2935_HISTORY_STORAGE_ADDRESS,
                 DomSubStampsSubFragment.standardDomSubStamps(hubStamp(), 1),
                 SYSI);
     fragments().add(accountFragment);
 
-    final EWord key = EWord.of(previousBlockNumberModulo);
-    final StorageFragment storingBlockhash =
-        systemTransactionStoring(
-            hub,
-            HISTORY_STORAGE_ADDRESS,
-            key,
-            EWord.of(world.get(HISTORY_STORAGE_ADDRESS).getStorageValue(UInt256.fromBytes(key))),
-            EWord.of(blockhash),
-            2);
-    fragments().add(storingBlockhash);
+    if (isNonTrivialOperation) {
+      final EWord key = EWord.of(previousBlockNumberModulo);
+      final StorageFragment storingBlockhash =
+          systemTransactionStoring(
+              hub,
+              EIP2935_HISTORY_STORAGE_ADDRESS,
+              key,
+              EWord.of(
+                  world
+                      .get(EIP2935_HISTORY_STORAGE_ADDRESS)
+                      .getStorageValue(UInt256.fromBytes(key))),
+              EWord.of(blockhash),
+              2);
+      fragments().add(storingBlockhash);
+    }
 
     fragments().add(ContextFragment.readZeroContextData(hub));
   }

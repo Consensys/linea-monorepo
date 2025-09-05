@@ -71,6 +71,6 @@ public class CancunAccountFragment extends LondonAccountFragment {
     trace.pAccountHadCodeInitially(
         isUserTransaction(txType)
             ? tx.hadCodeInitiallyMap().get(oldState().address()).hadCode()
-            : true);
+            : oldState().tracedHasCode());
   }
 }

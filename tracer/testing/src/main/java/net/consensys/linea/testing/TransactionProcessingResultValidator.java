@@ -30,8 +30,14 @@ public interface TransactionProcessingResultValidator {
         assertTrue(
             r.isSuccessful(),
             () ->
-                "Transaction: %s not successful. %s"
-                    .formatted(t.getHash().toString(), r.toString()));
+                String.format(
+                    "Transaction not successful:%n"
+                        + "  Hash: %s%n"
+                        + "  From: %s%n"
+                        + "  To: %s%n"
+                        + "  Nonce: %s%n"
+                        + "Reason: %s",
+                    t.getHash(), t.getSender(), t.getTo(), t.getNonce(), r));
       };
 
   TransactionProcessingResultValidator EMPTY_VALIDATOR = (t, r) -> {};

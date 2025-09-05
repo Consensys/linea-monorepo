@@ -16,6 +16,7 @@
 package net.consensys.linea.testing;
 
 import static net.consensys.linea.testing.ToyExecutionTools.addSystemAccountsIfRequired;
+import static net.consensys.linea.testing.ToyExecutionTools.runSystemInitialTransactions;
 import static net.consensys.linea.zktracer.ChainConfig.OLD_MAINNET_TESTCONFIG;
 import static net.consensys.linea.zktracer.ChainConfig.OLD_SEPOLIA_TESTCONFIG;
 
@@ -50,6 +51,7 @@ import org.hyperledger.besu.datatypes.*;
 import org.hyperledger.besu.ethereum.core.*;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.mainnet.MainnetTransactionProcessor;
+import org.hyperledger.besu.ethereum.mainnet.ProtocolSpec;
 import org.hyperledger.besu.ethereum.processing.TransactionProcessingResult;
 import org.hyperledger.besu.ethereum.referencetests.ReferenceTestWorldState;
 import org.hyperledger.besu.evm.account.MutableAccount;
@@ -95,6 +97,8 @@ public class ReplayExecutionEnvironment {
 
   @Builder.Default private final boolean runWithBesuNode = false;
 
+  @Builder.Default private final boolean systemContractDeployedPriorToConflation = true;
+
   private final ZkTracer zkTracer;
 
   public void checkTracer(String inputFilePath, long startBlock, long endBlock) {
@@ -127,7 +131,7 @@ public class ReplayExecutionEnvironment {
       executeOnBesu(chain, conflation, this.useCoinbaseAddressFromBlockHeader, this.filename);
       return;
     }
-    this.executeFrom(chain, conflation);
+    this.executeFrom(chain, conflation, systemContractDeployedPriorToConflation);
     ExecutionEnvironment.checkTracer(
         zkTracer,
         new CorsetValidator(chain),
@@ -145,12 +149,12 @@ public class ReplayExecutionEnvironment {
       log.error(e.getMessage());
       return;
     }
-    this.executeFrom(chain, conflation);
+    this.executeFrom(chain, conflation, systemContractDeployedPriorToConflation);
     this.checkTracer(inputFilePath, conflation.firstBlockNumber(), conflation.lastBlockNumber());
   }
 
   public void replay(ChainConfig chain, ConflationSnapshot conflation) {
-    this.executeFrom(chain, conflation);
+    this.executeFrom(chain, conflation, systemContractDeployedPriorToConflation);
     ExecutionEnvironment.checkTracer(
         zkTracer,
         new CorsetValidator(chain),
@@ -165,8 +169,12 @@ public class ReplayExecutionEnvironment {
    * out, then execute and check it.
    *
    * @param conflation the conflation to replay
+   * @param systemContractDeployedPriorToConflation
    */
-  private void executeFrom(final ChainConfig chain, final ConflationSnapshot conflation) {
+  private void executeFrom(
+      final ChainConfig chain,
+      final ConflationSnapshot conflation,
+      boolean systemContractDeployedPriorToConflation) {
     ConflationAwareOperationTracer tracer = this.zkTracer;
     BlockCapturer capturer = null;
     // Configure block capturer (if applicable)
@@ -185,7 +193,8 @@ public class ReplayExecutionEnvironment {
         tracer,
         this.txResultChecking,
         this.useCoinbaseAddressFromBlockHeader,
-        this.transactionProcessingResultValidator);
+        this.transactionProcessingResultValidator,
+        systemContractDeployedPriorToConflation);
     //
     if (debugBlockCapturer) {
       writeCaptureToFile(chain, conflation, capturer);
@@ -244,18 +253,22 @@ public class ReplayExecutionEnvironment {
       final ConflationAwareOperationTracer tracer,
       final boolean txResultChecking,
       final boolean useCoinbaseAddressFromBlockHeader,
-      final TransactionProcessingResultValidator resultValidator) {
+      final TransactionProcessingResultValidator resultValidator,
+      boolean systemContractDeployedPriorToTheConflation) {
     final BlockHashLookup blockHashLookup = conflation.toBlockHashLookup();
     // Initialise world state from conflation
     final MutableWorldState world = initWorld(conflation);
 
     // Add system accounts if the fork requires it and not already present in the state.
-    addSystemAccountsIfRequired(world.updater(), chain.fork);
+    if (systemContractDeployedPriorToTheConflation) {
+      addSystemAccountsIfRequired(world.updater(), chain.fork);
+    }
 
     world.persist(null);
-    // Construct the transaction processor
-    final MainnetTransactionProcessor transactionProcessor =
-        ExecutionEnvironment.getProtocolSpec(chain.id, chain.fork).getTransactionProcessor();
+    // Construct the processor
+    final ProtocolSpec protocolSpec = ExecutionEnvironment.getProtocolSpec(chain.id, chain.fork);
+    final MainnetTransactionProcessor transactionProcessor = protocolSpec.getTransactionProcessor();
+
     // Begin
     tracer.traceStartConflation(conflation.blocks().size());
     //
@@ -270,7 +283,8 @@ public class ReplayExecutionEnvironment {
           useCoinbaseAddressFromBlockHeader
               ? header.getCoinbase()
               : CliqueHelpers.getProposerOfBlock(header);
-      tracer.traceStartBlock(world, header, body, miningBeneficiary);
+      tracer.traceStartBlock(world.updater(), header, body, miningBeneficiary);
+      runSystemInitialTransactions(protocolSpec, chain.fork, world, header, tracer);
 
       for (TransactionSnapshot txs : blockSnapshot.txs()) {
         final Transaction tx = txs.toTransaction();
