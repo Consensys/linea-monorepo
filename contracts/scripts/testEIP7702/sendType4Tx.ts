@@ -1,6 +1,7 @@
 import { Authorization, ethers } from "ethers";
-import { get1559Fees } from "../utils";
+import { get1559Fees, isLineaChainId, LineaEstimateGasClient } from "../utils";
 import * as dotenv from "dotenv";
+import { generateFunctionSelector } from "contracts/common/helpers";
 
 // Prerequisite - Deploy a contract with NON-VIEW initialize() function, e.g. TestEIP7702Delegation
 // Use this contract for TARGET_ADDRESS env
@@ -12,10 +13,12 @@ dotenv.config();
 class EIP7702TransactionSender {
   private provider: ethers.Provider;
   private signer: ethers.Wallet;
+  private lineaEstimateGasClient: LineaEstimateGasClient;
 
   constructor(rpcUrl: string, privateKey: string) {
     this.provider = new ethers.JsonRpcProvider(rpcUrl);
     this.signer = new ethers.Wallet(privateKey, this.provider);
+    this.lineaEstimateGasClient = new LineaEstimateGasClient(new URL(rpcUrl));
   }
 
   async createAuthorization(targetContractAddress: string): Promise<Authorization> {
@@ -45,19 +48,23 @@ class EIP7702TransactionSender {
     // Create contract instance and execute
     const delegatedContract = new ethers.Contract(this.signer, ABI, this.signer);
 
-    // TODO - Change for linea_estimateGas
-    const feeData = await get1559Fees(this.provider);
+    const chainId = (await this.provider.getNetwork()).chainId;
+    const { maxPriorityFeePerGas, maxFeePerGas } = isLineaChainId(Number(chainId))
+      ? await this.lineaEstimateGasClient.lineaEstimateGas(
+          this.signer.address,
+          this.signer.address,
+          `0x${generateFunctionSelector("initialize()")}`,
+          "0",
+        )
+      : await get1559Fees(this.provider);
 
     const txParams = {
       type: 4,
       authorizationList: [authorization],
       gasLimit: 500000n,
       value: 0n,
-      //   Hardcoded values to pass Linea devnet
-      // maxPriorityFeePerGas: 90000000000n,
-      // maxFeePerGas: 90000000000n,
-      maxPriorityFeePerGas: feeData.maxPriorityFeePerGas,
-      maxFeePerGas: feeData.maxFeePerGas,
+      maxPriorityFeePerGas: maxPriorityFeePerGas,
+      maxFeePerGas: maxFeePerGas,
     };
 
     const tx = await delegatedContract["initialize()"](txParams);
