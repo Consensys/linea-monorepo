@@ -125,26 +125,7 @@ class ProverParsingTest {
       new = null,
     )
 
-    val configWithCleanupEnabled = ProverToml(
-      version = "v2.0.0",
-      fsInprogressRequestWritingSuffix = ".inprogress_coordinator_writing",
-      fsInprogressProvingSuffixPattern = "\\.inprogress\\.prover.*",
-      execution = ProverToml.ProverDirectoriesToml(
-        fsRequestsDirectory = "/data/prover/v2/execution/requests",
-        fsResponsesDirectory = "/data/prover/v2/execution/responses",
-      ),
-      blobCompression = ProverToml.ProverDirectoriesToml(
-        fsRequestsDirectory = "/data/prover/v2/compression/requests",
-        fsResponsesDirectory = "/data/prover/v2/compression/responses",
-      ),
-      proofAggregation = ProverToml.ProverDirectoriesToml(
-        fsRequestsDirectory = "/data/prover/v2/aggregation/requests",
-        fsResponsesDirectory = "/data/prover/v2/aggregation/responses",
-      ),
-      switchBlockNumberInclusive = null,
-      new = null,
-      enableRequestFilesCleanup = true,
-    )
+    val configWithCleanupEnabled = configMinimal.copy(enableRequestFilesCleanup = true)
   }
 
   data class WrapperConfig(
