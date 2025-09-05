@@ -115,6 +115,7 @@ public class ZkTracer implements LineCountingTracer {
     // Configure metadata
     trace.addMetadata("releaseVersion", ZkTracer.class.getPackage().getSpecificationVersion());
     trace.addMetadata("chainId", this.chain.id.toString());
+    trace.addMetadata("fork", this.chain.fork.toString());
     trace.addMetadata("l2L1LogSmcAddress", this.chain.bridgeConfiguration.contract().toString());
     trace.addMetadata("l2L1LogTopic", this.chain.bridgeConfiguration.topic().toString());
     // include block range
