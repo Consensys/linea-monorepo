@@ -82,7 +82,7 @@ class ProofGeneratingConflationHandlerImpl(
                 .whenException { th ->
                   log.debug(
                     "traces conflation failed: batch={} errorMessage={}",
-                    conflation.conflationResult.intervalString(),
+                    blockIntervalString,
                     th.message,
                     th,
                   )
