@@ -161,34 +161,32 @@ class ELSyncService(
   private fun extractEvmForkFromDifficultyAwareQbft(forkSpec: ForkSpec): ElFork =
     ((forkSpec.configuration as DifficultyAwareQbftConfig).postTtdConfig).elFork
 
+  @Synchronized
   override fun start() {
-    synchronized(this) {
-      if (poller != null) {
-        return
-      }
-      log.debug("Starting ELSyncService with polling interval: {}", config.pollingInterval)
-      poller = timerFactory("ELSyncPoller", true)
-      poller!!.scheduleAtFixedRate(
-        timerTask {
-          try {
-            pollTask()
-          } catch (e: Exception) {
-            log.warn("ELSyncService poll task exception", e)
-          }
-        },
-        0,
-        config.pollingInterval.inWholeMilliseconds,
-      )
+    if (poller != null) {
+      return
     }
+    log.debug("Starting ELSyncService with polling interval: {}", config.pollingInterval)
+    poller = timerFactory("ELSyncPoller", true)
+    poller!!.scheduleAtFixedRate(
+      timerTask {
+        try {
+          pollTask()
+        } catch (e: Exception) {
+          log.warn("Poll task failed: errorMessage={}", e.message, e)
+        }
+      },
+      0,
+      config.pollingInterval.inWholeMilliseconds,
+    )
   }
 
+  @Synchronized
   override fun stop() {
-    synchronized(this) {
-      if (poller == null) {
-        return
-      }
-      poller?.cancel()
-      poller = null
+    if (poller == null) {
+      return
     }
+    poller?.cancel()
+    poller = null
   }
 }
