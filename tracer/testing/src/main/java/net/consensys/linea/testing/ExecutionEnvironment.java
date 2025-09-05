@@ -15,6 +15,7 @@
 
 package net.consensys.linea.testing;
 
+import static net.consensys.linea.testing.MultiBlockExecutionEnvironment.DEFAULT_DELTA_TIMESTAMP_BETWEEN_BLOCKS;
 import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.DEFAULT_TIME_STAMP;
 import static net.consensys.linea.zktracer.Trace.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -126,7 +127,8 @@ public class ExecutionEnvironment {
         parentBlockHeader.isPresent()
             ? BlockHeaderBuilder.fromHeader(parentBlockHeader.get())
                 .number(parentBlockHeader.get().getNumber() + 1)
-                .timestamp(parentBlockHeader.get().getTimestamp() + 100)
+                .timestamp(
+                    parentBlockHeader.get().getTimestamp() + DEFAULT_DELTA_TIMESTAMP_BETWEEN_BLOCKS)
                 .parentHash(parentBlockHeader.get().getHash())
                 .nonce(parentBlockHeader.get().getNonce() + 1)
                 .blockHeaderFunctions(new CliqueBlockHeaderFunctions())

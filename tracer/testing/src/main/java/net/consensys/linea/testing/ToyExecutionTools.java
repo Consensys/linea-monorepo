@@ -18,8 +18,8 @@ package net.consensys.linea.testing;
 import static net.consensys.linea.zktracer.Fork.isPostCancun;
 import static net.consensys.linea.zktracer.Fork.isPostPrague;
 import static net.consensys.linea.zktracer.Trace.LINEA_BLOCK_GAS_LIMIT;
-import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP2935HistoricalHash.HISTORY_STORAGE_ADDRESS;
-import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP4788BeaconBlockRoot.BEACONROOT_ADDRESS;
+import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP2935HistoricalHash.EIP2935_HISTORY_STORAGE_ADDRESS;
+import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP4788BeaconBlockRoot.EIP4788_BEACONROOT_ADDRESS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.*;
@@ -40,6 +40,7 @@ import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.mainnet.MainnetTransactionProcessor;
 import org.hyperledger.besu.ethereum.mainnet.ProtocolSpec;
 import org.hyperledger.besu.ethereum.mainnet.TransactionValidationParams;
+import org.hyperledger.besu.ethereum.mainnet.blockhash.PreExecutionProcessor;
 import org.hyperledger.besu.ethereum.mainnet.systemcall.BlockProcessingContext;
 import org.hyperledger.besu.ethereum.processing.TransactionProcessingResult;
 import org.hyperledger.besu.ethereum.referencetests.GeneralStateTestCaseEipSpec;
@@ -111,17 +112,8 @@ public class ToyExecutionTools {
 
     tracer.traceStartConflation(1);
     tracer.traceStartBlock(worldStateUpdater, blockHeader, blockBody, blockHeader.getCoinbase());
-    final var preExecutionProcessor = protocolSpec.getPreExecutionProcessor();
-    if (isPostCancun(fork)) {
-      final BlockProcessingContext context =
-          new BlockProcessingContext(
-              blockHeader,
-              initialWorldState,
-              protocolSpec,
-              preExecutionProcessor.createBlockHashLookup(blockchain, blockHeader),
-              tracer);
-      preExecutionProcessor.process(context);
-    }
+    runSystemInitialTransactions(protocolSpec, fork, initialWorldState, blockHeader, tracer);
+
     TransactionProcessingResult result = null;
     for (Transaction transaction : blockBody.getTransactions()) {
       // Several of the GeneralStateTests check if the transaction could potentially
@@ -247,24 +239,24 @@ public class ToyExecutionTools {
 
   public static void addSystemAccountsIfRequired(WorldUpdater worldStateUpdater, Fork fork) {
     if (isPostCancun(fork)) {
-      if (worldStateUpdater.getAccount(BEACONROOT_ADDRESS) == null) {
-        worldStateUpdater.createAccount(BEACONROOT_ADDRESS);
+      if (worldStateUpdater.getAccount(EIP4788_BEACONROOT_ADDRESS) == null) {
+        worldStateUpdater.createAccount(EIP4788_BEACONROOT_ADDRESS);
         // bytecode is taken from
         // https://etherscan.io/address/0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02#code
         worldStateUpdater
-            .getAccount(BEACONROOT_ADDRESS)
+            .getAccount(EIP4788_BEACONROOT_ADDRESS)
             .setCode(
                 Bytes.fromHexString(
                     "0x3373fffffffffffffffffffffffffffffffffffffffe14604d57602036146024575f5ffd5b5f35801560495762001fff810690815414603c575f5ffd5b62001fff01545f5260205ff35b5f5ffd5b62001fff42064281555f359062001fff015500"));
       }
     }
     if (isPostPrague(fork)) {
-      if (worldStateUpdater.getAccount(HISTORY_STORAGE_ADDRESS) == null) {
-        worldStateUpdater.createAccount(HISTORY_STORAGE_ADDRESS);
+      if (worldStateUpdater.getAccount(EIP2935_HISTORY_STORAGE_ADDRESS) == null) {
+        worldStateUpdater.createAccount(EIP2935_HISTORY_STORAGE_ADDRESS);
         // bytecode is taken from
         // https://etherscan.io/address/0x0000F90827F1C53a10cb7A02335B175320002935#code
         worldStateUpdater
-            .getAccount(HISTORY_STORAGE_ADDRESS)
+            .getAccount(EIP2935_HISTORY_STORAGE_ADDRESS)
             .setCode(
                 Bytes.fromHexString(
                     "0x3373fffffffffffffffffffffffffffffffffffffffe14604657602036036042575f35600143038111604257611fff81430311604257611fff9006545f5260205ff35b5f5ffd5b5f35611fff60014303065500"));
@@ -329,5 +321,26 @@ public class ToyExecutionTools {
 
   private static boolean shouldClearEmptyAccounts(final String eip) {
     return !SPECS_PRIOR_TO_DELETING_EMPTY_ACCOUNTS.contains(eip);
+  }
+
+  public static void runSystemInitialTransactions(
+      ProtocolSpec spec,
+      Fork fork,
+      MutableWorldState world,
+      BlockHeader header,
+      ConflationAwareOperationTracer tracer) {
+    if (isPostCancun(fork)) {
+      final PreExecutionProcessor preExecutionProcessor = spec.getPreExecutionProcessor();
+      final ReferenceTestBlockchain blockchain = new ReferenceTestBlockchain(header.getNumber());
+
+      final BlockProcessingContext context =
+          new BlockProcessingContext(
+              header,
+              world,
+              spec,
+              preExecutionProcessor.createBlockHashLookup(blockchain, header),
+              tracer);
+      preExecutionProcessor.process(context);
+    }
   }
 }

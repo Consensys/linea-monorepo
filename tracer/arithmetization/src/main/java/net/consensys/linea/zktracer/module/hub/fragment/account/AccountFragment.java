@@ -151,7 +151,7 @@ public abstract class AccountFragment
       rlpAddrSubFragment.trace(trace);
     }
 
-    final boolean hasCode = oldState().tracedHasCode();
+    final boolean hasCode = oldState.tracedHasCode();
     final boolean hasCodeNew = newState.tracedHasCode();
 
     trace

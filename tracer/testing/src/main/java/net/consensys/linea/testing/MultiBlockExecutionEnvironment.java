@@ -15,8 +15,9 @@
 
 package net.consensys.linea.testing;
 
+import static net.consensys.linea.reporting.TracerTestBase.testInfo;
+import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.DEFAULT_BLOCK_NUMBER;
 import static net.consensys.linea.zktracer.ChainConfig.MAINNET_TESTCONFIG;
-import static net.consensys.linea.zktracer.Fork.LONDON;
 import static net.consensys.linea.zktracer.Trace.LINEA_BLOCK_GAS_LIMIT;
 
 import java.math.BigInteger;
@@ -33,11 +34,14 @@ import net.consensys.linea.reporting.TestInfoWithChainConfig;
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.ethereum.core.*;
 
 @Builder
 @Slf4j
 public class MultiBlockExecutionEnvironment {
+  public static final short DEFAULT_DELTA_TIMESTAMP_BETWEEN_BLOCKS = 2;
+
   @Singular("addAccount")
   private final List<ToyAccount> accounts;
 
@@ -46,7 +50,11 @@ public class MultiBlockExecutionEnvironment {
   public static final BigInteger CHAIN_ID = BigInteger.valueOf(1337);
   private final ZkTracer tracer;
 
-  @Builder.Default public final ChainConfig testsChain = MAINNET_TESTCONFIG(LONDON);
+  @Builder.Default
+  public final ChainConfig testsChain = MAINNET_TESTCONFIG(testInfo.chainConfig.fork);
+
+  @Builder.Default private final long startingBlockNumber = DEFAULT_BLOCK_NUMBER;
+  @Builder.Default private final boolean systemContractDeployedPriorToConflation = true;
 
   /**
    * A transaction validator of each transaction; by default, it asserts that the transaction was
@@ -63,6 +71,17 @@ public class MultiBlockExecutionEnvironment {
         .testsChain(testInfo.chainConfig);
   }
 
+  public static MultiBlockExecutionEnvironment.MultiBlockExecutionEnvironmentBuilder builder(
+      TestInfoWithChainConfig testInfo,
+      boolean systemContractDeployedPriorConflation,
+      long firstBlockNumber) {
+    return new MultiBlockExecutionEnvironmentBuilder()
+        .tracer(new ZkTracer(testInfo.chainConfig))
+        .testsChain(testInfo.chainConfig)
+        .systemContractDeployedPriorToConflation(systemContractDeployedPriorConflation)
+        .startingBlockNumber(firstBlockNumber);
+  }
+
   public static class MultiBlockExecutionEnvironmentBuilder {
 
     private List<BlockSnapshot> blocks = new ArrayList<>();
@@ -73,14 +92,26 @@ public class MultiBlockExecutionEnvironment {
 
     public MultiBlockExecutionEnvironmentBuilder addBlock(
         List<Transaction> transactions, long gasLimit) {
-      BlockHeaderBuilder blockHeaderBuilder =
-          this.blocks.isEmpty()
+      final boolean firstBlock = this.blocks.isEmpty();
+      final BlockHeaderBuilder blockHeaderBuilder =
+          firstBlock
               ? ExecutionEnvironment.getLineaBlockHeaderBuilder(Optional.empty())
               : ExecutionEnvironment.getLineaBlockHeaderBuilder(
                   Optional.of(this.blocks.getLast().header().toBlockHeader()));
       blockHeaderBuilder.coinbase(ToyExecutionEnvironmentV2.DEFAULT_COINBASE_ADDRESS);
       blockHeaderBuilder.gasLimit(gasLimit);
-      BlockBody blockBody = new BlockBody(transactions, Collections.emptyList());
+      blockHeaderBuilder.number(startingBlockNumber$value + blocks.size());
+      // Note: as per https://eips.ethereum.org/EIPS/eip-4788: "If this EIP is active in a genesis
+      // block, the genesis header’s parent_beacon_block_root must be 0x0 and no system transaction
+      // may occur."
+      if (firstBlock) {
+        blockHeaderBuilder.parentBeaconBlockRoot(
+            startingBlockNumber$value == 0 ? Bytes32.ZERO : Bytes32.fromHexString("0xBADDADD7"));
+      } else {
+        blockHeaderBuilder.parentBeaconBlockRoot(blocks.getLast().header().parentBeaconBlockRoot());
+      }
+
+      final BlockBody blockBody = new BlockBody(transactions, Collections.emptyList());
       this.blocks.add(BlockSnapshot.of(blockHeaderBuilder.buildBlockHeader(), blockBody));
 
       return this;
@@ -92,6 +123,7 @@ public class MultiBlockExecutionEnvironment {
         .zkTracer(tracer)
         .useCoinbaseAddressFromBlockHeader(true)
         .transactionProcessingResultValidator(this.transactionProcessingResultValidator)
+        .systemContractDeployedPriorToConflation(systemContractDeployedPriorToConflation)
         .build()
         .replay(testsChain, this.buildConflationSnapshot());
   }
