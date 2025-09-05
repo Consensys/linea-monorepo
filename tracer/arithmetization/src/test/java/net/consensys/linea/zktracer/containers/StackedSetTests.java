@@ -20,7 +20,7 @@ import java.math.BigInteger;
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
-import net.consensys.linea.zktracer.module.add.LondonAdd;
+import net.consensys.linea.zktracer.module.add.AddOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -31,21 +31,21 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(UnitTestWatcher.class)
 public class StackedSetTests extends TracerTestBase {
 
-  private static final LondonAdd.Operation ONE_PLUS_ONE =
-      new LondonAdd.Operation(
+  private static final AddOperation ONE_PLUS_ONE =
+      new AddOperation(
           OpCode.ADD,
           Bytes32.leftPad(Bytes.wrap(BigInteger.ONE.toByteArray())),
           Bytes32.leftPad(Bytes.wrap(BigInteger.ONE.toByteArray())));
 
-  private static final LondonAdd.Operation ONE_PLUS_TWO =
-      new LondonAdd.Operation(
+  private static final AddOperation ONE_PLUS_TWO =
+      new AddOperation(
           OpCode.ADD,
           Bytes32.leftPad(Bytes.wrap(BigInteger.ONE.toByteArray())),
           Bytes32.leftPad(Bytes.wrap(BigInteger.TWO.toByteArray())));
 
   @Test
   public void push() {
-    ModuleOperationStackedSet<LondonAdd.Operation> chunks = new ModuleOperationStackedSet<>();
+    ModuleOperationStackedSet<AddOperation> chunks = new ModuleOperationStackedSet<>();
 
     chunks.add(ONE_PLUS_ONE);
     chunks.add(ONE_PLUS_ONE);
@@ -57,7 +57,7 @@ public class StackedSetTests extends TracerTestBase {
 
   @Test
   public void multiplePushPop() {
-    ModuleOperationStackedSet<LondonAdd.Operation> chunks = new ModuleOperationStackedSet<>();
+    ModuleOperationStackedSet<AddOperation> chunks = new ModuleOperationStackedSet<>();
     chunks.add(ONE_PLUS_ONE);
     chunks.add(ONE_PLUS_ONE);
     Assertions.assertEquals(1, chunks.size());
