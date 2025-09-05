@@ -13,9 +13,9 @@ import (
 // domainCacheKey is the composite key for the cache.
 // It uses a struct with comparable types as the map key.
 type domainCacheKey struct {
-	m              uint64
-	gen            field.Element
-	withPrecompute bool
+	m uint64
+	// gen            field.Element
+	// withPrecompute bool
 }
 
 var (
@@ -33,32 +33,34 @@ func NewDomainWithCache(m uint64, withPrecompute bool, shift *field.Element) *ff
 	defer domainMutex.Unlock()
 
 	// Compute the cache key.
-	var gen field.Element
-	if shift != nil {
-		gen.Set(shift)
-	} else {
-		gen.SetUint64(field.MultiplicativeGen)
-	}
+	// var gen field.Element
+	// if shift != nil {
+	// 	gen.Set(shift)
+	// } else {
+	// 	gen.SetUint64(field.MultiplicativeGen)
+	// }
 	key := domainCacheKey{
-		m:              m,
-		gen:            gen,
-		withPrecompute: withPrecompute,
+		m: m,
+		// gen:            gen,
+		// withPrecompute: withPrecompute,
 	}
 
 	// Return from cache if available.
-	if domain, ok := domainCache[key]; ok {
-		return domain.Value()
+	if shift == nil && withPrecompute {
+		if domain, ok := domainCache[key]; ok {
+			return domain.Value()
+		}
 	}
 
 	// Cache miss → create a new domain.
 	var domain *fft.Domain
 	switch {
 	case shift != nil && withPrecompute:
-		domain = fft.NewDomain(m, fft.WithShift(*shift))
+		return fft.NewDomain(m, fft.WithShift(*shift))
 	case withPrecompute:
 		domain = fft.NewDomain(m)
 	default:
-		domain = fft.NewDomain(m, fft.WithoutPrecompute())
+		return fft.NewDomain(m, fft.WithoutPrecompute())
 	}
 
 	weakDomain := weak.Make(domain)
