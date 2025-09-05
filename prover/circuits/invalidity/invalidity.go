@@ -35,10 +35,10 @@ type CircuitInvalidity struct {
 
 // SubCircuit is the circuit for the invalidity case
 type SubCircuit interface {
-	Define(frontend.API) error                                 // define the constraints
-	Allocate(Config, *wizard.CompiledIOP)                      //  allocate the circuit
-	Assign(AssigningInputs, *wizard.CompiledIOP, wizard.Proof) // generate assignment
-	ExecutionCtx() []frontend.Variable                         // returns the execution context used in the subcircuit
+	Define(frontend.API) error         // define the constraints
+	Allocate(Config)                   //  allocate the circuit
+	Assign(AssigningInputs)            // generate assignment
+	ExecutionCtx() []frontend.Variable // returns the execution context used in the subcircuit
 }
 
 // AssigningInputs collects the inputs used for the circuit assignment
@@ -49,6 +49,9 @@ type AssigningInputs struct {
 	InvalidityType    InvalidityType
 	FromAddress       common.Address
 	RlpEncodedTx      []byte
+	KeccakCompiledIOP *wizard.CompiledIOP
+	KeccakProof       wizard.Proof
+	MaxRlpByteSize    int
 }
 
 // Define the constraints
@@ -75,16 +78,16 @@ func (c *CircuitInvalidity) Define(api frontend.API) error {
 }
 
 // Allocate the circuit
-func (c *CircuitInvalidity) Allocate(config Config, comp *wizard.CompiledIOP) {
+func (c *CircuitInvalidity) Allocate(config Config) {
 	// allocate the subCircuit
-	c.SubCircuit.Allocate(config, comp)
+	c.SubCircuit.Allocate(config)
 	// @azam: allocate the Functional Public Inputs
 }
 
 // Assign the circuit
-func (c *CircuitInvalidity) Assign(assi AssigningInputs, comp *wizard.CompiledIOP, proof wizard.Proof) {
+func (c *CircuitInvalidity) Assign(assi AssigningInputs) {
 	// assign the sub circuits
-	c.SubCircuit.Assign(assi, comp, proof)
+	c.SubCircuit.Assign(assi)
 	// assign the Functional Public Inputs
 	c.FuncInputs.Assign(assi.FuncInputs)
 	// assign the public input
@@ -97,7 +100,7 @@ func (c *CircuitInvalidity) Assign(assi AssigningInputs, comp *wizard.CompiledIO
 func (c *CircuitInvalidity) MakeProof(
 	setup circuits.Setup,
 	assi AssigningInputs,
-	FuncInputs public_input.Invalidity,
+	FuncInputs *public_input.Invalidity,
 	kcomp *wizard.CompiledIOP,
 	kproof wizard.Proof,
 ) string {
@@ -111,7 +114,7 @@ func (c *CircuitInvalidity) MakeProof(
 		panic("unsupported invalidity type")
 	}
 
-	c.Assign(assi, kcomp, kproof)
+	c.Assign(assi)
 
 	proof, err := circuits.ProveCheck(
 		&setup,
@@ -133,7 +136,9 @@ func (c *CircuitInvalidity) MakeProof(
 // Config collects the data used for the sub circuits allocation
 type Config struct {
 	// depth of the merkle tree for the account trie
-	Depth int
+	Depth             int
+	KeccakCompiledIOP *wizard.CompiledIOP
+	MaxRlpByteSize    int
 }
 
 type builder struct {
@@ -153,7 +158,7 @@ func (b *builder) Compile() (constraint.ConstraintSystem, error) {
 // compile  the circuit to the constraints
 func makeCS(config Config, circuit *CircuitInvalidity, comp *wizard.CompiledIOP) constraint.ConstraintSystem {
 
-	circuit.Allocate(config, comp)
+	circuit.Allocate(config)
 
 	scs, err := frontend.Compile(fr.Modulus(), scs.NewBuilder, circuit, frontend.WithCapacity(1<<24))
 	if err != nil {

@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/rlp"
 )
 
 type TxPayloadGnark struct {
@@ -70,14 +71,15 @@ func AssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenDataModule, 
 		indexCol   = common.NewVectorBuilder(gdm.Index)
 	)
 
-	prefixedRlp, err := tx.MarshalBinary()
-	if err != nil {
-		panic(err)
-	}
+	// get the rlp encoding of the transaction with type prefix.
+	prefixedRlp := PrefixedRLPNoSignature(tx)
+
+	// compute the hash of the transaction.
+	signer := types.NewLondonSigner(tx.ChainId())
+	txHash := signer.Hash(tx)
 	// sanity check
-	h1 := tx.Hash()
 	h2 := crypto.Keccak256Hash(prefixedRlp)
-	if h1 != h2 {
+	if txHash != h2 {
 		panic("preimage mismatch")
 	}
 
@@ -138,9 +140,9 @@ func AssignGenInfoModule(run *wizard.ProverRuntime, gim *generic.GenInfoModule, 
 		hashLo      = common.NewVectorBuilder(gim.HashLo)
 		isHashHiCol = common.NewVectorBuilder(gim.IsHashHi)
 		isHashLoCol = common.NewVectorBuilder(gim.IsHashLo)
+		signer      = types.NewLondonSigner(tx.ChainId())
+		txHash      = signer.Hash(tx)
 	)
-	// we only hash one transaction
-	txHash := tx.Hash()
 
 	if len(txHash.Bytes()) != 32 {
 		utils.Panic("tx hash length is not 32 bytes")
@@ -157,7 +159,7 @@ func AssignGenInfoModule(run *wizard.ProverRuntime, gim *generic.GenInfoModule, 
 	isHashLoCol.PadAndAssign(run)
 }
 
-func MakeKeccakProofs(tx *types.Transaction, maxRlpByteSize int, compilationSuite func(*wizard.CompiledIOP)) (
+func MakeKeccakProofs(tx *types.Transaction, maxRlpByteSize int, compilationSuite ...func(*wizard.CompiledIOP)) (
 	comp *wizard.CompiledIOP,
 	proof wizard.Proof,
 ) {
@@ -193,7 +195,7 @@ func MakeKeccakProofs(tx *types.Transaction, maxRlpByteSize int, compilationSuit
 		mod.Run(run)
 	}
 
-	comp = wizard.Compile(define, compilationSuite)
+	comp = wizard.Compile(define, compilationSuite...)
 	proof = wizard.Prove(comp, prover)
 	err := wizard.Verify(comp, proof)
 
@@ -201,4 +203,22 @@ func MakeKeccakProofs(tx *types.Transaction, maxRlpByteSize int, compilationSuit
 		utils.Panic("verifier failed: %v", err)
 	}
 	return
+}
+
+// it returns the rlp encoding of the transaction with type prefix, before signing.
+func PrefixedRLPNoSignature(tx *types.Transaction) []byte {
+	b := bytes.Buffer{}
+	b.Write([]byte{tx.Type()})
+	rlp.Encode(&b,
+		[]interface{}{
+			tx.ChainId(),
+			tx.Nonce(),
+			tx.GasTipCap(),
+			tx.GasFeeCap(),
+			tx.Gas(),
+			tx.To(),
+			tx.Value(),
+			tx.Data(),
+			tx.AccessList()})
+	return b.Bytes()
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/ethereum/go-ethereum/core/types"
 )
 
 // BadNonceCircuit defines the circuit for the transaction with a bad nonce.
@@ -63,42 +64,61 @@ func (circuit *BadNonceCircuit) Define(api frontend.API) error {
 }
 
 // Allocate the circuit
-func (c *BadNonceCircuit) Allocate(config Config, comp *wizard.CompiledIOP) {
-	c.AccountTrie.Allocate(config)
-	keccak := wizard.AllocateWizardCircuit(comp, 0)
-	c.KeccakH = *keccak
+func (cir *BadNonceCircuit) Allocate(config Config) {
+	// allocate the account trie
+	cir.AccountTrie.Allocate(config)
+	keccak := wizard.AllocateWizardCircuit(config.KeccakCompiledIOP, 0)
+	cir.KeccakH = *keccak
+	// allocate the RLPEncodedTx to have a fixed size
+	cir.RLPEncodedTx = make([]frontend.Variable, config.MaxRlpByteSize)
+
 }
 
-// Assign the circuit from [AssigningInputs]
-func (c *BadNonceCircuit) Assign(assi AssigningInputs, comp *wizard.CompiledIOP, proof wizard.Proof) {
+// Assign the circuit from [AssigningInputs], circuit is reinitialized
+func (cir *BadNonceCircuit) Assign(assi AssigningInputs) {
 
 	var (
 		txNonce = assi.Transaction.Nonce()
 		acNonce = assi.AccountTrieInputs.Account.Nonce
-		a       = assi.Transaction.Hash()
+		signer  = types.NewLondonSigner(assi.Transaction.ChainId())
+		a       = signer.Hash(assi.Transaction).Bytes()
+		comp    = assi.KeccakCompiledIOP
+		proof   = assi.KeccakProof
+		keccak  = *wizard.AssignVerifierCircuit(comp, proof, 0)
 	)
-	*c = BadNonceCircuit{
-		TxNonce:       txNonce,
-		TxFromAddress: assi.FromAddress[:],
-	}
 
-	c.TxHash[0] = a[:16]
-	c.TxHash[1] = a[16:32]
+	cir.TxNonce = txNonce
+	cir.TxFromAddress = assi.FromAddress[:]
+	cir.RLPEncodedTx = make([]frontend.Variable, assi.MaxRlpByteSize)
+
+	// assign the tx hash
+	cir.TxHash[0] = a[0:16]
+	cir.TxHash[1] = a[16:32]
 
 	if assi.RlpEncodedTx[0] != 0x02 {
 		utils.Panic("only support typed 2 transactions, maybe the rlp is not prefixed with the type byte")
 	}
 	// assign the rlp encoding
-	c.RLPEncodedTx = internal.FromBytesToElements(assi.RlpEncodedTx)
+	elements := internal.FromBytesToElements(assi.RlpEncodedTx)
+	rlpLen := len(elements)
+	if rlpLen > assi.MaxRlpByteSize {
+		utils.Panic("rlp encoding is too large: got %d, max %d", rlpLen, assi.MaxRlpByteSize)
+	}
+
+	copy(cir.RLPEncodedTx, elements)
+
+	for i := len(elements); i < assi.MaxRlpByteSize; i++ {
+		cir.RLPEncodedTx[i] = 0
+	}
+
 	// sanity-check
 	if txNonce == uint64(acNonce+1) {
 		utils.Panic("tried to generate a bad-nonce proof for a valid transaction")
 	}
 
 	// assign the account trie
-	c.AccountTrie.Assign(assi.AccountTrieInputs)
-	// assign the keccak verifier
-	c.KeccakH = *wizard.AssignVerifierCircuit(comp, proof, 0)
+	cir.AccountTrie.Assign(assi.AccountTrieInputs)
+	cir.KeccakH = keccak
 }
 
 func (c *BadNonceCircuit) ExecutionCtx() []frontend.Variable {
