@@ -74,6 +74,7 @@ class ProofGeneratingConflationHandlerImpl(
         batchAlreadyProvenSupplier(batch)
           .thenCompose { responseAlreadyDone ->
             if (responseAlreadyDone) {
+              log.info("skipping conflation and proof request: batch={} already proven", blockIntervalString)
               SafeFuture.completedFuture(batch)
             } else {
               tracesProductionCoordinator
@@ -108,7 +109,7 @@ class ProofGeneratingConflationHandlerImpl(
                 }
             }
           }
-          .thenCompose { batchProofHandler.acceptNewBatch(it) }
+          .thenCompose { batchProofHandler.acceptNewBatch(batch) }
       }
   }
 }
