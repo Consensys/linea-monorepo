@@ -18,7 +18,7 @@ class EIP7702TransactionSender {
   constructor(rpcUrl: string, privateKey: string) {
     this.provider = new ethers.JsonRpcProvider(rpcUrl);
     this.signer = new ethers.Wallet(privateKey, this.provider);
-    this.lineaEstimateGasClient = new LineaEstimateGasClient(new URL(rpcUrl));
+    this.lineaEstimateGasClient = new LineaEstimateGasClient(new URL(rpcUrl), this.signer.address);
   }
 
   async createAuthorization(targetContractAddress: string): Promise<Authorization> {
@@ -52,9 +52,7 @@ class EIP7702TransactionSender {
     const { maxPriorityFeePerGas, maxFeePerGas } = isLineaChainId(Number(chainId))
       ? await this.lineaEstimateGasClient.lineaEstimateGas(
           this.signer.address,
-          this.signer.address,
           `0x${generateFunctionSelector("initialize()")}`,
-          "0",
         )
       : await get1559Fees(this.provider);
 
