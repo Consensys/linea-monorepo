@@ -7,6 +7,8 @@ import (
 	"github.com/consensys/gnark/std/math/emulated"
 )
 
+type EmulatedElement = emulated.Element[emulated.KoalaBear]
+
 // EmulatedFieldOps struct implementing FieldOps[T FType].
 // It is a wrapper around emulatedApi for koalabear.
 type EmulatedFieldOps struct {
@@ -14,95 +16,95 @@ type EmulatedFieldOps struct {
 	ef  *emulated.Field[emulated.KoalaBear]
 }
 
-func (e EmulatedFieldOps) Mul(a, b *emulated.Element[emulated.KoalaBear]) *emulated.Element[emulated.KoalaBear] {
+func (e *EmulatedFieldOps) Mul(a, b *EmulatedElement) *EmulatedElement {
 	return e.ef.Mul(a, b)
 }
 
-func (e EmulatedFieldOps) Add(a, b *emulated.Element[emulated.KoalaBear]) *emulated.Element[emulated.KoalaBear] {
+func (e *EmulatedFieldOps) Add(a, b *EmulatedElement) *EmulatedElement {
 	return e.ef.Add(a, b)
 }
 
-func (e EmulatedFieldOps) Neg(a *emulated.Element[emulated.KoalaBear]) *emulated.Element[emulated.KoalaBear] {
+func (e *EmulatedFieldOps) Neg(a *EmulatedElement) *EmulatedElement {
 	return e.ef.Neg(a)
 }
 
-func (e EmulatedFieldOps) Sub(a, b *emulated.Element[emulated.KoalaBear]) *emulated.Element[emulated.KoalaBear] {
+func (e *EmulatedFieldOps) Sub(a, b *EmulatedElement) *EmulatedElement {
 	return e.ef.Sub(a, b)
 }
 
-func (e EmulatedFieldOps) Inverse(a *emulated.Element[emulated.KoalaBear]) *emulated.Element[emulated.KoalaBear] {
+func (e *EmulatedFieldOps) Inverse(a *EmulatedElement) *EmulatedElement {
 	return e.ef.Inverse(a)
 }
 
-func (e EmulatedFieldOps) Div(a, b *emulated.Element[emulated.KoalaBear]) *emulated.Element[emulated.KoalaBear] {
+func (e *EmulatedFieldOps) Div(a, b *EmulatedElement) *EmulatedElement {
 	return e.ef.Div(a, b)
 }
 
-func (e EmulatedFieldOps) ToBinary(a *emulated.Element[emulated.KoalaBear], m ...int) []frontend.Variable {
+func (e *EmulatedFieldOps) ToBinary(a *EmulatedElement, m ...int) []frontend.Variable {
 	return e.ef.ToBits(a)
 }
 
-func (e EmulatedFieldOps) FromBinary(a ...frontend.Variable) *emulated.Element[emulated.KoalaBear] {
+func (e *EmulatedFieldOps) FromBinary(a ...frontend.Variable) *EmulatedElement {
 	return e.ef.FromBits(a...)
 }
 
-func (e EmulatedFieldOps) And(a, b frontend.Variable) frontend.Variable {
-	return e.api.And(a, b)
-}
+// func (e EmulatedFieldOps) And(a, b frontend.Variable) frontend.Variable {
+// 	return e.api.And(a, b)
+// }
 
-func (e EmulatedFieldOps) Select(a frontend.Variable, i1, i2 *emulated.Element[emulated.KoalaBear]) *emulated.Element[emulated.KoalaBear] {
+func (e *EmulatedFieldOps) Select(a frontend.Variable, i1, i2 *EmulatedElement) *EmulatedElement {
 	return e.ef.Select(a, i1, i2)
 }
 
-func (e EmulatedFieldOps) Lookup2(b0, b1 frontend.Variable, i0, i1, i2, i3 *emulated.Element[emulated.KoalaBear]) *emulated.Element[emulated.KoalaBear] {
+func (e *EmulatedFieldOps) Lookup2(b0, b1 frontend.Variable, i0, i1, i2, i3 *EmulatedElement) *EmulatedElement {
 	return e.ef.Lookup2(b0, b1, i0, i1, i2, i3)
 }
 
-func (e EmulatedFieldOps) IsZero(a *emulated.Element[emulated.KoalaBear]) frontend.Variable {
+func (e *EmulatedFieldOps) IsZero(a *EmulatedElement) frontend.Variable {
 	return e.ef.IsZero(a)
 }
 
-func (e EmulatedFieldOps) AssertIsEqual(a, b *emulated.Element[emulated.KoalaBear]) {
+func (e *EmulatedFieldOps) AssertIsEqual(a, b *EmulatedElement) {
 	e.ef.AssertIsEqual(a, b)
 }
 
-func (e EmulatedFieldOps) AssertIsDifferent(a, b *emulated.Element[emulated.KoalaBear]) {
+func (e *EmulatedFieldOps) AssertIsDifferent(a, b *EmulatedElement) {
 	e.ef.AssertIsDifferent(a, b)
 }
 
-func (e EmulatedFieldOps) AssertIsLessOrEqual(a, b *emulated.Element[emulated.KoalaBear]) {
+func (e *EmulatedFieldOps) AssertIsLessOrEqual(a, b *EmulatedElement) {
 	e.ef.AssertIsLessOrEqual(a, b)
 }
 
-func (e EmulatedFieldOps) FromUint(v uint64) *emulated.Element[emulated.KoalaBear] {
+func (e *EmulatedFieldOps) FromUint(v uint64) *EmulatedElement {
 	a := emulated.ValueOf[emulated.KoalaBear](v)
 	return &a
 }
 
-func (e EmulatedFieldOps) FromKoalabear(v koalabear.Element) *emulated.Element[emulated.KoalaBear] {
+func (e *EmulatedFieldOps) FromKoalabear(v koalabear.Element) *EmulatedElement {
 	a := emulated.ValueOf[emulated.KoalaBear](v)
 	return &a
 }
 
-func (e EmulatedFieldOps) NewHint(f solver.Hint, nbOutputs int, inputs ...*emulated.Element[emulated.KoalaBear]) ([]*emulated.Element[emulated.KoalaBear], error) {
+func (e *EmulatedFieldOps) NewHint(f solver.Hint, nbOutputs int, inputs ...*EmulatedElement) ([]*EmulatedElement, error) {
 	res, err := e.ef.NewHint(f, nbOutputs, inputs...)
 	return res, err
 }
 
-func (e EmulatedFieldOps) Println(a ...emulated.Element[emulated.KoalaBear]) {
+func (e *EmulatedFieldOps) Println(a ...*EmulatedElement) {
 	for i := 0; i < len(a); i++ {
 		e.api.Println(a[i].Limbs...)
 	}
 }
 
-func (e EmulatedFieldOps) NativeApi() frontend.API {
-	return e.api
-}
+// func (e EmulatedFieldOps) NativeApi() frontend.API {
+// 	return e.api
+// }
 
-func getFieldOpEmulated(api frontend.API) (FieldOps[emulated.Element[emulated.KoalaBear]], error) {
-	ff, err := emulated.NewField[emulated.KoalaBear](api)
+func newEmulatedAPI(api frontend.API) (*EmulatedFieldOps, error) {
+	f, err := emulated.NewField[emulated.KoalaBear](api)
 	if err != nil {
-		return EmulatedFieldOps{}, err
+		return nil, err
 	}
-	return EmulatedFieldOps{api: api, ef: ff}, nil
+	return &EmulatedFieldOps{api: api, ef: f}, nil
 }

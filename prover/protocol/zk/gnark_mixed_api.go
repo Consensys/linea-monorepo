@@ -1,42 +1,20 @@
 package zk
 
 import (
+	"fmt"
+
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/math/emulated"
 )
 
-// fieldType stores the circuit type: emulated or native.
-type fieldType int
-
-const (
-	// Native koalabear circuit defined over koalabear
-	Native fieldType = iota
-
-	// Emulated koalabear circuit over bls12-377
-	Emulated
-
-	// Other cases
-	Undefined
-)
-
-// FType (for Field Type) supported field types in gnark circuit
-type FType interface {
-	emulated.Element[emulated.KoalaBear] | frontend.Variable
+// Element (for Field Type) supported field types in gnark circuit
+type Element interface {
+	EmulatedElement | NativeElement
 }
 
-// getType returns the type of the circuit, emulated (koalabear over bls12-377) or native
-// (koalabear over koalabear).
-func getType[T FType]() fieldType {
-	var a T
-	if _, ok := any(a).(emulated.Element[emulated.KoalaBear]); ok {
-		return Emulated
-	}
-	return Native
-}
-
-type FieldOps[T FType] interface {
+type FieldOps[T Element] interface {
 	Mul(a, b *T) *T
 	Add(a, b *T) *T
 	Neg(a *T) *T
@@ -47,7 +25,7 @@ type FieldOps[T FType] interface {
 	ToBinary(a *T, n ...int) []frontend.Variable
 	FromBinary(b ...frontend.Variable) *T
 
-	And(a, b frontend.Variable) frontend.Variable
+	// And(a, b frontend.Variable) frontend.Variable
 
 	Select(b frontend.Variable, i1, i2 *T) *T
 	Lookup2(b0, b1 frontend.Variable, i0, i1, i2, i3 *T) *T
@@ -64,25 +42,51 @@ type FieldOps[T FType] interface {
 
 	NewHint(f solver.Hint, nbOutputs int, inputs ...*T) ([]*T, error)
 
-	Println(a ...T)
+	Println(a ...*T)
 
-	NativeApi() frontend.API
+	// NativeApi() frontend.API
 }
 
-func NewApi[T FType](api frontend.API) (FieldOps[T], error) {
-	var wApi FieldOps[T]
-	t := getType[T]()
-	if t == Emulated {
-		tmpApi, err := getFieldOpEmulated(api)
+func NewApi[T Element](api frontend.API) (FieldOps[T], error) {
+	var t T
+	var ret FieldOps[T]
+	var ok bool
+	switch any(t).(type) {
+	case EmulatedElement:
+		retV, err := newEmulatedAPI(api)
 		if err != nil {
-			return wApi, err
+			return nil, err
 		}
-		wApi = any(tmpApi).(FieldOps[T])
-	} else {
-		tmpApi := getFieldOpNative(api)
-		wApi = any(tmpApi).(FieldOps[T])
+		ret, ok = any(retV).(FieldOps[T])
+		if !ok {
+			panic("could not cast emulated API to requested type")
+		}
+	case NativeElement:
+		retV, err := newNativeAPI(api)
+		if err != nil {
+			return nil, err
+		}
+		ret, ok = any(retV).(FieldOps[T])
+		if !ok {
+			panic("could not cast native API to requested type")
+		}
+	default:
+		return nil, fmt.Errorf("unsupported requested API type")
 	}
-	return wApi, nil
+	return ret, nil
+}
+
+func ValueOf[T Element](input any) T {
+	var ret T
+	switch v := any(&ret).(type) {
+	case *EmulatedElement:
+		*v = emulated.ValueOf[emulated.KoalaBear](input)
+	case *NativeElement:
+		*v = valueOfNE(input)
+	default:
+		panic("unsupported type")
+	}
+	return ret
 }
 
 // Circuit 0: mixed

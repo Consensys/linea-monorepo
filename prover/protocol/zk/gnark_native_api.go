@@ -6,117 +6,117 @@ import (
 	"github.com/consensys/gnark/frontend"
 )
 
-// NativeFieldOps struct implementing FieldOps[T FType].
-// It is a wrapper around the native api.
-type NativeFieldOps struct{ api frontend.API }
-
-func (n NativeFieldOps) Mul(a, b *frontend.Variable) *frontend.Variable {
-	r := n.api.Mul(*a, *b)
-	return &r
+type NativeElement struct {
+	V frontend.Variable
 }
 
-func (n NativeFieldOps) Add(a, b *frontend.Variable) *frontend.Variable {
-	r := n.api.Add(*a, *b)
-	return &r
+func packNE(v frontend.Variable) *NativeElement {
+	return &NativeElement{V: v}
 }
 
-func (n NativeFieldOps) Neg(a *frontend.Variable) *frontend.Variable {
-	r := n.api.Neg(*a)
-	return &r
+func valueOfNE(v any) NativeElement {
+	return NativeElement{V: v}
 }
 
-func (n NativeFieldOps) Sub(a, b *frontend.Variable) *frontend.Variable {
-	r := n.api.Sub(*a, *b)
-	return &r
+type NativeAPI struct {
+	api frontend.API
 }
 
-func (n NativeFieldOps) Inverse(a *frontend.Variable) *frontend.Variable {
-	r := n.api.Inverse(*a)
-	return &r
+func newNativeAPI(api frontend.API) (*NativeAPI, error) {
+	return &NativeAPI{api: api}, nil
 }
 
-func (n NativeFieldOps) Div(a, b *frontend.Variable) *frontend.Variable {
-	r := n.api.Div(*a, *b)
-	return &r
+var _ FieldOps[NativeElement] = &NativeAPI{}
+
+func (n *NativeAPI) Mul(a, b *NativeElement) *NativeElement {
+	return packNE(n.api.Mul(a.V, b.V))
 }
 
-func (n NativeFieldOps) ToBinary(a *frontend.Variable, m ...int) []frontend.Variable {
-	r := n.api.ToBinary(*a, m...)
+func (n *NativeAPI) Add(a, b *NativeElement) *NativeElement {
+	return packNE(n.api.Add(a.V, b.V))
+}
+
+func (n *NativeAPI) Neg(a *NativeElement) *NativeElement {
+	return packNE(n.api.Neg(a.V))
+}
+
+func (n *NativeAPI) Sub(a, b *NativeElement) *NativeElement {
+	return packNE(n.api.Sub(a.V, b.V))
+}
+
+func (n *NativeAPI) Inverse(a *NativeElement) *NativeElement {
+	return packNE(n.api.Inverse(a.V))
+}
+
+func (n *NativeAPI) Div(a, b *NativeElement) *NativeElement {
+	return packNE(n.api.Div(a.V, b.V))
+}
+
+func (n *NativeAPI) ToBinary(a *NativeElement, m ...int) []frontend.Variable {
+	r := n.api.ToBinary(a.V, m...)
 	return r
 }
 
-func (n NativeFieldOps) FromBinary(a ...frontend.Variable) *frontend.Variable {
-	r := n.api.FromBinary(a...)
-	return &r
+func (n *NativeAPI) FromBinary(a ...frontend.Variable) *NativeElement {
+	return packNE(n.api.FromBinary(a...))
 }
 
-func (n NativeFieldOps) And(a, b frontend.Variable) frontend.Variable {
-	return n.api.And(a, b)
+// func (n NativeAPI) And(a, b frontend.Variable) frontend.Variable {
+// 	return n.api.And(a, b)
+// }
+
+func (n *NativeAPI) Select(a frontend.Variable, i1, i2 *NativeElement) *NativeElement {
+	return packNE(n.api.Select(a, i1.V, i2.V))
 }
 
-func (n NativeFieldOps) Select(a frontend.Variable, i1, i2 *frontend.Variable) *frontend.Variable {
-	r := n.api.Select(a, *i1, *i2)
-	return &r
+func (n *NativeAPI) Lookup2(b0, b1 frontend.Variable, i0, i1, i2, i3 *NativeElement) *NativeElement {
+	return packNE(n.api.Lookup2(b0, b1, i0.V, i1.V, i2.V, i3.V))
 }
 
-func (n NativeFieldOps) Lookup2(b0, b1 frontend.Variable, i0, i1, i2, i3 *frontend.Variable) *frontend.Variable {
-	r := n.api.Lookup2(b0, b1, *i0, *i1, *i2, *i3)
-	return &r
+func (n *NativeAPI) IsZero(a *NativeElement) frontend.Variable {
+	return n.api.IsZero(a.V)
 }
 
-func (n NativeFieldOps) IsZero(a *frontend.Variable) frontend.Variable {
-	r := n.api.IsZero(*a)
-	return r
+func (n *NativeAPI) AssertIsEqual(a, b *NativeElement) {
+	n.api.AssertIsEqual(a.V, b.V)
 }
 
-func (n NativeFieldOps) AssertIsEqual(a, b *frontend.Variable) {
-	n.api.AssertIsEqual(*a, *b)
+func (n *NativeAPI) AssertIsDifferent(a, b *NativeElement) {
+	n.api.AssertIsDifferent(a.V, b.V)
 }
 
-func (n NativeFieldOps) AssertIsDifferent(a, b *frontend.Variable) {
-	n.api.AssertIsEqual(*a, *b)
+func (n *NativeAPI) AssertIsLessOrEqual(v *NativeElement, bound *NativeElement) {
+	n.api.AssertIsLessOrEqual(v.V, bound.V)
 }
 
-func (n NativeFieldOps) AssertIsLessOrEqual(v *frontend.Variable, bound *frontend.Variable) {
-	n.api.AssertIsLessOrEqual(*v, *bound)
+func (n *NativeAPI) FromUint(v uint64) *NativeElement {
+	return packNE(v)
 }
 
-func (n NativeFieldOps) FromUint(v uint64) *frontend.Variable {
-	var a frontend.Variable
-	a = v
-	return &a
+func (n *NativeAPI) FromKoalabear(v koalabear.Element) *NativeElement {
+	return packNE(v)
 }
 
-func (n NativeFieldOps) FromKoalabear(v koalabear.Element) *frontend.Variable {
-	var a frontend.Variable
-	a = v
-	return &a
-}
-
-func (n NativeFieldOps) NewHint(f solver.Hint, nbOutputs int, inputs ...*frontend.Variable) ([]*frontend.Variable, error) {
+func (n *NativeAPI) NewHint(f solver.Hint, nbOutputs int, inputs ...*NativeElement) ([]*NativeElement, error) {
 	_inputs := make([]frontend.Variable, len(inputs))
 	for i, r := range inputs {
-		_inputs[i] = *r
+		_inputs[i] = r.V
 	}
 	_r, err := n.api.NewHint(f, nbOutputs, _inputs)
 	if err != nil {
 		return nil, err
 	}
-	res := make([]*frontend.Variable, nbOutputs)
+	res := make([]*NativeElement, nbOutputs)
 	for i, r := range _r {
-		res[i] = &r
+		res[i] = packNE(r)
 	}
 	return res, nil
 }
 
-func (n NativeFieldOps) Println(a ...frontend.Variable) {
-	n.api.Println(a...)
-}
-
-func (n NativeFieldOps) NativeApi() frontend.API {
-	return n.api
-}
-
-func getFieldOpNative(api frontend.API) FieldOps[frontend.Variable] {
-	return NativeFieldOps{api: api}
+func (n *NativeAPI) Println(a ...*NativeElement) {
+	args := make([]frontend.Variable, len(a))
+	for i, v := range a {
+		args[i] = v.V
+	}
+	n.api.Println(args...)
 }
