@@ -15,17 +15,21 @@
 
 package net.consensys.linea.zktracer.module.add;
 
+import static net.consensys.linea.zktracer.opcode.OpCode.ADD;
+
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.units.bigints.UInt256;
 
 @Accessors(fluent = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
-public abstract class AddOperation extends ModuleOperation {
+public class AddOperation extends ModuleOperation {
   @EqualsAndHashCode.Include @Getter protected final OpCode opCode;
   @EqualsAndHashCode.Include @Getter protected final Bytes32 arg1;
   @EqualsAndHashCode.Include @Getter protected final Bytes32 arg2;
@@ -36,7 +40,27 @@ public abstract class AddOperation extends ModuleOperation {
     this.arg2 = arg2;
   }
 
-  public abstract void trace(int stamp, Trace.Add trace);
+  public void trace(int stamp, Trace.Add trace) {
+    // Compute result of this operation.
+    UInt256 res =
+        switch (opCode) {
+          case ADD -> UInt256.fromBytes(arg1).add(UInt256.fromBytes(arg2));
+          case SUB -> UInt256.fromBytes(arg1).subtract(UInt256.fromBytes(arg2));
+          default -> throw new IllegalArgumentException("invalid operation: " + opCode);
+        };
+    // Trace it
+    trace
+        .arg1(arg1)
+        .arg2(arg2)
+        .inst(UnsignedByte.of(opCode.byteValue() & 0xff))
+        .res(res)
+        .validateRow();
+  }
+
+  @Override
+  protected int computeLineCount() {
+    return 1;
+  }
 
   public static class Comparator implements java.util.Comparator<AddOperation> {
     public int compare(AddOperation op1, AddOperation op2) {

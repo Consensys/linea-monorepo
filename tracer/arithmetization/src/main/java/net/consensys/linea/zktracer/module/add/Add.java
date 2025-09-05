@@ -36,7 +36,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 @RequiredArgsConstructor
 @Getter
 @Accessors(fluent = true)
-public abstract class Add implements OperationSetModule<AddOperation> {
+public class Add implements OperationSetModule<AddOperation> {
 
   protected final ModuleOperationStackedSet<AddOperation> operations =
       new ModuleOperationStackedSet<>();
@@ -95,5 +95,7 @@ public abstract class Add implements OperationSetModule<AddOperation> {
     }
   }
 
-  protected abstract void addOperation(OpCode opcode, Bytes32 arg1, Bytes32 arg2);
+  protected void addOperation(OpCode opcode, Bytes32 arg1, Bytes32 arg2) {
+    operations.add(new AddOperation(opcode, arg1, arg2));
+  }
 }
