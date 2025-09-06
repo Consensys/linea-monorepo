@@ -21,6 +21,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
+	"github.com/fxamacker/cbor/v2"
 	"github.com/google/uuid"
 )
 
@@ -74,20 +75,21 @@ type BackReference int
 // Serializer manages the serialization process, packing objects into a PackedObject.
 // It tracks references to objects (e.g., columns, coins) and collects warnings for non-fatal issues.
 type Serializer struct {
-	PackedObject *PackedObject               // The output structure containing serialized data.
-	typeMap      map[string]int              // Maps type names to indices in PackedObject.Types.
-	pointerMap   map[uintptr]int             // Maps pointer values to indices in PackedObject.Pointers.
-	coinMap      map[uuid.UUID]int           // Maps coin UUIDs to indices in PackedObject.Coins.
-	coinIdMap    map[string]int              // Maps coin IDs to indices in PackedObject.CoinIDs.
-	columnMap    map[uuid.UUID]int           // Maps column UUIDs to indices in PackedObject.Columns.
-	columnIdMap  map[string]int              // Maps column IDs to indices in PackedObject.ColumnIDs.
-	queryMap     map[uuid.UUID]int           // Maps query UUIDs to indices in PackedObject.Queries.
-	queryIDMap   map[string]int              // Maps query IDs to indices in PackedObject.QueryIDs.
-	compiledIOPs map[*wizard.CompiledIOP]int // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
-	Stores       map[*column.Store]int       // Maps Store pointers to indices in PackedObject.Store.
-	circuitMap   map[*cs.SparseR1CS]int      // Maps circuit pointers to indices in PackedObject.Circuits.
-	ExprMap      map[field.Element]int       // Maps expression pointers to indices in PackedObject.Expressions
-	Warnings     []string                    // Collects warnings (e.g., unexported fields) for debugging.
+	PackedObject     *PackedObject               // The output structure containing serialized data.
+	typeMap          map[string]int              // Maps type names to indices in PackedObject.Types.
+	pointerMap       map[uintptr]int             // Maps pointer values to indices in PackedObject.Pointers.
+	coinMap          map[uuid.UUID]int           // Maps coin UUIDs to indices in PackedObject.Coins.
+	coinIdMap        map[string]int              // Maps coin IDs to indices in PackedObject.CoinIDs.
+	columnMap        map[uuid.UUID]int           // Maps column UUIDs to indices in PackedObject.Columns.
+	columnIdMap      map[string]int              // Maps column IDs to indices in PackedObject.ColumnIDs.
+	queryMap         map[uuid.UUID]int           // Maps query UUIDs to indices in PackedObject.Queries.
+	queryIDMap       map[string]int              // Maps query IDs to indices in PackedObject.QueryIDs.
+	compiledIOPs     map[*wizard.CompiledIOP]int // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
+	compiledIOPsFast map[*wizard.CompiledIOP]int
+	Stores           map[*column.Store]int  // Maps Store pointers to indices in PackedObject.Store.
+	circuitMap       map[*cs.SparseR1CS]int // Maps circuit pointers to indices in PackedObject.Circuits.
+	ExprMap          map[field.Element]int  // Maps expression pointers to indices in PackedObject.Expressions
+	Warnings         []string               // Collects warnings (e.g., unexported fields) for debugging.
 }
 
 // Deserializer manages the deserialization process, reconstructing objects from a PackedObject.
@@ -108,19 +110,20 @@ type Deserializer struct {
 // PackedObject is the serialized representation of data, designed for CBOR encoding.
 // It stores type metadata, objects, and a payload for the root serialized value.
 type PackedObject struct {
-	Types         []string               `cbor:"a"` // Type names for interfaces.
-	PointedValues []any                  `cbor:"c"` // Serialized pointers (as PackedIFace).
-	ColumnIDs     []string               `cbor:"d"` // String IDs for columns.
-	Columns       []column.PackedNatural `cbor:"e"` // Serialized columns (as PackedNatural).
-	CoinIDs       []string               `cbor:"f"` // String IDs for coins.
-	Coins         []PackedCoin           `cbor:"g"` // Serialized coins.
-	QueryIDs      []string               `cbor:"h"` // String IDs for queries.
-	Queries       []PackedStructObject   `cbor:"i"` // Serialized queries.
-	Store         []column.PackedStore   `cbor:"j"` // Serialized stores (as arrays).
-	CompiledIOP   []PackedStructObject   `cbor:"k"` // Serialized CompiledIOPs.
-	Circuits      [][]byte               `cbor:"l"` // Serialized circuits.
-	Expressions   []PackedStructObject   `cbor:"m"` // Serialized expressions
-	Payload       any                    `cbor:"n"` // CBOR-encoded root value.
+	Types           []string               `cbor:"a"` // Type names for interfaces.
+	PointedValues   []any                  `cbor:"c"` // Serialized pointers (as PackedIFace).
+	ColumnIDs       []string               `cbor:"d"` // String IDs for columns.
+	Columns         []column.PackedNatural `cbor:"e"` // Serialized columns (as PackedNatural).
+	CoinIDs         []string               `cbor:"f"` // String IDs for coins.
+	Coins           []PackedCoin           `cbor:"g"` // Serialized coins.
+	QueryIDs        []string               `cbor:"h"` // String IDs for queries.
+	Queries         []PackedStructObject   `cbor:"i"` // Serialized queries.
+	Store           []column.PackedStore   `cbor:"j"` // Serialized stores (as arrays).
+	CompiledIOP     []PackedStructObject   `cbor:"k"` // Serialized CompiledIOPs.
+	CompiledIOPFast []cbor.RawMessage      `cbor:"o"` // Serialized CompiledIOPs (fast path).
+	Circuits        [][]byte               `cbor:"l"` // Serialized circuits.
+	Expressions     []PackedStructObject   `cbor:"m"` // Serialized expressions
+	Payload         any                    `cbor:"n"` // CBOR-encoded root value.
 }
 
 // PackedIFace serializes an interface value, storing its type index and concrete value.

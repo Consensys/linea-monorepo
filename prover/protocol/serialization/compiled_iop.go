@@ -1,6 +1,7 @@
 package serialization
 
 import (
+	"bytes"
 	"math/big"
 	"reflect"
 
@@ -8,8 +9,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
-// rawCompiledIOP represents the serialized form of CompiledIOP.
-type serCompiledIOP struct {
+// RawCompiledIOP represents the serialized form of CompiledIOP.
+type RawCompiledIOP struct {
 	DummyCompiled          bool `cbor:"j"`
 	WithStorePointerChecks bool `cbor:"o"`
 	SelfRecursionCount     int  `cbor:"k"`
@@ -31,6 +32,30 @@ type serCompiledIOP struct {
 	PcsCtxs any `cbor:"i"`
 }
 
+func initRawCompiledIOP(comp *wizard.CompiledIOP) *RawCompiledIOP {
+
+	numRounds := comp.NumRounds()
+	return &RawCompiledIOP{
+		SelfRecursionCount:     comp.SelfRecursionCount,
+		DummyCompiled:          comp.DummyCompiled,
+		WithStorePointerChecks: comp.WithStorePointerChecks,
+
+		FiatShamirSetup: comp.FiatShamirSetup.BigInt(fieldToSmallBigInt(comp.FiatShamirSetup)),
+
+		// Preallocate arrays to reduce allocations
+		QueriesParams:              make([][]BackReference, numRounds),
+		QueriesNoParams:            make([][]BackReference, numRounds),
+		Coins:                      make([][]BackReference, numRounds),
+		Subprovers:                 make([][]PackedStructObject, numRounds),
+		SubVerifiers:               make([][]PackedStructObject, numRounds),
+		FiatShamirHooksPreSampling: make([][]PackedStructObject, numRounds),
+
+		Precomputed:  make([]PackedStructObject, len(comp.Precomputed.ListAllKeys())),
+		PublicInputs: make([]PackedStructObject, len(comp.PublicInputs)),
+		ExtraData:    make([]PackedStructObject, len(comp.ExtraData)),
+	}
+}
+
 func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReference, *serdeError) {
 
 	if comp == nil {
@@ -41,21 +66,11 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 		return BackReference(idx), nil
 	}
 	// Reserve slot and cache BEFORE packing to break recursion
-	idx := len(s.PackedObject.CompiledIOP)
-	s.compiledIOPs[comp] = idx
-	s.PackedObject.CompiledIOP = append(s.PackedObject.CompiledIOP, nil)
+	refIdx := len(s.PackedObject.CompiledIOPFast)
+	s.compiledIOPsFast[comp] = refIdx
+	s.PackedObject.CompiledIOPFast = append(s.PackedObject.CompiledIOPFast, nil)
 
-	// Now start ser. faster
-	rawCompiledIOP := serCompiledIOP{}
-
-	// Primitives
-	rawCompiledIOP.SelfRecursionCount = comp.SelfRecursionCount
-	rawCompiledIOP.DummyCompiled = comp.DummyCompiled
-	rawCompiledIOP.WithStorePointerChecks = comp.WithStorePointerChecks
-
-	// marshall FiatShamir Field.Element
-	bi := fieldToSmallBigInt(comp.FiatShamirSetup)
-	rawCompiledIOP.FiatShamirSetup = comp.FiatShamirSetup.BigInt(bi)
+	rawCompiledIOP := initRawCompiledIOP(comp)
 
 	// Marshal precomputed data
 	type rawPrecomputed struct {
@@ -196,8 +211,15 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 		}
 	}
 
+	var buf bytes.Buffer
+	if err := encodeWithCBORToBuffer(&buf, rawCompiledIOP); err != nil {
+		return 0, newSerdeErrorf(err.Error())
+	}
+
+	s.PackedObject.CompiledIOPFast[refIdx] = buf.Bytes()
+	return BackReference(refIdx), nil
 }
 
-func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (*wizard.CompiledIOP, *serdeError) {
+// func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (*wizard.CompiledIOP, *serdeError) {
 
-}
+// }
