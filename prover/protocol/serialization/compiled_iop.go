@@ -1,11 +1,11 @@
 package serialization
 
 import (
+	"math/big"
 	"reflect"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/fxamacker/cbor/v2"
 )
 
 // rawCompiledIOP represents the serialized form of CompiledIOP.
@@ -14,7 +14,7 @@ type serCompiledIOP struct {
 	WithStorePointerChecks bool `cbor:"o"`
 	SelfRecursionCount     int  `cbor:"k"`
 
-	FiatShamirSetup field.Element `cbor:"l"`
+	FiatShamirSetup *big.Int `cbor:"l"`
 
 	Columns         BackReference     `cbor:"a"`
 	QueriesParams   [][]BackReference `cbor:"b"`
@@ -24,12 +24,11 @@ type serCompiledIOP struct {
 	Subprovers                 [][]PackedStructObject `cbor:"e"`
 	SubVerifiers               [][]PackedStructObject `cbor:"f"`
 	FiatShamirHooksPreSampling [][]PackedStructObject `cbor:"g"`
+	Precomputed                []PackedStructObject   `cbor:"h"`
+	PublicInputs               []PackedStructObject   `cbor:"m"`
+	ExtraData                  []PackedStructObject   `cbor:"n"`
 
-	Precomputed []cbor.RawMessage `cbor:"h"`
-	PcsCtxs     cbor.RawMessage   `cbor:"i"`
-
-	PublicInputs cbor.RawMessage `cbor:"m"`
-	ExtraData    cbor.RawMessage `cbor:"n"`
+	PcsCtxs any `cbor:"i"`
 }
 
 func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReference, *serdeError) {
@@ -54,21 +53,70 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 	rawCompiledIOP.DummyCompiled = comp.DummyCompiled
 	rawCompiledIOP.WithStorePointerChecks = comp.WithStorePointerChecks
 
-	// Field.Element
-	rawCompiledIOP.FiatShamirSetup = comp.FiatShamirSetup
+	// marshall FiatShamir Field.Element
+	bi := fieldToSmallBigInt(comp.FiatShamirSetup)
+	rawCompiledIOP.FiatShamirSetup = comp.FiatShamirSetup.BigInt(bi)
+
+	// Marshal precomputed data
+	type rawPrecomputed struct {
+		_         struct{}             `cbor:"toarray"`
+		ColID     ifaces.ColID         `cbor:"k"`
+		ColAssign ifaces.ColAssignment `cbor:"v"`
+	}
 
 	for idx, colID := range comp.Precomputed.ListAllKeys() {
 
-		backRefColID , err :=  s.PackColumnID(colID)
+		// This should not work becoz of interfaces
+		// if err := encodeWithCBORToBuffer(&buf, preComputed); err != nil {
+		// 	return 0, newSerdeErrorf(err.Error())
+		// }
+		// rawCompiledIOP.Precomputed[idx] = buf.Bytes()
+		// buf.Reset()
+		preComputed := rawPrecomputed{ColID: colID, ColAssign: comp.Precomputed.MustGet(colID)}
+		packedPrecomputedObj, err := s.PackStructObject(reflect.ValueOf(preComputed))
 		if err != nil {
-			return 0, err.wrapPath("(compiled-IOP-precomputed-colID)")
+			return 0, err.wrapPath("(compiled-IOP-precomputed)")
 		}
+		rawCompiledIOP.Precomputed[idx] = packedPrecomputedObj
+	}
 
-		colAssignment := comp.Precomputed.MustGet(colID)
-		
+	// marshall pcsctx
+	pcsAny, err := s.PackInterface(reflect.ValueOf(comp.PcsCtxs))
+	if err != nil {
+		return 0, err.wrapPath("(compiled-IOP-pcs-ctx)")
+	}
+	rawCompiledIOP.PcsCtxs = pcsAny
 
+	// marshall public inputs
+	type rawPublicInput struct {
+		_    struct{}        `cbor:"toarray"`
+		Name string          `cbor:"n"`
+		Acc  ifaces.Accessor `cbor:"a"`
+	}
+	for idx, pubInp := range comp.PublicInputs {
+		rawPubInp := rawPublicInput{Name: pubInp.Name, Acc: pubInp.Acc}
+		packedPubInp, err := s.PackStructObject(reflect.ValueOf(rawPubInp))
+		if err != nil {
+			return 0, err.wrapPath("(compiled-IOP-public-inputs)")
+		}
+		rawCompiledIOP.PublicInputs[idx] = packedPubInp
+	}
 
-		rawCompiledIOP.Precomputed[idx] = 
+	// marshall extra data
+	type rawExtraData struct {
+		_     struct{} `cbor:"toarray"`
+		Key   string   `cbor:"k"`
+		Value any      `cbor:"v"`
+	}
+	mapIdx := 0
+	for key, extraDataAny := range comp.ExtraData {
+		rawExtraData := rawExtraData{Key: key, Value: extraDataAny}
+		packedExtraData, err := s.PackStructObject(reflect.ValueOf(rawExtraData))
+		if err != nil {
+			return 0, err.wrapPath("(compiled-IOP-extra-data)")
+		}
+		rawCompiledIOP.ExtraData[mapIdx] = packedExtraData
+		mapIdx++
 	}
 
 	// Round specific data
@@ -93,6 +141,7 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 			rawCompiledIOP.Coins[round][i] = backRefCoin
 		}
 
+		// Reflection is unavoidable here atm
 		// Pack query Params faster
 		queries := comp.QueriesParams.AllKeysAt(round)
 		for i, query := range queries {
@@ -116,7 +165,7 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 		// Pack subProverActions faster
 		proverActions := comp.SubProvers.GetOrEmpty(round)
 		for i, subProverAction := range proverActions {
-			// ValueOf(subProverAction) => should pass the direct struct obj
+			// ValueOf(subProverAction) => should pass the direct struct obj i.e. concrete type and not interface type
 			pActionObj, err := s.PackStructObject(reflect.ValueOf(subProverAction))
 			if err != nil {
 				return 0, err.wrapPath("(compiled-IOP-subprovers)")
