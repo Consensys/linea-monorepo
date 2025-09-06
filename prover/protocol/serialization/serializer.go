@@ -21,7 +21,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
-	"github.com/fxamacker/cbor/v2"
 	"github.com/google/uuid"
 )
 
@@ -120,7 +119,7 @@ type PackedObject struct {
 	Queries         []PackedStructObject   `cbor:"i"` // Serialized queries.
 	Store           []column.PackedStore   `cbor:"j"` // Serialized stores (as arrays).
 	CompiledIOP     []PackedStructObject   `cbor:"k"` // Serialized CompiledIOPs.
-	CompiledIOPFast []cbor.RawMessage      `cbor:"o"` // Serialized CompiledIOPs (fast path).
+	CompiledIOPFast []RawCompiledIOP       `cbor:"o"` // Serialized CompiledIOPs (fast path).
 	Circuits        [][]byte               `cbor:"l"` // Serialized circuits.
 	Expressions     []PackedStructObject   `cbor:"m"` // Serialized expressions
 	Payload         any                    `cbor:"n"` // CBOR-encoded root value.
@@ -149,19 +148,20 @@ type PackedStructObject []any
 
 func NewSerializer() *Serializer {
 	return &Serializer{
-		PackedObject: &PackedObject{},
-		typeMap:      map[string]int{},
-		pointerMap:   map[uintptr]int{},
-		coinMap:      map[uuid.UUID]int{},
-		coinIdMap:    map[string]int{},
-		columnMap:    map[uuid.UUID]int{},
-		columnIdMap:  map[string]int{},
-		queryMap:     map[uuid.UUID]int{},
-		queryIDMap:   map[string]int{},
-		compiledIOPs: map[*wizard.CompiledIOP]int{},
-		Stores:       map[*column.Store]int{},
-		circuitMap:   map[*cs.SparseR1CS]int{},
-		ExprMap:      map[field.Element]int{},
+		PackedObject:     &PackedObject{},
+		typeMap:          map[string]int{},
+		pointerMap:       map[uintptr]int{},
+		coinMap:          map[uuid.UUID]int{},
+		coinIdMap:        map[string]int{},
+		columnMap:        map[uuid.UUID]int{},
+		columnIdMap:      map[string]int{},
+		queryMap:         map[uuid.UUID]int{},
+		queryIDMap:       map[string]int{},
+		compiledIOPs:     map[*wizard.CompiledIOP]int{},
+		compiledIOPsFast: map[*wizard.CompiledIOP]int{},
+		Stores:           map[*column.Store]int{},
+		circuitMap:       map[*cs.SparseR1CS]int{},
+		ExprMap:          map[field.Element]int{},
 	}
 }
 

@@ -1,7 +1,7 @@
 package serialization
 
 import (
-	"bytes"
+	"fmt"
 	"math/big"
 	"reflect"
 
@@ -33,14 +33,12 @@ type RawCompiledIOP struct {
 }
 
 func initRawCompiledIOP(comp *wizard.CompiledIOP) *RawCompiledIOP {
-
 	numRounds := comp.NumRounds()
 	return &RawCompiledIOP{
 		SelfRecursionCount:     comp.SelfRecursionCount,
 		DummyCompiled:          comp.DummyCompiled,
 		WithStorePointerChecks: comp.WithStorePointerChecks,
-
-		FiatShamirSetup: comp.FiatShamirSetup.BigInt(fieldToSmallBigInt(comp.FiatShamirSetup)),
+		FiatShamirSetup:        comp.FiatShamirSetup.BigInt(fieldToSmallBigInt(comp.FiatShamirSetup)),
 
 		// Preallocate arrays to reduce allocations
 		QueriesParams:              make([][]BackReference, numRounds),
@@ -68,7 +66,7 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 	// Reserve slot and cache BEFORE packing to break recursion
 	refIdx := len(s.PackedObject.CompiledIOPFast)
 	s.compiledIOPsFast[comp] = refIdx
-	s.PackedObject.CompiledIOPFast = append(s.PackedObject.CompiledIOPFast, nil)
+	s.PackedObject.CompiledIOPFast = append(s.PackedObject.CompiledIOPFast, RawCompiledIOP{})
 
 	rawCompiledIOP := initRawCompiledIOP(comp)
 
@@ -78,15 +76,7 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 		ColID     ifaces.ColID         `cbor:"k"`
 		ColAssign ifaces.ColAssignment `cbor:"v"`
 	}
-
 	for idx, colID := range comp.Precomputed.ListAllKeys() {
-
-		// This should not work becoz of interfaces
-		// if err := encodeWithCBORToBuffer(&buf, preComputed); err != nil {
-		// 	return 0, newSerdeErrorf(err.Error())
-		// }
-		// rawCompiledIOP.Precomputed[idx] = buf.Bytes()
-		// buf.Reset()
 		preComputed := rawPrecomputed{ColID: colID, ColAssign: comp.Precomputed.MustGet(colID)}
 		packedPrecomputedObj, err := s.PackStructObject(reflect.ValueOf(preComputed))
 		if err != nil {
@@ -95,14 +85,16 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 		rawCompiledIOP.Precomputed[idx] = packedPrecomputedObj
 	}
 
-	// marshall pcsctx
-	pcsAny, err := s.PackInterface(reflect.ValueOf(comp.PcsCtxs))
-	if err != nil {
-		return 0, err.wrapPath("(compiled-IOP-pcs-ctx)")
+	// Marshall pcsctx
+	if comp.PcsCtxs != nil {
+		pcsAny, err := s.PackInterface(reflect.ValueOf(comp.PcsCtxs))
+		if err != nil {
+			return 0, err.wrapPath("(compiled-IOP-pcs-ctx)")
+		}
+		rawCompiledIOP.PcsCtxs = pcsAny
 	}
-	rawCompiledIOP.PcsCtxs = pcsAny
 
-	// marshall public inputs
+	// Marshall public inputs
 	type rawPublicInput struct {
 		_    struct{}        `cbor:"toarray"`
 		Name string          `cbor:"n"`
@@ -117,7 +109,7 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 		rawCompiledIOP.PublicInputs[idx] = packedPubInp
 	}
 
-	// marshall extra data
+	// Marshall extra data
 	type rawExtraData struct {
 		_     struct{} `cbor:"toarray"`
 		Key   string   `cbor:"k"`
@@ -144,9 +136,9 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 
 	// Outer loop - round
 	for round := 0; round < numRounds; round++ {
-
 		// Pack coins faster
 		coinNames := comp.Coins.AllKeysAt(round)
+		rawCompiledIOP.Coins[round] = make([]BackReference, len(coinNames))
 		for i, coinName := range coinNames {
 			c := comp.Coins.Data(coinName)
 			backRefCoin, err := s.PackCoin(c)
@@ -156,10 +148,15 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 			rawCompiledIOP.Coins[round][i] = backRefCoin
 		}
 
-		// Reflection is unavoidable here atm
+		// Reflection is unavoidable here atm. To avoid reflection here, we might have to
+		// write a custom interface dispatcher. In essence this would entail writing a serdec
+		// compiler that auto generates Pack/Unpack methods for all struct objects within the
+		// implementation regsitry.
+
 		// Pack query Params faster
-		queries := comp.QueriesParams.AllKeysAt(round)
-		for i, query := range queries {
+		queriesParams := comp.QueriesParams.AllKeysAt(round)
+		rawCompiledIOP.QueriesParams[round] = make([]BackReference, len(queriesParams))
+		for i, query := range queriesParams {
 			backRefQuery, err := s.PackQuery(comp.QueriesParams.Data(query))
 			if err != nil {
 				return 0, err.wrapPath("(compiled-IOP-queries-params)")
@@ -168,8 +165,9 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 		}
 
 		// Pack query NoParams faster
-		queries = comp.QueriesNoParams.AllKeysAt(round)
-		for i, query := range queries {
+		queriesNoParams := comp.QueriesNoParams.AllKeysAt(round)
+		rawCompiledIOP.QueriesNoParams[round] = make([]BackReference, len(queriesNoParams))
+		for i, query := range queriesNoParams {
 			backRefQuery, err := s.PackQuery(comp.QueriesNoParams.Data(query))
 			if err != nil {
 				return 0, err.wrapPath("(compiled-IOP-queries-no-params)")
@@ -179,44 +177,93 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 
 		// Pack subProverActions faster
 		proverActions := comp.SubProvers.GetOrEmpty(round)
+		rawCompiledIOP.Subprovers[round] = make([]PackedStructObject, len(proverActions))
 		for i, subProverAction := range proverActions {
-			// ValueOf(subProverAction) => should pass the direct struct obj i.e. concrete type and not interface type
-			pActionObj, err := s.PackStructObject(reflect.ValueOf(subProverAction))
-			if err != nil {
-				return 0, err.wrapPath("(compiled-IOP-subprovers)")
+			v := reflect.ValueOf(subProverAction)
+			if v.Kind() == reflect.Ptr {
+				if v.IsNil() {
+					continue // Skip nil pointers
+				}
+				v = v.Elem() // Dereference to get the underlying value
 			}
-			rawCompiledIOP.Subprovers[round][i] = pActionObj
+			switch v.Kind() {
+			case reflect.Struct:
+				pActionObj, err := s.PackStructObject(v)
+				if err != nil {
+					return 0, err.wrapPath(fmt.Sprintf("(compiled-IOP-subprovers[%d])", i))
+				}
+				rawCompiledIOP.Subprovers[round][i] = pActionObj
+			case reflect.Slice:
+				pActionObj, err := s.PackArrayOrSlice(v)
+				if err != nil {
+					return 0, err.wrapPath(fmt.Sprintf("(compiled-IOP-subprovers[%d])", i))
+				}
+				rawCompiledIOP.Subprovers[round][i] = pActionObj
+			default:
+				return 0, newSerdeErrorf("invalid subprover type: %v, expected struct or slice", v.Type()).wrapPath(fmt.Sprintf("(compiled-IOP-subprovers[%d])", i))
+			}
 		}
 
 		// Pack verifierActions faster
 		verifierActions := comp.SubVerifiers.GetOrEmpty(round)
+		rawCompiledIOP.SubVerifiers[round] = make([]PackedStructObject, len(verifierActions))
 		for i, verifierAction := range verifierActions {
-			// ValueOf(verifierAction) => should pass the direct struct obj
-			vActionObj, err := s.PackStructObject(reflect.ValueOf(verifierAction))
-			if err != nil {
-				return 0, err.wrapPath("(compiled-IOP-subverifiers)")
+			concreteVerifierActVal := reflect.ValueOf(verifierAction)
+			if concreteVerifierActVal.Kind() == reflect.Ptr {
+				if concreteVerifierActVal.IsNil() {
+					continue // Skip nil pointers
+				}
+				concreteVerifierActVal = concreteVerifierActVal.Elem()
 			}
-			rawCompiledIOP.SubVerifiers[round][i] = vActionObj
+			switch concreteVerifierActVal.Kind() {
+			case reflect.Struct:
+				vActionObj, err := s.PackStructObject(concreteVerifierActVal)
+				if err != nil {
+					return 0, err.wrapPath(fmt.Sprintf("(compiled-IOP-subverifiers[%d])", i))
+				}
+				rawCompiledIOP.SubVerifiers[round][i] = vActionObj
+			case reflect.Slice:
+				vActionObj, err := s.PackArrayOrSlice(concreteVerifierActVal)
+				if err != nil {
+					return 0, err.wrapPath(fmt.Sprintf("(compiled-IOP-subverifiers[%d])", i))
+				}
+				rawCompiledIOP.SubVerifiers[round][i] = vActionObj
+			default:
+				return 0, newSerdeErrorf("invalid verifier type: %v, expected struct or slice", concreteVerifierActVal.Type()).wrapPath(fmt.Sprintf("(compiled-IOP-subverifiers[%d])", i))
+			}
 		}
 
 		// Pack FSHookPreSampling faster
 		hookActions := comp.FiatShamirHooksPreSampling.GetOrEmpty(round)
+		rawCompiledIOP.FiatShamirHooksPreSampling[round] = make([]PackedStructObject, len(hookActions))
 		for i, hookAction := range hookActions {
-			// ValueOf(hookAction) => should pass the direct struct obj
-			hookObj, err := s.PackStructObject(reflect.ValueOf(hookAction))
-			if err != nil {
-				return 0, err.wrapPath("(compiled-IOP-fiatshamirhooks-pre-sampling)")
+			concreteHookActVal := reflect.ValueOf(hookAction)
+			if concreteHookActVal.Kind() == reflect.Ptr {
+				if concreteHookActVal.IsNil() {
+					continue // Skip nil pointers
+				}
+				concreteHookActVal = concreteHookActVal.Elem()
 			}
-			rawCompiledIOP.FiatShamirHooksPreSampling[round][i] = hookObj
+			switch concreteHookActVal.Kind() {
+			case reflect.Struct:
+				hookObj, err := s.PackStructObject(concreteHookActVal)
+				if err != nil {
+					return 0, err.wrapPath(fmt.Sprintf("(compiled-IOP-fiatshamirhooks-pre-sampling[%d])", i))
+				}
+				rawCompiledIOP.FiatShamirHooksPreSampling[round][i] = hookObj
+			case reflect.Slice:
+				hookObj, err := s.PackArrayOrSlice(concreteHookActVal)
+				if err != nil {
+					return 0, err.wrapPath(fmt.Sprintf("(compiled-IOP-fiatshamirhooks-pre-sampling[%d])", i))
+				}
+				rawCompiledIOP.FiatShamirHooksPreSampling[round][i] = hookObj
+			default:
+				return 0, newSerdeErrorf("invalid hook type: %v, expected struct or slice", concreteHookActVal.Type()).wrapPath(fmt.Sprintf("(compiled-IOP-fiatshamirhooks-pre-sampling[%d])", i))
+			}
 		}
 	}
 
-	var buf bytes.Buffer
-	if err := encodeWithCBORToBuffer(&buf, rawCompiledIOP); err != nil {
-		return 0, newSerdeErrorf(err.Error())
-	}
-
-	s.PackedObject.CompiledIOPFast[refIdx] = buf.Bytes()
+	s.PackedObject.CompiledIOPFast[refIdx] = *rawCompiledIOP
 	return BackReference(refIdx), nil
 }
 
