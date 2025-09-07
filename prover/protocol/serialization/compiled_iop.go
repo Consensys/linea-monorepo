@@ -14,18 +14,18 @@ import (
 )
 
 type RawPrecomputed struct {
-	_         struct{}             `cbor:"toarray"`
+	_         struct{}             `cbor:",toarray"`
 	ColID     ifaces.ColID         `cbor:"k"`
 	ColAssign ifaces.ColAssignment `cbor:"v"`
 }
 
 type RawPublicInput struct {
-	_    struct{}        `cbor:"toarray"`
+	_    struct{}        `cbor:",toarray"`
 	Name string          `cbor:"n"`
 	Acc  ifaces.Accessor `cbor:"a"`
 }
 type RawExtraData struct {
-	_     struct{} `cbor:"toarray"`
+	_     struct{} `cbor:",toarray"`
 	Key   string   `cbor:"k"`
 	Value any      `cbor:"v"`
 }
@@ -48,17 +48,19 @@ type RawCompiledIOP struct {
 
 	FiatShamirSetup *big.Int `cbor:"l"`
 
-	Columns         BackReference     `cbor:"a"`
-	QueriesParams   [][]BackReference `cbor:"b"`
-	QueriesNoParams [][]BackReference `cbor:"c"`
-	Coins           [][]BackReference `cbor:"d"`
+	Columns BackReference     `cbor:"a"`
+	Coins   [][]BackReference `cbor:"d"`
 
+	QueriesParams [][]PackedIFace `cbor:"b"`
+
+	QueriesNoParams            [][]BackReference      `cbor:"c"`
 	Subprovers                 [][]PackedStructObject `cbor:"e"`
 	SubVerifiers               [][]PackedStructObject `cbor:"f"`
 	FiatShamirHooksPreSampling [][]PackedStructObject `cbor:"g"`
-	Precomputed                []PackedStructObject   `cbor:"h"`
-	PublicInputs               []PackedStructObject   `cbor:"m"`
-	ExtraData                  []PackedStructObject   `cbor:"n"`
+
+	Precomputed  []PackedStructObject `cbor:"h"`
+	PublicInputs []PackedStructObject `cbor:"m"`
+	ExtraData    []PackedStructObject `cbor:"n"`
 
 	PcsCtxs any `cbor:"i"`
 }
@@ -73,7 +75,8 @@ func initRawCompiledIOP(comp *wizard.CompiledIOP) *RawCompiledIOP {
 		FiatShamirSetup:        comp.FiatShamirSetup.BigInt(fieldToSmallBigInt(comp.FiatShamirSetup)),
 
 		// Preallocate arrays to reduce allocations
-		QueriesParams:              make([][]BackReference, numRounds),
+		QueriesParams: make([][]PackedIFace, numRounds),
+
 		QueriesNoParams:            make([][]BackReference, numRounds),
 		Coins:                      make([][]BackReference, numRounds),
 		Subprovers:                 make([][]PackedStructObject, numRounds),
@@ -133,6 +136,7 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 	s.PackedObject.CompiledIOPFast = append(s.PackedObject.CompiledIOPFast, RawCompiledIOP{})
 
 	rawCompiledIOP := initRawCompiledIOP(comp)
+
 	// ------- Non-round specific data
 
 	// Marshal precomputed data
@@ -196,80 +200,94 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 
 		// Outer loop - round
 		for round := 0; round < rawCompiledIOP.NumRounds; round++ {
+
 			// Pack coins faster
-			coinNames := comp.Coins.AllKeysAt(round)
-			rawCompiledIOP.Coins[round] = make([]BackReference, len(coinNames))
-			for i, coinName := range coinNames {
-				c := comp.Coins.Data(coinName)
-				backRefCoin, err := s.PackCoin(c)
-				if err != nil {
-					return 0, err.wrapPath("(compiled-IOP-coins)")
+
+			{
+				coinNames := comp.Coins.AllKeysAt(round)
+				rawCompiledIOP.Coins[round] = make([]BackReference, len(coinNames))
+				for i, coinName := range coinNames {
+					c := comp.Coins.Data(coinName)
+					backRefCoin, err := s.PackCoin(c)
+					if err != nil {
+						return 0, err.wrapPath("(compiled-IOP-coins)")
+					}
+					rawCompiledIOP.Coins[round][i] = backRefCoin
 				}
-				rawCompiledIOP.Coins[round][i] = backRefCoin
 			}
 
-			// Pack query Params faster
-			queriesParams := comp.QueriesParams.AllKeysAt(round)
-			rawCompiledIOP.QueriesParams[round] = make([]BackReference, len(queriesParams))
-			for i, query := range queriesParams {
-				backRefQuery, err := s.PackQuery(comp.QueriesParams.Data(query))
-				if err != nil {
-					return 0, err.wrapPath("(compiled-IOP-queries-params)")
+			// Pack queries faster
+			{
+				// Pack query Params faster
+				queriesParams := comp.QueriesParams.AllKeysAt(round)
+				rawCompiledIOP.QueriesParams[round] = make([]PackedIFace, len(queriesParams))
+				for i, query := range queriesParams {
+					val := comp.QueriesParams.Data(query)
+					packedQueryParamsAny, err := s.PackInterface(reflect.ValueOf(&val))
+					if err != nil {
+						return 0, err.wrapPath("(compiled-IOP-queries-params)")
+					}
+					rawCompiledIOP.QueriesParams[round][i] = packedQueryParamsAny.(PackedIFace)
 				}
-				rawCompiledIOP.QueriesParams[round][i] = backRefQuery
-			}
 
-			// Pack query NoParams faster
-			queriesNoParams := comp.QueriesNoParams.AllKeysAt(round)
-			rawCompiledIOP.QueriesNoParams[round] = make([]BackReference, len(queriesNoParams))
-			for i, query := range queriesNoParams {
-				backRefQuery, err := s.PackQuery(comp.QueriesNoParams.Data(query))
-				if err != nil {
-					return 0, err.wrapPath("(compiled-IOP-queries-no-params)")
+				// Pack query NoParams faster
+				queriesNoParams := comp.QueriesNoParams.AllKeysAt(round)
+				rawCompiledIOP.QueriesNoParams[round] = make([]BackReference, len(queriesNoParams))
+				for i, query := range queriesNoParams {
+					backRefQuery, err := s.PackQuery(comp.QueriesNoParams.Data(query))
+					if err != nil {
+						return 0, err.wrapPath("(compiled-IOP-queries-no-params)")
+					}
+					rawCompiledIOP.QueriesNoParams[round][i] = backRefQuery
 				}
-				rawCompiledIOP.QueriesNoParams[round][i] = backRefQuery
 			}
 
 			// Pack subProverActions faster
-			proverActions := comp.SubProvers.GetOrEmpty(round)
-			rawCompiledIOP.Subprovers[round] = make([]PackedStructObject, len(proverActions))
-			for i, subProverAction := range proverActions {
-				obj, serr, skipped := s.packActionValue(subProverAction, "(compiled-IOP-subprovers[%d])", i)
-				if serr != nil {
-					return 0, serr
+			{
+				proverActions := comp.SubProvers.GetOrEmpty(round)
+				rawCompiledIOP.Subprovers[round] = make([]PackedStructObject, len(proverActions))
+				for i, subProverAction := range proverActions {
+					obj, serr, skipped := s.packActionValue(subProverAction, "(compiled-IOP-subprovers[%d])", i)
+					if serr != nil {
+						return 0, serr
+					}
+					if skipped {
+						continue
+					}
+					rawCompiledIOP.Subprovers[round][i] = obj
 				}
-				if skipped {
-					continue
-				}
-				rawCompiledIOP.Subprovers[round][i] = obj
 			}
 
 			// Pack verifierActions faster
-			verifierActions := comp.SubVerifiers.GetOrEmpty(round)
-			rawCompiledIOP.SubVerifiers[round] = make([]PackedStructObject, len(verifierActions))
-			for i, verifierAction := range verifierActions {
-				obj, serr, skipped := s.packActionValue(verifierAction, "(compiled-IOP-subverifiers[%d])", i)
-				if serr != nil {
-					return 0, serr
+			{
+				verifierActions := comp.SubVerifiers.GetOrEmpty(round)
+				rawCompiledIOP.SubVerifiers[round] = make([]PackedStructObject, len(verifierActions))
+				for i, verifierAction := range verifierActions {
+					obj, serr, skipped := s.packActionValue(verifierAction, "(compiled-IOP-subverifiers[%d])", i)
+					if serr != nil {
+						return 0, serr
+					}
+					if skipped {
+						continue
+					}
+					rawCompiledIOP.SubVerifiers[round][i] = obj
 				}
-				if skipped {
-					continue
-				}
-				rawCompiledIOP.SubVerifiers[round][i] = obj
 			}
 
 			// Pack FSHookPreSampling faster
-			hookActions := comp.FiatShamirHooksPreSampling.GetOrEmpty(round)
-			rawCompiledIOP.FiatShamirHooksPreSampling[round] = make([]PackedStructObject, len(hookActions))
-			for i, hookAction := range hookActions {
-				obj, serr, skipped := s.packActionValue(hookAction, "(compiled-IOP-fiatshamirhooks-pre-sampling[%d])", i)
-				if serr != nil {
-					return 0, serr
+			{
+				hookActions := comp.FiatShamirHooksPreSampling.GetOrEmpty(round)
+				rawCompiledIOP.FiatShamirHooksPreSampling[round] = make([]PackedStructObject, len(hookActions))
+				for i, hookAction := range hookActions {
+					obj, serr, skipped := s.packActionValue(hookAction, "(compiled-IOP-fiatshamirhooks-pre-sampling[%d])", i)
+					if serr != nil {
+						return 0, serr
+					}
+					if skipped {
+						continue
+					}
+					rawCompiledIOP.FiatShamirHooksPreSampling[round][i] = obj
 				}
-				if skipped {
-					continue
-				}
-				rawCompiledIOP.FiatShamirHooksPreSampling[round][i] = obj
 			}
 		}
 	}
@@ -299,7 +317,7 @@ func newEmptyCompiledIOP(rawCompIOP RawCompiledIOP) *wizard.CompiledIOP {
 
 func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *serdeError) {
 
-	if v < 0 || int(v) >= len(d.PackedObject.CompiledIOP) {
+	if v < 0 || int(v) >= len(d.PackedObject.CompiledIOPFast) {
 		return reflect.Value{}, newSerdeErrorf("invalid compiled-IOP backreference: %v", v)
 	}
 
@@ -319,7 +337,7 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 
 	// Unmarshall Field.Element
 	{
-		f, err := unmarshalBigInt(nil, packedRawCompiledIOP.FiatShamirSetup, TypeOfBigInt)
+		f, err := unmarshalBigInt(d, *packedRawCompiledIOP.FiatShamirSetup, TypeOfBigInt)
 		if err != nil {
 			return reflect.Value{}, err.wrapPath("(deser compiled-IOP-fiatshamirsetup)")
 		}
@@ -356,15 +374,15 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 
 	// Unmarshall pcsctx
 	{
-		val, err := d.UnpackInterface(packedRawCompiledIOP.PcsCtxs, typeofPcsCtxs)
-		if err != nil {
-			return reflect.Value{}, err.wrapPath("(deser compiled-IOP-pcsctxs)")
-		}
-
-		var ok bool
-		deCompIOP.PcsCtxs, ok = val.Interface().(*vortex.Ctx)
-		if !ok {
-			return reflect.Value{}, newSerdeErrorf("could not cast to *vortex.Ctx: %w", err)
+		// During deserialization:
+		if packedRawCompiledIOP.PcsCtxs != nil {
+			pcsVal, err := d.UnpackInterface(packedRawCompiledIOP.PcsCtxs, typeofPcsCtxs)
+			if err != nil {
+				return reflect.Value{}, err.wrapPath("(deser compiled-IOP-pcsctxs)")
+			}
+			deCompIOP.PcsCtxs = pcsVal.Interface()
+		} else {
+			deCompIOP.PcsCtxs = nil
 		}
 	}
 
@@ -424,17 +442,12 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 
 			// Unpack query params faster
 			{
-				for _, backRef := range packedRawCompiledIOP.QueriesParams[round] {
-					res, err := d.UnpackQuery(backRef, TypeOfQuery)
+				for _, queryParamsPIface := range packedRawCompiledIOP.QueriesParams[round] {
+					res, err := d.UnpackInterface(queryParamsPIface.Concrete, TypeOfQuery)
 					if err != nil {
 						return reflect.Value{}, err.wrapPath("(deser compiled-IOP-queries-params)")
 					}
-
-					query, ok := res.Interface().(ifaces.Query)
-					if !ok {
-						return reflect.Value{}, newSerdeErrorf("could not cast q.Params to ifaces.Query: %w", err)
-					}
-
+					query := res.Interface().(ifaces.Query)
 					deCompIOP.QueriesParams.AddToRound(round, query.Name(), query)
 				}
 
