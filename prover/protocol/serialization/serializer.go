@@ -94,16 +94,17 @@ type Serializer struct {
 // Deserializer manages the deserialization process, reconstructing objects from a PackedObject.
 // It caches reconstructed objects to resolve back-references and collects warnings.
 type Deserializer struct {
-	PackedObject  *PackedObject          // The input structure to deserialize.
-	PointedValues []reflect.Value        // Maps pointer values to indices in PackedObject.Pointers.
-	Columns       []*column.Natural      // Cache of deserialized columns, indexed by BackReference.
-	Coins         []*coin.Info           // Cache of deserialized coins.
-	Queries       []*ifaces.Query        // Cache of deserialized queries.
-	CompiledIOPs  []*wizard.CompiledIOP  // Cache of deserialized CompiledIOPs.
-	Stores        []*column.Store        // Cache of deserialized stores.
-	Circuits      []*cs.SparseR1CS       // Cache of deserialized circuits.
-	Expressions   []*symbolic.Expression // Cache of deserialized expressions
-	Warnings      []string               // Collects warnings for debugging.
+	PackedObject     *PackedObject         // The input structure to deserialize.
+	PointedValues    []reflect.Value       // Maps pointer values to indices in PackedObject.Pointers.
+	Columns          []*column.Natural     // Cache of deserialized columns, indexed by BackReference.
+	Coins            []*coin.Info          // Cache of deserialized coins.
+	Queries          []*ifaces.Query       // Cache of deserialized queries.
+	CompiledIOPs     []*wizard.CompiledIOP // Cache of deserialized CompiledIOPs.
+	CompiledIOPsFast []*wizard.CompiledIOP
+	Stores           []*column.Store        // Cache of deserialized stores.
+	Circuits         []*cs.SparseR1CS       // Cache of deserialized circuits.
+	Expressions      []*symbolic.Expression // Cache of deserialized expressions
+	Warnings         []string               // Collects warnings for debugging.
 }
 
 // PackedObject is the serialized representation of data, designed for CBOR encoding.
