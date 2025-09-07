@@ -30,6 +30,13 @@ type RawExtraData struct {
 	Value any      `cbor:"v"`
 }
 
+type RawIface struct {
+	_             struct{}      `cbor:",toarray"`
+	BackReference BackReference `cbor:"b"`
+	ConcreteType  int           `cbor:"t"`
+	// ConcreteValue any           `cbor:"v", omitempty`
+}
+
 var (
 	typeofRawPrecomputedData = reflect.TypeOf(RawPrecomputed{})
 	typeofRawPublicInput     = reflect.TypeOf(RawPublicInput{})
@@ -51,9 +58,9 @@ type RawCompiledIOP struct {
 	Columns BackReference     `cbor:"a"`
 	Coins   [][]BackReference `cbor:"d"`
 
-	QueriesParams [][]PackedIFace `cbor:"b"`
+	QueriesParams   [][]RawIface `cbor:"b"`
+	QueriesNoParams [][]RawIface `cbor:"c"`
 
-	QueriesNoParams            [][]BackReference      `cbor:"c"`
 	Subprovers                 [][]PackedStructObject `cbor:"e"`
 	SubVerifiers               [][]PackedStructObject `cbor:"f"`
 	FiatShamirHooksPreSampling [][]PackedStructObject `cbor:"g"`
@@ -75,9 +82,9 @@ func initRawCompiledIOP(comp *wizard.CompiledIOP) *RawCompiledIOP {
 		FiatShamirSetup:        comp.FiatShamirSetup.BigInt(fieldToSmallBigInt(comp.FiatShamirSetup)),
 
 		// Preallocate arrays to reduce allocations
-		QueriesParams: make([][]PackedIFace, numRounds),
+		QueriesParams:   make([][]RawIface, numRounds),
+		QueriesNoParams: make([][]RawIface, numRounds),
 
-		QueriesNoParams:            make([][]BackReference, numRounds),
 		Coins:                      make([][]BackReference, numRounds),
 		Subprovers:                 make([][]PackedStructObject, numRounds),
 		SubVerifiers:               make([][]PackedStructObject, numRounds),
@@ -202,7 +209,6 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 		for round := 0; round < rawCompiledIOP.NumRounds; round++ {
 
 			// Pack coins faster
-
 			{
 				coinNames := comp.Coins.AllKeysAt(round)
 				rawCompiledIOP.Coins[round] = make([]BackReference, len(coinNames))
@@ -219,26 +225,61 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 			// Pack queries faster
 			{
 				// Pack query Params faster
-				queriesParams := comp.QueriesParams.AllKeysAt(round)
-				rawCompiledIOP.QueriesParams[round] = make([]PackedIFace, len(queriesParams))
-				for i, query := range queriesParams {
-					val := comp.QueriesParams.Data(query)
-					packedQueryParamsAny, err := s.PackInterface(reflect.ValueOf(&val))
-					if err != nil {
-						return 0, err.wrapPath("(compiled-IOP-queries-params)")
+				{
+					queriesParams := comp.QueriesParams.AllKeysAt(round)
+					rawCompiledIOP.QueriesParams[round] = make([]RawIface, len(queriesParams))
+					for i, queryID := range queriesParams {
+						query := comp.QueriesParams.Data(queryID)
+						backRef, err := s.PackQuery(query)
+						if err != nil {
+							return 0, err.wrapPath("(ser-compiled-IOP-queries-params)")
+						}
+
+						val := reflect.ValueOf(query)
+						concreteTypeStr := getPkgPathAndTypeNameIndirect(val.Interface())
+						if _, err := findRegisteredImplementation(concreteTypeStr); err != nil {
+							return 0, newSerdeErrorf("attempted to serialize unregistered type repr=%q type=%v: %v", concreteTypeStr, val.Type().String(), err)
+						}
+
+						if _, ok := s.typeMap[concreteTypeStr]; !ok {
+							s.PackedObject.Types = append(s.PackedObject.Types, concreteTypeStr)
+							s.typeMap[concreteTypeStr] = len(s.PackedObject.Types) - 1
+						}
+
+						rawCompiledIOP.QueriesParams[round][i] = RawIface{
+							BackReference: backRef,
+							ConcreteType:  s.typeMap[concreteTypeStr],
+						}
 					}
-					rawCompiledIOP.QueriesParams[round][i] = packedQueryParamsAny.(PackedIFace)
 				}
 
 				// Pack query NoParams faster
-				queriesNoParams := comp.QueriesNoParams.AllKeysAt(round)
-				rawCompiledIOP.QueriesNoParams[round] = make([]BackReference, len(queriesNoParams))
-				for i, query := range queriesNoParams {
-					backRefQuery, err := s.PackQuery(comp.QueriesNoParams.Data(query))
-					if err != nil {
-						return 0, err.wrapPath("(compiled-IOP-queries-no-params)")
+				{
+					queriesNoParams := comp.QueriesNoParams.AllKeysAt(round)
+					rawCompiledIOP.QueriesNoParams[round] = make([]RawIface, len(queriesNoParams))
+					for i, queryID := range queriesNoParams {
+						query := comp.QueriesNoParams.Data(queryID)
+						backRef, err := s.PackQuery(query)
+						if err != nil {
+							return 0, err.wrapPath("(ser-compiled-IOP-queries-no-params)")
+						}
+
+						val := reflect.ValueOf(query)
+						concreteTypeStr := getPkgPathAndTypeNameIndirect(val.Interface())
+						if _, err := findRegisteredImplementation(concreteTypeStr); err != nil {
+							return 0, newSerdeErrorf("attempted to serialize unregistered type repr=%q type=%v: %v", concreteTypeStr, val.Type().String(), err)
+						}
+
+						if _, ok := s.typeMap[concreteTypeStr]; !ok {
+							s.PackedObject.Types = append(s.PackedObject.Types, concreteTypeStr)
+							s.typeMap[concreteTypeStr] = len(s.PackedObject.Types) - 1
+						}
+
+						rawCompiledIOP.QueriesNoParams[round][i] = RawIface{
+							BackReference: backRef,
+							ConcreteType:  s.typeMap[concreteTypeStr],
+						}
 					}
-					rawCompiledIOP.QueriesNoParams[round][i] = backRefQuery
 				}
 			}
 
@@ -440,29 +481,16 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 				}
 			}
 
-			// Unpack query params faster
+			// Unpack queries faster
 			{
-				for _, queryParamsPIface := range packedRawCompiledIOP.QueriesParams[round] {
-					res, err := d.UnpackInterface(queryParamsPIface.Concrete, TypeOfQuery)
-					if err != nil {
-						return reflect.Value{}, err.wrapPath("(deser compiled-IOP-queries-params)")
-					}
-					query := res.Interface().(ifaces.Query)
-					deCompIOP.QueriesParams.AddToRound(round, query.Name(), query)
+				for _, queryRawIface := range packedRawCompiledIOP.QueriesParams[round] {
+					concreteType := reflect.TypeOf(d.PackedObject.Types[queryRawIface.ConcreteType])
+					d.UnpackQuery(queryRawIface.BackReference, concreteType)
 				}
 
-				for _, backRef := range packedRawCompiledIOP.QueriesNoParams[round] {
-					res, err := d.UnpackQuery(backRef, TypeOfQuery)
-					if err != nil {
-						return reflect.Value{}, err.wrapPath("(deser compiled-IOP-queries-no-params)")
-					}
-
-					query, ok := res.Interface().(ifaces.Query)
-					if !ok {
-						return reflect.Value{}, newSerdeErrorf("could not cast q.Noparams to ifaces.Query: %w", err)
-					}
-
-					deCompIOP.QueriesNoParams.AddToRound(round, query.Name(), query)
+				for _, queryRawIface := range packedRawCompiledIOP.QueriesNoParams[round] {
+					concreteType := reflect.TypeOf(d.PackedObject.Types[queryRawIface.ConcreteType])
+					d.UnpackQuery(queryRawIface.BackReference, concreteType)
 				}
 			}
 
