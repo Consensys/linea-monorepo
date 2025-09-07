@@ -35,6 +35,8 @@ var (
 	typeofRawPublicInput     = reflect.TypeOf(RawPublicInput{})
 	typeofRawExtraData       = reflect.TypeOf(RawExtraData{})
 	typeofPcsCtxs            = reflect.TypeOf((*vortex.Ctx)(nil))
+	typeOfProverAction       = reflect.TypeOf((*wizard.ProverAction)(nil))
+	typeOfVerifierAction     = reflect.TypeOf((*wizard.VerifierAction)(nil))
 )
 
 // RawCompiledIOP represents the serialized form of CompiledIOP.
@@ -122,7 +124,7 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 		return 0, nil
 	}
 	// Fast cache hit
-	if idx, ok := s.compiledIOPs[comp]; ok {
+	if idx, ok := s.compiledIOPsFast[comp]; ok {
 		return BackReference(idx), nil
 	}
 	// Reserve slot and cache BEFORE packing to break recursion
@@ -420,7 +422,87 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 				}
 			}
 
+			// Unpack query params faster
+			{
+				for _, backRef := range packedRawCompiledIOP.QueriesParams[round] {
+					res, err := d.UnpackQuery(backRef, TypeOfQuery)
+					if err != nil {
+						return reflect.Value{}, err.wrapPath("(deser compiled-IOP-queries-params)")
+					}
+
+					query, ok := res.Interface().(ifaces.Query)
+					if !ok {
+						return reflect.Value{}, newSerdeErrorf("could not cast q.Params to ifaces.Query: %w", err)
+					}
+
+					deCompIOP.QueriesParams.AddToRound(round, query.Name(), query)
+				}
+
+				for _, backRef := range packedRawCompiledIOP.QueriesNoParams[round] {
+					res, err := d.UnpackQuery(backRef, TypeOfQuery)
+					if err != nil {
+						return reflect.Value{}, err.wrapPath("(deser compiled-IOP-queries-no-params)")
+					}
+
+					query, ok := res.Interface().(ifaces.Query)
+					if !ok {
+						return reflect.Value{}, newSerdeErrorf("could not cast q.Noparams to ifaces.Query: %w", err)
+					}
+
+					deCompIOP.QueriesNoParams.AddToRound(round, query.Name(), query)
+				}
+			}
+
+			// Unpack prover actions
+			{
+				for _, proverObj := range packedRawCompiledIOP.Subprovers[round] {
+					res, err := d.UnpackStructObject(proverObj, typeOfProverAction)
+					if err != nil {
+						return reflect.Value{}, newSerdeErrorf("could not unpack struct object for prover action: %w", err)
+					}
+
+					proverAction, ok := res.Elem().Interface().(wizard.ProverAction)
+					if !ok {
+						return reflect.Value{}, newSerdeErrorf("could not deser because illegal cast to prover action: %w", err)
+					}
+
+					deCompIOP.RegisterProverAction(round, proverAction)
+				}
+			}
+
+			// Unpack verifier action
+			{
+				for _, verifierObj := range packedRawCompiledIOP.SubVerifiers[round] {
+					res, err := d.UnpackStructObject(verifierObj, typeOfVerifierAction)
+					if err != nil {
+						return reflect.Value{}, newSerdeErrorf("could not unpack struct object for verifier action: %w", err)
+					}
+
+					verifierAction, ok := res.Elem().Interface().(wizard.VerifierAction)
+					if !ok {
+						return reflect.Value{}, newSerdeErrorf("could not deser because illegal cast to verifier action: %w", err)
+					}
+					deCompIOP.RegisterVerifierAction(round, verifierAction)
+				}
+			}
+
+			// Unpack FS hooks
+			{
+				for _, fsObj := range packedRawCompiledIOP.FiatShamirHooksPreSampling[round] {
+					res, err := d.UnpackStructObject(fsObj, typeOfVerifierAction)
+					if err != nil {
+						return reflect.Value{}, newSerdeErrorf("could not unpack struct object for verifier action: %w", err)
+					}
+
+					fsHook, ok := res.Elem().Interface().(wizard.VerifierAction)
+					if !ok {
+						return reflect.Value{}, newSerdeErrorf("could not deser because illegal cast to verifier action: %w", err)
+					}
+					deCompIOP.FiatShamirHooksPreSampling.AppendToInner(round, fsHook)
+				}
+			}
 		}
 	}
 
+	return reflect.ValueOf(d.CompiledIOPsFast[v]), nil
 }

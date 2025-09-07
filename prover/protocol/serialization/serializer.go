@@ -74,16 +74,16 @@ type BackReference int
 // Serializer manages the serialization process, packing objects into a PackedObject.
 // It tracks references to objects (e.g., columns, coins) and collects warnings for non-fatal issues.
 type Serializer struct {
-	PackedObject     *PackedObject               // The output structure containing serialized data.
-	typeMap          map[string]int              // Maps type names to indices in PackedObject.Types.
-	pointerMap       map[uintptr]int             // Maps pointer values to indices in PackedObject.Pointers.
-	coinMap          map[uuid.UUID]int           // Maps coin UUIDs to indices in PackedObject.Coins.
-	coinIdMap        map[string]int              // Maps coin IDs to indices in PackedObject.CoinIDs.
-	columnMap        map[uuid.UUID]int           // Maps column UUIDs to indices in PackedObject.Columns.
-	columnIdMap      map[string]int              // Maps column IDs to indices in PackedObject.ColumnIDs.
-	queryMap         map[uuid.UUID]int           // Maps query UUIDs to indices in PackedObject.Queries.
-	queryIDMap       map[string]int              // Maps query IDs to indices in PackedObject.QueryIDs.
-	compiledIOPs     map[*wizard.CompiledIOP]int // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
+	PackedObject *PackedObject     // The output structure containing serialized data.
+	typeMap      map[string]int    // Maps type names to indices in PackedObject.Types.
+	pointerMap   map[uintptr]int   // Maps pointer values to indices in PackedObject.Pointers.
+	coinMap      map[uuid.UUID]int // Maps coin UUIDs to indices in PackedObject.Coins.
+	coinIdMap    map[string]int    // Maps coin IDs to indices in PackedObject.CoinIDs.
+	columnMap    map[uuid.UUID]int // Maps column UUIDs to indices in PackedObject.Columns.
+	columnIdMap  map[string]int    // Maps column IDs to indices in PackedObject.ColumnIDs.
+	queryMap     map[uuid.UUID]int // Maps query UUIDs to indices in PackedObject.Queries.
+	queryIDMap   map[string]int    // Maps query IDs to indices in PackedObject.QueryIDs.
+	// compiledIOPs     map[*wizard.CompiledIOP]int // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
 	compiledIOPsFast map[*wizard.CompiledIOP]int
 	Stores           map[*column.Store]int  // Maps Store pointers to indices in PackedObject.Store.
 	circuitMap       map[*cs.SparseR1CS]int // Maps circuit pointers to indices in PackedObject.Circuits.
@@ -149,16 +149,16 @@ type PackedStructObject []any
 
 func NewSerializer() *Serializer {
 	return &Serializer{
-		PackedObject:     &PackedObject{},
-		typeMap:          map[string]int{},
-		pointerMap:       map[uintptr]int{},
-		coinMap:          map[uuid.UUID]int{},
-		coinIdMap:        map[string]int{},
-		columnMap:        map[uuid.UUID]int{},
-		columnIdMap:      map[string]int{},
-		queryMap:         map[uuid.UUID]int{},
-		queryIDMap:       map[string]int{},
-		compiledIOPs:     map[*wizard.CompiledIOP]int{},
+		PackedObject: &PackedObject{},
+		typeMap:      map[string]int{},
+		pointerMap:   map[uintptr]int{},
+		coinMap:      map[uuid.UUID]int{},
+		coinIdMap:    map[string]int{},
+		columnMap:    map[uuid.UUID]int{},
+		columnIdMap:  map[string]int{},
+		queryMap:     map[uuid.UUID]int{},
+		queryIDMap:   map[string]int{},
+		// compiledIOPs:     map[*wizard.CompiledIOP]int{},
 		compiledIOPsFast: map[*wizard.CompiledIOP]int{},
 		Stores:           map[*column.Store]int{},
 		circuitMap:       map[*cs.SparseR1CS]int{},
@@ -262,7 +262,7 @@ func (s *Serializer) PackValue(v reflect.Value) (any, *serdeError) {
 		if unpacked == nil {
 			return nil, nil
 		}
-		return s.PackCompiledIOP(unpacked)
+		return s.PackCompiledIOPFast(unpacked)
 	case TypeOfColumnNatural:
 		return s.PackColumn(v.Interface().(column.Natural))
 	case TypeOfColumnID:
@@ -336,7 +336,7 @@ func (d *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e *s
 	// Handle protocol-specific types.
 	switch t {
 	case TypeOfCompiledIOPPointer:
-		return d.UnpackCompiledIOP(backReferenceFromCBORInt(v))
+		return d.UnpackCompiledIOPFast(backReferenceFromCBORInt(v))
 	case TypeOfColumnNatural:
 		return d.UnpackColumn(backReferenceFromCBORInt(v))
 	case TypeOfColumnID:
@@ -608,6 +608,7 @@ func (d *Deserializer) UnpackQueryID(v BackReference) (reflect.Value, *serdeErro
 	return reflect.ValueOf(res), nil
 }
 
+/*
 // PackCompiledIOP serializes a wizard.CompiledIOP, returning a BackReference to its index in PackedObject.CompiledIOP.
 func (s *Serializer) PackCompiledIOP(comp *wizard.CompiledIOP) (BackReference, *serdeError) {
 	if comp == nil {
@@ -660,6 +661,8 @@ func (d *Deserializer) UnpackCompiledIOP(v BackReference) (reflect.Value, *serde
 
 	return reflect.ValueOf(d.CompiledIOPs[v]), nil
 }
+
+*/
 
 // PackStore serializes a column.Store, returning a BackReference to its index in PackedObject.Store.
 func (s *Serializer) PackStore(st *column.Store) (BackReference, *serdeError) {
