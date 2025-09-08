@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	solver.RegisterHint(inverseE2Hint, inverseE4Hint)
+	solver.RegisterHint(inverseE2Hint, inverseE4Hint, divE4Hint)
 }
 
 func inverseE2Hint(_ *big.Int, inputs []*big.Int, res []*big.Int) error {
@@ -35,6 +35,29 @@ func inverseE4Hint(_ *big.Int, inputs []*big.Int, res []*big.Int) error {
 	a.B1.A1.SetBigInt(inputs[3])
 
 	c.Inverse(&a)
+
+	c.B0.A0.BigInt(res[0])
+	c.B0.A1.BigInt(res[1])
+	c.B1.A0.BigInt(res[2])
+	c.B1.A1.BigInt(res[3])
+
+	return nil
+}
+
+func divE4Hint(_ *big.Int, inputs []*big.Int, res []*big.Int) error {
+	var a, b, c fext.Element
+
+	a.B0.A0.SetBigInt(inputs[0])
+	a.B0.A1.SetBigInt(inputs[1])
+	a.B1.A0.SetBigInt(inputs[2])
+	a.B1.A1.SetBigInt(inputs[3])
+
+	b.B0.A0.SetBigInt(inputs[4])
+	b.B0.A1.SetBigInt(inputs[5])
+	b.B1.A0.SetBigInt(inputs[6])
+	b.B1.A1.SetBigInt(inputs[7])
+
+	c.Div(&a, &b)
 
 	c.B0.A0.BigInt(res[0])
 	c.B0.A1.BigInt(res[1])

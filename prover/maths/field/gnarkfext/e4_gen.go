@@ -20,7 +20,6 @@ func NewE4Gen[T zk.Element](v fext.Element) E4Gen[T] {
 
 type Ext4[T zk.Element] struct {
 	mixedAPI zk.FieldOps[T]
-	api      frontend.API
 	*Ext2[T]
 }
 
@@ -32,7 +31,6 @@ func NewExt4[t zk.Element](api frontend.API) (*Ext4[t], error) {
 	ext2 := NewExt2[t](api)
 	return &Ext4[t]{
 		mixedAPI: mixedAPI,
-		api:      api,
 		Ext2:     ext2,
 	}, nil
 }
@@ -102,7 +100,7 @@ func (ext4 *Ext4[T]) Double(e1 *E4Gen[T]) *E4Gen[T] {
 }
 
 // Sub Element elmts
-func (ext4 *Ext4[T]) Sub(e1, e2 E4Gen[T]) *E4Gen[T] {
+func (ext4 *Ext4[T]) Sub(e1, e2 *E4Gen[T]) *E4Gen[T] {
 	return &E4Gen[T]{
 		B0: *ext4.Ext2.Sub(&e1.B0, &e2.B0),
 		B1: *ext4.Ext2.Sub(&e1.B1, &e2.B1),
@@ -220,12 +218,6 @@ func (ext4 *Ext4[T]) Inverse(e1 *E4Gen[T]) *E4Gen[T] {
 	return e3
 }
 
-// // Assign a value to self (witness assignment)
-// func (ext4 *Ext4[T]) Assign(a fext.Element) {
-// 	e.B0.Assign(api, a.B0)
-// 	e.B1.Assign(api, a.B1)
-// }
-
 // Select sets e to r1 if b=1, r2 otherwise
 func (ext4 *Ext4[T]) Select(b frontend.Variable, r1, r2 *E4Gen[T]) *E4Gen[T] {
 	return &E4Gen[T]{
@@ -234,12 +226,21 @@ func (ext4 *Ext4[T]) Select(b frontend.Variable, r1, r2 *E4Gen[T]) *E4Gen[T] {
 	}
 }
 
-// Sub Element elmts
+// Div Element elmts
 func (ext4 *Ext4[T]) Div(e1, e2 *E4Gen[T]) *E4Gen[T] {
-	return &E4Gen[T]{
-		B0: *ext4.Ext2.Div(&e1.B0, &e2.B0),
-		B1: *ext4.Ext2.Div(&e1.B1, &e2.B1),
+
+	res, err := ext4.mixedAPI.NewHint(
+		divE4Hint, 4,
+		&e1.B0.A0, &e1.B0.A1, &e1.B1.A0, &e1.B1.A1,
+		&e2.B0.A0, &e2.B0.A1, &e2.B1.A0, &e2.B1.A1)
+	if err != nil {
+		// err is non nil only for invalid number of inputs
+		panic(err)
 	}
+	e3 := ext4.assign(res[:4])
+	_res := ext4.Mul(e3, e2)
+	ext4.AssertIsEqual(_res, e1)
+	return e3
 }
 
 // Sub Element elmts

@@ -205,12 +205,12 @@ func (ext2 *Ext2[T]) Select(b frontend.Variable, r1, r2 *E2Gen[T]) *E2Gen[T] {
 }
 
 // Div e2 elmts
-func (ext2 *Ext2[T]) Div(e1, e2 *E2Gen[T]) *E2Gen[T] {
-	return &E2Gen[T]{
-		A0: *ext2.mixedAPI.Div(&e1.A0, &e2.A0),
-		A1: *ext2.mixedAPI.Div(&e1.A1, &e2.A1),
-	}
-}
+// func (ext2 *Ext2[T]) Div(e1, e2 *E2Gen[T]) *E2Gen[T] {
+// 	return &E2Gen[T]{
+// 		A0: *ext2.mixedAPI.Div(&e1.A0, &e2.A0),
+// 		A1: *ext2.mixedAPI.Div(&e1.A1, &e2.A1),
+// 	}
+// }
 
 // DivByBase  Div e2 Element by a base elmt
 func (ext2 *Ext2[T]) DivByBase(e1 *E2Gen[T], e2 *T) *E2Gen[T] {
@@ -219,38 +219,3 @@ func (ext2 *Ext2[T]) DivByBase(e1 *E2Gen[T], e2 *T) *E2Gen[T] {
 		A1: *ext2.mixedAPI.Div(&e1.A1, e2),
 	}
 }
-
-// // Assign a value to self (witness assignment)
-// func (e *E2Gen[T zk.FType]) Assign(a extensions.E2Gen[T zk.FType]) {
-// 	e.A0 = a.A0
-// 	e.A1 = a.A1
-// }
-
-// // AssertIsEqual constraint self to be equal to other into the given constraint system
-// func (e *E2Gen[T zk.FType]) AssertIsEqual(api frontend.API, other E2Gen[T zk.FType]) {
-// 	api.AssertIsEqual(e.A0, other.A0)
-// 	api.AssertIsEqual(e.A1, other.A1)
-// }
-
-// // Select sets e to r1 if b=1, r2 otherwise
-// func (e *E2Gen[T zk.FType]) Select(api frontend.API, b frontend.Variable, r1, r2 E2Gen[T zk.FType]) *E2Gen[T zk.FType] {
-
-// 	e.A0 = api.Select(b, r1.A0, r2.A0)
-// 	e.A1 = api.Select(b, r1.A1, r2.A1)
-
-// 	return e
-// }
-
-// // Sub E2Gen[T zk.FType] elmts
-// func (e *E2Gen[T zk.FType]) Div(api frontend.API, e1, E2Gen[T zk.FType] E2Gen[T zk.FType]) *E2Gen[T zk.FType] {
-// 	e.A0 = api.Div(e1.A0, E2Gen[T zk.FType].A0)
-// 	e.A1 = api.Div(e1.A1, E2Gen[T zk.FType].A1)
-// 	return e
-// }
-
-// // Sub Element elmts
-// func (e *E2Gen[T zk.FType]) DivByBase(api frontend.API, e1 E2Gen[T zk.FType], E2Gen[T zk.FType] frontend.Variable) *E2Gen[T zk.FType] {
-// 	e.A0 = api.Div(e1.A0, E2Gen[T zk.FType])
-// 	e.A1 = api.Div(e1.A1, E2Gen[T zk.FType])
-// 	return e
-// }
