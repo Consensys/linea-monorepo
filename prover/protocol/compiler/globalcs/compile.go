@@ -39,8 +39,9 @@ func Compile(comp *wizard.CompiledIOP) {
 		evaluationRound = quotientRound + 1
 	)
 
+	evaluationProver := EvaluationProver(evaluationCtx)
 	comp.RegisterProverAction(quotientRound, &quotientCtx)
-	comp.RegisterProverAction(evaluationRound, EvaluationProver(evaluationCtx))
+	comp.RegisterProverAction(evaluationRound, &evaluationProver)
 	comp.RegisterVerifierAction(evaluationRound, &EvaluationVerifier{EvaluationCtx: evaluationCtx})
 
 }

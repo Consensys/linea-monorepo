@@ -42,7 +42,7 @@ type ProverTaskAtRound struct {
 // a goroutine for each tasks and wait for all of them to finish. The approach
 // for parallelization can be justified if the number of go-routines stays low
 // (e.g. less than 1000s).
-func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
+func (p *ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(p.numTasks())

@@ -83,7 +83,7 @@ type AssignPermutationGrandProduct struct {
 	IsPartial bool
 }
 
-func (a AssignPermutationGrandProduct) Run(run *wizard.ProverRuntime) {
+func (a *AssignPermutationGrandProduct) Run(run *wizard.ProverRuntime) {
 	y := field.One()
 	if a.IsPartial {
 		y = a.Query.Compute(run)
