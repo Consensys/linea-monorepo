@@ -206,6 +206,84 @@ public class BlockchainReferenceTestTools {
     PARAMS.ignore("static_RETURN_BoundsOOG_d0g0v0_*");
     PARAMS.ignore("static_RETURN_BoundsOOG_d1g0v0_*");
     PARAMS.ignore("static_RETURN_Bounds_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("Cancun-enough_gas*");
+    PARAMS.ignore("Cancun-out_of_gas*");
+    PARAMS.ignore("Cancun-no_stack_overflow*");
+    PARAMS.ignore("Cancun-stack_overflow*");
+    PARAMS.ignore("Cancun-zero_inputs*");
+    PARAMS.ignore("Cancun-zero_length_out_of_bounds_destination*");
+    PARAMS.ignore("Cancun-single_byte_rewrite*");
+    PARAMS.ignore("Cancun-full_word_rewrite*");
+    PARAMS.ignore("Cancun-single_byte_forward_overwrite*");
+    PARAMS.ignore("Cancun-full_word_forward_overwrite*");
+    PARAMS.ignore("Cancun-mid_word_single_byte_rewrite*");
+    PARAMS.ignore("Cancun-mid_word_single_word_rewrite*");
+    PARAMS.ignore("Cancun-mid_word_multi_word_rewrite*");
+    PARAMS.ignore("Cancun-two_words_forward_overwrite*");
+    PARAMS.ignore("Cancun-two_words_backward_overwrite*");
+    PARAMS.ignore("Cancun-two_words_backward_overwrite_single_byte_offset*");
+    PARAMS.ignore("Cancun-single_byte_memory_extension*");
+    PARAMS.ignore("Cancun-single_word_memory_extension*");
+    PARAMS.ignore("Cancun-single_word_minus_one_byte_memory_extension*");
+    PARAMS.ignore("Cancun-single_word_plus_one_byte_memory_extension*");
+    PARAMS.ignore("Cancun-full_memory_rewrite*");
+    PARAMS.ignore("Cancun-full_memory_copy*");
+    PARAMS.ignore("Cancun-full_memory_copy_offset*");
+    PARAMS.ignore("Cancun-empty_memory-length=0-src=0-dest=0*");
+    PARAMS.ignore("Cancun-empty_memory-length=0-src=0-dest=32*");
+    PARAMS.ignore("Cancun-empty_memory-length=0-src=32-dest=0*");
+    PARAMS.ignore("Cancun-empty_memory-length=0-src=32-dest=32*");
+    PARAMS.ignore("Cancun-empty_memory-length=1-src=0-dest=0*");
+    PARAMS.ignore("Cancun-empty_memory-length=1-src=0-dest=32*");
+    PARAMS.ignore("Cancun-empty_memory-length=1-src=32-dest=0*");
+    PARAMS.ignore("Cancun-empty_memory-length=1-src=32-dest=32*");
+    PARAMS.ignore("Cancun-call[Cancun]");
+    PARAMS.ignore("Cancun-staticcall_cant_call_tstore[Cancun]");
+    PARAMS.ignore("Cancun-staticcall_cant_call_tstore_with_stack_underflow[Cancun]");
+    PARAMS.ignore("Cancun-staticcalled_can_call_tstore[Cancun]");
+    PARAMS.ignore("Cancun-callcode[Cancun]");
+    PARAMS.ignore("Cancun-delegatecall[Cancun]");
+    PARAMS.ignore("Cancun-call_with_revert[Cancun]");
+    PARAMS.ignore("Cancun-call_with_invalid[Cancun]");
+    PARAMS.ignore("Cancun-call_with_stack_underflow[Cancun]");
+    PARAMS.ignore("Cancun-call_with_tstore_stack_underflow[Cancun]");
+    PARAMS.ignore("Cancun-call_with_tstore_stack_underflow_2[Cancun]");
+    PARAMS.ignore("Cancun-call_with_tload_stack_underflow[Cancun]");
+    PARAMS.ignore("Cancun-call_with_out_of_gas[Cancun]");
+    PARAMS.ignore("Cancun-call_with_out_of_gas_2[Cancun]");
+    PARAMS.ignore("Cancun-callcode_with_revert[Cancun]");
+    PARAMS.ignore("Cancun-callcode_with_invalid[Cancun]");
+    PARAMS.ignore("Cancun-callcode_with_stack_underflow[Cancun]");
+    PARAMS.ignore("Cancun-callcode_with_tstore_stack_underflow[Cancun]");
+    PARAMS.ignore("Cancun-callcode_with_tstore_stack_underflow_2[Cancun]");
+    PARAMS.ignore("Cancun-callcode_with_tload_stack_underflow[Cancun]");
+    PARAMS.ignore("Cancun-callcode_with_out_of_gas[Cancun]");
+    PARAMS.ignore("Cancun-callcode_with_out_of_gas_2[Cancun]");
+    PARAMS.ignore("Cancun-delegatecall_with_revert[Cancun]");
+    PARAMS.ignore("Cancun-delegatecall_with_invalid[Cancun]");
+    PARAMS.ignore("Cancun-delegatecall_with_stack_underflow[Cancun]");
+    PARAMS.ignore("Cancun-delegatecall_with_tstore_stack_underflow[Cancun]");
+    PARAMS.ignore("Cancun-delegatecall_with_tstore_stack_underflow_2[Cancun]");
+    PARAMS.ignore("Cancun-delegatecall_with_tload_stack_underflow[Cancun]");
+    PARAMS.ignore("Cancun-delegatecall_with_out_of_gas[Cancun]");
+    PARAMS.ignore("Cancun-delegatecall_with_out_of_gas_2[Cancun]");
+    PARAMS.ignore("Cancun-tstore_in_reentrant_call[Cancun]");
+    PARAMS.ignore("Cancun-tload_after_reentrant_tstore[Cancun]");
+    PARAMS.ignore("Cancun-manipulate_in_reentrant_call[Cancun]");
+    PARAMS.ignore("Cancun-tstore_in_call_then_tload_return_in_staticcall[Cancun]");
+    PARAMS.ignore("Cancun-tstore_before_revert_has_no_effect[Cancun]");
+    PARAMS.ignore("Cancun-revert_undoes_all[Cancun]");
+    PARAMS.ignore("Cancun-revert_undoes_tstorage_after_successful_call[Cancun]");
+    PARAMS.ignore("Cancun-tstore_before_invalid_has_no_effect[Cancun]");
+    PARAMS.ignore("Cancun-revert_undoes_all[Cancun]");
+    PARAMS.ignore("Cancun-invalid_undoes_all[Cancun]");
+    PARAMS.ignore("Cancun-invalid_undoes_tstorage_after_successful_call[Cancun]");
+    PARAMS.ignore("Cancun-tload_after_selfdestruct_pre_existing_contract[Cancun]");
+    PARAMS.ignore("Cancun-tload_after_selfdestruct_new_contract[Cancun]");
+    PARAMS.ignore("Cancun-tload_after_inner_selfdestruct_pre_existing_contract[Cancun]");
+    PARAMS.ignore("Cancun-tload_after_inner_selfdestruct_new_contract[Cancun]");
+    PARAMS.ignore("Cancun-tstore_after_selfdestruct_pre_existing_contract[Cancun]");
+    PARAMS.ignore("Cancun-tstore_after_selfdestruct_new_contract[Cancun]");
 
     // Deployment transaction to an account with nonce / code
     PARAMS.ignore("TransactionCollisionToEmptyButCode_d0g0v0_*");
@@ -299,7 +377,6 @@ public class BlockchainReferenceTestTools {
 
     // the following tests blow up due monetary creation pre PoS where the COINBASE would get paid 2
     // Eth at the end of every block
-    // TODO: re-enable post Paris
     PARAMS.ignore("correct_London\\[London\\]");
     PARAMS.ignore("incorrectUncleTimestamp4_London\\[London\\]");
     PARAMS.ignore("incorrectUncleTimestamp5_London\\[London\\]");
@@ -392,6 +469,16 @@ public class BlockchainReferenceTestTools {
     // Pending deployment number fix
     // Issue #https://github.com/Consensys/linea-specification/issues/191
     PARAMS.ignore("create2collisionwithSelfdestructSameBlock.json");
+
+    // Transaction Type not supported at the moment
+    PARAMS.ignore("opcodeBlobhBounds*");
+    PARAMS.ignore("opcodeBlobhashOutOfRange*");
+    PARAMS.ignore("blockWithAllTransactionTypes*");
+    PARAMS.ignore("Cancun-tx_type=3*");
+    PARAMS.ignore("blobhashListBounds3_d0g0v0_*");
+    PARAMS.ignore("blobhashListBounds4_d0g0v0_*");
+    PARAMS.ignore("blobhashListBounds5_d0g0v0_*");
+    PARAMS.ignore("blobhashListBounds6_d0g0v0_*");
   }
 
   public static CompletableFuture<Set<String>> getRecordedFailedTestsFromJson(
