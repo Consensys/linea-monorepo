@@ -37,11 +37,12 @@ type RawExtraData struct {
 }
 
 type RawQuery struct {
-	_                             struct{}      `cbor:",toarray" serde:"omit"`
-	BackReference                 BackReference `cbor:"b"`
-	ConcreteType                  int           `cbor:"t"`
-	IsIgnored                     bool          `cbor:"i"`
-	IsSkippedFromProverTranscript bool          `cbor:"s"`
+	_                               struct{}      `cbor:",toarray" serde:"omit"`
+	BackReference                   BackReference `cbor:"b"`
+	ConcreteType                    int           `cbor:"t"`
+	IsIgnored                       bool          `cbor:"i"`
+	IsSkippedFromProverTranscript   bool          `cbor:"s"`
+	IsSkippedFromVerifierTranscript bool          `cbor:"v"`
 }
 
 type RawData struct {
@@ -253,7 +254,7 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 	raw := d.PackedObject.CompiledIOPFast[v]
 
 	// Reserve the cache and outer shapes up-front
-	de := newEmptyCompiledIOP(raw)
+	de := NewEmptyCompiledIOP(raw)
 	d.CompiledIOPsFast[v] = de
 
 	// FiatShamirSetup
@@ -482,10 +483,11 @@ func (s *Serializer) packQueriesRound(reg *wizard.ByRoundRegister[ifaces.QueryID
 		}
 		typeIdx := s.packTypeIndex(ct)
 		out[i] = RawQuery{
-			BackReference:                 backRef,
-			ConcreteType:                  typeIdx,
-			IsIgnored:                     reg.IsIgnored(id),
-			IsSkippedFromProverTranscript: reg.IsSkippedFromProverTranscript(id),
+			BackReference:                   backRef,
+			ConcreteType:                    typeIdx,
+			IsIgnored:                       reg.IsIgnored(id),
+			IsSkippedFromProverTranscript:   reg.IsSkippedFromProverTranscript(id),
+			IsSkippedFromVerifierTranscript: reg.IsSkippedFromVerifierTranscript(id),
 		}
 	}
 	return out, nil
@@ -502,7 +504,7 @@ func (s *Serializer) packQueriesNoParamsRound(comp *wizard.CompiledIOP, round in
 
 // -------------------- constructor with Reserve --------------------
 
-func newEmptyCompiledIOP(rawCompIOP RawCompiledIOP) *wizard.CompiledIOP {
+func NewEmptyCompiledIOP(rawCompIOP RawCompiledIOP) *wizard.CompiledIOP {
 	comp := &wizard.CompiledIOP{
 		DummyCompiled:              rawCompIOP.DummyCompiled,
 		SelfRecursionCount:         rawCompIOP.SelfRecursionCount,
@@ -548,12 +550,16 @@ func (d *Deserializer) unpackQueriesRound(reg *wizard.ByRoundRegister[ifaces.Que
 			return newSerdeErrorf("illegal cast to ifaces.Query")
 		}
 
-		reg.AddToRound(round, q.Name(), q)
+		qID := q.Name()
+		reg.AddToRound(round, qID, q)
 		if rq.IsIgnored {
-			reg.MarkAsIgnored(q.Name())
+			reg.MarkAsIgnored(qID)
 		}
 		if rq.IsSkippedFromProverTranscript {
-			reg.MarkAsSkippedFromProverTranscript(q.Name())
+			reg.MarkAsSkippedFromProverTranscript(qID)
+		}
+		if rq.IsSkippedFromVerifierTranscript {
+			reg.MarkAsSkippedFromVerifierTranscript(qID)
 		}
 	}
 	return nil
