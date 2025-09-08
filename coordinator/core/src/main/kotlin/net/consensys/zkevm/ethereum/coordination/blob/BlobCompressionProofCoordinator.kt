@@ -110,6 +110,8 @@ class BlobCompressionProofCoordinator(
           exception,
         )
       }
+    }.thenAccept {
+      log.debug("Blob compression proof blob={} was processed and persisted successfully", blob.intervalString())
     }
     // We want to process the next blob without waiting for the compression proof to finish and process the next
     // blob after shnarf calculation of current blob is done
