@@ -194,8 +194,8 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 	}
 
 	comp.RegisterVerifierAction(0, &ConsistencyCheck{Ctx: rec, PIs: plonkCtx.Columns.PI})
-	comp.RegisterProverAction(1, AssignVortexUAlpha{Ctxs: rec})
-	comp.RegisterProverAction(2, AssignVortexOpenedCols{Ctxs: rec})
+	comp.RegisterProverAction(1, &AssignVortexUAlpha{Ctxs: rec})
+	comp.RegisterProverAction(2, &AssignVortexOpenedCols{Ctxs: rec})
 
 	// Importantly, this must happen after the "vortex" actions are registered
 	// otherwise the items to self-recurse are not well-defined.
