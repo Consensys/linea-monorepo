@@ -53,7 +53,7 @@
     "hardhat-tracer": "2.8.2",
     "node-gyp": "10.1.0",
     "prettier-plugin-solidity": "1.4.2",
-    "solhint": "5.0.5",
+    "solhint": "6.0.1",
     "solidity-coverage": "0.8.16",
     "solidity-docgen": "0.6.0-beta.36",
     "yargs": "catalog:"
