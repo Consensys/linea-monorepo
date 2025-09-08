@@ -110,7 +110,7 @@ public class LondonRlpTxn extends RlpTxn {
   public void traceOperation(RlpTxnOperation op, int absTxNum, Trace.Rlptxn trace) {
     final LondonRlpTxnOperation operation = (LondonRlpTxnOperation) op;
     // Create the local row storage and specify transaction constant columns
-    RlpTxnColumnsValue traceValue = new RlpTxnColumnsValue();
+    final RlpTxnColumnsValue traceValue = new RlpTxnColumnsValue();
     traceValue.resetDataHiLo();
     traceValue.addrHi = bigIntegerToBytes(BigInteger.ZERO);
     traceValue.addrLo = bigIntegerToBytes(BigInteger.ZERO);
@@ -734,7 +734,7 @@ public class LondonRlpTxn extends RlpTxn {
       if (inputLen <= traceValue.nStep) {
         ByteCountAndPowerOutput byteCountingOutput = byteCounting(inputLen, traceValue.nStep);
         BitDecOutput bitDecOutput =
-            bitDecomposition(inputByte.get(inputByte.size() - 1), traceValue.nStep);
+            bitDecomposition((0xFF & inputByte.get(inputByte.size() - 1)), traceValue.nStep);
 
         for (int ct = 0; ct < traceValue.nStep; ct++) {
           traceValue.counter = ct;

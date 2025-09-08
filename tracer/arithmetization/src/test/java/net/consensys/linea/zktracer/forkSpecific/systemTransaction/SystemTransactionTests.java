@@ -18,7 +18,6 @@ package net.consensys.linea.zktracer.forkSpecific.systemTransaction;
 import static net.consensys.linea.testing.MultiBlockExecutionEnvironment.DEFAULT_DELTA_TIMESTAMP_BETWEEN_BLOCKS;
 import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.DEFAULT_BLOCK_NUMBER;
 import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.DEFAULT_TIME_STAMP;
-import static net.consensys.linea.zktracer.Fork.isPostCancun;
 import static net.consensys.linea.zktracer.Fork.isPostShanghai;
 import static net.consensys.linea.zktracer.forkSpecific.systemTransaction.SystemTransactionTestUtils.byteCodeCallingBeaconRootSystemAccount;
 import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP2935HistoricalHash.EIP2935_HISTORY_STORAGE_ADDRESS;
@@ -161,12 +160,6 @@ public class SystemTransactionTests extends TracerTestBase {
     // transaction:
     // org.opentest4j.AssertionFailedError: Transaction not successful:
     if (!isPostShanghai(chainConfig.fork)) {
-      return;
-    }
-
-    // TODO: remove me: this test spotted an issue in RlpTxn module, see issue
-    // https://github.com/Consensys/linea-tracer/issues/2229
-    if (!isPostCancun(chainConfig.fork)) {
       return;
     }
 
