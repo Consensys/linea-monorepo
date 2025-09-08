@@ -189,8 +189,8 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 
 	ctx.EvalPointOfPolys, ctx.PolysOfEvalPoint = indexPolysAndPoints(ctx.Polys, ctx.Queries)
 
-	comp.RegisterProverAction(ctx.getNumRound(comp), QuotientAccumulation{ctx})
-	comp.RegisterProverAction(ctx.getNumRound(comp)+1, RandomPointEvaluation{ctx})
+	comp.RegisterProverAction(ctx.getNumRound(comp), &QuotientAccumulation{ctx})
+	comp.RegisterProverAction(ctx.getNumRound(comp)+1, &RandomPointEvaluation{ctx})
 	comp.RegisterVerifierAction(ctx.getNumRound(comp)+1, &VerifierAction{ctx})
 
 	return ctx
