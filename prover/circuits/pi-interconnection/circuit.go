@@ -28,13 +28,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
-	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
-	mimcComp "github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -64,10 +57,6 @@ type Circuit struct {
 	MaxNbCircuits int // possibly useless TODO consider removing
 	UseGkrMimc    bool
 }
-
-// type alias to denote a wizard-compilation suite. This is used when calling
-// compile and provides internal parameters for the wizard package.
-type compilationSuite = []func(*wizard.CompiledIOP)
 
 func (c *Circuit) Define(api frontend.API) error {
 	// TODO @Tabaie @alexandre.belling remove hard coded values once these are included in aggregation PI sum
@@ -414,7 +403,7 @@ func NewBuilder(c config.PublicInput) circuits.Builder {
 }
 
 func (b builder) Compile() (constraint.ConstraintSystem, error) {
-	c, err := Compile(*b.PublicInput, WizardCompilationParameters()...)
+	c, err := Compile(*b.PublicInput, internal.WizardCompilationParameters()...)
 	if err != nil {
 		return nil, err
 	}
@@ -425,55 +414,6 @@ func (b builder) Compile() (constraint.ConstraintSystem, error) {
 	}
 
 	return cs, nil
-}
-
-func WizardCompilationParameters() []func(iop *wizard.CompiledIOP) {
-	var (
-		sisInstance = ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
-
-		fullCompilationSuite = compilationSuite{
-
-			compiler.Arcane(
-				compiler.WithTargetColSize(1<<18),
-				compiler.WithStitcherMinSize(1<<8),
-			),
-			logdata.Log("after vortex"),
-			vortex.Compile(
-				2,
-				vortex.ForceNumOpenedColumns(256),
-				vortex.WithSISParams(&sisInstance),
-			),
-
-			selfrecursion.SelfRecurse,
-			cleanup.CleanUp,
-			mimcComp.CompileMiMC,
-			compiler.Arcane(
-				compiler.WithTargetColSize(1<<16),
-				compiler.WithStitcherMinSize(1<<8),
-			),
-			vortex.Compile(
-				8,
-				vortex.ForceNumOpenedColumns(64),
-				vortex.WithSISParams(&sisInstance),
-			),
-
-			selfrecursion.SelfRecurse,
-			cleanup.CleanUp,
-			mimcComp.CompileMiMC,
-			compiler.Arcane(
-				compiler.WithTargetColSize(1<<13),
-				compiler.WithStitcherMinSize(1<<8),
-			),
-			vortex.Compile(
-				8,
-				vortex.ForceNumOpenedColumns(64),
-				vortex.WithOptionalSISHashingThreshold(1<<20),
-			),
-		}
-	)
-
-	return fullCompilationSuite
-
 }
 
 // GetMaxNbCircuitsSum computes MaxNbDecompression + MaxNbExecution + MaxNbInvalidity from the compiled constraint system
