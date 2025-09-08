@@ -36,26 +36,46 @@ public class TraceWriter {
   private static final String TRACE_FILE_EXTENSION = ".lt";
   private static final String TRACE_TEMP_FILE_EXTENSION = ".lt.tmp";
 
-  private final ZkTracer tracer;
+  final Path tracesOutputDirPath;
+
+  /**
+   * Check whether the corresponding trace file already exists, or not.
+   *
+   * @param startBlockNumber            start block number for conflation.
+   * @param endBlockNumber              end block number for conflation.
+   * @param expectedTracesEngineVersion expected version of tracer
+   * @param besuVersion
+   * @return True if the trace file exists.
+   */
+  public Path traceFilePath(final long startBlockNumber,
+                            final long endBlockNumber,
+                            final String expectedTracesEngineVersion,
+                            final String besuVersion) {
+    // Generate the original and final trace file name.
+    final String origTraceFileName =
+      generateOutputFileName(startBlockNumber, endBlockNumber, expectedTracesEngineVersion, besuVersion);
+    // Generate and resolve the original and final trace file path.
+    return generateOutputFilePath(tracesOutputDirPath, origTraceFileName + TRACE_FILE_EXTENSION);
+  }
 
   @SneakyThrows(IOException.class)
   public Path writeTraceToFile(
-      final Path tracesOutputDirPath,
+      final ZkTracer tracer,
       final long startBlockNumber,
       final long endBlockNumber,
-      final String expectedTracesEngineVersion) {
+      final String expectedTracesEngineVersion,
+      final String besuVersion) {
     // Generate the original and final trace file name.
     final String origTraceFileName =
-        generateOutputFileName(startBlockNumber, endBlockNumber, expectedTracesEngineVersion);
+        generateOutputFileName(startBlockNumber, endBlockNumber, expectedTracesEngineVersion, besuVersion);
     // Generate and resolve the original and final trace file path.
     final Path origTraceFilePath =
         generateOutputFilePath(tracesOutputDirPath, origTraceFileName + TRACE_FILE_EXTENSION);
-
     // Write the trace at the original and final trace file path, but with the suffix .tmp at the
     // end of the file.
     final Path tmpTraceFilePath =
         writeToTmpFile(
-            tracesOutputDirPath,
+            tracer,
             origTraceFileName + ".",
             TRACE_TEMP_FILE_EXTENSION,
             startBlockNumber,
@@ -69,7 +89,7 @@ public class TraceWriter {
   }
 
   public Path writeToTmpFile(
-      final Path rootDir,
+      final ZkTracer tracer,
       final String prefix,
       final String suffix,
       final long startBlockNumber,
@@ -78,17 +98,17 @@ public class TraceWriter {
     try {
       FileAttribute<Set<PosixFilePermission>> perms =
           PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-r--r--"));
-      traceFile = Files.createTempFile(rootDir, prefix, suffix, perms);
+      traceFile = Files.createTempFile(tracesOutputDirPath, prefix, suffix, perms);
     } catch (IOException e) {
       log.error(
           "Error while creating tmp file {} {} {}. Trying without setting the permissions",
-          rootDir,
+          tracesOutputDirPath,
           prefix,
           suffix);
       try {
-        traceFile = Files.createTempFile(rootDir, prefix, suffix);
+        traceFile = Files.createTempFile(tracesOutputDirPath, prefix, suffix);
       } catch (IOException f) {
-        log.error("Still Failing while creating tmp file {} {} {}", rootDir, prefix, suffix);
+        log.error("Still Failing while creating tmp file {} {} {}", tracesOutputDirPath, prefix, suffix);
         throw new RuntimeException(e);
       }
     }
@@ -112,8 +132,9 @@ public class TraceWriter {
   private String generateOutputFileName(
       final long startBlockNumber,
       final long endBlockNumber,
-      final String expectedTracesEngineVersion) {
-    return "%s-%s.conflated.%s"
-        .formatted(startBlockNumber, endBlockNumber, expectedTracesEngineVersion);
+      final String expectedTracesEngineVersion,
+      final String besuVersion) {
+    return "%s-%s.conflated.%s.%s"
+        .formatted(startBlockNumber, endBlockNumber, expectedTracesEngineVersion, besuVersion);
   }
 }

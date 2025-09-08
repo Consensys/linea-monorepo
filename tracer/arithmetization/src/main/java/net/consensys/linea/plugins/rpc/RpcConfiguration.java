@@ -20,4 +20,5 @@ import net.consensys.linea.plugins.LineaOptionsConfiguration;
 
 /** The Linea tracer configuration private to this repo. */
 @Builder(toBuilder = true)
-public record RpcConfiguration(int concurrentRequestsLimit) implements LineaOptionsConfiguration {}
+public record RpcConfiguration(int concurrentRequestsLimit, boolean caching)
+    implements LineaOptionsConfiguration {}

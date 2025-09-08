@@ -26,8 +26,7 @@ public class TracesEndpointCliOptions implements LineaCliOptions {
   static final String CONFLATED_TRACE_GENERATION_TRACES_OUTPUT_PATH =
       "--plugin-linea-conflated-trace-generation-traces-output-path";
 
-  static final String CONFLATED_TRACE_GENERATION_CONCURRENT_REQUESTS_LIMIT =
-      "--plugin-linea-conflated-trace-generation-concurrent-requests-limit";
+  static final String CACHING = "--plugin-linea-rpc-caching";
 
   @CommandLine.Option(
       required = true,
@@ -36,6 +35,14 @@ public class TracesEndpointCliOptions implements LineaCliOptions {
       paramLabel = "<PATH>",
       description = "Path to where traces will be written")
   private String tracesOutputPath = null;
+
+
+  @CommandLine.Option(
+          names = {CACHING},
+          hidden = true,
+          paramLabel = "<CACHING>",
+          description = "Reuse existing trace files when available")
+  private boolean caching = true;
 
   private TracesEndpointCliOptions() {}
 
@@ -57,6 +64,7 @@ public class TracesEndpointCliOptions implements LineaCliOptions {
   static TracesEndpointCliOptions fromConfig(final TracesEndpointConfiguration config) {
     final TracesEndpointCliOptions options = create();
     options.tracesOutputPath = config.tracesOutputPath();
+    options.caching = config.caching();
     return options;
   }
 
@@ -67,13 +75,14 @@ public class TracesEndpointCliOptions implements LineaCliOptions {
    */
   @Override
   public TracesEndpointConfiguration toDomainObject() {
-    return TracesEndpointConfiguration.builder().tracesOutputPath(tracesOutputPath).build();
+    return TracesEndpointConfiguration.builder().tracesOutputPath(tracesOutputPath).caching(caching).build();
   }
 
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
         .add(CONFLATED_TRACE_GENERATION_TRACES_OUTPUT_PATH, tracesOutputPath)
-        .toString();
+            .add(CACHING, caching)
+            .toString();
   }
 }
