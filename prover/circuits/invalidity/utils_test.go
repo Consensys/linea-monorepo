@@ -291,11 +291,12 @@ func TestShomei(t *testing.T) {
 }
 
 type TestCases struct {
-	Account     Account
-	Leaf        accumulator.LeafOpening
-	Tx          types.DynamicFeeTx
-	FromAddress common.Address
-	TxHash      common.Hash
+	Account        Account
+	Leaf           accumulator.LeafOpening
+	Tx             types.DynamicFeeTx
+	FromAddress    common.Address
+	TxHash         common.Hash
+	InvalidityType invalidity.InvalidityType
 }
 
 var tcases = []TestCases{
@@ -313,13 +314,14 @@ var tcases = []TestCases{
 			}),
 		},
 		Tx: types.DynamicFeeTx{
-			Nonce:     1, // valid nonce
-			Value:     big.NewInt(1),
+			Nonce:     1,             // valid nonce
+			Value:     big.NewInt(1), //invalid balance
 			Gas:       1,
 			GasFeeCap: big.NewInt(1), // gas price
 		},
-		FromAddress: common.HexToAddress("0x00aed6"),
-		TxHash:      common.HexToHash("0x3f1d2e2b4c3f4e5d6c7b8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d"),
+		FromAddress:    common.HexToAddress("0x00aed6"),
+		TxHash:         common.HexToHash("0x3f1d2e2b4c3f4e5d6c7b8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d"),
+		InvalidityType: 1,
 	},
 	{
 		// EOA
@@ -351,8 +353,9 @@ var tcases = []TestCases{
 			Gas:       1,
 			GasFeeCap: big.NewInt(1), // gas price
 		},
-		FromAddress: common.HexToAddress("0x00aed7"),
-		TxHash:      common.HexToHash("0x4f1d2e2b4c3f4e5d6c7b8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9e"),
+		FromAddress:    common.HexToAddress("0x00aed7"),
+		TxHash:         common.HexToHash("0x4f1d2e2b4c3f4e5d6c7b8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9e"),
+		InvalidityType: 0, // or 1
 	},
 	{
 		// Another EOA
@@ -378,13 +381,14 @@ var tcases = []TestCases{
 			}),
 		},
 		Tx: types.DynamicFeeTx{
-			Nonce:     66,              // valid nonce
+			Nonce:     63,              // invalid nonce
 			Value:     big.NewInt(800), // valid value
 			Gas:       1,
 			GasFeeCap: big.NewInt(1), // gas price
 		},
-		FromAddress: common.HexToAddress("0x00aed8"),
-		TxHash:      common.HexToHash("0x5f1d2e2b4c3f4e5d6c7b8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9f"),
+		FromAddress:    common.HexToAddress("0x00aed8"),
+		TxHash:         common.HexToHash("0x5f1d2e2b4c3f4e5d6c7b8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9f"),
+		InvalidityType: 0,
 	},
 }
 

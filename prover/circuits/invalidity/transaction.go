@@ -39,7 +39,8 @@ type AccessTupleGnark struct {
 	StorageKeys []frontend.Variable `json:"storageKeys" gencodec:"required"`
 }
 
-func checkKeccakConsistency(api frontend.API, rlpEncode []frontend.Variable, txHash [2]frontend.Variable, keccak *wizard.VerifierCircuit) {
+// checkKeccakConsistency checks the consistency of keccak module against the given input and output.
+func checkKeccakConsistency(api frontend.API, hashInput []frontend.Variable, hashOutput [2]frontend.Variable, keccak *wizard.VerifierCircuit) {
 
 	var (
 		radix       = big.NewInt(256)
@@ -51,31 +52,31 @@ func checkKeccakConsistency(api frontend.API, rlpEncode []frontend.Variable, txH
 		isHashLoCol = keccak.GetColumn(ifaces.ColIDf("TxHash_INVALIDITY_IS_HASH_LO"))
 	)
 
-	// check that the rlpEncoding matches the limb column
-	if len(limbCol) < len(rlpEncode)/16+1 {
+	// check that the input matches the limb column
+	if len(limbCol) < len(hashInput)/16+1 {
 		utils.Panic("keccak limb column is not large enough to hold the rlp encoding")
 	}
 
-	// split the rlpEncoding into chunks of 16 bytes
-	for len(rlpEncode) > 16 {
-		v := rlpEncode[:16]
+	// split the input into chunks of 16 bytes
+	for len(hashInput) > 16 {
+		v := hashInput[:16]
 		curLimb := compress.ReadNum(api, v, radix)
 		api.AssertIsEqual(limbCol[ctr], curLimb)
 		ctr++
-		rlpEncode = rlpEncode[16:]
+		hashInput = hashInput[16:]
 	}
 	// handle the last chunk
-	if len(rlpEncode) > 0 {
+	if len(hashInput) > 0 {
 		// left align and pad with zeros
 		v := make([]frontend.Variable, 16)
-		copy(v, rlpEncode)
+		copy(v, hashInput)
 		curLimb := compress.ReadNum(api, v, radix)
 		api.AssertIsEqual(limbCol[ctr], curLimb)
 	}
 
-	// check that the hash output matches the txHash
-	api.AssertIsEqual(hashHiCol[0], txHash[0])
-	api.AssertIsEqual(hashLoCol[0], txHash[1])
+	// check that the keccak  hash columns matches the hashOutput
+	api.AssertIsEqual(hashHiCol[0], hashOutput[0])
+	api.AssertIsEqual(hashLoCol[0], hashOutput[1])
 
 	// check that isHashHi and isHashLo are set to 1
 	api.AssertIsEqual(isHashHiCol[0], 1)
