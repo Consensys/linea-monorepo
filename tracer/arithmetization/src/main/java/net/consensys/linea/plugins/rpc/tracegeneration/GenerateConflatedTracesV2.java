@@ -15,6 +15,7 @@
 
 package net.consensys.linea.plugins.rpc.tracegeneration;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
@@ -44,9 +45,9 @@ import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 public class GenerateConflatedTracesV2 {
   private static final JsonConverter CONVERTER = JsonConverter.builder().build();
 
+  private final boolean traceFileCaching;
   private final RequestLimiter requestLimiter;
-
-  private final Path tracesOutputPath;
+  private final TraceWriter traceWriter;
   private final ServiceManager besuContext;
   private TraceService traceService;
   private final LineaL1L2BridgeSharedConfiguration l1L2BridgeSharedConfiguration;
@@ -60,9 +61,10 @@ public class GenerateConflatedTracesV2 {
       final Fork fork) {
     this.besuContext = besuContext;
     this.requestLimiter = requestLimiter;
-    this.tracesOutputPath = Paths.get(endpointConfiguration.tracesOutputPath());
+    this.traceWriter = new TraceWriter(Paths.get(endpointConfiguration.tracesOutputPath()));
     this.l1L2BridgeSharedConfiguration = lineaL1L2BridgeSharedConfiguration;
     this.fork = fork;
+    this.traceFileCaching = endpointConfiguration.caching();
   }
 
   public String getNamespace() {
@@ -100,33 +102,66 @@ public class GenerateConflatedTracesV2 {
 
     final long fromBlock = params.startBlockNumber();
     final long toBlock = params.endBlockNumber();
-    final ZkTracer tracer =
-        new ZkTracer(
-            fork,
-            l1L2BridgeSharedConfiguration,
-            BesuServiceProvider.getBesuService(besuContext, BlockchainService.class)
-                .getChainId()
-                .orElseThrow());
-    final TraceWriter traceWriter = new TraceWriter(tracer);
+    // Determine expected path of the trace file.
+    Path path =
+        this.traceWriter.traceFilePath(
+            fromBlock,
+            toBlock,
+            params.expectedTracesEngineVersion(),
+            TraceRequestParams.getBesuRuntime());
+    // Check whether the trace file already exists (or not).
+    if (cachedTraceFileAvailable(path)) {
+      log.info("[TRACING] cached trace for {}-{} detected as {}", fromBlock, toBlock, path);
+    } else {
+      final ZkTracer tracer =
+          new ZkTracer(
+              fork,
+              l1L2BridgeSharedConfiguration,
+              BesuServiceProvider.getBesuService(besuContext, BlockchainService.class)
+                  .getChainId()
+                  .orElseThrow());
 
-    traceService.trace(
-        fromBlock,
-        toBlock,
-        worldStateBeforeTracing -> tracer.traceStartConflation(toBlock - fromBlock + 1),
-        tracer::traceEndConflation,
-        tracer);
+      traceService.trace(
+          fromBlock,
+          toBlock,
+          worldStateBeforeTracing -> tracer.traceStartConflation(toBlock - fromBlock + 1),
+          tracer::traceEndConflation,
+          tracer);
 
-    log.info("[TRACING] trace for {}-{} computed in {}", fromBlock, toBlock, sw);
-    sw.reset().start();
-
-    final Path path =
-        traceWriter.writeTraceToFile(
-            tracesOutputPath,
-            params.startBlockNumber(),
-            params.endBlockNumber(),
-            params.expectedTracesEngineVersion());
-    log.info("[TRACING] trace for {}-{} serialized to {} in {}", path, toBlock, fromBlock, sw);
+      log.info("[TRACING] trace for {}-{} computed in {}", fromBlock, toBlock, sw);
+      sw.reset().start();
+      // Generate trace file
+      path =
+          traceWriter.writeTraceToFile(
+              tracer,
+              params.startBlockNumber(),
+              params.endBlockNumber(),
+              params.expectedTracesEngineVersion(),
+              TraceRequestParams.getBesuRuntime());
+      log.info("[TRACING] trace for {}-{} serialized to {} in {}", fromBlock, toBlock, path, sw);
+    }
 
     return new TraceFile(params.expectedTracesEngineVersion(), path.toString());
+  }
+
+  /**
+   * Determine whether a suitable trace file already exists in the desired location, and that it has
+   * the correction versioning, etc.
+   *
+   * @param path Expected path for tracefile
+   * @return
+   */
+  private boolean cachedTraceFileAvailable(final Path path) {
+    // Initial sanity checks
+    if (!Files.exists(path)) {
+      // trace file doesn't exist.
+      return false;
+    } else if (!traceFileCaching) {
+      // Caching disabled.
+      log.info("[TRACING] cached trace {} ignored (caching disabled)", path);
+      return false;
+    }
+    //
+    return true;
   }
 }
