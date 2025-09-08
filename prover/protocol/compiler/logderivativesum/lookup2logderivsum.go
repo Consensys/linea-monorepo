@@ -107,7 +107,7 @@ func compileLookupIntoLogDerivativeSum(comp *wizard.CompiledIOP, seg ColumnSegme
 
 	for round, task := range proverTasks {
 		if task.numTasks() > 0 {
-			comp.RegisterProverAction(round, task)
+			comp.RegisterProverAction(round, &task)
 		}
 	}
 
