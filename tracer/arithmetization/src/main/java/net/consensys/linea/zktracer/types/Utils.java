@@ -55,6 +55,7 @@ public class Utils {
   public static BitDecOutput bitDecomposition(int input, int nbStep) {
     final int nbStepMin = 8;
     checkArgument(nbStep >= nbStepMin, "Number of steps must be at least " + nbStepMin);
+    checkArgument(input >= 0, "Input must be non-negative");
 
     ArrayList<Boolean> bit = new ArrayList<>(nbStep);
     ArrayList<Integer> acc = new ArrayList<>(nbStep);
