@@ -3,15 +3,13 @@ package invalidity
 import (
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
-	ethtypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 // Request file for  a  forced transaction attempted to be included in the current aggregation
 // The forcedTransactionNumbers from request files per aggregation, should create a consecutive sequence.
 type Request struct {
-	// the forcedTransaction attempted to be included in the current aggregation,
-	// @azam replace its type with a payload type since we do'nt need the signature part.
-	ForcedTransactionPayLoad *ethtypes.Transaction `json:"forcedTransactionPayload"`
+	// RLP encoding of the transaction see [ethereum.EncodeTxForSigning()]
+	RlpEncodedTx []byte `json:"forcedTransactionRLP"`
 	// transaction number assigned by L1 contract
 	ForcedTransactionNumber uint64 `json:"forcedTransactionNumber"`
 	// from address as given by L1 contract

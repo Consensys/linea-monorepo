@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -14,6 +15,7 @@ import (
 	"github.com/consensys/gnark/backend/solidity"
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
+	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/backend/invalidity"
 	"github.com/consensys/linea-monorepo/prover/circuits"
@@ -465,7 +467,11 @@ func dumpVerifierContract(odir string, circID circuits.MockCircuitID) {
 // previous ftx number generated (for consistency).
 func ProcessInvaliditySpec(rng *rand.Rand, spec *InvalidityProofSpec, prevResp *invalidity.Response, specFile string) *invalidity.Response {
 
-	invalidityReq := RandInvalidityProofRequest(rng, spec, specFile)
+	var (
+		invalidityReq = RandInvalidityProofRequest(rng, spec, specFile)
+		txData        types.TxData
+		err           error
+	)
 
 	if prevResp != nil {
 		invalidityReq.ForcedTransactionNumber = uint64(prevResp.ForcedTransactionNumber + 1)
@@ -473,9 +479,13 @@ func ProcessInvaliditySpec(rng *rand.Rand, spec *InvalidityProofSpec, prevResp *
 		spec.PrevStreamHash = prevResp.FtxStreamHash.Hex()
 	}
 
+	if txData, err = ethereum.DecodeTxFromBytes(bytes.NewReader(invalidityReq.RlpEncodedTx)); err != nil {
+		printlnAndExit("could not decode the RlpEncodedTx %w", err)
+	}
+
 	invalidityReq.FtxStreamHash = circInvalidity.UpdateFtxStreamHash(
 		linTypes.Bytes32FromHex(spec.PrevStreamHash),
-		invalidityReq.ForcedTransactionPayLoad,
+		types.NewTx(txData),
 		spec.ExpectedBlockHeight,
 		invalidityReq.FromAddresses,
 	)

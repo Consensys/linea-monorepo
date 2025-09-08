@@ -100,14 +100,14 @@ func (c *CircuitInvalidity) Assign(assi AssigningInputs) {
 func (c *CircuitInvalidity) MakeProof(
 	setup circuits.Setup,
 	assi AssigningInputs,
-	FuncInputs *public_input.Invalidity,
-	kcomp *wizard.CompiledIOP,
-	kproof wizard.Proof,
+	compilationSuite ...func(*wizard.CompiledIOP),
 ) string {
 
 	switch assi.InvalidityType {
 	case BadNonce, BadBalance:
 		c.SubCircuit = &BadNonceBalanceCircuit{}
+		assi.KeccakCompiledIOP, assi.KeccakProof = MakeKeccakProofs(assi.Transaction, assi.MaxRlpByteSize, compilationSuite...)
+
 	default:
 		panic("unsupported invalidity type")
 	}

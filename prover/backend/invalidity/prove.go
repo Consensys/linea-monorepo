@@ -1,15 +1,18 @@
 package invalidity
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 )
 
 // Prove generates a proof for the invalidity circuit
@@ -19,6 +22,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		setup           circuits.Setup
 		serializedProof string
 		err             error
+		txData          types.TxData
 	)
 
 	if cfg.Invalidity.ProverMode == config.ProverModeDev {
@@ -40,22 +44,22 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		if setup, err = circuits.LoadSetup(cfg, circuits.InvalidityCircuitID); err != nil {
 			return nil, fmt.Errorf("could not load the setup: %w", err)
 		}
-		var (
-			kcomp  *wizard.CompiledIOP
-			kproof wizard.Proof
-		)
-		// if circuit is of type BadNonce/BadBalance, we need to create a keccak module
-		if req.InvalidityTypes == invalidity.BadNonce || req.InvalidityTypes == invalidity.BadBalance {
-			kcomp, kproof = invalidity.MakeKeccakProofs(req.ForcedTransactionPayLoad, MaxRlpByteSize, dummy.Compile)
+
+		if txData, err = ethereum.DecodeTxFromBytes(bytes.NewReader(req.RlpEncodedTx)); err != nil {
+			return nil, fmt.Errorf("could not decode the RlpEncodedTx %w", err)
 		}
 
 		serializedProof = c.MakeProof(setup,
 			invalidity.AssigningInputs{
+				RlpEncodedTx:      req.RlpEncodedTx,
+				Transaction:       types.NewTx(txData),
 				AccountTrieInputs: req.AccountTrie,
-				Transaction:       req.ForcedTransactionPayLoad,
+				FromAddress:       common.Address(req.FromAddresses),
 				InvalidityType:    req.InvalidityTypes,
+				FuncInputs:        *req.FuncInput(),
+				MaxRlpByteSize:    cfg.Invalidity.MaxRlpByteSize,
 			},
-			req.FuncInput(), kcomp, kproof)
+		)
 	}
 
 	rsp := &Response{
