@@ -55,6 +55,8 @@ var (
 	typeofRawPublicInput     = reflect.TypeOf(RawPublicInput{})
 	typeofRawExtraData       = reflect.TypeOf(RawExtraData{})
 	typeofPcsCtxs            = reflect.TypeOf((*vortex.Ctx)(nil))
+	typeOfProverAction       = reflect.TypeOf((*wizard.ProverAction)(nil)).Elem()
+	typeOfVerifierAction     = reflect.TypeOf((*wizard.VerifierAction)(nil)).Elem()
 )
 
 // RawCompiledIOP represents the serialized form of CompiledIOP.
@@ -567,7 +569,8 @@ func (d *Deserializer) unpackQueriesNoParamsRound(de *wizard.CompiledIOP, raws [
 }
 
 // Common helper for prover/verifier actions per round
-func (d *Deserializer) unpackActionsRound(deComp *wizard.CompiledIOP, raws []RawData, round int, contextLabel string,
+func (d *Deserializer) unpackActionsRound(deComp *wizard.CompiledIOP, raws []RawData,
+	round int, contextLabel string, ifaceType reflect.Type,
 	castFn func(any) (any, bool), registerFn func(*wizard.CompiledIOP, int, any)) *serdeError {
 	for _, r := range raws {
 		ctStr := d.PackedObject.Types[r.ConcreteType]
@@ -581,33 +584,65 @@ func (d *Deserializer) unpackActionsRound(deComp *wizard.CompiledIOP, raws []Raw
 			se  *serdeError
 		)
 
-		logrus.Printf("**** Before Checking for concrete type: %v kind:%v", ct, ct.Kind())
+		// logrus.Printf("Interface type passed for %s-action is %v", contextLabel, ifaceType)
+		// logrus.Printf("**** Before Checking for concrete type: %v kind:%v", ct, ct.Kind())
+
 		switch ct.Kind() {
 		case reflect.Struct:
 			res, se = d.UnpackStructObject(r.ConcreteValue, ct)
 			if se != nil {
 				return se.wrapPath("(deser struct compiled-IOP-" + contextLabel + "-actions)")
 			}
+
+			val := res.Interface()
+			if !ct.Implements(ifaceType) && ct.Kind() == reflect.Struct {
+				// return newSerdeErrorf("concrete type:%v must implement iface type %v", ct, ifaceType)
+				//logrus.Printf("Concrete type does not implement iface type. Trying pointer form")
+				val = res.Addr().Interface()
+			} else {
+				logrus.Printf("Concrete type:%v implements iface type", ct)
+			}
+
+			act, ok := castFn(val)
+			if !ok {
+				return newSerdeErrorf("illegal cast to %s action", contextLabel)
+			}
+			registerFn(deComp, round, act)
+
 		case reflect.Slice, reflect.Array:
 			res, se = d.UnpackArrayOrSlice(r.ConcreteValue, ct)
 			if se != nil {
 				return se.wrapPath("(deser slice/array compiled-IOP-" + contextLabel + "-actions)")
 			}
-		}
-		logrus.Printf("**** After Checking for concrete type: %v kind:%v", ct, ct.Kind())
 
-		val := res.Interface()
-		logrus.Printf("BEFORE deser prover val type: %v kind:%v addr:%v  type:%v kind:%v", reflect.TypeOf(val), reflect.TypeOf(val).Kind(), res.Addr(), reflect.TypeOf(res.Addr().Interface()), res.Addr().Kind())
-		if res.Kind() != reflect.Ptr && res.CanAddr() {
-			val = res.Addr().Interface()
+			// logrus.Printf("** Before registering prover action of kind slice/array")
+			act, ok := castFn(res.Interface())
+			if !ok {
+				return newSerdeErrorf("illegal cast to %s action", contextLabel)
+			}
+			registerFn(deComp, round, act)
+			//logrus.Printf("** After registering prover action of kind slice/array")
+
+		default:
+			return newSerdeErrorf("unsupported kind for %s action: %v", contextLabel, ct.Kind())
 		}
 
-		logrus.Printf("AFTER deser prover val type: %v kind:%v addr:%v  type:%v kind:%v", reflect.TypeOf(val), reflect.TypeOf(val).Kind(), res.Addr(), reflect.TypeOf(res.Addr().Interface()), res.Addr().Kind())
-		act, ok := castFn(val)
-		if !ok {
-			return newSerdeErrorf("illegal cast to %s action", contextLabel)
-		}
-		registerFn(deComp, round, act)
+		/*
+			logrus.Printf("**** After Checking for concrete type: %v kind:%v", ct, ct.Kind())
+			val := res.Interface()
+			logrus.Printf("BEFORE deser prover val type: %v kind:%v addr:%v  type:%v kind:%v", reflect.TypeOf(val), reflect.TypeOf(val).Kind(), res.Addr(), reflect.TypeOf(res.Addr().Interface()), res.Addr().Kind())
+			if res.Kind() != reflect.Ptr && res.CanAddr() {
+				val = res.Addr().Interface()
+			}
+
+			logrus.Printf("AFTER deser prover val type: %v kind:%v addr:%v  type:%v kind:%v", reflect.TypeOf(val), reflect.TypeOf(val).Kind(), res.Addr(), reflect.TypeOf(res.Addr().Interface()), res.Addr().Kind())
+			act, ok := castFn(val)
+			if !ok {
+				return newSerdeErrorf("illegal cast to %s action", contextLabel)
+			}
+			registerFn(deComp, round, act)
+
+		*/
 
 		/*
 			// Try cast directly
@@ -634,7 +669,7 @@ func (d *Deserializer) unpackActionsRound(deComp *wizard.CompiledIOP, raws []Raw
 // Wrappers for clarity and call-site compatibility:
 func (d *Deserializer) unpackProverActionsRound(de *wizard.CompiledIOP, raws []RawData, round int) *serdeError {
 	return d.unpackActionsRound(
-		de, raws, round, "prover",
+		de, raws, round, "prover", typeOfProverAction,
 		func(v any) (any, bool) { act, ok := v.(wizard.ProverAction); return act, ok },
 		func(c *wizard.CompiledIOP, r int, act any) { c.RegisterProverAction(r, act.(wizard.ProverAction)) },
 	)
@@ -642,7 +677,7 @@ func (d *Deserializer) unpackProverActionsRound(de *wizard.CompiledIOP, raws []R
 
 func (d *Deserializer) unpackVerifierActionsRound(de *wizard.CompiledIOP, raws []RawData, round int) *serdeError {
 	return d.unpackActionsRound(
-		de, raws, round, "verifier",
+		de, raws, round, "verifier", typeOfVerifierAction,
 		func(v any) (any, bool) { act, ok := v.(wizard.VerifierAction); return act, ok },
 		func(c *wizard.CompiledIOP, r int, act any) { c.RegisterVerifierAction(r, act.(wizard.VerifierAction)) },
 	)
