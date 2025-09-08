@@ -94,12 +94,12 @@ type Serializer struct {
 // Deserializer manages the deserialization process, reconstructing objects from a PackedObject.
 // It caches reconstructed objects to resolve back-references and collects warnings.
 type Deserializer struct {
-	PackedObject     *PackedObject         // The input structure to deserialize.
-	PointedValues    []reflect.Value       // Maps pointer values to indices in PackedObject.Pointers.
-	Columns          []*column.Natural     // Cache of deserialized columns, indexed by BackReference.
-	Coins            []*coin.Info          // Cache of deserialized coins.
-	Queries          []*ifaces.Query       // Cache of deserialized queries.
-	CompiledIOPs     []*wizard.CompiledIOP // Cache of deserialized CompiledIOPs.
+	PackedObject  *PackedObject     // The input structure to deserialize.
+	PointedValues []reflect.Value   // Maps pointer values to indices in PackedObject.Pointers.
+	Columns       []*column.Natural // Cache of deserialized columns, indexed by BackReference.
+	Coins         []*coin.Info      // Cache of deserialized coins.
+	Queries       []*ifaces.Query   // Cache of deserialized queries.
+	//CompiledIOPs     []*wizard.CompiledIOP // Cache of deserialized CompiledIOPs.
 	CompiledIOPsFast []*wizard.CompiledIOP
 	Stores           []*column.Store        // Cache of deserialized stores.
 	Circuits         []*cs.SparseR1CS       // Cache of deserialized circuits.
@@ -110,20 +110,20 @@ type Deserializer struct {
 // PackedObject is the serialized representation of data, designed for CBOR encoding.
 // It stores type metadata, objects, and a payload for the root serialized value.
 type PackedObject struct {
-	Types           []string               `cbor:"a"` // Type names for interfaces.
-	PointedValues   []any                  `cbor:"c"` // Serialized pointers (as PackedIFace).
-	ColumnIDs       []string               `cbor:"d"` // String IDs for columns.
-	Columns         []column.PackedNatural `cbor:"e"` // Serialized columns (as PackedNatural).
-	CoinIDs         []string               `cbor:"f"` // String IDs for coins.
-	Coins           []PackedCoin           `cbor:"g"` // Serialized coins.
-	QueryIDs        []string               `cbor:"h"` // String IDs for queries.
-	Queries         []PackedStructObject   `cbor:"i"` // Serialized queries.
-	Store           []column.PackedStore   `cbor:"j"` // Serialized stores (as arrays).
-	CompiledIOP     []PackedStructObject   `cbor:"k"` // Serialized CompiledIOPs.
-	CompiledIOPFast []RawCompiledIOP       `cbor:"o"` // Serialized CompiledIOPs (fast path).
-	Circuits        [][]byte               `cbor:"l"` // Serialized circuits.
-	Expressions     []PackedStructObject   `cbor:"m"` // Serialized expressions
-	Payload         any                    `cbor:"n"` // CBOR-encoded root value.
+	Types         []string               `cbor:"a"` // Type names for interfaces.
+	PointedValues []any                  `cbor:"c"` // Serialized pointers (as PackedIFace).
+	ColumnIDs     []string               `cbor:"d"` // String IDs for columns.
+	Columns       []column.PackedNatural `cbor:"e"` // Serialized columns (as PackedNatural).
+	CoinIDs       []string               `cbor:"f"` // String IDs for coins.
+	Coins         []PackedCoin           `cbor:"g"` // Serialized coins.
+	QueryIDs      []string               `cbor:"h"` // String IDs for queries.
+	Queries       []PackedStructObject   `cbor:"i"` // Serialized queries.
+	Store         []column.PackedStore   `cbor:"j"` // Serialized stores (as arrays).
+	//CompiledIOP     []PackedStructObject   `cbor:"k"` // Serialized CompiledIOPs.
+	CompiledIOPFast []RawCompiledIOP     `cbor:"o"` // Serialized CompiledIOPs (fast path).
+	Circuits        [][]byte             `cbor:"l"` // Serialized circuits.
+	Expressions     []PackedStructObject `cbor:"m"` // Serialized expressions
+	Payload         any                  `cbor:"n"` // CBOR-encoded root value.
 }
 
 // PackedIFace serializes an interface value, storing its type index and concrete value.
@@ -202,11 +202,12 @@ func NewDeserializer(packedObject *PackedObject) *Deserializer {
 		Columns:       make([]*column.Natural, len(packedObject.Columns)),
 		Coins:         make([]*coin.Info, len(packedObject.Coins)),
 		Queries:       make([]*ifaces.Query, len(packedObject.Queries)),
-		CompiledIOPs:  make([]*wizard.CompiledIOP, len(packedObject.CompiledIOP)),
-		Stores:        make([]*column.Store, len(packedObject.Store)),
-		Circuits:      make([]*cs.SparseR1CS, len(packedObject.Circuits)),
-		Expressions:   make([]*symbolic.Expression, len(packedObject.Expressions)),
-		PackedObject:  packedObject,
+		// CompiledIOPs: make([]*wizard.CompiledIOP, len(packedObject.CompiledIOP)),
+		CompiledIOPsFast: make([]*wizard.CompiledIOP, len(packedObject.CompiledIOPFast)),
+		Stores:           make([]*column.Store, len(packedObject.Store)),
+		Circuits:         make([]*cs.SparseR1CS, len(packedObject.Circuits)),
+		Expressions:      make([]*symbolic.Expression, len(packedObject.Expressions)),
+		PackedObject:     packedObject,
 	}
 }
 
