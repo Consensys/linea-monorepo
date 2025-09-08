@@ -172,10 +172,19 @@ class GlobalBlobAwareConflationCalculator(
       endBlockTime = blobBlockCounters
         .find { it.blockNumber == blobInterval.endBlockNumber }!!.blockTimestamp,
     )
+    val triggerName = if (numberOfBatches >= batchesLimit) {
+      // we must trigger an alert when BATCHES_LIMIT is reached because blobs
+      // won't be used to max capacity and affects Linea profitability
+      // please do not change the name of this trigger, it is used in the log's based alert
+      "BATCHES_LIMIT"
+    } else {
+      trigger.name
+    }
+
     log.info(
       "new blob: blob={} trigger={} blobSizeBytes={} blobBatchesCount={} blobBatchesLimit={} blobBatchesList={}",
       blobInterval.intervalString(),
-      trigger,
+      triggerName,
       compressedData.size,
       blobBatches.size,
       batchesLimit,
