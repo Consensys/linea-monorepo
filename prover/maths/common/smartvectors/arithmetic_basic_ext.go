@@ -75,16 +75,22 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPo
 	length := vecs[0].Len()
 	pool, hasPool := mempool.ExtractCheckOptionalStrict(length, p...)
 	// Preallocate the intermediate values
-	var resReg, tmpVec []fext.Element
+	var resReg, tmpVecExt []fext.Element
+	var tmpVec []field.Element
+
 	if !hasPool {
 		resReg = make([]fext.Element, length)
-		tmpVec = make([]fext.Element, length)
+		tmpVecExt = make([]fext.Element, length)
+		tmpVec = make([]field.Element, length)
 	} else {
 		a := AllocFromPoolExt(pool)
 		b := AllocFromPoolExt(pool)
-		resReg, tmpVec = a.RegularExt, b.RegularExt
+		bBase := AllocFromPool(pool)
+		resReg, tmpVecExt = a.RegularExt, b.RegularExt
+		tmpVec = bBase.Regular
 		vectorext.Fill(resReg, fext.Zero())
 		defer b.Free(pool)
+		defer bBase.Free(pool)
 	}
 
 	var tmpF, resCon fext.Element
@@ -138,11 +144,16 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPo
 			anyReg = true
 			v := casted.RegularExt
 			accumulateRegExt(resReg, v, xPow)
+		case *PaddedCircularWindow:
+			// treat it as a regular, reusing the buffer
+			anyReg = true
+			casted.WriteInSlice(tmpVec)
+			accumulateRegMixed(resReg, tmpVec, xPow)
 		case *PaddedCircularWindowExt:
 			// treat it as a regular, reusing the buffer
 			anyReg = true
-			casted.WriteInSliceExt(tmpVec)
-			accumulateRegExt(resReg, tmpVec, xPow)
+			casted.WriteInSliceExt(tmpVecExt)
+			accumulateRegExt(resReg, tmpVecExt, xPow)
 		default:
 			utils.Panic("unexpected type %T", v)
 		}
