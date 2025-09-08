@@ -254,8 +254,8 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 	raw := d.PackedObject.CompiledIOPFast[v]
 
 	// Reserve the cache and outer shapes up-front
-	de := NewEmptyCompiledIOP(raw)
-	d.CompiledIOPsFast[v] = de
+	deComp := newEmptyCompiledIOP(raw)
+	d.CompiledIOPsFast[v] = deComp
 
 	// FiatShamirSetup
 	{
@@ -263,7 +263,7 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 		if err != nil {
 			return reflect.Value{}, err.wrapPath("(deser compiled-IOP-fiatshamirsetup)")
 		}
-		de.FiatShamirSetup.SetBigInt(f.Interface().(*big.Int))
+		deComp.FiatShamirSetup.SetBigInt(f.Interface().(*big.Int))
 	}
 
 	// Columns
@@ -272,7 +272,7 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 		if err != nil {
 			return reflect.Value{}, err.wrapPath("(deser. compiled-IOP-columns)")
 		}
-		de.Columns = storeVal.Interface().(*column.Store)
+		deComp.Columns = storeVal.Interface().(*column.Store)
 	}
 
 	// Precomputed
@@ -286,7 +286,7 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 			if !ok {
 				return reflect.Value{}, newSerdeErrorf("could not cast to RawPrecomputed: %w", err)
 			}
-			de.Precomputed.InsertNew(pre.ColID, pre.ColAssign)
+			deComp.Precomputed.InsertNew(pre.ColID, pre.ColAssign)
 		}
 	}
 
@@ -298,9 +298,9 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 			if err != nil {
 				return reflect.Value{}, err.wrapPath("(deser compiled-IOP-pcsctxs)")
 			}
-			de.PcsCtxs = pcsVal.Interface()
+			deComp.PcsCtxs = pcsVal.Interface()
 		} else {
-			de.PcsCtxs = nil
+			deComp.PcsCtxs = nil
 		}
 	}
 
@@ -316,7 +316,7 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 			if !ok {
 				return reflect.Value{}, newSerdeErrorf("could not cast to raw public input: %w", err)
 			}
-			de.PublicInputs[i] = wizard.PublicInput{Name: pi.Name, Acc: pi.Acc}
+			deComp.PublicInputs[i] = wizard.PublicInput{Name: pi.Name, Acc: pi.Acc}
 		}
 	}
 
@@ -331,7 +331,7 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 			if !ok {
 				return reflect.Value{}, newSerdeErrorf("could not cast to raw extra data: %w", err)
 			}
-			de.ExtraData[ed.Key] = ed.Value
+			deComp.ExtraData[ed.Key] = ed.Value
 		}
 	}
 
@@ -349,33 +349,32 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 				if !ok {
 					return reflect.Value{}, newSerdeErrorf("illegal cast to *coin.Info: %w", err)
 				}
-				de.Coins.AddToRound(round, info.Name, info)
+				deComp.Coins.AddToRound(round, info.Name, info)
 			}
 		}
 
 		// Queries
 		{
-			if se := d.unpackQueriesParamsRound(de, raw.QueriesParams[round], round); se != nil {
+			if se := d.unpackQueriesParamsRound(deComp, raw.QueriesParams[round], round); se != nil {
 				return reflect.Value{}, se
 			}
-			if se := d.unpackQueriesNoParamsRound(de, raw.QueriesNoParams[round], round); se != nil {
+			if se := d.unpackQueriesNoParamsRound(deComp, raw.QueriesNoParams[round], round); se != nil {
 				return reflect.Value{}, se
 			}
 		}
 
 		// Actions and hooks
 		{
-			if se := d.unpackProverActionsRound(de, raw.Subprovers[round], round); se != nil {
+			if se := d.unpackProverActionsRound(deComp, raw.Subprovers[round], round); se != nil {
 				return reflect.Value{}, se
 			}
-			if se := d.unpackFSHooksRound(de, raw.FiatShamirHooksPreSampling[round], round); se != nil {
+			if se := d.unpackFSHooksRound(deComp, raw.FiatShamirHooksPreSampling[round], round); se != nil {
 				return reflect.Value{}, se
 			}
-			if se := d.unpackVerifierActionsRound(de, raw.SubVerifiers[round], round); se != nil {
+			if se := d.unpackVerifierActionsRound(deComp, raw.SubVerifiers[round], round); se != nil {
 				return reflect.Value{}, se
 			}
 		}
-
 	}
 
 	return reflect.ValueOf(d.CompiledIOPsFast[v]), nil
@@ -466,8 +465,21 @@ func initRawCompiledIOP(comp *wizard.CompiledIOP) *RawCompiledIOP {
 }
 
 // Query packers per register (no closures inside functions)
-func (s *Serializer) packQueriesRound(reg *wizard.ByRoundRegister[ifaces.QueryID, ifaces.Query],
+func (s *Serializer) packQueriesRound(comp *wizard.CompiledIOP,
 	round int, contextLabel string) ([]RawQuery, *serdeError) {
+
+	var reg wizard.ByRoundRegister[ifaces.QueryID, ifaces.Query]
+	switch contextLabel {
+	case "params":
+		reg = comp.QueriesParams
+	case "no-params":
+		reg = comp.QueriesNoParams
+	default:
+		return nil, newSerdeErrorf("invalid contextLabel during packing query: %v", contextLabel)
+	}
+
+	// IMPORTANT: This `AllKeysAt` internally calls `Reserve(round+1)` which is why in the corresponding
+	// deserializer we need to do the same.
 	ids := reg.AllKeysAt(round)
 	out := make([]RawQuery, len(ids))
 	for i, id := range ids {
@@ -495,16 +507,16 @@ func (s *Serializer) packQueriesRound(reg *wizard.ByRoundRegister[ifaces.QueryID
 
 // Wrappers for clarity and call-site compatibility:
 func (s *Serializer) packQueriesParamsRound(comp *wizard.CompiledIOP, round int) ([]RawQuery, *serdeError) {
-	return s.packQueriesRound(&comp.QueriesParams, round, "params")
+	return s.packQueriesRound(comp, round, "params")
 }
 
 func (s *Serializer) packQueriesNoParamsRound(comp *wizard.CompiledIOP, round int) ([]RawQuery, *serdeError) {
-	return s.packQueriesRound(&comp.QueriesNoParams, round, "no-params")
+	return s.packQueriesRound(comp, round, "no-params")
 }
 
 // -------------------- constructor with Reserve --------------------
 
-func NewEmptyCompiledIOP(rawCompIOP RawCompiledIOP) *wizard.CompiledIOP {
+func newEmptyCompiledIOP(rawCompIOP RawCompiledIOP) *wizard.CompiledIOP {
 	comp := &wizard.CompiledIOP{
 		DummyCompiled:              rawCompIOP.DummyCompiled,
 		SelfRecursionCount:         rawCompIOP.SelfRecursionCount,
@@ -522,6 +534,8 @@ func NewEmptyCompiledIOP(rawCompIOP RawCompiledIOP) *wizard.CompiledIOP {
 		PcsCtxs:                    nil,
 	}
 	// Ensure outer length equals NumRounds even if some rounds have zero entries
+	comp.QueriesParams.ReserveFor(rawCompIOP.NumRounds)
+	comp.QueriesNoParams.ReserveFor(rawCompIOP.NumRounds)
 	comp.SubProvers.Reserve(rawCompIOP.NumRounds)
 	comp.SubVerifiers.Reserve(rawCompIOP.NumRounds)
 	comp.FiatShamirHooksPreSampling.Reserve(rawCompIOP.NumRounds)
@@ -531,8 +545,19 @@ func NewEmptyCompiledIOP(rawCompIOP RawCompiledIOP) *wizard.CompiledIOP {
 // -------------------- query/action unpack helpers --------------------
 
 // Query unpackers per register (no closures inside functions)
-func (d *Deserializer) unpackQueriesRound(reg *wizard.ByRoundRegister[ifaces.QueryID, ifaces.Query],
+func (d *Deserializer) unpackQueriesRound(deComp *wizard.CompiledIOP,
 	raws []RawQuery, round int, contextLabel string) *serdeError {
+
+	var reg wizard.ByRoundRegister[ifaces.QueryID, ifaces.Query]
+	switch contextLabel {
+	case "params":
+		reg = deComp.QueriesParams
+	case "no-params":
+		reg = deComp.QueriesNoParams
+	default:
+		return newSerdeErrorf("invalid contextLabel during unpacking query: %v", contextLabel)
+	}
+
 	for _, rq := range raws {
 		ctStr := d.PackedObject.Types[rq.ConcreteType]
 		ct, err := findRegisteredImplementation(ctStr)
@@ -566,12 +591,12 @@ func (d *Deserializer) unpackQueriesRound(reg *wizard.ByRoundRegister[ifaces.Que
 }
 
 // Wrappers for clarity and call-site compatibility:
-func (d *Deserializer) unpackQueriesParamsRound(de *wizard.CompiledIOP, raws []RawQuery, round int) *serdeError {
-	return d.unpackQueriesRound(&de.QueriesParams, raws, round, "params")
+func (d *Deserializer) unpackQueriesParamsRound(deComp *wizard.CompiledIOP, raws []RawQuery, round int) *serdeError {
+	return d.unpackQueriesRound(deComp, raws, round, "params")
 }
 
-func (d *Deserializer) unpackQueriesNoParamsRound(de *wizard.CompiledIOP, raws []RawQuery, round int) *serdeError {
-	return d.unpackQueriesRound(&de.QueriesNoParams, raws, round, "no-params")
+func (d *Deserializer) unpackQueriesNoParamsRound(deComp *wizard.CompiledIOP, raws []RawQuery, round int) *serdeError {
+	return d.unpackQueriesRound(deComp, raws, round, "no-params")
 }
 
 // Common helper for prover/verifier actions per round
