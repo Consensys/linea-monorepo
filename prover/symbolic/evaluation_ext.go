@@ -96,6 +96,10 @@ func newChunkSolver(b *ExpressionBoard) chunkSolver {
 		boardAssignmentsignment.assignment[lvl] = make([]nodeAssignmentGautam, len(b.Nodes[lvl]))
 	}
 
+	// TODO @gbotrel assuming that the graph was already simplified for constants before
+	// (i.e. if an op has all constant inputs, it has been replaced by a constant node)
+	// TODO @gbotrel check the above and do it if not the case
+
 	// Init the constants and inputs.
 	for i := range b.Nodes {
 		for j := range b.Nodes[i] {
@@ -175,18 +179,18 @@ func (solver *chunkSolver) evalNode(na *nodeAssignmentGautam) {
 	if na.HasValue {
 		return
 	}
-	// TODO do we need to sanity check all inputs have values ?
+
+	// TODO @gbotrel we assume all inputs have values and the graph is correct.
+
+	res := extensions.Vector(na.ConcreteValue[:])
+
 	switch op := na.Node.Operator.(type) {
 	case Product:
-		res := extensions.Vector(na.ConcreteValue[:])
-		// TODO @gbotrel if all exponents are 0, concreteValue can be dirty
-		first := true
 		for i := range na.Inputs {
 			vTmp := extensions.Vector(solver.tmp[:])
 			vInput := extensions.Vector(*na.Inputs[i].(*sv.RegularExt))
 			vTmp.Exp(vInput, int64(op.Exponents[i]))
-			if first {
-				first = false
+			if i == 0 {
 				copy(res, vTmp)
 			} else {
 				res.Mul(res, vTmp)
@@ -195,7 +199,6 @@ func (solver *chunkSolver) evalNode(na *nodeAssignmentGautam) {
 	case LinComb:
 		var t0 extensions.E4
 		vTmp := extensions.Vector(solver.tmp[:])
-		res := extensions.Vector(na.ConcreteValue[:])
 		for i := range na.Inputs {
 			vInput := extensions.Vector(*na.Inputs[i].(*sv.RegularExt))
 			coeff := op.Coeffs[i]
@@ -238,9 +241,22 @@ func (solver *chunkSolver) evalNode(na *nodeAssignmentGautam) {
 				res.Add(res, vTmp)
 			}
 		}
+	case PolyEval:
+		// result = input[0] + input[1]·x + input[2]·x² + input[3]·x³ + ...
+		// i.e., ∑_{i=0}^{n} input[i]·x^i
+		x := na.Inputs[0].(*sv.RegularExt).GetExt(0)
+		copy(res, extensions.Vector(*na.Inputs[len(na.Inputs)-1].(*sv.RegularExt)))
+
+		for i := len(na.Inputs) - 2; i >= 1; i-- {
+			vTmp := extensions.Vector(*na.Inputs[i].(*sv.RegularExt))
+			res.ScalarMul(res, &x)
+			res.Add(res, vTmp)
+		}
 	default:
-		eval := na.Node.Operator.EvaluateExt(na.Inputs)
-		eval.WriteInSliceExt(na.ConcreteValue[:])
+		utils.Panic("unknown op %T", na.Node.Operator)
+		// fmt.Printf("unknown op %T\n", na.Node.Operator)
+		// eval := na.Node.Operator.EvaluateExt(na.Inputs)
+		// eval.WriteInSliceExt(na.ConcreteValue[:])
 	}
 
 	na.HasValue = true

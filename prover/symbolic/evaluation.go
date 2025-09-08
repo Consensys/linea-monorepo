@@ -19,7 +19,7 @@ const (
 	// MaxChunkSize is a fine-tuned by hand number. Smaller is slower, larger
 	// comsumes for more memory. For testing, it can be overriden even though
 	// it will become flakky if we have several tests.
-	MaxChunkSize int = 1 << 9
+	MaxChunkSize int = 1 << 8 // TODO @gbotrel revisit
 )
 
 type GetDegree = func(m interface{}) int
