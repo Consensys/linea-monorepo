@@ -1,9 +1,7 @@
 package symbolic
 
 import (
-	"fmt"
 	"math/big"
-	"sync"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
@@ -16,152 +14,7 @@ import (
 
 // Evaluate the board for a batch  of inputs in parallel
 func (b *ExpressionBoard) EvaluateExt(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
-
-	/*
-		Find the size of the vector
-	*/
-	totalSize := 0
-	for i, inp := range inputs {
-		if totalSize > 0 && totalSize != inp.Len() {
-			// Expects that all vector inputs have the same size
-			utils.Panic("Mismatch in the size: len(v) %v, totalsize %v, pos %v", inp.Len(), totalSize, i)
-		}
-
-		if totalSize == 0 {
-			totalSize = inp.Len()
-		}
-	}
-
-	if totalSize == 0 {
-		// Either, there is no input or the inputs are empty. Both
-		// cases are panic
-		utils.Panic("Either there is no input or the inputs all have size 0")
-	}
-
-	if len(p) > 0 && p[0].Size() != MaxChunkSize {
-		utils.Panic("the pool should be a pool of vectors of size=%v but it is %v", MaxChunkSize, p[0].Size())
-	}
-
-	/*
-		The is no vector input iff totalSize is 0
-		Thus the condition below catch the two cases where:
-			- There is no input vectors (scalars only)
-			- The vectors are smaller than the min chunk size
-	*/
-
-	if totalSize < MaxChunkSize {
-		// never pass the pool here as the pool assumes that all vectors have a
-		// size of MaxChunkSize. Thus, it would not work here.
-		return b.evaluateSingleThread(inputs).DeepCopy()
-	}
-
-	// This is the code-path that is used for benchmarking when the size of the
-	// vectors is exactly MaxChunkSize. In production, it will rather use the
-	// multi-threaded option. The above condition cannot use the pool because we
-	// assume here that the pool has a vector size of exactly MaxChunkSize.
-	if totalSize == MaxChunkSize {
-		return b.evaluateSingleThreadExt(inputs, p...).DeepCopy()
-	}
-
-	if totalSize%MaxChunkSize != 0 {
-		utils.Panic("Unsupported : totalSize %v is not divided by the chunk size %v", totalSize, MaxChunkSize)
-	}
-
-	numChunks := totalSize / MaxChunkSize
-	res := make([]fext.Element, totalSize)
-
-	parallel.ExecuteFromChan(numChunks, func(wg *sync.WaitGroup, id *parallel.AtomicCounter) {
-
-		var pool []mempool.MemPool
-		if len(p) > 0 {
-			if _, ok := p[0].(*mempool.DebuggeableCall); !ok {
-				pool = append(pool, mempool.WrapsWithMemCache(p[0]))
-			}
-		}
-
-		chunkInputs := make([]sv.SmartVector, len(inputs))
-
-		for {
-			chunkID, ok := id.Next()
-			if !ok {
-				break
-			}
-
-			var (
-				chunkStart = chunkID * MaxChunkSize
-				chunkStop  = (chunkID + 1) * MaxChunkSize
-			)
-
-			for i, inp := range inputs {
-				chunkInputs[i] = inp.SubVector(chunkStart, chunkStop)
-				// Sanity-check : the output of SubVector must have the correct length
-				if chunkInputs[i].Len() != chunkStop-chunkStart {
-					utils.Panic("Subvector failed, subvector should have size %v but size is %v", chunkStop-chunkStart, chunkInputs[i].Len())
-				}
-			}
-
-			// We don't parallelize evaluations where the inputs are all scalars
-			// Therefore the cast is safe.
-			chunkRes := b.evaluateSingleThreadExt(chunkInputs, pool...)
-
-			// No race condition here as each call write to different places
-			// of vec.
-			chunkRes.WriteInSliceExt(res[chunkStart:chunkStop])
-
-			wg.Done()
-		}
-
-		if len(p) > 0 {
-			if sa, ok := pool[0].(*mempool.SliceArena); ok {
-				sa.TearDown()
-			}
-		}
-	})
-
-	return sv.NewRegularExt(res)
-}
-
-// evaluateSingleThread evaluates a boarded expression. The inputs can be either
-// vector or scalars. The vector's input length should be smaller than a chunk.
-func (b *ExpressionBoard) evaluateSingleThreadExt(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
-
-	var (
-		length         = inputs[0].Len()
-		pool, hasPool  = mempool.ExtractCheckOptionalSoft(length, p...)
-		nodeAssignment = b.prepareNodeAssignments(inputs)
-	)
-
-	// Then computes the levels one by one
-	for level := 1; level < len(nodeAssignment); level++ {
-		for pil := range nodeAssignment[level] {
-
-			node := &nodeAssignment[level][pil]
-			nodeAssignment.evalExt(node, pool)
-		}
-	}
-
-	// Assertion, the last level contains only one node (the final result)
-	if len(nodeAssignment[len(nodeAssignment)-1]) > 1 {
-		panic("multiple heads")
-	}
-
-	resBuf := nodeAssignment[len(b.Nodes)-1][0].Value
-
-	if resBuf == nil {
-		panic("resbuf is nil")
-	}
-
-	// Deep-copy the last node and put resBuf back in the pool. It's cleanier
-	// that way.
-	if hasPool {
-		if reg, ok := resBuf.(*sv.PooledExt); ok {
-			resGC := reg.DeepCopy()
-			reg.Free(pool)
-			resBuf = resGC
-		}
-	}
-
-	return resBuf
+	return b.EvaluateMixed(inputs, p...)
 }
 
 // Evaluate the board for a batch  of inputs in parallel
@@ -174,7 +27,7 @@ func (b *ExpressionBoard) EvaluateMixed(inputs []sv.SmartVector, p ...mempool.Me
 	for i, inp := range inputs {
 		if totalSize > 0 && totalSize != inp.Len() {
 			// Expects that all vector inputs have the same size
-			utils.Panic("Mismatch in the size: len(v) %v, totalsize %v, pos %v", inp.Len(), totalSize, i)
+			utils.Panic("mismatch in the size: len(v) %v, totalsize %v, pos %v", inp.Len(), totalSize, i)
 		}
 
 		if totalSize == 0 {
@@ -183,238 +36,61 @@ func (b *ExpressionBoard) EvaluateMixed(inputs []sv.SmartVector, p ...mempool.Me
 	}
 
 	if totalSize == 0 {
-		// Either, there is no input or the inputs are empty. Both
-		// cases are panic
-		utils.Panic("Either there is no input or the inputs all have size 0")
+		utils.Panic("either there is no input or the inputs all have size 0")
 	}
 
 	if len(p) > 0 && p[0].Size() != MaxChunkSize {
 		utils.Panic("the pool should be a pool of vectors of size=%v but it is %v", MaxChunkSize, p[0].Size())
 	}
 
-	/*
-		The is no vector input iff totalSize is 0
-		Thus the condition below catch the two cases where:
-			- There is no input vectors (scalars only)
-			- The vectors are smaller than the min chunk size
-	*/
-
-	if totalSize < MaxChunkSize {
-		// never pass the pool here as the pool assumes that all vectors have a
-		// size of MaxChunkSize. Thus, it would not work here.
-		return b.evaluateSingleThreadMixed(inputs).DeepCopy()
+	isBase := sv.AreAllBase(inputs)
+	if isBase {
+		return b.Evaluate(inputs, p...)
 	}
 
-	// This is the code-path that is used for benchmarking when the size of the
-	// vectors is exactly MaxChunkSize. In production, it will rather use the
-	// multi-threaded option. The above condition cannot use the pool because we
-	// assume here that the pool has a vector size of exactly MaxChunkSize.
-	if totalSize == MaxChunkSize {
-		fmt.Printf("doing single threaded mixed\n")
-		return b.evaluateSingleThreadMixed(inputs, p...).DeepCopy()
+	// The result is an extension vector
+	res := make([]fext.Element, totalSize)
+
+	if totalSize < MaxChunkSize {
+		// return b.evaluateSingleThreadMixed(inputs, p...).DeepCopy()
+		solver := newChunkSolver(b)
+
+		solver.reset(inputs, 0, totalSize, b)
+		solver.evaluate()
+
+		copy(res[:totalSize], solver.assignment[len(b.Nodes)-1][0].ConcreteValue[:totalSize])
+		if totalSize == 1 {
+			return sv.NewConstantExt(res[0], 1)
+		}
+		return sv.NewRegularExt(res)
 	}
 
 	if totalSize%MaxChunkSize != 0 {
-		utils.Panic("Unsupported : totalSize %v is not divided by the chunk size %v", totalSize, MaxChunkSize)
+		utils.Panic("totalSize %v is not divided by the chunk size %v", totalSize, MaxChunkSize)
 	}
 
 	numChunks := totalSize / MaxChunkSize
 
-	// resIsBase := sv.AreAllBase(inputs)
-	// if resIsBase {
-	// 	fmt.Printf("doing base vectors, totalSize=%v, numChunks=%v\n", totalSize, numChunks)
-	// 	// we are dealing with base vectors
-	// 	res := make([]field.Element, totalSize)
-	// 	parallel.ExecuteFromChan(numChunks, func(wg *sync.WaitGroup, id *parallel.AtomicCounter) {
-
-	// 		var pool []mempool.MemPool
-	// 		if len(p) > 0 {
-	// 			if _, ok := p[0].(*mempool.DebuggeableCall); !ok {
-	// 				pool = append(pool, mempool.WrapsWithMemCache(p[0]))
-	// 			}
-	// 		}
-
-	// 		chunkInputs := make([]sv.SmartVector, len(inputs))
-
-	// 		for {
-	// 			chunkID, ok := id.Next()
-	// 			if !ok {
-	// 				break
-	// 			}
-
-	// 			var (
-	// 				chunkStart = chunkID * MaxChunkSize
-	// 				chunkStop  = (chunkID + 1) * MaxChunkSize
-	// 			)
-
-	// 			for i, inp := range inputs {
-	// 				chunkInputs[i] = inp.SubVector(chunkStart, chunkStop)
-	// 				// Sanity-check : the output of SubVector must have the correct length
-	// 				if chunkInputs[i].Len() != chunkStop-chunkStart {
-	// 					utils.Panic("Subvector failed, subvector should have size %v but size is %v", chunkStop-chunkStart, chunkInputs[i].Len())
-	// 				}
-	// 			}
-
-	// 			// We don't parallelize evaluations where the inputs are all scalars
-	// 			// Therefore the cast is safe.
-	// 			chunkRes := b.evaluateSingleThreadMixed(chunkInputs, pool...)
-
-	// 			// No race condition here as each call write to different places
-	// 			// of vec.
-	// 			chunkRes.WriteInSlice(res[chunkStart:chunkStop])
-
-	// 			wg.Done()
-	// 		}
-
-	// 		if len(p) > 0 {
-	// 			if sa, ok := pool[0].(*mempool.SliceArena); ok {
-	// 				sa.TearDown()
-	// 			}
-	// 		}
-	// 	})
-	// 	return sv.NewRegular(res)
-	// } else {
-	nbNodes := 0
-	for _, level := range b.Nodes {
-		nbNodes += len(level)
-	}
-	fmt.Printf("doing ext vectors, totalSize=%v, numChunks=%v, nbNodes=%v\n", totalSize, numChunks, nbNodes)
-
-	// The result is an extension vector
-	res := make([]fext.Element, totalSize)
 	parallel.Execute(numChunks, func(start, stop int) {
 
-		// chunkInputs := make([]sv.SmartVector, len(inputs))
-		ba := b.initNodeAssignmentsGautam(inputs)
+		solver := newChunkSolver(b)
 		for chunkID := start; chunkID < stop; chunkID++ {
-			// chunkID, ok := id.Next()
-			// if !ok {
-			// 	break
-			// }
 
-			var (
-				chunkStart = chunkID * MaxChunkSize
-				chunkStop  = (chunkID + 1) * MaxChunkSize
-			)
+			chunkStart := chunkID * MaxChunkSize
+			chunkStop := (chunkID + 1) * MaxChunkSize
 
-			// for i, inp := range inputs {
-			// 	chunkInputs[i] = inp.SubVector(chunkStart, chunkStop)
-			// 	// Sanity-check : the output of SubVector must have the correct length
-			// 	if chunkInputs[i].Len() != chunkStop-chunkStart {
-			// 		utils.Panic("Subvector failed, subvector should have size %v but size is %v", chunkStop-chunkStart, chunkInputs[i].Len())
-			// 	}
-			// }
+			solver.reset(inputs, chunkStart, chunkStop, b)
+			solver.evaluate()
 
-			b.resetNodeAssignmentsGautam(inputs, chunkStart, chunkStop, &ba)
-			// We don't parallelize evaluations where the inputs are all scalars
-			// Therefore the cast is safe.
-			b.evaluateSingleThreadMixedGautam(inputs, chunkStart, chunkStop, &ba)
-
-			// No race condition here as each call write to different places
-			// of vec.
-			// chunkRes.WriteInSliceExt(res[chunkStart:chunkStop])
-
-			copy(res[chunkStart:chunkStop], ba.assignment[len(b.Nodes)-1][0].ConcreteValue[:])
-
-			// wg.Done()
+			copy(res[chunkStart:chunkStop], solver.assignment[len(b.Nodes)-1][0].ConcreteValue[:])
 		}
 
 	})
 	return sv.NewRegularExt(res)
-	// }
 }
 
-// evaluateSingleThread evaluates a boarded expression. The inputs can be either
-// vector or scalars. The vector's input length should be smaller than a chunk.
-func (b *ExpressionBoard) evaluateSingleThreadMixed(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
-
-	var (
-		length         = inputs[0].Len()
-		pool, hasPool  = mempool.ExtractCheckOptionalSoft(length, p...)
-		nodeAssignment = b.prepareNodeAssignments(inputs)
-	)
-
-	// Then computes the levels one by one
-	for level := 1; level < len(nodeAssignment); level++ {
-		for pil := range nodeAssignment[level] {
-
-			node := &nodeAssignment[level][pil]
-			nodeAssignment.evalMixed(node, pool)
-
-		}
-	}
-
-	// Assertion, the last level contains only one node (the final result)
-	if len(nodeAssignment[len(nodeAssignment)-1]) > 1 {
-		panic("multiple heads")
-	}
-
-	resBuf := nodeAssignment[len(b.Nodes)-1][0].Value
-
-	if resBuf == nil {
-		panic("resbuf is nil")
-	}
-
-	// Deep-copy the last node and put resBuf back in the pool. It's cleaner
-	// that way.
-	if hasPool {
-		if reg, ok := resBuf.(*sv.Pooled); ok {
-			// we have a base Pooled smart vector
-			resGC := reg.DeepCopy()
-			reg.Free(pool)
-			resBuf = resGC
-		} else {
-			// check for an extension
-			if regExt, isPooledExtension := resBuf.(*sv.PooledExt); isPooledExtension {
-				resGC := regExt.DeepCopy()
-				regExt.Free(pool)
-				resBuf = resGC
-			}
-		}
-	}
-	return resBuf
-}
-
-// evaluateSingleThread evaluates a boarded expression. The inputs can be either
-// vector or scalars. The vector's input length should be smaller than a chunk.
-func (b *ExpressionBoard) evaluateSingleThreadMixedGautam(inputs []sv.SmartVector, chunkStart, chunkStop int, ba *boardAssignmentGautam) {
-
-	// var (
-	// 	nodeAssignment = b.prepareNodeAssignments(inputs)
-	// )
-
-	// Then computes the levels one by one
-	nodeAssignment := ba.assignment
-	for level := 1; level < len(nodeAssignment); level++ {
-		for pil := range nodeAssignment[level] {
-
-			node := &nodeAssignment[level][pil]
-			ba.evalMixedGautam(node)
-
-		}
-	}
-
-	// // Assertion, the last level contains only one node (the final result)
-	// if len(nodeAssignment[len(nodeAssignment)-1]) > 1 {
-	// 	panic("multiple heads")
-	// }
-
-	// // create a new regular smart vector ext and write the concrete value in it.
-	// res := make([]fext.Element, chunkStop-chunkStart) // TODO &gbotrel use pool ?
-	// copy(res, nodeAssignment[len(b.Nodes)-1][0].ConcreteValue[:])
-	// resExt := sv.NewRegularExt(res)
-
-	// // resBuf := nodeAssignment[len(b.Nodes)-1][0].Value
-
-	// // if resBuf == nil {
-	// // 	panic("resbuf is nil")
-	// // }
-
-	// return resExt
-}
-
-func (b *ExpressionBoard) initNodeAssignmentsGautam(inputs []sv.SmartVector) boardAssignmentGautam {
-	boardAssignmentsignment := boardAssignmentGautam{b: big.NewInt(0)}
+func newChunkSolver(b *ExpressionBoard) chunkSolver {
+	boardAssignmentsignment := chunkSolver{b: big.NewInt(0)}
 	boardAssignmentsignment.assignment = make([][]nodeAssignmentGautam, len(b.Nodes))
 	for lvl := range boardAssignmentsignment.assignment {
 		boardAssignmentsignment.assignment[lvl] = make([]nodeAssignmentGautam, len(b.Nodes[lvl]))
@@ -456,12 +132,14 @@ func (b *ExpressionBoard) initNodeAssignmentsGautam(inputs []sv.SmartVector) boa
 	return boardAssignmentsignment
 }
 
-func (b *ExpressionBoard) resetNodeAssignmentsGautam(inputs []sv.SmartVector, chunkStart, chunkStop int, nodeAssignments *boardAssignmentGautam) {
+func (solver *chunkSolver) reset(inputs []sv.SmartVector, chunkStart, chunkStop int, b *ExpressionBoard) {
 	inputCursor := 0
+	chunkLen := chunkStop - chunkStart // can be < MaxChunkSize
+
 	// Init the constants and inputs.
 	for i := range b.Nodes {
 		for j := range b.Nodes[i] {
-			na := &nodeAssignments.assignment[i][j]
+			na := &solver.assignment[i][j]
 			if !na.IsConstant {
 				na.HasValue = false
 			}
@@ -472,7 +150,7 @@ func (b *ExpressionBoard) resetNodeAssignmentsGautam(inputs []sv.SmartVector, ch
 					// leaves, we set the input.
 					// Sanity-check the input should have the correct length
 					sb := inputs[inputCursor].SubVector(chunkStart, chunkStop)
-					sb.WriteInSliceExt(na.ConcreteValue[:])
+					sb.WriteInSliceExt(na.ConcreteValue[:chunkLen])
 					// nodeAssignments[0][i].Value = inputs[inputCursor]
 					inputCursor++
 					na.HasValue = true
@@ -483,7 +161,16 @@ func (b *ExpressionBoard) resetNodeAssignmentsGautam(inputs []sv.SmartVector, ch
 
 }
 
-func (b *boardAssignmentGautam) evalMixedGautam(na *nodeAssignmentGautam) {
+func (solver *chunkSolver) evaluate() {
+	// Evaluate values level by level
+	for level := 1; level < len(solver.assignment); level++ {
+		for pil := range solver.assignment[level] {
+			solver.evalNode(&solver.assignment[level][pil])
+		}
+	}
+}
+
+func (solver *chunkSolver) evalNode(na *nodeAssignmentGautam) {
 
 	if na.HasValue {
 		return
@@ -495,7 +182,7 @@ func (b *boardAssignmentGautam) evalMixedGautam(na *nodeAssignmentGautam) {
 		// TODO @gbotrel if all exponents are 0, concreteValue can be dirty
 		first := true
 		for i := range na.Inputs {
-			vTmp := extensions.Vector(b.tmp[:])
+			vTmp := extensions.Vector(solver.tmp[:])
 			vInput := extensions.Vector(*na.Inputs[i].(*sv.RegularExt))
 			vTmp.Exp(vInput, int64(op.Exponents[i]))
 			if first {
@@ -507,7 +194,7 @@ func (b *boardAssignmentGautam) evalMixedGautam(na *nodeAssignmentGautam) {
 		}
 	case LinComb:
 		var t0 extensions.E4
-		vTmp := extensions.Vector(b.tmp[:])
+		vTmp := extensions.Vector(solver.tmp[:])
 		res := extensions.Vector(na.ConcreteValue[:])
 		for i := range na.Inputs {
 			vInput := extensions.Vector(*na.Inputs[i].(*sv.RegularExt))
@@ -548,7 +235,7 @@ func (b *boardAssignmentGautam) evalMixedGautam(na *nodeAssignmentGautam) {
 			default:
 				t0.B0.A0.SetInt64(int64(op.Coeffs[i]))
 				vTmp.ScalarMul(vInput, &t0)
-				res.Add(res, vInput)
+				res.Add(res, vTmp)
 			}
 		}
 	default:
@@ -557,31 +244,5 @@ func (b *boardAssignmentGautam) evalMixedGautam(na *nodeAssignmentGautam) {
 	}
 
 	na.HasValue = true
-
-	// for i := range val {
-	// 	b.incParentKnownCountOfMixed(val[i], pool, false)
-	// }
-}
-
-func exp(z *extensions.E4, x extensions.E4, k int64) {
-	if k == 0 {
-		z.SetOne()
-		return
-	}
-
-	if k < 0 {
-		// negative k, we invert
-		// if k < 0: xᵏ (mod q⁴) == (x⁻¹)ᵏ (mod q⁴)
-		x.Inverse(&x)
-		k = -k
-	}
-
-	z.SetOne()
-	for i := 63; i >= 0; i-- {
-		z.Square(z)
-		if (k & (1 << uint(i))) != 0 {
-			z.Mul(z, &x)
-		}
-	}
 
 }
