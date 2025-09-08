@@ -600,7 +600,10 @@ func (d *Deserializer) unpackActionsRound(deComp *wizard.CompiledIOP, raws []Raw
 				//logrus.Printf("Concrete type does not implement iface type. Trying pointer form")
 				val = res.Addr().Interface()
 			} else {
-				logrus.Printf("Concrete type:%v implements iface type", ct)
+				if !TypeTracker[ctStr] {
+					logrus.Printf("Concrete type:%v implements iface type", ct)
+					TypeTracker[ctStr] = true
+				}
 			}
 
 			act, ok := castFn(val)
@@ -616,11 +619,13 @@ func (d *Deserializer) unpackActionsRound(deComp *wizard.CompiledIOP, raws []Raw
 			}
 
 			// logrus.Printf("** Before registering prover action of kind slice/array")
-			act, ok := castFn(res.Interface())
+			val := res.Interface()
+			act, ok := castFn(val)
 			if !ok {
 				return newSerdeErrorf("illegal cast to %s action", contextLabel)
 			}
 			registerFn(deComp, round, act)
+
 			//logrus.Printf("** After registering prover action of kind slice/array")
 
 		default:
