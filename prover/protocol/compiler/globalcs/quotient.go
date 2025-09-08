@@ -207,8 +207,8 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 		totalTimeGc = int64(0)
 
 		// Initial step is to compute the FFTs for all committed vectors
-		coeffs        = sync.Map{} // (ifaces.ColID <=> sv.SmartVector)
-		pool          = mempool.CreateFromSyncPool(symbolic.MaxChunkSize).Prewarm(runtime.GOMAXPROCS(0) * ctx.MaxNbExprNode)
+		coeffs = sync.Map{} // (ifaces.ColID <=> sv.SmartVector)
+		// pool          = mempool.CreateFromSyncPool(symbolic.MaxChunkSize).Prewarm(runtime.GOMAXPROCS(0) * ctx.MaxNbExprNode)
 		largePool     = mempool.CreateFromSyncPool(ctx.DomainSize).Prewarm(len(ctx.AllInvolvedColumns))
 		timeIFFT      time.Duration
 		timeFFT       time.Duration
@@ -479,7 +479,7 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 
 				// Note that this will panic if the expression contains "no commitment"
 				// This should be caught already by the constructor of the constraint.
-				quotientShare := ctx.AggregateExpressionsBoard[j].EvaluateMixed(evalInputs, pool)
+				quotientShare := ctx.AggregateExpressionsBoard[j].EvaluateMixed(evalInputs)
 				quotientShare = sv.ScalarMulExt(quotientShare, annulatorInvVals[i])
 				run.AssignColumn(ctx.QuotientShares[j][share].GetColID(), quotientShare)
 			})

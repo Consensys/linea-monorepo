@@ -2,25 +2,456 @@ package symbolic
 
 import (
 	"fmt"
-	"sync"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 
 	"github.com/consensys/gnark/frontend"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 const (
-	// MaxChunkSize is a fine-tuned by hand number. Smaller is slower, larger
-	// comsumes for more memory. For testing, it can be overriden even though
+	// maxChunkSize is a fine-tuned by hand number. Smaller is slower, larger
+	// consumes for more memory. For testing, it can be overriden even though
 	// it will become flakky if we have several tests.
-	MaxChunkSize int = 1 << 8 // TODO @gbotrel revisit
+	maxChunkSize int = 1 << 8 // TODO @gbotrel revisit
 )
+
+type evaluation[T chunkValue] struct {
+	nodes   [][]evaluationNode[T]
+	scratch T
+}
+
+type evaluationNode[T chunkValue] struct {
+	value      T
+	inputs     []*T
+	op         Operator
+	hasValue   bool
+	isConstant bool
+}
+
+type chunkExt [maxChunkSize]fext.Element
+type chunkBase [maxChunkSize]field.Element
+
+type chunkValue interface {
+	chunkBase | chunkExt
+}
+
+func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
+	return b.evaluate(inputs)
+}
+
+func (b *ExpressionBoard) EvaluateExt(inputs []sv.SmartVector) sv.SmartVector {
+	return b.evaluate(inputs)
+}
+
+func (b *ExpressionBoard) EvaluateMixed(inputs []sv.SmartVector) sv.SmartVector {
+	return b.evaluate(inputs)
+}
+
+func (b *ExpressionBoard) evaluate(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
+
+	/*
+		Find the size of the vector
+	*/
+	totalSize := 0
+	for i, inp := range inputs {
+		if totalSize > 0 && totalSize != inp.Len() {
+			// Expects that all vector inputs have the same size
+			utils.Panic("mismatch in the size: len(v) %v, totalsize %v, pos %v", inp.Len(), totalSize, i)
+		}
+
+		if totalSize == 0 {
+			totalSize = inp.Len()
+		}
+	}
+
+	if totalSize == 0 {
+		utils.Panic("either there is no input or the inputs all have size 0")
+	}
+
+	if len(p) > 0 && p[0].Size() != maxChunkSize {
+		utils.Panic("the pool should be a pool of vectors of size=%v but it is %v", maxChunkSize, p[0].Size())
+	}
+
+	isBase := sv.AreAllBase(inputs)
+	if isBase {
+		// The result is an extension vector
+		res := make([]field.Element, totalSize)
+
+		if totalSize < maxChunkSize {
+			solver := newEvaluation[chunkBase](b)
+
+			solver.reset(inputs, 0, totalSize, b)
+			solver.evaluate()
+
+			copy(res[:totalSize], solver.nodes[len(b.Nodes)-1][0].value[:totalSize])
+			if totalSize == 1 {
+				return sv.NewConstant(res[0], 1)
+			}
+			return sv.NewRegular(res)
+		}
+
+		if totalSize%maxChunkSize != 0 {
+			utils.Panic("totalSize %v is not divided by the chunk size %v", totalSize, maxChunkSize)
+		}
+
+		numChunks := totalSize / maxChunkSize
+
+		parallel.Execute(numChunks, func(start, stop int) {
+
+			solver := newEvaluation[chunkBase](b)
+			for chunkID := start; chunkID < stop; chunkID++ {
+
+				chunkStart := chunkID * maxChunkSize
+				chunkStop := (chunkID + 1) * maxChunkSize
+
+				solver.reset(inputs, chunkStart, chunkStop, b)
+				solver.evaluate()
+
+				copy(res[chunkStart:chunkStop], solver.nodes[len(b.Nodes)-1][0].value[:])
+			}
+
+		})
+		return sv.NewRegular(res)
+	}
+
+	// The result is an extension vector
+	res := make([]fext.Element, totalSize)
+
+	if totalSize < maxChunkSize {
+		solver := newEvaluation[chunkExt](b)
+
+		solver.reset(inputs, 0, totalSize, b)
+		solver.evaluate()
+
+		copy(res[:totalSize], solver.nodes[len(b.Nodes)-1][0].value[:totalSize])
+		if totalSize == 1 {
+			return sv.NewConstantExt(res[0], 1)
+		}
+		return sv.NewRegularExt(res)
+	}
+
+	if totalSize%maxChunkSize != 0 {
+		utils.Panic("totalSize %v is not divided by the chunk size %v", totalSize, maxChunkSize)
+	}
+
+	numChunks := totalSize / maxChunkSize
+
+	parallel.Execute(numChunks, func(start, stop int) {
+
+		solver := newEvaluation[chunkExt](b)
+		for chunkID := start; chunkID < stop; chunkID++ {
+
+			chunkStart := chunkID * maxChunkSize
+			chunkStop := (chunkID + 1) * maxChunkSize
+
+			solver.reset(inputs, chunkStart, chunkStop, b)
+			solver.evaluate()
+
+			copy(res[chunkStart:chunkStop], solver.nodes[len(b.Nodes)-1][0].value[:])
+		}
+
+	})
+	return sv.NewRegularExt(res)
+}
+
+func newEvaluation[T chunkValue](b *ExpressionBoard) evaluation[T] {
+	solver := evaluation[T]{}
+	solver.nodes = make([][]evaluationNode[T], len(b.Nodes))
+	for lvl := range solver.nodes {
+		solver.nodes[lvl] = make([]evaluationNode[T], len(b.Nodes[lvl]))
+	}
+
+	// TODO @gbotrel assuming that the graph was already simplified for constants before
+	// (i.e. if an op has all constant inputs, it has been replaced by a constant node)
+	// TODO @gbotrel check the above and do it if not the case
+
+	// Init the constants and inputs.
+	for i := range b.Nodes {
+		for j := range b.Nodes[i] {
+			na := &solver.nodes[i][j]
+			node := &b.Nodes[i][j]
+			na.op = node.Operator
+			na.hasValue = false
+			na.isConstant = false
+			na.inputs = make([]*T, len(node.Children))
+
+			switch op := node.Operator.(type) {
+			case Constant:
+				// The constants are identified to constant vectors
+				na.isConstant = true
+				na.hasValue = true
+				fill(&na.value, op.Val)
+				if len(node.Children) != 0 {
+					panic("constant with children")
+				}
+			}
+
+			// set the inputs pointers
+			for k := range node.Children {
+				id := node.Children[k]
+				na.inputs[k] = &(solver.nodes[id.level()][id.posInLevel()].value)
+			}
+		}
+	}
+
+	return solver
+}
+
+func fill[T chunkValue](dst *T, v fext.GenericFieldElem) {
+	switch casted := any(dst).(type) {
+	case *chunkExt:
+		ev := v.GetExt()
+		for i := range casted {
+			casted[i] = ev
+		}
+	case *chunkBase:
+		ev, _ := v.GetBase()
+		for i := range casted {
+			casted[i] = ev
+		}
+	default:
+		utils.Panic("unknown type %T", dst)
+	}
+}
+
+func (e *evaluation[T]) reset(inputs []sv.SmartVector, chunkStart, chunkStop int, b *ExpressionBoard) {
+	inputCursor := 0
+	chunkLen := chunkStop - chunkStart // can be < MaxChunkSize
+
+	// Init the constants and inputs.
+	for i := range b.Nodes {
+		for j := range b.Nodes[i] {
+			na := &e.nodes[i][j]
+			if !na.isConstant {
+				na.hasValue = false
+			}
+
+			if i == 0 {
+				switch na.op.(type) {
+				case Variable:
+					// leaves, we set the input.
+					// Sanity-check the input should have the correct length
+					sb := inputs[inputCursor].SubVector(chunkStart, chunkStop)
+					switch casted := any(&na.value).(type) {
+					case *chunkBase:
+						sb.WriteInSlice(casted[:chunkLen])
+					case *chunkExt:
+						sb.WriteInSliceExt(casted[:chunkLen])
+					}
+					// nodeAssignments[0][i].Value = inputs[inputCursor]
+					inputCursor++
+					na.hasValue = true
+				}
+			}
+		}
+	}
+
+}
+
+func (e *evaluation[T]) evaluate() {
+	// Evaluate values level by level
+	switch casted := any(e).(type) {
+	case *evaluation[chunkBase]:
+		evaluateBase(casted)
+	case *evaluation[chunkExt]:
+		evaluateExt(casted)
+	default:
+		utils.Panic("unknown type %T", casted)
+	}
+}
+
+func evaluateBase(s *evaluation[chunkBase]) {
+	for level := 1; level < len(s.nodes); level++ {
+		for pil := range s.nodes[level] {
+			evalNodeBase(s, &s.nodes[level][pil])
+		}
+	}
+}
+
+func evaluateExt(s *evaluation[chunkExt]) {
+	for level := 1; level < len(s.nodes); level++ {
+		for pil := range s.nodes[level] {
+			evalNodeExt(s, &s.nodes[level][pil])
+		}
+	}
+}
+
+// evalNodeBase and evalNodeExt are specialized and identical; could use function operator
+// to make more generic.
+
+func evalNodeExt(solver *evaluation[chunkExt], na *evaluationNode[chunkExt]) {
+	if na.hasValue {
+		return
+	}
+
+	res := extensions.Vector(na.value[:])
+
+	switch op := na.op.(type) {
+	case Product:
+		for i := range na.inputs {
+			vTmp := extensions.Vector(solver.scratch[:])
+			vInput := extensions.Vector(na.inputs[i][:])
+			vTmp.Exp(vInput, int64(op.Exponents[i]))
+			if i == 0 {
+				copy(res, vTmp)
+			} else {
+				res.Mul(res, vTmp)
+			}
+		}
+	case LinComb:
+		var t0 extensions.E4
+		vTmp := extensions.Vector(solver.scratch[:])
+		for i := range na.inputs {
+			vInput := extensions.Vector(na.inputs[i][:])
+			coeff := op.Coeffs[i]
+
+			if i == 0 {
+				switch coeff {
+				case 0:
+					for j := range res {
+						res[j].SetZero()
+					}
+				case 1:
+					copy(res, vInput)
+				case 2:
+					res.Add(vInput, vInput)
+				case -1:
+					for j := range res {
+						res[j].SetZero()
+					}
+					res.Sub(res, vInput)
+				default:
+					t0.B0.A0.SetInt64(int64(coeff))
+					res.ScalarMul(vInput, &t0)
+				}
+				continue
+			}
+
+			switch coeff {
+			case 0:
+				continue
+			case 1:
+				res.Add(res, vInput)
+			case 2:
+				res.Add(res, vInput)
+				res.Add(res, vInput)
+			case -1:
+				res.Sub(res, vInput)
+			default:
+				t0.B0.A0.SetInt64(int64(op.Coeffs[i]))
+				vTmp.ScalarMul(vInput, &t0)
+				res.Add(res, vTmp)
+			}
+		}
+	case PolyEval:
+		// result = input[0] + input[1]·x + input[2]·x² + input[3]·x³ + ...
+		// i.e., ∑_{i=0}^{n} input[i]·x^i
+		x := na.inputs[0][0] // we assume that the first input is always a constant
+		copy(res, extensions.Vector(na.inputs[len(na.inputs)-1][:]))
+
+		for i := len(na.inputs) - 2; i >= 1; i-- {
+			vTmp := extensions.Vector(na.inputs[i][:])
+			res.ScalarMul(res, &x)
+			res.Add(res, vTmp)
+		}
+	default:
+		utils.Panic("unknown op %T", na.op)
+	}
+
+	na.hasValue = true
+
+}
+
+func evalNodeBase(solver *evaluation[chunkBase], na *evaluationNode[chunkBase]) {
+	if na.hasValue {
+		return
+	}
+
+	res := field.Vector(na.value[:])
+
+	switch op := na.op.(type) {
+	case Product:
+		for i := range na.inputs {
+			vTmp := field.Vector(solver.scratch[:])
+			vInput := field.Vector(na.inputs[i][:])
+			vTmp.Exp(vInput, int64(op.Exponents[i]))
+			if i == 0 {
+				copy(res, vTmp)
+			} else {
+				res.Mul(res, vTmp)
+			}
+		}
+	case LinComb:
+		var t0 field.Element
+		vTmp := field.Vector(solver.scratch[:])
+		for i := range na.inputs {
+			vInput := field.Vector(na.inputs[i][:])
+			coeff := op.Coeffs[i]
+
+			if i == 0 {
+				switch coeff {
+				case 0:
+					for j := range res {
+						res[j].SetZero()
+					}
+				case 1:
+					copy(res, vInput)
+				case 2:
+					res.Add(vInput, vInput)
+				case -1:
+					for j := range res {
+						res[j].SetZero()
+					}
+					res.Sub(res, vInput)
+				default:
+					t0.SetInt64(int64(coeff))
+					res.ScalarMul(vInput, &t0)
+				}
+				continue
+			}
+
+			switch coeff {
+			case 0:
+				continue
+			case 1:
+				res.Add(res, vInput)
+			case 2:
+				res.Add(res, vInput)
+				res.Add(res, vInput)
+			case -1:
+				res.Sub(res, vInput)
+			default:
+				t0.SetInt64(int64(op.Coeffs[i]))
+				vTmp.ScalarMul(vInput, &t0)
+				res.Add(res, vTmp)
+			}
+		}
+	case PolyEval:
+		// result = input[0] + input[1]·x + input[2]·x² + input[3]·x³ + ...
+		// i.e., ∑_{i=0}^{n} input[i]·x^i
+		x := na.inputs[0][0] // we assume that the first input is always a constant
+		copy(res, field.Vector(na.inputs[len(na.inputs)-1][:]))
+
+		for i := len(na.inputs) - 2; i >= 1; i-- {
+			vTmp := field.Vector(na.inputs[i][:])
+			res.ScalarMul(res, &x)
+			res.Add(res, vTmp)
+		}
+	default:
+		utils.Panic("unknown op %T", na.op)
+	}
+
+	na.hasValue = true
+
+}
 
 type GetDegree = func(m interface{}) int
 
@@ -36,161 +467,6 @@ func (b *ExpressionBoard) ListVariableMetadata() []Metadata {
 		}
 	}
 	return res
-}
-
-// Evaluate the board for a batch  of inputs in parallel
-func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
-
-	/*
-		Find the size of the vector
-	*/
-	totalSize := 0
-	for i, inp := range inputs {
-		if totalSize > 0 && totalSize != inp.Len() {
-			// Expects that all vector inputs have the same size
-			utils.Panic("Mismatch in the size: len(v) %v, totalsize %v, pos %v", inp.Len(), totalSize, i)
-		}
-
-		if totalSize == 0 {
-			totalSize = inp.Len()
-		}
-	}
-
-	if totalSize == 0 {
-		// Either, there is no input or the inputs are empty. Both
-		// cases are panic
-		utils.Panic("Either there is no input or the inputs all have size 0")
-	}
-
-	if len(p) > 0 && p[0].Size() != MaxChunkSize {
-		utils.Panic("the pool should be a pool of vectors of size=%v but it is %v", MaxChunkSize, p[0].Size())
-	}
-
-	/*
-		There is no vector input iff totalSize is 0
-		Thus the condition below catch the two cases where:
-			- There is no input vectors (scalars only)
-			- The vectors are smaller than the min chunk size
-	*/
-
-	if totalSize < MaxChunkSize {
-		// never pass the pool here as the pool assumes that all vectors have a
-		// size of MaxChunkSize. Thus, it would not work here.
-		return b.evaluateSingleThread(inputs).DeepCopy()
-	}
-
-	// This is the code-path that is used for benchmarking when the size of the
-	// vectors is exactly MaxChunkSize. In production, it will rather use the
-	// multi-threaded option. The above condition cannot use the pool because we
-	// assume here that the pool has a vector size of exactly MaxChunkSize.
-	if totalSize == MaxChunkSize {
-		return b.evaluateSingleThread(inputs, p...).DeepCopy()
-	}
-
-	if totalSize%MaxChunkSize != 0 {
-		utils.Panic("Unsupported : totalSize %v is not divided by the chunk size %v", totalSize, MaxChunkSize)
-	}
-
-	numChunks := totalSize / MaxChunkSize
-	res := make([]field.Element, totalSize)
-
-	parallel.ExecuteFromChan(numChunks, func(wg *sync.WaitGroup, id *parallel.AtomicCounter) {
-
-		var pool []mempool.MemPool
-		if len(p) > 0 {
-			if _, ok := p[0].(*mempool.DebuggeableCall); !ok {
-				pool = append(pool, mempool.WrapsWithMemCache(p[0]))
-			}
-		}
-
-		chunkInputs := make([]sv.SmartVector, len(inputs))
-
-		for {
-			chunkID, ok := id.Next()
-			if !ok {
-				break
-			}
-
-			var (
-				chunkStart = chunkID * MaxChunkSize
-				chunkStop  = (chunkID + 1) * MaxChunkSize
-			)
-
-			for i, inp := range inputs {
-				chunkInputs[i] = inp.SubVector(chunkStart, chunkStop)
-				// Sanity-check : the output of SubVector must have the correct length
-				if chunkInputs[i].Len() != chunkStop-chunkStart {
-					utils.Panic("Subvector failed, subvector should have size %v but size is %v", chunkStop-chunkStart, chunkInputs[i].Len())
-				}
-			}
-
-			// We don't parallelize evaluations where the inputs are all scalars
-			// Therefore the cast is safe.
-			chunkRes := b.evaluateSingleThread(chunkInputs, pool...)
-
-			// If chunkRes is all zeroes, then we can skip the copying. As res
-			// is already zero. This optimization is particularly useful for the
-			// limitless prover where we often deal with very sparse vectors.
-			if c, ok := chunkRes.(*sv.Constant); !ok || c.Val() != field.Zero() {
-				// No race condition here as each call write to different places
-				// of vec.
-				chunkRes.WriteInSlice(res[chunkStart:chunkStop])
-			}
-
-			wg.Done()
-		}
-
-		if len(p) > 0 {
-			if sa, ok := pool[0].(*mempool.SliceArena); ok {
-				sa.TearDown()
-			}
-		}
-	})
-
-	return sv.NewRegular(res)
-}
-
-// evaluateSingleThread evaluates a boarded expression. The inputs can be either
-// vector or scalars. The vector's input length should be smaller than a chunk.
-func (b *ExpressionBoard) evaluateSingleThread(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
-
-	var (
-		length         = inputs[0].Len()
-		pool, hasPool  = mempool.ExtractCheckOptionalSoft(length, p...)
-		nodeAssignment = b.prepareNodeAssignments(inputs)
-	)
-
-	// Then computes the levels one by one
-	for level := 1; level < len(nodeAssignment); level++ {
-		for pil := range nodeAssignment[level] {
-
-			node := &nodeAssignment[level][pil]
-			nodeAssignment.eval(node, pool)
-		}
-	}
-
-	// Assertion, the last level contains only one node (the final result)
-	if len(nodeAssignment[len(nodeAssignment)-1]) > 1 {
-		panic("multiple heads")
-	}
-
-	resBuf := nodeAssignment[len(b.Nodes)-1][0].Value
-
-	if resBuf == nil {
-		panic("resbuf is nil")
-	}
-
-	// Deep-copy the last node and put resBuf back in the pool. It's cleanier
-	// that way.
-	if hasPool {
-		if reg, ok := resBuf.(*sv.Pooled); ok {
-			resGC := reg.DeepCopy()
-			reg.Free(pool)
-			resBuf = resGC
-		}
-	}
-
-	return resBuf
 }
 
 // Degree returns the overall degree of the expression board. It admits a custom
