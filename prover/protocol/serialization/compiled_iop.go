@@ -100,7 +100,6 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 	raw := initRawCompiledIOP(comp)
 
 	// Precomputed
-
 	{
 		for idx, colID := range comp.Precomputed.ListAllKeys() {
 			pre := RawPrecomputed{ColID: colID, ColAssign: comp.Precomputed.MustGet(colID)}
@@ -114,7 +113,6 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 
 	// PcsCtxs
 	{
-		logrus.Println("Packing PcsCtxs")
 		if comp.PcsCtxs != nil {
 			pcsAny, err := s.PackValue(reflect.ValueOf(comp.PcsCtxs))
 			if err != nil {
@@ -292,7 +290,6 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 
 	// PcsCtxs
 	{
-		logrus.Println("Unpacking Pcsctxs")
 		if raw.PcsCtxs != nil {
 			pcsVal, err := d.UnpackValue(raw.PcsCtxs, typeofPcsCtxs)
 			if err != nil {
@@ -306,7 +303,6 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 
 	// Public inputs
 	{
-		logrus.Println("Unpacking Public inputs")
 		for i, rpi := range raw.PublicInputs {
 			res, err := d.UnpackStructObject(rpi, typeofRawPublicInput)
 			if err != nil {
@@ -522,9 +518,9 @@ func newEmptyCompiledIOP(rawCompIOP RawCompiledIOP) *wizard.CompiledIOP {
 		SelfRecursionCount:         rawCompIOP.SelfRecursionCount,
 		WithStorePointerChecks:     rawCompIOP.WithStorePointerChecks,
 		Columns:                    column.NewStore(),
+		Coins:                      wizard.NewRegister[coin.Name, coin.Info](),
 		QueriesParams:              wizard.NewRegister[ifaces.QueryID, ifaces.Query](),
 		QueriesNoParams:            wizard.NewRegister[ifaces.QueryID, ifaces.Query](),
-		Coins:                      wizard.NewRegister[coin.Name, coin.Info](),
 		SubProvers:                 collection.VecVec[wizard.ProverAction]{},
 		SubVerifiers:               collection.VecVec[wizard.VerifierAction]{},
 		FiatShamirHooksPreSampling: collection.VecVec[wizard.VerifierAction]{},
@@ -534,6 +530,8 @@ func newEmptyCompiledIOP(rawCompIOP RawCompiledIOP) *wizard.CompiledIOP {
 		PcsCtxs:                    nil,
 	}
 	// Ensure outer length equals NumRounds even if some rounds have zero entries
+	comp.Columns.ReserveFor(rawCompIOP.NumRounds)
+	comp.Coins.ReserveFor(rawCompIOP.NumRounds)
 	comp.QueriesParams.ReserveFor(rawCompIOP.NumRounds)
 	comp.QueriesNoParams.ReserveFor(rawCompIOP.NumRounds)
 	comp.SubProvers.Reserve(rawCompIOP.NumRounds)
