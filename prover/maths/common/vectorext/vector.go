@@ -19,15 +19,14 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"runtime"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"unsafe"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 // Vector represents a slice of Element.
@@ -139,7 +138,7 @@ func (vector *Vector) AsyncReadFrom(r io.Reader) (int64, error, chan error) {
 		var cptErrors uint64
 
 		// process the elements in parallel
-		execute(int(sliceLen), func(start, end int) {
+		parallel.Execute(int(sliceLen), func(start, end int) {
 
 			coeffs := make([]koalabear.Element, degreeExtension)
 
@@ -245,50 +244,6 @@ func (vector Vector) Swap(i, j int) {
 	vector[i], vector[j] = vector[j], vector[i]
 }
 
-func addVecGeneric(res, a, b Vector) {
-	if len(a) != len(b) || len(a) != len(res) {
-		panic("vector.Add: vectors don't have the same length")
-	}
-	for i := 0; i < len(a); i++ {
-		res[i].Add(&a[i], &b[i])
-	}
-}
-
-func subVecGeneric(res, a, b Vector) {
-	if len(a) != len(b) || len(a) != len(res) {
-		panic("vector.Sub: vectors don't have the same length")
-	}
-	for i := 0; i < len(a); i++ {
-		res[i].Sub(&a[i], &b[i])
-	}
-}
-
-func scalarMulVecGeneric(res, a Vector, b *fext.Element) {
-	if len(a) != len(res) {
-		panic("vector.ScalarMul: vectors don't have the same length")
-	}
-	for i := 0; i < len(a); i++ {
-		res[i].Mul(&a[i], b)
-	}
-}
-
-func sumVecGeneric(res *fext.Element, a Vector) {
-	for i := 0; i < len(a); i++ {
-		res.Add(res, &a[i])
-	}
-}
-
-func innerProductVecGeneric(res *fext.Element, a, b Vector) {
-	if len(a) != len(b) {
-		panic("vector.InnerProduct: vectors don't have the same length")
-	}
-	var tmp fext.Element
-	for i := 0; i < len(a); i++ {
-		tmp.Mul(&a[i], &b[i])
-		res.Add(res, &tmp)
-	}
-}
-
 func innerProductVecByElement(res *fext.Element, a Vector, b []field.Element) {
 	if len(a) != len(b) {
 		panic("vector.InnerProduct: vectors don't have the same length")
@@ -298,68 +253,6 @@ func innerProductVecByElement(res *fext.Element, a Vector, b []field.Element) {
 		tmp.MulByElement(&a[i], &b[i])
 		res.Add(res, &tmp)
 	}
-}
-
-func mulVecGeneric(res, a, b Vector) {
-	if len(a) != len(b) || len(a) != len(res) {
-		panic("vector.Mul: vectors don't have the same length")
-	}
-	for i := 0; i < len(a); i++ {
-		res[i].Mul(&a[i], &b[i])
-	}
-}
-
-// TODO @gbotrel make a public package out of that.
-// execute executes the work function in parallel.
-// this is copy paste from internal/parallel/parallel.go
-// as we don't want to generate code importing internal/
-func execute(nbIterations int, work func(int, int), maxCpus ...int) {
-
-	nbTasks := runtime.NumCPU()
-	if len(maxCpus) == 1 {
-		nbTasks = maxCpus[0]
-		if nbTasks < 1 {
-			nbTasks = 1
-		} else if nbTasks > 512 {
-			nbTasks = 512
-		}
-	}
-
-	if nbTasks == 1 {
-		// no go routines
-		work(0, nbIterations)
-		return
-	}
-
-	nbIterationsPerCpus := nbIterations / nbTasks
-
-	// more CPUs than tasks: a CPU will work on exactly one iteration
-	if nbIterationsPerCpus < 1 {
-		nbIterationsPerCpus = 1
-		nbTasks = nbIterations
-	}
-
-	var wg sync.WaitGroup
-
-	extraTasks := nbIterations - (nbTasks * nbIterationsPerCpus)
-	extraTasksOffset := 0
-
-	for i := 0; i < nbTasks; i++ {
-		wg.Add(1)
-		_start := i*nbIterationsPerCpus + extraTasksOffset
-		_end := _start + nbIterationsPerCpus
-		if extraTasks > 0 {
-			_end++
-			extraTasks--
-			extraTasksOffset++
-		}
-		go func() {
-			work(_start, _end)
-			wg.Done()
-		}()
-	}
-
-	wg.Wait()
 }
 func PrettifyGeneric(a []fext.GenericFieldElem) string {
 	res := "["
