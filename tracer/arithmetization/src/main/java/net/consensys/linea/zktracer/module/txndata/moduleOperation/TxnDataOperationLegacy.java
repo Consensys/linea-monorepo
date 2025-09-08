@@ -20,17 +20,7 @@ import static net.consensys.linea.zktracer.Trace.MAX_REFUND_QUOTIENT;
 import static net.consensys.linea.zktracer.Trace.RLP_RCPT_SUBPHASE_ID_CUMUL_GAS;
 import static net.consensys.linea.zktracer.Trace.RLP_RCPT_SUBPHASE_ID_STATUS_CODE;
 import static net.consensys.linea.zktracer.Trace.RLP_RCPT_SUBPHASE_ID_TYPE;
-import static net.consensys.linea.zktracer.Trace.Txndata.COMMON_RLP_TXN_PHASE_NUMBER_0;
-import static net.consensys.linea.zktracer.Trace.Txndata.COMMON_RLP_TXN_PHASE_NUMBER_1;
-import static net.consensys.linea.zktracer.Trace.Txndata.COMMON_RLP_TXN_PHASE_NUMBER_2;
-import static net.consensys.linea.zktracer.Trace.Txndata.COMMON_RLP_TXN_PHASE_NUMBER_3;
-import static net.consensys.linea.zktracer.Trace.Txndata.COMMON_RLP_TXN_PHASE_NUMBER_4;
-import static net.consensys.linea.zktracer.Trace.Txndata.COMMON_RLP_TXN_PHASE_NUMBER_5;
-import static net.consensys.linea.zktracer.Trace.Txndata.TYPE_0_RLP_TXN_PHASE_NUMBER_6;
-import static net.consensys.linea.zktracer.Trace.Txndata.TYPE_1_RLP_TXN_PHASE_NUMBER_6;
-import static net.consensys.linea.zktracer.Trace.Txndata.TYPE_1_RLP_TXN_PHASE_NUMBER_7;
-import static net.consensys.linea.zktracer.Trace.Txndata.TYPE_2_RLP_TXN_PHASE_NUMBER_6;
-import static net.consensys.linea.zktracer.Trace.Txndata.TYPE_2_RLP_TXN_PHASE_NUMBER_7;
+import static net.consensys.linea.zktracer.TraceLondon.Txndata.*;
 import static net.consensys.linea.zktracer.module.Util.getTxTypeAsInt;
 import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
 import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
@@ -44,7 +34,6 @@ import java.util.List;
 
 import lombok.Getter;
 import net.consensys.linea.zktracer.Trace;
-import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.txndata.BlockSnapshot;
 import net.consensys.linea.zktracer.module.txndata.RlptxnOutgoing;
@@ -56,13 +45,12 @@ import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.TransactionType;
 
-public abstract class TxndataOperation extends ModuleOperation {
+public abstract class TxnDataOperationLegacy extends TxnDataOperation {
   protected final Wcp wcp;
   protected final Euc euc;
   @Getter public final TransactionProcessingMetadata tx;
 
   private static final Bytes EIP_2681_MAX_NONCE = bigIntegerToBytes(EIP2681_MAX_NONCE);
-  private static final int NB_WCP_EUC_ROWS_FRONTIER_ACCESS_LIST = 7;
 
   private final int nbRowsType0;
   private final int nbRowsType1;
@@ -74,7 +62,7 @@ public abstract class TxndataOperation extends ModuleOperation {
   private final ArrayList<RlptxrcptOutgoing> valuesToRlpTxrcpt;
   private static final Bytes BYTES_MAX_REFUND_QUOTIENT = Bytes.of(MAX_REFUND_QUOTIENT);
 
-  public TxndataOperation(
+  public TxnDataOperationLegacy(
       Wcp wcp,
       Euc euc,
       TransactionProcessingMetadata tx,
@@ -323,7 +311,7 @@ public abstract class TxndataOperation extends ModuleOperation {
     };
   }
 
-  public void traceTx(Trace.Txndata trace, BlockSnapshot block, int absTxNumMax) {
+  public void traceTransaction(Trace.Txndata trace, BlockSnapshot block, int absTxNumMax) {
 
     this.setRlptxnValues();
     this.setRlptxrcptValues();
@@ -410,4 +398,7 @@ public abstract class TxndataOperation extends ModuleOperation {
           .validateRow();
     }
   }
+
+  @Override
+  public void traceTransaction(Trace.Txndata trace) {}
 }

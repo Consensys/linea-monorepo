@@ -33,9 +33,8 @@ public class PragueHub extends CancunHub {
   }
 
   @Override
-  protected void traceSystemInitialTransaction(
-      WorldView world, ProcessableBlockHeader blockHeader) {
-    super.traceSystemInitialTransaction(world, blockHeader);
+  protected void traceSysiTransactions(WorldView world, ProcessableBlockHeader blockHeader) {
+    super.traceSysiTransactions(world, blockHeader);
     state.incrementSysiTransactionNumber();
     new EIP2935HistoricalHash(this, world, blockHeader);
   }

@@ -21,9 +21,9 @@ import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 
-public class LondonTxndataOperation extends TxndataOperation {
+public class LondonTxnDataOperation extends TxnDataOperationLegacy {
 
-  public LondonTxndataOperation(
+  public LondonTxnDataOperation(
       Wcp wcp,
       Euc euc,
       TransactionProcessingMetadata tx,

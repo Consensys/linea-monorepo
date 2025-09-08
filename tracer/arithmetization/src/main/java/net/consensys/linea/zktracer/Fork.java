@@ -15,13 +15,29 @@
 
 package net.consensys.linea.zktracer;
 
+/**
+ * release numbers of forks are defined from the <b>Ethereum Protocol Releases</b> table in <a
+ * href="https://github.com/ethereum/execution-specs">execution specs</a> repo. We start counting at
+ * 1 and include all named releases, including aborted ones (such as "DAO Wars").
+ */
 public enum Fork {
-  LONDON,
-  PARIS,
-  SHANGHAI,
-  CANCUN,
-  PRAGUE,
-  OSAKA; // OSAKA is a fork that is not yet released
+  LONDON(14),
+  PARIS(17),
+  SHANGHAI(18),
+  CANCUN(19),
+  PRAGUE(20),
+  OSAKA(21) // not yet live on L1
+;
+
+  private final int releaseNumber;
+
+  Fork(int releaseNumber) {
+    this.releaseNumber = releaseNumber;
+  }
+
+  public int getReleaseNumber() {
+    return releaseNumber;
+  }
 
   public static String toString(Fork fork) {
     return switch (fork) {
@@ -47,15 +63,19 @@ public enum Fork {
     return Fork.valueOf(fork.toUpperCase());
   }
 
+  private static boolean forkIsAtLeast(Fork fork, Fork threshold) {
+    return fork.getReleaseNumber() >= threshold.getReleaseNumber();
+  }
+
   public static boolean isPostShanghai(Fork fork) {
-    return fork.compareTo(SHANGHAI) >= 0;
+    return forkIsAtLeast(fork, SHANGHAI);
   }
 
   public static boolean isPostCancun(Fork fork) {
-    return fork.compareTo(CANCUN) >= 0;
+    return forkIsAtLeast(fork, CANCUN);
   }
 
   public static boolean isPostPrague(Fork fork) {
-    return fork.compareTo(PRAGUE) >= 0;
+    return forkIsAtLeast(fork, PRAGUE);
   }
 }

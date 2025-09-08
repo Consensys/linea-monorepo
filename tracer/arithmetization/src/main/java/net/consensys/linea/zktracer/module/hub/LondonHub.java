@@ -39,6 +39,7 @@ import net.consensys.linea.zktracer.module.tables.instructionDecoder.Instruction
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.LondonInstructionDecoder;
 import net.consensys.linea.zktracer.module.txndata.module.LondonTxnData;
 import net.consensys.linea.zktracer.module.txndata.module.TxnData;
+import net.consensys.linea.zktracer.module.txndata.moduleOperation.TxnDataOperation;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -58,7 +59,7 @@ public class LondonHub extends Hub {
   }
 
   @Override
-  protected TxnData setTxnData() {
+  protected TxnData<? extends TxnDataOperation> setTxnData() {
     return new LondonTxnData(this, wcp(), euc());
   }
 
@@ -142,8 +143,7 @@ public class LondonHub extends Hub {
   }
 
   @Override
-  protected void traceSystemInitialTransaction(
-      WorldView world, ProcessableBlockHeader blockHeader) {
+  protected void traceSysiTransactions(WorldView world, ProcessableBlockHeader blockHeader) {
     // Nothing to do, appears in Cancun
   }
 

@@ -15,8 +15,9 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.transaction.system;
 
-public enum SystemTransactionFragmentType {
-  NOOP,
-  EIP4788_BEACON_BLOCK_ROOT,
-  EIP2935_HISTORICAL_HASH
+public enum SystemTransactionType {
+  SYSI_NOOP,
+  SYSI_EIP_4788_BEACON_BLOCK_ROOT,
+  SYSI_EIP_2935_HISTORICAL_HASH,
+  SYSF_NOOP,
 }

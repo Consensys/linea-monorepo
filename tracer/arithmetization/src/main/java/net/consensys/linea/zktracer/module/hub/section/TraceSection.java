@@ -244,7 +244,7 @@ public class TraceSection {
                         nonStackLineCounter,
                         hub().state.mmuStamp(),
                         hub().state.mxpStamp());
-                default -> throw new IllegalArgumentException("Unknown fork: " +commonValues.hub.fork);
+                default -> throw new IllegalArgumentException("Unknown fork: " + commonValues.hub.fork);
               };
       commonFragment.trace(hubTrace);
       hubTrace.fillAndValidateRow();

@@ -1,0 +1,106 @@
+/*
+ * Copyright Consensys Software Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package net.consensys.linea.zktracer.module.txndata.moduleOperation;
+
+import static com.google.common.base.Preconditions.checkState;
+import static net.consensys.linea.zktracer.module.txndata.moduleOperation.TxnDataOperationPerspectivized.TransactionCategory.*;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import net.consensys.linea.zktracer.Trace;
+import net.consensys.linea.zktracer.module.euc.Euc;
+import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.txndata.BlockSnapshot;
+import net.consensys.linea.zktracer.module.txndata.module.PerspectivizedTxnData;
+import net.consensys.linea.zktracer.module.txndata.moduleOperation.transactions.UserTransaction;
+import net.consensys.linea.zktracer.module.txndata.rows.TxnDataRow;
+import net.consensys.linea.zktracer.module.wcp.Wcp;
+import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
+
+public abstract class TxnDataOperationPerspectivized extends TxnDataOperation {
+  public final ProcessableBlockHeader blockHeader;
+  public final Hub hub;
+  public final Euc euc;
+  public final Wcp wcp;
+  public final short relativeBlockNumber;
+  public final short sysiTransactionNumber;
+  public final short userTransactionNumber;
+  public final short sysfTransactionNumber;
+  public final List<TxnDataRow> rows = new ArrayList<>();
+  public final TransactionCategory category;
+
+  public enum TransactionCategory {
+    SYSI,
+    USER,
+    SYSF,
+  }
+
+  protected abstract int ctMax();
+
+  @Override
+  public int computeLineCount() {
+    checkState(rows.size() == 1 + ctMax());
+    return rows.size();
+  }
+
+  public TxnDataOperationPerspectivized(
+      PerspectivizedTxnData txnData, TransactionCategory category) {
+    blockHeader = txnData.getCurrentBlockHeader();
+    hub = txnData.hub();
+    wcp = hub.wcp();
+    euc = hub.euc();
+    relativeBlockNumber = (short) hub.blockStack().currentRelativeBlockNumber();
+    sysiTransactionNumber = hub.state.sysiTransactionNumber();
+    userTransactionNumber = hub.state.getUserTransactionNumber();
+    sysfTransactionNumber = hub.state.sysfTransactionNumber();
+    this.category = category;
+  }
+
+  public void traceTransaction(Trace.Txndata trace) {
+    short ct = 0;
+    for (TxnDataRow row : rows) {
+      traceCommonSaveForFlags(trace, ct);
+      row.traceRow(trace);
+      trace.fillAndValidateRow();
+      ct++;
+    }
+  }
+
+  private void traceCommonSaveForFlags(Trace.Txndata trace, int ct) {
+    trace
+        .blkNumber(relativeBlockNumber)
+        // TOTL_TXN_NUMBER is (defcomputed ...)
+        .sysiTxnNumber(sysiTransactionNumber)
+        .userTxnNumber(userTransactionNumber)
+        .sysfTxnNumber(sysfTransactionNumber)
+        .sysi(category == SYSI)
+        .user(category == USER)
+        .sysf(category == SYSF)
+        // CMPTN, HUB, RLP flags get traced by the rows themselves
+        .ct(ct)
+        .ctMax(ctMax())
+    // GAS_CUMULATIVE gets traced for USER transactions only
+    ;
+
+    if (this instanceof UserTransaction) {
+      UserTransaction userTransaction = (UserTransaction) this;
+      trace.gasCumulative(userTransaction.txn.getAccumulatedGasUsedInBlock());
+    }
+  }
+
+  @Override
+  public void traceTransaction(Trace.Txndata trace, BlockSnapshot block, int absTxNumMax) {}
+}
