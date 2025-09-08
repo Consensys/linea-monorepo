@@ -33,6 +33,7 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 public class TxFinalTest extends TracerTestBase {
 
@@ -48,11 +49,16 @@ public class TxFinalTest extends TracerTestBase {
       ToyAccount.builder()
           .balance(Wei.fromEth(1))
           .address(Address.fromHexString("0xdead000000000000000000000000000beef"))
-          .code(BytecodeCompiler.newProgram(testInfo).push(12).push(35).op(OpCode.SGT).compile())
+          .code(BytecodeCompiler.newProgram(chainConfig).push(12).push(35).op(OpCode.SGT).compile())
           .build();
 
   private static final Bytes initCode =
-      BytecodeCompiler.newProgram(testInfo).push(12).push(13).push(24).op(OpCode.ADDMOD).compile();
+      BytecodeCompiler.newProgram(chainConfig)
+          .push(12)
+          .push(13)
+          .push(24)
+          .op(OpCode.ADDMOD)
+          .compile();
 
   final Address depAddress =
       Address.extract(getCreateRawAddress(senderAddress, senderAccount.getNonce()));
@@ -60,7 +66,7 @@ public class TxFinalTest extends TracerTestBase {
   // TODO: add smcCallSenderIsRecipient() {}, not possible before EIP-7702
 
   @Test
-  void smcCallSenderIsCoinbase() {
+  void smcCallSenderIsCoinbase(TestInfo testInfo) {
     final Transaction tx =
         ToyTransaction.builder()
             .sender(senderAccount)
@@ -70,7 +76,7 @@ public class TxFinalTest extends TracerTestBase {
             .value(Wei.of(1000))
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, receiverAccount))
         .transaction(tx)
         .coinbase(senderAddress)
@@ -80,7 +86,7 @@ public class TxFinalTest extends TracerTestBase {
   }
 
   @Test
-  void smcCallRecipientIsCoinbase() {
+  void smcCallRecipientIsCoinbase(TestInfo testInfo) {
     final Transaction tx =
         ToyTransaction.builder()
             .sender(senderAccount)
@@ -90,7 +96,7 @@ public class TxFinalTest extends TracerTestBase {
             .value(Wei.of(1000))
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, receiverAccount))
         .transaction(tx)
         .coinbase(receiverAccount.getAddress())
@@ -104,7 +110,7 @@ public class TxFinalTest extends TracerTestBase {
   // good luck for finding the right nonce ;) deploymentSenderIsRecipient() {}
 
   @Test
-  void deploymentSenderIsCoinbase() {
+  void deploymentSenderIsCoinbase(TestInfo testInfo) {
     final Transaction tx =
         ToyTransaction.builder()
             .sender(senderAccount)
@@ -114,7 +120,7 @@ public class TxFinalTest extends TracerTestBase {
             .value(Wei.of(1000))
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount))
         .transaction(tx)
         .coinbase(senderAddress)
@@ -124,7 +130,7 @@ public class TxFinalTest extends TracerTestBase {
   }
 
   @Test
-  void deploymentRecipientIsCoinbase() {
+  void deploymentRecipientIsCoinbase(TestInfo testInfo) {
     final Transaction tx =
         ToyTransaction.builder()
             .sender(senderAccount)
@@ -134,7 +140,7 @@ public class TxFinalTest extends TracerTestBase {
             .value(Wei.of(1000))
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount))
         .transaction(tx)
         .coinbase(depAddress)

@@ -30,6 +30,7 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -38,7 +39,7 @@ public class TransientTest extends TracerTestBase {
 
   private static final Bytes TLOAD_TSTORE_TLOAD = Bytes.fromHexString("0x60025C50600160025D60025C");
   // This bytecode is:
-  // BytecodeCompiler.newProgram(testInfo)
+  // BytecodeCompiler.newProgram(chainConfig)
   // .push(2) // storage key
   //     .op(TLOAD)
   //     .op(POP) // value
@@ -71,7 +72,7 @@ public class TransientTest extends TracerTestBase {
           SMC_ACCOUNT_TLOAD_TSTORE_TLOAD.getAddress(),
           Bytes.fromHexString("613A98"));
   // This bytecode is:
-  // BytecodeCompiler.newProgram(testInfo)
+  // BytecodeCompiler.newProgram(chainConfig)
   //     .push(0) // return size
   //     .push(0) // return offset
   //     .push(0) // arg size
@@ -102,13 +103,13 @@ public class TransientTest extends TracerTestBase {
   }
 
   @Test
-  void trivialTStoreTLoad() {
-    BytecodeRunner.of(TLOAD_TSTORE_TLOAD).run(testInfo);
+  void trivialTStoreTLoad(TestInfo testInfo) {
+    BytecodeRunner.of(TLOAD_TSTORE_TLOAD).run(chainConfig, testInfo);
   }
 
   @ParameterizedTest
   @MethodSource("fourCalls")
-  void differentCallsTStoreTLoad(Bytes callType) {
+  void differentCallsTStoreTLoad(Bytes callType, TestInfo testInfo) {
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
@@ -134,7 +135,7 @@ public class TransientTest extends TracerTestBase {
             .to(recipientAccount)
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, recipientAccount, SMC_ACCOUNT_TLOAD_TSTORE_TLOAD))
         .transaction(transaction)
         .zkTracerValidator(zkTracer -> {})
@@ -143,7 +144,7 @@ public class TransientTest extends TracerTestBase {
   }
 
   @Test
-  void multipleTransactionTStoreTLoad() {
+  void multipleTransactionTStoreTLoad(TestInfo testInfo) {
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
@@ -185,7 +186,7 @@ public class TransientTest extends TracerTestBase {
             .nonce((long) firstNonce + 1)
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, recipientAccount))
         .transactions(List.of(transaction1, transaction2))
         .zkTracerValidator(zkTracer -> {})
@@ -194,7 +195,7 @@ public class TransientTest extends TracerTestBase {
   }
 
   @Test
-  void revertingTStoreTLoad() {
+  void revertingTStoreTLoad(TestInfo testInfo) {
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
@@ -203,7 +204,7 @@ public class TransientTest extends TracerTestBase {
         Address.fromHexString("0x1122334455667788990011223344556677889900");
 
     final Bytes recipientCode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(0) // return size
             .push(0) // return offset
             .push(0) // arg size
@@ -239,7 +240,7 @@ public class TransientTest extends TracerTestBase {
             .to(recipientAccount)
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, recipientAccount, SMC_ACCOUNT_TLOAD_TSTORE_TLOAD_REVERT))
         .transaction(transaction)
         .zkTracerValidator(zkTracer -> {})

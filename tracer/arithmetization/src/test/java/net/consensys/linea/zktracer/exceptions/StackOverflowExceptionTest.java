@@ -27,6 +27,7 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -37,14 +38,14 @@ public class StackOverflowExceptionTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("stackOverflowExceptionSource")
-  void stackOverflowExceptionTest(OpCode opCode, int alpha, int delta) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void stackOverflowExceptionTest(OpCode opCode, int alpha, int delta, TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     for (int i = 0; i < 1024; i++) {
       program.push(0);
     }
     program.op(opCode);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     // the opcode pushes more arguments than the stack can handle
 

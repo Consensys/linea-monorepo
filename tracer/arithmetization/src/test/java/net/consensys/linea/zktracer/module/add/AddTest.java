@@ -22,86 +22,87 @@ import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
 public class AddTest extends TracerTestBase {
   @Test
-  void testSmallZeroAdd() {
+  void testSmallZeroAdd(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(Bytes.of(0xF1))
                 .push(Bytes.EMPTY)
                 .op(OpCode.ADD)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   @Test
-  void testSmallZeroSub() {
+  void testSmallZeroSub(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(Bytes.of(0xF1))
                 .push(Bytes.EMPTY)
                 .op(OpCode.SUB)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   @Test
-  void testOverflowLoAdd() {
+  void testOverflowLoAdd(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(Bytes.fromHexString("0xF0F1F2F3F4F5F6F7F8F9FAFBFCFDFEFF"))
                 .push(Bytes.fromHexString("0xE0E1E2E3E4E5E6E7E8E9EAEBECEDEEEF"))
                 .op(OpCode.ADD)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   @Test
-  void testHugeSmallAdd() {
+  void testHugeSmallAdd(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(Bytes.repeat((byte) 0xFF, 32))
                 .push(Bytes.of(2))
                 .op(OpCode.ADD)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   @Test
-  void testOverFlowHiAdd() {
+  void testOverFlowHiAdd(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(
                     Bytes.concatenate(Bytes.repeat((byte) 0xFF, 16), Bytes.repeat((byte) 0x01, 16)))
                 .push(
                     Bytes.concatenate(Bytes.repeat((byte) 0x02, 16), Bytes.repeat((byte) 0x01, 16)))
                 .op(OpCode.ADD)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   @Test
-  void testSmallHugeSub() {
+  void testSmallHugeSub(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(Bytes.of(2))
                 .push(Bytes.repeat((byte) 0xFF, 32))
                 .op(OpCode.SUB)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   @Test
-  void testHugeSmallSub() {
+  void testHugeSmallSub(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(Bytes.repeat((byte) 0xFF, 32))
                 .push(Bytes.of(2))
                 .op(OpCode.SUB)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 }

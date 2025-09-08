@@ -22,36 +22,37 @@ import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
 public class WcpEdgeCaseTest extends TracerTestBase {
   @Test
-  void testZeroAndHugeArgs() {
+  void testZeroAndHugeArgs(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(Bytes.repeat((byte) 0xff, 32))
                 .push(Bytes.EMPTY)
                 .op(OpCode.SLT)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   @Test
-  void testHugeAndZeroArgs() {
+  void testHugeAndZeroArgs(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(Bytes.EMPTY)
                 .push(Bytes.repeat((byte) 0xff, 32))
                 .op(OpCode.SLT)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   @Test
-  void failingOnShadowNodeBlock916394() {
+  void failingOnShadowNodeBlock916394(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(Bytes.EMPTY)
                 .push(
                     Bytes.concatenate(
@@ -61,19 +62,19 @@ public class WcpEdgeCaseTest extends TracerTestBase {
                         Bytes.of(0x59)))
                 .op(OpCode.SLT)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   @Test
-  void failingOnShadowNodeBlockWhatever() {
+  void failingOnShadowNodeBlockWhatever(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(Bytes.EMPTY)
                 .push(
                     Bytes.fromHexString(
                         "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe1859"))
                 .op(OpCode.SLT)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 }

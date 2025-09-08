@@ -33,6 +33,7 @@ import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.zktracer.module.mxp.MxpTestUtils;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -51,12 +52,12 @@ public class LogsTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("logsOpCodesList")
-  void staticAndOogExceptionsLogs(OpCode opCode) {
+  void staticAndOogExceptionsLogs(OpCode opCode, TestInfo testInfo) {
 
     BytecodeCompiler program = simpleProgram(opCode);
     Bytes pgCompile = program.compile();
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(pgCompile);
-    long gasCostTx = bytecodeRunner.runOnlyForGasCost(testInfo);
+    long gasCostTx = bytecodeRunner.runOnlyForGasCost(chainConfig, testInfo);
 
     int cornerCase = -1;
     // We calculate gas cost to trigger OOGX
@@ -68,7 +69,7 @@ public class LogsTest extends TracerTestBase {
 
     // Run with linea block gas limit so gas cost is passed to child without 63/64
     BytecodeRunner bytecodeRunnerStaticCall = BytecodeRunner.of(pgStaticCallToCode.compile());
-    bytecodeRunnerStaticCall.run(List.of(codeProviderAccount), testInfo);
+    bytecodeRunnerStaticCall.run(List.of(codeProviderAccount), chainConfig, testInfo);
 
     // Static check happens before OOGX in tracer
     assertEquals(
@@ -82,14 +83,14 @@ public class LogsTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("logsOpCodesList")
-  public void staticAndMxpExceptions(OpCode opCode) {
+  public void staticAndMxpExceptions(OpCode opCode, TestInfo testInfo) {
     boolean triggerMaxCodeSizeException = false;
     // We test with or without Roob
     boolean[] triggerRoob = new boolean[] {false, true};
 
     for (boolean roob : triggerRoob) {
       // We prepare a program with an MXPX for the opcode
-      BytecodeCompiler pg = BytecodeCompiler.newProgram(testInfo);
+      BytecodeCompiler pg = BytecodeCompiler.newProgram(chainConfig);
       new MxpTestUtils(opcodes)
           .triggerNonTrivialButMxpxOrRoobOrMaxCodeSizeExceptionForOpCode(
               fork, pg, roob, triggerMaxCodeSizeException, opCode);
@@ -100,7 +101,7 @@ public class LogsTest extends TracerTestBase {
 
       // We run the program to static call the account with MXPX code
       BytecodeRunner bytecodeRunnerStaticCall = BytecodeRunner.of(pgStaticCallToCode.compile());
-      bytecodeRunnerStaticCall.run(List.of(codeProviderAccount), testInfo);
+      bytecodeRunnerStaticCall.run(List.of(codeProviderAccount), chainConfig, testInfo);
 
       // Static check happens before MXPX
       assertEquals(

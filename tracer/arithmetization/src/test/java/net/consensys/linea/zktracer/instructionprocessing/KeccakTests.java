@@ -20,27 +20,28 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
 public class KeccakTests extends TracerTestBase {
   @Test
-  void singleEmptyKeccak() {
+  void singleEmptyKeccak(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(0) // size
                 .push(0) // offset
                 .op(OpCode.SHA3)
                 .op(OpCode.POP)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   /** computing KEC("ee ee ... ee"), aligned on 1st byte */
   @Test
-  void singleWordKeccakNonAligned() {
+  void singleWordKeccakNonAligned(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
                 .push(1)
                 .op(OpCode.MSTORE)
@@ -49,14 +50,14 @@ public class KeccakTests extends TracerTestBase {
                 .op(OpCode.SHA3)
                 .op(OpCode.POP)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   /** computing KEC("ee ee ... ee"), aligned on 0th byte */
   @Test
-  void singleWordKeccakAligned() {
+  void singleWordKeccakAligned(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
                 .push(0)
                 .op(OpCode.MSTORE)
@@ -65,14 +66,14 @@ public class KeccakTests extends TracerTestBase {
                 .op(OpCode.SHA3)
                 .op(OpCode.POP)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   /** computing KEC("ee") */
   @Test
-  void singleByteKeccak() {
+  void singleByteKeccak(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push("ee")
                 .push(1)
                 .op(OpCode.MSTORE8)
@@ -81,13 +82,13 @@ public class KeccakTests extends TracerTestBase {
                 .op(OpCode.SHA3)
                 .op(OpCode.POP)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   @Test
-  void testSeveralKeccaks() {
+  void testSeveralKeccaks(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(0)
                 .push(0)
                 .op(OpCode.SHA3)
@@ -105,6 +106,6 @@ public class KeccakTests extends TracerTestBase {
                 .op(OpCode.SHA3)
                 .op(OpCode.POP)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 }

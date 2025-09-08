@@ -34,6 +34,7 @@ import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.*;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 public class TxWarmTest extends TracerTestBase {
 
@@ -56,11 +57,12 @@ public class TxWarmTest extends TracerTestBase {
           .balance(Wei.fromEth(1))
           .address(Address.fromHexString("0xdead000000000000000000000000000beef"))
           .code(Bytes.fromHexString("0x6001600001"))
-          // eq: BytecodeCompiler.newProgram(testInfo).push(1).push(0).op(OpCode.ADD).compile()
+          // eq: BytecodeCompiler.newProgram(new TestInfoWithChainConfig(chainConfig,
+          // testInfo)).push(1).push(0).op(OpCode.ADD).compile()
           .build();
 
   @Test
-  void inefficientAccessList() {
+  void inefficientAccessList(TestInfo testInfo) {
     // inefficient access list
     final List<AccessListEntry> accessList = new ArrayList<>(List.of());
 
@@ -109,7 +111,7 @@ public class TxWarmTest extends TracerTestBase {
             .value(Wei.of(1000))
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, receiverAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
@@ -118,7 +120,7 @@ public class TxWarmTest extends TracerTestBase {
   }
 
   @Test
-  void warmSender() {
+  void warmSender(TestInfo testInfo) {
     final List<AccessListEntry> accessList = new ArrayList<>(List.of());
     accessList.add(new AccessListEntry(senderAddress, List.of(FIXED_STORAGE_KEYS)));
 
@@ -133,7 +135,7 @@ public class TxWarmTest extends TracerTestBase {
             .value(Wei.of(1000))
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, receiverAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
@@ -142,7 +144,7 @@ public class TxWarmTest extends TracerTestBase {
   }
 
   @Test
-  void warmReceiver() {
+  void warmReceiver(TestInfo testInfo) {
     final List<AccessListEntry> accessList = new ArrayList<>(List.of());
     accessList.add(
         new AccessListEntry(
@@ -159,7 +161,7 @@ public class TxWarmTest extends TracerTestBase {
             .value(Wei.of(1000))
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, receiverAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
@@ -168,7 +170,7 @@ public class TxWarmTest extends TracerTestBase {
   }
 
   @Test
-  void warmCoinbase() {
+  void warmCoinbase(TestInfo testInfo) {
     final List<AccessListEntry> accessList = new ArrayList<>(List.of());
     accessList.add(
         new AccessListEntry(
@@ -185,7 +187,7 @@ public class TxWarmTest extends TracerTestBase {
             .value(Wei.of(1000))
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, receiverAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
@@ -194,9 +196,9 @@ public class TxWarmTest extends TracerTestBase {
   }
 
   @Test
-  void warmDeploymentAddress() {
+  void warmDeploymentAddress(TestInfo testInfo) {
     final Bytes initCode =
-        BytecodeCompiler.newProgram(testInfo).push(1).push(0).op(OpCode.SLT).compile();
+        BytecodeCompiler.newProgram(chainConfig).push(1).push(0).op(OpCode.SLT).compile();
 
     final Address depAddress =
         Address.extract(getCreateRawAddress(senderAddress, senderAccount.getNonce()));
@@ -217,7 +219,7 @@ public class TxWarmTest extends TracerTestBase {
             .value(Wei.of(1000))
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})

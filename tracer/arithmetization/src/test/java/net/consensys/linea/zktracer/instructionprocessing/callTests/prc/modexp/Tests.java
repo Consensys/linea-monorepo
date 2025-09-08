@@ -27,6 +27,7 @@ import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.framewor
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.hash.ParameterGeneration;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.provider.Arguments;
 
 @Tag("prc-calltests")
@@ -42,7 +43,7 @@ public class Tests extends PrecompileCallTests<CallParameters> {
 
   /** Non-parametric test to make sure things are working as expected. */
   @Test
-  public void singleMessageCallTransactionTest() {
+  public void singleMessageCallTransactionTest(TestInfo testInfo) {
     MemoryContents memoryContents =
         new MemoryContents(
             MODERATE, // bbs
@@ -60,13 +61,13 @@ public class Tests extends PrecompileCallTests<CallParameters> {
             true);
 
     BytecodeCompiler rootCode =
-        params.customPrecompileCallsSeparatedByReturnDataWipingOperation(testInfo);
-    runMessageCallTransactionWithProvidedCodeAsRootCode(rootCode, testInfo);
+        params.customPrecompileCallsSeparatedByReturnDataWipingOperation(chainConfig);
+    runMessageCallTransactionWithProvidedCodeAsRootCode(rootCode, chainConfig, testInfo);
   }
 
   /** Non-parametric test to make sure things are working as expected. */
   @Test
-  public void singleMessageCallTransactionTest2() {
+  public void singleMessageCallTransactionTest2(TestInfo testInfo) {
     MemoryContents memoryContents =
         new MemoryContents(
             MAX, // bbs
@@ -84,7 +85,7 @@ public class Tests extends PrecompileCallTests<CallParameters> {
             true);
 
     BytecodeCompiler rootCode =
-        params.customPrecompileCallsSeparatedByReturnDataWipingOperation(testInfo);
-    runMessageCallTransactionWithProvidedCodeAsRootCode(rootCode, testInfo);
+        params.customPrecompileCallsSeparatedByReturnDataWipingOperation(chainConfig);
+    runMessageCallTransactionWithProvidedCodeAsRootCode(rootCode, chainConfig, testInfo);
   }
 }

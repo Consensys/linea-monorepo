@@ -21,6 +21,7 @@ import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @Tag("replay")
@@ -28,7 +29,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class Issue1145Tests extends TracerTestBase {
 
   @Test
-  public void issue_1145_block_3318494_ReturnPrecondition() {
-    replay(OLD_SEPOLIA_TESTCONFIG, "3318494.sepolia.json.gz");
+  public void issue_1145_block_3318494_ReturnPrecondition(TestInfo testInfo) {
+    replay(OLD_SEPOLIA_TESTCONFIG, "3318494.sepolia.json.gz", testInfo);
   }
 }

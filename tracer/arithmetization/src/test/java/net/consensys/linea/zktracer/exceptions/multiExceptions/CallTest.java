@@ -36,6 +36,7 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -55,7 +56,7 @@ public class CallTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("addExistsAndIsWarmCallSource")
-  void staticAndOogExceptionsCall(boolean targetAddressExists, boolean isWarm) {
+  void staticAndOogExceptionsCall(boolean targetAddressExists, boolean isWarm, TestInfo testInfo) {
     // value has to be > 0 for static exception to be triggered on CALL
     int value = 1;
     //  When value is transferred
@@ -63,7 +64,7 @@ public class CallTest extends TracerTestBase {
     // execution, even if no code is executed
     // call stipend - 1
     int cornerCase = 2299;
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     if (targetAddressExists && isWarm) {
       // Note: this is a possible way to warm the address
@@ -94,7 +95,7 @@ public class CallTest extends TracerTestBase {
               .nonce(10)
               .address(Address.fromHexString("ca11ee"))
               .build();
-      gasCost = bytecodeRunner.runOnlyForGasCost(List.of(calleeAccount), testInfo);
+      gasCost = bytecodeRunner.runOnlyForGasCost(List.of(calleeAccount), chainConfig, testInfo);
       // We calculate gas cost to trigger OOGX
       // We retrieve the gas cost of the transaction as it's the gas used for the static call, so
       // intrinsic gas cost already accounted
@@ -102,9 +103,10 @@ public class CallTest extends TracerTestBase {
       BytecodeCompiler pgStaticCallToCode =
           getProgramStaticCallToCodeAddress(gasCostPlusCornerCase);
       bytecodeRunnerStaticCall = BytecodeRunner.of(pgStaticCallToCode.compile());
-      bytecodeRunnerStaticCall.run(List.of(calleeAccount, CallProviderAccount), testInfo);
+      bytecodeRunnerStaticCall.run(
+          List.of(calleeAccount, CallProviderAccount), chainConfig, testInfo);
     } else {
-      gasCost = bytecodeRunner.runOnlyForGasCost(testInfo);
+      gasCost = bytecodeRunner.runOnlyForGasCost(chainConfig, testInfo);
       // We calculate gas cost to trigger OOGX
       // We retrieve the gas cost of the transaction as it's the gas used for the static call, so
       // intrinsic gas cost already accounted
@@ -112,7 +114,8 @@ public class CallTest extends TracerTestBase {
       BytecodeCompiler pgStaticCallToCode =
           getProgramStaticCallToCodeAddress(gasCostPlusCornerCase);
       bytecodeRunnerStaticCall = BytecodeRunner.of(pgStaticCallToCode.compile());
-      bytecodeRunnerStaticCall.run(gasCost + cornerCase, List.of(CallProviderAccount), testInfo);
+      bytecodeRunnerStaticCall.run(
+          gasCost + cornerCase, List.of(CallProviderAccount), chainConfig, testInfo);
     }
 
     assertEquals(
@@ -133,14 +136,14 @@ public class CallTest extends TracerTestBase {
   }
 
   @Test
-  public void staticAndMxpExceptionsCall() {
+  public void staticAndMxpExceptionsCall(TestInfo testInfo) {
     boolean triggerMaxCodeSizeException = false;
     // We test with or without Roob
     boolean[] triggerRoob = new boolean[] {false, true};
 
     for (boolean roob : triggerRoob) {
       // We prepare a program with an MXPX for the opcode
-      BytecodeCompiler pg = BytecodeCompiler.newProgram(testInfo);
+      BytecodeCompiler pg = BytecodeCompiler.newProgram(chainConfig);
       new MxpTestUtils(opcodes)
           .triggerNonTrivialButMxpxOrRoobOrMaxCodeSizeExceptionForOpCode(
               fork, pg, roob, triggerMaxCodeSizeException, OpCode.CALL);
@@ -151,7 +154,7 @@ public class CallTest extends TracerTestBase {
 
       // We run the program to static call the account with MXPX code
       BytecodeRunner bytecodeRunnerStaticCall = BytecodeRunner.of(pgStaticCallToCode.compile());
-      bytecodeRunnerStaticCall.run(List.of(codeProviderAccount), testInfo);
+      bytecodeRunnerStaticCall.run(List.of(codeProviderAccount), chainConfig, testInfo);
 
       // Static check happens before MXPX
       assertEquals(

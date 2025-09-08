@@ -22,6 +22,7 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -36,24 +37,24 @@ public class CallStackDepthAbortTests extends TracerTestBase {
   @EnumSource(
       value = OpCode.class,
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
-  void attemptAtCallStackDepthAbortWillRevert(OpCode callOpCode) {
+  void attemptAtCallStackDepthAbortWillRevert(OpCode callOpCode, TestInfo testInfo) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     appendRecursiveSelfCall(program, callOpCode);
     appendRevert(program, 6, 7);
 
-    BytecodeRunner.of(program).run(testInfo);
+    BytecodeRunner.of(program).run(chainConfig, testInfo);
   }
 
   @ParameterizedTest
   @EnumSource(
       value = OpCode.class,
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
-  void attemptAtCallStackDepthAbort(OpCode callOpCode) {
+  void attemptAtCallStackDepthAbort(OpCode callOpCode, TestInfo testInfo) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     appendRecursiveSelfCall(program, callOpCode);
 
-    BytecodeRunner.of(program).run(testInfo);
+    BytecodeRunner.of(program).run(chainConfig, testInfo);
   }
 }

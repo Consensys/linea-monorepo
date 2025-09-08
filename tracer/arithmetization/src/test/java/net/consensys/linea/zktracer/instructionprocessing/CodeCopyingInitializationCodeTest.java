@@ -33,6 +33,7 @@ import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
@@ -49,7 +50,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class CodeCopyingInitializationCodeTest extends TracerTestBase {
 
   final Bytes initCodeSimple =
-      BytecodeCompiler.newProgram(testInfo)
+      BytecodeCompiler.newProgram(chainConfig)
           .op(OpCode.CODESIZE)
           .push(0)
           .push(0)
@@ -57,7 +58,7 @@ public class CodeCopyingInitializationCodeTest extends TracerTestBase {
           .compile();
 
   final Bytes initCodeWithMload =
-      BytecodeCompiler.newProgram(testInfo)
+      BytecodeCompiler.newProgram(chainConfig)
           .op(OpCode.CODESIZE)
           .push(0)
           .push(0)
@@ -67,7 +68,7 @@ public class CodeCopyingInitializationCodeTest extends TracerTestBase {
           .compile();
 
   final Bytes initCodeDeploysItself =
-      BytecodeCompiler.newProgram(testInfo)
+      BytecodeCompiler.newProgram(chainConfig)
           .op(OpCode.CODESIZE)
           .push(0)
           .push(0)
@@ -83,43 +84,43 @@ public class CodeCopyingInitializationCodeTest extends TracerTestBase {
 
   /** We test <b>deployment transactions</b>. */
   @Test
-  void testDeploymentTransactionCodeCopiesItself() {
+  void testDeploymentTransactionCodeCopiesItself(TestInfo testInfo) {
     Transaction deploymentTransaction = deploymentTansactionFromInitCode(initCodeSimple);
-    runTransaction(deploymentTransaction);
+    runTransaction(deploymentTransaction, testInfo);
   }
 
   @Test
-  void testDeploymentTransactionCodeCopiesItselfAndFinishesOnMload() {
+  void testDeploymentTransactionCodeCopiesItselfAndFinishesOnMload(TestInfo testInfo) {
     Transaction deploymentTransaction = deploymentTansactionFromInitCode(initCodeWithMload);
-    runTransaction(deploymentTransaction);
+    runTransaction(deploymentTransaction, testInfo);
   }
 
   @Test
-  void testDeploymentTransactionDeploysOwnInitCodeThroughCodeCopy() {
+  void testDeploymentTransactionDeploysOwnInitCodeThroughCodeCopy(TestInfo testInfo) {
     Transaction deploymentTransaction = deploymentTansactionFromInitCode(initCodeDeploysItself);
-    runTransaction(deploymentTransaction);
+    runTransaction(deploymentTransaction, testInfo);
   }
 
   /** We test <b>CREATE's</b>. */
   @Test
-  void testCreateContractFromInitCodeSimple() {
+  void testCreateContractFromInitCodeSimple(TestInfo testInfo) {
     Transaction messageCallTransaction =
         messageCallTransactionToDeployerAccount(accountInitCodeSimple);
-    runTransaction(messageCallTransaction);
+    runTransaction(messageCallTransaction, testInfo);
   }
 
   @Test
-  void testCreateContractFromInitCodeWithMload() {
+  void testCreateContractFromInitCodeWithMload(TestInfo testInfo) {
     Transaction messageCallTransaction =
         messageCallTransactionToDeployerAccount(accountInitCodeWithMload);
-    runTransaction(messageCallTransaction);
+    runTransaction(messageCallTransaction, testInfo);
   }
 
   @Test
-  void testCreateContractFromInitCodeThatDeploysItself() {
+  void testCreateContractFromInitCodeThatDeploysItself(TestInfo testInfo) {
     Transaction messageCallTransaction =
         messageCallTransactionToDeployerAccount(accountInitCodeThatDeploysItself);
-    runTransaction(messageCallTransaction);
+    runTransaction(messageCallTransaction, testInfo);
   }
 
   KeyPair keyPair = new SECP256K1().generateKeyPair();
@@ -179,8 +180,8 @@ public class CodeCopyingInitializationCodeTest extends TracerTestBase {
         .build();
   }
 
-  private void runTransaction(Transaction transaction) {
-    ToyExecutionEnvironmentV2.builder(testInfo)
+  private void runTransaction(Transaction transaction, TestInfo testInfo) {
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(accounts)
         .transaction(transaction)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
@@ -189,7 +190,7 @@ public class CodeCopyingInitializationCodeTest extends TracerTestBase {
   }
 
   private Bytes deployerOf(Bytes initCode) {
-    return BytecodeCompiler.newProgram(testInfo)
+    return BytecodeCompiler.newProgram(chainConfig)
         .push(initCode)
         .push(0) // offset
         .op(OpCode.MSTORE)

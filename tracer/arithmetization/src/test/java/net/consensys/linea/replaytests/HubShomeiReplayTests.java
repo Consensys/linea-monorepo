@@ -22,6 +22,7 @@ import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @Tag("nightly")
@@ -35,12 +36,12 @@ public class HubShomeiReplayTests extends TracerTestBase {
    * In block 35 (tx number 53) we have a succesfull non reverted SSTORE at the same acc / key.
    */
   @Test
-  void alert2025_06_12_first() {
-    replay(MAINNET_LONDON_TESTCONFIG, "19913402-19913483.mainnet.json.gz");
+  void alert2025_06_12_first(TestInfo testInfo) {
+    replay(MAINNET_LONDON_TESTCONFIG, "19913402-19913483.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void alert2025_06_12_second() {
-    replay(MAINNET_LONDON_TESTCONFIG, "19914560-19914640.mainnet.json.gz");
+  void alert2025_06_12_second(TestInfo testInfo) {
+    replay(MAINNET_LONDON_TESTCONFIG, "19914560-19914640.mainnet.json.gz", testInfo);
   }
 }

@@ -22,11 +22,12 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.limits.precompiles.ModexpEffectiveCall;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 public class ModexpIllegalOperationTests extends TracerTestBase {
   @Test
-  void legalThenTwoIllegals() {
-    final ZkTracer state = new ZkTracer(testInfo.chainConfig);
+  void legalThenTwoIllegals(TestInfo testInfo) {
+    final ZkTracer state = new ZkTracer(chainConfig);
     final ModexpEffectiveCall countingOnlyModule = state.getHub().modexpEffectiveCall();
 
     countingOnlyModule.updateTally(1);
@@ -42,8 +43,8 @@ public class ModexpIllegalOperationTests extends TracerTestBase {
   }
 
   @Test
-  void legalIllegalLegal() {
-    final ZkTracer state = new ZkTracer(testInfo.chainConfig);
+  void legalIllegalLegal(TestInfo testInfo) {
+    final ZkTracer state = new ZkTracer(chainConfig);
     final ModexpEffectiveCall countingOnlyModule = state.getHub().modexpEffectiveCall();
 
     countingOnlyModule.updateTally(1);
@@ -59,8 +60,8 @@ public class ModexpIllegalOperationTests extends TracerTestBase {
   }
 
   @Test
-  void TwoIllegals() {
-    final ZkTracer state = new ZkTracer(testInfo.chainConfig);
+  void TwoIllegals(TestInfo testInfo) {
+    final ZkTracer state = new ZkTracer(chainConfig);
     final ModexpEffectiveCall countingOnlyModule = state.getHub().modexpEffectiveCall();
 
     countingOnlyModule.updateTally(MAX_VALUE);

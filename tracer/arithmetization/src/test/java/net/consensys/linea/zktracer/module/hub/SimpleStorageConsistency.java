@@ -34,6 +34,7 @@ import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
@@ -83,13 +84,13 @@ public class SimpleStorageConsistency extends TracerTestBase {
           AccessListEntry.createAccessListEntry(receiverAddress, duplicateKey));
 
   @Test
-  void test() {
+  void test(TestInfo testInfo) {
     final ToyAccount receiverAccount =
         ToyAccount.builder()
             .balance(Wei.fromEth(1))
             .address(receiverAddress)
             .code(
-                BytecodeCompiler.newProgram(testInfo)
+                BytecodeCompiler.newProgram(chainConfig)
                     // SLOAD initial value
                     .push(key)
                     .op(OpCode.SLOAD)
@@ -141,7 +142,7 @@ public class SimpleStorageConsistency extends TracerTestBase {
 
     final List<Transaction> txs = List.of(simpleWarm, stupidWarm, noWarm);
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(receiverAccount, senderAccount1, senderAccount2, senderAccount3))
         .transactions(txs)
         .zkTracerValidator(zkTracer -> {})

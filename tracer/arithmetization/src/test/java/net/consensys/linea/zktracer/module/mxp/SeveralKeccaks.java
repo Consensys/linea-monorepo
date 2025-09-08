@@ -20,23 +20,24 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
 public class SeveralKeccaks extends TracerTestBase {
 
   @Test
-  public void testMul() {
+  public void testMul(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo).push(32).push(7).op(OpCode.MUL).compile())
-        .run(testInfo);
+            BytecodeCompiler.newProgram(chainConfig).push(32).push(7).op(OpCode.MUL).compile())
+        .run(chainConfig, testInfo);
   }
 
   /** For readability we write __ instead of 00 */
   @Test
-  void testIsTheBeefDeadYet() {
+  void testIsTheBeefDeadYet(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push("deadbeef") // 4 bytes
                 .push(28 * 8)
                 .op(OpCode.SHL) //  stack = [ 0x DE AD BE EF __ ... __]
@@ -71,13 +72,13 @@ public class SeveralKeccaks extends TracerTestBase {
                 .push(5)
                 .op(OpCode.SHA3) // KEC(0x00DEADBEEF)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   @Test
-  void testSeveralKeccaks() {
+  void testSeveralKeccaks(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(0)
                 .push(0)
                 .op(OpCode.SHA3) // empty hash, no memory expansion
@@ -111,6 +112,6 @@ public class SeveralKeccaks extends TracerTestBase {
                 .op(OpCode.SHA3)
                 .op(OpCode.POP)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 }

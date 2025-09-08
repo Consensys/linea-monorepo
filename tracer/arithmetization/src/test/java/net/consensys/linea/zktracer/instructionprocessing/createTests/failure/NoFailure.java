@@ -21,6 +21,7 @@ import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
@@ -31,9 +32,9 @@ public class NoFailure extends TracerTestBase {
    * address collision takes place, no failure condition F is raised.
    */
   @Test
-  void noFailureConditionTest() {
+  void noFailureConditionTest(TestInfo testInfo) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     program
         .push(salt01)
         .push(0)
@@ -46,7 +47,7 @@ public class NoFailure extends TracerTestBase {
         .push(1)
         .op(CREATE2);
 
-    run(program, testInfo);
+    run(program, chainConfig, testInfo);
   }
 
   /**
@@ -54,9 +55,9 @@ public class NoFailure extends TracerTestBase {
    * address (4) performs a deployment (CREATE2) at that address
    */
   @Test
-  void noFailureConditionDespiteNonzeroBalanceTest() {
+  void noFailureConditionDespiteNonzeroBalanceTest(TestInfo testInfo) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     precomputeDeploymentAddressOfEmptyInitCodeCreate2(program, salt01);
     storeAt(program, 0xadd7);
@@ -67,6 +68,6 @@ public class NoFailure extends TracerTestBase {
     loadFromStorage(program, 0xadd7);
     program.op(EQ); // we expect the result to be true
 
-    run(program, testInfo);
+    run(program, chainConfig, testInfo);
   }
 }

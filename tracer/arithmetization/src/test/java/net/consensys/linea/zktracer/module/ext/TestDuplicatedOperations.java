@@ -24,14 +24,15 @@ import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
 public class TestDuplicatedOperations extends TracerTestBase {
   @Test
-  void testDuplicate() {
+  void testDuplicate(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(
                     Bytes.fromHexString(
                         "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"))
@@ -49,6 +50,6 @@ public class TestDuplicatedOperations extends TracerTestBase {
             zkTracer -> {
               assertThat(zkTracer.getModulesLineCount().get("EXT")).isEqualTo(8);
             })
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 }

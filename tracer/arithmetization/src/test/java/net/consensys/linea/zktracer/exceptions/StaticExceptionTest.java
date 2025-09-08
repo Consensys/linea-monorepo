@@ -30,6 +30,7 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -39,8 +40,8 @@ public class StaticExceptionTest extends TracerTestBase {
 
   @ParameterizedTest
   @ValueSource(ints = {0, 1})
-  void staticExceptionDueToCallWithNonZeroValueTest(int value) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void staticExceptionDueToCallWithNonZeroValueTest(int value, TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     program
         .push(0) // return at capacity
         .push(0) // return at offset
@@ -50,7 +51,7 @@ public class StaticExceptionTest extends TracerTestBase {
         .op(GAS)
         .op(OpCode.STATICCALL);
 
-    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(chainConfig);
     calleeProgram
         .push(0) // return at capacity
         .push(0) // return at offset
@@ -71,7 +72,7 @@ public class StaticExceptionTest extends TracerTestBase {
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program);
 
-    bytecodeRunner.run(List.of(calleeAccount), testInfo);
+    bytecodeRunner.run(List.of(calleeAccount), chainConfig, testInfo);
 
     if (value != 0) {
       assertEquals(
@@ -81,8 +82,8 @@ public class StaticExceptionTest extends TracerTestBase {
   }
 
   @Test
-  void staticExceptionDueToSStoreTest() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void staticExceptionDueToSStoreTest(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     program
         .push(0) // return at capacity
         .push(0) // return at offset
@@ -92,7 +93,7 @@ public class StaticExceptionTest extends TracerTestBase {
         .push(1000) // gas
         .op(OpCode.STATICCALL);
 
-    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(chainConfig);
     calleeProgram.push(0).push(0).op(OpCode.SSTORE);
 
     final ToyAccount calleeAccount =
@@ -105,7 +106,7 @@ public class StaticExceptionTest extends TracerTestBase {
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
 
-    bytecodeRunner.run(List.of(calleeAccount), testInfo);
+    bytecodeRunner.run(List.of(calleeAccount), chainConfig, testInfo);
 
     assertEquals(
         STATIC_FAULT,
@@ -113,8 +114,8 @@ public class StaticExceptionTest extends TracerTestBase {
   }
 
   @Test
-  void staticExceptionDueToSelfDestructTest() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void staticExceptionDueToSelfDestructTest(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     program
         .push(0) // return at capacity
         .push(0) // return at offset
@@ -124,7 +125,7 @@ public class StaticExceptionTest extends TracerTestBase {
         .push(1000) // gas
         .op(OpCode.STATICCALL);
 
-    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(chainConfig);
     calleeProgram.push(0).op(OpCode.SELFDESTRUCT);
 
     final ToyAccount calleeAccount =
@@ -137,7 +138,7 @@ public class StaticExceptionTest extends TracerTestBase {
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
 
-    bytecodeRunner.run(List.of(calleeAccount), testInfo);
+    bytecodeRunner.run(List.of(calleeAccount), chainConfig, testInfo);
 
     assertEquals(
         STATIC_FAULT,
@@ -146,8 +147,8 @@ public class StaticExceptionTest extends TracerTestBase {
 
   @ParameterizedTest
   @ValueSource(ints = {0, 1, 2, 3, 4})
-  void staticExceptionDueToLogTest(int numberOfTopics) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void staticExceptionDueToLogTest(int numberOfTopics, TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     program
         .push(0) // return at capacity
         .push(0) // return at offset
@@ -157,7 +158,7 @@ public class StaticExceptionTest extends TracerTestBase {
         .push(1000) // gas
         .op(OpCode.STATICCALL);
 
-    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(chainConfig);
     for (int i = 0; i < numberOfTopics; i++) {
       calleeProgram.push(0);
     }
@@ -175,7 +176,7 @@ public class StaticExceptionTest extends TracerTestBase {
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
 
-    bytecodeRunner.run(List.of(calleeAccount), testInfo);
+    bytecodeRunner.run(List.of(calleeAccount), chainConfig, testInfo);
 
     assertEquals(
         STATIC_FAULT,
@@ -184,8 +185,8 @@ public class StaticExceptionTest extends TracerTestBase {
 
   @ParameterizedTest
   @ValueSource(strings = {"CREATE", "CREATE2"})
-  void staticExceptionDueToCreateTest(String opCodeName) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void staticExceptionDueToCreateTest(String opCodeName, TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     program
         .push(0) // return at capacity
         .push(0) // return at offset
@@ -195,7 +196,7 @@ public class StaticExceptionTest extends TracerTestBase {
         .push(1000) // gas
         .op(OpCode.STATICCALL);
 
-    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(chainConfig);
     if (opCodeName.equals("CREATE2")) {
       calleeProgram.push(0);
     }
@@ -215,7 +216,7 @@ public class StaticExceptionTest extends TracerTestBase {
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
 
-    bytecodeRunner.run(List.of(calleeAccount), testInfo);
+    bytecodeRunner.run(List.of(calleeAccount), chainConfig, testInfo);
 
     assertEquals(
         STATIC_FAULT,

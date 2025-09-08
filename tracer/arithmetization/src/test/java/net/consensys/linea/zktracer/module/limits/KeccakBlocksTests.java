@@ -34,11 +34,12 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 public class KeccakBlocksTests extends TracerTestBase {
 
   @Test
-  void keccakCountTests() {
+  void keccakCountTests(TestInfo testInfo) {
 
     // sender account
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
@@ -53,7 +54,7 @@ public class KeccakBlocksTests extends TracerTestBase {
             .balance(Wei.fromEth(1))
             .address(Address.wrap(Bytes.repeat((byte) 1, Address.SIZE)))
             .code(
-                BytecodeCompiler.newProgram(testInfo)
+                BytecodeCompiler.newProgram(chainConfig)
                     // CREATE
                     .push(0) // size
                     .push(0) // offset
@@ -78,7 +79,7 @@ public class KeccakBlocksTests extends TracerTestBase {
             .build();
 
     final ToyExecutionEnvironmentV2 toyWorld =
-        ToyExecutionEnvironmentV2.builder(testInfo)
+        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
             .accounts(List.of(senderAccount, recipient))
             .transaction(tx)
             .zkTracerValidator(zkTracer -> {})

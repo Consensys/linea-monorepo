@@ -25,7 +25,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.consensys.linea.reporting.TestInfoWithChainConfig;
+import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
@@ -49,8 +49,8 @@ public class BytecodeCompiler {
    *
    * @return an instance of {@link BytecodeCompiler}
    */
-  public static BytecodeCompiler newProgram(TestInfoWithChainConfig testInfo) {
-    return new BytecodeCompiler(testInfo.chainConfig.fork);
+  public static BytecodeCompiler newProgram(ChainConfig chainConfig) {
+    return new BytecodeCompiler(chainConfig.fork);
   }
 
   /**

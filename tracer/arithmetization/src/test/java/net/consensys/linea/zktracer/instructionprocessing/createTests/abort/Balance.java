@@ -31,6 +31,7 @@ import net.consensys.linea.zktracer.instructionprocessing.createTests.OffsetPara
 import net.consensys.linea.zktracer.instructionprocessing.createTests.SizeParameter;
 import net.consensys.linea.zktracer.instructionprocessing.createTests.ValueParameter;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -43,9 +44,12 @@ public class Balance extends TracerTestBase {
   @ParameterizedTest
   @MethodSource("rootLevelInsufficientBalanceParameters")
   void rootLevelInsufficientBalanceCreateOpcodeTest(
-      CreateType createType, SizeParameter sizeParameter, OffsetParameter offsetParameter) {
+      CreateType createType,
+      SizeParameter sizeParameter,
+      OffsetParameter offsetParameter,
+      TestInfo testInfo) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     if (sizeParameter == s_MSIZE) {
       program.push(513).push(0).op(SHA3); // purely to expand memory to 0 < 512 + 32 bytes
@@ -59,7 +63,7 @@ public class Balance extends TracerTestBase {
         sizeParameter,
         salt01);
 
-    run(program, testInfo);
+    run(program, chainConfig, testInfo);
   }
 
   /**
@@ -73,8 +77,9 @@ public class Balance extends TracerTestBase {
       CreateType createType,
       OffsetParameter offsetParameter,
       SizeParameter sizeParameter,
-      boolean reverts) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+      boolean reverts,
+      TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     genericCreate(
         program,
         createType,
@@ -89,17 +94,17 @@ public class Balance extends TracerTestBase {
       appendRevert(program, 2, 13);
     }
 
-    run(program, testInfo);
+    run(program, chainConfig, testInfo);
   }
 
   @Test
-  void specialRootLevelAbortThenSuccessCreateTest() {
+  void specialRootLevelAbortThenSuccessCreateTest(TestInfo testInfo) {
     final CreateType createType = CreateType.CREATE;
     final OffsetParameter offsetParameter = OffsetParameter.o_ZERO;
     final SizeParameter sizeParameter = SizeParameter.s_ZERO;
     final boolean reverts = true;
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     genericCreate(
         program,
         createType,
@@ -114,11 +119,11 @@ public class Balance extends TracerTestBase {
       appendRevert(program, 2, 13);
     }
 
-    run(program, testInfo);
+    run(program, chainConfig, testInfo);
   }
 
   @Test
-  void rootLevelAbortThenSuccessCreateTest() {
+  void rootLevelAbortThenSuccessCreateTest(TestInfo testInfo) {
 
     // parameters
     CreateType createType = CreateType.CREATE;
@@ -126,7 +131,7 @@ public class Balance extends TracerTestBase {
     SizeParameter sizeParameter = SizeParameter.s_ZERO;
     boolean reverts = true;
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     genericCreate(
         program,
         createType,
@@ -141,7 +146,7 @@ public class Balance extends TracerTestBase {
       appendRevert(program, 2, 13);
     }
 
-    run(program, testInfo);
+    run(program, chainConfig, testInfo);
   }
 
   /**
@@ -155,19 +160,20 @@ public class Balance extends TracerTestBase {
       CreateType createType,
       OffsetParameter offsetParameter,
       SizeParameter sizeParameter,
-      boolean reverts) {
+      boolean reverts,
+      TestInfo testInfo) {
     BytecodeCompiler program =
         rootLevelSuccessThenAbortCreateByteCodeCompiler(
             createType, offsetParameter, sizeParameter, reverts);
-    run(program, testInfo);
+    run(program, chainConfig, testInfo);
   }
 
   @Test
-  void specificRootLevelSuccessThenAbortCreateTest() {
+  void specificRootLevelSuccessThenAbortCreateTest(TestInfo testInfo) {
     BytecodeCompiler program =
         rootLevelSuccessThenAbortCreateByteCodeCompiler(
             CreateType.CREATE2, OffsetParameter.o_ZERO, SizeParameter.s_ZERO, false);
-    run(program, testInfo);
+    run(program, chainConfig, testInfo);
   }
 
   BytecodeCompiler rootLevelSuccessThenAbortCreateByteCodeCompiler(
@@ -175,7 +181,7 @@ public class Balance extends TracerTestBase {
       OffsetParameter offsetParameter,
       SizeParameter sizeParameter,
       boolean reverts) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     genericCreate(
         program, createType, ValueParameter.v_ONE, offsetParameter, sizeParameter, salt01);
     genericCreate(

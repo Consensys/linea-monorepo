@@ -40,41 +40,42 @@ import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
 public class OobCallTest extends TracerTestBase {
 
   @Test
-  void testCallSendValueGreaterThanBalanceHiNonZero() {
+  void testCallSendValueGreaterThanBalanceHiNonZero(TestInfo testInfo) {
     final EWord balanceOfCaller = EWord.of(BigInteger.ONE);
     final EWord amountToSend = EWord.of(BigInteger.ONE, BigInteger.ZERO);
 
-    testCallSendValue(balanceOfCaller, amountToSend, 1);
+    testCallSendValue(balanceOfCaller, amountToSend, 1, testInfo);
   }
 
   @Test
-  void testCallSendValueGreaterThanBalanceLoNonZero() {
+  void testCallSendValueGreaterThanBalanceLoNonZero(TestInfo testInfo) {
     final EWord balanceOfCaller = EWord.of(BigInteger.ONE);
     final EWord amountToSend = EWord.of(BigInteger.ZERO, BigInteger.TWO);
 
-    testCallSendValue(balanceOfCaller, amountToSend, 1);
+    testCallSendValue(balanceOfCaller, amountToSend, 1, testInfo);
   }
 
   @Test
-  void testCallSendValueGreaterThanBalanceHiLoNonZero() {
+  void testCallSendValueGreaterThanBalanceHiLoNonZero(TestInfo testInfo) {
     final EWord balanceOfCaller = EWord.of(BigInteger.ONE);
     final EWord amountToSend = EWord.of(BigInteger.TWO, BigInteger.TWO);
 
-    testCallSendValue(balanceOfCaller, amountToSend, 1);
+    testCallSendValue(balanceOfCaller, amountToSend, 1, testInfo);
   }
 
   @Test
-  void testCallSendValueSmallerThanBalanceLoNonZero() {
+  void testCallSendValueSmallerThanBalanceLoNonZero(TestInfo testInfo) {
     final EWord balanceOfCaller = EWord.of(BigInteger.TWO);
     final EWord amountToSend = EWord.of(BigInteger.ZERO, BigInteger.ONE);
 
-    testCallSendValue(balanceOfCaller, amountToSend);
+    testCallSendValue(balanceOfCaller, amountToSend, testInfo);
   }
 
   /*
@@ -82,24 +83,24 @@ public class OobCallTest extends TracerTestBase {
   unless maxHeapSize is adjusted in tests.gradle
    */
   @Test
-  void testRecursiveCalls1024() {
+  void testRecursiveCalls1024(TestInfo testInfo) {
     final EWord iterations = EWord.of(BigInteger.valueOf(1024));
 
-    testRecursiveCalls(iterations);
+    testRecursiveCalls(iterations, testInfo);
   }
 
   @Test
-  void testRecursiveCalls1025() {
+  void testRecursiveCalls1025(TestInfo testInfo) {
     final EWord iterations = EWord.of(BigInteger.valueOf(1025));
 
-    testRecursiveCalls(iterations, 1);
+    testRecursiveCalls(iterations, 1, testInfo);
   }
 
   @Test
-  void testRecursiveCallsWithBytecode() {
+  void testRecursiveCallsWithBytecode(TestInfo testInfo) {
     final BytecodeRunner bytecodeRunner =
         BytecodeRunner.of(Bytes.fromHexString("60006000600060006000305af1"));
-    bytecodeRunner.run(Wei.fromEth(400), 0xFFFFFFL, testInfo);
+    bytecodeRunner.run(Wei.fromEth(400), 0xFFFFFFL, chainConfig, testInfo);
 
     final Hub hub = bytecodeRunner.getHub();
 
@@ -107,38 +108,42 @@ public class OobCallTest extends TracerTestBase {
   }
 
   /**
-   * Same as {@link #testRecursiveCallsWithBytecode()} but with an ADD opcode at the end triggering
-   * SUX
+   * Same as {@link #testRecursiveCallsWithBytecode(TestInfo)} but with an ADD opcode at the end
+   * triggering SUX
    */
   @Test
-  void testRecursiveCallsWithBytecodeFollowedByStackUnderflow() {
+  void testRecursiveCallsWithBytecodeFollowedByStackUnderflow(TestInfo testInfo) {
     final BytecodeRunner bytecodeRunner =
         BytecodeRunner.of(Bytes.fromHexString("60006000600060006000305af101"));
-    bytecodeRunner.run(Wei.fromEth(400), 0xFFFFFFL, testInfo);
+    bytecodeRunner.run(Wei.fromEth(400), 0xFFFFFFL, chainConfig, testInfo);
 
     final Hub hub = bytecodeRunner.getHub();
 
     assertTrue(stackUnderflow(hub.pch().exceptions()));
   }
 
-  /** Same as {@link #testRecursiveCallsWithBytecode()} but with an ADDRESS opcode at the end */
+  /**
+   * Same as {@link #testRecursiveCallsWithBytecode(TestInfo)} but with an ADDRESS opcode at the end
+   */
   @Test
-  void testRecursiveCallsWithBytecodeFollowedByAddress() {
+  void testRecursiveCallsWithBytecodeFollowedByAddress(TestInfo testInfo) {
     final BytecodeRunner bytecodeRunner =
         BytecodeRunner.of(Bytes.fromHexString("60006000600060006000305af130"));
-    bytecodeRunner.run(Wei.fromEth(400), (long) 21000 + 10000, testInfo);
+    bytecodeRunner.run(Wei.fromEth(400), (long) 21000 + 10000, chainConfig, testInfo);
 
     final Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.none(hub.pch().exceptions()));
   }
 
-  /** Same as {@link #testRecursiveCallsWithBytecode()} but with an STOP opcode at the end */
+  /**
+   * Same as {@link #testRecursiveCallsWithBytecode(TestInfo)} but with an STOP opcode at the end
+   */
   @Test
-  void testRecursiveCallsWithBytecodeFollowedByExplicitStop() {
+  void testRecursiveCallsWithBytecodeFollowedByExplicitStop(TestInfo testInfo) {
     final BytecodeRunner bytecodeRunner =
         BytecodeRunner.of(Bytes.fromHexString("60006000600060006000305af100"));
-    bytecodeRunner.run(Wei.fromEth(400), 0xFFFFFFL, testInfo);
+    bytecodeRunner.run(Wei.fromEth(400), 0xFFFFFFL, chainConfig, testInfo);
 
     final Hub hub = bytecodeRunner.getHub();
 
@@ -146,12 +151,15 @@ public class OobCallTest extends TracerTestBase {
   }
 
   // Support methods
-  private void testCallSendValue(EWord balanceOfCaller, EWord amountToSend) {
-    testCallSendValue(balanceOfCaller, amountToSend, 0);
+  private void testCallSendValue(EWord balanceOfCaller, EWord amountToSend, TestInfo testInfo) {
+    testCallSendValue(balanceOfCaller, amountToSend, 0, testInfo);
   }
 
   private void testCallSendValue(
-      final EWord balanceOfCaller, EWord amountToSend, int numberOfOnesInOobEvent1) {
+      final EWord balanceOfCaller,
+      EWord amountToSend,
+      int numberOfOnesInOobEvent1,
+      TestInfo testInfo) {
     /* NOTE: The contracts in this method are compiled by using
     solc *.sol --bin-runtime --evm-version london -o compiledContracts
     i.e., we do not include the init code of the contracts in the bytecode
@@ -201,7 +209,7 @@ public class OobCallTest extends TracerTestBase {
             .build();
 
     final ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
-        ToyExecutionEnvironmentV2.builder(testInfo)
+        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
             .accounts(List.of(userAccount, contractCallerAccount, contractCalleeAccount))
             .transaction(tx)
             .transactionProcessingResultValidator(
@@ -215,11 +223,12 @@ public class OobCallTest extends TracerTestBase {
     assertTrue(Exceptions.none(hub.pch().exceptions()));
   }
 
-  private void testRecursiveCalls(EWord iterations) {
-    testRecursiveCalls(iterations, 0);
+  private void testRecursiveCalls(EWord iterations, TestInfo testInfo) {
+    testRecursiveCalls(iterations, 0, testInfo);
   }
 
-  private void testRecursiveCalls(EWord iterations, int numberOfOnesInOobEvent1) {
+  private void testRecursiveCalls(
+      EWord iterations, int numberOfOnesInOobEvent1, TestInfo testInfo) {
     /* NOTE: The contracts in this method are compiled by using
     solc *.sol --bin-runtime --evm-version london -o compiledContracts
     i.e., we do not include the init code of the contracts in the bytecode
@@ -254,7 +263,7 @@ public class OobCallTest extends TracerTestBase {
             .build();
 
     final ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
-        ToyExecutionEnvironmentV2.builder(testInfo)
+        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
             .accounts(List.of(userAccount, contractCallerAccount))
             .transaction(tx)
             .transactionProcessingResultValidator(

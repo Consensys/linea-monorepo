@@ -22,6 +22,7 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
@@ -32,9 +33,9 @@ public class ExtCodeHashAndAccountExistenceTests extends TracerTestBase {
    * DEAD anymore)
    */
   @Test
-  void extcodexxxForPrecompileBeforeAndAfterTransfer() {
+  void extcodexxxForPrecompileBeforeAndAfterTransfer(TestInfo testInfo) {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(1)
             .op(DUP1)
             .op(EXTCODEHASH) // will return 0
@@ -55,14 +56,14 @@ public class ExtCodeHashAndAccountExistenceTests extends TracerTestBase {
             .op(POP)
             .op(EXTCODESIZE) // will return 0
             .compile();
-    BytecodeRunner.of(bytecode).run(testInfo);
+    BytecodeRunner.of(bytecode).run(chainConfig, testInfo);
   }
 
   /** same as above with ECRECOVER swapped for some random address (nice!) */
   @Test
-  void extcodexxxBeforeAndAfterTransfer() {
+  void extcodexxxBeforeAndAfterTransfer(TestInfo testInfo) {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(69)
             .op(DUP1)
             .op(EXTCODEHASH) // will return 0
@@ -83,7 +84,7 @@ public class ExtCodeHashAndAccountExistenceTests extends TracerTestBase {
             .op(POP)
             .op(EXTCODESIZE) // will return 0
             .compile();
-    BytecodeRunner.of(bytecode).run(testInfo);
+    BytecodeRunner.of(bytecode).run(chainConfig, testInfo);
   }
 
   /**
@@ -92,9 +93,9 @@ public class ExtCodeHashAndAccountExistenceTests extends TracerTestBase {
    * again (no deployment occurred)
    */
   @Test
-  void extcodexxxBeforeDuringAndAfterTrivialDeployment() {
+  void extcodexxxBeforeDuringAndAfterTrivialDeployment(TestInfo testInfo) {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push("6ff1019c622e4641f86f4bb7232b7901b8d20db6")
             .op(DUP1)
             .op(EXTCODEHASH) // will return 0
@@ -110,7 +111,7 @@ public class ExtCodeHashAndAccountExistenceTests extends TracerTestBase {
             .op(POP)
             .op(EXTCODESIZE) // will return 0
             .compile();
-    BytecodeRunner.of(bytecode).run(testInfo);
+    BytecodeRunner.of(bytecode).run(chainConfig, testInfo);
   }
 
   /**
@@ -129,9 +130,9 @@ public class ExtCodeHashAndAccountExistenceTests extends TracerTestBase {
    * <p>EXTCODESIZE
    */
   @Test
-  void extcodexxxBeforeDuringAndAfterDeploymentDeployingEmtpyByteCode() {
+  void extcodexxxBeforeDuringAndAfterDeploymentDeployingEmtpyByteCode(TestInfo testInfo) {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push("6ff1019c622e4641f86f4bb7232b7901b8d20db6")
             .op(DUP1)
             .op(EXTCODEHASH) // will return 0
@@ -151,7 +152,7 @@ public class ExtCodeHashAndAccountExistenceTests extends TracerTestBase {
             .op(POP)
             .op(EXTCODESIZE) // will return 0
             .compile();
-    BytecodeRunner.of(bytecode).run(testInfo);
+    BytecodeRunner.of(bytecode).run(chainConfig, testInfo);
   }
 
   /**
@@ -180,9 +181,9 @@ public class ExtCodeHashAndAccountExistenceTests extends TracerTestBase {
    * <p>This deploys the following bytecode: 0x00
    */
   @Test
-  void extcodexxxBeforeDuringAndAfterDeploymentDeployingSingleZeroByte() {
+  void extcodexxxBeforeDuringAndAfterDeploymentDeployingSingleZeroByte(TestInfo testInfo) {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push("6ff1019c622e4641f86f4bb7232b7901b8d20db6")
             .op(EXTCODEHASH) // will return 0
             .op(POP)
@@ -201,14 +202,14 @@ public class ExtCodeHashAndAccountExistenceTests extends TracerTestBase {
             .op(POP)
             .op(EXTCODESIZE) // will return 1
             .compile();
-    BytecodeRunner.of(bytecode).run(testInfo);
+    BytecodeRunner.of(bytecode).run(chainConfig, testInfo);
   }
 
   /** Invoke EXTCODEHASH/EXTCODESIZE of oneself. */
   @Test
-  void extcodexxxOfOneself() {
+  void extcodexxxOfOneself(TestInfo testInfo) {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .op(ADDRESS)
             .op(DUP1)
             .op(EXTCODEHASH) // will return the hash of this bytecode:
@@ -217,6 +218,6 @@ public class ExtCodeHashAndAccountExistenceTests extends TracerTestBase {
             .op(EXTCODESIZE) // will return 6
             .op(JUMPDEST) //
             .compile();
-    BytecodeRunner.of(bytecode).run(testInfo);
+    BytecodeRunner.of(bytecode).run(chainConfig, testInfo);
   }
 }

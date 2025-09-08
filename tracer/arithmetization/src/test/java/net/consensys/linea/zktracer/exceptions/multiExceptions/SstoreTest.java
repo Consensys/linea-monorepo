@@ -30,6 +30,7 @@ import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /*
@@ -41,8 +42,8 @@ STATIC & OOGX : SSTORE
 @ExtendWith(UnitTestWatcher.class)
 public class SstoreTest extends TracerTestBase {
   @Test
-  public void staticAndOutOfSStoreExceptions() {
-    BytecodeCompiler pg = BytecodeCompiler.newProgram(testInfo);
+  public void staticAndOutOfSStoreExceptions(TestInfo testInfo) {
+    BytecodeCompiler pg = BytecodeCompiler.newProgram(chainConfig);
 
     pg.push(0).push(0).op(OpCode.SSTORE);
 
@@ -54,7 +55,7 @@ public class SstoreTest extends TracerTestBase {
         getProgramStaticCallToCodeAddress(gasCostToTriggerOutOfSStore);
 
     BytecodeRunner bytecodeRunnerStaticCall = BytecodeRunner.of(pgStaticCallToCode.compile());
-    bytecodeRunnerStaticCall.run(List.of(codeProviderAccount), testInfo);
+    bytecodeRunnerStaticCall.run(List.of(codeProviderAccount), chainConfig, testInfo);
 
     // Static check happens before outOfStore exception
     assertEquals(
@@ -67,12 +68,12 @@ public class SstoreTest extends TracerTestBase {
   }
 
   @Test
-  void staticAndOogExceptionsSStore() {
+  void staticAndOogExceptionsSStore(TestInfo testInfo) {
 
     BytecodeCompiler program = simpleProgram(OpCode.SSTORE);
     Bytes pgCompile = program.compile();
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(pgCompile);
-    long gasCostTx = bytecodeRunner.runOnlyForGasCost(testInfo);
+    long gasCostTx = bytecodeRunner.runOnlyForGasCost(chainConfig, testInfo);
     int cornerCase = -1;
 
     // We calculate gas cost to trigger OOGX
@@ -84,7 +85,7 @@ public class SstoreTest extends TracerTestBase {
 
     // Run with linea block gas limit so gas cost is passed to child without 63/64
     BytecodeRunner bytecodeRunnerStaticCall = BytecodeRunner.of(pgStaticCallToCode.compile());
-    bytecodeRunnerStaticCall.run(List.of(codeProviderAccount), testInfo);
+    bytecodeRunnerStaticCall.run(List.of(codeProviderAccount), chainConfig, testInfo);
 
     // Static check happens before OOGX in tracer
     assertEquals(

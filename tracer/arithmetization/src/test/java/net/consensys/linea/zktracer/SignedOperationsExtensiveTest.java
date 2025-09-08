@@ -32,6 +32,7 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -44,10 +45,10 @@ public class SignedOperationsExtensiveTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("signedComparisonsModDivTestSource")
-  void signedComparisonsModDivTest(OpCode opCode, String a, String b) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo).push(b).push(a).op(opCode);
+  void signedComparisonsModDivTest(OpCode opCode, String a, String b, TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig).push(b).push(a).op(opCode);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
   }
 
   private static Stream<Arguments> signedComparisonsModDivTestSource() {
@@ -111,11 +112,11 @@ public class SignedOperationsExtensiveTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("signExtendTestSource")
-  private void signExtendTest(String position, String value) {
+  private void signExtendTest(String position, String value, TestInfo testInfo) {
     BytecodeCompiler program =
-        BytecodeCompiler.newProgram(testInfo).push(value).push(position).op(OpCode.SIGNEXTEND);
+        BytecodeCompiler.newProgram(chainConfig).push(value).push(position).op(OpCode.SIGNEXTEND);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
   }
 
   private static Stream<Arguments> signExtendTestSource() {

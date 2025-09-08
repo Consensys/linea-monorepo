@@ -31,12 +31,13 @@ import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 public class TransactionStorageTest extends TracerTestBase {
   TestContext tc;
 
   @Test
-  void testTransactionMapStorage() {
+  void testTransactionMapStorage(TestInfo testInfo) {
     // initialize the test context
     this.tc = new TestContext();
     this.tc.initializeTestContext();
@@ -52,7 +53,7 @@ public class TransactionStorageTest extends TracerTestBase {
 
     // prepare a multi-block execution of transactions
     final MultiBlockExecutionEnvironment multiBlockEnv =
-        MultiBlockExecutionEnvironment.builder(testInfo)
+        MultiBlockExecutionEnvironment.builder(chainConfig, testInfo)
             // initialize accounts
             .accounts(
                 List.of(

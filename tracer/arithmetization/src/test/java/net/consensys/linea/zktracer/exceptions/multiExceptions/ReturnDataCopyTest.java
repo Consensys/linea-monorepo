@@ -27,6 +27,7 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /*
@@ -40,7 +41,7 @@ Note : As MXPX is a subcase of OOGX, we don't test MXPX & OOGX
 @ExtendWith(UnitTestWatcher.class)
 public class ReturnDataCopyTest extends TracerTestBase {
   @Test
-  void rdcAndOogExceptionsReturnDataCopy() {
+  void rdcAndOogExceptionsReturnDataCopy(TestInfo testInfo) {
     boolean MXPX = true;
     boolean RDCX = true;
     final ToyAccount codeProviderAccount =
@@ -50,7 +51,8 @@ public class ReturnDataCopyTest extends TracerTestBase {
     BytecodeCompiler programWithoutRdcx = getProgramRDCFromStaticCallToCodeAccount(!RDCX, !MXPX);
     BytecodeRunner bytecodeRunnerWithoutRdcx = BytecodeRunner.of(programWithoutRdcx.compile());
     long gasCostWithoutRdcx =
-        bytecodeRunnerWithoutRdcx.runOnlyForGasCost(List.of(codeProviderAccount), testInfo);
+        bytecodeRunnerWithoutRdcx.runOnlyForGasCost(
+            List.of(codeProviderAccount), chainConfig, testInfo);
 
     // We compute the final gas cost with RDCX and OOGX trigger
     // We trigger RDCX by adding 1 to RDS
@@ -60,7 +62,7 @@ public class ReturnDataCopyTest extends TracerTestBase {
     // We run the program with RDCX trigger and gasCost for OOGX
     BytecodeCompiler program = getProgramRDCFromStaticCallToCodeAccount(RDCX, !MXPX);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(gasCostWithRdcxAndOogx, List.of(codeProviderAccount), testInfo);
+    bytecodeRunner.run(gasCostWithRdcxAndOogx, List.of(codeProviderAccount), chainConfig, testInfo);
 
     // RDCX check happens before OOGX in tracer
     assertEquals(
@@ -69,7 +71,7 @@ public class ReturnDataCopyTest extends TracerTestBase {
   }
 
   @Test
-  void rdcAndMxpExceptionsReturnDataCopy() {
+  void rdcAndMxpExceptionsReturnDataCopy(TestInfo testInfo) {
     boolean MXPX = true;
     boolean RDCX = true;
     final ToyAccount codeProviderAccount =
@@ -79,7 +81,7 @@ public class ReturnDataCopyTest extends TracerTestBase {
     BytecodeCompiler program = getProgramRDCFromStaticCallToCodeAccount(RDCX, MXPX);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(List.of(codeProviderAccount), testInfo);
+    bytecodeRunner.run(List.of(codeProviderAccount), chainConfig, testInfo);
 
     // RDCX check happens before MXPX in tracer
     assertEquals(

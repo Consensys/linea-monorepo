@@ -35,6 +35,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -72,26 +73,26 @@ public class ShfExtensiveTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("shfTestSource")
-  void shlTest(String value, int k, int l) {
-    shfProgramOf(value, OpCode.SHL).run(testInfo);
+  void shlTest(String value, int k, int l, TestInfo testInfo) {
+    shfProgramOf(value, OpCode.SHL).run(chainConfig, testInfo);
   }
 
   @ParameterizedTest
   @MethodSource("shfTestSource")
-  void shrTest(String value, int k, int l) {
-    shfProgramOf(value, OpCode.SHR).run(testInfo);
+  void shrTest(String value, int k, int l, TestInfo testInfo) {
+    shfProgramOf(value, OpCode.SHR).run(chainConfig, testInfo);
   }
 
   @ParameterizedTest
   @MethodSource("shfTestSource")
-  void sarTest(String value, int k, int l) {
-    shfProgramOf(value, OpCode.SAR).run(testInfo);
+  void sarTest(String value, int k, int l, TestInfo testInfo) {
+    shfProgramOf(value, OpCode.SAR).run(chainConfig, testInfo);
   }
 
   @ParameterizedTest
   @MethodSource("shfWithMaskTestSource")
-  void sarWithMaskTest(String value, int k, int l, String XY) {
-    shfProgramOf(value, OpCode.SAR).run(testInfo);
+  void sarWithMaskTest(String value, int k, int l, String XY, TestInfo testInfo) {
+    shfProgramOf(value, OpCode.SAR).run(chainConfig, testInfo);
   }
 
   private static Stream<Arguments> shfTestSource() {
@@ -132,7 +133,7 @@ public class ShfExtensiveTest extends TracerTestBase {
   //  Creates a program that concatenates shifts operations (with different relevant shift values)
   //  for a given value and opcode
   private BytecodeRunner shfProgramOf(String value, OpCode opCode) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     for (String shift : SHIFTS) {
       program.push(value).push(shift).op(opCode);
     }
@@ -165,10 +166,10 @@ public class ShfExtensiveTest extends TracerTestBase {
   @Disabled
   @ParameterizedTest
   @MethodSource("shfExtensiveTestSource")
-  void shfExtensiveTest(String shift, String value, OpCode opCode) {
+  void shfExtensiveTest(String shift, String value, OpCode opCode, TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo).push(value).push(shift).op(opCode).compile())
-        .run(testInfo);
+            BytecodeCompiler.newProgram(chainConfig).push(value).push(shift).op(opCode).compile())
+        .run(chainConfig, testInfo);
   }
 
   private static Stream<Arguments> shfExtensiveTestSource() {

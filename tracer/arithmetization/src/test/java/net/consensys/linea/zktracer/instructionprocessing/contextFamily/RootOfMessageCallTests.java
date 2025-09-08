@@ -21,14 +21,15 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
 public class RootOfMessageCallTests extends TracerTestBase {
 
   @Test
-  public void messageCallTest() {
-    BytecodeCompiler program = allContextOpCodes(testInfo);
-    BytecodeRunner.of(program).run(testInfo);
+  public void messageCallTest(TestInfo testInfo) {
+    BytecodeCompiler program = allContextOpCodes(chainConfig);
+    BytecodeRunner.of(program).run(chainConfig, testInfo);
   }
 }

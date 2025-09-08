@@ -31,6 +31,7 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -50,9 +51,9 @@ public class JumpTest extends TracerTestBase {
    */
   @ParameterizedTest
   @ValueSource(ints = {5, 6})
-  void jumpAndOogExceptionsJump(int jumpCounter) {
+  void jumpAndOogExceptionsJump(int jumpCounter, TestInfo testInfo) {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(jumpCounter) // pc: 0 - 5 i/o 4, Trigger Jump Exception
             .op(OpCode.JUMP) // pc: 2
             .op(OpCode.INVALID) // pc: 3
@@ -65,7 +66,7 @@ public class JumpTest extends TracerTestBase {
     // Calculate the gas cost to trigger OOGX on JUMP and not on the last but one opcode
     long gasCost = GAS_CONST_G_TRANSACTION + GAS_CONST_G_VERY_LOW;
 
-    bytecodeRunner.run(gasCost, testInfo);
+    bytecodeRunner.run(gasCost, chainConfig, testInfo);
 
     // OOGX check happens before JUMPX in tracer
     assertEquals(
@@ -79,9 +80,9 @@ public class JumpTest extends TracerTestBase {
    */
   @ParameterizedTest
   @ValueSource(ints = {6, 9})
-  void jumpAndOogExceptionsJumpi(int jumpCounter) {
+  void jumpAndOogExceptionsJumpi(int jumpCounter, TestInfo testInfo) {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(1) // pc = 0, 1
             .push(jumpCounter) // pc = 2, 3, i/o 7, Trigger Jump Exception
             .op(OpCode.JUMPI) // pc = 4
@@ -97,7 +98,7 @@ public class JumpTest extends TracerTestBase {
     // Calculate the gas cost to trigger OOGX on JUMPI and not on the last but one opcode
     long gasCost = GAS_CONST_G_TRANSACTION + 2 * GAS_CONST_G_VERY_LOW;
 
-    bytecodeRunner.run(gasCost, testInfo);
+    bytecodeRunner.run(gasCost, chainConfig, testInfo);
 
     // JUMPX check happens before OOGX in tracer
     assertEquals(

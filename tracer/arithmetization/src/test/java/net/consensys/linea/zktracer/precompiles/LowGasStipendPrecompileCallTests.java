@@ -50,6 +50,7 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -111,8 +112,9 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
       Address precompileAddress,
       ValueCase valueCase,
       GasCase gasCase,
-      boolean modexpCostGT200OrBlake2fRoundsGT0) {
-    final BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+      boolean modexpCostGT200OrBlake2fRoundsGT0,
+      TestInfo testInfo) {
+    final BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     // In order to actually trigger the insufficient we need to:
     // - Set a specific callDataSize for BLAKE2F and EC_PAIRING
@@ -203,7 +205,10 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
         .op(OpCode.CALL);
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(program);
     bytecodeRunner.run(
-        61_000_000L, precompileAddress == MODEXP ? additionalAccounts : List.of(), testInfo);
+        61_000_000L,
+        precompileAddress == MODEXP ? additionalAccounts : List.of(),
+        chainConfig,
+        testInfo);
   }
 
   static Stream<Arguments> lowGasStipendPrecompileCallTestSource() {

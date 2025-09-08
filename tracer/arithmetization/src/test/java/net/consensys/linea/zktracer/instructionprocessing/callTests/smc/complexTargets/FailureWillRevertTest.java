@@ -23,6 +23,7 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -39,9 +40,9 @@ public class FailureWillRevertTest extends TracerTestBase {
   @EnumSource(
       value = OpCode.class,
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
-  public void singleSelfCallFailureWillRevertTest(OpCode callOpCode) {
+  public void singleSelfCallFailureWillRevertTest(OpCode callOpCode, TestInfo testInfo) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     sloadFrom(program, 0x00);
     addX(program, 0x01);
     duplicateTop(program);
@@ -59,13 +60,13 @@ public class FailureWillRevertTest extends TracerTestBase {
     selfCall(program, callOpCode, 0xffff, 0x10);
     appendRevert(program, 31, 7);
 
-    BytecodeRunner.of(program).run(testInfo);
+    BytecodeRunner.of(program).run(chainConfig, testInfo);
   }
 
   @Test
-  public void banalAdditionTest() {
+  public void banalAdditionTest(TestInfo testInfo) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     sloadFrom(program, 0x00); // puts 0 on stack
     addX(program, 0x01);
     sstoreAt(program, 0x00);
@@ -74,7 +75,7 @@ public class FailureWillRevertTest extends TracerTestBase {
     sstoreAt(program, 0x00);
     appendRevert(program, 31, 7);
 
-    BytecodeRunner.of(program).run(testInfo);
+    BytecodeRunner.of(program).run(chainConfig, testInfo);
   }
 
   /**
@@ -83,22 +84,26 @@ public class FailureWillRevertTest extends TracerTestBase {
    * the swap stack pattern.)
    */
   @Test
-  public void banalSwapTest() {
+  public void banalSwapTest(TestInfo testInfo) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     program.push(1).push(2).op(SWAP1).push(3).op(SWAP1);
 
-    BytecodeRunner.of(program).run(testInfo);
+    BytecodeRunner.of(program).run(chainConfig, testInfo);
   }
 
-  /** Similar to {@link #singleSelfCallFailureWillRevertTest(OpCode)} but with two self calls. */
+  /**
+   * Similar to {@link #singleSelfCallFailureWillRevertTest(OpCode,TestInfo)} but with two self
+   * calls.
+   */
   @ParameterizedTest
   @EnumSource(
       value = OpCode.class,
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
-  public void thirdSelfCallBreaksTriggeringFailureWillRevertTest(OpCode callOpCode) {
+  public void thirdSelfCallBreaksTriggeringFailureWillRevertTest(
+      OpCode callOpCode, TestInfo testInfo) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     sloadFrom(program, 0x00);
     addX(program, 0x01);
     duplicateTop(program);
@@ -115,7 +120,7 @@ public class FailureWillRevertTest extends TracerTestBase {
     selfCall(program, callOpCode, 0xffff, 0x01);
     appendRevert(program, 31, 7);
 
-    BytecodeRunner.of(program).run(testInfo);
+    BytecodeRunner.of(program).run(chainConfig, testInfo);
   }
 
   public void sloadFrom(BytecodeCompiler program, int storageKey) {

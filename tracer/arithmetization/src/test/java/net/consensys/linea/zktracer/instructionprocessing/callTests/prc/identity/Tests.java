@@ -32,6 +32,7 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -64,9 +65,9 @@ public class Tests extends TracerTestBase {
   @EnumSource(
       value = OpCode.class,
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
-  void nontrivialCallDataIdentityTest(OpCode callOpCode) {
+  void nontrivialCallDataIdentityTest(OpCode callOpCode, TestInfo testInfo) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     fullCodeCopyOf(program, byteSource);
     appendCall(
         program,
@@ -89,7 +90,7 @@ public class Tests extends TracerTestBase {
             .to(identityCaller)
             .value(Wei.of(7_000_000_000L))
             .build();
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(byteSource, userAccount, identityCaller))
         .transaction(transaction)
         .build()

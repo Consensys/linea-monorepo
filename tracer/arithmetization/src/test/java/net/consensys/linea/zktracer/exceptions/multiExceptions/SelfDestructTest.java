@@ -31,6 +31,7 @@ import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /*
@@ -43,12 +44,12 @@ STATIC & OOGX : SELFDESTRUCT
 public class SelfDestructTest extends TracerTestBase {
 
   @Test
-  void staticAndOogExceptionsSelfDestruct() {
+  void staticAndOogExceptionsSelfDestruct(TestInfo testInfo) {
 
     BytecodeCompiler program = simpleProgram(OpCode.SELFDESTRUCT);
     Bytes pgCompile = program.compile();
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(pgCompile);
-    long gasCostTx = bytecodeRunner.runOnlyForGasCost(testInfo);
+    long gasCostTx = bytecodeRunner.runOnlyForGasCost(chainConfig, testInfo);
 
     int cornerCase = -1;
     // We calculate gas cost to trigger OOGX
@@ -60,7 +61,7 @@ public class SelfDestructTest extends TracerTestBase {
 
     // Run with linea block gas limit so gas cost is passed to child without 63/64
     BytecodeRunner bytecodeRunnerStaticCall = BytecodeRunner.of(pgStaticCallToCode.compile());
-    bytecodeRunnerStaticCall.run(List.of(codeProviderAccount), testInfo);
+    bytecodeRunnerStaticCall.run(List.of(codeProviderAccount), chainConfig, testInfo);
 
     // Static check happens before OOGX in tracer
     assertEquals(

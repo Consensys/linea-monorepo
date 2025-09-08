@@ -21,6 +21,7 @@ import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /** Insufficient balance at some address */
@@ -29,7 +30,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class Issue1116Tests extends TracerTestBase {
 
   @Test
-  void issue_1116_block_8019521() {
-    replay(OLD_MAINNET_TESTCONFIG, "8019521.mainnet.json.gz");
+  void issue_1116_block_8019521(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "8019521.mainnet.json.gz", testInfo);
   }
 }

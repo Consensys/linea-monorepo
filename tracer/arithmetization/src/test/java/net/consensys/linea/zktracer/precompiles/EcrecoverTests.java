@@ -23,15 +23,16 @@ import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
 public class EcrecoverTests extends TracerTestBase {
 
   @Test
-  void basicEcrecoverTest() {
+  void basicEcrecoverTest(TestInfo testInfo) {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(0)
             .push(0)
             .push(0)
@@ -43,16 +44,16 @@ public class EcrecoverTests extends TracerTestBase {
             .op(OpCode.POP)
             .compile();
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(bytecode);
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     // Check that the line count is made
     assertEquals(0, bytecodeRunner.getHub().ecRecoverEffectiveCall().lineCount());
   }
 
   @Test
-  void insufficientGasEcrecoverTest() {
+  void insufficientGasEcrecoverTest(TestInfo testInfo) {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(0)
             .push(0)
             .push(0)
@@ -64,7 +65,7 @@ public class EcrecoverTests extends TracerTestBase {
             .op(OpCode.POP)
             .compile();
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(bytecode);
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     // Check that the line count is made
     assertEquals(0, bytecodeRunner.getHub().ecRecoverEffectiveCall().lineCount());

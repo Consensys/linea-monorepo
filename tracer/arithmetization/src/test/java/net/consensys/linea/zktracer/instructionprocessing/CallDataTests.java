@@ -29,6 +29,7 @@ import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
@@ -39,18 +40,18 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(UnitTestWatcher.class)
 public class CallDataTests extends TracerTestBase {
   // @Test
-  // void transactionCallDataForMessageCallTest() {
+  // void transactionCallDataForMessageCallTest(TestInfo testInfo) {
   // }
 
   // @Test
-  // void transactionCallDataForDeploymentTest() {
+  // void transactionCallDataForDeploymentTest(TestInfo testInfo) {
   // }
 
   @Test
-  void nonAlignedCallDataInCallTest() {
+  void nonAlignedCallDataInCallTest(TestInfo testInfo) {
 
     Transaction transaction = transactionCallingCallDataCodeAccount();
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(accounts)
         .transaction(transaction)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
@@ -59,14 +60,14 @@ public class CallDataTests extends TracerTestBase {
   }
 
   // @Test
-  // void callDataInCreateTest() {
+  // void callDataInCreateTest(TestInfo testInfo) {
   // }
 
   private final Bytes callData32 =
       Bytes.fromHexString("abcdef01234567890000deadbeef0000aa0f517e002024aa9876543210fedcba");
 
   Bytes callDataByteCode =
-      BytecodeCompiler.newProgram(testInfo)
+      BytecodeCompiler.newProgram(chainConfig)
           .push(13) // size
           .push(29) // sourceOffset
           .push(17) // targetOffset
@@ -83,7 +84,7 @@ public class CallDataTests extends TracerTestBase {
           .compile();
 
   final Bytes callerCode =
-      BytecodeCompiler.newProgram(testInfo)
+      BytecodeCompiler.newProgram(chainConfig)
           .push(callData32)
           .push(2)
           .op(OpCode.MSTORE)

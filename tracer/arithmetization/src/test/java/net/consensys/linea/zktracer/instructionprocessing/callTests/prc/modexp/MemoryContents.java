@@ -19,8 +19,8 @@ import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 
 import java.math.BigInteger;
 
-import net.consensys.linea.reporting.TestInfoWithChainConfig;
 import net.consensys.linea.testing.BytecodeCompiler;
+import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.framework.PrecompileCallMemoryContents;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -90,7 +90,7 @@ public class MemoryContents implements PrecompileCallMemoryContents {
    *
    * @return
    */
-  public BytecodeCompiler memoryContents(TestInfoWithChainConfig testInfo) {
+  public BytecodeCompiler memoryContents(ChainConfig chainConfig) {
 
     // starting at index 2 eliminates the 0x prefix
     String byteSizes = this.bbs().substring(2) + this.ebs().substring(2) + this.mbs().substring(2);
@@ -102,7 +102,7 @@ public class MemoryContents implements PrecompileCallMemoryContents {
             + expn().substring(0, 2 * this.ebsShort())
             + mdls().substring(0, 2 * this.mbsShort());
 
-    return BytecodeCompiler.newProgram(testInfo).immediate(Bytes.fromHexString(memoryContents));
+    return BytecodeCompiler.newProgram(chainConfig).immediate(Bytes.fromHexString(memoryContents));
   }
 
   private String base() {

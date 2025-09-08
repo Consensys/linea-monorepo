@@ -19,16 +19,17 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.*;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 public class SelfdestructInDeploymentTests extends TracerTestBase {
   @Test
-  public void testSelfdestructInDeploymentTransaction() {
+  public void testSelfdestructInDeploymentTransaction(TestInfo testInfo) {
 
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .op(OpCode.ADDRESS)
                 .op(OpCode.SELFDESTRUCT)
                 .compile())
-        .runInitcode(testInfo);
+        .runInitcode(chainConfig, testInfo);
   }
 }

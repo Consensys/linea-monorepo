@@ -14,13 +14,12 @@
  */
 package net.consensys.linea.zktracer.instructionprocessing.utilities;
 
-import static net.consensys.linea.reporting.TracerTestBase.testInfo;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
-import net.consensys.linea.reporting.TestInfoWithChainConfig;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
+import net.consensys.linea.zktracer.ChainConfig;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 
@@ -31,9 +30,9 @@ public class MultiOpCodeSmcs {
    *
    * @return
    */
-  public static BytecodeCompiler allContextOpCodes(TestInfoWithChainConfig testInfo) {
+  public static BytecodeCompiler allContextOpCodes(ChainConfig chainConfig) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     program
         .op(ADDRESS)
         .op(CALLDATASIZE)
@@ -47,11 +46,12 @@ public class MultiOpCodeSmcs {
     return program;
   }
 
-  public static ToyAccount allContextOpCodesSmc =
-      ToyAccount.builder()
-          .balance(Wei.fromEth(9))
-          .nonce(13)
-          .address(Address.fromHexString("c0de"))
-          .code(allContextOpCodes(testInfo).compile())
-          .build();
+  public static ToyAccount allContextOpCodesSmc(ChainConfig chainConfig) {
+    return ToyAccount.builder()
+        .balance(Wei.fromEth(9))
+        .nonce(13)
+        .address(Address.fromHexString("c0de"))
+        .code(allContextOpCodes(chainConfig).compile())
+        .build();
+  }
 }

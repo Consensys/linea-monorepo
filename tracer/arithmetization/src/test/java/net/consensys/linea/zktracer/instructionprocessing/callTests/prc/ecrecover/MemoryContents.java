@@ -18,8 +18,8 @@ import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static net.consensys.linea.zktracer.instructionprocessing.callTests.prc.ecadd.MemoryContents.RND;
 import static net.consensys.linea.zktracer.instructionprocessing.callTests.prc.ecadd.MemoryContents.WORD_HEX_SIZE;
 
-import net.consensys.linea.reporting.TestInfoWithChainConfig;
 import net.consensys.linea.testing.BytecodeCompiler;
+import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.framework.PrecompileCallMemoryContents;
 
 /**
@@ -123,7 +123,7 @@ public enum MemoryContents implements PrecompileCallMemoryContents {
    *
    * @return
    */
-  public BytecodeCompiler memoryContents(TestInfoWithChainConfig testInfo) {
+  public BytecodeCompiler memoryContents(ChainConfig chainConfig) {
 
     // we switch with every call
     switchVariant();
@@ -132,48 +132,48 @@ public enum MemoryContents implements PrecompileCallMemoryContents {
       case ZEROS -> {
         final String ZERO_WORD = "00".repeat(WORD_SIZE);
         return new EcRecoverTuple(ZERO_WORD, ZERO_WORD, ZERO_WORD, ZERO_WORD)
-            .memoryContents(false, testInfo);
+            .memoryContents(false, chainConfig);
       }
       case WELL_FORMED -> {
         return variant
-            ? VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_1.memoryContents(false, testInfo)
-            : VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_2.memoryContents(false, testInfo);
+            ? VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_1.memoryContents(false, chainConfig)
+            : VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_2.memoryContents(false, chainConfig);
       }
       case MALFORMED_AT_7f_BUT_SALVAGEABLE -> {
         return variant
-            ? VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_1.memoryContents(true, testInfo)
-            : VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_2.memoryContents(true, testInfo);
+            ? VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_1.memoryContents(true, chainConfig)
+            : VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_2.memoryContents(true, chainConfig);
       }
       case INVALID_V -> {
         return variant
-            ? INVALID_V_TUPLE_1.memoryContents(false, testInfo)
-            : INVALID_V_TUPLE_2.memoryContents(false, testInfo);
+            ? INVALID_V_TUPLE_1.memoryContents(false, chainConfig)
+            : INVALID_V_TUPLE_2.memoryContents(false, chainConfig);
       }
       case BOUNDARY_R -> {
         return variant
             ? VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_1
                 .replaceR(true)
-                .memoryContents(false, testInfo)
+                .memoryContents(false, chainConfig)
             : VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_2
                 .replaceR(false)
-                .memoryContents(false, testInfo);
+                .memoryContents(false, chainConfig);
       }
       case BOUNDARY_S -> {
         return variant
             ? VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_1
                 .replaceS(true)
-                .memoryContents(false, testInfo)
+                .memoryContents(false, chainConfig)
             : VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_2
                 .replaceS(false)
-                .memoryContents(false, testInfo);
+                .memoryContents(false, chainConfig);
       }
       case RANDOM -> {
-        return RANDOM_TUPLE.memoryContents(false, testInfo);
+        return RANDOM_TUPLE.memoryContents(false, chainConfig);
       }
       case MALLEABLE -> {
         return variant
-            ? EVM_CODES_EXAMPLE.memoryContents(false, testInfo)
-            : EVM_CODES_EXAMPLE_MALLEABLE.memoryContents(false, testInfo);
+            ? EVM_CODES_EXAMPLE.memoryContents(false, chainConfig)
+            : EVM_CODES_EXAMPLE_MALLEABLE.memoryContents(false, chainConfig);
       }
       default -> throw new RuntimeException("Unknown MemoryContentsParameter");
     }

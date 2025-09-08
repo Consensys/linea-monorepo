@@ -31,6 +31,7 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -47,16 +48,16 @@ public class MessageCallTests extends TracerTestBase {
       value = OpCode.class,
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
   @ExtendWith(UnitTestWatcher.class)
-  public void testWithCall(OpCode opCode) {
+  public void testWithCall(OpCode opCode, TestInfo testInfo) {
 
     ToyAccount recipientAccount = buildRecipient(opCode);
 
     List<ToyAccount> accounts = new ArrayList<>();
     accounts.add(userAccount);
-    accounts.add(allContextOpCodesSmc);
+    accounts.add(allContextOpCodesSmc(chainConfig));
     accounts.add(recipientAccount);
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .transaction(buildTransaction(recipientAccount))
         .accounts(accounts)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
@@ -72,7 +73,7 @@ public class MessageCallTests extends TracerTestBase {
    */
   private ToyAccount buildRecipient(OpCode callOpCode) {
 
-    BytecodeCompiler recipientCode = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler recipientCode = BytecodeCompiler.newProgram(chainConfig);
     recipientCode.op(CALLDATASIZE);
     recipientCode.op(RETURNDATASIZE);
     recipientCode.op(CALLER);
@@ -82,7 +83,7 @@ public class MessageCallTests extends TracerTestBase {
         recipientCode,
         callOpCode,
         100_000,
-        allContextOpCodesSmc.getAddress(),
+        allContextOpCodesSmc(chainConfig).getAddress(),
         1664,
         13,
         91,

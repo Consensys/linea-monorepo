@@ -60,6 +60,7 @@ import org.hyperledger.besu.evm.internal.EvmConfiguration;
 import org.hyperledger.besu.evm.internal.Words;
 import org.hyperledger.besu.evm.tracing.OperationTracer;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
+import org.junit.jupiter.api.TestInfo;
 
 /** Responsible for executing EVM transactions in replay tests. */
 @Builder
@@ -118,7 +119,7 @@ public class ReplayExecutionEnvironment {
    *
    * @param replayFile the file containing the conflation
    */
-  public void replay(ChainConfig chain, final Reader replayFile) {
+  public void replay(ChainConfig chain, TestInfo testInfo, final Reader replayFile) {
     Gson gson = new Gson();
     ConflationSnapshot conflation;
     try {
@@ -137,7 +138,8 @@ public class ReplayExecutionEnvironment {
         new CorsetValidator(chain),
         Optional.of(log),
         conflation.firstBlockNumber(),
-        conflation.lastBlockNumber());
+        conflation.lastBlockNumber(),
+        testInfo);
   }
 
   public void replay(ChainConfig chain, final Reader replayFile, String inputFilePath) {
@@ -153,14 +155,15 @@ public class ReplayExecutionEnvironment {
     this.checkTracer(inputFilePath, conflation.firstBlockNumber(), conflation.lastBlockNumber());
   }
 
-  public void replay(ChainConfig chain, ConflationSnapshot conflation) {
+  public void replay(ChainConfig chain, TestInfo testInfo, ConflationSnapshot conflation) {
     this.executeFrom(chain, conflation, systemContractDeployedPriorToConflation);
     ExecutionEnvironment.checkTracer(
         zkTracer,
         new CorsetValidator(chain),
         Optional.of(log),
         conflation.firstBlockNumber(),
-        conflation.lastBlockNumber());
+        conflation.lastBlockNumber(),
+        testInfo);
   }
 
   /**

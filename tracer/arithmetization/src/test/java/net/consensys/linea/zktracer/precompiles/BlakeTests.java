@@ -25,12 +25,13 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 public class BlakeTests extends TracerTestBase {
   @Test
-  void emptyBlakeTest() {
+  void emptyBlakeTest(TestInfo testInfo) {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(0)
             .push(0)
             .push(0)
@@ -43,7 +44,7 @@ public class BlakeTests extends TracerTestBase {
             .compile();
 
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(bytecode);
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     // check precompile limits line count
     assertEquals(0, bytecodeRunner.getHub().blakeEffectiveCall().lineCount());
@@ -51,11 +52,11 @@ public class BlakeTests extends TracerTestBase {
   }
 
   @Test
-  void basicBlakeTest() {
+  void basicBlakeTest(TestInfo testInfo) {
     final int round = 10;
 
     final Bytes bytecode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(Bytes.fromHexString("0x0badb077")) // value, some random data to hash
             .push(5) // offset
             .op(OpCode.MSTORE)
@@ -78,7 +79,7 @@ public class BlakeTests extends TracerTestBase {
             .compile();
 
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(bytecode);
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     // check precompile limits line count
     assertEquals(1, bytecodeRunner.getHub().blakeEffectiveCall().lineCount());
@@ -86,9 +87,9 @@ public class BlakeTests extends TracerTestBase {
   }
 
   @Test
-  void wrongFInputTest() {
+  void wrongFInputTest(TestInfo testInfo) {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(Bytes.fromHexString("0x0badb077")) // value, some random data to hash
             .push(5) // offset
             .op(OpCode.MSTORE)
@@ -107,7 +108,7 @@ public class BlakeTests extends TracerTestBase {
             .compile();
 
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(bytecode);
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     // check precompile limits line count
     assertEquals(0, bytecodeRunner.getHub().blakeEffectiveCall().lineCount());
@@ -115,9 +116,9 @@ public class BlakeTests extends TracerTestBase {
   }
 
   @Test
-  void notEnoughGasBlakeTest() {
+  void notEnoughGasBlakeTest(TestInfo testInfo) {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(Bytes.fromHexString("0x0badb077")) // value, some random data to hash
             .push(5) // offset
             .op(OpCode.MSTORE)
@@ -136,7 +137,7 @@ public class BlakeTests extends TracerTestBase {
             .compile();
 
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(bytecode);
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     // check precompile limits line count
     assertEquals(0, bytecodeRunner.getHub().blakeEffectiveCall().lineCount());

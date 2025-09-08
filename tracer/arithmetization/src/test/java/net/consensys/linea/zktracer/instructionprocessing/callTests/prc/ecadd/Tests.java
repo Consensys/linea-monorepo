@@ -27,6 +27,7 @@ import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.ReturnAt
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.framework.PrecompileCallTests;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.provider.Arguments;
 
 @Tag("prc-calltests")
@@ -42,7 +43,7 @@ public class Tests extends PrecompileCallTests<CallParameters> {
 
   /** Non-parametric test to make sure things are working as expected. */
   @Test
-  public void singleMessageCallTransactionTest() {
+  public void singleMessageCallTransactionTest(TestInfo testInfo) {
     CallParameters params =
         new CallParameters(
             CALL,
@@ -53,7 +54,7 @@ public class Tests extends PrecompileCallTests<CallParameters> {
             true);
 
     BytecodeCompiler rootCode =
-        params.customPrecompileCallsSeparatedByReturnDataWipingOperation(testInfo);
-    runMessageCallTransactionWithProvidedCodeAsRootCode(rootCode, testInfo);
+        params.customPrecompileCallsSeparatedByReturnDataWipingOperation(chainConfig);
+    runMessageCallTransactionWithProvidedCodeAsRootCode(rootCode, chainConfig, testInfo);
   }
 }

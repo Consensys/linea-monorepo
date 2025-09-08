@@ -36,11 +36,12 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 public class WarmingCoinbaseTests extends TracerTestBase {
 
   @Test
-  void coinbaseIsPrecompile() {
+  void coinbaseIsPrecompile(TestInfo testInfo) {
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
@@ -62,7 +63,7 @@ public class WarmingCoinbaseTests extends TracerTestBase {
             .gasLimit(100000L)
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, recipientAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
@@ -72,7 +73,7 @@ public class WarmingCoinbaseTests extends TracerTestBase {
   }
 
   @Test
-  void coinbaseIsSmcAndIsCalledDuringExecution() {
+  void coinbaseIsSmcAndIsCalledDuringExecution(TestInfo testInfo) {
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
@@ -83,7 +84,12 @@ public class WarmingCoinbaseTests extends TracerTestBase {
         ToyAccount.builder()
             .balance(Wei.fromEth(0x1))
             .address(DEFAULT_COINBASE_ADDRESS)
-            .code(BytecodeCompiler.newProgram(testInfo).push(1).push(2).op(OpCode.SSTORE).compile())
+            .code(
+                BytecodeCompiler.newProgram(chainConfig)
+                    .push(1)
+                    .push(2)
+                    .op(OpCode.SSTORE)
+                    .compile())
             .build();
 
     final ToyAccount recipientAccount =
@@ -91,7 +97,7 @@ public class WarmingCoinbaseTests extends TracerTestBase {
             .balance(Wei.fromEth(0x1))
             .address(Address.fromHexString("0x1122334455667788990011223344556677889900"))
             .code(
-                BytecodeCompiler.newProgram(testInfo)
+                BytecodeCompiler.newProgram(chainConfig)
                     .push(0) // ret size
                     .push(0) // ret offset
                     .push(0) // arg size
@@ -112,7 +118,7 @@ public class WarmingCoinbaseTests extends TracerTestBase {
             .gasLimit(100000L)
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, recipientAccount, smcCoinbase))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
@@ -123,7 +129,7 @@ public class WarmingCoinbaseTests extends TracerTestBase {
   // This useless init code creates an account with bytecode "BALANCE"
   private final Bytes INIT_CODE = Bytes.fromHexString("0x603160005360016000F3");
 
-  // = BytecodeCompiler.newProgram(testInfo)
+  // = BytecodeCompiler.newProgram(chainConfig)
   //      .push(OpCode.BALANCE.byteValue())
   //      .push(0) // offset
   //      .op(OpCode.MSTORE8)
@@ -133,7 +139,7 @@ public class WarmingCoinbaseTests extends TracerTestBase {
   //      .compile();
 
   @Test
-  void coinbaseIsDeployedAddress() {
+  void coinbaseIsDeployedAddress(TestInfo testInfo) {
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
@@ -152,7 +158,7 @@ public class WarmingCoinbaseTests extends TracerTestBase {
             .payload(INIT_CODE)
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
@@ -162,7 +168,7 @@ public class WarmingCoinbaseTests extends TracerTestBase {
   }
 
   @Test
-  void coinbaseIsDeployedByCreate() {
+  void coinbaseIsDeployedByCreate(TestInfo testInfo) {
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
@@ -174,7 +180,7 @@ public class WarmingCoinbaseTests extends TracerTestBase {
             .balance(Wei.fromEth(0x12))
             .address(Address.fromHexString("0x1122334455667788990011223344556677889900"))
             .code(
-                BytecodeCompiler.newProgram(testInfo)
+                BytecodeCompiler.newProgram(chainConfig)
                     .push(INIT_CODE) // value
                     .push(0) // offset
                     .op(OpCode.MSTORE)
@@ -197,7 +203,7 @@ public class WarmingCoinbaseTests extends TracerTestBase {
             .to(recipientAccount)
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, recipientAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
@@ -207,7 +213,7 @@ public class WarmingCoinbaseTests extends TracerTestBase {
   }
 
   @Test
-  void coinbaseIsDeployedByCreate2() {
+  void coinbaseIsDeployedByCreate2(TestInfo testInfo) {
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
@@ -221,7 +227,7 @@ public class WarmingCoinbaseTests extends TracerTestBase {
             .balance(Wei.fromEth(0x12))
             .address(Address.fromHexString("0x1122334455667788990011223344556677889900"))
             .code(
-                BytecodeCompiler.newProgram(testInfo)
+                BytecodeCompiler.newProgram(chainConfig)
                     .push(INIT_CODE) // value
                     .push(0) // offset
                     .op(OpCode.MSTORE)
@@ -248,7 +254,7 @@ public class WarmingCoinbaseTests extends TracerTestBase {
             .to(recipientAccount)
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, recipientAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})

@@ -27,17 +27,18 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
 public class MessageFrameTest extends TracerTestBase {
 
   @Test
-  void testCreate() {
+  void testCreate(TestInfo testInfo) {
     // The pc is not updated as expected
     // We do not execute the init code of the created smart contract
     // TODO: fix this!
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     program
         .push("63deadbeef000000000000000000000000000000000000000000000000000000")
@@ -50,14 +51,14 @@ public class MessageFrameTest extends TracerTestBase {
         .op(OpCode.DUP1);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
   }
 
   @Test
-  void testCall() {
+  void testCall(TestInfo testInfo) {
     // Interestingly for CALL the pc is updated as expected
     // We execute the bytecode of the called smart contract
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     program.push(0).push(0).push(0).push(0).push(0x01).push("ca11ee").push(0xffff).op(OpCode.CALL);
 
@@ -71,6 +72,6 @@ public class MessageFrameTest extends TracerTestBase {
             .code(Bytes.fromHexString("0x63deadbeef00"))
             .build();
 
-    bytecodeRunner.run(List.of(smartContractAccount), testInfo);
+    bytecodeRunner.run(List.of(smartContractAccount), chainConfig, testInfo);
   }
 }

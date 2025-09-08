@@ -44,6 +44,7 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -51,7 +52,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 public class ZkCounterTest extends TracerTestBase {
 
   @Test
-  void twoSuccessfullL2l1Logs() {
+  void twoSuccessfullL2l1Logs(TestInfo testInfo) {
     // sender account
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
@@ -65,7 +66,7 @@ public class ZkCounterTest extends TracerTestBase {
             .balance(Wei.fromEth(1))
             .address(TEST_DEFAULT.contract())
             .code(
-                BytecodeCompiler.newProgram(testInfo)
+                BytecodeCompiler.newProgram(chainConfig)
                     // LOG1 with right topic, and no data
                     .push(TEST_DEFAULT.topic()) // topic
                     .push(0) //  size
@@ -95,7 +96,7 @@ public class ZkCounterTest extends TracerTestBase {
             .build();
 
     final ToyExecutionEnvironmentV2 toyWorld =
-        ToyExecutionEnvironmentV2.builder(testInfo)
+        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
             .accounts(List.of(senderAccount, l2l1LogSMC))
             .transaction(tx)
             .zkTracerValidator(zkTracer -> {})
@@ -124,7 +125,7 @@ public class ZkCounterTest extends TracerTestBase {
    * This test does: - a LOG with right address and topic, but reverted - a LOG with right Address,
    * but the right topic not at the right place - a LOG with right topic, but wrong address
    */
-  void unsuccessfullL2l1Logs() {
+  void unsuccessfullL2l1Logs(TestInfo testInfo) {
     // sender account
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
@@ -137,7 +138,7 @@ public class ZkCounterTest extends TracerTestBase {
             .balance(Wei.fromEth(1))
             .address(Address.wrap(Bytes.repeat((byte) 1, Address.SIZE)))
             .code(
-                BytecodeCompiler.newProgram(testInfo)
+                BytecodeCompiler.newProgram(chainConfig)
                     // LOG1 with right topic, and no data
                     .push(TEST_DEFAULT.topic()) // topic
                     .push(0) //  size
@@ -151,7 +152,7 @@ public class ZkCounterTest extends TracerTestBase {
             .balance(Wei.fromEth(1))
             .address(Address.wrap(Bytes.repeat((byte) 2, Address.SIZE)))
             .code(
-                BytecodeCompiler.newProgram(testInfo)
+                BytecodeCompiler.newProgram(chainConfig)
                     // LOG1 with right topic, and no data
                     .push(TEST_DEFAULT.topic()) // topic
                     .push(0) //  size
@@ -169,7 +170,7 @@ public class ZkCounterTest extends TracerTestBase {
             .balance(Wei.fromEth(1))
             .address(TEST_DEFAULT.contract())
             .code(
-                BytecodeCompiler.newProgram(testInfo)
+                BytecodeCompiler.newProgram(chainConfig)
                     // LOG2 with right topic, not at the right place
                     .push(TEST_DEFAULT.topic()) // topic 2
                     .push(Bytes.of(1)) // topic 1
@@ -193,7 +194,7 @@ public class ZkCounterTest extends TracerTestBase {
             .build();
 
     final ToyExecutionEnvironmentV2 toyWorld =
-        ToyExecutionEnvironmentV2.builder(testInfo)
+        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
             .accounts(List.of(senderAccount, l2l1LogSMC, LOG_ACCOUNT_AND_REVERT, LOG_ACCOUNT))
             .transaction(tx)
             .zkTracerValidator(zkTracer -> {})
@@ -219,7 +220,7 @@ public class ZkCounterTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("ripBlakeInput")
-  void ripBlakeCall(Address prc, boolean exceptional, boolean emptyCds) {
+  void ripBlakeCall(Address prc, boolean exceptional, boolean emptyCds, TestInfo testInfo) {
     // sender account
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
@@ -233,7 +234,7 @@ public class ZkCounterTest extends TracerTestBase {
             .balance(Wei.fromEth(1))
             .address(Address.wrap(Bytes.repeat((byte) 1, Address.SIZE)))
             .code(
-                BytecodeCompiler.newProgram(testInfo)
+                BytecodeCompiler.newProgram(chainConfig)
                     // populate memory with some data
                     .push(56) // value
                     .push(3) //  offset
@@ -260,7 +261,7 @@ public class ZkCounterTest extends TracerTestBase {
             .build();
 
     final ToyExecutionEnvironmentV2 toyWorld =
-        ToyExecutionEnvironmentV2.builder(testInfo)
+        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
             .accounts(List.of(senderAccount, callPRC))
             .transaction(tx)
             .zkTracerValidator(zkTracer -> {})
@@ -300,7 +301,7 @@ public class ZkCounterTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("modexpInput")
-  void modexpCall(boolean base, boolean exp, boolean mod) {
+  void modexpCall(boolean base, boolean exp, boolean mod, TestInfo testInfo) {
     // sender account
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
@@ -314,7 +315,7 @@ public class ZkCounterTest extends TracerTestBase {
             .balance(Wei.fromEth(1))
             .address(Address.wrap(Bytes.repeat((byte) 1, Address.SIZE)))
             .code(
-                BytecodeCompiler.newProgram(testInfo)
+                BytecodeCompiler.newProgram(chainConfig)
                     // populate memory with BBS
                     .push(base ? 513 : 4) // value
                     .push(BBS_MIN_OFFSET) //  offset
@@ -349,7 +350,7 @@ public class ZkCounterTest extends TracerTestBase {
             .build();
 
     final ToyExecutionEnvironmentV2 toyWorld =
-        ToyExecutionEnvironmentV2.builder(testInfo)
+        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
             .accounts(List.of(senderAccount, callPRC))
             .transaction(tx)
             .zkTracerValidator(zkTracer -> {})
@@ -396,7 +397,7 @@ public class ZkCounterTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("blsAndKzgInput")
-  void blsAndKzg(Address prc) {
+  void blsAndKzg(Address prc, TestInfo testInfo) {
     // sender account
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
@@ -410,7 +411,7 @@ public class ZkCounterTest extends TracerTestBase {
             .balance(Wei.fromEth(1))
             .address(Address.wrap(Bytes.repeat((byte) 1, Address.SIZE)))
             .code(
-                BytecodeCompiler.newProgram(testInfo)
+                BytecodeCompiler.newProgram(chainConfig)
                     // populate memory with some data
                     .push(56) // value
                     .push(3) //  offset
@@ -437,7 +438,7 @@ public class ZkCounterTest extends TracerTestBase {
             .build();
 
     final ToyExecutionEnvironmentV2 toyWorld =
-        ToyExecutionEnvironmentV2.builder(testInfo)
+        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
             .accounts(List.of(senderAccount, callPRC))
             .transaction(tx)
             .zkTracerValidator(zkTracer -> {})
@@ -450,8 +451,8 @@ public class ZkCounterTest extends TracerTestBase {
     // no LOG
     assertEquals(0, lineCountMap.get("BLOCK_L2_L1_LOGS"));
 
-    final boolean isKzgCall = prc.equals(KZG_POINT_EVAL) && isPostCancun(testInfo.chainConfig.fork);
-    final boolean isBlsCall = isBlsPrecompileCall(prc, testInfo.chainConfig.fork);
+    final boolean isKzgCall = prc.equals(KZG_POINT_EVAL) && isPostCancun(chainConfig.fork);
+    final boolean isBlsCall = isBlsPrecompileCall(prc, chainConfig.fork);
 
     // no precompile call, but a PRC:
     assertEquals(0, lineCountMap.get(MODEXP));

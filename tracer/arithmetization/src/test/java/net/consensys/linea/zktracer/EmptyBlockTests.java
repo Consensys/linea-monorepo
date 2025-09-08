@@ -39,13 +39,14 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 public class EmptyBlockTests extends TracerTestBase {
 
   @Test
-  void mixOfEmptyAndNonEmptyBlocks() {
+  void mixOfEmptyAndNonEmptyBlocks(TestInfo testInfo) {
     // Empty block are allowed only after Cancun
-    if (isPostCancun(testInfo.chainConfig.fork)) {
+    if (isPostCancun(chainConfig.fork)) {
 
       final ToyAccount receivingAccount =
           ToyAccount.builder()
@@ -53,7 +54,7 @@ public class EmptyBlockTests extends TracerTestBase {
               .nonce(116)
               .address(Address.fromHexStringStrict("0x1122334455667788990011223344556677889900"))
               .code(
-                  BytecodeCompiler.newProgram(testInfo)
+                  BytecodeCompiler.newProgram(chainConfig)
                       .push(0) // ret size
                       .push(0) // ret offset
                       .push(0) // size
@@ -77,7 +78,7 @@ public class EmptyBlockTests extends TracerTestBase {
               .nonce(116)
               .address(Address.wrap(leftPadTo(Bytes.minimalBytes(1111111), 20)))
               .code(
-                  BytecodeCompiler.newProgram(testInfo)
+                  BytecodeCompiler.newProgram(chainConfig)
                       .op(OpCode.NUMBER) // value
                       .push(Bytes.fromHexString("c7e0")) // key
                       .op(OpCode.SSTORE)
@@ -90,7 +91,7 @@ public class EmptyBlockTests extends TracerTestBase {
               .nonce(116)
               .address(Address.wrap(leftPadTo(Bytes.minimalBytes(222222), 20)))
               .code(
-                  BytecodeCompiler.newProgram(testInfo)
+                  BytecodeCompiler.newProgram(chainConfig)
                       .push(2)
                       .op(OpCode.NUMBER)
                       .op(OpCode.SUB)
@@ -137,7 +138,7 @@ public class EmptyBlockTests extends TracerTestBase {
               .build();
 
       final MultiBlockExecutionEnvironment.MultiBlockExecutionEnvironmentBuilder builder =
-          MultiBlockExecutionEnvironment.builder(testInfo)
+          MultiBlockExecutionEnvironment.builder(chainConfig, testInfo)
               .accounts(List.of(senderAccount, storingNumber, logging, receivingAccount));
 
       // Two blocks are empty
@@ -179,12 +180,12 @@ public class EmptyBlockTests extends TracerTestBase {
   }
 
   @Test
-  void onlyOneEmptyBlock() {
+  void onlyOneEmptyBlock(TestInfo testInfo) {
     // Empty block are allowed only after Cancun
-    if (isPostCancun(testInfo.chainConfig.fork)) {
+    if (isPostCancun(chainConfig.fork)) {
 
       final MultiBlockExecutionEnvironment.MultiBlockExecutionEnvironmentBuilder builder =
-          MultiBlockExecutionEnvironment.builder(testInfo);
+          MultiBlockExecutionEnvironment.builder(chainConfig, testInfo);
 
       // One empty block
       builder.addBlock(List.of());

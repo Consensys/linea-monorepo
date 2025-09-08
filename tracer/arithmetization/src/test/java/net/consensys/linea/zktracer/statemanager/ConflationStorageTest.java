@@ -29,13 +29,14 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 public class ConflationStorageTest extends TracerTestBase {
   TestContext tc;
 
   @Tag("disabled-for-cancun-temporarily")
   @Test
-  void testConflationMapStorage() {
+  void testConflationMapStorage(TestInfo testInfo) {
     // initialize the test context
     this.tc = new TestContext();
     this.tc.initializeTestContext();
@@ -51,7 +52,7 @@ public class ConflationStorageTest extends TracerTestBase {
 
     // prepare a multi-block execution of transactions
     final MultiBlockExecutionEnvironment multiBlockEnv =
-        MultiBlockExecutionEnvironment.builder(testInfo)
+        MultiBlockExecutionEnvironment.builder(chainConfig, testInfo)
             // initialize accounts
             .accounts(
                 List.of(

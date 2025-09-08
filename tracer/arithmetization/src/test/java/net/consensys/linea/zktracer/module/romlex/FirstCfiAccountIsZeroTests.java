@@ -33,6 +33,7 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 public class FirstCfiAccountIsZeroTests extends TracerTestBase {
   /**
@@ -40,7 +41,7 @@ public class FirstCfiAccountIsZeroTests extends TracerTestBase {
    * with CFI has Address 0, Deployment number 0 and deployment status 0.
    */
   @Test
-  void strictLexOrdering() {
+  void strictLexOrdering(TestInfo testInfo) {
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
@@ -49,7 +50,7 @@ public class FirstCfiAccountIsZeroTests extends TracerTestBase {
 
     // we don't care about the bytecode, we just need a contract with address 0
     final Bytes bytecode =
-        BytecodeCompiler.newProgram(testInfo).push(256).push(255).op(OpCode.SAR).compile();
+        BytecodeCompiler.newProgram(chainConfig).push(256).push(255).op(OpCode.SAR).compile();
 
     final ToyAccount recipientAccount =
         ToyAccount.builder()
@@ -69,7 +70,7 @@ public class FirstCfiAccountIsZeroTests extends TracerTestBase {
             .build();
 
     final ToyExecutionEnvironmentV2 test =
-        ToyExecutionEnvironmentV2.builder(testInfo)
+        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
             .accounts(List.of(senderAccount, recipientAccount))
             .transaction(tx)
             .zkTracerValidator(zkTracer -> {})

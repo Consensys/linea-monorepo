@@ -21,14 +21,15 @@ import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
 public class CallTrivialCasesTest extends TracerTestBase {
   @Test
-  void eoaCallScenarioTest() {
+  void eoaCallScenarioTest(TestInfo testInfo) {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(0)
             .push(0)
             .push(0)
@@ -39,13 +40,13 @@ public class CallTrivialCasesTest extends TracerTestBase {
             .op(OpCode.CALL)
             .op(OpCode.POP)
             .compile();
-    BytecodeRunner.of(bytecode).run(testInfo);
+    BytecodeRunner.of(bytecode).run(chainConfig, testInfo);
   }
 
   @Test
-  void eoaCallWithCallDataAndReturnDataCapacityTest() {
+  void eoaCallWithCallDataAndReturnDataCapacityTest(TestInfo testInfo) {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(0x31)
             .push(0x11)
             .push(0x22)
@@ -56,13 +57,13 @@ public class CallTrivialCasesTest extends TracerTestBase {
             .op(OpCode.CALL)
             .op(OpCode.POP)
             .compile();
-    BytecodeRunner.of(bytecode).run(testInfo);
+    BytecodeRunner.of(bytecode).run(chainConfig, testInfo);
   }
 
   @Test
-  void eoaCallScenarioTestZeroCalleeGas() {
+  void eoaCallScenarioTestZeroCalleeGas(TestInfo testInfo) {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(0)
             .push(0)
             .push(0)
@@ -73,6 +74,6 @@ public class CallTrivialCasesTest extends TracerTestBase {
             .op(OpCode.CALL)
             .op(OpCode.POP)
             .compile();
-    BytecodeRunner.of(bytecode).run(testInfo);
+    BytecodeRunner.of(bytecode).run(chainConfig, testInfo);
   }
 }

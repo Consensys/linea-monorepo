@@ -36,6 +36,7 @@ import net.consensys.linea.zktracer.module.mxp.MxpTestUtils;
 import net.consensys.linea.zktracer.module.mxp.moduleOperation.LondonMxpOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -46,14 +47,14 @@ public class MemoryExpansionExceptionTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("memoryExpansionExceptionTestSource")
-  public void memoryExpansionExceptionTest(boolean triggerRoob, OpCode opCode) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  public void memoryExpansionExceptionTest(boolean triggerRoob, OpCode opCode, TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     boolean triggerMaxCodeSizeException = false;
     new MxpTestUtils(opcodes)
         .triggerNonTrivialButMxpxOrRoobOrMaxCodeSizeExceptionForOpCode(
             fork, program, triggerRoob, triggerMaxCodeSizeException, opCode);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
     assertEquals(
         MEMORY_EXPANSION_EXCEPTION,
         bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
@@ -69,16 +70,16 @@ public class MemoryExpansionExceptionTest extends TracerTestBase {
   }
 
   @Test
-  public void soloMemoryExpansionTest() {
+  public void soloMemoryExpansionTest(TestInfo testInfo) {
     boolean triggerRoob = false;
     boolean triggerMaxCodeSizeException = false;
     OpCode opCode = OpCode.CODECOPY;
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     new MxpTestUtils(opcodes)
         .triggerNonTrivialButMxpxOrRoobOrMaxCodeSizeExceptionForOpCode(
             fork, program, triggerRoob, triggerMaxCodeSizeException, opCode);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
     assertEquals(
         MEMORY_EXPANSION_EXCEPTION,
         bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());

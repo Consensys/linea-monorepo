@@ -28,6 +28,7 @@ import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.OpCodes;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -39,14 +40,14 @@ public class StackUnderflowExceptionTest extends TracerTestBase {
   @ParameterizedTest
   @MethodSource("stackUnderflowExceptionSource")
   void stackUnderflowExceptionTest(
-      OpCode opCode, int nPushes, boolean triggersStackUnderflowExceptions) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+      OpCode opCode, int nPushes, boolean triggersStackUnderflowExceptions, TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     for (int i = 0; i < nPushes; i++) {
       program.push(0);
     }
     program.op(opCode);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     // the number of pushed arguments is less than the number of arguments required by the opcode
 

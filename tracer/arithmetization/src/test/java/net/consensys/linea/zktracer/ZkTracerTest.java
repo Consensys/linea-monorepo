@@ -27,7 +27,7 @@ public class ZkTracerTest extends TracerTestBase {
 
   @Test
   public void createNewTracer() {
-    final ZkTracer zkTracer = new ZkTracer(testInfo.chainConfig);
+    final ZkTracer zkTracer = new ZkTracer(chainConfig);
     assertThat(zkTracer.isExtendedTracing()).isTrue();
   }
 }

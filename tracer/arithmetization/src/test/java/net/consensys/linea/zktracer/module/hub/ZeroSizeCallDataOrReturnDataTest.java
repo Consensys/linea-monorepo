@@ -25,12 +25,13 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 public class ZeroSizeCallDataOrReturnDataTest extends TracerTestBase {
 
   @Test
-  void zeroSizeHugeReturnAtOffsetTest() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void zeroSizeHugeReturnAtOffsetTest(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     program
         .push(0) // return at capacity
         .push("ff".repeat(32)) // return at offset
@@ -40,7 +41,7 @@ public class ZeroSizeCallDataOrReturnDataTest extends TracerTestBase {
         .push(1000) // gas
         .op(OpCode.STATICCALL);
 
-    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(chainConfig);
     calleeProgram.op(OpCode.CALLDATASIZE);
 
     final ToyAccount calleeAccount =
@@ -52,12 +53,12 @@ public class ZeroSizeCallDataOrReturnDataTest extends TracerTestBase {
             .build();
 
     BytecodeRunner.of(program.compile())
-        .run(Wei.fromEth(1), 30000L, List.of(calleeAccount), testInfo);
+        .run(Wei.fromEth(1), 30000L, List.of(calleeAccount), chainConfig, testInfo);
   }
 
   @Test
-  void zeroSizeHugeCallDataOffsetTest() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void zeroSizeHugeCallDataOffsetTest(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     program
         .push(0) // return at capacity
         .push(0) // return at offset
@@ -67,7 +68,7 @@ public class ZeroSizeCallDataOrReturnDataTest extends TracerTestBase {
         .push(1000) // gas
         .op(OpCode.STATICCALL);
 
-    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(chainConfig);
     calleeProgram.op(OpCode.CALLDATASIZE);
 
     final ToyAccount calleeAccount =
@@ -79,12 +80,12 @@ public class ZeroSizeCallDataOrReturnDataTest extends TracerTestBase {
             .build();
 
     BytecodeRunner.of(program.compile())
-        .run(Wei.fromEth(1), 30000L, List.of(calleeAccount), testInfo);
+        .run(Wei.fromEth(1), 30000L, List.of(calleeAccount), chainConfig, testInfo);
   }
 
   @Test
-  void zeroSizeHugeReturnDataOffsetTest() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void zeroSizeHugeReturnDataOffsetTest(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     program
         .push(0) // return at capacity
         .push(0) // return at offset
@@ -94,7 +95,7 @@ public class ZeroSizeCallDataOrReturnDataTest extends TracerTestBase {
         .push(1000) // gas
         .op(OpCode.STATICCALL);
 
-    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(chainConfig);
     calleeProgram.push(0).push("ff".repeat(32)).op(OpCode.RETURN);
 
     final ToyAccount calleeAccount =
@@ -106,6 +107,6 @@ public class ZeroSizeCallDataOrReturnDataTest extends TracerTestBase {
             .build();
 
     BytecodeRunner.of(program.compile())
-        .run(Wei.fromEth(1), 30000L, List.of(calleeAccount), testInfo);
+        .run(Wei.fromEth(1), 30000L, List.of(calleeAccount), chainConfig, testInfo);
   }
 }

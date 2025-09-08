@@ -27,6 +27,7 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -34,10 +35,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 public class McopyTests extends TracerTestBase {
   @ParameterizedTest
   @MethodSource("inputs")
-  void singleMcopy(Bytes targetOffset, Bytes sourceOffset, Bytes size) {
+  void singleMcopy(Bytes targetOffset, Bytes sourceOffset, Bytes size, TestInfo testInfo) {
 
     final Bytes FILL_MEMORY =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(0) // offset
             .push(
                 Bytes32.fromHexString(
@@ -46,7 +47,7 @@ public class McopyTests extends TracerTestBase {
             .compile();
 
     final Bytes MLOADS =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(0)
             .op(MLOAD)
             .op(POP)
@@ -64,7 +65,7 @@ public class McopyTests extends TracerTestBase {
                 pushAndMcopy(targetOffset, sourceOffset, size), // We perform the MCOPY
                 MLOADS // We load the first 3 words of memory to check the result
                 ))
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   private static final List<Bytes32> INPUTS =

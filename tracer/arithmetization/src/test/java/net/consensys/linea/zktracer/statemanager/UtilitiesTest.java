@@ -22,12 +22,13 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.MultiBlockExecutionEnvironment;
 import net.consensys.linea.testing.TransactionProcessingResultValidator;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 public class UtilitiesTest extends TracerTestBase {
   TestContext tc;
 
   @Test
-  void testBuildingBlockOperations() {
+  void testBuildingBlockOperations(TestInfo testInfo) {
     // initialize the test context
     this.tc = new TestContext();
     this.tc.initializeTestContext();
@@ -38,7 +39,7 @@ public class UtilitiesTest extends TracerTestBase {
             // Transfers generate 3 logs, the 1s are for reverted operations
             List.of(2, 2, 3, 2, 2));
 
-    MultiBlockExecutionEnvironment.builder(testInfo)
+    MultiBlockExecutionEnvironment.builder(chainConfig, testInfo)
         .accounts(
             List.of(
                 tc.initialAccounts[0],
@@ -104,13 +105,13 @@ public class UtilitiesTest extends TracerTestBase {
   // bytecode output by the function
   // SmartContractUtils.getYulContractByteCode("StateManagerSnippets.yul")
   @Test
-  void testCreate2Snippets() {
+  void testCreate2Snippets(TestInfo testInfo) {
     // initialize the test context
     this.tc = new TestContext();
     this.tc.initializeTestContext();
     TransactionProcessingResultValidator resultValidator =
         new StateManagerTestValidator(tc.frameworkEntryPointAccount, List.of(2));
-    MultiBlockExecutionEnvironment.builder(testInfo)
+    MultiBlockExecutionEnvironment.builder(chainConfig, testInfo)
         .accounts(
             List.of(
                 tc.initialAccounts[0],

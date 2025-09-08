@@ -22,13 +22,14 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 public class OobDuplicateOperationTest extends TracerTestBase {
   @Test
-  void testCallDataLoadDuplicate() {
+  void testCallDataLoadDuplicate(TestInfo testInfo) {
     final BytecodeRunner code =
         BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(1)
                 .op(OpCode.CALLDATALOAD)
                 .op(OpCode.POP)
@@ -37,7 +38,7 @@ public class OobDuplicateOperationTest extends TracerTestBase {
                 .op(OpCode.POP)
                 .op(OpCode.STOP)
                 .compile());
-    code.run(testInfo);
+    code.run(chainConfig, testInfo);
 
     assertEquals(1, code.getHub().oob().operations().getAll().size());
   }

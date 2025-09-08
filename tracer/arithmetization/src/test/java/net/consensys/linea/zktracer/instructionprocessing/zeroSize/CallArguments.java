@@ -23,6 +23,7 @@ import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.datatypes.Address;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -39,30 +40,30 @@ public class CallArguments extends TracerTestBase {
   @EnumSource(
       value = OpCode.class,
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
-  void emptyCallDataAndReturnAtCall(OpCode callOpCode) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void emptyCallDataAndReturnAtCall(OpCode callOpCode, TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     extremalCallContract(program, callOpCode, true, true);
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 
   @ParameterizedTest
   @EnumSource(
       value = OpCode.class,
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
-  void emptyReturnAtCall(OpCode callOpCode) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void emptyReturnAtCall(OpCode callOpCode, TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     extremalCallContract(program, callOpCode, false, true);
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 
   @ParameterizedTest
   @EnumSource(
       value = OpCode.class,
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
-  void emptyCallDataCall(OpCode callOpCode) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void emptyCallDataCall(OpCode callOpCode, TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     extremalCallContract(program, callOpCode, true, false);
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 
   private void extremalCallContract(

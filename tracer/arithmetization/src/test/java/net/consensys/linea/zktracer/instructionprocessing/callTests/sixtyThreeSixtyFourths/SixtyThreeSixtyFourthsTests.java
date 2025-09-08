@@ -54,6 +54,7 @@ import net.consensys.linea.testing.ToyAccount;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -136,13 +137,15 @@ public class SixtyThreeSixtyFourthsTests extends TracerTestBase {
                               BytecodeRunner.of(preCallProgram(address, false, false, 0))
                                   .runOnlyForGasCost(
                                       address == MODEXP ? additionalAccounts : List.of(),
-                                      testInfo));
+                                      chainConfig,
+                                      null));
                           put(
                               true,
                               BytecodeRunner.of(preCallProgram(address, false, true, 0))
                                   .runOnlyForGasCost(
                                       address == MODEXP ? additionalAccounts : List.of(),
-                                      testInfo));
+                                      chainConfig,
+                                      null));
                         }
                       }));
 
@@ -159,16 +162,17 @@ public class SixtyThreeSixtyFourthsTests extends TracerTestBase {
    */
   @ParameterizedTest
   @MethodSource("fixedCostEcAddTestSource")
-  void fixedCostEcAddTest(long gasLimit, boolean insufficientGasForPrecompileExpected) {
+  void fixedCostEcAddTest(
+      long gasLimit, boolean insufficientGasForPrecompileExpected, TestInfo testInfo) {
     // Whenever transferValue = true, gas is enough
     // so we only test the case in which transferValue = false
 
-    final BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    final BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     program.immediate(preCallProgram(ALTBN128_ADD, false, false, 0)).op(CALL);
 
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(program);
-    bytecodeRunner.run(gasLimit, testInfo);
+    bytecodeRunner.run(gasLimit, chainConfig, testInfo);
 
     assertNotEquals(
         OUT_OF_GAS_EXCEPTION,
@@ -212,12 +216,14 @@ public class SixtyThreeSixtyFourthsTests extends TracerTestBase {
       boolean insufficientGasForPrecompileExpected,
       boolean transfersValue,
       boolean targetAddressExists,
-      int cds) {
-    final BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+      int cds,
+      TestInfo testInfo) {
+    final BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     program.immediate(preCallProgram(address, transfersValue, targetAddressExists, cds)).op(CALL);
 
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(program);
-    bytecodeRunner.run(gasLimit, address == MODEXP ? additionalAccounts : List.of(), testInfo);
+    bytecodeRunner.run(
+        gasLimit, address == MODEXP ? additionalAccounts : List.of(), chainConfig, testInfo);
 
     assertNotEquals(
         OUT_OF_GAS_EXCEPTION,
@@ -268,7 +274,7 @@ public class SixtyThreeSixtyFourthsTests extends TracerTestBase {
   // Support methods
   static Bytes preCallProgram(
       Address address, boolean transfersValue, boolean targetAddressExists, int cds) {
-    return BytecodeCompiler.newProgram(testInfo)
+    return BytecodeCompiler.newProgram(chainConfig)
         .immediate(expandMemoryTo2048Words())
         .immediate(targetAddressExists ? successfullySummonIntoExistence(address) : Bytes.EMPTY)
         .immediate(
@@ -284,7 +290,7 @@ public class SixtyThreeSixtyFourthsTests extends TracerTestBase {
 
   static Bytes expandMemoryTo(int words) {
     checkArgument(words >= 1);
-    return BytecodeCompiler.newProgram(testInfo)
+    return BytecodeCompiler.newProgram(chainConfig)
         .push((words - 1) * WORD_SIZE)
         .op(MLOAD)
         .op(POP)
@@ -302,14 +308,14 @@ public class SixtyThreeSixtyFourthsTests extends TracerTestBase {
   }
 
   static Bytes call(Bytes gas, Address address, int cds, boolean transfersValue) {
-    return BytecodeCompiler.newProgram(testInfo)
+    return BytecodeCompiler.newProgram(chainConfig)
         .immediate(pushCallArguments(gas, address, cds, transfersValue))
         .op(CALL)
         .compile();
   }
 
   static Bytes pushCallArguments(Bytes gas, Address address, int cds, boolean transfersValue) {
-    return BytecodeCompiler.newProgram(testInfo)
+    return BytecodeCompiler.newProgram(chainConfig)
         .push(0) // returnAtCapacity
         .push(0) // returnAtOffset
         .push(cds) // callDataSize

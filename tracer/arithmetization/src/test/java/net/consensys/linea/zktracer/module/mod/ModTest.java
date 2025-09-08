@@ -22,14 +22,15 @@ import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
 public class ModTest extends TracerTestBase {
   @Test
-  void testSignedSmod() {
+  void testSignedSmod(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(UInt256.MAX_VALUE)
                 .push(UInt256.MAX_VALUE)
                 .op(OpCode.SMOD)
@@ -55,6 +56,6 @@ public class ModTest extends TracerTestBase {
                 .op(OpCode.DIV)
                 .op(OpCode.POP)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 }

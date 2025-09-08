@@ -24,19 +24,20 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
 public class OpCodesTest extends TracerTestBase {
 
   @Test
-  public void AllOpCodesTest() {
-    BytecodeRunner bytecodeRunner = BytecodeRunner.of(getAllOpCodesProgram());
-    bytecodeRunner.run(testInfo);
+  public void AllOpCodesTest(TestInfo testInfo) {
+    BytecodeRunner bytecodeRunner = BytecodeRunner.of(getAllOpCodesProgram(testInfo));
+    bytecodeRunner.run(chainConfig, testInfo);
   }
 
-  private Bytes getAllOpCodesProgram() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  private Bytes getAllOpCodesProgram(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     //
     for (OpCodeData opCodeData : opcodes.iterator()) {
       if (opCodeData != null) {

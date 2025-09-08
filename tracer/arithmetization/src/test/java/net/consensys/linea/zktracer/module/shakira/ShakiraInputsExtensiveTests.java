@@ -37,6 +37,7 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -63,17 +64,18 @@ public class ShakiraInputsExtensiveTests extends TracerTestBase {
   @Tag("Weekly")
   @ParameterizedTest
   @MethodSource("inputs")
-  void shakiraInputTesting(final int size, final int offset, final OpCode instruction) {
+  void shakiraInputTesting(
+      final int size, final int offset, final OpCode instruction, TestInfo testInfo) {
     final BytecodeRunner bytecodeRunner =
         BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .op(CALLDATASIZE)
                 .push(0)
                 .push(0)
                 .op(CALLDATACOPY)
                 .immediate(instructionSpecificBytecode(size, offset, instruction))
                 .compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
     // extract relevant opcode data
     OpCodeData opCode = opcodes.of(instruction);
     // check line Counting if SHA245 PRC is called
@@ -98,7 +100,7 @@ public class ShakiraInputsExtensiveTests extends TracerTestBase {
     switch (instruction) {
       case CALL, CALLCODE:
         {
-          return BytecodeCompiler.newProgram(testInfo)
+          return BytecodeCompiler.newProgram(chainConfig)
               .push(SEED.nextInt(WORD_SIZE))
               .push(0)
               .push(size)
@@ -111,7 +113,7 @@ public class ShakiraInputsExtensiveTests extends TracerTestBase {
         }
       case STATICCALL, DELEGATECALL:
         {
-          return BytecodeCompiler.newProgram(testInfo)
+          return BytecodeCompiler.newProgram(chainConfig)
               .push(SEED.nextInt(WORD_SIZE))
               .push(0)
               .push(size)
@@ -123,11 +125,15 @@ public class ShakiraInputsExtensiveTests extends TracerTestBase {
         }
       case SHA3:
         {
-          return BytecodeCompiler.newProgram(testInfo).push(size).push(offset).op(SHA3).compile();
+          return BytecodeCompiler.newProgram(chainConfig)
+              .push(size)
+              .push(offset)
+              .op(SHA3)
+              .compile();
         }
       case RETURN:
         {
-          return BytecodeCompiler.newProgram(testInfo)
+          return BytecodeCompiler.newProgram(chainConfig)
               .push(
                   rightPadTo(
                       Bytes.concatenate(
@@ -163,7 +169,7 @@ public class ShakiraInputsExtensiveTests extends TracerTestBase {
         }
       case CREATE2:
         {
-          return BytecodeCompiler.newProgram(testInfo)
+          return BytecodeCompiler.newProgram(chainConfig)
               .push(Bytes32.random(SEED))
               .push(size)
               .push(offset)

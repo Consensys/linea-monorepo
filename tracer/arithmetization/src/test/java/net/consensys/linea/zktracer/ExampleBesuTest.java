@@ -31,13 +31,14 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 public class ExampleBesuTest extends TracerTestBase {
   // TODO: will be reenabled once https://github.com/Consensys/zkevm-monorepo/issues/4247 is
   // resolved
   @Disabled
   @Test
-  void test() {
+  void test(TestInfo testInfo) {
     KeyPair keyPair = new SECP256K1().generateKeyPair();
     Address senderAddress = Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
 
@@ -50,7 +51,7 @@ public class ExampleBesuTest extends TracerTestBase {
             .nonce(6)
             .address(Address.fromHexString("0x111111"))
             .code(
-                BytecodeCompiler.newProgram(testInfo)
+                BytecodeCompiler.newProgram(chainConfig)
                     .push(32, 0xbeef)
                     .push(32, 0xdead)
                     .op(OpCode.ADD)
@@ -60,7 +61,7 @@ public class ExampleBesuTest extends TracerTestBase {
     Transaction tx =
         ToyTransaction.builder().sender(senderAccount).to(receiverAccount).keyPair(keyPair).build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, receiverAccount))
         .transaction(tx)
         .runWithBesuNode(true)

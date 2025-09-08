@@ -28,6 +28,7 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /*
@@ -42,13 +43,13 @@ InvalidCodePrefix & MaxCodeSize & OOGX : RETURN
 @ExtendWith(UnitTestWatcher.class)
 public class ReturnTest extends TracerTestBase {
   @Test
-  void invalidCodePrefixAndOogExceptionForCreate() {
+  void invalidCodePrefixAndOogExceptionForCreate(TestInfo testInfo) {
     // We run gas cost calculation on program without Invalid Code Prefix exception
     int startByte = 0xee;
     BytecodeCompiler programWithoutICP =
         getPgCreateInitCodeWithReturnStartByteAndSize(startByte, 1);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(programWithoutICP.compile());
-    long gascost = bytecodeRunner.runOnlyForGasCost(testInfo);
+    long gascost = bytecodeRunner.runOnlyForGasCost(chainConfig, testInfo);
 
     // We prepare program with Invalid Code Prefix exception
     int startByteWithICPX = EIP_3541_MARKER;
@@ -58,7 +59,7 @@ public class ReturnTest extends TracerTestBase {
     // We run program with Invalid Code Prefix and OOG exception
     long gasCostMinusOne = gascost - 2;
     BytecodeRunner bytecodeRunnerWithICP = BytecodeRunner.of(programWithICP.compile());
-    bytecodeRunnerWithICP.run(gasCostMinusOne, testInfo);
+    bytecodeRunnerWithICP.run(gasCostMinusOne, chainConfig, testInfo);
 
     // OOGX check is done prior to Invalid Code Prefix exception in tracer
     assertEquals(
@@ -71,7 +72,7 @@ public class ReturnTest extends TracerTestBase {
   }
 
   @Test
-  void initCodePrefixAndMaxCodeSizeExceptionForCreate() {
+  void initCodePrefixAndMaxCodeSizeExceptionForCreate(TestInfo testInfo) {
     // We prepare program with Invalid Code Prefix and Max Code Size exceptions
     int startByteWithICPX = EIP_3541_MARKER;
     int returnSize = MAX_CODE_SIZE + 1;
@@ -80,7 +81,7 @@ public class ReturnTest extends TracerTestBase {
 
     BytecodeRunner bytecodeRunnerWithICPXAndMCSX =
         BytecodeRunner.of(programWithICPXAndMCSX.compile());
-    bytecodeRunnerWithICPXAndMCSX.run(testInfo);
+    bytecodeRunnerWithICPXAndMCSX.run(chainConfig, testInfo);
 
     // Max Code Size Exception check is done prior to Invalid Code Prefix exception in tracer
     assertEquals(
@@ -93,13 +94,13 @@ public class ReturnTest extends TracerTestBase {
   }
 
   @Test
-  void maxCodeSizeAndOogExceptionForCreate() {
-    BytecodeCompiler initProgram = BytecodeCompiler.newProgram(testInfo);
+  void maxCodeSizeAndOogExceptionForCreate(TestInfo testInfo) {
+    BytecodeCompiler initProgram = BytecodeCompiler.newProgram(chainConfig);
     initProgram.push(MAX_CODE_SIZE + 1).push(0).op(OpCode.RETURN);
     final String initProgramAsString = initProgram.compile().toString().substring(2);
     final int initProgramByteSize = initProgram.compile().size();
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     program
         .push(initProgramAsString + "00".repeat(32 - initProgramByteSize))
@@ -119,7 +120,7 @@ public class ReturnTest extends TracerTestBase {
     // 21000L for the intrinsic transaction cost
     var initCodeCost = isPostShanghai(fork) ? 2L : 0L;
     var gasCostBefReturn = 32027L + 21000L + initCodeCost;
-    bytecodeRunner.run(gasCostBefReturn, testInfo);
+    bytecodeRunner.run(gasCostBefReturn, chainConfig, testInfo);
 
     // Max Code Size Exception check before OOGX in tracer
     assertEquals(
@@ -128,7 +129,7 @@ public class ReturnTest extends TracerTestBase {
   }
 
   @Test
-  void initCodePrefixAndMaxCodeSizeAndOogExceptionForCreate() {
+  void initCodePrefixAndMaxCodeSizeAndOogExceptionForCreate(TestInfo testInfo) {
     // We prepare program with Invalid Code Prefix and Max Code Size exceptions
     int startByteWithICPX = EIP_3541_MARKER;
     int returnSize = MAX_CODE_SIZE + 1;
@@ -146,7 +147,7 @@ public class ReturnTest extends TracerTestBase {
     // 21000L for the intrinsic transaction cost
     var initCodeCost = isPostShanghai(fork) ? 2L : 0L;
     var gasCostBefReturn = 32039L + 21000L + initCodeCost;
-    bytecodeRunnerWithICPXAndMCSX.run(gasCostBefReturn, testInfo);
+    bytecodeRunnerWithICPXAndMCSX.run(gasCostBefReturn, chainConfig, testInfo);
 
     // Max Code Size Exception check is done prior to OOGX and Invalid Code Prefix exception in
     // tracer

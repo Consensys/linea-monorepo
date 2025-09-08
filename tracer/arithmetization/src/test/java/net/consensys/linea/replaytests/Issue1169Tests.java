@@ -21,6 +21,7 @@ import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @Tag("nightly")
@@ -28,7 +29,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class Issue1169Tests extends TracerTestBase {
 
   @Test
-  public void issue_1145_block_3318494_InsufficientBalanceMainnet() {
-    replay(OLD_MAINNET_TESTCONFIG, "2746060.mainnet.json.gz");
+  public void issue_1145_block_3318494_InsufficientBalanceMainnet(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "2746060.mainnet.json.gz", testInfo);
   }
 }

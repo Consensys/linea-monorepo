@@ -21,9 +21,9 @@ import static net.consensys.linea.zktracer.opcode.OpCode.SELFDESTRUCT;
 
 import java.util.Optional;
 
-import net.consensys.linea.reporting.TestInfoWithChainConfig;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
+import net.consensys.linea.zktracer.ChainConfig;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 
@@ -39,9 +39,9 @@ public enum Heir {
   public static Address selfDestructorAddress = Address.fromHexString("0xFFc0deadd7");
 
   public static ToyAccount basicSelfDestructor(
-      Heir heir, Optional<Address> selfDestructAddress, TestInfoWithChainConfig testInfo) {
+      Heir heir, Optional<Address> selfDestructAddress, ChainConfig chainConfig) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     switch (heir) {
       case HEIR_IS_ZERO:
         program.push(0);

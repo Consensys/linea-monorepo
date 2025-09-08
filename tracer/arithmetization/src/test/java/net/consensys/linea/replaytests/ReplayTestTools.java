@@ -30,6 +30,7 @@ import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.ReplayExecutionEnvironment;
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.ZkTracer;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.provider.Arguments;
 
@@ -65,7 +66,8 @@ public class ReplayTestTools {
    *     However until existing problems are resolved with the replay mechanism, it may be useful to
    *     disable this for specific tests on a case-by-case basis.
    */
-  public static void replay(ChainConfig chain, String filename, boolean resultChecking) {
+  public static void replay(
+      ChainConfig chain, String filename, TestInfo testInfo, boolean resultChecking) {
     final InputStream fileStream =
         ReplayTestTools.class
             .getClassLoader()
@@ -86,7 +88,7 @@ public class ReplayTestTools {
         .zkTracer(new ZkTracer(chain))
         .txResultChecking(resultChecking)
         .build()
-        .replay(chain, new BufferedReader(new InputStreamReader(stream)));
+        .replay(chain, testInfo, new BufferedReader(new InputStreamReader(stream)));
   }
 
   /**
@@ -95,8 +97,8 @@ public class ReplayTestTools {
    * @param chain Chain for testing (e.g. mainnet or sepolia, etc)
    * @param filename Name of replay file
    */
-  public static void replay(ChainConfig chain, String filename) {
-    replay(chain, filename, true);
+  public static void replay(ChainConfig chain, String filename, TestInfo testInfo) {
+    replay(chain, filename, testInfo, true);
   }
 
   /**
