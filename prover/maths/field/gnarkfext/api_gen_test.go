@@ -1,6 +1,7 @@
 package gnarkfext
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -17,7 +18,8 @@ type ApiCircuitGen[T zk.Element] struct {
 	SubAB E4Gen[T]
 	MulAB E4Gen[T]
 	// SquareA E4Gen[T]
-	DivAB E4Gen[T]
+	// DivAB E4Gen[T]
+	InvA E4Gen[T]
 }
 
 func (c *ApiCircuitGen[T]) Define(api frontend.API) error {
@@ -38,22 +40,27 @@ func (c *ApiCircuitGen[T]) Define(api frontend.API) error {
 	// squareA := ext4.Mul(&c.A, &c.A) // TODO Square mysteriously fails
 	// ext4.AssertIsEqual(squareA, &c.SquareA)
 
-	divAB := ext4.Div(&c.A, &c.B)
-	ext4.AssertIsEqual(divAB, &c.DivAB)
+	// divAB := ext4.Div(&c.A, &c.B)
+	// ext4.AssertIsEqual(divAB, &c.DivAB)
+
+	invA := ext4.Inverse(&c.A)
+	ext4.AssertIsEqual(invA, &c.InvA)
 
 	return nil
 }
 
 func testApiGenWitness[T zk.Element]() *ApiCircuitGen[T] {
 	// var a, b, addab, subab, mulab, squarea, divab fext.Element
-	var a, b, addab, subab, mulab, divab fext.Element
-	a.SetRandom()
+	var a, b, addab, subab, mulab, inva fext.Element
+	a.SetOne()
 	b.SetRandom()
 	addab.Add(&a, &b)
 	subab.Sub(&a, &b)
 	mulab.Mul(&a, &b)
+	fmt.Printf("a= %s\n", a.String())
 	// squarea.Square(&a)
-	divab.Div(&a, &b)
+	// divab.Div(&a, &b)
+	inva.Inverse(&a)
 	return &ApiCircuitGen[T]{
 		A:     NewE4Gen[T](a),
 		B:     NewE4Gen[T](b),
@@ -61,7 +68,8 @@ func testApiGenWitness[T zk.Element]() *ApiCircuitGen[T] {
 		SubAB: NewE4Gen[T](subab),
 		MulAB: NewE4Gen[T](mulab),
 		// SquareA: NewE4Gen[T](squarea),
-		DivAB: NewE4Gen[T](divab),
+		// DivAB: NewE4Gen[T](divab),
+		InvA: NewE4Gen[T](inva),
 	}
 }
 

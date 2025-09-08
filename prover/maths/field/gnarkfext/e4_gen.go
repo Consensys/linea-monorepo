@@ -110,8 +110,6 @@ func (ext4 *Ext4[T]) Sub(e1, e2 *E4Gen[T]) *E4Gen[T] {
 // Mul e2 elmts, e = e1*e2
 func (ext4 *Ext4[T]) Mul(e1, e2 *E4Gen[T], in ...*E4Gen[T]) *E4Gen[T] {
 
-	ext4.mixedAPI.Println(&e1.B0.A0)
-
 	l1 := ext4.Ext2.Add(&e1.B0, &e1.B1)
 	l2 := ext4.Ext2.Add(&e2.B0, &e2.B1)
 
@@ -203,13 +201,20 @@ func (ext4 *Ext4[T]) Conjugate(e1 E4Gen[T]) *E4Gen[T] {
 // Inverse Element elmts
 func (ext4 *Ext4[T]) Inverse(e1 *E4Gen[T]) *E4Gen[T] {
 
+	ext4.mixedAPI.Println(&e1.B0.A0)
+	ext4.mixedAPI.Println(&e1.B0.A1)
+	ext4.mixedAPI.Println(&e1.B1.A0)
+	ext4.mixedAPI.Println(&e1.B1.A1)
 	res, err := ext4.mixedAPI.NewHint(inverseE4Hint, 4, &e1.B0.A0, &e1.B0.A1, &e1.B1.A0, &e1.B1.A1)
 	if err != nil {
 		// err is non-nil only for invalid number of inputs
 		panic(err)
 	}
-
 	e3 := ext4.assign(res[:4])
+	// ext4.mixedAPI.Println(&e3.B0.A0)
+	// ext4.mixedAPI.Println(&e3.B0.A1)
+	// ext4.mixedAPI.Println(&e3.B1.A0)
+	// ext4.mixedAPI.Println(&e3.B1.A1)
 	one := ext4.One()
 
 	// 1 == e3 * e1
