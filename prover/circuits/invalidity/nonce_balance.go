@@ -9,34 +9,52 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-// BadNonceCircuit defines the circuit for the transaction with a bad nonce.
-type BadNonceCircuit struct {
+// BadNonceBalanceCircuit defines the circuit for the transaction with a bad nonce or insufficient balance.
+// The circuit does not do any range check over the transaction field,
+// as it is supposed to be done by the contract.
+type BadNonceBalanceCircuit struct {
 	//  Transaction payload.
 	TxNonce frontend.Variable
+	// transaction cost
+	TxCost frontend.Variable `gnark:",secret"`
 	// RLP-encoded payload  prefixed with the type byte. txType || rlp(tx.inner)
-	RLPEncodedTx []frontend.Variable
+	RLPEncodedTx []frontend.Variable `gnark:",secret"`
 	// sender address
-	TxFromAddress frontend.Variable
+	TxFromAddress frontend.Variable `gnark:",secret"`
 	// AccountTrie of the sender
-	AccountTrie AccountTrie
+	AccountTrie AccountTrie `gnark:",secret"`
 	// hash of the transaction
-	TxHash [2]frontend.Variable
+	TxHash [2]frontend.Variable `gnark:",secret"`
 	// Keccak verifier circuit
-	KeccakH wizard.VerifierCircuit
+	KeccakH wizard.VerifierCircuit `gnark:",secret"`
+	// Invalidity type
+	InvalidityType frontend.Variable `gnark:",secret"`
 }
 
-// Define represents the constraints relevant to [BadNonceCircuit]
-func (circuit *BadNonceCircuit) Define(api frontend.API) error {
+// Define represents the constraints relevant to [BadNonceBalanceCircuit]
+func (circuit *BadNonceBalanceCircuit) Define(api frontend.API) error {
 
 	var (
-		nonce   = circuit.TxNonce
 		account = circuit.AccountTrie.Account
-		diff    = api.Sub(nonce, api.Add(account.Nonce, 1))
 		hKey    = circuit.AccountTrie.LeafOpening.HKey
 	)
 
-	// check that the nonce != Account.Nonce + 1
-	api.AssertIsDifferent(diff, 0)
+	//check that invalidity type is valid, it should be 0 or 1
+	api.AssertIsBoolean(circuit.InvalidityType)
+
+	// bad nonce; if invalidityType == 0 ----> tx nonce != account nonce + 1
+	nonceDiff := api.Add(
+		api.Mul(
+			api.Sub(1, circuit.InvalidityType),
+			api.Sub(circuit.TxNonce, api.Add(account.Nonce, 1)),
+		),
+		circuit.InvalidityType)
+	api.AssertIsDifferent(nonceDiff, 0)
+
+	// bad balance; if invalidityType == 1 ----> account balance < tx cost + 1
+	api.AssertIsLessOrEqual(
+		api.Mul(account.Balance, circuit.InvalidityType),
+		api.Add(circuit.TxCost, 1))
 
 	// check that the account matches the state root
 	circuit.AccountTrie.Define(api)
@@ -47,7 +65,7 @@ func (circuit *BadNonceCircuit) Define(api frontend.API) error {
 	mimc.Write(circuit.TxFromAddress)
 	api.AssertIsEqual(hKey, mimc.Sum())
 
-	// check that nonce matches the rlp encoding
+	// check that TxInfo matches the rlp encoding
 	// expectedNonce := ExtractNonceFromRLPZk(api, circuit.RLPEncodedTx)
 	// api.AssertIsEqual(expectedNonce, nonce)
 
@@ -60,9 +78,10 @@ func (circuit *BadNonceCircuit) Define(api frontend.API) error {
 }
 
 // Allocate the circuit
-func (cir *BadNonceCircuit) Allocate(config Config) {
+func (cir *BadNonceBalanceCircuit) Allocate(config Config) {
 	// allocate the account trie
 	cir.AccountTrie.Allocate(config)
+	// allocate the keccak verifier
 	cir.KeccakH = *wizard.AllocateWizardCircuit(config.KeccakCompiledIOP, 0)
 	// allocate the RLPEncodedTx to have a fixed size
 	cir.RLPEncodedTx = make([]frontend.Variable, config.MaxRlpByteSize)
@@ -70,19 +89,22 @@ func (cir *BadNonceCircuit) Allocate(config Config) {
 }
 
 // Assign the circuit from [AssigningInputs], circuit is reinitialized
-func (cir *BadNonceCircuit) Assign(assi AssigningInputs) {
+func (cir *BadNonceBalanceCircuit) Assign(assi AssigningInputs) {
 
 	var (
+		txCost  = assi.Transaction.Cost()
+		balance = assi.AccountTrieInputs.Account.Balance
 		txNonce = assi.Transaction.Nonce()
 		acNonce = assi.AccountTrieInputs.Account.Nonce
 		signer  = types.NewLondonSigner(assi.Transaction.ChainId())
 		a       = signer.Hash(assi.Transaction).Bytes()
-		comp    = assi.KeccakCompiledIOP
-		proof   = assi.KeccakProof
-		keccak  = *wizard.AssignVerifierCircuit(comp, proof, 0)
+		// assign the keccak verifier
+		keccak = *wizard.AssignVerifierCircuit(assi.KeccakCompiledIOP, assi.KeccakProof, 0)
 	)
 
 	cir.TxNonce = txNonce
+	cir.TxCost = txCost
+	cir.InvalidityType = int(assi.InvalidityType)
 	cir.TxFromAddress = assi.FromAddress[:]
 	cir.RLPEncodedTx = make([]frontend.Variable, assi.MaxRlpByteSize)
 
@@ -106,9 +128,16 @@ func (cir *BadNonceCircuit) Assign(assi AssigningInputs) {
 		cir.RLPEncodedTx[i] = 0
 	}
 
-	// sanity-check
-	if txNonce == uint64(acNonce+1) {
-		utils.Panic("tried to generate a bad-nonce proof for a valid transaction")
+	// sanity-checks
+	if assi.InvalidityType != 0 && assi.InvalidityType != 1 {
+		utils.Panic("expected invalidity type 0 or 1 but received %v", assi.InvalidityType)
+	}
+	if txNonce == uint64(acNonce+1) && cir.InvalidityType == 0 {
+		utils.Panic("tried to generate a bad-nonce proof for a possibly valid transaction")
+	}
+
+	if txCost.Cmp(balance) != 1 && cir.InvalidityType == 1 {
+		utils.Panic("tried to generate a bad-balance proof for a possibly valid transaction")
 	}
 
 	// assign the account trie
@@ -116,6 +145,6 @@ func (cir *BadNonceCircuit) Assign(assi AssigningInputs) {
 	cir.KeccakH = keccak
 }
 
-func (c *BadNonceCircuit) ExecutionCtx() []frontend.Variable {
+func (c *BadNonceBalanceCircuit) ExecutionCtx() []frontend.Variable {
 	return []frontend.Variable{c.AccountTrie.MerkleProof.Root}
 }

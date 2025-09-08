@@ -46,7 +46,7 @@ func (spi *FunctionalPublicInputsGnark) Sum(api frontend.API, hsh gnarkHash.Fiel
 
 func (f FunctionalPublicInputsGnark) ExecutionCtxFor(c SubCircuit) []frontend.Variable {
 	switch c.(type) {
-	case *BadNonceCircuit, *BadBalanceCircuit:
+	case *BadNonceBalanceCircuit:
 		return []frontend.Variable{f.SateRootHash}
 	default:
 		panic("unknown or unsupported subcircuit")

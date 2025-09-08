@@ -106,10 +106,8 @@ func (c *CircuitInvalidity) MakeProof(
 ) string {
 
 	switch assi.InvalidityType {
-	case BadNonce:
-		c.SubCircuit = &BadNonceCircuit{}
-	case BadBalance:
-		c.SubCircuit = &BadBalanceCircuit{}
+	case BadNonce, BadBalance:
+		c.SubCircuit = &BadNonceBalanceCircuit{}
 	default:
 		panic("unsupported invalidity type")
 	}
