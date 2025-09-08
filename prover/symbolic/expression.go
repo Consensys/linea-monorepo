@@ -77,6 +77,10 @@ type Operator interface {
 	GnarkEvalExt(frontend.API, []gnarkfext.Element) gnarkfext.Element
 }
 
+type OperatorWithResult interface {
+	EvaluateExtResult(result sv.SmartVector, inputs []sv.SmartVector, p ...mempool.MemPool)
+}
+
 // Board pins down the expression into an ExpressionBoard. This converts the
 // Expression into a DAG and runs a topological sorting algorithm over the
 // nodes of the expression. This has the effect of removing the duplicates

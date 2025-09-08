@@ -1,6 +1,8 @@
 package symbolic
 
 import (
+	"math/big"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -11,10 +13,26 @@ import (
 type boardAssignment [][]nodeAssignment
 
 type nodeAssignment struct {
-	Addr            [2]int
 	Node            *Node
 	Value           sv.SmartVector
-	NumKnownParents int
+	NumKnownParents int // not really used TODO @gbotrel
+	hasValue        bool
+	ConcreteValue   [MaxChunkSize]fext.Element
+}
+
+type boardAssignmentGautam struct {
+	assignment [][]nodeAssignmentGautam
+	tmp        [MaxChunkSize]fext.Element
+	b          *big.Int
+}
+
+type nodeAssignmentGautam struct {
+	Node          *Node
+	HasValue      bool
+	IsConstant    bool // temporary for simple init / reset refactor.
+	ConcreteValue [MaxChunkSize]fext.Element
+	// Inputs        []*[MaxChunkSize]fext.Element // Pointers to the inputs' concrete values
+	Inputs []sv.SmartVector
 }
 
 func (b *ExpressionBoard) prepareNodeAssignments(inputs []sv.SmartVector) boardAssignment {
@@ -59,7 +77,6 @@ func (b *ExpressionBoard) prepareNodeAssignments(inputs []sv.SmartVector) boardA
 			var (
 				node = nodeAssignment{
 					Node: &b.Nodes[lvl][pil],
-					Addr: [2]int{lvl, pil},
 				}
 				inputs  = nodeAssignments.inputOf(&node)
 				success = node.tryGuessEval(inputs)
@@ -370,18 +387,20 @@ func (b boardAssignment) incParentKnownCountOfMixed(na *nodeAssignment, pool mem
 	}
 
 	if na.allParentsKnown() {
-
+		if recursive {
+			panic("TODO @gbotrel")
+		}
 		// The recursive call to incParentKnownCount is needed only if the node
 		// that we "completed" by marking all its parent as known was completed
 		// **only** for that reason. It could also have been completed because
 		// all its children are constants. When that is the case, all the children
 		// will have been incremented already.
-		if recursive && na.Value == nil {
-			children := b.inputOf(na)
-			for i := range children {
-				b.incParentKnownCountOfMixed(children[i], pool, recursive)
-			}
-		}
+		// if recursive && na.Value == nil {
+		// 	children := b.inputOf(na)
+		// 	for i := range children {
+		// 		b.incParentKnownCountOfMixed(children[i], pool, recursive)
+		// 	}
+		// }
 
 		return na.tryFreeMixed(pool)
 	}
