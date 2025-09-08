@@ -103,7 +103,7 @@ func StackColumn(comp *wizard.CompiledIOP, srcs []ifaces.Column) StackedColumn {
 }
 
 // Assigns assigns the stack column
-func (s StackedColumn) Run(run *wizard.ProverRuntime) {
+func (s *StackedColumn) Run(run *wizard.ProverRuntime) {
 
 	res := make([]field.Element, 0, s.Column.Size())
 	for i := range s.Source {

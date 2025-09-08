@@ -20,7 +20,7 @@ type VerifierAction struct {
 	*MultipointToSinglepointCompilation
 }
 
-func (va VerifierAction) Run(run wizard.Runtime) error {
+func (va *VerifierAction) Run(run wizard.Runtime) error {
 
 	var (
 		queryParams = run.GetUnivariateParams(va.NewQuery.QueryID)
@@ -93,7 +93,7 @@ func (va VerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (va *VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	var (
 		queryParams = run.GetUnivariateParams(va.NewQuery.QueryID)

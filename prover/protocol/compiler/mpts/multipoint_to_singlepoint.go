@@ -191,7 +191,7 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 
 	comp.RegisterProverAction(ctx.getNumRound(comp), QuotientAccumulation{ctx})
 	comp.RegisterProverAction(ctx.getNumRound(comp)+1, RandomPointEvaluation{ctx})
-	comp.RegisterVerifierAction(ctx.getNumRound(comp)+1, VerifierAction{ctx})
+	comp.RegisterVerifierAction(ctx.getNumRound(comp)+1, &VerifierAction{ctx})
 
 	return ctx
 }
