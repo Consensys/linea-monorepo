@@ -147,7 +147,7 @@ contract StakeManager is
      * @dev The supplier is going to be the `Karma` token.
      * @param _rewardsSupplier The address of the rewards supplier.
      */
-    function setRewardsSupplier(address _rewardsSupplier) external onlyRole(DEFAULT_ADMIN_ROLE) onlyNotEmergencyMode {
+    function setRewardsSupplier(address _rewardsSupplier) external onlyNotEmergencyMode onlyRole(DEFAULT_ADMIN_ROLE) {
         rewardsSupplier = _rewardsSupplier;
     }
 
@@ -155,7 +155,7 @@ contract StakeManager is
      * @notice Registers a vault with its owner. Called by the vault itself during initialization.
      * @dev Only callable by contracts with trusted codehash
      */
-    function registerVault() external onlyTrustedCodehash onlyNotEmergencyMode {
+    function registerVault() external onlyNotEmergencyMode onlyTrustedCodehash {
         address vault = msg.sender;
         address owner = IStakeVault(vault).owner();
 
@@ -182,8 +182,8 @@ contract StakeManager is
         uint256 currentLockUntil
     )
         external
-        onlyTrustedCodehash
         onlyNotEmergencyMode
+        onlyTrustedCodehash
         onlyRegisteredVault
         returns (uint256 newLockUntil)
     {
@@ -227,8 +227,8 @@ contract StakeManager is
         uint256 currentLockUntil
     )
         external
-        onlyTrustedCodehash
         onlyNotEmergencyMode
+        onlyTrustedCodehash
         onlyRegisteredVault
         returns (uint256 newLockUntil)
     {
@@ -266,7 +266,7 @@ contract StakeManager is
      * @dev Unstaking reduces accrued MPs proportionally.
      * @param amount The amount of tokens to unstake
      */
-    function unstake(uint256 amount) external onlyTrustedCodehash onlyNotEmergencyMode onlyRegisteredVault {
+    function unstake(uint256 amount) external onlyNotEmergencyMode onlyTrustedCodehash onlyRegisteredVault {
         VaultData storage vault = vaultData[msg.sender];
         _unstake(amount, vault, msg.sender);
         emit Unstaked(msg.sender, amount);
@@ -364,7 +364,7 @@ contract StakeManager is
      * @dev This function is only callable when emergency mode is disabled.
      * @dev Only the owner of the contract can call this function.
      */
-    function enableEmergencyMode() external onlyAdminOrGuardian onlyNotEmergencyMode {
+    function enableEmergencyMode() external onlyNotEmergencyMode onlyAdminOrGuardian {
         emergencyModeEnabled = true;
         emit EmergencyModeEnabled();
     }
