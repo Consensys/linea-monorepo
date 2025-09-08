@@ -129,6 +129,7 @@ jobs:
               - '!docs/**'
             contracts-excluding-local-deployment-artifacts:
               - 'contracts/**'
+              - 'contracts-tge/**'
               - '!contracts/local-deployments-artifacts/**'
           # Means that ALL (and not just one) filter patterns must match. In other words applies the 'AND' operator to filter patterns.
           # The default is 'some', which requires just one filter pattern match and applies the 'OR' operator.
