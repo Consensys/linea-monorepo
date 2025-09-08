@@ -103,7 +103,6 @@ public class CancunMxpCall extends MxpCall {
   public int ctMax() {
     return 0;
   }
-  ;
 
   public boolean isMSizeScenario() {
     return false;

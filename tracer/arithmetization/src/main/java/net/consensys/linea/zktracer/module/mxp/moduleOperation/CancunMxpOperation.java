@@ -57,12 +57,14 @@ public class CancunMxpOperation extends MxpOperation {
     traceComputation(stamp, trace);
   }
 
-  final void traceDecoder(int stamp, Trace.Mxp trace) {
-    OpCodeData opCodeData = cancunMxpCall.getOpCodeData();
+  private void traceShared(int stamp, Trace.Mxp trace) {
+    trace.mxpStamp(stamp).cn(contextNumber);
+  }
 
+  private void traceDecoder(int stamp, Trace.Mxp trace) {
+    final OpCodeData opCodeData = cancunMxpCall.getOpCodeData();
+    traceShared(stamp, trace);
     trace
-        .mxpStamp(stamp)
-        .cn(Bytes.ofUnsignedLong(this.getContextNumber()))
         .decoder(true)
         .pDecoderInst(UnsignedByte.of(opCodeData.mnemonic().byteValue()))
         .pDecoderIsMsize(opCodeData.isMSize())
@@ -79,12 +81,10 @@ public class CancunMxpOperation extends MxpOperation {
         .fillAndValidateRow();
   }
 
-  final void traceMacro(int stamp, Trace.Mxp trace) {
-    OpCode opCode = cancunMxpCall.getOpCodeData().mnemonic();
-
+  private void traceMacro(int stamp, Trace.Mxp trace) {
+    final OpCode opCode = cancunMxpCall.getOpCodeData().mnemonic();
+    traceShared(stamp, trace);
     trace
-        .mxpStamp(stamp)
-        .cn(Bytes.ofUnsignedLong(this.getContextNumber()))
         .macro(true)
         .pMacroInst(UnsignedByte.of(opCode.byteValue()))
         .pMacroDeploying(cancunMxpCall.isDeploys())
@@ -104,10 +104,9 @@ public class CancunMxpOperation extends MxpOperation {
         .fillAndValidateRow();
   }
 
-  final void traceScenario(int stamp, Trace.Mxp trace) {
+  private void traceScenario(int stamp, Trace.Mxp trace) {
+    traceShared(stamp, trace);
     trace
-        .mxpStamp(stamp)
-        .cn(Bytes.ofUnsignedLong(this.getContextNumber()))
         .scenario(true)
         .pScenarioMsize(cancunMxpCall.isMSizeScenario())
         .pScenarioTrivial(cancunMxpCall.isTrivialScenario())
@@ -121,24 +120,23 @@ public class CancunMxpOperation extends MxpOperation {
         .fillAndValidateRow();
   }
 
-  final void traceComputation(int stamp, Trace.Mxp trace) {
-
-    for (int i = 0; i < nRowsComputation(); i++) {
+  private void traceComputation(int stamp, Trace.Mxp trace) {
+    final short ctMax = (short) cancunMxpCall.ctMax();
+    for (int ct = 0; ct <= ctMax; ct++) {
+      traceShared(stamp, trace);
       trace
-          .mxpStamp(stamp)
-          .cn(Bytes.ofUnsignedLong(this.getContextNumber()))
           .computation(true)
-          .ct(i)
-          .ctMax(cancunMxpCall.ctMax())
-          .pComputationWcpFlag(cancunMxpCall.exoCalls[i].wcpFlag())
-          .pComputationEucFlag(cancunMxpCall.exoCalls[i].eucFlag())
-          .pComputationExoInst(cancunMxpCall.exoCalls[i].instruction())
-          .pComputationArg1Hi(cancunMxpCall.exoCalls[i].arg1Hi())
-          .pComputationArg1Lo(cancunMxpCall.exoCalls[i].arg1Lo())
-          .pComputationArg2Hi(cancunMxpCall.exoCalls[i].arg2Hi())
-          .pComputationArg2Lo(cancunMxpCall.exoCalls[i].arg2Lo())
-          .pComputationResA(cancunMxpCall.exoCalls[i].resultA())
-          .pComputationResB(cancunMxpCall.exoCalls[i].resultB())
+          .ct(ct)
+          .ctMax(ctMax)
+          .pComputationWcpFlag(cancunMxpCall.exoCalls[ct].wcpFlag())
+          .pComputationEucFlag(cancunMxpCall.exoCalls[ct].eucFlag())
+          .pComputationExoInst(cancunMxpCall.exoCalls[ct].instruction())
+          .pComputationArg1Hi(cancunMxpCall.exoCalls[ct].arg1Hi())
+          .pComputationArg1Lo(cancunMxpCall.exoCalls[ct].arg1Lo())
+          .pComputationArg2Hi(cancunMxpCall.exoCalls[ct].arg2Hi())
+          .pComputationArg2Lo(cancunMxpCall.exoCalls[ct].arg2Lo())
+          .pComputationResA(cancunMxpCall.exoCalls[ct].resultA())
+          .pComputationResB(cancunMxpCall.exoCalls[ct].resultB())
           .fillAndValidateRow();
     }
   }

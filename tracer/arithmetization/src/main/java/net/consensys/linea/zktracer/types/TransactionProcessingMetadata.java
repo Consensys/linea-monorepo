@@ -346,7 +346,8 @@ public class TransactionProcessingMetadata {
         final long maxFeePerGas = tx.getMaxFeePerGas().get().getAsBigInteger().longValueExact();
         return Math.min(baseFee + maxPriorityFee, maxFeePerGas);
       }
-      default -> throw new IllegalArgumentException("Transaction type not supported");
+      default -> throw new IllegalArgumentException(
+          "Transaction type not supported: " + tx.getType());
     }
   }
 
