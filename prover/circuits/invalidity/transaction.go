@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
 	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0/compress"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -128,7 +129,7 @@ func AssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenDataModule, 
 	)
 
 	// get the rlp encoding of the transaction with type prefix.
-	prefixedRlp := PrefixedRLPNoSignature(tx)
+	prefixedRlp := ethereum.EncodeTxForSigning(tx)
 
 	// compute the hash of the transaction.
 	signer := types.NewLondonSigner(tx.ChainId())

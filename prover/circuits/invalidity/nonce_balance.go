@@ -6,7 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 // BadNonceBalanceCircuit defines the circuit for the transaction with a bad nonce or insufficient balance.
@@ -96,8 +96,7 @@ func (cir *BadNonceBalanceCircuit) Assign(assi AssigningInputs) {
 		balance = assi.AccountTrieInputs.Account.Balance
 		txNonce = assi.Transaction.Nonce()
 		acNonce = assi.AccountTrieInputs.Account.Nonce
-		signer  = types.NewLondonSigner(assi.Transaction.ChainId())
-		a       = signer.Hash(assi.Transaction).Bytes()
+		a       = crypto.Keccak256(assi.RlpEncodedTx)
 		// assign the keccak verifier
 		keccak = *wizard.AssignVerifierCircuit(assi.KeccakCompiledIOP, assi.KeccakProof, 0)
 	)

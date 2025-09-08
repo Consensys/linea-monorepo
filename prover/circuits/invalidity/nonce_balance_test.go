@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
@@ -49,7 +50,7 @@ func TestInvalidity(t *testing.T) {
 				InvalidityType: tcase.InvalidityType,
 			}
 
-			b = invalidity.PrefixedRLPNoSignature(assi.Transaction)
+			b = ethereum.EncodeTxForSigning(assi.Transaction)
 		)
 
 		// RLP encode the transaction (with type byte)

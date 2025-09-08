@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/hex"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
+	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
 	"github.com/consensys/linea-monorepo/prover/backend/invalidity"
 	circInvalidity "github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -292,15 +294,20 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 
 	txHash := signer.Hash(tx)
 
+	//sanity check
+	if !bytes.Equal(txHash.Bytes(), crypto.Keccak256(ethereum.EncodeTxForSigning(tx))) {
+		utils.Panic("tx hash mismatch")
+	}
+
 	// Add tx, txHash, and fromAddress to the invalidity spec file
 	updateInvaliditySpecFile(specFile, tx, txHash, fromAddress)
 
 	return &invalidity.Request{
-		ForcedTransactionPayLoad: tx,
-		ForcedTransactionNumber:  uint64(spec.FtxNumber),
-		FromAddresses:            linTypes.EthAddress(fromAddress),
-		InvalidityTypes:          circInvalidity.BadNonce,
-		ExpectedBlockHeight:      uint64(spec.ExpectedBlockHeight),
+		RlpEncodedTx:            ethereum.EncodeTxForSigning(tx),
+		ForcedTransactionNumber: uint64(spec.FtxNumber),
+		FromAddresses:           linTypes.EthAddress(fromAddress),
+		InvalidityTypes:         circInvalidity.BadNonce,
+		ExpectedBlockHeight:     uint64(spec.ExpectedBlockHeight),
 	}
 
 }
