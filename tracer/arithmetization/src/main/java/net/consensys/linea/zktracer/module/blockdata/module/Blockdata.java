@@ -29,6 +29,7 @@ import net.consensys.linea.zktracer.module.blockdata.moduleOperation.BlockdataOp
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.txndata.module.TxnData;
+import net.consensys.linea.zktracer.module.txndata.moduleOperation.TxnDataOperation;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.evm.worldstate.WorldView;
@@ -145,7 +146,7 @@ public abstract class Blockdata implements Module {
     }
   }
 
-  TxnData txnData() {
+  TxnData<? extends TxnDataOperation> txnData() {
     return hub.txnData();
   }
 }

@@ -37,7 +37,7 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
-public class EIP4788BeaconBlockRoot extends TraceSection {
+public class EIP4788BeaconBlockRootSection extends TraceSection {
 
   public static final Address EIP4788_BEACONROOT_ADDRESS =
       AddressUtils.addressFromBytes(
@@ -45,7 +45,8 @@ public class EIP4788BeaconBlockRoot extends TraceSection {
               Bytes.minimalBytes(BEACON_ROOTS_ADDRESS_HI),
               bigIntegerToBytes16(BEACON_ROOTS_ADDRESS_LO)));
 
-  public EIP4788BeaconBlockRoot(Hub hub, WorldView world, ProcessableBlockHeader blockHeader) {
+  public EIP4788BeaconBlockRootSection(
+      Hub hub, WorldView world, ProcessableBlockHeader blockHeader) {
     super(hub, (short) 5);
     final AccountSnapshot beaconrootAccount =
         AccountSnapshot.canonical(hub, world, EIP4788_BEACONROOT_ADDRESS, false);
@@ -59,7 +60,7 @@ public class EIP4788BeaconBlockRoot extends TraceSection {
     final Eip4788TransactionFragment transactionFragment =
         new Eip4788TransactionFragment(timestamp, beaconRoot, currentBlockIsGenesisBlock);
     fragments().add(transactionFragment);
-    hub.txnData().callTxnDataForSystemTransaction(transactionFragment);
+    hub.txnData().callTxnDataForSystemTransaction(transactionFragment.type());
 
     final AccountFragment accountFragment =
         hub.factories()

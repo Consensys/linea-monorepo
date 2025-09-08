@@ -1,5 +1,5 @@
 /*
- * Copyright ConsenSys Inc.
+ * Copyright Consensys Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -12,23 +12,14 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+package net.consensys.linea.zktracer.module.txndata.rows.computationRows;
 
-package net.consensys.linea.zktracer.module.hub.fragment.transaction.system;
-
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
-import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
+import net.consensys.linea.zktracer.module.txndata.rows.TxnDataRow;
 
-@RequiredArgsConstructor
-@Getter
-@Accessors(fluent = true)
-public abstract class SystemTransactionFragment implements TraceFragment {
-  final SystemTransactionType type;
-
+public abstract class ComputationRow extends TxnDataRow {
   @Override
-  public Trace.Hub trace(Trace.Hub trace) {
-    return trace.peekAtTransaction(true);
+  public void traceRow(Trace.Txndata trace) {
+    trace.cmptn(true);
   }
 }

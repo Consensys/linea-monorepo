@@ -42,6 +42,8 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 @Getter
 public class TransactionProcessingMetadata {
 
+  final Hub hub;
+
   final int userTransactionNumber;
   final int relativeTransactionNumber;
   final int relativeBlockNumber;
@@ -66,6 +68,8 @@ public class TransactionProcessingMetadata {
   final long dataCost;
   final long initCodeCost;
   final long accessListCost;
+  final long floorCost;
+  final long floorCostPrague;
 
   /* g in the EYP, defined by g = TG - g0 */
   final long initiallyAvailableGas;
@@ -165,7 +169,7 @@ public class TransactionProcessingMetadata {
 
   @Accessors(fluent = true)
   @Getter
-  private final int numberOfNonZeroBytesInPayload;
+  private final int numberOfNonzeroBytesInPayload;
 
   @Accessors(fluent = true)
   @Getter
@@ -181,6 +185,7 @@ public class TransactionProcessingMetadata {
       final Transaction transaction,
       final int relativeTransactionNumber,
       final int userTransactionNumber) {
+    this.hub = hub;
     this.userTransactionNumber = userTransactionNumber;
     relativeBlockNumber = hub.blockStack().currentRelativeBlockNumber();
     coinbaseAddress = hub.coinbaseAddress();
@@ -195,19 +200,26 @@ public class TransactionProcessingMetadata {
 
     initialBalance = getInitialBalance(world);
 
+    numberOfZeroBytesInPayload = Math.toIntExact(besuTransaction.getPayloadZeroBytes());
+    numberOfNonzeroBytesInPayload =
+        besuTransaction.getPayload().size() - numberOfZeroBytesInPayload;
+
     // Note: Besu's dataCost computation contains
     // - the 21_000 transaction cost (we deduce it)
     // - the contract creation cost in case of deployment
     // - the baseline gas (gas for access lists and 7702 authorizations) is set to zero, because we
     // only consider the cost of the transaction payload
-    initCodeCost = hub.gasCalculator.initcodeCost(besuTransaction.getPayload().size());
-    dataCost =
-        hub.gasCalculator.transactionIntrinsicGasCost(besuTransaction, 0)
-            - GAS_CONST_G_TRANSACTION
-            - (isDeployment ? GAS_CONST_G_CREATE : 0)
-            - (isDeployment ? initCodeCost : 0);
+    initCodeCost =
+        isDeployment ? hub.gasCalculator.initcodeCost(besuTransaction.getPayload().size()) : 0;
+    dataCost = 4 * weightedByteCount();
     accessListCost =
         besuTransaction.getAccessList().map(hub.gasCalculator::accessListGasCost).orElse(0L);
+    floorCost =
+        // the value below will not work in the Cancun TXN_DATA module (where it spits out 0,
+        // but we still carry out the computation with the Prague value).
+        hub.gasCalculator.transactionFloorCost(
+            getBesuTransaction().getPayload(), numberOfZeroBytesInPayload);
+    floorCostPrague = GAS_CONST_G_TRANSACTION + this.weightedByteCount() * FLOOR_TOKEN_COST;
     initiallyAvailableGas = getInitiallyAvailableGas();
 
     effectiveRecipient = effectiveToAddress(besuTransaction);
@@ -235,9 +247,6 @@ public class TransactionProcessingMetadata {
             : Bytes.EMPTY;
     replayProtection = besuTransaction.getChainId().isPresent();
     yParity = retrieveYParity();
-    numberOfZeroBytesInPayload = Math.toIntExact(besuTransaction.getPayloadZeroBytes());
-    numberOfNonZeroBytesInPayload =
-        besuTransaction.getPayload().size() - numberOfZeroBytesInPayload;
     final List<AccessListEntry> accessList =
         besuTransaction.getAccessList().orElse(new ArrayList<>());
     numberOfWarmedAddresses = accessList.size();
@@ -325,12 +334,12 @@ public class TransactionProcessingMetadata {
   }
 
   public long getInitiallyAvailableGas() {
-    return besuTransaction.getGasLimit() - getUpfrontGasCost();
+    return getGasLimit() - getUpfrontGasCost();
   }
 
   private long computeRefundEffective() {
-    final long maxRefundableAmount = getGasUsed() / MAX_REFUND_QUOTIENT;
-    return Math.min(maxRefundableAmount, refundCounterMax);
+    final long upperBoundForRefunds = getGasUsed() / MAX_REFUND_QUOTIENT;
+    return Math.min(upperBoundForRefunds, refundCounterMax);
   }
 
   private long computeEffectiveGasPrice() {
@@ -365,17 +374,22 @@ public class TransactionProcessingMetadata {
 
   /* Tg - g' in the EYP*/
   public long computeGasUsed() {
-    return besuTransaction.getGasLimit() - leftoverGas;
+    return getGasLimit() - leftoverGas;
   }
 
   /* g* in the EYP */
   public long computeRefunded() {
-    return leftoverGas + refundEffective;
+
+    final long leftoverGasPlusEffectiveRefund = leftoverGas + refundEffective;
+    final long executionCostAfterRefunds = getGasLimit() - leftoverGasPlusEffectiveRefund;
+    final long finalTransactionCost = Math.max(floorCost, executionCostAfterRefunds);
+
+    return getGasLimit() - finalTransactionCost;
   }
 
   /* Tg - g* in the EYP */
   public long computeTotalGasUsed() {
-    return besuTransaction.getGasLimit() - getGasRefunded();
+    return getGasLimit() - getGasRefunded();
   }
 
   public long feeRateForCoinbase() {
@@ -413,6 +427,10 @@ public class TransactionProcessingMetadata {
         }
       }
     }
+  }
+
+  public long weightedByteCount() {
+    return 4 * numberOfNonzeroBytesInPayload + numberOfZeroBytesInPayload;
   }
 
   public void captureUpdatedInitialRecipientAddressDeploymentInfoAtTransactionStart(Hub hub) {
@@ -458,5 +476,13 @@ public class TransactionProcessingMetadata {
     } else {
       hadCodeInitiallyMap.put(address, newOccurrence);
     }
+  }
+
+  public long getGasLimit() {
+    return besuTransaction.getGasLimit();
+  }
+
+  public boolean isMessageCall() {
+    return !isDeployment;
   }
 }

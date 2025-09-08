@@ -60,7 +60,7 @@ public class EIP2935HistoricalHash extends TraceSection {
     final EIP2935TransactionFragment transactionFragment =
         new EIP2935TransactionFragment(previousBlockNumberModulo, blockhash, currentBlockIsGenesis);
     fragments().add(transactionFragment);
-    hub.txnData().callTxnDataForSystemTransaction(transactionFragment);
+    hub.txnData().callTxnDataForSystemTransaction(transactionFragment.type());
 
     final AccountFragment accountFragment =
         hub.factories()

@@ -24,7 +24,7 @@ import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
 
-public class ShanghaiTxndataOperation extends LondonTxndataOperation {
+public class ShanghaiTxndataOperation extends LondonTxnDataOperation {
 
   public static final Bytes MAX_INIT_CODE_SIZE_BYTES = Bytes.ofUnsignedInt(MAX_INIT_CODE_SIZE);
   private static final Bytes WORD_SIZE_BYTES = Bytes.ofUnsignedInt(WORD_SIZE);

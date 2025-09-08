@@ -27,8 +27,8 @@ import net.consensys.linea.zktracer.module.hub.section.McopySection;
 import net.consensys.linea.zktracer.module.hub.section.finalization.CancunFinalizationSection;
 import net.consensys.linea.zktracer.module.hub.section.halt.selfdestruct.CancunSelfdestructSection;
 import net.consensys.linea.zktracer.module.hub.section.skip.CancunTxSkipSection;
-import net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP4788BeaconBlockRoot;
-import net.consensys.linea.zktracer.module.hub.section.systemTransaction.Noop;
+import net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP4788BeaconBlockRootSection;
+import net.consensys.linea.zktracer.module.hub.section.systemTransaction.SysfNoopSection;
 import net.consensys.linea.zktracer.module.hub.section.transients.TLoadSection;
 import net.consensys.linea.zktracer.module.hub.section.transients.TStoreSection;
 import net.consensys.linea.zktracer.module.hub.section.txInitializationSection.CancunInitializationSection;
@@ -41,8 +41,9 @@ import net.consensys.linea.zktracer.module.rlptxn.cancun.CancunRlpTxn;
 import net.consensys.linea.zktracer.module.tables.PowerRt;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.CancunInstructionDecoder;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.InstructionDecoder;
-import net.consensys.linea.zktracer.module.txndata.module.CancunTxnData;
+import net.consensys.linea.zktracer.module.txndata.module.PerspectivizedTxnData;
 import net.consensys.linea.zktracer.module.txndata.module.TxnData;
+import net.consensys.linea.zktracer.module.txndata.moduleOperation.TxnDataOperation;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -67,8 +68,8 @@ public class CancunHub extends ShanghaiHub {
   }
 
   @Override
-  protected TxnData setTxnData() {
-    return new CancunTxnData(this, wcp(), euc());
+  protected TxnData<? extends TxnDataOperation> setTxnData() {
+    return new PerspectivizedTxnData(this, wcp(), euc());
   }
 
   @Override
@@ -131,12 +132,11 @@ public class CancunHub extends ShanghaiHub {
   }
 
   @Override
-  protected void traceSystemInitialTransaction(
-      WorldView world, ProcessableBlockHeader blockHeader) {
+  protected void traceSysiTransactions(WorldView world, ProcessableBlockHeader blockHeader) {
     state.transactionProcessingType(SYSI);
     state.incrementSysiTransactionNumber();
     state.processingPhase(TX_SKIP);
-    new EIP4788BeaconBlockRoot(this, world, blockHeader);
+    new EIP4788BeaconBlockRootSection(this, world, blockHeader);
   }
 
   @Override
@@ -146,7 +146,7 @@ public class CancunHub extends ShanghaiHub {
     // java > 21
     state.incrementSysfTransactionNumber();
     state.processingPhase(TX_SKIP);
-    new Noop(this);
+    new SysfNoopSection(this);
   }
 
   @Override

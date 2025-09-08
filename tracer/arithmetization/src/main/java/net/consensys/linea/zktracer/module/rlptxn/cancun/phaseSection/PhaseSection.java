@@ -53,7 +53,7 @@ public abstract class PhaseSection {
                 : tx.getBesuTransaction().getTo().get().slice(4, LLARGE))
         .pTxnValue(bigIntegerToBytes(tx.getBesuTransaction().getValue().getAsBigInteger()))
         .pTxnNumberOfZeroBytes(tx.numberOfZeroBytesInPayload())
-        .pTxnNumberOfNonzeroBytes(tx.numberOfNonZeroBytesInPayload())
+        .pTxnNumberOfNonzeroBytes(tx.numberOfNonzeroBytesInPayload())
         .pTxnNumberOfPrewarmedAddresses(tx.numberOfWarmedAddresses())
         .pTxnNumberOfPrewarmedStorageKeys(tx.numberOfWarmedStorageKeys());
     tracePostValues(trace, tracedValues);

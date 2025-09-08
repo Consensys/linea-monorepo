@@ -19,7 +19,7 @@ import static net.consensys.linea.zktracer.Fork.isPostCancun;
 import static net.consensys.linea.zktracer.Fork.isPostPrague;
 import static net.consensys.linea.zktracer.Trace.LINEA_BLOCK_GAS_LIMIT;
 import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP2935HistoricalHash.EIP2935_HISTORY_STORAGE_ADDRESS;
-import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP4788BeaconBlockRoot.EIP4788_BEACONROOT_ADDRESS;
+import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP4788BeaconBlockRootSection.EIP4788_BEACONROOT_ADDRESS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.*;

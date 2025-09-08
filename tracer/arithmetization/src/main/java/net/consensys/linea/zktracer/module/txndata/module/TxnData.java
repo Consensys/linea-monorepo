@@ -25,17 +25,16 @@ import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.fragment.transaction.system.SystemTransactionFragment;
-import net.consensys.linea.zktracer.module.txndata.moduleOperation.TxndataOperation;
+import net.consensys.linea.zktracer.module.hub.fragment.transaction.system.SystemTransactionType;
+import net.consensys.linea.zktracer.module.txndata.moduleOperation.TxnDataOperation;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 
 @RequiredArgsConstructor
 @Accessors(fluent = true)
-public abstract class TxnData implements OperationListModule<TxndataOperation> {
+public abstract class TxnData<T extends TxnDataOperation> implements OperationListModule<T> {
   @Getter
-  private final ModuleOperationStackedList<TxndataOperation> operations =
-      new ModuleOperationStackedList<>();
+  private final ModuleOperationStackedList<T> operations = new ModuleOperationStackedList<>();
 
   @Getter private final Hub hub;
   @Getter private final Wcp wcp;
@@ -44,11 +43,6 @@ public abstract class TxnData implements OperationListModule<TxndataOperation> {
   @Override
   public String moduleKey() {
     return "TXN_DATA";
-  }
-
-  @Override
-  public void traceStartConflation(final long blockCount) {
-    wcp.additionalRows.add(4); /* 4 = byte length of LINEA_BLOCK_GAS_LIMIT */
   }
 
   @Override
@@ -66,6 +60,5 @@ public abstract class TxnData implements OperationListModule<TxndataOperation> {
 
   public abstract int numberOfUserTransactionsInCurrentBlock();
 
-  public abstract void callTxnDataForSystemTransaction(
-      final SystemTransactionFragment transactionFragment);
+  public abstract void callTxnDataForSystemTransaction(final SystemTransactionType type);
 }

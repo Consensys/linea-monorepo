@@ -65,12 +65,12 @@ public class DataPhaseSection extends PhaseSection {
     // Trace the prefix
     traceTransactionConstantValues(trace, tracedValues);
     prefix.traceRlpTxn(trace, tracedValues, true, true, true, 0);
-    trace.pCmpAux1(tx.numberOfZeroBytesInPayload()).pCmpAux2(tx.numberOfNonZeroBytesInPayload());
+    trace.pCmpAux1(tx.numberOfZeroBytesInPayload()).pCmpAux2(tx.numberOfNonzeroBytesInPayload());
     tracePostValues(trace, tracedValues);
 
     // trace the limbs
     int zeros = tx.numberOfZeroBytesInPayload();
-    int nonZeros = tx.numberOfNonZeroBytesInPayload();
+    int nonZeros = tx.numberOfNonzeroBytesInPayload();
     final short ctMax = (short) (limbs.size() - 1);
     for (int ct = 0; ct <= ctMax; ct++) {
       final InstructionDataPricing currentLimb = limbs.get(ct);
