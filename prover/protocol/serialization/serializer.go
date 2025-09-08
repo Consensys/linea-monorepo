@@ -116,7 +116,7 @@ type PackedObject struct {
 	Coins         []PackedCoin           `cbor:"g"` // Serialized coins.
 	QueryIDs      []string               `cbor:"h"` // String IDs for queries.
 	Queries       []PackedStructObject   `cbor:"i"` // Serialized queries.
-	Store         [][]any                `cbor:"j"` // Serialized stores (as arrays).
+	Store         []column.PackedStore   `cbor:"j"` // Serialized stores (as arrays).
 	CompiledIOP   []PackedStructObject   `cbor:"k"` // Serialized CompiledIOPs.
 	Circuits      [][]byte               `cbor:"l"` // Serialized circuits.
 	Expressions   []PackedStructObject   `cbor:"m"` // Serialized expressions
@@ -252,43 +252,45 @@ func (s *Serializer) PackValue(v reflect.Value) (any, *serdeError) {
 	}
 
 	// Handle protocol-specific types.
-	switch {
-	case typeOfV == TypeOfColumnNatural:
-		return s.PackColumn(v.Interface().(column.Natural))
-	case typeOfV == TypeOfColumnID:
-		return s.PackColumnID(v.Interface().(ifaces.ColID))
-	case typeOfV == TypeOfCoin:
-		return s.PackCoin(v.Interface().(coin.Info))
-	case typeOfV == TypeOfCoinID:
-		return s.PackCoinID(v.Interface().(coin.Name))
-	case typeOfV.Implements(TypeOfQuery) && typeOfV.Kind() != reflect.Interface && !(typeOfV.Kind() == reflect.Ptr && typeOfV.Elem().Implements(TypeOfQuery)):
-		return s.PackQuery(v.Interface().(ifaces.Query))
-	case typeOfV == TypeOfQueryID:
-		return s.PackQueryID(v.Interface().(ifaces.QueryID))
-	case typeOfV == TypeOfCompiledIOPPointer:
+	switch typeOfV {
+	case TypeOfCompiledIOPPointer:
 		unpacked := v.Interface().(*wizard.CompiledIOP)
 		if unpacked == nil {
 			return nil, nil
 		}
 		return s.PackCompiledIOP(unpacked)
-	case typeOfV == TypeOfStorePtr:
+	case TypeOfColumnNatural:
+		return s.PackColumn(v.Interface().(column.Natural))
+	case TypeOfColumnID:
+		return s.PackColumnID(v.Interface().(ifaces.ColID))
+	case TypeOfCoin:
+		return s.PackCoin(v.Interface().(coin.Info))
+	case TypeOfCoinID:
+		return s.PackCoinID(v.Interface().(coin.Name))
+	case TypeOfQueryID:
+		return s.PackQueryID(v.Interface().(ifaces.QueryID))
+	case TypeOfStorePtr:
 		unpacked := v.Interface().(*column.Store)
 		if unpacked == nil {
 			return nil, nil
 		}
 		return s.PackStore(unpacked)
-	case typeOfV == TypeOfPlonkCirc:
+	case TypeOfPlonkCirc:
 		unpacked := v.Interface().(*cs.SparseR1CS)
 		if unpacked == nil {
 			return nil, nil
 		}
 		return s.PackPlonkCircuit(unpacked)
-	case typeOfV == TypeOfExpressionPtr:
+	case TypeOfExpressionPtr:
 		unpacked := v.Interface().(*symbolic.Expression)
 		if unpacked == nil {
 			return nil, nil
 		}
 		return s.PackExpression(unpacked)
+	default:
+		if typeOfV.Implements(TypeOfQuery) && typeOfV.Kind() != reflect.Interface && !(typeOfV.Kind() == reflect.Ptr && typeOfV.Elem().Implements(TypeOfQuery)) {
+			return s.PackQuery(v.Interface().(ifaces.Query))
+		}
 	}
 
 	// Handle generic Go types.
@@ -328,27 +330,29 @@ func (d *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e *s
 	}
 
 	// Handle protocol-specific types.
-	switch {
-	case t == TypeOfColumnNatural:
-		return d.UnpackColumn(backReferenceFromCBORInt(v))
-	case t == TypeOfColumnID:
-		return d.UnpackColumnID(backReferenceFromCBORInt(v))
-	case t == TypeOfCoin:
-		return d.UnpackCoin(backReferenceFromCBORInt(v))
-	case t == TypeOfCoinID:
-		return d.UnpackCoinID(backReferenceFromCBORInt(v))
-	case t.Implements(TypeOfQuery) && t.Kind() != reflect.Interface && !(t.Kind() == reflect.Ptr && t.Elem().Implements(TypeOfQuery)):
-		return d.UnpackQuery(backReferenceFromCBORInt(v), t)
-	case t == TypeOfQueryID:
-		return d.UnpackQueryID(backReferenceFromCBORInt(v))
-	case t == TypeOfCompiledIOPPointer:
+	switch t {
+	case TypeOfCompiledIOPPointer:
 		return d.UnpackCompiledIOP(backReferenceFromCBORInt(v))
-	case t == TypeOfStorePtr:
+	case TypeOfColumnNatural:
+		return d.UnpackColumn(backReferenceFromCBORInt(v))
+	case TypeOfColumnID:
+		return d.UnpackColumnID(backReferenceFromCBORInt(v))
+	case TypeOfCoin:
+		return d.UnpackCoin(backReferenceFromCBORInt(v))
+	case TypeOfCoinID:
+		return d.UnpackCoinID(backReferenceFromCBORInt(v))
+	case TypeOfQueryID:
+		return d.UnpackQueryID(backReferenceFromCBORInt(v))
+	case TypeOfStorePtr:
 		return d.UnpackStore(backReferenceFromCBORInt(v))
-	case t == TypeOfPlonkCirc:
+	case TypeOfPlonkCirc:
 		return d.UnpackPlonkCircuit(backReferenceFromCBORInt(v))
-	case t == TypeOfExpressionPtr:
+	case TypeOfExpressionPtr:
 		return d.UnpackExpression(backReferenceFromCBORInt(v))
+	default:
+		if t.Implements(TypeOfQuery) && t.Kind() != reflect.Interface && !(t.Kind() == reflect.Ptr && t.Elem().Implements(TypeOfQuery)) {
+			return d.UnpackQuery(backReferenceFromCBORInt(v), t)
+		}
 	}
 
 	// Handle generic Go types.
@@ -666,11 +670,7 @@ func (s *Serializer) PackStore(st *column.Store) (BackReference, *serdeError) {
 	s.PackedObject.Store = append(s.PackedObject.Store, nil)
 
 	packed := st.Pack()
-	arr, err := s.PackArrayOrSlice(reflect.ValueOf(packed))
-	if err != nil {
-		return 0, err.wrapPath("(store)")
-	}
-	s.PackedObject.Store[idx] = arr
+	s.PackedObject.Store[idx] = packed
 	return BackReference(idx), nil
 }
 
@@ -682,13 +682,7 @@ func (d *Deserializer) UnpackStore(v BackReference) (reflect.Value, *serdeError)
 
 	if d.Stores[v] == nil {
 		preStore := d.PackedObject.Store[v]
-		storeArr, err := d.UnpackArrayOrSlice(preStore, TypeOfPackedStore)
-		if err != nil {
-			return reflect.Value{}, err.wrapPath("(store)")
-		}
-
-		pStore := storeArr.Interface().(column.PackedStore)
-		d.Stores[v] = pStore.Unpack()
+		d.Stores[v] = preStore.Unpack()
 	}
 
 	return reflect.ValueOf(d.Stores[v]), nil
@@ -810,7 +804,7 @@ func (d *Deserializer) UnpackArrayOrSlice(v []any, t reflect.Type) (reflect.Valu
 			return reflect.Value{}, newSerdeErrorf("failed to deserialize to %q, size mismatch: %d != %d", t.String(), len(v), t.Len())
 		}
 	case reflect.Slice:
-		res = reflect.MakeSlice(t, len(v), len(v))
+		res = reflect.MakeSlice(t, len(v), cap(v))
 	default:
 		return reflect.Value{}, newSerdeErrorf("failed to deserialize to %q, expected array or slice", t.String())
 	}
