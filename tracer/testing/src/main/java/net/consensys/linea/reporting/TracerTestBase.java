@@ -25,14 +25,14 @@ import org.junit.jupiter.api.TestInfo;
 import static net.consensys.linea.zktracer.Fork.*;
 
 public class TracerTestBase {
-  public static TestInfoWithChainConfig testInfo = new TestInfoWithChainConfig();
+  public static ChainConfig chainConfig;
   public static Fork fork;
   public static OpCodes opcodes;
 
   @BeforeAll
   public static void init() {
       // Configure chain information and fork before any tests are run, including any methods used as MethodSource.
-      TracerTestBase.testInfo.chainConfig =
+      TracerTestBase.chainConfig =
               switch (getForkOrDefault("LONDON")) {
               case "LONDON" -> ChainConfig.MAINNET_TESTCONFIG(LONDON);
               case "PARIS" -> ChainConfig.MAINNET_TESTCONFIG(PARIS);
@@ -42,14 +42,8 @@ public class TracerTestBase {
               default -> throw new IllegalArgumentException(
                   "Unknown fork: " + System.getProperty("unit.replay.tests.fork"));
             };
-    TracerTestBase.fork = TracerTestBase.testInfo.chainConfig.fork;
+    TracerTestBase.fork = TracerTestBase.chainConfig.fork;
     TracerTestBase.opcodes = OpCodes.load(fork);
-  }
-
-  @BeforeEach
-  public void init(TestInfo testInfo) {
-    // Record information about the specific test being run.
-    TracerTestBase.testInfo.testInfo = testInfo;
   }
 
   public static String getForkOrDefault(String defaultFork) {

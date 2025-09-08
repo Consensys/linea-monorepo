@@ -23,13 +23,14 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
-import net.consensys.linea.reporting.TestInfoWithChainConfig;
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
+import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.instructionprocessing.createTests.*;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -43,9 +44,9 @@ public class RootLevel extends TracerTestBase {
   public static String salt02 = "5a1702";
 
   @Test
-  void basicCreate2Test() {
+  void basicCreate2Test(TestInfo testInfo) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     program
         .push(0xadd7) // salt
         .push(1) // size
@@ -53,7 +54,7 @@ public class RootLevel extends TracerTestBase {
         .push(1) // value
         .op(CREATE2);
 
-    run(program, testInfo);
+    run(program, chainConfig, testInfo);
   }
 
   @ParameterizedTest
@@ -62,9 +63,10 @@ public class RootLevel extends TracerTestBase {
       CreateType createType,
       ValueParameter valueParameter,
       OffsetParameter offsetParameter,
-      boolean revert) {
+      boolean revert,
+      TestInfo testInfo) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     genericCreate(
         program, createType, valueParameter, offsetParameter, SizeParameter.s_ZERO, salt01);
 
@@ -72,15 +74,15 @@ public class RootLevel extends TracerTestBase {
       program.push(0).push(0).op(REVERT);
     }
 
-    run(program, testInfo);
+    run(program, chainConfig, testInfo);
   }
 
   @ParameterizedTest
   @EnumSource(WhenToTestParameter.class)
-  void rootLevelCreate2AndExtCodeHash(WhenToTestParameter when) {
+  void rootLevelCreate2AndExtCodeHash(WhenToTestParameter when, TestInfo testInfo) {
 
     int storageKey = 0;
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     precomputeDeploymentAddressOfEmptyInitCodeCreate2(program, salt01);
     storeAt(program, storageKey);
 
@@ -104,7 +106,7 @@ public class RootLevel extends TracerTestBase {
       program.op(EXTCODEHASH); // we expect to see KECCAK(( ))
     }
 
-    run(program, testInfo);
+    run(program, chainConfig, testInfo);
   }
 
   private static Stream<Arguments> createParametersForEmptyCreates() {
@@ -194,7 +196,7 @@ public class RootLevel extends TracerTestBase {
     program.push(storageKey).op(SLOAD);
   }
 
-  public static void run(BytecodeCompiler program, TestInfoWithChainConfig testInfo) {
-    BytecodeRunner.of(program).run(testInfo);
+  public static void run(BytecodeCompiler program, ChainConfig chainConfig, TestInfo testInfo) {
+    BytecodeRunner.of(program).run(chainConfig, testInfo);
   }
 }

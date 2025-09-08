@@ -36,6 +36,7 @@ import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
@@ -44,7 +45,7 @@ public class TestRlpAddress extends TracerTestBase {
   private final RlpRandEdgeCase util = new RlpRandEdgeCase();
 
   @Test
-  void randDeployment() {
+  void randDeployment(TestInfo testInfo) {
     final KeyPair keyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
@@ -56,7 +57,7 @@ public class TestRlpAddress extends TracerTestBase {
             .build();
 
     final Bytes initCode =
-        BytecodeCompiler.newProgram(testInfo).push(1).push(1).op(OpCode.SLT).compile();
+        BytecodeCompiler.newProgram(chainConfig).push(1).push(1).op(OpCode.SLT).compile();
 
     final Transaction tx =
         ToyTransaction.builder()
@@ -69,7 +70,7 @@ public class TestRlpAddress extends TracerTestBase {
             .payload(initCode)
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount))
         .transaction(tx)
         .build()
@@ -77,7 +78,7 @@ public class TestRlpAddress extends TracerTestBase {
   }
 
   @Test
-  void failingCreateTest() {
+  void failingCreateTest(TestInfo testInfo) {
     final KeyPair keyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
@@ -96,7 +97,7 @@ public class TestRlpAddress extends TracerTestBase {
             .nonce(10)
             .address(contractAddress)
             .code(
-                BytecodeCompiler.newProgram(testInfo)
+                BytecodeCompiler.newProgram(chainConfig)
 
                     // copy the entirety of the call data to RAM
                     .op(OpCode.CALLDATASIZE)
@@ -112,7 +113,7 @@ public class TestRlpAddress extends TracerTestBase {
             .build();
 
     final Bytes initCodeReturnContractCode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(contractAddress)
             .op(OpCode.EXTCODESIZE)
             .op(OpCode.DUP1)
@@ -135,7 +136,7 @@ public class TestRlpAddress extends TracerTestBase {
             .payload(initCodeReturnContractCode)
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, contractAccount))
         .transaction(tx)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
@@ -144,7 +145,7 @@ public class TestRlpAddress extends TracerTestBase {
   }
 
   @Test
-  void improvedCreateTest() {
+  void improvedCreateTest(TestInfo testInfo) {
     final KeyPair keyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
@@ -163,7 +164,7 @@ public class TestRlpAddress extends TracerTestBase {
             .nonce(10)
             .address(contractAddress)
             .code(
-                BytecodeCompiler.newProgram(testInfo)
+                BytecodeCompiler.newProgram(chainConfig)
                     // copy the entirety of the call data to RAM
                     .op(OpCode.CALLDATASIZE)
                     .push(0)
@@ -178,7 +179,7 @@ public class TestRlpAddress extends TracerTestBase {
             .build();
 
     final BytecodeCompiler copyAndReturnSomeForeignContractsCode =
-        BytecodeCompiler.newProgram(testInfo);
+        BytecodeCompiler.newProgram(chainConfig);
     fullCopyOfForeignByteCode(copyAndReturnSomeForeignContractsCode, contractAddress);
     appendReturn(copyAndReturnSomeForeignContractsCode, 0, 0);
 
@@ -192,7 +193,7 @@ public class TestRlpAddress extends TracerTestBase {
             .payload(copyAndReturnSomeForeignContractsCode.compile())
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, callDataDeployerAccount))
         .transaction(tx)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)

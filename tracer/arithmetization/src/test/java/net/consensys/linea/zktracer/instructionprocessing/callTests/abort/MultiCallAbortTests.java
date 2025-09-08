@@ -24,6 +24,7 @@ import net.consensys.linea.testing.BytecodeRunner;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /** CALL/ABORT's are revert sensitive. We test this with two CALL's. */
@@ -31,31 +32,31 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class MultiCallAbortTests extends TracerTestBase {
 
   @Test
-  void normalCallThenAbortedCallToEoaThenRevert() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void normalCallThenAbortedCallToEoaThenRevert(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     appendCall(program, CALL, 0, Address.fromHexString(eoaAddress), 1, 0, 0, 0, 0);
     appendInsufficientBalanceCall(
         program, CALL, 1000, Address.fromHexString(eoaAddress), 0, 0, 0, 0);
     program.push(6).push(7).op(REVERT);
     Bytes bytecode = program.compile();
-    BytecodeRunner.of(bytecode).run(testInfo);
+    BytecodeRunner.of(bytecode).run(chainConfig, testInfo);
   }
 
   @Test
-  void abortedCallNormalCallToEoaThenRevert() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void abortedCallNormalCallToEoaThenRevert(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     appendInsufficientBalanceCall(
         program, CALL, 1000, Address.fromHexString(eoaAddress), 0, 0, 0, 0);
     appendCall(program, CALL, 0, Address.fromHexString(eoaAddress), 1, 0, 0, 0, 0);
     program.push(6).push(7).op(REVERT);
     Bytes bytecode = program.compile();
-    BytecodeRunner.of(bytecode).run(testInfo);
+    BytecodeRunner.of(bytecode).run(chainConfig, testInfo);
   }
 
   @Test
-  void balanceThenAbortedCallToEoaThenRevert() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void balanceThenAbortedCallToEoaThenRevert(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     program.push(eoaAddress).op(BALANCE).op(POP);
     appendInsufficientBalanceCall(
@@ -63,18 +64,18 @@ public class MultiCallAbortTests extends TracerTestBase {
     appendCall(program, CALL, 0, Address.fromHexString(eoaAddress), 0, 0, 0, 0, 0);
     program.push(6).push(7).op(REVERT);
     Bytes bytecode = program.compile();
-    BytecodeRunner.of(bytecode).run(testInfo);
+    BytecodeRunner.of(bytecode).run(chainConfig, testInfo);
   }
 
   @Test
-  void abortedCallThenBalanceToEoaThenRevert() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void abortedCallThenBalanceToEoaThenRevert(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     appendInsufficientBalanceCall(
         program, CALL, 1000, Address.fromHexString(eoaAddress), 0, 0, 0, 0);
     appendCall(program, CALL, 0, Address.fromHexString(eoaAddress), 0, 0, 0, 0, 0);
     program.push(6).push(7).op(REVERT);
     Bytes bytecode = program.compile();
-    BytecodeRunner.of(bytecode).run(testInfo);
+    BytecodeRunner.of(bytecode).run(chainConfig, testInfo);
   }
 }

@@ -24,38 +24,39 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
 public class ImmediateInvalid extends TracerTestBase {
 
   @Test
-  void zeroValueTransferToInvalid() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void zeroValueTransferToInvalid(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleInvalid.getAddress(), 0, 0, 0, 0, 0);
 
-    BytecodeRunner.of(program.compile()).run(accounts, testInfo);
+    BytecodeRunner.of(program.compile()).run(accounts, chainConfig, testInfo);
   }
 
   @Test
-  void nonZeroValueTransferToInvalidContract() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void nonZeroValueTransferToInvalidContract(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleInvalid.getAddress(), 1, 0, 0, 0, 0);
 
-    BytecodeRunner.of(program.compile()).run(accounts, testInfo);
+    BytecodeRunner.of(program.compile()).run(accounts, chainConfig, testInfo);
   }
 
   @Test
-  void nonZeroValueTransferToInvalidContractRevertingTransaction() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void nonZeroValueTransferToInvalidContractRevertingTransaction(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleInvalid.getAddress(), 1, 0, 0, 0, 0);
 
     // we use the 1 on the stack after this successful CALL as the revert message size
     program.push(0).op(REVERT);
 
-    BytecodeRunner.of(program.compile()).run(accounts, testInfo);
+    BytecodeRunner.of(program.compile()).run(accounts, chainConfig, testInfo);
   }
 }

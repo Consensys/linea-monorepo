@@ -28,7 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class CountOnlyModuleTest extends TracerTestBase {
   @Test
   void test() {
-    ZkTracer state = new ZkTracer(testInfo.chainConfig);
+    ZkTracer state = new ZkTracer(chainConfig);
     final ModexpEffectiveCall countingOnlyModule = state.getHub().modexpEffectiveCall();
 
     countingOnlyModule.updateTally(1);
@@ -47,7 +47,7 @@ public class CountOnlyModuleTest extends TracerTestBase {
     countingOnlyModule.popTransactionBundle();
     assertThat(countingOnlyModule.lineCount()).isEqualTo(1);
 
-    state = new ZkTracer(testInfo.chainConfig);
+    state = new ZkTracer(chainConfig);
     assertThat(state.getHub().modexpEffectiveCall().lineCount()).isEqualTo(0);
   }
 }

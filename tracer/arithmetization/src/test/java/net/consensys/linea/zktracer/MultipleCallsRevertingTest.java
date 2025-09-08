@@ -32,6 +32,7 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -57,7 +58,11 @@ public class MultipleCallsRevertingTest extends TracerTestBase {
   @ParameterizedTest
   @MethodSource("contractForSLoadAndSStoreTestSource")
   void multipleCallsRevertingTest(
-      boolean toRoot, boolean mustRevert, CallCase callCase, boolean useCallCode) {
+      boolean toRoot,
+      boolean mustRevert,
+      CallCase callCase,
+      boolean useCallCode,
+      TestInfo testInfo) {
     // arithmetization/src/test/resources/contracts/multipleCallsReverting/*.sol
     // solc-select use 0.4.24
     // solc *.sol --bin-runtime --evm-version byzantium -o compiledContracts
@@ -186,7 +191,7 @@ public class MultipleCallsRevertingTest extends TracerTestBase {
     transactions.add(txToInitiateCalls);
 
     ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
-        ToyExecutionEnvironmentV2.builder(testInfo)
+        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
             .accounts(accounts)
             .transactions(transactions)
             .transactionProcessingResultValidator(

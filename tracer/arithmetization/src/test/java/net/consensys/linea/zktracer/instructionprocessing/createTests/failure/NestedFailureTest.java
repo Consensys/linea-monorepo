@@ -34,6 +34,7 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -49,14 +50,14 @@ public class NestedFailureTest extends TracerTestBase {
   @EnumSource(
       value = OpCode.class,
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
-  public void nestedFailureTest(OpCode callOpCode) {
+  public void nestedFailureTest(OpCode callOpCode, TestInfo testInfo) {
 
     final String deployedCode = "deadbeefc0de";
     final int deployedCodeLengthInBytes = deployedCode.length() / 2;
     final String errorString = "0e7707";
     final int errorStringLengthInBytes = errorString.length() / 2;
 
-    BytecodeCompiler initCode = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler initCode = BytecodeCompiler.newProgram(chainConfig);
     callCaller(initCode, callOpCode, 0xffffff, 1, 0xa, 0xb, 0xc, 0xd);
     final int sizeUpToCall = initCode.compile().size();
     initCode
@@ -91,7 +92,7 @@ public class NestedFailureTest extends TracerTestBase {
             .balance(Wei.of(0xffffff))
             .build();
 
-    BytecodeCompiler entryPoint = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler entryPoint = BytecodeCompiler.newProgram(chainConfig);
     fullCodeCopyOf(entryPoint, accountContainingInitCode); // loading init code into memory
     entryPoint
         .push(salt02) // salt
@@ -117,7 +118,7 @@ public class NestedFailureTest extends TracerTestBase {
             .gasLimit(0xffffffL)
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(userAccount, entryPointAccount, accountContainingInitCode))
         .transaction(transaction)
         .build()

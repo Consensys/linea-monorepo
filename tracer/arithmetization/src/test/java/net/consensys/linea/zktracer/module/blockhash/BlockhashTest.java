@@ -30,15 +30,16 @@ import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
 public class BlockhashTest extends TracerTestBase {
 
   @Test
-  void severalBlockhash() {
+  void severalBlockhash(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
 
                 // arg is NUMBER - 1
                 .push(1)
@@ -125,13 +126,13 @@ public class BlockhashTest extends TracerTestBase {
                 .op(OpCode.BLOCKHASH)
                 .op(OpCode.POP)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   @Test
-  void singleBlockhash() {
+  void singleBlockhash(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
 
                 // arg of BlockHash is Blocknumber +1
                 .op(OpCode.NUMBER)
@@ -140,33 +141,33 @@ public class BlockhashTest extends TracerTestBase {
                 .op(OpCode.BLOCKHASH)
                 .op(OpCode.POP)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   @Test
-  void blockhashArgumentUpperRangeCheckMultiBlockTest() {
+  void blockhashArgumentUpperRangeCheckMultiBlockTest(TestInfo testInfo) {
     // Block 1
     Bytes program1 =
-        BytecodeCompiler.newProgram(testInfo).op(OpCode.NUMBER).op(OpCode.BLOCKHASH).compile();
+        BytecodeCompiler.newProgram(chainConfig).op(OpCode.NUMBER).op(OpCode.BLOCKHASH).compile();
 
     // Block 2
     Bytes program2 =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(1)
             .op(OpCode.NUMBER)
             .op(OpCode.SUB)
             .op(OpCode.BLOCKHASH)
             .compile();
 
-    multiBlocksTest(List.of(program1, program2));
+    multiBlocksTest(List.of(program1, program2), testInfo);
   }
 
   @Test
-  void blockhashArgumentLowerRangeCheckMultiBlockTest() {
-    Bytes fillerProgram = BytecodeCompiler.newProgram(testInfo).op(OpCode.COINBASE).compile();
+  void blockhashArgumentLowerRangeCheckMultiBlockTest(TestInfo testInfo) {
+    Bytes fillerProgram = BytecodeCompiler.newProgram(chainConfig).op(OpCode.COINBASE).compile();
 
     Bytes program0 =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(1)
             .op(OpCode.NUMBER)
             .op(OpCode.SUB)
@@ -176,7 +177,7 @@ public class BlockhashTest extends TracerTestBase {
     // Block no longer available
     // Block 1
     Bytes program1 =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(256)
             .op(OpCode.NUMBER)
             .op(OpCode.SUB)
@@ -185,7 +186,7 @@ public class BlockhashTest extends TracerTestBase {
 
     // Block 2
     Bytes program2 =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(257)
             .op(OpCode.NUMBER)
             .op(OpCode.SUB)
@@ -193,7 +194,7 @@ public class BlockhashTest extends TracerTestBase {
             .compile();
 
     Bytes program3 =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(16)
             .op(OpCode.NUMBER)
             .op(OpCode.SUB)
@@ -204,6 +205,7 @@ public class BlockhashTest extends TracerTestBase {
         Stream.concat(
                 Collections.nCopies(256, fillerProgram).stream(),
                 List.of(program0, program1, program2, program3).stream())
-            .collect(Collectors.toList()));
+            .collect(Collectors.toList()),
+        testInfo);
   }
 }

@@ -25,14 +25,15 @@ import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 class MemoryTests extends TracerTestBase {
   private final Random rnd = new Random(666);
 
   @Test
-  void successionOverlappingMstore() {
+  void successionOverlappingMstore(TestInfo testInfo) {
     BytecodeRunner.of(
-            newProgram(testInfo)
+            newProgram(chainConfig)
                 .push(Bytes.repeat((byte) 1, 32))
                 .push(0)
                 .op(OpCode.MSTORE)
@@ -45,30 +46,30 @@ class MemoryTests extends TracerTestBase {
                 .push(6)
                 .op(OpCode.MLOAD)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   @Test
-  void fastMload() {
-    BytecodeRunner.of(newProgram(testInfo).push(34).push(0).op(OpCode.MLOAD).compile())
-        .run(testInfo);
+  void fastMload(TestInfo testInfo) {
+    BytecodeRunner.of(newProgram(chainConfig).push(34).push(0).op(OpCode.MLOAD).compile())
+        .run(chainConfig, testInfo);
   }
 
   @Test
-  void alignedMstore8() {
-    BytecodeRunner.of(newProgram(testInfo).push(12).push(0).op(OpCode.MSTORE8).compile())
-        .run(testInfo);
+  void alignedMstore8(TestInfo testInfo) {
+    BytecodeRunner.of(newProgram(chainConfig).push(12).push(0).op(OpCode.MSTORE8).compile())
+        .run(chainConfig, testInfo);
   }
 
   @Test
-  void nonAlignedMstore8() {
-    BytecodeRunner.of(newProgram(testInfo).push(66872).push(35).op(OpCode.MSTORE8).compile())
-        .run(testInfo);
+  void nonAlignedMstore8(TestInfo testInfo) {
+    BytecodeRunner.of(newProgram(chainConfig).push(66872).push(35).op(OpCode.MSTORE8).compile())
+        .run(chainConfig, testInfo);
   }
 
   @Test
-  void mstoreAndReturn() {
-    BytecodeCompiler program = newProgram(testInfo);
+  void mstoreAndReturn(TestInfo testInfo) {
+    BytecodeCompiler program = newProgram(chainConfig);
     program
         .push("deadbeef11111111deadbeef22222222deadbeef00000000deadbeefcccccccc")
         .push(0x20)
@@ -76,12 +77,12 @@ class MemoryTests extends TracerTestBase {
         .push(0x10)
         .push(0x30)
         .op(OpCode.RETURN);
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 
   @Test
-  void mstoreAndRevert() {
-    BytecodeCompiler program = newProgram(testInfo);
+  void mstoreAndRevert(TestInfo testInfo) {
+    BytecodeCompiler program = newProgram(chainConfig);
     program
         .push("deadbeef11111111deadbeef22222222deadbeef00000000deadbeefcccccccc")
         .push(0x20)
@@ -89,12 +90,12 @@ class MemoryTests extends TracerTestBase {
         .push(0x10)
         .push(0x28)
         .op(OpCode.REVERT);
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 
   @Test
-  void returnAfterLog2() {
-    BytecodeCompiler program = newProgram(testInfo);
+  void returnAfterLog2(TestInfo testInfo) {
+    BytecodeCompiler program = newProgram(chainConfig);
     program
         .push(0x01)
         .push(0x11)
@@ -119,12 +120,12 @@ class MemoryTests extends TracerTestBase {
         .push(0x30)
         .op(OpCode.RETURN);
 
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 
   @Test
-  void revertAfterLog2() {
-    BytecodeCompiler program = newProgram(testInfo);
+  void revertAfterLog2(TestInfo testInfo) {
+    BytecodeCompiler program = newProgram(chainConfig);
     program
         .push(0x01)
         .push(0x11)
@@ -149,18 +150,18 @@ class MemoryTests extends TracerTestBase {
         .push(0x30)
         .op(OpCode.REVERT);
 
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 
   @Test
-  void checkMSizeAfterMemoryExpansion() {
-    BytecodeCompiler program = newProgram(testInfo);
+  void checkMSizeAfterMemoryExpansion(TestInfo testInfo) {
+    BytecodeCompiler program = newProgram(chainConfig);
     program
         .push(0xFF)
         .push(0)
         .op(OpCode.MSTORE) // expand memory
         .op(OpCode.MSIZE); // call MSIZE on non-zero memory
 
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 }

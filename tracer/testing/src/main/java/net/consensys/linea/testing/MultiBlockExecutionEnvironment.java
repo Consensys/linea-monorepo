@@ -15,9 +15,7 @@
 
 package net.consensys.linea.testing;
 
-import static net.consensys.linea.reporting.TracerTestBase.testInfo;
 import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.DEFAULT_BLOCK_NUMBER;
-import static net.consensys.linea.zktracer.ChainConfig.MAINNET_TESTCONFIG;
 import static net.consensys.linea.zktracer.Trace.LINEA_BLOCK_GAS_LIMIT;
 
 import java.math.BigInteger;
@@ -30,12 +28,12 @@ import lombok.Builder;
 import lombok.Singular;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.blockcapture.snapshots.*;
-import net.consensys.linea.reporting.TestInfoWithChainConfig;
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.ethereum.core.*;
+import org.junit.jupiter.api.TestInfo;
 
 @Builder
 @Slf4j
@@ -50,8 +48,8 @@ public class MultiBlockExecutionEnvironment {
   public static final BigInteger CHAIN_ID = BigInteger.valueOf(1337);
   private final ZkTracer tracer;
 
-  @Builder.Default
-  public final ChainConfig testsChain = MAINNET_TESTCONFIG(testInfo.chainConfig.fork);
+  public final ChainConfig testsChain;
+  public final TestInfo testInfo;
 
   @Builder.Default private final long startingBlockNumber = DEFAULT_BLOCK_NUMBER;
   @Builder.Default private final boolean systemContractDeployedPriorToConflation = true;
@@ -65,19 +63,22 @@ public class MultiBlockExecutionEnvironment {
       TransactionProcessingResultValidator.DEFAULT_VALIDATOR;
 
   public static MultiBlockExecutionEnvironment.MultiBlockExecutionEnvironmentBuilder builder(
-      TestInfoWithChainConfig testInfo) {
+      ChainConfig chainConfig, TestInfo testInfo) {
     return new MultiBlockExecutionEnvironmentBuilder()
-        .tracer(new ZkTracer(testInfo.chainConfig))
-        .testsChain(testInfo.chainConfig);
+        .tracer(new ZkTracer(chainConfig))
+        .testsChain(chainConfig)
+        .testInfo(testInfo);
   }
 
   public static MultiBlockExecutionEnvironment.MultiBlockExecutionEnvironmentBuilder builder(
-      TestInfoWithChainConfig testInfo,
+      ChainConfig chainConfig,
+      TestInfo testInfo,
       boolean systemContractDeployedPriorConflation,
       long firstBlockNumber) {
     return new MultiBlockExecutionEnvironmentBuilder()
-        .tracer(new ZkTracer(testInfo.chainConfig))
-        .testsChain(testInfo.chainConfig)
+        .tracer(new ZkTracer(chainConfig))
+        .testsChain(chainConfig)
+        .testInfo(testInfo)
         .systemContractDeployedPriorToConflation(systemContractDeployedPriorConflation)
         .startingBlockNumber(firstBlockNumber);
   }
@@ -125,7 +126,7 @@ public class MultiBlockExecutionEnvironment {
         .transactionProcessingResultValidator(this.transactionProcessingResultValidator)
         .systemContractDeployedPriorToConflation(systemContractDeployedPriorToConflation)
         .build()
-        .replay(testsChain, this.buildConflationSnapshot());
+        .replay(testsChain, testInfo, this.buildConflationSnapshot());
   }
 
   public Hub getHub() {

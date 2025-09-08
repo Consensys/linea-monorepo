@@ -29,6 +29,7 @@ import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
@@ -39,9 +40,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class BalanceTests extends TracerTestBase {
 
   @Test
-  void unrevertedValueTransfer() {
+  void unrevertedValueTransfer(TestInfo testInfo) {
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(accounts)
         .transaction(stopTransaction)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
@@ -50,9 +51,9 @@ public class BalanceTests extends TracerTestBase {
   }
 
   @Test
-  void revertedValueTransferTest() {
+  void revertedValueTransferTest(TestInfo testInfo) {
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(accounts)
         .transaction(revertTransaction)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
@@ -74,7 +75,7 @@ public class BalanceTests extends TracerTestBase {
           .build();
 
   Bytes revertByteCode =
-      BytecodeCompiler.newProgram(testInfo).push(0).push(0).op(OpCode.REVERT).compile();
+      BytecodeCompiler.newProgram(chainConfig).push(0).push(0).op(OpCode.REVERT).compile();
 
   ToyAccount revertAccount =
       ToyAccount.builder()

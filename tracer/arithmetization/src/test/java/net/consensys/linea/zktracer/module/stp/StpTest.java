@@ -41,6 +41,7 @@ import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
@@ -54,7 +55,7 @@ public class StpTest extends TracerTestBase {
   private final long SENDER_BALANCE = 0xFFFFFFFFFFFFL;
 
   @Test
-  void testCall() {
+  void testCall(TestInfo testInfo) {
     final int NB_CALL = 200;
 
     final List<ToyAccount> accounts = new ArrayList<>();
@@ -73,7 +74,7 @@ public class StpTest extends TracerTestBase {
           txCall(opcode, toExists, toWarm, balance, value, gasCall, gasLimit, accounts));
     }
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(accounts)
         .transactions(transactions)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
@@ -82,7 +83,7 @@ public class StpTest extends TracerTestBase {
   }
 
   @Test
-  void testCreate() {
+  void testCreate(TestInfo testInfo) {
     final int NB_CREATE = 200;
 
     final List<ToyAccount> world = new ArrayList<>();
@@ -98,7 +99,7 @@ public class StpTest extends TracerTestBase {
       }
     }
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(world)
         .transactions(txList)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
@@ -180,7 +181,7 @@ public class StpTest extends TracerTestBase {
 
   private Bytes codeCall(OpCode opcode, Address calleeAddress, BigInteger value, long gasCall) {
     return switch (opcode) {
-      case CALL, CALLCODE -> BytecodeCompiler.newProgram(testInfo)
+      case CALL, CALLCODE -> BytecodeCompiler.newProgram(chainConfig)
           .push(Bytes.minimalBytes(6)) // retLength
           .push(Bytes.minimalBytes(5)) // terOffset
           .push(Bytes.minimalBytes(4)) // argsLength
@@ -190,7 +191,7 @@ public class StpTest extends TracerTestBase {
           .push(longToBytes(gasCall)) // gas
           .op(opcode)
           .compile();
-      case DELEGATECALL, STATICCALL -> BytecodeCompiler.newProgram(testInfo)
+      case DELEGATECALL, STATICCALL -> BytecodeCompiler.newProgram(chainConfig)
           .push(Bytes.minimalBytes(5)) // retLength
           .push(Bytes.minimalBytes(4)) // terOffset
           .push(Bytes.minimalBytes(3)) // argsLength
@@ -226,7 +227,7 @@ public class StpTest extends TracerTestBase {
             .balance(Wei.ONE)
             .address(to)
             .code(
-                BytecodeCompiler.newProgram(testInfo)
+                BytecodeCompiler.newProgram(chainConfig)
                     .push(Bytes.fromHexString("0xff")) // length
                     .push(Bytes.fromHexString("0x80")) // offset
                     .push(Bytes.minimalBytes(value)) // value
@@ -268,7 +269,7 @@ public class StpTest extends TracerTestBase {
             .balance(Wei.ONE)
             .address(to)
             .code(
-                BytecodeCompiler.newProgram(testInfo)
+                BytecodeCompiler.newProgram(chainConfig)
                     .push(Bytes.random(32)) // salt
                     .push(Bytes.fromHexString("0xff")) // length
                     .push(Bytes.fromHexString("0x80")) // offset

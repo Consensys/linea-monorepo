@@ -39,6 +39,7 @@ import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.*;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -66,7 +67,7 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
   private static final Bytes32 STD_KEY =
       Bytes32.wrap(leftPadTo(Bytes.fromHexString("0xdeadbeef"), Bytes32.SIZE));
   private static final Bytes SSTORE_INITCODE =
-      BytecodeCompiler.newProgram(testInfo)
+      BytecodeCompiler.newProgram(chainConfig)
           .push(Bytes.fromHexString("0x7a12e0")) // value
           .push(STD_KEY.trimLeadingZeros()) // key
           .op(OpCode.SSTORE)
@@ -75,7 +76,7 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
   private final Bytes32 INITCODE_HASH = keccak256(SSTORE_INITCODE);
 
   private static final Bytes CREATE2_AND_SSTORE =
-      BytecodeCompiler.newProgram(testInfo)
+      BytecodeCompiler.newProgram(chainConfig)
           .push(0) // offset
           .push(SSTORE_INITCODE) // value
           .op(OpCode.MSTORE)
@@ -116,7 +117,8 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
       boolean deployment,
       WarmingScenarii warming1,
       WarmingScenarii warming2,
-      WarmingScenarii warming3) {
+      WarmingScenarii warming3,
+      TestInfo testInfo) {
 
     // not possible to have a sender and recipient collision
     if ((deployment || !skip) && senderRecipientCollision(collision)) {
@@ -182,7 +184,7 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
       accounts.add(recipientAccount);
     }
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(accounts)
         .transaction(tx)
         .coinbase(coinBaseAddress)

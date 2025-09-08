@@ -22,6 +22,7 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.datatypes.Address;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -44,8 +45,8 @@ public class GasStipendTests extends TracerTestBase {
   @EnumSource(
       value = OpCode.class,
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
-  void zeroValueEcRecoverCallTest(OpCode callOpCode) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void zeroValueEcRecoverCallTest(OpCode callOpCode, TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     validEcrecoverData(program);
     appendCall(
         program,
@@ -58,15 +59,15 @@ public class GasStipendTests extends TracerTestBase {
         0,
         0);
 
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 
   @ParameterizedTest
   @EnumSource(
       value = OpCode.class,
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
-  void nonzeroValueEcRecoverCallTest(OpCode callOpCode) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void nonzeroValueEcRecoverCallTest(OpCode callOpCode, TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     validEcrecoverData(program);
     appendCall(
         program,
@@ -79,15 +80,15 @@ public class GasStipendTests extends TracerTestBase {
         0,
         0);
 
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 
   @ParameterizedTest
   @EnumSource(
       value = OpCode.class,
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
-  void nonzeroValueEcRecoverCallWillRevertTest(OpCode callOpCode) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void nonzeroValueEcRecoverCallWillRevertTest(OpCode callOpCode, TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     validEcrecoverData(program);
     appendCall(
         program,
@@ -101,15 +102,15 @@ public class GasStipendTests extends TracerTestBase {
         32);
     appendRevert(program, 0, 32);
 
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 
   @ParameterizedTest
   @EnumSource(
       value = OpCode.class,
       names = {"CALL", "CALLCODE"})
-  void stipendCompletesGasEcRecoverCallTest(OpCode callOpCode) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void stipendCompletesGasEcRecoverCallTest(OpCode callOpCode, TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     validEcrecoverData(program);
     appendCall(
         program,
@@ -122,7 +123,7 @@ public class GasStipendTests extends TracerTestBase {
         0,
         0);
 
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 
   // insufficient gas for PRC execution
@@ -130,8 +131,8 @@ public class GasStipendTests extends TracerTestBase {
   @EnumSource(
       value = OpCode.class,
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
-  void gasFallsShortForEcRecoverTest(OpCode callOpCode) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void gasFallsShortForEcRecoverTest(OpCode callOpCode, TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     validEcrecoverData(program);
     appendCall(
         program,
@@ -144,15 +145,16 @@ public class GasStipendTests extends TracerTestBase {
         0,
         0);
 
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 
   @ParameterizedTest
   @EnumSource(
       value = OpCode.class,
       names = {"CALL", "CALLCODE"})
-  void stipendFromValueFallsShortOfCompletingGasEcrecoverCallTest(OpCode callOpCode) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void stipendFromValueFallsShortOfCompletingGasEcrecoverCallTest(
+      OpCode callOpCode, TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     validEcrecoverData(program);
     appendCall(
         program,
@@ -166,6 +168,6 @@ public class GasStipendTests extends TracerTestBase {
         0,
         0);
 
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 }

@@ -15,8 +15,8 @@
 
 package net.consensys.linea.zktracer.forkSpecific.systemTransaction;
 
-import net.consensys.linea.reporting.TestInfoWithChainConfig;
 import net.consensys.linea.testing.BytecodeCompiler;
+import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -25,8 +25,8 @@ import org.hyperledger.besu.datatypes.Address;
 public class SystemTransactionTestUtils {
 
   static Bytes byteCodeCallingBeaconRootSystemAccount(
-      TestInfoWithChainConfig testInfo, Address systemContractAddress, long arg) {
-    return BytecodeCompiler.newProgram(testInfo)
+      ChainConfig chainConfig, Address systemContractAddress, long arg) {
+    return BytecodeCompiler.newProgram(chainConfig)
         // prepare memory with arg left padded
         .push(Bytes32.leftPad(Bytes.minimalBytes(arg))) // value
         .push(0) // offset
@@ -45,8 +45,8 @@ public class SystemTransactionTestUtils {
   }
 
   static Bytes byteCodeCallingBeaconRootSystemAccountFromCallData(
-      TestInfoWithChainConfig testInfo, Address systemContractAddress) {
-    return BytecodeCompiler.newProgram(testInfo)
+      ChainConfig chainConfig, Address systemContractAddress) {
+    return BytecodeCompiler.newProgram(chainConfig)
         // prepare memory with argument
         .op(OpCode.CALLDATASIZE) // size@
         .push(0) // source offset

@@ -25,6 +25,7 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeRunner;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -45,12 +46,12 @@ public class BlobhashTests extends TracerTestBase {
   // LINEA_BLOB_PER_TRANSACTION_MAXIMUM+2 and a ridiculously large value
   @ParameterizedTest
   @MethodSource("stackArgument")
-  void trivialPrevBlobhash(final Bytes32 stackArgument) {
+  void trivialPrevBlobhash(final Bytes32 stackArgument, TestInfo testInfo) {
     BytecodeRunner.of(
             Bytes.concatenate(
                 Bytes.fromHexString("0x7F"), // PUSH32
                 stackArgument, // the stack argument
                 Bytes.fromHexString("49"))) // BLOBHASH
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 }

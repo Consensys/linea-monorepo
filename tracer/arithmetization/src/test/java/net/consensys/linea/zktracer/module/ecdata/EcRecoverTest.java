@@ -33,6 +33,7 @@ import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -41,11 +42,11 @@ import org.junit.jupiter.params.provider.MethodSource;
 @ExtendWith(UnitTestWatcher.class)
 public class EcRecoverTest extends TracerTestBase {
   @Test
-  void testEcRecoverWithEmptyExt() {
+  void testEcRecoverWithEmptyExt(TestInfo testInfo) {
     BytecodeRunner.of(
             Bytes.fromHexString(
                 "6080604052348015600f57600080fd5b5060476001601b6001620f00007ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe609360201b60201c565b605157605060ce565b5b60006040518060400160405280600e81526020017f7a6b2d65766d206973206c6966650000000000000000000000000000000000008152509050805160208201f35b600060405186815285602082015284604082015283606082015260008084608001836001610bb8fa9150608081016040525095945050505050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052600160045260246000fdfe"))
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   @ParameterizedTest
@@ -57,9 +58,10 @@ public class EcRecoverTest extends TracerTestBase {
       EWord r,
       EWord s,
       boolean expectedInternalChecksPassed,
-      boolean expectedSuccessBit) {
+      boolean expectedSuccessBit,
+      TestInfo testInfo) {
     BytecodeCompiler program =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             // First place the parameters in memory
             .push(h)
             .push(0)
@@ -83,7 +85,7 @@ public class EcRecoverTest extends TracerTestBase {
             .op(OpCode.STATICCALL);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     final EcData ecData = bytecodeRunner.getHub().ecData();
 
@@ -231,9 +233,9 @@ public class EcRecoverTest extends TracerTestBase {
   }
 
   @Test
-  void testEcRecoverInternalChecksFailSingleCase() {
+  void testEcRecoverInternalChecksFailSingleCase(TestInfo testInfo) {
     BytecodeCompiler program =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             // First place the parameters in memory
             .push("1111111111111111111111111111111111111111111111111111111111111111") // h
             .push(0)
@@ -257,7 +259,7 @@ public class EcRecoverTest extends TracerTestBase {
             .op(OpCode.STATICCALL);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     final EcData ecData = bytecodeRunner.getHub().ecData();
 

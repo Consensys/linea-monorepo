@@ -29,6 +29,7 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -39,9 +40,9 @@ public class EcAddTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("ecAddSource")
-  void testEcAdd(String pX, String pY, String qX, String qY) {
+  void testEcAdd(String pX, String pY, String qX, String qY, TestInfo testInfo) {
     BytecodeCompiler program =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             // First place the parameters in memory
             .push(pX) // pX
             .push(0)
@@ -65,7 +66,7 @@ public class EcAddTest extends TracerTestBase {
             .op(OpCode.STATICCALL);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
   }
 
   private static Stream<Arguments> ecAddSource() {
@@ -82,9 +83,9 @@ public class EcAddTest extends TracerTestBase {
   }
 
   @Test
-  void testEcAddSingleCase() {
+  void testEcAddSingleCase(TestInfo testInfo) {
     BytecodeCompiler program =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             // First place the parameters in memory
             .push("070375d4eec4f22aa3ad39cb40ccd73d2dbab6de316e75f81dc2948a996795d5") // pX
             .push(0)
@@ -108,15 +109,15 @@ public class EcAddTest extends TracerTestBase {
             .op(OpCode.STATICCALL);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     assertEquals(1, bytecodeRunner.getHub().ecAddEffectiveCall().lineCount());
   }
 
   @Test
-  void testEcAddWithPointAtInfinityAsResult() {
+  void testEcAddWithPointAtInfinityAsResult(TestInfo testInfo) {
     BytecodeCompiler program =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             // First place the parameters in memory
             .push(1) // pX
             .push(0)
@@ -140,7 +141,7 @@ public class EcAddTest extends TracerTestBase {
             .op(OpCode.STATICCALL);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     // check precompile limits line count
     assertEquals(1, bytecodeRunner.getHub().ecAddEffectiveCall().lineCount());

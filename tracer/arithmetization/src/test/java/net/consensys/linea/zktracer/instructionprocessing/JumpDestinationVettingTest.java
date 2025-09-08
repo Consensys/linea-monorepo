@@ -26,6 +26,7 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -39,8 +40,8 @@ public class JumpDestinationVettingTest extends TracerTestBase {
   @ParameterizedTest
   @MethodSource("jumpDestinationVettingCases")
   void jumpDestinationVettingTest(
-      int positionOfDeceptiveJumpDest, OpCode pushK, int pushKArgumentLength) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+      int positionOfDeceptiveJumpDest, OpCode pushK, int pushKArgumentLength, TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     int nTotalInvalid = 0;
     for (int i = 0; i < N_JUMPS; i++) {
       int nPartialInvalid = random.nextInt(10) + 1;
@@ -61,7 +62,7 @@ public class JumpDestinationVettingTest extends TracerTestBase {
     }
     Bytes bytecode = program.compile();
     System.out.println(bytecode.toHexString());
-    BytecodeRunner.of(bytecode).run(testInfo);
+    BytecodeRunner.of(bytecode).run(chainConfig, testInfo);
   }
 
   public String generateDeceptivePush(int positionOfDeceptiveJumpDest, int pushKArgumentLength) {

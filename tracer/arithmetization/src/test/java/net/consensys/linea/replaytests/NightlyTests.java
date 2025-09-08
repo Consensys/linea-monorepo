@@ -22,6 +22,7 @@ import net.consensys.linea.reporting.TracerTestBase;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @Disabled
@@ -29,216 +30,216 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(UnitTestWatcher.class)
 public class NightlyTests extends TracerTestBase {
   @Test
-  void leoFailingRange() {
-    replay(OLD_MAINNET_TESTCONFIG, "5389571-5389577.mainnet.json.gz");
+  void leoFailingRange(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5389571-5389577.mainnet.json.gz", testInfo);
   }
 
   // Leo's range split up 5104800-5104883
   ///////////////////////////////////////
   @Test
-  void test_5104800_5104809() {
-    replay(OLD_MAINNET_TESTCONFIG, "5104800-5104809.mainnet.json.gz");
+  void test_5104800_5104809(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5104800-5104809.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5104810_5104819() {
-    replay(OLD_MAINNET_TESTCONFIG, "5104810-5104819.mainnet.json.gz");
+  void test_5104810_5104819(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5104810-5104819.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5104820_5104829() {
-    replay(OLD_MAINNET_TESTCONFIG, "5104820-5104829.mainnet.json.gz");
+  void test_5104820_5104829(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5104820-5104829.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5104830_5104839() {
-    replay(OLD_MAINNET_TESTCONFIG, "5104830-5104839.mainnet.json.gz");
+  void test_5104830_5104839(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5104830-5104839.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5104840_5104849() {
-    replay(OLD_MAINNET_TESTCONFIG, "5104840-5104849.mainnet.json.gz");
+  void test_5104840_5104849(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5104840-5104849.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5104850_5104859() {
-    replay(OLD_MAINNET_TESTCONFIG, "5104850-5104859.mainnet.json.gz");
+  void test_5104850_5104859(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5104850-5104859.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5104860_5104869() {
-    replay(OLD_MAINNET_TESTCONFIG, "5104860-5104869.mainnet.json.gz");
+  void test_5104860_5104869(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5104860-5104869.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5104870_5104879() {
-    replay(OLD_MAINNET_TESTCONFIG, "5104870-5104879.mainnet.json.gz");
+  void test_5104870_5104879(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5104870-5104879.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5104880_5104883() {
-    replay(OLD_MAINNET_TESTCONFIG, "5104880-5104883.mainnet.json.gz");
+  void test_5104880_5104883(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5104880-5104883.mainnet.json.gz", testInfo);
   }
 
   // Leo's range split up 5105646-5105728
   ///////////////////////////////////////
   @Test
-  void test_5105646_5105649() {
-    replay(OLD_MAINNET_TESTCONFIG, "5105646-5105649.mainnet.json.gz");
+  void test_5105646_5105649(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5105646-5105649.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5105650_5105659() {
-    replay(OLD_MAINNET_TESTCONFIG, "5105650-5105659.mainnet.json.gz");
+  void test_5105650_5105659(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5105650-5105659.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5105660_5105669() {
-    replay(OLD_MAINNET_TESTCONFIG, "5105660-5105669.mainnet.json.gz");
+  void test_5105660_5105669(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5105660-5105669.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5105670_5105679() {
-    replay(OLD_MAINNET_TESTCONFIG, "5105670-5105679.mainnet.json.gz");
+  void test_5105670_5105679(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5105670-5105679.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5105680_5105689() {
-    replay(OLD_MAINNET_TESTCONFIG, "5105680-5105689.mainnet.json.gz");
+  void test_5105680_5105689(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5105680-5105689.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5105690_5105699() {
-    replay(OLD_MAINNET_TESTCONFIG, "5105690-5105699.mainnet.json.gz");
+  void test_5105690_5105699(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5105690-5105699.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5105700_5105709() {
-    replay(OLD_MAINNET_TESTCONFIG, "5105700-5105709.mainnet.json.gz");
+  void test_5105700_5105709(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5105700-5105709.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5105710_5105719() {
-    replay(OLD_MAINNET_TESTCONFIG, "5105710-5105719.mainnet.json.gz");
+  void test_5105710_5105719(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5105710-5105719.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5105720_5105728() {
-    replay(OLD_MAINNET_TESTCONFIG, "5105720-5105728.mainnet.json.gz");
+  void test_5105720_5105728(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5105720-5105728.mainnet.json.gz", testInfo);
   }
 
   // Leo's range split up 5106538-5106638
   @Test
-  void test_5106538_5106539() {
-    replay(OLD_MAINNET_TESTCONFIG, "5106538-5106539.mainnet.json.gz");
+  void test_5106538_5106539(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5106538-5106539.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5106540_5106549() {
-    replay(OLD_MAINNET_TESTCONFIG, "5106540-5106549.mainnet.json.gz");
+  void test_5106540_5106549(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5106540-5106549.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5106550_5106559() {
-    replay(OLD_MAINNET_TESTCONFIG, "5106550-5106559.mainnet.json.gz");
+  void test_5106550_5106559(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5106550-5106559.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5106560_5106569() {
-    replay(OLD_MAINNET_TESTCONFIG, "5106560-5106569.mainnet.json.gz");
+  void test_5106560_5106569(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5106560-5106569.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5106570_5106579() {
-    replay(OLD_MAINNET_TESTCONFIG, "5106570-5106579.mainnet.json.gz");
+  void test_5106570_5106579(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5106570-5106579.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5106580_5106589() {
-    replay(OLD_MAINNET_TESTCONFIG, "5106580-5106589.mainnet.json.gz");
+  void test_5106580_5106589(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5106580-5106589.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5106590_5106599() {
-    replay(OLD_MAINNET_TESTCONFIG, "5106590-5106599.mainnet.json.gz");
+  void test_5106590_5106599(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5106590-5106599.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5106600_5106609() {
-    replay(OLD_MAINNET_TESTCONFIG, "5106600-5106609.mainnet.json.gz");
+  void test_5106600_5106609(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5106600-5106609.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5106610_5106619() {
-    replay(OLD_MAINNET_TESTCONFIG, "5106610-5106619.mainnet.json.gz");
+  void test_5106610_5106619(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5106610-5106619.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5106620_5106629() {
-    replay(OLD_MAINNET_TESTCONFIG, "5106620-5106629.mainnet.json.gz");
+  void test_5106620_5106629(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5106620-5106629.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5106630_5106638() {
-    replay(OLD_MAINNET_TESTCONFIG, "5106630-5106638.mainnet.json.gz");
+  void test_5106630_5106638(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5106630-5106638.mainnet.json.gz", testInfo);
   }
 
   // Leo's range split up 5118361-5118389
   ///////////////////////////////////////
   @Test
-  void test_5118361_5118369() {
-    replay(OLD_MAINNET_TESTCONFIG, "5118361-5118369.mainnet.json.gz");
+  void test_5118361_5118369(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5118361-5118369.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5118370_5118379() {
-    replay(OLD_MAINNET_TESTCONFIG, "5118370-5118379.mainnet.json.gz");
+  void test_5118370_5118379(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5118370-5118379.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_5118380_5118389() {
-    replay(OLD_MAINNET_TESTCONFIG, "5118380-5118389.mainnet.json.gz");
+  void test_5118380_5118389(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "5118380-5118389.mainnet.json.gz", testInfo);
   }
 
   // Florian's ranges
   ///////////////////
   @Test
-  void test_6871261_6871263() {
-    replay(OLD_MAINNET_TESTCONFIG, "6871261-6871263.mainnet.json.gz");
+  void test_6871261_6871263(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "6871261-6871263.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_6930360_6930360() {
-    replay(OLD_MAINNET_TESTCONFIG, "6930360.mainnet.json.gz");
+  void test_6930360_6930360(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "6930360.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_7040245_7040246() {
-    replay(OLD_MAINNET_TESTCONFIG, "7040245-7040246.mainnet.json.gz");
+  void test_7040245_7040246(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "7040245-7040246.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_7037321_7037321() {
-    replay(OLD_MAINNET_TESTCONFIG, "7037321.mainnet.json.gz");
+  void test_7037321_7037321(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "7037321.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_7037237_7037243() {
-    replay(OLD_MAINNET_TESTCONFIG, "7037237-7037243.mainnet.json.gz");
+  void test_7037237_7037243(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "7037237-7037243.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_7037244_7037244() {
-    replay(OLD_MAINNET_TESTCONFIG, "7037244.mainnet.json.gz");
+  void test_7037244_7037244(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "7037244.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_7032685_7032688() {
-    replay(OLD_MAINNET_TESTCONFIG, "7032685-7032688.mainnet.json.gz");
+  void test_7032685_7032688(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "7032685-7032688.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void test_7032397_7032402() {
-    replay(OLD_MAINNET_TESTCONFIG, "7032397-7032402.mainnet.json.gz");
+  void test_7032397_7032402(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "7032397-7032402.mainnet.json.gz", testInfo);
   }
 }

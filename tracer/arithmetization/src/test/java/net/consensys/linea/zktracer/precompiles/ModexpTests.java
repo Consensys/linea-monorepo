@@ -38,6 +38,7 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
@@ -54,9 +55,9 @@ public class ModexpTests extends TracerTestBase {
   // * 4171332133 ≡ 0xF8A17A25
 
   @Test
-  void basicModexpTest() {
+  void basicModexpTest(TestInfo testInfo) {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(0)
             .push(0)
             .push(0)
@@ -69,19 +70,19 @@ public class ModexpTests extends TracerTestBase {
             .compile();
 
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(bytecode);
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     // check precompile limits line count
     assertEquals(1, bytecodeRunner.getHub().modexpEffectiveCall().lineCount());
   }
 
   @Test
-  void basicNonTrivialModexpTest() {
+  void basicNonTrivialModexpTest(TestInfo testInfo) {
     final int base = 2;
     final int exp = 5;
     final int mod = 7;
     final Bytes bytecode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(1)
             .push(BBS_MIN_OFFSET)
             .op(OpCode.MSTORE)
@@ -112,14 +113,14 @@ public class ModexpTests extends TracerTestBase {
             .compile();
 
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(bytecode);
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     // check precompile limits line count
     assertEquals(1, bytecodeRunner.getHub().modexpEffectiveCall().lineCount());
   }
 
   @Test
-  void testUnpaddedModexp() {
+  void testUnpaddedModexp(TestInfo testInfo) {
 
     String hexBase = "407CB5AD";
     String hexExpn = "40BDB1ED";
@@ -129,14 +130,14 @@ public class ModexpTests extends TracerTestBase {
         preparingBaseExponentAndModulusForModexpAndRunningVariousModexps(hexBase, hexExpn, hexModl);
 
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     // check precompile limits line count
     assertTrue(bytecodeRunner.getHub().modexpEffectiveCall().lineCount() > 0);
   }
 
   @Test
-  void testPaddedModexp() {
+  void testPaddedModexp(TestInfo testInfo) {
 
     String hexBase = "00407CB5AD";
     String hexExpn = "40BDB1ED";
@@ -146,7 +147,7 @@ public class ModexpTests extends TracerTestBase {
         preparingBaseExponentAndModulusForModexpAndRunningVariousModexps(hexBase, hexExpn, hexModl);
 
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     // check precompile limits line count
     assertTrue(bytecodeRunner.getHub().modexpEffectiveCall().lineCount() > 0);
@@ -220,7 +221,7 @@ public class ModexpTests extends TracerTestBase {
     int baseOffset = 64 + bbs;
     int expnOffset = 64 + bbs + ebs;
     int modlOffset = 64 + bbs + ebs + mbs;
-    return BytecodeCompiler.newProgram(testInfo)
+    return BytecodeCompiler.newProgram(chainConfig)
         .push(byteSize(hexBase))
         .push("00")
         .op(OpCode.MSTORE) // this sets bbs = 4
@@ -244,15 +245,15 @@ public class ModexpTests extends TracerTestBase {
   }
 
   @Test
-  void variationsOnEmptyCalls() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void variationsOnEmptyCalls(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     List<Integer> callDataSizeList = List.of(0, 1, 31, 32, 33, 63, 64, 65, 95, 96, 97, 128);
     for (int callDataSize : callDataSizeList) {
       appendAllZeroCallDataModexpCalls(program, callDataSize);
     }
 
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 
   /**
@@ -262,7 +263,7 @@ public class ModexpTests extends TracerTestBase {
    */
   @Disabled
   @Test
-  void hugeMbsShortCdsModexpCallPlusReturnDataSize() {
+  void hugeMbsShortCdsModexpCallPlusReturnDataSize(TestInfo testInfo) {
 
     Bytes compiledCode =
         Bytes.fromHexString(
@@ -294,7 +295,7 @@ public class ModexpTests extends TracerTestBase {
 
     List<ToyAccount> accounts = List.of(userAccount, recipientAccount);
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(accounts)
         .transactions(transactions)
         .zkTracerValidator(zkTracer -> {})
@@ -316,9 +317,9 @@ public class ModexpTests extends TracerTestBase {
 
   @Test
   // We trigger a ModexpData MMU Call where the sourceOffset = referenceSize for the MmuCall
-  void referenceSizeEqualsSourceOffset() {
+  void referenceSizeEqualsSourceOffset(TestInfo testInfo) {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             // bbs = 2
             .push(Bytes32.leftPad(Bytes.of(2)))
             .push(0) // offset
@@ -346,14 +347,14 @@ public class ModexpTests extends TracerTestBase {
             .op(OpCode.CALL)
             .op(OpCode.POP)
             .compile();
-    BytecodeRunner.of(bytecode).run(testInfo);
+    BytecodeRunner.of(bytecode).run(chainConfig, testInfo);
   }
 
   @Test
   // This test a modexp call with bbs > 512
-  void unprovableModexp() {
+  void unprovableModexp(TestInfo testInfo) {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             // bbs = 513
             .push(Bytes32.leftPad(Bytes.minimalBytes(513)))
             .push(0) // offset
@@ -392,7 +393,7 @@ public class ModexpTests extends TracerTestBase {
             .compile();
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(bytecode);
     try {
-      bytecodeRunner.run(testInfo);
+      bytecodeRunner.run(chainConfig, testInfo);
     } catch (Exception e) {
       // This is expected as the modexp call is unprovable
       if (!e.getMessage().contains("Final CallScenario, CALL_PRC_UNDEFINED, is still undefined")) {

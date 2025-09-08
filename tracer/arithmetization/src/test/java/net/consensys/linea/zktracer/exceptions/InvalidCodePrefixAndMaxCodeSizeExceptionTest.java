@@ -45,6 +45,7 @@ import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -55,13 +56,13 @@ public class InvalidCodePrefixAndMaxCodeSizeExceptionTest extends TracerTestBase
   // Here it is attempted to trigger the INVALID_CODE_PREFIX exception using a deployment
   // transaction (fails)
   @Test
-  void invalidCodePrefixExceptionForDeploymentTransactionTest() {
+  void invalidCodePrefixExceptionForDeploymentTransactionTest(TestInfo testInfo) {
     KeyPair keyPair = new SECP256K1().generateKeyPair();
     Address userAddress = Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
     ToyAccount userAccount =
         ToyAccount.builder().balance(Wei.fromEth(1000)).nonce(1).address(userAddress).build();
 
-    BytecodeCompiler initProgram = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler initProgram = BytecodeCompiler.newProgram(chainConfig);
 
     initProgram
         .push(Integer.toHexString(EIP_3541_MARKER))
@@ -86,7 +87,7 @@ public class InvalidCodePrefixAndMaxCodeSizeExceptionTest extends TracerTestBase
     checkArgument(tx.isContractCreation());
 
     ToyExecutionEnvironmentV2 toyExecutionEnvironment =
-        ToyExecutionEnvironmentV2.builder(testInfo)
+        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
             .accounts(List.of(userAccount))
             .transaction(tx)
             .build();
@@ -105,13 +106,13 @@ public class InvalidCodePrefixAndMaxCodeSizeExceptionTest extends TracerTestBase
   // Here it is attempted to trigger the MAX_CODE_SIZE exception using a deployment transaction
   // (fails)
   @Test
-  void maxCodeSizeExceptionForDeploymentTransactionTest() {
+  void maxCodeSizeExceptionForDeploymentTransactionTest(TestInfo testInfo) {
     KeyPair keyPair = new SECP256K1().generateKeyPair();
     Address userAddress = Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
     ToyAccount userAccount =
         ToyAccount.builder().balance(Wei.fromEth(1000)).nonce(1).address(userAddress).build();
 
-    BytecodeCompiler initProgram = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler initProgram = BytecodeCompiler.newProgram(chainConfig);
 
     initProgram.push(MAX_CODE_SIZE + 1).push(0).op(OpCode.RETURN);
 
@@ -130,7 +131,7 @@ public class InvalidCodePrefixAndMaxCodeSizeExceptionTest extends TracerTestBase
     checkArgument(tx.isContractCreation());
 
     ToyExecutionEnvironmentV2 toyExecutionEnvironment =
-        ToyExecutionEnvironmentV2.builder(testInfo)
+        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
             .accounts(List.of(userAccount))
             .transaction(tx)
             .build();
@@ -149,8 +150,8 @@ public class InvalidCodePrefixAndMaxCodeSizeExceptionTest extends TracerTestBase
   // Here it is attempted to trigger the INVALID_CODE_PREFIX exception using a CREATE transaction
   // (success)
   @Test
-  void invalidCodePrefixExceptionForCreateTest() {
-    BytecodeCompiler initProgram = BytecodeCompiler.newProgram(testInfo);
+  void invalidCodePrefixExceptionForCreateTest(TestInfo testInfo) {
+    BytecodeCompiler initProgram = BytecodeCompiler.newProgram(chainConfig);
     initProgram
         .push(Integer.toHexString(EIP_3541_MARKER))
         .push(0)
@@ -161,7 +162,7 @@ public class InvalidCodePrefixAndMaxCodeSizeExceptionTest extends TracerTestBase
     final String initProgramAsString = initProgram.compile().toString().substring(2);
     final int initProgramByteSize = initProgram.compile().size();
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     program
         .push(initProgramAsString + "00".repeat(32 - initProgramByteSize))
@@ -173,7 +174,7 @@ public class InvalidCodePrefixAndMaxCodeSizeExceptionTest extends TracerTestBase
         .op(OpCode.CREATE);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     assertEquals(
         INVALID_CODE_PREFIX,
@@ -183,13 +184,13 @@ public class InvalidCodePrefixAndMaxCodeSizeExceptionTest extends TracerTestBase
   // Here it is attempted to trigger the MAX_CODE_SIZE exception using a CREATE transaction
   // (success)
   @Test
-  void maxCodeSizeExceptionForCreateTest() {
-    BytecodeCompiler initProgram = BytecodeCompiler.newProgram(testInfo);
+  void maxCodeSizeExceptionForCreateTest(TestInfo testInfo) {
+    BytecodeCompiler initProgram = BytecodeCompiler.newProgram(chainConfig);
     initProgram.push(MAX_CODE_SIZE + 1).push(0).op(OpCode.RETURN);
     final String initProgramAsString = initProgram.compile().toString().substring(2);
     final int initProgramByteSize = initProgram.compile().size();
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     program
         .push(initProgramAsString + "00".repeat(32 - initProgramByteSize))
@@ -201,7 +202,7 @@ public class InvalidCodePrefixAndMaxCodeSizeExceptionTest extends TracerTestBase
         .op(OpCode.CREATE);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     assertEquals(
         MAX_CODE_SIZE_EXCEPTION,
@@ -210,7 +211,7 @@ public class InvalidCodePrefixAndMaxCodeSizeExceptionTest extends TracerTestBase
 
   @ParameterizedTest
   @MethodSource("createOpCodesList")
-  public void MaxCodeSizeExceptionWithInitCodeForCreatesTest(OpCode opCode) {
+  public void MaxCodeSizeExceptionWithInitCodeForCreatesTest(OpCode opCode, TestInfo testInfo) {
     // Dummy init code, repeats ADDRESS opcode
     Bytes32 initCodeChunk = Bytes32.fromHexString("30".repeat(32));
 
@@ -218,7 +219,7 @@ public class InvalidCodePrefixAndMaxCodeSizeExceptionTest extends TracerTestBase
     // a Max code size exception
     BytecodeCompiler pg = getPgCreateWithInitCodeSize(opCode, initCodeChunk, 1537);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(pg.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     // (Post-Shanghai) MAX_CODE_SIZE_EXCEPTION happens
     TracedException exceptionTriggered = isPostShanghai(fork) ? MAX_CODE_SIZE_EXCEPTION : NONE;

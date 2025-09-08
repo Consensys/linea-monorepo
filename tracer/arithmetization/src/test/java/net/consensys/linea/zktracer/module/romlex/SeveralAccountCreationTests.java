@@ -34,11 +34,12 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 public class SeveralAccountCreationTests extends TracerTestBase {
 
   private static final Bytes INIT_CODE =
-      BytecodeCompiler.newProgram(testInfo)
+      BytecodeCompiler.newProgram(chainConfig)
           .push(Bytes.fromHexString("0x703eda7a")) // value
           .push(Bytes32.repeat((byte) 12)) // key
           .op(OpCode.SSTORE)
@@ -48,7 +49,7 @@ public class SeveralAccountCreationTests extends TracerTestBase {
           .compile();
 
   private static final Bytes CREATE2_INITCODE_IS_CALLDATA =
-      BytecodeCompiler.newProgram(testInfo)
+      BytecodeCompiler.newProgram(chainConfig)
           .immediate(POPULATE_MEMORY)
           .push(Bytes32.leftPad(Bytes.fromHexString("0x7a17"))) // salt
           .op(OpCode.MSIZE) // size
@@ -75,7 +76,7 @@ public class SeveralAccountCreationTests extends TracerTestBase {
           .build();
 
   @Test
-  void multiTransactionsCreate2() {
+  void multiTransactionsCreate2(TestInfo testInfo) {
 
     final KeyPair keyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
@@ -104,7 +105,7 @@ public class SeveralAccountCreationTests extends TracerTestBase {
             .nonce(senderAccount.getNonce() + 1)
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, create2Account, create2AndRevertAccount))
         .transactions(List.of(tx1, tx2))
         .build()
@@ -112,7 +113,7 @@ public class SeveralAccountCreationTests extends TracerTestBase {
   }
 
   @Test
-  void monoTransactionsCreate2() {
+  void monoTransactionsCreate2(TestInfo testInfo) {
 
     final KeyPair keyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
@@ -142,7 +143,7 @@ public class SeveralAccountCreationTests extends TracerTestBase {
             .to(recipientAccout)
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, recipientAccout, create2Account, create2AndRevertAccount))
         .transaction(tx)
         .build()

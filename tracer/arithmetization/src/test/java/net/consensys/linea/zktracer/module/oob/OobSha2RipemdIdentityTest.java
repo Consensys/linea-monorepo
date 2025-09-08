@@ -34,6 +34,7 @@ import org.bouncycastle.crypto.digests.RIPEMD160Digest;
 import org.bouncycastle.util.encoders.Hex;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -52,13 +53,13 @@ public class OobSha2RipemdIdentityTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("argSizesSource")
-  void testSha2(int argSize) throws NoSuchAlgorithmException {
+  void testSha2(int argSize, TestInfo testInfo) throws NoSuchAlgorithmException {
     String data = generateHexString(argSize);
     ProgramAndRetInfo programAndRetInfo = initProgramInvokingPrecompile(data, Address.SHA256);
     BytecodeCompiler program = programAndRetInfo.program();
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     String referenceComputedHash = sha256(data);
     final Hub hub = bytecodeRunner.getHub();
@@ -76,13 +77,13 @@ public class OobSha2RipemdIdentityTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("argSizesSource")
-  void testIdentity(int argSize) {
+  void testIdentity(int argSize, TestInfo testInfo) {
     String data = generateHexString(argSize);
     ProgramAndRetInfo programAndRetInfo = initProgramInvokingPrecompile(data, Address.ID);
     BytecodeCompiler program = programAndRetInfo.program();
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     String returnedData = bytecodeRunner.getHub().currentFrame().frame().getReturnData().toString();
     // System.out.println(returnedData);
@@ -94,13 +95,13 @@ public class OobSha2RipemdIdentityTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("argSizesSource")
-  void testRipmd(int argSize) {
+  void testRipmd(int argSize, TestInfo testInfo) {
     String data = generateHexString(argSize);
     ProgramAndRetInfo programAndRetInfo = initProgramInvokingPrecompile(data, Address.RIPEMD160);
     BytecodeCompiler program = programAndRetInfo.program();
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     String referenceComputedHash = ripemd160(data);
     String prcComputedHash =
@@ -192,7 +193,7 @@ public class OobSha2RipemdIdentityTest extends TracerTestBase {
     int retSize = address == Address.ID ? argSize : 32;
     int retOffset = 0;
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     // MSTORE data if argSize > 0
     if (argSize > 0) {
@@ -268,7 +269,7 @@ public class OobSha2RipemdIdentityTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("argSizesSource")
-  void testInitProgramInvokingPrecompileDataInMemorySupportMethod(int argSize) {
+  void testInitProgramInvokingPrecompileDataInMemorySupportMethod(int argSize, TestInfo testInfo) {
     // This test is to ensure that the data written in memory is the same as the input data
     String data = generateHexString(argSize);
 
@@ -276,7 +277,7 @@ public class OobSha2RipemdIdentityTest extends TracerTestBase {
     BytecodeCompiler program = programAndRetInfo.program();
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     String dataInMemory =
         bytecodeRunner

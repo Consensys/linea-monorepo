@@ -23,6 +23,7 @@ import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 /**
  * We explore what happens if the first instruction after resuming the execution of a frame is
@@ -52,13 +53,14 @@ public class ExceptionAtContextReEntryTest extends TracerTestBase {
    * <b>Note.</b> Both exceptions are <b>stackUnderflowException</b>'s.
    */
   @Test
-  public void firstInstructionAfterResumingFromUnsuccessfulMessageCallIsExceptional() {
+  public void firstInstructionAfterResumingFromUnsuccessfulMessageCallIsExceptional(
+      TestInfo testInfo) {
 
-    BytecodeCompiler initCode = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler initCode = BytecodeCompiler.newProgram(chainConfig);
     initCode.push(ADD.byteValue()).push(0).op(MSTORE8).push(1).push(0).op(RETURN);
     // this init code deploys the byte code "0x01" (when given sufficient gas)
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     // we do a deployment of a smart contract whose bytecode is "0x01"
     Bytes initCodeBytes = initCode.compile();
@@ -88,7 +90,7 @@ public class ExceptionAtContextReEntryTest extends TracerTestBase {
     // a stackUnderflowException.
     program.op(ADD);
 
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 
   /**
@@ -103,9 +105,10 @@ public class ExceptionAtContextReEntryTest extends TracerTestBase {
    * <b>Note.</b> Both exceptions are <b>stackUnderflowException</b>'s.
    */
   @Test
-  public void firstInstructionAfterResumingFromSuccessfulMessageCallIsExceptional() {
+  public void firstInstructionAfterResumingFromSuccessfulMessageCallIsExceptional(
+      TestInfo testInfo) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     // message call to a simple smart contract
     program
@@ -123,7 +126,7 @@ public class ExceptionAtContextReEntryTest extends TracerTestBase {
     // a stackUnderflowException.
     program.op(ADD);
 
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 
   /**
@@ -133,9 +136,10 @@ public class ExceptionAtContextReEntryTest extends TracerTestBase {
    * <p><b>Note.</b> The exceptions is a <b>stackUnderflowException</b>.
    */
   @Test
-  public void firstInstructionAfterResumingFromSuccessfulContractCreationIsExceptional() {
+  public void firstInstructionAfterResumingFromSuccessfulContractCreationIsExceptional(
+      TestInfo testInfo) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     program.push(0).push(0).push(0).op(CREATE);
 
     // the previous operation leaves the stack in the following state
@@ -145,7 +149,7 @@ public class ExceptionAtContextReEntryTest extends TracerTestBase {
     // stackUnderflowException.
     program.op(ADD);
 
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 
   /**
@@ -155,9 +159,10 @@ public class ExceptionAtContextReEntryTest extends TracerTestBase {
    * <p><b>Note.</b> The exceptions is a <b>stackUnderflowException</b>.
    */
   @Test
-  public void firstInstructionAfterResumingFromUnsuccessfulContractCreationIsExceptional() {
+  public void firstInstructionAfterResumingFromUnsuccessfulContractCreationIsExceptional(
+      TestInfo testInfo) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     program.push(ADD.byteValue()).push(0).op(MSTORE8);
     // memory = [01 00 00 ... [
 
@@ -170,6 +175,6 @@ public class ExceptionAtContextReEntryTest extends TracerTestBase {
     // stackUnderflowException.
     program.op(ADD);
 
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 }

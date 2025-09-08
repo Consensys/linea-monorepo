@@ -24,6 +24,7 @@ import net.consensys.linea.zktracer.module.hub.Hub;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
@@ -48,7 +49,7 @@ public class Issue1216Tests extends TracerTestBase {
   @Tag("nightly")
   @Tag("replay")
   @Test
-  void issue_1216_sepolia_block_2392659() {
-    replay(OLD_SEPOLIA_TESTCONFIG, "2392659.sepolia.json.gz");
+  void issue_1216_sepolia_block_2392659(TestInfo testInfo) {
+    replay(OLD_SEPOLIA_TESTCONFIG, "2392659.sepolia.json.gz", testInfo);
   }
 }

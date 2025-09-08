@@ -21,6 +21,7 @@ import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /** Failing block for ADD ?! */
@@ -30,7 +31,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class Issue1274Tests extends TracerTestBase {
 
   @Test
-  void issue_1274_mainnet_block_7734306() {
-    replay(OLD_MAINNET_TESTCONFIG, "7734306.mainnet.json.gz");
+  void issue_1274_mainnet_block_7734306(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "7734306.mainnet.json.gz", testInfo);
   }
 }

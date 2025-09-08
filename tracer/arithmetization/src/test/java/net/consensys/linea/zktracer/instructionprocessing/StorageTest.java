@@ -21,21 +21,22 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
 public class StorageTest extends TracerTestBase {
 
   @Test
-  void simpleSstoreSload() {
+  void simpleSstoreSload(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(0x666) // value
                 .push(0xca7) // key
                 .op(OpCode.SSTORE)
                 .push(0xca7) // key
                 .op(OpCode.SLOAD)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 }

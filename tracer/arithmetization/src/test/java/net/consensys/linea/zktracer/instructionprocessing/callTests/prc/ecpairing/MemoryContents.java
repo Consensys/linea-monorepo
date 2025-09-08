@@ -19,8 +19,8 @@ import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static net.consensys.linea.zktracer.instructionprocessing.callTests.prc.ecpairing.LargePoint.LARGE_POINT_AT_INFINITY;
 import static net.consensys.linea.zktracer.instructionprocessing.callTests.prc.ecpairing.SmallPoint.SMALL_POINT_AT_INFINITY;
 
-import net.consensys.linea.reporting.TestInfoWithChainConfig;
 import net.consensys.linea.testing.BytecodeCompiler;
+import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.framework.PrecompileCallMemoryContents;
 import org.apache.tuweni.bytes.Bytes;
 
@@ -80,7 +80,7 @@ public class MemoryContents implements PrecompileCallMemoryContents {
   }
 
   @Override
-  public BytecodeCompiler memoryContents(TestInfoWithChainConfig testInfo) {
+  public BytecodeCompiler memoryContents(ChainConfig chainConfig) {
     Bytes memoryContentsBytes =
         Bytes.fromHexString(leftPairs() + CenterPair() + rightPairs() + RETURN_DATA_STRIP);
     // TODO: replace 192 with the appropriate constant (maybe add to GlobalConstants)
@@ -88,7 +88,7 @@ public class MemoryContents implements PrecompileCallMemoryContents {
         memoryContentsBytes.size()
             == TOTAL_NUMBER_OF_PAIRS_OF_POINTS * SIZE_OF_PAIR_OF_POINTS + WORD_SIZE);
 
-    BytecodeCompiler memoryContents = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler memoryContents = BytecodeCompiler.newProgram(chainConfig);
     return memoryContents.immediate(memoryContentsBytes);
   }
 

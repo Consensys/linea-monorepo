@@ -21,6 +21,7 @@ import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
@@ -46,7 +47,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class Issue1136Tests extends TracerTestBase {
 
   @Test
-  void issue_1136_block_3110546() {
-    replay(OLD_SEPOLIA_TESTCONFIG, "3110546.sepolia.json.gz");
+  void issue_1136_block_3110546(TestInfo testInfo) {
+    replay(OLD_SEPOLIA_TESTCONFIG, "3110546.sepolia.json.gz", testInfo);
   }
 }

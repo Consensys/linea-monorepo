@@ -19,11 +19,12 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeRunner;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 public class Push0Tests extends TracerTestBase {
   // only performs a trivial PUSH0 operation
   @Test
-  void trivialPush0() {
-    BytecodeRunner.of(Bytes.fromHexString("0x5F")).run(testInfo);
+  void trivialPush0(TestInfo testInfo) {
+    BytecodeRunner.of(Bytes.fromHexString("0x5F")).run(chainConfig, testInfo);
   }
 }

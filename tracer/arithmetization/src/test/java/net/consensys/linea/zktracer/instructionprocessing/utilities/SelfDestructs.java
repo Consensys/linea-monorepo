@@ -17,8 +17,8 @@ package net.consensys.linea.zktracer.instructionprocessing.utilities;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import static org.hyperledger.besu.datatypes.Address.ECREC;
 
-import net.consensys.linea.reporting.TestInfoWithChainConfig;
 import net.consensys.linea.testing.BytecodeCompiler;
+import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.opcode.OpCode;
 
 public class SelfDestructs {
@@ -88,9 +88,9 @@ public class SelfDestructs {
   }
 
   public static BytecodeCompiler storageTouchingSelfDestructorRewardsZeroAddress(
-      TestInfoWithChainConfig testInfo) {
+      ChainConfig chainConfig) {
 
-    BytecodeCompiler selfDestructor = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler selfDestructor = BytecodeCompiler.newProgram(chainConfig);
     loadAndStoreValues(selfDestructor);
     // selfDestructWithZeroRecipient(selfDestructor);
 
@@ -98,9 +98,9 @@ public class SelfDestructs {
   }
 
   public static BytecodeCompiler variableRecipientStorageTouchingSelfDestructor(
-      TestInfoWithChainConfig testInfo) {
+      ChainConfig chainConfig) {
 
-    BytecodeCompiler selfDestructor = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler selfDestructor = BytecodeCompiler.newProgram(chainConfig);
     loadAndStoreValues(selfDestructor);
     seldestructWithRecipientLoadedFromStorage(selfDestructor);
 

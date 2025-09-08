@@ -35,6 +35,7 @@ import net.consensys.linea.zktracer.module.mxp.MxpTestUtils;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -57,12 +58,12 @@ public class CreatesTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("createOpCodesList")
-  void staticAndOogExceptionsCreates(OpCode opCode) {
+  void staticAndOogExceptionsCreates(OpCode opCode, TestInfo testInfo) {
 
     BytecodeCompiler program = simpleProgram(opCode);
     Bytes pgCompile = program.compile();
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(pgCompile);
-    long gasCostTx = bytecodeRunner.runOnlyForGasCost(testInfo);
+    long gasCostTx = bytecodeRunner.runOnlyForGasCost(chainConfig, testInfo);
 
     /*
     for CREATE/CREATE2, Static Exception happens before deployment, so we test OOGX before deployment
@@ -79,7 +80,7 @@ public class CreatesTest extends TracerTestBase {
 
     // Run with linea block gas limit so gas cost is passed to child without 63/64
     BytecodeRunner bytecodeRunnerStaticCall = BytecodeRunner.of(pgStaticCallToCode.compile());
-    bytecodeRunnerStaticCall.run(List.of(codeProviderAccount), testInfo);
+    bytecodeRunnerStaticCall.run(List.of(codeProviderAccount), chainConfig, testInfo);
 
     // Static check happens before OOGX in tracer
     assertEquals(
@@ -93,14 +94,14 @@ public class CreatesTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("createOpCodesList")
-  public void staticAndMxpExceptionsCreates(OpCode opCode) {
+  public void staticAndMxpExceptionsCreates(OpCode opCode, TestInfo testInfo) {
     boolean triggerMaxCodeSizeException = false;
     // We test with or without Roob
     boolean[] triggerRoob = new boolean[] {false, true};
 
     for (boolean roob : triggerRoob) {
       // We prepare a program with an MXPX for the opcode
-      BytecodeCompiler pg = BytecodeCompiler.newProgram(testInfo);
+      BytecodeCompiler pg = BytecodeCompiler.newProgram(chainConfig);
       new MxpTestUtils(opcodes)
           .triggerNonTrivialButMxpxOrRoobOrMaxCodeSizeExceptionForOpCode(
               fork, pg, roob, triggerMaxCodeSizeException, opCode);
@@ -111,7 +112,7 @@ public class CreatesTest extends TracerTestBase {
 
       // We run the program to static call the account with MXPX code
       BytecodeRunner bytecodeRunnerStaticCall = BytecodeRunner.of(pgStaticCallToCode.compile());
-      bytecodeRunnerStaticCall.run(List.of(codeProviderAccount), testInfo);
+      bytecodeRunnerStaticCall.run(List.of(codeProviderAccount), chainConfig, testInfo);
 
       // Static check happens before MXPX
       assertEquals(
@@ -127,7 +128,7 @@ public class CreatesTest extends TracerTestBase {
   /** Post-shanghai, the following tests might trigger a MAX_CODE_SIZE_EXCEPTION */
   @ParameterizedTest
   @MethodSource("createOpCodesList")
-  public void staticAndMaxCodeSizeExceptionsCreates(OpCode opCode) {
+  public void staticAndMaxCodeSizeExceptionsCreates(OpCode opCode, TestInfo testInfo) {
     Bytes32 initCodeChunk = Bytes32.repeat((byte) 0x30);
     BytecodeCompiler pg = getPgCreateWithInitCodeSize(opCode, initCodeChunk, 1537);
 
@@ -138,7 +139,7 @@ public class CreatesTest extends TracerTestBase {
     // We run the program to static call the account with code that creates with an init code size
     // exception
     BytecodeRunner bytecodeRunnerStaticCall = BytecodeRunner.of(pgStaticCallToCode.compile());
-    bytecodeRunnerStaticCall.run(List.of(codeProviderAccount), testInfo);
+    bytecodeRunnerStaticCall.run(List.of(codeProviderAccount), chainConfig, testInfo);
 
     // Static check happens before MAX_CODE_SIZE_EXCEPTION
     assertEquals(
@@ -152,7 +153,7 @@ public class CreatesTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("createOpCodesList")
-  public void OogAndMaxCodeSizeExceptionsCreates(OpCode opCode) {
+  public void OogAndMaxCodeSizeExceptionsCreates(OpCode opCode, TestInfo testInfo) {
     // Dummy init code, repeats ADDRESS opcode
     Bytes32 initCodeChunk = Bytes32.repeat((byte) 0x30);
 
@@ -163,7 +164,7 @@ public class CreatesTest extends TracerTestBase {
     BytecodeRunner bytecodeRunnerInitCodeForGasCost =
         BytecodeRunner.of(initCodeForGasCost.compile());
     long gasCostForInitCodeWithoutMaxCodeSizeException =
-        bytecodeRunnerInitCodeForGasCost.runOnlyForGasCost(testInfo);
+        bytecodeRunnerInitCodeForGasCost.runOnlyForGasCost(chainConfig, testInfo);
 
     // We now prepare a create program with an init code of (1537 * 32) byte size that will trigger
     // a Max code size exception
@@ -177,7 +178,7 @@ public class CreatesTest extends TracerTestBase {
     long gasCostForCreateProgramOOGX =
         gasCostForInitCodeWithoutMaxCodeSizeException + 6L + 12L + 9L + extraPushCreate2 + 1L;
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(pg.compile());
-    bytecodeRunner.run(gasCostForCreateProgramOOGX, testInfo);
+    bytecodeRunner.run(gasCostForCreateProgramOOGX, chainConfig, testInfo);
 
     // (Post-Shanghai) MAX_CODE_SIZE_EXCEPTION check happens before OOGX in tracer
     TracedException exceptionTriggered =
@@ -189,21 +190,21 @@ public class CreatesTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("createOpCodesList")
-  public void MxpAndMaxCodeSizeExceptionExceptionsCreates(OpCode opCode) {
+  public void MxpAndMaxCodeSizeExceptionExceptionsCreates(OpCode opCode, TestInfo testInfo) {
     // We test with or without Roob
     boolean maxCodeSizeException = true;
     boolean[] triggerRoob = new boolean[] {false, true};
 
     for (boolean roob : triggerRoob) {
       // We prepare a program with an MXPX and MAX_CODE_SIZE_EXCEPTION for the opcode
-      BytecodeCompiler pg = BytecodeCompiler.newProgram(testInfo);
+      BytecodeCompiler pg = BytecodeCompiler.newProgram(chainConfig);
       new MxpTestUtils(opcodes)
           .triggerNonTrivialButMxpxOrRoobOrMaxCodeSizeExceptionForOpCode(
               fork, pg, roob, maxCodeSizeException, opCode);
 
       // We run the program
       BytecodeRunner bytecodeRunner = BytecodeRunner.of(pg.compile());
-      bytecodeRunner.run(testInfo);
+      bytecodeRunner.run(chainConfig, testInfo);
 
       // (Post-Shanghai) MAX_CODE_SIZE_EXCEPTION check is done prior to MXPX
       TracedException exceptionTriggered =

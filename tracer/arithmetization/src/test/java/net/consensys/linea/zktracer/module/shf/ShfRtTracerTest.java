@@ -27,6 +27,7 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -37,48 +38,48 @@ class ShfRtTracerTest extends TracerTestBase {
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("provideShiftOperators")
-  void testFailingBlockchainBlock(final int opCodeValue) {
+  void testFailingBlockchainBlock(final int opCodeValue, TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(Bytes32.rightPad(Bytes.fromHexString("0x08")))
                 .push(Bytes32.fromHexString("0x01"))
                 .immediate(opCodeValue)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   @Test
-  void testShfResultFailure() {
+  void testShfResultFailure(TestInfo testInfo) {
     BytecodeRunner.of(
             Bytes.fromHexString(
                 "7faaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa7fa0000000000000000000000000000000000000000000000000000000000000001d"))
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("provideRandomSarArguments")
-  void testRandomSar(final Bytes32[] payload) {
+  void testRandomSar(final Bytes32[] payload, TestInfo testInfo) {
     log.info(
         "value: " + payload[0].toShortHexString() + ", shift by: " + payload[1].toShortHexString());
 
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(payload[1])
                 .push(payload[0])
                 .op(OpCode.SAR)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   @Test
-  void testTmp() {
+  void testTmp(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .immediate(Bytes32.fromHexStringLenient("0x54fda4f3c1452c8c58df4fb1e9d6de"))
                 .immediate(Bytes32.fromHexStringLenient("0xb5"))
                 .op(OpCode.SAR)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   private static Stream<Arguments> provideRandomSarArguments() {

@@ -542,7 +542,8 @@ public class BlockchainReferenceTestTools {
         Optional.of(log),
         // NOTE: just use 0 for start and end block here, since this information is not used.
         0,
-        0);
+        0,
+        null);
     assertThat(blockchain.getChainHeadHash()).isEqualTo(spec.getLastBlockHash());
   }
 

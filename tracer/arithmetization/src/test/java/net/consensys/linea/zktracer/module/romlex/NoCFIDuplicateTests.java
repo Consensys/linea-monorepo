@@ -33,6 +33,7 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 public class NoCFIDuplicateTests extends TracerTestBase {
 
@@ -41,7 +42,7 @@ public class NoCFIDuplicateTests extends TracerTestBase {
    * contract.
    */
   @Test
-  void noCfiDuplicate() {
+  void noCfiDuplicate(TestInfo testInfo) {
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
@@ -49,7 +50,7 @@ public class NoCFIDuplicateTests extends TracerTestBase {
         ToyAccount.builder().balance(Wei.fromEth(0xffff)).nonce(128).address(senderAddress).build();
 
     final Bytes bytecode =
-        BytecodeCompiler.newProgram(testInfo).push(256).push(255).op(OpCode.SLT).compile();
+        BytecodeCompiler.newProgram(chainConfig).push(256).push(255).op(OpCode.SLT).compile();
 
     final ToyAccount recipientAccount =
         ToyAccount.builder()
@@ -79,7 +80,7 @@ public class NoCFIDuplicateTests extends TracerTestBase {
             .build();
 
     final ToyExecutionEnvironmentV2 test =
-        ToyExecutionEnvironmentV2.builder(testInfo)
+        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
             .accounts(List.of(senderAccount, recipientAccount))
             .transactions(List.of(tx1, tx2))
             .zkTracerValidator(zkTracer -> {})

@@ -27,6 +27,7 @@ import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.module.hub.signals.TracedException;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -36,11 +37,11 @@ import org.junit.jupiter.params.provider.MethodSource;
 public class InvalidOpcodeExceptionTest extends TracerTestBase {
 
   @Test
-  void invalidOpcodeExceptionTest() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void invalidOpcodeExceptionTest(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     program.op(OpCode.INVALID);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
     assertEquals(
         TracedException.INVALID_OPCODE,
         bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());
@@ -48,11 +49,11 @@ public class InvalidOpcodeExceptionTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("nonOpcodeExceptionSource")
-  void nonOpcodeExceptionTest(int value) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void nonOpcodeExceptionTest(int value, TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     program.immediate(value);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
     assertEquals(
         TracedException.INVALID_OPCODE,
         bytecodeRunner.getHub().lastUserTransactionSection().commonValues.tracedException());

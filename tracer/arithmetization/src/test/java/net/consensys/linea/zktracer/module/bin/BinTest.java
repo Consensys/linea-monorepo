@@ -22,21 +22,22 @@ import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
 public class BinTest extends TracerTestBase {
   @Test
-  public void edgeCase() {
+  public void edgeCase(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo).push(0xf0).push(0xf0).op(OpCode.AND).compile())
-        .run(testInfo);
+            BytecodeCompiler.newProgram(chainConfig).push(0xf0).push(0xf0).op(OpCode.AND).compile())
+        .run(chainConfig, testInfo);
   }
 
   @Test
-  void testSignedSignextend() {
+  void testSignedSignextend(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(UInt256.MAX_VALUE)
                 .push(UInt256.MAX_VALUE)
                 .op(OpCode.SIGNEXTEND)
@@ -49,13 +50,13 @@ public class BinTest extends TracerTestBase {
                 .push(UInt256.MAX_VALUE)
                 .op(OpCode.SIGNEXTEND)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   @Test
-  void testSignextendRef() {
+  void testSignextendRef(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(0xFF)
                 .push(0)
                 .op(OpCode.SIGNEXTEND)
@@ -65,6 +66,6 @@ public class BinTest extends TracerTestBase {
                 .op(OpCode.SIGNEXTEND)
                 .op(OpCode.POP)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 }

@@ -25,16 +25,17 @@ import net.consensys.linea.zktracer.container.module.Module;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
+import org.junit.jupiter.api.TestInfo;
 
 class ModTracerTest extends TracerTestBase {
   private static final Module MODULE = new Mod();
   private static final DynamicTests DYN_TESTS = DynamicTests.forModule(MODULE);
 
   @TestFactory
-  Stream<DynamicTest> runDynamicTests() {
+  Stream<DynamicTest> runDynamicTests(TestInfo testInfo) {
     return DYN_TESTS
         .testCase("non random arguments test", provideNonRandomArguments())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 
   private List<OpcodeCall> provideNonRandomArguments() {

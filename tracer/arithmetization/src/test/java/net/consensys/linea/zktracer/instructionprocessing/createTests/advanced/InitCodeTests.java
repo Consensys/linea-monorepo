@@ -38,6 +38,7 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.web3j.abi.EventEncoder;
 
@@ -86,7 +87,7 @@ public class InitCodeTests extends TracerTestBase {
   static final Long gasLimit = 5000000L;
 
   @Test
-  void deployContractCWithCreate2() {
+  void deployContractCWithCreate2(TestInfo testInfo) {
 
     // Payloads preparation
     Bytes storeInitCodeC = CustomCreate2Payload.storeInitCodeC(initCodeC);
@@ -213,7 +214,7 @@ public class InitCodeTests extends TracerTestBase {
             List.of(0L, 0L, 0L, 0L, 0L, 0L, 2L, 0L, 0L));
 
     final ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
-        ToyExecutionEnvironmentV2.builder(testInfo)
+        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
             .accounts(List.of(userAccount, customCreate2Account))
             .transactions(transactions)
             .transactionProcessingResultValidator(create2Validator)

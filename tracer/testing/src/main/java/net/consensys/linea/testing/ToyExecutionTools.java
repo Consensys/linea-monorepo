@@ -55,6 +55,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.TestInfo;
 
 @Slf4j
 public class ToyExecutionTools {
@@ -74,7 +75,8 @@ public class ToyExecutionTools {
       final ProtocolSpec protocolSpec,
       final LineCountingTracer tracer,
       final TransactionProcessingResultValidator transactionProcessingResultValidator,
-      final Consumer<ZkTracer> zkTracerValidator) {
+      final Consumer<ZkTracer> zkTracerValidator,
+      final TestInfo testInfo) {
 
     final BlockHeader blockHeader = getBlockHeader(spec, protocolSpec);
 
@@ -198,7 +200,8 @@ public class ToyExecutionTools {
           // block number for first block
           blockHeader.getNumber(),
           // block number for last block
-          blockHeader.getNumber());
+          blockHeader.getNumber(),
+          testInfo);
     }
   }
 

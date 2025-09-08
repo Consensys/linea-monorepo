@@ -26,6 +26,7 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -36,10 +37,10 @@ public class RomTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("incompletePushRomTestSource")
-  void incompletePushRomTest(int j, int k) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void incompletePushRomTest(int j, int k, TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     program.incompletePush(k, "ff".repeat(j));
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 
   private static Stream<Arguments> incompletePushRomTestSource() {
@@ -53,7 +54,7 @@ public class RomTest extends TracerTestBase {
   }
 
   @Test
-  void randomConcatenationOfIncompletePushesRomTest() {
+  void randomConcatenationOfIncompletePushesRomTest(TestInfo testInfo) {
     List<Pair<Integer, Integer>> permutationOfKAndJPairs = new ArrayList<>();
     for (int k = 1; k <= 32; k++) {
       for (int j = 0; j <= k; j++) {
@@ -62,13 +63,13 @@ public class RomTest extends TracerTestBase {
     }
     Collections.shuffle(permutationOfKAndJPairs);
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     for (Pair<Integer, Integer> kAndJPair : permutationOfKAndJPairs) {
       int k = kAndJPair.getFirst();
       int j = kAndJPair.getSecond();
       program.incompletePush(k, "5b".repeat(j));
     }
 
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 }

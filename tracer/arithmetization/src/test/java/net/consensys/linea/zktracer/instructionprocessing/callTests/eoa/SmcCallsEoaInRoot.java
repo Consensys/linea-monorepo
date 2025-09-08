@@ -24,6 +24,7 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
@@ -39,47 +40,47 @@ public class SmcCallsEoaInRoot extends TracerTestBase {
   final String eoaAddress = "abcdef0123456789";
 
   @Test
-  void transfersSomeValueWillRevertTest() {
-    BytecodeCompiler bytecode = BytecodeCompiler.newProgram(testInfo);
+  void transfersSomeValueWillRevertTest(TestInfo testInfo) {
+    BytecodeCompiler bytecode = BytecodeCompiler.newProgram(chainConfig);
     appendCall(bytecode, CALL, 0, Address.fromHexString(eoaAddress), 13, 2, 3, 4, 5);
     bytecode.op(POP).push(6).push(7).op(REVERT).compile();
-    BytecodeRunner.of(bytecode.compile()).run(testInfo);
+    BytecodeRunner.of(bytecode.compile()).run(chainConfig, testInfo);
   }
 
   @Test
-  void transfersSomeValueWontRevertTest() {
-    BytecodeCompiler bytecode = BytecodeCompiler.newProgram(testInfo);
+  void transfersSomeValueWontRevertTest(TestInfo testInfo) {
+    BytecodeCompiler bytecode = BytecodeCompiler.newProgram(chainConfig);
     appendCall(bytecode, CALL, 0, Address.fromHexString(eoaAddress), 13, 2, 3, 4, 5);
-    BytecodeRunner.of(bytecode.compile()).run(testInfo);
+    BytecodeRunner.of(bytecode.compile()).run(chainConfig, testInfo);
   }
 
   @Test
-  void transfersAllValueWillRevertTest() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void transfersAllValueWillRevertTest(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     fullBalanceCall(program, CALL, Address.fromHexString(eoaAddress), 1, 2, 3, 4);
     program.push(6).push(7).op(REVERT);
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 
   @Test
-  void transfersAllValueWontRevertTest() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void transfersAllValueWontRevertTest(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     fullBalanceCall(program, CALL, Address.fromHexString(eoaAddress), 1, 2, 3, 4);
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 
   @Test
-  void transfersNoValueWillRevertTest() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void transfersNoValueWillRevertTest(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     appendCall(program, CALL, 0, Address.fromHexString(eoaAddress), 0, 1, 2, 3, 4);
     program.op(POP).push(6).push(7).op(REVERT).compile();
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 
   @Test
-  void transfersNoValueWontRevertTest() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void transfersNoValueWontRevertTest(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     appendCall(program, CALL, 0, Address.fromHexString(eoaAddress), 0, 1, 2, 3, 4);
-    BytecodeRunner.of(program.compile()).run(testInfo);
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 }

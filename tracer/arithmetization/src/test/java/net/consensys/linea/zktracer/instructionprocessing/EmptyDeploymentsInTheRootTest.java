@@ -33,6 +33,7 @@ import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
@@ -45,14 +46,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class EmptyDeploymentsInTheRootTest extends TracerTestBase {
 
   final Bytes initCodeEmptyDeployment =
-      BytecodeCompiler.newProgram(testInfo)
+      BytecodeCompiler.newProgram(chainConfig)
           .push(0) // size
           .push(0x0c) // offset
           .op(OpCode.RETURN)
           .compile();
 
   final Bytes initCodeNonemptyDeployment =
-      BytecodeCompiler.newProgram(testInfo)
+      BytecodeCompiler.newProgram(chainConfig)
           .op(OpCode.TIMESTAMP) // value, initially was DIFFICULTY
           .push(0) // offset
           .op(OpCode.MSTORE)
@@ -62,14 +63,14 @@ public class EmptyDeploymentsInTheRootTest extends TracerTestBase {
           .compile();
 
   final Bytes initCodeEmptyRevert =
-      BytecodeCompiler.newProgram(testInfo)
+      BytecodeCompiler.newProgram(chainConfig)
           .push(0) // size
           .push(0x0f) // offset
           .op(OpCode.REVERT)
           .compile();
 
   final Bytes initCodeNonemptyRevert =
-      BytecodeCompiler.newProgram(testInfo)
+      BytecodeCompiler.newProgram(chainConfig)
           .op(OpCode.COINBASE) // value
           .push(0) // offset
           .op(OpCode.MSTORE)
@@ -79,12 +80,12 @@ public class EmptyDeploymentsInTheRootTest extends TracerTestBase {
           .compile();
 
   final Bytes initCodeImmediateStackUnderflowException =
-      BytecodeCompiler.newProgram(testInfo)
+      BytecodeCompiler.newProgram(chainConfig)
           .op(OpCode.BLOCKHASH) // immediate SUX
           .compile();
 
   final Bytes initCodeImmediateInvalidException =
-      BytecodeCompiler.newProgram(testInfo)
+      BytecodeCompiler.newProgram(chainConfig)
           .op(OpCode.INVALID) // immediate INVALID
           .compile();
 
@@ -98,73 +99,73 @@ public class EmptyDeploymentsInTheRootTest extends TracerTestBase {
 
   /** We test <b>deployment transactions</b>. */
   @Test
-  void deploymentTransactionLeadsToEmptyDeploymentTest() {
+  void deploymentTransactionLeadsToEmptyDeploymentTest(TestInfo testInfo) {
     Transaction deploymentTransaction = deploymentTansactionFromInitCode(initCodeEmptyDeployment);
-    runTransaction(deploymentTransaction);
+    runTransaction(deploymentTransaction, testInfo);
   }
 
   @Test
-  void deploymentTransactionLeadsToNonemptyDeploymentTest() {
+  void deploymentTransactionLeadsToNonemptyDeploymentTest(TestInfo testInfo) {
     Transaction deploymentTransaction =
         deploymentTansactionFromInitCode(initCodeNonemptyDeployment);
-    runTransaction(deploymentTransaction);
+    runTransaction(deploymentTransaction, testInfo);
   }
 
   @Test
-  void deploymentTransactionEmptyReverts() {
+  void deploymentTransactionEmptyReverts(TestInfo testInfo) {
     Transaction deploymentTransaction = deploymentTansactionFromInitCode(initCodeEmptyRevert);
-    runTransaction(deploymentTransaction);
+    runTransaction(deploymentTransaction, testInfo);
   }
 
   @Test
-  void deploymentTransactionNonemptyReverts() {
+  void deploymentTransactionNonemptyReverts(TestInfo testInfo) {
     Transaction deploymentTransaction = deploymentTansactionFromInitCode(initCodeNonemptyRevert);
-    runTransaction(deploymentTransaction);
+    runTransaction(deploymentTransaction, testInfo);
   }
 
   @Test
-  void deploymentTransactionStackUnderFlowException() {
+  void deploymentTransactionStackUnderFlowException(TestInfo testInfo) {
     Transaction deploymentTransaction =
         deploymentTansactionFromInitCode(initCodeImmediateStackUnderflowException);
-    runTransaction(deploymentTransaction);
+    runTransaction(deploymentTransaction, testInfo);
   }
 
   @Test
-  void deploymentTransactionInvalidException() {
+  void deploymentTransactionInvalidException(TestInfo testInfo) {
     Transaction deploymentTransaction =
         deploymentTansactionFromInitCode(initCodeImmediateInvalidException);
-    runTransaction(deploymentTransaction);
+    runTransaction(deploymentTransaction, testInfo);
   }
 
   /** We test <b>CREATE's</b>. */
   @Test
-  void createDeploysEmptyByteCode() {
+  void createDeploysEmptyByteCode(TestInfo testInfo) {
     Transaction messageCallTransaction =
         messageCallTransactionToDeployerAccount(accountDeployerOfEmptyInitCode);
-    runTransaction(messageCallTransaction);
+    runTransaction(messageCallTransaction, testInfo);
   }
 
   @Test
-  void createDeploysNonemptyByteCode() {
+  void createDeploysNonemptyByteCode(TestInfo testInfo) {
     Transaction messageCallTransaction =
         messageCallTransactionToDeployerAccount(accountDeployerOfNonemptyInitCode);
-    runTransaction(messageCallTransaction);
+    runTransaction(messageCallTransaction, testInfo);
   }
 
   @Test
-  void createRevertsWithEmptyReturnData() {
+  void createRevertsWithEmptyReturnData(TestInfo testInfo) {
     Transaction messageCallTransaction =
         messageCallTransactionToDeployerAccount(
             accountGeneratorOfRevertedCreateWithEmptyReturnData);
-    runTransaction(messageCallTransaction);
+    runTransaction(messageCallTransaction, testInfo);
   }
 
   @Test
-  void createRevertsWithNonemptyReturnData() {
+  void createRevertsWithNonemptyReturnData(TestInfo testInfo) {
     Transaction messageCallTransaction =
         messageCallTransactionToDeployerAccount(
             accountGeneratorOfRevertedCreateWithNonemptyReturnData);
-    runTransaction(messageCallTransaction);
+    runTransaction(messageCallTransaction, testInfo);
   }
 
   KeyPair keyPair = new SECP256K1().generateKeyPair();
@@ -253,8 +254,8 @@ public class EmptyDeploymentsInTheRootTest extends TracerTestBase {
         .build();
   }
 
-  private void runTransaction(Transaction transaction) {
-    ToyExecutionEnvironmentV2.builder(testInfo)
+  private void runTransaction(Transaction transaction, TestInfo testInfo) {
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(accounts)
         .transaction(transaction)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
@@ -267,7 +268,7 @@ public class EmptyDeploymentsInTheRootTest extends TracerTestBase {
    * @return
    */
   private Bytes deployerOf(Bytes initCode) {
-    return BytecodeCompiler.newProgram(testInfo)
+    return BytecodeCompiler.newProgram(chainConfig)
         .push(initCode)
         .push(0) // offset
         .op(OpCode.MSTORE)

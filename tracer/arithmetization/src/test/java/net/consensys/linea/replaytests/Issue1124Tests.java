@@ -21,6 +21,7 @@ import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /** STP constraints were failing for these ranges */
@@ -30,12 +31,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class Issue1124Tests extends TracerTestBase {
 
   @Test
-  void issue_1124_range_4323962_4324012() {
-    replay(OLD_MAINNET_TESTCONFIG, "4323962-4324012.mainnet.json.gz");
+  void issue_1124_range_4323962_4324012(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "4323962-4324012.mainnet.json.gz", testInfo);
   }
 
   @Test
-  void issue_1124_range_4343434_4343473() {
-    replay(OLD_MAINNET_TESTCONFIG, "4343434-4343473.mainnet.json.gz");
+  void issue_1124_range_4343434_4343473(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "4343434-4343473.mainnet.json.gz", testInfo);
   }
 }

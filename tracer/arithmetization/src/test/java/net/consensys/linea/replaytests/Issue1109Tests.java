@@ -21,6 +21,7 @@ import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @Tag("replay")
@@ -28,7 +29,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class Issue1109Tests extends TracerTestBase {
 
   @Test
-  void issue_1090_block_6690_6699() {
-    replay(OLD_MAINNET_TESTCONFIG, "6690-6699.mainnet.json.gz");
+  void issue_1090_block_6690_6699(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "6690-6699.mainnet.json.gz", testInfo);
   }
 }

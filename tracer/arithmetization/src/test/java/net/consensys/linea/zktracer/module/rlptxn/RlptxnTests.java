@@ -38,6 +38,7 @@ import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.*;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -65,9 +66,8 @@ public class RlptxnTests extends TracerTestBase {
       BigInteger value,
       Bytes payload,
       List<AccessListEntry> accessList,
-      boolean chainLess) {
-    // Note: different values of signatures are not tested here, but some tests with "small" r/s can
-    // be seen here: SystemTransactionTests/genesisBlockTest
+      boolean chainLess,
+      TestInfo testInfo) {
 
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
@@ -82,7 +82,7 @@ public class RlptxnTests extends TracerTestBase {
         ToyAccount.builder()
             .address(Address.wrap(Bytes.random(Address.SIZE, SEED)))
             .code(
-                BytecodeCompiler.newProgram(testInfo)
+                BytecodeCompiler.newProgram(chainConfig)
                     .op(CALLDATASIZE)
                     .push(0)
                     .push(0)
@@ -109,7 +109,7 @@ public class RlptxnTests extends TracerTestBase {
 
     final Transaction transaction = chainLess ? txBuilder.chainId(null).build() : txBuilder.build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, recipientAccount))
         .transaction(transaction)
         .zkTracerValidator(zkTracer -> {})

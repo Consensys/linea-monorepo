@@ -31,7 +31,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
-import net.consensys.linea.reporting.TestInfoWithChainConfig;
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
@@ -43,6 +42,7 @@ import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -75,7 +75,7 @@ public class EcPairingTest extends TracerTestBase {
   static List<Arguments> largePoints;
 
   @BeforeAll
-  public static void initConcatenatedLists() {
+  public static void initConcatenatedLists(TestInfo testInfo) {
     try {
       String basePath = "../arithmetization/src/test/resources/ecpairing/";
       smallPointsOutOfRange =
@@ -118,9 +118,9 @@ public class EcPairingTest extends TracerTestBase {
 
   // Tests
   @Test
-  void testEcPairingWithSingleTrivialPairing() {
+  void testEcPairingWithSingleTrivialPairing(TestInfo testInfo) {
     BytecodeCompiler program =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(0x20) // retSize
             .push(0) // retOffset
             .push(192) // argSize
@@ -130,17 +130,17 @@ public class EcPairingTest extends TracerTestBase {
             .op(OpCode.STATICCALL);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     assertLineCount(bytecodeRunner);
   }
 
   @Test
-  void testEcPairingWithSingleNonTrivialValidPairing() {
+  void testEcPairingWithSingleNonTrivialValidPairing(TestInfo testInfo) {
     // small point: (Ax,Ay)
     // large point: (BxRe + i*BxIm, ByRe + i*ByIm)
     BytecodeCompiler program =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             // random point in C1
             .push("26d7d8759964ac70b4d5cdf698ad5f70da246752481ea37da637551a60a2a57f") // Ax
             .push(0)
@@ -171,7 +171,7 @@ public class EcPairingTest extends TracerTestBase {
             .op(OpCode.STATICCALL);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     assertLineCount(bytecodeRunner);
   }
@@ -179,7 +179,7 @@ public class EcPairingTest extends TracerTestBase {
   @ParameterizedTest
   @MethodSource("ecPairingSingleSource")
   void testEcPairingSingleForScenarioUsingMethodSource(
-      String Ax, String Ay, String BxIm, String BxRe, String ByIm, String ByRe) {
+      String Ax, String Ay, String BxIm, String BxRe, String ByIm, String ByRe, TestInfo testInfo) {
     testEcPairingSingleForScenario(Ax, Ay, BxIm, BxRe, ByIm, ByRe, testInfo);
   }
 
@@ -189,7 +189,7 @@ public class EcPairingTest extends TracerTestBase {
       resources =
           "/ecpairing/test_ec_pairing_single_for_scenario_using_method_source_failed_placeholder.csv")
   void testEcPairingSingleForScenarioUsingCsv(
-      String Ax, String Ay, String BxIm, String BxRe, String ByIm, String ByRe) {
+      String Ax, String Ay, String BxIm, String BxRe, String ByIm, String ByRe, TestInfo testInfo) {
     testEcPairingSingleForScenario(Ax, Ay, BxIm, BxRe, ByIm, ByRe, testInfo);
   }
 
@@ -197,17 +197,11 @@ public class EcPairingTest extends TracerTestBase {
   // testEcPairingSingleForScenarioUsingMethodSource
   // testEcPairingSingleForScenarioUsingCsv
   private static void testEcPairingSingleForScenario(
-      String Ax,
-      String Ay,
-      String BxIm,
-      String BxRe,
-      String ByIm,
-      String ByRe,
-      TestInfoWithChainConfig testInfo) {
+      String Ax, String Ay, String BxIm, String BxRe, String ByIm, String ByRe, TestInfo testInfo) {
     // small point: (Ax,Ay)
     // large point: (BxRe + i*BxIm, ByRe + i*ByIm)
     BytecodeCompiler program =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             // point supposed to be in C1
             .push(Ax) // Ax
             .push(0)
@@ -237,7 +231,7 @@ public class EcPairingTest extends TracerTestBase {
             .op(OpCode.STATICCALL);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     assertLineCount(bytecodeRunner);
 
@@ -260,8 +254,8 @@ public class EcPairingTest extends TracerTestBase {
   @ParameterizedTest
   @MethodSource({"ecPairingGenericSource", "ecPairingSuccessfulNonTrivialSource"})
   void testEcPairingGenericForScenarioUsingMethodSource(
-      String description, String pairingsAsString) {
-    testEcPairingGenericForScenario(description, pairingsAsString);
+      String description, String pairingsAsString, TestInfo testInfo) {
+    testEcPairingGenericForScenario(description, pairingsAsString, testInfo);
   }
 
   @Disabled // Useful only to test specific test cases in a CSV file
@@ -270,19 +264,21 @@ public class EcPairingTest extends TracerTestBase {
       resources =
           "/ecpairing/test_ec_pairing_generic_for_scenario_using_method_source_failed_placeholder.csv",
       maxCharsPerColumn = 100000)
-  void testEcPairingGenericForScenarioUsingCsv(String description, String pairingsAsString) {
-    testEcPairingGenericForScenario(description, pairingsAsString);
+  void testEcPairingGenericForScenarioUsingCsv(
+      String description, String pairingsAsString, TestInfo testInfo) {
+    testEcPairingGenericForScenario(description, pairingsAsString, testInfo);
   }
 
   // Body of:
   // testEcPairingGenericForScenarioUsingMethodSource
   // testEcPairingGenericForScenarioUsingCsv
-  private void testEcPairingGenericForScenario(String description, String pairingsAsString) {
+  private void testEcPairingGenericForScenario(
+      String description, String pairingsAsString, TestInfo testInfo) {
     assertFalse(description.contains(" "), "Description cannot contain spaces");
 
     List<Arguments> pairings = pairingsAsStringToArgumentsList(pairingsAsString);
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     for (int i = 0; i < pairings.size(); i++) {
       Arguments pair = pairings.get(i);
 
@@ -335,7 +331,7 @@ public class EcPairingTest extends TracerTestBase {
 
     // Run the program
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(testInfo);
+    bytecodeRunner.run(chainConfig, testInfo);
 
     // Set arguments for TestWatcher
     EcPairingArgumentsSingleton.getInstance().setArguments(description + "," + pairingsAsString);
@@ -537,7 +533,7 @@ public class EcPairingTest extends TracerTestBase {
   }
 
   // Method source of testEcPairingGenericForScenarioUsingMethodSource
-  private static Stream<Arguments> ecPairingSuccessfulNonTrivialSource() {
+  private static Stream<Arguments> ecPairingSuccessfulNonTrivialSource(TestInfo testInfo) {
     List<Arguments> allPairings = new ArrayList<>();
 
     // case totalPairings = 2
@@ -668,7 +664,7 @@ public class EcPairingTest extends TracerTestBase {
 
   // Tests for support methods
   @Test
-  public void testPair() {
+  public void testPair(TestInfo testInfo) {
     Arguments smallPoint = Arguments.of("Ax", "Ay");
     Arguments largePoint = Arguments.of("BxIm", "BxRe", "ByIm", "ByRe");
     Arguments pair = pair(smallPoint, largePoint);
@@ -682,7 +678,7 @@ public class EcPairingTest extends TracerTestBase {
   }
 
   @Test
-  public void testArgumentsListToPairingsAsString() {
+  public void testArgumentsListToPairingsAsString(TestInfo testInfo) {
     List<Arguments> pairings = new ArrayList<>();
     pairings.add(Arguments.of("Ax1", "Ay1", "BxIm1", "BxRe1", "ByIm1", "ByRe1"));
     pairings.add(Arguments.of("Ax2", "Ay2", "BxIm2", "BxRe2", "ByIm2", "ByRe2"));

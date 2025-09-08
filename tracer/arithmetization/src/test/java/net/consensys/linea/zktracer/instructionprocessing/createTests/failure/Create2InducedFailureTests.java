@@ -22,6 +22,7 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
@@ -32,9 +33,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class Create2InducedFailureTests extends TracerTestBase {
 
   @Test
-  void failureConditionNonceTest() {
+  void failureConditionNonceTest(TestInfo testInfo) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     program
         .push(salt01)
         .push(0)
@@ -47,7 +48,7 @@ public class Create2InducedFailureTests extends TracerTestBase {
         .push(1)
         .op(CREATE2);
 
-    run(program, testInfo);
+    run(program, chainConfig, testInfo);
   }
 
   /**
@@ -65,16 +66,16 @@ public class Create2InducedFailureTests extends TracerTestBase {
    * address, thus raising the <b>Failure Condition F</b>.
    */
   @Test
-  void failureConditionNonceAndCodeTest() {
+  void failureConditionNonceAndCodeTest(TestInfo testInfo) {
 
-    BytecodeCompiler initCode = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler initCode = BytecodeCompiler.newProgram(chainConfig);
     initCode
         .push(1) // size
         .push(0)
         .op(RETURN);
     Bytes compiledInitCode = initCode.compile();
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     program
         .push(compiledInitCode)
         .push(8 * (32 - compiledInitCode.size()))
@@ -98,6 +99,6 @@ public class Create2InducedFailureTests extends TracerTestBase {
         .push(1) // value
         .op(CREATE2); // second (attempted) deployment raises failure condition
 
-    run(program, testInfo);
+    run(program, chainConfig, testInfo);
   }
 }

@@ -24,6 +24,7 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
@@ -35,30 +36,30 @@ public class SingleJumpDest extends TracerTestBase {
 
   /** This test should trigger the <b>scenario/CALL_TO_SMC_SUCCESS_WONT_REVERT</b> scenario. */
   @Test
-  void zeroValueTransferToJumpDestContract() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void zeroValueTransferToJumpDestContract(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     appendCall(
         program, CALL, 10, accountWhoseByteCodeIsASingleJumpDest.getAddress(), 0, 0, 0, 0, 0);
 
-    BytecodeRunner.of(program.compile()).run(accounts, testInfo);
+    BytecodeRunner.of(program.compile()).run(accounts, chainConfig, testInfo);
   }
 
   /** This test should trigger the <b>scenario/CALL_TO_SMC_SUCCESS_WONT_REVERT</b> scenario. */
   @Test
-  void nonZeroValueTransferToJumpDestContract() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void nonZeroValueTransferToJumpDestContract(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     appendCall(
         program, CALL, 10, accountWhoseByteCodeIsASingleJumpDest.getAddress(), 1, 0, 0, 0, 0);
 
-    BytecodeRunner.of(program.compile()).run(accounts, testInfo);
+    BytecodeRunner.of(program.compile()).run(accounts, chainConfig, testInfo);
   }
 
   /** This test should trigger the <b>scenario/CALL_TO_SMC_SUCCESS_WILL_REVERT</b> scenario. */
   @Test
-  void nonZeroValueTransferToJumpDestContractRevertingTransaction() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void nonZeroValueTransferToJumpDestContractRevertingTransaction(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     appendCall(
         program, CALL, 10, accountWhoseByteCodeIsASingleJumpDest.getAddress(), 1, 0, 0, 0, 0);
@@ -66,7 +67,7 @@ public class SingleJumpDest extends TracerTestBase {
     // we use the 1 on the stack after this successful CALL as the revert message size
     program.push(0).op(REVERT);
 
-    BytecodeRunner.of(program.compile()).run(accounts, testInfo);
+    BytecodeRunner.of(program.compile()).run(accounts, chainConfig, testInfo);
   }
 
   // CALL reverts because of OOGX
@@ -74,34 +75,34 @@ public class SingleJumpDest extends TracerTestBase {
 
   /** This test should trigger the <b>scenario/CALL_TO_SMC_FAILURE_WONT_REVERT</b> scenario. */
   @Test
-  void zeroValueTransferToJumpDestContractOogx() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void zeroValueTransferToJumpDestContractOogx(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleJumpDest.getAddress(), 0, 0, 0, 0, 0);
 
-    BytecodeRunner.of(program.compile()).run(accounts, testInfo);
+    BytecodeRunner.of(program.compile()).run(accounts, chainConfig, testInfo);
   }
 
   /** This test should trigger the <b>scenario/CALL_TO_SMC_FAILURE_WONT_REVERT</b> scenario. */
   @Test
-  void nonZeroValueTransferToJumpDestContractOogx() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void nonZeroValueTransferToJumpDestContractOogx(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleJumpDest.getAddress(), 1, 0, 0, 0, 0);
 
-    BytecodeRunner.of(program.compile()).run(accounts, testInfo);
+    BytecodeRunner.of(program.compile()).run(accounts, chainConfig, testInfo);
   }
 
   /** This test should trigger the <b>scenario/CALL_TO_SMC_FAILURE_WILL_REVERT</b> scenario. */
   @Test
-  void nonZeroValueTransferToJumpDestContractOogxAndRevertingTransaction() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+  void nonZeroValueTransferToJumpDestContractOogxAndRevertingTransaction(TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleJumpDest.getAddress(), 1, 0, 0, 0, 0);
 
     // we use the 1 on the stack after this successful CALL as the revert message size
     program.push(0).op(REVERT);
 
-    BytecodeRunner.of(program.compile()).run(accounts, testInfo);
+    BytecodeRunner.of(program.compile()).run(accounts, chainConfig, testInfo);
   }
 }

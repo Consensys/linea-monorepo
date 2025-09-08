@@ -44,6 +44,7 @@ import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.processing.TransactionProcessingResult;
 import org.hyperledger.besu.evm.log.Log;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.web3j.abi.EventEncoder;
 import org.web3j.abi.FunctionEncoder;
@@ -55,7 +56,7 @@ import org.web3j.abi.datatypes.generated.Uint256;
 public class ExampleSolidityTest extends TracerTestBase {
 
   @Test
-  void testWithFrameworkEntrypoint() {
+  void testWithFrameworkEntrypoint(TestInfo testInfo) {
     KeyPair keyPair = new SECP256K1().generateKeyPair();
     Address senderAddress = Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
 
@@ -134,7 +135,7 @@ public class ExampleSolidityTest extends TracerTestBase {
           }
         };
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, frameworkEntrypointAccount, snippetAccount))
         .transaction(tx)
         .transactionProcessingResultValidator(resultValidator)
@@ -143,7 +144,7 @@ public class ExampleSolidityTest extends TracerTestBase {
   }
 
   @Test
-  void testSnippetIndependently() {
+  void testSnippetIndependently(TestInfo testInfo) {
     KeyPair keyPair = new SECP256K1().generateKeyPair();
     Address senderAddress = Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
 
@@ -183,7 +184,7 @@ public class ExampleSolidityTest extends TracerTestBase {
           assertEquals(response.singleInt, BigInteger.valueOf(123456));
         };
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, contractAccount))
         .transaction(tx)
         .transactionProcessingResultValidator(resultValidator)
@@ -192,7 +193,7 @@ public class ExampleSolidityTest extends TracerTestBase {
   }
 
   @Test
-  void testContractNotRelatedToTestingFramework() {
+  void testContractNotRelatedToTestingFramework(TestInfo testInfo) {
     KeyPair senderkeyPair = new SECP256K1().generateKeyPair();
     Address senderAddress =
         Address.extract(Hash.hash(senderkeyPair.getPublicKey().getEncodedBytes()));
@@ -223,7 +224,7 @@ public class ExampleSolidityTest extends TracerTestBase {
             .keyPair(senderkeyPair)
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, contractAccount))
         .transaction(tx)
         .build()
@@ -231,7 +232,7 @@ public class ExampleSolidityTest extends TracerTestBase {
   }
 
   @Test
-  void testYul() {
+  void testYul(TestInfo testInfo) {
     KeyPair senderkeyPair = new SECP256K1().generateKeyPair();
     Address senderAddress =
         Address.extract(Hash.hash(senderkeyPair.getPublicKey().getEncodedBytes()));
@@ -302,7 +303,7 @@ public class ExampleSolidityTest extends TracerTestBase {
             .gasLimit(500000L)
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, yulAccount, frameworkEntrypointAccount))
         .transaction(tx)
         .transactionProcessingResultValidator(resultValidator)

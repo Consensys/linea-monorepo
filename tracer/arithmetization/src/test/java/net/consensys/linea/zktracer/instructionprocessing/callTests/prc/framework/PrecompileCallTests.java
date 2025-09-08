@@ -22,6 +22,7 @@ import static net.consensys.linea.zktracer.instructionprocessing.callTests.prc.C
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.CodeExecutionMethods;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -35,13 +36,13 @@ public abstract class PrecompileCallTests<T extends PrecompileCallParameters>
    */
   @ParameterizedTest
   @MethodSource("parameterGeneration")
-  public void messageCallTransactionTest(T callParameter) {
+  public void messageCallTransactionTest(T callParameter, TestInfo testInfo) {
 
     BytecodeCompiler rootCode =
-        callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation(testInfo);
+        callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation(chainConfig);
     if (callParameter.willRevert()) revertWith(rootCode, 0, 5 * WORD_SIZE);
 
-    runMessageCallTransactionWithProvidedCodeAsRootCode(rootCode, testInfo);
+    runMessageCallTransactionWithProvidedCodeAsRootCode(rootCode, chainConfig, testInfo);
   }
 
   /**
@@ -51,13 +52,13 @@ public abstract class PrecompileCallTests<T extends PrecompileCallParameters>
    */
   @ParameterizedTest
   @MethodSource("parameterGeneration")
-  public void deploymentTransactionTest(T callParameter) {
+  public void deploymentTransactionTest(T callParameter, TestInfo testInfo) {
 
     BytecodeCompiler txInitCode =
-        callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation(testInfo);
+        callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation(chainConfig);
     if (callParameter.willRevert()) revertWith(txInitCode, 0, 0);
 
-    runDeploymentTransactionWithProvidedCodeAsInitCode(txInitCode, testInfo);
+    runDeploymentTransactionWithProvidedCodeAsInitCode(txInitCode, chainConfig, testInfo);
   }
 
   /**
@@ -67,11 +68,11 @@ public abstract class PrecompileCallTests<T extends PrecompileCallParameters>
    */
   @ParameterizedTest
   @MethodSource("parameterGeneration")
-  public void messageCallFromRootTest(T callParameter) {
+  public void messageCallFromRootTest(T callParameter, TestInfo testInfo) {
     BytecodeCompiler chadPrcEnjoyerCode =
-        callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation(testInfo);
+        callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation(chainConfig);
     runMessageCallToAccountEndowedWithProvidedCode(
-        chadPrcEnjoyerCode, callParameter.willRevert(), testInfo);
+        chadPrcEnjoyerCode, callParameter.willRevert(), chainConfig, testInfo);
   }
 
   /**
@@ -86,10 +87,10 @@ public abstract class PrecompileCallTests<T extends PrecompileCallParameters>
    */
   @ParameterizedTest
   @MethodSource("parameterGeneration")
-  public void happyPathDuringCreate(T callParameter) {
+  public void happyPathDuringCreate(T callParameter, TestInfo testInfo) {
     BytecodeCompiler foreignCode =
-        callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation(testInfo);
-    runForeignByteCodeAsInitCode(foreignCode, callParameter.willRevert(), testInfo);
+        callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation(chainConfig);
+    runForeignByteCodeAsInitCode(foreignCode, callParameter.willRevert(), chainConfig, testInfo);
   }
 
   /**
@@ -99,10 +100,10 @@ public abstract class PrecompileCallTests<T extends PrecompileCallParameters>
    */
   @ParameterizedTest
   @MethodSource("parameterGeneration")
-  public void happyPathAfterCreate(T callParameter) {
+  public void happyPathAfterCreate(T callParameter, TestInfo testInfo) {
     BytecodeCompiler chadPrcEnjoyerCode =
-        callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation(testInfo);
+        callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation(chainConfig);
     runCreateDeployingForeignCodeAndCallIntoIt(
-        chadPrcEnjoyerCode, callParameter.willRevert(), testInfo);
+        chadPrcEnjoyerCode, callParameter.willRevert(), chainConfig, testInfo);
   }
 }

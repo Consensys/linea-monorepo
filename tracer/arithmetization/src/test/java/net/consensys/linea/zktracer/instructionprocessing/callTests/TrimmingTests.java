@@ -23,16 +23,17 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
 public class TrimmingTests extends TracerTestBase {
 
   @Test
-  void targetTrimming() {
+  void targetTrimming(TestInfo testInfo) {
 
     BytecodeCompiler bytecode =
-        BytecodeCompiler.newProgram(testInfo)
+        BytecodeCompiler.newProgram(chainConfig)
             .push(1)
             .push(2)
             .push(3)
@@ -60,6 +61,6 @@ public class TrimmingTests extends TracerTestBase {
             .push(eoaAddress) // address
             .op(EXTCODEHASH);
 
-    BytecodeRunner.of(bytecode).run(testInfo);
+    BytecodeRunner.of(bytecode).run(chainConfig, testInfo);
   }
 }

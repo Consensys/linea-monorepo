@@ -20,20 +20,22 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
 public class ImmediateRevert extends TracerTestBase {
 
   @Test
-  void testImmediatePop() {
-    BytecodeRunner.of(BytecodeCompiler.newProgram(testInfo).op(OpCode.POP).compile()).run(testInfo);
+  void testImmediatePop(TestInfo testInfo) {
+    BytecodeRunner.of(BytecodeCompiler.newProgram(chainConfig).op(OpCode.POP).compile())
+        .run(chainConfig, testInfo);
   }
 
   @Test
-  void testPopWithinCreate() {
+  void testPopWithinCreate(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(0x50) // POP
                 .push(0)
                 .op(OpCode.MSTORE8)
@@ -42,6 +44,6 @@ public class ImmediateRevert extends TracerTestBase {
                 .push(1) // value
                 .op(OpCode.CREATE)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 }

@@ -35,13 +35,14 @@ import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
 public class TxSkipTests extends TracerTestBase {
 
   @Test
-  void testUselessAccessListForTxSkip() {
+  void testUselessAccessListForTxSkip(TestInfo testInfo) {
     final ToyAccount receiverAccount =
         ToyAccount.builder()
             .balance(Wei.fromEth(1))
@@ -182,7 +183,7 @@ public class TxSkipTests extends TracerTestBase {
             deploymentWithEmptyInit,
             deploymentWithEmptyInitAndUselessAccessList);
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(
             List.of(
                 coinbaseAccount,
@@ -206,7 +207,7 @@ public class TxSkipTests extends TracerTestBase {
   }
 
   @Test
-  void receiverIsCoinbase() {
+  void receiverIsCoinbase(TestInfo testInfo) {
 
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
@@ -231,7 +232,7 @@ public class TxSkipTests extends TracerTestBase {
             .gasLimit(100000L)
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(coinbaseAccount, senderAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
@@ -240,7 +241,7 @@ public class TxSkipTests extends TracerTestBase {
   }
 
   @Test
-  void receiverIsSender() {
+  void receiverIsSender(TestInfo testInfo) {
 
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
@@ -256,7 +257,7 @@ public class TxSkipTests extends TracerTestBase {
             .value(Wei.of(123))
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
@@ -265,7 +266,7 @@ public class TxSkipTests extends TracerTestBase {
   }
 
   @Test
-  void senderIsCoinbase() {
+  void senderIsCoinbase(TestInfo testInfo) {
 
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
@@ -288,7 +289,7 @@ public class TxSkipTests extends TracerTestBase {
             .value(Wei.of(123))
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
@@ -298,7 +299,7 @@ public class TxSkipTests extends TracerTestBase {
   }
 
   @Test
-  void senderIsCoinbaseIsReceiver() {
+  void senderIsCoinbaseIsReceiver(TestInfo testInfo) {
 
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
@@ -314,7 +315,7 @@ public class TxSkipTests extends TracerTestBase {
             .value(Wei.of(123))
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
@@ -324,7 +325,7 @@ public class TxSkipTests extends TracerTestBase {
   }
 
   @Test
-  void skipMessageCallCoinbaseIsPrecompile() {
+  void skipMessageCallCoinbaseIsPrecompile(TestInfo testInfo) {
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
@@ -349,7 +350,7 @@ public class TxSkipTests extends TracerTestBase {
             .value(Wei.of(123))
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, receiverAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
@@ -359,7 +360,7 @@ public class TxSkipTests extends TracerTestBase {
   }
 
   @Test
-  void skippedDepSenderIsCoinbase() {
+  void skippedDepSenderIsCoinbase(TestInfo testInfo) {
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
@@ -374,7 +375,7 @@ public class TxSkipTests extends TracerTestBase {
             .gasLimit(100000L)
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
@@ -384,7 +385,7 @@ public class TxSkipTests extends TracerTestBase {
   }
 
   @Test
-  void skippedDepDeploymentAddressIsCoinbase() {
+  void skippedDepDeploymentAddressIsCoinbase(TestInfo testInfo) {
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
@@ -407,7 +408,7 @@ public class TxSkipTests extends TracerTestBase {
             .nonce((long) nonce)
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
@@ -417,7 +418,7 @@ public class TxSkipTests extends TracerTestBase {
   }
 
   @Test
-  void skippedDepCoinbaseIsPrecompile() {
+  void skippedDepCoinbaseIsPrecompile(TestInfo testInfo) {
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
@@ -432,7 +433,7 @@ public class TxSkipTests extends TracerTestBase {
             .gasLimit(100000L)
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
@@ -442,7 +443,7 @@ public class TxSkipTests extends TracerTestBase {
   }
 
   @Test
-  void txSkipValueIsZero() {
+  void txSkipValueIsZero(TestInfo testInfo) {
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
@@ -463,7 +464,7 @@ public class TxSkipTests extends TracerTestBase {
             .value(Wei.ZERO)
             .build();
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount, receiverAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})

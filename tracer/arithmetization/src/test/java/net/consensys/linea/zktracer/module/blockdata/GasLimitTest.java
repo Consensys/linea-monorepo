@@ -31,6 +31,7 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -41,25 +42,36 @@ public class GasLimitTest extends TracerTestBase {
 
   @Disabled("This test is disabled as we now enforce fixed block gas limit")
   @Test
-  void legalGasLimitVariationsTest() {
-    Bytes p = BytecodeCompiler.newProgram(testInfo).push(1).compile();
+  void legalGasLimitVariationsTest(TestInfo testInfo) {
+    Bytes p = BytecodeCompiler.newProgram(chainConfig).push(1).compile();
 
     long gasLimit = GAS_LIMIT_MINIMUM.longValueExact();
-    multiBlocksTest(List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_SAME)));
-    multiBlocksTest(List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_INCREMENT)));
-    multiBlocksTest(List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_MAX)));
+    multiBlocksTest(
+        List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_SAME)), testInfo);
+    multiBlocksTest(
+        List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_INCREMENT)), testInfo);
+    multiBlocksTest(
+        List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_MAX)), testInfo);
 
     gasLimit = 100_000_000L;
-    multiBlocksTest(List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_SAME)));
-    multiBlocksTest(List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_INCREMENT)));
-    multiBlocksTest(List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_DECREMENT)));
-    multiBlocksTest(List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_MAX)));
-    multiBlocksTest(List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_MIN)));
+    multiBlocksTest(
+        List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_SAME)), testInfo);
+    multiBlocksTest(
+        List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_INCREMENT)), testInfo);
+    multiBlocksTest(
+        List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_DECREMENT)), testInfo);
+    multiBlocksTest(
+        List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_MAX)), testInfo);
+    multiBlocksTest(
+        List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_MIN)), testInfo);
 
     gasLimit = GAS_LIMIT_MAXIMUM.longValueExact();
-    multiBlocksTest(List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_SAME)));
-    multiBlocksTest(List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_DECREMENT)));
-    multiBlocksTest(List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_MIN)));
+    multiBlocksTest(
+        List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_SAME)), testInfo);
+    multiBlocksTest(
+        List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_DECREMENT)), testInfo);
+    multiBlocksTest(
+        List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_MIN)), testInfo);
   }
 
   /**
@@ -72,11 +84,14 @@ public class GasLimitTest extends TracerTestBase {
   @Disabled
   @ParameterizedTest
   @MethodSource("blockDataVariableGasLimitTestSource")
-  void variableGasLimitTest(long gasLimit, NextGasLimitScenario nextGasLimitScenario) {
-    Bytes program = BytecodeCompiler.newProgram(testInfo).op(OpCode.STOP).compile();
+  void variableGasLimitTest(
+      long gasLimit, NextGasLimitScenario nextGasLimitScenario, TestInfo testInfo) {
+    Bytes program = BytecodeCompiler.newProgram(chainConfig).op(OpCode.STOP).compile();
 
     multiBlocksTest(
-        List.of(program, program), List.of(gasLimit, nextGasLimit(gasLimit, nextGasLimitScenario)));
+        List.of(program, program),
+        List.of(gasLimit, nextGasLimit(gasLimit, nextGasLimitScenario)),
+        testInfo);
   }
 
   private static Stream<Arguments> blockDataVariableGasLimitTestSource() {

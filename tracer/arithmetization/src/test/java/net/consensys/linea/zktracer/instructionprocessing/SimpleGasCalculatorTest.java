@@ -20,14 +20,15 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
 public class SimpleGasCalculatorTest extends TracerTestBase {
   @Test
-  void simpleGasCalculatorTest() {
+  void simpleGasCalculatorTest(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push("deadbeef") // value
                 .push(0x80) // key
                 .op(OpCode.MSTORE)
@@ -39,6 +40,6 @@ public class SimpleGasCalculatorTest extends TracerTestBase {
                 .push(0x80) // key
                 .op(OpCode.MLOAD)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 }

@@ -37,6 +37,7 @@ import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
@@ -63,7 +64,7 @@ public class ContractModifyingStorageTest extends TracerTestBase {
   // NOTE: 0.8.0+commit.c7dfd78e compiler version is used and Remix VM (London) as environment to
   // compile and deploy the contracts below
   @Test
-  void contractModifyingStorageInConstructorTest() {
+  void contractModifyingStorageInConstructorTest(TestInfo testInfo) {
     // Deploy
     // arithmetization/src/test/resources/contracts/contractModifyingStorage/ContractModifyingStorageInConstructor.sol
 
@@ -93,7 +94,7 @@ public class ContractModifyingStorageTest extends TracerTestBase {
     checkArgument(tx.isContractCreation());
 
     ToyExecutionEnvironmentV2 toyExecutionEnvironment =
-        ToyExecutionEnvironmentV2.builder(testInfo)
+        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
             .accounts(List.of(userAccount))
             .transaction(tx)
             .build();
@@ -102,7 +103,7 @@ public class ContractModifyingStorageTest extends TracerTestBase {
   }
 
   @Test
-  void contractModifyingStorageInFunctionTest() {
+  void contractModifyingStorageInFunctionTest(TestInfo testInfo) {
     // Deploy
     // arithmetization/src/test/resources/contracts/contractModifyingStorage/ContractModifyingStorageInFunction.sol
 
@@ -127,7 +128,7 @@ public class ContractModifyingStorageTest extends TracerTestBase {
             .build();
 
     ToyExecutionEnvironmentV2 toyExecutionEnvironment =
-        ToyExecutionEnvironmentV2.builder(testInfo)
+        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
             .accounts(List.of(userAccount))
             .transaction(tx)
             .build();
@@ -140,7 +141,7 @@ public class ContractModifyingStorageTest extends TracerTestBase {
   private final Random rnd = new Random(666);
 
   @Test
-  void temporaryTest() {
+  void temporaryTest(TestInfo testInfo) {
     List<Transaction> txList = new ArrayList<>();
 
     KeyPair keyPair1 = new SECP256K1().generateKeyPair();
@@ -205,7 +206,7 @@ public class ContractModifyingStorageTest extends TracerTestBase {
             .value(Wei.fromEth(3))
             .build());
 
-    ToyExecutionEnvironmentV2.builder(testInfo)
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(account1, account2, account3, account4, account5))
         .transactions(txList)
         .build()

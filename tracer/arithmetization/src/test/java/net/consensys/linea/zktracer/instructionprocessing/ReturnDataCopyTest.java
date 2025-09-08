@@ -23,14 +23,15 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
 public class ReturnDataCopyTest extends TracerTestBase {
   @Test
-  void testReturnDataCopyFromSha256() {
+  void testReturnDataCopyFromSha256(TestInfo testInfo) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram(testInfo)
+            BytecodeCompiler.newProgram(chainConfig)
                 .push(
                     Bytes.fromHexString(
                         "0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"))
@@ -52,6 +53,6 @@ public class ReturnDataCopyTest extends TracerTestBase {
                 .op(OpCode.MLOAD)
                 .op(OpCode.STOP)
                 .compile())
-        .run(testInfo);
+        .run(chainConfig, testInfo);
   }
 }
