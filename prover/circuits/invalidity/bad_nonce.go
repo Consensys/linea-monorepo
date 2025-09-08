@@ -1,13 +1,9 @@
 package invalidity
 
 import (
-	"math/big"
-
 	"github.com/consensys/gnark/frontend"
 	gmimc "github.com/consensys/gnark/std/hash/mimc"
-	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0/compress"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -67,8 +63,7 @@ func (circuit *BadNonceCircuit) Define(api frontend.API) error {
 func (cir *BadNonceCircuit) Allocate(config Config) {
 	// allocate the account trie
 	cir.AccountTrie.Allocate(config)
-	keccak := wizard.AllocateWizardCircuit(config.KeccakCompiledIOP, 0)
-	cir.KeccakH = *keccak
+	cir.KeccakH = *wizard.AllocateWizardCircuit(config.KeccakCompiledIOP, 0)
 	// allocate the RLPEncodedTx to have a fixed size
 	cir.RLPEncodedTx = make([]frontend.Variable, config.MaxRlpByteSize)
 
@@ -123,56 +118,4 @@ func (cir *BadNonceCircuit) Assign(assi AssigningInputs) {
 
 func (c *BadNonceCircuit) ExecutionCtx() []frontend.Variable {
 	return []frontend.Variable{c.AccountTrie.MerkleProof.Root}
-}
-
-func checkKeccakConsistency(api frontend.API, rlpEncode []frontend.Variable, txHash [2]frontend.Variable, keccak *wizard.VerifierCircuit) {
-
-	var (
-		radix       = big.NewInt(256)
-		ctr         = 0
-		limbCol     = keccak.GetColumn(ifaces.ColIDf("TxHash_INVALIDITY_LIMBS"))
-		hashHiCol   = keccak.GetColumn(ifaces.ColIDf("TxHash_INVALIDITY_HASH_HI"))
-		hashLoCol   = keccak.GetColumn(ifaces.ColIDf("TxHash_INVALIDITY_HASH_LO"))
-		isHashHiCol = keccak.GetColumn(ifaces.ColIDf("TxHash_INVALIDITY_IS_HASH_HI"))
-		isHashLoCol = keccak.GetColumn(ifaces.ColIDf("TxHash_INVALIDITY_IS_HASH_LO"))
-	)
-
-	// check that the rlpEncoding matches the limb column
-	if len(limbCol) < len(rlpEncode)/16+1 {
-		utils.Panic("keccak limb column is not large enough to hold the rlp encoding")
-	}
-
-	// split the rlpEncoding into chunks of 16 bytes
-	for len(rlpEncode) > 16 {
-		v := rlpEncode[:16]
-		curLimb := compress.ReadNum(api, v, radix)
-		api.AssertIsEqual(limbCol[ctr], curLimb)
-		ctr++
-		rlpEncode = rlpEncode[16:]
-	}
-	// handle the last chunk
-	if len(rlpEncode) > 0 {
-		// left align and pad with zeros
-		v := make([]frontend.Variable, 16)
-		copy(v, rlpEncode)
-		curLimb := compress.ReadNum(api, v, radix)
-		api.AssertIsEqual(limbCol[ctr], curLimb)
-	}
-
-	// check that the hash output matches the txHash
-	api.AssertIsEqual(hashHiCol[0], txHash[0])
-	api.AssertIsEqual(hashLoCol[0], txHash[1])
-
-	// check that isHashHi and isHashLo are set to 1
-	api.AssertIsEqual(isHashHiCol[0], 1)
-	api.AssertIsEqual(isHashLoCol[0], 1)
-
-	// check that the rest of the limb column is padded with zeros
-	// note that due to the collision resistance of keccak,
-	// this check along side the above checks are enough,
-	// and we dont need to check (nByte, hashNum, toHash, index) columns.
-	for i := ctr + 1; i < len(limbCol); i++ {
-		api.AssertIsEqual(limbCol[i], 0)
-	}
-
 }

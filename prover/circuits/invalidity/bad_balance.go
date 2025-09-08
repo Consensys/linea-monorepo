@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/ethereum/go-ethereum/core/types"
 )
 
 // BadBalanceCircuit defines the circuit for the transaction with insufficient balance.
@@ -58,6 +59,8 @@ func (circuit *BadBalanceCircuit) Define(api frontend.API) error {
 // Allocate the circuit
 func (c *BadBalanceCircuit) Allocate(config Config) {
 	c.AccountTrie.Allocate(config)
+	c.RLPEncodedTx = make([]frontend.Variable, config.MaxRlpByteSize)
+	c.KeccakH = *wizard.AllocateWizardCircuit(config.KeccakCompiledIOP, 0)
 }
 
 // Assign the circuit from [AssigningInputs]
@@ -65,24 +68,45 @@ func (c *BadBalanceCircuit) Assign(assi AssigningInputs) {
 	var (
 		txCost  = assi.Transaction.Cost()
 		balance = assi.AccountTrieInputs.Account.Balance
-		txHash  = assi.Transaction.Hash()
+		signer  = types.NewLondonSigner(assi.Transaction.ChainId())
+		a       = signer.Hash(assi.Transaction)
+		comp    = assi.KeccakCompiledIOP
+		proof   = assi.KeccakProof
+		keccak  = *wizard.AssignVerifierCircuit(comp, proof, 0)
 	)
-	*c = BadBalanceCircuit{
-		TxCost:        txCost,
-		TxFromAddress: assi.FromAddress[:],
+
+	c.TxCost = txCost
+	c.TxFromAddress = assi.FromAddress[:]
+	c.RLPEncodedTx = make([]frontend.Variable, assi.MaxRlpByteSize)
+
+	// assign the tx hash
+	c.TxHash[0] = a[0:16]
+	c.TxHash[1] = a[16:32]
+
+	if assi.RlpEncodedTx[0] != 0x02 {
+		utils.Panic("only support typed 2 transactions, maybe the rlp is not prefixed with the type byte")
 	}
-	c.RLPEncodedTx = internal.FromBytesToElements(assi.RlpEncodedTx)
-	c.TxHash[0] = txHash[:16]
-	c.TxHash[1] = txHash[16:]
-	c.KeccakH = *wizard.AssignVerifierCircuit(assi.KeccakCompiledIOP, assi.KeccakProof, 0)
+	// assign the rlp encoding
+	elements := internal.FromBytesToElements(assi.RlpEncodedTx)
+	rlpLen := len(elements)
+	if rlpLen > assi.MaxRlpByteSize {
+		utils.Panic("rlp encoding is too large: got %d, max %d", rlpLen, assi.MaxRlpByteSize)
+	}
+
+	copy(c.RLPEncodedTx, elements)
+
+	for i := len(elements); i < assi.MaxRlpByteSize; i++ {
+		c.RLPEncodedTx[i] = 0
+	}
 
 	//sanity-check:
 	if txCost.Cmp(balance) != 1 {
 		utils.Panic("tried to generate a bad-balance proof for a valid transaction")
 	}
 
+	//assign the account trie
 	c.AccountTrie.Assign(assi.AccountTrieInputs)
-
+	c.KeccakH = keccak
 }
 
 func (c *BadBalanceCircuit) ExecutionCtx() []frontend.Variable {

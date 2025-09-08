@@ -18,7 +18,8 @@ import (
 func TestInvalidityBadBalance(t *testing.T) {
 
 	var (
-		config = &smt.Config{
+		maxRlpByteSize = 256
+		config         = &smt.Config{
 			HashFunc: hashtypes.MiMC,
 			Depth:    10,
 		}
@@ -44,30 +45,27 @@ func TestInvalidityBadBalance(t *testing.T) {
 			},
 			FromAddress: tcases[1].FromAddress,
 		}
-		b, err = assi.Transaction.MarshalBinary()
+		b = inval.PrefixedRLPNoSignature(assi.Transaction)
 	)
-	require.NoError(t, err)
 	assi.RlpEncodedTx = make([]byte, len(b[:])) // include the type byte
 	copy(assi.RlpEncodedTx, b[:])
 
+	// generate keccak proof for the circuit
+	kcomp, kproof := inval.MakeKeccakProofs(assi.Transaction, maxRlpByteSize, dummy.Compile)
+	assi.KeccakCompiledIOP = kcomp
+	assi.KeccakProof = kproof
+	assi.MaxRlpByteSize = maxRlpByteSize
+
+	// define the circuit
 	circuit := inval.CircuitInvalidity{
 		SubCircuit: &inval.BadBalanceCircuit{},
 	}
 
-	// generate keccak proof for the circuit
-	kcomp, kproof := inval.MakeKeccakProofs(assi.Transaction, 256, dummy.Compile)
-	assi.KeccakCompiledIOP = kcomp
-	assi.KeccakProof = kproof
-	assi.MaxRlpByteSize = 256
-	// assign the circuit
-	circuit.Assign(assi)
-	// solve the circuit
-	witness, err := frontend.NewWitness(&circuit, ecc.BLS12_377.ScalarField())
-	require.NoError(t, err)
-
 	// allocate the circuit
 	circuit.Allocate(inval.Config{
-		Depth: config.Depth,
+		Depth:             config.Depth,
+		KeccakCompiledIOP: kcomp,
+		MaxRlpByteSize:    maxRlpByteSize,
 	})
 
 	// compile the circuit
@@ -78,6 +76,16 @@ func TestInvalidityBadBalance(t *testing.T) {
 	)
 	require.NoError(t, err)
 
+	// assign the circuit
+	assignment := inval.CircuitInvalidity{
+		SubCircuit: &inval.BadBalanceCircuit{},
+	}
+	assignment.Assign(assi)
+
+	witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())
+	require.NoError(t, err)
+
+	// assert the proof is valid
 	err = scs.IsSolved(witness)
 	require.NoError(t, err)
 
