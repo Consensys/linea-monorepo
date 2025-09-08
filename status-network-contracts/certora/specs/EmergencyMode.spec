@@ -15,6 +15,11 @@ definition isTrustedCodehashAccessFunction(method f) returns bool = (
   f.selector == sig:streamer.setTrustedCodehash(bytes32, bool).selector
 );
 
+definition isPausableFunction(method f) returns bool = (
+  f.selector == sig:streamer.pause().selector ||
+  f.selector == sig:streamer.unpause().selector
+);
+
 definition isInitializerFunction(method f) returns bool = (
   f.selector == sig:streamer.initialize(address,address).selector
 );
@@ -37,9 +42,11 @@ definition noCallDuringEmergency(method f) returns bool = (
                 || f.selector == sig:streamer.lock(uint256, uint256).selector
                 || f.selector == sig:streamer.setReward(uint256, uint256).selector
                 || f.selector == sig:enableEmergencyMode().selector
+                || f.selector == sig:pause().selector
+                || f.selector == sig:unpause().selector
 );
 
-rule accountCanOnlyLeaveInEmergencyMode(method f) {
+rule allowedActionsInEmergencyMode(method f) {
   env e;
   calldataarg args;
 
@@ -51,6 +58,7 @@ rule accountCanOnlyLeaveInEmergencyMode(method f) {
   assert !isReverted => f.selector == sig:streamer.leave().selector ||
                         f.isView ||
                         isAccessControlFunction(f) ||
+                        isPausableFunction(f) ||
                         isTrustedCodehashAccessFunction(f) ||
                         isInitializerFunction(f) ||
                         isUUPSUpgradeableFunction(f);

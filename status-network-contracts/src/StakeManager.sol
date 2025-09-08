@@ -5,6 +5,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import { IStakeManager } from "./interfaces/IStakeManager.sol";
 import { IStakeVault } from "./interfaces/IStakeVault.sol";
 import { IRewardDistributor } from "./interfaces/IRewardDistributor.sol";
@@ -21,6 +22,7 @@ import { StakeMath } from "./math/StakeMath.sol";
 contract StakeManager is
     Initializable,
     UUPSUpgradeable,
+    PausableUpgradeable,
     IStakeManager,
     TrustedCodehashAccess,
     IRewardDistributor,
@@ -147,7 +149,12 @@ contract StakeManager is
      * @dev The supplier is going to be the `Karma` token.
      * @param _rewardsSupplier The address of the rewards supplier.
      */
-    function setRewardsSupplier(address _rewardsSupplier) external onlyNotEmergencyMode onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setRewardsSupplier(address _rewardsSupplier)
+        external
+        onlyNotEmergencyMode
+        whenNotPaused
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
         rewardsSupplier = _rewardsSupplier;
     }
 
@@ -155,7 +162,7 @@ contract StakeManager is
      * @notice Registers a vault with its owner. Called by the vault itself during initialization.
      * @dev Only callable by contracts with trusted codehash
      */
-    function registerVault() external onlyNotEmergencyMode onlyTrustedCodehash {
+    function registerVault() external onlyNotEmergencyMode whenNotPaused onlyTrustedCodehash {
         address vault = msg.sender;
         address owner = IStakeVault(vault).owner();
 
@@ -183,6 +190,7 @@ contract StakeManager is
     )
         external
         onlyNotEmergencyMode
+        whenNotPaused
         onlyTrustedCodehash
         onlyRegisteredVault
         returns (uint256 newLockUntil)
@@ -228,6 +236,7 @@ contract StakeManager is
     )
         external
         onlyNotEmergencyMode
+        whenNotPaused
         onlyTrustedCodehash
         onlyRegisteredVault
         returns (uint256 newLockUntil)
@@ -266,18 +275,25 @@ contract StakeManager is
      * @dev Unstaking reduces accrued MPs proportionally.
      * @param amount The amount of tokens to unstake
      */
-    function unstake(uint256 amount) external onlyNotEmergencyMode onlyTrustedCodehash onlyRegisteredVault {
+    function unstake(uint256 amount)
+        external
+        onlyNotEmergencyMode
+        whenNotPaused
+        onlyTrustedCodehash
+        onlyRegisteredVault
+    {
         VaultData storage vault = vaultData[msg.sender];
         _unstake(amount, vault, msg.sender);
         emit Unstaked(msg.sender, amount);
     }
 
-    // @notice Allows an account to leave the system. This can happen when a
-    //         user doesn't agree with an upgrade of the stake manager.
-    // @dev This function is protected by whitelisting the codehash of the caller.
-    //      This ensures `StakeVault`s will call this function only if they don't
-    //      trust the `StakeManager` (e.g. in case of an upgrade).
-    function leave() external onlyTrustedCodehash {
+    /**
+     * @notice Allows an account to leave the system.
+     * @dev This function will unstake all tokens and reset MP and reward index.
+     * @dev After calling this function, the vault will no longer be able to stake or earn rewards.
+     * @dev The vault will still be registered, but with zero balances.
+     */
+    function leave() external whenNotPaused onlyTrustedCodehash {
         VaultData storage vault = vaultData[msg.sender];
 
         if (vault.stakedBalance > 0) {
@@ -297,7 +313,7 @@ contract StakeManager is
      * @dev This function is only callable when emergency mode is disabled.
      * @dev Takes care of updating the global MP and reward index.
      */
-    function updateGlobalState() external onlyNotEmergencyMode {
+    function updateGlobalState() external onlyNotEmergencyMode whenNotPaused {
         _updateGlobalState();
     }
 
@@ -307,7 +323,15 @@ contract StakeManager is
      * @param amount The amount of rewards to distribute.
      * @param duration The duration of the reward period.
      */
-    function setReward(uint256 amount, uint256 duration) external onlyNotEmergencyMode onlyRewardsSupplier {
+    function setReward(
+        uint256 amount,
+        uint256 duration
+    )
+        external
+        onlyNotEmergencyMode
+        whenNotPaused
+        onlyRewardsSupplier
+    {
         if (duration == 0) {
             revert StakeManager__DurationCannotBeZero();
         }
@@ -341,7 +365,7 @@ contract StakeManager is
      * @dev This function is only callable when emergency mode is disabled.
      * @dev Anyone can compound MPs for account.
      */
-    function updateAccount(address account) external onlyNotEmergencyMode {
+    function updateAccount(address account) external onlyNotEmergencyMode whenNotPaused {
         _updateGlobalState();
         address[] memory accountVaults = vaults[account];
         for (uint256 i = 0; i < accountVaults.length; i++) {
@@ -354,7 +378,7 @@ contract StakeManager is
      * @dev This function is only callable when emergency mode is disabled.
      * @dev Anyone can claim rewards on behalf of any vault
      */
-    function updateVault(address vaultAddress) external onlyNotEmergencyMode {
+    function updateVault(address vaultAddress) external onlyNotEmergencyMode whenNotPaused {
         _updateGlobalState();
         _updateVault(vaultAddress, false);
     }
@@ -370,13 +394,33 @@ contract StakeManager is
     }
 
     /**
+     * @notice Pauses the system.
+     */
+    function pause() external onlyNotEmergencyMode onlyAdminOrGuardian {
+        _pause();
+    }
+
+    /**
+     * @notice Unpauses the system.
+     */
+    function unpause() external onlyNotEmergencyMode onlyAdminOrGuardian {
+        _unpause();
+    }
+
+    /**
      * @notice Migrate the staked balance of a vault to another vault.
      * @param migrateTo The address of the vault to migrate to.
      * @dev This function is only callable by trusted stake vaults.
      * @dev Reverts if the vault to migrate to is not owned by the same user.
      * @dev Revets if the vault to migrate to has a non-zero staked balance.
      */
-    function migrateToVault(address migrateTo) external onlyNotEmergencyMode onlyTrustedCodehash onlyRegisteredVault {
+    function migrateToVault(address migrateTo)
+        external
+        onlyNotEmergencyMode
+        whenNotPaused
+        onlyTrustedCodehash
+        onlyRegisteredVault
+    {
         if (vaultOwners[migrateTo] == address(0)) {
             revert StakeManager__InvalidVault();
         }

@@ -15,6 +15,7 @@ methods {
     function emergencyModeEnabled() external returns (bool) envfree;
     function leave() external;
     function Math.mulDiv(uint256 a, uint256 b, uint256 c) internal returns uint256 => mulDivSummary(a,b,c);
+    function paused() external returns (bool) envfree;
 
     function _.migrateFromVault(IStakeVault.MigrationData) external => DISPATCHER(true);
     function _.lockUntil() external => DISPATCHER(true);
@@ -123,4 +124,26 @@ rule MPsOnlyDecreaseWhenUnstaking(method f) filtered { f -> f.selector != sig:up
   uint256 totalMPAfter = totalMPAccrued(e);
 
   assert totalMPAfter < totalMPBefore => f.selector == sig:unstake(uint256).selector || f.selector == sig:leave().selector;
+}
+
+rule allowedActionsWhenPaused(method f) {
+  env e;
+  calldataarg args;
+
+  require paused();
+
+  f@withrevert(e, args);
+  bool reverted = lastReverted;
+
+  assert !reverted => f.isView ||
+    f.selector == sig:streamer.initialize(address,address).selector ||
+    f.selector == sig:streamer.upgradeTo(address).selector ||
+    f.selector == sig:streamer.upgradeToAndCall(address, bytes).selector ||
+    f.selector == sig:streamer.grantRole(bytes32, address).selector ||
+    f.selector == sig:streamer.revokeRole(bytes32, address).selector ||
+    f.selector == sig:streamer.renounceRole(bytes32, address).selector ||
+    f.selector == sig:streamer.setTrustedCodehash(bytes32, bool).selector ||
+    f.selector == sig:streamer.__TrustedCodehashAccess_init(address).selector ||
+    f.selector == sig:streamer.enableEmergencyMode().selector ||
+    f.selector == sig:streamer.unpause().selector;
 }
