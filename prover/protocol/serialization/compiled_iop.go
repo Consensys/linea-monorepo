@@ -29,6 +29,7 @@ type RawPublicInput struct {
 	Name string          `cbor:"n"`
 	Acc  ifaces.Accessor `cbor:"a"`
 }
+
 type RawExtraData struct {
 	_     struct{} `cbor:",toarray" serde:"omit"`
 	Key   string   `cbor:"k"`
@@ -39,8 +40,8 @@ type RawQuery struct {
 	_                             struct{}      `cbor:",toarray" serde:"omit"`
 	BackReference                 BackReference `cbor:"b"`
 	ConcreteType                  int           `cbor:"t"`
-	IsIgnored                     bool          `cbor:"i"` // Only needed for queries
-	IsSkippedFromProverTranscript bool          `cbor:"s"` // Only needed for queries
+	IsIgnored                     bool          `cbor:"i"`
+	IsSkippedFromProverTranscript bool          `cbor:"s"`
 }
 
 type RawData struct {
@@ -54,8 +55,6 @@ var (
 	typeofRawPublicInput     = reflect.TypeOf(RawPublicInput{})
 	typeofRawExtraData       = reflect.TypeOf(RawExtraData{})
 	typeofPcsCtxs            = reflect.TypeOf((*vortex.Ctx)(nil))
-	// typeOfProverAction       = reflect.TypeOf((*wizard.ProverAction)(nil))
-	// typeOfVerifierAction     = reflect.TypeOf((*wizard.VerifierAction)(nil))
 )
 
 // RawCompiledIOP represents the serialized form of CompiledIOP.
@@ -69,12 +68,11 @@ type RawCompiledIOP struct {
 	Columns BackReference     `cbor:"a"`
 	Coins   [][]BackReference `cbor:"d"`
 
-	QueriesParams   [][]RawQuery `cbor:"b"`
-	QueriesNoParams [][]RawQuery `cbor:"c"`
-
-	Subprovers                 [][]RawData `cbor:"e"`
-	SubVerifiers               [][]RawData `cbor:"f"`
-	FiatShamirHooksPreSampling [][]RawData `cbor:"g"`
+	QueriesParams              [][]RawQuery `cbor:"b"`
+	QueriesNoParams            [][]RawQuery `cbor:"c"`
+	Subprovers                 [][]RawData  `cbor:"e"`
+	SubVerifiers               [][]RawData  `cbor:"f"`
+	FiatShamirHooksPreSampling [][]RawData  `cbor:"g"`
 
 	Precomputed  []PackedStructObject `cbor:"h"`
 	PublicInputs []PackedStructObject `cbor:"m"`
@@ -83,341 +81,284 @@ type RawCompiledIOP struct {
 	PcsCtxs any `cbor:"i"`
 }
 
+// -------------------- Helper functions --------------------
+
+func (s *Serializer) packTypeIndex(concreteTypeStr string) int {
+	if idx, ok := s.typeMap[concreteTypeStr]; ok {
+		return idx
+	}
+	s.PackedObject.Types = append(s.PackedObject.Types, concreteTypeStr)
+	idx := len(s.PackedObject.Types) - 1
+	s.typeMap[concreteTypeStr] = idx
+	return idx
+}
+
+func checkRegisteredOrWarn(concreteTypeStr string, t reflect.Type) (*serdeError, bool) {
+	if _, err := findRegisteredImplementation(concreteTypeStr); err != nil {
+		if !TypeTracker[concreteTypeStr] {
+			logrus.Warnf("attempted to serialize unregistered type repr=%q type=%v: %v", concreteTypeStr, t.String(), err)
+			TypeTracker[concreteTypeStr] = true
+		}
+		return newSerdeErrorf("attempted to serialize unregistered type repr=%q type=%v: %v", concreteTypeStr, t.String(), err), true
+	}
+	return nil, false
+}
+
+// Shared packing for prover/verifier actions (struct or slice), preserving messages and path formats.
+func (s *Serializer) packActionCommon(val any, pathFmt string, idx int) (RawData, *serdeError, bool) {
+	v := reflect.ValueOf(val)
+	if v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return RawData{}, nil, true
+		}
+		v = v.Elem()
+	}
+
+	concreteTypeStr := getPkgPathAndTypeNameIndirect(v.Interface())
+	if serr, skipped := checkRegisteredOrWarn(concreteTypeStr, v.Type()); serr != nil || skipped {
+		return RawData{}, serr, true
+	}
+	typeIdx := s.packTypeIndex(concreteTypeStr)
+
+	switch v.Kind() {
+	case reflect.Struct:
+		obj, err := s.PackStructObject(v)
+		if err != nil {
+			return RawData{}, err.wrapPath(fmt.Sprintf(pathFmt, idx)), false
+		}
+		return RawData{ConcreteType: typeIdx, ConcreteValue: obj}, nil, false
+	case reflect.Slice:
+		obj, err := s.PackArrayOrSlice(v)
+		if err != nil {
+			return RawData{}, err.wrapPath(fmt.Sprintf(pathFmt, idx)), false
+		}
+		return RawData{ConcreteType: typeIdx, ConcreteValue: obj}, nil, false
+	default:
+		return RawData{}, newSerdeErrorf("invalid action type: %v, expected struct or slice", v.Type()).wrapPath(fmt.Sprintf(pathFmt, idx)), false
+	}
+}
+
+func (s *Serializer) packProverAction(val wizard.ProverAction, pathFmt string, idx int) (RawData, *serdeError, bool) {
+	return s.packActionCommon(val, pathFmt, idx)
+}
+func (s *Serializer) packVerifierAction(val wizard.VerifierAction, pathFmt string, idx int) (RawData, *serdeError, bool) {
+	return s.packActionCommon(val, pathFmt, idx)
+}
+
 func initRawCompiledIOP(comp *wizard.CompiledIOP) *RawCompiledIOP {
 	numRounds := comp.NumRounds()
 	return &RawCompiledIOP{
-		NumRounds:              numRounds,
-		SelfRecursionCount:     comp.SelfRecursionCount,
-		DummyCompiled:          comp.DummyCompiled,
-		WithStorePointerChecks: comp.WithStorePointerChecks,
-		FiatShamirSetup:        comp.FiatShamirSetup.BigInt(fieldToSmallBigInt(comp.FiatShamirSetup)),
-
-		Coins: make([][]BackReference, numRounds),
-
-		// Preallocate arrays to reduce allocations
+		NumRounds:                  numRounds,
+		SelfRecursionCount:         comp.SelfRecursionCount,
+		DummyCompiled:              comp.DummyCompiled,
+		WithStorePointerChecks:     comp.WithStorePointerChecks,
+		FiatShamirSetup:            comp.FiatShamirSetup.BigInt(fieldToSmallBigInt(comp.FiatShamirSetup)),
+		Coins:                      make([][]BackReference, numRounds),
 		QueriesParams:              make([][]RawQuery, numRounds),
 		QueriesNoParams:            make([][]RawQuery, numRounds),
 		Subprovers:                 make([][]RawData, numRounds),
 		SubVerifiers:               make([][]RawData, numRounds),
 		FiatShamirHooksPreSampling: make([][]RawData, numRounds),
-
-		Precomputed:  make([]PackedStructObject, len(comp.Precomputed.ListAllKeys())),
-		PublicInputs: make([]PackedStructObject, len(comp.PublicInputs)),
-		ExtraData:    make([]PackedStructObject, len(comp.ExtraData)),
+		Precomputed:                make([]PackedStructObject, len(comp.Precomputed.ListAllKeys())),
+		PublicInputs:               make([]PackedStructObject, len(comp.PublicInputs)),
+		ExtraData:                  make([]PackedStructObject, len(comp.ExtraData)),
 	}
 }
 
-func (s *Serializer) packVerifierAction(val wizard.VerifierAction, pathFmt string, idx int) (RawData, *serdeError, bool) {
-	// Pass in `val` instead of `&val` for concrete type
-	// Handle nil pointer early: preserve behavior of original `continue`
-	v := reflect.ValueOf(val)
-	if v.Kind() == reflect.Ptr {
-		if v.IsNil() {
-			return RawData{}, nil, true
-		}
-		v = v.Elem()
-	}
-
-	concreteTypeStr := getPkgPathAndTypeNameIndirect(v.Interface())
-	if _, err := findRegisteredImplementation(concreteTypeStr); err != nil {
-		if !TypeTracker[concreteTypeStr] {
-			logrus.Warnf("attempted to serialize unregistered type repr=%q type=%v: %v", concreteTypeStr, v.Type().String(), err)
-			TypeTracker[concreteTypeStr] = true
-		}
-		return RawData{}, newSerdeErrorf("attempted to serialize unregistered type repr=%q type=%v: %v", concreteTypeStr, v.Type().String(), err), true
-	}
-
-	if _, ok := s.typeMap[concreteTypeStr]; !ok {
-		s.PackedObject.Types = append(s.PackedObject.Types, concreteTypeStr)
-		s.typeMap[concreteTypeStr] = len(s.PackedObject.Types) - 1
-		// logrus.Printf("Registering VERIFIER action type: %s to index: %d", concreteTypeStr, s.typeMap[concreteTypeStr])
-	}
-
-	switch v.Kind() {
-	case reflect.Struct:
-		obj, err := s.PackStructObject(v)
+// Query packers per register (no closures inside functions)
+func (s *Serializer) packQueriesRound(reg *wizard.ByRoundRegister[ifaces.QueryID, ifaces.Query],
+	round int, contextLabel string) ([]RawQuery, *serdeError) {
+	ids := reg.AllKeysAt(round)
+	out := make([]RawQuery, len(ids))
+	for i, id := range ids {
+		q := reg.Data(id)
+		backRef, err := s.PackQuery(q)
 		if err != nil {
-			return RawData{}, err.wrapPath(fmt.Sprintf(pathFmt, idx)), false
+			return nil, err.wrapPath("(ser-compiled-IOP-queries-" + contextLabel + ")")
 		}
-		return RawData{ConcreteType: s.typeMap[concreteTypeStr], ConcreteValue: obj}, nil, false
-	case reflect.Slice:
-		obj, err := s.PackArrayOrSlice(v)
-		if err != nil {
-			return RawData{}, err.wrapPath(fmt.Sprintf(pathFmt, idx)), false
+		v := reflect.ValueOf(q)
+		ct := getPkgPathAndTypeNameIndirect(v.Interface())
+		if serr, _ := checkRegisteredOrWarn(ct, v.Type()); serr != nil {
+			return nil, serr
 		}
-		return RawData{ConcreteType: s.typeMap[concreteTypeStr], ConcreteValue: obj}, nil, false
-	default:
-		return RawData{}, newSerdeErrorf("invalid action type: %v, expected struct or slice", v.Type()).wrapPath(fmt.Sprintf(pathFmt, idx)), false
+		typeIdx := s.packTypeIndex(ct)
+		out[i] = RawQuery{
+			BackReference:                 backRef,
+			ConcreteType:                  typeIdx,
+			IsIgnored:                     reg.IsIgnored(id),
+			IsSkippedFromProverTranscript: reg.IsSkippedFromProverTranscript(id),
+		}
 	}
+	return out, nil
 }
 
-// packActionValue packs a single action value which can be either a struct or a slice.
-// If the original value was a nil pointer, this returns (zero, nil, true) indicating the caller should skip
-// (same behaviour as original continue).
-// pathFmt should be a format string that accepts one %d for the index when producing error paths.
-func (s *Serializer) packProverAction(val wizard.ProverAction, pathFmt string, idx int) (RawData, *serdeError, bool) {
-
-	// Pass in `val` instead of `&val` for concrete type
-	// Handle nil pointer early: preserve behavior of original `continue`
-	v := reflect.ValueOf(val)
-	if v.Kind() == reflect.Ptr {
-		if v.IsNil() {
-			return RawData{}, nil, true
-		}
-		v = v.Elem()
-	}
-
-	concreteTypeStr := getPkgPathAndTypeNameIndirect(v.Interface())
-	if _, err := findRegisteredImplementation(concreteTypeStr); err != nil {
-		if !TypeTracker[concreteTypeStr] {
-			logrus.Warnf("attempted to serialize unregistered type repr=%q type=%v: %v", concreteTypeStr, v.Type().String(), err)
-			TypeTracker[concreteTypeStr] = true
-		}
-		return RawData{}, newSerdeErrorf("attempted to serialize unregistered type repr=%q type=%v: %v", concreteTypeStr, v.Type().String(), err), true
-	}
-
-	if _, ok := s.typeMap[concreteTypeStr]; !ok {
-		s.PackedObject.Types = append(s.PackedObject.Types, concreteTypeStr)
-		s.typeMap[concreteTypeStr] = len(s.PackedObject.Types) - 1
-		// logrus.Printf("Registering PROVER action type: %s to index: %d", concreteTypeStr, s.typeMap[concreteTypeStr])
-	}
-
-	switch v.Kind() {
-	case reflect.Struct:
-		obj, err := s.PackStructObject(v)
-		if err != nil {
-			return RawData{}, err.wrapPath(fmt.Sprintf(pathFmt, idx)), false
-		}
-		return RawData{ConcreteType: s.typeMap[concreteTypeStr], ConcreteValue: obj}, nil, false
-	case reflect.Slice:
-		obj, err := s.PackArrayOrSlice(v)
-		if err != nil {
-			return RawData{}, err.wrapPath(fmt.Sprintf(pathFmt, idx)), false
-		}
-		return RawData{ConcreteType: s.typeMap[concreteTypeStr], ConcreteValue: obj}, nil, false
-	default:
-		return RawData{}, newSerdeErrorf("invalid action type: %v, expected struct or slice", v.Type()).wrapPath(fmt.Sprintf(pathFmt, idx)), false
-	}
+// Wrappers for clarity and call-site compatibility:
+func (s *Serializer) packQueriesParamsRound(comp *wizard.CompiledIOP, round int) ([]RawQuery, *serdeError) {
+	return s.packQueriesRound(&comp.QueriesParams, round, "params")
 }
+
+func (s *Serializer) packQueriesNoParamsRound(comp *wizard.CompiledIOP, round int) ([]RawQuery, *serdeError) {
+	return s.packQueriesRound(&comp.QueriesNoParams, round, "no-params")
+}
+
+// -------------------- Packing --------------------
 
 func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReference, *serdeError) {
-
 	if comp == nil {
 		return 0, nil
 	}
-	// Fast cache hit
 	if idx, ok := s.compiledIOPsFast[comp]; ok {
 		return BackReference(idx), nil
 	}
-	// Reserve slot and cache BEFORE packing to break recursion
 	refIdx := len(s.PackedObject.CompiledIOPFast)
 	s.compiledIOPsFast[comp] = refIdx
 	s.PackedObject.CompiledIOPFast = append(s.PackedObject.CompiledIOPFast, RawCompiledIOP{})
 
-	rawCompiledIOP := initRawCompiledIOP(comp)
+	raw := initRawCompiledIOP(comp)
 
-	// ------- Non-round specific data
+	// Precomputed
 
-	// Marshal precomputed data
 	{
 		for idx, colID := range comp.Precomputed.ListAllKeys() {
-			preComputed := RawPrecomputed{ColID: colID, ColAssign: comp.Precomputed.MustGet(colID)}
-			packedPrecomputedObj, err := s.PackStructObject(reflect.ValueOf(preComputed))
+			pre := RawPrecomputed{ColID: colID, ColAssign: comp.Precomputed.MustGet(colID)}
+			obj, err := s.PackStructObject(reflect.ValueOf(pre))
 			if err != nil {
 				return 0, err.wrapPath("(compiled-IOP-precomputed)")
 			}
-			rawCompiledIOP.Precomputed[idx] = packedPrecomputedObj
+			raw.Precomputed[idx] = obj
 		}
 	}
 
-	// Marshall pcsctx
+	// PcsCtxs
 	{
 		if comp.PcsCtxs != nil {
 			pcsAny, err := s.PackInterface(reflect.ValueOf(comp.PcsCtxs))
 			if err != nil {
 				return 0, err.wrapPath("(compiled-IOP-pcs-ctx)")
 			}
-			rawCompiledIOP.PcsCtxs = pcsAny
+			raw.PcsCtxs = pcsAny
 		}
 	}
 
-	// Marshall public inputs
+	// Public inputs
 	{
-		for idx, pubInp := range comp.PublicInputs {
-			rawPubInp := RawPublicInput{Name: pubInp.Name, Acc: pubInp.Acc}
-			packedPubInp, err := s.PackStructObject(reflect.ValueOf(rawPubInp))
+		for i, pi := range comp.PublicInputs {
+			rawPI := RawPublicInput{Name: pi.Name, Acc: pi.Acc}
+			obj, err := s.PackStructObject(reflect.ValueOf(rawPI))
 			if err != nil {
 				return 0, err.wrapPath("(compiled-IOP-public-inputs)")
 			}
-			rawCompiledIOP.PublicInputs[idx] = packedPubInp
+			raw.PublicInputs[i] = obj
 		}
 	}
 
-	// Marshall extra data
+	// Extra data (map order not fixed; preserved as-is)
 	{
-
-		mapIdx := 0
-		for key, extraDataAny := range comp.ExtraData {
-			rawExtraData := RawExtraData{Key: key, Value: extraDataAny}
-			packedExtraData, err := s.PackStructObject(reflect.ValueOf(rawExtraData))
+		i := 0
+		for k, v := range comp.ExtraData {
+			rawED := RawExtraData{Key: k, Value: v}
+			obj, err := s.PackStructObject(reflect.ValueOf(rawED))
 			if err != nil {
 				return 0, err.wrapPath("(compiled-IOP-extra-data)")
 			}
-			rawCompiledIOP.ExtraData[mapIdx] = packedExtraData
-			mapIdx++
+			raw.ExtraData[i] = obj
+			i++
 		}
 	}
 
-	// ------- Round specific data
-
+	// Columns
 	{
 		backRefCol, err := s.PackStore(comp.Columns)
 		if err != nil {
 			return 0, err.wrapPath("(compiled-IOP-columns-store)")
 		}
-		rawCompiledIOP.Columns = backRefCol
-		// Outer loop - round
-		for round := 0; round < rawCompiledIOP.NumRounds; round++ {
+		raw.Columns = backRefCol
+	}
 
-			// Pack coins faster
-			{
-				coinNames := comp.Coins.AllKeysAt(round)
-				rawCompiledIOP.Coins[round] = make([]BackReference, len(coinNames))
-				for i, coinName := range coinNames {
-					c := comp.Coins.Data(coinName)
-					backRefCoin, err := s.PackCoin(c)
-					if err != nil {
-						return 0, err.wrapPath("(compiled-IOP-coins)")
-					}
-					rawCompiledIOP.Coins[round][i] = backRefCoin
+	for round := 0; round < raw.NumRounds; round++ {
+
+		// Coins
+		{
+			coinNames := comp.Coins.AllKeysAt(round)
+			raw.Coins[round] = make([]BackReference, len(coinNames))
+			for i, name := range coinNames {
+				c := comp.Coins.Data(name)
+				br, err := s.PackCoin(c)
+				if err != nil {
+					return 0, err.wrapPath("(compiled-IOP-coins)")
 				}
+				raw.Coins[round][i] = br
 			}
+		}
 
-			// Pack queries faster
-			{
-				// Pack query Params faster
-				{
-					queriesParams := comp.QueriesParams.AllKeysAt(round)
-					rawCompiledIOP.QueriesParams[round] = make([]RawQuery, len(queriesParams))
-					for i, queryID := range queriesParams {
-						query := comp.QueriesParams.Data(queryID)
-						// if comp.QueriesParams.IsIgnored(queryID) {
-						// 	logrus.Printf("ignoring query %v", queryID)
-						// }
-						backRef, err := s.PackQuery(query)
-						if err != nil {
-							return 0, err.wrapPath("(ser-compiled-IOP-queries-params)")
-						}
-
-						val := reflect.ValueOf(query)
-						concreteTypeStr := getPkgPathAndTypeNameIndirect(val.Interface())
-						if _, err := findRegisteredImplementation(concreteTypeStr); err != nil {
-							return 0, newSerdeErrorf("attempted to serialize unregistered type repr=%q type=%v: %v", concreteTypeStr, val.Type().String(), err)
-						}
-
-						if _, ok := s.typeMap[concreteTypeStr]; !ok {
-							s.PackedObject.Types = append(s.PackedObject.Types, concreteTypeStr)
-							s.typeMap[concreteTypeStr] = len(s.PackedObject.Types) - 1
-						}
-
-						rawCompiledIOP.QueriesParams[round][i] = RawQuery{
-							BackReference:                 backRef,
-							ConcreteType:                  s.typeMap[concreteTypeStr],
-							IsIgnored:                     comp.QueriesParams.IsIgnored(queryID),
-							IsSkippedFromProverTranscript: comp.QueriesParams.IsSkippedFromProverTranscript(queryID),
-						}
-					}
-				}
-
-				// Pack query NoParams faster
-				{
-					queriesNoParams := comp.QueriesNoParams.AllKeysAt(round)
-					rawCompiledIOP.QueriesNoParams[round] = make([]RawQuery, len(queriesNoParams))
-					for i, queryID := range queriesNoParams {
-						query := comp.QueriesNoParams.Data(queryID)
-						backRef, err := s.PackQuery(query)
-						if err != nil {
-							return 0, err.wrapPath("(ser-compiled-IOP-queries-no-params)")
-						}
-
-						val := reflect.ValueOf(query)
-						concreteTypeStr := getPkgPathAndTypeNameIndirect(val.Interface())
-						if _, err := findRegisteredImplementation(concreteTypeStr); err != nil {
-							return 0, newSerdeErrorf("attempted to serialize unregistered type repr=%q type=%v: %v", concreteTypeStr, val.Type().String(), err)
-						}
-
-						if _, ok := s.typeMap[concreteTypeStr]; !ok {
-							s.PackedObject.Types = append(s.PackedObject.Types, concreteTypeStr)
-							s.typeMap[concreteTypeStr] = len(s.PackedObject.Types) - 1
-						}
-
-						rawCompiledIOP.QueriesNoParams[round][i] = RawQuery{
-							BackReference:                 backRef,
-							ConcreteType:                  s.typeMap[concreteTypeStr],
-							IsIgnored:                     comp.QueriesNoParams.IsIgnored(queryID),
-							IsSkippedFromProverTranscript: comp.QueriesNoParams.IsSkippedFromProverTranscript(queryID),
-						}
-					}
-				}
+		// Queries
+		{
+			if list, e := s.packQueriesParamsRound(comp, round); e != nil {
+				return 0, e
+			} else {
+				raw.QueriesParams[round] = list
 			}
-
-			// Pack subProverActions faster
-			{
-				proverActions := comp.SubProvers.GetOrEmpty(round)
-				//logrus.Printf("** Outer Prover actions %v", proverActions)
-				rawCompiledIOP.Subprovers[round] = make([]RawData, len(proverActions))
-				for i, subProverAction := range proverActions {
-					obj, serr, skipped := s.packProverAction(subProverAction, "(compiled-IOP-subprovers[%d])", i)
-					if serr != nil {
-						return 0, serr
-					}
-					if skipped {
-						continue
-					}
-					rawCompiledIOP.Subprovers[round][i] = obj
-				}
+			if list, e := s.packQueriesNoParamsRound(comp, round); e != nil {
+				return 0, e
+			} else {
+				raw.QueriesNoParams[round] = list
 			}
+		}
 
-			// Pack FSHookPreSampling faster
-			{
-				hookActions := comp.FiatShamirHooksPreSampling.GetOrEmpty(round)
-				// logrus.Printf("** Outer Hook actions %v", hookActions)
-				rawCompiledIOP.FiatShamirHooksPreSampling[round] = make([]RawData, len(hookActions))
-				for i, hookAction := range hookActions {
-					// logrus.Printf("**** Packing hookAction: %v\n at round %d", hookAction, round)
-					obj, serr, skipped := s.packVerifierAction(hookAction, "(compiled-IOP-fiatshamirhooks-pre-sampling[%d])", i)
-					if serr != nil {
-						return 0, serr
-					}
-					if skipped {
-						continue
-					}
-					rawCompiledIOP.FiatShamirHooksPreSampling[round][i] = obj
+		// Prover actions
+		{
+			provers := comp.SubProvers.GetOrEmpty(round)
+			raw.Subprovers[round] = make([]RawData, len(provers))
+			for i, act := range provers {
+				obj, serr, skipped := s.packProverAction(act, "(compiled-IOP-subprovers[%d])", i)
+				if serr != nil {
+					return 0, serr
 				}
-			}
-
-			// Pack verifierActions faster
-			{
-				verifierActions := comp.SubVerifiers.GetOrEmpty(round)
-				rawCompiledIOP.SubVerifiers[round] = make([]RawData, len(verifierActions))
-				for i, verifierAction := range verifierActions {
-					obj, serr, skipped := s.packVerifierAction(verifierAction, "(compiled-IOP-subverifiers[%d])", i)
-					if serr != nil {
-						return 0, serr
-					}
-					if skipped {
-						continue
-					}
-					rawCompiledIOP.SubVerifiers[round][i] = obj
+				if skipped {
+					continue
 				}
+				raw.Subprovers[round][i] = obj
 			}
+		}
 
+		// FS hooks pre-sampling
+		{
+			hooks := comp.FiatShamirHooksPreSampling.GetOrEmpty(round)
+			raw.FiatShamirHooksPreSampling[round] = make([]RawData, len(hooks))
+			for i, hook := range hooks {
+				obj, serr, skipped := s.packVerifierAction(hook, "(compiled-IOP-fiatshamirhooks-pre-sampling[%d])", i)
+				if serr != nil {
+					return 0, serr
+				}
+				if skipped {
+					continue
+				}
+				raw.FiatShamirHooksPreSampling[round][i] = obj
+			}
+		}
+
+		// Verifier actions
+		{
+			verifiers := comp.SubVerifiers.GetOrEmpty(round)
+			raw.SubVerifiers[round] = make([]RawData, len(verifiers))
+			for i, act := range verifiers {
+				obj, serr, skipped := s.packVerifierAction(act, "(compiled-IOP-subverifiers[%d])", i)
+				if serr != nil {
+					return 0, serr
+				}
+				if skipped {
+					continue
+				}
+				raw.SubVerifiers[round][i] = obj
+			}
 		}
 	}
 
-	s.PackedObject.CompiledIOPFast[refIdx] = *rawCompiledIOP
+	s.PackedObject.CompiledIOPFast[refIdx] = *raw
 	return BackReference(refIdx), nil
 }
+
+// -------------------- constructor with Reserve --------------------
 
 func newEmptyCompiledIOP(rawCompIOP RawCompiledIOP) *wizard.CompiledIOP {
 	comp := &wizard.CompiledIOP{
@@ -443,257 +384,228 @@ func newEmptyCompiledIOP(rawCompIOP RawCompiledIOP) *wizard.CompiledIOP {
 	return comp
 }
 
-func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *serdeError) {
+// -------------------- query/action unpack helpers --------------------
 
+// Query unpackers per register (no closures inside functions)
+func (d *Deserializer) unpackQueriesRound(reg *wizard.ByRoundRegister[ifaces.QueryID, ifaces.Query],
+	raws []RawQuery, round int, contextLabel string) *serdeError {
+	for _, rq := range raws {
+		ctStr := d.PackedObject.Types[rq.ConcreteType]
+		ct, err := findRegisteredImplementation(ctStr)
+		if err != nil {
+			return newSerdeErrorf("could not find registered implementation for concrete type: %w", err)
+		}
+
+		val, se := d.UnpackQuery(rq.BackReference, ct)
+		if se != nil {
+			return se.wrapPath("(deser compiled-IOP-queries-" + contextLabel + ")")
+		}
+
+		q, ok := val.Interface().(ifaces.Query)
+		if !ok {
+			return newSerdeErrorf("illegal cast to ifaces.Query")
+		}
+
+		reg.AddToRound(round, q.Name(), q)
+		if rq.IsIgnored {
+			reg.MarkAsIgnored(q.Name())
+		}
+		if rq.IsSkippedFromProverTranscript {
+			reg.MarkAsSkippedFromProverTranscript(q.Name())
+		}
+	}
+	return nil
+}
+
+// Wrappers for clarity and call-site compatibility:
+func (d *Deserializer) unpackQueriesParamsRound(de *wizard.CompiledIOP, raws []RawQuery, round int) *serdeError {
+	return d.unpackQueriesRound(&de.QueriesParams, raws, round, "params")
+}
+
+func (d *Deserializer) unpackQueriesNoParamsRound(de *wizard.CompiledIOP, raws []RawQuery, round int) *serdeError {
+	return d.unpackQueriesRound(&de.QueriesNoParams, raws, round, "no-params")
+}
+
+func (d *Deserializer) unpackProverActionsRound(de *wizard.CompiledIOP, raws []RawData, round int) *serdeError {
+	for _, r := range raws {
+		ctStr := d.PackedObject.Types[r.ConcreteType]
+		ct, err := findRegisteredImplementation(ctStr)
+		if err != nil {
+			return newSerdeErrorf("could not find registered implementation for prover action: %w", err)
+		}
+		res, se := d.UnpackStructObject(r.ConcreteValue, ct)
+		if se != nil {
+			return se.wrapPath("(deser compiled-IOP-subprovers)")
+		}
+		act, ok := res.Addr().Interface().(wizard.ProverAction)
+		if !ok {
+			return newSerdeErrorf("could not deser because illegal cast to prover action")
+		}
+		de.RegisterProverAction(round, act)
+	}
+	return nil
+}
+
+func (d *Deserializer) unpackVerifierActionsRound(de *wizard.CompiledIOP, raws []RawData, round int) *serdeError {
+	for _, r := range raws {
+		ctStr := d.PackedObject.Types[r.ConcreteType]
+		ct, err := findRegisteredImplementation(ctStr)
+		if err != nil {
+			return newSerdeErrorf("could not find registered implementation for prover action: %w", err)
+		}
+		res, se := d.UnpackStructObject(r.ConcreteValue, ct)
+		if se != nil {
+			return newSerdeErrorf("could not unpack struct object for verifier action: %w", se)
+		}
+		act, ok := res.Addr().Interface().(wizard.VerifierAction)
+		if !ok {
+			return newSerdeErrorf("could not deser because illegal cast to verifier action")
+		}
+		de.RegisterVerifierAction(round, act)
+	}
+	return nil
+}
+
+func (d *Deserializer) unpackFSHooksRound(de *wizard.CompiledIOP, raws []RawData, round int) *serdeError {
+	for _, r := range raws {
+		ctStr := d.PackedObject.Types[r.ConcreteType]
+		ct, err := findRegisteredImplementation(ctStr)
+		if err != nil {
+			return newSerdeErrorf("could not find registered implementation for prover action: %w", err)
+		}
+		res, se := d.UnpackStructObject(r.ConcreteValue, ct)
+		if se != nil {
+			return newSerdeErrorf("could not unpack struct object for verifier action: %w", se)
+		}
+		h, ok := res.Addr().Interface().(wizard.VerifierAction)
+		if !ok {
+			return newSerdeErrorf("could not deser because illegal cast to verifier action")
+		}
+		de.FiatShamirHooksPreSampling.AppendToInner(round, h)
+	}
+	return nil
+}
+
+// -------------------- unpacking --------------------
+
+func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *serdeError) {
 	if v < 0 || int(v) >= len(d.PackedObject.CompiledIOPFast) {
 		return reflect.Value{}, newSerdeErrorf("invalid compiled-IOP backreference: %v", v)
 	}
-
-	// Cache Hit first => Already deserialized
 	if d.CompiledIOPsFast[v] != nil {
 		return reflect.ValueOf(d.CompiledIOPsFast[v]), nil
 	}
+	raw := d.PackedObject.CompiledIOPFast[v]
 
-	// Unpack the raw compiled iop
-	packedRawCompiledIOP := d.PackedObject.CompiledIOPFast[v]
+	// Reserve the cache and outer shapes up-front
+	de := newEmptyCompiledIOP(raw)
+	d.CompiledIOPsFast[v] = de
+	de.SubProvers.Reserve(raw.NumRounds)
+	de.SubVerifiers.Reserve(raw.NumRounds)
+	de.FiatShamirHooksPreSampling.Reserve(raw.NumRounds)
 
-	// Reserve the cache
-	deCompIOP := newEmptyCompiledIOP(packedRawCompiledIOP)
-	d.CompiledIOPsFast[v] = deCompIOP
-
-	// Start unpacking the raw compiled iop
-
-	// Unmarshall Field.Element
+	// FiatShamirSetup
 	{
-		f, err := unmarshalBigInt(d, *packedRawCompiledIOP.FiatShamirSetup, TypeOfBigInt)
+		f, err := unmarshalBigInt(d, *raw.FiatShamirSetup, TypeOfBigInt)
 		if err != nil {
 			return reflect.Value{}, err.wrapPath("(deser compiled-IOP-fiatshamirsetup)")
 		}
-		deCompIOP.FiatShamirSetup.SetBigInt(f.Interface().(*big.Int))
+		de.FiatShamirSetup.SetBigInt(f.Interface().(*big.Int))
 	}
 
-	// Unpack column store
+	// Columns
 	{
-		storeVal, err := d.UnpackStore(packedRawCompiledIOP.Columns)
+		storeVal, err := d.UnpackStore(raw.Columns)
 		if err != nil {
 			return reflect.Value{}, err.wrapPath("(deser. compiled-IOP-columns)")
 		}
-		deCompIOP.Columns = storeVal.Interface().(*column.Store)
+		de.Columns = storeVal.Interface().(*column.Store)
 	}
 
-	// Non-round specific data
+	// Precomputed
+	for _, rp := range raw.Precomputed {
+		res, err := d.UnpackStructObject(rp, typeofRawPrecomputedData)
+		if err != nil {
+			return reflect.Value{}, newSerdeErrorf("could not unpack struct object for raw pre-computed data: %w", err)
+		}
+		pre, ok := res.Interface().(RawPrecomputed)
+		if !ok {
+			return reflect.Value{}, newSerdeErrorf("could not cast to RawPrecomputed: %w", err)
+		}
+		de.Precomputed.InsertNew(pre.ColID, pre.ColAssign)
+	}
 
-	// Unmarshall precomputed data
-	{
-		for _, rawPrecomp := range packedRawCompiledIOP.Precomputed {
-			res, err := d.UnpackStructObject(rawPrecomp, typeofRawPrecomputedData)
+	// PcsCtxs
+	if raw.PcsCtxs != nil {
+		pcsVal, err := d.UnpackInterface(raw.PcsCtxs, typeofPcsCtxs)
+		if err != nil {
+			return reflect.Value{}, err.wrapPath("(deser compiled-IOP-pcsctxs)")
+		}
+		de.PcsCtxs = pcsVal.Interface()
+	} else {
+		de.PcsCtxs = nil
+	}
+
+	// Public inputs
+	for i, rpi := range raw.PublicInputs {
+		res, err := d.UnpackStructObject(rpi, typeofRawPublicInput)
+		if err != nil {
+			return reflect.Value{}, newSerdeErrorf("could not unpack struct object for raw public input: %w", err)
+		}
+		pi, ok := res.Interface().(RawPublicInput)
+		if !ok {
+			return reflect.Value{}, newSerdeErrorf("could not cast to raw public input: %w", err)
+		}
+		de.PublicInputs[i] = wizard.PublicInput{Name: pi.Name, Acc: pi.Acc}
+	}
+
+	// Extra data
+	for _, red := range raw.ExtraData {
+		res, err := d.UnpackStructObject(red, typeofRawExtraData)
+		if err != nil {
+			return reflect.Value{}, newSerdeErrorf("could not unpack struct object for raw extra data: %w", err)
+		}
+		ed, ok := res.Interface().(RawExtraData)
+		if !ok {
+			return reflect.Value{}, newSerdeErrorf("could not cast to raw extra data: %w", err)
+		}
+		de.ExtraData[ed.Key] = ed.Value
+	}
+
+	// Rounds
+	for round := 0; round < raw.NumRounds; round++ {
+		// Coins
+		for _, br := range raw.Coins[round] {
+			val, err := d.UnpackCoin(br)
 			if err != nil {
-				return reflect.Value{}, newSerdeErrorf("could not unpack struct object for raw pre-computed data: %w", err)
+				return reflect.Value{}, err.wrapPath("(deser compiled-IOP-coins)")
 			}
-
-			precomp, ok := res.Interface().(RawPrecomputed)
+			info, ok := val.Interface().(coin.Info)
 			if !ok {
-				return reflect.Value{}, newSerdeErrorf("could not cast to RawPrecomputed: %w", err)
+				return reflect.Value{}, newSerdeErrorf("illegal cast to *coin.Info: %w", err)
 			}
+			de.Coins.AddToRound(round, info.Name, info)
+		}
 
-			deCompIOP.Precomputed.InsertNew(precomp.ColID, precomp.ColAssign)
+		// Queries
+		if se := d.unpackQueriesParamsRound(de, raw.QueriesParams[round], round); se != nil {
+			return reflect.Value{}, se
+		}
+		if se := d.unpackQueriesNoParamsRound(de, raw.QueriesNoParams[round], round); se != nil {
+			return reflect.Value{}, se
+		}
+
+		// Actions and hooks
+		if se := d.unpackProverActionsRound(de, raw.Subprovers[round], round); se != nil {
+			return reflect.Value{}, se
+		}
+		if se := d.unpackFSHooksRound(de, raw.FiatShamirHooksPreSampling[round], round); se != nil {
+			return reflect.Value{}, se
+		}
+		if se := d.unpackVerifierActionsRound(de, raw.SubVerifiers[round], round); se != nil {
+			return reflect.Value{}, se
 		}
 	}
 
-	// Unmarshall pcsctx
-	{
-		// During deserialization:
-		if packedRawCompiledIOP.PcsCtxs != nil {
-			pcsVal, err := d.UnpackInterface(packedRawCompiledIOP.PcsCtxs, typeofPcsCtxs)
-			if err != nil {
-				return reflect.Value{}, err.wrapPath("(deser compiled-IOP-pcsctxs)")
-			}
-			deCompIOP.PcsCtxs = pcsVal.Interface()
-		} else {
-			deCompIOP.PcsCtxs = nil
-		}
-	}
-
-	// Unmarshall public input
-	{
-		for idx, rawPubInp := range packedRawCompiledIOP.PublicInputs {
-			res, err := d.UnpackStructObject(rawPubInp, typeofRawPublicInput)
-			if err != nil {
-				return reflect.Value{}, newSerdeErrorf("could not unpack struct object for raw public input: %w", err)
-			}
-
-			pubInp, ok := res.Interface().(RawPublicInput)
-			if !ok {
-				return reflect.Value{}, newSerdeErrorf("could not cast to raw public input: %w", err)
-			}
-			deCompIOP.PublicInputs[idx] = wizard.PublicInput{
-				Name: pubInp.Name,
-				Acc:  pubInp.Acc,
-			}
-		}
-	}
-
-	// Unmarshall extradata
-	{
-		for _, rawExtraData := range packedRawCompiledIOP.ExtraData {
-			res, err := d.UnpackStructObject(rawExtraData, typeofRawExtraData)
-			if err != nil {
-				return reflect.Value{}, newSerdeErrorf("could not unpack struct object for raw extra data: %w", err)
-			}
-			extraData, ok := res.Interface().(RawExtraData)
-			if !ok {
-				return reflect.Value{}, newSerdeErrorf("could not cast to raw extra data: %w", err)
-			}
-			deCompIOP.ExtraData[extraData.Key] = extraData.Value
-		}
-	}
-
-	// ------- Round specific data
-	{
-		for round := 0; round < packedRawCompiledIOP.NumRounds; round++ {
-
-			// Unpack coins
-			{
-				for _, backRef := range packedRawCompiledIOP.Coins[round] {
-					val, err := d.UnpackCoin(backRef)
-					if err != nil {
-						return reflect.Value{}, err.wrapPath("(deser compiled-IOP-coins)")
-					}
-
-					coinInfo, ok := val.Interface().(coin.Info)
-					if !ok {
-						return reflect.Value{}, newSerdeErrorf("illegal cast to *coin.Info: %w", err)
-					}
-					deCompIOP.Coins.AddToRound(round, coinInfo.Name, coinInfo)
-				}
-			}
-
-			// Unpack queries faster
-			{
-				for _, rawQuery := range packedRawCompiledIOP.QueriesParams[round] {
-					concreteTypeStr := d.PackedObject.Types[rawQuery.ConcreteType]
-					// logrus.Printf("Deser QUERY params concreteTypeStr: %v", concreteTypeStr)
-					concreteType, err := findRegisteredImplementation(concreteTypeStr)
-					if err != nil {
-						return reflect.Value{}, newSerdeErrorf("could not find registered implementation for concrete type: %w", err)
-					}
-					// logrus.Printf("queryRawIface.ConcreteType: %v", concreteType)
-					res, serdeErr := d.UnpackQuery(rawQuery.BackReference, concreteType)
-					if serdeErr != nil {
-						return reflect.Value{}, serdeErr.wrapPath("(deser compiled-IOP-queries-params)")
-					}
-
-					query, ok := res.Interface().(ifaces.Query)
-					if !ok {
-						return reflect.Value{}, newSerdeErrorf("illegal cast to ifaces.Query: %w", err)
-					}
-
-					deCompIOP.QueriesParams.AddToRound(round, query.Name(), query)
-					if rawQuery.IsIgnored {
-						deCompIOP.QueriesParams.MarkAsIgnored(query.Name())
-					}
-
-					if rawQuery.IsSkippedFromProverTranscript {
-						deCompIOP.QueriesNoParams.MarkAsSkippedFromProverTranscript(query.Name())
-					}
-				}
-
-				for _, rawQuery := range packedRawCompiledIOP.QueriesNoParams[round] {
-					concreteTypeStr := d.PackedObject.Types[rawQuery.ConcreteType]
-					//logrus.Printf("Deser QUERY no params concreteTypeStr: %v", concreteTypeStr)
-					concreteType, err := findRegisteredImplementation(concreteTypeStr)
-					if err != nil {
-						return reflect.Value{}, newSerdeErrorf("could not find registered implementation for concrete type: %w", err)
-					}
-					//logrus.Printf("queryRawIface.ConcreteType: %v", concreteType)
-					res, serdeErr := d.UnpackQuery(rawQuery.BackReference, concreteType)
-					if serdeErr != nil {
-						return reflect.Value{}, serdeErr.wrapPath("(deser compiled-IOP-queries-params)")
-					}
-
-					query, ok := res.Interface().(ifaces.Query)
-					if !ok {
-						return reflect.Value{}, newSerdeErrorf("illegal cast to ifaces.Query: %w", err)
-					}
-
-					deCompIOP.QueriesNoParams.AddToRound(round, query.Name(), query)
-					if rawQuery.IsIgnored {
-						deCompIOP.QueriesNoParams.MarkAsIgnored(query.Name())
-					}
-
-					if rawQuery.IsSkippedFromProverTranscript {
-						deCompIOP.QueriesNoParams.MarkAsSkippedFromProverTranscript(query.Name())
-					}
-				}
-			}
-
-			// Unpack prover actions
-			{
-				for _, proverRawIface := range packedRawCompiledIOP.Subprovers[round] {
-					concreteTypeStr := d.PackedObject.Types[proverRawIface.ConcreteType]
-					//logrus.Printf("Deser PROVER action concreteTypeStr: %v", concreteTypeStr)
-					concreteType, err := findRegisteredImplementation(concreteTypeStr)
-					if err != nil {
-						return reflect.Value{}, newSerdeErrorf("could not find registered implementation for prover action: %w", err)
-					}
-					// logrus.Printf("proverRawIface.ConcreteType: %v", concreteType)
-					res, serdeErr := d.UnpackStructObject(proverRawIface.ConcreteValue, concreteType)
-					if serdeErr != nil {
-						return reflect.Value{}, serdeErr.wrapPath("(deser compiled-IOP-subprovers)")
-					}
-
-					proverAction, ok := res.Addr().Interface().(wizard.ProverAction)
-					if !ok {
-						return reflect.Value{}, newSerdeErrorf("could not deser because illegal cast to prover action: %w", err)
-					}
-
-					deCompIOP.RegisterProverAction(round, proverAction)
-				}
-			}
-
-			// Unpack FS hooks
-			{
-				for _, fsRawIface := range packedRawCompiledIOP.FiatShamirHooksPreSampling[round] {
-					concreteTypeStr := d.PackedObject.Types[fsRawIface.ConcreteType]
-					concreteType, err := findRegisteredImplementation(concreteTypeStr)
-					if err != nil {
-						return reflect.Value{}, newSerdeErrorf("could not find registered implementation for prover action: %w", err)
-					}
-					res, serdeErr := d.UnpackStructObject(fsRawIface.ConcreteValue, concreteType)
-					if serdeErr != nil {
-						return reflect.Value{}, newSerdeErrorf("could not unpack struct object for verifier action: %w", err)
-					}
-
-					fsHook, ok := res.Addr().Interface().(wizard.VerifierAction)
-					if !ok {
-						return reflect.Value{}, newSerdeErrorf("could not deser because illegal cast to verifier action: %w", err)
-					}
-					deCompIOP.FiatShamirHooksPreSampling.AppendToInner(round, fsHook)
-				}
-			}
-
-			// Unpack verifier action
-			{
-				for _, verifierRawIface := range packedRawCompiledIOP.SubVerifiers[round] {
-					concreteTypeStr := d.PackedObject.Types[verifierRawIface.ConcreteType]
-					concreteType, err := findRegisteredImplementation(concreteTypeStr)
-					if err != nil {
-						return reflect.Value{}, newSerdeErrorf("could not find registered implementation for prover action: %w", err)
-					}
-					res, serdeErr := d.UnpackStructObject(verifierRawIface.ConcreteValue, concreteType)
-					if serdeErr != nil {
-						return reflect.Value{}, newSerdeErrorf("could not unpack struct object for verifier action: %w", err)
-					}
-
-					verifierAction, ok := res.Addr().Interface().(wizard.VerifierAction)
-					if !ok {
-						return reflect.Value{}, newSerdeErrorf("could not deser because illegal cast to verifier action: %w", err)
-					}
-					deCompIOP.RegisterVerifierAction(round, verifierAction)
-				}
-			}
-
-		}
-	}
 	return reflect.ValueOf(d.CompiledIOPsFast[v]), nil
 }
