@@ -423,17 +423,6 @@ func evalNodeBase(solver *evaluation[chunkBase], na *evaluationNode[chunkBase]) 
 				vRes.Add(vRes, vTmp)
 			}
 		}
-	case PolyEval:
-		// result = input[0] + input[1]·x + input[2]·x² + input[3]·x³ + ...
-		// i.e., ∑_{i=0}^{n} input[i]·x^i
-		x := na.inputs[0][0] // we assume that the first input is always a constant
-		copy(vRes, field.Vector(na.inputs[len(na.inputs)-1][:]))
-
-		for i := len(na.inputs) - 2; i >= 1; i-- {
-			vTmp := field.Vector(na.inputs[i][:])
-			vRes.ScalarMul(vRes, &x)
-			vRes.Add(vRes, vTmp)
-		}
 	default:
 		utils.Panic("unknown op %T", na.op)
 	}
