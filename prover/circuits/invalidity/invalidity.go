@@ -10,7 +10,6 @@ import (
 	gmimc "github.com/consensys/gnark/std/hash/mimc"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
-	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -107,7 +106,7 @@ func (c *CircuitInvalidity) MakeProof(
 	switch assi.InvalidityType {
 	case BadNonce, BadBalance:
 		c.SubCircuit = &BadNonceBalanceCircuit{}
-		assi.KeccakCompiledIOP, assi.KeccakProof = MakeKeccakProofs(assi.Transaction, assi.MaxRlpByteSize, internal.WizardCompilationParameters()...)
+		assi.KeccakCompiledIOP, assi.KeccakProof = MakeKeccakProofs(assi.Transaction, assi.MaxRlpByteSize, circuits.WizardCompilationParameters()...)
 
 	default:
 		panic("unsupported invalidity type")

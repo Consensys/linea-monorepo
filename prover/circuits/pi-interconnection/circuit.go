@@ -403,7 +403,7 @@ func NewBuilder(c config.PublicInput) circuits.Builder {
 }
 
 func (b builder) Compile() (constraint.ConstraintSystem, error) {
-	c, err := Compile(*b.PublicInput, internal.WizardCompilationParameters()...)
+	c, err := Compile(*b.PublicInput, circuits.WizardCompilationParameters()...)
 	if err != nil {
 		return nil, err
 	}
