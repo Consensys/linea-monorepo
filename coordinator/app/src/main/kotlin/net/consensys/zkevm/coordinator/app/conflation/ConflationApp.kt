@@ -29,7 +29,9 @@ import net.consensys.zkevm.coordinator.blockcreation.GethCliqueSafeBlockProvider
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.TracesGeneratorJsonRpcClientV2
 import net.consensys.zkevm.coordinator.clients.prover.ProverClientFactory
+import net.consensys.zkevm.domain.Batch
 import net.consensys.zkevm.domain.BlocksConflation
+import net.consensys.zkevm.domain.ProofIndex
 import net.consensys.zkevm.ethereum.coordination.HighestConflationTracker
 import net.consensys.zkevm.ethereum.coordination.HighestProvenBatchTracker
 import net.consensys.zkevm.ethereum.coordination.HighestProvenBlobTracker
@@ -276,9 +278,11 @@ class ConflationApp(
           maxInflightRequestsPerClient = configs.traces.counters.requestLimitPerEndpoint,
           requestTimeout = configs.traces.counters.requestTimeout?.inWholeMilliseconds,
           log = tracesCountersLog,
+          requestPriorityComparator = TracesGeneratorJsonRpcClientV2.requestPriorityComparator,
         ),
         config = TracesGeneratorJsonRpcClientV2.Config(
           expectedTracesApiVersion = configs.traces.expectedTracesApiVersion,
+          ignoreTracesGeneratorErrors = configs.traces.ignoreTracesGeneratorErrors,
         ),
         retryConfig = configs.traces.counters.requestRetries.toJsonRpcRetry(),
         log = tracesCountersLog,
@@ -294,9 +298,11 @@ class ConflationApp(
           maxInflightRequestsPerClient = configs.traces.conflation.requestLimitPerEndpoint,
           requestTimeout = configs.traces.conflation.requestTimeout?.inWholeMilliseconds,
           log = tracesConflationLog,
+          requestPriorityComparator = TracesGeneratorJsonRpcClientV2.requestPriorityComparator,
         ),
         config = TracesGeneratorJsonRpcClientV2.Config(
           expectedTracesApiVersion = configs.traces.expectedTracesApiVersion,
+          ignoreTracesGeneratorErrors = configs.traces.ignoreTracesGeneratorErrors,
         ),
         retryConfig = configs.traces.conflation.requestRetries.toJsonRpcRetry(),
         log = tracesConflationLog,
@@ -341,6 +347,14 @@ class ConflationApp(
         ),
         batchProofHandler = batchProofHandler,
         vertx = vertx,
+        batchAlreadyProvenSupplier = { batch: Batch ->
+          executionProverClient.isProofAlreadyDone(
+            proofRequestId = ProofIndex(
+              batch.startBlockNumber,
+              batch.endBlockNumber,
+            ),
+          )
+        },
         config = ProofGeneratingConflationHandlerImpl.Config(5.seconds),
       )
 
