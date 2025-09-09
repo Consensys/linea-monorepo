@@ -5,6 +5,8 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import { ERC20VotesUpgradeable } from
+    "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
 import { IRewardDistributor } from "./interfaces/IRewardDistributor.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -14,7 +16,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
  * @notice This contract allows for setting rewards for reward distributors.
  * @dev Implementation of the Karma token
  */
-contract Karma is Initializable, ERC20Upgradeable, UUPSUpgradeable, AccessControlUpgradeable {
+contract Karma is Initializable, ERC20VotesUpgradeable, UUPSUpgradeable, AccessControlUpgradeable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /// @notice Emitted when the address is invalid
@@ -44,7 +46,7 @@ contract Karma is Initializable, ERC20Upgradeable, UUPSUpgradeable, AccessContro
     event SlashPercentageUpdated(uint256 oldPercentage, uint256 newPercentage);
 
     /*//////////////////////////////////////////////////////////////////////////
-                                  CONSTATNS
+                                  CONSTANTS
     //////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Maximum slash percentage (in basis points: 100% = 10000)
@@ -119,6 +121,7 @@ contract Karma is Initializable, ERC20Upgradeable, UUPSUpgradeable, AccessContro
             revert Karma__InvalidAddress();
         }
         __ERC20_init(NAME, SYMBOL);
+        __ERC20Votes_init();
         __UUPSUpgradeable_init();
         __AccessControl_init();
 
