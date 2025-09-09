@@ -9,7 +9,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -106,19 +106,30 @@ func (r InnerProduct) Check(run ifaces.Runtime) error {
 
 func (r InnerProduct) Compute(run ifaces.Runtime) []fext.Element {
 
-	res := make([]fext.Element, len(r.Bs))
+	res := make([]field.Element, len(r.Bs))
+	liftRes := make([]fext.Element, len(r.Bs))
+
 	a := r.A.GetColAssignment(run)
-	a = smartvectors_mixed.LiftToExt(a)
+	// a = smartvectors_mixed.LiftToExt(a)
 
 	for i := range r.Bs {
 
 		b := r.Bs[i].GetColAssignment(run)
-		b = smartvectors_mixed.LiftToExt(b)
-		ab := smartvectors_mixed.Mul(a, b)
-		res[i] = smartvectors.SumExt(ab)
+
+		// fmt.Printf("product all base=%v\n", b.Pretty())
+
+		// b = smartvectors_mixed.LiftToExt(b)
+		ab := smartvectors.Mul(a, b)
+		// ab = smartvectors_mixed.LiftToExt(ab)
+
+		res[i] = smartvectors.Sum(ab)
+		// ab := smartvectors_mixed.Mul(a, b)
+		// res[i] = smartvectors.SumExt(ab)
+		liftRes[i] = fext.Lift(res[i])
 	}
 
-	return res
+	return liftRes
+
 }
 
 // Check the inner-product manually
