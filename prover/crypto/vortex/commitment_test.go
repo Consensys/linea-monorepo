@@ -53,6 +53,7 @@ func TestLinearCombination(t *testing.T) {
 var testCaseParameters = []*Params{
 	NewParams(2, 1<<4, 32, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, poseidon2.NewMerkleDamgardHasher),
 	NewParams(4, 1<<3, 32, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, poseidon2.NewMerkleDamgardHasher),
+	NewParams(4, 1<<3, 32, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, nil),
 }
 
 func TestProver(t *testing.T) {
@@ -73,33 +74,33 @@ func TestProver(t *testing.T) {
 		// the testCase provides to the prover. If nil, then this is equivalent
 		// to `f(n) -> n`.
 		ChangeAssignmentSize func(int) int
-		// Flag denoting if we are committing with SIS+MiMC hash or MiMC hash
-		IsSisReplacedByMiMC []bool
-		MustPanic           bool
+		// Flag denoting if we are committing with SIS+Poseidon2 hash or Poseidon2 hash
+		IsSisReplacedByPoseidon2 []bool
+		MustPanic                bool
 	}{
 		{
-			Explainer:             "1 matrix commitment with one poly with SIS commitment",
-			NumPolysPerCommitment: []int{1},
-			IsSisReplacedByMiMC:   []bool{false},
-			NumOpenedColumns:      4,
+			Explainer:                "1 matrix commitment with one poly with SIS commitment",
+			NumPolysPerCommitment:    []int{1},
+			IsSisReplacedByPoseidon2: []bool{false},
+			NumOpenedColumns:         4,
 		},
 		{
-			Explainer:             "1 matrix commitment with several polys without SIS commitment",
-			NumPolysPerCommitment: []int{3},
-			IsSisReplacedByMiMC:   []bool{true},
-			NumOpenedColumns:      4,
+			Explainer:                "1 matrix commitment with several polys without SIS commitment",
+			NumPolysPerCommitment:    []int{3},
+			IsSisReplacedByPoseidon2: []bool{true},
+			NumOpenedColumns:         4,
 		},
 		{
-			Explainer:             "2 matrix commitment with several polys with SIS commitment",
-			NumPolysPerCommitment: []int{3, 3},
-			IsSisReplacedByMiMC:   []bool{false, false},
-			NumOpenedColumns:      8,
+			Explainer:                "2 matrix commitment with several polys with SIS commitment",
+			NumPolysPerCommitment:    []int{3, 3},
+			IsSisReplacedByPoseidon2: []bool{false, false},
+			NumOpenedColumns:         8,
 		},
 		{
-			Explainer:             "1 matrix commitment with several polys with SIS and no SIS commitment",
-			NumPolysPerCommitment: []int{1, 15},
-			IsSisReplacedByMiMC:   []bool{false, true},
-			NumOpenedColumns:      8,
+			Explainer:                "1 matrix commitment with several polys with SIS and no SIS commitment",
+			NumPolysPerCommitment:    []int{1, 15},
+			IsSisReplacedByPoseidon2: []bool{false, true},
+			NumOpenedColumns:         8,
 		},
 		{
 			Explainer:             "too many rows",
@@ -178,20 +179,20 @@ func TestProver(t *testing.T) {
 				t.Logf("params=%++v test-case=%++v", params, testCase)
 
 				var (
-					numCommitments      = len(testCase.NumPolysPerCommitment)
-					effPolySize         = params.NbColumns
-					polyLists           = make([][]smartvectors.SmartVector, numCommitments)
-					yLists              = make([][]fext.Element, numCommitments)
-					roots               = make([]types.Bytes32, numCommitments)
-					trees               = make([]*smt.Tree, numCommitments)
-					isSisReplacedByMiMC = make([]bool, numCommitments)
+					numCommitments           = len(testCase.NumPolysPerCommitment)
+					effPolySize              = params.NbColumns
+					polyLists                = make([][]smartvectors.SmartVector, numCommitments)
+					yLists                   = make([][]fext.Element, numCommitments)
+					roots                    = make([]types.Bytes32, numCommitments)
+					trees                    = make([]*smt.Tree, numCommitments)
+					isSisReplacedByPoseidon2 = make([]bool, numCommitments)
 				)
 
 				if testCase.ChangeAssignmentSize != nil {
 					effPolySize = testCase.ChangeAssignmentSize(effPolySize)
 				}
-				if testCase.IsSisReplacedByMiMC != nil {
-					isSisReplacedByMiMC = testCase.IsSisReplacedByMiMC
+				if testCase.IsSisReplacedByPoseidon2 != nil {
+					isSisReplacedByPoseidon2 = testCase.IsSisReplacedByPoseidon2
 				}
 
 				for i := range polyLists {
@@ -231,7 +232,7 @@ func TestProver(t *testing.T) {
 				// Commits to it
 				committedMatrices := make([]EncodedMatrix, numCommitments)
 				for i := range trees {
-					if !isSisReplacedByMiMC[i] {
+					if !isSisReplacedByPoseidon2[i] {
 						committedMatrices[i], trees[i], _ = params.CommitMerkleWithSIS(polyLists[i])
 					} else {
 						committedMatrices[i], trees[i], _ = params.CommitMerkleWithoutSIS(polyLists[i])
@@ -246,14 +247,14 @@ func TestProver(t *testing.T) {
 				// Check the proof
 				err := VerifyOpening(
 					&VerifierInputs{
-						Params:              *params,
-						MerkleRoots:         roots,
-						X:                   x,
-						Ys:                  yLists,
-						OpeningProof:        *proof,
-						RandomCoin:          randomCoin,
-						EntryList:           entryList[:testCase.NumOpenedColumns],
-						IsSISReplacedByMiMC: isSisReplacedByMiMC,
+						Params:                   *params,
+						MerkleRoots:              roots,
+						X:                        x,
+						Ys:                       yLists,
+						OpeningProof:             *proof,
+						RandomCoin:               randomCoin,
+						EntryList:                entryList[:testCase.NumOpenedColumns],
+						IsSISReplacedByPoseidon2: isSisReplacedByPoseidon2,
 					})
 
 				require.NoError(t, err)
@@ -273,6 +274,7 @@ func TestVerifierNegative(t *testing.T) {
 		params = []*Params{
 			NewParams(2, 8, 17, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, poseidon2.NewMerkleDamgardHasher),
 			NewParams(2, 8, 17, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, poseidon2.NewMerkleDamgardHasher),
+			NewParams(2, 8, 17, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, nil),
 		}
 
 		statementMutatorCorpus = []struct {

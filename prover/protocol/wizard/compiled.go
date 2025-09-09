@@ -628,6 +628,23 @@ func (c *CompiledIOP) InsertMiMC(round int, id ifaces.QueryID, block, old, new i
 	return q
 }
 
+func (c *CompiledIOP) InsertPoseidon2(round int, id ifaces.QueryID, block, old, new [8]ifaces.Column, selector ifaces.Column) query.Poseidon2 {
+
+	for i := 0; i < 8; i++ {
+		c.checkColumnInStore(block[i])
+		c.checkColumnInStore(old[i])
+		c.checkColumnInStore(new[i])
+	}
+
+	if selector != nil {
+		c.checkColumnInStore(selector)
+	}
+
+	q := query.NewPoseidon2(id, block, old, new, selector)
+	c.QueriesNoParams.AddToRound(round, id, q)
+	return q
+}
+
 // RegistersVerifyingKey registers a column as part of the verifying key of the
 // protocol; meaning a column whose assignment is static and which is visible
 // to the verifier.

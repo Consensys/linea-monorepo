@@ -15,6 +15,7 @@
 package vectorext
 
 import (
+	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 )
@@ -22,32 +23,35 @@ import (
 // Add adds two vectors element-wise and stores the result in self.
 // It panics if the vectors don't have the same length.
 func (vector *Vector) Add(a, b Vector) {
-	addVecGeneric(*vector, a, b)
+	v := extensions.Vector(*vector)
+	v.Add(extensions.Vector(a), extensions.Vector(b))
 }
 
 // Sub subtracts two vectors element-wise and stores the result in self.
 // It panics if the vectors don't have the same length.
 func (vector *Vector) Sub(a, b Vector) {
-	subVecGeneric(*vector, a, b)
+	v := extensions.Vector(*vector)
+	v.Sub(extensions.Vector(a), extensions.Vector(b))
 }
 
 // ScalarMul multiplies a vector by a scalar element-wise and stores the result in self.
 // It panics if the vectors don't have the same length.
 func (vector *Vector) ScalarMul(a Vector, b *fext.Element) {
-	scalarMulVecGeneric(*vector, a, b)
+	v := extensions.Vector(*vector)
+	v.ScalarMul(extensions.Vector(a), b)
 }
 
 // Sum computes the sum of all elements in the vector.
 func (vector *Vector) Sum() (res fext.Element) {
-	sumVecGeneric(&res, *vector)
-	return
+	v := extensions.Vector(*vector)
+	return v.Sum()
 }
 
 // InnerProduct computes the inner product of two vectors.
 // It panics if the vectors don't have the same length.
 func (vector *Vector) InnerProduct(other Vector) (res fext.Element) {
-	innerProductVecGeneric(&res, *vector, other)
-	return
+	v := extensions.Vector(*vector)
+	return v.InnerProduct(extensions.Vector(other))
 }
 
 // InnerProduct computes the inner product of two vectors.
@@ -60,5 +64,6 @@ func (vector *Vector) InnerProductByElement(other []field.Element) (res fext.Ele
 // Mul multiplies two vectors element-wise and stores the result in self.
 // It panics if the vectors don't have the same length.
 func (vector *Vector) Mul(a, b Vector) {
-	mulVecGeneric(*vector, a, b)
+	v := extensions.Vector(*vector)
+	v.Mul(extensions.Vector(a), extensions.Vector(b))
 }
