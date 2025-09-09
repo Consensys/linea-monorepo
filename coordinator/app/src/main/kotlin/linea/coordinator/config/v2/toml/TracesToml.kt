@@ -7,7 +7,6 @@ import kotlin.time.Duration.Companion.seconds
 
 data class TracesToml(
   val expectedTracesApiVersion: String,
-  // val common: ClientApiConfigToml? = null,
   val endpoints: List<URL>? = null,
   val requestLimitPerEndpoint: UInt = UInt.MAX_VALUE,
   val requestTimeout: Duration? = null,
@@ -22,7 +21,7 @@ data class TracesToml(
   val new: TracesToml? = null,
 ) {
   init {
-    require(endpoints != null || (counters !== null && conflation !== null)) {
+    require(endpoints != null || (counters?.endpoints !== null && conflation?.endpoints !== null)) {
       "either traces.endpoints " +
         "or traces.counters.endpoints and traces.conflation.endpoints must be set"
     }
