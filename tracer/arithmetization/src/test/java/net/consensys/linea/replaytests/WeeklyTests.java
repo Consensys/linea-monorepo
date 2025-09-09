@@ -26,9 +26,9 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @Disabled
-@Tag("nightly")
+@Tag("weekly")
 @ExtendWith(UnitTestWatcher.class)
-public class NightlyTests extends TracerTestBase {
+public class WeeklyTests extends TracerTestBase {
   @Test
   void leoFailingRange(TestInfo testInfo) {
     replay(OLD_MAINNET_TESTCONFIG, "5389571-5389577.mainnet.json.gz", testInfo);

@@ -25,7 +25,6 @@ jobs:
         run: GOMAXPROCS=10 GOMEMLIMIT=20GiB ./gradlew nightlyTests
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
-          CORSET_FLAGS: disable
           GOCORSET_FLAGS: -v --ansi-escapes=false --report --mir
           NIGHTLY_TESTS_PARALLELISM: 2
           ZKEVM_FORK: LONDON
