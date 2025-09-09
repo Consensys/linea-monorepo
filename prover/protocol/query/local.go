@@ -132,7 +132,7 @@ func (cs LocalConstraint) Check(run ifaces.Runtime) error {
 		Sanity-check : n (the number of element used for the evaluation)
 		should be equal to the length of metadata
 	*/
-	evalRes := board.EvaluateMixed(inputs)
+	evalRes := board.Evaluate(inputs)
 	res := sv.GetGenericElemOfSmartvector(evalRes, 0)
 	/*
 		If the query is satisfied, the result should be zero. In

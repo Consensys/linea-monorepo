@@ -165,7 +165,7 @@ func (e *FromExprAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 			}
 		}
 
-		return e.Boarded.EvaluateExt(inputs).GetExt(0)
+		return e.Boarded.Evaluate(inputs).GetExt(0)
 	}
 }
 
