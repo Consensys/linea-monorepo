@@ -31,6 +31,8 @@ contract Karma is Initializable, ERC20Upgradeable, UUPSUpgradeable, AccessContro
     error Karma__InvalidSlashPercentage();
     /// @notice Emitted when balance to slash is invalid
     error Karma__CannotSlashZeroBalance();
+    /// @notice Emitted when there are insufficient funds to transfer
+    error Karma__InsufficientTransferBalance();
 
     /// @notice Emitted when a reward distributor is added
     event RewardDistributorAdded(address distributor);
@@ -60,6 +62,7 @@ contract Karma is Initializable, ERC20Upgradeable, UUPSUpgradeable, AccessContro
     string public constant SYMBOL = "KARMA";
     /// @notice The total allocation for all reward distributors
     uint256 public totalDistributorAllocation;
+    /// @notice The total amount of slashed tokens
     uint256 public totalSlashAmount;
     /// @notice Set of reward distributors
     EnumerableSet.AddressSet private rewardDistributors;
@@ -69,6 +72,8 @@ contract Karma is Initializable, ERC20Upgradeable, UUPSUpgradeable, AccessContro
     mapping(address distributor => mapping(address account => uint256 slashAmount)) public rewardDistributorSlashAmount;
     /// @notice Mapping of accounts to their slashed amount for internal balance
     mapping(address account => uint256 slashAmount) public accountSlashAmount;
+    /// @notice Maps addresses to their transfer permission
+    mapping(address account => bool whitelisted) public allowedToTransfer;
     /// @notice Percentage of Karma to slash (in basis points: 1% = 100, 10% = 1000, 100% = 10000)
     uint256 public slashPercentage;
 
@@ -159,6 +164,19 @@ contract Karma is Initializable, ERC20Upgradeable, UUPSUpgradeable, AccessContro
     }
 
     /**
+     * @notice Sets whether an account is allowed to transfer tokens.
+     * @dev Only the admin can set transfer permissions.
+     * @param account The address of the account.
+     * @param allowed Boolean indicating whether the account is allowed to transfer tokens.
+     */
+    function setAllowedToTransfer(address account, bool allowed) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (account == address(0)) {
+            revert Karma__InvalidAddress();
+        }
+        allowedToTransfer[account] = allowed;
+    }
+
+    /**
      * @notice Sets the reward for a reward distributor.
      * @dev Only the owner can set the reward for a reward distributor.
      * @dev The total allocation for all reward distributors is updated.
@@ -204,8 +222,18 @@ contract Karma is Initializable, ERC20Upgradeable, UUPSUpgradeable, AccessContro
         return _calculateSlashAmount(value);
     }
 
-    function transfer(address, uint256) public pure override returns (bool) {
-        revert Karma__TransfersNotAllowed();
+    /**
+     * @notice Transfers tokens from the caller to a specified address.
+     * @dev Transfers are only allowed if the caller is whitelisted in `allowedToTransfer`.
+     * @dev Reverts if `amount` exceeds `accountSlashAmount`.
+     * @param to The address to transfer tokens to.
+     * @param amount The amount of tokens to transfer.
+     * @return A boolean value indicating whether the operation succeeded.
+     */
+    function transfer(address to, uint256 amount) public override returns (bool) {
+        address owner = _msgSender();
+        _transfer(owner, to, amount);
+        return true;
     }
 
     function approve(address, uint256) public pure override returns (bool) {
@@ -219,6 +247,19 @@ contract Karma is Initializable, ERC20Upgradeable, UUPSUpgradeable, AccessContro
     /*//////////////////////////////////////////////////////////////////////////
                            INTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/
+
+    function _beforeTokenTransfer(address from, address to, uint256 amount) internal override {
+        if (from != address(0)) {
+            if (!allowedToTransfer[msg.sender]) {
+                revert Karma__TransfersNotAllowed();
+            }
+
+            uint256 transferableBalance = super.balanceOf(from) - accountSlashAmount[from];
+            if (amount > transferableBalance) {
+                revert Karma__InsufficientTransferBalance();
+            }
+        }
+    }
 
     function _totalSupply() internal view returns (uint256) {
         return super.totalSupply() + _externalSupply();

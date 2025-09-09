@@ -7,6 +7,7 @@ methods {
     function totalSupply() external returns (uint256) envfree;
     function externalSupply() external returns (uint256) envfree;
     function accountSlashAmount(address) external returns (uint256) envfree;
+    function allowedToTransfer(address) external returns (bool) envfree;
     function _.setReward(uint256, uint256) external => DISPATCHER(true);
     function _.rewardsBalanceOfAccount(address) external => DISPATCHER(true);
     function hasRole(bytes32, address) external returns (bool) envfree;
@@ -66,14 +67,17 @@ invariant totalDistributorAllocationIsSumOfDistributorAllocations()
 //     assert externalSupply() <= totalDistributorAllocation();
 // }
 
-rule erc20TransferIsDisabled(method f) {
+rule erc20TransferIsDisabledForNonWhitelistedAccounts(method f) {
     env e;
     calldataarg args;
+
+    bool isWhiteListed = allowedToTransfer(e.msg.sender);
 
     f@withrevert(e, args);
     bool isReverted = lastReverted;
 
-    assert isERC20TransferFunction(f) => isReverted;
+
+    assert isERC20TransferFunction(f) && !isWhiteListed => isReverted;
 }
 
 rule adminFuncsOnlyCallableByAdmin(method f) {
