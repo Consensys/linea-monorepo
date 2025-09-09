@@ -17,15 +17,15 @@ package net.consensys.linea.zktracer.module.txndata.moduleOperation.transactions
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.Fork.isPostPrague;
 import static net.consensys.linea.zktracer.Trace.*;
+import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.USER;
 import static net.consensys.linea.zktracer.module.txndata.moduleOperation.ShanghaiTxndataOperation.MAX_INIT_CODE_SIZE_BYTES;
-import static net.consensys.linea.zktracer.module.txndata.moduleOperation.TxnDataOperationPerspectivized.TransactionCategory.*;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import java.math.BigInteger;
 
 import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.module.txndata.module.*;
-import net.consensys.linea.zktracer.module.txndata.moduleOperation.TxnDataOperationPerspectivized;
+import net.consensys.linea.zktracer.module.txndata.moduleOperation.TxnDataOperationCancun;
 import net.consensys.linea.zktracer.module.txndata.rows.*;
 import net.consensys.linea.zktracer.module.txndata.rows.computationRows.EucRow;
 import net.consensys.linea.zktracer.module.txndata.rows.computationRows.WcpRow;
@@ -34,7 +34,7 @@ import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
-public class UserTransaction extends TxnDataOperationPerspectivized {
+public class UserTransaction extends TxnDataOperationCancun {
 
   private static final Bytes EIP_2681_MAX_NONCE = bigIntegerToBytes(EIP2681_MAX_NONCE);
   public final TransactionProcessingMetadata txn;

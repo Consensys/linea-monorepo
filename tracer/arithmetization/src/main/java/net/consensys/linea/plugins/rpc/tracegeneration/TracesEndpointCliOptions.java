@@ -36,12 +36,11 @@ public class TracesEndpointCliOptions implements LineaCliOptions {
       description = "Path to where traces will be written")
   private String tracesOutputPath = null;
 
-
   @CommandLine.Option(
-          names = {CACHING},
-          hidden = true,
-          paramLabel = "<CACHING>",
-          description = "Reuse existing trace files when available")
+      names = {CACHING},
+      hidden = true,
+      paramLabel = "<CACHING>",
+      description = "Reuse existing trace files when available")
   private boolean caching = true;
 
   private TracesEndpointCliOptions() {}
@@ -75,14 +74,17 @@ public class TracesEndpointCliOptions implements LineaCliOptions {
    */
   @Override
   public TracesEndpointConfiguration toDomainObject() {
-    return TracesEndpointConfiguration.builder().tracesOutputPath(tracesOutputPath).caching(caching).build();
+    return TracesEndpointConfiguration.builder()
+        .tracesOutputPath(tracesOutputPath)
+        .caching(caching)
+        .build();
   }
 
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
         .add(CONFLATED_TRACE_GENERATION_TRACES_OUTPUT_PATH, tracesOutputPath)
-            .add(CACHING, caching)
-            .toString();
+        .add(CACHING, caching)
+        .toString();
   }
 }

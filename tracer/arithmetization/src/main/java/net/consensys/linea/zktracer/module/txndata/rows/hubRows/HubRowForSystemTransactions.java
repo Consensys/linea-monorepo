@@ -22,10 +22,10 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 public class HubRowForSystemTransactions extends HubRow {
 
   public EWord systemTransactionData1;
-  public EWord systemTransactionData2;
+  public long systemTransactionData2;
   public EWord systemTransactionData3;
   public EWord systemTransactionData4;
-  public EWord systemTransactionData5;
+  public boolean systemTransactionData5;
   public final Type type;
 
   public HubRowForSystemTransactions(ProcessableBlockHeader header, Hub hub, Type type) {
@@ -38,10 +38,10 @@ public class HubRowForSystemTransactions extends HubRow {
     super.traceRow(trace);
     trace
         .pHubSystTxnData1(type == Type.NOOP ? EWord.ZERO : systemTransactionData1)
-        .pHubSystTxnData2(type == Type.NOOP ? EWord.ZERO : systemTransactionData2)
+        .pHubSystTxnData2(type == Type.NOOP ? 0 : systemTransactionData2)
         .pHubSystTxnData3(type == Type.NOOP ? EWord.ZERO : systemTransactionData3)
         .pHubSystTxnData4(type == Type.NOOP ? EWord.ZERO : systemTransactionData4)
-        .pHubSystTxnData5(type == Type.NOOP ? EWord.ZERO : systemTransactionData5)
+        .pHubSystTxnData5(!(type == Type.NOOP) && systemTransactionData5)
         .pHubEip2935(type == Type.EIP2935)
         .pHubEip4788(type == Type.EIP4788)
         .pHubNoop(type == Type.NOOP);

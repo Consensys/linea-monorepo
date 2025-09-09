@@ -15,7 +15,7 @@
 package net.consensys.linea.zktracer.module.txndata.moduleOperation;
 
 import static com.google.common.base.Preconditions.checkState;
-import static net.consensys.linea.zktracer.module.txndata.moduleOperation.TxnDataOperationPerspectivized.TransactionCategory.*;
+import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +23,7 @@ import java.util.List;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
 import net.consensys.linea.zktracer.module.txndata.BlockSnapshot;
 import net.consensys.linea.zktracer.module.txndata.module.PerspectivizedTxnData;
 import net.consensys.linea.zktracer.module.txndata.moduleOperation.transactions.UserTransaction;
@@ -30,7 +31,7 @@ import net.consensys.linea.zktracer.module.txndata.rows.TxnDataRow;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
-public abstract class TxnDataOperationPerspectivized extends TxnDataOperation {
+public abstract class TxnDataOperationCancun extends TxnDataOperation {
   public final ProcessableBlockHeader blockHeader;
   public final Hub hub;
   public final Euc euc;
@@ -40,13 +41,7 @@ public abstract class TxnDataOperationPerspectivized extends TxnDataOperation {
   public final short userTransactionNumber;
   public final short sysfTransactionNumber;
   public final List<TxnDataRow> rows = new ArrayList<>();
-  public final TransactionCategory category;
-
-  public enum TransactionCategory {
-    SYSI,
-    USER,
-    SYSF,
-  }
+  public final TransactionProcessingType category;
 
   protected abstract int ctMax();
 
@@ -56,8 +51,7 @@ public abstract class TxnDataOperationPerspectivized extends TxnDataOperation {
     return rows.size();
   }
 
-  public TxnDataOperationPerspectivized(
-      PerspectivizedTxnData txnData, TransactionCategory category) {
+  public TxnDataOperationCancun(PerspectivizedTxnData txnData, TransactionProcessingType category) {
     blockHeader = txnData.getCurrentBlockHeader();
     hub = txnData.hub();
     wcp = hub.wcp();
@@ -81,7 +75,7 @@ public abstract class TxnDataOperationPerspectivized extends TxnDataOperation {
 
   private void traceCommonSaveForFlags(Trace.Txndata trace, int ct) {
     trace
-        .blkNumber(relativeBlockNumber)
+        // BLK_NUMBER is (defcomputed ...)
         // TOTL_TXN_NUMBER is (defcomputed ...)
         .sysiTxnNumber(sysiTransactionNumber)
         .userTxnNumber(userTransactionNumber)

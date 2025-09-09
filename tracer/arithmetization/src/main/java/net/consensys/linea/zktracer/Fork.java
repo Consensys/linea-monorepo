@@ -15,18 +15,20 @@
 
 package net.consensys.linea.zktracer;
 
+import static net.consensys.linea.zktracer.Trace.*;
+
 /**
  * release numbers of forks are defined from the <b>Ethereum Protocol Releases</b> table in <a
  * href="https://github.com/ethereum/execution-specs">execution specs</a> repo. We start counting at
  * 1 and include all named releases, including aborted ones (such as "DAO Wars").
  */
 public enum Fork {
-  LONDON(14),
-  PARIS(17),
-  SHANGHAI(18),
-  CANCUN(19),
-  PRAGUE(20),
-  OSAKA(21) // not yet live on L1
+  LONDON(EVM_LONDON),
+  PARIS(EVM_PARIS),
+  SHANGHAI(EVM_SHANGHAI),
+  CANCUN(EVM_CANCUN),
+  PRAGUE(EVM_PRAGUE),
+  OSAKA(EVM_OSAKA) // not yet live on L1
 ;
 
   private final int releaseNumber;

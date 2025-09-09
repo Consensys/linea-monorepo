@@ -17,24 +17,20 @@ package net.consensys.linea.zktracer.module.txndata.moduleOperation.transactions
 import static com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.Fork.isPostCancun;
 import static net.consensys.linea.zktracer.Trace.HISTORY_BUFFER_LENGTH;
-import static net.consensys.linea.zktracer.module.txndata.moduleOperation.TxnDataOperationPerspectivized.TransactionCategory.*;
+import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.SYSI;
 import static net.consensys.linea.zktracer.module.txndata.rows.computationRows.EucRow.callToEuc;
 import static net.consensys.linea.zktracer.module.txndata.rows.computationRows.WcpRow.smallCallToIszero;
-import static net.consensys.linea.zktracer.module.txndata.rows.computationRows.WcpRow.smallCallToLeq;
 import static net.consensys.linea.zktracer.module.txndata.rows.hubRows.Type.EIP4788;
 
 import net.consensys.linea.zktracer.module.txndata.module.PerspectivizedTxnData;
-import net.consensys.linea.zktracer.module.txndata.moduleOperation.TxnDataOperationPerspectivized;
+import net.consensys.linea.zktracer.module.txndata.moduleOperation.TxnDataOperationCancun;
 import net.consensys.linea.zktracer.module.txndata.rows.computationRows.EucRow;
 import net.consensys.linea.zktracer.module.txndata.rows.computationRows.WcpRow;
 import net.consensys.linea.zktracer.module.txndata.rows.hubRows.HubRowForSystemTransactions;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes32;
 
-public class SysiEip4788Transaction extends TxnDataOperationPerspectivized {
-
-  private final long NONSENSE_CANCUN_HARDFORK_TIMESTAMP =
-      0x1337L; // Placeholder for the actual Prague fork timestamp
+public class SysiEip4788Transaction extends TxnDataOperationCancun {
 
   public SysiEip4788Transaction(final PerspectivizedTxnData txnData) {
     super(txnData, SYSI);
@@ -46,7 +42,6 @@ public class SysiEip4788Transaction extends TxnDataOperationPerspectivized {
     hubRow();
     computeTimestampModulo8191ComputationRow();
     detectTheGenesisBlockComputationRow();
-    compareTimestampToLineaCancunForkTimestampComputationRow();
   }
 
   protected void hubRow() {
@@ -59,16 +54,15 @@ public class SysiEip4788Transaction extends TxnDataOperationPerspectivized {
             : Bytes32.ZERO;
 
     hubRow.systemTransactionData1 = EWord.of(timestamp);
-    hubRow.systemTransactionData2 = EWord.of(timestamp % HISTORY_BUFFER_LENGTH);
+    hubRow.systemTransactionData2 = timestamp % HISTORY_BUFFER_LENGTH;
     hubRow.systemTransactionData3 = EWord.of(EWord.of(parentBeaconBlockRoot).hi());
     hubRow.systemTransactionData4 = EWord.of(EWord.of(parentBeaconBlockRoot).lo());
-    hubRow.systemTransactionData5 = EWord.of(blockHeader.getNumber() == 0 ? 1 : 0);
+    hubRow.systemTransactionData5 = blockHeader.getNumber() == 0;
 
     rows.add(hubRow);
   }
 
   private void computeTimestampModulo8191ComputationRow() {
-    // TODO: use the prime constant
     EucRow row = callToEuc(euc, blockHeader.getTimestamp(), HISTORY_BUFFER_LENGTH);
     rows.add(row);
   }
@@ -78,14 +72,8 @@ public class SysiEip4788Transaction extends TxnDataOperationPerspectivized {
     rows.add(row);
   }
 
-  private void compareTimestampToLineaCancunForkTimestampComputationRow() {
-    WcpRow row =
-        smallCallToLeq(wcp, NONSENSE_CANCUN_HARDFORK_TIMESTAMP, blockHeader.getTimestamp());
-    rows.add(row);
-  }
-
   @Override
   protected int ctMax() {
-    return 3;
+    return 2;
   }
 }

@@ -41,19 +41,21 @@ public class TraceWriter {
   /**
    * Check whether the corresponding trace file already exists, or not.
    *
-   * @param startBlockNumber            start block number for conflation.
-   * @param endBlockNumber              end block number for conflation.
+   * @param startBlockNumber start block number for conflation.
+   * @param endBlockNumber end block number for conflation.
    * @param expectedTracesEngineVersion expected version of tracer
    * @param besuVersion
    * @return True if the trace file exists.
    */
-  public Path traceFilePath(final long startBlockNumber,
-                            final long endBlockNumber,
-                            final String expectedTracesEngineVersion,
-                            final String besuVersion) {
+  public Path traceFilePath(
+      final long startBlockNumber,
+      final long endBlockNumber,
+      final String expectedTracesEngineVersion,
+      final String besuVersion) {
     // Generate the original and final trace file name.
     final String origTraceFileName =
-      generateOutputFileName(startBlockNumber, endBlockNumber, expectedTracesEngineVersion, besuVersion);
+        generateOutputFileName(
+            startBlockNumber, endBlockNumber, expectedTracesEngineVersion, besuVersion);
     // Generate and resolve the original and final trace file path.
     return generateOutputFilePath(tracesOutputDirPath, origTraceFileName + TRACE_FILE_EXTENSION);
   }
@@ -67,7 +69,8 @@ public class TraceWriter {
       final String besuVersion) {
     // Generate the original and final trace file name.
     final String origTraceFileName =
-        generateOutputFileName(startBlockNumber, endBlockNumber, expectedTracesEngineVersion, besuVersion);
+        generateOutputFileName(
+            startBlockNumber, endBlockNumber, expectedTracesEngineVersion, besuVersion);
     // Generate and resolve the original and final trace file path.
     final Path origTraceFilePath =
         generateOutputFilePath(tracesOutputDirPath, origTraceFileName + TRACE_FILE_EXTENSION);
@@ -108,7 +111,8 @@ public class TraceWriter {
       try {
         traceFile = Files.createTempFile(tracesOutputDirPath, prefix, suffix);
       } catch (IOException f) {
-        log.error("Still Failing while creating tmp file {} {} {}", tracesOutputDirPath, prefix, suffix);
+        log.error(
+            "Still Failing while creating tmp file {} {} {}", tracesOutputDirPath, prefix, suffix);
         throw new RuntimeException(e);
       }
     }
