@@ -101,7 +101,7 @@ func TestHashModXnMinusOne(t *testing.T) {
 }
 
 func TestLimbSplit(t *testing.T) {
-	var rng = rand.New(utils.NewRandSource(0))
+	var rng = rand.New(utils.NewRandSource(0)) // #nosec G404
 	randX := field.PseudoRand(rng)
 
 	arrays := [][]field.Element{

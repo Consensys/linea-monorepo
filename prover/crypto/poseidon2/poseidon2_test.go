@@ -12,7 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-var rng = rand.New(utils.NewRandSource(0))
+var rng = rand.New(utils.NewRandSource(0)) // #nosec G404
 
 // Test different input sizes to ensure consistency with the Merkle-Damgard construction.
 var testCases = []struct {
