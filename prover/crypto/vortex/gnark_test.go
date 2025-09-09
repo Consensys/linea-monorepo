@@ -310,7 +310,7 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	randomCoin = fext.RandomElement()
 	entryList = []int{1, 5, 19, 645}
 
-	params := NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, poseidon2.NewMerkleDamgardHasher)
+	params := NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, nil)
 
 	polyLists := make([][]smartvectors.SmartVector, nCommitments)
 	yLists = make([][]fext.Element, nCommitments)

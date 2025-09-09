@@ -46,54 +46,54 @@ type SubModuleParameters struct {
 
 var (
 	benchCases = []StdBenchmarkCase{
+		// {
+		// 	Name: "minimal",
+		// 	Permutations: SubModuleParameters{
+		// 		Count:  1,
+		// 		NumCol: 1,
+		// 		NumRow: 1 << 10,
+		// 	},
+		// 	Lookup: SubModuleParameters{
+		// 		Count:     1,
+		// 		NumCol:    1,
+		// 		NumRow:    1 << 10,
+		// 		NumRowAux: 1 << 10,
+		// 	},
+		// 	Projection: SubModuleParameters{
+		// 		Count:     1,
+		// 		NumCol:    1,
+		// 		NumRow:    1 << 10,
+		// 		NumRowAux: 1 << 10,
+		// 	},
+		// 	Fibo: SubModuleParameters{
+		// 		Count:  1,
+		// 		NumRow: 1 << 10,
+		// 	},
+		// },
 		{
-			Name: "minimal",
+			Name: "realistic-segment",
 			Permutations: SubModuleParameters{
-				Count:  1,
-				NumCol: 1,
-				NumRow: 1 << 10,
+				Count:  5,
+				NumCol: 3,
+				NumRow: 1 << 20,
 			},
 			Lookup: SubModuleParameters{
-				Count:     1,
-				NumCol:    1,
-				NumRow:    1 << 10,
-				NumRowAux: 1 << 10,
+				Count:     50,
+				NumCol:    3,
+				NumRow:    1 << 20,
+				NumRowAux: 1 << 20,
 			},
 			Projection: SubModuleParameters{
-				Count:     1,
-				NumCol:    1,
-				NumRow:    1 << 10,
-				NumRowAux: 1 << 10,
+				Count:     5,
+				NumCol:    3,
+				NumRow:    1 << 20,
+				NumRowAux: 1 << 20,
 			},
 			Fibo: SubModuleParameters{
-				Count:  1,
-				NumRow: 1 << 10,
+				Count:  200,
+				NumRow: 1 << 20,
 			},
 		},
-		// 	{
-		// 		Name: "realistic-segment",
-		// 		Permutations: SubModuleParameters{
-		// 			Count:  5,
-		// 			NumCol: 3,
-		// 			NumRow: 1 << 20,
-		// 		},
-		// 		Lookup: SubModuleParameters{
-		// 			Count:     50,
-		// 			NumCol:    3,
-		// 			NumRow:    1 << 20,
-		// 			NumRowAux: 1 << 20,
-		// 		},
-		// 		Projection: SubModuleParameters{
-		// 			Count:     5,
-		// 			NumCol:    3,
-		// 			NumRow:    1 << 20,
-		// 			NumRowAux: 1 << 20,
-		// 		},
-		// 		Fibo: SubModuleParameters{
-		// 			Count:  200,
-		// 			NumRow: 1 << 20,
-		// 		},
-		// 	},
 		// {
 		// 	Name: "smaller-segment",
 		// 	Permutations: SubModuleParameters{
