@@ -189,8 +189,11 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 
 		// Prover actions
 		{
-			provers := comp.SubProvers.GetOrEmpty(round)
-			packedComp.Subprovers[round] = make([]RawData, len(provers))
+
+			copy := comp.SubProvers
+			packedComp.Subprovers[round] = make([]RawData, copy.LenOf(round))
+
+			provers := comp.SubProvers.MustGet(round)
 			for i, act := range provers {
 				obj, serr, skipped := s.packProverAction(act, "(compiled-IOP-subprovers[%d])", i)
 				if serr != nil {
@@ -205,8 +208,11 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 
 		// FS hooks pre-sampling
 		{
-			hooks := comp.FiatShamirHooksPreSampling.GetOrEmpty(round)
-			packedComp.FiatShamirHooksPreSampling[round] = make([]RawData, len(hooks))
+			copy := comp.FiatShamirHooksPreSampling
+			packedComp.FiatShamirHooksPreSampling[round] = make([]RawData, copy.LenOf(round))
+
+			hooks := comp.FiatShamirHooksPreSampling.MustGet(round)
+
 			for i, hook := range hooks {
 				obj, serr, skipped := s.packVerifierAction(hook, "(compiled-IOP-fiatshamirhooks-pre-sampling[%d])", i)
 				if serr != nil {
@@ -221,8 +227,11 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 
 		// Verifier actions
 		{
-			verifiers := comp.SubVerifiers.GetOrEmpty(round)
-			packedComp.SubVerifiers[round] = make([]RawData, len(verifiers))
+
+			copy := comp.SubVerifiers
+			packedComp.SubVerifiers[round] = make([]RawData, copy.LenOf(round))
+
+			verifiers := comp.SubVerifiers.MustGet(round)
 			for i, act := range verifiers {
 				obj, serr, skipped := s.packVerifierAction(act, "(compiled-IOP-subverifiers[%d])", i)
 				if serr != nil {
@@ -461,23 +470,15 @@ func initRawCompiledIOP(comp *wizard.CompiledIOP) *PackedCompiledIOP {
 }
 
 // Query packers per register (no closures inside functions)
-func (s *Serializer) packQueriesRound(comp *wizard.CompiledIOP,
+func (s *Serializer) packQueriesRound(reg *wizard.ByRoundRegister[ifaces.QueryID, ifaces.Query],
 	round int, contextLabel string) ([]PackedQuery, *serdeError) {
-
-	var reg wizard.ByRoundRegister[ifaces.QueryID, ifaces.Query]
-	switch contextLabel {
-	case "params":
-		reg = comp.QueriesParams
-	case "no-params":
-		reg = comp.QueriesNoParams
-	default:
-		return nil, newSerdeErrorf("invalid contextLabel during packing query: %v", contextLabel)
-	}
 
 	// IMPORTANT: This `AllKeysAt` internally calls `Reserve(round+1)` which is why in the corresponding
 	// deserializer we need to do the same.
-	ids := reg.AllKeysAt(round)
-	out := make([]PackedQuery, len(ids))
+
+	copy := reg
+	out := make([]PackedQuery, copy.ByRounds.LenOf(round))
+	ids := copy.AllKeysAt(round)
 	for i, id := range ids {
 		q := reg.Data(id)
 		backRef, err := s.PackQuery(q)
@@ -503,11 +504,11 @@ func (s *Serializer) packQueriesRound(comp *wizard.CompiledIOP,
 
 // Wrappers for clarity and call-site compatibility:
 func (s *Serializer) packQueriesParamsRound(comp *wizard.CompiledIOP, round int) ([]PackedQuery, *serdeError) {
-	return s.packQueriesRound(comp, round, "params")
+	return s.packQueriesRound(&comp.QueriesParams, round, "params")
 }
 
 func (s *Serializer) packQueriesNoParamsRound(comp *wizard.CompiledIOP, round int) ([]PackedQuery, *serdeError) {
-	return s.packQueriesRound(comp, round, "no-params")
+	return s.packQueriesRound(&comp.QueriesNoParams, round, "no-params")
 }
 
 // -------------------- constructor with Reserve --------------------
@@ -529,6 +530,7 @@ func newEmptyCompiledIOP(rawCompIOP PackedCompiledIOP) *wizard.CompiledIOP {
 		ExtraData:                  make(map[string]any, len(rawCompIOP.ExtraData)),
 		PcsCtxs:                    nil,
 	}
+
 	// Ensure outer length equals NumRounds even if some rounds have zero entries
 	comp.Columns.ReserveFor(rawCompIOP.NumRounds)
 	comp.Coins.ReserveFor(rawCompIOP.NumRounds)
@@ -543,18 +545,8 @@ func newEmptyCompiledIOP(rawCompIOP PackedCompiledIOP) *wizard.CompiledIOP {
 // -------------------- query/action unpack helpers --------------------
 
 // Query unpackers per register (no closures inside functions)
-func (d *Deserializer) unpackQueriesRound(deComp *wizard.CompiledIOP,
+func (d *Deserializer) unpackQueriesRound(reg *wizard.ByRoundRegister[ifaces.QueryID, ifaces.Query],
 	raws []PackedQuery, round int, contextLabel string) *serdeError {
-
-	var reg wizard.ByRoundRegister[ifaces.QueryID, ifaces.Query]
-	switch contextLabel {
-	case "params":
-		reg = deComp.QueriesParams
-	case "no-params":
-		reg = deComp.QueriesNoParams
-	default:
-		return newSerdeErrorf("invalid contextLabel during unpacking query: %v", contextLabel)
-	}
 
 	for _, rq := range raws {
 		ctStr := d.PackedObject.Types[rq.ConcreteType]
@@ -590,11 +582,11 @@ func (d *Deserializer) unpackQueriesRound(deComp *wizard.CompiledIOP,
 
 // Wrappers for clarity and call-site compatibility:
 func (d *Deserializer) unpackQueriesParamsRound(deComp *wizard.CompiledIOP, raws []PackedQuery, round int) *serdeError {
-	return d.unpackQueriesRound(deComp, raws, round, "params")
+	return d.unpackQueriesRound(&deComp.QueriesParams, raws, round, "params")
 }
 
 func (d *Deserializer) unpackQueriesNoParamsRound(deComp *wizard.CompiledIOP, raws []PackedQuery, round int) *serdeError {
-	return d.unpackQueriesRound(deComp, raws, round, "no-params")
+	return d.unpackQueriesRound(&deComp.QueriesNoParams, raws, round, "no-params")
 }
 
 // Common helper for prover/verifier actions per round
