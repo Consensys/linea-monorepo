@@ -5,8 +5,6 @@ import (
 	"math/big"
 	"math/bits"
 
-	gnarkutils "github.com/consensys/gnark-crypto/utils"
-
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/constraint/solver"
@@ -33,14 +31,14 @@ func init() {
 func FFTInverseKoalaBear(_ *big.Int, inputs []*big.Int, results []*big.Int) error {
 
 	// TODO store this somewhere (global variable or something, shouldn't regenerate it at each call)
-	d := fft.NewDomain(uint64(len(inputs)), fft.WithCache())
+	d := fft.NewDomain(uint64(len(inputs)), fft.WithoutPrecompute())
 
 	v := make([]field.Element, len(inputs))
 	for i := 0; i < len(inputs); i++ {
 		v[i].SetBigInt(inputs[i])
 	}
 	d.FFTInverse(v, fft.DIF)
-	gnarkutils.BitReverse(v)
+	fft.BitReverse(v)
 
 	for i := 0; i < len(results); i++ {
 		results[i] = big.NewInt(0)

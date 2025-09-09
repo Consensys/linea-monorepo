@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"testing"
 
-	gnarkutils "github.com/consensys/gnark-crypto/utils"
-
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
@@ -193,7 +191,7 @@ func TestBatchEvaluateLagrangeExt(t *testing.T) {
 	polyLagrangeSv := make([]SmartVector, nbPoly)
 	for i := 0; i < nbPoly; i++ {
 		d.FFTExt(polyLagranges[i], fft.DIF)
-		gnarkutils.BitReverse(polyLagranges[i])
+		fft.BitReverse(polyLagranges[i])
 		polyLagrangeSv[i] = NewRegularExt(polyLagranges[i])
 
 	}
@@ -227,8 +225,8 @@ func TestBatchInterpolationWithConstantVectorExt(t *testing.T) {
 
 	domain.FFTExt(polys[0], fft.DIF)
 	domain.FFTExt(polys[1], fft.DIF)
-	gnarkutils.BitReverse(polys[0])
-	gnarkutils.BitReverse(polys[1])
+	fft.BitReverse(polys[0])
+	fft.BitReverse(polys[1])
 
 	yOnRoots := fastpolyext.BatchEvaluateLagrange(polys, x)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
@@ -245,8 +243,8 @@ func TestBatchInterpolationWithConstantVectorExt(t *testing.T) {
 
 	domain.FFTExt(onCosets[0], fft.DIF, fft.OnCoset())
 	domain.FFTExt(onCosets[1], fft.DIF, fft.OnCoset())
-	gnarkutils.BitReverse(onCosets[0])
-	gnarkutils.BitReverse(onCosets[1])
+	fft.BitReverse(onCosets[0])
+	fft.BitReverse(onCosets[1])
 
 	yOnCosets := fastpolyext.BatchEvaluateLagrange(onCosets, x, true)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
@@ -275,8 +273,8 @@ func TestBatchEvaluateLagrangeOnlyConstantVector(t *testing.T) {
 
 	domain.FFTExt(polys[0], fft.DIF)
 	domain.FFTExt(polys[1], fft.DIF)
-	gnarkutils.BitReverse(polys[0])
-	gnarkutils.BitReverse(polys[1])
+	fft.BitReverse(polys[0])
+	fft.BitReverse(polys[1])
 
 	yOnRoots := fastpolyext.BatchEvaluateLagrange(polys, x)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
@@ -293,8 +291,8 @@ func TestBatchEvaluateLagrangeOnlyConstantVector(t *testing.T) {
 
 	domain.FFTExt(onCosets[0], fft.DIF, fft.OnCoset())
 	domain.FFTExt(onCosets[1], fft.DIF, fft.OnCoset())
-	gnarkutils.BitReverse(onCosets[0])
-	gnarkutils.BitReverse(onCosets[1])
+	fft.BitReverse(onCosets[0])
+	fft.BitReverse(onCosets[1])
 
 	yOnCosets := fastpolyext.BatchEvaluateLagrange(onCosets, x, true)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
@@ -330,9 +328,9 @@ func TestBatchInterpolationThreeVectorsExt(t *testing.T) {
 	domain.FFTExt(polys[0], fft.DIF)
 	domain.FFTExt(polys[1], fft.DIF)
 	domain.FFTExt(polys[2], fft.DIF)
-	gnarkutils.BitReverse(polys[0])
-	gnarkutils.BitReverse(polys[1])
-	gnarkutils.BitReverse(polys[2])
+	fft.BitReverse(polys[0])
+	fft.BitReverse(polys[1])
+	fft.BitReverse(polys[2])
 
 	yOnRoots := fastpolyext.BatchEvaluateLagrange(polys, x)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
@@ -353,9 +351,9 @@ func TestBatchInterpolationThreeVectorsExt(t *testing.T) {
 	domain.FFTExt(onCosets[0], fft.DIF, fft.OnCoset())
 	domain.FFTExt(onCosets[1], fft.DIF, fft.OnCoset())
 	domain.FFTExt(onCosets[2], fft.DIF, fft.OnCoset())
-	gnarkutils.BitReverse(onCosets[0])
-	gnarkutils.BitReverse(onCosets[1])
-	gnarkutils.BitReverse(onCosets[2])
+	fft.BitReverse(onCosets[0])
+	fft.BitReverse(onCosets[1])
+	fft.BitReverse(onCosets[2])
 
 	yOnCosets := fastpolyext.BatchEvaluateLagrange(onCosets, x, true)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
