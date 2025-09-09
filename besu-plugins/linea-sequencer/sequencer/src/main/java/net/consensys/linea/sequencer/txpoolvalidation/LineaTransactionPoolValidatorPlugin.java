@@ -87,12 +87,14 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
           new LineaTransactionPoolValidatorFactory(
               besuConfiguration,
               blockchainService,
+              worldStateService,
               transactionSimulationService,
               transactionPoolValidatorConfiguration(),
               profitabilityConfiguration(),
               tracerConfiguration(),
               l1L2BridgeSharedConfiguration(),
-              rejectedTxJsonRpcManager));
+              rejectedTxJsonRpcManager,
+              getInvalidTransactionByLineCountCache()));
 
       if (metricCategoryRegistry.isMetricCategoryEnabled(TX_POOL_PROFITABILITY)) {
         final var besuEventsService =

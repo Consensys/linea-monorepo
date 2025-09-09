@@ -56,6 +56,7 @@ import org.hyperledger.besu.plugin.services.BesuConfiguration;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
 import org.hyperledger.besu.plugin.services.TransactionSimulationService;
+import org.hyperledger.besu.plugin.services.WorldStateService;
 import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 import org.hyperledger.besu.plugin.services.rpc.RpcMethodError;
@@ -86,6 +87,7 @@ public class LineaEstimateGas {
   private final TransactionSimulationService transactionSimulationService;
   private final BlockchainService blockchainService;
   private final RpcEndpointService rpcEndpointService;
+  private WorldStateService worldStateService;
   private LineaRpcConfiguration rpcConfiguration;
   private LineaTransactionPoolValidatorConfiguration txValidatorConf;
   private LineaProfitabilityConfiguration profitabilityConf;
@@ -110,7 +112,8 @@ public class LineaEstimateGas {
       final LineaTransactionPoolValidatorConfiguration transactionValidatorConfiguration,
       final LineaProfitabilityConfiguration profitabilityConf,
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
-      final LineaTracerConfiguration tracerConfiguration) {
+      final LineaTracerConfiguration tracerConfiguration,
+      final WorldStateService worldStateService) {
     this.rpcConfiguration = rpcConfiguration;
     this.txValidatorConf = transactionValidatorConfiguration;
     this.profitabilityConf = profitabilityConf;
@@ -119,6 +122,7 @@ public class LineaEstimateGas {
     this.tracerConfiguration = tracerConfiguration;
     this.moduleLineCountValidator =
         new ModuleLineCountValidator(tracerConfiguration.moduleLimitsMap());
+    this.worldStateService = worldStateService;
   }
 
   public String getNamespace() {
@@ -430,7 +434,8 @@ public class LineaEstimateGas {
             ? new ZkCounter(l1L2BridgeConfiguration)
             : new ZkTracer(LONDON, l1L2BridgeConfiguration, chainId);
     lineCountingTracer.traceStartConflation(1L);
-    lineCountingTracer.traceStartBlock(pendingBlockHeader, pendingBlockHeader.getCoinbase());
+    lineCountingTracer.traceStartBlock(
+        worldStateService.getWorldView(), pendingBlockHeader, pendingBlockHeader.getCoinbase());
     return lineCountingTracer;
   }
 

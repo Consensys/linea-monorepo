@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
-import net.consensys.linea.bundles.BundlePoolService;
 import net.consensys.linea.bundles.LineaLimitedBundlePool;
 import net.consensys.linea.bundles.TransactionBundle;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
@@ -68,9 +67,9 @@ class LineaTransactionSelectorFactoryTest {
   private LineaProfitabilityConfiguration mockProfitabilityConfiguration;
   private BesuEvents mockEvents;
   private LineaLimitedBundlePool bundlePool;
-  private BundlePoolService mockBundlePool;
   private LineaTracerConfiguration lineaTracerConfiguration;
   private LineaTransactionSelectorFactory factory;
+  private InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
 
   @TempDir static Path tempDir;
   @TempDir Path dataDir;
@@ -96,15 +95,17 @@ class LineaTransactionSelectorFactoryTest {
             .isLimitless(false)
             .build();
 
-    mockBlockchainService = mock(BlockchainService.class);
+    mockBlockchainService = mock(BlockchainService.class, RETURNS_DEEP_STUBS);
     when(mockBlockchainService.getChainId()).thenReturn(Optional.of(BigInteger.ONE));
     when(mockBlockchainService.getNextBlockBaseFee()).thenReturn(Optional.of(Wei.of(7)));
+    when(mockBlockchainService.getChainHeadHeader().getTimestamp()).thenReturn(1753867173L);
     mockTxSelectorConfiguration = mock(LineaTransactionSelectorConfiguration.class);
     l1L2BridgeConfiguration =
         new LineaL1L2BridgeSharedConfiguration(BRIDGE_CONTRACT, BRIDGE_LOG_TOPIC);
     mockProfitabilityConfiguration = mock(LineaProfitabilityConfiguration.class);
     mockEvents = mock(BesuEvents.class);
     bundlePool = spy(new LineaLimitedBundlePool(dataDir, 4096, mockEvents, mockBlockchainService));
+    invalidTransactionByLineCountCache = new InvalidTransactionByLineCountCache(10);
 
     factory =
         new LineaTransactionSelectorFactory(
@@ -115,7 +116,9 @@ class LineaTransactionSelectorFactoryTest {
             lineaTracerConfiguration,
             Optional.empty(),
             Optional.empty(),
-            bundlePool);
+            Optional.empty(),
+            bundlePool,
+            invalidTransactionByLineCountCache);
     factory.create(new SelectorsStateManager());
   }
 
