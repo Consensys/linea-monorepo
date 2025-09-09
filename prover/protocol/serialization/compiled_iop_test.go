@@ -27,8 +27,8 @@ import (
 
 var (
 	// Avoid setting both modes to true at the same time
-	isTest      = false
-	isBenchmark = true
+	isTest      = true
+	isBenchmark = false
 )
 
 // returns a dummy column name
@@ -383,7 +383,7 @@ var serdeScenarios = []serdeScenario{
 }
 
 // Test function that runs sanity checks for all scenarios with multiple test cases
-func TestSerdeAll(t *testing.T) {
+func TestSerdeIOPAll(t *testing.T) {
 	for _, scenario := range serdeScenarios {
 		if !scenario.test {
 			continue
