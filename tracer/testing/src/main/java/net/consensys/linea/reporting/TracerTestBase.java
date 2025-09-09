@@ -14,15 +14,12 @@
  */
 package net.consensys.linea.reporting;
 
+import static net.consensys.linea.zktracer.Fork.*;
+
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.opcode.OpCodes;
-import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.TestInfo;
-
-import static net.consensys.linea.zktracer.Fork.*;
 
 public class TracerTestBase {
   public static ChainConfig chainConfig;
@@ -31,24 +28,26 @@ public class TracerTestBase {
 
   @BeforeAll
   public static void init() {
-      // Configure chain information and fork before any tests are run, including any methods used as MethodSource.
-      TracerTestBase.chainConfig =
-              switch (getForkOrDefault("CANCUN")) {
-              case "LONDON" -> ChainConfig.MAINNET_TESTCONFIG(LONDON);
-              case "PARIS" -> ChainConfig.MAINNET_TESTCONFIG(PARIS);
-              case "SHANGHAI" -> ChainConfig.MAINNET_TESTCONFIG(SHANGHAI);
-              case "CANCUN" -> ChainConfig.MAINNET_TESTCONFIG(CANCUN);
-              case "PRAGUE" -> ChainConfig.MAINNET_TESTCONFIG(PRAGUE);
-              default -> throw new IllegalArgumentException(
-                  "Unknown fork: " + System.getProperty("unit.replay.tests.fork"));
-            };
+    // Configure chain information and fork before any tests are run, including any methods used as
+    // MethodSource.
+    TracerTestBase.chainConfig =
+        switch (getForkOrDefault("LONDON")) {
+          case "LONDON" -> ChainConfig.MAINNET_TESTCONFIG(LONDON);
+          case "PARIS" -> ChainConfig.MAINNET_TESTCONFIG(PARIS);
+          case "SHANGHAI" -> ChainConfig.MAINNET_TESTCONFIG(SHANGHAI);
+          case "CANCUN" -> ChainConfig.MAINNET_TESTCONFIG(CANCUN);
+          case "PRAGUE" -> ChainConfig.MAINNET_TESTCONFIG(PRAGUE);
+          default -> throw new IllegalArgumentException(
+              "Unknown fork: " + System.getProperty("unit.replay.tests.fork"));
+        };
+
     TracerTestBase.fork = TracerTestBase.chainConfig.fork;
     TracerTestBase.opcodes = OpCodes.load(fork);
   }
 
   public static String getForkOrDefault(String defaultFork) {
     String fork = System.getenv("ZKEVM_FORK");
-    if(fork != null) {
+    if (fork != null) {
       return fork;
     }
     //

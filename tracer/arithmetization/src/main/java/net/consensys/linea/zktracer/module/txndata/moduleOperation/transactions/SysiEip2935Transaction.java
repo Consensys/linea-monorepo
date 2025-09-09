@@ -17,12 +17,11 @@ package net.consensys.linea.zktracer.module.txndata.moduleOperation.transactions
 import static com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.Fork.isPostPrague;
 import static net.consensys.linea.zktracer.Trace.HISTORY_SERVE_WINDOW;
-import static net.consensys.linea.zktracer.module.txndata.moduleOperation.TxnDataOperationPerspectivized.TransactionCategory.*;
+import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.SYSI;
 import static net.consensys.linea.zktracer.module.txndata.rows.computationRows.WcpRow.smallCallToIszero;
-import static net.consensys.linea.zktracer.module.txndata.rows.computationRows.WcpRow.smallCallToLeq;
 
 import net.consensys.linea.zktracer.module.txndata.module.PerspectivizedTxnData;
-import net.consensys.linea.zktracer.module.txndata.moduleOperation.TxnDataOperationPerspectivized;
+import net.consensys.linea.zktracer.module.txndata.moduleOperation.TxnDataOperationCancun;
 import net.consensys.linea.zktracer.module.txndata.rows.computationRows.EucRow;
 import net.consensys.linea.zktracer.module.txndata.rows.computationRows.WcpRow;
 import net.consensys.linea.zktracer.module.txndata.rows.hubRows.HubRowForSystemTransactions;
@@ -30,14 +29,14 @@ import net.consensys.linea.zktracer.module.txndata.rows.hubRows.Type;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 
-public class SysiEip2935Transaction extends TxnDataOperationPerspectivized {
+public class SysiEip2935Transaction extends TxnDataOperationCancun {
 
   private final long nonsensePragueTimestamp =
       0x13370000L; // Placeholder for the actual Prague fork timestamp
 
   @Override
   protected int ctMax() {
-    return 3;
+    return 2;
   }
 
   public SysiEip2935Transaction(final PerspectivizedTxnData txnData) {
@@ -50,7 +49,6 @@ public class SysiEip2935Transaction extends TxnDataOperationPerspectivized {
     hubRow();
     detectTheGenesisBlockComputationRow();
     computePreviousBlockNumberModulo8191ComputationRow();
-    compareTimestampToLineaCancunForkTimestampComputationRow();
   }
 
   protected void hubRow() {
@@ -59,10 +57,10 @@ public class SysiEip2935Transaction extends TxnDataOperationPerspectivized {
         new HubRowForSystemTransactions(blockHeader, hub, Type.EIP2935);
 
     hubRow.systemTransactionData1 = EWord.of(previousBlockNumber());
-    hubRow.systemTransactionData2 = EWord.of(previousBlockNumber() % HISTORY_SERVE_WINDOW);
+    hubRow.systemTransactionData2 = previousBlockNumber() % HISTORY_SERVE_WINDOW;
     hubRow.systemTransactionData3 = EWord.of(EWord.of(previousBlockHash()).hi());
     hubRow.systemTransactionData4 = EWord.of(EWord.of(previousBlockHash()).lo());
-    hubRow.systemTransactionData5 = EWord.of(currentBlockIsGenesisBlock() ? 1 : 0);
+    hubRow.systemTransactionData5 = currentBlockIsGenesisBlock();
 
     rows.add(hubRow);
   }
@@ -74,11 +72,6 @@ public class SysiEip2935Transaction extends TxnDataOperationPerspectivized {
 
   private void computePreviousBlockNumberModulo8191ComputationRow() {
     EucRow row = EucRow.callToEuc(euc, previousBlockNumber(), HISTORY_SERVE_WINDOW);
-    rows.add(row);
-  }
-
-  private void compareTimestampToLineaCancunForkTimestampComputationRow() {
-    WcpRow row = smallCallToLeq(wcp, blockHeader.getTimestamp(), nonsensePragueTimestamp);
     rows.add(row);
   }
 

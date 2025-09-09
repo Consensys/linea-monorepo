@@ -28,17 +28,16 @@ import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.HubProcessingPhase;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
-import net.consensys.linea.zktracer.module.hub.fragment.common.CancunCommonFragment;
-import net.consensys.linea.zktracer.module.hub.fragment.common.LondonCommonFragment;
-import net.consensys.linea.zktracer.module.hub.fragment.stack.StackFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.common.CancunCommonFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.common.CommonFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.common.CommonFragmentValues;
+import net.consensys.linea.zktracer.module.hub.fragment.common.LondonCommonFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.stack.StackFragment;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.runtime.stack.Stack;
 import net.consensys.linea.zktracer.runtime.stack.StackLine;
@@ -121,11 +120,11 @@ public class TraceSection {
   /** This method is called at commit time, to build required information post-hoc. */
   public void seal() {
     final HubProcessingPhase currentPhase = commonValues.hubProcessingPhase;
-    final int nsr = commonValues.hubProcessingPhase == TX_EXEC ?
-            (int) fragments.stream().filter(l -> !(l instanceof StackFragment)).count()
+    final int nsr =
+        commonValues.hubProcessingPhase == TX_EXEC
+            ? (int) fragments.stream().filter(l -> !(l instanceof StackFragment)).count()
             : 0;
-    commonValues.numberOfNonStackRows(
-       nsr);
+    commonValues.numberOfNonStackRows(nsr);
     commonValues.TLI(
         (int) fragments.stream().filter(l -> (l instanceof StackFragment)).count() == 2);
     commonValues.codeFragmentIndex(
@@ -226,26 +225,28 @@ public class TraceSection {
       if (specificFragment instanceof StackFragment) {
         stackLineCounter++;
       } else {
-        if (commonValues.hubProcessingPhase == TX_EXEC) {nonStackLineCounter++;}
+        if (commonValues.hubProcessingPhase == TX_EXEC) {
+          nonStackLineCounter++;
+        }
       }
 
       specificFragment.trace(hubTrace);
       final CommonFragment commonFragment =
-              switch (commonValues.hub.fork){
-                case LONDON, PARIS, SHANGHAI -> new LondonCommonFragment(
-                        commonValues,
-                        stackLineCounter,
-                        nonStackLineCounter,
-                        hub().state.mmuStamp(),
-                        hub().state.mxpStamp());
-                case CANCUN, PRAGUE ->  new CancunCommonFragment(
-                        commonValues,
-                        stackLineCounter,
-                        nonStackLineCounter,
-                        hub().state.mmuStamp(),
-                        hub().state.mxpStamp());
-                default -> throw new IllegalArgumentException("Unknown fork: " + commonValues.hub.fork);
-              };
+          switch (commonValues.hub.fork) {
+            case LONDON, PARIS, SHANGHAI -> new LondonCommonFragment(
+                commonValues,
+                stackLineCounter,
+                nonStackLineCounter,
+                hub().state.mmuStamp(),
+                hub().state.mxpStamp());
+            case CANCUN, PRAGUE -> new CancunCommonFragment(
+                commonValues,
+                stackLineCounter,
+                nonStackLineCounter,
+                hub().state.mmuStamp(),
+                hub().state.mxpStamp());
+            default -> throw new IllegalArgumentException("Unknown fork: " + commonValues.hub.fork);
+          };
       commonFragment.trace(hubTrace);
       hubTrace.fillAndValidateRow();
     }

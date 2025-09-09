@@ -14,15 +14,15 @@
  */
 package net.consensys.linea.zktracer.module.txndata.moduleOperation.transactions;
 
-import static net.consensys.linea.zktracer.module.txndata.moduleOperation.TxnDataOperationPerspectivized.TransactionCategory.*;
+import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.SYSF;
 import static net.consensys.linea.zktracer.module.txndata.rows.hubRows.Type.NOOP;
 
 import net.consensys.linea.zktracer.module.txndata.module.PerspectivizedTxnData;
-import net.consensys.linea.zktracer.module.txndata.moduleOperation.TxnDataOperationPerspectivized;
+import net.consensys.linea.zktracer.module.txndata.moduleOperation.TxnDataOperationCancun;
 import net.consensys.linea.zktracer.module.txndata.rows.computationRows.NoopRow;
 import net.consensys.linea.zktracer.module.txndata.rows.hubRows.HubRowForSystemTransactions;
 
-public class SysfNoopTransaction extends TxnDataOperationPerspectivized {
+public class SysfNoopTransaction extends TxnDataOperationCancun {
 
   public final PerspectivizedTxnData txnData;
 

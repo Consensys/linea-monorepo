@@ -19,7 +19,7 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.transaction.system.SystemTransactionType;
-import net.consensys.linea.zktracer.module.txndata.moduleOperation.TxnDataOperationPerspectivized;
+import net.consensys.linea.zktracer.module.txndata.moduleOperation.TxnDataOperationCancun;
 import net.consensys.linea.zktracer.module.txndata.moduleOperation.transactions.SysfNoopTransaction;
 import net.consensys.linea.zktracer.module.txndata.moduleOperation.transactions.SysiEip2935Transaction;
 import net.consensys.linea.zktracer.module.txndata.moduleOperation.transactions.SysiEip4788Transaction;
@@ -30,7 +30,7 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
-public class PerspectivizedTxnData extends TxnData<TxnDataOperationPerspectivized> {
+public class PerspectivizedTxnData extends TxnData<TxnDataOperationCancun> {
 
   @Getter private ProcessableBlockHeader currentBlockHeader;
 
@@ -68,7 +68,7 @@ public class PerspectivizedTxnData extends TxnData<TxnDataOperationPerspectivize
 
   @Override
   public void commit(Trace trace) {
-    for (TxnDataOperationPerspectivized tx : operations().getAll()) {
+    for (TxnDataOperationCancun tx : operations().getAll()) {
       tx.traceTransaction(trace.txndata());
     }
   }
