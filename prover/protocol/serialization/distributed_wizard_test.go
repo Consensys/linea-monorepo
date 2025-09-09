@@ -49,7 +49,7 @@ func TestSerdeDW(t *testing.T) {
 	}
 	dist := GetDW(cfg)
 	isSanityCheck := true
-	isfailFast := true
+	isfailFast := false
 
 	t.Run("ModuleNames", func(t *testing.T) {
 		runSerdeTest(t, dist.ModuleNames, "DW.ModuleNames", isSanityCheck, isfailFast)
