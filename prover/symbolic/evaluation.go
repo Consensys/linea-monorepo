@@ -16,10 +16,8 @@ import (
 )
 
 const (
-	// maxChunkSize indicates the number of rows each go routine evaluates
-	// since the go routine needs the memory to allocate values for all nodes,
-	// larger values may lead to excessive memory usage.
-	maxChunkSize int = 1 << 8 // TODO @gbotrel revisit
+	// maxChunkSize indicates the number of rows each go routine evaluates.
+	maxChunkSize int = 1 << 8
 )
 
 // evaluation is a helper to evaluate an expression board in chunks of
@@ -49,6 +47,10 @@ type chunkBase [maxChunkSize]field.Element
 
 // Evaluate evaluates the expression board on the provided inputs.
 func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
+	// essentially, we can see the inputs as "columns", and the chunks as "rows"
+	// the relations between the columns are defined by the expression board
+	// we evaluate the expression board chunk by chunk, in parallel.
+
 	if len(inputs) == 0 {
 		panic("no input provided")
 	}
@@ -183,6 +185,10 @@ func newEvaluation[T chunkValue](b *ExpressionBoard) evaluation[T] {
 		}
 	}
 
+	// we can propagate constants here, since it will be useful for all chunks and done only once.
+	// starting from level 1 since level 0 are inputs/constants,
+	// if all my inputs are constant, I can compute my value, and be a constant too.
+	// but in practice it never happens so we omit this part.
 	return solver
 }
 

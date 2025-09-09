@@ -129,8 +129,7 @@ func (PolyEval) EvaluateExt(inputs []sv.SmartVector, p ...mempool.MemPool) sv.Sm
 	// We assume that the first element is always a scalar
 	// Get the constant value. We use Get(0) to get the value, but any integer would
 	// also work provided it is also in range. 0 ensures that.
-	// x := inputs[0].(*sv.ConstantExt).GetExt(0) // TODO @gbotrel restore.
-	x := inputs[0].GetExt(0) // to ensure we panic if the input is not a constant
+	x := inputs[0].(*sv.ConstantExt).GetExt(0) // to ensure we panic if the input is not a constant
 	return sv.LinearCombinationExt(inputs[1:], x, p...)
 }
 
