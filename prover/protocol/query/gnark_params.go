@@ -60,15 +60,15 @@ func (p LogDerivSumParams) GnarkAssign() GnarkLogDerivSumParams {
 
 // A gnark circuit version of InnerProductParams
 type GnarkInnerProductParams struct {
-	Ys []gnarkfext.Element
+	Ys []frontend.Variable
 }
 
 func (p InnerProduct) GnarkAllocate() GnarkInnerProductParams {
-	return GnarkInnerProductParams{Ys: make([]gnarkfext.Element, len(p.Bs))}
+	return GnarkInnerProductParams{Ys: make([]frontend.Variable, len(p.Bs))}
 }
 
 func (p InnerProductParams) GnarkAssign() GnarkInnerProductParams {
-	return GnarkInnerProductParams{Ys: vectorext.IntoGnarkAssignment(p.Ys)}
+	return GnarkInnerProductParams{Ys: vector.IntoGnarkAssignment(p.Ys)}
 }
 
 // A gnark circuit version of univariate eval params
@@ -134,7 +134,7 @@ func (p HornerParams) GnarkAssign() GnarkHornerParams {
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkInnerProductParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
-	fs.UpdateExt(p.Ys...)
+	fs.Update(p.Ys...)
 }
 
 // Update the fiat-shamir state with the the present parameters

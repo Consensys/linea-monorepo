@@ -5,9 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -47,21 +45,7 @@ func TestInnerProduct(t *testing.T) {
 	assert.NoErrorf(t, wizard.Verify(comp, proof), "invalid proof")
 }
 
-func innerProductExt(a, b []fext.Element) fext.Element {
-
-	if len(a) != len(b) {
-		panic("<a, b> with len(a) != len(b)")
-	}
-	var res, tmp fext.Element
-	for i := 0; i < len(a); i++ {
-		tmp.Mul(&a[i], &b[i])
-		res.Add(&res, &tmp)
-	}
-	return res
-
-}
-
-func innerProduct(a, b []field.Element) fext.Element {
+func innerProduct(a, b []field.Element) field.Element {
 
 	if len(a) != len(b) {
 		panic("<a, b> with len(a) != len(b)")
@@ -71,7 +55,7 @@ func innerProduct(a, b []field.Element) fext.Element {
 		tmp.Mul(&a[i], &b[i])
 		res.Add(&res, &tmp)
 	}
-	return fext.Lift(res)
+	return res
 }
 
 var testCases = []struct {
@@ -81,7 +65,7 @@ var testCases = []struct {
 	size     int
 	a        smartvectors.SmartVector
 	b        []smartvectors.SmartVector
-	expected []fext.Element
+	expected []field.Element
 }{
 	// Single InnerProduct
 	createMultiIPTestCase("Quey1", "ColA1", []ifaces.ColID{"ColB1"}, 4, 1, false),
@@ -100,7 +84,7 @@ type testCase struct {
 	size     int
 	a        smartvectors.SmartVector
 	b        []smartvectors.SmartVector
-	expected []fext.Element
+	expected []field.Element
 }
 
 // createMultiIPTestCase generates a testCase for multiple inner products (linear combination).
@@ -113,16 +97,16 @@ func createMultiIPTestCase(
 	isBase bool,
 ) testCase {
 	if !isBase {
-		aValues := vectorext.ForRandTestFromLen(size)
-		aVec := smartvectors.NewRegularExt(aValues)
+		aValues := vector.ForRandTestFromLen(size)
+		aVec := smartvectors.NewRegular(aValues)
 		bVec := make([]smartvectors.SmartVector, bRows)
 
-		expected_Vec := make([]fext.Element, bRows)
-		bValues := make([][]fext.Element, bRows)
+		expected_Vec := make([]field.Element, bRows)
+		bValues := make([][]field.Element, bRows)
 		for i := 0; i < bRows; i++ {
-			bValues[i] = vectorext.ForRandTestFromLen(size)
-			bVec[i] = smartvectors.NewRegularExt(bValues[i])
-			expected_Vec[i] = innerProductExt(aValues, bValues[i])
+			bValues[i] = vector.ForRandTestFromLen(size)
+			bVec[i] = smartvectors.NewRegular(bValues[i])
+			expected_Vec[i] = innerProduct(aValues, bValues[i])
 		}
 		return testCase{
 			qName:    qName,
@@ -138,7 +122,7 @@ func createMultiIPTestCase(
 		aVec := smartvectors.NewRegular(aValues)
 		bVec := make([]smartvectors.SmartVector, bRows)
 
-		expected_Vec := make([]fext.Element, bRows)
+		expected_Vec := make([]field.Element, bRows)
 		bValues := make([][]field.Element, bRows)
 		for i := 0; i < bRows; i++ {
 			bValues[i] = vector.ForRandTestFromLen(size)

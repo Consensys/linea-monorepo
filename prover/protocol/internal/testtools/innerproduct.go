@@ -3,7 +3,6 @@ package testtools
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -21,7 +20,7 @@ type InnerProductTestcase struct {
 	Bs []smartvectors.SmartVector
 	// Values are the values to assign to the query. nil tells the assign
 	// function to compute it itself. And thus, having the correct value.
-	Values []fext.Element
+	Values []field.Element
 	// Q is the query to define.
 	Q query.InnerProduct
 	// MustFailFlag is true if the testcase must fail.
@@ -39,8 +38,8 @@ var ListOfInnerProductTestcasePositive = []*InnerProductTestcase{
 		Bs: []smartvectors.SmartVector{
 			smartvectors.NewConstant(field.One(), 16),
 		},
-		Values: []fext.Element{
-			fext.Lift(field.NewElement(16)),
+		Values: []field.Element{
+			field.NewElement(16),
 		},
 	},
 
@@ -50,8 +49,8 @@ var ListOfInnerProductTestcasePositive = []*InnerProductTestcase{
 		Bs: []smartvectors.SmartVector{
 			smartvectors.NewConstant(field.One(), 16),
 		},
-		Values: []fext.Element{
-			fext.Lift(field.NewElement(16)),
+		Values: []field.Element{
+			field.NewElement(16),
 		},
 		AsIsConstCol: true,
 	},
@@ -62,8 +61,8 @@ var ListOfInnerProductTestcasePositive = []*InnerProductTestcase{
 		Bs: []smartvectors.SmartVector{
 			smartvectors.ForTest(0, 3, 0, 2),
 		},
-		Values: []fext.Element{
-			fext.Lift(field.NewElement(5)),
+		Values: []field.Element{
+			field.NewElement(5),
 		},
 	},
 
@@ -74,7 +73,7 @@ var ListOfInnerProductTestcasePositive = []*InnerProductTestcase{
 			smartvectors.ForTest(0, 3, 0, 2),
 			smartvectors.ForTest(1, 0, 0, 2),
 		},
-		Values: []fext.Element{fext.Lift(field.NewElement(5)), fext.Lift(field.NewElement(3))},
+		Values: []field.Element{field.NewElement(5), field.NewElement(3)},
 	},
 
 	{
@@ -84,7 +83,7 @@ var ListOfInnerProductTestcasePositive = []*InnerProductTestcase{
 			smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0),
 			smartvectors.ForTest(1, 0, 0, 2, 1, 0, 0, 0),
 		},
-		Values: []fext.Element{fext.Lift(field.NewElement(7)), fext.Lift(field.NewElement(5))},
+		Values: []field.Element{field.NewElement(7), field.NewElement(5)},
 	},
 
 	{
@@ -93,7 +92,7 @@ var ListOfInnerProductTestcasePositive = []*InnerProductTestcase{
 		Bs: []smartvectors.SmartVector{
 			smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1),
 		},
-		Values: []fext.Element{fext.Lift(field.NewElement(15))},
+		Values: []field.Element{field.NewElement(15)},
 	},
 
 	{
@@ -102,7 +101,7 @@ var ListOfInnerProductTestcasePositive = []*InnerProductTestcase{
 		Bs: []smartvectors.SmartVector{
 			smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1),
 		},
-		Values: []fext.Element{fext.Lift(field.NewElement(30))},
+		Values: []field.Element{field.NewElement(30)},
 	},
 
 	{
@@ -122,8 +121,8 @@ var ListOfInnerProductTestcaseNegative = []*InnerProductTestcase{
 		Bs: []smartvectors.SmartVector{
 			smartvectors.ForTest(0, 3, 0, 2),
 		},
-		Values: []fext.Element{
-			fext.Lift(field.NewElement(17)),
+		Values: []field.Element{
+			field.NewElement(17),
 		},
 		MustFailFlag: true,
 	},
@@ -135,7 +134,7 @@ var ListOfInnerProductTestcaseNegative = []*InnerProductTestcase{
 			smartvectors.ForTest(0, 3, 0, 2),
 			smartvectors.ForTest(1, 0, 0, 2),
 		},
-		Values:       []fext.Element{fext.Lift(field.NewElement(22)), fext.Lift(field.NewElement(3))},
+		Values:       []field.Element{field.NewElement(22), field.NewElement(3)},
 		MustFailFlag: true,
 	},
 
@@ -146,7 +145,7 @@ var ListOfInnerProductTestcaseNegative = []*InnerProductTestcase{
 			smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0),
 			smartvectors.ForTest(1, 0, 0, 2, 1, 0, 0, 0),
 		},
-		Values:       []fext.Element{fext.Lift(field.NewElement(77)), fext.Lift(field.NewElement(5))},
+		Values:       []field.Element{field.NewElement(77), field.NewElement(5)},
 		MustFailFlag: true,
 	},
 
@@ -156,7 +155,7 @@ var ListOfInnerProductTestcaseNegative = []*InnerProductTestcase{
 		Bs: []smartvectors.SmartVector{
 			smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1),
 		},
-		Values:       []fext.Element{fext.Lift(field.NewElement(14))},
+		Values:       []field.Element{field.NewElement(14)},
 		MustFailFlag: true,
 	},
 
@@ -166,7 +165,7 @@ var ListOfInnerProductTestcaseNegative = []*InnerProductTestcase{
 		Bs: []smartvectors.SmartVector{
 			smartvectors.ForTest(0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 3, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1),
 		},
-		Values:       []fext.Element{fext.Lift(field.NewElement(31))},
+		Values:       []field.Element{field.NewElement(31)},
 		MustFailFlag: true,
 	},
 
@@ -176,7 +175,7 @@ var ListOfInnerProductTestcaseNegative = []*InnerProductTestcase{
 		Bs: []smartvectors.SmartVector{
 			RandomFromSeed(8, 2),
 		},
-		Values:       []fext.Element{fext.Lift(field.NewElement(30))},
+		Values:       []field.Element{field.NewElement(30)},
 		MustFailFlag: true,
 	},
 }

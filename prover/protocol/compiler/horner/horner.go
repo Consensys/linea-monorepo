@@ -250,13 +250,13 @@ func (a AssignHornerIP) Run(run *wizard.ProverRuntime) {
 		var (
 			ip        = a.CountingInnerProducts[i]
 			selectors = a.Q.Parts[i].Selectors
-			res       = make([]fext.Element, len(selectors))
+			res       = make([]field.Element, len(selectors))
 		)
 
 		for i, selector := range selectors {
 			sel := selector.GetColAssignment(run).IntoRegVecSaveAlloc()
 			for j := range sel {
-				fext.AddByBase(&res[i], &res[i], &sel[j])
+				res[i].Add(&res[i], &sel[j])
 			}
 		}
 
@@ -283,10 +283,7 @@ func (c *CheckHornerResult) Run(run wizard.Runtime) error {
 
 		for k := range ipQuery.Bs {
 			y := ipParams.Ys[k]
-			if !fext.IsBase(&y) {
-				return fmt.Errorf("the y of the inner product %v is not a base element", ipQuery.ID)
-			}
-			ipCount += int(y.B0.A0.Uint64())
+			ipCount += int(y.Uint64())
 		}
 
 		if hornerParams.Parts[i].N0+ipCount != hornerParams.Parts[i].N1 {
