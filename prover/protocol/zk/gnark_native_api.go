@@ -1,6 +1,8 @@
 package zk
 
 import (
+	"math/big"
+
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
@@ -30,6 +32,10 @@ var _ FieldOps[NativeElement] = &NativeAPI{}
 
 func (n *NativeAPI) Mul(a, b *NativeElement) *NativeElement {
 	return packNE(n.api.Mul(a.V, b.V))
+}
+
+func (n *NativeAPI) MulConst(a *NativeElement, b *big.Int) *NativeElement {
+	return packNE(n.api.Mul(a.V, b))
 }
 
 func (n *NativeAPI) Add(a, b *NativeElement) *NativeElement {

@@ -13,13 +13,13 @@ import (
 )
 
 type ApiCircuitGen[T zk.Element] struct {
-	A, B  E4Gen[T]
-	AddAB E4Gen[T]
-	SubAB E4Gen[T]
-	MulAB E4Gen[T]
-	// SquareA E4Gen[T]
-	DivAB E4Gen[T]
-	InvA  E4Gen[T]
+	A, B    E4Gen[T]
+	AddAB   E4Gen[T]
+	SubAB   E4Gen[T]
+	MulAB   E4Gen[T]
+	SquareA E4Gen[T]
+	DivAB   E4Gen[T]
+	InvA    E4Gen[T]
 }
 
 func (c *ApiCircuitGen[T]) Define(api frontend.API) error {
@@ -37,8 +37,8 @@ func (c *ApiCircuitGen[T]) Define(api frontend.API) error {
 	mulAB := ext4.Mul(&c.A, &c.B)
 	ext4.AssertIsEqual(mulAB, &c.MulAB)
 
-	// squareA := ext4.Mul(&c.A, &c.A) // TODO Square mysteriously fails
-	// ext4.AssertIsEqual(squareA, &c.SquareA)
+	squareA := ext4.Square(&c.A) // TODO Square mysteriously fails
+	ext4.AssertIsEqual(squareA, &c.SquareA)
 
 	divAB := ext4.Div(&c.A, &c.B)
 	ext4.AssertIsEqual(divAB, &c.DivAB)
@@ -50,25 +50,24 @@ func (c *ApiCircuitGen[T]) Define(api frontend.API) error {
 }
 
 func testApiGenWitness[T zk.Element]() *ApiCircuitGen[T] {
-	// var a, b, addab, subab, mulab, squarea, divab fext.Element
-	var a, b, addab, subab, mulab, inva, divab fext.Element
+	var a, b, addab, subab, mulab, squarea, inva, divab fext.Element
 	a.SetRandom()
 	b.SetRandom()
 	addab.Add(&a, &b)
 	subab.Sub(&a, &b)
 	mulab.Mul(&a, &b)
-	// squarea.Square(&a)
+	squarea.Square(&a)
 	divab.Div(&a, &b)
 	inva.Inverse(&a)
 	return &ApiCircuitGen[T]{
-		A:     NewE4Gen[T](a),
-		B:     NewE4Gen[T](b),
-		AddAB: NewE4Gen[T](addab),
-		SubAB: NewE4Gen[T](subab),
-		MulAB: NewE4Gen[T](mulab),
-		// SquareA: NewE4Gen[T](squarea),
-		DivAB: NewE4Gen[T](divab),
-		InvA:  NewE4Gen[T](inva),
+		A:       NewE4Gen[T](a),
+		B:       NewE4Gen[T](b),
+		AddAB:   NewE4Gen[T](addab),
+		SubAB:   NewE4Gen[T](subab),
+		MulAB:   NewE4Gen[T](mulab),
+		SquareA: NewE4Gen[T](squarea),
+		DivAB:   NewE4Gen[T](divab),
+		InvA:    NewE4Gen[T](inva),
 	}
 }
 

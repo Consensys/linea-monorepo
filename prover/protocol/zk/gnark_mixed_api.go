@@ -2,6 +2,7 @@ package zk
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/constraint/solver"
@@ -16,6 +17,7 @@ type Element interface {
 
 type FieldOps[T Element] interface {
 	Mul(a, b *T) *T
+	MulConst(a *T, b *big.Int) *T
 	Add(a, b *T) *T
 	Neg(a *T) *T
 	Sub(a, b *T) *T

@@ -1,6 +1,8 @@
 package gnarkfext
 
 import (
+	"math/big"
+
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/protocol/zk"
@@ -113,23 +115,17 @@ func (ext2 *Ext2[T]) Mul(e1, e2 *E2Gen[T]) *E2Gen[T] {
 	}
 }
 
-// // Square E2Gen[T zk.FType] elt
 func (ext2 *Ext2[T]) Square(x *E2Gen[T]) *E2Gen[T] {
+	// Square sets z to the E2-product of x,x returns z
+	var res E2Gen[T]
+	a := ext2.mixedAPI.Mul(&x.A0, &x.A1)
+	c := ext2.mixedAPI.Mul(&x.A0, &x.A0)
+	b := ext2.mixedAPI.Mul(&x.A1, &x.A1)
+	b = ext2.mixedAPI.MulConst(b, big.NewInt(3))
+	res.A0 = *ext2.mixedAPI.Add(c, b)
+	res.A1 = *ext2.mixedAPI.Add(a, a)
+	return &res
 
-	extqnrE2 := ext2.mixedAPI.FromKoalabear(ext.qnrE2)
-	two := ext2.mixedAPI.FromUint(2)
-
-	c0 := ext2.mixedAPI.Mul(&x.A0, &x.A0) // x0^2
-	c1 := ext2.mixedAPI.Mul(&x.A1, &x.A1) // x1^2
-	c1 = ext2.mixedAPI.Mul(c1, extqnrE2)  // qnr*x1^2
-	c0 = ext2.mixedAPI.Add(c0, c1)        // x0^2 + qnr*x1^2
-	c1 = ext2.mixedAPI.Mul(extqnrE2, two) // 2*qnr
-	c1 = ext2.mixedAPI.Mul(c1, &x.A0)     // 2*qnr*x0
-	c1 = ext2.mixedAPI.Mul(c1, &x.A1)     // 2*qnr*x0*x1
-	return &E2Gen[T]{
-		A0: *c0, // x0^2 + qnr*x1^2
-		A1: *c1, // 2*qnr*x0*x1
-	}
 }
 
 // MulByFp multiplies an fp2 elmt by an fp elmt

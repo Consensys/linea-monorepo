@@ -1,6 +1,8 @@
 package zk
 
 import (
+	"math/big"
+
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
@@ -28,6 +30,10 @@ var _ FieldOps[EmulatedElement] = &EmulatedFieldOps{}
 
 func (e *EmulatedFieldOps) Mul(a, b *EmulatedElement) *EmulatedElement {
 	return e.ef.Mul(a, b)
+}
+
+func (e *EmulatedFieldOps) MulConst(a *EmulatedElement, b *big.Int) *EmulatedElement {
+	return e.ef.MulConst(a, b)
 }
 
 func (e *EmulatedFieldOps) Add(a, b *EmulatedElement) *EmulatedElement {
@@ -105,7 +111,6 @@ func (e *EmulatedFieldOps) FromKoalabear(v koalabear.Element) *EmulatedElement {
 }
 
 func (e *EmulatedFieldOps) NewHint(f solver.Hint, nbOutputs int, inputs ...*EmulatedElement) ([]*EmulatedElement, error) {
-
 	res, err := e.ef.NewHint(f, nbOutputs, inputs...)
 	return res, err
 }

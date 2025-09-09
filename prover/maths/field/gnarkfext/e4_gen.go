@@ -135,20 +135,21 @@ func (ext4 *Ext4[T]) Mul(e1, e2 *E4Gen[T], in ...*E4Gen[T]) *E4Gen[T] {
 	}
 }
 
-// Square Element elt
+// Square sets z=x*x in E4 and returns z
 func (ext4 *Ext4[T]) Square(x *E4Gen[T]) *E4Gen[T] {
+	// same as mul, but we remove duplicate add and simplify multiplications with squaring
+	// note: this is more efficient than Algorithm 22 from https://eprint.iacr.org/2010/354.pdf
+	a := ext4.Ext2.Add(&x.B0, &x.B1)
+	d := ext4.Ext2.Square(&x.B0)
+	c := ext4.Ext2.Square(&x.B1)
+	a = ext4.Ext2.Square(a)
+	bc := ext4.Ext2.Add(d, c)
+	var z E4Gen[T]
+	z.B1 = *ext4.Ext2.Sub(a, bc)
+	z.B0 = *ext4.Ext2.MulByNonResidue(c)
+	z.B0 = *ext4.Ext2.Add(&z.B0, d)
 
-	c0 := ext4.Ext2.Sub(&x.B0, &x.B1)
-	c3 := ext4.Ext2.MulByNonResidue(&x.B1)
-	c3 = ext4.Ext2.Sub(&x.B0, c3)
-	c2 := ext4.Ext2.Mul(&x.B0, &x.B1)
-	c0 = ext4.Ext2.Mul(c0, c3)
-	c0 = ext4.Ext2.Add(c0, c2)
-	c2 = ext4.Ext2.MulByNonResidue(c2)
-	return &E4Gen[T]{
-		B0: *ext4.Ext2.Add(c0, c2),
-		B1: *ext4.Ext2.Double(c2),
-	}
+	return &z
 }
 
 // MulByFp multiplies an fp2 elmt by an fp elmt
