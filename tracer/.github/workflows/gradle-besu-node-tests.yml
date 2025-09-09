@@ -32,7 +32,6 @@ jobs:
         run: GOMEMLIMIT=26GiB ./gradlew :arithmetization:besuNodeTests
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
-          CORSET_FLAGS: disable
           GOCORSET_FLAGS: -b1024 -v --ansi-escapes=false --report --air
 
 

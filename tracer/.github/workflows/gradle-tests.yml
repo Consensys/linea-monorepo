@@ -103,7 +103,6 @@ jobs:
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           REPLAY_TESTS_PARALLELISM: 4
-          CORSET_FLAGS: disable
           GOCORSET_FLAGS: -b1024 -v --ansi-escapes=false --report --air
           ZKEVM_FORK: LONDON
 

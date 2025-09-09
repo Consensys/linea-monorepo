@@ -23,9 +23,9 @@ jobs:
         uses: ./.github/actions/setup-environment
 
       - name: Run Weekly tests
-        run: GOMAXPROCS=2 GOMEMLIMIT=10GiB ./gradlew weeklyTests
+        run: GOMAXPROCS=10 GOMEMLIMIT=20GiB ./gradlew weeklyTests
         env:
-          WEEKLY_TESTS_PARALLELISM: 32
+          WEEKLY_TESTS_PARALLELISM: 2
           GOCORSET_FLAGS: -v -b1024 --ansi-escapes=false --report --mir
           ZKEVM_FORK: ${{ inputs.zkevm_fork }}
 
