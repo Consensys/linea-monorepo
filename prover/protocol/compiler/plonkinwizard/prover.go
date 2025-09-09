@@ -53,7 +53,7 @@ func (a CircAssignment) getWitnesses(run *wizard.ProverRuntime) []witness.Witnes
 	return witnesses
 }
 
-func (a AssignSelOpening) Run(run *wizard.ProverRuntime) {
+func (a *AssignSelOpening) Run(run *wizard.ProverRuntime) {
 
 	var (
 		maxNbInstances    = len(a.SelOpenings)
