@@ -1,8 +1,9 @@
 package symbolic
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
@@ -81,9 +82,9 @@ func TestReplayExpression(t *testing.T) {
 			require.Equal(t, metadatas[i].String()+"_", replayedMetadata[i].String())
 		}
 
-		eval := board.EvaluateMixed(inputs)
-		replayedEval := replayedBoard.EvaluateMixed(inputs_)
-		oldEval := oldBoard.EvaluateMixed(inputs)
+		eval := board.Evaluate(inputs)
+		replayedEval := replayedBoard.Evaluate(inputs_)
+		oldEval := oldBoard.Evaluate(inputs)
 
 		// The oldEval and eval should be consistent
 		require.Equal(t, eval.Pretty(), oldEval.Pretty())

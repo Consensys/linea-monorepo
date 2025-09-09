@@ -12,79 +12,63 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 )
 
 const (
-	// maxChunkSize is a fine-tuned by hand number. Smaller is slower, larger
-	// consumes for more memory. For testing, it can be overriden even though
-	// it will become flakky if we have several tests.
+	// maxChunkSize indicates the number of rows each go routine evaluates
+	// since the go routine needs the memory to allocate values for all nodes,
+	// larger values may lead to excessive memory usage.
 	maxChunkSize int = 1 << 8 // TODO @gbotrel revisit
 )
 
+// evaluation is a helper to evaluate an expression board in chunks of
+// maxChunkSize rows at a time.
 type evaluation[T chunkValue] struct {
 	nodes   [][]evaluationNode[T]
 	scratch T
 }
 
+// evaluationNode is a node in the evaluation graph.
 type evaluationNode[T chunkValue] struct {
-	value      T
-	inputs     []*T
-	op         Operator
-	hasValue   bool
-	isConstant bool
+	value      T        // value of the node after evaluation
+	inputs     []*T     // pointers to the inputs values
+	op         Operator // op(inputs) = value
+	hasValue   bool     // true if value is valid
+	isConstant bool     // true if the node is a constant
+}
+
+// chunkValue is a type constraint for the chunk evaluation.
+// either a vector of base field elements or extension field elements.
+type chunkValue interface {
+	chunkBase | chunkExt
 }
 
 type chunkExt [maxChunkSize]fext.Element
 type chunkBase [maxChunkSize]field.Element
 
-type chunkValue interface {
-	chunkBase | chunkExt
-}
-
+// Evaluate evaluates the expression board on the provided inputs.
 func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
-	return b.evaluate(inputs)
-}
-
-func (b *ExpressionBoard) EvaluateExt(inputs []sv.SmartVector) sv.SmartVector {
-	return b.evaluate(inputs)
-}
-
-func (b *ExpressionBoard) EvaluateMixed(inputs []sv.SmartVector) sv.SmartVector {
-	return b.evaluate(inputs)
-}
-
-func (b *ExpressionBoard) evaluate(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
-
-	/*
-		Find the size of the vector
-	*/
-	totalSize := 0
-	for i, inp := range inputs {
-		if totalSize > 0 && totalSize != inp.Len() {
-			// Expects that all vector inputs have the same size
-			utils.Panic("mismatch in the size: len(v) %v, totalsize %v, pos %v", inp.Len(), totalSize, i)
-		}
-
-		if totalSize == 0 {
-			totalSize = inp.Len()
+	if len(inputs) == 0 {
+		panic("no input provided")
+	}
+	// sanity check the inputs
+	totalSize := inputs[0].Len()
+	for i := 1; i < len(inputs); i++ {
+		if inputs[i].Len() != totalSize {
+			utils.Panic("mismatch in the size: len(v0) %v, len(v%v) %v", totalSize, i, inputs[i].Len())
 		}
 	}
-
 	if totalSize == 0 {
-		utils.Panic("either there is no input or the inputs all have size 0")
+		panic("inputs all have size 0")
 	}
 
-	if len(p) > 0 && p[0].Size() != maxChunkSize {
-		utils.Panic("the pool should be a pool of vectors of size=%v but it is %v", maxChunkSize, p[0].Size())
-	}
-
+	// if all inputs are base, the result is also base
 	isBase := sv.AreAllBase(inputs)
 	if isBase {
-		// The result is an extension vector
 		res := make([]field.Element, totalSize)
 
+		// special case: if totalSize is small enough, we do not need to chunk
 		if totalSize < maxChunkSize {
 			solver := newEvaluation[chunkBase](b)
 
@@ -125,6 +109,7 @@ func (b *ExpressionBoard) evaluate(inputs []sv.SmartVector, p ...mempool.MemPool
 	// The result is an extension vector
 	res := make([]fext.Element, totalSize)
 
+	// special case: if totalSize is small enough, we do not need to chunk
 	if totalSize < maxChunkSize {
 		solver := newEvaluation[chunkExt](b)
 
@@ -168,10 +153,6 @@ func newEvaluation[T chunkValue](b *ExpressionBoard) evaluation[T] {
 	for lvl := range solver.nodes {
 		solver.nodes[lvl] = make([]evaluationNode[T], len(b.Nodes[lvl]))
 	}
-
-	// TODO @gbotrel assuming that the graph was already simplified for constants before
-	// (i.e. if an op has all constant inputs, it has been replaced by a constant node)
-	// TODO @gbotrel check the above and do it if not the case
 
 	// Init the constants and inputs.
 	for i := range b.Nodes {
@@ -269,6 +250,8 @@ func (e *evaluation[T]) evaluate() {
 }
 
 func evaluateBase(s *evaluation[chunkBase]) {
+	// level 0 are inputs/constants
+	// we start at level 1
 	for level := 1; level < len(s.nodes); level++ {
 		for pil := range s.nodes[level] {
 			evalNodeBase(s, &s.nodes[level][pil])
@@ -277,6 +260,8 @@ func evaluateBase(s *evaluation[chunkBase]) {
 }
 
 func evaluateExt(s *evaluation[chunkExt]) {
+	// level 0 are inputs/constants
+	// we start at level 1
 	for level := 1; level < len(s.nodes); level++ {
 		for pil := range s.nodes[level] {
 			evalNodeExt(s, &s.nodes[level][pil])
@@ -292,23 +277,22 @@ func evalNodeExt(solver *evaluation[chunkExt], na *evaluationNode[chunkExt]) {
 		return
 	}
 
-	res := extensions.Vector(na.value[:])
+	vRes := extensions.Vector(na.value[:])
+	vTmp := extensions.Vector(solver.scratch[:])
 
 	switch op := na.op.(type) {
 	case Product:
 		for i := range na.inputs {
-			vTmp := extensions.Vector(solver.scratch[:])
 			vInput := extensions.Vector(na.inputs[i][:])
-			vTmp.Exp(vInput, int64(op.Exponents[i]))
 			if i == 0 {
-				copy(res, vTmp)
+				vRes.Exp(vInput, int64(op.Exponents[i]))
 			} else {
-				res.Mul(res, vTmp)
+				vTmp.Exp(vInput, int64(op.Exponents[i]))
+				vRes.Mul(vRes, vTmp)
 			}
 		}
 	case LinComb:
 		var t0 extensions.E4
-		vTmp := extensions.Vector(solver.scratch[:])
 		for i := range na.inputs {
 			vInput := extensions.Vector(na.inputs[i][:])
 			coeff := op.Coeffs[i]
@@ -316,21 +300,21 @@ func evalNodeExt(solver *evaluation[chunkExt], na *evaluationNode[chunkExt]) {
 			if i == 0 {
 				switch coeff {
 				case 0:
-					for j := range res {
-						res[j].SetZero()
+					for j := range vRes {
+						vRes[j].SetZero()
 					}
 				case 1:
-					copy(res, vInput)
+					copy(vRes, vInput)
 				case 2:
-					res.Add(vInput, vInput)
+					vRes.Add(vInput, vInput)
 				case -1:
-					for j := range res {
-						res[j].SetZero()
+					for j := range vRes {
+						vRes[j].SetZero()
 					}
-					res.Sub(res, vInput)
+					vRes.Sub(vRes, vInput)
 				default:
 					t0.B0.A0.SetInt64(int64(coeff))
-					res.ScalarMul(vInput, &t0)
+					vRes.ScalarMul(vInput, &t0)
 				}
 				continue
 			}
@@ -339,28 +323,28 @@ func evalNodeExt(solver *evaluation[chunkExt], na *evaluationNode[chunkExt]) {
 			case 0:
 				continue
 			case 1:
-				res.Add(res, vInput)
+				vRes.Add(vRes, vInput)
 			case 2:
-				res.Add(res, vInput)
-				res.Add(res, vInput)
+				vRes.Add(vRes, vInput)
+				vRes.Add(vRes, vInput)
 			case -1:
-				res.Sub(res, vInput)
+				vRes.Sub(vRes, vInput)
 			default:
 				t0.B0.A0.SetInt64(int64(op.Coeffs[i]))
 				vTmp.ScalarMul(vInput, &t0)
-				res.Add(res, vTmp)
+				vRes.Add(vRes, vTmp)
 			}
 		}
 	case PolyEval:
 		// result = input[0] + input[1]·x + input[2]·x² + input[3]·x³ + ...
 		// i.e., ∑_{i=0}^{n} input[i]·x^i
 		x := na.inputs[0][0] // we assume that the first input is always a constant
-		copy(res, extensions.Vector(na.inputs[len(na.inputs)-1][:]))
+		copy(vRes, extensions.Vector(na.inputs[len(na.inputs)-1][:]))
 
 		for i := len(na.inputs) - 2; i >= 1; i-- {
 			vTmp := extensions.Vector(na.inputs[i][:])
-			res.ScalarMul(res, &x)
-			res.Add(res, vTmp)
+			vRes.ScalarMul(vRes, &x)
+			vRes.Add(vRes, vTmp)
 		}
 	default:
 		utils.Panic("unknown op %T", na.op)
@@ -375,23 +359,22 @@ func evalNodeBase(solver *evaluation[chunkBase], na *evaluationNode[chunkBase]) 
 		return
 	}
 
-	res := field.Vector(na.value[:])
+	vRes := field.Vector(na.value[:])
+	vTmp := field.Vector(solver.scratch[:])
 
 	switch op := na.op.(type) {
 	case Product:
 		for i := range na.inputs {
-			vTmp := field.Vector(solver.scratch[:])
 			vInput := field.Vector(na.inputs[i][:])
-			vTmp.Exp(vInput, int64(op.Exponents[i]))
 			if i == 0 {
-				copy(res, vTmp)
+				vRes.Exp(vInput, int64(op.Exponents[i]))
 			} else {
-				res.Mul(res, vTmp)
+				vTmp.Exp(vInput, int64(op.Exponents[i]))
+				vRes.Mul(vRes, vTmp)
 			}
 		}
 	case LinComb:
 		var t0 field.Element
-		vTmp := field.Vector(solver.scratch[:])
 		for i := range na.inputs {
 			vInput := field.Vector(na.inputs[i][:])
 			coeff := op.Coeffs[i]
@@ -399,21 +382,21 @@ func evalNodeBase(solver *evaluation[chunkBase], na *evaluationNode[chunkBase]) 
 			if i == 0 {
 				switch coeff {
 				case 0:
-					for j := range res {
-						res[j].SetZero()
+					for j := range vRes {
+						vRes[j].SetZero()
 					}
 				case 1:
-					copy(res, vInput)
+					copy(vRes, vInput)
 				case 2:
-					res.Add(vInput, vInput)
+					vRes.Add(vInput, vInput)
 				case -1:
-					for j := range res {
-						res[j].SetZero()
+					for j := range vRes {
+						vRes[j].SetZero()
 					}
-					res.Sub(res, vInput)
+					vRes.Sub(vRes, vInput)
 				default:
 					t0.SetInt64(int64(coeff))
-					res.ScalarMul(vInput, &t0)
+					vRes.ScalarMul(vInput, &t0)
 				}
 				continue
 			}
@@ -422,28 +405,28 @@ func evalNodeBase(solver *evaluation[chunkBase], na *evaluationNode[chunkBase]) 
 			case 0:
 				continue
 			case 1:
-				res.Add(res, vInput)
+				vRes.Add(vRes, vInput)
 			case 2:
-				res.Add(res, vInput)
-				res.Add(res, vInput)
+				vRes.Add(vRes, vInput)
+				vRes.Add(vRes, vInput)
 			case -1:
-				res.Sub(res, vInput)
+				vRes.Sub(vRes, vInput)
 			default:
 				t0.SetInt64(int64(op.Coeffs[i]))
 				vTmp.ScalarMul(vInput, &t0)
-				res.Add(res, vTmp)
+				vRes.Add(vRes, vTmp)
 			}
 		}
 	case PolyEval:
 		// result = input[0] + input[1]·x + input[2]·x² + input[3]·x³ + ...
 		// i.e., ∑_{i=0}^{n} input[i]·x^i
 		x := na.inputs[0][0] // we assume that the first input is always a constant
-		copy(res, field.Vector(na.inputs[len(na.inputs)-1][:]))
+		copy(vRes, field.Vector(na.inputs[len(na.inputs)-1][:]))
 
 		for i := len(na.inputs) - 2; i >= 1; i-- {
 			vTmp := field.Vector(na.inputs[i][:])
-			res.ScalarMul(res, &x)
-			res.Add(res, vTmp)
+			vRes.ScalarMul(vRes, &x)
+			vRes.Add(vRes, vTmp)
 		}
 	default:
 		utils.Panic("unknown op %T", na.op)

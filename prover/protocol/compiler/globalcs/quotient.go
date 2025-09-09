@@ -479,7 +479,7 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 
 				// Note that this will panic if the expression contains "no commitment"
 				// This should be caught already by the constructor of the constraint.
-				quotientShare := ctx.AggregateExpressionsBoard[j].EvaluateMixed(evalInputs)
+				quotientShare := ctx.AggregateExpressionsBoard[j].Evaluate(evalInputs)
 				quotientShare = sv.ScalarMulExt(quotientShare, annulatorInvVals[i])
 				run.AssignColumn(ctx.QuotientShares[j][share].GetColID(), quotientShare)
 			})
