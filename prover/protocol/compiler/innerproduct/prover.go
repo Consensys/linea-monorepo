@@ -15,17 +15,18 @@ import (
 type ProverTask []*ContextForSize
 
 // Run implements the [wizard.ProverAction] interface.
-func (p ProverTask) Run(run *wizard.ProverRuntime) {
+func (p *ProverTask) Run(run *wizard.ProverRuntime) {
 
+	_p := *p
 	wg := &sync.WaitGroup{}
-	wg.Add(len(p))
+	wg.Add(len(_p))
 
-	for i := range p {
+	for i := range _p {
 		// Passing the loop index ensures each go routine is storing the value
 		// of i in a different variable so that there is no race condition over
 		// i.
 		go func(i int) {
-			p[i].run(run)
+			_p[i].run(run)
 			wg.Done()
 		}(i)
 	}
