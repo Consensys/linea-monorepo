@@ -25,6 +25,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var (
+	// Avoid setting both modes to true at the same time
+	isTest      = false
+	isBenchmark = true
+)
+
 // returns a dummy column name
 func dummyColName(i int) ifaces.ColID {
 	return ifaces.ColIDf("POLY_%v", i)
@@ -139,11 +145,6 @@ func generateProtocol(tc TestCase) (define func(*wizard.Builder)) {
 }
 
 const lppMerkleRootPublicInput = "LPP_COLUMNS_MERKLE_ROOTS"
-
-var (
-	isTest      = true
-	isBenchmark = false
-)
 
 // Scenario registry
 type serdeScenario struct {
