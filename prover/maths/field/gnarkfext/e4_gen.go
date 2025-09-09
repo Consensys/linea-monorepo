@@ -18,18 +18,19 @@ func NewE4Gen[T zk.Element](v fext.Element) E4Gen[T] {
 	}
 }
 
+// Ext4 contains  the ext4 koalabear operations
 type Ext4[T zk.Element] struct {
 	mixedAPI zk.FieldOps[T]
 	*Ext2[T]
 }
 
-func NewExt4[t zk.Element](api frontend.API) (*Ext4[t], error) {
-	mixedAPI, err := zk.NewApi[t](api)
+func NewExt4[T zk.Element](api frontend.API) (*Ext4[T], error) {
+	mixedAPI, err := zk.NewApi[T](api)
 	if err != nil {
 		return nil, err
 	}
-	ext2 := NewExt2[t](api)
-	return &Ext4[t]{
+	ext2 := NewExt2[T](api)
+	return &Ext4[T]{
 		mixedAPI: mixedAPI,
 		Ext2:     ext2,
 	}, nil
@@ -53,7 +54,7 @@ func (ext4 *Ext4[T]) One() *E4Gen[T] {
 
 // IsZero returns 1 if the element is equal to 0 and 0 otherwise
 func (ext4 *Ext4[T]) IsZero(e *E4Gen[T]) frontend.Variable {
-	return ext4.api.And(
+	return ext4.mixedAPI.And(
 		ext4.Ext2.IsZero(&e.B0),
 		ext4.Ext2.IsZero(&e.B1),
 	)
@@ -201,20 +202,13 @@ func (ext4 *Ext4[T]) Conjugate(e1 E4Gen[T]) *E4Gen[T] {
 // Inverse Element elmts
 func (ext4 *Ext4[T]) Inverse(e1 *E4Gen[T]) *E4Gen[T] {
 
-	ext4.mixedAPI.Println(&e1.B0.A0)
-	ext4.mixedAPI.Println(&e1.B0.A1)
-	ext4.mixedAPI.Println(&e1.B1.A0)
-	ext4.mixedAPI.Println(&e1.B1.A1)
-	res, err := ext4.mixedAPI.NewHint(inverseE4Hint, 4, &e1.B0.A0, &e1.B0.A1, &e1.B1.A0, &e1.B1.A1)
+	inverseHint := zk.MixedHint[T](_inverseE4)
+	res, err := ext4.mixedAPI.NewHint(inverseHint, 4, &e1.B0.A0, &e1.B0.A1, &e1.B1.A0, &e1.B1.A1)
 	if err != nil {
 		// err is non-nil only for invalid number of inputs
 		panic(err)
 	}
 	e3 := ext4.assign(res[:4])
-	// ext4.mixedAPI.Println(&e3.B0.A0)
-	// ext4.mixedAPI.Println(&e3.B0.A1)
-	// ext4.mixedAPI.Println(&e3.B1.A0)
-	// ext4.mixedAPI.Println(&e3.B1.A1)
 	one := ext4.One()
 
 	// 1 == e3 * e1
@@ -234,8 +228,9 @@ func (ext4 *Ext4[T]) Select(b frontend.Variable, r1, r2 *E4Gen[T]) *E4Gen[T] {
 // Div Element elmts
 func (ext4 *Ext4[T]) Div(e1, e2 *E4Gen[T]) *E4Gen[T] {
 
+	divHint := zk.MixedHint[T](_divE4)
 	res, err := ext4.mixedAPI.NewHint(
-		divE4Hint, 4,
+		divHint, 4,
 		&e1.B0.A0, &e1.B0.A1, &e1.B1.A0, &e1.B1.A1,
 		&e2.B0.A0, &e2.B0.A1, &e2.B1.A0, &e2.B1.A1)
 	if err != nil {

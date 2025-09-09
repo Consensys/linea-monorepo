@@ -2,6 +2,7 @@ package zk
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/constraint/solver"
@@ -25,7 +26,9 @@ type FieldOps[T Element] interface {
 	ToBinary(a *T, n ...int) []frontend.Variable
 	FromBinary(b ...frontend.Variable) *T
 
-	// And(a, b frontend.Variable) frontend.Variable
+	And(a, b frontend.Variable) frontend.Variable
+	Xor(a, b frontend.Variable) frontend.Variable
+	Or(a, b frontend.Variable) frontend.Variable
 
 	Select(b frontend.Variable, i1, i2 *T) *T
 	Lookup2(b0, b1 frontend.Variable, i0, i1, i2, i3 *T) *T
@@ -44,7 +47,7 @@ type FieldOps[T Element] interface {
 
 	Println(a ...*T)
 
-	// NativeApi() frontend.API
+	// GnarkAPI() frontend.API
 }
 
 func NewApi[T Element](api frontend.API) (FieldOps[T], error) {
@@ -82,11 +85,26 @@ func ValueOf[T Element](input any) T {
 	case *EmulatedElement:
 		*v = emulated.ValueOf[emulated.KoalaBear](input)
 	case *NativeElement:
-		*v = valueOfNE(input)
+		*v = NativeElement{V: input}
 	default:
 		panic("unsupported type")
 	}
 	return ret
+}
+
+func MixedHint[T Element](h solver.Hint) solver.Hint {
+	var t T
+	switch any(t).(type) {
+	case EmulatedElement:
+		fmt.Println("") // without this line hint is not registered and I don't want to know why
+		return func(_ *big.Int, nativeInputs, nativeOutputs []*big.Int) error {
+			return emulated.UnwrapHint(nativeInputs, nativeOutputs, h)
+		}
+	case NativeElement:
+		return h
+	default:
+		panic("unsupported requested API type")
+	}
 }
 
 // Circuit 0: mixed

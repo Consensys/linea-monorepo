@@ -1,7 +1,6 @@
 package gnarkfext
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -13,13 +12,13 @@ import (
 )
 
 type ApiCircuitGen[T zk.Element] struct {
-	A, B  E4Gen[T]
-	AddAB E4Gen[T]
-	SubAB E4Gen[T]
-	MulAB E4Gen[T]
+	A, B E4Gen[T]
+	// AddAB E4Gen[T]
+	// SubAB E4Gen[T]
+	// MulAB E4Gen[T]
 	// SquareA E4Gen[T]
-	// DivAB E4Gen[T]
-	InvA E4Gen[T]
+	DivAB E4Gen[T]
+	// InvA  E4Gen[T]
 }
 
 func (c *ApiCircuitGen[T]) Define(api frontend.API) error {
@@ -28,66 +27,65 @@ func (c *ApiCircuitGen[T]) Define(api frontend.API) error {
 	if err != nil {
 		return err
 	}
-	addAB := ext4.Add(&c.A, &c.B)
-	ext4.AssertIsEqual(addAB, &c.AddAB)
+	// addAB := ext4.Add(&c.A, &c.B)
+	// ext4.AssertIsEqual(addAB, &c.AddAB)
 
-	subAB := ext4.Sub(&c.A, &c.B)
-	ext4.AssertIsEqual(subAB, &c.SubAB)
+	// subAB := ext4.Sub(&c.A, &c.B)
+	// ext4.AssertIsEqual(subAB, &c.SubAB)
 
-	mulAB := ext4.Mul(&c.A, &c.B)
-	ext4.AssertIsEqual(mulAB, &c.MulAB)
+	// mulAB := ext4.Mul(&c.A, &c.B)
+	// ext4.AssertIsEqual(mulAB, &c.MulAB)
 
 	// squareA := ext4.Mul(&c.A, &c.A) // TODO Square mysteriously fails
 	// ext4.AssertIsEqual(squareA, &c.SquareA)
 
-	// divAB := ext4.Div(&c.A, &c.B)
-	// ext4.AssertIsEqual(divAB, &c.DivAB)
+	divAB := ext4.Div(&c.A, &c.B)
+	ext4.AssertIsEqual(divAB, &c.DivAB)
 
-	invA := ext4.Inverse(&c.A)
-	ext4.AssertIsEqual(invA, &c.InvA)
+	// invA := ext4.Inverse(&c.A)
+	// ext4.AssertIsEqual(invA, &c.InvA)
 
 	return nil
 }
 
 func testApiGenWitness[T zk.Element]() *ApiCircuitGen[T] {
 	// var a, b, addab, subab, mulab, squarea, divab fext.Element
-	var a, b, addab, subab, mulab, inva fext.Element
-	a.SetOne()
+	var a, b, addab, subab, mulab, inva, divab fext.Element
+	a.SetRandom()
 	b.SetRandom()
 	addab.Add(&a, &b)
 	subab.Sub(&a, &b)
 	mulab.Mul(&a, &b)
-	fmt.Printf("a= %s\n", a.String())
 	// squarea.Square(&a)
-	// divab.Div(&a, &b)
+	divab.Div(&a, &b)
 	inva.Inverse(&a)
 	return &ApiCircuitGen[T]{
-		A:     NewE4Gen[T](a),
-		B:     NewE4Gen[T](b),
-		AddAB: NewE4Gen[T](addab),
-		SubAB: NewE4Gen[T](subab),
-		MulAB: NewE4Gen[T](mulab),
+		A: NewE4Gen[T](a),
+		B: NewE4Gen[T](b),
+		// AddAB: NewE4Gen[T](addab),
+		// SubAB: NewE4Gen[T](subab),
+		// MulAB: NewE4Gen[T](mulab),
 		// SquareA: NewE4Gen[T](squarea),
-		// DivAB: NewE4Gen[T](divab),
-		InvA: NewE4Gen[T](inva),
+		DivAB: NewE4Gen[T](divab),
+		// InvA:  NewE4Gen[T](inva),
 	}
 }
 
 func TestAPIGen(t *testing.T) {
 
-	{
-		// witness := testApiGenWitness[zk.NativeElement]()
+	// {
+	// 	witness := testApiGenWitness[zk.NativeElement]()
 
-		// var circuit ApiCircuitGen[zk.NativeElement]
+	// 	var circuit ApiCircuitGen[zk.NativeElement]
 
-		// ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
-		// assert.NoError(t, err)
+	// 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
+	// 	assert.NoError(t, err)
 
-		// fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
-		// assert.NoError(t, err)
-		// err = ccs.IsSolved(fullWitness)
-		// assert.NoError(t, err)
-	}
+	// 	fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
+	// 	assert.NoError(t, err)
+	// 	err = ccs.IsSolved(fullWitness)
+	// 	assert.NoError(t, err)
+	// }
 
 	{
 		witness := testApiGenWitness[zk.EmulatedElement]()

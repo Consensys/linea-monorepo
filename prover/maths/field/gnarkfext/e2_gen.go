@@ -8,7 +8,6 @@ import (
 
 type Ext2[T zk.Element] struct {
 	mixedAPI zk.FieldOps[T]
-	api      frontend.API
 }
 
 func NewExt2[t zk.Element](api frontend.API) *Ext2[t] {
@@ -18,7 +17,6 @@ func NewExt2[t zk.Element](api frontend.API) *Ext2[t] {
 	}
 	return &Ext2[t]{
 		mixedAPI: mixedAPI,
-		api:      api,
 	}
 }
 
@@ -54,7 +52,7 @@ func (ext2 *Ext2[T]) One() *E2Gen[T] {
 
 // IsZero returns 1 if the element is equal to 0 and 0 otherwise
 func (ext2 *Ext2[T]) IsZero(e *E2Gen[T]) frontend.Variable {
-	return ext2.api.And(
+	return ext2.mixedAPI.And(
 		ext2.mixedAPI.IsZero(&e.A0),
 		ext2.mixedAPI.IsZero(&e.A1),
 	)

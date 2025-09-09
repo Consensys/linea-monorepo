@@ -16,6 +16,16 @@ type EmulatedFieldOps struct {
 	ef  *emulated.Field[emulated.KoalaBear]
 }
 
+func newEmulatedAPI(api frontend.API) (*EmulatedFieldOps, error) {
+	f, err := emulated.NewField[emulated.KoalaBear](api)
+	if err != nil {
+		return nil, err
+	}
+	return &EmulatedFieldOps{api: api, ef: f}, nil
+}
+
+var _ FieldOps[EmulatedElement] = &EmulatedFieldOps{}
+
 func (e *EmulatedFieldOps) Mul(a, b *EmulatedElement) *EmulatedElement {
 	return e.ef.Mul(a, b)
 }
@@ -48,9 +58,17 @@ func (e *EmulatedFieldOps) FromBinary(a ...frontend.Variable) *EmulatedElement {
 	return e.ef.FromBits(a...)
 }
 
-// func (e EmulatedFieldOps) And(a, b frontend.Variable) frontend.Variable {
-// 	return e.api.And(a, b)
-// }
+func (n *EmulatedFieldOps) And(a, b frontend.Variable) frontend.Variable {
+	return n.api.And(a, b)
+}
+
+func (n *EmulatedFieldOps) Xor(a, b frontend.Variable) frontend.Variable {
+	return n.api.Xor(a, b)
+}
+
+func (n *EmulatedFieldOps) Or(a, b frontend.Variable) frontend.Variable {
+	return n.api.Or(a, b)
+}
 
 func (e *EmulatedFieldOps) Select(a frontend.Variable, i1, i2 *EmulatedElement) *EmulatedElement {
 	return e.ef.Select(a, i1, i2)
@@ -87,6 +105,7 @@ func (e *EmulatedFieldOps) FromKoalabear(v koalabear.Element) *EmulatedElement {
 }
 
 func (e *EmulatedFieldOps) NewHint(f solver.Hint, nbOutputs int, inputs ...*EmulatedElement) ([]*EmulatedElement, error) {
+
 	res, err := e.ef.NewHint(f, nbOutputs, inputs...)
 	return res, err
 }
@@ -97,14 +116,6 @@ func (e *EmulatedFieldOps) Println(a ...*EmulatedElement) {
 	}
 }
 
-// func (e EmulatedFieldOps) NativeApi() frontend.API {
-// 	return e.api
+// func (n *EmulatedFieldOps) GnarkAPI() frontend.API {
+// 	return n.api
 // }
-
-func newEmulatedAPI(api frontend.API) (*EmulatedFieldOps, error) {
-	f, err := emulated.NewField[emulated.KoalaBear](api)
-	if err != nil {
-		return nil, err
-	}
-	return &EmulatedFieldOps{api: api, ef: f}, nil
-}

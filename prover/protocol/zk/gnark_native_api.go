@@ -61,9 +61,17 @@ func (n *NativeAPI) FromBinary(a ...frontend.Variable) *NativeElement {
 	return packNE(n.api.FromBinary(a...))
 }
 
-// func (n NativeAPI) And(a, b frontend.Variable) frontend.Variable {
-// 	return n.api.And(a, b)
-// }
+func (n *NativeAPI) And(a, b frontend.Variable) frontend.Variable {
+	return n.api.And(a, b)
+}
+
+func (n *NativeAPI) Xor(a, b frontend.Variable) frontend.Variable {
+	return n.api.Xor(a, b)
+}
+
+func (n *NativeAPI) Or(a, b frontend.Variable) frontend.Variable {
+	return n.api.Or(a, b)
+}
 
 func (n *NativeAPI) Select(a frontend.Variable, i1, i2 *NativeElement) *NativeElement {
 	return packNE(n.api.Select(a, i1.V, i2.V))
@@ -102,7 +110,7 @@ func (n *NativeAPI) NewHint(f solver.Hint, nbOutputs int, inputs ...*NativeEleme
 	for i, r := range inputs {
 		_inputs[i] = r.V
 	}
-	_r, err := n.api.NewHint(f, nbOutputs, _inputs)
+	_r, err := n.api.NewHint(f, nbOutputs, _inputs...)
 	if err != nil {
 		return nil, err
 	}

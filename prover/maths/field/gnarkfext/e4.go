@@ -179,28 +179,6 @@ func (e *Element) Conjugate(api frontend.API, e1 Element) *Element {
 	return e
 }
 
-// Inverse Element elmts
-func (e *Element) Inverse(api frontend.API, e1 Element) *Element {
-
-	res, err := api.NewHint(inverseE4Hint, 4, e1.B0.A0, e1.B0.A1, e1.B1.A0, e1.B1.A1)
-	if err != nil {
-		// err is non-nil only for invalid number of inputs
-		panic(err)
-	}
-
-	var e3, one Element
-	e3.assign(res[:4])
-	one.SetOne()
-
-	// 1 == e3 * e1
-	e3.Mul(api, e3, e1)
-	e3.AssertIsEqual(api, one)
-
-	e.assign(res[:4])
-
-	return e
-}
-
 // Assign a value to self (witness assignment)
 func (e *Element) Assign(a fext.Element) {
 	e.B0.Assign(a.B0)
@@ -232,10 +210,47 @@ func NewFromBase(e frontend.Variable) Element {
 	}
 }
 
-// Sub Element elmts
+// Inverse Element elmts
+func (e *Element) Inverse(api frontend.API, e1 Element) *Element {
+
+	res, err := api.NewHint(_inverseE4, 4, e1.B0.A0, e1.B0.A1, e1.B1.A0, e1.B1.A1)
+	if err != nil {
+		// err is non-nil only for invalid number of inputs
+		panic(err)
+	}
+
+	var e3, one Element
+	e3.assign(res[:4])
+	one.SetOne()
+
+	// 1 == e3 * e1
+	e3.Mul(api, e3, e1)
+	e3.AssertIsEqual(api, one)
+
+	e.assign(res[:4])
+
+	return e
+}
+
+// Div Element elmts
 func (e *Element) Div(api frontend.API, e1, e2 Element) *Element {
-	e.B0.Div(api, e1.B0, e2.B0)
-	e.B1.Div(api, e1.B1, e2.B1)
+
+	res, err := api.NewHint(_divE4, 4,
+		e1.B0.A0, e1.B0.A1, e1.B1.A0, e1.B1.A1,
+		e2.B0.A0, e2.B0.A1, e2.B1.A0, e2.B1.A1)
+	if err != nil {
+		panic(err)
+	}
+
+	var a Element
+	a.assign(res)
+
+	var b Element
+	b.Mul(api, a, e2)
+	e1.AssertIsEqual(api, b)
+
+	e.assign(res)
+
 	return e
 }
 
