@@ -7,6 +7,7 @@ import { DepositForBurnLogEvent } from "@/types/events";
 import { HistoryActionsForCompleteTxCaching } from "@/stores";
 import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
 import { isBlockTooOld } from "./isBlockTooOld";
+import { isTimestampTooOld } from "./isTimestampTooOld";
 
 export async function fetchCctpBridgeEvents(
   historyStoreActions: HistoryActionsForCompleteTxCaching,
@@ -40,6 +41,10 @@ export async function fetchCctpBridgeEvents(
       const cacheKey = getCompleteTxStoreKey(fromChain.id, transactionHash);
       const cachedCompletedTx = historyStoreActions.getCompleteTx(cacheKey);
       if (cachedCompletedTx) {
+        if (isTimestampTooOld(cachedCompletedTx.timestamp)) {
+          historyStoreActions.deleteCompleteTx(cacheKey);
+          return;
+        }
         transactionsMap.set(transactionHash, cachedCompletedTx);
         return;
       }

@@ -26,9 +26,13 @@ type HistoryActions = {
   // getTransactionsByKey: (key: string) => BridgeTransaction[];
   // getFromBlockNumbers: (key: string) => { l1FromBlock: bigint; l2FromBlock: bigint };
   getCompleteTx: (key: string) => BridgeTransaction | undefined;
+  deleteCompleteTx: (key: string) => void;
 };
 
-export type HistoryActionsForCompleteTxCaching = Pick<HistoryActions, "setCompleteTx" | "getCompleteTx">;
+export type HistoryActionsForCompleteTxCaching = Pick<
+  HistoryActions,
+  "setCompleteTx" | "getCompleteTx" | "deleteCompleteTx"
+>;
 
 export type HistoryStore = HistoryState & HistoryActions;
 
@@ -69,6 +73,13 @@ export const useHistoryStore = createWithEqualityFn<HistoryStore>()(
         const { completeTxHistory } = get();
         return completeTxHistory[key];
       },
+      deleteCompleteTx: (key) =>
+        set((state) => {
+          const { [key]: _, ...remainingHistory } = state.completeTxHistory;
+          return {
+            completeTxHistory: remainingHistory,
+          };
+        }),
       // getTransactionsByKey: (key) => {
       //   const { history } = get();
       //   return history[key]?.transactions ?? [];

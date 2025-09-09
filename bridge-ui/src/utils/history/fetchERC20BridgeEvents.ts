@@ -21,6 +21,7 @@ import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
 import { isBlockTooOld } from "./isBlockTooOld";
 import { isUndefined, isUndefinedOrNull } from "@/utils";
 import { config } from "@/config";
+import { isTimestampTooOld } from "./isTimestampTooOld";
 
 export async function fetchERC20BridgeEvents(
   historyStoreActions: HistoryActionsForCompleteTxCaching,
@@ -79,6 +80,10 @@ export async function fetchERC20BridgeEvents(
       const cacheKey = getCompleteTxStoreKey(fromChain.id, transactionHash);
       const cachedCompletedTx = historyStoreActions.getCompleteTx(cacheKey);
       if (cachedCompletedTx) {
+        if (isTimestampTooOld(cachedCompletedTx.timestamp)) {
+          historyStoreActions.deleteCompleteTx(cacheKey);
+          return;
+        }
         transactionsMap.set(transactionHash, cachedCompletedTx);
         return;
       }
