@@ -57,12 +57,12 @@ func runSerdeBenchmark(b *testing.B, input any, name string, onlySerialize bool)
 	}
 }
 
-// BenchmarkSerializeZkEVM benchmarks serialization of ZkEVM separately.
-func BenchmarkSerializeZkEVM(b *testing.B) {
+// BenchmarkSerZkEVM benchmarks serialization of ZkEVM separately.
+func BenchmarkSerZkEVM(b *testing.B) {
 	runSerdeBenchmark(b, z, "ZkEVM-Serialize", true)
 }
 
-// BenchmarkDeserializeZkEVM benchmarks deserialization of ZkEVM separately.
-func BenchmarkDeserializeZkEVM(b *testing.B) {
+// BenchmarkDeserZkEVM benchmarks deserialization of ZkEVM separately.
+func BenchmarkDeserZkEVM(b *testing.B) {
 	runSerdeBenchmark(b, z, "ZkEVM-Deserialize", false)
 }
