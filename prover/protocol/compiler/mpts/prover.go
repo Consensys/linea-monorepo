@@ -3,6 +3,8 @@ package mpts
 import (
 	"sync"
 
+	gnarkutils "github.com/consensys/gnark-crypto/utils"
+
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -296,8 +298,8 @@ func ldeOfExt(v []fext.Element, pool mempool.MemPool) *[]fext.Element {
 
 	var (
 		sizeLarge   = pool.Size()
-		domainSmall = fft.NewDomain(uint64(len(v)), fft.WithoutPrecompute())
-		domainLarge = fft.NewDomain(uint64(sizeLarge), fft.WithoutPrecompute())
+		domainSmall = fft.NewDomain(uint64(len(v)), fft.WithCache())
+		domainLarge = fft.NewDomain(uint64(sizeLarge), fft.WithCache())
 		resPtr      = pool.AllocExt()
 		res         = *resPtr
 	)
@@ -309,9 +311,9 @@ func ldeOfExt(v []fext.Element, pool mempool.MemPool) *[]fext.Element {
 	// reduce the overheads of bit-reversal with a smarter implementation.
 	// To be digged in the future, if this comes up as a bottleneck.
 	domainSmall.FFTInverseExt(res[:len(v)], fft.DIF)
-	fft.BitReverse(res[:len(v)])
+	gnarkutils.BitReverse(res[:len(v)])
 	domainLarge.FFTExt(res, fft.DIF)
-	fft.BitReverse(res)
+	gnarkutils.BitReverse(res)
 
 	return resPtr
 }

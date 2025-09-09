@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"testing"
 
+	gnarkutils "github.com/consensys/gnark-crypto/utils"
+
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
@@ -30,7 +32,7 @@ func TestEvaluateLagrange(t *testing.T) {
 	polyLagrange := make([]field.Element, size)
 	copy(polyLagrange, poly)
 	d.FFT(polyLagrange, fft.DIF)
-	fft.BitReverse(polyLagrange)
+	gnarkutils.BitReverse(polyLagrange)
 
 	var evalCan fext.Element
 	var tmp fext.Element
@@ -77,7 +79,7 @@ func TestBatchEvaluateLagrange(t *testing.T) {
 	polyLagrangeSv := make([]SmartVector, nbPoly)
 	for i := 0; i < nbPoly; i++ {
 		d.FFT(polyLagranges[i], fft.DIF)
-		fft.BitReverse(polyLagranges[i])
+		gnarkutils.BitReverse(polyLagranges[i])
 		polyLagrangeSv[i] = NewRegular(polyLagranges[i])
 
 	}
@@ -240,8 +242,8 @@ func TestBatchInterpolationWithConstantVector(t *testing.T) {
 
 	domain.FFT(polys[0], fft.DIF)
 	domain.FFT(polys[1], fft.DIF)
-	fft.BitReverse(polys[0])
-	fft.BitReverse(polys[1])
+	gnarkutils.BitReverse(polys[0])
+	gnarkutils.BitReverse(polys[1])
 
 	yOnRoots := fastpoly.BatchEvaluateLagrangeMixed(polys, x)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
@@ -258,8 +260,8 @@ func TestBatchInterpolationWithConstantVector(t *testing.T) {
 
 	domain.FFT(onCosets[0], fft.DIF, fft.OnCoset())
 	domain.FFT(onCosets[1], fft.DIF, fft.OnCoset())
-	fft.BitReverse(onCosets[0])
-	fft.BitReverse(onCosets[1])
+	gnarkutils.BitReverse(onCosets[0])
+	gnarkutils.BitReverse(onCosets[1])
 
 	yOnCosets := fastpoly.BatchEvaluateLagrangeMixed(onCosets, x, true)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
@@ -286,8 +288,8 @@ func TestBatchEvaluateLagrangeOnFextOnlyConstantVector(t *testing.T) {
 
 	domain.FFT(polys[0], fft.DIF)
 	domain.FFT(polys[1], fft.DIF)
-	fft.BitReverse(polys[0])
-	fft.BitReverse(polys[1])
+	gnarkutils.BitReverse(polys[0])
+	gnarkutils.BitReverse(polys[1])
 
 	yOnRoots := fastpoly.BatchEvaluateLagrangeMixed(polys, x)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
@@ -304,8 +306,8 @@ func TestBatchEvaluateLagrangeOnFextOnlyConstantVector(t *testing.T) {
 
 	domain.FFT(onCosets[0], fft.DIF, fft.OnCoset())
 	domain.FFT(onCosets[1], fft.DIF, fft.OnCoset())
-	fft.BitReverse(onCosets[0])
-	fft.BitReverse(onCosets[1])
+	gnarkutils.BitReverse(onCosets[0])
+	gnarkutils.BitReverse(onCosets[1])
 
 	yOnCosets := fastpoly.BatchEvaluateLagrangeMixed(onCosets, x, true)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
@@ -341,9 +343,9 @@ func TestBatchInterpolationThreeVectors(t *testing.T) {
 	domain.FFT(polys[0], fft.DIF)
 	domain.FFT(polys[1], fft.DIF)
 	domain.FFT(polys[2], fft.DIF)
-	fft.BitReverse(polys[0])
-	fft.BitReverse(polys[1])
-	fft.BitReverse(polys[2])
+	gnarkutils.BitReverse(polys[0])
+	gnarkutils.BitReverse(polys[1])
+	gnarkutils.BitReverse(polys[2])
 
 	yOnRoots := fastpoly.BatchEvaluateLagrangeMixed(polys, x)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
@@ -364,9 +366,9 @@ func TestBatchInterpolationThreeVectors(t *testing.T) {
 	domain.FFT(onCosets[0], fft.DIF, fft.OnCoset())
 	domain.FFT(onCosets[1], fft.DIF, fft.OnCoset())
 	domain.FFT(onCosets[2], fft.DIF, fft.OnCoset())
-	fft.BitReverse(onCosets[0])
-	fft.BitReverse(onCosets[1])
-	fft.BitReverse(onCosets[2])
+	gnarkutils.BitReverse(onCosets[0])
+	gnarkutils.BitReverse(onCosets[1])
+	gnarkutils.BitReverse(onCosets[2])
 
 	yOnCosets := fastpoly.BatchEvaluateLagrangeMixed(onCosets, x, true)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())

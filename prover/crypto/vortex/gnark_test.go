@@ -7,6 +7,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
+	gnarkutils "github.com/consensys/gnark-crypto/utils"
 
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
@@ -68,7 +69,7 @@ func TestComputeLagrangeCircuit(t *testing.T) {
 		buf := make([]field.Element, s)
 		buf[i].SetOne()
 		d.FFTInverse(buf, fft.DIF)
-		fft.BitReverse(buf)
+		gnarkutils.BitReverse(buf)
 		li := evalPoly(buf, zeta)
 		witness.Li[i] = li.String()
 	}

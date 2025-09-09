@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	gnarkutils "github.com/consensys/gnark-crypto/utils"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -68,7 +69,7 @@ func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRati
 
 	v.WriteInSliceExt(res.RegularExt)
 
-	domain := fft.NewDomain(uint64(v.Len()), fft.WithoutPrecompute())
+	domain := fft.NewDomain(uint64(v.Len()), fft.WithCache())
 
 	var shift field.Element
 	if cosetID != 0 || cosetRatio != 0 {
@@ -76,12 +77,12 @@ func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRati
 		omega.Exp(omega, big.NewInt(int64(cosetID)))
 
 		shift.Mul(&domain.FrMultiplicativeGen, &omega)
-		domain = fft.NewDomain(uint64(v.Len()), fft.WithShift(shift), fft.WithoutPrecompute())
+		domain = fft.NewDomain(uint64(v.Len()), fft.WithShift(shift), fft.WithCache())
 	}
 	if decimation == fft.DIT {
 		// Optionally, bitReverse the input
 		if bitReverse {
-			fft.BitReverse(res.RegularExt)
+			gnarkutils.BitReverse(res.RegularExt)
 		}
 		if cosetID != 0 || cosetRatio != 0 {
 			domain.FFTExt(res.RegularExt, fft.DIT, append(opts, fft.OnCoset())...)
@@ -96,7 +97,7 @@ func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRati
 			domain.FFTExt(res.RegularExt, fft.DIF, opts...)
 		}
 		if bitReverse {
-			fft.BitReverse(res.RegularExt)
+			gnarkutils.BitReverse(res.RegularExt)
 		}
 	}
 
@@ -162,7 +163,7 @@ func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, co
 
 	v.WriteInSliceExt(res.RegularExt)
 
-	domain := fft.NewDomain(uint64(v.Len()), fft.WithoutPrecompute())
+	domain := fft.NewDomain(uint64(v.Len()), fft.WithCache())
 
 	var shift field.Element
 	if cosetID != 0 || cosetRatio != 0 {
@@ -170,7 +171,7 @@ func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, co
 		omega.Exp(omega, big.NewInt(int64(cosetID)))
 
 		shift.Mul(&domain.FrMultiplicativeGen, &omega)
-		domain = fft.NewDomain(uint64(v.Len()), fft.WithShift(shift), fft.WithoutPrecompute())
+		domain = fft.NewDomain(uint64(v.Len()), fft.WithShift(shift), fft.WithCache())
 	}
 
 	if decimation == fft.DIF {
@@ -181,12 +182,12 @@ func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, co
 			domain.FFTInverseExt(res.RegularExt, fft.DIF, opts...)
 		}
 		if bitReverse {
-			fft.BitReverse(res.RegularExt)
+			gnarkutils.BitReverse(res.RegularExt)
 		}
 	} else {
 		// Likewise, the optionally rearrange the input in correct order
 		if bitReverse {
-			fft.BitReverse(res.RegularExt)
+			gnarkutils.BitReverse(res.RegularExt)
 		}
 		if cosetID != 0 || cosetRatio != 0 {
 			domain.FFTInverseExt(res.RegularExt, fft.DIT, append(opts, fft.OnCoset())...)

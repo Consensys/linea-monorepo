@@ -3,6 +3,8 @@ package fastpoly
 import (
 	"testing"
 
+	gnarkutils "github.com/consensys/gnark-crypto/utils"
+
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
@@ -35,7 +37,7 @@ func TestEvaluateLagrangeFext(t *testing.T) {
 	*/
 	copy(pLagrange, p)
 	domain.FFT(pLagrange, fft.DIF)
-	fft.BitReverse(pLagrange)
+	gnarkutils.BitReverse(pLagrange)
 	v := EvaluateLagrangeMixed(pLagrange, x)
 	require.Equal(t, u.String(), v.String())
 
@@ -44,7 +46,7 @@ func TestEvaluateLagrangeFext(t *testing.T) {
 	*/
 	copy(pLagrange, p)
 	domain.FFT(pLagrange, fft.DIF, fft.OnCoset())
-	fft.BitReverse(pLagrange)
+	gnarkutils.BitReverse(pLagrange)
 	vOnCoset := EvaluateLagrangeMixed(pLagrange, x, true)
 	require.Equal(t, u.String(), vOnCoset.String())
 }
@@ -78,7 +80,7 @@ func TestBatchEvaluateLagrangeOnFext(t *testing.T) {
 		onRoots[i] = vector.DeepCopy(polys[i])
 
 		d.FFT(onRoots[i], fft.DIF)
-		fft.BitReverse(onRoots[i])
+		gnarkutils.BitReverse(onRoots[i])
 	}
 
 	// compute lagrange eval
@@ -98,7 +100,7 @@ func TestBatchEvaluateLagrangeOnFext(t *testing.T) {
 		onCosets[i] = vector.DeepCopy(polys[i])
 
 		d.FFT(onCosets[i], fft.DIF, fft.OnCoset())
-		fft.BitReverse(onCosets[i])
+		gnarkutils.BitReverse(onCosets[i])
 	}
 
 	// compute lagrange eval
