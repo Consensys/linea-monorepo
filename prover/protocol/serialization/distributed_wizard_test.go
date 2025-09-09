@@ -185,14 +185,14 @@ func BenchmarkSerdeDW(b *testing.B) {
 
 	b.Run("ModuleNames", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			runSerdeBenchmark(b, dist.ModuleNames, "DW.ModuleNames")
+			justSerde(b, dist.ModuleNames, "DW.ModuleNames")
 		}
 	})
 
 	for i := range dist.GLs {
 		b.Run(fmt.Sprintf("GLModule-%d", i), func(b *testing.B) {
 			for j := 0; j < b.N; j++ {
-				runSerdeBenchmark(b, dist.GLs[i], fmt.Sprintf("DW.GLModule-%d", i))
+				justSerde(b, dist.GLs[i], fmt.Sprintf("DW.GLModule-%d", i))
 			}
 		})
 	}
@@ -200,32 +200,32 @@ func BenchmarkSerdeDW(b *testing.B) {
 	for i := range dist.LPPs {
 		b.Run(fmt.Sprintf("LPPModule-%d", i), func(b *testing.B) {
 			for j := 0; j < b.N; j++ {
-				runSerdeBenchmark(b, dist.LPPs[i], fmt.Sprintf("DW.LPPModule-%d", i))
+				justSerde(b, dist.LPPs[i], fmt.Sprintf("DW.LPPModule-%d", i))
 			}
 		})
 	}
 
 	b.Run("DefaultModule", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			runSerdeBenchmark(b, dist.DefaultModule, "DW.DefaultModule")
+			justSerde(b, dist.DefaultModule, "DW.DefaultModule")
 		}
 	})
 
 	b.Run("Bootstrapper", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			runSerdeBenchmark(b, dist.Bootstrapper, "DW.Bootstrapper")
+			justSerde(b, dist.Bootstrapper, "DW.Bootstrapper")
 		}
 	})
 
 	b.Run("Discoverer", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			runSerdeBenchmark(b, dist.Disc, "DW.Discoverer")
+			justSerde(b, dist.Disc, "DW.Discoverer")
 		}
 	})
 
 	b.Run("CompiledDefault", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			runSerdeBenchmark(b, dist.CompiledDefault, "DW.CompiledDefault")
+			justSerde(b, dist.CompiledDefault, "DW.CompiledDefault")
 		}
 	})
 
@@ -233,7 +233,7 @@ func BenchmarkSerdeDW(b *testing.B) {
 
 		b.Run(fmt.Sprintf("CompiledGL-%v", i), func(b *testing.B) {
 			for j := 0; j < b.N; j++ {
-				runSerdeBenchmark(b, dist.CompiledGLs[i], fmt.Sprintf("DW.CompiledGL-%v", i))
+				justSerde(b, dist.CompiledGLs[i], fmt.Sprintf("DW.CompiledGL-%v", i))
 			}
 		})
 	}
@@ -242,7 +242,7 @@ func BenchmarkSerdeDW(b *testing.B) {
 
 		b.Run(fmt.Sprintf("CompiledLPP-%v", i), func(b *testing.B) {
 			for j := 0; j < b.N; j++ {
-				runSerdeBenchmark(b, dist.CompiledLPPs[i], fmt.Sprintf("DW.CompiledLPP-%v", i))
+				justSerde(b, dist.CompiledLPPs[i], fmt.Sprintf("DW.CompiledLPP-%v", i))
 			}
 		})
 	}
@@ -254,7 +254,7 @@ func BenchmarkSerdeDW(b *testing.B) {
 
 	b.Run("CompiledConglomeration", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			runSerdeBenchmark(b, cong, "DW.CompiledConglomeration")
+			justSerde(b, cong, "DW.CompiledConglomeration")
 		}
 	})
 }

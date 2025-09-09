@@ -119,7 +119,7 @@ func runSerdeTestPerf(t *testing.T, input any, name string) *profiling.Performan
 	return perfLog
 }
 
-func runSerdeBenchmark(t *testing.B, input any, name string) {
+func justSerde(t *testing.B, input any, name string) {
 	// In case the test panics, log the error but do not let the panic
 	// interrupt the test.
 	defer func() {
