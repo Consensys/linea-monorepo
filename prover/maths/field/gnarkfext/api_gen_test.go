@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -12,13 +13,13 @@ import (
 )
 
 type ApiCircuitGen[T zk.Element] struct {
-	A, B E4Gen[T]
+	A E4Gen[T]
 	// AddAB E4Gen[T]
 	// SubAB E4Gen[T]
 	// MulAB E4Gen[T]
 	// SquareA E4Gen[T]
-	DivAB E4Gen[T]
-	// InvA  E4Gen[T]
+	// DivAB E4Gen[T]
+	InvA E4Gen[T]
 }
 
 func (c *ApiCircuitGen[T]) Define(api frontend.API) error {
@@ -39,11 +40,11 @@ func (c *ApiCircuitGen[T]) Define(api frontend.API) error {
 	// squareA := ext4.Mul(&c.A, &c.A) // TODO Square mysteriously fails
 	// ext4.AssertIsEqual(squareA, &c.SquareA)
 
-	divAB := ext4.Div(&c.A, &c.B)
-	ext4.AssertIsEqual(divAB, &c.DivAB)
+	// divAB := ext4.Div(&c.A, &c.B)
+	// ext4.AssertIsEqual(divAB, &c.DivAB)
 
-	// invA := ext4.Inverse(&c.A)
-	// ext4.AssertIsEqual(invA, &c.InvA)
+	invA := ext4.Inverse(&c.A)
+	ext4.AssertIsEqual(invA, &c.InvA)
 
 	return nil
 }
@@ -61,31 +62,31 @@ func testApiGenWitness[T zk.Element]() *ApiCircuitGen[T] {
 	inva.Inverse(&a)
 	return &ApiCircuitGen[T]{
 		A: NewE4Gen[T](a),
-		B: NewE4Gen[T](b),
+		// B: NewE4Gen[T](b),
 		// AddAB: NewE4Gen[T](addab),
 		// SubAB: NewE4Gen[T](subab),
 		// MulAB: NewE4Gen[T](mulab),
 		// SquareA: NewE4Gen[T](squarea),
-		DivAB: NewE4Gen[T](divab),
-		// InvA:  NewE4Gen[T](inva),
+		// DivAB: NewE4Gen[T](divab),
+		InvA: NewE4Gen[T](inva),
 	}
 }
 
 func TestAPIGen(t *testing.T) {
 
-	// {
-	// 	witness := testApiGenWitness[zk.NativeElement]()
+	{
+		witness := testApiGenWitness[zk.NativeElement]()
 
-	// 	var circuit ApiCircuitGen[zk.NativeElement]
+		var circuit ApiCircuitGen[zk.NativeElement]
 
-	// 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
-	// 	assert.NoError(t, err)
+		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
+		assert.NoError(t, err)
 
-	// 	fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
-	// 	assert.NoError(t, err)
-	// 	err = ccs.IsSolved(fullWitness)
-	// 	assert.NoError(t, err)
-	// }
+		fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
+		assert.NoError(t, err)
+		err = ccs.IsSolved(fullWitness)
+		assert.NoError(t, err)
+	}
 
 	{
 		witness := testApiGenWitness[zk.EmulatedElement]()

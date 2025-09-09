@@ -199,10 +199,19 @@ func (ext4 *Ext4[T]) Conjugate(e1 E4Gen[T]) *E4Gen[T] {
 	}
 }
 
+// Select sets e to r1 if b=1, r2 otherwise
+func (ext4 *Ext4[T]) Select(b frontend.Variable, r1, r2 *E4Gen[T]) *E4Gen[T] {
+	return &E4Gen[T]{
+		B0: *ext4.Ext2.Select(b, &r1.B0, &r2.B0),
+		B1: *ext4.Ext2.Select(b, &r1.B1, &r2.B1),
+	}
+}
+
 // Inverse Element elmts
 func (ext4 *Ext4[T]) Inverse(e1 *E4Gen[T]) *E4Gen[T] {
 
-	inverseHint := zk.MixedHint[T](_inverseE4)
+	inverseHint := InverseHint[T]()
+
 	res, err := ext4.mixedAPI.NewHint(inverseHint, 4, &e1.B0.A0, &e1.B0.A1, &e1.B1.A0, &e1.B1.A1)
 	if err != nil {
 		// err is non-nil only for invalid number of inputs
@@ -217,31 +226,23 @@ func (ext4 *Ext4[T]) Inverse(e1 *E4Gen[T]) *E4Gen[T] {
 	return e3
 }
 
-// Select sets e to r1 if b=1, r2 otherwise
-func (ext4 *Ext4[T]) Select(b frontend.Variable, r1, r2 *E4Gen[T]) *E4Gen[T] {
-	return &E4Gen[T]{
-		B0: *ext4.Ext2.Select(b, &r1.B0, &r2.B0),
-		B1: *ext4.Ext2.Select(b, &r1.B1, &r2.B1),
-	}
-}
-
 // Div Element elmts
-func (ext4 *Ext4[T]) Div(e1, e2 *E4Gen[T]) *E4Gen[T] {
+// func (ext4 *Ext4[T]) Div(e1, e2 *E4Gen[T]) *E4Gen[T] {
 
-	divHint := zk.MixedHint[T](_divE4)
-	res, err := ext4.mixedAPI.NewHint(
-		divHint, 4,
-		&e1.B0.A0, &e1.B0.A1, &e1.B1.A0, &e1.B1.A1,
-		&e2.B0.A0, &e2.B0.A1, &e2.B1.A0, &e2.B1.A1)
-	if err != nil {
-		// err is non nil only for invalid number of inputs
-		panic(err)
-	}
-	e3 := ext4.assign(res[:4])
-	_res := ext4.Mul(e3, e2)
-	ext4.AssertIsEqual(_res, e1)
-	return e3
-}
+// 	divHint := zk.MixedHint[T](_divE4)
+// 	res, err := ext4.mixedAPI.NewHint(
+// 		divHint, 4,
+// 		&e1.B0.A0, &e1.B0.A1, &e1.B1.A0, &e1.B1.A1,
+// 		&e2.B0.A0, &e2.B0.A1, &e2.B1.A0, &e2.B1.A1)
+// 	if err != nil {
+// 		// err is non nil only for invalid number of inputs
+// 		panic(err)
+// 	}
+// 	e3 := ext4.assign(res[:4])
+// 	_res := ext4.Mul(e3, e2)
+// 	ext4.AssertIsEqual(_res, e1)
+// 	return e3
+// }
 
 // Sub Element elmts
 func (ext4 *Ext4[T]) DivByBase(e1 *E4Gen[T], e2 *T) *E4Gen[T] {

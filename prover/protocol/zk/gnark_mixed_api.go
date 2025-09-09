@@ -2,7 +2,6 @@ package zk
 
 import (
 	"fmt"
-	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/constraint/solver"
@@ -90,21 +89,6 @@ func ValueOf[T Element](input any) T {
 		panic("unsupported type")
 	}
 	return ret
-}
-
-func MixedHint[T Element](h solver.Hint) solver.Hint {
-	var t T
-	switch any(t).(type) {
-	case EmulatedElement:
-		fmt.Println("") // without this line hint is not registered and I don't want to know why
-		return func(_ *big.Int, nativeInputs, nativeOutputs []*big.Int) error {
-			return emulated.UnwrapHint(nativeInputs, nativeOutputs, h)
-		}
-	case NativeElement:
-		return h
-	default:
-		panic("unsupported requested API type")
-	}
 }
 
 // Circuit 0: mixed
