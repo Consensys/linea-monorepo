@@ -120,7 +120,7 @@ type PackedObject struct {
 	Queries       []PackedStructObject   `cbor:"i"` // Serialized queries.
 	Store         []column.PackedStore   `cbor:"j"` // Serialized stores (as arrays).
 	//CompiledIOP     []PackedStructObject   `cbor:"k"` // Serialized CompiledIOPs.
-	CompiledIOPFast []RawCompiledIOP     `cbor:"o"` // Serialized CompiledIOPs (fast path).
+	CompiledIOPFast []PackedCompiledIOP  `cbor:"o"` // Serialized CompiledIOPs (fast path).
 	Circuits        [][]byte             `cbor:"l"` // Serialized circuits.
 	Expressions     []PackedStructObject `cbor:"m"` // Serialized expressions
 	Payload         any                  `cbor:"n"` // CBOR-encoded root value.
