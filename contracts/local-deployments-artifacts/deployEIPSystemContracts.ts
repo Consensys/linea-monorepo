@@ -58,7 +58,28 @@ const EIP_CONTRACTS: Record<string, EIPContractConfig> = {
   },
 };
 
-async function deployEIPSystemContract(provider: ethers.JsonRpcProvider, config: EIPContractConfig): Promise<void> {
+async function deployEIPSystemContract(
+  provider: ethers.JsonRpcProvider,
+  wallet: ethers.Wallet,
+  walletNonce: number,
+  config: EIPContractConfig,
+): Promise<void> {
+  try {
+    // Prefund expected sender
+    const prefundTx = await wallet.sendTransaction({
+      to: config.predeterminedSenderAddress,
+      value: BigInt(config.deploymentTx.gas) * BigInt(config.deploymentTx.gasPrice),
+      nonce: walletNonce,
+    });
+    await prefundTx.wait();
+    console.log(`Successfully prefunded predetermined sender for ${config.contractName}`);
+  } catch (error) {
+    console.error(
+      `❌ Error during prefunding predetermined sender for ${config.contractName}: ${(error as Error).message}`,
+    );
+    throw error;
+  }
+
   // Check if the contract is already deployed at the expected address
   const code = await provider.getCode(config.expectedAddress);
   if (code !== "0x") {
@@ -125,12 +146,20 @@ async function main() {
   }
 
   const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
+  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
 
   const contractNames = ["EIP2935", "EIP4788"] as const;
 
-  for (const contractName of contractNames) {
+  let walletNonce: number;
+  if (!process.env.L2_NONCE) {
+    walletNonce = await wallet.getNonce();
+  } else {
+    walletNonce = parseInt(process.env.L2_NONCE);
+  }
+
+  for (const [index, contractName] of contractNames.entries()) {
     const config = EIP_CONTRACTS[contractName];
-    await deployEIPSystemContract(provider, config);
+    await deployEIPSystemContract(provider, wallet, walletNonce + index, config);
   }
 }
 
