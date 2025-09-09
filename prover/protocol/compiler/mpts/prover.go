@@ -296,8 +296,8 @@ func ldeOfExt(v []fext.Element, pool mempool.MemPool) *[]fext.Element {
 
 	var (
 		sizeLarge   = pool.Size()
-		domainSmall = fft.NewDomain(uint64(len(v)))
-		domainLarge = fft.NewDomain(uint64(sizeLarge))
+		domainSmall = fft.NewDomain(uint64(len(v)), fft.WithCache())
+		domainLarge = fft.NewDomain(uint64(sizeLarge), fft.WithCache())
 		resPtr      = pool.AllocExt()
 		res         = *resPtr
 	)
