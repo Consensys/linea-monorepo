@@ -67,7 +67,7 @@ func PlonkCheck(
 	}
 
 	if ctx.HasCommitment() {
-		comp.RegisterProverAction(Round+1, LROCommitProverAction{
+		comp.RegisterProverAction(Round+1, &LROCommitProverAction{
 			GenericPlonkProverAction: ctx.GenericPlonkProverAction(),
 			ProverStateLock:          &sync.Mutex{},
 		})

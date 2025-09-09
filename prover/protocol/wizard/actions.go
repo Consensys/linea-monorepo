@@ -21,7 +21,7 @@ type proverStepWrapper struct {
 }
 
 // Run implements the ProverAction interface for MainProverStep.
-func (w proverStepWrapper) Run(run *ProverRuntime) {
+func (w *proverStepWrapper) Run(run *ProverRuntime) {
 	w.step(run)
 }
 
@@ -53,7 +53,7 @@ type PrintingVerifierAction struct {
 }
 
 // Run implements the ProverAction interface for PrintingProverAction.
-func (p PrintingProverAction) Run(run *ProverRuntime) {
+func (p *PrintingProverAction) Run(run *ProverRuntime) {
 
 	name := p.Column.GetColID()
 	if len(p.NameReplacement) > 0 {
@@ -65,7 +65,7 @@ func (p PrintingProverAction) Run(run *ProverRuntime) {
 }
 
 // Run implements the VerifierAction interface for PrintingVerifierAction.
-func (p PrintingVerifierAction) Run(run Runtime) error {
+func (p *PrintingVerifierAction) Run(run Runtime) error {
 
 	name := p.Column.GetColID()
 	if len(p.NameReplacement) > 0 {

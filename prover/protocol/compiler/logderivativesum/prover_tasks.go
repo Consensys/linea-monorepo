@@ -169,7 +169,7 @@ type MAssignmentTask struct {
 // In case one of the Ss contains an entry that does not appear in T, the
 // function panics. This aims at early detecting that the lookup query is not
 // satisfied.
-func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
+func (a *MAssignmentTask) Run(run *wizard.ProverRuntime) {
 
 	var (
 		// isMultiColumn flags whether the table have multiple column and
@@ -361,7 +361,7 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 // sigmaAssignment
 type ZAssignmentTask ZCtx
 
-func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
+func (z *ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 	parallel.Execute(len(z.ZDenominatorBoarded), func(start, stop int) {
 		for frag := start; frag < stop; frag++ {
 

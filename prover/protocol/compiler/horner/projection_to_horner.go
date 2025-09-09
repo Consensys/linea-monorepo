@@ -123,11 +123,11 @@ func ProjectionToHorner(comp *wizard.CompiledIOP) {
 	}
 
 	ctx.Query = comp.InsertHornerQuery(round, ifaces.QueryIDf("PROJECTION_TO_HORNER_%v", comp.SelfRecursionCount), parts)
-	comp.RegisterProverAction(round, AssignHornerQuery{ctx})
+	comp.RegisterProverAction(round, &AssignHornerQuery{ctx})
 	comp.RegisterVerifierAction(round, &CheckHornerQuery{ProjectionContext: ctx})
 }
 
-func (a AssignHornerQuery) Run(run *wizard.ProverRuntime) {
+func (a *AssignHornerQuery) Run(run *wizard.ProverRuntime) {
 
 	params := query.HornerParams{}
 

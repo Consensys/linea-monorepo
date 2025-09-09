@@ -105,11 +105,11 @@ func compile(comp *wizard.CompiledIOP, options ...Option) {
 	}
 	// run the prover of the relevant round
 	if len(proverTaskNoCollaps) >= 1 {
-		comp.RegisterProverAction(round, proverTaskNoCollaps)
+		comp.RegisterProverAction(round, &proverTaskNoCollaps)
 	}
 
 	if len(proverTaskCollpas) >= 1 {
-		comp.RegisterProverAction(round+1, proverTaskCollpas)
+		comp.RegisterProverAction(round+1, &proverTaskCollpas)
 	}
 
 }
