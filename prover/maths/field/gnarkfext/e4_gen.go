@@ -227,22 +227,22 @@ func (ext4 *Ext4[T]) Inverse(e1 *E4Gen[T]) *E4Gen[T] {
 }
 
 // Div Element elmts
-// func (ext4 *Ext4[T]) Div(e1, e2 *E4Gen[T]) *E4Gen[T] {
+func (ext4 *Ext4[T]) Div(e1, e2 *E4Gen[T]) *E4Gen[T] {
 
-// 	divHint := zk.MixedHint[T](_divE4)
-// 	res, err := ext4.mixedAPI.NewHint(
-// 		divHint, 4,
-// 		&e1.B0.A0, &e1.B0.A1, &e1.B1.A0, &e1.B1.A1,
-// 		&e2.B0.A0, &e2.B0.A1, &e2.B1.A0, &e2.B1.A1)
-// 	if err != nil {
-// 		// err is non nil only for invalid number of inputs
-// 		panic(err)
-// 	}
-// 	e3 := ext4.assign(res[:4])
-// 	_res := ext4.Mul(e3, e2)
-// 	ext4.AssertIsEqual(_res, e1)
-// 	return e3
-// }
+	divHint := DivHint[T]()
+	res, err := ext4.mixedAPI.NewHint(
+		divHint, 4,
+		&e1.B0.A0, &e1.B0.A1, &e1.B1.A0, &e1.B1.A1,
+		&e2.B0.A0, &e2.B0.A1, &e2.B1.A0, &e2.B1.A1)
+	if err != nil {
+		// err is non nil only for invalid number of inputs
+		panic(err)
+	}
+	e3 := ext4.assign(res[:4])
+	_res := ext4.Mul(e3, e2)
+	ext4.AssertIsEqual(_res, e1)
+	return e3
+}
 
 // Sub Element elmts
 func (ext4 *Ext4[T]) DivByBase(e1 *E4Gen[T], e2 *T) *E4Gen[T] {

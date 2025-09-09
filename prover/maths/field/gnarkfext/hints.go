@@ -15,7 +15,8 @@ func init() {
 	solver.RegisterHint(
 		// zk.MixedHint[zk.EmulatedElement](_divE4),
 		// zk.MixedHint[zk.NativeElement](_divE4),
-		// divE4Emulated,
+		divE4Emulated,
+		divE4Native,
 		// _divE4,
 		inverseE4Emulated,
 		inverseE4Native)
@@ -35,11 +36,23 @@ func inverseE2Hint(_ *big.Int, inputs []*big.Int, res []*big.Int) error {
 	return nil
 }
 
-func divE4Emulated(_ *big.Int, nativeInputs []*big.Int, nativeOutputs []*big.Int) error {
-	return emulated.UnwrapHint(nativeInputs, nativeOutputs, _divE4)
+func DivHint[T zk.Element]() solver.Hint {
+	var t T
+	switch any(t).(type) {
+	case zk.EmulatedElement:
+		return divE4Emulated
+	case zk.NativeElement:
+		return divE4Native
+	default:
+		panic("unsupported requested API type")
+	}
 }
 
-func _divE4(_ *big.Int, inputs []*big.Int, res []*big.Int) error {
+func divE4Emulated(_ *big.Int, nativeInputs []*big.Int, nativeOutputs []*big.Int) error {
+	return emulated.UnwrapHint(nativeInputs, nativeOutputs, divE4Native)
+}
+
+func divE4Native(_ *big.Int, inputs []*big.Int, res []*big.Int) error {
 	var a, b, c fext.Element
 
 	a.B0.A0.SetBigInt(inputs[0])

@@ -235,7 +235,7 @@ func (e *Element) Inverse(api frontend.API, e1 Element) *Element {
 // Div Element elmts
 func (e *Element) Div(api frontend.API, e1, e2 Element) *Element {
 
-	res, err := api.NewHint(_divE4, 4,
+	res, err := api.NewHint(divE4Native, 4,
 		e1.B0.A0, e1.B0.A1, e1.B1.A0, e1.B1.A1,
 		e2.B0.A0, e2.B0.A1, e2.B1.A0, e2.B1.A1)
 	if err != nil {
