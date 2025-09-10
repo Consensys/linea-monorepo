@@ -36,12 +36,13 @@ type PackedExtradata struct {
 }
 
 type PackedQuery struct {
-	_                               struct{}      `cbor:",toarray" serde:"omit"`
-	BackReference                   BackReference `cbor:"b"`
-	ConcreteType                    int           `cbor:"t"`
-	IsIgnored                       bool          `cbor:"i"`
-	IsSkippedFromProverTranscript   bool          `cbor:"s"`
-	IsSkippedFromVerifierTranscript bool          `cbor:"v"`
+	_             struct{}      `cbor:",toarray" serde:"omit"`
+	BackReference BackReference `cbor:"b"`
+	ConcreteType  int           `cbor:"t"`
+
+	IsIgnored                       bool `cbor:"i"`
+	IsSkippedFromProverTranscript   bool `cbor:"s"`
+	IsSkippedFromVerifierTranscript bool `cbor:"v"`
 }
 
 type PackedRawData struct {
@@ -66,6 +67,9 @@ type PackedCompiledIOP struct {
 	WithStorePointerChecks bool     `cbor:"o"`
 	SelfRecursionCount     int      `cbor:"k"`
 	FiatShamirSetup        *big.Int `cbor:"l"`
+
+	Bools  map[bool]int `cbor:"p"`
+	Rounds []int
 
 	Columns BackReference `cbor:"a"`
 
@@ -247,14 +251,14 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 	if v < 0 || int(v) >= len(d.PackedObject.CompiledIOPFast) {
 		return reflect.Value{}, newSerdeErrorf("invalid compiled-IOP backreference: %v", v)
 	}
-	if d.CompiledIOPsFast[v] != nil {
-		return reflect.ValueOf(d.CompiledIOPsFast[v]), nil
+	if d.compiledIOPsFast[v] != nil {
+		return reflect.ValueOf(d.compiledIOPsFast[v]), nil
 	}
 	packedCompIOP := d.PackedObject.CompiledIOPFast[v]
 
 	// Reserve the cache and outer shapes up-front
 	deComp := newEmptyCompiledIOP(packedCompIOP)
-	d.CompiledIOPsFast[v] = deComp
+	d.compiledIOPsFast[v] = deComp
 
 	// defer func() {
 	// 	deComp.Columns.ReserveFor(packedCompIOP.NumRounds)
@@ -380,7 +384,7 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 		}
 	}
 
-	return reflect.ValueOf(d.CompiledIOPsFast[v]), nil
+	return reflect.ValueOf(d.compiledIOPsFast[v]), nil
 }
 
 // -------------------- Helper functions --------------------
@@ -487,8 +491,9 @@ func (s *Serializer) packAllQueries(reg *wizard.ByRoundRegister[ifaces.QueryID, 
 		}
 		typeIdx := s.packTypeIndex(ct)
 		out[i] = PackedQuery{
-			BackReference:                   backRef,
-			ConcreteType:                    typeIdx,
+			BackReference: backRef,
+			ConcreteType:  typeIdx,
+
 			IsIgnored:                       reg.IsIgnored(id),
 			IsSkippedFromProverTranscript:   reg.IsSkippedFromProverTranscript(id),
 			IsSkippedFromVerifierTranscript: reg.IsSkippedFromVerifierTranscript(id),
@@ -546,6 +551,7 @@ func (d *Deserializer) unpackAllQueries(reg *wizard.ByRoundRegister[ifaces.Query
 		}
 
 		qID := q.Name()
+
 		reg.AddToRound(round, qID, q)
 		if rq.IsIgnored {
 			reg.MarkAsIgnored(qID)
