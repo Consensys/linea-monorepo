@@ -74,8 +74,8 @@ var (
 	typeofRawPublicInput     = reflect.TypeOf(PackedPublicInput{})
 	typeofRawExtraData       = reflect.TypeOf(PackedExtradata{})
 	typeofPcsCtxs            = reflect.TypeOf((*vortex.Ctx)(nil))
-	// typeOfProverAction       = reflect.TypeOf((*wizard.ProverAction)(nil)).Elem()
-	// typeOfVerifierAction     = reflect.TypeOf((*wizard.VerifierAction)(nil)).Elem()
+	typeOfProverAction       = reflect.TypeOf((*wizard.ProverAction)(nil)).Elem()
+	typeOfVerifierAction     = reflect.TypeOf((*wizard.VerifierAction)(nil)).Elem()
 )
 
 // PackedCompiledIOP represents the serialized form of CompiledIOP.
@@ -476,10 +476,12 @@ func (s *Serializer) packActionCommon(val any, pathFmt string, idx int) (PackedR
 		}
 		return PackedRawData{ConcreteType: typeIdx, ConcreteValue: obj}, nil, false
 	case reflect.Slice, reflect.Array:
+		logrus.Printf("Concrete type while packing action: %v", concreteTypeStr)
 		obj, err := s.PackArrayOrSlice(v)
 		if err != nil {
 			return PackedRawData{}, err.wrapPath(fmt.Sprintf(pathFmt, idx)), false
 		}
+
 		return PackedRawData{ConcreteType: typeIdx, ConcreteValue: obj}, nil, false
 	default:
 		return PackedRawData{}, newSerdeErrorf("invalid action type: %v, expected struct or slice", v.Type()).wrapPath(fmt.Sprintf(pathFmt, idx)), false
@@ -652,10 +654,10 @@ func (d *Deserializer) unpackAllProverActions(deCompProverActions [][]wizard.Pro
 				val := res.Addr().Interface()
 
 				// DEBUG Purposes only
-				if !TypeTracker[ctStr] {
-					logrus.Printf("Concrete type:%v implements iface type", ct)
-					TypeTracker[ctStr] = true
-				}
+				// if !TypeTracker[ctStr] {
+				// 	logrus.Printf("Concrete type:%v implements iface type", ct)
+				// 	TypeTracker[ctStr] = true
+				// }
 
 				act, ok := val.(wizard.ProverAction)
 				if !ok {
@@ -665,15 +667,17 @@ func (d *Deserializer) unpackAllProverActions(deCompProverActions [][]wizard.Pro
 				deCompProverActions[round][idx] = act
 
 			case reflect.Slice, reflect.Array:
+
+				logrus.Printf("** Before registering prover action of kind slice/array ct:%v ct.Elem():%v", ct, ct.Elem())
+
 				res, se = d.UnpackArrayOrSlice(action.ConcreteValue, ct)
 				if se != nil {
 					return se.wrapPath("(deser slice/array compiled-IOP-prover-actions)")
 				}
 
-				// logrus.Printf("Does concrete type:%v implements iface type? %v", ct, ct.Implements(typeOfProverAction))
-
 				// IMPORTANT: The concrete type must be a pointer to a struct because implicity
 				// go always returns a pointer type when reflect.TypeOf(...) for either pointer or value receivers
+
 				val := res.Addr().Interface()
 
 				// DEBUG Purposes only
@@ -733,10 +737,10 @@ func (d *Deserializer) unpackAllVerifierActions(deCompVerifierActions [][]wizard
 				// go always returns a pointer type when reflect.TypeOf(...) for either pointer or value receivers
 				val := res.Addr().Interface()
 				// DEBUG Purposes only
-				if !TypeTracker[ctStr] {
-					logrus.Printf("Concrete type:%v implements iface type", ct)
-					TypeTracker[ctStr] = true
-				}
+				// if !TypeTracker[ctStr] {
+				// 	logrus.Printf("Concrete type:%v implements iface type", ct)
+				// 	TypeTracker[ctStr] = true
+				// }
 
 				act, ok := val.(wizard.VerifierAction)
 				if !ok {
@@ -813,10 +817,10 @@ func (d *Deserializer) unpackAllFSHooksPreSampling(deCompFSHooksPreSampling [][]
 				// go always returns a pointer type when reflect.TypeOf(...) for either pointer or value receivers
 				val := res.Addr().Interface()
 				// DEBUG Purposes only
-				if !TypeTracker[ctStr] {
-					logrus.Printf("Concrete type:%v implements iface type", ct)
-					TypeTracker[ctStr] = true
-				}
+				// if !TypeTracker[ctStr] {
+				// 	logrus.Printf("Concrete type:%v implements iface type", ct)
+				// 	TypeTracker[ctStr] = true
+				// }
 
 				act, ok := val.(wizard.VerifierAction)
 				if !ok {
