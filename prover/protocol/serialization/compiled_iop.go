@@ -49,6 +49,7 @@ type PackedQuery struct {
 
 type PackedRawData struct {
 	_             struct{}           `cbor:",toarray" serde:"omit"`
+	WasPointer    bool               `cbor:"p"`
 	ConcreteType  int                `cbor:"t"`
 	ConcreteValue PackedStructObject `cbor:"v"`
 }
@@ -453,14 +454,61 @@ func checkRegisteredOrWarn(concreteTypeStr string, t reflect.Type) (*serdeError,
 }
 
 // Shared packing for prover/verifier actions (struct or slice), preserving messages and path formats.
+// func (s *Serializer) packActionCommon(val any, pathFmt string, idx int) (PackedRawData, *serdeError, bool) {
+// 	v := reflect.ValueOf(val)
+// 	if v.Kind() == reflect.Ptr {
+// 		if v.IsNil() {
+// 			return PackedRawData{}, nil, true
+// 		}
+// 		v = v.Elem()
+// 	}
+
+// 	concreteTypeStr := getPkgPathAndTypeNameIndirect(v.Interface())
+// 	if serr, skipped := checkRegisteredOrWarn(concreteTypeStr, v.Type()); serr != nil || skipped {
+// 		return PackedRawData{}, serr, true
+// 	}
+// 	typeIdx := s.packTypeIndex(concreteTypeStr)
+
+// 	switch v.Kind() {
+// 	case reflect.Struct:
+// 		obj, err := s.PackStructObject(v)
+// 		if err != nil {
+// 			return PackedRawData{}, err.wrapPath(fmt.Sprintf(pathFmt, idx)), false
+// 		}
+// 		return PackedRawData{ConcreteType: typeIdx, ConcreteValue: obj}, nil, false
+// 	case reflect.Slice, reflect.Array:
+// 		logrus.Printf("Concrete type while packing action: %v", concreteTypeStr)
+// 		obj, err := s.PackArrayOrSlice(v)
+// 		if err != nil {
+// 			return PackedRawData{}, err.wrapPath(fmt.Sprintf(pathFmt, idx)), false
+// 		}
+
+// 		return PackedRawData{ConcreteType: typeIdx, ConcreteValue: obj}, nil, false
+// 	default:
+// 		return PackedRawData{}, newSerdeErrorf("invalid action type: %v, expected struct or slice", v.Type()).wrapPath(fmt.Sprintf(pathFmt, idx)), false
+// 	}
+// }
+
 func (s *Serializer) packActionCommon(val any, pathFmt string, idx int) (PackedRawData, *serdeError, bool) {
-	v := reflect.ValueOf(val)
-	if v.Kind() == reflect.Ptr {
-		if v.IsNil() {
+	// orig is the original reflect.Value we received from the interface
+	orig := reflect.ValueOf(val)
+	wasPtr := false
+
+	if !orig.IsValid() {
+		return PackedRawData{}, newSerdeErrorf("invalid value passed to packActionCommon").wrapPath(fmt.Sprintf(pathFmt, idx)), false
+	}
+
+	// If the interface holds a pointer, remember that and work with the Elem()
+	if orig.Kind() == reflect.Ptr {
+		wasPtr = true
+		if orig.IsNil() {
+			// original was a nil pointer: we consider this "skipped" (same behaviour as before)
 			return PackedRawData{}, nil, true
 		}
-		v = v.Elem()
+		orig = orig.Elem()
 	}
+
+	v := orig // v is the non-pointer concrete value we actually pack
 
 	concreteTypeStr := getPkgPathAndTypeNameIndirect(v.Interface())
 	if serr, skipped := checkRegisteredOrWarn(concreteTypeStr, v.Type()); serr != nil || skipped {
@@ -474,15 +522,24 @@ func (s *Serializer) packActionCommon(val any, pathFmt string, idx int) (PackedR
 		if err != nil {
 			return PackedRawData{}, err.wrapPath(fmt.Sprintf(pathFmt, idx)), false
 		}
-		return PackedRawData{ConcreteType: typeIdx, ConcreteValue: obj}, nil, false
+		return PackedRawData{
+			ConcreteType:  typeIdx,
+			ConcreteValue: obj,
+			WasPointer:    wasPtr,
+		}, nil, false
+
 	case reflect.Slice, reflect.Array:
 		logrus.Printf("Concrete type while packing action: %v", concreteTypeStr)
 		obj, err := s.PackArrayOrSlice(v)
 		if err != nil {
 			return PackedRawData{}, err.wrapPath(fmt.Sprintf(pathFmt, idx)), false
 		}
+		return PackedRawData{
+			ConcreteType:  typeIdx,
+			ConcreteValue: obj,
+			WasPointer:    wasPtr,
+		}, nil, false
 
-		return PackedRawData{ConcreteType: typeIdx, ConcreteValue: obj}, nil, false
 	default:
 		return PackedRawData{}, newSerdeErrorf("invalid action type: %v, expected struct or slice", v.Type()).wrapPath(fmt.Sprintf(pathFmt, idx)), false
 	}
@@ -618,6 +675,89 @@ func (d *Deserializer) unpackAllQueries(reg *wizard.ByRoundRegister[ifaces.Query
 }
 
 // Wrappers for clarity and call-site compatibility:
+// func (d *Deserializer) unpackAllProverActions(deCompProverActions [][]wizard.ProverAction, actions2D [][]PackedRawData) *serdeError {
+// 	var (
+// 		res   reflect.Value
+// 		se    *serdeError
+// 		ct    reflect.Type
+// 		ctStr string
+// 		err   error
+// 	)
+
+// 	for round, actions := range actions2D {
+// 		if len(actions) == 0 {
+// 			deCompProverActions[round] = nil
+// 		}
+// 		deCompProverActions[round] = make([]wizard.ProverAction, len(actions))
+// 		for idx, action := range actions {
+// 			ctStr = d.PackedObject.Types[action.ConcreteType]
+// 			ct, err = findRegisteredImplementation(ctStr)
+// 			if err != nil {
+// 				return newSerdeErrorf("could not find registered implementation for prover action: %w", err)
+// 			}
+
+// 			// logrus.Printf("Interface type passed for %s-action is %v", contextLabel, ifaceType)
+// 			// logrus.Printf("**** Before Checking for concrete type: %v kind:%v", ct, ct.Kind())
+
+// 			switch ct.Kind() {
+// 			case reflect.Struct:
+// 				res, se = d.UnpackStructObject(action.ConcreteValue, ct)
+// 				if se != nil {
+// 					return se.wrapPath("(deser struct compiled-IOP-prover-actions)")
+// 				}
+
+// 				// IMPORTANT: The concrete type must be a pointer to a struct because implicity
+// 				// go always returns a pointer type when reflect.TypeOf(...) for either pointer or value receivers
+// 				val := res.Addr().Interface()
+
+// 				// DEBUG Purposes only
+// 				// if !TypeTracker[ctStr] {
+// 				// 	logrus.Printf("Concrete type:%v implements iface type", ct)
+// 				// 	TypeTracker[ctStr] = true
+// 				// }
+
+// 				act, ok := val.(wizard.ProverAction)
+// 				if !ok {
+// 					return newSerdeErrorf("illegal cast of type %v with string rep %s to prover action", ct, ctStr)
+// 				}
+
+// 				deCompProverActions[round][idx] = act
+
+// 			case reflect.Slice, reflect.Array:
+
+// 				logrus.Printf("** Before registering prover action of kind slice/array ct:%v ct.Elem():%v", ct, ct.Elem())
+
+// 				res, se = d.UnpackArrayOrSlice(action.ConcreteValue, ct)
+// 				if se != nil {
+// 					return se.wrapPath("(deser slice/array compiled-IOP-prover-actions)")
+// 				}
+
+// 				// IMPORTANT: The concrete type must be a pointer to a struct because implicity
+// 				// go always returns a pointer type when reflect.TypeOf(...) for either pointer or value receivers
+
+// 				val := res.Interface()
+
+// 				// DEBUG Purposes only
+// 				if !TypeTracker[ctStr] {
+// 					logrus.Printf("Concrete type:%v implements iface type", ct)
+// 					TypeTracker[ctStr] = true
+// 				}
+// 				act, ok := val.(wizard.ProverAction)
+// 				if !ok {
+// 					return newSerdeErrorf("illegal cast of %v with string rep %s to prover action", ct, ctStr)
+// 				}
+// 				deCompProverActions[round][idx] = act
+
+// 				//logrus.Printf("** After registering prover action of kind slice/array")
+
+// 			default:
+// 				return newSerdeErrorf("unsupported kind:%v for prover action", ct.Kind())
+// 			}
+// 		}
+// 	}
+// 	return nil
+// }
+
 func (d *Deserializer) unpackAllProverActions(deCompProverActions [][]wizard.ProverAction, actions2D [][]PackedRawData) *serdeError {
 	var (
 		res   reflect.Value
@@ -630,8 +770,11 @@ func (d *Deserializer) unpackAllProverActions(deCompProverActions [][]wizard.Pro
 	for round, actions := range actions2D {
 		if len(actions) == 0 {
 			deCompProverActions[round] = nil
+			continue
 		}
+
 		deCompProverActions[round] = make([]wizard.ProverAction, len(actions))
+
 		for idx, action := range actions {
 			ctStr = d.PackedObject.Types[action.ConcreteType]
 			ct, err = findRegisteredImplementation(ctStr)
@@ -639,27 +782,24 @@ func (d *Deserializer) unpackAllProverActions(deCompProverActions [][]wizard.Pro
 				return newSerdeErrorf("could not find registered implementation for prover action: %w", err)
 			}
 
-			// logrus.Printf("Interface type passed for %s-action is %v", contextLabel, ifaceType)
-			// logrus.Printf("**** Before Checking for concrete type: %v kind:%v", ct, ct.Kind())
-
 			switch ct.Kind() {
 			case reflect.Struct:
+				// Unpack into a concrete value (addressable)
 				res, se = d.UnpackStructObject(action.ConcreteValue, ct)
 				if se != nil {
 					return se.wrapPath("(deser struct compiled-IOP-prover-actions)")
 				}
 
-				// IMPORTANT: The concrete type must be a pointer to a struct because implicity
-				// go always returns a pointer type when reflect.TypeOf(...) for either pointer or value receivers
-				val := res.Addr().Interface()
+				// Restore pointer-ness if original was pointer; otherwise use value.
+				var valInterface any
+				if action.WasPointer {
+					// res is an addressable value of type T, res.Addr() is *T
+					valInterface = res.Addr().Interface()
+				} else {
+					valInterface = res.Interface()
+				}
 
-				// DEBUG Purposes only
-				// if !TypeTracker[ctStr] {
-				// 	logrus.Printf("Concrete type:%v implements iface type", ct)
-				// 	TypeTracker[ctStr] = true
-				// }
-
-				act, ok := val.(wizard.ProverAction)
+				act, ok := valInterface.(wizard.ProverAction)
 				if !ok {
 					return newSerdeErrorf("illegal cast of type %v with string rep %s to prover action", ct, ctStr)
 				}
@@ -667,7 +807,6 @@ func (d *Deserializer) unpackAllProverActions(deCompProverActions [][]wizard.Pro
 				deCompProverActions[round][idx] = act
 
 			case reflect.Slice, reflect.Array:
-
 				logrus.Printf("** Before registering prover action of kind slice/array ct:%v ct.Elem():%v", ct, ct.Elem())
 
 				res, se = d.UnpackArrayOrSlice(action.ConcreteValue, ct)
@@ -675,23 +814,27 @@ func (d *Deserializer) unpackAllProverActions(deCompProverActions [][]wizard.Pro
 					return se.wrapPath("(deser slice/array compiled-IOP-prover-actions)")
 				}
 
-				// IMPORTANT: The concrete type must be a pointer to a struct because implicity
-				// go always returns a pointer type when reflect.TypeOf(...) for either pointer or value receivers
-
-				val := res.Addr().Interface()
+				var valInterface any
+				if action.WasPointer {
+					// Wrap the result (type T) into a pointer *T
+					ptr := reflect.New(res.Type()) // *T where T is the slice/array type
+					ptr.Elem().Set(res)
+					valInterface = ptr.Interface()
+				} else {
+					valInterface = res.Interface()
+				}
 
 				// DEBUG Purposes only
 				if !TypeTracker[ctStr] {
 					logrus.Printf("Concrete type:%v implements iface type", ct)
 					TypeTracker[ctStr] = true
 				}
-				act, ok := val.(wizard.ProverAction)
+
+				act, ok := valInterface.(wizard.ProverAction)
 				if !ok {
 					return newSerdeErrorf("illegal cast of %v with string rep %s to prover action", ct, ctStr)
 				}
 				deCompProverActions[round][idx] = act
-
-				//logrus.Printf("** After registering prover action of kind slice/array")
 
 			default:
 				return newSerdeErrorf("unsupported kind:%v for prover action", ct.Kind())
