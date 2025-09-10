@@ -162,9 +162,9 @@ public class ChainConfig {
    * @param fork
    * @return
    */
-  public static ChainConfig ETHEREUM_CHAIN(String fork) {
+  public static ChainConfig ETHEREUM_CHAIN(Fork fork) {
     return new ChainConfig(
-        Fork.fromString(fork),
+        fork,
         1,
         false,
         BigInteger.valueOf(ETHEREUM_GAS_LIMIT_MINIMUM),

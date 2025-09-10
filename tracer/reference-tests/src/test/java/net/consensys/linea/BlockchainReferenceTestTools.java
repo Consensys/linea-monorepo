@@ -41,6 +41,7 @@ import net.consensys.linea.reporting.TestOutcome;
 import net.consensys.linea.reporting.TestOutcomeWriterTool;
 import net.consensys.linea.testing.ExecutionEnvironment;
 import net.consensys.linea.zktracer.ChainConfig;
+import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.hyperledger.besu.ethereum.BlockValidator;
 import org.hyperledger.besu.ethereum.MainnetBlockValidatorBuilder;
@@ -561,7 +562,8 @@ public class BlockchainReferenceTestTools {
 
     final ProtocolSchedule schedule =
         REFERENCE_TEST_PROTOCOL_SCHEDULES.getByName(spec.getNetwork());
-    final ChainConfig chain = ChainConfig.ETHEREUM_CHAIN(spec.getNetwork());
+    final Fork fork = getForkFromNetwork(spec.getNetwork());
+    final ChainConfig chain = ChainConfig.ETHEREUM_CHAIN(fork);
     final MutableBlockchain blockchain = spec.getBlockchain();
     final ProtocolContext context = spec.getProtocolContext();
 
@@ -653,5 +655,12 @@ public class BlockchainReferenceTestTools {
             corsetBlockProcessor);
 
     return new MainnetBlockImporter(blockValidator);
+  }
+
+  private static Fork getForkFromNetwork(String string) {
+    if (string.equals("Merge")) {
+      return Fork.PARIS;
+    }
+    return Fork.fromString(string);
   }
 }
