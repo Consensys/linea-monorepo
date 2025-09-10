@@ -39,6 +39,7 @@ type PackedQuery struct {
 	_             struct{}      `cbor:",toarray" serde:"omit"`
 	BackReference BackReference `cbor:"b"`
 	ConcreteType  int           `cbor:"t"`
+	Round         int           `cbor:"r"`
 
 	IsIgnored                       bool `cbor:"i"`
 	IsSkippedFromProverTranscript   bool `cbor:"s"`
@@ -68,11 +69,7 @@ type PackedCompiledIOP struct {
 	SelfRecursionCount     int      `cbor:"k"`
 	FiatShamirSetup        *big.Int `cbor:"l"`
 
-	Bools  map[bool]int `cbor:"p"`
-	Rounds []int
-
-	Columns BackReference `cbor:"a"`
-
+	Columns            BackReference     `cbor:"a"`
 	Coins              []BackReference   `cbor:"d"`
 	QueriesParams      []PackedQuery     `cbor:"b"`
 	QueriesNoParams    []PackedQuery     `cbor:"c"`
@@ -491,9 +488,9 @@ func (s *Serializer) packAllQueries(reg *wizard.ByRoundRegister[ifaces.QueryID, 
 		}
 		typeIdx := s.packTypeIndex(ct)
 		out[i] = PackedQuery{
-			BackReference: backRef,
-			ConcreteType:  typeIdx,
-
+			BackReference:                   backRef,
+			ConcreteType:                    typeIdx,
+			Round:                           reg.Round(id),
 			IsIgnored:                       reg.IsIgnored(id),
 			IsSkippedFromProverTranscript:   reg.IsSkippedFromProverTranscript(id),
 			IsSkippedFromVerifierTranscript: reg.IsSkippedFromVerifierTranscript(id),
@@ -551,8 +548,7 @@ func (d *Deserializer) unpackAllQueries(reg *wizard.ByRoundRegister[ifaces.Query
 		}
 
 		qID := q.Name()
-
-		reg.AddToRound(round, qID, q)
+		reg.AddToRound(rq.Round, qID, q)
 		if rq.IsIgnored {
 			reg.MarkAsIgnored(qID)
 		}
@@ -567,123 +563,120 @@ func (d *Deserializer) unpackAllQueries(reg *wizard.ByRoundRegister[ifaces.Query
 }
 
 // Common helper for prover/verifier actions per round
-func (d *Deserializer) unpackActionsRound(deComp *wizard.CompiledIOP, raws [][]PackedRawData,
+func (d *Deserializer) unpackActionsRound(deComp *wizard.CompiledIOP, action2D [][]PackedRawData,
 	contextLabel string, ifaceType reflect.Type,
 	castFn func(any) (any, bool), registerFn func(*wizard.CompiledIOP, int, any)) *serdeError {
-	for _, r := range raws {
-		ctStr := d.PackedObject.Types[r.ConcreteType]
-		ct, err := findRegisteredImplementation(ctStr)
-		if err != nil {
-			return newSerdeErrorf("could not find registered implementation for %s action: %w", contextLabel, err)
+
+	var (
+		res   reflect.Value
+		se    *serdeError
+		ct    reflect.Type
+		ctStr string
+		err   error
+	)
+
+	for round, actions := range action2D {
+		for _, action := range actions {
+			ctStr = d.PackedObject.Types[action.ConcreteType]
+			ct, err = findRegisteredImplementation(ctStr)
+			if err != nil {
+				return newSerdeErrorf("could not find registered implementation for %s action: %w", contextLabel, err)
+			}
+
+			// logrus.Printf("Interface type passed for %s-action is %v", contextLabel, ifaceType)
+			// logrus.Printf("**** Before Checking for concrete type: %v kind:%v", ct, ct.Kind())
+
+			switch ct.Kind() {
+			case reflect.Struct:
+				res, se = d.UnpackStructObject(action.ConcreteValue, ct)
+				if se != nil {
+					return se.wrapPath("(deser struct compiled-IOP-" + contextLabel + "-actions)")
+				}
+
+				val := res.Interface()
+				if !ct.Implements(ifaceType) && ct.Kind() == reflect.Struct {
+					val = res.Addr().Interface()
+				} else {
+
+					// DEBUG Purposes only
+					// if !TypeTracker[ctStr] {
+					// 	logrus.Printf("Concrete type:%v implements iface type", ct)
+					// 	TypeTracker[ctStr] = true
+					// }
+				}
+
+				act, ok := castFn(val)
+				if !ok {
+					return newSerdeErrorf("illegal cast to %s action", contextLabel)
+				}
+				registerFn(deComp, round, act)
+
+			case reflect.Slice, reflect.Array:
+				res, se = d.UnpackArrayOrSlice(action.ConcreteValue, ct)
+				if se != nil {
+					return se.wrapPath("(deser slice/array compiled-IOP-" + contextLabel + "-actions)")
+				}
+
+				// logrus.Printf("** Before registering prover action of kind slice/array")
+				val := res.Interface()
+				act, ok := castFn(val)
+				if !ok {
+					return newSerdeErrorf("illegal cast to %s action", contextLabel)
+				}
+				registerFn(deComp, round, act)
+
+				//logrus.Printf("** After registering prover action of kind slice/array")
+
+			default:
+				return newSerdeErrorf("unsupported kind for %s action: %v", contextLabel, ct.Kind())
+			}
+
 		}
-
-		var (
-			res reflect.Value
-			se  *serdeError
-		)
-
-		// logrus.Printf("Interface type passed for %s-action is %v", contextLabel, ifaceType)
-		// logrus.Printf("**** Before Checking for concrete type: %v kind:%v", ct, ct.Kind())
-
-		switch ct.Kind() {
-		case reflect.Struct:
-			res, se = d.UnpackStructObject(r.ConcreteValue, ct)
-			if se != nil {
-				return se.wrapPath("(deser struct compiled-IOP-" + contextLabel + "-actions)")
-			}
-
-			val := res.Interface()
-			if !ct.Implements(ifaceType) && ct.Kind() == reflect.Struct {
-				val = res.Addr().Interface()
-			} else {
-
-				// DEBUG Purposes only
-				// if !TypeTracker[ctStr] {
-				// 	logrus.Printf("Concrete type:%v implements iface type", ct)
-				// 	TypeTracker[ctStr] = true
-				// }
-			}
-
-			act, ok := castFn(val)
-			if !ok {
-				return newSerdeErrorf("illegal cast to %s action", contextLabel)
-			}
-			registerFn(deComp, round, act)
-
-		case reflect.Slice, reflect.Array:
-			res, se = d.UnpackArrayOrSlice(r.ConcreteValue, ct)
-			if se != nil {
-				return se.wrapPath("(deser slice/array compiled-IOP-" + contextLabel + "-actions)")
-			}
-
-			// logrus.Printf("** Before registering prover action of kind slice/array")
-			val := res.Interface()
-			act, ok := castFn(val)
-			if !ok {
-				return newSerdeErrorf("illegal cast to %s action", contextLabel)
-			}
-			registerFn(deComp, round, act)
-
-			//logrus.Printf("** After registering prover action of kind slice/array")
-
-		default:
-			return newSerdeErrorf("unsupported kind for %s action: %v", contextLabel, ct.Kind())
-		}
-
-		/*
-			logrus.Printf("**** After Checking for concrete type: %v kind:%v", ct, ct.Kind())
-			val := res.Interface()
-			logrus.Printf("BEFORE deser prover val type: %v kind:%v addr:%v  type:%v kind:%v", reflect.TypeOf(val), reflect.TypeOf(val).Kind(), res.Addr(), reflect.TypeOf(res.Addr().Interface()), res.Addr().Kind())
-			if res.Kind() != reflect.Ptr && res.CanAddr() {
-				val = res.Addr().Interface()
-			}
-
-			logrus.Printf("AFTER deser prover val type: %v kind:%v addr:%v  type:%v kind:%v", reflect.TypeOf(val), reflect.TypeOf(val).Kind(), res.Addr(), reflect.TypeOf(res.Addr().Interface()), res.Addr().Kind())
-			act, ok := castFn(val)
-			if !ok {
-				return newSerdeErrorf("illegal cast to %s action", contextLabel)
-			}
-			registerFn(deComp, round, act)
-
-		*/
-
 	}
 	return nil
 }
 
 // Wrappers for clarity and call-site compatibility:
-func (d *Deserializer) unpackProverActionsRound(de *wizard.CompiledIOP, raws [][]PackedRawData) *serdeError {
+func (d *Deserializer) unpackProverActionsRound(de *wizard.CompiledIOP, actions2D [][]PackedRawData) *serdeError {
 	return d.unpackActionsRound(
-		de, raws, "prover", typeOfProverAction,
+		de, actions2D, "prover", typeOfProverAction,
 		func(v any) (any, bool) { act, ok := v.(wizard.ProverAction); return act, ok },
 		func(c *wizard.CompiledIOP, r int, act any) { c.RegisterProverAction(r, act.(wizard.ProverAction)) },
 	)
 }
 
-func (d *Deserializer) unpackVerifierActionsRound(de *wizard.CompiledIOP, raws [][]PackedRawData) *serdeError {
+func (d *Deserializer) unpackVerifierActionsRound(de *wizard.CompiledIOP, actions2D [][]PackedRawData) *serdeError {
 	return d.unpackActionsRound(
-		de, raws, "verifier", typeOfVerifierAction,
+		de, actions2D, "verifier", typeOfVerifierAction,
 		func(v any) (any, bool) { act, ok := v.(wizard.VerifierAction); return act, ok },
 		func(c *wizard.CompiledIOP, r int, act any) { c.RegisterVerifierAction(r, act.(wizard.VerifierAction)) },
 	)
 }
 
-func (d *Deserializer) unpackFSHooksRound(de *wizard.CompiledIOP, raws [][]PackedRawData) *serdeError {
-	for _, r := range raws {
-		ctStr := d.PackedObject.Types[r.ConcreteType]
-		ct, err := findRegisteredImplementation(ctStr)
-		if err != nil {
-			return newSerdeErrorf("could not find registered implementation for prover action: %w", err)
-		}
-		res, se := d.UnpackStructObject(r.ConcreteValue, ct)
-		if se != nil {
-			return newSerdeErrorf("could not unpack struct object for verifier action: %w", se)
-		}
-		h, ok := res.Addr().Interface().(wizard.VerifierAction)
-		if !ok {
-			return newSerdeErrorf("could not deser because illegal cast to verifier action")
-		}
-		de.FiatShamirHooksPreSampling.AppendToInner(round, h)
-	}
-	return nil
+func (d *Deserializer) unpackFSHooksRound(de *wizard.CompiledIOP, actions2D [][]PackedRawData) *serdeError {
+	// for _, r := range raws {
+	// 	ctStr := d.PackedObject.Types[r.ConcreteType]
+	// 	ct, err := findRegisteredImplementation(ctStr)
+	// 	if err != nil {
+	// 		return newSerdeErrorf("could not find registered implementation for prover action: %w", err)
+	// 	}
+	// 	res, se := d.UnpackStructObject(r.ConcreteValue, ct)
+	// 	if se != nil {
+	// 		return newSerdeErrorf("could not unpack struct object for verifier action: %w", se)
+	// 	}
+	// 	h, ok := res.Addr().Interface().(wizard.VerifierAction)
+	// 	if !ok {
+	// 		return newSerdeErrorf("could not deser because illegal cast to verifier action")
+	// 	}
+	// 	de.FiatShamirHooksPreSampling.AppendToInner(round, h)
+	// }
+	// return nil
+
+	return d.unpackActionsRound(
+		de, actions2D, "fs-hooks-presampling", typeOfVerifierAction,
+		func(v any) (any, bool) { act, ok := v.(wizard.VerifierAction); return act, ok },
+		func(c *wizard.CompiledIOP, r int, act any) {
+			c.FiatShamirHooksPreSampling.AppendToInner(r, act.(wizard.VerifierAction))
+		},
+	)
 }
