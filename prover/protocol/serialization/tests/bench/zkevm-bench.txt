@@ -1,0 +1,47 @@
+
+-- Ser 
+
+NEW
+-----
+goos: linux
+goarch: amd64
+pkg: github.com/consensys/linea-monorepo/prover/protocol/serialization
+cpu: AMD EPYC 9R14
+BenchmarkSerZkEVM-192     	       3	 436876715 ns/op	172264760 B/op	 5156986 allocs/op
+PASS
+ok  	github.com/consensys/linea-monorepo/prover/protocol/serialization	3.644s
+
+
+OLD
+-----
+goos: linux
+goarch: amd64
+pkg: github.com/consensys/linea-monorepo/prover/protocol/serialization
+cpu: AMD EPYC 9R14
+BenchmarkSerZkEVM-192     	       3	 460715299 ns/op	175461341 B/op	 5293744 allocs/op
+PASS
+ok  	github.com/consensys/linea-monorepo/prover/protocol/serialization	3.808s
+
+
+----- Deser 
+
+NEW
+-----
+goos: linux
+goarch: amd64
+pkg: github.com/consensys/linea-monorepo/prover/protocol/serialization
+cpu: AMD EPYC 9R14
+BenchmarkDeserZkEVM-192     	       3	 491829033 ns/op	162005965 B/op	 4760366 allocs/op
+PASS
+ok  	github.com/consensys/linea-monorepo/prover/protocol/serialization	5.322s
+
+
+OLD
+----- 
+goos: linux
+goarch: amd64
+pkg: github.com/consensys/linea-monorepo/prover/protocol/serialization
+cpu: AMD EPYC 9R14
+BenchmarkDeserZkEVM-192     	       2	 516683600 ns/op	164106032 B/op	 4896052 allocs/op
+PASS
+ok  	github.com/consensys/linea-monorepo/prover/protocol/serialization	3.515s

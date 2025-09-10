@@ -1,0 +1,43 @@
+### New 
+
+BenchmarkSerIOP1-192     	     514	   2132889 ns/op	  985048 B/op	   13580 allocs/op
+BenchmarkSerIOP2-192     	       4	 275673068 ns/op	146368116 B/op	 3374837 allocs/op
+BenchmarkSerIOP3-192     	     396	   2826886 ns/op	 1524729 B/op	   23657 allocs/op
+BenchmarkSerIOP4-192     	       4	 278328066 ns/op	156343538 B/op	 3434316 allocs/op
+BenchmarkSerIOP5-192     	       1	7796137913 ns/op	4492670872 B/op	48569225 allocs/op
+BenchmarkSerIOP6-192     	     100	  10218719 ns/op	23826767 B/op	   40096 allocs/op
+
+BenchmarkDeserIOP1-192     	     312	   3791031 ns/op	 1134720 B/op	   21146 allocs/op
+BenchmarkDeserIOP2-192     	       5	 232408198 ns/op	104585328 B/op	 2327916 allocs/op
+BenchmarkDeserIOP3-192     	     270	   4343537 ns/op	 1570554 B/op	   27582 allocs/op
+BenchmarkDeserIOP4-192     	       4	 250346324 ns/op	108472830 B/op	 2392691 allocs/op
+BenchmarkDeserIOP5-192     	       1	3802516437 ns/op	2387748920 B/op	28063880 allocs/op
+BenchmarkDeserIOP6-192     	     100	  10442805 ns/op	11253699 B/op	   37317 allocs/op
+
+BenchmarkSerIOP5-192     	       1	7251062509 ns/op	4373064864 B/op	48569754 allocs/op
+BenchmarkSerIOP5-192     	       1	7818108681 ns/op	4774479096 B/op	48569226 allocs/op
+BenchmarkSerIOP5-192     	       1	4266586526 ns/op	4305776424 B/op	48569219 allocs/op
+BenchmarkSerIOP5-192     	       1	5235089511 ns/op	4297125624 B/op	48569213 allocs/op
+BenchmarkSerIOP5-192     	       1	3894972404 ns/op	4339335472 B/op	48569212 allocs/op
+BenchmarkSerIOP5-192     	       1	8734469543 ns/op	4296609000 B/op	48569219 allocs/op
+BenchmarkSerIOP5-192     	       1	3477369317 ns/op	4281396440 B/op	48569203 allocs/op
+BenchmarkSerIOP5-192     	       1	3744684742 ns/op	4305776240 B/op	48569212 allocs/op
+BenchmarkSerIOP5-192     	       1	3928623351 ns/op	4305830584 B/op	48569223 allocs/op
+BenchmarkSerIOP5-192     	       1	5590183037 ns/op	4339390296 B/op	48569223 allocs/op
+BenchmarkSerIOP5-192     	       1	4752304272 ns/op	4356186680 B/op	48569216 allocs/op
+
+BenchmarkDeserIOP5-192     	       1	3771016953 ns/op	2387619120 B/op	28063951 allocs/op
+BenchmarkDeserIOP5-192     	       1	3460506600 ns/op	2387684048 B/op	28063755 allocs/op
+BenchmarkDeserIOP5-192     	       1	3267437970 ns/op	2387673336 B/op	28063597 allocs/op
+BenchmarkDeserIOP5-192     	       1	3619523684 ns/op	2387685608 B/op	28063778 allocs/op
+BenchmarkDeserIOP5-192     	       1	3237302293 ns/op	2387687744 B/op	28063812 allocs/op
+BenchmarkDeserIOP5-192     	       1	3439407581 ns/op	2387687176 B/op	28063803 allocs/op
+BenchmarkDeserIOP5-192     	       1	3415601142 ns/op	2387686712 B/op	28063797 allocs/op
+BenchmarkDeserIOP5-192     	       1	3317812016 ns/op	2387690720 B/op	28063858 allocs/op
+BenchmarkDeserIOP5-192     	       1	3230897068 ns/op	2387678808 B/op	28063671 allocs/op
+BenchmarkDeserIOP5-192     	       1	3275406302 ns/op	2387687160 B/op	28063801 allocs/op
+
+
+-- Avg
+BenchmarkSerIOP5-192    	       11	5335768535 ns/op	4361360974 B/op	48569265 allocs/op
+BenchmarkDeserIOP5-192    	       10	3407497160 ns/op	2387683983 B/op	28063782 allocs/op
