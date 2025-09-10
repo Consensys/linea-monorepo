@@ -74,8 +74,8 @@ var (
 	typeofRawPublicInput     = reflect.TypeOf(PackedPublicInput{})
 	typeofRawExtraData       = reflect.TypeOf(PackedExtradata{})
 	typeofPcsCtxs            = reflect.TypeOf((*vortex.Ctx)(nil))
-	typeOfProverAction       = reflect.TypeOf((*wizard.ProverAction)(nil)).Elem()
-	typeOfVerifierAction     = reflect.TypeOf((*wizard.VerifierAction)(nil)).Elem()
+	// typeOfProverAction       = reflect.TypeOf((*wizard.ProverAction)(nil)).Elem()
+	// typeOfVerifierAction     = reflect.TypeOf((*wizard.VerifierAction)(nil)).Elem()
 )
 
 // PackedCompiledIOP represents the serialized form of CompiledIOP.
@@ -647,16 +647,14 @@ func (d *Deserializer) unpackAllProverActions(deCompProverActions [][]wizard.Pro
 					return se.wrapPath("(deser struct compiled-IOP-prover-actions)")
 				}
 
-				val := res.Interface()
-				if !ct.Implements(typeOfProverAction) && ct.Kind() == reflect.Struct {
-					val = res.Addr().Interface()
-				} else {
+				// IMPORTANT: The concrete type must be a pointer to a struct because implicity
+				// go always returns a pointer type when reflect.TypeOf(...) for either pointer or value receivers
+				val := res.Addr().Interface()
 
-					// DEBUG Purposes only
-					if !TypeTracker[ctStr] {
-						logrus.Printf("Concrete type:%v implements iface type", ct)
-						TypeTracker[ctStr] = true
-					}
+				// DEBUG Purposes only
+				if !TypeTracker[ctStr] {
+					logrus.Printf("Concrete type:%v implements iface type", ct)
+					TypeTracker[ctStr] = true
 				}
 
 				act, ok := val.(wizard.ProverAction)
@@ -672,18 +670,16 @@ func (d *Deserializer) unpackAllProverActions(deCompProverActions [][]wizard.Pro
 					return se.wrapPath("(deser slice/array compiled-IOP-prover-actions)")
 				}
 
-				// logrus.Printf("** Before registering prover action of kind slice/array")
+				// logrus.Printf("Does concrete type:%v implements iface type? %v", ct, ct.Implements(typeOfProverAction))
 
-				logrus.Printf("Does concrete type:%v implements iface type? %v", ct, ct.Implements(typeOfProverAction))
-				val := res.Interface()
-				if !ct.Implements(typeOfProverAction) && (ct.Kind() == reflect.Slice || ct.Kind() == reflect.Array) {
-					val = res.Addr().Interface()
-				} else {
-					// DEBUG Purposes only
-					if !TypeTracker[ctStr] {
-						logrus.Printf("Concrete type:%v implements %v type", ct, typeOfProverAction)
-						TypeTracker[ctStr] = true
-					}
+				// IMPORTANT: The concrete type must be a pointer to a struct because implicity
+				// go always returns a pointer type when reflect.TypeOf(...) for either pointer or value receivers
+				val := res.Addr().Interface()
+
+				// DEBUG Purposes only
+				if !TypeTracker[ctStr] {
+					logrus.Printf("Concrete type:%v implements iface type", ct)
+					TypeTracker[ctStr] = true
 				}
 				act, ok := val.(wizard.ProverAction)
 				if !ok {
@@ -733,16 +729,13 @@ func (d *Deserializer) unpackAllVerifierActions(deCompVerifierActions [][]wizard
 					return se.wrapPath("(deser struct compiled-IOP-verifier-actions)")
 				}
 
-				val := res.Interface()
-				if !ct.Implements(typeOfVerifierAction) && ct.Kind() == reflect.Struct {
-					val = res.Addr().Interface()
-				} else {
-
-					// DEBUG Purposes only
-					if !TypeTracker[ctStr] {
-						logrus.Printf("Concrete type:%v implements %v type", ct, typeOfVerifierAction)
-						TypeTracker[ctStr] = true
-					}
+				// IMPORTANT: The concrete type must be a pointer to a struct because implicity
+				// go always returns a pointer type when reflect.TypeOf(...) for either pointer or value receivers
+				val := res.Addr().Interface()
+				// DEBUG Purposes only
+				if !TypeTracker[ctStr] {
+					logrus.Printf("Concrete type:%v implements iface type", ct)
+					TypeTracker[ctStr] = true
 				}
 
 				act, ok := val.(wizard.VerifierAction)
@@ -758,7 +751,15 @@ func (d *Deserializer) unpackAllVerifierActions(deCompVerifierActions [][]wizard
 					return se.wrapPath("(deser slice/array compiled-IOP-verifier-actions)")
 				}
 
-				val := res.Interface()
+				// IMPORTANT: The concrete type must be a pointer to a struct because implicity
+				// go always returns a pointer type when reflect.TypeOf(...) for either pointer or value receivers
+				val := res.Addr().Interface()
+				// DEBUG Purposes only
+				if !TypeTracker[ctStr] {
+					logrus.Printf("Concrete type:%v implements iface type", ct)
+					TypeTracker[ctStr] = true
+				}
+
 				act, ok := val.(wizard.VerifierAction)
 				if !ok {
 					return newSerdeErrorf("illegal cast of %v with string rep %s to verifier action", ct, ctStr)
@@ -808,16 +809,13 @@ func (d *Deserializer) unpackAllFSHooksPreSampling(deCompFSHooksPreSampling [][]
 					return se.wrapPath("(deser struct compiled-IOP-fshook-actions)")
 				}
 
-				val := res.Interface()
-				if !ct.Implements(typeOfVerifierAction) && ct.Kind() == reflect.Struct {
-					val = res.Addr().Interface()
-				} else {
-
-					// DEBUG Purposes only
-					if !TypeTracker[ctStr] {
-						logrus.Printf("Concrete type:%v implements %v type", ct, typeOfVerifierAction)
-						TypeTracker[ctStr] = true
-					}
+				// IMPORTANT: The concrete type must be a pointer to a struct because implicity
+				// go always returns a pointer type when reflect.TypeOf(...) for either pointer or value receivers
+				val := res.Addr().Interface()
+				// DEBUG Purposes only
+				if !TypeTracker[ctStr] {
+					logrus.Printf("Concrete type:%v implements iface type", ct)
+					TypeTracker[ctStr] = true
 				}
 
 				act, ok := val.(wizard.VerifierAction)
@@ -833,7 +831,15 @@ func (d *Deserializer) unpackAllFSHooksPreSampling(deCompFSHooksPreSampling [][]
 					return se.wrapPath("(deser slice/array compiled-IOP-fshook-actions)")
 				}
 
-				val := res.Interface()
+				// IMPORTANT: The concrete type must be a pointer to a struct because implicity
+				// go always returns a pointer type when reflect.TypeOf(...) for either pointer or value receivers
+				val := res.Addr().Interface()
+				// DEBUG Purposes only
+				if !TypeTracker[ctStr] {
+					logrus.Printf("Concrete type:%v implements iface type", ct)
+					TypeTracker[ctStr] = true
+				}
+
 				act, ok := val.(wizard.VerifierAction)
 				if !ok {
 					return newSerdeErrorf("illegal cast of %v with string rep %s to fshook action", ct, ctStr)
