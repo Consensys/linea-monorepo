@@ -1,3 +1,4 @@
+permissions: read-all
 name: Weekly Tests
 
 on:
@@ -17,20 +18,26 @@ jobs:
     with:
       zkevm_fork: LONDON
 
+  weekly-unit-tests-paris:
+    uses: ./.github/workflows/reusable-weekly-tests.yml
+    secrets: inherit
+    with:
+      zkevm_fork: PARIS
+
   weekly-unit-tests-shanghai:
     uses: ./.github/workflows/reusable-weekly-tests.yml
-    secrets: inherit    
+    secrets: inherit
     with:
       zkevm_fork: SHANGHAI
 
   weekly-prc-call-tests-london:
     uses: ./.github/workflows/reusable-weekly-prc-tests.yml
-    secrets: inherit    
+    secrets: inherit
     with:
       zkevm_fork: LONDON
 
   weekly-prc-call-tests-shanghai:
     uses: ./.github/workflows/reusable-weekly-prc-tests.yml
-    secrets: inherit    
+    secrets: inherit
     with:
       zkevm_fork: SHANGHAI
