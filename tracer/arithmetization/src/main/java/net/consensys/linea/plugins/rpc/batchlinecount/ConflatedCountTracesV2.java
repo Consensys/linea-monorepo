@@ -15,6 +15,8 @@
 
 package net.consensys.linea.plugins.rpc.batchlinecount;
 
+import static net.consensys.linea.zktracer.Fork.getForkFromBesuBlockchainService;
+
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
@@ -89,7 +91,7 @@ public class ConflatedCountTracesV2 {
 
     final long fromBlock = params.startBlockNumber();
     final long toBlock = params.endBlockNumber();
-    final LineCountingTracer counter = createLineCountingTracer();
+    final LineCountingTracer counter = createLineCountingTracer(fromBlock, toBlock);
 
     traceService.trace(
         fromBlock,
@@ -110,11 +112,14 @@ public class ConflatedCountTracesV2 {
         params.expectedTracesEngineVersion(), fromBlock, toBlock, new TreeMap<>(counts));
   }
 
-  private LineCountingTracer createLineCountingTracer() {
+  private LineCountingTracer createLineCountingTracer(long fromBlock, long toBlock) {
+    // Retrieve fork from Besu plugin API with block number
+    final Fork fork = getForkFromBesuBlockchainService(besuContext, fromBlock, toBlock);
+
     return tracerSharedConfiguration.isLimitless()
         ? new ZkCounter(l1L2BridgeSharedConfiguration)
         : new ZkTracer(
-            Fork.LONDON,
+            fork,
             l1L2BridgeSharedConfiguration,
             BesuServiceProvider.getBesuService(besuContext, BlockchainService.class)
                 .getChainId()

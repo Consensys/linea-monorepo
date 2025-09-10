@@ -15,6 +15,7 @@
 package net.consensys.linea.testing;
 
 import static net.consensys.linea.testing.ShomeiNode.MerkelProofResponse;
+import static net.consensys.linea.zktracer.Fork.isPostParis;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hyperledger.besu.tests.acceptance.dsl.WaitUtils.waitFor;
 
@@ -97,7 +98,9 @@ public class BesuExecutionTools {
     int shomeiPort = findFreePort();
     this.httpClient = new OkHttpClient();
     this.chainConfig = chainConfig;
-    GenesisConfigBuilder genesisConfigBuilder = new GenesisConfigBuilder();
+    // Generate file per fork in resources
+    String genesisFileName = "BesuExecutionToolsGenesis_" + chainConfig.fork.name() + ".json";
+    GenesisConfigBuilder genesisConfigBuilder = new GenesisConfigBuilder(genesisFileName);
     genesisConfigBuilder.setChainId(chainConfig.id);
     genesisConfigBuilder.setCoinbase(coinbase);
     genesisConfigBuilder.setGasLimit(chainConfig.gasLimitMaximum.longValue());
@@ -161,6 +164,7 @@ public class BesuExecutionTools {
       shomeiThread.start();
       besuCluster.start(besuNode);
 
+      // Send transaction to the transaction pool with eth_sendRawTransaction
       EthTransactions ethTransactions = new EthTransactions();
       List<String> txHashes =
           transactions.stream()
@@ -171,6 +175,19 @@ public class BesuExecutionTools {
               .toList();
       Map<String, Boolean> txReceiptProcessed = new HashMap<>();
       ConcurrentSet<Long> blockNumbers = new ConcurrentSet<>();
+
+      // If fork is Paris or after, Clique as a consensus layer defined in the genesis file
+      // doesn't work anymore
+      // We use EngineAPIService to mimick the consensus layer steps and build a new block
+      if (isPostParis(chainConfig.fork)) {
+        ObjectMapper mapper = new ObjectMapper();
+        EngineAPIService engineApiService = new EngineAPIService(besuNode, ethTransactions, mapper);
+        var latestTimestamp = this.besuNode.execute(ethTransactions.block()).getTimestamp();
+        // TODO: could be done with genesis
+        engineApiService.buildNewBlock(chainConfig.fork, latestTimestamp.longValue() + 1L, 1000);
+      }
+
+      // We check that the transactions are included in a block
       waitFor(
           100,
           () -> {
@@ -191,6 +208,7 @@ public class BesuExecutionTools {
                       txReceipt.getBlockNumber());
                 });
           });
+
       assertThat(blockNumbers).isNotEmpty();
       long startBlockNumber = Collections.min(blockNumbers);
       long endBlockNumber = Collections.max(blockNumbers);
@@ -234,7 +252,7 @@ public class BesuExecutionTools {
       File executionProofRequestFile = testDataDir.resolve(executionProofFileName).toFile();
       assertThat(executionProofRequestFile.createNewFile()).isTrue();
       MAPPER.writeValue(executionProofRequestFile, executionProofRequestDto);
-    } catch (IOException e) {
+    } catch (IOException | InterruptedException e) {
       throw new RuntimeException(e);
     } finally {
       try {

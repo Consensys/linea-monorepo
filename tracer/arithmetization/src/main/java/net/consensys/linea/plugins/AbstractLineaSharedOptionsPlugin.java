@@ -15,8 +15,6 @@
 
 package net.consensys.linea.plugins;
 
-import static net.consensys.linea.zktracer.Fork.LONDON;
-
 import java.util.Map;
 
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +22,6 @@ import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedCliOptions;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.plugins.config.LineaTracerSharedCliOptions;
 import net.consensys.linea.plugins.config.LineaTracerSharedConfiguration;
-import net.consensys.linea.zktracer.Fork;
 
 /** In this class we put CLI options that are shared with other plugins not defined here */
 @Slf4j
@@ -55,10 +52,6 @@ public abstract class AbstractLineaSharedOptionsPlugin extends AbstractLineaOpti
   public LineaTracerSharedConfiguration tracerSharedConfiguration() {
     return (LineaTracerSharedConfiguration)
         getConfigurationByKey(LineaTracerSharedCliOptions.CONFIG_KEY).optionsConfig();
-  }
-
-  public Fork fork() {
-    return LONDON; // TODO: IMPORTANT
   }
 
   @Override

@@ -15,6 +15,8 @@
 
 package net.consensys.linea.testing;
 
+import static net.consensys.linea.zktracer.Trace.LINEA_BLOCK_GAS_LIMIT;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
@@ -23,6 +25,7 @@ import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import org.hyperledger.besu.consensus.clique.CliqueExtraData;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.ethereum.api.jsonrpc.JsonRpcConfiguration;
+import org.hyperledger.besu.ethereum.core.MiningConfiguration;
 import org.hyperledger.besu.ethereum.worldstate.DataStorageConfiguration;
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode;
 import org.hyperledger.besu.tests.acceptance.dsl.node.RunnableNode;
@@ -65,7 +68,11 @@ public class BesuNodeBuilder {
                       .buildAsString()
                       .describeConstable();
                 })
-            .miningEnabled()
+            // Used for block building with EngineAPIService
+            .miningConfiguration(
+                MiningConfiguration.newDefault().setTargetGasLimit(LINEA_BLOCK_GAS_LIMIT))
+            .engineRpcEnabled(true)
+            //
             .jsonRpcEnabled()
             .jsonRpcConfiguration(jsonRpcConfiguration)
             .requestedPlugins(

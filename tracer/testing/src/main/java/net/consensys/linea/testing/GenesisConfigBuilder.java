@@ -24,15 +24,15 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 
 public class GenesisConfigBuilder {
-  private static ObjectNode LINEA_CONFIG =
-      JsonUtil.objectNodeFromURL(
-          GenesisConfigBuilder.class.getResource("/BesuExecutionToolsGenesis.json"), true);
-
+  private ObjectNode LINEA_CONFIG;
   private ObjectNode genesisRoot;
   private ObjectNode configNode;
   private ObjectNode allocNode;
 
-  public GenesisConfigBuilder() {
+  public GenesisConfigBuilder(String genesisJsonFileName) {
+    LINEA_CONFIG =
+        JsonUtil.objectNodeFromURL(
+            GenesisConfigBuilder.class.getResource("/" + genesisJsonFileName), true);
     genesisRoot = LINEA_CONFIG.deepCopy();
     configNode = genesisRoot.withObjectProperty("config");
     allocNode = genesisRoot.withObjectProperty("alloc");
