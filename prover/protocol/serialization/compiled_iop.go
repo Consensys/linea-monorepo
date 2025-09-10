@@ -97,11 +97,31 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 	s.compiledIOPsFast[comp] = refIdx
 	s.PackedObject.CompiledIOPFast = append(s.PackedObject.CompiledIOPFast, PackedCompiledIOP{})
 
-	packedComp := newPackedCompiledIOP(comp)
+	var (
+		coinNames    = comp.Coins.AllKeys()
+		qIDsParams   = comp.QueriesParams.AllKeys()
+		qIDsNoParams = comp.QueriesNoParams.AllKeys()
+		precomputed  = comp.Precomputed.ListAllKeys()
+	)
+
+	metadata := packedIOPMetadata{
+		numRounds:              comp.NumRounds(),
+		coinsLen:               len(coinNames),
+		queryParamsLen:         len(qIDsParams),
+		queryNoParamsLen:       len(qIDsNoParams),
+		selfRecursionCount:     comp.SelfRecursionCount,
+		precomputedLen:         len(precomputed),
+		publicinputLen:         len(comp.PublicInputs),
+		extradataLen:           len(comp.ExtraData),
+		dummyCompiled:          comp.DummyCompiled,
+		withStorePointerChecks: comp.WithStorePointerChecks,
+		packedFSSetup:          comp.FiatShamirSetup.BigInt(fieldToSmallBigInt(comp.FiatShamirSetup)),
+	}
+	packedComp := newPackedCompiledIOP(metadata)
 
 	// Precomputed
 	{
-		for idx, colID := range comp.Precomputed.ListAllKeys() {
+		for idx, colID := range precomputed {
 			pre := RawPrecomputed{ColID: colID, ColAssign: comp.Precomputed.MustGet(colID)}
 			obj, err := s.PackStructObject(reflect.ValueOf(pre))
 			if err != nil {
@@ -159,7 +179,7 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 
 	// Coins
 	{
-		coinNames := comp.Coins.AllKeys()
+
 		for i, name := range coinNames {
 			c := comp.Coins.Data(name)
 			br, err := s.PackCoin(c)
@@ -172,12 +192,12 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 
 	// Queries
 	{
-		if list, e := s.packAllQueries(&comp.QueriesParams, "query-params"); e != nil {
+		if list, e := s.packAllQueries(&comp.QueriesParams, qIDsParams, "query-params"); e != nil {
 			return 0, e
 		} else {
 			packedComp.QueriesParams = list
 		}
-		if list, e := s.packAllQueries(&comp.QueriesNoParams, "query-no-params"); e != nil {
+		if list, e := s.packAllQueries(&comp.QueriesNoParams, qIDsNoParams, "query-no-params"); e != nil {
 			return 0, e
 		} else {
 			packedComp.QueriesNoParams = list
@@ -448,34 +468,51 @@ func (s *Serializer) packVerifierAction(val wizard.VerifierAction, pathFmt strin
 	return s.packActionCommon(val, pathFmt, idx)
 }
 
-func newPackedCompiledIOP(comp *wizard.CompiledIOP) *PackedCompiledIOP {
-	numRounds := comp.NumRounds()
+type packedIOPMetadata struct {
+	dummyCompiled          bool
+	withStorePointerChecks bool
+
+	numRounds          int
+	coinsLen           int
+	queryParamsLen     int
+	queryNoParamsLen   int
+	selfRecursionCount int
+	precomputedLen     int
+	publicinputLen     int
+	extradataLen       int
+
+	packedFSSetup *big.Int
+}
+
+func newPackedCompiledIOP(packedMetadata packedIOPMetadata) *PackedCompiledIOP {
 	return &PackedCompiledIOP{
-		NumRounds:              numRounds,
-		SelfRecursionCount:     comp.SelfRecursionCount,
-		DummyCompiled:          comp.DummyCompiled,
-		WithStorePointerChecks: comp.WithStorePointerChecks,
-		FiatShamirSetup:        comp.FiatShamirSetup.BigInt(fieldToSmallBigInt(comp.FiatShamirSetup)),
-		Coins:                  make([]BackReference, numRounds),
-		QueriesParams:          make([]PackedQuery, numRounds),
-		QueriesNoParams:        make([]PackedQuery, numRounds),
-		SubProvers:             make([][]PackedRawData, numRounds),
-		SubVerifiers:           make([][]PackedRawData, numRounds),
-		FSHooksPreSampling:     make([][]PackedRawData, numRounds),
-		Precomputed:            make([]PackedStructObject, len(comp.Precomputed.ListAllKeys())),
-		PublicInputs:           make([]PackedStructObject, len(comp.PublicInputs)),
-		ExtraData:              make([]PackedStructObject, len(comp.ExtraData)),
+		NumRounds:              packedMetadata.numRounds,
+		SelfRecursionCount:     packedMetadata.selfRecursionCount,
+		DummyCompiled:          packedMetadata.dummyCompiled,
+		WithStorePointerChecks: packedMetadata.withStorePointerChecks,
+		FiatShamirSetup:        packedMetadata.packedFSSetup,
+		Coins:                  make([]BackReference, packedMetadata.coinsLen),
+		QueriesParams:          make([]PackedQuery, packedMetadata.queryParamsLen),
+		QueriesNoParams:        make([]PackedQuery, packedMetadata.queryNoParamsLen),
+		SubProvers:             make([][]PackedRawData, packedMetadata.numRounds),
+		SubVerifiers:           make([][]PackedRawData, packedMetadata.numRounds),
+		FSHooksPreSampling:     make([][]PackedRawData, packedMetadata.numRounds),
+		Precomputed:            make([]PackedStructObject, packedMetadata.precomputedLen),
+		PublicInputs:           make([]PackedStructObject, packedMetadata.publicinputLen),
+		ExtraData:              make([]PackedStructObject, packedMetadata.extradataLen),
 	}
 }
 
 // Query packers per register (no closures inside functions)
-func (s *Serializer) packAllQueries(reg *wizard.ByRoundRegister[ifaces.QueryID, ifaces.Query],
+func (s *Serializer) packAllQueries(reg *wizard.ByRoundRegister[ifaces.QueryID, ifaces.Query], qIDs []ifaces.QueryID,
 	contextLabel string) ([]PackedQuery, *serdeError) {
 
-	// Internally calls AllKeysAt(round) which reserves some memory upfront
-	ids := reg.AllKeys()
-	out := make([]PackedQuery, len(ids))
-	for i, id := range ids {
+	if len(qIDs) == 0 {
+		return nil, nil
+	}
+
+	out := make([]PackedQuery, len(qIDs))
+	for i, id := range qIDs {
 		q := reg.Data(id)
 		backRef, err := s.PackQuery(q)
 		if err != nil {
