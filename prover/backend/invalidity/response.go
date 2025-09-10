@@ -2,9 +2,12 @@ package invalidity
 
 import (
 	"github.com/consensys/linea-monorepo/prover/utils/types"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 type Response struct {
+	// the transaction that was attempted to be included in the current aggregation
+	Transaction *ethtypes.Transaction
 	// the corresponding request file
 	Request
 	// Proof in 0x prefixed hexstring format

@@ -25,6 +25,10 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		txData          types.TxData
 	)
 
+	if txData, err = ethereum.DecodeTxFromBytes(bytes.NewReader(req.RlpEncodedTx)); err != nil {
+		return nil, fmt.Errorf("could not decode the RlpEncodedTx %w", err)
+	}
+
 	if cfg.Invalidity.ProverMode == config.ProverModeDev {
 
 		srsProvider, err := circuits.NewSRSStore(cfg.PathForSRS())
@@ -45,10 +49,6 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 			return nil, fmt.Errorf("could not load the setup: %w", err)
 		}
 
-		if txData, err = ethereum.DecodeTxFromBytes(bytes.NewReader(req.RlpEncodedTx)); err != nil {
-			return nil, fmt.Errorf("could not decode the RlpEncodedTx %w", err)
-		}
-
 		serializedProof = c.MakeProof(setup,
 			invalidity.AssigningInputs{
 				RlpEncodedTx:      req.RlpEncodedTx,
@@ -63,6 +63,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 	}
 
 	rsp := &Response{
+		Transaction:        types.NewTx(txData),
 		Request:            *req,
 		ProverVersion:      cfg.Version,
 		Proof:              serializedProof,

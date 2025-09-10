@@ -146,6 +146,7 @@ func genFiles(cmd *cobra.Command, args []string) {
 				blobSubmissionResponses[0],
 				runningSpec,
 				spec.AggregationSpec,
+				blobSubmissionResponses[len(blobSubmissionResponses)-1].FinalStateRootHash,
 			)
 			aggregationResponses = resp
 
@@ -167,6 +168,7 @@ func genFiles(cmd *cobra.Command, args []string) {
 				blobSubmissionResponses[0],
 				runningSpec,
 				spec.AggregationSpec,
+				blobSubmissionResponses[len(blobSubmissionResponses)-1].FinalStateRootHash,
 			)
 			aggregationResponses = resp
 
@@ -178,11 +180,12 @@ func genFiles(cmd *cobra.Command, args []string) {
 				specFile,
 			)
 			prevInvalidityProofResp = resp
-			runningSpec.InvalidityProofs = append(runningSpec.InvalidityProofs, *resp)
+			runningSpec.InvalidityProofs = append(runningSpec.InvalidityProofs, resp)
 
 		default:
 			printlnAndExit("Spec is neither a BlobSubmissionSpec nor an AggregationSpec : %++v", spec)
 		}
+
 	}
 
 	// Then write the files
@@ -232,6 +235,27 @@ func genFiles(cmd *cobra.Command, args []string) {
 		dumpVerifierContract(odir, circuits.MockCircuitIDEmulation)
 	}
 
+	// and for the invalidity proofs
+	for i, resp := range runningSpec.InvalidityProofs {
+		p := path.Join(odir, fmt.Sprintf("forcedTransaction-%v.json", i))
+		f, err := os.Create(p)
+		if err != nil {
+			// It should not be possible due to the above check
+			printlnAndExit("Unexpected error creating output file: %v", err)
+		}
+
+		serialized, err := json.MarshalIndent(resp, "", "\t")
+		if err != nil {
+			printlnAndExit("could not serialize invalidity response: %v", err)
+		}
+
+		_, err = f.Write(serialized)
+		if err != nil {
+			printlnAndExit("Unexpected error writing output file: %v", err)
+		}
+
+		f.Close()
+	}
 }
 
 func printlnAndExit(msg string, args ...any) {
@@ -287,51 +311,6 @@ func parseSpecFile(file string) RandGenSpec {
 	return spec
 }
 
-// Helper function to update the invalidity spec file with fromAddress, tx and txHash
-func updateInvaliditySpecFile(specFile string, tx *types.Transaction, txHash common.Hash, fromAddress common.Address) {
-	// Read the existing spec file
-	var specData InvaliditySpecFile
-	f, err := os.Open(specFile)
-	if err != nil {
-		panic(fmt.Errorf("could not open spec file %v: %w", specFile, err))
-	}
-	defer f.Close()
-
-	if err := json.NewDecoder(f).Decode(&specData); err != nil {
-		panic(fmt.Errorf("could not parse spec file %v: %w", specFile, err))
-	}
-
-	// Marshal the transaction to JSON
-	txJSON, err := tx.MarshalJSON()
-	if err != nil {
-		panic(fmt.Errorf("could not marshal transaction: %w", err))
-	}
-
-	// Parse the transaction JSON into InvalidityTxJSON struct
-	var txData InvalidityTxJSON
-	if err := json.Unmarshal(txJSON, &txData); err != nil {
-		panic(fmt.Errorf("could not unmarshal transaction JSON: %w", err))
-	}
-
-	// Update the spec data
-	specData.FromAddress = fromAddress.Hex()
-	specData.InvalidityTx = txData // Now this works
-	specData.InvalidityTxHash = txHash.Hex()
-
-	// Write back to file
-	outFile, err := os.Create(specFile)
-	if err != nil {
-		panic(fmt.Errorf("could not create spec file %v: %w", specFile, err))
-	}
-	defer outFile.Close()
-
-	encoder := json.NewEncoder(outFile)
-	encoder.SetIndent("", "    ")
-	if err := encoder.Encode(specData); err != nil {
-		panic(fmt.Errorf("could not write spec file %v: %w", specFile, err))
-	}
-}
-
 // Process a blob submission spec file
 func ProcessBlobSubmissionSpec(
 	rng *rand.Rand,
@@ -385,6 +364,7 @@ func ProcessAggregationSpec(
 	firstBlobSub *blobsubmission.Response,
 	runningSpec *AggregationSpec,
 	spec AggregationSpec,
+	finalStateRootHash string,
 ) (
 	resp *aggregation.Response,
 ) {
@@ -415,16 +395,20 @@ func ProcessAggregationSpec(
 	if err != nil {
 		printlnAndExit("Could not craft aggregation response : %s", err)
 	}
-
+	resp.FinalStateRootHash = finalStateRootHash
 	// Post-processing, stores the L1ROllingHash data
 	runningSpec.LastFinalizedL1RollingHash = resp.L1RollingHash
 	runningSpec.LastFinalizedL1RollingHashMessageNumber = resp.L1RollingHashMessageNumber
 
 	runningSpec.ParentAggregationBlockHash = resp.FinalBlockHash
-	runningSpec.ParentAggregationFtxStreamHash = resp.FtxStreamHash
+	runningSpec.ParentAggregationFtxStreamHash = resp.FinalFtxStreamHash
 	runningSpec.ParentAggregationFtxNumber = int(resp.FinalFtxNumber)
-	runningSpec.InvalidityProofs = []invalidity.Response{}
 
+	for i := range runningSpec.InvalidityProofs {
+		runningSpec.InvalidityProofs[i].StateRootHash = linTypes.Bytes32FromHex(finalStateRootHash)
+		runningSpec.InvalidityProofs[i].FtxMinBlockNumber = uint64(resp.LastFinalizedBlockNumber + 1)
+		runningSpec.InvalidityProofs[i].FtxMaxBlockNumber = uint64(resp.FinalBlockNumber)
+	}
 	return resp
 }
 
