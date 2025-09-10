@@ -15,6 +15,8 @@
 
 package net.consensys.linea.plugins.rpc.capture;
 
+import static net.consensys.linea.zktracer.Fork.getForkFromBesuBlockchainService;
+
 import com.google.common.base.Stopwatch;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.blockcapture.BlockCapturer;
@@ -32,11 +34,9 @@ import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 public class CaptureToFile {
   private final ServiceManager besuContext;
   private TraceService traceService;
-  private final Fork fork;
 
-  public CaptureToFile(final ServiceManager besuContext, Fork fork) {
+  public CaptureToFile(final ServiceManager besuContext) {
     this.besuContext = besuContext;
-    this.fork = fork;
   }
 
   public String getNamespace() {
@@ -61,7 +61,11 @@ public class CaptureToFile {
     CaptureParams params = CaptureParams.createTraceParams(request.getParams());
     final long fromBlock = params.fromBlock();
     final long toBlock = params.toBlock();
-    final BlockCapturer tracer = new BlockCapturer(this.fork);
+
+    // Retrieve fork from Besu plugin API with block number
+    final Fork fork = getForkFromBesuBlockchainService(besuContext, fromBlock, toBlock);
+
+    final BlockCapturer tracer = new BlockCapturer(fork);
 
     Stopwatch sw = Stopwatch.createStarted();
     traceService.trace(
