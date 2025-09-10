@@ -70,32 +70,6 @@ type InvalidityProofSpec struct {
 	ExpectedBlockHeight int      `json:"expectedBlockHeight"`
 }
 
-type InvalidityTxJSON struct {
-	Type                 string      `json:"type"`
-	ChainID              string      `json:"chainId"`
-	Nonce                string      `json:"nonce"`
-	To                   string      `json:"to"`
-	Gas                  string      `json:"gas"`
-	GasPrice             interface{} `json:"gasPrice"`
-	MaxPriorityFeePerGas string      `json:"maxPriorityFeePerGas"`
-	MaxFeePerGas         string      `json:"maxFeePerGas"`
-	Value                string      `json:"value"`
-	Input                string      `json:"input"`
-	AccessList           interface{} `json:"accessList"`
-	V                    string      `json:"v"`
-	R                    string      `json:"r"`
-	S                    string      `json:"s"`
-	YParity              string      `json:"yParity"`
-	Hash                 string      `json:"hash"`
-}
-
-type InvaliditySpecFile struct {
-	InvalidityProofSpec interface{}      `json:"invalidityProofSpec"`
-	FromAddress         string           `json:"fromAddress"`
-	InvalidityTx        InvalidityTxJSON `json:"invalidityTx"`
-	InvalidityTxHash    string           `json:"invalidityTxHash"`
-}
-
 // Aggregation spec
 type AggregationSpec struct {
 
@@ -160,7 +134,7 @@ type AggregationSpec struct {
 	FinalBlockNumber         uint `json:"finalBlockNumber"`
 
 	// List of the invalidity proof responses
-	InvalidityProofs []invalidity.Response `json:"invalidityProofs"`
+	InvalidityProofs []*invalidity.Response `json:"invalidityProofs"`
 
 	// ParentAggregationBlockHash is the final block hash of the parent aggregation
 	ParentAggregationBlockHash string `json:"parentAggregationBlockHash"`
@@ -299,15 +273,13 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 		utils.Panic("tx hash mismatch")
 	}
 
-	// Add tx, txHash, and fromAddress to the invalidity spec file
-	updateInvaliditySpecFile(specFile, tx, txHash, fromAddress)
-
 	return &invalidity.Request{
 		RlpEncodedTx:            ethereum.EncodeTxForSigning(tx),
 		ForcedTransactionNumber: uint64(spec.FtxNumber),
 		FromAddresses:           linTypes.EthAddress(fromAddress),
 		InvalidityTypes:         circInvalidity.BadNonce,
 		ExpectedBlockHeight:     uint64(spec.ExpectedBlockHeight),
+		PrevFtxStreamHash:       linTypes.Bytes32FromHex(spec.PrevStreamHash),
 	}
 
 }
@@ -338,7 +310,7 @@ func (rdg *RandDataGen) Base64RandLen(from, to int) string {
 // and the returned hex string is 0x prefixed.
 func (rdg *RandDataGen) HexString(n int) string {
 	res := make([]byte, n)
-	rdg.Read(res)
+	rdg.Read(res[1:]) // we leave the first byte zero to ensure it's < the bls12 field.
 	return "0x" + hex.EncodeToString(res)
 }
 
