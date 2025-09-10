@@ -85,10 +85,10 @@ type Serializer struct {
 	queryIDMap   map[string]int    // Maps query IDs to indices in PackedObject.QueryIDs.
 	// compiledIOPs     map[*wizard.CompiledIOP]int // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
 	compiledIOPsFast map[*wizard.CompiledIOP]int
-	Stores           map[*column.Store]int  // Maps Store pointers to indices in PackedObject.Store.
+	stores           map[*column.Store]int  // Maps Store pointers to indices in PackedObject.Store.
 	circuitMap       map[*cs.SparseR1CS]int // Maps circuit pointers to indices in PackedObject.Circuits.
-	ExprMap          map[field.Element]int  // Maps expression pointers to indices in PackedObject.Expressions
-	Warnings         []string               // Collects warnings (e.g., unexported fields) for debugging.
+	exprMap          map[field.Element]int  // Maps expression pointers to indices in PackedObject.Expressions
+	warnings         []string               // Collects warnings (e.g., unexported fields) for debugging.
 }
 
 // Deserializer manages the deserialization process, reconstructing objects from a PackedObject.
@@ -160,9 +160,9 @@ func NewSerializer() *Serializer {
 		queryIDMap:   map[string]int{},
 		// compiledIOPs:     map[*wizard.CompiledIOP]int{},
 		compiledIOPsFast: map[*wizard.CompiledIOP]int{},
-		Stores:           map[*column.Store]int{},
+		stores:           map[*column.Store]int{},
 		circuitMap:       map[*cs.SparseR1CS]int{},
-		ExprMap:          map[field.Element]int{},
+		exprMap:          map[field.Element]int{},
 	}
 }
 
@@ -180,8 +180,8 @@ func Serialize(v any) (bytesOfV []byte, err error) {
 	}
 
 	// Print any warnings (e.g., unexported fields).
-	for i := range ser.Warnings {
-		fmt.Println(ser.Warnings[i])
+	for i := range ser.warnings {
+		fmt.Println(ser.warnings[i])
 	}
 
 	// Store the packed (already serialized) payload directly
@@ -670,11 +670,11 @@ func (s *Serializer) PackStore(st *column.Store) (BackReference, *serdeError) {
 	if st == nil {
 		return 0, nil
 	}
-	if idx, ok := s.Stores[st]; ok {
+	if idx, ok := s.stores[st]; ok {
 		return BackReference(idx), nil
 	}
 	idx := len(s.PackedObject.Store)
-	s.Stores[st] = idx
+	s.stores[st] = idx
 	s.PackedObject.Store = append(s.PackedObject.Store, nil)
 
 	packed := st.Pack()
@@ -743,11 +743,11 @@ func (s *Serializer) PackExpression(e *symbolic.Expression) (BackReference, *ser
 		return 0, nil
 	}
 	key := e.ESHash
-	if idx, ok := s.ExprMap[key]; ok {
+	if idx, ok := s.exprMap[key]; ok {
 		return BackReference(idx), nil
 	}
 	idx := len(s.PackedObject.Expressions)
-	s.ExprMap[key] = idx
+	s.exprMap[key] = idx
 	s.PackedObject.Expressions = append(s.PackedObject.Expressions, nil)
 
 	packed, err := s.PackStructObject(reflect.ValueOf(*e))
@@ -1199,7 +1199,7 @@ func (d *Deserializer) UnpackPrimitive(v any, t reflect.Type) reflect.Value {
 
 // warnf logs a warning message to the Serializer’s Warnings slice.
 func (ser *Serializer) warnf(warning string) {
-	ser.Warnings = append(ser.Warnings, warning)
+	ser.warnings = append(ser.warnings, warning)
 }
 
 // warnf logs a warning message to the Deserializer’s Warnings slice.
