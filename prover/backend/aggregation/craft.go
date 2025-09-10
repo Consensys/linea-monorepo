@@ -180,6 +180,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 		// to keep the last value only.
 		cf.FinalShnarf = dp.ExpectedShnarf
 		cf.DataHashes = append(cf.DataHashes, dp.DataHash)
+		cf.FinalStateRootHash = dp.FinalStateRootHash
 
 		// Append the proof claim to the list of collected proofs
 		if !cf.IsProoflessJob {
@@ -239,7 +240,7 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		ParentAggregationFinalShnarf:        cf.ParentAggregationFinalShnarf,
 		FinalShnarf:                         cf.FinalShnarf,
 		FinalBlockHash:                      cf.FinalBlockHash,
-		FtxStreamHash:                       cf.FinalFtxStreamHash,
+		FinalFtxStreamHash:                  cf.FinalFtxStreamHash,
 		FinalFtxNumber:                      cf.FinalFtxNumber,
 		ParentAggregationBlockHash:          cf.ParentAggregationBlockHash,
 		ParentAggregationFtxNumber:          cf.LastFinalizedFtxNumber,

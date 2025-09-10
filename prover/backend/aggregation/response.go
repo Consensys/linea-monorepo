@@ -39,6 +39,7 @@ type Response struct {
 
 	// ParentStateRootHash is the root hash of the last finalized state.
 	// 0x-prefixed hexstring
+	FinalStateRootHash  string `json:"finalStateRootHash"`
 	ParentStateRootHash string `json:"parentStateRootHash"`
 
 	// The timestamp before and after what is finalized
@@ -54,11 +55,11 @@ type Response struct {
 	// occuring in the frame of the current aggregation.
 	L1RollingHashMessageNumber uint `json:"l1RollingHashMessageNumber"`
 
-	// FtxStreamHash stores the last stream hash in the frame of the current aggregation.
-	FtxStreamHash                  string `json:"ftxStreamHash"`
+	// FinalFtxStreamHash stores the last stream hash in the frame of the current aggregation.
+	FinalFtxStreamHash             string `json:"finalFtxStreamHash"`
 	ParentAggregationFtxStreamHash string `json:"parentAggregationFtxStreamHash"`
 	// FinalFtxNumber stores the number of last ftx in the frame of the current aggregation.
-	FinalFtxNumber             uint `json:"ftxNumber"`
+	FinalFtxNumber             uint `json:"finalFtxNumber"`
 	ParentAggregationFtxNumber uint `json:"parentAggregationFtxNumber"`
 
 	// L2 messages related messages. L2MerkleRoots stores a sequences of Merkle
