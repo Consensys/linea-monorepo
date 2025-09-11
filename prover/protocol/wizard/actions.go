@@ -21,7 +21,7 @@ type proverStepWrapper struct {
 }
 
 // Run implements the ProverAction interface for MainProverStep.
-func (w *proverStepWrapper) Run(run *ProverRuntime) {
+func (w proverStepWrapper) Run(run *ProverRuntime) {
 	w.step(run)
 }
 
