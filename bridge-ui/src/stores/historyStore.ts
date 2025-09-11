@@ -75,6 +75,7 @@ export const useHistoryStore = createWithEqualityFn<HistoryStore>()(
       },
       deleteCompleteTx: (key) =>
         set((state) => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { [key]: _, ...remainingHistory } = state.completeTxHistory;
           return {
             completeTxHistory: remainingHistory,
