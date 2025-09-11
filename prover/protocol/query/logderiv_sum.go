@@ -132,7 +132,6 @@ func (r LogDerivativeSum) Compute(run ifaces.Runtime) (field.Element, error) {
 			}
 			resLock.Unlock()
 
-
 			var (
 				inputs = r.Inputs.Parts
 				size   = inputs[k].Size
