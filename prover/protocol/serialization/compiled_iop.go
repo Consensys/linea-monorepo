@@ -16,6 +16,7 @@ import (
 
 var (
 	TypeTracker = make(map[string]bool)
+	DEBUG       = false
 )
 
 type RawPrecomputed struct {
@@ -58,10 +59,7 @@ type packedIOPMetadata struct {
 	dummyCompiled          bool
 	withStorePointerChecks bool
 
-	numRounds          int
 	coinsLen           int
-	queryParamsLen     int
-	queryNoParamsLen   int
 	selfRecursionCount int
 	precomputedLen     int
 	publicinputLen     int
@@ -75,21 +73,20 @@ var (
 	typeofRawPublicInput     = reflect.TypeOf(PackedPublicInput{})
 	typeofRawExtraData       = reflect.TypeOf(PackedExtradata{})
 	typeofPcsCtxs            = reflect.TypeOf((*vortex.Ctx)(nil))
-	// typeOfProverAction       = reflect.TypeOf((*wizard.ProverAction)(nil)).Elem()
-	// typeOfVerifierAction     = reflect.TypeOf((*wizard.VerifierAction)(nil)).Elem()
 )
 
 // PackedCompiledIOP represents the serialized form of CompiledIOP.
 type PackedCompiledIOP struct {
-	DummyCompiled          bool `cbor:"j"`
-	WithStorePointerChecks bool `cbor:"o"`
+	_                      struct{} `cbor:",toarray" serde:"omit"`
+	DummyCompiled          bool     `cbor:"j"`
+	WithStorePointerChecks bool     `cbor:"o"`
 
-	NumRounds             int      `cbor:"r"`
-	CoinsLen              int      `cbor:"s"`
-	QueryParamsOuterLen   int      `cbor:"p"`
-	QueryNoParamsOuterLen int      `cbor:"q"`
-	SelfRecursionCount    int      `cbor:"k"`
-	FiatShamirSetup       *big.Int `cbor:"l"`
+	CoinsLen              int `cbor:"s"`
+	QueryParamsOuterLen   int `cbor:"p"`
+	QueryNoParamsOuterLen int `cbor:"q"`
+	SelfRecursionCount    int `cbor:"k"`
+
+	FiatShamirSetup *big.Int `cbor:"l"`
 
 	Columns BackReference   `cbor:"a"`
 	Coins   []BackReference `cbor:"d"`
@@ -108,40 +105,19 @@ type PackedCompiledIOP struct {
 	PcsCtxs any `cbor:"i"`
 }
 
-type printdata struct {
-	numRounds               int
-	coinsLen                int
-	queryParamsOuterLen     int
-	queryParamsInnerLen     []int
-	queryNoParamsOuterLen   int
-	queryNoParamsInnerLen   []int
-	proverActionsOuterLen   int
-	proverActionInnerLen    []int
-	verifierActionsOuterLen int
-	verifierActionsInnerLen []int
-	fshooksOuterLen         int
-	fshooksInnerLen         []int
-}
-
 // -------------------- Packing --------------------
 
 func newPackedCompiledIOP(packedMetadata packedIOPMetadata) *PackedCompiledIOP {
 
 	return &PackedCompiledIOP{
-		NumRounds: packedMetadata.numRounds,
-		// CoinsLen:  packedMetadata.coinsLen,
-		// QueryParamsOuterLen:    packedMetadata.queryParamsLen,
-		// QueryNoParamsOuterLen:  packedMetadata.queryNoParamsLen,
 		SelfRecursionCount:     packedMetadata.selfRecursionCount,
 		DummyCompiled:          packedMetadata.dummyCompiled,
 		WithStorePointerChecks: packedMetadata.withStorePointerChecks,
 		FiatShamirSetup:        packedMetadata.packedFSSetup,
 		Coins:                  make([]BackReference, packedMetadata.coinsLen),
-		// QueriesParams:          make([]PackedQuery, packedMetadata.queryParamsLen),
-		// QueriesNoParams:        make([]PackedQuery, packedMetadata.queryNoParamsLen),
-		Precomputed:  make([]PackedStructObject, packedMetadata.precomputedLen),
-		PublicInputs: make([]PackedStructObject, packedMetadata.publicinputLen),
-		ExtraData:    make([]PackedStructObject, packedMetadata.extradataLen),
+		Precomputed:            make([]PackedStructObject, packedMetadata.precomputedLen),
+		PublicInputs:           make([]PackedStructObject, packedMetadata.publicinputLen),
+		ExtraData:              make([]PackedStructObject, packedMetadata.extradataLen),
 	}
 }
 
@@ -164,10 +140,7 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 	)
 
 	metadata := packedIOPMetadata{
-		numRounds:              comp.NumRounds(),
 		coinsLen:               len(coinNames),
-		queryParamsLen:         len(qIDsParams),
-		queryNoParamsLen:       len(qIDsNoParams),
 		selfRecursionCount:     comp.SelfRecursionCount,
 		precomputedLen:         len(precomputed),
 		publicinputLen:         len(comp.PublicInputs),
@@ -177,9 +150,11 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 		packedFSSetup:          comp.FiatShamirSetup.BigInt(fieldToSmallBigInt(comp.FiatShamirSetup)),
 	}
 
-	logCompiledIOPMetadata(comp, "packing-acutal-compiled-IOP")
+	if DEBUG {
+		logCompiledIOPMetadata(comp, "packing-acutal-compiled-IOP")
+		logrus.Printf("Packed metadata: %+v", metadata)
+	}
 
-	logrus.Printf("Packed metadata: %+v", metadata)
 	packedComp := newPackedCompiledIOP(metadata)
 
 	// Precomputed
@@ -252,6 +227,7 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 			packedComp.Coins[i] = br
 		}
 
+		// IMPORTANT: Record the original per-IOP outer lengths so unpacker can restore exact shape.
 		packedComp.CoinsLen = len(comp.Coins.ByRounds.Inner)
 	}
 
@@ -268,7 +244,7 @@ func (s *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackReferenc
 			packedComp.QueriesNoParams = list
 		}
 
-		// **Record the original per-IOP outer lengths so unpacker can restore exact shape.**
+		// IMPORTANT: Record the original per-IOP outer lengths so unpacker can restore exact shape.
 		packedComp.QueryParamsOuterLen = len(comp.QueriesParams.ByRounds.Inner)
 		packedComp.QueryNoParamsOuterLen = len(comp.QueriesNoParams.ByRounds.Inner)
 	}
@@ -490,13 +466,10 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 			return reflect.Value{}, se
 		}
 
-		// logrus.Printf("Before unpacking FSHOOK  len of packedCompIOP.FSHooksPreSampling: %v", len(packedCompIOP.FSHooksPreSampling))
-
 		deComp.FiatShamirHooksPreSampling.Inner = make([][]wizard.VerifierAction, len(packedCompIOP.FSHooksPreSampling))
 		if se := d.unpackAllFSHooksPreSampling(deComp.FiatShamirHooksPreSampling.Inner, packedCompIOP.FSHooksPreSampling); se != nil {
 			return reflect.Value{}, se
 		}
-		//logrus.Printf("AFTER unpacking FSHOOK  len of packedCompIOP.FSHooksPreSampling: %v", len(packedCompIOP.FSHooksPreSampling))
 
 		deComp.SubVerifiers.Inner = make([][]wizard.VerifierAction, len(packedCompIOP.SubVerifiers))
 		if se := d.unpackAllVerifierActions(deComp.SubVerifiers.Inner, packedCompIOP.SubVerifiers); se != nil {
@@ -504,7 +477,9 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 		}
 	}
 
-	logCompiledIOPMetadata(deComp, "unpacking-deserialized-comp-iop")
+	if DEBUG {
+		logCompiledIOPMetadata(deComp, "unpacking-deserialized-comp-iop")
+	}
 
 	return reflect.ValueOf(d.compiledIOPsFast[v]), nil
 }
@@ -761,6 +736,21 @@ func (d *Deserializer) unpackAllFSHooksPreSampling(
 	actions2D [][]PackedRawData,
 ) *serdeError {
 	return unpackAllActions(d, "fshook", deCompFSHooksPreSampling, actions2D)
+}
+
+type printdata struct {
+	numRounds               int
+	coinsLen                int
+	queryParamsOuterLen     int
+	queryParamsInnerLen     []int
+	queryNoParamsOuterLen   int
+	queryNoParamsInnerLen   []int
+	proverActionsOuterLen   int
+	proverActionInnerLen    []int
+	verifierActionsOuterLen int
+	verifierActionsInnerLen []int
+	fshooksOuterLen         int
+	fshooksInnerLen         []int
 }
 
 // logCompiledIOPMetadata logs metadata about a CompiledIOP
