@@ -39,7 +39,7 @@ type Request struct {
 	ParentAggregationLastL1RollingHashMessageNumber int    `json:"parentAggregationLastL1RollingHashMessageNumber"`
 
 	// last finalized stream hash
-	ParentAggregationLastFtxStreamHash string `json:"parentAggregationLastFtxStreamHash"`
+	ParentAggregationLastFtxRollingHash string `json:"parentAggregationLastFtxRollingHash"`
 	// last finalized forced transaction number
 	ParentAggregationLastFtxNumber int `json:"parentAggregationLastFtxNumber"`
 }
@@ -123,6 +123,6 @@ type CollectedFields struct {
 	LastFinalizedFtxNumber uint
 	FinalFtxNumber         uint
 
-	LastFinalizedFtxStreamHash string
-	FinalFtxStreamHash         string
+	LastFinalizedFtxRollingHash string
+	FinalFtxRollingHash         string
 }
