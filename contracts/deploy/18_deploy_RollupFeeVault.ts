@@ -15,7 +15,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const contractName = "RollupFeeVault";
   const existingContractAddress = await getDeployedContractAddress(contractName, deployments);
 
-  // UpgradeableWithdrawalQueuePredeploy DEPLOYED AS UPGRADEABLE PROXY
+  // RollupFeeVault DEPLOYED AS UPGRADEABLE PROXY
   if (!existingContractAddress) {
     console.log(`Deploying initial version, NB: the address will be saved if env SAVE_ADDRESS=true.`);
   } else {
