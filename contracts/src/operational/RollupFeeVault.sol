@@ -4,7 +4,7 @@ pragma solidity 0.8.30;
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /**
- * @title Upgradeable Operator Fee Vault Contract.
+ * @title Upgradeable Fee Vault Contract.
  * @notice Accepts ETH for later economic functions.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
