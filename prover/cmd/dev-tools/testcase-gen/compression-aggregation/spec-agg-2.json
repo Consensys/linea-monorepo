@@ -13,7 +13,7 @@
         "verProofForCircuitID": 0,
         "genProofForCircuitID": 0,
         "verifierContractID": 0,
-        "parentAggregationFtxStreamHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "parentAggregationFtxRollingHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
         "parentAggregationFtxNumber": 122
     }
 }

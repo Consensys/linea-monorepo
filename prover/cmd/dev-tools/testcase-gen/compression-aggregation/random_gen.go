@@ -142,11 +142,11 @@ type AggregationSpec struct {
 	FinalBlockHash string `json:"finalBlockHash"`
 
 	// ParentStreamHash is the stream hash of the parent aggregation
-	ParentAggregationFtxStreamHash string `json:"parentAggregationFtxStreamHash"`
-	ParentAggregationFtxNumber     int    `json:"parentAggregationFtxNumber"`
+	ParentAggregationFtxRollingHash string `json:"parentAggregationFtxRollingHash"`
+	ParentAggregationFtxNumber      int    `json:"parentAggregationFtxNumber"`
 
-	FinalFtxStreamHash string `json:"finalFtxStreamHash"`
-	FinalFtxNumber     uint   `json:"finalFtxNumber"`
+	FinalFtxRollingHash string `json:"finalFtxRollingHash"`
+	FinalFtxNumber      uint   `json:"finalFtxNumber"`
 }
 
 // Generates a random request file for a blob submission
@@ -195,17 +195,17 @@ func RandAggregation(rng *rand.Rand, spec AggregationSpec) *aggregation.Collecte
 		FinalBlockNumber:                        spec.FinalBlockNumber,
 		ParentAggregationBlockHash:              spec.ParentAggregationBlockHash,
 		FinalBlockHash:                          spec.FinalBlockHash,
-		LastFinalizedFtxStreamHash:              spec.ParentAggregationFtxStreamHash,
+		LastFinalizedFtxRollingHash:             spec.ParentAggregationFtxRollingHash,
 		LastFinalizedFtxNumber:                  uint(spec.ParentAggregationFtxNumber),
 		// By default the final stream hash is the same as the parent. We will
 		// overwrite it later if there is an invalidity proof in the spec.
-		FinalFtxStreamHash: spec.ParentAggregationFtxStreamHash,
-		FinalFtxNumber:     uint(spec.ParentAggregationFtxNumber),
+		FinalFtxRollingHash: spec.ParentAggregationFtxRollingHash,
+		FinalFtxNumber:      uint(spec.ParentAggregationFtxNumber),
 	}
 
 	if len(spec.InvalidityProofs) > 0 {
 		invalidityProof := spec.InvalidityProofs[len(spec.InvalidityProofs)-1]
-		cf.FinalFtxStreamHash = invalidityProof.FtxStreamHash.Hex()
+		cf.FinalFtxRollingHash = invalidityProof.FtxRollingHash.Hex()
 		cf.FinalFtxNumber = uint(invalidityProof.ForcedTransactionNumber)
 	}
 
@@ -279,7 +279,7 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 		FromAddresses:           linTypes.EthAddress(fromAddress),
 		InvalidityTypes:         circInvalidity.BadNonce,
 		ExpectedBlockHeight:     uint64(spec.ExpectedBlockHeight),
-		PrevFtxStreamHash:       linTypes.Bytes32FromHex(spec.PrevStreamHash),
+		PrevFtxRollingHash:      linTypes.Bytes32FromHex(spec.PrevStreamHash),
 	}
 
 }

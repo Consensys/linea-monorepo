@@ -55,9 +55,9 @@ type Response struct {
 	// occuring in the frame of the current aggregation.
 	L1RollingHashMessageNumber uint `json:"l1RollingHashMessageNumber"`
 
-	// FinalFtxStreamHash stores the last stream hash in the frame of the current aggregation.
-	FinalFtxStreamHash             string `json:"finalFtxStreamHash"`
-	ParentAggregationFtxStreamHash string `json:"parentAggregationFtxStreamHash"`
+	// FinalFtxRollingHash stores the last stream hash in the frame of the current aggregation.
+	FinalFtxRollingHash             string `json:"finalFtxRollingHash"`
+	ParentAggregationFtxRollingHash string `json:"parentAggregationFtxRollingHash"`
 	// FinalFtxNumber stores the number of last ftx in the frame of the current aggregation.
 	FinalFtxNumber             uint `json:"finalFtxNumber"`
 	ParentAggregationFtxNumber uint `json:"parentAggregationFtxNumber"`

@@ -401,7 +401,7 @@ func ProcessAggregationSpec(
 	runningSpec.LastFinalizedL1RollingHashMessageNumber = resp.L1RollingHashMessageNumber
 
 	runningSpec.ParentAggregationBlockHash = resp.FinalBlockHash
-	runningSpec.ParentAggregationFtxStreamHash = resp.FinalFtxStreamHash
+	runningSpec.ParentAggregationFtxRollingHash = resp.FinalFtxRollingHash
 	runningSpec.ParentAggregationFtxNumber = int(resp.FinalFtxNumber)
 
 	for i := range runningSpec.InvalidityProofs {
@@ -460,14 +460,14 @@ func ProcessInvaliditySpec(rng *rand.Rand, spec *InvalidityProofSpec, prevResp *
 	if prevResp != nil {
 		invalidityReq.ForcedTransactionNumber = uint64(prevResp.ForcedTransactionNumber + 1)
 		spec.FtxNumber = int(invalidityReq.ForcedTransactionNumber)
-		spec.PrevStreamHash = prevResp.FtxStreamHash.Hex()
+		spec.PrevStreamHash = prevResp.FtxRollingHash.Hex()
 	}
 
 	if txData, err = ethereum.DecodeTxFromBytes(bytes.NewReader(invalidityReq.RlpEncodedTx)); err != nil {
 		printlnAndExit("could not decode the RlpEncodedTx %w", err)
 	}
 
-	invalidityReq.FtxStreamHash = circInvalidity.UpdateFtxStreamHash(
+	invalidityReq.FtxRollingHash = circInvalidity.UpdateFtxRollingHash(
 		linTypes.Bytes32FromHex(spec.PrevStreamHash),
 		types.NewTx(txData),
 		spec.ExpectedBlockHeight,
