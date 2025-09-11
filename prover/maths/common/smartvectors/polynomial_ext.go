@@ -104,64 +104,71 @@ func EvaluateLagrangeFullFext(v SmartVector, x fext.Element, oncoset ...bool) fe
 }
 
 // Batch-evaluate polynomials in Lagrange basis
+// Batch-evaluate polynomials in Lagrange basis
 func BatchEvaluateLagrangeExt(vs []SmartVector, x fext.Element, oncoset ...bool) []fext.Element {
-
 	var (
-		polys         = make([][]fext.Element, len(vs))
 		results       = make([]fext.Element, len(vs))
-		computed      = make([]bool, len(vs))
 		totalConstant = 0
 	)
 
-	// smartvector to []fr.element
-	parallel.Execute(len(vs), func(start, stop int) {
-		for i := start; i < stop; i++ {
-			if con, ok := vs[i].(*ConstantExt); ok {
-				// constant vectors
-				results[i] = con.Value
-				computed[i] = true
-				totalConstant++
-				continue
-			}
+	// First pass: handle constants and collect non-constant polynomials
+	var nonConstantPolys [][]fext.Element
+	var nonConstantIndices []int
 
-			// non-constant vectors
-			polys[i] = vs[i].IntoRegVecSaveAllocExt()
+	// Process smartvectors to separate constants from polynomials
+	for i := 0; i < len(vs); i++ {
+		switch con := vs[i].(type) {
+		case *ConstantExt:
+			// constant vectors - store result directly
+			results[i] = con.Value
+			totalConstant++
+		default:
+			// non-constant vectors - collect for batch processing
+			poly := vs[i].IntoRegVecSaveAllocExt()
+			nonConstantPolys = append(nonConstantPolys, poly)
+			nonConstantIndices = append(nonConstantIndices, i)
 		}
-	})
+	}
 
+	// If all vectors are constant, return early
 	if totalConstant == len(vs) {
 		return results
 	}
 
-	return BatchEvaluateLagrangeSVExt(results, computed, polys, x, oncoset...)
-}
+	// Batch evaluate non-constant polynomials
+	if len(nonConstantPolys) > 0 {
+		nonConstantResults := BatchEvaluateLagrangeSVExt(nonConstantPolys, x, oncoset...)
 
-// Optimized batch EvaluateLagrange for smart vectors.
-// This reduces the number of computation by pre-processing
-// constant vectors in advance in BatchEvaluateLagrange()
-func BatchEvaluateLagrangeSVExt(results []fext.Element, computed []bool, polys [][]fext.Element, x fext.Element, oncoset ...bool) []fext.Element {
-
-	n := 0
-	for i := range polys {
-		if len(polys[i]) > 0 {
-			n = len(polys[i])
+		// Map results back to original positions
+		for j, result := range nonConstantResults {
+			originalIndex := nonConstantIndices[j]
+			results[originalIndex] = result
 		}
 	}
 
-	if n == 0 {
-		// that's a possible edge-case and it can happen if all the input polys
-		// are constant smart-vectors. This is should be prevented by the the
-		// caller.
-		return results
+	return results
+}
+
+// Simplified batch EvaluateLagrange - only handles non-constant polynomials
+func BatchEvaluateLagrangeSVExt(polys [][]fext.Element, x fext.Element, oncoset ...bool) []fext.Element {
+	if len(polys) == 0 {
+		return []fext.Element{}
+	}
+
+	// All polys should have the same length
+	n := len(polys[0])
+	for i := range polys {
+		if len(polys[i]) != n {
+			utils.Panic("all polys should have the same length %v", n)
+		}
 	}
 
 	if !utils.IsPowerOfTwo(n) {
-		utils.Panic("only support powers of two but poly has length %v", len(polys))
+		utils.Panic("only support powers of two but poly has length %v", n)
 	}
 
-	domain := fft.NewDomain(uint64(n), fft.WithCache())
+	domain := fft.NewDomain(uint64(n))
 	denominator := make([]fext.Element, n)
-
 	one := fext.One()
 
 	if len(oncoset) > 0 && oncoset[0] {
@@ -169,11 +176,10 @@ func BatchEvaluateLagrangeSVExt(results []fext.Element, computed []bool, polys [
 	}
 
 	/*
-		First, we compute the denominator,
-
-		D_x = \frac{X}{x} - g for x \in H
-			where H is the subgroup of the roots of unity (not the coset)
-			and g a field element such that gH is the coset
+	   First, we compute the denominator,
+	   D_x = \frac{X}{x} - g for x \in H
+	       where H is the subgroup of the roots of unity (not the coset)
+	       and g a field element such that gH is the coset
 	*/
 	denominator[0] = x
 	for i := 1; i < n; i++ {
@@ -182,53 +188,38 @@ func BatchEvaluateLagrangeSVExt(results []fext.Element, computed []bool, polys [
 
 	for i := 0; i < n; i++ {
 		denominator[i].Sub(&denominator[i], &one)
-
 		if denominator[i].IsZero() {
-			// edge-case : x is a root of unity of the domain. In this case, we can just return
-			// the associated value for poly
-
+			// edge-case : x is a root of unity of the domain
+			results := make([]fext.Element, len(polys))
 			for k := range polys {
-				if computed[k] {
-					continue
-				}
 				results[k] = polys[k][i]
 			}
-
 			return results
 		}
 	}
 
 	/*
-		Then, we compute the sum between the inverse of the denominator
-		and the poly
-
-		\sum_{x \in H}\frac{P(gx)}{D_x}
+	   Then, we compute the sum between the inverse of the denominator
+	   and the poly
+	   \sum_{x \in H}\frac{P(gx)}{D_x}
 	*/
 	denominator = fext.BatchInvert(denominator)
 
-	// Precompute the value of x^n once outside the loop
+	// Precompute values outside the loop
 	xN := new(fext.Element).Exp(x, big.NewInt(int64(n)))
-
-	// Precompute the value of domain.CardinalityInv outside the loop
 	cardinalityInv := &domain.CardinalityInv
-
-	// Compute factor as (x^n - 1) * (1 / domain.Cardinality).
 	factor := new(fext.Element).Sub(xN, &one)
 	factor.MulByElement(factor, cardinalityInv)
 
+	results := make([]fext.Element, len(polys))
+
 	parallel.Execute(len(polys), func(start, stop int) {
 		for k := start; k < stop; k++ {
-
-			if computed[k] {
-				continue
-			}
-			// Compute the scalar product.
+			// Compute the scalar product
 			res := vectorext.ScalarProd(polys[k], denominator)
-
-			// Multiply res with factor.
+			// Multiply res with factor
 			res.Mul(&res, factor)
-
-			// Store the result.
+			// Store the result
 			results[k] = res
 		}
 	})
