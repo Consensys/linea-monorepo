@@ -19,9 +19,9 @@ type Request struct {
 	// state root hash of the current aggregation, so this is the same for all the request files relevant to the same aggregation
 	StateRootHash types.Bytes32 `json:"stateRootHash"`
 	// RollingHash associated with the transaction
-	FtxStreamHash types.Bytes32 `json:"ftxStreamHash"`
+	FtxRollingHash types.Bytes32 `json:"ftxRollingHash"`
 	// previous FTX stream hash, i.e. the FTX stream hash of the previous forced transaction.
-	PrevFtxStreamHash types.Bytes32 `json:"prevFtxStreamHash"`
+	PrevFtxRollingHash types.Bytes32 `json:"prevFtxRollingHash"`
 	// the minimum block number where the transaction is handled
 	FtxMinBlockNumber uint64
 	// the maximum block number where the transaction is handled

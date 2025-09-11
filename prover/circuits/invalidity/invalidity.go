@@ -178,8 +178,8 @@ const (
 	BadBalance InvalidityType = 1
 )
 
-// UpdateFtxStreamHash updates the ftxStreamHash
-func UpdateFtxStreamHash(
+// UpdateFtxRollingHash updates the ftxRollingHash
+func UpdateFtxRollingHash(
 	prevStreamHash linTypes.Bytes32,
 	txPayload *types.Transaction,
 	expectedBlockHeight int,

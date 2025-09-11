@@ -254,7 +254,7 @@ func (c *Circuit) Define(api frontend.API) error {
 	api.AssertIsLessOrEqual(c.NbInvalidity, maxNbInvalidity) // @Azam check if it is neccassary here
 	rInvalidity := internal.NewRange(api, c.NbInvalidity, maxNbInvalidity)
 	finalFtxNumber := c.AggregationFPIQSnark.LastFinalizedFtxNumber
-	finalFtxStreamHash := c.AggregationFPIQSnark.LastFinalizedFtxStreamHash
+	finalFtxRollingHash := c.AggregationFPIQSnark.LastFinalizedFtxRollingHash
 	for i, invalidityFPI := range c.InvalidityFPI {
 
 		api.AssertIsEqual(invalidityFPI.StateRootHash, finalState) // @Azam make sure it really give the finalState
@@ -265,25 +265,25 @@ func (c *Circuit) Define(api frontend.API) error {
 		expr := api.Mul(rInvalidity.InRange[i], api.Sub(invalidityFPI.TxNumber, api.Add(finalFtxNumber, 1)))
 		api.AssertIsEqual(expr, 0)
 
-		// expected FtxStreamHash
+		// expected FtxRollingHash
 		hshM.Reset()
-		hshM.Write(finalFtxStreamHash)
+		hshM.Write(finalFtxRollingHash)
 		hshM.Write(invalidityFPI.TxHash[0])
 		hshM.Write(invalidityFPI.TxHash[1])
 		hshM.Write(invalidityFPI.ExpectedBlockNumber)
 		hshM.Write(invalidityFPI.FromAddress)
 		res := hshM.Sum()
-		api.AssertIsEqual(api.Mul(rInvalidity.InRange[i], api.Sub(res, invalidityFPI.FtxStreamHash)), 0)
+		api.AssertIsEqual(api.Mul(rInvalidity.InRange[i], api.Sub(res, invalidityFPI.FtxRollingHash)), 0)
 
-		// update finalFtxStreamHash and finalFtxNumber)
-		finalFtxStreamHash = api.Select(rInvalidity.InRange[i], invalidityFPI.FtxStreamHash, finalFtxStreamHash)
+		// update finalFtxRollingHash and finalFtxNumber)
+		finalFtxRollingHash = api.Select(rInvalidity.InRange[i], invalidityFPI.FtxRollingHash, finalFtxRollingHash)
 		finalFtxNumber = api.Select(rInvalidity.InRange[i], invalidityFPI.TxNumber, finalFtxNumber)
 
 	}
 
 	// set the FinalRollingHashNumberFtx for the aggregation circuit.
 	pi.FinalFtxNumber = finalFtxNumber
-	pi.FinalFtxStreamHash = finalFtxStreamHash
+	pi.FinalFtxRollingHash = finalFtxRollingHash
 
 	twoPow8 := big.NewInt(256)
 	// "open" aggregation public input

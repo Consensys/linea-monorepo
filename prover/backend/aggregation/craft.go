@@ -48,7 +48,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 			ParentAggregationLastBlockTimestamp:     uint(req.ParentAggregationLastBlockTimestamp),
 			LastFinalizedL1RollingHash:              req.ParentAggregationLastL1RollingHash,
 			LastFinalizedL1RollingHashMessageNumber: uint(req.ParentAggregationLastL1RollingHashMessageNumber),
-			LastFinalizedFtxStreamHash:              req.ParentAggregationLastFtxStreamHash,
+			LastFinalizedFtxRollingHash:             req.ParentAggregationLastFtxRollingHash,
 			LastFinalizedFtxNumber:                  uint(req.ParentAggregationLastFtxNumber),
 		}
 	)
@@ -77,7 +77,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 			cf.ParentStateRootHash = po.ParentStateRootHash
 			cf.ParentAggregationBlockHash = po.ParentBlockHash.Hex()
 			cf.LastFinalizedFtxNumber = uint(req.ParentAggregationLastFtxNumber)
-			cf.LastFinalizedFtxStreamHash = req.ParentAggregationLastFtxStreamHash
+			cf.LastFinalizedFtxRollingHash = req.ParentAggregationLastFtxRollingHash
 		}
 
 		if po.ProverMode == config.ProverModeProofless {
@@ -202,8 +202,8 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 	}
 
 	// similarly for the stream hash
-	if len(cf.FinalFtxStreamHash) == 0 {
-		cf.FinalFtxStreamHash = req.ParentAggregationLastFtxStreamHash
+	if len(cf.FinalFtxRollingHash) == 0 {
+		cf.FinalFtxRollingHash = req.ParentAggregationLastFtxRollingHash
 		cf.FinalFtxNumber = uint(req.ParentAggregationLastFtxNumber)
 	}
 
@@ -240,11 +240,11 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		ParentAggregationFinalShnarf:        cf.ParentAggregationFinalShnarf,
 		FinalShnarf:                         cf.FinalShnarf,
 		FinalBlockHash:                      cf.FinalBlockHash,
-		FinalFtxStreamHash:                  cf.FinalFtxStreamHash,
+		FinalFtxRollingHash:                 cf.FinalFtxRollingHash,
 		FinalFtxNumber:                      cf.FinalFtxNumber,
 		ParentAggregationBlockHash:          cf.ParentAggregationBlockHash,
 		ParentAggregationFtxNumber:          cf.LastFinalizedFtxNumber,
-		ParentAggregationFtxStreamHash:      cf.LastFinalizedFtxStreamHash,
+		ParentAggregationFtxRollingHash:     cf.LastFinalizedFtxRollingHash,
 	}
 
 	// @alex: proofless jobs are triggered once during the migration introducing
@@ -265,8 +265,8 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		L1RollingHash:                           cf.L1RollingHash,
 		LastFinalizedL1RollingHashMessageNumber: cf.LastFinalizedL1RollingHashMessageNumber,
 		L1RollingHashMessageNumber:              resp.L1RollingHashMessageNumber,
-		LastFinalizedFtxStreamHash:              cf.LastFinalizedFtxStreamHash,
-		FinalFtxStreamHash:                      cf.FinalFtxStreamHash,
+		LastFinalizedFtxRollingHash:             cf.LastFinalizedFtxRollingHash,
+		FinalFtxRollingHash:                     cf.FinalFtxRollingHash,
 		LastFinalizedFtxNumber:                  cf.LastFinalizedFtxNumber,
 		FinalFtxNumber:                          cf.FinalFtxNumber,
 		L2MsgRootHashes:                         cf.L2MsgRootHashes,
@@ -301,7 +301,7 @@ func validate(cf *CollectedFields) (err error) {
 	utils.ValidateHexString(&err, cf.FinalShnarf, "FinalizedShnarf : %w", 32)
 	utils.ValidateHexString(&err, cf.ParentStateRootHash, "ParentStateRootHash : %w", 32)
 	utils.ValidateHexString(&err, cf.L1RollingHash, "L1RollingHash : %w", 32)
-	utils.ValidateHexString(&err, cf.FinalFtxStreamHash, "FinalFtxStreamHash : %w", 32)
+	utils.ValidateHexString(&err, cf.FinalFtxRollingHash, "FinalFtxRollingHash : %w", 32)
 	utils.ValidateHexString(&err, cf.L2MessagingBlocksOffsets, "L2MessagingBlocksOffsets : %w", -1)
 	utils.ValidateTimestamps(&err, cf.ParentAggregationLastBlockTimestamp, cf.FinalTimestamp)
 	utils.ValidateHexString(&err, cf.DataParentHash, "DataParentHash : %w", 32)
@@ -441,7 +441,7 @@ func (cf *CollectedFields) collectInvalidityInfo(cfg *config.Config, req *Reques
 		cf.InvalidityPI = append(cf.InvalidityPI, *pi)
 
 		cf.FinalFtxNumber = uint(po.ForcedTransactionNumber)
-		cf.FinalFtxStreamHash = po.FtxStreamHash.Hex()
+		cf.FinalFtxRollingHash = po.FtxRollingHash.Hex()
 	}
 	return nil
 }

@@ -48,8 +48,8 @@ func TestPublicInput(t *testing.T) {
 			L2MsgMerkleTreeDepth:                    5,
 			LastFinalizedFtxNumber:                  3,
 			FinalFtxNumber:                          5,
-			LastFinalizedFtxStreamHash:              utils.FmtIntHex32Bytes(0x0345),
-			FinalFtxStreamHash:                      utils.FmtIntHex32Bytes(0x45),
+			LastFinalizedFtxRollingHash:             utils.FmtIntHex32Bytes(0x0345),
+			FinalFtxRollingHash:                     utils.FmtIntHex32Bytes(0x45),
 		},
 	}
 
