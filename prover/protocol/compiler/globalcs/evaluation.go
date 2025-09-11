@@ -140,15 +140,15 @@ func (pa EvaluationProver) Run(run *wizard.ProverRuntime) {
 		go func(i int, evalPoint fext.Element) {
 			var (
 				q  = pa.QuotientEvals[i]
-				ys = make([]fext.Element, len(q.Pols))
+				cs = make([]sv.SmartVector, len(q.Pols))
 			)
 
 			parallel.Execute(len(q.Pols), func(start, stop int) {
 				for i := start; i < stop; i++ {
-					c := q.Pols[i].GetColAssignment(run)
-					ys[i] = sv.EvaluateLagrangeFullFext(c, evalPoint)
+					cs[i] = q.Pols[i].GetColAssignment(run)
 				}
 			})
+			ys := sv.BatchEvaluateLagrangeExt(cs, evalPoint)
 
 			run.AssignUnivariateExt(q.Name(), evalPoint, ys...)
 			wg.Done()
