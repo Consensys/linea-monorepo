@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"math/big"
 	"math/rand"
 
@@ -236,7 +237,7 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 	)
 
 	// Generate a FIXED/deterministic private key for consistent testing
-	deterministicSeed := "fixed_test_seed_for_invalidity_proof_123456"
+	deterministicSeed := fmt.Sprintf("fixed_test_seed_for_invalidity_proof_123456_%v", rng.Int63())
 	hash := crypto.Keccak256([]byte(deterministicSeed))
 	privKey, err := crypto.ToECDSA(hash)
 	if err != nil {
@@ -254,7 +255,7 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 
 	tx := types.NewTx(&types.DynamicFeeTx{
 		ChainID:   spec.ChainID,
-		Nonce:     2,
+		Nonce:     rng.Uint64() % 100,
 		GasTipCap: big.NewInt(int64(123543135)),
 		GasFeeCap: big.NewInt(int64(112121212)),
 		Gas:       4531112,
