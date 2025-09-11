@@ -8,6 +8,8 @@ import (
 type Response struct {
 	// the transaction that was attempted to be included in the current aggregation
 	Transaction *ethtypes.Transaction
+	// hash of the transaction (before signing)
+	TxHash string `json:"txHash"`
 	// the corresponding request file
 	Request
 	// Proof in 0x prefixed hexstring format
