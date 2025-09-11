@@ -20,17 +20,18 @@ type ProverTaskAtRound []*ZCtx
 // a goroutine for each tasks and wait for all of them to finish. The approach
 // for parallelization can be justified if the number of go-routines stays low
 // (e.g. less than 1000s).
-func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
+func (p *ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
 
+	_p := *p
 	wg := &sync.WaitGroup{}
-	wg.Add(len(p))
+	wg.Add(len(_p))
 
-	for i := range p {
+	for i := range _p {
 		// the passing of the index `i` is there to ensure that the go-routine
 		// is running over a local copy of `i` which is not incremented every
 		// time the loop goes to the next iteration.
 		go func(i int) {
-			p[i].run(run)
+			_p[i].run(run)
 			wg.Done()
 		}(i)
 	}

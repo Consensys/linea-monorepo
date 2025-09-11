@@ -37,6 +37,6 @@ func CompileGrandProduct(comp *wizard.CompiledIOP) {
 		}
 
 		comp.RegisterVerifierAction(round, &verAction)
-		comp.RegisterProverAction(round, allProverActions)
+		comp.RegisterProverAction(round, &allProverActions)
 	}
 }
