@@ -17,12 +17,13 @@ package net.consensys.linea.zktracer.opcode.gas.projector;
 
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_COPY;
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
+import static org.hyperledger.besu.evm.internal.Words.clampedAdd;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.zktracer.Fork;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
-import org.hyperledger.besu.evm.internal.Words;
 
 @Slf4j
 public final class DataCopy extends GasProjection {
@@ -56,7 +57,11 @@ public final class DataCopy extends GasProjection {
   }
 
   @Override
-  public long largestOffset() {
-    return size == 0 ? 0 : Words.clampedAdd(targetOffset, size);
+  public long mxpxOffset(Fork fork) {
+    return switch (fork) {
+      case LONDON, PARIS, SHANGHAI -> size == 0 ? 0 : clampedAdd(targetOffset, size - 1);
+      case CANCUN, PRAGUE, OSAKA -> size == 0 ? 0 : Math.max(targetOffset, size);
+      default -> throw new IllegalArgumentException("Unknown fork: " + fork);
+    };
   }
 }

@@ -15,18 +15,7 @@
 
 package net.consensys.linea.zktracer.types;
 
-import org.apache.tuweni.bytes.Bytes;
-
 final class BytesValues {
-  private BytesValues() {}
-
-  static final int MAX_UNSIGNED_SHORT = (1 << 16) - 1;
-  static final long MAX_UNSIGNED_INT = (1L << 32) - 1;
-  static final long MAX_UNSIGNED_LONG = Long.MAX_VALUE;
-
-  static Bytes fromHexString(CharSequence str, int destSize, boolean lenient) {
-    return Bytes.wrap(fromRawHexString(str, destSize, lenient));
-  }
 
   static byte[] fromRawHexString(CharSequence str, int destSize, boolean lenient) {
     int len = str.length();

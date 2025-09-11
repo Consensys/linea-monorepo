@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_KECCAK_256_WORD;
 import static org.hyperledger.besu.evm.internal.Words.clampedAdd;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
+import net.consensys.linea.zktracer.Fork;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 
@@ -49,8 +50,12 @@ public final class Sha3 extends GasProjection {
   }
 
   @Override
-  public long largestOffset() {
-    return this.length == 0 ? 0 : clampedAdd(this.offset, this.length);
+  public long mxpxOffset(Fork fork) {
+    return switch (fork) {
+      case LONDON, PARIS, SHANGHAI -> length == 0 ? 0 : clampedAdd(offset, length - 1);
+      case CANCUN, PRAGUE, OSAKA -> length == 0 ? 0 : Math.max(offset, length);
+      default -> throw new IllegalArgumentException("Unknown fork: " + fork);
+    };
   }
 
   @Override

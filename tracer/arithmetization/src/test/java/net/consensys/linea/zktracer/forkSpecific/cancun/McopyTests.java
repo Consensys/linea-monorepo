@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.forkSpecific.cancun;
 
 import static net.consensys.linea.zktracer.Trace.*;
+import static net.consensys.linea.zktracer.TraceCancun.Mxp.CANCUN_MXPX_THRESHOLD;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import java.util.ArrayList;
@@ -39,10 +40,10 @@ public class McopyTests extends TracerTestBase {
 
     final Bytes FILL_MEMORY =
         BytecodeCompiler.newProgram(chainConfig)
-            .push(0) // offset
             .push(
                 Bytes32.fromHexString(
                     "0x11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff")) // value
+            .push(0) // offset
             .op(MSTORE)
             .compile();
 
@@ -78,6 +79,9 @@ public class McopyTests extends TracerTestBase {
           Bytes32.leftPad(Bytes.ofUnsignedInt(WORD_SIZE_MO)),
           Bytes32.leftPad(Bytes.ofUnsignedInt(WORD_SIZE)),
           Bytes32.leftPad(Bytes.ofUnsignedInt(33)),
+          Bytes32.leftPad(Bytes.ofUnsignedLong(CANCUN_MXPX_THRESHOLD - 1)),
+          Bytes32.leftPad(Bytes.ofUnsignedLong(CANCUN_MXPX_THRESHOLD)),
+          Bytes32.leftPad(Bytes.ofUnsignedLong(CANCUN_MXPX_THRESHOLD + 1)),
           Bytes32.leftPad(Bytes.ofUnsignedLong(Long.MAX_VALUE)),
           Bytes32.repeat((byte) 0xff));
 

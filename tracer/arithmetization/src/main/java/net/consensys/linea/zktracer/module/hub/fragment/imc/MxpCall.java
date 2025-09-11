@@ -22,7 +22,6 @@ import lombok.Setter;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
-import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.module.hub.state.State;
 import net.consensys.linea.zktracer.module.mxp.moduleCall.*;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -70,7 +69,7 @@ public abstract class MxpCall implements TraceSubFragment {
     // set memorySizeInWords
     this.memorySizeInWords = this.hub.messageFrame().memoryWordSize();
     // set sizes and offsets
-    EWord[] sizesAndOffsets = getSizesAndOffsets(frame, this.opCodeData);
+    final EWord[] sizesAndOffsets = getSizesAndOffsets(frame, this.opCodeData);
     this.size1 = sizesAndOffsets[0];
     this.offset1 = sizesAndOffsets[1];
     this.size2 = sizesAndOffsets[2];
@@ -101,13 +100,13 @@ public abstract class MxpCall implements TraceSubFragment {
     if (opCodeData.isMSize()) {
       return new CancunMSizeMxpCall(hub);
     }
-    EWord[] sizesAndOffsets = getSizesAndOffsets(hub.messageFrame(), opCodeData);
-    EWord size1 = sizesAndOffsets[0];
-    EWord size2 = sizesAndOffsets[2];
+    final EWord[] sizesAndOffsets = getSizesAndOffsets(hub.messageFrame(), opCodeData);
+    final EWord size1 = sizesAndOffsets[0];
+    final EWord size2 = sizesAndOffsets[2];
     if (size1.isZero() && size2.isZero()) {
       return new CancunTrivialMxpCall(hub);
     }
-    CancunNotMSizeNorTrivialMxpCall cancunNotMSizeNorTrivialMxpCall =
+    final CancunNotMSizeNorTrivialMxpCall cancunNotMSizeNorTrivialMxpCall =
         new CancunNotMSizeNorTrivialMxpCall(hub);
     if (cancunNotMSizeNorTrivialMxpCall.mxpx) {
       return new CancunMxpxMxpCall(hub, cancunNotMSizeNorTrivialMxpCall.mxpx);
@@ -117,10 +116,6 @@ public abstract class MxpCall implements TraceSubFragment {
       }
       return new CancunStateUpdateBytePricingMxpCall(hub);
     }
-  }
-
-  static boolean getMemoryExpansionException(Hub hub) {
-    return Exceptions.memoryExpansionException(hub.pch().exceptions());
   }
 
   public boolean getSize1NonZeroNoMxpx() {
@@ -138,7 +133,6 @@ public abstract class MxpCall implements TraceSubFragment {
   }
 
   protected void setMayTriggerNontrivialMmuOperation() {}
-  ;
 
   // Method only filled for LondonMxpCall
   public abstract void traceMayTriggerNonTrivialMmuOperationFromMxpx(Trace.Hub trace);

@@ -86,6 +86,7 @@ public class CommonFragmentValues {
     final boolean stackException = stackException(exceptions);
 
     final boolean isExec = hub.state.processingPhase() == TX_EXEC;
+    final OpCodeData opCode = hub.opCodeData();
 
     this.hub = hub;
     relBlockNumber = (short) hub.blockStack().currentRelativeBlockNumber();
@@ -100,20 +101,21 @@ public class CommonFragmentValues {
     this.stamps = hub.state().stamps();
     this.callFrame = hub.currentFrame();
     this.exceptions = exceptions;
-    this.pc = isExec ? hub.currentFrame().pc() : 0;
-    this.pcNew = computePcNew(hub, pc, stackException, isExec);
+    this.pc = isExec ? callFrame.pc() : 0;
+    this.pcNew = computePcNew(hub, callFrame, opCode, pc, stackException, isExec);
     this.height = callFrame.stack().getHeight();
     this.heightNew = callFrame.stack().getHeightNew();
 
-    this.gasExpected = computeGasExpected();
-    this.gasActual = computeGasRemaining();
-    this.gasCost = isExec ? computeGasCost() : 0;
+    this.gasExpected = computeGasExpected(callFrame);
+    this.gasActual = hub.remainingGas();
+    final GasProjection op = isExec ? hub.gasProjector.of(hub.messageFrame(), opCode) : null;
+    this.gasCost = isExec ? op.upfrontGasCost() : 0;
     this.gasNext = isExec ? computeGasNext(exceptions) : 0;
-    this.gasCostExcluduingDeploymentCost = isExec ? computeGasCostExcludingDeploymentCost() : 0;
+    this.gasCostExcluduingDeploymentCost = isExec ? op.gasCostExcludingDeploymentCost() : 0;
 
-    final InstructionFamily instructionFamily = hub.opCodeData().instructionFamily();
+    final InstructionFamily instructionFamily = opCode.instructionFamily();
     this.contextMayChange =
-        hubProcessingPhase == HubProcessingPhase.TX_EXEC
+        isExec
             && ((instructionFamily == CALL
                     || instructionFamily == CREATE
                     || instructionFamily == HALT
@@ -129,8 +131,6 @@ public class CommonFragmentValues {
       tracedException = TracedException.NONE;
       return;
     }
-
-    final OpCodeData opCode = hub.opCodeData();
 
     if (Exceptions.staticFault(exceptions)) {
       checkArgument(opCode.mayTriggerStaticException());
@@ -187,22 +187,29 @@ public class CommonFragmentValues {
     this.tracedException = tracedException;
   }
 
-  static int computePcNew(final Hub hub, final int pc, boolean stackException, boolean isExec) {
-    final OpCodeData opCode = hub.opCodeData();
+  static int computePcNew(
+      final Hub hub,
+      final CallFrame callFrame,
+      OpCodeData opCode,
+      final int pc,
+      boolean stackException,
+      boolean isExec) {
     if (!isExec || stackException) {
       return 0;
     }
 
+    // General Case:
     if (!opCode.isNonTrivialPush() && !opCode.isJump()) return pc + 1;
 
+    // PUSHX (with X !=0 ) case
     if (opCode.isNonTrivialPush()) {
       return pc + 1 + (opCode.byteValue() - EVM_INST_PUSH0);
     }
 
+    // JUMP case
     if (opCode.isJump()) {
-      final BigInteger prospectivePcNew =
-          hub.currentFrame().frame().getStackItem(0).toUnsignedBigInteger();
-      final BigInteger codeSize = BigInteger.valueOf(hub.currentFrame().code().getSize());
+      final BigInteger prospectivePcNew = callFrame.frame().getStackItem(0).toUnsignedBigInteger();
+      final BigInteger codeSize = BigInteger.valueOf(callFrame.code().getSize());
 
       final int attemptedPcNew =
           codeSize.compareTo(prospectivePcNew) > 0 ? prospectivePcNew.intValueExact() : 0;
@@ -212,8 +219,7 @@ public class CommonFragmentValues {
       }
 
       if (opCode.mnemonic().equals(OpCode.JUMPI)) {
-        final BigInteger condition =
-            hub.currentFrame().frame().getStackItem(1).toUnsignedBigInteger();
+        final BigInteger condition = callFrame.frame().getStackItem(1).toUnsignedBigInteger();
         if (!condition.equals(BigInteger.ZERO)) {
           return attemptedPcNew;
         } else {
@@ -226,14 +232,8 @@ public class CommonFragmentValues {
         "Instruction not covered " + opCode.mnemonic() + " unable to compute pcNew.");
   }
 
-  public long computeGasRemaining() {
-    return hub.remainingGas();
-  }
-
-  public long computeGasExpected() {
+  public long computeGasExpected(CallFrame currentFrame) {
     if (hub.state().processingPhase() != TX_EXEC) return 0;
-
-    final CallFrame currentFrame = hub.currentFrame();
 
     if (currentFrame.executionPaused()) {
       currentFrame.unpauseCurrentFrame();
@@ -241,16 +241,6 @@ public class CommonFragmentValues {
     }
 
     return currentFrame.frame().getRemainingGas();
-  }
-
-  private long computeGasCost() {
-    return hub.gasProjector.of(hub.messageFrame(), hub.opCodeData()).upfrontGasCost();
-  }
-
-  private long computeGasCostExcludingDeploymentCost() {
-    return hub.gasProjector
-        .of(hub.messageFrame(), hub.opCodeData())
-        .gasCostExcludingDeploymentCost();
   }
 
   /**
@@ -272,31 +262,17 @@ public class CommonFragmentValues {
    * @return
    */
   public long computeGasNext(short exceptions) {
-
-    if (Exceptions.any(exceptions)) {
-      return 0;
-    }
-
-    final long gasAfterDeductingCost = computeGasRemaining() - computeGasCost();
-
-    return switch (hub.opCodeData().instructionFamily()) {
-      case KEC, COPY, STACK_RAM, STORAGE, LOG, HALT -> gasAfterDeductingCost;
-      case CREATE -> gasAfterDeductingCost;
-        // Note: this is only part of the story because of
-        //  1. nonempty init code CREATE's where gas is paid out of pocket
-        // This is done in the CREATE section
-      case CALL -> gasAfterDeductingCost;
-        // Note: this is only part of the story because of
-        //  1. aborts with value transfers (immediately reapStipend)
-        //  2. EOA calls with value transfer (immediately reapStipend)
-        //  3. SMC calls: gas paid out of pocket
-        //  4. PRC calls: gas paid out of pocket + special PRC cost + returned gas
-        // This is done in the CALL section
-
-      default -> // ADD, MUL, MOD, EXT, WCP, BIN, SHF, CONTEXT, ACCOUNT, TRANSACTION, BATCH, JUMP,
-      // MACHINE_STATE, PUSH_POP, DUP, SWAP, INVALID
-      gasAfterDeductingCost;
-    };
+    return Exceptions.any(exceptions) ? 0 : gasActual - gasCost;
+    // Note:
+    //   for CREATE(s) -> this is only part of the story because of
+    //     //  1. nonempty init code CREATE's where gas is paid out of pocket
+    //     // This is done in the CREATE section
+    //   for CALL(s) -> this is only part of the story because of
+    //     //  1. aborts with value transfers (immediately reapStipend)
+    //     //  2. EOA calls with value transfer (immediately reapStipend)
+    //     //  3. SMC calls: gas paid out of pocket
+    //     //  4. PRC calls: gas paid out of pocket + special PRC cost + returned gas
+    //     // This is done in the CALL section
   }
 
   public void payGasPaidOutOfPocket(Hub hub) {
