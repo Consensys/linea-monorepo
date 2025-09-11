@@ -19,6 +19,9 @@ import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.SYSI;
 import static net.consensys.linea.zktracer.module.hub.fragment.storage.StorageFragment.systemTransactionStoring;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes16;
+import static net.consensys.linea.zktracer.types.Conversions.longToUnsignedBigInteger;
+
+import java.math.BigInteger;
 
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -50,7 +53,7 @@ public class EIP4788BeaconBlockRootSection extends TraceSection {
     super(hub, (short) 5);
     final AccountSnapshot beaconrootAccount =
         AccountSnapshot.canonical(hub, world, EIP4788_BEACONROOT_ADDRESS, false);
-    final long timestamp = blockHeader.getTimestamp();
+    final BigInteger timestamp = longToUnsignedBigInteger(blockHeader.getTimestamp());
     final boolean currentBlockIsGenesisBlock = blockHeader.getNumber() == 0;
     final boolean isNonTrivialOperation =
         !currentBlockIsGenesisBlock && !beaconrootAccount.code().isEmpty();
@@ -74,7 +77,9 @@ public class EIP4788BeaconBlockRootSection extends TraceSection {
     fragments().add(accountFragment);
 
     if (isNonTrivialOperation) {
-      final EWord keyTimestamp = EWord.of(timestamp % HISTORY_BUFFER_LENGTH);
+      final BigInteger timestampMod8191 =
+          timestamp.mod(longToUnsignedBigInteger(HISTORY_BUFFER_LENGTH));
+      final EWord keyTimestamp = EWord.of(timestampMod8191);
       final StorageFragment storingTimestamp =
           systemTransactionStoring(
               hub,
@@ -89,7 +94,7 @@ public class EIP4788BeaconBlockRootSection extends TraceSection {
       fragments().add(storingTimestamp);
 
       final EWord keyBeaconRoot =
-          EWord.of((timestamp % HISTORY_BUFFER_LENGTH) + HISTORY_BUFFER_LENGTH);
+          EWord.of(timestampMod8191.add(longToUnsignedBigInteger(HISTORY_BUFFER_LENGTH)));
       final StorageFragment storingBeaconroot =
           systemTransactionStoring(
               hub,

@@ -37,8 +37,9 @@ public abstract class HubRow extends TxnDataRow {
     trace
         .hub(true)
         .pHubBtcBlockNumber(header.getNumber())
-        .pHubBtcBlockGasLimit(header.getGasLimit())
-        .pHubBtcBasefee(header.getBaseFee().get().getAsBigInteger().longValueExact())
+        .pHubBtcBlockGasLimit(Bytes.ofUnsignedLong(header.getGasLimit()))
+        .pHubBtcBasefee(
+            Bytes.ofUnsignedLong(header.getBaseFee().get().getAsBigInteger().longValueExact()))
         .pHubBtcTimestamp(Bytes.ofUnsignedLong(header.getTimestamp()))
         .pHubBtcCoinbaseAddressHi(coinbase.slice(0, 4).toLong())
         .pHubBtcCoinbaseAddressLo(coinbase.slice(4, LLARGE));

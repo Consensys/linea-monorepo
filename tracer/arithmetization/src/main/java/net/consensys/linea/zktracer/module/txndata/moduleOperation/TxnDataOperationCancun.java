@@ -29,6 +29,7 @@ import net.consensys.linea.zktracer.module.txndata.module.PerspectivizedTxnData;
 import net.consensys.linea.zktracer.module.txndata.moduleOperation.transactions.UserTransaction;
 import net.consensys.linea.zktracer.module.txndata.rows.TxnDataRow;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 public abstract class TxnDataOperationCancun extends TxnDataOperation {
@@ -91,7 +92,7 @@ public abstract class TxnDataOperationCancun extends TxnDataOperation {
 
     if (this instanceof UserTransaction) {
       UserTransaction userTransaction = (UserTransaction) this;
-      trace.gasCumulative(userTransaction.txn.getAccumulatedGasUsedInBlock());
+      trace.gasCumulative(Bytes.ofUnsignedLong(userTransaction.txn.getAccumulatedGasUsedInBlock()));
     }
   }
 

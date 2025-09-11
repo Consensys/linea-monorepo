@@ -174,16 +174,29 @@ public abstract class SelfdestructSection extends TraceSection
 
   abstract boolean accountFragmentWiping();
 
+  abstract boolean softAccountWiping();
+
   @Override
   public void resolvePostExecution(
       Hub hub, MessageFrame frame, Operation.OperationResult operationResult) {
 
-    selfdestructorNew = AccountSnapshot.canonical(hub, selfdestructor.address());
     final boolean isDeployment = frame.getType() == MessageFrame.Type.CONTRACT_CREATION;
     checkState(isDeployment == selfdestructor.deploymentStatus());
+
+    selfdestructorNew = AccountSnapshot.canonical(hub, selfdestructor.address());
     if (isDeployment) {
       selfdestructorNew = selfdestructorNew.deploymentStatus(false);
       selfdestructorNew.code(Bytecode.EMPTY);
+    }
+
+    if (!selfdestructorNew.balance().isZero()) {
+
+      // sanity checks
+      checkState(selfdestructTargetsItself());
+      checkState(softAccountWiping());
+      checkState(selfdestructorNew.balance().equals(selfdestructor.balance()));
+
+      selfdestructorNew.setBalanceToZero();
     }
 
     if (selfdestructTargetsItself()) {

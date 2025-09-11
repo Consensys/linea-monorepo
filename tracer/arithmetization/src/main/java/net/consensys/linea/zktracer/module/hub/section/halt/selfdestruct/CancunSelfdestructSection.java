@@ -32,4 +32,11 @@ public class CancunSelfdestructSection extends LondonSelfdestructSection {
         .get(selfdestructor.address())
         .hadCode();
   }
+
+  public boolean softAccountWiping() {
+    return transactionProcessingMetadata
+        .hadCodeInitiallyMap()
+        .get(selfdestructor.address())
+        .hadCode();
+  }
 }

@@ -51,7 +51,7 @@ public class RlpRow extends TxnDataRow {
         .pRlpNumberOfZeroBytes(txn.numberOfZeroBytesInPayload())
         .pRlpNumberOfNonzeroBytes(txn.numberOfNonzeroBytesInPayload())
         .pRlpDataSize(besuTxn.getPayload().size())
-        .pRlpGasLimit(besuTxn.getGasLimit())
+        .pRlpGasLimit(Bytes.ofUnsignedLong(besuTxn.getGasLimit()))
         .pRlpGasPrice(
             besuTxn.getType().supports1559FeeMarket()
                 ? Bytes.EMPTY
