@@ -1,15 +1,12 @@
 package smartvectors
 
 import (
-	"math/big"
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 
-	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 // AddExt two vectors representing polynomials in coefficient form.
@@ -104,7 +101,6 @@ func EvaluateLagrangeFullFext(v SmartVector, x fext.Element, oncoset ...bool) fe
 }
 
 // Batch-evaluate polynomials in Lagrange basis
-// Batch-evaluate polynomials in Lagrange basis
 func BatchEvaluateLagrangeExt(vs []SmartVector, x fext.Element, oncoset ...bool) []fext.Element {
 	var (
 		results       = make([]fext.Element, len(vs))
@@ -137,7 +133,7 @@ func BatchEvaluateLagrangeExt(vs []SmartVector, x fext.Element, oncoset ...bool)
 
 	// Batch evaluate non-constant polynomials
 	if len(nonConstantPolys) > 0 {
-		nonConstantResults := BatchEvaluateLagrangeSVExt(nonConstantPolys, x, oncoset...)
+		nonConstantResults, _ := vortex.BatchEvalFextPolyLagrange(nonConstantPolys, x, oncoset...)
 
 		// Map results back to original positions
 		for j, result := range nonConstantResults {
@@ -145,84 +141,6 @@ func BatchEvaluateLagrangeExt(vs []SmartVector, x fext.Element, oncoset ...bool)
 			results[originalIndex] = result
 		}
 	}
-
-	return results
-}
-
-// Simplified batch EvaluateLagrange - only handles non-constant polynomials
-func BatchEvaluateLagrangeSVExt(polys [][]fext.Element, x fext.Element, oncoset ...bool) []fext.Element {
-	if len(polys) == 0 {
-		return []fext.Element{}
-	}
-
-	// All polys should have the same length
-	n := len(polys[0])
-	for i := range polys {
-		if len(polys[i]) != n {
-			utils.Panic("all polys should have the same length %v", n)
-		}
-	}
-
-	if !utils.IsPowerOfTwo(n) {
-		utils.Panic("only support powers of two but poly has length %v", n)
-	}
-
-	domain := fft.NewDomain(uint64(n))
-	denominator := make([]fext.Element, n)
-	one := fext.One()
-
-	if len(oncoset) > 0 && oncoset[0] {
-		x.MulByElement(&x, &domain.FrMultiplicativeGenInv)
-	}
-
-	/*
-	   First, we compute the denominator,
-	   D_x = \frac{X}{x} - g for x \in H
-	       where H is the subgroup of the roots of unity (not the coset)
-	       and g a field element such that gH is the coset
-	*/
-	denominator[0] = x
-	for i := 1; i < n; i++ {
-		denominator[i].MulByElement(&denominator[i-1], &domain.GeneratorInv)
-	}
-
-	for i := 0; i < n; i++ {
-		denominator[i].Sub(&denominator[i], &one)
-		if denominator[i].IsZero() {
-			// edge-case : x is a root of unity of the domain
-			results := make([]fext.Element, len(polys))
-			for k := range polys {
-				results[k] = polys[k][i]
-			}
-			return results
-		}
-	}
-
-	/*
-	   Then, we compute the sum between the inverse of the denominator
-	   and the poly
-	   \sum_{x \in H}\frac{P(gx)}{D_x}
-	*/
-	denominator = fext.BatchInvert(denominator)
-
-	// Precompute values outside the loop
-	xN := new(fext.Element).Exp(x, big.NewInt(int64(n)))
-	cardinalityInv := &domain.CardinalityInv
-	factor := new(fext.Element).Sub(xN, &one)
-	factor.MulByElement(factor, cardinalityInv)
-
-	results := make([]fext.Element, len(polys))
-
-	parallel.Execute(len(polys), func(start, stop int) {
-		for k := start; k < stop; k++ {
-			// Compute the scalar product
-			res := vectorext.ScalarProd(polys[k], denominator)
-			// Multiply res with factor
-			res.Mul(&res, factor)
-			// Store the result
-			results[k] = res
-		}
-	})
 
 	return results
 }
