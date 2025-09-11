@@ -16,6 +16,8 @@
 package net.consensys.linea.zktracer.module.mxp;
 
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_MEMORY;
+import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
+import static net.consensys.linea.zktracer.types.EWord.ONE;
 import static org.hyperledger.besu.evm.internal.Words.clampedAdd;
 import static org.hyperledger.besu.evm.internal.Words.clampedMultiply;
 
@@ -48,11 +50,11 @@ public class MxpUtils {
       case MSIZE -> {}
       case MLOAD, MSTORE -> {
         offset1 = EWord.of(frame.getStackItem(0));
-        size1 = EWord.of(32);
+        size1 = EWord.of(WORD_SIZE);
       }
       case MSTORE8 -> {
         offset1 = EWord.of(frame.getStackItem(0));
-        size1 = EWord.of(1);
+        size1 = ONE;
       }
       case REVERT, RETURN, LOG0, LOG1, LOG2, LOG3, LOG4, SHA3 -> {
         offset1 = EWord.of(frame.getStackItem(0));
