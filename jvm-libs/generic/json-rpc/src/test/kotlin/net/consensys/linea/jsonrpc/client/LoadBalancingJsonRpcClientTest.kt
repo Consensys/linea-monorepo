@@ -30,6 +30,9 @@ import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.Executors
 import java.util.concurrent.ThreadLocalRandom
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.concurrent.atomics.AtomicLong
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.concurrent.atomics.incrementAndFetch
 import kotlin.concurrent.timer
 import kotlin.math.log
 import kotlin.time.Duration.Companion.milliseconds
@@ -269,18 +272,40 @@ class LoadBalancingJsonRpcClientTest {
     )
   }
 
+  @Test
+  fun `verify that if first node in list always fails becomes the sticky client`() {
+    val numberOfRpcClients = 5
+    val maxInflightRequestsPerRpcClient = 3u
+    val numberOfThreads = 10
+    val numberOfRequestPerThread = 20
+    val alwaysFailFakeJsonRpcClient = AlwaysFailFakeJsonRpcClient(1)
+    val fakeJsonRpcClients = (2..numberOfRpcClients).map { FakeJsonRpcClient(it) }
+    val rpcClients: List<JsonRpcClient> = listOf(alwaysFailFakeJsonRpcClient) + fakeJsonRpcClients
+    testThreadSafe(
+      numberOfRpcClients,
+      maxInflightRequestsPerRpcClient,
+      numberOfThreads,
+      numberOfRequestPerThread,
+      rpcClients,
+    )
+    val totalRequests = numberOfThreads * numberOfRequestPerThread
+    // assert that the first client handled all requests
+    assertThat(alwaysFailFakeJsonRpcClient.getRequestsHandled()).isEqualTo(totalRequests.toLong())
+    fakeJsonRpcClients.forEach { assertThat(it.getRequestsHandled()).isEqualTo(0L) }
+  }
+
   private fun testThreadSafe(
     numberOfRpcClients: Int,
     maxInflightRequestsPerRpcClient: UInt,
     numberOfThreads: Int,
     numberOfRequestPerThread: Int,
+    rpcClients: List<JsonRpcClient> = (1..numberOfRpcClients).map { FakeJsonRpcClient(it) },
   ) {
     val executor = Executors.newCachedThreadPool()
     val producersStartBarrier = CyclicBarrier(numberOfThreads + 1)
     val totalRequestsToWait = numberOfThreads * numberOfRequestPerThread
     val receivedResponsesLatch = CountDownLatch(totalRequestsToWait)
 
-    val rpcClients = (1..numberOfRpcClients).map { FakeJsonRpcClient(it) }
     val loadBalancer = LoadBalancingJsonRpcClient.create(rpcClients, maxInflightRequestsPerRpcClient)
     val requestProducers =
       (1..numberOfThreads).map {
@@ -334,14 +359,45 @@ class LoadBalancingJsonRpcClientTest {
           .onComplete { asyncResult ->
             responsesHandledAtomic.incrementAndGet()
             responsesReceivedLatch.countDown()
-            assertThat(asyncResult.failed()).isEqualTo(shallFail || futureHandlerShallThrow)
+            if (asyncResult.failed()) {
+              val errorMessage = asyncResult.cause()?.message
+              if ("ALWAYS_FAILING_FAKE_CLIENT" != errorMessage) {
+                assertThat(shallFail || futureHandlerShallThrow).isEqualTo(true)
+              }
+            }
             asyncResult.result()?.let { assertThat(it.unwrap().id).isEqualTo(requestId) }
           }
       }
     }
   }
 
-  private class FakeJsonRpcClient(val id: Int) : JsonRpcClient {
+  private abstract class BaseFakeJsonRpcClient : JsonRpcClient {
+    abstract fun getRequestsHandled(): Long
+  }
+
+  @OptIn(ExperimentalAtomicApi::class)
+  private class AlwaysFailFakeJsonRpcClient(val id: Int) : BaseFakeJsonRpcClient() {
+    private val requestsHandled = AtomicLong(0)
+    override fun makeRequest(
+      request: JsonRpcRequest,
+      resultMapper: (Any?) -> Any?,
+    ): Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> {
+      val promise = Promise.promise<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>>()
+      requestsHandled.incrementAndFetch()
+      promise.fail(Exception("ALWAYS_FAILING_FAKE_CLIENT"))
+      return promise.future()
+    }
+
+    override fun toString(): String = "ALWAYS_FAILING_FAKE_CLIENT_$id"
+    override fun getRequestsHandled(): Long {
+      return requestsHandled.load()
+    }
+  }
+
+  @OptIn(ExperimentalAtomicApi::class)
+  private class FakeJsonRpcClient(val id: Int) : BaseFakeJsonRpcClient() {
+    private val requestsHandled = AtomicLong(0)
+
     override fun makeRequest(
       request: JsonRpcRequest,
       resultMapper: (Any?) -> Any?,
@@ -350,6 +406,8 @@ class LoadBalancingJsonRpcClientTest {
       val paramsList = request.params as List<*>
       val delayInMilliseconds = paramsList[0] as Long
       val shallFail = paramsList[1] as Boolean
+
+      requestsHandled.incrementAndFetch()
 
       timer("rcp-client-$id", false, delayInMilliseconds, 100L) {
         if (!promise.future().isComplete) {
@@ -365,6 +423,9 @@ class LoadBalancingJsonRpcClientTest {
     }
 
     override fun toString(): String = "FAKE_CLIENT_$id"
+    override fun getRequestsHandled(): Long {
+      return requestsHandled.load()
+    }
   }
 
   private fun JsonRpcClient.replyWithDelay(
