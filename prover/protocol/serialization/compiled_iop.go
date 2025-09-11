@@ -500,7 +500,6 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 
 	var wg sync.WaitGroup
 	errCh := make(chan *serdeError, 1)
-	var mu sync.Mutex // protects maps and slices
 
 	run := func(fn func() *serdeError) {
 		wg.Add(1)
@@ -546,9 +545,7 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 			if !ok {
 				return newSerdeErrorf("could not cast to RawPrecomputed")
 			}
-			mu.Lock()
 			deComp.Precomputed.InsertNew(pre.ColID, pre.ColAssign)
-			mu.Unlock()
 		}
 		return nil
 	})
@@ -594,9 +591,7 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 			if !ok {
 				return newSerdeErrorf("could not cast to raw extra data")
 			}
-			mu.Lock()
 			deComp.ExtraData[ed.Key] = ed.Value
-			mu.Unlock()
 		}
 		return nil
 	})
@@ -612,18 +607,21 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 			if !ok {
 				return newSerdeErrorf("illegal cast to coin.Info")
 			}
-			mu.Lock()
 			deComp.Coins.AddToRound(info.Round, info.Name, info)
-			mu.Unlock()
 		}
 		return nil
 	})
 
-	// Queries
+	// Queries params
 	run(func() *serdeError {
 		if se := d.unpackAllQueries(&deComp.QueriesParams, packedCompIOP.QueriesParams, "params"); se != nil {
 			return se
 		}
+		return nil
+	})
+
+	// queries no params
+	run(func() *serdeError {
 		if se := d.unpackAllQueries(&deComp.QueriesNoParams, packedCompIOP.QueriesNoParams, "no-params"); se != nil {
 			return se
 		}
@@ -637,11 +635,19 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 			return se
 		}
 
+		return nil
+	})
+
+	run(func() *serdeError {
 		deComp.FiatShamirHooksPreSampling.Inner = make([][]wizard.VerifierAction, len(packedCompIOP.FSHooksPreSampling))
 		if se := d.unpackAllFSHooksPreSampling(deComp.FiatShamirHooksPreSampling.Inner, packedCompIOP.FSHooksPreSampling); se != nil {
 			return se
 		}
 
+		return nil
+	})
+
+	run(func() *serdeError {
 		deComp.SubVerifiers.Inner = make([][]wizard.VerifierAction, len(packedCompIOP.SubVerifiers))
 		if se := d.unpackAllVerifierActions(deComp.SubVerifiers.Inner, packedCompIOP.SubVerifiers); se != nil {
 			return se
