@@ -39,7 +39,7 @@ type Request struct {
 	ParentAggregationLastL1RollingHashMessageNumber int    `json:"parentAggregationLastL1RollingHashMessageNumber"`
 
 	// last finalized stream hash
-	ParentAggregationLastFtxStreamHash string `json:"parentAggregationLastFtxStreamHash"`
+	ParentAggregationLastFtxRollingHash string `json:"parentAggregationLastFtxRollingHash"`
 	// last finalized forced transaction number
 	ParentAggregationLastFtxNumber int `json:"parentAggregationLastFtxNumber"`
 }
@@ -61,6 +61,7 @@ type CollectedFields struct {
 	// Parent zk root hash of the state over which we want to finalize. In 0x
 	// prefixed hexstring.
 	ParentStateRootHash string
+	FinalStateRootHash  string
 
 	// Timestamp of the last already finalized L2 block
 	ParentAggregationLastBlockTimestamp uint
@@ -122,6 +123,6 @@ type CollectedFields struct {
 	LastFinalizedFtxNumber uint
 	FinalFtxNumber         uint
 
-	LastFinalizedFtxStreamHash string
-	FinalFtxStreamHash         string
+	LastFinalizedFtxRollingHash string
+	FinalFtxRollingHash         string
 }

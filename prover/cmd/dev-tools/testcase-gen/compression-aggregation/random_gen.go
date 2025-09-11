@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"math/big"
 	"math/rand"
 
@@ -68,32 +69,6 @@ type InvalidityProofSpec struct {
 	PrevStreamHash      string   `json:"prevStreamHash"`
 	ChainID             *big.Int `json:"chainID"`
 	ExpectedBlockHeight int      `json:"expectedBlockHeight"`
-}
-
-type InvalidityTxJSON struct {
-	Type                 string      `json:"type"`
-	ChainID              string      `json:"chainId"`
-	Nonce                string      `json:"nonce"`
-	To                   string      `json:"to"`
-	Gas                  string      `json:"gas"`
-	GasPrice             interface{} `json:"gasPrice"`
-	MaxPriorityFeePerGas string      `json:"maxPriorityFeePerGas"`
-	MaxFeePerGas         string      `json:"maxFeePerGas"`
-	Value                string      `json:"value"`
-	Input                string      `json:"input"`
-	AccessList           interface{} `json:"accessList"`
-	V                    string      `json:"v"`
-	R                    string      `json:"r"`
-	S                    string      `json:"s"`
-	YParity              string      `json:"yParity"`
-	Hash                 string      `json:"hash"`
-}
-
-type InvaliditySpecFile struct {
-	InvalidityProofSpec interface{}      `json:"invalidityProofSpec"`
-	FromAddress         string           `json:"fromAddress"`
-	InvalidityTx        InvalidityTxJSON `json:"invalidityTx"`
-	InvalidityTxHash    string           `json:"invalidityTxHash"`
 }
 
 // Aggregation spec
@@ -160,7 +135,7 @@ type AggregationSpec struct {
 	FinalBlockNumber         uint `json:"finalBlockNumber"`
 
 	// List of the invalidity proof responses
-	InvalidityProofs []invalidity.Response `json:"invalidityProofs"`
+	InvalidityProofs []*invalidity.Response `json:"invalidityProofs"`
 
 	// ParentAggregationBlockHash is the final block hash of the parent aggregation
 	ParentAggregationBlockHash string `json:"parentAggregationBlockHash"`
@@ -168,11 +143,11 @@ type AggregationSpec struct {
 	FinalBlockHash string `json:"finalBlockHash"`
 
 	// ParentStreamHash is the stream hash of the parent aggregation
-	ParentAggregationFtxStreamHash string `json:"parentAggregationFtxStreamHash"`
-	ParentAggregationFtxNumber     int    `json:"parentAggregationFtxNumber"`
+	ParentAggregationFtxRollingHash string `json:"parentAggregationFtxRollingHash"`
+	ParentAggregationFtxNumber      int    `json:"parentAggregationFtxNumber"`
 
-	FinalFtxStreamHash string `json:"finalFtxStreamHash"`
-	FinalFtxNumber     uint   `json:"finalFtxNumber"`
+	FinalFtxRollingHash string `json:"finalFtxRollingHash"`
+	FinalFtxNumber      uint   `json:"finalFtxNumber"`
 }
 
 // Generates a random request file for a blob submission
@@ -221,17 +196,17 @@ func RandAggregation(rng *rand.Rand, spec AggregationSpec) *aggregation.Collecte
 		FinalBlockNumber:                        spec.FinalBlockNumber,
 		ParentAggregationBlockHash:              spec.ParentAggregationBlockHash,
 		FinalBlockHash:                          spec.FinalBlockHash,
-		LastFinalizedFtxStreamHash:              spec.ParentAggregationFtxStreamHash,
+		LastFinalizedFtxRollingHash:             spec.ParentAggregationFtxRollingHash,
 		LastFinalizedFtxNumber:                  uint(spec.ParentAggregationFtxNumber),
 		// By default the final stream hash is the same as the parent. We will
 		// overwrite it later if there is an invalidity proof in the spec.
-		FinalFtxStreamHash: spec.ParentAggregationFtxStreamHash,
-		FinalFtxNumber:     uint(spec.ParentAggregationFtxNumber),
+		FinalFtxRollingHash: spec.ParentAggregationFtxRollingHash,
+		FinalFtxNumber:      uint(spec.ParentAggregationFtxNumber),
 	}
 
 	if len(spec.InvalidityProofs) > 0 {
 		invalidityProof := spec.InvalidityProofs[len(spec.InvalidityProofs)-1]
-		cf.FinalFtxStreamHash = invalidityProof.FtxStreamHash.Hex()
+		cf.FinalFtxRollingHash = invalidityProof.FtxRollingHash.Hex()
 		cf.FinalFtxNumber = uint(invalidityProof.ForcedTransactionNumber)
 	}
 
@@ -262,7 +237,7 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 	)
 
 	// Generate a FIXED/deterministic private key for consistent testing
-	deterministicSeed := "fixed_test_seed_for_invalidity_proof_123456"
+	deterministicSeed := fmt.Sprintf("fixed_test_seed_for_invalidity_proof_123456_%v", rng.Int63())
 	hash := crypto.Keccak256([]byte(deterministicSeed))
 	privKey, err := crypto.ToECDSA(hash)
 	if err != nil {
@@ -280,7 +255,7 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 
 	tx := types.NewTx(&types.DynamicFeeTx{
 		ChainID:   spec.ChainID,
-		Nonce:     2,
+		Nonce:     rng.Uint64() % 100,
 		GasTipCap: big.NewInt(int64(123543135)),
 		GasFeeCap: big.NewInt(int64(112121212)),
 		Gas:       4531112,
@@ -299,15 +274,13 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 		utils.Panic("tx hash mismatch")
 	}
 
-	// Add tx, txHash, and fromAddress to the invalidity spec file
-	updateInvaliditySpecFile(specFile, tx, txHash, fromAddress)
-
 	return &invalidity.Request{
 		RlpEncodedTx:            ethereum.EncodeTxForSigning(tx),
 		ForcedTransactionNumber: uint64(spec.FtxNumber),
 		FromAddresses:           linTypes.EthAddress(fromAddress),
 		InvalidityTypes:         circInvalidity.BadNonce,
 		ExpectedBlockHeight:     uint64(spec.ExpectedBlockHeight),
+		PrevFtxRollingHash:      linTypes.Bytes32FromHex(spec.PrevStreamHash),
 	}
 
 }
@@ -338,7 +311,7 @@ func (rdg *RandDataGen) Base64RandLen(from, to int) string {
 // and the returned hex string is 0x prefixed.
 func (rdg *RandDataGen) HexString(n int) string {
 	res := make([]byte, n)
-	rdg.Read(res)
+	rdg.Read(res[1:]) // we leave the first byte zero to ensure it's < the bls12 field.
 	return "0x" + hex.EncodeToString(res)
 }
 

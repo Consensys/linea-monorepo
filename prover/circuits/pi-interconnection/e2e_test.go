@@ -105,24 +105,24 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 		InitialBlockNumber:           6,
 	}}
 
-	// assign the first ftxStreamHash
-	prevFtxStreamHash := types.Bytes32FromHex("0x0123")
-	ftxStreamHashBytes := test_utils.ComputeFtxStreamHash(
-		prevFtxStreamHash,
+	// assign the first ftxRollingHash
+	prevFtxRollingHash := types.Bytes32FromHex("0x0123")
+	ftxRollingHashBytes := test_utils.ComputeFtxRollingHash(
+		prevFtxRollingHash,
 		internal.Uint64To32Bytes(2),
 		11,
 		types.DummyAddress(32),
 	)
-	ftxStreamHash := types.Bytes32(ftxStreamHashBytes)
+	ftxRollingHash := types.Bytes32(ftxRollingHashBytes)
 
-	// assign the second ftxStreamHash
-	ftxStreamHashBytes1 := test_utils.ComputeFtxStreamHash(
-		ftxStreamHash,
+	// assign the second ftxRollingHash
+	ftxRollingHashBytes1 := test_utils.ComputeFtxRollingHash(
+		ftxRollingHash,
 		internal.Uint64To32Bytes(2),
 		12,
 		types.DummyAddress(32),
 	)
-	ftxStreamHash1 := types.Bytes32(ftxStreamHashBytes1)
+	ftxRollingHash1 := types.Bytes32(ftxRollingHashBytes1)
 
 	invalReq := []public_input.Invalidity{{
 		TxHash:              internal.Uint64To32Bytes(2),
@@ -130,14 +130,14 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 		StateRootHash:       stateRootHashes[2],
 		ExpectedBlockHeight: 11,
 		FromAddress:         types.DummyAddress(32),
-		FtxStreamHash:       ftxStreamHash,
+		FtxRollingHash:      ftxRollingHash,
 	}, {
 		TxHash:              internal.Uint64To32Bytes(2),
 		TxNumber:            4,
 		StateRootHash:       stateRootHashes[2],
 		ExpectedBlockHeight: 12,
 		FromAddress:         types.DummyAddress(32),
-		FtxStreamHash:       ftxStreamHash1,
+		FtxRollingHash:      ftxRollingHash1,
 	}}
 
 	blobReq := blobsubmission.Request{
@@ -173,8 +173,8 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 			L2MsgMerkleTreeDepth:                    5,
 			LastFinalizedFtxNumber:                  2,
 			FinalFtxNumber:                          4,
-			LastFinalizedFtxStreamHash:              utils.HexEncodeToString(prevFtxStreamHash[:]),
-			FinalFtxStreamHash:                      utils.HexEncodeToString(invalReq[1].FtxStreamHash[:]),
+			LastFinalizedFtxRollingHash:             utils.HexEncodeToString(prevFtxRollingHash[:]),
+			FinalFtxRollingHash:                     utils.HexEncodeToString(invalReq[1].FtxRollingHash[:]),
 		},
 	}
 
@@ -230,24 +230,24 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 		LastRollingHashUpdateNumber:  26,
 	}}
 
-	// assign the first ftxStreamHash
-	prevFtxStreamHash := types.Bytes32FromHex("0x0123")
-	ftxStreamHashBytes := test_utils.ComputeFtxStreamHash(
-		prevFtxStreamHash,
+	// assign the first ftxRollingHash
+	prevFtxRollingHash := types.Bytes32FromHex("0x0123")
+	ftxRollingHashBytes := test_utils.ComputeFtxRollingHash(
+		prevFtxRollingHash,
 		internal.Uint64To32Bytes(2),
 		32,
 		types.DummyAddress(32),
 	)
-	ftxStreamHash := types.Bytes32(ftxStreamHashBytes)
+	ftxRollingHash := types.Bytes32(ftxRollingHashBytes)
 
-	// assign the second ftxStreamHash
-	ftxStreamHashBytes1 := test_utils.ComputeFtxStreamHash(
-		ftxStreamHash,
+	// assign the second ftxRollingHash
+	ftxRollingHashBytes1 := test_utils.ComputeFtxRollingHash(
+		ftxRollingHash,
 		internal.Uint64To32Bytes(2),
 		41,
 		types.DummyAddress(32),
 	)
-	ftxStreamHash1 := types.Bytes32(ftxStreamHashBytes1)
+	ftxRollingHash1 := types.Bytes32(ftxRollingHashBytes1)
 
 	invalReq := []public_input.Invalidity{{
 		TxHash:              internal.Uint64To32Bytes(2),
@@ -255,14 +255,14 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 		StateRootHash:       internal.Uint64To32Bytes(22),
 		ExpectedBlockHeight: 32,
 		FromAddress:         types.DummyAddress(32),
-		FtxStreamHash:       ftxStreamHash,
+		FtxRollingHash:      ftxRollingHash,
 	}, {
 		TxHash:              internal.Uint64To32Bytes(2),
 		TxNumber:            4,
 		StateRootHash:       internal.Uint64To32Bytes(22),
 		ExpectedBlockHeight: 41,
 		FromAddress:         types.DummyAddress(32),
-		FtxStreamHash:       ftxStreamHash1,
+		FtxRollingHash:      ftxRollingHash1,
 	}}
 
 	blobReq0 := blobsubmission.Request{
@@ -309,8 +309,8 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 			L2MsgMerkleTreeDepth:                    5,
 			LastFinalizedFtxNumber:                  2,
 			FinalFtxNumber:                          4,
-			LastFinalizedFtxStreamHash:              utils.HexEncodeToString(prevFtxStreamHash[:]),
-			FinalFtxStreamHash:                      utils.HexEncodeToString(invalReq[1].FtxStreamHash[:]),
+			LastFinalizedFtxRollingHash:             utils.HexEncodeToString(prevFtxRollingHash[:]),
+			FinalFtxRollingHash:                     utils.HexEncodeToString(invalReq[1].FtxRollingHash[:]),
 		},
 	}
 

@@ -1,0 +1,8 @@
+{
+    "invalidityProofSpec": {
+        "ftxNumber": 124,
+        "prevStreamHash": "0x0e56bf1a19ff6ab4de04eca15940234742d43002868bf34761c50ad4ea8114c4",
+        "chainID": 789979,
+        "expectedBlockHeight": 310
+    }
+}

@@ -20,7 +20,7 @@ func (req *Request) FuncInput() *public_input.Invalidity {
 			FromAddress:         req.FromAddresses,
 			ExpectedBlockHeight: uint64(req.ExpectedBlockHeight),
 			StateRootHash:       req.StateRootHash,
-			FtxStreamHash:       req.FtxStreamHash,
+			FtxRollingHash:      req.FtxRollingHash,
 		}
 	)
 	return fi

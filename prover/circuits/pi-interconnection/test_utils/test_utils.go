@@ -48,16 +48,16 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 		InitialStateRootHash:         internal.Uint64To32Bytes(1),
 	}
 
-	prevFtxStreamHash := types.Bytes32FromHex("0x0123")
+	prevFtxRollingHash := types.Bytes32FromHex("0x0123")
 	txHash := types.FullBytes32FromHex("0x0ab0")
 
-	ftxStreamHashBytes := ComputeFtxStreamHash(
-		prevFtxStreamHash,
+	ftxRollingHashBytes := ComputeFtxRollingHash(
+		prevFtxRollingHash,
 		common.Hash(txHash),
 		9,
 		types.DummyAddress(32),
 	)
-	ftxStreamHash := types.Bytes32(ftxStreamHashBytes)
+	ftxRollingHash := types.Bytes32(ftxRollingHashBytes)
 
 	invalReq := public_input.Invalidity{
 		TxHash:              common.Hash(txHash),
@@ -65,7 +65,7 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 		StateRootHash:       finalStateRootHash,
 		ExpectedBlockHeight: 9,
 		FromAddress:         types.DummyAddress(32),
-		FtxStreamHash:       ftxStreamHash,
+		FtxRollingHash:      ftxRollingHash,
 	}
 
 	merkleRoots := aggregation.PackInMiniTrees(test_utils.BlocksToHex(execReq.L2MessageHashes))
@@ -86,8 +86,8 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 		L2MsgMerkleTreeDepth:                    5,
 		LastFinalizedFtxNumber:                  3,
 		FinalFtxNumber:                          4,
-		LastFinalizedFtxStreamHash:              utils.HexEncodeToString(prevFtxStreamHash[:]),
-		FinalFtxStreamHash:                      utils.HexEncodeToString(ftxStreamHash[:]), // reuse same value
+		LastFinalizedFtxRollingHash:             utils.HexEncodeToString(prevFtxRollingHash[:]),
+		FinalFtxRollingHash:                     utils.HexEncodeToString(ftxRollingHash[:]), // reuse same value
 	}
 
 	return pi_interconnection.Request{
@@ -97,9 +97,9 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 		Aggregation:    agg,
 	}
 }
-func ComputeFtxStreamHash(prevFtxStreamHash types.Bytes32, txHash common.Hash, expectedBlockHeight uint64, fromAddress types.EthAddress) []byte {
+func ComputeFtxRollingHash(prevFtxRollingHash types.Bytes32, txHash common.Hash, expectedBlockHeight uint64, fromAddress types.EthAddress) []byte {
 	mimc := mimc.NewMiMC()
-	mimc.Write(prevFtxStreamHash[:])
+	mimc.Write(prevFtxRollingHash[:])
 	mimc.Write(txHash[:16])
 	mimc.Write(txHash[16:])
 	types.WriteInt64On32Bytes(mimc, int64(expectedBlockHeight))

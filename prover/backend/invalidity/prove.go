@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 // Prove generates a proof for the invalidity circuit
@@ -24,6 +25,10 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		err             error
 		txData          types.TxData
 	)
+
+	if txData, err = ethereum.DecodeTxFromBytes(bytes.NewReader(req.RlpEncodedTx)); err != nil {
+		return nil, fmt.Errorf("could not decode the RlpEncodedTx %w", err)
+	}
 
 	if cfg.Invalidity.ProverMode == config.ProverModeDev {
 
@@ -45,10 +50,6 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 			return nil, fmt.Errorf("could not load the setup: %w", err)
 		}
 
-		if txData, err = ethereum.DecodeTxFromBytes(bytes.NewReader(req.RlpEncodedTx)); err != nil {
-			return nil, fmt.Errorf("could not decode the RlpEncodedTx %w", err)
-		}
-
 		serializedProof = c.MakeProof(setup,
 			invalidity.AssigningInputs{
 				RlpEncodedTx:      req.RlpEncodedTx,
@@ -62,7 +63,11 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		)
 	}
 
+	txHash := crypto.Keccak256(req.RlpEncodedTx)
+
 	rsp := &Response{
+		Transaction:        types.NewTx(txData),
+		TxHash:             utils.HexEncodeToString(txHash),
 		Request:            *req,
 		ProverVersion:      cfg.Version,
 		Proof:              serializedProof,
