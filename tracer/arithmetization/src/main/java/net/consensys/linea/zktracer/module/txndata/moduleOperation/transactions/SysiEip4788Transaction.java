@@ -21,6 +21,9 @@ import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.
 import static net.consensys.linea.zktracer.module.txndata.rows.computationRows.EucRow.callToEuc;
 import static net.consensys.linea.zktracer.module.txndata.rows.computationRows.WcpRow.smallCallToIszero;
 import static net.consensys.linea.zktracer.module.txndata.rows.hubRows.Type.EIP4788;
+import static net.consensys.linea.zktracer.types.Conversions.longToUnsignedBigInteger;
+
+import java.math.BigInteger;
 
 import net.consensys.linea.zktracer.module.txndata.module.PerspectivizedTxnData;
 import net.consensys.linea.zktracer.module.txndata.moduleOperation.TxnDataOperationCancun;
@@ -47,14 +50,15 @@ public class SysiEip4788Transaction extends TxnDataOperationCancun {
   protected void hubRow() {
     HubRowForSystemTransactions hubRow = new HubRowForSystemTransactions(blockHeader, hub, EIP4788);
 
-    long timestamp = blockHeader.getTimestamp();
+    final BigInteger timestamp = longToUnsignedBigInteger(blockHeader.getTimestamp());
     Bytes32 parentBeaconBlockRoot =
         blockHeader.getParentBeaconBlockRoot().isPresent()
             ? blockHeader.getParentBeaconBlockRoot().get()
             : Bytes32.ZERO;
 
     hubRow.systemTransactionData1 = EWord.of(timestamp);
-    hubRow.systemTransactionData2 = timestamp % HISTORY_BUFFER_LENGTH;
+    hubRow.systemTransactionData2 =
+        timestamp.mod(BigInteger.valueOf(HISTORY_BUFFER_LENGTH)).longValue();
     hubRow.systemTransactionData3 = EWord.of(EWord.of(parentBeaconBlockRoot).hi());
     hubRow.systemTransactionData4 = EWord.of(EWord.of(parentBeaconBlockRoot).lo());
     hubRow.systemTransactionData5 = blockHeader.getNumber() == 0;

@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.euc.Euc;
+import net.consensys.linea.zktracer.module.euc.EucOperation;
 import org.apache.tuweni.bytes.Bytes;
 
 @RequiredArgsConstructor
@@ -31,8 +32,8 @@ public class EucRow extends ComputationRow {
   @Getter final long remainder;
 
   public static EucRow callToEuc(Euc euc, final long dividend, final long divisor) {
-    euc.callEUC(Bytes.ofUnsignedLong(dividend), Bytes.ofUnsignedLong(divisor));
-    return new EucRow(dividend, divisor, dividend / divisor, dividend % divisor);
+    EucOperation op = euc.callEUC(Bytes.ofUnsignedLong(dividend), Bytes.ofUnsignedLong(divisor));
+    return new EucRow(dividend, divisor, op.quotient().toLong(), op.remainder().toLong());
   }
 
   @Override

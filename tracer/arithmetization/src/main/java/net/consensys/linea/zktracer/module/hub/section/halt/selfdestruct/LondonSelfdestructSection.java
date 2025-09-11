@@ -29,4 +29,8 @@ public class LondonSelfdestructSection extends SelfdestructSection {
     // In London, the account fragment is always wiped
     return true;
   }
+
+  public boolean softAccountWiping() {
+    return false;
+  }
 }

@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.mxp.moduleCall;
 
-import static net.consensys.linea.zktracer.TraceCancun.Mxp.MXPX_THRESHOLD;
+import static net.consensys.linea.zktracer.TraceCancun.Mxp.CANCUN_MXPX_THRESHOLD;
 import static net.consensys.linea.zktracer.module.mxp.MxpUtils.memoryCost;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 
@@ -88,7 +88,7 @@ public class CancunMxpCall extends MxpCall {
   /** Computed by CancunNotMSizeNorTrivialMxpCall for CancunMxpxMxpCall */
   public int mxpxExpression = 0;
 
-  static final Bytes mxpxThreshold = Bytes.ofUnsignedLong(MXPX_THRESHOLD);
+  static final Bytes mxpxThreshold = Bytes.ofUnsignedLong(CANCUN_MXPX_THRESHOLD);
 
   /**
    * Computed in CancunStateUpdateMxpCall for State update scenarii CancunStateUpdtWPricingMxpCall
