@@ -157,6 +157,12 @@ func BatchEvaluateLagrangeSVExt(results []fext.Element, computed []bool, polys [
 		return results
 	}
 
+	for i := range polys {
+		if len(polys[i]) != n {
+			utils.Panic("all polys should have the same length %v", n)
+		}
+	}
+
 	if !utils.IsPowerOfTwo(n) {
 		utils.Panic("only support powers of two but poly has length %v", len(polys))
 	}
