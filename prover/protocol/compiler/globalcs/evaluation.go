@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
@@ -117,7 +118,7 @@ func (pa EvaluationProver) Run(run *wizard.ProverRuntime) {
 		}
 	})
 
-	ys := sv.BatchEvaluateLagrangeExt(witnesses, r)
+	ys := smartvectors_mixed.BatchEvaluateLagrange(witnesses, r)
 	run.AssignUnivariateExt(pa.WitnessEval.QueryID, r, ys...)
 
 	/*
@@ -148,7 +149,7 @@ func (pa EvaluationProver) Run(run *wizard.ProverRuntime) {
 					cs[i] = q.Pols[i].GetColAssignment(run)
 				}
 			})
-			ys := sv.BatchEvaluateLagrangeExt(cs, evalPoint)
+			ys := smartvectors_mixed.BatchEvaluateLagrange(cs, evalPoint)
 
 			run.AssignUnivariateExt(q.Name(), evalPoint, ys...)
 			wg.Done()
