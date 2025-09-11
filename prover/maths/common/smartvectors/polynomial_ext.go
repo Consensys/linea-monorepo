@@ -2,11 +2,11 @@ package smartvectors
 
 import (
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
-
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 // AddExt two vectors representing polynomials in coefficient form.
@@ -102,43 +102,52 @@ func EvaluateLagrangeFullFext(v SmartVector, x fext.Element, oncoset ...bool) fe
 
 // Batch-evaluate polynomials in Lagrange basis
 func BatchEvaluateLagrangeExt(vs []SmartVector, x fext.Element, oncoset ...bool) []fext.Element {
-	var (
-		results       = make([]fext.Element, len(vs))
-		totalConstant = 0
-	)
+	results := make([]fext.Element, len(vs))
 
-	// First pass: handle constants and collect non-constant polynomials
-	var nonConstantPolys [][]fext.Element
-	var nonConstantIndices []int
+	// Pre-allocate with capacity to avoid multiple reallocations
+	nonConstantPolys := make([][]fext.Element, 0, len(vs))
+	nonConstantIndices := make([]int, 0, len(vs))
+	totalConstant := 0
 
-	// Process smartvectors to separate constants from polynomials
-	for i := 0; i < len(vs); i++ {
-		switch con := vs[i].(type) {
-		case *ConstantExt:
-			// constant vectors - store result directly
-			results[i] = con.Value
+	// Use parallel processing for constant detection
+	type workItem struct {
+		index      int
+		poly       []fext.Element
+		isConstant bool
+		value      fext.Element
+	}
+
+	workItems := make([]workItem, len(vs))
+
+	parallel.Execute(len(vs), func(start, stop int) {
+		for i := start; i < stop; i++ {
+			if con, ok := vs[i].(*ConstantExt); ok {
+				workItems[i] = workItem{i, nil, true, con.Value}
+			} else {
+				workItems[i] = workItem{i, vs[i].IntoRegVecSaveAllocExt(), false, fext.Element{}}
+			}
+		}
+	})
+
+	// Sequential collection (this part is fast)
+	for _, item := range workItems {
+		if item.isConstant {
+			results[item.index] = item.value
 			totalConstant++
-		default:
-			// non-constant vectors - collect for batch processing
-			poly := vs[i].IntoRegVecSaveAllocExt()
-			nonConstantPolys = append(nonConstantPolys, poly)
-			nonConstantIndices = append(nonConstantIndices, i)
+		} else {
+			nonConstantPolys = append(nonConstantPolys, item.poly)
+			nonConstantIndices = append(nonConstantIndices, item.index)
 		}
 	}
 
-	// If all vectors are constant, return early
 	if totalConstant == len(vs) {
 		return results
 	}
 
-	// Batch evaluate non-constant polynomials
 	if len(nonConstantPolys) > 0 {
 		nonConstantResults, _ := vortex.BatchEvalFextPolyLagrange(nonConstantPolys, x, oncoset...)
-
-		// Map results back to original positions
 		for j, result := range nonConstantResults {
-			originalIndex := nonConstantIndices[j]
-			results[originalIndex] = result
+			results[nonConstantIndices[j]] = result
 		}
 	}
 
