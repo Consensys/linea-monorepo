@@ -222,8 +222,7 @@ func (re RandomPointEvaluation) Run(run *wizard.ProverRuntime) {
 
 	}
 
-	// fmt.Printf("Are all base: %v", smartvectors.AreAllBase(polyVals[:len(polyVals)-1]))
-	ys := smartvectors.BatchEvaluateLagrangeMPTS(polyVals, r)
+	ys := smartvectors.BatchEvaluateLagrangeExt(polyVals, r)
 
 	run.AssignUnivariateExt(re.NewQuery.QueryID, r, ys...)
 }
