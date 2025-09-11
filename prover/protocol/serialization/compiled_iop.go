@@ -15,8 +15,10 @@ import (
 )
 
 var (
-	TypeTracker = make(map[string]bool)
-	DEBUG       = false
+	DEBUG = false
+
+	// Uncomment this line for DEBUG mode
+	//TypeTracker = make(map[string]bool)
 )
 
 type RawPrecomputed struct {
@@ -38,14 +40,13 @@ type PackedExtradata struct {
 }
 
 type PackedQuery struct {
-	_             struct{}      `cbor:",toarray" serde:"omit"`
-	BackReference BackReference `cbor:"b"`
-	ConcreteType  int           `cbor:"t"`
-	Round         int           `cbor:"r"`
-
-	IsIgnored                       bool `cbor:"i"`
-	IsSkippedFromProverTranscript   bool `cbor:"s"`
-	IsSkippedFromVerifierTranscript bool `cbor:"v"`
+	_                               struct{}      `cbor:",toarray" serde:"omit"`
+	BackReference                   BackReference `cbor:"b"`
+	ConcreteType                    int           `cbor:"t"`
+	Round                           int           `cbor:"r"`
+	IsIgnored                       bool          `cbor:"i"`
+	IsSkippedFromProverTranscript   bool          `cbor:"s"`
+	IsSkippedFromVerifierTranscript bool          `cbor:"v"`
 }
 
 type PackedRawData struct {
@@ -58,14 +59,12 @@ type PackedRawData struct {
 type packedIOPMetadata struct {
 	dummyCompiled          bool
 	withStorePointerChecks bool
-
-	coinsLen           int
-	selfRecursionCount int
-	precomputedLen     int
-	publicinputLen     int
-	extradataLen       int
-
-	packedFSSetup *big.Int
+	coinsLen               int
+	selfRecursionCount     int
+	precomputedLen         int
+	publicinputLen         int
+	extradataLen           int
+	packedFSSetup          *big.Int
 }
 
 var (
@@ -78,31 +77,31 @@ var (
 // PackedCompiledIOP represents the serialized form of CompiledIOP.
 type PackedCompiledIOP struct {
 	_                      struct{} `cbor:",toarray" serde:"omit"`
-	DummyCompiled          bool     `cbor:"j"`
-	WithStorePointerChecks bool     `cbor:"o"`
+	DummyCompiled          bool     `cbor:"a"`
+	WithStorePointerChecks bool     `cbor:"b"`
 
-	CoinsLen              int `cbor:"s"`
-	QueryParamsOuterLen   int `cbor:"p"`
-	QueryNoParamsOuterLen int `cbor:"q"`
-	SelfRecursionCount    int `cbor:"k"`
+	CoinsLen              int `cbor:"c"`
+	QueryParamsOuterLen   int `cbor:"d"`
+	QueryNoParamsOuterLen int `cbor:"e"`
+	SelfRecursionCount    int `cbor:"f"`
 
-	FiatShamirSetup *big.Int `cbor:"l"`
+	FiatShamirSetup *big.Int `cbor:"g"`
 
-	Columns BackReference   `cbor:"a"`
-	Coins   []BackReference `cbor:"d"`
+	Columns BackReference   `cbor:"h"`
+	Coins   []BackReference `cbor:"i"`
 
-	QueriesParams   []PackedQuery `cbor:"b"`
-	QueriesNoParams []PackedQuery `cbor:"c"`
+	QueriesParams   []PackedQuery `cbor:"j"`
+	QueriesNoParams []PackedQuery `cbor:"k"`
 
-	SubProvers         [][]PackedRawData `cbor:"e"`
-	SubVerifiers       [][]PackedRawData `cbor:"f"`
-	FSHooksPreSampling [][]PackedRawData `cbor:"g"`
+	SubProvers         [][]PackedRawData `cbor:"l"`
+	SubVerifiers       [][]PackedRawData `cbor:"m"`
+	FSHooksPreSampling [][]PackedRawData `cbor:"n"`
 
-	Precomputed  []PackedStructObject `cbor:"h"`
-	PublicInputs []PackedStructObject `cbor:"m"`
-	ExtraData    []PackedStructObject `cbor:"n"`
+	Precomputed  []PackedStructObject `cbor:"o"`
+	PublicInputs []PackedStructObject `cbor:"p"`
+	ExtraData    []PackedStructObject `cbor:"q"`
 
-	PcsCtxs any `cbor:"i"`
+	PcsCtxs any `cbor:"r"`
 }
 
 // -------------------- Packing --------------------
@@ -498,11 +497,17 @@ func (s *Serializer) packTypeIndex(concreteTypeStr string) int {
 
 func checkRegisteredOrWarn(concreteTypeStr string, t reflect.Type) (*serdeError, bool) {
 	if _, err := findRegisteredImplementation(concreteTypeStr); err != nil {
-		if !TypeTracker[concreteTypeStr] {
-			logrus.Warnf("attempted to serialize unregistered type repr=%q type=%v: %v", concreteTypeStr, t.String(), err)
-			TypeTracker[concreteTypeStr] = true
+
+		if DEBUG {
+
+			// UNCOMMENT this line for DEBUG mode
+			// if !TypeTracker[concreteTypeStr] {
+			// 	logrus.Warnf("attempted to serialize unregistered type repr=%q type=%v: %v", concreteTypeStr, t.String(), err)
+			// 	TypeTracker[concreteTypeStr] = true
+			// }
 		}
-		// return newSerdeErrorf("attempted to serialize unregistered type repr=%q type=%v: %v", concreteTypeStr, t.String(), err), true
+
+		return newSerdeErrorf("attempted to serialize unregistered type repr=%q type=%v: %v", concreteTypeStr, t.String(), err), true
 	}
 	return nil, false
 }
@@ -717,24 +722,15 @@ func unpackAllActions[T any](d *Deserializer, context string,
 	return nil
 }
 
-func (d *Deserializer) unpackAllProverActions(
-	deCompProverActions [][]wizard.ProverAction,
-	actions2D [][]PackedRawData,
-) *serdeError {
+func (d *Deserializer) unpackAllProverActions(deCompProverActions [][]wizard.ProverAction, actions2D [][]PackedRawData) *serdeError {
 	return unpackAllActions(d, "prover", deCompProverActions, actions2D)
 }
 
-func (d *Deserializer) unpackAllVerifierActions(
-	deCompVerifierActions [][]wizard.VerifierAction,
-	actions2D [][]PackedRawData,
-) *serdeError {
+func (d *Deserializer) unpackAllVerifierActions(deCompVerifierActions [][]wizard.VerifierAction, actions2D [][]PackedRawData) *serdeError {
 	return unpackAllActions(d, "verifier", deCompVerifierActions, actions2D)
 }
 
-func (d *Deserializer) unpackAllFSHooksPreSampling(
-	deCompFSHooksPreSampling [][]wizard.VerifierAction,
-	actions2D [][]PackedRawData,
-) *serdeError {
+func (d *Deserializer) unpackAllFSHooksPreSampling(deCompFSHooksPreSampling [][]wizard.VerifierAction, actions2D [][]PackedRawData) *serdeError {
 	return unpackAllActions(d, "fshook", deCompFSHooksPreSampling, actions2D)
 }
 
