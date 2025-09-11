@@ -4,6 +4,7 @@ import (
 	"sync/atomic"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
+	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -177,6 +178,74 @@ func BatchEvaluateLagrangeMixed(vs []SmartVector, x fext.Element, oncoset ...boo
 			results[i].Set(&tmp[i])
 		}
 	}
+
+	return results
+}
+
+// BatchEvaluateLagrangeMixed polynomials in Lagrange basis at an E4 point
+func BatchEvaluateLagrangeMPTS(vs []SmartVector, x fext.Element, oncoset ...bool) []fext.Element {
+
+	var (
+		polys         = make([][]field.Element, len(vs)-1)
+		polyLast      []fext.Element
+		results       = make([]fext.Element, len(vs))
+		computed      = make([]bool, len(vs))
+		totalConstant = uint64(0)
+	)
+
+	// filter out constant vectors
+	indexNonConstantVector := -1
+	parallel.Execute(len(vs)-1, func(start, stop int) {
+		for i := start; i < stop; i++ {
+
+			if !IsBase(vs[i]) {
+				utils.Panic("expected a base-field smart-vector, got %T", vs[i])
+			}
+
+			if con, ok := vs[i].(*Constant); ok {
+				fext.SetFromBase(&results[i], &con.Value)
+				computed[i] = true
+				atomic.AddUint64(&totalConstant, 1)
+				continue
+			}
+
+			// non-constant vectors
+			indexNonConstantVector = i
+			polys[i], _ = vs[i].IntoRegVecSaveAllocBase()
+		}
+	})
+
+	if con, ok := vs[len(vs)-1].(*ConstantExt); ok {
+		// constant vectors
+		results[len(vs)-1] = con.Value
+		computed[len(vs)-1] = true
+		totalConstant++
+	}
+
+	// non-constant vectors
+	polyLast = vs[len(vs)-1].IntoRegVecSaveAllocExt()
+
+	// all the vectors are constant, nothing to do more
+	if int(totalConstant) == len(vs) {
+		return results
+	}
+
+	// else, we put dummy copy at the constant vector indices, and call BatchEvaluateLagrange
+	for i := 0; i < len(polys); i++ {
+		if computed[i] {
+			polys[i] = polys[indexNonConstantVector]
+		}
+	}
+
+	// batch evaluate, and replace already computed values from constant vectors
+	tmp := fastpoly.BatchEvaluateLagrangeMixed(polys, x, oncoset...)
+	tmpLast := fastpolyext.EvaluateLagrange(polyLast, x, oncoset...)
+	for i := 0; i < len(polys); i++ {
+		if !computed[i] {
+			results[i].Set(&tmp[i])
+		}
+	}
+	results[len(results)-1].Set(&tmpLast)
 
 	return results
 }
