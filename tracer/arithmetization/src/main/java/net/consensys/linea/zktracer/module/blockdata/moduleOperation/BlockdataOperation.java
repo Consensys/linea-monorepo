@@ -27,8 +27,7 @@ import static net.consensys.linea.zktracer.TraceCancun.Blockdata.nROWS_BL;
 import static net.consensys.linea.zktracer.TraceLondon.Blockdata.nROWS_DF;
 import static net.consensys.linea.zktracer.TraceParis.Blockdata.nROWS_PV;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
-import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
-import static net.consensys.linea.zktracer.types.Conversions.booleanToBytes;
+import static net.consensys.linea.zktracer.types.Conversions.*;
 
 import java.math.BigInteger;
 import java.util.Arrays;
