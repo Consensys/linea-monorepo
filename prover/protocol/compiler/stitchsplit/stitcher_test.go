@@ -49,7 +49,7 @@ func TestStitcherLocalWithPeriodicSample(t *testing.T) {
 	testStitcher(t, 64, 256, localWithPeriodicSample(256, 8, 7))
 }
 
-func TestSplitterGlobalWithVerifColAndPerriodic(t *testing.T) {
+func TestSplitterGlobalWithVerifColAndPeriodic(t *testing.T) {
 	testStitcher(t, 8, 64, globalWithVerifColAndPeriodic(8, 4, 0))
 	testStitcher(t, 64, 128, globalWithVerifColAndPeriodic(256, 8, 1))
 	testStitcher(t, 8, 16, globalWithVerifColAndPeriodic(256, 8, 7))
@@ -262,6 +262,7 @@ func singlePolyFibo(size int) func() (wizard.DefineFunc, wizard.MainProverStep) 
 			P2 := build.RegisterCommit(P2, size)
 
 			// P(X) = P(X/w) + P(X/w^2)
+			// i.e., P[i+2] = P[i+1] + P[i]
 			expr1 := sym.Sub(
 				sym.Add(column.Shift(P1, 1), P1),
 				column.Shift(P1, 2))
@@ -295,7 +296,7 @@ func globalWithPeriodicSample(size, period, offset int) func() (wizard.DefineFun
 
 		builder := func(build *wizard.Builder) {
 			P1 := build.RegisterCommit(P1, size) // overshadows P
-			_ = build.GlobalConstraint(GLOBAL1, variables.NewPeriodicSample(period, offset).Mul(ifaces.ColumnAsVariable(P1)))
+			_ = build.GlobalConstraint(GLOBAL1, sym.Mul(P1, variables.NewPeriodicSample(period, offset)))
 		}
 
 		prover := func(run *wizard.ProverRuntime) {
@@ -317,7 +318,7 @@ func localWithPeriodicSample(size, period, offset int) func() (wizard.DefineFunc
 
 		builder := func(build *wizard.Builder) {
 			P1 := build.RegisterCommit(P1, size) // overshadows P
-			_ = build.LocalConstraint(GLOBAL1, variables.NewPeriodicSample(period, offset).Mul(ifaces.ColumnAsVariable(P1)))
+			_ = build.LocalConstraint(LOCAL1, sym.Mul(P1, variables.NewPeriodicSample(period, offset)))
 		}
 
 		prover := func(run *wizard.ProverRuntime) {

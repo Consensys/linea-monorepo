@@ -30,7 +30,8 @@ type StitchSubColumnsProverAction struct {
 func (a *StitchSubColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	for round := range a.Stitchings {
 		// This loop is not in deterministic order but this does not matter
-		// as this is purely for cleaning up.
+		// as this is purely for cleaning up. After stitching, the big column
+		// should live and the sub columns should be deleted.
 		for subCol := range a.Stitchings[round].BySubCol {
 			run.Columns.TryDel(subCol)
 		}
@@ -199,7 +200,6 @@ func (ctx *StitchingContext) ScanStitchCommit() {
 			continue
 		}
 
-		// @Azam Precomputed ones are double assigned by this?
 		ctx.Comp.RegisterProverAction(round, &StitchColumnsProverAction{
 			Ctx:   ctx,
 			Round: round,
@@ -208,6 +208,7 @@ func (ctx *StitchingContext) ScanStitchCommit() {
 }
 
 // It scan the compiler trace for a given round and classifies the columns eligible to the stitching, by their size.
+// It also declares a column with size < minSize a public column (to be verified by the verifier)
 func scanAndClassifyEligibleColumns(ctx StitchingContext, round int) map[int][]ifaces.Column {
 	columnsBySize := map[int][]ifaces.Column{}
 
