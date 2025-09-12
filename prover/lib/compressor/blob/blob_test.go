@@ -3,6 +3,10 @@ package blob_test
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
+
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
@@ -12,9 +16,6 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
-	"path/filepath"
-	"testing"
 )
 
 func TestGetVersion(t *testing.T) {

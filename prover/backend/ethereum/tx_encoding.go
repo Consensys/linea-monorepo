@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/holiman/uint256"
 )
 
 // Returns the transaction hash of the transaction
@@ -27,13 +28,16 @@ func EncodeTxForSigning(tx *types.Transaction) (encodedTx []byte) {
 
 	// Since there are different types of transactions in Ethereum.
 	// We encode them differently
-	var buffer bytes.Buffer
+	var (
+		buffer bytes.Buffer
+		err    error
+	)
 
 	switch {
 	// LONDON with dynamic fees
 	case tx.Type() == types.DynamicFeeTxType:
 		buffer.Write([]byte{tx.Type()})
-		rlp.Encode(&buffer, []interface{}{
+		err = rlp.Encode(&buffer, []interface{}{
 			tx.ChainId(),
 			tx.Nonce(),
 			tx.GasTipCap(),
@@ -47,7 +51,7 @@ func EncodeTxForSigning(tx *types.Transaction) (encodedTx []byte) {
 	// EIP2390 transaction with access-list
 	case tx.Type() == types.AccessListTxType:
 		buffer.Write([]byte{tx.Type()})
-		rlp.Encode(&buffer, []interface{}{
+		err = rlp.Encode(&buffer, []interface{}{
 			tx.ChainId(),
 			tx.Nonce(),
 			tx.GasPrice(),
@@ -59,7 +63,7 @@ func EncodeTxForSigning(tx *types.Transaction) (encodedTx []byte) {
 		})
 	// EIP155 signature with protection against replay
 	case tx.Type() == types.LegacyTxType && tx.Protected():
-		rlp.Encode(&buffer, []interface{}{
+		err = rlp.Encode(&buffer, []interface{}{
 			tx.Nonce(),
 			tx.GasPrice(),
 			tx.Gas(),
@@ -70,7 +74,7 @@ func EncodeTxForSigning(tx *types.Transaction) (encodedTx []byte) {
 		})
 	// Homestead signature
 	case tx.Type() == types.LegacyTxType && !tx.Protected():
-		rlp.Encode(&buffer, []interface{}{
+		err = rlp.Encode(&buffer, []interface{}{
 			tx.Nonce(),
 			tx.GasPrice(),
 			tx.Gas(),
@@ -78,8 +82,26 @@ func EncodeTxForSigning(tx *types.Transaction) (encodedTx []byte) {
 			tx.Value(),
 			tx.Data(),
 		})
+	// EIP-7702 transaction
+	case tx.Type() == types.SetCodeTxType:
+		buffer.Write([]byte{tx.Type()})
+		err = rlp.Encode(&buffer, []interface{}{ // fields taken from spec at https://eip7702.io
+			tx.ChainId(),    // chain_id
+			tx.Nonce(),      // nonce
+			tx.GasTipCap(),  // max_priority_fee_per_gas
+			tx.GasFeeCap(),  // max_fee_per_gas
+			tx.Gas(),        // gas_limit
+			tx.To(),         // destination
+			tx.Value(),      // value
+			tx.Data(),       // data
+			tx.AccessList(), // access_list
+		})
 	default:
 		utils.Panic("Unknown type of transaction %v, %++v", tx.Type(), tx)
+	}
+
+	if err != nil {
+		utils.Panic("failed to encode transaction %v: %w", tx, err)
 	}
 
 	return buffer.Bytes()
@@ -91,6 +113,7 @@ const (
 	accessListTxNumField  int = 8
 	legacyTxNumField      int = 9
 	unprotectedTxNumField int = 6
+	setCodeNumField       int = 9
 )
 
 // DecodeTxFromBytes from a string of bytes. If the stream of bytes is larger
@@ -116,6 +139,8 @@ func DecodeTxFromBytes(b *bytes.Reader) (tx types.TxData, err error) {
 		return decodeDynamicFeeTx(b)
 	case firstByte == types.AccessListTxType:
 		return decodeAccessListTx(b)
+	case firstByte == types.SetCodeTxType:
+		return decodeSetCodeTx(b)
 	// According to the RLP rule, `0xc0 + x` or `0xf7` indicates that the current
 	// item is a list and this is what's used to identify that the transaction is
 	// a legacy transaction or a EIP-155 transaction.
@@ -131,10 +156,38 @@ func DecodeTxFromBytes(b *bytes.Reader) (tx types.TxData, err error) {
 	}
 }
 
+func decodeSetCodeTx(b *bytes.Reader) (parsedTx *types.SetCodeTx, err error) {
+	var decTx []any
+
+	if err = rlp.Decode(b, &decTx); err != nil {
+		return nil, fmt.Errorf("could not rlp decode transaction: %w", err)
+	}
+
+	if len(decTx) != setCodeNumField {
+		return nil, fmt.Errorf("invalid number of field for a set-code transaction")
+	}
+
+	parsedTx = new(types.SetCodeTx)
+
+	err = errors.Join(
+		TryCast(&parsedTx.ChainID, decTx[0], "chainID"),
+		TryCast(&parsedTx.Nonce, decTx[1], "nonce"),
+		TryCast(&parsedTx.GasTipCap, decTx[2], "gas-tip-cap"),
+		TryCast(&parsedTx.GasFeeCap, decTx[3], "gas-fee-cap"),
+		TryCast(&parsedTx.Gas, decTx[4], "gas"),
+		TryCast(&parsedTx.To, decTx[5], "to"),
+		TryCast(&parsedTx.Value, decTx[6], "value"),
+		TryCast(&parsedTx.Data, decTx[7], "data"),
+		TryCast(&parsedTx.AccessList, decTx[8], "access-list"),
+	)
+
+	return
+}
+
 // decodeDynamicFeeTx encodes a [types.DynamicFeeTx] into a [bytes.Reader] and
 // returns an error if it did not pass.
 func decodeDynamicFeeTx(b *bytes.Reader) (parsedTx *types.DynamicFeeTx, err error) {
-	decTx := []any{}
+	var decTx []any
 
 	if err = rlp.Decode(b, &decTx); err != nil {
 		return nil, fmt.Errorf("could not rlp decode transaction: %w", err)
@@ -165,7 +218,7 @@ func decodeDynamicFeeTx(b *bytes.Reader) (parsedTx *types.DynamicFeeTx, err erro
 // and returns an error if it did not pass.
 func decodeAccessListTx(b *bytes.Reader) (parsedTx *types.AccessListTx, err error) {
 
-	decTx := []any{}
+	var decTx []any
 
 	if err := rlp.Decode(b, &decTx); err != nil {
 		return nil, fmt.Errorf("could not rlp decode transaction: %w", err)
@@ -315,6 +368,10 @@ func TryCast[T any](into *T, from any, explainer string) error {
 		*into = any(parsedBigInt.Uint64()).(T)
 	case []byte:
 		*into = any(fromBytes).(T)
+	case *uint256.Int:
+		var parsedUint256 uint256.Int
+		parsedUint256.SetBytes(fromBytes)
+		*into = any(&parsedUint256).(T)
 	default:
 		// Unsupported type - accumulate the error
 		return fmt.Errorf("could not decode %v (value %s, type %T) as type %T", explainer, from, from, *into)
