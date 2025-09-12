@@ -56,6 +56,15 @@ PRECOMPILE_BLAKE_ROUNDS                     = 0
 # Block-specific limits
 #
 BLOCK_KECCAK        = 8192
-BLOCK_L1_SIZE       = 1000000
+BLOCK_L1_SIZE       = 120000
 BLOCK_L2_L1_LOGS    = 16
 BLOCK_TRANSACTIONS  = 300
+#
+# limitless proof limits
+#
+BLS                 = 0
+RIP                 = 0
+MODEXP              = 0
+BLAKE               = 0
+POINT_EVAL          = 0
+

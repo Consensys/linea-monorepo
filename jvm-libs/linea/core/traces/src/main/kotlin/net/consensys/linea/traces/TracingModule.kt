@@ -60,6 +60,13 @@ enum class TracingModuleV2 : TracingModule {
   BLOCK_L1_SIZE,
   BLOCK_L2_L1_LOGS,
   BLOCK_TRANSACTIONS,
+
+  // Introduced by limitless proof
+  BLS,
+  RIP,
+  MODEXP,
+  BLAKE,
+  POINT_EVAL,
   ;
 
   companion object {
@@ -94,6 +101,11 @@ enum class TracingModuleV2 : TracingModule {
       TRM,
       TXN_DATA,
       WCP,
+      BLS,
+      RIP,
+      MODEXP,
+      BLAKE,
+      POINT_EVAL,
     )
   }
 }
