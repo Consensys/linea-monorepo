@@ -11,7 +11,7 @@ type FunctionalPublicInputsGnark struct {
 	TxHash              [2]frontend.Variable // keccak hash needs 2 field elements
 	TxNumber            frontend.Variable
 	FromAddress         frontend.Variable
-	SateRootHash        frontend.Variable
+	StateRootHash       frontend.Variable
 	ExpectedBlockNumber frontend.Variable
 	FtxStreamHash       frontend.Variable
 }
@@ -22,7 +22,7 @@ func (gpi *FunctionalPublicInputsGnark) Assign(pi public_input.Invalidity) {
 	gpi.TxHash[1] = pi.TxHash[16:]
 	gpi.FromAddress = pi.FromAddress[:]
 	gpi.ExpectedBlockNumber = pi.ExpectedBlockHeight
-	gpi.SateRootHash = pi.StateRootHash[:]
+	gpi.StateRootHash = pi.StateRootHash[:]
 	gpi.TxNumber = pi.TxNumber
 	gpi.FtxStreamHash = pi.FtxStreamHash[:]
 }
@@ -37,7 +37,7 @@ func (spi *FunctionalPublicInputsGnark) Sum(api frontend.API, hsh gnarkHash.Fiel
 		spi.TxNumber,
 		spi.FromAddress,
 		spi.ExpectedBlockNumber,
-		spi.SateRootHash,
+		spi.StateRootHash,
 		spi.FtxStreamHash,
 	)
 
@@ -47,7 +47,7 @@ func (spi *FunctionalPublicInputsGnark) Sum(api frontend.API, hsh gnarkHash.Fiel
 func (f FunctionalPublicInputsGnark) ExecutionCtxFor(c SubCircuit) []frontend.Variable {
 	switch c.(type) {
 	case *BadNonceBalanceCircuit:
-		return []frontend.Variable{f.SateRootHash}
+		return []frontend.Variable{f.StateRootHash}
 	default:
 		panic("unknown or unsupported subcircuit")
 	}
