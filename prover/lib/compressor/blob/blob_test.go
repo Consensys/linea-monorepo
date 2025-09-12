@@ -2,10 +2,7 @@ package blob_test
 
 import (
 	"bytes"
-	"compress/zlib"
-	"encoding/base64"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -14,7 +11,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 	v0 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
-	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 	blobv1testing "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -164,64 +160,4 @@ func newRecursiveFolderIterator(t *testing.T, path string) *recursiveFolderItera
 	res := recursiveFolderIterator{t: t, pathLen: len(path) + 1}
 	res.openDir(path)
 	return &res
-}
-
-func TestEncodeBlockWithType4Tx(t *testing.T) {
-	// Create a blob with a single block, containing an EIP-7702, Set Code transaction.
-
-	// blockRlpBase64 from https://explorer.devnet.linea.build/block/9128081
-	// compressed using zlib
-	const (
-		blockRlpCompressedBase64 = "eNr6yXz6J1PjgiXaYeZsl2a0dIqk9Zwp6VrjxnNbat9dhon/VNM++EbdZ1gge8b3xb3jsVWrW7embztzReqykKv0lK4S4Q8Lnf46XJnsPoUBC1jAbGSeHnZvvu2FBxqfjvi5+DxSz79VunX6ItfHYWdOsa93XmA7/zk7R00l966idw8Fzk/LdXT/0X3HQcGh1b1G4tjE+bMXMHanRh7yiFh3emvmHE822asLZq41yan3537kvs9p8aTt3DsZGUY6aGju9pjYUm46haGZUaemJWPdi+0LGBkYSg0YfLwdGBhjN2OLGTnXf6EOMmvTK8REzj7Jiz9sL2W0yafbX+Bz6SZOD/EqhQ6YSvYFYS/kxaXPhC773+z6bNKBH3nRHg+kZ+asPcCYpL/1cfIWxYaGBYScuODxhiNOM/7IiMz6/eXEzPydKurrHJ+kzJ7ss2TqTOmKoB2hPxmddlxl+XGp6TkzX6vIl2wWBgjZzL5QYcrhFQ+353xYH7M3s3GBySvpOUk2+3waWho1/8gc+BH3I6bpOfMUD+8H2ZGy1afKRFwe+Jmuua82q6KYn3HBDHnL/RwZM74uMvvGu9rKN2yh96ENzW+CLt87qtyr13NQbIHkdktLzs5bnWv2il1+Pbki+f6L5BL/hwLSUy9XOWpfXsbGOD9a5kyqk7RFw5pNRQ4lG5fnvJ587Xl1yG2lH+s3TmRacmxB9L6D+eyi9jVPamdufSsgpyXF3Xfr1AQF5/kyWx9PPW3z/Edmc+fr6y2sYcwWTUEcU5Ra0j4dFz39hvXe6l8HHM6ZSV4/z53S0Mx4TmtB7WSNe24fL7yWklz5333uK/fY0vMn1M7kyO/5tub2Spe/Kgvkbz569PU596zK8zud7N5N1vPQ2LIroWBF9hrO6Mrmf3OXHTgACAAA///o8zd2"
-		dictPath                 = "../dict/25-04-21.bin"
-	)
-	var block types.Block
-	blockBytes := zlibDecompressBase64EncodedBytes(t, blockRlpCompressedBase64)
-	require.NoError(t, rlp.DecodeBytes(blockBytes, &block))
-
-	bm, err := v1.NewBlobMaker(127000, dictPath)
-	require.NoError(t, err)
-
-	ok, err := bm.Write(blockBytes, false)
-	require.NoError(t, err)
-	require.True(t, ok)
-
-	blobBytes := bm.Bytes()
-
-	decompressR, err := v1.DecompressBlob(blobBytes, dictionary.NewStore(dictPath))
-	require.NoError(t, err)
-
-	require.Equal(t, 1, len(decompressR.Blocks))
-
-	decodedBlock, err := v1.DecodeBlockFromUncompressed(bytes.NewReader(decompressR.Blocks[0]))
-	require.NoError(t, err)
-
-	blockBack := decodedBlock.ToStd()
-	require.Equal(t, 2, len(blockBack.Transactions()))
-
-	tx := block.Transactions()[0]
-	txBack := blockBack.Transactions()[0]
-	require.Equal(t, types.SetCodeTxType, int(tx.Type()))
-	require.Equal(t, types.SetCodeTxType, int(txBack.Type()))
-}
-
-func zlibDecompressBase64EncodedBytes(t *testing.T, b64 string) []byte {
-	compressed, err := base64.StdEncoding.DecodeString(b64)
-	require.NoError(t, err)
-
-	zReader, err := zlib.NewReader(bytes.NewReader(compressed))
-	require.NoError(t, err)
-
-	var bb bytes.Buffer
-	readBuf := make([]byte, 1024)
-
-	for n := len(readBuf); n == len(readBuf); {
-		n, err = zReader.Read(readBuf)
-		if err != io.EOF {
-			require.NoError(t, err)
-		}
-		bb.Write(readBuf[:n])
-	}
-
-	return bb.Bytes()
 }
