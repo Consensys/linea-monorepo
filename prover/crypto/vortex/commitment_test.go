@@ -32,7 +32,7 @@ func TestLinearCombination(t *testing.T) {
 	ys := make([]fext.Element, nPolys)
 	for i := range polys {
 		polys[i] = smartvectors.Rand(polySize)
-		ys[i] = smartvectors.EvaluateLagrangeMixed(polys[i], x)
+		ys[i] = smartvectors.EvaluateBasePolyLagrange(polys[i], x)
 	}
 
 	// Make a linear combination of the poly
@@ -43,8 +43,8 @@ func TestLinearCombination(t *testing.T) {
 
 	// Evaluate the two on a random-ish point. Should
 	// yield the same result.
-	y0 := smartvectors.EvaluateLagrangeMixed(lc, x)
-	y1 := smartvectors.EvaluateLagrangeMixed(proof.LinearCombination, x)
+	y0 := smartvectors.EvaluateBasePolyLagrange(lc, x)
+	y1 := smartvectors.EvaluateBasePolyLagrange(proof.LinearCombination, x)
 
 	require.Equal(t, y0, y1)
 }
@@ -206,7 +206,7 @@ func TestProver(t *testing.T) {
 						// the interpolation algorithm will panic as this counts
 						// as invalid inputs.
 						if utils.IsPowerOfTwo(effPolySize) {
-							ys[j] = smartvectors.EvaluateLagrangeMixed(polys[j], x)
+							ys[j] = smartvectors.EvaluateBasePolyLagrange(polys[j], x)
 						} else {
 							ys[j].SetRandom()
 						}
@@ -474,7 +474,7 @@ func TestVerifierNegative(t *testing.T) {
 					// the interpolation algorithm will panic as this counts
 					// as invalid inputs.
 					if utils.IsPowerOfTwo(effPolySize) {
-						ys[j] = smartvectors.EvaluateLagrangeMixed(polys[j], x)
+						ys[j] = smartvectors.EvaluateBasePolyLagrange(polys[j], x)
 					} else {
 						ys[j].SetRandom()
 					}

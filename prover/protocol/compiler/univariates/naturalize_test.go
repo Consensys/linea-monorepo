@@ -53,10 +53,10 @@ func TestNaturalize(t *testing.T) {
 
 		x := fext.RandomElement()
 
-		y1 := smartvectors.EvaluateLagrangeMixed(p1, x)
-		y2 := smartvectors.EvaluateLagrangeMixed(p2, x)
-		y3 := smartvectors.EvaluateLagrangeMixed(p3, x)
-		y4 := smartvectors.EvaluateLagrangeMixed(p4, x)
+		y1 := smartvectors.EvaluateBasePolyLagrange(p1, x)
+		y2 := smartvectors.EvaluateBasePolyLagrange(p2, x)
+		y3 := smartvectors.EvaluateBasePolyLagrange(p3, x)
+		y4 := smartvectors.EvaluateBasePolyLagrange(p4, x)
 
 		p1s2 := P1S2.GetColAssignment(assi)
 

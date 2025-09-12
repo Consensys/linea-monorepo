@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
-	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
@@ -74,7 +74,7 @@ func TestFuzzPolynomialExt(t *testing.T) {
 			b := tcaseB.svecs[0]
 
 			// Try interpolating by one (should return the first element)
-			xa := EvaluateLagrangeFullFext(a, fext.One())
+			xa := EvaluateFextPolyLagrange(a, fext.One())
 			expecteda0 := a.GetExt(0)
 			assert.Equal(t, xa.String(), expecteda0.String())
 
@@ -181,7 +181,7 @@ func TestBatchEvaluateLagrangeExt(t *testing.T) {
 
 	evalCan := make([]fext.Element, nbPoly)
 	for i := 0; i < nbPoly; i++ {
-		evalCan[i] = polyext.Eval(polys[i], x)
+		evalCan[i] = vortex.EvalFextPolyHorner(polys[i], x)
 	}
 
 	d := fft.NewDomain(uint64(size))
@@ -195,7 +195,7 @@ func TestBatchEvaluateLagrangeExt(t *testing.T) {
 		polyLagrangeSv[i] = NewRegularExt(polyLagranges[i])
 
 	}
-	evalLag := BatchEvaluateLagrangeExt(polyLagrangeSv, x)
+	evalLag := BatchEvaluateFextPolyLagrange(polyLagrangeSv, x)
 
 	// check the result
 	for i := 0; i < nbPoly; i++ {
@@ -210,8 +210,8 @@ func TestBatchInterpolationWithConstantVectorExt(t *testing.T) {
 
 	x := fext.RandomElement()
 
-	expectedY := polyext.Eval(randPoly, x)
-	expectedY2 := polyext.Eval(randPoly2, x)
+	expectedY := vortex.EvalFextPolyHorner(randPoly, x)
+	expectedY2 := vortex.EvalFextPolyHorner(randPoly2, x)
 	domain := fft.NewDomain(uint64(n))
 
 	/*
@@ -228,7 +228,7 @@ func TestBatchInterpolationWithConstantVectorExt(t *testing.T) {
 	fft.BitReverse(polys[0])
 	fft.BitReverse(polys[1])
 
-	yOnRoots := fastpolyext.BatchEvaluateLagrange(polys, x)
+	yOnRoots, _ := vortex.BatchEvalFextPolyLagrange(polys, x)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
 	require.Equal(t, expectedY2.String(), yOnRoots[1].String())
 
@@ -246,7 +246,7 @@ func TestBatchInterpolationWithConstantVectorExt(t *testing.T) {
 	fft.BitReverse(onCosets[0])
 	fft.BitReverse(onCosets[1])
 
-	yOnCosets := fastpolyext.BatchEvaluateLagrange(onCosets, x, true)
+	yOnCosets, _ := vortex.BatchEvalFextPolyLagrange(onCosets, x, true)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
 	require.Equal(t, expectedY2.String(), yOnCosets[1].String())
 
@@ -258,8 +258,8 @@ func TestBatchEvaluateLagrangeOnlyConstantVector(t *testing.T) {
 	randPoly2 := vectorext.ForTest(2, 2, 2, 2)
 	x := fext.RandomElement()
 
-	expectedY := polyext.Eval(randPoly, x)
-	expectedY2 := polyext.Eval(randPoly2, x)
+	expectedY := vortex.EvalFextPolyHorner(randPoly, x)
+	expectedY2 := vortex.EvalFextPolyHorner(randPoly2, x)
 	domain := fft.NewDomain(uint64(n))
 
 	/*
@@ -276,7 +276,7 @@ func TestBatchEvaluateLagrangeOnlyConstantVector(t *testing.T) {
 	fft.BitReverse(polys[0])
 	fft.BitReverse(polys[1])
 
-	yOnRoots := fastpolyext.BatchEvaluateLagrange(polys, x)
+	yOnRoots, _ := vortex.BatchEvalFextPolyLagrange(polys, x)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
 	require.Equal(t, expectedY2.String(), yOnRoots[1].String())
 
@@ -294,7 +294,7 @@ func TestBatchEvaluateLagrangeOnlyConstantVector(t *testing.T) {
 	fft.BitReverse(onCosets[0])
 	fft.BitReverse(onCosets[1])
 
-	yOnCosets := fastpolyext.BatchEvaluateLagrange(onCosets, x, true)
+	yOnCosets, _ := vortex.BatchEvalFextPolyLagrange(onCosets, x, true)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
 	require.Equal(t, expectedY2.String(), yOnCosets[1].String())
 }
@@ -309,9 +309,9 @@ func TestBatchInterpolationThreeVectorsExt(t *testing.T) {
 
 	x := fext.RandomElement()
 
-	expectedY := polyext.Eval(randPoly, x)
-	expectedY2 := polyext.Eval(randPoly2, x)
-	expectedY3 := polyext.Eval(randPoly3, x)
+	expectedY := vortex.EvalFextPolyHorner(randPoly, x)
+	expectedY2 := vortex.EvalFextPolyHorner(randPoly2, x)
+	expectedY3 := vortex.EvalFextPolyHorner(randPoly3, x)
 	domain := fft.NewDomain(uint64(n))
 
 	/*
@@ -332,7 +332,7 @@ func TestBatchInterpolationThreeVectorsExt(t *testing.T) {
 	fft.BitReverse(polys[1])
 	fft.BitReverse(polys[2])
 
-	yOnRoots := fastpolyext.BatchEvaluateLagrange(polys, x)
+	yOnRoots, _ := vortex.BatchEvalFextPolyLagrange(polys, x)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
 	require.Equal(t, expectedY2.String(), yOnRoots[1].String())
 	require.Equal(t, expectedY3.String(), yOnRoots[2].String())
@@ -355,7 +355,7 @@ func TestBatchInterpolationThreeVectorsExt(t *testing.T) {
 	fft.BitReverse(onCosets[1])
 	fft.BitReverse(onCosets[2])
 
-	yOnCosets := fastpolyext.BatchEvaluateLagrange(onCosets, x, true)
+	yOnCosets, _ := vortex.BatchEvalFextPolyLagrange(onCosets, x, true)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
 	require.Equal(t, expectedY2.String(), yOnCosets[1].String())
 	require.Equal(t, expectedY3.String(), yOnCosets[2].String())

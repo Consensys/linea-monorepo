@@ -309,7 +309,7 @@ func (ctx *Ctx) explicitPublicEvaluation(run wizard.Runtime) error {
 
 		val := pol.GetColAssignment(run)
 
-		y := smartvectors.EvaluateLagrangeFullFext(val, params.ExtX)
+		y := smartvectors.EvaluateFextPolyLagrange(val, params.ExtX)
 		if y != params.ExtYs[i] {
 			return fmt.Errorf("inconsistent evaluation")
 		}

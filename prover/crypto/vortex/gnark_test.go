@@ -320,7 +320,7 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 		ys := make([]fext.Element, nPolys)
 		for i := range polys {
 			polys[i] = smartvectors.Rand(polySize)
-			ys[i] = smartvectors.EvaluateLagrangeMixed(polys[i], x)
+			ys[i] = smartvectors.EvaluateBasePolyLagrange(polys[i], x)
 		}
 		polyLists[j] = polys
 		yLists[j] = ys

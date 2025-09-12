@@ -99,7 +99,7 @@ func (r UnivariateEval) Check(run ifaces.Runtime) error {
 
 	for k, pol := range r.Pols {
 		wit := pol.GetColAssignment(run)
-		actualY := smartvectors.EvaluateLagrangeFullFext(wit, params.ExtX)
+		actualY := smartvectors.EvaluateFextPolyLagrange(wit, params.ExtX)
 		if actualY != params.ExtYs[k] {
 			anyErr = true
 			errMsg += fmt.Sprintf("expected P(x) = %s but got %s for %v\n", params.ExtYs[k].String(), actualY.String(), pol.GetColID())

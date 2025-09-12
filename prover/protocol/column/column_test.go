@@ -39,7 +39,7 @@ func TestReprAndDerivation(t *testing.T) {
 		shifted1 := smartvectors.ForTest(2, 3, 4, 1)
 		Shifted1 := column.Shift(V, 1)
 
-		expectedY := smartvectors.EvaluateLagrangeMixed(shifted1, x)
+		expectedY := smartvectors.EvaluateBasePolyLagrange(shifted1, x)
 
 		cachedXs := collection.NewMapping[string, fext.Element]()
 		cachedXs.InsertNew("", x)
@@ -54,7 +54,7 @@ func TestReprAndDerivation(t *testing.T) {
 		require.Equal(t, x_, cachedXs.MustGet(dsBranch))
 
 		// Evaluate the derived claim : should equal the expected Y
-		derivedY := smartvectors.EvaluateLagrangeMixed(v, x_)
+		derivedY := smartvectors.EvaluateBasePolyLagrange(v, x_)
 
 		finalYs := collection.NewMapping[string, fext.Element]()
 		finalYs.InsertNew(column.DerivedYRepr(dsBranch, V), derivedY)
