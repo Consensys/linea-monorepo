@@ -143,9 +143,8 @@ object MapperLineaDomainToBesu {
             CodeDelegation.builder().run {
               address(Address.wrap(Bytes.wrap(it.address)))
               nonce(it.nonce.toLong())
-              val (v, _) = recIdFromV(it.v.toInt().toBigInteger())
               chainId(it.chainId.toBigInteger())
-              signature(SECPSignature(it.r, it.s, v))
+              signature(SECPSignature(it.r, it.s, it.v))
               build()
             }
           } ?: emptyList()
