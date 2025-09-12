@@ -11,7 +11,6 @@ enum class TracingModuleV2 : TracingModule {
   BLAKE_MODEXP_DATA,
   BLOCK_DATA,
   BLOCK_HASH,
-  BLS,
   EC_DATA,
   EUC,
   EXP,
@@ -26,7 +25,6 @@ enum class TracingModuleV2 : TracingModule {
   MUL,
   MXP,
   OOB,
-  POINT_EVAL,
   RLP_ADDR,
   RLP_TXN,
   RLP_TXN_RCPT,
@@ -62,6 +60,13 @@ enum class TracingModuleV2 : TracingModule {
   BLOCK_L1_SIZE,
   BLOCK_L2_L1_LOGS,
   BLOCK_TRANSACTIONS,
+
+  // Introduced by limitless proof
+  BLS,
+  RIP,
+  MODEXP,
+  BLAKE,
+  POINT_EVAL,
   ;
 
   companion object {
@@ -71,7 +76,6 @@ enum class TracingModuleV2 : TracingModule {
       BLAKE_MODEXP_DATA,
       BLOCK_DATA,
       BLOCK_HASH,
-      BLS,
       EC_DATA,
       EUC,
       EXP,
@@ -86,7 +90,6 @@ enum class TracingModuleV2 : TracingModule {
       MUL,
       MXP,
       OOB,
-      POINT_EVAL,
       RLP_ADDR,
       RLP_TXN,
       RLP_TXN_RCPT,
@@ -98,6 +101,11 @@ enum class TracingModuleV2 : TracingModule {
       TRM,
       TXN_DATA,
       WCP,
+      BLS,
+      RIP,
+      MODEXP,
+      BLAKE,
+      POINT_EVAL,
     )
   }
 }
