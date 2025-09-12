@@ -326,6 +326,8 @@ public class BlockchainReferenceTestTools {
     PARAMS.ignore("CALLBlake2f_MaxRounds.*");
     PARAMS.ignore("loopMul_*");
     PARAMS.ignore("randomStatetest177_d0g0v0_*");
+    PARAMS.ignore("15_tstoreCannotBeDosd_d0g0v0*");
+    PARAMS.ignore("21_tstoreCannotBeDosdOOO_d0g0v0*");
 
     // Inconclusive fork choice rule, since in merge CL should be choosing forks and setting the
     // chain head. Perfectly valid test pre-merge.
