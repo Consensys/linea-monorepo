@@ -79,7 +79,7 @@ async function main() {
   // Get initializer data for empty initialize() function
   const emptyInitializer = getInitializerData(ConsolidationQueueAbi, "initialize", []);
 
-  // Deploy proxy contracts
+  // Deploy proxy contracts in parallel
   const [consolidationQueueProxy, beaconChainDepositProxy, withdrawalQueueProxy] = await Promise.all([
     deployContractFromArtifacts(
       ConsolidationQueueContractName,
@@ -118,10 +118,10 @@ async function main() {
   const withdrawalQueueProxyAddress = await withdrawalQueueProxy.getAddress();
 
   console.log("\n=== DEPLOYMENT COMPLETE ===");
+  console.log(`ProxyAdmin: ${proxyAdminAddress}`);
   console.log(`UpgradeableConsolidationQueuePredeploy proxy: ${consolidationQueueProxyAddress}`);
   console.log(`UpgradeableBeaconChainDepositPredeploy proxy: ${beaconChainDepositProxyAddress}`);
   console.log(`UpgradeableWithdrawalQueuePredeploy proxy: ${withdrawalQueueProxyAddress}`);
-  console.log(`ProxyAdmin: ${proxyAdminAddress}`);
 }
 
 main().catch((error) => {
