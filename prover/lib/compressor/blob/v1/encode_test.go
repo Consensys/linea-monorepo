@@ -2,14 +2,12 @@ package v1_test
 
 import (
 	"bytes"
-	"compress/zlib"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"math/big"
 	"os"
 	"path"
@@ -23,7 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/holiman/uint256"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,7 +33,8 @@ func TestEncodeDecodeTx(t *testing.T) {
 	var (
 		privKey, _ = ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
 		chainID    = big.NewInt(51)
-		signer     = types.NewLondonSigner(chainID)
+		ldnSigner  = types.NewLondonSigner(chainID)
+		prgSigner  = types.NewPragueSigner(chainID)
 	)
 
 	testTx := []struct {
@@ -125,35 +124,38 @@ func TestEncodeDecodeTx(t *testing.T) {
 				ChainID:   chainID,
 			},
 		},
-		/*{	TODO MustSignNewTx fails on Set Code transactions. Figure out a way to sign this.
+		{
 			Name: "set-code",
 			Tx: &types.SetCodeTx{
-				ChainID:    uint256.MustFromBig(chainID),
-				GasTipCap:  uint256.NewInt(10002),
-				GasFeeCap:  uint256.NewInt(33333),
-				Gas:        7000007,
-				To:         common.Address{12, 24},
-				Value:      uint256.NewInt(66666666),
-				Nonce:      3,
-				Data:       nil,
-				AccessList: nil,
-				AuthList:   nil,
-				V:          nil,
-				R:          nil,
-				S:          nil,
+				ChainID:   uint256.MustFromBig(chainID),
+				GasTipCap: uint256.NewInt(10002),
+				GasFeeCap: uint256.NewInt(33333),
+				Gas:       7000007,
+				To:        common.Address{12, 24},
+				Value:     uint256.NewInt(66666666),
+				Nonce:     3,
+				Data:      hexutil.MustDecode("0xdeadbeafbeefbeef12345689"),
+				// TODO: Add AccessList
 			},
-		},*/
+		},
 	}
 
 	for _, tc := range testTx {
 
 		t.Run(tc.Name, func(t *testing.T) {
 
-			var (
-				tx   = types.MustSignNewTx(privKey, signer, tc.Tx)
-				buf  = &bytes.Buffer{}
-				addr = &common.Address{}
-			)
+			var signer types.Signer
+
+			switch tc.Tx.(type) {
+			case *types.SetCodeTx:
+				signer = prgSigner
+			default:
+				signer = ldnSigner
+
+			}
+			tx := types.MustSignNewTx(privKey, signer, tc.Tx)
+			buf := new(bytes.Buffer)
+			addr := new(common.Address)
 
 			if err := v1.EncodeTxForCompression(tx, buf); err != nil {
 				t.Fatalf("could not encode the transaction")
@@ -291,36 +293,4 @@ func decompressBlob(b []byte) ([][][]byte, error) {
 	}
 
 	return batches, nil
-}
-
-func TestEncodeBlockWithType4Tx(t *testing.T) {
-	// blockRlpBase64 from https://explorer.devnet.linea.build/block/9128081
-	const blockRlpCompressedBase64 = "eNr6yXz6J1PjgiXaYeZsl2a0dIqk9Zwp6VrjxnNbat9dhon/VNM++EbdZ1gge8b3xb3jsVWrW7embztzReqykKv0lK4S4Q8Lnf46XJnsPoUBC1jAbGSeHnZvvu2FBxqfjvi5+DxSz79VunX6ItfHYWdOsa93XmA7/zk7R00l966idw8Fzk/LdXT/0X3HQcGh1b1G4tjE+bMXMHanRh7yiFh3emvmHE822asLZq41yan3537kvs9p8aTt3DsZGUY6aGju9pjYUm46haGZUaemJWPdi+0LGBkYSg0YfLwdGBhjN2OLGTnXf6EOMmvTK8REzj7Jiz9sL2W0yafbX+Bz6SZOD/EqhQ6YSvYFYS/kxaXPhC773+z6bNKBH3nRHg+kZ+asPcCYpL/1cfIWxYaGBYScuODxhiNOM/7IiMz6/eXEzPydKurrHJ+kzJ7ss2TqTOmKoB2hPxmddlxl+XGp6TkzX6vIl2wWBgjZzL5QYcrhFQ+353xYH7M3s3GBySvpOUk2+3waWho1/8gc+BH3I6bpOfMUD+8H2ZGy1afKRFwe+Jmuua82q6KYn3HBDHnL/RwZM74uMvvGu9rKN2yh96ENzW+CLt87qtyr13NQbIHkdktLzs5bnWv2il1+Pbki+f6L5BL/hwLSUy9XOWpfXsbGOD9a5kyqk7RFw5pNRQ4lG5fnvJ587Xl1yG2lH+s3TmRacmxB9L6D+eyi9jVPamdufSsgpyXF3Xfr1AQF5/kyWx9PPW3z/Edmc+fr6y2sYcwWTUEcU5Ra0j4dFz39hvXe6l8HHM6ZSV4/z53S0Mx4TmtB7WSNe24fL7yWklz5333uK/fY0vMn1M7kyO/5tub2Spe/Kgvkbz569PU596zK8zud7N5N1vPQ2LIroWBF9hrO6Mrmf3OXHTgACAAA///o8zd2"
-	var (
-		block types.Block
-		bb    bytes.Buffer
-	)
-	decodeBase64EncodedCompressedRlp(t, &block, blockRlpCompressedBase64)
-	require.NoError(t, v1.EncodeBlockForCompression(&block, &bb))
-}
-
-func decodeBase64EncodedCompressedRlp(t *testing.T, v any, b64 string) {
-	compressed, err := base64.StdEncoding.DecodeString(b64)
-	require.NoError(t, err)
-
-	zReader, err := zlib.NewReader(bytes.NewReader(compressed))
-	require.NoError(t, err)
-
-	var rlpEnc bytes.Buffer
-	readBuf := make([]byte, 1024)
-
-	for n := len(readBuf); n == len(readBuf); {
-		n, err = zReader.Read(readBuf)
-		if err != io.EOF {
-			require.NoError(t, err)
-		}
-		rlpEnc.Write(readBuf[:n])
-	}
-
-	require.NoError(t, rlp.DecodeBytes(rlpEnc.Bytes(), v))
 }
