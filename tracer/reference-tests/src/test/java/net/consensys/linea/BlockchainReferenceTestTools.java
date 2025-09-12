@@ -316,6 +316,7 @@ public class BlockchainReferenceTestTools {
     // Don't do time-consuming tests.
     PARAMS.ignore("CALLBlake2f_MaxRounds.*");
     PARAMS.ignore("loopMul_*");
+    PARAMS.ignore("randomStatetest177_d0g0v0_*");
 
     // Inconclusive fork choice rule, since in merge CL should be choosing forks and setting the
     // chain head. Perfectly valid test pre-merge.
