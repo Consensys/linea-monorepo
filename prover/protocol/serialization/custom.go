@@ -103,32 +103,26 @@ func init() {
 }
 
 func marshalRingSisKey(ser *Serializer, val reflect.Value) (any, *serdeError) {
-	key := val.Interface().(*ringsis.Key)
-	keyGenParams := key.KeyGen
-	res, err := ser.PackStructObject(reflect.ValueOf(*keyGenParams))
-	if err != nil {
-		return nil, newSerdeErrorf("could not marshal ring-sis key: %w", err)
+	key, ok := val.Interface().(*ringsis.Key)
+	if !ok {
+		return nil, newSerdeErrorf("illegal cast to %v", TypeOfRingSisKeyPtr)
 	}
-	return res, nil
+
+	// logrus.Printf("Packing Ring-sis max num field to hash:%d", key.KeyGen.MaxNumFieldToHash)
+	// logrus.Printf("Packing Ring-sis key:%++v", key.KeyGen.Params)
+	return key.KeyGen.MaxNumFieldToHash, nil
 }
 
 func unmarshalRingSisKey(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
 
-	if v_, ok := val.(PackedStructObject); ok {
-		val = []any(v_)
-	}
-
-	res, err := des.UnpackStructObject(val.([]any), TypeofRingSisKeyGenParam)
-	if err != nil {
-		return reflect.Value{}, newSerdeErrorf("could not unpack struct object for ring-sis key: %w", err)
-	}
-
-	keyGenParams, ok := res.Interface().(ringsis.KeyGen)
+	maxNumFieldToHash, ok := val.(uint64)
 	if !ok {
-		return reflect.Value{}, newSerdeErrorf("could not cast to ringsis.KeyGen: %w", err)
+		return reflect.Value{}, newSerdeErrorf("illegal cast of val of type %T to int", val)
 	}
-	innerParams := keyGenParams.Params
-	ringSiskey := ringsis.GenerateKey(*innerParams, keyGenParams.MaxNumFieldToHash)
+
+	// logrus.Printf("Unpacking Ring-sis max num field to hash  uint64:%v int:%d", maxNumFieldToHash, int(maxNumFieldToHash))
+	// logrus.Printf("Unpacking Ring-sis  params:%++v", ringsis.StdParams)
+	ringSiskey := ringsis.GenerateKey(ringsis.StdParams, int(maxNumFieldToHash))
 	return reflect.ValueOf(ringSiskey), nil
 }
 
