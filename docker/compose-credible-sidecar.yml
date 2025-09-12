@@ -49,16 +49,18 @@ services:
         condition: service_healthy
     # Command line arguments for the sidecar
     command:
-      - "--chain.transport-url=http://0.0.0.0:9546"
-      - "--chain.chain-block-time=1000"
-      - "--ae.rpc_url=ws://sequencer:8546"
-      - "--ae.rpc_da_url=http://assertion-da:5001"  # If you have assertion DA running
-      - "--ae.oracle_contract=0x6dD3f12ce435f69DCeDA7e31605C02Bb5422597b"
-      - "--ae.assertion-gas-limit=3000000"
-      - "--ae.soft-timeout-ms=650"
-      - "--ae.block_tag=finalized"
+      - "--transport.bind-addr=0.0.0.0:9546"
+      - "--chain.block-time=1000"
+      - "--chain.chain-id=1337"
+      - "--chain.rpc-url=http://sequencer:8545"
+      - "--credible.indexer-rpc-url=ws://sequencer:8546"
+      - "--credible.assertion-da-rpc-url=http://assertion-da:5001"  # If you have assertion DA running
+      - "--credible.state-oracle=0x6dD3f12ce435f69DCeDA7e31605C02Bb5422597b"
+      - "--credible.assertion-gas-limit=3000000"
+      - "--credible.soft-timeout-ms=650"
+      - "--credible.block-tag=finalized"
     environment:
-      - RUST_LOG=info
+      - RUST_LOG=debug
       - OTEL_SERVICE_NAME=credible-sidecar
       - TRACING_METRICS_PORT=9000
     ports:
