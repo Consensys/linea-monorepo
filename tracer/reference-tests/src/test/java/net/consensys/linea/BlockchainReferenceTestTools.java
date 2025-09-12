@@ -473,11 +473,17 @@ public class BlockchainReferenceTestTools {
     PARAMS.ignore("ecadd_1-3_0-0_25000_80_d0g3v0_*");
 
     // System transactions Withdrawals are not supported
-    // Breaks hub.account-consistency---linking---conflation-level---balance as the transition on
-    // account 0x0000000000000000000000000000000000000200
+    // Breaks hub.account-consistency---linking---conflation-level---balance as the transition
+    // for account 0x0000000000000000000000000000000000000200
     PARAMS.ignore("BlockchainTests/Pyspecs/shanghai/eip4895_withdrawals/balance_within_block.json");
     PARAMS.ignore(
         "BlockchainTests/Pyspecs/shanghai/eip4895_withdrawals/use_value_in_contract.json");
+    // for account EIP4788_BEACONROOT_ADDRESS
+    PARAMS.ignore("Cancun-block_count=10-buffer_wraparound");
+    PARAMS.ignore("Cancun-block_count=10-buffer_wraparound_overwrite");
+    PARAMS.ignore("Cancun-block_count=10-buffer_wraparound_overwrite_high_timestamp");
+    PARAMS.ignore("Cancun-block_count=10-buffer_wraparound_no_overwrite");
+    PARAMS.ignore("Cancun-block_count=10-buffer_wraparound_no_overwrite_2");
 
     // Pending deployment number fix
     // Issue #https://github.com/Consensys/linea-specification/issues/191
