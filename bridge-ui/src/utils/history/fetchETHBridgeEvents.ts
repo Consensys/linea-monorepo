@@ -13,9 +13,9 @@ import {
   MessageSentLogEvent,
 } from "@/types";
 import { formatOnChainMessageStatus } from "./formatOnChainMessageStatus";
-import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
 import { isBlockTooOld } from "./isBlockTooOld";
 import { config } from "@/config";
+import { restoreFromTransactionCache } from "./restoreFromTransactionCache";
 
 export async function fetchETHBridgeEvents(
   historyStoreActions: HistoryActionsForCompleteTxCaching,
@@ -73,10 +73,9 @@ export async function fetchETHBridgeEvents(
       const uniqueKey = `${log.args._from}-${log.args._to}-${log.transactionHash}`;
 
       // Search cache for completed tx for this txHash, if cache-hit can skip remaining logic
-      const cacheKey = getCompleteTxStoreKey(fromChain.id, log.transactionHash);
-      const cachedCompletedTx = historyStoreActions.getCompleteTx(cacheKey);
-      if (cachedCompletedTx) {
-        transactionsMap.set(uniqueKey, cachedCompletedTx);
+      if (
+        restoreFromTransactionCache(historyStoreActions, fromChain.id, log.transactionHash, transactionsMap, uniqueKey)
+      ) {
         return;
       }
 

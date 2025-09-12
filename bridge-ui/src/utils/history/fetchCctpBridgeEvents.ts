@@ -5,8 +5,8 @@ import { BridgeTransaction, BridgeTransactionType, Chain, Token, CctpDepositForB
 import { isCctp, getCctpMessageByTxHash, getCctpTransactionStatus, isUndefined } from "@/utils";
 import { DepositForBurnLogEvent } from "@/types/events";
 import { HistoryActionsForCompleteTxCaching } from "@/stores";
-import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
 import { isBlockTooOld } from "./isBlockTooOld";
+import { restoreFromTransactionCache } from "./restoreFromTransactionCache";
 
 export async function fetchCctpBridgeEvents(
   historyStoreActions: HistoryActionsForCompleteTxCaching,
@@ -37,10 +37,15 @@ export async function fetchCctpBridgeEvents(
       const transactionHash = log.transactionHash;
 
       // Search cache for completed tx for this txHash, if cache-hit can skip remaining logic
-      const cacheKey = getCompleteTxStoreKey(fromChain.id, transactionHash);
-      const cachedCompletedTx = historyStoreActions.getCompleteTx(cacheKey);
-      if (cachedCompletedTx) {
-        transactionsMap.set(transactionHash, cachedCompletedTx);
+      if (
+        restoreFromTransactionCache(
+          historyStoreActions,
+          fromChain.id,
+          transactionHash,
+          transactionsMap,
+          transactionHash,
+        )
+      ) {
         return;
       }
 
