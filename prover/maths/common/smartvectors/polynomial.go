@@ -92,8 +92,8 @@ func RuffiniQuoRem(p SmartVector, q field.Element) (quo SmartVector, rem field.E
 	return quo, rem
 }
 
-// EvaluateLagrangeMixed a polynomial in Lagrange basis at an E4 point
-func EvaluateLagrangeMixed(v SmartVector, x fext.Element, oncoset ...bool) fext.Element {
+// EvaluateBasePolyLagrange a polynomial in Lagrange basis at an E4 point
+func EvaluateBasePolyLagrange(v SmartVector, x fext.Element, oncoset ...bool) fext.Element {
 	if con, ok := v.(*Constant); ok {
 		var res fext.Element
 		fext.SetFromBase(&res, &con.Value)
@@ -115,8 +115,8 @@ func EvaluateLagrangeMixed(v SmartVector, x fext.Element, oncoset ...bool) fext.
 	return res
 }
 
-// BatchEvaluateLagrangeMixed polynomials in Lagrange basis at an E4 point
-func BatchEvaluateLagrangeMixed(vs []SmartVector, x fext.Element, oncoset ...bool) []fext.Element {
+// BatchEvaluateBasePolyLagrange polynomials in Lagrange basis at an E4 point
+func BatchEvaluateBasePolyLagrange(vs []SmartVector, x fext.Element, oncoset ...bool) []fext.Element {
 	results := make([]fext.Element, len(vs))
 
 	if len(vs) == 0 {

@@ -89,7 +89,7 @@ func RuffiniQuoRemExt(p SmartVector, q fext.Element) (quo SmartVector, rem fext.
 }
 
 // Evaluate a polynomial in Lagrange basis
-func EvaluateLagrangeFullFext(v SmartVector, x fext.Element, oncoset ...bool) fext.Element {
+func EvaluateFextPolyLagrange(v SmartVector, x fext.Element, oncoset ...bool) fext.Element {
 	if con, ok := v.(*ConstantExt); ok {
 		return con.Value
 	}
@@ -110,7 +110,7 @@ func EvaluateLagrangeFullFext(v SmartVector, x fext.Element, oncoset ...bool) fe
 }
 
 // Batch-evaluate polynomials in Lagrange basis
-func BatchEvaluateLagrangeExt(vs []SmartVector, x fext.Element, oncoset ...bool) []fext.Element {
+func BatchEvaluateFextPolyLagrange(vs []SmartVector, x fext.Element, oncoset ...bool) []fext.Element {
 	results := make([]fext.Element, len(vs))
 
 	// Pre-allocate with capacity to avoid multiple reallocations

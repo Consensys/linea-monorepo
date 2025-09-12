@@ -43,7 +43,7 @@ func TestEvaluateLagrange(t *testing.T) {
 
 	var evalLag fext.Element
 	polyLagrangeSv := NewRegular(polyLagrange)
-	evalLag = EvaluateLagrangeMixed(polyLagrangeSv, x)
+	evalLag = EvaluateBasePolyLagrange(polyLagrangeSv, x)
 
 	if !evalLag.Equal(&evalCan) {
 		t.Fatal("error")
@@ -82,7 +82,7 @@ func TestBatchEvaluateLagrange(t *testing.T) {
 		polyLagrangeSv[i] = NewRegular(polyLagranges[i])
 
 	}
-	evalLag := BatchEvaluateLagrangeMixed(polyLagrangeSv, x)
+	evalLag := BatchEvaluateBasePolyLagrange(polyLagrangeSv, x)
 
 	// check the result
 	for i := 0; i < nbPoly; i++ {
@@ -140,7 +140,7 @@ func TestFuzzPolynomial(t *testing.T) {
 			// Try interpolating by zero (should return the first element)
 			var zeroExt fext.Element
 			zeroExt.SetZero()
-			xa := EvaluateLagrangeMixed(a, zeroExt)
+			xa := EvaluateBasePolyLagrange(a, zeroExt)
 			expecteda0 := a.GetExt(0)
 			assert.Equal(t, xa.String(), expecteda0.String())
 

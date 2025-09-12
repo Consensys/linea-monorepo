@@ -27,8 +27,8 @@ func TestReedSolomonDoesNotChangeEvaluation(t *testing.T) {
 	err := params.isCodeword(rsEncoded)
 	require.NoError(t, err)
 
-	y0 := smartvectors.EvaluateLagrangeMixed(vec, x)
-	y1 := smartvectors.EvaluateLagrangeMixed(rsEncoded, x)
+	y0 := smartvectors.EvaluateBasePolyLagrange(vec, x)
+	y1 := smartvectors.EvaluateBasePolyLagrange(rsEncoded, x)
 
 	require.Equal(t, y0.String(), y1.String())
 }
@@ -49,8 +49,8 @@ func TestReedSolomonConstant(t *testing.T) {
 	err := params.isCodeword(rsEncoded)
 	require.NoError(t, err)
 
-	y0 := smartvectors.EvaluateLagrangeMixed(vec, x)
-	y1 := smartvectors.EvaluateLagrangeMixed(rsEncoded, x)
+	y0 := smartvectors.EvaluateBasePolyLagrange(vec, x)
+	y1 := smartvectors.EvaluateBasePolyLagrange(rsEncoded, x)
 
 	require.Equal(t, y0.String(), y1.String())
 

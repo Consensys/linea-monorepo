@@ -155,7 +155,7 @@ func (v *VerifierInputs) checkStatement() (err error) {
 
 	// Check the consistency of Ys and proof.Linear combination
 	Yjoined := utils.Join(v.Ys...)
-	alphaY := smartvectors.EvaluateLagrangeFullFext(v.OpeningProof.LinearCombination, v.X)
+	alphaY := smartvectors.EvaluateFextPolyLagrange(v.OpeningProof.LinearCombination, v.X)
 	alphaYPrime := polyext.Eval(Yjoined, v.RandomCoin)
 
 	if alphaY != alphaYPrime {

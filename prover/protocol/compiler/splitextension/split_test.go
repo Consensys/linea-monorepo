@@ -158,7 +158,7 @@ func TestSplitextension(t *testing.T) {
 				for i := 0; i < numColumns; i++ {
 					curName := fmt.Sprintf("%s_%d", baseNameToSplit, i)
 					run.AssignColumn(ifaces.ColID(curName), testCase.Columns[i])
-					y[i] = smartvectors.EvaluateLagrangeFullFext(testCase.Columns[i], testCase.X)
+					y[i] = smartvectors.EvaluateFextPolyLagrange(testCase.Columns[i], testCase.X)
 				}
 				run.AssignUnivariateExt(qName, testCase.X, y...)
 			}

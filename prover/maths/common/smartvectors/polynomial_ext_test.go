@@ -75,7 +75,7 @@ func TestFuzzPolynomialExt(t *testing.T) {
 			b := tcaseB.svecs[0]
 
 			// Try interpolating by one (should return the first element)
-			xa := EvaluateLagrangeFullFext(a, fext.One())
+			xa := EvaluateFextPolyLagrange(a, fext.One())
 			expecteda0 := a.GetExt(0)
 			assert.Equal(t, xa.String(), expecteda0.String())
 
@@ -196,7 +196,7 @@ func TestBatchEvaluateLagrangeExt(t *testing.T) {
 		polyLagrangeSv[i] = NewRegularExt(polyLagranges[i])
 
 	}
-	evalLag := BatchEvaluateLagrangeExt(polyLagrangeSv, x)
+	evalLag := BatchEvaluateFextPolyLagrange(polyLagrangeSv, x)
 
 	// check the result
 	for i := 0; i < nbPoly; i++ {
