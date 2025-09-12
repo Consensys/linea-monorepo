@@ -125,6 +125,24 @@ func TestEncodeDecodeTx(t *testing.T) {
 				ChainID:   chainID,
 			},
 		},
+		/*{	TODO MustSignNewTx fails on Set Code transactions. Figure out a way to sign this.
+			Name: "set-code",
+			Tx: &types.SetCodeTx{
+				ChainID:    uint256.MustFromBig(chainID),
+				GasTipCap:  uint256.NewInt(10002),
+				GasFeeCap:  uint256.NewInt(33333),
+				Gas:        7000007,
+				To:         common.Address{12, 24},
+				Value:      uint256.NewInt(66666666),
+				Nonce:      3,
+				Data:       nil,
+				AccessList: nil,
+				AuthList:   nil,
+				V:          nil,
+				R:          nil,
+				S:          nil,
+			},
+		},*/
 	}
 
 	for _, tc := range testTx {

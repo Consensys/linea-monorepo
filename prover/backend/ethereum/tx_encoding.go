@@ -27,13 +27,16 @@ func EncodeTxForSigning(tx *types.Transaction) (encodedTx []byte) {
 
 	// Since there are different types of transactions in Ethereum.
 	// We encode them differently
-	var buffer bytes.Buffer
+	var (
+		buffer bytes.Buffer
+		err    error
+	)
 
 	switch {
 	// LONDON with dynamic fees
 	case tx.Type() == types.DynamicFeeTxType:
 		buffer.Write([]byte{tx.Type()})
-		rlp.Encode(&buffer, []interface{}{
+		err = rlp.Encode(&buffer, []interface{}{
 			tx.ChainId(),
 			tx.Nonce(),
 			tx.GasTipCap(),
@@ -47,7 +50,7 @@ func EncodeTxForSigning(tx *types.Transaction) (encodedTx []byte) {
 	// EIP2390 transaction with access-list
 	case tx.Type() == types.AccessListTxType:
 		buffer.Write([]byte{tx.Type()})
-		rlp.Encode(&buffer, []interface{}{
+		err = rlp.Encode(&buffer, []interface{}{
 			tx.ChainId(),
 			tx.Nonce(),
 			tx.GasPrice(),
@@ -59,7 +62,7 @@ func EncodeTxForSigning(tx *types.Transaction) (encodedTx []byte) {
 		})
 	// EIP155 signature with protection against replay
 	case tx.Type() == types.LegacyTxType && tx.Protected():
-		rlp.Encode(&buffer, []interface{}{
+		err = rlp.Encode(&buffer, []interface{}{
 			tx.Nonce(),
 			tx.GasPrice(),
 			tx.Gas(),
@@ -70,7 +73,7 @@ func EncodeTxForSigning(tx *types.Transaction) (encodedTx []byte) {
 		})
 	// Homestead signature
 	case tx.Type() == types.LegacyTxType && !tx.Protected():
-		rlp.Encode(&buffer, []interface{}{
+		err = rlp.Encode(&buffer, []interface{}{
 			tx.Nonce(),
 			tx.GasPrice(),
 			tx.Gas(),
@@ -78,8 +81,25 @@ func EncodeTxForSigning(tx *types.Transaction) (encodedTx []byte) {
 			tx.Value(),
 			tx.Data(),
 		})
+	// EIP-7702 transaction
+	case tx.Type() == types.SetCodeTxType:
+		err = rlp.Encode(&buffer, []interface{}{ // fields taken from spec at https://eip7702.io
+			tx.ChainId(),    // chain_id
+			tx.Nonce(),      // nonce
+			tx.GasTipCap(),  // max_priority_fee_per_gas
+			tx.GasFeeCap(),  // max_fee_per_gas
+			tx.Gas(),        // gas_limit
+			tx.To(),         // destination
+			tx.Value(),      // value
+			tx.Data(),       // data
+			tx.AccessList(), // access_list
+		})
 	default:
 		utils.Panic("Unknown type of transaction %v, %++v", tx.Type(), tx)
+	}
+
+	if err != nil {
+		utils.Panic("failed to encode transaction %v: %w", tx, err)
 	}
 
 	return buffer.Bytes()
