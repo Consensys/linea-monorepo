@@ -12,7 +12,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,10 +44,7 @@ func TestInvalidity(t *testing.T) {
 					Account:     tcase.Account,
 					LeafOpening: tcase.Leaf,
 				},
-				Transaction: types.NewTx(&tcase.Tx),
-				FuncInputs: public_input.Invalidity{
-					StateRootHash: root,
-				},
+				Transaction:    types.NewTx(&tcase.Tx),
 				FromAddress:    tcase.FromAddress,
 				MaxRlpByteSize: maxRlpByteSize,
 				InvalidityType: tcase.InvalidityType,
@@ -53,9 +53,15 @@ func TestInvalidity(t *testing.T) {
 			b = ethereum.EncodeTxForSigning(assi.Transaction)
 		)
 
-		// RLP encode the transaction (with type byte)
+		// RLP encode the transaction
 		assi.RlpEncodedTx = make([]byte, len(b[:])) // include the type byte
 		copy(assi.RlpEncodedTx, b[:])
+
+		assi.FuncInputs = public_input.Invalidity{
+			StateRootHash: root,
+			TxHash:        common.Hash(crypto.Keccak256(assi.RlpEncodedTx)),
+			FromAddress:   linTypes.EthAddress(assi.FromAddress),
+		}
 
 		// generate keccak proof for the circuit
 		kcomp, kproof := invalidity.MakeKeccakProofs(assi.Transaction, maxRlpByteSize, dummy.Compile)

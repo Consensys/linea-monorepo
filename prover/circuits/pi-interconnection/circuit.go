@@ -257,7 +257,7 @@ func (c *Circuit) Define(api frontend.API) error {
 	finalFtxStreamHash := c.AggregationFPIQSnark.LastFinalizedFtxStreamHash
 	for i, invalidityFPI := range c.InvalidityFPI {
 
-		api.AssertIsEqual(invalidityFPI.SateRootHash, finalState) // @Azam make sure it really give the finalState
+		api.AssertIsEqual(invalidityFPI.StateRootHash, finalState) // @Azam make sure it really give the finalState
 		api.AssertIsLessOrEqual(pi.FinalBlockNumber, invalidityFPI.ExpectedBlockNumber)
 		api.AssertIsEqual(c.InvalidityPublicInput[i], api.Mul(rInvalidity.InRange[i], c.InvalidityFPI[i].Sum(api, hshM)))
 

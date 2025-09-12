@@ -16,19 +16,19 @@ type BadNonceBalanceCircuit struct {
 	//  Transaction payload.
 	TxNonce frontend.Variable
 	// transaction cost
-	TxCost frontend.Variable `gnark:",secret"`
+	TxCost frontend.Variable
 	// RLP-encoded payload  prefixed with the type byte. txType || rlp(tx.inner)
-	RLPEncodedTx []frontend.Variable `gnark:",secret"`
+	RLPEncodedTx []frontend.Variable
 	// sender address
-	TxFromAddress frontend.Variable `gnark:",secret"`
+	TxFromAddress frontend.Variable
 	// AccountTrie of the sender
-	AccountTrie AccountTrie `gnark:",secret"`
+	AccountTrie AccountTrie
 	// hash of the transaction
-	TxHash [2]frontend.Variable `gnark:",secret"`
+	TxHash [2]frontend.Variable
 	// Keccak verifier circuit
-	KeccakH wizard.VerifierCircuit `gnark:",secret"`
+	KeccakH wizard.VerifierCircuit
 	// Invalidity type
-	InvalidityType frontend.Variable `gnark:",secret"`
+	InvalidityType frontend.Variable
 }
 
 // Define represents the constraints relevant to [BadNonceBalanceCircuit]
@@ -144,6 +144,11 @@ func (cir *BadNonceBalanceCircuit) Assign(assi AssigningInputs) {
 	cir.KeccakH = keccak
 }
 
-func (c *BadNonceBalanceCircuit) ExecutionCtx() []frontend.Variable {
-	return []frontend.Variable{c.AccountTrie.MerkleProof.Root}
+// FunctionalPublicInputs returns the functional public inputs of the circuit
+func (c *BadNonceBalanceCircuit) FunctionalPublicInputs() FunctionalPublicInputsGnark {
+	return FunctionalPublicInputsGnark{
+		TxHash:        c.TxHash,
+		FromAddress:   c.TxFromAddress,
+		StateRootHash: c.AccountTrie.MerkleProof.Root,
+	}
 }

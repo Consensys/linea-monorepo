@@ -13,7 +13,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/crate-crypto/go-ipa/bandersnatch/fr"
 	"github.com/ethereum/go-ethereum/common"
@@ -26,19 +25,19 @@ type CircuitInvalidity struct {
 	// - bad transaction nonce
 	// - bad transaction value
 	// ...
-	SubCircuit SubCircuit
+	SubCircuit SubCircuit `gnark:",secret"`
 	// the functional public inputs of the circuit.
-	FuncInputs FunctionalPublicInputsGnark
+	FuncInputs FunctionalPublicInputsGnark `gnark:",secret"`
 	// the hash of the functional public inputs
-	PublicInput frontend.Variable
+	PublicInput frontend.Variable `gnark:",public"`
 }
 
 // SubCircuit is the circuit for the invalidity case
 type SubCircuit interface {
-	Define(frontend.API) error         // define the constraints
-	Allocate(Config)                   //  allocate the circuit
-	Assign(AssigningInputs)            // generate assignment
-	ExecutionCtx() []frontend.Variable // returns the execution context used in the subcircuit
+	Define(frontend.API) error                           // define the constraints
+	Allocate(Config)                                     //  allocate the circuit
+	Assign(AssigningInputs)                              // generate assignment
+	FunctionalPublicInputs() FunctionalPublicInputsGnark // returns the functional public inputs used in the subcircuit
 }
 
 // AssigningInputs collects the inputs used for the circuit assignment
@@ -59,16 +58,26 @@ func (c *CircuitInvalidity) Define(api frontend.API) error {
 	// subCircuit constraints
 	c.SubCircuit.Define(api)
 
-	// sanity check
-	if len(c.SubCircuit.ExecutionCtx()) == 0 {
-		utils.Panic("did not expect an empty execution context")
-	}
-
-	// constraints on the execution context of the subCircuit, they should match the functional public inputs.
-	for i := range c.SubCircuit.ExecutionCtx() {
-		api.AssertIsEqual(c.SubCircuit.ExecutionCtx()[i], c.FuncInputs.ExecutionCtxFor(c.SubCircuit)[i])
-
-	}
+	// constraints on the consistence of functional public inputs
+	// note that any FPI solely related to FtxStreamHash is not checked here,
+	// since they are used in the interconnection circuit, and not in the subcircuit.
+	subCircuitFPI := c.SubCircuit.FunctionalPublicInputs()
+	api.AssertIsEqual(
+		api.Sub(c.FuncInputs.TxHash[0], subCircuitFPI.TxHash[0]),
+		0,
+	)
+	api.AssertIsEqual(
+		api.Sub(c.FuncInputs.TxHash[1], subCircuitFPI.TxHash[1]),
+		0,
+	)
+	api.AssertIsEqual(
+		api.Sub(c.FuncInputs.StateRootHash, subCircuitFPI.StateRootHash),
+		0,
+	)
+	api.AssertIsEqual(
+		api.Sub(c.FuncInputs.FromAddress, subCircuitFPI.FromAddress),
+		0,
+	)
 
 	//  constraint on the hashing of functional public inputs
 	hsh, _ := gmimc.NewMiMC(api)
@@ -81,7 +90,6 @@ func (c *CircuitInvalidity) Define(api frontend.API) error {
 func (c *CircuitInvalidity) Allocate(config Config) {
 	// allocate the subCircuit
 	c.SubCircuit.Allocate(config)
-	// @azam: allocate the Functional Public Inputs
 }
 
 // Assign the circuit
@@ -92,8 +100,6 @@ func (c *CircuitInvalidity) Assign(assi AssigningInputs) {
 	c.FuncInputs.Assign(assi.FuncInputs)
 	// assign the public input
 	c.PublicInput = assi.FuncInputs.Sum(nil)
-	c.FuncInputs.ExpectedBlockNumber = assi.FuncInputs.ExpectedBlockHeight
-	c.FuncInputs.SateRootHash = assi.FuncInputs.StateRootHash[:]
 }
 
 // MakeProof and solve the circuit.
