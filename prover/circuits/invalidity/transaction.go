@@ -16,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/rlp"
 )
 
 type TxPayloadGnark struct {
@@ -259,4 +260,22 @@ func MakeKeccakProofs(tx *types.Transaction, maxRlpByteSize int, compilationSuit
 		utils.Panic("verifier failed: %v", err)
 	}
 	return
+}
+
+// it returns the rlp encoding of the transaction with type prefix, before signing.
+func PrefixedRLPNoSignature(tx *types.Transaction) []byte {
+	b := bytes.Buffer{}
+	b.Write([]byte{tx.Type()})
+	rlp.Encode(&b,
+		[]interface{}{
+			tx.ChainId(),
+			tx.Nonce(),
+			tx.GasTipCap(),
+			tx.GasFeeCap(),
+			tx.Gas(),
+			tx.To(),
+			tx.Value(),
+			tx.Data(),
+			tx.AccessList()})
+	return b.Bytes()
 }
