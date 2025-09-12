@@ -52,7 +52,9 @@ public class ExtraDataPricingTest extends LineaPluginTestBase {
     minerNode.getMiningParameters().setMinTransactionGasPrice(MIN_GAS_PRICE);
     final var doubleMinGasPrice = MIN_GAS_PRICE.multiply(2);
 
-    final var extraData = createExtraDataPricingField(0, 0, 0);
+    final var extraData =
+        createExtraDataPricingField(
+            0, MIN_GAS_PRICE.toLong() / WEI_IN_KWEI, doubleMinGasPrice.toLong() / WEI_IN_KWEI);
     final var reqSetExtraData = new MinerSetExtraDataRequest(extraData);
     final var respSetExtraData = reqSetExtraData.execute(minerNode.nodeRequests());
 

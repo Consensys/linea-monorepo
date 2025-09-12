@@ -39,9 +39,9 @@ class ExtraDataV1UpdaterImplTest {
   lateinit var wiremock: WireMockServer
   private lateinit var jsonRpcClientFactory: VertxHttpJsonRpcClientFactory
   private val minerExtraData = MinerExtraDataV1(
-    fixedCostInKWei = 30000u,
-    variableCostInKWei = 0u,
-    ethGasPriceInKWei = 100000u,
+    fixedCostInKWei = 1u,
+    variableCostInKWei = 2u,
+    ethGasPriceInKWei = 10u,
   )
   val setMinerExtraDataSuccessResponse =
     JsonObject.of(
