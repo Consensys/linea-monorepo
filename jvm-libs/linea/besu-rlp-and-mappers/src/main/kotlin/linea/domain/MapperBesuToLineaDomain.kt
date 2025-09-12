@@ -39,14 +39,14 @@ object MapperBesuToLineaDomain {
   fun mapToDomain(transaction: Transaction): linea.domain.Transaction {
     return Transaction(
       nonce = transaction.nonce.toULong(),
-      gasPrice = transaction.getGasPrice().getOrNull()?.toBigInteger()?.toULong(),
+      gasPrice = transaction.gasPrice.getOrNull()?.toBigInteger()?.toULong(),
       gasLimit = transaction.gasLimit.toULong(),
       to = transaction.to.getOrNull()?.toArray(),
       value = transaction.value.toBigInteger(),
       input = transaction.payload.toArray(),
-      r = transaction.signature.getR(),
-      s = transaction.signature.getS(),
-      v = transaction.getV().toULong(),
+      r = transaction.signature.r,
+      s = transaction.signature.s,
+      v = transaction.v.toULong(),
       yParity = transaction.yParity?.toULong(),
       type = transaction.type.toDomain(),
       chainId = transaction.chainId.getOrNull()?.toULong(),
@@ -56,6 +56,16 @@ object MapperBesuToLineaDomain {
         AccessListEntry(
           accessListEntry.address.toArray(),
           accessListEntry.storageKeys.map { it.toArray() },
+        )
+      },
+      codeDelegations = transaction.codeDelegationList.getOrNull()?.map {
+        CodeDelegation(
+          chainId = it.chainId().toULong(),
+          address = it.address().toArray(),
+          nonce = it.nonce().toULong(),
+          v = it.v(),
+          r = it.r(),
+          s = it.s(),
         )
       },
     )

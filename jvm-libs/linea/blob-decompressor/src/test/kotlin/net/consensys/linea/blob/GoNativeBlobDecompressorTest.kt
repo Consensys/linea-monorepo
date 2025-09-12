@@ -5,7 +5,9 @@ import linea.blob.BlobCompressor
 import linea.blob.BlobCompressorVersion
 import linea.blob.GoBackedBlobCompressor
 import linea.domain.AccessListEntry
+import linea.domain.DUMMY_DELEGATION
 import linea.domain.TransactionFactory
+import linea.domain.TransactionType
 import linea.domain.createBlock
 import linea.domain.toBesu
 import linea.kotlin.decodeHex
@@ -18,6 +20,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import java.math.BigInteger
 import kotlin.jvm.optionals.getOrNull
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -79,10 +82,29 @@ class GoNativeBlobDecompressorTest {
         ),
       ),
     )
+    val tx2 = TransactionFactory.createTransaction(
+      type = TransactionType.DELEGATE_CODE,
+      nonce = 14u,
+      gasLimit = 500000U,
+      to = "0xc3a8e1b76cf0af5cbd6981a034ea1b9c623cbe4c".decodeHex(),
+      value = BigInteger.ZERO,
+      input = "0x8129fc1c".decodeHex(),
+      r = "160981842285399234228706247823090298075894560123723101549121809333799265478".toBigInteger(),
+      s = "41497505193730071958791131225783886927059026426434667995811062394302979849447".toBigInteger(),
+      v = 1u,
+      yParity = 1u,
+      chainId = 59139u,
+      gasPrice = null,
+      maxFeePerGas = 90000000000u,
+      maxPriorityFeePerGas = 90000000000u,
+      accessList = null,
+      codeDelegations = listOf(DUMMY_DELEGATION),
+    )
+
     val originalBesuBlock = createBlock(
       number = 123uL,
       timestamp = Instant.parse("2025-01-02T12:23:45Z"),
-      transactions = listOf(tx0, tx1),
+      transactions = listOf(tx0, tx1, tx2),
     ).toBesu()
 
     compressor.appendBlock(RLP.encodeBlock(originalBesuBlock))

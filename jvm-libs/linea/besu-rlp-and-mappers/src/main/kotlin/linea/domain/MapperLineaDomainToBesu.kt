@@ -13,6 +13,7 @@ import org.hyperledger.besu.datatypes.Hash
 import org.hyperledger.besu.datatypes.Wei
 import org.hyperledger.besu.ethereum.core.BlockBody
 import org.hyperledger.besu.ethereum.core.BlockHeaderBuilder
+import org.hyperledger.besu.ethereum.core.CodeDelegation
 import org.hyperledger.besu.ethereum.core.Difficulty
 import org.hyperledger.besu.ethereum.core.Transaction
 import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
@@ -136,6 +137,19 @@ object MapperLineaDomainToBesu {
             )
           } ?: emptyList()
           accessList(accList)
+        }
+        if (besuType.supportsDelegateCode()) {
+          val delegationList = tx.codeDelegations?.map {
+            CodeDelegation.builder().run {
+              address(Address.wrap(Bytes.wrap(it.address)))
+              nonce(it.nonce.toLong())
+              val (v, _) = recIdFromV(it.v.toInt().toBigInteger())
+              chainId(it.chainId.toBigInteger())
+              signature(SECPSignature(it.r, it.s, v))
+              build()
+            }
+          } ?: emptyList()
+          codeDelegations(delegationList)
         }
       }
       .signature(signature)

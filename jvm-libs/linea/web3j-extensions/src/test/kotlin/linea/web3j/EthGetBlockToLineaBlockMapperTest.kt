@@ -65,13 +65,14 @@ class EthGetBlockToLineaBlockMapperTest {
         input = "0x60806040523480156200001157600080fd5b506200001c".decodeHex(),
         r = "0x1fa31b9272cc67174efb129c2fd2ec5afda122503745beb22bd26e48a42240bb".toBigIntegerFromHex(),
         s = "0x248c9cdf9352b4a379577c5b44bcb25a5350dc6722fd7b2aec40e193f670e4f4".toBigIntegerFromHex(),
-        v = 0UL,
+        v = 0u,
         yParity = null,
         type = TransactionType.EIP1559,
         chainId = 0x539UL,
         maxFeePerGas = 0xeUL,
         maxPriorityFeePerGas = 0x0UL,
         accessList = emptyList(),
+        codeDelegations = emptyList(),
       ),
     )
 
@@ -138,6 +139,7 @@ class EthGetBlockToLineaBlockMapperTest {
         maxFeePerGas = null,
         maxPriorityFeePerGas = null,
         accessList = null,
+        codeDelegations = null,
       ),
     )
     domainTx.toBesu().also { besuTx ->
@@ -222,6 +224,7 @@ class EthGetBlockToLineaBlockMapperTest {
             ),
           ),
         ),
+        codeDelegations = null,
       ),
     )
 
@@ -300,6 +303,7 @@ class EthGetBlockToLineaBlockMapperTest {
         maxFeePerGas = null,
         maxPriorityFeePerGas = null,
         accessList = emptyList(),
+        codeDelegations = null,
       ),
     )
 
@@ -379,6 +383,7 @@ class EthGetBlockToLineaBlockMapperTest {
         maxFeePerGas = 0x1017dff7UL,
         maxPriorityFeePerGas = 0x1017df87UL,
         accessList = emptyList(),
+        codeDelegations = null,
       ),
     )
 
@@ -454,6 +459,7 @@ class EthGetBlockToLineaBlockMapperTest {
         maxFeePerGas = 0xeUL,
         maxPriorityFeePerGas = 0UL,
         accessList = emptyList(),
+        codeDelegations = null,
       ),
     )
 
@@ -523,6 +529,7 @@ class EthGetBlockToLineaBlockMapperTest {
         maxFeePerGas = null,
         maxPriorityFeePerGas = null,
         accessList = null,
+        codeDelegations = null,
       ),
     )
     domainTx.toBesu().also { besuTx ->
