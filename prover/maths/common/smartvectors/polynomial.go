@@ -46,52 +46,6 @@ func PolySub(a, b SmartVector) SmartVector {
 	return NewRegular(res)
 }
 
-/*
-Ruffini division
-  - p polynomial in coefficient form
-  - q field.Element, caracterizing the divisor X - q
-  - quo quotient polynomial in coefficient form, result will be passed
-    here. quo is truncated of its first entry in the process
-  - expected to be at least as large as `p`
-
-- rem, remainder also equals to P(r)
-
-Supports &p == quo
-*/
-func RuffiniQuoRem(p SmartVector, q field.Element) (quo SmartVector, rem field.Element) {
-
-	// The case where "p" is zero is assumed to be impossible as every type of
-	// smart-vector strongly forbid dealing with zero length smart-vectors.
-	if p.Len() == 0 {
-		panic("Zero-length smart-vectors are forbidden")
-	}
-
-	// If p has length 1, then the general case algorithm does not work
-	if p.Len() == 1 {
-		quo = NewConstant(field.Zero(), 1)
-		rem = p.Get(0)
-		return quo, rem
-	}
-
-	quo_ := make([]field.Element, p.Len())
-
-	// Pass the last coefficient
-	quo_[p.Len()-1] = p.Get(p.Len() - 1)
-
-	for i := p.Len() - 2; i >= 0; i-- {
-		var c field.Element
-		c.Mul(&quo_[i+1], &q)
-		pi := p.Get(i)
-		quo_[i].Add(&c, &pi)
-	}
-
-	// As we employ custom allocation, we should not pass x[1:]
-	rem = quo_[0]
-	quo = NewRegular(quo_[1:])
-
-	return quo, rem
-}
-
 // EvaluateBasePolyLagrange a polynomial in Lagrange basis at an E4 point
 func EvaluateBasePolyLagrange(v SmartVector, x fext.Element, oncoset ...bool) fext.Element {
 	if con, ok := v.(*Constant); ok {
@@ -205,11 +159,11 @@ func EvalCoeff(v SmartVector, x field.Element) field.Element {
 }
 
 // Evaluate a polynomial in coefficient basis at an E4 point
-func EvalCoeffMixed(v SmartVector, x fext.Element) fext.Element {
+func EvalBasePolyHorner(v SmartVector, x fext.Element) fext.Element {
 	// Maybe there is an optim for windowed here
 	res := make([]field.Element, v.Len())
 	v.WriteInSlice(res)
-	return poly.EvalMixed(res, x)
+	return vortex.EvalBasePolyHorner(res, x)
 }
 
 func EvalCoeffBivariate(v SmartVector, x field.Element, numCoeffX int, y field.Element) field.Element {

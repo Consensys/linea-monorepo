@@ -8,7 +8,6 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
@@ -182,7 +181,7 @@ func TestBatchEvaluateLagrangeExt(t *testing.T) {
 
 	evalCan := make([]fext.Element, nbPoly)
 	for i := 0; i < nbPoly; i++ {
-		evalCan[i] = polyext.Eval(polys[i], x)
+		evalCan[i] = vortex.EvalFextPolyHorner(polys[i], x)
 	}
 
 	d := fft.NewDomain(uint64(size))
@@ -211,8 +210,8 @@ func TestBatchInterpolationWithConstantVectorExt(t *testing.T) {
 
 	x := fext.RandomElement()
 
-	expectedY := polyext.Eval(randPoly, x)
-	expectedY2 := polyext.Eval(randPoly2, x)
+	expectedY := vortex.EvalFextPolyHorner(randPoly, x)
+	expectedY2 := vortex.EvalFextPolyHorner(randPoly2, x)
 	domain := fft.NewDomain(uint64(n))
 
 	/*
@@ -259,8 +258,8 @@ func TestBatchEvaluateLagrangeOnlyConstantVector(t *testing.T) {
 	randPoly2 := vectorext.ForTest(2, 2, 2, 2)
 	x := fext.RandomElement()
 
-	expectedY := polyext.Eval(randPoly, x)
-	expectedY2 := polyext.Eval(randPoly2, x)
+	expectedY := vortex.EvalFextPolyHorner(randPoly, x)
+	expectedY2 := vortex.EvalFextPolyHorner(randPoly2, x)
 	domain := fft.NewDomain(uint64(n))
 
 	/*
@@ -310,9 +309,9 @@ func TestBatchInterpolationThreeVectorsExt(t *testing.T) {
 
 	x := fext.RandomElement()
 
-	expectedY := polyext.Eval(randPoly, x)
-	expectedY2 := polyext.Eval(randPoly2, x)
-	expectedY3 := polyext.Eval(randPoly3, x)
+	expectedY := vortex.EvalFextPolyHorner(randPoly, x)
+	expectedY2 := vortex.EvalFextPolyHorner(randPoly2, x)
+	expectedY3 := vortex.EvalFextPolyHorner(randPoly3, x)
 	domain := fft.NewDomain(uint64(n))
 
 	/*

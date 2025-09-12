@@ -3,7 +3,6 @@ package smartvectors
 import (
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -168,7 +167,7 @@ func EvalCoeffExt(v SmartVector, x fext.Element) fext.Element {
 	// Maybe there is an optim for windowed here
 	res := make([]fext.Element, v.Len())
 	v.WriteInSliceExt(res)
-	return polyext.Eval(res, x)
+	return vortex.EvalFextPolyHorner(res, x)
 }
 
 func EvalCoeffBivariateExt(v SmartVector, x fext.Element, numCoeffX int, y fext.Element) fext.Element {
@@ -183,8 +182,8 @@ func EvalCoeffBivariateExt(v SmartVector, x fext.Element, numCoeffX int, y fext.
 
 	foldOnX := make([]fext.Element, len(slice)/numCoeffX)
 	for i := 0; i < len(slice); i += numCoeffX {
-		foldOnX[i/numCoeffX] = polyext.Eval(slice[i:i+numCoeffX], x)
+		foldOnX[i/numCoeffX] = vortex.EvalFextPolyHorner(slice[i:i+numCoeffX], x)
 	}
 
-	return polyext.Eval(foldOnX, y)
+	return vortex.EvalFextPolyHorner(foldOnX, y)
 }
