@@ -227,65 +227,6 @@ func TestFFTFuzzyEvaluation(t *testing.T) {
 	}
 }
 
-func TestFFTFuzzyConsistWithInterpolation(t *testing.T) {
-
-	for i := 0; i < FuzzIteration; i++ {
-		// We reuse the test case generator for linear combinations. We only
-		// care about the first vector.
-		builder := newTestBuilder(i)
-		tcase := builder.NewTestCaseForLinComb()
-
-		success := t.Run(
-			fmt.Sprintf("fuzzy-FFT-DIT-DIF-%v", i),
-			func(t *testing.T) {
-				coeffs := tcase.svecs[0]
-
-				// Test the consistency of the FFT
-				oncoset := builder.gen.IntN(2) == 0
-
-				ratio, cosetID := 0, 0
-				if oncoset {
-					ratio = 1 << builder.gen.IntN(4)
-					cosetID = builder.gen.IntN(ratio)
-				}
-
-				// ====== With bit reverse ======
-
-				// FFT DIT and IFFT DIF should be the identity
-				evals := FFT(coeffs, fft.DIT, true, ratio, cosetID, nil)
-				i := builder.gen.IntN(coeffs.Len())
-				t.Logf("Parameters are (vec %v - ratio %v - cosetID %v - evalAt %v", coeffs.Pretty(), ratio, cosetID, i)
-
-				var xCoeff field.Element
-				xCoeff.SetInt64(2)
-
-				xVal := xCoeff
-
-				if oncoset {
-					omegacoset, err := fft.Generator(uint64(evals.Len() * ratio))
-					if err != nil {
-						panic(err)
-					}
-					omegacoset.Exp(omegacoset, big.NewInt(int64(cosetID)))
-					mulGen := field.NewElement(field.MultiplicativeGen)
-					omegacoset.Mul(&omegacoset, &mulGen)
-					xVal.Div(&xVal, &omegacoset)
-				}
-
-				yCoeff := EvalCoeff(coeffs, xCoeff)
-				// We already multiplied xVal by the multiplicative generator in the
-				// important case.
-				yFFT := EvaluateLagrange(evals, xVal, false)
-
-				require.Equal(t, yCoeff.String(), yFFT.String())
-
-			},
-		)
-
-		require.True(t, success)
-	}
-}
-
 func TestFFTBackAndForth(t *testing.T) {
 
 	// This test case is not covered from the above

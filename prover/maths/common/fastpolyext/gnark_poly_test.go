@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -37,7 +38,7 @@ func TestEvaluateLagrangeGnark(t *testing.T) {
 	x.SetRandom()
 
 	// eval lagrange
-	r := EvaluateLagrange(poly, x)
+	r, _ := vortex.EvalFextPolyLagrange(poly, x)
 
 	// test circuit
 	var witness, circuit EvaluateLagrangeCircuit

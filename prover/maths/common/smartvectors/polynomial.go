@@ -3,7 +3,8 @@ package smartvectors
 import (
 	"sync/atomic"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -91,25 +92,6 @@ func RuffiniQuoRem(p SmartVector, q field.Element) (quo SmartVector, rem field.E
 	return quo, rem
 }
 
-// EvaluateLagrange a polynomial in Lagrange basis at an field point
-func EvaluateLagrange(v SmartVector, x field.Element, oncoset ...bool) field.Element {
-
-	if !IsBase(v) {
-		utils.Panic("Provided a non-base smart-vector")
-	}
-
-	if con, ok := v.(*Constant); ok {
-		return con.Value
-	}
-
-	// Maybe there is an optim for windowed here
-	poly := make([]field.Element, v.Len())
-	v.WriteInSlice(poly)
-	// res := fastpoly.EvaluateLagrangeOnFext(poly, x, oncoset...)
-	res := fastpoly.EvaluateLagrange(poly, x, oncoset...)
-	return res
-}
-
 // EvaluateLagrangeMixed a polynomial in Lagrange basis at an E4 point
 func EvaluateLagrangeMixed(v SmartVector, x fext.Element, oncoset ...bool) fext.Element {
 	if con, ok := v.(*Constant); ok {
@@ -121,7 +103,14 @@ func EvaluateLagrangeMixed(v SmartVector, x fext.Element, oncoset ...bool) fext.
 	// Maybe there is an optim for windowed here
 	poly := make([]field.Element, v.Len())
 	v.WriteInSlice(poly)
-	res := fastpoly.EvaluateLagrangeMixed(poly, x, oncoset...)
+
+	if len(oncoset) > 0 && oncoset[0] {
+		genFr := fft.GeneratorFullMultiplicativeGroup()
+		genFr.Inverse(&genFr)
+		x.MulByElement(&x, &genFr)
+	}
+
+	res, _ := vortex.EvalBasePolyLagrange(poly, x)
 
 	return res
 }
@@ -195,7 +184,7 @@ func BatchEvaluateLagrangeMixed(vs []SmartVector, x fext.Element, oncoset ...boo
 
 	// Batch evaluate only non-constant polynomials
 	if len(nonConstantPolys) > 0 {
-		polyResults := fastpoly.BatchEvaluateLagrangeMixed(nonConstantPolys, x, oncoset...)
+		polyResults, _ := vortex.BatchEvalBasePolyLagrange(nonConstantPolys, x, oncoset...)
 
 		// Map results back to original positions
 		for i, result := range polyResults {

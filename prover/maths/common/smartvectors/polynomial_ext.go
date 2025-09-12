@@ -1,8 +1,8 @@
 package smartvectors
 
 import (
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -97,7 +97,16 @@ func EvaluateLagrangeFullFext(v SmartVector, x fext.Element, oncoset ...bool) fe
 	// Maybe there is an optim for windowed here
 	res := make([]fext.Element, v.Len())
 	v.WriteInSliceExt(res)
-	return fastpolyext.EvaluateLagrange(res, x, oncoset...)
+
+	if len(oncoset) > 0 && oncoset[0] {
+		genFr := fft.GeneratorFullMultiplicativeGroup()
+		genFr.Inverse(&genFr)
+		x.MulByElement(&x, &genFr)
+	}
+
+	result, _ := vortex.EvalFextPolyLagrange(res, x)
+
+	return result
 }
 
 // Batch-evaluate polynomials in Lagrange basis

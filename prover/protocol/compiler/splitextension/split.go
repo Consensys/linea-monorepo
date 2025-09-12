@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -195,7 +196,7 @@ func (pctx *AssignUnivProverAction) Run(runtime *wizard.ProverRuntime) {
 		svToEval = append(svToEval, sv)
 	}
 
-	y := smartvectors.BatchEvaluateLagrangeMixed(svToEval, x)
+	y := smartvectors_mixed.BatchEvaluateLagrange(svToEval, x)
 
 	// This loops collect the evaluation claims of the already-on-base polynomials
 	// from the new query to append them to the claims on the new query. This

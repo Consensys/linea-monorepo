@@ -3,10 +3,13 @@ package fastpoly
 import (
 	"testing"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
+
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,10 +37,10 @@ func TestEvaluateLagrangeGnark(t *testing.T) {
 	}
 	var x field.Element
 	x.SetRandom()
-
+	var xExt fext.Element
+	fext.SetFromBase(&xExt, &x)
 	// eval lagrange
-	r := EvaluateLagrange(poly, x)
-
+	r, _ := vortex.EvalBasePolyLagrange(poly, xExt)
 	// test circuit
 	var witness, circuit EvaluateLagrangeCircuit
 	circuit.Poly = make([]frontend.Variable, size)
