@@ -19,8 +19,6 @@ services:
     depends_on:
       sequencer:
         condition: service_healthy
-      l2-node-besu:
-        condition: service_healthy
     command: [ 'java', '-Dlog4j2.configurationFile=configs/log4j.xml', '-jar', "maru.jar", '--maru-genesis-file', '/initialization/genesis-maru.json', '--config', 'configs/config.toml']
 #    command: [ 'echo' , 'Forced exit to run in IntellIJ' ]
     volumes:
@@ -310,7 +308,7 @@ services:
   coordinator:
     hostname: coordinator
     container_name: coordinator
-    image: consensys/linea-coordinator:${COORDINATOR_TAG:-418d5c9}
+    image: consensys/linea-coordinator:${COORDINATOR_TAG:-1be1b25}
     profiles: [ "l2", "debug" ]
     depends_on:
       postgres:
