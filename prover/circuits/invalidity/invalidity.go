@@ -7,12 +7,15 @@ import (
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	gmimc "github.com/consensys/gnark/std/hash/mimc"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/crate-crypto/go-ipa/bandersnatch/fr"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/sirupsen/logrus"
 )
@@ -22,19 +25,19 @@ type CircuitInvalidity struct {
 	// - bad transaction nonce
 	// - bad transaction value
 	// ...
-	SubCircuit SubCircuit
+	SubCircuit SubCircuit `gnark:",secret"`
 	// the functional public inputs of the circuit.
-	FuncInputs FunctionalPublicInputsGnark
+	FuncInputs FunctionalPublicInputsGnark `gnark:",secret"`
 	// the hash of the functional public inputs
-	PublicInput frontend.Variable
+	PublicInput frontend.Variable `gnark:",public"`
 }
 
 // SubCircuit is the circuit for the invalidity case
 type SubCircuit interface {
-	Define(frontend.API) error       // define the constraints
-	Allocate(Config)                 //  allocate the circuit
-	Assign(AssigningInputs)          // generate assignment
-	ExecutionCtx() frontend.Variable // returns the execution context (FinalStateRootHash) used in the subcircuit
+	Define(frontend.API) error                           // define the constraints
+	Allocate(Config)                                     //  allocate the circuit
+	Assign(AssigningInputs)                              // generate assignment
+	FunctionalPublicInputs() FunctionalPublicInputsGnark // returns the functional public inputs used in the subcircuit
 }
 
 // AssigningInputs collects the inputs used for the circuit assignment
@@ -43,13 +46,43 @@ type AssigningInputs struct {
 	Transaction       *types.Transaction
 	FuncInputs        public_input.Invalidity
 	InvalidityType    InvalidityType
+	FromAddress       common.Address
+	RlpEncodedTx      []byte
+	KeccakCompiledIOP *wizard.CompiledIOP
+	KeccakProof       wizard.Proof
+	MaxRlpByteSize    int
 }
 
 // Define the constraints
 func (c *CircuitInvalidity) Define(api frontend.API) error {
+	// subCircuit constraints
 	c.SubCircuit.Define(api)
-	api.AssertIsEqual(c.SubCircuit.ExecutionCtx(), c.FuncInputs.SateRootHash)
-	// @azam constraint on the hashing of functional public inputs
+
+	// constraints on the consistence of functional public inputs
+	// note that any FPI solely related to FtxStreamHash is not checked here,
+	// since they are used in the interconnection circuit, and not in the subcircuit.
+	subCircuitFPI := c.SubCircuit.FunctionalPublicInputs()
+	api.AssertIsEqual(
+		api.Sub(c.FuncInputs.TxHash[0], subCircuitFPI.TxHash[0]),
+		0,
+	)
+	api.AssertIsEqual(
+		api.Sub(c.FuncInputs.TxHash[1], subCircuitFPI.TxHash[1]),
+		0,
+	)
+	api.AssertIsEqual(
+		api.Sub(c.FuncInputs.StateRootHash, subCircuitFPI.StateRootHash),
+		0,
+	)
+	api.AssertIsEqual(
+		api.Sub(c.FuncInputs.FromAddress, subCircuitFPI.FromAddress),
+		0,
+	)
+
+	//  constraint on the hashing of functional public inputs
+	hsh, _ := gmimc.NewMiMC(api)
+	api.AssertIsEqual(c.PublicInput, c.FuncInputs.Sum(api, &hsh))
+
 	return nil
 }
 
@@ -57,7 +90,6 @@ func (c *CircuitInvalidity) Define(api frontend.API) error {
 func (c *CircuitInvalidity) Allocate(config Config) {
 	// allocate the subCircuit
 	c.SubCircuit.Allocate(config)
-	// @azam: allocate the Functional Public Inputs
 }
 
 // Assign the circuit
@@ -68,25 +100,26 @@ func (c *CircuitInvalidity) Assign(assi AssigningInputs) {
 	c.FuncInputs.Assign(assi.FuncInputs)
 	// assign the public input
 	c.PublicInput = assi.FuncInputs.Sum(nil)
-	c.FuncInputs.ExpectedBlockNumber = assi.FuncInputs.ExpectedBlockHeight
-	c.FuncInputs.SateRootHash = assi.FuncInputs.StateRootHash[:]
 }
 
 // MakeProof and solve the circuit.
-func (c *CircuitInvalidity) MakeProof(setup circuits.Setup, assi AssigningInputs, FuncInputs *public_input.Invalidity) string {
+func (c *CircuitInvalidity) MakeProof(
+	setup circuits.Setup,
+	assi AssigningInputs,
+	compilationSuite ...func(*wizard.CompiledIOP),
+) string {
 
 	switch assi.InvalidityType {
-	case BadNonce:
-		c.SubCircuit = &BadNonceCircuit{}
-	case BadBalance:
-		c.SubCircuit = &BadBalanceCircuit{}
+	case BadNonce, BadBalance:
+		c.SubCircuit = &BadNonceBalanceCircuit{}
+		assi.KeccakCompiledIOP, assi.KeccakProof = MakeKeccakProofs(assi.Transaction, assi.MaxRlpByteSize, compilationSuite...)
+
 	default:
 		panic("unsupported invalidity type")
 	}
 
 	c.Assign(assi)
 
-	//@azam what options should I add?
 	proof, err := circuits.ProveCheck(
 		&setup,
 		c,
@@ -107,12 +140,15 @@ func (c *CircuitInvalidity) MakeProof(setup circuits.Setup, assi AssigningInputs
 // Config collects the data used for the sub circuits allocation
 type Config struct {
 	// depth of the merkle tree for the account trie
-	Depth int
+	Depth             int
+	KeccakCompiledIOP *wizard.CompiledIOP
+	MaxRlpByteSize    int
 }
 
 type builder struct {
 	config  Config
 	circuit *CircuitInvalidity
+	comp    *wizard.CompiledIOP
 }
 
 func NewBuilder(config Config) *builder {
@@ -120,11 +156,11 @@ func NewBuilder(config Config) *builder {
 }
 
 func (b *builder) Compile() (constraint.ConstraintSystem, error) {
-	return makeCS(b.config, b.circuit), nil
+	return makeCS(b.config, b.circuit, b.comp), nil
 }
 
 // compile  the circuit to the constraints
-func makeCS(config Config, circuit *CircuitInvalidity) constraint.ConstraintSystem {
+func makeCS(config Config, circuit *CircuitInvalidity, comp *wizard.CompiledIOP) constraint.ConstraintSystem {
 
 	circuit.Allocate(config)
 

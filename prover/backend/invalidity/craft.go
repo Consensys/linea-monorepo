@@ -2,6 +2,8 @@ package invalidity
 
 import (
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 // FuncInput are all the relevant fields parsed by the prover that
@@ -11,8 +13,9 @@ import (
 func (req *Request) FuncInput() *public_input.Invalidity {
 
 	var (
-		fi = &public_input.Invalidity{
-			TxHash:              req.ForcedTransactionPayLoad.Hash(),
+		txHash = crypto.Keccak256(req.RlpEncodedTx)
+		fi     = &public_input.Invalidity{
+			TxHash:              common.Hash(txHash),
 			TxNumber:            uint64(req.ForcedTransactionNumber),
 			FromAddress:         req.FromAddresses,
 			ExpectedBlockHeight: uint64(req.ExpectedBlockHeight),
@@ -20,6 +23,6 @@ func (req *Request) FuncInput() *public_input.Invalidity {
 			FtxStreamHash:       req.FtxStreamHash,
 		}
 	)
-
 	return fi
+
 }

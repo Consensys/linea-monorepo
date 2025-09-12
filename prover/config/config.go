@@ -265,6 +265,10 @@ type Invalidity struct {
 
 	// ProverMode stores the kind of prover to use.
 	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev full"`
+
+	// MaxRlpByteSize specifies the maximum size of the RLP-encoded data,
+	// in bytes (this is the payload size without signature)
+	MaxRlpByteSize int `mapstructure:"max_rlp_byte_size" validate:"gte=0"`
 }
 
 type Aggregation struct {
