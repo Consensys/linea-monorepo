@@ -12,7 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
-// BatchEvaluateLagrangeExt - Extended version supporting both base and extension fields
+// BatchEvaluateLagrange - Extended version supporting both base and extension fields
 func BatchEvaluateLagrange(vs []sv.SmartVector, x fext.Element, oncoset ...bool) []fext.Element {
 	results := make([]fext.Element, len(vs))
 	if len(vs) == 0 {
