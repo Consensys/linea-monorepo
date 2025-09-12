@@ -66,9 +66,10 @@ data class CodeDelegation(
 
     other as CodeDelegation
 
+    if (v != other.v) return false
+    if (chainId != other.chainId) return false
     if (!address.contentEquals(other.address)) return false
     if (nonce != other.nonce) return false
-    if (v != other.v) return false
     if (r != other.r) return false
     if (s != other.s) return false
 
@@ -77,8 +78,9 @@ data class CodeDelegation(
 
   override fun hashCode(): Int {
     var result = address.contentHashCode()
+    result = 31 * result + chainId.hashCode()
     result = 31 * result + nonce.hashCode()
-    result = 31 * result + (v?.hashCode() ?: 0)
+    result = 31 * result + v.hashCode()
     result = 31 * result + r.hashCode()
     result = 31 * result + s.hashCode()
     return result
