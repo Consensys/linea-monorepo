@@ -7,6 +7,7 @@ import (
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
+	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -106,7 +107,7 @@ func BatchEvaluateLagrange(vs []sv.SmartVector, x fext.Element, oncoset ...bool)
 		baseWg.Add(1)
 		go func() {
 			defer baseWg.Done()
-			baseResults, _ = vortex.BatchEvalBasePolyLagrange(basePolys, x, oncoset...)
+			baseResults = fastpoly.BatchEvaluateLagrangeMixed(basePolys, x, oncoset...)
 		}()
 	}
 

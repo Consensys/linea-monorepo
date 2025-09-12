@@ -40,90 +40,57 @@ func EvaluateLagrange(poly []field.Element, x field.Element, oncoset ...bool) fi
 
 // BatchEvaluateLagrangeMixed batch version of EvaluateLagrangeOnFext
 func BatchEvaluateLagrangeMixed(polys [][]field.Element, x fext.Element, oncoset ...bool) []fext.Element {
-	if len(polys) == 0 {
-		return []fext.Element{}
+
+	// TODO should we check that the polynomials are of the same size ??
+	results := make([]fext.Element, len(polys))
+	poly := polys[0]
+
+	if !utils.IsPowerOfTwo(len(poly)) {
+		utils.Panic("only support powers of two but poly has length %v", len(poly))
 	}
 
-	n := len(polys[0])
-	for i := range polys {
-		if len(polys[i]) != n {
-			return []fext.Element{}
-		}
+	size := len(poly)
+	omega, err := fft.Generator(uint64(size))
+	if err != nil {
+		// TODO handle that properly
+		panic(err)
 	}
 
-	if !utils.IsPowerOfTwo(n) {
-		return []fext.Element{}
-	}
-
-	var (
-		denominators = make([]fext.Element, n)
-		one          field.Element
-		generator, _ = fft.Generator(uint64(n))
-		generatorInv = new(field.Element).Inverse(&generator)
-		cardInv      field.Element
-		results      = make([]fext.Element, len(polys))
-	)
-
-	one.SetOne()
-	cardInv.SetUint64(uint64(n))
-	cardInv.Inverse(&cardInv)
+	domain := fft.NewDomain(uint64(len(poly)), fft.WithCache())
 
 	if len(oncoset) > 0 && oncoset[0] {
-		domain := fft.NewDomain(uint64(n), fft.WithCache())
 		x.MulByElement(&x, &domain.FrMultiplicativeGenInv)
 	}
 
-	// The denominator is constructed as:
-	// 		D_x = x/ω^i - 1 for i = 0, 1, ..., n-1
-	// 	where ω is the generator of the subgroup of roots of unity
-	denominators[0] = x
-	for i := 1; i < n; i++ {
-		denominators[i].MulByElement(&denominators[i-1], generatorInv)
+	lagrangeAtX := make([]fext.Element, size)
+	var accw, one, extomega fext.Element
+	one.SetOne()
+	accw.SetOne()
+	fext.SetFromBase(&extomega, &omega)
+	dens := make([]fext.Element, size) // [x-1, x-ω, x-ω², ...]
+	for i := 0; i < size; i++ {
+		dens[i].Sub(&x, &accw)
+		accw.Mul(&accw, &extomega)
+	}
+	invdens := fext.BatchInvert(dens) // [1/x-1, 1/x-ω, 1/x-ω², ...]
+	var tmp fext.Element
+	tmp.Exp(x, big.NewInt(int64(size))).Sub(&tmp, &one) // xⁿ-1
+	fext.SetFromIntBase(&lagrangeAtX[0], int64(size))
+	lagrangeAtX[0].Inverse(&lagrangeAtX[0])
+	lagrangeAtX[0].Mul(&tmp, &lagrangeAtX[0])        // 1/n * (xⁿ-1)
+	lagrangeAtX[0].Mul(&lagrangeAtX[0], &invdens[0]) // 1/n * (xⁿ-1)/(x-1)
+
+	for i := 1; i < size; i++ {
+		lagrangeAtX[i].Mul(&lagrangeAtX[i-1], &dens[i-1]).
+			Mul(&lagrangeAtX[i], &invdens[i]).
+			Mul(&lagrangeAtX[i], &extomega)
 	}
 
-	for i := 0; i < n; i++ {
-		// This subtracts a base field element from a field extension element.
-		denominators[i].B0.A0.Sub(&denominators[i].B0.A0, &one)
-		if denominators[i].IsZero() {
-			// edge-case : x is a root of unity of the domain. In this case, we can just return
-			// the associated value for poly
-			for k := range polys {
-				fext.SetFromBase(&results[k], &polys[k][i])
-			}
-			return results
-		}
-	}
-
-	/*
-	   Then, we compute the sum between the inverse of the denominator
-	   and the poly
-	   \sum_{i=0}^{n-1} \frac{P(ω^i)}{D_i}
-	*/
-	denominators = fext.BatchInvert(denominators)
-
-	var factor fext.Element
-	// Precompute the value of x^n once outside the loop
-	factor.Exp(x, big.NewInt(int64(n)))
-	var extOne fext.Element
-	extOne.SetOne()
-	factor.Sub(&factor, &extOne)
-	factor.MulByElement(&factor, &cardInv)
-
-	// Compute results in parallel
 	parallel.Execute(len(polys), func(start, stop int) {
 		for k := start; k < stop; k++ {
-			// Compute the scalar product between polynomial coefficients and denominators
-			var res fext.Element
-			for i := 0; i < n; i++ {
-				res = vectorext.ScalarProdByElement(denominators, polys[k])
-			}
-			// Multiply res with factor.
-			res.Mul(&res, &factor)
-			// Store the result.
-			results[k] = res
+			results[k] = vectorext.ScalarProdByElement(lagrangeAtX, polys[k])
 		}
 	})
-
 	return results
 }
 
