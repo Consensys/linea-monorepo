@@ -224,6 +224,7 @@ func (re RandomPointEvaluation) Run(run *wizard.ProverRuntime) {
 	}
 
 	ys := smartvectors_mixed.BatchEvaluateLagrange(polyVals, r)
+
 	run.AssignUnivariateExt(re.NewQuery.QueryID, r, ys...)
 }
 
