@@ -16,7 +16,6 @@
 package net.consensys.linea.zktracer.module.ecdata;
 
 import java.util.List;
-import java.util.Set;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -34,15 +33,11 @@ import net.consensys.linea.zktracer.module.limits.precompiles.EcPairingMillerLoo
 import net.consensys.linea.zktracer.module.limits.precompiles.EcRecoverEffectiveCall;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.datatypes.Address;
 
 @RequiredArgsConstructor
 @Getter
 @Accessors(fluent = true)
 public class EcData implements OperationListModule<EcDataOperation> {
-  public static final Set<Address> EC_PRECOMPILES =
-      Set.of(Address.ECREC, Address.ALTBN128_ADD, Address.ALTBN128_MUL, Address.ALTBN128_PAIRING);
-
   private final ModuleOperationStackedList<EcDataOperation> operations =
       new ModuleOperationStackedList<>();
 

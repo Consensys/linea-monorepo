@@ -58,15 +58,18 @@ public class OobOperation extends ModuleOperation {
   public static int computeExponentLog(ModexpMetadata metadata, int cds) {
     final int bbs = metadata.bbsInt();
     final int ebs = metadata.ebsInt();
+    return computeExponentLog(metadata.callData(), cds, bbs, ebs);
+  }
 
-    // pad CallData to 96 + bbs + ebs
-    final Bytes doublePaddedCallData =
+  public static int computeExponentLog(Bytes callData, int cds, int bbs, int ebs) {
+    // pad callData to 96 + bbs + ebs
+    final Bytes paddedCallData =
         cds < BASE_MIN_OFFSET + bbs + ebs
-            ? rightPadTo(metadata.callData(), BASE_MIN_OFFSET + bbs + ebs)
-            : metadata.callData();
+            ? rightPadTo(callData, BASE_MIN_OFFSET + bbs + ebs)
+            : callData;
 
     final BigInteger leadingBytesOfExponent =
-        doublePaddedCallData
+        paddedCallData
             .slice(BASE_MIN_OFFSET + bbs, min(ebs, EBS_MIN_OFFSET))
             .toUnsignedBigInteger();
 

@@ -22,6 +22,7 @@ import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.module.blockdata.module.Blockdata;
 import net.consensys.linea.zktracer.module.blockdata.module.CancunBlockData;
+import net.consensys.linea.zktracer.module.blsdata.BlsData;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.section.McopySection;
 import net.consensys.linea.zktracer.module.hub.section.finalization.CancunFinalizationSection;
@@ -33,12 +34,27 @@ import net.consensys.linea.zktracer.module.hub.section.transients.TLoadSection;
 import net.consensys.linea.zktracer.module.hub.section.transients.TStoreSection;
 import net.consensys.linea.zktracer.module.hub.section.txInitializationSection.CancunInitializationSection;
 import net.consensys.linea.zktracer.module.hub.transients.Transients;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsC1MembershipCalls;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsC2MembershipCalls;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG1AddEffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG1MapFp2ToG2EffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG1MapFpToG1EffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG1MembershipCalls;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG1MsmEffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG2AddEffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG2MembershipCalls;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG2MsmEffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsPairingCheckFinalExponentiations;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsPairingCheckMillerLoops;
+import net.consensys.linea.zktracer.module.limits.precompiles.PointEvaluationEffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.PointEvaluationFailureCall;
 import net.consensys.linea.zktracer.module.mxp.module.CancunMxp;
 import net.consensys.linea.zktracer.module.mxp.module.Mxp;
 import net.consensys.linea.zktracer.module.rlpUtils.RlpUtils;
 import net.consensys.linea.zktracer.module.rlptxn.RlpTxn;
 import net.consensys.linea.zktracer.module.rlptxn.cancun.CancunRlpTxn;
 import net.consensys.linea.zktracer.module.tables.PowerRt;
+import net.consensys.linea.zktracer.module.tables.bls.BlsRt;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.CancunInstructionDecoder;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.InstructionDecoder;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
@@ -55,6 +71,46 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 public class CancunHub extends ShanghaiHub {
   public CancunHub(ChainConfig chain) {
     super(chain);
+  }
+
+  @Override
+  protected BlsData setBlsData(
+      Wcp wcp,
+      PointEvaluationEffectiveCall pointEvaluationEffectiveCall,
+      PointEvaluationFailureCall pointEvaluationFailureCall,
+      BlsG1AddEffectiveCall blsG1AddEffectiveCall,
+      BlsG1MsmEffectiveCall blsG1MsmEffectiveCall,
+      BlsG2AddEffectiveCall blsG2AddEffectiveCall,
+      BlsG2MsmEffectiveCall blsG2MsmEffectiveCall,
+      BlsPairingCheckMillerLoops blsPairingCheckMillerLoops,
+      BlsPairingCheckFinalExponentiations blsPairingCheckFinalExponentiations,
+      BlsG1MapFpToG1EffectiveCall blsG1MapFpToG1EffectiveCall,
+      BlsG1MapFp2ToG2EffectiveCall blsG1MapFp2ToG2EffectiveCall,
+      BlsC1MembershipCalls blsC1MembershipCalls,
+      BlsC2MembershipCalls blsC2MembershipCalls,
+      BlsG1MembershipCalls blsG1MembershipCalls,
+      BlsG2MembershipCalls blsG2MembershipCalls) {
+    return new BlsData(
+        wcp,
+        pointEvaluationEffectiveCall,
+        pointEvaluationFailureCall,
+        blsG1AddEffectiveCall,
+        blsG1MsmEffectiveCall,
+        blsG2AddEffectiveCall,
+        blsG2MsmEffectiveCall,
+        blsPairingCheckMillerLoops,
+        blsPairingCheckFinalExponentiations,
+        blsG1MapFpToG1EffectiveCall,
+        blsG1MapFp2ToG2EffectiveCall,
+        blsC1MembershipCalls,
+        blsC2MembershipCalls,
+        blsG1MembershipCalls,
+        blsG2MembershipCalls);
+  }
+
+  @Override
+  protected BlsRt setBlsRt() {
+    return new BlsRt();
   }
 
   @Override

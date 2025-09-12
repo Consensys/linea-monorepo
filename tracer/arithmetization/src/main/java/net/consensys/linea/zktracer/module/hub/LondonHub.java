@@ -22,6 +22,7 @@ import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.module.blockdata.module.Blockdata;
 import net.consensys.linea.zktracer.module.blockdata.module.LondonBlockData;
+import net.consensys.linea.zktracer.module.blsdata.BlsData;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.section.create.LondonCreateSection;
 import net.consensys.linea.zktracer.module.hub.section.finalization.LondonFinalizationSection;
@@ -29,12 +30,27 @@ import net.consensys.linea.zktracer.module.hub.section.halt.selfdestruct.LondonS
 import net.consensys.linea.zktracer.module.hub.section.skip.LondonTxSkipSection;
 import net.consensys.linea.zktracer.module.hub.section.txInitializationSection.LondonInitializationSection;
 import net.consensys.linea.zktracer.module.hub.transients.Transients;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsC1MembershipCalls;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsC2MembershipCalls;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG1AddEffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG1MapFp2ToG2EffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG1MapFpToG1EffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG1MembershipCalls;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG1MsmEffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG2AddEffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG2MembershipCalls;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG2MsmEffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsPairingCheckFinalExponentiations;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsPairingCheckMillerLoops;
+import net.consensys.linea.zktracer.module.limits.precompiles.PointEvaluationEffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.PointEvaluationFailureCall;
 import net.consensys.linea.zktracer.module.mxp.module.LondonMxp;
 import net.consensys.linea.zktracer.module.mxp.module.Mxp;
 import net.consensys.linea.zktracer.module.rlpUtils.RlpUtils;
 import net.consensys.linea.zktracer.module.rlptxn.RlpTxn;
 import net.consensys.linea.zktracer.module.rlptxn.london.LondonRlpTxn;
 import net.consensys.linea.zktracer.module.tables.PowerRt;
+import net.consensys.linea.zktracer.module.tables.bls.BlsRt;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.InstructionDecoder;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.LondonInstructionDecoder;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
@@ -51,6 +67,33 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 public class LondonHub extends Hub {
   public LondonHub(ChainConfig chain) {
     super(chain);
+  }
+
+  @Override
+  protected BlsData setBlsData(
+      Wcp wcp,
+      PointEvaluationEffectiveCall pointEvaluationEffectiveCall,
+      PointEvaluationFailureCall pointEvaluationFailureCall,
+      BlsG1AddEffectiveCall blsG1AddEffectiveCall,
+      BlsG1MsmEffectiveCall blsG1MsmEffectiveCall,
+      BlsG2AddEffectiveCall blsG2AddEffectiveCall,
+      BlsG2MsmEffectiveCall blsG2MsmEffectiveCall,
+      BlsPairingCheckMillerLoops blsPairingCheckMillerLoops,
+      BlsPairingCheckFinalExponentiations blsPairingCheckFinalExponentiations,
+      BlsG1MapFpToG1EffectiveCall blsG1MapFpToG1EffectiveCall,
+      BlsG1MapFp2ToG2EffectiveCall blsG1MapFp2ToG2EffectiveCall,
+      BlsC1MembershipCalls blsC1MembershipCalls,
+      BlsC2MembershipCalls blsC2MembershipCalls,
+      BlsG1MembershipCalls blsG1MembershipCalls,
+      BlsG2MembershipCalls blsG2MembershipCalls) {
+    // Bls is not used in London
+    return null;
+  }
+
+  @Override
+  protected BlsRt setBlsRt() {
+    // BlsRt is not used in London
+    return null;
   }
 
   @Override

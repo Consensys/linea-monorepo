@@ -103,8 +103,6 @@ public class TrmTracerTest extends TracerTestBase {
     }
   }
 
-  // TODO: enable for Cancun once KZG precomp has been added to address precomp list
-  @Tag("disabled-for-cancun-temporarily")
   @Test
   void testNonCallAddressParameterTinyAfterTrimming(TestInfo testInfo) {
     for (int tiny = 0; tiny < 16; tiny++) {
@@ -121,8 +119,6 @@ public class TrmTracerTest extends TracerTestBase {
     nonCall(RANDOM_STRING_FROM_THE_INTERNET, testInfo);
   }
 
-  // TODO: enable for Cancun once KZG precomp has been added to address precomp list
-  @Tag("disabled-for-cancun-temporarily")
   @Test
   void testSevenArgCall(TestInfo testInfo) {
     for (int addr = 0; addr < 16; addr++) {
@@ -130,8 +126,6 @@ public class TrmTracerTest extends TracerTestBase {
     }
   }
 
-  // TODO: enable for Cancun once KZG precomp has been added to address precomp list
-  @Tag("disabled-for-cancun-temporarily")
   @Test
   void testSampleDelegateCall(TestInfo testInfo) {
     for (long addr = 0; addr < 16; addr++) {
@@ -145,8 +139,6 @@ public class TrmTracerTest extends TracerTestBase {
         .run(chainConfig, testInfo);
   }
 
-  // TODO: enable for Cancun once KZG precomp has been added to address precomp list
-  @Tag("disabled-for-cancun-temporarily")
   @Test
   void testTrimToUncoverATinyAddressAndQueryItsBalanceCodeHashAndCodeSize(TestInfo testInfo) {
     BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
