@@ -18,7 +18,7 @@ import (
 var (
 	DEBUG = false
 
-	// Uncomment this line for DEBUG mode
+	// For DEBUG mode uncomment this line
 	//TypeTracker = make(map[string]bool)
 )
 
@@ -345,146 +345,6 @@ func newEmptyCompiledIOP(packedCompIOP PackedCompiledIOP) *wizard.CompiledIOP {
 	return deComp
 }
 
-/*
-func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *serdeError) {
-	if v < 0 || int(v) >= len(d.PackedObject.CompiledIOPFast) {
-		return reflect.Value{}, newSerdeErrorf("invalid compiled-IOP backreference: %v", v)
-	}
-	if d.compiledIOPsFast[v] != nil {
-		return reflect.ValueOf(d.compiledIOPsFast[v]), nil
-	}
-	packedCompIOP := d.PackedObject.CompiledIOPFast[v]
-
-	// Reserve the cache and outer shapes up-front
-	deComp := newEmptyCompiledIOP(packedCompIOP)
-	d.compiledIOPsFast[v] = deComp
-
-	// FiatShamirSetup
-	{
-		f, err := unmarshalBigInt(d, *packedCompIOP.FiatShamirSetup, TypeOfBigInt)
-		if err != nil {
-			return reflect.Value{}, err.wrapPath("(deser compiled-IOP-fiatshamirsetup)")
-		}
-		deComp.FiatShamirSetup.SetBigInt(f.Interface().(*big.Int))
-	}
-
-	// Columns
-	{
-		storeVal, err := d.UnpackStore(packedCompIOP.Columns)
-		if err != nil {
-			return reflect.Value{}, err.wrapPath("(deser. compiled-IOP-columns)")
-		}
-		deComp.Columns = storeVal.Interface().(*column.Store)
-	}
-
-	// Precomputed
-	{
-		for _, rp := range packedCompIOP.Precomputed {
-			res, err := d.UnpackStructObject(rp, typeofRawPrecomputedData)
-			if err != nil {
-				return reflect.Value{}, newSerdeErrorf("could not unpack struct object for raw pre-computed data: %w", err)
-			}
-			pre, ok := res.Interface().(RawPrecomputed)
-			if !ok {
-				return reflect.Value{}, newSerdeErrorf("could not cast to RawPrecomputed: %w", err)
-			}
-			deComp.Precomputed.InsertNew(pre.ColID, pre.ColAssign)
-		}
-	}
-
-	// PcsCtxs
-	{
-		if packedCompIOP.PcsCtxs != nil {
-			pcsVal, err := d.UnpackValue(packedCompIOP.PcsCtxs, typeofPcsCtxs)
-			if err != nil {
-				return reflect.Value{}, err.wrapPath("(deser compiled-IOP-pcsctxs)")
-			}
-			deComp.PcsCtxs = pcsVal.Interface()
-		} else {
-			deComp.PcsCtxs = nil
-		}
-	}
-
-	// Public inputs
-	{
-		for i, rpi := range packedCompIOP.PublicInputs {
-			res, err := d.UnpackStructObject(rpi, typeofRawPublicInput)
-			if err != nil {
-				return reflect.Value{}, newSerdeErrorf("could not unpack struct object for raw public input: %w", err)
-			}
-			pi, ok := res.Interface().(PackedPublicInput)
-			if !ok {
-				return reflect.Value{}, newSerdeErrorf("could not cast to raw public input: %w", err)
-			}
-			deComp.PublicInputs[i] = wizard.PublicInput{Name: pi.Name, Acc: pi.Acc}
-		}
-	}
-
-	// Extra data
-	{
-		for _, red := range packedCompIOP.ExtraData {
-			res, err := d.UnpackStructObject(red, typeofRawExtraData)
-			if err != nil {
-				return reflect.Value{}, newSerdeErrorf("could not unpack struct object for raw extra data: %w", err)
-			}
-			ed, ok := res.Interface().(PackedExtradata)
-			if !ok {
-				return reflect.Value{}, newSerdeErrorf("could not cast to raw extra data: %w", err)
-			}
-			deComp.ExtraData[ed.Key] = ed.Value
-		}
-	}
-
-	// Coins
-	{
-		for _, br := range packedCompIOP.Coins {
-			val, err := d.UnpackCoin(br)
-			if err != nil {
-				return reflect.Value{}, err.wrapPath("(deser compiled-IOP-coins)")
-			}
-			info, ok := val.Interface().(coin.Info)
-			if !ok {
-				return reflect.Value{}, newSerdeErrorf("illegal cast to *coin.Info: %w", err)
-			}
-			deComp.Coins.AddToRound(info.Round, info.Name, info)
-		}
-	}
-
-	// Queries
-	{
-		if se := d.unpackAllQueries(&deComp.QueriesParams, packedCompIOP.QueriesParams, "params"); se != nil {
-			return reflect.Value{}, se
-		}
-		if se := d.unpackAllQueries(&deComp.QueriesNoParams, packedCompIOP.QueriesNoParams, "no-params"); se != nil {
-			return reflect.Value{}, se
-		}
-	}
-
-	// Actions and hooks
-	{
-		deComp.SubProvers.Inner = make([][]wizard.ProverAction, len(packedCompIOP.SubProvers))
-		if se := d.unpackAllProverActions(deComp.SubProvers.Inner, packedCompIOP.SubProvers); se != nil {
-			return reflect.Value{}, se
-		}
-
-		deComp.FiatShamirHooksPreSampling.Inner = make([][]wizard.VerifierAction, len(packedCompIOP.FSHooksPreSampling))
-		if se := d.unpackAllFSHooksPreSampling(deComp.FiatShamirHooksPreSampling.Inner, packedCompIOP.FSHooksPreSampling); se != nil {
-			return reflect.Value{}, se
-		}
-
-		deComp.SubVerifiers.Inner = make([][]wizard.VerifierAction, len(packedCompIOP.SubVerifiers))
-		if se := d.unpackAllVerifierActions(deComp.SubVerifiers.Inner, packedCompIOP.SubVerifiers); se != nil {
-			return reflect.Value{}, se
-		}
-	}
-
-	if DEBUG {
-		logCompiledIOPMetadata(deComp, "unpacking-deserialized-comp-iop")
-	}
-
-	return reflect.ValueOf(d.compiledIOPsFast[v]), nil
-} */
-
 func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *serdeError) {
 	if v < 0 || int(v) >= len(d.PackedObject.CompiledIOPFast) {
 		return reflect.Value{}, newSerdeErrorf("invalid compiled-IOP backreference: %v", v)
@@ -501,7 +361,7 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 	var wg sync.WaitGroup
 	errCh := make(chan *serdeError, 1)
 
-	run := func(fn func() *serdeError) {
+	runParallel := func(fn func() *serdeError) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -515,7 +375,7 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 	}
 
 	// FiatShamirSetup
-	run(func() *serdeError {
+	runParallel(func() *serdeError {
 		f, err := unmarshalBigInt(d, *packedCompIOP.FiatShamirSetup, TypeOfBigInt)
 		if err != nil {
 			return err.wrapPath("(deser compiled-IOP-fiatshamirsetup)")
@@ -525,7 +385,7 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 	})
 
 	// Columns
-	run(func() *serdeError {
+	runParallel(func() *serdeError {
 		storeVal, err := d.UnpackStore(packedCompIOP.Columns)
 		if err != nil {
 			return err.wrapPath("(deser compiled-IOP-columns)")
@@ -535,7 +395,7 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 	})
 
 	// Precomputed
-	run(func() *serdeError {
+	runParallel(func() *serdeError {
 		for _, rp := range packedCompIOP.Precomputed {
 			res, err := d.UnpackStructObject(rp, typeofRawPrecomputedData)
 			if err != nil {
@@ -551,7 +411,7 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 	})
 
 	// PcsCtxs
-	run(func() *serdeError {
+	runParallel(func() *serdeError {
 		if packedCompIOP.PcsCtxs != nil {
 			pcsVal, err := d.UnpackValue(packedCompIOP.PcsCtxs, typeofPcsCtxs)
 			if err != nil {
@@ -565,7 +425,7 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 	})
 
 	// PublicInputs
-	run(func() *serdeError {
+	runParallel(func() *serdeError {
 		for i, rpi := range packedCompIOP.PublicInputs {
 			res, err := d.UnpackStructObject(rpi, typeofRawPublicInput)
 			if err != nil {
@@ -581,7 +441,7 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 	})
 
 	// ExtraData
-	run(func() *serdeError {
+	runParallel(func() *serdeError {
 		for _, red := range packedCompIOP.ExtraData {
 			res, err := d.UnpackStructObject(red, typeofRawExtraData)
 			if err != nil {
@@ -597,7 +457,7 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 	})
 
 	// Coins
-	run(func() *serdeError {
+	runParallel(func() *serdeError {
 		for _, br := range packedCompIOP.Coins {
 			val, err := d.UnpackCoin(br)
 			if err != nil {
@@ -613,7 +473,7 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 	})
 
 	// Queries params
-	run(func() *serdeError {
+	runParallel(func() *serdeError {
 		if se := d.unpackAllQueries(&deComp.QueriesParams, packedCompIOP.QueriesParams, "params"); se != nil {
 			return se
 		}
@@ -621,7 +481,7 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 	})
 
 	// queries no params
-	run(func() *serdeError {
+	runParallel(func() *serdeError {
 		if se := d.unpackAllQueries(&deComp.QueriesNoParams, packedCompIOP.QueriesNoParams, "no-params"); se != nil {
 			return se
 		}
@@ -629,7 +489,7 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 	})
 
 	// Actions & Hooks
-	run(func() *serdeError {
+	runParallel(func() *serdeError {
 		deComp.SubProvers.Inner = make([][]wizard.ProverAction, len(packedCompIOP.SubProvers))
 		if se := d.unpackAllProverActions(deComp.SubProvers.Inner, packedCompIOP.SubProvers); se != nil {
 			return se
@@ -638,7 +498,7 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 		return nil
 	})
 
-	run(func() *serdeError {
+	runParallel(func() *serdeError {
 		deComp.FiatShamirHooksPreSampling.Inner = make([][]wizard.VerifierAction, len(packedCompIOP.FSHooksPreSampling))
 		if se := d.unpackAllFSHooksPreSampling(deComp.FiatShamirHooksPreSampling.Inner, packedCompIOP.FSHooksPreSampling); se != nil {
 			return se
@@ -647,7 +507,7 @@ func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *s
 		return nil
 	})
 
-	run(func() *serdeError {
+	runParallel(func() *serdeError {
 		deComp.SubVerifiers.Inner = make([][]wizard.VerifierAction, len(packedCompIOP.SubVerifiers))
 		if se := d.unpackAllVerifierActions(deComp.SubVerifiers.Inner, packedCompIOP.SubVerifiers); se != nil {
 			return se
@@ -834,86 +694,10 @@ func (d *Deserializer) unpackAllQueries(reg *wizard.ByRoundRegister[ifaces.Query
 	return nil
 }
 
-/*
-func unpackAllActions[T any](d *Deserializer, context string,
-	out [][]T, actions2D [][]PackedRawData) *serdeError {
-
-	var (
-		res   reflect.Value
-		se    *serdeError
-		ct    reflect.Type
-		ctStr string
-		err   error
-	)
-
-	for round, actions := range actions2D {
-		if len(actions) == 0 {
-			out[round] = nil
-			continue
-		}
-
-		out[round] = make([]T, len(actions))
-
-		for idx, action := range actions {
-			ctStr = d.PackedObject.Types[action.ConcreteType]
-			ct, err = findRegisteredImplementation(ctStr)
-			if err != nil {
-				return newSerdeErrorf("could not find registered implementation for %s action: %w", context, err)
-			}
-
-			switch ct.Kind() {
-			case reflect.Struct:
-				res, se = d.UnpackStructObject(action.ConcreteValue, ct)
-				if se != nil {
-					return se.wrapPath(fmt.Sprintf("(deser struct compiled-IOP-%s-actions)", context))
-				}
-				var valInterface any
-				if action.WasPointer {
-					valInterface = res.Addr().Interface()
-				} else {
-					valInterface = res.Interface()
-				}
-
-				v, ok := valInterface.(T)
-				if !ok {
-					return newSerdeErrorf("illegal cast of type %v with string rep %s to %s action", ct, ctStr, context)
-				}
-				out[round][idx] = v
-
-			case reflect.Slice, reflect.Array:
-				res, se = d.UnpackArrayOrSlice(action.ConcreteValue, ct)
-				if se != nil {
-					return se.wrapPath(fmt.Sprintf("(deser slice/array compiled-IOP-%s-actions)", context))
-				}
-
-				var valInterface any
-				if action.WasPointer {
-					ptr := reflect.New(res.Type())
-					ptr.Elem().Set(res)
-					valInterface = ptr.Interface()
-				} else {
-					valInterface = res.Interface()
-				}
-
-				v, ok := valInterface.(T)
-				if !ok {
-					return newSerdeErrorf("illegal cast of %v with string rep %s to %s action", ct, ctStr, context)
-				}
-				out[round][idx] = v
-
-			default:
-				return newSerdeErrorf("unsupported kind:%v for %s action", ct.Kind(), context)
-			}
-		}
-	}
-	return nil
-} */
-
 func unpackAllActions[T any](d *Deserializer, context string,
 	out [][]T, actions2D [][]PackedRawData) *serdeError {
 
 	for round, actions := range actions2D {
-		// logrus.Printf("OUTER Unpacking %s actions:%v round:%d", context, actions, round)
 		if len(actions) == 0 {
 			out[round] = nil
 			continue
@@ -921,10 +705,9 @@ func unpackAllActions[T any](d *Deserializer, context string,
 		out[round] = make([]T, len(actions))
 
 		var wg sync.WaitGroup
-		errCh := make(chan *serdeError, 1) // capture first error
+		errCh := make(chan *serdeError, 1)
 
 		for idx, action := range actions {
-			// logrus.Printf("INNER Unpacking %s action:%v round:%d idx:%d", context, action, round, idx)
 			wg.Add(1)
 			go func(idx int, action PackedRawData) {
 				defer wg.Done()
@@ -1003,11 +786,7 @@ func unpackAllActions[T any](d *Deserializer, context string,
 				}
 
 				out[round][idx] = v
-
-				// logrus.Printf(" AFTER INNER Unpacking %s action:%v round:%d idx:%d", context, action, round, idx)
 			}(idx, action)
-
-			//logrus.Printf(" AFTER OUTER Unpacking %s action:%v round:%d idx:%d", context, action, round, idx)
 		}
 
 		wg.Wait()

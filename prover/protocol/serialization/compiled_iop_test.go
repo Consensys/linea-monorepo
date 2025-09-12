@@ -27,8 +27,8 @@ import (
 
 var (
 	// Avoid setting both modes to true at the same time
-	isTest      = true
-	isBenchmark = false
+	isTest      = false
+	isBenchmark = true
 )
 
 // returns a dummy column name
@@ -49,14 +49,11 @@ func dummyCoinName(i int) coin.Name {
 // name of the evaluation query
 const QNAME ifaces.QueryID = "EVAL"
 
-// sis instances
+// DO NOT CHANGE THESE from std params of ringsis instances
+// marshalling/unmarshalling depends on it
 var sisInstances = []ringsis.Params{
-	{LogTwoBound: 8, LogTwoDegree: 1},
-	{LogTwoBound: 8, LogTwoDegree: 2},
-	{LogTwoBound: 8, LogTwoDegree: 3},
-	{LogTwoBound: 8, LogTwoDegree: 6},
-	{LogTwoBound: 8, LogTwoDegree: 5},
-	{LogTwoBound: 16, LogTwoDegree: 6},
+	ringsis.StdParams, ringsis.StdParams, ringsis.StdParams,
+	ringsis.StdParams, ringsis.StdParams, ringsis.StdParams,
 }
 
 // testcase type

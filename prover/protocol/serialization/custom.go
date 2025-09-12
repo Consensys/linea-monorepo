@@ -105,23 +105,16 @@ func init() {
 func marshalRingSisKey(ser *Serializer, val reflect.Value) (any, *serdeError) {
 	key, ok := val.Interface().(*ringsis.Key)
 	if !ok {
-		return nil, newSerdeErrorf("illegal cast to %v", TypeOfRingSisKeyPtr)
+		return nil, newSerdeErrorf("illegal cast of val of type %T to %v", val, TypeOfRingSisKeyPtr)
 	}
-
-	// logrus.Printf("Packing Ring-sis max num field to hash:%d", key.KeyGen.MaxNumFieldToHash)
-	// logrus.Printf("Packing Ring-sis key:%++v", key.KeyGen.Params)
 	return key.KeyGen.MaxNumFieldToHash, nil
 }
 
 func unmarshalRingSisKey(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
-
 	maxNumFieldToHash, ok := val.(uint64)
 	if !ok {
 		return reflect.Value{}, newSerdeErrorf("illegal cast of val of type %T to int", val)
 	}
-
-	// logrus.Printf("Unpacking Ring-sis max num field to hash  uint64:%v int:%d", maxNumFieldToHash, int(maxNumFieldToHash))
-	// logrus.Printf("Unpacking Ring-sis  params:%++v", ringsis.StdParams)
 	ringSiskey := ringsis.GenerateKey(ringsis.StdParams, int(maxNumFieldToHash))
 	return reflect.ValueOf(ringSiskey), nil
 }

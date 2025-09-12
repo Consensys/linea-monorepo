@@ -74,16 +74,15 @@ type BackReference int
 // Serializer manages the serialization process, packing objects into a PackedObject.
 // It tracks references to objects (e.g., columns, coins) and collects warnings for non-fatal issues.
 type Serializer struct {
-	PackedObject *PackedObject     // The output structure containing serialized data.
-	typeMap      map[string]int    // Maps type names to indices in PackedObject.Types.
-	pointerMap   map[uintptr]int   // Maps pointer values to indices in PackedObject.Pointers.
-	coinMap      map[uuid.UUID]int // Maps coin UUIDs to indices in PackedObject.Coins.
-	coinIdMap    map[string]int    // Maps coin IDs to indices in PackedObject.CoinIDs.
-	columnMap    map[uuid.UUID]int // Maps column UUIDs to indices in PackedObject.Columns.
-	columnIdMap  map[string]int    // Maps column IDs to indices in PackedObject.ColumnIDs.
-	queryMap     map[uuid.UUID]int // Maps query UUIDs to indices in PackedObject.Queries.
-	queryIDMap   map[string]int    // Maps query IDs to indices in PackedObject.QueryIDs.
-	// compiledIOPs     map[*wizard.CompiledIOP]int // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
+	PackedObject     *PackedObject     // The output structure containing serialized data.
+	typeMap          map[string]int    // Maps type names to indices in PackedObject.Types.
+	pointerMap       map[uintptr]int   // Maps pointer values to indices in PackedObject.Pointers.
+	coinMap          map[uuid.UUID]int // Maps coin UUIDs to indices in PackedObject.Coins.
+	coinIdMap        map[string]int    // Maps coin IDs to indices in PackedObject.CoinIDs.
+	columnMap        map[uuid.UUID]int // Maps column UUIDs to indices in PackedObject.Columns.
+	columnIdMap      map[string]int    // Maps column IDs to indices in PackedObject.ColumnIDs.
+	queryMap         map[uuid.UUID]int // Maps query UUIDs to indices in PackedObject.Queries.
+	queryIDMap       map[string]int    // Maps query IDs to indices in PackedObject.QueryIDs.
 	compiledIOPsFast map[*wizard.CompiledIOP]int
 	stores           map[*column.Store]int  // Maps Store pointers to indices in PackedObject.Store.
 	circuitMap       map[*cs.SparseR1CS]int // Maps circuit pointers to indices in PackedObject.Circuits.
@@ -94,12 +93,11 @@ type Serializer struct {
 // Deserializer manages the deserialization process, reconstructing objects from a PackedObject.
 // It caches reconstructed objects to resolve back-references and collects warnings.
 type Deserializer struct {
-	PackedObject  *PackedObject     // The input structure to deserialize.
-	pointedValues []reflect.Value   // Maps pointer values to indices in PackedObject.Pointers.
-	columns       []*column.Natural // Cache of deserialized columns, indexed by BackReference.
-	coins         []*coin.Info      // Cache of deserialized coins.
-	queries       []*ifaces.Query   // Cache of deserialized queries.
-	//CompiledIOPs     []*wizard.CompiledIOP // Cache of deserialized CompiledIOPs.
+	PackedObject     *PackedObject     // The input structure to deserialize.
+	pointedValues    []reflect.Value   // Maps pointer values to indices in PackedObject.Pointers.
+	columns          []*column.Natural // Cache of deserialized columns, indexed by BackReference.
+	coins            []*coin.Info      // Cache of deserialized coins.
+	queries          []*ifaces.Query   // Cache of deserialized queries.
 	compiledIOPsFast []*wizard.CompiledIOP
 	stores           []*column.Store        // Cache of deserialized stores.
 	circuits         []*cs.SparseR1CS       // Cache of deserialized circuits.
@@ -126,20 +124,20 @@ type Deserializer struct {
 // PackedObject is the serialized representation of data, designed for CBOR encoding.
 // It stores type metadata, objects, and a payload for the root serialized value.
 type PackedObject struct {
-	Types         []string               `cbor:"a"` // Type names for interfaces.
-	PointedValues []any                  `cbor:"c"` // Serialized pointers (as PackedIFace).
-	ColumnIDs     []string               `cbor:"d"` // String IDs for columns.
-	Columns       []column.PackedNatural `cbor:"e"` // Serialized columns (as PackedNatural).
-	CoinIDs       []string               `cbor:"f"` // String IDs for coins.
-	Coins         []PackedCoin           `cbor:"g"` // Serialized coins.
-	QueryIDs      []string               `cbor:"h"` // String IDs for queries.
-	Queries       []PackedStructObject   `cbor:"i"` // Serialized queries.
-	Store         []column.PackedStore   `cbor:"j"` // Serialized stores (as arrays).
-	//CompiledIOP     []PackedStructObject   `cbor:"k"` // Serialized CompiledIOPs.
-	CompiledIOPFast []PackedCompiledIOP  `cbor:"o"` // Serialized CompiledIOPs (fast path).
-	Circuits        [][]byte             `cbor:"l"` // Serialized circuits.
-	Expressions     []PackedStructObject `cbor:"m"` // Serialized expressions
-	Payload         any                  `cbor:"n"` // CBOR-encoded root value.
+	_               struct{}               `cbor:",toarray" serde:"omit"`
+	Types           []string               `cbor:"a"` // Type names for interfaces.
+	PointedValues   []any                  `cbor:"c"` // Serialized pointers (as PackedIFace).
+	ColumnIDs       []string               `cbor:"d"` // String IDs for columns.
+	Columns         []column.PackedNatural `cbor:"e"` // Serialized columns (as PackedNatural).
+	CoinIDs         []string               `cbor:"f"` // String IDs for coins.
+	Coins           []PackedCoin           `cbor:"g"` // Serialized coins.
+	QueryIDs        []string               `cbor:"h"` // String IDs for queries.
+	Queries         []PackedStructObject   `cbor:"i"` // Serialized queries.
+	Store           []column.PackedStore   `cbor:"j"` // Serialized stores (as arrays).
+	CompiledIOPFast []PackedCompiledIOP    `cbor:"o"` // Serialized CompiledIOPs (fast path).
+	Circuits        [][]byte               `cbor:"l"` // Serialized circuits.
+	Expressions     []PackedStructObject   `cbor:"m"` // Serialized expressions
+	Payload         any                    `cbor:"n"` // CBOR-encoded root value.
 }
 
 // PackedIFace serializes an interface value, storing its type index and concrete value.
@@ -619,62 +617,6 @@ func (d *Deserializer) UnpackQueryID(v BackReference) (reflect.Value, *serdeErro
 	res := ifaces.QueryID(d.PackedObject.QueryIDs[v])
 	return reflect.ValueOf(res), nil
 }
-
-/*
-// PackCompiledIOP serializes a wizard.CompiledIOP, returning a BackReference to its index in PackedObject.CompiledIOP.
-func (s *Serializer) PackCompiledIOP(comp *wizard.CompiledIOP) (BackReference, *serdeError) {
-	if comp == nil {
-		return 0, nil
-	}
-	// Fast cache hit
-	if idx, ok := s.compiledIOPs[comp]; ok {
-		return BackReference(idx), nil
-	}
-	// Reserve slot and cache BEFORE packing to break recursion
-	idx := len(s.PackedObject.CompiledIOP)
-	s.compiledIOPs[comp] = idx
-	s.PackedObject.CompiledIOP = append(s.PackedObject.CompiledIOP, nil)
-
-	obj, err := s.PackStructObject(reflect.ValueOf(*comp))
-	if err != nil {
-		return 0, err.wrapPath("(compiled-IOP)")
-	}
-	s.PackedObject.CompiledIOP[idx] = obj
-	return BackReference(idx), nil
-}
-
-// UnpackCompiledIOP deserializes a wizard.CompiledIOP from a BackReference, caching the result.
-func (d *Deserializer) UnpackCompiledIOP(v BackReference) (reflect.Value, *serdeError) {
-	if v < 0 || int(v) >= len(d.PackedObject.CompiledIOP) {
-		return reflect.Value{}, newSerdeErrorf("invalid compiled-IOP backreference: %v", v)
-	}
-
-	if d.CompiledIOPs[v] == nil {
-
-		// Something to be aware of is that CompiledIOPs usually contains
-		// reference to themselves internally. Thus, if we don't cache a pointer
-		// to the compiledIOP, the deserialization will go into an infinite loop.
-		// To prevent that, we set a pointer to a zero value and it will be
-		// cached when the compiled IOP is unpacked. The pointed value is then
-		// assigned after the unpacking. With this approach, the ptr to the
-		// compiledIOP can immediately be returned for the recursive calls.
-		ptr := &wizard.CompiledIOP{}
-		d.CompiledIOPs[v] = ptr
-
-		packedCompiledIOP := d.PackedObject.CompiledIOP[v]
-		compiledIOP, err := d.UnpackStructObject(packedCompiledIOP, TypeOfCompiledIOP)
-		if err != nil {
-			return reflect.Value{}, err.wrapPath("(compiled-IOP)")
-		}
-
-		c := compiledIOP.Interface().(wizard.CompiledIOP)
-		*ptr = c
-	}
-
-	return reflect.ValueOf(d.CompiledIOPs[v]), nil
-}
-
-*/
 
 // PackStore serializes a column.Store, returning a BackReference to its index in PackedObject.Store.
 func (s *Serializer) PackStore(st *column.Store) (BackReference, *serdeError) {
@@ -1232,3 +1174,59 @@ func (d *Deserializer) warnf(warning string) {
 func backReferenceFromCBORInt(n any) BackReference {
 	return BackReference(n.(uint64))
 }
+
+/*
+// PackCompiledIOP serializes a wizard.CompiledIOP, returning a BackReference to its index in PackedObject.CompiledIOP.
+func (s *Serializer) PackCompiledIOP(comp *wizard.CompiledIOP) (BackReference, *serdeError) {
+	if comp == nil {
+		return 0, nil
+	}
+	// Fast cache hit
+	if idx, ok := s.compiledIOPs[comp]; ok {
+		return BackReference(idx), nil
+	}
+	// Reserve slot and cache BEFORE packing to break recursion
+	idx := len(s.PackedObject.CompiledIOP)
+	s.compiledIOPs[comp] = idx
+	s.PackedObject.CompiledIOP = append(s.PackedObject.CompiledIOP, nil)
+
+	obj, err := s.PackStructObject(reflect.ValueOf(*comp))
+	if err != nil {
+		return 0, err.wrapPath("(compiled-IOP)")
+	}
+	s.PackedObject.CompiledIOP[idx] = obj
+	return BackReference(idx), nil
+}
+
+// UnpackCompiledIOP deserializes a wizard.CompiledIOP from a BackReference, caching the result.
+func (d *Deserializer) UnpackCompiledIOP(v BackReference) (reflect.Value, *serdeError) {
+	if v < 0 || int(v) >= len(d.PackedObject.CompiledIOP) {
+		return reflect.Value{}, newSerdeErrorf("invalid compiled-IOP backreference: %v", v)
+	}
+
+	if d.CompiledIOPs[v] == nil {
+
+		// Something to be aware of is that CompiledIOPs usually contains
+		// reference to themselves internally. Thus, if we don't cache a pointer
+		// to the compiledIOP, the deserialization will go into an infinite loop.
+		// To prevent that, we set a pointer to a zero value and it will be
+		// cached when the compiled IOP is unpacked. The pointed value is then
+		// assigned after the unpacking. With this approach, the ptr to the
+		// compiledIOP can immediately be returned for the recursive calls.
+		ptr := &wizard.CompiledIOP{}
+		d.CompiledIOPs[v] = ptr
+
+		packedCompiledIOP := d.PackedObject.CompiledIOP[v]
+		compiledIOP, err := d.UnpackStructObject(packedCompiledIOP, TypeOfCompiledIOP)
+		if err != nil {
+			return reflect.Value{}, err.wrapPath("(compiled-IOP)")
+		}
+
+		c := compiledIOP.Interface().(wizard.CompiledIOP)
+		*ptr = c
+	}
+
+	return reflect.ValueOf(d.CompiledIOPs[v]), nil
+}
+
+*/
