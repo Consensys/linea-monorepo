@@ -90,16 +90,24 @@ public class CallSection extends TraceSection
 
   private static final Map<Address, BiFunction<Hub, CallSection, PrecompileSubsection>>
       ADDRESS_TO_PRECOMPILE =
-          Map.of(
-              ECREC, EllipticCurvePrecompileSubsection::new,
-              SHA256, ShaTwoOrRipemdSubSection::new,
-              RIPEMD160, ShaTwoOrRipemdSubSection::new,
-              ID, IdentitySubsection::new,
-              MODEXP, ModexpSubsection::new,
-              ALTBN128_ADD, EllipticCurvePrecompileSubsection::new,
-              ALTBN128_MUL, EllipticCurvePrecompileSubsection::new,
-              ALTBN128_PAIRING, EllipticCurvePrecompileSubsection::new,
-              BLAKE2B_F_COMPRESSION, BlakeSubsection::new);
+          Map.ofEntries(
+              Map.entry(ECREC, EllipticCurvePrecompileSubsection::new),
+              Map.entry(SHA256, ShaTwoOrRipemdSubSection::new),
+              Map.entry(RIPEMD160, ShaTwoOrRipemdSubSection::new),
+              Map.entry(ID, IdentitySubsection::new),
+              Map.entry(MODEXP, ModexpSubsection::new),
+              Map.entry(ALTBN128_ADD, EllipticCurvePrecompileSubsection::new),
+              Map.entry(ALTBN128_MUL, EllipticCurvePrecompileSubsection::new),
+              Map.entry(ALTBN128_PAIRING, EllipticCurvePrecompileSubsection::new),
+              Map.entry(BLAKE2B_F_COMPRESSION, BlakeSubsection::new),
+              Map.entry(KZG_POINT_EVAL, EllipticCurvePrecompileSubsection::new),
+              Map.entry(BLS12_G1ADD, EllipticCurvePrecompileSubsection::new),
+              Map.entry(BLS12_G1MULTIEXP, EllipticCurvePrecompileSubsection::new),
+              Map.entry(BLS12_G2ADD, EllipticCurvePrecompileSubsection::new),
+              Map.entry(BLS12_G2MULTIEXP, EllipticCurvePrecompileSubsection::new),
+              Map.entry(BLS12_PAIRING, EllipticCurvePrecompileSubsection::new),
+              Map.entry(BLS12_MAP_FP_TO_G1, EllipticCurvePrecompileSubsection::new),
+              Map.entry(BLS12_MAP_FP2_TO_G2, EllipticCurvePrecompileSubsection::new));
 
   public Optional<Address> precompileAddress;
 

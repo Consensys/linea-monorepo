@@ -15,8 +15,6 @@
 
 package net.consensys.linea.zktracer.container.module;
 
-import static com.google.common.base.Preconditions.checkState;
-
 import java.util.List;
 
 import lombok.Setter;
@@ -34,8 +32,9 @@ public abstract class EventDetectorModule implements Module {
 
   @Override
   public void commitTransactionBundle() {
-    checkState(
-        !eventDetected, "Shouldn't commit transaction as an unprovable event has been detected.");
+    // TODO: this is commented out as in this branch we want BLS precompiles to be executed
+    // checkState(!eventDetected, "Shouldn't commit transaction as an unprovable event has been
+    // detected.");
   }
 
   @Override

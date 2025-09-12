@@ -16,6 +16,12 @@
 package net.consensys.linea.zktracer.precompiles;
 
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_BLAKE2_PER_ROUND;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_BLS_G1_ADD;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_BLS_G2_ADD;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_BLS_MAP_FP2_TO_G2;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_BLS_MAP_FP_TO_G1;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_BLS_PAIRING_CHECK;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_BLS_PAIRING_CHECK_PAIR;
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_ECADD;
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_ECMUL;
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_ECPAIRING;
@@ -24,12 +30,29 @@ import static net.consensys.linea.zktracer.Trace.GAS_CONST_ECRECOVER;
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_IDENTITY;
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_IDENTITY_WORD;
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_MODEXP;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_POINT_EVALUATION;
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_RIPEMD;
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_RIPEMD_WORD;
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_SHA2;
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_SHA2_WORD;
+import static net.consensys.linea.zktracer.Trace.OOB_INST_BLS_G1_MSM;
+import static net.consensys.linea.zktracer.Trace.OOB_INST_BLS_G2_MSM;
 import static net.consensys.linea.zktracer.Trace.Oob.G_QUADDIVISOR;
-import static net.consensys.linea.zktracer.Trace.PRC_ECPAIRING_SIZE;
+import static net.consensys.linea.zktracer.Trace.PRC_BLS_G1_MSM_MULTIPLICATION_COST;
+import static net.consensys.linea.zktracer.Trace.PRC_BLS_G2_MSM_MULTIPLICATION_COST;
+import static net.consensys.linea.zktracer.Trace.PRC_BLS_MULTIPLICATION_MULTIPLIER;
+import static net.consensys.linea.zktracer.Trace.PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_G1_MSM;
+import static net.consensys.linea.zktracer.Trace.PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_G2_MSM;
+import static net.consensys.linea.zktracer.Trace.PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_PAIRING_CHECK;
+import static net.consensys.linea.zktracer.Trace.PRECOMPILE_CALL_DATA_UNIT_SIZE___ECPAIRING;
+import static net.consensys.linea.zktracer.Trace.PRECOMPILE_RETURN_DATA_SIZE___BLS_G1_ADD;
+import static net.consensys.linea.zktracer.Trace.PRECOMPILE_RETURN_DATA_SIZE___BLS_G1_MSM;
+import static net.consensys.linea.zktracer.Trace.PRECOMPILE_RETURN_DATA_SIZE___BLS_G2_ADD;
+import static net.consensys.linea.zktracer.Trace.PRECOMPILE_RETURN_DATA_SIZE___BLS_G2_MSM;
+import static net.consensys.linea.zktracer.Trace.PRECOMPILE_RETURN_DATA_SIZE___BLS_MAP_FP2_TO_G2;
+import static net.consensys.linea.zktracer.Trace.PRECOMPILE_RETURN_DATA_SIZE___BLS_MAP_FP_TO_G1;
+import static net.consensys.linea.zktracer.Trace.PRECOMPILE_RETURN_DATA_SIZE___BLS_PAIRING_CHECK;
+import static net.consensys.linea.zktracer.Trace.PRECOMPILE_RETURN_DATA_SIZE___POINT_EVALUATION;
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE_MO;
 import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.populateMemory;
@@ -37,6 +60,7 @@ import static org.hyperledger.besu.datatypes.Address.*;
 
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
+import net.consensys.linea.zktracer.module.tables.bls.BlsRt;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -81,6 +105,22 @@ public class PrecompileUtils extends TracerTestBase {
       return getECPAIRINGCost(cds);
     } else if (precompileAddress.equals(BLAKE2B_F_COMPRESSION)) {
       return getBLAKE2FCost(r);
+    } else if (precompileAddress.equals(KZG_POINT_EVAL)) {
+      return getPointEvaluationCost();
+    } else if (precompileAddress.equals(BLS12_G1ADD)) {
+      return getBlsG1AddCost();
+    } else if (precompileAddress.equals(BLS12_G1MULTIEXP)) {
+      return getBlsG1MsmCost(cds);
+    } else if (precompileAddress.equals(BLS12_G2ADD)) {
+      return getBlsG2AddCost();
+    } else if (precompileAddress.equals(BLS12_G2MULTIEXP)) {
+      return getBlsG2MsmCost(cds);
+    } else if (precompileAddress.equals(BLS12_PAIRING)) {
+      return getBlsPairingCheckCost(cds);
+    } else if (precompileAddress.equals(BLS12_MAP_FP_TO_G1)) {
+      return getBlsMapFpToG1Cost();
+    } else if (precompileAddress.equals(BLS12_MAP_FP2_TO_G2)) {
+      return getBlsMapFp2ToG2Cost();
     } else {
       throw new IllegalArgumentException("Unknown precompile address");
     }
@@ -126,11 +166,56 @@ public class PrecompileUtils extends TracerTestBase {
   }
 
   public static int getECPAIRINGCost(int cds) {
-    return GAS_CONST_ECPAIRING + GAS_CONST_ECPAIRING_PAIR * (cds / PRC_ECPAIRING_SIZE);
+    return GAS_CONST_ECPAIRING
+        + GAS_CONST_ECPAIRING_PAIR * (cds / PRECOMPILE_CALL_DATA_UNIT_SIZE___ECPAIRING);
   }
 
   public static int getBLAKE2FCost(int r) {
     return GAS_CONST_BLAKE2_PER_ROUND * r;
+  }
+
+  public static int getPointEvaluationCost() {
+    return GAS_CONST_POINT_EVALUATION;
+  }
+
+  public static int getBlsG1AddCost() {
+    return GAS_CONST_BLS_G1_ADD;
+  }
+
+  public static int getBlsG1MsmCost(int cds) {
+    final int numInputs = cds / PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_G1_MSM;
+    final int discount = BlsRt.getMsmDiscount(OOB_INST_BLS_G1_MSM, numInputs);
+    return numInputs
+        * PRC_BLS_G1_MSM_MULTIPLICATION_COST
+        * discount
+        / PRC_BLS_MULTIPLICATION_MULTIPLIER;
+  }
+
+  public static int getBlsG2AddCost() {
+    return GAS_CONST_BLS_G2_ADD;
+  }
+
+  public static int getBlsG2MsmCost(int cds) {
+    final int numInputs = cds / PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_G2_MSM;
+    final int discount = BlsRt.getMsmDiscount(OOB_INST_BLS_G2_MSM, numInputs);
+    return numInputs
+        * PRC_BLS_G2_MSM_MULTIPLICATION_COST
+        * discount
+        / PRC_BLS_MULTIPLICATION_MULTIPLIER;
+  }
+
+  public static int getBlsPairingCheckCost(int cds) {
+    return GAS_CONST_BLS_PAIRING_CHECK
+        + GAS_CONST_BLS_PAIRING_CHECK_PAIR
+            * (cds / PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_PAIRING_CHECK);
+  }
+
+  public static int getBlsMapFpToG1Cost() {
+    return GAS_CONST_BLS_MAP_FP_TO_G1;
+  }
+
+  public static int getBlsMapFp2ToG2Cost() {
+    return GAS_CONST_BLS_MAP_FP2_TO_G2;
   }
 
   // Methods to prepare inputs for certain precompiles
@@ -198,23 +283,37 @@ public class PrecompileUtils extends TracerTestBase {
    * @return the computed return at capacity.
    */
   static int getExpectedReturnAtCapacity(Address precompileAddress, int callDataSize, int mbs) {
-    final int returnAtCapacity;
-    if (precompileAddress == ECREC
-        || precompileAddress == SHA256
-        || precompileAddress == RIPEMD160
-        || precompileAddress == ALTBN128_PAIRING) {
-      returnAtCapacity = WORD_SIZE;
-    } else if (precompileAddress == ALTBN128_ADD
-        || precompileAddress == ALTBN128_MUL
-        || precompileAddress == BLAKE2B_F_COMPRESSION) {
-      returnAtCapacity = 2 * WORD_SIZE;
-    } else if (precompileAddress == MODEXP) {
-      returnAtCapacity = mbs;
-    } else if (precompileAddress == ID) {
-      returnAtCapacity = callDataSize;
+    if (precompileAddress.equals(ECREC)
+        || precompileAddress.equals(SHA256)
+        || precompileAddress.equals(RIPEMD160)
+        || precompileAddress.equals(ALTBN128_PAIRING)) {
+      return WORD_SIZE;
+    } else if (precompileAddress.equals(ALTBN128_ADD)
+        || precompileAddress.equals(ALTBN128_MUL)
+        || precompileAddress.equals(BLAKE2B_F_COMPRESSION)) {
+      return 2 * WORD_SIZE;
+    } else if (precompileAddress.equals(MODEXP)) {
+      return mbs;
+    } else if (precompileAddress.equals(ID)) {
+      return callDataSize;
+    } else if (precompileAddress.equals(KZG_POINT_EVAL)) {
+      return PRECOMPILE_RETURN_DATA_SIZE___POINT_EVALUATION;
+    } else if (precompileAddress.equals(BLS12_G1ADD)) {
+      return PRECOMPILE_RETURN_DATA_SIZE___BLS_G1_ADD;
+    } else if (precompileAddress.equals(BLS12_G1MULTIEXP)) {
+      return PRECOMPILE_RETURN_DATA_SIZE___BLS_G1_MSM;
+    } else if (precompileAddress.equals(BLS12_G2ADD)) {
+      return PRECOMPILE_RETURN_DATA_SIZE___BLS_G2_ADD;
+    } else if (precompileAddress.equals(BLS12_G2MULTIEXP)) {
+      return PRECOMPILE_RETURN_DATA_SIZE___BLS_G2_MSM;
+    } else if (precompileAddress.equals(BLS12_PAIRING)) {
+      return PRECOMPILE_RETURN_DATA_SIZE___BLS_PAIRING_CHECK;
+    } else if (precompileAddress.equals(BLS12_MAP_FP_TO_G1)) {
+      return PRECOMPILE_RETURN_DATA_SIZE___BLS_MAP_FP_TO_G1;
+    } else if (precompileAddress.equals(BLS12_MAP_FP2_TO_G2)) {
+      return PRECOMPILE_RETURN_DATA_SIZE___BLS_MAP_FP2_TO_G2;
     } else {
       throw new IllegalArgumentException("Unknown precompile address");
     }
-    return returnAtCapacity;
   }
 }

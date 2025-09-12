@@ -15,28 +15,32 @@
 
 package net.consensys.linea.zktracer.precompiles;
 
-import static com.google.common.math.BigIntegerMath.log2;
-import static java.lang.Math.min;
 import static net.consensys.linea.zktracer.Trace.*;
+import static net.consensys.linea.zktracer.module.oob.OobOperation.computeExponentLog;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.generateModexpInput;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.getExpectedReturnAtCapacity;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.getPrecompileCost;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.prepareBlake2F;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.prepareModexp;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.prepareSha256Ripemd160Id;
-import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 import static org.hyperledger.besu.datatypes.Address.ALTBN128_ADD;
 import static org.hyperledger.besu.datatypes.Address.ALTBN128_MUL;
 import static org.hyperledger.besu.datatypes.Address.ALTBN128_PAIRING;
 import static org.hyperledger.besu.datatypes.Address.BLAKE2B_F_COMPRESSION;
+import static org.hyperledger.besu.datatypes.Address.BLS12_G1ADD;
+import static org.hyperledger.besu.datatypes.Address.BLS12_G1MULTIEXP;
+import static org.hyperledger.besu.datatypes.Address.BLS12_G2ADD;
+import static org.hyperledger.besu.datatypes.Address.BLS12_G2MULTIEXP;
+import static org.hyperledger.besu.datatypes.Address.BLS12_MAP_FP2_TO_G2;
+import static org.hyperledger.besu.datatypes.Address.BLS12_MAP_FP_TO_G1;
+import static org.hyperledger.besu.datatypes.Address.BLS12_PAIRING;
 import static org.hyperledger.besu.datatypes.Address.ECREC;
 import static org.hyperledger.besu.datatypes.Address.ID;
+import static org.hyperledger.besu.datatypes.Address.KZG_POINT_EVAL;
 import static org.hyperledger.besu.datatypes.Address.MODEXP;
 import static org.hyperledger.besu.datatypes.Address.RIPEMD160;
 import static org.hyperledger.besu.datatypes.Address.SHA256;
 
-import java.math.BigInteger;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
@@ -103,6 +107,8 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
    * @param precompileAddress the address of the precompile contract.
    * @param valueCase the value case (zero or non-zero).
    * @param gasCase the gas case (zero, one, cost minus one, cost, cost plus one).
+   * @param callDataSize the size of the call data. It is ignored for MODEXP as it is defined
+   *     internally.
    * @param modexpCostGT200OrBlake2fRoundsGT0 flag indicating if the MODEXP cost is greater than 200
    *     or if the BLAKE2F rounds are greater than 0. It is ignored for other precompile contracts.
    */
@@ -112,17 +118,19 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
       Address precompileAddress,
       ValueCase valueCase,
       GasCase gasCase,
+      Integer callDataSize,
       boolean modexpCostGT200OrBlake2fRoundsGT0,
       TestInfo testInfo) {
     final BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
-    // In order to actually trigger the insufficient we need to:
-    // - Set a specific callDataSize for BLAKE2F and EC_PAIRING
+    // In order to actually trigger the insufficient gas we need to:
+    // - Set a specific callDataSize for BLAKE2F and EC_PAIRING and BLS precompiles (already passed
+    // as a parameter)
     // - Set the r value of BLAKE2F to have precompileCost > callStipend
     // - Populate the memory with a large enough number of words for SHA256, RIPEMD160, and ID
     //   to have precompileCost > callStipend.
     final int value = valueCase.isZeroCase() ? 0 : 1;
-    final int callDataSize; // depends on the called precompile
+    // final int callDataSize; // depends on the called precompile
     final int callDataOffset = 0;
 
     // returnAtCapacity is defined below
@@ -132,20 +140,16 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
     if (precompileAddress == BLAKE2B_F_COMPRESSION) {
       rLeadingByte = modexpCostGT200OrBlake2fRoundsGT0 ? 0x12 : 0;
       r = rLeadingByte << 8;
-      callDataSize = PRECOMPILE_CALL_DATA_SIZE___BLAKE2F;
       prepareBlake2F(program, rLeadingByte, callDataOffset + 2);
-    } else if (precompileAddress == ALTBN128_PAIRING) {
-      callDataSize = PRC_ECPAIRING_SIZE;
     } else if ((precompileAddress == SHA256
         || precompileAddress == RIPEMD160
         || precompileAddress == ID)) {
-      final int nWords = 1024;
-      callDataSize = nWords * WORD_SIZE; // This guarantees that precompileCost > callStipend
-      prepareSha256Ripemd160Id(program, nWords, callDataOffset);
+      prepareSha256Ripemd160Id(program, callDataSize / WORD_SIZE, callDataOffset);
     } else if (precompileAddress == MODEXP) {
       bbs = modexpCostGT200OrBlake2fRoundsGT0 ? 1 : 2;
       ebs = modexpCostGT200OrBlake2fRoundsGT0 ? 6 : 3;
       mbs = modexpCostGT200OrBlake2fRoundsGT0 ? 25 : 4;
+      Preconditions.checkArgument(callDataSize == null);
       callDataSize = 96 + bbs + ebs + mbs;
 
       final Bytes modexpInput = generateModexpInput(bbs, mbs, ebs);
@@ -162,9 +166,6 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
       additionalAccounts = List.of(codeOwnerAccount);
 
       prepareModexp(program, modexpInput, callDataOffset, codeOwnerAddress);
-    } else {
-      // ECADD, ECMUL, ECRECOVER cases
-      callDataSize = 1; // This is an arbitrary value
     }
 
     // Set returnAtCapacity equal to the expected return size of the precompile call
@@ -182,13 +183,18 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
     // We now deduce that gas stipend from the gas given to the transaction to trigger
     // insufficient gas for the precompile call in the non-trivial cases (COST_MINUS_ONE, COST,
     // COST_PLUS_ONE).
-    // Note that we exclude the case of MODEXP as it is treated in a separate test
-    // and the case of ECADD as it has a fixed gas cost of 150 < 2300.
+    // Note that we exclude the case of MODEXP as it is treated in a separate test,
+    // the case of ECADD as it has a fixed gas cost of 150 < 2300,
+    // the case of BLS12_G1ADD as it has a fixed gas cost of 375 < 2300
+    // and the case of BLS12_G2ADD as it has a fixed gas cost of 600 < 2300.
+    // TODO: are there other cases to exclude?
     if (valueCase.isNonZeroCase()
         && (gasCase == GasCase.COST_MINUS_ONE
             || gasCase == GasCase.COST
             || gasCase == GasCase.COST_PLUS_ONE)
         && !precompileAddress.equals(ALTBN128_ADD)
+        && !precompileAddress.equals(BLS12_G1ADD)
+        && !precompileAddress.equals(BLS12_G2ADD)
         && !precompileAddress.equals(MODEXP)) {
       gas -= GAS_CONST_G_CALL_STIPEND;
     }
@@ -215,20 +221,94 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
     List<Arguments> arguments = new ArrayList<>();
     for (GasCase gasCase : GasCase.values()) {
       for (ValueCase valueCase : ValueCase.values()) {
-        arguments.add(Arguments.of(ECREC, valueCase, gasCase, false));
-        arguments.add(Arguments.of(SHA256, valueCase, gasCase, false));
-        arguments.add(Arguments.of(RIPEMD160, valueCase, gasCase, false));
-        arguments.add(Arguments.of(ID, valueCase, gasCase, false));
-        arguments.add(Arguments.of(ALTBN128_ADD, valueCase, gasCase, false));
-        arguments.add(Arguments.of(ALTBN128_MUL, valueCase, gasCase, false));
-        arguments.add(Arguments.of(Address.ALTBN128_PAIRING, valueCase, gasCase, false));
-        arguments.add(Arguments.of(BLAKE2B_F_COMPRESSION, valueCase, gasCase, false));
-        arguments.add(Arguments.of(BLAKE2B_F_COMPRESSION, valueCase, gasCase, true));
+        // 1 is an arbitrary callDataSize for ECREC, ALTBN128_ADD, ALTBN128_MUL
+        arguments.add(Arguments.of(ECREC, valueCase, gasCase, 1, false));
+        // 1024 * WORD_SIZE guarantees precompileCost > callStipend for SHA256, RIPEMD160 and ID
+        arguments.add(Arguments.of(SHA256, valueCase, gasCase, 1024 * WORD_SIZE, false));
+        arguments.add(Arguments.of(RIPEMD160, valueCase, gasCase, 1024 * WORD_SIZE, false));
+        arguments.add(Arguments.of(ID, valueCase, gasCase, 1024 * WORD_SIZE, false));
+        arguments.add(Arguments.of(ALTBN128_ADD, valueCase, gasCase, 1, false));
+        arguments.add(Arguments.of(ALTBN128_MUL, valueCase, gasCase, 1, false));
+        arguments.add(
+            Arguments.of(
+                ALTBN128_PAIRING,
+                valueCase,
+                gasCase,
+                PRECOMPILE_CALL_DATA_UNIT_SIZE___ECPAIRING,
+                false));
+        arguments.add(
+            Arguments.of(
+                BLAKE2B_F_COMPRESSION,
+                valueCase,
+                gasCase,
+                PRECOMPILE_CALL_DATA_SIZE___BLAKE2F,
+                false));
+        arguments.add(
+            Arguments.of(
+                BLAKE2B_F_COMPRESSION,
+                valueCase,
+                gasCase,
+                PRECOMPILE_CALL_DATA_SIZE___BLAKE2F,
+                true));
+        // BLS precompiles
+        arguments.add(
+            Arguments.of(
+                KZG_POINT_EVAL,
+                valueCase,
+                gasCase,
+                PRECOMPILE_CALL_DATA_SIZE___POINT_EVALUATION,
+                false));
+        arguments.add(
+            Arguments.of(
+                BLS12_G1ADD, valueCase, gasCase, PRECOMPILE_CALL_DATA_SIZE___G1_ADD, false));
+        arguments.add(
+            Arguments.of(
+                BLS12_G2ADD, valueCase, gasCase, PRECOMPILE_CALL_DATA_SIZE___G2_ADD, false));
+        arguments.add(
+            Arguments.of(
+                BLS12_PAIRING,
+                valueCase,
+                gasCase,
+                PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_PAIRING_CHECK,
+                false));
+        arguments.add(
+            Arguments.of(
+                BLS12_MAP_FP_TO_G1,
+                valueCase,
+                gasCase,
+                PRECOMPILE_CALL_DATA_SIZE___FP_TO_G1,
+                false));
+        arguments.add(
+            Arguments.of(
+                BLS12_MAP_FP2_TO_G2,
+                valueCase,
+                gasCase,
+                PRECOMPILE_CALL_DATA_SIZE___FP2_TO_G2,
+                false));
+        for (int numberOfUnits = 1; numberOfUnits <= 128 + 1; numberOfUnits++) {
+          arguments.add(
+              Arguments.of(
+                  BLS12_G1MULTIEXP,
+                  valueCase,
+                  gasCase,
+                  numberOfUnits * PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_G1_MSM,
+                  false));
+          arguments.add(
+              Arguments.of(
+                  BLS12_G2MULTIEXP,
+                  valueCase,
+                  gasCase,
+                  numberOfUnits * PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_G2_MSM,
+                  false));
+        }
       }
       // The NON_ZERO for MODEXP case will be treated in a separate test
-      arguments.add(Arguments.of(MODEXP, ValueCase.ZERO, gasCase, false));
-      arguments.add(Arguments.of(MODEXP, ValueCase.ZERO, gasCase, true));
+      // callDataSize is defined internally
+      // TODO
+      arguments.add(Arguments.of(MODEXP, ValueCase.ZERO, gasCase, null, false));
+      arguments.add(Arguments.of(MODEXP, ValueCase.ZERO, gasCase, null, true));
     }
+
     return arguments.stream();
   }
 
@@ -248,28 +328,5 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
       case COST -> precompileCost;
       case COST_PLUS_ONE -> precompileCost + 1;
     };
-  }
-
-  // TODO: this is ugly, shouldn't copy paste the functiun in OobOperation
-  // Support method for MODEXP
-  public static int computeExponentLog(Bytes paddedCallData, int cds, int bbs, int ebs) {
-    Preconditions.checkArgument(paddedCallData.size() >= 96);
-
-    // pad paddedCallData to 96 + bbs + ebs
-    final Bytes doublePaddedCallData =
-        cds < 96 + bbs + ebs ? rightPadTo(paddedCallData, 96 + bbs + ebs) : paddedCallData;
-
-    final BigInteger leadingBytesOfExponent =
-        doublePaddedCallData.slice(96 + bbs, min(ebs, 32)).toUnsignedBigInteger();
-
-    if (ebs <= 32 && leadingBytesOfExponent.signum() == 0) {
-      return 0;
-    } else if (ebs <= 32 && leadingBytesOfExponent.signum() != 0) {
-      return log2(leadingBytesOfExponent, RoundingMode.FLOOR);
-    } else if (ebs > 32 && leadingBytesOfExponent.signum() != 0) {
-      return 8 * (ebs - 32) + log2(leadingBytesOfExponent, RoundingMode.FLOOR);
-    } else {
-      return 8 * (ebs - 32);
-    }
   }
 }

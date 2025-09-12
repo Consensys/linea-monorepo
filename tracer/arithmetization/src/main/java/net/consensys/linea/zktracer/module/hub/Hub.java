@@ -46,6 +46,7 @@ import net.consensys.linea.zktracer.module.bin.Bin;
 import net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpData;
 import net.consensys.linea.zktracer.module.blockdata.module.Blockdata;
 import net.consensys.linea.zktracer.module.blockhash.Blockhash;
+import net.consensys.linea.zktracer.module.blsdata.BlsData;
 import net.consensys.linea.zktracer.module.ecdata.EcData;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.exp.Exp;
@@ -77,6 +78,18 @@ import net.consensys.linea.zktracer.module.limits.L1BlockSizeOld;
 import net.consensys.linea.zktracer.module.limits.L2L1Logs;
 import net.consensys.linea.zktracer.module.limits.precompiles.BlakeEffectiveCall;
 import net.consensys.linea.zktracer.module.limits.precompiles.BlakeRounds;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsC1MembershipCalls;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsC2MembershipCalls;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG1AddEffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG1MapFp2ToG2EffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG1MapFpToG1EffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG1MembershipCalls;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG1MsmEffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG2AddEffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG2MembershipCalls;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsG2MsmEffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsPairingCheckFinalExponentiations;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlsPairingCheckMillerLoops;
 import net.consensys.linea.zktracer.module.limits.precompiles.EcAddEffectiveCall;
 import net.consensys.linea.zktracer.module.limits.precompiles.EcMulEffectiveCall;
 import net.consensys.linea.zktracer.module.limits.precompiles.EcPairingFinalExponentiations;
@@ -84,6 +97,8 @@ import net.consensys.linea.zktracer.module.limits.precompiles.EcPairingG2Members
 import net.consensys.linea.zktracer.module.limits.precompiles.EcPairingMillerLoops;
 import net.consensys.linea.zktracer.module.limits.precompiles.EcRecoverEffectiveCall;
 import net.consensys.linea.zktracer.module.limits.precompiles.ModexpEffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.PointEvaluationEffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.PointEvaluationFailureCall;
 import net.consensys.linea.zktracer.module.limits.precompiles.RipemdBlocks;
 import net.consensys.linea.zktracer.module.limits.precompiles.Sha256Blocks;
 import net.consensys.linea.zktracer.module.logdata.LogData;
@@ -106,6 +121,7 @@ import net.consensys.linea.zktracer.module.shf.Shf;
 import net.consensys.linea.zktracer.module.stp.Stp;
 import net.consensys.linea.zktracer.module.tables.PowerRt;
 import net.consensys.linea.zktracer.module.tables.bin.BinRt;
+import net.consensys.linea.zktracer.module.tables.bls.BlsRt;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.*;
 import net.consensys.linea.zktracer.module.tables.shf.ShfRt;
 import net.consensys.linea.zktracer.module.trm.Trm;
@@ -205,6 +221,37 @@ public abstract class Hub implements Module {
     return trace.hub().spillage();
   }
 
+  @Getter
+  final PointEvaluationEffectiveCall pointEvaluationEffectiveCall =
+      new PointEvaluationEffectiveCall();
+
+  @Getter
+  final PointEvaluationFailureCall pointEvaluationFailureCall = new PointEvaluationFailureCall();
+
+  @Getter final BlsG1AddEffectiveCall blsG1AddEffectiveCall = new BlsG1AddEffectiveCall();
+  @Getter final BlsG1MsmEffectiveCall blsG1MsmEffectiveCall = new BlsG1MsmEffectiveCall();
+  @Getter final BlsG2AddEffectiveCall blsG2AddEffectiveCall = new BlsG2AddEffectiveCall();
+  @Getter final BlsG2MsmEffectiveCall blsG2MsmEffectiveCall = new BlsG2MsmEffectiveCall();
+
+  @Getter
+  final BlsPairingCheckMillerLoops blsPairingCheckMillerLoops = new BlsPairingCheckMillerLoops();
+
+  @Getter
+  final BlsPairingCheckFinalExponentiations blsPairingCheckFinalExponentiations =
+      new BlsPairingCheckFinalExponentiations();
+
+  @Getter
+  final BlsG1MapFpToG1EffectiveCall blsG1MapFpToG1EffectiveCall = new BlsG1MapFpToG1EffectiveCall();
+
+  @Getter
+  final BlsG1MapFp2ToG2EffectiveCall blsG1MapFp2ToG2EffectiveCall =
+      new BlsG1MapFp2ToG2EffectiveCall();
+
+  @Getter final BlsC1MembershipCalls blsC1MembershipCalls = new BlsC1MembershipCalls();
+  @Getter final BlsC2MembershipCalls blsC2MembershipCalls = new BlsC2MembershipCalls();
+  @Getter final BlsG1MembershipCalls blsG1MembershipCalls = new BlsG1MembershipCalls();
+  @Getter final BlsG2MembershipCalls blsG2MembershipCalls = new BlsG2MembershipCalls();
+
   /** List of all modules of the ZK-evm */
   // stateless modules
   @Getter private final Wcp wcp = new Wcp();
@@ -212,6 +259,26 @@ public abstract class Hub implements Module {
   private final Add add = new Add();
   private final Bin bin = new Bin();
   private final Blockhash blockhash = new Blockhash(this, wcp);
+
+  @Getter
+  final BlsData blsData =
+      setBlsData(
+          wcp,
+          pointEvaluationEffectiveCall,
+          pointEvaluationFailureCall,
+          blsG1AddEffectiveCall,
+          blsG1MsmEffectiveCall,
+          blsG2AddEffectiveCall,
+          blsG2MsmEffectiveCall,
+          blsPairingCheckMillerLoops,
+          blsPairingCheckFinalExponentiations,
+          blsG1MapFpToG1EffectiveCall,
+          blsG1MapFp2ToG2EffectiveCall,
+          blsC1MembershipCalls,
+          blsC2MembershipCalls,
+          blsG1MembershipCalls,
+          blsG2MembershipCalls);
+
   @Getter private final Euc euc = new Euc(wcp);
   @Getter private final Ext ext = new Ext(this);
   @Getter private final Gas gas = new Gas();
@@ -292,6 +359,20 @@ public abstract class Hub implements Module {
         ripemdBlocks,
         blakeEffectiveCall,
         blakeRounds,
+        pointEvaluationEffectiveCall,
+        pointEvaluationFailureCall,
+        blsG1AddEffectiveCall,
+        blsG1MsmEffectiveCall,
+        blsG2AddEffectiveCall,
+        blsG2MsmEffectiveCall,
+        blsPairingCheckMillerLoops,
+        blsPairingCheckFinalExponentiations,
+        blsG1MapFpToG1EffectiveCall,
+        blsG1MapFp2ToG2EffectiveCall,
+        blsC1MembershipCalls,
+        blsC2MembershipCalls,
+        blsG1MembershipCalls,
+        blsG2MembershipCalls,
         l1BlockSize,
         l2L1Logs,
         pointEval,
@@ -341,6 +422,7 @@ public abstract class Hub implements Module {
                     blakeModexpData,
                     blockdata,
                     blockhash,
+                    blsData,
                     ecData,
                     exp,
                     ext,
@@ -404,7 +486,7 @@ public abstract class Hub implements Module {
     mmio = new Mmio(mmu);
 
     refTableModules =
-        Stream.of(new BinRt(), setInstructionDecoder(), new ShfRt(), setPower())
+        Stream.of(new BinRt(), setBlsRt(), setInstructionDecoder(), new ShfRt(), setPower())
             .filter(Objects::nonNull)
             .toList();
 
@@ -415,6 +497,7 @@ public abstract class Hub implements Module {
                         bin,
                         blakeModexpData,
                         blockhash, /* WARN: must be called BEFORE WCP (for traceEndConflation) */
+                        blsData,
                         ecData,
                         euc,
                         ext,
@@ -1087,6 +1170,25 @@ public abstract class Hub implements Module {
   public Address coinbaseAddressOfRelativeBlock(final int relativeBlockNumber) {
     return blockStack.getBlockByRelativeBlockNumber(relativeBlockNumber).coinbaseAddress();
   }
+
+  protected abstract BlsData setBlsData(
+      Wcp wcp,
+      PointEvaluationEffectiveCall pointEvaluationEffectiveCall,
+      PointEvaluationFailureCall pointEvaluationFailureCall,
+      BlsG1AddEffectiveCall blsG1AddEffectiveCall,
+      BlsG1MsmEffectiveCall blsG1MsmEffectiveCall,
+      BlsG2AddEffectiveCall blsG2AddEffectiveCall,
+      BlsG2MsmEffectiveCall blsG2MsmEffectiveCall,
+      BlsPairingCheckMillerLoops blsPairingCheckMillerLoops,
+      BlsPairingCheckFinalExponentiations blsPairingCheckFinalExponentiations,
+      BlsG1MapFpToG1EffectiveCall blsG1MapFpToG1EffectiveCall,
+      BlsG1MapFp2ToG2EffectiveCall blsG1MapFp2ToG2EffectiveCall,
+      BlsC1MembershipCalls blsC1MembershipCalls,
+      BlsC2MembershipCalls blsC2MembershipCalls,
+      BlsG1MembershipCalls blsG1MembershipCalls,
+      BlsG2MembershipCalls blsG2MembershipCalls);
+
+  protected abstract BlsRt setBlsRt();
 
   protected abstract GasCalculator setGasCalculator();
 

@@ -42,6 +42,10 @@ dependencies {
   implementation "${besuArtifactGroup}.internal:besu-ethereum-core"
   implementation "${besuArtifactGroup}.internal:besu-ethereum-rlp"
 
+  implementation "org.hyperledger.besu:gnark:1.4.1-SNAPSHOT"
+  // implementation "${besuArtifactGroup}:gnark"
+  implementation 'net.java.dev.jna:jna:5.13.0'
+
   implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
   implementation 'info.picocli:picocli'
   implementation 'com.google.code.gson:gson'
@@ -71,3 +75,14 @@ jar {
 }
 
 apply from: rootProject.file("gradle/publishing.gradle")
+
+configure(allprojects) {
+  repositories {
+    maven {
+      url 'https://hyperledger.jfrog.io/artifactory/besu-maven'
+      content { includeGroupByRegex('org\\.hyperledger\\..*') }
+    }
+
+    mavenCentral()
+  }
+}

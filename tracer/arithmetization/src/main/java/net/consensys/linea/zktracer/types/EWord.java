@@ -133,6 +133,17 @@ public final class EWord extends BaseUInt256Value<EWord> implements Quantity {
             Bytes16.leftPad(bigIntegerToBytes(loBigInt))));
   }
 
+  /**
+   * From hi and lo Bytes to EVM word.
+   *
+   * @param hi the high half of the EWord
+   * @param lo the low half of the EWord
+   * @return the EVM word
+   */
+  public static EWord of(final Bytes hi, final Bytes lo) {
+    return EWord.of(Bytes.concatenate(Bytes16.leftPad(hi), Bytes16.leftPad(lo)));
+  }
+
   @Override
   public BigInteger getAsBigInteger() {
     return toBigInteger();
