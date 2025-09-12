@@ -10,7 +10,6 @@ import (
 	gmimc "github.com/consensys/gnark/std/hash/mimc"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
-
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
@@ -101,12 +100,13 @@ func (c *CircuitInvalidity) Assign(assi AssigningInputs) {
 func (c *CircuitInvalidity) MakeProof(
 	setup circuits.Setup,
 	assi AssigningInputs,
+	compilationSuite ...func(*wizard.CompiledIOP),
 ) string {
 
 	switch assi.InvalidityType {
 	case BadNonce, BadBalance:
 		c.SubCircuit = &BadNonceBalanceCircuit{}
-		assi.KeccakCompiledIOP, assi.KeccakProof = MakeKeccakProofs(assi.Transaction, assi.MaxRlpByteSize, circuits.WizardCompilationParameters()...)
+		assi.KeccakCompiledIOP, assi.KeccakProof = MakeKeccakProofs(assi.Transaction, assi.MaxRlpByteSize, compilationSuite...)
 
 	default:
 		panic("unsupported invalidity type")
@@ -134,16 +134,15 @@ func (c *CircuitInvalidity) MakeProof(
 // Config collects the data used for the sub circuits allocation
 type Config struct {
 	// depth of the merkle tree for the account trie
-	Depth int
-	// keccak compiled iop, used to verify the tx hash
+	Depth             int
 	KeccakCompiledIOP *wizard.CompiledIOP
-	// max rlp byte size of the transaction
-	MaxRlpByteSize int
+	MaxRlpByteSize    int
 }
 
 type builder struct {
 	config  Config
 	circuit *CircuitInvalidity
+	comp    *wizard.CompiledIOP
 }
 
 func NewBuilder(config Config) *builder {
@@ -151,11 +150,11 @@ func NewBuilder(config Config) *builder {
 }
 
 func (b *builder) Compile() (constraint.ConstraintSystem, error) {
-	return makeCS(b.config, b.circuit), nil
+	return makeCS(b.config, b.circuit, b.comp), nil
 }
 
 // compile  the circuit to the constraints
-func makeCS(config Config, circuit *CircuitInvalidity) constraint.ConstraintSystem {
+func makeCS(config Config, circuit *CircuitInvalidity, comp *wizard.CompiledIOP) constraint.ConstraintSystem {
 
 	circuit.Allocate(config)
 
