@@ -31,7 +31,7 @@ public class TracerTestBase {
     // Configure chain information and fork before any tests are run, including any methods used as
     // MethodSource.
     TracerTestBase.chainConfig =
-        switch (getForkOrDefault("CANCUN")) {
+        switch (getForkOrDefault("LONDON")) {
           case "LONDON" -> ChainConfig.MAINNET_TESTCONFIG(LONDON);
           case "PARIS" -> ChainConfig.MAINNET_TESTCONFIG(PARIS);
           case "SHANGHAI" -> ChainConfig.MAINNET_TESTCONFIG(SHANGHAI);
