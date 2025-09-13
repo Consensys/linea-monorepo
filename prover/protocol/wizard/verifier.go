@@ -5,7 +5,6 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
@@ -427,28 +426,6 @@ func (run *VerifierRuntime) GetGrandProductParams(name ifaces.QueryID) query.Gra
 // GetHornerParams returns the parameters of a [query.Honer] query.
 func (run *VerifierRuntime) GetHornerParams(name ifaces.QueryID) query.HornerParams {
 	return run.QueriesParams.MustGet(name).(query.HornerParams)
-}
-
-/*
-CopyColumnInto implements `column.GetWitness`
-Copies the witness into a slice
-
-Deprecated: this is deadcode
-*/
-func (run VerifierRuntime) CopyColumnInto(name ifaces.ColID, buff *ifaces.ColAssignment) {
-	/*
-		Make sure the column is registered. If the name is the one specified
-		does not correcpond to a natural column, this will panic. And this is
-		expected behaviour.
-	*/
-	run.Spec.Columns.MustHaveName(name)
-	toCopy := run.Columns.MustGet(name)
-
-	if toCopy.Len() != (*buff).Len() {
-		utils.Panic("buffer has the wrong length %v, witness has length %v", (*buff).Len(), toCopy.Len())
-	}
-
-	smartvectors.Copy(buff, toCopy)
 }
 
 // GetColumnAt returns the value of a verifier [ifaces.Column] at a specified
