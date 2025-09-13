@@ -88,6 +88,7 @@ type Serializer struct {
 	circuitMap       map[*cs.SparseR1CS]int // Maps circuit pointers to indices in PackedObject.Circuits.
 	exprMap          map[field.Element]int  // Maps expression pointers to indices in PackedObject.Expressions
 	warnings         []string               // Collects warnings (e.g., unexported fields) for debugging.
+	// compiledIOPs     map[*wizard.CompiledIOP]int // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
 }
 
 // Deserializer manages the deserialization process, reconstructing objects from a PackedObject.
@@ -103,22 +104,7 @@ type Deserializer struct {
 	circuits         []*cs.SparseR1CS       // Cache of deserialized circuits.
 	expressions      []*symbolic.Expression // Cache of deserialized expressions
 	warnings         []string               // Collects warnings for debugging.
-
-	// Per-slot Once for one-time, race-free initialization of non-recursive caches.
-	onceColumns  []sync.Once
-	onceCoins    []sync.Once
-	onceQueries  []sync.Once
-	onceStores   []sync.Once
-	onceCircuits []sync.Once
-	onceExprs    []sync.Once
-
-	// Per-slot errors for initializers that can fail.
-	queriesErr  []*serdeError
-	circuitsErr []*serdeError
-	exprErr     []*serdeError
-
-	// Recursive pointer cache must use lock + placeholder to break cycles.
-	muPointedValues sync.RWMutex
+	muPointedValues  sync.RWMutex           // Recursive pointer cache must use lock + placeholder to break cycles.
 }
 
 // PackedObject is the serialized representation of data, designed for CBOR encoding.
@@ -138,6 +124,7 @@ type PackedObject struct {
 	Circuits        [][]byte               `cbor:"l"` // Serialized circuits.
 	Expressions     []PackedStructObject   `cbor:"m"` // Serialized expressions
 	Payload         any                    `cbor:"n"` // CBOR-encoded root value.
+	//CompiledIOP     []PackedStructObject   `cbor:"k"` // Serialized CompiledIOPs.
 }
 
 // PackedIFace serializes an interface value, storing its type index and concrete value.
@@ -163,20 +150,20 @@ type PackedStructObject []any
 
 func NewSerializer() *Serializer {
 	return &Serializer{
-		PackedObject: &PackedObject{},
-		typeMap:      map[string]int{},
-		pointerMap:   map[uintptr]int{},
-		coinMap:      map[uuid.UUID]int{},
-		coinIdMap:    map[string]int{},
-		columnMap:    map[uuid.UUID]int{},
-		columnIdMap:  map[string]int{},
-		queryMap:     map[uuid.UUID]int{},
-		queryIDMap:   map[string]int{},
-		// compiledIOPs:     map[*wizard.CompiledIOP]int{},
+		PackedObject:     &PackedObject{},
+		typeMap:          map[string]int{},
+		pointerMap:       map[uintptr]int{},
+		coinMap:          map[uuid.UUID]int{},
+		coinIdMap:        map[string]int{},
+		columnMap:        map[uuid.UUID]int{},
+		columnIdMap:      map[string]int{},
+		queryMap:         map[uuid.UUID]int{},
+		queryIDMap:       map[string]int{},
 		compiledIOPsFast: map[*wizard.CompiledIOP]int{},
 		stores:           map[*column.Store]int{},
 		circuitMap:       map[*cs.SparseR1CS]int{},
 		exprMap:          map[field.Element]int{},
+		// compiledIOPs:     map[*wizard.CompiledIOP]int{},
 	}
 }
 
@@ -212,27 +199,16 @@ func Serialize(v any) (bytesOfV []byte, err error) {
 
 func NewDeserializer(packedObject *PackedObject) *Deserializer {
 	return &Deserializer{
-		pointedValues: make([]reflect.Value, len(packedObject.PointedValues)),
-		columns:       make([]*column.Natural, len(packedObject.Columns)),
-		coins:         make([]*coin.Info, len(packedObject.Coins)),
-		queries:       make([]*ifaces.Query, len(packedObject.Queries)),
-		// CompiledIOPs: make([]*wizard.CompiledIOP, len(packedObject.CompiledIOP)),
+		pointedValues:    make([]reflect.Value, len(packedObject.PointedValues)),
+		columns:          make([]*column.Natural, len(packedObject.Columns)),
+		coins:            make([]*coin.Info, len(packedObject.Coins)),
+		queries:          make([]*ifaces.Query, len(packedObject.Queries)),
 		compiledIOPsFast: make([]*wizard.CompiledIOP, len(packedObject.CompiledIOPFast)),
 		stores:           make([]*column.Store, len(packedObject.Store)),
 		circuits:         make([]*cs.SparseR1CS, len(packedObject.Circuits)),
 		expressions:      make([]*symbolic.Expression, len(packedObject.Expressions)),
 		PackedObject:     packedObject,
-
-		onceColumns:  make([]sync.Once, len(packedObject.Columns)),
-		onceCoins:    make([]sync.Once, len(packedObject.Coins)),
-		onceQueries:  make([]sync.Once, len(packedObject.Queries)),
-		onceStores:   make([]sync.Once, len(packedObject.Store)),
-		onceCircuits: make([]sync.Once, len(packedObject.Circuits)),
-		onceExprs:    make([]sync.Once, len(packedObject.Expressions)),
-
-		queriesErr:  make([]*serdeError, len(packedObject.Queries)),
-		circuitsErr: make([]*serdeError, len(packedObject.Circuits)),
-		exprErr:     make([]*serdeError, len(packedObject.Expressions)),
+		// CompiledIOPs: make([]*wizard.CompiledIOP, len(packedObject.CompiledIOP)),
 	}
 }
 
@@ -432,11 +408,15 @@ func (d *Deserializer) UnpackColumn(v BackReference) (reflect.Value, *serdeError
 	if v < 0 || int(v) >= len(d.PackedObject.Columns) {
 		return reflect.Value{}, newSerdeErrorf("invalid column backreference: %v", v)
 	}
-	d.onceColumns[v].Do(func() {
+
+	// It's the first time that 'd' sees the column: it unpacks it from the
+	// pre-unmarshalled object
+	if d.columns[v] == nil {
 		packedNat := d.PackedObject.Columns[v]
 		nat := packedNat.Unpack()
 		d.columns[v] = &nat
-	})
+	}
+
 	return reflect.ValueOf(*d.columns[v]), nil
 }
 
@@ -479,23 +459,31 @@ func (d *Deserializer) UnpackCoin(v BackReference) (reflect.Value, *serdeError) 
 	if v < 0 || int(v) >= len(d.PackedObject.Coins) {
 		return reflect.Value{}, newSerdeErrorf("invalid coin back-reference=%v", v)
 	}
-	d.onceCoins[v].Do(func() {
+
+	if d.coins[v] == nil {
+		// Access the PackedCoin at the backreference index
 		packedCoin := d.PackedObject.Coins[v]
+
+		// Prepare sizes slice for coin.NewInfo variadic argument
 		var sizes []int
-		if packedCoin.Size > 0 {
+		if packedCoin.Size > 0 { // Only include if non-zero due to omitempty
 			sizes = append(sizes, packedCoin.Size)
 		}
-		if packedCoin.UpperBound > 0 {
+		if packedCoin.UpperBound > 0 { // Only include if non-zero due to omitempty
 			sizes = append(sizes, int(packedCoin.UpperBound))
 		}
+
+		// Reconstruct coin.Info from PackedCoin
 		unpacked := coin.NewInfo(
 			coin.Name(packedCoin.Name),
 			coin.Type(packedCoin.Type),
 			packedCoin.Round,
-			sizes...,
+			sizes..., // Variadic argument for size and upperBound
 		)
+
 		d.coins[v] = &unpacked
-	})
+	}
+
 	return reflect.ValueOf(*d.coins[v]), nil
 }
 
@@ -561,6 +549,7 @@ func (s *Serializer) PackQuery(q ifaces.Query) (BackReference, *serdeError) {
 
 // UnpackQuery deserializes an ifaces.Query from a BackReference, ensuring it matches the target type.
 func (d *Deserializer) UnpackQuery(v BackReference, t reflect.Type) (reflect.Value, *serdeError) {
+
 	if v < 0 || int(v) >= len(d.PackedObject.Queries) {
 		return reflect.Value{}, newSerdeErrorf("invalid query backreference: %v", v)
 	}
@@ -569,32 +558,35 @@ func (d *Deserializer) UnpackQuery(v BackReference, t reflect.Type) (reflect.Val
 	if t.Kind() == reflect.Ptr {
 		typeConcrete = t.Elem()
 	}
+
 	if !t.Implements(TypeOfQuery) || typeConcrete.Kind() != reflect.Struct {
 		return reflect.Value{}, newSerdeErrorf("invalid query type: %v", t.String())
 	}
 
-	d.onceQueries[v].Do(func() {
+	if d.queries[v] == nil {
 		packedQuery := d.PackedObject.Queries[v]
 		query, err := d.UnpackStructObject(packedQuery, typeConcrete)
 		if err != nil {
-			d.queriesErr[v] = err.wrapPath("(query)")
-			return
+			return reflect.Value{}, err.wrapPath("(query)")
 		}
+
 		if t.Kind() == reflect.Ptr {
 			query = query.Addr()
 		}
+
 		q := query.Interface().(ifaces.Query)
 		d.queries[v] = &q
-	})
-	if se := d.queriesErr[v]; se != nil {
-		return reflect.Value{}, se
 	}
 
-	qIfaces := *d.queries[v]
-	qValue := reflect.ValueOf(qIfaces)
+	var (
+		qIfaces = *d.queries[v]
+		qValue  = reflect.ValueOf(qIfaces)
+	)
+
 	if qValue.Type() != t {
 		return reflect.Value{}, newSerdeErrorf("the deserialized query does not have the expected type, %v != %v", t.String(), qValue.Type().String())
 	}
+
 	return qValue, nil
 }
 
@@ -618,6 +610,62 @@ func (d *Deserializer) UnpackQueryID(v BackReference) (reflect.Value, *serdeErro
 	return reflect.ValueOf(res), nil
 }
 
+/*
+// PackCompiledIOP serializes a wizard.CompiledIOP, returning a BackReference to its index in PackedObject.CompiledIOP.
+func (s *Serializer) PackCompiledIOP(comp *wizard.CompiledIOP) (BackReference, *serdeError) {
+	if comp == nil {
+		return 0, nil
+	}
+	// Fast cache hit
+	if idx, ok := s.compiledIOPs[comp]; ok {
+		return BackReference(idx), nil
+	}
+	// Reserve slot and cache BEFORE packing to break recursion
+	idx := len(s.PackedObject.CompiledIOP)
+	s.compiledIOPs[comp] = idx
+	s.PackedObject.CompiledIOP = append(s.PackedObject.CompiledIOP, nil)
+
+	obj, err := s.PackStructObject(reflect.ValueOf(*comp))
+	if err != nil {
+		return 0, err.wrapPath("(compiled-IOP)")
+	}
+	s.PackedObject.CompiledIOP[idx] = obj
+	return BackReference(idx), nil
+}
+
+// UnpackCompiledIOP deserializes a wizard.CompiledIOP from a BackReference, caching the result.
+func (d *Deserializer) UnpackCompiledIOP(v BackReference) (reflect.Value, *serdeError) {
+	if v < 0 || int(v) >= len(d.PackedObject.CompiledIOP) {
+		return reflect.Value{}, newSerdeErrorf("invalid compiled-IOP backreference: %v", v)
+	}
+
+	if d.CompiledIOPs[v] == nil {
+
+		// Something to be aware of is that CompiledIOPs usually contains
+		// reference to themselves internally. Thus, if we don't cache a pointer
+		// to the compiledIOP, the deserialization will go into an infinite loop.
+		// To prevent that, we set a pointer to a zero value and it will be
+		// cached when the compiled IOP is unpacked. The pointed value is then
+		// assigned after the unpacking. With this approach, the ptr to the
+		// compiledIOP can immediately be returned for the recursive calls.
+		ptr := &wizard.CompiledIOP{}
+		d.CompiledIOPs[v] = ptr
+
+		packedCompiledIOP := d.PackedObject.CompiledIOP[v]
+		compiledIOP, err := d.UnpackStructObject(packedCompiledIOP, TypeOfCompiledIOP)
+		if err != nil {
+			return reflect.Value{}, err.wrapPath("(compiled-IOP)")
+		}
+
+		c := compiledIOP.Interface().(wizard.CompiledIOP)
+		*ptr = c
+	}
+
+	return reflect.ValueOf(d.CompiledIOPs[v]), nil
+}
+
+*/
+
 // PackStore serializes a column.Store, returning a BackReference to its index in PackedObject.Store.
 func (s *Serializer) PackStore(st *column.Store) (BackReference, *serdeError) {
 	if st == nil {
@@ -640,10 +688,12 @@ func (d *Deserializer) UnpackStore(v BackReference) (reflect.Value, *serdeError)
 	if v < 0 || int(v) >= len(d.PackedObject.Store) {
 		return reflect.Value{}, newSerdeErrorf("invalid store backreference: %v", v)
 	}
-	d.onceStores[v].Do(func() {
+
+	if d.stores[v] == nil {
 		preStore := d.PackedObject.Store[v]
 		d.stores[v] = preStore.Unpack()
-	})
+	}
+
 	return reflect.ValueOf(d.stores[v]), nil
 }
 
@@ -671,19 +721,18 @@ func (d *Deserializer) UnpackPlonkCircuit(v BackReference) (reflect.Value, *serd
 	if v < 0 || int(v) >= len(d.PackedObject.Circuits) {
 		return reflect.Value{}, newSerdeErrorf("invalid circuit backreference: %v", v)
 	}
-	d.onceCircuits[v].Do(func() {
+
+	if d.circuits[v] == nil {
 		circ := &cs.SparseR1CS{}
 		packedCircuit := d.PackedObject.Circuits[v]
 		r := bytes.NewReader(packedCircuit)
 		if _, err := circ.ReadFrom(r); err != nil {
-			d.circuitsErr[v] = newSerdeErrorf("could not scan the unpacked circuit, err=%w", err)
-			return
+			return reflect.Value{}, newSerdeErrorf("could not scan the unpacked circuit, err=%w", err)
 		}
+
 		d.circuits[v] = circ
-	})
-	if se := d.circuitsErr[v]; se != nil {
-		return reflect.Value{}, se
 	}
+
 	return reflect.ValueOf(d.circuits[v]), nil
 }
 
@@ -716,19 +765,18 @@ func (d *Deserializer) UnpackExpression(v BackReference) (reflect.Value, *serdeE
 	if v < 0 || int(v) >= len(d.PackedObject.Expressions) {
 		return reflect.Value{}, newSerdeErrorf("invalid expression backreference: %v", v)
 	}
-	d.onceExprs[v].Do(func() {
+
+	if d.expressions[v] == nil {
 		preExpr := d.PackedObject.Expressions[v]
 		expr, err := d.UnpackStructObject(preExpr, TypeOfExpression)
 		if err != nil {
-			d.exprErr[v] = err
-			return
+			return reflect.Value{}, err
 		}
+
 		unpacked := expr.Interface().(symbolic.Expression)
 		d.expressions[v] = &unpacked
-	})
-	if se := d.exprErr[v]; se != nil {
-		return reflect.Value{}, se
 	}
+
 	return reflect.ValueOf(d.expressions[v]), nil
 }
 
@@ -1174,59 +1222,3 @@ func (d *Deserializer) warnf(warning string) {
 func backReferenceFromCBORInt(n any) BackReference {
 	return BackReference(n.(uint64))
 }
-
-/*
-// PackCompiledIOP serializes a wizard.CompiledIOP, returning a BackReference to its index in PackedObject.CompiledIOP.
-func (s *Serializer) PackCompiledIOP(comp *wizard.CompiledIOP) (BackReference, *serdeError) {
-	if comp == nil {
-		return 0, nil
-	}
-	// Fast cache hit
-	if idx, ok := s.compiledIOPs[comp]; ok {
-		return BackReference(idx), nil
-	}
-	// Reserve slot and cache BEFORE packing to break recursion
-	idx := len(s.PackedObject.CompiledIOP)
-	s.compiledIOPs[comp] = idx
-	s.PackedObject.CompiledIOP = append(s.PackedObject.CompiledIOP, nil)
-
-	obj, err := s.PackStructObject(reflect.ValueOf(*comp))
-	if err != nil {
-		return 0, err.wrapPath("(compiled-IOP)")
-	}
-	s.PackedObject.CompiledIOP[idx] = obj
-	return BackReference(idx), nil
-}
-
-// UnpackCompiledIOP deserializes a wizard.CompiledIOP from a BackReference, caching the result.
-func (d *Deserializer) UnpackCompiledIOP(v BackReference) (reflect.Value, *serdeError) {
-	if v < 0 || int(v) >= len(d.PackedObject.CompiledIOP) {
-		return reflect.Value{}, newSerdeErrorf("invalid compiled-IOP backreference: %v", v)
-	}
-
-	if d.CompiledIOPs[v] == nil {
-
-		// Something to be aware of is that CompiledIOPs usually contains
-		// reference to themselves internally. Thus, if we don't cache a pointer
-		// to the compiledIOP, the deserialization will go into an infinite loop.
-		// To prevent that, we set a pointer to a zero value and it will be
-		// cached when the compiled IOP is unpacked. The pointed value is then
-		// assigned after the unpacking. With this approach, the ptr to the
-		// compiledIOP can immediately be returned for the recursive calls.
-		ptr := &wizard.CompiledIOP{}
-		d.CompiledIOPs[v] = ptr
-
-		packedCompiledIOP := d.PackedObject.CompiledIOP[v]
-		compiledIOP, err := d.UnpackStructObject(packedCompiledIOP, TypeOfCompiledIOP)
-		if err != nil {
-			return reflect.Value{}, err.wrapPath("(compiled-IOP)")
-		}
-
-		c := compiledIOP.Interface().(wizard.CompiledIOP)
-		*ptr = c
-	}
-
-	return reflect.ValueOf(d.CompiledIOPs[v]), nil
-}
-
-*/
