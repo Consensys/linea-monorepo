@@ -16,8 +16,6 @@ package net.consensys.linea.sequencer.txpoolvalidation.shared;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.google.protobuf.ByteString;
-import java.io.IOException;
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
 import io.grpc.Status;
@@ -26,6 +24,7 @@ import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
 import io.grpc.stub.StreamObserver;
 import io.grpc.testing.GrpcCleanupRule;
+import java.io.IOException;
 import java.util.Optional;
 import net.consensys.linea.sequencer.txpoolvalidation.shared.KarmaServiceClient.KarmaInfo;
 import net.vac.prover.GetUserTierInfoReply;
@@ -41,15 +40,15 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Comprehensive tests for KarmaServiceClient functionality.
- * 
- * Tests gRPC communication, error handling, timeouts, and karma info parsing.
+ *
+ * <p>Tests gRPC communication, error handling, timeouts, and karma info parsing.
  */
 class KarmaServiceClientTest {
 
-  @org.junit.Rule
-  public final GrpcCleanupRule grpcCleanup = new GrpcCleanupRule();
+  @org.junit.Rule public final GrpcCleanupRule grpcCleanup = new GrpcCleanupRule();
 
-  private static final Address TEST_USER = Address.fromHexString("0x1234567890123456789012345678901234567890");
+  private static final Address TEST_USER =
+      Address.fromHexString("0x1234567890123456789012345678901234567890");
 
   private KarmaServiceClient client;
   private Server mockServer;
@@ -74,12 +73,12 @@ class KarmaServiceClientTest {
   void testSuccessfulKarmaInfoRetrieval() throws Exception {
     // Create mock server that returns valid karma info
     String serverName = InProcessServerBuilder.generateName();
-    mockServer = InProcessServerBuilder
-        .forName(serverName)
-        .directExecutor()
-        .addService(new MockKarmaService(MockResponseType.SUCCESS))
-        .build()
-        .start();
+    mockServer =
+        InProcessServerBuilder.forName(serverName)
+            .directExecutor()
+            .addService(new MockKarmaService(MockResponseType.SUCCESS))
+            .build()
+            .start();
 
     inProcessChannel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
     client = new KarmaServiceClient("Test", "localhost", 8545, false, 5000, inProcessChannel);
@@ -99,12 +98,12 @@ class KarmaServiceClientTest {
   void testUserNotFound() throws Exception {
     // Create mock server that returns NOT_FOUND error
     String serverName = InProcessServerBuilder.generateName();
-    mockServer = InProcessServerBuilder
-        .forName(serverName)
-        .directExecutor()
-        .addService(new MockKarmaService(MockResponseType.NOT_FOUND))
-        .build()
-        .start();
+    mockServer =
+        InProcessServerBuilder.forName(serverName)
+            .directExecutor()
+            .addService(new MockKarmaService(MockResponseType.NOT_FOUND))
+            .build()
+            .start();
 
     inProcessChannel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
     client = new KarmaServiceClient("Test", "localhost", 8545, false, 5000, inProcessChannel);
@@ -118,12 +117,12 @@ class KarmaServiceClientTest {
   void testServiceError() throws Exception {
     // Create mock server that returns service error
     String serverName = InProcessServerBuilder.generateName();
-    mockServer = InProcessServerBuilder
-        .forName(serverName)
-        .directExecutor()
-        .addService(new MockKarmaService(MockResponseType.SERVICE_ERROR))
-        .build()
-        .start();
+    mockServer =
+        InProcessServerBuilder.forName(serverName)
+            .directExecutor()
+            .addService(new MockKarmaService(MockResponseType.SERVICE_ERROR))
+            .build()
+            .start();
 
     inProcessChannel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
     client = new KarmaServiceClient("Test", "localhost", 8545, false, 5000, inProcessChannel);
@@ -137,15 +136,17 @@ class KarmaServiceClientTest {
   void testTimeout() throws Exception {
     // Create mock server that delays response
     String serverName = InProcessServerBuilder.generateName();
-    mockServer = InProcessServerBuilder
-        .forName(serverName)
-        .directExecutor()
-        .addService(new MockKarmaService(MockResponseType.TIMEOUT))
-        .build()
-        .start();
+    mockServer =
+        InProcessServerBuilder.forName(serverName)
+            .directExecutor()
+            .addService(new MockKarmaService(MockResponseType.TIMEOUT))
+            .build()
+            .start();
 
     inProcessChannel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
-    client = new KarmaServiceClient("Test", "localhost", 8545, false, 100, inProcessChannel); // 100ms timeout
+    client =
+        new KarmaServiceClient(
+            "Test", "localhost", 8545, false, 100, inProcessChannel); // 100ms timeout
 
     Optional<KarmaInfo> result = client.fetchKarmaInfo(TEST_USER);
 
@@ -156,12 +157,12 @@ class KarmaServiceClientTest {
   void testServiceUnavailable() throws Exception {
     // Create mock server that throws UNAVAILABLE
     String serverName = InProcessServerBuilder.generateName();
-    mockServer = InProcessServerBuilder
-        .forName(serverName)
-        .directExecutor()
-        .addService(new MockKarmaService(MockResponseType.UNAVAILABLE))
-        .build()
-        .start();
+    mockServer =
+        InProcessServerBuilder.forName(serverName)
+            .directExecutor()
+            .addService(new MockKarmaService(MockResponseType.UNAVAILABLE))
+            .build()
+            .start();
 
     inProcessChannel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
     client = new KarmaServiceClient("Test", "localhost", 8545, false, 5000, inProcessChannel);
@@ -175,12 +176,12 @@ class KarmaServiceClientTest {
   void testEmptyResponse() throws Exception {
     // Create mock server that returns empty response
     String serverName = InProcessServerBuilder.generateName();
-    mockServer = InProcessServerBuilder
-        .forName(serverName)
-        .directExecutor()
-        .addService(new MockKarmaService(MockResponseType.EMPTY))
-        .build()
-        .start();
+    mockServer =
+        InProcessServerBuilder.forName(serverName)
+            .directExecutor()
+            .addService(new MockKarmaService(MockResponseType.EMPTY))
+            .build()
+            .start();
 
     inProcessChannel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
     client = new KarmaServiceClient("Test", "localhost", 8545, false, 5000, inProcessChannel);
@@ -205,12 +206,12 @@ class KarmaServiceClientTest {
   void testNoKarmaTierInfo() throws Exception {
     // Create mock server that returns response without tier info
     String serverName = InProcessServerBuilder.generateName();
-    mockServer = InProcessServerBuilder
-        .forName(serverName)
-        .directExecutor()
-        .addService(new MockKarmaService(MockResponseType.NO_TIER))
-        .build()
-        .start();
+    mockServer =
+        InProcessServerBuilder.forName(serverName)
+            .directExecutor()
+            .addService(new MockKarmaService(MockResponseType.NO_TIER))
+            .build()
+            .start();
 
     inProcessChannel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
     client = new KarmaServiceClient("Test", "localhost", 8545, false, 5000, inProcessChannel);
@@ -233,9 +234,7 @@ class KarmaServiceClientTest {
     NO_TIER
   }
 
-  /**
-   * Mock gRPC service for testing different response scenarios
-   */
+  /** Mock gRPC service for testing different response scenarios */
   private static class MockKarmaService extends RlnProverGrpc.RlnProverImplBase {
     private final MockResponseType responseType;
 
@@ -244,20 +243,20 @@ class KarmaServiceClientTest {
     }
 
     @Override
-    public void getUserTierInfo(GetUserTierInfoRequest request, StreamObserver<GetUserTierInfoReply> responseObserver) {
+    public void getUserTierInfo(
+        GetUserTierInfoRequest request, StreamObserver<GetUserTierInfoReply> responseObserver) {
       switch (responseType) {
         case SUCCESS:
-          UserTierInfoResult result = UserTierInfoResult.newBuilder()
-              .setTier(Tier.newBuilder().setName("Regular").setQuota(720).build())
-              .setTxCount(10)
-              .setCurrentEpoch(12345)
-              .setCurrentEpochSlice(1)
-              .build();
-          
-          GetUserTierInfoReply reply = GetUserTierInfoReply.newBuilder()
-              .setRes(result)
-              .build();
-          
+          UserTierInfoResult result =
+              UserTierInfoResult.newBuilder()
+                  .setTier(Tier.newBuilder().setName("Regular").setQuota(720).build())
+                  .setTxCount(10)
+                  .setCurrentEpoch(12345)
+                  .setCurrentEpochSlice(1)
+                  .build();
+
+          GetUserTierInfoReply reply = GetUserTierInfoReply.newBuilder().setRes(result).build();
+
           responseObserver.onNext(reply);
           responseObserver.onCompleted();
           break;
@@ -267,10 +266,11 @@ class KarmaServiceClientTest {
           break;
 
         case SERVICE_ERROR:
-          GetUserTierInfoReply errorReply = GetUserTierInfoReply.newBuilder()
-              .setError(UserTierInfoError.newBuilder().setMessage("Service error").build())
-              .build();
-          
+          GetUserTierInfoReply errorReply =
+              GetUserTierInfoReply.newBuilder()
+                  .setError(UserTierInfoError.newBuilder().setMessage("Service error").build())
+                  .build();
+
           responseObserver.onNext(errorReply);
           responseObserver.onCompleted();
           break;
@@ -290,17 +290,17 @@ class KarmaServiceClientTest {
           break;
 
         case NO_TIER:
-          UserTierInfoResult noTierResult = UserTierInfoResult.newBuilder()
-              .setTxCount(5)
-              .setCurrentEpoch(12345)
-              .setCurrentEpochSlice(1)
-              // No tier info
-              .build();
-          
-          GetUserTierInfoReply noTierReply = GetUserTierInfoReply.newBuilder()
-              .setRes(noTierResult)
-              .build();
-          
+          UserTierInfoResult noTierResult =
+              UserTierInfoResult.newBuilder()
+                  .setTxCount(5)
+                  .setCurrentEpoch(12345)
+                  .setCurrentEpochSlice(1)
+                  // No tier info
+                  .build();
+
+          GetUserTierInfoReply noTierReply =
+              GetUserTierInfoReply.newBuilder().setRes(noTierResult).build();
+
           responseObserver.onNext(noTierReply);
           responseObserver.onCompleted();
           break;

@@ -38,7 +38,7 @@ jobs:
         if: matrix.language != 'github-actions'
         uses: github/codeql-action/autobuild@v3
         env:
-          GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3

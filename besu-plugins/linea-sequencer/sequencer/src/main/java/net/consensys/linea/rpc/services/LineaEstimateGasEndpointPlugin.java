@@ -25,6 +25,8 @@ public class LineaEstimateGasEndpointPlugin extends AbstractLineaRequiredPlugin 
 
   private TransactionSimulationService transactionSimulationService;
   private LineaEstimateGas lineaEstimateGasMethod;
+  private net.consensys.linea.sequencer.txpoolvalidation.shared.SharedServiceManager
+      sharedServiceManager;
 
   /**
    * Register the RPC service.
@@ -54,18 +56,36 @@ public class LineaEstimateGasEndpointPlugin extends AbstractLineaRequiredPlugin 
   @Override
   public void beforeExternalServices() {
     super.beforeExternalServices();
+    // Initialize shared gasless services (deny list, karma client) so estimateGas can use them
+    sharedServiceManager =
+        new net.consensys.linea.sequencer.txpoolvalidation.shared.SharedServiceManager(
+            rlnValidatorConfiguration(), lineaRpcConfiguration());
+
     lineaEstimateGasMethod.init(
         lineaRpcConfiguration(),
         transactionPoolValidatorConfiguration(),
         profitabilityConfiguration(),
         l1L2BridgeSharedConfiguration(),
-        tracerConfiguration());
+        tracerConfiguration(),
+        sharedServiceManager.getDenyListManager(),
+        sharedServiceManager.getKarmaServiceClient());
   }
 
   @Override
   public void doStart() {
     if (l1L2BridgeSharedConfiguration().equals(LineaL1L2BridgeSharedConfiguration.TEST_DEFAULT)) {
       throw new IllegalArgumentException("L1L2 bridge settings have not been defined.");
+    }
+  }
+
+  @Override
+  public void stop() {
+    super.stop();
+    if (sharedServiceManager != null) {
+      try {
+        sharedServiceManager.close();
+      } catch (java.io.IOException ignored) {
+      }
     }
   }
 }

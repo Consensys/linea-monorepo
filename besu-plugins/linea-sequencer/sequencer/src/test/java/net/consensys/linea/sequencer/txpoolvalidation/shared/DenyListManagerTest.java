@@ -31,16 +31,19 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Comprehensive tests for DenyListManager functionality.
- * 
- * Tests file I/O, TTL expiration, thread safety, and all core operations.
+ *
+ * <p>Tests file I/O, TTL expiration, thread safety, and all core operations.
  */
 class DenyListManagerTest {
 
   @TempDir Path tempDir;
 
-  private static final Address TEST_ADDRESS_1 = Address.fromHexString("0x1234567890123456789012345678901234567890");
-  private static final Address TEST_ADDRESS_2 = Address.fromHexString("0x9876543210987654321098765432109876543210");
-  private static final Address TEST_ADDRESS_3 = Address.fromHexString("0xabcdefabcdefabcdefabcdefabcdefabcdefabcd");
+  private static final Address TEST_ADDRESS_1 =
+      Address.fromHexString("0x1234567890123456789012345678901234567890");
+  private static final Address TEST_ADDRESS_2 =
+      Address.fromHexString("0x9876543210987654321098765432109876543210");
+  private static final Address TEST_ADDRESS_3 =
+      Address.fromHexString("0xabcdefabcdefabcdefabcdefabcdefabcdefabcd");
 
   private DenyListManager denyListManager;
   private Path denyListFile;
@@ -59,12 +62,13 @@ class DenyListManagerTest {
 
   @Test
   void testBasicDenyListOperations() {
-    denyListManager = new DenyListManager(
-        "Test",
-        denyListFile.toString(),
-        60, // 60 minutes TTL
-        0   // No auto-refresh
-    );
+    denyListManager =
+        new DenyListManager(
+            "Test",
+            denyListFile.toString(),
+            60, // 60 minutes TTL
+            0 // No auto-refresh
+            );
 
     // Initially empty
     assertThat(denyListManager.size()).isEqualTo(0);
@@ -94,12 +98,7 @@ class DenyListManagerTest {
 
   @Test
   void testFilePersistence() throws IOException {
-    denyListManager = new DenyListManager(
-        "Test",
-        denyListFile.toString(),
-        60,
-        0
-    );
+    denyListManager = new DenyListManager("Test", denyListFile.toString(), 60, 0);
 
     // Add multiple addresses
     denyListManager.addToDenyList(TEST_ADDRESS_1);
@@ -113,12 +112,7 @@ class DenyListManagerTest {
 
     // Close and recreate manager to test loading from file
     denyListManager.close();
-    denyListManager = new DenyListManager(
-        "Test",
-        denyListFile.toString(),
-        60,
-        0
-    );
+    denyListManager = new DenyListManager("Test", denyListFile.toString(), 60, 0);
 
     // Should load from file
     assertThat(denyListManager.size()).isEqualTo(2);
@@ -129,16 +123,16 @@ class DenyListManagerTest {
   @Test
   void testTtlExpiration() throws IOException {
     // Create manager with very short TTL for testing
-    denyListManager = new DenyListManager(
-        "Test",
-        denyListFile.toString(),
-        0, // 0 minutes TTL - everything expires immediately
-        0
-    );
+    denyListManager =
+        new DenyListManager(
+            "Test",
+            denyListFile.toString(),
+            0, // 0 minutes TTL - everything expires immediately
+            0);
 
     // Add address - it should be immediately expired
     denyListManager.addToDenyList(TEST_ADDRESS_1);
-    
+
     // Check that it's marked as expired when checked
     assertThat(denyListManager.isDenied(TEST_ADDRESS_1)).isFalse();
     assertThat(denyListManager.size()).isEqualTo(0); // Should be cleaned up
@@ -147,12 +141,10 @@ class DenyListManagerTest {
   @Test
   void testFileRefresh() throws Exception {
     // Create manager with auto-refresh
-    denyListManager = new DenyListManager(
-        "Test",
-        denyListFile.toString(),
-        60,
-        1 // Refresh every 1 second
-    );
+    denyListManager =
+        new DenyListManager(
+            "Test", denyListFile.toString(), 60, 1 // Refresh every 1 second
+            );
 
     // Manually add entry to file
     Instant now = Instant.now();
@@ -160,8 +152,7 @@ class DenyListManagerTest {
     Files.writeString(denyListFile, fileEntry);
 
     // Wait for refresh to pick up the change
-    await().atMost(Duration.ofSeconds(3))
-        .until(() -> denyListManager.isDenied(TEST_ADDRESS_3));
+    await().atMost(Duration.ofSeconds(3)).until(() -> denyListManager.isDenied(TEST_ADDRESS_3));
 
     assertThat(denyListManager.size()).isEqualTo(1);
     assertThat(denyListManager.isDenied(TEST_ADDRESS_3)).isTrue();
@@ -170,19 +161,17 @@ class DenyListManagerTest {
   @Test
   void testMalformedFileHandling() throws IOException {
     // Create file with malformed entries
-    String malformedContent = "invalid-address,2023-01-01T00:00:00Z\n" +
-                              "0x1234567890123456789012345678901234567890,invalid-timestamp\n" +
-                              "incomplete-line\n" +
-                              TEST_ADDRESS_1.toHexString().toLowerCase() + "," + Instant.now().toString();
-    
+    String malformedContent =
+        "invalid-address,2023-01-01T00:00:00Z\n"
+            + "0x1234567890123456789012345678901234567890,invalid-timestamp\n"
+            + "incomplete-line\n"
+            + TEST_ADDRESS_1.toHexString().toLowerCase()
+            + ","
+            + Instant.now().toString();
+
     Files.writeString(denyListFile, malformedContent);
 
-    denyListManager = new DenyListManager(
-        "Test",
-        denyListFile.toString(),
-        60,
-        0
-    );
+    denyListManager = new DenyListManager("Test", denyListFile.toString(), 60, 0);
 
     // Should load only the valid entry
     assertThat(denyListManager.size()).isEqualTo(1);
@@ -194,23 +183,29 @@ class DenyListManagerTest {
     // Create file with expired and valid entries
     Instant expired = Instant.now().minus(2, ChronoUnit.HOURS);
     Instant valid = Instant.now();
-    
-    String fileContent = TEST_ADDRESS_1.toHexString().toLowerCase() + "," + expired.toString() + "\n" +
-                        TEST_ADDRESS_2.toHexString().toLowerCase() + "," + valid.toString();
-    
+
+    String fileContent =
+        TEST_ADDRESS_1.toHexString().toLowerCase()
+            + ","
+            + expired.toString()
+            + "\n"
+            + TEST_ADDRESS_2.toHexString().toLowerCase()
+            + ","
+            + valid.toString();
+
     Files.writeString(denyListFile, fileContent);
 
-    denyListManager = new DenyListManager(
-        "Test",
-        denyListFile.toString(),
-        60, // 60 minutes TTL
-        0
-    );
+    denyListManager =
+        new DenyListManager(
+            "Test",
+            denyListFile.toString(),
+            60, // 60 minutes TTL
+            0);
 
     // Should load only the non-expired entry
     assertThat(denyListManager.size()).isEqualTo(1);
     assertThat(denyListManager.isDenied(TEST_ADDRESS_1)).isFalse(); // Expired
-    assertThat(denyListManager.isDenied(TEST_ADDRESS_2)).isTrue();   // Valid
+    assertThat(denyListManager.isDenied(TEST_ADDRESS_2)).isTrue(); // Valid
 
     // File should be cleaned up automatically
     String cleanedContent = Files.readString(denyListFile);
@@ -220,23 +215,20 @@ class DenyListManagerTest {
 
   @Test
   void testConcurrentOperations() throws InterruptedException {
-    denyListManager = new DenyListManager(
-        "Test",
-        denyListFile.toString(),
-        60,
-        0
-    );
+    denyListManager = new DenyListManager("Test", denyListFile.toString(), 60, 0);
 
     // Test concurrent operations
     Thread[] threads = new Thread[10];
-    
+
     for (int i = 0; i < threads.length; i++) {
       final int threadId = i;
-      threads[i] = new Thread(() -> {
-        Address testAddr = Address.fromHexString(String.format("0x%040d", threadId));
-        denyListManager.addToDenyList(testAddr);
-        assertThat(denyListManager.isDenied(testAddr)).isTrue();
-      });
+      threads[i] =
+          new Thread(
+              () -> {
+                Address testAddr = Address.fromHexString(String.format("0x%040d", threadId));
+                denyListManager.addToDenyList(testAddr);
+                assertThat(denyListManager.isDenied(testAddr)).isTrue();
+              });
     }
 
     // Start all threads
@@ -255,12 +247,7 @@ class DenyListManagerTest {
 
   @Test
   void testReloadFromFile() throws IOException {
-    denyListManager = new DenyListManager(
-        "Test",
-        denyListFile.toString(),
-        60,
-        0
-    );
+    denyListManager = new DenyListManager("Test", denyListFile.toString(), 60, 0);
 
     // Add entry via manager
     denyListManager.addToDenyList(TEST_ADDRESS_1);
@@ -284,13 +271,8 @@ class DenyListManagerTest {
   void testNonExistentFile() {
     // Create manager with non-existent file
     Path nonExistentFile = tempDir.resolve("non_existent.txt");
-    
-    denyListManager = new DenyListManager(
-        "Test",
-        nonExistentFile.toString(),
-        60,
-        0
-    );
+
+    denyListManager = new DenyListManager("Test", nonExistentFile.toString(), 60, 0);
 
     // Should initialize with empty list
     assertThat(denyListManager.size()).isEqualTo(0);
@@ -301,22 +283,17 @@ class DenyListManagerTest {
     assertThat(denyListManager.size()).isEqualTo(1);
   }
 
-  @Test 
+  @Test
   void testAtomicFileOperations() throws IOException {
-    denyListManager = new DenyListManager(
-        "Test",
-        denyListFile.toString(),
-        60,
-        0
-    );
+    denyListManager = new DenyListManager("Test", denyListFile.toString(), 60, 0);
 
     // Add entry and verify atomic operation
     denyListManager.addToDenyList(TEST_ADDRESS_1);
-    
+
     // File should exist and be readable
     assertThat(Files.exists(denyListFile)).isTrue();
     assertThat(Files.isReadable(denyListFile)).isTrue();
-    
+
     // Content should be valid
     String content = Files.readString(denyListFile);
     assertThat(content).contains(TEST_ADDRESS_1.toHexString().toLowerCase());

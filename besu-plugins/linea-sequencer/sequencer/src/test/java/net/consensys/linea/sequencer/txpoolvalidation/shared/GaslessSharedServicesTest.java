@@ -24,16 +24,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/**
- * Simple tests to verify gasless shared services work correctly together.
- */
+/** Simple tests to verify gasless shared services work correctly together. */
 class GaslessSharedServicesTest {
 
   @TempDir Path tempDir;
 
-  private static final Address TEST_ADDRESS = Address.fromHexString("0x1234567890123456789012345678901234567890");
-  private static final String TEST_NULLIFIER = "0xa1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456";
-  private static final String TEST_EPOCH = "0x1c61ef0b2ebc0235d85fe8537b4455549356e3895005ba7a03fbd4efc9ba3692";
+  private static final Address TEST_ADDRESS =
+      Address.fromHexString("0x1234567890123456789012345678901234567890");
+  private static final String TEST_NULLIFIER =
+      "0xa1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456";
+  private static final String TEST_EPOCH =
+      "0x1c61ef0b2ebc0235d85fe8537b4455549356e3895005ba7a03fbd4efc9ba3692";
 
   private DenyListManager denyListManager;
   private NullifierTracker nullifierTracker;
@@ -65,7 +66,7 @@ class GaslessSharedServicesTest {
     assertThat(denyListManager).isNotNull();
     assertThat(nullifierTracker).isNotNull();
     assertThat(karmaServiceClient).isNotNull();
-    
+
     assertThat(denyListManager.size()).isEqualTo(0);
     assertThat(nullifierTracker.getStats().currentNullifiers()).isEqualTo(0);
     assertThat(karmaServiceClient.isAvailable()).isTrue();
@@ -75,13 +76,13 @@ class GaslessSharedServicesTest {
   void testDenyListBasicOperations() {
     // Initially not denied
     assertThat(denyListManager.isDenied(TEST_ADDRESS)).isFalse();
-    
+
     // Add to deny list
     boolean added = denyListManager.addToDenyList(TEST_ADDRESS);
     assertThat(added).isTrue();
     assertThat(denyListManager.isDenied(TEST_ADDRESS)).isTrue();
     assertThat(denyListManager.size()).isEqualTo(1);
-    
+
     // Remove from deny list
     boolean removed = denyListManager.removeFromDenyList(TEST_ADDRESS);
     assertThat(removed).isTrue();
@@ -94,14 +95,14 @@ class GaslessSharedServicesTest {
     // First use should be allowed
     boolean isNew = nullifierTracker.checkAndMarkNullifier(TEST_NULLIFIER, TEST_EPOCH);
     assertThat(isNew).isTrue();
-    
+
     // Reuse should be blocked
     boolean isReused = nullifierTracker.checkAndMarkNullifier(TEST_NULLIFIER, TEST_EPOCH);
     assertThat(isReused).isFalse();
-    
+
     // Verify tracking
     assertThat(nullifierTracker.isNullifierUsed(TEST_NULLIFIER, TEST_EPOCH)).isTrue();
-    
+
     NullifierTracker.NullifierStats stats = nullifierTracker.getStats();
     assertThat(stats.totalTracked()).isEqualTo(1);
     assertThat(stats.duplicateAttempts()).isEqualTo(1);
@@ -110,11 +111,11 @@ class GaslessSharedServicesTest {
   @Test
   void testKarmaServiceClientConfiguration() {
     assertThat(karmaServiceClient.isAvailable()).isTrue();
-    
+
     // Test that service handles unavailable scenarios gracefully
-    java.util.Optional<KarmaServiceClient.KarmaInfo> result = 
+    java.util.Optional<KarmaServiceClient.KarmaInfo> result =
         karmaServiceClient.fetchKarmaInfo(TEST_ADDRESS);
-    
+
     // Since no actual service is running, should return empty
     assertThat(result).isEmpty();
   }
@@ -125,7 +126,7 @@ class GaslessSharedServicesTest {
     denyListManager.close();
     nullifierTracker.close();
     karmaServiceClient.close();
-    
+
     // After closing, karma service should not be available
     assertThat(karmaServiceClient.isAvailable()).isFalse();
   }

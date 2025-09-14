@@ -7,7 +7,7 @@ host-allowlist=["*"]
 revert-reason-enabled=true
 
 target-gas-limit=2000000000
-min-gas-price=1000000
+min-gas-price=0
 tx-pool-min-gas-price=0
 max-peers=10
 
@@ -54,8 +54,8 @@ plugin-linea-estimate-gas-compatibility-mode-enabled=false
 plugin-linea-extra-data-pricing-enabled=true
 plugin-linea-l1l2-bridge-contract="0xe537D669CA013d86EBeF1D64e40fC74CADC91987"
 plugin-linea-l1l2-bridge-topic="e856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c"
-plugin-linea-tx-pool-profitability-check-api-enabled=true
-plugin-linea-tx-pool-profitability-check-p2p-enabled=true
+plugin-linea-tx-pool-profitability-check-api-enabled=false
+plugin-linea-tx-pool-profitability-check-p2p-enabled=false
 plugin-linea-tx-pool-simulation-check-api-enabled=false
 plugin-linea-tx-pool-simulation-check-p2p-enabled=false
 plugin-linea-max-block-calldata-size=109000
@@ -74,7 +74,8 @@ Xsynchronizer-fast-sync-full-validation-rate=0.000001
 tx-pool-priority-senders=["0xfe3b557e8fb62b89f4916b721be55ceb828dbd73",
   "0xd42e308fc964b71e18126df469c21b0d7bcb86cc",
   "0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0",
-  "0xc8c92fe825d8930b9357c006e0af160dfa727a62"]
+  "0xc8c92fe825d8930b9357c006e0af160dfa727a62",
+  "0x8cdcc370846c9f669489227465f80e6cc4ecd050"]
 
 Xin-process-rpc-enabled=true
 Xin-process-rpc-apis=["ETH", "MINER"]

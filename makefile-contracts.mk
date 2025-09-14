@@ -36,8 +36,8 @@ deploy-l2messageservice:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
 		MESSAGE_SERVICE_CONTRACT_NAME=L2MessageService \
-		PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae} \
-		RPC_URL=http:\\localhost:8545/ \
+		PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0xb17202c37cce9498e6f7dcdc1abd207802d09b5eee96677ea219ac867a198b91} \
+		RPC_URL=http:\\localhost:9045/ \
 		L2MSGSERVICE_SECURITY_COUNCIL=0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266 \
 		L2MSGSERVICE_L1L2_MESSAGE_SETTER=$${L2MSGSERVICE_L1L2_MESSAGE_SETTER:-0xd42e308fc964b71e18126df469c21b0d7bcb86cc} \
 		L2MSGSERVICE_RATE_LIMIT_PERIOD=86400 \
@@ -93,18 +93,138 @@ deploy-l2-test-erc20:
 		TEST_ERC20_INITIAL_SUPPLY=100000 \
 		npx ts-node local-deployments-artifacts/deployTestERC20.ts
 
+deploy-status-network-contracts:
+		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
+		# Deploy Status Network contracts (Karma, StakeManager, RLN, etc.) using Forge
+		@echo "Deploying Status Network Contracts..."
+		@echo "Deploying KarmaTiers contract..."
+		@cd status-network-contracts && \
+		FOUNDRY_DISABLE_NIGHTLY_WARNING=true ETH_FROM=0x1B9AbEeC3215D8AdE8A33607f2cF0f4F60e5F0D0 forge script script/DeployKarmaTiers.s.sol:DeployKarmaTiersScript \
+			--rpc-url http://localhost:8545 \
+			--private-key $${DEPLOYMENT_PRIVATE_KEY:-0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae} \
+			--broadcast --root . || { echo "KarmaTiers deployment failed"; exit 1; }
+		@echo "KarmaTiers deployed successfully!"
+		@echo "Deploying StakeManager contract..."
+		@cd status-network-contracts && \
+		FOUNDRY_DISABLE_NIGHTLY_WARNING=true ETH_FROM=0x1B9AbEeC3215D8AdE8A33607f2cF0f4F60e5F0D0 forge script script/DeployStakeManager.s.sol:DeployStakeManagerScript \
+			--rpc-url http://localhost:8545 \
+			--private-key $${DEPLOYMENT_PRIVATE_KEY:-0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae} \
+			--broadcast --root . || { echo "StakeManager deployment failed"; exit 1; }
+		@echo "StakeManager deployed successfully!"
+		@echo "Deploying Karma contract..."
+		@cd status-network-contracts && \
+		FOUNDRY_DISABLE_NIGHTLY_WARNING=true ETH_FROM=0x1B9AbEeC3215D8AdE8A33607f2cF0f4F60e5F0D0 forge script script/DeployKarma.s.sol:DeployKarmaScript \
+			--rpc-url http://localhost:8545 \
+			--private-key $${DEPLOYMENT_PRIVATE_KEY:-0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae} \
+			--broadcast --root . || { echo "Karma deployment failed"; exit 1; }
+		@echo "Karma deployed successfully!"
+		@echo "Deploying RLN contract..."
+		@cd status-network-contracts && \
+		KARMA_ADDRESS=$$(./scripts/get-deployed-address.sh DeployKarma.s.sol Karma 2>/dev/null) && \
+		if [ -z "$$KARMA_ADDRESS" ]; then \
+			echo "Failed to extract Karma contract address"; \
+			exit 1; \
+		fi && \
+		echo "Using Karma address: $$KARMA_ADDRESS" && \
+		FOUNDRY_DISABLE_NIGHTLY_WARNING=true ETH_FROM=0x1B9AbEeC3215D8AdE8A33607f2cF0f4F60e5F0D0 DEPTH=20 KARMA_ADDRESS=$$KARMA_ADDRESS forge script script/RLN.s.sol:DeployRLNScript \
+			--rpc-url http://localhost:8545 \
+			--private-key $${DEPLOYMENT_PRIVATE_KEY:-0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae} \
+			--broadcast --root . || { echo "RLN deployment failed"; exit 1; }
+		@echo "RLN deployed successfully!"
+		@echo "Deploying KarmaNFT contract..."
+		@cd status-network-contracts && \
+		KARMA_ADDRESS=$$(./scripts/get-deployed-address.sh DeployKarma.s.sol Karma 2>/dev/null) && \
+		if [ -z "$$KARMA_ADDRESS" ]; then \
+			echo "Failed to extract Karma contract address"; \
+			exit 1; \
+		fi && \
+		echo "Using Karma address: $$KARMA_ADDRESS" && \
+		FOUNDRY_DISABLE_NIGHTLY_WARNING=true ETH_FROM=0x1B9AbEeC3215D8AdE8A33607f2cF0f4F60e5F0D0 KARMA_ADDRESS=$$KARMA_ADDRESS forge script script/DeployKarmaNFT.s.sol:DeployKarmaNFTScript \
+			--rpc-url http://localhost:8545 \
+			--private-key $${DEPLOYMENT_PRIVATE_KEY:-0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae} \
+			--broadcast --root . || { echo "KarmaNFT deployment failed"; exit 1; }
+		@echo "KarmaNFT deployed successfully!"
+		@echo "All Status Network contracts deployed successfully!"
+		@echo "Deployment Summary:"
+		@cd status-network-contracts && \
+		KARMA_TIERS=$$(./scripts/get-deployed-address.sh DeployKarmaTiers.s.sol KarmaTiers 2>/dev/null) && \
+		STAKE_MANAGER=$$(./scripts/get-deployed-address.sh DeployStakeManager.s.sol StakeManager 2>/dev/null) && \
+		KARMA=$$(./scripts/get-deployed-address.sh DeployKarma.s.sol Karma 2>/dev/null) && \
+		RLN=$$(./scripts/get-deployed-address.sh RLN.s.sol RLN 2>/dev/null) && \
+		KARMA_NFT=$$(./scripts/get-deployed-address.sh DeployKarmaNFT.s.sol KarmaNFT 2>/dev/null) && \
+		echo "   KarmaTiers: $$KARMA_TIERS" && \
+		echo "   StakeManager: $$STAKE_MANAGER" && \
+		echo "   Karma: $$KARMA" && \
+		echo "   RLN: $$RLN" && \
+		echo "   KarmaNFT: $$KARMA_NFT"
+
+deploy-status-network-contracts-hardhat:
+		# Deploy using Hardhat deployment tags
+		cd contracts/; \
+		STATUS_NETWORK_DEPLOYER=$${STATUS_NETWORK_DEPLOYER:-0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266} \
+		STATUS_NETWORK_STAKING_TOKEN=$${STATUS_NETWORK_STAKING_TOKEN:-0x0000000000000000000000000000000000000001} \
+		STATUS_NETWORK_RLN_DEPTH=$${STATUS_NETWORK_RLN_DEPTH:-20} \
+		npx hardhat deploy --network l2 --tags StatusNetworkStakeManager,StatusNetworkVaultFactory,StatusNetworkKarma,StatusNetworkRLN,StatusNetworkKarmaNFT,StatusNetworkKarmaTiers
+
 deploy-contracts: L1_CONTRACT_VERSION:=6
 deploy-contracts: LINEA_PROTOCOL_CONTRACTS_ONLY:=false
+deploy-contracts: STATUS_NETWORK_CONTRACTS_ENABLED:=false
 deploy-contracts:
+	@echo "Starting contract deployment process..."
+	@echo "Configuration: LINEA_PROTOCOL_CONTRACTS_ONLY=$(LINEA_PROTOCOL_CONTRACTS_ONLY), STATUS_NETWORK_CONTRACTS_ENABLED=$(STATUS_NETWORK_CONTRACTS_ENABLED)"
+	@echo "Verifying network readiness..."
+	./scripts/verify-network-ready.sh || { echo "Network not ready for deployment"; exit 1; }
 	cd contracts/; \
 	export L1_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --rpc-url http://localhost:8445) && \
-	export L2_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae --rpc-url http://localhost:8545) && \
+	export L2_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0xb17202c37cce9498e6f7dcdc1abd207802d09b5eee96677ea219ac867a198b91 --rpc-url http://localhost:8545) && \
 	cd .. && \
+	echo "Starting Linea protocol contracts deployment..." && \
 	if [ "$(LINEA_PROTOCOL_CONTRACTS_ONLY)" = "false" ]; then \
-		$(MAKE) -j6 deploy-linea-rollup-v$(L1_CONTRACT_VERSION) deploy-token-bridge-l1 deploy-l1-test-erc20 deploy-l2messageservice deploy-token-bridge-l2 deploy-l2-test-erc20; \
+		$(MAKE) deploy-linea-rollup-v$(L1_CONTRACT_VERSION) && \
+		$(MAKE) deploy-token-bridge-l1 && \
+		$(MAKE) deploy-l1-test-erc20 && \
+		$(MAKE) deploy-l2messageservice && \
+		$(MAKE) deploy-token-bridge-l2 && \
+		$(MAKE) deploy-l2-test-erc20 && \
+		echo "All Linea protocol contracts deployed successfully!"; \
 	else \
-		$(MAKE) -j6 deploy-linea-rollup-v$(L1_CONTRACT_VERSION) deploy-l2messageservice; \
-	fi
+		$(MAKE) deploy-linea-rollup-v$(L1_CONTRACT_VERSION) && \
+		$(MAKE) deploy-l2messageservice && \
+		echo "Core Linea protocol contracts deployed successfully!"; \
+	fi && \
+	if [ "$(STATUS_NETWORK_CONTRACTS_ENABLED)" = "true" ]; then \
+		echo "Starting Status Network contracts deployment..." && \
+		$(MAKE) deploy-status-network-contracts && \
+		echo "Status Network contracts deployed successfully!"; \
+	else \
+		echo "Status Network contracts deployment skipped."; \
+	fi && \
+	echo "All contract deployments completed successfully! RLN remained enabled." && \
+	$(MAKE) print-all-contract-addresses
+
+print-all-contract-addresses:
+	@echo "=========================="
+	@echo "DEPLOYED CONTRACT ADDRESSES"
+	@echo "=========================="
+	@echo "Linea Protocol Contracts:"
+	@echo "  L1 Rollup: $$(cd contracts && cat local-deployments-artifacts/L1RollupAddress.txt 2>/dev/null || echo 'Not deployed')"
+	@echo "  L2 Message Service: $$(cd contracts && cat local-deployments-artifacts/L2MessageServiceAddress.txt 2>/dev/null || echo 'Not deployed')"
+	@echo "  L1 Token Bridge: $$(cd contracts && cat local-deployments-artifacts/TokenBridgeL1Address.txt 2>/dev/null || echo 'Not deployed')"
+	@echo "  L2 Token Bridge: $$(cd contracts && cat local-deployments-artifacts/TokenBridgeL2Address.txt 2>/dev/null || echo 'Not deployed')"
+	@echo ""
+	@echo "Status Network Contracts:"
+	@cd status-network-contracts && \
+	KARMA_TIERS=$$(./scripts/get-deployed-address.sh DeployKarmaTiers.s.sol KarmaTiers 2>/dev/null || echo 'Not deployed') && \
+	STAKE_MANAGER=$$(./scripts/get-deployed-address.sh DeployStakeManager.s.sol StakeManager 2>/dev/null || echo 'Not deployed') && \
+	KARMA=$$(./scripts/get-deployed-address.sh DeployKarma.s.sol Karma 2>/dev/null || echo 'Not deployed') && \
+	RLN=$$(./scripts/get-deployed-address.sh RLN.s.sol RLN 2>/dev/null || echo 'Not deployed') && \
+	KARMA_NFT=$$(./scripts/get-deployed-address.sh DeployKarmaNFT.s.sol KarmaNFT 2>/dev/null || echo 'Not deployed') && \
+	echo "  KarmaTiers: $$KARMA_TIERS" && \
+	echo "  StakeManager: $$STAKE_MANAGER" && \
+	echo "  Karma: $$KARMA" && \
+	echo "  RLN: $$RLN" && \
+	echo "  KarmaNFT: $$KARMA_NFT"
+	@echo "=========================="
 
 
 deploy-l2-evm-opcode-tester:

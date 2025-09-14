@@ -622,7 +622,8 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
                 + Instant.ofEpochSecond(timestamp)
                     .atZone(ZoneOffset.UTC)
                     .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH"))
-                + ":SALT:" + getSecureEpochSalt();
+                + ":SALT:"
+                + getSecureEpochSalt();
         yield hashToFieldElementHex(timestampStr);
       }
       case "TEST" -> {
@@ -645,8 +646,8 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
   }
 
   /**
-   * Generates a secure salt for epoch generation to prevent predictable epoch values.
-   * Uses blockchain state entropy for security while maintaining determinism.
+   * Generates a secure salt for epoch generation to prevent predictable epoch values. Uses
+   * blockchain state entropy for security while maintaining determinism.
    *
    * @return Secure salt string based on recent blockchain state
    */
@@ -655,22 +656,23 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
       var currentHeader = blockchainService.getChainHeadHeader();
       long blockNumber = currentHeader.getNumber();
       long timestamp = currentHeader.getTimestamp();
-      
+
       // Use recent block data for entropy while maintaining determinism within epoch windows
       // Mix block hash with timestamp for additional entropy
-      String entropySource = "ENTROPY:" + (blockNumber / 100) * 100 + ":" + (timestamp / 3600) * 3600;
-      
+      String entropySource =
+          "ENTROPY:" + (blockNumber / 100) * 100 + ":" + (timestamp / 3600) * 3600;
+
       // Hash to create compact, secure salt
       java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
       byte[] hash = digest.digest(entropySource.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-      
+
       // Use first 8 bytes for compact salt
       StringBuilder salt = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         salt.append(String.format("%02x", hash[i]));
       }
       return salt.toString();
-      
+
     } catch (Exception e) {
       LOG.error("Error generating secure epoch salt: {}", e.getMessage());
       // Fallback to basic timestamp for determinism
@@ -705,8 +707,8 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
   }
 
   /**
-   * Validates if a proof epoch is acceptable compared to the current epoch.
-   * Implements flexible epoch validation to prevent race conditions while maintaining security.
+   * Validates if a proof epoch is acceptable compared to the current epoch. Implements flexible
+   * epoch validation to prevent race conditions while maintaining security.
    *
    * @param proofEpochId The epoch from the RLN proof
    * @param currentEpochId The current system epoch
@@ -720,21 +722,21 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
 
     // For different epoch modes, implement appropriate tolerance windows
     String epochMode = rlnConfig.defaultEpochForQuota().toUpperCase();
-    
+
     switch (epochMode) {
       case "BLOCK":
         // Allow proofs from previous 2 blocks to handle block timing races
         return isBlockEpochValid(proofEpochId, currentEpochId, 2);
-      
+
       case "TIMESTAMP_1H":
         // Allow proofs from current hour and previous hour for timing tolerance
         return isTimestampEpochValid(proofEpochId, currentEpochId, 1);
-      
+
       case "TEST":
       case "FIXED_FIELD_ELEMENT":
         // In test mode, be more permissive for testing scenarios
         return true;
-      
+
       default:
         // For unknown modes, default to strict validation for security
         LOG.warn("Unknown epoch mode '{}', using strict validation", epochMode);
@@ -742,16 +744,14 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
     }
   }
 
-  /**
-   * Validates block-based epochs within tolerance window.
-   */
+  /** Validates block-based epochs within tolerance window. */
   private boolean isBlockEpochValid(String proofEpoch, String currentEpoch, int blockTolerance) {
     try {
       // Extract block numbers from epoch hashes (simplified approach)
       // In production, you'd want more sophisticated epoch comparison
       var currentHeader = blockchainService.getChainHeadHeader();
       long currentBlock = currentHeader.getNumber();
-      
+
       // For each potential recent block, generate its epoch and compare
       for (int i = 0; i <= blockTolerance; i++) {
         String testBlockStr = "BLOCK:" + (currentBlock - i);
@@ -770,21 +770,20 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
     }
   }
 
-  /**
-   * Validates timestamp-based epochs within tolerance window.
-   */
+  /** Validates timestamp-based epochs within tolerance window. */
   private boolean isTimestampEpochValid(String proofEpoch, String currentEpoch, int hourTolerance) {
     try {
       var currentHeader = blockchainService.getChainHeadHeader();
       long currentTimestamp = currentHeader.getTimestamp();
-      
+
       // Check current hour and previous hours within tolerance
       for (int i = 0; i <= hourTolerance; i++) {
         long testTimestamp = currentTimestamp - (i * 3600); // Subtract hours
-        String testTimeStr = "TIME:" + 
-            Instant.ofEpochSecond(testTimestamp)
-                .atZone(ZoneOffset.UTC)
-                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH"));
+        String testTimeStr =
+            "TIME:"
+                + Instant.ofEpochSecond(testTimestamp)
+                    .atZone(ZoneOffset.UTC)
+                    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH"));
         String testEpoch = hashToFieldElementHex(testTimeStr);
         if (testEpoch.equals(proofEpoch)) {
           if (i > 0) {
@@ -845,33 +844,47 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
       return Optional.empty(); // RLN validation is disabled
     }
 
+    // Priority txs (configured via tx-pool-priority-senders) bypass RLN checks.
+    // This is required to allow infrastructure/deployment accounts to operate
+    // regardless of base-fee configuration.
+    if (hasPriority) {
+      LOG.info(
+          "[RLN] Bypass RLN validation for priority transaction {} from {}",
+          transaction.getHash().toHexString(),
+          transaction.getSender().toHexString());
+      return Optional.empty();
+    }
+
     final Address sender = transaction.getSender();
     final org.hyperledger.besu.datatypes.Hash txHash = transaction.getHash();
     final String txHashString = txHash.toHexString();
+
+    // Compute effective gas price (0 indicates gasless intent)
+    final Wei effectiveGasPrice =
+        transaction
+            .getGasPrice()
+            .map(q -> Wei.of(q.getAsBigInteger()))
+            .orElseGet(
+                () ->
+                    transaction
+                        .getMaxFeePerGas()
+                        .map(q -> Wei.of(q.getAsBigInteger()))
+                        .orElse(Wei.ZERO));
 
     // 1. Deny List Check
     if (denyListManager.isDenied(sender)) {
       // User is actively denied. Check for premium gas.
       long premiumThresholdWei = rlnConfig.premiumGasPriceThresholdWei();
-      Wei effectiveGasPrice =
-          transaction
-              .getGasPrice()
-              .map(q -> Wei.of(q.getAsBigInteger()))
-              .orElseGet(
-                  () ->
-                      transaction
-                          .getMaxFeePerGas()
-                          .map(q -> Wei.of(q.getAsBigInteger()))
-                          .orElse(Wei.ZERO));
 
       if (effectiveGasPrice.getAsBigInteger().compareTo(BigInteger.valueOf(premiumThresholdWei))
           >= 0) {
         denyListManager.removeFromDenyList(sender);
         LOG.info(
-            "Sender {} was on deny list but paid premium gas ({} Wei >= {} Wei). Allowing and removing from deny list.",
+            "Sender {} was on deny list but paid premium gas ({} Wei >= {} Wei). Removing from deny list and continuing RLN validation.",
             sender.toHexString(),
             effectiveGasPrice,
             premiumThresholdWei);
+        // Intentionally continue to RLN validation (no early allow) so spam protection remains
       } else {
         LOG.warn(
             "Sender {} is on deny list. Transaction {} rejected. Effective gas price {} Wei < {} Wei.",
@@ -883,15 +896,35 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
       }
     }
 
+    // Global premium-gas bypass: if user pays at or above premium threshold, allow without RLN
+    long premiumThresholdWei = rlnConfig.premiumGasPriceThresholdWei();
+    if (effectiveGasPrice.getAsBigInteger().compareTo(BigInteger.valueOf(premiumThresholdWei))
+        >= 0) {
+      LOG.info(
+          "[RLN] Premium gas payment detected ({} Wei >= {} Wei) for tx {}. Bypassing RLN validation.",
+          effectiveGasPrice,
+          premiumThresholdWei,
+          txHashString);
+      return Optional.empty();
+    }
+
     // 2. RLN Proof Verification (via gRPC Cache) - with non-blocking wait
-    LOG.debug("Attempting to fetch RLN proof for txHash: {} from cache.", txHashString);
+    LOG.debug(
+        "Attempting to fetch RLN proof for txHash: {} from cache. isLocal={}, hasPriority={}",
+        txHashString,
+        isLocal,
+        hasPriority);
     CachedProof proof = waitForProofInCache(txHashString);
 
     if (proof == null) {
       LOG.warn(
-          "RLN proof not found in cache after timeout for txHash: {}. Timeout: {}ms",
+          "RLN proof not found in cache after timeout for txHash: {}. Timeout: {}ms (sender={}, gasPrice={}, maxFee={}, maxPrio={})",
           txHashString,
-          rlnConfig.rlnProofLocalWaitTimeoutMs());
+          rlnConfig.rlnProofLocalWaitTimeoutMs(),
+          sender.toHexString(),
+          transaction.getGasPrice().map(Object::toString).orElse("-"),
+          transaction.getMaxFeePerGas().map(Object::toString).orElse("-"),
+          transaction.getMaxPriorityFeePerGas().map(Object::toString).orElse("-"));
       return Optional.of("RLN proof not found in cache after timeout.");
     }
     LOG.debug("RLN proof found in cache for txHash: {}", txHashString);

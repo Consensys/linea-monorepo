@@ -77,6 +77,13 @@ public class LineaRlnValidatorCliOptions implements LineaCliOptions {
       arity = "1")
   private long proofWaitTimeoutMs = 1000L; // 1 second (increased from 200ms)
 
+  @CommandLine.Option(
+      names = "--plugin-linea-rln-epoch-mode",
+      description =
+          "Epoch mode used to compute the RLN external nullifier (options: BLOCK, TIMESTAMP_1H, TEST, FIXED_FIELD_ELEMENT; default: ${DEFAULT-VALUE})",
+      arity = "1")
+  private String epochMode = LineaRlnValidatorConfiguration.V1_DEFAULT.defaultEpochForQuota();
+
   private LineaRlnValidatorCliOptions() {}
 
   public static LineaRlnValidatorCliOptions create() {
@@ -126,7 +133,7 @@ public class LineaRlnValidatorCliOptions implements LineaCliOptions {
         timeoutsMs, // karmaServiceTimeoutMs
         true, // exponentialBackoffEnabled (good default)
         60000L, // maxBackoffDelayMs (1 min, good default)
-        "TIMESTAMP_1H", // defaultEpochForQuota (good default)
+        epochMode, // defaultEpochForQuota (configurable via CLI)
         Optional.empty() // rlnJniLibPath (use system path)
         );
   }
