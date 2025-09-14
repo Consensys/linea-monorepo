@@ -25,7 +25,8 @@ public class LineaEstimateGasEndpointPlugin extends AbstractLineaRequiredPlugin 
 
   private TransactionSimulationService transactionSimulationService;
   private LineaEstimateGas lineaEstimateGasMethod;
-  private net.consensys.linea.sequencer.txpoolvalidation.shared.SharedServiceManager sharedServiceManager;
+  private net.consensys.linea.sequencer.txpoolvalidation.shared.SharedServiceManager
+      sharedServiceManager;
 
   /**
    * Register the RPC service.
