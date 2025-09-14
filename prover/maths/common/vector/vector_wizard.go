@@ -9,6 +9,7 @@ import (
 	fr "github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -223,6 +224,17 @@ func IntoGnarkAssignment(msgData []field.Element) []frontend.Variable {
 	assignedMsg := []frontend.Variable{}
 	for _, x := range msgData {
 		assignedMsg = append(assignedMsg, frontend.Variable(x))
+	}
+	return assignedMsg
+}
+
+// IntoGnarkAssignment converts an array of field.Element into an array of
+// frontend.Variable that can be used to assign a vector of frontend.Variable
+// in a circuit or to generate a vector of constant in the circuit definition.
+func IntoGnarkAssignmentGen[T zk.Element](msgData []field.Element) []T {
+	assignedMsg := make([]T, len(msgData))
+	for i := 0; i < len(msgData); i++ {
+		assignedMsg[i] = zk.ValueOf[T](msgData[i])
 	}
 	return assignedMsg
 }

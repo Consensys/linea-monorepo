@@ -120,7 +120,3 @@ func (e *EmulatedFieldOps) Println(a ...*EmulatedElement) {
 		e.api.Println(a[i].Limbs...)
 	}
 }
-
-// func (n *EmulatedFieldOps) GnarkAPI() frontend.API {
-// 	return n.api
-// }

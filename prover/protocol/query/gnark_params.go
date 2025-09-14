@@ -54,6 +54,30 @@ type GnarkHornerParams struct {
 	Parts []HornerParamsPartGnark
 }
 
+// GnarkAllocate allocates a [GnarkHornerParams] with the right dimensions
+func (p HornerParams) GnarkAllocate() GnarkHornerParams {
+	return GnarkHornerParams{
+		Parts: make([]HornerParamsPartGnark, len(p.Parts)),
+	}
+}
+
+// GnarkAssign returns a gnark assignment for the present parameters.
+func (p HornerParams) GnarkAssign() GnarkHornerParams {
+
+	parts := make([]HornerParamsPartGnark, len(p.Parts))
+	for i, part := range p.Parts {
+		parts[i] = HornerParamsPartGnark{
+			N0: part.N0,
+			N1: part.N1,
+		}
+	}
+
+	return GnarkHornerParams{
+		FinalResult: p.FinalResult,
+		Parts:       parts,
+	}
+}
+
 func (p LogDerivSumParams) GnarkAssign() GnarkLogDerivSumParams {
 	return GnarkLogDerivSumParams{Sum: p.Sum}
 }
@@ -105,30 +129,6 @@ func (p UnivariateEvalParams) GnarkAssign() GnarkUnivariateEvalParams {
 			ExtYs: vectorext.IntoGnarkAssignment(p.ExtYs),
 			ExtX:  gnarkfext.SetFromExt(p.ExtX),
 		}
-	}
-}
-
-// GnarkAllocate allocates a [GnarkHornerParams] with the right dimensions
-func (p HornerParams) GnarkAllocate() GnarkHornerParams {
-	return GnarkHornerParams{
-		Parts: make([]HornerParamsPartGnark, len(p.Parts)),
-	}
-}
-
-// GnarkAssign returns a gnark assignment for the present parameters.
-func (p HornerParams) GnarkAssign() GnarkHornerParams {
-
-	parts := make([]HornerParamsPartGnark, len(p.Parts))
-	for i, part := range p.Parts {
-		parts[i] = HornerParamsPartGnark{
-			N0: part.N0,
-			N1: part.N1,
-		}
-	}
-
-	return GnarkHornerParams{
-		FinalResult: p.FinalResult,
-		Parts:       parts,
 	}
 }
 

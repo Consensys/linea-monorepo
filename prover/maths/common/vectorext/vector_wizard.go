@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -295,6 +296,17 @@ func IntoGnarkAssignment(msgData []fext.Element) []gnarkfext.Element {
 	assignedMsg := []gnarkfext.Element{}
 	for _, x := range msgData {
 		assignedMsg = append(assignedMsg, gnarkfext.FromValue(x))
+	}
+	return assignedMsg
+}
+
+// IntoGnarkAssignment converts an array of field.Element into an array of
+// frontend.Variable that can be used to assign a vector of frontend.Variable
+// in a circuit or to generate a vector of constant in the circuit definition.
+func IntoGnarkAssignmentGen[T zk.Element](msgData []fext.Element) []gnarkfext.E4Gen[T] {
+	assignedMsg := make([]gnarkfext.E4Gen[T], len(msgData))
+	for i := 0; i < len(msgData); i++ {
+		assignedMsg[i] = gnarkfext.NewE4Gen[T](msgData[i])
 	}
 	return assignedMsg
 }
