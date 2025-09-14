@@ -30,7 +30,7 @@ contract DeploymentConfig is Script {
     constructor(address _broadcaster) {
         if (_broadcaster == address(0)) revert DeploymentConfig_InvalidDeployerAddress();
         deployer = _broadcaster;
-        if (block.chainid == 31_337) {
+        if (block.chainid == 31_337 || block.chainid == 1337) {
             activeNetworkConfig = getOrCreateAnvilEthConfig();
         } else if (block.chainid == 11_155_111) {
             activeNetworkConfig = getSepoliaConfig();

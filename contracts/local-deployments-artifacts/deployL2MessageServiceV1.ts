@@ -84,7 +84,7 @@ async function main() {
     unpauseTypeRoles,
   ]);
 
-  await deployContractFromArtifacts(
+  const l2MessageServiceProxy = await deployContractFromArtifacts(
     L2MessageServiceContractName,
     TransparentUpgradeableProxyAbi,
     TransparentUpgradeableProxyBytecode,
@@ -93,6 +93,12 @@ async function main() {
     proxyAdminAddress,
     initializer,
   );
+
+  // Persist proxy address for Makefile reporting
+  const l2MessageServiceProxyAddress = await l2MessageServiceProxy.getAddress();
+  const fs = await import("fs");
+  const path = await import("path");
+  fs.writeFileSync(path.join(__dirname, "L2MessageServiceAddress.txt"), l2MessageServiceProxyAddress);
 }
 
 main().catch((error) => {

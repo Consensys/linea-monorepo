@@ -250,8 +250,9 @@ public class LineaEstimateGas {
         if (karmaInfoOpt.isPresent()) {
           KarmaInfo karmaInfo = karmaInfoOpt.get();
           boolean hasQuotaAvailable = karmaInfo.epochTxCount() < karmaInfo.dailyQuota();
-          boolean isEligibleTier =
-              !"Unknown".equals(karmaInfo.tier()) && karmaInfo.dailyQuota() > 0;
+          // Consider eligibility based on positive quota. Tier name may be unspecified in some
+          // environments (e.g., mock service), so avoid relying on tier label.
+          boolean isEligibleTier = karmaInfo.dailyQuota() > 0;
 
           log.debug(
               "[{}] Karma info for sender {}: Tier={}, TxCount={}, Quota={}, HasQuota={}, IsEligibleTier={}",

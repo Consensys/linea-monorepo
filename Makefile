@@ -38,7 +38,12 @@ start-env:
   			[ "$$(docker compose -f $(COMPOSE_FILE) ps -q sequencer | xargs docker inspect -f '{{.State.Health.Status}}')" != "healthy" ]; }; do \
   			sleep 2; \
   			echo "Checking health status of l1-el-node and sequencer..."; \
-  	done
+  	done; \
+  	if [ "$(SKIP_L1_L2_NODE_HEALTH_CHECK)" = "false" ]; then \
+  		echo "Container health checks passed"; \
+  		echo "Performing network readiness verification..."; \
+  		./scripts/verify-network-ready.sh || { echo "❌ Network readiness verification failed"; exit 1; }; \
+  	fi
 	if [ "$(SKIP_CONTRACTS_DEPLOYMENT)" = "true" ]; then \
 		echo "Skipping contracts deployment"; \
 	else \
@@ -79,6 +84,13 @@ start-env-with-staterecovery:
 
 start-env-with-rln:
 	make start-env COMPOSE_FILE=docker/compose-tracing-v2-rln.yml LINEA_PROTOCOL_CONTRACTS_ONLY=true STATUS_NETWORK_CONTRACTS_ENABLED=true
+
+start-env-with-rln-and-contracts:
+	@echo "Starting complete RLN environment with automated contract deployment..."
+	make start-env COMPOSE_FILE=docker/compose-tracing-v2-rln.yml LINEA_PROTOCOL_CONTRACTS_ONLY=true STATUS_NETWORK_CONTRACTS_ENABLED=true
+	@echo "Environment started. Beginning contract deployment with automatic RLN handling..."
+	make deploy-contracts LINEA_PROTOCOL_CONTRACTS_ONLY=true STATUS_NETWORK_CONTRACTS_ENABLED=true
+	@echo "Complete RLN environment with contracts is ready!"
 
 staterecovery-replay-from-block: L1_ROLLUP_CONTRACT_ADDRESS:=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
 staterecovery-replay-from-block: STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER:=1

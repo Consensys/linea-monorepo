@@ -87,6 +87,8 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
   public PluginTransactionPoolValidator createTransactionValidator() {
     final var validatorsList = new ArrayList<PluginTransactionPoolValidator>();
 
+    // Removed GaslessFeeBypassValidator to simplify and avoid redundant logic
+
     validatorsList.add(new AllowedAddressValidator(denied));
     validatorsList.add(new GasLimitValidator(txPoolValidatorConf));
     validatorsList.add(new CalldataValidator(txPoolValidatorConf));

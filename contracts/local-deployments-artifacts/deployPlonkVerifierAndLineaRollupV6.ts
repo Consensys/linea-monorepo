@@ -118,7 +118,7 @@ async function main() {
     },
   ]);
 
-  await deployContractFromArtifacts(
+  const lineaRollupProxy = await deployContractFromArtifacts(
     lineaRollupName,
     TransparentUpgradeableProxyAbi,
     TransparentUpgradeableProxyBytecode,
@@ -128,6 +128,10 @@ async function main() {
     initializer,
     { gasPrice },
   );
+
+  // Persist proxy address for Makefile reporting
+  const lineaRollupProxyAddress = await lineaRollupProxy.getAddress();
+  fs.writeFileSync(path.join(__dirname, "L1RollupAddress.txt"), lineaRollupProxyAddress);
 }
 
 main().catch((error) => {

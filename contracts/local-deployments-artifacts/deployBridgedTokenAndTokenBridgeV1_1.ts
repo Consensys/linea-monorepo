@@ -29,9 +29,11 @@ import {
   TOKEN_BRIDGE_PAUSE_TYPES_ROLES,
   TOKEN_BRIDGE_ROLES,
   TOKEN_BRIDGE_UNPAUSE_TYPES_ROLES,
-} from "contracts/common/constants";
+} from "../common/constants";
 import { ethers } from "ethers";
 import { deployContractFromArtifacts, getInitializerData } from "../common/helpers/deployments";
+import fs from "fs";
+import path from "path";
 
 async function main() {
   const ORDERED_NONCE_POST_L2MESSAGESERVICE = 3;
@@ -154,7 +156,7 @@ async function main() {
     },
   ]);
 
-  await deployContractFromArtifacts(
+  const tokenBridgeProxy = await deployContractFromArtifacts(
     TokenBridgeContractName,
     TransparentUpgradeableProxyAbi,
     TransparentUpgradeableProxyBytecode,
@@ -163,6 +165,11 @@ async function main() {
     proxyAdminAddress,
     initializer,
   );
+
+  // Persist deployed proxy address for Makefile reporting
+  const tokenBridgeProxyAddress = await tokenBridgeProxy.getAddress();
+  const outFile = process.env.TOKEN_BRIDGE_L1 === "true" ? "TokenBridgeL1Address.txt" : "TokenBridgeL2Address.txt";
+  fs.writeFileSync(path.join(__dirname, outFile), tokenBridgeProxyAddress);
 }
 
 main().catch((error) => {

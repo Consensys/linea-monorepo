@@ -7,7 +7,7 @@ services:
   rln-prover:
     hostname: rln-prover
     container_name: rln-prover
-    image: status-rln-prover:20250828133212
+    image: status-rln-prover:20250914165712
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo", "rln" ]
     ports:
       - "50051:50051"  # RLN proof service
@@ -36,12 +36,13 @@ services:
     networks:
       linea:
         ipv4_address: 11.11.11.120
+    platform: linux/amd64
 
   # Karma Service (separate from prover for scalability)
   karma-service:
     hostname: karma-service  
     container_name: karma-service
-    image: status-rln-prover:20250828133212
+    image: status-rln-prover:20250914165712
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo", "rln" ]
     ports:
       - "50053:50052"
@@ -64,11 +65,12 @@ services:
     networks:
       linea:
         ipv4_address: 11.11.11.121
+    platform: linux/amd64
 
   sequencer:
     hostname: sequencer
     container_name: sequencer
-    image: linea-besu-minimal-rln:20250828133212
+    image: linea-besu-minimal-rln:20250914165712
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     ports:
       - "8545:8545"
@@ -95,30 +97,39 @@ services:
       JAVA_LIBRARY_PATH: "/opt/besu/lib/native"
       # Debug logging for RLN components
       JAVA_OPTS: "-Dlog4j2.logger.net.consensys.linea.sequencer.txpoolvalidation=DEBUG"
-    entrypoint: besu-untuned
-    command:
-      - --config-file=/var/lib/besu/sequencer.config.toml
-      - --node-private-key-file=/var/lib/besu/key
-      - --plugin-linea-l1-polling-interval=PT12S
-      - --plugin-linea-l1-smart-contract-address=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
-      - --plugin-linea-l1-rpc-endpoint=http://l1-el-node:8545
-      - --plugin-linea-rejected-tx-endpoint=http://transaction-exclusion-api:8080
-      - --plugin-linea-node-type=SEQUENCER
-      # === RLN Configuration (ENABLED for Sequencer) ===
-      - --plugin-linea-rln-enabled=true
-      - --plugin-linea-rln-proof-service=rln-prover:50051
-      - --plugin-linea-rln-karma-service=karma-service:50052
-      - --plugin-linea-rln-verifying-key=/var/lib/besu/rln/verifying_key.dat
-      - --plugin-linea-rln-deny-list-path=/var/lib/besu/gasless-deny-list.txt
-      - --plugin-linea-rln-use-tls=false
-      - --plugin-linea-rln-premium-gas-threshold-gwei=10
-      - --plugin-linea-rln-timeouts-ms=30000
-      - --plugin-linea-rln-proof-wait-timeout-ms=2000
-      # === RPC Configuration ===
-      - --plugin-linea-rpc-gasless-enabled=true
-      - --plugin-linea-rpc-rln-prover-forwarder-enabled=false
-      - --plugin-linea-rpc-allow-zero-gas-estimation-gasless=true
-      - --plugin-linea-rpc-premium-gas-multiplier=1.5
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        echo $$ > /tmp/pid
+        exec besu-untuned \
+          --config-file=/var/lib/besu/sequencer.config.toml \
+          --node-private-key-file=/var/lib/besu/key \
+          --plugin-linea-l1-polling-interval=PT12S \
+          --plugin-linea-l1-smart-contract-address=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9 \
+          --plugin-linea-l1-rpc-endpoint=http://l1-el-node:8545 \
+          --plugin-linea-rejected-tx-endpoint=http://transaction-exclusion-api:8080 \
+          --plugin-linea-node-type=SEQUENCER \
+          --plugin-linea-rln-enabled=true \
+          --plugin-linea-rln-proof-service=rln-prover:50051 \
+          --plugin-linea-rln-karma-service=karma-service:50052 \
+          --plugin-linea-rln-verifying-key=/var/lib/besu/rln/verifying_key.dat \
+          --plugin-linea-rln-deny-list-path=/var/lib/besu/gasless-deny-list.txt \
+          --plugin-linea-rln-use-tls=false \
+          --plugin-linea-rln-premium-gas-threshold-gwei=10 \
+          --plugin-linea-rln-timeouts-ms=30000 \
+          --plugin-linea-rln-proof-wait-timeout-ms=30000 \
+          --plugin-linea-rln-epoch-mode=TEST \
+          --plugin-linea-min-margin=0 \
+          --plugin-linea-tx-pool-min-margin=0 \
+          --plugin-linea-tx-pool-profitability-check-api-enabled=false \
+          --plugin-linea-tx-pool-profitability-check-p2p-enabled=false \
+          --plugin-linea-variable-gas-cost-wei=0 \
+          --plugin-linea-fixed-gas-cost-wei=0 \
+          --plugin-linea-rpc-gasless-enabled=true \
+          --plugin-linea-rpc-rln-prover-forwarder-enabled=false \
+          --plugin-linea-rpc-allow-zero-gas-estimation-gasless=true \
+          --plugin-linea-rpc-premium-gas-multiplier=1.5
     volumes:
       - ./config/linea-besu-sequencer/sequencer.config.toml:/var/lib/besu/sequencer.config.toml:ro
       - ./config/linea-besu-sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
@@ -132,6 +143,7 @@ services:
       l1network:
       linea:
         ipv4_address: 11.11.11.101
+    platform: linux/amd64
 
   l2-node:
     container_name: l2-node
@@ -169,7 +181,7 @@ services:
   l2-node-besu:
     hostname: l2-node-besu
     container_name: l2-node-besu
-    image: linea-besu-minimal-rln:20250828133212
+    image: linea-besu-minimal-rln:20250914165712
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
@@ -195,28 +207,37 @@ services:
       JAVA_LIBRARY_PATH: "/opt/besu/lib/native"
       # Debug logging for RLN and karma service interactions
       JAVA_OPTS: "-Dlog4j2.logger.net.consensys.linea.sequencer.txpoolvalidation=DEBUG -Dlog4j2.logger.net.consensys.linea.rpc=DEBUG"
-    entrypoint: besu-untuned
-    command:
-      - --config-file=/var/lib/besu/l2-node-besu.config.toml
-      - --genesis-file=/var/lib/besu/genesis.json
-      - --plugin-linea-l1-polling-interval=PT12S
-      - --plugin-linea-l1-smart-contract-address=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
-      - --plugin-linea-l1-rpc-endpoint=http://l1-el-node:8545
-      - --plugin-linea-rejected-tx-endpoint=http://transaction-exclusion-api:8080
-      - --plugin-linea-node-type=RPC
-      - --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
-      # === RLN Configuration ===
-      - --plugin-linea-rln-enabled=false
-      - --plugin-linea-rln-proof-service=rln-prover:50051
-      - --plugin-linea-rln-karma-service=karma-service:50052
-      - --plugin-linea-rln-timeouts-ms=30000
-      - --plugin-linea-rpc-gasless-enabled=true
-      - --plugin-linea-rpc-rln-prover-forwarder-enabled=true
-      - --plugin-linea-rpc-allow-zero-gas-estimation-gasless=true
-      - --plugin-linea-rpc-premium-gas-multiplier=1.5
-      # Estimate Gas Compatibility for linea_estimateGas RPC method
-      - --plugin-linea-estimate-gas-compatibility-mode-enabled=true
-      - --plugin-linea-estimate-gas-compatibility-mode-multiplier=1.2
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        echo $$ > /tmp/pid
+        exec besu-untuned \
+          --config-file=/var/lib/besu/l2-node-besu.config.toml \
+          --genesis-file=/var/lib/besu/genesis.json \
+          --plugin-linea-l1-polling-interval=PT12S \
+          --plugin-linea-l1-smart-contract-address=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9 \
+          --plugin-linea-l1-rpc-endpoint=http://l1-el-node:8545 \
+          --plugin-linea-rejected-tx-endpoint=http://transaction-exclusion-api:8080 \
+          --plugin-linea-node-type=RPC \
+          --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303 \
+          --plugin-linea-rln-enabled=false \
+          --plugin-linea-rln-proof-service=rln-prover:50051 \
+          --plugin-linea-rln-karma-service=karma-service:50052 \
+          --plugin-linea-rln-timeouts-ms=30000 \
+          --plugin-linea-rln-epoch-mode=TEST \
+          --plugin-linea-rpc-gasless-enabled=true \
+          --plugin-linea-rpc-rln-prover-forwarder-enabled=true \
+          --plugin-linea-rpc-allow-zero-gas-estimation-gasless=true \
+          --plugin-linea-rpc-premium-gas-multiplier=1.5 \
+          --plugin-linea-min-margin=0 \
+          --plugin-linea-tx-pool-min-margin=0 \
+          --plugin-linea-tx-pool-profitability-check-api-enabled=false \
+          --plugin-linea-tx-pool-profitability-check-p2p-enabled=false \
+          --plugin-linea-variable-gas-cost-wei=0 \
+          --plugin-linea-fixed-gas-cost-wei=0 \
+          --plugin-linea-estimate-gas-compatibility-mode-enabled=true \
+          --plugin-linea-estimate-gas-compatibility-mode-multiplier=1.2
     volumes:
       - ./config/l2-node-besu/l2-node-besu-config.toml:/var/lib/besu/l2-node-besu.config.toml:ro
       - ./config/linea-besu-sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
@@ -231,6 +252,7 @@ services:
       l1network:
       linea:
         ipv4_address: 11.11.11.119
+    platform: linux/amd64
 
   traces-node:
     hostname: traces-node

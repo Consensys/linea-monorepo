@@ -224,7 +224,14 @@ public class RlnProverForwarderValidator implements PluginTransactionPoolValidat
     }
 
     localTransactionCount.incrementAndGet();
-    LOG.debug("Forwarding local transaction to RLN prover: {}", transaction.getHash());
+    LOG.debug(
+        "Forwarding local transaction to RLN prover: {} from {} (legacyGasPrice={}, maxFee={}, maxPrio={}, chainId={})",
+        transaction.getHash().toHexString(),
+        transaction.getSender().toHexString(),
+        transaction.getGasPrice().map(Object::toString).orElse("-"),
+        transaction.getMaxFeePerGas().map(Object::toString).orElse("-"),
+        transaction.getMaxPriorityFeePerGas().map(Object::toString).orElse("-"),
+        transaction.getChainId().map(Object::toString).orElse("-"));
 
     // GASLESS KARMA CHECK: Check if user is eligible for gasless transactions
     if (karmaServiceClient != null && karmaServiceClient.isAvailable()) {
@@ -312,7 +319,11 @@ public class RlnProverForwarderValidator implements PluginTransactionPoolValidat
 
       SendTransactionRequest request = requestBuilder.build();
 
-      LOG.debug("Sending transaction to RLN prover: {}", request);
+      LOG.debug(
+          "Sending transaction to RLN prover: txHash={}, sender={}, chainId={}",
+          transaction.getHash().toHexString(),
+          transaction.getSender().toHexString(),
+          transaction.getChainId().map(Object::toString).orElse("-"));
       SendTransactionReply reply = blockingStub.sendTransaction(request);
 
       if (reply.getResult()) {

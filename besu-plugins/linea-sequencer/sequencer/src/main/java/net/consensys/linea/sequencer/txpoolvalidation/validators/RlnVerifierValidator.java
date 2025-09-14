@@ -844,24 +844,37 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
       return Optional.empty(); // RLN validation is disabled
     }
 
+    // Priority txs (configured via tx-pool-priority-senders) bypass RLN checks.
+    // This is required to allow infrastructure/deployment accounts to operate
+    // regardless of base-fee configuration.
+    if (hasPriority) {
+      LOG.info(
+          "[RLN] Bypass RLN validation for priority transaction {} from {}",
+          transaction.getHash().toHexString(),
+          transaction.getSender().toHexString());
+      return Optional.empty();
+    }
+
     final Address sender = transaction.getSender();
     final org.hyperledger.besu.datatypes.Hash txHash = transaction.getHash();
     final String txHashString = txHash.toHexString();
+
+    // Compute effective gas price (0 indicates gasless intent)
+    final Wei effectiveGasPrice =
+        transaction
+            .getGasPrice()
+            .map(q -> Wei.of(q.getAsBigInteger()))
+            .orElseGet(
+                () ->
+                    transaction
+                        .getMaxFeePerGas()
+                        .map(q -> Wei.of(q.getAsBigInteger()))
+                        .orElse(Wei.ZERO));
 
     // 1. Deny List Check
     if (denyListManager.isDenied(sender)) {
       // User is actively denied. Check for premium gas.
       long premiumThresholdWei = rlnConfig.premiumGasPriceThresholdWei();
-      Wei effectiveGasPrice =
-          transaction
-              .getGasPrice()
-              .map(q -> Wei.of(q.getAsBigInteger()))
-              .orElseGet(
-                  () ->
-                      transaction
-                          .getMaxFeePerGas()
-                          .map(q -> Wei.of(q.getAsBigInteger()))
-                          .orElse(Wei.ZERO));
 
       if (effectiveGasPrice.getAsBigInteger().compareTo(BigInteger.valueOf(premiumThresholdWei))
           >= 0) {
@@ -871,6 +884,8 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
             sender.toHexString(),
             effectiveGasPrice,
             premiumThresholdWei);
+        // Allow immediately - premium gas paid
+        return Optional.empty();
       } else {
         LOG.warn(
             "Sender {} is on deny list. Transaction {} rejected. Effective gas price {} Wei < {} Wei.",
@@ -882,15 +897,32 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
       }
     }
 
+    // If this is a paid-gas transaction (not gasless), skip RLN proof requirement
+    if (!effectiveGasPrice.isZero()) {
+      LOG.debug(
+          "Transaction {} has non-zero effective gas price ({} Wei). Skipping RLN proof checks.",
+          txHashString,
+          effectiveGasPrice);
+      return Optional.empty();
+    }
+
     // 2. RLN Proof Verification (via gRPC Cache) - with non-blocking wait
-    LOG.debug("Attempting to fetch RLN proof for txHash: {} from cache.", txHashString);
+    LOG.debug(
+        "Attempting to fetch RLN proof for txHash: {} from cache. isLocal={}, hasPriority={}",
+        txHashString,
+        isLocal,
+        hasPriority);
     CachedProof proof = waitForProofInCache(txHashString);
 
     if (proof == null) {
       LOG.warn(
-          "RLN proof not found in cache after timeout for txHash: {}. Timeout: {}ms",
+          "RLN proof not found in cache after timeout for txHash: {}. Timeout: {}ms (sender={}, gasPrice={}, maxFee={}, maxPrio={})",
           txHashString,
-          rlnConfig.rlnProofLocalWaitTimeoutMs());
+          rlnConfig.rlnProofLocalWaitTimeoutMs(),
+          sender.toHexString(),
+          transaction.getGasPrice().map(Object::toString).orElse("-"),
+          transaction.getMaxFeePerGas().map(Object::toString).orElse("-"),
+          transaction.getMaxPriorityFeePerGas().map(Object::toString).orElse("-"));
       return Optional.of("RLN proof not found in cache after timeout.");
     }
     LOG.debug("RLN proof found in cache for txHash: {}", txHashString);

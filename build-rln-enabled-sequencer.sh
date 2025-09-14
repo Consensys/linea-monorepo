@@ -205,14 +205,14 @@ TIMESTAMP=$(date +%Y%m%d%H%M%S)
 BESU_IMAGE_TAG="linea-besu-minimal-rln:${TIMESTAMP}"
 
 echo -e "${YELLOW}🔨 Building Docker image...${NC}"
-docker build -t "$BESU_IMAGE_TAG" .
+docker build --platform linux/amd64 -t "$BESU_IMAGE_TAG" .
 
 echo -e "${GREEN}✅ Minimal custom Besu image built: $BESU_IMAGE_TAG${NC}"
 
 echo -e "${BLUE}🐳 Building RLN Prover Docker image...${NC}"
 cd "$STATUS_RLN_PROVER_DIR"
 RLN_PROVER_TAG="status-rln-prover:${TIMESTAMP}"
-docker build -t "$RLN_PROVER_TAG" .
+docker build --platform linux/amd64 -t "$RLN_PROVER_TAG" .
 
 echo -e "${GREEN}✅ RLN Prover image built: $RLN_PROVER_TAG${NC}"
 
