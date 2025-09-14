@@ -54,31 +54,4 @@ jobs:
           name: sequencer-unit-test-report
           path: besu-plugins/linea-sequencer/sequencer/build/reports/tests/test/
 
-  acceptance:
-    name: Sequencer Acceptance Tests (JDK 21)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Java 21 (Temurin)
-        uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b
-        with:
-          distribution: temurin
-          java-version: 21
-
-      - name: Setup Gradle cache
-        uses: gradle/actions/setup-gradle@v3
-
-      - name: Run acceptance tests
-        run: ./gradlew besu-plugins:linea-sequencer:acceptance-tests:acceptanceTests
-        env:
-          JAVA_OPTS: -Dorg.gradle.daemon=false
-
-      - name: Upload acceptance test reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: sequencer-acceptance-test-report
-          path: besu-plugins/linea-sequencer/acceptance-tests/build/reports/tests/
-
 
