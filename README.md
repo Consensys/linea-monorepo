@@ -15,6 +15,37 @@ On top of the Linea stack, it adds the smart contracts and infrastructure for St
 The additional Status Network features are optional, configurable using the CLI options (details provided under [Configuration Options](#configuration-options)).
 Open-sourced under the [Apache 2.0](LICENSE-APACHE) and the [MIT](LICENSE-MIT) licenses.
 
+## Quickstart
+
+### Prerequisites
+- Docker and Docker Compose
+- Java 21 (Temurin)
+- Make
+
+### Start local network
+- Only Status Network contracts on Linea stack (no extra Linea contract deployments):
+
+```bash
+STATUS_NETWORK_CONTRACTS_ENABLED=true LINEA_PROTOCOL_CONTRACTS_ONLY=true make start-env-with-rln
+```
+
+- Full Linea + Status Network (includes Linea protocol suite like token bridges):
+
+```bash
+LINEA_PROTOCOL_CONTRACTS_ONLY=false STATUS_NETWORK_CONTRACTS_ENABLED=true make start-env-with-rln-and-contracts
+```
+
+When the stack comes up, contract addresses are printed and can be verified with scripts under `contracts/local-deployments-artifacts/`.
+
+### Rebuild after sequencer changes
+Any edits to the sequencer or validators require rebuilding and restarting:
+
+```bash
+./build-rln-enabled-sequencer.sh
+make clean-environment
+STATUS_NETWORK_CONTRACTS_ENABLED=true LINEA_PROTOCOL_CONTRACTS_ONLY=true make start-env-with-rln
+```
+
 ## What is Status Network?
 
 [Status Network](https://status.network) is the **first natively gasless Ethereum L2**, optimized for social apps and games, featuring sustainable public funding for developers through native yield and DEX fees. Built on the Linea zkEVM stack, it provides high-performance, gas-free transactions while ensuring economic sustainability through a novel funding model and spam prevention technology.
@@ -52,6 +83,14 @@ The Status Network RLN validator system can be configured using various CLI opti
 - **`--plugin-linea-rln-proof-service`**: RLN Proof service endpoint in `host:port` format (default: `localhost:50051`)
 - **`--plugin-linea-rln-karma-service`**: Karma service endpoint in `host:port` format (default: `localhost:50052`)
 - **`--plugin-linea-rln-deny-list-path`**: Path to the gasless deny list file (default: `/var/lib/besu/gasless-deny-list.txt`)
+
+### Troubleshooting
+- If a 0-gas (gasless) transaction is accepted by the RPC but not included, check the sequencer logs for RLN proof cache timeouts or epoch mismatches and ensure `--plugin-linea-rln-epoch-mode=TEST` is used in local demos.
+- If paid transactions fail for “min gas price” or “upfront cost” locally, ensure L2 genesis has `baseFeePerGas=0` and sequencer `min-gas-price=0` in config.
+- Premium gas transactions (gas > configured threshold) bypass RLN validation by design.
+
+### CI
+- GitHub Actions runs sequencer unit tests (Java 21) with Gradle caching. JNI-dependent RLN native tests are excluded from CI.
 
 ## How to contribute
 
