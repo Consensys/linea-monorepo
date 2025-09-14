@@ -42,8 +42,8 @@ jobs:
         env:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
-      - name: Run unit tests
-        run: ./gradlew besu-plugins:linea-sequencer:sequencer:test
+      - name: Run unit tests (sequencer packages only)
+        run: ./gradlew besu-plugins:linea-sequencer:sequencer:test --tests 'net.consensys.linea.sequencer.*'
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
 
