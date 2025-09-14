@@ -188,12 +188,12 @@ class RlnVerifierValidatorComprehensiveTest {
     assertThat(lowGasResult.get()).contains("Sender on deny list, premium gas not met");
     assertThat(denyListManager.isDenied(DENIED_SENDER)).isTrue();
 
-    // Premium gas transaction should bypass and remove from deny list
+    // Premium gas transaction should bypass RLN and remove from deny list
     org.hyperledger.besu.ethereum.core.Transaction premiumGasTx =
         createTestTransaction(DENIED_SENDER, Wei.of(6_000_000_000L)); // 6 GWei - above threshold
     Optional<String> premiumGasResult = validator.validateTransaction(premiumGasTx, false, false);
-    assertThat(premiumGasResult).isPresent();
-    assertThat(premiumGasResult.get()).doesNotContain("deny list");
+    // With premium gas, RLN is bypassed entirely
+    assertThat(premiumGasResult).isEmpty();
     assertThat(denyListManager.isDenied(DENIED_SENDER)).isFalse();
   }
 
@@ -322,9 +322,8 @@ class RlnVerifierValidatorComprehensiveTest {
         createTestTransaction(DENIED_SENDER, Wei.of(6_000_000_000L)); // 6 GWei - above threshold
 
     Optional<String> premiumResult = validator.validateTransaction(premiumGasTx, false, false);
-    // Should fail for missing proof but not for deny list
-    assertThat(premiumResult).isPresent();
-    assertThat(premiumResult.get()).doesNotContain("deny list");
+    // Should pass due to premium gas bypass
+    assertThat(premiumResult).isEmpty();
 
     // Verify sender removed from deny list
     assertThat(denyListManager.isDenied(DENIED_SENDER)).isFalse();
@@ -428,10 +427,10 @@ class RlnVerifierValidatorComprehensiveTest {
   void testResourceExhaustionProtection() {
     // Test that validator handles resource exhaustion gracefully
 
-    // Fill up proof waiting cache to near capacity
+    // Fill up proof waiting cache to near capacity using gasless txs (no proofs)
     for (int i = 0; i < 90; i++) {
       org.hyperledger.besu.ethereum.core.Transaction tx =
-          createTestTransactionWithNonce(TEST_SENDER, i);
+          createGaslessTestTransactionWithNonce(TEST_SENDER, i);
       Optional<String> result = validator.validateTransaction(tx, false, false);
       // Should handle gracefully even under load
       assertThat(result).isPresent();
@@ -660,7 +659,7 @@ class RlnVerifierValidatorComprehensiveTest {
 
     for (int i = 0; i < spamTransactionCount; i++) {
       org.hyperledger.besu.ethereum.core.Transaction spamTx =
-          createTestTransactionWithNonce(TEST_SENDER, i);
+          createGaslessTestTransactionWithNonce(TEST_SENDER, i);
       Optional<String> result = validator.validateTransaction(spamTx, false, false);
 
       if (result.isPresent()) {
@@ -668,7 +667,7 @@ class RlnVerifierValidatorComprehensiveTest {
       }
     }
 
-    // All spam transactions should be rejected (no valid proofs)
+    // With zero-gas default and no proofs, all should be rejected
     assertThat(rejectedCount).isEqualTo(spamTransactionCount);
 
     // Verify system remains responsive by processing one more transaction
@@ -711,12 +710,12 @@ class RlnVerifierValidatorComprehensiveTest {
     Optional<String> zeroGasResult = validator.validateTransaction(zeroGasTx, false, false);
     assertThat(zeroGasResult).isPresent(); // Should be handled appropriately
 
-    // Extremely high gas price transaction (potential DoS)
+    // Extremely high gas price transaction (should bypass RLN due to premium gas)
     org.hyperledger.besu.ethereum.core.Transaction highGasTx =
         createTestTransaction(
             TEST_SENDER, Wei.of(1_000_000_000_000_000_000L)); // 1000 GWei gas price
     Optional<String> highGasResult = validator.validateTransaction(highGasTx, false, false);
-    assertThat(highGasResult).isPresent(); // Should be handled appropriately
+    assertThat(highGasResult).isEmpty(); // Premium gas bypass applies
 
     // Transaction with empty payload but non-zero value
     org.hyperledger.besu.ethereum.core.Transaction emptyPayloadTx =
@@ -732,13 +731,14 @@ class RlnVerifierValidatorComprehensiveTest {
 
     Optional<String> emptyPayloadResult =
         validator.validateTransaction(emptyPayloadTx, false, false);
-    assertThat(emptyPayloadResult).isPresent(); // Should be processed
+    assertThat(emptyPayloadResult).isEmpty(); // Non-gasless tx passes without RLN
   }
 
   // ==================== HELPER METHODS ====================
 
   private org.hyperledger.besu.ethereum.core.Transaction createTestTransaction(Address sender) {
-    return createTestTransaction(sender, Wei.of(20_000_000_000L));
+    // Default to zero gas to exercise RLN path in tests unless overridden
+    return createTestTransaction(sender, Wei.ZERO);
   }
 
   private org.hyperledger.besu.ethereum.core.Transaction createTestTransaction(
@@ -762,6 +762,20 @@ class RlnVerifierValidatorComprehensiveTest {
         .nonce(nonce)
         .gasLimit(21000)
         .gasPrice(Wei.of(20_000_000_000L))
+        .payload(Bytes.fromHexString("0xdeadbeef"))
+        .value(Wei.ZERO)
+        .signature(FAKE_SIGNATURE)
+        .build();
+  }
+
+  private org.hyperledger.besu.ethereum.core.Transaction createGaslessTestTransactionWithNonce(
+      Address sender, int nonce) {
+    return org.hyperledger.besu.ethereum.core.Transaction.builder()
+        .sender(sender)
+        .to(Address.fromHexString("0x5555555555555555555555555555555555555555"))
+        .nonce(nonce)
+        .gasLimit(21000)
+        .gasPrice(Wei.ZERO)
         .payload(Bytes.fromHexString("0xdeadbeef"))
         .value(Wei.ZERO)
         .signature(FAKE_SIGNATURE)

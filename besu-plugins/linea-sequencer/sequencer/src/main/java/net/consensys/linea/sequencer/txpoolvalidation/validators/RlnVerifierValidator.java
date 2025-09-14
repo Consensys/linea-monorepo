@@ -880,12 +880,11 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
           >= 0) {
         denyListManager.removeFromDenyList(sender);
         LOG.info(
-            "Sender {} was on deny list but paid premium gas ({} Wei >= {} Wei). Allowing and removing from deny list.",
+            "Sender {} was on deny list but paid premium gas ({} Wei >= {} Wei). Removing from deny list and continuing RLN validation.",
             sender.toHexString(),
             effectiveGasPrice,
             premiumThresholdWei);
-        // Allow immediately - premium gas paid
-        return Optional.empty();
+        // Intentionally continue to RLN validation (no early allow) so spam protection remains
       } else {
         LOG.warn(
             "Sender {} is on deny list. Transaction {} rejected. Effective gas price {} Wei < {} Wei.",
@@ -897,12 +896,15 @@ public class RlnVerifierValidator implements PluginTransactionPoolValidator, Clo
       }
     }
 
-    // If this is a paid-gas transaction (not gasless), skip RLN proof requirement
-    if (!effectiveGasPrice.isZero()) {
-      LOG.debug(
-          "Transaction {} has non-zero effective gas price ({} Wei). Skipping RLN proof checks.",
-          txHashString,
-          effectiveGasPrice);
+    // Global premium-gas bypass: if user pays at or above premium threshold, allow without RLN
+    long premiumThresholdWei = rlnConfig.premiumGasPriceThresholdWei();
+    if (effectiveGasPrice.getAsBigInteger().compareTo(BigInteger.valueOf(premiumThresholdWei))
+        >= 0) {
+      LOG.info(
+          "[RLN] Premium gas payment detected ({} Wei >= {} Wei) for tx {}. Bypassing RLN validation.",
+          effectiveGasPrice,
+          premiumThresholdWei,
+          txHashString);
       return Optional.empty();
     }
 
