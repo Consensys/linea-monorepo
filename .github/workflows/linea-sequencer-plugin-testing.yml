@@ -25,7 +25,7 @@ jobs:
           distribution: temurin
           java-version: 21
       - name: Setup Gradle cache
-        uses: gradle/actions/setup-gradle@db19848a5fa7950289d366fda7f6df9bb9b3198f
+        uses: gradle/actions/setup-gradle@v3
       - name: spotless
         run: ./gradlew --no-daemon --parallel clean besu-plugins:linea-sequencer:spotlessCheck
 
@@ -64,7 +64,7 @@ jobs:
           java-version: 21
           distribution: temurin
       - name: Setup Gradle cache
-        uses: gradle/actions/setup-gradle@db19848a5fa7950289d366fda7f6df9bb9b3198f
+        uses: gradle/actions/setup-gradle@v3
 
       - name: Run acceptance tests
         run: ./gradlew besu-plugins:linea-sequencer:acceptance-tests:acceptanceTests
