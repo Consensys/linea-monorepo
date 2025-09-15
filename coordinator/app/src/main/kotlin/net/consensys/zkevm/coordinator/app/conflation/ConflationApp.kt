@@ -272,7 +272,8 @@ class ConflationApp(
         targetEndBlockNumbers = configs.conflation.proofAggregation.targetEndBlocks ?: emptyList(),
         metricsFacade = metricsFacade,
         provenAggregationEndBlockNumberConsumer = { aggEndBlockNumber -> highestAggregationTracker(aggEndBlockNumber) },
-        provenConsecutiveAggregationEndBlockNumberConsumer = { aggEndBlockNumber -> highestConsecutiveAggregationTracker(aggEndBlockNumber) },
+        provenConsecutiveAggregationEndBlockNumberConsumer =
+        { aggEndBlockNumber -> highestConsecutiveAggregationTracker(aggEndBlockNumber) },
         aggregationSizeMultipleOf = configs.conflation.proofAggregation.aggregationSizeMultipleOf,
       )
   }

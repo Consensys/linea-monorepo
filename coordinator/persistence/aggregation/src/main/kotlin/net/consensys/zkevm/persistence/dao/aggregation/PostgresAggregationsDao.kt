@@ -307,7 +307,7 @@ class PostgresAggregationsDao(
     fromBlockNumber: Long?,
   ): SafeFuture<Long?> {
     return (
-      if (fromBlockNumber != null ) {
+      if (fromBlockNumber != null) {
         SafeFuture.completedFuture(fromBlockNumber)
       } else {
         findFirstAggregationProof().thenApply { firstProof ->
@@ -315,22 +315,22 @@ class PostgresAggregationsDao(
         }
       }
       ).thenCompose { fromBlockNumber ->
-        if (fromBlockNumber == null) {
-          SafeFuture.completedFuture(null)
-        } else {
-          selectAggregations
-            .execute(
-              Tuple.of(
-                fromBlockNumber,
-                aggregationStatusToDbValue(Aggregation.Status.Proven),
-                Int.MAX_VALUE,
-              ),
-            )
-            .toSafeFuture()
-            .thenApply { rowSet ->
-              rowSet.lastOrNull()?.getLong("end_block_number")
-            }
-        }
+      if (fromBlockNumber == null) {
+        SafeFuture.completedFuture(null)
+      } else {
+        selectAggregations
+          .execute(
+            Tuple.of(
+              fromBlockNumber,
+              aggregationStatusToDbValue(Aggregation.Status.Proven),
+              Int.MAX_VALUE,
+            ),
+          )
+          .toSafeFuture()
+          .thenApply { rowSet ->
+            rowSet.lastOrNull()?.getLong("end_block_number")
+          }
+      }
     }
   }
 

@@ -509,8 +509,8 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     // if fromBlockNumber is not given, should also return 20L as aggregation of blocks 1..20 exists in db
     aggregationsPostgresDaoImpl.findHighestConsecutiveEndBlockNumber()
       .get().also { highestEndBlockNumber ->
-      assertThat(highestEndBlockNumber).isEqualTo(20L)
-    }
+        assertThat(highestEndBlockNumber).isEqualTo(20L)
+      }
 
     // should return null as there is no aggregation with start block number as 21L
     aggregationsPostgresDaoImpl.findHighestConsecutiveEndBlockNumber(

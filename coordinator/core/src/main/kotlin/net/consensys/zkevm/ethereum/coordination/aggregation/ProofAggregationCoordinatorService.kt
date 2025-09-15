@@ -319,7 +319,7 @@ class ProofAggregationCoordinatorService(
         config = Config(
           pollingInterval = aggregationCoordinatorPollingInterval,
           proofsLimit = maxProofsPerAggregation,
-          proofGenerationRetryBackoffDelay = 5.seconds
+          proofGenerationRetryBackoffDelay = 5.seconds,
         ),
         metricsFacade = metricsFacade,
         nextBlockNumberToPoll = startBlockNumberInclusive.toLong(),
