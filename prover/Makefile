@@ -30,7 +30,8 @@ PACKAGES := \
 	github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries/... \
 	github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit/... \
 	github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates/... \
-  github.com/consensys/linea-monorepo/prover/protocol/dedicated/selector/...
+  github.com/consensys/linea-monorepo/prover/protocol/dedicated/selector/... \
+  github.com/consensys/linea-monorepo/prover/protocol/dedicated/reedsolomon/...
 
 # these targets are not defined as depending on source files,
 # so they should be recompiled by default “just in case”.
