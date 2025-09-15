@@ -94,23 +94,19 @@ class TransactionalSealedBeaconBlockImporterTest {
   }
 
   @Test
-  fun `importBlock rolls the DB update back on block import`() {
+  fun `importBlock succeeds even with block import failure`() {
     val sealedBeaconBlock = DataGenerators.randomSealedBeaconBlock(2UL)
+    val beaconState = DataGenerators.randomBeaconState(2UL)
     whenever(stateTransition.processBlock(any())).thenReturn(
       SafeFuture.completedFuture(
-        DataGenerators.randomBeaconState(
-          2UL,
-        ),
+        beaconState,
       ),
     )
     val expectedException = RuntimeException("Test exception")
     beaconBlockImporterResponse = SafeFuture.failedFuture(expectedException)
-    val stateBeforeTransition = beaconChain.getLatestBeaconState()
 
     val result = qbftBlockImporter.importBlock(sealedBeaconBlock).get()
-
-    assertThat(result).isEqualTo(ValidationResult.Companion.Invalid(expectedException.toString(), expectedException))
-    val stateAfterTransition = beaconChain.getLatestBeaconState()
-    assertThat(stateBeforeTransition).isEqualTo(stateAfterTransition)
+    assertThat(result).isEqualTo(ValidationResult.Companion.Valid)
+    assertThat(beaconChain.getLatestBeaconState()).isEqualTo(beaconState)
   }
 }

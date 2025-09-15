@@ -95,19 +95,31 @@ class TransactionalSealedBeaconBlockImporter(
       )
       return stateTransition
         .processBlock(sealedBeaconBlock.beaconBlock)
-        .thenCompose { resultingState ->
+        .thenApply { resultingState ->
           updater
             .putBeaconState(resultingState)
             .putSealedBeaconBlock(sealedBeaconBlock)
-          beaconBlockImporter
-            .importBlock(resultingState, sealedBeaconBlock.beaconBlock)
-        }.thenApply {
           updater.commit()
           log.trace(
             "Import complete clBlockNumber={} elBlockNumber={}",
             clBlockNumber,
             elBLockNumber,
           )
+          resultingState
+        }.thenCompose { resultingState ->
+          beaconBlockImporter
+            .importBlock(resultingState, sealedBeaconBlock.beaconBlock)
+            .thenApply { }
+            .exceptionally { e ->
+              // Block import doesn't participate in the validation, so we want it to complete, yet ignore its result
+              log.warn(
+                "Failure importing a valid CL block! clBlockNumber={}, elBlockNumber={}",
+                clBlockNumber,
+                elBLockNumber,
+                e,
+              )
+            }
+        }.thenApply {
           ValidationResult.Companion.Valid as ValidationResult
         }.exceptionally { ex ->
           log.trace(
