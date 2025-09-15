@@ -23,14 +23,14 @@ import (
 func main() {
 
 	// allow override via environment variable
-	maxRlpByteSize := 1 << 21
+	maxRlpByteSize := 1 << 10
 	if v := os.Getenv("MAX_RLP"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			maxRlpByteSize = n
 		}
 	}
 
-	depth := 40
+	depth := 10
 	if v := os.Getenv("Depth"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			depth = n
