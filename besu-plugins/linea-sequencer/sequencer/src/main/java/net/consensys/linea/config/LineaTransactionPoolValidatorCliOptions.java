@@ -28,6 +28,9 @@ public class LineaTransactionPoolValidatorCliOptions implements LineaCliOptions 
   public static final String DENY_LIST_PATH = "--plugin-linea-deny-list-path";
   public static final String DEFAULT_DENY_LIST_PATH = "lineaDenyList.txt";
 
+  public static final String BUNDLE_DENY_LIST_PATH = "--plugin-linea-bundle-deny-list-path";
+  public static final String DEFAULT_BUNDLE_DENY_LIST_PATH = "lineaBundleDenyList.txt";
+
   public static final String MAX_TX_GAS_LIMIT_OPTION = "--plugin-linea-max-tx-gas-limit";
   public static final int DEFAULT_MAX_TRANSACTION_GAS_LIMIT = 30_000_000;
 
@@ -49,6 +52,16 @@ public class LineaTransactionPoolValidatorCliOptions implements LineaCliOptions 
       description =
           "Path to the file containing the deny list (default: " + DEFAULT_DENY_LIST_PATH + ")")
   private String denyListPath = DEFAULT_DENY_LIST_PATH;
+
+  @CommandLine.Option(
+      names = {BUNDLE_DENY_LIST_PATH},
+      hidden = true,
+      paramLabel = "<STRING>",
+      description =
+          "Path to the file containing the deny list for bundles (default: "
+              + DEFAULT_BUNDLE_DENY_LIST_PATH
+              + ")")
+  private String bundleDenyListPath = DEFAULT_BUNDLE_DENY_LIST_PATH;
 
   @CommandLine.Option(
       names = {MAX_TX_GAS_LIMIT_OPTION},
@@ -109,6 +122,7 @@ public class LineaTransactionPoolValidatorCliOptions implements LineaCliOptions 
       final LineaTransactionPoolValidatorConfiguration config) {
     final LineaTransactionPoolValidatorCliOptions options = create();
     options.denyListPath = config.denyListPath();
+    options.bundleDenyListPath = config.bundleDenyListPath();
     options.maxTxGasLimit = config.maxTxGasLimit();
     options.maxTxCallDataSize = config.maxTxCalldataSize();
     options.txPoolSimulationCheckApiEnabled = config.txPoolSimulationCheckApiEnabled();
@@ -125,7 +139,9 @@ public class LineaTransactionPoolValidatorCliOptions implements LineaCliOptions 
   public LineaTransactionPoolValidatorConfiguration toDomainObject() {
     return new LineaTransactionPoolValidatorConfiguration(
         denyListPath,
-        parseDeniedAddresses(),
+        parseDeniedAddresses(denyListPath),
+        bundleDenyListPath,
+        parseDeniedAddresses(bundleDenyListPath),
         maxTxGasLimit,
         maxTxCallDataSize,
         txPoolSimulationCheckApiEnabled,
@@ -136,6 +152,7 @@ public class LineaTransactionPoolValidatorCliOptions implements LineaCliOptions 
   public String toString() {
     return MoreObjects.toStringHelper(this)
         .add(DENY_LIST_PATH, denyListPath)
+        .add(BUNDLE_DENY_LIST_PATH, bundleDenyListPath)
         .add(MAX_TX_GAS_LIMIT_OPTION, maxTxGasLimit)
         .add(MAX_TX_CALLDATA_SIZE, maxTxCallDataSize)
         .add(TX_POOL_ENABLE_SIMULATION_CHECK_API, txPoolSimulationCheckApiEnabled)
@@ -143,8 +160,8 @@ public class LineaTransactionPoolValidatorCliOptions implements LineaCliOptions 
         .toString();
   }
 
-  private Set<Address> parseDeniedAddresses() {
-    try (Stream<String> lines = Files.lines(Path.of(new File(denyListPath).toURI()))) {
+  private Set<Address> parseDeniedAddresses(final String denyListFilename) {
+    try (Stream<String> lines = Files.lines(Path.of(new File(denyListFilename).toURI()))) {
       return lines
           .map(l -> Address.fromHexString(l.trim()))
           .collect(Collectors.toUnmodifiableSet());
