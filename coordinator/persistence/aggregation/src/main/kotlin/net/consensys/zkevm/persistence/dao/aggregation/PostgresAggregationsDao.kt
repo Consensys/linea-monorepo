@@ -306,16 +306,12 @@ class PostgresAggregationsDao(
   override fun findHighestConsecutiveEndBlockNumber(
     fromBlockNumber: Long?,
   ): SafeFuture<Long?> {
-    return (
+    return if (fromBlockNumber != null) {
+      SafeFuture.completedFuture(fromBlockNumber)
+    } else {
+      findFirstAggregationStartBlockNumber()
+    }.thenCompose { fromBlockNumber ->
       if (fromBlockNumber != null) {
-        SafeFuture.completedFuture(fromBlockNumber)
-      } else {
-        findFirstAggregationStartBlockNumber()
-      }
-      ).thenCompose { fromBlockNumber ->
-      if (fromBlockNumber == null) {
-        SafeFuture.completedFuture(null)
-      } else {
         selectAggregations
           .execute(
             Tuple.of(
@@ -328,6 +324,8 @@ class PostgresAggregationsDao(
           .thenApply { rowSet ->
             rowSet.lastOrNull()?.getLong("end_block_number")
           }
+      } else {
+        SafeFuture.completedFuture(null)
       }
     }
   }
