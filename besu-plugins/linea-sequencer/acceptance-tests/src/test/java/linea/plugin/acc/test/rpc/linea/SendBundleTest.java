@@ -33,15 +33,16 @@ import org.web3j.utils.Numeric;
 public class SendBundleTest extends AbstractSendBundleTest {
   private static final Address DENY_TO_ADDRESS =
       Address.fromHexString("0xf17f52151EbEF6C7334FAD080c5704D77216b732");
-  private static final Address DENY_FROM_ADDRESS =
-      Address.fromHexString("0x44b30d738d2dec1952b92c091724e8aedd52b9b2");
+  // Address 0x44b30d738d2dec1952b92c091724e8aedd52b9b2
   private static final String DENY_FROM_PRIVATE_KEY =
       "0xf326e86ba27e2286725a154922094f02573f4921a25a27046b74ec90e653438e";
 
   @Override
   public List<String> getTestCliOptions() {
     return new TestCommandLineOptionsBuilder()
-        .set("--plugin-linea-bundle-deny-list-path=", getResourcePath("/bundleDenyList.txt"))
+        .set(
+            "--plugin-linea-bundle-overriding-deny-list-path=",
+            getResourcePath("/bundleDenyList.txt"))
         .build();
   }
 
