@@ -37,11 +37,28 @@ class EIP7702TransactionSender {
     return authorization;
   }
 
-  async sendNonSponsoredTransaction(targetERC20Address: string) {
+  async createAuthorizationForPrivateKey(targetContractAddress: string, privateKey: string): Promise<Authorization> {
+    const network = await this.provider.getNetwork();
+    const currentChainId = network.chainId;
+
+    const signer = new ethers.Wallet(privateKey, this.provider);
+    const currentNonce = await this.provider.getTransactionCount(signer.address);
+    const authNonce = currentNonce + 1;
+
+    const authorization = await signer.authorize({
+      address: targetContractAddress,
+      nonce: authNonce,
+      chainId: currentChainId,
+    });
+    console.log("Authorization created with nonce:", authorization.nonce);
+    return authorization;
+  }
+
+  async sendNonSponsoredTransaction(targetAddress: string) {
     console.log("\n=== TRANSACTION 1: NON-SPONSORED (ETH TRANSFERS) ===");
 
     // Create authorization with incremented nonce for same-wallet transactions
-    const authorization = await this.createAuthorization(targetERC20Address);
+    const authorization = await this.createAuthorization(targetAddress);
 
     const ABI = ["function initialize() external"];
 
