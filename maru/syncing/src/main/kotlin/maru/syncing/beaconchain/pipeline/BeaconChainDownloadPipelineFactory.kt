@@ -105,7 +105,11 @@ class BeaconChainDownloadPipelineFactory(
 
     return BeaconChainPipeline(
       pipeline = pipeline,
-      target = { latestEndBlock },
+      target = {
+        // If we started beyond the sync target, return the sync target (we're already synced to it)
+        val currentSyncTarget = syncTargetProvider()
+        if (startBlock > currentSyncTarget) currentSyncTarget else latestEndBlock
+      },
     )
   }
 }

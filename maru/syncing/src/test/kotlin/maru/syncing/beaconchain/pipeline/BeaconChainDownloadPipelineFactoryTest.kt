@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.times
 import org.mockito.kotlin.any
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture.completedFuture
@@ -207,6 +208,8 @@ class BeaconChainDownloadPipelineFactoryTest {
 
   @Test
   fun `factory creates multiple independent pipelines`() {
+    whenever(syncTargetProvider.invoke()).thenReturn(150uL)
+
     val pipeline1 = factory.createPipeline(100uL)
     val pipeline2 = factory.createPipeline(100uL)
 
@@ -259,5 +262,33 @@ class BeaconChainDownloadPipelineFactoryTest {
     // Should complete without overflow errors
     completionFuture.get(5, TimeUnit.SECONDS)
     assertThat(completionFuture).isCompleted
+  }
+
+  @Test
+  fun `pipeline target equals sync target when already synced`() {
+    whenever(syncTargetProvider.invoke()).thenReturn(100uL)
+
+    val pipeline = factory.createPipeline(101uL)
+    val completionFuture = pipeline.pipeline.start(executorService)
+
+    completionFuture.get(5, TimeUnit.SECONDS)
+
+    assertThat(pipeline.target()).isEqualTo(100uL)
+    verify(peerLookup, never()).getPeers()
+    verify(blockImporter, never()).importBlock(any())
+  }
+
+  @Test
+  fun `pipeline target returns sync target when sync target changes to less than start block`() {
+    // Set sync target to 50 (less than start block 100)
+    whenever(syncTargetProvider.invoke()).thenReturn(50uL)
+
+    val pipeline = factory.createPipeline(100uL)
+    val completionFuture = pipeline.pipeline.start(executorService)
+
+    completionFuture.get(5, TimeUnit.SECONDS)
+
+    // Should return the current sync target (50) since startBlock (100) > currentSyncTarget (50)
+    assertThat(pipeline.target()).isEqualTo(50uL)
   }
 }
