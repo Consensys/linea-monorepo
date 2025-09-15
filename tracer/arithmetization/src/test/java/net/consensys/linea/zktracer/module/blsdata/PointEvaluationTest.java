@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.blsdata;
 
+import static net.consensys.linea.zktracer.Fork.isPostCancun;
 import static net.consensys.linea.zktracer.module.blsdata.BlsDataOperation.POINT_EVALUATION_PRIME;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -111,8 +112,8 @@ public class PointEvaluationTest extends TracerTestBase {
             "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
             "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
             testInfo);
-    BlsData blsdata = bytecodeRunner.getHub().blsData();
-    if (blsdata != null) {
+    if (isPostCancun(chainConfig.fork)) {
+      final BlsData blsdata = bytecodeRunner.getHub().blsData();
       assertTrue(blsdata.blsDataOperation().mint());
       assertFalse(blsdata.blsDataOperation().mext());
       assertFalse(blsdata.blsDataOperation().successBit());
@@ -129,8 +130,8 @@ public class PointEvaluationTest extends TracerTestBase {
             "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
             "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
             testInfo);
-    BlsData blsdata = bytecodeRunner.getHub().blsData();
-    if (blsdata != null) {
+    if (isPostCancun(chainConfig.fork)) {
+      final BlsData blsdata = bytecodeRunner.getHub().blsData();
       assertTrue(blsdata.blsDataOperation().mint());
       assertFalse(blsdata.blsDataOperation().mext());
       assertFalse(blsdata.blsDataOperation().successBit());
@@ -174,7 +175,7 @@ public class PointEvaluationTest extends TracerTestBase {
         .push(10) // address
         .push(Bytes.fromHexStringLenient("0xFFFFFFFF")) // gas
         .op(OpCode.STATICCALL);
-    BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
+    final BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
     bytecodeRunner.run(List.of(codeOwnerAccount), chainConfig, testInfo);
     return bytecodeRunner;
   }
