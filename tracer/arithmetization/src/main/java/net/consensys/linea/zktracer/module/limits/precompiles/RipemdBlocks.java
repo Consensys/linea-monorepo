@@ -16,26 +16,22 @@
 package net.consensys.linea.zktracer.module.limits.precompiles;
 
 import static com.google.common.base.Preconditions.checkState;
+import static net.consensys.linea.zktracer.module.limits.CountingModuleName.PRECOMPILE_RIPEMD_BLOCKS;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
-import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 
-@RequiredArgsConstructor
 @Getter
 @Accessors(fluent = true)
-public final class RipemdBlocks implements CountingOnlyModule {
-  private final CountOnlyOperation counts = new CountOnlyOperation();
+public final class RipemdBlocks extends CountingOnlyModule {
   public static final int RIPEMD160_BLOCKSIZE = 64 * 8;
   // If the length is > 2⁶4, we just use the lower 64 bits.
   private static final int RIPEMD160_LENGTH_APPEND = 64;
   private static final int RIPEMD160_ND_PADDED_ONE = 1;
 
-  @Override
-  public String moduleKey() {
-    return "PRECOMPILE_RIPEMD_BLOCKS";
+  public RipemdBlocks() {
+    super(PRECOMPILE_RIPEMD_BLOCKS);
   }
 
   @Override

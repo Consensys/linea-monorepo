@@ -15,23 +15,22 @@
 
 package net.consensys.linea.zktracer.module.limits.precompiles;
 
+import static net.consensys.linea.zktracer.module.limits.CountingModuleName.PRECOMPILE_SHA2_BLOCKS;
+
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
-import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 
 @Getter
 @Accessors(fluent = true)
-public final class Sha256Blocks implements CountingOnlyModule {
-  private final CountOnlyOperation counts = new CountOnlyOperation();
+public final class Sha256Blocks extends CountingOnlyModule {
   private static final int SHA256_BLOCKSIZE = 64 * 8;
   // The length of the data to be hashed is 2**64 maximum.
   private static final int SHA256_PADDING_LENGTH = 64;
   private static final int SHA256_NB_PADDED_ONE = 1;
 
-  @Override
-  public String moduleKey() {
-    return "PRECOMPILE_SHA2_BLOCKS";
+  public Sha256Blocks() {
+    super(PRECOMPILE_SHA2_BLOCKS);
   }
 
   @Override

@@ -19,9 +19,9 @@ import static net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfigurat
 import static net.consensys.linea.zktracer.Fork.isPostCancun;
 import static net.consensys.linea.zktracer.Utils.call;
 import static net.consensys.linea.zktracer.Utils.delegateCall;
-import static net.consensys.linea.zktracer.ZkCounter.*;
-import static net.consensys.linea.zktracer.ZkCounter.MODEXP;
 import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.*;
+import static net.consensys.linea.zktracer.module.limits.CountingModuleName.BLS;
+import static net.consensys.linea.zktracer.module.limits.CountingModuleName.POINT_EVAL;
 import static net.consensys.linea.zktracer.types.AddressUtils.BLS_PRECOMPILES;
 import static net.consensys.linea.zktracer.types.AddressUtils.isBlsPrecompileCall;
 import static org.hyperledger.besu.datatypes.Address.*;
@@ -35,6 +35,7 @@ import java.util.stream.Stream;
 
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.*;
+import net.consensys.linea.zktracer.module.limits.CountingModuleName;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
@@ -110,9 +111,9 @@ public class ZkCounterTest extends TracerTestBase {
     assertEquals(2, lineCountMap.get("BLOCK_L2_L1_LOGS"));
 
     // no precompile call:
-    assertEquals(0, lineCountMap.get(MODEXP));
-    assertEquals(0, lineCountMap.get(RIP));
-    assertEquals(0, lineCountMap.get(BLAKE));
+    assertEquals(0, lineCountMap.get(CountingModuleName.MODEXP.toString()));
+    assertEquals(0, lineCountMap.get(CountingModuleName.RIP.toString()));
+    assertEquals(0, lineCountMap.get(CountingModuleName.BLAKE.toString()));
     assertEquals(0, lineCountMap.get("POINT_EVAL"));
     assertEquals(0, lineCountMap.get("BLS"));
 
@@ -208,11 +209,11 @@ public class ZkCounterTest extends TracerTestBase {
     assertEquals(0, lineCountMap.get("BLOCK_L2_L1_LOGS"));
 
     // no precompile call:
-    assertEquals(0, lineCountMap.get(MODEXP));
-    assertEquals(0, lineCountMap.get(RIP));
-    assertEquals(0, lineCountMap.get(BLAKE));
-    assertEquals(0, lineCountMap.get("POINT_EVAL"));
-    assertEquals(0, lineCountMap.get("BLS"));
+    assertEquals(0, lineCountMap.get(CountingModuleName.MODEXP.toString()));
+    assertEquals(0, lineCountMap.get(CountingModuleName.RIP.toString()));
+    assertEquals(0, lineCountMap.get(CountingModuleName.BLAKE.toString()));
+    assertEquals(0, lineCountMap.get(POINT_EVAL.toString()));
+    assertEquals(0, lineCountMap.get(BLS.toString()));
 
     // L1 block size > 0
     assertTrue(lineCountMap.get("BLOCK_L1_SIZE") > 0);
@@ -275,13 +276,13 @@ public class ZkCounterTest extends TracerTestBase {
     assertEquals(0, lineCountMap.get("BLOCK_L2_L1_LOGS"));
 
     // no precompile call, but a PRC:
-    assertEquals(0, lineCountMap.get(MODEXP));
+    assertEquals(0, lineCountMap.get(CountingModuleName.MODEXP.toString()));
     final int expectedRIP = prc.equals(RIPEMD160) ? Integer.MAX_VALUE : 0;
-    assertEquals(expectedRIP, lineCountMap.get(RIP));
+    assertEquals(expectedRIP, lineCountMap.get(CountingModuleName.RIP.toString()));
     final int expectedBlake = prc.equals(BLAKE2B_F_COMPRESSION) ? Integer.MAX_VALUE : 0;
-    assertEquals(expectedBlake, lineCountMap.get(BLAKE));
-    assertEquals(0, lineCountMap.get("POINT_EVAL"));
-    assertEquals(0, lineCountMap.get("BLS"));
+    assertEquals(expectedBlake, lineCountMap.get(CountingModuleName.BLAKE.toString()));
+    assertEquals(0, lineCountMap.get(POINT_EVAL.toString()));
+    assertEquals(0, lineCountMap.get(BLS.toString()));
 
     // L1 block size > 0
     assertTrue(lineCountMap.get("BLOCK_L1_SIZE") > 0);
@@ -364,11 +365,13 @@ public class ZkCounterTest extends TracerTestBase {
     assertEquals(0, lineCountMap.get("BLOCK_L2_L1_LOGS"));
 
     // no precompile call, but a MODEXP:
-    assertEquals((!base && !exp && !mod) ? 0 : Integer.MAX_VALUE, lineCountMap.get(MODEXP));
-    assertEquals(0, lineCountMap.get(RIP));
-    assertEquals(0, lineCountMap.get(BLAKE));
-    assertEquals(0, lineCountMap.get("POINT_EVAL"));
-    assertEquals(0, lineCountMap.get("BLS"));
+    assertEquals(
+        (!base && !exp && !mod) ? 0 : Integer.MAX_VALUE,
+        lineCountMap.get(CountingModuleName.MODEXP.toString()));
+    assertEquals(0, lineCountMap.get(CountingModuleName.RIP.toString()));
+    assertEquals(0, lineCountMap.get(CountingModuleName.BLAKE.toString()));
+    assertEquals(0, lineCountMap.get(POINT_EVAL.toString()));
+    assertEquals(0, lineCountMap.get(BLS.toString()));
 
     // L1 block size > 0
     assertTrue(lineCountMap.get("BLOCK_L1_SIZE") > 0);
@@ -455,11 +458,11 @@ public class ZkCounterTest extends TracerTestBase {
     final boolean isBlsCall = isBlsPrecompileCall(prc, chainConfig.fork);
 
     // no precompile call, but a PRC:
-    assertEquals(0, lineCountMap.get(MODEXP));
-    assertEquals(0, lineCountMap.get(RIP));
-    assertEquals(0, lineCountMap.get(BLAKE));
-    assertEquals(isKzgCall ? Integer.MAX_VALUE : 0, lineCountMap.get("POINT_EVAL"));
-    assertEquals(isBlsCall ? Integer.MAX_VALUE : 0, lineCountMap.get("BLS"));
+    assertEquals(0, lineCountMap.get(CountingModuleName.MODEXP.toString()));
+    assertEquals(0, lineCountMap.get(CountingModuleName.RIP.toString()));
+    assertEquals(0, lineCountMap.get(CountingModuleName.BLAKE.toString()));
+    assertEquals(isKzgCall ? Integer.MAX_VALUE : 0, lineCountMap.get(POINT_EVAL.toString()));
+    assertEquals(isBlsCall ? Integer.MAX_VALUE : 0, lineCountMap.get(BLS.toString()));
 
     // L1 block size > 0
     assertTrue(lineCountMap.get("BLOCK_L1_SIZE") > 0);

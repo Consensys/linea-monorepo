@@ -18,45 +18,55 @@ package net.consensys.linea.zktracer.container.module;
 import java.util.List;
 
 import com.google.common.base.Preconditions;
+import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
+import net.consensys.linea.zktracer.module.limits.CountingModuleName;
 
 /** A {@link CountingOnlyModule} is a {@link Module} that only counts certain outcomes. */
-public interface CountingOnlyModule extends Module {
-  CountOnlyOperation counts();
+@RequiredArgsConstructor
+public class CountingOnlyModule implements Module {
+  private final CountingModuleName moduleKey;
+
+  protected final CountOnlyOperation counts = new CountOnlyOperation();
 
   @Override
-  default void commitTransactionBundle() {
-    counts().commitTransactionBundle();
+  public void commitTransactionBundle() {
+    counts.commitTransactionBundle();
   }
 
   @Override
-  default void popTransactionBundle() {
-    counts().popTransactionBundle();
+  public String moduleKey() {
+    return moduleKey.toString();
   }
 
   @Override
-  default int lineCount() {
-    return counts().lineCount();
+  public void popTransactionBundle() {
+    counts.popTransactionBundle();
   }
 
   @Override
-  default int spillage(Trace trace) {
+  public int lineCount() {
+    return counts.lineCount();
+  }
+
+  @Override
+  public int spillage(Trace trace) {
     return 0;
   }
 
-  default void updateTally(final int count) {
+  public void updateTally(final int count) {
     Preconditions.checkArgument(count >= 0, "Must be non-negative");
-    counts().add(count);
+    counts.add(count);
   }
 
   @Override
-  default List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
     throw new IllegalStateException("should never be called");
   }
 
   @Override
-  default void commit(Trace trace) {
+  public void commit(Trace trace) {
     throw new IllegalStateException("should never be called");
   }
 }

@@ -24,6 +24,7 @@ import java.util.List;
 
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.*;
+import net.consensys.linea.zktracer.container.module.IncrementingModule;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
@@ -90,7 +91,7 @@ public class L2L1LogsTests extends TracerTestBase {
 
     toyWorld.run();
 
-    final L2L1Logs l2l1Logs = toyWorld.getHub().l2L1Logs();
+    final IncrementingModule l2l1Logs = toyWorld.getHub().l2L1Logs();
 
     // We made two LOGs, one with 1 topic, and one with 4 topics and data
     assertEquals(2, l2l1Logs.lineCount());
@@ -174,7 +175,7 @@ public class L2L1LogsTests extends TracerTestBase {
 
     toyWorld.run();
 
-    final L2L1Logs l2l1Logs = toyWorld.getHub().l2L1Logs();
+    final IncrementingModule l2l1Logs = toyWorld.getHub().l2L1Logs();
 
     // We made a reverted LOG
     assertEquals(0, l2l1Logs.lineCount());

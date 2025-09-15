@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer;
 
+import static net.consensys.linea.zktracer.module.limits.CountingModuleName.*;
+import static net.consensys.linea.zktracer.module.limits.CountingModuleName.MODEXP;
 import static net.consensys.linea.zktracer.types.AddressUtils.isBlsPrecompile;
 import static org.hyperledger.besu.datatypes.Address.*;
 
@@ -24,11 +26,11 @@ import java.util.Map;
 import java.util.Set;
 
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
-import net.consensys.linea.zktracer.container.module.EventDetectorModule;
+import net.consensys.linea.zktracer.container.module.IncrementAndDetectModule;
+import net.consensys.linea.zktracer.container.module.IncrementingModule;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata;
 import net.consensys.linea.zktracer.module.limits.L1BlockSize;
-import net.consensys.linea.zktracer.module.limits.L2L1Logs;
 import net.consensys.linea.zktracer.types.MemoryRange;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
@@ -40,17 +42,13 @@ import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
 public class ZkCounter implements LineCountingTracer {
-  public static final String MODEXP = "MODEXP";
-  public static final String RIP = "RIP";
-  public static final String BLAKE = "BLAKE";
-
-  final EventDetectorModule modexp = new EventDetectorModule(MODEXP) {};
-  final EventDetectorModule rip = new EventDetectorModule(RIP) {};
-  final EventDetectorModule blake = new EventDetectorModule(BLAKE) {};
-  final EventDetectorModule pointEval = new EventDetectorModule("POINT_EVAL") {};
-  final EventDetectorModule bls = new EventDetectorModule("BLS") {};
+  final IncrementAndDetectModule modexp = new IncrementAndDetectModule(MODEXP) {};
+  final IncrementAndDetectModule rip = new IncrementAndDetectModule(RIP) {};
+  final IncrementAndDetectModule blake = new IncrementAndDetectModule(BLAKE) {};
+  final IncrementAndDetectModule pointEval = new IncrementAndDetectModule(POINT_EVAL);
+  final IncrementAndDetectModule bls = new IncrementAndDetectModule(BLS);
   final L1BlockSize l1BlockSize;
-  final L2L1Logs l2l1Logs = new L2L1Logs();
+  final IncrementingModule l2l1Logs = new IncrementingModule(BLOCK_L2_L1_LOGS);
   final List<Module> moduleToCount;
 
   public ZkCounter(LineaL1L2BridgeSharedConfiguration bridgeConfiguration) {

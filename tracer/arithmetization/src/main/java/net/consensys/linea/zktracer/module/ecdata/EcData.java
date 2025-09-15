@@ -21,16 +21,12 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
+import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
+import net.consensys.linea.zktracer.container.module.IncrementingModule;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.ext.Ext;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment;
-import net.consensys.linea.zktracer.module.limits.precompiles.EcAddEffectiveCall;
-import net.consensys.linea.zktracer.module.limits.precompiles.EcMulEffectiveCall;
-import net.consensys.linea.zktracer.module.limits.precompiles.EcPairingFinalExponentiations;
-import net.consensys.linea.zktracer.module.limits.precompiles.EcPairingG2MembershipCalls;
-import net.consensys.linea.zktracer.module.limits.precompiles.EcPairingMillerLoops;
-import net.consensys.linea.zktracer.module.limits.precompiles.EcRecoverEffectiveCall;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.apache.tuweni.bytes.Bytes;
 
@@ -44,13 +40,13 @@ public class EcData implements OperationListModule<EcDataOperation> {
   private final Wcp wcp;
   private final Ext ext;
 
-  private final EcAddEffectiveCall ecAddEffectiveCall;
-  private final EcMulEffectiveCall ecMulEffectiveCall;
-  private final EcRecoverEffectiveCall ecRecoverEffectiveCall;
+  private final IncrementingModule ecAddEffectiveCall;
+  private final IncrementingModule ecMulEffectiveCall;
+  private final IncrementingModule ecRecoverEffectiveCall;
 
-  private final EcPairingG2MembershipCalls ecPairingG2MembershipCalls;
-  private final EcPairingMillerLoops ecPairingMillerLoops;
-  private final EcPairingFinalExponentiations ecPairingFinalExponentiations;
+  private final CountingOnlyModule ecPairingG2MembershipCalls;
+  private final CountingOnlyModule ecPairingMillerLoops;
+  private final IncrementingModule ecPairingFinalExponentiations;
 
   @Getter private EcDataOperation ecDataOperation;
 
