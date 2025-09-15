@@ -156,6 +156,15 @@ class PostgresAggregationsDao(
       """.trimIndent(),
     )
 
+  private val findFirstAggregation =
+    connection.preparedQuery(
+      """
+        select * from $aggregationsTable
+        order by start_block_number asc
+        LIMIT 1
+      """.trimIndent(),
+    )
+
   private val deleteUptoQuery =
     connection.preparedQuery(
       """
@@ -295,20 +304,34 @@ class PostgresAggregationsDao(
   }
 
   override fun findHighestConsecutiveEndBlockNumber(
-    fromBlockNumber: Long,
+    fromBlockNumber: Long?,
   ): SafeFuture<Long?> {
-    return selectAggregations
-      .execute(
-        Tuple.of(
-          fromBlockNumber,
-          aggregationStatusToDbValue(Aggregation.Status.Proven),
-          Int.MAX_VALUE,
-        ),
-      )
-      .toSafeFuture()
-      .thenApply { rowSet ->
-        rowSet.lastOrNull()?.getLong("end_block_number")
+    return (
+      if (fromBlockNumber != null ) {
+        SafeFuture.completedFuture(fromBlockNumber)
+      } else {
+        findFirstAggregationProof().thenApply { firstProof ->
+          firstProof?.startBlockNumber?.toLong()
+        }
       }
+      ).thenCompose { fromBlockNumber ->
+        if (fromBlockNumber == null) {
+          SafeFuture.completedFuture(null)
+        } else {
+          selectAggregations
+            .execute(
+              Tuple.of(
+                fromBlockNumber,
+                aggregationStatusToDbValue(Aggregation.Status.Proven),
+                Int.MAX_VALUE,
+              ),
+            )
+            .toSafeFuture()
+            .thenApply { rowSet ->
+              rowSet.lastOrNull()?.getLong("end_block_number")
+            }
+        }
+    }
   }
 
   override fun findAggregationProofByEndBlockNumber(endBlockNumber: Long): SafeFuture<ProofToFinalize?> {
@@ -328,6 +351,20 @@ class PostgresAggregationsDao(
           )
         } else {
           aggregationProofs.firstOrNull()
+        }
+      }
+  }
+
+  private fun findFirstAggregationProof(): SafeFuture<ProofToFinalize?> {
+    return findFirstAggregation
+      .execute()
+      .toSafeFuture()
+      .thenApply { rowSet ->
+        val aggregationProofs = rowSet.map(::parseAggregationProofs)
+        if (aggregationProofs.isNotEmpty()) {
+          aggregationProofs.firstOrNull()
+        } else {
+          null
         }
       }
   }

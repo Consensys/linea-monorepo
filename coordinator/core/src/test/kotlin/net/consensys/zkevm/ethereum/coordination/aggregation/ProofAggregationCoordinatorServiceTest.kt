@@ -82,11 +82,14 @@ class ProofAggregationCoordinatorServiceTest {
     val config = ProofAggregationCoordinatorService.Config(
       pollingInterval = 10.milliseconds,
       proofsLimit = blobsToPoll,
+      proofGenerationRetryBackoffDelay = 5.milliseconds
     )
 
     var provenAggregation = 0UL
+    var provenConsecutiveAggregation = 0UL
 
     val provenAggregationEndBlockNumberConsumer = Consumer<ULong> { provenAggregation = it }
+    val provenConsecutiveAggregationEndBlockNumberConsumer = Consumer<ULong> { provenConsecutiveAggregation = it }
     val proofAggregationCoordinatorService = ProofAggregationCoordinatorService(
       vertx = mockVertx,
       config = config,
@@ -98,6 +101,7 @@ class ProofAggregationCoordinatorServiceTest {
       aggregationL2StateProvider = mockAggregationL2StateProvider,
       metricsFacade = metricsFacade,
       provenAggregationEndBlockNumberConsumer = provenAggregationEndBlockNumberConsumer,
+      provenConsecutiveAggregationEndBlockNumberConsumer = provenConsecutiveAggregationEndBlockNumberConsumer,
     )
     verify(mockAggregationCalculator).onAggregation(proofAggregationCoordinatorService)
 
@@ -211,6 +215,14 @@ class ProofAggregationCoordinatorServiceTest {
         }
       }
 
+    whenever(mockAggregationsRepository.findHighestConsecutiveEndBlockNumber())
+      .thenAnswer {
+        SafeFuture.completedFuture(aggregation1.endBlockNumber.toLong())
+      }
+      .thenAnswer {
+        SafeFuture.completedFuture(aggregation2.endBlockNumber.toLong())
+      }
+
     whenever(
       mockAggregationsRepository.saveNewAggregation(
         argThat<Aggregation> {
@@ -232,6 +244,7 @@ class ProofAggregationCoordinatorServiceTest {
     verify(mockProofAggregationClient).requestProof(proofsToAggregate1)
     verify(mockAggregationsRepository).saveNewAggregation(aggregation1)
     assertThat(provenAggregation).isEqualTo(aggregation1.endBlockNumber)
+    assertThat(provenConsecutiveAggregation).isEqualTo(aggregation1.endBlockNumber)
 
     // Second aggregation should Trigger
     proofAggregationCoordinatorService.action().get()
@@ -245,5 +258,6 @@ class ProofAggregationCoordinatorServiceTest {
     verify(mockProofAggregationClient).requestProof(proofsToAggregate2)
     verify(mockAggregationsRepository).saveNewAggregation(aggregation2)
     assertThat(provenAggregation).isEqualTo(aggregation2.endBlockNumber)
+    assertThat(provenConsecutiveAggregation).isEqualTo(aggregation2.endBlockNumber)
   }
 }
