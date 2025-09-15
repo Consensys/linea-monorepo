@@ -388,20 +388,3 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 func (q LogDerivativeSum) UUID() uuid.UUID {
 	return q.uuid
 }
-
-func fieldAsInt(f field.Element) int {
-
-	if f.IsUint64() {
-		return int(f.Uint64())
-	}
-
-	f_ := f
-	f_.Neg(&f_)
-
-	if f_.IsUint64() {
-		return -int(f_.Uint64())
-	}
-
-	// utils.Panic("unsupported field type: %v", f.String())
-	return 0
-}

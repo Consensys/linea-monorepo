@@ -62,7 +62,7 @@ func (bd *BitDecomposed) Run(run *wizard.ProverRuntime) {
 
 	for x := range v.IterateCompact() {
 
-		if !x.IsUint64() {
+		if !x.CheckNonNeg() {
 			panic("can handle 64 bits at most")
 		}
 

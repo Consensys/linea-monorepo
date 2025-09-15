@@ -336,7 +336,7 @@ func unmarshalAsZero(des *Deserializer, val any, t reflect.Type) (reflect.Value,
 // done [field.SetBigInt] as it handles negative values.
 func fieldToSmallBigInt(v field.Element) *big.Int {
 	neg := new(field.Element).Neg(&v)
-	if neg.IsUint64() {
+	if neg.CheckNonNeg() {
 		n := neg.Uint64()
 		return new(big.Int).SetInt64(-int64(n))
 	}

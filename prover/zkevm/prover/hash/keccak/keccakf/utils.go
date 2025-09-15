@@ -103,7 +103,7 @@ func DecomposeFr(f field.Element, base int, nb int) (res []field.Element) {
 
 	// Optimization : the computation is faster to perform if
 	// f fits on a U64
-	if f.IsUint64() {
+	if f.CheckNonNeg() {
 		return DecomposeSmall(f.Uint64(), base, nb)
 	}
 

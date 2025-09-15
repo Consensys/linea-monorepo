@@ -2,7 +2,6 @@ package byte32cmp
 
 import (
 	"fmt"
-	"strconv"
 	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -206,14 +205,14 @@ func (mCmp *MultiLimbCmp) Run(run *wizard.ProverRuntime) {
 		)
 
 		// sf is positive
-		if checkStringSign(sF.String()) && !sF.IsZero() {
+		if sF.CheckNonNeg() && !sF.IsZero() {
 
 			isGreater[i] = field.One()
 			nnSyndrom[i] = sF
 		}
 
 		// sf is negitive
-		if !checkStringSign(sF.String()) {
+		if !sF.CheckNonNeg() {
 
 			isLower[i] = field.One()
 			nnSyndrom[i].Neg(&sF)
@@ -226,23 +225,4 @@ func (mCmp *MultiLimbCmp) Run(run *wizard.ProverRuntime) {
 	run.AssignColumn(mCmp.NonNegativeSyndrom.GetColID(), smartvectors.NewRegular(nnSyndrom))
 
 	wg.Wait()
-}
-
-// checkStringSign determines if a string represents a positive, negative, or zero value.
-func checkStringSign(inputStr string) bool {
-	// Step 1 & 2: Parse the string to a float64 and handle any errors.
-	number, err := strconv.ParseFloat(inputStr, 64)
-	if err != nil {
-		// This block runs if the string is not a valid number.
-		return false
-	}
-
-	// Step 3: Compare the number to determine its sign.
-	if number > 0 {
-		return true
-	} else if number < 0 {
-		return false
-	} else {
-		return true
-	}
 }
