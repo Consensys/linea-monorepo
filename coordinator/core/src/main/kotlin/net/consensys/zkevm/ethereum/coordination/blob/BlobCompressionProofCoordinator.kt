@@ -147,7 +147,7 @@ class BlobCompressionProofCoordinator(
       .thenPeek {
         log.info(
           "blob compression proof generated: blob={}",
-          conflations.toBlockIntervals().toBlockInterval(),
+          conflations.toBlockIntervals().toBlockInterval().intervalString(),
         )
       }
       .thenCompose { blobCompressionProof ->
