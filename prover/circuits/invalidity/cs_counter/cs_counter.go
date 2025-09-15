@@ -9,12 +9,12 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 
-	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
 	"github.com/sirupsen/logrus"
@@ -23,7 +23,7 @@ import (
 func main() {
 
 	// allow override via environment variable
-	maxRlpByteSize := 1 << 10
+	maxRlpByteSize := 1 << 21
 	if v := os.Getenv("MAX_RLP"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			maxRlpByteSize = n
@@ -59,7 +59,7 @@ func main() {
 		}
 		keccak.NewKeccakSingleProvider(comp, inp)
 	}
-	comp := wizard.Compile(definer, internal.WizardCompilationParameters()...)
+	comp := wizard.Compile(definer, zkevm.FullCompilationSuite...)
 	logrus.Info("keccak circuit compiled")
 
 	// define the circuit
