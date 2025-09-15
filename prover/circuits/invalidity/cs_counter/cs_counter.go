@@ -29,12 +29,20 @@ func main() {
 			maxRlpByteSize = n
 		}
 	}
-	fmt.Println("Compiling with maxRlpByteSize =", maxRlpByteSize)
+
+	depth := 40
+	if v := os.Getenv("Depth"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			depth = n
+		}
+	}
+
+	fmt.Printf("Compiling with maxRlpByteSize = %v and depth = %v\n", maxRlpByteSize, depth)
 
 	var (
 		config = &smt.Config{
 			HashFunc: hashtypes.MiMC,
-			Depth:    40,
+			Depth:    depth,
 		}
 	)
 
