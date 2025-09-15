@@ -1,7 +1,6 @@
 package query
 
 import (
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
@@ -11,20 +10,25 @@ import (
 
 // A gnark circuit version of the LocalOpeningResult
 type GnarkLocalOpeningParamsGen[T zk.Element] struct {
-	BaseY  frontend.Variable
-	ExtY   gnarkfext.Element
+	BaseY  T
+	ExtY   gnarkfext.E4Gen[T]
 	IsBase bool
 }
 
-// func (p LocalOpeningParams) GnarkAssign() GnarkLocalOpeningParamsGen {
-// 	var exty gnarkfext.Element
-// 	exty.Assign(p.ExtY)
-// 	return GnarkLocalOpeningParams{
-// 		BaseY:  p.BaseY,
-// 		ExtY:   exty,
-// 		IsBase: p.IsBase,
-// 	}
-// }
+func (g *GnarkLocalOpeningParamsGen[T]) GnarkAssign(p LocalOpeningParams) {
+	g.BaseY = zk.ValueOf[T](p.BaseY)
+	g.ExtY = gnarkfext.NewE4Gen[T](p.ExtY)
+	g.IsBase = p.IsBase
+}
+
+// A gnark circuit version of LogDerivSumParams
+type GnarkLogDerivSumParamsGen[T zk.Element] struct {
+	Sum T
+}
+
+func (g *GnarkLogDerivSumParamsGen[T]) GnarkAssign(p LogDerivSumParams) {
+	g.Sum = zk.ValueOf[T](p.Sum)
+}
 
 // A gnark circuit version of GrandProductParams
 type GnarkGrandProductParamsGen[T zk.Element] struct {
@@ -63,10 +67,6 @@ func (g *GnarkHornerParamsGen[T]) Assign(p HornerParams) {
 		}
 	}
 }
-
-// func (p LogDerivSumParams) GnarkAssign() GnarkLogDerivSumParams {
-// 	return GnarkLogDerivSumParams{Sum: p.Sum}
-// }
 
 // A gnark circuit version of InnerProductParams
 type GnarkInnerProductParamsGen[T zk.Element] struct {
