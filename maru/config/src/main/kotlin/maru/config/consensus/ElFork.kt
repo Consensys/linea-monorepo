@@ -11,5 +11,6 @@ package maru.config.consensus
 enum class ElFork {
   Paris,
   Shanghai,
+  Cancun,
   Prague,
 }

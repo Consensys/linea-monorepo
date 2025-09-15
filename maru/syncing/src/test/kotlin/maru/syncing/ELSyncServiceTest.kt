@@ -47,7 +47,7 @@ class ELSyncServiceTest {
             blockTimeSeconds = 1U,
             configuration =
               QbftConsensusConfig(
-                elFork = ElFork.Shanghai,
+                elFork = ElFork.Cancun,
                 validatorSet = emptySet(),
               ),
             timestampSeconds = switchTimestamp,
@@ -113,7 +113,7 @@ class ELSyncServiceTest {
       ELSyncService(
         beaconChain = beaconChain,
         forksSchedule = forksSchedule,
-        elManagerMap = mapOf(ElFork.Shanghai to executionLayerManager),
+        elManagerMap = mapOf(ElFork.Cancun to executionLayerManager),
         onStatusChange = onStatusChange,
         config = config,
         finalizationProvider = finalizationProvider,
@@ -194,7 +194,7 @@ class ELSyncServiceTest {
       ELSyncService(
         beaconChain = beaconChain,
         forksSchedule = forksSchedule,
-        elManagerMap = mapOf(ElFork.Shanghai to executionLayerManager),
+        elManagerMap = mapOf(ElFork.Cancun to executionLayerManager),
         onStatusChange = { },
         config = config,
         finalizationProvider = finalizationProvider,

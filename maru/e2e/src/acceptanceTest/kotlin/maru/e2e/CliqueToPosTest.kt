@@ -66,6 +66,8 @@ class CliqueToPosTest {
         .waitingForService("sequencer", HealthChecks.toHaveAllPortsOpen())
         .build()
     private var forksTimestamps = emptyMap<String, ULong>()
+    private var shanghaiTimestamp: ULong = 0UL
+    private var cancunTimestamp: ULong = 0UL
     private var pragueTimestamp: ULong = 0UL
     private var ttd: ULong = 0UL
     private lateinit var maruFactory: MaruFactory
@@ -111,12 +113,16 @@ class CliqueToPosTest {
     fun beforeAll() {
       deleteGenesisFiles()
       qbftCluster.before()
-      forksTimestamps = parseForks(listOf("pragueTime", "terminalTotalDifficulty"))
+      forksTimestamps = parseForks(listOf("pragueTime", "cancunTime", "shanghaiTime", "terminalTotalDifficulty"))
+      shanghaiTimestamp = forksTimestamps["shanghaiTime"]!!
+      cancunTimestamp = forksTimestamps["cancunTime"]!!
       pragueTimestamp = forksTimestamps["pragueTime"]!!
       ttd = forksTimestamps["terminalTotalDifficulty"]!!
       maruFactory =
         MaruFactory(
           validatorPrivateKey = VALIDATOR_PRIVATE_KEY_WITH_PREFIX.fromHexToByteArray(),
+          shanghaiTimestamp = shanghaiTimestamp,
+          cancunTimestamp = cancunTimestamp,
           pragueTimestamp = pragueTimestamp,
           ttd = ttd,
         )
@@ -184,7 +190,7 @@ class CliqueToPosTest {
       )
 
     private var runCounter = 0u
-    private val lastCliqueBlockNumber = 5L
+    private const val LAST_CLIQUE_BLOCK_NUMBER = 5L
   }
 
   private fun saveLogs(path: Path) {
@@ -232,13 +238,27 @@ class CliqueToPosTest {
   fun networkCanBeSwitched() {
     maruSequencer = buildValidatorMaruWithMultipleFollowers()
     maruSequencer.start()
-    val prePragueTransactions = 10
-    sendCliqueAndParisTransactions(prePragueTransactions)
+    val preCancunTransactions = 10
+    sendCliqueAndParisTransactions(preCancunTransactions)
     everyoneArePeered()
-    val lastCliqueBlock = getBlockByNumber(lastCliqueBlockNumber)!!
-    assertThat(lastCliqueBlock.totalDifficulty.toLong()).isEqualTo(lastCliqueBlockNumber * 2L + 1L)
-    val parisBlock = getBlockByNumber(lastCliqueBlockNumber + 1)!!
+    val lastCliqueBlock = getBlockByNumber(LAST_CLIQUE_BLOCK_NUMBER)!!
+    assertThat(lastCliqueBlock.totalDifficulty.toLong()).isEqualTo(LAST_CLIQUE_BLOCK_NUMBER * 2L + 1L)
+    val parisBlock = getBlockByNumber(LAST_CLIQUE_BLOCK_NUMBER + 1)!!
     assertThat(parisBlock.difficulty.toLong()).isEqualTo(0L)
+
+    val shanghaiTransactions = 4
+    waitTillTimestamp(shanghaiTimestamp, "shanghaiTime")
+    log.info("Sequencer has switched to Shanghai")
+    repeat(shanghaiTransactions) {
+      transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
+    }
+
+    val cancunTransactions = 4
+    waitTillTimestamp(cancunTimestamp, "cancunTime")
+    log.info("Sequencer has switched to Cancun")
+    repeat(cancunTransactions) {
+      transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
+    }
 
     val pragueTransactions = 4
     waitTillTimestamp(pragueTimestamp, "pragueTime")
@@ -247,11 +267,22 @@ class CliqueToPosTest {
       transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
     }
 
-    val firstPragueBlock = getBlockByNumber(prePragueTransactions.toLong() + 1)!!
+    val firstShanghaiBlock = getBlockByNumber(preCancunTransactions.toLong() + 1)!!
+    assertThat(firstShanghaiBlock.timestamp.toULong())
+      .isGreaterThanOrEqualTo(shanghaiTimestamp)
+      .isLessThan(cancunTimestamp)
+
+    val firstCancunBlock = getBlockByNumber(preCancunTransactions.toLong() + shanghaiTransactions + 1)!!
+    assertThat(firstCancunBlock.timestamp.toULong())
+      .isGreaterThanOrEqualTo(cancunTimestamp)
+      .isLessThan(pragueTimestamp)
+
+    val firstPragueBlock =
+      getBlockByNumber(preCancunTransactions.toLong() + shanghaiTransactions + cancunTransactions + 1)!!
     assertThat(firstPragueBlock.timestamp.toULong()).isGreaterThanOrEqualTo(pragueTimestamp)
 
-    val resultingBlockNumber = prePragueTransactions + pragueTransactions.toLong()
-    assertNodeBlockHeight(TestEnvironment.sequencerL2Client, resultingBlockNumber)
+    val resultingBlockNumber = preCancunTransactions + shanghaiTransactions + cancunTransactions + pragueTransactions
+    assertNodeBlockHeight(TestEnvironment.sequencerL2Client, resultingBlockNumber.toLong())
 
     waitForAllNodesToBeInSyncToMatch()
   }

@@ -31,3 +31,7 @@ docker-clean-environment:
 	docker volume rm maru-local-dev maru-logs || true # ignore failure if volumes do not exist already
 	docker system prune -f || true
 	rm docker/initialization/*.json || true # ignore failure if files do not exist already
+
+docker-pull:
+	cd docker/; \
+	make docker-pull

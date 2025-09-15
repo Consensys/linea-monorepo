@@ -47,7 +47,7 @@ class DifficultyAwareQbftConfigSerializerTest {
     val qbftConfig =
       QbftConsensusConfig(
         validatorSet = setOf(validator),
-        elFork = ElFork.Shanghai,
+        elFork = ElFork.Cancun,
       )
 
     val config1 =
@@ -74,7 +74,7 @@ class DifficultyAwareQbftConfigSerializerTest {
     val qbftConfig =
       QbftConsensusConfig(
         validatorSet = setOf(validator),
-        elFork = ElFork.Shanghai,
+        elFork = ElFork.Cancun,
       )
 
     val normalTtdConfig =
@@ -109,12 +109,12 @@ class DifficultyAwareQbftConfigSerializerTest {
         terminalTotalDifficulty = 500UL,
       )
 
-    val configShanghai =
+    val configCancun =
       DifficultyAwareQbftConfig(
         postTtdConfig =
           QbftConsensusConfig(
             validatorSet = setOf(validator),
-            elFork = ElFork.Shanghai,
+            elFork = ElFork.Cancun,
           ),
         terminalTotalDifficulty = 500UL,
       )
@@ -130,12 +130,12 @@ class DifficultyAwareQbftConfigSerializerTest {
       )
 
     val serializedParis = serializer.serialize(configParis)
-    val serializedShanghai = serializer.serialize(configShanghai)
+    val serializedCancun = serializer.serialize(configCancun)
     val serializedPrague = serializer.serialize(configPrague)
 
     // Each fork should produce different serialization
-    assertThat(serializedParis).isNotEqualTo(serializedShanghai)
-    assertThat(serializedShanghai).isNotEqualTo(serializedPrague)
+    assertThat(serializedParis).isNotEqualTo(serializedCancun)
+    assertThat(serializedCancun).isNotEqualTo(serializedPrague)
     assertThat(serializedParis).isNotEqualTo(serializedPrague)
   }
 }
