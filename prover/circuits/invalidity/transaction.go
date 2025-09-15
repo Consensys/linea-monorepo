@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
 	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0/compress"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -95,25 +94,23 @@ func checkKeccakConsistency(api frontend.API, hashInput []frontend.Variable, has
 
 func CreateGenDataModule(comp *wizard.CompiledIOP, size int) generic.GenDataModule {
 
-	createCol := common.CreateColFn(comp, "TxHash_INVALIDITY", size, pragmas.RightPadded)
 	gdm := generic.GenDataModule{
-		HashNum: createCol("HASH_NUM"),
-		Index:   createCol("INDEX"),
-		Limb:    createCol("LIMBS"),
-		NBytes:  createCol("NBYTES"),
-		ToHash:  createCol("TO_HASH"),
+		HashNum: comp.InsertProof(0, "TxHash_INVALIDITY_HASH_NUM", size),
+		Index:   comp.InsertProof(0, "TxHash_INVALIDITY_INDEX", size),
+		Limb:    comp.InsertProof(0, "TxHash_INVALIDITY_LIMBS", size),
+		NBytes:  comp.InsertProof(0, "TxHash_INVALIDITY_NBYTES", size),
+		ToHash:  comp.InsertProof(0, "TxHash_INVALIDITY_TO_HASH", size),
 	}
 	return gdm
 }
 
 func CreateGenInfoModule(comp *wizard.CompiledIOP, size int) generic.GenInfoModule {
 
-	createCol := common.CreateColFn(comp, "TxHash_INVALIDITY", size, pragmas.RightPadded)
 	gim := generic.GenInfoModule{
-		HashHi:   createCol("HASH_HI"),
-		HashLo:   createCol("HASH_LO"),
-		IsHashHi: createCol("IS_HASH_HI"),
-		IsHashLo: createCol("IS_HASH_LO"),
+		HashHi:   comp.InsertProof(0, "TxHash_INVALIDITY_HASH_HI", size),
+		HashLo:   comp.InsertProof(0, "TxHash_INVALIDITY_HASH_LO", size),
+		IsHashHi: comp.InsertProof(0, "TxHash_INVALIDITY_IS_HASH_HI", size),
+		IsHashLo: comp.InsertProof(0, "TxHash_INVALIDITY_IS_HASH_LO", size),
 	}
 	return gim
 }
