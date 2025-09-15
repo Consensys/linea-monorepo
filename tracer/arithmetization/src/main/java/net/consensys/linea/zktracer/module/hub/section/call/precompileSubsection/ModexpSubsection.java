@@ -57,7 +57,7 @@ public class ModexpSubsection extends PrecompileSubsection {
 
     modexpMetaData = new ModexpMetadata(getCallDataRange());
     if (modexpMetaData.unprovableModexp()) {
-      hub.modexpEffectiveCall().updateTally(Integer.MAX_VALUE);
+      hub.modexpEffectiveCall().detectEvent();
       hub.defers().unscheduleForContextReEntry(this, hub.currentFrame());
       transactionWillBePopped = true;
       return;

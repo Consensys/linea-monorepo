@@ -16,29 +16,27 @@
 package net.consensys.linea.zktracer.module.limits;
 
 import static com.google.common.base.Preconditions.checkState;
+import static net.consensys.linea.zktracer.module.limits.CountingModuleName.BLOCK_KECCAK;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
-import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
-import net.consensys.linea.zktracer.module.limits.precompiles.EcRecoverEffectiveCall;
+import net.consensys.linea.zktracer.container.module.IncrementingModule;
 
-@RequiredArgsConstructor
 @Getter
 @Accessors(fluent = true)
-public class Keccak implements CountingOnlyModule {
-  private final CountOnlyOperation counts = new CountOnlyOperation();
+public class Keccak extends CountingOnlyModule {
   private static final int PUBKEY_BYTES = 64;
   private static final int KECCAK_BIT_RATE = 1088;
   private static final int KECCAK_BYTE_RATE = KECCAK_BIT_RATE / 8; // TODO: find correct name
 
-  private final EcRecoverEffectiveCall ecRecoverEffectiveCall;
+  private final IncrementingModule ecRecoverEffectiveCall;
   private final BlockTransactions blockTransactions;
 
-  @Override
-  public String moduleKey() {
-    return "BLOCK_KECCAK";
+  public Keccak(IncrementingModule ecRecoverEffectiveCall, BlockTransactions blockTransactions) {
+    super(BLOCK_KECCAK);
+    this.ecRecoverEffectiveCall = ecRecoverEffectiveCall;
+    this.blockTransactions = blockTransactions;
   }
 
   @Override

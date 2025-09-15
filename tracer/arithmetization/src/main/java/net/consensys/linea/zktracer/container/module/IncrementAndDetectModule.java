@@ -17,60 +17,38 @@ package net.consensys.linea.zktracer.container.module;
 
 import static com.google.common.base.Preconditions.checkState;
 
-import java.util.List;
-
 import lombok.Setter;
-import net.consensys.linea.zktracer.Trace;
+import net.consensys.linea.zktracer.module.limits.CountingModuleName;
 
-public abstract class EventDetectorModule implements Module {
-
-  final String moduleKey;
+public class IncrementAndDetectModule extends IncrementingModule {
 
   public static final String ERROR_MESSAGE_TRIED_TO_COMMIT_UNPROVABLE_TX =
       "Shouldn't commit transaction as an unprovable event has been detected.";
 
   @Setter boolean eventDetected = false;
 
-  protected EventDetectorModule(String moduleKey) {
-    this.moduleKey = moduleKey;
+  public IncrementAndDetectModule(CountingModuleName moduleKey) {
+    super(moduleKey);
   }
 
   @Override
   public void commitTransactionBundle() {
     checkState(!eventDetected, ERROR_MESSAGE_TRIED_TO_COMMIT_UNPROVABLE_TX);
+    super.commitTransactionBundle();
   }
 
   @Override
   public void popTransactionBundle() {
     eventDetected = false;
+    super.popTransactionBundle();
   }
 
   @Override
   public int lineCount() {
-    return eventDetected ? Integer.MAX_VALUE : 0;
+    return eventDetected ? Integer.MAX_VALUE : counts.lineCount();
   }
 
   public void detectEvent() {
     eventDetected = true;
-  }
-
-  @Override
-  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
-    throw new IllegalStateException("should never be called");
-  }
-
-  @Override
-  public void commit(Trace trace) {
-    throw new IllegalStateException("should never be called");
-  }
-
-  @Override
-  public int spillage(Trace trace) {
-    return 0;
-  }
-
-  @Override
-  public String moduleKey() {
-    return moduleKey;
   }
 }

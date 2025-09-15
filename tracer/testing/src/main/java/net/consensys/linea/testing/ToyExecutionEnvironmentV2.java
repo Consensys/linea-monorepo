@@ -19,7 +19,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static net.consensys.linea.zktracer.ChainConfig.MAINNET_TESTCONFIG;
 import static net.consensys.linea.zktracer.Fork.LONDON;
 import static net.consensys.linea.zktracer.Trace.LINEA_BASE_FEE;
-import static net.consensys.linea.zktracer.container.module.EventDetectorModule.ERROR_MESSAGE_TRIED_TO_COMMIT_UNPROVABLE_TX;
+import static net.consensys.linea.zktracer.container.module.IncrementAndDetectModule.ERROR_MESSAGE_TRIED_TO_COMMIT_UNPROVABLE_TX;
 
 import java.util.*;
 import java.util.function.Consumer;

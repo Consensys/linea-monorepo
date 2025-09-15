@@ -21,6 +21,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
+import net.consensys.linea.zktracer.container.module.IncrementingModule;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
@@ -38,7 +39,7 @@ public class L1BlockSizeOld implements Module {
 
   private final BlockTransactions blockTransactions;
   private final Keccak keccak;
-  private final L2L1Logs l2l1Logs;
+  private final IncrementingModule l2l1Logs;
   private final Address l2l1Address;
   private final LogTopic l2l1Topic;
 

@@ -21,6 +21,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
+import net.consensys.linea.zktracer.container.module.IncrementingModule;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import org.apache.tuweni.bytes.Bytes;
@@ -36,7 +37,7 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 @RequiredArgsConstructor
 public class L1BlockSize implements Module {
 
-  private final L2L1Logs l2l1Logs;
+  private final IncrementingModule l2l1Logs;
   private final Address l2l1Address;
   private final Bytes l2l1Topic;
 

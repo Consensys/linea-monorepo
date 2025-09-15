@@ -1,5 +1,5 @@
 /*
- * Copyright Consensys Software Inc.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -13,29 +13,23 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.limits.precompiles;
+package net.consensys.linea.zktracer.container.module;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import lombok.Getter;
-import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
-import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
+import net.consensys.linea.zktracer.module.limits.CountingModuleName;
 
-@Getter
-@Accessors(fluent = true)
-public final class BlsG1AddEffectiveCall implements CountingOnlyModule {
-  private final CountOnlyOperation counts = new CountOnlyOperation();
+public class IncrementingModule extends CountingOnlyModule {
 
-  @Override
-  public String moduleKey() {
-    return "PRECOMPILE_BLS_G1_ADD_EFFECTIVE_CALLS";
+  public IncrementingModule(CountingModuleName moduleKey) {
+    super(moduleKey);
   }
 
   @Override
   public void updateTally(final int numberEffectiveCall) {
     checkArgument(
-        numberEffectiveCall <= 1, "can't add more than one effective precompile call at a time");
+        numberEffectiveCall == 0 || numberEffectiveCall == 1,
+        "Can only update the tally by one at the time.");
     counts.add(numberEffectiveCall);
   }
 }

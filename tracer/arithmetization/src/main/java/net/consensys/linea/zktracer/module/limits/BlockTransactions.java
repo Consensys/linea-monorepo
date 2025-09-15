@@ -15,25 +15,23 @@
 
 package net.consensys.linea.zktracer.module.limits;
 
+import static net.consensys.linea.zktracer.module.limits.CountingModuleName.BLOCK_TRANSACTIONS;
+
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
-import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 @Getter
 @Accessors(fluent = true)
-@RequiredArgsConstructor
-public class BlockTransactions implements CountingOnlyModule {
+public class BlockTransactions extends CountingOnlyModule {
   private final Hub hub;
-  private final CountOnlyOperation counts = new CountOnlyOperation();
 
-  @Override
-  public String moduleKey() {
-    return "BLOCK_TRANSACTIONS";
+  public BlockTransactions(Hub hub) {
+    super(BLOCK_TRANSACTIONS);
+    this.hub = hub;
   }
 
   @Override

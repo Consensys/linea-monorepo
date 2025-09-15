@@ -20,22 +20,22 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.zktracer.ZkTracer;
-import net.consensys.linea.zktracer.module.limits.precompiles.ModexpEffectiveCall;
+import net.consensys.linea.zktracer.container.module.IncrementAndDetectModule;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 
-public class ModexpIllegalOperationTests extends TracerTestBase {
+public class IncrementAndDetectModuleTests extends TracerTestBase {
   @Test
   void legalThenTwoIllegals(TestInfo testInfo) {
     final ZkTracer state = new ZkTracer(chainConfig);
-    final ModexpEffectiveCall countingOnlyModule = state.getHub().modexpEffectiveCall();
+    final IncrementAndDetectModule countingOnlyModule = state.getHub().modexpEffectiveCall();
 
     countingOnlyModule.updateTally(1);
 
-    countingOnlyModule.updateTally(MAX_VALUE);
+    countingOnlyModule.detectEvent();
     assertThat(countingOnlyModule.lineCount()).isEqualTo(MAX_VALUE);
 
-    countingOnlyModule.updateTally(MAX_VALUE);
+    countingOnlyModule.detectEvent();
     assertThat(countingOnlyModule.lineCount()).isEqualTo(MAX_VALUE);
 
     countingOnlyModule.popTransactionBundle();
@@ -45,11 +45,11 @@ public class ModexpIllegalOperationTests extends TracerTestBase {
   @Test
   void legalIllegalLegal(TestInfo testInfo) {
     final ZkTracer state = new ZkTracer(chainConfig);
-    final ModexpEffectiveCall countingOnlyModule = state.getHub().modexpEffectiveCall();
+    final IncrementAndDetectModule countingOnlyModule = state.getHub().modexpEffectiveCall();
 
     countingOnlyModule.updateTally(1);
 
-    countingOnlyModule.updateTally(MAX_VALUE);
+    countingOnlyModule.detectEvent();
     assertThat(countingOnlyModule.lineCount()).isEqualTo(MAX_VALUE);
 
     countingOnlyModule.updateTally(1);
@@ -62,12 +62,12 @@ public class ModexpIllegalOperationTests extends TracerTestBase {
   @Test
   void TwoIllegals(TestInfo testInfo) {
     final ZkTracer state = new ZkTracer(chainConfig);
-    final ModexpEffectiveCall countingOnlyModule = state.getHub().modexpEffectiveCall();
+    final IncrementAndDetectModule countingOnlyModule = state.getHub().modexpEffectiveCall();
 
-    countingOnlyModule.updateTally(MAX_VALUE);
+    countingOnlyModule.detectEvent();
     assertThat(countingOnlyModule.lineCount()).isEqualTo(MAX_VALUE);
 
-    countingOnlyModule.updateTally(MAX_VALUE);
+    countingOnlyModule.detectEvent();
     assertThat(countingOnlyModule.lineCount()).isEqualTo(MAX_VALUE);
 
     countingOnlyModule.popTransactionBundle();
