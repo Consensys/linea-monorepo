@@ -100,7 +100,7 @@ public class ZkTracer implements LineCountingTracer {
           case SHANGHAI -> new TraceShanghai();
           case CANCUN -> new TraceCancun();
           case PRAGUE -> new TracePrague();
-          default -> throw new IllegalArgumentException("Fork config is invalid");
+          default -> throw new IllegalArgumentException("Unknown fork: " + chain.fork);
         };
     final DebugMode.PinLevel debugLevel = new DebugMode.PinLevel();
     this.debugMode =

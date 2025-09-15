@@ -15,11 +15,12 @@
 
 package net.consensys.linea.zktracer.module.blsdata;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-import com.google.common.base.Preconditions;
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
@@ -64,8 +65,8 @@ public class BlsG1AddTest extends TracerTestBase {
   @ParameterizedTest
   @MethodSource("blsG1AddSource")
   void testBlsG1Add(String a, String b, TestInfo testInfo) {
-    Preconditions.checkArgument(a.length() == 256, "G1 point 'a' must be 256 hex chars");
-    Preconditions.checkArgument(b.length() == 256, "G1 point 'b' must be 256 hex chars");
+    checkArgument(a.length() == 256, "G1 point 'a' must be 256 hex chars");
+    checkArgument(b.length() == 256, "G1 point 'b' must be 256 hex chars");
 
     BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
