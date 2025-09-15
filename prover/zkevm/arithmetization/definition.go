@@ -10,6 +10,7 @@ import (
 
 	"github.com/consensys/go-corset/pkg/ir/air"
 	"github.com/consensys/go-corset/pkg/schema"
+	"github.com/consensys/go-corset/pkg/util/field/bls12_377"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
@@ -25,21 +26,21 @@ import (
 type schemaScanner struct {
 	LimitMap           map[string]int
 	Comp               *wizard.CompiledIOP
-	Schema             *air.Schema
-	Modules            []schema.Module
-	InterleavedColumns map[string]air.InterleavingConstraint
+	Schema             *air.Schema[bls12_377.Element]
+	Modules            []schema.Module[bls12_377.Element]
+	InterleavedColumns map[string]air.InterleavingConstraint[bls12_377.Element]
 }
 
 // Define registers the arithmetization from a corset air.Schema and trace limits
 // from config.
-func Define(comp *wizard.CompiledIOP, schema *air.Schema, limits *config.TracesLimits) {
+func Define(comp *wizard.CompiledIOP, schema *air.Schema[bls12_377.Element], limits *config.TracesLimits) {
 
 	scanner := &schemaScanner{
 		LimitMap:           mapModuleLimits(limits),
 		Comp:               comp,
 		Schema:             schema,
 		Modules:            schema.Modules().Collect(),
-		InterleavedColumns: map[string]air.InterleavingConstraint{},
+		InterleavedColumns: map[string]air.InterleavingConstraint[bls12_377.Element]{},
 	}
 
 	scanner.scanColumns()
@@ -98,11 +99,11 @@ func (s *schemaScanner) scanConstraints() {
 }
 
 // addCsInComp adds a corset constraint into the [wizard.CompiledIOP]
-func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constraint) {
+func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constraint[bls12_377.Element]) {
 
 	switch cs := corsetCS.(type) {
 
-	case air.InterleavingConstraint:
+	case air.InterleavingConstraint[bls12_377.Element]:
 		// Identify all interleaved columns
 		var (
 			ic = cs.Unwrap()
@@ -116,7 +117,7 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 		// Record interleaving constraint
 		s.InterleavedColumns[wName] = cs
 
-	case air.LookupConstraint:
+	case air.LookupConstraint[bls12_377.Element]:
 		var (
 			cSource  = cs.Unwrap().Sources[0]
 			cTarget  = cs.Unwrap().Targets[0]
@@ -160,7 +161,7 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 			s.Comp.InsertInclusionDoubleConditional(0, ifaces.QueryID(name), wTargets, wSources, selectorTarget, selectorSource)
 		}
 
-	case air.PermutationConstraint:
+	case air.PermutationConstraint[bls12_377.Element]:
 
 		var (
 			pc       = cs.Unwrap()
@@ -179,7 +180,7 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 
 		s.Comp.InsertPermutation(0, ifaces.QueryID(name), wTargets, wSources)
 
-	case air.VanishingConstraint:
+	case air.VanishingConstraint[bls12_377.Element]:
 
 		var (
 			vc     = cs.Unwrap()
@@ -220,7 +221,7 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 
 		s.Comp.InsertLocal(0, ifaces.QueryID(name), wExpr)
 
-	case air.RangeConstraint:
+	case air.RangeConstraint[bls12_377.Element]:
 		rc := cs.Unwrap()
 		bound := field.NewElement(2)
 		bound.Exp(bound, big.NewInt(int64(rc.Bitwidth)))
@@ -235,11 +236,11 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 
 // castExpression turns a corset expression into a [symbolic.Expression] whose
 // variables are [wizard.CompiledIOP] components.
-func (s *schemaScanner) castExpression(context schema.ModuleId, expr air.Term) *symbolic.Expression {
+func (s *schemaScanner) castExpression(context schema.ModuleId, expr air.Term[bls12_377.Element]) *symbolic.Expression {
 
 	switch e := expr.(type) {
 
-	case *air.Add:
+	case *air.Add[bls12_377.Element]:
 
 		args := make([]any, len(e.Args))
 		for i := range args {
@@ -247,7 +248,7 @@ func (s *schemaScanner) castExpression(context schema.ModuleId, expr air.Term) *
 		}
 		return symbolic.Add(args...)
 
-	case *air.Sub:
+	case *air.Sub[bls12_377.Element]:
 
 		args := make([]any, len(e.Args))
 		for i := range args {
@@ -255,7 +256,7 @@ func (s *schemaScanner) castExpression(context schema.ModuleId, expr air.Term) *
 		}
 		return symbolic.Sub(args[0], args[1:]...)
 
-	case *air.Mul:
+	case *air.Mul[bls12_377.Element]:
 
 		args := make([]any, len(e.Args))
 		for i := range args {
@@ -263,11 +264,11 @@ func (s *schemaScanner) castExpression(context schema.ModuleId, expr air.Term) *
 		}
 		return symbolic.Mul(args...)
 
-	case *air.Constant:
+	case *air.Constant[bls12_377.Element]:
 
-		return symbolic.NewConstant(e.Value)
+		return symbolic.NewConstant(e.Value.Element)
 
-	case *air.ColumnAccess:
+	case *air.ColumnAccess[bls12_377.Element]:
 
 		c := s.compColumnByCorsetID(context, e.Register)
 		if e.Shift != 0 {
