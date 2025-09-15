@@ -12,6 +12,7 @@ dependencies {
 
   api "org.hyperledger.besu.internal:besu-acceptance-tests-dsl"
   implementation("org.hyperledger.besu.internal:besu-ethereum-core")
+  implementation("org.hyperledger.besu.internal:besu-ethereum-api")
   implementation("org.hyperledger.besu.internal:besu-consensus-merge")
   implementation("org.hyperledger.besu.internal:besu-crypto-algorithms")
   implementation("org.hyperledger.besu.internal:besu-consensus-clique")

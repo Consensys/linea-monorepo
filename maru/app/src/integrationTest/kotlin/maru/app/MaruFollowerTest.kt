@@ -245,7 +245,7 @@ class MaruFollowerTest {
 
     cluster.stop()
     Thread.sleep(3000)
-    cluster.startWithRetry(followerStack.besuNode)
+    cluster.startWithRetry(followerStack.besuNode, validatorStack.besuNode)
 
     repeat(blocksToProduce) {
       transactionsHelper.run {
