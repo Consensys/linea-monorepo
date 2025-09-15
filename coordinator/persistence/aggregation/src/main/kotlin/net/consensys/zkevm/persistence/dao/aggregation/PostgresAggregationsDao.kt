@@ -310,9 +310,7 @@ class PostgresAggregationsDao(
       if (fromBlockNumber != null) {
         SafeFuture.completedFuture(fromBlockNumber)
       } else {
-        findFirstAggregationProof().thenApply { firstProof ->
-          firstProof?.startBlockNumber?.toLong()
-        }
+        findFirstAggregationStartBlockNumber()
       }
       ).thenCompose { fromBlockNumber ->
       if (fromBlockNumber == null) {
@@ -355,17 +353,12 @@ class PostgresAggregationsDao(
       }
   }
 
-  private fun findFirstAggregationProof(): SafeFuture<ProofToFinalize?> {
+  private fun findFirstAggregationStartBlockNumber(): SafeFuture<Long?> {
     return findFirstAggregation
       .execute()
       .toSafeFuture()
       .thenApply { rowSet ->
-        val aggregationProofs = rowSet.map(::parseAggregationProofs)
-        if (aggregationProofs.isNotEmpty()) {
-          aggregationProofs.firstOrNull()
-        } else {
-          null
-        }
+        rowSet.firstOrNull()?.getLong("start_block_number")
       }
   }
 
