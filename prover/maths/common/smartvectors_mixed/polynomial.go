@@ -2,7 +2,6 @@ package smartvectors_mixed
 
 import (
 	"sync"
-	"sync/atomic"
 
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 
@@ -42,8 +41,6 @@ func BatchEvaluateLagrange(vs []sv.SmartVector, x fext.Element, oncoset ...bool)
 
 	// Parallel processing - classification and polynomial extraction
 	parallel.Execute(len(vs), func(start, stop int) {
-		localConstantCount := uint64(0)
-
 		for i := start; i < stop; i++ {
 			item := workItem{index: i}
 
@@ -73,8 +70,6 @@ func BatchEvaluateLagrange(vs []sv.SmartVector, x fext.Element, oncoset ...bool)
 			workItems[i] = item
 		}
 
-		// Add local count to global atomic counter
-		atomic.AddUint64(&totalConstant, localConstantCount)
 	})
 
 	// Sequential collection and result assignment
