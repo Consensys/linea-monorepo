@@ -2,7 +2,6 @@ package smartvectors_mixed
 
 import (
 	"sync"
-	"sync/atomic"
 
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 
@@ -42,8 +41,6 @@ func BatchEvaluateLagrange(vs []sv.SmartVector, x fext.Element, oncoset ...bool)
 
 	// Parallel processing - classification and polynomial extraction
 	parallel.Execute(len(vs), func(start, stop int) {
-		localConstantCount := uint64(0)
-
 		for i := start; i < stop; i++ {
 			item := workItem{index: i}
 
@@ -73,8 +70,6 @@ func BatchEvaluateLagrange(vs []sv.SmartVector, x fext.Element, oncoset ...bool)
 			workItems[i] = item
 		}
 
-		// Add local count to global atomic counter
-		atomic.AddUint64(&totalConstant, localConstantCount)
 	})
 
 	// Sequential collection and result assignment
@@ -100,13 +95,17 @@ func BatchEvaluateLagrange(vs []sv.SmartVector, x fext.Element, oncoset ...bool)
 	var baseWg, extWg sync.WaitGroup
 	var baseResults []fext.Element
 	var extResults []fext.Element
+	var baseErr, extErr error
 
 	// Evaluate base field polynomials
 	if len(basePolys) > 0 {
 		baseWg.Add(1)
 		go func() {
 			defer baseWg.Done()
-			baseResults, _ = vortex.BatchEvalBasePolyLagrange(basePolys, x, oncoset...)
+			baseResults, baseErr = vortex.BatchEvalBasePolyLagrange(basePolys, x, oncoset...)
+			if baseErr != nil {
+				panic(baseErr)
+			}
 		}()
 	}
 
@@ -115,7 +114,10 @@ func BatchEvaluateLagrange(vs []sv.SmartVector, x fext.Element, oncoset ...bool)
 		extWg.Add(1)
 		go func() {
 			defer extWg.Done()
-			extResults, _ = vortex.BatchEvalFextPolyLagrange(extPolys, x, oncoset...)
+			extResults, extErr = vortex.BatchEvalFextPolyLagrange(extPolys, x, oncoset...)
+			if extErr != nil {
+				panic(extErr)
+			}
 		}()
 	}
 

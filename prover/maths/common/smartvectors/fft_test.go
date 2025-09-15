@@ -279,7 +279,7 @@ func TestFFTFuzzyConsistWithInterpolation(t *testing.T) {
 				// important case.
 				var xExt fext.Element
 				fext.SetFromBase(&xExt, &xVal)
-				yFFT := EvaluateFextPolyLagrange(evals, xExt, false)
+				yFFT := EvaluateBasePolyLagrange(evals, xExt, false)
 
 				require.Equal(t, yCoeff.String(), yFFT.String())
 

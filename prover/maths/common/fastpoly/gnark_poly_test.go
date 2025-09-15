@@ -40,7 +40,10 @@ func TestEvaluateLagrangeGnark(t *testing.T) {
 	var xExt fext.Element
 	fext.SetFromBase(&xExt, &x)
 	// eval lagrange
-	r, _ := vortex.EvalBasePolyLagrange(poly, xExt)
+	r, err := vortex.EvalBasePolyLagrange(poly, xExt)
+	if err != nil {
+		panic(err)
+	}
 	// test circuit
 	var witness, circuit EvaluateLagrangeCircuit
 	circuit.Poly = make([]frontend.Variable, size)

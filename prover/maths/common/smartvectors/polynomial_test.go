@@ -212,7 +212,8 @@ func TestBatchInterpolationWithConstantVector(t *testing.T) {
 	fft.BitReverse(polys[0])
 	fft.BitReverse(polys[1])
 
-	yOnRoots, _ := vortex.BatchEvalBasePolyLagrange(polys, x)
+	yOnRoots, err := vortex.BatchEvalBasePolyLagrange(polys, x)
+	require.NoError(t, err)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
 	require.Equal(t, expectedY2.String(), yOnRoots[1].String())
 
@@ -230,7 +231,8 @@ func TestBatchInterpolationWithConstantVector(t *testing.T) {
 	fft.BitReverse(onCosets[0])
 	fft.BitReverse(onCosets[1])
 
-	yOnCosets, _ := vortex.BatchEvalBasePolyLagrange(onCosets, x, true)
+	yOnCosets, err := vortex.BatchEvalBasePolyLagrange(onCosets, x, true)
+	require.NoError(t, err)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
 	require.Equal(t, expectedY2.String(), yOnCosets[1].String())
 }
@@ -258,7 +260,8 @@ func TestBatchEvaluateLagrangeOnFextOnlyConstantVector(t *testing.T) {
 	fft.BitReverse(polys[0])
 	fft.BitReverse(polys[1])
 
-	yOnRoots, _ := vortex.BatchEvalBasePolyLagrange(polys, x)
+	yOnRoots, err := vortex.BatchEvalBasePolyLagrange(polys, x)
+	require.NoError(t, err)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
 	require.Equal(t, expectedY2.String(), yOnRoots[1].String())
 
@@ -276,7 +279,8 @@ func TestBatchEvaluateLagrangeOnFextOnlyConstantVector(t *testing.T) {
 	fft.BitReverse(onCosets[0])
 	fft.BitReverse(onCosets[1])
 
-	yOnCosets, _ := vortex.BatchEvalBasePolyLagrange(onCosets, x, true)
+	yOnCosets, err := vortex.BatchEvalBasePolyLagrange(onCosets, x, true)
+	require.NoError(t, err)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
 	require.Equal(t, expectedY2.String(), yOnCosets[1].String())
 }
@@ -314,7 +318,8 @@ func TestBatchInterpolationThreeVectors(t *testing.T) {
 	fft.BitReverse(polys[1])
 	fft.BitReverse(polys[2])
 
-	yOnRoots, _ := vortex.BatchEvalBasePolyLagrange(polys, x)
+	yOnRoots, err := vortex.BatchEvalBasePolyLagrange(polys, x)
+	require.NoError(t, err)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
 	require.Equal(t, expectedY2.String(), yOnRoots[1].String())
 	require.Equal(t, expectedY3.String(), yOnRoots[2].String())
@@ -337,7 +342,8 @@ func TestBatchInterpolationThreeVectors(t *testing.T) {
 	fft.BitReverse(onCosets[1])
 	fft.BitReverse(onCosets[2])
 
-	yOnCosets, _ := vortex.BatchEvalBasePolyLagrange(onCosets, x, true)
+	yOnCosets, err := vortex.BatchEvalBasePolyLagrange(onCosets, x, true)
+	require.NoError(t, err)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
 	require.Equal(t, expectedY2.String(), yOnCosets[1].String())
 	require.Equal(t, expectedY3.String(), yOnCosets[2].String())

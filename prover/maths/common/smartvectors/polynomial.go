@@ -64,7 +64,10 @@ func EvaluateBasePolyLagrange(v SmartVector, x fext.Element, oncoset ...bool) fe
 		x.MulByElement(&x, &genFr)
 	}
 
-	res, _ := vortex.EvalBasePolyLagrange(poly, x)
+	res, err := vortex.EvalBasePolyLagrange(poly, x)
+	if err != nil {
+		panic(err)
+	}
 
 	return res
 }
@@ -138,7 +141,10 @@ func BatchEvaluateBasePolyLagrange(vs []SmartVector, x fext.Element, oncoset ...
 
 	// Batch evaluate only non-constant polynomials
 	if len(nonConstantPolys) > 0 {
-		polyResults, _ := vortex.BatchEvalBasePolyLagrange(nonConstantPolys, x, oncoset...)
+		polyResults, err := vortex.BatchEvalBasePolyLagrange(nonConstantPolys, x, oncoset...)
+		if err != nil {
+			panic(err)
+		}
 
 		// Map results back to original positions
 		for i, result := range polyResults {

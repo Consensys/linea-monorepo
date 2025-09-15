@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
+	"github.com/consensys/gnark-crypto/utils"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -191,7 +192,7 @@ func TestBatchEvaluateLagrangeExt(t *testing.T) {
 	polyLagrangeSv := make([]SmartVector, nbPoly)
 	for i := 0; i < nbPoly; i++ {
 		d.FFTExt(polyLagranges[i], fft.DIF)
-		fft.BitReverse(polyLagranges[i])
+		utils.BitReverse(polyLagranges[i])
 		polyLagrangeSv[i] = NewRegularExt(polyLagranges[i])
 
 	}
@@ -225,10 +226,11 @@ func TestBatchInterpolationWithConstantVectorExt(t *testing.T) {
 
 	domain.FFTExt(polys[0], fft.DIF)
 	domain.FFTExt(polys[1], fft.DIF)
-	fft.BitReverse(polys[0])
-	fft.BitReverse(polys[1])
+	utils.BitReverse(polys[0])
+	utils.BitReverse(polys[1])
 
-	yOnRoots, _ := vortex.BatchEvalFextPolyLagrange(polys, x)
+	yOnRoots, err := vortex.BatchEvalFextPolyLagrange(polys, x)
+	require.NoError(t, err)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
 	require.Equal(t, expectedY2.String(), yOnRoots[1].String())
 
@@ -243,10 +245,11 @@ func TestBatchInterpolationWithConstantVectorExt(t *testing.T) {
 
 	domain.FFTExt(onCosets[0], fft.DIF, fft.OnCoset())
 	domain.FFTExt(onCosets[1], fft.DIF, fft.OnCoset())
-	fft.BitReverse(onCosets[0])
-	fft.BitReverse(onCosets[1])
+	utils.BitReverse(onCosets[0])
+	utils.BitReverse(onCosets[1])
 
-	yOnCosets, _ := vortex.BatchEvalFextPolyLagrange(onCosets, x, true)
+	yOnCosets, err := vortex.BatchEvalFextPolyLagrange(onCosets, x, true)
+	require.NoError(t, err)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
 	require.Equal(t, expectedY2.String(), yOnCosets[1].String())
 
@@ -273,10 +276,11 @@ func TestBatchEvaluateLagrangeOnlyConstantVector(t *testing.T) {
 
 	domain.FFTExt(polys[0], fft.DIF)
 	domain.FFTExt(polys[1], fft.DIF)
-	fft.BitReverse(polys[0])
-	fft.BitReverse(polys[1])
+	utils.BitReverse(polys[0])
+	utils.BitReverse(polys[1])
 
-	yOnRoots, _ := vortex.BatchEvalFextPolyLagrange(polys, x)
+	yOnRoots, err := vortex.BatchEvalFextPolyLagrange(polys, x)
+	require.NoError(t, err)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
 	require.Equal(t, expectedY2.String(), yOnRoots[1].String())
 
@@ -291,10 +295,11 @@ func TestBatchEvaluateLagrangeOnlyConstantVector(t *testing.T) {
 
 	domain.FFTExt(onCosets[0], fft.DIF, fft.OnCoset())
 	domain.FFTExt(onCosets[1], fft.DIF, fft.OnCoset())
-	fft.BitReverse(onCosets[0])
-	fft.BitReverse(onCosets[1])
+	utils.BitReverse(onCosets[0])
+	utils.BitReverse(onCosets[1])
 
-	yOnCosets, _ := vortex.BatchEvalFextPolyLagrange(onCosets, x, true)
+	yOnCosets, err := vortex.BatchEvalFextPolyLagrange(onCosets, x, true)
+	require.NoError(t, err)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
 	require.Equal(t, expectedY2.String(), yOnCosets[1].String())
 }
@@ -328,11 +333,12 @@ func TestBatchInterpolationThreeVectorsExt(t *testing.T) {
 	domain.FFTExt(polys[0], fft.DIF)
 	domain.FFTExt(polys[1], fft.DIF)
 	domain.FFTExt(polys[2], fft.DIF)
-	fft.BitReverse(polys[0])
-	fft.BitReverse(polys[1])
-	fft.BitReverse(polys[2])
+	utils.BitReverse(polys[0])
+	utils.BitReverse(polys[1])
+	utils.BitReverse(polys[2])
 
-	yOnRoots, _ := vortex.BatchEvalFextPolyLagrange(polys, x)
+	yOnRoots, err := vortex.BatchEvalFextPolyLagrange(polys, x)
+	require.NoError(t, err)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
 	require.Equal(t, expectedY2.String(), yOnRoots[1].String())
 	require.Equal(t, expectedY3.String(), yOnRoots[2].String())
@@ -351,11 +357,12 @@ func TestBatchInterpolationThreeVectorsExt(t *testing.T) {
 	domain.FFTExt(onCosets[0], fft.DIF, fft.OnCoset())
 	domain.FFTExt(onCosets[1], fft.DIF, fft.OnCoset())
 	domain.FFTExt(onCosets[2], fft.DIF, fft.OnCoset())
-	fft.BitReverse(onCosets[0])
-	fft.BitReverse(onCosets[1])
-	fft.BitReverse(onCosets[2])
+	utils.BitReverse(onCosets[0])
+	utils.BitReverse(onCosets[1])
+	utils.BitReverse(onCosets[2])
 
-	yOnCosets, _ := vortex.BatchEvalFextPolyLagrange(onCosets, x, true)
+	yOnCosets, err := vortex.BatchEvalFextPolyLagrange(onCosets, x, true)
+	require.NoError(t, err)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
 	require.Equal(t, expectedY2.String(), yOnCosets[1].String())
 	require.Equal(t, expectedY3.String(), yOnCosets[2].String())
