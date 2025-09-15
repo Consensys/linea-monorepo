@@ -26,6 +26,8 @@ class EIP7702TransactionSender {
     const currentChainId = network.chainId;
 
     const currentNonce = await this.provider.getTransactionCount(this.signer.address);
+    // +1 required when same account is `to` and is an authorization signer
+    // https://eips.ethereum.org/EIPS/eip-7702 - "The authorization list is processed before the execution portion of the transaction begins, but after the sender’s nonce is incremented."
     const authNonce = currentNonce + 1;
 
     const authorization = await this.signer.authorize({
