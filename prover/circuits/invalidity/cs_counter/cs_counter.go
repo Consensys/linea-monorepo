@@ -1,24 +1,36 @@
-package invalidity_test
+package main
 
 import (
-	"testing"
+	"fmt"
+	"os"
+	"strconv"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
 	"github.com/sirupsen/logrus"
 )
 
-func BenchmarkInvalidity(b *testing.B) {
-	const maxRlpByteSize = 1024
+func main() {
+
+	// allow override via environment variable
+	maxRlpByteSize := 1 << 10
+	if v := os.Getenv("MAX_RLP"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			maxRlpByteSize = n
+		}
+	}
+	fmt.Println("Compiling with maxRlpByteSize =", maxRlpByteSize)
+
 	var (
 		config = &smt.Config{
 			HashFunc: hashtypes.MiMC,
@@ -48,7 +60,8 @@ func BenchmarkInvalidity(b *testing.B) {
 		}
 		keccak.NewKeccakSingleProvider(comp, inp)
 	}
-	comp := wizard.Compile(definer, zkevm.FullCompilationSuite...)
+	comp := wizard.Compile(definer, dummy.Compile)
+	logrus.Info("keccak circuit compiled")
 
 	// define the circuit
 	circuit := invalidity.CircuitInvalidity{
@@ -70,8 +83,9 @@ func BenchmarkInvalidity(b *testing.B) {
 	)
 
 	if err != nil {
-		b.Fatal(err)
+		utils.Panic("circuit compilation failed: %v", err)
 	}
+
 	logrus.WithField("constraints", scs.GetNbConstraints()).Info("circuit compiled")
 
 }
