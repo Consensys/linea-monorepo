@@ -19,8 +19,8 @@ import org.hyperledger.besu.datatypes.Address;
  *
  * @param denyListPath the path to the file containing the addresses that are denied.
  * @param deniedAddresses the set of addresses that are denied.
- * @param bundleDenyListPath the path to the file containing the addresses that are denied for
- *     bundles.
+ * @param bundleOverridingDenyListPath the path to the file containing the addresses that are denied
+ *     for bundles.
  * @param bundleDeniedAddresses the set of addresses that are denied for bundles.
  * @param maxTxGasLimit the maximum gas limit allowed for transactions
  * @param maxTxCalldataSize the maximum size of calldata allowed for transactions
@@ -31,7 +31,7 @@ import org.hyperledger.besu.datatypes.Address;
 public record LineaTransactionPoolValidatorConfiguration(
     String denyListPath,
     Set<Address> deniedAddresses,
-    String bundleDenyListPath,
+    String bundleOverridingDenyListPath,
     Set<Address> bundleDeniedAddresses,
     int maxTxGasLimit,
     int maxTxCalldataSize,
