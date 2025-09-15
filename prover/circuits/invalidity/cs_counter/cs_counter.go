@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/gnark/profile"
 
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
@@ -23,14 +24,14 @@ import (
 func main() {
 
 	// allow override via environment variable
-	maxRlpByteSize := 1 << 10
+	maxRlpByteSize := 1 << 17 // 128 KB
 	if v := os.Getenv("MAX_RLP"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			maxRlpByteSize = n
 		}
 	}
 
-	depth := 10
+	depth := 40
 	if v := os.Getenv("Depth"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			depth = n
@@ -74,7 +75,7 @@ func main() {
 	circuit := invalidity.CircuitInvalidity{
 		SubCircuit: &invalidity.BadNonceBalanceCircuit{},
 	}
-
+	p := profile.Start()
 	// allocate the circuit
 	circuit.Allocate(invalidity.Config{
 		Depth:             config.Depth,
@@ -94,5 +95,7 @@ func main() {
 	}
 
 	logrus.WithField("constraints", scs.GetNbConstraints()).Info("circuit compiled")
+	p.Stop()
+	fmt.Println(p.Top())
 
 }
