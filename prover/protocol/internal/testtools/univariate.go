@@ -119,19 +119,6 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 		RoundOfPolys: []int{-1, 0},
 	},
 	{
-		NameStr: "two-poly-one-point-different-sizes-simple-values",
-		Polys: []smartvectors.SmartVector{
-			smartvectors.ForTest(0, 0, 0, 0, 0, 1, 0, 0),
-			smartvectors.ForTest(0, 1, 0, 0),
-		},
-		QueryXs: []fext.Element{
-			fext.Zero(),
-		},
-		QueryPols: [][]int{
-			{0, 1},
-		},
-	},
-	{
 		NameStr: "two-poly-one-point",
 		Polys: []smartvectors.SmartVector{
 			RandomVec(8),

@@ -222,10 +222,8 @@ func (re RandomPointEvaluation) Run(run *wizard.ProverRuntime) {
 
 	}
 
-	ys := make([]fext.Element, len(polyVals))
-	for i := range ys {
-		ys[i] = smartvectors.EvaluateLagrangeFullFext(polyVals[i], r) //TODO@yao : check here EvaluateLagrangeMixed or EvaluateLagrangeFullFext, check witness and poly type,
-	}
+	ys := smartvectors.BatchEvaluateLagrangeExt(polyVals, r)
+
 	run.AssignUnivariateExt(re.NewQuery.QueryID, r, ys...)
 }
 
@@ -296,8 +294,8 @@ func ldeOfExt(v []fext.Element, pool mempool.MemPool) *[]fext.Element {
 
 	var (
 		sizeLarge   = pool.Size()
-		domainSmall = fft.NewDomain(uint64(len(v)))
-		domainLarge = fft.NewDomain(uint64(sizeLarge))
+		domainSmall = fft.NewDomain(uint64(len(v)), fft.WithCache())
+		domainLarge = fft.NewDomain(uint64(sizeLarge), fft.WithCache())
 		resPtr      = pool.AllocExt()
 		res         = *resPtr
 	)

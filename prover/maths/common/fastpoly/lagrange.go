@@ -56,7 +56,7 @@ func BatchEvaluateLagrangeMixed(polys [][]field.Element, x fext.Element, oncoset
 		panic(err)
 	}
 
-	domain := fft.NewDomain(uint64(len(poly)))
+	domain := fft.NewDomain(uint64(len(poly)), fft.WithCache())
 
 	if len(oncoset) > 0 && oncoset[0] {
 		x.MulByElement(&x, &domain.FrMultiplicativeGenInv)

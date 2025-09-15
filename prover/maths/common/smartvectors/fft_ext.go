@@ -68,7 +68,7 @@ func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRati
 
 	v.WriteInSliceExt(res.RegularExt)
 
-	domain := fft.NewDomain(uint64(v.Len()))
+	domain := fft.NewDomain(uint64(v.Len()), fft.WithCache())
 
 	var shift field.Element
 	if cosetID != 0 || cosetRatio != 0 {
@@ -76,7 +76,7 @@ func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRati
 		omega.Exp(omega, big.NewInt(int64(cosetID)))
 
 		shift.Mul(&domain.FrMultiplicativeGen, &omega)
-		domain = fft.NewDomain(uint64(v.Len()), fft.WithShift(shift))
+		domain = fft.NewDomain(uint64(v.Len()), fft.WithShift(shift), fft.WithCache())
 	}
 	if decimation == fft.DIT {
 		// Optionally, bitReverse the input
@@ -162,7 +162,7 @@ func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, co
 
 	v.WriteInSliceExt(res.RegularExt)
 
-	domain := fft.NewDomain(uint64(v.Len()))
+	domain := fft.NewDomain(uint64(v.Len()), fft.WithCache())
 
 	var shift field.Element
 	if cosetID != 0 || cosetRatio != 0 {
@@ -170,7 +170,7 @@ func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, co
 		omega.Exp(omega, big.NewInt(int64(cosetID)))
 
 		shift.Mul(&domain.FrMultiplicativeGen, &omega)
-		domain = fft.NewDomain(uint64(v.Len()), fft.WithShift(shift))
+		domain = fft.NewDomain(uint64(v.Len()), fft.WithShift(shift), fft.WithCache())
 	}
 
 	if decimation == fft.DIF {

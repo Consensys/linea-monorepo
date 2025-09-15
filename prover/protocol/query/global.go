@@ -170,7 +170,7 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 	}
 
 	// This panics if the global constraints doesn't use any commitment
-	res := boarded.EvaluateMixed(evalInputs)
+	res := boarded.Evaluate(evalInputs)
 
 	offsetRange := MinMaxOffset(cs.Expression)
 
