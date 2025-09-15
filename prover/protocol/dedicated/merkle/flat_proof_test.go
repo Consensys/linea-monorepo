@@ -79,7 +79,6 @@ func (ctx *merkleTestRunnerFlat) Define(b *wizard.Builder) {
 
 // Assign assigns the merkle tree test-cases at runtime
 func (ctx *merkleTestRunnerFlat) Assign(run *wizard.ProverRuntime, data *merkleTestBuilder) {
-
 	run.AssignColumn("LEAF", smartvectors.RightZeroPadded(data.leaves, merkleTestNumRow))
 	run.AssignColumn("ROOTS", smartvectors.RightZeroPadded(data.roots, merkleTestNumRow))
 	run.AssignColumn("POS", smartvectors.RightZeroPadded(data.pos, merkleTestNumRow))
@@ -135,7 +134,7 @@ type merkleTestBuilderRow struct {
 
 func newMerkleTestBuilder(depth int) *merkleTestBuilder {
 	return &merkleTestBuilder{
-		tree: *smt.BuildComplete(make([]types.Bytes32, 1<<depth), hashtypes.MiMC),
+		tree: *smt.BuildComplete(make([]types.Bytes32, 1<<depth), hashtypes.Poseidon2),
 	}
 }
 

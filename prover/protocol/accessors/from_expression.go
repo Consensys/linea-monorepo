@@ -66,6 +66,7 @@ func NewFromExpression(expr *symbolic.Expression, exprName string) ifaces.Access
 		}
 	}
 
+	fmt.Printf("FromExprAccessor: expr=%v, round=%v, metadata=%v\n", expr, exprRound, metadata)
 	return &FromExprAccessor{
 		Expr:      expr,
 		ExprName:  exprName,
@@ -164,7 +165,6 @@ func (e *FromExprAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 				utils.Panic("unsupported type %T", m)
 			}
 		}
-
 		return e.Boarded.Evaluate(inputs).GetExt(0)
 	}
 }

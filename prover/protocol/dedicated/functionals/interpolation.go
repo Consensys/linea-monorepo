@@ -69,6 +69,7 @@ func (a *InterpolationProverAction) Run(assi *wizard.ProverRuntime) {
 		}
 	}
 
+	fmt.Printf("witiend=%v\n", witi[a.N-1].String())
 	fmt.Printf("witi=%v\n", vectorext.Prettify(witi))
 	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.Name, INTERPOLATION_POLY), smartvectors.NewRegularExt(witi))
 	assi.AssignLocalPointExt(ifaces.QueryIDf("%v_%v", a.Name, INTERPOLATION_OPEN_END), witi[a.N-1])

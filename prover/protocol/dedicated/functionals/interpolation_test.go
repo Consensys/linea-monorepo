@@ -55,7 +55,7 @@ func TestEvaluateLagrangeMixed(t *testing.T) {
 
 	proof := wizard.Prove(compiled, prover)
 
-	xVal := x.GetValExt(run)
+	xVal := x.GetValExt(savedRuntime)
 	fmt.Printf("x=%v\n", xVal)
 	fmt.Printf("wp=%v\n", wp)
 

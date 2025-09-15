@@ -2,6 +2,7 @@ package byte32cmp
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -100,9 +101,9 @@ func CmpMultiLimbs(comp *wizard.CompiledIOP, a, b LimbColumns) (isGreater, isEqu
 		numLimbs        = len(a.Limbs)
 		numBitsPerLimbs = a.LimbBitSize
 		ctx             = &MultiLimbCmp{
-			IsGreater:          comp.InsertCommit(round, ifaces.ColIDf(ctxName("IS_GREATER")), nRows),
-			IsLower:            comp.InsertCommit(round, ifaces.ColIDf(ctxName("IS_LOWER")), nRows),
-			NonNegativeSyndrom: comp.InsertCommit(round, ifaces.ColIDf(ctxName("MUST_BE_POSITIVE")), nRows),
+			IsGreater:          comp.InsertCommit(round, ifaces.ColIDf("%s", ctxName("IS_GREATER")), nRows),
+			IsLower:            comp.InsertCommit(round, ifaces.ColIDf("%s", ctxName("IS_LOWER")), nRows),
+			NonNegativeSyndrom: comp.InsertCommit(round, ifaces.ColIDf("%s", ctxName("MUST_BE_POSITIVE")), nRows),
 		}
 
 		syndromExpression = sym.NewConstant(0)
@@ -145,7 +146,7 @@ func CmpMultiLimbs(comp *wizard.CompiledIOP, a, b LimbColumns) (isGreater, isEqu
 
 	comp.InsertGlobal(
 		round,
-		ifaces.QueryIDf(ctxName("FLAGS_MUTUALLY_EXCLUSIVE")),
+		ifaces.QueryIDf("%s", ctxName("FLAGS_MUTUALLY_EXCLUSIVE")),
 		sym.Sub(1, ctx.IsGreater, isEqual, ctx.IsLower),
 	)
 
@@ -204,15 +205,20 @@ func (mCmp *MultiLimbCmp) Run(run *wizard.ProverRuntime) {
 			sF = syndrom.Get(i)
 		)
 
-		if sF.IsUint64() && !sF.IsZero() {
+		// sf is positive
+		if checkStringSign(sF.String()) && !sF.IsZero() {
+
 			isGreater[i] = field.One()
 			nnSyndrom[i] = sF
 		}
 
-		if !sF.IsUint64() {
+		// sf is negitive
+		if !checkStringSign(sF.String()) {
+
 			isLower[i] = field.One()
 			nnSyndrom[i].Neg(&sF)
 		}
+
 	}
 
 	run.AssignColumn(mCmp.IsGreater.GetColID(), smartvectors.NewRegular(isGreater))
@@ -220,4 +226,23 @@ func (mCmp *MultiLimbCmp) Run(run *wizard.ProverRuntime) {
 	run.AssignColumn(mCmp.NonNegativeSyndrom.GetColID(), smartvectors.NewRegular(nnSyndrom))
 
 	wg.Wait()
+}
+
+// checkStringSign determines if a string represents a positive, negative, or zero value.
+func checkStringSign(inputStr string) bool {
+	// Step 1 & 2: Parse the string to a float64 and handle any errors.
+	number, err := strconv.ParseFloat(inputStr, 64)
+	if err != nil {
+		// This block runs if the string is not a valid number.
+		return false
+	}
+
+	// Step 3: Compare the number to determine its sign.
+	if number > 0 {
+		return true
+	} else if number < 0 {
+		return false
+	} else {
+		return true
+	}
 }

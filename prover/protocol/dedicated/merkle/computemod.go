@@ -445,7 +445,7 @@ func (cm *ComputeMod) qname(name string, args ...any) ifaces.QueryID {
 func (cm *ComputeMod) colZeroAtInactive(col ifaces.Column, name string) {
 	// col zero at inactive area, e.g., IsInactive[i]) * col[i] = 0
 	sug := cm.SugarVar
-	cm.Comp.InsertGlobal(cm.Round, cm.qname(name),
+	cm.Comp.InsertGlobal(cm.Round, cm.qname("%s", name),
 		symbolic.Mul(sug.IsInactive, col))
 }
 
