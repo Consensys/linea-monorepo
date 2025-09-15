@@ -10,6 +10,7 @@ package maru.app
 
 import maru.config.ApiEndpointConfig
 import maru.config.consensus.ElFork
+import maru.executionlayer.client.CancunWeb3JJsonRpcExecutionLayerEngineApiClient
 import maru.executionlayer.client.ExecutionLayerEngineApiClient
 import maru.executionlayer.client.ParisWeb3JJsonRpcExecutionLayerEngineApiClient
 import maru.executionlayer.client.PragueWeb3JJsonRpcExecutionLayerEngineApiClient
@@ -62,6 +63,12 @@ object Helpers {
 
       ElFork.Shanghai ->
         ShanghaiWeb3JJsonRpcExecutionLayerEngineApiClient(
+          web3jClient = web3JEngineApiClient,
+          metricsFacade = metricsFacade,
+        )
+
+      ElFork.Cancun ->
+        CancunWeb3JJsonRpcExecutionLayerEngineApiClient(
           web3jClient = web3JEngineApiClient,
           metricsFacade = metricsFacade,
         )

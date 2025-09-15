@@ -63,7 +63,7 @@ class ForkSpecSerializerTest {
     val qbftConfig =
       QbftConsensusConfig(
         validatorSet = setOf(validator1, validator2),
-        elFork = ElFork.Shanghai,
+        elFork = ElFork.Cancun,
       )
 
     val difficultyAwareQbftConfig =
@@ -176,7 +176,7 @@ class ForkSpecSerializerTest {
     val qbftConfig =
       QbftConsensusConfig(
         validatorSet = setOf(validator),
-        elFork = ElFork.Shanghai,
+        elFork = ElFork.Cancun,
       )
 
     val ttdValues = listOf(0UL, 1UL, 1000UL, ULong.MAX_VALUE)
@@ -300,7 +300,7 @@ class ForkSpecSerializerTest {
     val qbftConfig =
       QbftConsensusConfig(
         validatorSet = validators,
-        elFork = ElFork.Shanghai,
+        elFork = ElFork.Cancun,
       )
 
     val difficultyAwareQbftConfig =

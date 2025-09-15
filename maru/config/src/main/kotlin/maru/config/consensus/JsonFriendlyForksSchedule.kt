@@ -100,10 +100,9 @@ data class JsonFriendlyForksSchedule(
 ) {
   override fun equals(other: Any?): Boolean {
     if (other !is JsonFriendlyForksSchedule) {
-      false
+      return false
     }
-    val otherTyped = other as JsonFriendlyForksSchedule
-    return config.containsAll(otherTyped.config) && config.size == otherTyped.config.size
+    return config.containsAll(other.config) && config.size == other.config.size
   }
 
   fun domainFriendly(): ForksSchedule = ForksSchedule(chainId, config)
