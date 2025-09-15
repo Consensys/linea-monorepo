@@ -64,7 +64,10 @@ func EvaluateBasePolyLagrange(v SmartVector, x fext.Element, oncoset ...bool) fe
 		x.MulByElement(&x, &genFr)
 	}
 
-	res, _ := vortex.EvalBasePolyLagrange(poly, x)
+	res, err := vortex.EvalBasePolyLagrange(poly, x)
+	if err != nil {
+		panic(err)
+	}
 
 	return res
 }
