@@ -9,10 +9,10 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
@@ -34,14 +34,13 @@ func main() {
 	var (
 		config = &smt.Config{
 			HashFunc: hashtypes.MiMC,
-			Depth:    10,
+			Depth:    40,
 		}
 	)
 
 	// generate keccak proof for the circuit
 	maxNumKeccakF := maxRlpByteSize/136 + 1 // each keccakF can hash 136 bytes.
 	colSize := maxRlpByteSize/16 + 1        // each limb is 16 bytes.
-	// @azam do we still need this ?
 	size := utils.NextPowerOfTwo(colSize)
 
 	gdm := generic.GenDataModule{}
@@ -60,7 +59,7 @@ func main() {
 		}
 		keccak.NewKeccakSingleProvider(comp, inp)
 	}
-	comp := wizard.Compile(definer, dummy.Compile)
+	comp := wizard.Compile(definer, internal.WizardCompilationParameters()...)
 	logrus.Info("keccak circuit compiled")
 
 	// define the circuit
