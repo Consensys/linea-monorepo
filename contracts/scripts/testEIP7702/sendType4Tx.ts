@@ -43,7 +43,7 @@ class EIP7702TransactionSender {
 
     const signer = new ethers.Wallet(privateKey, this.provider);
     const currentNonce = await this.provider.getTransactionCount(signer.address);
-    const authNonce = currentNonce + 1;
+    const authNonce = currentNonce;
 
     const authorization = await signer.authorize({
       address: targetContractAddress,
