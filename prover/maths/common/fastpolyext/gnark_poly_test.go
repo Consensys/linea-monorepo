@@ -38,7 +38,8 @@ func TestEvaluateLagrangeGnark(t *testing.T) {
 	x.SetRandom()
 
 	// eval lagrange
-	r, _ := vortex.EvalFextPolyLagrange(poly, x)
+	r, err := vortex.EvalFextPolyLagrange(poly, x)
+	assert.NoError(t, err)
 
 	// test circuit
 	var witness, circuit EvaluateLagrangeCircuit

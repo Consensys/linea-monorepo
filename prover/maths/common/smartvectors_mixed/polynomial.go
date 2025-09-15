@@ -95,13 +95,17 @@ func BatchEvaluateLagrange(vs []sv.SmartVector, x fext.Element, oncoset ...bool)
 	var baseWg, extWg sync.WaitGroup
 	var baseResults []fext.Element
 	var extResults []fext.Element
+	var err error
 
 	// Evaluate base field polynomials
 	if len(basePolys) > 0 {
 		baseWg.Add(1)
 		go func() {
 			defer baseWg.Done()
-			baseResults, _ = vortex.BatchEvalBasePolyLagrange(basePolys, x, oncoset...)
+			baseResults, err = vortex.BatchEvalBasePolyLagrange(basePolys, x, oncoset...)
+			if err != nil {
+				panic(err)
+			}
 		}()
 	}
 
@@ -110,7 +114,10 @@ func BatchEvaluateLagrange(vs []sv.SmartVector, x fext.Element, oncoset ...bool)
 		extWg.Add(1)
 		go func() {
 			defer extWg.Done()
-			extResults, _ = vortex.BatchEvalFextPolyLagrange(extPolys, x, oncoset...)
+			extResults, err = vortex.BatchEvalFextPolyLagrange(extPolys, x, oncoset...)
+			if err != nil {
+				panic(err)
+			}
 		}()
 	}
 

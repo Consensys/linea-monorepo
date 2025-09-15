@@ -103,7 +103,10 @@ func EvaluateFextPolyLagrange(v SmartVector, x fext.Element, oncoset ...bool) fe
 		x.MulByElement(&x, &genFr)
 	}
 
-	result, _ := vortex.EvalFextPolyLagrange(res, x)
+	result, err := vortex.EvalFextPolyLagrange(res, x)
+	if err != nil {
+		panic(err)
+	}
 
 	return result
 }
@@ -153,7 +156,10 @@ func BatchEvaluateFextPolyLagrange(vs []SmartVector, x fext.Element, oncoset ...
 	}
 
 	if len(nonConstantPolys) > 0 {
-		nonConstantResults, _ := vortex.BatchEvalFextPolyLagrange(nonConstantPolys, x, oncoset...)
+		nonConstantResults, err := vortex.BatchEvalFextPolyLagrange(nonConstantPolys, x, oncoset...)
+		if err != nil {
+			panic(err)
+		}
 		for j, result := range nonConstantResults {
 			results[nonConstantIndices[j]] = result
 		}
