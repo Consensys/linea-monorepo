@@ -187,6 +187,9 @@ class ProofAggregationCoordinatorService(
     ) {
       aggregationProofCreation(blockIntervals, compressionProofIndexes)
     }
+      .thenPeek {
+        log.info("aggregation proof generated: aggregation={}", blobsToAggregate.intervalString())
+      }
       .thenCompose { aggregationProof ->
         val aggregation = Aggregation(
           startBlockNumber = blobsToAggregate.startBlockNumber,
