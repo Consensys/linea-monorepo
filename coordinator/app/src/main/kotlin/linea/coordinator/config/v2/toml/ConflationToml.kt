@@ -5,6 +5,7 @@ import linea.blob.BlobCompressorVersion
 import linea.coordinator.config.v2.ConflationConfig
 import net.consensys.linea.traces.TracesCountersV2
 import java.net.URL
+import java.time.Instant
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -64,7 +65,7 @@ data class ConflationToml(
   }
 
   data class HardForksToml(
-    val timestampBasedForks: List<java.time.Instant> = emptyList(),
+    val timestampBasedForks: List<Instant> = emptyList(),
     val totalTerminalDifficulty: ULong = ULong.MAX_VALUE,
   ) {
     fun reified(): ConflationConfig.HardForks {
