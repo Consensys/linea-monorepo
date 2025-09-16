@@ -21,7 +21,8 @@ npx hardhat run scripts/testSendBundle/testSendBundle.ts
  * - BUNDLE_URL: Bundle relay URL (e.g., "https://relay-sepolia.flashbots.net")
  *
  * Optional Environment Variables:
- * - BLOCK_NUMBER: Target block number (defaults to current + 1)
+ * - BLOCK_NUMBER: Target block number (defaults to current + 1, only used for single bundle)
+ * - BUNDLE_COUNT: Number of bundles to send to consecutive blocks (defaults to 10)
  */
 
 import { ethers, id } from "ethers";
@@ -103,8 +104,8 @@ class BundleSender {
       to: toAddress,
       value: ethers.formatEther(amountWei),
       gasLimit: gasLimit.toString(),
-      maxFeePerGas: ethers.formatUnits(maxFeePerGas, "gwei"),
-      maxPriorityFeePerGas: ethers.formatUnits(maxPriorityFeePerGas, "gwei"),
+      maxFeePerGas: ethers.formatUnits(100n * maxFeePerGas, "gwei"),
+      maxPriorityFeePerGas: ethers.formatUnits(100n * maxPriorityFeePerGas, "gwei"),
       nonce,
       chainId,
     });
@@ -121,13 +122,6 @@ class BundleSender {
       txs: signedTransactions,
       blockNumber: `0x${blockNumber.toString(16)}`,
     };
-
-    console.log("Sending bundle:", {
-      bundleParams,
-      bundleUrl: this.bundleUrl,
-      targetBlock: blockNumber,
-      currentBlock: currentBlockNumber,
-    });
 
     const requestBody = {
       jsonrpc: "2.0",
@@ -154,8 +148,6 @@ class BundleSender {
 
     const result: BundleResponse = await response.json();
 
-    console.log("Bundle response:", result);
-
     if (result.error) {
       throw new Error(`Bundle error: ${result.error.code} - ${result.error.message}`);
     }
@@ -173,6 +165,10 @@ class BundleSender {
       balance: ethers.formatEther(balance),
       nonce,
     };
+  }
+
+  async getCurrentBlockNumber(): Promise<number> {
+    return await this.provider.getBlockNumber();
   }
 
   private async generateBundleSignature(requestBody: string): Promise<string> {
@@ -201,6 +197,7 @@ async function main() {
 
     // Optional environment variables
     const targetBlockNumber = process.env.BLOCK_NUMBER ? parseInt(process.env.BLOCK_NUMBER) : undefined;
+    const bundleCount = process.env.BUNDLE_COUNT ? parseInt(process.env.BUNDLE_COUNT) : 10;
 
     const bundleSender = new BundleSender(rpcUrl, privateKey, bundleUrl);
 
@@ -212,21 +209,83 @@ async function main() {
       toAddress,
       amount,
       bundleUrl,
-      targetBlockNumber: targetBlockNumber || "auto (current + 1)",
+      bundleCount,
+      singleTarget: targetBlockNumber ? `block ${targetBlockNumber}` : `next ${bundleCount} blocks`,
     });
 
     console.log("\n=== Creating Transaction ===");
     const signedTx = await bundleSender.createEthTransferTransaction(fromAddress, toAddress, amount);
 
-    console.log("\n=== Sending Bundle ===");
-    const result = await bundleSender.sendBundle([signedTx], targetBlockNumber);
+    if (targetBlockNumber) {
+      // Single bundle mode
+      console.log("\n=== Sending Single Bundle ===");
+      const result = await bundleSender.sendBundle([signedTx], targetBlockNumber);
+      console.log("\n=== Success ===");
+      console.log("Bundle hash:", result.result?.bundleHash);
+      if (result.result?.smart) {
+        console.log("Smart bundle:", result.result.smart);
+      }
+      console.log("\nBundle submitted successfully! Monitor the target block to see if it was included.");
+    } else {
+      // Multiple bundles mode
+      console.log(`\n=== Sending ${bundleCount} Bundles ===`);
 
-    console.log("\n=== Success ===");
-    console.log("Bundle hash:", result.result?.bundleHash);
-    if (result.result?.smart) {
-      console.log("Smart bundle:", result.result.smart);
+      const currentBlock = await bundleSender.getCurrentBlockNumber();
+      const targetBlocks = Array.from({ length: bundleCount }, (_, i) => currentBlock + i + 1);
+
+      console.log(`Target blocks: ${targetBlocks.join(", ")}`);
+      console.log(`\nSending all bundles concurrently...`);
+
+      // Create promises for all bundle submissions
+      const bundlePromises = targetBlocks.map(async (targetBlock) => {
+        try {
+          const result = await bundleSender.sendBundle([signedTx], targetBlock);
+          console.log(`✅ Bundle submitted - Hash: ${result.result?.bundleHash || "unknown"}`);
+          return {
+            block: targetBlock,
+            success: true,
+            bundleHash: result.result?.bundleHash || "",
+          };
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.log(`❌ Bundle failed: ${errorMessage}`);
+          return {
+            block: targetBlock,
+            success: false,
+            error: errorMessage,
+          };
+        }
+      });
+
+      // Wait for all bundles to complete
+      const results = await Promise.all(bundlePromises);
+
+      // Results summary
+      console.log("\n=== Results Summary ===");
+      const successful = results.filter((r) => r.success);
+      const failed = results.filter((r) => !r.success);
+
+      console.log(`Successful bundles: ${successful.length}/${bundleCount}`);
+      console.log(`Failed bundles: ${failed.length}/${bundleCount}`);
+
+      // if (successful.length > 0) {
+      //   console.log("\n✅ Successful bundle hashes:");
+      //   successful.forEach((r) => {
+      //     console.log(`  ${r.bundleHash}`);
+      //   });
+      // }
+
+      // if (failed.length > 0) {
+      //   console.log("\n❌ Failed submissions:");
+      //   failed.forEach((r) => {
+      //     console.log(`  ${r.error}`);
+      //   });
+      // }
+
+      console.log(
+        `\nAll bundles submitted! Monitor blocks ${currentBlock + 1} to ${currentBlock + bundleCount} for inclusion.`,
+      );
     }
-    console.log("\nBundle submitted successfully! Monitor the target block to see if it was included.");
   } catch (error) {
     console.error("\n=== Error ===");
     console.error("Error:", error);
