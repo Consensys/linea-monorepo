@@ -1,5 +1,6 @@
 package linea.coordinator.config.v2.toml
 
+import kotlinx.datetime.toKotlinInstant
 import linea.blob.BlobCompressorVersion
 import linea.coordinator.config.v2.ConflationConfig
 import net.consensys.linea.traces.TracesCountersV2
@@ -47,6 +48,7 @@ data class ConflationToml(
     val coordinatorPollingInterval: Duration = 3.seconds,
     val targetEndBlocks: List<ULong>? = null,
     val aggregationSizeMultipleOf: UInt = 1u,
+    val hardForks: HardForksToml = HardForksToml(),
   ) {
     fun reified(): ConflationConfig.ProofAggregation {
       return ConflationConfig.ProofAggregation(
@@ -56,6 +58,19 @@ data class ConflationToml(
         coordinatorPollingInterval = this.coordinatorPollingInterval,
         targetEndBlocks = this.targetEndBlocks,
         aggregationSizeMultipleOf = this.aggregationSizeMultipleOf,
+        hardForks = hardForks.reified(),
+      )
+    }
+  }
+
+  data class HardForksToml(
+    val timestampBasedForks: List<java.time.Instant> = emptyList(),
+    val totalTerminalDifficulty: ULong = ULong.MAX_VALUE,
+  ) {
+    fun reified(): ConflationConfig.HardForks {
+      return ConflationConfig.HardForks(
+        timestampBasedForks = this.timestampBasedForks.map { it.toKotlinInstant() },
+        totalTerminalDifficulty = this.totalTerminalDifficulty,
       )
     }
   }

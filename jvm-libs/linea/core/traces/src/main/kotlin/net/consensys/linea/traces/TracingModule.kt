@@ -130,8 +130,6 @@ enum class TracingModuleV2 : TracingModule {
       POINT_EVAL,
       BLS_DATA,
       RLP_UTILS,
-      POWER_REFERENCE_TABLE,
-      BLS_REFERENCE_TABLE,
     )
   }
 }

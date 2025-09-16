@@ -57,6 +57,7 @@ class BlockToBatchSubmissionCoordinator(
             blockRLPEncoded = blockRLPEncoded,
             numOfTransactions = blockEvent.block.transactions.size.toUInt(),
             gasUsed = blockEvent.block.gasUsed,
+            totalDifficulty = blockEvent.block.totalDifficulty,
           ),
         )
       }.whenException { th ->

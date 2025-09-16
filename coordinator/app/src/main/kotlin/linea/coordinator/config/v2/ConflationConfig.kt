@@ -1,5 +1,6 @@
 package linea.coordinator.config.v2
 
+import kotlinx.datetime.Instant
 import linea.blob.BlobCompressorVersion
 import linea.domain.RetryConfig
 import net.consensys.linea.traces.TracesCountersV2
@@ -42,5 +43,11 @@ data class ConflationConfig(
     val coordinatorPollingInterval: Duration = 3.seconds,
     val targetEndBlocks: List<ULong>? = null,
     val aggregationSizeMultipleOf: UInt = 1u,
+    val hardForks: HardForks = HardForks(),
+  )
+
+  data class HardForks(
+    val timestampBasedForks: List<Instant> = emptyList(),
+    val totalTerminalDifficulty: ULong = ULong.MAX_VALUE,
   )
 }

@@ -84,7 +84,7 @@ BLAKE               = 0
 POINT_EVAL          = 0
 
 # Introduced from beta-v4.0-rc6-CANCUN and present on Cancun
-BLS_DATA                = 2147483647
-RLP_UTILS               = 2147483647 # Note: need to confirm if this limit could have the same limit as RLP_TXN
+BLS_DATA                = 8192
+RLP_UTILS               = 131072 # Note: need to confirm if this limit could have the same limit as RLP_TXN
 POWER_REFERENCE_TABLE   = 2147483647
 BLS_REFERENCE_TABLE     = 2147483647

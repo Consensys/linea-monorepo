@@ -17,6 +17,7 @@ data class BlockData<TxData>(
   val receiptsRoot: ByteArray,
   val logsBloom: ByteArray,
   val difficulty: ULong,
+  val totalDifficulty: ULong,
   val gasLimit: ULong,
   val gasUsed: ULong,
   val timestamp: ULong,

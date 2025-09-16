@@ -15,9 +15,8 @@
     "arrowGlacierBlock": 0,
     "grayGlacierBlock": 0,
     "terminalTotalDifficulty": 8,
-    "shanghaiTime": %PRAGUE_TIME%,
-    "cancunTime": %PRAGUE_TIME%,
-    "pragueTime": %PRAGUE_TIME%,
+    "shanghaiTime": %SHANGHAI_TIME%,
+    "cancunTime": %CANCUN_TIME%,
     "depositContractAddress": "0x3a69eD7FA6f6CA1dB2649327c4A2E666130823bE",
     "clique": {
       "period": 1,
