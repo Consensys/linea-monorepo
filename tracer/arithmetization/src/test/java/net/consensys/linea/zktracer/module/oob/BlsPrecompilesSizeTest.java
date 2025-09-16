@@ -39,6 +39,7 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -48,6 +49,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 @ExtendWith(UnitTestWatcher.class)
 public class BlsPrecompilesSizeTest extends TracerTestBase {
 
+  @Tag("nightly")
   @ParameterizedTest
   @MethodSource("blsPrecompilesSizeTestSource")
   void blsPrecompilesSizeTest(Address address, Integer size, TestInfo testInfo) {

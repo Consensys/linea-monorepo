@@ -118,7 +118,6 @@ public enum Fork {
    * @return Fork corresponding Fork instance if the hardfork id is the same between fromBlock and
    *     toBlock, else throw
    */
-  // Waiting for https://github.com/hyperledger/besu/pull/9115 to uncomment
   public static Fork getForkFromBesuBlockchainService(
       ServiceManager context, long fromBlock, long toBlock) {
     HardforkId hardforkIdFromBlock =
