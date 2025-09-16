@@ -28,7 +28,7 @@ func newNativeAPI(api frontend.API) (*NativeAPI, error) {
 	return &NativeAPI{api: api}, nil
 }
 
-var _ FieldOps[NativeElement] = &NativeAPI{}
+var _ APIGen[NativeElement] = &NativeAPI{}
 
 func (n *NativeAPI) Mul(a, b *NativeElement) *NativeElement {
 	return packNE(n.api.Mul(a.V, b.V))

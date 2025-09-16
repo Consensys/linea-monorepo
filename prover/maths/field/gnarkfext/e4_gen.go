@@ -20,7 +20,7 @@ func NewE4Gen[T zk.Element](v fext.Element) E4Gen[T] {
 
 // Ext4 contains  the ext4 koalabear operations
 type Ext4[T zk.Element] struct {
-	mixedAPI zk.FieldOps[T]
+	mixedAPI zk.APIGen[T]
 	*Ext2[T]
 }
 

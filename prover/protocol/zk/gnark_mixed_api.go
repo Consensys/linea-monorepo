@@ -15,7 +15,7 @@ type Element interface {
 	EmulatedElement | NativeElement
 }
 
-type FieldOps[T Element] interface {
+type APIGen[T Element] interface {
 	Mul(a, b *T) *T
 	MulConst(a *T, b *big.Int) *T
 	Add(a, b *T) *T
@@ -51,9 +51,9 @@ type FieldOps[T Element] interface {
 	// GnarkAPI() frontend.API
 }
 
-func NewApi[T Element](api frontend.API) (FieldOps[T], error) {
+func NewApi[T Element](api frontend.API) (APIGen[T], error) {
 	var t T
-	var ret FieldOps[T]
+	var ret APIGen[T]
 	var ok bool
 	switch any(t).(type) {
 	case EmulatedElement:
@@ -61,7 +61,7 @@ func NewApi[T Element](api frontend.API) (FieldOps[T], error) {
 		if err != nil {
 			return nil, err
 		}
-		ret, ok = any(retV).(FieldOps[T])
+		ret, ok = any(retV).(APIGen[T])
 		if !ok {
 			panic("could not cast emulated API to requested type")
 		}
@@ -70,7 +70,7 @@ func NewApi[T Element](api frontend.API) (FieldOps[T], error) {
 		if err != nil {
 			return nil, err
 		}
-		ret, ok = any(retV).(FieldOps[T])
+		ret, ok = any(retV).(APIGen[T])
 		if !ok {
 			panic("could not cast native API to requested type")
 		}
@@ -101,17 +101,17 @@ func ValueOf[T Element](input any) T {
 
 // func (c *TestMixedCircuitMixed[T]) Define(api frontend.API) error {
 
-// 	var wApi FieldOps[T]
+// 	var wApi APIGen[T]
 // 	t := getType[T]()
 // 	if t == Emulated {
 // 		tmpApi, err := getFieldOpEmulated(api)
 // 		if err != nil {
 // 			return err
 // 		}
-// 		wApi = any(tmpApi).(FieldOps[T])
+// 		wApi = any(tmpApi).(APIGen[T])
 // 	} else {
 // 		tmpApi := getFieldOpNative(api)
-// 		wApi = any(tmpApi).(FieldOps[T])
+// 		wApi = any(tmpApi).(APIGen[T])
 // 	}
 
 // 	wApi.Println(c.R)

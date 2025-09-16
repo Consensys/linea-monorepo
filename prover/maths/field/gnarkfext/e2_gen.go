@@ -9,7 +9,7 @@ import (
 )
 
 type Ext2[T zk.Element] struct {
-	mixedAPI zk.FieldOps[T]
+	mixedAPI zk.APIGen[T]
 }
 
 func NewExt2[t zk.Element](api frontend.API) *Ext2[t] {
