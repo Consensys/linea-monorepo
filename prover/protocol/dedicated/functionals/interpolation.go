@@ -168,6 +168,7 @@ func Interpolation(comp *wizard.CompiledIOP, name string, a ifaces.Accessor, p i
 	nInv := field.NewElement(uint64(p.Size()))
 	nInv.Inverse(&nInv)
 
+	// Finally we return the accessor that will read the interpolation result
 	return accessors.NewFromExpression(
 		symbolic.Mul(
 			symbolic.Sub(

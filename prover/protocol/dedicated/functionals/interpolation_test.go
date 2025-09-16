@@ -57,7 +57,7 @@ func TestEvaluateLagrangeMixed(t *testing.T) {
 
 	xVal := x.GetValExt(savedRuntime)
 	fmt.Printf("x=%v\n", xVal)
-	fmt.Printf("wp=%v\n", wp)
+	fmt.Printf("acc=%v\n", acc)
 
 	accY := acc.GetValExt(savedRuntime)
 	expectedY := smartvectors.EvaluateLagrangeMixed(wp, xVal)
