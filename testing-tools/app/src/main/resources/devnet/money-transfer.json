@@ -3,7 +3,7 @@
   "name": "money transfer",
   "context": {
     "chainId": 59139,
-    "url": "http://localhost:59358/",
+    "url": "https://rpc.devnet.linea.build",
     "nbOfExecutions": 10
   },
   "calls": [
