@@ -44,5 +44,11 @@ data class ConflationConfig(
     val targetEndBlocks: List<ULong>? = null,
     val aggregationSizeMultipleOf: UInt = 1u,
     val timestampBasedHardForks: List<Instant> = emptyList(),
-  )
+  ) {
+    init {
+      require(timestampBasedHardForks.toSet().size == timestampBasedHardForks.size) {
+        "Timestamps list contains duplicates! Probably a misconfiguration!"
+      }
+    }
+  }
 }

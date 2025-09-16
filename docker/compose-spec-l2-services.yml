@@ -33,7 +33,7 @@ services:
     networks:
       linea:
         ipv4_address: 11.11.11.210
-  
+
   maru-follower:
     image: consensys/maru:${MARU_TAG:-9839958}
     hostname: maru-follower
@@ -46,7 +46,7 @@ services:
         condition: service_healthy
       zkbesu-shomei:
         condition: service_healthy
-      
+
     command: [ 'java', '-Dlog4j2.configurationFile=configs/log4j.xml', '-jar', "maru.jar", '--maru-genesis-file', '/initialization/genesis-maru.json', '--config', 'configs/config.toml']
 #    command: [ 'echo' , 'Forced exit to run in IntellIJ' ]
     volumes:

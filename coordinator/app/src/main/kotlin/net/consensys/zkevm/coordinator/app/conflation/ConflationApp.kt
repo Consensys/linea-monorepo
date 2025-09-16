@@ -213,15 +213,17 @@ class ConflationApp(
     blobCompressionProofCoordinator
   }
 
-  private val extendedWeb3JImpl = ExtendedWeb3JImpl(l2Web3jClient)
-  private val lastProcessedBlock = extendedWeb3JImpl.ethGetBlock(
+  private val extendedWeb3J = ExtendedWeb3JImpl(l2Web3jClient)
+  private val lastProcessedBlock = extendedWeb3J.ethGetBlock(
     BlockParameter.fromNumber(lastProcessedBlockNumber),
   ).get()
+
   init {
     require(lastProcessedBlock != null) {
       "lastProcessedBlock=$lastProcessedBlock is null! Unable to instantiate conflation calculators!"
     }
   }
+
   private val lastProcessedTimestamp = Instant.fromEpochSeconds(lastProcessedBlock!!.timestamp.toLong())
 
   private val proofAggregationCoordinatorService: LongRunningService = run {
@@ -279,7 +281,6 @@ class ConflationApp(
         metricsFacade = metricsFacade,
         provenAggregationEndBlockNumberConsumer = { aggEndBlockNumber -> highestAggregationTracker(aggEndBlockNumber) },
         aggregationSizeMultipleOf = configs.conflation.proofAggregation.aggregationSizeMultipleOf,
-        // Add hard fork configuration parameters
         hardForkTimestamps = configs.conflation.proofAggregation.timestampBasedHardForks,
         initialTimestamp = lastProcessedTimestamp,
       )
@@ -394,7 +395,7 @@ class ConflationApp(
     log.info("Resuming conflation from block={} inclusive", lastProcessedBlockNumber + 1UL)
     val blockCreationMonitor = BlockCreationMonitor(
       vertx = vertx,
-      web3j = extendedWeb3JImpl,
+      web3j = extendedWeb3J,
       startingBlockNumberExclusive = lastProcessedBlockNumber.toLong(),
       blockCreationListener = block2BatchCoordinator,
       lastProvenBlockNumberProviderAsync = lastProvenBlockNumberProvider,
@@ -499,9 +500,10 @@ class ConflationApp(
         ),
       )
       log.info(
-        "Added timestamp-based hard fork calculator with {} timestamps, initialized at {}",
+        "Added timestamp-based hard fork calculator with {} timestamps, initialized at {}, timestamps={}",
         configs.conflation.proofAggregation.timestampBasedHardForks.size,
         lastProcessedTimestamp,
+        configs.conflation.proofAggregation.timestampBasedHardForks,
       )
     }
   }

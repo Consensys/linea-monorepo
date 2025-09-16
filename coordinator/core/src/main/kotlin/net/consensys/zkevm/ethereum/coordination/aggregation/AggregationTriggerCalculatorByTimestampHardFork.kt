@@ -40,7 +40,8 @@ class AggregationTriggerCalculatorByTimestampHardFork(
 
     if (applicableTimestamp != null && inFlightAggregation != null) {
       log.info(
-        "Hard fork detected at blob ending at block {} with timestamp {}. Fork timestamp: {}. Triggering aggregation.",
+        "Hard fork detected at blob ending at blockNumber={} with timestamp={}, forkTimestamp={}. " +
+          "Triggering aggregation.",
         blobCounters.endBlockNumber,
         blobEndTimestamp,
         applicableTimestamp,

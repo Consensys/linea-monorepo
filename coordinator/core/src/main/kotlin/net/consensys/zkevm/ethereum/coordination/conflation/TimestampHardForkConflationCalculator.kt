@@ -44,7 +44,7 @@ class TimestampHardForkConflationCalculator(
 
     if (applicableTimestamp != null) {
       log.info(
-        "Hard fork detected at block {} with timestamp {}. Fork timestamp: {}",
+        "Hard fork detected at blockNumber={} with timestamp={}. forkTimestamp={}",
         blockCounters.blockNumber,
         blockTimestamp,
         applicableTimestamp,
