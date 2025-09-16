@@ -5,32 +5,26 @@
  * Creates a single ETH transfer transaction and submits it to a bundle relay service.
  *
  * Usage:
- * RPC_URL="https://your-eth-rpc-url" \
- * PRIVATE_KEY="0x..." \
- * TO_ADDRESS="0x..." \
- * AMOUNT="0.1" \
- * BUNDLE_URL="https://relay.flashbots.net" \
- * npx hardhat run scripts/testSendBundle/testSendBundle.ts
- *
+
+RPC_URL=https://your-eth-rpc-url \
+PRIVATE_KEY=0x... \
+TO_ADDRESS="0x... \
+AMOUNT=0.001 \
+BUNDLE_URL=https://relay-sepolia.flashbots.net \
+npx hardhat run scripts/testSendBundle/testSendBundle.ts
+
  * Required Environment Variables:
  * - RPC_URL: Ethereum RPC endpoint for getting chain data
  * - PRIVATE_KEY: Private key for signing transactions (source address derived from this)
  * - TO_ADDRESS: Destination address for ETH transfer
  * - AMOUNT: Amount of ETH to transfer (e.g., "0.1")
- * - BUNDLE_URL: Bundle relay URL (e.g., "https://relay.flashbots.net")
+ * - BUNDLE_URL: Bundle relay URL (e.g., "https://relay-sepolia.flashbots.net")
  *
  * Optional Environment Variables:
  * - BLOCK_NUMBER: Target block number (defaults to current + 1)
- *
- * Examples:
- * # Mainnet Flashbots
- * BUNDLE_URL="https://relay.flashbots.net"
- *
- * # Sepolia Flashbots
- * BUNDLE_URL="https://relay-sepolia.flashbots.net"
  */
 
-import { ethers } from "ethers";
+import { ethers, id } from "ethers";
 import { get1559Fees, isLineaChainId, LineaEstimateGasClient } from "../utils";
 import * as dotenv from "dotenv";
 
@@ -142,12 +136,16 @@ class BundleSender {
       params: [bundleParams],
     };
 
+    const requestBodyString = JSON.stringify(requestBody);
+    const bundleSignature = await this.generateBundleSignature(requestBodyString);
+
     const response = await fetch(this.bundleUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "X-Flashbots-Signature": bundleSignature,
       },
-      body: JSON.stringify(requestBody),
+      body: requestBodyString,
     });
 
     if (!response.ok) {
@@ -175,6 +173,11 @@ class BundleSender {
       balance: ethers.formatEther(balance),
       nonce,
     };
+  }
+
+  private async generateBundleSignature(requestBody: string): Promise<string> {
+    const signature = await this.signer.signMessage(id(requestBody));
+    return `${this.signer.address}:${signature}`;
   }
 }
 
@@ -205,7 +208,6 @@ async function main() {
     const fromAddress = signerInfo.address;
 
     console.log("Configuration:", {
-      rpcUrl: rpcUrl.replace(/\/\/.*@/, "//***:***@"), // Hide credentials in URL
       fromAddress,
       toAddress,
       amount,
