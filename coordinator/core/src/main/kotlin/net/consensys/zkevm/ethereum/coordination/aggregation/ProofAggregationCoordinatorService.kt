@@ -218,8 +218,8 @@ class ProofAggregationCoordinatorService(
                 }
               }
               .whenException {
-                log.error(
-                  "Error getting consecutive aggregation end block number from DB: aggregation={} errorMessage={}",
+                log.warn(
+                  "Failed to get consecutive aggregation end block number from DB: aggregation={} errorMessage={}",
                   blobsToAggregate.intervalString(),
                   it.message,
                   it,
