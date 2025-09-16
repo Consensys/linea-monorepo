@@ -28,7 +28,7 @@ type ReedSolomonProverAction struct {
 
 func (a *ReedSolomonProverAction) Run(assi *wizard.ProverRuntime) {
 	witness := a.H.GetColAssignment(assi)
-	coeffs := smartvectors.FFTInverse(witness, fft.DIF, true, 0, 0, nil).SubVector(0, a.CodeDim)
+	coeffs := smartvectors.FFTInverse(witness, fft.DIF, true, 0, 0).SubVector(0, a.CodeDim)
 	assi.AssignColumn(a.Coeff.GetColID(), coeffs)
 }
 

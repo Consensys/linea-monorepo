@@ -4,10 +4,8 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Compute the FFT of a vector
@@ -22,14 +20,10 @@ import (
 // CosetRatio > CosetID:
 //   - Specifies on which coset to perform the operation
 //   - 0, 0 to assert that the transformation should not be done over a coset
-func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, pool mempool.MemPool, opts ...fft.Option) SmartVector {
+func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, opts ...fft.Option) SmartVector {
 
 	// Sanity-check on the size of the vector v
 	assertPowerOfTwoLen(v.Len())
-
-	if pool != nil && pool.Size() != v.Len() {
-		utils.Panic("provided a mempool with size %v but processing vectors of size %v", pool.Size(), v.Len())
-	}
 
 	/*
 		Try to capture the special cases
@@ -59,12 +53,7 @@ func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRati
 	}
 
 	// Else : we run the FFT directly
-	var res *PooledExt
-	if pool != nil {
-		res = AllocFromPoolExt(pool)
-	} else {
-		res = &PooledExt{RegularExt: make([]fext.Element, v.Len())}
-	}
+	res := &PooledExt{RegularExt: make([]fext.Element, v.Len())}
 
 	v.WriteInSliceExt(res.RegularExt)
 
@@ -115,14 +104,10 @@ func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRati
 // CosetRatio > CosetID:
 //   - Specifies on which coset to perform the operation
 //   - 0, 0 to assert that the transformation should not be done over a coset
-func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, pool mempool.MemPool, opts ...fft.Option) SmartVector {
+func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, opts ...fft.Option) SmartVector {
 
 	// Sanity-check on the size of the vector v
 	assertPowerOfTwoLen(v.Len())
-
-	if pool != nil && pool.Size() != v.Len() {
-		utils.Panic("provided a mempool with size %v but processing vectors of size %v", pool.Size(), v.Len())
-	}
 
 	/*
 		Try to capture the special cases
@@ -153,12 +138,7 @@ func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, co
 	}
 
 	// Else : we run the FFTInverse directly
-	var res *PooledExt
-	if pool != nil {
-		res = AllocFromPoolExt(pool)
-	} else {
-		res = &PooledExt{RegularExt: make([]fext.Element, v.Len())}
-	}
+	res := &PooledExt{RegularExt: make([]fext.Element, v.Len())}
 
 	v.WriteInSliceExt(res.RegularExt)
 

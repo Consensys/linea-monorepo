@@ -4,7 +4,6 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -22,14 +21,10 @@ import (
 // CosetRatio > CosetID:
 //   - Specifies on which coset to perform the operation
 //   - 0, 0 to assert that the transformation should not be done over a coset
-func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, pool mempool.MemPool, opts ...fft.Option) SmartVector {
+func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, opts ...fft.Option) SmartVector {
 
 	// Sanity-check on the size of the vector v
 	assertPowerOfTwoLen(v.Len())
-
-	if pool != nil && pool.Size() != v.Len() {
-		utils.Panic("provided a mempool with size %v but processing vectors of size %v", pool.Size(), v.Len())
-	}
 
 	/*
 		Try to capture the special cases
@@ -59,12 +54,7 @@ func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio i
 	}
 
 	// Else : we run the FFT directly
-	var res *Pooled
-	if pool != nil {
-		res = AllocFromPool(pool)
-	} else {
-		res = &Pooled{Regular: make([]field.Element, v.Len())}
-	}
+	res := &Pooled{Regular: make([]field.Element, v.Len())}
 
 	v.WriteInSlice(res.Regular)
 
@@ -118,7 +108,7 @@ func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio i
 // CosetRatio > CosetID:
 //   - Specifies on which coset to perform the operation
 //   - 0, 0 to assert that the transformation should not be done over a coset
-func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, pool mempool.MemPool, opts ...fft.Option) SmartVector {
+func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, opts ...fft.Option) SmartVector {
 
 	if !IsBase(v) {
 		utils.Panic("FFT inverse is only defined for base vectors")
@@ -126,10 +116,6 @@ func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, coset
 
 	// Sanity-check on the size of the vector v
 	assertPowerOfTwoLen(v.Len())
-
-	if pool != nil && pool.Size() != v.Len() {
-		utils.Panic("provided a mempool with size %v but processing vectors of size %v", pool.Size(), v.Len())
-	}
 
 	/*
 		Try to capture the special cases
@@ -160,12 +146,7 @@ func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, coset
 	}
 
 	// Else : we run the FFTInverse directly
-	var res *Pooled
-	if pool != nil {
-		res = AllocFromPool(pool)
-	} else {
-		res = &Pooled{Regular: make([]field.Element, v.Len())}
-	}
+	res := &Pooled{Regular: make([]field.Element, v.Len())}
 
 	v.WriteInSlice(res.Regular)
 

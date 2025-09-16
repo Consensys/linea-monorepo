@@ -1,23 +1,19 @@
 package globalcs
 
 import (
-	"errors"
-	"math/big"
 	"reflect"
 	"runtime"
 	"sync"
-	"time"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -27,7 +23,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	ppool "github.com/consensys/linea-monorepo/prover/utils/parallel/pool"
-	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 )
 
 const (
@@ -202,45 +197,25 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 		sv.SmartVector
 	}
 
-	var (
-		// Tracks the time spent on garbage collection
-		totalTimeGc = int64(0)
+	// Initial step is to compute the FFTs for all committed vectors
+	coeffs := sync.Map{} // (ifaces.ColID <=> sv.SmartVector)
 
-		// Initial step is to compute the FFTs for all committed vectors
-		coeffs = sync.Map{} // (ifaces.ColID <=> sv.SmartVector)
-		// pool          = mempool.CreateFromSyncPool(symbolic.MaxChunkSize).Prewarm(runtime.GOMAXPROCS(0) * ctx.MaxNbExprNode)
-		largePool     = mempool.CreateFromSyncPool(ctx.DomainSize).Prewarm(len(ctx.AllInvolvedColumns))
-		timeIFFT      time.Duration
-		timeFFT       time.Duration
-		timeExecRatio = map[int]time.Duration{}
-		timeOmega     time.Duration
-	)
+	// Compute once the FFT of the natural columns
+	ppool.ExecutePoolChunky(len(ctx.AllInvolvedRoots), func(k int) {
+		pol := ctx.AllInvolvedRoots[k]
+		name := pol.GetColID()
 
-	if ctx.DomainSize >= GC_DOMAIN_SIZE {
-		// Force the GC to run
-		tGc := time.Now()
-		runtime.GC()
-		totalTimeGc += time.Since(tGc).Milliseconds()
-	}
+		// gets directly a shallow copy in the map of the runtime
+		var witness sv.SmartVector
+		witness, isAssigned := run.Columns.TryGet(name)
 
-	timeIFFT += profiling.TimeIt(func() {
-		// Compute once the FFT of the natural columns
-		ppool.ExecutePoolChunky(len(ctx.AllInvolvedRoots), func(k int) {
-			pol := ctx.AllInvolvedRoots[k]
-			name := pol.GetColID()
-
-			// gets directly a shallow copy in the map of the runtime
-			var witness sv.SmartVector
-			witness, isAssigned := run.Columns.TryGet(name)
-
-			// can happen if the column is verifier defined. In that case, no
-			// need to protect with a lock. This will not touch run.Columns.
-			if !isAssigned {
-				witness = pol.GetColAssignment(run)
-			}
-			witness = sv.FFTInverseExt(witness, fft.DIF, false, 0, 0, nil, fft.WithNbTasks(2))
-			coeffs.Store(name, threadSafeVector{&sync.Mutex{}, witness})
-		})
+		// can happen if the column is verifier defined. In that case, no
+		// need to protect with a lock. This will not touch run.Columns.
+		if !isAssigned {
+			witness = pol.GetColAssignment(run)
+		}
+		witness = sv.FFTInverseExt(witness, fft.DIF, false, 0, 0, fft.WithNbTasks(2))
+		coeffs.Store(name, threadSafeVector{&sync.Mutex{}, witness})
 	})
 
 	// Take the max quotient degree
@@ -259,48 +234,12 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 	annulatorInvVals := fastpolyext.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
 	annulatorInvVals = fext.ParBatchInvert(annulatorInvVals, runtime.GOMAXPROCS(0))
 
-	/*
-		Also returns the evaluations of
-	*/
-
 	for i := 0; i < maxRatio; i++ {
 
 		// use sync map to store the coset evaluated polynomials
 		computedReeval := sync.Map{}
 
-		timeOmega += profiling.TimeIt(func() {
-
-			// The following computes the quotient polynomial and assigns it
-			// Omega is a root of unity which generates the domain of evaluation of the
-			// constraint. Its size coincide with the size of the domain of evaluation.
-			// For each value of `i`, X will evaluate to gen*omegaQ^numCoset*omega^i.
-			// Gen is a generator of F^*
-			var (
-				omega, err1        = fft.Generator(uint64(ctx.DomainSize))
-				omegaQNumCos, err2 = fft.Generator(uint64(ctx.DomainSize * maxRatio))
-				omegaI             = field.NewElement(field.MultiplicativeGen)
-			)
-
-			if err1 != nil || err2 != nil {
-				utils.Panic("failed to generate generators: %v", errors.Join(err1, err2))
-			}
-
-			omegaQNumCos.Exp(omegaQNumCos, big.NewInt(int64(i)))
-			omegaI.Mul(&omegaI, &omegaQNumCos)
-
-			// Precomputations of the powers of omega, can be optimized if useful
-			omegas := make([]field.Element, ctx.DomainSize)
-			for i := range omegas {
-				omegas[i] = omegaI
-				omegaI.Mul(&omegaI, &omega)
-			}
-		})
-
 		for j, ratio := range ctx.Ratios {
-
-			if _, ok := timeExecRatio[ratio]; !ok {
-				timeExecRatio[ratio] = time.Duration(0)
-			}
 
 			// For instance, if deg = 2 and max deg 8, we enter only if
 			// i = 0 or 4 because this corresponds to the cosets we are
@@ -319,185 +258,155 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 				metadatas = board.ListVariableMetadata()
 			)
 
-			if ctx.DomainSize >= GC_DOMAIN_SIZE {
-				// Force the GC to run
-				tGc := time.Now()
-				runtime.GC()
-				totalTimeGc += time.Since(tGc).Milliseconds()
-			}
+			ppool.ExecutePoolChunky(len(roots), func(k int) {
 
-			timeFFT += profiling.TimeIt(func() {
+				root := roots[k]
+				name := root.GetColID()
+				if _, found := computedReeval.Load(name); found {
+					// it was already computed in a previous iteration of `j`
+					return
+				}
 
-				ppool.ExecutePoolChunky(len(roots), func(k int) {
-					localPool := mempool.WrapsWithMemCache(largePool)
-					defer localPool.TearDown()
+				// else it's the first value of j that sees it. so we compute the
+				// coset reevaluation.
 
-					root := roots[k]
-					name := root.GetColID()
-					if _, found := computedReeval.Load(name); found {
-						// it was already computed in a previous iteration of `j`
-						return
-					}
+				v, ok := coeffs.Load(name)
+				if !ok {
+					utils.Panic("handle %v not found in the coeffs (a)\n", name)
+				}
 
-					// else it's the first value of j that sees it. so we compute the
-					// coset reevaluation.
+				// lock the vector to ensure we don't do twice the same compute
+				// and that we don't (over)write an entry in the map with a (leaking) pool vector
+				v.(threadSafeVector).Lock()
+				defer v.(threadSafeVector).Unlock()
 
-					v, ok := coeffs.Load(name)
-					if !ok {
-						utils.Panic("handle %v not found in the coeffs (a)\n", name)
-					}
+				// check again if it was already computed
+				// (can happen if 2 go routines hit the lock at the same time)
+				if _, ok := computedReeval.Load(name); ok {
+					return
+				}
 
-					// lock the vector to ensure we don't do twice the same compute
-					// and that we don't (over)write an entry in the map with a (leaking) pool vector
-					v.(threadSafeVector).Lock()
-					defer v.(threadSafeVector).Unlock()
+				reevaledRoot := sv.FFTExt(v.(threadSafeVector).SmartVector, fft.DIT, false, ratio, share, fft.WithNbTasks(2))
+				computedReeval.Store(name, reevaledRoot)
+			})
 
-					// check again if it was already computed
-					// (can happen if 2 go routines hit the lock at the same time)
-					if _, ok := computedReeval.Load(name); ok {
-						return
-					}
+			ppool.ExecutePoolChunky(len(handles), func(k int) {
 
-					reevaledRoot := sv.FFTExt(v.(threadSafeVector).SmartVector, fft.DIT, false, ratio, share, localPool, fft.WithNbTasks(2))
-					computedReeval.Store(name, reevaledRoot)
-				})
+				pol := handles[k]
+				// short-path, the column is a purely Shifted(Natural) or a Natural
+				// (this excludes repeats and/or interleaved columns)
+				root := column.RootParents(pol)
+				rootName := root.GetColID()
 
-				ppool.ExecutePoolChunky(len(handles), func(k int) {
-					localPool := mempool.WrapsWithMemCache(largePool)
-					defer localPool.TearDown()
+				reevaledRoot, found := computedReeval.Load(rootName)
+				if !found {
+					// it is expected to computed in the above loop
+					utils.Panic("did not find the reevaluation of %v", rootName)
+				}
 
-					pol := handles[k]
-					// short-path, the column is a purely Shifted(Natural) or a Natural
-					// (this excludes repeats and/or interleaved columns)
-					root := column.RootParents(pol)
-					rootName := root.GetColID()
+				// Now, we can reuse a soft-rotation of the smart-vector to save memory
+				if !pol.IsComposite() {
+					// in this case, the right vector was the root so we are done
+					return
+				}
 
-					reevaledRoot, found := computedReeval.Load(rootName)
-					if !found {
-						// it is expected to computed in the above loop
-						utils.Panic("did not find the reevaluation of %v", rootName)
-					}
-
-					// Now, we can reuse a soft-rotation of the smart-vector to save memory
-					if !pol.IsComposite() {
-						// in this case, the right vector was the root so we are done
-						return
-					}
-
-					if shifted, isShifted := pol.(column.Shifted); isShifted {
-						polName := pol.GetColID()
-						res := sv.SoftRotateExt(reevaledRoot.(sv.SmartVector), shifted.Offset)
-						computedReeval.Store(polName, res)
-						return
-					}
-
+				if shifted, isShifted := pol.(column.Shifted); isShifted {
 					polName := pol.GetColID()
-					if _, ok := computedReeval.Load(polName); ok {
-						// already computed
-						return
-					}
-
-					v, ok := coeffs.Load(polName)
-					if !ok {
-						utils.Panic("handle %v not found in the coeffs\n", polName)
-					}
-
-					// lock the vector to ensure we don't do twice the same compute
-					// and that we don't (over)write an entry in the map with a (leaking) pool vector
-					v.(threadSafeVector).Lock()
-					defer v.(threadSafeVector).Unlock()
-
-					// check again if it was already computed
-					// (can happen if 2 go routines hit the lock at the same time)
-					if _, ok := computedReeval.Load(polName); ok {
-						return
-					}
-
-					res := sv.FFT(v.(threadSafeVector).SmartVector, fft.DIT, false, ratio, share, localPool, fft.WithNbTasks(2))
+					res := sv.SoftRotateExt(reevaledRoot.(sv.SmartVector), shifted.Offset)
 					computedReeval.Store(polName, res)
-				})
+					return
+				}
+
+				polName := pol.GetColID()
+				if _, ok := computedReeval.Load(polName); ok {
+					// already computed
+					return
+				}
+
+				v, ok := coeffs.Load(polName)
+				if !ok {
+					utils.Panic("handle %v not found in the coeffs\n", polName)
+				}
+
+				// lock the vector to ensure we don't do twice the same compute
+				// and that we don't (over)write an entry in the map with a (leaking) pool vector
+				v.(threadSafeVector).Lock()
+				defer v.(threadSafeVector).Unlock()
+
+				// check again if it was already computed
+				// (can happen if 2 go routines hit the lock at the same time)
+				if _, ok := computedReeval.Load(polName); ok {
+					return
+				}
+
+				res := sv.FFT(v.(threadSafeVector).SmartVector, fft.DIT, false, ratio, share, fft.WithNbTasks(2))
+				computedReeval.Store(polName, res)
 			})
 
-			if len(handles) >= GC_HANDLES_SIZE {
-				// Force the GC to run
-				tGc := time.Now()
-				runtime.GC()
-				totalTimeGc += time.Since(tGc).Milliseconds()
+			// Evaluates the constraint expression on the coset
+			evalInputs := make([]sv.SmartVector, len(metadatas))
+
+			for k, metadataInterface := range metadatas {
+
+				switch metadata := metadataInterface.(type) {
+				case ifaces.Column:
+					//name := metadata.GetColID()
+					//evalInputs[k] = computedReeval[name]
+					value, ok := computedReeval.Load(metadata.GetColID())
+					if !ok {
+						utils.Panic("did not find the reevaluation of %v", metadata.GetColID())
+					}
+					evalInputs[k] = value.(sv.SmartVector)
+
+				case coin.Info:
+					if metadata.IsBase() {
+						evalInputs[k] = sv.NewConstant(run.GetRandomCoinField(metadata.Name), ctx.DomainSize)
+					} else {
+						evalInputs[k] = sv.NewConstantExt(run.GetRandomCoinFieldExt(metadata.Name), ctx.DomainSize)
+					}
+				case variables.X:
+					evalInputs[k] = metadata.EvalCoset(ctx.DomainSize, i, maxRatio, true)
+				case variables.PeriodicSample:
+					evalInputs[k] = metadata.EvalCoset(ctx.DomainSize, i, maxRatio, true)
+				case ifaces.Accessor:
+					if metadata.IsBase() {
+						// This is a base accessor, we can use the constant
+						// value directly.
+						elem, err := metadata.GetValBase(run)
+						if err != nil {
+							panic(err)
+						}
+						evalInputs[k] = sv.NewConstant(elem, ctx.DomainSize)
+					} else {
+						// This is a non-base accessor
+						evalInputs[k] = sv.NewConstantExt(metadata.GetValExt(run), ctx.DomainSize)
+					}
+				default:
+					utils.Panic("Not a variable type %v", reflect.TypeOf(metadataInterface))
+				}
 			}
 
-			timeExecRatio[ratio] += profiling.TimeIt(func() {
-
-				// Evaluates the constraint expression on the coset
-				evalInputs := make([]sv.SmartVector, len(metadatas))
-
-				for k, metadataInterface := range metadatas {
-
-					switch metadata := metadataInterface.(type) {
-					case ifaces.Column:
-						//name := metadata.GetColID()
-						//evalInputs[k] = computedReeval[name]
-						value, ok := computedReeval.Load(metadata.GetColID())
-						if !ok {
-							utils.Panic("did not find the reevaluation of %v", metadata.GetColID())
-						}
-						evalInputs[k] = value.(sv.SmartVector)
-
-					case coin.Info:
-						if metadata.IsBase() {
-							evalInputs[k] = sv.NewConstant(run.GetRandomCoinField(metadata.Name), ctx.DomainSize)
-						} else {
-							evalInputs[k] = sv.NewConstantExt(run.GetRandomCoinFieldExt(metadata.Name), ctx.DomainSize)
-						}
-					case variables.X:
-						evalInputs[k] = metadata.EvalCoset(ctx.DomainSize, i, maxRatio, true)
-					case variables.PeriodicSample:
-						evalInputs[k] = metadata.EvalCoset(ctx.DomainSize, i, maxRatio, true)
-					case ifaces.Accessor:
-						if metadata.IsBase() {
-							// This is a base accessor, we can use the constant
-							// value directly.
-							elem, err := metadata.GetValBase(run)
-							if err != nil {
-								panic(err)
-							}
-							evalInputs[k] = sv.NewConstant(elem, ctx.DomainSize)
-						} else {
-							// This is a non-base accessor
-							evalInputs[k] = sv.NewConstantExt(metadata.GetValExt(run), ctx.DomainSize)
-						}
-					default:
-						utils.Panic("Not a variable type %v", reflect.TypeOf(metadataInterface))
-					}
-				}
-
-				if len(handles) >= GC_HANDLES_SIZE {
-					// Force the GC to run
-					tGc := time.Now()
-					runtime.GC()
-					totalTimeGc += time.Since(tGc).Milliseconds()
-				}
-
-				// Note that this will panic if the expression contains "no commitment"
-				// This should be caught already by the constructor of the constraint.
-				quotientShare := ctx.AggregateExpressionsBoard[j].Evaluate(evalInputs)
+			// Note that this will panic if the expression contains "no commitment"
+			// This should be caught already by the constructor of the constraint.
+			quotientShare := ctx.AggregateExpressionsBoard[j].Evaluate(evalInputs)
+			if re, ok := quotientShare.(*sv.RegularExt); ok {
+				vq := extensions.Vector(*re)
+				vq.ScalarMul(vq, &annulatorInvVals[i])
+			} else {
 				quotientShare = sv.ScalarMulExt(quotientShare, annulatorInvVals[i])
-				run.AssignColumn(ctx.QuotientShares[j][share].GetColID(), quotientShare)
-			})
+			}
+
+			run.AssignColumn(ctx.QuotientShares[j][share].GetColID(), quotientShare)
 
 		}
 
 		// Forcefully clean the memory for the computed reevals
 		computedReeval.Range(func(k, v interface{}) bool {
-
-			if pooled, ok := v.(*sv.Pooled); ok {
-				pooled.Free(largePool)
-			}
-
 			computedReeval.Delete(k)
 			return true
 		})
 	}
 
-	logrus.Infof("[global-constraint] msg=\"computed the quotient\" timeIFFT=%v timeOmega=%v timeFFT=%v timeExecExpression=%v totalTimeGC=%v", timeIFFT, timeOmega, timeFFT, timeExecRatio, totalTimeGc)
+	logrus.Infof("[global-constraint] msg=\"computed the quotient\"")
 
 }

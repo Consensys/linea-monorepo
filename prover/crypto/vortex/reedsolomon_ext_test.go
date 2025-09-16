@@ -21,7 +21,7 @@ func TestReedSolomonExtDoesNotChangeEvaluation(t *testing.T) {
 
 	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, nil)
 	vec := smartvectors.RandExt(1 << 10)
-	rsEncoded := params.rsEncodeExt(vec, nil)
+	rsEncoded := params.rsEncodeExt(vec)
 
 	err := params.isCodewordExt(rsEncoded)
 	require.NoError(t, err)
@@ -43,7 +43,7 @@ func TestReedSolomonExtConstant(t *testing.T) {
 
 	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, nil)
 	vec := smartvectors.NewConstantExt(fext.RandomElement(), polySize)
-	rsEncoded := params.rsEncodeExt(vec, nil)
+	rsEncoded := params.rsEncodeExt(vec)
 
 	err := params.isCodewordExt(rsEncoded)
 	require.NoError(t, err)
