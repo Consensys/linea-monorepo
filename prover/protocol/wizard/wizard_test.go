@@ -50,7 +50,7 @@ func TestCompiler(t *testing.T) {
 		p := smartvectors.ForTest(1, 2, 3, 3)
 		run.AssignColumn(P, p)
 		u := run.GetRandomCoinFieldExt(COIN)
-		y := smartvectors.EvaluateLagrangeMixed(p, u)
+		y := smartvectors.EvaluateBasePolyLagrange(p, u)
 		run.AssignUnivariateExt(U, u, y)
 	}
 

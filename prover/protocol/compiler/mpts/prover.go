@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -222,7 +223,7 @@ func (re RandomPointEvaluation) Run(run *wizard.ProverRuntime) {
 
 	}
 
-	ys := smartvectors.BatchEvaluateLagrangeExt(polyVals, r)
+	ys := smartvectors_mixed.BatchEvaluateLagrange(polyVals, r)
 
 	run.AssignUnivariateExt(re.NewQuery.QueryID, r, ys...)
 }

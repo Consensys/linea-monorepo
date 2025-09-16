@@ -4,11 +4,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
-	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -132,7 +131,7 @@ func (v *VerifierInputs) checkColLinCombination() (err error) {
 		}
 
 		// Check the linear combination is consistent with the opened column
-		y := poly.EvalMixed(fullCol, v.RandomCoin)
+		y := vortex.EvalBasePolyHorner(fullCol, v.RandomCoin)
 
 		if selectedColID > linearCombination.Len() {
 			return fmt.Errorf("entry overflows the size of the linear combination")
@@ -155,8 +154,8 @@ func (v *VerifierInputs) checkStatement() (err error) {
 
 	// Check the consistency of Ys and proof.Linear combination
 	Yjoined := utils.Join(v.Ys...)
-	alphaY := smartvectors.EvaluateLagrangeFullFext(v.OpeningProof.LinearCombination, v.X)
-	alphaYPrime := polyext.Eval(Yjoined, v.RandomCoin)
+	alphaY := smartvectors.EvaluateFextPolyLagrange(v.OpeningProof.LinearCombination, v.X)
+	alphaYPrime := vortex.EvalFextPolyHorner(Yjoined, v.RandomCoin)
 
 	if alphaY != alphaYPrime {
 		return fmt.Errorf("RowLincomb and Y are inconsistent")

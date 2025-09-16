@@ -54,7 +54,7 @@ func TestCompiler(t *testing.T) {
 				// assign the rows with random polynomials and collect the ys
 				for i, row := range rows[:nPolsNoSIS] {
 					p := smartvectors.PseudoRand(rng, polSize)
-					ys[i] = smartvectors.EvaluateLagrangeMixed(p, x)
+					ys[i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 					pr.AssignColumn(row.GetColID(), p)
 				}
 
@@ -76,7 +76,7 @@ func TestCompiler(t *testing.T) {
 				// assign the rows with random polynomials and collect the ys
 				for i, row := range rows {
 					p := smartvectors.PseudoRand(rng, polSize)
-					ys[i] = smartvectors.EvaluateLagrangeMixed(p, x)
+					ys[i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 					pr.AssignColumn(row.GetColID(), p)
 				}
 
@@ -118,7 +118,7 @@ func TestCompiler(t *testing.T) {
 					offsetIndex := nPols * round
 					for i, row := range rowsMultiRound[round] {
 						p := smartvectors.PseudoRand(rng, polSize)
-						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
+						ys[offsetIndex+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
 				}
@@ -168,7 +168,7 @@ func TestCompiler(t *testing.T) {
 
 					for i, row := range rowsMultiRound[round-2] {
 						p := smartvectors.PseudoRand(rng, polSize)
-						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
+						ys[offsetIndex+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
 				}
@@ -217,7 +217,7 @@ func TestCompiler(t *testing.T) {
 
 					for i, row := range rowsMultiRound[round] {
 						p := smartvectors.PseudoRand(rng, polSize)
-						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
+						ys[offsetIndex+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
 				}
@@ -271,7 +271,7 @@ func TestCompiler(t *testing.T) {
 
 					for i, row := range rowsMultiRound[round] {
 						p := smartvectors.PseudoRand(rng, polSize)
-						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
+						ys[offsetIndex+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
 				}
@@ -339,11 +339,11 @@ func TestCompiler(t *testing.T) {
 						// assigned in the define phase
 						if i < numPrecomputedsNoSIS && round == 0 {
 							p := pr.Spec.Precomputed.MustGet(row.GetColID())
-							ys[i] = smartvectors.EvaluateLagrangeMixed(p, x)
+							ys[i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 							continue
 						}
 						p := smartvectors.PseudoRand(rng, polSize)
-						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
+						ys[offsetIndex+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
 				}
@@ -411,11 +411,11 @@ func TestCompiler(t *testing.T) {
 						// assigned in the define phase
 						if i < numPrecomputedsSIS && round == 0 {
 							p := pr.Spec.Precomputed.MustGet(row.GetColID())
-							ys[i] = smartvectors.EvaluateLagrangeMixed(p, x)
+							ys[i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 							continue
 						}
 						p := smartvectors.PseudoRand(rng, polSize)
-						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
+						ys[offsetIndex+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
 				}
@@ -482,11 +482,11 @@ func TestCompiler(t *testing.T) {
 						// assigned in the define phase
 						if i < numPrecomputedsNoSIS && round == 0 {
 							p := pr.Spec.Precomputed.MustGet(row.GetColID())
-							ys[i] = smartvectors.EvaluateLagrangeMixed(p, x)
+							ys[i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 							continue
 						}
 						p := smartvectors.PseudoRand(rng, polSize)
-						ys[offsetIndex+i] = smartvectors.EvaluateLagrangeMixed(p, x)
+						ys[offsetIndex+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 						pr.AssignColumn(row.GetColID(), p)
 					}
 				}

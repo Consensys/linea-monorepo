@@ -302,7 +302,7 @@ func (u *UnivariateTestcase) assignUnivariate(run *wizard.ProverRuntime, i int) 
 
 	for j := range q.Pols {
 		p := q.Pols[j].GetColAssignment(run)
-		ys[j] = smartvectors.EvaluateLagrangeMixed(p, x)
+		ys[j] = smartvectors.EvaluateBasePolyLagrange(p, x)
 	}
 
 	run.AssignUnivariateExt(q.QueryID, x, ys...)

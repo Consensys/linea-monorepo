@@ -3,7 +3,8 @@ package smartvectors
 import (
 	"sync/atomic"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -45,73 +46,8 @@ func PolySub(a, b SmartVector) SmartVector {
 	return NewRegular(res)
 }
 
-/*
-Ruffini division
-  - p polynomial in coefficient form
-  - q field.Element, caracterizing the divisor X - q
-  - quo quotient polynomial in coefficient form, result will be passed
-    here. quo is truncated of its first entry in the process
-  - expected to be at least as large as `p`
-
-- rem, remainder also equals to P(r)
-
-Supports &p == quo
-*/
-func RuffiniQuoRem(p SmartVector, q field.Element) (quo SmartVector, rem field.Element) {
-
-	// The case where "p" is zero is assumed to be impossible as every type of
-	// smart-vector strongly forbid dealing with zero length smart-vectors.
-	if p.Len() == 0 {
-		panic("Zero-length smart-vectors are forbidden")
-	}
-
-	// If p has length 1, then the general case algorithm does not work
-	if p.Len() == 1 {
-		quo = NewConstant(field.Zero(), 1)
-		rem = p.Get(0)
-		return quo, rem
-	}
-
-	quo_ := make([]field.Element, p.Len())
-
-	// Pass the last coefficient
-	quo_[p.Len()-1] = p.Get(p.Len() - 1)
-
-	for i := p.Len() - 2; i >= 0; i-- {
-		var c field.Element
-		c.Mul(&quo_[i+1], &q)
-		pi := p.Get(i)
-		quo_[i].Add(&c, &pi)
-	}
-
-	// As we employ custom allocation, we should not pass x[1:]
-	rem = quo_[0]
-	quo = NewRegular(quo_[1:])
-
-	return quo, rem
-}
-
-// EvaluateLagrange a polynomial in Lagrange basis at an field point
-func EvaluateLagrange(v SmartVector, x field.Element, oncoset ...bool) field.Element {
-
-	if !IsBase(v) {
-		utils.Panic("Provided a non-base smart-vector")
-	}
-
-	if con, ok := v.(*Constant); ok {
-		return con.Value
-	}
-
-	// Maybe there is an optim for windowed here
-	poly := make([]field.Element, v.Len())
-	v.WriteInSlice(poly)
-	// res := fastpoly.EvaluateLagrangeOnFext(poly, x, oncoset...)
-	res := fastpoly.EvaluateLagrange(poly, x, oncoset...)
-	return res
-}
-
-// EvaluateLagrangeMixed a polynomial in Lagrange basis at an E4 point
-func EvaluateLagrangeMixed(v SmartVector, x fext.Element, oncoset ...bool) fext.Element {
+// EvaluateBasePolyLagrange a polynomial in Lagrange basis at an E4 point
+func EvaluateBasePolyLagrange(v SmartVector, x fext.Element, oncoset ...bool) fext.Element {
 	if con, ok := v.(*Constant); ok {
 		var res fext.Element
 		fext.SetFromBase(&res, &con.Value)
@@ -121,60 +57,98 @@ func EvaluateLagrangeMixed(v SmartVector, x fext.Element, oncoset ...bool) fext.
 	// Maybe there is an optim for windowed here
 	poly := make([]field.Element, v.Len())
 	v.WriteInSlice(poly)
-	res := fastpoly.EvaluateLagrangeMixed(poly, x, oncoset...)
+
+	if len(oncoset) > 0 && oncoset[0] {
+		genFr := fft.GeneratorFullMultiplicativeGroup()
+		genFr.Inverse(&genFr)
+		x.MulByElement(&x, &genFr)
+	}
+
+	res, err := vortex.EvalBasePolyLagrange(poly, x)
+	if err != nil {
+		panic(err)
+	}
 
 	return res
 }
 
-// BatchEvaluateLagrangeMixed polynomials in Lagrange basis at an E4 point
-func BatchEvaluateLagrangeMixed(vs []SmartVector, x fext.Element, oncoset ...bool) []fext.Element {
+// BatchEvaluateBasePolyLagrange polynomials in Lagrange basis at an E4 point
+func BatchEvaluateBasePolyLagrange(vs []SmartVector, x fext.Element, oncoset ...bool) []fext.Element {
+	results := make([]fext.Element, len(vs))
 
-	var (
-		polys         = make([][]field.Element, len(vs))
-		results       = make([]fext.Element, len(vs))
-		computed      = make([]bool, len(vs))
-		totalConstant = uint64(0)
-	)
+	if len(vs) == 0 {
+		return results
+	}
 
-	// filter out constant vectors
-	indexNonConstantVector := -1
+	// Separate constants from polynomials
+	type workItem struct {
+		index      int
+		poly       []field.Element
+		isConstant bool
+		value      fext.Element
+	}
+
+	workItems := make([]workItem, len(vs))
+	var totalConstant uint64
+
+	// Process in parallel to identify constants and extract polynomials
 	parallel.Execute(len(vs), func(start, stop int) {
 		for i := start; i < stop; i++ {
-
 			if !IsBase(vs[i]) {
 				utils.Panic("expected a base-field smart-vector, got %T", vs[i])
 			}
 
 			if con, ok := vs[i].(*Constant); ok {
-				fext.SetFromBase(&results[i], &con.Value)
-				computed[i] = true
+				var result fext.Element
+				fext.SetFromBase(&result, &con.Value)
+				workItems[i] = workItem{
+					index:      i,
+					isConstant: true,
+					value:      result,
+				}
 				atomic.AddUint64(&totalConstant, 1)
-				continue
+			} else {
+				poly, _ := vs[i].IntoRegVecSaveAllocBase()
+				workItems[i] = workItem{
+					index:      i,
+					poly:       poly,
+					isConstant: false,
+				}
 			}
-
-			// non-constant vectors
-			indexNonConstantVector = i
-			polys[i], _ = vs[i].IntoRegVecSaveAllocBase()
 		}
 	})
 
-	// all the vectors are constant, nothing to do more
+	// Early return if all constants
 	if int(totalConstant) == len(vs) {
+		for _, item := range workItems {
+			results[item.index] = item.value
+		}
 		return results
 	}
 
-	// else, we put dummy copy at the constant vector indices, and call BatchEvaluateLagrange
-	for i := 0; i < len(polys); i++ {
-		if computed[i] {
-			polys[i] = polys[indexNonConstantVector]
+	// Collect only non-constant polynomials
+	nonConstantPolys := make([][]field.Element, 0, len(vs)-int(totalConstant))
+	nonConstantIndices := make([]int, 0, len(vs)-int(totalConstant))
+
+	for _, item := range workItems {
+		if item.isConstant {
+			results[item.index] = item.value
+		} else {
+			nonConstantPolys = append(nonConstantPolys, item.poly)
+			nonConstantIndices = append(nonConstantIndices, item.index)
 		}
 	}
 
-	// batch evaluate, and replace already computed values from constant vectors
-	tmp := fastpoly.BatchEvaluateLagrangeMixed(polys, x, oncoset...)
-	for i := 0; i < len(polys); i++ {
-		if !computed[i] {
-			results[i].Set(&tmp[i])
+	// Batch evaluate only non-constant polynomials
+	if len(nonConstantPolys) > 0 {
+		polyResults, err := vortex.BatchEvalBasePolyLagrange(nonConstantPolys, x, oncoset...)
+		if err != nil {
+			panic(err)
+		}
+
+		// Map results back to original positions
+		for i, result := range polyResults {
+			results[nonConstantIndices[i]] = result
 		}
 	}
 
@@ -191,11 +165,11 @@ func EvalCoeff(v SmartVector, x field.Element) field.Element {
 }
 
 // Evaluate a polynomial in coefficient basis at an E4 point
-func EvalCoeffMixed(v SmartVector, x fext.Element) fext.Element {
+func EvalBasePolyHorner(v SmartVector, x fext.Element) fext.Element {
 	// Maybe there is an optim for windowed here
 	res := make([]field.Element, v.Len())
 	v.WriteInSlice(res)
-	return poly.EvalMixed(res, x)
+	return vortex.EvalBasePolyHorner(res, x)
 }
 
 func EvalCoeffBivariate(v SmartVector, x field.Element, numCoeffX int, y field.Element) field.Element {

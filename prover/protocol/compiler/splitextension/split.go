@@ -197,7 +197,7 @@ func (pctx *AssignUnivProverAction) Run(runtime *wizard.ProverRuntime) {
 		svToEval = append(svToEval, sv)
 	}
 
-	y := smartvectors.BatchEvaluateLagrangeMixed(svToEval, x)
+	y := smartvectors.BatchEvaluateBasePolyLagrange(svToEval, x)
 
 	// This loops collect the evaluation claims of the already-on-base polynomials
 	// from the new query to append them to the claims on the new query. This
