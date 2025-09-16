@@ -7,7 +7,6 @@
  * Usage:
  * RPC_URL="https://your-eth-rpc-url" \
  * PRIVATE_KEY="0x..." \
- * FROM_ADDRESS="0x..." \
  * TO_ADDRESS="0x..." \
  * AMOUNT="0.1" \
  * BUNDLE_URL="https://relay.flashbots.net" \
@@ -15,8 +14,7 @@
  *
  * Required Environment Variables:
  * - RPC_URL: Ethereum RPC endpoint for getting chain data
- * - PRIVATE_KEY: Private key for signing transactions (must match FROM_ADDRESS)
- * - FROM_ADDRESS: Source address for ETH transfer
+ * - PRIVATE_KEY: Private key for signing transactions (source address derived from this)
  * - TO_ADDRESS: Destination address for ETH transfer
  * - AMOUNT: Amount of ETH to transfer (e.g., "0.1")
  * - BUNDLE_URL: Bundle relay URL (e.g., "https://relay.flashbots.net")
@@ -194,13 +192,17 @@ async function main() {
 
     const rpcUrl = requireEnv("RPC_URL");
     const privateKey = requireEnv("PRIVATE_KEY");
-    const fromAddress = requireEnv("FROM_ADDRESS");
     const toAddress = requireEnv("TO_ADDRESS");
     const amount = requireEnv("AMOUNT");
     const bundleUrl = requireEnv("BUNDLE_URL");
 
     // Optional environment variables
     const targetBlockNumber = process.env.BLOCK_NUMBER ? parseInt(process.env.BLOCK_NUMBER) : undefined;
+
+    const bundleSender = new BundleSender(rpcUrl, privateKey, bundleUrl);
+
+    const signerInfo = await bundleSender.getSignerInfo();
+    const fromAddress = signerInfo.address;
 
     console.log("Configuration:", {
       rpcUrl: rpcUrl.replace(/\/\/.*@/, "//***:***@"), // Hide credentials in URL
@@ -210,8 +212,6 @@ async function main() {
       bundleUrl,
       targetBlockNumber: targetBlockNumber || "auto (current + 1)",
     });
-
-    const bundleSender = new BundleSender(rpcUrl, privateKey, bundleUrl);
 
     console.log("\n=== Creating Transaction ===");
     const signedTx = await bundleSender.createEthTransferTransaction(fromAddress, toAddress, amount);
