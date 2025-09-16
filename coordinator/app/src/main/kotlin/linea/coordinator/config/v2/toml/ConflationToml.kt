@@ -51,6 +51,12 @@ data class ConflationToml(
     val aggregationSizeMultipleOf: UInt = 1u,
     val timestampBasedHardForks: List<Instant> = emptyList(),
   ) {
+    init {
+      require(timestampBasedHardForks.toSet().size == timestampBasedHardForks.size) {
+        "Timestamps list contains duplicates! Probably a misconfiguration!"
+      }
+    }
+
     fun reified(): ConflationConfig.ProofAggregation {
       return ConflationConfig.ProofAggregation(
         proofsLimit = this.proofsLimit,
