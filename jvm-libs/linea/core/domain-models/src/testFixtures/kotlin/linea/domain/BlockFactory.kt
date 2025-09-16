@@ -74,12 +74,14 @@ class EthGetBlockResponseDTO(
   val baseFeePerGas: ULong?,
   val sha3Uncles: ByteArray, // ommersHash
   val size: ULong,
+  val totalDifficulty: ULong,
   val transactions: List<ByteArray>,
   val uncles: List<ByteArray> = emptyList(),
 )
 
 fun Block?.toEthGetBlockResponse(
   size: ULong = 10UL * 1024UL,
+  totalDifficulty: ULong = this?.difficulty ?: 0UL,
 ): EthGetBlockResponseDTO? {
   if (this == null) return null
   return EthGetBlockResponseDTO(
@@ -101,6 +103,7 @@ fun Block?.toEthGetBlockResponse(
     baseFeePerGas = this.baseFeePerGas,
     sha3Uncles = this.ommersHash,
     size = size,
+    totalDifficulty = totalDifficulty,
     transactions = emptyList(),
   )
 }
