@@ -61,7 +61,7 @@ public class ShakiraInputsExtensiveTests extends TracerTestBase {
 
   private static final short CREATE_OPCODE_LENGTH = 21;
 
-  @Tag("Weekly")
+  @Tag("weekly")
   @ParameterizedTest
   @MethodSource("inputs")
   void shakiraInputTesting(

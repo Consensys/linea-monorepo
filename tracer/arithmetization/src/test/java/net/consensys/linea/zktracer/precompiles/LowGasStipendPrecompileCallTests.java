@@ -54,6 +54,7 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -112,6 +113,7 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
    * @param modexpCostGT200OrBlake2fRoundsGT0 flag indicating if the MODEXP cost is greater than 200
    *     or if the BLAKE2F rounds are greater than 0. It is ignored for other precompile contracts.
    */
+  @Tag("nightly")
   @ParameterizedTest
   @MethodSource("lowGasStipendPrecompileCallTestSource")
   void lowGasStipendPrecompileCallTest(

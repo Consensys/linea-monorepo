@@ -24,7 +24,6 @@ import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -87,8 +86,6 @@ public class TrmTracerTest extends TracerTestBase {
               + "00000000"
               + "00000000");
 
-  // TODO: enable for Cancun once KZG precomp has been added to address precomp list
-  @Tag("disabled-for-cancun-temporarily")
   @Test
   void testNonCallTinyParamLessThan16(TestInfo testInfo) {
     for (int tiny = 0; tiny < 16; tiny++) {

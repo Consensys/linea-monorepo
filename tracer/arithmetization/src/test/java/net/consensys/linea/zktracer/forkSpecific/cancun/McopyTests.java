@@ -28,15 +28,72 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 public class McopyTests extends TracerTestBase {
+
   @ParameterizedTest
-  @MethodSource("inputs")
-  void singleMcopy(Bytes targetOffset, Bytes sourceOffset, Bytes size, TestInfo testInfo) {
+  @MethodSource("inputParamsUnit")
+  void McopyLight(Bytes targetOffset, Bytes sourceOffset, Bytes size, TestInfo testInfo) {
+    singleMcopy(targetOffset, sourceOffset, size, testInfo);
+  }
+
+  @Tag("nightly")
+  @ParameterizedTest
+  @MethodSource("inputParamsNightly")
+  void McopyExtensive(Bytes targetOffset, Bytes sourceOffset, Bytes size, TestInfo testInfo) {
+    singleMcopy(targetOffset, sourceOffset, size, testInfo);
+  }
+
+  // Parameterized method
+  private static Stream<Arguments> inputs(List<Bytes32> inputsValues) {
+    final List<Arguments> arguments = new ArrayList<>();
+    for (Bytes32 targetOffset : inputsValues) {
+      for (Bytes32 sourceOffset : inputsValues) {
+        for (Bytes32 size : inputsValues) {
+          arguments.add(Arguments.of(targetOffset, sourceOffset, size));
+        }
+      }
+    }
+    return arguments.stream();
+  }
+
+  private static Stream<Arguments> inputParamsNightly() {
+    return inputs(inputsValuesNightly);
+  }
+
+  private static Stream<Arguments> inputParamsUnit() {
+    return inputs(inputsValuesUnit);
+  }
+
+  private static final List<Bytes32> inputsValuesUnit =
+      List.of(
+          Bytes32.ZERO,
+          Bytes32.leftPad(Bytes.ofUnsignedInt(1)),
+          Bytes32.leftPad(Bytes.ofUnsignedLong(CANCUN_MXPX_THRESHOLD - 1)),
+          Bytes32.leftPad(Bytes.ofUnsignedLong(CANCUN_MXPX_THRESHOLD)),
+          Bytes32.repeat((byte) 0xff));
+
+  private static final List<Bytes32> inputsValuesNightly =
+      Stream.concat(
+              inputsValuesUnit.stream(),
+              Stream.of(
+                  Bytes32.leftPad(Bytes.ofUnsignedInt(LLARGEMO)),
+                  Bytes32.leftPad(Bytes.ofUnsignedInt(LLARGE)),
+                  Bytes32.leftPad(Bytes.ofUnsignedInt(LLARGEPO)),
+                  Bytes32.leftPad(Bytes.ofUnsignedInt(WORD_SIZE_MO)),
+                  Bytes32.leftPad(Bytes.ofUnsignedInt(WORD_SIZE)),
+                  Bytes32.leftPad(Bytes.ofUnsignedInt(33)),
+                  Bytes32.leftPad(Bytes.ofUnsignedLong(Long.MAX_VALUE)),
+                  Bytes32.leftPad(Bytes.ofUnsignedLong(CANCUN_MXPX_THRESHOLD + 1))))
+          .toList();
+
+  // Main test
+  private void singleMcopy(Bytes targetOffset, Bytes sourceOffset, Bytes size, TestInfo testInfo) {
 
     final Bytes FILL_MEMORY =
         BytecodeCompiler.newProgram(chainConfig)
@@ -67,34 +124,6 @@ public class McopyTests extends TracerTestBase {
                 MLOADS // We load the first 3 words of memory to check the result
                 ))
         .run(chainConfig, testInfo);
-  }
-
-  private static final List<Bytes32> INPUTS =
-      List.of(
-          Bytes32.ZERO,
-          Bytes32.leftPad(Bytes.ofUnsignedInt(1)),
-          Bytes32.leftPad(Bytes.ofUnsignedInt(LLARGEMO)),
-          Bytes32.leftPad(Bytes.ofUnsignedInt(LLARGE)),
-          Bytes32.leftPad(Bytes.ofUnsignedInt(LLARGEPO)),
-          Bytes32.leftPad(Bytes.ofUnsignedInt(WORD_SIZE_MO)),
-          Bytes32.leftPad(Bytes.ofUnsignedInt(WORD_SIZE)),
-          Bytes32.leftPad(Bytes.ofUnsignedInt(33)),
-          Bytes32.leftPad(Bytes.ofUnsignedLong(CANCUN_MXPX_THRESHOLD - 1)),
-          Bytes32.leftPad(Bytes.ofUnsignedLong(CANCUN_MXPX_THRESHOLD)),
-          Bytes32.leftPad(Bytes.ofUnsignedLong(CANCUN_MXPX_THRESHOLD + 1)),
-          Bytes32.leftPad(Bytes.ofUnsignedLong(Long.MAX_VALUE)),
-          Bytes32.repeat((byte) 0xff));
-
-  private static Stream<Arguments> inputs() {
-    final List<Arguments> arguments = new ArrayList<>();
-    for (Bytes32 targetOffset : INPUTS) {
-      for (Bytes32 sourceOffset : INPUTS) {
-        for (Bytes32 size : INPUTS) {
-          arguments.add(Arguments.of(targetOffset, sourceOffset, size));
-        }
-      }
-    }
-    return arguments.stream();
   }
 
   private Bytes pushAndMcopy(Bytes targetOffset, Bytes sourceOffset, Bytes size) {
