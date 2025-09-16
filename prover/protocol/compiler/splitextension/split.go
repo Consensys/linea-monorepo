@@ -159,20 +159,22 @@ func (a *AssignSplitColumnProverAction) Run(runtime *wizard.ProverRuntime) {
 
 	ctx := a.Ctx
 
-	for i, pol := range ctx.ToSplitPolynomials {
+	parallel.Execute(len(ctx.ToSplitPolynomials), func(start, end int) {
+		for i := start; i < end; i++ {
+			pol := ctx.ToSplitPolynomials[i]
+			if pol.Round() != a.Round {
+				continue
+			}
 
-		if pol.Round() != a.Round {
-			continue
+			cc := pol.GetColAssignment(runtime)
+			sv := splitVector(cc)
+
+			runtime.AssignColumn(ctx.SplittedPolynomials[4*i].GetColID(), sv[0])
+			runtime.AssignColumn(ctx.SplittedPolynomials[4*i+1].GetColID(), sv[1])
+			runtime.AssignColumn(ctx.SplittedPolynomials[4*i+2].GetColID(), sv[2])
+			runtime.AssignColumn(ctx.SplittedPolynomials[4*i+3].GetColID(), sv[3])
 		}
-
-		cc := pol.GetColAssignment(runtime)
-		sv := splitVector(cc)
-
-		runtime.AssignColumn(ctx.SplittedPolynomials[4*i].GetColID(), sv[0])
-		runtime.AssignColumn(ctx.SplittedPolynomials[4*i+1].GetColID(), sv[1])
-		runtime.AssignColumn(ctx.SplittedPolynomials[4*i+2].GetColID(), sv[2])
-		runtime.AssignColumn(ctx.SplittedPolynomials[4*i+3].GetColID(), sv[3])
-	}
+	})
 }
 
 // Run implements ProverAction interface
@@ -264,27 +266,39 @@ func (vctx *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 }
 
 func splitVector(sv smartvectors.SmartVector) [4]smartvectors.SmartVector {
-	var res [4]smartvectors.SmartVector
-	size := sv.Len()
-	var buf [4][]field.Element
-	for i := 0; i < 4; i++ {
-		buf[i] = make([]field.Element, size)
-	}
-	parallel.Execute(size, func(start, end int) {
-		for i := start; i < end; i++ {
-			elmt := sv.GetExt(i)
-			buf[0][i].Set(&elmt.B0.A0)
-			buf[1][i].Set(&elmt.B0.A1)
-			buf[2][i].Set(&elmt.B1.A0)
-			buf[3][i].Set(&elmt.B1.A1)
-		}
-	})
 
-	res[0] = smartvectors.NewRegular(buf[0])
-	res[1] = smartvectors.NewRegular(buf[1])
-	res[2] = smartvectors.NewRegular(buf[2])
-	res[3] = smartvectors.NewRegular(buf[3])
-	return res
+	size := sv.Len()
+
+	switch sv.(type) {
+	case *smartvectors.Regular, *smartvectors.Constant, *smartvectors.PaddedCircularWindow:
+		return [4]smartvectors.SmartVector{
+			sv, // TODO @gbotrel check if we need to copy here.
+			smartvectors.NewConstant(field.Zero(), size),
+			smartvectors.NewConstant(field.Zero(), size),
+			smartvectors.NewConstant(field.Zero(), size),
+		}
+
+	default:
+		r0 := make([]field.Element, size)
+		r1 := make([]field.Element, size)
+		r2 := make([]field.Element, size)
+		r3 := make([]field.Element, size)
+
+		for i := 0; i < size; i++ {
+			elmt := sv.GetExt(i)
+			r0[i] = elmt.B0.A0
+			r1[i] = elmt.B0.A1
+			r2[i] = elmt.B1.A0
+			r3[i] = elmt.B1.A1
+		}
+		return [4]smartvectors.SmartVector{
+			smartvectors.NewRegular(r0),
+			smartvectors.NewRegular(r1),
+			smartvectors.NewRegular(r2),
+			smartvectors.NewRegular(r3),
+		}
+	}
+
 }
 
 // build prover & verifier actions
