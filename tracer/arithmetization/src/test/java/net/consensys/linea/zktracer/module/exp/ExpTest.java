@@ -32,6 +32,7 @@ import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -126,13 +127,11 @@ public class ExpTest extends TracerTestBase {
     bytecodeRunner.run(chainConfig, testInfo);
   }
 
-  @Disabled("We may want to run these long tests only during nightly builds")
+  @Tag("nightly")
   @ParameterizedTest
   @MethodSource("testModexpLogSource")
   void testModexpLogFFBlockWithLDCase(
       int ebsCutoff, int cdsCutoff, int k, int LDIndex, TestInfo testInfo) {
-    log.debug("k: " + k);
-    log.debug("LDIndex: " + LDIndex);
     // 0x00000000000000000000000000000040ffffffffffffffffffffffffffffffff
     Bytes wordAfterBase = Bytes.fromHexStringLenient(ffBlockWithLd(k, LDIndex));
     BytecodeCompiler program = initProgramInvokingModexp(ebsCutoff, cdsCutoff, wordAfterBase);
@@ -140,12 +139,10 @@ public class ExpTest extends TracerTestBase {
     bytecodeRunner.run(chainConfig, testInfo);
   }
 
-  @Disabled("We may want to run these long tests only during nightly builds")
+  @Tag("nightly")
   @ParameterizedTest
   @MethodSource("testModexpLogSource")
   void testModexpLogLDAtCase(int ebsCutoff, int cdsCutoff, int k, int ldIndex, TestInfo testInfo) {
-    log.debug("k: " + k);
-    log.debug("ldIndex: " + ldIndex);
     Bytes wordAfterBase = Bytes.fromHexStringLenient(ldAt(k, ldIndex));
     BytecodeCompiler program = initProgramInvokingModexp(ebsCutoff, cdsCutoff, wordAfterBase);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());

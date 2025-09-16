@@ -62,9 +62,8 @@ public class Shf implements OperationSetModule<ShfOperation> {
 
   @Override
   public void commit(Trace trace) {
-    int stamp = 0;
     for (ShfOperation op : operations.sortOperations(new ShfOperationComparator())) {
-      op.trace(trace.shf(), ++stamp);
+      op.trace(trace.shf());
     }
   }
 }
