@@ -1,19 +1,25 @@
 package globalcs
 
 import (
+	"math/big"
 	"reflect"
 	"runtime"
 	"sync"
+	"sync/atomic"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
+	"golang.org/x/sync/singleflight"
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -191,12 +197,6 @@ func generateQuotientShares(comp *wizard.CompiledIOP, ratios []int, domainSize i
 // compute the quotient shares.
 func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 
-	// threadSafeVector is a wrapper around the smart vector that makes it lockable
-	type threadSafeVector struct {
-		*sync.Mutex
-		sv.SmartVector
-	}
-
 	// Initial step is to compute the FFTs for all committed vectors
 	coeffs := sync.Map{} // (ifaces.ColID <=> sv.SmartVector)
 
@@ -215,7 +215,7 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 			witness = pol.GetColAssignment(run)
 		}
 		witness = sv.FFTInverseExt(witness, fft.DIF, false, 0, 0, fft.WithNbTasks(2))
-		coeffs.Store(name, threadSafeVector{&sync.Mutex{}, witness})
+		coeffs.Store(name, witness)
 	})
 
 	// Take the max quotient degree
@@ -234,10 +234,17 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 	annulatorInvVals := fastpolyext.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
 	annulatorInvVals = fext.ParBatchInvert(annulatorInvVals, runtime.GOMAXPROCS(0))
 
+	// this space we allocate, always to avoid relying on a pool with syncs, and fragmented memory
+	// or too many allocs.
+	scratch := make([]fext.Element, len(ctx.AllInvolvedRoots)*ctx.DomainSize)
+
 	for i := 0; i < maxRatio; i++ {
+		// we use Atomic add on this to determine the next free slot in our scratch space
+		var scratchOffset int64
 
 		// use sync map to store the coset evaluated polynomials
-		computedReeval := sync.Map{}
+		var singleflight singleflight.Group
+		computedReeval := sync.Map{} // (ifaces.ColID <=> sv.SmartVector)
 
 		for j, ratio := range ctx.Ratios {
 
@@ -258,36 +265,39 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 				metadatas = board.ListVariableMetadata()
 			)
 
+			shift := computeShift(uint64(ctx.DomainSize), ratio, share)
+			domain := fft.NewDomain(uint64(ctx.DomainSize), fft.WithShift(shift), fft.WithCache())
+
 			ppool.ExecutePoolChunky(len(roots), func(k int) {
 
 				root := roots[k]
 				name := root.GetColID()
-				if _, found := computedReeval.Load(name); found {
-					// it was already computed in a previous iteration of `j`
-					return
-				}
 
 				// else it's the first value of j that sees it. so we compute the
 				// coset reevaluation.
+				singleflight.Do(string(name), func() (interface{}, error) {
+					v, ok := coeffs.Load(name)
+					if !ok {
+						utils.Panic("handle %v not found in the coeffs (a)\n", name)
+					}
 
-				v, ok := coeffs.Load(name)
-				if !ok {
-					utils.Panic("handle %v not found in the coeffs (a)\n", name)
-				}
+					n := atomic.AddInt64(&scratchOffset, 1)
+					start := (n - 1) * int64(ctx.DomainSize)
+					end := n * int64(ctx.DomainSize)
+					var reevaledRoot []fext.Element
+					if end > int64(len(scratch)) {
+						reevaledRoot = make([]fext.Element, ctx.DomainSize)
+					} else {
+						reevaledRoot = scratch[start:end]
+					}
 
-				// lock the vector to ensure we don't do twice the same compute
-				// and that we don't (over)write an entry in the map with a (leaking) pool vector
-				v.(threadSafeVector).Lock()
-				defer v.(threadSafeVector).Unlock()
+					v.(sv.SmartVector).WriteInSliceExt(reevaledRoot)
+					domain.FFTExt(reevaledRoot, fft.DIT, fft.OnCoset(), fft.WithNbTasks(2))
 
-				// check again if it was already computed
-				// (can happen if 2 go routines hit the lock at the same time)
-				if _, ok := computedReeval.Load(name); ok {
-					return
-				}
+					computedReeval.Store(name, smartvectors.NewRegularExt(reevaledRoot))
+					return nil, nil
+				})
 
-				reevaledRoot := sv.FFTExt(v.(threadSafeVector).SmartVector, fft.DIT, false, ratio, share, fft.WithNbTasks(2))
-				computedReeval.Store(name, reevaledRoot)
 			})
 
 			ppool.ExecutePoolChunky(len(handles), func(k int) {
@@ -318,29 +328,22 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 				}
 
 				polName := pol.GetColID()
-				if _, ok := computedReeval.Load(polName); ok {
-					// already computed
-					return
-				}
+				singleflight.Do(string(polName), func() (interface{}, error) {
+					v, ok := coeffs.Load(polName)
+					if !ok {
+						utils.Panic("handle %v not found in the coeffs\n", polName)
+					}
 
-				v, ok := coeffs.Load(polName)
-				if !ok {
-					utils.Panic("handle %v not found in the coeffs\n", polName)
-				}
+					n := uint64(v.(sv.SmartVector).Len())
 
-				// lock the vector to ensure we don't do twice the same compute
-				// and that we don't (over)write an entry in the map with a (leaking) pool vector
-				v.(threadSafeVector).Lock()
-				defer v.(threadSafeVector).Unlock()
+					res := make([]field.Element, n)
+					v.(sv.SmartVector).WriteInSlice(res)
+					domain.FFT(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(2))
 
-				// check again if it was already computed
-				// (can happen if 2 go routines hit the lock at the same time)
-				if _, ok := computedReeval.Load(polName); ok {
-					return
-				}
-
-				res := sv.FFT(v.(threadSafeVector).SmartVector, fft.DIT, false, ratio, share, fft.WithNbTasks(2))
-				computedReeval.Store(polName, res)
+					// res := sv.FFT(v.(sv.SmartVector), fft.DIT, false, ratio, share, fft.WithNbTasks(2))
+					computedReeval.Store(polName, smartvectors.NewRegular(res))
+					return nil, nil
+				})
 			})
 
 			// Evaluates the constraint expression on the coset
@@ -350,8 +353,6 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 
 				switch metadata := metadataInterface.(type) {
 				case ifaces.Column:
-					//name := metadata.GetColID()
-					//evalInputs[k] = computedReeval[name]
 					value, ok := computedReeval.Load(metadata.GetColID())
 					if !ok {
 						utils.Panic("did not find the reevaluation of %v", metadata.GetColID())
@@ -409,4 +410,14 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 
 	logrus.Infof("[global-constraint] msg=\"computed the quotient\"")
 
+}
+
+func computeShift(n uint64, cosetRatio int, cosetID int) field.Element {
+	var shift field.Element
+	cardinality := ecc.NextPowerOfTwo(uint64(n))
+	frMulGen := fft.GeneratorFullMultiplicativeGroup()
+	omega, _ := fft.Generator(cardinality * uint64(cosetRatio))
+	omega.Exp(omega, big.NewInt(int64(cosetID)))
+	shift.Mul(&frMulGen, &omega)
+	return shift
 }
