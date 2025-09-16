@@ -9,6 +9,7 @@
 
 package net.consensys.linea.config;
 
+import java.time.Duration;
 import lombok.Builder;
 import net.consensys.linea.plugins.LineaOptionsConfiguration;
 
@@ -19,5 +20,6 @@ public record LineaTransactionSelectorConfiguration(
     int overLinesLimitCacheSize,
     long maxGasPerBlock,
     long maxBundleGasPerBlock,
-    long maxBundlePoolSizeBytes)
+    long maxBundlePoolSizeBytes,
+    Duration maxBundleSelectionTime)
     implements LineaOptionsConfiguration {}

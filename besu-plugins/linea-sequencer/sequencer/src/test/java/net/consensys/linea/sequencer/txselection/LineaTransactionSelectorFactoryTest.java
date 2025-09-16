@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
@@ -100,6 +101,7 @@ class LineaTransactionSelectorFactoryTest {
     when(mockBlockchainService.getNextBlockBaseFee()).thenReturn(Optional.of(Wei.of(7)));
     when(mockBlockchainService.getChainHeadHeader().getTimestamp()).thenReturn(1753867173L);
     mockTxSelectorConfiguration = mock(LineaTransactionSelectorConfiguration.class);
+    when(mockTxSelectorConfiguration.maxBundleSelectionTime()).thenReturn(Duration.ofMillis(1000L));
     l1L2BridgeConfiguration =
         new LineaL1L2BridgeSharedConfiguration(BRIDGE_CONTRACT, BRIDGE_LOG_TOPIC);
     mockProfitabilityConfiguration = mock(LineaProfitabilityConfiguration.class);

@@ -10,7 +10,15 @@
 package net.consensys.linea.sequencer.txselection;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bundles.BundlePoolService;
@@ -49,6 +57,9 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
   private final Optional<LivenessService> livenessService;
   private final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
   private final AtomicReference<LineaTransactionSelector> currSelector = new AtomicReference<>();
+  private final ExecutorService bundleSelectionExecutor =
+      Executors.newCachedThreadPool(
+          Thread.ofPlatform().daemon().name("BundleSelector-", 0).factory());
 
   public LineaTransactionSelectorFactory(
       final BlockchainService blockchainService,
@@ -106,25 +117,86 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
         .addArgument(bundlesByBlockNumber::size)
         .log();
 
-    bundlesByBlockNumber.forEach(
-        bundle -> {
-          log.trace("Starting evaluation of bundle {}", bundle);
+    if (!bundlesByBlockNumber.isEmpty()) {
+      final var isSelectionTimeout = new AtomicBoolean(false);
+      final var selectionStartedAt = System.currentTimeMillis();
 
-          var badBundleRes =
-              bundle.pendingTransactions().stream()
-                  .map(bts::evaluatePendingTransaction)
-                  .filter(evalRes -> !evalRes.selected())
-                  .findFirst();
+      final FutureTask<Void> bundleSelectionTask =
+          new FutureTask<>(
+              () ->
+                  timeLimitedBundleSelection(
+                      bts, bundlesByBlockNumber, isSelectionTimeout, selectionStartedAt),
+              null);
 
-          if (badBundleRes.isPresent()) {
-            log.debug("Failed bundle {}, reason {}", bundle, badBundleRes);
-            rollback(bts);
-          } else {
-            log.debug("Selected bundle {}", bundle);
-            commit(bts);
-          }
-        });
+      bundleSelectionExecutor.submit(bundleSelectionTask);
+
+      try {
+        bundleSelectionTask.get(
+            txSelectorConfiguration.maxBundleSelectionTime().toMillis(), TimeUnit.MILLISECONDS);
+      } catch (ExecutionException | InterruptedException e) {
+        log.warn("Bundle selection interrupted, reason: {}", e.getMessage());
+        log.trace("Bundle selection interrupted", e);
+      } catch (TimeoutException e) {
+        isSelectionTimeout.set(true);
+        log.warn(
+            "Bundle selection timed out after {}ms",
+            System.currentTimeMillis() - selectionStartedAt);
+      }
+    }
+
     currSelector.set(null);
+  }
+
+  private void timeLimitedBundleSelection(
+      final BlockTransactionSelectionService bts,
+      final List<TransactionBundle> bundlesByBlockNumber,
+      final AtomicBoolean selectionTimeout,
+      final long selectionStartedAt) {
+
+    bundlesByBlockNumber.stream()
+        .takeWhile(bundle -> !Thread.interrupted() && !selectionTimeout.get())
+        .forEach(
+            bundle -> {
+              final var bundleStartedAt = System.currentTimeMillis();
+              log.trace("Starting evaluation of bundle {}", bundle.bundleIdentifier());
+              var maybeBadBundleRes =
+                  bundle.pendingTransactions().stream()
+                      .takeWhile(
+                          pendingBundleTx -> !Thread.interrupted() && !selectionTimeout.get())
+                      .map(bts::evaluatePendingTransaction)
+                      .filter(evalRes -> !evalRes.selected())
+                      .findFirst();
+
+              final var now = System.currentTimeMillis();
+              final var totalSelectionMillis = now - selectionStartedAt;
+              final var bundleSelectionMillis = now - bundleStartedAt;
+              if (selectionTimeout.get()) {
+                log.debug(
+                    "Selection cancelled due to timeout for bundle {}, elapsed time: bundle {}ms, total {}ms",
+                    bundle.bundleIdentifier(),
+                    bundleSelectionMillis,
+                    totalSelectionMillis);
+                rollback(bts);
+              } else {
+                if (maybeBadBundleRes.isPresent()) {
+                  final var badBundleRes = maybeBadBundleRes.get();
+                  log.debug(
+                      "Failed bundle {}, reason {}, elapsed time: bundle {}ms, total {}ms",
+                      bundle.bundleIdentifier(),
+                      badBundleRes,
+                      bundleSelectionMillis,
+                      totalSelectionMillis);
+                  rollback(bts);
+                } else {
+                  log.debug(
+                      "Selected bundle {}, elapsed time: bundle {}ms, total {}ms",
+                      bundle.bundleIdentifier(),
+                      bundleSelectionMillis,
+                      totalSelectionMillis);
+                  commit(bts);
+                }
+              }
+            });
   }
 
   private void checkAndSendLivenessBundle(
