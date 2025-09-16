@@ -110,7 +110,6 @@ type Deserializer struct {
 // PackedObject is the serialized representation of data, designed for CBOR encoding.
 // It stores type metadata, objects, and a payload for the root serialized value.
 type PackedObject struct {
-	_               struct{}               `cbor:",toarray" serde:"omit"`
 	Types           []string               `cbor:"a"` // Type names for interfaces.
 	PointedValues   []any                  `cbor:"c"` // Serialized pointers (as PackedIFace).
 	ColumnIDs       []string               `cbor:"d"` // String IDs for columns.
