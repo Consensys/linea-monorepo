@@ -5,6 +5,7 @@ import (
 	"runtime/debug"
 	"sync"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
@@ -390,12 +391,10 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 					evalResult := column.EvalExprColumn(run, z.ZNumeratorBoarded[frag])
 					numerator, _ = evalResult.IntoRegVecSaveAllocBase()
 				}
-
-				for k := range packedZ {
-					packedZ[k].Mul(&numerator[k], &packedZ[k])
-					if k > 0 {
-						packedZ[k].Add(&packedZ[k], &packedZ[k-1])
-					}
+				vp := field.Vector(packedZ)
+				vp.Mul(vp, field.Vector(numerator))
+				for k := 1; k < len(packedZ); k++ {
+					packedZ[k].Add(&packedZ[k], &packedZ[k-1])
 				}
 
 				run.AssignColumn(z.Zs[frag].GetColID(), sv.NewRegular(packedZ))
@@ -414,11 +413,11 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 					numerator = evalResult.IntoRegVecSaveAllocExt()
 				}
 
-				for k := range packedZ {
-					packedZ[k].Mul(&packedZ[k], &numerator[k])
-					if k > 0 {
-						packedZ[k].Add(&packedZ[k], &packedZ[k-1])
-					}
+				vp := extensions.Vector(packedZ)
+				vp.Mul(vp, extensions.Vector(numerator))
+
+				for k := 1; k < len(packedZ); k++ {
+					packedZ[k].Add(&packedZ[k], &packedZ[k-1])
 				}
 
 				run.AssignColumn(z.Zs[frag].GetColID(), sv.NewRegularExt(packedZ))
