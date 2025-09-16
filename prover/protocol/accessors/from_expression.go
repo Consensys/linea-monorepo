@@ -66,7 +66,7 @@ func NewFromExpression(expr *symbolic.Expression, exprName string) ifaces.Access
 		}
 	}
 
-	fmt.Printf("FromExprAccessor: expr=%v, round=%v, metadata=%v\n", expr, exprRound, metadata)
+	fmt.Printf("FromExprAccessor: expr=%v, round=%v, metadata=%T\n", expr, exprRound, metadata)
 	return &FromExprAccessor{
 		Expr:      expr,
 		ExprName:  exprName,
@@ -125,9 +125,13 @@ func (e *FromExprAccessor) GetValBase(run ifaces.Runtime) (field.Element, error)
 		for i, m := range metadata {
 			switch castedMetadata := m.(type) {
 			case ifaces.Accessor:
+				fmt.Printf("metadata[i]=%v\n", castedMetadata)
 				x, _ := castedMetadata.GetValBase(run)
 				inputs[i] = smartvectors.NewConstant(x, 1)
+				fmt.Printf("inputs[i]=%v\n", inputs[i])
+
 			case coin.Info:
+
 				// this is always fine because all coins are public
 				x := run.GetRandomCoinField(castedMetadata.Name)
 				inputs[i] = smartvectors.NewConstant(x, 1)
@@ -144,7 +148,10 @@ func (e *FromExprAccessor) GetValBase(run ifaces.Runtime) (field.Element, error)
 }
 
 func (e *FromExprAccessor) GetValExt(run ifaces.Runtime) fext.Element {
+	fmt.Print("value\n")
 	if e.IsBase() {
+		fmt.Print("value base\n")
+
 		res, _ := e.GetValBase(run)
 		return fext.Lift(res)
 	} else {
