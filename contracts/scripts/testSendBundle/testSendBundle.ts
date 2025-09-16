@@ -378,20 +378,6 @@ async function main() {
       console.log(`Successful bundles: ${successful.length}/${bundleCount}`);
       console.log(`Failed bundles: ${failed.length}/${bundleCount}`);
 
-      // if (successful.length > 0) {
-      //   console.log("\n✅ Successful bundle hashes:");
-      //   successful.forEach((r) => {
-      //     console.log(`  ${r.bundleHash}`);
-      //   });
-      // }
-
-      // if (failed.length > 0) {
-      //   console.log("\n❌ Failed submissions:");
-      //   failed.forEach((r) => {
-      //     console.log(`  ${r.error}`);
-      //   });
-      // }
-
       console.log(
         `\nAll bundles submitted! Monitor blocks ${currentBlock + 1} to ${currentBlock + bundleCount} for inclusion.`,
       );
