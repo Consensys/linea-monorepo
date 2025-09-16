@@ -35,10 +35,7 @@ class ConflationParsingTest {
       coordinator-polling-interval = "PT2S"
       deadline-check-interval = "PT8S"
       target-end-blocks = [10, 20, 30_000]
-
-      [conflation.proof-aggregation.hard-forks]
-      timestamp-based-forks = ["2024-01-15T12:00:00Z", "2024-06-01T16:00:00Z"]
-      total-terminal-difficulty = 5875
+      timestamp-based-hard-forks = ["2024-01-15T12:00:00Z", "2024-06-01T16:00:00Z"]
     """.trimIndent()
     val config = ConflationToml(
       disabled = true,
@@ -61,12 +58,9 @@ class ConflationParsingTest {
         coordinatorPollingInterval = 2.seconds,
         deadlineCheckInterval = 8.seconds,
         targetEndBlocks = listOf(10uL, 20uL, 30_000uL),
-        hardForks = ConflationToml.HardForksToml(
-          timestampBasedForks = listOf(
-            Instant.parse("2024-01-15T12:00:00Z"),
-            Instant.parse("2024-06-01T16:00:00Z"),
-          ),
-          totalTerminalDifficulty = 5875UL,
+        timestampBasedHardForks = listOf(
+          Instant.parse("2024-01-15T12:00:00Z"),
+          Instant.parse("2024-06-01T16:00:00Z"),
         ),
       ),
     )
@@ -93,10 +87,7 @@ class ConflationParsingTest {
         deadlineCheckInterval = 30.seconds,
         coordinatorPollingInterval = 3.seconds,
         targetEndBlocks = null,
-        hardForks = ConflationToml.HardForksToml(
-          timestampBasedForks = emptyList(),
-          totalTerminalDifficulty = ULong.MAX_VALUE,
-        ),
+        timestampBasedHardForks = emptyList(),
       ),
     )
   }

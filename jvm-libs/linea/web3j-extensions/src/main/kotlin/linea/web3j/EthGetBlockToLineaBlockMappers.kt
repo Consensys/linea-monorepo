@@ -59,7 +59,6 @@ fun <TxData> mapToDomain(web3jBlock: EthBlock.Block, txsMapper: (EthBlock.Block)
     receiptsRoot = web3jBlock.receiptsRoot.decodeHex(),
     logsBloom = web3jBlock.logsBloom.decodeHex(),
     difficulty = web3jBlock.difficulty.toULong(),
-    totalDifficulty = web3jBlock.totalDifficulty.toULong(),
     gasLimit = web3jBlock.gasLimit.toULong(),
     gasUsed = web3jBlock.gasUsed.toULong(),
     timestamp = web3jBlock.timestamp.toULong(),

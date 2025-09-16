@@ -75,14 +75,12 @@ data class BlockCounters(
   val blockRLPEncoded: ByteArray,
   val numOfTransactions: UInt = 0u,
   val gasUsed: ULong = 0uL,
-  val totalDifficulty: ULong = 0uL,
 ) {
   override fun toString(): String {
     return "BlockCounters(blockNumber=$blockNumber, " +
       "blockTimestamp=$blockTimestamp, " +
       "tracesCounters=$tracesCounters, " +
-      "blockRLPEncoded=${blockRLPEncoded.size}bytes, " +
-      "totalDifficulty=$totalDifficulty,)"
+      "blockRLPEncoded=${blockRLPEncoded.size}bytes,)"
   }
 
   override fun equals(other: Any?): Boolean {
@@ -97,7 +95,6 @@ data class BlockCounters(
     if (!blockRLPEncoded.contentEquals(other.blockRLPEncoded)) return false
     if (numOfTransactions != other.numOfTransactions) return false
     if (gasUsed != other.gasUsed) return false
-    if (totalDifficulty != other.totalDifficulty) return false
 
     return true
   }
@@ -109,7 +106,6 @@ data class BlockCounters(
     result = 31 * result + blockRLPEncoded.contentHashCode()
     result = 31 * result + numOfTransactions.hashCode()
     result = 31 * result + gasUsed.hashCode()
-    result = 31 * result + totalDifficulty.hashCode()
     return result
   }
 }

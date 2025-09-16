@@ -49,7 +49,7 @@ data class ConflationToml(
     val coordinatorPollingInterval: Duration = 3.seconds,
     val targetEndBlocks: List<ULong>? = null,
     val aggregationSizeMultipleOf: UInt = 1u,
-    val hardForks: HardForksToml = HardForksToml(),
+    val timestampBasedHardForks: List<Instant> = emptyList(),
   ) {
     fun reified(): ConflationConfig.ProofAggregation {
       return ConflationConfig.ProofAggregation(
@@ -59,19 +59,7 @@ data class ConflationToml(
         coordinatorPollingInterval = this.coordinatorPollingInterval,
         targetEndBlocks = this.targetEndBlocks,
         aggregationSizeMultipleOf = this.aggregationSizeMultipleOf,
-        hardForks = hardForks.reified(),
-      )
-    }
-  }
-
-  data class HardForksToml(
-    val timestampBasedForks: List<Instant> = emptyList(),
-    val totalTerminalDifficulty: ULong = ULong.MAX_VALUE,
-  ) {
-    fun reified(): ConflationConfig.HardForks {
-      return ConflationConfig.HardForks(
-        timestampBasedForks = this.timestampBasedForks.map { it.toKotlinInstant() },
-        totalTerminalDifficulty = this.totalTerminalDifficulty,
+        timestampBasedHardForks = timestampBasedHardForks.map { it.toKotlinInstant() },
       )
     }
   }

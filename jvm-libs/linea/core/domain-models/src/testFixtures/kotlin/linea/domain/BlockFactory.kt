@@ -14,7 +14,6 @@ fun createBlock(
   gasLimit: ULong = 60_000_000UL,
   gasUsed: ULong = 30_000_000UL,
   difficulty: ULong = 2UL,
-  totalDifficulty: ULong = 4UL,
   parentHash: ByteArray = ByteArrayExt.random32(),
   stateRoot: ByteArray = ByteArrayExt.random32(),
   receiptsRoot: ByteArray = ByteArrayExt.random32(),
@@ -37,7 +36,6 @@ fun createBlock(
     receiptsRoot = receiptsRoot,
     logsBloom = logsBloom,
     difficulty = difficulty,
-    totalDifficulty = totalDifficulty,
     gasLimit = gasLimit,
     gasUsed = gasUsed,
     timestamp = timestamp.epochSeconds.toULong(),
@@ -76,7 +74,6 @@ class EthGetBlockResponseDTO(
   val baseFeePerGas: ULong?,
   val sha3Uncles: ByteArray, // ommersHash
   val size: ULong,
-  val totalDifficulty: ULong,
   val transactions: List<ByteArray>,
   val uncles: List<ByteArray> = emptyList(),
 )
@@ -104,7 +101,6 @@ fun Block?.toEthGetBlockResponse(
     baseFeePerGas = this.baseFeePerGas,
     sha3Uncles = this.ommersHash,
     size = size,
-    totalDifficulty = totalDifficulty,
     transactions = emptyList(),
   )
 }
@@ -121,7 +117,6 @@ fun Block.toBlockWithRandomTxHashes(): BlockWithTxHashes {
     receiptsRoot = receiptsRoot,
     logsBloom = logsBloom,
     difficulty = difficulty,
-    totalDifficulty = totalDifficulty,
     gasLimit = gasLimit,
     gasUsed = gasUsed,
     timestamp = timestamp,

@@ -43,11 +43,6 @@ data class ConflationConfig(
     val coordinatorPollingInterval: Duration = 3.seconds,
     val targetEndBlocks: List<ULong>? = null,
     val aggregationSizeMultipleOf: UInt = 1u,
-    val hardForks: HardForks = HardForks(),
-  )
-
-  data class HardForks(
-    val timestampBasedForks: List<Instant> = emptyList(),
-    val totalTerminalDifficulty: ULong = ULong.MAX_VALUE,
+    val timestampBasedHardForks: List<Instant> = emptyList(),
   )
 }

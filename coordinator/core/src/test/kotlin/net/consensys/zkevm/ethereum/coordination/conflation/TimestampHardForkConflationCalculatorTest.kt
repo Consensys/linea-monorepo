@@ -243,14 +243,12 @@ class TimestampHardForkConflationCalculatorTest {
   private fun blockCounters(
     blockNumber: Int,
     timestamp: Instant,
-    totalDifficulty: ULong = 0UL,
   ): BlockCounters {
     return BlockCounters(
       blockNumber = blockNumber.toULong(),
       blockTimestamp = timestamp,
       tracesCounters = fakeTracesCountersV2(blockNumber.toUInt()),
       blockRLPEncoded = ByteArray(0),
-      totalDifficulty = totalDifficulty,
     )
   }
 }

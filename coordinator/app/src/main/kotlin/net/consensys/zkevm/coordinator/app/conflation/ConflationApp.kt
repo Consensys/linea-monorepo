@@ -10,7 +10,6 @@ import linea.contract.l2.Web3JL2MessageServiceSmartContractClient
 import linea.coordinator.config.toJsonRpcRetry
 import linea.coordinator.config.v2.CoordinatorConfig
 import linea.coordinator.config.v2.isDisabled
-import linea.domain.Block
 import linea.domain.BlockParameter
 import linea.domain.RetryConfig
 import linea.encoding.BlockRLPEncoder
@@ -65,7 +64,6 @@ import net.consensys.zkevm.ethereum.coordination.conflation.ProofGeneratingConfl
 import net.consensys.zkevm.ethereum.coordination.conflation.TimestampHardForkConflationCalculator
 import net.consensys.zkevm.ethereum.coordination.conflation.TracesConflationCalculator
 import net.consensys.zkevm.ethereum.coordination.conflation.TracesConflationCoordinatorImpl
-import net.consensys.zkevm.ethereum.coordination.conflation.TtdHardForkConflationCalculator
 import net.consensys.zkevm.ethereum.coordination.proofcreation.ZkProofCreationCoordinatorImpl
 import net.consensys.zkevm.persistence.AggregationsRepository
 import net.consensys.zkevm.persistence.BatchesRepository
@@ -215,6 +213,17 @@ class ConflationApp(
     blobCompressionProofCoordinator
   }
 
+  private val extendedWeb3JImpl = ExtendedWeb3JImpl(l2Web3jClient)
+  private val lastProcessedBlock = extendedWeb3JImpl.ethGetBlock(
+    BlockParameter.fromNumber(lastProcessedBlockNumber),
+  ).get()
+  init {
+    require(lastProcessedBlock != null) {
+      "lastProcessedBlock=$lastProcessedBlock is null! Unable to instantiate conflation calculators!"
+    }
+  }
+  private val lastProcessedTimestamp = Instant.fromEpochSeconds(lastProcessedBlock!!.timestamp.toLong())
+
   private val proofAggregationCoordinatorService: LongRunningService = run {
     val maxBlobEndBlockNumberTracker = ConsecutiveProvenBlobsProviderWithLastEndBlockNumberTracker(
       aggregationsRepository,
@@ -259,7 +268,7 @@ class ConflationApp(
           ),
           vertx = vertx,
         ),
-        l2MessageService = Web3JL2MessageServiceSmartContractClient.Companion.createReadOnly(
+        l2MessageService = Web3JL2MessageServiceSmartContractClient.createReadOnly(
           web3jClient = l2Web3jClient,
           contractAddress = configs.protocol.l2.contractAddress,
           smartContractErrors = configs.smartContractErrors,
@@ -270,6 +279,9 @@ class ConflationApp(
         metricsFacade = metricsFacade,
         provenAggregationEndBlockNumberConsumer = { aggEndBlockNumber -> highestAggregationTracker(aggEndBlockNumber) },
         aggregationSizeMultipleOf = configs.conflation.proofAggregation.aggregationSizeMultipleOf,
+        // Add hard fork configuration parameters
+        hardForkTimestamps = configs.conflation.proofAggregation.timestampBasedHardForks,
+        initialTimestamp = lastProcessedTimestamp,
       )
   }
 
@@ -378,7 +390,6 @@ class ConflationApp(
     lastProvenConsecutiveBatchBlockNumberProvider
   }
 
-  private val extendedWeb3JImpl = ExtendedWeb3JImpl(l2Web3jClient)
   private val blockCreationMonitor = run {
     log.info("Resuming conflation from block={} inclusive", lastProcessedBlockNumber + 1UL)
     val blockCreationMonitor = BlockCreationMonitor(
@@ -479,36 +490,20 @@ class ConflationApp(
 
   private fun addTimestampHardForkCalculatorIfDefined(
     calculators: MutableList<ConflationCalculator>,
-    lastBlock: Block,
   ) {
-    if (configs.conflation.proofAggregation.hardForks.timestampBasedForks.isNotEmpty()) {
-      val initialTimestamp = Instant.fromEpochSeconds(lastBlock.timestamp.toLong())
-
+    if (configs.conflation.proofAggregation.timestampBasedHardForks.isNotEmpty()) {
       calculators.add(
         TimestampHardForkConflationCalculator(
-          hardForkTimestamps = configs.conflation.proofAggregation.hardForks.timestampBasedForks,
-          initialTimestamp = initialTimestamp,
+          hardForkTimestamps = configs.conflation.proofAggregation.timestampBasedHardForks,
+          initialTimestamp = lastProcessedTimestamp,
         ),
       )
       log.info(
         "Added timestamp-based hard fork calculator with {} timestamps, initialized at {}",
-        configs.conflation.proofAggregation.hardForks.timestampBasedForks.size,
-        initialTimestamp,
+        configs.conflation.proofAggregation.timestampBasedHardForks.size,
+        lastProcessedTimestamp,
       )
     }
-  }
-
-  private fun addTtdHardForkCalculator(calculators: MutableList<ConflationCalculator>, block: Block) {
-    calculators.add(
-      TtdHardForkConflationCalculator(
-        totalTerminalDifficulty = configs.conflation.proofAggregation.hardForks.totalTerminalDifficulty,
-        initialTotalDifficulty = block.totalDifficulty,
-      ),
-    )
-    log.info(
-      "Added TTD-based hard fork calculator with TTD = {}",
-      configs.conflation.proofAggregation.hardForks.totalTerminalDifficulty,
-    )
   }
 
   private fun createCalculatorsForBlobsAndConflation(
@@ -525,16 +520,9 @@ class ConflationApp(
         ),
         compressedBlobCalculator,
       )
-    val lastProcessedBlock = extendedWeb3JImpl.ethGetBlock(
-      BlockParameter.fromNumber(lastProcessedBlockNumber),
-    ).get()
-    require(lastProcessedBlock != null) {
-      "lastProcessedBlockNumber=$lastProcessedBlockNumber is null! Unable to instantiate conflation calculators!"
-    }
     addBlocksLimitCalculatorIfDefined(calculators)
     addTargetEndBlockConflationCalculatorIfDefined(calculators)
-    addTimestampHardForkCalculatorIfDefined(calculators, lastProcessedBlock)
-    addTtdHardForkCalculator(calculators, lastProcessedBlock)
+    addTimestampHardForkCalculatorIfDefined(calculators)
     return calculators
   }
 }
