@@ -4,6 +4,8 @@ import (
 	"github.com/consensys/gnark/frontend"
 	gmimc "github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -38,6 +40,10 @@ func (circuit *BadNonceBalanceCircuit) Define(api frontend.API) error {
 		account = circuit.AccountTrie.Account
 		hKey    = circuit.AccountTrie.LeafOpening.HKey
 	)
+
+	// setup the hashing approach for the keccak verifier
+	circuit.KeccakH.HasherFactory = gkrmimc.NewHasherFactory(api)
+	circuit.KeccakH.FS = fiatshamir.NewGnarkFiatShamir(api, circuit.KeccakH.HasherFactory)
 
 	//check that invalidity type is valid, it should be 0 or 1
 	api.AssertIsBoolean(circuit.InvalidityType)
