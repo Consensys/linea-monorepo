@@ -52,6 +52,7 @@ func NewFromExpression(expr *symbolic.Expression, exprName string) ifaces.Access
 
 	for _, m := range metadata {
 		switch castedMetadata := m.(type) {
+
 		case variables.X, variables.PeriodicSample:
 			// this is not supported
 			panic("variables are not supported")
@@ -66,7 +67,6 @@ func NewFromExpression(expr *symbolic.Expression, exprName string) ifaces.Access
 		}
 	}
 
-	fmt.Printf("FromExprAccessor: expr=%v, round=%v, metadata=%T\n", expr, exprRound, metadata)
 	return &FromExprAccessor{
 		Expr:      expr,
 		ExprName:  exprName,

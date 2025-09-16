@@ -3,7 +3,7 @@ package merkle
 import (
 	"strings"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -562,7 +562,7 @@ func (cm *ComputeMod) assign(
 				}
 
 				// And run the mimc compression function
-				interm[row] = mimc.BlockCompression(field.Zero(), left[row])
+				interm[row] = poseidon2.BlockCompression(field.Zero(), left[row])
 				nodehash[row] = mimc.BlockCompression(interm[row], right[row])
 			}
 

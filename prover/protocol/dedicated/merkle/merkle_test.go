@@ -1,7 +1,6 @@
 package merkle_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
@@ -18,13 +17,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	blockSize = 8
+)
+
 // merkleTestBuilder is used to build the assignment of merkle proofs
 // and is implemented like a writer.
 type merkleTestBuilder struct {
 	proofs             []smt.Proof
 	pos                []field.Element
-	roots              []field.Element
-	leaves             []field.Element
+	roots              []field.Octuplet
+	leaves             []field.Octuplet
 	useNextMerkleProof []field.Element
 	isActive           []field.Element
 	counter            []field.Element
@@ -36,8 +39,8 @@ func newMerkleTestBuilder(numProofs int) *merkleTestBuilder {
 	return &merkleTestBuilder{
 		proofs:             make([]smt.Proof, 0, numProofs),
 		pos:                make([]field.Element, 0, numProofs),
-		roots:              make([]field.Element, 0, numProofs),
-		leaves:             make([]field.Element, 0, numProofs),
+		roots:              make([]field.Octuplet, 0, numProofs),
+		leaves:             make([]field.Octuplet, 0, numProofs),
 		useNextMerkleProof: make([]field.Element, 0, numProofs),
 		isActive:           make([]field.Element, 0, numProofs),
 		counter:            make([]field.Element, 0, numProofs),
@@ -57,27 +60,18 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 		leaves[i] = types.HashToBytes32(x)
 	}
 	tree := smt.BuildComplete(leaves, hashtypes.Poseidon2)
-	fmt.Printf("tree ok\n")
 	root := tree.Root
 	if !isReuse {
-		fmt.Printf("new\n")
 
 		for i := 0; i < numProofs; i++ {
 			proof := tree.MustProve(i)
 			b.proofs = append(b.proofs, proof)
-			var le, ro field.Octuplet
 			var po field.Element
-			for j := 0; j < 8; j++ {
-				if err := le[j].SetBytesCanonical(leaves[i][:]); err != nil {
-					panic(err)
-				}
-				if err := ro[j].SetBytesCanonical(root[:]); err != nil {
-					panic(err)
-				}
-				b.leaves = append(b.leaves, le[j])
-				b.roots = append(b.roots, ro[j])
-			}
+			le := types.Bytes32ToHash(leaves[i])
+			ro := types.Bytes32ToHash(root)
 			po.SetUint64(uint64(i))
+			b.leaves = append(b.leaves, le)
+			b.roots = append(b.roots, ro)
 			b.pos = append(b.pos, po)
 
 		}
@@ -95,17 +89,13 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 				root_old := tree.Root
 				b.proofs = append(b.proofs, proof_old)
 
-				var le, ro, po field.Element
-				if err := le.SetBytesCanonical(leaves[j][:]); err != nil {
-					panic(err)
-				}
-				if err := ro.SetBytesCanonical(root_old[:]); err != nil {
-					panic(err)
-				}
+				var po field.Element
+				le := types.Bytes32ToHash(leaves[j])
+				ro := types.Bytes32ToHash(root_old)
 				po.SetUint64(uint64(j))
 				b.leaves = append(b.leaves, le)
-				b.pos = append(b.pos, po)
 				b.roots = append(b.roots, ro)
+				b.pos = append(b.pos, po)
 				// At the starting row for Update useNextMerkleProof is one
 				b.useNextMerkleProof = append(b.useNextMerkleProof, field.One())
 				b.isActive = append(b.isActive, field.One())
@@ -122,13 +112,9 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 				root_new := tree.Root
 				b.proofs = append(b.proofs, proof_new)
 
-				var le_2, ro_2, po_2 field.Element
-				if err := le_2.SetBytesCanonical(leaves[j][:]); err != nil {
-					panic(err)
-				}
-				if err := ro_2.SetBytesCanonical(root_new[:]); err != nil {
-					panic(err)
-				}
+				var po_2 field.Element
+				le_2 := types.Bytes32ToHash(leaves[j])
+				ro_2 := types.Bytes32ToHash(root_new)
 				po_2.SetUint64(uint64(j))
 				b.leaves = append(b.leaves, le_2)
 				b.pos = append(b.pos, po_2)
@@ -144,17 +130,15 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 			for i := (numProofs - numNonReUseProofs); i < numProofs; i++ {
 				proof := tree.MustProve(i)
 				b.proofs = append(b.proofs, proof)
-				var le, ro, po field.Element
-				if err := le.SetBytesCanonical(leaves[i][:]); err != nil {
-					panic(err)
-				}
-				if err := ro.SetBytesCanonical(root[:]); err != nil {
-					panic(err)
-				}
+
+				var po field.Element
+				le := types.Bytes32ToHash(leaves[i])
+				ro := types.Bytes32ToHash(root)
 				po.SetUint64(uint64(i))
 				b.leaves = append(b.leaves, le)
-				b.pos = append(b.pos, po)
 				b.roots = append(b.roots, ro)
+				b.pos = append(b.pos, po)
+
 				b.useNextMerkleProof = append(b.useNextMerkleProof, field.Zero())
 				b.isActive = append(b.isActive, field.One())
 			}
@@ -166,17 +150,15 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 			for i := 0; i < numNonReUseProofs; i++ {
 				proof := tree.MustProve(i)
 				b.proofs = append(b.proofs, proof)
-				var le, ro, po field.Element
-				if err := le.SetBytesCanonical(leaves[i][:]); err != nil {
-					panic(err)
-				}
-				if err := ro.SetBytesCanonical(root[:]); err != nil {
-					panic(err)
-				}
+
+				var po field.Element
+				le := types.Bytes32ToHash(leaves[i])
+				ro := types.Bytes32ToHash(root)
 				po.SetUint64(uint64(i))
 				b.leaves = append(b.leaves, le)
-				b.pos = append(b.pos, po)
 				b.roots = append(b.roots, ro)
+				b.pos = append(b.pos, po)
+
 				b.useNextMerkleProof = append(b.useNextMerkleProof, field.Zero())
 				b.isActive = append(b.isActive, field.One())
 			}
@@ -187,17 +169,14 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 				root_old := tree.Root
 				b.proofs = append(b.proofs, proof_old)
 
-				var le, ro, po field.Element
-				if err := le.SetBytesCanonical(leaves[j][:]); err != nil {
-					panic(err)
-				}
-				if err := ro.SetBytesCanonical(root_old[:]); err != nil {
-					panic(err)
-				}
+				var po field.Element
+				le := types.Bytes32ToHash(leaves[j])
+				ro := types.Bytes32ToHash(root_old)
 				po.SetUint64(uint64(j))
 				b.leaves = append(b.leaves, le)
-				b.pos = append(b.pos, po)
 				b.roots = append(b.roots, ro)
+				b.pos = append(b.pos, po)
+
 				// At the starting row for Update useNextMerkleProof is one
 				b.useNextMerkleProof = append(b.useNextMerkleProof, field.One())
 				b.isActive = append(b.isActive, field.One())
@@ -214,17 +193,13 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 				root_new := tree.Root
 				b.proofs = append(b.proofs, proof_new)
 
-				var le_2, ro_2, po_2 field.Element
-				if err := le_2.SetBytesCanonical(leaves[j][:]); err != nil {
-					panic(err)
-				}
-				if err := ro_2.SetBytesCanonical(root_new[:]); err != nil {
-					panic(err)
-				}
+				var po_2 field.Element
+				le_2 := types.Bytes32ToHash(leaves[j])
+				ro_2 := types.Bytes32ToHash(root_new)
 				po_2.SetUint64(uint64(j))
 				b.leaves = append(b.leaves, le_2)
-				b.pos = append(b.pos, po_2)
 				b.roots = append(b.roots, ro_2)
+				b.pos = append(b.pos, po_2)
 
 				// At the updation row useNextMerkleProof is zero
 				b.useNextMerkleProof = append(b.useNextMerkleProof, field.Zero())
@@ -239,17 +214,14 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 				root_old := tree.Root
 				b.proofs = append(b.proofs, proof_old)
 
-				var le, ro, po field.Element
-				if err := le.SetBytesCanonical(leaves[j][:]); err != nil {
-					panic(err)
-				}
-				if err := ro.SetBytesCanonical(root_old[:]); err != nil {
-					panic(err)
-				}
+				var po field.Element
+				le := types.Bytes32ToHash(leaves[j])
+				ro := types.Bytes32ToHash(root_old)
 				po.SetUint64(uint64(j))
 				b.leaves = append(b.leaves, le)
-				b.pos = append(b.pos, po)
 				b.roots = append(b.roots, ro)
+				b.pos = append(b.pos, po)
+
 				// At the starting row for Update useNextMerkleProof is one
 				b.useNextMerkleProof = append(b.useNextMerkleProof, field.One())
 				b.isActive = append(b.isActive, field.One())
@@ -266,17 +238,13 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 				root_new := tree.Root
 				b.proofs = append(b.proofs, proof_new)
 
-				var le_2, ro_2, po_2 field.Element
-				if err := le_2.SetBytesCanonical(leaves[j][:]); err != nil {
-					panic(err)
-				}
-				if err := ro_2.SetBytesCanonical(root_new[:]); err != nil {
-					panic(err)
-				}
+				var po_2 field.Element
+				le_2 := types.Bytes32ToHash(leaves[j])
+				ro_2 := types.Bytes32ToHash(root_new)
 				po_2.SetUint64(uint64(j))
 				b.leaves = append(b.leaves, le_2)
-				b.pos = append(b.pos, po_2)
 				b.roots = append(b.roots, ro_2)
+				b.pos = append(b.pos, po_2)
 
 				// At the updation row useNextMerkleProof is zero
 				b.useNextMerkleProof = append(b.useNextMerkleProof, field.Zero())
@@ -288,17 +256,15 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 			for i := 2; i < 2+numNonReUseProofs; i++ {
 				proof := tree.MustProve(i)
 				b.proofs = append(b.proofs, proof)
-				var le, ro, po field.Element
-				if err := le.SetBytesCanonical(leaves[i][:]); err != nil {
-					panic(err)
-				}
-				if err := ro.SetBytesCanonical(root[:]); err != nil {
-					panic(err)
-				}
+
+				var po field.Element
+				le := types.Bytes32ToHash(leaves[i])
+				ro := types.Bytes32ToHash(root)
 				po.SetUint64(uint64(i))
 				b.leaves = append(b.leaves, le)
-				b.pos = append(b.pos, po)
 				b.roots = append(b.roots, ro)
+				b.pos = append(b.pos, po)
+
 				b.useNextMerkleProof = append(b.useNextMerkleProof, field.Zero())
 				b.isActive = append(b.isActive, field.One())
 			}
@@ -309,17 +275,14 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 				root_old := tree.Root
 				b.proofs = append(b.proofs, proof_old)
 
-				var le, ro, po field.Element
-				if err := le.SetBytesCanonical(leaves[j][:]); err != nil {
-					panic(err)
-				}
-				if err := ro.SetBytesCanonical(root_old[:]); err != nil {
-					panic(err)
-				}
+				var po field.Element
+				le := types.Bytes32ToHash(leaves[j])
+				ro := types.Bytes32ToHash(root_old)
 				po.SetUint64(uint64(j))
 				b.leaves = append(b.leaves, le)
-				b.pos = append(b.pos, po)
 				b.roots = append(b.roots, ro)
+				b.pos = append(b.pos, po)
+
 				// At the starting row for Update useNextMerkleProof is one
 				b.useNextMerkleProof = append(b.useNextMerkleProof, field.One())
 				b.isActive = append(b.isActive, field.One())
@@ -336,17 +299,13 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 				root_new := tree.Root
 				b.proofs = append(b.proofs, proof_new)
 
-				var le_2, ro_2, po_2 field.Element
-				if err := le_2.SetBytesCanonical(leaves[j][:]); err != nil {
-					panic(err)
-				}
-				if err := ro_2.SetBytesCanonical(root_new[:]); err != nil {
-					panic(err)
-				}
+				var po_2 field.Element
+				le_2 := types.Bytes32ToHash(leaves[j])
+				ro_2 := types.Bytes32ToHash(root_new)
 				po_2.SetUint64(uint64(j))
 				b.leaves = append(b.leaves, le_2)
-				b.pos = append(b.pos, po_2)
 				b.roots = append(b.roots, ro_2)
+				b.pos = append(b.pos, po_2)
 
 				// At the updation row useNextMerkleProof is zero
 				b.useNextMerkleProof = append(b.useNextMerkleProof, field.Zero())

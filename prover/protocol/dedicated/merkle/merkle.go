@@ -10,6 +10,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
+const (
+	width     = 16
+	blockSize = 8
+)
+
 // Wizard gadget allowing to verify a Merkle proof
 // See : https://github.com/consensys/linea-monorepo/issues/67
 
