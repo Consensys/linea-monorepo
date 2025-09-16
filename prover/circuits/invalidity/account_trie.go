@@ -3,6 +3,7 @@ package invalidity
 import (
 	"github.com/consensys/gnark/frontend"
 	gmimc "github.com/consensys/gnark/std/hash/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	ac "github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -143,12 +144,10 @@ type MerkleProofCircuit struct {
 
 // Define the constraints for a merkle proof
 func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
-	h, err := gmimc.NewMiMC(api)
-	if err != nil {
-		return err
-	}
+	hFac := gkrmimc.NewHasherFactory(api)
+	hshM := hFac.NewHasher()
 
-	smt.GnarkVerifyMerkleProof(api, circuit.Proofs, circuit.Leaf, circuit.Root, &h)
+	smt.GnarkVerifyMerkleProof(api, circuit.Proofs, circuit.Leaf, circuit.Root, hshM)
 
 	return nil
 }
