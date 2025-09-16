@@ -26,8 +26,8 @@ func TestReedSolomonExtDoesNotChangeEvaluation(t *testing.T) {
 	err := params.isCodewordExt(rsEncoded)
 	require.NoError(t, err)
 
-	y0 := smartvectors.EvaluateLagrangeFullFext(vec, x)
-	y1 := smartvectors.EvaluateLagrangeFullFext(rsEncoded, x)
+	y0 := smartvectors.EvaluateFextPolyLagrange(vec, x)
+	y1 := smartvectors.EvaluateFextPolyLagrange(rsEncoded, x)
 
 	require.Equal(t, y0.String(), y1.String())
 }
@@ -48,8 +48,8 @@ func TestReedSolomonExtConstant(t *testing.T) {
 	err := params.isCodewordExt(rsEncoded)
 	require.NoError(t, err)
 
-	y0 := smartvectors.EvaluateLagrangeFullFext(vec, x)
-	y1 := smartvectors.EvaluateLagrangeFullFext(rsEncoded, x)
+	y0 := smartvectors.EvaluateFextPolyLagrange(vec, x)
+	y1 := smartvectors.EvaluateFextPolyLagrange(rsEncoded, x)
 
 	require.Equal(t, y0.String(), y1.String())
 

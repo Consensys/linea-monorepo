@@ -190,7 +190,7 @@ func TestPeriodicSampleEvalAtConsistentWithEval(t *testing.T) {
 				vanillaEval := sampling.EvalCoset(domain, 0, 1, false)
 
 				x := fext.NewFromUintBase(420691966156)
-				yExpected := smartvectors.EvaluateLagrangeMixed(vanillaEval, x)
+				yExpected := smartvectors.EvaluateBasePolyLagrange(vanillaEval, x)
 				yActual := sampling.EvalAtOutOfDomainExt(domain, x)
 
 				require.Equal(t, yExpected.String(), yActual.String())

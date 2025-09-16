@@ -282,7 +282,7 @@ func TestFFTExtFuzzyConsistWithInterpolation(t *testing.T) {
 				yCoeff := EvalCoeffExt(coeffs, xCoeff)
 				// We already multiplied xVal by the multiplicative generator in the
 				// important case.
-				yFFT := EvaluateLagrangeFullFext(evals, xVal, false)
+				yFFT := EvaluateFextPolyLagrange(evals, xVal, false)
 
 				require.Equal(t, yCoeff.String(), yFFT.String())
 

@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
@@ -117,7 +118,7 @@ func (pa EvaluationProver) Run(run *wizard.ProverRuntime) {
 		}
 	})
 
-	ys := sv.BatchEvaluateLagrangeExt(witnesses, r)
+	ys := smartvectors_mixed.BatchEvaluateLagrange(witnesses, r)
 	run.AssignUnivariateExt(pa.WitnessEval.QueryID, r, ys...)
 
 	/*
@@ -140,15 +141,15 @@ func (pa EvaluationProver) Run(run *wizard.ProverRuntime) {
 		go func(i int, evalPoint fext.Element) {
 			var (
 				q  = pa.QuotientEvals[i]
-				ys = make([]fext.Element, len(q.Pols))
+				cs = make([]sv.SmartVector, len(q.Pols))
 			)
 
 			parallel.Execute(len(q.Pols), func(start, stop int) {
 				for i := start; i < stop; i++ {
-					c := q.Pols[i].GetColAssignment(run)
-					ys[i] = sv.EvaluateLagrangeFullFext(c, evalPoint)
+					cs[i] = q.Pols[i].GetColAssignment(run)
 				}
 			})
+			ys := smartvectors_mixed.BatchEvaluateLagrange(cs, evalPoint)
 
 			run.AssignUnivariateExt(q.Name(), evalPoint, ys...)
 			wg.Done()

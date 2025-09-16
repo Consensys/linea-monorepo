@@ -9,6 +9,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -271,11 +272,14 @@ func TestFFTFuzzyConsistWithInterpolation(t *testing.T) {
 					omegacoset.Mul(&omegacoset, &mulGen)
 					xVal.Div(&xVal, &omegacoset)
 				}
-
-				yCoeff := EvalCoeff(coeffs, xCoeff)
+				var xCoeffExt fext.Element
+				fext.SetFromBase(&xCoeffExt, &xCoeff)
+				yCoeff := EvalBasePolyHorner(coeffs, xCoeffExt)
 				// We already multiplied xVal by the multiplicative generator in the
 				// important case.
-				yFFT := EvaluateLagrange(evals, xVal, false)
+				var xExt fext.Element
+				fext.SetFromBase(&xExt, &xVal)
+				yFFT := EvaluateBasePolyLagrange(evals, xExt, false)
 
 				require.Equal(t, yCoeff.String(), yFFT.String())
 
