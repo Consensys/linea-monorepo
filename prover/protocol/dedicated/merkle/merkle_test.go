@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/merkle"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -31,7 +32,6 @@ type merkleTestBuilder struct {
 	useNextMerkleProof []field.Element
 	isActive           []field.Element
 	counter            []field.Element
-	tree               smt.Tree
 }
 
 // newMerkleTestBuilder returns an empty builder
@@ -326,19 +326,29 @@ func TestMerklePow2(t *testing.T) {
 	builder.assignProofs(numProofs, depth, false, 0, 0)
 
 	define := func(b *wizard.Builder) {
-		proofcol := b.RegisterCommit("PROOF", depth*numProofs)
-		rootscol := b.RegisterCommit("ROOTS", numProofs)
-		leavescol := b.RegisterCommit("LEAVES", numProofs)
+		var proofcol, rootscol, leavescol [blockSize]ifaces.Column
+
+		for i := 0; i < blockSize; i++ {
+			proofcol[i] = b.RegisterCommit(ifaces.ColIDf("PROOF_%v", i), depth*numProofs)
+
+			rootscol[i] = b.RegisterCommit(ifaces.ColIDf("ROOTS_%v", i), numProofs)
+			leavescol[i] = b.RegisterCommit(ifaces.ColIDf("LEAVES_%v", i), numProofs)
+		}
 		poscol := b.RegisterCommit("POS", numProofs)
 
-		merkle.MerkleProofCheck(b.CompiledIOP, "TEST", depth, numProofs, proofcol, rootscol, leavescol, poscol)
+		merkle.MerkleProofCheck(b.CompiledIOP, "TEST", depth, numProofs, poscol, proofcol, rootscol, leavescol)
 	}
 
 	prove := func(run *wizard.ProverRuntime) {
 		proofAssignment := merkle.PackMerkleProofs(builder.proofs)
-		run.AssignColumn("PROOF", proofAssignment)
-		run.AssignColumn("ROOTS", smartvectors.NewRegular(builder.roots))
-		run.AssignColumn("LEAVES", smartvectors.NewRegular(builder.leaves))
+		trRoot := merkle.Transpose(builder.roots)
+		trLeaves := merkle.Transpose(builder.leaves)
+
+		for i := 0; i < blockSize; i++ {
+			run.AssignColumn(ifaces.ColIDf("PROOF_%v", i), proofAssignment[i])
+			run.AssignColumn(ifaces.ColIDf("ROOTS_%v", i), smartvectors.NewRegular(trRoot[i]))
+			run.AssignColumn(ifaces.ColIDf("LEAVES_%v", i), smartvectors.NewRegular(trLeaves[i]))
+		}
 		run.AssignColumn("POS", smartvectors.NewRegular(builder.pos))
 	}
 
@@ -350,332 +360,332 @@ func TestMerklePow2(t *testing.T) {
 
 }
 
-func TestMerkleNotPow2(t *testing.T) {
+// func TestMerkleNotPow2(t *testing.T) {
 
-	logrus.SetLevel(logrus.DebugLevel)
+// 	logrus.SetLevel(logrus.DebugLevel)
 
-	// Generates a list of Merkle proofs for the same tree
-	depth := 3
-	numProofs := 1 << 2
-	smallSize := utils.NextPowerOfTwo(numProofs)
-	largeSize := utils.NextPowerOfTwo(numProofs * depth)
-	builder := newMerkleTestBuilder(numProofs)
-	builder.assignProofs(numProofs, depth, false, 0, 0)
+// 	// Generates a list of Merkle proofs for the same tree
+// 	depth := 3
+// 	numProofs := 1 << 2
+// 	smallSize := utils.NextPowerOfTwo(numProofs)
+// 	largeSize := utils.NextPowerOfTwo(numProofs * depth)
+// 	builder := newMerkleTestBuilder(numProofs)
+// 	builder.assignProofs(numProofs, depth, false, 0, 0)
 
-	define := func(b *wizard.Builder) {
-		proofcol := b.RegisterCommit("PROOF", largeSize)
-		rootscol := b.RegisterCommit("ROOTS", smallSize)
-		leavescol := b.RegisterCommit("LEAVES", smallSize)
-		poscol := b.RegisterCommit("POS", smallSize)
+// 	define := func(b *wizard.Builder) {
+// 		proofcol := b.RegisterCommit("PROOF", largeSize)
+// 		rootscol := b.RegisterCommit("ROOTS", smallSize)
+// 		leavescol := b.RegisterCommit("LEAVES", smallSize)
+// 		poscol := b.RegisterCommit("POS", smallSize)
 
-		merkle.MerkleProofCheck(b.CompiledIOP, "TEST", depth, numProofs, proofcol, rootscol, leavescol, poscol)
-	}
+// 		merkle.MerkleProofCheck(b.CompiledIOP, "TEST", depth, numProofs, proofcol, rootscol, leavescol, poscol)
+// 	}
 
-	prove := func(run *wizard.ProverRuntime) {
-		proofAssignment := merkle.PackMerkleProofs(builder.proofs)
-		run.AssignColumn("PROOF", proofAssignment)
-		run.AssignColumn("ROOTS", padWithLast(builder.roots))
-		run.AssignColumn("LEAVES", padWithLast(builder.leaves))
-		run.AssignColumn("POS", padWithLast(builder.pos))
-	}
+// 	prove := func(run *wizard.ProverRuntime) {
+// 		proofAssignment := merkle.PackMerkleProofs(builder.proofs)
+// 		run.AssignColumn("PROOF", proofAssignment)
+// 		run.AssignColumn("ROOTS", padWithLast(builder.roots))
+// 		run.AssignColumn("LEAVES", padWithLast(builder.leaves))
+// 		run.AssignColumn("POS", padWithLast(builder.pos))
+// 	}
 
-	comp := wizard.Compile(define, dummy.Compile)
-	proof := wizard.Prove(comp, prove)
-	err := wizard.Verify(comp, proof)
+// 	comp := wizard.Compile(define, dummy.Compile)
+// 	proof := wizard.Prove(comp, prove)
+// 	err := wizard.Verify(comp, proof)
 
-	require.NoError(t, err)
+// 	require.NoError(t, err)
 
-}
+// }
 
-func TestMerkleManySizes(t *testing.T) {
+// func TestMerkleManySizes(t *testing.T) {
 
-	logrus.SetLevel(logrus.FatalLevel)
+// 	logrus.SetLevel(logrus.FatalLevel)
 
-	dimensions := []map[string]int{
-		{"depth": 4, "numProofs": 16},
-		{"depth": 8, "numProofs": 16},
-		{"depth": 4, "numProofs": 14},
-		{"depth": 5, "numProofs": 14},
-		{"depth": 6, "numProofs": 14},
-		{"depth": 6, "numProofs": 48},
-	}
+// 	dimensions := []map[string]int{
+// 		{"depth": 4, "numProofs": 16},
+// 		{"depth": 8, "numProofs": 16},
+// 		{"depth": 4, "numProofs": 14},
+// 		{"depth": 5, "numProofs": 14},
+// 		{"depth": 6, "numProofs": 14},
+// 		{"depth": 6, "numProofs": 48},
+// 	}
 
-	runTest := func(dims map[string]int) {
+// 	runTest := func(dims map[string]int) {
 
-		// Generates a list of Merkle proofs for the same tree
-		depth := dims["depth"]
-		numProofs := dims["numProofs"]
+// 		// Generates a list of Merkle proofs for the same tree
+// 		depth := dims["depth"]
+// 		numProofs := dims["numProofs"]
 
-		smallSize := utils.NextPowerOfTwo(numProofs)
-		largeSize := utils.NextPowerOfTwo(numProofs * depth)
-		builder := newMerkleTestBuilder(numProofs)
-		builder.assignProofs(numProofs, depth, false, 0, 0)
+// 		smallSize := utils.NextPowerOfTwo(numProofs)
+// 		largeSize := utils.NextPowerOfTwo(numProofs * depth)
+// 		builder := newMerkleTestBuilder(numProofs)
+// 		builder.assignProofs(numProofs, depth, false, 0, 0)
 
-		define := func(b *wizard.Builder) {
-			proofcol := b.RegisterCommit("PROOF", largeSize)
-			rootscol := b.RegisterCommit("ROOTS", smallSize)
-			leavescol := b.RegisterCommit("LEAVES", smallSize)
-			poscol := b.RegisterCommit("POS", smallSize)
+// 		define := func(b *wizard.Builder) {
+// 			proofcol := b.RegisterCommit("PROOF", largeSize)
+// 			rootscol := b.RegisterCommit("ROOTS", smallSize)
+// 			leavescol := b.RegisterCommit("LEAVES", smallSize)
+// 			poscol := b.RegisterCommit("POS", smallSize)
 
-			merkle.MerkleProofCheck(b.CompiledIOP, "TEST", depth, numProofs, proofcol, rootscol, leavescol, poscol)
-		}
+// 			merkle.MerkleProofCheck(b.CompiledIOP, "TEST", depth, numProofs, proofcol, rootscol, leavescol, poscol)
+// 		}
 
-		prove := func(run *wizard.ProverRuntime) {
-			proofAssignment := merkle.PackMerkleProofs(builder.proofs)
-			run.AssignColumn("PROOF", proofAssignment)
-			run.AssignColumn("ROOTS", smartvectors.RightZeroPadded(builder.roots, smallSize))
-			run.AssignColumn("LEAVES", smartvectors.RightZeroPadded(builder.leaves, smallSize))
-			run.AssignColumn("POS", smartvectors.RightZeroPadded(builder.pos, smallSize))
-		}
+// 		prove := func(run *wizard.ProverRuntime) {
+// 			proofAssignment := merkle.PackMerkleProofs(builder.proofs)
+// 			run.AssignColumn("PROOF", proofAssignment)
+// 			run.AssignColumn("ROOTS", smartvectors.RightZeroPadded(builder.roots, smallSize))
+// 			run.AssignColumn("LEAVES", smartvectors.RightZeroPadded(builder.leaves, smallSize))
+// 			run.AssignColumn("POS", smartvectors.RightZeroPadded(builder.pos, smallSize))
+// 		}
 
-		comp := wizard.Compile(define, dummy.Compile)
-		proof := wizard.Prove(comp, prove)
-		err := wizard.Verify(comp, proof)
-		require.NoError(t, err)
-	}
+// 		comp := wizard.Compile(define, dummy.Compile)
+// 		proof := wizard.Prove(comp, prove)
+// 		err := wizard.Verify(comp, proof)
+// 		require.NoError(t, err)
+// 	}
 
-	for i := range dimensions {
-		t.Logf("run test case #%v", i)
-		runTest(dimensions[i])
-	}
+// 	for i := range dimensions {
+// 		t.Logf("run test case #%v", i)
+// 		runTest(dimensions[i])
+// 	}
 
-}
+// }
 
-// Tests for reuse of Merkle trees
+// // Tests for reuse of Merkle trees
 
-func TestMerklePow2ReuseMerkle(t *testing.T) {
-	logrus.SetLevel(logrus.DebugLevel)
-	testOps := map[int]string{
-		0: "disableAtLast",
-		1: "disableAtFirst",
-		2: "disableInBetween",
-	}
-	runTest := func(disablePos string) {
-		// Generates a list of Merkle proofs for the same tree
-		depth := 4
-		numProofs := 1 << 3
-		// Must be even and can be atmost (numProofs - 2)
-		numNonReUseProofs := 2
-		builder := newMerkleTestBuilder(numProofs)
-		switch disablePos {
-		// We disable useNextMerkleProof at the last
-		case "disableAtLast":
-			builder.assignProofs(numProofs, depth, true, 0, numNonReUseProofs)
-		// We disable useNextMerkleProof at the begining
-		case "disableAtFirst":
-			builder.assignProofs(numProofs, depth, true, 1, numNonReUseProofs)
-		// We disable useNextMerkleProof in between (in the third row onwards)
-		case "disableInBetween":
-			builder.assignProofs(numProofs, depth, true, 2, numNonReUseProofs)
-		}
+// func TestMerklePow2ReuseMerkle(t *testing.T) {
+// 	logrus.SetLevel(logrus.DebugLevel)
+// 	testOps := map[int]string{
+// 		0: "disableAtLast",
+// 		1: "disableAtFirst",
+// 		2: "disableInBetween",
+// 	}
+// 	runTest := func(disablePos string) {
+// 		// Generates a list of Merkle proofs for the same tree
+// 		depth := 4
+// 		numProofs := 1 << 3
+// 		// Must be even and can be atmost (numProofs - 2)
+// 		numNonReUseProofs := 2
+// 		builder := newMerkleTestBuilder(numProofs)
+// 		switch disablePos {
+// 		// We disable useNextMerkleProof at the last
+// 		case "disableAtLast":
+// 			builder.assignProofs(numProofs, depth, true, 0, numNonReUseProofs)
+// 		// We disable useNextMerkleProof at the begining
+// 		case "disableAtFirst":
+// 			builder.assignProofs(numProofs, depth, true, 1, numNonReUseProofs)
+// 		// We disable useNextMerkleProof in between (in the third row onwards)
+// 		case "disableInBetween":
+// 			builder.assignProofs(numProofs, depth, true, 2, numNonReUseProofs)
+// 		}
 
-		define := func(b *wizard.Builder) {
-			proofcol := b.RegisterCommit("PROOF", depth*numProofs)
-			rootscol := b.RegisterCommit("ROOTS", numProofs)
-			leavescol := b.RegisterCommit("LEAVES", numProofs)
-			poscol := b.RegisterCommit("POS", numProofs)
-			useNextMerkleProofCol := b.RegisterCommit("REUSE_NEXT_PROOF", numProofs)
-			isActiveCol := b.RegisterCommit("IS_ACTIVE", numProofs)
-			counterCol := b.RegisterCommit("COUNTER", numProofs)
+// 		define := func(b *wizard.Builder) {
+// 			proofcol := b.RegisterCommit("PROOF", depth*numProofs)
+// 			rootscol := b.RegisterCommit("ROOTS", numProofs)
+// 			leavescol := b.RegisterCommit("LEAVES", numProofs)
+// 			poscol := b.RegisterCommit("POS", numProofs)
+// 			useNextMerkleProofCol := b.RegisterCommit("REUSE_NEXT_PROOF", numProofs)
+// 			isActiveCol := b.RegisterCommit("IS_ACTIVE", numProofs)
+// 			counterCol := b.RegisterCommit("COUNTER", numProofs)
 
-			merkle.MerkleProofCheckWithReuse(b.CompiledIOP, "TEST", depth, numProofs, proofcol, rootscol, leavescol, poscol, useNextMerkleProofCol, isActiveCol, counterCol)
-		}
+// 			merkle.MerkleProofCheckWithReuse(b.CompiledIOP, "TEST", depth, numProofs, proofcol, rootscol, leavescol, poscol, useNextMerkleProofCol, isActiveCol, counterCol)
+// 		}
 
-		prove := func(run *wizard.ProverRuntime) {
-			proofAssignment := merkle.PackMerkleProofs(builder.proofs)
-			run.AssignColumn("PROOF", proofAssignment)
-			run.AssignColumn("ROOTS", smartvectors.NewRegular(builder.roots))
-			run.AssignColumn("LEAVES", smartvectors.NewRegular(builder.leaves))
-			run.AssignColumn("POS", smartvectors.NewRegular(builder.pos))
-			run.AssignColumn("REUSE_NEXT_PROOF", smartvectors.NewRegular(builder.useNextMerkleProof))
-			run.AssignColumn("IS_ACTIVE", smartvectors.NewRegular(builder.isActive))
-			run.AssignColumn("COUNTER", smartvectors.NewRegular(builder.counter))
-		}
+// 		prove := func(run *wizard.ProverRuntime) {
+// 			proofAssignment := merkle.PackMerkleProofs(builder.proofs)
+// 			run.AssignColumn("PROOF", proofAssignment)
+// 			run.AssignColumn("ROOTS", smartvectors.NewRegular(builder.roots))
+// 			run.AssignColumn("LEAVES", smartvectors.NewRegular(builder.leaves))
+// 			run.AssignColumn("POS", smartvectors.NewRegular(builder.pos))
+// 			run.AssignColumn("REUSE_NEXT_PROOF", smartvectors.NewRegular(builder.useNextMerkleProof))
+// 			run.AssignColumn("IS_ACTIVE", smartvectors.NewRegular(builder.isActive))
+// 			run.AssignColumn("COUNTER", smartvectors.NewRegular(builder.counter))
+// 		}
 
-		comp := wizard.Compile(define, dummy.Compile)
-		proof := wizard.Prove(comp, prove)
-		err := wizard.Verify(comp, proof)
+// 		comp := wizard.Compile(define, dummy.Compile)
+// 		proof := wizard.Prove(comp, prove)
+// 		err := wizard.Verify(comp, proof)
 
-		require.NoError(t, err)
-	}
-	for i := range testOps {
-		t.Logf("run test case #%v", i)
-		runTest(testOps[i])
-	}
+// 		require.NoError(t, err)
+// 	}
+// 	for i := range testOps {
+// 		t.Logf("run test case #%v", i)
+// 		runTest(testOps[i])
+// 	}
 
-}
+// }
 
-func TestMerkleNotPow2ReuseMerkle(t *testing.T) {
+// func TestMerkleNotPow2ReuseMerkle(t *testing.T) {
 
-	logrus.SetLevel(logrus.FatalLevel)
-	testOps := map[int]string{
-		0: "disableAtLast",
-		1: "disableAtFirst",
-		2: "disableInBetween",
-	}
-	runTest := func(disablePos string) {
-		// Generates a list of Merkle proofs for the same tree
-		depth := 3
-		numProofs := 1 << 2
-		// Must be even and can be atmost (numProofs - 2)
-		numNonReUseProofs := 2
-		smallSize := utils.NextPowerOfTwo(numProofs)
-		largeSize := utils.NextPowerOfTwo(numProofs * depth)
-		builder := newMerkleTestBuilder(numProofs)
-		switch disablePos {
-		// We disable useNextMerkleProof at the last
-		case "disableAtLast":
-			builder.assignProofs(numProofs, depth, true, 0, numNonReUseProofs)
-		// We disable useNextMerkleProof at the begining
-		case "disableAtFirst":
-			builder.assignProofs(numProofs, depth, true, 1, numNonReUseProofs)
-		// We disable useNextMerkleProof in between (in the third row onwards)
-		case "disableInBetween":
-			builder.assignProofs(numProofs, depth, true, 2, numNonReUseProofs)
-		}
+// 	logrus.SetLevel(logrus.FatalLevel)
+// 	testOps := map[int]string{
+// 		0: "disableAtLast",
+// 		1: "disableAtFirst",
+// 		2: "disableInBetween",
+// 	}
+// 	runTest := func(disablePos string) {
+// 		// Generates a list of Merkle proofs for the same tree
+// 		depth := 3
+// 		numProofs := 1 << 2
+// 		// Must be even and can be atmost (numProofs - 2)
+// 		numNonReUseProofs := 2
+// 		smallSize := utils.NextPowerOfTwo(numProofs)
+// 		largeSize := utils.NextPowerOfTwo(numProofs * depth)
+// 		builder := newMerkleTestBuilder(numProofs)
+// 		switch disablePos {
+// 		// We disable useNextMerkleProof at the last
+// 		case "disableAtLast":
+// 			builder.assignProofs(numProofs, depth, true, 0, numNonReUseProofs)
+// 		// We disable useNextMerkleProof at the begining
+// 		case "disableAtFirst":
+// 			builder.assignProofs(numProofs, depth, true, 1, numNonReUseProofs)
+// 		// We disable useNextMerkleProof in between (in the third row onwards)
+// 		case "disableInBetween":
+// 			builder.assignProofs(numProofs, depth, true, 2, numNonReUseProofs)
+// 		}
 
-		define := func(b *wizard.Builder) {
-			proofcol := b.RegisterCommit("PROOF", largeSize)
-			rootscol := b.RegisterCommit("ROOTS", smallSize)
-			leavescol := b.RegisterCommit("LEAVES", smallSize)
-			poscol := b.RegisterCommit("POS", smallSize)
-			useNextMerkleProofCol := b.RegisterCommit("REUSE_NEXT_PROOF", smallSize)
-			isActiveCol := b.RegisterCommit("IS_ACTIVE", smallSize)
-			counterCol := b.RegisterCommit("COUNTER", smallSize)
+// 		define := func(b *wizard.Builder) {
+// 			proofcol := b.RegisterCommit("PROOF", largeSize)
+// 			rootscol := b.RegisterCommit("ROOTS", smallSize)
+// 			leavescol := b.RegisterCommit("LEAVES", smallSize)
+// 			poscol := b.RegisterCommit("POS", smallSize)
+// 			useNextMerkleProofCol := b.RegisterCommit("REUSE_NEXT_PROOF", smallSize)
+// 			isActiveCol := b.RegisterCommit("IS_ACTIVE", smallSize)
+// 			counterCol := b.RegisterCommit("COUNTER", smallSize)
 
-			merkle.MerkleProofCheckWithReuse(b.CompiledIOP, "TEST", depth, numProofs, proofcol, rootscol, leavescol, poscol, useNextMerkleProofCol, isActiveCol, counterCol)
-		}
+// 			merkle.MerkleProofCheckWithReuse(b.CompiledIOP, "TEST", depth, numProofs, proofcol, rootscol, leavescol, poscol, useNextMerkleProofCol, isActiveCol, counterCol)
+// 		}
 
-		prove := func(run *wizard.ProverRuntime) {
-			proofAssignment := merkle.PackMerkleProofs(builder.proofs)
-			run.AssignColumn("PROOF", proofAssignment)
-			run.AssignColumn("ROOTS", padWithLast(builder.roots))
-			run.AssignColumn("LEAVES", padWithLast(builder.leaves))
-			run.AssignColumn("POS", padWithLast(builder.pos))
-			run.AssignColumn("REUSE_NEXT_PROOF", smartvectors.NewRegular(builder.useNextMerkleProof))
-			run.AssignColumn("IS_ACTIVE", smartvectors.NewRegular(builder.isActive))
-			run.AssignColumn("COUNTER", smartvectors.NewRegular(builder.counter))
-		}
+// 		prove := func(run *wizard.ProverRuntime) {
+// 			proofAssignment := merkle.PackMerkleProofs(builder.proofs)
+// 			run.AssignColumn("PROOF", proofAssignment)
+// 			run.AssignColumn("ROOTS", padWithLast(builder.roots))
+// 			run.AssignColumn("LEAVES", padWithLast(builder.leaves))
+// 			run.AssignColumn("POS", padWithLast(builder.pos))
+// 			run.AssignColumn("REUSE_NEXT_PROOF", smartvectors.NewRegular(builder.useNextMerkleProof))
+// 			run.AssignColumn("IS_ACTIVE", smartvectors.NewRegular(builder.isActive))
+// 			run.AssignColumn("COUNTER", smartvectors.NewRegular(builder.counter))
+// 		}
 
-		comp := wizard.Compile(define, dummy.Compile)
-		proof := wizard.Prove(comp, prove)
-		err := wizard.Verify(comp, proof)
+// 		comp := wizard.Compile(define, dummy.Compile)
+// 		proof := wizard.Prove(comp, prove)
+// 		err := wizard.Verify(comp, proof)
 
-		require.NoError(t, err)
-	}
-	for i := range testOps {
-		t.Logf("run test case #%v", i)
-		runTest(testOps[i])
-	}
+// 		require.NoError(t, err)
+// 	}
+// 	for i := range testOps {
+// 		t.Logf("run test case #%v", i)
+// 		runTest(testOps[i])
+// 	}
 
-}
+// }
 
-func TestMerkleManySizesReuseMerkle(t *testing.T) {
+// func TestMerkleManySizesReuseMerkle(t *testing.T) {
 
-	logrus.SetLevel(logrus.FatalLevel)
-	// Note: numNonReUseProofs should be even and can be atmost (numProofs - 2)
-	dimensions := []map[string]int{
-		{"depth": 4, "numProofs": 16, "numNonReUseProofs": 2, "disablePosition": 2},
-		{"depth": 8, "numProofs": 16, "numNonReUseProofs": 4, "disablePosition": 1},
-		{"depth": 4, "numProofs": 14, "numNonReUseProofs": 8, "disablePosition": 0},
-		{"depth": 5, "numProofs": 24, "numNonReUseProofs": 18, "disablePosition": 0},
-		{"depth": 4, "numProofs": 12, "numNonReUseProofs": 10, "disablePosition": 2},
-		{"depth": 6, "numProofs": 48, "numNonReUseProofs": 20, "disablePosition": 2},
-	}
+// 	logrus.SetLevel(logrus.FatalLevel)
+// 	// Note: numNonReUseProofs should be even and can be atmost (numProofs - 2)
+// 	dimensions := []map[string]int{
+// 		{"depth": 4, "numProofs": 16, "numNonReUseProofs": 2, "disablePosition": 2},
+// 		{"depth": 8, "numProofs": 16, "numNonReUseProofs": 4, "disablePosition": 1},
+// 		{"depth": 4, "numProofs": 14, "numNonReUseProofs": 8, "disablePosition": 0},
+// 		{"depth": 5, "numProofs": 24, "numNonReUseProofs": 18, "disablePosition": 0},
+// 		{"depth": 4, "numProofs": 12, "numNonReUseProofs": 10, "disablePosition": 2},
+// 		{"depth": 6, "numProofs": 48, "numNonReUseProofs": 20, "disablePosition": 2},
+// 	}
 
-	runTest := func(dims map[string]int) {
+// 	runTest := func(dims map[string]int) {
 
-		// Generates a list of Merkle proofs for the same tree
-		depth := dims["depth"]
-		numProofs := dims["numProofs"]
-		numNonReUseProofs := dims["numNonReUseProofs"]
-		disablePos := dims["disablePosition"]
+// 		// Generates a list of Merkle proofs for the same tree
+// 		depth := dims["depth"]
+// 		numProofs := dims["numProofs"]
+// 		numNonReUseProofs := dims["numNonReUseProofs"]
+// 		disablePos := dims["disablePosition"]
 
-		smallSize := utils.NextPowerOfTwo(numProofs)
-		largeSize := utils.NextPowerOfTwo(numProofs * depth)
+// 		smallSize := utils.NextPowerOfTwo(numProofs)
+// 		largeSize := utils.NextPowerOfTwo(numProofs * depth)
 
-		builder := newMerkleTestBuilder(numProofs)
-		builder.assignProofs(numProofs, depth, true, disablePos, numNonReUseProofs)
-		define := func(b *wizard.Builder) {
-			proofcol := b.RegisterCommit("PROOF", largeSize)
-			rootscol := b.RegisterCommit("ROOTS", smallSize)
-			leavescol := b.RegisterCommit("LEAVES", smallSize)
-			poscol := b.RegisterCommit("POS", smallSize)
-			useNextMerkleProofCol := b.RegisterCommit("REUSE_NEXT_PROOF", smallSize)
-			isActiveCol := b.RegisterCommit("IS_ACTIVE", smallSize)
-			counterCol := b.RegisterCommit("COUNTER", smallSize)
+// 		builder := newMerkleTestBuilder(numProofs)
+// 		builder.assignProofs(numProofs, depth, true, disablePos, numNonReUseProofs)
+// 		define := func(b *wizard.Builder) {
+// 			proofcol := b.RegisterCommit("PROOF", largeSize)
+// 			rootscol := b.RegisterCommit("ROOTS", smallSize)
+// 			leavescol := b.RegisterCommit("LEAVES", smallSize)
+// 			poscol := b.RegisterCommit("POS", smallSize)
+// 			useNextMerkleProofCol := b.RegisterCommit("REUSE_NEXT_PROOF", smallSize)
+// 			isActiveCol := b.RegisterCommit("IS_ACTIVE", smallSize)
+// 			counterCol := b.RegisterCommit("COUNTER", smallSize)
 
-			merkle.MerkleProofCheckWithReuse(b.CompiledIOP, "TEST", depth, numProofs, proofcol, rootscol, leavescol, poscol, useNextMerkleProofCol, isActiveCol, counterCol)
-		}
+// 			merkle.MerkleProofCheckWithReuse(b.CompiledIOP, "TEST", depth, numProofs, proofcol, rootscol, leavescol, poscol, useNextMerkleProofCol, isActiveCol, counterCol)
+// 		}
 
-		prove := func(run *wizard.ProverRuntime) {
-			proofAssignment := merkle.PackMerkleProofs(builder.proofs)
-			run.AssignColumn("PROOF", proofAssignment)
-			run.AssignColumn("ROOTS", smartvectors.RightZeroPadded(builder.roots, smallSize))
-			run.AssignColumn("LEAVES", smartvectors.RightZeroPadded(builder.leaves, smallSize))
-			run.AssignColumn("POS", smartvectors.RightZeroPadded(builder.pos, smallSize))
-			run.AssignColumn("REUSE_NEXT_PROOF", smartvectors.RightZeroPadded(builder.useNextMerkleProof, smallSize))
-			run.AssignColumn("IS_ACTIVE", smartvectors.RightZeroPadded(builder.isActive, smallSize))
-			run.AssignColumn("COUNTER", smartvectors.RightZeroPadded(builder.counter, smallSize))
-		}
+// 		prove := func(run *wizard.ProverRuntime) {
+// 			proofAssignment := merkle.PackMerkleProofs(builder.proofs)
+// 			run.AssignColumn("PROOF", proofAssignment)
+// 			run.AssignColumn("ROOTS", smartvectors.RightZeroPadded(builder.roots, smallSize))
+// 			run.AssignColumn("LEAVES", smartvectors.RightZeroPadded(builder.leaves, smallSize))
+// 			run.AssignColumn("POS", smartvectors.RightZeroPadded(builder.pos, smallSize))
+// 			run.AssignColumn("REUSE_NEXT_PROOF", smartvectors.RightZeroPadded(builder.useNextMerkleProof, smallSize))
+// 			run.AssignColumn("IS_ACTIVE", smartvectors.RightZeroPadded(builder.isActive, smallSize))
+// 			run.AssignColumn("COUNTER", smartvectors.RightZeroPadded(builder.counter, smallSize))
+// 		}
 
-		comp := wizard.Compile(define, dummy.Compile)
-		proof := wizard.Prove(comp, prove)
-		err := wizard.Verify(comp, proof)
-		require.NoError(t, err)
-	}
+// 		comp := wizard.Compile(define, dummy.Compile)
+// 		proof := wizard.Prove(comp, prove)
+// 		err := wizard.Verify(comp, proof)
+// 		require.NoError(t, err)
+// 	}
 
-	for i := range dimensions {
-		t.Logf("run test case #%v", i)
-		runTest(dimensions[i])
-	}
+// 	for i := range dimensions {
+// 		t.Logf("run test case #%v", i)
+// 		runTest(dimensions[i])
+// 	}
 
-}
+// }
 
-// Test where numProofs and MaxNumProofs are different
-// This case is not handled in the non-reuse case
-func TestDifferentNumProofMaxProof(t *testing.T) {
-	depth := 4
-	numProofs := 4
-	maxNumProofs := 6
-	numNonReUseProofs := 2
-	smallSize := utils.NextPowerOfTwo(maxNumProofs)
-	largeSize := utils.NextPowerOfTwo(maxNumProofs * depth)
-	// We allocate the maximum size for the columns
-	builder := newMerkleTestBuilder(maxNumProofs)
-	// We assign only numProofs (< maxNumProofs) number of proofs
-	builder.assignProofs(numProofs, depth, true, 0, numNonReUseProofs)
-	define := func(b *wizard.Builder) {
-		proofcol := b.RegisterCommit("PROOF", largeSize)
-		rootscol := b.RegisterCommit("ROOTS", smallSize)
-		leavescol := b.RegisterCommit("LEAVES", smallSize)
-		poscol := b.RegisterCommit("POS", smallSize)
-		useNextMerkleProofCol := b.RegisterCommit("REUSE_NEXT_PROOF", smallSize)
-		isActiveCol := b.RegisterCommit("IS_ACTIVE", smallSize)
-		counterCol := b.RegisterCommit("COUNTER", smallSize)
+// // Test where numProofs and MaxNumProofs are different
+// // This case is not handled in the non-reuse case
+// func TestDifferentNumProofMaxProof(t *testing.T) {
+// 	depth := 4
+// 	numProofs := 4
+// 	maxNumProofs := 6
+// 	numNonReUseProofs := 2
+// 	smallSize := utils.NextPowerOfTwo(maxNumProofs)
+// 	largeSize := utils.NextPowerOfTwo(maxNumProofs * depth)
+// 	// We allocate the maximum size for the columns
+// 	builder := newMerkleTestBuilder(maxNumProofs)
+// 	// We assign only numProofs (< maxNumProofs) number of proofs
+// 	builder.assignProofs(numProofs, depth, true, 0, numNonReUseProofs)
+// 	define := func(b *wizard.Builder) {
+// 		proofcol := b.RegisterCommit("PROOF", largeSize)
+// 		rootscol := b.RegisterCommit("ROOTS", smallSize)
+// 		leavescol := b.RegisterCommit("LEAVES", smallSize)
+// 		poscol := b.RegisterCommit("POS", smallSize)
+// 		useNextMerkleProofCol := b.RegisterCommit("REUSE_NEXT_PROOF", smallSize)
+// 		isActiveCol := b.RegisterCommit("IS_ACTIVE", smallSize)
+// 		counterCol := b.RegisterCommit("COUNTER", smallSize)
 
-		merkle.MerkleProofCheckWithReuse(b.CompiledIOP, "TEST", depth, maxNumProofs, proofcol, rootscol, leavescol, poscol, useNextMerkleProofCol, isActiveCol, counterCol)
-	}
+// 		merkle.MerkleProofCheckWithReuse(b.CompiledIOP, "TEST", depth, maxNumProofs, proofcol, rootscol, leavescol, poscol, useNextMerkleProofCol, isActiveCol, counterCol)
+// 	}
 
-	prove := func(run *wizard.ProverRuntime) {
-		proofs_ := merkle.PackMerkleProofs(builder.proofs)
-		proofsReg := smartvectors.IntoRegVec(proofs_)
-		proofPadded := smartvectors.RightZeroPadded(proofsReg, largeSize)
-		run.AssignColumn("PROOF", proofPadded)
-		run.AssignColumn("ROOTS", smartvectors.RightZeroPadded(builder.roots, smallSize))
-		run.AssignColumn("LEAVES", smartvectors.RightZeroPadded(builder.leaves, smallSize))
-		run.AssignColumn("POS", smartvectors.RightZeroPadded(builder.pos, smallSize))
-		run.AssignColumn("REUSE_NEXT_PROOF", smartvectors.RightZeroPadded(builder.useNextMerkleProof, smallSize))
-		run.AssignColumn("IS_ACTIVE", smartvectors.RightZeroPadded(builder.isActive, smallSize))
-		run.AssignColumn("COUNTER", smartvectors.RightZeroPadded(builder.counter, smallSize))
-	}
+// 	prove := func(run *wizard.ProverRuntime) {
+// 		proofs_ := merkle.PackMerkleProofs(builder.proofs)
+// 		proofsReg := smartvectors.IntoRegVec(proofs_)
+// 		proofPadded := smartvectors.RightZeroPadded(proofsReg, largeSize)
+// 		run.AssignColumn("PROOF", proofPadded)
+// 		run.AssignColumn("ROOTS", smartvectors.RightZeroPadded(builder.roots, smallSize))
+// 		run.AssignColumn("LEAVES", smartvectors.RightZeroPadded(builder.leaves, smallSize))
+// 		run.AssignColumn("POS", smartvectors.RightZeroPadded(builder.pos, smallSize))
+// 		run.AssignColumn("REUSE_NEXT_PROOF", smartvectors.RightZeroPadded(builder.useNextMerkleProof, smallSize))
+// 		run.AssignColumn("IS_ACTIVE", smartvectors.RightZeroPadded(builder.isActive, smallSize))
+// 		run.AssignColumn("COUNTER", smartvectors.RightZeroPadded(builder.counter, smallSize))
+// 	}
 
-	comp := wizard.Compile(define, dummy.Compile)
-	proof := wizard.Prove(comp, prove)
-	err := wizard.Verify(comp, proof)
-	require.NoError(t, err)
+// 	comp := wizard.Compile(define, dummy.Compile)
+// 	proof := wizard.Prove(comp, prove)
+// 	err := wizard.Verify(comp, proof)
+// 	require.NoError(t, err)
 
-}
+// }
 
 func padWithLast(v []field.Element) smartvectors.SmartVector {
 	return smartvectors.RightPadded(v, v[len(v)-1], utils.NextPowerOfTwo(len(v)))

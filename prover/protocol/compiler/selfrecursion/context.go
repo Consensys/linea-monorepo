@@ -10,6 +10,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
+const blockSize = 8
+
 type Columns struct {
 	// (Precomputed)
 	//
@@ -73,12 +75,12 @@ type Columns struct {
 	// (Commitment, to assign from the proof)
 	//
 	// (MerkleProofs, positions to open)
-	MerkleProofs ifaces.Column
+	MerkleProofs [blockSize]ifaces.Column
 
 	// (Commitment, to assign)
 	//
 	// Leaves to be verified by the proof (must be zero padded)
-	MerkleProofsLeaves ifaces.Column
+	MerkleProofsLeaves [blockSize]ifaces.Column
 
 	// (Commitment, to compute)
 	//
@@ -88,7 +90,7 @@ type Columns struct {
 	// (Commitment, to compute)
 	//
 	// Roots hashes for the Merkle proofs
-	MerkleRoots ifaces.Column
+	MerkleRoots [blockSize]ifaces.Column
 
 	// (Commitment, to compute)
 	//
@@ -343,7 +345,9 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 	}
 
 	// And mark the merkle proof column as a Proof message
-	comp.Columns.SetStatus(ctx.Columns.MerkleProofs.GetColID(), column.Committed)
+	for i := 0; i < blockSize; i++ {
+		comp.Columns.SetStatus(ctx.Columns.MerkleProofs[i].GetColID(), column.Committed)
+	}
 
 	return ctx
 }

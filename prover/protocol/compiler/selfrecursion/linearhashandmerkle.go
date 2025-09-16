@@ -99,7 +99,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 
 	// The Merkle proof verification is for both sis and non sis rounds
 	merkle.MerkleProofCheck(ctx.Comp, ctx.merkleProofVerificationName(), depth, leavesSizeUnpadded,
-		ctx.Columns.MerkleProofs, ctx.Columns.MerkleRoots, ctx.Columns.MerkleProofsLeaves, ctx.Columns.MerkleProofPositions)
+		ctx.Columns.MerkleProofs, ctx.Columns.MerkleProofPositions, ctx.Columns.MerkleRoots, ctx.Columns.MerkleProofsLeaves)
 
 	// The below linear hash verification is for only sis rounds
 	if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || ctx.VortexCtx.IsSISAppliedToPrecomputed() {
