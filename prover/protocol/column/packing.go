@@ -38,6 +38,7 @@ func (p PackedStore) Unpack() *Store {
 // PackedNatural is serialization-friendly intermediate structure that is
 // use to represent a natural column.
 type PackedNatural struct {
+	_        struct{}     `cbor:",toarray"`
 	Store    *Store       `cbor:"s"`
 	Round    int          `cbor:"r"`
 	Position int          `cbor:"p"`
