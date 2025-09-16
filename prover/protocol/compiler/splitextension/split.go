@@ -269,36 +269,43 @@ func splitVector(sv smartvectors.SmartVector) [4]smartvectors.SmartVector {
 
 	size := sv.Len()
 
-	switch sv.(type) {
-	case *smartvectors.Regular, *smartvectors.Constant, *smartvectors.PaddedCircularWindow:
+	if smartvectors.IsBase(sv) {
 		return [4]smartvectors.SmartVector{
-			sv, // TODO @gbotrel check if we need to copy here.
+			sv,
 			smartvectors.NewConstant(field.Zero(), size),
 			smartvectors.NewConstant(field.Zero(), size),
 			smartvectors.NewConstant(field.Zero(), size),
-		}
-
-	default:
-		r0 := make([]field.Element, size)
-		r1 := make([]field.Element, size)
-		r2 := make([]field.Element, size)
-		r3 := make([]field.Element, size)
-
-		for i := 0; i < size; i++ {
-			elmt := sv.GetExt(i)
-			r0[i] = elmt.B0.A0
-			r1[i] = elmt.B0.A1
-			r2[i] = elmt.B1.A0
-			r3[i] = elmt.B1.A1
-		}
-		return [4]smartvectors.SmartVector{
-			smartvectors.NewRegular(r0),
-			smartvectors.NewRegular(r1),
-			smartvectors.NewRegular(r2),
-			smartvectors.NewRegular(r3),
 		}
 	}
 
+	// if it's a constant (ext) we don't need to allocate.
+	if _, ok := sv.(*smartvectors.ConstantExt); ok {
+		elmt := sv.GetExt(0)
+		r0 := smartvectors.NewConstant(elmt.B0.A0, size)
+		r1 := smartvectors.NewConstant(elmt.B0.A1, size)
+		r2 := smartvectors.NewConstant(elmt.B1.A0, size)
+		r3 := smartvectors.NewConstant(elmt.B1.A1, size)
+		return [4]smartvectors.SmartVector{r0, r1, r2, r3}
+	}
+
+	r0 := make([]field.Element, size)
+	r1 := make([]field.Element, size)
+	r2 := make([]field.Element, size)
+	r3 := make([]field.Element, size)
+
+	for i := 0; i < size; i++ {
+		elmt := sv.GetExt(i)
+		r0[i] = elmt.B0.A0
+		r1[i] = elmt.B0.A1
+		r2[i] = elmt.B1.A0
+		r3[i] = elmt.B1.A1
+	}
+	return [4]smartvectors.SmartVector{
+		smartvectors.NewRegular(r0),
+		smartvectors.NewRegular(r1),
+		smartvectors.NewRegular(r2),
+		smartvectors.NewRegular(r3),
+	}
 }
 
 // build prover & verifier actions
