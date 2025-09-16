@@ -54,6 +54,44 @@ interface BundleResponse {
   };
 }
 
+interface CallBundleParams {
+  txs: string[];
+  blockNumber: string;
+  stateBlockNumber: string;
+  timestamp?: number;
+}
+
+interface CallBundleResult {
+  bundleGasPrice: string;
+  bundleHash: string;
+  coinbaseDiff: string;
+  ethSentToCoinbase: string;
+  gasFees: string;
+  results: Array<{
+    coinbaseDiff: string;
+    ethSentToCoinbase: string;
+    fromAddress: string;
+    gasFees: string;
+    gasPrice: string;
+    gasUsed: number;
+    toAddress: string;
+    txHash: string;
+    value: string;
+  }>;
+  stateBlockNumber: number;
+  totalGasUsed: number;
+}
+
+interface CallBundleResponse {
+  jsonrpc: string;
+  id: number;
+  result?: CallBundleResult;
+  error?: {
+    code: number;
+    message: string;
+  };
+}
+
 class BundleSender {
   private provider: ethers.Provider;
   private signer: ethers.Wallet;
@@ -155,6 +193,48 @@ class BundleSender {
     return result;
   }
 
+  async callBundle(signedTransactions: string[], targetBlockNumber?: number): Promise<CallBundleResponse> {
+    const currentBlockNumber = await this.provider.getBlockNumber();
+    const blockNumber = targetBlockNumber || currentBlockNumber + 1;
+
+    const callBundleParams: CallBundleParams = {
+      txs: signedTransactions,
+      blockNumber: `0x${blockNumber.toString(16)}`,
+      stateBlockNumber: "latest",
+    };
+
+    const requestBody = {
+      jsonrpc: "2.0",
+      id: 1,
+      method: "eth_callBundle",
+      params: [callBundleParams],
+    };
+
+    const requestBodyString = JSON.stringify(requestBody);
+    const bundleSignature = await this.generateBundleSignature(requestBodyString);
+
+    const response = await fetch(this.bundleUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Flashbots-Signature": bundleSignature,
+      },
+      body: requestBodyString,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result: CallBundleResponse = await response.json();
+
+    if (result.error) {
+      throw new Error(`Call bundle error: ${result.error.code} - ${result.error.message}`);
+    }
+
+    return result;
+  }
+
   async getSignerInfo(): Promise<{ address: string; balance: string; nonce: number }> {
     const address = this.signer.address;
     const balance = await this.provider.getBalance(address);
@@ -218,14 +298,28 @@ async function main() {
 
     if (targetBlockNumber) {
       // Single bundle mode
-      console.log("\n=== Sending Single Bundle ===");
-      const result = await bundleSender.sendBundle([signedTx], targetBlockNumber);
-      console.log("\n=== Success ===");
-      console.log("Bundle hash:", result.result?.bundleHash);
-      if (result.result?.smart) {
-        console.log("Smart bundle:", result.result.smart);
+      console.log("\n=== Simulating Bundle ===");
+      const callResult = await bundleSender.callBundle([signedTx], targetBlockNumber);
+
+      if (callResult.result) {
+        console.log("Bundle simulation successful:");
+        console.log("  Total gas used:", callResult.result.totalGasUsed);
+        console.log("  Bundle gas price:", ethers.formatUnits(callResult.result.bundleGasPrice, "gwei"), "gwei");
+        console.log("  Gas fees:", ethers.formatEther(callResult.result.gasFees), "ETH");
+        console.log("  Coinbase diff:", ethers.formatEther(callResult.result.coinbaseDiff), "ETH");
+        console.log("  State block number:", callResult.result.stateBlockNumber);
+
+        console.log("\n=== Sending Single Bundle ===");
+        const result = await bundleSender.sendBundle([signedTx], targetBlockNumber);
+        console.log("\n=== Success ===");
+        console.log("Bundle hash:", result.result?.bundleHash);
+        if (result.result?.smart) {
+          console.log("Smart bundle:", result.result.smart);
+        }
+        console.log("\nBundle submitted successfully! Monitor the target block to see if it was included.");
+      } else {
+        console.log("Bundle simulation failed - skipping submission");
       }
-      console.log("\nBundle submitted successfully! Monitor the target block to see if it was included.");
     } else {
       // Multiple bundles mode
       console.log(`\n=== Sending ${bundleCount} Bundles ===`);
@@ -239,6 +333,22 @@ async function main() {
       // Create promises for all bundle submissions
       const bundlePromises = targetBlocks.map(async (targetBlock) => {
         try {
+          // Simulate bundle first
+          const callResult = await bundleSender.callBundle([signedTx], targetBlock);
+
+          if (!callResult.result) {
+            console.log(`❌ Bundle simulation failed for block ${targetBlock} - skipping submission`);
+            return {
+              block: targetBlock,
+              success: false,
+              error: "Bundle simulation failed",
+            };
+          }
+
+          console.log(
+            `📊 Bundle simulation for block ${targetBlock}: ${callResult.result.totalGasUsed} gas, ${ethers.formatEther(callResult.result.gasFees)} ETH fees`,
+          );
+
           const result = await bundleSender.sendBundle([signedTx], targetBlock);
           console.log(`✅ Bundle submitted - Hash: ${result.result?.bundleHash || "unknown"}`);
           return {
