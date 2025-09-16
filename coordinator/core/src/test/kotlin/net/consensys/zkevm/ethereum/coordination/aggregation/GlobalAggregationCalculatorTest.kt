@@ -70,7 +70,7 @@ class GlobalAggregationCalculatorTest {
         hardForkTimestamps?.also {
           aggregationTriggerCalculatorByTimestampHardFork = AggregationTriggerCalculatorByTimestampHardFork(
             hardForkTimestamps = it,
-            initialTimestamp = initialTimestamp
+            initialTimestamp = initialTimestamp,
           )
           add(aggregationTriggerCalculatorByTimestampHardFork)
         }
@@ -380,7 +380,7 @@ class GlobalAggregationCalculatorTest {
         numberOfBatches = 7u,
         startBlockNumber = 11u,
         endBlockNumber = 30u,
-      )
+      ),
     )
     assertThat(pendingProofsGauge.value()).isEqualTo(14.0)
 
