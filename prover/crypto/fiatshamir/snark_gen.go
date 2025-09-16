@@ -4,68 +4,43 @@ package fiatshamir
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/math/uints"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 )
 
-// FieldHasher hashes inputs into a short digest. This interface mocks
-// [BinaryHasher], but is more suitable in-circuit by assuming the inputs are
-// scalar field elements and outputs digest as a field element. Such hash
-// functions are for example Poseidon, MiMC etc.
-type FieldHasher interface {
-	// Sum computes the hash of the internal state of the hash function.
-	Sum() frontend.Variable
+type FieldHasher[T zk.Element] interface {
+	Sum() T
+	Write(data ...T)
 
-	// Write populate the internal state of the hash function with data. The inputs are native field elements.
-	Write(data ...frontend.Variable)
-
-	// Reset empty the internal state and put the intermediate state to zero.
+	// Reset set the intermediate state to zero.
 	Reset()
 }
 
 // StateStorer allows to store and retrieve the state of a hash function.
-type StateStorer interface {
-	FieldHasher
-	// State retrieves the current state of the hash function. Calling this
-	// method should not destroy the current state and allow continue the use of
-	// the current hasher. The number of returned Variable is implementation
-	// dependent.
-	State() []frontend.Variable
-	// SetState sets the state of the hash function from a previously stored
-	// state retrieved using [StateStorer.State] method. The implementation
-	// returns an error if the number of supplied Variable does not match the
-	// number of Variable expected.
-	SetState(state []frontend.Variable) error
+type StateStorer[T zk.Element] interface {
+	FieldHasher[T]
+	State() []T
+	SetState(state []T) error
 }
 
 // BinaryHasher hashes inputs into a short digest. It takes as inputs bytes and
 // outputs byte array whose length depends on the underlying hash function. For
 // SNARK-native hash functions use [FieldHasher].
 type BinaryHasher interface {
-	// Sum finalises the current hash and returns the digest.
 	Sum() []uints.U8
 
-	// Write writes more bytes into the current hash state.
 	Write([]uints.U8)
 
-	// Size returns the number of bytes this hash function returns in a call to
-	// [BinaryHasher.Sum].
+	// Size returns the number of bytes output by Sum.
 	Size() int
 }
 
-// BinaryFixedLengthHasher is like [BinaryHasher], but assumes the length of the
-// input is not full length as defined during compile time. This allows to
-// compute digest of variable-length input, unlike [BinaryHasher] which assumes
-// the length of the input is the total number of bytes written.
-type BinaryFixedLengthHasher interface {
+type BinaryFixedLengthHasher[T zk.Element] interface {
 	BinaryHasher
 	// FixedLengthSum returns digest of the first length bytes. See the
 	// [WithMinimalLength] option for setting lower bound on length.
-	FixedLengthSum(length frontend.Variable) []uints.U8
+	FixedLengthSum(length T) []uints.U8
 }
 
-// HasherConfig allows to configure the behavior of the hash constructors. Do
-// not initialize the configuration directly but rather use the [Option]
-// functions which perform correct initializations. This configuration is
-// exported for importing in hash implementations.
 type HasherConfig struct {
 	MinimalLength int
 }
@@ -74,10 +49,7 @@ type HasherConfig struct {
 type Option func(*HasherConfig) error
 
 // WithMinimalLength hints the minimal length of the input to the hash function.
-// This allows to optimize the constraint count when calling
-// [BinaryFixedLengthHasher.FixedLengthSum] as we can avoid selecting between
-// the dummy padding and actual padding. If this option is not provided, then we
-// assume the minimal length is 0.
+// Default minimal length is 0.
 func WithMinimalLength(minimalLength int) Option {
 	return func(cfg *HasherConfig) error {
 		cfg.MinimalLength = minimalLength
@@ -85,47 +57,43 @@ func WithMinimalLength(minimalLength int) Option {
 	}
 }
 
-// Compressor is a 2-1 one-way function. It takes two inputs and compresses
-// them into one output.
-//
-// NB! This is lossy compression, meaning that the output is not guaranteed to
-// be unique for different inputs. The output is guaranteed to be the same for
-// the same inputs.
-//
-// The Compressor is used in the Merkle-Damgard construction to build a hash
-// function.
-type Compressor interface {
-	Compress(frontend.Variable, frontend.Variable) frontend.Variable
+// 2 to 1 compression function
+type Compressor[T zk.Element] interface {
+	Compress(T, T) T
 }
 
-type merkleDamgardHasher struct {
-	state frontend.Variable
-	iv    frontend.Variable
-	f     Compressor
-	api   frontend.API
+type merkleDamgardHasher[T zk.Element] struct {
+	state T
+	iv    T
+	f     Compressor[T]
+	api   zk.APIGen[T]
 }
 
 // NewMerkleDamgardHasher transforms a 2-1 one-way function into a hash
 // initialState is a value whose preimage is not known
-func NewMerkleDamgardHasher(api frontend.API, f Compressor, initialState frontend.Variable) FieldHasher {
-	return &merkleDamgardHasher{
+func NewMerkleDamgardHasher[T zk.Element](api frontend.API, f Compressor[T], initialState T) FieldHasher[T] {
+	mApi, err := zk.NewApi[T](api)
+	if err != nil { // TODO handle panic
+		panic(err)
+	}
+	return &merkleDamgardHasher[T]{
 		state: initialState,
 		iv:    initialState,
 		f:     f,
-		api:   api,
+		api:   mApi,
 	}
 }
 
-func (h *merkleDamgardHasher) Reset() {
+func (h *merkleDamgardHasher[T]) Reset() {
 	h.state = h.iv
 }
 
-func (h *merkleDamgardHasher) Write(data ...frontend.Variable) {
+func (h *merkleDamgardHasher[T]) Write(data ...T) {
 	for _, d := range data {
 		h.state = h.f.Compress(h.state, d)
 	}
 }
 
-func (h *merkleDamgardHasher) Sum() frontend.Variable {
+func (h *merkleDamgardHasher[T]) Sum() T {
 	return h.state
 }
