@@ -126,6 +126,8 @@ class BundleSender {
       maxPriorityFeePerGas = fees.maxPriorityFeePerGas || 0n;
     }
 
+    const gasMultiplierFactor = 10000000n;
+
     const txParams = {
       to: toAddress,
       value: amountWei,
@@ -133,8 +135,8 @@ class BundleSender {
       nonce,
       chainId,
       type: 2, // EIP-1559 transaction
-      maxFeePerGas,
-      maxPriorityFeePerGas,
+      maxFeePerGas: maxFeePerGas * gasMultiplierFactor,
+      maxPriorityFeePerGas: maxPriorityFeePerGas * gasMultiplierFactor,
     };
 
     console.log("Transaction parameters:", {
@@ -142,8 +144,8 @@ class BundleSender {
       to: toAddress,
       value: ethers.formatEther(amountWei),
       gasLimit: gasLimit.toString(),
-      maxFeePerGas: ethers.formatUnits(100n * maxFeePerGas, "gwei"),
-      maxPriorityFeePerGas: ethers.formatUnits(100n * maxPriorityFeePerGas, "gwei"),
+      maxFeePerGas: ethers.formatUnits(maxFeePerGas, "gwei"),
+      maxPriorityFeePerGas: ethers.formatUnits(maxPriorityFeePerGas, "gwei"),
       nonce,
       chainId,
     });
