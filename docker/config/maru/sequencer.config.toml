@@ -4,9 +4,14 @@ allow-empty-blocks = false
 data-path="/tmp/maru-db"
 private-key-path="/tmp/maru-db/private-key"
 
+[qbft]
+fee-recipient = "0x0000000000000000000000000000000000000000"
+
 [p2p]
 port = 9000
 ip-address = "0.0.0.0"
+static-peers = ["/dns4/maru-follower/tcp/9000/p2p/16Uiu2HAkxepRVwhqNB4s7FJ4r2qYGowe41FofyHapGVZ6H86oJir"]
+reconnect-delay = "500 ms"
 
 [p2p.discovery]
 port = 9000
@@ -16,16 +21,14 @@ refresh-interval = "2 seconds"
 cooldown-period = "2 seconds"
 ban-period = "30 seconds"
 
-[p2p.status-update]
-refresh-interval= "2 seconds"
-
 [payload-validator]
-engine-api-endpoint = { endpoint = "http://l2-node-besu:8550" }
-eth-api-endpoint = { endpoint = "http://l2-node-besu:8545" }
+engine-api-endpoint = { endpoint = "http://sequencer:8550" }
+eth-api-endpoint = { endpoint = "http://sequencer:8545" }
 
-[follower-engine-apis]
-follower-tracer = { endpoint = "http://traces-node:8550" }
-follower-shomei = { endpoint = "http://zkbesu-shomei:8550" }
+#[follower-engine-apis]
+#follower-besu = { endpoint = "http://l2-node-besu:8550" }
+#follower-tracer = { endpoint = "http://traces-node:8550" }
+#follower-shomei = { endpoint = "http://zkbesu-shomei:8550" }
 
 [observability]
 port = 9090

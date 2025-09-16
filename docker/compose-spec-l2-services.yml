@@ -12,7 +12,7 @@ services:
       - ./config/l2-genesis-initialization/:/initialization:rw
 
   maru:
-    image: consensys/maru:${MARU_TAG:-develop}
+    image: consensys/maru:${MARU_TAG:-9839958}
     hostname: maru
     container_name: maru
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
@@ -22,9 +22,9 @@ services:
     command: [ 'java', '-Dlog4j2.configurationFile=configs/log4j.xml', '-jar', "maru.jar", '--maru-genesis-file', '/initialization/genesis-maru.json', '--config', 'configs/config.toml']
 #    command: [ 'echo' , 'Forced exit to run in IntellIJ' ]
     volumes:
-      - ./config/maru/config.sequencer.toml:/opt/consensys/maru/configs/config.toml:ro
+      - ./config/maru/sequencer.config.toml:/opt/consensys/maru/configs/config.toml:ro
       - ./config/maru/log4j.xml:/opt/consensys/maru/configs/log4j.xml:ro
-      - ./config/maru/0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0.key:/tmp/maru-db/private-key
+      - ./config/maru/0x083e11f14b68d5ebeb4be3e3e0237ebbc5675ab5.key:/tmp/maru-db/private-key
       - ./config/l2-genesis-initialization:/initialization/:ro
     ports:
       # Attach the IDE's remote java debugger to localhost:5005 to debug maru
@@ -32,10 +32,10 @@ services:
       - "8080:8080"
     networks:
       linea:
-        ipv4_address: 11.11.11.211
+        ipv4_address: 11.11.11.210
   
   maru-follower:
-    image: consensys/maru:${MARU_TAG:-develop}
+    image: consensys/maru:${MARU_TAG:-9839958}
     hostname: maru-follower
     container_name: maru-follower
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
@@ -50,9 +50,9 @@ services:
     command: [ 'java', '-Dlog4j2.configurationFile=configs/log4j.xml', '-jar', "maru.jar", '--maru-genesis-file', '/initialization/genesis-maru.json', '--config', 'configs/config.toml']
 #    command: [ 'echo' , 'Forced exit to run in IntellIJ' ]
     volumes:
-      - ./config/maru/config.follower.toml:/opt/consensys/maru/configs/config.toml:ro
+      - ./config/maru/follower.config.toml:/opt/consensys/maru/configs/config.toml:ro
       - ./config/maru/log4j.xml:/opt/consensys/maru/configs/log4j.xml:ro
-      - ./config/maru/0xbae3c3fcd73ccf7755ec8a10664f218ad6bbc775.key:/tmp/maru-db/private-key
+      - ./config/maru/0xf897807365c936f351969863aeac729841e27c1b.key:/tmp/maru-db/private-key
       - ./config/l2-genesis-initialization:/initialization/:ro
     ports:
       # Attach the IDE's remote java debugger to localhost:5005 to debug maru
@@ -60,13 +60,16 @@ services:
       - "18080:8080"
     networks:
       linea:
-        ipv4_address: 11.11.11.210
+        ipv4_address: 11.11.11.211
 
   sequencer:
     hostname: sequencer
     container_name: sequencer
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc0-counting-only---Prague-EXCLUDING-new-precompiles-and-7702-20250903145440-cf39ee8}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc6-CANCUN-20250916062616-7686144}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
+    depends_on:
+      l2-genesis-initialization:
+        condition: service_completed_successfully
     ports:
       - "8545:8545"
       - "8546:8546"
@@ -97,8 +100,7 @@ services:
       - ./config/linea-besu-sequencer/key:/var/lib/besu/key:ro
       - ./config/linea-besu-sequencer/log4j.xml:/var/lib/besu/log4j.xml:ro
       - ./config/linea-besu-sequencer/tls-files:/var/lib/besu/tls-files/
-      - ../config/common/traces-limits-v2-reduced.toml:/var/lib/besu/traces-limits.toml:ro
-      #- ../config/common/traces-limits-v2.toml:/var/lib/besu/traces-limits.toml:ro
+      - ../config/common/traces-limits-v2.toml:/var/lib/besu/traces-limits.toml:ro
       - ./config/l2-genesis-initialization:/initialization/:ro
     networks:
       l1network:
@@ -141,7 +143,7 @@ services:
   l2-node-besu:
     hostname: l2-node-besu
     container_name: l2-node-besu
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc0-counting-only---Prague-EXCLUDING-new-precompiles-and-7702-20250903145440-cf39ee8}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc6-CANCUN-20250916062616-7686144}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
@@ -174,8 +176,7 @@ services:
       - ./config/l2-node-besu/l2-node-besu-config.toml:/var/lib/besu/l2-node-besu.config.toml:ro
       - ./config/linea-besu-sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
       - ./config/l2-node-besu/log4j.xml:/var/lib/besu/log4j.xml:ro
-      - ../config/common/traces-limits-v2-reduced.toml:/var/lib/besu/traces-limits.toml:ro
-      #- ../config/common/traces-limits-v2.toml:/var/lib/besu/traces-limits.toml:ro
+      - ../config/common/traces-limits-v2.toml:/var/lib/besu/traces-limits.toml:ro
       - ./config/l2-genesis-initialization:/initialization/:ro
       - ../tmp/local/:/data/:rw
     networks:
@@ -186,7 +187,7 @@ services:
   l2-node-besu-follower:
     hostname: l2-node-besu-follower
     container_name: l2-node-besu-follower
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc0-counting-only---Prague-EXCLUDING-new-precompiles-and-7702-20250903145440-cf39ee8}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc6-CANCUN-20250916062616-7686144}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
@@ -208,7 +209,7 @@ services:
     entrypoint: besu-untuned
     command:
       - --config-file=/var/lib/besu/l2-node-besu.config.toml
-      - --genesis-file=/var/lib/besu/genesis.json
+      - --genesis-file=/initialization/genesis-besu.json
       - --plugin-linea-l1-polling-interval=PT12S
       - --plugin-linea-l1-smart-contract-address=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
       - --plugin-linea-l1-rpc-endpoint=http://l1-el-node:8545
@@ -219,8 +220,8 @@ services:
       - ./config/l2-node-besu/l2-node-besu-config.toml:/var/lib/besu/l2-node-besu.config.toml:ro
       - ./config/linea-besu-sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
       - ./config/l2-node-besu/log4j.xml:/var/lib/besu/log4j.xml:ro
-      - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
       - ../config/common/traces-limits-v2.toml:/var/lib/besu/traces-limits.toml:ro
+      - ./config/l2-genesis-initialization:/initialization/:ro
       - ../tmp/local/:/data/:rw
     networks:
       l1network:
@@ -230,7 +231,7 @@ services:
   traces-node:
     hostname: traces-node
     container_name: traces-node
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc0-counting-only---Prague-EXCLUDING-new-precompiles-and-7702-20250903145440-cf39ee8}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc6-CANCUN-20250916062616-7686144}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
@@ -333,8 +334,7 @@ services:
     #command: [ 'echo', 'forced exit' ]
     volumes:
       - ../config/coordinator/coordinator-config-v2.toml:/opt/consensys/linea/coordinator/config/coordinator-config.toml:ro
-      #- ../config/common/traces-limits-v2.toml:/opt/consensys/linea/coordinator/config/traces-limits-v2.toml:ro
-      - ../config/common/traces-limits-v2-reduced.toml:/opt/consensys/linea/coordinator/config/traces-limits-v2.toml:ro
+      - ../config/common/traces-limits-v2.toml:/opt/consensys/linea/coordinator/config/traces-limits-v2.toml:ro
       - ../config/common/smart-contract-errors.toml:/opt/consensys/linea/coordinator/config/smart-contract-errors.toml:ro
       - ../config/common/gas-price-cap-time-of-day-multipliers.toml:/opt/consensys/linea/coordinator/config/gas-price-cap-time-of-day-multipliers.toml:ro
       - ../config/coordinator/vertx-options.json:/var/lib/coordinator/vertx-options.json:ro
@@ -407,7 +407,7 @@ services:
       - l1network
 
   zkbesu-shomei:
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc0-counting-only---Prague-EXCLUDING-new-precompiles-and-7702-20250903145440-cf39ee8}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc6-CANCUN-20250916062616-7686144}
     hostname: zkbesu-shomei
     container_name: zkbesu-shomei
     profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
@@ -443,7 +443,7 @@ services:
         --plugin-shomei-http-host="11.11.11.114" \
         --plugin-shomei-http-port=8888 \
         --bonsai-limit-trie-logs-enabled=false \
-        --plugin-shomei-zktrace-comparison-mode=31 \
+        --plugin-shomei-zktrace-comparison-mode=0 \
         --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
 
     volumes:
@@ -624,7 +624,7 @@ services:
         ipv4_address: 10.10.10.205
 
   zkbesu-shomei-sr:
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc0-counting-only---Prague-EXCLUDING-new-precompiles-and-7702-20250903145440-cf39ee8}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc6-CANCUN-20250916062616-7686144}
     hostname: zkbesu-shomei-sr
     container_name: zkbesu-shomei-sr
     profiles: [ "external-to-monorepo", "staterecovery" ]

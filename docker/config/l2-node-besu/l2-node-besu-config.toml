@@ -58,7 +58,7 @@ plugin-linea-estimate-gas-min-margin="1.2"
 plugin-linea-bundles-forward-urls=["http://sequencer:8545"]
 plugin-linea-bundles-forward-retry-delay=1000
 plugin-linea-bundles-forward-timeout=5000
-plugin-linea-limitless-enabled=true
+plugin-linea-limitless-enabled=false
 
 bonsai-limit-trie-logs-enabled=false
 bonsai-historical-block-limit=1024

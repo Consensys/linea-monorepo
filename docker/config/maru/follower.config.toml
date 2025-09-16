@@ -4,23 +4,11 @@ allow-empty-blocks = false
 data-path="/tmp/maru-db"
 private-key-path="/tmp/maru-db/private-key"
 
-[qbft]
-fee-recipient = "0x0000000000000000000000000000000000000000"
-
-#[p2p]
-#port = 3322
-#ip-address = "0.0.0.0"
-#static-peers = []
-#reconnect-delay = "500 ms"
-#
-#[p2p.discovery]
-#port = 3324
-##bootnodes = ["enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2yFBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toYDrgUyOhV4N0Y3CCJBKDdWRwgiQT"]
-#refresh-interval = "2 minutes"
-
 [p2p]
 port = 9000
 ip-address = "0.0.0.0"
+static-peers = ["/dns4/maru/tcp/9000/p2p/16Uiu2HAmJUNxrHNBa7RhqqPKfEDc3nccSeoK9XFTAmHwEUQcDStu"]
+reconnect-delay = "500 ms"
 
 [p2p.discovery]
 port = 9000
@@ -30,12 +18,14 @@ refresh-interval = "2 seconds"
 cooldown-period = "2 seconds"
 ban-period = "30 seconds"
 
+[p2p.status-update]
+refresh-interval= "2 seconds"
+
 [payload-validator]
-engine-api-endpoint = { endpoint = "http://sequencer:8550" }
-eth-api-endpoint = { endpoint = "http://sequencer:8545" }
+engine-api-endpoint = { endpoint = "http://l2-node-besu:8550" }
+eth-api-endpoint = { endpoint = "http://l2-node-besu:8545" }
 
 [follower-engine-apis]
-follower-besu = { endpoint = "http://l2-node-besu:8550" }
 follower-tracer = { endpoint = "http://traces-node:8550" }
 follower-shomei = { endpoint = "http://zkbesu-shomei:8550" }
 

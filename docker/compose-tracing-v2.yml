@@ -46,10 +46,10 @@ services:
       file: compose-spec-l2-services.yml
       service: maru
 
-  # maru-follower:
-  #   extends:
-  #     file: compose-spec-l2-services.yml
-  #     service: maru-follower
+  maru-follower:
+    extends:
+      file: compose-spec-l2-services.yml
+      service: maru-follower
 
   sequencer:
     extends:
