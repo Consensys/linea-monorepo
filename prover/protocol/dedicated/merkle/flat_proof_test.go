@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
@@ -65,11 +66,18 @@ type merkleTestRunnerFlat struct {
 // Define implements the [wizard.DefineFunc] interface
 func (ctx *merkleTestRunnerFlat) Define(b *wizard.Builder) {
 
+	var leaf, roots [blockSize]ifaces.Column
+	proofs := *NewProof(b.CompiledIOP, 0, "test", merkleTestDepth, merkleTestNumRow)
+
+	for i := 0; i < blockSize; i++ {
+		leaf[i] = b.RegisterCommit(ifaces.ColIDf("LEAF_%v", i), merkleTestNumRow)
+		roots[i] = b.RegisterCommit(ifaces.ColIDf("ROOTS_%v", i), merkleTestNumRow)
+	}
 	mpvInputs := FlatProofVerificationInputs{
 		Name:     "test",
-		Proof:    *NewProof(b.CompiledIOP, 0, "test", merkleTestDepth, merkleTestNumRow),
-		Leaf:     b.RegisterCommit("LEAF", merkleTestNumRow),
-		Roots:    b.RegisterCommit("ROOTS", merkleTestNumRow),
+		Proof:    proofs,
+		Leaf:     leaf,
+		Roots:    roots,
 		Position: b.RegisterCommit("POS", merkleTestNumRow),
 		IsActive: b.RegisterCommit("ACTIVE", merkleTestNumRow),
 	}
@@ -79,26 +87,31 @@ func (ctx *merkleTestRunnerFlat) Define(b *wizard.Builder) {
 
 // Assign assigns the merkle tree test-cases at runtime
 func (ctx *merkleTestRunnerFlat) Assign(run *wizard.ProverRuntime, data *merkleTestBuilder) {
-	run.AssignColumn("LEAF", smartvectors.RightZeroPadded(data.leaves, merkleTestNumRow))
-	run.AssignColumn("ROOTS", smartvectors.RightZeroPadded(data.roots, merkleTestNumRow))
+	for i := 0; i < blockSize; i++ {
+		run.AssignColumn(ifaces.ColIDf("LEAF_%v", i), smartvectors.RightZeroPadded(data.leaves[i], merkleTestNumRow))
+		run.AssignColumn(ifaces.ColIDf("ROOTS_%v", i), smartvectors.RightZeroPadded(data.roots[i], merkleTestNumRow))
+	}
 	run.AssignColumn("POS", smartvectors.RightZeroPadded(data.pos, merkleTestNumRow))
 	run.AssignColumn("ACTIVE", smartvectors.RightZeroPadded(data.isActive, merkleTestNumRow))
 
 	ctx.ctx.Proof.Assign(run, data.proofs)
 	ctx.ctx.Run(run)
 
-	for i := 0; i < merkleTestNumRow; i++ {
-		for l := 0; l < merkleTestDepth; l++ {
+	// for i := 0; i < merkleTestNumRow; i++ {
+	// 	for l := 0; l < merkleTestDepth; l++ {
 
-			var (
-				left  = ctx.ctx.Lefts[l].Result.GetColAssignmentAt(run, i)
-				right = ctx.ctx.Rights[l].Result.GetColAssignmentAt(run, i)
-				node  = ctx.ctx.Nodes[l].Result().GetColAssignmentAt(run, i)
-			)
+	// 		var left, right, node [blockSize]field.Element
 
-			fmt.Printf("proof=%v level=%v left=%v right=%v node=%v\n", i, l, left.Text(16), right.Text(16), node.Text(16))
-		}
-	}
+	// 		for k := 0; k < blockSize; k++ {
+	// 			left[k] = ctx.ctx.Lefts[l][k].Result.GetColAssignmentAt(run, i)
+	// 			right[k] = ctx.ctx.Rights[l][k].Result.GetColAssignmentAt(run, i)
+	// 			node[k] = ctx.ctx.Nodes[l].Result()[k].GetColAssignmentAt(run, i)
+	// 			fmt.Printf("merkleTestNumRow=%v merkleTestDepth=%v\n", merkleTestNumRow, merkleTestDepth)
+
+	// 		}
+
+	// 	}
+	// }
 }
 
 // merkleTestCaseInstance represents either a read or a write operation to add to
@@ -115,8 +128,8 @@ type merkleTestCaseInstance struct {
 type merkleTestBuilder struct {
 	proofs             []smt.Proof
 	pos                []field.Element
-	roots              []field.Element
-	leaves             []field.Element
+	roots              [blockSize][]field.Element
+	leaves             [blockSize][]field.Element
 	useNextMerkleProof []field.Element
 	isActive           []field.Element
 	counter            []field.Element
@@ -185,8 +198,10 @@ func (mt *merkleTestBuilder) pushRow(row merkleTestBuilderRow) {
 	mt.pos = append(mt.pos, field.NewElement(uint64(row.pos)))
 	leafOct := types.Bytes32ToHash(row.leaf)
 	rootOct := types.Bytes32ToHash(row.root)
-	mt.leaves = append(mt.leaves, leafOct[:]...)
-	mt.roots = append(mt.roots, rootOct[:]...)
+	for i := 0; i < blockSize; i++ {
+		mt.leaves[i] = append(mt.leaves[i], leafOct[i])
+		mt.roots[i] = append(mt.roots[i], rootOct[i])
+	}
 	mt.useNextMerkleProof = append(mt.useNextMerkleProof, field.FromBool(row.useNextMerkleProof))
 	mt.isActive = append(mt.isActive, field.One())
 }
