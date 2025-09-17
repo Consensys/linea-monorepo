@@ -97,21 +97,20 @@ func (ctx *merkleTestRunnerFlat) Assign(run *wizard.ProverRuntime, data *merkleT
 	ctx.ctx.Proof.Assign(run, data.proofs)
 	ctx.ctx.Run(run)
 
-	// for i := 0; i < merkleTestNumRow; i++ {
-	// 	for l := 0; l < merkleTestDepth; l++ {
+	for i := 0; i < merkleTestNumRow; i++ {
+		for l := 0; l < merkleTestDepth; l++ {
 
-	// 		var left, right, node [blockSize]field.Element
+			var left, right, node [blockSize]field.Element
 
-	// 		for k := 0; k < blockSize; k++ {
-	// 			left[k] = ctx.ctx.Lefts[l][k].Result.GetColAssignmentAt(run, i)
-	// 			right[k] = ctx.ctx.Rights[l][k].Result.GetColAssignmentAt(run, i)
-	// 			node[k] = ctx.ctx.Nodes[l].Result()[k].GetColAssignmentAt(run, i)
-	// 			fmt.Printf("merkleTestNumRow=%v merkleTestDepth=%v\n", merkleTestNumRow, merkleTestDepth)
+			for k := 0; k < blockSize; k++ {
+				left[k] = ctx.ctx.Lefts[l][k].Result.GetColAssignmentAt(run, i)
+				right[k] = ctx.ctx.Rights[l][k].Result.GetColAssignmentAt(run, i)
+				node[k] = ctx.ctx.Nodes[l].Result()[k].GetColAssignmentAt(run, i)
+				fmt.Printf("proof=%v level=%v left=%v right=%v node=%v\n", i, l, left[k].Text(16), right[k].Text(16), node[k].Text(16))
+			}
 
-	// 		}
-
-	// 	}
-	// }
+		}
+	}
 }
 
 // merkleTestCaseInstance represents either a read or a write operation to add to

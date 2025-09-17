@@ -56,13 +56,13 @@ func CheckFlatMerkleProofs(comp *wizard.CompiledIOP, inputs FlatProofVerificatio
 
 	ctx := &FlatMerkleProofVerification{
 		FlatProofVerificationInputs: inputs,
-		PosBits:                     bits.BitDecompose(comp, inputs.Position, len(inputs.Proof.Nodes)), //TODO@yao: check blockSize iteration
+		PosBits:                     bits.BitDecompose(comp, inputs.Position, len(inputs.Proof.Nodes[0])), //TODO@yao: check blockSize iteration
 	}
 
 	prevNode := inputs.Leaf
 	var left, right [blockSize]*dedicated.TernaryCtx
 	var leftResult, rightResult [blockSize]ifaces.Column
-	for i := range inputs.Proof.Nodes {
+	for i := range inputs.Proof.Nodes[0] {
 		for j := 0; j < blockSize; j++ {
 
 			left[j] = dedicated.Ternary(comp, ctx.PosBits.Bits[i], inputs.Proof.Nodes[j][i], prevNode[j])
@@ -138,9 +138,9 @@ func checkColumnsAllHaveSameSize(inp *FlatProofVerificationInputs) error {
 
 	size := inp.Roots[0].Size()
 	for j := 0; j < blockSize; j++ {
-		for _, node := range inp.Proof.Nodes {
-			if node[j].Size() != size {
-				return fmt.Errorf("all nodes must have the same size: root=%v proof=%v", size, node[j].Size())
+		for _, node := range inp.Proof.Nodes[j] {
+			if node.Size() != size {
+				return fmt.Errorf("all nodes must have the same size: root=%v proof=%v", size, node.Size())
 			}
 		}
 

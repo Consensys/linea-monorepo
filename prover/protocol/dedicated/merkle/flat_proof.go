@@ -42,9 +42,9 @@ func NewProof(comp *wizard.CompiledIOP, round int, name string, depth, numRows i
 // WithStatus changes the status of all the columns of the [FlatProof] to
 // "status" and returns a pointer to the receiver.
 func (p *FlatProof) WithStatus(comp *wizard.CompiledIOP, status column.Status) *FlatProof {
-	for i := range p.Nodes {
-		for j := 0; j < blockSize; j++ {
-			comp.Columns.SetStatus(p.Nodes[i][j].GetColID(), status)
+	for j := 0; j < blockSize; j++ {
+		for i := range p.Nodes[j] {
+			comp.Columns.SetStatus(p.Nodes[j][i].GetColID(), status)
 		}
 	}
 	return p
@@ -70,8 +70,8 @@ func (p *FlatProof) Assign(run *wizard.ProverRuntime, proofs []smt.Proof) {
 		}
 	}
 
-	for i := range p.Nodes {
-		for j := 0; j < blockSize; j++ {
+	for j := 0; j < blockSize; j++ {
+		for i := range p.Nodes[j] {
 			run.AssignColumn(p.Nodes[j][i].GetColID(), smartvectors.RightZeroPadded(assignment[j][i], p.NumRow()))
 		}
 	}
@@ -97,12 +97,12 @@ func (p *FlatProof) Unpack(run ifaces.Runtime, pos smartvectors.SmartVector) []s
 
 		newProof := smt.Proof{
 			Path:     field.ToInt(pos.GetPtr(i)),
-			Siblings: make([]types.Bytes32, len(p.Nodes)),
+			Siblings: make([]types.Bytes32, len(p.Nodes[0])),
 		}
 
-		for n := range p.Nodes {
-			var node [8]field.Element
-			for j := 0; j < 8; j++ {
+		for n := range p.Nodes[0] {
+			var node [blockSize]field.Element
+			for j := 0; j < blockSize; j++ {
 				node[j] = p.Nodes[j][n].GetColAssignmentAt(run, i)
 			}
 			newProof.Siblings[n] = types.HashToBytes32(node)
@@ -128,13 +128,13 @@ func (p *FlatProof) UnpackGnark(run ifaces.GnarkRuntime, entryList []frontend.Va
 
 		newProof := smt.GnarkProof{
 			Path:     entryList[i],
-			Siblings: make([]frontend.Variable, len(p.Nodes)),
+			Siblings: make([]frontend.Variable, len(p.Nodes[0])),
 		}
 
-		for j := range p.Nodes {
-			var node [8]frontend.Variable
+		for j := range p.Nodes[0] {
+			var node [blockSize]frontend.Variable
 
-			for k := 0; k < 8; k++ {
+			for k := 0; k < blockSize; k++ {
 				node[k] = p.Nodes[k][j].GetColAssignmentGnarkAt(run, i)
 			}
 			newProof.Siblings[j] = node
