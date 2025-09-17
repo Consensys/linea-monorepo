@@ -51,7 +51,7 @@ class GoNativeBlobDecompressorTest {
     assertThat(decompressedBlocks).hasSize(2)
   }
 
-  @Disabled("Disabled until decompressor can decompress type 4 txs")
+  @Test
   fun `should decompress original data`() {
     val tx0 = TransactionFactory.createTransactionFrontier(
       nonce = 10uL,
