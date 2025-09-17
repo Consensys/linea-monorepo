@@ -102,7 +102,7 @@ func EncodeTxForSigning(tx *types.Transaction) (encodedTx []byte) {
 	}
 
 	if err != nil {
-		utils.Panic("failed to encode transaction %v: %w", tx, err)
+		utils.Panic("failed to encode transaction %v: %v", tx, err)
 	}
 
 	return buffer.Bytes()
