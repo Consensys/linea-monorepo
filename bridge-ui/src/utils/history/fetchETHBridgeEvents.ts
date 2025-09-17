@@ -16,6 +16,7 @@ import { formatOnChainMessageStatus } from "./formatOnChainMessageStatus";
 import { isBlockTooOld } from "./isBlockTooOld";
 import { config } from "@/config";
 import { restoreFromTransactionCache } from "./restoreFromTransactionCache";
+import { saveToTransactionCache } from "./saveToTransactionCache";
 
 export async function fetchETHBridgeEvents(
   historyStoreActions: HistoryActionsForCompleteTxCaching,
@@ -125,8 +126,7 @@ export async function fetchETHBridgeEvents(
         },
       };
 
-      // Store COMPLETE tx in cache
-      historyStoreActions.setCompleteTx(tx);
+      saveToTransactionCache(historyStoreActions, tx);
       transactionsMap.set(uniqueKey, tx);
     }),
   );
