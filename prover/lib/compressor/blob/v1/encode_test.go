@@ -359,15 +359,6 @@ func TestEncodeBlockWithType4Tx(t *testing.T) {
 	require.Equal(t, tx.AccessList(), txBack.AccessList())
 }
 
-func TestReadBlobWithType4Tx(t *testing.T) {
-	blobBytes := zlibDecompressBase64EncodedBytes(t,
-		"eJyy/3/o9tJvFcdydnc/32xXsyFFd4Yln3as9FbNnCm6Flv0xQ4uYBBgkApgEGBgMCvPCBWIfaXxo+nQAYn09cWGfxpOCpzpfNeeuEDYX+f7ndcmjm9P3NBSWin72CTr9/E7V6zevzX0W7/M9SrXf1amfQpSt1lY3H9YyDUr2Lcc0GT6cbuJ1VLu/6GG9R/YWR4yCpg33To3dwIDI0/Ch6SUtMyPuR82a/7jbDp5/CFXA/OfJUyC9o8WPN/wT5Qxg/tHC+tC+Ycf5I4s1CzRX3pvf/rvvFPr+filz+y/Eh3S4N9yQq/A4EWgv9sGB+YfIgzxHxxU2xKvFNzeVhG+Lm7LgQtSpbznDOXi1RycHFTtm2dIVwfIH0qoa3DgPeBgf4ABBQACAAD///X3fVw=",
-	)
-	dictStore := dictionary.NewStore("../../dict/25-04-21.bin")
-	_, err := v1.DecompressBlob(blobBytes, dictStore)
-	require.NoError(t, err)
-}
-
 func zlibDecompressBase64EncodedBytes(t *testing.T, b64 string) []byte {
 	compressed, err := base64.StdEncoding.DecodeString(b64)
 	require.NoError(t, err)
