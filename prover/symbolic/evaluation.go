@@ -2,6 +2,7 @@ package symbolic
 
 import (
 	"fmt"
+	"runtime"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -46,7 +47,7 @@ type chunkExt [maxChunkSize]fext.Element
 type chunkBase [maxChunkSize]field.Element
 
 // Evaluate evaluates the expression board on the provided inputs.
-func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
+func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, nbTasks ...int) sv.SmartVector {
 	// essentially, we can see the inputs as "columns", and the chunks as "rows"
 	// the relations between the columns are defined by the expression board
 	// we evaluate the expression board chunk by chunk, in parallel.
@@ -90,6 +91,12 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
 
 		numChunks := totalSize / maxChunkSize
 
+		// TODO @gbotrel cleanup nbTasks
+		numCpus := runtime.NumCPU()
+		if len(nbTasks) > 0 && nbTasks[0] > 0 && nbTasks[0] < numCpus {
+			numCpus = nbTasks[0]
+		}
+
 		parallel.Execute(numChunks, func(start, stop int) {
 
 			solver := newEvaluation[chunkBase](b)
@@ -104,7 +111,7 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
 				copy(res[chunkStart:chunkStop], solver.nodes[len(b.Nodes)-1][0].value[:])
 			}
 
-		})
+		}, numCpus)
 		return sv.NewRegular(res)
 	}
 
