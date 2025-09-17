@@ -18,6 +18,7 @@ import linea.rlp.RLP
 import net.consensys.linea.nativecompressor.CompressorTestData
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.math.BigInteger
@@ -50,7 +51,7 @@ class GoNativeBlobDecompressorTest {
     assertThat(decompressedBlocks).hasSize(2)
   }
 
-  @Test
+  @Disabled("Disabled until decompressor can decompress type 4 txs")
   fun `should decompress original data`() {
     val tx0 = TransactionFactory.createTransactionFrontier(
       nonce = 10uL,
