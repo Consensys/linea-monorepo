@@ -384,9 +384,9 @@ func TryCast[T any](into *T, from any, explainer string) error {
 		hash := common.BytesToHash(fromBytes)
 		*into = any(hash).(T)
 	case *big.Int:
-		var parsedBigInt big.Int
+		parsedBigInt := new(big.Int)
 		parsedBigInt.SetBytes(fromBytes)
-		*into = any(&parsedBigInt).(T)
+		*into = any(parsedBigInt).(T)
 	case uint64:
 		// The encoding of uint64 can use less than 8 bytes. For this
 		// reason we go through a big integer.
@@ -396,16 +396,18 @@ func TryCast[T any](into *T, from any, explainer string) error {
 	case []byte:
 		*into = any(fromBytes).(T)
 	case uint8:
-		if len(fromBytes) > 1 {
+		switch len(fromBytes) {
+		case 0:
+			*(any(into).(*uint8)) = 0
+		case 1:
+			*(any(into).(*uint8)) = fromBytes[0]
+		default:
 			return fmt.Errorf("could not decode %v: []byte value for uint8 can only be of length 0 or 1, not %d", explainer, len(fromBytes))
 		}
-		if len(fromBytes) == 1 {
-			*(any(into).(*uint8)) = fromBytes[0]
-		}
 	case *uint256.Int:
-		var parsedUint256 uint256.Int
+		parsedUint256 := new(uint256.Int)
 		parsedUint256.SetBytes(fromBytes)
-		*into = any(&parsedUint256).(T)
+		*into = any(parsedUint256).(T)
 	case uint256.Int:
 		any(into).(*uint256.Int).SetBytes(fromBytes)
 	default:
