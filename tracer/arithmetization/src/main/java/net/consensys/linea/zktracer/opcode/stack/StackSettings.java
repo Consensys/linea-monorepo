@@ -45,4 +45,19 @@ public record StackSettings(
     boolean flag1,
     boolean flag2,
     boolean flag3,
-    boolean flag4) {}
+    boolean flag4) {
+  public static final StackSettings DEFAULT =
+      new StackSettings(
+          Pattern.ZERO_ZERO,
+          0,
+          0,
+          GasConstants.G_ZERO,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false);
+}
