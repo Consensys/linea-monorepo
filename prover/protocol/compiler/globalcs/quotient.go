@@ -28,6 +28,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	ppool "github.com/consensys/linea-monorepo/prover/utils/parallel/pool"
 )
 
@@ -201,21 +202,38 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 	coeffs := sync.Map{} // (ifaces.ColID <=> sv.SmartVector)
 
 	// Compute once the FFT of the natural columns
-	ppool.ExecutePoolChunky(len(ctx.AllInvolvedRoots), func(k int) {
-		pol := ctx.AllInvolvedRoots[k]
-		name := pol.GetColID()
 
-		// gets directly a shallow copy in the map of the runtime
-		var witness sv.SmartVector
-		witness, isAssigned := run.Columns.TryGet(name)
+	domain0 := fft.NewDomain(uint64(ctx.DomainSize), fft.WithCache())
+	parallel.Execute(len(ctx.AllInvolvedRoots), func(start, stop int) {
 
-		// can happen if the column is verifier defined. In that case, no
-		// need to protect with a lock. This will not touch run.Columns.
-		if !isAssigned {
-			witness = pol.GetColAssignment(run)
+		for k := start; k < stop; k++ {
+			pol := ctx.AllInvolvedRoots[k]
+			name := pol.GetColID()
+
+			// gets directly a shallow copy in the map of the runtime
+			var witness sv.SmartVector
+			witness, isAssigned := run.Columns.TryGet(name)
+
+			// can happen if the column is verifier defined. In that case, no
+			// need to protect with a lock. This will not touch run.Columns.
+			if !isAssigned {
+				witness = pol.GetColAssignment(run)
+			}
+
+			if smartvectors.IsBase(witness) {
+				res := make([]field.Element, witness.Len())
+				witness.WriteInSlice(res)
+				domain0.FFTInverse(res, fft.DIF, fft.WithNbTasks(1))
+				coeffs.Store(name, smartvectors.NewRegular(res))
+				continue
+			}
+
+			res := make([]fext.Element, witness.Len())
+			witness.WriteInSliceExt(res)
+			domain0.FFTInverseExt(res, fft.DIF, fft.WithNbTasks(1))
+			coeffs.Store(name, smartvectors.NewRegularExt(res))
 		}
-		witness = sv.FFTInverseExt(witness, fft.DIF, false, 0, 0, fft.WithNbTasks(2))
-		coeffs.Store(name, witness)
+
 	})
 
 	// Take the max quotient degree
@@ -291,8 +309,12 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 						reevaledRoot = scratch[start:end]
 					}
 
+					// TODO @gbotrel coeffs are mostly base vectors;
+					// but the code in eval somewhere can't mix well ext and base,
+					// we could save additional memory here.
+
 					v.(sv.SmartVector).WriteInSliceExt(reevaledRoot)
-					domain.FFTExt(reevaledRoot, fft.DIT, fft.OnCoset(), fft.WithNbTasks(2))
+					domain.FFTExt(reevaledRoot, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
 
 					computedReeval.Store(name, smartvectors.NewRegularExt(reevaledRoot))
 					return nil, nil
@@ -338,7 +360,7 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 
 					res := make([]field.Element, n)
 					v.(sv.SmartVector).WriteInSlice(res)
-					domain.FFT(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(2))
+					domain.FFT(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
 
 					// res := sv.FFT(v.(sv.SmartVector), fft.DIT, false, ratio, share, fft.WithNbTasks(2))
 					computedReeval.Store(polName, smartvectors.NewRegular(res))

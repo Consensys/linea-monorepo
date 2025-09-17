@@ -34,10 +34,10 @@ func (p *Params) rsEncodeExt(v smartvectors.SmartVector) smartvectors.SmartVecto
 		smallDomain := p.Domains[0]
 		largeDomain := p.Domains[1]
 
-		smallDomain.FFTInverseExt(expandedCoeffs[:v.Len()], fft.DIF, fft.WithNbTasks(2))
+		smallDomain.FFTInverseExt(expandedCoeffs[:v.Len()], fft.DIF, fft.WithNbTasks(1))
 		utils.BitReverse(expandedCoeffs[:v.Len()])
 
-		largeDomain.FFTExt(expandedCoeffs, fft.DIF, fft.WithNbTasks(2))
+		largeDomain.FFTExt(expandedCoeffs, fft.DIF, fft.WithNbTasks(1))
 		utils.BitReverse(expandedCoeffs)
 
 		return smartvectors.NewRegularExt(expandedCoeffs)
@@ -46,10 +46,10 @@ func (p *Params) rsEncodeExt(v smartvectors.SmartVector) smartvectors.SmartVecto
 	// fast path; we avoid the bit reverse operations and work on the smaller domain.
 	inputCoeffs := extensions.Vector(expandedCoeffs[:p.NbColumns])
 
-	p.Domains[0].FFTInverseExt(inputCoeffs, fft.DIF, fft.WithNbTasks(2))
+	p.Domains[0].FFTInverseExt(inputCoeffs, fft.DIF, fft.WithNbTasks(1))
 	inputCoeffs.MulByElement(inputCoeffs, p.CosetTableBitReverse)
 
-	p.Domains[0].FFTExt(inputCoeffs, fft.DIT, fft.WithNbTasks(2))
+	p.Domains[0].FFTExt(inputCoeffs, fft.DIT, fft.WithNbTasks(1))
 	for j := p.NbColumns - 1; j >= 0; j-- {
 		expandedCoeffs[rho*j+1] = expandedCoeffs[j]
 		expandedCoeffs[rho*j] = v.GetExt(j)

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
@@ -182,6 +181,7 @@ func (e *Expression) ValidateExt() error {
 		// The cast back to sv.Constant is not functionally important but is an
 		// easy sanity check.
 		expectedESH := e.Operator.EvaluateExt(eshashes).(*sv.ConstantExt).GetExt(0)
+
 		if !e.ESHash.IsEqualExt(&expectedESH) {
 			return fmt.Errorf("esh mismatch %v %v", expectedESH.String(), e.ESHash.String())
 		}
@@ -299,17 +299,18 @@ func (e *Expression) ReconstructBottomUp(
 	// LinCombExt or ProductExt or LinearCombinationExt. This is an intermediate expression.
 	case LinComb, Product, PolyEval:
 		children := make([]*Expression, len(e.Children))
-		var wg sync.WaitGroup
-		wg.Add(len(e.Children))
+		// var wg sync.WaitGroup
+		// wg.Add(len(e.Children))
 
 		for i, c := range e.Children {
-			go func(i int, c *Expression) {
-				defer wg.Done()
-				children[i] = c.ReconstructBottomUp(constructor)
-			}(i, c)
+			// TODO @gbotrel next fix that --> too many go routines.
+			// go func(i int, c *Expression) {
+			// 	defer wg.Done()
+			children[i] = c.ReconstructBottomUp(constructor)
+			// }(i, c)
 		}
 
-		wg.Wait()
+		// wg.Wait()
 		return constructor(e, children)
 	}
 

@@ -34,10 +34,10 @@ func (p *Params) _rsEncodeBase(v smartvectors.SmartVector) smartvectors.SmartVec
 		smallDomain := p.Domains[0]
 		largeDomain := p.Domains[1]
 
-		smallDomain.FFTInverse(expandedCoeffs[:v.Len()], fft.DIF, fft.WithNbTasks(2))
+		smallDomain.FFTInverse(expandedCoeffs[:v.Len()], fft.DIF, fft.WithNbTasks(1))
 		utils.BitReverse(expandedCoeffs[:v.Len()])
 
-		largeDomain.FFT(expandedCoeffs, fft.DIF, fft.WithNbTasks(2))
+		largeDomain.FFT(expandedCoeffs, fft.DIF, fft.WithNbTasks(1))
 		utils.BitReverse(expandedCoeffs)
 
 		return smartvectors.NewRegular(expandedCoeffs)
@@ -46,10 +46,10 @@ func (p *Params) _rsEncodeBase(v smartvectors.SmartVector) smartvectors.SmartVec
 	// fast path; we avoid the bit reverse operations and work on the smaller domain.
 	inputCoeffs := koalabear.Vector(expandedCoeffs[:p.NbColumns])
 
-	p.Domains[0].FFTInverse(inputCoeffs, fft.DIF, fft.WithNbTasks(2))
+	p.Domains[0].FFTInverse(inputCoeffs, fft.DIF, fft.WithNbTasks(1))
 	inputCoeffs.Mul(inputCoeffs, p.CosetTableBitReverse)
 
-	p.Domains[0].FFT(inputCoeffs, fft.DIT, fft.WithNbTasks(2))
+	p.Domains[0].FFT(inputCoeffs, fft.DIT, fft.WithNbTasks(1))
 	for j := p.NbColumns - 1; j >= 0; j-- {
 		expandedCoeffs[rho*j+1] = expandedCoeffs[j]
 		expandedCoeffs[rho*j] = v.Get(j)

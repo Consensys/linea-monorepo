@@ -44,7 +44,7 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 
 		// quotient stores the assignment of the quotient polynomial as it is
 		// being computed.
-		quotient = make([]fext.Element, qa.getNumRow())
+		quotient = make(extensions.Vector, qa.getNumRow())
 
 		// powersOfRho lists all the powers of rho and are precomputed to help
 		// parallelization.
@@ -64,6 +64,7 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 	parallel.Execute(len(qa.Polys), func(start, stop int) {
 
 		localPartialQuotient := make(extensions.Vector, qa.getNumRow())
+		localRes := make(extensions.Vector, qa.getNumRow())
 		poly := make(extensions.Vector, qa.getNumRow())
 
 		for polyID := start; polyID < stop; polyID++ {
@@ -108,16 +109,12 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 			localPartialQuotient.Mul(localPartialQuotient, poly)
 			localPartialQuotient.ScalarMul(localPartialQuotient, &powersOfRho[polyID])
 
-			// This part of the algorithm cannot be parallelized or there
-			// would be race condition. Expectedly, this amounts to a very
-			// small part of the computation.
-			{
-				quotientLock.Lock()
-				vectorext.Add(quotient, quotient, localPartialQuotient)
-				quotientLock.Unlock()
-			}
-
+			localRes.Add(localRes, localPartialQuotient)
 		}
+
+		quotientLock.Lock()
+		quotient.Add(quotient, localRes)
+		quotientLock.Unlock()
 	})
 
 	// This clause addresses the edge-case where all the [Polys] are
@@ -181,7 +178,7 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 		}
 
 		quotientLock.Lock()
-		vectorext.Sub(quotient, quotient, localResult)
+		quotient.Sub(quotient, localResult)
 		quotientLock.Unlock()
 	})
 
