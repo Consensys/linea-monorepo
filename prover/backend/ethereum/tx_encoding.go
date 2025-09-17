@@ -86,15 +86,16 @@ func EncodeTxForSigning(tx *types.Transaction) (encodedTx []byte) {
 	case tx.Type() == types.SetCodeTxType:
 		buffer.Write([]byte{tx.Type()})
 		err = rlp.Encode(&buffer, []interface{}{ // fields taken from spec at https://eip7702.io
-			tx.ChainId(),    // chain_id
-			tx.Nonce(),      // nonce
-			tx.GasTipCap(),  // max_priority_fee_per_gas
-			tx.GasFeeCap(),  // max_fee_per_gas
-			tx.Gas(),        // gas_limit
-			tx.To(),         // destination
-			tx.Value(),      // value
-			tx.Data(),       // data
-			tx.AccessList(), // access_list
+			tx.ChainId(),               // chain_id
+			tx.Nonce(),                 // nonce
+			tx.GasTipCap(),             // max_priority_fee_per_gas
+			tx.GasFeeCap(),             // max_fee_per_gas
+			tx.Gas(),                   // gas_limit
+			tx.To(),                    // destination
+			tx.Value(),                 // value
+			tx.Data(),                  // data
+			tx.AccessList(),            // access_list
+			tx.SetCodeAuthorizations(), // auth_list
 		})
 	default:
 		utils.Panic("Unknown type of transaction %v, %++v", tx.Type(), tx)
@@ -113,7 +114,7 @@ const (
 	accessListTxNumField  int = 8
 	legacyTxNumField      int = 9
 	unprotectedTxNumField int = 6
-	setCodeNumField       int = 9
+	setCodeNumField       int = 10
 )
 
 // DecodeTxFromBytes from a string of bytes. If the stream of bytes is larger
@@ -179,6 +180,7 @@ func decodeSetCodeTx(b *bytes.Reader) (parsedTx *types.SetCodeTx, err error) {
 		TryCast(&parsedTx.Value, decTx[6], "value"),
 		TryCast(&parsedTx.Data, decTx[7], "data"),
 		TryCast(&parsedTx.AccessList, decTx[8], "access-list"),
+		TryCast(&parsedTx.AuthList, decTx[9], "auth-list"),
 	)
 
 	return
@@ -295,6 +297,16 @@ func TryCast[T any](into *T, from any, explainer string) error {
 		)
 
 		switch any(*into).(type) {
+		case []types.SetCodeAuthorization:
+			authList := make([]types.SetCodeAuthorization, length)
+			for i := range authList {
+				err = errors.Join(
+					err,
+					TryCast(&authList[i], list[i], fmt.Sprintf("%v[%v]", explainer, i)),
+				)
+			}
+			*into = (any(authList)).(T)
+			return err
 
 		case types.AccessList:
 			accessList := make(types.AccessList, length)
@@ -314,6 +326,21 @@ func TryCast[T any](into *T, from any, explainer string) error {
 				TryCast(&tuple.StorageKeys, list[1], fmt.Sprintf("%v.%v", explainer, "storage-key")),
 			)
 			*into = (any(tuple)).(T)
+			return err
+
+		case types.SetCodeAuthorization:
+			var tuple types.SetCodeAuthorization
+
+			err = errors.Join(
+				TryCast(&tuple.ChainID, list[0], fmt.Sprintf("%v.%v", explainer, "chain-id")),
+				TryCast(&tuple.Address, list[1], fmt.Sprintf("%v.%v", explainer, "address")),
+				TryCast(&tuple.Nonce, list[2], fmt.Sprintf("%v.%v", explainer, "nonce")),
+				TryCast(&tuple.V, list[3], fmt.Sprintf("%v.%v", explainer, "sig-v")),
+				TryCast(&tuple.R, list[4], fmt.Sprintf("%v.%v", explainer, "sig-r")),
+				TryCast(&tuple.S, list[5], fmt.Sprintf("%v.%v", explainer, "sig-s")),
+			)
+			*into = (any(tuple)).(T)
+
 			return err
 
 		case []common.Hash:
@@ -368,10 +395,19 @@ func TryCast[T any](into *T, from any, explainer string) error {
 		*into = any(parsedBigInt.Uint64()).(T)
 	case []byte:
 		*into = any(fromBytes).(T)
+	case uint8:
+		if len(fromBytes) > 1 {
+			return fmt.Errorf("could not decode %v: []byte value for uint8 can only be of length 0 or 1, not %d", explainer, len(fromBytes))
+		}
+		if len(fromBytes) == 1 {
+			*(any(into).(*uint8)) = fromBytes[0]
+		}
 	case *uint256.Int:
 		var parsedUint256 uint256.Int
 		parsedUint256.SetBytes(fromBytes)
 		*into = any(&parsedUint256).(T)
+	case uint256.Int:
+		any(into).(*uint256.Int).SetBytes(fromBytes)
 	default:
 		// Unsupported type - accumulate the error
 		return fmt.Errorf("could not decode %v (value %s, type %T) as type %T", explainer, from, from, *into)

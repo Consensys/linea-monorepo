@@ -99,6 +99,12 @@ func TestEncodeDecodeTx(t *testing.T) {
 				Value:     big.NewInt(66666666),
 				Data:      hexutil.MustDecode("0xdeadbeafbeefbeef12345689"),
 				ChainID:   chainID,
+				AccessList: types.AccessList{
+					{
+						Address:     common.Address{1},
+						StorageKeys: nil,
+					},
+				},
 			},
 		},
 		{
@@ -138,7 +144,14 @@ func TestEncodeDecodeTx(t *testing.T) {
 				Value:     uint256.NewInt(66666666),
 				Nonce:     3,
 				Data:      hexutil.MustDecode("0xdeadbeafbeefbeef12345689"),
-				// TODO: Add AccessList
+				AuthList: []types.SetCodeAuthorization{{
+					ChainID: *uint256.MustFromBig(chainID),
+					Address: common.Address{1, 2},
+					Nonce:   3,
+					V:       4,
+					R:       uint256.Int{5},
+					S:       uint256.Int{6},
+				}},
 			},
 		},
 	}
