@@ -159,6 +159,7 @@ public class ExecutionEnvironment {
             MiningConfiguration.MINING_DISABLED,
             badBlockManager,
             false,
+            false,
             new NoOpMetricsSystem());
 
     final MainnetProtocolSpecFactory protocol =
@@ -168,6 +169,7 @@ public class ExecutionEnvironment {
             OptionalLong.empty(),
             EvmConfiguration.DEFAULT,
             MiningConfiguration.MINING_DISABLED,
+            false,
             false,
             new NoOpMetricsSystem());
 
