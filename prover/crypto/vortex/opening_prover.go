@@ -64,7 +64,7 @@ func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, 
 	linCombSV := smartvectors.NewRegularExt(linComb)
 
 	return &OpeningProof{
-		LinearCombination: params._rsEncodeExt(linCombSV, nil),
+		LinearCombination: params.rsEncodeExt(linCombSV),
 	}
 }
 

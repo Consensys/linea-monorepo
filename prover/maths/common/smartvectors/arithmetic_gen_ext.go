@@ -1,7 +1,6 @@
 package smartvectors
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -11,7 +10,7 @@ import (
 //   - The function panics if svecs is empty
 //   - The function panics if the length of coeffs does not match the length of
 //     svecs
-func LinCombExt(coeffs []int, svecs []SmartVector, p ...mempool.MemPool) SmartVector {
+func LinCombExt(coeffs []int, svecs []SmartVector) SmartVector {
 	// Sanity check : all svec should have the same length
 	length := svecs[0].Len()
 	for i := 0; i < len(svecs); i++ {
@@ -19,7 +18,7 @@ func LinCombExt(coeffs []int, svecs []SmartVector, p ...mempool.MemPool) SmartVe
 			utils.Panic("bad size %v, expected %v", svecs[i].Len(), length)
 		}
 	}
-	return processOperatorExt(linCombOp{}, coeffs, svecs, p...)
+	return processOperatorExt(linCombOp{}, coeffs, svecs)
 }
 
 // ProductExt computes a product of smart-vectors with integer exponents
@@ -27,8 +26,8 @@ func LinCombExt(coeffs []int, svecs []SmartVector, p ...mempool.MemPool) SmartVe
 //   - The function panics if svecs is empty
 //   - The function panics if the length of exponents does not match the length of
 //     svecs
-func ProductExt(exponents []int, svecs []SmartVector, p ...mempool.MemPool) SmartVector {
-	return processOperatorExt(productOp{}, exponents, svecs, p...)
+func ProductExt(exponents []int, svecs []SmartVector) SmartVector {
+	return processOperatorExt(productOp{}, exponents, svecs)
 }
 
 // processOperatorExt computes the result of an [operator] and put the result into res
@@ -36,7 +35,7 @@ func ProductExt(exponents []int, svecs []SmartVector, p ...mempool.MemPool) Smar
 //   - The function panics if svecs is empty
 //   - The function panics if the length of coeffs does not match the length of
 //     svecs
-func processOperatorExt(op operator, coeffs []int, svecs []SmartVector, p ...mempool.MemPool) SmartVector {
+func processOperatorExt(op operator, coeffs []int, svecs []SmartVector) SmartVector {
 
 	// There should be as many coeffs than there are vectors
 	if len(coeffs) != len(svecs) {
@@ -100,7 +99,7 @@ func processOperatorExt(op operator, coeffs []int, svecs []SmartVector, p ...mem
 	}
 
 	// Accumulate the regular part of the vector
-	regularRes, matchedRegular := processRegularOnlyExt(op, svecs, coeffs, p...)
+	regularRes, matchedRegular := processRegularOnlyExt(op, svecs, coeffs)
 
 	// Sanity-check : all of the vector should fall into only one of the two
 	// category.
@@ -110,18 +109,18 @@ func processOperatorExt(op operator, coeffs []int, svecs []SmartVector, p ...mem
 
 	switch {
 	case matchedRegular == totalToMatch:
-		return regularRes
+		return &regularRes
 	case matchedRegular+matchedConst == totalToMatch:
 		// In this case, there are no windowed in the list. This means we only
 		// need to merge the const one into the regular one before returning
-		op.constTermExtIntoVecExt(regularRes.RegularExt, &constRes.Value)
-		return regularRes
+		op.constTermExtIntoVecExt(regularRes, &constRes.Value)
+		return &regularRes
 	default:
 
 		// If windowRes is a regular (can happen if all windows arguments cover the full circle)
 		if w, ok := windowRes.(*RegularExt); ok {
-			op.vecTermExtIntoVecExt(regularRes.RegularExt, *w)
-			return regularRes
+			op.vecTermExtIntoVecExt(regularRes, *w)
+			return &regularRes
 		}
 
 		// Overwrite window with its casting into an actual circular windows
@@ -130,7 +129,7 @@ func processOperatorExt(op operator, coeffs []int, svecs []SmartVector, p ...mem
 		// In this case, the constant is already accumulated into the windowed.
 		// Thus, we just have to merge the windowed one into the regular one.
 		interval := windowRes.interval()
-		regvec := regularRes.RegularExt
+		regvec := regularRes
 		length := len(regvec)
 
 		// The windows rolls over
@@ -138,14 +137,14 @@ func processOperatorExt(op operator, coeffs []int, svecs []SmartVector, p ...mem
 			op.vecTermExtIntoVecExt(regvec[:interval.Stop()], windowRes.Window_[length-interval.Start():])
 			op.vecTermExtIntoVecExt(regvec[interval.Start():], windowRes.Window_[:length-interval.Start()])
 			op.constTermExtIntoVecExt(regvec[interval.Stop():interval.Start()], &windowRes.PaddingVal_)
-			return regularRes
+			return &regularRes
 		}
 
 		// Else, no roll-over
 		op.vecTermExtIntoVecExt(regvec[interval.Start():interval.Stop()], windowRes.Window_)
 		op.constTermExtIntoVecExt(regvec[:interval.Start()], &windowRes.PaddingVal_)
 		op.constTermExtIntoVecExt(regvec[interval.Stop():], &windowRes.PaddingVal_)
-		return regularRes
+		return &regularRes
 	}
 }
 

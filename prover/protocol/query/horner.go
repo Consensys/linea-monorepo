@@ -8,6 +8,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -201,11 +202,9 @@ func (p *HornerParams) GetResult(run ifaces.Runtime, q Horner) (n1s []int, final
 func getResultOfParts(run ifaces.Runtime, q *HornerPart) (fext.Element, int) {
 
 	var (
-		datas     = [][]fext.Element{}
-		selectors = [][]field.Element{}
+		datas     = []smartvectors.SmartVector{}
+		selectors = []smartvectors.SmartVector{}
 		count     = 0
-		x         = q.X.GetValExt(run)
-		acc       = fext.Zero()
 		size      = 0
 	)
 
@@ -213,33 +212,36 @@ func getResultOfParts(run ifaces.Runtime, q *HornerPart) (fext.Element, int) {
 
 		var (
 			board    = q.Coefficients[coor].Board()
-			data     = column.EvalExprColumn(run, board).IntoRegVecSaveAllocExt()
-			selector = q.Selectors[coor].GetColAssignment(run).IntoRegVecSaveAlloc()
+			data     = column.EvalExprColumn(run, board)
+			selector = q.Selectors[coor].GetColAssignment(run)
 		)
 
 		datas = append(datas, data)
 		selectors = append(selectors, selector)
 
 		if coor == 0 {
-			size = len(data)
+			size = data.Len()
 		}
 
-		if size != len(data) {
+		if size != data.Len() {
 			// Note, this is already check at the constructor level.
 			utils.Panic("All data must have the same size, part=%v", q.Name)
 		}
 	}
 
+	acc := fext.Zero()
+	x := q.X.GetValExt(run)
 	for row := size - 1; row >= 0; row-- {
 		for coor := 0; coor < len(datas); coor++ {
 
-			if selectors[coor][row].IsZero() {
+			if selectors[coor].GetPtr(row).IsZero() {
 				continue
 			}
 
 			count++
 			acc.Mul(&acc, &x)
-			acc.Add(&acc, &datas[coor][row])
+			other := datas[coor].GetExt(row)
+			acc.Add(&acc, &other)
 		}
 	}
 

@@ -4,10 +4,8 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Compute the FFT of a vector
@@ -22,14 +20,10 @@ import (
 // CosetRatio > CosetID:
 //   - Specifies on which coset to perform the operation
 //   - 0, 0 to assert that the transformation should not be done over a coset
-func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, pool mempool.MemPool, opts ...fft.Option) SmartVector {
+func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, opts ...fft.Option) SmartVector {
 
 	// Sanity-check on the size of the vector v
 	assertPowerOfTwoLen(v.Len())
-
-	if pool != nil && pool.Size() != v.Len() {
-		utils.Panic("provided a mempool with size %v but processing vectors of size %v", pool.Size(), v.Len())
-	}
 
 	/*
 		Try to capture the special cases
@@ -59,14 +53,9 @@ func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRati
 	}
 
 	// Else : we run the FFT directly
-	var res *PooledExt
-	if pool != nil {
-		res = AllocFromPoolExt(pool)
-	} else {
-		res = &PooledExt{RegularExt: make([]fext.Element, v.Len())}
-	}
+	res := NewRegularExt(make([]fext.Element, v.Len()))
 
-	v.WriteInSliceExt(res.RegularExt)
+	v.WriteInSliceExt(*res)
 
 	domain := fft.NewDomain(uint64(v.Len()), fft.WithCache())
 
@@ -81,22 +70,22 @@ func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRati
 	if decimation == fft.DIT {
 		// Optionally, bitReverse the input
 		if bitReverse {
-			fft.BitReverse(res.RegularExt)
+			fft.BitReverse(*res)
 		}
 		if cosetID != 0 || cosetRatio != 0 {
-			domain.FFTExt(res.RegularExt, fft.DIT, append(opts, fft.OnCoset())...)
+			domain.FFTExt(*res, fft.DIT, append(opts, fft.OnCoset())...)
 		} else {
-			domain.FFTExt(res.RegularExt, fft.DIT, opts...)
+			domain.FFTExt(*res, fft.DIT, opts...)
 		}
 	} else {
 		// Likewise, the optionally rearrange the input in correct order
 		if cosetID != 0 || cosetRatio != 0 {
-			domain.FFTExt(res.RegularExt, fft.DIF, append(opts, fft.OnCoset())...)
+			domain.FFTExt(*res, fft.DIF, append(opts, fft.OnCoset())...)
 		} else {
-			domain.FFTExt(res.RegularExt, fft.DIF, opts...)
+			domain.FFTExt(*res, fft.DIF, opts...)
 		}
 		if bitReverse {
-			fft.BitReverse(res.RegularExt)
+			fft.BitReverse(*res)
 		}
 	}
 
@@ -115,14 +104,10 @@ func FFTExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRati
 // CosetRatio > CosetID:
 //   - Specifies on which coset to perform the operation
 //   - 0, 0 to assert that the transformation should not be done over a coset
-func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, pool mempool.MemPool, opts ...fft.Option) SmartVector {
+func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, opts ...fft.Option) SmartVector {
 
 	// Sanity-check on the size of the vector v
 	assertPowerOfTwoLen(v.Len())
-
-	if pool != nil && pool.Size() != v.Len() {
-		utils.Panic("provided a mempool with size %v but processing vectors of size %v", pool.Size(), v.Len())
-	}
 
 	/*
 		Try to capture the special cases
@@ -153,14 +138,9 @@ func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, co
 	}
 
 	// Else : we run the FFTInverse directly
-	var res *PooledExt
-	if pool != nil {
-		res = AllocFromPoolExt(pool)
-	} else {
-		res = &PooledExt{RegularExt: make([]fext.Element, v.Len())}
-	}
+	res := NewRegularExt(make([]fext.Element, v.Len()))
 
-	v.WriteInSliceExt(res.RegularExt)
+	v.WriteInSliceExt(*res)
 
 	domain := fft.NewDomain(uint64(v.Len()), fft.WithCache())
 
@@ -176,22 +156,22 @@ func FFTInverseExt(v SmartVector, decimation fft.Decimation, bitReverse bool, co
 	if decimation == fft.DIF {
 		// Optionally, bitReverse the output
 		if cosetID != 0 || cosetRatio != 0 {
-			domain.FFTInverseExt(res.RegularExt, fft.DIF, append(opts, fft.OnCoset())...)
+			domain.FFTInverseExt(*res, fft.DIF, append(opts, fft.OnCoset())...)
 		} else {
-			domain.FFTInverseExt(res.RegularExt, fft.DIF, opts...)
+			domain.FFTInverseExt(*res, fft.DIF, opts...)
 		}
 		if bitReverse {
-			fft.BitReverse(res.RegularExt)
+			fft.BitReverse(*res)
 		}
 	} else {
 		// Likewise, the optionally rearrange the input in correct order
 		if bitReverse {
-			fft.BitReverse(res.RegularExt)
+			fft.BitReverse(*res)
 		}
 		if cosetID != 0 || cosetRatio != 0 {
-			domain.FFTInverseExt(res.RegularExt, fft.DIT, append(opts, fft.OnCoset())...)
+			domain.FFTInverseExt(*res, fft.DIT, append(opts, fft.OnCoset())...)
 		} else {
-			domain.FFTInverseExt(res.RegularExt, fft.DIT, opts...)
+			domain.FFTInverseExt(*res, fft.DIT, opts...)
 		}
 	}
 	return res

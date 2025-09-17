@@ -3,11 +3,11 @@ package vortex
 import (
 	"fmt"
 
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
+	"github.com/consensys/gnark-crypto/utils"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 )
 
 // _rsEncodeBase encodes a vector `v` and returns the corresponding the Reed-Solomon
@@ -16,7 +16,7 @@ import (
 // the Lagrange basis Omega_{n * blow-up} where blow-up corresponds to the
 // inverse-rate of the code. The code is systematic as the original vector is
 // interleaved within the encoded vector.
-func (p *Params) _rsEncodeBase(v smartvectors.SmartVector, pool mempool.MemPool) smartvectors.SmartVector {
+func (p *Params) _rsEncodeBase(v smartvectors.SmartVector) smartvectors.SmartVector {
 
 	// Short path, v is a constant vector. It's encoding is also a constant vector
 	// with the same value.
@@ -24,56 +24,38 @@ func (p *Params) _rsEncodeBase(v smartvectors.SmartVector, pool mempool.MemPool)
 		return smartvectors.NewConstant(cons.Val(), p.NumEncodedCols())
 	}
 
-	// Interpret the smart-vectors as a polynomial in Lagrange form
-	// and returns a vector of coefficients.
-	asCoeffs := smartvectors.FFTInverse(v, fft.DIT, true, 0, 0, pool)
-	if pool != nil {
-		defer func() {
-			if pooled, ok := asCoeffs.(*smartvectors.Pooled); ok {
-				pooled.Free(pool)
-			}
-		}()
-	}
-
-	// Pad the coefficients
 	expandedCoeffs := make([]field.Element, p.NumEncodedCols())
-	asCoeffs.WriteInSlice(expandedCoeffs[:asCoeffs.Len()])
 
-	// This is not memory that will be recycled easily
-	return smartvectors.FFT(smartvectors.NewRegular(expandedCoeffs), fft.DIT, true, 0, 0, nil)
-}
+	// copy the input
+	v.WriteInSlice(expandedCoeffs[:v.Len()])
 
-// _rsEncodeExt encodes a vector `v` and returns the corresponding the Reed-Solomon
-// codeword. The input vector is interpreted as a polynomial in Lagrange basis
-// over a domain of n-roots of unity Omega_n and returns its representation in
-// the Lagrange basis Omega_{n * blow-up} where blow-up corresponds to the
-// inverse-rate of the code. The code is systematic as the original vector is
-// interleaved within the encoded vector.
-func (p *Params) _rsEncodeExt(v smartvectors.SmartVector, pool mempool.MemPool) smartvectors.SmartVector {
+	const rho = 2
+	if rho != p.BlowUpFactor {
+		smallDomain := p.Domains[0]
+		largeDomain := p.Domains[1]
 
-	// Short path, v is a constant vector. It's encoding is also a constant vector
-	// with the same value.
-	if cons, ok := v.(*smartvectors.ConstantExt); ok {
-		return smartvectors.NewConstantExt(cons.Val(), p.NumEncodedCols())
+		smallDomain.FFTInverse(expandedCoeffs[:v.Len()], fft.DIF, fft.WithNbTasks(1))
+		utils.BitReverse(expandedCoeffs[:v.Len()])
+
+		largeDomain.FFT(expandedCoeffs, fft.DIF, fft.WithNbTasks(1))
+		utils.BitReverse(expandedCoeffs)
+
+		return smartvectors.NewRegular(expandedCoeffs)
 	}
 
-	// Interpret the smart-vectors as a polynomial in Lagrange form
-	// and returns a vector of coefficients.
-	asCoeffs := smartvectors.FFTInverseExt(v, fft.DIT, true, 0, 0, pool)
-	if pool != nil {
-		defer func() {
-			if pooled, ok := asCoeffs.(*smartvectors.PooledExt); ok {
-				pooled.Free(pool)
-			}
-		}()
+	// fast path; we avoid the bit reverse operations and work on the smaller domain.
+	inputCoeffs := koalabear.Vector(expandedCoeffs[:p.NbColumns])
+
+	p.Domains[0].FFTInverse(inputCoeffs, fft.DIF, fft.WithNbTasks(1))
+	inputCoeffs.Mul(inputCoeffs, p.CosetTableBitReverse)
+
+	p.Domains[0].FFT(inputCoeffs, fft.DIT, fft.WithNbTasks(1))
+	for j := p.NbColumns - 1; j >= 0; j-- {
+		expandedCoeffs[rho*j+1] = expandedCoeffs[j]
+		expandedCoeffs[rho*j] = v.Get(j)
 	}
 
-	// Pad the coefficients
-	expandedCoeffs := make([]fext.Element, p.NumEncodedCols())
-	asCoeffs.WriteInSliceExt(expandedCoeffs[:asCoeffs.Len()])
-
-	// This is not memory that will be recycled easily
-	return smartvectors.FFTExt(smartvectors.NewRegularExt(expandedCoeffs), fft.DIT, true, 0, 0, nil)
+	return smartvectors.NewRegular(expandedCoeffs)
 }
 
 // IsCodeword returns nil iff the argument `v` is a correct codeword and an

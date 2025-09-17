@@ -21,7 +21,7 @@ import (
 // when the vector is written or sub-vectored. This makes rotations essentially
 // free.
 type RotatedExt struct {
-	v      *PooledExt
+	v      RegularExt
 	offset int
 }
 
@@ -46,7 +46,7 @@ func NewRotatedExt(reg RegularExt, offset int) *RotatedExt {
 	}
 
 	return &RotatedExt{
-		v: &PooledExt{RegularExt: reg}, offset: offset,
+		v: reg, offset: offset,
 	}
 }
 
@@ -77,8 +77,8 @@ func (r *RotatedExt) Get(n int) field.Element {
 // [start, stop). (stop being excluded from the span)
 func (r *RotatedExt) SubVector(start, stop int) SmartVector {
 
-	if stop+r.offset < len(r.v.RegularExt) && start+r.offset > 0 {
-		res := RegularExt(r.v.RegularExt[start+r.offset : stop+r.offset])
+	if stop+r.offset < len(r.v) && start+r.offset > 0 {
+		res := RegularExt(r.v[start+r.offset : stop+r.offset])
 		return &res
 	}
 
@@ -105,7 +105,7 @@ func (r *RotatedExt) SubVector(start, stop int) SmartVector {
 
 	// NB: we may need to construct the res in several steps
 	// in case
-	copy(res, r.v.RegularExt[startWithOffsetClean:utils.Min(size, startWithOffsetClean+spanSize)])
+	copy(res, r.v[startWithOffsetClean:utils.Min(size, startWithOffsetClean+spanSize)])
 
 	// If this is negative of zero, it means the first copy already copied
 	// everything we needed to copy
@@ -117,7 +117,7 @@ func (r *RotatedExt) SubVector(start, stop int) SmartVector {
 	}
 
 	// if necessary perform a second
-	copy(res[howManyAlreadyCopied:], r.v.RegularExt[:howManyElementLeftToCopy])
+	copy(res[howManyAlreadyCopied:], r.v[:howManyElementLeftToCopy])
 	ret := RegularExt(res)
 	return &ret
 }
@@ -129,15 +129,13 @@ func (r *RotatedExt) RotateRight(offset int) SmartVector {
 		utils.Panic("offset is too large")
 	}
 	return &RotatedExt{
-		v: &PooledExt{
-			RegularExt: vectorext.DeepCopy(r.v.RegularExt),
-		},
+		v:      vectorext.DeepCopy(r.v),
 		offset: r.offset + offset,
 	}
 }
 
 func (r *RotatedExt) DeepCopy() SmartVector {
-	return NewRotatedExt(vectorext.DeepCopy(r.v.RegularExt), r.offset)
+	return NewRotatedExt(vectorext.DeepCopy(r.v), r.offset)
 }
 
 func (r *RotatedExt) WriteInSlice(s []field.Element) {
@@ -199,7 +197,7 @@ func SoftRotateExt(v SmartVector, offset int) SmartVector {
 	case *RegularExt:
 		return NewRotatedExt(*casted, offset)
 	case *RotatedExt:
-		return NewRotatedExt(casted.v.RegularExt, utils.PositiveMod(offset+casted.offset, v.Len()))
+		return NewRotatedExt(casted.v, utils.PositiveMod(offset+casted.offset, v.Len()))
 	case *PaddedCircularWindowExt:
 		return NewPaddedCircularWindowExt(
 			casted.Window_,
@@ -210,11 +208,6 @@ func SoftRotateExt(v SmartVector, offset int) SmartVector {
 	case *ConstantExt:
 		// It's a constant so it does not need to be rotated
 		return v
-	case *PooledExt:
-		return &RotatedExt{
-			v:      casted,
-			offset: offset,
-		}
 	default:
 		utils.Panic("unknown type %T", v)
 	}
