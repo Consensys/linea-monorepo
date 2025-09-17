@@ -102,19 +102,6 @@ class ConflationApp(
     log = LogManager.getLogger("clients.l2.eth.conflation"),
   )
 
-  private val extendedWeb3J = ExtendedWeb3JImpl(l2Web3jClient)
-  private val lastProcessedBlock = extendedWeb3J.ethGetBlock(
-    BlockParameter.fromNumber(lastProcessedBlockNumber),
-  ).get()
-
-  init {
-    require(lastProcessedBlock != null) {
-      "lastProcessedBlock=$lastProcessedBlock is null! Unable to instantiate conflation calculators!"
-    }
-  }
-
-  private val lastProcessedTimestamp = Instant.fromEpochSeconds(lastProcessedBlock!!.timestamp.toLong())
-
   private val deadlineConflationCalculatorRunner = createDeadlineConflationCalculatorRunner(l2Web3jClient)
 
   private val conflationCalculator: TracesConflationCalculator = run {
@@ -225,6 +212,19 @@ class ConflationApp(
     conflationCalculator.onBlobCreation(compositeSafeFutureHandler)
     blobCompressionProofCoordinator
   }
+
+  private val extendedWeb3J = ExtendedWeb3JImpl(l2Web3jClient)
+  private val lastProcessedBlock = extendedWeb3J.ethGetBlock(
+    BlockParameter.fromNumber(lastProcessedBlockNumber),
+  ).get()
+
+  init {
+    require(lastProcessedBlock != null) {
+      "lastProcessedBlock=$lastProcessedBlock is null! Unable to instantiate conflation calculators!"
+    }
+  }
+
+  private val lastProcessedTimestamp = Instant.fromEpochSeconds(lastProcessedBlock!!.timestamp.toLong())
 
   private val proofAggregationCoordinatorService: LongRunningService = run {
     val maxBlobEndBlockNumberTracker = ConsecutiveProvenBlobsProviderWithLastEndBlockNumberTracker(

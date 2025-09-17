@@ -10,7 +10,6 @@ services:
     entrypoint: [ "sh","/initialization/init.sh" ]
     volumes:
       - ./config/l2-genesis-initialization/:/initialization:rw
-      - ../config/coordinator:/initialization/coordinator:rw
 
   maru:
     image: consensys/maru:${MARU_TAG:-9839958}
@@ -285,8 +284,6 @@ services:
     image: consensys/linea-coordinator:${COORDINATOR_TAG:-6eff2d5}
     profiles: [ "l2", "debug" ]
     depends_on:
-      l2-genesis-initialization:
-        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       l1-el-node:
