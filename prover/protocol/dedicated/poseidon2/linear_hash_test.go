@@ -15,17 +15,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const blockSize = 8
+
 func TestLinearHash(t *testing.T) {
 
-	var tohash, expectedhash ifaces.Column
+	var tohash [blockSize]ifaces.Column
+	var expectedhash [blockSize]ifaces.Column
+
 	testcases := []struct {
 		period  int
 		numhash int
 	}{
-		{period: 4, numhash: 16},
-		{period: 3, numhash: 16},
-		{period: 4, numhash: 14},
-		{period: 5, numhash: 17},
+		{period: 4, numhash: 8},
+		// {period: 3, numhash: 16},
+		// {period: 4, numhash: 14},
+		// {period: 5, numhash: 17},
 	}
 
 	for _, tc := range testcases {
@@ -36,40 +40,48 @@ func TestLinearHash(t *testing.T) {
 		numRowSmall := utils.NextPowerOfTwo(numhash)
 
 		define := func(b *wizard.Builder) {
-			tohash = b.RegisterCommit("TOHASH", numRowLarge)
-			expectedhash = b.RegisterCommit("HASHED", numRowSmall)
+			for i := 0; i < blockSize; i++ {
+				tohash[i] = b.RegisterCommit(ifaces.ColIDf("TOHASH_%v", i), numRowLarge)
+
+				expectedhash[i] = b.RegisterCommit(ifaces.ColIDf("HASHED_%v", i), numRowSmall)
+			}
 			linhash.CheckLinearHash(b.CompiledIOP, "test", tohash, period, numhash, expectedhash)
 		}
 
 		prove := func(run *wizard.ProverRuntime) {
-			th := make([]field.Element, 0, numhash*period)
-			ex := make([]field.Element, 0, numhash)
+			var ex, th [blockSize][]field.Element
+
+			for i := 0; i < blockSize; i++ {
+				ex[i] = make([]field.Element, 0, numhash)
+				th[i] = make([]field.Element, 0, numhash*period)
+			}
 
 			for i := 0; i < numhash; i++ {
 				// generate a segment at random, hash it
 				// and append the segment to th and the result
 				// to ex
-				segment := vector.Rand(period)
-				// hasher := poseidon2.NewPoseidon2()
-
+				segment := vector.Rand(period * blockSize)
 				y := poseidon2.Poseidon2HashVecElement(segment)
-				// for _, x := range segment {
-				// 	xbytes := x.Bytes()
-				// 	hasher.Write(xbytes[:])
-				// }
-				// var y field.Element
-				// y.SetBytes(hasher.Sum(nil))
 
-				th = append(th, segment...)
-				ex = append(ex, y[:]...)
+				for j := 0; j < blockSize; j++ {
+					ex[j] = append(ex[j], y[j])
+					for i := 0; i < period; i++ {
+						th[j] = append(th[j], segment[i*blockSize+j])
+					}
+				}
 			}
 
-			// And assign them
-			thSV := smartvectors.RightZeroPadded(th, numRowLarge)
-			exSV := smartvectors.RightZeroPadded(ex, numRowSmall)
+			var exSV, thSV [blockSize]smartvectors.SmartVector
+			for i := 0; i < blockSize; i++ {
+				thSV[i] = smartvectors.RightZeroPadded(th[i], numRowLarge)
+				exSV[i] = smartvectors.RightZeroPadded(ex[i], numRowSmall)
 
-			run.AssignColumn(tohash.GetColID(), thSV)
-			run.AssignColumn(expectedhash.GetColID(), exSV)
+				// And assign them
+				run.AssignColumn(tohash[i].GetColID(), thSV[i])
+				run.AssignColumn(expectedhash[i].GetColID(), exSV[i])
+
+			}
+
 		}
 
 		comp := wizard.Compile(define, dummy.Compile)

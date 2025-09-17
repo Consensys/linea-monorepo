@@ -34,6 +34,8 @@ PACKAGES := \
   github.com/consensys/linea-monorepo/prover/protocol/dedicated/reedsolomon/...\
   github.com/consensys/linea-monorepo/prover/protocol/dedicated/bigrange/...\
   github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp/...\
+  github.com/consensys/linea-monorepo/prover/protocol/dedicated/merkle/...\
+
 
 
 # these targets are not defined as depending on source files,

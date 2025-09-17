@@ -150,8 +150,7 @@ func (ctx *HashingCtx) Run(run *wizard.ProverRuntime) {
 
 	for i := range interm {
 		for j := 0; j < blockSize; j++ {
-			var intermSlice []field.Element
-			intermSlice = make([]field.Element, len(interm[i]))
+			intermSlice := make([]field.Element, len(interm[i]))
 			for k := range interm[i] {
 				intermSlice[k] = interm[i][k][j]
 			}
