@@ -85,6 +85,6 @@ POINT_EVAL          = 0
 
 # Introduced from beta-v4.0-rc6-CANCUN and present on Cancun
 BLS_DATA                = 1073741824
-RLP_UTILS               = 131072 # Note: need to confirm if this limit could have the same limit as RLP_TXN
+RLP_UTILS               = 131072
 POWER_REFERENCE_TABLE   = 2147483647
 BLS_REFERENCE_TABLE     = 2147483647
