@@ -274,6 +274,7 @@ class ConflationApp(
         provenAggregationEndBlockNumberConsumer = { aggEndBlockNumber -> highestAggregationTracker(aggEndBlockNumber) },
         provenConsecutiveAggregationEndBlockNumberConsumer =
         { aggEndBlockNumber -> highestConsecutiveAggregationTracker(aggEndBlockNumber) },
+        lastFinalizedBlockNumberSupplier = { lastProvenBlockNumberProvider.getLatestL1FinalizedBlock().toULong() },
         aggregationSizeMultipleOf = configs.conflation.proofAggregation.aggregationSizeMultipleOf,
       )
   }

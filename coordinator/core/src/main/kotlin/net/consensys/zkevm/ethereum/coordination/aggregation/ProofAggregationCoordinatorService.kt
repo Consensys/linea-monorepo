@@ -22,6 +22,7 @@ import net.consensys.zkevm.ethereum.coordination.blockcreation.SafeBlockProvider
 import net.consensys.zkevm.persistence.AggregationsRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.apache.logging.log4j.util.Supplier
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.function.Consumer
@@ -38,9 +39,10 @@ class ProofAggregationCoordinatorService(
   private val consecutiveProvenBlobsProvider: ConsecutiveProvenBlobsProvider,
   private val proofAggregationClient: ProofAggregationProverClientV2,
   private val aggregationL2StateProvider: AggregationL2StateProvider,
-  private val log: Logger = LogManager.getLogger(ProofAggregationCoordinatorService::class.java),
   private val provenAggregationEndBlockNumberConsumer: Consumer<ULong> = Consumer<ULong> { },
   private val provenConsecutiveAggregationEndBlockNumberConsumer: Consumer<ULong> = Consumer<ULong> { },
+  private val lastFinalizedBlockNumberSupplier: Supplier<ULong> = Supplier<ULong> { 0UL },
+  private val log: Logger = LogManager.getLogger(ProofAggregationCoordinatorService::class.java),
 ) : AggregationHandler, PeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = config.pollingInterval.inWholeMilliseconds,
@@ -211,7 +213,9 @@ class ProofAggregationCoordinatorService(
             )
           }
           .thenPeek {
-            aggregationsRepository.findHighestConsecutiveEndBlockNumber()
+            aggregationsRepository.findHighestConsecutiveEndBlockNumber(
+              lastFinalizedBlockNumberSupplier.get().toLong() + 1L,
+            )
               .thenApply { it ->
                 if (it != null) {
                   provenConsecutiveAggregationEndBlockNumberConsumer.accept(it.toULong())
@@ -283,6 +287,7 @@ class ProofAggregationCoordinatorService(
       metricsFacade: MetricsFacade,
       provenAggregationEndBlockNumberConsumer: Consumer<ULong>,
       provenConsecutiveAggregationEndBlockNumberConsumer: Consumer<ULong>,
+      lastFinalizedBlockNumberSupplier: Supplier<ULong>,
       aggregationSizeMultipleOf: UInt,
     ): LongRunningService {
       val aggregationCalculatorByDeadline =
@@ -336,6 +341,7 @@ class ProofAggregationCoordinatorService(
         ),
         provenAggregationEndBlockNumberConsumer = provenAggregationEndBlockNumberConsumer,
         provenConsecutiveAggregationEndBlockNumberConsumer = provenConsecutiveAggregationEndBlockNumberConsumer,
+        lastFinalizedBlockNumberSupplier = lastFinalizedBlockNumberSupplier,
       )
 
       return LongRunningService.compose(deadlineCheckRunner, proofAggregationService)
