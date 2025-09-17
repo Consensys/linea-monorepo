@@ -1,7 +1,6 @@
 package smartvectors_mixed
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -12,12 +11,12 @@ import (
 //   - The function panics if svecs is empty
 //   - The function panics if the length of coeffs does not match the length of
 //     svecs
-func LinCombMixed(coeffs []int, svecs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
+func LinCombMixed(coeffs []int, svecs []sv.SmartVector) sv.SmartVector {
 	vecsBase, vecsExt, coeffsBase, coeffsExt := SeparateBaseAndExtVectorsWithCoeffs(coeffs, svecs)
 	// compute the base result
 	var resBase sv.SmartVector = sv.NewConstant(field.Zero(), svecs[0].Len())
 	if len(vecsBase) > 0 {
-		resBase = sv.LinComb(coeffsBase, vecsBase, p...)
+		resBase = sv.LinComb(coeffsBase, vecsBase)
 	}
 
 	if len(vecsExt) == 0 {
@@ -31,7 +30,7 @@ func LinCombMixed(coeffs []int, svecs []sv.SmartVector, p ...mempool.MemPool) sv
 		}
 		// there are some extension vectors present
 		// apply the extension operation to the extension vectors
-		resExt := sv.LinCombExt(coeffsExt, vecsExt, p...)
+		resExt := sv.LinCombExt(coeffsExt, vecsExt)
 		// lift the base result to extension representation and then apply the extension operation
 		liftedBase := LiftToExt(resBase)
 		return AddMixed(liftedBase, resExt)
@@ -43,12 +42,12 @@ func LinCombMixed(coeffs []int, svecs []sv.SmartVector, p ...mempool.MemPool) sv
 //   - The function panics if svecs is empty
 //   - The function panics if the length of exponents does not match the length of
 //     svecs
-func ProductMixed(exponents []int, svecs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
+func ProductMixed(exponents []int, svecs []sv.SmartVector) sv.SmartVector {
 	vecsBase, vecsExt, expBase, expExt := SeparateBaseAndExtVectorsWithCoeffs(exponents, svecs)
 	// compute the base result
 	var resBase sv.SmartVector = sv.NewConstant(field.One(), svecs[0].Len())
 	if len(vecsBase) > 0 {
-		resBase = sv.Product(expBase, vecsBase, p...)
+		resBase = sv.Product(expBase, vecsBase)
 	}
 
 	if len(vecsExt) == 0 {
@@ -62,7 +61,7 @@ func ProductMixed(exponents []int, svecs []sv.SmartVector, p ...mempool.MemPool)
 		}
 		// there are some extension vectors present
 		// apply the extension operation to the extension vectors
-		resExt := sv.ProductExt(expExt, vecsExt, p...)
+		resExt := sv.ProductExt(expExt, vecsExt)
 		// lift the base result to extension representation and then apply the extension operation
 		liftedBase := LiftToExt(resBase)
 		return MulMixed(liftedBase, resExt)

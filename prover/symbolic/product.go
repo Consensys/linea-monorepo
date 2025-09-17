@@ -11,7 +11,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
@@ -140,8 +139,8 @@ func (prod Product) Degree(inputDegrees []int) int {
 }
 
 // Evaluate implements the [Operator] interface.
-func (prod Product) Evaluate(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
-	return sv.Product(prod.Exponents, inputs, p...)
+func (prod Product) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
+	return sv.Product(prod.Exponents, inputs)
 }
 
 // Validate implements the [Operator] interface.
@@ -206,10 +205,10 @@ func (prod Product) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) g
 	return res
 }
 
-func (prod Product) EvaluateExt(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
-	return sv.ProductExt(prod.Exponents, inputs, p...)
+func (prod Product) EvaluateExt(inputs []sv.SmartVector) sv.SmartVector {
+	return sv.ProductExt(prod.Exponents, inputs)
 }
 
-func (prod Product) EvaluateMixed(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
-	return smartvectors_mixed.ProductMixed(prod.Exponents, inputs, p...)
+func (prod Product) EvaluateMixed(inputs []sv.SmartVector) sv.SmartVector {
+	return smartvectors_mixed.ProductMixed(prod.Exponents, inputs)
 }

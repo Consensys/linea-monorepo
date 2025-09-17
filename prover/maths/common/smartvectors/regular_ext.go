@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"iter"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
-
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
@@ -107,11 +105,9 @@ func (r *RegularExt) Pretty() string {
 	return fmt.Sprintf("Regular[%v]", vectorext.Prettify(*r))
 }
 
-func processRegularOnlyExt(op operator, svecs []SmartVector, coeffs []int, p ...mempool.MemPool) (result *PooledExt, numMatches int) {
+func processRegularOnlyExt(op operator, svecs []SmartVector, coeffs []int) (result *PooledExt, numMatches int) {
 
 	length := svecs[0].Len()
-
-	pool, hasPool := mempool.ExtractCheckOptionalStrict(length, p...)
 
 	var resvec *PooledExt
 
@@ -137,11 +133,7 @@ func processRegularOnlyExt(op operator, svecs []SmartVector, coeffs []int, p ...
 			// Importantly, we do not need to assume that regRes is originally
 			// zero.
 			if isFirst {
-				if hasPool {
-					resvec = AllocFromPoolExt(pool)
-				} else {
-					resvec = &PooledExt{RegularExt: make([]fext.Element, length)}
-				}
+				resvec = &PooledExt{RegularExt: make([]fext.Element, length)}
 
 				isFirst = false
 				op.vecExtIntoTermExt(resvec.RegularExt, *reg, coeffs[i])
@@ -195,21 +187,7 @@ func (c *RegularExt) GetPtr(n int) *field.Element {
 
 type PooledExt struct {
 	RegularExt
-	poolPtr *[]fext.Element
 }
 
-func AllocFromPoolExt(pool mempool.MemPool) *PooledExt {
-	poolPtr := pool.AllocExt()
-	return &PooledExt{
-		RegularExt: *poolPtr,
-		poolPtr:    poolPtr,
-	}
-}
-
-func (p *PooledExt) Free(pool mempool.MemPool) {
-	if p.poolPtr != nil {
-		pool.FreeExt(p.poolPtr)
-	}
-	p.poolPtr = nil
-	p.RegularExt = nil
+func (p *PooledExt) Free() {
 }

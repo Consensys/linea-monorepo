@@ -1,7 +1,6 @@
 package smartvectors_mixed
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -41,10 +40,6 @@ func LiftToExt(vec sv.SmartVector) sv.SmartVector {
 		)
 		return res
 	case *sv.Rotated:
-		vecExt := make([]fext.Element, v.Len())
-		v.WriteInSliceExt(vecExt)
-		return sv.NewRegularExt(vecExt)
-	case *sv.Pooled:
 		vecExt := make([]fext.Element, v.Len())
 		v.WriteInSliceExt(vecExt)
 		return sv.NewRegularExt(vecExt)
@@ -134,16 +129,15 @@ func SeparateBaseAndExtVectorsWithCoeffs(coeffs []int, vecs []sv.SmartVector) ([
 
 func ExecuteFuncOnBaseExtWithMempool(
 	vecs []sv.SmartVector,
-	baseOperation func(vec []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector,
-	extOperation func(vec []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector,
+	baseOperation func(vec []sv.SmartVector) sv.SmartVector,
+	extOperation func(vec []sv.SmartVector) sv.SmartVector,
 	finalOperation func(vec ...sv.SmartVector) sv.SmartVector,
-	p ...mempool.MemPool,
 ) sv.SmartVector {
 	vecsBase, vecsExt := SeparateBaseAndExtVectors(vecs)
 
 	var res sv.SmartVector = sv.NewConstant(field.Zero(), vecs[0].Len())
 	if len(vecsBase) > 0 {
-		res = baseOperation(vecsBase, p...)
+		res = baseOperation(vecsBase)
 	}
 
 	if len(vecsExt) == 0 {
@@ -152,7 +146,7 @@ func ExecuteFuncOnBaseExtWithMempool(
 	} else {
 		// there are some extension vectors present
 		// apply the extension operation to the extension vectors
-		addExt := extOperation(vecsExt, p...)
+		addExt := extOperation(vecsExt)
 		// lift the base result to extension representation and then apply the extension operation
 		liftedBase := LiftToExt(res)
 		return finalOperation(liftedBase, addExt)

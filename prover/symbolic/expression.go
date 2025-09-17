@@ -9,7 +9,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
@@ -61,11 +60,11 @@ type Expression struct {
 type Operator interface {
 	// Evaluate returns an evaluation of the operator from a list of assignments:
 	// one for each operand (children) of the expression.
-	Evaluate([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector
+	Evaluate([]sv.SmartVector) sv.SmartVector
 	// EvaluateExt returns an evaluation of the operator from a list of assignments:
 	// one for each operand (children) of the expression.
-	EvaluateExt([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector
-	EvaluateMixed([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector
+	EvaluateExt([]sv.SmartVector) sv.SmartVector
+	EvaluateMixed([]sv.SmartVector) sv.SmartVector
 	// Validate performs a sanity-check of the expression the Operator belongs
 	// to.
 	Validate(e *Expression) error
@@ -77,7 +76,7 @@ type Operator interface {
 }
 
 type OperatorWithResult interface {
-	EvaluateExtResult(result sv.SmartVector, inputs []sv.SmartVector, p ...mempool.MemPool)
+	EvaluateExtResult(result sv.SmartVector, inputs []sv.SmartVector)
 }
 
 // Board pins down the expression into an ExpressionBoard. This converts the

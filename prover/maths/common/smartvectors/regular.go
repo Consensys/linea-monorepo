@@ -7,7 +7,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -107,13 +106,11 @@ func (r *Regular) IterateSkipPadding() iter.Seq[field.Element] {
 	return r.IterateCompact()
 }
 
-func processRegularOnly(op operator, svecs []SmartVector, coeffs []int, p ...mempool.MemPool) (result *Pooled, numMatches int) {
+func processRegularOnly(op operator, svecs []SmartVector, coeffs []int) (result SmartVector, numMatches int) {
 
 	length := svecs[0].Len()
 
-	pool, hasPool := mempool.ExtractCheckOptionalStrict(length, p...)
-
-	var resvec *Pooled
+	var resvec SmartVector
 
 	isFirst := true
 	numMatches = 0
@@ -127,28 +124,20 @@ func processRegularOnly(op operator, svecs []SmartVector, coeffs []int, p ...mem
 			svec = rotatedAsRegular(rot)
 		}
 
-		if pooled, ok := svec.(*Pooled); ok {
-			svec = &pooled.Regular
-		}
-
 		if reg, ok := svec.(*Regular); ok {
 			numMatches++
 			// For the first one, we can save by just copying the result
 			// Importantly, we do not need to assume that regRes is originally
 			// zero.
 			if isFirst {
-				if hasPool {
-					resvec = AllocFromPool(pool)
-				} else {
-					resvec = &Pooled{Regular: make([]field.Element, length)}
-				}
+				resvec = NewRegular(make([]field.Element, length))
 
 				isFirst = false
-				op.vecIntoTerm(resvec.Regular, *reg, coeffs[i])
+				op.vecIntoTerm(*resvec.(*Regular), *reg, coeffs[i])
 				continue
 			}
 
-			op.vecIntoVec(resvec.Regular, *reg, coeffs[i])
+			op.vecIntoVec(*resvec.(*Regular), *reg, coeffs[i])
 		}
 	}
 
@@ -188,27 +177,4 @@ func (r *Regular) IntoRegVecSaveAllocExt() []fext.Element {
 
 func (r *Regular) GetPtr(n int) *field.Element {
 	return &(*r)[n]
-}
-
-type Pooled struct {
-	Regular
-	poolPtr *[]field.Element `serde:"omit"`
-}
-
-func AllocFromPool(pool mempool.MemPool) *Pooled {
-	poolPtr := pool.Alloc()
-	return &Pooled{
-		Regular: *poolPtr,
-		poolPtr: poolPtr,
-	}
-}
-
-func (p *Pooled) Free(pool mempool.MemPool) {
-	if p.poolPtr != nil {
-		if err := pool.Free(p.poolPtr); err != nil {
-			utils.Panic("failed to free slice in pool: %v", err)
-		}
-	}
-	p.poolPtr = nil
-	p.Regular = nil
 }

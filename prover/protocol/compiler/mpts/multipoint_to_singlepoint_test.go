@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -158,12 +157,10 @@ func TestLdeOf(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.Name, func(t *testing.T) {
 
-			var (
-				sizeBig = len(tc.LDE)
-				memPool = mempool.CreateFromSyncPool(sizeBig)
-				resPtr  = ldeOfExt(tc.Poly, memPool)
-				res     = *resPtr
-			)
+			sizeBig := len(tc.LDE)
+			res := make([]fext.Element, sizeBig)
+			copy(res, tc.Poly)
+			_ldeOfExt(res, len(tc.Poly), sizeBig)
 
 			for i := range tc.LDE {
 				if !tc.LDE[i].Equal(&res[i]) {

@@ -1,7 +1,6 @@
 package smartvectors
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -11,7 +10,7 @@ import (
 //   - The function panics if svecs is empty
 //   - The function panics if the length of coeffs does not match the length of
 //     svecs
-func LinCombExt(coeffs []int, svecs []SmartVector, p ...mempool.MemPool) SmartVector {
+func LinCombExt(coeffs []int, svecs []SmartVector) SmartVector {
 	// Sanity check : all svec should have the same length
 	length := svecs[0].Len()
 	for i := 0; i < len(svecs); i++ {
@@ -19,7 +18,7 @@ func LinCombExt(coeffs []int, svecs []SmartVector, p ...mempool.MemPool) SmartVe
 			utils.Panic("bad size %v, expected %v", svecs[i].Len(), length)
 		}
 	}
-	return processOperatorExt(linCombOp{}, coeffs, svecs, p...)
+	return processOperatorExt(linCombOp{}, coeffs, svecs)
 }
 
 // ProductExt computes a product of smart-vectors with integer exponents
@@ -27,8 +26,8 @@ func LinCombExt(coeffs []int, svecs []SmartVector, p ...mempool.MemPool) SmartVe
 //   - The function panics if svecs is empty
 //   - The function panics if the length of exponents does not match the length of
 //     svecs
-func ProductExt(exponents []int, svecs []SmartVector, p ...mempool.MemPool) SmartVector {
-	return processOperatorExt(productOp{}, exponents, svecs, p...)
+func ProductExt(exponents []int, svecs []SmartVector) SmartVector {
+	return processOperatorExt(productOp{}, exponents, svecs)
 }
 
 // processOperatorExt computes the result of an [operator] and put the result into res
@@ -36,7 +35,7 @@ func ProductExt(exponents []int, svecs []SmartVector, p ...mempool.MemPool) Smar
 //   - The function panics if svecs is empty
 //   - The function panics if the length of coeffs does not match the length of
 //     svecs
-func processOperatorExt(op operator, coeffs []int, svecs []SmartVector, p ...mempool.MemPool) SmartVector {
+func processOperatorExt(op operator, coeffs []int, svecs []SmartVector) SmartVector {
 
 	// There should be as many coeffs than there are vectors
 	if len(coeffs) != len(svecs) {
@@ -100,7 +99,7 @@ func processOperatorExt(op operator, coeffs []int, svecs []SmartVector, p ...mem
 	}
 
 	// Accumulate the regular part of the vector
-	regularRes, matchedRegular := processRegularOnlyExt(op, svecs, coeffs, p...)
+	regularRes, matchedRegular := processRegularOnlyExt(op, svecs, coeffs)
 
 	// Sanity-check : all of the vector should fall into only one of the two
 	// category.

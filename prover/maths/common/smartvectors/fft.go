@@ -54,9 +54,9 @@ func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio i
 	}
 
 	// Else : we run the FFT directly
-	res := &Pooled{Regular: make([]field.Element, v.Len())}
+	res := NewRegular(make([]field.Element, v.Len()))
 
-	v.WriteInSlice(res.Regular)
+	v.WriteInSlice(*res)
 
 	domain := fft.NewDomain(uint64(v.Len()), fft.WithCache())
 
@@ -75,22 +75,22 @@ func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio i
 	if decimation == fft.DIT {
 		// Optionally, bitReverse the input
 		if bitReverse {
-			fft.BitReverse(res.Regular)
+			fft.BitReverse(*res)
 		}
 		if cosetID != 0 || cosetRatio != 0 {
-			domain.FFT(res.Regular, fft.DIT, fft.OnCoset())
+			domain.FFT(*res, fft.DIT, fft.OnCoset())
 		} else {
-			domain.FFT(res.Regular, fft.DIT)
+			domain.FFT(*res, fft.DIT)
 		}
 	} else {
 		// Likewise, the optionally rearrange the input in correct order
 		if cosetID != 0 || cosetRatio != 0 {
-			domain.FFT(res.Regular, fft.DIF, fft.OnCoset())
+			domain.FFT(*res, fft.DIF, fft.OnCoset())
 		} else {
-			domain.FFT(res.Regular, fft.DIF)
+			domain.FFT(*res, fft.DIF)
 		}
 		if bitReverse {
-			fft.BitReverse(res.Regular)
+			fft.BitReverse(*res)
 		}
 	}
 	return res
@@ -146,9 +146,9 @@ func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, coset
 	}
 
 	// Else : we run the FFTInverse directly
-	res := &Pooled{Regular: make([]field.Element, v.Len())}
+	res := NewRegular(make([]field.Element, v.Len()))
 
-	v.WriteInSlice(res.Regular)
+	v.WriteInSlice(*res)
 
 	domain := fft.NewDomain(uint64(v.Len()), fft.WithCache())
 	var shift field.Element
@@ -166,22 +166,22 @@ func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, coset
 	if decimation == fft.DIF {
 		// Optionally, bitReverse the output
 		if cosetID != 0 || cosetRatio != 0 {
-			domain.FFTInverse(res.Regular, fft.DIF, fft.OnCoset())
+			domain.FFTInverse(*res, fft.DIF, fft.OnCoset())
 		} else {
-			domain.FFTInverse(res.Regular, fft.DIF)
+			domain.FFTInverse(*res, fft.DIF)
 		}
 		if bitReverse {
-			fft.BitReverse(res.Regular)
+			fft.BitReverse(*res)
 		}
 	} else {
 		// Likewise, the optionally rearrange the input in correct order
 		if bitReverse {
-			fft.BitReverse(res.Regular)
+			fft.BitReverse(*res)
 		}
 		if cosetID != 0 || cosetRatio != 0 {
-			domain.FFTInverse(res.Regular, fft.DIT, fft.OnCoset())
+			domain.FFTInverse(*res, fft.DIT, fft.OnCoset())
 		} else {
-			domain.FFTInverse(res.Regular, fft.DIT)
+			domain.FFTInverse(*res, fft.DIT)
 		}
 	}
 	return res

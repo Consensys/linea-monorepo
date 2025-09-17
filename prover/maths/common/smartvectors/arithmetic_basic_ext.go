@@ -1,8 +1,6 @@
 package smartvectors
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -66,32 +64,18 @@ func InnerProductExt(a, b SmartVector) fext.Element {
 //	result = vecs[0] + vecs[1] * x + vecs[2] * x^2 + vecs[3] * x^3 + ...
 //
 // where `x` is a scalar and `vecs[i]` are [SmartVector]
-func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPool) (result SmartVector) {
+func LinearCombinationExt(vecs []SmartVector, x fext.Element) (result SmartVector) {
 
 	if len(vecs) == 0 {
 		panic("no input vectors")
 	}
 
 	length := vecs[0].Len()
-	pool, hasPool := mempool.ExtractCheckOptionalStrict(length, p...)
 	// Preallocate the intermediate values
-	var resReg, tmpVecExt []fext.Element
-	var tmpVec []field.Element
 
-	if !hasPool {
-		resReg = make([]fext.Element, length)
-		tmpVecExt = make([]fext.Element, length)
-		tmpVec = make([]field.Element, length)
-	} else {
-		a := AllocFromPoolExt(pool)
-		b := AllocFromPoolExt(pool)
-		bBase := AllocFromPool(pool)
-		resReg, tmpVecExt = a.RegularExt, b.RegularExt
-		tmpVec = bBase.Regular
-		vectorext.Fill(resReg, fext.Zero())
-		defer b.Free(pool)
-		defer bBase.Free(pool)
-	}
+	resReg := make([]fext.Element, length)
+	tmpVecExt := make([]fext.Element, length)
+	tmpVec := make([]field.Element, length)
 
 	var tmpF, resCon fext.Element
 	var anyReg, anyCon bool
@@ -137,10 +121,6 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPo
 			anyReg = true
 			v := *casted
 			accumulateRegExt(resReg, v, xPow)
-		case *Pooled: // e.g. from product
-			anyReg = true
-			v := casted.Regular
-			accumulateRegMixed(resReg, v, xPow)
 		case *PooledExt: // e.g. from product
 			anyReg = true
 			v := casted.RegularExt
@@ -168,10 +148,6 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPo
 		}
 		return NewRegularExt(resReg)
 	case anyCon && !anyReg:
-		// and we can directly unpool resreg because it was not used
-		if hasPool {
-			pool.FreeExt(&resReg)
-		}
 		return NewConstantExt(resCon, length)
 	case !anyCon && anyReg:
 		return NewRegularExt(resReg)

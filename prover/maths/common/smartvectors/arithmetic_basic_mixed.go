@@ -1,8 +1,6 @@
 package smartvectors
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -13,30 +11,17 @@ import (
 //	result = vecs[0] + vecs[1] * x + vecs[2] * x^2 + vecs[3] * x^3 + ...
 //
 // where `x` is a scalar in fext and `vecs[i]` are [SmartVector] holding field elements
-func LinearCombinationMixed(vecs []SmartVector, x fext.Element, p ...mempool.MemPool) (result SmartVector) {
+func LinearCombinationMixed(vecs []SmartVector, x fext.Element) (result SmartVector) {
 
 	if len(vecs) == 0 {
 		panic("no input vectors")
 	}
 
 	length := vecs[0].Len()
-	pool, hasPool := mempool.ExtractCheckOptionalStrict(length, p...)
 
 	// Preallocate the intermediate values
-	var resReg []fext.Element
-	var tmpVec []field.Element
-	if !hasPool {
-		resReg = make([]fext.Element, length)
-		tmpVec = make([]field.Element, length)
-	} else {
-		a := AllocFromPoolExt(pool)
-		b := AllocFromPool(pool)
-		resReg = a.RegularExt
-		tmpVec = b.Regular
-
-		vectorext.Fill(resReg, fext.Zero())
-		defer b.Free(pool)
-	}
+	resReg := make([]fext.Element, length)
+	tmpVec := make([]field.Element, length)
 
 	var tmpF, resCon fext.Element
 	var anyReg, anyCon bool
@@ -68,10 +53,6 @@ func LinearCombinationMixed(vecs []SmartVector, x fext.Element, p ...mempool.Mem
 			anyReg = true
 			v := *casted
 			accumulateRegMixed(resReg, v, xPow)
-		case *Pooled: // e.g. from product
-			anyReg = true
-			v := casted.Regular
-			accumulateRegMixed(resReg, v, xPow)
 		case *PaddedCircularWindow:
 			// treat it as a regular, reusing the buffer
 			anyReg = true
@@ -91,10 +72,6 @@ func LinearCombinationMixed(vecs []SmartVector, x fext.Element, p ...mempool.Mem
 		}
 		return NewRegularExt(resReg)
 	case anyCon && !anyReg:
-		// and we can directly unpool resreg because it was not used
-		if hasPool {
-			pool.FreeExt(&resReg)
-		}
 		return NewConstantExt(resCon, length)
 	case !anyCon && anyReg:
 		return NewRegularExt(resReg)

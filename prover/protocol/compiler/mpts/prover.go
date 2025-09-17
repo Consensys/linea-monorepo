@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	gutils "github.com/consensys/gnark-crypto/utils"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
@@ -261,32 +260,6 @@ func getPowersOfOmegaExt(n int) []fext.Element {
 	}
 
 	return res
-}
-
-// ldeOf computes the low-degree extension of a vector and allocates the result
-// in the pool. The size of the result is the same as the size of the pool.
-func ldeOfExt(v []fext.Element, pool mempool.MemPool) *[]fext.Element {
-
-	var (
-		sizeLarge   = pool.Size()
-		domainSmall = fft.NewDomain(uint64(len(v)), fft.WithCache())
-		domainLarge = fft.NewDomain(uint64(sizeLarge), fft.WithCache())
-		resPtr      = pool.AllocExt()
-		res         = *resPtr
-	)
-
-	vectorext.Fill(res, fext.Zero())
-	copy(res[:len(v)], v)
-
-	// Note: this implementation is very suboptimal as it should be possible
-	// reduce the overheads of bit-reversal with a smarter implementation.
-	// To be digged in the future, if this comes up as a bottleneck.
-	domainSmall.FFTInverseExt(res[:len(v)], fft.DIF)
-	gutils.BitReverse(res[:len(v)])
-	domainLarge.FFTExt(res, fft.DIF)
-	gutils.BitReverse(res)
-
-	return resPtr
 }
 
 func _ldeOfExt(v []fext.Element, sizeSmall, sizeLarge int) {

@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -38,16 +37,16 @@ func (Variable) Degree([]int) int {
 }
 
 // Evaluate implements the [Operator] interface. Yet, this panics if this is called.
-func (v Variable) Evaluate([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector {
+func (v Variable) Evaluate([]sv.SmartVector) sv.SmartVector {
 	panic("we never call it for variables")
 }
 
 // EvaluateExt implements the [Operator] interface. Yet, this panics if this is called.
-func (v Variable) EvaluateExt([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector {
+func (v Variable) EvaluateExt([]sv.SmartVector) sv.SmartVector {
 	panic("we never call it for variables")
 }
 
-func (v Variable) EvaluateMixed([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector {
+func (v Variable) EvaluateMixed([]sv.SmartVector) sv.SmartVector {
 	panic("we never call it for variables")
 }
 
