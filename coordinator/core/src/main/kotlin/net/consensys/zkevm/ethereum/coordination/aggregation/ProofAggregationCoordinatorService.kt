@@ -23,10 +23,10 @@ import net.consensys.zkevm.ethereum.coordination.blockcreation.SafeBlockProvider
 import net.consensys.zkevm.persistence.AggregationsRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.apache.logging.log4j.util.Supplier
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.function.Consumer
+import java.util.function.Supplier
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
