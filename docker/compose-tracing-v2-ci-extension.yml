@@ -7,6 +7,11 @@ services:
       file: compose-spec-l2-services.yml
       service: web3signer
 
+  maru-follower:
+    extends:
+      file: compose-spec-l2-services.yml
+      service: maru-follower
+
   l2-node-besu:
     extends:
       file: compose-spec-l2-services.yml
