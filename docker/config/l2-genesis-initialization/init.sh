@@ -1,5 +1,5 @@
 #!/bin/zsh
-echo "Initialization of timestamp in genesis files for Maru, Besu, and Geth."
+echo "Initialization of timestamp in genesis files for Maru, Besu, and Geth, and config file for coordinator"
 date
 cd initialization || exit
 cp -T "genesis-maru.json.template" "genesis-maru.json"
@@ -26,3 +26,8 @@ sed -i "s/%PRAGUE_TIME%/$prague_timestamp/g" genesis-geth.json
 
 CREATE_EMPTY_BLOCKS="${CREATE_EMPTY_BLOCKS:-false}"
 sed -i "s/%CREATE_EMPTY_BLOCKS%/$CREATE_EMPTY_BLOCKS/g" genesis-besu.json
+
+shanghai_timestamp_ms=$((shanghai_timestamp * 1000))
+cancun_timestamp_ms=$((cancun_timestamp * 1000))
+prague_timestamp_ms=$((prague_timestamp * 1000))
+sed -i'' "s/^\(timestamp-based-hard-forks[ ]*=[ ]*\).*/\1[${shanghai_timestamp_ms}, ${cancun_timestamp_ms}]/" coordinator/coordinator-config-v2.toml
