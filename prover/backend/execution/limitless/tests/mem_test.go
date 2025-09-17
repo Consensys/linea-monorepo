@@ -25,13 +25,8 @@ func toGiB(b uint64) float64 {
 	return float64(b) / (1 << 30)
 }
 
-// var dw = &distributed.DistributedWizard{
-// 	CompiledGLs:  make([]*distributed.RecursedSegmentCompilation, 10),
-// 	CompiledLPPs: make([]*distributed.RecursedSegmentCompilation, 10),
-// }
-
 // ---- Test for GL modules ----
-func TestMemUseCompGL(t *testing.T) {
+func TestMemUseAllCompGL(t *testing.T) {
 	assetsDir := "/home/ubuntu/linea-monorepo/prover/prover-assets/6.0.3/mainnet/execution-limitless"
 	files, err := os.ReadDir(assetsDir)
 	if err != nil {
@@ -108,7 +103,7 @@ func TestMemUseCompGL(t *testing.T) {
 }
 
 // ---- Test for LPP modules ----
-func TestMemUseCompLPP(t *testing.T) {
+func TestMemUseAllCompLPP(t *testing.T) {
 	assetsDir := "/home/ubuntu/linea-monorepo/prover/prover-assets/6.0.3/mainnet/execution-limitless"
 	files, err := os.ReadDir(assetsDir)
 	if err != nil {
@@ -183,4 +178,91 @@ func TestMemUseCompLPP(t *testing.T) {
 	fmt.Printf("Total Go allocs (TotalAlloc Δ): %.3f GiB\n", toGiB(finalTotal-baseTotalAlloc))
 	fmt.Printf("Final live Go heap (Alloc Δ): %.3f GiB\n", toGiB(finalAlloc-baseAlloc))
 	fmt.Printf("Final RSS Δ: %.3f GiB\n\n", toGiB(finalRSS-baseRSS))
+}
+
+// --- Measure per GL module ---
+func TestMemUsePerCompGL(t *testing.T) {
+	assetsDir := "/home/ubuntu/linea-monorepo/prover/prover-assets/6.0.3/mainnet/execution-limitless"
+	files, err := os.ReadDir(assetsDir)
+	if err != nil {
+		t.Fatalf("failed to read assets dir: %v", err)
+	}
+
+	var glModules []string
+	for _, f := range files {
+		name := f.Name()
+		if strings.HasPrefix(name, "dw-compiled-gl-") && strings.HasSuffix(name, ".bin") {
+			base := strings.TrimSuffix(strings.TrimPrefix(name, "dw-compiled-gl-"), ".bin")
+			glModules = append(glModules, base)
+		}
+	}
+
+	cfg, _ := config.NewConfigFromFileUnchecked("/home/ubuntu/linea-monorepo/prover/config/config-mainnet-limitless.toml")
+	dw := &distributed.DistributedWizard{
+		CompiledGLs: make([]*distributed.RecursedSegmentCompilation, len(glModules)),
+	}
+
+	var prevRSS = getRSSBytes()
+	maxRSS := prevRSS
+	fmt.Printf("\n[GL Modules RSS Delta]\n")
+	for i, mod := range glModules {
+		compGL, err := zkevm.LoadCompiledGL(cfg, distributed.ModuleName(mod))
+		if err != nil {
+			t.Fatalf("failed to load compiled GL %s: %v", mod, err)
+		}
+		dw.CompiledGLs[i] = compGL
+
+		currRSS := getRSSBytes()
+		delta := currRSS - prevRSS
+
+		prevRSS = currRSS
+		if currRSS > maxRSS {
+			maxRSS = currRSS
+		}
+		fmt.Printf("GL[%s]: ΔRSS = %.3f  Peak RSS = %.3f GiB\n", mod, toGiB(delta), toGiB(maxRSS))
+	}
+}
+
+// --- Measure per LPP module ---
+func TestMemUsePerCompLPP(t *testing.T) {
+	assetsDir := "/home/ubuntu/linea-monorepo/prover/prover-assets/6.0.3/mainnet/execution-limitless"
+	files, err := os.ReadDir(assetsDir)
+	if err != nil {
+		t.Fatalf("failed to read assets dir: %v", err)
+	}
+
+	var lppModules [][]string
+	for _, f := range files {
+		name := f.Name()
+		if strings.HasPrefix(name, "dw-compiled-lpp-") && strings.HasSuffix(name, ".bin") {
+			base := strings.TrimSuffix(strings.TrimPrefix(name, "dw-compiled-lpp-"), ".bin")
+			base = strings.Trim(base, "[]")
+			lppModules = append(lppModules, []string{base})
+		}
+	}
+
+	cfg, _ := config.NewConfigFromFileUnchecked("/home/ubuntu/linea-monorepo/prover/config/config-mainnet-limitless.toml")
+	dw := &distributed.DistributedWizard{
+		CompiledLPPs: make([]*distributed.RecursedSegmentCompilation, len(lppModules)),
+	}
+
+	var prevRSS = getRSSBytes()
+	maxRSS := prevRSS
+	fmt.Printf("\n[LPP Modules RSS Delta]\n")
+	for i, mods := range lppModules {
+		compLPP, err := zkevm.LoadCompiledLPP(cfg, []distributed.ModuleName{distributed.ModuleName(mods[0])})
+		if err != nil {
+			t.Fatalf("failed to load compiled LPP %v: %v", mods, err)
+		}
+		dw.CompiledLPPs[i] = compLPP
+
+		currRSS := getRSSBytes()
+		delta := currRSS - prevRSS
+
+		prevRSS = currRSS
+		if currRSS > maxRSS {
+			maxRSS = currRSS
+		}
+		fmt.Printf("LPP[%s]: ΔRSS = %.3f GiB, Peak RSS = %.3f GiB\n", mods[0], toGiB(delta), toGiB(maxRSS))
+	}
 }
