@@ -151,7 +151,7 @@ func PackMerkleProofs(proofs []smt.Proof) [blockSize]smartvectors.SmartVector {
 
 	res := [blockSize][]field.Element{}
 	for i := 0; i < blockSize; i++ {
-		res[i] = make([]field.Element, 0, numProofs*depth)
+		res[i] = make([]field.Element, numProofs*depth)
 	}
 
 	numProofWritten := 0
@@ -163,7 +163,6 @@ func PackMerkleProofs(proofs []smt.Proof) [blockSize]smartvectors.SmartVector {
 				utils.Panic("expected depth %v, got %v", depth, len(proofs[i].Siblings))
 			}
 			proofentry := proofs[i].Siblings[depth-j-1]
-
 			hashOct := types.Bytes32ToHash(proofentry)
 			for coord := range res {
 				res[coord][numProofWritten*depth+j] = hashOct[coord]
