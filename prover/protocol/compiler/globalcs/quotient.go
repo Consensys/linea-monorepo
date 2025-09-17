@@ -261,7 +261,7 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 		var scratchOffset int64
 
 		// use sync map to store the coset evaluated polynomials
-		var singleflight singleflight.Group
+		var group singleflight.Group
 		computedReeval := sync.Map{} // (ifaces.ColID <=> sv.SmartVector)
 
 		for j, ratio := range ctx.Ratios {
@@ -276,9 +276,9 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 			// With the above example, if we are in the ratio = 2 and maxRatio = 8
 			// and i = 1 (it can only be 0 <= i < ratio).
 			var (
-				share     = i * ratio / maxRatio
-				handles   = ctx.ColumnsForRatio[j]
-				roots     = ctx.RootsForRatio[j]
+				share   = i * ratio / maxRatio
+				handles = ctx.ColumnsForRatio[j]
+				// roots     = ctx.RootsForRatio[j]
 				board     = ctx.AggregateExpressionsBoard[j]
 				metadatas = board.ListVariableMetadata()
 			)
@@ -286,41 +286,30 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 			shift := computeShift(uint64(ctx.DomainSize), ratio, share)
 			domain := fft.NewDomain(uint64(ctx.DomainSize), fft.WithShift(shift), fft.WithCache())
 
-			ppool.ExecutePoolChunky(len(roots), func(k int) {
+			computeRoot := func(name ifaces.ColID) (any, error) {
+				_v, _ := coeffs.Load(name)
+				v := _v.(sv.SmartVector)
+				n := atomic.AddInt64(&scratchOffset, 1)
+				start := (n - 1) * int64(ctx.DomainSize)
+				end := n * int64(ctx.DomainSize)
+				var reevaledRoot []fext.Element
+				if end > int64(len(scratch)) {
+					reevaledRoot = make([]fext.Element, ctx.DomainSize)
+				} else {
+					reevaledRoot = scratch[start:end]
+				}
 
-				root := roots[k]
-				name := root.GetColID()
+				// TODO @gbotrel coeffs are mostly base vectors;
+				// but the code in eval somewhere can't mix well ext and base,
+				// we could save additional memory here.
+				v.WriteInSliceExt(reevaledRoot)
+				domain.FFTExt(reevaledRoot, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
 
-				// else it's the first value of j that sees it. so we compute the
-				// coset reevaluation.
-				singleflight.Do(string(name), func() (interface{}, error) {
-					v, ok := coeffs.Load(name)
-					if !ok {
-						utils.Panic("handle %v not found in the coeffs (a)\n", name)
-					}
+				res := smartvectors.NewRegularExt(reevaledRoot)
+				computedReeval.Store(name, res)
 
-					n := atomic.AddInt64(&scratchOffset, 1)
-					start := (n - 1) * int64(ctx.DomainSize)
-					end := n * int64(ctx.DomainSize)
-					var reevaledRoot []fext.Element
-					if end > int64(len(scratch)) {
-						reevaledRoot = make([]fext.Element, ctx.DomainSize)
-					} else {
-						reevaledRoot = scratch[start:end]
-					}
-
-					// TODO @gbotrel coeffs are mostly base vectors;
-					// but the code in eval somewhere can't mix well ext and base,
-					// we could save additional memory here.
-
-					v.(sv.SmartVector).WriteInSliceExt(reevaledRoot)
-					domain.FFTExt(reevaledRoot, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
-
-					computedReeval.Store(name, smartvectors.NewRegularExt(reevaledRoot))
-					return nil, nil
-				})
-
-			})
+				return res, nil
+			}
 
 			ppool.ExecutePoolChunky(len(handles), func(k int) {
 
@@ -330,11 +319,7 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 				root := column.RootParents(pol)
 				rootName := root.GetColID()
 
-				reevaledRoot, found := computedReeval.Load(rootName)
-				if !found {
-					// it is expected to computed in the above loop
-					utils.Panic("did not find the reevaluation of %v", rootName)
-				}
+				reevaledRoot, _, _ := group.Do(string(rootName), func() (interface{}, error) { return computeRoot(rootName) })
 
 				// Now, we can reuse a soft-rotation of the smart-vector to save memory
 				if !pol.IsComposite() {
@@ -350,11 +335,8 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 				}
 
 				polName := pol.GetColID()
-				singleflight.Do(string(polName), func() (interface{}, error) {
-					v, ok := coeffs.Load(polName)
-					if !ok {
-						utils.Panic("handle %v not found in the coeffs\n", polName)
-					}
+				group.Do(string(polName), func() (interface{}, error) {
+					v, _ := coeffs.Load(polName)
 
 					n := uint64(v.(sv.SmartVector).Len())
 
@@ -393,15 +375,8 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 					evalInputs[k] = metadata.EvalCoset(ctx.DomainSize, i, maxRatio, true)
 				case ifaces.Accessor:
 					if metadata.IsBase() {
-						// This is a base accessor, we can use the constant
-						// value directly.
-						elem, err := metadata.GetValBase(run)
-						if err != nil {
-							panic(err)
-						}
-						evalInputs[k] = sv.NewConstant(elem, ctx.DomainSize)
+						evalInputs[k] = sv.NewConstant(metadata.GetVal(run), ctx.DomainSize)
 					} else {
-						// This is a non-base accessor
 						evalInputs[k] = sv.NewConstantExt(metadata.GetValExt(run), ctx.DomainSize)
 					}
 				default:
@@ -424,10 +399,8 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 		}
 
 		// Forcefully clean the memory for the computed reevals
-		computedReeval.Range(func(k, v interface{}) bool {
-			computedReeval.Delete(k)
-			return true
-		})
+		computedReeval = sync.Map{}
+		group = singleflight.Group{}
 	}
 
 	logrus.Infof("[global-constraint] msg=\"computed the quotient\"")
