@@ -27,9 +27,9 @@ import kotlin.jvm.optionals.getOrNull
 class GoNativeBlobDecompressorTest {
   private val blobCompressedLimit = 30 * 1024
   private val compressor: BlobCompressor = GoBackedBlobCompressor
-    .getInstance(BlobCompressorVersion.V1_2, blobCompressedLimit)
+    .getInstance(BlobCompressorVersion.V2_0, blobCompressedLimit)
   private val decompressor: BlobDecompressor =
-    GoNativeBlobDecompressorFactory.getInstance(BlobDecompressorVersion.V1_2_0)
+    GoNativeBlobDecompressorFactory.getInstance(BlobDecompressorVersion.V2)
 
   @BeforeEach
   fun beforeEach() {
