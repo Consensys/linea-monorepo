@@ -21,7 +21,8 @@ class EIP7702TransactionSender {
     this.lineaEstimateGasClient = new LineaEstimateGasClient(new URL(rpcUrl), this.signer.address);
   }
 
-  async createAuthorization(targetContractAddress: string): Promise<Authorization> {
+  // Create Authorization for process.env.PRIVATE_KEY
+  async createAuthorizationForSelf(targetContractAddress: string): Promise<Authorization> {
     const network = await this.provider.getNetwork();
     const currentChainId = network.chainId;
 
@@ -39,6 +40,7 @@ class EIP7702TransactionSender {
     return authorization;
   }
 
+  // Create Authorization for another private key
   async createAuthorizationForPrivateKey(targetContractAddress: string, privateKey: string): Promise<Authorization> {
     const network = await this.provider.getNetwork();
     const currentChainId = network.chainId;
