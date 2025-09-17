@@ -10,29 +10,114 @@ import (
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
-	"github.com/sirupsen/logrus"
+
+	"github.com/shirou/gopsutil/v3/process"
 )
 
-// expandUser expands ~ to the current user's home dir
+// getRSSBytes returns current process RSS in bytes.
+func getRSSBytes() uint64 {
+	p, _ := process.NewProcess(int32(os.Getpid()))
+	mem, _ := p.MemoryInfo()
+	return mem.RSS
+}
 
-func TestMemUsageCompiledMods(t *testing.T) {
-	// Path to the prover assets directory (adjust if needed)
+func toGiB(b uint64) float64 {
+	return float64(b) / (1 << 30)
+}
+
+// var dw = &distributed.DistributedWizard{
+// 	CompiledGLs:  make([]*distributed.RecursedSegmentCompilation, 10),
+// 	CompiledLPPs: make([]*distributed.RecursedSegmentCompilation, 10),
+// }
+
+// ---- Test for GL modules ----
+func TestMemUseCompGL(t *testing.T) {
 	assetsDir := "/home/ubuntu/linea-monorepo/prover/prover-assets/6.0.3/mainnet/execution-limitless"
-
 	files, err := os.ReadDir(assetsDir)
 	if err != nil {
 		t.Fatalf("failed to read assets dir: %v", err)
 	}
 
 	var glModules []string
-	var lppModules [][]string
-
 	for _, f := range files {
 		name := f.Name()
 		if strings.HasPrefix(name, "dw-compiled-gl-") && strings.HasSuffix(name, ".bin") {
 			base := strings.TrimSuffix(strings.TrimPrefix(name, "dw-compiled-gl-"), ".bin")
 			glModules = append(glModules, base)
 		}
+	}
+
+	cfg, err := config.NewConfigFromFileUnchecked("/home/ubuntu/linea-monorepo/prover/config/config-mainnet-limitless.toml")
+	if err != nil {
+		t.Fatalf("failed to read config file: %s", err)
+	}
+
+	dw := &distributed.DistributedWizard{
+		CompiledGLs: make([]*distributed.RecursedSegmentCompilation, len(glModules)),
+	}
+
+	var ms runtime.MemStats
+	runtime.ReadMemStats(&ms)
+	baseTotalAlloc := ms.TotalAlloc
+	baseAlloc := ms.Alloc
+	baseRSS := getRSSBytes()
+	maxRSS := baseRSS
+
+	for i, mod := range glModules {
+		// snapshot before
+		runtime.ReadMemStats(&ms)
+		beforeTotal := ms.TotalAlloc
+		beforeAlloc := ms.Alloc
+		beforeRSS := getRSSBytes()
+
+		// load
+		compGL, err := zkevm.LoadCompiledGL(cfg, distributed.ModuleName(mod))
+		if err != nil {
+			t.Fatalf("failed to load compiled GL %s: %v", mod, err)
+		}
+		dw.CompiledGLs[i] = compGL
+
+		// snapshot after
+		runtime.ReadMemStats(&ms)
+		afterTotal := ms.TotalAlloc
+		afterAlloc := ms.Alloc
+		afterRSS := getRSSBytes()
+		if afterRSS > maxRSS {
+			maxRSS = afterRSS
+		}
+
+		fmt.Printf("[GL %s] TotalAlloc Δ: %.3f GiB | LiveHeap Δ: %.3f GiB | RSS Δ: %.3f GiB\n",
+			mod,
+			toGiB(afterTotal-beforeTotal),
+			toGiB(afterAlloc-beforeAlloc),
+			toGiB(afterRSS-beforeRSS),
+		)
+	}
+
+	// final stats
+	runtime.ReadMemStats(&ms)
+	finalTotal := ms.TotalAlloc
+	finalAlloc := ms.Alloc
+	finalRSS := getRSSBytes()
+
+	fmt.Printf("\n[GL Totals]\n")
+	fmt.Printf("Peak RSS observed: %.3f GiB\n", toGiB(maxRSS))
+	fmt.Printf("Total Go allocs (TotalAlloc Δ): %.3f GiB\n", toGiB(finalTotal-baseTotalAlloc))
+	fmt.Printf("Final live Go heap (Alloc Δ): %.3f GiB\n", toGiB(finalAlloc-baseAlloc))
+	fmt.Printf("Final RSS Δ: %.3f GiB\n\n", toGiB(finalRSS-baseRSS))
+}
+
+// ---- Test for LPP modules ----
+func TestMemUseCompLPP(t *testing.T) {
+	assetsDir := "/home/ubuntu/linea-monorepo/prover/prover-assets/6.0.3/mainnet/execution-limitless"
+	files, err := os.ReadDir(assetsDir)
+	if err != nil {
+		t.Fatalf("failed to read assets dir: %v", err)
+	}
+
+	var lppModules [][]string
+	for _, f := range files {
+		name := f.Name()
 		if strings.HasPrefix(name, "dw-compiled-lpp-") && strings.HasSuffix(name, ".bin") {
 			base := strings.TrimSuffix(strings.TrimPrefix(name, "dw-compiled-lpp-"), ".bin")
 			base = strings.Trim(base, "[]")
@@ -45,49 +130,57 @@ func TestMemUsageCompiledMods(t *testing.T) {
 		t.Fatalf("failed to read config file: %s", err)
 	}
 
-	var beforeGL, afterGL, afterLPP runtime.MemStats
-
-	// Measure memory before GL
-	runtime.GC()
-	runtime.ReadMemStats(&beforeGL)
-
-	// Load all GL modules
-	for _, mod := range glModules {
-		logrus.Infof("Loading compiled GL module %s", mod)
-		_, err := zkevm.LoadCompiledGL(cfg, distributed.ModuleName(mod)) // pass cfg if needed
-		if err != nil {
-			t.Fatalf("failed to load compiled GL %s: %v", mod, err)
-		}
+	dw := &distributed.DistributedWizard{
+		CompiledLPPs: make([]*distributed.RecursedSegmentCompilation, len(lppModules)),
 	}
 
-	// Measure memory after GL
-	runtime.GC()
-	runtime.ReadMemStats(&afterGL)
+	var ms runtime.MemStats
+	runtime.ReadMemStats(&ms)
+	baseTotalAlloc := ms.TotalAlloc
+	baseAlloc := ms.Alloc
+	baseRSS := getRSSBytes()
+	maxRSS := baseRSS
 
-	// Load all LPP modules
-	for _, mods := range lppModules {
-		logrus.Infof("Loading compiled LPP module %s", mods)
-		_, err := zkevm.LoadCompiledLPP(cfg, []distributed.ModuleName{distributed.ModuleName(mods[0])}) // pass cfg if needed
+	for i, mods := range lppModules {
+		// snapshot before
+		runtime.ReadMemStats(&ms)
+		beforeTotal := ms.TotalAlloc
+		beforeAlloc := ms.Alloc
+		beforeRSS := getRSSBytes()
+
+		// load
+		compLPP, err := zkevm.LoadCompiledLPP(cfg, []distributed.ModuleName{distributed.ModuleName(mods[0])})
 		if err != nil {
 			t.Fatalf("failed to load compiled LPP %v: %v", mods, err)
 		}
+		dw.CompiledLPPs[i] = compLPP
+
+		// snapshot after
+		runtime.ReadMemStats(&ms)
+		afterTotal := ms.TotalAlloc
+		afterAlloc := ms.Alloc
+		afterRSS := getRSSBytes()
+		if afterRSS > maxRSS {
+			maxRSS = afterRSS
+		}
+
+		fmt.Printf("[LPP %s] TotalAlloc Δ: %.3f GiB | LiveHeap Δ: %.3f GiB | RSS Δ: %.3f GiB\n",
+			mods[0],
+			toGiB(afterTotal-beforeTotal),
+			toGiB(afterAlloc-beforeAlloc),
+			toGiB(afterRSS-beforeRSS),
+		)
 	}
 
-	// Measure memory after LPP
-	runtime.GC()
-	runtime.ReadMemStats(&afterLPP)
+	// final stats
+	runtime.ReadMemStats(&ms)
+	finalTotal := ms.TotalAlloc
+	finalAlloc := ms.Alloc
+	finalRSS := getRSSBytes()
 
-	// Convert to GiB
-	toGiB := func(b uint64) float64 {
-		return float64(b) / (1024 * 1024 * 1024)
-	}
-
-	glDelta := toGiB(afterGL.Alloc - beforeGL.Alloc)
-	lppDelta := toGiB(afterLPP.Alloc - afterGL.Alloc)
-	totalDelta := toGiB(afterLPP.Alloc - beforeGL.Alloc)
-
-	fmt.Printf("Memory usage delta (GiB):\n")
-	fmt.Printf("  Compiled GL:   %.3f GiB\n", glDelta)
-	fmt.Printf("  Compiled LPP:  %.3f GiB\n", lppDelta)
-	fmt.Printf("  Total:         %.3f GiB\n", totalDelta)
+	fmt.Printf("\n[LPP Totals]\n")
+	fmt.Printf("Peak RSS observed: %.3f GiB\n", toGiB(maxRSS))
+	fmt.Printf("Total Go allocs (TotalAlloc Δ): %.3f GiB\n", toGiB(finalTotal-baseTotalAlloc))
+	fmt.Printf("Final live Go heap (Alloc Δ): %.3f GiB\n", toGiB(finalAlloc-baseAlloc))
+	fmt.Printf("Final RSS Δ: %.3f GiB\n\n", toGiB(finalRSS-baseRSS))
 }
