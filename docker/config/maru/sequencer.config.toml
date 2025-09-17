@@ -53,3 +53,8 @@ sync-target-selection = "Highest"
 #max-retries = 5
 #backoff-delay = "1 seconds"
 #use-unconditional-random-download-peer = false
+
+[follower-engine-apis]
+follower-tracer = { endpoint = "http://traces-node:8550" }
+follower-shomei = { endpoint = "http://zkbesu-shomei:8550" }
+follower-besu = { endpoint = "http://l2-node-besu:8550" }
