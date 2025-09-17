@@ -71,10 +71,12 @@ class NewSealedBeaconBlockHandlerMultiplexer<T>(
 }
 
 /**
- * Responsible for: transactional  and El node
+ * Responsible for the following steps
  * 1. state transition of node's BeaconChain
  * 2. new block import into an EL node
- * The import is transactional, I.e. all or nothing approach
+ * The import is not transactional, note all or nothing.
+ * Steps 1 and 2 are performed sequentially. As long as Step 1 is successful, the block is considered imported.
+ * Step 2 is fire and forget.
  */
 class TransactionalSealedBeaconBlockImporter(
   private val beaconChain: BeaconChain,
@@ -84,58 +86,64 @@ class TransactionalSealedBeaconBlockImporter(
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
   override fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<ValidationResult> {
-    val updater = beaconChain.newBeaconChainUpdater()
     val clBlockNumber = sealedBeaconBlock.beaconBlock.beaconBlockHeader.number
     val elBLockNumber = sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber
-    try {
-      log.trace(
-        "Importing clBlockNumber={} elBlockNumber={}",
-        clBlockNumber,
-        elBLockNumber,
-      )
-      return stateTransition
-        .processBlock(sealedBeaconBlock.beaconBlock)
-        .thenApply { resultingState ->
+    log.trace(
+      "Importing clBlockNumber={} elBlockNumber={}",
+      clBlockNumber,
+      elBLockNumber,
+    )
+    val stateTransition =
+      try {
+        stateTransition.processBlock(sealedBeaconBlock.beaconBlock)
+      } catch (ex: Throwable) {
+        log.error(
+          "State transition threw an exception clBlockNumber={} elBlockNumber={}",
+          clBlockNumber,
+          elBLockNumber,
+          ex,
+        )
+        return SafeFuture.failedFuture(ex)
+      }
+
+    return stateTransition
+      .thenApply { resultingState ->
+        beaconChain.newBeaconChainUpdater().use { updater ->
           updater
             .putBeaconState(resultingState)
             .putSealedBeaconBlock(sealedBeaconBlock)
-          updater.commit()
-          log.trace(
-            "Import complete clBlockNumber={} elBlockNumber={}",
-            clBlockNumber,
-            elBLockNumber,
-          )
-          resultingState
-        }.thenCompose { resultingState ->
-          beaconBlockImporter
-            .importBlock(resultingState, sealedBeaconBlock.beaconBlock)
-            .thenApply { }
-            .exceptionally { e ->
-              // Block import doesn't participate in the validation, so we want it to complete, yet ignore its result
-              log.warn(
-                "Failure importing a valid CL block! clBlockNumber={}, elBlockNumber={}",
-                clBlockNumber,
-                elBLockNumber,
-                e,
-              )
-            }
-        }.thenApply {
-          ValidationResult.Companion.Valid as ValidationResult
-        }.exceptionally { ex ->
-          log.trace(
-            "Import reverted clBlockNumber={} elBlockNumber={}",
-            clBlockNumber,
-            elBLockNumber,
-          )
-          updater.rollback()
-          ValidationResult.Companion.Invalid(ex.message!!, ex.cause)
-        }.whenComplete { _, _ ->
-          updater.close()
+            .commit()
         }
-    } catch (e: Exception) {
-      log.error("Block import state transition failed!: ${e.message}", e)
-      return SafeFuture.failedFuture(e)
-    }
+        log.trace(
+          "DB Import complete clBlockNumber={} elBlockNumber={}",
+          clBlockNumber,
+          elBLockNumber,
+        )
+        resultingState
+      }.thenPeek { resultingState ->
+        // Fire and forget
+        beaconBlockImporter
+          .importBlock(resultingState, sealedBeaconBlock.beaconBlock)
+          .whenException { e ->
+            // Block import doesn't participate in the validation, so we want it to complete, yet ignore its result
+            log.warn(
+              "Failure importing a valid CL block! clBlockNumber={}, elBlockNumber={}",
+              clBlockNumber,
+              elBLockNumber,
+              e,
+            )
+          }
+      }.thenApply {
+        ValidationResult.Companion.Valid as ValidationResult
+      }.exceptionally { ex ->
+        log.error(
+          "DB Import failed clBlockNumber={} elBlockNumber={}",
+          clBlockNumber,
+          elBLockNumber,
+          ex,
+        )
+        ValidationResult.Companion.Invalid(ex.message!!, ex.cause)
+      }
   }
 }
 
