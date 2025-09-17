@@ -15,14 +15,16 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
+import static net.consensys.linea.zktracer.module.limits.CountingModuleName.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.REVERT;
 import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
 import net.consensys.linea.zktracer.ChainConfig;
+import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
+import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.module.blockdata.module.Blockdata;
 import net.consensys.linea.zktracer.module.blockdata.module.LondonBlockData;
-import net.consensys.linea.zktracer.module.blsdata.BlsData;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.section.create.LondonCreateSection;
 import net.consensys.linea.zktracer.module.hub.section.finalization.LondonFinalizationSection;
@@ -32,11 +34,8 @@ import net.consensys.linea.zktracer.module.hub.section.txInitializationSection.L
 import net.consensys.linea.zktracer.module.hub.transients.Transients;
 import net.consensys.linea.zktracer.module.mxp.module.LondonMxp;
 import net.consensys.linea.zktracer.module.mxp.module.Mxp;
-import net.consensys.linea.zktracer.module.rlpUtils.RlpUtils;
 import net.consensys.linea.zktracer.module.rlptxn.RlpTxn;
 import net.consensys.linea.zktracer.module.rlptxn.london.LondonRlpTxn;
-import net.consensys.linea.zktracer.module.tables.PowerRt;
-import net.consensys.linea.zktracer.module.tables.bls.BlsRt;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.InstructionDecoder;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.LondonInstructionDecoder;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
@@ -56,15 +55,15 @@ public class LondonHub extends Hub {
   }
 
   @Override
-  protected BlsData setBlsData(Hub hub) {
+  protected Module setBlsData(Hub hub) {
     // Bls is not used in London
-    return null;
+    return new CountingOnlyModule(BLS_DATA);
   }
 
   @Override
-  protected BlsRt setBlsRt() {
+  protected Module setBlsRt() {
     // BlsRt is not used in London
-    return null;
+    return new CountingOnlyModule(BLS_REFERENCE_TABLE);
   }
 
   @Override
@@ -88,9 +87,9 @@ public class LondonHub extends Hub {
   }
 
   @Override
-  protected RlpUtils setRlpUtils(Wcp wcp) {
+  protected Module setRlpUtils(Wcp wcp) {
     // RlpUtils is not used in London, it is only used in Cancun
-    return null;
+    return new CountingOnlyModule(RLP_UTILS);
   }
 
   @Override
@@ -104,9 +103,9 @@ public class LondonHub extends Hub {
   }
 
   @Override
-  protected PowerRt setPower() {
+  protected Module setPower() {
     // PowerRt is not used in London, it is only used in Cancun
-    return null;
+    return new CountingOnlyModule(POWER_REFERENCE_TABLE);
   }
 
   @Override

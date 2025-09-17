@@ -58,8 +58,8 @@ public class PointEvaluationTest extends TracerTestBase {
             "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
             "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
             testInfo);
-    BlsData blsdata = bytecodeRunner.getHub().blsData();
-    if (blsdata != null) {
+    if (isPostCancun(fork)) {
+      final BlsData blsdata = (BlsData) bytecodeRunner.getHub().blsData();
       assertFalse(blsdata.blsDataOperation().mint());
       assertFalse(blsdata.blsDataOperation().mext());
       assertTrue(blsdata.blsDataOperation().successBit());
@@ -76,8 +76,8 @@ public class PointEvaluationTest extends TracerTestBase {
             "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
             "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
             testInfo);
-    BlsData blsdata = bytecodeRunner.getHub().blsData();
-    if (blsdata != null) {
+    if (isPostCancun(fork)) {
+      final BlsData blsdata = (BlsData) bytecodeRunner.getHub().blsData();
       assertTrue(blsdata.blsDataOperation().mint());
       assertFalse(blsdata.blsDataOperation().mext());
       assertFalse(blsdata.blsDataOperation().successBit());
@@ -94,8 +94,8 @@ public class PointEvaluationTest extends TracerTestBase {
             "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
             "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
             testInfo);
-    BlsData blsdata = bytecodeRunner.getHub().blsData();
-    if (blsdata != null) {
+    if (isPostCancun(fork)) {
+      final BlsData blsdata = (BlsData) bytecodeRunner.getHub().blsData();
       assertFalse(blsdata.blsDataOperation().mint());
       assertFalse(blsdata.blsDataOperation().mext());
       assertTrue(blsdata.blsDataOperation().successBit()); // TODO: why?
@@ -112,8 +112,8 @@ public class PointEvaluationTest extends TracerTestBase {
             "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
             "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
             testInfo);
-    if (isPostCancun(chainConfig.fork)) {
-      final BlsData blsdata = bytecodeRunner.getHub().blsData();
+    if (isPostCancun(fork)) {
+      final BlsData blsdata = (BlsData) bytecodeRunner.getHub().blsData();
       assertTrue(blsdata.blsDataOperation().mint());
       assertFalse(blsdata.blsDataOperation().mext());
       assertFalse(blsdata.blsDataOperation().successBit());
@@ -130,8 +130,8 @@ public class PointEvaluationTest extends TracerTestBase {
             "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
             "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
             testInfo);
-    if (isPostCancun(chainConfig.fork)) {
-      final BlsData blsdata = bytecodeRunner.getHub().blsData();
+    if (isPostCancun(fork)) {
+      final BlsData blsdata = (BlsData) bytecodeRunner.getHub().blsData();
       assertTrue(blsdata.blsDataOperation().mint());
       assertFalse(blsdata.blsDataOperation().mext());
       assertFalse(blsdata.blsDataOperation().successBit());
