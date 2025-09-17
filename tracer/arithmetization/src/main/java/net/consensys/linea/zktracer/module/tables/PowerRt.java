@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.tables;
 
 import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.module.limits.CountingModuleName.POWER_REFERENCE_TABLE;
 
 import java.util.List;
 
@@ -27,7 +28,7 @@ import org.apache.tuweni.bytes.Bytes;
 public class PowerRt implements Module {
   @Override
   public String moduleKey() {
-    return "POWER_REFERENCE_TABLE";
+    return POWER_REFERENCE_TABLE.toString();
   }
 
   @Override

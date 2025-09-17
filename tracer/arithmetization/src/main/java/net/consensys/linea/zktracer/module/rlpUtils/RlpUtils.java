@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.rlpUtils;
 
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.Trace.RLP_PREFIX_LIST_LONG;
+import static net.consensys.linea.zktracer.module.limits.CountingModuleName.RLP_UTILS;
 
 import java.util.List;
 
@@ -55,7 +56,7 @@ public class RlpUtils implements OperationSetModule<RlpUtilsCall> {
 
   @Override
   public String moduleKey() {
-    return "RLP_UTILS";
+    return RLP_UTILS.toString();
   }
 
   public RlpUtilsCall call(RlpUtilsCall call) {

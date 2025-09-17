@@ -62,11 +62,11 @@ public class CountingOnlyModule implements Module {
 
   @Override
   public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
-    throw new IllegalStateException("should never be called");
+    throw new IllegalStateException("Module " + moduleKey + "  should never be traced");
   }
 
   @Override
   public void commit(Trace trace) {
-    throw new IllegalStateException("should never be called");
+    throw new IllegalStateException("Module " + moduleKey + "  should never be traced");
   }
 }

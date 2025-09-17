@@ -23,6 +23,7 @@ import static net.consensys.linea.zktracer.module.hub.fragment.scenario.Precompi
 import java.math.BigInteger;
 
 import com.google.common.base.Preconditions;
+import net.consensys.linea.zktracer.module.blsdata.BlsData;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
@@ -163,7 +164,7 @@ public class EllipticCurvePrecompileSubsection extends PrecompileSubsection {
       if (flag().isEcdataPrecompile()) {
         hub.ecData.callEcData(exoModuleOperationId(), flag(), extractCallData(), returnData);
       } else if (flag().isBlsPrecompile()) {
-        hub.blsData()
+        ((BlsData) hub.blsData())
             .callBls(
                 exoModuleOperationId(), flag(), extractCallData(), returnData, successBitMmuCall);
       }

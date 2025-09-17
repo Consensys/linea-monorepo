@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.blsdata;
 
+import static net.consensys.linea.zktracer.module.limits.CountingModuleName.BLS_DATA;
+
 import java.util.List;
 
 import lombok.Getter;
@@ -55,7 +57,7 @@ public class BlsData implements OperationListModule<BlsDataOperation> {
 
   @Override
   public String moduleKey() {
-    return "BLS_DATA";
+    return BLS_DATA.toString();
   }
 
   @Override
