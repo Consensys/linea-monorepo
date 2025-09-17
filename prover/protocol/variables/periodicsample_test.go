@@ -4,6 +4,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -155,10 +156,12 @@ func TestPeriodicSampleCoset(t *testing.T) {
 				// Test EvalOnCoset
 				for _, ratio := range ratios {
 					for cosetID := 0; cosetID < ratio; cosetID++ {
-
 						testEval := sampling.EvalCoset(domain, cosetID, ratio, true)
-						testEval = smartvectors.FFTInverse(testEval, fft.DIF, true, ratio, cosetID)
-						testEval = smartvectors.FFT(testEval, fft.DIT, true, 0, 0)
+
+						d := fft.NewDomain(uint64(testEval.Len()), fft.WithShift(computeShift(uint64(testEval.Len()), ratio, cosetID)), fft.WithCache())
+						v := testEval.(*smartvectors.Regular)
+						d.FFTInverse(*v, fft.DIF, fft.OnCoset())
+						d.FFT(*v, fft.DIT)
 
 						require.Equal(t, vanillaEval.Pretty(), testEval.Pretty(),
 							"domain %v, period %v, offset %v, ratio %v, cosetID %v",
@@ -171,6 +174,16 @@ func TestPeriodicSampleCoset(t *testing.T) {
 		}
 	}
 
+}
+
+func computeShift(n uint64, cosetRatio int, cosetID int) field.Element {
+	var shift field.Element
+	cardinality := ecc.NextPowerOfTwo(uint64(n))
+	frMulGen := fft.GeneratorFullMultiplicativeGroup()
+	omega, _ := fft.Generator(cardinality * uint64(cosetRatio))
+	omega.Exp(omega, big.NewInt(int64(cosetID)))
+	shift.Mul(&frMulGen, &omega)
+	return shift
 }
 
 func TestPeriodicSampleEvalAtConsistentWithEval(t *testing.T) {

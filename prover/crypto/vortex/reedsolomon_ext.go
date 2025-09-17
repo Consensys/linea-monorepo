@@ -61,9 +61,15 @@ func (p *Params) rsEncodeExt(v smartvectors.SmartVector) smartvectors.SmartVecto
 // IsCodeword returns nil iff the argument `v` is a correct codeword and an
 // error is returned otherwise.
 func (p *Params) isCodewordExt(v smartvectors.SmartVector) error {
-	coeffs := smartvectors.FFTInverseExt(v, fft.DIT, true, 0, 0)
+	if v.Len() != p.NumEncodedCols() {
+		return fmt.Errorf("invalid length for a codeword")
+	}
+	coeffs := make([]fext.Element, p.NumEncodedCols())
+	v.WriteInSliceExt(coeffs)
+	utils.BitReverse(coeffs)
+	p.Domains[1].FFTInverseExt(coeffs, fft.DIT, fft.WithNbTasks(1))
 	for i := p.NbColumns; i < p.NumEncodedCols(); i++ {
-		c := coeffs.GetExt(i)
+		c := coeffs[i]
 		if !c.IsZero() {
 			return fmt.Errorf("not a reed-solomon codeword")
 		}
