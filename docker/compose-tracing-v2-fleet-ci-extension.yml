@@ -28,7 +28,7 @@ services:
       service: l2-node-besu
     command:
       - --config-file=/var/lib/besu/l2-node-besu.config.toml
-      - --genesis-file=/var/lib/besu/genesis.json
+      - --genesis-file=/initialization/genesis-besu.json
       - --plugin-linea-l1-polling-interval=PT12S
       - --plugin-linea-l1-smart-contract-address=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
       - --plugin-linea-l1-rpc-endpoint=http://l1-el-node:8545
@@ -45,7 +45,7 @@ services:
       service: l2-node-besu-follower
     command:
       - --config-file=/var/lib/besu/l2-node-besu.config.toml
-      - --genesis-file=/var/lib/besu/genesis.json
+      - --genesis-file=/initialization/genesis-besu.json
       - --plugin-linea-l1-polling-interval=PT12S
       - --plugin-linea-l1-smart-contract-address=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
       - --plugin-linea-l1-rpc-endpoint=http://l1-el-node:8545
