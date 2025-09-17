@@ -109,18 +109,18 @@ func processOperatorExt(op operator, coeffs []int, svecs []SmartVector) SmartVec
 
 	switch {
 	case matchedRegular == totalToMatch:
-		return regularRes
+		return &regularRes
 	case matchedRegular+matchedConst == totalToMatch:
 		// In this case, there are no windowed in the list. This means we only
 		// need to merge the const one into the regular one before returning
-		op.constTermExtIntoVecExt(regularRes.RegularExt, &constRes.Value)
-		return regularRes
+		op.constTermExtIntoVecExt(regularRes, &constRes.Value)
+		return &regularRes
 	default:
 
 		// If windowRes is a regular (can happen if all windows arguments cover the full circle)
 		if w, ok := windowRes.(*RegularExt); ok {
-			op.vecTermExtIntoVecExt(regularRes.RegularExt, *w)
-			return regularRes
+			op.vecTermExtIntoVecExt(regularRes, *w)
+			return &regularRes
 		}
 
 		// Overwrite window with its casting into an actual circular windows
@@ -129,7 +129,7 @@ func processOperatorExt(op operator, coeffs []int, svecs []SmartVector) SmartVec
 		// In this case, the constant is already accumulated into the windowed.
 		// Thus, we just have to merge the windowed one into the regular one.
 		interval := windowRes.interval()
-		regvec := regularRes.RegularExt
+		regvec := regularRes
 		length := len(regvec)
 
 		// The windows rolls over
@@ -137,14 +137,14 @@ func processOperatorExt(op operator, coeffs []int, svecs []SmartVector) SmartVec
 			op.vecTermExtIntoVecExt(regvec[:interval.Stop()], windowRes.Window_[length-interval.Start():])
 			op.vecTermExtIntoVecExt(regvec[interval.Start():], windowRes.Window_[:length-interval.Start()])
 			op.constTermExtIntoVecExt(regvec[interval.Stop():interval.Start()], &windowRes.PaddingVal_)
-			return regularRes
+			return &regularRes
 		}
 
 		// Else, no roll-over
 		op.vecTermExtIntoVecExt(regvec[interval.Start():interval.Stop()], windowRes.Window_)
 		op.constTermExtIntoVecExt(regvec[:interval.Start()], &windowRes.PaddingVal_)
 		op.constTermExtIntoVecExt(regvec[interval.Stop():], &windowRes.PaddingVal_)
-		return regularRes
+		return &regularRes
 	}
 }
 

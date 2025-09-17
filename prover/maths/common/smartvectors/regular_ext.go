@@ -105,11 +105,11 @@ func (r *RegularExt) Pretty() string {
 	return fmt.Sprintf("Regular[%v]", vectorext.Prettify(*r))
 }
 
-func processRegularOnlyExt(op operator, svecs []SmartVector, coeffs []int) (result *PooledExt, numMatches int) {
+func processRegularOnlyExt(op operator, svecs []SmartVector, coeffs []int) (result RegularExt, numMatches int) {
 
 	length := svecs[0].Len()
 
-	var resvec *PooledExt
+	var resvec RegularExt
 
 	isFirst := true
 	numMatches = 0
@@ -123,24 +123,20 @@ func processRegularOnlyExt(op operator, svecs []SmartVector, coeffs []int) (resu
 			svec = rotatedAsRegularExt(rot)
 		}
 
-		if pooled, ok := svec.(*PooledExt); ok {
-			svec = &pooled.RegularExt
-		}
-
 		if reg, ok := svec.(*RegularExt); ok {
 			numMatches++
 			// For the first one, we can save by just copying the result
 			// Importantly, we do not need to assume that regRes is originally
 			// zero.
 			if isFirst {
-				resvec = &PooledExt{RegularExt: make([]fext.Element, length)}
+				resvec = *NewRegularExt(make([]fext.Element, length))
 
 				isFirst = false
-				op.vecExtIntoTermExt(resvec.RegularExt, *reg, coeffs[i])
+				op.vecExtIntoTermExt(resvec, *reg, coeffs[i])
 				continue
 			}
 
-			op.vecExtIntoVecExt(resvec.RegularExt, *reg, coeffs[i])
+			op.vecExtIntoVecExt(resvec, *reg, coeffs[i])
 		}
 	}
 
@@ -183,11 +179,4 @@ func (c *RegularExt) IterateSkipPadding() iter.Seq[field.Element] {
 
 func (c *RegularExt) GetPtr(n int) *field.Element {
 	panic("not available for extensions")
-}
-
-type PooledExt struct {
-	RegularExt
-}
-
-func (p *PooledExt) Free() {
 }

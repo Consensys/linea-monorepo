@@ -121,10 +121,6 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element) (result SmartVecto
 			anyReg = true
 			v := *casted
 			accumulateRegExt(resReg, v, xPow)
-		case *PooledExt: // e.g. from product
-			anyReg = true
-			v := casted.RegularExt
-			accumulateRegExt(resReg, v, xPow)
 		case *PaddedCircularWindow:
 			// treat it as a regular, reusing the buffer
 			anyReg = true
@@ -177,11 +173,9 @@ func BatchInvertExt(x SmartVector) SmartVector {
 		return res
 	case *RotatedExt:
 		return NewRotatedExt(
-			fext.BatchInvert(v.v.RegularExt),
+			fext.BatchInvert(v.v),
 			v.offset,
 		)
-	case *PooledExt:
-		return NewRegularExt(fext.BatchInvert(v.RegularExt))
 	case *RegularExt:
 		return NewRegularExt(fext.BatchInvert(*v))
 	}
@@ -220,9 +214,9 @@ func IsZeroExt(x SmartVector) SmartVector {
 		return res
 
 	case *RotatedExt:
-		res := make([]fext.Element, len(v.v.RegularExt))
+		res := make([]fext.Element, len(v.v))
 		for i := range res {
-			if v.v.RegularExt[i] == fext.Zero() {
+			if v.v[i] == fext.Zero() {
 				res[i] = fext.One()
 			}
 		}
@@ -235,15 +229,6 @@ func IsZeroExt(x SmartVector) SmartVector {
 		res := make([]fext.Element, len(*v))
 		for i := range res {
 			if (*v)[i] == fext.Zero() {
-				res[i] = fext.One()
-			}
-		}
-		return NewRegularExt(res)
-
-	case *PooledExt:
-		res := make([]fext.Element, len(v.RegularExt))
-		for i := range res {
-			if v.RegularExt[i] == fext.Zero() {
 				res[i] = fext.One()
 			}
 		}
@@ -281,15 +266,8 @@ func SumExt(a SmartVector) (res fext.Element) {
 
 	case *RotatedExt:
 		res := fext.Zero()
-		for i := range v.v.RegularExt {
-			res.Add(&res, &v.v.RegularExt[i])
-		}
-		return res
-
-	case *PooledExt:
-		res := fext.Zero()
-		for i := range v.RegularExt {
-			res.Add(&res, &v.RegularExt[i])
+		for i := range v.v {
+			res.Add(&res, &v.v[i])
 		}
 		return res
 

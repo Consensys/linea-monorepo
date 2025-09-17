@@ -273,9 +273,7 @@ func Density(v SmartVector) int {
 	case *RegularExt:
 		return len(*w)
 	case *RotatedExt:
-		return len(w.v.RegularExt)
-	case *PooledExt:
-		return len(w.RegularExt)
+		return len(w.v)
 	default:
 		panic(fmt.Sprintf("unexpected type %T", v))
 	}
@@ -395,7 +393,7 @@ func TryReduceSizeRight(v SmartVector) (new SmartVector, totalSaving int) {
 
 	switch w := v.(type) {
 	case *Constant, *Rotated, *PaddedCircularWindow, *ConstantExt,
-		*RotatedExt, *PooledExt, *PaddedCircularWindowExt:
+		*RotatedExt, *PaddedCircularWindowExt:
 		return v, 0
 	case *Regular:
 
