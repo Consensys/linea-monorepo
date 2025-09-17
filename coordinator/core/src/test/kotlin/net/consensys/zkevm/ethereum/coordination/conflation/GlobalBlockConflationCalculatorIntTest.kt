@@ -276,7 +276,7 @@ class GlobalBlockConflationCalculatorIntTest {
         startBlockNumber = 2uL,
         endBlockNumber = 3uL,
         conflationTrigger = ConflationTrigger.HARD_FORK,
-        tracesCounters = block3Counters.tracesCounters.add(block4Counters.tracesCounters),
+        tracesCounters = block2Counters.tracesCounters.add(block3Counters.tracesCounters),
       ),
     )
   }
