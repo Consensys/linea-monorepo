@@ -35,7 +35,7 @@ class ConflationParsingTest {
       coordinator-polling-interval = "PT2S"
       deadline-check-interval = "PT8S"
       target-end-blocks = [10, 20, 30_000]
-      timestamp-based-hard-forks = ["2024-01-15T12:00:00Z", "2024-06-01T16:00:00Z"]
+      timestamp-based-hard-forks = ["2024-01-15T12:00:00Z", "2024-06-01T16:00:00Z", 1758083127]
     """.trimIndent()
     val config = ConflationToml(
       disabled = true,
@@ -61,6 +61,7 @@ class ConflationParsingTest {
         timestampBasedHardForks = listOf(
           Instant.parse("2024-01-15T12:00:00Z"),
           Instant.parse("2024-06-01T16:00:00Z"),
+          Instant.ofEpochMilli(1758083127L),
         ),
       ),
     )
