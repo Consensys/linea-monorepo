@@ -56,7 +56,7 @@ func FFTInverse(api frontend.API, p []frontend.Variable, genInv field.Element, c
 	cardInverse.SetUint64(cardinality).Inverse(&cardInverse)
 
 	// res of the fft inverse
-	res, err := api.Compiler().NewHint(FFTInverseKoalaBear, len(p))
+	res, err := api.Compiler().NewHint(FFTInverseKoalaBear, len(p), p...)
 	if err != nil {
 		return nil, err
 	}
