@@ -35,6 +35,33 @@ services:
       linea:
         ipv4_address: 11.11.11.210
 
+  maru-follower:
+    image: consensys/maru:${MARU_TAG:-9839958}
+    hostname: maru-follower
+    container_name: maru-follower
+    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
+    depends_on:
+      l2-node-besu:
+        condition: service_healthy
+      traces-node:
+        condition: service_healthy
+      zkbesu-shomei:
+        condition: service_healthy
+
+    command: [ 'java', '-Dlog4j2.configurationFile=configs/log4j.xml', '-jar', "maru.jar", '--maru-genesis-file', '/initialization/genesis-maru.json', '--config', 'configs/config.toml']
+    volumes:
+      - ./config/maru/follower.config.toml:/opt/consensys/maru/configs/config.toml:ro
+      - ./config/maru/log4j.xml:/opt/consensys/maru/configs/log4j.xml:ro
+      - ./config/maru/0xf897807365c936f351969863aeac729841e27c1b.key:/tmp/maru-db/private-key
+      - ./config/l2-genesis-initialization:/initialization/:ro
+    ports:
+      # Attach the IDE's remote java debugger to localhost:5005 to debug maru
+      - "15005:5005"
+      - "18080:8080"
+    networks:
+      linea:
+        ipv4_address: 11.11.11.211
+
   sequencer:
     hostname: sequencer
     container_name: sequencer
