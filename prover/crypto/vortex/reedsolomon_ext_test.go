@@ -3,7 +3,6 @@ package vortex
 import (
 	"testing"
 
-	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -19,7 +18,7 @@ func TestReedSolomonExtDoesNotChangeEvaluation(t *testing.T) {
 
 	x := fext.RandomElement()
 
-	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, nil)
+	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, nil, nil)
 	vec := smartvectors.RandExt(1 << 10)
 	rsEncoded := params.rsEncodeExt(vec)
 
@@ -41,7 +40,7 @@ func TestReedSolomonExtConstant(t *testing.T) {
 
 	x := fext.RandomElement()
 
-	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, nil)
+	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, nil, nil)
 	vec := smartvectors.NewConstantExt(fext.RandomElement(), polySize)
 	rsEncoded := params.rsEncodeExt(vec)
 
