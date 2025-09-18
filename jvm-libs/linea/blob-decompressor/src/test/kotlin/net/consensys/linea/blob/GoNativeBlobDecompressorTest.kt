@@ -184,7 +184,7 @@ class GoNativeBlobDecompressorTest {
   }
 
   fun org.hyperledger.besu.datatypes.CodeDelegation.toLinaDomain(): linea.domain.CodeDelegation {
-    // Besu does CodeDelegation class not implement equals/hashcode so we convert to Lina Domain model to compare
+    // Besu does CodeDelegation class not implement equals/hashcode so we convert to Linea Domain model to compare
     return linea.domain.CodeDelegation(
       address = this.address().toArray(),
       chainId = this.chainId().toULong(),
