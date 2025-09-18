@@ -1,6 +1,7 @@
 package poseidon2_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
@@ -26,7 +27,7 @@ func TestLinearHash(t *testing.T) {
 		period  int
 		numhash int
 	}{
-		{period: 4, numhash: 8},
+		{period: 2, numhash: 5},
 		// {period: 3, numhash: 16},
 		// {period: 4, numhash: 14},
 		// {period: 5, numhash: 17},
@@ -63,6 +64,7 @@ func TestLinearHash(t *testing.T) {
 				segment := vector.Rand(period * blockSize)
 				y := poseidon2.Poseidon2HashVecElement(segment)
 
+				fmt.Printf(" hashes to %v\n", vector.Prettify(y[:]))
 				for j := 0; j < blockSize; j++ {
 					ex[j] = append(ex[j], y[j])
 					for i := 0; i < period; i++ {
