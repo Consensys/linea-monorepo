@@ -173,7 +173,7 @@ class QbftValidatorFactory(
     val blockImporter = QbftBlockImporterAdapter(sealedBeaconBlockImporter)
 
     val blockCodec = QbftBlockCodecAdapter
-    val blockInterface = QbftBlockInterfaceAdapter()
+    val blockInterface = QbftBlockInterfaceAdapter(stateTransition)
     val beaconBlockValidatorFactory =
       BeaconBlockValidatorFactoryImpl(
         beaconChain = beaconChain,
