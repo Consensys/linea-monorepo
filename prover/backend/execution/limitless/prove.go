@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"runtime"
 	"strconv"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
@@ -25,11 +24,11 @@ import (
 )
 
 var (
-	witnessDir = "/tmp/witnesses"
+
 	// numConcurrentWitnessWritingGoroutines governs the goroutine serializing,
 	// compressing and writing the  witness. The writing part is also controlled
 	// by a semaphore on top of this.
-	numConcurrentWitnessWritingGoroutines = runtime.NumCPU()
+	numConcurrentWitnessWritingGoroutines = 20
 	// numConcurrentSubProverJobs governs the number of concurrent sub-prover
 	// jobs.
 	numConcurrentSubProverJobs = 4
@@ -48,8 +47,8 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	// Clean up witness directory to be sure it is empty when we start the
 	// process. This helps addressing the situation where a previous process
 	// have been interrupted.
-	os.RemoveAll(witnessDir)
-	defer os.RemoveAll(witnessDir)
+	os.RemoveAll(config.WitnessDir)
+	defer os.RemoveAll(config.WitnessDir)
 
 	// Setup execution witness and output response
 	var (
@@ -336,7 +335,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
 		i := i
 		eg.Go(func() error {
 
-			filePath := witnessDir + "/witness-GL-" + strconv.Itoa(i)
+			filePath := config.WitnessDir + "/witness-GL-" + strconv.Itoa(i)
 			if err := serialization.StoreToDisk(filePath, *witnessGLs[i], true); err != nil {
 				return fmt.Errorf("could not save witnessGL: %v", err)
 			}
@@ -356,7 +355,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
 
 		eg.Go(func() error {
 
-			filePath := witnessDir + "/witness-LPP-" + strconv.Itoa(i)
+			filePath := config.WitnessDir + "/witness-LPP-" + strconv.Itoa(i)
 			if err := serialization.StoreToDisk(filePath, *witnessLPPs[i], true); err != nil {
 				return fmt.Errorf("could not save witnessLPP: %v", err)
 			}
@@ -380,7 +379,7 @@ func RunGL(cfg *config.Config, witnessIndex int) (proofGL *recursion.Witness, lp
 	logrus.Infof("Running the GL-prover for witness index=%v", witnessIndex)
 
 	witness := &distributed.ModuleWitnessGL{}
-	witnessFilePath := witnessDir + "/witness-GL-" + strconv.Itoa(witnessIndex)
+	witnessFilePath := config.WitnessDir + "/witness-GL-" + strconv.Itoa(witnessIndex)
 	if err := serialization.LoadFromDisk(witnessFilePath, witness, true); err != nil {
 		return nil, field.Element{}, err
 	}
@@ -411,7 +410,7 @@ func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Element
 	logrus.Infof("Running the LPP-prover for witness index=%v", witnessIndex)
 
 	witness := &distributed.ModuleWitnessLPP{}
-	witnessFilePath := witnessDir + "/witness-LPP-" + strconv.Itoa(witnessIndex)
+	witnessFilePath := config.WitnessDir + "/witness-LPP-" + strconv.Itoa(witnessIndex)
 	if err := serialization.LoadFromDisk(witnessFilePath, witness, true); err != nil {
 		return nil, err
 	}

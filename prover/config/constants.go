@@ -17,4 +17,7 @@ const (
 
 	// Extension to add in order to defer the job to the large prover
 	LargeSuffix = "large"
+
+	// Limitless prover stuffs
+	WitnessDir = "/tmp/witnesses"
 )
