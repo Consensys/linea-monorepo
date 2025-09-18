@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.gas;
 
 import java.math.BigInteger;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -24,11 +25,12 @@ import lombok.experimental.Accessors;
 @Getter
 @Setter
 @Accessors(fluent = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class GasParameters {
-  BigInteger gasActual;
-  BigInteger gasCost;
-  boolean xahoy;
-  boolean oogx;
+  @EqualsAndHashCode.Include BigInteger gasActual;
+  @EqualsAndHashCode.Include BigInteger gasCost;
+  @EqualsAndHashCode.Include boolean xahoy;
+  @EqualsAndHashCode.Include boolean oogx;
 
   public int compareTo(GasParameters other) {
     if (oogx() != other.oogx()) {
