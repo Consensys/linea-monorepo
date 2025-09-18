@@ -24,6 +24,7 @@ type Alliance struct {
 	// Status of the sub columns
 	// the only valid Status for the eligible sub columns are;
 	// committed, Precomputed, VerifierDefined
+	// To include Proof and Verifying key
 	Status column.Status
 }
 
@@ -71,9 +72,8 @@ func (summary MultiSummary) InsertNew(s Alliance) {
 }
 
 // It checks if the expression is over a set of the columns eligible to the stitching.
-// Namely, it contains columns of proper size with status Precomputed, Committed, or Verifiercol.
-// It panics if the expression includes a mixture of eligible columns and columns with status Proof/VerifiyingKey/Ignored.
-//
+// Namely, it contains columns of proper size with status Precomputed, Committed, Verifiercol, Proof, and Verifying key.
+// It panics if the expression includes a mixture of eligible columns and columns with status Ignored.
 // If all the columns are verifierCol the expression is not eligible to the compilation.
 // This is an expected behavior, since the verifier checks such expression by itself.
 func IsExprEligible(
@@ -91,6 +91,7 @@ func IsExprEligible(
 	)
 
 	for i := range metadata {
+		// ToDo(fix): default case missing for both the switches
 		switch m := metadata[i].(type) {
 		// reminder: [verifiercol.VerifierCol] , [column.Natural] and [column.Shifted]
 		// all implement [ifaces.Column]

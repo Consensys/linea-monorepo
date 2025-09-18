@@ -68,7 +68,7 @@ func (ctx StitchingContext) LocalOpening() {
 
 }
 
-func (ctx StitchingContext) LocalGlobalConstraints() {
+func (ctx StitchingContext)  LocalGlobalConstraints() {
 	for _, qName := range ctx.Comp.QueriesNoParams.AllUnignoredKeys() {
 
 		q := ctx.Comp.QueriesNoParams.Data(qName)
@@ -156,9 +156,9 @@ func (ctx StitchingContext) LocalGlobalConstraints() {
 }
 
 // Takes a sub column and returns the stitching column.
-// the stitching column is shifted such that the first row agrees with the first row of the sub column.
-// more detailed, such stitching column agrees with the the sub column up to a subsampling with offset zero.
-// the col should only be either verifiercol or eligible col.
+// The stitching column is shifted in such a way that the first row agrees with the first row of the sub column.
+// i.e., such stitching column agrees with the the sub column up to a subsampling with offset zero.
+// The col should only be either verifiercol or eligible col.
 // option is always empty, and used only for the recursive calls over the shifted columns.
 func getStitchingCol(ctx StitchingContext, col ifaces.Column, option ...int) ifaces.Column {
 	var (
