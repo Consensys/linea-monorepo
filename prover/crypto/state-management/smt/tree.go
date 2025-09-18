@@ -3,6 +3,8 @@ package smt
 import (
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -11,6 +13,8 @@ import (
 
 // Config specifies the parameters of the tree (choice of hash function, depth).
 type Config struct {
+	// HashFunc is a function returning initialized hashers.
+	HashFunc func() hashtypes.Hasher
 	// Depth is the depth of the tree
 	Depth int
 }

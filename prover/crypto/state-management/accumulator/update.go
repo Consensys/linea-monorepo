@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
@@ -23,11 +24,11 @@ type UpdateTrace[K, V io.WriterTo] struct {
 	NewValue V      `json:"newValue"`
 	// We call it new next free node, but the value is not updated
 	// during the update.
-	NewNextFreeNode int         `json:"newNextFreeNode"`
-	OldSubRoot      Bytes32     `json:"oldSubRoot"`
-	NewSubRoot      Bytes32     `json:"newSubRoot"`
-	OldOpening      LeafOpening `json:"priorUpdatedLeaf"`
-	Proof           smt.Proof   `json:"proof"`
+	NewNextFreeNode int            `json:"newNextFreeNode"`
+	OldSubRoot      field.Octuplet `json:"oldSubRoot"`
+	NewSubRoot      field.Octuplet `json:"newSubRoot"`
+	OldOpening      LeafOpening    `json:"priorUpdatedLeaf"`
+	Proof           smt.Proof      `json:"proof"`
 }
 
 // UpdateAndProve performs a read on the accumulator. Panics if the associated

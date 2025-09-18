@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 
@@ -52,7 +53,7 @@ func (s *ProverState[K, V]) Config() *smt.Config {
 }
 
 // SubTreeRoot returns the root of the tree
-func (s *ProverState[K, V]) SubTreeRoot() Bytes32 {
+func (s *ProverState[K, V]) SubTreeRoot() field.Octuplet {
 	return s.Tree.Root
 }
 

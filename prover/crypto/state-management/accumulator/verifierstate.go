@@ -3,6 +3,9 @@ package accumulator
 import (
 	"io"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
@@ -17,7 +20,7 @@ type VerifierState[K, V io.WriterTo] struct {
 	// Track the index of the next free node
 	NextFreeNode int64
 	// Internal tree
-	SubTreeRoot Bytes32
+	SubTreeRoot field.Octuplet
 	// Config contains the parameters of the tree
 	Config *smt.Config
 }
@@ -35,10 +38,10 @@ func (p *ProverState[K, V]) VerifierState() VerifierState[K, V] {
 
 // updateCheckRoot audit an atomic update of the merkle tree (e.g. one leaf) and
 // returns the new root
-func updateCheckRoot(conf *smt.Config, proof smt.Proof, root, old, new Bytes32) (newRoot Bytes32, err error) {
+func updateCheckRoot(conf *smt.Config, proof smt.Proof, root, old, new field.Octuplet) (newRoot field.Octuplet, err error) {
 
 	if ok := proof.Verify(conf, old, root); !ok {
-		return Bytes32{}, errors.New("root update audit failed : could not authenticate the old")
+		return field.Octuplet{}, errors.New("root update audit failed : could not authenticate the old")
 	}
 
 	// Note: all possible errors are already convered by `proof.Verify`
@@ -49,12 +52,9 @@ func updateCheckRoot(conf *smt.Config, proof smt.Proof, root, old, new Bytes32) 
 
 // TopRoot returns the top-root hash which includes `NextFreeNode` and the
 // `SubTreeRoot`
-func (v *VerifierState[K, V]) TopRoot() Bytes32 {
-	hasher := v.Config.HashFunc()
-	WriteInt64On32Bytes(hasher, v.NextFreeNode)
-	v.SubTreeRoot.WriteTo(hasher)
-	Bytes32 := hasher.Sum(nil)
-	return AsBytes32(Bytes32)
+func (v *VerifierState[K, V]) TopRoot() field.Octuplet {
+
+	return poseidon2.Poseidon2BlockCompression(WriteInt64OnHash(v.NextFreeNode), v.SubTreeRoot)
 }
 
 // deferCheckUpdateRoot appends to `appendTo` the merkle proof claims that are
@@ -63,9 +63,9 @@ func (v *VerifierState[K, V]) TopRoot() Bytes32 {
 func deferCheckUpdateRoot(
 	conf *smt.Config,
 	proof smt.Proof,
-	root, old, new Bytes32,
+	root, old, new field.Octuplet,
 	appendTo []smt.ProvedClaim,
-) (appended []smt.ProvedClaim, newRoot Bytes32) {
+) (appended []smt.ProvedClaim, newRoot field.Octuplet) {
 	var err error
 	newRoot, err = proof.RecoverRoot(conf, new)
 	if err != nil {
