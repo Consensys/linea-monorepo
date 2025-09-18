@@ -2,8 +2,8 @@
   "compilerOptions": {
     "outDir": "./dist",
     "baseUrl": ".",
-    "moduleResolution": "node",
-    "module": "commonjs",
+    "moduleResolution": "nodenext",
+    "module": "nodenext",
     "target": "es2022",
     "sourceMap": true,
     "strict": true,
