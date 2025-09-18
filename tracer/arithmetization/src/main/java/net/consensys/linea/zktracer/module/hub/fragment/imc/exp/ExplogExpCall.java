@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.hub.fragment.imc.exp;
 
 import static net.consensys.linea.zktracer.Trace.EXP_INST_EXPLOG;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -27,9 +28,10 @@ import org.apache.tuweni.bytes.Bytes;
 @Accessors(fluent = true)
 @Getter
 @Setter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class ExplogExpCall implements ExpCall {
-  EWord exponent;
-  long dynCost;
+  @EqualsAndHashCode.Include EWord exponent;
+  @EqualsAndHashCode.Include long dynCost;
 
   @Override
   public int expInstruction() {
@@ -55,5 +57,9 @@ public class ExplogExpCall implements ExpCall {
         .pMiscExpData1(exponent.hi())
         .pMiscExpData2(exponent.lo())
         .pMiscExpData5(Bytes.ofUnsignedLong(dynCost));
+  }
+
+  public String toString() {
+    return "EXPLOG(" + exponent.toString() + ")=" + dynCost;
   }
 }

@@ -43,4 +43,8 @@ public abstract class OobCall implements TraceSubFragment {
   public abstract void callExoModulesAndSetOutputs(final Add add, final Mod mod, final Wcp wcp);
 
   public abstract int ctMax();
+
+  public abstract boolean equals(Object o);
+
+  public abstract int hashCode();
 }
