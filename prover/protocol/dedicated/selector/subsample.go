@@ -59,7 +59,6 @@ func (a *SubsampleProverAction) Run(run *wizard.ProverRuntime) {
 			prev = accLargeWit[pos]
 		}
 	}
-
 	run.AssignColumn(a.AccLarge.GetColID(), smartvectors.NewRegularExt(accLargeWit))
 	run.AssignLocalPointExt(a.AccLargeLast, prev)
 
