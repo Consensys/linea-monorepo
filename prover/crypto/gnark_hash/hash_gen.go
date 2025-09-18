@@ -1,5 +1,8 @@
-// Package hash provides an interface that hash functions (as gadget) should implement.
-package fiatshamir
+// Package gnark_hash provides an interface that hash functions (as gadget) should implement.
+// Copy from https://github.com/Consensys/gnark/blob/master/std/hash/hash.go
+// TODO put this file in gnark ?
+
+package gnark_hash
 
 import (
 	"github.com/consensys/gnark/frontend"
