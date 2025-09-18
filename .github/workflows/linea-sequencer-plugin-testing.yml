@@ -35,8 +35,6 @@ jobs:
 
       - name: Build
         run: ./gradlew besu-plugins:linea-sequencer:build
-        env:
-          JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
       - name: Upload distribution artifacts
         uses: actions/upload-artifact@v4
@@ -46,8 +44,7 @@ jobs:
 
       - name: Run unit tests
         run: ./gradlew besu-plugins:linea-sequencer:sequencer:test
-        env:
-          JAVA_OPTS: -Dorg.gradle.daemon=false
+
       - name: Upload test report
         if: always()
         uses: actions/upload-artifact@v4
@@ -76,7 +73,7 @@ jobs:
       - name: Run acceptance tests
         run: ./gradlew besu-plugins:linea-sequencer:acceptance-tests:acceptanceTests
         env:
-          JAVA_OPTS: -Dorg.gradle.daemon=false
+          JAVA_OPTS: -Xmx10g -Xms2g
 
       - name: Upload test report
         if: always()
