@@ -3,8 +3,9 @@ package query
 import (
 	"errors"
 	"fmt"
-	"github.com/consensys/gnark-crypto/field/koalabear"
 	"sync"
+
+	"github.com/consensys/gnark-crypto/field/koalabear"
 
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
@@ -127,11 +128,11 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 	)
 
 	if errData != nil {
-		return fmt.Errorf("Error while getting the data ", errData)
+		return fmt.Errorf("Error while getting the data %v", errData)
 	}
 
 	if errSel != nil {
-		return fmt.Errorf("Error while getting the selector ", errSel)
+		return fmt.Errorf("Error while getting the selector %v", errSel)
 	}
 	var (
 		ccs, compErr        = frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, piw.Circuit)
