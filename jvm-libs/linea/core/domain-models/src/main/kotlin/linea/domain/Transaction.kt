@@ -85,6 +85,10 @@ data class CodeDelegation(
     result = 31 * result + s.hashCode()
     return result
   }
+
+  override fun toString(): String {
+    return "CodeDelegation(chainId=$chainId, address=${address.encodeHex()}, nonce=$nonce, v=$v, r=$r, s=$s)"
+  }
 }
 
 // TODO: Delete once 7702 is supported by Web3j

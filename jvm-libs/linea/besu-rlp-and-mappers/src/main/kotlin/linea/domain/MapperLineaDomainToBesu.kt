@@ -139,19 +139,22 @@ object MapperLineaDomainToBesu {
           accessList(accList)
         }
         if (besuType.supportsDelegateCode()) {
-          val delegationList = tx.codeDelegations?.map {
-            CodeDelegation.builder().run {
-              address(Address.wrap(Bytes.wrap(it.address)))
-              nonce(it.nonce.toLong())
-              chainId(it.chainId.toBigInteger())
-              signature(SECPSignature(it.r, it.s, it.v))
-              build()
-            }
-          } ?: emptyList()
+          val delegationList = tx.codeDelegations
+            ?.map { it.toBesu() }
+            ?: emptyList()
           codeDelegations(delegationList)
         }
       }
       .signature(signature)
+      .build()
+  }
+
+  fun linea.domain.CodeDelegation.toBesu(): org.hyperledger.besu.datatypes.CodeDelegation {
+    return CodeDelegation.builder()
+      .address(Address.wrap(Bytes.wrap(this.address)))
+      .nonce(this.nonce.toLong())
+      .chainId(this.chainId.toBigInteger())
+      .signature(SECPSignature(this.r, this.s, this.v))
       .build()
   }
 
