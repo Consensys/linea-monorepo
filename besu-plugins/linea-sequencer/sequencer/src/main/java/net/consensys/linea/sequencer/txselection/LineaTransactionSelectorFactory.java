@@ -12,9 +12,7 @@ package net.consensys.linea.sequencer.txselection;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bundles.BundlePoolService;
 import net.consensys.linea.bundles.TransactionBundle;
@@ -95,95 +93,84 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
 
   public void selectPendingTransactions(
       final BlockTransactionSelectionService bts, final ProcessableBlockHeader pendingBlockHeader) {
+    try {
+      // check and send liveness bundle if any
+      checkAndSendLivenessBundle(bts, pendingBlockHeader.getNumber());
 
-    // do not use directly this atomic boolean but always use the lambda below,
-    // to check for interrupt, because they check if the thread is actually interrupted.
-    final AtomicBoolean interruptRecorded = new AtomicBoolean(false);
+      if (isSelectionInterrupted()) return;
 
-    final Supplier<Boolean> isSelectionInterrupted =
-        () -> {
-          if (interruptRecorded.get()) {
-            return true;
-          }
-          if (Thread.currentThread().isInterrupted()) {
-            log.info("Bundle selection interrupted");
-            interruptRecorded.set(true);
-            return true;
-          }
-          return false;
-        };
+      final var bundlesByBlockNumber =
+          bundlePoolService.getBundlesByBlockNumber(pendingBlockHeader.getNumber());
 
-    // check and send liveness bundle if any
-    checkAndSendLivenessBundle(bts, pendingBlockHeader.getNumber());
+      log.atDebug()
+          .setMessage("Bundle pool stats: total={}, for block #{}={}")
+          .addArgument(bundlePoolService::size)
+          .addArgument(pendingBlockHeader::getNumber)
+          .addArgument(bundlesByBlockNumber::size)
+          .log();
 
-    if (isSelectionInterrupted.get()) return;
+      if (isSelectionInterrupted()) return;
 
-    final var bundlesByBlockNumber =
-        bundlePoolService.getBundlesByBlockNumber(pendingBlockHeader.getNumber());
+      final var selectionStartedAt = System.nanoTime();
 
-    log.atDebug()
-        .setMessage("Bundle pool stats: total={}, for block #{}={}")
-        .addArgument(bundlePoolService::size)
-        .addArgument(pendingBlockHeader::getNumber)
-        .addArgument(bundlesByBlockNumber::size)
-        .log();
+      bundlesByBlockNumber.stream()
+          .takeWhile(unused -> !isSelectionInterrupted())
+          .forEach(
+              bundle -> {
+                final var bundleStartedAt = System.nanoTime();
+                log.trace("Starting evaluation of bundle {}", bundle.bundleIdentifier());
 
-    if (isSelectionInterrupted.get()) return;
+                var maybeBadBundleRes =
+                    bundle.pendingTransactions().stream()
+                        .takeWhile(unused -> !isSelectionInterrupted())
+                        .map(bts::evaluatePendingTransaction)
+                        .filter(evalRes -> !evalRes.selected())
+                        .findFirst();
 
-    final var selectionStartedAt = System.nanoTime();
+                final var now = System.nanoTime();
+                final var cumulativeBundleSelectionTime = now - selectionStartedAt;
+                final var currentBundleSelectionTime = now - bundleStartedAt;
 
-    bundlesByBlockNumber.stream()
-        .takeWhile(unused -> !isSelectionInterrupted.get())
-        .forEach(
-            bundle -> {
-              final var bundleStartedAt = System.nanoTime();
-              log.trace("Starting evaluation of bundle {}", bundle.bundleIdentifier());
-
-              var maybeBadBundleRes =
-                  bundle.pendingTransactions().stream()
-                      .takeWhile(unused -> !isSelectionInterrupted.get())
-                      .map(bts::evaluatePendingTransaction)
-                      .filter(evalRes -> !evalRes.selected())
-                      .findFirst();
-
-              final var now = System.nanoTime();
-              final var cumulativeBundleSelectionTime = now - selectionStartedAt;
-              final var currentBundleSelectionTime = now - bundleStartedAt;
-
-              if (isSelectionInterrupted.get()) {
-                log.atDebug()
-                    .setMessage(
-                        "Bundle selection interrupted while processing bundle {},"
-                            + " elapsed time: current bundle {}ms, cumulative {}ms")
-                    .addArgument(bundle::bundleIdentifier)
-                    .addArgument(() -> nanosToMillis(currentBundleSelectionTime))
-                    .addArgument(() -> nanosToMillis(cumulativeBundleSelectionTime))
-                    .log();
-                rollback(bts);
-              } else {
-                if (maybeBadBundleRes.isPresent()) {
+                if (isSelectionInterrupted()) {
                   log.atDebug()
                       .setMessage(
-                          "Failed bundle {}, reason {}, elapsed time: current bundle {}ms, cumulative {}ms")
+                          "Bundle selection interrupted while processing bundle {},"
+                              + " elapsed time: current bundle {}ms, cumulative {}ms")
                       .addArgument(bundle::bundleIdentifier)
-                      .addArgument(maybeBadBundleRes::get)
                       .addArgument(() -> nanosToMillis(currentBundleSelectionTime))
                       .addArgument(() -> nanosToMillis(cumulativeBundleSelectionTime))
                       .log();
                   rollback(bts);
                 } else {
-                  log.atDebug()
-                      .setMessage(
-                          "Selected bundle {}, elapsed time: current bundle {}ms, cumulative {}ms")
-                      .addArgument(bundle::bundleIdentifier)
-                      .addArgument(() -> nanosToMillis(currentBundleSelectionTime))
-                      .addArgument(() -> nanosToMillis(cumulativeBundleSelectionTime))
-                      .log();
-                  commit(bts);
+                  if (maybeBadBundleRes.isPresent()) {
+                    log.atDebug()
+                        .setMessage(
+                            "Failed bundle {}, reason {}, elapsed time: current bundle {}ms, cumulative {}ms")
+                        .addArgument(bundle::bundleIdentifier)
+                        .addArgument(maybeBadBundleRes::get)
+                        .addArgument(() -> nanosToMillis(currentBundleSelectionTime))
+                        .addArgument(() -> nanosToMillis(cumulativeBundleSelectionTime))
+                        .log();
+                    rollback(bts);
+                  } else {
+                    log.atDebug()
+                        .setMessage(
+                            "Selected bundle {}, elapsed time: current bundle {}ms, cumulative {}ms")
+                        .addArgument(bundle::bundleIdentifier)
+                        .addArgument(() -> nanosToMillis(currentBundleSelectionTime))
+                        .addArgument(() -> nanosToMillis(cumulativeBundleSelectionTime))
+                        .log();
+                    commit(bts);
+                  }
                 }
-              }
-            });
-    currSelector.set(null);
+              });
+      currSelector.set(null);
+    } finally {
+      if (isSelectionInterrupted()) {
+        // finally consume the interrupt
+        Thread.currentThread().interrupt();
+      }
+    }
   }
 
   private void checkAndSendLivenessBundle(
@@ -230,5 +217,11 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
 
   private long nanosToMillis(final long nanos) {
     return TimeUnit.NANOSECONDS.toMillis(nanos);
+  }
+
+  private boolean isSelectionInterrupted() {
+    // returns if the thread is interrupted without resetting the state
+    // so it can be called many times without changing the interrupt state
+    return Thread.currentThread().isInterrupted();
   }
 }
