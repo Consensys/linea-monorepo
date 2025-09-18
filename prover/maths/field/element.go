@@ -11,7 +11,7 @@ import (
 )
 
 type Element = koalabear.Element
-type Vector []Element
+type Vector = koalabear.Vector
 type Octuplet [8]Element
 
 const (
@@ -103,16 +103,9 @@ func RandomElement() Element {
 
 // PseudoRand generates a field using a pseudo-random number generator
 func PseudoRand(rng *rand.Rand) Element {
-
-	var (
-		bigInt    = &big.Int{}
-		res       = Element{}
-		bareU32   = [1]uint32{rng.Uint32()}
-		bareBytes = *(*[4]byte)(unsafe.Pointer(&bareU32))
-	)
-
-	bigInt.SetBytes(bareBytes[:]).Mod(bigInt, Modulus())
-	res.SetBigInt(bigInt)
+	const q = 2130706433 // koalabear modulus
+	var res Element
+	res[0] = rng.Uint32() % q
 	return res
 }
 

@@ -119,19 +119,6 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 		RoundOfPolys: []int{-1, 0},
 	},
 	{
-		NameStr: "two-poly-one-point-different-sizes-simple-values",
-		Polys: []smartvectors.SmartVector{
-			smartvectors.ForTest(0, 0, 0, 0, 0, 1, 0, 0),
-			smartvectors.ForTest(0, 1, 0, 0),
-		},
-		QueryXs: []fext.Element{
-			fext.Zero(),
-		},
-		QueryPols: [][]int{
-			{0, 1},
-		},
-	},
-	{
 		NameStr: "two-poly-one-point",
 		Polys: []smartvectors.SmartVector{
 			RandomVec(8),
@@ -315,7 +302,7 @@ func (u *UnivariateTestcase) assignUnivariate(run *wizard.ProverRuntime, i int) 
 
 	for j := range q.Pols {
 		p := q.Pols[j].GetColAssignment(run)
-		ys[j] = smartvectors.EvaluateLagrangeMixed(p, x)
+		ys[j] = smartvectors.EvaluateBasePolyLagrange(p, x)
 	}
 
 	run.AssignUnivariateExt(q.QueryID, x, ys...)

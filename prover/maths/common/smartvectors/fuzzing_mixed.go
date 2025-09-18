@@ -3,7 +3,7 @@ package smartvectors
 import (
 	"fmt"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -93,7 +93,7 @@ func (gen *testCaseGen) NewTestCaseForLinearCombinationMixed() (tcase testCaseMi
 	if winMaxStop-winMinStart > gen.windowWithLen {
 		utils.Panic("inconsistent window dimension %v %v with gen %++v", winMinStart, winMaxStop, gen)
 	}
-	resVal := poly.EvalMixed(vals, x)
+	resVal := vortex.EvalBasePolyHorner(vals, x)
 
 	switch {
 	case maxType == constantT:

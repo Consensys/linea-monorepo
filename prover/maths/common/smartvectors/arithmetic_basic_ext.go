@@ -1,8 +1,6 @@
 package smartvectors
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -66,32 +64,18 @@ func InnerProductExt(a, b SmartVector) fext.Element {
 //	result = vecs[0] + vecs[1] * x + vecs[2] * x^2 + vecs[3] * x^3 + ...
 //
 // where `x` is a scalar and `vecs[i]` are [SmartVector]
-func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPool) (result SmartVector) {
+func LinearCombinationExt(vecs []SmartVector, x fext.Element) (result SmartVector) {
 
 	if len(vecs) == 0 {
 		panic("no input vectors")
 	}
 
 	length := vecs[0].Len()
-	pool, hasPool := mempool.ExtractCheckOptionalStrict(length, p...)
 	// Preallocate the intermediate values
-	var resReg, tmpVecExt []fext.Element
-	var tmpVec []field.Element
 
-	if !hasPool {
-		resReg = make([]fext.Element, length)
-		tmpVecExt = make([]fext.Element, length)
-		tmpVec = make([]field.Element, length)
-	} else {
-		a := AllocFromPoolExt(pool)
-		b := AllocFromPoolExt(pool)
-		bBase := AllocFromPool(pool)
-		resReg, tmpVecExt = a.RegularExt, b.RegularExt
-		tmpVec = bBase.Regular
-		vectorext.Fill(resReg, fext.Zero())
-		defer b.Free(pool)
-		defer bBase.Free(pool)
-	}
+	resReg := make([]fext.Element, length)
+	tmpVecExt := make([]fext.Element, length)
+	tmpVec := make([]field.Element, length)
 
 	var tmpF, resCon fext.Element
 	var anyReg, anyCon bool
@@ -110,6 +94,7 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPo
 			acc[i].Add(&acc[i], &tmpF)
 		}
 	}
+
 	// Computes the polynomial operation separately on the const,
 	// windows and regular and the aggregate the results at the end.
 	// The computation is done following horner's method.
@@ -136,14 +121,6 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPo
 			anyReg = true
 			v := *casted
 			accumulateRegExt(resReg, v, xPow)
-		case *Pooled: // e.g. from product
-			anyReg = true
-			v := casted.Regular
-			accumulateRegMixed(resReg, v, xPow)
-		case *PooledExt: // e.g. from product
-			anyReg = true
-			v := casted.RegularExt
-			accumulateRegExt(resReg, v, xPow)
 		case *PaddedCircularWindow:
 			// treat it as a regular, reusing the buffer
 			anyReg = true
@@ -167,10 +144,6 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPo
 		}
 		return NewRegularExt(resReg)
 	case anyCon && !anyReg:
-		// and we can directly unpool resreg because it was not used
-		if hasPool {
-			pool.FreeExt(&resReg)
-		}
 		return NewConstantExt(resCon, length)
 	case !anyCon && anyReg:
 		return NewRegularExt(resReg)
@@ -200,11 +173,9 @@ func BatchInvertExt(x SmartVector) SmartVector {
 		return res
 	case *RotatedExt:
 		return NewRotatedExt(
-			fext.BatchInvert(v.v.RegularExt),
+			fext.BatchInvert(v.v),
 			v.offset,
 		)
-	case *PooledExt:
-		return NewRegularExt(fext.BatchInvert(v.RegularExt))
 	case *RegularExt:
 		return NewRegularExt(fext.BatchInvert(*v))
 	}
@@ -243,9 +214,9 @@ func IsZeroExt(x SmartVector) SmartVector {
 		return res
 
 	case *RotatedExt:
-		res := make([]fext.Element, len(v.v.RegularExt))
+		res := make([]fext.Element, len(v.v))
 		for i := range res {
-			if v.v.RegularExt[i] == fext.Zero() {
+			if v.v[i] == fext.Zero() {
 				res[i] = fext.One()
 			}
 		}
@@ -258,15 +229,6 @@ func IsZeroExt(x SmartVector) SmartVector {
 		res := make([]fext.Element, len(*v))
 		for i := range res {
 			if (*v)[i] == fext.Zero() {
-				res[i] = fext.One()
-			}
-		}
-		return NewRegularExt(res)
-
-	case *PooledExt:
-		res := make([]fext.Element, len(v.RegularExt))
-		for i := range res {
-			if v.RegularExt[i] == fext.Zero() {
 				res[i] = fext.One()
 			}
 		}
@@ -304,15 +266,8 @@ func SumExt(a SmartVector) (res fext.Element) {
 
 	case *RotatedExt:
 		res := fext.Zero()
-		for i := range v.v.RegularExt {
-			res.Add(&res, &v.v.RegularExt[i])
-		}
-		return res
-
-	case *PooledExt:
-		res := fext.Zero()
-		for i := range v.RegularExt {
-			res.Add(&res, &v.RegularExt[i])
+		for i := range v.v {
+			res.Add(&res, &v.v[i])
 		}
 		return res
 

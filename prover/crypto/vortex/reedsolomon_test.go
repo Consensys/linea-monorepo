@@ -22,13 +22,13 @@ func TestReedSolomonDoesNotChangeEvaluation(t *testing.T) {
 
 	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, nil)
 	vec := smartvectors.Rand(1 << 10)
-	rsEncoded := params._rsEncodeBase(vec, nil)
+	rsEncoded := params._rsEncodeBase(vec)
 
 	err := params.isCodeword(rsEncoded)
 	require.NoError(t, err)
 
-	y0 := smartvectors.EvaluateLagrangeMixed(vec, x)
-	y1 := smartvectors.EvaluateLagrangeMixed(rsEncoded, x)
+	y0 := smartvectors.EvaluateBasePolyLagrange(vec, x)
+	y1 := smartvectors.EvaluateBasePolyLagrange(rsEncoded, x)
 
 	require.Equal(t, y0.String(), y1.String())
 }
@@ -44,13 +44,13 @@ func TestReedSolomonConstant(t *testing.T) {
 
 	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, nil)
 	vec := smartvectors.NewConstant(field.NewElement(42), polySize)
-	rsEncoded := params._rsEncodeBase(vec, nil)
+	rsEncoded := params._rsEncodeBase(vec)
 
 	err := params.isCodeword(rsEncoded)
 	require.NoError(t, err)
 
-	y0 := smartvectors.EvaluateLagrangeMixed(vec, x)
-	y1 := smartvectors.EvaluateLagrangeMixed(rsEncoded, x)
+	y0 := smartvectors.EvaluateBasePolyLagrange(vec, x)
+	y1 := smartvectors.EvaluateBasePolyLagrange(rsEncoded, x)
 
 	require.Equal(t, y0.String(), y1.String())
 

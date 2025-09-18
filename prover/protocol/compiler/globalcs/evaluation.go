@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
@@ -117,7 +118,7 @@ func (pa EvaluationProver) Run(run *wizard.ProverRuntime) {
 		}
 	})
 
-	ys := sv.BatchEvaluateLagrangeExt(witnesses, r)
+	ys := smartvectors_mixed.BatchEvaluateLagrange(witnesses, r)
 	run.AssignUnivariateExt(pa.WitnessEval.QueryID, r, ys...)
 
 	/*
@@ -127,7 +128,7 @@ func (pa EvaluationProver) Run(run *wizard.ProverRuntime) {
 
 	var (
 		maxRatio          = utils.Max(pa.Ratios...)
-		mulGenInv         = fft.NewDomain(uint64(maxRatio * pa.DomainSize)).FrMultiplicativeGenInv
+		mulGenInv         = fft.NewDomain(uint64(maxRatio*pa.DomainSize), fft.WithCache()).FrMultiplicativeGenInv
 		rootInv, _        = fft.Generator(uint64(maxRatio * pa.DomainSize))
 		quotientEvalPoint fext.Element
 		wg                = &sync.WaitGroup{}
@@ -140,15 +141,15 @@ func (pa EvaluationProver) Run(run *wizard.ProverRuntime) {
 		go func(i int, evalPoint fext.Element) {
 			var (
 				q  = pa.QuotientEvals[i]
-				ys = make([]fext.Element, len(q.Pols))
+				cs = make([]sv.SmartVector, len(q.Pols))
 			)
 
 			parallel.Execute(len(q.Pols), func(start, stop int) {
 				for i := start; i < stop; i++ {
-					c := q.Pols[i].GetColAssignment(run)
-					ys[i] = sv.EvaluateLagrangeFullFext(c, evalPoint)
+					cs[i] = q.Pols[i].GetColAssignment(run)
 				}
 			})
+			ys := smartvectors_mixed.BatchEvaluateLagrange(cs, evalPoint)
 
 			run.AssignUnivariateExt(q.Name(), evalPoint, ys...)
 			wg.Done()
@@ -329,7 +330,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 		// shiftedR = r / g where g is the generator of the multiplicative group
 		shiftedR fext.Element
 		// mulGen is the generator of the multiplicative group
-		mulGenInv = fft.NewDomain(uint64(maxRatio * ctx.DomainSize)).FrMultiplicativeGenInv
+		mulGenInv = fft.NewDomain(uint64(maxRatio*ctx.DomainSize), fft.WithCache()).FrMultiplicativeGenInv
 		// omegaN is a root of unity generating the domain of size `domainSize
 		// * maxRatio`
 		omegaN, _ = fft.Generator(uint64(ctx.DomainSize * maxRatio))
@@ -419,7 +420,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 		// shiftedR = r / g where g is the generator of the multiplicative group
 		shiftedR gnarkfext.Element
 		// mulGen is the generator of the multiplicative group
-		mulGenInv = fft.NewDomain(uint64(maxRatio * ctx.DomainSize)).FrMultiplicativeGenInv
+		mulGenInv = fft.NewDomain(uint64(maxRatio*ctx.DomainSize), fft.WithCache()).FrMultiplicativeGenInv
 		// omegaN is a root of unity generating the domain of size `domainSize
 		// * maxRatio`
 		omegaN, _ = fft.Generator(uint64(ctx.DomainSize * maxRatio))

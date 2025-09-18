@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -65,12 +64,12 @@ func (PolyEval) Degree(inputDegrees []int) int {
 /*
 Evaluates a polynomial evaluation
 */
-func (PolyEval) Evaluate(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
+func (PolyEval) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
 	// We assume that the first element is always a scalar
 	// Get the constant value. We use Get(0) to get the value, but any integer would
 	// also work provided it is also in range. 0 ensures that.
 	x := inputs[0].(*sv.Constant).Get(0)
-	return sv.LinearCombination(inputs[1:], x, p...)
+	return sv.LinearCombination(inputs[1:], x)
 }
 
 /*
@@ -125,18 +124,18 @@ func (PolyEval) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gnark
 	return res
 }
 
-func (PolyEval) EvaluateExt(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
+func (PolyEval) EvaluateExt(inputs []sv.SmartVector) sv.SmartVector {
 	// We assume that the first element is always a scalar
 	// Get the constant value. We use Get(0) to get the value, but any integer would
 	// also work provided it is also in range. 0 ensures that.
-	x := inputs[0].(*sv.ConstantExt).GetExt(0)
-	return sv.LinearCombinationExt(inputs[1:], x, p...)
+	x := inputs[0].(*sv.ConstantExt).GetExt(0) // to ensure we panic if the input is not a constant
+	return sv.LinearCombinationExt(inputs[1:], x)
 }
 
-func (PolyEval) EvaluateMixed(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
+func (PolyEval) EvaluateMixed(inputs []sv.SmartVector) sv.SmartVector {
 	if sv.AreAllBase(inputs) {
-		return PolyEval{}.Evaluate(inputs, p...)
+		return PolyEval{}.Evaluate(inputs)
 	} else {
-		return PolyEval{}.EvaluateExt(inputs, p...)
+		return PolyEval{}.EvaluateExt(inputs)
 	}
 }

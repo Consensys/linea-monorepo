@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"math/rand/v2"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
@@ -299,7 +299,7 @@ func (gen *testCaseGenExt) NewTestCaseForLinearCombinationExt() (tcase testCaseE
 	if winMaxStop-winMinStart > gen.windowWithLen {
 		utils.Panic("inconsistent window dimension %v %v with gen %++v", winMinStart, winMaxStop, gen)
 	}
-	resVal := polyext.Eval(vals, x)
+	resVal := vortex.EvalFextPolyHorner(vals, x)
 
 	switch {
 	case maxType == constantExtT:

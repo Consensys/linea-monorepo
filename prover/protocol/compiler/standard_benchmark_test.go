@@ -71,6 +71,11 @@ var (
 		// 	},
 		// },
 		{
+			// run with GOGC=200 and
+			// ensure THP is enabled:
+			// cat /sys/kernel/mm/transparent_hugepage/enabled
+			// if not:
+			// echo always | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
 			Name: "realistic-segment",
 			Permutations: SubModuleParameters{
 				Count:  5,
