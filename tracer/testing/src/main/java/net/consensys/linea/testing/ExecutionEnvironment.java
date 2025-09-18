@@ -65,8 +65,15 @@ import org.slf4j.Logger;
 public class ExecutionEnvironment {
   public static final String CORSET_VALIDATION_RESULT = "Corset validation result: ";
 
-  static GenesisConfig GENESIS_CONFIG =
-      GenesisConfig.fromSource(ExecutionEnvironment.class.getResource("/linea.json"));
+  private static GenesisConfig getGenesisConfig(Fork fork) {
+    return switch (fork) {
+      case LONDON, PARIS, SHANGHAI, CANCUN -> GenesisConfig.fromSource(
+          ExecutionEnvironment.class.getResource("/Linea_LONDON.json"));
+      case PRAGUE, OSAKA -> GenesisConfig.fromSource(
+          ExecutionEnvironment.class.getResource("/Linea_PRAGUE.json"));
+      default -> throw new IllegalArgumentException("Unexpected fork value: " + fork);
+    };
+  }
 
   static final BlockHeaderBuilder DEFAULT_BLOCK_HEADER_BUILDER =
       BlockHeaderBuilder.createDefault()
@@ -147,7 +154,7 @@ public class ExecutionEnvironment {
 
   public static ProtocolSpec getProtocolSpec(BigInteger chainId, Fork fork) {
     final BadBlockManager badBlockManager = new BadBlockManager();
-    final GenesisConfigOptions genesisConfigOptions = GENESIS_CONFIG.getConfigOptions();
+    final GenesisConfigOptions genesisConfigOptions = getGenesisConfig(fork).getConfigOptions();
 
     final ProtocolSchedule schedule =
         CliqueProtocolSchedule.create(
@@ -175,17 +182,17 @@ public class ExecutionEnvironment {
 
     final ProtocolSpecBuilder builder =
         switch (fork) {
-          case LONDON -> protocol.londonDefinition(GENESIS_CONFIG.getConfigOptions());
-          case PARIS -> protocol.parisDefinition(GENESIS_CONFIG.getConfigOptions());
-          case SHANGHAI -> protocol.shanghaiDefinition(GENESIS_CONFIG.getConfigOptions());
+          case LONDON -> protocol.londonDefinition(genesisConfigOptions);
+          case PARIS -> protocol.parisDefinition(genesisConfigOptions);
+          case SHANGHAI -> protocol.shanghaiDefinition(genesisConfigOptions);
           case CANCUN -> protocol
-              .cancunDefinition(GENESIS_CONFIG.getConfigOptions())
+              .cancunDefinition(genesisConfigOptions)
               .preExecutionProcessor(new CancunPreExecutionProcessor());
           case PRAGUE -> protocol
-              .pragueDefinition(GENESIS_CONFIG.getConfigOptions())
+              .pragueDefinition(genesisConfigOptions)
               .preExecutionProcessor(new PraguePreExecutionProcessor());
           case OSAKA -> protocol
-              .osakaDefinition(GENESIS_CONFIG.getConfigOptions())
+              .osakaDefinition(genesisConfigOptions)
               .preExecutionProcessor(new PraguePreExecutionProcessor());
           default -> throw new IllegalArgumentException("Unexpected fork value: " + fork);
         };

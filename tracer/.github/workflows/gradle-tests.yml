@@ -89,6 +89,13 @@ jobs:
       zkevm_fork: CANCUN
       tests-with-ssh: ${{ inputs.tests-with-ssh || false}}
 
+  unit-tests-prague:
+    needs: [ build ]
+    uses: ./.github/workflows/reusable-unit-tests.yml
+    with:
+      zkevm_fork: PRAGUE
+      tests-with-ssh: ${{ inputs.tests-with-ssh || false}}
+
   # ==================================================================
   # Fast Replay Tests
   # ==================================================================
