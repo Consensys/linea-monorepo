@@ -13,7 +13,6 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bundles.BundlePoolService;
@@ -96,27 +95,27 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
   public void selectPendingTransactions(
       final BlockTransactionSelectionService bts, final ProcessableBlockHeader pendingBlockHeader) {
 
+    // do not use directly this atomic boolean but always use the lambda below,
+    // to check for interrupt, because they check if the thread is actually interrupted.
     final AtomicBoolean isInterrupted = new AtomicBoolean(false);
 
-    final Predicate<Object> selectionNotInterrupted =
-        unused -> {
+    final Supplier<Boolean> isSelectionInterrupted =
+        () -> {
           if (isInterrupted.get()) {
-            return false;
+            return true;
           }
           if (Thread.currentThread().isInterrupted()) {
             log.info("Bundle selection interrupted");
             isInterrupted.set(true);
-            return false;
+            return true;
           }
-          return true;
+          return false;
         };
-
-    final Supplier<Boolean> selectionInterrupted = () -> !selectionNotInterrupted.test(null);
 
     // check and send liveness bundle if any
     checkAndSendLivenessBundle(bts, pendingBlockHeader.getNumber());
 
-    if (selectionInterrupted.get()) return;
+    if (isSelectionInterrupted.get()) return;
 
     final var bundlesByBlockNumber =
         bundlePoolService.getBundlesByBlockNumber(pendingBlockHeader.getNumber());
@@ -128,12 +127,12 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
         .addArgument(bundlesByBlockNumber::size)
         .log();
 
-    if (selectionInterrupted.get()) return;
+    if (isSelectionInterrupted.get()) return;
 
     final var selectionStartedAt = System.currentTimeMillis();
 
     bundlesByBlockNumber.stream()
-        .takeWhile(selectionNotInterrupted)
+        .takeWhile(unused -> !isSelectionInterrupted.get())
         .forEach(
             bundle -> {
               final var bundleStartedAt = System.currentTimeMillis();
@@ -141,7 +140,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
 
               var maybeBadBundleRes =
                   bundle.pendingTransactions().stream()
-                      .takeWhile(selectionNotInterrupted)
+                      .takeWhile(unused -> !isSelectionInterrupted.get())
                       .map(bts::evaluatePendingTransaction)
                       .filter(evalRes -> !evalRes.selected())
                       .findFirst();
@@ -150,7 +149,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
               final var totalSelectionMillis = now - selectionStartedAt;
               final var bundleSelectionMillis = now - bundleStartedAt;
 
-              if (selectionInterrupted.get()) {
+              if (isSelectionInterrupted.get()) {
                 log.debug(
                     "Bundle selection interrupted while processing bundle {}, elapsed time: bundle {}ms, total {}ms",
                     bundle.bundleIdentifier(),
