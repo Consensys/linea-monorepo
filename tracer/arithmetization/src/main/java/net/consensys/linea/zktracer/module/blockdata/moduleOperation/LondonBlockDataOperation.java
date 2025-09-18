@@ -59,6 +59,9 @@ public class LondonBlockDataOperation extends BlockdataOperation {
   }
 
   @Override
+  protected void traceTimestampAndNumber(Trace.Blockdata trace) {}
+
+  @Override
   protected void traceIsDifficulty(Trace.Blockdata trace, OpCode opCode) {
     trace.isDifficulty(opCode == DIFFICULTY);
   }

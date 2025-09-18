@@ -25,9 +25,12 @@ import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
 public class CancunBlockDataOperation extends ParisBlockDataOperation {
+
+  private final BlockHeader blockHeader;
 
   public CancunBlockDataOperation(
       Hub hub,
@@ -40,6 +43,7 @@ public class CancunBlockDataOperation extends ParisBlockDataOperation {
       OpCode opCode,
       long firstBlockNumber) {
     super(hub, blockHeader, prevBlockHeader, relTxMax, wcp, euc, chain, opCode, firstBlockNumber);
+    this.blockHeader = blockHeader;
   }
 
   @Override
@@ -48,6 +52,13 @@ public class CancunBlockDataOperation extends ParisBlockDataOperation {
 
     // row i
     wcpCallToGEQ(0, data(), EWord.ZERO);
+  }
+
+  @Override
+  public void traceTimestampAndNumber(Trace.Blockdata trace) {
+    trace
+        .timestamp(Bytes.ofUnsignedLong(blockHeader.getTimestamp()))
+        .number(blockHeader.getNumber());
   }
 
   @Override

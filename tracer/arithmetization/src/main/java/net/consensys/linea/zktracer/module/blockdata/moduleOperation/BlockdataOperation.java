@@ -245,9 +245,12 @@ public abstract class BlockdataOperation extends ModuleOperation {
           .exoInst(exoInst[ct])
           .wcpFlag(wcpFlag[ct])
           .eucFlag(eucFlag[ct]);
-      trace.validateRow();
+      traceTimestampAndNumber(trace);
+      trace.fillAndValidateRow();
     }
   }
+
+  protected abstract void traceTimestampAndNumber(Trace.Blockdata trace);
 
   protected abstract void traceIsDifficulty(Trace.Blockdata trace, OpCode opCode);
 
