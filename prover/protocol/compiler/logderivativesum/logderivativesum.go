@@ -3,7 +3,6 @@ package logderivativesum
 import (
 	"fmt"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"slices"
@@ -126,7 +125,7 @@ func (f *FinalEvaluationCheck) Run(run wizard.Runtime) error {
 		return fmt.Errorf("log-derivate-sum; the final evaluation check failed for %v\n"+
 			"given %v but calculated %v\n"+
 			"partial-sums=(len %v) %v",
-			f.LogDerivSumID, claimedSum.String(), zSum.String(), len(tmps), vectorext.PrettifyGeneric(tmps),
+			f.LogDerivSumID, claimedSum.String(), zSum.String(), len(tmps), fext.PrettifyGeneric(tmps),
 		)
 	}
 

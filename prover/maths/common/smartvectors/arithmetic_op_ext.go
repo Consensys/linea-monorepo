@@ -30,17 +30,15 @@ func (linCombOp) vecExtIntoVecExt(res, x []fext.Element, coeff int) {
 	assertHasLength(len(res), len(x))
 	switch coeff {
 	case 1:
-		vectorext.Add(res, res, x)
+		vectorext.Vector(res).Add(res, x)
 	case -1:
-		vectorext.Sub(res, res, x)
+		vectorext.Vector(res).Sub(res, x)
 	case 2:
-		for i := range res {
-			res[i].Add(&res[i], &x[i]).Add(&res[i], &x[i])
-		}
+		vectorext.Vector(res).Add(res, x)
+		vectorext.Vector(res).Add(res, x)
 	case -2:
-		for i := range res {
-			res[i].Sub(&res[i], &x[i]).Sub(&res[i], &x[i])
-		}
+		vectorext.Vector(res).Sub(res, x)
+		vectorext.Vector(res).Sub(res, x)
 	default:
 		var c, tmp fext.Element
 		fext.SetFromIntBase(&c, int64(coeff))
@@ -66,7 +64,7 @@ func (linCombOp) vecExtIntoTermExt(term, x []fext.Element, coeff int) {
 			term[i].Neg(&x[i])
 		}
 	case 2:
-		vectorext.Add(term, x, x)
+		vectorext.Vector(term).Add(x, x)
 	case -2:
 		for i := range term {
 			term[i].Add(&x[i], &x[i]).Neg(&term[i])
@@ -102,7 +100,7 @@ func (linCombOp) constTermExtIntoConstExt(res, term *fext.Element) {
 }
 
 func (linCombOp) vecTermExtIntoVecExt(res, term []fext.Element) {
-	vectorext.Add(res, res, term)
+	vectorext.Vector(res).Add(res, term)
 }
 
 func (linCombOp) constTermExtIntoVecExt(res []fext.Element, term *fext.Element) {
@@ -142,18 +140,14 @@ func (productOp) vecExtIntoVecExt(res, x []fext.Element, coeff int) {
 	case 0:
 		// Nothing to do
 	case 1:
-		vectorext.MulElementWise(res, res, x)
+		vectorext.Vector(res).Mul(res, x)
 	case 2:
-		for i := range res {
-			res[i].Mul(&res[i], &x[i]).Mul(&res[i], &x[i])
-		}
+		vectorext.Vector(res).Mul(res, x)
+		vectorext.Vector(res).Mul(res, x)
 	case 3:
-		for i := range res {
-			var tmp fext.Element
-			tmp.Square(&x[i])
-			tmp.Mul(&tmp, &x[i])
-			res[i].Mul(&res[i], &tmp)
-		}
+		vectorext.Vector(res).Mul(res, x)
+		vectorext.Vector(res).Mul(res, x)
+		vectorext.Vector(res).Mul(res, x)
 	default:
 		var tmp fext.Element
 		for i := range res {
@@ -190,26 +184,7 @@ func (productOp) constExtIntoTermExt(res, x *fext.Element, coeff int) {
 
 // res = x * coeff or res = x ^ coeff where x is a vector
 func (productOp) vecExtIntoTermExt(res, x []fext.Element, coeff int) {
-	switch coeff {
-	case 0:
-		vectorext.Fill(res, fext.One())
-	case 1:
-		copy(res, x)
-	case 2:
-		vectorext.MulElementWise(res, x, x)
-	case 3:
-		for i := range res {
-			// Creating a new variable for the case where res and x are the same variable
-			var tmp fext.Element
-			tmp.Square(&x[i])
-			res[i].Mul(&tmp, &x[i])
-		}
-	default:
-		c := big.NewInt(int64(coeff))
-		for i := range res {
-			res[i].Exp(x[i], c)
-		}
-	}
+	vectorext.Vector(res).Exp(x, int64(coeff))
 }
 
 // res += term or res *= coeff for constants
@@ -219,11 +194,10 @@ func (productOp) constTermExtIntoConstExt(res, term *fext.Element) {
 
 // res += term for vectors
 func (productOp) vecTermExtIntoVecExt(res, term []fext.Element) {
-	vectorext.MulElementWise(res, res, term)
-
+	vectorext.Vector(res).Mul(res, term)
 }
 
 // res += term where res is a vector and term is a constant
 func (productOp) constTermExtIntoVecExt(res []fext.Element, term *fext.Element) {
-	vectorext.ScalarMul(res, res, *term)
+	vectorext.Vector(res).ScalarMul(res, term)
 }

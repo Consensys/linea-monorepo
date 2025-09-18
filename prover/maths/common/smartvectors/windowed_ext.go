@@ -290,8 +290,12 @@ func processWindowedOnlyExt(op operator, svecs []SmartVector, coeffs_ []int) (re
 			op.vecExtIntoTermExt(unionWindow[start_:stop_], pcw.Window_, coeffs[i])
 			// #nosec G601 -- Deliberate pass by reference. (We trust the pointed object is not mutated)
 			op.constExtIntoTermExt(&paddedTerm, &pcw.PaddingVal_, coeffs[i])
-			vectorext.Fill(unionWindow[:start_], paddedTerm)
-			vectorext.Fill(unionWindow[stop_:], paddedTerm)
+			for j := 0; j < start_; j++ {
+				unionWindow[j] = paddedTerm
+			}
+			for j := stop_; j < len(unionWindow); j++ {
+				unionWindow[j] = paddedTerm
+			}
 			continue
 		}
 

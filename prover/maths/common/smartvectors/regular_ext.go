@@ -12,7 +12,7 @@ import (
 )
 
 // RegularExt is s normal vector in a nutshell
-type RegularExt []fext.Element
+type RegularExt vectorext.Vector
 
 // NewRegularExt instanstiate a new regular from a slice. Returns a pointer so that the result
 // can be reused without referencing as a SmartVector.
