@@ -3,9 +3,9 @@ package query
 import (
 	"errors"
 	"fmt"
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"sync"
 
-	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
@@ -122,9 +122,19 @@ func (piw *PlonkInWizard) Name() ifaces.QueryID {
 func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 
 	var (
-		data                = piw.Data.GetColAssignment(run).IntoRegVecSaveAlloc()
-		sel                 = piw.Selector.GetColAssignment(run).IntoRegVecSaveAlloc()
-		ccs, compErr        = frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, piw.Circuit)
+		data, errData = piw.Data.GetColAssignment(run).IntoRegVecSaveAllocBase()
+		sel, errSel   = piw.Selector.GetColAssignment(run).IntoRegVecSaveAllocBase()
+	)
+
+	if errData != nil {
+		return fmt.Errorf("Error while getting the data ", errData)
+	}
+
+	if errSel != nil {
+		return fmt.Errorf("Error while getting the selector ", errSel)
+	}
+	var (
+		ccs, compErr        = frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, piw.Circuit)
 		numEffInstances int = 0
 	)
 
@@ -166,7 +176,7 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 			var (
 				locPubInputs  = data[i : i+nbPublicPadded]
 				locSelector   = sel[i : i+nbPublicPadded]
-				witness, _    = witness.New(ecc.BLS12_377.ScalarField())
+				witness, _    = witness.New(koalabear.Modulus())
 				witnessFiller = make(chan any, nbPublic)
 			)
 

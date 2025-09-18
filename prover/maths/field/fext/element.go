@@ -157,7 +157,7 @@ func SetInterface(z *Element, i1 interface{}) (*Element, error) {
 		z := SetBytes(c1)
 		return &z, nil
 	default:
-		return nil, errors.New("can't set fr.Element from type " + reflect.TypeOf(i1).String())
+		return nil, errors.New("can't set fext.Element from type " + reflect.TypeOf(i1).String())
 	}
 }
 
