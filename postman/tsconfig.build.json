@@ -9,6 +9,5 @@
     "rootDir": ".",
     "sourceMap": true
   },
-  "include": ["./src/**/*.ts", "scripts/**/runPostman.ts"],
-  "exclude": ["src/**/*.test.ts"]
+  "include": ["./src/**/*.ts", "scripts/**/runPostman.ts"]
 }
