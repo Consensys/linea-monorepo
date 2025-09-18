@@ -170,7 +170,7 @@ func (ctx *StitchingContext) ScanStitchCommit() {
 
 				// Mark it as ignored, so that it is no longer considered as
 				// queryable (since we are replacing it with its stitching).
-				if status != column.Proof || status != column.VerifyingKey {
+				if status != column.Proof && status != column.VerifyingKey {
 					ctx.Comp.Columns.MarkAsIgnored(col.GetColID())
 				}
 			}
