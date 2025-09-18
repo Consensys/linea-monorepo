@@ -43,13 +43,51 @@ type TracesLimits struct {
 	Trm               int `mapstructure:"TRM" validate:"power_of_2" corset:"trm"`
 	Txndata           int `mapstructure:"TXN_DATA" validate:"power_of_2" corset:"txndata"`
 	Wcp               int `mapstructure:"WCP" validate:"power_of_2" corset:"wcp"`
-
+	// internal modules
+	ByteShl256    int `mapstructure:"BYTE_SHL256" validate:"power_of_2" corset:"byte_shl256"`
+	ByteShr256    int `mapstructure:"BYTE_SHR256" validate:"power_of_2" corset:"byte_shr256"`
+	ByteSar256    int `mapstructure:"BYTE_SAR256" validate:"power_of_2" corset:"byte_sar256"`
+	BitShl256     int `mapstructure:"BIT_SHL256" validate:"power_of_2" corset:"bit_shl256"`
+	BitShr256     int `mapstructure:"BIT_SHR256" validate:"power_of_2" corset:"bit_shr256"`
+	BitSar256     int `mapstructure:"BIT_SAR256" validate:"power_of_2" corset:"bit_sar256"`
+	FillBytesFrom int `mapstructure:"FILL_BYTES_FROM" validate:"power_of_2" corset:"fill_bytes_from"`
+	Log2          int `mapstructure:"LOG2" validate:"power_of_2" corset:"log2"`
+	Log2U128      int `mapstructure:"LOG2_U128" validate:"power_of_2" corset:"log2_u128"`
+	Log2U64       int `mapstructure:"LOG2_U64" validate:"power_of_2" corset:"log2_u64"`
+	Log2U32       int `mapstructure:"LOG2_U32" validate:"power_of_2" corset:"log2_u32"`
+	Log2U16       int `mapstructure:"LOG2_U16" validate:"power_of_2" corset:"log2_u16"`
+	Log2U8        int `mapstructure:"LOG2_U8" validate:"power_of_2" corset:"log2_u8"`
+	Log2U4        int `mapstructure:"LOG2_U4" validate:"power_of_2" corset:"log2_u4"`
+	Log2U2        int `mapstructure:"LOG2_U2" validate:"power_of_2" corset:"log2_u2"`
+	Log256        int `mapstructure:"LOG256" validate:"power_of_2" corset:"log256"`
+	Log256U128    int `mapstructure:"LOG256_U128" validate:"power_of_2" corset:"log256_u128"`
+	Log256U64     int `mapstructure:"LOG256_U64" validate:"power_of_2" corset:"log256_u64"`
+	Log256U32     int `mapstructure:"LOG256_U32" validate:"power_of_2" corset:"log256_u32"`
+	Log256U16     int `mapstructure:"LOG256_U16" validate:"power_of_2" corset:"log256_u16"`
+	SetByte256    int `mapstructure:"SET_BYTE256" validate:"power_of_2" corset:"set_byte256"`
+	SetByte128    int `mapstructure:"SET_BYTE128" validate:"power_of_2" corset:"set_byte128"`
+	SetByte64     int `mapstructure:"SET_BYTE64" validate:"power_of_2" corset:"set_byte64"`
+	SetByte32     int `mapstructure:"SET_BYTE32" validate:"power_of_2" corset:"set_byte32"`
+	SetByte16     int `mapstructure:"SET_BYTE16" validate:"power_of_2" corset:"set_byte16"`
+	// limitless typing modules
 	U128 int `mapstructure:"U128" validate:"power_of_2" corset:"u128"`
-	U20  int `mapstructure:"U20" validate:"power_of_2" corset:"u20"`
-	U32  int `mapstructure:"U32" validate:"power_of_2" corset:"u32"`
-	U36  int `mapstructure:"U36" validate:"power_of_2" corset:"u36"`
+	U127 int `mapstructure:"U127" validate:"power_of_2" corset:"u127"`
+	U126 int `mapstructure:"U126" validate:"power_of_2" corset:"u126"`
+	U120 int `mapstructure:"U120" validate:"power_of_2" corset:"u120"`
+	U119 int `mapstructure:"U119" validate:"power_of_2" corset:"u119"`
 	U64  int `mapstructure:"U64" validate:"power_of_2" corset:"u64"`
-
+	U63  int `mapstructure:"U63" validate:"power_of_2" corset:"u63"`
+	U62  int `mapstructure:"U62" validate:"power_of_2" corset:"u62"`
+	U56  int `mapstructure:"U56" validate:"power_of_2" corset:"u56"`
+	U55  int `mapstructure:"U55" validate:"power_of_2" corset:"u55"`
+	U36  int `mapstructure:"U36" validate:"power_of_2" corset:"u36"`
+	U32  int `mapstructure:"U32" validate:"power_of_2" corset:"u32"`
+	U31  int `mapstructure:"U31" validate:"power_of_2" corset:"u31"`
+	U30  int `mapstructure:"U30" validate:"power_of_2" corset:"u30"`
+	U24  int `mapstructure:"U24" validate:"power_of_2" corset:"u24"`
+	U23  int `mapstructure:"U23" validate:"power_of_2" corset:"u23"`
+	U20  int `mapstructure:"U20" validate:"power_of_2" corset:"u20"`
+	// reference tables
 	Binreftable int `mapstructure:"BIN_REFERENCE_TABLE" validate:"power_of_2" corset:"binreftable"`
 	Shfreftable int `mapstructure:"SHF_REFERENCE_TABLE" validate:"power_of_2" corset:"shfreftable"`
 	Instdecoder int `mapstructure:"INSTRUCTION_DECODER" validate:"power_of_2" corset:"instdecoder"`
