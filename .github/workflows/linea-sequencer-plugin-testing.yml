@@ -73,6 +73,7 @@ jobs:
       - name: Run acceptance tests
         run: ./gradlew besu-plugins:linea-sequencer:acceptance-tests:acceptanceTests
         env:
+          CI: true
           JAVA_OPTS: -Xmx10g -Xms2g
 
       - name: Upload test report
