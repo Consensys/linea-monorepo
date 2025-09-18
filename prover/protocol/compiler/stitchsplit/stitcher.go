@@ -34,6 +34,13 @@ func (a *StitchSubColumnsProverAction) Run(run *wizard.ProverRuntime) {
 		// as this is purely for cleaning up. After stitching, the big column
 		// should live and the sub columns should be deleted.
 		for subCol := range a.Stitchings[round].BySubCol {
+			// If the subcols are of status Proof or VerifyingKey,
+			// then we do not want to delete them as they are still needed
+			// for the Fiat-Shamir challenge generation.
+			status := run.Spec.Columns.Status(subCol)
+			if status == column.Proof || status == column.VerifyingKey {
+				continue
+			}
 			run.Columns.TryDel(subCol)
 		}
 	}
@@ -102,6 +109,13 @@ func (a *StitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
 		if a.Ctx.Comp.Precomputed.Exists(idBigCol) {
 			continue
 		}
+
+		// If id of big col is expandProofOrVerifyingKeyColWithZero, then it is already
+		// expanded
+		if _, isExpanded := a.Ctx.Stitchings[a.Round].ByBigCol[idBigCol][0].(verifiercol.ExpandedProofOrVerifyingKeyColWithZero); isExpanded {
+			continue
+		}
+
 
 		// get the assignment of the subColumns and interleave them
 		witnesses := make([]smartvectors.SmartVector, len(subColumns))
