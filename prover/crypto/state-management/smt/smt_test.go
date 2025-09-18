@@ -3,7 +3,6 @@ package smt_test
 import (
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
@@ -24,8 +23,7 @@ func RandBytes32(pos int) Bytes32 {
 func TestTreeInitialization(t *testing.T) {
 
 	config := &smt.Config{
-		HashFunc: hashtypes.Keccak,
-		Depth:    40,
+		Depth: 40,
 	}
 
 	tree := smt.NewEmptyTree(config)
@@ -39,8 +37,7 @@ func TestTreeInitialization(t *testing.T) {
 
 func TestTreeUpdateLeaf(t *testing.T) {
 	config := &smt.Config{
-		HashFunc: hashtypes.Keccak,
-		Depth:    40,
+		Depth: 40,
 	}
 
 	tree := smt.NewEmptyTree(config)
@@ -48,17 +45,18 @@ func TestTreeUpdateLeaf(t *testing.T) {
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
 		// Make a valid Bytes32
-		newLeaf := RandBytes32(pos)
+		var newLeaf field.Octuplet
+		for i := range newLeaf {
+			newLeaf[i] = field.RandomElement()
+		}
 		tree.Update(pos, newLeaf)
 		recovered, _ := tree.GetLeaf(pos)
 		require.Equal(t, newLeaf, recovered)
 	}
 }
-
 func TestMerkleProofNative(t *testing.T) {
 	config := &smt.Config{
-		HashFunc: hashtypes.Keccak,
-		Depth:    40,
+		Depth: 40,
 	}
 
 	tree := smt.NewEmptyTree(config)
@@ -77,8 +75,7 @@ func TestMerkleProofNative(t *testing.T) {
 
 func TestMerkleProofWithUpdate(t *testing.T) {
 	config := &smt.Config{
-		HashFunc: hashtypes.Keccak,
-		Depth:    40,
+		Depth: 40,
 	}
 
 	tree := smt.NewEmptyTree(config)
@@ -89,7 +86,10 @@ func TestMerkleProofWithUpdate(t *testing.T) {
 
 		// Updat the leaf with a random-looking value before
 		// checking the proof
-		newLeaf := RandBytes32(pos)
+		var newLeaf field.Octuplet
+		for i := range newLeaf {
+			newLeaf[i] = field.RandomElement()
+		}
 		tree.Update(pos, newLeaf)
 
 		// After updating the old proof should still be valid
@@ -102,8 +102,7 @@ func TestMerkleProofWithUpdate(t *testing.T) {
 func TestBuildFromScratch(t *testing.T) {
 
 	config := &smt.Config{
-		HashFunc: hashtypes.Keccak,
-		Depth:    8,
+		Depth: 8,
 	}
 
 	// Generate random field elements and cast them into Bytes32es
@@ -113,15 +112,15 @@ func TestBuildFromScratch(t *testing.T) {
 		leavesFr[i] = field.RandomElement()
 	}
 
-	leaves := make([]Bytes32, len(leavesFr)/8)
+	leaves := make([]field.Octuplet, len(leavesFr)/8)
 	for i := range leaves {
 		var arr [8]field.Element
 		copy(arr[:], leavesFr[8*i:8*i+8])
-		leaves[i] = HashToBytes32(arr)
+		leaves[i] = arr
 	}
 
 	// And generate the
-	tree := smt.BuildComplete(leaves, config.HashFunc)
+	tree := smt.BuildComplete(leaves)
 
 	// Test-Merkle tests the merkle proof point by point
 	for i := range leaves {
@@ -140,6 +139,6 @@ func TestBuildFromScratch(t *testing.T) {
 	}
 
 	// We should obtain the same roots
-	require.Equal(t, oneByoneTree.Root.Hex(), tree.Root.Hex())
+	require.Equal(t, oneByoneTree.Root, tree.Root)
 
 }

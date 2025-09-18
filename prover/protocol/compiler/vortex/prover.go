@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -99,7 +98,7 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 	}
 
 	// And assign the 1-sized column to contain the root
-	var root = types.Bytes32ToHash(tree.Root)
+	var root = tree.Root
 	run.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round)), smartvectors.NewRegular(root[:]))
 }
 
@@ -367,7 +366,7 @@ func (ctx *Ctx) packMerkleProofs(proofs [][]smt.Proof) [8]smartvectors.SmartVect
 			for k := range p.Siblings {
 				// The proof stores the sibling bottom-up but we want to pack
 				// the proof in top-down order.
-				hashOct := types.Bytes32ToHash(p.Siblings[depth-1-k])
+				hashOct := p.Siblings[depth-1-k]
 				for coord := range res {
 					res[coord][numProofWritten*depth+k] = hashOct[coord]
 				}
@@ -403,7 +402,7 @@ func (ctx *Ctx) unpackMerkleProofs(sv [8]smartvectors.SmartVector, entryList []i
 			// initialize the proof that we are parsing
 			proof := smt.Proof{
 				Path:     entryList[j],
-				Siblings: make([]types.Bytes32, depth),
+				Siblings: make([]field.Octuplet, depth),
 			}
 
 			// parse the siblings accounting for the fact that we
@@ -413,7 +412,7 @@ func (ctx *Ctx) unpackMerkleProofs(sv [8]smartvectors.SmartVector, entryList []i
 				for coord := 0; coord < len(v); coord++ {
 					v[coord] = sv[coord].Get(curr)
 				}
-				proof.Siblings[depth-k-1] = types.Bytes32(types.HashToBytes32(v))
+				proof.Siblings[depth-k-1] = v
 				curr++
 			}
 

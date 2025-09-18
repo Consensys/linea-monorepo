@@ -5,14 +5,12 @@ import (
 	"runtime/debug"
 	"testing"
 
-	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,7 +23,7 @@ func TestLinearCombination(t *testing.T) {
 	x := fext.NewFromInt(478, 763, 890, 123)
 	randomCoin := fext.NewFromInt(1523, 6783, 32, 789)
 
-	params := NewParams(blowUpFactor, polySize, nPolys, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, poseidon2.NewMerkleDamgardHasher)
+	params := NewParams(blowUpFactor, polySize, nPolys, ringsis.StdParams, nil, nil)
 
 	// Polynomials to commit to
 	polys := make([]smartvectors.SmartVector, nPolys)
@@ -51,9 +49,7 @@ func TestLinearCombination(t *testing.T) {
 
 // testCaseParameters is a corpus of valid parameters for Vortex
 var testCaseParameters = []*Params{
-	NewParams(2, 1<<4, 32, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, poseidon2.NewMerkleDamgardHasher),
-	NewParams(4, 1<<3, 32, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, poseidon2.NewMerkleDamgardHasher),
-	NewParams(4, 1<<3, 32, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, nil),
+	NewParams(4, 1<<3, 32, ringsis.StdParams, nil, nil),
 }
 
 func TestProver(t *testing.T) {
@@ -183,7 +179,7 @@ func TestProver(t *testing.T) {
 					effPolySize              = params.NbColumns
 					polyLists                = make([][]smartvectors.SmartVector, numCommitments)
 					yLists                   = make([][]fext.Element, numCommitments)
-					roots                    = make([]types.Bytes32, numCommitments)
+					roots                    = make([]field.Octuplet, numCommitments)
 					trees                    = make([]*smt.Tree, numCommitments)
 					isSisReplacedByPoseidon2 = make([]bool, numCommitments)
 				)
@@ -272,9 +268,8 @@ func TestVerifierNegative(t *testing.T) {
 			{3, 1, 15},
 		}
 		params = []*Params{
-			NewParams(2, 8, 17, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, poseidon2.NewMerkleDamgardHasher),
-			NewParams(2, 8, 17, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, poseidon2.NewMerkleDamgardHasher),
-			NewParams(2, 8, 17, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, nil),
+
+			NewParams(2, 8, 17, ringsis.StdParams, nil, nil),
 		}
 
 		statementMutatorCorpus = []struct {
@@ -459,7 +454,7 @@ func TestVerifierNegative(t *testing.T) {
 				effPolySize    = params.NbColumns
 				polyLists      = make([][]smartvectors.SmartVector, numCommitments)
 				yLists         = make([][]fext.Element, numCommitments)
-				roots          = make([]types.Bytes32, numCommitments)
+				roots          = make([]field.Octuplet, numCommitments)
 				trees          = make([]*smt.Tree, numCommitments)
 			)
 

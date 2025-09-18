@@ -3,27 +3,27 @@ package smt
 import (
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // ProvedClaim is the composition of a proof with the claim it proves.
 type ProvedClaim struct {
 	Proof      Proof
-	Root, Leaf types.Bytes32
+	Root, Leaf field.Octuplet
 }
 
 // Proof represents a Merkle proof of membership for the Merkle-tree
 type Proof struct {
-	Path     int             `json:"leafIndex"` // Position of the leaf
-	Siblings []types.Bytes32 `json:"siblings"`  // length 40
+	Path     int              `json:"leafIndex"` // Position of the leaf
+	Siblings []field.Octuplet `json:"siblings"`  // length 40
 }
 
 // Prove returns a Merkle proof  of membership of the leaf at position `pos` and
 // an error if the position is out of bounds.
 func (t *Tree) Prove(pos int) (Proof, error) {
 	depth := t.Config.Depth
-	siblings := make([]types.Bytes32, depth)
+	siblings := make([]field.Octuplet, depth)
 	idx := pos
 
 	if pos >= 1<<depth {
@@ -61,18 +61,18 @@ func (t *Tree) MustProve(pos int) Proof {
 }
 
 // RecoverRoot returns the root recovered from the Merkle proof.
-func (p *Proof) RecoverRoot(conf *Config, leaf types.Bytes32) (types.Bytes32, error) {
+func (p *Proof) RecoverRoot(conf *Config, leaf field.Octuplet) (field.Octuplet, error) {
 
 	if p.Path > 1<<conf.Depth {
-		return types.Bytes32{}, fmt.Errorf("invalid proof: path is %v larger than the number of leaves in the tree %v", p.Path, 1<<len(p.Siblings))
+		return field.Octuplet{}, fmt.Errorf("invalid proof: path is %v larger than the number of leaves in the tree %v", p.Path, 1<<len(p.Siblings))
 	}
 
 	if p.Path < 0 {
-		return types.Bytes32{}, fmt.Errorf("invalid proof: path is negative %v", p.Path)
+		return field.Octuplet{}, fmt.Errorf("invalid proof: path is negative %v", p.Path)
 	}
 
 	if len(p.Siblings) != conf.Depth {
-		return types.Bytes32{}, fmt.Errorf("the proof contains %v siblings but the tree has a depth of %v", len(p.Siblings), conf.Depth)
+		return field.Octuplet{}, fmt.Errorf("the proof contains %v siblings but the tree has a depth of %v", len(p.Siblings), conf.Depth)
 	}
 
 	var (
@@ -85,7 +85,7 @@ func (p *Proof) RecoverRoot(conf *Config, leaf types.Bytes32) (types.Bytes32, er
 		if idx&1 == 1 {
 			left, right = right, left
 		}
-		current = hashLR(conf, left, right)
+		current = hashLR(left, right)
 		idx >>= 1
 	}
 
@@ -99,7 +99,7 @@ func (p *Proof) RecoverRoot(conf *Config, leaf types.Bytes32) (types.Bytes32, er
 }
 
 // Verify the Merkle-proof against a hash and a root
-func (p *Proof) Verify(conf *Config, leaf, root types.Bytes32) bool {
+func (p *Proof) Verify(conf *Config, leaf field.Octuplet, root field.Octuplet) bool {
 	actual, err := p.RecoverRoot(conf, leaf)
 	if err != nil {
 		fmt.Printf("mtree verify: %v\n", err.Error())

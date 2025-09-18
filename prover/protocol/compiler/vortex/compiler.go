@@ -20,7 +20,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
 )
 
@@ -930,7 +929,7 @@ func (ctx *Ctx) commitPrecomputeds() {
 	ctx.Items.Precomputeds.Tree = tree
 
 	// And assign the 1-sized column to contain the root
-	rootOct := types.Bytes32ToHash(tree.Root)
+	rootOct := tree.Root
 	ctx.Items.Precomputeds.MerkleRoot = ctx.Comp.RegisterVerifyingKey(
 		ctx.PrecomputedMerkleRootName(),
 		smartvectors.NewRegular(rootOct[:]),

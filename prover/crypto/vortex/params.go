@@ -73,8 +73,8 @@ func NewParams(
 		utils.Panic("The number of columns has to be a power of two, got %v", nbColumns)
 	}
 
-	if merkleHashFunc == nil {
-		utils.Panic("`nil` merkle hash function provided")
+	if merkleHashFunc != nil || leafHashFunc != nil {
+		utils.Panic("Default poseidon2 hash function is provided")
 	}
 
 	if maxNbRows < 1 {

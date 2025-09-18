@@ -84,7 +84,8 @@ func AssignCicuitVariablesWithMerkleTree(
 		for j := 0; j < len(proof.MerkleProofs[i]); j++ {
 			verifyCircuit.Proof.MerkleProofs[i][j].Path = proof.MerkleProofs[i][j].Path
 			for k := 0; k < len(proof.MerkleProofs[i][j].Siblings); k++ {
-				buf.SetBytes(proof.MerkleProofs[i][j].Siblings[k][:])
+				hashBytes := types.HashToBytes32(proof.MerkleProofs[i][j].Siblings[k])
+				buf.SetBytes(hashBytes[:])
 				verifyCircuit.Proof.MerkleProofs[i][j].Siblings[k] = buf.String()
 			}
 		}

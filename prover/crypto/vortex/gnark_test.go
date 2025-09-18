@@ -18,7 +18,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -303,7 +302,7 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	x fext.Element,
 	yLists [][]fext.Element,
 	entryList []int,
-	roots []types.Bytes32,
+	roots []field.Octuplet,
 ) {
 
 	x = fext.RandomElement()
@@ -327,7 +326,7 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	}
 
 	// Commits to it
-	roots = make([]types.Bytes32, nCommitments)
+	roots = make([]field.Octuplet, nCommitments)
 	trees := make([]*smt.Tree, nCommitments)
 	committedMatrices := make([]EncodedMatrix, nCommitments)
 	isSISReplacedByPoseidon2 := make([]bool, nCommitments)
