@@ -51,7 +51,7 @@ public class EIP2935HistoricalHash extends TraceSection {
     final short previousBlockNumberModulo =
         currentBlockIsGenesis ? 0 : (short) ((blockHeader.getNumber() - 1) % HISTORY_SERVE_WINDOW);
     final AccountSnapshot blockhashHistoryAccount =
-        AccountSnapshot.canonical(hub, EIP2935_HISTORY_STORAGE_ADDRESS);
+        AccountSnapshot.canonical(hub, world, EIP2935_HISTORY_STORAGE_ADDRESS, false);
     final boolean isNonTrivialOperation =
         !currentBlockIsGenesis && !blockhashHistoryAccount.code().isEmpty();
 
