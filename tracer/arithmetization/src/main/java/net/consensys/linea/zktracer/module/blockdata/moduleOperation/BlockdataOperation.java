@@ -25,7 +25,7 @@ import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_NB;
 import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_TS;
 import static net.consensys.linea.zktracer.TraceCancun.Blockdata.nROWS_BL;
 import static net.consensys.linea.zktracer.TraceLondon.Blockdata.nROWS_DF;
-import static net.consensys.linea.zktracer.TraceParis.Blockdata.nROWS_PV;
+import static net.consensys.linea.zktracer.TraceShanghai.Blockdata.nROWS_PV;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 
@@ -331,7 +331,7 @@ public abstract class BlockdataOperation extends ModuleOperation {
       case CHAINID -> nROWS_ID;
       case BASEFEE -> nROWS_BF;
       case BLOBBASEFEE -> nROWS_BL; // Cancun and after
-      default -> throw new IllegalArgumentException("Not a valid opcode for lockData: " + opCode);
+      default -> throw new IllegalArgumentException("Not a valid opcode for BlockData: " + opCode);
     };
   }
 }

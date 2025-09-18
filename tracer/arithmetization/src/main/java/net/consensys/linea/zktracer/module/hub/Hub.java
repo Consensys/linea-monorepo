@@ -366,48 +366,51 @@ public abstract class Hub implements Module {
   private final List<Module> refTableModules;
 
   /**
+   * The real modules, ie the ones that are traced and triggered during execution. It differs with
+   * the moduleToTrace() as it contains module traced for some fork only.
+   */
+  private List<Module> realModule() {
+    return List.of(
+        this,
+        add,
+        bin,
+        blakeModexpData,
+        blockdata,
+        blockhash,
+        blsData,
+        ecData,
+        exp,
+        ext,
+        euc,
+        gas,
+        logData,
+        logInfo,
+        mmu, // WARN: must be traced before the MMIO
+        mmio,
+        mod,
+        mul,
+        mxp,
+        oob,
+        rlpAddr,
+        rlpTxn,
+        rlpTxnRcpt,
+        rlpUtils,
+        rom,
+        romLex,
+        shakiraData,
+        shf,
+        stp,
+        trm,
+        txnData,
+        wcp);
+  }
+
+  /**
    * @return a list of all modules for which to generate traces
    */
   public List<Module> getModulesToTrace() {
     final List<Module> allModules =
-        new ArrayList<>(
-            Stream.concat(
-                    Stream.of(
-                            this,
-                            add,
-                            bin,
-                            blakeModexpData,
-                            blockdata,
-                            blockhash,
-                            blsData,
-                            ecData,
-                            exp,
-                            ext,
-                            euc,
-                            gas,
-                            logData,
-                            logInfo,
-                            mmu, // WARN: must be traced before the MMIO
-                            mmio,
-                            mod,
-                            mul,
-                            mxp,
-                            oob,
-                            rlpAddr,
-                            rlpTxn,
-                            rlpTxnRcpt,
-                            rlpUtils,
-                            rom,
-                            romLex,
-                            shakiraData,
-                            shf,
-                            stp,
-                            trm,
-                            txnData,
-                            wcp)
-                        .filter(Objects::nonNull),
-                    refTableModules.stream())
-                .toList());
+        new ArrayList<>(Stream.concat(realModule().stream(), refTableModules.stream()).toList());
 
     // All modules are in this list for the coordinator to have the same set of module whatever the
     // fork. But we don't trace them.
@@ -428,7 +431,10 @@ public abstract class Hub implements Module {
    * @return the modules to count
    */
   public List<Module> getModulesToCount() {
-    return Stream.concat(getModulesToTrace().stream(), getTracelessModules().stream()).toList();
+    return Stream.concat(
+            Stream.concat(realModule().stream(), refTableModules.stream()),
+            getTracelessModules().stream())
+        .toList();
   }
 
   public Hub(final ChainConfig chain) {
