@@ -272,11 +272,19 @@ func (a AssignHornerIP) Run(run *wizard.ProverRuntime) {
 			res       = make([]fext.Element, len(selectors))
 		)
 
-		for i, selector := range selectors {
-			sel := selector.GetColAssignment(run).IntoRegVecSaveAlloc()
-			for j := range sel {
-				fext.AddByBase(&res[i], &res[i], &sel[j])
+		for j, selector := range selectors {
+			sv := selector.GetColAssignment(run)
+			switch sv := sv.(type) {
+			case *smartvectors.Constant:
+				// we just multiply the constant by the size
+				size := field.NewElement(uint64(sv.Len()))
+				cst := sv.Get(0)
+				res[j].B0.A0.Mul(&cst, &size)
+				continue
 			}
+			sel := sv.IntoRegVecSaveAlloc()
+			vs := field.Vector(sel)
+			res[j].B0.A0 = vs.Sum()
 		}
 
 		run.AssignInnerProduct(ip.ID, res...)

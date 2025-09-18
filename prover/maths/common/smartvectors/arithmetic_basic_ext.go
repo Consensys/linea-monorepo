@@ -1,6 +1,7 @@
 package smartvectors
 
 import (
+	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -81,18 +82,15 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element) (result SmartVecto
 	var anyReg, anyCon bool
 	xPow := fext.One()
 
-	accumulateRegExt := func(acc, v []fext.Element, x fext.Element) {
+	accumulateRegExt := func(acc, v extensions.Vector, x fext.Element) {
 		for i := 0; i < length; i++ {
 			tmpF.Mul(&v[i], &x)
 			acc[i].Add(&acc[i], &tmpF)
 		}
 	}
 
-	accumulateRegMixed := func(acc []fext.Element, v []field.Element, x fext.Element) {
-		for i := 0; i < length; i++ {
-			tmpF.MulByElement(&x, &v[i])
-			acc[i].Add(&acc[i], &tmpF)
-		}
+	accumulateRegMixed := func(acc extensions.Vector, v field.Vector, x fext.Element) {
+		acc.MulAccByElement(v, &x)
 	}
 
 	// Computes the polynomial operation separately on the const,
@@ -115,11 +113,11 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element) (result SmartVecto
 			resCon.Add(&resCon, &tmpF)
 		case *Regular:
 			anyReg = true
-			v := *casted
+			v := field.Vector(*casted)
 			accumulateRegMixed(resReg, v, xPow)
 		case *RegularExt:
 			anyReg = true
-			v := *casted
+			v := extensions.Vector(*casted)
 			accumulateRegExt(resReg, v, xPow)
 		case *PaddedCircularWindow:
 			// treat it as a regular, reusing the buffer

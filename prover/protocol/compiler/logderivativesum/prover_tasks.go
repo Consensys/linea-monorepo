@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
@@ -58,9 +57,6 @@ func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
 	)
 
 	for i := range p.MAssignmentTasks {
-		// the passing of the index `i` is there to ensure that the go-routine
-		// is running over a local copy of `i` which is not incremented every
-		// time the loop goes to the next iteration.
 		go func(i int) {
 
 			// In case the subtask panics, we recover so that we can repanic in
@@ -84,9 +80,6 @@ func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
 	}
 
 	for i := range p.ZAssignmentTasks {
-		// the passing of the index `i` is there to ensure that the go-routine
-		// is running over a local copy of `i` which is not incremented every
-		// time the loop goes to the next iteration.
 		go func(i int) {
 
 			// In case the subtask panics, we recover so that we can repanic in
@@ -102,7 +95,6 @@ func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
 
 				wg.Done()
 			}()
-
 			p.ZAssignmentTasks[i].Run(run)
 		}(i)
 	}
@@ -211,9 +203,7 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 		// It is sampled via `crypto/rand` internally to ensure it cannot be
 		// predicted ahead of time by an adversary.
 		var collapsingRandomness fext.Element
-		if _, err := collapsingRandomness.SetRandom(); err != nil {
-			utils.Panic("could not sample the collapsing randomness: %v", err.Error())
-		}
+		collapsingRandomness.MustSetRandom()
 
 		for frag := range a.T {
 			tCollapsed[frag] = wizardutils.RandLinCombColAssignment(run, collapsingRandomness, a.T[frag])
@@ -367,11 +357,13 @@ type ZAssignmentTask ZCtx
 
 func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 	parallel.Execute(len(z.ZDenominatorBoarded), func(start, stop int) {
+
+		sb0, sb1 := make(field.Vector, z.Size), make(field.Vector, z.Size)
+		se0, se1 := make(extensions.Vector, z.Size), make(extensions.Vector, z.Size)
+
 		for frag := start; frag < stop; frag++ {
 
-			var (
-				numeratorMetadata = z.ZNumeratorBoarded[frag].ListVariableMetadata()
-			)
+			numeratorMetadata := z.ZNumeratorBoarded[frag].ListVariableMetadata()
 
 			svDenominator := column.EvalExprColumn(run, z.ZDenominatorBoarded[frag])
 
@@ -380,19 +372,20 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 			// the denominator depends on a randomness. The case is still here
 			// for completeness but we don't optimize for it.
 			if sv.IsBase(svDenominator) {
-				var numerator []field.Element
-				denominator := svDenominator.IntoRegVecSaveAlloc()
+				numerator := sb0
+				denominator := sb1
+				svDenominator.WriteInSlice(denominator)
 				packedZ := field.BatchInvert(denominator)
 				if len(numeratorMetadata) == 0 {
-					numerator = vector.Repeat(field.One(), z.Size)
-				}
-
-				if len(numeratorMetadata) > 0 {
+					for i := range numerator {
+						numerator[i].SetOne()
+					}
+				} else {
 					evalResult := column.EvalExprColumn(run, z.ZNumeratorBoarded[frag])
-					numerator, _ = evalResult.IntoRegVecSaveAllocBase()
+					evalResult.WriteInSlice(numerator)
 				}
 				vp := field.Vector(packedZ)
-				vp.Mul(vp, field.Vector(numerator))
+				vp.Mul(vp, numerator)
 				for k := 1; k < len(packedZ); k++ {
 					packedZ[k].Add(&packedZ[k], &packedZ[k-1])
 				}
@@ -401,20 +394,22 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 				run.AssignLocalPointExt(z.ZOpenings[frag].ID, fext.Lift(packedZ[len(packedZ)-1]))
 			} else {
 				// we are dealing with extension denominators
-				var numerator []fext.Element
-				denominator := svDenominator.IntoRegVecSaveAllocExt()
+				numerator := se0
+				denominator := se1
+				svDenominator.WriteInSliceExt(denominator)
 				packedZ := fext.BatchInvert(denominator)
 
 				if len(numeratorMetadata) == 0 {
-					numerator = vectorext.Repeat(fext.One(), z.Size)
-				}
-				if len(numeratorMetadata) > 0 {
+					for i := range numerator {
+						numerator[i].SetOne()
+					}
+				} else {
 					evalResult := column.EvalExprColumn(run, z.ZNumeratorBoarded[frag])
-					numerator = evalResult.IntoRegVecSaveAllocExt()
+					evalResult.WriteInSliceExt(numerator)
 				}
 
 				vp := extensions.Vector(packedZ)
-				vp.Mul(vp, extensions.Vector(numerator))
+				vp.Mul(vp, numerator)
 
 				for k := 1; k < len(packedZ); k++ {
 					packedZ[k].Add(&packedZ[k], &packedZ[k-1])
