@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 import { Test } from "forge-std/Test.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { RLN } from "../src/rln/RLN.sol";
 import { Karma } from "../src/Karma.sol";
@@ -41,8 +42,8 @@ contract RLNTest is Test {
         karma = _karma;
         (address deployer,) = deploymentConfig.activeNetworkConfig();
         owner = deployer;
-        distributor1 = new KarmaDistributorMock();
-        distributor2 = new KarmaDistributorMock();
+        distributor1 = new KarmaDistributorMock(IERC20(address(_karma)));
+        distributor2 = new KarmaDistributorMock(IERC20(address(_karma)));
 
         // Assign deterministic addresses
         adminAddr = makeAddr("admin");
@@ -61,6 +62,8 @@ contract RLNTest is Test {
         karma.addRewardDistributor(address(distributor1));
         karma.addRewardDistributor(address(distributor2));
         karma.grantRole(karma.SLASHER_ROLE(), address(rln));
+        karma.setAllowedToTransfer(address(distributor1), true);
+        karma.setAllowedToTransfer(address(distributor2), true);
         vm.stopBroadcast();
     }
 
@@ -162,8 +165,8 @@ contract RLNTest is Test {
     function test_slash_succeeds() public {
         uint256 distributorBalance = 50 ether;
         vm.startPrank(owner);
-        karma.mint(user2Addr, 10 ether); // Mint Karma tokens to user2
-        distributor1.setUserKarmaShare(user2Addr, distributorBalance);
+        karma.mint(address(distributor1), distributorBalance); // Mint Karma tokens to distributor1
+        distributor1.setUserKarmaShare(user2Addr, 10 ether);
         vm.stopPrank();
 
         // Register the identity first

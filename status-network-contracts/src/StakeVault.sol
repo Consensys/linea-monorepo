@@ -393,7 +393,7 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      * @param _newLockUntil The new lock until timestamp.
      * @param _seconds The time period to stake for.
      */
-    function _ensureLockUntilValid(uint256 _newLockUntil, uint256 _seconds) internal {
+    function _ensureLockUntilValid(uint256 _newLockUntil, uint256 _seconds) internal view {
         uint256 expectedLockUntil = Math.max(lockUntil, block.timestamp) + _seconds;
         if (_seconds > 0 && _newLockUntil != expectedLockUntil) {
             // This should never happen, unless there was a malicious

@@ -44,6 +44,9 @@ contract StakeManager is
     // solhint-disable var-name-mixedcase
     /// @notice Token that is staked in the vaults (SNT).
     IERC20 public STAKING_TOKEN;
+    // solhint-disable var-name-mixedcase
+    /// @notice Token that is used for rewards (Karma).
+    IERC20 public REWARD_TOKEN;
     /// @notice Scale factor used for rewards calculation.
     uint256 public constant SCALE_FACTOR = 1e27;
     /// @notice Total staked balance in the system.
@@ -136,11 +139,12 @@ contract StakeManager is
      * @param _owner Address of the owner of the contract.
      * @param _stakingToken Address of the staking token.
      */
-    function initialize(address _owner, address _stakingToken) external initializer {
+    function initialize(address _owner, address _stakingToken, address _rewardToken) external initializer {
         __TrustedCodehashAccess_init(_owner);
         __UUPSUpgradeable_init();
 
         STAKING_TOKEN = IERC20(_stakingToken);
+        REWARD_TOKEN = IERC20(_rewardToken);
         lastMPUpdatedTime = block.timestamp;
     }
 
@@ -282,8 +286,11 @@ contract StakeManager is
         onlyTrustedCodehash
         onlyRegisteredVault
     {
+        _updateGlobalState();
+        _updateVault(msg.sender, false);
+
         VaultData storage vault = vaultData[msg.sender];
-        _unstake(amount, vault, msg.sender);
+        _unstake(amount, vault);
         emit Unstaked(msg.sender, amount);
     }
 
@@ -294,17 +301,25 @@ contract StakeManager is
      * @dev The vault will still be registered, but with zero balances.
      */
     function leave() external whenNotPaused onlyTrustedCodehash {
+        _updateGlobalState();
+        _updateVault(msg.sender, false);
+
         VaultData storage vault = vaultData[msg.sender];
 
         if (vault.stakedBalance > 0) {
             // calling `_unstake` to update accounting accordingly
-            _unstake(vault.stakedBalance, vault, msg.sender);
-
-            // further cleanup that isn't done in `_unstake`
-            vault.rewardIndex = 0;
-            vault.lastMPUpdateTime = 0;
+            _unstake(vault.stakedBalance, vault);
         }
 
+        uint256 rewardsToRedeem = vault.rewardsAccrued;
+        // reset accrued rewards
+        totalRewardsAccrued -= rewardsToRedeem;
+        vault.rewardsAccrued = 0;
+        vault.rewardIndex = 0;
+        // further cleanup that isn't done in `_unstake`
+        vault.lastMPUpdateTime = 0;
+
+        REWARD_TOKEN.transfer(IStakeVault(msg.sender).owner(), rewardsToRedeem);
         emit VaultLeft(msg.sender);
     }
 
@@ -371,6 +386,29 @@ contract StakeManager is
         for (uint256 i = 0; i < accountVaults.length; i++) {
             _updateVault(accountVaults[i], false);
         }
+    }
+
+    /**
+     * @notice Allows users to convert their accrued virtual rewards to actual rewards.
+     * @dev This function is only callable when emergency mode is disabled.
+     * @dev Anyone can claim rewards on behalf of any account
+     */
+    function redeemRewards(address account) external onlyNotEmergencyMode whenNotPaused returns (uint256) {
+        _updateGlobalState();
+        address[] memory accountVaults = vaults[account];
+        uint256 redeemed;
+        for (uint256 i = 0; i < accountVaults.length; i++) {
+            _updateVault(accountVaults[i], false);
+            VaultData storage vault = vaultData[accountVaults[i]];
+
+            // Not using `rewardsBalanceOf` here to avoid second storage read.
+            // `vault.rewardsAccrued` is sufficient here since we just updated the vault.
+            redeemed += vault.rewardsAccrued;
+            totalRewardsAccrued -= vault.rewardsAccrued;
+            vault.rewardsAccrued = 0;
+        }
+        REWARD_TOKEN.transfer(account, redeemed);
+        return redeemed;
     }
 
     /**
@@ -459,7 +497,7 @@ contract StakeManager is
                            INTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/
 
-    function _updateGlobalState() internal {
+    function _updateGlobalState() internal virtual {
         _updateGlobalMP();
         _updateRewardIndex();
     }
@@ -472,7 +510,7 @@ contract StakeManager is
         }
     }
 
-    function _updateVault(address vaultAddress, bool forceMPUpdate) internal {
+    function _updateVault(address vaultAddress, bool forceMPUpdate) internal virtual {
         VaultData storage vault = vaultData[vaultAddress];
 
         // first accrue pending rewards for the work done so far
@@ -504,10 +542,7 @@ contract StakeManager is
         }
     }
 
-    function _unstake(uint256 amount, VaultData storage vault, address vaultAddress) internal {
-        _updateGlobalState();
-        _updateVault(vaultAddress, false);
-
+    function _unstake(uint256 amount, VaultData storage vault) internal {
         (uint256 _deltaMpTotal, uint256 _deltaMpMax) =
             _calculateUnstake(vault.stakedBalance, vault.mpAccrued, vault.maxMP, amount);
         vault.stakedBalance -= amount;

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import { Test } from "forge-std/Test.sol";
 import { DeployKarmaScript } from "../script/DeployKarma.s.sol";
@@ -28,12 +29,14 @@ contract KarmaTest is Test {
         (address deployer,) = deploymentConfig.activeNetworkConfig();
         owner = deployer;
 
-        distributor1 = new KarmaDistributorMock();
-        distributor2 = new KarmaDistributorMock();
+        distributor1 = new KarmaDistributorMock(IERC20(address(karma)));
+        distributor2 = new KarmaDistributorMock(IERC20(address(karma)));
 
         vm.startBroadcast(owner);
         karma.addRewardDistributor(address(distributor1));
         karma.addRewardDistributor(address(distributor2));
+        karma.setAllowedToTransfer(address(distributor1), true);
+        karma.setAllowedToTransfer(address(distributor2), true);
         vm.stopBroadcast();
     }
 
@@ -50,7 +53,7 @@ contract KarmaTest is Test {
     }
 
     function testAddKarmaDistributorOnlyAdmin() public {
-        KarmaDistributorMock distributor3 = new KarmaDistributorMock();
+        KarmaDistributorMock distributor3 = new KarmaDistributorMock(IERC20(address(karma)));
 
         bytes memory expectedError = _accessControlError(alice, karma.DEFAULT_ADMIN_ROLE());
         vm.prank(alice);
@@ -188,7 +191,7 @@ contract AddRewardDistributorTest is KarmaTest {
 
     function setUp() public virtual override {
         super.setUp();
-        distributor = address(new KarmaDistributorMock());
+        distributor = address(new KarmaDistributorMock(IERC20(address(karma))));
     }
 
     function test_RevertWhen_SenderIsNotDefaultAdmin() public {
@@ -217,7 +220,7 @@ contract RemoveRewardDistributorTest is KarmaTest {
 
     function setUp() public virtual override {
         super.setUp();
-        distributor = address(new KarmaDistributorMock());
+        distributor = address(new KarmaDistributorMock(IERC20(address(karma))));
     }
 
     function test_RevertWhen_SenderIsNotDefaultAdmin() public {
@@ -233,11 +236,21 @@ contract RemoveRewardDistributorTest is KarmaTest {
         assertEq(distributors.length, 3);
         assertEq(distributors[2], distributor);
 
+        // set some rewards
+        uint256 rewardAmount = 1000 ether;
+        vm.prank(owner);
+        karma.setReward(distributor, rewardAmount, 0);
+        // mock distributor distributes all its karma immediately
+        uint256 totalSupply = karma.totalSupply();
+        assertEq(totalSupply, rewardAmount);
+
         // remove the distributor
         vm.prank(owner);
         karma.removeRewardDistributor(distributor);
         distributors = karma.getRewardDistributors();
         assertEq(distributors.length, 2);
+
+        assertEq(karma.totalSupply(), totalSupply - rewardAmount);
     }
 
     function testRemoveRewardDistributorAsOtherAdmin() public {
@@ -267,7 +280,7 @@ contract SetRewardTest is KarmaTest {
 
     function setUp() public virtual override {
         super.setUp();
-        distributor = address(new KarmaDistributorMock());
+        distributor = address(new KarmaDistributorMock(IERC20(address(karma))));
     }
 
     function test_RevertWhen_SenderIsNotDefaultAdmin() public {
@@ -287,8 +300,10 @@ contract SetRewardTest is KarmaTest {
     function testSetRewardAsAdmin() public {
         vm.startPrank(owner);
         karma.addRewardDistributor(distributor);
-        karma.setReward(distributor, 0, 0);
+        uint256 rewardAmount = 1000 ether;
+        karma.setReward(distributor, rewardAmount, 0);
         vm.stopPrank();
+        assertEq(karma.balanceOfRewardDistributor(distributor), rewardAmount);
     }
 
     function testSetRewardAsOtherAdmin() public {
@@ -297,8 +312,10 @@ contract SetRewardTest is KarmaTest {
         karma.addRewardDistributor(distributor);
         vm.stopPrank();
 
+        uint256 rewardAmount = 1000 ether;
         vm.prank(operator);
-        karma.setReward(distributor, 0, 0);
+        karma.setReward(distributor, rewardAmount, 0);
+        assertEq(karma.balanceOfRewardDistributor(distributor), rewardAmount);
     }
 
     function testSetRewardAsOperator() public {
@@ -324,7 +341,7 @@ contract OverflowTest is KarmaTest {
 
     function test_RevertWhen_MintingCausesOverflow() public {
         vm.startBroadcast(owner);
-        karma.setReward(address(distributor1), type(uint256).max, 1000);
+        karma.setReward(address(distributor1), type(uint224).max, 1000);
         vm.stopBroadcast();
 
         vm.prank(owner);
@@ -332,79 +349,13 @@ contract OverflowTest is KarmaTest {
         karma.mint(owner, 1e18);
     }
 
-    // FIXME: Temporarily remove to avoid overflows on votes too. We are going to enable it again with the next changes
-    // on the external totalSupply
-    // function test_RevertWhen_SettingRewardCausesOverflow() public {
-    //     vm.prank(owner);
-    //     karma.mint(owner, type(uint256).max);
-
-    //     vm.prank(owner);
-    //     vm.expectRevert();
-    //     karma.setReward(address(distributor1), 1e18, 1000);
-    // }
-}
-
-contract SlashAmountOfTest is KarmaTest {
-    address public slasher = makeAddr("slasher");
-
-    function _mintKarmaToAccount(address account, uint256 amount) internal {
-        vm.startPrank(owner);
-        karma.mint(account, amount);
-        vm.stopPrank();
-    }
-
-    function setUp() public override {
-        super.setUp();
-
-        vm.startPrank(owner);
-        karma.grantRole(karma.SLASHER_ROLE(), slasher);
-        vm.stopPrank();
-    }
-
-    function test_SlashAmountOf() public {
-        uint256 accountBalance = 100 ether;
-        uint256 distributorBalance = 50 ether;
-        _mintKarmaToAccount(alice, accountBalance);
+    function test_RevertWhen_SettingRewardCausesOverflow() public {
         vm.prank(owner);
-        distributor1.setUserKarmaShare(alice, distributorBalance);
+        karma.mint(owner, type(uint224).max);
 
         vm.prank(owner);
-        karma.slash(alice);
-
-        uint256 slashedAmount = karma.slashedAmountOf(alice);
-        assertEq(
-            slashedAmount, karma.calculateSlashAmount(accountBalance) + karma.calculateSlashAmount(distributorBalance)
-        );
-    }
-
-    function testFuzz_SlashAmountOf(
-        uint256 accountBalance,
-        uint256 distributor1Balance,
-        uint256 distributor2Balance
-    )
-        public
-    {
-        // adding some bounds here to ensure we don't overflow
-        vm.assume(accountBalance < 1e30);
-        vm.assume(distributor1Balance < 1e30);
-        vm.assume(distributor2Balance < 1e30);
-
-        // Ensure Alice has at least some balance to slash
-        vm.assume(accountBalance + distributor1Balance + distributor2Balance > 0);
-
-        _mintKarmaToAccount(alice, accountBalance);
-        vm.startPrank(owner);
-        distributor1.setUserKarmaShare(alice, distributor1Balance);
-        distributor2.setUserKarmaShare(alice, distributor2Balance);
-        vm.stopPrank();
-
-        vm.prank(owner);
-        karma.slash(alice);
-
-        uint256 slashedAmount = karma.slashedAmountOf(alice);
-        uint256 expectedSlashAmount = karma.calculateSlashAmount(accountBalance)
-            + karma.calculateSlashAmount(distributor1Balance) + karma.calculateSlashAmount(distributor2Balance);
-        assertEq(slashedAmount, expectedSlashAmount);
+        vm.expectRevert();
+        karma.setReward(address(distributor1), 1e18, 1000);
     }
 }
 
@@ -467,50 +418,15 @@ contract SlashTest is KarmaTest {
         assertEq(karma.balanceOf(alice), currentBalance - slashedAmount);
     }
 
-    // FIXME: Temporarily remove to avoid overflows on votes too. We are going to enable it again with the next changes
-    // on the external totalSupply
-    // function testFuzz_Slash(uint256 rewardsAmount) public {
-    //     vm.assume(rewardsAmount > 0);
-    //     _mintKarmaToAccount(alice, rewardsAmount);
+    function testFuzz_Slash(uint256 rewardsAmount) public {
+        vm.assume(rewardsAmount > 0);
+        vm.assume(rewardsAmount <= type(uint128).max);
+        _mintKarmaToAccount(alice, rewardsAmount);
+        uint256 slashAmount = karma.calculateSlashAmount(rewardsAmount);
 
-    //     vm.prank(slasher);
-    //     karma.slash(alice);
-    //     uint256 slashedAmount = karma.slashedAmountOf(alice);
-
-    //     assertEq(karma.balanceOf(alice), rewardsAmount - slashedAmount);
-    // }
-
-    function testRemoveRewardDistributorShouldReduceSlashAmount() public {
-        uint256 distributorRewards = 1000 ether;
-        uint256 mintedRewards = 1000 ether;
-        uint256 totalRewards = distributorRewards + mintedRewards;
-
-        // set up rewards for alice
-        vm.prank(owner);
-        distributor1.setUserKarmaShare(alice, distributorRewards);
-        _mintKarmaToAccount(alice, mintedRewards);
-        assertEq(distributor1.rewardsBalanceOfAccount(alice), distributorRewards);
-        assertEq(karma.balanceOf(alice), totalRewards);
-
-        // slash alice
-        uint256 accountSlashAmount = karma.calculateSlashAmount(mintedRewards);
-        uint256 distributorSlashAmount = karma.calculateSlashAmount(distributorRewards);
-        vm.prank(owner);
+        vm.prank(slasher);
         karma.slash(alice);
-
-        uint256 totalSlashAmount = karma.slashedAmountOf(alice);
-
-        assertEq(karma.accountSlashAmount(alice), accountSlashAmount);
-        assertEq(karma.rewardDistributorSlashAmount(address(distributor1), alice), distributorSlashAmount);
-        assertEq(karma.slashedAmountOf(alice), totalSlashAmount);
-        assertEq(karma.balanceOf(alice), totalRewards - totalSlashAmount);
-
-        // remove the distributor
-        vm.prank(owner);
-        karma.removeRewardDistributor(address(distributor1));
-        totalSlashAmount = karma.slashedAmountOf(alice);
-        assertEq(karma.accountSlashAmount(alice), accountSlashAmount);
-        assertEq(karma.balanceOf(alice), totalRewards - distributorRewards - totalSlashAmount);
+        assertEq(karma.balanceOf(alice), rewardsAmount - slashAmount);
     }
 }
 
@@ -542,7 +458,7 @@ contract TransferTest is KarmaTest {
         vm.stopPrank();
 
         vm.prank(alice);
-        vm.expectRevert(Karma.Karma__InsufficientTransferBalance.selector);
+        vm.expectRevert("ERC20: transfer amount exceeds balance");
         karma.transfer(bob, transferableAmount + 1);
     }
 

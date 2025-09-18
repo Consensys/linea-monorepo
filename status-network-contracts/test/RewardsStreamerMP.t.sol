@@ -39,7 +39,10 @@ contract StakeManagerTest is StakeMath, Test {
     function setUp() public virtual {
         DeployStakeManagerScript deployment = new DeployStakeManagerScript();
         DeployKarmaScript karmaDeployment = new DeployKarmaScript();
-        (StakeManager stakeManager, VaultFactory _vaultFactory, DeploymentConfig deploymentConfig) = deployment.run();
+
+        (karma,) = karmaDeployment.run();
+        (StakeManager stakeManager, VaultFactory _vaultFactory, DeploymentConfig deploymentConfig) =
+            deployment.runForTest(address(karma));
 
         (address _deployer, address _stakingToken) = deploymentConfig.activeNetworkConfig();
 
@@ -47,11 +50,11 @@ contract StakeManagerTest is StakeMath, Test {
         stakingToken = MockToken(_stakingToken);
         vaultFactory = _vaultFactory;
         admin = _deployer;
-        (karma,) = karmaDeployment.run();
 
         // set up reward distribution
         vm.startPrank(admin);
         karma.addRewardDistributor(address(streamer));
+        karma.setAllowedToTransfer(address(streamer), true);
         streamer.setRewardsSupplier(address(karma));
         streamer.grantRole(streamer.GUARDIAN_ROLE(), address(guardian));
         vm.stopPrank();
@@ -2376,6 +2379,69 @@ contract WithdrawTest is StakeManagerTest {
     }
 }
 
+contract RedeemRewardsTest is StakeManagerTest {
+    uint256 public rewardAmount = 1000e18;
+    uint256 public rewardDuration = 10 days;
+
+    function setUp() public override {
+        super.setUp();
+    }
+
+    function test_RedeemRewardsZeroRewards() public {
+        uint256 aliceInitialBalance = stakingToken.balanceOf(alice);
+        uint256 aliceInitialKarmaBalance = karma.balanceOf(alice);
+
+        _stake(alice, 100e18, 0);
+
+        assertEq(stakingToken.balanceOf(alice), aliceInitialBalance - 100e18, "Alice should have staked tokens");
+
+        // let half of the reward duration pass
+        vm.warp(block.timestamp + rewardDuration);
+
+        vm.prank(alice);
+        uint256 redeemed = streamer.redeemRewards(alice);
+
+        assertEq(redeemed, 0, "Alice redeemed zero Karma rewards");
+        assertEq(karma.balanceOf(alice), aliceInitialKarmaBalance, "Alice redeemed half the Karma rewards");
+    }
+
+    function test_RedeemRewards() public {
+        vm.startPrank(admin);
+        karma.setReward(address(streamer), rewardAmount, rewardDuration);
+        vm.stopPrank();
+
+        uint256 aliceInitialBalance = stakingToken.balanceOf(alice);
+        uint256 aliceInitialKarmaBalance = karma.balanceOf(alice);
+        uint256 streamerInitialKarmaBalance = karma.balanceOfRewardDistributor(address(streamer));
+
+        _stake(alice, 100e18, 0);
+
+        assertEq(stakingToken.balanceOf(alice), aliceInitialBalance - 100e18, "Alice should have staked tokens");
+
+        // let half of the reward duration pass
+        vm.warp(block.timestamp + rewardDuration);
+
+        streamer.updateGlobalState();
+        uint256 totalRewardsAccruedBefore = streamer.totalRewardsAccrued();
+
+        vm.prank(alice);
+        uint256 redeemed = streamer.redeemRewards(alice);
+
+        assertEq(redeemed, rewardAmount, "Alice redeemed all the Karma rewards");
+        assertEq(
+            streamer.totalRewardsAccrued(),
+            totalRewardsAccruedBefore - rewardAmount,
+            "Streamer totalRewardsAccrued decreased"
+        );
+        assertEq(karma.balanceOf(alice), aliceInitialKarmaBalance + rewardAmount, "Alice redeemed Karma rewards");
+        assertEq(
+            karma.balanceOfRewardDistributor(address(streamer)),
+            streamerInitialKarmaBalance - rewardAmount,
+            "Streamer paid the Karma rewards"
+        );
+    }
+}
+
 contract LeaveTest is StakeManagerTest {
     function setUp() public override {
         super.setUp();
@@ -2431,6 +2497,66 @@ contract LeaveTest is StakeManagerTest {
         );
 
         assertEq(stakingToken.balanceOf(alice), aliceInitialBalance, "Alice has all her funds back");
+    }
+
+    function test_LeaveShouldRedeemRewardsToActualKarma() public {
+        vm.startPrank(admin);
+        karma.setReward(address(streamer), 1000e18, 10 days);
+        vm.stopPrank();
+
+        uint256 aliceInitialBalance = stakingToken.balanceOf(alice);
+        uint256 streamerInitialKarmaBalance = karma.balanceOfRewardDistributor(address(streamer));
+
+        _stake(alice, 100e18, 0);
+
+        assertEq(stakingToken.balanceOf(alice), aliceInitialBalance - 100e18, "Alice should have staked tokens");
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 100e18,
+                totalMPStaked: 100e18,
+                totalMPAccrued: 100e18,
+                totalMaxMP: 500e18,
+                stakingBalance: 100e18,
+                rewardBalance: 0,
+                rewardIndex: 0
+            })
+        );
+
+        vm.warp(block.timestamp + 10 days);
+
+        _leave(alice);
+
+        // stake manager properly updates accounting
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 0,
+                totalMPStaked: 0,
+                totalMPAccrued: 0,
+                totalMaxMP: 0,
+                stakingBalance: 0,
+                rewardBalance: 0,
+                rewardIndex: 0
+            })
+        );
+
+        // vault should be empty as funds have been moved out
+        checkVault(
+            CheckVaultParams({
+                account: vaults[alice],
+                rewardBalance: 0,
+                stakedBalance: 0,
+                vaultBalance: 0,
+                rewardIndex: 0,
+                mpAccrued: 0,
+                maxMP: 0,
+                rewardsAccrued: 0
+            })
+        );
+
+        assertEq(stakingToken.balanceOf(alice), aliceInitialBalance, "Alice has all her funds back");
+        assertEq(karma.balanceOfRewardDistributor(address(streamer)), 0, "Streamer has no Karma left");
+        assertEq(karma.balanceOf(alice), streamerInitialKarmaBalance, "Alice has all the Karma rewards");
     }
 
     function test_LeaveShouldKeepFundsLockedInStakeVault() public {
@@ -3479,5 +3605,44 @@ contract FuzzTests is StakeManagerTest {
         assertEq(
             stakingToken.balanceOf(alice), aliceInitialBalance + stakeAmount, "Alice should get staked tokens back"
         );
+    }
+
+    function testFuzz_RedeemRewards(
+        uint256 stakeAmount,
+        uint256 lockUpPeriod,
+        uint256 rewardAmount,
+        uint16 rewardPeriod,
+        uint16 accountRewardPeriod
+    )
+        public
+    {
+        stakeAmount = bound(stakeAmount, 1e18, 20_000_000e18);
+        vm.assume(rewardPeriod > 0 && rewardPeriod <= 12 weeks); // assuming max 3 months
+        vm.assume(rewardAmount > 1e18 && rewardAmount <= 1_000_000e18); // assuming max 1_000_000 Karma
+        vm.assume(accountRewardPeriod <= rewardPeriod); // Ensure accountRewardPeriod doesn't exceed rewardPeriod
+        lockUpPeriod = lockUpPeriod == 0 ? 0 : bound(lockUpPeriod, MIN_LOCKUP_PERIOD, MAX_LOCKUP_PERIOD);
+        uint256 initialTime = vm.getBlockTimestamp();
+        uint256 tolerance = 1000;
+
+        // Calculate expected reward using safe math operations
+        uint256 expectedReward = accountRewardPeriod < rewardPeriod
+            ? Math.mulDiv(accountRewardPeriod, rewardAmount, rewardPeriod)
+            : rewardAmount;
+
+        expectedRevert = NO_REVERT;
+
+        _stake(alice, stakeAmount, lockUpPeriod, expectedRevert);
+        _setRewards(rewardAmount, rewardPeriod);
+
+        uint256 streamerKarmaBalanceBefore = karma.balanceOfRewardDistributor(address(streamer));
+        assertEq(streamerKarmaBalanceBefore, rewardAmount);
+
+        vm.warp(initialTime + accountRewardPeriod);
+
+        uint256 redeemed = streamer.redeemRewards(vaults[alice]);
+
+        assertEq(streamer.totalRewardsSupply(), expectedReward, "Total rewards supply mismatch");
+        assertApproxEqAbs(karma.balanceOf(alice), expectedReward, tolerance, "Reward balance mismatch");
+        assertEq(karma.balanceOfRewardDistributor(address(streamer)), streamerKarmaBalanceBefore - redeemed);
     }
 }

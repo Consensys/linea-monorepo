@@ -27,5 +27,17 @@ interface IRewardDistributor {
      * @return Balance of rewards for the account.
      */
     function rewardsBalanceOfAccount(address user) external view returns (uint256);
+
+    /**
+     * @notice Sets the reward amount and duration.
+     * @param amount Amount of rewards to be distributed.
+     */
     function setReward(uint256 amount, uint256 duration) external;
+
+    /**
+     * @notice Converts rewards into actual reward tokens
+     * @param account Address of the account.
+     * @return Amount of reward tokens redeemed.
+     */
+    function redeemRewards(address account) external returns (uint256);
 }

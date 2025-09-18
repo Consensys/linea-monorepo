@@ -26,16 +26,29 @@ function mulDivSummary(uint256 a, uint256 b, uint256 c) returns uint256 {
   return require_uint256(a*b/c);
 }
 
-ghost mathint sumOfBalances {
-	init_state axiom sumOfBalances == 0;
+ghost mapping(address => uint256) mirrorStaked
+{
+    init_state axiom (usum address vault. mirrorStaked[vault]) == 0;
 }
 
 hook Sstore vaultData[KEY address vault].stakedBalance uint256 newValue (uint256 oldValue) {
-    sumOfBalances = sumOfBalances - oldValue + newValue;
+    mirrorStaked[vault] = newValue;
+}
+
+hook Sload uint256 val vaultData[KEY address vault].stakedBalance {
+    require mirrorStaked[vault] == val, "staked is mirrored";
+}
+
+ghost mathint sumOfAccruedRewards {
+	init_state axiom sumOfAccruedRewards == 0;
+}
+
+hook Sstore vaultData[KEY address vault].rewardsAccrued uint256 newValue (uint256 oldValue) {
+    sumOfAccruedRewards = sumOfAccruedRewards - oldValue + newValue;
 }
 
 invariant sumOfBalancesIsTotalStaked()
-  sumOfBalances == to_mathint(totalStaked())
+  totalStaked() == (usum address vault. mirrorStaked[vault])
   filtered {
     f -> f.selector != sig:upgradeToAndCall(address,bytes).selector
   }
@@ -124,7 +137,7 @@ rule allowedActionsWhenPaused(method f) {
   bool reverted = lastReverted;
 
   assert !reverted => f.isView ||
-    f.selector == sig:streamer.initialize(address,address).selector ||
+    f.selector == sig:streamer.initialize(address,address,address).selector ||
     f.selector == sig:streamer.upgradeTo(address).selector ||
     f.selector == sig:streamer.upgradeToAndCall(address, bytes).selector ||
     f.selector == sig:streamer.grantRole(bytes32, address).selector ||
@@ -135,3 +148,4 @@ rule allowedActionsWhenPaused(method f) {
     f.selector == sig:streamer.enableEmergencyMode().selector ||
     f.selector == sig:streamer.unpause().selector;
 }
+

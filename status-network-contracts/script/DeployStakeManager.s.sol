@@ -14,10 +14,19 @@ import { VaultFactory } from "../src/VaultFactory.sol";
 
 contract DeployStakeManagerScript is BaseScript {
     function run() public returns (StakeManager, VaultFactory, DeploymentConfig) {
+        address karmaAddress = vm.envAddress("KARMA_ADDRESS");
+        require(karmaAddress != address(0), "KARMA_ADDRESS is not set");
+        return _run(karmaAddress);
+    }
+
+    function runForTest(address rewardToken) public returns (StakeManager, VaultFactory, DeploymentConfig) {
+        return _run(rewardToken);
+    }
+
+    function _run(address rewardToken) public returns (StakeManager, VaultFactory, DeploymentConfig) {
         DeploymentConfig deploymentConfig = new DeploymentConfig(broadcaster);
         (address deployer, address stakingToken) = deploymentConfig.activeNetworkConfig();
-
-        bytes memory initializeData = abi.encodeCall(StakeManager.initialize, (deployer, stakingToken));
+        bytes memory initializeData = abi.encodeCall(StakeManager.initialize, (deployer, stakingToken, rewardToken));
 
         vm.startBroadcast(deployer);
 

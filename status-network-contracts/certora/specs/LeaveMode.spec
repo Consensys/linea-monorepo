@@ -20,7 +20,7 @@ rule allowedActionsAfterLeaving(method f) {
 
   assert !reverted => f.isView ||
     isOwnableFunction(f) ||
-    f.selector == sig:initialize(address,address).selector ||
+    f.selector == sig:initialize(address,address,address).selector ||
     f.selector == sig:leave(address).selector || // calling leave() is not going to do anything harmful
     f.selector == sig:withdraw(address,uint256).selector ||
     f.selector == sig:withdraw(address,uint256,address).selector ||

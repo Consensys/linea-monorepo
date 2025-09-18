@@ -21,7 +21,7 @@ definition isPausableFunction(method f) returns bool = (
 );
 
 definition isInitializerFunction(method f) returns bool = (
-  f.selector == sig:streamer.initialize(address,address).selector
+  f.selector == sig:streamer.initialize(address,address,address).selector
 );
 
 definition isUUPSUpgradeableFunction(method f) returns bool = (
@@ -44,6 +44,7 @@ definition noCallDuringEmergency(method f) returns bool = (
                 || f.selector == sig:enableEmergencyMode().selector
                 || f.selector == sig:pause().selector
                 || f.selector == sig:unpause().selector
+                || f.selector == sig:redeemRewards(address).selector
 );
 
 rule allowedActionsInEmergencyMode(method f) {
