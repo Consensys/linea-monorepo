@@ -43,15 +43,15 @@ blob-size-limit = 102400 # 100KB
 handler-polling-interval = "PT1S"
 # default batches-limit is proof-aggregation.proofs-limit - 1
 # batches-limit must be less than or equal to proof-aggregation.proofs-limit - 1
-batches-limit = 1
+batches-limit = 4
 
 [conflation.proof-aggregation]
-proofs-limit = 3
+proofs-limit = 10
 deadline = "PT1M"
 coordinator-polling-interval = "PT2S"
 deadline-check-interval = "PT8S"
-target-end-blocks = []
-timestamp-based-hard-forks = []
+target-end-blocks = [8]
+timestamp-based-hard-forks = [1758125555000, 1758125595000]
 
 [prover]
 version = "v3.0.0"
