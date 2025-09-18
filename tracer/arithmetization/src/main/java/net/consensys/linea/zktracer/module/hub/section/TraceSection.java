@@ -52,6 +52,7 @@ public class TraceSection {
   @Setter public TraceSection previousSection = null;
   /* A link to the next section */
   @Setter public TraceSection nextSection = null;
+  // Maybe added to the fragments at end transaction after all defers are resolved
   @Setter public ContextFragment exceptionalContextFragment = null;
 
   /** Default creator specifying the max number of rows the section can contain. */
