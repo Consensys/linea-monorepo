@@ -49,7 +49,7 @@ public class SendBundleTest extends AbstractSendBundleTest {
   @Override
   protected GenesisConfigurationFactory.CliqueOptions getCliqueOptions() {
     return new GenesisConfigurationFactory.CliqueOptions(
-        10,  // we can't process all within 2s, so increasing block time
+        10, // we can't process all within 2s, so increasing block time
         GenesisConfigurationFactory.CliqueOptions.DEFAULT.epochLength(),
         false);
   }
