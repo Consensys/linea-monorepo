@@ -613,7 +613,8 @@ public abstract class Hub implements Module {
       m.traceEndTx(txStack.current());
     }
 
-    // Compute the line counting of the HUB of the current transaction
+    // Compute the line counting of the HUB of the current transaction and add the exceptional
+    // fragment
     state.lineCounter().add(state.currentTransactionHubSections().lineCount());
   }
 
