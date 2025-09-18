@@ -20,5 +20,5 @@
     "exactOptionalPropertyTypes": true,
     "noEmit": false
   },
-  "exclude": ["**/node_modules", "**/dist", "*.d.ts", "**/.*/", "*.test.ts"]
+  "exclude": ["**/node_modules", "**/dist", "*.d.ts", "**/.*/"]
 }
