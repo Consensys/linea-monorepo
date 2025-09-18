@@ -32,6 +32,7 @@ services:
       - "5005:5005"
       - "8080:8080"
     networks:
+      l1network:
       linea:
         ipv4_address: 11.11.11.210
 
@@ -282,7 +283,7 @@ services:
   coordinator:
     hostname: coordinator
     container_name: coordinator
-    image: consensys/linea-coordinator:${COORDINATOR_TAG:-b0efa92}
+    image: consensys/linea-coordinator:${COORDINATOR_TAG:-fe77e2f}
     profiles: [ "l2", "debug" ]
     depends_on:
       l2-genesis-initialization:
