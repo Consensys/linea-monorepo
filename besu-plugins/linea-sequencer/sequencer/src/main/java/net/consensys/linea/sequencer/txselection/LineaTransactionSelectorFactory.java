@@ -11,6 +11,7 @@ package net.consensys.linea.sequencer.txselection;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
@@ -97,16 +98,16 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
 
     // do not use directly this atomic boolean but always use the lambda below,
     // to check for interrupt, because they check if the thread is actually interrupted.
-    final AtomicBoolean isInterrupted = new AtomicBoolean(false);
+    final AtomicBoolean interruptRecorded = new AtomicBoolean(false);
 
     final Supplier<Boolean> isSelectionInterrupted =
         () -> {
-          if (isInterrupted.get()) {
+          if (interruptRecorded.get()) {
             return true;
           }
           if (Thread.currentThread().isInterrupted()) {
             log.info("Bundle selection interrupted");
-            isInterrupted.set(true);
+            interruptRecorded.set(true);
             return true;
           }
           return false;
@@ -129,13 +130,13 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
 
     if (isSelectionInterrupted.get()) return;
 
-    final var selectionStartedAt = System.currentTimeMillis();
+    final var selectionStartedAt = System.nanoTime();
 
     bundlesByBlockNumber.stream()
         .takeWhile(unused -> !isSelectionInterrupted.get())
         .forEach(
             bundle -> {
-              final var bundleStartedAt = System.currentTimeMillis();
+              final var bundleStartedAt = System.nanoTime();
               log.trace("Starting evaluation of bundle {}", bundle.bundleIdentifier());
 
               var maybeBadBundleRes =
@@ -145,33 +146,39 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
                       .filter(evalRes -> !evalRes.selected())
                       .findFirst();
 
-              final var now = System.currentTimeMillis();
-              final var totalSelectionMillis = now - selectionStartedAt;
-              final var bundleSelectionMillis = now - bundleStartedAt;
+              final var now = System.nanoTime();
+              final var cumulativeBundleSelectionTime = now - selectionStartedAt;
+              final var currentBundleSelectionTime = now - bundleStartedAt;
 
               if (isSelectionInterrupted.get()) {
-                log.debug(
-                    "Bundle selection interrupted while processing bundle {}, elapsed time: bundle {}ms, total {}ms",
-                    bundle.bundleIdentifier(),
-                    bundleSelectionMillis,
-                    totalSelectionMillis);
+                log.atDebug()
+                    .setMessage(
+                        "Bundle selection interrupted while processing bundle {},"
+                            + " elapsed time: current bundle {}ms, cumulative {}ms")
+                    .addArgument(bundle::bundleIdentifier)
+                    .addArgument(() -> nanosToMillis(currentBundleSelectionTime))
+                    .addArgument(() -> nanosToMillis(cumulativeBundleSelectionTime))
+                    .log();
                 rollback(bts);
               } else {
                 if (maybeBadBundleRes.isPresent()) {
-                  final var badBundleRes = maybeBadBundleRes.get();
-                  log.debug(
-                      "Failed bundle {}, reason {}, elapsed time: bundle {}ms, total {}ms",
-                      bundle.bundleIdentifier(),
-                      badBundleRes,
-                      bundleSelectionMillis,
-                      totalSelectionMillis);
+                  log.atDebug()
+                      .setMessage(
+                          "Failed bundle {}, reason {}, elapsed time: current bundle {}ms, cumulative {}ms")
+                      .addArgument(bundle::bundleIdentifier)
+                      .addArgument(maybeBadBundleRes::get)
+                      .addArgument(() -> nanosToMillis(currentBundleSelectionTime))
+                      .addArgument(() -> nanosToMillis(cumulativeBundleSelectionTime))
+                      .log();
                   rollback(bts);
                 } else {
-                  log.debug(
-                      "Selected bundle {}, elapsed time: bundle {}ms, total {}ms",
-                      bundle.bundleIdentifier(),
-                      bundleSelectionMillis,
-                      totalSelectionMillis);
+                  log.atDebug()
+                      .setMessage(
+                          "Selected bundle {}, elapsed time: current bundle {}ms, cumulative {}ms")
+                      .addArgument(bundle::bundleIdentifier)
+                      .addArgument(() -> nanosToMillis(currentBundleSelectionTime))
+                      .addArgument(() -> nanosToMillis(cumulativeBundleSelectionTime))
+                      .log();
                   commit(bts);
                 }
               }
@@ -219,5 +226,9 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
   private void rollback(final BlockTransactionSelectionService bts) {
     currSelector.get().getOperationTracer().popTransactionBundle();
     bts.rollback();
+  }
+
+  private long nanosToMillis(final long nanos) {
+    return TimeUnit.NANOSECONDS.toMillis(nanos);
   }
 }
