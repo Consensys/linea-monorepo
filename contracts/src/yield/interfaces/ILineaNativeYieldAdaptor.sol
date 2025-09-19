@@ -19,13 +19,13 @@ interface ILineaNativeYieldExtension {
    * @notice Send ETH to this contract.
    * @dev FUNDER_ROLE is required to execute.
    */
-  function fund() payable external;
+  function fund() external payable;
 
   /**
    * @notice Permissionlessly donate ETH to this contract.
    * @dev Keeps track of ETH sent via this function for donation reporting purposes.
    */
-  function fundPermissionless() payable external;
+  function fundPermissionless() external payable;
 
   /**
    * @notice Report native yield earned for L2 distribution by emitting a synthetic `MessageSent` event.
