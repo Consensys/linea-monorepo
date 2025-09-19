@@ -5,7 +5,7 @@ go 1.24.0
 require (
 	github.com/consensys/compress v0.2.5
 	github.com/consensys/gnark v0.13.1-0.20250808202721-87bf7b083403
-	github.com/consensys/gnark-crypto v0.19.1-0.20250918180942-a336a036c818
+	github.com/consensys/gnark-crypto v0.19.1-0.20250919011318-5eed6f724d6b
 	github.com/consensys/go-corset v1.0.12-0.20250729080012-3d83adbcfe23
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.11.2
