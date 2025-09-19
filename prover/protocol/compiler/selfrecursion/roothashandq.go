@@ -36,7 +36,7 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 	for round, rh := range ctx.Columns.Rooth {
 		if ctx.VortexCtx.RoundStatus[round] == vortex.IsSISApplied {
 			rootHashSis = append(rootHashSis, rh)
-		} else if ctx.VortexCtx.RoundStatus[round] == vortex.IsOnlyMiMCApplied {
+		} else if ctx.VortexCtx.RoundStatus[round] == vortex.IsOnlyPoseidon2Applied {
 			rootHashNonsis = append(rootHashNonsis, rh)
 		} else if ctx.VortexCtx.RoundStatus[round] == vortex.IsEmpty {
 			continue
@@ -64,7 +64,7 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 	nbOpenCol := ctx.VortexCtx.NbColsToOpen()
 	numActiveRoot := nbOpenCol * numCommittedRound
 	// Length of MerkleRoots = numActiveRoot + padding
-	totalRoots := ctx.Columns.MerkleRoots.Size()
+	totalRoots := ctx.Columns.MerkleRoots[0].Size()
 
 	rootHashVecParts := utils.RightPadWith(
 		rootHashesClean,
@@ -86,8 +86,8 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 		rootHashVecParts...,
 	)
 
-	if rootHashVec.Size() != ctx.Columns.MerkleRoots.Size() {
-		utils.Panic("unexpected lengths %v expected %v", rootHashVec.Size(), ctx.Columns.MerkleRoots.Size())
+	if rootHashVec.Size() != ctx.Columns.MerkleRoots[0].Size() {
+		utils.Panic("unexpected lengths %v expected %v", rootHashVec.Size(), ctx.Columns.MerkleRoots[0].Size())
 	}
 
 	// If MerkleRoots is correct, then there is a permutation we can
@@ -131,7 +131,7 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 	// And from that, we get s1 and s2 and declare the corresponding
 	// copy constraint.
 	ctx.Comp.InsertFixedPermutation(
-		ctx.Columns.MerkleRoots.Round(),
+		ctx.Columns.MerkleRoots[0].Round(),
 		ctx.rootHasGlue(),
 		[]smartvectors.SmartVector{
 			smartvectors.NewRegular(s[:totalRoots]),
@@ -139,11 +139,11 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 		},
 		[]ifaces.Column{
 			rootHashVec,
-			ctx.Columns.MerkleRoots,
+			ctx.Columns.MerkleRoots[0],
 		},
 		[]ifaces.Column{
 			rootHashVec,
-			ctx.Columns.MerkleRoots,
+			ctx.Columns.MerkleRoots[0],
 		},
 	)
 }

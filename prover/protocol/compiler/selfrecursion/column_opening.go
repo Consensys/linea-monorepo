@@ -200,8 +200,8 @@ func (a *CollapsingProverAction) Run(run *wizard.ProverRuntime) {
 		roundStartAt += len(comsInRoundI)
 	}
 
-	colPowT := accessors.NewExponent(a.Ctx.Coins.Collapse, a.Ctx.VortexCtx.NbColsToOpen()).GetVal(run)
-	eDual := smartvectors.PolyEval(subDuals, colPowT)
+	colPowT := accessors.NewExponent(a.Ctx.Coins.Collapse, a.Ctx.VortexCtx.NbColsToOpen()).GetValExt(run)
+	eDual := smartvectors.LinearCombinationExt(subDuals, colPowT)
 
 	run.AssignColumn(a.EDualID, eDual)
 
@@ -442,7 +442,7 @@ func (a *FoldPhaseProverAction) Run(run *wizard.ProverRuntime) {
 	foldedKey := a.Ctx.Columns.ACollapseFold.GetColAssignment(run)
 	foldedPreimage := a.Ctx.Columns.PreimageCollapseFold.GetColAssignment(run)
 	y := smartvectors.InnerProduct(foldedKey, foldedPreimage)
-	run.AssignInnerProduct(a.IpQueryID, y)
+	run.AssignInnerProduct(a.IpQueryID, fext.Lift(y))
 }
 
 type FoldPhaseVerifierAction struct {
@@ -456,16 +456,16 @@ func (a *FoldPhaseVerifierAction) Run(run wizard.Runtime) error {
 	dcollapse := a.Ctx.Columns.DhQCollapse.GetColAssignment(run)
 	rfold := run.GetRandomCoinFieldExt(a.Ctx.Coins.Fold.Name)
 	yAlleged := run.GetInnerProductParams(a.IpQueryID).Ys[0]
-	yDual := smartvectors.EvalCoeff(edual, rfold)
-	yActual := smartvectors.EvalCoeff(dcollapse, rfold)
+	yDual := smartvectors.EvalCoeffExt(edual, rfold)
+	yActual := smartvectors.EvalCoeffExt(dcollapse, rfold)
 
-	var xN, xNminus1, xNplus1 field.Element
+	var xN, xNminus1, xNplus1 fext.Element
 	one := field.One()
 	xN.Exp(rfold, big.NewInt(int64(a.Degree)))
-	xNminus1.Sub(&xN, &one)
-	xNplus1.Add(&xN, &one)
+	xNminus1.B0.A0.Sub(&xN.B0.A0, &one)
+	xNplus1.B0.A0.Add(&xN.B0.A0, &one)
 
-	var left, left0, left1, right field.Element
+	var left, left0, left1, right fext.Element
 	left0.Mul(&xNplus1, &yDual)
 	left1.Mul(&xNminus1, &yActual)
 	left.Sub(&left0, &left1)
@@ -480,10 +480,10 @@ func (a *FoldPhaseVerifierAction) Run(run wizard.Runtime) error {
 func (a *FoldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	edual := a.Ctx.Columns.Edual.GetColAssignmentGnark(run)
 	dcollapse := a.Ctx.Columns.DhQCollapse.GetColAssignmentGnark(run)
-	rfold := run.GetRandomCoinField(a.Ctx.Coins.Fold.Name)
+	rfold := run.GetRandomCoinFieldExt(a.Ctx.Coins.Fold.Name)
 	yAlleged := run.GetInnerProductParams(a.IpQueryID).Ys[0]
-	yDual := poly.EvaluateUnivariateGnark(api, edual, rfold)
-	yActual := poly.EvaluateUnivariateGnark(api, dcollapse, rfold)
+	yDual := poly.EvaluateUnivariateGnarkMixed(api, edual, rfold)
+	yActual := poly.EvaluateUnivariateGnarkMixed(api, dcollapse, rfold)
 
 	one := field.One()
 	xN := gnarkutil.Exp(api, rfold, a.Degree)

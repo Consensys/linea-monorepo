@@ -143,7 +143,7 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 
 // SplitPublicInputs parses a vector of field elements and returns the
 // parsed arguments.
-func SplitPublicInputs[T any](r *Recursion, allPubs []T) (x T, ys, mRoots, pubs []T) {
+func SplitPublicInputs[T any](r *Recursion, allPubs []T) (x, ys, mRoots, pubs []T) {
 
 	var (
 		numPubs     = len(r.InputCompiledIOP.PublicInputs)
@@ -171,9 +171,9 @@ func SplitPublicInputs[T any](r *Recursion, allPubs []T) (x T, ys, mRoots, pubs 
 	// Commitments    []frontend.Variable `gnark:",public"`
 	// Pubs           []frontend.Variable `gnark:",public"`
 	//
-	x, allPubDrain = allPubDrain[0], allPubDrain[1:]
-	ys, allPubDrain = allPubDrain[:numYs], allPubDrain[numYs:]
-	mRoots, allPubDrain = allPubDrain[:numMRoots], allPubDrain[numMRoots:]
+	x, allPubDrain = allPubDrain[:4], allPubDrain[4:]
+	ys, allPubDrain = allPubDrain[:4*numYs], allPubDrain[4*numYs:]
+	mRoots, allPubDrain = allPubDrain[:8*numMRoots], allPubDrain[8*numMRoots:]
 	pubs, _ = allPubDrain[:numPubs], allPubDrain[numPubs:]
 
 	return x, ys, mRoots, pubs

@@ -34,7 +34,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/merkle"
-	dmimc "github.com/consensys/linea-monorepo/prover/protocol/dedicated/mimc"
+	dposeidon2 "github.com/consensys/linea-monorepo/prover/protocol/dedicated/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/selector"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -188,7 +188,7 @@ func init() {
 
 	RegisterImplementation(cleanup.CleanupProverAction{})
 
-	RegisterImplementation(dmimc.LinearHashProverAction{})
+	RegisterImplementation(dposeidon2.LinearHashProverAction{})
 	RegisterImplementation(merkle.MerkleProofProverAction{})
 
 	RegisterImplementation(univariates.NaturalizeProverAction{})

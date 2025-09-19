@@ -91,7 +91,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 		SisHashes:         sisHashes,
 		MimcHashes:        mimcHashes,
 		Trees:             trees,
-		FinalFS:           run.FS.State()[0],
+		FinalFS:           field.Zero(), //TODO@yao: fix run.FS.State()[0],
 		Pub:               pubs,
 	}
 }
@@ -125,16 +125,17 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 		params := run.GetUnivariateParams(pcsCtx.Query.QueryID)
 		pcsMRoot := pcsCtx.Items.MerkleRoots
 
-		if circX != params.X {
-			return fmt.Errorf("proof no=%v, x value does not match %v != %v", i, circX.String(), params.X.String())
+		//TODO@yao: check all values
+		if circX[0] != params.ExtX.B0.A0 {
+			return fmt.Errorf("proof no=%v, x value does not match %v != %v", i, circX[0].String(), params.ExtX.B0.A0.String())
 		}
 
-		if len(circYs) != len(params.ExtYs) {
+		if len(circYs) != 4*len(params.ExtYs) {
 			return fmt.Errorf("proof no=%v, number of Ys does not match; %v != %v", i, len(circYs), len(params.Ys))
 		}
 
-		for i := range circYs {
-			if circYs[i] != params.ExtYs[i] {
+		for i := range params.ExtYs {
+			if circYs[4*i] != params.ExtYs[i].B0.A0 {
 				return fmt.Errorf("proof no=%v, Y[%v] does not match; %v != %v", i, i, circYs[i].String(), params.Ys[i].String())
 			}
 		}

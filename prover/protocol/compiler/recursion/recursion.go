@@ -20,6 +20,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
+const blockSize = 8
+
 // Recursion is a collection of wizard items composing a wizard circuit
 // for recursion. The recursion operates over a wizard proof for a
 // protocol featuring the [vortex.Compile] such that the runtime only
@@ -393,7 +395,9 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 	dstVortexCtx.Items.Alpha = translator.AddCoinAtRound(srcVortexCtx.Items.Alpha, 1)
 	dstVortexCtx.Items.Ualpha = translator.AddColumnAtRound(srcVortexCtx.Items.Ualpha, false, 1)
 	dstVortexCtx.Items.Q = translator.AddCoinAtRound(srcVortexCtx.Items.Q, 2)
-	dstVortexCtx.Items.MerkleProofs = translator.AddColumnAtRound(srcVortexCtx.Items.MerkleProofs, false, 2)
+	for i := 0; i < blockSize; i++ {
+		dstVortexCtx.Items.MerkleProofs[i] = translator.AddColumnAtRound(srcVortexCtx.Items.MerkleProofs[i], false, 2)
+	}
 	dstVortexCtx.Items.OpenedColumns = translator.AddColumnList(srcVortexCtx.Items.OpenedColumns, false, 2)
 	dstVortexCtx.Items.OpenedSISColumns = translator.AddColumnList(srcVortexCtx.Items.OpenedSISColumns, false, 2)
 	dstVortexCtx.Items.OpenedNonSISColumns = translator.AddColumnList(srcVortexCtx.Items.OpenedNonSISColumns, false, 2)
