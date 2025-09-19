@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { L1MessageService } from "../messaging/l1/L1MessageService.sol";
+import { LineaNativeYieldExtension } from "../yield/LineaNativeYieldExtension.sol";
 import { ZkEvmV2 } from "./ZkEvmV2.sol";
 import { ILineaRollup } from "./interfaces/ILineaRollup.sol";
 import { PermissionsManager } from "../security/access/PermissionsManager.sol";
@@ -18,6 +19,7 @@ abstract contract LineaRollupBase is
   ZkEvmV2,
   L1MessageService,
   PermissionsManager,
+  LineaNativeYieldExtension,
   ILineaRollup
 {
   using EfficientLeftRightKeccak for *;
