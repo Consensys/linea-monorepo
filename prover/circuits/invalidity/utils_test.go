@@ -7,7 +7,8 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	badnonce "github.com/consensys/linea-monorepo/prover/circuits/invalidity"
+	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
+	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
@@ -15,10 +16,58 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/go-playground/assert/v2"
 	"github.com/stretchr/testify/require"
 )
+
+func TestNonceFromRLP(t *testing.T) {
+	var (
+		tx        = types.NewTx(&tcases[1].Tx)
+		encodedTx = ethereum.EncodeTxForSigning(tx)
+		a         byte
+	)
+	extractedNonce, _ := invalidity.ExtractNonceFromRLP(encodedTx)
+	require.Equal(t, tx.Nonce(), extractedNonce, "extractedNonce and actualNonce are different")
+
+	c := circuitExtractNonceFromRLP{
+		rlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
+		nonce:        tx.Nonce(),
+	}
+
+	for i := range encodedTx {
+		a = encodedTx[i]
+		c.rlpEncodedtx[i] = a
+	}
+
+	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &c, frontend.IgnoreUnconstrainedInputs())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// solve the circuit
+	twitness, err := frontend.NewWitness(&c, ecc.BLS12_377.ScalarField())
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = ccs.IsSolved(twitness)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+}
+
+type circuitExtractNonceFromRLP struct {
+	rlpEncodedtx []frontend.Variable
+	nonce        frontend.Variable
+}
+
+func (c circuitExtractNonceFromRLP) Define(api frontend.API) error {
+	gnarkExtractedNonce := invalidity.ExtractNonceFromRLPZk(api, c.rlpEncodedtx)
+	api.AssertIsEqual(gnarkExtractedNonce, c.nonce)
+	return nil
+}
 
 // generate a tree for testing
 func getMerkleProof(t *testing.T) (smt.Proof, Bytes32, Bytes32) {
@@ -55,7 +104,7 @@ func TestMerkleProofs(t *testing.T) {
 	// generate witness
 	proofs, leafs, root := getMerkleProof(t)
 
-	var witness badnonce.MerkleProofCircuit
+	var witness invalidity.MerkleProofCircuit
 
 	witness.Proofs.Siblings = make([]frontend.Variable, len(proofs.Siblings))
 	for j := 0; j < len(proofs.Siblings); j++ {
@@ -67,7 +116,7 @@ func TestMerkleProofs(t *testing.T) {
 	witness.Root = root[:]
 
 	// compile circuit
-	var circuit badnonce.MerkleProofCircuit
+	var circuit invalidity.MerkleProofCircuit
 	circuit.Proofs.Siblings = make([]frontend.Variable, len(proofs.Siblings))
 
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
@@ -93,14 +142,14 @@ func TestMimcCircuit(t *testing.T) {
 	scs, err := frontend.Compile(
 		ecc.BLS12_377.ScalarField(),
 		scs.NewBuilder,
-		&badnonce.MimcCircuit{PreImage: make([]frontend.Variable, 4)},
+		&invalidity.MimcCircuit{PreImage: make([]frontend.Variable, 4)},
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	require.NoError(t, err)
 
-	assignment := badnonce.MimcCircuit{
+	assignment := invalidity.MimcCircuit{
 		PreImage: []frontend.Variable{0, 1, 2, 3},
 		Hash:     mimc.HashVec(vector.ForTest(0, 1, 2, 3)),
 	}
@@ -121,7 +170,7 @@ func TestMimcAccount(t *testing.T) {
 		// generate Mimc witness for Hash(Account)
 		a = tcases[1].Account
 
-		witMimc badnonce.MimcCircuit
+		witMimc invalidity.MimcCircuit
 
 		account = GnarkAccount{
 			Nonce:    a.Nonce,
@@ -157,7 +206,7 @@ func TestMimcAccount(t *testing.T) {
 	scs, err := frontend.Compile(
 		ecc.BLS12_377.ScalarField(),
 		scs.NewBuilder,
-		&badnonce.MimcCircuit{PreImage: make([]frontend.Variable, len(witMimc.PreImage))},
+		&invalidity.MimcCircuit{PreImage: make([]frontend.Variable, len(witMimc.PreImage))},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -242,9 +291,12 @@ func TestShomei(t *testing.T) {
 }
 
 type TestCases struct {
-	Account Account
-	Leaf    accumulator.LeafOpening
-	Tx      types.DynamicFeeTx
+	Account        Account
+	Leaf           accumulator.LeafOpening
+	Tx             types.DynamicFeeTx
+	FromAddress    common.Address
+	TxHash         common.Hash
+	InvalidityType invalidity.InvalidityType
 }
 
 var tcases = []TestCases{
@@ -256,14 +308,20 @@ var tcases = []TestCases{
 		Leaf: accumulator.LeafOpening{
 			Prev: 0,
 			Next: 1,
-			HKey: Bytes32FromHex("0x00aed6"),
+			HKey: hKeyFromAddress(common.HexToAddress("0x00aed6")),
+			HVal: hValFromAccount(Account{
+				Balance: big.NewInt(0),
+			}),
 		},
 		Tx: types.DynamicFeeTx{
-			Nonce:     1, // valid nonce
-			Value:     big.NewInt(1),
+			Nonce:     1,             // valid nonce
+			Value:     big.NewInt(1), //invalid balance
 			Gas:       1,
 			GasFeeCap: big.NewInt(1), // gas price
 		},
+		FromAddress:    common.HexToAddress("0x00aed6"),
+		TxHash:         common.HexToHash("0x3f1d2e2b4c3f4e5d6c7b8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d"),
+		InvalidityType: 1,
 	},
 	{
 		// EOA
@@ -279,7 +337,15 @@ var tcases = []TestCases{
 		Leaf: accumulator.LeafOpening{
 			Prev: 0,
 			Next: 2,
-			HKey: Bytes32FromHex("0x00aed7"),
+			HKey: hKeyFromAddress(common.HexToAddress("0x00aed7")),
+			HVal: hValFromAccount(Account{
+				Nonce:          65,
+				Balance:        big.NewInt(5690),
+				StorageRoot:    Bytes32FromHex("0x00aed60bedfcad80c2a5e6a7a3100e837f875f9aa71d768291f68f894b0a3d11"),
+				MimcCodeHash:   Bytes32FromHex("0x007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6ee"),
+				KeccakCodeHash: FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
+				CodeSize:       0,
+			}),
 		},
 		Tx: types.DynamicFeeTx{
 			Nonce:     65,               // invalid nonce
@@ -287,6 +353,9 @@ var tcases = []TestCases{
 			Gas:       1,
 			GasFeeCap: big.NewInt(1), // gas price
 		},
+		FromAddress:    common.HexToAddress("0x00aed7"),
+		TxHash:         common.HexToHash("0x4f1d2e2b4c3f4e5d6c7b8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9e"),
+		InvalidityType: 0, // or 1
 	},
 	{
 		// Another EOA
@@ -301,13 +370,36 @@ var tcases = []TestCases{
 		Leaf: accumulator.LeafOpening{
 			Prev: 1,
 			Next: 3,
-			HKey: Bytes32FromHex("0x00aed8"),
+			HKey: hKeyFromAddress(common.HexToAddress("0x00aed8")),
+			HVal: hValFromAccount(Account{
+				Nonce:          65,
+				Balance:        big.NewInt(835),
+				StorageRoot:    Bytes32FromHex("0x007942bb21022172cbad3ffc38d1c59e998f1ab6ab52feb15345d04bbf859f14"),
+				MimcCodeHash:   Bytes32FromHex("0x007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6ee"),
+				KeccakCodeHash: FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
+				CodeSize:       0,
+			}),
 		},
 		Tx: types.DynamicFeeTx{
-			Nonce:     66,              // valid nonce
+			Nonce:     63,              // invalid nonce
 			Value:     big.NewInt(800), // valid value
 			Gas:       1,
 			GasFeeCap: big.NewInt(1), // gas price
 		},
+		FromAddress:    common.HexToAddress("0x00aed8"),
+		TxHash:         common.HexToHash("0x5f1d2e2b4c3f4e5d6c7b8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9f"),
+		InvalidityType: 0,
 	},
+}
+
+func hKeyFromAddress(add common.Address) Bytes32 {
+	mimc := mimc.NewMiMC()
+	mimc.Write(add.Bytes())
+	return Bytes32(mimc.Sum(nil))
+}
+
+func hValFromAccount(a Account) Bytes32 {
+	mimc := mimc.NewMiMC()
+	a.WriteTo(mimc)
+	return Bytes32(mimc.Sum(nil))
 }

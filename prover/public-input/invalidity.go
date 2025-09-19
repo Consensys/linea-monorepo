@@ -20,7 +20,7 @@ type Invalidity struct {
 	FromAddress         types.EthAddress // address of the sender
 	ExpectedBlockHeight uint64           //  the max expected block number for the transaction to be executed.
 	StateRootHash       types.Bytes32    // state-root-hash on which the invalidity is based
-	FtxStreamHash       types.Bytes32    // the streamHash of the forced transaction
+	FtxRollingHash      types.Bytes32    // the streamHash of the forced transaction
 }
 
 // Sum compute the mimc hash over the functional public inputs
@@ -30,12 +30,13 @@ func (pi *Invalidity) Sum(hsh hash.Hash) []byte {
 	}
 
 	hsh.Reset()
-	hsh.Write(pi.TxHash[:])
-	writeNum(hsh, pi.TxNumber)
+	hsh.Write(pi.TxHash[:16])
+	hsh.Write(pi.TxHash[16:])
+	types.WriteInt64On32Bytes(hsh, int64(pi.TxNumber))
 	hsh.Write(pi.FromAddress[:])
-	writeNum(hsh, pi.ExpectedBlockHeight)
+	types.WriteInt64On32Bytes(hsh, int64(pi.ExpectedBlockHeight))
 	hsh.Write(pi.StateRootHash[:])
-	hsh.Write(pi.FtxStreamHash[:])
+	hsh.Write(pi.FtxRollingHash[:])
 
 	return hsh.Sum(nil)
 }
