@@ -15,37 +15,22 @@
 
 package net.consensys.linea.zktracer.module.blockdata.module;
 
-import static net.consensys.linea.zktracer.TraceCancun.Blockdata.*;
+import static net.consensys.linea.zktracer.TraceParis.Blockdata.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
-import static net.consensys.linea.zktracer.opcode.OpCode.BASEFEE;
-import static net.consensys.linea.zktracer.opcode.OpCode.CHAINID;
-import static net.consensys.linea.zktracer.opcode.OpCode.GASLIMIT;
-import static net.consensys.linea.zktracer.opcode.OpCode.PREVRANDAO;
 
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.module.blockdata.moduleOperation.BlockdataOperation;
-import net.consensys.linea.zktracer.module.blockdata.moduleOperation.CancunBlockDataOperation;
+import net.consensys.linea.zktracer.module.blockdata.moduleOperation.ShanghaiBlockDataOperation;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
-public class CancunBlockData extends ShanghaiBlockData {
-  public CancunBlockData(Hub hub, Wcp wcp, Euc euc, ChainConfig chain) {
+public class ShanghaiBlockData extends ParisBlockData {
+
+  public ShanghaiBlockData(Hub hub, Wcp wcp, Euc euc, ChainConfig chain) {
     super(hub, wcp, euc, chain);
-  }
-
-  @Override
-  protected OpCode[] setOpCodes() {
-    return new OpCode[] {
-      COINBASE, TIMESTAMP, NUMBER, PREVRANDAO, GASLIMIT, CHAINID, BASEFEE, BLOBBASEFEE
-    };
-  }
-
-  @Override
-  protected int numberOfLinesPerBlock() {
-    return nROWS_DEPTH;
   }
 
   @Override
@@ -59,7 +44,7 @@ public class CancunBlockData extends ShanghaiBlockData {
       ChainConfig chain,
       OpCode opCode,
       long firstBlockNumber) {
-    return new CancunBlockDataOperation(
+    return new ShanghaiBlockDataOperation(
         hub,
         blockHeader,
         previousBlockHeader,

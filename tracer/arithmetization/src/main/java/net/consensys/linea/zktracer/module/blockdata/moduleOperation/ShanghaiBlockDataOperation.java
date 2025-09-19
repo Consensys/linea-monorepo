@@ -23,11 +23,10 @@ import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
-import net.consensys.linea.zktracer.types.EWord;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
-public class ParisBlockDataOperation extends LondonBlockDataOperation {
-  public ParisBlockDataOperation(
+public class ShanghaiBlockDataOperation extends ParisBlockDataOperation {
+  public ShanghaiBlockDataOperation(
       Hub hub,
       BlockHeader blockHeader,
       BlockHeader prevBlockHeader,
@@ -41,27 +40,12 @@ public class ParisBlockDataOperation extends LondonBlockDataOperation {
   }
 
   @Override
-  protected void handleDifficulty() {
-    throw new IllegalStateException("OpCode in London fork only, not in Paris and after.");
-  }
-
-  @Override
-  protected void handlePrevRandao() {
-    data = EWord.of(blockHeader().getPrevRandao().get());
-
-    // row i
-    wcpCallToGEQ(0, data(), EWord.ZERO);
-  }
-
-  @Override
   protected void traceIsDifficulty(Trace.Blockdata trace, OpCode opCode) {
-    // Note: not a typo: for simplicity, the Paris BlockData has the same columns as the London
-    // BlockData
-    trace.isDifficulty(opCode == PREVRANDAO);
+    // OpCode in London fork only, not in Paris and after.
   }
 
   @Override
   protected void traceIsPrevRandao(Trace.Blockdata trace, OpCode opCode) {
-    // prev randao is traced in difficulty columns
+    trace.isPrevrandao(opCode == PREVRANDAO);
   }
 }

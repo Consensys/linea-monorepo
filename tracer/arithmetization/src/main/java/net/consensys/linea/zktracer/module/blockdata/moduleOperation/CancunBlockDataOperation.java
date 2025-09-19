@@ -28,7 +28,7 @@ import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
-public class CancunBlockDataOperation extends ParisBlockDataOperation {
+public class CancunBlockDataOperation extends ShanghaiBlockDataOperation {
 
   private final BlockHeader blockHeader;
 
