@@ -3,9 +3,9 @@ package innerproduct
 import (
 	"fmt"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
-	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -46,7 +46,7 @@ func (v *VerifierForSize) Run(run wizard.Runtime) error {
 
 	if len(ys) > 1 {
 		batchingCoin := run.GetRandomCoinFieldExt(v.BatchOpening.Name)
-		expected = polyext.Eval(ys, batchingCoin)
+		expected = vortex.EvalFextPolyHorner(ys, batchingCoin)
 	}
 
 	if len(ys) <= 1 {

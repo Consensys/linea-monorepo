@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/assert"
@@ -78,118 +77,6 @@ func TestFuzzLinearCombination(t *testing.T) {
 	}
 }
 
-func TestFuzzProductWithPool(t *testing.T) {
-
-	for i := 0; i < FuzzIteration; i++ {
-		tcase := newTestBuilder(i).NewTestCaseForProd()
-
-		success := t.Run(tcase.name, func(t *testing.T) {
-
-			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
-
-			t.Logf("TEST CASE %v\n", tcase.String())
-
-			prodWithPool := Product(tcase.coeffs, tcase.svecs, pool)
-			require.Equal(t, tcase.expectedValue.Pretty(), prodWithPool.Pretty(), "product with pool failed")
-
-			// And let us do it a second time for idempotency
-			prodWithPool = Product(tcase.coeffs, tcase.svecs, pool)
-			require.Equal(t, tcase.expectedValue.Pretty(), prodWithPool.Pretty(), "product with pool failed")
-		})
-
-		if !success {
-			t.Logf("TEST CASE %v\n", tcase.String())
-			t.FailNow()
-		}
-	}
-
-}
-
-func TestFuzzProductWithPoolCompare(t *testing.T) {
-
-	for i := 0; i < FuzzIteration; i++ {
-		tcase := newTestBuilder(i).NewTestCaseForProd()
-
-		success := t.Run(tcase.name, func(t *testing.T) {
-
-			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
-
-			t.Logf("TEST CASE %v\n", tcase.String())
-
-			// Product() with pool
-			prodWithPool := Product(tcase.coeffs, tcase.svecs, pool)
-			require.Equal(t, tcase.expectedValue.Pretty(), prodWithPool.Pretty(), "Product() with pool failed")
-
-			// Product() without pool
-			prod := Product(tcase.coeffs, tcase.svecs)
-
-			// check if Product() with pool = Product() without pool
-			require.Equal(t, prodWithPool.Pretty(), prod.Pretty(), "Product() w/ and w/o pool are different")
-		})
-
-		if !success {
-			t.Logf("TEST CASE %v\n", tcase.String())
-			t.FailNow()
-		}
-	}
-
-}
-
-func TestFuzzLinCombWithPool(t *testing.T) {
-
-	for i := 0; i < FuzzIteration; i++ {
-		tcase := newTestBuilder(i).NewTestCaseForLinComb()
-
-		success := t.Run(tcase.name, func(t *testing.T) {
-
-			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
-
-			t.Logf("TEST CASE %v\n", tcase.String())
-
-			linCombWithPool := LinComb(tcase.coeffs, tcase.svecs, pool)
-			require.Equal(t, tcase.expectedValue.Pretty(), linCombWithPool.Pretty(), "LinComb() with pool failed")
-
-			// And let us do it a second time for idempotency
-			linCombWithPool = LinComb(tcase.coeffs, tcase.svecs, pool)
-			require.Equal(t, tcase.expectedValue.Pretty(), linCombWithPool.Pretty(), "LinComb() with pool failed")
-		})
-
-		if !success {
-			t.Logf("TEST CASE %v\n", tcase.String())
-			t.FailNow()
-		}
-	}
-}
-
-func TestFuzzLinCombWithPoolCompare(t *testing.T) {
-
-	for i := 0; i < FuzzIteration; i++ {
-		tcase := newTestBuilder(i).NewTestCaseForLinComb()
-
-		success := t.Run(tcase.name, func(t *testing.T) {
-
-			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
-
-			t.Logf("TEST CASE %v\n", tcase.String())
-
-			// LinComb() with pool
-			linCombWithPool := LinComb(tcase.coeffs, tcase.svecs, pool)
-			require.Equal(t, tcase.expectedValue.Pretty(), linCombWithPool.Pretty(), "LinComb() with pool failed")
-
-			// LinComb() without pool
-			linComb := LinComb(tcase.coeffs, tcase.svecs)
-
-			// check if LinComb() with pool = LinComb() without pool
-			require.Equal(t, linCombWithPool.Pretty(), linComb.Pretty(), "LinComb() w/ and w/o pool are different")
-		})
-
-		if !success {
-			t.Logf("TEST CASE %v\n", tcase.String())
-			t.FailNow()
-		}
-	}
-}
-
 func TestOpBasicEdgeCases(t *testing.T) {
 
 	two := field.NewElement(2)
@@ -236,8 +123,8 @@ func TestOpBasicEdgeCases(t *testing.T) {
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case-%v", i), func(t *testing.T) {
 			t.Logf("test-case details: %v", testCase.explainer)
-			res := testCase.fn(testCase.inputs...).(*Pooled)
-			actual := NewRegular(res.Regular)
+			res := testCase.fn(testCase.inputs...).(*Regular)
+			actual := res
 			require.Equal(t, testCase.expectedRes, actual, "expectedRes=%v\nres=%v", testCase.expectedRes.Pretty(), res.Pretty())
 		})
 	}
@@ -281,57 +168,5 @@ func TestScalarMul(t *testing.T) {
 			y := ScalarMul(testCase.a, testCase.b)
 			assert.Equal(t, testCase.y.Pretty(), y.Pretty())
 		})
-	}
-}
-
-func TestFuzzLinearCombinationWithPool(t *testing.T) {
-	for i := 0; i < FuzzIteration; i++ {
-		tcase := newTestBuilder(i).NewTestCaseForLinearCombination()
-
-		success := t.Run(tcase.name, func(t *testing.T) {
-
-			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
-
-			// LinearCombination() with pool
-			LinearCombinationWithPool := LinearCombination(tcase.svecs, tcase.evaluationPoint, pool)
-			require.Equal(t, tcase.expectedValue.Pretty(), LinearCombinationWithPool.Pretty(), "linear combination with pool failed")
-
-			// and a second time to ensure idempotency
-			LinearCombinationWithPool = LinearCombination(tcase.svecs, tcase.evaluationPoint, pool)
-			require.Equal(t, tcase.expectedValue.Pretty(), LinearCombinationWithPool.Pretty(), "linear combination with pool failed")
-
-		})
-
-		if !success {
-			t.Logf("TEST CASE %v\n", tcase.String())
-			t.FailNow()
-		}
-	}
-}
-
-func TestFuzzLinearCombinationWithPoolCompare(t *testing.T) {
-	for i := 0; i < FuzzIteration; i++ {
-		tcase := newTestBuilder(i).NewTestCaseForLinearCombination()
-
-		success := t.Run(tcase.name, func(t *testing.T) {
-
-			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
-
-			// LinearCombination() with pool
-			LinearCombinationWithPool := LinearCombination(tcase.svecs, tcase.evaluationPoint, pool)
-			require.Equal(t, tcase.expectedValue.Pretty(), LinearCombinationWithPool.Pretty(), "LinearCombination() with pool failed")
-
-			// LinearCombination() without pool
-			LinearCombination := LinearCombination(tcase.svecs, tcase.evaluationPoint)
-
-			// check if LinearCombination() with pool = LinearCombination() without pool
-			require.Equal(t, LinearCombinationWithPool.Pretty(), LinearCombination.Pretty(), "LinearCombination() w/ and w/o pool are different")
-
-		})
-
-		if !success {
-			t.Logf("TEST CASE %v\n", tcase.String())
-			t.FailNow()
-		}
 	}
 }

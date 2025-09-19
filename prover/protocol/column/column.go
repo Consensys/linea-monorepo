@@ -177,7 +177,7 @@ func EvalExprColumn(run ifaces.Runtime, board symbolic.ExpressionBoard) smartvec
 		}
 	}
 
-	return board.Evaluate(inputs)
+	return board.Evaluate(inputs, 2)
 }
 
 // GnarkEvalExprColumn evaluates an expression in a gnark circuit setting

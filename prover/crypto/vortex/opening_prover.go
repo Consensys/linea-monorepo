@@ -3,6 +3,7 @@ package vortex
 import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -51,20 +52,44 @@ func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, 
 	linComb := make([]fext.Element, params.NbColumns)
 
 	parallel.Execute(len(linComb), func(start, stop int) {
-		subTask := make([]smartvectors.SmartVector, 0, len(committedSV))
-		for i := range committedSV {
-			subTask = append(subTask, committedSV[i].SubVector(start, stop))
-		}
 
-		// Collect the result in the larger slice at the end
-		subResult := smartvectors.LinearCombinationExt(subTask, randomCoin)
-		subResult.WriteInSliceExt(linComb[start:stop])
+		x := fext.One()
+		scratch := make(vectorext.Vector, stop-start)
+		localLinComb := make(vectorext.Vector, stop-start)
+		for i := range committedSV {
+			_sv := committedSV[i]
+			// we distinguish the case of a regular vector and constant to avoid
+			// unnecessary allocations and copies
+			switch _svt := _sv.(type) {
+			case *smartvectors.Constant:
+				cst := _svt.GetExt(0)
+				cst.Mul(&cst, &x)
+				for j := range localLinComb {
+					localLinComb[j].Add(&localLinComb[j], &cst)
+				}
+				x.Mul(&x, &randomCoin)
+				continue
+			case *smartvectors.Regular:
+				sv := field.Vector((*_svt)[start:stop])
+				for i := range scratch {
+					fext.SetFromBase(&scratch[i], &sv[i])
+				}
+			default:
+				sv := _svt.SubVector(start, stop)
+				sv.WriteInSliceExt(scratch)
+			}
+			scratch.ScalarMul(scratch, &x)
+			localLinComb.Add(localLinComb, scratch)
+			x.Mul(&x, &randomCoin)
+
+		}
+		copy(linComb[start:stop], localLinComb)
 	})
 
 	linCombSV := smartvectors.NewRegularExt(linComb)
 
 	return &OpeningProof{
-		LinearCombination: params._rsEncodeExt(linCombSV, nil),
+		LinearCombination: params.rsEncodeExt(linCombSV),
 	}
 }
 

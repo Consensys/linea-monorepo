@@ -1,8 +1,7 @@
 package smartvectors
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -66,49 +65,32 @@ func InnerProductExt(a, b SmartVector) fext.Element {
 //	result = vecs[0] + vecs[1] * x + vecs[2] * x^2 + vecs[3] * x^3 + ...
 //
 // where `x` is a scalar and `vecs[i]` are [SmartVector]
-func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPool) (result SmartVector) {
+func LinearCombinationExt(vecs []SmartVector, x fext.Element) (result SmartVector) {
 
 	if len(vecs) == 0 {
 		panic("no input vectors")
 	}
 
 	length := vecs[0].Len()
-	pool, hasPool := mempool.ExtractCheckOptionalStrict(length, p...)
 	// Preallocate the intermediate values
-	var resReg, tmpVecExt []fext.Element
-	var tmpVec []field.Element
 
-	if !hasPool {
-		resReg = make([]fext.Element, length)
-		tmpVecExt = make([]fext.Element, length)
-		tmpVec = make([]field.Element, length)
-	} else {
-		a := AllocFromPoolExt(pool)
-		b := AllocFromPoolExt(pool)
-		bBase := AllocFromPool(pool)
-		resReg, tmpVecExt = a.RegularExt, b.RegularExt
-		tmpVec = bBase.Regular
-		vectorext.Fill(resReg, fext.Zero())
-		defer b.Free(pool)
-		defer bBase.Free(pool)
-	}
+	resReg := make([]fext.Element, length)
+	tmpVecExt := make([]fext.Element, length)
+	tmpVec := make([]field.Element, length)
 
 	var tmpF, resCon fext.Element
 	var anyReg, anyCon bool
 	xPow := fext.One()
 
-	accumulateRegExt := func(acc, v []fext.Element, x fext.Element) {
+	accumulateRegExt := func(acc, v extensions.Vector, x fext.Element) {
 		for i := 0; i < length; i++ {
 			tmpF.Mul(&v[i], &x)
 			acc[i].Add(&acc[i], &tmpF)
 		}
 	}
 
-	accumulateRegMixed := func(acc []fext.Element, v []field.Element, x fext.Element) {
-		for i := 0; i < length; i++ {
-			tmpF.MulByElement(&x, &v[i])
-			acc[i].Add(&acc[i], &tmpF)
-		}
+	accumulateRegMixed := func(acc extensions.Vector, v field.Vector, x fext.Element) {
+		acc.MulAccByElement(v, &x)
 	}
 
 	// Computes the polynomial operation separately on the const,
@@ -131,19 +113,11 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPo
 			resCon.Add(&resCon, &tmpF)
 		case *Regular:
 			anyReg = true
-			v := *casted
+			v := field.Vector(*casted)
 			accumulateRegMixed(resReg, v, xPow)
 		case *RegularExt:
 			anyReg = true
-			v := *casted
-			accumulateRegExt(resReg, v, xPow)
-		case *Pooled: // e.g. from product
-			anyReg = true
-			v := casted.Regular
-			accumulateRegMixed(resReg, v, xPow)
-		case *PooledExt: // e.g. from product
-			anyReg = true
-			v := casted.RegularExt
+			v := extensions.Vector(*casted)
 			accumulateRegExt(resReg, v, xPow)
 		case *PaddedCircularWindow:
 			// treat it as a regular, reusing the buffer
@@ -168,10 +142,6 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPo
 		}
 		return NewRegularExt(resReg)
 	case anyCon && !anyReg:
-		// and we can directly unpool resreg because it was not used
-		if hasPool {
-			pool.FreeExt(&resReg)
-		}
 		return NewConstantExt(resCon, length)
 	case !anyCon && anyReg:
 		return NewRegularExt(resReg)
@@ -201,11 +171,9 @@ func BatchInvertExt(x SmartVector) SmartVector {
 		return res
 	case *RotatedExt:
 		return NewRotatedExt(
-			fext.BatchInvert(v.v.RegularExt),
+			fext.BatchInvert(v.v),
 			v.offset,
 		)
-	case *PooledExt:
-		return NewRegularExt(fext.BatchInvert(v.RegularExt))
 	case *RegularExt:
 		return NewRegularExt(fext.BatchInvert(*v))
 	}
@@ -244,9 +212,9 @@ func IsZeroExt(x SmartVector) SmartVector {
 		return res
 
 	case *RotatedExt:
-		res := make([]fext.Element, len(v.v.RegularExt))
+		res := make([]fext.Element, len(v.v))
 		for i := range res {
-			if v.v.RegularExt[i] == fext.Zero() {
+			if v.v[i] == fext.Zero() {
 				res[i] = fext.One()
 			}
 		}
@@ -259,15 +227,6 @@ func IsZeroExt(x SmartVector) SmartVector {
 		res := make([]fext.Element, len(*v))
 		for i := range res {
 			if (*v)[i] == fext.Zero() {
-				res[i] = fext.One()
-			}
-		}
-		return NewRegularExt(res)
-
-	case *PooledExt:
-		res := make([]fext.Element, len(v.RegularExt))
-		for i := range res {
-			if v.RegularExt[i] == fext.Zero() {
 				res[i] = fext.One()
 			}
 		}
@@ -305,15 +264,8 @@ func SumExt(a SmartVector) (res fext.Element) {
 
 	case *RotatedExt:
 		res := fext.Zero()
-		for i := range v.v.RegularExt {
-			res.Add(&res, &v.v.RegularExt[i])
-		}
-		return res
-
-	case *PooledExt:
-		res := fext.Zero()
-		for i := range v.RegularExt {
-			res.Add(&res, &v.RegularExt[i])
+		for i := range v.v {
+			res.Add(&res, &v.v[i])
 		}
 		return res
 

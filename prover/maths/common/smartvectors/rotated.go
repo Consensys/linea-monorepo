@@ -23,7 +23,7 @@ import (
 // when the vector is written or sub-vectored. This makes rotations essentially
 // free.
 type Rotated struct {
-	v      *Pooled
+	v      Regular
 	offset int
 }
 
@@ -48,7 +48,8 @@ func NewRotated(reg Regular, offset int) *Rotated {
 	}
 
 	return &Rotated{
-		v: &Pooled{Regular: reg}, offset: offset,
+		v:      reg,
+		offset: offset,
 	}
 }
 
@@ -78,15 +79,15 @@ func (r *Rotated) Get(n int) field.Element {
 
 func (r *Rotated) GetPtr(n int) *field.Element {
 	pos := utils.PositiveMod(n+r.offset, r.Len())
-	return &r.v.Regular[pos]
+	return &r.v[pos]
 }
 
 // Returns a particular element. The subvector is taken at indices
 // [Start, Stop). (Stop being excluded from the span)
 func (r *Rotated) SubVector(start, stop int) SmartVector {
 
-	if stop+r.offset < len(r.v.Regular) && start+r.offset > 0 {
-		res := Regular(r.v.Regular[start+r.offset : stop+r.offset])
+	if stop+r.offset < len(r.v) && start+r.offset > 0 {
+		res := Regular(r.v[start+r.offset : stop+r.offset])
 		return &res
 	}
 
@@ -113,7 +114,7 @@ func (r *Rotated) SubVector(start, stop int) SmartVector {
 
 	// NB: we may need to construct the res in several steps
 	// in case
-	copy(res, r.v.Regular[startWithOffsetClean:utils.Min(size, startWithOffsetClean+spanSize)])
+	copy(res, r.v[startWithOffsetClean:utils.Min(size, startWithOffsetClean+spanSize)])
 
 	// If this is negative of zero, it means the first copy already copied
 	// everything we needed to copy
@@ -125,7 +126,7 @@ func (r *Rotated) SubVector(start, stop int) SmartVector {
 	}
 
 	// if necessary perform a second
-	copy(res[howManyAlreadyCopied:], r.v.Regular[:howManyElementLeftToCopy])
+	copy(res[howManyAlreadyCopied:], r.v[:howManyElementLeftToCopy])
 	ret := Regular(res)
 	return &ret
 }
@@ -136,16 +137,13 @@ func (r *Rotated) RotateRight(offset int) SmartVector {
 	if offset > 1<<40 {
 		utils.Panic("offset is too large")
 	}
-	return &Rotated{
-		v: &Pooled{
-			Regular: vector.DeepCopy(r.v.Regular),
-		},
-		offset: r.offset + offset,
-	}
+	res := r.DeepCopy()
+	res.(*Rotated).offset += offset
+	return res
 }
 
 func (r *Rotated) DeepCopy() SmartVector {
-	return NewRotated(vector.DeepCopy(r.v.Regular), r.offset)
+	return NewRotated(vector.DeepCopy(r.v), r.offset)
 }
 
 func (r *Rotated) WriteInSlice(s []field.Element) {
@@ -219,7 +217,7 @@ func SoftRotate(v SmartVector, offset int) SmartVector {
 	case *Regular:
 		return NewRotated(*casted, offset)
 	case *Rotated:
-		return NewRotated(casted.v.Regular, utils.PositiveMod(offset+casted.offset, v.Len()))
+		return NewRotated(casted.v, utils.PositiveMod(offset+casted.offset, v.Len()))
 	case *PaddedCircularWindow:
 		return NewPaddedCircularWindow(
 			casted.Window_,
@@ -230,11 +228,6 @@ func SoftRotate(v SmartVector, offset int) SmartVector {
 	case *Constant:
 		// It's a constant so it does not need to be rotated
 		return v
-	case *Pooled:
-		return &Rotated{
-			v:      casted,
-			offset: offset,
-		}
 	default:
 		utils.Panic("unknown type %T", v)
 	}

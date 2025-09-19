@@ -1,9 +1,7 @@
 package smartvectors
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -66,7 +64,7 @@ func InnerProduct(a, b SmartVector) field.Element {
 //	result = vecs[0] + vecs[1] * x + vecs[2] * x^2 + vecs[3] * x^3 + ...
 //
 // where `x` is a scalar and `vecs[i]` are [SmartVector]
-func LinearCombination(vecs []SmartVector, x field.Element, p ...mempool.MemPool) (result SmartVector) {
+func LinearCombination(vecs []SmartVector, x field.Element) (result SmartVector) {
 
 	if len(vecs) == 0 {
 		panic("no input vectors")
@@ -94,20 +92,9 @@ func LinearCombination(vecs []SmartVector, x field.Element, p ...mempool.MemPool
 		return NewConstant(y, length)
 	}
 
-	pool, hasPool := mempool.ExtractCheckOptionalStrict(length, p...)
-
 	// Preallocate the intermediate values
-	var resReg, tmpVec []field.Element
-	if !hasPool {
-		resReg = make([]field.Element, length)
-		tmpVec = make([]field.Element, length)
-	} else {
-		a := AllocFromPool(pool)
-		b := AllocFromPool(pool)
-		resReg, tmpVec = a.Regular, b.Regular
-		vector.Fill(resReg, field.Zero())
-		defer b.Free(pool)
-	}
+	resReg := make([]field.Element, length)
+	tmpVec := make([]field.Element, length)
 
 	var tmpF, resCon field.Element
 	var anyReg, anyCon bool
@@ -139,10 +126,6 @@ func LinearCombination(vecs []SmartVector, x field.Element, p ...mempool.MemPool
 			anyReg = true
 			v := *casted
 			accumulateReg(resReg, v, xPow)
-		case *Pooled: // e.g. from product
-			anyReg = true
-			v := casted.Regular
-			accumulateReg(resReg, v, xPow)
 		case *PaddedCircularWindow:
 			// treat it as a regular, reusing the buffer
 			anyReg = true
@@ -162,10 +145,6 @@ func LinearCombination(vecs []SmartVector, x field.Element, p ...mempool.MemPool
 		}
 		return NewRegular(resReg)
 	case anyCon && !anyReg:
-		// and we can directly unpool resreg because it was not used
-		if hasPool {
-			pool.Free(&resReg)
-		}
 		return NewConstant(resCon, length)
 	case !anyCon && anyReg:
 		return NewRegular(resReg)
@@ -195,11 +174,9 @@ func BatchInvert(x SmartVector) SmartVector {
 		return res
 	case *Rotated:
 		return NewRotated(
-			field.BatchInvert(v.v.Regular),
+			field.BatchInvert(v.v),
 			v.offset,
 		)
-	case *Pooled:
-		return NewRegular(field.BatchInvert(v.Regular))
 	case *Regular:
 		return NewRegular(field.BatchInvert(*v))
 	}
@@ -238,9 +215,9 @@ func IsZero(x SmartVector) SmartVector {
 		return res
 
 	case *Rotated:
-		res := make([]field.Element, len(v.v.Regular))
+		res := make([]field.Element, len(v.v))
 		for i := range res {
-			if v.v.Regular[i] == field.Zero() {
+			if v.v[i] == field.Zero() {
 				res[i] = field.One()
 			}
 		}
@@ -258,14 +235,6 @@ func IsZero(x SmartVector) SmartVector {
 		}
 		return NewRegular(res)
 
-	case *Pooled:
-		res := make([]field.Element, len(v.Regular))
-		for i := range res {
-			if v.Regular[i] == field.Zero() {
-				res[i] = field.One()
-			}
-		}
-		return NewRegular(res)
 	}
 
 	panic("unsupported type")
@@ -299,15 +268,8 @@ func Sum(a SmartVector) (res field.Element) {
 
 	case *Rotated:
 		res := field.Zero()
-		for i := range v.v.Regular {
-			res.Add(&res, &v.v.Regular[i])
-		}
-		return res
-
-	case *Pooled:
-		res := field.Zero()
-		for i := range v.Regular {
-			res.Add(&res, &v.Regular[i])
+		for i := range v.v {
+			res.Add(&res, &v.v[i])
 		}
 		return res
 

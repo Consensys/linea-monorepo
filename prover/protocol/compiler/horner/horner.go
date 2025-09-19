@@ -3,6 +3,7 @@ package horner
 import (
 	"fmt"
 	"math/big"
+	"sync"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -16,6 +17,7 @@ import (
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 // HornerCtx is a compilation artefact generated during the execution of the
@@ -180,63 +182,80 @@ func (a AssignHornerCtx) Run(run *wizard.ProverRuntime) {
 	var (
 		params = run.GetHornerParams(a.Q.ID)
 		res    = fext.Zero()
+		lock   sync.Mutex
 	)
 
-	for i, part := range a.Q.Parts {
+	parallel.Execute(len(a.Q.Parts), func(start, end int) {
+		// for i, part := range a.Q.Parts {
+		for i := start; i < end; i++ {
 
-		var (
-			arity        = len(part.Selectors)
-			datas        = make([]smartvectors.SmartVector, arity)
-			selectors    = make([]smartvectors.SmartVector, arity)
-			x            = part.X.GetValExt(run)
-			n0           = params.Parts[i].N0
-			count        = 0
-			numRow       = part.Size()
-			acc          = fext.Zero()
-			accumulators = make([][]fext.Element, arity)
-		)
+			part := a.Q.Parts[i]
 
-		for k := 0; k < arity; k++ {
-			board := part.Coefficients[k].Board()
-			datas[k] = column.EvalExprColumn(run, board)
-			selectors[k] = part.Selectors[k].GetColAssignment(run)
-			accumulators[k] = make([]fext.Element, numRow)
-		}
+			var (
+				arity        = len(part.Selectors)
+				datas        = make([]smartvectors.SmartVector, arity)
+				selectors    = make([]smartvectors.SmartVector, arity)
+				x            = part.X.GetValExt(run)
+				n0           = params.Parts[i].N0
+				count        = 0
+				numRow       = part.Size()
+				acc          = fext.Zero()
+				accumulators = make([][]fext.Element, arity)
+			)
 
-		for row := numRow - 1; row >= 0; row-- {
 			for k := 0; k < arity; k++ {
-				sel := selectors[k].Get(row)
-				if sel.IsOne() {
-					count++
-				}
-				acc = computeMicroAccumulate(selectors[k].Get(row), acc, x, datas[k].GetExt(row))
-				accumulators[k][row] = acc
+				board := part.Coefficients[k].Board()
+				datas[k] = column.EvalExprColumn(run, board)
+				selectors[k] = part.Selectors[k].GetColAssignment(run)
+				accumulators[k] = make([]fext.Element, numRow)
 			}
+
+			for row := numRow - 1; row >= 0; row-- {
+				for k := 0; k < arity; k++ {
+					sel := selectors[k].Get(row)
+
+					if sel.IsOne() {
+						count++
+						p := datas[k].GetExt(row)
+						acc.Mul(&x, &acc)
+						acc.Add(&acc, &p)
+						accumulators[k][row] = acc
+					} else if sel.IsZero() {
+						accumulators[k][row] = acc
+					} else {
+						panic("selector is non-binary")
+					}
+				}
+			}
+
+			if n0+count != params.Parts[i].N1 {
+				// To update once we merge with the "code 78" branch as it means that a constraint is not satisfied.
+				utils.Panic("the counting of the 1s in the filter does not match the one in the local-opening: (%v-%v) != %v, part=%v", params.Parts[i].N1, n0, count, part.Name)
+			}
+
+			for k := 0; k < arity; k++ {
+				run.AssignColumn(a.AccumulatingCols[i][k].GetColID(), smartvectors.NewRegularExt(accumulators[k]))
+			}
+
+			tmp := accumulators[arity-1][0]
+			run.AssignLocalPointExt(a.LocOpenings[i].ID, tmp)
+
+			if n0 > 0 {
+				xN0 := new(fext.Element).Exp(x, big.NewInt(int64(n0)))
+				tmp.Mul(&tmp, xN0)
+			}
+
+			if a.Q.Parts[i].SignNegative {
+				tmp.Neg(&tmp)
+			}
+
+			lock.Lock()
+			res.Add(&res, &tmp)
+			lock.Unlock()
 		}
+	})
 
-		if n0+count != params.Parts[i].N1 {
-			// To update once we merge with the "code 78" branch as it means that a constraint is not satisfied.
-			utils.Panic("the counting of the 1s in the filter does not match the one in the local-opening: (%v-%v) != %v, part=%v", params.Parts[i].N1, n0, count, part.Name)
-		}
-
-		for k := 0; k < arity; k++ {
-			run.AssignColumn(a.AccumulatingCols[i][k].GetColID(), smartvectors.NewRegularExt(accumulators[k]))
-		}
-
-		tmp := accumulators[arity-1][0]
-		run.AssignLocalPointExt(a.LocOpenings[i].ID, tmp)
-
-		if n0 > 0 {
-			xN0 := new(fext.Element).Exp(x, big.NewInt(int64(n0)))
-			tmp.Mul(&tmp, xN0)
-		}
-
-		if a.Q.Parts[i].SignNegative {
-			tmp.Neg(&tmp)
-		}
-
-		res.Add(&res, &tmp)
-	}
+	// }
 
 	if res != params.FinalResult {
 		utils.Panic("the horner query %v is assigned a final result of %v but we recomputed %v\n", a.Q.ID, res.String(), params.FinalResult.String())
@@ -253,11 +272,19 @@ func (a AssignHornerIP) Run(run *wizard.ProverRuntime) {
 			res       = make([]fext.Element, len(selectors))
 		)
 
-		for i, selector := range selectors {
-			sel := selector.GetColAssignment(run).IntoRegVecSaveAlloc()
-			for j := range sel {
-				fext.AddByBase(&res[i], &res[i], &sel[j])
+		for j, selector := range selectors {
+			sv := selector.GetColAssignment(run)
+			switch sv := sv.(type) {
+			case *smartvectors.Constant:
+				// we just multiply the constant by the size
+				size := field.NewElement(uint64(sv.Len()))
+				cst := sv.Get(0)
+				res[j].B0.A0.Mul(&cst, &size)
+				continue
 			}
+			sel := sv.IntoRegVecSaveAlloc()
+			vs := field.Vector(sel)
+			res[j].B0.A0 = vs.Sum()
 		}
 
 		run.AssignInnerProduct(ip.ID, res...)

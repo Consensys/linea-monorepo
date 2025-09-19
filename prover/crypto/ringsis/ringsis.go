@@ -1,13 +1,8 @@
 package ringsis
 
 import (
-	"runtime"
-	"sync"
-
-	"github.com/consensys/gnark-crypto/field/koalabear/sis"
-
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-
+	"github.com/consensys/gnark-crypto/field/koalabear/sis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -29,9 +24,6 @@ type Key struct {
 	// degree etc)
 	*KeyGen
 
-	// lock guards the access to the SIS key and prevents the user from hashing
-	// concurrently with the same SIS key.
-	lock *sync.Mutex `serde:"omit"`
 	// gnarkInternal stores the SIS key itself and some precomputed domain
 	// twiddles.
 	gnarkInternal *sis.RSis `serde:"omit"`
@@ -65,7 +57,6 @@ func GenerateKey(params Params, maxNumFieldToHash int) *Key {
 	}
 
 	res := &Key{
-		lock:          &sync.Mutex{},
 		GnarkInternal: rsis,
 		KeyGen:        &KeyGen{&params, maxNumFieldToHash},
 		twiddleCosets: nil,
@@ -79,11 +70,6 @@ func GenerateKey(params Params, maxNumFieldToHash int) *Key {
 //
 // It is equivalent to calling r.Write(element.Marshal()); outBytes = r.Sum(nil);
 func (s *Key) Hash(v []field.Element) []field.Element {
-
-	// since hashing writes into internal buffers
-	// we need to guard against races conditions.
-	s.lock.Lock()
-	defer s.lock.Unlock()
 
 	result := make([]field.Element, s.GnarkInternal.Degree)
 	err := s.GnarkInternal.Hash(v, result)
@@ -225,63 +211,56 @@ func (s *Key) FlattenedKey() []field.Element {
 //   - modulus degree: 	64  log2(bound): 	8
 //   - modulus degree: 	64  log2(bound): 	16
 //   - modulus degree: 	32  log2(bound): 	8
-func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
-
-	// numRows stores the number of rows in the matrix to hash it must be
-	// strictly positive and be within the bounds of MaxNumFieldHashable.
-	numRows := len(v)
-
-	if numRows == 0 {
-		utils.Panic("Attempted to transversally hash a matrix with no rows")
+func (s *Key) TransversalHash(v []smartvectors.SmartVector, res []field.Element) []field.Element {
+	// nbRows is the number of rows in the matrix
+	nbRows := len(v)
+	if nbRows == 0 || nbRows > s.MaxNumFieldToHash {
+		utils.Panic("nbRows=%v out of bounds [1,%v]", nbRows, s.MaxNumFieldToHash)
 	}
 
-	if numRows > s.MaxNumFieldHashable() {
-		utils.Panic("Attempted to hash %v rows, but the limit is %v", numRows, s.MaxNumFieldHashable())
-	}
-
-	// numCols stores the number of columns in the matrix to hash et must be
-	// positive and all the rows must have the same size.
-	numCols := v[0].Len()
-
-	if numCols == 0 {
+	// nbCols is the number of columns in the matrix
+	nbCols := v[0].Len()
+	if nbCols == 0 {
 		utils.Panic("Provided a 0-colums matrix")
 	}
 
 	for i := range v {
-		if v[i].Len() != numCols {
+		if v[i].Len() != nbCols {
 			utils.Panic("Unexpected : all inputs smart-vectors should have the same length the first one has length %v, but #%v has length %v",
-				numCols, i, v[i].Len())
+				nbCols, i, v[i].Len())
 		}
 	}
-	res := make([]field.Element, numCols*s.OutputSize())
 
-	// Will contain keys per threads
-	keys := make([]*Key, runtime.GOMAXPROCS(0))
-	buffers := make([][]field.Element, runtime.GOMAXPROCS(0))
+	sisKeySize := s.OutputSize()
 
-	parallel.ExecuteThreadAware(
-		numCols,
-		func(threadID int) {
-			keys[threadID] = s.CopyWithFreshBuffer()
-			buffers[threadID] = make([]field.Element, numRows)
-		},
-		func(col, threadID int) {
-			buffer := buffers[threadID]
-			key := keys[threadID]
-			for row := 0; row < numRows; row++ {
-				buffer[row] = v[row].Get(col)
+	parallel.Execute(nbCols, func(start, end int) {
+		// we transpose the columns using a windowed approach
+		// this is done to improve memory accesses when transposing the matrix
+
+		// perf note; we could allocate only blocks of 256 elements here and do the SIS hash
+		// block by block, but surprisingly it is slower than the current implementation
+		// it would however save some memory allocation.
+		windowSize := 4
+		n := end - start
+		for n%windowSize != 0 {
+			windowSize /= 2
+		}
+		transposed := make([][]field.Element, windowSize)
+		for i := range transposed {
+			transposed[i] = make([]field.Element, nbRows)
+		}
+		for col := start; col < end; col += windowSize {
+			for i := 0; i < nbRows; i++ {
+				for j := range transposed {
+					// TODO need careful review; tests passes with v[i].Get(col) and v[i].Get(col+j)
+					transposed[j][i] = v[i].Get(col + j)
+				}
 			}
-			copy(res[col*key.OutputSize():(col+1)*key.OutputSize()], key.Hash(buffer))
-		})
+			for j := range transposed {
+				s.GnarkInternal.Hash(transposed[j], res[(col+j)*sisKeySize:(col+j)*sisKeySize+sisKeySize])
+			}
+		}
+	})
 
 	return res
-}
-
-// CopyWithFreshBuffer creates a copy of the key with fresh buffers. Shallow
-// copies the the key itself.
-//
-// This is deprecated as the new implementation of SIS does not need them. The
-// function simply returns "s".
-func (s *Key) CopyWithFreshBuffer() *Key {
-	return s
 }

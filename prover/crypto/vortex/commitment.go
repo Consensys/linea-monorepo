@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -38,12 +37,23 @@ func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatr
 			Panic("too many rows: %v, capacity is %v\n", len(ps), p.MaxNbRows)
 	}
 
+	chAlloc := make(chan struct{}, 1)
+	go func() {
+		// this is a large alloc, we start before doing the encoding.
+		// TODO @gbotrel not particularly efficient -- this still appears in the trace.
+		// we should investigate a way to pre-allocate that and re-use it, seems useful to keep mostly
+		// for self recursion, maybe in a context linked to that?
+		colHashes = make([]field.Element, p.NumEncodedCols()*p.Key.OutputSize())
+		close(chAlloc)
+	}()
+
 	timeEncoding := profiling.TimeIt(func() {
 		encodedMatrix = p.encodeRows(ps)
 	})
 	timeSisHashing := profiling.TimeIt(func() {
 		// colHashes stores concatenation of SIS hashes of the columns
-		colHashes = p.Key.TransversalHash(encodedMatrix)
+		<-chAlloc
+		colHashes = p.Key.TransversalHash(encodedMatrix, colHashes)
 	})
 
 	timeTree := profiling.TimeIt(func() {
@@ -130,19 +140,13 @@ func (params *Params) encodeRows(ps []smartvectors.SmartVector) (encodedMatrix E
 		}
 	}
 
-	// The pool will be responsible for holding the coefficients that are
-	// intermediary steps in creating the rs encoded rows.
-	pool := mempool.CreateFromSyncPool(params.NbColumns)
-
 	// The committed matrix is obtained by encoding the input vectors
 	// and laying them in rows.
 	encodedMatrix = make(EncodedMatrix, len(ps))
 	parallel.Execute(len(ps), func(start, stop int) {
-		localPool := mempool.WrapsWithMemCache(pool)
 		for i := start; i < stop; i++ {
-			encodedMatrix[i] = params._rsEncodeBase(ps[i], localPool)
+			encodedMatrix[i] = params._rsEncodeBase(ps[i])
 		}
-		localPool.TearDown()
 	})
 
 	return encodedMatrix

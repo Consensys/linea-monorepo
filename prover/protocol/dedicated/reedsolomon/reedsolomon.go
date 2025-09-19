@@ -4,8 +4,10 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/gnark-crypto/utils"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
@@ -28,8 +30,13 @@ type ReedSolomonProverAction struct {
 
 func (a *ReedSolomonProverAction) Run(assi *wizard.ProverRuntime) {
 	witness := a.H.GetColAssignment(assi)
-	coeffs := smartvectors.FFTInverse(witness, fft.DIF, true, 0, 0, nil).SubVector(0, a.CodeDim)
-	assi.AssignColumn(a.Coeff.GetColID(), coeffs)
+	domain := fft.NewDomain(uint64(witness.Len()), fft.WithCache())
+	coeffs := make([]field.Element, witness.Len())
+	witness.WriteInSlice(coeffs)
+	domain.FFTInverse(coeffs, fft.DIF, fft.WithNbTasks(1))
+	utils.BitReverse(coeffs)
+	// Take only the first `CodeDim` coefficients
+	assi.AssignColumn(a.Coeff.GetColID(), smartvectors.NewRegular(coeffs[:a.CodeDim]))
 }
 
 type ReedSolomonVerifierAction struct {

@@ -78,7 +78,7 @@ func (ex ExpandedVerifCol) Size() int {
 // GetColAssignment returns the assignment of the current column
 func (ex ExpandedVerifCol) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 	assi := ex.Verifiercol.GetColAssignment(run)
-	values := make([][]fext.Element, ex.Expansion)
+	values := make([]vectorext.Vector, ex.Expansion)
 	for j := range values {
 		values[j] = smartvectors.IntoRegVecExt(assi)
 	}

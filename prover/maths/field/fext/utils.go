@@ -51,7 +51,10 @@ func SetFromIntBase(z *Element, v int64) *Element {
 }
 
 func SetFromBase(z *Element, x *field.Element) *Element {
-	z.B0.A0.Set(x)
+	z.B0.A0[0] = x[0]
+	z.B0.A1[0] = 0
+	z.B1.A0[0] = 0
+	z.B1.A1[0] = 0
 	return z
 }
 

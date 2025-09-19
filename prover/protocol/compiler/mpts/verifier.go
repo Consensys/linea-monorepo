@@ -176,7 +176,7 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapExt(run wizard.Ru
 	for i, c := range ctx.ExplicitlyEvaluated {
 		colID := ctx.ExplicitlyEvaluated[i].GetColID()
 		poly := c.GetColAssignment(run)
-		evaluationMap[colID] = smartvectors.EvaluateLagrangeFullFext(poly, x)
+		evaluationMap[colID] = smartvectors.EvaluateFextPolyLagrange(poly, x)
 	}
 
 	return evaluationMap

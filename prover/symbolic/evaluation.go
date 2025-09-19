@@ -2,6 +2,7 @@ package symbolic
 
 import (
 	"fmt"
+	"runtime"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -46,7 +47,7 @@ type chunkExt [maxChunkSize]fext.Element
 type chunkBase [maxChunkSize]field.Element
 
 // Evaluate evaluates the expression board on the provided inputs.
-func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
+func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, nbTasks ...int) sv.SmartVector {
 	// essentially, we can see the inputs as "columns", and the chunks as "rows"
 	// the relations between the columns are defined by the expression board
 	// we evaluate the expression board chunk by chunk, in parallel.
@@ -72,12 +73,12 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
 
 		// special case: if totalSize is small enough, we do not need to chunk
 		if totalSize < maxChunkSize {
-			solver := newEvaluation[chunkBase](b)
+			eval := newEvaluation[chunkBase](b)
 
-			solver.reset(inputs, 0, totalSize, b)
-			solver.evaluate()
+			eval.reset(inputs, 0, totalSize, b)
+			eval.evaluate()
 
-			copy(res[:totalSize], solver.nodes[len(b.Nodes)-1][0].value[:totalSize])
+			copy(res[:totalSize], eval.nodes[len(b.Nodes)-1][0].value[:totalSize])
 			if totalSize == 1 {
 				return sv.NewConstant(res[0], 1)
 			}
@@ -90,21 +91,27 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
 
 		numChunks := totalSize / maxChunkSize
 
+		// TODO @gbotrel cleanup nbTasks
+		numCpus := runtime.NumCPU()
+		if len(nbTasks) > 0 && nbTasks[0] > 0 && nbTasks[0] < numCpus {
+			numCpus = nbTasks[0]
+		}
+
 		parallel.Execute(numChunks, func(start, stop int) {
 
-			solver := newEvaluation[chunkBase](b)
+			eval := newEvaluation[chunkBase](b)
 			for chunkID := start; chunkID < stop; chunkID++ {
 
 				chunkStart := chunkID * maxChunkSize
 				chunkStop := (chunkID + 1) * maxChunkSize
 
-				solver.reset(inputs, chunkStart, chunkStop, b)
-				solver.evaluate()
+				eval.reset(inputs, chunkStart, chunkStop, b)
+				eval.evaluate()
 
-				copy(res[chunkStart:chunkStop], solver.nodes[len(b.Nodes)-1][0].value[:])
+				copy(res[chunkStart:chunkStop], eval.nodes[len(b.Nodes)-1][0].value[:])
 			}
 
-		})
+		}, numCpus)
 		return sv.NewRegular(res)
 	}
 
@@ -113,12 +120,12 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
 
 	// special case: if totalSize is small enough, we do not need to chunk
 	if totalSize < maxChunkSize {
-		solver := newEvaluation[chunkExt](b)
+		eval := newEvaluation[chunkExt](b)
 
-		solver.reset(inputs, 0, totalSize, b)
-		solver.evaluate()
+		eval.reset(inputs, 0, totalSize, b)
+		eval.evaluate()
 
-		copy(res[:totalSize], solver.nodes[len(b.Nodes)-1][0].value[:totalSize])
+		copy(res[:totalSize], eval.nodes[len(b.Nodes)-1][0].value[:totalSize])
 		if totalSize == 1 {
 			return sv.NewConstantExt(res[0], 1)
 		}
@@ -133,16 +140,16 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
 
 	parallel.Execute(numChunks, func(start, stop int) {
 
-		solver := newEvaluation[chunkExt](b)
+		eval := newEvaluation[chunkExt](b)
 		for chunkID := start; chunkID < stop; chunkID++ {
 
 			chunkStart := chunkID * maxChunkSize
 			chunkStop := (chunkID + 1) * maxChunkSize
 
-			solver.reset(inputs, chunkStart, chunkStop, b)
-			solver.evaluate()
+			eval.reset(inputs, chunkStart, chunkStop, b)
+			eval.evaluate()
 
-			copy(res[chunkStart:chunkStop], solver.nodes[len(b.Nodes)-1][0].value[:])
+			copy(res[chunkStart:chunkStop], eval.nodes[len(b.Nodes)-1][0].value[:])
 		}
 
 	})
@@ -224,23 +231,44 @@ func (e *evaluation[T]) reset(inputs []sv.SmartVector, chunkStart, chunkStop int
 			if i == 0 {
 				switch na.op.(type) {
 				case Variable:
-					// leaves, we set the input.
-					// Sanity-check the input should have the correct length
-					sb := inputs[inputCursor].SubVector(chunkStart, chunkStop)
+					input := inputs[inputCursor]
 					switch casted := any(&na.value).(type) {
 					case *chunkBase:
-						sb.WriteInSlice(casted[:chunkLen])
+						switch rv := input.(type) {
+						case *sv.Regular:
+							copy(casted[:chunkLen], (*rv)[chunkStart:chunkStop])
+						default:
+							sb := input.SubVector(chunkStart, chunkStop)
+							sb.WriteInSlice(casted[:chunkLen])
+						}
 					case *chunkExt:
-						sb.WriteInSliceExt(casted[:chunkLen])
+
+						// if input is rotated, SubVector is expensive so we check for that
+						switch rv := input.(type) {
+						case *sv.Regular:
+							for i := 0; i < chunkLen; i++ {
+								fext.SetFromBase(&casted[i], &(*rv)[chunkStart+i])
+							}
+						case *sv.RotatedExt:
+							rv.WriteSubVectorInSliceExt(chunkStart, chunkStop, casted[:chunkLen])
+						case *sv.RegularExt:
+							copy(casted[:chunkLen], (*rv)[chunkStart:chunkStop])
+						case *sv.ConstantExt:
+							for i := 0; i < chunkLen; i++ {
+								casted[i].Set(&rv.Value)
+							}
+						default:
+							sb := input.SubVector(chunkStart, chunkStop)
+							sb.WriteInSliceExt(casted[:chunkLen])
+						}
 					}
-					// nodeAssignments[0][i].Value = inputs[inputCursor]
+
 					inputCursor++
 					na.hasValue = true
 				}
 			}
 		}
 	}
-
 }
 
 func (e *evaluation[T]) evaluate() {

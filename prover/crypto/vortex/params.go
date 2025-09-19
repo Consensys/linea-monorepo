@@ -1,9 +1,12 @@
 package vortex
 
 import (
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark-crypto/hash"
+	gutils "github.com/consensys/gnark-crypto/utils"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -38,6 +41,9 @@ type Params struct {
 	// MerkleHashFunc returns a `hash.Hash` which is used
 	// to hash the nodes of the Merkle tree.
 	MerkleHashFunc func() hash.StateStorer
+
+	// Coset table of the small domain, bit reversed
+	CosetTableBitReverse field.Vector
 }
 
 // NewParams creates and returns a [Params]:
@@ -75,9 +81,14 @@ func NewParams(
 		utils.Panic("The number of rows per matrix cannot be zero of negative: %v", maxNbRows)
 	}
 
+	shift, err := koalabear.Generator(uint64(nbColumns * blowUpFactor))
+	if err != nil {
+		panic(err)
+	}
+
 	res := &Params{
 		Domains: [2]*fft.Domain{
-			fft.NewDomain(uint64(nbColumns), fft.WithCache()),
+			fft.NewDomain(uint64(nbColumns), fft.WithShift(shift)),
 			fft.NewDomain(uint64(blowUpFactor*nbColumns), fft.WithCache()),
 		},
 		NbColumns:      nbColumns,
@@ -87,6 +98,16 @@ func NewParams(
 		LeafHashFunc:   leafHashFunc,
 		MerkleHashFunc: merkleHashFunc,
 	}
+	smallDomain := res.Domains[0]
+	cosetTable, err := smallDomain.CosetTable()
+	if err != nil {
+		panic(err)
+	}
+	cosetTableBitReverse := make(field.Vector, len(cosetTable))
+	copy(cosetTableBitReverse, cosetTable)
+	gutils.BitReverse(cosetTableBitReverse)
+
+	res.CosetTableBitReverse = cosetTableBitReverse
 
 	return res
 }

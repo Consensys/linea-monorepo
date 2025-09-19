@@ -57,7 +57,7 @@ func TestEvaluateLagrangeMixed(t *testing.T) {
 	xVal := x.GetValExt(savedRuntime)
 
 	accY := acc.GetValExt(savedRuntime)
-	expectedY := smartvectors.EvaluateLagrangeMixed(wp, xVal)
+	expectedY := smartvectors.EvaluateBasePolyLagrange(wp, xVal)
 
 	require.Equal(t, accY, expectedY)
 

@@ -3,6 +3,7 @@ package permutation
 import (
 	"sync"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -21,14 +22,10 @@ type ProverTaskAtRound []*ZCtx
 // for parallelization can be justified if the number of go-routines stays low
 // (e.g. less than 1000s).
 func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
-
 	wg := &sync.WaitGroup{}
 	wg.Add(len(p))
 
 	for i := range p {
-		// the passing of the index `i` is there to ensure that the go-routine
-		// is running over a local copy of `i` which is not incremented every
-		// time the loop goes to the next iteration.
 		go func(i int) {
 			p[i].run(run)
 			wg.Done()
@@ -73,11 +70,10 @@ func (z *ZCtx) run(run *wizard.ProverRuntime) {
 
 			numeratorSlice, _ := numerator.IntoRegVecSaveAllocBase()
 
-			for i := range denominatorSlice {
-				numeratorSlice[i].Mul(&numeratorSlice[i], &denominatorSlice[i])
-				if i > 0 {
-					numeratorSlice[i].Mul(&numeratorSlice[i], &numeratorSlice[i-1])
-				}
+			vNum := field.Vector(numeratorSlice)
+			vNum.Mul(vNum, field.Vector(denominatorSlice))
+			for i := 1; i < len(numeratorSlice); i++ {
+				numeratorSlice[i].Mul(&numeratorSlice[i], &numeratorSlice[i-1])
 			}
 
 			run.AssignColumn(z.Zs[i].GetColID(), smartvectors.NewRegular(numeratorSlice))
@@ -95,11 +91,11 @@ func (z *ZCtx) run(run *wizard.ProverRuntime) {
 
 			numeratorSlice := numerator.IntoRegVecSaveAllocExt()
 
-			for i := range denominatorSlice {
-				numeratorSlice[i].Mul(&numeratorSlice[i], &denominatorSlice[i])
-				if i > 0 {
-					numeratorSlice[i].Mul(&numeratorSlice[i], &numeratorSlice[i-1])
-				}
+			vNum := extensions.Vector(numeratorSlice)
+			vNum.Mul(vNum, extensions.Vector(denominatorSlice))
+
+			for i := 1; i < len(numeratorSlice); i++ {
+				numeratorSlice[i].Mul(&numeratorSlice[i], &numeratorSlice[i-1])
 			}
 
 			run.AssignColumn(z.Zs[i].GetColID(), smartvectors.NewRegularExt(numeratorSlice))
