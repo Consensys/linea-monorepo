@@ -1,0 +1,39 @@
+name: Build Linea Besu Package with Credible plugin
+
+permissions:
+  contents: read
+  packages: write
+
+on:
+  push:
+    branches:
+      - main
+      - credible/*
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+      - name: Install packages
+        run: |
+          cd linea-besu-package && ./scripts/assemble-credible.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GH_TOKEN }}          
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          context: ./linea-besu-package/tmp
+          file: ./linea-besu-package/linea-besu/Dockerfile
+          tags: ghcr.io/${{ github.repository }}/linea-besu-package:${{ github.sha }}
