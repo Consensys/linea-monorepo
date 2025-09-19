@@ -33,7 +33,6 @@ PACKAGES := \
   github.com/consensys/linea-monorepo/prover/protocol/dedicated/selector/... \
   github.com/consensys/linea-monorepo/prover/protocol/dedicated/reedsolomon/...\
   github.com/consensys/linea-monorepo/prover/protocol/dedicated/bigrange/...\
-  github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp/...\
   github.com/consensys/linea-monorepo/prover/protocol/dedicated/merkle/...\
   github.com/consensys/linea-monorepo/prover/protocol/dedicated/poseidon2/...\
 

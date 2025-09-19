@@ -6,7 +6,7 @@ import "math"
 
 func ToInt(e *Element) int {
 	n := e.Uint64()
-	if !e.CheckNonNeg() || n > math.MaxInt {
+	if !e.IsNonNeg() || n > math.MaxInt {
 		panic("out of range")
 	}
 	return int(n) // #nosec G115 -- Checked for overflow
