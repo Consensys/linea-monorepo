@@ -62,8 +62,8 @@ func Bootstrap(cfg *config.Config, req *execution.Request, metadata Metadata) er
 
 	// Publish metadata.json atomically to --out
 	metadataPath := path.Join(config.MetadataDirPrefix, fmt.Sprintf("%s-%s-metadata-getZkProof.json", metadata.StartBlock, metadata.EndBlock))
-	if err := files.WriteJSONFileAtomic(metadataPath, metadata); err != nil {
-		return fmt.Errorf("write metadata: %w", err)
+	if err := files.MustWriteFileAtomic(metadataPath, metadata); err != nil {
+		return fmt.Errorf("error during writing metadata: %w", err)
 	}
 
 	logrus.Infof("Bootstrapper finished successfully and generated %s file", metadataPath)

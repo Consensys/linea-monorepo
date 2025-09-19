@@ -13,9 +13,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// WriteJSONFileAtomic writes `v` to `path` atomically.
+// MustWriteFileAtomic writes `v` to `path` atomically.
 // It creates a temporary file in the same directory and renames it to the final path.
-func WriteJSONFileAtomic(path string, v any) error {
+func MustWriteFileAtomic(path string, v any) error {
 	dir := filepath.Dir(path)
 	tmpFile, err := os.CreateTemp(dir, config.InProgressSufix)
 	if err != nil {
