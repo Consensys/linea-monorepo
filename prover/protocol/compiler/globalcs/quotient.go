@@ -32,28 +32,6 @@ import (
 	ppool "github.com/consensys/linea-monorepo/prover/utils/parallel/pool"
 )
 
-const (
-	/*
-		Explanation for Manual Garbage Collection Thresholds
-	*/
-	// These two thresholds work well for the real-world traces at the moment of writing and a 340GiB memory limit,
-	// but this approach can be generalized and further improved.
-
-	// When ctx.domainSize>=524288, proverEvaluationQueries() experiences a heavy workload,
-	// consistently hitting the GOMEMLIMIT of 340GiB.
-	// This results in numerous auto GCs during CPU-intensive small tasks, significantly degrading performance.
-	// In the benchmark input files, GC_DOMAIN_SIZE >= 524288 means only the first call of proverEvaluationQueries().
-	// With ctx.domainSize<=262144, manual GC is not necessary as auto GCs triggered by GOMEMLIMIT suffice.
-	GC_DOMAIN_SIZE int = 524288
-
-	// Auto GCs are triggered during ReEvaluate and Batch evaluation
-	// when len(handles) exceeds approximately 4000, causing performance degradation.
-	// This threshold is set to perform manual GCs before ReEvaluate and Batch evaluation
-	// only when len(handles) reaches a size substantial enough to trigger auto GC during ReEvaluate and Batch evaluation.
-	// Note that the value of GC_HANDLES_SIZE 4000 is derived from experience and analytics on the benchmark input files.
-	GC_HANDLES_SIZE int = 4000
-)
-
 // QuotientCtx collects all the internal fields needed to compute the quotient
 type QuotientCtx struct {
 
