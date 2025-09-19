@@ -59,7 +59,7 @@ func (c *CircuitInvalidity) Define(api frontend.API) error {
 	c.SubCircuit.Define(api)
 
 	// constraints on the consistence of functional public inputs
-	// note that any FPI solely related to FtxStreamHash is not checked here,
+	// note that any FPI solely related to FtxFtxRollingHash is not checked here,
 	// since they are used in the interconnection circuit, and not in the subcircuit.
 	subCircuitFPI := c.SubCircuit.FunctionalPublicInputs()
 	api.AssertIsEqual(
@@ -180,7 +180,7 @@ const (
 
 // UpdateFtxRollingHash updates the ftxRollingHash
 func UpdateFtxRollingHash(
-	prevStreamHash linTypes.Bytes32,
+	prevFtxRollingHash linTypes.Bytes32,
 	txPayload *types.Transaction,
 	expectedBlockHeight int,
 	fromAddress linTypes.EthAddress,
@@ -191,7 +191,7 @@ func UpdateFtxRollingHash(
 
 	hasher := mimc.NewMiMC()
 
-	hasher.Write(prevStreamHash[:])
+	hasher.Write(prevFtxRollingHash[:])
 	hasher.Write(txHash[:16])
 	hasher.Write(txHash[16:])
 	linTypes.WriteInt64On32Bytes(hasher, int64(expectedBlockHeight))

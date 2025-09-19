@@ -460,7 +460,7 @@ func ProcessInvaliditySpec(rng *rand.Rand, spec *InvalidityProofSpec, prevResp *
 	if prevResp != nil {
 		invalidityReq.ForcedTransactionNumber = uint64(prevResp.ForcedTransactionNumber + 1)
 		spec.FtxNumber = int(invalidityReq.ForcedTransactionNumber)
-		spec.PrevStreamHash = prevResp.FtxRollingHash.Hex()
+		spec.PrevFtxRollingHash = prevResp.FtxRollingHash.Hex()
 	}
 
 	if txData, err = ethereum.DecodeTxFromBytes(bytes.NewReader(invalidityReq.RlpEncodedTx)); err != nil {
@@ -468,7 +468,7 @@ func ProcessInvaliditySpec(rng *rand.Rand, spec *InvalidityProofSpec, prevResp *
 	}
 
 	invalidityReq.FtxRollingHash = circInvalidity.UpdateFtxRollingHash(
-		linTypes.Bytes32FromHex(spec.PrevStreamHash),
+		linTypes.Bytes32FromHex(spec.PrevFtxRollingHash),
 		types.NewTx(txData),
 		spec.ExpectedBlockHeight,
 		invalidityReq.FromAddresses,

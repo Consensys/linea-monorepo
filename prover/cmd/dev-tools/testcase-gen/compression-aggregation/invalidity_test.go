@@ -15,7 +15,7 @@ func TestInvalidity(t *testing.T) {
 	spec := &InvalidityProofSpec{
 		ChainID:             big.NewInt(51),
 		ExpectedBlockHeight: 1_000_000_000,
-		PrevStreamHash:      "0x000000000000000000000000000000000000000000000000000000000000000a",
+		PrevFtxRollingHash:  "0x000000000000000000000000000000000000000000000000000000000000000a",
 		FtxNumber:           1678,
 	}
 
