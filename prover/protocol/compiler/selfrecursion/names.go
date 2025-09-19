@@ -122,8 +122,8 @@ func (ctx *SelfRecursionCtx) concatenatedPrecomputedPreimages() ifaces.ColID {
 }
 
 // Name of the MerkleLeaves
-func (ctx *SelfRecursionCtx) merkleLeavesName() ifaces.ColID {
-	name := ifaces.ColIDf("SELFRECURSION_MERKLE_LEAVES_%v", ctx.SelfRecursionCnt)
+func (ctx *SelfRecursionCtx) merkleLeavesName(i int) ifaces.ColID {
+	name := ifaces.ColIDf("SELFRECURSION_MERKLE_LEAVES_%v_%v", ctx.SelfRecursionCnt, i)
 	return maybePrefix(ctx, name)
 }
 
@@ -134,8 +134,8 @@ func (ctx *SelfRecursionCtx) merklePositionsName() ifaces.ColID {
 }
 
 // Name of the MerkleRoots
-func (ctx *SelfRecursionCtx) merkleRootsName() ifaces.ColID {
-	name := ifaces.ColIDf("SELFRECURSION_MERKLE_ROOTS_%v", ctx.SelfRecursionCnt)
+func (ctx *SelfRecursionCtx) merkleRootsName(i int) ifaces.ColID {
+	name := ifaces.ColIDf("SELFRECURSION_MERKLE_ROOTS_%v_%v", ctx.SelfRecursionCnt, i)
 	return maybePrefix(ctx, name)
 }
 
@@ -185,8 +185,8 @@ func (ctx *SelfRecursionCtx) nonSisRoundLinearHashVerificationName(round int) st
 
 // leafConsistencyName returns the name passed to the wizard helper building the
 // leaf consistency verifier.
-func (ctx *SelfRecursionCtx) leafConsistencyName() ifaces.QueryID {
-	name := ifaces.QueryIDf("SELFRECURSION_LINEAR_HASH_LEAF_CONSISTENCY_%v", ctx.SelfRecursionCnt)
+func (ctx *SelfRecursionCtx) leafConsistencyName(i int) ifaces.QueryID {
+	name := ifaces.QueryIDf("SELFRECURSION_LINEAR_HASH_LEAF_%v_CONSISTENCY_%v", i, ctx.SelfRecursionCnt)
 	return maybePrefix(ctx, name)
 }
 

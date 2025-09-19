@@ -282,7 +282,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			offset       = 0
 			preImageEval ifaces.Accessor
 		)
-		if len(ctx.MIMCMetaData.ToHashSizes) > 0 {
+		if len(ctx.Poseidon2MetaData.ToHashSizes) > 0 {
 			ctx.Columns.CollapsedPreimagesNonSis = expr_handle.RandLinCombCol(
 				ctx.Comp,
 				accessors.NewFromCoin(ctx.Coins.Collapse),
@@ -296,10 +296,10 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 				ctx.Columns.CollapsedPreimagesNonSis,
 			)
 
-			for i := range ctx.MIMCMetaData.ToHashSizes {
+			for i := range ctx.Poseidon2MetaData.ToHashSizes {
 				// We add the number of polynomials per non SIS round
 				// to the offset
-				offset += ctx.MIMCMetaData.ToHashSizes[i]
+				offset += ctx.Poseidon2MetaData.ToHashSizes[i]
 			}
 		}
 		/*
@@ -328,7 +328,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 		}
 
 		// preImageEval := preimageNonSisEval + alpha^offset * preImageSisEval
-		if len(ctx.MIMCMetaData.ToHashSizes) > 0 && ctx.Columns.ConcatenatedDhQ != nil {
+		if len(ctx.Poseidon2MetaData.ToHashSizes) > 0 && ctx.Columns.ConcatenatedDhQ != nil {
 			preImageEvalSymb := symbolic.Add(
 				preImageNonSisEval,
 				symbolic.Mul(
@@ -340,9 +340,9 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 				),
 			)
 			preImageEval = accessors.NewFromExpression(preImageEvalSymb, fmt.Sprintf("PREIMAGE_EVAL_%v", ctx.SelfRecursionCnt))
-		} else if len(ctx.MIMCMetaData.ToHashSizes) > 0 && ctx.Columns.ConcatenatedDhQ == nil {
+		} else if len(ctx.Poseidon2MetaData.ToHashSizes) > 0 && ctx.Columns.ConcatenatedDhQ == nil {
 			preImageEval = preImageNonSisEval
-		} else if len(ctx.MIMCMetaData.ToHashSizes) == 0 && ctx.Columns.ConcatenatedDhQ != nil {
+		} else if len(ctx.Poseidon2MetaData.ToHashSizes) == 0 && ctx.Columns.ConcatenatedDhQ != nil {
 			preImageEval = preImageSisEval
 		} else {
 			utils.Panic("There are neither SIS nor non SIS round, this should not happen")

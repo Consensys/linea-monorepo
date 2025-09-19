@@ -19,7 +19,7 @@ const blockSize = 8
 
 func TestLinearHash(t *testing.T) {
 
-	var tohash [blockSize]ifaces.Column
+	var tohash ifaces.Column
 	var expectedhash [blockSize]ifaces.Column
 
 	testcases := []struct {
@@ -36,24 +36,23 @@ func TestLinearHash(t *testing.T) {
 
 		period := tc.period
 		numhash := tc.numhash
-		numRowLarge := utils.NextPowerOfTwo(period * numhash)
+		numRowLarge := utils.NextPowerOfTwo(blockSize * period * numhash)
 		numRowSmall := utils.NextPowerOfTwo(numhash)
 
 		define := func(b *wizard.Builder) {
+			tohash = b.RegisterCommit("TOHASH", numRowLarge)
 			for i := 0; i < blockSize; i++ {
-				tohash[i] = b.RegisterCommit(ifaces.ColIDf("TOHASH_%v", i), numRowLarge)
-
 				expectedhash[i] = b.RegisterCommit(ifaces.ColIDf("HASHED_%v", i), numRowSmall)
 			}
 			linhash.CheckLinearHash(b.CompiledIOP, "test", tohash, period, numhash, expectedhash)
 		}
 
 		prove := func(run *wizard.ProverRuntime) {
-			var ex, th [blockSize][]field.Element
+			th := make([]field.Element, 0, blockSize*numhash*period)
 
+			var ex [blockSize][]field.Element
 			for i := 0; i < blockSize; i++ {
 				ex[i] = make([]field.Element, 0, numhash)
-				th[i] = make([]field.Element, 0, numhash*period)
 			}
 
 			for i := 0; i < numhash; i++ {
@@ -63,21 +62,19 @@ func TestLinearHash(t *testing.T) {
 				segment := vector.Rand(period * blockSize)
 				y := poseidon2.Poseidon2Sponge(segment)
 
+				th = append(th, segment...)
 				for j := 0; j < blockSize; j++ {
 					ex[j] = append(ex[j], y[j])
-					for i := 0; i < period; i++ {
-						th[j] = append(th[j], segment[i*blockSize+j])
-					}
 				}
 			}
+			thSV := smartvectors.RightZeroPadded(th, numRowLarge)
+			run.AssignColumn(tohash.GetColID(), thSV)
 
-			var exSV, thSV [blockSize]smartvectors.SmartVector
+			var exSV [blockSize]smartvectors.SmartVector
 			for i := 0; i < blockSize; i++ {
-				thSV[i] = smartvectors.RightZeroPadded(th[i], numRowLarge)
 				exSV[i] = smartvectors.RightZeroPadded(ex[i], numRowSmall)
 
 				// And assign them
-				run.AssignColumn(tohash[i].GetColID(), thSV[i])
 				run.AssignColumn(expectedhash[i].GetColID(), exSV[i])
 
 			}
