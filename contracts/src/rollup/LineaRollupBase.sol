@@ -8,6 +8,8 @@ import { ILineaRollup } from "./interfaces/ILineaRollup.sol";
 import { PermissionsManager } from "../security/access/PermissionsManager.sol";
 import { LineaNativeYieldExtension } from "../yield/LineaNativeYieldExtension.sol";
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
+import { MessageHashing } from "../messaging/libraries/MessageHashing.sol";
+
 
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
@@ -738,7 +740,7 @@ abstract contract LineaRollupBase is
     }
 
     uint256 messageNumber = nextMessageNumber++;
-    bytes32 messageHash = keccak256(abi.encode(address(this), l2YieldRecipient, 0, _amount, messageNumber, bytes("")));
+    bytes32 messageHash = MessageHashing._hashMessageWithEmptyCalldata(address(this), l2YieldRecipient, 0, _amount, messageNumber);
     
     _addRollingHash(messageNumber, messageHash);
 
