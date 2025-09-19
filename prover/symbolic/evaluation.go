@@ -231,17 +231,33 @@ func (e *evaluation[T]) reset(inputs []sv.SmartVector, chunkStart, chunkStop int
 			if i == 0 {
 				switch na.op.(type) {
 				case Variable:
-
+					input := inputs[inputCursor]
 					switch casted := any(&na.value).(type) {
 					case *chunkBase:
-						sb := inputs[inputCursor].SubVector(chunkStart, chunkStop)
-						sb.WriteInSlice(casted[:chunkLen])
+						switch rv := input.(type) {
+						case *sv.Regular:
+							copy(casted[:chunkLen], (*rv)[chunkStart:chunkStop])
+						default:
+							sb := input.SubVector(chunkStart, chunkStop)
+							sb.WriteInSlice(casted[:chunkLen])
+						}
 					case *chunkExt:
-						input := inputs[inputCursor]
+
 						// if input is rotated, SubVector is expensive so we check for that
-						if rv, ok := input.(*sv.RotatedExt); ok {
+						switch rv := input.(type) {
+						case *sv.Regular:
+							for i := 0; i < chunkLen; i++ {
+								fext.SetFromBase(&casted[i], &(*rv)[chunkStart+i])
+							}
+						case *sv.RotatedExt:
 							rv.WriteSubVectorInSliceExt(chunkStart, chunkStop, casted[:chunkLen])
-						} else {
+						case *sv.RegularExt:
+							copy(casted[:chunkLen], (*rv)[chunkStart:chunkStop])
+						case *sv.ConstantExt:
+							for i := 0; i < chunkLen; i++ {
+								casted[i].Set(&rv.Value)
+							}
+						default:
 							sb := input.SubVector(chunkStart, chunkStop)
 							sb.WriteInSliceExt(casted[:chunkLen])
 						}
@@ -253,7 +269,6 @@ func (e *evaluation[T]) reset(inputs []sv.SmartVector, chunkStart, chunkStop int
 			}
 		}
 	}
-
 }
 
 func (e *evaluation[T]) evaluate() {
