@@ -90,14 +90,14 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
 
   public Optional<RomOperation> getChunkByMetadata(final ContractMetadata metadata) {
     // First search in the chunk added in the current transaction
-    for (RomOperation c : operations.operationsInTransactionBundle()) {
+    for (RomOperation c : operations.operationsInTransactionBundle().keySet()) {
       if (c.metadata().equals(metadata)) {
         return Optional.of(c);
       }
     }
 
     // If not found, search in the chunk added since the beginning of the conflation
-    for (RomOperation c : operations.operationsCommitedToTheConflation()) {
+    for (RomOperation c : operations.operationsCommitedToTheConflation().keySet()) {
       if (c.metadata().equals(metadata)) {
         return Optional.of(c);
       }
