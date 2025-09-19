@@ -231,16 +231,22 @@ func (e *evaluation[T]) reset(inputs []sv.SmartVector, chunkStart, chunkStop int
 			if i == 0 {
 				switch na.op.(type) {
 				case Variable:
-					// leaves, we set the input.
-					// Sanity-check the input should have the correct length
-					sb := inputs[inputCursor].SubVector(chunkStart, chunkStop)
+
 					switch casted := any(&na.value).(type) {
 					case *chunkBase:
+						sb := inputs[inputCursor].SubVector(chunkStart, chunkStop)
 						sb.WriteInSlice(casted[:chunkLen])
 					case *chunkExt:
-						sb.WriteInSliceExt(casted[:chunkLen])
+						input := inputs[inputCursor]
+						// if input is rotated, SubVector is expensive so we check for that
+						if rv, ok := input.(*sv.RotatedExt); ok {
+							rv.WriteSubVectorInSliceExt(chunkStart, chunkStop, casted[:chunkLen])
+						} else {
+							sb := input.SubVector(chunkStart, chunkStop)
+							sb.WriteInSliceExt(casted[:chunkLen])
+						}
 					}
-					// nodeAssignments[0][i].Value = inputs[inputCursor]
+
 					inputCursor++
 					na.hasValue = true
 				}

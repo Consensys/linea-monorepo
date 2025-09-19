@@ -2,7 +2,7 @@ package wizardutils
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -31,16 +31,30 @@ func RandLinCombColSymbolic(x coin.Info, hs []ifaces.Column) *symbolic.Expressio
 // coin value. The function returns the resulting linear combination as a
 // [smartvectors.SmartVector].
 func RandLinCombColAssignment(run *wizard.ProverRuntime, coinVal fext.Element, hs []ifaces.Column) smartvectors.SmartVector {
-	var colTableWit smartvectors.SmartVector
-	var witnessCollapsed smartvectors.SmartVector
+	if len(hs) == 0 {
+		panic("cannot compute random linear combination of zero columns")
+	}
+
 	x := fext.One()
-	witnessCollapsed = smartvectors.NewConstantExt(fext.Zero(), hs[0].Size())
+
+	vColumn := make(vectorext.Vector, hs[0].Size())
+	vWitness := make(vectorext.Vector, hs[0].Size())
+
 	for tableCol := range hs {
-		colTableWit = hs[tableCol].GetColAssignment(run)
-		tempConstant := smartvectors.NewConstantExt(x, hs[0].Size())
-		aux := smartvectors_mixed.MulMixed(colTableWit, tempConstant)
-		witnessCollapsed = smartvectors_mixed.AddMixed(witnessCollapsed, aux)
+		sv := hs[tableCol].GetColAssignment(run)
+		_vColumn := vColumn
+		// if sv is already a regular vector, we can avoid the copy
+		if r, ok := sv.(*smartvectors.RegularExt); ok {
+			_vColumn = vectorext.Vector(*r)
+		} else {
+			sv.WriteInSliceExt(_vColumn)
+		}
+		// vColumn = sv * x
+		// vWitness += vColumn
+		// x *= coinVal
+		vColumn.ScalarMul(_vColumn, &x)
+		vWitness.Add(vWitness, _vColumn)
 		x.Mul(&x, &coinVal)
 	}
-	return witnessCollapsed
+	return smartvectors.NewRegularExt(vWitness)
 }
