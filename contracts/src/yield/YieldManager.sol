@@ -42,7 +42,12 @@ contract YieldManager is IYieldManager {
   function fundYieldProvider(uint256 _amount, address _yieldProvider) external {
     // TODO - Validate withdrawal reserve sufficient
     // TODO - Validate _yieldProvider
-    IYieldProvider(_yieldProvider).fundYieldProvider(_amount);
+    (bool success,) = _yieldProvider.delegatecall(
+      abi.encodeCall(IYieldProvider.fundYieldProvider, (_amount)
+      ));
+     if (!success) {
+      revert DelegateCallFailed();
+     }
   }
 
   /**

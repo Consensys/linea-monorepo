@@ -8,6 +8,11 @@ pragma solidity ^0.8.30;
  */
 interface IYieldManager {
   /**
+   * @dev Thrown when delegatecall to a YieldProvider fails.
+   */
+  error DelegateCallFailed();
+
+  /**
    * @notice Send ETH to the specified yield strategy.
    * @dev YIELD_PROVIDER_FUNDER_ROLE is required to execute.
    * @dev Reverts if the withdrawal reserve is below the minimum threshold.
