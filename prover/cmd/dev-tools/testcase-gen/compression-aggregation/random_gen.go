@@ -66,7 +66,7 @@ type BlobSubmissionSpec struct {
 // InvalidityProofSpec
 type InvalidityProofSpec struct {
 	FtxNumber           int      `json:"ftxNumber"`
-	PrevStreamHash      string   `json:"prevStreamHash"`
+	PrevFtxRollingHash  string   `json:"prevFtxRollingHash"`
 	ChainID             *big.Int `json:"chainID"`
 	ExpectedBlockHeight int      `json:"expectedBlockHeight"`
 }
@@ -142,7 +142,7 @@ type AggregationSpec struct {
 	// FinalBlockHash is the block hash of the last finalized block
 	FinalBlockHash string `json:"finalBlockHash"`
 
-	// ParentStreamHash is the stream hash of the parent aggregation
+	// ParentFtxRollingHash is the stream hash of the parent aggregation
 	ParentAggregationFtxRollingHash string `json:"parentAggregationFtxRollingHash"`
 	ParentAggregationFtxNumber      int    `json:"parentAggregationFtxNumber"`
 
@@ -280,7 +280,7 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 		FromAddresses:           linTypes.EthAddress(fromAddress),
 		InvalidityTypes:         circInvalidity.BadNonce,
 		ExpectedBlockHeight:     uint64(spec.ExpectedBlockHeight),
-		PrevFtxRollingHash:      linTypes.Bytes32FromHex(spec.PrevStreamHash),
+		PrevFtxRollingHash:      linTypes.Bytes32FromHex(spec.PrevFtxRollingHash),
 	}
 
 }
