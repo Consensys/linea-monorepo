@@ -1,6 +1,8 @@
 package bits
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -62,6 +64,7 @@ func (bd *BitDecomposed) Run(run *wizard.ProverRuntime) {
 
 	for x := range v.IterateCompact() {
 
+		fmt.Printf("BitDecompose: processing row %v\n", x.IsNonNeg())
 		if !x.IsNonNeg() {
 			panic("can handle 64 bits at most")
 		}
