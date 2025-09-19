@@ -7,6 +7,33 @@ pragma solidity ^0.8.30;
  * @custom:security-contact security-report@linea.build
  */
 interface ILineaNativeYieldExtension {
+
+  /**
+   * @notice Emitted when ETH send from an authorized funder.
+   * @param funder Address which sent ETH.
+   * @param amount Donation amount.
+   */
+  event FundingReceived(address indexed funder, uint256 amount);
+
+  /**
+   * @notice Emitted when a permissionless ETH donation is received.
+   * @param donor Address which sent the donation.
+   * @param amount Donation amount.
+   */
+  event PermissionlessDonationReceived(address indexed donor, uint256 amount);
+
+  /**
+   * @notice Emitted when a YieldManager address is set.
+   * @param oldYieldManagerAddress The previous YieldManager address.
+   * @param newYieldManagerAddress The new YieldManager address.
+   * @param caller Address which set the YieldManager address.
+   */
+  event YieldManagerChanged(
+    address indexed oldYieldManagerAddress,
+    address indexed newYieldManagerAddress,
+    address indexed caller
+  );
+
   /**
    * @notice Transfer ETH to the registered YieldManager.
    * @dev RESERVE_OPERATOR_ROLE is required to execute.
@@ -37,7 +64,7 @@ interface ILineaNativeYieldExtension {
   /**
    * @notice Set YieldManager address.
    * @dev YIELD_MANAGER_SETTER_ROLE is required to execute.
-   * @param _yieldManager YieldManager address.
+   * @param _newYieldManager YieldManager address.
    */
-  function setYieldManager(address _yieldManager) external;
+  function setYieldManager(address _newYieldManager) external;
 }

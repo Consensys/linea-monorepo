@@ -7,6 +7,7 @@ pragma solidity ^0.8.30;
  * @custom:security-contact security-report@linea.build
  */
 interface IYieldManager {
+
   /**
    * @notice Send ETH to the specified yield strategy.
    * @dev YIELD_PROVIDER_FUNDER_ROLE is required to execute.
@@ -16,6 +17,13 @@ interface IYieldManager {
    * @param _yieldProvider The target yield provider contract.
    */
   function fundYieldProvider(uint256 _amount, address _yieldProvider) external;
+
+  /**
+   * @notice Receive ETH from the withdrawal reserve.
+   * @dev Only accepts calls from the withdrawal reserve.
+   * @dev Reverts if, after transfer, the withdrawal reserve will be below the minimum threshold.
+   */
+  function receiveFundsFromReserve() external payable;
 
   /**
    * @notice Send ETH to the L1MessageService.
