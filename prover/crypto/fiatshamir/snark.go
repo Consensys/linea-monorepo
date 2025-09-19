@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
 
+	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -31,9 +32,10 @@ type GnarkFiatShamir struct {
 // used in the scope of a [frontend.Define] function.
 func NewGnarkFiatShamir(api frontend.API, h hash.StateStorer) *GnarkFiatShamir {
 
-	// if factory == nil {
-	// 	factory = &locmimc.BasicHasherFactory{Api: api}
-	// }
+	if h == nil {
+		tmp, _ := mimc.NewMiMC(api)
+		h = &tmp
+	}
 
 	// hasher := mimc.NewMiMC(api)
 
