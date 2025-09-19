@@ -19,5 +19,10 @@ const (
 	LargeSuffix = "large"
 
 	// Limitless prover stuffs
-	WitnessDir = "/tmp/witnesses"
+	WitnessDir = "/tmp/witness"
+
+	WitnessGLDirPrefix  = "/tmp/witness/GL"
+	WitnessLPPDirPrefix = "/tmp/witness/LPP"
+
+	MetadataDirPrefix = "/tmp/metadata"
 )

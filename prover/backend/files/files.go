@@ -2,12 +2,68 @@ package files
 
 import (
 	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
+	"regexp"
 
+	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/sirupsen/logrus"
 )
+
+// WriteJSONFileAtomic writes `v` to `path` atomically.
+// It creates a temporary file in the same directory and renames it to the final path.
+func WriteJSONFileAtomic(path string, v any) error {
+	dir := filepath.Dir(path)
+	tmpFile, err := os.CreateTemp(dir, config.InProgressSufix)
+	if err != nil {
+		return fmt.Errorf("create temp file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+
+	enc := json.NewEncoder(tmpFile)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(v); err != nil {
+		tmpFile.Close()
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("encode json: %w", err)
+	}
+
+	if err := tmpFile.Sync(); err != nil {
+		tmpFile.Close()
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("sync temp file: %w", err)
+	}
+
+	if err := tmpFile.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("close temp file: %w", err)
+	}
+
+	if err := os.Rename(tmpPath, path); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("rename temp file: %w", err)
+	}
+
+	return nil
+}
+
+// --------- Helper ----
+
+// parseSbrEbr extracts sbr/ebr from names like 22504197-22504198-...-getZkProof.json
+var regExSBEB = regexp.MustCompile(
+	`(^|.*/)(\d+)-(\d+)-.*-(getZkProof|getZkBlobCompressionProof|getZkAggregatedProof)\.json$`,
+)
+
+func ParseSbrEbr(reqFilePath string) (sbr, ebr string, _ error) {
+	m := regExSBEB.FindStringSubmatch(reqFilePath)
+	if m == nil {
+		return "", "", fmt.Errorf("unable to parse sbr/ebr from %s", reqFilePath)
+	}
+	return m[2], m[3], nil
+}
 
 // CheckFilePath checks whether the provided filePath points to an existing file.
 func CheckFilePath(filePath string) error {

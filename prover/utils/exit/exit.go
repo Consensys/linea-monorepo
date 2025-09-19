@@ -87,7 +87,7 @@ func OnUnsatisfiedConstraints(err error) {
 
 	if currentIssueHandlingMode&ExitOnUnsatisfiedConstraint > 0 {
 
-		logrus.Errorf("[UNSATISFIED CONSTRAINTS] An unsatisfied constraint has been report. Going to exit. err=%v", err.Error())
+		logrus.Errorf("[UNSATISFIED CONSTRAINTS] An unsatisfied constraint has been reported. Going to exit. err=%v", err.Error())
 
 		// The print stack is really useful to help locating where the problem
 		// originates from.
