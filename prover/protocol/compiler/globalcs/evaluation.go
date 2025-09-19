@@ -94,7 +94,7 @@ func declareUnivariateQueries(
 
 // Run computes the evaluation of the univariate queries and implements the
 // [wizard.ProverAction] interface.
-func (pa EvaluationProver) Run(run *wizard.ProverRuntime) {
+func (pa *EvaluationProver) Run(run *wizard.ProverRuntime) {
 
 	var (
 		stoptimer = profiling.LogTimer("Evaluate the queries for the global constraints")

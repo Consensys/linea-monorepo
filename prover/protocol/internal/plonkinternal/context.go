@@ -366,7 +366,7 @@ func (ctx *compilationCtx) buildPermutation(spr *cs.SparseR1CS, pt *plonkBLS12_3
 // contrary case.
 func (ctx compilationCtx) GetPlonkProverAction() PlonkInWizardProverAction {
 	if ctx.HasCommitment() {
-		return InitialBBSProverAction{
+		return &InitialBBSProverAction{
 			GenericPlonkProverAction: ctx.GenericPlonkProverAction(),
 			ProverStateLock:          &sync.Mutex{},
 		}

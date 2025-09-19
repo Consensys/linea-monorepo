@@ -35,7 +35,7 @@ type ReassignPrecomputedRootAction struct {
 	*Ctx
 }
 
-func (r ReassignPrecomputedRootAction) Run(run *wizard.ProverRuntime) {
+func (r *ReassignPrecomputedRootAction) Run(run *wizard.ProverRuntime) {
 	run.AssignColumn(
 		r.Items.Precomputeds.MerkleRoot.GetColID(),
 		smartvectors.NewConstant(r.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedValue, 1),

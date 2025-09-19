@@ -235,7 +235,7 @@ func (u *UnivariateTestcase) Define(comp *wizard.CompiledIOP) {
 		polys[i] = comp.InsertCommit(round, name, u.Polys[i].Len())
 
 		if round > 0 {
-			comp.RegisterProverAction(round, autoAssignColumn{
+			comp.RegisterProverAction(round, &autoAssignColumn{
 				col: polys[i],
 				sv:  u.Polys[i],
 			})
@@ -260,7 +260,7 @@ func (u *UnivariateTestcase) Define(comp *wizard.CompiledIOP) {
 		)
 
 		if maxRound > 0 {
-			comp.RegisterProverAction(maxRound, assignUnivariatePA{u, i})
+			comp.RegisterProverAction(maxRound, &assignUnivariatePA{u, i})
 		}
 	}
 }
@@ -330,4 +330,4 @@ type assignUnivariatePA struct {
 	i int
 }
 
-func (pa assignUnivariatePA) Run(run *wizard.ProverRuntime) { pa.u.assignUnivariate(run, pa.i) }
+func (pa *assignUnivariatePA) Run(run *wizard.ProverRuntime) { pa.u.assignUnivariate(run, pa.i) }

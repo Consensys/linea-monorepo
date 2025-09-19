@@ -170,12 +170,12 @@ func compileHornerQuery(comp *wizard.CompiledIOP, q *query.Horner) {
 		ctx.CountingInnerProducts = append(ctx.CountingInnerProducts, ip)
 	}
 
-	comp.RegisterProverAction(iPRound, AssignHornerIP{ctx})
-	comp.RegisterProverAction(q.Round, AssignHornerCtx{ctx})
+	comp.RegisterProverAction(iPRound, &AssignHornerIP{ctx})
+	comp.RegisterProverAction(q.Round, &AssignHornerCtx{ctx})
 	comp.RegisterVerifierAction(q.Round, &CheckHornerResult{HornerCtx: ctx})
 }
 
-func (a AssignHornerCtx) Run(run *wizard.ProverRuntime) {
+func (a *AssignHornerCtx) Run(run *wizard.ProverRuntime) {
 
 	var (
 		params = run.GetHornerParams(a.Q.ID)
@@ -245,7 +245,7 @@ func (a AssignHornerCtx) Run(run *wizard.ProverRuntime) {
 	}
 }
 
-func (a AssignHornerIP) Run(run *wizard.ProverRuntime) {
+func (a *AssignHornerIP) Run(run *wizard.ProverRuntime) {
 
 	for i := range a.Q.Parts {
 

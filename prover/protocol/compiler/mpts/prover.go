@@ -27,7 +27,7 @@ type RandomPointEvaluation struct {
 	*MultipointToSinglepointCompilation
 }
 
-func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
+func (qa *QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 
 	var (
 		rho = run.GetRandomCoinField(qa.LinCombCoeffRho.Name)
@@ -209,7 +209,7 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 	run.AssignColumn(qa.Quotient.GetColID(), smartvectors.NewRegular(quotient))
 }
 
-func (re RandomPointEvaluation) Run(run *wizard.ProverRuntime) {
+func (re *RandomPointEvaluation) Run(run *wizard.ProverRuntime) {
 
 	var (
 		r        = run.GetRandomCoinField(re.EvaluationPoint.Name)

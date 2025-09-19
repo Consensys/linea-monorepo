@@ -42,7 +42,7 @@ type ProverTaskAtRound struct {
 // a goroutine for each tasks and wait for all of them to finish. The approach
 // for parallelization can be justified if the number of go-routines stays low
 // (e.g. less than 1000s).
-func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
+func (p *ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(p.numTasks())
@@ -169,7 +169,7 @@ type MAssignmentTask struct {
 // In case one of the Ss contains an entry that does not appear in T, the
 // function panics. This aims at early detecting that the lookup query is not
 // satisfied.
-func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
+func (a *MAssignmentTask) Run(run *wizard.ProverRuntime) {
 
 	var (
 		// isMultiColumn flags whether the table have multiple column and
@@ -361,7 +361,7 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 // sigmaAssignment
 type ZAssignmentTask ZCtx
 
-func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
+func (z *ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 	parallel.Execute(len(z.ZDenominatorBoarded), func(start, stop int) {
 		for frag := start; frag < stop; frag++ {
 

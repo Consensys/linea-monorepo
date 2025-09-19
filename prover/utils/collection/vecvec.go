@@ -33,7 +33,7 @@ func (v *VecVec[T]) GetInner() [][]T {
 	return v.Inner
 }
 
-// Returns the inner double-slice
+// Returns the length of the inner double-slice
 func (v *VecVec[T]) Len() int {
 	return len(v.Inner)
 }

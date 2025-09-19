@@ -172,6 +172,8 @@ func init() {
 	RegisterImplementation(bigrange.BigRangeProverAction{})
 	RegisterImplementation(ded.AssignPIPProverAction{})
 	RegisterImplementation(keccak.ShakiraProverAction{})
+	RegisterImplementation(vortex.ColumnAssignmentProverAction{})
+	RegisterImplementation(vortex.LinearCombinationComputationProverAction{})
 
 	// Smartvectors
 	RegisterImplementation(smartvectors.Regular{})
@@ -364,11 +366,9 @@ func RegisterImplementation(instance any) {
 	}
 
 	registeredTypeName := getPkgPathAndTypeName(instance)
-
 	if implementationRegistry.Exists(registeredTypeName) {
 		return
 	}
-
 	implementationRegistry.InsertNew(registeredTypeName, reflect.TypeOf(instance))
 }
 

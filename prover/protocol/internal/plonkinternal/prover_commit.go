@@ -50,7 +50,7 @@ type (
 
 // Run initializes the circuit assignment in the case where the the circuit uses
 // BBS22 commitment.
-func (pa InitialBBSProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []witness.Witness) {
+func (pa *InitialBBSProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []witness.Witness) {
 
 	if pa.ExternalHasherOption.Enabled {
 		solver.RegisterHint(mimc.MimcHintfunc)
@@ -124,7 +124,7 @@ func (pa InitialBBSProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []
 }
 
 // Run implements the [wizard.ProverAction] interface
-func (pa LROCommitProverAction) Run(run *wizard.ProverRuntime) {
+func (pa *LROCommitProverAction) Run(run *wizard.ProverRuntime) {
 
 	ctx := pa
 

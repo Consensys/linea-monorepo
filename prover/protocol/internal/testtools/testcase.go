@@ -147,7 +147,7 @@ type autoAssignColumn struct {
 	sv  smartvectors.SmartVector
 }
 
-func (ac autoAssignColumn) Run(run *wizard.ProverRuntime) {
+func (ac *autoAssignColumn) Run(run *wizard.ProverRuntime) {
 	name := ac.col.GetColID()
 	run.AssignColumn(name, ac.sv)
 }
