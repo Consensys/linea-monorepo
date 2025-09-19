@@ -73,12 +73,12 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, nbTasks ...int) sv.S
 
 		// special case: if totalSize is small enough, we do not need to chunk
 		if totalSize < maxChunkSize {
-			solver := newEvaluation[chunkBase](b)
+			eval := newEvaluation[chunkBase](b)
 
-			solver.reset(inputs, 0, totalSize, b)
-			solver.evaluate()
+			eval.reset(inputs, 0, totalSize, b)
+			eval.evaluate()
 
-			copy(res[:totalSize], solver.nodes[len(b.Nodes)-1][0].value[:totalSize])
+			copy(res[:totalSize], eval.nodes[len(b.Nodes)-1][0].value[:totalSize])
 			if totalSize == 1 {
 				return sv.NewConstant(res[0], 1)
 			}
@@ -99,16 +99,16 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, nbTasks ...int) sv.S
 
 		parallel.Execute(numChunks, func(start, stop int) {
 
-			solver := newEvaluation[chunkBase](b)
+			eval := newEvaluation[chunkBase](b)
 			for chunkID := start; chunkID < stop; chunkID++ {
 
 				chunkStart := chunkID * maxChunkSize
 				chunkStop := (chunkID + 1) * maxChunkSize
 
-				solver.reset(inputs, chunkStart, chunkStop, b)
-				solver.evaluate()
+				eval.reset(inputs, chunkStart, chunkStop, b)
+				eval.evaluate()
 
-				copy(res[chunkStart:chunkStop], solver.nodes[len(b.Nodes)-1][0].value[:])
+				copy(res[chunkStart:chunkStop], eval.nodes[len(b.Nodes)-1][0].value[:])
 			}
 
 		}, numCpus)
@@ -120,12 +120,12 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, nbTasks ...int) sv.S
 
 	// special case: if totalSize is small enough, we do not need to chunk
 	if totalSize < maxChunkSize {
-		solver := newEvaluation[chunkExt](b)
+		eval := newEvaluation[chunkExt](b)
 
-		solver.reset(inputs, 0, totalSize, b)
-		solver.evaluate()
+		eval.reset(inputs, 0, totalSize, b)
+		eval.evaluate()
 
-		copy(res[:totalSize], solver.nodes[len(b.Nodes)-1][0].value[:totalSize])
+		copy(res[:totalSize], eval.nodes[len(b.Nodes)-1][0].value[:totalSize])
 		if totalSize == 1 {
 			return sv.NewConstantExt(res[0], 1)
 		}
@@ -140,16 +140,16 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, nbTasks ...int) sv.S
 
 	parallel.Execute(numChunks, func(start, stop int) {
 
-		solver := newEvaluation[chunkExt](b)
+		eval := newEvaluation[chunkExt](b)
 		for chunkID := start; chunkID < stop; chunkID++ {
 
 			chunkStart := chunkID * maxChunkSize
 			chunkStop := (chunkID + 1) * maxChunkSize
 
-			solver.reset(inputs, chunkStart, chunkStop, b)
-			solver.evaluate()
+			eval.reset(inputs, chunkStart, chunkStop, b)
+			eval.evaluate()
 
-			copy(res[chunkStart:chunkStop], solver.nodes[len(b.Nodes)-1][0].value[:])
+			copy(res[chunkStart:chunkStop], eval.nodes[len(b.Nodes)-1][0].value[:])
 		}
 
 	})
