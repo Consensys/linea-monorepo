@@ -21,14 +21,9 @@ type HasherFactory interface {
 	NewHasher() ghash.StateStorer
 }
 
-// ExternalHasherFactory is an implementation of the HasherFactory interface
-// that tags the variables happening in a MiMC hasher claim.
-type ExternalHasherFactory struct {
-	Api frontend.API
-}
-
 // ExternalHasher is an implementation of the [ghash.StateStorer] interface
 // that tags the variables happening in a MiMC hasher claim.
+// @thomas seems like it is a merkleDamgardHasher, implementing the StateStorer interface
 type ExternalHasher struct {
 	api   frontend.API
 	data  []frontend.Variable
@@ -66,8 +61,8 @@ type storeCommitBuilder interface {
 }
 
 // NewHasher returns an external MiMC hasher.
-func (f *ExternalHasherFactory) NewHasher() ghash.StateStorer {
-	return &ExternalHasher{api: f.Api, state: frontend.Variable(0)}
+func NewHasher(api frontend.API) ghash.StateStorer {
+	return &ExternalHasher{api: api, state: frontend.Variable(0)}
 }
 
 // Writes fields elements into the hasher; implements [hash.FieldHasher]

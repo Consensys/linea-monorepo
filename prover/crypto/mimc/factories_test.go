@@ -18,10 +18,7 @@ type externalMimcFactoryTestLinear struct {
 func (circuit *externalMimcFactoryTestLinear) Define(api frontend.API) error {
 
 	var (
-		factory = &ExternalHasherFactory{Api: api}
-		// factoryBasic = &BasicHasherFactory{Api: api}
-		hasher = factory.NewHasher()
-		// hasherBasic    = factoryBasic.NewHasher()
+		hasher         = NewHasher(api)
 		hasherBasic, _ = mimc.NewMiMC(api)
 	)
 
