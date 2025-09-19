@@ -27,7 +27,7 @@ type Metadata struct {
 	NumLPP     int    `json:"numLPP"`
 }
 
-func Bootstrap(cfg *config.Config, req *execution.Request, metadata Metadata) error {
+func RunBootstrapper(cfg *config.Config, req *execution.Request, metadata Metadata) error {
 
 	// Set MonitorParams before any proving happens
 	profiling.SetMonitorParams(cfg)
@@ -50,7 +50,7 @@ func Bootstrap(cfg *config.Config, req *execution.Request, metadata Metadata) er
 
 	logrus.Info("Starting to run the bootstrapper")
 
-	numGL, numLPP, err := bootstrap(cfg, witness.ZkEVM, metadata)
+	numGL, numLPP, err := initBootstrap(cfg, witness.ZkEVM, metadata)
 	if err != nil {
 		return fmt.Errorf("error during bootstrap:%s", err.Error())
 	}
@@ -70,7 +70,7 @@ func Bootstrap(cfg *config.Config, req *execution.Request, metadata Metadata) er
 	return nil
 }
 
-func bootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata Metadata) (numGL, numLPP int, err error) {
+func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata Metadata) (numGL, numLPP int, err error) {
 
 	// TODO: This call will goaway once we implement `mmap` optimization in the controller process
 	// By this way, we ensure the static prover assets are loaded into memory only once and it is passed as `memfd`
@@ -78,13 +78,11 @@ func bootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata Metadat
 	assets := &zkevm.LimitlessZkEVM{}
 	loadStaticProverAssetsFromDisk(cfg, assets)
 
-	// The GL and LPP modules are loaded in the background immediately but we
-	// only need them for the [distributed.SegmentRuntime] call.
-	distDone := make(chan error)
-	go func() {
-		err := assets.LoadBlueprints(cfg)
-		distDone <- err
-	}()
+	// Load blueprints in background, we only need them after bootstrapping succeeds.
+	eg, ctx := errgroup.WithContext(context.Background())
+	eg.Go(func() error {
+		return assets.LoadBlueprints(cfg)
+	})
 
 	// The function initially attempt to run the bootstrapper directly and will
 	// catch "limit-overflow" panic msgs. When they happen, we retry running
@@ -135,15 +133,16 @@ func bootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata Metadat
 		}()
 	}
 
+	// Wait for blueprints to finish before freeing assets
+	if err := eg.Wait(); err != nil {
+		utils.Panic("could not load GL and LPP blueprint modules: %v", err)
+	}
+
 	// This frees the memory from the assets that are no longer needed. We don't
 	// need to do that for the module GLs and LPPs because they are thrown away
 	// when the current function returns.
 	assets.Zkevm = nil
 	assets.DistWizard.Bootstrapper = nil
-
-	if err := <-distDone; err != nil {
-		utils.Panic("could not load GL and LPP blueprint modules: %v", err)
-	}
 
 	logrus.Infof("Segmenting the runtime")
 	witnessGLs, witnessLPPs := distributed.SegmentRuntime(
@@ -154,56 +153,58 @@ func bootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata Metadat
 	)
 
 	logrus.Info("Saving the witnesses")
-	eg, ctx := errgroup.WithContext(context.Background())
+	wg, ctx := errgroup.WithContext(ctx)
+	wg.SetLimit(12) // We expect on avg. 12 GL and 12 LPP witnesses per request
 
 	for i, witnessGL := range witnessGLs {
 		i := i
-		eg.Go(func() error {
+		wg.Go(func() error {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
 			default:
+
+				fileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-witness.bin", metadata.StartBlock, metadata.EndBlock, i, witnessGL.ModuleIndex)
+				filePath := path.Join(config.WitnessGLDirPrefix, string(witnessGL.ModuleName), fileName)
+
+				// Clean up anuy prev. witness file before starting. This helps addressing the situation
+				// where a previous process have been interrupted.
+				_ = os.Remove(filePath)
+
+				if err := serialization.StoreToDisk(filePath, *witnessGL, true); err != nil {
+					return fmt.Errorf("could not save witnessGL: %w", err)
+				}
+				witnessGL = nil
+				return nil
 			}
-
-			fileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-witness.bin", metadata.StartBlock, metadata.EndBlock, i, witnessGL.ModuleIndex)
-			filePath := path.Join(config.WitnessGLDirPrefix, string(witnessGL.ModuleName), fileName)
-
-			// Clean up anuy prev. witness file before starting. This helps addressing the situation
-			// where a previous process have been interrupted.
-			os.Remove(filePath)
-
-			if err := serialization.StoreToDisk(filePath, *witnessGL, true); err != nil {
-				return fmt.Errorf("could not save witnessGL: %w", err)
-			}
-			witnessGL = nil
-			return nil
 		})
 	}
 
 	for i, witnessLPP := range witnessLPPs {
 		i := i
-		eg.Go(func() error {
+		wg.Go(func() error {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
 			default:
-			}
 
-			fileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-witness.bin", metadata.StartBlock, metadata.EndBlock, i, witnessLPP.ModuleIndex)
-			filePath := path.Join(config.WitnessLPPDirPrefix, string(witnessLPP.ModuleName[0]), fileName)
+				fileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-witness.bin", metadata.StartBlock, metadata.EndBlock, i, witnessLPP.ModuleIndex)
+				filePath := path.Join(config.WitnessLPPDirPrefix, string(witnessLPP.ModuleName[0]), fileName)
 
-			// Clean up anuy prev. witness file before starting. This helps addressing the situation
-			// where a previous process have been interrupted.
-			os.Remove(filePath)
-			if err := serialization.StoreToDisk(filePath, *witnessLPP, true); err != nil {
-				return fmt.Errorf("could not save witnessLPP: %w", err)
+				// Clean up anuy prev. witness file before starting. This helps addressing the situation
+				// where a previous process have been interrupted.
+				_ = os.Remove(filePath)
+				if err := serialization.StoreToDisk(filePath, *witnessLPP, true); err != nil {
+					return fmt.Errorf("could not save witnessLPP: %w", err)
+				}
+
+				witnessLPP = nil
+				return nil
 			}
-			witnessLPP = nil
-			return nil
 		})
 	}
 
-	if err := eg.Wait(); err != nil {
+	if err := wg.Wait(); err != nil {
 		return 0, 0, fmt.Errorf("could not save witnesses: %v", err)
 	}
 
