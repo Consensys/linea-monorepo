@@ -164,8 +164,8 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
                   }
                 }
               });
-      currSelector.set(null);
     } finally {
+      currSelector.set(null);
       if (isSelectionInterrupted()) {
         // finally consume the interrupt
         Thread.currentThread().interrupt();
