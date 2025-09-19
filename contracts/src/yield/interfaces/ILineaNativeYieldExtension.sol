@@ -35,6 +35,18 @@ interface ILineaNativeYieldExtension {
   );
 
   /**
+   * @notice Emitted when the L2YieldRecipient address is set.
+   * @param oldL2YieldRecipientAddress The previous L2YieldRecipient address.
+   * @param newL2YieldRecipientAddress The new L2YieldRecipient address.
+   * @param caller Address which set the L2YieldRecipient address.
+   */
+  event L2YieldRecipientChanged(
+    address indexed oldL2YieldRecipientAddress,
+    address indexed newL2YieldRecipientAddress,
+    address indexed caller
+  );
+
+  /**
    * @dev Thrown when the caller is not the YieldManager.
    */
   error CallerIsNotYieldManager();
@@ -72,4 +84,11 @@ interface ILineaNativeYieldExtension {
    * @param _newYieldManager YieldManager address.
    */
   function setYieldManager(address _newYieldManager) external;
+
+  /**
+   * @notice Set l2YieldRecipient address.
+   * @dev L2_YIELD_RECIPIENT_SETTER_ROLE is required to execute.
+   * @param _newL2YieldRecipient L2YieldRecipient address.
+   */
+  function setL2YieldRecipient(address _newL2YieldRecipient) external;
 }

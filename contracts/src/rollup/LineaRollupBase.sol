@@ -7,8 +7,8 @@ import { ZkEvmV2 } from "./ZkEvmV2.sol";
 import { ILineaRollup } from "./interfaces/ILineaRollup.sol";
 import { PermissionsManager } from "../security/access/PermissionsManager.sol";
 import { LineaNativeYieldExtension } from "../yield/LineaNativeYieldExtension.sol";
-
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
+
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
  * @author ConsenSys Software Inc.
@@ -725,5 +725,23 @@ abstract contract LineaRollupBase is
 
       publicInput := mod(keccak256(mPtr, 0x180), MODULO_R)
     }
+  }
+
+  /**
+   * @notice Report native yield earned for L2 distribution by emitting a synthetic `MessageSent` event.
+   * @dev Callable only by the registered YieldManager.
+   * @param _amount The net earned yield.
+   */
+  function reportNativeYield(uint256 _amount) external {
+    if (msg.sender != yieldManager) {
+      revert CallerIsNotYieldManager();
+    }
+
+    uint256 messageNumber = nextMessageNumber++;
+    bytes32 messageHash = keccak256(abi.encode(address(this), l2YieldRecipient, 0, _amount, messageNumber, bytes("")));
+    
+    _addRollingHash(messageNumber, messageHash);
+
+    emit MessageSent(msg.sender, l2YieldRecipient, 0, _amount, messageNumber, hex"", messageHash);
   }
 }
