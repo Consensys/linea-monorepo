@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"runtime"
 	"sync"
-	"sync/atomic"
+	"unsafe"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
@@ -194,7 +194,6 @@ func generateQuotientShares(comp *wizard.CompiledIOP, ratios []int, domainSize i
 	return quotientShares
 }
 
-// Run implements the [wizard.ProverAction] interface and embeds the logic to
 // compute the quotient shares.
 func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 
@@ -252,13 +251,11 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 	annulatorInvVals := fastpolyext.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
 	annulatorInvVals = fext.ParBatchInvert(annulatorInvVals, runtime.GOMAXPROCS(0))
 
-	// this space we allocate, always to avoid relying on a pool with syncs, and fragmented memory
-	// or too many allocs.
-	scratch := make([]fext.Element, len(ctx.AllInvolvedRoots)*ctx.DomainSize)
+	scratch := utils.NewScratch[fext.Element](ctx.DomainSize, len(ctx.AllInvolvedRoots))
 
 	for i := 0; i < maxRatio; i++ {
-		// we use Atomic add on this to determine the next free slot in our scratch space
-		var scratchOffset int64
+		// reset the scratch offset for this round
+		scratch.Reset()
 
 		// use sync map to store the coset evaluated polynomials
 		var group singleflight.Group
@@ -286,31 +283,6 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 			shift := computeShift(uint64(ctx.DomainSize), ratio, share)
 			domain := fft.NewDomain(uint64(ctx.DomainSize), fft.WithShift(shift), fft.WithCache())
 
-			computeRoot := func(name ifaces.ColID) (any, error) {
-				_v, _ := coeffs.Load(name)
-				v := _v.(sv.SmartVector)
-				n := atomic.AddInt64(&scratchOffset, 1)
-				start := (n - 1) * int64(ctx.DomainSize)
-				end := n * int64(ctx.DomainSize)
-				var reevaledRoot []fext.Element
-				if end > int64(len(scratch)) {
-					reevaledRoot = make([]fext.Element, ctx.DomainSize)
-				} else {
-					reevaledRoot = scratch[start:end]
-				}
-
-				// TODO @gbotrel coeffs are mostly base vectors;
-				// but the code in eval somewhere can't mix well ext and base,
-				// we could save additional memory here.
-				v.WriteInSliceExt(reevaledRoot)
-				domain.FFTExt(reevaledRoot, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
-
-				res := smartvectors.NewRegularExt(reevaledRoot)
-				computedReeval.Store(name, res)
-
-				return res, nil
-			}
-
 			ppool.ExecutePoolChunky(len(handles), func(k int) {
 
 				pol := handles[k]
@@ -319,7 +291,37 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 				root := column.RootParents(pol)
 				rootName := root.GetColID()
 
-				reevaledRoot, _, _ := group.Do(string(rootName), func() (interface{}, error) { return computeRoot(rootName) })
+				reevaledRoot, _, _ := group.Do(string(rootName), func() (interface{}, error) {
+					// load the coeff
+					_v, _ := coeffs.Load(rootName)
+					vCoeffs := _v.(sv.SmartVector)
+
+					// use a scratch space if possible
+					reevaledRoot := scratch.NewVector()
+
+					// most of the coeffs are regular, so we optimize for that case
+					// and do a fft on the base field.
+					if vr, ok := vCoeffs.(*sv.Regular); ok {
+						vBase := field.Vector(unsafe.Slice((*field.Element)(unsafe.Pointer(&reevaledRoot[0])), ctx.DomainSize))
+						copy(vBase, *vr)
+						domain.FFT(vBase, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
+
+						// since vBase and reevaledRoot share the same memory, we need to
+						// copy the values backwards
+						// to avoid overwriting values we still need to read.
+						for i := ctx.DomainSize - 1; i >= 0; i-- {
+							fext.SetFromBase(&reevaledRoot[i], &vBase[i])
+						}
+					} else {
+						vCoeffs.WriteInSliceExt(reevaledRoot)
+						domain.FFTExt(reevaledRoot, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
+					}
+
+					res := smartvectors.NewRegularExt(reevaledRoot)
+					computedReeval.Store(rootName, res)
+
+					return res, nil
+				})
 
 				// Now, we can reuse a soft-rotation of the smart-vector to save memory
 				if !pol.IsComposite() {
