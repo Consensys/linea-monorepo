@@ -101,6 +101,7 @@ func init() {
 	RegisterImplementation(verifiercol.FromYs{})
 	RegisterImplementation(verifiercol.FromAccessors{})
 	RegisterImplementation(verifiercol.ExpandedVerifCol{})
+	// Todo: add expand_proof_and_verifyingkey_col
 	RegisterImplementation(verifiercol.RepeatedAccessor{})
 
 	// Queries

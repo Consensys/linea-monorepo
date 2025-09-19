@@ -55,6 +55,12 @@ func TestSplitterGlobalWithVerifColAndPeriodic(t *testing.T) {
 	testStitcher(t, 8, 16, globalWithVerifColAndPeriodic(256, 8, 7))
 }
 
+func TestStitcherGlobalWithProofCol(t *testing.T) {
+	testStitcher(t, 8, 64, globalWithProofCols(8))
+	// testStitcher(t, 64, 128, globalWithProofCols(16))
+	// testStitcher(t, 8, 16, globalWithProofCols(32))
+}
+
 func TestLocalEvalWithStatus(t *testing.T) {
 	// Set log level to Info to capture detailed logs during the test
 	logrus.SetLevel(logrus.DebugLevel)
@@ -307,6 +313,32 @@ func globalWithPeriodicSample(size, period, offset int) func() (wizard.DefineFun
 				}
 			}
 			run.AssignColumn(P1, smartvectors.NewRegular(v))
+		}
+
+		return builder, prover
+	}
+}
+
+func globalWithProofCols(size int) func() (wizard.DefineFunc, wizard.MainProverStep) {
+	return func() (wizard.DefineFunc, wizard.MainProverStep) {
+
+		builder := func(build *wizard.Builder) {
+			P1 := build.RegisterCommit(P1, size) // overshadows P
+			P2 := build.CompiledIOP.InsertProof(0, P2, size)
+			_ = build.GlobalConstraint(GLOBAL1, sym.Mul(P1, P2))
+		}
+
+		prover := func(run *wizard.ProverRuntime) {
+			v1 := vector.Repeat(field.Zero(), size)
+			v2 := vector.Repeat(field.Zero(), size)
+			for i := 0; i < size; i++ {
+				if i%2 == 0 {
+					v1[i].SetZero()
+					v2[i].SetOne()
+				}
+			}
+			run.AssignColumn(P1, smartvectors.NewRegular(v1))
+			run.AssignColumn(P2, smartvectors.NewRegular(v2))
 		}
 
 		return builder, prover

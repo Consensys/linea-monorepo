@@ -116,7 +116,6 @@ func (a *StitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
 			continue
 		}
 
-
 		// get the assignment of the subColumns and interleave them
 		witnesses := make([]smartvectors.SmartVector, len(subColumns))
 		for i := range witnesses {
