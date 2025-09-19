@@ -16,11 +16,15 @@
 package net.consensys.linea.zktracer.module.hub;
 
 import net.consensys.linea.zktracer.ChainConfig;
+import net.consensys.linea.zktracer.module.blockdata.module.Blockdata;
+import net.consensys.linea.zktracer.module.blockdata.module.ShanghaiBlockData;
+import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.section.create.ShanghaiCreateSection;
 import net.consensys.linea.zktracer.module.hub.section.txInitializationSection.ShanghaiInitializationSection;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
 import net.consensys.linea.zktracer.module.txndata.TxnDataOperation;
 import net.consensys.linea.zktracer.module.txndata.shanghai.ShanghaiTxnData;
+import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.gascalculator.ShanghaiGasCalculator;
@@ -34,6 +38,11 @@ public class ShanghaiHub extends ParisHub {
   @Override
   protected GasCalculator setGasCalculator() {
     return new ShanghaiGasCalculator();
+  }
+
+  @Override
+  protected Blockdata setBlockData(Hub hub, Wcp wcp, Euc euc, ChainConfig chain) {
+    return new ShanghaiBlockData(hub, wcp, euc, chain);
   }
 
   @Override
