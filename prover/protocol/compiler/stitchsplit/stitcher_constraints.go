@@ -68,7 +68,7 @@ func (ctx StitchingContext) LocalOpening() {
 
 }
 
-func (ctx StitchingContext)  LocalGlobalConstraints() {
+func (ctx StitchingContext) LocalGlobalConstraints() {
 	for _, qName := range ctx.Comp.QueriesNoParams.AllUnignoredKeys() {
 
 		q := ctx.Comp.QueriesNoParams.Data(qName)
@@ -157,7 +157,7 @@ func (ctx StitchingContext)  LocalGlobalConstraints() {
 
 // Takes a sub column and returns the stitching column.
 // The stitching column is shifted in such a way that the first row agrees with the first row of the sub column.
-// i.e., such stitching column agrees with the the sub column up to a subsampling with offset zero.
+// i.e., such stitching column agrees with the sub column up to a subsampling with offset zero.
 // The col should only be either verifiercol or eligible col.
 // option is always empty, and used only for the recursive calls over the shifted columns.
 func getStitchingCol(ctx StitchingContext, col ifaces.Column, option ...int) ifaces.Column {
@@ -221,9 +221,11 @@ func (ctx *StitchingContext) adjustExpression(
 	newExpr *symbolic.Expression,
 ) {
 
-	board := expr.Board()
-	metadata := board.ListVariableMetadata()
-	replaceMap := collection.NewMapping[string, *symbolic.Expression]()
+	var (
+		board      = expr.Board()
+		metadata   = board.ListVariableMetadata()
+		replaceMap = collection.NewMapping[string, *symbolic.Expression]()
+	)
 
 	for i := range metadata {
 		switch m := metadata[i].(type) {

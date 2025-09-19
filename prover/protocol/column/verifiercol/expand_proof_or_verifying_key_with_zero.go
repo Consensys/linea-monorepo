@@ -40,7 +40,6 @@ func (ex ExpandedProofOrVerifyingKeyColWithZero) Size() int {
 }
 
 // GetColAssignment returns the assignment of the current column
-// Todo: Base columns are proof columns
 func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 	assi := ex.Col.GetColAssignment(run)
 	values := make([][]field.Element, ex.Expansion)

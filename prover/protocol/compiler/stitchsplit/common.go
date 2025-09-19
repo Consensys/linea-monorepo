@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -91,7 +92,6 @@ func IsExprEligible(
 	)
 
 	for i := range metadata {
-		// ToDo(fix): default case missing for both the switches
 		switch m := metadata[i].(type) {
 		// reminder: [verifiercol.VerifierCol] , [column.Natural] and [column.Shifted]
 		// all implement [ifaces.Column]
@@ -112,14 +112,15 @@ func IsExprEligible(
 			case verifiercol.VerifierCol:
 				statusMap[rootColumn.GetColID()] = column.VerifierDefined.String() + "/" + strconv.Itoa(nat.Size())
 			}
+		default:
+			// unsupported column type
+			utils.Panic("unsupported column type %T", m)
 		}
 	}
 
 	if hasAtLeastOneEligible && !allAreEligible {
-		// 1. we expect no expression including Proof columns
-		// 2. we expect no expression over ignored columns
-		// 3. we expect no VerifiyingKey withing the stitching range.
-		logrus.Errorf("the expression is not valid, it is mixed with invalid columns of status Proof/Ignored/verifierKey, %v", statusMap)
+		// We expect no expression over ignored columns
+		logrus.Errorf("the expression is not valid, it is mixed with invalid columns of status Ignored, %v", statusMap)
 		return false, true
 	}
 
