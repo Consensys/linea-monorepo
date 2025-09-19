@@ -162,11 +162,7 @@ func (r *RegularExt) IntoRegVecSaveAllocBase() ([]field.Element, error) {
 }
 
 func (r *RegularExt) IntoRegVecSaveAllocExt() []fext.Element {
-	temp := make([]fext.Element, r.Len())
-	for i := 0; i < r.Len(); i++ {
-		temp[i] = r.GetExt(i)
-	}
-	return temp
+	return *r
 }
 
 func (r *RegularExt) IterateCompact() iter.Seq[field.Element] {
