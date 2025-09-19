@@ -7,7 +7,6 @@ pragma solidity ^0.8.30;
  * @custom:security-contact security-report@linea.build
  */
 interface ILineaNativeYieldExtension {
-
   /**
    * @notice Emitted when ETH send from an authorized funder.
    * @param funder Address which sent ETH.
