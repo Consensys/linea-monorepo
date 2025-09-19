@@ -10,6 +10,7 @@
 package net.consensys.linea.sequencer.txselection;
 
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bundles.BundlePoolService;
@@ -43,6 +44,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
   private final LineaTracerConfiguration tracerConfiguration;
   private final Optional<HistogramMetrics> maybeProfitabilityMetrics;
   private final BundlePoolService bundlePoolService;
+  private final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
   private final AtomicReference<LineaTransactionSelector> currSelector = new AtomicReference<>();
 
   public LineaTransactionSelectorFactory(
@@ -53,7 +55,8 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
       final LineaTracerConfiguration tracerConfiguration,
       final Optional<JsonRpcManager> rejectedTxJsonRpcManager,
       final Optional<HistogramMetrics> maybeProfitabilityMetrics,
-      final BundlePoolService bundlePoolService) {
+      final BundlePoolService bundlePoolService,
+      final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache) {
     this.blockchainService = blockchainService;
     this.txSelectorConfiguration = txSelectorConfiguration;
     this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
@@ -62,6 +65,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
     this.maybeProfitabilityMetrics = maybeProfitabilityMetrics;
     this.bundlePoolService = bundlePoolService;
+    this.invalidTransactionByLineCountCache = invalidTransactionByLineCountCache;
   }
 
   @Override
@@ -74,43 +78,88 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
             l1L2BridgeConfiguration,
             profitabilityConfiguration,
             tracerConfiguration,
-            bundlePoolService,
             rejectedTxJsonRpcManager,
-            maybeProfitabilityMetrics);
+            maybeProfitabilityMetrics,
+            invalidTransactionByLineCountCache);
     currSelector.set(selector);
     return selector;
   }
 
   public void selectPendingTransactions(
       final BlockTransactionSelectionService bts, final ProcessableBlockHeader pendingBlockHeader) {
-    final var bundlesByBlockNumber =
-        bundlePoolService.getBundlesByBlockNumber(pendingBlockHeader.getNumber());
+    try {
+      final var bundlesByBlockNumber =
+          bundlePoolService.getBundlesByBlockNumber(pendingBlockHeader.getNumber());
 
-    log.atDebug()
-        .setMessage("Bundle pool stats: total={}, for block #{}={}")
-        .addArgument(bundlePoolService::size)
-        .addArgument(pendingBlockHeader::getNumber)
-        .addArgument(bundlesByBlockNumber::size)
-        .log();
+      log.atDebug()
+          .setMessage("Bundle pool stats: total={}, for block #{}={}")
+          .addArgument(bundlePoolService::size)
+          .addArgument(pendingBlockHeader::getNumber)
+          .addArgument(bundlesByBlockNumber::size)
+          .log();
 
-    bundlesByBlockNumber.forEach(
-        bundle -> {
-          log.trace("Starting evaluation of bundle {}", bundle);
-          var badBundleRes =
-              bundle.pendingTransactions().stream()
-                  .map(bts::evaluatePendingTransaction)
-                  .filter(evalRes -> !evalRes.selected())
-                  .findFirst();
+      if (isSelectionInterrupted()) return;
 
-          if (badBundleRes.isPresent()) {
-            log.trace("Failed bundle {}, reason {}", bundle, badBundleRes);
-            rollback(bts);
-          } else {
-            log.trace("Selected bundle {}", bundle);
-            commit(bts);
-          }
-        });
-    currSelector.set(null);
+      final var selectionStartedAt = System.nanoTime();
+
+      bundlesByBlockNumber.stream()
+          .takeWhile(unused -> !isSelectionInterrupted())
+          .forEach(
+              bundle -> {
+                final var bundleStartedAt = System.nanoTime();
+                log.trace("Starting evaluation of bundle {}", bundle.bundleIdentifier());
+
+                var maybeBadBundleRes =
+                    bundle.pendingTransactions().stream()
+                        .takeWhile(unused -> !isSelectionInterrupted())
+                        .map(bts::evaluatePendingTransaction)
+                        .filter(evalRes -> !evalRes.selected())
+                        .findFirst();
+
+                final var now = System.nanoTime();
+                final var cumulativeBundleSelectionTime = now - selectionStartedAt;
+                final var currentBundleSelectionTime = now - bundleStartedAt;
+
+                if (isSelectionInterrupted()) {
+                  log.atDebug()
+                      .setMessage(
+                          "Bundle selection interrupted while processing bundle {},"
+                              + " elapsed time: current bundle {}ms, cumulative {}ms")
+                      .addArgument(bundle::bundleIdentifier)
+                      .addArgument(() -> nanosToMillis(currentBundleSelectionTime))
+                      .addArgument(() -> nanosToMillis(cumulativeBundleSelectionTime))
+                      .log();
+                  rollback(bts);
+                } else {
+                  if (maybeBadBundleRes.isPresent()) {
+                    log.atDebug()
+                        .setMessage(
+                            "Failed bundle {}, reason {}, elapsed time: current bundle {}ms, cumulative {}ms")
+                        .addArgument(bundle::bundleIdentifier)
+                        .addArgument(maybeBadBundleRes::get)
+                        .addArgument(() -> nanosToMillis(currentBundleSelectionTime))
+                        .addArgument(() -> nanosToMillis(cumulativeBundleSelectionTime))
+                        .log();
+                    rollback(bts);
+                  } else {
+                    log.atDebug()
+                        .setMessage(
+                            "Selected bundle {}, elapsed time: current bundle {}ms, cumulative {}ms")
+                        .addArgument(bundle::bundleIdentifier)
+                        .addArgument(() -> nanosToMillis(currentBundleSelectionTime))
+                        .addArgument(() -> nanosToMillis(cumulativeBundleSelectionTime))
+                        .log();
+                    commit(bts);
+                  }
+                }
+              });
+    } finally {
+      currSelector.set(null);
+      if (isSelectionInterrupted()) {
+        // finally consume the interrupt
+        Thread.currentThread().interrupt();
+      }
+    }
   }
 
   private void commit(final BlockTransactionSelectionService bts) {
@@ -121,5 +170,15 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
   private void rollback(final BlockTransactionSelectionService bts) {
     currSelector.get().getOperationTracer().popTransactionBundle();
     bts.rollback();
+  }
+
+  private long nanosToMillis(final long nanos) {
+    return TimeUnit.NANOSECONDS.toMillis(nanos);
+  }
+
+  private boolean isSelectionInterrupted() {
+    // returns if the thread is interrupted without resetting the state
+    // so it can be called many times without changing the interrupt state
+    return Thread.currentThread().isInterrupted();
   }
 }
