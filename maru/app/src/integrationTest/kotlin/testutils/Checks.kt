@@ -9,13 +9,27 @@
 package testutils
 
 import java.math.BigInteger
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
+import org.awaitility.kotlin.await
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
 import org.web3j.protocol.core.DefaultBlockParameter
 import org.web3j.protocol.core.methods.response.EthBlock
 import testutils.besu.BesuFactory
 
 object Checks {
+  fun BesuNode.assertMinedBlocks(blocksMined: Int) {
+    await
+      .pollDelay(1.seconds.toJavaDuration())
+      .timeout(30.seconds.toJavaDuration())
+      .untilAsserted {
+        val minedBlocks = this.getMinedBlocks(blocksMined)
+        assertThat(minedBlocks).hasSize(blocksMined)
+      }
+  }
+
   fun BesuNode.getMinedBlocks(blocksMined: Int): List<EthBlock.Block> =
     (1..blocksMined)
       .map {
