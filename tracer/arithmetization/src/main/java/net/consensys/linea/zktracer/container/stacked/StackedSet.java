@@ -15,8 +15,8 @@
 
 package net.consensys.linea.zktracer.container.stacked;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import lombok.Getter;
 import lombok.experimental.Accessors;
@@ -24,23 +24,23 @@ import lombok.experimental.Accessors;
 @Accessors(fluent = true)
 @Getter
 public class StackedSet<E> {
-  private final Set<E> operationsCommitedToTheConflation;
-  private final Set<E> operationsInTransactionBundle;
+  private final Map<E, E> operationsCommitedToTheConflation;
+  private final Map<E, E> operationsInTransactionBundle;
 
   public StackedSet() {
-    operationsCommitedToTheConflation = new HashSet<>();
-    operationsInTransactionBundle = new HashSet<>();
+    operationsCommitedToTheConflation = new LinkedHashMap<>();
+    operationsInTransactionBundle = new LinkedHashMap<>();
   }
 
   /** Prefer this constructor as we preallocate more needed memory */
   public StackedSet(
       final int expectedConflationNumberOperations, final int expectedTransactionNumberOperations) {
-    operationsCommitedToTheConflation = new HashSet<>(expectedConflationNumberOperations);
-    operationsInTransactionBundle = new HashSet<>(expectedTransactionNumberOperations);
+    operationsCommitedToTheConflation = new LinkedHashMap<>(expectedConflationNumberOperations);
+    operationsInTransactionBundle = new LinkedHashMap<>(expectedTransactionNumberOperations);
   }
 
   public void commitTransactionBundle() {
-    operationsCommitedToTheConflation().addAll(operationsInTransactionBundle());
+    operationsCommitedToTheConflation().putAll(operationsInTransactionBundle());
     operationsInTransactionBundle().clear();
   }
 
@@ -49,10 +49,8 @@ public class StackedSet<E> {
   }
 
   public boolean add(E e) {
-    if (!operationsCommitedToTheConflation().contains(e)) {
-      return operationsInTransactionBundle().add(e);
-    }
-    return false;
+    if (operationsCommitedToTheConflation.containsKey(e)) return false;
+    return operationsInTransactionBundle.putIfAbsent(e, e) == null;
   }
 
   public int size() {
