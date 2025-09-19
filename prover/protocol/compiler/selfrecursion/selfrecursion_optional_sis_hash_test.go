@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
@@ -54,17 +55,16 @@ func testCaseGenerator() []testCase {
 			b.UnivariateEval("EVAL", rows...)
 		},
 		Prove: func(pr *wizard.ProverRuntime) {
-			ys := make([]field.Element, len(rows))
-			x := field.NewElement(57) // the evaluation point
-
+			ys := make([]fext.Element, len(rows))
+			x := fext.Lift(field.NewElement(57))
 			// assign the rows with random polynomials and collect the ys
 			for i, row := range rows {
 				p := smartvectors.Rand(polSize)
-				ys[i] = smartvectors.EvaluateLagrange(p, x)
+				ys[i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 				pr.AssignColumn(row.GetColID(), p)
 			}
 
-			pr.AssignUnivariate("EVAL", x, ys...)
+			pr.AssignUnivariateExt("EVAL", x, ys...)
 		},
 	})
 	tc = append(tc, testCase{
@@ -95,8 +95,8 @@ func testCaseGenerator() []testCase {
 			for i := range nPolsMultiRound {
 				numPolys += nPolsMultiRound[i]
 			}
-			ys := make([]field.Element, numPolys)
-			x := field.NewElement(57) // the evaluation point
+			ys := make([]fext.Element, numPolys)
+			x := fext.Lift(field.NewElement(57)) // the evaluation point
 
 			// assign the rows with random polynomials and collect the ys
 			for round := range rowsMultiRound {
@@ -113,12 +113,12 @@ func testCaseGenerator() []testCase {
 
 				for i, row := range rowsMultiRound[round] {
 					p := smartvectors.Rand(polSize)
-					ys[offsetIndex+i] = smartvectors.EvaluateLagrange(p, x)
+					ys[offsetIndex+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 					pr.AssignColumn(row.GetColID(), p)
 				}
 			}
 
-			pr.AssignUnivariate("EVAL", x, ys...)
+			pr.AssignUnivariateExt("EVAL", x, ys...)
 		},
 	})
 	tc = append(tc, testCase{
@@ -159,8 +159,8 @@ func testCaseGenerator() []testCase {
 			for i := range nPolsMultiRound {
 				numPolys += nPolsMultiRound[i]
 			}
-			ys := make([]field.Element, numPolys)
-			x := field.NewElement(57) // the evaluation point
+			ys := make([]fext.Element, numPolys)
+			x := fext.Lift(field.NewElement(57)) // the evaluation point
 
 			// assign the rows with random polynomials and collect the ys
 			for round := range rowsMultiRound {
@@ -180,16 +180,16 @@ func testCaseGenerator() []testCase {
 					// assigned in the define phase
 					if i < numPrecomputedsNoSIS && round == 0 {
 						p := pr.Spec.Precomputed.MustGet(row.GetColID())
-						ys[i] = smartvectors.EvaluateLagrange(p, x)
+						ys[i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 						continue
 					}
 					p := smartvectors.Rand(polSize)
-					ys[offsetIndex+i] = smartvectors.EvaluateLagrange(p, x)
+					ys[offsetIndex+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 					pr.AssignColumn(row.GetColID(), p)
 				}
 			}
 
-			pr.AssignUnivariate("EVAL", x, ys...)
+			pr.AssignUnivariateExt("EVAL", x, ys...)
 		},
 	})
 	tc = append(tc, testCase{
@@ -230,8 +230,8 @@ func testCaseGenerator() []testCase {
 			for i := range nPolsMultiRound {
 				numPolys += nPolsMultiRound[i]
 			}
-			ys := make([]field.Element, numPolys)
-			x := field.NewElement(57) // the evaluation point
+			ys := make([]fext.Element, numPolys)
+			x := fext.Lift(field.NewElement(57)) // the evaluation point
 
 			// assign the rows with random polynomials and collect the ys
 			for round := range rowsMultiRound {
@@ -251,16 +251,16 @@ func testCaseGenerator() []testCase {
 					// assigned in the define phase
 					if i < numPrecomputedsSIS && round == 0 {
 						p := pr.Spec.Precomputed.MustGet(row.GetColID())
-						ys[i] = smartvectors.EvaluateLagrange(p, x)
+						ys[i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 						continue
 					}
 					p := smartvectors.Rand(polSize)
-					ys[offsetIndex+i] = smartvectors.EvaluateLagrange(p, x)
+					ys[offsetIndex+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 					pr.AssignColumn(row.GetColID(), p)
 				}
 			}
 
-			pr.AssignUnivariate("EVAL", x, ys...)
+			pr.AssignUnivariateExt("EVAL", x, ys...)
 		},
 	})
 	tc = append(tc, testCase{
@@ -301,8 +301,8 @@ func testCaseGenerator() []testCase {
 			for i := range nPolsMultiRoundNoSIS {
 				numPolys += nPolsMultiRoundNoSIS[i]
 			}
-			ys := make([]field.Element, numPolys)
-			x := field.NewElement(57) // the evaluation point
+			ys := make([]fext.Element, numPolys)
+			x := fext.Lift(field.NewElement(57)) // the evaluation point
 
 			// assign the rows with random polynomials and collect the ys
 			for round := range rowsMultiRound {
@@ -322,16 +322,16 @@ func testCaseGenerator() []testCase {
 					// assigned in the define phase
 					if i < numPrecomputedsNoSIS && round == 0 {
 						p := pr.Spec.Precomputed.MustGet(row.GetColID())
-						ys[i] = smartvectors.EvaluateLagrange(p, x)
+						ys[i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 						continue
 					}
 					p := smartvectors.Rand(polSize)
-					ys[offsetIndex+i] = smartvectors.EvaluateLagrange(p, x)
+					ys[offsetIndex+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 					pr.AssignColumn(row.GetColID(), p)
 				}
 			}
 
-			pr.AssignUnivariate("EVAL", x, ys...)
+			pr.AssignUnivariateExt("EVAL", x, ys...)
 		},
 	})
 	tc = append(tc, testCase{
@@ -372,8 +372,8 @@ func testCaseGenerator() []testCase {
 			for i := range nPolsMultiRoundSIS {
 				numPolys += nPolsMultiRoundSIS[i]
 			}
-			ys := make([]field.Element, numPolys)
-			x := field.NewElement(57) // the evaluation point
+			ys := make([]fext.Element, numPolys)
+			x := fext.Lift(field.NewElement(57)) // the evaluation point
 
 			// assign the rows with random polynomials and collect the ys
 			for round := range rowsMultiRound {
@@ -393,16 +393,16 @@ func testCaseGenerator() []testCase {
 					// assigned in the define phase
 					if i < numPrecomputedsSIS && round == 0 {
 						p := pr.Spec.Precomputed.MustGet(row.GetColID())
-						ys[i] = smartvectors.EvaluateLagrange(p, x)
+						ys[i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 						continue
 					}
 					p := smartvectors.Rand(polSize)
-					ys[offsetIndex+i] = smartvectors.EvaluateLagrange(p, x)
+					ys[offsetIndex+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 					pr.AssignColumn(row.GetColID(), p)
 				}
 			}
 
-			pr.AssignUnivariate("EVAL", x, ys...)
+			pr.AssignUnivariateExt("EVAL", x, ys...)
 		},
 	})
 	tc = append(tc, testCase{
@@ -443,8 +443,8 @@ func testCaseGenerator() []testCase {
 			for i := range nPolsMultiRoundEmpty {
 				numPolys += nPolsMultiRoundEmpty[i]
 			}
-			ys := make([]field.Element, numPolys)
-			x := field.NewElement(57) // the evaluation point
+			ys := make([]fext.Element, numPolys)
+			x := fext.Lift(field.NewElement(57)) // the evaluation point
 
 			// assign the rows with random polynomials and collect the ys
 			for round := range rowsMultiRound {
@@ -464,16 +464,16 @@ func testCaseGenerator() []testCase {
 					// assigned in the define phase
 					if i < numPrecomputedsNoSIS && round == 0 {
 						p := pr.Spec.Precomputed.MustGet(row.GetColID())
-						ys[i] = smartvectors.EvaluateLagrange(p, x)
+						ys[i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 						continue
 					}
 					p := smartvectors.Rand(polSize)
-					ys[offsetIndex+i] = smartvectors.EvaluateLagrange(p, x)
+					ys[offsetIndex+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 					pr.AssignColumn(row.GetColID(), p)
 				}
 			}
 
-			pr.AssignUnivariate("EVAL", x, ys...)
+			pr.AssignUnivariateExt("EVAL", x, ys...)
 		},
 	})
 	return tc
