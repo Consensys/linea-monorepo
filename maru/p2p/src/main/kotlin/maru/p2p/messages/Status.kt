@@ -8,6 +8,8 @@
  */
 package maru.p2p.messages
 
+import linea.kotlin.encodeHex
+
 data class Status(
   val forkIdHash: ByteArray,
   val latestStateRoot: ByteArray,
@@ -30,4 +32,7 @@ data class Status(
     result = 31 * result + latestBlockNumber.hashCode()
     return result
   }
+
+  override fun toString(): String =
+    "Status(latestBlockNumber=$latestBlockNumber, forkIdHash=${forkIdHash.encodeHex()}, latestStateRoot=${latestStateRoot.encodeHex()})"
 }
