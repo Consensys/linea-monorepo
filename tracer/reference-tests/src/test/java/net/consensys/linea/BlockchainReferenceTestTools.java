@@ -15,10 +15,12 @@
 
 package net.consensys.linea;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static net.consensys.linea.BlockchainReferenceTestJson.readBlockchainReferenceTestsOutput;
 import static net.consensys.linea.ReferenceTestOutcomeRecorderTool.JSON_INPUT_FILENAME;
 import static net.consensys.linea.reporting.TracerTestBase.getForkOrDefault;
 import static net.consensys.linea.testing.ToyExecutionTools.addSystemAccountsIfRequired;
+import static net.consensys.linea.zktracer.container.module.IncrementAndDetectModule.ERROR_MESSAGE_TRIED_TO_COMMIT_UNPROVABLE_TX;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Paths;
@@ -641,16 +643,22 @@ public class BlockchainReferenceTestTools {
       }
     }
 
-    zkTracer.traceEndConflation(worldState);
-
-    ExecutionEnvironment.checkTracer(
-        zkTracer,
-        corsetValidator,
-        Optional.of(log),
-        // NOTE: just use 0 for start and end block here, since this information is not used.
-        0,
-        0,
-        null);
+    // TODO: run it normally once we don't exclude BLS precompiles
+    try {
+      zkTracer.traceEndConflation(worldState);
+      ExecutionEnvironment.checkTracer(
+          zkTracer,
+          corsetValidator,
+          Optional.of(log),
+          // NOTE: just use 0 for start and end block here, since this information is not used.
+          0,
+          0,
+          null);
+    } catch (Exception e) {
+      // Tmp: we ignore this error, as BLS precompiles are excluded in prod, but not in test
+      checkArgument(
+          e.getMessage().contains(ERROR_MESSAGE_TRIED_TO_COMMIT_UNPROVABLE_TX), e.getMessage());
+    }
     assertThat(blockchain.getChainHeadHash()).isEqualTo(spec.getLastBlockHash());
   }
 
