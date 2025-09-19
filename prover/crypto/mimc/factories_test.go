@@ -2,6 +2,7 @@ package mimc
 
 import (
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/std/hash/mimc"
 )
 
 // externalMiMCFactoryTestLinear is used to test the external MiMC factory
@@ -17,10 +18,11 @@ type externalMimcFactoryTestLinear struct {
 func (circuit *externalMimcFactoryTestLinear) Define(api frontend.API) error {
 
 	var (
-		factory      = &ExternalHasherFactory{Api: api}
-		factoryBasic = &BasicHasherFactory{Api: api}
-		hasher       = factory.NewHasher()
-		hasherBasic  = factoryBasic.NewHasher()
+		factory = &ExternalHasherFactory{Api: api}
+		// factoryBasic = &BasicHasherFactory{Api: api}
+		hasher = factory.NewHasher()
+		// hasherBasic    = factoryBasic.NewHasher()
+		hasherBasic, _ = mimc.NewMiMC(api)
 	)
 
 	hasher.Write(circuit.Inp[:]...)

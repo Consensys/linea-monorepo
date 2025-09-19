@@ -9,7 +9,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	ghash "github.com/consensys/gnark/std/hash"
-	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -20,12 +19,6 @@ import (
 // of Plonk in Wizard.
 type HasherFactory interface {
 	NewHasher() ghash.StateStorer
-}
-
-// BasicHasherFactory is a simple implementation of HasherFactory that returns
-// the standard MiMC hasher as in [NewMiMC].
-type BasicHasherFactory struct {
-	Api frontend.API
 }
 
 // ExternalHasherFactory is an implementation of the HasherFactory interface
@@ -70,12 +63,6 @@ type storeCommitBuilder interface {
 	SetKeyValue(key, value any)
 	GetKeyValue(key any) (value any)
 	GetWiresConstraintExact(wires []frontend.Variable, addMissing bool) ([][2]int, error)
-}
-
-// NewHasher returns the standard MiMC hasher as in [NewMiMC].
-func (f *BasicHasherFactory) NewHasher() ghash.StateStorer {
-	h, _ := mimc.NewMiMC(f.Api)
-	return &h
 }
 
 // NewHasher returns an external MiMC hasher.
