@@ -79,7 +79,7 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata Met
 	loadStaticProverAssetsFromDisk(cfg, assets)
 
 	// Load blueprints in background, we only need them after bootstrapping succeeds.
-	eg, ctx := errgroup.WithContext(context.Background())
+	eg := &errgroup.Group{}
 	eg.Go(func() error {
 		return assets.LoadBlueprints(cfg)
 	})
@@ -153,7 +153,7 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata Met
 	)
 
 	logrus.Info("Saving the witnesses")
-	wg, ctx := errgroup.WithContext(ctx)
+	wg, ctx := errgroup.WithContext(context.Background())
 	wg.SetLimit(12) // We expect on avg. 12 GL and 12 LPP witnesses per request
 
 	for i, witnessGL := range witnessGLs {
@@ -167,7 +167,12 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata Met
 				fileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-witness.bin", metadata.StartBlock, metadata.EndBlock, i, witnessGL.ModuleIndex)
 				filePath := path.Join(config.WitnessGLDirPrefix, string(witnessGL.ModuleName), fileName)
 
-				// Clean up anuy prev. witness file before starting. This helps addressing the situation
+				dir := path.Dir(filePath)
+				if err := os.MkdirAll(dir, 0o755); err != nil {
+					return fmt.Errorf("could not create GL witness directory: %w for filePath: %s fileName:%s", err, filePath, fileName)
+				}
+
+				// Clean up any prev. witness file before starting. This helps addressing the situation
 				// where a previous process have been interrupted.
 				_ = os.Remove(filePath)
 
@@ -191,7 +196,12 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata Met
 				fileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-witness.bin", metadata.StartBlock, metadata.EndBlock, i, witnessLPP.ModuleIndex)
 				filePath := path.Join(config.WitnessLPPDirPrefix, string(witnessLPP.ModuleName[0]), fileName)
 
-				// Clean up anuy prev. witness file before starting. This helps addressing the situation
+				dir := path.Dir(filePath)
+				if err := os.MkdirAll(dir, 0o755); err != nil {
+					return fmt.Errorf("could not create GL witness directory: %w for filePath: %s fileName:%s", err, filePath, fileName)
+				}
+
+				// Clean up any prev. witness file before starting. This helps addressing the situation
 				// where a previous process have been interrupted.
 				_ = os.Remove(filePath)
 				if err := serialization.StoreToDisk(filePath, *witnessLPP, true); err != nil {
