@@ -28,10 +28,10 @@ type Columns struct {
 	//
 	// Round-by-rounds commitments root hashes. Since some rounds
 	// may be dried some of the RoundDigest can be `nil`
-	Rooth [blockSize][]ifaces.Column
+	Rooth []ifaces.Column
 
 	// Precomputed roots
-	PrecompRoot [blockSize]ifaces.Column
+	PrecompRoot ifaces.Column
 
 	// (Verifier column)
 	//

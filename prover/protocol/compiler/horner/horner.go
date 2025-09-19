@@ -224,7 +224,7 @@ func (a AssignHornerCtx) Run(run *wizard.ProverRuntime) {
 		}
 
 		tmp := accumulators[arity-1][0]
-		run.AssignLocalPointExt(a.LocOpenings[i].ID, tmp) //TODO@yao: tmp.B0.A0 or tmp?
+		run.AssignLocalPointExt(a.LocOpenings[i].ID, tmp)
 
 		if n0 > 0 {
 			xN0 := new(fext.Element).Exp(x, big.NewInt(int64(n0)))

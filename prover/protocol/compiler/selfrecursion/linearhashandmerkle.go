@@ -432,10 +432,9 @@ func processPrecomputedRound(
 	openingIndices []int,
 ) {
 	// The merkle root for the precomputed round
-	var rootPrecomp [blockSize]field.Element
-	for i := 0; i < blockSize; i++ {
-		rootPrecomp[i] = a.Ctx.Columns.PrecompRoot[i].GetColAssignment(run).Get(0)
-	}
+	precompRootSv := run.GetColumn(a.Ctx.Columns.PrecompRoot.GetColID())
+	rootPrecomp := field.Octuplet(precompRootSv.IntoRegVecSaveAlloc())
+
 	if a.Ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 		precompColSisHash := a.Ctx.VortexCtx.Items.Precomputeds.DhWithMerkle
 		var precompSisLeaves [blockSize][]field.Element
@@ -550,10 +549,9 @@ func processRound(
 				utils.Panic("colSisHashName %v not found", colSisHashName)
 			}
 
-			var rooth [blockSize]field.Element
-			for i := 0; i < blockSize; i++ {
-				rooth[i] = a.Ctx.Columns.Rooth[i][round].GetColAssignment(run).Get(0)
-			}
+			precompRootSv := run.GetColumn(a.Ctx.Columns.Rooth[round].GetColID())
+			rooth := field.Octuplet(precompRootSv.IntoRegVecSaveAlloc())
+
 			colSisHash := colSisHashSV.([]field.Element)
 
 			var sisRoundLeaves [blockSize][]field.Element
@@ -588,10 +586,9 @@ func processRound(
 			colPoseidon2Hash := colPoseidon2HashSV.([]field.Element)
 
 			// Fetch the root for the round
-			var rooth [blockSize]field.Element
-			for i := 0; i < blockSize; i++ {
-				rooth[i] = a.Ctx.Columns.Rooth[i][round].GetColAssignment(run).Get(0)
-			}
+			precompRootSv := run.GetColumn(a.Ctx.Columns.Rooth[round].GetColID())
+			rooth := field.Octuplet(precompRootSv.IntoRegVecSaveAlloc())
+
 			var poseidon2HashValues [blockSize][]field.Element
 			for j := 0; j < blockSize; j++ {
 				poseidon2HashValues[j] = make([]field.Element, 0, lmp.NumOpenedCol)

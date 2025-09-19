@@ -56,7 +56,7 @@ func CheckFlatMerkleProofs(comp *wizard.CompiledIOP, inputs FlatProofVerificatio
 
 	ctx := &FlatMerkleProofVerification{
 		FlatProofVerificationInputs: inputs,
-		PosBits:                     bits.BitDecompose(comp, inputs.Position, len(inputs.Proof.Nodes[0])), //TODO@yao: check blockSize iteration
+		PosBits:                     bits.BitDecompose(comp, inputs.Position, len(inputs.Proof.Nodes[0])),
 	}
 
 	prevNode := inputs.Leaf
