@@ -11,7 +11,7 @@ import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-abstract contract LineaNativeYieldExtension is AccessControlUpgradeable, ILineaNativeYieldExtension, IYieldManager, IGenericErrors {
+abstract contract LineaNativeYieldExtension is AccessControlUpgradeable, ILineaNativeYieldExtension, IGenericErrors {
   /// @notice The role required to send ETH to the YieldManager.
   bytes32 public constant RESERVE_OPERATOR_ROLE = keccak256("RESERVE_OPERATOR_ROLE");
 
@@ -60,7 +60,9 @@ abstract contract LineaNativeYieldExtension is AccessControlUpgradeable, ILineaN
    * @param _amount The net earned yield.
    */
   function reportNativeYield(uint256 _amount) external {
-
+    if (msg.sender != yieldManager) {
+      revert CallerIsNotYieldManager();
+    }
   }
 
   /**

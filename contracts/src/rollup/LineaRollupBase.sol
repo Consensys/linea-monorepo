@@ -6,6 +6,7 @@ import { L1MessageService } from "../messaging/l1/L1MessageService.sol";
 import { ZkEvmV2 } from "./ZkEvmV2.sol";
 import { ILineaRollup } from "./interfaces/ILineaRollup.sol";
 import { PermissionsManager } from "../security/access/PermissionsManager.sol";
+import { LineaNativeYieldExtension } from "../yield/LineaNativeYieldExtension.sol";
 
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
 /**
@@ -18,6 +19,7 @@ abstract contract LineaRollupBase is
   ZkEvmV2,
   L1MessageService,
   PermissionsManager,
+  LineaNativeYieldExtension,
   ILineaRollup
 {
   using EfficientLeftRightKeccak for *;
