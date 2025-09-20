@@ -5,7 +5,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -34,13 +33,6 @@ func (a *StitchSubColumnsProverAction) Run(run *wizard.ProverRuntime) {
 		// as this is purely for cleaning up. After stitching, the big column
 		// should live and the sub columns should be deleted.
 		for subCol := range a.Stitchings[round].BySubCol {
-			// If the subcols are of status Proof or VerifyingKey,
-			// then we do not want to delete them as they are still needed
-			// for the Fiat-Shamir challenge generation.
-			status := run.Spec.Columns.Status(subCol)
-			if status == column.Proof || status == column.VerifyingKey {
-				continue
-			}
 			run.Columns.TryDel(subCol)
 		}
 	}
@@ -110,12 +102,6 @@ func (a *StitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
 			continue
 		}
 
-		// If id of big col is expandProofOrVerifyingKeyColWithZero, then it is already
-		// expanded
-		if _, isExpanded := a.Ctx.Stitchings[a.Round].ByBigCol[idBigCol][0].(verifiercol.ExpandedProofOrVerifyingKeyColWithZero); isExpanded {
-			continue
-		}
-
 		// get the assignment of the subColumns and interleave them
 		witnesses := make([]smartvectors.SmartVector, len(subColumns))
 		for i := range witnesses {
@@ -153,11 +139,9 @@ func (ctx *StitchingContext) ScanStitchCommit() {
 		for _, size := range sizes {
 
 			var (
-				cols             = columnsBySize[size]
-				precomputedCols  = make([]ifaces.Column, 0, len(cols))
-				committedCols    = make([]ifaces.Column, 0, len(cols))
-				proofCols        = make([]ifaces.Column, 0, len(cols))
-				verifyingKeyCols = make([]ifaces.Column, 0, len(cols))
+				cols            = columnsBySize[size]
+				precomputedCols = make([]ifaces.Column, 0, len(cols))
+				committedCols   = make([]ifaces.Column, 0, len(cols))
 			)
 
 			// collect the the columns with valid status; Precomputed, committed
@@ -170,11 +154,6 @@ func (ctx *StitchingContext) ScanStitchCommit() {
 					precomputedCols = append(precomputedCols, col)
 				case column.Committed:
 					committedCols = append(committedCols, col)
-				case column.Proof:
-					proofCols = append(proofCols, col)
-				case column.VerifyingKey:
-					verifyingKeyCols = append(verifyingKeyCols, col)
-
 				default:
 					// note that status of verifercol/ veriferDefined is not
 					// available via compiler trace.
@@ -183,9 +162,7 @@ func (ctx *StitchingContext) ScanStitchCommit() {
 
 				// Mark it as ignored, so that it is no longer considered as
 				// queryable (since we are replacing it with its stitching).
-				if status != column.Proof && status != column.VerifyingKey {
-					ctx.Comp.Columns.MarkAsIgnored(col.GetColID())
-				}
+				ctx.Comp.Columns.MarkAsIgnored(col.GetColID())
 			}
 
 			if len(precomputedCols) != 0 {
@@ -216,38 +193,6 @@ func (ctx *StitchingContext) ScanStitchCommit() {
 					ctx.stitchGroup(stitching)
 				}
 			}
-
-			if len(proofCols) != 0 {
-				for _, col := range proofCols {
-					expandedProofCol := verifiercol.ExpandedProofOrVerifyingKeyColWithZero{
-						Col:       col,
-						Expansion: ctx.MaxSize / col.Size(),
-					}
-					s := Alliance{
-						BigCol:  expandedProofCol,
-						SubCols: []ifaces.Column{col},
-						Round:   round,
-						Status:  column.Proof,
-					}
-					(MultiSummary)(ctx.Stitchings).InsertNew(s)
-				}
-			}
-
-			if len(verifyingKeyCols) != 0 {
-				for _, col := range verifyingKeyCols {
-					expandedVerifyingKeyCol := verifiercol.ExpandedProofOrVerifyingKeyColWithZero{
-						Col:       col,
-						Expansion: ctx.MaxSize / col.Size(),
-					}
-					s := Alliance{
-						BigCol:  expandedVerifyingKeyCol,
-						SubCols: []ifaces.Column{col},
-						Round:   round,
-						Status:  column.VerifyingKey,
-					}
-					(MultiSummary)(ctx.Stitchings).InsertNew(s)
-				}
-			}
 		}
 
 		if len(ctx.Stitchings[round].ByBigCol) == 0 {
@@ -271,8 +216,9 @@ func scanAndClassifyEligibleColumns(ctx StitchingContext, round int) map[int][]i
 		status := ctx.Comp.Columns.Status(colName)
 		col := ctx.Comp.Columns.GetHandle(colName)
 
-		// we expect no query over the ignored columns.
-		if status == column.Ignored {
+		// We do not make proof and verifying key column eligible for stitching.
+		// We expand them directly during the constraints.
+		if status == column.Ignored || status == column.Proof || status == column.VerifyingKey {
 			continue
 		}
 

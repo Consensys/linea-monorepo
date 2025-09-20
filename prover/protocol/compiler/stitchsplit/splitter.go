@@ -125,7 +125,6 @@ func (ctx *SplitterContext) ScanSplitCommit() {
 						nameHandleSlice(col, i, numSubSlices),
 						precomp.SubVector(i*ctx.Size, (i+1)*ctx.Size),
 					)
-					// If the big column is a verifying key, we need to mark the sub-columns as precomputed?
 					if status != column.Precomputed {
 						comp.Columns.SetStatus(subSlices[i].GetColID(), status)
 					}

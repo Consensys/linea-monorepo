@@ -56,7 +56,7 @@ func TestSplitterGlobalWithVerifColAndPeriodic(t *testing.T) {
 }
 
 func TestStitcherGlobalWithProofCol(t *testing.T) {
-	testStitcher(t, 8, 64, globalWithProofCols(8))
+	testStitcher(t, 8, 64, globalWithProofCols(16))
 	// testStitcher(t, 64, 128, globalWithProofCols(16))
 	// testStitcher(t, 8, 16, globalWithProofCols(32))
 }
