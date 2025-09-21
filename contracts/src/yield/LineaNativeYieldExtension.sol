@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.30;
 
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { ILineaNativeYieldExtension } from "./interfaces/ILineaNativeYieldExtension.sol";
 import { IYieldManager } from "./interfaces/IYieldManager.sol";
 import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
 import { IMessageService } from "../messaging/interfaces/IMessageService.sol";
+import { LineaRollupPauseManager } from "../security/pausing/LineaRollupPauseManager.sol";
 
 /**
  * @title Native yield extension module for the Linea L1MessageService.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-abstract contract LineaNativeYieldExtension is AccessControlUpgradeable, ILineaNativeYieldExtension, IMessageService, IGenericErrors {
+abstract contract LineaNativeYieldExtension is LineaRollupPauseManager, ILineaNativeYieldExtension, IMessageService, IGenericErrors {
   /// @notice The role required to send ETH to the YieldManager.
   bytes32 public constant RESERVE_OPERATOR_ROLE = keccak256("RESERVE_OPERATOR_ROLE");
 
@@ -65,8 +65,6 @@ abstract contract LineaNativeYieldExtension is AccessControlUpgradeable, ILineaN
    * @param _l2YieldRecipient L2YieldRecipient address.
    */
   function __LineaNativeYieldExtension_init(address _yieldManager, address _l2YieldRecipient) internal onlyInitializing {
-    __AccessControl_init();
-
     setYieldManager(_yieldManager);
     setL2YieldRecipient(_l2YieldRecipient);
   }
@@ -77,7 +75,7 @@ abstract contract LineaNativeYieldExtension is AccessControlUpgradeable, ILineaN
    * @dev Enforces that, after transfer, the L1MessageService balance remains ≥ the configured effective minimum reserve.
    * @param _amount Amount of ETH to transfer.
    */
-  function transferFundsForNativeYield(uint256 _amount) external onlyRole(RESERVE_OPERATOR_ROLE) {
+  function transferFundsForNativeYield(uint256 _amount) external whenTypeAndGeneralNotPaused(PauseType.L1_YIELDMANAGER) onlyRole(RESERVE_OPERATOR_ROLE) {
     IYieldManager(yieldManager()).receiveFundsFromReserve{ value: _amount }();
   }
 
@@ -85,7 +83,7 @@ abstract contract LineaNativeYieldExtension is AccessControlUpgradeable, ILineaN
    * @notice Send ETH to this contract.
    * @dev FUNDER_ROLE is required to execute.
    */
-  function fund() external payable onlyRole(FUNDER_ROLE) {
+  function fund() external payable whenTypeAndGeneralNotPaused(PauseType.FUNDING) onlyRole(FUNDER_ROLE) {
     emit FundingReceived(msg.sender, msg.value);
   }
 
