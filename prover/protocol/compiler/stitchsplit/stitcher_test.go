@@ -49,7 +49,7 @@ func TestStitcherLocalWithPeriodicSample(t *testing.T) {
 	testStitcher(t, 64, 256, localWithPeriodicSample(256, 8, 7))
 }
 
-func TestSplitterGlobalWithVerifColAndPeriodic(t *testing.T) {
+func TestStitcherGlobalWithVerifColAndPeriodic(t *testing.T) {
 	testStitcher(t, 8, 64, globalWithVerifColAndPeriodic(8, 4, 0))
 	testStitcher(t, 64, 128, globalWithVerifColAndPeriodic(256, 8, 1))
 	testStitcher(t, 8, 16, globalWithVerifColAndPeriodic(256, 8, 7))

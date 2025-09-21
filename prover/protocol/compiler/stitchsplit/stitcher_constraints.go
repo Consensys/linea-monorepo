@@ -59,6 +59,9 @@ func (ctx StitchingContext) LocalOpening() {
 
 		// get the stitching column associated with the sub column q.Poly.
 		stitchingCol := getStitchingCol(ctx, q.Pol)
+		if stitchingCol == nil {
+			utils.Panic("stitching col is nil")
+		}
 
 		newQ := ctx.Comp.InsertLocalOpening(round, queryNameStitcher(q.ID), stitchingCol)
 
@@ -186,20 +189,38 @@ func getStitchingCol(ctx StitchingContext, col ifaces.Column, option ...int) ifa
 		return column.Shift(stitchingCol, newOffset)
 	case column.Natural:
 		// find the stitching column
-		subColInfo := ctx.Stitchings[round].BySubCol[col.GetColID()]
-		stitchingCol = ctx.Comp.Columns.GetHandle(subColInfo.NameBigCol)
-		scaling := stitchingCol.Size() / col.Size()
-		if len(option) != 0 {
-			newOffset = scaling * option[0]
+		switch m.Status() {
+		case column.Proof, column.VerifyingKey:
+			stitchingCol = verifiercol.ExpandedProofOrVerifyingKeyColWithZero{
+				Col:       col,
+				Expansion: ctx.MaxSize / col.Size(),
+			}
+			if len(option) != 0 {
+				// if it is a shifted veriferCol, set the offset for shifting the expanded column
+				newOffset = option[0] * col.Size()
+			}
+			return column.Shift(stitchingCol, newOffset)
+		case column.Committed, column.Precomputed:
+			subColInfo := ctx.Stitchings[round].BySubCol[col.GetColID()]
+			stitchingCol = ctx.Comp.Columns.GetHandle(subColInfo.NameBigCol)
+			scaling := stitchingCol.Size() / col.Size()
+			if len(option) != 0 {
+				newOffset = scaling * option[0]
+			}
+			newOffset = newOffset + subColInfo.PosInBigCol
+			return column.Shift(stitchingCol, newOffset)
+		default:
+			utils.Panic("unsupported column status %v", m.Status())
 		}
-		newOffset = newOffset + subColInfo.PosInBigCol
-		return column.Shift(stitchingCol, newOffset)
 
 	case column.Shifted:
 		// Shift the stitching column by the right position
 		offset := column.StackOffsets(col)
 		col = column.RootParents(col)
 		res := getStitchingCol(ctx, col, offset)
+		if res == nil {
+			utils.Panic("stitching col is nil")
+		}
 		return res
 
 	default:
@@ -207,6 +228,7 @@ func getStitchingCol(ctx StitchingContext, col ifaces.Column, option ...int) ifa
 		panic("unsupported")
 
 	}
+	return nil
 }
 
 // It checks if the expression is over a set of the columns eligible to the stitching.
@@ -235,20 +257,18 @@ func IsExprEligibleForStitching(
 		// all implement [ifaces.Column]
 		case ifaces.Column: // it is a Committed, Precomputed or verifierCol
 			rootColumn := column.RootParents(m)
-
 			switch nat := rootColumn.(type) {
 			case column.Natural: // then it is not a verifiercol
 				switch nat.Status() {
-				case column.Proof:
-					// proof columns are eligible,
-					// we already checked that their size > minSize
-					b = true
-				case column.VerifyingKey:
-					// verifying key columns are eligible,
+				case column.Proof, column.VerifyingKey:
+					// proof and verifying key columns are eligible,
 					// we already checked that their size > minSize
 					b = true
 				case column.Committed, column.Precomputed:
 					b = isColEligible(stitchings, m)
+				case column.Ignored:
+					// we expect no expression over ignored columns
+					b = false
 				default:
 					utils.Panic("unsupported column status %v", nat.Status())
 				}
@@ -278,7 +298,7 @@ func IsExprEligibleForStitching(
 	}
 
 	if allAreVeriferCol {
-		// 4. we expect no expression involving only and only the verifierCols.
+		// we expect no expression involving only and only the verifierCols.
 		// We expect that this case wont happen.
 		// Otherwise should be handled in the [github.com/consensys/linea-monorepo/prover/protocol/query] package.
 		// Namely, Local/Global queries should be checked directly by the verifer.
@@ -318,17 +338,15 @@ func (ctx *StitchingContext) adjustExpression(
 			switch nat := rootColumn.(type) {
 			case column.Natural: // then it is not a verifiercol
 				switch nat.Status() {
-				case column.Proof, column.VerifyingKey:
-					stitchingCol = verifiercol.ExpandedProofOrVerifyingKeyColWithZero{
-						Col:       rootColumn,
-						Expansion: ctx.MaxSize / rootColumn.Size(),
-					}
-				case column.Committed, column.Precomputed:
+				case column.Proof, column.VerifyingKey, column.Committed, column.Precomputed:
 					stitchingCol = getStitchingCol(*ctx, m)
+					if stitchingCol == nil {
+						utils.Panic("stitching col is nil")
+					}
+					replaceMap.InsertNew(m.String(), ifaces.ColumnAsVariable(stitchingCol))
 				default:
 					utils.Panic("unsupported column status %v", nat.Status())
 				}
-				replaceMap.InsertNew(m.String(), ifaces.ColumnAsVariable(stitchingCol))
 			}
 		case coin.Info, ifaces.Accessor:
 			replaceMap.InsertNew(m.String(), symbolic.NewVariable(m))
