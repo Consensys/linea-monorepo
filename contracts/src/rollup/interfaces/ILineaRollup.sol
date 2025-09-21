@@ -21,6 +21,8 @@ interface ILineaRollup {
    * @param roleAddresses The list of role address and roles to assign permissions to.
    * @param pauseTypeRoles The list of pause types to associate with roles.
    * @param unpauseTypeRoles The list of unpause types to associate with roles.
+   * @param initialYieldManager The address of the YieldManager contract.
+   * @param initialL2YieldRecipient The address of the designated L2YieldRecipient.
    * @param fallbackOperator The account to be given OPERATOR_ROLE on when the time since last finalization lapses.
    * @param defaultAdmin The account to be given DEFAULT_ADMIN_ROLE on initialization.
    */
@@ -34,6 +36,8 @@ interface ILineaRollup {
     IPermissionsManager.RoleAddress[] roleAddresses;
     IPauseManager.PauseTypeRole[] pauseTypeRoles;
     IPauseManager.PauseTypeRole[] unpauseTypeRoles;
+    address initialYieldManager;
+    address initialL2YieldRecipient;
     address fallbackOperator;
     address defaultAdmin;
   }

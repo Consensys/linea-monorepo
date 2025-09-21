@@ -120,6 +120,8 @@ abstract contract LineaRollupBase is
 
     __Permissions_init(_initializationData.roleAddresses);
 
+    __LineaNativeYieldExtension_init(_initializationData.initialYieldManager, _initializationData.initialL2YieldRecipient);
+
     verifiers[0] = _initializationData.defaultVerifier;
 
     if (_initializationData.fallbackOperator == address(0)) {
@@ -735,10 +737,11 @@ abstract contract LineaRollupBase is
    * @param _amount The net earned yield.
    */
   function reportNativeYield(uint256 _amount) external {
-    if (msg.sender != yieldManager) {
+    if (msg.sender != yieldManager()) {
       revert CallerIsNotYieldManager();
     }
 
+    address l2YieldRecipient = l2YieldRecipient();
     uint256 messageNumber = nextMessageNumber++;
     bytes32 messageHash = MessageHashing._hashMessageWithEmptyCalldata(address(this), l2YieldRecipient, 0, _amount, messageNumber);
     

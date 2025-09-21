@@ -25,14 +25,51 @@ abstract contract LineaNativeYieldExtension is AccessControlUpgradeable, ILineaN
   /// @notice The role required to set the L2YieldRecipient address.
   bytes32 public constant L2_YIELD_RECIPIENT_SETTER_ROLE = keccak256("L2_YIELD_RECIPIENT_SETTER_ROLE");
 
+  /// @custom:storage-location erc7201:linea.storage.LineaNativeYieldExtensionStorage
+  struct LineaNativeYieldExtensionStorage {    
+      address _yieldManager;
+      address _l2YieldRecipient;
+      uint256 _permissionlessDonationTotal;
+  }
+
+  // keccak256(abi.encode(uint256(keccak256("linea.storage.LineaNativeYieldExtensionStorage")) - 1)) & ~bytes32(uint256(0xff))
+  bytes32 private constant LineaNativeYieldExtensionStorageLocation = 0x1ca1eef1e96a909fae6702b42f1bcde6999f4e0fc09e0e51d048b197a65a8f00;
+
+  function _getLineaNativeYieldExtensionStorage() private pure returns (LineaNativeYieldExtensionStorage storage $) {
+      assembly {
+          $.slot := LineaNativeYieldExtensionStorageLocation
+      }
+  }
+
   /// @notice The address of the YieldManager.
-  address public yieldManager;
+  function yieldManager() public view returns (address) {
+      LineaNativeYieldExtensionStorage storage $ = _getLineaNativeYieldExtensionStorage();
+      return $._yieldManager;
+  }
 
   /// @notice The address of the L2YieldRecipient.
-  address public l2YieldRecipient;
+  function l2YieldRecipient() public view returns (address) {
+      LineaNativeYieldExtensionStorage storage $ = _getLineaNativeYieldExtensionStorage();
+      return $._l2YieldRecipient;
+  }
 
   /// @notice The total ETH received through fundPermissionless().
-  uint256 public permissionlessDonationTotal;
+  function permissionlessDonationTotal() public view returns (uint256) {
+      LineaNativeYieldExtensionStorage storage $ = _getLineaNativeYieldExtensionStorage();
+      return $._permissionlessDonationTotal;
+  }
+
+  /**
+   * @notice Initialises the LineaNativeYieldExtension.
+   * @param _yieldManager YieldManager address.
+   * @param _l2YieldRecipient L2YieldRecipient address.
+   */
+  function __LineaNativeYieldExtension_init(address _yieldManager, address _l2YieldRecipient) internal onlyInitializing {
+    __AccessControl_init();
+
+    setYieldManager(_yieldManager);
+    setL2YieldRecipient(_l2YieldRecipient);
+  }
 
   /**
    * @notice Transfer ETH to the registered YieldManager.
@@ -41,7 +78,7 @@ abstract contract LineaNativeYieldExtension is AccessControlUpgradeable, ILineaN
    * @param _amount Amount of ETH to transfer.
    */
   function transferFundsForNativeYield(uint256 _amount) external onlyRole(RESERVE_OPERATOR_ROLE) {
-    IYieldManager(yieldManager).receiveFundsFromReserve{ value: _amount }();
+    IYieldManager(yieldManager()).receiveFundsFromReserve{ value: _amount }();
   }
 
   /**
@@ -58,7 +95,8 @@ abstract contract LineaNativeYieldExtension is AccessControlUpgradeable, ILineaN
    */
   function fundPermissionless() external payable {
     emit PermissionlessDonationReceived(msg.sender, msg.value);
-    permissionlessDonationTotal += msg.value;
+    LineaNativeYieldExtensionStorage storage $ = _getLineaNativeYieldExtensionStorage();
+    $._permissionlessDonationTotal += msg.value;
   }
 
   /**
@@ -66,12 +104,13 @@ abstract contract LineaNativeYieldExtension is AccessControlUpgradeable, ILineaN
    * @dev YIELD_MANAGER_SETTER_ROLE is required to execute.
    * @param _newYieldManager YieldManager address.
    */
-  function setYieldManager(address _newYieldManager) external onlyRole(YIELD_MANAGER_SETTER_ROLE) {
+  function setYieldManager(address _newYieldManager) public onlyRole(YIELD_MANAGER_SETTER_ROLE) {
     if (_newYieldManager == address(0)) {
       revert ZeroAddressNotAllowed();
     }
-    emit YieldManagerChanged(yieldManager, _newYieldManager, msg.sender);
-    yieldManager = _newYieldManager;
+    LineaNativeYieldExtensionStorage storage $ = _getLineaNativeYieldExtensionStorage();
+    emit YieldManagerChanged($._yieldManager, _newYieldManager, msg.sender);
+    $._yieldManager = _newYieldManager;
   }
 
   /**
@@ -79,11 +118,12 @@ abstract contract LineaNativeYieldExtension is AccessControlUpgradeable, ILineaN
    * @dev L2_YIELD_RECIPIENT_SETTER_ROLE is required to execute.
    * @param _newL2YieldRecipient L2YieldRecipient address.
    */
-  function setL2YieldRecipient(address _newL2YieldRecipient) external onlyRole(L2_YIELD_RECIPIENT_SETTER_ROLE) {
+  function setL2YieldRecipient(address _newL2YieldRecipient) public onlyRole(L2_YIELD_RECIPIENT_SETTER_ROLE) {
     if (_newL2YieldRecipient == address(0)) {
       revert ZeroAddressNotAllowed();
     }
-    emit L2YieldRecipientChanged(l2YieldRecipient, _newL2YieldRecipient, msg.sender);
-    l2YieldRecipient = _newL2YieldRecipient;
+    LineaNativeYieldExtensionStorage storage $ = _getLineaNativeYieldExtensionStorage();
+    emit L2YieldRecipientChanged($._l2YieldRecipient, _newL2YieldRecipient, msg.sender);
+    $._l2YieldRecipient = _newL2YieldRecipient;
   }
 }
