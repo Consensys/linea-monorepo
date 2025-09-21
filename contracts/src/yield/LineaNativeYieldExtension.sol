@@ -85,7 +85,7 @@ abstract contract LineaNativeYieldExtension is AccessControlUpgradeable, ILineaN
    * @notice Send ETH to this contract.
    * @dev FUNDER_ROLE is required to execute.
    */
-  function fund() external payable onlyRole(YIELD_MANAGER_SETTER_ROLE) {
+  function fund() external payable onlyRole(FUNDER_ROLE) {
     emit FundingReceived(msg.sender, msg.value);
   }
 

@@ -736,7 +736,7 @@ abstract contract LineaRollupBase is
    * @dev Callable only by the registered YieldManager.
    * @param _amount The net earned yield.
    */
-  function reportNativeYield(uint256 _amount) external {
+  function reportNativeYield(uint256 _amount) external whenTypeAndGeneralNotPaused(PauseType.L1_L2) {
     if (msg.sender != yieldManager()) {
       revert CallerIsNotYieldManager();
     }
