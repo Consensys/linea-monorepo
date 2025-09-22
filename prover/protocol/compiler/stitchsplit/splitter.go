@@ -39,9 +39,9 @@ func Splitter(size int) func(*wizard.CompiledIOP) {
 }
 
 type SplitterContext struct {
-	Comp       *wizard.CompiledIOP
+	Comp *wizard.CompiledIOP
 	// The target column size after splitting
-	Size       int
+	Size int
 	// Splitting alliances are stored round by round
 	Splittings []SummerizedAlliances
 }
