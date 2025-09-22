@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/sirupsen/logrus"
 )
 
 type compilerType int
@@ -112,7 +111,7 @@ func IsExprEligible(
 					switch nat.Status() {
 					case column.Proof, column.VerifyingKey:
 						// proof and verifying key columns are eligible,
-						// we already checked that their size > minSize
+						// we already checked that their minSize < size < maxSize
 						b = true
 					// Here only the columns that are ignored by the stitcher compiler are eligible
 					case column.Committed, column.Precomputed, column.Ignored:
@@ -142,8 +141,7 @@ func IsExprEligible(
 
 	if hasAtLeastOneEligible && !allAreEligible {
 		// We expect no expression over ignored columns
-		logrus.Debugf("the expression is not eligible, it is not supported by stitcher, %v", statusMap)
-		return false, true
+		utils.Panic("the expression is not eligible, it is not supported by stitcher, %v", statusMap)
 	}
 
 	if allAreVeriferCol {

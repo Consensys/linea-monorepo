@@ -134,6 +134,10 @@ func (ctx StitchingContext) LocalGlobalConstraints() {
 				ctx.Comp.QueriesNoParams.MarkAsIgnored(qName)
 				continue
 			}
+			// If the domainsize is larger than the max size, we cannot stitch it.
+			if q.DomainSize > ctx.MaxSize {
+				continue
+			}
 			// detect if the expression is over the eligible columns.
 			isEligible, unSupported := IsExprEligible(isColEligibleStitching, ctx.Stitchings, board, compilerTypeStitch)
 			if !isEligible && !unSupported {
