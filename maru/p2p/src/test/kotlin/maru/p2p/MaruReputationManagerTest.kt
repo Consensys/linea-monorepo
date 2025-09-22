@@ -47,13 +47,24 @@ class MaruReputationManagerTest {
   }
 
   @Test
-  fun `allows connection after cooldown expires`() {
-    val manager = MaruReputationManager(metricsSystem, timeProvider, { false }, reputationConfig)
+  fun `doesn't allow connection after cooldown period expires but allows after ban period`() {
+    val manager =
+      MaruReputationManager(
+        metricsSystem = metricsSystem,
+        timeProvider = timeProvider,
+        isStaticPeer = { false },
+        reputationConfig = reputationConfig,
+      )
     whenever(timeProvider.timeInMillis).thenReturn(UInt64.ZERO)
     manager.adjustReputation(peerAddress, ReputationAdjustment.LARGE_PENALTY)
     // Simulate time passing beyond cooldown
     whenever(timeProvider.timeInMillis).thenReturn(
       UInt64.ZERO.plus(reputationConfig.cooldownPeriod.inWholeMilliseconds) + 1,
+    )
+    assertThat(manager.isConnectionInitiationAllowed(peerAddress)).isFalse()
+    // Simulate time passing beyond ban period
+    whenever(timeProvider.timeInMillis).thenReturn(
+      UInt64.ZERO.plus(reputationConfig.banPeriod.inWholeMilliseconds) + 1,
     )
     assertThat(manager.isConnectionInitiationAllowed(peerAddress)).isTrue()
   }
