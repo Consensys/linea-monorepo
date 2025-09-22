@@ -92,8 +92,8 @@ func (ctx *SelfRecursionCtx) interpolateUAlphaX() string {
 }
 
 // Name of the concatenation of the DhQs
-func (ctx *SelfRecursionCtx) concatenatedDhQ() ifaces.ColID {
-	name := ifaces.ColIDf("SELFRECURSION_CONCAT_DHQ_%v", ctx.SelfRecursionCnt)
+func (ctx *SelfRecursionCtx) concatenatedDhQ(index int) ifaces.ColID {
+	name := ifaces.ColIDf("SELFRECURSION_CONCAT_DHQ_%v_%v", ctx.SelfRecursionCnt, index)
 	return maybePrefix(ctx, name)
 }
 
@@ -116,8 +116,8 @@ func (ctx *SelfRecursionCtx) concatenatedPrecomputedHashes() ifaces.ColID {
 }
 
 // Name of the concatenated preimages for the precomputed rounds
-func (ctx *SelfRecursionCtx) concatenatedPrecomputedPreimages() ifaces.ColID {
-	name := ifaces.ColIDf("SELFRECURSION_CONCAT_PRECOMPUTED_PREIMAGES_%v", ctx.SelfRecursionCnt)
+func (ctx *SelfRecursionCtx) concatenatedPrecomputedPreimages(index int) ifaces.ColID {
+	name := ifaces.ColIDf("SELFRECURSION_CONCAT_PRECOMPUTED_PREIMAGES_%v_%v", ctx.SelfRecursionCnt, index)
 	return maybePrefix(ctx, name)
 }
 

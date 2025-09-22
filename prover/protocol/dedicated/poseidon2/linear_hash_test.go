@@ -53,7 +53,7 @@ func TestLinearHash(t *testing.T) {
 
 			for i := 0; i < blockSize; i++ {
 				ex[i] = make([]field.Element, 0, numhash)
-				th[i] = make([]field.Element, 0, numhash*colChunks)
+				th[i] = make([]field.Element, 0, colChunks*numhash)
 			}
 
 			for i := 0; i < numhash; i++ {
