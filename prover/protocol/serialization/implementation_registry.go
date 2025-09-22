@@ -177,7 +177,6 @@ func init() {
 	RegisterImplementation(smartvectors.Regular{})
 	RegisterImplementation(smartvectors.PaddedCircularWindow{})
 	RegisterImplementation(smartvectors.Constant{})
-	RegisterImplementation(smartvectors.Pooled{})
 
 	RegisterImplementation(stitchsplit.ProveRoundProverAction{})
 	RegisterImplementation(stitchsplit.AssignLocalPointProverAction{})

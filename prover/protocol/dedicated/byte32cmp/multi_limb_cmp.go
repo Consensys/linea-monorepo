@@ -205,14 +205,14 @@ func (mCmp *MultiLimbCmp) Run(run *wizard.ProverRuntime) {
 		)
 
 		// sf is positive
-		if sF.IsNonNeg() && !sF.IsZero() {
+		if !sF.LexicographicallyLargest() && !sF.IsZero() {
 
 			isGreater[i] = field.One()
 			nnSyndrom[i] = sF
 		}
 
 		// sf is negitive
-		if !sF.IsNonNeg() {
+		if sF.LexicographicallyLargest() {
 
 			isLower[i] = field.One()
 			nnSyndrom[i].Neg(&sF)

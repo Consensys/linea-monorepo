@@ -19,62 +19,86 @@ const blockSize = 8
 
 func TestLinearHash(t *testing.T) {
 
-	var tohash ifaces.Column
+	var tohash [blockSize]ifaces.Column
 	var expectedhash [blockSize]ifaces.Column
 
 	testcases := []struct {
-		period  int
+		colSize int
 		numhash int
 	}{
-		{period: 2, numhash: 4},
-		{period: 3, numhash: 16},
-		// {period: 4, numhash: 14},
-		// {period: 5, numhash: 17},
+		{colSize: 16, numhash: 4},  // Full Chunks
+		{colSize: 20, numhash: 16}, // Partial last chunk
+		{colSize: 31, numhash: 8},  // Partial last chunk
 	}
 
 	for _, tc := range testcases {
 
-		period := tc.period
+		colChunks := (tc.colSize + blockSize - 1) / blockSize
 		numhash := tc.numhash
-		numRowLarge := utils.NextPowerOfTwo(blockSize * period * numhash)
+		colSize := tc.colSize
+		numRowLarge := utils.NextPowerOfTwo(colChunks * numhash)
 		numRowSmall := utils.NextPowerOfTwo(numhash)
 
 		define := func(b *wizard.Builder) {
-			tohash = b.RegisterCommit("TOHASH", numRowLarge)
 			for i := 0; i < blockSize; i++ {
+				tohash[i] = b.RegisterCommit(ifaces.ColIDf("TOHASH_%v", i), numRowLarge)
+
 				expectedhash[i] = b.RegisterCommit(ifaces.ColIDf("HASHED_%v", i), numRowSmall)
 			}
-			linhash.CheckLinearHash(b.CompiledIOP, "test", tohash, period, numhash, expectedhash)
+			linhash.CheckLinearHash(b.CompiledIOP, "test", tohash, colChunks, numhash, expectedhash)
 		}
 
 		prove := func(run *wizard.ProverRuntime) {
-			th := make([]field.Element, 0, blockSize*numhash*period)
+			var ex, th [blockSize][]field.Element
 
-			var ex [blockSize][]field.Element
 			for i := 0; i < blockSize; i++ {
 				ex[i] = make([]field.Element, 0, numhash)
+				th[i] = make([]field.Element, 0, numhash*colChunks)
 			}
 
 			for i := 0; i < numhash; i++ {
 				// generate a segment at random, hash it
 				// and append the segment to th and the result
 				// to ex
-				segment := vector.Rand(period * blockSize)
+				segment := vector.Rand(colSize)
 				y := poseidon2.Poseidon2Sponge(segment)
 
-				th = append(th, segment...)
 				for j := 0; j < blockSize; j++ {
 					ex[j] = append(ex[j], y[j])
+
+					// Allocate segments to TOHASH columns
+					completeChunks := colSize / blockSize
+					for k := 0; k < completeChunks; k++ {
+						th[j] = append(th[j], segment[k*blockSize+j])
+					}
+
+					lastChunkElements := colSize % blockSize
+					lastChunkPadding := 0
+					if lastChunkElements > 0 {
+						lastChunkPadding = blockSize - lastChunkElements
+					}
+					if lastChunkElements > 0 {
+						k := completeChunks
+						if j < lastChunkPadding {
+							// Left padding
+							th[j] = append(th[j], field.Zero())
+						} else {
+							// Actual data
+							actualIdx := k*blockSize + (j - lastChunkPadding)
+							th[j] = append(th[j], segment[actualIdx])
+						}
+					}
+
 				}
 			}
-			thSV := smartvectors.RightZeroPadded(th, numRowLarge)
-			run.AssignColumn(tohash.GetColID(), thSV)
 
-			var exSV [blockSize]smartvectors.SmartVector
+			var exSV, thSV [blockSize]smartvectors.SmartVector
 			for i := 0; i < blockSize; i++ {
+				thSV[i] = smartvectors.RightZeroPadded(th[i], numRowLarge)
 				exSV[i] = smartvectors.RightZeroPadded(ex[i], numRowSmall)
 
 				// And assign them
+				run.AssignColumn(tohash[i].GetColID(), thSV[i])
 				run.AssignColumn(expectedhash[i].GetColID(), exSV[i])
 
 			}
@@ -86,4 +110,11 @@ func TestLinearHash(t *testing.T) {
 		require.NoError(t, wizard.Verify(comp, proof))
 	}
 
+}
+func getSegmentElement(segment []field.Element, k, j, blockSize, colSize int) field.Element {
+	idx := k*blockSize + j
+	if idx < colSize {
+		return segment[idx]
+	}
+	return field.Zero()
 }
