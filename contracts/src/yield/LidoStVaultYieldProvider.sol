@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.30;
 
+import { YieldManagerStorageLayout } from "./YieldManagerStorageLayout.sol";
 import { IYieldManager } from "./interfaces/IYieldManager.sol";
 import { IYieldProvider } from "./interfaces/IYieldProvider.sol";
 import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
+import { IDashboard } from "./interfaces/vendor/lido-vault/IDashboard.sol";
 
 /**
  * @title Contract to handle native yield operations with Lido Staking Vault.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract LidoStVaultYieldProvider is IYieldProvider, IGenericErrors {
+contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, IGenericErrors {
   /**
    * @notice Send ETH to the specified yield strategy.
    * @dev Will settle any outstanding liabilities to the YieldProvider.
@@ -92,19 +94,21 @@ contract LidoStVaultYieldProvider is IYieldProvider, IGenericErrors {
   /**
    * @notice Pauses beacon chain deposits for specified yield provier.
    */
-  function pauseStaking() external {
-
+  function pauseStaking(address _yieldProvider) external {
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    IDashboard($._yieldProviderData[_yieldProvider].registration.yieldProviderEntrypoint).pauseBeaconChainDeposits();
   }
 
   /**
    * @notice Unpauses beacon chain deposits for specified yield provier.
    * @dev Will revert if the withdrawal reserve is in deficit, or there is an existing LST liability.
    */
-  function unpauseStaking() external {
-
+  function unpauseStaking(address _yieldProvider) external {
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    IDashboard($._yieldProviderData[_yieldProvider].registration.yieldProviderEntrypoint).resumeBeaconChainDeposits();
   }
 
   function validateAdditionToYieldManager(IYieldManager.YieldProviderRegistration calldata _yieldProviderRegistration) external {
-
+    
   }
 }

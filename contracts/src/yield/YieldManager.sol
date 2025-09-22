@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.30;
 
+import { YieldManagerStorageLayout } from "./YieldManagerStorageLayout.sol";
 import { IYieldManager } from "./interfaces/IYieldManager.sol";
 import { IYieldProvider } from "./interfaces/IYieldProvider.sol";
 import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
@@ -10,9 +11,10 @@ import { YieldManagerPauseManager } from "../security/pausing/YieldManagerPauseM
 /**
  * @title Contract to handle native yield operations.
  * @author ConsenSys Software Inc.
+ * @dev Sole writer to YieldManagerStorageLayout.
  * @custom:security-contact security-report@linea.build
  */
-contract YieldManager is YieldManagerPauseManager, IYieldManager, IGenericErrors {
+contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IYieldManager, IGenericErrors {
   /// @notice The role required to send ETH to a yield provider.
   bytes32 public constant YIELD_PROVIDER_FUNDER_ROLE = keccak256("YIELD_PROVIDER_FUNDER_ROLE");
 
@@ -43,25 +45,6 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager, IGenericErrors
   /// @notice 100% in BPS.
   uint256 constant MAX_BPS = 10000;
 
-  /// @custom:storage-location erc7201:linea.storage.YieldManager
-  struct YieldManagerStorage {
-    // Should we struct pack this?
-    address _l1MessageService;
-    uint256 _minimumWithdrawalReservePercentageBps;
-    uint256 _minimumWithdrawalReserveAmount;
-    address[] _yieldProviders;
-    mapping(address yieldProvider => YieldProviderData) _yieldProviderData;
-  }
-
-  // keccak256(abi.encode(uint256(keccak256("linea.storage.YieldManagerStorage")) - 1)) & ~bytes32(uint256(0xff))
-  bytes32 private constant YieldManagerStorageLocation = 0xdc1272075efdca0b85fb2d76cbb5f26d954dc18e040d6d0b67071bd5cbd04300;
-
-  function _getYieldManagerStorage() private pure returns (YieldManagerStorage storage $) {
-      assembly {
-          $.slot := YieldManagerStorageLocation
-      }
-  }
-
   /// @notice The L1MessageService address.
   function l1MessageService() public view returns (address) {
       YieldManagerStorage storage $ = _getYieldManagerStorage();
@@ -88,14 +71,23 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager, IGenericErrors
   function initialize() external initializer {
   }
 
+  modifier onlyKnownYieldProvider(address _yieldProvider) {
+      YieldManagerStorage storage $ = _getYieldManagerStorage();
+      if ($._yieldProviderData[_yieldProvider].yieldProviderIndex != 0) {
+        revert UnknownYieldProvider();
+      }
+      _;
+  }
+
+
   /// @notice Get effective minimum withdrawal reserve
   /// @dev Effective minimum reserve is min(minimumWithdrawalReservePercentageBps, minimumWithdrawalReserveAmount).
   function getEffectiveMinimumWithdrawalReserve() public view returns (uint256) {
       YieldManagerStorage storage $ = _getYieldManagerStorage();
       uint256 l1MessageServiceBalance = $._l1MessageService.balance;
       uint256 minWithdrawalReserveByPercentage = l1MessageServiceBalance * $._minimumWithdrawalReservePercentageBps / MAX_BPS;
-      uint256 minimumWithdrawalReserveAmount = $._minimumWithdrawalReserveAmount;
-      return minWithdrawalReserveByPercentage > minimumWithdrawalReserveAmount ? minWithdrawalReserveByPercentage : minimumWithdrawalReserveAmount;
+      uint256 minimumWithdrawalReserveAmountCached = $._minimumWithdrawalReserveAmount;
+      return minWithdrawalReserveByPercentage > minimumWithdrawalReserveAmountCached ? minWithdrawalReserveByPercentage : minimumWithdrawalReserveAmountCached;
   }
 
   /// @notice Returns true if withdrawal reserve balance is below effective required minimum.
@@ -117,7 +109,7 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager, IGenericErrors
    * @param _amount        The amount of ETH to send.
    * @param _yieldProvider The target yield provider contract.
    */
-  function fundYieldProvider(uint256 _amount, address _yieldProvider) external {
+  function fundYieldProvider(uint256 _amount, address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
     if (!isWithdrawalReserveBelowEffectiveMinimum()) {
         revert InsufficientWithdrawalReserve();
     }
@@ -143,7 +135,6 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager, IGenericErrors
     if (msg.sender != $._l1MessageService) {
       revert SenderNotL1MessageService();
     }
-    uint256 effectiveMinimumWithdrawalReserve = getEffectiveMinimumWithdrawalReserve();
     if (!isWithdrawalReserveBelowEffectiveMinimum()) {
         revert InsufficientWithdrawalReserve();
     }
@@ -172,7 +163,7 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager, IGenericErrors
    * @param _totalReserveDonations   Total amount of donations received on the L1MessageService or L2MessageService.
    * @param _yieldProvider      Yield provider address.
    */
-  function reportYield(uint256 _totalReserveDonations, address _yieldProvider) external {
+  function reportYield(uint256 _totalReserveDonations, address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
 
   }
 
@@ -182,7 +173,7 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager, IGenericErrors
    * @param _withdrawalParams   Provider-specific withdrawal parameters.
    * @param _yieldProvider      Yield provider address.
    */
-  function unstake(bytes memory _withdrawalParams, address _yieldProvider) external {
+  function unstake(bytes memory _withdrawalParams, address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
 
   }
 
@@ -207,7 +198,7 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager, IGenericErrors
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof,
     address _yieldProvider
-  ) external {
+  ) external onlyKnownYieldProvider(_yieldProvider) {
 
   }
 
@@ -219,7 +210,7 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager, IGenericErrors
    * @param _amount                 Amount to withdraw.
    * @param _yieldProvider          Yield provider address.
    */
-  function withdrawFromYieldProvider(uint256 _amount, address _yieldProvider) external {
+  function withdrawFromYieldProvider(uint256 _amount, address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
 
   }
 
@@ -230,7 +221,7 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager, IGenericErrors
    * @param _amount                 Amount to withdraw.
    * @param _yieldProvider          Yield provider address.
    */
-  function addToWithdrawalReserve(uint256 _amount, address _yieldProvider) external {
+  function addToWithdrawalReserve(uint256 _amount, address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
 
   }
 
@@ -240,7 +231,7 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager, IGenericErrors
    * @param _amount                 Amount to withdraw.
    * @param _yieldProvider          Yield provider address.
    */
-  function replenishWithdrawalReserve(uint256 _amount, address _yieldProvider) external {
+  function replenishWithdrawalReserve(uint256 _amount, address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
 
   }
 
@@ -249,7 +240,7 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager, IGenericErrors
    * @dev STAKING_PAUSER_ROLE is required to execute.
    * @param _yieldProvider          Yield provider address.
    */
-  function pauseStaking(address _yieldProvider) external {
+  function pauseStaking(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
 
   }
 
@@ -259,7 +250,7 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager, IGenericErrors
    * @dev Will revert if the withdrawal reserve is in deficit, or there is an existing LST liability.
    * @param _yieldProvider          Yield provider address.
    */
-  function unpauseStaking(address _yieldProvider) external {
+  function unpauseStaking(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
 
   }
 
@@ -277,7 +268,8 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager, IGenericErrors
     if ($._yieldProviderData[_yieldProvider].yieldProviderIndex != 0) {
       revert YieldProviderAlreadyAdded();
     }
-    uint96 yieldProviderIndex = uint96($._yieldProviders.length);
+    // Ensure no added yield provider has index 0
+    uint96 yieldProviderIndex = uint96($._yieldProviders.length) + 1;
     // TODO - ? Need to check for uint96 overflow
     $._yieldProviders.push(_yieldProvider);
     // $._yieldProviderRegistration[_yieldProvider] = _yieldProviderRegistration;
@@ -292,7 +284,7 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager, IGenericErrors
     // TODO - Emit event
   }
 
-  function removeYieldProvider(address _yieldProvider) external onlyRole(YIELD_PROVIDER_SETTER) {
+  function removeYieldProvider(address _yieldProvider) external onlyRole(YIELD_PROVIDER_SETTER)  {
     if (_yieldProvider == address(0)) {
       revert ZeroAddressNotAllowed();
     }

@@ -84,6 +84,8 @@ interface IYieldManager {
    */
   error CallerMissingRole(bytes32 role1, bytes32 role2);
 
+  error UnknownYieldProvider();
+
   error YieldProviderAlreadyAdded();
 
   error YieldProviderHasRemainingFunds();

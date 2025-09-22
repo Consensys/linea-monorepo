@@ -6,9 +6,12 @@ import { IYieldManager } from "./IYieldManager.sol";
 /**
  * @title Contract that will the YieldManager will delegatecall, to handle provider-specific yield operations.
  * @author ConsenSys Software Inc.
+ * @dev YieldProvider will handle only the external protocol interactions, YieldManager will handle the remainder (storage update, input validation, etc).
  * @custom:security-contact security-report@linea.build
  */
 interface IYieldProvider {
+  error IncorrectYieldProviderType();
+
   /**
    * @notice Send ETH to the specified yield strategy.
    * @dev Will settle any outstanding liabilities to the YieldProvider.
@@ -76,13 +79,13 @@ interface IYieldProvider {
   /**
    * @notice Pauses beacon chain deposits for specified yield provier.
    */
-  function pauseStaking() external;
+  function pauseStaking(address _yieldProvider) external;
 
   /**
    * @notice Unpauses beacon chain deposits for specified yield provier.
    * @dev Will revert if the withdrawal reserve is in deficit, or there is an existing LST liability.
    */
-  function unpauseStaking() external;
+  function unpauseStaking(address _yieldProvider) external;
 
   function validateAdditionToYieldManager(IYieldManager.YieldProviderRegistration calldata _yieldProviderRegistration) external;
 }
