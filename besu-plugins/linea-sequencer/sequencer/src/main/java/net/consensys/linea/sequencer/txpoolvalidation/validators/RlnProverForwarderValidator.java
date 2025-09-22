@@ -18,13 +18,22 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.ByteString;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import java.math.BigInteger;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.consensys.linea.config.LineaRlnValidatorConfiguration;
+import net.consensys.linea.config.LineaTracerConfiguration;
+import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.txpoolvalidation.shared.KarmaServiceClient;
+import net.consensys.linea.zktracer.LineCountingTracer;
+import net.consensys.linea.zktracer.ZkCounter;
+import net.consensys.linea.zktracer.ZkTracer;
+import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
+import org.hyperledger.besu.plugin.services.BlockchainService;
+import org.hyperledger.besu.plugin.services.TransactionSimulationService;
 import net.consensys.linea.sequencer.txpoolvalidation.shared.KarmaServiceClient.KarmaInfo;
 import net.vac.prover.Address;
 import net.vac.prover.RlnProverGrpc;
@@ -91,6 +100,12 @@ public class RlnProverForwarderValidator implements PluginTransactionPoolValidat
   // Karma service for gasless validation
   private final KarmaServiceClient karmaServiceClient;
 
+  // Simulation dependencies for estimating gas used
+  private final TransactionSimulationService transactionSimulationService;
+  private final BlockchainService blockchainService;
+  private final LineaTracerConfiguration tracerConfiguration;
+  private final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration;
+
   /**
    * Creates a new RLN Prover Forwarder Validator with default gRPC channel management.
    *
@@ -101,8 +116,29 @@ public class RlnProverForwarderValidator implements PluginTransactionPoolValidat
   public RlnProverForwarderValidator(
       LineaRlnValidatorConfiguration rlnConfig,
       boolean enabled,
+      KarmaServiceClient karmaServiceClient,
+      TransactionSimulationService transactionSimulationService,
+      BlockchainService blockchainService,
+      LineaTracerConfiguration tracerConfiguration,
+      LineaL1L2BridgeSharedConfiguration l1L2BridgeSharedConfiguration) {
+    this(rlnConfig,
+        enabled,
+        karmaServiceClient,
+        transactionSimulationService,
+        blockchainService,
+        tracerConfiguration,
+        l1L2BridgeSharedConfiguration,
+        null);
+  }
+
+  /**
+   * Backward-compatible constructor used by existing tests. New dependencies default to null.
+   */
+  public RlnProverForwarderValidator(
+      LineaRlnValidatorConfiguration rlnConfig,
+      boolean enabled,
       KarmaServiceClient karmaServiceClient) {
-    this(rlnConfig, enabled, karmaServiceClient, null);
+    this(rlnConfig, enabled, karmaServiceClient, null, null, null, null, null);
   }
 
   /**
@@ -113,7 +149,7 @@ public class RlnProverForwarderValidator implements PluginTransactionPoolValidat
    * @param enabled Whether the validator is enabled (should be false in sequencer mode)
    */
   public RlnProverForwarderValidator(LineaRlnValidatorConfiguration rlnConfig, boolean enabled) {
-    this(rlnConfig, enabled, null, null);
+    this(rlnConfig, enabled, null, null, null, null, null, null);
   }
 
   /**
@@ -132,10 +168,18 @@ public class RlnProverForwarderValidator implements PluginTransactionPoolValidat
       LineaRlnValidatorConfiguration rlnConfig,
       boolean enabled,
       KarmaServiceClient karmaServiceClient,
+      TransactionSimulationService transactionSimulationService,
+      BlockchainService blockchainService,
+      LineaTracerConfiguration tracerConfiguration,
+      LineaL1L2BridgeSharedConfiguration l1L2BridgeSharedConfiguration,
       ManagedChannel providedChannel) {
     this.rlnConfig = rlnConfig;
     this.enabled = enabled;
     this.karmaServiceClient = karmaServiceClient;
+    this.transactionSimulationService = transactionSimulationService;
+    this.blockchainService = blockchainService;
+    this.tracerConfiguration = tracerConfiguration;
+    this.l1L2BridgeConfiguration = l1L2BridgeSharedConfiguration;
 
     if (enabled) {
       if (providedChannel != null) {
@@ -317,6 +361,15 @@ public class RlnProverForwarderValidator implements PluginTransactionPoolValidat
                           .setValue(ByteString.copyFrom(chainId.toByteArray()))
                           .build()));
 
+      // Provide an estimated gas units value. As an initial implementation,
+      // simulate execution to estimate gas used when possible; fallback to tx gas limit.
+      long estimatedGasUsed = estimateGasUsed(transaction);
+      LOG.debug(
+          "Estimated gas used for tx {}: {}",
+          transaction.getHash().toHexString(),
+          estimatedGasUsed);
+      requestBuilder.setEstimatedGasUsed(estimatedGasUsed);
+
       SendTransactionRequest request = requestBuilder.build();
 
       LOG.debug(
@@ -345,6 +398,49 @@ public class RlnProverForwarderValidator implements PluginTransactionPoolValidat
       // Graceful fallback: accept the transaction if gRPC fails
       return Optional.empty();
     }
+  }
+
+  private LineCountingTracer createLineCountingTracer(
+      final ProcessableBlockHeader pendingBlockHeader, final BigInteger chainId) {
+    var lineCountingTracer =
+        tracerConfiguration != null && tracerConfiguration.isLimitless()
+            ? new ZkCounter(l1L2BridgeConfiguration)
+            : new ZkTracer(net.consensys.linea.zktracer.Fork.LONDON, l1L2BridgeConfiguration, chainId);
+    lineCountingTracer.traceStartConflation(1L);
+    lineCountingTracer.traceStartBlock(pendingBlockHeader, pendingBlockHeader.getCoinbase());
+    return lineCountingTracer;
+  }
+
+  private long estimateGasUsed(final Transaction transaction) {
+    try {
+      // Fast-path: simple ETH transfer with empty calldata
+      if (transaction.getTo().isPresent()
+          && transaction.getPayload().isEmpty()
+          && transaction.getValue().getAsBigInteger().signum() > 0) {
+        return 21_000L;
+      }
+
+      if (transactionSimulationService == null || blockchainService == null) {
+        return transaction.getGasLimit();
+      }
+
+      final var pendingBlockHeader = transactionSimulationService.simulatePendingBlockHeader();
+      final var chainId = blockchainService.getChainId().orElse(BigInteger.ZERO);
+      final var tracer = createLineCountingTracer(pendingBlockHeader, chainId);
+      final var maybeSimulationResults =
+          transactionSimulationService.simulate(
+              transaction, java.util.Optional.empty(), pendingBlockHeader, tracer, false, true);
+
+      if (maybeSimulationResults.isPresent()) {
+        final var sim = maybeSimulationResults.get();
+        if (sim.isSuccessful()) {
+          return sim.result().getEstimateGasUsedByTransaction();
+        }
+      }
+    } catch (final Exception ignored) {
+      // fall through to fallback below
+    }
+    return transaction.getGasLimit();
   }
 
   /**

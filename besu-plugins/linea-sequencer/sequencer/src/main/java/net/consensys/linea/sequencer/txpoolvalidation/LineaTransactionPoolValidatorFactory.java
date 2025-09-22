@@ -101,7 +101,11 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
           new RlnProverForwarderValidator(
               rlnValidatorConf,
               true, // enabled
-              sharedServiceManager.getKarmaServiceClient()));
+              sharedServiceManager.getKarmaServiceClient(),
+              transactionSimulationService,
+              blockchainService,
+              tracerConfiguration,
+              l1L2BridgeConfiguration));
     }
 
     // Conditionally add RLN Validator (for proof verification)

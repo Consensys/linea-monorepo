@@ -7,12 +7,13 @@ services:
   rln-prover:
     hostname: rln-prover
     container_name: rln-prover
-    image: status-rln-prover:20250914165712
+    image: status-rln-prover:20250922172416
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo", "rln" ]
     ports:
       - "50051:50051"  # RLN proof service
       - "50052:50052"  # Karma service (optional, can be same port)
     restart: unless-stopped
+    user: root
     environment:
       SERVICE_IP: "0.0.0.0"
       SERVICE_PORT: "50051"
@@ -27,8 +28,24 @@ services:
     volumes:
       - local-dev:/app/data
       - ./config/rln-prover/mock_users.json:/app/mock_users.json:ro
+    command:
+      - --no-config
+      - --ip
+      - 0.0.0.0
+      - --port
+      - "50051"
+      - --metrics-ip
+      - 0.0.0.0
+      - --metrics-port
+      - "30031"
+      - --db
+      - /app/data/prover-db
+      - --mock-sc
+      - "true"
+      - --mock-user
+      - /app/mock_users.json
     healthcheck:
-      test: ["CMD", "sh", "-c", "ps aux | grep status_rln_prover | grep -v grep"]
+      test: ["CMD", "sh", "-c", "ps aux | grep prover_cli | grep -v grep"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -42,11 +59,12 @@ services:
   karma-service:
     hostname: karma-service  
     container_name: karma-service
-    image: status-rln-prover:20250914165712
+    image: status-rln-prover:20250922172416
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo", "rln" ]
     ports:
       - "50053:50052"
     restart: unless-stopped
+    user: root
     environment:
       SERVICE_IP: "0.0.0.0"
       SERVICE_PORT: "50052"
@@ -56,8 +74,24 @@ services:
     volumes:
       - local-dev:/app/data
       - ./config/rln-prover/mock_users.json:/app/mock_users.json:ro
+    command:
+      - --no-config
+      - --ip
+      - 0.0.0.0
+      - --port
+      - "50052"
+      - --metrics-ip
+      - 0.0.0.0
+      - --metrics-port
+      - "30032"
+      - --db
+      - /app/data/karma-db
+      - --mock-sc
+      - "true"
+      - --mock-user
+      - /app/mock_users.json
     healthcheck:
-      test: ["CMD", "sh", "-c", "ps aux | grep status_rln_prover | grep -v grep"]
+      test: ["CMD", "sh", "-c", "ps aux | grep prover_cli | grep -v grep"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -70,7 +104,7 @@ services:
   sequencer:
     hostname: sequencer
     container_name: sequencer
-    image: linea-besu-minimal-rln:20250914165712
+    image: linea-besu-minimal-rln:20250922172416
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     ports:
       - "8545:8545"
@@ -181,7 +215,7 @@ services:
   l2-node-besu:
     hostname: l2-node-besu
     container_name: l2-node-besu
-    image: linea-besu-minimal-rln:20250914165712
+    image: linea-besu-minimal-rln:20250922172416
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:

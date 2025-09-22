@@ -135,6 +135,9 @@ message SendTransactionRequest {
   optional Address sender = 2;
   optional U256 chainId = 3;
   bytes transactionHash = 4 [(max_size) = 32];
+  // Estimated gas units the transaction is expected to consume (best-effort)
+  // Backward-compatible addition; receivers may ignore if unsupported.
+  uint64 estimated_gas_used = 5;
 }
 
 message SendTransactionReply {

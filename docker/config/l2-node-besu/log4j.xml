@@ -28,6 +28,9 @@
     <Logger name="org.hyperledger.besu.ethereum.api.jsonrpc" level="TRACE" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
+    <Logger name="net.consensys.linea.sequencer.txpoolvalidation" level="DEBUG" additivity="false">
+      <AppenderRef ref="Console"/>
+    </Logger>
     <Logger name="io.opentelemetry" level="WARN" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
