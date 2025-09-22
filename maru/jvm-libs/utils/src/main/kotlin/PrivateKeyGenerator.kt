@@ -28,7 +28,22 @@ import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
  * Utility tool to generate a prefixed private key and corresponding node ID
  */
 object PrivateKeyGenerator {
-  fun generateAndLogPrivateKey() {
+  data class KeyData(
+    val privateKey: ByteArray,
+    val address: ByteArray,
+    val peerId: LibP2PNodeId,
+  )
+
+  fun logKeyData(keyData: KeyData) {
+    println(
+      "Generated key: " +
+        "prefixed privateKey=${keyData.privateKey.encodeHex()} " +
+        "ethAddress=${keyData.address.encodeHex()} " +
+        "libP2pNodeId=${keyData.peerId}",
+    )
+  }
+
+  fun generateAndLogPrivateKey(): KeyData {
     val keyPair = generateKeyPair(KeyType.SECP256K1)
     val privateKey = keyPair.component1()
     val privateKeyWithPrefixString = marshalPrivateKey(privateKey).encodeHex()
@@ -36,10 +51,7 @@ object PrivateKeyGenerator {
     val address = privateKeyToAddress(privateKey.raw().takeLast(32).toByteArray())
     val peerId = PeerId.fromPubKey(privateKey.publicKey())
     val libP2PNodeId = LibP2PNodeId(peerId)
-
-    println("Generated private key (prefixed): $privateKeyWithPrefixString")
-    println("Ethereum address: $address")
-    println("Corresponding node ID: $libP2PNodeId")
+    return KeyData(privateKey.raw(), address.toArray(), libP2PNodeId)
   }
 
   fun privateKeyToAddress(privateKey: ByteArray): Address {
@@ -52,6 +64,10 @@ object PrivateKeyGenerator {
 
   @JvmStatic
   fun main(args: Array<String>) {
-    generateAndLogPrivateKey()
+    val numberOfKeys = args.firstOrNull()?.toIntOrNull() ?: 5
+    repeat(numberOfKeys) {
+      generateAndLogPrivateKey()
+        .also { logKeyData(it) }
+    }
   }
 }
