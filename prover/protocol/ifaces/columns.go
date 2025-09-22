@@ -7,6 +7,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -126,6 +127,72 @@ type Column interface {
 	IsComposite() bool
 	GetColAssignmentGnarkAtBase(run GnarkRuntime, pos int) (frontend.Variable, error)
 	GetColAssignmentGnarkAtExt(run GnarkRuntime, pos int) gnarkfext.Element
+}
+
+// Column symbolically represents a vector of field elements which may
+// represent a committed vector, or a set of field elements that are part of
+// proof of the protocol or even a part of the preprocessing of the protocol
+// (i.e. a part of the protocol which can be computed offline). A column may
+// refer directly to values that have been (or have to be) assigned in the
+// Wizard or to derive vectors (which we also denote by abstract references
+// sometime). Columns always have a static size, meaning that their size should
+// be stated when declaring the column prior to compiling the Wizard. A current
+// limitation is that all columns must have size equal to a power of two.
+type ColumnGen[T zk.Element] interface {
+	// This ensures that a column can be used as a symbolic variable within a
+	// symbolic arithmetic expression.
+	symbolic.Metadata
+	// Round returns the ID of the prover-verifier interaction round at which
+	// the column is assigned by the prover in the protocol. This corresponds
+	// to the number of times the verifier sends a batch of random coins to the
+	// prover before the column may be computed.
+	Round() int
+	// Size returns the size of the referenced column (i.e. the number of values
+	// in the vector).
+	Size() int
+	// GetColID returns the column's unique string identifier. The [ColID]
+	// typically provide context to what the column is used for and where it was
+	// computed.
+	GetColID() ColID
+	// Returns true if the column is registered. This is trivial by design
+	// (because [github.com/consensys/linea-monorepo/protocol/column.Natural] column objects are built by the function that registers
+	// it). The goal of this function is to assert this fact. Precisely, it will
+	// check if a corresponding entry in the store exists. If it does not, it
+	// panics.
+	MustExists()
+	// GetColAssignment retrieves the assignment of the receiver column from a
+	// [github.com/consensys/linea-monorepo/protocol/wizard.ProverRuntime]. It panics if the column has not been assigned yet. It is
+	// the preferred way to extract the assignment of the column and should be
+	// preferred over calling [Runtime.GetColumn] as the latter
+	// will not accept columns that are not of the [column.Natural] type.
+	GetColAssignment(run Runtime) ColAssignment
+	// GetColAssignmentAt retrieves the assignment of a column at a particular
+	// position. For instance, col.GetColAssignment(run, 0), returns the first
+	// position of the assigned column.
+	GetColAssignmentAt(run Runtime, pos int) field.Element
+	GetColAssignmentAtBase(run Runtime, pos int) (field.Element, error)
+	GetColAssignmentAtExt(run Runtime, pos int) fext.Element
+	// GetColAssignmentGnark does the same as GetColAssignment but in a gnark
+	// circuit. This will panic if the column is not yet assigned or if the
+	// column is not visible by the verifier. For instance, it will panic if the
+	// column is tagged as committed.
+	GetColAssignmentGnark(run GnarkRuntimeGen[T]) []T
+	GetColAssignmentGnarkBase(run GnarkRuntimeGen[T]) ([]T, error)
+	GetColAssignmentGnarkExt(run GnarkRuntimeGen[T]) []gnarkfext.E4Gen[T]
+	// GetColAssignmentGnarkAt recovers the assignment of the column at a
+	// particular position. This will panic if the column is not yet assigned or if the
+	// column is not visible by the verifier. For instance, it will panic if the
+	// column is tagged as committed.
+	GetColAssignmentGnarkAt(run GnarkRuntimeGen[T], pos int) T
+	// IsComposite states whether a column is constructed by deriving one or
+	// more columns. For instance [github.com/consensys/linea-monorepo/protocol/column.Natural] is not a composite column as
+	// it directly refers to a set of values provided to the Wizard by the user
+	// or by an intermediate compiler step. And [github.com/consensys/linea-monorepo/protocol/column.Shift] is a composite
+	// column as it is derived from an underlying column (which may or may not
+	// be a composite column itself)
+	IsComposite() bool
+	GetColAssignmentGnarkAtBase(run GnarkRuntimeGen[T], pos int) (T, error)
+	GetColAssignmentGnarkAtExt(run GnarkRuntimeGen[T], pos int) gnarkfext.E4Gen[T]
 }
 
 // ColumnAsVariable instantiates a [symbolic.Variable] from a column. The [symbolic.Variable]

@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 )
 
 // Runtime is implemented by the [github.com/consensys/linea-monorepo/protocol/wizard.ProverRuntime] and
@@ -43,6 +44,25 @@ type GnarkRuntime interface {
 	GetRandomCoinFieldExt(name coin.Name) gnarkfext.Element
 	// GetRandomCoinIntegerVec is as [Runtime.GetRandomCoinIntegerVec] but in a gnark circuit
 	GetRandomCoinIntegerVec(name coin.Name) []frontend.Variable
+	// GetParams is as [Runtime.GetParams] but in a gnark circuit
+	GetParams(id QueryID) GnarkQueryParams
+}
+
+// TODO @thomas ??? interface redefined in protocol/wizard/gnark_verifier.go
+type GnarkRuntimeGen[T zk.Element] interface {
+	// GetColumn is as [Runtime.GetColumn] but in a gnark circuit
+	GetColumn(ColID) []T
+	GetColumnBase(ColID) ([]T, error)
+	GetColumnExt(ColID) []gnarkfext.E4Gen[T]
+	// GetColumnAt is as [Runtime.GetColumnAt] but in a gnark circuit
+	GetColumnAt(ColID, int) T
+	GetColumnAtBase(ColID, int) (T, error)
+	GetColumnAtExt(ColID, int) gnarkfext.E4Gen[T]
+	// GetRandomCoinField is as [Runtime.GetRandomCoinField] but in a gnark circuit
+	GetRandomCoinField(name coin.Name) T
+	GetRandomCoinFieldExt(name coin.Name) gnarkfext.E4Gen[T]
+	// GetRandomCoinIntegerVec is as [Runtime.GetRandomCoinIntegerVec] but in a gnark circuit
+	GetRandomCoinIntegerVec(name coin.Name) []T
 	// GetParams is as [Runtime.GetParams] but in a gnark circuit
 	GetParams(id QueryID) GnarkQueryParams
 }

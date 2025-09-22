@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/google/uuid"
 )
 
@@ -68,6 +69,17 @@ func (n *QueryID) UnmarshalJSON(b []byte) error {
 type Query interface {
 	Check(run Runtime) error
 	CheckGnark(api frontend.API, run GnarkRuntime)
+	Name() QueryID
+	// UUID returns a unique identifier for the query. It is stronger identifier
+	// than the name of the query because two compiled IOPs with queries with
+	// the same name won't have the same UUID. The UUID can then be used to
+	// distinguish between the two.
+	UUID() uuid.UUID
+}
+
+type QueryGen[T zk.Element] interface {
+	Check(run Runtime) error
+	CheckGnark(api zk.APIGen[T], run GnarkRuntimeGen[T])
 	Name() QueryID
 	// UUID returns a unique identifier for the query. It is stronger identifier
 	// than the name of the query because two compiled IOPs with queries with
