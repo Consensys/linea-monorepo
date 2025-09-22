@@ -23,7 +23,8 @@ interface IYieldManager {
     address yieldProviderOssificationEntrypoint;
   }
 
-  struct YieldProviderReport {
+  struct YieldProviderData {
+    YieldProviderRegistration registration;
     uint96 yieldProviderIndex;
     bool isStakingPaused;
     bool isOssified;

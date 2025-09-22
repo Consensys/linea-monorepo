@@ -50,8 +50,7 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager, IGenericErrors
     uint256 _minimumWithdrawalReservePercentageBps;
     uint256 _minimumWithdrawalReserveAmount;
     address[] _yieldProviders;
-    mapping(address yieldProvider => YieldProviderRegistration) _yieldProviderRegistration;
-    mapping(address yieldProvider => YieldProviderReport) _yieldProviderReport;
+    mapping(address yieldProvider => YieldProviderData) _yieldProviderData;
   }
 
   // keccak256(abi.encode(uint256(keccak256("linea.storage.YieldManagerStorage")) - 1)) & ~bytes32(uint256(0xff))
@@ -273,15 +272,17 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager, IGenericErrors
     }
     IYieldProvider(_yieldProvider).validateAdditionToYieldManager(_yieldProviderRegistration);
     YieldManagerStorage storage $ = _getYieldManagerStorage();
-    if ($._yieldProviderRegistration[_yieldProvider].yieldProviderEntrypoint != address(0)) {
+
+    
+    if ($._yieldProviderData[_yieldProvider].yieldProviderIndex != 0) {
       revert YieldProviderAlreadyAdded();
     }
-    
     uint96 yieldProviderIndex = uint96($._yieldProviders.length);
     // TODO - ? Need to check for uint96 overflow
     $._yieldProviders.push(_yieldProvider);
-    $._yieldProviderRegistration[_yieldProvider] = _yieldProviderRegistration;
-    $._yieldProviderReport[_yieldProvider] = YieldProviderReport({
+    // $._yieldProviderRegistration[_yieldProvider] = _yieldProviderRegistration;
+    $._yieldProviderData[_yieldProvider] = YieldProviderData({
+        registration: _yieldProviderRegistration,
         yieldProviderIndex: yieldProviderIndex,
         isStakingPaused: false,
         isOssified: false,
@@ -298,18 +299,17 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager, IGenericErrors
 
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     // TODO - Do we need to handle remaining yield situation?
-    if ($._yieldProviderReport[_yieldProvider].amountFunded != 0) {
+    if ($._yieldProviderData[_yieldProvider].amountFunded != 0) {
       revert YieldProviderHasRemainingFunds();
     }
 
-    uint96 yieldProviderIndex = $._yieldProviderReport[_yieldProvider].yieldProviderIndex;
+    uint96 yieldProviderIndex = $._yieldProviderData[_yieldProvider].yieldProviderIndex;
     address lastYieldProvider = $._yieldProviders[$._yieldProviders.length - 1];
-    $._yieldProviderReport[lastYieldProvider].yieldProviderIndex = yieldProviderIndex;
+    $._yieldProviderData[lastYieldProvider].yieldProviderIndex = yieldProviderIndex;
     $._yieldProviders[yieldProviderIndex] = lastYieldProvider;
     $._yieldProviders.pop();
 
-    delete $._yieldProviderRegistration[_yieldProvider];
-    delete $._yieldProviderReport[_yieldProvider];
+    delete $._yieldProviderData[_yieldProvider];
 
     // TODO - Emit event
   }
