@@ -2,7 +2,6 @@ package stitchsplit
 
 import (
 	"reflect"
-	"strconv"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -14,7 +13,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
-	"github.com/sirupsen/logrus"
 )
 
 func (ctx SplitterContext) constraints() {
@@ -75,7 +73,7 @@ func (ctx SplitterContext) LocalGlobalConstraints() {
 
 			// detect if the expression is eligible;
 			// i.e., it contains columns of proper size with status Precomputed, committed, or verifiercol.
-			isEligible, unSupported := IsExprEligibleForSplitting(isColEligibleSplitting, ctx.Splittings, board)
+			isEligible, unSupported := IsExprEligible(isColEligibleSplitting, ctx.Splittings, board, compilerTypeSplit)
 
 			if unSupported {
 				panic("unSupported")
@@ -96,7 +94,7 @@ func (ctx SplitterContext) LocalGlobalConstraints() {
 
 			// detect if the expression is eligible;
 			// i.e., it contains columns of proper size with status Precomputed, committed, or verifiercol.
-			isEligible, unSupported := IsExprEligibleForSplitting(isColEligibleSplitting, ctx.Splittings, board)
+			isEligible, unSupported := IsExprEligible(isColEligibleSplitting, ctx.Splittings, board, compilerTypeSplit)
 
 			if unSupported {
 				panic("unSupported")
@@ -132,71 +130,6 @@ func isColEligibleSplitting(splittings MultiSummary, col ifaces.Column) bool {
 	natural := column.RootParents(col)
 	_, found := splittings[col.Round()].ByBigCol[natural.GetColID()]
 	return found
-}
-
-// It checks if the expression is over a set of the columns eligible to the stitching.
-// Namely, it contains columns of proper size with status Precomputed, Committed, Verifiercol, Proof, and Verifying key.
-// It panics if the expression includes a mixture of eligible columns and columns with status Ignored.
-// If all the columns are verifierCol the expression is not eligible to the compilation.
-// This is an expected behavior, since the verifier checks such expression by itself.
-func IsExprEligibleForSplitting(
-	isColEligible func(MultiSummary, ifaces.Column) bool,
-	stitchings MultiSummary,
-	board symbolic.ExpressionBoard,
-) (isEligible bool, isUnsupported bool) {
-
-	var (
-		metadata              = board.ListVariableMetadata()
-		hasAtLeastOneEligible = false
-		allAreEligible        = true
-		allAreVeriferCol      = true
-		statusMap             = map[ifaces.ColID]string{}
-	)
-
-	for i := range metadata {
-		switch m := metadata[i].(type) {
-		// reminder: [verifiercol.VerifierCol] , [column.Natural] and [column.Shifted]
-		// all implement [ifaces.Column]
-		case ifaces.Column: // it is a Committed, Precomputed or verifierCol
-			rootColumn := column.RootParents(m)
-
-			switch nat := rootColumn.(type) {
-			case column.Natural: // then it is not a verifiercol
-				statusMap[rootColumn.GetColID()] = nat.Status().String() + "/" + strconv.Itoa(nat.Size())
-				allAreVeriferCol = false
-				b := isColEligible(stitchings, m)
-
-				hasAtLeastOneEligible = hasAtLeastOneEligible || b
-				allAreEligible = allAreEligible && b
-				if m.Size() == 0 {
-					panic("found a column with a size of 0")
-				}
-			case verifiercol.VerifierCol:
-				statusMap[rootColumn.GetColID()] = column.VerifierDefined.String() + "/" + strconv.Itoa(nat.Size())
-			}
-		case variables.PeriodicSample:
-			// periodic samples are always eligible
-		default:
-			// unsupported column type
-			utils.Panic("unsupported column type %T", m)
-		}
-	}
-
-	if hasAtLeastOneEligible && !allAreEligible {
-		// We expect no expression over ignored columns
-		logrus.Errorf("the expression is not valid, it is mixed with invalid columns of status Ignored, %v", statusMap)
-		return false, true
-	}
-
-	if allAreVeriferCol {
-		// 4. we expect no expression involving only and only the verifierCols.
-		// We expect that this case wont happen.
-		// Otherwise should be handled in the [github.com/consensys/linea-monorepo/prover/protocol/query] package.
-		// Namely, Local/Global queries should be checked directly by the verifer.
-		panic("all the columns in the expression are verifierCols, unsupported by the compiler")
-	}
-
-	return hasAtLeastOneEligible, false
 }
 
 // It finds the subCol containing the first row of col,
