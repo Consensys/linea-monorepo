@@ -3,6 +3,7 @@ package stitchsplit
 import (
 	"strconv"
 
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -135,17 +136,17 @@ func IsExprEligible(
 			case verifiercol.VerifierCol:
 				statusMap[rootColumn.GetColID()] = column.VerifierDefined.String() + "/" + strconv.Itoa(nat.Size())
 			}
-		case variables.PeriodicSample:
-			// periodic samples are always eligible
+		case variables.PeriodicSample, coin.Info:
+			// periodic samples and coins are always eligible	
 		default:
 			// unsupported column type
-			utils.Panic("unsupported column type %T", m)
+			// utils.Panic("unsupported column type %T", m)
 		}
 	}
 
 	if hasAtLeastOneEligible && !allAreEligible {
 		// We expect no expression over ignored columns
-		logrus.Errorf("the expression is not valid, it is mixed with invalid columns of status Ignored, %v", statusMap)
+		logrus.Errorf("the expression is not valid, it is mixed with invalid columns of status, %v", statusMap)
 		return false, true
 	}
 
