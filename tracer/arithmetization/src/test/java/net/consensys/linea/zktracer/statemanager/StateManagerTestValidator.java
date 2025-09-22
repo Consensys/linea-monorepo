@@ -44,8 +44,10 @@ public class StateManagerTestValidator implements TransactionProcessingResultVal
     TransactionProcessingResultValidator.DEFAULT_VALIDATOR.accept(transaction, result);
     // One event from the snippet
     // One event from the framework entrypoint about contract call
-    System.out.println("Number of logs: " + result.getLogs().size());
-    assertEquals(expectedNoLogs.get(txCounter), result.getLogs().size());
+    assertEquals(
+        expectedNoLogs.get(txCounter),
+        result.getLogs().size(),
+        "Unexpected number of logs for transaction" + txCounter);
     for (int i = 0; i < result.getLogs().size(); i++) {
       Log currentLog = result.getLogs().get(i);
       String callEventSignature = EventEncoder.encode(FrameworkEntrypoint.CALLEXECUTED_EVENT);
