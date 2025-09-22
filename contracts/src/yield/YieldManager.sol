@@ -284,6 +284,7 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager, IGenericErrors
     $._yieldProviderReport[_yieldProvider] = YieldProviderReport({
         yieldProviderIndex: yieldProviderIndex,
         isStakingPaused: false,
+        isOssified: false,
         amountFunded: 0,
         yieldReportedCumulative: 0
     });

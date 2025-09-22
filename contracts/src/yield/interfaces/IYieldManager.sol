@@ -26,6 +26,7 @@ interface IYieldManager {
   struct YieldProviderReport {
     uint96 yieldProviderIndex;
     bool isStakingPaused;
+    bool isOssified;
     uint256 amountFunded;
     uint256 yieldReportedCumulative;
     // ? TODO - Do we need entry for negativeYield
