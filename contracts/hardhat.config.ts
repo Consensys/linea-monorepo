@@ -131,6 +131,7 @@ const config: HardhatUserConfig = {
       "bridging/token/utils/StorageFiller39.sol",
       "bridging/token/CustomBridgedToken.sol",
       "governance/TimeLock.sol",
+      "predeploy",
       "security/access/PermissionsManager.sol",
       "security/reentrancy/TransientStorageReentrancyGuardUpgradeable.sol",
       "tokens",
