@@ -70,12 +70,18 @@ func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnark(run iface
 
 // GetColAssignmentAt returns a particular position of the column
 func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element {
-	return ex.Col.GetColAssignmentAt(run, pos/ex.Expansion)
+	if pos%ex.Expansion == 0 {
+		return ex.Col.GetColAssignmentAt(run, pos/ex.Expansion)
+	}
+	return field.Zero()
 }
 
 // GetColAssignmentGnarkAt returns a particular position of the column in a gnark circuit
 func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
-	return ex.Col.GetColAssignmentGnarkAt(run, pos/ex.Expansion)
+	if pos%ex.Expansion == 0 {
+		return ex.Col.GetColAssignmentGnarkAt(run, pos/ex.Expansion)
+	}
+	return frontend.Variable(0)
 }
 
 // IsComposite implements the [ifaces.Column] interface
