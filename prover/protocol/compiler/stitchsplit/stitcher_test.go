@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	P1, P2, P3           ifaces.ColID   = "P1", "P2", "P3"
+	P1, P2, P3       ifaces.ColID   = "P1", "P2", "P3"
 	GLOBAL1, GLOBAL2 ifaces.QueryID = "GLOBAL1", "GLOBAL2"
 	LOCAL1           ifaces.QueryID = "LOCAL1"
 )

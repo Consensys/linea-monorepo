@@ -137,7 +137,7 @@ func IsExprEligible(
 				statusMap[rootColumn.GetColID()] = column.VerifierDefined.String() + "/" + strconv.Itoa(nat.Size())
 			}
 		case variables.PeriodicSample, coin.Info:
-			// periodic samples and coins are always eligible	
+			// periodic samples and coins are always eligible
 		default:
 			// unsupported column type
 			// utils.Panic("unsupported column type %T", m)
