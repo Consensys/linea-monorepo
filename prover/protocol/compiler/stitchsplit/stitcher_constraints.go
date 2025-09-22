@@ -200,7 +200,7 @@ func getStitchingCol(ctx StitchingContext, col ifaces.Column, option ...int) ifa
 				newOffset = option[0] * col.Size()
 			}
 			return column.Shift(stitchingCol, newOffset)
-		case column.Committed, column.Precomputed:
+		case column.Committed, column.Precomputed, column.Ignored:
 			subColInfo := ctx.Stitchings[round].BySubCol[col.GetColID()]
 			stitchingCol = ctx.Comp.Columns.GetHandle(subColInfo.NameBigCol)
 			scaling := stitchingCol.Size() / col.Size()
@@ -264,11 +264,9 @@ func IsExprEligibleForStitching(
 					// proof and verifying key columns are eligible,
 					// we already checked that their size > minSize
 					b = true
-				case column.Committed, column.Precomputed:
+				// Here only the columns that are ignored by the stitcher compiler are eligible
+				case column.Committed, column.Precomputed, column.Ignored:
 					b = isColEligible(stitchings, m)
-				case column.Ignored:
-					// we expect no expression over ignored columns
-					b = false
 				default:
 					utils.Panic("unsupported column status %v", nat.Status())
 				}
@@ -338,15 +336,19 @@ func (ctx *StitchingContext) adjustExpression(
 			switch nat := rootColumn.(type) {
 			case column.Natural: // then it is not a verifiercol
 				switch nat.Status() {
-				case column.Proof, column.VerifyingKey, column.Committed, column.Precomputed:
-					stitchingCol = getStitchingCol(*ctx, m)
+				case column.Proof, column.VerifyingKey, column.Committed, column.Precomputed, column.Ignored:
+					stitchingCol = getStitchingCol(*ctx, rootColumn)
 					if stitchingCol == nil {
 						utils.Panic("stitching col is nil")
 					}
 					replaceMap.InsertNew(m.String(), ifaces.ColumnAsVariable(stitchingCol))
-				default:
-					utils.Panic("unsupported column status %v", nat.Status())
 				}
+			case verifiercol.VerifierCol:
+				stitchingCol = getStitchingCol(*ctx, rootColumn)
+				if stitchingCol == nil {
+					utils.Panic("stitching col is nil")
+				}
+				replaceMap.InsertNew(m.String(), ifaces.ColumnAsVariable(stitchingCol))
 			}
 		case coin.Info, ifaces.Accessor:
 			replaceMap.InsertNew(m.String(), symbolic.NewVariable(m))
@@ -356,6 +358,8 @@ func (ctx *StitchingContext) adjustExpression(
 			// there, we need to inflate the period and the offset
 			scaling := ctx.MaxSize / domainSize
 			replaceMap.InsertNew(m.String(), variables.NewPeriodicSample(m.T*scaling, m.Offset*scaling))
+		default:
+			utils.Panic("unsupported metadata type %T", m)	
 		}
 	}
 
