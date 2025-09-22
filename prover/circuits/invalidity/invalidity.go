@@ -192,8 +192,8 @@ func UpdateFtxRollingHash(
 	hasher := mimc.NewMiMC()
 
 	hasher.Write(prevFtxRollingHash[:])
-	hasher.Write(txHash[:16])
-	hasher.Write(txHash[16:])
+	hasher.Write(txHash[:LIMB_SIZE])
+	hasher.Write(txHash[LIMB_SIZE:])
 	linTypes.WriteInt64On32Bytes(hasher, int64(expectedBlockHeight))
 	hasher.Write(fromAddress[:])
 

@@ -355,7 +355,7 @@ var tcases = []TestCases{
 		},
 		FromAddress:    common.HexToAddress("0x00aed7"),
 		TxHash:         common.HexToHash("0x4f1d2e2b4c3f4e5d6c7b8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9e"),
-		InvalidityType: 0, // or 1
+		InvalidityType: 0, //  0 = BadNonce, 1 = BadBalance
 	},
 	{
 		// Another EOA

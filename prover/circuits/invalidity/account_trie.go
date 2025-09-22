@@ -117,8 +117,8 @@ func (c *AccountTrie) Assign(assi AccountTrieInputs) {
 
 	account.StorageRoot = a.StorageRoot[:]
 	account.MimcCodeHash = a.MimcCodeHash[:]
-	account.KeccakCodeHashMSB = a.KeccakCodeHash[16:]
-	account.KeccakCodeHashLSB = a.KeccakCodeHash[:16]
+	account.KeccakCodeHashMSB = a.KeccakCodeHash[LIMB_SIZE:]
+	account.KeccakCodeHashLSB = a.KeccakCodeHash[:LIMB_SIZE]
 
 	leafOpening := accumulator.GnarkLeafOpening{
 		Prev: l.Prev,
