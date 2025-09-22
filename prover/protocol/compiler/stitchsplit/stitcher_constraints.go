@@ -200,6 +200,7 @@ func getStitchingCol(ctx StitchingContext, col ifaces.Column, option ...int) ifa
 				newOffset = option[0] * col.Size()
 			}
 			return column.Shift(stitchingCol, newOffset)
+		// reminder: subcols are ignored after stitching
 		case column.Committed, column.Precomputed, column.Ignored:
 			subColInfo := ctx.Stitchings[round].BySubCol[col.GetColID()]
 			stitchingCol = ctx.Comp.Columns.GetHandle(subColInfo.NameBigCol)
@@ -332,24 +333,11 @@ func (ctx *StitchingContext) adjustExpression(
 		switch m := metadata[i].(type) {
 		case ifaces.Column:
 			// it's always a compiled column
-			rootColumn := column.RootParents(m)
-			switch nat := rootColumn.(type) {
-			case column.Natural: // then it is not a verifiercol
-				switch nat.Status() {
-				case column.Proof, column.VerifyingKey, column.Committed, column.Precomputed, column.Ignored:
-					stitchingCol = getStitchingCol(*ctx, rootColumn)
-					if stitchingCol == nil {
-						utils.Panic("stitching col is nil")
-					}
-					replaceMap.InsertNew(m.String(), ifaces.ColumnAsVariable(stitchingCol))
-				}
-			case verifiercol.VerifierCol:
-				stitchingCol = getStitchingCol(*ctx, rootColumn)
-				if stitchingCol == nil {
-					utils.Panic("stitching col is nil")
-				}
-				replaceMap.InsertNew(m.String(), ifaces.ColumnAsVariable(stitchingCol))
+			stitchingCol = getStitchingCol(*ctx, m)
+			if stitchingCol == nil {
+				utils.Panic("stitching col is nil")
 			}
+			replaceMap.InsertNew(m.String(), ifaces.ColumnAsVariable(stitchingCol))
 		case coin.Info, ifaces.Accessor:
 			replaceMap.InsertNew(m.String(), symbolic.NewVariable(m))
 		case variables.X:
@@ -359,7 +347,7 @@ func (ctx *StitchingContext) adjustExpression(
 			scaling := ctx.MaxSize / domainSize
 			replaceMap.InsertNew(m.String(), variables.NewPeriodicSample(m.T*scaling, m.Offset*scaling))
 		default:
-			utils.Panic("unsupported metadata type %T", m)	
+			utils.Panic("unsupported metadata type %T", m)
 		}
 	}
 
