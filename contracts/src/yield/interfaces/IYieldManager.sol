@@ -11,15 +11,24 @@ interface IYieldManager {
       LIDO_STVAULT
   }
 
+  // TODO - YieldProvider and YieldManager share the same storage, so take out?
 
   /**
    * @notice Supporting data for compressed calldata submission including compressed data.
    * @dev finalStateRootHash is used to set state root at the end of the data.
    */
-  struct YieldProviderInfo {
+  struct YieldProviderRegistration {
+    YieldProviderType yieldProviderType;
     address yieldProviderEntrypoint;
     address yieldProviderOssificationEntrypoint;
-    YieldProviderType yieldProviderType;
+  }
+
+  struct YieldProviderReport {
+    uint96 yieldProviderIndex;
+    bool isStakingPaused;
+    uint256 amountFunded;
+    uint256 yieldReportedCumulative;
+    // ? TODO - Do we need entry for negativeYield
   }
 
   /**
@@ -72,6 +81,10 @@ interface IYieldManager {
    * @param role2 Second acceptable role.
    */
   error CallerMissingRole(bytes32 role1, bytes32 role2);
+
+  error YieldProviderAlreadyAdded();
+
+  error YieldProviderHasRemainingFunds();
 
   /**
    * @notice Send ETH to the specified yield strategy.

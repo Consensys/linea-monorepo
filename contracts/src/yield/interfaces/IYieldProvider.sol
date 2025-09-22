@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.30;
 
+import { IYieldManager } from "./IYieldManager.sol";
+
 /**
  * @title Contract that will the YieldManager will delegatecall, to handle provider-specific yield operations.
  * @author ConsenSys Software Inc.
@@ -81,4 +83,6 @@ interface IYieldProvider {
    * @dev Will revert if the withdrawal reserve is in deficit, or there is an existing LST liability.
    */
   function unpauseStaking() external;
+
+  function validateAdditionToYieldManager(IYieldManager.YieldProviderRegistration calldata _yieldProviderRegistration) external;
 }

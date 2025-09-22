@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import { IYieldManager } from "./interfaces/IYieldManager.sol";
 import { IYieldProvider } from "./interfaces/IYieldProvider.sol";
+import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
 import { ILineaNativeYieldExtension } from "./interfaces/ILineaNativeYieldExtension.sol";
 import { YieldManagerPauseManager } from "../security/pausing/YieldManagerPauseManager.sol";
 
@@ -11,7 +12,7 @@ import { YieldManagerPauseManager } from "../security/pausing/YieldManagerPauseM
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract YieldManager is YieldManagerPauseManager, IYieldManager {
+contract YieldManager is YieldManagerPauseManager, IYieldManager, IGenericErrors {
   /// @notice The role required to send ETH to a yield provider.
   bytes32 public constant YIELD_PROVIDER_FUNDER_ROLE = keccak256("YIELD_PROVIDER_FUNDER_ROLE");
 
@@ -48,7 +49,9 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager {
     address _l1MessageService;
     uint256 _minimumWithdrawalReservePercentageBps;
     uint256 _minimumWithdrawalReserveAmount;
-    mapping(address yieldProvider => YieldProviderInfo) _yieldProvider;
+    address[] _yieldProviders;
+    mapping(address yieldProvider => YieldProviderRegistration) _yieldProviderRegistration;
+    mapping(address yieldProvider => YieldProviderReport) _yieldProviderReport;
   }
 
   // keccak256(abi.encode(uint256(keccak256("linea.storage.YieldManagerStorage")) - 1)) & ~bytes32(uint256(0xff))
@@ -260,6 +263,57 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager {
   function unpauseStaking(address _yieldProvider) external {
 
   }
+
+  function addYieldProvider(address _yieldProvider, YieldProviderRegistration calldata _yieldProviderRegistration) external onlyRole(YIELD_PROVIDER_SETTER) {
+    if (_yieldProvider == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+    if (_yieldProviderRegistration.yieldProviderEntrypoint == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+    IYieldProvider(_yieldProvider).validateAdditionToYieldManager(_yieldProviderRegistration);
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    if ($._yieldProviderRegistration[_yieldProvider].yieldProviderEntrypoint != address(0)) {
+      revert YieldProviderAlreadyAdded();
+    }
+    
+    uint96 yieldProviderIndex = uint96($._yieldProviders.length);
+    // TODO - ? Need to check for uint96 overflow
+    $._yieldProviders.push(_yieldProvider);
+    $._yieldProviderRegistration[_yieldProvider] = _yieldProviderRegistration;
+    $._yieldProviderReport[_yieldProvider] = YieldProviderReport({
+        yieldProviderIndex: yieldProviderIndex,
+        isStakingPaused: false,
+        amountFunded: 0,
+        yieldReportedCumulative: 0
+    });
+    // TODO - Emit event
+  }
+
+  function removeYieldProvider(address _yieldProvider) external onlyRole(YIELD_PROVIDER_SETTER) {
+    if (_yieldProvider == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    // TODO - Do we need to handle remaining yield situation?
+    if ($._yieldProviderReport[_yieldProvider].amountFunded != 0) {
+      revert YieldProviderHasRemainingFunds();
+    }
+
+    uint96 yieldProviderIndex = $._yieldProviderReport[_yieldProvider].yieldProviderIndex;
+    address lastYieldProvider = $._yieldProviders[$._yieldProviders.length - 1];
+    $._yieldProviderReport[lastYieldProvider].yieldProviderIndex = yieldProviderIndex;
+    $._yieldProviders[yieldProviderIndex] = lastYieldProvider;
+    $._yieldProviders.pop();
+
+    delete $._yieldProviderRegistration[_yieldProvider];
+    delete $._yieldProviderReport[_yieldProvider];
+
+    // TODO - Emit event
+  }
+
+  // TODO - Setter for l1MessageService
 
   /**
    * @notice Set minimum withdrawal reserve percentage.
