@@ -23,25 +23,21 @@ var (
 )
 
 type RawPrecomputed struct {
-	_         struct{}             `cbor:",toarray" serde:"omit"`
 	ColID     ifaces.ColID         `cbor:"k"`
 	ColAssign ifaces.ColAssignment `cbor:"v"`
 }
 
 type PackedPublicInput struct {
-	_    struct{}        `cbor:",toarray" serde:"omit"`
 	Name string          `cbor:"n"`
 	Acc  ifaces.Accessor `cbor:"a"`
 }
 
 type PackedExtradata struct {
-	_     struct{} `cbor:",toarray" serde:"omit"`
-	Key   string   `cbor:"k"`
-	Value any      `cbor:"v"`
+	Key   string `cbor:"k"`
+	Value any    `cbor:"v"`
 }
 
 type PackedQuery struct {
-	_                               struct{}      `cbor:",toarray" serde:"omit"`
 	BackReference                   BackReference `cbor:"b"`
 	ConcreteType                    int           `cbor:"t"`
 	Round                           int           `cbor:"r"`
@@ -51,7 +47,6 @@ type PackedQuery struct {
 }
 
 type PackedRawData struct {
-	_             struct{}           `cbor:",toarray" serde:"omit"`
 	WasPointer    bool               `cbor:"p"`
 	ConcreteType  int                `cbor:"t"`
 	ConcreteValue PackedStructObject `cbor:"v"`
@@ -77,9 +72,8 @@ var (
 
 // PackedCompiledIOP represents the serialized form of CompiledIOP.
 type PackedCompiledIOP struct {
-	_                      struct{} `cbor:",toarray" serde:"omit"`
-	DummyCompiled          bool     `cbor:"a"`
-	WithStorePointerChecks bool     `cbor:"b"`
+	DummyCompiled          bool `cbor:"a"`
+	WithStorePointerChecks bool `cbor:"b"`
 
 	CoinsLen              int `cbor:"c"`
 	QueryParamsOuterLen   int `cbor:"d"`

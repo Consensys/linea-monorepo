@@ -110,7 +110,6 @@ type Deserializer struct {
 // PackedObject is the serialized representation of data, designed for CBOR encoding.
 // It stores type metadata, objects, and a payload for the root serialized value.
 type PackedObject struct {
-	_               struct{}               `cbor:",toarray" serde:"omit"`
 	Types           []string               `cbor:"a"` // Type names for interfaces.
 	PointedValues   []any                  `cbor:"c"` // Serialized pointers (as PackedIFace).
 	ColumnIDs       []string               `cbor:"d"` // String IDs for columns.
@@ -130,19 +129,17 @@ type PackedObject struct {
 // PackedIFace serializes an interface value, storing its type index and concrete value.
 // PackedIFace encodes as [Type, Concrete] instead of a map.
 type PackedIFace struct {
-	_        struct{} `cbor:",toarray"` // encode/decode as array
-	Type     int      `cbor:"t"`        // Index into PackedObject.Types.
-	Concrete any      `cbor:"c"`        // Serialized concrete value.
+	Type     int `cbor:"t"` // Index into PackedObject.Types.
+	Concrete any `cbor:"c"` // Serialized concrete value.
 }
 
 // PackedCoin is a compact representation of coin.Info, optimized for CBOR encoding.
 type PackedCoin struct {
-	_          struct{} `cbor:",toarray"`    // encode/decode as array
-	Type       int8     `cbor:"t"`           // Coin type (e.g., Random, Fixed).
-	Size       int      `cbor:"s,omitempty"` // Coin size (optional).
-	UpperBound int32    `cbor:"u,omitempty"` // Upper bound for coin (optional).
-	Name       string   `cbor:"n"`           // Coin name.
-	Round      int      `cbor:"r"`           // Round number.
+	Type       int8   `cbor:"t"`           // Coin type (e.g., Random, Fixed).
+	Size       int    `cbor:"s,omitempty"` // Coin size (optional).
+	UpperBound int32  `cbor:"u,omitempty"` // Upper bound for coin (optional).
+	Name       string `cbor:"n"`           // Coin name.
+	Round      int    `cbor:"r"`           // Round number.
 }
 
 // PackedStructObject is a slice of serialized field values for a struct.
