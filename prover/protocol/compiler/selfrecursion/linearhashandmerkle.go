@@ -65,7 +65,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 			for i := 0; i < numRoundSis; i++ {
 				// Register the SIS round leaves
 				ctx.Columns.SisRoundLeaves[j] = append(ctx.Columns.SisRoundLeaves[j], ctx.Comp.InsertCommit(
-					roundQ, ctx.sisRoundLeavesName(i), ctx.VortexCtx.NbColsToOpen()))
+					roundQ, ctx.sisRoundLeavesName(i, j), ctx.VortexCtx.NbColsToOpen()))
 			}
 		}
 	}

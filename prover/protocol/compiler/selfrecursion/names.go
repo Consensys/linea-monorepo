@@ -140,8 +140,8 @@ func (ctx *SelfRecursionCtx) merkleRootsName(i int) ifaces.ColID {
 }
 
 // Name of the SIS rounds leaves
-func (ctx *SelfRecursionCtx) sisRoundLeavesName(round int) ifaces.ColID {
-	name := ifaces.ColIDf("SELFRECURSION_SIS_ROUND_LEAVES_%v_%v", ctx.SelfRecursionCnt, round)
+func (ctx *SelfRecursionCtx) sisRoundLeavesName(round int, index int) ifaces.ColID {
+	name := ifaces.ColIDf("SELFRECURSION_SIS_ROUND_LEAVES_%v_%v_%v", ctx.SelfRecursionCnt, round, index)
 	return maybePrefix(ctx, name)
 }
 

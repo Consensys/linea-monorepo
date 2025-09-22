@@ -228,6 +228,7 @@ func (ctx *linearHashCtx) HashingCols() {
 	// Propagation of the state within the chunks
 	//
 	// TODO@yao: miss one constraint: (BlockToHash[i][pos] - ToHash[pos*8 + i]) * IsActive[pos] = 0
+	// // or consider split the input to sponge to 8 columns directly
 	for i := 0; i < blockSize; i++ {
 		expr := ifaces.ColumnAsVariable(ctx.NewState[i]).
 			Mul(ctx.IsActiveVar()).
