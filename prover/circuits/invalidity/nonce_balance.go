@@ -114,8 +114,8 @@ func (cir *BadNonceBalanceCircuit) Assign(assi AssigningInputs) {
 	cir.RLPEncodedTx = make([]frontend.Variable, assi.MaxRlpByteSize)
 
 	// assign the tx hash
-	cir.TxHash[0] = a[0:16]
-	cir.TxHash[1] = a[16:32]
+	cir.TxHash[0] = a[0:LIMB_SIZE]
+	cir.TxHash[1] = a[LIMB_SIZE:]
 
 	if assi.RlpEncodedTx[0] != 0x02 {
 		utils.Panic("only support typed 2 transactions, maybe the rlp is not prefixed with the type byte")
@@ -137,11 +137,11 @@ func (cir *BadNonceBalanceCircuit) Assign(assi AssigningInputs) {
 	if assi.InvalidityType != 0 && assi.InvalidityType != 1 {
 		utils.Panic("expected invalidity type 0 or 1 but received %v", assi.InvalidityType)
 	}
-	if txNonce == uint64(acNonce+1) && cir.InvalidityType == 0 {
+	if txNonce == uint64(acNonce+1) && assi.InvalidityType == 0 {
 		utils.Panic("tried to generate a bad-nonce proof for a possibly valid transaction")
 	}
 
-	if txCost.Cmp(balance) != 1 && cir.InvalidityType == 1 {
+	if txCost.Cmp(balance) != 1 && assi.InvalidityType == 1 {
 		utils.Panic("tried to generate a bad-balance proof for a possibly valid transaction")
 	}
 

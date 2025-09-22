@@ -48,7 +48,7 @@ func main() {
 	)
 
 	// generate keccak proof for the circuit
-	maxNumKeccakF := maxRlpByteSize/136 + 1 // each keccakF can hash 136 bytes.
+	maxNumKeccakF := maxRlpByteSize/136 + 1 // 136 bytes is the number of bytes absorbed per permutation keccakF.
 	colSize := maxRlpByteSize/16 + 1        // each limb is 16 bytes.
 	size := utils.NextPowerOfTwo(colSize)
 

@@ -15,8 +15,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/rlp"
 )
+
+const LIMB_SIZE = 16
 
 type TxPayloadGnark struct {
 	ChainID    frontend.Variable
@@ -57,18 +58,18 @@ func checkKeccakConsistency(api frontend.API, hashInput []frontend.Variable, has
 		utils.Panic("keccak limb column is not large enough to hold the rlp encoding")
 	}
 
-	// split the input into chunks of 16 bytes
-	for len(hashInput) > 16 {
-		v := hashInput[:16]
+	// split the input into chunks of LIMB_SIZE (16) bytes
+	for len(hashInput) > LIMB_SIZE {
+		v := hashInput[:LIMB_SIZE]
 		curLimb := compress.ReadNum(api, v, radix)
 		api.AssertIsEqual(limbCol[ctr], curLimb)
 		ctr++
-		hashInput = hashInput[16:]
+		hashInput = hashInput[LIMB_SIZE:]
 	}
 	// handle the last chunk
 	if len(hashInput) > 0 {
 		// left align and pad with zeros
-		v := make([]frontend.Variable, 16)
+		v := make([]frontend.Variable, LIMB_SIZE)
 		copy(v, hashInput)
 		curLimb := compress.ReadNum(api, v, radix)
 		api.AssertIsEqual(limbCol[ctr], curLimb)
@@ -140,12 +141,12 @@ func AssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenDataModule, 
 	expectedStream := make([]byte, len(prefixedRlp))
 	copy(expectedStream, prefixedRlp)
 
-	// split the prefixedRlp into limbs of left-aligned 16 bytes.
+	// split the prefixedRlp into limbs of left-aligned LIMB_SIZE (16) bytes.
 	ctrIndex := 0
-	for len(prefixedRlp) >= 16 {
-		limbCol.PushBytes(prefixedRlp[:16])
+	for len(prefixedRlp) >= LIMB_SIZE {
+		limbCol.PushBytes(prefixedRlp[:LIMB_SIZE])
 
-		nByteCol.PushInt(16)
+		nByteCol.PushInt(LIMB_SIZE)
 		hashNumCol.PushInt(1)
 		toHashCol.PushInt(1)
 
@@ -155,10 +156,10 @@ func AssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenDataModule, 
 			indexCol.PushInc()
 		}
 		ctrIndex++
-		prefixedRlp = prefixedRlp[16:]
+		prefixedRlp = prefixedRlp[LIMB_SIZE:]
 	}
 	if len(prefixedRlp) > 0 {
-		b := make([]byte, 16)
+		b := make([]byte, LIMB_SIZE)
 		copy(b, prefixedRlp) // left-aligned
 		limbCol.PushBytes(b)
 
@@ -202,8 +203,8 @@ func AssignGenInfoModule(run *wizard.ProverRuntime, gim *generic.GenInfoModule, 
 		utils.Panic("tx hash length is not 32 bytes")
 	}
 	// we only have one hash to fill in the gim columns
-	hashHi.PushBytes(txHash[:16])
-	hashLo.PushBytes(txHash[16:])
+	hashHi.PushBytes(txHash[:LIMB_SIZE])
+	hashLo.PushBytes(txHash[LIMB_SIZE:])
 	isHashHiCol.PushInt(1)
 	isHashLoCol.PushInt(1)
 
@@ -217,9 +218,8 @@ func MakeKeccakProofs(tx *types.Transaction, maxRlpByteSize int, compilationSuit
 	comp *wizard.CompiledIOP,
 	proof wizard.Proof,
 ) {
-	maxNumKeccakF := maxRlpByteSize/136 + 1 // each keccakF can hash 136 bytes.
-	colSize := maxRlpByteSize/16 + 1        // each limb is 16 bytes.
-	// @azam do we still need this ?
+	maxNumKeccakF := maxRlpByteSize/136 + 1 //  136 bytes is the number of bytes absorbed per permutation keccakF.
+	colSize := maxRlpByteSize/LIMB_SIZE + 1 // each limb is LIMB_SIZE bytes.
 	size := utils.NextPowerOfTwo(colSize)
 
 	mod := &keccak.KeccakSingleProvider{}
@@ -257,22 +257,4 @@ func MakeKeccakProofs(tx *types.Transaction, maxRlpByteSize int, compilationSuit
 		utils.Panic("verifier failed: %v", err)
 	}
 	return
-}
-
-// it returns the rlp encoding of the transaction with type prefix, before signing.
-func PrefixedRLPNoSignature(tx *types.Transaction) []byte {
-	b := bytes.Buffer{}
-	b.Write([]byte{tx.Type()})
-	rlp.Encode(&b,
-		[]interface{}{
-			tx.ChainId(),
-			tx.Nonce(),
-			tx.GasTipCap(),
-			tx.GasFeeCap(),
-			tx.Gas(),
-			tx.To(),
-			tx.Value(),
-			tx.Data(),
-			tx.AccessList()})
-	return b.Bytes()
 }
