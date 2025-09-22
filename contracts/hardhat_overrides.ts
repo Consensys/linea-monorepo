@@ -11,6 +11,7 @@ const londonOverride = {
 
 const londonOverridePaths = [
   "src/messaging/l2/L2MessageService.sol",
+  "src/operational/LineaSequencerUptimeFeed.sol",
   "src/bridging/token/TokenBridge.sol",
   "src/bridging/token/BridgedToken.sol",
   "src/tokens/LineaVoyageXP.sol",
@@ -28,6 +29,8 @@ const londonOverridePaths = [
   "src/_testing/unit/messaging/TestL2MessageService.sol",
   "src/predeploy/UpgradeableConsolidationQueuePredeploy.sol",
   "src/predeploy/UpgradeableWithdrawalQueuePredeploy.sol",
+  "src/predeploy/UpgradeableBeaconChainDepositPredeploy.sol",
+  "src/operational/RollupFeeVault.sol",
 ];
 
 export const overrides = Object.fromEntries(londonOverridePaths.map((path) => [path, londonOverride]));
