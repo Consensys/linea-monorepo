@@ -79,6 +79,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       _;
   }
 
+  // TODO - Actually, multiply percentage by TOTAL IN SYSTEM
 
   /// @notice Get effective minimum withdrawal reserve
   /// @dev Effective minimum reserve is min(minimumWithdrawalReservePercentageBps, minimumWithdrawalReserveAmount).
@@ -96,8 +97,8 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       YieldManagerStorage storage $ = _getYieldManagerStorage();
       uint256 l1MessageServiceBalance = $._l1MessageService.balance;
       uint256 minWithdrawalReserveByPercentage = l1MessageServiceBalance * $._minimumWithdrawalReservePercentageBps / MAX_BPS;
-      uint256 minimumWithdrawalReserveAmount = $._minimumWithdrawalReserveAmount;
-      uint256 effectiveMinimumReserve = minWithdrawalReserveByPercentage > minimumWithdrawalReserveAmount ? minWithdrawalReserveByPercentage : minimumWithdrawalReserveAmount;
+      uint256 minimumWithdrawalReserveAmountCached = $._minimumWithdrawalReserveAmount;
+      uint256 effectiveMinimumReserve = minWithdrawalReserveByPercentage > minimumWithdrawalReserveAmountCached ? minWithdrawalReserveByPercentage : minimumWithdrawalReserveAmountCached;
       return l1MessageServiceBalance < effectiveMinimumReserve;
   }
 
@@ -113,13 +114,15 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!isWithdrawalReserveBelowEffectiveMinimum()) {
         revert InsufficientWithdrawalReserve();
     }
-    // TODO - Validate _yieldProvider
     (bool success,) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.fundYieldProvider, (_amount)
-      ));
-     if (!success) {
+      abi.encodeCall(IYieldProvider.fundYieldProvider, (_yieldProvider, _amount)
+    ));
+    if (!success) {
       revert DelegateCallFailed();
-     }
+    }
+    IYieldManager.YieldProviderData storage $ = _getYieldProviderDataStorage(_yieldProvider);
+    $.amountFunded += _amount;
+    // emit event?
   }
 
   /**
@@ -241,7 +244,18 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @param _yieldProvider          Yield provider address.
    */
   function pauseStaking(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
-
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    if ($._yieldProviderData[_yieldProvider].isStakingPaused) {
+      revert StakingAlreadyPaused();
+    }
+    (bool success,) = _yieldProvider.delegatecall(
+      abi.encodeCall(IYieldProvider.pauseStaking, (_yieldProvider)
+    ));
+    if (!success) {
+      revert DelegateCallFailed();
+    }
+    $._yieldProviderData[_yieldProvider].isStakingPaused = true;
+    // Emit event
   }
 
   /**
@@ -251,7 +265,22 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @param _yieldProvider          Yield provider address.
    */
   function unpauseStaking(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
-
+    // Other checks for unstaking
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    if (!$._yieldProviderData[_yieldProvider].isStakingPaused) {
+      revert StakingAlreadyUnpaused();
+    }
+    if (!isWithdrawalReserveBelowEffectiveMinimum()) {
+        revert InsufficientWithdrawalReserve();
+    }
+    (bool success,) = _yieldProvider.delegatecall(
+      abi.encodeCall(IYieldProvider.pauseStaking, (_yieldProvider)
+    ));
+    if (!success) {
+      revert DelegateCallFailed();
+    }
+    $._yieldProviderData[_yieldProvider].isStakingPaused = false;
+    // emit Event
   }
 
   function addYieldProvider(address _yieldProvider, YieldProviderRegistration calldata _yieldProviderRegistration) external onlyRole(YIELD_PROVIDER_SETTER) {
@@ -263,7 +292,6 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     }
     IYieldProvider(_yieldProvider).validateAdditionToYieldManager(_yieldProviderRegistration);
     YieldManagerStorage storage $ = _getYieldManagerStorage();
-
     
     if ($._yieldProviderData[_yieldProvider].yieldProviderIndex != 0) {
       revert YieldProviderAlreadyAdded();

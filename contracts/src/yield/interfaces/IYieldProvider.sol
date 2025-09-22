@@ -17,7 +17,7 @@ interface IYieldProvider {
    * @dev Will settle any outstanding liabilities to the YieldProvider.
    * @param _amount        The amount of ETH to send.
    */
-  function fundYieldProvider(uint256 _amount) external;
+  function fundYieldProvider(address _yieldProvider, uint256 _amount) external;
 
   /**
    * @notice Report newly accrued yield, excluding any portion reserved for system obligations.
@@ -25,13 +25,13 @@ interface IYieldProvider {
    *      the `_reserveDonations` parameter is required to ensure accurate yield accounting.
    * @param _totalReserveDonations   Total amount of donations received on the L1MessageService or L2MessageService.
    */
-  function reportYield(uint256 _totalReserveDonations) external;
+  function reportYield(address _yieldProvider, uint256 _totalReserveDonations) external;
 
   /**
    * @notice Request beacon chain withdrawal.
    * @param _withdrawalParams   Provider-specific withdrawal parameters.
    */
-  function unstake(bytes memory _withdrawalParams) external;
+  function unstake(address _yieldProvider, bytes memory _withdrawalParams) external;
 
   /**
    * @notice Permissionlessly request beacon chain withdrawal.
@@ -50,6 +50,7 @@ interface IYieldProvider {
    * @param _withdrawalParamsProof  Merkle proof of _withdrawalParams to be verified against EIP-4788 beacon chain root.
    */
   function unstakePermissionless(
+    address _yieldProvider,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
   ) external;
@@ -60,21 +61,21 @@ interface IYieldProvider {
    * @dev If fund remaining, will settle any outstanding LST liabilities and protocol obligations.
    * @param _amount                 Amount to withdraw.
    */
-  function withdrawFromYieldProvider(uint256 _amount) external;
+  function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external;
 
   /**
    * @notice Rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
    * @dev Settles any outstanding LST liabilities, provided this does not leave the withdrawal reserve in deficit.
    * @param _amount                 Amount to withdraw.
    */
-  function addToWithdrawalReserve(uint256 _amount) external;
+  function addToWithdrawalReserve(address _yieldProvider, uint256 _amount) external;
 
   /**
    * @notice Permissionlessly rebalance ETH from the YieldManager, sending it to the L1MessageService.
    * @dev Only available when the withdrawal is in deficit.
    * @param _amount                 Amount to withdraw.
    */
-  function replenishWithdrawalReserve(uint256 _amount) external;
+  function replenishWithdrawalReserve(address _yieldProvider, uint256 _amount) external;
 
   /**
    * @notice Pauses beacon chain deposits for specified yield provier.

@@ -90,6 +90,10 @@ interface IYieldManager {
 
   error YieldProviderHasRemainingFunds();
 
+  error StakingAlreadyPaused();
+
+  error StakingAlreadyUnpaused();
+
   /**
    * @notice Send ETH to the specified yield strategy.
    * @dev YIELD_PROVIDER_FUNDER_ROLE is required to execute.

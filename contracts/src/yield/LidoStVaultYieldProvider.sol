@@ -5,7 +5,7 @@ import { YieldManagerStorageLayout } from "./YieldManagerStorageLayout.sol";
 import { IYieldManager } from "./interfaces/IYieldManager.sol";
 import { IYieldProvider } from "./interfaces/IYieldProvider.sol";
 import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
-import { IDashboard } from "./interfaces/vendor/lido-vault/IDashboard.sol";
+import { ICommonVaultOperations } from "./interfaces/vendor/lido-vault/ICommonVaultOperations.sol";
 
 /**
  * @title Contract to handle native yield operations with Lido Staking Vault.
@@ -13,13 +13,19 @@ import { IDashboard } from "./interfaces/vendor/lido-vault/IDashboard.sol";
  * @custom:security-contact security-report@linea.build
  */
 contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, IGenericErrors {
+  function _getEntrypointContract(address _yieldProvider) private view returns (address) {
+    IYieldManager.YieldProviderData storage $ = _getYieldProviderDataStorage(_yieldProvider);
+    return $.isOssified ? $.registration.yieldProviderOssificationEntrypoint : $.registration.yieldProviderEntrypoint;
+  }
+
+
   /**
    * @notice Send ETH to the specified yield strategy.
    * @dev Will settle any outstanding liabilities to the YieldProvider.
    * @param _amount        The amount of ETH to send.
    */
-  function fundYieldProvider(uint256 _amount) external {
-
+  function fundYieldProvider(address _yieldProvider, uint256 _amount) external {
+    ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).fund{value: _amount}();
   }
 
   /**
@@ -28,7 +34,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
    *      the `_reserveDonations` parameter is required to ensure accurate yield accounting.
    * @param _totalReserveDonations   Total amount of donations received on the L1MessageService or L2MessageService.
    */
-  function reportYield(uint256 _totalReserveDonations) external {
+  function reportYield(address _yieldProvider, uint256 _totalReserveDonations) external {
 
   }
 
@@ -36,7 +42,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
    * @notice Request beacon chain withdrawal.
    * @param _withdrawalParams   Provider-specific withdrawal parameters.
    */
-  function unstake(bytes memory _withdrawalParams) external {
+  function unstake(address _yieldProvider, bytes memory _withdrawalParams) external {
 
   }
 
@@ -57,6 +63,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
    * @param _withdrawalParamsProof  Merkle proof of _withdrawalParams to be verified against EIP-4788 beacon chain root.
    */
   function unstakePermissionless(
+    address _yieldProvider,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
   ) external {
@@ -69,8 +76,8 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
    * @dev If fund remaining, will settle any outstanding LST liabilities and protocol obligations.
    * @param _amount                 Amount to withdraw.
    */
-  function withdrawFromYieldProvider(uint256 _amount) external {
-
+  function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external {
+    ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).withdraw(address(this), _amount);
   }
 
   /**
@@ -78,7 +85,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
    * @dev Settles any outstanding LST liabilities, provided this does not leave the withdrawal reserve in deficit.
    * @param _amount                 Amount to withdraw.
    */
-  function addToWithdrawalReserve(uint256 _amount) external {
+  function addToWithdrawalReserve(address _yieldProvider, uint256 _amount) external {
 
   }
 
@@ -87,7 +94,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
    * @dev Only available when the withdrawal is in deficit.
    * @param _amount                 Amount to withdraw.
    */
-  function replenishWithdrawalReserve(uint256 _amount) external {
+  function replenishWithdrawalReserve(address _yieldProvider, uint256 _amount) external {
 
   }
 
@@ -95,8 +102,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
    * @notice Pauses beacon chain deposits for specified yield provier.
    */
   function pauseStaking(address _yieldProvider) external {
-    YieldManagerStorage storage $ = _getYieldManagerStorage();
-    IDashboard($._yieldProviderData[_yieldProvider].registration.yieldProviderEntrypoint).pauseBeaconChainDeposits();
+    ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).pauseBeaconChainDeposits();
   }
 
   /**
@@ -104,11 +110,12 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
    * @dev Will revert if the withdrawal reserve is in deficit, or there is an existing LST liability.
    */
   function unpauseStaking(address _yieldProvider) external {
-    YieldManagerStorage storage $ = _getYieldManagerStorage();
-    IDashboard($._yieldProviderData[_yieldProvider].registration.yieldProviderEntrypoint).resumeBeaconChainDeposits();
+    ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).resumeBeaconChainDeposits();
   }
 
-  function validateAdditionToYieldManager(IYieldManager.YieldProviderRegistration calldata _yieldProviderRegistration) external {
-    
+  function validateAdditionToYieldManager(IYieldManager.YieldProviderRegistration calldata _yieldProviderRegistration) external pure {
+    if (_yieldProviderRegistration.yieldProviderType != IYieldManager.YieldProviderType.LIDO_STVAULT) {
+      revert IncorrectYieldProviderType();
+    }
   }
 }

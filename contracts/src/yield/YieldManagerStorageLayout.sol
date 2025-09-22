@@ -28,4 +28,9 @@ abstract contract YieldManagerStorageLayout {
           $.slot := YieldManagerStorageLocation
       }
   }
+
+  function _getYieldProviderDataStorage(address _yieldProvider) internal view returns (IYieldManager.YieldProviderData storage) {
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    return $._yieldProviderData[_yieldProvider];
+  }
 }
