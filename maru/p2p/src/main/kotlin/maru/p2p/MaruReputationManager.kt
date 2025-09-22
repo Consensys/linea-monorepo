@@ -172,7 +172,7 @@ class MaruReputationManager(
         }
       val shouldDisconnect = newScore <= disconnectScoreThreshold
       if (shouldDisconnect) {
-        suitableAfter = Optional.of(currentTime.plus(cooldownPeriod))
+        suitableAfter = Optional.of(currentTime.plus(banPeriod))
         score.set(DEFAULT_SCORE)
       }
       return shouldDisconnect
