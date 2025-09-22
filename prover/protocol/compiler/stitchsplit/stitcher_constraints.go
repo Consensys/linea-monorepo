@@ -99,6 +99,11 @@ func (ctx StitchingContext) LocalGlobalConstraints() {
 				continue
 			}
 
+			// If the domainsize is larger than the max size, we cannot stitch it.
+			if q.DomainSize > ctx.MaxSize {
+				continue
+			}
+
 			// detect if the expression is eligible;
 			// i.e., it contains columns of proper size with status Precomputed, committed, or verifiercol.
 			isEligible, unSupported := IsExprEligible(isColEligibleStitching, ctx.Stitchings, board, compilerTypeStitch)
