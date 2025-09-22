@@ -7,10 +7,71 @@ pragma solidity ^0.8.30;
  * @custom:security-contact security-report@linea.build
  */
 interface IYieldManager {
+  enum YieldProviderType {
+      LIDO_STVAULT
+  }
+
+
+  /**
+   * @notice Supporting data for compressed calldata submission including compressed data.
+   * @dev finalStateRootHash is used to set state root at the end of the data.
+   */
+  struct YieldProviderInfo {
+    address yieldProviderEntrypoint;
+    address yieldProviderOssificationEntrypoint;
+    YieldProviderType yieldProviderType;
+  }
+
+  /**
+   * @notice Emitted when minimumWithdrawalReservePercentageBps is set.
+   * @param oldMinimumWithdrawalReservePercentageBps The previous minimumWithdrawalReservePercentageBps.
+   * @param newMinimumWithdrawalReservePercentageBps The new minimumWithdrawalReservePercentageBps.
+   * @param caller Address which set minimumWithdrawalReservePercentageBps.
+   */
+  event MinimumWithdrawalReservePercentageBpsSet(
+    uint256 oldMinimumWithdrawalReservePercentageBps,
+    uint256 newMinimumWithdrawalReservePercentageBps,
+    address indexed caller
+  );
+
+  /**
+   * @notice Emitted when minimumWithdrawalReserveAmountSet is set.
+   * @param oldMinimumWithdrawalReserveAmount The previous minimumWithdrawalReserveAmountSet.
+   * @param newMinimumWithdrawalReserveAmount The new minimumWithdrawalReserveAmountSet.
+   * @param caller Address which set minimumWithdrawalReserveAmountSet.
+   */
+  event MinimumWithdrawalReserveAmountSet(
+    uint256 oldMinimumWithdrawalReserveAmount,
+    uint256 newMinimumWithdrawalReserveAmount,
+    address indexed caller
+  );
+
+  /**
+   * @dev Thrown when sender is not the L1MessageService.
+   */
+  error SenderNotL1MessageService();
+
+  /**
+   * @dev Thrown when an operation will leave the withdrawal reserve below the minimum required amount.
+   */
+  error InsufficientWithdrawalReserve();
+
   /**
    * @dev Thrown when delegatecall to a YieldProvider fails.
    */
   error DelegateCallFailed();
+
+  /**
+   * @dev Thrown when >10000 bps is provided.
+   */
+  error BpsMoreThan10000();
+
+  /**
+   * @dev Thrown when caller is missing a required role.
+   * @param role1 First accepted role.
+   * @param role2 Second acceptable role.
+   */
+  error CallerMissingRole(bytes32 role1, bytes32 role2);
 
   /**
    * @notice Send ETH to the specified yield strategy.
@@ -118,4 +179,21 @@ interface IYieldManager {
    * @param _yieldProvider          Yield provider address.
    */
   function unpauseStaking(address _yieldProvider) external;
+
+  /**
+   * @notice Set minimum withdrawal reserve percentage.
+   * @dev Units of bps.
+   * @dev Effective minimum reserve is min(minimumWithdrawalReservePercentageBps, minimumWithdrawalReserveAmount).
+   * @dev WITHDRAWAL_RESERVE_SETTER_ROLE is required to execute.
+   * @param _minimumWithdrawalReservePercentageBps Minimum withdrawal reserve percentage in bps.
+   */
+  function setMinimumWithdrawalReservePercentageBps(uint256 _minimumWithdrawalReservePercentageBps) external;
+
+  /**
+   * @notice Set minimum withdrawal reserve.
+   * @dev Effective minimum reserve is min(minimumWithdrawalReservePercentageBps, minimumWithdrawalReserveAmount).
+   * @dev WITHDRAWAL_RESERVE_SETTER_ROLE is required to execute.
+   * @param _minimumWithdrawalReserveAmount Minimum withdrawal reserve amount.
+   */
+  function setMinimumWithdrawalReserveAmount(uint256 _minimumWithdrawalReserveAmount) external;
 }

@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import { IYieldManager } from "./interfaces/IYieldManager.sol";
 import { IYieldProvider } from "./interfaces/IYieldProvider.sol";
+import { ILineaNativeYieldExtension } from "./interfaces/ILineaNativeYieldExtension.sol";
 import { YieldManagerPauseManager } from "../security/pausing/YieldManagerPauseManager.sol";
 
 /**
@@ -32,9 +33,22 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager {
   /// @notice The role required to execute ossification functions.
   bytes32 public constant OSSIFIER_ROLE = keccak256("OSSIFIER_ROLE");
 
+  /// @notice The role required to set withdrawal reserve parameters.
+  bytes32 public constant WITHDRAWAL_RESERVE_SETTER_ROLE = keccak256("WITHDRAWAL_RESERVE_SETTER_ROLE");
+
+  /// @notice The role required to add and remove yield providers.
+  bytes32 public constant YIELD_PROVIDER_SETTER = keccak256("YIELD_PROVIDER_SETTER");
+
+  /// @notice 100% in BPS.
+  uint256 constant MAX_BPS = 10000;
+
   /// @custom:storage-location erc7201:linea.storage.YieldManager
   struct YieldManagerStorage {
-    address placeholder;
+    // Should we struct pack this?
+    address _l1MessageService;
+    uint256 _minimumWithdrawalReservePercentageBps;
+    uint256 _minimumWithdrawalReserveAmount;
+    mapping(address yieldProvider => YieldProviderInfo) _yieldProvider;
   }
 
   // keccak256(abi.encode(uint256(keccak256("linea.storage.YieldManagerStorage")) - 1)) & ~bytes32(uint256(0xff))
@@ -46,6 +60,53 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager {
       }
   }
 
+  /// @notice The L1MessageService address.
+  function l1MessageService() public view returns (address) {
+      YieldManagerStorage storage $ = _getYieldManagerStorage();
+      return $._l1MessageService;
+  }
+
+  /// @notice Minimum withdrawal reserve percentage in bps.
+  /// @dev Effective minimum reserve is min(minimumWithdrawalReservePercentageBps, minimumWithdrawalReserveAmount).
+  function minimumWithdrawalReservePercentageBps() public view returns (uint256) {
+      YieldManagerStorage storage $ = _getYieldManagerStorage();
+      return $._minimumWithdrawalReservePercentageBps;
+  }
+
+  /// @notice Minimum withdrawal reserve amount.
+  /// @dev Effective minimum reserve is min(minimumWithdrawalReservePercentageBps, minimumWithdrawalReserveAmount).
+  function minimumWithdrawalReserveAmount() public view returns (uint256) {
+      YieldManagerStorage storage $ = _getYieldManagerStorage();
+      return $._minimumWithdrawalReserveAmount;
+  }
+
+  /**
+   * @notice Initialises the YieldManager.
+   */
+  function initialize() external initializer {
+  }
+
+  /// @notice Get effective minimum withdrawal reserve
+  /// @dev Effective minimum reserve is min(minimumWithdrawalReservePercentageBps, minimumWithdrawalReserveAmount).
+  function getEffectiveMinimumWithdrawalReserve() public view returns (uint256) {
+      YieldManagerStorage storage $ = _getYieldManagerStorage();
+      uint256 l1MessageServiceBalance = $._l1MessageService.balance;
+      uint256 minWithdrawalReserveByPercentage = l1MessageServiceBalance * $._minimumWithdrawalReservePercentageBps / MAX_BPS;
+      uint256 minimumWithdrawalReserveAmount = $._minimumWithdrawalReserveAmount;
+      return minWithdrawalReserveByPercentage > minimumWithdrawalReserveAmount ? minWithdrawalReserveByPercentage : minimumWithdrawalReserveAmount;
+  }
+
+  /// @notice Returns true if withdrawal reserve balance is below effective required minimum.
+  /// @dev We tolerate DRY-violation with getEffectiveMinimumWithdrawalReserve() for gas efficiency.
+  function isWithdrawalReserveBelowEffectiveMinimum() public view returns (bool) {
+      YieldManagerStorage storage $ = _getYieldManagerStorage();
+      uint256 l1MessageServiceBalance = $._l1MessageService.balance;
+      uint256 minWithdrawalReserveByPercentage = l1MessageServiceBalance * $._minimumWithdrawalReservePercentageBps / MAX_BPS;
+      uint256 minimumWithdrawalReserveAmount = $._minimumWithdrawalReserveAmount;
+      uint256 effectiveMinimumReserve = minWithdrawalReserveByPercentage > minimumWithdrawalReserveAmount ? minWithdrawalReserveByPercentage : minimumWithdrawalReserveAmount;
+      return l1MessageServiceBalance < effectiveMinimumReserve;
+  }
+
   /**
    * @notice Send ETH to the specified yield strategy.
    * @dev YIELD_PROVIDER_FUNDER_ROLE is required to execute.
@@ -55,7 +116,9 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager {
    * @param _yieldProvider The target yield provider contract.
    */
   function fundYieldProvider(uint256 _amount, address _yieldProvider) external {
-    // TODO - Validate withdrawal reserve sufficient
+    if (!isWithdrawalReserveBelowEffectiveMinimum()) {
+        revert InsufficientWithdrawalReserve();
+    }
     // TODO - Validate _yieldProvider
     (bool success,) = _yieldProvider.delegatecall(
       abi.encodeCall(IYieldProvider.fundYieldProvider, (_amount)
@@ -68,19 +131,35 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager {
   /**
    * @notice Receive ETH from the withdrawal reserve.
    * @dev Only accepts calls from the withdrawal reserve.
+   * @dev It is possible for an arbitrary user to call this via `L1.claimMessage()`,
+   *    this results in a user effectively donating their ETH balance to YieldManager.
+   *    This does not violate the safety property of user principal protection, as the user has forfeited their principal.
    * @dev Reverts if, after transfer, the withdrawal reserve will be below the minimum threshold.
    */
   function receiveFundsFromReserve() external payable {
-
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    if (msg.sender != $._l1MessageService) {
+      revert SenderNotL1MessageService();
+    }
+    uint256 effectiveMinimumWithdrawalReserve = getEffectiveMinimumWithdrawalReserve();
+    if (!isWithdrawalReserveBelowEffectiveMinimum()) {
+        revert InsufficientWithdrawalReserve();
+    }
+    // TODO - Emit event
   }
 
   /**
    * @notice Send ETH to the L1MessageService.
-   * @dev YIELD_PROVIDER_FUNDER_ROLE or YIELD_MANAGER_UNSTAKER_ROLE is required to execute.
+   * @dev RESERVE_OPERATOR_ROLE or YIELD_MANAGER_UNSTAKER_ROLE is required to execute.
    * @param _amount        The amount of ETH to send.
    */
   function transferFundsToReserve(uint256 _amount) external {
-
+    if (!hasRole(RESERVE_OPERATOR_ROLE, msg.sender) && !hasRole(YIELD_PROVIDER_FUNDER_ROLE, msg.sender)) {
+      revert CallerMissingRole(RESERVE_OPERATOR_ROLE, YIELD_PROVIDER_FUNDER_ROLE);
+    }
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    ILineaNativeYieldExtension($._l1MessageService).fund{value: _amount}();
+    // Destination will emit the event.
   }
 
   /**
@@ -180,5 +259,33 @@ contract YieldManager is YieldManagerPauseManager, IYieldManager {
    */
   function unpauseStaking(address _yieldProvider) external {
 
+  }
+
+  /**
+   * @notice Set minimum withdrawal reserve percentage.
+   * @dev Units of bps.
+   * @dev Effective minimum reserve is min(minimumWithdrawalReservePercentageBps, minimumWithdrawalReserveAmount).
+   * @dev WITHDRAWAL_RESERVE_SETTER_ROLE is required to execute.
+   * @param _minimumWithdrawalReservePercentageBps Minimum withdrawal reserve percentage in bps.
+   */
+  function setMinimumWithdrawalReservePercentageBps(uint256 _minimumWithdrawalReservePercentageBps) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
+      if (_minimumWithdrawalReservePercentageBps > MAX_BPS) {
+        revert BpsMoreThan10000();
+      }
+      YieldManagerStorage storage $ = _getYieldManagerStorage();
+      emit MinimumWithdrawalReservePercentageBpsSet($._minimumWithdrawalReservePercentageBps, _minimumWithdrawalReservePercentageBps, msg.sender);
+      $._minimumWithdrawalReservePercentageBps = _minimumWithdrawalReservePercentageBps;
+  }
+
+  /**
+   * @notice Set minimum withdrawal reserve.
+   * @dev Effective minimum reserve is min(minimumWithdrawalReservePercentageBps, minimumWithdrawalReserveAmount).
+   * @dev WITHDRAWAL_RESERVE_SETTER_ROLE is required to execute.
+   * @param _minimumWithdrawalReserveAmount Minimum withdrawal reserve amount.
+   */
+  function setMinimumWithdrawalReserveAmount(uint256 _minimumWithdrawalReserveAmount) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
+      YieldManagerStorage storage $ = _getYieldManagerStorage();
+      emit MinimumWithdrawalReserveAmountSet($._minimumWithdrawalReserveAmount, _minimumWithdrawalReserveAmount, msg.sender);
+      $._minimumWithdrawalReserveAmount = _minimumWithdrawalReserveAmount;
   }
 }
