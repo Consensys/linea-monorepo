@@ -4,6 +4,11 @@
 // See contracts/COMPILERS.md
 pragma solidity >=0.8.0;
 
+import { IVaultHub } from "./IVaultHub.sol";
+import { IStakingVault } from "./IStakingVault.sol";
+import { IPredepositGuarantee } from "./IPredepositGuarantee.sol";
+
+
 /**
  * @title Dashboard
  * @notice This contract is a UX-layer for StakingVault and meant to be used as its owner.
@@ -33,7 +38,7 @@ interface IDashboard {
      * @notice Returns the vault connection data for the staking vault.
      * @return VaultConnection struct containing vault data
      */
-    function vaultConnection() external view returns (VaultHub.VaultConnection memory);
+    function vaultConnection() external view returns (IVaultHub.VaultConnection memory);
 
     /**
      * @notice Returns the stETH share limit of the vault
