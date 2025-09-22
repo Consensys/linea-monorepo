@@ -3,11 +3,9 @@ package stitchsplit
 import (
 	"strconv"
 
-	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
@@ -135,18 +133,16 @@ func IsExprEligible(
 				}
 			case verifiercol.VerifierCol:
 				statusMap[rootColumn.GetColID()] = column.VerifierDefined.String() + "/" + strconv.Itoa(nat.Size())
+			default:
+				// unsupported column type
+				utils.Panic("unsupported column type %T", m)
 			}
-		case variables.PeriodicSample, coin.Info:
-			// periodic samples and coins are always eligible
-		default:
-			// unsupported column type
-			// utils.Panic("unsupported column type %T", m)
 		}
 	}
 
 	if hasAtLeastOneEligible && !allAreEligible {
 		// We expect no expression over ignored columns
-		logrus.Errorf("the expression is not valid, it is mixed with invalid columns of status, %v", statusMap)
+		logrus.Debugf("the expression is not eligible, it is not supported by stitcher, %v", statusMap)
 		return false, true
 	}
 
