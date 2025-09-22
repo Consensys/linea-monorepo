@@ -27,14 +27,14 @@ type GnarkRuntimeGen[T zk.Element] interface {
 	ifaces.GnarkRuntime
 	GetSpec() *CompiledIOP
 	GetPublicInput(api frontend.API, name string) T
-	GetGrandProductParams(name ifaces.QueryID) query.GnarkGrandProductParams
-	GetHornerParams(name ifaces.QueryID) query.GnarkHornerParams
-	GetLogDerivSumParams(name ifaces.QueryID) query.GnarkLogDerivSumParams
-	GetLocalPointEvalParams(name ifaces.QueryID) query.GnarkLocalOpeningParams
-	GetInnerProductParams(name ifaces.QueryID) query.GnarkInnerProductParams
-	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
-	GetUnivariateParams(name ifaces.QueryID) query.GnarkUnivariateEvalParams
-	Fs() *fiatshamir.GnarkFiatShamir
+	GetGrandProductParams(name ifaces.QueryID) query.GnarkGrandProductParamsGen[T]
+	GetHornerParams(name ifaces.QueryID) query.GnarkHornerParamsGen[T]
+	GetLogDerivSumParams(name ifaces.QueryID) query.GnarkLogDerivSumParamsGen[T]
+	GetLocalPointEvalParams(name ifaces.QueryID) query.GnarkLocalOpeningParamsGen[T]
+	GetInnerProductParams(name ifaces.QueryID) query.GnarkInnerProductParamsGen[T]
+	GetUnivariateEval(name ifaces.QueryID) query.GnarkUnivariateEvalParamsGen[T]
+	GetUnivariateParams(name ifaces.QueryID) query.GnarkUnivariateEvalParamsGen[T]
+	Fs() *fiatshamir.GnarkFiatShamir // TODO make it gen
 	GetHasherFactory() mimc.HasherFactory
 	InsertCoin(name coin.Name, value interface{})
 	GetState(name string) (any, bool)
@@ -68,7 +68,8 @@ type VerifierCircuitAnalyticGen struct {
 //
 // The sub-circuit employs GKR for MiMC in order to improve the performances
 // of the MiMC hashes that occurs during the verifier runtime.
-type VerifierCircuitGen struct {
+// implements GnarkRuntimeGen[T zk.Element] interface
+type VerifierCircuitGen[T zk.Element] struct {
 
 	// Spec points to the inner CompiledIOP and carries all the static
 	// informations related to the circuit.
@@ -77,7 +78,7 @@ type VerifierCircuitGen struct {
 	// Maps a query's name to a position in the arrays below. The reason we
 	// use this data-structure is because the [VerifierRuntime] offers
 	// key-value access to the internal parameters of the struct and we
-	// cannot have maps of [frontend.Variable] in a gnark circuit (because we
+	// cannot have maps of [T] in a gnark circuit (because we
 	// need a deterministic storage so that we are sure that the wires stay at
 	// the same position). The way we solve the problem is by storing the
 	// columns and parameters in slices and keeping track of their positions
@@ -101,30 +102,31 @@ type VerifierCircuitGen struct {
 
 	// Columns stores the gnark witness part corresponding to the columns
 	// provided in the proof and in the VerifyingKey.
-	Columns    [][]frontend.Variable `gnark:",secret"`
+	Columns    [][]T                 `gnark:",secret"`
 	ColumnsExt [][]gnarkfext.Element `gnark:",secret"`
 	// UnivariateParams stores an assignment for each [query.UnivariateParams]
 	// from the proof. This is part of the witness of the gnark circuit.
-	UnivariateParams []query.GnarkUnivariateEvalParams `gnark:",secret"`
+	UnivariateParams []query.GnarkUnivariateEvalParamsGen[T] `gnark:",secret"`
 	// InnerProductParams stores an assignment for each [query.InnerProductParams]
 	// from the proof. It is part of the witness of the gnark circuit.
-	InnerProductParams []query.GnarkInnerProductParams `gnark:",secret"`
+	InnerProductParams []query.GnarkInnerProductParamsGen[T] `gnark:",secret"`
 	// LocalOpeningParams stores an assignment for each [query.LocalOpeningParams]
 	// from the proof. It is part of the witness of the gnark circuit.
-	LocalOpeningParams []query.GnarkLocalOpeningParams `gnark:",secret"`
+	LocalOpeningParams []query.GnarkLocalOpeningParamsGen[T] `gnark:",secret"`
 	// LogDerivSumParams stores an assignment for each [query.LogDerivSumParams]
 	// from the proof. It is part of the witness of the gnark circuit.
-	LogDerivSumParams []query.GnarkLogDerivSumParams `gnark:",secret"`
+	LogDerivSumParams []query.GnarkLogDerivSumParamsGen[T] `gnark:",secret"`
 	// GrandProductParams stores an assignment for each [query.GrandProductParams]
 	// from the proof. It is part of the witness of the gnark circuit.
-	GrandProductParams []query.GnarkGrandProductParams `gnark:",secret"`
+	GrandProductParams []query.GnarkGrandProductParamsGen[T] `gnark:",secret"`
 	// HornerParams stores an assignment for each [query.Horner] from
 	// the proof. It is part of the witness of the gnark circuit.
-	HornerParams []query.GnarkHornerParams `gnark:",secret"`
+	HornerParams []query.GnarkHornerParamsGen[T] `gnark:",secret"`
 
 	// FS is the Fiat-Shamir state, mirroring [VerifierRuntime.FS]. The same
 	// cautionnary rules apply to it; e.g. don't use it externally when
 	// possible.
+	// TODO make it gen
 	FS *fiatshamir.GnarkFiatShamir `gnark:"-"`
 
 	// Coins stores all the coins sampled by the verifier circuit. It is not
@@ -137,6 +139,7 @@ type VerifierCircuitGen struct {
 	// in the circuit. It is used for efficiently computing the Fiat-Shamir
 	// hashes but also the MiMC Vortex column hashes that we use for the
 	// last round of the self-recursion.
+	// TODO @thomas replace this with poseidon2 ?
 	HasherFactory mimc.HasherFactory `gnark:"-"`
 
 	// State is a generic-purpose data store that the verifier steps can use to
@@ -149,9 +152,9 @@ type VerifierCircuitGen struct {
 
 // NewVerifierCircuit creates an empty wizard verifier circuit.
 // Initializes the underlying structs and collections.
-func NewVerifierCircuitGen(comp *CompiledIOP, numRound int) *VerifierCircuit {
+func NewVerifierCircuitGen[T zk.Element](comp *CompiledIOP, numRound int) *VerifierCircuitGen[T] {
 
-	return &VerifierCircuit{
+	return &VerifierCircuitGen[T]{
 		Spec: comp,
 
 		ColumnsIDs:          collection.NewMapping[ifaces.ColID, int](),
@@ -163,13 +166,13 @@ func NewVerifierCircuitGen(comp *CompiledIOP, numRound int) *VerifierCircuit {
 		GrandProductIDs:     collection.NewMapping[ifaces.QueryID, int](),
 		HornerIDs:           collection.NewMapping[ifaces.QueryID, int](),
 
-		Columns:            [][]frontend.Variable{},
+		// Columns:            [][]T,
 		ColumnsExt:         [][]gnarkfext.Element{},
-		UnivariateParams:   make([]query.GnarkUnivariateEvalParams, 0),
-		InnerProductParams: make([]query.GnarkInnerProductParams, 0),
-		LocalOpeningParams: make([]query.GnarkLocalOpeningParams, 0),
-		LogDerivSumParams:  make([]query.GnarkLogDerivSumParams, 0),
-		HornerParams:       make([]query.GnarkHornerParams, 0),
+		UnivariateParams:   make([]query.GnarkUnivariateEvalParamsGen[T], 0),
+		InnerProductParams: make([]query.GnarkInnerProductParamsGen[T], 0),
+		LocalOpeningParams: make([]query.GnarkLocalOpeningParamsGen[T], 0),
+		LogDerivSumParams:  make([]query.GnarkLogDerivSumParamsGen[T], 0),
+		HornerParams:       make([]query.GnarkHornerParamsGen[T], 0),
 		Coins:              collection.NewMapping[coin.Name, interface{}](),
 
 		NumRound: numRound,

@@ -17,7 +17,6 @@ type GnarkFiatShamirGen[T zk.Element] struct {
 // an optional [gkrmimc.HasherFactory] object as input. This is expected to be
 // used in the scope of a [frontend.Define] function.
 func NewGnarkFiatShamirGen[T zk.Element](api frontend.API, h hash.StateStorer) *GnarkFiatShamir {
-
 	return &GnarkFiatShamir{
 		hasher: h,
 		api:    api,
