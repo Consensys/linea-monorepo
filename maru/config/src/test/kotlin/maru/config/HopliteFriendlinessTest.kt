@@ -17,6 +17,7 @@ import kotlin.time.Duration.Companion.seconds
 import linea.domain.BlockParameter
 import linea.domain.RetryConfig
 import linea.kotlin.decodeHex
+import maru.config.MaruConfigLoader.parseConfig
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
