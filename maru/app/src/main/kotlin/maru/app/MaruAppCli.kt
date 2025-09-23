@@ -10,9 +10,7 @@ package maru.app
 
 import java.io.File
 import java.util.concurrent.Callable
-import maru.config.MaruConfigDtoToml
-import maru.config.consensus.JsonFriendlyForksSchedule
-import maru.config.loadConfigs
+import maru.config.MaruConfigLoader
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.core.LoggerContext
 import org.apache.logging.log4j.core.config.Configurator
@@ -59,8 +57,8 @@ class MaruAppCli : Callable<Int> {
       System.err.println("Failed to read genesis file file: \"${genesisFile.path}\"")
       return 1
     }
-    val parsedAppConfig = loadConfigs<MaruConfigDtoToml>(configFiles.map { it.toPath() })
-    val parsedBeaconGenesisConfig = loadConfigs<JsonFriendlyForksSchedule>(listOf(genesisFile.toPath()))
+    val parsedAppConfig = MaruConfigLoader.loadAppConfigs(configFiles)
+    val parsedBeaconGenesisConfig = MaruConfigLoader.loadGenesisConfig(genesisFile)
 
     val app =
       MaruAppFactory()

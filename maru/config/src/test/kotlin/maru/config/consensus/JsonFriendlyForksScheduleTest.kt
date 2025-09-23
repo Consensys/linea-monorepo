@@ -8,7 +8,7 @@
  */
 package maru.config.consensus
 
-import maru.config.Utils
+import maru.config.MaruConfigLoader.parseBeaconChainConfig
 import maru.config.consensus.qbft.DifficultyAwareQbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
@@ -47,10 +47,9 @@ class JsonFriendlyForksScheduleTest {
   @Test
   fun genesisFileIsConvertableToDomain() {
     val config =
-      Utils
-        .parseBeaconChainConfig(
-          genesisConfig,
-        ).domainFriendly()
+      parseBeaconChainConfig(
+        genesisConfig,
+      ).domainFriendly()
     assertThat(config).isEqualTo(
       ForksSchedule(
         1337u,
@@ -94,7 +93,7 @@ class JsonFriendlyForksScheduleTest {
       }
       """.trimIndent()
     assertThatThrownBy {
-      Utils.parseBeaconChainConfig(
+      parseBeaconChainConfig(
         invalidConfiguration,
       )
     }.isInstanceOf(Exception::class.java)

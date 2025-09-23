@@ -13,11 +13,11 @@ import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.getOrElse
 import com.github.michaelbull.result.recoverIf
+import com.sksamuel.hoplite.ConfigLoader
 import com.sksamuel.hoplite.ConfigLoaderBuilder
 import com.sksamuel.hoplite.ConfigResult
 import com.sksamuel.hoplite.ExperimentalHoplite
 import com.sksamuel.hoplite.fp.Validated
-import com.sksamuel.hoplite.toml.TomlPropertySource
 import java.nio.file.Path
 import maru.config.consensus.ForkConfigDecoder
 import maru.config.decoders.TomlByteArrayHexDecoder
@@ -32,32 +32,11 @@ fun ConfigLoaderBuilder.addTomlDecoders(strict: Boolean): ConfigLoaderBuilder =
     .apply { if (strict) this.strict() }
 
 @OptIn(ExperimentalHoplite::class)
-inline fun <reified T : Any> parseConfig(
-  toml: String,
-  strict: Boolean = false,
-): T =
-  ConfigLoaderBuilder
-    .default()
-    .withExplicitSealedTypes()
-    .addTomlDecoders(strict)
-    .addSource(TomlPropertySource(toml))
-    .build()
-    .loadConfigOrThrow<T>()
-
-@OptIn(ExperimentalHoplite::class)
 inline fun <reified T : Any> loadConfigsOrError(
   configFiles: List<Path>,
-  strict: Boolean,
-): Result<T, String> {
-  val confLoader =
-    ConfigLoaderBuilder
-      .empty()
-      .addDefaults()
-      .withExplicitSealedTypes()
-      .addTomlDecoders(strict)
-      .build()
-
-  return confLoader
+  confLoader: ConfigLoader,
+): Result<T, String> =
+  confLoader
     .loadConfig<T>(configFiles.reversed().map { it.toAbsolutePath().toString() })
     .let { configResult: ConfigResult<T> ->
       when (configResult) {
@@ -65,7 +44,6 @@ inline fun <reified T : Any> loadConfigsOrError(
         is Validated.Invalid -> Err(configResult.getInvalidUnsafe().description())
       }
     }
-}
 
 fun logErrorIfPresent(
   configLoadingResult: Result<Any?, String>,
@@ -80,9 +58,10 @@ fun logErrorIfPresent(
 inline fun <reified T : Any> loadConfigsAndLogErrors(
   configFiles: List<Path>,
   logger: Logger = LogManager.getLogger("maru.config"),
-  strict: Boolean,
+  strict: Boolean = false,
+  confLoader: ConfigLoader,
 ): Result<T, String> =
-  loadConfigsOrError<T>(configFiles, strict = strict)
+  loadConfigsOrError<T>(configFiles, confLoader)
     .also {
       val logLevel = if (strict) Level.WARN else Level.ERROR
       logErrorIfPresent(it, logger, logLevel)
@@ -92,16 +71,19 @@ inline fun <reified T : Any> loadConfigs(
   configFiles: List<Path>,
   logger: Logger = LogManager.getLogger("maru.config"),
   enforceStrict: Boolean = false,
+  confLoaderBuilderFn: (Boolean) -> ConfigLoader,
 ): T =
   loadConfigsAndLogErrors<T>(
     configFiles,
     logger,
     strict = true,
+    confLoader = confLoaderBuilderFn(true),
   ).recoverIf({ !enforceStrict }, {
     loadConfigsAndLogErrors<T>(
       configFiles,
       logger,
       strict = false,
+      confLoader = confLoaderBuilderFn(false),
     ).getOrElse {
       throw RuntimeException("Invalid configurations: $it")
     }
