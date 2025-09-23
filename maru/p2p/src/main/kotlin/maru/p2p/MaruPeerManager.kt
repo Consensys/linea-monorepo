@@ -8,8 +8,6 @@
  */
 package maru.p2p
 
-import io.libp2p.core.PeerId
-import io.libp2p.crypto.keys.unmarshalSecp256k1PublicKey
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -24,8 +22,6 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import tech.pegasys.teku.networking.p2p.discovery.DiscoveryPeer
-import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.libp2p.PeerAlreadyConnectedException
 import tech.pegasys.teku.networking.p2p.network.P2PNetwork
 import tech.pegasys.teku.networking.p2p.network.PeerHandler
@@ -71,9 +67,12 @@ class MaruPeerManager(
     if (scheduler == null) {
       scheduler = Executors.newSingleThreadScheduledExecutor(Thread.ofPlatform().daemon().factory())
     }
-    scheduler!!.scheduleAtFixedRate({
-      logConnectedPeers()
-    }, 20000, 20000, TimeUnit.MILLISECONDS)
+    scheduler!!.scheduleAtFixedRate(
+      /* command = */ this::logConnectedPeers,
+      /* initialDelay = */ 5,
+      /* period = */ 20,
+      /* unit = */ TimeUnit.SECONDS,
+    )
     if (discoveryService != null) {
       searchTaskFuture =
         scheduler!!.scheduleWithFixedDelay(
@@ -124,7 +123,7 @@ class MaruPeerManager(
   }
 
   private fun logConnectedPeers() {
-    log.info("Currently connected peers={}", connectedPeers.keys.toList())
+    log.info("currently connected peers={}", connectedPeers.values.toList().map { it.toLogString() })
     if (log.isDebugEnabled) {
       discoveryService?.getKnownPeers()?.forEach { peer ->
         log.debug("discovered peer={}", peer)
@@ -207,10 +206,5 @@ class MaruPeerManager(
         connectionInProgress.remove(peer.nodeId)
       }
     }
-  }
-
-  fun getNodeId(peer: DiscoveryPeer): LibP2PNodeId {
-    val pubKey = unmarshalSecp256k1PublicKey(peer.publicKey.toArrayUnsafe())
-    return LibP2PNodeId(PeerId.fromPubKey(pubKey))
   }
 }
