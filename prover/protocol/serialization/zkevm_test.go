@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
@@ -151,4 +152,19 @@ func justserde(t *testing.B, input any, name string) {
 
 func TestSerdeZkEVM(t *testing.T) {
 	runSerdeTest(t, z, "ZkEVM", true, false)
+}
+
+func TestSerdeZKEVMFull(t *testing.T) {
+
+	cfg, err := config.NewConfigFromFileUnchecked("/home/ubuntu/linea-monorepo/prover/config/config-mainnet-limitless.toml")
+	if err != nil {
+		t.Fatalf("failed to read config file: %s", err)
+	}
+
+	var (
+		traceLimits = cfg.TracesLimits
+		zkEVM       = zkevm.FullZKEVMWithSuite(&traceLimits, zkevm.CompilationSuite{}, cfg)
+	)
+
+	runSerdeTest(t, zkEVM, "ZkEVM", true, false)
 }
