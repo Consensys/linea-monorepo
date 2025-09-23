@@ -26,7 +26,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 /** STP constraints were failing for these ranges */
 @Tag("replay")
-@Tag("nightly")
+@Tag("weekly")
 @ExtendWith(UnitTestWatcher.class)
 public class Issue1124Tests extends TracerTestBase {
 
