@@ -17,6 +17,7 @@ abstract contract YieldManagerStorageLayout {
     uint256 _minimumWithdrawalReservePercentageBps;
     uint256 _minimumWithdrawalReserveAmount;
     address[] _yieldProviders;
+    uint256 _userFundsInYieldProvidersTotal;
     mapping(address yieldProvider => IYieldManager.YieldProviderData) _yieldProviderData;
   }
 
@@ -30,7 +31,7 @@ abstract contract YieldManagerStorageLayout {
   }
 
   function _getYieldProviderDataStorage(address _yieldProvider) internal view returns (IYieldManager.YieldProviderData storage) {
-    YieldManagerStorage storage $ = _getYieldManagerStorage();
-    return $._yieldProviderData[_yieldProvider];
+    YieldManagerStorage storage $$ = _getYieldManagerStorage();
+    return $$._yieldProviderData[_yieldProvider];
   }
 }

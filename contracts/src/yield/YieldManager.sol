@@ -79,27 +79,31 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       _;
   }
 
-  // TODO - Actually, multiply percentage by TOTAL IN SYSTEM
+ function getWithdrawalReserveBalance() public view returns (uint256) {
+    return _getYieldManagerStorage()._l1MessageService.balance;
+  }
+
+  function getTotalSystemBalance() public view returns (uint256) {
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    return $._l1MessageService.balance + address(this).balance + $._userFundsInYieldProvidersTotal;
+  }
+
+  function getMinimumWithdrawalReserveByPercentage() public view returns (uint256) {
+    return getTotalSystemBalance() * _getYieldManagerStorage()._minimumWithdrawalReservePercentageBps / MAX_BPS;
+  }
 
   /// @notice Get effective minimum withdrawal reserve
   /// @dev Effective minimum reserve is min(minimumWithdrawalReservePercentageBps, minimumWithdrawalReserveAmount).
   function getEffectiveMinimumWithdrawalReserve() public view returns (uint256) {
-      YieldManagerStorage storage $ = _getYieldManagerStorage();
-      uint256 l1MessageServiceBalance = $._l1MessageService.balance;
-      uint256 minWithdrawalReserveByPercentage = l1MessageServiceBalance * $._minimumWithdrawalReservePercentageBps / MAX_BPS;
-      uint256 minimumWithdrawalReserveAmountCached = $._minimumWithdrawalReserveAmount;
+      uint256 minimumWithdrawalReserveAmountCached = _getYieldManagerStorage()._minimumWithdrawalReserveAmount;
+      uint256 minWithdrawalReserveByPercentage = getMinimumWithdrawalReserveByPercentage();
       return minWithdrawalReserveByPercentage > minimumWithdrawalReserveAmountCached ? minWithdrawalReserveByPercentage : minimumWithdrawalReserveAmountCached;
   }
 
   /// @notice Returns true if withdrawal reserve balance is below effective required minimum.
-  /// @dev We tolerate DRY-violation with getEffectiveMinimumWithdrawalReserve() for gas efficiency.
+  /// @dev We are doing duplicate BALANCE opcode call, but how to remove duplicate call while maintaining readability?
   function isWithdrawalReserveBelowEffectiveMinimum() public view returns (bool) {
-      YieldManagerStorage storage $ = _getYieldManagerStorage();
-      uint256 l1MessageServiceBalance = $._l1MessageService.balance;
-      uint256 minWithdrawalReserveByPercentage = l1MessageServiceBalance * $._minimumWithdrawalReservePercentageBps / MAX_BPS;
-      uint256 minimumWithdrawalReserveAmountCached = $._minimumWithdrawalReserveAmount;
-      uint256 effectiveMinimumReserve = minWithdrawalReserveByPercentage > minimumWithdrawalReserveAmountCached ? minWithdrawalReserveByPercentage : minimumWithdrawalReserveAmountCached;
-      return l1MessageServiceBalance < effectiveMinimumReserve;
+      return _getYieldManagerStorage()._l1MessageService.balance < getEffectiveMinimumWithdrawalReserve();
   }
 
   /**
@@ -120,8 +124,8 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!success) {
       revert DelegateCallFailed();
     }
-    IYieldManager.YieldProviderData storage $ = _getYieldProviderDataStorage(_yieldProvider);
-    $.amountFunded += _amount;
+    _getYieldManagerStorage()._userFundsInYieldProvidersTotal += _amount;
+    _getYieldProviderDataStorage(_yieldProvider).userFunds += _amount;
     // emit event?
   }
 
@@ -134,8 +138,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @dev Reverts if, after transfer, the withdrawal reserve will be below the minimum threshold.
    */
   function receiveFundsFromReserve() external payable {
-    YieldManagerStorage storage $ = _getYieldManagerStorage();
-    if (msg.sender != $._l1MessageService) {
+    if (msg.sender != l1MessageService()) {
       revert SenderNotL1MessageService();
     }
     if (!isWithdrawalReserveBelowEffectiveMinimum()) {
@@ -153,8 +156,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!hasRole(RESERVE_OPERATOR_ROLE, msg.sender) && !hasRole(YIELD_PROVIDER_FUNDER_ROLE, msg.sender)) {
       revert CallerMissingRole(RESERVE_OPERATOR_ROLE, YIELD_PROVIDER_FUNDER_ROLE);
     }
-    YieldManagerStorage storage $ = _getYieldManagerStorage();
-    ILineaNativeYieldExtension($._l1MessageService).fund{value: _amount}();
+    ILineaNativeYieldExtension(l1MessageService()).fund{value: _amount}();
     // Destination will emit the event.
   }
 
@@ -244,8 +246,8 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @param _yieldProvider          Yield provider address.
    */
   function pauseStaking(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
-    YieldManagerStorage storage $ = _getYieldManagerStorage();
-    if ($._yieldProviderData[_yieldProvider].isStakingPaused) {
+    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    if ($$.isStakingPaused) {
       revert StakingAlreadyPaused();
     }
     (bool success,) = _yieldProvider.delegatecall(
@@ -254,7 +256,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!success) {
       revert DelegateCallFailed();
     }
-    $._yieldProviderData[_yieldProvider].isStakingPaused = true;
+    $$.isStakingPaused = true;
     // Emit event
   }
 
@@ -266,8 +268,8 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    */
   function unpauseStaking(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
     // Other checks for unstaking
-    YieldManagerStorage storage $ = _getYieldManagerStorage();
-    if (!$._yieldProviderData[_yieldProvider].isStakingPaused) {
+    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    if (!$$.isStakingPaused) {
       revert StakingAlreadyUnpaused();
     }
     if (!isWithdrawalReserveBelowEffectiveMinimum()) {
@@ -279,7 +281,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!success) {
       revert DelegateCallFailed();
     }
-    $._yieldProviderData[_yieldProvider].isStakingPaused = false;
+    $$.isStakingPaused = false;
     // emit Event
   }
 
@@ -306,7 +308,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
         yieldProviderIndex: yieldProviderIndex,
         isStakingPaused: false,
         isOssified: false,
-        amountFunded: 0,
+        userFunds: 0,
         yieldReportedCumulative: 0
     });
     // TODO - Emit event
@@ -318,11 +320,29 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     }
 
     YieldManagerStorage storage $ = _getYieldManagerStorage();
-    // TODO - Do we need to handle remaining yield situation?
-    if ($._yieldProviderData[_yieldProvider].amountFunded != 0) {
+    // TODO - How to handle remaining yield situation? If we keep earning yield, we can never exit?...Then don't report
+    if ($._yieldProviderData[_yieldProvider].userFunds != 0) {
       revert YieldProviderHasRemainingFunds();
     }
+    _removeYieldProvider(_yieldProvider);
+    // TODO - Emit event
+  }
 
+  // @dev Removes the requirement that there is 0 userFunds remaining in the YieldProvder
+  // @dev Otherwise newly reported yield can prevent removeYieldProvider
+  function emergencyRemoveYieldProvider(address _yieldProvider) external onlyRole(YIELD_PROVIDER_SETTER)  {
+    if (_yieldProvider == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    _removeYieldProvider(_yieldProvider);
+    // TODO - Emit event
+  }
+
+
+  function _removeYieldProvider(address _yieldProvider) internal  {
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
     uint96 yieldProviderIndex = $._yieldProviderData[_yieldProvider].yieldProviderIndex;
     address lastYieldProvider = $._yieldProviders[$._yieldProviders.length - 1];
     $._yieldProviderData[lastYieldProvider].yieldProviderIndex = yieldProviderIndex;
@@ -330,8 +350,6 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     $._yieldProviders.pop();
 
     delete $._yieldProviderData[_yieldProvider];
-
-    // TODO - Emit event
   }
 
   // TODO - Setter for l1MessageService

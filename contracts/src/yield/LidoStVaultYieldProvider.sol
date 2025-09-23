@@ -14,8 +14,8 @@ import { ICommonVaultOperations } from "./interfaces/vendor/lido-vault/ICommonVa
  */
 contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, IGenericErrors {
   function _getEntrypointContract(address _yieldProvider) private view returns (address) {
-    IYieldManager.YieldProviderData storage $ = _getYieldProviderDataStorage(_yieldProvider);
-    return $.isOssified ? $.registration.yieldProviderOssificationEntrypoint : $.registration.yieldProviderEntrypoint;
+    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    return $$.isOssified ? $$.registration.yieldProviderOssificationEntrypoint : $$.registration.yieldProviderEntrypoint;
   }
 
 

@@ -28,7 +28,8 @@ interface IYieldManager {
     uint96 yieldProviderIndex;
     bool isStakingPaused;
     bool isOssified;
-    uint256 amountFunded;
+    // Incremented 1:1 with yieldReportedCumulative, because yieldReported becomes user funds
+    uint256 userFunds;
     uint256 yieldReportedCumulative;
     // ? TODO - Do we need entry for negativeYield
   }
