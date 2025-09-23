@@ -93,4 +93,52 @@ class MaruReputationManagerTest {
     manager.reportInitiatedConnectionSuccessful(peerAddress)
     assertThat(manager.isConnectionInitiationAllowed(peerAddress)).isTrue()
   }
+
+  @Test
+  fun `re-bans peer on subsequent disconnection after initial ban expires`() {
+    val manager = MaruReputationManager(metricsSystem, timeProvider, { false }, reputationConfig)
+
+    // t0: first disconnection with a ban-worthy reason triggers initial ban
+    whenever(timeProvider.timeInMillis).thenReturn(UInt64.ZERO)
+    manager.reportDisconnection(peerAddress, Optional.of(DisconnectReason.REMOTE_FAULT), true)
+    assertThat(manager.isConnectionInitiationAllowed(peerAddress)).isFalse()
+
+    // t1: move time to just after initial ban expires; peer becomes eligible again
+    val t1 = UInt64.ZERO.plus(reputationConfig.banPeriod.inWholeMilliseconds) + 1
+    whenever(timeProvider.timeInMillis).thenReturn(t1)
+    assertThat(manager.isConnectionInitiationAllowed(peerAddress)).isTrue()
+
+    // t1: immediately another disconnection with same reason should re-apply the ban
+    manager.reportDisconnection(peerAddress, Optional.of(DisconnectReason.REMOTE_FAULT), true)
+    assertThat(manager.isConnectionInitiationAllowed(peerAddress)).isFalse()
+
+    // t2: after second ban expires, peer should be allowed again
+    val t2 = t1.plus(reputationConfig.banPeriod.inWholeMilliseconds) + 1
+    whenever(timeProvider.timeInMillis).thenReturn(t2)
+    assertThat(manager.isConnectionInitiationAllowed(peerAddress)).isTrue()
+  }
+
+  @Test
+  fun `does not extend ban when disconnection occurs during active ban`() {
+    val manager = MaruReputationManager(metricsSystem, timeProvider, { false }, reputationConfig)
+
+    // t0: ban the peer
+    whenever(timeProvider.timeInMillis).thenReturn(UInt64.ZERO)
+    manager.reportDisconnection(peerAddress, Optional.of(DisconnectReason.REMOTE_FAULT), true)
+    assertThat(manager.isConnectionInitiationAllowed(peerAddress)).isFalse()
+
+    // t_mid: still within the first ban window
+    val half = reputationConfig.banPeriod.inWholeMilliseconds / 2
+    val tMid = UInt64.ZERO.plus(half + 1)
+    whenever(timeProvider.timeInMillis).thenReturn(tMid)
+
+    // Report another disconnection during active ban; should NOT extend the ban
+    manager.reportDisconnection(peerAddress, Optional.of(DisconnectReason.REMOTE_FAULT), true)
+    assertThat(manager.isConnectionInitiationAllowed(peerAddress)).isFalse()
+
+    // t_end: just after the original ban expires; should be allowed
+    val tEnd = UInt64.ZERO.plus(reputationConfig.banPeriod.inWholeMilliseconds) + 1
+    whenever(timeProvider.timeInMillis).thenReturn(tEnd)
+    assertThat(manager.isConnectionInitiationAllowed(peerAddress)).isTrue()
+  }
 }
