@@ -286,6 +286,8 @@ services:
     image: consensys/linea-coordinator:${COORDINATOR_TAG:-4daddb3}
     profiles: [ "l2", "debug" ]
     depends_on:
+      l2-genesis-initialization:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       l1-el-node:
