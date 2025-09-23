@@ -65,30 +65,8 @@ func TestLinearHash(t *testing.T) {
 
 				for j := 0; j < blockSize; j++ {
 					ex[j] = append(ex[j], y[j])
-
-					// Allocate segments to TOHASH columns
-					completeChunks := colSize / blockSize
-					for k := 0; k < completeChunks; k++ {
-						th[j] = append(th[j], segment[k*blockSize+j])
-					}
-
-					lastChunkElements := colSize % blockSize
-					lastChunkPadding := 0
-					if lastChunkElements > 0 {
-						lastChunkPadding = blockSize - lastChunkElements
-
-						k := completeChunks
-						if j < lastChunkPadding {
-							// Left padding
-							th[j] = append(th[j], field.Zero())
-						} else {
-							// Actual data
-							actualIdx := k*blockSize + (j - lastChunkPadding)
-							th[j] = append(th[j], segment[actualIdx])
-						}
-					}
-
 				}
+				th = linhash.PrepareToHashWitness(th, segment)
 			}
 
 			var exSV, thSV [blockSize]smartvectors.SmartVector

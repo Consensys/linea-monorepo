@@ -437,36 +437,14 @@ func (a *LinearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 	numhash := a.NumOpenedCol
 	for i := 0; i < a.NumNonSisRound; i++ {
 		var th [blockSize][]field.Element
-
+		colSize := len(lmp.NonSisHashPreimages[i])
+		colChunks := (colSize + blockSize - 1) / blockSize
+		totalChunks := colChunks * numhash
 		for j := 0; j < blockSize; j++ {
-			colSize := len(lmp.NonSisHashPreimages[i])
-			colChunks := (colSize + blockSize - 1) / blockSize
-			totalChunks := colChunks * numhash
 			th[j] = make([]field.Element, 0, totalChunks)
-
-			// Allocate segments to TOHASH columns
-			completeChunks := colSize / blockSize
-			for k := 0; k < completeChunks; k++ {
-				th[j] = append(th[j], lmp.NonSisHashPreimages[i][k*blockSize+j])
-			}
-
-			lastChunkElements := colSize % blockSize
-			lastChunkPadding := 0
-			if lastChunkElements > 0 {
-				lastChunkPadding = blockSize - lastChunkElements
-			}
-			if lastChunkElements > 0 {
-				k := completeChunks
-				if j < lastChunkPadding {
-					// Left padding
-					th[j] = append(th[j], field.Zero())
-				} else {
-					// Actual data
-					actualIdx := k*blockSize + (j - lastChunkPadding)
-					th[j] = append(th[j], lmp.NonSisHashPreimages[i][actualIdx])
-				}
-			}
 		}
+		th = poseidon2W.PrepareToHashWitness(th, lmp.NonSisHashPreimages[i])
+
 		for j := 0; j < blockSize; j++ {
 			run.AssignColumn(a.Ctx.Poseidon2MetaData.NonSiSToHash[i][j].GetColID(), smartvectors.RightZeroPadded(th[j], a.NonSISToHash[i]))
 			run.AssignColumn(a.Ctx.Poseidon2MetaData.NonSisLeaves[j][i].GetColID(), smartvectors.RightZeroPadded(lmp.NonSisLeaves[i][j], a.NonSISExpectedHash))
@@ -497,30 +475,7 @@ func processPrecomputedRound(
 			sisHash := precompColSisHash[srcStart : srcStart+lmp.SisHashSize]
 
 			// Allocate sisHash to SisToHash columns
-			completeChunks := lmp.SisHashSize / blockSize
-			for j := 0; j < blockSize; j++ {
-
-				for k := 0; k < completeChunks; k++ {
-					lmp.SisToHash[j] = append(lmp.SisToHash[j], sisHash[k*blockSize+j])
-				}
-
-				lastChunkElements := lmp.SisHashSize % blockSize
-				lastChunkPadding := 0
-				if lastChunkElements > 0 {
-					lastChunkPadding = blockSize - lastChunkElements
-				}
-				if lastChunkElements > 0 {
-					k := completeChunks
-					if j < lastChunkPadding {
-						// Left padding
-						lmp.SisToHash[j] = append(lmp.SisToHash[j], field.Zero())
-					} else {
-						// Actual data
-						actualIdx := k*blockSize + (j - lastChunkPadding)
-						lmp.SisToHash[j] = append(lmp.SisToHash[j], sisHash[actualIdx])
-					}
-				}
-			}
+			lmp.SisToHash = poseidon2W.PrepareToHashWitness(lmp.SisToHash, sisHash)
 
 			leaf := poseidon2.Poseidon2Sponge(sisHash)
 			for j := 0; j < blockSize; j++ {
@@ -639,31 +594,7 @@ func processRound(
 				srcStart := selectedCol * lmp.SisHashSize
 				sisHash := colSisHash[srcStart : srcStart+lmp.SisHashSize]
 
-				// Allocate sisHash to ConcatDhQ columns
-				completeChunks := lmp.SisHashSize / blockSize
-				for j := 0; j < blockSize; j++ {
-
-					for k := 0; k < completeChunks; k++ {
-						lmp.SisToHash[j] = append(lmp.SisToHash[j], sisHash[k*blockSize+j])
-					}
-
-					lastChunkElements := lmp.SisHashSize % blockSize
-					lastChunkPadding := 0
-					if lastChunkElements > 0 {
-						lastChunkPadding = blockSize - lastChunkElements
-					}
-					if lastChunkElements > 0 {
-						k := completeChunks
-						if j < lastChunkPadding {
-							// Left padding
-							lmp.SisToHash[j] = append(lmp.SisToHash[j], field.Zero())
-						} else {
-							// Actual data
-							actualIdx := k*blockSize + (j - lastChunkPadding)
-							lmp.SisToHash[j] = append(lmp.SisToHash[j], sisHash[actualIdx])
-						}
-					}
-				}
+				lmp.SisToHash = poseidon2W.PrepareToHashWitness(lmp.SisToHash, sisHash)
 
 				leaf := poseidon2.Poseidon2Sponge(sisHash)
 				for j := 0; j < blockSize; j++ {
