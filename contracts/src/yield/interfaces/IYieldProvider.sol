@@ -10,7 +10,13 @@ import { IYieldManager } from "./IYieldManager.sol";
  * @custom:security-contact security-report@linea.build
  */
 interface IYieldProvider {
+  enum OperationType {
+      ReportYield
+  }
+
   error IncorrectYieldProviderType();
+
+  error OperationNotSupportedDuringOssification(OperationType operationType);
 
   /**
    * @notice Send ETH to the specified yield strategy.

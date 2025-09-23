@@ -35,7 +35,9 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
    * @param _totalReserveDonations   Total amount of donations received on the L1MessageService or L2MessageService.
    */
   function reportYield(address _yieldProvider, uint256 _totalReserveDonations) external {
-
+    if (_getYieldProviderDataStorage(_yieldProvider).isOssified) {
+      revert OperationNotSupportedDuringOssification(OperationType.ReportYield);
+    }
   }
 
   /**
@@ -43,7 +45,11 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
    * @param _withdrawalParams   Provider-specific withdrawal parameters.
    */
   function unstake(address _yieldProvider, bytes memory _withdrawalParams) external {
+    // Do parsing of _withdrawalParams
+    // Validate _withdrawalParams
 
+    (bytes memory pubkeys, uint64[] memory amounts, address refundRecipient) = abi.decode(_withdrawalParams, (bytes, uint64[], address));
+    ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).triggerValidatorWithdrawals(pubkeys, amounts, refundRecipient);
   }
 
   /**
