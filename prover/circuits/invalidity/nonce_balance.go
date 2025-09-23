@@ -134,14 +134,14 @@ func (cir *BadNonceBalanceCircuit) Assign(assi AssigningInputs) {
 	}
 
 	// sanity-checks
-	if assi.InvalidityType != 0 && assi.InvalidityType != 1 {
-		utils.Panic("expected invalidity type 0 or 1 but received %v", assi.InvalidityType)
+	if assi.InvalidityType != BadNonce && assi.InvalidityType != BadBalance {
+		utils.Panic("expected invalidity type BadNonce or BadBalance but received %v", assi.InvalidityType)
 	}
-	if txNonce == uint64(acNonce+1) && assi.InvalidityType == 0 {
+	if txNonce == uint64(acNonce+1) && assi.InvalidityType == BadNonce {
 		utils.Panic("tried to generate a bad-nonce proof for a possibly valid transaction")
 	}
 
-	if txCost.Cmp(balance) != 1 && assi.InvalidityType == 1 {
+	if txCost.Cmp(balance) != 1 && assi.InvalidityType == BadBalance {
 		utils.Panic("tried to generate a bad-balance proof for a possibly valid transaction")
 	}
 

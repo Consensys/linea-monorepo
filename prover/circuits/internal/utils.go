@@ -74,8 +74,9 @@ func NoCheck(b *bool) {
 	*b = false
 }
 
-// NewRange can determines if a frontend.Variable 'bound' is less than a given max,
-// InRnage is similar to the IsActive vector.Namely for the indics (0,...., max-1) it is 1 till bound and zero after that.
+// NewRange determines if a frontend.Variable 'bound' is less than a given max,
+// InRange is similar to the IsActive vector. Namely, for the indices (0,...., max-1)
+// it is 1 till bound and zero after that.
 func NewRange(api frontend.API, bound frontend.Variable, max int, opts ...NewRangeOption) *Range {
 
 	if max < 0 {

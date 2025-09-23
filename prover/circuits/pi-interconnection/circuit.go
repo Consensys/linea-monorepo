@@ -251,13 +251,13 @@ func (c *Circuit) Define(api frontend.API) error {
 
 	// check invalidity proofs against the finalStateRootHash and FinalBlockNumber in the aggregation.
 	maxNbInvalidity := len(c.InvalidityFPI)
-	api.AssertIsLessOrEqual(c.NbInvalidity, maxNbInvalidity) // @Azam check if it is neccassary here
+	api.AssertIsLessOrEqual(c.NbInvalidity, maxNbInvalidity)
 	rInvalidity := internal.NewRange(api, c.NbInvalidity, maxNbInvalidity)
 	finalFtxNumber := c.AggregationFPIQSnark.LastFinalizedFtxNumber
 	finalFtxRollingHash := c.AggregationFPIQSnark.LastFinalizedFtxRollingHash
 	for i, invalidityFPI := range c.InvalidityFPI {
 
-		api.AssertIsEqual(invalidityFPI.StateRootHash, finalState) // @Azam make sure it really give the finalState
+		api.AssertIsEqual(invalidityFPI.StateRootHash, finalState)
 		api.AssertIsLessOrEqual(pi.FinalBlockNumber, invalidityFPI.ExpectedBlockNumber)
 		api.AssertIsEqual(c.InvalidityPublicInput[i], api.Mul(rInvalidity.InRange[i], c.InvalidityFPI[i].Sum(api, hshM)))
 
