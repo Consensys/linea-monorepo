@@ -416,11 +416,29 @@ public abstract class Hub implements Module {
     // fork. But we don't trace them.
     final List<Module> appearsInCancun =
         allModules.stream().filter(module -> module instanceof CountingOnlyModule).toList();
+    /*       LONDON CANCUN PRAGUE
+    rlpUtils CO     Inst.
+    powerRT  CO     Inst.
+    blsRT    CO     CO     Inst.
+    blsData  CO     Inst.
+    */
+    if (!isPostCancun(fork)) {
+      checkArgument(
+          appearsInCancun.size() == 4,
+          "rlpUtils, powerRT, blsRT, blsData expected to be CountingOnly");
+    }
+    if (fork == Fork.CANCUN) {
+      checkArgument(appearsInCancun.size() == 1, "blsRT expected to be CountingOnly");
+    }
+    if (fork == Fork.PRAGUE) {
+      checkArgument(appearsInCancun.isEmpty(), "no modules expected to be CountingOnly");
+    }
+    /*
     if (!appearsInCancun.isEmpty()) {
       checkArgument(!isPostCancun(fork), "No modules to remove after Cancun");
-      checkArgument(appearsInCancun.size() == 4); // blsData, rlpUtils, PowerRefTable, blsRefTable
+      checkArgument(appearsInCancun.size() == 4 ); // blsData, rlpUtils, PowerRefTable, blsRefTable
     }
-
+     */
     return allModules.stream().filter(module -> !appearsInCancun.contains(module)).toList();
   }
 

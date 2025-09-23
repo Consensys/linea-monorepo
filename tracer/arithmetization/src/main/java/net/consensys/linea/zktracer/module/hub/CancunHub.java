@@ -40,7 +40,6 @@ import net.consensys.linea.zktracer.module.rlpUtils.RlpUtils;
 import net.consensys.linea.zktracer.module.rlptxn.RlpTxn;
 import net.consensys.linea.zktracer.module.rlptxn.cancun.CancunRlpTxn;
 import net.consensys.linea.zktracer.module.tables.PowerRt;
-import net.consensys.linea.zktracer.module.tables.bls.BlsRt;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.CancunInstructionDecoder;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.InstructionDecoder;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
@@ -77,11 +76,6 @@ public class CancunHub extends ShanghaiHub {
         blsC2MembershipCalls,
         blsG1MembershipCalls,
         blsG2MembershipCalls);
-  }
-
-  @Override
-  protected BlsRt setBlsRt() {
-    return new BlsRt();
   }
 
   @Override
