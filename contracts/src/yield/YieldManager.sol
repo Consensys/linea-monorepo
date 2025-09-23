@@ -111,10 +111,10 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @dev YIELD_PROVIDER_FUNDER_ROLE is required to execute.
    * @dev Reverts if the withdrawal reserve is below the minimum threshold.
    * @dev Will settle any outstanding liabilities to the YieldProvider.
-   * @param _amount        The amount of ETH to send.
    * @param _yieldProvider The target yield provider contract.
+   * @param _amount        The amount of ETH to send.
    */
-  function fundYieldProvider(uint256 _amount, address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
+  function fundYieldProvider(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
     if (!isWithdrawalReserveBelowEffectiveMinimum()) {
         revert InsufficientWithdrawalReserve();
     }
@@ -165,21 +165,37 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @dev YIELD_REPORTER_ROLE is required to execute.
    * @dev Since the YieldManager is unaware of donations received via the L1MessageService or L2MessageService,
    *      the `_reserveDonations` parameter is required to ensure accurate yield accounting.
-   * @param _totalReserveDonations   Total amount of donations received on the L1MessageService or L2MessageService.
    * @param _yieldProvider      Yield provider address.
+   * @param _totalReserveDonations   Total amount of donations received on the L1MessageService or L2MessageService.
    */
-  function reportYield(uint256 _totalReserveDonations, address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
-
+  function reportYield(address _yieldProvider, uint256 _totalReserveDonations) external onlyKnownYieldProvider(_yieldProvider) {
+    (bool success, bytes memory data) = _yieldProvider.delegatecall(
+      abi.encodeCall(IYieldProvider.reportYield, (_yieldProvider, _totalReserveDonations)
+    ));
+    if (!success) {
+      revert DelegateCallFailed();
+    }
+    (uint256 newYield) = abi.decode(data, (uint256));
+    _getYieldManagerStorage()._userFundsInYieldProvidersTotal += newYield;
+    _getYieldProviderDataStorage(_yieldProvider).userFunds += newYield;
+    _getYieldProviderDataStorage(_yieldProvider).yieldReportedCumulative += newYield;
+    ILineaNativeYieldExtension(l1MessageService()).reportNativeYield(newYield);
   }
 
   /**
    * @notice Request beacon chain withdrawal from specified yield provider.
    * @dev YIELD_MANAGER_UNSTAKER_ROLE or RESERVE_OPERATOR_ROLE is required to execute.
-   * @param _withdrawalParams   Provider-specific withdrawal parameters.
    * @param _yieldProvider      Yield provider address.
+   * @param _withdrawalParams   Provider-specific withdrawal parameters.
    */
-  function unstake(bytes memory _withdrawalParams, address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
-
+  function unstake(address _yieldProvider, bytes memory _withdrawalParams) external onlyKnownYieldProvider(_yieldProvider) {
+    (bool success,) = _yieldProvider.delegatecall(
+      abi.encodeCall(IYieldProvider.unstake, (_yieldProvider, _withdrawalParams)
+    ));
+    if (!success) {
+      revert DelegateCallFailed();
+    }
+    // TODO emit event
   }
 
   /**
@@ -195,16 +211,22 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    *         - PENDING_PERMISSIONLESS_UNSTAKE
    *
    * @dev Validates (validatorPubkey, validatorBalance, validatorWithdrawalCredential) against EIP-4788 beacon chain root.
+   * @param _yieldProvider          Yield provider address.
    * @param _withdrawalParams       Provider-specific withdrawal parameters.
    * @param _withdrawalParamsProof  Merkle proof of _withdrawalParams to be verified against EIP-4788 beacon chain root.
-   * @param _yieldProvider          Yield provider address.
    */
   function unstakePermissionless(
+    address _yieldProvider,
     bytes calldata _withdrawalParams,
-    bytes calldata _withdrawalParamsProof,
-    address _yieldProvider
+    bytes calldata _withdrawalParamsProof
   ) external onlyKnownYieldProvider(_yieldProvider) {
-
+    (bool success,) = _yieldProvider.delegatecall(
+      abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, _withdrawalParams, _withdrawalParamsProof)
+    ));
+    if (!success) {
+      revert DelegateCallFailed();
+    }
+    // TODO emit event
   }
 
   /**
@@ -212,10 +234,10 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @dev YIELD_MANAGER_UNSTAKER_ROLE is required to execute.
    * @dev If withdrawal reserve is in deficit, will route funds to the bridge.
    * @dev If fund remaining, will settle any outstanding LST liabilities and protocol obligations.
-   * @param _amount                 Amount to withdraw.
    * @param _yieldProvider          Yield provider address.
+   * @param _amount                 Amount to withdraw.
    */
-  function withdrawFromYieldProvider(uint256 _amount, address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
+  function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
 
   }
 
@@ -223,20 +245,20 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @notice Rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
    * @dev RESERVE_OPERATOR_ROLE is required to execute.
    * @dev Settles any outstanding LST liabilities, provided this does not leave the withdrawal reserve in deficit.
-   * @param _amount                 Amount to withdraw.
    * @param _yieldProvider          Yield provider address.
+   * @param _amount                 Amount to withdraw.
    */
-  function addToWithdrawalReserve(uint256 _amount, address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
+  function addToWithdrawalReserve(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
 
   }
 
   /**
    * @notice Permissionlessly rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
    * @dev Only available when the withdrawal is in deficit.
-   * @param _amount                 Amount to withdraw.
    * @param _yieldProvider          Yield provider address.
+   * @param _amount                 Amount to withdraw.
    */
-  function replenishWithdrawalReserve(uint256 _amount, address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
+  function replenishWithdrawalReserve(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
 
   }
 

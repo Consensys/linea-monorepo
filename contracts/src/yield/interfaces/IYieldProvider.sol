@@ -31,7 +31,7 @@ interface IYieldProvider {
    *      the `_reserveDonations` parameter is required to ensure accurate yield accounting.
    * @param _totalReserveDonations   Total amount of donations received on the L1MessageService or L2MessageService.
    */
-  function reportYield(address _yieldProvider, uint256 _totalReserveDonations) external;
+  function reportYield(address _yieldProvider, uint256 _totalReserveDonations) external returns (uint256);
 
   /**
    * @notice Request beacon chain withdrawal.

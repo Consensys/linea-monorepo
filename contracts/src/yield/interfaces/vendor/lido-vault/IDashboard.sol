@@ -32,6 +32,9 @@ interface IDashboard {
      */
     function ETH() external view returns(address);
 
+    function VAULT_HUB() external view returns(address);
+
+
     // ==================== View Functions ====================
 
     /**
@@ -317,4 +320,6 @@ interface IDashboard {
         uint64[] calldata _amounts,
         address _refundRecipient
     ) external payable;
+
+    function nodeOperatorDisbursableFee() external view returns (uint256);
 }

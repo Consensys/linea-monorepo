@@ -6,6 +6,11 @@ import { IYieldManager } from "./interfaces/IYieldManager.sol";
 import { IYieldProvider } from "./interfaces/IYieldProvider.sol";
 import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
 import { ICommonVaultOperations } from "./interfaces/vendor/lido-vault/ICommonVaultOperations.sol";
+import { IDashboard } from "./interfaces/vendor/lido-vault/IDashboard.sol";
+import { IStETH } from "./interfaces/vendor/lido-vault/IStETH.sol";
+import { IVaultHub } from "./interfaces/vendor/lido-vault/IVaultHub.sol";
+
+
 
 /**
  * @title Contract to handle native yield operations with Lido Staking Vault.
@@ -18,6 +23,49 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
     return $$.isOssified ? $$.registration.yieldProviderOssificationEntrypoint : $$.registration.yieldProviderEntrypoint;
   }
 
+  function _getStakingVault(address _yieldProvider) private view returns (address) {
+    return _getYieldProviderDataStorage(_yieldProvider).registration.yieldProviderOssificationEntrypoint;
+  }
+
+  function _getDashboard(address _yieldProvider) private view returns (address) {
+    return _getYieldProviderDataStorage(_yieldProvider).registration.yieldProviderEntrypoint;
+  }
+
+  function _getCurrentLSTLiability(address _yieldProvider) internal view returns (uint256) {
+    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    if ($$.isOssified) return 0;
+    IDashboard dashboard = IDashboard($$.registration.yieldProviderEntrypoint);
+    uint256 liabilityShares = dashboard.liabilityShares();
+    // Use `roundUp` variant to be conservative
+    uint256 liabilityEth = IStETH(dashboard.STETH()).getPooledEthBySharesRoundUp(liabilityShares);
+    return liabilityEth;
+  }
+
+  // Will settle as much LST liability as possible. Will return amount of liabilityEth remaining
+  function _payLSTLiability(address _yieldProvider) internal returns (uint256) {
+    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    if ($$.isOssified) return 0;
+
+    uint256 vaultBalanceEth = _getStakingVault(_yieldProvider).balance;
+    IDashboard dashboard = IDashboard(_getDashboard(_yieldProvider));
+    IStETH steth = IStETH(dashboard.STETH());
+    uint256 vaultBalanceShares = steth.getSharesByPooledEth(vaultBalanceEth);
+    uint256 liabilityShares = dashboard.liabilityShares();
+    uint256 liabilitySharesPaid = liabilityShares < vaultBalanceShares ? liabilityShares : vaultBalanceShares;
+    // Do the payment
+    dashboard.rebalanceVaultWithShares(liabilitySharesPaid);
+  }
+
+
+  // @dev Omit redemptions, because it will overlap with liabilities
+  function _getCurrentObligationsMinusRedemptions(address _yieldProvider) internal view returns (uint256) {
+    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    IDashboard dashboard = IDashboard($$.registration.yieldProviderEntrypoint);
+    IVaultHub vaultHub = IVaultHub(dashboard.VAULT_HUB());
+    // yieldProviderOssificationEntrypoint = StakingVault
+    IVaultHub.VaultObligations memory obligations = vaultHub.vaultObligations($$.registration.yieldProviderOssificationEntrypoint);
+    return obligations.unsettledLidoFees + dashboard.nodeOperatorDisbursableFee();
+  }
 
   /**
    * @notice Send ETH to the specified yield strategy.
@@ -34,10 +82,16 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
    *      the `_reserveDonations` parameter is required to ensure accurate yield accounting.
    * @param _totalReserveDonations   Total amount of donations received on the L1MessageService or L2MessageService.
    */
-  function reportYield(address _yieldProvider, uint256 _totalReserveDonations) external {
+  function reportYield(address _yieldProvider, uint256 _totalReserveDonations) external returns (uint256 _newYield) {
     if (_getYieldProviderDataStorage(_yieldProvider).isOssified) {
       revert OperationNotSupportedDuringOssification(OperationType.ReportYield);
     }
+    _payLSTLiability(_yieldProvider);
+    uint256 liabilityEth = _getCurrentLSTLiability(_yieldProvider);
+    uint256 obligationsEth = _getCurrentObligationsMinusRedemptions(_yieldProvider);
+    uint256 totalVaultEth = IDashboard(_getDashboard(_yieldProvider)).totalValue();
+    uint256 fundsAvailableForUserWithdrawal = totalVaultEth - obligationsEth - liabilityEth;
+    return fundsAvailableForUserWithdrawal - _getYieldProviderDataStorage(_yieldProvider).userFunds;
   }
 
   /**
@@ -45,11 +99,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
    * @param _withdrawalParams   Provider-specific withdrawal parameters.
    */
   function unstake(address _yieldProvider, bytes memory _withdrawalParams) external {
-    // Do parsing of _withdrawalParams
-    // Validate _withdrawalParams
-
-    (bytes memory pubkeys, uint64[] memory amounts, address refundRecipient) = abi.decode(_withdrawalParams, (bytes, uint64[], address));
-    ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).triggerValidatorWithdrawals(pubkeys, amounts, refundRecipient);
+    _unstake(_yieldProvider, _withdrawalParams);
   }
 
   /**
@@ -73,7 +123,18 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
   ) external {
+    // TODO - Verify _withdrawalParamsProof
+    _unstake(_yieldProvider, _withdrawalParams);
+  }
 
+  /**
+   * @notice Request beacon chain withdrawal.
+   * @param _withdrawalParams   Provider-specific withdrawal parameters.
+   */
+  function _unstake(address _yieldProvider, bytes memory _withdrawalParams) internal {
+    (bytes memory pubkeys, uint64[] memory amounts, address refundRecipient) = abi.decode(_withdrawalParams, (bytes, uint64[], address));
+    // Lido StakingVault.sol will handle the param validation
+    ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).triggerValidatorWithdrawals(pubkeys, amounts, refundRecipient);
   }
 
   /**

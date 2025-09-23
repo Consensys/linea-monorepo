@@ -33,4 +33,15 @@ interface IVaultHub {
         bool isBeaconDepositsManuallyPaused;
         /// 64 bits gap
     }
+
+    struct VaultObligations {
+        /// @notice cumulative value for Lido fees that were settled on the vault
+        uint128 settledLidoFees;
+        /// @notice current unsettled Lido fees amount
+        uint128 unsettledLidoFees;
+        /// @notice current unsettled redemptions amount
+        uint128 redemptions;
+    }
+    
+    function vaultObligations(address _vault) external view returns (VaultObligations memory);
 }
