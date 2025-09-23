@@ -50,6 +50,12 @@ interface MaruPeer : Peer {
   fun scheduleDisconnectIfStatusNotReceived(delay: Duration)
 }
 
+fun MaruPeer.toLogString(): String {
+  // e.g 16Uiu2HAmNp6gzhT3GwJQjUw6awr3o75SEr9ZVWVfVX3Fq22ERsKS|/ip4/10.42.0.84/tcp/45166|91
+  // useful to see which peers is connected to and reported head
+  return "{id=$id, addr=${this.address.toExternalForm()}, lastClBlockNumber=${getStatus()?.latestBlockNumber}}"
+}
+
 interface MaruPeerFactory {
   fun createMaruPeer(delegatePeer: Peer): MaruPeer
 }
