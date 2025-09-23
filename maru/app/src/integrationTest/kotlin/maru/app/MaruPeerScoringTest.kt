@@ -66,7 +66,7 @@ class MaruPeerScoringTest {
   }
 
   @Test
-  fun `node gets in sync with default block retrieval strategy`() {
+  fun `node get's in sync with default block retrieval strategy`() {
     val maruNodeSetup =
       setUpNodes(blockRetrievalStrategy = DefaultBlockRetrievalStrategy())
 

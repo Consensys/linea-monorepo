@@ -30,6 +30,7 @@ import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 object PrivateKeyGenerator {
   data class KeyData(
     val privateKey: ByteArray,
+    val prefixedPrivateKey: ByteArray,
     val address: ByteArray,
     val peerId: LibP2PNodeId,
   )
@@ -37,7 +38,8 @@ object PrivateKeyGenerator {
   fun logKeyData(keyData: KeyData) {
     println(
       "Generated key: " +
-        "prefixed privateKey=${keyData.privateKey.encodeHex()} " +
+        "prefixedPrivateKey=${keyData.prefixedPrivateKey.encodeHex()} " +
+        "privateKey=${keyData.privateKey.encodeHex()} " +
         "ethAddress=${keyData.address.encodeHex()} " +
         "libP2pNodeId=${keyData.peerId}",
     )
@@ -46,12 +48,17 @@ object PrivateKeyGenerator {
   fun generateAndLogPrivateKey(): KeyData {
     val keyPair = generateKeyPair(KeyType.SECP256K1)
     val privateKey = keyPair.component1()
-    val privateKeyWithPrefixString = marshalPrivateKey(privateKey).encodeHex()
+    val privateKeyWithPrefix = marshalPrivateKey(privateKey)
     // Sometimes keyPair has 1 byte more so we just take the last 32 bytes ¯\_(ツ)_/¯
     val address = privateKeyToAddress(privateKey.raw().takeLast(32).toByteArray())
     val peerId = PeerId.fromPubKey(privateKey.publicKey())
     val libP2PNodeId = LibP2PNodeId(peerId)
-    return KeyData(privateKey.raw(), address.toArray(), libP2PNodeId)
+    return KeyData(
+      privateKey = privateKey.raw(),
+      prefixedPrivateKey = privateKeyWithPrefix,
+      address = address.toArray(),
+      peerId = libP2PNodeId,
+    )
   }
 
   fun privateKeyToAddress(privateKey: ByteArray): Address {
