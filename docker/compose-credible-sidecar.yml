@@ -70,3 +70,61 @@ services:
     networks:
       linea:
         ipv4_address: 11.11.11.205
+
+  credible-contract-deployer:
+    container_name: credible-contract-deployer
+    hostname: credible-contract-deployer
+    image: ghcr.io/phylaxsystems/credible-layer-contracts/contracts-utils-linea:linea
+    profiles: ["credible", "l2"]
+    depends_on:
+      sequencer:
+        condition: service_healthy
+    command:
+    - bash
+    - -c
+    - |
+      echo "### Credible contracts deployment! ###";
+
+      while true; do
+          echo "Attempting to connect to: $$RPC_URL"
+          
+          if cast chain-id --rpc-url "$$RPC_URL" 2>/dev/null; then
+              echo "Sequencer RPC is responding!"
+              break
+          else
+              echo "RPC not ready yet..."
+              sleep 5
+          fi
+      done
+
+      echo "Funding deployer..."
+      cast send --private-key "$$FUNDER_PRIVATE_KEY" --rpc-url "$$RPC_URL" --value 2ether 0x8d63e0FE87CA36E06a076584fCA651A684D4c97d
+
+      echo "Funding CreateX deployer..."
+      cast send --private-key "$$PRIVATE_KEY" --rpc-url "$$RPC_URL" --value 0.5ether 0xeD456e05CaAb11d66C4c797dD6c1D6f9A7F352b5
+
+      createxCode=$(cast code 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed --rpc-url "$$RPC_URL")
+
+      if [ "$$createxCode" == "0x" ]; then
+          echo "CreateX not deployed, deploying...";
+          cast publish "$(cat "shell/presigned-transactions/createx_deploy_tx.json")" --rpc-url "$$RPC_URL"
+      else
+          echo "CreateX deployed, skipping deployment";
+      fi
+      
+      echo "Deploying Credible Layer contracts"!
+      forge script script/DeployCore.s.sol --rpc-url "$$RPC_URL" --broadcast --private-key "$$PRIVATE_KEY"
+    environment:
+      # This key is just to send some funds to the deployer pk (taken from the L2 genesis)
+      FUNDER_PRIVATE_KEY: "0x75b9700016469b0d7f12c0d6a0225cd9a59818a4bd1437cf9583ca0ffa1d111a"
+      # Deployer of the credible contracts
+      PRIVATE_KEY: "0xac431098061ca49f5b36121d01a17d30e1d0624227d08b583ff328f1efe0d4a2"
+      RPC_URL: "http://sequencer:8545"
+      STATE_ORACLE_MAX_ASSERTIONS_PER_AA: 10
+      STATE_ORACLE_ASSERTION_TIMELOCK_BLOCKS: 10
+      STATE_ORACLE_ADMIN_ADDRESS: "0x8d63e0FE87CA36E06a076584fCA651A684D4c97d"
+      # Must match the above assertion-da private key
+      DA_PROVER_ADDRESS: "0xb0d60c09103F4a5c04EE8537A22ECD6a34382B36"
+    restart: on-failure:3
+    networks:
+      linea:
