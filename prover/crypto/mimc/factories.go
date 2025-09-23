@@ -23,7 +23,15 @@ type HasherFactory interface {
 
 // ExternalHasher is an implementation of the [ghash.StateStorer] interface
 // that tags the variables happening in a MiMC hasher claim.
+//
 // @thomas seems like it is a merkleDamgardHasher, implementing the StateStorer interface
+// implements:
+// Write(data ...frontend.Variable)
+// Reset()
+// Sum()
+// SetState(newState []frontend.Variable) error
+// State() []frontend.Variable
+// compress(state, block frontend.Variable) frontend.Variable
 type ExternalHasher struct {
 	api   frontend.API
 	data  []frontend.Variable
