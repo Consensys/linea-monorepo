@@ -102,8 +102,8 @@ type VerifierCircuitGen[T zk.Element] struct {
 
 	// Columns stores the gnark witness part corresponding to the columns
 	// provided in the proof and in the VerifyingKey.
-	Columns    [][]T                 `gnark:",secret"`
-	ColumnsExt [][]gnarkfext.Element `gnark:",secret"`
+	Columns    [][]T                  `gnark:",secret"`
+	ColumnsExt [][]gnarkfext.E4Gen[T] `gnark:",secret"`
 	// UnivariateParams stores an assignment for each [query.UnivariateParams]
 	// from the proof. This is part of the witness of the gnark circuit.
 	UnivariateParams []query.GnarkUnivariateEvalParamsGen[T] `gnark:",secret"`

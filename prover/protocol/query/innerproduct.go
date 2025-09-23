@@ -137,7 +137,7 @@ func (r InnerProduct) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 			actualIP = api.Add(actualIP, tmp)
 		}
 
-		api.AssertIsEqual(expecteds.Ys[i], actualIP)
+		api.AssertIsEqual(expecteds.Ys[i], actualIP) // ?? -> @thomas it will fail
 	}
 }
 
