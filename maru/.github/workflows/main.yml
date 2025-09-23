@@ -16,39 +16,59 @@ jobs:
     runs-on: [gha-runner-scale-set-ubuntu-22.04-amd64-small]
     name: Filter commit changes
     outputs:
-      consensus-client: ${{ steps.filter.outputs.consensus-client }}
-      has-changes-requiring-build: ${{ steps.filter-out.outputs.has-changes-requiring-build }}
+      has-changes-requiring-build: ${{ steps.filter.outputs.has-changes-requiring-build }}
+      chaos-tests-changes: ${{ steps.filter.outputs.chaos-tests-changes }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Filter commit changes
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 #v3.0.2
         id: filter
         with:
           base: ${{ github.ref }}
           list-files: "json"
           filters: |
-            consensus-client:
-              - '**'
-
-      - name: Filter out commit changes
-        uses: dorny/paths-filter@v3
-        id: filter-out
-        with:
-          base: ${{ github.ref }}
-          list-files: "json"
-          filters: |
             has-changes-requiring-build:
-              - '!**/*.md'
-              - '!docs/**'
-              - '!chaos-testing/**'
+              - '.github/**'
+              - '**/src/**'
+              - '**/Makefile'
+              - 'docker/**'
+              - 'gradle/**'
+              - 'gradlew'
+              - 'gradlew.bat'
+              - '**/*.gradle'
+              - '**/*.properties'
+            chaos-tests-changes:
+              - '.github/**'
+              - 'chaos-testing/**'
+
+      - name: Debug filter outputs
+        run: |
+          echo "has-changes-requiring-build: ${{ steps.filter.outputs.has-changes-requiring-build }}"
+          echo "chaos-tests-changes: ${{ steps.filter.outputs.chaos-tests-changes }}"
+          echo "Event name: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "All filter outputs: ${{ toJSON(steps.filter.outputs) }}"
+
+  debug:
+    name: Debug Filters outputs
+    needs: [ filter-commit-changes ]
+    runs-on: [ gha-runner-scale-set-ubuntu-22.04-amd64-small ]
+    steps:
+      - name: Debug filter outputs
+        run: |
+          echo "has-changes-requiring-build: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}"
+          echo "chaos-tests-changes: ${{ needs.filter-commit-changes.outputs.chaos-tests-changes }}"
+          echo "Event name: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
 
   testing:
     needs: [ filter-commit-changes ]
     if: ${{ always() && !cancelled() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
     uses: ./.github/workflows/testing.yml
     with:
-      consensus-client-changed: ${{ needs.filter-commit-changes.outputs.consensus-client }}
+      consensus-client-changed: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}
     secrets: inherit
 
   run-e2e-tests:
@@ -62,14 +82,15 @@ jobs:
 
   chaos-testing:
     needs: [ filter-commit-changes ]
-    if: ${{ always() && !cancelled() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
+    if: ${{ always() && !cancelled() && ((needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true') || (needs.filter-commit-changes.outputs.chaos-tests-changes == 'true')) }}
     uses: ./.github/workflows/chaos-testing.yml
     with:
-      consensus-client-changed: ${{ needs.filter-commit-changes.outputs.consensus-client }}
+      consensus-client-changed: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}
     secrets: inherit
 
   build-for-testing:
-    if: ${{ always() && !cancelled() }}
+    needs: [ filter-commit-changes ]
+    if: ${{ always() && !cancelled() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
     uses: ./.github/workflows/maru-build-and-publish.yml
     with:
       develop_tag: 'develop'
@@ -79,6 +100,7 @@ jobs:
 
   maru-image-smoke-test:
     needs: [ build-for-testing ]
+    if: ${{ always() && !cancelled() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
     uses: ./.github/workflows/smoke-tests.yml
     with:
       commit-tag: ${{ needs.build-for-testing.outputs.commit_tag }}

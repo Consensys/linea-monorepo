@@ -1,31 +1,46 @@
+socketPath ?= /run/containerd/containerd.sock
 chaos-mesh-install:
-	@helm repo add chaos-mesh https://charts.chaos-mesh.org
+	-@helm repo add chaos-mesh https://charts.chaos-mesh.org >/dev/null 2>&1 || true
 	@helm repo update
-	@helm install chaos-mesh chaos-mesh/chaos-mesh \
+	@echo "socketPath=$(socketPath) KUBECONFIG=$(KUBECONFIG)"
+	helm --kubeconfig $(KUBECONFIG) install chaos-mesh chaos-mesh/chaos-mesh \
 		--namespace chaos-mesh --create-namespace \
 		--version 2.7.2 \
 		--set controllerManager.create=true \
 		--set controllerManager.clusterScoped=true \
 		--set chaosDaemon.create=true \
 		--set chaosDaemon.runtime=containerd \
-		--set chaosDaemon.socketPath=/run/k3s/containerd/containerd.sock \
+		--set chaosDaemon.socketPath=$(socketPath) \
 		--set dashboard.create=true \
 		--set dashboard.securityMode=false \
 		--set dashboard.service.type=NodePort
 
+chaos-mesh-install-on-k3s:
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) chaos-mesh-install socketPath=/run/k3s/containerd/containerd.sock
+
+chaos-mesh-install-on-aws-eks:
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) chaos-mesh-install socketPath=/run/containerd/containerd.sock
+
 chaos-mesh-uninstall:
-	-@kubectl delete ns chaos-mesh >/dev/null 2>&1
+	-@kubectl delete ns chaos-mesh --wait=true >/dev/null 2>&1
 
 chaos-mesh-reinstall:
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) chaos-mesh-reinstall-k3s
+
+chaos-mesh-reinstall-k3s:
 	-@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) chaos-mesh-uninstall
-	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) chaos-mesh-install
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) chaos-mesh-install-on-k3s
+
+chaos-mesh-reinstall-aws-eks:
+	-@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) chaos-mesh-uninstall
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) chaos-mesh-install-on-aws-eks
 
 chaos-experiment-http-engine-api-error:
-	-@kubectl delete -f experiments/http-engine-api-error.yaml
+	-@kubectl delete -f experiments/http-engine-api-error.yaml --wait-true >/dev/null 2>&1
 	@kubectl apply -f experiments/http-engine-api-error.yaml
 
 chaos-experiment-workflow:
-	-@kubectl delete -f experiments/workflow-linea-resilience.yaml >/dev/null 2>&1
+	-@kubectl delete -f experiments/workflow-linea-resilience.yaml --wait=true>/dev/null 2>&1
 	@kubectl apply -f experiments/workflow-linea-resilience.yaml
 
 experiment_name ?= linea-resilience

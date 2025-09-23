@@ -18,6 +18,6 @@ spec:
       - ['x-chaos-test', 'forced-error']
     body:
       type: JSON
-      value: '{"jsonrpc": "2.0", "id": 1, "error": {"code": -32000, "message": "Forced error"}}'
+      value: '{"jsonrpc": "2.0", "id": 1, "error": {"code": -32000, "message": "Forced error - chaos testing"}}'
 #      value: '{"jsonrpc": "2.0", "id": 1, "some-key": "foreced-error"}'
   duration: 20s
