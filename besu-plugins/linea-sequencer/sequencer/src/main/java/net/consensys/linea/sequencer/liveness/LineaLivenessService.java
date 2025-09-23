@@ -167,17 +167,19 @@ public class LineaLivenessService implements LivenessService {
     // The last successfully reported block timestamp regarded as late
     long cachedLastReportedDownBlockTimestamp = this.lastReportedDownBlockTimestamp.get();
 
-    boolean hasSeenLastBlockTimestamp = lastBlockTimestamp < cachedLastBlockTimestamp;
+    // We only check to skip if it was earlier block timestamp than last seen one, because under 
+    // PoS we could have last seen block timestamp over and over again
+    boolean hasSeenEarlierBlockTimestamp = lastBlockTimestamp < cachedLastBlockTimestamp;
     boolean isLastBlockTimestampFromGenesisBlock = targetBlockNumber <= 1;
 
     // skip the rest and return false if the earlier block timestamp had been checked or
     // the given lastBlockTimestamp is from genesis block
-    if (hasSeenLastBlockTimestamp || isLastBlockTimestampFromGenesisBlock) {
+    if (hasSeenEarlierBlockTimestamp || isLastBlockTimestampFromGenesisBlock) {
       log.atDebug()
           .setMessage(
-              "Skip the check as hasSeenLastBlockTimestamp={} isLastBlockTimestampFromGenesisBlock={}"
+              "Skip the check as hasSeenEarlierBlockTimestamp={} isLastBlockTimestampFromGenesisBlock={}"
                   + " lastBlockTimestamp={} cachedLastBlockTimestamp={} targetBlockNumber={}")
-          .addArgument(hasSeenLastBlockTimestamp)
+          .addArgument(hasSeenEarlierBlockTimestamp)
           .addArgument(isLastBlockTimestampFromGenesisBlock)
           .addArgument(lastBlockTimestamp)
           .addArgument(cachedLastBlockTimestamp)
