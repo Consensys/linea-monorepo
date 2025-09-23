@@ -28,8 +28,8 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /** This range broke the MOD module's mod.set-absolute-values constraint. */
-@Tag("nightly")
 @Tag("replay")
+@Tag("weekly")
 @ExtendWith(UnitTestWatcher.class)
 public class Issue1180Tests extends TracerTestBase {
 

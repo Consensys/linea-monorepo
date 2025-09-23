@@ -26,20 +26,22 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 /** Same underlying NPE issue as that solved in #1216. */
 @Tag("replay")
-@Tag("nightly")
 @ExtendWith(UnitTestWatcher.class)
 public class Issue1123Tests extends TracerTestBase {
 
+  @Tag("nightly")
   @Test
   void issue_1123_mainnet_block_8043758(TestInfo testInfo) {
     replay(OLD_MAINNET_TESTCONFIG, "8043758.mainnet.json.gz", testInfo);
   }
 
+  @Tag("weekly")
   @Test
   void issue_1123_mainnet_block_8019521(TestInfo testInfo) {
     replay(OLD_MAINNET_TESTCONFIG, "8019521.mainnet.json.gz", testInfo);
   }
 
+  @Tag("weekly")
   @Test
   void issue_1123_mainnet_block_8005327(TestInfo testInfo) {
     replay(OLD_MAINNET_TESTCONFIG, "8005327.mainnet.json.gz", testInfo);

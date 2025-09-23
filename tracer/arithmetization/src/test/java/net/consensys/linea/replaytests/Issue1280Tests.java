@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-@Tag("nightly")
+@Tag("weekly")
 @Tag("replay")
 @ExtendWith(UnitTestWatcher.class)
 public class Issue1280Tests extends TracerTestBase {
