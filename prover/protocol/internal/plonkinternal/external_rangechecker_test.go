@@ -142,7 +142,7 @@ func TestRangeCheckNegative(t *testing.T) {
 
 	circuit := &testRangeCheckingCircuitIncomplete{}
 
-	assignment := gnarkutil.AsWitnessPublic([]frontend.Variable{
+	assignment := gnarkutil.AsWitnessPublicSmallField([]frontend.Variable{
 		// 0x10000000000000000000000000 = 2^100
 		field.NewFromString("0x10000000000000000000000000"),
 		field.NewFromString("0x10000000000000000000000000"),
