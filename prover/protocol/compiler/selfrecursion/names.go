@@ -92,8 +92,8 @@ func (ctx *SelfRecursionCtx) interpolateUAlphaX() string {
 }
 
 // Name of the concatenation of the DhQs
-func (ctx *SelfRecursionCtx) concatenatedDhQ(index int) ifaces.ColID {
-	name := ifaces.ColIDf("SELFRECURSION_CONCAT_DHQ_%v_%v", ctx.SelfRecursionCnt, index)
+func (ctx *SelfRecursionCtx) sisToHash(index int) ifaces.ColID {
+	name := ifaces.ColIDf("SELFRECURSION_SIS_TOHASH_%v_%v", ctx.SelfRecursionCnt, index)
 	return maybePrefix(ctx, name)
 }
 
@@ -104,19 +104,19 @@ func (ctx *SelfRecursionCtx) nonSisLeaves(round int) ifaces.ColID {
 }
 
 // Name of the concatenated preimages for the non SIS rounds
-func (ctx *SelfRecursionCtx) concatenatedMIMCPreimages(round int) ifaces.ColID {
+func (ctx *SelfRecursionCtx) nonSisToHash(round int) ifaces.ColID {
 	name := ifaces.ColIDf("SELFRECURSION_CONCAT_MIMC_PREIMAGES_%v_%v", ctx.SelfRecursionCnt, round)
 	return maybePrefix(ctx, name)
 }
 
 // Name of the concatenated hashes for the precomputed rounds
-func (ctx *SelfRecursionCtx) concatenatedPrecomputedHashes() ifaces.ColID {
-	name := ifaces.ColIDf("SELFRECURSION_CONCAT_PRECOMPUTED_HASHES_%v", ctx.SelfRecursionCnt)
+func (ctx *SelfRecursionCtx) expectedNonSisPrecomputedHashes(index int) ifaces.ColID {
+	name := ifaces.ColIDf("SELFRECURSION_EXPECTED_NON_SIS_HASHES_%v_%v", ctx.SelfRecursionCnt, index)
 	return maybePrefix(ctx, name)
 }
 
 // Name of the concatenated preimages for the precomputed rounds
-func (ctx *SelfRecursionCtx) concatenatedPrecomputedPreimages(index int) ifaces.ColID {
+func (ctx *SelfRecursionCtx) nonSisPrecomputedToHash(index int) ifaces.ColID {
 	name := ifaces.ColIDf("SELFRECURSION_CONCAT_PRECOMPUTED_PREIMAGES_%v_%v", ctx.SelfRecursionCnt, index)
 	return maybePrefix(ctx, name)
 }

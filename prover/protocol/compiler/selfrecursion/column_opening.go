@@ -34,13 +34,13 @@ func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
 	// We need this only when there are non zero number
 	// of SIS rounds
 	for j := 0; j < blockSize; j++ {
-		if ctx.Columns.ConcatenatedDhQ[j] != nil {
+		if ctx.Columns.SisToHash[j] != nil {
 			ctx.RegistersSisPreimageLimbs()
 		}
 		ctx.CollapsingPhase()
 		// The fold phase is only needed if there are non-zero
 		// number of SIS rounds
-		if ctx.Columns.ConcatenatedDhQ[j] != nil {
+		if ctx.Columns.SisToHash[j] != nil {
 			ctx.FoldPhase()
 		}
 	}
@@ -255,7 +255,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 	// aka, the collapsed preimage
 	// We need this only if there are
 	// non-zero number of SIS rounds
-	if ctx.Columns.ConcatenatedDhQ[0] != nil {
+	if ctx.Columns.SisToHash[0] != nil {
 		ctx.Columns.PreimagesSisCollapse = expr_handle.RandLinCombCol(
 			ctx.Comp,
 			accessors.NewFromCoin(ctx.Coins.Collapse),
@@ -284,7 +284,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			offset       = 0
 			preImageEval ifaces.Accessor
 		)
-		if len(ctx.Poseidon2MetaData.ToHashSizes) > 0 {
+		if len(ctx.Poseidon2MetaData.ColChunks) > 0 {
 			ctx.Columns.CollapsedPreimagesNonSis = expr_handle.RandLinCombCol(
 				ctx.Comp,
 				accessors.NewFromCoin(ctx.Coins.Collapse),
@@ -298,10 +298,10 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 				ctx.Columns.CollapsedPreimagesNonSis,
 			)
 
-			for i := range ctx.Poseidon2MetaData.ToHashSizes {
+			for i := range ctx.Poseidon2MetaData.ColChunks {
 				// We add the number of polynomials per non SIS round
 				// to the offset
-				offset += ctx.Poseidon2MetaData.ToHashSizes[i]
+				offset += ctx.Poseidon2MetaData.ColChunks[i]
 			}
 		}
 		/*
@@ -318,7 +318,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 		// We only compute the preImageSisEval if there are any SIS rounds
 		// and the concatenated DhQ is not nil
 		for j := 0; j < blockSize; j++ {
-			if ctx.Columns.ConcatenatedDhQ[j] != nil {
+			if ctx.Columns.SisToHash[j] != nil {
 				preImageSisEval = functionals.EvalCoeffBivariate(
 					ctx.Comp,
 					ctx.constencyUalphaQPreimageRight(),
@@ -331,7 +331,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			}
 
 			// preImageEval := preimageNonSisEval + alpha^offset * preImageSisEval
-			if len(ctx.Poseidon2MetaData.ToHashSizes) > 0 && ctx.Columns.ConcatenatedDhQ[j] != nil {
+			if len(ctx.Poseidon2MetaData.ColChunks) > 0 && ctx.Columns.SisToHash[j] != nil {
 				preImageEvalSymb := symbolic.Add(
 					preImageNonSisEval,
 					symbolic.Mul(
@@ -343,9 +343,9 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 					),
 				)
 				preImageEval = accessors.NewFromExpression(preImageEvalSymb, fmt.Sprintf("PREIMAGE_EVAL_%v", ctx.SelfRecursionCnt))
-			} else if len(ctx.Poseidon2MetaData.ToHashSizes) > 0 && ctx.Columns.ConcatenatedDhQ[j] == nil {
+			} else if len(ctx.Poseidon2MetaData.ColChunks) > 0 && ctx.Columns.SisToHash[j] == nil {
 				preImageEval = preImageNonSisEval
-			} else if len(ctx.Poseidon2MetaData.ToHashSizes) == 0 && ctx.Columns.ConcatenatedDhQ[j] != nil {
+			} else if len(ctx.Poseidon2MetaData.ColChunks) == 0 && ctx.Columns.SisToHash[j] != nil {
 				preImageEval = preImageSisEval
 			} else {
 				utils.Panic("There are neither SIS nor non SIS round, this should not happen")
@@ -360,7 +360,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 
 	for j := 0; j < blockSize; j++ {
 		// The below code is only executed only if there are non-zero SIS rounds
-		if ctx.Columns.ConcatenatedDhQ[j] != nil {
+		if ctx.Columns.SisToHash[j] != nil {
 			sisDeg := ctx.VortexCtx.SisParams.OutputSize()
 			// Currently, only powers of two SIS degree are allowed
 			// (in practice, we restrict ourselves to pure power of two)
@@ -372,9 +372,9 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			// Compute the collapsed hashes
 			ctx.Columns.DhQCollapse = functionals.FoldOuter(
 				ctx.Comp,
-				ctx.Columns.ConcatenatedDhQ[j],
+				ctx.Columns.SisToHash[j],
 				accessors.NewFromCoin(ctx.Coins.Collapse),
-				ctx.Columns.ConcatenatedDhQ[j].Size()/sisDeg,
+				ctx.Columns.SisToHash[j].Size()/sisDeg,
 			)
 
 			// sanity-check : the size of DhQCollapse must equal to sisDeg

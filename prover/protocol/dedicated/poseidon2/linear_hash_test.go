@@ -32,20 +32,20 @@ func TestLinearHash(t *testing.T) {
 	}
 
 	for _, tc := range testcases {
-
-		colChunks := (tc.colSize + blockSize - 1) / blockSize
+		// Each column to be hashed is split into chunks of 8 elements
 		numhash := tc.numhash
 		colSize := tc.colSize
-		numRowLarge := utils.NextPowerOfTwo(colChunks * numhash)
-		numRowSmall := utils.NextPowerOfTwo(numhash)
+		colChunks := (tc.colSize + blockSize - 1) / blockSize
+		totalChunks := colChunks * numhash
+		numRowToHash := utils.NextPowerOfTwo(totalChunks)
+		numRowExpectedHash := utils.NextPowerOfTwo(numhash)
 
 		define := func(b *wizard.Builder) {
 			for i := 0; i < blockSize; i++ {
-				tohash[i] = b.RegisterCommit(ifaces.ColIDf("TOHASH_%v", i), numRowLarge)
-
-				expectedhash[i] = b.RegisterCommit(ifaces.ColIDf("HASHED_%v", i), numRowSmall)
+				tohash[i] = b.RegisterCommit(ifaces.ColIDf("TOHASH_%v", i), numRowToHash)
+				expectedhash[i] = b.RegisterCommit(ifaces.ColIDf("HASHED_%v", i), numRowExpectedHash)
 			}
-			linhash.CheckLinearHash(b.CompiledIOP, "test", tohash, colChunks, numhash, expectedhash)
+			linhash.CheckLinearHash(b.CompiledIOP, "test", colChunks, tohash, numhash, expectedhash)
 		}
 
 		prove := func(run *wizard.ProverRuntime) {
@@ -53,7 +53,7 @@ func TestLinearHash(t *testing.T) {
 
 			for i := 0; i < blockSize; i++ {
 				ex[i] = make([]field.Element, 0, numhash)
-				th[i] = make([]field.Element, 0, colChunks*numhash)
+				th[i] = make([]field.Element, 0, totalChunks)
 			}
 
 			for i := 0; i < numhash; i++ {
@@ -76,8 +76,7 @@ func TestLinearHash(t *testing.T) {
 					lastChunkPadding := 0
 					if lastChunkElements > 0 {
 						lastChunkPadding = blockSize - lastChunkElements
-					}
-					if lastChunkElements > 0 {
+
 						k := completeChunks
 						if j < lastChunkPadding {
 							// Left padding
@@ -94,8 +93,8 @@ func TestLinearHash(t *testing.T) {
 
 			var exSV, thSV [blockSize]smartvectors.SmartVector
 			for i := 0; i < blockSize; i++ {
-				thSV[i] = smartvectors.RightZeroPadded(th[i], numRowLarge)
-				exSV[i] = smartvectors.RightZeroPadded(ex[i], numRowSmall)
+				thSV[i] = smartvectors.RightZeroPadded(th[i], numRowToHash)
+				exSV[i] = smartvectors.RightZeroPadded(ex[i], numRowExpectedHash)
 
 				// And assign them
 				run.AssignColumn(tohash[i].GetColID(), thSV[i])
@@ -110,11 +109,4 @@ func TestLinearHash(t *testing.T) {
 		require.NoError(t, wizard.Verify(comp, proof))
 	}
 
-}
-func getSegmentElement(segment []field.Element, k, j, blockSize, colSize int) field.Element {
-	idx := k*blockSize + j
-	if idx < colSize {
-		return segment[idx]
-	}
-	return field.Zero()
 }

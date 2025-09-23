@@ -43,24 +43,23 @@ type linearHashCtx struct {
 	// hash is finished
 	IsActiveLarge, IsActiveRowExpected, IsEndOfHash, Ones ifaces.Column
 
-	// Period of the linear hash
-	Period, NumHash int
+	// ColChunks of the linear hash
+	ColChunks, NumHash int
 	// Round of declaration of the linear hash
 	Round int
 }
 
 /*
-Check a linear hashby chunk of columns
+Check a linear hash by chunk of columns
 Inputs example:
 
   - numhash : 2
 
-  - colSize : 4 => chunk = 1
+  - colChunks : 1
 
-  - tohash : (a₄,a₅,a₆,a₇) || (b₄,b₅,b₆,b₇)
-
-  - Input structure:
-    ToHash (last chunk of each hash is left padded with zeroes if needed):
+  - Input structure, we prepare the columns as follows before calling the function (last chunk of each hash input is left padded with zeroes if needed),
+  each block of 8 elements is a block to be hashed.
+    ToHash:
     [a₀,a₁,a₂,a₃,a₄,a₅,a₆,a₇, b₀,b₁,b₂,b₃,b₄,b₅,b₆,b₇]
     └─────── block a ──────┘  └─────── block b ──────┘
 
@@ -70,13 +69,15 @@ Inputs example:
     ...
     BlockToHash[7]: [a₇, b₇]  // Eighth component of each block
 
-  - expectedhash : (Hash(a₄,a₅,a₆,a₇) || Hash(b₄,b₅,b₆,b₇))
+  - expectedhash : (Hash(a₀,a₁,a₂,a₃,a₄,a₅,a₆,a₇) || Hash(b₀,b₁,b₂,b₃,b₄,b₅,b₆,b₇))
 */
+
 func CheckLinearHash(
 	comp *wizard.CompiledIOP,
 	name string,
+	colChunks int,
 	tohash [blockSize]ifaces.Column,
-	period int, numHash int,
+	numHash int,
 	expectedHashes [blockSize]ifaces.Column,
 ) {
 
@@ -85,14 +86,14 @@ func CheckLinearHash(
 		Comp:         comp,
 		Name:         name,
 		ToHash:       tohash,
-		Period:       period,
+		ColChunks:    colChunks,
 		NumHash:      numHash,
 		ExpectedHash: expectedHashes,
 	}
 
 	// Get the rounds
 	ctx.Round = utils.Max(tohash[0].Round(), expectedHashes[0].Round())
-	ctx.IsFullyActive = utils.IsPowerOfTwo(numHash * period)
+	ctx.IsFullyActive = utils.IsPowerOfTwo(numHash * colChunks)
 
 	ctx.HashingCols()
 
@@ -104,7 +105,7 @@ func CheckLinearHash(
 				prefixWithLinearHash(comp, name, "RES_EXTRACTION_%v", i),
 				[]ifaces.Column{ctx.NewStateClean[i]},
 				[]ifaces.Column{ctx.ExpectedHash[i]},
-				period-1,
+				colChunks-1,
 			)
 		}
 	} else {
@@ -138,16 +139,16 @@ func (a *LinearHashProverAction) Run(run *wizard.ProverRuntime) {
 	for i := 0; i < blockSize; i++ {
 		blocksWit[i] = a.Ctx.ToHash[i].GetColAssignment(run)
 
-		olds[i] = make([]field.Element, a.Ctx.Period*a.Ctx.NumHash)
-		news[i] = make([]field.Element, a.Ctx.Period*a.Ctx.NumHash)
+		olds[i] = make([]field.Element, a.Ctx.ColChunks*a.Ctx.NumHash)
+		news[i] = make([]field.Element, a.Ctx.ColChunks*a.Ctx.NumHash)
 	}
 	var zeroBlock field.Octuplet
 	parallel.Execute(a.Ctx.NumHash, func(start, stop int) {
 		for hashID := start; hashID < stop; hashID++ {
 			old := zeroBlock
 			var currentBlock [blockSize]field.Element
-			for i := 0; i < a.Ctx.Period; i++ {
-				pos := hashID*a.Ctx.Period + i
+			for i := 0; i < a.Ctx.ColChunks; i++ {
+				pos := hashID*a.Ctx.ColChunks + i
 				for j := 0; j < blockSize; j++ {
 					currentBlock[j] = blocksWit[j].Get(pos)
 				}
@@ -296,7 +297,7 @@ func (ctx *linearHashCtx) IsActiveVar() *symbolic.Expression {
 		ctx.IsActiveLarge = ctx.Comp.InsertPrecomputed(
 			ifaces.ColIDf("%s", prefixWithLinearHash(ctx.Comp, ctx.Name, "IS_ACTIVE_%v", ctx.ToHash[0].GetColID())),
 			smartvectors.RightZeroPadded(
-				vector.Repeat(field.One(), ctx.NumHash*ctx.Period),
+				vector.Repeat(field.One(), ctx.NumHash*ctx.ColChunks),
 				ctx.ToHash[0].Size(),
 			),
 		)
@@ -308,15 +309,15 @@ func (ctx *linearHashCtx) IsActiveVar() *symbolic.Expression {
 func (ctx *linearHashCtx) IsEndOfHashVar() *symbolic.Expression {
 	if ctx.IsFullyActive {
 		// Always active
-		return variables.NewPeriodicSample(ctx.Period, ctx.Period-1)
+		return variables.NewPeriodicSample(ctx.ColChunks, ctx.ColChunks-1)
 	}
 
 	// Lazily registers the columns
 	if ctx.IsEndOfHash == nil {
 
-		window := make([]field.Element, ctx.NumHash*ctx.Period)
+		window := make([]field.Element, ctx.NumHash*ctx.ColChunks)
 		for i := range window {
-			if i%ctx.Period == ctx.Period-1 {
+			if i%ctx.ColChunks == ctx.ColChunks-1 {
 				window[i].SetOne()
 			}
 		}
