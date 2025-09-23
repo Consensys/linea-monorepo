@@ -104,7 +104,7 @@ class MaruReputationManager(
     }
     return getOrCreateReputation(peerAddress)
       .adjustReputation(effect, timeProvider.timeInMillis)
-      .also { if (it) log.debug("Disconnecting peer={} after adjustment", peerAddress) }
+      .also { if (it) log.debug("Disocnnecting peer={} after adjustment", peerAddress) }
   }
 
   private fun getOrCreateReputation(peerAddress: PeerAddress): Reputation =
@@ -142,7 +142,7 @@ class MaruReputationManager(
       reason: Optional<DisconnectReason>,
       locallyInitiated: Boolean,
     ) {
-      if (isSuitableAt(disconnectTime)) {
+      if (suitableAfter.isEmpty) {
         if (isLocallyConsideredUnsuitable(reason, locallyInitiated) ||
           reason.map { it.isPermanent }.orElse(false)
         ) {
