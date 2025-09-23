@@ -251,39 +251,39 @@ func (c *Circuit) Define(api frontend.API) error {
 
 	// check invalidity proofs against the finalStateRootHash and FinalBlockNumber in the aggregation.
 	maxNbInvalidity := len(c.InvalidityFPI)
-	api.AssertIsLessOrEqual(c.NbInvalidity, maxNbInvalidity) // @Azam check if it is neccassary here
+	api.AssertIsLessOrEqual(c.NbInvalidity, maxNbInvalidity)
 	rInvalidity := internal.NewRange(api, c.NbInvalidity, maxNbInvalidity)
-	lastFinalizedTxNum := c.AggregationFPIQSnark.LastFinalizedFtxNumber
 	finalFtxNumber := c.AggregationFPIQSnark.LastFinalizedFtxNumber
-	finalFtxStreamHash := c.AggregationFPIQSnark.LastFinalizedFtxStreamHash
+	finalFtxRollingHash := c.AggregationFPIQSnark.LastFinalizedFtxRollingHash
 	for i, invalidityFPI := range c.InvalidityFPI {
 
-		api.AssertIsEqual(invalidityFPI.SateRootHash, finalState) // @Azam make sure it really give the finalState
+		api.AssertIsEqual(invalidityFPI.StateRootHash, finalState)
 		api.AssertIsLessOrEqual(pi.FinalBlockNumber, invalidityFPI.ExpectedBlockNumber)
 		api.AssertIsEqual(c.InvalidityPublicInput[i], api.Mul(rInvalidity.InRange[i], c.InvalidityFPI[i].Sum(api, hshM)))
 
-		if i != 0 {
-			// constraints over rollingHashFtx
-			expr := api.Mul(rInvalidity.InRange[i], api.Sub(invalidityFPI.TxNumber, c.InvalidityFPI[i-1].TxNumber, 1))
+		// constraints over rollingHashFtx
+		expr := api.Mul(rInvalidity.InRange[i], api.Sub(invalidityFPI.TxNumber, api.Add(finalFtxNumber, 1)))
+		api.AssertIsEqual(expr, 0)
 
-			api.AssertIsEqual(expr, 0)
-		}
+		// expected FtxRollingHash
+		hshM.Reset()
+		hshM.Write(finalFtxRollingHash)
+		hshM.Write(invalidityFPI.TxHash[0])
+		hshM.Write(invalidityFPI.TxHash[1])
+		hshM.Write(invalidityFPI.ExpectedBlockNumber)
+		hshM.Write(invalidityFPI.FromAddress)
+		res := hshM.Sum()
+		api.AssertIsEqual(api.Mul(rInvalidity.InRange[i], api.Sub(res, invalidityFPI.FtxRollingHash)), 0)
 
-		finalFtxStreamHash = api.Select(rInvalidity.InRange[i], invalidityFPI.FtxStreamHash, finalFtxStreamHash)
+		// update finalFtxRollingHash and finalFtxNumber)
+		finalFtxRollingHash = api.Select(rInvalidity.InRange[i], invalidityFPI.FtxRollingHash, finalFtxRollingHash)
 		finalFtxNumber = api.Select(rInvalidity.InRange[i], invalidityFPI.TxNumber, finalFtxNumber)
 
 	}
 
-	// for i == 0 check it against the lastFinalizedTxNum
-	api.AssertIsEqual(0,
-		api.Mul(
-			rInvalidity.InRange[0],
-			api.Sub(c.InvalidityFPI[0].TxNumber, lastFinalizedTxNum, 1),
-		))
-
 	// set the FinalRollingHashNumberFtx for the aggregation circuit.
 	pi.FinalFtxNumber = finalFtxNumber
-	pi.FinalFtxStreamHash = finalFtxStreamHash
+	pi.FinalFtxRollingHash = finalFtxRollingHash
 
 	twoPow8 := big.NewInt(256)
 	// "open" aggregation public input
