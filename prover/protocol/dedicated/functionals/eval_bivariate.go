@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
@@ -48,7 +47,7 @@ func (a *EvalBivariateProverAction) Run(assi *wizard.ProverRuntime) {
 	for i := a.Length - 2; i >= 0; i-- {
 		pi := p.GetExt(i)
 		if (i+1)%a.NPowX == 0 {
-			h[i].MulByElement(&h[i+1], &yxPow1mkVal).Add(&h[i], &pi)
+			h[i].Mul(&h[i+1], &yxPow1mkVal).Add(&h[i], &pi)
 			continue
 		}
 		h[i].Mul(&h[i+1], &xVal).Add(&h[i], &pi)
