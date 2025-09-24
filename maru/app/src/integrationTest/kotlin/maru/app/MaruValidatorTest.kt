@@ -16,7 +16,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
-import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
 import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurationBuilder
@@ -24,6 +23,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import testutils.Checks.assertMinedBlocks
 import testutils.Checks.getMinedBlocks
 import testutils.PeeringNodeNetworkStack
 import testutils.besu.BesuFactory
@@ -121,8 +121,8 @@ class MaruValidatorTest {
       }
     }
 
-    checkBesuNodeBlocks(validatorStack.besuNode, blocksToProduce)
-    checkBesuNodeBlocks(followerStack.besuNode, blocksToProduce)
+    validatorStack.besuNode.assertMinedBlocks(blocksToProduce)
+    followerStack.besuNode.assertMinedBlocks(blocksToProduce)
 
     val oldBesuSequencer = validatorStack.besuNode
     val engineRpcPort = oldBesuSequencer.engineJsonRpcPort
@@ -158,20 +158,72 @@ class MaruValidatorTest {
       }
     }
 
-    checkBesuNodeBlocks(newBesuSequencer, blocksToProduce * 2)
-    checkBesuNodeBlocks(followerStack.besuNode, blocksToProduce * 2)
+    newBesuSequencer.assertMinedBlocks(blocksToProduce * 2)
+    followerStack.besuNode.assertMinedBlocks(blocksToProduce * 2)
   }
 
-  private fun checkBesuNodeBlocks(
-    besuNode: BesuNode,
-    expectedBlocks: Int,
-  ) {
+  @Test
+  fun `Besu sequencer restarted from scratch is able to sync state while follower accepts transactions`() {
+    setupMaruHelper()
+    val blocksToProduce = 5
+    repeat(blocksToProduce) {
+      transactionsHelper.run {
+        followerStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
+    }
+
+    validatorStack.besuNode.assertMinedBlocks(blocksToProduce)
+    followerStack.besuNode.assertMinedBlocks(blocksToProduce)
+
+    val oldBesuSequencer = validatorStack.besuNode
+    val engineRpcPort = oldBesuSequencer.engineJsonRpcPort
+    val jsonRpcPort = oldBesuSequencer.jsonRpcPort
+    println("Old sequencer jsonRpcPort=$jsonRpcPort, engineRpcPort=$engineRpcPort")
+    cluster.stopNode(oldBesuSequencer)
+    oldBesuSequencer.stop()
+    oldBesuSequencer.close()
+
+    repeat(3) {
+      transactionsHelper.run {
+        followerStack.besuNode.sendTransaction(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
+    }
+
+    val newBesuSequencer =
+      BesuFactory.buildTestBesu(
+        jsonRpcPort = jsonRpcPort,
+        engineRpcPort = engineRpcPort,
+      )
+
+    cluster.addNode(newBesuSequencer)
+
     await
       .pollDelay(1.seconds.toJavaDuration())
       .timeout(30.seconds.toJavaDuration())
       .untilAsserted {
-        val minedBlocks = besuNode.getMinedBlocks(expectedBlocks)
-        assertThat(minedBlocks).hasSize(expectedBlocks)
+        val newSequencerBlocks = newBesuSequencer.getMinedBlocks(blocksToProduce + 1)
+        assertThat(newSequencerBlocks).hasSize(blocksToProduce + 1)
       }
+
+    repeat(blocksToProduce) {
+      transactionsHelper.run {
+        followerStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
+    }
+
+    newBesuSequencer.assertMinedBlocks(blocksToProduce * 2 + 1)
+    followerStack.besuNode.assertMinedBlocks(blocksToProduce * 2 + 1)
   }
 }
