@@ -19,6 +19,7 @@ func Execute(nbIterations int, work func(int, int), maxCpus ...int) {
 		}
 	}
 
+	// heuristic to avoid creating too many goroutines (experimental, may change)
 	nbGoRoutines := runtime.NumGoroutine()
 	nbCpus := runtime.GOMAXPROCS(0) * 3
 	for nbTasks+nbGoRoutines > nbCpus && nbTasks > 1 {
@@ -50,21 +51,6 @@ func Execute(nbIterations int, work func(int, int), maxCpus ...int) {
 		panicOnce  = &sync.Once{}
 	)
 
-	// stack := debug.Stack()
-
-	// filters := []string{
-	// 	"state-management/smt/tree.go",
-	// 	"AssignSplitColumnProverAction",
-	// }
-	// skip := false
-	// for _, f := range filters {
-	// 	if strings.Contains(string(stack), f) {
-	// 		skip = true
-	// 		break
-	// 	}
-	// }
-
-	// stack := string(debug.Stack())
 	for i := 0; i < nbTasks; i++ {
 		wg.Add(1)
 		_start := i*nbIterationsPerCpus + extraTasksOffset
@@ -90,15 +76,7 @@ func Execute(nbIterations int, work func(int, int), maxCpus ...int) {
 				wg.Done()
 			}()
 
-			// start := time.Now()
 			work(_start, _end)
-			// took := time.Since(start)
-
-			// if !skip && took < time.Millisecond {
-			// 	// this is a very fast task
-			// 	fmt.Printf("parallel task [%d,%d] took %s\n%s\n", _start, _end, took, stack)
-			// }
-
 		}()
 	}
 

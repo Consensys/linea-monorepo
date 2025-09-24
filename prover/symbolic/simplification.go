@@ -214,22 +214,6 @@ func expandTerms(op Operator, magnitudes []int, children []*Expression) (
 
 		if cIsLinC && opIsLinC {
 			for k, grandChild := range child.Children {
-				// if opgg, ok := grandChild.Operator.(Product); ok {
-				// 	// it's a product, let's print it nicely to understand
-				// 	fmt.Printf("grandChild %d is a product with exponents %v\n", k, opgg.Exponents)
-				// 	for _, ggchild := range grandChild.Children {
-				// 		fmt.Printf("  ggchild: %T\n", ggchild.Operator)
-				// 		for _, gggchild := range ggchild.Children {
-				// 			if v, ok := gggchild.Operator.(Variable); ok {
-				// 				fmt.Printf("    gggchild: %s\n", v.Metadata.String())
-				// 			} else if _, ok := gggchild.Operator.(PolyEval); ok {
-				// 				fmt.Printf("    gggchild: PolyEval on poly %s\n", gggchild.ESHash.String())
-				// 			} else {
-				// 				fmt.Printf("    gggchild: %T\n", gggchild.Operator)
-				// 			}
-				// 		}
-				// 	}
-				// }
 				expandedExpression = append(expandedExpression, grandChild)
 				expandedMagnitudes = append(expandedMagnitudes, magnitude*cLinC.Coeffs[k])
 			}
