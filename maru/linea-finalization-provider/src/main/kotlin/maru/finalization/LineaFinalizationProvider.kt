@@ -135,7 +135,7 @@ class LineaFinalizationProvider(
               lastFinalizedBlock.get().blockNumber,
               block.number,
               lastFinalizedBlock.get().hash.encodeHex(),
-              block.hash,
+              block.hash.encodeHex(),
               if (finalizedBlockNumber > block.number) {
                 "(node is behind, using latest available block)"
               } else {
