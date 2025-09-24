@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -34,13 +35,11 @@ type PackedPublicInput struct {
 }
 
 type PackedExtradata struct {
-	//_     struct{} `cbor:",toarray" serde:"omit"`
 	Key   string `cbor:"k"`
 	Value any    `cbor:"v"`
 }
 
 type PackedQuery struct {
-	//_                               struct{}      `cbor:",toarray" serde:"omit"`
 	BackReference                   BackReference `cbor:"b"`
 	ConcreteType                    int           `cbor:"t"`
 	Round                           int           `cbor:"r"`
@@ -76,7 +75,6 @@ var (
 
 // PackedCompiledIOP represents the serialized form of CompiledIOP.
 type PackedCompiledIOP struct {
-	//_                      struct{} `cbor:",toarray" serde:"omit"`
 	DummyCompiled          bool `cbor:"a"`
 	WithStorePointerChecks bool `cbor:"b"`
 
@@ -344,143 +342,188 @@ func newEmptyCompiledIOP(packedCompIOP PackedCompiledIOP) *wizard.CompiledIOP {
 	return deComp
 }
 
-func (d *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *serdeError) {
-	if v < 0 || int(v) >= len(d.PackedObject.CompiledIOPFast) {
+func (de *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *serdeError) {
+	if v < 0 || int(v) >= len(de.PackedObject.CompiledIOPFast) {
 		return reflect.Value{}, newSerdeErrorf("invalid compiled-IOP backreference: %v", v)
 	}
-	if d.CompiledIOPsFast[v] != nil {
-		return reflect.ValueOf(d.CompiledIOPsFast[v]), nil
+	if de.CompiledIOPsFast[v] != nil {
+		return reflect.ValueOf(de.CompiledIOPsFast[v]), nil
 	}
-	packedCompIOP := d.PackedObject.CompiledIOPFast[v]
+	packedCompIOP := de.PackedObject.CompiledIOPFast[v]
 
 	// Reserve the cache and outer shapes up-front
 	deComp := newEmptyCompiledIOP(packedCompIOP)
-	d.CompiledIOPsFast[v] = deComp
+	de.CompiledIOPsFast[v] = deComp
 
-	// FiatShamirSetup
-	{
-		f, err := unmarshalBigInt(d, *packedCompIOP.FiatShamirSetup, TypeOfBigInt)
-		if err != nil {
-			return reflect.Value{}, err.wrapPath("(deser compiled-IOP-fiatshamirsetup)")
-		}
-		deComp.FiatShamirSetup.SetBigInt(f.Interface().(*big.Int))
-	}
+	var wg sync.WaitGroup
+	errCh := make(chan *serdeError, 1)
 
-	// Columns
+	// Deserialize Columns sequentially
 	{
-		storeVal, err := d.UnpackStore(packedCompIOP.Columns)
+		storeVal, err := de.UnpackStore(packedCompIOP.Columns)
 		if err != nil {
 			return reflect.Value{}, err.wrapPath("(deser. compiled-IOP-columns)")
 		}
 		deComp.Columns = storeVal.Interface().(*column.Store)
 	}
 
+	runParallel := func(fn func() *serdeError) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if se := fn(); se != nil {
+				select {
+				case errCh <- se:
+				default:
+				}
+			}
+		}()
+	}
+
+	// FiatShamirSetup
+	runParallel(func() *serdeError {
+		f, err := unmarshalBigInt(de, *packedCompIOP.FiatShamirSetup, TypeOfBigInt)
+		if err != nil {
+			return err.wrapPath("(deser compiled-IOP-fiatshamirsetup)")
+		}
+		deComp.FiatShamirSetup.SetBigInt(f.Interface().(*big.Int))
+		return nil
+	})
+
 	// Precomputed
-	{
+	runParallel(func() *serdeError {
 		for _, rp := range packedCompIOP.Precomputed {
-			res, err := d.UnpackStructObject(rp, typeofRawPrecomputedData)
+			res, err := de.UnpackStructObject(rp, typeofRawPrecomputedData)
 			if err != nil {
-				return reflect.Value{}, newSerdeErrorf("could not unpack struct object for raw pre-computed data: %w", err)
+				return newSerdeErrorf("could not unpack struct object for raw pre-computed data: %w", err)
 			}
 			pre, ok := res.Interface().(RawPrecomputed)
 			if !ok {
-				return reflect.Value{}, newSerdeErrorf("could not cast to RawPrecomputed: %w", err)
+				return newSerdeErrorf("could not cast to RawPrecomputed")
 			}
 			deComp.Precomputed.InsertNew(pre.ColID, pre.ColAssign)
 		}
-	}
+		return nil
+	})
 
 	// PcsCtxs
-	{
+	runParallel(func() *serdeError {
 		if packedCompIOP.PcsCtxs != nil {
-			pcsVal, err := d.UnpackValue(packedCompIOP.PcsCtxs, typeofPcsCtxs)
+			pcsVal, err := de.UnpackValue(packedCompIOP.PcsCtxs, typeofPcsCtxs)
 			if err != nil {
-				return reflect.Value{}, err.wrapPath("(deser compiled-IOP-pcsctxs)")
+				return err.wrapPath("(deser compiled-IOP-pcsctxs)")
 			}
 			deComp.PcsCtxs = pcsVal.Interface()
 		} else {
 			deComp.PcsCtxs = nil
 		}
-	}
+		return nil
+	})
 
-	// Public inputs
-	{
+	// PublicInputs
+	runParallel(func() *serdeError {
 		for i, rpi := range packedCompIOP.PublicInputs {
-			res, err := d.UnpackStructObject(rpi, typeofRawPublicInput)
+			res, err := de.UnpackStructObject(rpi, typeofRawPublicInput)
 			if err != nil {
-				return reflect.Value{}, newSerdeErrorf("could not unpack struct object for raw public input: %w", err)
+				return newSerdeErrorf("could not unpack struct object for raw public input: %w", err)
 			}
 			pi, ok := res.Interface().(PackedPublicInput)
 			if !ok {
-				return reflect.Value{}, newSerdeErrorf("could not cast to raw public input: %w", err)
+				return newSerdeErrorf("could not cast to raw public input")
 			}
 			deComp.PublicInputs[i] = wizard.PublicInput{Name: pi.Name, Acc: pi.Acc}
 		}
-	}
+		return nil
+	})
 
-	// Extra data
-	{
+	// ExtraData
+	runParallel(func() *serdeError {
 		for _, red := range packedCompIOP.ExtraData {
-			res, err := d.UnpackStructObject(red, typeofRawExtraData)
+			res, err := de.UnpackStructObject(red, typeofRawExtraData)
 			if err != nil {
-				return reflect.Value{}, newSerdeErrorf("could not unpack struct object for raw extra data: %w", err)
+				return newSerdeErrorf("could not unpack struct object for raw extra data: %w", err)
 			}
 			ed, ok := res.Interface().(PackedExtradata)
 			if !ok {
-				return reflect.Value{}, newSerdeErrorf("could not cast to raw extra data: %w", err)
+				return newSerdeErrorf("could not cast to raw extra data")
 			}
 			deComp.ExtraData[ed.Key] = ed.Value
 		}
-	}
+		return nil
+	})
 
 	// Coins
-	{
+	runParallel(func() *serdeError {
 		for _, br := range packedCompIOP.Coins {
-			val, err := d.UnpackCoin(br)
+			val, err := de.UnpackCoin(br)
 			if err != nil {
-				return reflect.Value{}, err.wrapPath("(deser compiled-IOP-coins)")
+				return err.wrapPath("(deser compiled-IOP-coins)")
 			}
 			info, ok := val.Interface().(coin.Info)
 			if !ok {
-				return reflect.Value{}, newSerdeErrorf("illegal cast to *coin.Info: %w", err)
+				return newSerdeErrorf("illegal cast to coin.Info")
 			}
 			deComp.Coins.AddToRound(info.Round, info.Name, info)
 		}
-	}
+		return nil
+	})
 
-	// Queries
-	{
-		if se := d.unpackAllQueries(&deComp.QueriesParams, packedCompIOP.QueriesParams, "params"); se != nil {
-			return reflect.Value{}, se
+	// Queries params
+	runParallel(func() *serdeError {
+		if se := de.unpackAllQueries(&deComp.QueriesParams, packedCompIOP.QueriesParams, "params"); se != nil {
+			return se
 		}
-		if se := d.unpackAllQueries(&deComp.QueriesNoParams, packedCompIOP.QueriesNoParams, "no-params"); se != nil {
-			return reflect.Value{}, se
-		}
-	}
+		return nil
+	})
 
-	// Actions and hooks
-	{
+	// queries no params
+	runParallel(func() *serdeError {
+		if se := de.unpackAllQueries(&deComp.QueriesNoParams, packedCompIOP.QueriesNoParams, "no-params"); se != nil {
+			return se
+		}
+		return nil
+	})
+
+	// Actions & Hooks
+	runParallel(func() *serdeError {
 		deComp.SubProvers.Inner = make([][]wizard.ProverAction, len(packedCompIOP.SubProvers))
-		if se := d.unpackAllProverActions(deComp.SubProvers.Inner, packedCompIOP.SubProvers); se != nil {
-			return reflect.Value{}, se
+		if se := de.unpackAllProverActions(deComp.SubProvers.Inner, packedCompIOP.SubProvers); se != nil {
+			return se
 		}
 
+		return nil
+	})
+
+	runParallel(func() *serdeError {
 		deComp.FiatShamirHooksPreSampling.Inner = make([][]wizard.VerifierAction, len(packedCompIOP.FSHooksPreSampling))
-		if se := d.unpackAllFSHooksPreSampling(deComp.FiatShamirHooksPreSampling.Inner, packedCompIOP.FSHooksPreSampling); se != nil {
-			return reflect.Value{}, se
+		if se := de.unpackAllFSHooksPreSampling(deComp.FiatShamirHooksPreSampling.Inner, packedCompIOP.FSHooksPreSampling); se != nil {
+			return se
 		}
 
+		return nil
+	})
+
+	runParallel(func() *serdeError {
 		deComp.SubVerifiers.Inner = make([][]wizard.VerifierAction, len(packedCompIOP.SubVerifiers))
-		if se := d.unpackAllVerifierActions(deComp.SubVerifiers.Inner, packedCompIOP.SubVerifiers); se != nil {
-			return reflect.Value{}, se
+		if se := de.unpackAllVerifierActions(deComp.SubVerifiers.Inner, packedCompIOP.SubVerifiers); se != nil {
+			return se
 		}
+		return nil
+	})
+
+	wg.Wait()
+
+	select {
+	case se := <-errCh:
+		return reflect.Value{}, se
+	default:
 	}
 
 	if DEBUG {
 		logCompiledIOPMetadata(deComp, "unpacking-deserialized-comp-iop")
 	}
 
-	return reflect.ValueOf(d.CompiledIOPsFast[v]), nil
+	return reflect.ValueOf(de.CompiledIOPsFast[v]), nil
 }
 
 // -------------------- Helper functions --------------------
@@ -651,74 +694,108 @@ func (de *Deserializer) unpackAllQueries(reg *wizard.ByRoundRegister[ifaces.Quer
 func unpackAllActions[T any](d *Deserializer, context string,
 	out [][]T, actions2D [][]PackedRawData) *serdeError {
 
-	var (
-		res   reflect.Value
-		se    *serdeError
-		ct    reflect.Type
-		ctStr string
-		err   error
-	)
-
 	for round, actions := range actions2D {
 		if len(actions) == 0 {
 			out[round] = nil
 			continue
 		}
-
 		out[round] = make([]T, len(actions))
 
+		var wg sync.WaitGroup
+		errCh := make(chan *serdeError, 1)
+
 		for idx, action := range actions {
-			ctStr = d.PackedObject.Types[action.ConcreteType]
-			ct, err = findRegisteredImplementation(ctStr)
-			if err != nil {
-				return newSerdeErrorf("could not find registered implementation for %s action: %w", context, err)
-			}
+			wg.Add(1)
+			go func(idx int, action PackedRawData) {
+				defer wg.Done()
 
-			switch ct.Kind() {
-			case reflect.Struct:
-				res, se = d.UnpackStructObject(action.ConcreteValue, ct)
-				if se != nil {
-					return se.wrapPath(fmt.Sprintf("(deser struct compiled-IOP-%s-actions)", context))
+				// These must be local to avoid races
+				ctStr := d.PackedObject.Types[action.ConcreteType]
+				ct, err := findRegisteredImplementation(ctStr)
+				if err != nil {
+					select {
+					case errCh <- newSerdeErrorf(
+						"could not find registered implementation for %s action: %w",
+						context, err,
+					):
+					default:
+					}
+					return
 				}
-				var valInterface any
-				if action.WasPointer {
-					valInterface = res.Addr().Interface()
-				} else {
-					valInterface = res.Interface()
+
+				var (
+					res          reflect.Value
+					se           *serdeError
+					valInterface any
+				)
+
+				switch ct.Kind() {
+				case reflect.Struct:
+					res, se = d.UnpackStructObject(action.ConcreteValue, ct)
+					if se != nil {
+						select {
+						case errCh <- se.wrapPath(fmt.Sprintf("(deser struct compiled-IOP-%s-actions)", context)):
+						default:
+						}
+						return
+					}
+					if action.WasPointer {
+						valInterface = res.Addr().Interface()
+					} else {
+						valInterface = res.Interface()
+					}
+
+				case reflect.Slice, reflect.Array:
+					res, se = d.UnpackArrayOrSlice(action.ConcreteValue, ct)
+					if se != nil {
+						select {
+						case errCh <- se.wrapPath(fmt.Sprintf("(deser slice/array compiled-IOP-%s-actions)", context)):
+						default:
+						}
+						return
+					}
+					if action.WasPointer {
+						ptr := reflect.New(res.Type())
+						ptr.Elem().Set(res)
+						valInterface = ptr.Interface()
+					} else {
+						valInterface = res.Interface()
+					}
+
+				default:
+					select {
+					case errCh <- newSerdeErrorf("unsupported kind:%v for %s action", ct.Kind(), context):
+					default:
+					}
+					return
 				}
 
 				v, ok := valInterface.(T)
 				if !ok {
-					return newSerdeErrorf("illegal cast of type %v with string rep %s to %s action", ct, ctStr, context)
+					select {
+					case errCh <- newSerdeErrorf(
+						"illegal cast of type %v with string rep %s to %s action",
+						ct, ctStr, context,
+					):
+					default:
+					}
+					return
 				}
+
 				out[round][idx] = v
+			}(idx, action)
+		}
 
-			case reflect.Slice, reflect.Array:
-				res, se = d.UnpackArrayOrSlice(action.ConcreteValue, ct)
-				if se != nil {
-					return se.wrapPath(fmt.Sprintf("(deser slice/array compiled-IOP-%s-actions)", context))
-				}
+		wg.Wait()
 
-				var valInterface any
-				if action.WasPointer {
-					ptr := reflect.New(res.Type())
-					ptr.Elem().Set(res)
-					valInterface = ptr.Interface()
-				} else {
-					valInterface = res.Interface()
-				}
-
-				v, ok := valInterface.(T)
-				if !ok {
-					return newSerdeErrorf("illegal cast of %v with string rep %s to %s action", ct, ctStr, context)
-				}
-				out[round][idx] = v
-
-			default:
-				return newSerdeErrorf("unsupported kind:%v for %s action", ct.Kind(), context)
-			}
+		// check if any goroutine reported error
+		select {
+		case e := <-errCh:
+			return e
+		default:
 		}
 	}
+
 	return nil
 }
 
