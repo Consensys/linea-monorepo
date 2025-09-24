@@ -14,6 +14,8 @@
  */
 package net.consensys.linea.zktracer.instructionprocessing.createTests.advanced;
 
+import static net.consensys.linea.zktracer.instructionprocessing.createTests.advanced.AdvancedCreate2ScenarioValue.*;
+import static net.consensys.linea.zktracer.instructionprocessing.createTests.advanced.ScenarioUtils.getTransactions;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.MonoOpCodeSmcs.userAccount;
 
 import java.math.BigInteger;
@@ -124,10 +126,10 @@ public class StorageNoOpTests extends TracerTestBase {
             selfdestruct == SelfDestruct.SELF_DESTRUCT,
             revert == Revert.REVERT);
     // for some reason the solidity code does not allow to pass a nonzero value to the
-    // transaction; we thus provide zero Wei to both transactions
+    // transaction; we thus provide zero Wei (NONE) to both transactions
     List<Transaction> transactions =
-        InitCodeTests.getTransactions(
-            factorySmc, userAccount, List.of(deployPayload, callMainMethod), List.of(0L, 0L));
+        getTransactions(
+            factorySmc, userAccount, List.of(deployPayload, callMainMethod), List.of(NONE, NONE));
 
     final ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
         ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
