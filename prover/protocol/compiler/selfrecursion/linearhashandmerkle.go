@@ -1,6 +1,8 @@
 package selfrecursion
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -21,6 +23,9 @@ import (
 // used for the Merkle proof verification.
 func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	roundQ := ctx.Columns.Q.Round()
+
+	// Calculate round parameters
+	//
 	// numRound denotes the total number of commitment rounds
 	// including SIS and non SIS rounds
 	numRound := ctx.VortexCtx.NumCommittedRounds()
@@ -38,10 +43,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	// It is after considering the precomputed round
 	numRoundNonSis := numRound - numRoundSis
 
-	// The total SIS hash length = size of a single SIS hash *
-	// total number of SIS hash per SIS round * number of SIS rounds
-
-	// SIS Hash parameters
+	// CalculateSISParameters computes SIS-related parameters
 	sisNumHash := ctx.VortexCtx.NbColsToOpen() * numRoundSis
 	sisColSize := ctx.VortexCtx.SisParams.OutputSize()
 	sisColChunks := (sisColSize + blockSize - 1) / blockSize
@@ -49,6 +51,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	sisNumRowToHash := utils.NextPowerOfTwo(sisTotalChunks)
 	sisNumRowExpectedHash := utils.NextPowerOfTwo(sisNumHash)
 
+	// CalculateMerkleParameters computes Merkle tree parameters
 	// The leaves are computed for both SIS and non SIS rounds
 	numHash := ctx.VortexCtx.NbColsToOpen() * numRound
 	numRowExpectedHash := utils.NextPowerOfTwo(numHash)
@@ -56,12 +59,14 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	// The leaves size for non SIS rounds
 	nonSisNumHash := ctx.VortexCtx.NbColsToOpen() * numRoundNonSis
 
+	// Register Merkle-related columns
 	ctx.Columns.MerkleProofPositions = ctx.Comp.InsertCommit(roundQ, ctx.merklePositionsName(), numRowExpectedHash)
 	for i := 0; i < blockSize; i++ {
 		ctx.Columns.MerkleProofsLeaves[i] = ctx.Comp.InsertCommit(roundQ, ctx.merkleLeavesName(i), numRowExpectedHash)
 		ctx.Columns.MerkleRoots[i] = ctx.Comp.InsertCommit(roundQ, ctx.merkleRootsName(i), numRowExpectedHash)
 	}
 
+	// Register SIS-related columns if needed
 	// We commit to the below columns only if SIS is applied to any of the rounds including precomputed
 	if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 		for j := 0; j < blockSize; j++ {
@@ -77,8 +82,8 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 
 	// Register the linear hash columns for the non sis rounds
 	var (
-		poseidon2NumRowExpectedHash int
-		poseidon2NumRowsToHash      []int
+		nonSisNumRowExpectedHash int
+		nonSisNumRowsToHash      []int
 	)
 	if numRoundNonSis > 0 {
 		// Register the linear hash columns for non sis rounds
@@ -89,7 +94,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 		}
 		ctx.Poseidon2MetaData.NonSiSToHash = make([][blockSize]ifaces.Column, 0, numRoundNonSis)
 		ctx.Poseidon2MetaData.ColChunks = make([]int, 0, numRoundNonSis)
-		poseidon2NumRowExpectedHash, poseidon2NumRowsToHash = ctx.registerPoseidon2MetaDataForNonSisRounds(numRoundNonSis, roundQ)
+		nonSisNumRowExpectedHash, nonSisNumRowsToHash = ctx.registerPoseidon2MetaDataForNonSisRounds(numRoundNonSis, roundQ)
 	}
 
 	ctx.Comp.RegisterProverAction(roundQ, &LinearHashMerkleProverAction{
@@ -104,8 +109,8 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 		NonSisNumHash:         nonSisNumHash,
 		NumNonSisRound:        numRoundNonSis,
 		NumSisRound:           numRoundSis,
-		NonSISExpectedHash:    poseidon2NumRowExpectedHash,
-		NonSISToHash:          poseidon2NumRowsToHash,
+		NonSISExpectedHash:    nonSisNumRowExpectedHash,
+		NonSISToHash:          nonSisNumRowsToHash,
 	})
 
 	depth := utils.Log2Ceil(ctx.VortexCtx.NumEncodedCols())
@@ -357,6 +362,7 @@ type linearHashMerkleProverActionBuilder struct {
 	NumOpenedCol int
 	// total number of rounds
 	TotalNumRounds int
+	SisTotalChunks int
 	// the committed round offset
 	CommittedRound int
 }
@@ -373,8 +379,12 @@ func newLinearHashMerkleProverActionBuilder(a *LinearHashMerkleProverAction) *li
 	lmp.NumOpenedCol = a.Ctx.VortexCtx.NbColsToOpen()
 	lmp.TotalNumRounds = a.Ctx.VortexCtx.MaxCommittedRound
 	lmp.CommittedRound = 0
+	lmp.SisTotalChunks = a.SisTotalChunks
+
+	colChunks := (lmp.SisHashSize + blockSize - 1) / blockSize
+	totalChunks := colChunks * a.SisNumHash
 	for i := 0; i < blockSize; i++ {
-		lmp.SisToHash[i] = make([]field.Element, a.SisNumHash*a.Ctx.VortexCtx.SisParams.OutputSize())
+		lmp.SisToHash[i] = make([]field.Element, totalChunks)
 		lmp.MerkleLeaves[i] = make([]field.Element, 0, a.NumHash)
 		lmp.MerkleRoots[i] = make([]field.Element, 0, a.NumHash)
 		lmp.MerkleSisLeaves[i] = make([]field.Element, 0, a.SisNumHash)
@@ -413,6 +423,7 @@ func (a *LinearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 	for i := 0; i < blockSize; i++ {
 		lmp.MerkleLeaves[i] = append(lmp.MerkleNonSisLeaves[i], lmp.MerkleSisLeaves[i]...)
 		lmp.MerkleRoots[i] = append(lmp.MerkleNonSisRoots[i], lmp.MerkleSisRoots[i]...)
+		fmt.Printf("lmp.MerkleRoots[i]=%v\n", lmp.MerkleRoots[i])
 	}
 	lmp.MerklePositions = append(lmp.MerkleNonSisPositions, lmp.MerkleSisPositions...)
 
@@ -469,6 +480,7 @@ func processPrecomputedRound(
 		var precompSisLeaves [blockSize][]field.Element
 		for j := 0; j < blockSize; j++ {
 			precompSisLeaves[j] = make([]field.Element, 0, len(openingIndices))
+			lmp.SisToHash[j] = make([]field.Element, 0, lmp.SisTotalChunks)
 		}
 		for _, selectedCol := range openingIndices {
 			srcStart := selectedCol * lmp.SisHashSize
@@ -589,6 +601,7 @@ func processRound(
 			var sisRoundLeaves [blockSize][]field.Element
 			for j := 0; j < blockSize; j++ {
 				sisRoundLeaves[j] = make([]field.Element, 0, lmp.NumOpenedCol)
+				lmp.SisToHash[j] = make([]field.Element, 0, lmp.SisTotalChunks)
 			}
 			for _, selectedCol := range openingIndices {
 				srcStart := selectedCol * lmp.SisHashSize

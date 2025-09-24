@@ -39,8 +39,7 @@ func (c *FromPublicColumn) GetValBase(run ifaces.Runtime) (field.Element, error)
 }
 
 func (c *FromPublicColumn) GetValExt(run ifaces.Runtime) fext.Element {
-	//TODO implement me
-	panic("implement me")
+	return run.GetColumnAtExt(c.Col.ID, c.Pos)
 }
 
 func (c *FromPublicColumn) GetFrontendVariableBase(api frontend.API, circ ifaces.GnarkRuntime) (frontend.Variable, error) {

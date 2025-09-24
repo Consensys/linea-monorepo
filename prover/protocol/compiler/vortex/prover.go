@@ -1,6 +1,8 @@
 package vortex
 
 import (
+	"fmt"
+
 	gnarkvortex "github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
@@ -100,6 +102,7 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 
 	// And assign the 1-sized column to contain the root
 	var root = types.Bytes32ToHash(tree.Root)
+	fmt.Printf("root=%v\n", root)
 	run.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round)), smartvectors.NewRegular(root[:]))
 }
 

@@ -1,6 +1,7 @@
 package verifiercol
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -117,7 +118,10 @@ func (f FromAccessors) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment
 	res := make([]fext.Element, len(f.Accessors))
 	for i := range res {
 		res[i] = f.Accessors[i].GetValExt(run)
+		fmt.Printf("res[%v] =%v\n", i, res[i])
+
 	}
+
 	return smartvectors.RightPaddedExt(res, f.Padding, f.Size_)
 }
 

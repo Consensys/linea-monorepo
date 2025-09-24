@@ -33,17 +33,18 @@ func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
 	ctx.GluePositions()
 	// We need this only when there are non zero number
 	// of SIS rounds
-	for j := 0; j < blockSize; j++ {
-		if ctx.Columns.SisToHash[j] != nil {
-			ctx.RegistersSisPreimageLimbs()
-		}
-		ctx.CollapsingPhase()
-		// The fold phase is only needed if there are non-zero
-		// number of SIS rounds
-		if ctx.Columns.SisToHash[j] != nil {
-			ctx.FoldPhase()
-		}
-	}
+	//TODO@yao: recover below
+	// for j := 0; j < blockSize; j++ {
+	// 	if ctx.Columns.SisToHash[j] != nil {
+	// 		ctx.RegistersSisPreimageLimbs()
+	// 	}
+	// 	ctx.CollapsingPhase()
+	// 	// The fold phase is only needed if there are non-zero
+	// 	// number of SIS rounds
+	// 	if ctx.Columns.SisToHash[j] != nil {
+	// 		ctx.FoldPhase()
+	// 	}
+	// }
 }
 
 // Registers the preimage limbs for the SIS rounds.
@@ -105,14 +106,14 @@ type ColSelectionProverAction struct {
 
 func (a *ColSelectionProverAction) Run(run *wizard.ProverRuntime) {
 	q := run.GetRandomCoinIntegerVec(a.Ctx.Coins.Q.Name)
-	uAlpha := smartvectors.IntoRegVec(run.GetColumn(a.Ctx.Columns.Ualpha.GetColID()))
+	uAlpha := smartvectors.IntoRegVecExt(run.GetColumn(a.Ctx.Columns.Ualpha.GetColID()))
 
-	uAlphaQ := make([]field.Element, 0, a.Ctx.Columns.UalphaQ.Size())
+	uAlphaQ := make([]fext.Element, 0, a.Ctx.Columns.UalphaQ.Size())
 	for _, qi := range q {
 		uAlphaQ = append(uAlphaQ, uAlpha[qi])
 	}
 
-	run.AssignColumn(a.UAlphaQID, smartvectors.NewRegular(uAlphaQ))
+	run.AssignColumn(a.UAlphaQID, smartvectors.NewRegularExt(uAlphaQ))
 }
 
 // Declare the queries justifying the column selection:

@@ -35,7 +35,7 @@ func TestLinearHash(t *testing.T) {
 		// Each column to be hashed is split into chunks of 8 elements
 		numhash := tc.numhash
 		colSize := tc.colSize
-		colChunks := (tc.colSize + blockSize - 1) / blockSize
+		colChunks := (colSize + blockSize - 1) / blockSize
 		totalChunks := colChunks * numhash
 		numRowToHash := utils.NextPowerOfTwo(totalChunks)
 		numRowExpectedHash := utils.NextPowerOfTwo(numhash)
