@@ -41,15 +41,11 @@ class MaruPeerManager(
   private val log: Logger = LogManager.getLogger(this.javaClass)
   private val maxPeers = p2pConfig.maxPeers
   private val currentlySearching = AtomicBoolean(false)
-  private val connectedPeers: ConcurrentHashMap<NodeId, MaruPeer> = ConcurrentHashMap()
+  private val peers: ConcurrentHashMap<NodeId, MaruPeer> = ConcurrentHashMap()
   private var searchTaskFuture: ScheduledFuture<*>? = null
   private val connectionInProgress = mutableListOf<Bytes>()
   private var discoveryService: MaruDiscoveryService? = null
-
   private lateinit var p2pNetwork: P2PNetwork<Peer>
-
-  val peerCount: Int
-    get() = connectedPeers.size
 
   @Volatile
   private var started = AtomicBoolean(false)
@@ -123,7 +119,7 @@ class MaruPeerManager(
   }
 
   private fun logConnectedPeers() {
-    log.info("currently connected peers={}", connectedPeers.values.toList().map { it.toLogString() })
+    log.info("currently connected peers={}", peers.values.toList().map { it.toLogString() })
     if (log.isDebugEnabled) {
       discoveryService?.getKnownPeers()?.forEach { peer ->
         log.debug("discovered peer={}", peer)
@@ -132,35 +128,38 @@ class MaruPeerManager(
   }
 
   override fun onConnect(peer: Peer) {
-    // TODO: here we could check if we want to be connected to that peer
     val isAStaticPeer = isStaticPeer(peer.id)
     if (!isAStaticPeer && peerCount >= maxPeers) {
-      // TODO: We could disconnect another peer here, based on some criteria
       peer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
       return
     }
     if (isAStaticPeer || reputationManager.isConnectionInitiationAllowed(peer.address)) {
       val maruPeer = maruPeerFactory.createMaruPeer(peer)
-      connectedPeers[peer.id] = maruPeer
+      peers[peer.id] = maruPeer
       if (maruPeer.connectionInitiatedLocally()) {
         maruPeer.sendStatus()
       } else {
         maruPeer.scheduleDisconnectIfStatusNotReceived(p2pConfig.statusUpdate.timeout)
       }
     } else {
-      log.trace("Disconnecting from peer=${peer.address} due to connection not allowed yet.")
-      peer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
+      log.trace("Disconnecting from peer={} due to connection not allowed yet.", peer.address)
+      peer.disconnectCleanly(DisconnectReason.RATE_LIMITING)
     }
   }
 
   override fun onDisconnect(peer: Peer) {
-    connectedPeers.remove(peer.id)
+    peers.remove(peer.id)
     log.trace("Peer={} disconnected", peer.id)
   }
 
-  override fun getPeer(nodeId: NodeId): MaruPeer? = connectedPeers[nodeId]
+  private fun connectedPeers(): Map<NodeId, MaruPeer> = peers.filter { it.value.isConnected }
 
-  override fun getPeers(): List<MaruPeer> = connectedPeers.values.toList()
+  override fun getPeer(nodeId: NodeId): MaruPeer? = connectedPeers()[nodeId]
+
+  val peerCount: Int
+    get() = connectedPeers().size
+
+  override fun getPeers(): List<MaruPeer> = connectedPeers().values.toList()
 
   private fun tryToConnect(peer: MaruDiscoveryPeer) {
     try {
