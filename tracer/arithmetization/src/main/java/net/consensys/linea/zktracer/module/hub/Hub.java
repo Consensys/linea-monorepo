@@ -575,6 +575,8 @@ public abstract class Hub implements Module {
     }
     traceSysiTransactions(world, processableBlockHeader);
     state.lineCounter().add(state.currentTransactionHubSections().lineCount());
+
+    commitTransactionBundle();
   }
 
   @Override
