@@ -1,6 +1,7 @@
 package gnarkfext
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -12,6 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var sizeExpo = 12345
+
 type ApiCircuitGen[T zk.Element] struct {
 	A, B    E4Gen[T]
 	AddAB   E4Gen[T]
@@ -20,6 +23,8 @@ type ApiCircuitGen[T zk.Element] struct {
 	SquareA E4Gen[T]
 	DivAB   E4Gen[T]
 	InvA    E4Gen[T]
+	ExpA    E4Gen[T]
+	n       big.Int
 }
 
 func (c *ApiCircuitGen[T]) Define(api frontend.API) error {
@@ -46,11 +51,16 @@ func (c *ApiCircuitGen[T]) Define(api frontend.API) error {
 	invA := ext4.Inverse(&c.A)
 	ext4.AssertIsEqual(invA, &c.InvA)
 
+	expA := ext4.Exp(&c.A, &c.n)
+	ext4.AssertIsEqual(expA, &c.ExpA)
+
 	return nil
 }
 
 func testApiGenWitness[T zk.Element]() *ApiCircuitGen[T] {
-	var a, b, addab, subab, mulab, squarea, inva, divab fext.Element
+	var a, b, addab, subab, mulab, squarea, inva, divab, expa fext.Element
+	var n big.Int
+	n.SetUint64(uint64(sizeExpo))
 	a.SetRandom()
 	b.SetRandom()
 	addab.Add(&a, &b)
@@ -59,6 +69,7 @@ func testApiGenWitness[T zk.Element]() *ApiCircuitGen[T] {
 	squarea.Square(&a)
 	divab.Div(&a, &b)
 	inva.Inverse(&a)
+	expa.Exp(a, &n)
 	return &ApiCircuitGen[T]{
 		A:       NewE4Gen[T](a),
 		B:       NewE4Gen[T](b),
@@ -68,6 +79,8 @@ func testApiGenWitness[T zk.Element]() *ApiCircuitGen[T] {
 		SquareA: NewE4Gen[T](squarea),
 		DivAB:   NewE4Gen[T](divab),
 		InvA:    NewE4Gen[T](inva),
+		ExpA:    NewE4Gen[T](expa),
+		n:       n,
 	}
 }
 
@@ -77,6 +90,7 @@ func TestAPIGen(t *testing.T) {
 		witness := testApiGenWitness[zk.NativeElement]()
 
 		var circuit ApiCircuitGen[zk.NativeElement]
+		circuit.n.SetUint64(uint64(sizeExpo))
 
 		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
 		assert.NoError(t, err)
@@ -91,6 +105,7 @@ func TestAPIGen(t *testing.T) {
 		witness := testApiGenWitness[zk.EmulatedElement]()
 
 		var circuit ApiCircuitGen[zk.EmulatedElement]
+		circuit.n.SetUint64(uint64(sizeExpo))
 
 		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
 		assert.NoError(t, err)

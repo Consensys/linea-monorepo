@@ -1,6 +1,8 @@
 package gnarkfext
 
 import (
+	"math/big"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/zk"
@@ -254,27 +256,21 @@ func (ext4 *Ext4[T]) DivByBase(e1 *E4Gen[T], e2 *T) *E4Gen[T] {
 }
 
 // Exp exponentiation in gnark circuit, using the fast exponentiation
-func (ext4 *Ext4[T]) ExpGen(x *E4Gen[T], n int) *E4Gen[T] {
+func (ext4 *Ext4[T]) Exp(x *E4Gen[T], n *big.Int) *E4Gen[T] {
 
-	if n < 0 {
-		xinv := ext4.Inverse(x)
-		return ext4.ExpGen(xinv, -n)
+	res := ext4.One()
+	nBytes := n.Bytes()
+
+	// TODO handle negative case
+	for _, b := range nBytes {
+		for j := 0; j < 8; j++ {
+			c := (b >> (7 - j)) & 1
+			res = ext4.Square(res)
+			if c == 1 {
+				res = ext4.Mul(res, x)
+			}
+		}
 	}
 
-	if n == 0 {
-		return ext4.One()
-	}
-
-	if n == 1 {
-		return x
-	}
-
-	x2 := ext4.Mul(x, x)
-	if n%2 == 0 {
-		return ext4.ExpGen(x2, n/2)
-	} else {
-		res := ext4.ExpGen(x2, (n-1)/2)
-		return ext4.Mul(res, x)
-	}
-
+	return res
 }
