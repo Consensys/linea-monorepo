@@ -23,13 +23,15 @@ import net.consensys.zkevm.LongRunningService
 import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.cleanupDbDataAfterBlockNumbers
 import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.resumeAggregationFrom
 import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.resumeConflationFrom
+import net.consensys.zkevm.coordinator.app.conflation.TracesClientFactory.createTracesClients
 import net.consensys.zkevm.coordinator.blockcreation.BatchesRepoBasedLastProvenBlockNumberProvider
 import net.consensys.zkevm.coordinator.blockcreation.BlockCreationMonitor
 import net.consensys.zkevm.coordinator.blockcreation.GethCliqueSafeBlockProvider
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
-import net.consensys.zkevm.coordinator.clients.TracesGeneratorJsonRpcClientV2
 import net.consensys.zkevm.coordinator.clients.prover.ProverClientFactory
+import net.consensys.zkevm.domain.Batch
 import net.consensys.zkevm.domain.BlocksConflation
+import net.consensys.zkevm.domain.ProofIndex
 import net.consensys.zkevm.ethereum.coordination.HighestConflationTracker
 import net.consensys.zkevm.ethereum.coordination.HighestProvenBatchTracker
 import net.consensys.zkevm.ethereum.coordination.HighestProvenBlobTracker
@@ -267,41 +269,11 @@ class ConflationApp(
   }
 
   private val block2BatchCoordinator = run {
-    val tracesCountersClient = run {
-      val tracesCountersLog = LogManager.getLogger("clients.traces.counters")
-      TracesGeneratorJsonRpcClientV2(
-        vertx = vertx,
-        rpcClient = httpJsonRpcClientFactory.createWithLoadBalancing(
-          endpoints = configs.traces.counters.endpoints.toSet(),
-          maxInflightRequestsPerClient = configs.traces.counters.requestLimitPerEndpoint,
-          requestTimeout = configs.traces.counters.requestTimeout?.inWholeMilliseconds,
-          log = tracesCountersLog,
-        ),
-        config = TracesGeneratorJsonRpcClientV2.Config(
-          expectedTracesApiVersion = configs.traces.expectedTracesApiVersion,
-        ),
-        retryConfig = configs.traces.counters.requestRetries.toJsonRpcRetry(),
-        log = tracesCountersLog,
-      )
-    }
-
-    val tracesConflationClient = run {
-      val tracesConflationLog = LogManager.getLogger("clients.traces.conflation")
-      TracesGeneratorJsonRpcClientV2(
-        vertx = vertx,
-        rpcClient = httpJsonRpcClientFactory.createWithLoadBalancing(
-          endpoints = configs.traces.conflation.endpoints.toSet(),
-          maxInflightRequestsPerClient = configs.traces.conflation.requestLimitPerEndpoint,
-          requestTimeout = configs.traces.conflation.requestTimeout?.inWholeMilliseconds,
-          log = tracesConflationLog,
-        ),
-        config = TracesGeneratorJsonRpcClientV2.Config(
-          expectedTracesApiVersion = configs.traces.expectedTracesApiVersion,
-        ),
-        retryConfig = configs.traces.conflation.requestRetries.toJsonRpcRetry(),
-        log = tracesConflationLog,
-      )
-    }
+    val (tracesCountersClient, tracesConflationClient) = createTracesClients(
+      vertx = vertx,
+      rpcClientFactory = httpJsonRpcClientFactory,
+      configs = configs.traces,
+    )
 
     val blobsConflationHandler: (BlocksConflation) -> SafeFuture<*> = run {
       val maxProvenBatchCache = run {
@@ -341,6 +313,14 @@ class ConflationApp(
         ),
         batchProofHandler = batchProofHandler,
         vertx = vertx,
+        batchAlreadyProvenSupplier = { batch: Batch ->
+          executionProverClient.isProofAlreadyDone(
+            proofRequestId = ProofIndex(
+              batch.startBlockNumber,
+              batch.endBlockNumber,
+            ),
+          )
+        },
         config = ProofGeneratingConflationHandlerImpl.Config(5.seconds),
       )
 
