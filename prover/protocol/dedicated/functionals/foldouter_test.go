@@ -67,9 +67,9 @@ func TestFoldingOuter(t *testing.T) {
 		expected[i].SetUint64(uint64(v))
 	}
 
-	actual := smartvectors.IntoRegVec(savedRuntime.GetColumn(folded.GetColID()))
+	actual := smartvectors.IntoRegVecExt(savedRuntime.GetColumn(folded.GetColID()))
 	for i := range expected {
-		assert.Equal(t, expected[i], actual[i], "folded does not match")
+		assert.Equal(t, expected[i], actual[i].B0.A0, "folded does not match")
 	}
 
 	err := wizard.Verify(compiled, proof)

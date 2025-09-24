@@ -15,6 +15,8 @@ import (
 
 const ExtensionDegree int = 4
 
+var montConstantInv = field.NewFromString("1057030144")
+
 // Embedding
 type Element = extensions.E4
 
@@ -186,5 +188,12 @@ func ParBatchInvert(a []Element, numCPU int) []Element {
 		copy(res[start:stop], subRes)
 	}, numCPU)
 
+	return res
+}
+
+// MulRInv multiplies the field element by R^-1, where R is the Montgommery constant
+func MulRInv(x Element) Element {
+	var res Element
+	res.MulByElement(&x, &montConstantInv)
 	return res
 }
