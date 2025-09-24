@@ -251,9 +251,20 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector, res []field.Element)
 		}
 		for col := start; col < end; col += windowSize {
 			for i := 0; i < nbRows; i++ {
-				for j := range transposed {
-					// TODO need careful review; tests passes with v[i].Get(col) and v[i].Get(col+j)
-					transposed[j][i] = v[i].Get(col + j)
+				switch vi := v[i].(type) {
+				case *smartvectors.Constant:
+					cst := vi.Value
+					for j := range transposed {
+						transposed[j][i] = cst
+					}
+				case *smartvectors.Regular:
+					for j := range transposed {
+						transposed[j][i] = (*vi)[col+j]
+					}
+				default:
+					for j := range transposed {
+						transposed[j][i] = v[i].Get(col + j)
+					}
 				}
 			}
 			for j := range transposed {

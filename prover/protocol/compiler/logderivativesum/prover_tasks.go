@@ -358,8 +358,8 @@ type ZAssignmentTask ZCtx
 func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 	parallel.Execute(len(z.ZDenominatorBoarded), func(start, stop int) {
 
-		sb0, sb1 := make(field.Vector, z.Size), make(field.Vector, z.Size)
-		se0, se1 := make(extensions.Vector, z.Size), make(extensions.Vector, z.Size)
+		sb0 := make(field.Vector, z.Size)
+		se0 := make(extensions.Vector, z.Size)
 
 		for frag := start; frag < stop; frag++ {
 
@@ -373,8 +373,7 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 			// for completeness but we don't optimize for it.
 			if sv.IsBase(svDenominator) {
 				numerator := sb0
-				denominator := sb1
-				svDenominator.WriteInSlice(denominator)
+				denominator := svDenominator.IntoRegVecSaveAlloc()
 				packedZ := field.BatchInvert(denominator)
 				if len(numeratorMetadata) == 0 {
 					for i := range numerator {
@@ -392,35 +391,35 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 
 				run.AssignColumn(z.Zs[frag].GetColID(), sv.NewRegular(packedZ))
 				run.AssignLocalPointExt(z.ZOpenings[frag].ID, fext.Lift(packedZ[len(packedZ)-1]))
+				continue
+			}
+			// we are dealing with extension denominators
+			numerator := se0
+			// denominator := se1
+			denominator := svDenominator.IntoRegVecSaveAllocExt()
+			packedZ := fext.BatchInvert(denominator)
+
+			if len(numeratorMetadata) == 0 {
+				for i := range numerator {
+					numerator[i].SetOne()
+				}
 			} else {
-				// we are dealing with extension denominators
-				numerator := se0
-				denominator := se1
-				svDenominator.WriteInSliceExt(denominator)
-				packedZ := fext.BatchInvert(denominator)
-
-				if len(numeratorMetadata) == 0 {
-					for i := range numerator {
-						numerator[i].SetOne()
-					}
-				} else {
-					evalResult := column.EvalExprColumn(run, z.ZNumeratorBoarded[frag])
-					evalResult.WriteInSliceExt(numerator)
-				}
-
-				vp := extensions.Vector(packedZ)
-				vp.Mul(vp, numerator)
-
-				for k := 1; k < len(packedZ); k++ {
-					packedZ[k].Add(&packedZ[k], &packedZ[k-1])
-				}
-
-				run.AssignColumn(z.Zs[frag].GetColID(), sv.NewRegularExt(packedZ))
-				run.AssignLocalPointExt(z.ZOpenings[frag].ID, packedZ[len(packedZ)-1])
+				evalResult := column.EvalExprColumn(run, z.ZNumeratorBoarded[frag])
+				evalResult.WriteInSliceExt(numerator)
 			}
 
+			vp := extensions.Vector(packedZ)
+			vp.Mul(vp, numerator)
+
+			for k := 1; k < len(packedZ); k++ {
+				packedZ[k].Add(&packedZ[k], &packedZ[k-1])
+			}
+
+			run.AssignColumn(z.Zs[frag].GetColID(), sv.NewRegularExt(packedZ))
+			run.AssignLocalPointExt(z.ZOpenings[frag].ID, packedZ[len(packedZ)-1])
+
 		}
-	}) // end parallel execution
+	})
 
 }
 

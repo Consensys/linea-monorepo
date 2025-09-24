@@ -1,7 +1,6 @@
 package expr_handle
 
 import (
-	"fmt"
 	"reflect"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
@@ -82,21 +81,14 @@ func (a *ExprHandleProverAction) Run(run *wizard.ProverRuntime) {
 	run.AssignColumn(a.HandleName, resWitness)
 }
 
-// Create a handle from an expression. The name is
-// optional, if not set a generic name will be derived
-// from the ESH of the expression.
-func ExprHandle(comp *wizard.CompiledIOP, expr *symbolic.Expression, name ...string) ifaces.Column {
+// Create a handle from an expression.
+func ExprHandle(comp *wizard.CompiledIOP, expr *symbolic.Expression, handleName string) ifaces.Column {
 
 	var (
-		boarded    = expr.Board()
-		maxRound   = wizardutils.LastRoundToEval(expr)
-		length     = column.ExprIsOnSameLengthHandles(&boarded)
-		handleName = fmt.Sprintf("SYMBOLIC_%v", expr.ESHash.String())
+		boarded  = expr.Board()
+		maxRound = wizardutils.LastRoundToEval(expr)
+		length   = column.ExprIsOnSameLengthHandles(&boarded)
 	)
-
-	if len(name) > 0 {
-		handleName = name[0]
-	}
 
 	res := comp.InsertCommit(maxRound, ifaces.ColID(handleName), length)
 	comp.InsertGlobal(maxRound, ifaces.QueryID(handleName), expr.Sub(ifaces.ColumnAsVariable(res)))
