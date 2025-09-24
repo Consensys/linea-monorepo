@@ -28,6 +28,10 @@ func newEmulatedAPI(api frontend.API) (*EmulatedAPIGen, error) {
 
 var _ APIGen[EmulatedElement] = &EmulatedAPIGen{}
 
+func (e *EmulatedAPIGen) ValueOf(input any) EmulatedElement {
+	return ValueOf[EmulatedElement](input)
+}
+
 func (e *EmulatedAPIGen) Mul(a, b *EmulatedElement) *EmulatedElement {
 	return e.ef.Mul(a, b)
 }

@@ -30,6 +30,10 @@ func newNativeAPI(api frontend.API) (*NativeAPI, error) {
 
 var _ APIGen[NativeElement] = &NativeAPI{}
 
+func (e *NativeAPI) ValueOf(input any) NativeElement {
+	return ValueOf[NativeElement](input)
+}
+
 func (n *NativeAPI) Mul(a, b *NativeElement) *NativeElement {
 	return packNE(n.api.Mul(a.V, b.V))
 }

@@ -16,6 +16,8 @@ type Element interface {
 }
 
 type APIGen[T Element] interface {
+	ValueOf(input any) T
+
 	Mul(a, b *T) *T
 	MulConst(a *T, b *big.Int) *T
 	Add(a, b *T) *T
