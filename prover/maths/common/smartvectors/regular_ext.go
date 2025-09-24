@@ -27,6 +27,10 @@ func (r *RegularExt) Len() int { return len(*r) }
 
 // GetBase returns a particular element of the vector
 func (r *RegularExt) GetBase(n int) (field.Element, error) {
+	elem := r.GetExt(n)
+	if elem.B0.A1 == field.Zero() && elem.B1.A0 == field.Zero() && elem.B1.A1 == field.Zero() {
+		return elem.B0.A0, nil
+	}
 	return field.Zero(), errConversion
 }
 
@@ -154,10 +158,21 @@ func (r *RegularExt) DeepCopy() SmartVector {
 // Converts a smart-vector into a normal vec. The implementation minimizes
 // then number of copies.
 func (r *RegularExt) IntoRegVecSaveAlloc() []field.Element {
+	rBase, err := r.IntoRegVecSaveAllocBase()
+	if err == nil {
+		return rBase
+	}
 	panic(errConversion)
 }
 
 func (r *RegularExt) IntoRegVecSaveAllocBase() ([]field.Element, error) {
+	if IsBase(r) {
+		temp := make([]field.Element, r.Len())
+		for i := 0; i < r.Len(); i++ {
+			temp[i], _ = r.GetBase(i)
+		}
+		return temp, nil
+	}
 	return nil, errConversion
 }
 
