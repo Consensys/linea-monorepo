@@ -602,62 +602,6 @@ func (de *Deserializer) UnpackQueryID(v BackReference) (reflect.Value, *serdeErr
 	return reflect.ValueOf(res), nil
 }
 
-/*
-// PackCompiledIOP serializes a wizard.CompiledIOP, returning a BackReference to its index in PackedObject.CompiledIOP.
-func (ser *Serializer) PackCompiledIOP(comp *wizard.CompiledIOP) (any, *serdeError) {
-	if _, ok := ser.compiledIOPsFast[comp]; !ok {
-		// We can have recursive references to compiled IOPs, so we need to
-		// reserve the back-reference before attempting at unpacking it. That
-		// way, the recursive attempts at packing will cache-hit without
-		// creating an infinite loop.
-		n := len(ser.PackedObject.CompiledIOPFast)
-		ser.compiledIOPsFast[comp] = n
-		ser.PackedObject.CompiledIOPFast = append(ser.PackedObject.CompiledIOPFast, nil)
-
-		obj, err := ser.PackStructObject(reflect.ValueOf(*comp))
-		if err != nil {
-			return nil, err.wrapPath("(compiled-IOP)")
-		}
-
-		ser.PackedObject.CompiledIOPFast[n] = obj
-	}
-
-	return BackReference(ser.compiledIOPsFast[comp]), nil
-}
-
-// UnpackCompiledIOP deserializes a wizard.CompiledIOP from a BackReference, caching the result.
-func (de *Deserializer) UnpackCompiledIOP(v BackReference) (reflect.Value, *serdeError) {
-	if v < 0 || int(v) >= len(de.PackedObject.CompiledIOPFast) {
-		return reflect.Value{}, newSerdeErrorf("invalid compiled-IOP backreference: %v", v)
-	}
-
-	if de.CompiledIOPsFast[v] == nil {
-
-		// Something to be aware of is that CompiledIOPs usually contains
-		// reference to themselves internally. Thus, if we don't cache a pointer
-		// to the compiledIOP, the deserialization will go into an infinite loop.
-		// To prevent that, we set a pointer to a zero value and it will be
-		// cached when the compiled IOP is unpacked. The pointed value is then
-		// assigned after the unpacking. With this approach, the ptr to the
-		// compiledIOP can immediately be returned for the recursive calls.
-		ptr := &wizard.CompiledIOP{}
-		de.CompiledIOPsFast[v] = ptr
-
-		packedCompiledIOP := de.PackedObject.CompiledIOPFast[v]
-		compiledIOP, err := de.UnpackStructObject(packedCompiledIOP, TypeOfCompiledIOP)
-		if err != nil {
-			return reflect.Value{}, err.wrapPath("(compiled-IOP)")
-		}
-
-		c := compiledIOP.Interface().(wizard.CompiledIOP)
-		*ptr = c
-	}
-
-	return reflect.ValueOf(de.CompiledIOPsFast[v]), nil
-}
-
-*/
-
 // PackStore serializes a column.Store, returning a BackReference to its index in PackedObject.Store.
 func (ser *Serializer) PackStore(s *column.Store) (BackReference, *serdeError) {
 	if _, ok := ser.stores[s]; !ok {
@@ -1133,54 +1077,6 @@ func (ser *Serializer) PackPointer(v reflect.Value) (any, *serdeError) {
 
 	return BackReference(ser.pointerMap[v.Pointer()]), nil
 }
-
-/*
-// UnpackPointer deserializes a pointer value, ensuring the result is addressable.
-func (de *Deserializer) UnpackPointer(v any, t reflect.Type) (reflect.Value, *serdeError) {
-	if t.Kind() != reflect.Ptr {
-		return reflect.Value{}, newSerdeErrorf("invalid type: %v, expected a pointer", t.String())
-	}
-	if v == nil {
-		return reflect.Zero(t), nil
-	}
-
-	backRefInt, ok := v.(uint64)
-	if !ok {
-		return reflect.Value{}, newSerdeErrorf("pointer type=%v is not a BackReference nor a nil value, got=%++v", t.String(), v)
-	}
-	backRef := BackReference(backRefInt)
-	if backRef < 0 || int(backRef) >= len(de.PackedObject.PointedValues) {
-		return reflect.Value{}, newSerdeErrorf("invalid pointer backreference: %v", v)
-	}
-
-	// Cycle-safe: lock + placeholder publication to break recursion.
-	de.muPointedValues.RLock()
-	val := de.PointedValues[backRef]
-	de.muPointedValues.RUnlock()
-	if (val == reflect.Value{}) {
-
-		// To guards against infinite recursion, we preemptively assign a
-		// pointer value that we will use for subsequent occurence of the same
-		// backreference. This can happen when ser/de a structure with recursive
-		// pointers.
-		de.muPointedValues.Lock()
-		if (de.PointedValues[backRef] == reflect.Value{}) {
-			de.PointedValues[backRef] = reflect.New(t.Elem())
-		}
-		val = de.PointedValues[backRef]
-		de.muPointedValues.Unlock()
-
-		packedElem := de.PackedObject.PointedValues[backRef]
-		elem, err := de.UnpackValue(packedElem, t.Elem())
-		if err != nil {
-			return reflect.Value{}, err.wrapPath("(pointer)")
-		}
-		de.muPointedValues.Lock()
-		val.Elem().Set(elem)
-		de.muPointedValues.Unlock()
-	}
-	return val, nil
-}  */
 
 func (de *Deserializer) UnpackPointer(v any, t reflect.Type) (reflect.Value, *serdeError) {
 
