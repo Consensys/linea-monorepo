@@ -29,7 +29,6 @@ type RawPrecomputed struct {
 }
 
 type PackedPublicInput struct {
-	//_    struct{}        `cbor:",toarray" serde:"omit"`
 	Name string          `cbor:"n"`
 	Acc  ifaces.Accessor `cbor:"a"`
 }
@@ -346,19 +345,19 @@ func (de *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *
 	if v < 0 || int(v) >= len(de.PackedObject.CompiledIOPFast) {
 		return reflect.Value{}, newSerdeErrorf("invalid compiled-IOP backreference: %v", v)
 	}
-	if de.CompiledIOPsFast[v] != nil {
-		return reflect.ValueOf(de.CompiledIOPsFast[v]), nil
+	if de.compiledIOPsFast[v] != nil {
+		return reflect.ValueOf(de.compiledIOPsFast[v]), nil
 	}
 	packedCompIOP := de.PackedObject.CompiledIOPFast[v]
 
 	// Reserve the cache and outer shapes up-front
 	deComp := newEmptyCompiledIOP(packedCompIOP)
-	de.CompiledIOPsFast[v] = deComp
+	de.compiledIOPsFast[v] = deComp
 
 	var wg sync.WaitGroup
 	errCh := make(chan *serdeError, 1)
 
-	// Deserialize Columns sequentially
+	// Deserialize Columns sequentially so that other components can reference it concurrently
 	{
 		storeVal, err := de.UnpackStore(packedCompIOP.Columns)
 		if err != nil {
@@ -523,7 +522,7 @@ func (de *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *
 		logCompiledIOPMetadata(deComp, "unpacking-deserialized-comp-iop")
 	}
 
-	return reflect.ValueOf(de.CompiledIOPsFast[v]), nil
+	return reflect.ValueOf(de.compiledIOPsFast[v]), nil
 }
 
 // -------------------- Helper functions --------------------
