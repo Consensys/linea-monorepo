@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.exceptions;
 
 import static net.consensys.linea.zktracer.exceptions.ExceptionUtils.*;
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.OUT_OF_GAS_EXCEPTION;
+import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.List;
@@ -117,6 +118,17 @@ public class OutOfGasMemExpExceptionTest extends TracerTestBase {
         cornerCase, bytecodeRunner);
   }
 
+  /**
+   * the target offset in RAM is set to <b>OFF + 2</b> with OFF ≡ 6848. This is used to overcome the
+   * call data floor price (starting with PRAGUE) in the final computation of the gas cost of the
+   * whole transaction. The floor price does no longer overshadow the memory expansion cost, and so
+   * we can trigger the desired <b>OUT_OF_GAS_EXCEPTION</b>.
+   *
+   * <ul>
+   *   <li>works with <b>OFF</b> = 6848
+   *   <li>fails with <b>OFF</b> = 6847
+   * </ul>
+   */
   @ParameterizedTest
   @ValueSource(ints = {-1, 0, 1})
   void outOfGasExceptionCallDataCopy(int cornerCase, TestInfo testInfo) {
@@ -126,9 +138,9 @@ public class OutOfGasMemExpExceptionTest extends TracerTestBase {
         Bytes.fromHexString("0x7FFFFFFFFFFFFF00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
     program
         .push(31) // size
-        .push(1) // offset
-        .push(2) // offset, trigger mem expansion
-        .op(OpCode.CALLDATACOPY);
+        .push(1) // offset in call data
+        .push(6848 + 2) // offset in RAM, triggers memory expansion
+        .op(CALLDATACOPY);
 
     Bytes pgCompile = program.compile();
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(pgCompile);

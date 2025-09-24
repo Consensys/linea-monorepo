@@ -299,6 +299,7 @@ public final class BytecodeRunner {
             .accounts(accounts)
             .transaction(tx)
             .build();
+
     return toyExecutionEnvironmentV2.runForGasCost();
   }
 
