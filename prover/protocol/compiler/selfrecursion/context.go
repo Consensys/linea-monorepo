@@ -28,10 +28,10 @@ type Columns struct {
 	//
 	// Round-by-rounds commitments root hashes. Since some rounds
 	// may be dried some of the RoundDigest can be `nil`
-	Rooth []ifaces.Column
+	Rooth [][blockSize]ifaces.Column
 
 	// Precomputed roots
-	PrecompRoot ifaces.Column
+	PrecompRoot [blockSize]ifaces.Column
 
 	// (Verifier column)
 	//
@@ -268,19 +268,21 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 
 	// Asserts all the roots have the status proof.
 	for _, rooth := range ctx.Columns.Rooth {
+		for i := 0; i < blockSize; i++ {
+			if rooth[i] == nil {
+				// Skip it, it is a dry round
+				continue
+			}
 
-		if rooth == nil {
-			// Skip it, it is a dry round
-			continue
-		}
+			// Assume that the rounds commitments have a `Proof` status
 
-		// Assume that the rounds commitments have a `Proof` status
-		if comp.Columns.Status(rooth.GetColID()) != column.Proof {
-			utils.Panic(
-				"Assumed the rootH to be %v but status is %v",
-				column.Proof.String(),
-				comp.Columns.Status(rooth.GetColID()),
-			)
+			if comp.Columns.Status(rooth[i].GetColID()) != column.Proof {
+				utils.Panic(
+					"Assumed the rootH to be %v but status is %v",
+					column.Proof.String(),
+					comp.Columns.Status(rooth[i].GetColID()),
+				)
+			}
 		}
 	}
 

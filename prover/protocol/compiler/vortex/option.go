@@ -64,7 +64,7 @@ func AddPrecomputedMerkleRootToPublicInputs(name string) VortexOp {
 		ctx.AddPrecomputedMerkleRootToPublicInputsOpt = struct {
 			Enabled          bool
 			Name             string
-			PrecomputedValue field.Element
+			PrecomputedValue [blockSize]field.Element
 		}{Enabled: true, Name: name}
 	}
 }

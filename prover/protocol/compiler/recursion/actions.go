@@ -142,27 +142,30 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 
 		if pcsCtx.IsNonEmptyPrecomputed() {
 
-			com := pcsCtx.Items.Precomputeds.MerkleRoot.GetColAssignmentAt(run, 0)
-			if com != circMRoots[0] {
-				return fmt.Errorf("proof no=%v, MRoot does not match; %v != %v", i, com.String(), circMRoots[0].String())
-			}
+			for i := 0; i < blockSize; i++ {
+				com := pcsCtx.Items.Precomputeds.MerkleRoot[i].GetColAssignmentAt(run, 0)
+				if com != circMRoots[0] {
+					return fmt.Errorf("proof no=%v, MRoot does not match; %v != %v", i, com.String(), circMRoots[0].String())
+				}
 
-			circMRoots = circMRoots[1:]
+				circMRoots = circMRoots[1:]
+			}
 		}
 
 		nonEmptyCount := 0
 		for j := range pcsMRoot {
+			for k := 0; k < blockSize; k++ {
+				if pcsMRoot[j][k] == nil {
+					continue
+				}
 
-			if pcsMRoot[j] == nil {
-				continue
+				com := pcsMRoot[j][k].GetColAssignmentAt(run, 0)
+				if com != circMRoots[nonEmptyCount] {
+					return fmt.Errorf("proof no=%v, MRoot does not match; %v != %v", i, com.String(), circMRoots[nonEmptyCount].String())
+				}
+
+				nonEmptyCount++
 			}
-
-			com := pcsMRoot[j].GetColAssignmentAt(run, 0)
-			if com != circMRoots[nonEmptyCount] {
-				return fmt.Errorf("proof no=%v, MRoot does not match; %v != %v", i, com.String(), circMRoots[nonEmptyCount].String())
-			}
-
-			nonEmptyCount++
 		}
 	}
 
@@ -203,25 +206,29 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 			// to a round "0" Proof column. And its value is removed from the
 			// comp.Precomputed table. We use that fact to check if we can deactivate the
 			// equality assertion.
-			mRootName := pcsCtx.Items.Precomputeds.MerkleRoot.GetColID()
-			if cc.Ctx.InputCompiledIOP.Precomputed.Exists(mRootName) {
-				com := pcsCtx.Items.Precomputeds.MerkleRoot.GetColAssignmentGnarkAt(run, 0)
-				api.AssertIsEqual(com, circMRoots[0])
-			}
+			for j := 0; j < blockSize; j++ {
+				mRootName := pcsCtx.Items.Precomputeds.MerkleRoot[j].GetColID()
+				if cc.Ctx.InputCompiledIOP.Precomputed.Exists(mRootName) {
+					com := pcsCtx.Items.Precomputeds.MerkleRoot[j].GetColAssignmentGnarkAt(run, 0)
+					api.AssertIsEqual(com, circMRoots[0])
+				}
 
-			circMRoots = circMRoots[1:]
+				circMRoots = circMRoots[1:]
+			}
 		}
 
 		nonEmptyCount := 0
 		for j := range pcsMRoot {
 
-			if pcsMRoot[j] == nil {
-				continue
-			}
+			for k := 0; k < blockSize; k++ {
+				if pcsMRoot[j][k] == nil {
+					continue
+				}
 
-			com := pcsMRoot[j].GetColAssignmentGnarkAt(run, 0)
-			api.AssertIsEqual(com, circMRoots[nonEmptyCount])
-			nonEmptyCount++
+				com := pcsMRoot[j][k].GetColAssignmentGnarkAt(run, 0)
+				api.AssertIsEqual(com, circMRoots[nonEmptyCount])
+				nonEmptyCount++
+			}
 		}
 	}
 }

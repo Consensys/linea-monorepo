@@ -1,8 +1,6 @@
 package vortex
 
 import (
-	"fmt"
-
 	gnarkvortex "github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
@@ -39,10 +37,12 @@ type ReassignPrecomputedRootAction struct {
 }
 
 func (r ReassignPrecomputedRootAction) Run(run *wizard.ProverRuntime) {
-	run.AssignColumn(
-		r.Items.Precomputeds.MerkleRoot.GetColID(),
-		smartvectors.NewConstant(r.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedValue, 1),
-	)
+	for i := 0; i < blockSize; i++ {
+		run.AssignColumn(
+			r.Items.Precomputeds.MerkleRoot[i].GetColID(),
+			smartvectors.NewConstant(r.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedValue[i], 1),
+		)
+	}
 }
 
 // ColumnAssignmentProverAction is a [wizard.ProverAction] that assigns the
@@ -102,8 +102,9 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 
 	// And assign the 1-sized column to contain the root
 	var root = types.Bytes32ToHash(tree.Root)
-	fmt.Printf("root=%v\n", root)
-	run.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round)), smartvectors.NewRegular(root[:]))
+	for i := 0; i < blockSize; i++ {
+		run.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round, i)), smartvectors.NewConstant(root[i], 1))
+	}
 }
 
 type LinearCombinationComputationProverAction struct {

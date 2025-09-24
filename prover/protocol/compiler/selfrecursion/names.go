@@ -158,8 +158,8 @@ func (ctx *SelfRecursionCtx) aCollapsedName() string {
 }
 
 // Name of the collapsed key
-func (ctx *SelfRecursionCtx) rootHasGlue() ifaces.QueryID {
-	name := ifaces.QueryIDf("SELFRECURSION_ROOT_HASH_GLUE_%v", ctx.SelfRecursionCnt)
+func (ctx *SelfRecursionCtx) rootHasGlue(index int) ifaces.QueryID {
+	name := ifaces.QueryIDf("SELFRECURSION_ROOT_HASH_GLUE_%v_%v", ctx.SelfRecursionCnt, index)
 	return maybePrefix(ctx, name)
 }
 

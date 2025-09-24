@@ -1,8 +1,6 @@
 package selfrecursion
 
 import (
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -423,7 +421,6 @@ func (a *LinearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 	for i := 0; i < blockSize; i++ {
 		lmp.MerkleLeaves[i] = append(lmp.MerkleNonSisLeaves[i], lmp.MerkleSisLeaves[i]...)
 		lmp.MerkleRoots[i] = append(lmp.MerkleNonSisRoots[i], lmp.MerkleSisRoots[i]...)
-		fmt.Printf("lmp.MerkleRoots[i]=%v\n", lmp.MerkleRoots[i])
 	}
 	lmp.MerklePositions = append(lmp.MerkleNonSisPositions, lmp.MerkleSisPositions...)
 
@@ -472,9 +469,11 @@ func processPrecomputedRound(
 	openingIndices []int,
 ) {
 	// The merkle root for the precomputed round
-	precompRootSv := run.GetColumn(a.Ctx.Columns.PrecompRoot.GetColID())
-	rootPrecomp := field.Octuplet(precompRootSv.IntoRegVecSaveAlloc())
-
+	var rootPrecomp [blockSize]field.Element
+	for i := 0; i < blockSize; i++ {
+		precompRootSv := run.GetColumn(a.Ctx.Columns.PrecompRoot[i].GetColID())
+		rootPrecomp[i] = precompRootSv.IntoRegVecSaveAlloc()[0]
+	}
 	if a.Ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 		precompColSisHash := a.Ctx.VortexCtx.Items.Precomputeds.DhWithMerkle
 		var precompSisLeaves [blockSize][]field.Element
@@ -593,8 +592,11 @@ func processRound(
 				utils.Panic("colSisHashName %v not found", colSisHashName)
 			}
 
-			precompRootSv := run.GetColumn(a.Ctx.Columns.Rooth[round].GetColID())
-			rooth := field.Octuplet(precompRootSv.IntoRegVecSaveAlloc())
+			var rooth field.Octuplet
+			for j := 0; j < blockSize; j++ {
+				precompRootSv := run.GetColumn(a.Ctx.Columns.Rooth[round][j].GetColID())
+				rooth[j] = precompRootSv.IntoRegVecSaveAlloc()[0]
+			}
 
 			colSisHash := colSisHashSV.([]field.Element)
 
@@ -632,8 +634,11 @@ func processRound(
 			colPoseidon2Hash := colPoseidon2HashSV.([]field.Element)
 
 			// Fetch the root for the round
-			precompRootSv := run.GetColumn(a.Ctx.Columns.Rooth[round].GetColID())
-			rooth := field.Octuplet(precompRootSv.IntoRegVecSaveAlloc())
+			var rooth field.Octuplet
+			for j := 0; j < blockSize; j++ {
+				precompRootSv := run.GetColumn(a.Ctx.Columns.Rooth[round][j].GetColID())
+				rooth[j] = precompRootSv.IntoRegVecSaveAlloc()[0]
+			}
 
 			var poseidon2HashValues [blockSize][]field.Element
 			for j := 0; j < blockSize; j++ {

@@ -36,6 +36,7 @@ const (
 	// Denotes a round when we apply SIS+Poseidon2 hashing
 	// on the columns of the round matrix
 	IsSISApplied
+	blockSize = 8
 )
 
 /*
@@ -125,13 +126,13 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 					mr   = ctx.Items.MerkleRoots[round]
 				)
 
-				if mr == nil {
+				if mr[0] == nil {
 					utils.Panic("merkle root not found for round %v", round)
 				}
 
 				for i := 0; i < len(field.Octuplet{}); i++ {
 					name := fmt.Sprintf("%v_%v", name, i)
-					comp.InsertPublicInput(name, accessors.NewFromPublicColumn(ctx.Items.MerkleRoots[round], i))
+					comp.InsertPublicInput(name, accessors.NewFromPublicColumn(ctx.Items.MerkleRoots[round][i], 0))
 				}
 			}
 		}
@@ -140,21 +141,23 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 
 			var (
 				merkleRootColumn = ctx.Items.Precomputeds.MerkleRoot
-				merkleRootValue  = ctx.Comp.Precomputed.MustGet(merkleRootColumn.GetColID())
+				merkleRootValue  [blockSize]smartvectors.SmartVector
 			)
+			for i := 0; i < blockSize; i++ {
+				merkleRootValue[i] = ctx.Comp.Precomputed.MustGet(merkleRootColumn[i].GetColID())
 
-			ctx.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedValue = merkleRootValue.Get(0)
-			ctx.Comp.Columns.SetStatus(merkleRootColumn.GetColID(), column.Proof)
-			ctx.Comp.Precomputed.Del(merkleRootColumn.GetColID())
-			ctx.Comp.ExtraData[ctx.AddPrecomputedMerkleRootToPublicInputsOpt.Name] = merkleRootValue.Get(0)
-
+				ctx.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedValue[i] = merkleRootValue[i].Get(0)
+				ctx.Comp.Columns.SetStatus(merkleRootColumn[i].GetColID(), column.Proof)
+				ctx.Comp.Precomputed.Del(merkleRootColumn[i].GetColID())
+				ctx.Comp.ExtraData[ctx.AddPrecomputedMerkleRootToPublicInputsOpt.Name] = merkleRootValue[i].Get(0)
+			}
 			comp.RegisterProverAction(0, &ReassignPrecomputedRootAction{
 				Ctx: ctx,
 			})
 
 			for i := 0; i < len(field.Octuplet{}); i++ {
 				name := fmt.Sprintf("%v_%v", ctx.AddPrecomputedMerkleRootToPublicInputsOpt.Name, i)
-				comp.InsertPublicInput(name, accessors.NewFromPublicColumn(ctx.Items.Precomputeds.MerkleRoot, i))
+				comp.InsertPublicInput(name, accessors.NewFromPublicColumn(ctx.Items.Precomputeds.MerkleRoot[i], 0))
 			}
 		}
 	}
@@ -224,7 +227,7 @@ type Ctx struct {
 			// the precomputed flag is set.
 			PrecomputedColums []ifaces.Column
 			// Merkle Root of the precomputeds columns
-			MerkleRoot ifaces.Column
+			MerkleRoot [blockSize]ifaces.Column
 			// Committed matrix (rs encoded) of the precomputed columns
 			CommittedMatrix vortex.EncodedMatrix
 			// Tree in case of Merkle mode
@@ -246,10 +249,10 @@ type Ctx struct {
 		OpenedNonSISColumns []ifaces.Column
 		// MerkleProofs
 		// We represents all the Merkle proof as specfied here:
-		MerkleProofs [8]ifaces.Column
+		MerkleProofs [blockSize]ifaces.Column
 		// The Merkle roots are represented by a size 1 column
 		// in the wizard.
-		MerkleRoots []ifaces.Column
+		MerkleRoots [][blockSize]ifaces.Column
 	}
 
 	// IsSelfrecursed is a flag that tells the verifier Vortex to perform a
@@ -277,7 +280,7 @@ type Ctx struct {
 	AddPrecomputedMerkleRootToPublicInputsOpt struct {
 		Enabled          bool
 		Name             string
-		PrecomputedValue field.Element
+		PrecomputedValue [blockSize]field.Element
 	}
 }
 
@@ -295,7 +298,7 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 		Items: struct {
 			Precomputeds struct {
 				PrecomputedColums []ifaces.Column
-				MerkleRoot        ifaces.Column
+				MerkleRoot        [blockSize]ifaces.Column
 				CommittedMatrix   vortex.EncodedMatrix
 				Tree              *smt.Tree
 				DhWithMerkle      []field.Element
@@ -306,8 +309,8 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 			OpenedColumns       []ifaces.Column
 			OpenedSISColumns    []ifaces.Column
 			OpenedNonSISColumns []ifaces.Column
-			MerkleProofs        [8]ifaces.Column
-			MerkleRoots         []ifaces.Column
+			MerkleProofs        [blockSize]ifaces.Column
+			MerkleRoots         [][blockSize]ifaces.Column
 		}{},
 		// Declare the by rounds/sis rounds/non-sis rounds commitments
 		CommitmentsByRounds:       collection.NewVecVec[ifaces.ColID](),
@@ -324,7 +327,7 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 	}
 
 	// Preallocate all the merkle roots for all rounds
-	ctx.Items.MerkleRoots = make([]ifaces.Column, comp.NumRounds())
+	ctx.Items.MerkleRoots = make([][blockSize]ifaces.Column, comp.NumRounds())
 
 	// Declare the RoundStatus slice
 	ctx.RoundStatus = make([]roundStatus, 0, comp.NumRounds())
@@ -467,11 +470,13 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 
 	// Instead, we send Merkle roots that are symbolized with 1-sized
 	// columns.
-	ctx.Items.MerkleRoots[round] = ctx.Comp.InsertProof(
-		round,
-		ifaces.ColID(ctx.MerkleRootName(round)),
-		len(field.Octuplet{}),
-	)
+	for i := 0; i < blockSize; i++ {
+		ctx.Items.MerkleRoots[round][i] = ctx.Comp.InsertProof(
+			round,
+			ifaces.ColID(ctx.MerkleRootName(round, i)),
+			len(field.Element{}),
+		)
+	}
 }
 
 // asserts that the compiled IOP has only a single query and that this query
@@ -931,10 +936,12 @@ func (ctx *Ctx) commitPrecomputeds() {
 
 	// And assign the 1-sized column to contain the root
 	rootOct := types.Bytes32ToHash(tree.Root)
-	ctx.Items.Precomputeds.MerkleRoot = ctx.Comp.RegisterVerifyingKey(
-		ctx.PrecomputedMerkleRootName(),
-		smartvectors.NewRegular(rootOct[:]),
-	)
+	for i := 0; i < blockSize; i++ {
+		ctx.Items.Precomputeds.MerkleRoot[i] = ctx.Comp.RegisterVerifyingKey(
+			ctx.PrecomputedMerkleRootName(i),
+			smartvectors.NewConstant(rootOct[i], 1),
+		)
+	}
 }
 
 // GetPrecomputedSelectedCol returns the selected column
