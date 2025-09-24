@@ -88,7 +88,7 @@ class TransactionalSealedBeaconBlockImporter(
   override fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<ValidationResult> {
     val clBlockNumber = sealedBeaconBlock.beaconBlock.beaconBlockHeader.number
     val elBLockNumber = sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber
-    log.trace(
+    log.debug(
       "Importing clBlockNumber={} elBlockNumber={}",
       clBlockNumber,
       elBLockNumber,
