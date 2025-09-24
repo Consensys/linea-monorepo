@@ -446,8 +446,8 @@ type FoldPhaseProverAction struct {
 func (a *FoldPhaseProverAction) Run(run *wizard.ProverRuntime) {
 	foldedKey := a.Ctx.Columns.ACollapseFold.GetColAssignment(run)
 	foldedPreimage := a.Ctx.Columns.PreimageCollapseFold.GetColAssignment(run)
-	y := smartvectors.InnerProduct(foldedKey, foldedPreimage)
-	run.AssignInnerProduct(a.IpQueryID, fext.Lift(y))
+	y := smartvectors.InnerProductExt(foldedKey, foldedPreimage)
+	run.AssignInnerProduct(a.IpQueryID, y)
 }
 
 type FoldPhaseVerifierAction struct {
