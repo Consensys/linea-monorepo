@@ -2,6 +2,8 @@ package functionals
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"math/big"
 
 	"github.com/consensys/gnark/frontend"
@@ -34,15 +36,15 @@ type EvalBivariateProverAction struct {
 }
 
 func (a *EvalBivariateProverAction) Run(assi *wizard.ProverRuntime) {
-	xVal := a.X.GetVal(assi)
-	yxPow1mkVal := a.YXPow1mk.GetVal(assi)
+	xVal := a.X.GetValExt(assi)
+	yxPow1mkVal := a.YXPow1mk.GetValExt(assi)
 	p := a.PCom.GetColAssignment(assi)
 
-	h := make([]field.Element, a.Length)
-	h[a.Length-1] = p.Get(a.Length - 1)
+	h := make([]fext.Element, a.Length)
+	h[a.Length-1] = p.GetExt(a.Length - 1)
 
 	for i := a.Length - 2; i >= 0; i-- {
-		pi := p.Get(i)
+		pi := p.GetExt(i)
 		if (i+1)%a.NPowX == 0 {
 			h[i].Mul(&h[i+1], &yxPow1mkVal).Add(&h[i], &pi)
 			continue
@@ -50,8 +52,8 @@ func (a *EvalBivariateProverAction) Run(assi *wizard.ProverRuntime) {
 		h[i].Mul(&h[i+1], &xVal).Add(&h[i], &pi)
 	}
 
-	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.Name, EVAL_BIVARIATE_POLY), smartvectors.NewRegular(h))
-	assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", a.Name, EVAL_BIVARIATE_FIXED_POINT_BEGIN), h[0])
+	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.Name, EVAL_BIVARIATE_POLY), smartvectors.NewRegularExt(h))
+	assi.AssignLocalPointExt(ifaces.QueryIDf("%v_%v", a.Name, EVAL_BIVARIATE_FIXED_POINT_BEGIN), h[0])
 }
 
 /*
@@ -149,6 +151,9 @@ func EvalCoeffBivariate(
 	return accessors.NewLocalOpeningAccessor(finalLocalOpening, maxRound)
 }
 
+// Ensure XYPow1MinNAccessor implements the [ifaces.Accessor] interface
+var _ ifaces.Accessor = &XYPow1MinNAccessor{}
+
 // xYPower1MinAccessor implements [ifaces.Accessor] and computes X^(1-N) * Y
 // where x and y are input accessors. It is exported so that the [wizard.CompiledIOP]
 // serializer can access it.
@@ -159,6 +164,52 @@ type XYPow1MinNAccessor struct {
 	N int
 	// AccessName is used to derive a unique name to the accessor.s
 	AccessName string
+}
+
+func (a *XYPow1MinNAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
+	x, errX := a.X.GetValBase(run)
+	if errX != nil {
+		return field.Zero(), errX
+	}
+	y, errY := a.Y.GetValBase(run)
+	if errY != nil {
+		return field.Zero(), errY
+	}
+	var res field.Element
+	res.Exp(x, big.NewInt(int64(1-a.N)))
+	res.Mul(&res, &y)
+	return res, nil
+}
+
+func (a *XYPow1MinNAccessor) GetValExt(run ifaces.Runtime) fext.Element {
+	x := a.X.GetValExt(run)
+	y := a.Y.GetValExt(run)
+	var res fext.Element
+	res.Exp(x, big.NewInt(int64(1-a.N)))
+	res.Mul(&res, &y)
+	return res
+}
+
+func (a *XYPow1MinNAccessor) GetFrontendVariableBase(api frontend.API, run ifaces.GnarkRuntime) (frontend.Variable, error) {
+	x, errX := a.X.GetFrontendVariableBase(api, run)
+	if errX != nil {
+		return field.Zero(), errX
+	}
+	y, errY := a.Y.GetFrontendVariableBase(api, run)
+	if errY != nil {
+		return field.Zero(), errY
+	}
+	res := gnarkutil.Exp(api, x, 1-a.N)
+	res = api.Mul(res, y)
+	return res, nil
+}
+
+func (a *XYPow1MinNAccessor) GetFrontendVariableExt(api frontend.API, run ifaces.GnarkRuntime) gnarkfext.Element {
+	x := a.X.GetFrontendVariableExt(api, run)
+	y := a.Y.GetFrontendVariableExt(api, run)
+	temp := gnarkfext.Exp(api, x, 1-a.N)
+	res := temp.Mul(api, temp, y)
+	return *res
 }
 
 func (a *XYPow1MinNAccessor) IsBase() bool {
