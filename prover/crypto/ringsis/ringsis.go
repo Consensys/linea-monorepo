@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/arena"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
@@ -245,9 +246,11 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector, res []field.Element)
 		for n%windowSize != 0 {
 			windowSize /= 2
 		}
+		// using arena here just favors contiguous memory allocation
+		transposedArena := arena.NewVectorArena[field.Element](nbRows * windowSize)
 		transposed := make([][]field.Element, windowSize)
 		for i := range transposed {
-			transposed[i] = make([]field.Element, nbRows)
+			transposed[i] = arena.Get[field.Element](transposedArena, nbRows)
 		}
 		for col := start; col < end; col += windowSize {
 			for i := 0; i < nbRows; i++ {

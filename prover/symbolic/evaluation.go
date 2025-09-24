@@ -230,7 +230,9 @@ func (e *evaluation[T]) reset(inputs []sv.SmartVector, chunkStart, chunkStop int
 							rv.WriteSubVectorInSliceExt(chunkStart, chunkStop, (*casted)[:chunkLen])
 						case *sv.Regular:
 							for i := 0; i < chunkLen; i++ {
-								fext.SetFromBase(&(*casted)[i], &(*rv)[chunkStart+i])
+								// rest of e4 should be at zero since the whole vector is a regular one
+								// and we didn't mutate the input.
+								(*casted)[i].B0.A0 = (*rv)[chunkStart+i]
 							}
 						case *sv.RegularExt:
 							copy((*casted)[:chunkLen], (*rv)[chunkStart:chunkStop])

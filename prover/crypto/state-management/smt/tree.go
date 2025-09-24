@@ -291,11 +291,17 @@ func BuildComplete(leaves []types.Bytes32, hashFunc func() hashtypes.Hasher) *Tr
 	for i := 0; i < depth-1; i++ {
 		nextLevel := make([]types.Bytes32, len(currLevels)/2)
 		// TODO @gbotrel revisit parallelization here
-		parallel.Execute(len(nextLevel), func(start, end int) {
-			for k := start; k < end; k++ {
+		if len(nextLevel) >= 64 {
+			parallel.Execute(len(nextLevel), func(start, end int) {
+				for k := start; k < end; k++ {
+					nextLevel[k] = hashLR(config, currLevels[2*k], currLevels[2*k+1])
+				}
+			})
+		} else {
+			for k := range nextLevel {
 				nextLevel[k] = hashLR(config, currLevels[2*k], currLevels[2*k+1])
 			}
-		})
+		}
 
 		tree.OccupiedNodes[i] = nextLevel
 		currLevels = nextLevel
