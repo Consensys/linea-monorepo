@@ -31,7 +31,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
     return _getYieldProviderDataStorage(_yieldProvider).registration.yieldProviderEntrypoint;
   }
 
-  function _getCurrentLSTLiability(address _yieldProvider) internal view returns (uint256) {
+  function _getCurrentLSTLiabilityETH(address _yieldProvider) internal view returns (uint256) {
     IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
     if ($$.isOssified) return 0;
     IDashboard dashboard = IDashboard($$.registration.yieldProviderEntrypoint);
@@ -42,7 +42,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
   }
 
   // Will settle as much LST liability as possible. Will return amount of liabilityEth remaining
-  function _payLSTLiability(address _yieldProvider) internal returns (uint256) {
+  function _payMaximumPossibleLSTLiability(address _yieldProvider) internal returns (uint256) {
     IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
     if ($$.isOssified) return 0;
 
@@ -86,8 +86,8 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
     if (_getYieldProviderDataStorage(_yieldProvider).isOssified) {
       revert OperationNotSupportedDuringOssification(OperationType.ReportYield);
     }
-    _payLSTLiability(_yieldProvider);
-    uint256 liabilityEth = _getCurrentLSTLiability(_yieldProvider);
+    _payMaximumPossibleLSTLiability(_yieldProvider);
+    uint256 liabilityEth = _getCurrentLSTLiabilityETH(_yieldProvider);
     uint256 obligationsEth = _getCurrentObligationsMinusRedemptions(_yieldProvider);
     uint256 totalVaultEth = IDashboard(_getDashboard(_yieldProvider)).totalValue();
     uint256 fundsAvailableForUserWithdrawal = totalVaultEth - obligationsEth - liabilityEth;
@@ -146,11 +146,26 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
   /**
    * @notice Withdraw ETH from a specified yield provider.
    * @dev If withdrawal reserve is in deficit, will route funds to the bridge.
-   * @dev If fund remaining, will settle any outstanding LST liabilities and protocol obligations.
+   * @dev If fund remaining, will settle any outstanding LST liabilities.
+   * @dev This function will first attempt to pay LST liabilities. However it will reserve '_targetReserveDeficit' out of this. So '_targetReserveDeficit' withdrawal is guaranteed.
    * @param _amount                 Amount to withdraw.
    */
-  function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external {
-    ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).withdraw(address(this), _amount);
+  function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount, uint256 _targetReserveDeficit, address _recipient) external returns (uint256) {
+    uint256 withdrawAmount = _amount;
+    if (_targetReserveDeficit >= withdrawAmount) {
+      ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).withdraw(_recipient, withdrawAmount);
+      return withdrawAmount;
+    } else {
+      uint256 amountAvailableToPayLSTLiability = withdrawAmount - _targetReserveDeficit;
+      uint256 currentLSTLiabilityETH = _getCurrentLSTLiabilityETH(_yieldProvider);
+      if (currentLSTLiabilityETH > 0) {
+        uint256 LSTLiabilityETHPaid = currentLSTLiabilityETH > amountAvailableToPayLSTLiability ? amountAvailableToPayLSTLiability : currentLSTLiabilityETH;
+        IDashboard(_getDashboard(_yieldProvider)).rebalanceVaultWithEther(LSTLiabilityETHPaid);
+        withdrawAmount -= LSTLiabilityETHPaid;
+      }
+      ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).withdraw(_recipient, withdrawAmount);
+      return withdrawAmount;
+    }
   }
 
   /**

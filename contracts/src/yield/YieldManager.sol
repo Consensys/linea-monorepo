@@ -110,6 +110,12 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       return targetWithdrawalReserveByPercentage > targetWithdrawalReserveAmountCached ? targetWithdrawalReserveByPercentage : targetWithdrawalReserveAmountCached;
   }
 
+  function getTargetReserveDeficit() public view returns (uint256) {
+    uint256 effectiveTargetWithdrawalReserve = getEffectiveTargetWithdrawalReserve();
+    uint256 l1MessageServiceBalance = l1MessageService().balance;
+    return effectiveTargetWithdrawalReserve > l1MessageServiceBalance ? effectiveTargetWithdrawalReserve - l1MessageServiceBalance : 0;
+  }
+
   /// @notice Returns true if withdrawal reserve balance is below effective required minimum.
   /// @dev We are doing duplicate BALANCE opcode call, but how to remove duplicate call while maintaining readability?
   function isWithdrawalReserveBelowEffectiveMinimum() public view returns (bool) {
@@ -281,24 +287,32 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @notice Withdraw ETH from a specified yield provider.
    * @dev YIELD_MANAGER_UNSTAKER_ROLE is required to execute.
    * @dev If withdrawal reserve is in deficit, will route funds to the bridge.
-   * @dev If fund remaining, will settle any outstanding LST liabilities and protocol obligations.
+   * @dev If funds remaining, will settle any outstanding LST liabilities.
    * @param _yieldProvider          Yield provider address.
    * @param _amount                 Amount to withdraw.
    */
   function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
-    _withdrawFromYieldProvider(_yieldProvider, _amount);
+    uint256 targetDeficit = getTargetReserveDeficit();
+    uint256 withdrawAmountRemainingAfterFees = _withdrawFromYieldProvider(_yieldProvider, _amount, targetDeficit, address(this));
+    if (targetDeficit > 0) {
+      uint256 reserveTransferAmount = targetDeficit > withdrawAmountRemainingAfterFees ? withdrawAmountRemainingAfterFees : targetDeficit;
+      ILineaNativeYieldExtension(l1MessageService()).fund{value: reserveTransferAmount}();
+    }
     // Emit event
   }
 
-  function _withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) internal {
-    (bool success,) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.withdrawFromYieldProvider, (_yieldProvider, _amount)
+  function _withdrawFromYieldProvider(address _yieldProvider, uint256 _amount, uint256 _targetReserveDeficit, address _recipient) internal returns (uint256) {
+    (bool success, bytes memory data) = _yieldProvider.delegatecall(
+      abi.encodeCall(IYieldProvider.withdrawFromYieldProvider, (_yieldProvider, _amount, _targetReserveDeficit, _recipient)
     ));
     if (!success) {
       revert DelegateCallFailed();
     }
+    (uint256 withdrawAmountRemainingAfterFees) = abi.decode(data, (uint256));
     _getYieldManagerStorage()._userFundsInYieldProvidersTotal -= _amount;
     _getYieldProviderDataStorage(_yieldProvider).userFunds -= _amount;
+    _reducePendingPermissionlessUnstake(_yieldProvider, _amount);
+    return withdrawAmountRemainingAfterFees;
   }
 
   /**
@@ -309,7 +323,23 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @param _amount                 Amount to withdraw.
    */
   function addToWithdrawalReserve(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
-    
+    uint256 targetRebalanceAmount = _amount;
+    // Try to meet targetRebalanceAmount from yieldManager
+    uint256 yieldManagerBalance = address(this).balance;
+    if (yieldManagerBalance > 0) {
+      uint256 transferAmount = targetRebalanceAmount > yieldManagerBalance ? yieldManagerBalance : targetRebalanceAmount;
+      ILineaNativeYieldExtension(l1MessageService()).fund{value: transferAmount}();
+      targetRebalanceAmount -= transferAmount;
+    }
+    uint256 availableYieldProviderWithdrawBalance = getAvailableBalanceForWithdraw(_yieldProvider);
+    uint256 targetDeficit = getTargetReserveDeficit();
+    (bool success,) = _yieldProvider.delegatecall(
+      abi.encodeCall(IYieldProvider.withdrawFromYieldProvider, (_yieldProvider, availableYieldProviderWithdrawBalance, targetDeficit, l1MessageService())
+    ));
+    if (!success) {
+      revert DelegateCallFailed();
+    }
+    // Emit event
   }
 
   /**
@@ -336,7 +366,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     uint256 availableYieldProviderWithdrawBalance = getAvailableBalanceForWithdraw(_yieldProvider);
     if (targetDeficit > 0 && availableYieldProviderWithdrawBalance > 0) {
       uint256 withdrawAmount = targetDeficit > availableYieldProviderWithdrawBalance ? availableYieldProviderWithdrawBalance : targetDeficit;
-      _withdrawFromYieldProvider(_yieldProvider, withdrawAmount);
+      _withdrawFromYieldProvider(_yieldProvider, withdrawAmount, targetDeficit, l1MessageService());
       targetDeficit -= withdrawAmount;
     }
     // Emit event

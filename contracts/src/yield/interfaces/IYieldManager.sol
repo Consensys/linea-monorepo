@@ -174,7 +174,7 @@ interface IYieldManager {
    * @notice Withdraw ETH from a specified yield provider.
    * @dev YIELD_MANAGER_UNSTAKER_ROLE is required to execute.
    * @dev If withdrawal reserve is in deficit, will route funds to the bridge.
-   * @dev If fund remaining, will settle any outstanding LST liabilities and protocol obligations.
+   * @dev If fund remaining, will settle any outstanding LST liabilities.
    * @param _yieldProvider          Yield provider address.
    * @param _amount                 Amount to withdraw.
    */

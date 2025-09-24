@@ -64,10 +64,10 @@ interface IYieldProvider {
   /**
    * @notice Withdraw ETH from a specified yield provider.
    * @dev If withdrawal reserve is in deficit, will route funds to the bridge.
-   * @dev If fund remaining, will settle any outstanding LST liabilities and protocol obligations.
+   * @dev If fund remaining, will settle any outstanding LST liabilities.
    * @param _amount                 Amount to withdraw.
    */
-  function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external;
+  function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount, uint256 _targetReserveDeficit, address _recipient) external returns (uint256);
 
   /**
    * @notice Rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
