@@ -34,6 +34,7 @@ interface IYieldManager {
     uint256 pendingPermissionlessUnstake;
     // Required to socialize losses if permanent
     uint256 currentNegativeYield;
+    uint256 lstLiabilityPrincipal;
   }
 
   /**
@@ -104,6 +105,8 @@ interface IYieldManager {
   error WithdrawalReserveNotInDeficit();
 
   error SufficientAvailableFundsToCoverDeficit();
+
+  error LSTWithdrawalNotAllowed();
 
   /**
    * @notice Send ETH to the specified yield strategy.
@@ -229,4 +232,6 @@ interface IYieldManager {
   function setMinimumWithdrawalReserveAmount(uint256 _minimumWithdrawalReserveAmount) external;
 
   function getAvailableBalanceForWithdraw(address _yieldProvider) external returns (uint256);
+
+  function mintLST(address _yieldProvider, uint256 _amount, address _recipient) external;
 }

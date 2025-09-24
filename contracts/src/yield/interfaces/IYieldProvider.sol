@@ -11,7 +11,8 @@ import { IYieldManager } from "./IYieldManager.sol";
  */
 interface IYieldProvider {
   enum OperationType {
-      ReportYield
+      ReportYield,
+      MintLST
   }
 
   error IncorrectYieldProviderType();
@@ -91,4 +92,6 @@ interface IYieldProvider {
 
   // Get current ETH balance on the YieldProvider available for withdraw
   function getAvailableBalanceForWithdraw(address _yieldProvider) external view returns (uint256);
+
+  function mintLST(address _yieldProvider, uint256 _amount, address _recipient) external;
 }

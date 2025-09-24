@@ -749,4 +749,12 @@ abstract contract LineaRollupBase is
 
     emit MessageSent(msg.sender, l2YieldRecipient, 0, _amount, messageNumber, hex"", messageHash);
   }
+
+  // TODO - Do we need additional pause type here?
+  function claimMessageWithProofAndWithdrawLST(ClaimMessageWithProofParams calldata _params) external nonReentrant distributeFees(_params.fee, _params.to, _params.data, _params.feeRecipient) {
+    if (_params.value < address(this).balance) {
+      revert LSTWithdrawalRequiresDeficit();
+    }
+    _claimMessageWithProof(_params);
+  }
 }

@@ -25,6 +25,8 @@ abstract contract LineaNativeYieldExtension is LineaRollupPauseManager, ILineaNa
   /// @notice The role required to set the L2YieldRecipient address.
   bytes32 public constant L2_YIELD_RECIPIENT_SETTER_ROLE = keccak256("L2_YIELD_RECIPIENT_SETTER_ROLE");
 
+  bool transient IS_WITHDRAW_LST_ALLOWED;
+
   /// @custom:storage-location erc7201:linea.storage.LineaNativeYieldExtensionStorage
   struct LineaNativeYieldExtensionStorage {    
       address _yieldManager;
@@ -57,6 +59,10 @@ abstract contract LineaNativeYieldExtension is LineaRollupPauseManager, ILineaNa
   function permissionlessDonationTotal() public view returns (uint256) {
       LineaNativeYieldExtensionStorage storage $ = _getLineaNativeYieldExtensionStorage();
       return $._permissionlessDonationTotal;
+  }
+
+  function isWithdrawLSTAllowed() external view returns (bool) {
+    return IS_WITHDRAW_LST_ALLOWED;
   }
 
   /**

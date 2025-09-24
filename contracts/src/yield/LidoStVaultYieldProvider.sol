@@ -201,4 +201,11 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
   function getAvailableBalanceForWithdraw(address _yieldProvider) external view returns (uint256) {
     return _getStakingVault(_yieldProvider).balance;
   }
+
+  function mintLST(address _yieldProvider, uint256 _amount, address _recipient) external {
+    if (_getYieldProviderDataStorage(_yieldProvider).isOssified) {
+      revert OperationNotSupportedDuringOssification(OperationType.MintLST);
+    }
+    IDashboard(_getDashboard(_yieldProvider)).mintStETH(_recipient, _amount);
+  }
 }

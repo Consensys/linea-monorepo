@@ -378,18 +378,21 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @param _yieldProvider          Yield provider address.
    */
   function pauseStaking(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
-    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
-    if ($$.isStakingPaused) {
+    if (_getYieldProviderDataStorage(_yieldProvider).isStakingPaused) {
       revert StakingAlreadyPaused();
     }
+    _pauseStaking(_yieldProvider);
+    // Emit event
+  }
+  
+  function _pauseStaking(address _yieldProvider) internal {
     (bool success,) = _yieldProvider.delegatecall(
       abi.encodeCall(IYieldProvider.pauseStaking, (_yieldProvider)
     ));
     if (!success) {
       revert DelegateCallFailed();
     }
-    $$.isStakingPaused = true;
-    // Emit event
+    _getYieldProviderDataStorage(_yieldProvider).isStakingPaused = true;
   }
 
   /**
@@ -443,7 +446,8 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
         userFunds: 0,
         yieldReportedCumulative: 0,
         pendingPermissionlessUnstake: 0,
-        currentNegativeYield: 0
+        currentNegativeYield: 0,
+        lstLiabilityPrincipal: 0
     });
     // TODO - Emit event
   }
@@ -481,6 +485,24 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     $._yieldProviders.pop();
 
     delete $._yieldProviderData[_yieldProvider];
+  }
+
+  function mintLST(address _yieldProvider, uint256 _amount, address _recipient) external {
+    if (!ILineaNativeYieldExtension(l1MessageService()).isWithdrawLSTAllowed()) {
+      revert LSTWithdrawalNotAllowed();
+    }
+    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    if (!$$.isStakingPaused) {
+      _pauseStaking(_yieldProvider);
+    }
+    (bool success,) = _yieldProvider.delegatecall(
+      abi.encodeCall(IYieldProvider.mintLST, (_yieldProvider, _amount, _recipient)
+    ));
+    if (!success) {
+      revert DelegateCallFailed();
+    }
+    $$.lstLiabilityPrincipal += _amount;
+    // emit event
   }
 
   function setL1MessageService(address _l1MessageService) external {

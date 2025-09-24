@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.30;
 
+import { IL1MessageService } from "../../messaging/l1/interfaces/IL1MessageService.sol";
+
 /**
  * @title Native yield extension module for the Linea L1MessageService.
  * @author ConsenSys Software Inc.
@@ -50,6 +52,10 @@ interface ILineaNativeYieldExtension {
    */
   error CallerIsNotYieldManager();
 
+  error LSTWithdrawalRequiresDeficit();
+
+  function isWithdrawLSTAllowed() external view returns (bool);
+
   /**
    * @notice Transfer ETH to the registered YieldManager.
    * @dev RESERVE_OPERATOR_ROLE is required to execute.
@@ -90,4 +96,6 @@ interface ILineaNativeYieldExtension {
    * @param _newL2YieldRecipient L2YieldRecipient address.
    */
   function setL2YieldRecipient(address _newL2YieldRecipient) external;
+
+  function claimMessageWithProofAndWithdrawLST(IL1MessageService.ClaimMessageWithProofParams calldata _params) external;
 }
