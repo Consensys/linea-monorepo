@@ -5,9 +5,25 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"regexp"
 
 	"github.com/sirupsen/logrus"
 )
+
+// --------- Helper ----
+
+// parseSbrEbr extracts sbr/ebr from names like 22504197-22504198-...-getZkProof.json
+var regExSBEB = regexp.MustCompile(
+	`(^|.*/)(\d+)-(\d+)-.*-(getZkProof|getZkBlobCompressionProof|getZkAggregatedProof)\.json$`,
+)
+
+func ParseSbrEbr(reqFilePath string) (sbr, ebr string, _ error) {
+	m := regExSBEB.FindStringSubmatch(reqFilePath)
+	if m == nil {
+		return "", "", fmt.Errorf("unable to parse sbr/ebr from %s", reqFilePath)
+	}
+	return m[2], m[3], nil
+}
 
 // CheckFilePath checks whether the provided filePath points to an existing file.
 func CheckFilePath(filePath string) error {
