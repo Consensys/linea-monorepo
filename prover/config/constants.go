@@ -17,4 +17,12 @@ const (
 
 	// Extension to add in order to defer the job to the large prover
 	LargeSuffix = "large"
+
+	// Limitless prover stuffs
+	WitnessDir = "/tmp/witness"
+
+	WitnessGLDirPrefix  = "/tmp/witness/GL"
+	WitnessLPPDirPrefix = "/tmp/witness/LPP"
+
+	MetadataDirPrefix = "/tmp/metadata"
 )
