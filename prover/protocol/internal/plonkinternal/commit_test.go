@@ -34,8 +34,11 @@ func (circuit *TestCommitCircuit) Define(api frontend.API) error {
 	}
 
 	// commit to powers of a
-	committer := api.(frontend.Committer)
-	_, err := committer.Commit(powersOfA...)
+	//committer := api.(frontend.Committer)
+	//_, err := committer.Commit(powersOfA...)
+
+	committer := api.(frontend.WideCommitter)
+	_, err := committer.WideCommit(len(powersOfA), powersOfA...)
 	if err != nil {
 		return err
 	}

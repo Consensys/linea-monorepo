@@ -1,6 +1,7 @@
 package permutation
 
 import (
+	"runtime"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
@@ -66,7 +67,7 @@ func (z *ZCtx) run(run *wizard.ProverRuntime) {
 		if smartvectors.IsBase(numerator) && smartvectors.IsBase(denominator) {
 			// If both numerator and denominator are base
 			denominatorSlice, _ := denominator.IntoRegVecSaveAllocBase()
-			denominatorSlice = field.BatchInvert(denominatorSlice)
+			denominatorSlice = field.ParBatchInvert(denominatorSlice, runtime.NumCPU()/4)
 
 			numeratorSlice, _ := numerator.IntoRegVecSaveAllocBase()
 
@@ -87,16 +88,13 @@ func (z *ZCtx) run(run *wizard.ProverRuntime) {
 		} else {
 			// at least one of the numerator or denominator is over field extensions
 			denominatorSlice := denominator.IntoRegVecSaveAllocExt()
-			denominatorSlice = fext.BatchInvert(denominatorSlice)
+			denominatorSlice = fext.ParBatchInvert(denominatorSlice, runtime.NumCPU()/4)
 
 			numeratorSlice := numerator.IntoRegVecSaveAllocExt()
 
 			vNum := extensions.Vector(numeratorSlice)
 			vNum.Mul(vNum, extensions.Vector(denominatorSlice))
-
-			for i := 1; i < len(numeratorSlice); i++ {
-				numeratorSlice[i].Mul(&numeratorSlice[i], &numeratorSlice[i-1])
-			}
+			vNum.PrefixProduct()
 
 			run.AssignColumn(z.Zs[i].GetColID(), smartvectors.NewRegularExt(numeratorSlice))
 			run.AssignLocalPointExt(z.ZOpenings[i].Name(), numeratorSlice[len(numeratorSlice)-1])

@@ -29,27 +29,23 @@ type FromPublicColumn struct {
 }
 
 func (c *FromPublicColumn) IsBase() bool {
-	//TODO implement me
-	panic("implement me")
+	return c.Col.IsBase()
 }
 
 func (c *FromPublicColumn) GetValBase(run ifaces.Runtime) (field.Element, error) {
-	//TODO implement me
-	panic("implement me")
+	return run.GetColumnAtBase(c.Col.ID, c.Pos)
 }
 
 func (c *FromPublicColumn) GetValExt(run ifaces.Runtime) fext.Element {
 	return run.GetColumnAtExt(c.Col.ID, c.Pos)
 }
 
-func (c *FromPublicColumn) GetFrontendVariableBase(api frontend.API, circ ifaces.GnarkRuntime) (frontend.Variable, error) {
-	//TODO implement me
-	panic("implement me")
+func (c *FromPublicColumn) GetFrontendVariableBase(_ frontend.API, circ ifaces.GnarkRuntime) (frontend.Variable, error) {
+	return circ.GetColumnAtBase(c.Col.ID, c.Pos)
 }
 
-func (c *FromPublicColumn) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Element {
-	//TODO implement me
-	panic("implement me")
+func (c *FromPublicColumn) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Element {
+	return circ.GetColumnAtExt(c.Col.ID, c.Pos)
 }
 
 // NewFromPublicColumn constructs an [ifaces.Accessor] refering to the row #pos
