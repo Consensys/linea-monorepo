@@ -118,7 +118,6 @@ func (f FromAccessors) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment
 	for i := range res {
 		res[i] = f.Accessors[i].GetValExt(run)
 	}
-
 	return smartvectors.RightPaddedExt(res, f.Padding, f.Size_)
 }
 

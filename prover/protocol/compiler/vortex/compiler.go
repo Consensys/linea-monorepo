@@ -45,7 +45,7 @@ Applies the Vortex compiler over the current polynomial-IOP
   - SISTreshold : minimal number of polynomial in rounds to consider
     applying the SIS hashing on the columns of the round matrix. Implicitly, we
     consider that applying SIS hash over too few vectors is not worth it.
-    For these rounds we will use the MiMC hash function directly to compute
+    For these rounds we will use the Poseidon2 hash function directly to compute
     the leaves of the Merkle tree.
 
 There are the following requirements:
@@ -181,8 +181,8 @@ type Ctx struct {
 	// Parameters for the optional SIS hashing feature
 	// If the number of commitments for a given round
 	// is more than this threshold, we apply SIS hashing
-	//  and then MiMC hashing for computing the leaves of the Merkle tree.
-	// Otherwise, we replace SIS and directly apply MiMC hashing
+	//  and then Poseidon2 hashing for computing the leaves of the Merkle tree.
+	// Otherwise, we replace SIS and directly apply Poseidon2 hashing
 	// for computing the leaves of the Merkle tree.
 	ApplySISHashThreshold int
 	RoundStatus           []roundStatus
@@ -385,11 +385,11 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 		// Also, the order in which the precomputed columns are taken must be the one
 		// matching the query. Otherwise, we would not be able to obtain standard
 		// proofs for the limitless prover.
-		_, comUnconstrained = utils.FilterInSliceWithMap(coms_, ctx.PolynomialsTouchedByTheQuery)
-		coms                = ctx.commitmentsAtRoundFromQuery(round)
-		numComsActual       = len(coms) // actual == not shadow and not unconstrained
-		fillUpTo            = len(coms)
-		onlyMiMCApplied     = len(coms) < ctx.ApplySISHashThreshold
+		_, comUnconstrained  = utils.FilterInSliceWithMap(coms_, ctx.PolynomialsTouchedByTheQuery)
+		coms                 = ctx.commitmentsAtRoundFromQuery(round)
+		numComsActual        = len(coms) // actual == not shadow and not unconstrained
+		fillUpTo             = len(coms)
+		onlyPoseidon2Applied = len(coms) < ctx.ApplySISHashThreshold
 	)
 
 	// This part corresponds to an edge-case that is not supposed to happen
@@ -423,9 +423,9 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 	// To ensure the number limbs in each subcol divides the degree, we pad the
 	// list with shadow columns. This is required for self-recursion to work
 	// correctly. In practice they do not cost anything to the prover. When
-	// using MiMC, the number of limbs is equal to 1. This skips the
+	// using Poseidon2, the number of limbs is equal to 1. This skips the
 	// aforementioned behaviour.
-	if !onlyMiMCApplied && ctx.SisParams.NumFieldPerPoly() > 1 {
+	if !onlyPoseidon2Applied && ctx.SisParams.NumFieldPerPoly() > 1 {
 		fillUpTo = utils.NextMultipleOf(fillUpTo, ctx.SisParams.NumFieldPerPoly())
 	}
 
@@ -440,14 +440,14 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 
 	logrus.
 		WithField("where", "compileRoundWithVortex").
-		WithField("using-only-MiMC", onlyMiMCApplied).
+		WithField("using-only-Poseidon2", onlyPoseidon2Applied).
 		WithField("numComs", numComsActual).
 		WithField("numShadowRows", numShadowRows).
 		WithField("numUnconstrained", len(comUnconstrained)).
 		WithField("round", round).
 		Info("Compiled Vortex round")
 
-	if onlyMiMCApplied {
+	if onlyPoseidon2Applied {
 		ctx.RoundStatus = append(ctx.RoundStatus, IsOnlyPoseidon2Applied)
 		ctx.CommitmentsByRoundsNonSIS.AppendToInner(round, coms...)
 		ctx.MaxCommittedRoundNonSIS = utils.Max(ctx.MaxCommittedRoundNonSIS, round)
@@ -750,7 +750,7 @@ func (ctx *Ctx) processStatusPrecomputed() {
 	var (
 		nbUnskippedPrecomputedCols = len(precomputedCols)
 		fillUpTo                   = nbUnskippedPrecomputedCols
-		onlyMiMCApplied            = nbUnskippedPrecomputedCols < ctx.ApplySISHashThreshold
+		onlyPoseidon2Applied       = nbUnskippedPrecomputedCols < ctx.ApplySISHashThreshold
 	)
 
 	// Note: the above "if-clause" ensures that the fillUpTo >= len(coms), so
@@ -763,9 +763,9 @@ func (ctx *Ctx) processStatusPrecomputed() {
 	// To ensure the number limbs in each subcol divides the degree, we pad the
 	// list with shadow columns. This is required for self-recursion to work
 	// correctly. In practice they do not cost anything to the prover. When
-	// using MiMC, the number of limbs is equal to 1. This skips the
+	// using Poseidon2, the number of limbs is equal to 1. This skips the
 	// aforementioned behaviour.
-	if !onlyMiMCApplied && ctx.SisParams.NumFieldPerPoly() > 1 {
+	if !onlyPoseidon2Applied && ctx.SisParams.NumFieldPerPoly() > 1 {
 		fillUpTo = utils.NextMultipleOf(fillUpTo, ctx.SisParams.NumFieldPerPoly())
 	}
 
@@ -795,7 +795,7 @@ func (ctx *Ctx) processStatusPrecomputed() {
 	ctx.Items.Precomputeds.PrecomputedColums = precomputedCols
 
 	log := logrus.
-		WithField("where isSISAppliedForCommitment", !onlyMiMCApplied).
+		WithField("where isSISAppliedForCommitment", !onlyPoseidon2Applied).
 		WithField("nbPrecomputedRows", nbUnskippedPrecomputedCols).
 		WithField("nbShadowRows", numShadowRows)
 

@@ -23,9 +23,10 @@ type FromIntVecCoinPositionAccessor struct {
 	Pos int
 }
 
-func (c *FromIntVecCoinPositionAccessor) IsBase() bool {
+func (c *FromIntVecCoinPositionAccessor) IsBase() bool { //TODO@yao: implement me
 	//TODO implement me
-	panic("implement me")
+	// panic("implement me")
+	return true // temporary flag
 }
 
 func (c *FromIntVecCoinPositionAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
@@ -33,9 +34,9 @@ func (c *FromIntVecCoinPositionAccessor) GetValBase(run ifaces.Runtime) (field.E
 	panic("implement me")
 }
 
-func (c *FromIntVecCoinPositionAccessor) GetValExt(run ifaces.Runtime) fext.Element {
-	//TODO implement me
-	panic("implement me")
+func (c *FromIntVecCoinPositionAccessor) GetValExt(run ifaces.Runtime) fext.Element { //TODO@yao: implement me
+	elem := field.NewElement(uint64(run.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos]))
+	return fext.Lift(elem)
 }
 
 func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces.GnarkRuntime) (frontend.Variable, error) {

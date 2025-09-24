@@ -234,7 +234,7 @@ func (ctx *SelfRecursionCtx) registerPoseidon2MetaDataForNonSisRounds(
 					ctx.Poseidon2MetaData.NonSisLeaves[j],
 					ctx.Comp.InsertCommit(
 						round,
-						ctx.nonSisLeaves(i-firstNonEmptyRound),
+						ctx.nonSisLeaves(i-firstNonEmptyRound, j),
 						numRowExpectedHash,
 					))
 

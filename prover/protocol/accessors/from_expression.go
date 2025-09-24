@@ -164,6 +164,7 @@ func (e *FromExprAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 				utils.Panic("unsupported type %T", m)
 			}
 		}
+
 		return e.Boarded.Evaluate(inputs).GetExt(0)
 	}
 }
