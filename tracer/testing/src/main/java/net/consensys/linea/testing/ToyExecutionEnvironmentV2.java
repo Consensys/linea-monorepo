@@ -53,7 +53,7 @@ public class ToyExecutionEnvironmentV2 {
   public static final long DEFAULT_BLOCK_NUMBER = 6678980;
 
   public static final long DEFAULT_TIME_STAMP = 1347310;
-  private static final Hash DEFAULT_HASH =
+  public static final Hash DEFAULT_HASH =
       Hash.fromHexStringLenient("0xdeadbeef123123666dead666dead666");
 
   @Builder.Default private final List<ToyAccount> accounts = Collections.emptyList();

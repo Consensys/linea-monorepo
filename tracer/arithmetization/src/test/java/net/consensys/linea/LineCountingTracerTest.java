@@ -16,15 +16,22 @@
 package net.consensys.linea;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.*;
 import static net.consensys.linea.zktracer.ChainConfig.MAINNET_TESTCONFIG;
 import static net.consensys.linea.zktracer.Fork.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 
 import net.consensys.linea.reporting.TracerTestBase;
+import net.consensys.linea.testing.ExecutionEnvironment;
 import net.consensys.linea.zktracer.ZkCounter;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.container.module.Module;
+import org.hyperledger.besu.ethereum.core.BlockHeader;
+import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.junit.jupiter.api.Test;
 
 public class LineCountingTracerTest extends TracerTestBase {
@@ -115,6 +122,43 @@ public class LineCountingTracerTest extends TracerTestBase {
     for (String module : londonTracer) {
       checkArgument(
           pragueTracer.contains(module), "Module " + module + " is in London but not in Prague");
+    }
+  }
+
+  @Test
+  void startBlockStuffAreNotPopped() {
+    final WorldView world = WorldView.EMPTY;
+    final BlockHeader blockHeader =
+        ExecutionEnvironment.getLineaBlockHeaderBuilder(Optional.empty())
+            .number(DEFAULT_BLOCK_NUMBER)
+            .coinbase(DEFAULT_COINBASE_ADDRESS)
+            .timestamp(DEFAULT_TIME_STAMP)
+            .parentHash(DEFAULT_HASH)
+            .baseFee(DEFAULT_BASE_FEE)
+            .buildBlockHeader();
+
+    final ZkTracer tracer = new ZkTracer(chainConfig);
+    tracer.traceStartConflation(1);
+    tracer.traceStartBlock(world, blockHeader, DEFAULT_COINBASE_ADDRESS);
+    final Map<String, Integer> sizeBeforeTracer = tracer.getModulesLineCount();
+    tracer.popTransactionBundle();
+    final Map<String, Integer> sizeAfterTracer = tracer.getModulesLineCount();
+    for (String module : sizeBeforeTracer.keySet()) {
+      checkArgument(
+          Objects.equals(sizeAfterTracer.get(module), sizeBeforeTracer.get(module)),
+          "Tracer: some block stuff has been removed in Module " + module);
+    }
+
+    final ZkCounter counter = new ZkCounter(chainConfig.bridgeConfiguration);
+    counter.traceStartConflation(1);
+    counter.traceStartBlock(world, blockHeader, DEFAULT_COINBASE_ADDRESS);
+    final Map<String, Integer> sizeBeforeCounter = counter.getModulesLineCount();
+    counter.popTransactionBundle();
+    final Map<String, Integer> sizeAfterCounter = counter.getModulesLineCount();
+    for (String module : sizeBeforeCounter.keySet()) {
+      checkArgument(
+          Objects.equals(sizeAfterCounter.get(module), sizeBeforeCounter.get(module)),
+          "Counter: some block stuff has been removed in Module " + module);
     }
   }
 }
