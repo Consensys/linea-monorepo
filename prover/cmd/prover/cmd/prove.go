@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/blobdecompression"
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/execution/limitless"
+	"github.com/consensys/linea-monorepo/prover/backend/execution/limitless/distributed"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
 )
@@ -19,6 +20,7 @@ type ProverArgs struct {
 	Input      string
 	Output     string
 	Large      bool
+	Phase      string
 	ConfigFile string
 }
 
@@ -41,10 +43,15 @@ func Prove(args ProverArgs) error {
 		jobExecution         = strings.Contains(args.Input, "getZkProof")
 		jobBlobDecompression = strings.Contains(args.Input, "getZkBlobCompressionProof")
 		jobAggregation       = strings.Contains(args.Input, "getZkAggregatedProof")
+
+		// Limitless prover jobs
+		jobBootstrap = strings.Contains(args.Input, "getZkProof") && strings.EqualFold(args.Phase, "bootstrap")
 	)
 
 	// Handle job type
 	switch {
+	case jobBootstrap:
+		return handleBootstrapJob(cfg, args)
 	case jobExecution:
 		return handleExecutionJob(cfg, args)
 	case jobBlobDecompression:
@@ -54,6 +61,37 @@ func Prove(args ProverArgs) error {
 	default:
 		return errors.New("unknown job type")
 	}
+}
+
+func handleBootstrapJob(cfg *config.Config, args ProverArgs) error {
+
+	if cfg.Execution.ProverMode != config.ProverModeLimitless {
+		return fmt.Errorf("--phase flag can be invoked only in the %v mode", config.ProverModeLimitless)
+	}
+
+	req := &execution.Request{}
+	if err := readRequest(args.Input, req); err != nil {
+		return fmt.Errorf("could not read input file (%v): %w", args.Input, err)
+	}
+
+	// Extract start and end block from the req file
+	sbr, ebr, err := files.ParseSbrEbr(args.Input)
+	if err != nil {
+		return err
+	}
+
+	// Build metadata from the request (example, you can adjust)
+	metadata := &distributed.Metadata{
+		StartBlock: sbr,
+		EndBlock:   ebr,
+	}
+
+	metadata, err = distributed.RunBootstrapper(cfg, req, metadata)
+	if err != nil {
+		return fmt.Errorf("bootstrapper phase failed: %w", err)
+	}
+
+	return writeResponse(args.Output, metadata)
 }
 
 // handleExecutionJob processes an execution job
