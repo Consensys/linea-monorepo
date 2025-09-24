@@ -31,7 +31,9 @@ interface IYieldManager {
     // Incremented 1:1 with yieldReportedCumulative, because yieldReported becomes user funds
     uint256 userFunds;
     uint256 yieldReportedCumulative;
-    // ? TODO - Do we need entry for negativeYield
+    uint256 pendingPermissionlessUnstake;
+    // Required to socialize losses if permanent
+    uint256 currentNegativeYield;
   }
 
   /**
@@ -94,6 +96,14 @@ interface IYieldManager {
   error StakingAlreadyPaused();
 
   error StakingAlreadyUnpaused();
+
+  error TargetReservePercentageMustBeAboveMinimum();
+
+  error TargetReserveAmountMustBeAboveMinimum();
+
+  error WithdrawalReserveNotInDeficit();
+
+  error SufficientAvailableFundsToCoverDeficit();
 
   /**
    * @notice Send ETH to the specified yield strategy.
@@ -218,4 +228,6 @@ interface IYieldManager {
    * @param _minimumWithdrawalReserveAmount Minimum withdrawal reserve amount.
    */
   function setMinimumWithdrawalReserveAmount(uint256 _minimumWithdrawalReserveAmount) external;
+
+  function getAvailableBalance(address _yieldProvider) external returns (uint256);
 }

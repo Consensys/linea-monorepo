@@ -122,19 +122,25 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
     address _yieldProvider,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
-  ) external {
+  ) external returns (uint256) {
     // TODO - Verify _withdrawalParamsProof
-    _unstake(_yieldProvider, _withdrawalParams);
+    uint256 amountUnstaked = _unstake(_yieldProvider, _withdrawalParams);
+    return amountUnstaked;
   }
 
   /**
    * @notice Request beacon chain withdrawal.
    * @param _withdrawalParams   Provider-specific withdrawal parameters.
    */
-  function _unstake(address _yieldProvider, bytes memory _withdrawalParams) internal {
+  function _unstake(address _yieldProvider, bytes memory _withdrawalParams) internal returns (uint256) {
     (bytes memory pubkeys, uint64[] memory amounts, address refundRecipient) = abi.decode(_withdrawalParams, (bytes, uint64[], address));
     // Lido StakingVault.sol will handle the param validation
     ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).triggerValidatorWithdrawals(pubkeys, amounts, refundRecipient);
+    uint256 amountUnstaked;
+    for (uint256 i = 0; i < amounts.length; i++) {
+      amountUnstaked += amounts[i];
+    }
+    return amountUnstaked;
   }
 
   /**
@@ -184,5 +190,9 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
     if (_yieldProviderRegistration.yieldProviderType != IYieldManager.YieldProviderType.LIDO_STVAULT) {
       revert IncorrectYieldProviderType();
     }
+  }
+
+  function getAvailableBalance(address _yieldProvider) external view returns (uint256) {
+    return _getStakingVault(_yieldProvider).balance;
   }
 }

@@ -92,6 +92,10 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     return getTotalSystemBalance() * _getYieldManagerStorage()._minimumWithdrawalReservePercentageBps / MAX_BPS;
   }
 
+  function getTargetWithdrawalReserveByPercentage() public view returns (uint256) {
+    return getTotalSystemBalance() * _getYieldManagerStorage()._targetWithdrawalReservePercentageBps / MAX_BPS;
+  }
+
   /// @notice Get effective minimum withdrawal reserve
   /// @dev Effective minimum reserve is min(minimumWithdrawalReservePercentageBps, minimumWithdrawalReserveAmount).
   function getEffectiveMinimumWithdrawalReserve() public view returns (uint256) {
@@ -100,10 +104,23 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       return minWithdrawalReserveByPercentage > minimumWithdrawalReserveAmountCached ? minWithdrawalReserveByPercentage : minimumWithdrawalReserveAmountCached;
   }
 
+  function getEffectiveTargetWithdrawalReserve() public view returns (uint256) {
+      uint256 targetWithdrawalReserveAmountCached = _getYieldManagerStorage()._targetWithdrawalReserveAmount;
+      uint256 targetWithdrawalReserveByPercentage = getTargetWithdrawalReserveByPercentage();
+      return targetWithdrawalReserveByPercentage > targetWithdrawalReserveAmountCached ? targetWithdrawalReserveByPercentage : targetWithdrawalReserveAmountCached;
+  }
+
   /// @notice Returns true if withdrawal reserve balance is below effective required minimum.
   /// @dev We are doing duplicate BALANCE opcode call, but how to remove duplicate call while maintaining readability?
   function isWithdrawalReserveBelowEffectiveMinimum() public view returns (bool) {
       return _getYieldManagerStorage()._l1MessageService.balance < getEffectiveMinimumWithdrawalReserve();
+  }
+
+  function _reducePendingPermissionlessUnstake(address _yieldProvider, uint256 _amount) internal {
+    uint256 pendingPermissionlessUnstake = _getYieldProviderDataStorage(_yieldProvider).pendingPermissionlessUnstake;
+    if (pendingPermissionlessUnstake == 0) return;
+    uint256 reducedPendingPermissionlessUnstake = pendingPermissionlessUnstake > _amount ? pendingPermissionlessUnstake - _amount : 0;
+    _getYieldProviderDataStorage(_yieldProvider).pendingPermissionlessUnstake = reducedPendingPermissionlessUnstake;
   }
 
   /**
@@ -201,15 +218,16 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   /**
    * @notice Permissionlessly request beacon chain withdrawal from a specified yield provider.
    * @dev    Callable only when the withdrawal reserve is in deficit. 
-   * @dev    The permissionless unstake amount is capped to the remaining reserve deficit that 
+   * @dev    The permissionless unstake amount is capped to the remaining target deficit that 
    *         cannot be covered by other liquidity sources:
    *
    *         PERMISSIONLESS_UNSTAKE_AMOUNT ≤
-   *           RESERVE_DEFICIT
+   *           TARGET_DEFICIT
    *         - YIELD_PROVIDER_BALANCE
    *         - YIELD_MANAGER_BALANCE
    *         - PENDING_PERMISSIONLESS_UNSTAKE
    *
+   * @dev Any future ETH transfer to the L1MessageService will reduce PENDING_PERMISSIONLESS_UNSTAKE.
    * @dev Validates (validatorPubkey, validatorBalance, validatorWithdrawalCredential) against EIP-4788 beacon chain root.
    * @param _yieldProvider          Yield provider address.
    * @param _withdrawalParams       Provider-specific withdrawal parameters.
@@ -220,13 +238,43 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
   ) external onlyKnownYieldProvider(_yieldProvider) {
-    (bool success,) = _yieldProvider.delegatecall(
+    (bool success, bytes memory data) = _yieldProvider.delegatecall(
       abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, _withdrawalParams, _withdrawalParamsProof)
     ));
     if (!success) {
       revert DelegateCallFailed();
     }
+    (uint256 amountUnstaked) = abi.decode(data, (uint256));
+    // TODO - How about for multiple unstaking. How to be aware of other unstake permissionless? Just iterate through every other entry? Accept this for permissionless?
+    // Only know amountUnstaked at this point, so validate it here
+    _validateUnstakePermissionlessAmount(_yieldProvider, amountUnstaked);
+    _getYieldProviderDataStorage(_yieldProvider).pendingPermissionlessUnstake += amountUnstaked;
     // TODO emit event
+  }
+
+  function _validateUnstakePermissionlessAmount(address _yieldProvider, uint256 _amountUnstaked) internal {
+    uint256 effectiveMinimumWithdrawalReserve = getEffectiveMinimumWithdrawalReserve();
+    uint256 l1MessageServiceBalance = l1MessageService().balance;
+    if (l1MessageServiceBalance > effectiveMinimumWithdrawalReserve) {
+      revert WithdrawalReserveNotInDeficit();
+    }
+    uint256 targetWithdrawalReserve = getEffectiveTargetWithdrawalReserve();
+    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    uint256 availableBalanceNotOnL1MessageService = address(this).balance + getAvailableBalance(_yieldProvider) + $$.pendingPermissionlessUnstake;
+    if (_amountUnstaked + availableBalanceNotOnL1MessageService > targetWithdrawalReserve) {
+      revert SufficientAvailableFundsToCoverDeficit();
+    }
+  }
+
+  function getAvailableBalance(address _yieldProvider) public returns (uint256) {
+    (bool success, bytes memory data) = _yieldProvider.delegatecall(
+      abi.encodeCall(IYieldProvider.getAvailableBalance, (_yieldProvider)
+    ));
+    if (!success) {
+      revert DelegateCallFailed();
+    }
+    (uint256 availableBalance) = abi.decode(data, (uint256));
+    return availableBalance;
   }
 
   /**
@@ -238,7 +286,15 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @param _amount                 Amount to withdraw.
    */
   function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
-
+    (bool success,) = _yieldProvider.delegatecall(
+      abi.encodeCall(IYieldProvider.withdrawFromYieldProvider, (_yieldProvider, _amount)
+    ));
+    if (!success) {
+      revert DelegateCallFailed();
+    }
+    _getYieldManagerStorage()._userFundsInYieldProvidersTotal -= _amount;
+    _getYieldProviderDataStorage(_yieldProvider).userFunds -= _amount;
+    // Emit event
   }
 
   /**
@@ -259,7 +315,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @param _amount                 Amount to withdraw.
    */
   function replenishWithdrawalReserve(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
-
+    // TODO - Replenish above
   }
 
   /**
@@ -331,7 +387,9 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
         isStakingPaused: false,
         isOssified: false,
         userFunds: 0,
-        yieldReportedCumulative: 0
+        yieldReportedCumulative: 0,
+        pendingPermissionlessUnstake: 0,
+        currentNegativeYield: 0
     });
     // TODO - Emit event
   }
@@ -342,7 +400,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     }
 
     YieldManagerStorage storage $ = _getYieldManagerStorage();
-    // TODO - How to handle remaining yield situation? If we keep earning yield, we can never exit?...Then don't report
+    // We assume that 'pendingPermissionlessUnstake' and 'currentNegativeYield' must be 0, before 'userFunds' can be 0.
     if ($._yieldProviderData[_yieldProvider].userFunds != 0) {
       revert YieldProviderHasRemainingFunds();
     }
@@ -356,12 +414,9 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (_yieldProvider == address(0)) {
       revert ZeroAddressNotAllowed();
     }
-
-    YieldManagerStorage storage $ = _getYieldManagerStorage();
     _removeYieldProvider(_yieldProvider);
     // TODO - Emit event
   }
-
 
   function _removeYieldProvider(address _yieldProvider) internal  {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
@@ -374,7 +429,35 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     delete $._yieldProviderData[_yieldProvider];
   }
 
-  // TODO - Setter for l1MessageService
+  function setL1MessageService(address _l1MessageService) external {
+    if (_l1MessageService == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    // Emit event
+    $._l1MessageService = _l1MessageService;
+  }
+
+  function setTargetWithdrawalReservePercentageBps(uint256 _targetWithdrawalReservePercentageBps) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
+      if (_targetWithdrawalReservePercentageBps > MAX_BPS) {
+        revert BpsMoreThan10000();
+      }
+      YieldManagerStorage storage $ = _getYieldManagerStorage();
+      if (_targetWithdrawalReservePercentageBps < $._minimumWithdrawalReservePercentageBps) {
+        revert TargetReservePercentageMustBeAboveMinimum();
+      }
+      // Emit event
+      $._targetWithdrawalReservePercentageBps = _targetWithdrawalReservePercentageBps;
+  }
+
+  function setTargetWithdrawalReserveAmount(uint256 _targetWithdrawalReserveAmount) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
+      YieldManagerStorage storage $ = _getYieldManagerStorage();
+      if (_targetWithdrawalReserveAmount < $._minimumWithdrawalReserveAmount) {
+        revert TargetReserveAmountMustBeAboveMinimum();
+      }
+      // Emit event
+      $._targetWithdrawalReserveAmount = _targetWithdrawalReserveAmount;
+  }
 
   /**
    * @notice Set minimum withdrawal reserve percentage.
@@ -388,6 +471,9 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
         revert BpsMoreThan10000();
       }
       YieldManagerStorage storage $ = _getYieldManagerStorage();
+      if ($._targetWithdrawalReservePercentageBps < _minimumWithdrawalReservePercentageBps) {
+        revert TargetReservePercentageMustBeAboveMinimum();
+      }
       emit MinimumWithdrawalReservePercentageBpsSet($._minimumWithdrawalReservePercentageBps, _minimumWithdrawalReservePercentageBps, msg.sender);
       $._minimumWithdrawalReservePercentageBps = _minimumWithdrawalReservePercentageBps;
   }
@@ -400,6 +486,9 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    */
   function setMinimumWithdrawalReserveAmount(uint256 _minimumWithdrawalReserveAmount) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
       YieldManagerStorage storage $ = _getYieldManagerStorage();
+      if ($._targetWithdrawalReserveAmount < _minimumWithdrawalReserveAmount) {
+        revert TargetReserveAmountMustBeAboveMinimum();
+      }
       emit MinimumWithdrawalReserveAmountSet($._minimumWithdrawalReserveAmount, _minimumWithdrawalReserveAmount, msg.sender);
       $._minimumWithdrawalReserveAmount = _minimumWithdrawalReserveAmount;
   }

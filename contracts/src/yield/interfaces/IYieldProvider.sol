@@ -59,7 +59,7 @@ interface IYieldProvider {
     address _yieldProvider,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
-  ) external;
+  ) external returns (uint256);
 
   /**
    * @notice Withdraw ETH from a specified yield provider.
@@ -95,4 +95,7 @@ interface IYieldProvider {
   function unpauseStaking(address _yieldProvider) external;
 
   function validateAdditionToYieldManager(IYieldManager.YieldProviderRegistration calldata _yieldProviderRegistration) external;
+
+  // Get current ETH balance on the YieldProvider available for withdraw
+  function getAvailableBalance(address _yieldProvider) external view returns (uint256);
 }
