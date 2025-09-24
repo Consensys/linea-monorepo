@@ -132,7 +132,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @param _amount        The amount of ETH to send.
    */
   function fundYieldProvider(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
-    if (!isWithdrawalReserveBelowEffectiveMinimum()) {
+    if (isWithdrawalReserveBelowEffectiveMinimum()) {
         revert InsufficientWithdrawalReserve();
     }
     (bool success,) = _yieldProvider.delegatecall(
@@ -158,7 +158,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (msg.sender != l1MessageService()) {
       revert SenderNotL1MessageService();
     }
-    if (!isWithdrawalReserveBelowEffectiveMinimum()) {
+    if (isWithdrawalReserveBelowEffectiveMinimum()) {
         revert InsufficientWithdrawalReserve();
     }
     // TODO - Emit event
@@ -260,15 +260,15 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     }
     uint256 targetWithdrawalReserve = getEffectiveTargetWithdrawalReserve();
     YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
-    uint256 availableBalanceNotOnL1MessageService = address(this).balance + getAvailableBalance(_yieldProvider) + $$.pendingPermissionlessUnstake;
-    if (_amountUnstaked + availableBalanceNotOnL1MessageService > targetWithdrawalReserve) {
+    uint256 availableBalanceNotOnL1MessageService = address(this).balance + getAvailableBalanceForWithdraw(_yieldProvider) + $$.pendingPermissionlessUnstake;
+    if (l1MessageServiceBalance + _amountUnstaked + availableBalanceNotOnL1MessageService > targetWithdrawalReserve) {
       revert SufficientAvailableFundsToCoverDeficit();
     }
   }
 
-  function getAvailableBalance(address _yieldProvider) public returns (uint256) {
+  function getAvailableBalanceForWithdraw(address _yieldProvider) public returns (uint256) {
     (bool success, bytes memory data) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.getAvailableBalance, (_yieldProvider)
+      abi.encodeCall(IYieldProvider.getAvailableBalanceForWithdraw, (_yieldProvider)
     ));
     if (!success) {
       revert DelegateCallFailed();
@@ -286,6 +286,11 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @param _amount                 Amount to withdraw.
    */
   function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
+    _withdrawFromYieldProvider(_yieldProvider, _amount);
+    // Emit event
+  }
+
+  function _withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) internal {
     (bool success,) = _yieldProvider.delegatecall(
       abi.encodeCall(IYieldProvider.withdrawFromYieldProvider, (_yieldProvider, _amount)
     ));
@@ -294,7 +299,6 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     }
     _getYieldManagerStorage()._userFundsInYieldProvidersTotal -= _amount;
     _getYieldProviderDataStorage(_yieldProvider).userFunds -= _amount;
-    // Emit event
   }
 
   /**
@@ -305,17 +309,37 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @param _amount                 Amount to withdraw.
    */
   function addToWithdrawalReserve(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
-
+    
   }
 
   /**
    * @notice Permissionlessly rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
    * @dev Only available when the withdrawal is in deficit.
    * @param _yieldProvider          Yield provider address.
-   * @param _amount                 Amount to withdraw.
    */
-  function replenishWithdrawalReserve(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
-    // TODO - Replenish above
+  function replenishWithdrawalReserve(address _yieldProvider) external {
+    uint256 effectiveMinimumWithdrawalReserve = getEffectiveMinimumWithdrawalReserve();
+    uint256 l1MessageServiceBalance = l1MessageService().balance;
+    if (l1MessageServiceBalance > effectiveMinimumWithdrawalReserve) {
+      revert WithdrawalReserveNotInDeficit();
+    }
+    uint256 targetWithdrawalReserve = getEffectiveTargetWithdrawalReserve();
+    uint256 targetDeficit = targetWithdrawalReserve - l1MessageServiceBalance;
+    // Try to meet targetDeficit from yieldManager
+    uint256 yieldManagerBalance = address(this).balance;
+    if (yieldManagerBalance > 0) {
+      uint256 transferAmount = targetDeficit > yieldManagerBalance ? yieldManagerBalance : targetDeficit;
+      ILineaNativeYieldExtension(l1MessageService()).fund{value: transferAmount}();
+      targetDeficit -= transferAmount;
+    }
+    // Try to meet remaining targetDeficit by yieldProvider withdraw
+    uint256 availableYieldProviderWithdrawBalance = getAvailableBalanceForWithdraw(_yieldProvider);
+    if (targetDeficit > 0 && availableYieldProviderWithdrawBalance > 0) {
+      uint256 withdrawAmount = targetDeficit > availableYieldProviderWithdrawBalance ? availableYieldProviderWithdrawBalance : targetDeficit;
+      _withdrawFromYieldProvider(_yieldProvider, withdrawAmount);
+      targetDeficit -= withdrawAmount;
+    }
+    // Emit event
   }
 
   /**
@@ -350,7 +374,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!$$.isStakingPaused) {
       revert StakingAlreadyUnpaused();
     }
-    if (!isWithdrawalReserveBelowEffectiveMinimum()) {
+    if (isWithdrawalReserveBelowEffectiveMinimum()) {
         revert InsufficientWithdrawalReserve();
     }
     (bool success,) = _yieldProvider.delegatecall(

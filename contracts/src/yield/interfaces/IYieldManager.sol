@@ -193,9 +193,8 @@ interface IYieldManager {
    * @notice Permissionlessly rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
    * @dev Only available when the withdrawal is in deficit.
    * @param _yieldProvider          Yield provider address.
-   * @param _amount                 Amount to withdraw.
    */
-  function replenishWithdrawalReserve(address _yieldProvider, uint256 _amount) external;
+  function replenishWithdrawalReserve(address _yieldProvider) external;
 
   /**
    * @notice Pauses beacon chain deposits for specified yield provier.
@@ -229,5 +228,5 @@ interface IYieldManager {
    */
   function setMinimumWithdrawalReserveAmount(uint256 _minimumWithdrawalReserveAmount) external;
 
-  function getAvailableBalance(address _yieldProvider) external returns (uint256);
+  function getAvailableBalanceForWithdraw(address _yieldProvider) external returns (uint256);
 }

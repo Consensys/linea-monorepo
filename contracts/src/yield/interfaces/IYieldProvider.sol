@@ -77,13 +77,6 @@ interface IYieldProvider {
   function addToWithdrawalReserve(address _yieldProvider, uint256 _amount) external;
 
   /**
-   * @notice Permissionlessly rebalance ETH from the YieldManager, sending it to the L1MessageService.
-   * @dev Only available when the withdrawal is in deficit.
-   * @param _amount                 Amount to withdraw.
-   */
-  function replenishWithdrawalReserve(address _yieldProvider, uint256 _amount) external;
-
-  /**
    * @notice Pauses beacon chain deposits for specified yield provier.
    */
   function pauseStaking(address _yieldProvider) external;
@@ -97,5 +90,5 @@ interface IYieldProvider {
   function validateAdditionToYieldManager(IYieldManager.YieldProviderRegistration calldata _yieldProviderRegistration) external;
 
   // Get current ETH balance on the YieldProvider available for withdraw
-  function getAvailableBalance(address _yieldProvider) external view returns (uint256);
+  function getAvailableBalanceForWithdraw(address _yieldProvider) external view returns (uint256);
 }
