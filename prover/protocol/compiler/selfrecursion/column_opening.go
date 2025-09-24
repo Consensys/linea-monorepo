@@ -33,18 +33,17 @@ func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
 	ctx.GluePositions()
 	// We need this only when there are non zero number
 	// of SIS rounds
-	//TODO@yao: recover below
-	// for j := 0; j < blockSize; j++ {
-	// 	if ctx.Columns.SisToHash[j] != nil {
-	// 		ctx.RegistersSisPreimageLimbs()
-	// 	}
-	// 	ctx.CollapsingPhase()
-	// 	// The fold phase is only needed if there are non-zero
-	// 	// number of SIS rounds
-	// 	if ctx.Columns.SisToHash[j] != nil {
-	// 		ctx.FoldPhase()
-	// 	}
-	// }
+	for j := 0; j < blockSize; j++ {
+		if ctx.Columns.SisToHash[j] != nil {
+			ctx.RegistersSisPreimageLimbs()
+		}
+		ctx.CollapsingPhase()
+		// The fold phase is only needed if there are non-zero
+		// number of SIS rounds
+		if ctx.Columns.SisToHash[j] != nil {
+			ctx.FoldPhase()
+		}
+	}
 }
 
 // Registers the preimage limbs for the SIS rounds.

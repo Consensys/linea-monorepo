@@ -30,13 +30,7 @@ PACKAGES := \
 	github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries/... \
 	github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit/... \
 	github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates/... \
-  github.com/consensys/linea-monorepo/prover/protocol/dedicated/selector/... \
-  github.com/consensys/linea-monorepo/prover/protocol/dedicated/reedsolomon/...\
-  github.com/consensys/linea-monorepo/prover/protocol/dedicated/bigrange/...\
-  github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp/...\
-  github.com/consensys/linea-monorepo/prover/protocol/dedicated/merkle/...\
-  github.com/consensys/linea-monorepo/prover/protocol/dedicated/poseidon2/...\
-  github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk/...\
+  github.com/consensys/linea-monorepo/prover/protocol/dedicated/...\
 
 
 
