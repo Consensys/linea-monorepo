@@ -347,6 +347,35 @@ abstract contract TestingBase {
     }
 
     /**
+ * @notice Deploys a contract with create 2, sends a value and can revert. Event only emitted if address is not 0.
+     * @param _salt The salt for creating the contract.
+     * @param _bytecode The bytecode to use in creation.
+     * @param _value The value sent during the creation.
+     * @return addr The new contract address.
+     */
+    function deployWithCreate2_withValueAndRevert(
+        bytes32 _salt,
+        bytes memory _bytecode,
+        uint256 _value
+    ) public payable returns (address addr) {
+        assembly {
+            addr := create2(
+                _value,
+                add(_bytecode, 0x20),
+                mload(_bytecode),
+                _salt
+            )
+            if iszero(addr) {
+                revert(0, 0)
+            }
+        }
+
+        if (addr != address(0)) {
+            emit ContractCreated(addr);
+        }
+    }
+
+    /**
      * @notice Predetermines a Create2 address.
      * @param _deployerAddress The deploying contract's address.
      * @param _bytecode The bytecode to use in creation.

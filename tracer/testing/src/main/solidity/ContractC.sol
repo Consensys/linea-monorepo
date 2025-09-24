@@ -5,7 +5,8 @@ pragma solidity 0.8.26;
 import {CustomCreate2} from "./CustomCreate2.sol";
 
 interface ICustomCreate2 {
-    function create2WithInitCodeC() external;
+    function create2WithInitCodeC_withValueAndRevert() external;
+    function create2WithInitCodeC_noValueNoRevert() external;
 }
 
 /**
@@ -15,6 +16,8 @@ contract ContractC {
 
 
     event ImmediateRedeploymentFail();
+    event StoreInMap(uint key);
+    event SelfDestruct();
 
     constructor() payable {
         uint256 value = msg.value;
@@ -23,7 +26,7 @@ contract ContractC {
         if (value == 1) {
             storageMap[value]=from;
         } else if (value == 2) {
-            try ICustomCreate2(from).create2WithInitCodeC() {
+            try ICustomCreate2(from).create2WithInitCodeC_withValueAndRevert() {
             } catch Error(string memory _err) {
                 assembly {
                     stop()
@@ -46,10 +49,11 @@ contract ContractC {
 
     function storeInMap(uint key, address add) public {
         storageMap[key] = add;
+        emit StoreInMap(key);
     }
 
     function callBackCustomCreate2(address addCustomCreate2) public {
-        ICustomCreate2(addCustomCreate2).create2WithInitCodeC();
+        ICustomCreate2(addCustomCreate2).create2WithInitCodeC_noValueNoRevert();
     }
 
     function revertOnDemand() public {
@@ -58,6 +62,7 @@ contract ContractC {
 
     function selfDestructOnDemand() public {
         address payable thisAddr = payable(address(this));
+        emit SelfDestruct();
         selfdestruct(thisAddr);
     }
 
