@@ -137,7 +137,7 @@ class DefaultMaruPeer(
   override fun updateStatus(newStatus: Status) {
     scheduledDisconnect.ifPresent { it.cancel(false) }
     status.set(newStatus)
-    log.trace("Received status update from peer={}: status={}", id, newStatus)
+    log.debug("Received status update from peer={} status={}", id, newStatus)
     if (connectionInitiatedRemotely()) {
       scheduleDisconnectIfStatusNotReceived(
         p2pConfig.statusUpdate.refreshInterval + p2pConfig.statusUpdate.refreshIntervalLeeway,

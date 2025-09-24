@@ -56,9 +56,9 @@ abstract class CallAndForgetFutureMultiplexer<I>(
         SafeFuture
           .of {
             try {
-              log.debug("Handling $handlerName")
+              log.trace("calling handler='{}'", handlerName)
               handler(input).also {
-                log.debug("$handlerName handling completed successfully")
+                log.trace("handler='{}' completed successfully", handlerName)
               }
             } catch (ex: Exception) {
               log.logError(handlerName, input, ex)
@@ -75,7 +75,7 @@ abstract class CallAndForgetFutureMultiplexer<I>(
 
 class NewBlockHandlerMultiplexer(
   handlersMap: Map<String, NewBlockHandler<*>>,
-  log: Logger = LogManager.getLogger(NewBlockHandlerMultiplexer::javaClass),
+  log: Logger = LogManager.getLogger(NewBlockHandlerMultiplexer::class.java),
 ) : CallAndForgetFutureMultiplexer<BeaconBlock>(
     handlersMap = blockHandlersToGenericHandlers(handlersMap),
     log = log,
