@@ -47,18 +47,24 @@ public class EIP2935HistoricalHash extends TraceSection {
 
   public EIP2935HistoricalHash(final Hub hub, WorldView world, ProcessableBlockHeader blockHeader) {
     super(hub, (short) 4);
-    final boolean currentBlockIsGenesis = blockHeader.getNumber() == 0;
-    final short previousBlockNumberModulo =
-        currentBlockIsGenesis ? 0 : (short) ((blockHeader.getNumber() - 1) % HISTORY_SERVE_WINDOW);
+    final long blockNumber = blockHeader.getNumber();
+    final boolean currentBlockIsGenesis = blockNumber == 0;
+    final long previousBlockNumber = currentBlockIsGenesis ? 0 : blockNumber - 1;
+    final short previousBlockNumberMod8191 = (short) (previousBlockNumber % HISTORY_SERVE_WINDOW);
     final AccountSnapshot blockhashHistoryAccount =
         AccountSnapshot.canonical(hub, world, EIP2935_HISTORY_STORAGE_ADDRESS, false);
     final boolean isNonTrivialOperation =
         !currentBlockIsGenesis && !blockhashHistoryAccount.code().isEmpty();
 
-    final Bytes32 blockhash = isNonTrivialOperation ? blockHeader.getParentHash() : Bytes32.ZERO;
+    final Bytes32 previousBlockhashOrZero =
+        currentBlockIsGenesis ? Bytes32.ZERO : blockHeader.getParentHash();
 
     final EIP2935TransactionFragment transactionFragment =
-        new EIP2935TransactionFragment(previousBlockNumberModulo, blockhash, currentBlockIsGenesis);
+        new EIP2935TransactionFragment(
+            previousBlockNumber,
+            previousBlockNumberMod8191,
+            previousBlockhashOrZero,
+            currentBlockIsGenesis);
     fragments().add(transactionFragment);
     hub.txnData().callTxnDataForSystemTransaction(transactionFragment.type());
 
@@ -74,7 +80,7 @@ public class EIP2935HistoricalHash extends TraceSection {
     fragments().add(accountFragment);
 
     if (isNonTrivialOperation) {
-      final EWord key = EWord.of(previousBlockNumberModulo);
+      final EWord key = EWord.of(previousBlockNumberMod8191);
       final StorageFragment storingBlockhash =
           systemTransactionStoring(
               hub,
@@ -84,7 +90,7 @@ public class EIP2935HistoricalHash extends TraceSection {
                   world
                       .get(EIP2935_HISTORY_STORAGE_ADDRESS)
                       .getStorageValue(UInt256.fromBytes(key))),
-              EWord.of(blockhash),
+              EWord.of(previousBlockhashOrZero),
               2);
       fragments().add(storingBlockhash);
     }

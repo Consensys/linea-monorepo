@@ -49,7 +49,7 @@ public class ExampleBesuTest extends TracerTestBase {
       case LONDON -> {}
       case PARIS -> compiler.op(OpCode.DIFFICULTY);
       case SHANGHAI -> compiler.op(OpCode.PUSH0);
-      case CANCUN -> compiler.op(OpCode.MCOPY);
+      case CANCUN, PRAGUE -> compiler.op(OpCode.MCOPY);
       default -> throw new IllegalArgumentException("Unsupported fork: " + fork);
     }
 

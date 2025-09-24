@@ -84,6 +84,6 @@ public class SysiEip2935Transaction extends CancunTxnDataOperation {
   }
 
   private Bytes previousBlockHash() {
-    return currentBlockIsGenesisBlock() ? blockHeader.getParentHash() : Bytes.EMPTY;
+    return currentBlockIsGenesisBlock() ? Bytes.EMPTY : blockHeader.getParentHash();
   }
 }
