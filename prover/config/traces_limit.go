@@ -89,7 +89,6 @@ type TracesLimits struct {
 	U20  int `mapstructure:"U20" validate:"power_of_2" corset:"u20"`
 	// reference tables
 	Binreftable int `mapstructure:"BIN_REFERENCE_TABLE" validate:"power_of_2" corset:"binreftable"`
-	Shfreftable int `mapstructure:"SHF_REFERENCE_TABLE" validate:"power_of_2" corset:"shfreftable"`
 	Instdecoder int `mapstructure:"INSTRUCTION_DECODER" validate:"power_of_2" corset:"instdecoder"`
 
 	PrecompileEcrecoverEffectiveCalls    int `mapstructure:"PRECOMPILE_ECRECOVER_EFFECTIVE_CALLS"`
@@ -111,6 +110,28 @@ type TracesLimits struct {
 	BlockTransactions int `mapstructure:"BLOCK_TRANSACTIONS"`
 
 	ShomeiMerkleProofs int `mapstructure:"SHOMEI_MERKLE_PROOFS"`
+
+	// beta v4.0
+	PrecompileBlsPointEvaluationEffectiveCalls     int `mapstructure:"PRECOMPILE_BLS_POINT_EVALUATION_EFFECTIVE_CALLS"`
+	PrecompilePointEvaluationFailureEffectiveCalls int `mapstructure:"PRECOMPILE_POINT_EVALUATION_FAILURE_EFFECTIVE_CALLS"`
+	PrecompileBlsG1AddEffectiveCalls               int `mapstructure:"PRECOMPILE_BLS_G1_ADD_EFFECTIVE_CALLS"`
+	PrecompileBlsG1MsmEffectiveCalls               int `mapstructure:"PRECOMPILE_BLS_G1_MSM_EFFECTIVE_CALLS"`
+	PrecompileBlsG2AddEffectiveCalls               int `mapstructure:"PRECOMPILE_BLS_G2_ADD_EFFECTIVE_CALLS"`
+	PrecompileBlsG2MsmEffectiveCalls               int `mapstructure:"PRECOMPILE_BLS_G2_MSM_EFFECTIVE_CALLS"`
+	PrecompileBlsPairingCheckMillerLoops           int `mapstructure:"PRECOMPILE_BLS_PAIRING_CHECK_MILLER_LOOPS"`
+	PrecompileBlsFinalExponentiations              int `mapstructure:"PRECOMPILE_BLS_FINAL_EXPONENTIATIONS"`
+	PrecompileBlsMapFpToG1EffectiveCalls           int `mapstructure:"PRECOMPILE_BLS_MAP_FP_TO_G1_EFFECTIVE_CALLS"`
+	PrecompileBlsMapFp2ToG2EffectiveCalls          int `mapstructure:"PRECOMPILE_BLS_MAP_FP2_TO_G2_EFFECTIVE_CALLS"`
+	PrecompileBlsC1MembershipChecks                int `mapstructure:"PRECOMPILE_BLS_C1_MEMBERSHIP_CHECKS"`
+	PrecompileBlsC2MembershipCalls                 int `mapstructure:"PRECOMPILE_BLS_C2_MEMBERSHIP_CALLS"`
+	PrecompileBlsG1MembershipCalls                 int `mapstructure:"PRECOMPILE_BLS_G1_MEMBERSHIP_CALLS"`
+	PrecompileBlsG2MembershipCalls                 int `mapstructure:"PRECOMPILE_BLS_G2_MEMBERSHIP_CALLS"`
+	Bls                                            int `mapstructure:"BLS"`
+	PointEval                                      int `mapstructure:"POINT_EVAL"`
+	BlsData                                        int `mapstructure:"BLS_DATA"`
+	RlpUtils                                       int `mapstructure:"RLP_UTILS"`
+	PowerReferenceTable                            int `mapstructure:"POWER_REFERENCE_TABLE"`
+	BlsReferenceTable                              int `mapstructure:"BLS_REFERENCE_TABLE"`
 }
 
 func (tl *TracesLimits) Checksum() string {
@@ -177,6 +198,25 @@ func (tl *TracesLimits) ScaleUp(by int) {
 	tl.U32 *= by
 	tl.U36 *= by
 	tl.U64 *= by
+	// beta v4.0
+	tl.PrecompileBlsPointEvaluationEffectiveCalls *= by
+	tl.PrecompilePointEvaluationFailureEffectiveCalls *= by
+	tl.PrecompileBlsG1AddEffectiveCalls *= by
+	tl.PrecompileBlsG1MsmEffectiveCalls *= by
+	tl.PrecompileBlsG2AddEffectiveCalls *= by
+	tl.PrecompileBlsG2MsmEffectiveCalls *= by
+	tl.PrecompileBlsPairingCheckMillerLoops *= by
+	tl.PrecompileBlsFinalExponentiations *= by
+	tl.PrecompileBlsMapFpToG1EffectiveCalls *= by
+	tl.PrecompileBlsMapFp2ToG2EffectiveCalls *= by
+	tl.PrecompileBlsC1MembershipChecks *= by
+	tl.PrecompileBlsC2MembershipCalls *= by
+	tl.PrecompileBlsG1MembershipCalls *= by
+	tl.PrecompileBlsG2MembershipCalls *= by
+	tl.Bls *= by
+	tl.PointEval *= by
+	tl.BlsData *= by
+	tl.RlpUtils *= by
 }
 
 func GetTestTracesLimits() *TracesLimits {
@@ -214,7 +254,6 @@ func GetTestTracesLimits() *TracesLimits {
 		Txndata:                              1 << 14,
 		Wcp:                                  1 << 18,
 		Binreftable:                          1 << 20,
-		Shfreftable:                          1 << 12,
 		Instdecoder:                          1 << 9,
 		PrecompileEcrecoverEffectiveCalls:    1 << 9,
 		PrecompileSha2Blocks:                 1 << 9,
@@ -238,6 +277,27 @@ func GetTestTracesLimits() *TracesLimits {
 		U32:                                  1 << 17,
 		U36:                                  1 << 17,
 		U64:                                  1 << 17,
+		// beta v4.0
+		PrecompileBlsPointEvaluationEffectiveCalls:     0,
+		PrecompilePointEvaluationFailureEffectiveCalls: 0,
+		PrecompileBlsG1AddEffectiveCalls:               0,
+		PrecompileBlsG1MsmEffectiveCalls:               0,
+		PrecompileBlsG2AddEffectiveCalls:               0,
+		PrecompileBlsG2MsmEffectiveCalls:               0,
+		PrecompileBlsPairingCheckMillerLoops:           0,
+		PrecompileBlsFinalExponentiations:              0,
+		PrecompileBlsMapFpToG1EffectiveCalls:           0,
+		PrecompileBlsMapFp2ToG2EffectiveCalls:          0,
+		PrecompileBlsC1MembershipChecks:                0,
+		PrecompileBlsC2MembershipCalls:                 0,
+		PrecompileBlsG1MembershipCalls:                 0,
+		PrecompileBlsG2MembershipCalls:                 0,
+		Bls:                                            0,
+		PointEval:                                      0,
+		BlsData:                                        4096,
+		RlpUtils:                                       131072,
+		PowerReferenceTable:                            16,
+		BlsReferenceTable:                              256,
 	}
 
 	return traceLimits
