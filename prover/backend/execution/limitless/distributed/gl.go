@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
+	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
 )
@@ -16,7 +17,14 @@ type GLResp struct {
 	LPPCommitment field.Element      `cbor:"lpp_commit"`
 }
 
-func RunGL(cfg *config.Config, witnessGL *distributed.ModuleWitnessGL) (*GLResp, error) {
+func RunGL(cfg *config.Config, witnessGLPath string, proofGLPath string) error {
+
+	logrus.Infof("Initating the GL-prover from witnessGL file path %v", witnessGLPath)
+
+	witnessGL := &distributed.ModuleWitnessGL{}
+	if err := serialization.LoadFromDisk(witnessGLPath, witnessGL, true); err != nil {
+		return fmt.Errorf("could not load witness: %w", err)
+	}
 
 	logrus.Infof("Running the GL-prover for witness module name=%s at index=%d", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
@@ -24,7 +32,7 @@ func RunGL(cfg *config.Config, witnessGL *distributed.ModuleWitnessGL) (*GLResp,
 	// `mmap` optimization in the respective GL worker controller
 	compiledGL, err := zkevm.LoadCompiledGL(cfg, witnessGL.ModuleName)
 	if err != nil {
-		return nil, fmt.Errorf("could not load compiled GL: %w", err)
+		return fmt.Errorf("could not load compiled GL: %w", err)
 	}
 
 	logrus.Infof("Loaded the compiled GL for witness module=%v at index=%d", witnessGL.ModuleName, witnessGL.ModuleIndex)
@@ -33,12 +41,26 @@ func RunGL(cfg *config.Config, witnessGL *distributed.ModuleWitnessGL) (*GLResp,
 
 	logrus.Infof("Finished running the GL-prover for witness module=%v at index=%d", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
-	_proofGL := recursion.ExtractWitness(run)
+	var (
+		_proofGL   = recursion.ExtractWitness(run)
+		_lppCommit = distributed.GetLppCommitmentFromRuntime(run)
+	)
 
 	logrus.Infof("Extracted the witness for witness module=%v at index=%d", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
-	return &GLResp{
+	glResp := &GLResp{
 		ProofGL:       &_proofGL,
-		LPPCommitment: distributed.GetLppCommitmentFromRuntime(run),
-	}, nil
+		LPPCommitment: _lppCommit,
+	}
+
+	if err := serialization.StoreToDisk(proofGLPath, *glResp, true); err != nil {
+		return fmt.Errorf("could not store GL proof: %w", err)
+	}
+
+	logrus.Infof("Stored the GL proof and LPP commitment to path=%s", proofGLPath)
+
+	// Free memory immediately for next GL job
+	glResp = nil
+
+	return nil
 }
