@@ -230,7 +230,7 @@ public abstract class Hub implements Module {
   private final Mxp mxp = setMxp();
   private final Oob oob = new Oob(this, add, mod, wcp);
   private final Mmu mmu;
-  private final Stp stp = new Stp(wcp, mod);
+  private final Stp stp = new Stp();
   private final Exp exp = new Exp(this, wcp);
 
   /*
