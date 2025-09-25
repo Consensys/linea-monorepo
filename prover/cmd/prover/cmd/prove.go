@@ -107,8 +107,13 @@ func handleGLJob(cfg *config.Config, args ProverArgs) error {
 	if err != nil {
 		return fmt.Errorf("unable to parse sb/eb/segID from %s: %w", args.Input, err)
 	}
-
-	resp, err := distributed.RunGL(cfg, args.Input, sb, eb, segID)
+	req := &distributed.GLRequest{
+		WitnessGLPath: args.Input,
+		StartBlock:    sb,
+		EndBlock:      eb,
+		SegID:         segID,
+	}
+	resp, err := distributed.RunGL(cfg, req)
 	if err != nil {
 		return fmt.Errorf("GL phase failed: %w", err)
 	}
