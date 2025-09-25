@@ -14,12 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
 
-// anchoredExpression represents symbolic expression pinned into an overarching
-// [ExpressionBoard] expression.
-type anchoredExpression struct {
-	Board  *ExpressionBoard
-	ESHash fext.GenericFieldElem
-}
+type esHash = fext.Element
 
 // Expression represents a symbolic arithmetic expression. Expression can be
 // built using the [Add], [Mul], [Sub] etc... package. However, they can only
@@ -45,7 +40,7 @@ type Expression struct {
 	// 		- ESHash(a * b) = ESHash(a) * ESHash(b)
 	// 		- ESHash(c: Constant) = c
 	// 		- ESHash(a: variable) = H(a.String())
-	ESHash fext.GenericFieldElem
+	ESHash esHash
 	// Children stores the list of all the sub-expressions the current
 	// Expression uses as operands.
 	Children []*Expression
@@ -83,21 +78,18 @@ type OperatorWithResult interface {
 // Expression into a DAG and runs a topological sorting algorithm over the
 // nodes of the expression. This has the effect of removing the duplicates
 // nodes and making the expression more efficient to evaluate.
-func (f *Expression) Board() ExpressionBoard {
+func (e *Expression) Board() ExpressionBoard {
 	board := emptyBoard()
-	f.anchor(&board)
+	e.anchor(&board)
+
 	return board
 }
 
 // anchor pins down the Expression onto an ExpressionBoard.
-func (f *Expression) anchor(b *ExpressionBoard) anchoredExpression {
-
-	/*
-		Check if the expression is a duplicate of another expression bearing
-		the same GenericFieldElem and
-	*/
-	if _, ok := b.ESHashesToPos[f.ESHash]; ok {
-		return anchoredExpression{Board: b, ESHash: f.ESHash}
+func (e *Expression) anchor(b *ExpressionBoard) nodeID {
+	// recursion base case: the expression is already anchored
+	if nodeID, ok := b.ESHashesToPos[e.ESHash]; ok {
+		return nodeID
 	}
 
 	/*
@@ -105,19 +97,15 @@ func (f *Expression) anchor(b *ExpressionBoard) anchoredExpression {
 		subexpressions are anchored. And get their levels
 	*/
 	maxChildrenLevel := 0
-	childrenIDs := []nodeID{}
-	for _, child := range f.Children {
-		_ = child.anchor(b)
-		childID, ok := b.ESHashesToPos[child.ESHash]
-		if !ok {
-			utils.Panic("Children not found in expr")
-		}
-		maxChildrenLevel = utils.Max(maxChildrenLevel, childID.level())
+	childrenIDs := make([]nodeID, 0, len(e.Children))
+	for _, child := range e.Children {
+		childID := child.anchor(b)
+		maxChildrenLevel = max(maxChildrenLevel, childID.level())
 		childrenIDs = append(childrenIDs, childID)
 	}
 
 	newLevel := maxChildrenLevel + 1
-	if len(f.Children) == 0 {
+	if len(e.Children) == 0 {
 		// Then it is a leaf node and the level should be 0
 		newLevel = 0
 	}
@@ -129,51 +117,25 @@ func (f *Expression) anchor(b *ExpressionBoard) anchoredExpression {
 	if len(b.Nodes) <= newLevel {
 		b.Nodes = append(b.Nodes, []Node{})
 	}
-	NewNodeID := newNodeID(newLevel, len(b.Nodes[newLevel]))
-
+	id := newNodeID(newLevel, len(b.Nodes[newLevel]))
 	newNode := Node{
-		ESHash:   f.ESHash,
-		Parents:  []nodeID{},
+		ESHash:   e.ESHash,
 		Children: childrenIDs,
-		Operator: f.Operator,
+		Operator: e.Operator,
 	}
 
-	/*
-		Registers this NewNodeID in the children as a parents and in the
-		`ESHashToPosition` registry and in the children as a new `Parent`.
-		Also, add it to the list of nodes at the position corresponding to
-		its new NodeID
-	*/
-	b.ESHashesToPos[f.ESHash] = NewNodeID
-	for _, childID := range childrenIDs {
-		b.getNode(childID).addParent(NewNodeID)
-	}
-	b.Nodes[NewNodeID.level()] = append(b.Nodes[NewNodeID.level()], newNode)
+	b.ESHashesToPos[e.ESHash] = id
+	b.Nodes[id.level()] = append(b.Nodes[id.level()], newNode)
 
-	/*
-		And returns the new Anchored expression
-	*/
-	return anchoredExpression{
-		ESHash: f.ESHash,
-		Board:  b,
-	}
+	return id
 }
 
 // Validate operates a list of sanity-checks over the current expression to
 // assess its well-formedness. It returns an error if the check fails.
 func (e *Expression) Validate() error {
-	if e.IsBase {
-		return e.ValidateBase()
-	} else {
-		return e.ValidateExt()
-	}
-}
-
-func (e *Expression) ValidateExt() error {
-
 	eshashes := make([]sv.SmartVector, len(e.Children))
 	for i := range e.Children {
-		eshashes[i] = sv.NewConstantExt(e.Children[i].ESHash.GetExt(), 1)
+		eshashes[i] = sv.NewConstantExt(e.Children[i].ESHash, 1)
 	}
 
 	if len(e.Children) > 0 {
@@ -181,40 +143,7 @@ func (e *Expression) ValidateExt() error {
 		// easy sanity check.
 		expectedESH := e.Operator.EvaluateExt(eshashes).(*sv.ConstantExt).GetExt(0)
 
-		if !e.ESHash.IsEqualExt(&expectedESH) {
-			return fmt.Errorf("esh mismatch %v %v", expectedESH.String(), e.ESHash.String())
-		}
-	}
-
-	// Operator specific validation
-	if err := e.Operator.Validate(e); err != nil {
-		return err
-	}
-
-	// Validate the children recursively
-	for i := range e.Children {
-		if err := e.Children[i].Validate(); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (e *Expression) ValidateBase() error {
-
-	eshashes := make([]sv.SmartVector, len(e.Children))
-	for i := range e.Children {
-		baseESHash, _ := e.Children[i].ESHash.GetBase()
-		eshashes[i] = sv.NewConstant(baseESHash, 1)
-	}
-
-	if len(e.Children) > 0 {
-		// The cast back to sv.Constant is not functionally important but is an
-		// easy sanity check.
-		expectedESH, _ := e.Operator.Evaluate(eshashes).(*sv.Constant).GetBase(0)
-		expressionBaseESHash, _ := e.ESHash.GetBase()
-		if expectedESH != expressionBaseESHash {
+		if !e.ESHash.Equal(&expectedESH) {
 			return fmt.Errorf("esh mismatch %v %v", expectedESH.String(), e.ESHash.String())
 		}
 	}

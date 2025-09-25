@@ -26,7 +26,7 @@ func regroupTerms(magnitudes []int, children []*Expression) (
 	}
 
 	numChildren := len(children)
-	foundExpressions := make(map[fext.GenericFieldElem]int, numChildren)
+	foundExpressions := make(map[esHash]int, numChildren)
 	regroupedChildren = make([]*Expression, 0, numChildren)
 	regroupedMagnitudes = make([]int, 0, numChildren)
 	constantValues = make([]fext.GenericFieldElem, 0, numChildren)
@@ -180,15 +180,13 @@ func expandTerms(op Operator, magnitudes []int, children []*Expression) (
 	expandedMagnitudes := make([]int, 0, totalReturnSize)
 	expandedExpression := make([]*Expression, 0, totalReturnSize)
 
-	for i := 0; i < numChildren; i++ {
-
+	for i, child := range children {
+		magnitude := magnitudes[i]
 		var (
-			child     = children[i]
-			magnitude = magnitudes[i]
-			cProd     *Product
-			cLinC     *LinComb
-			cIsProd   bool
-			cIsLinC   bool
+			cProd   *Product
+			cLinC   *LinComb
+			cIsProd bool
+			cIsLinC bool
 		)
 
 		switch o := child.Operator.(type) {
@@ -207,16 +205,16 @@ func expandTerms(op Operator, magnitudes []int, children []*Expression) (
 		}
 
 		if cIsProd && opIsProd {
-			for k := range child.Children {
-				expandedExpression = append(expandedExpression, child.Children[k])
+			for k, grandChild := range child.Children {
+				expandedExpression = append(expandedExpression, grandChild)
 				expandedMagnitudes = append(expandedMagnitudes, magnitude*cProd.Exponents[k])
 			}
 			continue
 		}
 
 		if cIsLinC && opIsLinC {
-			for k := range child.Children {
-				expandedExpression = append(expandedExpression, child.Children[k])
+			for k, grandChild := range child.Children {
+				expandedExpression = append(expandedExpression, grandChild)
 				expandedMagnitudes = append(expandedMagnitudes, magnitude*cLinC.Coeffs[k])
 			}
 			continue

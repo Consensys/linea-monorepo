@@ -266,9 +266,9 @@ func _ldeOfExt(v []fext.Element, sizeSmall, sizeLarge int) {
 	domainSmall := fft.NewDomain(uint64(sizeSmall), fft.WithCache())
 	domainLarge := fft.NewDomain(uint64(sizeLarge), fft.WithCache())
 
-	domainSmall.FFTInverseExt(v[:sizeSmall], fft.DIF)
+	domainSmall.FFTInverseExt(v[:sizeSmall], fft.DIF, fft.WithNbTasks(1))
 	gutils.BitReverse(v[:sizeSmall])
-	domainLarge.FFTExt(v, fft.DIF)
+	domainLarge.FFTExt(v, fft.DIF, fft.WithNbTasks(1))
 	gutils.BitReverse(v)
 }
 

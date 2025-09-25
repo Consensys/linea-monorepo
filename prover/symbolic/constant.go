@@ -13,6 +13,7 @@ import (
 
 // Constant is an implementation of [Operator] which represents a constant value
 type Constant struct {
+	// TODO @gbotrel separate constant ext and no-ext
 	Val fext.GenericFieldElem
 }
 
@@ -57,7 +58,7 @@ func NewConstant(val interface{}) *Expression {
 	res := &Expression{
 		Operator: Constant{Val: *newHash},
 		Children: []*Expression{},
-		ESHash:   *new(fext.GenericFieldElem).Set(newHash),
+		ESHash:   x,
 		IsBase:   fext.IsBase(&x),
 	}
 	return res
