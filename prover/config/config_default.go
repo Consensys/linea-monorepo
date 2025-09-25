@@ -108,11 +108,34 @@ func setDefaultTracesLimit() {
 
 	// Reference tables
 	viper.SetDefault("traces_limits.BIN_REFERENCE_TABLE", 262144)
-	viper.SetDefault("traces_limits.SHF_REFERENCE_TABLE", 4096)
 	viper.SetDefault("traces_limits.INSTRUCTION_DECODER", 512)
 
 	// Shomei limits
 	viper.SetDefault("traces_limits.SHOMEI_MERKLE_PROOFS", 16384)
+
+	// Beta v4.0
+	viper.SetDefault("traces_limits.BYTE_SHL256", 131072)
+	viper.SetDefault("traces_limits.PRECOMPILE_BLS_POINT_EVALUATION_EFFECTIVE_CALLS", 0)
+	viper.SetDefault("traces_limits.PRECOMPILE_POINT_EVALUATION_FAILURE_EFFECTIVE_CALLS", 0)
+	viper.SetDefault("traces_limits.PRECOMPILE_BLS_G1_ADD_EFFECTIVE_CALLS", 0)
+	viper.SetDefault("traces_limits.PRECOMPILE_BLS_G1_MSM_EFFECTIVE_CALLS", 0)
+	viper.SetDefault("traces_limits.PRECOMPILE_BLS_G2_ADD_EFFECTIVE_CALLS", 0)
+	viper.SetDefault("traces_limits.PRECOMPILE_BLS_G2_MSM_EFFECTIVE_CALLS", 0)
+	viper.SetDefault("traces_limits.PRECOMPILE_BLS_PAIRING_CHECK_MILLER_LOOPS", 0)
+	viper.SetDefault("traces_limits.PRECOMPILE_BLS_FINAL_EXPONENTIATIONS", 0)
+	viper.SetDefault("traces_limits.PRECOMPILE_BLS_MAP_FP_TO_G1_EFFECTIVE_CALLS", 0)
+	viper.SetDefault("traces_limits.PRECOMPILE_BLS_MAP_FP2_TO_G2_EFFECTIVE_CALLS", 0)
+	viper.SetDefault("traces_limits.PRECOMPILE_BLS_C1_MEMBERSHIP_CHECKS", 0)
+	viper.SetDefault("traces_limits.PRECOMPILE_BLS_C2_MEMBERSHIP_CALLS", 0)
+	viper.SetDefault("traces_limits.PRECOMPILE_BLS_G1_MEMBERSHIP_CALLS", 0)
+	viper.SetDefault("traces_limits.PRECOMPILE_BLS_G2_MEMBERSHIP_CALLS", 0)
+
+	viper.SetDefault("traces_limits.BLS", 0)
+	viper.SetDefault("traces_limits.POINT_EVAL", 0)
+	viper.SetDefault("traces_limits.BLS_DATA", 4096)
+	viper.SetDefault("traces_limits.RLP_UTILS", 131072)
+	viper.SetDefault("traces_limits.POWER_REFERENCE_TABLE", 16)
+	viper.SetDefault("traces_limits.BLS_REFERENCE_TABLE", 256)
 
 	// Large Limits
 
@@ -176,10 +199,31 @@ func setDefaultTracesLimit() {
 
 	// Reference tables
 	viper.SetDefault("traces_limits_large.BIN_REFERENCE_TABLE", 262144)
-	viper.SetDefault("traces_limits_large.SHF_REFERENCE_TABLE", 4096)
 	viper.SetDefault("traces_limits_large.INSTRUCTION_DECODER", 512)
 
 	// Shomei limits
 	viper.SetDefault("traces_limits_large.SHOMEI_MERKLE_PROOFS", 32768)
 
+	// Beta v4.0
+	viper.SetDefault("traces_limits_large.PRECOMPILE_BLS_POINT_EVALUATION_EFFECTIVE_CALLS", 0)
+	viper.SetDefault("traces_limits_large.PRECOMPILE_POINT_EVALUATION_FAILURE_EFFECTIVE_CALLS", 0)
+	viper.SetDefault("traces_limits_large.PRECOMPILE_BLS_G1_ADD_EFFECTIVE_CALLS", 0)
+	viper.SetDefault("traces_limits_large.PRECOMPILE_BLS_G1_MSM_EFFECTIVE_CALLS", 0)
+	viper.SetDefault("traces_limits_large.PRECOMPILE_BLS_G2_ADD_EFFECTIVE_CALLS", 0)
+	viper.SetDefault("traces_limits_large.PRECOMPILE_BLS_G2_MSM_EFFECTIVE_CALLS", 0)
+	viper.SetDefault("traces_limits_large.PRECOMPILE_BLS_PAIRING_CHECK_MILLER_LOOPS", 0)
+	viper.SetDefault("traces_limits_large.PRECOMPILE_BLS_FINAL_EXPONENTIATIONS", 0)
+	viper.SetDefault("traces_limits_large.PRECOMPILE_BLS_MAP_FP_TO_G1_EFFECTIVE_CALLS", 0)
+	viper.SetDefault("traces_limits_large.PRECOMPILE_BLS_MAP_FP2_TO_G2_EFFECTIVE_CALLS", 0)
+	viper.SetDefault("traces_limits_large.PRECOMPILE_BLS_C1_MEMBERSHIP_CHECKS", 0)
+	viper.SetDefault("traces_limits_large.PRECOMPILE_BLS_C2_MEMBERSHIP_CALLS", 0)
+	viper.SetDefault("traces_limits_large.PRECOMPILE_BLS_G1_MEMBERSHIP_CALLS", 0)
+	viper.SetDefault("traces_limits_large.PRECOMPILE_BLS_G2_MEMBERSHIP_CALLS", 0)
+
+	viper.SetDefault("traces_limits_large.BLS", 0)
+	viper.SetDefault("traces_limits_large.POINT_EVAL", 0)
+	viper.SetDefault("traces_limits_large.BLS_DATA", 8192)
+	viper.SetDefault("traces_limits_large.RLP_UTILS", 262144)
+	viper.SetDefault("traces_limits_large.POWER_REFERENCE_TABLE", 16)
+	viper.SetDefault("traces_limits_large.BLS_REFERENCE_TABLE", 256)
 }
