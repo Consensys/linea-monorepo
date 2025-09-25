@@ -34,7 +34,7 @@ type GnarkRuntimeGen[T zk.Element] interface {
 	GetInnerProductParams(name ifaces.QueryID) query.GnarkInnerProductParamsGen[T]
 	GetUnivariateEval(name ifaces.QueryID) query.GnarkUnivariateEvalParamsGen[T]
 	GetUnivariateParams(name ifaces.QueryID) query.GnarkUnivariateEvalParamsGen[T]
-	Fs() *fiatshamir.GnarkFiatShamir // TODO make it gen
+	Fs() *fiatshamir.GnarkFiatShamir // TODO @thomas make it gen
 	GetHasherFactory() mimc.HasherFactory
 	InsertCoin(name coin.Name, value interface{})
 	GetState(name string) (any, bool)
@@ -167,7 +167,7 @@ func NewVerifierCircuitGen[T zk.Element](comp *CompiledIOP, numRound int) *Verif
 		HornerIDs:           collection.NewMapping[ifaces.QueryID, int](),
 
 		// Columns:            [][]T,
-		ColumnsExt:         [][]gnarkfext.Element{},
+		// ColumnsExt:         [][]gnarkfext.E4Gen[T],
 		UnivariateParams:   make([]query.GnarkUnivariateEvalParamsGen[T], 0),
 		InnerProductParams: make([]query.GnarkInnerProductParamsGen[T], 0),
 		LocalOpeningParams: make([]query.GnarkLocalOpeningParamsGen[T], 0),
@@ -184,13 +184,13 @@ func NewVerifierCircuitGen[T zk.Element](comp *CompiledIOP, numRound int) *Verif
 // calling the [frontend.Compile] function as this will pre-allocate all
 // the witness fields of the circuit and will allow the gnark compiler to
 // understand how big is the witness of the circuit.
-func AllocateWizardCircuitGen(comp *CompiledIOP, numRound int) *VerifierCircuit {
+func AllocateWizardCircuitGen[T zk.Element](comp *CompiledIOP, numRound int) *VerifierCircuit {
 
 	if numRound == 0 {
 		numRound = comp.NumRounds()
 	}
 
-	res := NewVerifierCircuit(comp, numRound)
+	res := NewVerifierCircuitGen[T](comp, numRound)
 
 	for _, colName := range comp.Columns.AllKeys() {
 
@@ -240,7 +240,7 @@ func AllocateWizardCircuitGen(comp *CompiledIOP, numRound int) *VerifierCircuit 
 		}
 
 		switch qInfo := qInfoIface.(type) {
-		case query.UnivariateEval:
+		case query.UnivariateEvalGen[T]:
 			res.AllocUnivariateEval(qName, qInfo)
 		case query.InnerProduct:
 			res.AllocInnerProduct(qName, qInfo)
@@ -353,7 +353,7 @@ func (c *VerifierCircuit) VerifyGen(api frontend.API) {
 	// Note: the function handles the case where c.HasherFactory == nil.
 	// It will instead use a standard MiMC hasher that does not use
 	// GKR instead.
-	c.FS = fiatshamir.NewGnarkFiatShamir(api, c.HasherFactory)
+	c.FS = fiatshamir.NewGnarkFiatShamir(api, c.HasherFactory) // TODO @thomas make it gen
 	c.FS.Update(c.Spec.FiatShamirSetup)
 
 	for round, roundSteps := range c.Spec.SubVerifiers.GetInner() {
@@ -681,15 +681,15 @@ func (c *VerifierCircuit) GetParamsGen(id ifaces.QueryID) ifaces.GnarkQueryParam
 
 // AllocColumn inserts a column in the Wizard verifier circuit and is meant
 // to be called at allocation time.
-func (c *VerifierCircuit) AllocColumnGen(id ifaces.ColID, size int) []frontend.Variable {
-	column := make([]frontend.Variable, size)
+func (c *VerifierCircuitGen[T]) AllocColumn(id ifaces.ColID, size int) []T {
+	column := make([]T, size)
 	c.ColumnsIDs.InsertNew(id, len(c.Columns))
 	c.Columns = append(c.Columns, column)
 	return column
 }
 
-func (c *VerifierCircuit) AllocColumnExtGen(id ifaces.ColID, size int) []gnarkfext.Element {
-	column := make([]gnarkfext.Element, size)
+func (c *VerifierCircuitGen[T]) AllocColumnExt(id ifaces.ColID, size int) []gnarkfext.E4Gen[T] {
+	column := make([]gnarkfext.E4Gen[T], size)
 	columnIndex := len(c.ColumnsExt)
 	c.ColumnsExtIDs.InsertNew(id, columnIndex)
 	c.ColumnsExt = append(c.ColumnsExt, column)
@@ -712,7 +712,7 @@ func (c *VerifierCircuit) AssignColumnExtGen(id ifaces.ColID, sv smartvectors.Sm
 
 // AllocUnivariableEval inserts a slot for a univariate query opening in the
 // witness of the verifier circuit.
-func (c *VerifierCircuit) AllocUnivariateEvalGen(qName ifaces.QueryID, qInfo query.UnivariateEval) {
+func (c *VerifierCircuitGen[T]) AllocUnivariateEval(qName ifaces.QueryID, qInfo query.UnivariateEvalGen[T]) {
 	// Note that nil is the default value for frontend.Variable
 	c.UnivariateParamsIDs.InsertNew(qName, len(c.UnivariateParams))
 	c.UnivariateParams = append(c.UnivariateParams, qInfo.GnarkAllocate())

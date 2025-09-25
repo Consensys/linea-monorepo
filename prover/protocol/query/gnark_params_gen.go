@@ -16,7 +16,7 @@ type GnarkLocalOpeningParamsGen[T zk.Element] struct {
 }
 
 func (g *GnarkLocalOpeningParamsGen[T]) GnarkAssign(p LocalOpeningParams) {
-	g.BaseY = zk.ValueOf[T](p.BaseY)
+	g.BaseY = *zk.ValueOf[T](p.BaseY)
 	g.ExtY = gnarkfext.NewE4Gen[T](p.ExtY)
 	g.IsBase = p.IsBase
 }
@@ -27,7 +27,7 @@ type GnarkLogDerivSumParamsGen[T zk.Element] struct {
 }
 
 func (g *GnarkLogDerivSumParamsGen[T]) GnarkAssign(p LogDerivSumParams) {
-	g.Sum = zk.ValueOf[T](p.Sum)
+	g.Sum = *zk.ValueOf[T](p.Sum)
 }
 
 // A gnark circuit version of GrandProductParams
@@ -62,8 +62,8 @@ func (g *GnarkHornerParamsGen[T]) Assign(p HornerParams) {
 	g.Parts = make([]HornerParamsPartGnarkGen[T], len(p.Parts))
 	for i := 0; i < len(p.Parts); i++ {
 		g.Parts[i] = HornerParamsPartGnarkGen[T]{
-			N0: zk.ValueOf[T](p.Parts[i].N0),
-			N1: zk.ValueOf[T](p.Parts[i].N1),
+			N0: *zk.ValueOf[T](p.Parts[i].N0),
+			N1: *zk.ValueOf[T](p.Parts[i].N1),
 		}
 	}
 }
@@ -91,21 +91,23 @@ type GnarkUnivariateEvalParamsGen[T zk.Element] struct {
 	IsBase bool
 }
 
-func (g *GnarkUnivariateEvalParamsGen[T]) Allocate(p UnivariateEval) {
-	g.Ys = make([]T, len(p.Pols))
-	g.ExtYs = make([]gnarkfext.E4Gen[T], len(p.Pols))
-
+func (p UnivariateEvalGen[T]) GnarkAllocate() GnarkUnivariateEvalParamsGen[T] {
+	// no need to preallocate the x because its size is already known
+	return GnarkUnivariateEvalParamsGen[T]{
+		Ys:    make([]T, len(p.Pols)),
+		ExtYs: make([]gnarkfext.E4Gen[T], len(p.Pols)),
+	}
 }
 
 // Returns a gnark assignment for the present parameters
 func (g *GnarkUnivariateEvalParamsGen[T]) GnarkAssign(p UnivariateEvalParams) {
 	if p.IsBase {
 		g.Ys = vector.IntoGnarkAssignmentGen[T](p.Ys)
-		g.X = zk.ValueOf[T](p.X)
+		g.X = *zk.ValueOf[T](p.X)
 	} else {
 		// extension query
 		g.Ys = nil
-		g.X = zk.ValueOf[T](0)
+		g.X = *zk.ValueOf[T](0)
 	}
 	g.ExtYs = vectorext.IntoGnarkAssignmentGen[T](p.ExtYs)
 	g.ExtX = gnarkfext.NewE4Gen[T](p.ExtX)
