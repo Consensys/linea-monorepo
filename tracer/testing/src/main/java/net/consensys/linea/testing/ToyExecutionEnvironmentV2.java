@@ -60,6 +60,8 @@ public class ToyExecutionEnvironmentV2 {
   @Builder.Default private final Address coinbase = DEFAULT_COINBASE_ADDRESS;
   @Builder.Default public static final Wei DEFAULT_BASE_FEE = Wei.of(LINEA_BASE_FEE);
   @Builder.Default private final Boolean runWithBesuNode = false;
+  @Builder.Default private String customBesuNodeGenesis = null;
+  @Builder.Default private Boolean oneTxPerBlockOnBesuNode = false;
 
   @Singular private final List<Transaction> transactions;
 
@@ -90,9 +92,16 @@ public class ToyExecutionEnvironmentV2 {
 
   public void run() {
     if (runWithBesuNode || System.getenv().containsKey("RUN_WITH_BESU_NODE")) {
-      new BesuExecutionTools(
-              Optional.of(testInfo), unitTestsChain, coinbase, accounts, transactions)
-          .executeTest();
+      BesuExecutionTools besuExecTools =
+          new BesuExecutionTools(
+              Optional.of(testInfo),
+              unitTestsChain,
+              coinbase,
+              accounts,
+              transactions,
+              oneTxPerBlockOnBesuNode,
+              customBesuNodeGenesis);
+      besuExecTools.executeTest();
     } else {
       final ProtocolSpec protocolSpec =
           ExecutionEnvironment.getProtocolSpec(unitTestsChain.id, unitTestsChain.fork);

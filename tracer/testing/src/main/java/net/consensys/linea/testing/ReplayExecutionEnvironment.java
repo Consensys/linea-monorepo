@@ -246,7 +246,13 @@ public class ReplayExecutionEnvironment {
       }
     }
     new BesuExecutionTools(
-            filename, chain, coinbase, accounts.values().stream().toList(), transactions)
+            filename,
+            chain,
+            coinbase,
+            accounts.values().stream().toList(),
+            transactions,
+            false,
+            null)
         .executeTest();
   }
 

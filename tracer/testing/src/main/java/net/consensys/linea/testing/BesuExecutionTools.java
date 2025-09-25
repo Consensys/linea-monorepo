@@ -14,6 +14,7 @@
  */
 package net.consensys.linea.testing;
 
+import static java.lang.Long.parseLong;
 import static net.consensys.linea.testing.ShomeiNode.MerkelProofResponse;
 import static net.consensys.linea.zktracer.Fork.isPostParis;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,12 +26,7 @@ import java.math.BigInteger;
 import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -43,6 +39,7 @@ import net.consensys.linea.corset.CorsetValidator;
 import net.consensys.linea.plugins.rpc.tracegeneration.TraceFile;
 import net.consensys.linea.plugins.rpc.tracegeneration.TraceRequestParams;
 import net.consensys.linea.zktracer.ChainConfig;
+import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.json.JsonConverter;
 import net.consensys.shomei.rpc.server.model.RollupGetZkEvmStateV0Parameter;
 import okhttp3.MediaType;
@@ -61,6 +58,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.eth.EthTransactions
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions;
 import org.junit.jupiter.api.TestInfo;
 import org.web3j.protocol.core.DefaultBlockParameter;
+import org.web3j.protocol.core.methods.response.EthBlock.Block;
 
 @Slf4j
 public class BesuExecutionTools {
@@ -71,22 +69,24 @@ public class BesuExecutionTools {
   private static final ObjectMapper MAPPER =
       CONVERTER.getObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
 
-  private final ChainConfig chainConfig;
   private final OkHttpClient httpClient;
   private final BesuNode besuNode;
   private final ShomeiNode shomeiNode;
   private final Path testDataDir;
   private final Path shomeiDataPath;
   private final List<Transaction> transactions;
-  private final CorsetValidator corsetValidator;
   private final String testName;
+  private final GenesisConfigBuilder genesisConfigBuilder;
+  private final Boolean oneTxPerBlock;
 
   public BesuExecutionTools(
       String testName,
       ChainConfig chainConfig,
       Address coinbase,
       List<ToyAccount> accounts,
-      List<Transaction> transactions) {
+      List<Transaction> transactions,
+      Boolean oneTxPerBlock,
+      String customGenesisFile) {
     String randomUUID = UUID.randomUUID().toString();
     String tmpTestName =
         Optional.ofNullable(testName)
@@ -97,14 +97,18 @@ public class BesuExecutionTools {
     int besuPort = findFreePort();
     int shomeiPort = findFreePort();
     this.httpClient = new OkHttpClient();
-    this.chainConfig = chainConfig;
-    // Generate file per fork in resources
-    String genesisFileName = "BesuExecutionToolsGenesis_" + chainConfig.fork.name() + ".json";
+    this.oneTxPerBlock = oneTxPerBlock;
+    // Generate file per fork in testing/src/main/resources folder
+    String genesisFileName =
+        (customGenesisFile == null)
+            ? "BesuExecutionToolsGenesis_" + chainConfig.fork.name() + ".json"
+            : customGenesisFile;
     GenesisConfigBuilder genesisConfigBuilder = new GenesisConfigBuilder(genesisFileName);
     genesisConfigBuilder.setChainId(chainConfig.id);
     genesisConfigBuilder.setCoinbase(coinbase);
     genesisConfigBuilder.setGasLimit(chainConfig.gasLimitMaximum.longValue());
     accounts.forEach(genesisConfigBuilder::addAccount);
+    this.genesisConfigBuilder = genesisConfigBuilder;
     try {
       this.testDataDir =
           Files.createDirectory(
@@ -128,7 +132,6 @@ public class BesuExecutionTools {
             .setJsonRpcPort(shomeiPort)
             .setDataStoragePath(this.shomeiDataPath)
             .build();
-    this.corsetValidator = new CorsetValidator(chainConfig);
     this.transactions = transactions;
   }
 
@@ -149,8 +152,17 @@ public class BesuExecutionTools {
       ChainConfig chainConfig,
       Address coinbase,
       List<ToyAccount> accounts,
-      List<Transaction> transactions) {
-    this(getTestName(testInfo), chainConfig, coinbase, accounts, transactions);
+      List<Transaction> transactions,
+      Boolean oneTxPerBlock,
+      String customGenesisFile) {
+    this(
+        getTestName(testInfo),
+        chainConfig,
+        coinbase,
+        accounts,
+        transactions,
+        oneTxPerBlock,
+        customGenesisFile);
   }
 
   public void executeTest() {
@@ -164,94 +176,69 @@ public class BesuExecutionTools {
       shomeiThread.start();
       besuCluster.start(besuNode);
 
-      // Send transaction to the transaction pool with eth_sendRawTransaction
       EthTransactions ethTransactions = new EthTransactions();
-      List<String> txHashes =
-          transactions.stream()
-              .map(
-                  tx ->
-                      besuNode.execute(
-                          ethTransactions.sendRawTransaction(tx.encoded().toHexString())))
-              .toList();
       Map<String, Boolean> txReceiptProcessed = new HashMap<>();
       ConcurrentSet<Long> blockNumbers = new ConcurrentSet<>();
+      List<String> txHashes = new ArrayList<>();
+      Fork nextFork = null;
+      Fork currentFork = nextFork;
+      Iterator<Transaction> txs = transactions.iterator();
+      Boolean txHasNext = txs.hasNext();
 
-      // If fork is Paris or after, Clique as a consensus layer defined in the genesis file
-      // doesn't work anymore
-      // We use EngineAPIService to mimick the consensus layer steps and build a new block
-      if (isPostParis(chainConfig.fork)) {
-        ObjectMapper mapper = new ObjectMapper();
-        EngineAPIService engineApiService = new EngineAPIService(besuNode, ethTransactions, mapper);
-        var latestTimestamp = this.besuNode.execute(ethTransactions.block()).getTimestamp();
-        // TODO: could be done with genesis
-        engineApiService.buildNewBlock(chainConfig.fork, latestTimestamp.longValue() + 1L, 1000);
+      while (txHasNext) {
+        // Send transaction to the transaction pool with eth_sendRawTransaction
+        // If oneTxPerBlock is true, we send one transaction per block
+        if (oneTxPerBlock) {
+          String txHash =
+              besuNode.execute(
+                  ethTransactions.sendRawTransaction(txs.next().encoded().toHexString()));
+          txHashes.add(txHash);
+          txHasNext = txs.hasNext();
+        } else {
+          // Send all transactions in the same block
+          while (txHasNext) {
+            String txHash =
+                besuNode.execute(
+                    ethTransactions.sendRawTransaction(txs.next().encoded().toHexString()));
+            txHashes.add(txHash);
+            txHasNext = txs.hasNext();
+          }
+        }
+
+        // After Paris, Clique as a consensus layer defined in the genesis file
+        // doesn't work anymore
+        // We use EngineAPIService to mimick the consensus layer steps and build a new block
+        Block blockInfo = this.besuNode.execute(ethTransactions.block());
+        nextFork = nextBlockFork(blockInfo);
+        if (isPostParis(nextFork)) {
+          callEngineAPIToBuildNewBlock(besuNode, ethTransactions, genesisConfigBuilder, nextFork);
+        }
+        // We check that the transactions are included in a block
+        waitForTxReceipts(besuNode, ethTransactions, txHashes, txReceiptProcessed, blockNumbers);
+        currentFork = nextFork;
+
+        // We trace the conflation
+        assertThat(blockNumbers).isNotEmpty();
+        long startBlockNumber = Collections.min(blockNumbers);
+        long endBlockNumber = Collections.max(blockNumbers);
+        TraceFile traceFile = traceAndCheckTracer(startBlockNumber, endBlockNumber, currentFork);
+        Path traceFilePath = Path.of(traceFile.conflatedTracesFileName());
+
+        // Clean up for next transaction
+        resetTxReceipts(txReceiptProcessed);
+        resetBlockNumbers(blockNumbers);
+        resetTxHashes(txHashes);
+
+        // Execution proof request
+        requestAndStoreExecutionProof(
+            besuNode,
+            ethTransactions,
+            startBlockNumber,
+            endBlockNumber,
+            traceFile,
+            traceFilePath,
+            testDataDir);
       }
-
-      // We check that the transactions are included in a block
-      waitFor(
-          100,
-          () -> {
-            txHashes.forEach(
-                (txHash) -> {
-                  if (txReceiptProcessed.containsKey(txHash)) {
-                    return;
-                  }
-                  var maybeTxReceipt =
-                      besuNode.execute(ethTransactions.getTransactionReceipt(txHash));
-                  assertThat(maybeTxReceipt).isPresent();
-                  var txReceipt = maybeTxReceipt.get();
-                  blockNumbers.add(txReceipt.getBlockNumber().longValue());
-                  txReceiptProcessed.put(txHash, true);
-                  log.info(
-                      "Executed transaction txHash={}, blockNumber={}",
-                      txReceipt.getTransactionHash(),
-                      txReceipt.getBlockNumber());
-                });
-          });
-
-      assertThat(blockNumbers).isNotEmpty();
-      long startBlockNumber = Collections.min(blockNumbers);
-      long endBlockNumber = Collections.max(blockNumbers);
-      String previousBlockStateRoot =
-          besuNode
-              .execute(
-                  ethTransactions.block(
-                      DefaultBlockParameter.valueOf(BigInteger.valueOf(startBlockNumber - 1))))
-              .getStateRoot();
-      TraceFile traceFile = lineaGenerateConflatedTracesToFileV2(startBlockNumber, endBlockNumber);
-      Path traceFilePath = Path.of(traceFile.conflatedTracesFileName());
-      waitFor(
-          10,
-          () -> {
-            assertThat(traceFilePath.toFile().exists())
-                .withFailMessage("Trace file %s does not exist", traceFilePath)
-                .isTrue();
-          });
-
-      ExecutionEnvironment.checkTracer(traceFilePath, corsetValidator, false, Optional.of(log));
-      MerkelProofResponse merkelProofResponse =
-          rollupGetZkEVMStateMerkleProofV0(startBlockNumber, endBlockNumber);
-      log.info("rollupGetZkEVMStateMerkleProofV0={}", merkelProofResponse);
-
-      ExecutionProof.BatchExecutionProofRequestDto executionProofRequestDto =
-          new ExecutionProof.BatchExecutionProofRequestDto(
-              merkelProofResponse.zkParentStateRootHash(),
-              previousBlockStateRoot,
-              traceFilePath.getFileName().toString(),
-              traceFile.tracesEngineVersion(),
-              merkelProofResponse.zkStateManagerVersion(),
-              merkelProofResponse.zkStateMerkleProof(),
-              Collections.emptyList() /* blocksData */);
-
-      String executionProofFileName =
-          ExecutionProof.getExecutionProofRequestFilename(
-              startBlockNumber,
-              endBlockNumber,
-              traceFile.tracesEngineVersion(),
-              merkelProofResponse.zkStateManagerVersion());
-      File executionProofRequestFile = testDataDir.resolve(executionProofFileName).toFile();
-      assertThat(executionProofRequestFile.createNewFile()).isTrue();
-      MAPPER.writeValue(executionProofRequestFile, executionProofRequestDto);
     } catch (IOException | InterruptedException e) {
       throw new RuntimeException(e);
     } finally {
@@ -273,6 +260,10 @@ public class BesuExecutionTools {
       }
     }
   }
+
+  /// // /////////////////////////
+  /// RPC Calls Helper Section
+  /// // /////////////////////////
 
   private TraceFile lineaGenerateConflatedTracesToFileV2(
       final long startBlockNumber, final long endBlockNumber) throws IOException {
@@ -361,5 +352,171 @@ public class BesuExecutionTools {
       return port;
     }
     throw new RuntimeException("Could not find a free port");
+  }
+
+  /// // /////////////////////////
+  /// Dynamic parsing of Genesis file
+  /// // /////////////////////////
+
+  private Fork nextBlockFork(Block block) {
+    var nextTotalDifficulty =
+        block.getTotalDifficulty().add(BigInteger.TWO); /* Clique increments by 2 */
+    var nextBlockTimestamp = block.getTimestamp().longValue() + 1L;
+
+    var TTD = genesisConfigBuilder.getTTD();
+    var shanghaiTime = genesisConfigBuilder.getShanghaiTime();
+    var cancunTime = genesisConfigBuilder.getCancunTime();
+    var pragueTime = genesisConfigBuilder.getPragueTime();
+
+    // No fork switch specified in the genesis file, stay in London
+    if (TTD == null && shanghaiTime == null && cancunTime == null && pragueTime == null) {
+      return Fork.LONDON;
+    }
+
+    var terminalTotalDifficulty = new BigInteger(TTD);
+
+    // Fork from Paris specified
+    if (nextTotalDifficulty.compareTo(terminalTotalDifficulty) > 0) {
+      if (shanghaiTime != null && (nextBlockTimestamp >= parseLong(shanghaiTime))) {
+        if (cancunTime != null && (nextBlockTimestamp >= parseLong(cancunTime))) {
+          if (pragueTime != null && (nextBlockTimestamp >= parseLong(pragueTime))) {
+            return Fork.PRAGUE;
+          }
+          return Fork.CANCUN;
+        }
+        return Fork.SHANGHAI;
+      }
+      return Fork.PARIS;
+    }
+    return Fork.LONDON;
+  }
+
+  /// // /////////////////////////
+  /// Cleaning helpers
+  /// // /////////////////////////
+
+  private void resetTxReceipts(Map<String, Boolean> txReceiptProcessed) {
+    txReceiptProcessed.clear();
+  }
+
+  private void resetBlockNumbers(ConcurrentSet<Long> blockNumbers) {
+    blockNumbers.clear();
+  }
+
+  private void resetTxHashes(List<String> txHashes) {
+    txHashes.clear();
+  }
+
+  /// // /////////////////////////
+  /// Block building helpers
+  /// // /////////////////////////
+
+  private static void callEngineAPIToBuildNewBlock(
+      BesuNode besuNode,
+      EthTransactions ethTransactions,
+      GenesisConfigBuilder genesisConfigBuilder,
+      Fork nextFork)
+      throws IOException, InterruptedException {
+    ObjectMapper mapper = new ObjectMapper();
+    EngineAPIService engineApiService = new EngineAPIService(besuNode, ethTransactions, mapper);
+    BigInteger latestTimestamp = besuNode.execute(ethTransactions.block()).getTimestamp();
+    long blockBuildingTimeMs = parseLong(genesisConfigBuilder.getCliqueBlockPeriodSeconds()) * 1000;
+    engineApiService.buildNewBlock(nextFork, latestTimestamp.longValue() + 1L, blockBuildingTimeMs);
+  }
+
+  private void waitForTxReceipts(
+      BesuNode besuNode,
+      EthTransactions ethTransactions,
+      List<String> txHashes,
+      Map<String, Boolean> txReceiptProcessed,
+      ConcurrentSet<Long> blockNumbers) {
+    waitFor(
+        100,
+        () -> {
+          txHashes.forEach(
+              (hash) -> {
+                if (txReceiptProcessed.containsKey(hash)) {
+                  return;
+                }
+                var maybeTxReceipt = besuNode.execute(ethTransactions.getTransactionReceipt(hash));
+                assertThat(maybeTxReceipt).isPresent();
+                var txReceipt = maybeTxReceipt.get();
+                blockNumbers.add(txReceipt.getBlockNumber().longValue());
+                txReceiptProcessed.put(hash, true);
+                log.info(
+                    "Executed transaction txHash={}, blockNumber={}",
+                    txReceipt.getTransactionHash(),
+                    txReceipt.getBlockNumber());
+              });
+        });
+  }
+
+  /// // /////////////////////////
+  /// Tracing helpers
+  /// // /////////////////////////
+
+  private static CorsetValidator getCorsetValidatorPerFork(Fork fork) {
+    return new CorsetValidator(ChainConfig.MAINNET_TESTCONFIG(fork));
+  }
+
+  private TraceFile traceAndCheckTracer(long startBlockNumber, long endBlockNumber, Fork nextFork)
+      throws IOException {
+    TraceFile traceFile = lineaGenerateConflatedTracesToFileV2(startBlockNumber, endBlockNumber);
+    Path traceFilePath = Path.of(traceFile.conflatedTracesFileName());
+    waitFor(
+        10,
+        () -> {
+          assertThat(traceFilePath.toFile().exists())
+              .withFailMessage("Trace file %s does not exist", traceFilePath)
+              .isTrue();
+        });
+
+    ExecutionEnvironment.checkTracer(
+        traceFilePath, getCorsetValidatorPerFork(nextFork), false, Optional.of(log));
+
+    return traceFile;
+  }
+
+  /// // /////////////////////////
+  /// Proof helpers
+  /// // /////////////////////////
+
+  private void requestAndStoreExecutionProof(
+      BesuNode besuNode,
+      EthTransactions ethTransactions,
+      long startBlockNumber,
+      long endBlockNumber,
+      TraceFile traceFile,
+      Path traceFilePath,
+      Path testDataDir)
+      throws IOException {
+    String previousBlockStateRootShanghai =
+        besuNode
+            .execute(
+                ethTransactions.block(
+                    DefaultBlockParameter.valueOf(BigInteger.valueOf(startBlockNumber - 1))))
+            .getStateRoot();
+    MerkelProofResponse merkelProofResponse =
+        rollupGetZkEVMStateMerkleProofV0(startBlockNumber, endBlockNumber);
+    log.info("rollupGetZkEVMStateMerkleProofV0={}", merkelProofResponse);
+    ExecutionProof.BatchExecutionProofRequestDto executionProofRequestDto =
+        new ExecutionProof.BatchExecutionProofRequestDto(
+            merkelProofResponse.zkParentStateRootHash(),
+            previousBlockStateRootShanghai,
+            traceFilePath.getFileName().toString(),
+            traceFile.tracesEngineVersion(),
+            merkelProofResponse.zkStateManagerVersion(),
+            merkelProofResponse.zkStateMerkleProof(),
+            Collections.emptyList() /* blocksData */);
+
+    String executionProofFileName =
+        ExecutionProof.getExecutionProofRequestFilename(
+            startBlockNumber,
+            endBlockNumber,
+            traceFile.tracesEngineVersion(),
+            merkelProofResponse.zkStateManagerVersion());
+    File executionProofRequestFile = testDataDir.resolve(executionProofFileName).toFile();
+    assertThat(executionProofRequestFile.createNewFile()).isTrue();
+    MAPPER.writeValue(executionProofRequestFile, executionProofRequestDto);
   }
 }
