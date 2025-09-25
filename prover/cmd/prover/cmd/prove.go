@@ -46,12 +46,15 @@ func Prove(args ProverArgs) error {
 
 		// Limitless prover jobs
 		jobBootstrap = strings.Contains(args.Input, "getZkProof") && strings.EqualFold(args.Phase, "bootstrap")
+		jobGL        = strings.EqualFold(args.Phase, "gl") && strings.Contains(args.Input, "wit.bin")
 	)
 
 	// Handle job type
 	switch {
 	case jobBootstrap:
 		return handleBootstrapJob(cfg, args)
+	case jobGL:
+		return handleGLJob(cfg, args)
 	case jobExecution:
 		return handleExecutionJob(cfg, args)
 	case jobBlobDecompression:
@@ -92,6 +95,16 @@ func handleBootstrapJob(cfg *config.Config, args ProverArgs) error {
 	}
 
 	return writeResponse(args.Output, metadata)
+}
+
+func handleGLJob(cfg *config.Config, args ProverArgs) error {
+
+	if cfg.Execution.ProverMode != config.ProverModeLimitless {
+		return fmt.Errorf("--phase flag can be invoked only in the %v mode", config.ProverModeLimitless)
+	}
+
+	// Run the GL prover
+	return distributed.RunGL(cfg, args.Input, args.Output)
 }
 
 // handleExecutionJob processes an execution job
