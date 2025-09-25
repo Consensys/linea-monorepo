@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"strconv"
 
 	"github.com/sirupsen/logrus"
 )
@@ -13,16 +14,39 @@ import (
 // --------- Helper ----
 
 // parseSbrEbr extracts sbr/ebr from names like 22504197-22504198-...-getZkProof.json
-var regExSBEB = regexp.MustCompile(
-	`(^|.*/)(\d+)-(\d+)-.*-(getZkProof|getZkBlobCompressionProof|getZkAggregatedProof)\.json$`,
+var (
+	regReq = regexp.MustCompile(
+		`(^|.*/)(\d+)-(\d+)-.*-(getZkProof|getZkBlobCompressionProof|getZkAggregatedProof)\.json.*$`,
+	)
+
+	regWitness = regexp.MustCompile(
+		`(^|.*/)(\d+)-(\d+)-seg-(\d+)-mod-(\d+)-(gl|lpp)-wit\.bin.*$`,
+	)
 )
 
-func ParseSbrEbr(reqFilePath string) (sbr, ebr string, _ error) {
-	m := regExSBEB.FindStringSubmatch(reqFilePath)
+func ParseReqFile(reqFilePath string) (sbr, ebr string, _ error) {
+	m := regReq.FindStringSubmatch(reqFilePath)
 	if m == nil {
 		return "", "", fmt.Errorf("unable to parse sbr/ebr from %s", reqFilePath)
 	}
 	return m[2], m[3], nil
+}
+
+func ParseWitnessFile(filePath string) (sb, eb string, segID int, err error) {
+	m := regWitness.FindStringSubmatch(filePath)
+	if m == nil {
+		return "", "", 0, fmt.Errorf("unable to parse sb/eb/segID from %s", filePath)
+	}
+
+	sb = m[2]
+	eb = m[3]
+
+	segID, err = strconv.Atoi(m[4])
+	if err != nil {
+		return "", "", 0, fmt.Errorf("invalid segID in %s: %w", filePath, err)
+	}
+
+	return sb, eb, segID, nil
 }
 
 // CheckFilePath checks whether the provided filePath points to an existing file.

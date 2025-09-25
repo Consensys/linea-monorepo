@@ -1,18 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Usage: ./backend/execution/limitless/distributed/sh/run_gl_proofs.sh 4
-# Default concurrency = 4
+# Usage: ./run_gl_proofs.sh [max_parallel]
 MAX_PARALLEL=${1:-4}
 
-# Set your paths here
+# Set your absolute paths
 WITNESS_DIR="/tmp/witness/GL"
-OUTPUT_BASE="/tmp/subproof/GL"
+RESPONSES_DIR="/tmp/responses"
 LOG_BASE="/home/ubuntu/linea-monorepo/prover/backend/execution/limitless/logs/mainnet/gl"
 CONFIG="/home/ubuntu/linea-monorepo/prover/config/config-mainnet-limitless.toml"
 PROVER="/home/ubuntu/linea-monorepo/prover/bin/prover"
 
-mkdir -p "$OUTPUT_BASE" "$LOG_BASE"
+mkdir -p "$RESPONSES_DIR" "$LOG_BASE"
 
 run_proof() {
     local infile="$1"
@@ -29,9 +28,6 @@ run_proof() {
     name_no_inprog="${name%.INPROGRESS}"
     base="${name_no_inprog%-wit.bin}"
 
-    outdir="$OUTPUT_BASE/$subdir"
-    mkdir -p "$outdir"
-
     logdir="$LOG_BASE"
     mkdir -p "$logdir"
 
@@ -40,32 +36,49 @@ run_proof() {
     logfile="$logdir/${seg_mod:-unknown}.log"
 
     echo "[INFO] Claimed $infile -> processing $inprogress"
-    echo "[INFO] Running proof for $inprogress -> $outdir/${base}-proof.bin (log: $logfile)"
 
-    if "$PROVER" prove \
-        --phase=gl \
-        --config "$CONFIG" \
-        --in "$inprogress" \
-        --out "$outdir/${base}-proof.bin" \
-        >"$logfile" 2>&1; then
+    # Build the command
+    local out_file="$RESPONSES_DIR/${base}-subProof.json"
+    local cmd=(
+        "$PROVER" prove
+        --phase=gl
+        --config "$CONFIG"
+        --in "$inprogress"
+        --out "$out_file"
+    )
+
+    echo "[INFO] Command: ${cmd[*]}"
+    echo "[INFO] Command: ${cmd[*]}" >>"$logfile"
+
+    local start_ts end_ts duration
+    start_ts=$(date +%s)
+
+    if "${cmd[@]}" >"$logfile" 2>&1; then
         mv -- "$inprogress" "${infile}.success" || \
             echo "[WARN] Completed but could not rename $inprogress -> ${infile}.success"
-        echo "[OK] Completed $infile"
+        end_ts=$(date +%s)
+        duration=$((end_ts - start_ts))
+        echo "[OK] Completed $infile in ${duration}s"
+        echo "[OK] Completed $infile in ${duration}s" >>"$logfile"
     else
         mv -- "$inprogress" "${infile}.failed" || \
             echo "[ERROR] Failed proof and could not rename $inprogress -> ${infile}.failed"
-        echo "[ERROR] Failed proof for $infile (log: $logfile)"
+        end_ts=$(date +%s)
+        duration=$((end_ts - start_ts))
+        echo "[ERROR] Failed proof for $infile in ${duration}s (log: $logfile)"
+        echo "[ERROR] Failed proof for $infile in ${duration}s" >>"$logfile"
+        return 1
     fi
 }
 
 export -f run_proof
-export WITNESS_DIR OUTPUT_BASE LOG_BASE CONFIG PROVER
+export WITNESS_DIR RESPONSES_DIR LOG_BASE CONFIG PROVER
 
-# Collect candidate witness files (those not already marked .success/.failed/.INPROGRESS)
+# Collect candidate witness files (exclude .success/.failed/.INPROGRESS)
 mapfile -t files < <(find "$WITNESS_DIR" -type f -name "*-gl-wit.bin" ! -name "*.success" ! -name "*.failed" ! -name "*.INPROGRESS")
 
 if [ "${#files[@]}" -eq 0 ]; then
-    echo "[INFO] All witness files already processed. Nothing to do."
+    echo "[INFO] All GL witness files already processed. Nothing to do."
     exit 0
 fi
 
