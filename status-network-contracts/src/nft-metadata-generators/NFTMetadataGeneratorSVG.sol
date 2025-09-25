@@ -46,7 +46,7 @@ contract NFTMetadataGeneratorSVG is BaseNFTMetadataGenerator {
         returns (string memory, string memory)
     {
         string memory text = Strings.toString(balance / 1e18);
-        bytes memory svg = abi.encodePacked(imagePrefix, text, imageSuffix);
+        bytes memory svg = bytes(string.concat(imagePrefix, text, imageSuffix));
 
         return ("image_data", string(abi.encodePacked("data:image/svg+xml;base64,", Base64.encode(svg))));
     }

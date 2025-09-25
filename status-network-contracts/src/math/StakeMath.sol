@@ -59,7 +59,7 @@ abstract contract StakeMath is MultiplierPointMath {
             revert StakeMath__InvalidLockingPeriod();
         }
 
-        uint256 deltaMpBonus;
+        uint256 deltaMpBonus = 0;
         if (dtLock > 0) {
             deltaMpBonus = _bonusMP(_increasedAmount, dtLock);
         }

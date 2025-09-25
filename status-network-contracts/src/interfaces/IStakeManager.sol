@@ -35,7 +35,13 @@ interface IStakeManager is ITrustedCodehashAccess, IStakeConstants {
     error StakeManager__RewardPeriodNotEnded();
     /// @notice Emitted when trying to unstake and funds are locked
     error StakeManager__FundsLocked();
+    /// @notice Emitted when transfering rewards fails
+    error StakeManager__RewardTransferFailed();
 
+    /// @notice Emitted when a reward supplier is set
+    event RewardsSupplierSet(address indexed supplier);
+    /// @notice Emitted when a reward is set
+    event RewardSet(uint256 amount, uint256 duration, uint256 startTime, uint256 endTime);
     /// @notice Emitted when a vault is registered.
     event VaultRegistered(address indexed vault, address indexed owner);
     /// @notice Emitted when a vault is migrated.
@@ -52,6 +58,8 @@ interface IStakeManager is ITrustedCodehashAccess, IStakeConstants {
     event VaultLeft(address indexed vault);
     /// @notice Emited when accounts update their vaults
     event VaultUpdated(address indexed vault, uint256 rewardsAccrued, uint256 mpAccrued);
+    /// @notice Emitted when rewards are redeemed
+    event RewardsRedeemed(address indexed vault, uint256 amount);
 
     function registerVault() external;
     function stake(

@@ -351,7 +351,7 @@ contract Karma is Initializable, ERC20VotesUpgradeable, UUPSUpgradeable, AccessC
     }
 
     function _balanceOf(address account) internal view returns (uint256) {
-        uint256 externalBalance;
+        uint256 externalBalance = 0;
 
         // first, aggregate all slashed amounts from reward distributors
         for (uint256 i = 0; i < rewardDistributors.length(); i++) {
@@ -372,7 +372,7 @@ contract Karma is Initializable, ERC20VotesUpgradeable, UUPSUpgradeable, AccessC
      * @return The total supply of the token.
      */
     function totalSupply() public view override returns (uint256) {
-        uint256 externalSupply;
+        uint256 externalSupply = 0;
         uint256 totalDistributorBalance = 0;
 
         for (uint256 i = 0; i < rewardDistributors.length(); i++) {

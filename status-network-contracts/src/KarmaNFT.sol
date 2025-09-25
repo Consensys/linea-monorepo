@@ -12,7 +12,7 @@ contract KarmaNFT is Ownable {
     error KarmaNFT__TransferNotAllowed();
     error KarmaNFT__InvalidTokenId();
 
-    IERC20 public karmaToken;
+    IERC20 public immutable karmaToken;
     INFTMetadataGenerator public metadataGenerator;
 
     string private name = "KarmaNFT";

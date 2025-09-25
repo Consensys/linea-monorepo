@@ -160,6 +160,7 @@ contract StakeManager is
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         rewardsSupplier = _rewardsSupplier;
+        emit RewardsSupplierSet(_rewardsSupplier);
     }
 
     /**
@@ -319,7 +320,10 @@ contract StakeManager is
         // further cleanup that isn't done in `_unstake`
         vault.lastMPUpdateTime = 0;
 
-        REWARD_TOKEN.transfer(IStakeVault(msg.sender).owner(), rewardsToRedeem);
+        bool success = REWARD_TOKEN.transfer(IStakeVault(msg.sender).owner(), rewardsToRedeem);
+        if (!success) {
+            revert StakeManager__RewardTransferFailed();
+        }
         emit VaultLeft(msg.sender);
     }
 
@@ -373,6 +377,8 @@ contract StakeManager is
         rewardAmount = remainingRewards + amount;
         rewardStartTime = block.timestamp;
         rewardEndTime = block.timestamp + duration;
+
+        emit RewardSet(amount, duration, rewardStartTime, rewardEndTime);
     }
 
     /**
@@ -396,7 +402,7 @@ contract StakeManager is
     function redeemRewards(address account) external onlyNotEmergencyMode whenNotPaused returns (uint256) {
         _updateGlobalState();
         address[] memory accountVaults = vaults[account];
-        uint256 redeemed;
+        uint256 redeemed = 0;
         for (uint256 i = 0; i < accountVaults.length; i++) {
             _updateVault(accountVaults[i], false);
             VaultData storage vault = vaultData[accountVaults[i]];
@@ -407,7 +413,11 @@ contract StakeManager is
             totalRewardsAccrued -= vault.rewardsAccrued;
             vault.rewardsAccrued = 0;
         }
-        REWARD_TOKEN.transfer(account, redeemed);
+        bool success = REWARD_TOKEN.transfer(account, redeemed);
+        if (!success) {
+            revert StakeManager__RewardTransferFailed();
+        }
+        emit RewardsRedeemed(account, redeemed);
         return redeemed;
     }
 

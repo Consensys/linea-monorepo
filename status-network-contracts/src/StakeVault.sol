@@ -30,8 +30,8 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
     error StakeVault__UnstakingFailed();
     /// @notice Emitted when not allowed to exit the system
     error StakeVault__NotAllowedToExit();
-    /// @notice Emitted when not allowed to leave the system
-    error StakeVault__NotAllowedToLeave();
+    /// @notice Emitted when exiting the system failed
+    error StakeVault__FailedToExit();
     /// @notice Emitted when migration failed
     error StakeVault__MigrationFailed();
     /// @notice Emitted when the caller is not the owner of the vault
@@ -46,6 +46,8 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
     error StakeVault__MustLeaveFirst();
     /// @notice Emitted when trying to call functions that can't be called after leaving
     error StakeVault__MarkedAsLeft();
+    /// @notice Emitted when leaving the system failed
+    error StakeVault__FailedToLeave();
 
     /*//////////////////////////////////////////////////////////////////////////
                                   STATE VARIABLES
@@ -192,12 +194,18 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
         try stakeManager.leave() {
             if (lockUntil <= block.timestamp) {
                 depositedBalance = 0;
-                STAKING_TOKEN.transfer(_destination, STAKING_TOKEN.balanceOf(address(this)));
+                bool success = STAKING_TOKEN.transfer(_destination, STAKING_TOKEN.balanceOf(address(this)));
+                if (!success) {
+                    revert StakeVault__FailedToLeave();
+                }
             }
         } catch {
             if (lockUntil <= block.timestamp) {
                 depositedBalance = 0;
-                STAKING_TOKEN.transfer(_destination, STAKING_TOKEN.balanceOf(address(this)));
+                bool success = STAKING_TOKEN.transfer(_destination, STAKING_TOKEN.balanceOf(address(this)));
+                if (!success) {
+                    revert StakeVault__FailedToLeave();
+                }
             }
         }
     }
@@ -421,9 +429,15 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
             if (!enabled) {
                 revert StakeVault__NotAllowedToExit();
             }
-            STAKING_TOKEN.transfer(_destination, STAKING_TOKEN.balanceOf(address(this)));
+            bool success = STAKING_TOKEN.transfer(_destination, STAKING_TOKEN.balanceOf(address(this)));
+            if (!success) {
+                revert StakeVault__FailedToExit();
+            }
         } catch {
-            STAKING_TOKEN.transfer(_destination, STAKING_TOKEN.balanceOf(address(this)));
+            bool success = STAKING_TOKEN.transfer(_destination, STAKING_TOKEN.balanceOf(address(this)));
+            if (!success) {
+                revert StakeVault__FailedToExit();
+            }
         }
     }
 

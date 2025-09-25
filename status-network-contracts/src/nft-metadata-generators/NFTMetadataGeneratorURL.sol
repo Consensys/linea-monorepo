@@ -43,6 +43,6 @@ contract NFTMetadataGeneratorURL is BaseNFTMetadataGenerator {
         override
         returns (string memory, string memory)
     {
-        return ("image", string(abi.encodePacked(urlPrefix, Strings.toHexString(account), urlSuffix)));
+        return ("image", string.concat(urlPrefix, Strings.toHexString(account), urlSuffix));
     }
 }
