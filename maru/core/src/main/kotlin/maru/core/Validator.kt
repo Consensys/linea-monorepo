@@ -9,10 +9,11 @@
 package maru.core
 
 import maru.extensions.encodeHex
+import org.apache.tuweni.bytes.Bytes
 
 data class Validator(
   val address: ByteArray,
-) {
+) : Comparable<Validator> {
   init {
     require(address.size == 20) {
       "Addresses should be 20 bytes long"
@@ -31,4 +32,6 @@ data class Validator(
   override fun hashCode(): Int = address.contentHashCode()
 
   override fun toString(): String = "Validator(address=${address.encodeHex()})"
+
+  override fun compareTo(other: Validator): Int = Bytes.wrap(address).compareTo(Bytes.wrap(other.address))
 }

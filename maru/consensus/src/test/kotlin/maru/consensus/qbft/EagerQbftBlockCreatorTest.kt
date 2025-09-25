@@ -78,7 +78,7 @@ class EagerQbftBlockCreatorTest {
   private val feeRecipient = Random.nextBytes(20)
   private val prevRandaoProvider = { _: ULong, _: ByteArray -> Bytes32.random().toArray() }
   private lateinit var executionLayerManager: ExecutionLayerManager
-  private val validatorSet = DataGenerators.randomValidators() + validator
+  private val validatorSet = (DataGenerators.randomValidators() + validator).toSortedSet()
 
   @BeforeEach
   fun beforeEach() {

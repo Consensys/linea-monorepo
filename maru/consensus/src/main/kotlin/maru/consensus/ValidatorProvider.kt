@@ -8,6 +8,7 @@
  */
 package maru.consensus
 
+import java.util.SequencedSet
 import maru.core.Validator
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
@@ -15,17 +16,22 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
  * Provides access to the set of validators for a given block.
  */
 interface ValidatorProvider {
-  fun getValidatorsAfterBlock(blockNumber: ULong): SafeFuture<Set<Validator>> = getValidatorsForBlock(blockNumber + 1u)
+  fun getValidatorsAfterBlock(blockNumber: ULong): SafeFuture<SequencedSet<Validator>> =
+    getValidatorsForBlock(
+      blockNumber + 1u,
+    )
 
-  fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<Set<Validator>>
+  fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<SequencedSet<Validator>>
 }
 
 /**
  * A [ValidatorProvider] that always returns the same [Validator] instance. This is useful for the single validator case.
  */
 class StaticValidatorProvider(
-  private val validators: Set<Validator>,
+  validators: Set<Validator>,
 ) : ValidatorProvider {
-  override fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<Set<Validator>> =
+  private val validators: SequencedSet<Validator> = validators.toSortedSet()
+
+  override fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<SequencedSet<Validator>> =
     SafeFuture.completedFuture(validators)
 }

@@ -9,6 +9,7 @@
 package maru.consensus.qbft.adapters
 
 import com.github.michaelbull.result.Ok
+import java.util.SequencedSet
 import maru.consensus.ValidatorProvider
 import maru.consensus.state.StateTransitionImpl
 import maru.consensus.validation.StateRootValidator
@@ -41,7 +42,7 @@ class QbftBlockInterfaceAdapterTest {
 
   @Test
   fun `updates state root when replacing round number`() {
-    val validators = DataGenerators.randomValidators()
+    val validators = DataGenerators.randomValidators().toSortedSet()
     val beaconBlock =
       BeaconBlock(
         beaconBlockHeader = DataGenerators.randomBeaconBlockHeader(1UL).copy(round = 10u),
@@ -59,7 +60,7 @@ class QbftBlockInterfaceAdapterTest {
   }
 
   private fun createMockStateTransition(
-    validators: Set<Validator> = DataGenerators.randomValidators(),
+    validators: SequencedSet<Validator> = DataGenerators.randomValidators().toSortedSet(),
   ): StateTransitionImpl {
     val validatorProvider = mock<ValidatorProvider>()
     whenever(validatorProvider.getValidatorsForBlock(any()))

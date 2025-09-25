@@ -8,6 +8,7 @@
  */
 package maru.consensus.qbft
 
+import java.util.SequencedSet
 import maru.core.BeaconState
 import maru.core.Validator
 import maru.core.ext.DataGenerators
@@ -18,7 +19,7 @@ import org.junit.jupiter.api.Test
 class ProposerSelectorImplTest {
   private val totalValidators = 5
   private val orderedValidators = List(totalValidators) { DataGenerators.randomValidator() }
-  private val validators = orderedValidators.toSet()
+  private val validators = orderedValidators.toSortedSet()
   private val genesisBlockNumber = 10uL
 
   @Test
@@ -73,7 +74,7 @@ class ProposerSelectorImplTest {
 
   private fun generateStateWithValidators(
     expectedBlockNumber: ULong,
-    expectedValidators: Set<Validator>,
+    expectedValidators: SequencedSet<Validator>,
     expectedProposer: Validator = expectedValidators.first(),
   ): BeaconState {
     val latestBlockHeader = DataGenerators.randomBeaconBlockHeader(expectedBlockNumber, proposer = expectedProposer)

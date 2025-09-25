@@ -9,6 +9,7 @@
 package maru.core.ext
 
 import java.math.BigInteger
+import java.util.SequencedSet
 import kotlin.random.Random
 import kotlin.random.nextUInt
 import kotlin.random.nextULong
@@ -60,13 +61,13 @@ object DataGenerators {
     val tmpGenesisStateRoot =
       BeaconState(
         beaconBlockHeader = beaconBlockHeader,
-        validators = validators,
+        validators = validators.toSortedSet(),
       )
     val stateRootHash = HashUtil.stateRoot(tmpGenesisStateRoot)
 
     val genesisBlockHeader = beaconBlockHeader.copy(stateRoot = stateRootHash)
     val genesisBlock = BeaconBlock(genesisBlockHeader, beaconBlockBody)
-    val genesisState = BeaconState(genesisBlockHeader, validators)
+    val genesisState = BeaconState(genesisBlockHeader, validators.toSortedSet())
     val genesisSealedBeaconBlock = SealedBeaconBlock(genesisBlock, emptySet())
 
     return Pair(genesisState, genesisSealedBeaconBlock)
@@ -97,7 +98,7 @@ object DataGenerators {
       )
     return BeaconState(
       beaconBlockHeader = beaconBlockHeader,
-      validators = validators,
+      validators = validators.toSortedSet(),
     )
   }
 
@@ -192,7 +193,7 @@ object DataGenerators {
 
   fun randomValidator(): Validator = Validator(Random.nextBytes(20))
 
-  fun randomValidators(): Set<Validator> = List(3) { randomValidator() }.toSet()
+  fun randomValidators(): SequencedSet<Validator> = List(3) { randomValidator() }.toSortedSet()
 
   fun randomValidPayloadStatus(): PayloadStatus =
     PayloadStatus(ExecutionPayloadStatus.VALID, latestValidHash = Random.nextBytes(32), validationError = null)
