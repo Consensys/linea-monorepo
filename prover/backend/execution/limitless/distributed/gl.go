@@ -2,9 +2,10 @@ package distributed
 
 import (
 	"fmt"
+	"os"
+	"path"
 
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
@@ -12,19 +13,30 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type GLResp struct {
-	ProofGL       *recursion.Witness `cbor:"proof_gl"`
-	LPPCommitment field.Element      `cbor:"lpp_commit"`
+type GLResponse struct {
+	GLProofPath        string `json:"gl_proof_path"`
+	LPPCommitmeentPath string `json:"lpp_commit_path"`
 }
 
-func RunGL(cfg *config.Config, witnessGLPath string, proofGLPath string) error {
+func RunGL(cfg *config.Config, witnessGLPath string, sb, eb string, segID int) (*GLResponse, error) {
 
 	logrus.Infof("Initating the GL-prover from witnessGL file path %v", witnessGLPath)
 
 	witnessGL := &distributed.ModuleWitnessGL{}
 	if err := serialization.LoadFromDisk(witnessGLPath, witnessGL, true); err != nil {
-		return fmt.Errorf("could not load witness: %w", err)
+		return nil, fmt.Errorf("could not load witness: %w", err)
 	}
+
+	var (
+		glProofFile   = fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-proof.bin", sb, eb, segID, witnessGL.ModuleIndex)
+		proofGLPath   = path.Join(config.SubProofsGLDirPrefix, string(witnessGL.ModuleName), glProofFile)
+		LPPCommitFile = fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-commit.bin", sb, eb, segID, witnessGL.ModuleIndex)
+		LPPCommitPath = path.Join(config.LPPCommitPrefix, string(witnessGL.ModuleName), LPPCommitFile)
+	)
+
+	// Incase the prev. process was interrupted, we clear the previous corrupted files (if it exists)
+	_ = os.Remove(proofGLPath)
+	_ = os.Remove(LPPCommitPath)
 
 	logrus.Infof("Running the GL-prover for witness module name=%s at index=%d", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
@@ -32,7 +44,7 @@ func RunGL(cfg *config.Config, witnessGLPath string, proofGLPath string) error {
 	// `mmap` optimization in the respective GL worker controller
 	compiledGL, err := zkevm.LoadCompiledGL(cfg, witnessGL.ModuleName)
 	if err != nil {
-		return fmt.Errorf("could not load compiled GL: %w", err)
+		return nil, fmt.Errorf("could not load compiled GL: %w", err)
 	}
 
 	logrus.Infof("Loaded the compiled GL for witness module=%v at index=%d", witnessGL.ModuleName, witnessGL.ModuleIndex)
@@ -41,26 +53,22 @@ func RunGL(cfg *config.Config, witnessGLPath string, proofGLPath string) error {
 
 	logrus.Infof("Finished running the GL-prover for witness module=%v at index=%d", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
-	var (
-		_proofGL   = recursion.ExtractWitness(run)
-		_lppCommit = distributed.GetLppCommitmentFromRuntime(run)
-	)
-
-	logrus.Infof("Extracted the witness for witness module=%v at index=%d", witnessGL.ModuleName, witnessGL.ModuleIndex)
-
-	glResp := &GLResp{
-		ProofGL:       &_proofGL,
-		LPPCommitment: _lppCommit,
+	_proofGL := recursion.ExtractWitness(run)
+	if err := serialization.StoreToDisk(proofGLPath, _proofGL, true); err != nil {
+		return nil, fmt.Errorf("could not store GL proof: %w", err)
 	}
 
-	if err := serialization.StoreToDisk(proofGLPath, *glResp, true); err != nil {
-		return fmt.Errorf("could not store GL proof: %w", err)
+	logrus.Infof("Generated GL proof for witness module=%v at index=%d and stored to disk", witnessGL.ModuleName, witnessGL.ModuleIndex)
+
+	_lppCommit := distributed.GetLppCommitmentFromRuntime(run)
+	if err := serialization.StoreToDisk(LPPCommitPath, _lppCommit, true); err != nil {
+		return nil, fmt.Errorf("could not store GL proof: %w", err)
 	}
 
-	logrus.Infof("Stored the GL proof and LPP commitment to path=%s", proofGLPath)
+	logrus.Infof("Generated LPP commitment for witness module=%v at index=%d and stored to disk", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
-	// Free memory immediately for next GL job
-	glResp = nil
-
-	return nil
+	return &GLResponse{
+		GLProofPath:        proofGLPath,
+		LPPCommitmeentPath: LPPCommitPath,
+	}, nil
 }
