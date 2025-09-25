@@ -749,7 +749,6 @@ func GetAffinities(z *ZkEvm) [][]column.Natural {
 			z.WizardIOP.Columns.GetHandle("hub.acp_ADDRESS_HI").(column.Natural),
 			z.WizardIOP.Columns.GetHandle("hub.ccp_HUB_STAMP").(column.Natural),
 			z.WizardIOP.Columns.GetHandle("hub.envcp_HUB_STAMP").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("hub.stkcp_PEEK_AT_STACK_POW_4").(column.Natural),
 		},
 		{
 			z.WizardIOP.Columns.GetHandle("KECCAK_IMPORT_PAD_HASH_NUM").(column.Natural),
@@ -773,7 +772,6 @@ func GetAffinities(z *ZkEvm) [][]column.Natural {
 			z.WizardIOP.Columns.GetHandle("SHA2_OVER_BLOCK_SHA2_COMPRESSION_CIRCUIT_IS_ACTIVE").(column.Natural),
 		},
 		{
-			z.WizardIOP.Columns.GetHandle("mmio.CN_ABC").(column.Natural),
 			z.WizardIOP.Columns.GetHandle("mmio.MMIO_STAMP").(column.Natural),
 			z.WizardIOP.Columns.GetHandle("mmu.STAMP").(column.Natural),
 		},
