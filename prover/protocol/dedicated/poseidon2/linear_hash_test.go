@@ -53,7 +53,7 @@ func TestLinearHash(t *testing.T) {
 
 			for i := 0; i < blockSize; i++ {
 				ex[i] = make([]field.Element, 0, numhash)
-				th[i] = make([]field.Element, 0, totalChunks)
+				th[i] = make([]field.Element, totalChunks)
 			}
 
 			for i := 0; i < numhash; i++ {
@@ -66,7 +66,8 @@ func TestLinearHash(t *testing.T) {
 				for j := 0; j < blockSize; j++ {
 					ex[j] = append(ex[j], y[j])
 				}
-				th = linhash.PrepareToHashWitness(th, segment)
+				start := i * colChunks
+				th = linhash.PrepareToHashWitness(th, segment, start)
 			}
 
 			var exSV, thSV [blockSize]smartvectors.SmartVector

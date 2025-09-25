@@ -336,13 +336,13 @@ func (ctx *linearHashCtx) IsNotEndOfHashVar() *symbolic.Expression {
 
 // PrepareToHashWitness pads a segment to the full chunked size and reshapes it
 // into blockSize columns for hashing.
-func PrepareToHashWitness(th [blockSize][]field.Element, segment []field.Element) [blockSize][]field.Element {
+func PrepareToHashWitness(th [blockSize][]field.Element, segment []field.Element, start int) [blockSize][]field.Element {
 	colSize := len(segment)
 	for j := 0; j < blockSize; j++ {
 		// Allocate segments to TOHASH columns
 		completeChunks := colSize / blockSize
 		for k := 0; k < completeChunks; k++ {
-			th[j] = append(th[j], segment[k*blockSize+j])
+			th[j][k+start] = segment[k*blockSize+j]
 		}
 
 		lastChunkElements := colSize % blockSize
@@ -353,11 +353,11 @@ func PrepareToHashWitness(th [blockSize][]field.Element, segment []field.Element
 			k := completeChunks
 			if j < lastChunkPadding {
 				// Left padding
-				th[j] = append(th[j], field.Zero())
+				th[j][k+start] = field.Zero()
 			} else {
 				// Actual data
 				actualIdx := k*blockSize + (j - lastChunkPadding)
-				th[j] = append(th[j], segment[actualIdx])
+				th[j][k+start] = segment[actualIdx]
 			}
 		}
 	}

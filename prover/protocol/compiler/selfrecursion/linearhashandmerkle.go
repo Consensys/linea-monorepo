@@ -387,10 +387,8 @@ func newLinearHashMerkleProverActionBuilder(a *LinearHashMerkleProverAction) *li
 	lmp.CommittedRound = 0
 	lmp.SisTotalChunks = a.SisTotalChunks
 
-	colChunks := (lmp.SisHashSize + blockSize - 1) / blockSize
-	totalChunks := colChunks * a.SisNumHash
 	for i := 0; i < blockSize; i++ {
-		lmp.SisToHash[i] = make([]field.Element, a.SisNumHash*totalChunks)
+		lmp.SisToHash[i] = make([]field.Element, a.SisTotalChunks)
 		lmp.MerkleLeaves[i] = make([]field.Element, 0, a.NumHash)
 		lmp.MerkleRoots[i] = make([]field.Element, 0, a.NumHash)
 		lmp.MerkleSisLeaves[i] = make([]field.Element, 0, a.SisNumHash)
@@ -454,16 +452,15 @@ func (a *LinearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 	}
 
 	// Assign the hash values and preimages for the non SIS rounds
-	numhash := a.NumOpenedCol
 	for i := 0; i < a.NumNonSisRound; i++ {
 		var th [blockSize][]field.Element
 		colSize := len(lmp.NonSisHashPreimages[i])
 		colChunks := (colSize + blockSize - 1) / blockSize
-		totalChunks := colChunks * numhash
 		for j := 0; j < blockSize; j++ {
-			th[j] = make([]field.Element, 0, totalChunks) //TODO@yao: match with the round or cleanup this code
+			th[j] = make([]field.Element, colChunks)
 		}
-		th = poseidon2W.PrepareToHashWitness(th, lmp.NonSisHashPreimages[i])
+
+		th = poseidon2W.PrepareToHashWitness(th, lmp.NonSisHashPreimages[i], 0)
 
 		for j := 0; j < blockSize; j++ {
 			run.AssignColumn(a.Ctx.Poseidon2MetaData.NonSiSToHash[i][j].GetColID(), smartvectors.RightZeroPadded(th[j], a.NonSISToHash[i]))
@@ -491,15 +488,16 @@ func processPrecomputedRound(
 		var precompSisLeaves [blockSize][]field.Element
 		for j := 0; j < blockSize; j++ {
 			precompSisLeaves[j] = make([]field.Element, 0, len(openingIndices))
-			lmp.SisToHash[j] = make([]field.Element, 0, lmp.SisTotalChunks) //TODO@yao: match with the round or cleanup this code
 		}
 		for i, selectedCol := range openingIndices {
 			srcStart := selectedCol * lmp.SisHashSize
 			sisHash := precompColSisHash[srcStart : srcStart+lmp.SisHashSize]
 			destStart := i * lmp.SisHashSize
-
 			// Allocate sisHash to SisToHash columns
-			lmp.SisToHash = poseidon2W.PrepareToHashWitness(lmp.SisToHash, sisHash)
+
+			chunks := (lmp.SisHashSize + blockSize - 1) / blockSize
+			tohashDestStart := i * chunks
+			lmp.SisToHash = poseidon2W.PrepareToHashWitness(lmp.SisToHash, sisHash, tohashDestStart)
 			copy(lmp.ConcatDhQ[destStart:destStart+lmp.SisHashSize], sisHash)
 
 			leaf := poseidon2.Poseidon2Sponge(sisHash)
@@ -599,9 +597,9 @@ func processRound(
 	if a.Ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		numRound -= 1
 	}
-	for j := 0; j < blockSize; j++ {
-		lmp.SisToHash[j] = make([]field.Element, 0, lmp.SisTotalChunks*(lmp.TotalNumRounds+1))
-	}
+	// for j := 0; j < blockSize; j++ {
+	// 	lmp.SisToHash[j] = make([]field.Element, 0, lmp.SisTotalChunks*(lmp.TotalNumRounds+1))
+	// }
 	for round := 0; round <= numRound; round++ {
 		if a.Ctx.VortexCtx.RoundStatus[round] == vortex.IsSISApplied {
 			colSisHashName := a.Ctx.VortexCtx.SisHashName(round)
@@ -628,7 +626,10 @@ func processRound(
 				sisHash := colSisHash[srcStart : srcStart+lmp.SisHashSize]
 				destStart := sisRoundCount*lmp.NumOpenedCol*lmp.SisHashSize + i*lmp.SisHashSize
 				copy(lmp.ConcatDhQ[destStart:destStart+lmp.SisHashSize], sisHash)
-				lmp.SisToHash = poseidon2W.PrepareToHashWitness(lmp.SisToHash, sisHash)
+
+				chunks := (lmp.SisHashSize + blockSize - 1) / blockSize
+				tohashDestStart := sisRoundCount*lmp.NumOpenedCol*chunks + i*chunks
+				lmp.SisToHash = poseidon2W.PrepareToHashWitness(lmp.SisToHash, sisHash, tohashDestStart)
 
 				leaf := poseidon2.Poseidon2Sponge(sisHash)
 
