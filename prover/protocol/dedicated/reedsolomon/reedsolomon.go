@@ -7,7 +7,7 @@ import (
 	"github.com/consensys/gnark-crypto/utils"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
@@ -31,12 +31,12 @@ type ReedSolomonProverAction struct {
 func (a *ReedSolomonProverAction) Run(assi *wizard.ProverRuntime) {
 	witness := a.H.GetColAssignment(assi)
 	domain := fft.NewDomain(uint64(witness.Len()), fft.WithCache())
-	coeffs := make([]field.Element, witness.Len())
-	witness.WriteInSlice(coeffs)
-	domain.FFTInverse(coeffs, fft.DIF, fft.WithNbTasks(1))
+	coeffs := make([]fext.Element, witness.Len())
+	witness.WriteInSliceExt(coeffs)
+	domain.FFTInverseExt(coeffs, fft.DIF, fft.WithNbTasks(1))
 	utils.BitReverse(coeffs)
 	// Take only the first `CodeDim` coefficients
-	assi.AssignColumn(a.Coeff.GetColID(), smartvectors.NewRegular(coeffs[:a.CodeDim]))
+	assi.AssignColumn(a.Coeff.GetColID(), smartvectors.NewRegularExt(coeffs[:a.CodeDim]))
 }
 
 type ReedSolomonVerifierAction struct {
@@ -48,8 +48,6 @@ type ReedSolomonVerifierAction struct {
 func (a *ReedSolomonVerifierAction) Run(run wizard.Runtime) error {
 	y := a.CoeffCheck.GetValExt(run)
 	y_ := a.EvalCheck.GetValExt(run)
-	fmt.Printf("rs y=%v\n", y.String())
-	fmt.Printf("rs y_=%v\n", y_.String())
 
 	if y != y_ {
 		return fmt.Errorf("reed-solomon check failed - %v is not a codeword", a.HColID)
