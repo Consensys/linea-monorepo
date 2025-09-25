@@ -34,8 +34,8 @@ func (f FromAccessors) IsBase() bool {
 }
 
 func (f FromAccessors) GetColAssignmentAtBase(run ifaces.Runtime, pos int) (field.Element, error) {
-	//TODO implement me
-	panic("implement me")
+	//TODO@yao: implement me
+	return field.Element{}, nil
 }
 
 func (f FromAccessors) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element {

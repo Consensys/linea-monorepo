@@ -103,15 +103,15 @@ func (ctx *SelfRecursionCtx) concatenatedDhQ() ifaces.ColID {
 	return maybePrefix(ctx, name)
 }
 
-// Name of the concatenated MiMC hashes for the non SIS rounds
+// Name of the concatenated Poseidon2 hashes for the non SIS rounds
 func (ctx *SelfRecursionCtx) nonSisLeaves(round int, index int) ifaces.ColID {
 	name := ifaces.ColIDf("SELFRECURSION_NON_SIS_LEAVES_%v_%v_%v", ctx.SelfRecursionCnt, round, index)
 	return maybePrefix(ctx, name)
 }
 
 // Name of the concatenated preimages for the non SIS rounds
-func (ctx *SelfRecursionCtx) nonSisToHash(round int) ifaces.ColID {
-	name := ifaces.ColIDf("SELFRECURSION_CONCAT_MIMC_PREIMAGES_%v_%v", ctx.SelfRecursionCnt, round)
+func (ctx *SelfRecursionCtx) nonSisToHash(round int, index int) ifaces.ColID {
+	name := ifaces.ColIDf("SELFRECURSION_CONCAT_POSEIDON2_PREIMAGES_%v_%v_%v", ctx.SelfRecursionCnt, round, index)
 	return maybePrefix(ctx, name)
 }
 

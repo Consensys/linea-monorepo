@@ -248,7 +248,7 @@ func (ctx *SelfRecursionCtx) registerPoseidon2MetaDataForNonSisRounds(
 			for j := 0; j < blockSize; j++ {
 				hashPreimages[j] = ctx.Comp.InsertCommit(
 					round,
-					ctx.nonSisToHash(j),
+					ctx.nonSisToHash(i-firstNonEmptyRound, j),
 					numRowToHash,
 				)
 			}
