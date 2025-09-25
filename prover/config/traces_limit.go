@@ -198,6 +198,46 @@ func (tl *TracesLimits) ScaleUp(by int) {
 	tl.U32 *= by
 	tl.U36 *= by
 	tl.U64 *= by
+
+	// Beta 4.0 internal modules
+	tl.ByteShl256 *= by
+	tl.ByteShr256 *= by
+	tl.ByteSar256 *= by
+	tl.BitShl256 *= by
+	tl.BitShr256 *= by
+	tl.BitSar256 *= by
+	tl.FillBytesFrom *= by
+	tl.Log2 *= by
+	tl.Log2U128 *= by
+	tl.Log2U64 *= by
+	tl.Log2U32 *= by
+	tl.Log2U16 *= by
+	tl.Log2U8 *= by
+	tl.Log2U4 *= by
+	tl.Log2U2 *= by
+	tl.Log256 *= by
+	tl.Log256U128 *= by
+	tl.Log256U64 *= by
+	tl.Log256U32 *= by
+	tl.Log256U16 *= by
+	tl.SetByte256 *= by
+	tl.SetByte128 *= by
+	tl.SetByte64 *= by
+	tl.SetByte32 *= by
+	tl.SetByte16 *= by
+	tl.U23 *= by
+	tl.U24 *= by
+	tl.U30 *= by
+	tl.U31 *= by
+	tl.U55 *= by
+	tl.U56 *= by
+	tl.U62 *= by
+	tl.U63 *= by
+	tl.U119 *= by
+	tl.U120 *= by
+	tl.U126 *= by
+	tl.U127 *= by
+
 	// beta v4.0
 	tl.PrecompileBlsPointEvaluationEffectiveCalls *= by
 	tl.PrecompilePointEvaluationFailureEffectiveCalls *= by
@@ -277,7 +317,7 @@ func GetTestTracesLimits() *TracesLimits {
 		U32:                                  1 << 17,
 		U36:                                  1 << 17,
 		U64:                                  1 << 17,
-		// Newly added modules
+		// Beta 4.0 internal modules
 		ByteShl256:    131072,
 		ByteShr256:    131072,
 		ByteSar256:    131072,
