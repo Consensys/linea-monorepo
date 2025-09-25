@@ -11,7 +11,7 @@ import (
 )
 
 // EvaluateLagrangeGnark a polynomial in lagrange basis on a gnark circuit
-func EvaluateLagrangeGnarkGen[T zk.Element](api frontend.API, poly []T, x T) T {
+func EvaluateLagrangeGnarkGen[T zk.Element](api frontend.API, poly []T, x T) *T {
 
 	if !utils.IsPowerOfTwo(len(poly)) {
 		utils.Panic("only support powers of two but poly has length %v", len(poly))
@@ -35,7 +35,7 @@ func EvaluateLagrangeGnarkGen[T zk.Element](api frontend.API, poly []T, x T) T {
 	dens := make([]*T, size) // [x-1, x-ω, x-ω², ...]
 	for i := 0; i < size; i++ {
 		gaccw := apiGen.ValueOf(accw)
-		dens[i] = apiGen.Sub(&x, &gaccw)
+		dens[i] = apiGen.Sub(&x, gaccw)
 		accw.Mul(&accw, &omega)
 	}
 	invdens := make([]*T, size) // [1/x-1, 1/x-ω, 1/x-ω², ...]
@@ -52,20 +52,20 @@ func EvaluateLagrangeGnarkGen[T zk.Element](api frontend.API, poly []T, x T) T {
 	bSize := big.NewInt(int64(size))
 	gOne := apiGen.ValueOf(1)
 	tmp := field.Exp(apiGen, x, bSize)
-	tmp = apiGen.Sub(tmp, &gOne) // xⁿ-1
+	tmp = apiGen.Sub(tmp, gOne) // xⁿ-1
 	var invSize field.Element
 	invSize.SetUint64(uint64(size)).Inverse(&invSize)
 	ginvSize := apiGen.ValueOf(invSize)
-	li := apiGen.Mul(tmp, &ginvSize) // 1/n * (xⁿ-1)
+	li := apiGen.Mul(tmp, ginvSize) // 1/n * (xⁿ-1)
 
 	res := apiGen.ValueOf(0)
 	gOmega := apiGen.ValueOf(omega)
 	for i := 0; i < size; i++ {
 		li = apiGen.Mul(li, invdens[i])
 		tmp = apiGen.Mul(li, &poly[i]) // pᵢ *  ωⁱ/n * ( xⁿ-1)/(x-ωⁱ)
-		res = *apiGen.Add(&res, tmp)
+		res = apiGen.Add(res, tmp)
 		li = apiGen.Mul(li, dens[i])
-		li = apiGen.Mul(li, &gOmega)
+		li = apiGen.Mul(li, gOmega)
 	}
 
 	return res

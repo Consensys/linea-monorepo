@@ -31,8 +31,8 @@ type E2Gen[T zk.Element] struct {
 
 func NewE2Gen[T zk.Element](v extensions.E2) E2Gen[T] {
 	return E2Gen[T]{
-		A0: zk.ValueOf[T](v.A0),
-		A1: zk.ValueOf[T](v.A1),
+		A0: *zk.ValueOf[T](v.A0),
+		A1: *zk.ValueOf[T](v.A1),
 	}
 }
 

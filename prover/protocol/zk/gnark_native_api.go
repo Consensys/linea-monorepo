@@ -30,7 +30,7 @@ func newNativeAPI(api frontend.API) (*NativeAPI, error) {
 
 var _ APIGen[NativeElement] = &NativeAPI{}
 
-func (e *NativeAPI) ValueOf(input any) NativeElement {
+func (e *NativeAPI) ValueOf(input any) *NativeElement {
 	return ValueOf[NativeElement](input)
 }
 

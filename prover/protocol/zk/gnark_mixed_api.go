@@ -16,7 +16,7 @@ type Element interface {
 }
 
 type APIGen[T Element] interface {
-	ValueOf(input any) T
+	ValueOf(input any) *T
 
 	Mul(a, b *T) *T
 	MulConst(a *T, b *big.Int) *T
@@ -82,7 +82,7 @@ func NewApi[T Element](api frontend.API) (APIGen[T], error) {
 	return ret, nil
 }
 
-func ValueOf[T Element](input any) T {
+func ValueOf[T Element](input any) *T {
 	var ret T
 	switch v := any(&ret).(type) {
 	case *EmulatedElement:
@@ -92,7 +92,7 @@ func ValueOf[T Element](input any) T {
 	default:
 		panic("unsupported type")
 	}
-	return ret
+	return &ret
 }
 
 // Circuit 0: mixed
