@@ -78,7 +78,7 @@ func handleBootstrapJob(cfg *config.Config, args ProverArgs) error {
 	}
 
 	// Extract start and end block from the req file
-	sbr, ebr, err := files.ParseSbrEbr(args.Input)
+	sbr, ebr, err := files.ParseReqFile(args.Input)
 	if err != nil {
 		return err
 	}
@@ -103,8 +103,17 @@ func handleGLJob(cfg *config.Config, args ProverArgs) error {
 		return fmt.Errorf("--phase flag can be invoked only in the %v mode", config.ProverModeLimitless)
 	}
 
-	// Run the GL prover
-	return distributed.RunGL(cfg, args.Input, args.Output)
+	sb, eb, segID, err := files.ParseWitnessFile(args.Input)
+	if err != nil {
+		return fmt.Errorf("unable to parse sb/eb/segID from %s: %w", args.Input, err)
+	}
+
+	resp, err := distributed.RunGL(cfg, args.Input, sb, eb, segID)
+	if err != nil {
+		return fmt.Errorf("GL phase failed: %w", err)
+	}
+
+	return writeResponse(args.Output, resp)
 }
 
 // handleExecutionJob processes an execution job
