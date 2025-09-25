@@ -797,7 +797,6 @@ func GetAffinities(z *ZkEvm) [][]column.Natural {
 			z.WizardIOP.Columns.GetHandle("SHA2_OVER_BLOCK_SHA2_COMPRESSION_CIRCUIT_IS_ACTIVE").(column.Natural),
 		},
 		{
-			z.WizardIOP.Columns.GetHandle("mmio.CN_ABC").(column.Natural),
 			z.WizardIOP.Columns.GetHandle("mmio.MMIO_STAMP").(column.Natural),
 			z.WizardIOP.Columns.GetHandle("mmu.STAMP").(column.Natural),
 		},
