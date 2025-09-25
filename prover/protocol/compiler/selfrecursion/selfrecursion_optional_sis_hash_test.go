@@ -74,7 +74,7 @@ func testCaseGenerator() []testCase {
 				var offsetIndex = 0
 				// trigger the creation of a new round by declaring a dummy coin
 				if round != 0 {
-					_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
+					_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
 					// Compute the offsetIndex
 					for i := 0; i < round; i++ {
 						offsetIndex += nPolsMultiRound[i]
@@ -128,7 +128,7 @@ func testCaseGenerator() []testCase {
 				var offsetIndex = 0
 				// trigger the creation of a new round by declaring a dummy coin
 				if round != 0 {
-					_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
+					_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
 					// Compute the offsetIndex
 					for i := 0; i < round; i++ {
 						offsetIndex += nPolsMultiRound[i]
@@ -199,7 +199,7 @@ func testCaseGenerator() []testCase {
 				var offsetIndex = 0
 				// trigger the creation of a new round by declaring a dummy coin
 				if round != 0 {
-					_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
+					_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
 					// Compute the offsetIndex
 					for i := 0; i < round; i++ {
 						offsetIndex += nPolsMultiRound[i]
@@ -270,7 +270,7 @@ func testCaseGenerator() []testCase {
 				var offsetIndex = 0
 				// trigger the creation of a new round by declaring a dummy coin
 				if round != 0 {
-					_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
+					_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
 					// Compute the offsetIndex
 					for i := 0; i < round; i++ {
 						offsetIndex += nPolsMultiRoundNoSIS[i]
@@ -341,7 +341,7 @@ func testCaseGenerator() []testCase {
 				var offsetIndex = 0
 				// trigger the creation of a new round by declaring a dummy coin
 				if round != 0 {
-					_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
+					_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
 					// Compute the offsetIndex
 					for i := 0; i < round; i++ {
 						offsetIndex += nPolsMultiRoundSIS[i]
@@ -412,7 +412,7 @@ func testCaseGenerator() []testCase {
 				var offsetIndex = 0
 				// trigger the creation of a new round by declaring a dummy coin
 				if round != 0 {
-					_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
+					_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
 					// Compute the offsetIndex
 					for i := 0; i < round; i++ {
 						offsetIndex += nPolsMultiRoundEmpty[i]
