@@ -33,13 +33,13 @@ func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
 	ctx.GluePositions()
 	// We need this only when there are non zero number
 	// of SIS rounds
-	if ctx.Columns.SisToHash[0] != nil {
+	if ctx.Columns.ConcatenatedDhQ != nil {
 		ctx.RegistersSisPreimageLimbs()
 	}
 	ctx.CollapsingPhase()
 	// The fold phase is only needed if there are non-zero
 	// number of SIS rounds
-	if ctx.Columns.SisToHash[0] != nil {
+	if ctx.Columns.ConcatenatedDhQ != nil {
 		ctx.FoldPhase()
 	}
 
@@ -214,8 +214,8 @@ type CollapsingVerifierAction struct {
 }
 
 func (a *CollapsingVerifierAction) Run(run wizard.Runtime) error {
-	if a.UAlphaQEval.GetVal(run) != a.PreImageEval.GetVal(run) {
-		l, r := a.UAlphaQEval.GetVal(run), a.PreImageEval.GetVal(run)
+	if a.UAlphaQEval.GetValExt(run) != a.PreImageEval.GetValExt(run) {
+		l, r := a.UAlphaQEval.GetValExt(run), a.PreImageEval.GetValExt(run)
 		return fmt.Errorf("consistency between u_alpha and the preimage: mismatch between uAlphaQEval=%v preimages=%v",
 			l.String(), r.String())
 	}
@@ -254,7 +254,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 	// aka, the collapsed preimage
 	// We need this only if there are
 	// non-zero number of SIS rounds
-	if ctx.Columns.SisToHash[0] != nil {
+	if ctx.Columns.ConcatenatedDhQ != nil {
 		ctx.Columns.PreimagesSisCollapse = expr_handle.RandLinCombCol(
 			ctx.Comp,
 			accessors.NewFromCoin(ctx.Coins.Collapse),
@@ -316,7 +316,8 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 		*/
 		// We only compute the preImageSisEval if there are any SIS rounds
 		// and the concatenated DhQ is not nil
-		if ctx.Columns.SisToHash[0] != nil {
+		if ctx.Columns.ConcatenatedDhQ != nil {
+			fmt.Printf("sis here\n")
 			preImageSisEval = functionals.EvalCoeffBivariate(
 				ctx.Comp,
 				ctx.constencyUalphaQPreimageRight(),
@@ -329,7 +330,9 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 		}
 
 		// preImageEval := preimageNonSisEval + alpha^offset * preImageSisEval
-		if len(ctx.Poseidon2MetaData.ColChunks) > 0 && ctx.Columns.SisToHash[0] != nil {
+		if len(ctx.Poseidon2MetaData.ColChunks) > 0 && ctx.Columns.ConcatenatedDhQ != nil {
+			fmt.Printf("nonsis here\n")
+
 			preImageEvalSymb := symbolic.Add(
 				preImageNonSisEval,
 				symbolic.Mul(
@@ -341,9 +344,9 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 				),
 			)
 			preImageEval = accessors.NewFromExpression(preImageEvalSymb, fmt.Sprintf("PREIMAGE_EVAL_%v", ctx.SelfRecursionCnt))
-		} else if len(ctx.Poseidon2MetaData.ColChunks) > 0 && ctx.Columns.SisToHash[0] == nil {
+		} else if len(ctx.Poseidon2MetaData.ColChunks) > 0 && ctx.Columns.ConcatenatedDhQ == nil {
 			preImageEval = preImageNonSisEval
-		} else if len(ctx.Poseidon2MetaData.ColChunks) == 0 && ctx.Columns.SisToHash[0] != nil {
+		} else if len(ctx.Poseidon2MetaData.ColChunks) == 0 && ctx.Columns.ConcatenatedDhQ != nil {
 			preImageEval = preImageSisEval
 		} else {
 			utils.Panic("There are neither SIS nor non SIS round, this should not happen")
@@ -357,7 +360,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 	}
 
 	// The below code is only executed only if there are non-zero SIS rounds
-	if ctx.Columns.SisToHash[0] != nil {
+	if ctx.Columns.ConcatenatedDhQ != nil {
 		sisDeg := ctx.VortexCtx.SisParams.OutputSize()
 		// Currently, only powers of two SIS degree are allowed
 		// (in practice, we restrict ourselves to pure power of two)

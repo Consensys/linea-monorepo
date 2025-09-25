@@ -259,6 +259,7 @@ func (ctx *SelfRecursionCtx) registerPoseidon2MetaDataForNonSisRounds(
 			continue
 		}
 	}
+
 	return numRowExpectedHash, numRowsToHash
 }
 
@@ -463,8 +464,10 @@ func (a *LinearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 		th = poseidon2W.PrepareToHashWitness(th, lmp.NonSisHashPreimages[i], 0)
 
 		for j := 0; j < blockSize; j++ {
-			run.AssignColumn(a.Ctx.Poseidon2MetaData.NonSiSToHash[i][j].GetColID(), smartvectors.RightZeroPadded(th[j], a.NonSISToHash[i]))
 			run.AssignColumn(a.Ctx.Poseidon2MetaData.NonSisLeaves[j][i].GetColID(), smartvectors.RightZeroPadded(lmp.NonSisLeaves[i][j], a.NonSISExpectedHash))
+
+			run.AssignColumn(a.Ctx.Poseidon2MetaData.NonSiSToHash[i][j].GetColID(), smartvectors.RightZeroPadded(th[j], a.NonSISToHash[i]))
+
 		}
 	}
 }
@@ -531,6 +534,8 @@ func processPrecomputedRound(
 			// Also compute the leaf from the column
 			// to check sanity
 			leaf_ := poseidon2.Poseidon2Sponge(poseidon2Preimage)
+			// Sanity check
+			// The leaf computed from the precomputed column
 			if leaf != leaf_ {
 				utils.Panic("Poseidon2 hash of the precomputed column %v does not match the leaf %v", leaf_, leaf)
 			}
@@ -677,6 +682,7 @@ func processRound(
 				// Also compute the leaf from the column
 				// to check sanity
 				leaf_ := poseidon2.Poseidon2Sponge(poseidon2Preimage)
+
 				if leaf != leaf_ {
 					utils.Panic("Poseidon2 hash of the non SIS column %v does not match the leaf %v", leaf_, leaf)
 				}
