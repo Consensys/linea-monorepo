@@ -1,6 +1,8 @@
 package selfrecursion
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -96,6 +98,8 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 		ctx.Poseidon2MetaData.NonSiSToHash = make([][blockSize]ifaces.Column, 0, numRoundNonSis)
 		ctx.Poseidon2MetaData.ColChunks = make([]int, 0, numRoundNonSis)
 		nonSisNumRowExpectedHash, nonSisNumRowsToHash = ctx.registerPoseidon2MetaDataForNonSisRounds(numRoundNonSis, roundQ)
+
+		fmt.Printf(" nonSisNumRowExpectedHash: %v, nonSisNumRowsToHash: %v\n", nonSisNumRowExpectedHash, nonSisNumRowsToHash) // debug --- IGNORE ---
 	}
 
 	ctx.Comp.RegisterProverAction(roundQ, &LinearHashMerkleProverAction{
@@ -148,13 +152,16 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 			sisNumHash, expectedHash)
 	}
 
+	// sis have the same size of preimages each rounds for linear hash, so we can concatenate them together and check once
+	// nonsis may have different size of preimages each rounds for linear hash, so we need to check them round by round
+	//
 	// Register the linear hash verification for the non sis rounds
 	for i := 0; i < numRoundNonSis; i++ {
 		var expectedHash [blockSize]ifaces.Column
 		for j := 0; j < blockSize; j++ {
 			expectedHash[j] = ctx.Poseidon2MetaData.NonSisLeaves[j][i]
 		}
-		//map ctx.Poseidon2MetaData.ToHashSizes[i] to chunks like above
+		//map ctx.Poseidon2MetaData to chunks like above
 		poseidon2W.CheckLinearHash(ctx.Comp, ctx.nonSisRoundLinearHashVerificationName(i), ctx.Poseidon2MetaData.ColChunks[i], ctx.Poseidon2MetaData.NonSiSToHash[i],
 			ctx.VortexCtx.NbColsToOpen(), expectedHash)
 	}
@@ -233,6 +240,8 @@ func (ctx *SelfRecursionCtx) registerPoseidon2MetaDataForNonSisRounds(
 			totalChunks := colChunks * numhash
 			numRowToHash := utils.NextPowerOfTwo(totalChunks)
 
+			fmt.Printf("numhash: %v, colSize: %v, colChunks: %v, totalChunks: %v, numRowToHash: %v\n", numhash, colSize, colChunks, totalChunks, numRowToHash) // debug --- IGNORE ---
+
 			for j := 0; j < blockSize; j++ {
 				ctx.Poseidon2MetaData.NonSisLeaves[j] = append(
 					ctx.Poseidon2MetaData.NonSisLeaves[j],
@@ -260,6 +269,7 @@ func (ctx *SelfRecursionCtx) registerPoseidon2MetaDataForNonSisRounds(
 		}
 	}
 
+	fmt.Printf("ctx.Poseidon2MetaData.ColChunks : %v\n", ctx.Poseidon2MetaData.ColChunks) // debug --- IGNORE ---
 	return numRowExpectedHash, numRowsToHash
 }
 
@@ -455,17 +465,20 @@ func (a *LinearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 	// Assign the hash values and preimages for the non SIS rounds
 	for i := 0; i < a.NumNonSisRound; i++ {
 		var th [blockSize][]field.Element
-		colSize := len(lmp.NonSisHashPreimages[i])
+		// TODO@yao: different from here
+		colSize := len(lmp.NonSisHashPreimages[i]) / a.NumOpenedCol
 		colChunks := (colSize + blockSize - 1) / blockSize
 		for j := 0; j < blockSize; j++ {
-			th[j] = make([]field.Element, colChunks)
+			th[j] = make([]field.Element, colChunks*a.NumOpenedCol)
 		}
-
-		th = poseidon2W.PrepareToHashWitness(th, lmp.NonSisHashPreimages[i], 0)
+		for k := 0; k < a.NumOpenedCol; k++ {
+			srcStart := k * colSize
+			nonsisHash := lmp.NonSisHashPreimages[i][srcStart : srcStart+colSize]
+			th = poseidon2W.PrepareToHashWitness(th, nonsisHash, k*colChunks)
+		}
 
 		for j := 0; j < blockSize; j++ {
 			run.AssignColumn(a.Ctx.Poseidon2MetaData.NonSisLeaves[j][i].GetColID(), smartvectors.RightZeroPadded(lmp.NonSisLeaves[i][j], a.NonSISExpectedHash))
-
 			run.AssignColumn(a.Ctx.Poseidon2MetaData.NonSiSToHash[i][j].GetColID(), smartvectors.RightZeroPadded(th[j], a.NonSISToHash[i]))
 
 		}
@@ -694,6 +707,7 @@ func processRound(
 				lmp.MerkleNonSisPositions = append(lmp.MerkleNonSisPositions, field.NewElement(uint64(selectedCol)))
 				poseidon2HashPreimages = append(poseidon2HashPreimages, poseidon2Preimage...)
 			}
+			fmt.Printf("poseidon2HashPreimages size: %v\n", len(poseidon2HashPreimages)) // debug --- IGNORE ---
 			// Append the hash values and preimages
 			lmp.NonSisLeaves = append(lmp.NonSisLeaves, poseidon2HashValues)
 			lmp.NonSisHashPreimages = append(lmp.NonSisHashPreimages, poseidon2HashPreimages)
