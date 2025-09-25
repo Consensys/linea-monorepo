@@ -8,36 +8,56 @@ import { KarmaNFT } from "../src/KarmaNFT.sol";
 import { NFTMetadataGeneratorSVG } from "../src/nft-metadata-generators/NFTMetadataGeneratorSVG.sol";
 import { INFTMetadataGenerator } from "../src/interfaces/INFTMetadataGenerator.sol";
 
+/**
+ * @dev Script for deploying KarmaNFT contract and its dependencies.
+ */
 contract DeployKarmaNFTScript is BaseScript {
-    function run() public returns (KarmaNFT, INFTMetadataGenerator, DeploymentConfig) {
+    /**
+     * @dev Deploys NFT metadata generator and KarmaNFT contract for production use and returns the instances.
+     * The address of the Karma contract must be provided via the "KARMA_ADDRESS" environment variable.
+     * @return karmaNFT The deployed KarmaNFT contract instance.
+     */
+    function run() public returns (KarmaNFT) {
+        address metadataGenerator = vm.envAddress("NFT_METADATA_GENERATOR_ADDRESS");
+        require(metadataGenerator != address(0), "NFT_METADATA_GENERATOR_ADDRESS is not set");
+
         address karmaAddress = vm.envAddress("KARMA_ADDRESS");
         require(karmaAddress != address(0), "KARMA_ADDRESS is not set");
 
-        return _run(karmaAddress);
+        return _run(metadataGenerator, karmaAddress);
     }
 
-    function runForTest(address karmaAddress) public returns (KarmaNFT, INFTMetadataGenerator, DeploymentConfig) {
-        return _run(karmaAddress);
-    }
-
-    function _run(address karmaAddress) public returns (KarmaNFT, INFTMetadataGenerator, DeploymentConfig) {
+    /**
+     * @dev Deploys KarmaNFT contract for testing purposes and returns the instances along with deployment config.
+     * @param metadataGenerator The address of the NFT metadata generator contract.
+     * @param karmaAddress The address of the Karma contract.
+     * @return karmaNFT The deployed KarmaNFT contract instance.
+     * @return deploymentConfig The DeploymentConfig instance for the current network.
+     */
+    function runForTest(address metadataGenerator, address karmaAddress) public returns (KarmaNFT, DeploymentConfig) {
         DeploymentConfig deploymentConfig = new DeploymentConfig(broadcaster);
-        (address deployer,) = deploymentConfig.activeNetworkConfig();
+        KarmaNFT karmaNFT = _run(metadataGenerator, karmaAddress);
+        return (karmaNFT, deploymentConfig);
+    }
 
-        vm.startBroadcast(deployer);
+    /**
+     * @dev Deploys NFT metadata generator and KarmaNFT contract within a broadcast context and returns the instances.
+     * @param metadataGenerator The address of the NFT metadata generator contract.
+     * @param karmaAddress The address of the Karma contract.
+     * @return karmaNFT The deployed KarmaNFT contract instance.
+     */
+    function _run(address metadataGenerator, address karmaAddress) internal broadcast returns (KarmaNFT) {
+        return deploy(metadataGenerator, karmaAddress);
+    }
 
-        // Deploy NFT metadata generator
-        string memory svgPrefix =
-        // solhint-disable-next-line
-            "<svg width=\"200\" height=\"200\" viewBox=\"0 0 200 200\"><rect x=\"0\" y=\"0\" width=\"100%\" height=\"100%\" stroke=\"black\" stroke-width=\"3px\" fill=\"white\"/><text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\">";
-        string memory svgSuffix = "</text></svg>";
-        NFTMetadataGeneratorSVG metadataGenerator = new NFTMetadataGeneratorSVG(svgPrefix, svgSuffix);
-
-        // Deploy KarmaNFT
-        KarmaNFT karmaNFT = new KarmaNFT(karmaAddress, address(metadataGenerator));
-
-        vm.stopBroadcast();
-
-        return (karmaNFT, INFTMetadataGenerator(metadataGenerator), deploymentConfig);
+    /**
+     * @dev Deploys NFT metadata generator and KarmaNFT contract and returns the instances.
+     * Note: This function does not handle broadcasting; it should be called within a broadcast context.
+     * @param metadataGenerator The address of the NFT metadata generator contract.
+     * @param karmaAddress The address of the Karma contract.
+     * @return karmaNFT The deployed KarmaNFT contract instance.
+     */
+    function deploy(address metadataGenerator, address karmaAddress) public returns (KarmaNFT karmaNFT) {
+        karmaNFT = new KarmaNFT(karmaAddress, metadataGenerator);
     }
 }

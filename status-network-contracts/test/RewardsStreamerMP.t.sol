@@ -6,6 +6,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { DeployKarmaScript } from "../script/DeployKarma.s.sol";
 import { DeployStakeManagerScript } from "../script/DeployStakeManager.s.sol";
+import { DeployVaultFactoryScript } from "../script/DeployVaultFactory.s.sol";
 import { UpgradeStakeManagerScript } from "../script/UpgradeStakeManager.s.sol";
 import { DeploymentConfig } from "../script/DeploymentConfig.s.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -39,12 +40,13 @@ contract StakeManagerTest is StakeMath, Test {
     function setUp() public virtual {
         DeployStakeManagerScript deployment = new DeployStakeManagerScript();
         DeployKarmaScript karmaDeployment = new DeployKarmaScript();
+        DeployVaultFactoryScript vaultFactoryDeployment = new DeployVaultFactoryScript();
 
-        (karma,) = karmaDeployment.run();
-        (StakeManager stakeManager, VaultFactory _vaultFactory, DeploymentConfig deploymentConfig) =
-            deployment.runForTest(address(karma));
-
+        (karma,) = karmaDeployment.runForTest();
+        (StakeManager stakeManager, DeploymentConfig deploymentConfig) = deployment.runForTest(address(karma));
         (address _deployer, address _stakingToken) = deploymentConfig.activeNetworkConfig();
+        (VaultFactory _vaultFactory,, address vaultProxyClone,) =
+            vaultFactoryDeployment.runForTest(address(stakeManager), _stakingToken);
 
         streamer = stakeManager;
         stakingToken = MockToken(_stakingToken);
@@ -57,6 +59,7 @@ contract StakeManagerTest is StakeMath, Test {
         karma.setAllowedToTransfer(address(streamer), true);
         streamer.setRewardsSupplier(address(karma));
         streamer.grantRole(streamer.GUARDIAN_ROLE(), address(guardian));
+        streamer.setTrustedCodehash(vaultProxyClone.codehash, true);
         vm.stopPrank();
 
         address[4] memory accounts = [alice, bob, charlie, dave];

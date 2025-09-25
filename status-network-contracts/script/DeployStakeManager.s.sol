@@ -12,41 +12,78 @@ import { StakeManager } from "../src/StakeManager.sol";
 import { StakeVault } from "../src/StakeVault.sol";
 import { VaultFactory } from "../src/VaultFactory.sol";
 
+/**
+ * @dev This script deploys the StakeManager contract as an upgradeable proxy using a Transparent Proxy pattern.
+ * It provides functions to deploy for production use and for testing purposes.
+ * The deploy function handles the deployment of the logic contract and the creation of the proxy.
+ * The staking token address is obtained from the active network configuration in DeploymentConfig.
+ * The reward token address is provided via an environment variable "KARMA_ADDRESS" for production deployments.
+ */
 contract DeployStakeManagerScript is BaseScript {
-    function run() public returns (StakeManager, VaultFactory, DeploymentConfig) {
+    /**
+     * @dev Deploys StakeManager contract for production use and returns the instance along with deployment config.
+     * The address of the Karma contract must be provided via the "KARMA_ADDRESS" environment variable.
+     * The deployer/owner of the StakeManager contract will be set to the broadcaster address.
+     * @return stakeManager The deployed StakeManager contract instance.
+     * @return deploymentConfig The DeploymentConfig instance for the current network.
+     */
+    function run() public returns (StakeManager stakeManager, DeploymentConfig deploymentConfig) {
         address karmaAddress = vm.envAddress("KARMA_ADDRESS");
         require(karmaAddress != address(0), "KARMA_ADDRESS is not set");
-        return _run(karmaAddress);
+
+        deploymentConfig = new DeploymentConfig(broadcaster);
+        (, address stakingToken) = deploymentConfig.activeNetworkConfig();
+        stakeManager = _run(stakingToken, karmaAddress);
     }
 
-    function runForTest(address rewardToken) public returns (StakeManager, VaultFactory, DeploymentConfig) {
-        return _run(rewardToken);
+    /**
+     * @dev Deploys StakeManager contract for testing purposes and returns the instance along with deployment config.
+     * @param rewardToken The address of the reward token (Karma) to be used in the StakeManager.
+     * @return stakeManager The deployed StakeManager contract instance.
+     * @return deploymentConfig The DeploymentConfig instance for the current network.
+     */
+    function runForTest(address rewardToken)
+        public
+        returns (StakeManager stakeManager, DeploymentConfig deploymentConfig)
+    {
+        deploymentConfig = new DeploymentConfig(broadcaster);
+        (, address stakingToken) = deploymentConfig.activeNetworkConfig();
+        stakeManager = _run(stakingToken, rewardToken);
     }
 
-    function _run(address rewardToken) public returns (StakeManager, VaultFactory, DeploymentConfig) {
-        DeploymentConfig deploymentConfig = new DeploymentConfig(broadcaster);
-        (address deployer, address stakingToken) = deploymentConfig.activeNetworkConfig();
+    /**
+     * @dev Deploys StakeManager contract within a broadcast context and returns the instance.
+     * @param stakingToken The address of the staking token to be used in the StakeManager.
+     * @param rewardToken The address of the reward token (Karma) to be used in the StakeManager.
+     * @return stakeManager The deployed StakeManager contract instance.
+     */
+    function _run(address stakingToken, address rewardToken) internal broadcast returns (StakeManager) {
+        (StakeManager stakeManager,) = deploy(broadcaster, stakingToken, rewardToken);
+        return stakeManager;
+    }
+
+    /**
+     * @dev Deploys StakeManager contract and returns the instance.
+     * Note: This function does not handle broadcasting; it should be called within a broadcast context.
+     * @param deployer The address that will be set as the deployer/owner of the StakeManager contract.
+     * @param stakingToken The address of the staking token to be used in the StakeManager.
+     * @param rewardToken The address of the reward token (Karma) to be used in the StakeManager.
+     * @return proxy The deployed StakeManager proxy contract instance.
+     * @return impl The address of the StakeManager logic contract.
+     */
+    function deploy(
+        address deployer,
+        address stakingToken,
+        address rewardToken
+    )
+        public
+        returns (StakeManager proxy, address impl)
+    {
         bytes memory initializeData = abi.encodeCall(StakeManager.initialize, (deployer, stakingToken, rewardToken));
 
-        vm.startBroadcast(deployer);
-
         // Deploy StakeManager logic contract
-        address impl = address(new StakeManager());
+        impl = address(new StakeManager());
         // Create upgradeable proxy
-        address proxy = address(new TransparentProxy(impl, initializeData));
-
-        // Create vault implementation for proxy clones
-        address vaultImplementation = address(new StakeVault(IERC20(stakingToken)));
-        address proxyClone = Clones.clone(vaultImplementation);
-
-        // Whitelist vault implementation codehash
-        StakeManager(proxy).setTrustedCodehash(proxyClone.codehash, true);
-
-        // Create vault factory
-        VaultFactory vaultFactory = new VaultFactory(deployer, proxy, vaultImplementation);
-
-        vm.stopBroadcast();
-
-        return (StakeManager(proxy), vaultFactory, deploymentConfig);
+        proxy = StakeManager(address(new TransparentProxy(impl, initializeData)));
     }
 }

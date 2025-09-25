@@ -7,19 +7,60 @@ import { DeploymentConfig } from "./DeploymentConfig.s.sol";
 import { NFTMetadataGeneratorSVG } from "../src/nft-metadata-generators/NFTMetadataGeneratorSVG.sol";
 import { INFTMetadataGenerator } from "../src/interfaces/INFTMetadataGenerator.sol";
 
-contract DeployMetadataGenerator is BaseScript {
-    function run() public returns (INFTMetadataGenerator, DeploymentConfig) {
-        DeploymentConfig deploymentConfig = new DeploymentConfig(broadcaster);
-        (address deployer,) = deploymentConfig.activeNetworkConfig();
+/**
+ * @dev Script for deploying NFT metadata generator contract.
+ */
+contract DeployMetadataGeneratorScript is BaseScript {
+    string public svgPrefix =
+    // solhint-disable-next-line
+        "<svg width=\"200\" height=\"200\" viewBox=\"0 0 200 200\"><rect x=\"0\" y=\"0\" width=\"100%\" height=\"100%\" stroke=\"black\" stroke-width=\"3px\" fill=\"white\"/><text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\">";
+    string public svgSuffix = "</text></svg>";
 
-        vm.startBroadcast(deployer);
-        string memory svgPrefix =
-        // solhint-disable-next-line
-            "<svg width=\"200\" height=\"200\" viewBox=\"0 0 200 200\"><rect x=\"0\" y=\"0\" width=\"100%\" height=\"100%\" stroke=\"black\" stroke-width=\"3px\" fill=\"white\"/><text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\">";
-        string memory svgSuffix = "</text></svg>";
+    /**
+     * @dev Deploys NFT metadata generator contract for production use and returns the instances.
+     * The address of the Karma contract must be provided via the "KARMA_ADDRESS" environment variable.
+     * @return metadataGenerator The deployed NFT metadata generator contract instance.
+     */
+    function run() public returns (INFTMetadataGenerator metadataGenerator) {
+        metadataGenerator = _run();
+    }
+
+    /**
+     * @dev Deploys NFT metadata generator contract for testing purposes and returns the instances along with
+     * deployment config.
+     * @param _svgPrefix The SVG prefix string to be used in the metadata generator.
+     * @param _svgSuffix The SVG suffix string to be used in the metadata generator.
+     * @return metadataGenerator The deployed NFT metadata generator contract instance.
+     * @return deploymentConfig The DeploymentConfig instance for the current network.
+     */
+    function runForTest(
+        string memory _svgPrefix,
+        string memory _svgSuffix
+    )
+        public
+        returns (INFTMetadataGenerator metadataGenerator, DeploymentConfig deploymentConfig)
+    {
+        deploymentConfig = new DeploymentConfig(broadcaster);
+        svgPrefix = _svgPrefix;
+        svgSuffix = _svgSuffix;
+        metadataGenerator = _run();
+    }
+
+    /**
+     * @dev Deploys NFT metadata generator contract within a broadcast context and returns the instances.
+     * @return metadataGenerator The deployed NFT metadata generator contract instance.
+     */
+    function _run() internal broadcast returns (INFTMetadataGenerator) {
+        return deploy();
+    }
+
+    /**
+     * @dev Deploys NFT metadata generator contract and returns the instances.
+     * Note: This function does not handle broadcasting; it should be called within a broadcast context.
+     * @return metadataGenerator The deployed NFT metadata generator contract instance.
+     */
+    function deploy() public returns (INFTMetadataGenerator) {
         NFTMetadataGeneratorSVG metadataGenerator = new NFTMetadataGeneratorSVG(svgPrefix, svgSuffix);
-        vm.stopBroadcast();
-
-        return (INFTMetadataGenerator(metadataGenerator), deploymentConfig);
+        return INFTMetadataGenerator(metadataGenerator);
     }
 }

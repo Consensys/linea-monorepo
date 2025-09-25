@@ -13,7 +13,7 @@ contract KarmaTiersTest is Test {
 
     function setUp() public virtual {
         DeployKarmaTiersScript deployment = new DeployKarmaTiersScript();
-        (KarmaTiers _karmaTiers, DeploymentConfig deploymentConfig) = deployment.run();
+        (KarmaTiers _karmaTiers, DeploymentConfig deploymentConfig) = deployment.runForTest();
         (address _deployer,) = deploymentConfig.activeNetworkConfig();
         owner = _deployer;
         karmaTiers = _karmaTiers;

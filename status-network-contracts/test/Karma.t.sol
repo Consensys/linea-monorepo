@@ -24,7 +24,7 @@ contract KarmaTest is Test {
 
     function setUp() public virtual {
         DeployKarmaScript karmaDeployment = new DeployKarmaScript();
-        (Karma _karma, DeploymentConfig deploymentConfig) = karmaDeployment.run();
+        (Karma _karma, DeploymentConfig deploymentConfig) = karmaDeployment.runForTest();
         karma = _karma;
         (address deployer,) = deploymentConfig.activeNetworkConfig();
         owner = deployer;

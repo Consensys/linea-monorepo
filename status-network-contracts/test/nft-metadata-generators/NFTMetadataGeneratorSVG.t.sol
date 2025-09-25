@@ -4,17 +4,26 @@ pragma solidity ^0.8.26;
 import { Test } from "forge-std/Test.sol";
 import { Base64 } from "@openzeppelin/contracts/utils/Base64.sol";
 import { MockToken } from "../mocks/MockToken.sol";
+import { INFTMetadataGenerator } from "../../src/interfaces/INFTMetadataGenerator.sol";
 import { NFTMetadataGeneratorSVG } from "../../src/nft-metadata-generators/NFTMetadataGeneratorSVG.sol";
+import { DeploymentConfig } from "../../script/DeploymentConfig.s.sol";
+import { DeployMetadataGeneratorScript } from "../../script/DeployMetadataGenerator.s.sol";
 
 contract NFTMetadataGeneratorSVGTest is Test {
     MockToken private erc20Token;
     NFTMetadataGeneratorSVG private metadataGenerator;
 
     address private alice = makeAddr("alice");
+    address admin;
 
     function setUp() public {
+        DeployMetadataGeneratorScript deployScript = new DeployMetadataGeneratorScript();
+        (INFTMetadataGenerator _metadataGenerator, DeploymentConfig config) =
+            deployScript.runForTest("<svg>", "</svg>");
+        (address deployer,) = config.activeNetworkConfig();
         erc20Token = new MockToken("Test", "TEST");
-        metadataGenerator = new NFTMetadataGeneratorSVG("<svg>", "</svg>");
+        metadataGenerator = NFTMetadataGeneratorSVG(address(_metadataGenerator));
+        admin = deployer;
 
         erc20Token.mint(alice, 10e18);
     }
@@ -47,6 +56,7 @@ contract NFTMetadataGeneratorSVGTest is Test {
         assertEq(metadataGenerator.imagePrefix(), "<svg>");
         assertEq(metadataGenerator.imageSuffix(), "</svg>");
 
+        vm.prank(admin);
         metadataGenerator.setImageStrings("<new-svg>", "</new-svg>");
 
         assertEq(metadataGenerator.imagePrefix(), "<new-svg>");

@@ -5,6 +5,7 @@ import { Test } from "forge-std/Test.sol";
 import { Base64 } from "@openzeppelin/contracts/utils/Base64.sol";
 import { MockToken } from "./mocks/MockToken.sol";
 import { KarmaNFT } from "../src/KarmaNFT.sol";
+import { DeploymentConfig } from "../script/DeploymentConfig.s.sol";
 import { DeployKarmaNFTScript } from "../script/DeployKarmaNFT.s.sol";
 import { INFTMetadataGenerator } from "../src/interfaces/INFTMetadataGenerator.sol";
 import { MockMetadataGenerator } from "./mocks/MockMetadataGenerator.sol";
@@ -13,13 +14,17 @@ contract KarmaNFTTest is Test {
     MockToken public erc20Token;
     INFTMetadataGenerator public metadataGenerator;
     KarmaNFT public nft;
+    DeploymentConfig public deploymentConfig;
+    address deployer;
 
     address public alice = makeAddr("alice");
 
     function setUp() public {
         erc20Token = new MockToken("Test", "TEST");
-        ((nft, metadataGenerator,)) = new DeployKarmaNFTScript().runForTest(address(erc20Token));
-        nft = new KarmaNFT(address(erc20Token), address(metadataGenerator));
+        metadataGenerator = new MockMetadataGenerator("https://test.local/");
+        (nft, deploymentConfig) =
+            new DeployKarmaNFTScript().runForTest(address(metadataGenerator), address(erc20Token));
+        (deployer,) = deploymentConfig.activeNetworkConfig();
 
         address[1] memory users = [alice];
         for (uint256 i = 0; i < users.length; i++) {
@@ -31,10 +36,7 @@ contract KarmaNFTTest is Test {
         return uint256(uint160(addr));
     }
 
-    function testTokenURI() public {
-        INFTMetadataGenerator generator = new MockMetadataGenerator("https://test.local/");
-        nft.setMetadataGenerator(address(generator));
-
+    function testTokenURI() public view {
         bytes memory expectedMetadata = abi.encodePacked(
             "{\"name\":\"KarmaNFT 0x328809bc894f92807417d2dad6b7c998c1afdac6\",",
             // solhint-disable-next-line
@@ -48,6 +50,7 @@ contract KarmaNFTTest is Test {
     function testSetMetadataGenerator() public {
         MockMetadataGenerator newMetadataGenerator = new MockMetadataGenerator("https://new-test.local/");
 
+        vm.prank(deployer);
         nft.setMetadataGenerator(address(newMetadataGenerator));
 
         assertEq(address(nft.metadataGenerator()), address(newMetadataGenerator));
