@@ -83,7 +83,6 @@ func init() {
 
 	// Limitless prover cmds
 	proveCmd.Flags().StringVar(&proverArgs.Phase, "phase", "", "phase flag can only be invoked for the execution proof in the limitless prover mode")
-
 }
 
 func cmdSetup(_cmd *cobra.Command, _ []string) error {
