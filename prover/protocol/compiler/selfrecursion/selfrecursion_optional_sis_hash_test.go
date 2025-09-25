@@ -9,7 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -519,7 +519,7 @@ func TestSelfRecursionOpsSisMultiLayered(t *testing.T) {
 					vortex.WithOptionalSISHashingThreshold(10),
 				),
 				selfrecursion.SelfRecurse,
-				mimc.CompileMiMC,
+				poseidon2.CompilePoseidon2,
 				compiler.Arcane(
 					compiler.WithTargetColSize(1<<10)),
 				vortex.Compile(
@@ -528,7 +528,7 @@ func TestSelfRecursionOpsSisMultiLayered(t *testing.T) {
 					vortex.WithOptionalSISHashingThreshold(10),
 				),
 				selfrecursion.SelfRecurse,
-				mimc.CompileMiMC,
+				poseidon2.CompilePoseidon2,
 				compiler.Arcane(
 					compiler.WithTargetColSize(1<<13)),
 				vortex.Compile(
