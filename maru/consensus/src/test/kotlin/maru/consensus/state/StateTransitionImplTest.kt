@@ -22,7 +22,7 @@ class StateTransitionImplTest {
   @Test
   fun `processBlock should return ok`() {
     val newBlock = DataGenerators.randomBeaconBlock(10uL)
-    val validators = List(3) { DataGenerators.randomValidator() }.toSet()
+    val validators = List(3) { DataGenerators.randomValidator() }.toSortedSet()
     val expectedPostState =
       BeaconState(
         beaconBlockHeader = newBlock.beaconBlockHeader,

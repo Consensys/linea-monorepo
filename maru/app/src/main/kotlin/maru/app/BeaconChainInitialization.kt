@@ -41,16 +41,17 @@ class BeaconChainInitialization(
         headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
       )
 
+    val sortedValidators = validatorSet.toSortedSet()
     val tmpGenesisStateRoot =
       BeaconState(
         beaconBlockHeader = beaconBlockHeader,
-        validators = validatorSet,
+        validators = sortedValidators,
       )
     val stateRootHash = HashUtil.stateRoot(tmpGenesisStateRoot)
 
     val genesisBlockHeader = beaconBlockHeader.copy(stateRoot = stateRootHash)
     val genesisBlock = BeaconBlock(genesisBlockHeader, beaconBlockBody)
-    val genesisState = BeaconState(genesisBlockHeader, validatorSet)
+    val genesisState = BeaconState(genesisBlockHeader, sortedValidators)
     beaconChain.newBeaconChainUpdater().run {
       putBeaconState(genesisState)
       putSealedBeaconBlock(SealedBeaconBlock(genesisBlock, emptySet()))

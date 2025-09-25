@@ -12,6 +12,7 @@ import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.getError
+import java.util.SequencedSet
 import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.ProposerSelector
 import maru.consensus.qbft.toConsensusRoundIdentifier
@@ -58,7 +59,7 @@ class BlockValidatorTest {
   private val currBeaconState =
     BeaconState(
       beaconBlockHeader = validCurrBlockHeader,
-      validators = validators.toSet(),
+      validators = validators.toSortedSet(),
     )
 
   private val validNewBlockBody = DataGenerators.randomBeaconBlockBody(numSeals = validators.size)
@@ -74,7 +75,7 @@ class BlockValidatorTest {
     HashUtil.stateRoot(
       BeaconState(
         beaconBlockHeader = validNewBlockStateRootHeader,
-        validators = validators.toSet(),
+        validators = validators.toSortedSet(),
       ),
     )
   private val validNewBlockHeader = validNewBlockStateRootHeader.copy(stateRoot = validNewStateRoot)
@@ -98,8 +99,8 @@ class BlockValidatorTest {
 
   private val validatorProvider =
     object : ValidatorProvider {
-      override fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<Set<Validator>> =
-        SafeFuture.completedFuture(validators.toSet())
+      override fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<SequencedSet<Validator>> =
+        SafeFuture.completedFuture(validators.toSortedSet())
     }
 
   private val stateTransition = StateTransitionImpl(validatorProvider)

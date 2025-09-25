@@ -11,6 +11,7 @@ package maru.consensus.validation
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
+import java.util.SequencedSet
 import maru.consensus.ValidatorProvider
 import maru.core.BeaconBlockHeader
 import maru.core.Seal
@@ -29,7 +30,8 @@ class SealsVerifierTest {
     )
   private val validatorProvider =
     object : ValidatorProvider {
-      override fun getValidatorsForBlock(blockNumber: ULong) = SafeFuture.completedFuture(validators.toSet())
+      override fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<SequencedSet<Validator>> =
+        SafeFuture.completedFuture(validators.toSortedSet())
     }
   private val validSeal1 = Seal(ByteArray(32) { 10 })
   private val validSeal2 = Seal(ByteArray(32) { 11 })

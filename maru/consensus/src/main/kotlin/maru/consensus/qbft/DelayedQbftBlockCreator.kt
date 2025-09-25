@@ -92,7 +92,7 @@ class DelayedQbftBlockCreator(
         )
       val stateRoot =
         HashUtil.stateRoot(
-          BeaconState(stateRootBlockHeader, validators),
+          BeaconState(stateRootBlockHeader, validators.toSortedSet()),
         )
       val finalBlockHeader = stateRootBlockHeader.copy(stateRoot = stateRoot)
       return BeaconBlock(finalBlockHeader, beaconBlockBody)

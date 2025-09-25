@@ -34,7 +34,7 @@ class BeaconStateSerDe(
     rlpInput.enterList()
 
     val latestBeaconBlockHeader = beaconBlockHeaderSerializer.readFrom(rlpInput)
-    val validators = rlpInput.readList { validatorSerializer.readFrom(it) }.toSet()
+    val validators = rlpInput.readList { validatorSerializer.readFrom(it) }.toSortedSet()
 
     rlpInput.leaveList()
 

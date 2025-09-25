@@ -38,7 +38,7 @@ class BeaconStateSerializerTest {
     val testValue =
       BeaconState(
         beaconBlockHeader = beaconBLockHeader,
-        validators = buildSet(3) { Validator(Random.nextBytes(20)) },
+        validators = List(3) { Validator(Random.nextBytes(20)) }.toSortedSet(),
       )
     val serializedData = serializer.serialize(testValue)
     val deserializedValue = serializer.deserialize(serializedData)
