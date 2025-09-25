@@ -13,24 +13,31 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type GLRequest struct {
+	WitnessGLPath string
+	StartBlock    string
+	EndBlock      string
+	SegID         int
+}
+
 type GLResponse struct {
 	GLProofPath        string `json:"gl_proof_path"`
 	LPPCommitmeentPath string `json:"lpp_commit_path"`
 }
 
-func RunGL(cfg *config.Config, witnessGLPath string, sb, eb string, segID int) (*GLResponse, error) {
+func RunGL(cfg *config.Config, req *GLRequest) (*GLResponse, error) {
 
-	logrus.Infof("Initating the GL-prover from witnessGL file path %v", witnessGLPath)
+	logrus.Infof("Initating the GL-prover from witnessGL file path %v", req.WitnessGLPath)
 
 	witnessGL := &distributed.ModuleWitnessGL{}
-	if err := serialization.LoadFromDisk(witnessGLPath, witnessGL, true); err != nil {
+	if err := serialization.LoadFromDisk(req.WitnessGLPath, witnessGL, true); err != nil {
 		return nil, fmt.Errorf("could not load witness: %w", err)
 	}
 
 	var (
-		glProofFile   = fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-proof.bin", sb, eb, segID, witnessGL.ModuleIndex)
+		glProofFile   = fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-proof.bin", req.StartBlock, req.EndBlock, req.SegID, witnessGL.ModuleIndex)
 		proofGLPath   = path.Join(config.SubProofsGLDirPrefix, string(witnessGL.ModuleName), glProofFile)
-		LPPCommitFile = fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-commit.bin", sb, eb, segID, witnessGL.ModuleIndex)
+		LPPCommitFile = fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-commit.bin", req.StartBlock, req.EndBlock, req.SegID, witnessGL.ModuleIndex)
 		LPPCommitPath = path.Join(config.LPPCommitPrefix, string(witnessGL.ModuleName), LPPCommitFile)
 	)
 
