@@ -162,13 +162,8 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 				return ctx.Err()
 			default:
 
-				fileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-wit.bin", metadata.StartBlock, metadata.EndBlock, i, witnessGL.ModuleIndex)
+				fileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-wit.bin", metadata.StartBlock, metadata.EndBlock, i, witnessGL.ModuleIndex)
 				filePath := path.Join(config.WitnessGLDirPrefix, string(witnessGL.ModuleName), fileName)
-
-				dir := path.Dir(filePath)
-				if err := os.MkdirAll(dir, 0o755); err != nil {
-					return fmt.Errorf("could not create GL witness directory: %w for filePath: %s fileName:%s", err, filePath, fileName)
-				}
 
 				// Clean up any prev. witness file before starting. This helps addressing the situation
 				// where a previous process have been interrupted.
@@ -191,13 +186,8 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 				return ctx.Err()
 			default:
 
-				fileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-wit.bin", metadata.StartBlock, metadata.EndBlock, i, witnessLPP.ModuleIndex)
+				fileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-lpp-wit.bin", metadata.StartBlock, metadata.EndBlock, i, witnessLPP.ModuleIndex)
 				filePath := path.Join(config.WitnessLPPDirPrefix, string(witnessLPP.ModuleName[0]), fileName)
-
-				dir := path.Dir(filePath)
-				if err := os.MkdirAll(dir, 0o755); err != nil {
-					return fmt.Errorf("could not create GL witness directory: %w for filePath: %s fileName:%s", err, filePath, fileName)
-				}
 
 				// Clean up any prev. witness file before starting. This helps addressing the situation
 				// where a previous process have been interrupted.
