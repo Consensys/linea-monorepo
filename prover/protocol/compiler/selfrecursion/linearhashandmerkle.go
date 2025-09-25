@@ -48,6 +48,8 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	sisTotalChunks := sisColChunks * sisNumHash
 	sisNumRowToHash := utils.NextPowerOfTwo(sisTotalChunks)
 	sisNumRowExpectedHash := utils.NextPowerOfTwo(sisNumHash)
+	concatDhQSizeUnpadded := sisColSize * sisNumHash
+	concatDhQSize := utils.NextPowerOfTwo(concatDhQSizeUnpadded)
 
 	// CalculateMerkleParameters computes Merkle tree parameters
 	// The leaves are computed for both SIS and non SIS rounds
@@ -67,6 +69,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	// Register SIS-related columns if needed
 	// We commit to the below columns only if SIS is applied to any of the rounds including precomputed
 	if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+		ctx.Columns.ConcatenatedDhQ = ctx.Comp.InsertCommit(roundQ, ctx.concatenatedDhQ(), concatDhQSize)
 		for j := 0; j < blockSize; j++ {
 			ctx.Columns.SisToHash[j] = ctx.Comp.InsertCommit(roundQ, ctx.sisToHash(j), sisNumRowToHash)
 			ctx.Columns.SisRoundLeaves[j] = make([]ifaces.Column, 0, numRoundSis)
@@ -97,6 +100,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 
 	ctx.Comp.RegisterProverAction(roundQ, &LinearHashMerkleProverAction{
 		Ctx:                   ctx,
+		ConcatDhQSize:         concatDhQSize,
 		SisNumRowExpectedHash: sisNumRowExpectedHash,
 		SisTotalChunks:        sisTotalChunks,
 		SisNumRowToHash:       sisNumRowToHash,
@@ -306,6 +310,7 @@ func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 // Implements the prover action interface
 type LinearHashMerkleProverAction struct {
 	Ctx                   *SelfRecursionCtx
+	ConcatDhQSize         int
 	SisNumRowExpectedHash int
 	SisTotalChunks        int
 	NumRowExpectedHash    int
@@ -325,6 +330,8 @@ type LinearHashMerkleProverAction struct {
 type linearHashMerkleProverActionBuilder struct {
 	// Contains the concatenated sis hashes of the selected columns
 	// for the sis round matrices
+	ConcatDhQ []field.Element
+
 	SisToHash [blockSize][]field.Element
 	// The leaves of the merkle tree (both sis and non sis)
 	MerkleLeaves [blockSize][]field.Element // extend to blockSize here
@@ -369,6 +376,7 @@ type linearHashMerkleProverActionBuilder struct {
 // linearHashMerkleProverActionBuilder
 func newLinearHashMerkleProverActionBuilder(a *LinearHashMerkleProverAction) *linearHashMerkleProverActionBuilder {
 	lmp := linearHashMerkleProverActionBuilder{}
+	lmp.ConcatDhQ = make([]field.Element, a.SisNumHash*a.Ctx.VortexCtx.SisParams.OutputSize())
 	lmp.MerklePositions = make([]field.Element, 0, a.NumHash)
 	lmp.MerkleSisPositions = make([]field.Element, 0, a.SisNumHash)
 	lmp.MerkleNonSisPositions = make([]field.Element, 0, a.NonSisNumHash)
@@ -440,6 +448,10 @@ func (a *LinearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 			}
 		}
 	}
+	if a.Ctx.VortexCtx.NumCommittedRoundsSis() > 0 || a.Ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+		run.AssignColumn(a.Ctx.Columns.ConcatenatedDhQ.GetColID(), smartvectors.RightZeroPadded(lmp.ConcatDhQ, a.ConcatDhQSize))
+
+	}
 
 	// Assign the hash values and preimages for the non SIS rounds
 	numhash := a.NumOpenedCol
@@ -481,12 +493,14 @@ func processPrecomputedRound(
 			precompSisLeaves[j] = make([]field.Element, 0, len(openingIndices))
 			lmp.SisToHash[j] = make([]field.Element, 0, lmp.SisTotalChunks)
 		}
-		for _, selectedCol := range openingIndices {
+		for i, selectedCol := range openingIndices {
 			srcStart := selectedCol * lmp.SisHashSize
 			sisHash := precompColSisHash[srcStart : srcStart+lmp.SisHashSize]
+			destStart := i * lmp.SisHashSize
 
 			// Allocate sisHash to SisToHash columns
 			lmp.SisToHash = poseidon2W.PrepareToHashWitness(lmp.SisToHash, sisHash)
+			copy(lmp.ConcatDhQ[destStart:destStart+lmp.SisHashSize], sisHash)
 
 			leaf := poseidon2.Poseidon2Sponge(sisHash)
 			for j := 0; j < blockSize; j++ {
@@ -514,6 +528,7 @@ func processPrecomputedRound(
 			var leaf [blockSize]field.Element
 			poseidon2Hash := precompColPoseidon2Hash[srcStart : srcStart+blockSize]
 			copy(leaf[:], poseidon2Hash)
+
 			poseidon2Preimage := a.Ctx.VortexCtx.GetPrecomputedSelectedCol(selectedCol)
 			// Also compute the leaf from the column
 			// to check sanity
@@ -605,13 +620,16 @@ func processRound(
 				sisRoundLeaves[j] = make([]field.Element, 0, lmp.NumOpenedCol)
 				lmp.SisToHash[j] = make([]field.Element, 0, lmp.SisTotalChunks)
 			}
-			for _, selectedCol := range openingIndices {
+			for i, selectedCol := range openingIndices {
 				srcStart := selectedCol * lmp.SisHashSize
 				sisHash := colSisHash[srcStart : srcStart+lmp.SisHashSize]
+				destStart := sisRoundCount*lmp.NumOpenedCol*lmp.SisHashSize + i*lmp.SisHashSize
+				copy(lmp.ConcatDhQ[destStart:destStart+lmp.SisHashSize], sisHash)
 
 				lmp.SisToHash = poseidon2W.PrepareToHashWitness(lmp.SisToHash, sisHash)
 
 				leaf := poseidon2.Poseidon2Sponge(sisHash)
+
 				for j := 0; j < blockSize; j++ {
 					lmp.MerkleSisLeaves[j] = append(lmp.MerkleSisLeaves[j], leaf[j])
 					sisRoundLeaves[j] = append(sisRoundLeaves[j], leaf[j])

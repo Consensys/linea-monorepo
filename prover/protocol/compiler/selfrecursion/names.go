@@ -97,6 +97,12 @@ func (ctx *SelfRecursionCtx) sisToHash(index int) ifaces.ColID {
 	return maybePrefix(ctx, name)
 }
 
+// Name of the concatenation of the DhQs
+func (ctx *SelfRecursionCtx) concatenatedDhQ() ifaces.ColID {
+	name := ifaces.ColIDf("SELFRECURSION_CONCAT_DHQ_%v", ctx.SelfRecursionCnt)
+	return maybePrefix(ctx, name)
+}
+
 // Name of the concatenated MiMC hashes for the non SIS rounds
 func (ctx *SelfRecursionCtx) nonSisLeaves(round int, index int) ifaces.ColID {
 	name := ifaces.ColIDf("SELFRECURSION_NON_SIS_LEAVES_%v_%v_%v", ctx.SelfRecursionCnt, round, index)

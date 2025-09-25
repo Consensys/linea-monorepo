@@ -366,20 +366,17 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			utils.Panic("Attempting to fold to a non-power of two size : %v", sisDeg)
 		}
 
-		for j := 0; j < blockSize; j++ {
+		// Compute the collapsed hashes
+		ctx.Columns.DhQCollapse = functionals.FoldOuter(
+			ctx.Comp,
+			ctx.Columns.ConcatenatedDhQ,
+			accessors.NewFromCoin(ctx.Coins.Collapse),
+			ctx.Columns.ConcatenatedDhQ.Size()/sisDeg,
+		)
 
-			// Compute the collapsed hashes
-			ctx.Columns.DhQCollapse = functionals.FoldOuter(
-				ctx.Comp,
-				ctx.Columns.SisToHash[j],
-				accessors.NewFromCoin(ctx.Coins.Collapse),
-				ctx.Columns.SisToHash[j].Size()/sisDeg,
-			)
-
-			// sanity-check : the size of DhQCollapse must equal to sisDeg
-			if ctx.Columns.DhQCollapse.Size() != sisDeg {
-				utils.Panic("the size of DhQ (%v) collapse must equal to the SIS modulus degree (%v)", ctx.Columns.DhQCollapse.Size(), sisDeg)
-			}
+		// sanity-check : the size of DhQCollapse must equal to sisDeg
+		if ctx.Columns.DhQCollapse.Size() != sisDeg {
+			utils.Panic("the size of DhQ (%v) collapse must equal to the SIS modulus degree (%v)", ctx.Columns.DhQCollapse.Size(), sisDeg)
 		}
 		//
 		// Merging the SIS keys
@@ -465,10 +462,10 @@ func (a *FoldPhaseVerifierAction) Run(run wizard.Runtime) error {
 	yActual := smartvectors.EvalCoeffExt(dcollapse, rfold)
 
 	var xN, xNminus1, xNplus1 fext.Element
-	one := field.One()
+	one := fext.One()
 	xN.Exp(rfold, big.NewInt(int64(a.Degree)))
-	xNminus1.B0.A0.Sub(&xN.B0.A0, &one)
-	xNplus1.B0.A0.Add(&xN.B0.A0, &one)
+	xNminus1.Sub(&xN, &one)
+	xNplus1.Add(&xN, &one)
 
 	var left, left0, left1, right fext.Element
 	left0.Mul(&xNplus1, &yDual)
@@ -492,71 +489,6 @@ func (a *FoldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRun
 
 	one := field.One()
 	xN := gnarkutil.Exp(api, rfold, a.Degree)
-	xNminus1 := api.Sub(xN, one)
-	xNplus1 := api.Add(xN, one)
-
-	left0 := api.Mul(xNplus1, yDual)
-	left1 := api.Mul(xNminus1, yActual)
-	left := api.Sub(left0, left1)
-	right := api.Mul(yAlleged, 2)
-
-	api.AssertIsEqual(left, right)
-}
-
-type foldPhaseProverAction struct {
-	ctx       *SelfRecursionCtx
-	ipQueryID ifaces.QueryID // Changed to ifaces.QueryID explicitly
-}
-
-func (a *foldPhaseProverAction) Run(run *wizard.ProverRuntime) {
-	foldedKey := a.ctx.Columns.ACollapseFold.GetColAssignment(run)
-	foldedPreimage := a.ctx.Columns.PreimageCollapseFold.GetColAssignment(run)
-	y := smartvectors.InnerProductExt(foldedKey, foldedPreimage)
-	run.AssignInnerProduct(a.ipQueryID, y)
-}
-
-type foldPhaseVerifierAction struct {
-	ctx       *SelfRecursionCtx
-	ipQueryID ifaces.QueryID
-	degree    int
-}
-
-func (a *foldPhaseVerifierAction) Run(run wizard.Runtime) error {
-	edual := a.ctx.Columns.Edual.GetColAssignment(run)
-	dcollapse := a.ctx.Columns.DhQCollapse.GetColAssignment(run)
-	rfold := run.GetRandomCoinFieldExt(a.ctx.Coins.Fold.Name)
-	yAlleged := run.GetInnerProductParams(a.ipQueryID).Ys[0]
-	yDual := smartvectors.EvalCoeffExt(edual, rfold)
-	yActual := smartvectors.EvalCoeffExt(dcollapse, rfold)
-
-	var xN, xNminus1, xNplus1 fext.Element
-	one := fext.One()
-	xN.Exp(rfold, big.NewInt(int64(a.degree)))
-	xNminus1.Sub(&xN, &one)
-	xNplus1.Add(&xN, &one)
-
-	var left, left0, left1, right fext.Element
-	left0.Mul(&xNplus1, &yDual)
-	left1.Mul(&xNminus1, &yActual)
-	left.Sub(&left0, &left1)
-	right.Double(&yAlleged)
-
-	if left != right {
-		return fmt.Errorf("failed the consistency check of the ring-SIS : %v != %v", left.String(), right.String())
-	}
-	return nil
-}
-
-func (a *foldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	edual := a.ctx.Columns.Edual.GetColAssignmentGnark(run)
-	dcollapse := a.ctx.Columns.DhQCollapse.GetColAssignmentGnark(run)
-	rfold := run.GetRandomCoinFieldExt(a.ctx.Coins.Fold.Name)
-	yAlleged := run.GetInnerProductParams(a.ipQueryID).Ys[0]
-	yDual := poly.EvaluateUnivariateGnarkMixed(api, edual, rfold)
-	yActual := poly.EvaluateUnivariateGnarkMixed(api, dcollapse, rfold)
-
-	one := field.One()
-	xN := gnarkutil.Exp(api, rfold, a.degree)
 	xNminus1 := api.Sub(xN, one)
 	xNplus1 := api.Add(xN, one)
 

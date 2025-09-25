@@ -69,8 +69,10 @@ type Columns struct {
 	// (Commitment, to compute)
 	//
 	// Represents the merged digest entries selected by Q. It must be zero
-	// padded. The ordering is (D_{h=0,q0}, D_{h=0, q1}, ..., D_{h=1, q0}, D_{h=0, q1}, ..., D_{h=numRound, q{t-1}})
-	SisToHash [blockSize]ifaces.Column // no need to extend to blockSize here
+	// padded. The ordering is (D_{h=0,q0}, D_{h=0, q1}, ..., D_{h=1, q0}, D_{h=1, q1}, ..., D_{h=numRound, q{t-1}})
+	ConcatenatedDhQ ifaces.Column
+
+	SisToHash [blockSize]ifaces.Column
 
 	// (Commitment, to assign from the proof)
 	//

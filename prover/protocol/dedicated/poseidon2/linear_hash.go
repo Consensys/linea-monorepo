@@ -97,7 +97,6 @@ func CheckLinearHash(
 
 	ctx.HashingCols()
 
-	//TODO@yao: here has the bug
 	if ctx.IsFullyActive {
 		for i := 0; i < blockSize; i++ {
 			selector.CheckSubsample(

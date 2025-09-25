@@ -94,30 +94,6 @@ func (a *ConsistencyYsUalphaVerifierAction) RunGnark(api frontend.API, run wizar
 	api.AssertIsEqual(uAlphaX, ysAlpha)
 }
 
-type consistencyYsUalphaVerifierAction struct {
-	ctx                *SelfRecursionCtx
-	interpolateUalphaX ifaces.Accessor
-}
-
-func (a *consistencyYsUalphaVerifierAction) Run(run wizard.Runtime) error {
-	ys := a.ctx.Columns.Ys.GetColAssignment(run)
-	alpha := run.GetRandomCoinFieldExt(a.ctx.Coins.Alpha.Name)
-	ysAlpha := smartvectors.EvalCoeffExt(ys, alpha)
-	uAlphaX := a.interpolateUalphaX.GetValExt(run)
-	if uAlphaX != ysAlpha {
-		return fmt.Errorf("ConsistencyBetweenYsAndUalpha did not pass, ysAlphaX=%v uAlphaX=%v", ysAlpha.String(), uAlphaX.String())
-	}
-	return nil
-}
-
-func (a *consistencyYsUalphaVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	ys := a.ctx.Columns.Ys.GetColAssignmentGnark(run)
-	alpha := run.GetRandomCoinFieldExt(a.ctx.Coins.Alpha.Name)
-	uAlphaX := a.interpolateUalphaX.GetFrontendVariable(api, run)
-	ysAlpha := poly.EvaluateUnivariateGnarkMixed(api, ys, alpha)
-	api.AssertIsEqual(uAlphaX, ysAlpha)
-}
-
 // Registers the consistency check between Ys and Ualpha
 func (ctx *SelfRecursionCtx) consistencyBetweenYsAndUalpha() {
 

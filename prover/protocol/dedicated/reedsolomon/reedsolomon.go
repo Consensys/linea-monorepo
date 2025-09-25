@@ -48,6 +48,8 @@ type ReedSolomonVerifierAction struct {
 func (a *ReedSolomonVerifierAction) Run(run wizard.Runtime) error {
 	y := a.CoeffCheck.GetValExt(run)
 	y_ := a.EvalCheck.GetValExt(run)
+	fmt.Printf("rs y=%v\n", y.String())
+	fmt.Printf("rs y_=%v\n", y_.String())
 
 	if y != y_ {
 		return fmt.Errorf("reed-solomon check failed - %v is not a codeword", a.HColID)
