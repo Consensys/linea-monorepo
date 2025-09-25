@@ -21,8 +21,12 @@ const (
 	// Limitless prover stuffs
 	WitnessDir = "/tmp/witness"
 
+	MetadataDirPrefix   = "/tmp/metadata"
 	WitnessGLDirPrefix  = "/tmp/witness/GL"
 	WitnessLPPDirPrefix = "/tmp/witness/LPP"
 
-	MetadataDirPrefix = "/tmp/metadata"
+	SubProofsGLDirPrefix = "/tmp/subproofs/GL"
+	LPPCommitPrefix      = "/tmp/lppcommit"
+
+	SubProofsLPPDirPrefix = "/tmp/subproofs/LPP"
 )
