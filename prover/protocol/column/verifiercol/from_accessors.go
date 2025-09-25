@@ -30,12 +30,33 @@ type FromAccessors struct {
 }
 
 func (f FromAccessors) IsBase() bool {
-	return f.Accessors[0].IsBase()
+	isExt := false
+	for i := range f.Accessors {
+		if !f.Accessors[i].IsBase() {
+			isExt = true
+			break
+		}
+	}
+	return !isExt
 }
 
 func (f FromAccessors) GetColAssignmentAtBase(run ifaces.Runtime, pos int) (field.Element, error) {
-	//TODO@yao: implement me
-	return field.Element{}, nil
+	if !f.IsBase() {
+		utils.Panic("From accessors, the column is not base")
+	}
+	if pos >= f.Size_ {
+		utils.Panic("out of bound: size=%v pos=%v", f.Size_, pos)
+	}
+
+	if pos >= len(f.Accessors) {
+		baseElem, errBase := fext.GetBase(&f.Padding)
+		if errBase != nil {
+			utils.Panic("From accessors, the padding is not base")
+		}
+		return baseElem, nil
+	}
+
+	return f.Accessors[pos].GetValBase(run)
 }
 
 func (f FromAccessors) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element {
@@ -52,23 +73,61 @@ func (f FromAccessors) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.E
 }
 
 func (f FromAccessors) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
-	//TODO implement me
-	panic("implement me")
+	if !f.IsBase() {
+		panic("From accessors, the column is not base")
+	} else {
+		res := make([]frontend.Variable, f.Size_)
+		for i := range f.Accessors {
+			res[i] = f.Accessors[i].GetFrontendVariable(nil, run)
+		}
+
+		for i := len(f.Accessors); i < f.Size_; i++ {
+			res[i] = f.Padding
+		}
+		return res, nil
+	}
+
 }
 
 func (f FromAccessors) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Element {
-	//TODO implement me
-	panic("implement me")
+	res := make([]gnarkfext.Element, f.Size_)
+	for i := range f.Accessors {
+		res[i] = f.Accessors[i].GetFrontendVariableExt(nil, run)
+	}
+
+	for i := len(f.Accessors); i < f.Size_; i++ {
+		res[i] = gnarkfext.FromValue(f.Padding)
+	}
+
+	return res
 }
 
 func (f FromAccessors) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
-	//TODO implement me
-	panic("implement me")
+	if !f.IsBase() {
+		utils.Panic("From accessors, the column is not base")
+	}
+	// we know that we are dealing with all base elements
+	if pos >= f.Size_ {
+		utils.Panic("out of bound: size=%v pos=%v", f.Size_, pos)
+	}
+
+	if pos >= len(f.Accessors) {
+		return f.Padding, nil
+	}
+
+	return f.Accessors[pos].GetFrontendVariable(nil, run), nil
 }
 
 func (f FromAccessors) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Element {
-	//TODO implement me
-	panic("implement me")
+	if pos >= f.Size_ {
+		utils.Panic("out of bound: size=%v pos=%v", f.Size_, pos)
+	}
+
+	if pos >= len(f.Accessors) {
+		return gnarkfext.FromValue(f.Padding)
+	}
+
+	return f.Accessors[pos].GetFrontendVariableExt(nil, run)
 }
 
 // NewFromAccessors instantiates a [FromAccessors] column from a list of
@@ -138,8 +197,7 @@ func (f FromAccessors) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend
 
 // GetColAssignmentAt returns a particular position of the column
 func (f FromAccessors) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element {
-	//TODO implement me
-	panic("implement me")
+	panic("deprecated, use GetColAssignmentAtBase or GetColAssignmentAtExt")
 }
 
 // GetColAssignmentGnarkAt returns a particular position of the column in a gnark circuit
