@@ -44,4 +44,9 @@ interface IVaultHub {
     }
     
     function vaultObligations(address _vault) external view returns (VaultObligations memory);
+
+    /// @notice allows anyone to settle any outstanding Lido fees for a vault, sending them to the treasury
+    /// @param _vault vault address
+    /// @dev requires the fresh report
+    function settleLidoFees(address _vault) external;
 }

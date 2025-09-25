@@ -11,8 +11,7 @@ import { IYieldManager } from "./IYieldManager.sol";
  */
 interface IYieldProvider {
   enum OperationType {
-      ReportYield,
-      MintLST
+      ReportYield
   }
 
   error IncorrectYieldProviderType();
@@ -71,13 +70,6 @@ interface IYieldProvider {
   function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount, uint256 _targetReserveDeficit, address _recipient) external returns (uint256);
 
   /**
-   * @notice Rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
-   * @dev Settles any outstanding LST liabilities, provided this does not leave the withdrawal reserve in deficit.
-   * @param _amount                 Amount to withdraw.
-   */
-  function addToWithdrawalReserve(address _yieldProvider, uint256 _amount) external;
-
-  /**
    * @notice Pauses beacon chain deposits for specified yield provier.
    */
   function pauseStaking(address _yieldProvider) external;
@@ -94,4 +86,8 @@ interface IYieldProvider {
   function getAvailableBalanceForWithdraw(address _yieldProvider) external view returns (uint256);
 
   function mintLST(address _yieldProvider, uint256 _amount, address _recipient) external;
+
+  function initiateOssification(address _yieldProvider) external;
+
+  function processPendingOssification(address _yieldProvider) external returns (bool);
 }

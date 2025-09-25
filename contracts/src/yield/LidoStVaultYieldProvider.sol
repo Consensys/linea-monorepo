@@ -9,8 +9,7 @@ import { ICommonVaultOperations } from "./interfaces/vendor/lido-vault/ICommonVa
 import { IDashboard } from "./interfaces/vendor/lido-vault/IDashboard.sol";
 import { IStETH } from "./interfaces/vendor/lido-vault/IStETH.sol";
 import { IVaultHub } from "./interfaces/vendor/lido-vault/IVaultHub.sol";
-
-
+import { IStakingVault } from "./interfaces/vendor/lido-vault/IStakingVault.sol";
 
 /**
  * @title Contract to handle native yield operations with Lido Staking Vault.
@@ -25,6 +24,12 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
 
   function _getStakingVault(address _yieldProvider) private view returns (address) {
     return _getYieldProviderDataStorage(_yieldProvider).registration.yieldProviderOssificationEntrypoint;
+  }
+
+  function _getVaultHub(address _yieldProvider) private view returns (address) {
+    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    IDashboard dashboard = IDashboard($$.registration.yieldProviderEntrypoint);
+    return dashboard.VAULT_HUB();
   }
 
   function _getDashboard(address _yieldProvider) private view returns (address) {
@@ -169,15 +174,6 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
   }
 
   /**
-   * @notice Rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
-   * @dev Settles any outstanding LST liabilities, provided this does not leave the withdrawal reserve in deficit.
-   * @param _amount                 Amount to withdraw.
-   */
-  function addToWithdrawalReserve(address _yieldProvider, uint256 _amount) external {
-
-  }
-
-  /**
    * @notice Pauses beacon chain deposits for specified yield provier.
    */
   function pauseStaking(address _yieldProvider) external {
@@ -203,9 +199,32 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
   }
 
   function mintLST(address _yieldProvider, uint256 _amount, address _recipient) external {
-    if (_getYieldProviderDataStorage(_yieldProvider).isOssified) {
-      revert OperationNotSupportedDuringOssification(OperationType.MintLST);
-    }
     IDashboard(_getDashboard(_yieldProvider)).mintStETH(_recipient, _amount);
+  }
+
+  // TODO - Role
+  // @dev Requires fresh report
+  function initiateOssification(address _yieldProvider) external {
+    IVaultHub vaultHub = IVaultHub(_getVaultHub(_yieldProvider));
+    address vault = _getStakingVault(_yieldProvider);
+    IDashboard dashboard = IDashboard(_getDashboard(_yieldProvider));
+
+    _payMaximumPossibleLSTLiability(_yieldProvider);
+    
+    // Lido implementation handles Lido fee payment, and revert on fresh report
+    // This will fail if any existing liabilities or obligations
+    dashboard.voluntaryDisconnect();
+  }
+
+  // TODO - Role
+  // Returns true if ossified after function call is done
+  function processPendingOssification(address _yieldProvider) external returns (bool) {
+    IDashboard dashboard = IDashboard(_getDashboard(_yieldProvider));
+    // Give ownership to YieldManager
+    dashboard.abandonDashboard(address(this));
+    IStakingVault vault = IStakingVault(_getStakingVault(_yieldProvider));
+    vault.acceptOwnership();
+    vault.ossify();
+    return true;
   }
 }

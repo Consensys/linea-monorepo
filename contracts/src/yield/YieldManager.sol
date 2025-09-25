@@ -442,6 +442,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
         registration: _yieldProviderRegistration,
         yieldProviderIndex: yieldProviderIndex,
         isStakingPaused: false,
+        isOssificationInitiated: false,
         isOssified: false,
         userFunds: 0,
         yieldReportedCumulative: 0,
@@ -492,6 +493,9 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert LSTWithdrawalNotAllowed();
     }
     YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    if ($$.isOssificationInitiated || $$.isOssified) {
+      revert MintLSTDisabledDuringOssification();
+    }
     if (!$$.isStakingPaused) {
       _pauseStaking(_yieldProvider);
     }
@@ -568,4 +572,42 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       emit MinimumWithdrawalReserveAmountSet($._minimumWithdrawalReserveAmount, _minimumWithdrawalReserveAmount, msg.sender);
       $._minimumWithdrawalReserveAmount = _minimumWithdrawalReserveAmount;
   }
+
+  // TODO - Role
+  function initiateOssification(address _yieldProvider) external {
+    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    if ($$.isOssified) {
+      revert AlreadyOssified();
+    }
+    (bool success,) = _yieldProvider.delegatecall(
+      abi.encodeCall(IYieldProvider.initiateOssification, (_yieldProvider)
+    ));
+    if (!success) {
+      revert DelegateCallFailed();
+    }
+    $$.isOssificationInitiated = true;
+  }
+
+  // TODO - Role
+  function processPendingOssification(address _yieldProvider) external {
+    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    if (!$$.isOssificationInitiated) {
+      revert OssificationNotInitiated();
+    }
+    if ($$.isOssified) {
+      revert AlreadyOssified();
+    }
+    (bool success, bytes memory data) = _yieldProvider.delegatecall(
+      abi.encodeCall(IYieldProvider.processPendingOssification, (_yieldProvider)
+    ));
+    if (!success) {
+      revert DelegateCallFailed();
+    }
+    (bool isOssified) = abi.decode(data, (bool));
+    if (isOssified) {
+      $$.isOssificationInitiated = true;
+    }
+  }
+
+  // TODO - How about undo-initiate
 }

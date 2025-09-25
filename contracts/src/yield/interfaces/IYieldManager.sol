@@ -27,6 +27,7 @@ interface IYieldManager {
     YieldProviderRegistration registration;
     uint96 yieldProviderIndex;
     bool isStakingPaused;
+    bool isOssificationInitiated;
     bool isOssified;
     // Incremented 1:1 with yieldReportedCumulative, because yieldReported becomes user funds
     uint256 userFunds;
@@ -107,6 +108,12 @@ interface IYieldManager {
   error SufficientAvailableFundsToCoverDeficit();
 
   error LSTWithdrawalNotAllowed();
+
+  error AlreadyOssified();
+
+  error OssificationNotInitiated();
+
+  error MintLSTDisabledDuringOssification();
 
   /**
    * @notice Send ETH to the specified yield strategy.
@@ -234,4 +241,8 @@ interface IYieldManager {
   function getAvailableBalanceForWithdraw(address _yieldProvider) external returns (uint256);
 
   function mintLST(address _yieldProvider, uint256 _amount, address _recipient) external;
+
+  function initiateOssification(address _yieldProvider) external;
+
+  function processPendingOssification(address _yieldProvider) external;
 }
