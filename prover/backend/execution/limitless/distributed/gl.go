@@ -68,7 +68,7 @@ func RunGL(cfg *config.Config, req *GLRequest) (*GLResponse, error) {
 	logrus.Infof("Generated GL proof for witness module=%v at index=%d and stored to disk", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
 	_lppCommit := distributed.GetLppCommitmentFromRuntime(run)
-	if err := serialization.StoreToDisk(LPPCommitPath, _lppCommit, true); err != nil {
+	if err := serialization.StoreToDisk(LPPCommitPath, _lppCommit, false); err != nil {
 		return nil, fmt.Errorf("could not store GL proof: %w", err)
 	}
 
