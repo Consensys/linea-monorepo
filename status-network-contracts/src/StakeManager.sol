@@ -29,11 +29,17 @@ contract StakeManager is
     StakeMath
 {
     struct VaultData {
+        /// @notice Amount of tokens staked by the vault.
         uint256 stakedBalance;
+        /// @notice Index of the last reward period the vault has been updated for.
         uint256 rewardIndex;
+        /// @notice Amount of multiplier points accrued by the vault.
         uint256 mpAccrued;
+        /// @notice Maximum multiplier points that can be accrued by the vault.
         uint256 maxMP;
+        /// @notice Time of the last multiplier points update for the vault.
         uint256 lastMPUpdateTime;
+        /// @notice Amount of rewards accrued by the vault.
         uint256 rewardsAccrued;
     }
 
@@ -138,6 +144,7 @@ contract StakeManager is
      * @dev Also sets the initial `lastMPUpdatedTime`
      * @param _owner Address of the owner of the contract.
      * @param _stakingToken Address of the staking token.
+     * @param _rewardToken Address of the reward token.
      */
     function initialize(address _owner, address _stakingToken, address _rewardToken) external initializer {
         __TrustedCodehashAccess_init(_owner);
@@ -187,6 +194,8 @@ contract StakeManager is
      * @dev Only registered vaults are allowed to stake.
      * @param amount The amount of tokens to stake
      * @param lockPeriod The duration to lock the stake
+     * @param currentLockUntil The current lock end time of the vault
+     * @return newLockUntil The new lock end time of the vault
      */
     function stake(
         uint256 amount,
@@ -234,6 +243,8 @@ contract StakeManager is
      * @dev Can only be called when emergency mode is disabled.
      * @dev Only registered vaults are allowed to lock.
      * @param lockPeriod The duration to lock the stake
+     * @param currentLockUntil The current lock end time of the vault
+     * @return newLockUntil The new lock end time of the vault
      */
     function lock(
         uint256 lockPeriod,
@@ -385,6 +396,7 @@ contract StakeManager is
      * @notice Allows any user to compound accrued MP for any user.
      * @dev This function is only callable when emergency mode is disabled.
      * @dev Anyone can compound MPs for account.
+     * @param account The address of the account to update.
      */
     function updateAccount(address account) external onlyNotEmergencyMode whenNotPaused {
         _updateGlobalState();
@@ -398,6 +410,8 @@ contract StakeManager is
      * @notice Allows users to convert their accrued virtual rewards to actual rewards.
      * @dev This function is only callable when emergency mode is disabled.
      * @dev Anyone can claim rewards on behalf of any account
+     * @param account The address of the account to redeem rewards for.
+     * @return The amount of rewards redeemed.
      */
     function redeemRewards(address account) external onlyNotEmergencyMode whenNotPaused returns (uint256) {
         _updateGlobalState();
@@ -425,6 +439,7 @@ contract StakeManager is
      * @notice Allows users to claim their accrued rewards.
      * @dev This function is only callable when emergency mode is disabled.
      * @dev Anyone can claim rewards on behalf of any vault
+     * @param vaultAddress The address of the vault to update.
      */
     function updateVault(address vaultAddress) external onlyNotEmergencyMode whenNotPaused {
         _updateGlobalState();
@@ -461,6 +476,7 @@ contract StakeManager is
      * @dev This function is only callable by trusted stake vaults.
      * @dev Reverts if the vault to migrate to is not owned by the same user.
      * @dev Revets if the vault to migrate to has a non-zero staked balance.
+     * @param migrateTo The address of the vault to migrate to.
      */
     function migrateToVault(address migrateTo)
         external
@@ -726,6 +742,7 @@ contract StakeManager is
 
     /**
      * @notice Returns the total shares of a given vault.
+     * @param vaultAddress The address of the vault
      * @return The total vault shares
      */
     function vaultShares(address vaultAddress) external view returns (uint256) {
@@ -734,6 +751,7 @@ contract StakeManager is
 
     /**
      * @notice Returns vault data for a given vault address.
+     * @param vaultAddress The address of the vault
      * @return Vault data for the given vault address
      */
     function getVault(address vaultAddress) external view returns (VaultData memory) {
@@ -743,6 +761,7 @@ contract StakeManager is
     /**
      * @notice Returns the staked balance of a vault.
      * @param vaultAddress The address of the vault.
+     * @return Staked balance of the vault.
      */
     function stakedBalanceOf(address vaultAddress) external view returns (uint256) {
         return vaultData[vaultAddress].stakedBalance;
@@ -750,6 +769,7 @@ contract StakeManager is
 
     /**
      * @notice Returns the rewards balance of a vault.
+     * @param vaultAddress The address of the vault.
      * @return Rewards balance of the vault.
      */
     function rewardsBalanceOf(address vaultAddress) public view returns (uint256) {
@@ -759,6 +779,7 @@ contract StakeManager is
 
     /**
      * @notice Returns the multiplier points balance of a vault.
+     * @param vaultAddress The address of the vault.
      * @return Multiplier points balance of the vault.
      */
     function mpBalanceOf(address vaultAddress) external view returns (uint256) {
@@ -767,6 +788,7 @@ contract StakeManager is
 
     /**
      * @notice Returns the accrued multiplier points of a vault.
+     * @param vaultAddress The address of the vault.
      * @return Accrued multiplier points of the vault.
      */
     function mpAccruedOf(address vaultAddress) external view returns (uint256) {
@@ -825,6 +847,7 @@ contract StakeManager is
     /**
      * @notice Returns the rewards balance of an account.
      * @dev Iterates over all vaults owned by the account and sums the rewards.
+     * @param account The address of the account.
      * @return Rewards balance of the account.
      */
     function rewardsBalanceOfAccount(address account) external view returns (uint256) {

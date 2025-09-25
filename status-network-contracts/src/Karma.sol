@@ -423,6 +423,11 @@ contract Karma is Initializable, ERC20VotesUpgradeable, UUPSUpgradeable, AccessC
         return super.balanceOf(distributor);
     }
 
+    /**
+     * @notice Returns the allowance of an account.
+     * @dev Allowances are not used in this contract, so this function always returns 0.
+     * @return Always returns 0.
+     */
     function allowance(address, address) public pure override returns (uint256) {
         return 0;
     }

@@ -388,6 +388,7 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      * @notice Returns the available amount of staking tokens that can be withdrawn.
      * @dev Includes excess tokens + unlocked deposited funds.
      * @return The amount of staking tokens available for withdrawal.
+     * @return The amount of excess staking tokens.
      */
     function _totalAndExcessStakingTokens() internal view returns (uint256, uint256) {
         uint256 totalBalance = STAKING_TOKEN.balanceOf(address(this));
