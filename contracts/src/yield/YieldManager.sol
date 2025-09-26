@@ -438,7 +438,10 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert StakingAlreadyUnpaused();
     }
     if (isWithdrawalReserveBelowEffectiveMinimum()) {
-        revert InsufficientWithdrawalReserve();
+      revert InsufficientWithdrawalReserve();
+    }
+    if ($$.lstLiabilityPrincipal > 0) {
+      revert UnpauseStakingForbiddenWithCurrentLSTPrincipal();
     }
     _unpauseStaking(_yieldProvider);
     // emit Event
@@ -671,6 +674,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
 
   // In Lido Vault it is possible to permissionlessly settle obligations, a variable that changes in 1:1 tandem with liabilities
   // Therefore we must have a function to reconcile obligations that were settled externally.
+  // If liability was settled by another entity, then we prioritize settlement of LST Principal over Interest.
   function reconcileExternalLSTPrincipalSettlement(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
     // Do not touch userFund state, this will be accounted for as negative yield in the next reportYield run
     _getYieldProviderDataStorage(_yieldProvider).lstLiabilityPrincipal -= _amount;

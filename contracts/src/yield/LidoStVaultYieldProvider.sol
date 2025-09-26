@@ -43,6 +43,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
   }
 
   // Will settle as much LST liability as possible. Will return amount of liabilityEth remaining
+  // @dev - we consider principal to be paid before interest. Reason being that Lido doesn't distinguish between the two, so we can choose which is more convenient for us as long as we remain consistent.
   function _payMaximumPossibleLSTLiability() internal {
     IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
     if ($$.isOssified) return;
@@ -51,7 +52,14 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
     uint256 vaultBalanceShares = STETH.getSharesByPooledEth(vaultBalanceEth);
     uint256 liabilityShares = DASHBOARD.liabilityShares();
     // Do the payment
+    uint256 beforeVaultBalance = YIELD_PROVIDER.balance;
     DASHBOARD.rebalanceVaultWithShares(Math256.min(liabilityShares, vaultBalanceShares));
+    uint256 afterVaultBalance = YIELD_PROVIDER.balance;
+    uint256 rebalanceAmountETH = beforeVaultBalance - afterVaultBalance;
+    // Adjust LST principal
+    // Break rule to handle $$ in YieldProvider, because LST liability being paid in ossification is a Lido-specific concept
+    uint256 lstLiabilityPrincipal = $$.lstLiabilityPrincipal;
+    $$.lstLiabilityPrincipal = Math256.safeSub(lstLiabilityPrincipal, rebalanceAmountETH);
   }
 
   function payLSTPrincipal(uint256 _maxAvailableRepaymentETH) external returns (uint256) {

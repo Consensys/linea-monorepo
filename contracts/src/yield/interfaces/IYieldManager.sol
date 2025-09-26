@@ -117,6 +117,8 @@ interface IYieldManager {
 
   error IllegalDonationAddress();
 
+  error UnpauseStakingForbiddenWithCurrentLSTPrincipal();
+
   /**
    * @notice Send ETH to the specified yield strategy.
    * @dev YIELD_PROVIDER_FUNDER_ROLE is required to execute.
