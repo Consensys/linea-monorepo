@@ -45,9 +45,9 @@ func RunGL(cfg *config.Config, req *GLRequest) (glResp *GLResponse, err error) {
 
 	var (
 		glProofFile   = fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-proof.bin", req.StartBlock, req.EndBlock, req.SegID, witnessGL.ModuleIndex)
-		proofGLPath   = path.Join(config.SubProofsGLDirPrefix, string(witnessGL.ModuleName), glProofFile)
+		proofGLPath   = path.Join(cfg.LimitlessParams.ProofsGLDir, string(witnessGL.ModuleName), glProofFile)
 		LPPCommitFile = fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-commit.bin", req.StartBlock, req.EndBlock, req.SegID, witnessGL.ModuleIndex)
-		LPPCommitPath = path.Join(config.LPPCommitPrefix, string(witnessGL.ModuleName), LPPCommitFile)
+		LPPCommitPath = path.Join(cfg.LimitlessParams.CommitsGLDir, string(witnessGL.ModuleName), LPPCommitFile)
 	)
 
 	// Incase the prev. process was interrupted, we clear the previous corrupted files (if it exists)

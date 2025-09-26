@@ -146,6 +146,8 @@ type Config struct {
 
 	TracesLimits      TracesLimits `mapstructure:"traces_limits" validate:"required"`
 	TracesLimitsLarge TracesLimits `mapstructure:"traces_limits_large" validate:"required"`
+
+	LimitlessParams LimitlessParams `mapstructure:"limitless_params"`
 }
 
 func (cfg *Config) Logger() *logrus.Logger {
@@ -212,11 +214,14 @@ type Prometheus struct {
 	Route string
 }
 
-// type LimitlessParams struct {
-// 	DiscTargetWeight  int `mapstructure:"disc_target_weight"`
-// 	DiscPreDivision   int `mapstructure:"disc_pre_division"`
-// 	CongloMaxSegments int `mapstructure:"conglo_max_segments"`
-// }
+type LimitlessParams struct {
+	MetadataDir   string `mapstructure:"metadata_dir"`
+	WitnessGLDir  string `mapstructure:"witness_gl_dir"`
+	WitnessLPPDir string `mapstructure:"witness_lp_dir"`
+	ProofsGLDir   string `mapstructure:"proofs_gl_dir"`
+	CommitsGLDir  string `mapstructure:"commits_gl_dir"`
+	ProofsLPPDir  string `mapstructure:"proofs_lp_dir"`
+}
 
 type Execution struct {
 	WithRequestDir `mapstructure:",squash"`
