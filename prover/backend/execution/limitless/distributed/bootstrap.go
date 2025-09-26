@@ -52,6 +52,7 @@ func RunBootstrapper(cfg *config.Config, req *execution.Request, metadata *Metad
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Errorf("[PANIC] Bootstrapper crashed for conflation request %s-%s: \n%s", metadata.StartBlock, metadata.EndBlock, debug.Stack())
+			return
 		}
 	}()
 
@@ -183,29 +184,29 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 			default:
 
 				witnessGLFileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-wit.bin", metadata.StartBlock, metadata.EndBlock, i, witnessGL.ModuleIndex)
-				witnessGLPath := path.Join(cfg.LimitlessParams.WitnessDir, "GL", string(witnessGL.ModuleName), witnessGLFileName)
+				witnessGLFile := path.Join(cfg.LimitlessParams.WitnessDir, "GL", string(witnessGL.ModuleName), witnessGLFileName)
 
 				// Clean up any prev. witness file before starting. This helps addressing the situation
 				// where a previous process have been interrupted.
-				_ = os.Remove(witnessGLPath)
-				if err := serialization.StoreToDisk(witnessGLPath, *witnessGL, true); err != nil {
+				_ = os.Remove(witnessGLFile)
+				if err := serialization.StoreToDisk(witnessGLFile, *witnessGL, true); err != nil {
 					return fmt.Errorf("could not save witnessGL: %w", err)
 				}
 
 				glProofFileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-proof.bin", metadata.StartBlock, metadata.EndBlock, i, witnessGLs[i].ModuleIndex)
-				glProofPath := path.Join(cfg.LimitlessParams.SubproofsDir, "GL", string(witnessGL.ModuleName), glProofFileName)
-				if err := os.MkdirAll(filepath.Dir(glProofPath), 0o755); err != nil {
+				glProofFile := path.Join(cfg.LimitlessParams.SubproofsDir, "GL", string(witnessGL.ModuleName), glProofFileName)
+				if err := os.MkdirAll(filepath.Dir(glProofFile), 0o755); err != nil {
 					return err
 				}
 
 				glCommitFileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-lpp-commit.bin", metadata.StartBlock, metadata.EndBlock, i, witnessGLs[i].ModuleIndex)
-				glCommitPath := path.Join(cfg.LimitlessParams.CommitsDir, string(witnessGL.ModuleName), glCommitFileName)
-				if err := os.MkdirAll(filepath.Dir(glCommitPath), 0o755); err != nil {
+				glCommitFile := path.Join(cfg.LimitlessParams.CommitsDir, string(witnessGL.ModuleName), glCommitFileName)
+				if err := os.MkdirAll(filepath.Dir(glCommitFile), 0o755); err != nil {
 					return err
 				}
 
-				metadata.GLProofFiles[i] = glProofPath
-				metadata.GLCommitFiles[i] = glCommitPath
+				metadata.GLProofFiles[i] = glProofFile
+				metadata.GLCommitFiles[i] = glCommitFile
 
 				witnessGL = nil
 				return nil
@@ -222,22 +223,22 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 			default:
 
 				witnessLPPFileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-lpp-wit.bin", metadata.StartBlock, metadata.EndBlock, i, witnessLPP.ModuleIndex)
-				witnessLPPPath := path.Join(cfg.LimitlessParams.WitnessDir, "LPP", string(witnessLPP.ModuleName[0]), witnessLPPFileName)
+				witnessLPPFile := path.Join(cfg.LimitlessParams.WitnessDir, "LPP", string(witnessLPP.ModuleName[0]), witnessLPPFileName)
 
 				// Clean up any prev. witness file before starting. This helps addressing the situation
 				// where a previous process have been interrupted.
-				_ = os.Remove(witnessLPPPath)
-				if err := serialization.StoreToDisk(witnessLPPPath, *witnessLPP, true); err != nil {
+				_ = os.Remove(witnessLPPFile)
+				if err := serialization.StoreToDisk(witnessLPPFile, *witnessLPP, true); err != nil {
 					return fmt.Errorf("could not save witnessLPP: %w", err)
 				}
 
 				lppProofFileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-lpp-proof.bin", metadata.StartBlock, metadata.EndBlock, i, witnessLPPs[i].ModuleIndex)
-				lppProofPath := path.Join(cfg.LimitlessParams.SubproofsDir, "LPP", string(witnessLPP.ModuleName[0]), lppProofFileName)
-				if err := os.MkdirAll(filepath.Dir(lppProofPath), 0o755); err != nil {
+				lppProofFile := path.Join(cfg.LimitlessParams.SubproofsDir, "LPP", string(witnessLPP.ModuleName[0]), lppProofFileName)
+				if err := os.MkdirAll(filepath.Dir(lppProofFile), 0o755); err != nil {
 					return err
 				}
 
-				metadata.LPPProofFiles[i] = lppProofPath
+				metadata.LPPProofFiles[i] = lppProofFile
 				witnessLPP = nil
 				return nil
 			}
