@@ -4,7 +4,6 @@ pragma solidity ^0.8.26;
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { BaseScript } from "./Base.s.sol";
 import { StakeManager } from "../src/StakeManager.sol";
-import { IStakeManagerProxy } from "../src/interfaces/IStakeManagerProxy.sol";
 import { DeploymentConfig } from "./DeploymentConfig.s.sol";
 
 /**
@@ -32,7 +31,7 @@ contract UpgradeStakeManagerScript is BaseScript {
         }
         DeploymentConfig deploymentConfig = new DeploymentConfig(broadcaster);
         (address deployer,) = deploymentConfig.activeNetworkConfig();
-        return runWithAdminAndProxy(deployer, IStakeManagerProxy(currentImplProxy));
+        return runWithAdminAndProxy(deployer, currentImplProxy);
     }
 
     /**
@@ -43,7 +42,7 @@ contract UpgradeStakeManagerScript is BaseScript {
      * @param currentImplProxy The instance of the current StakeManager proxy contract.
      * @return nextImpl The address of the new StakeManager implementation contract.
      */
-    function runWithAdminAndProxy(address admin, IStakeManagerProxy currentImplProxy) public returns (address) {
+    function runWithAdminAndProxy(address admin, address currentImplProxy) public returns (address) {
         address deployer = broadcaster;
         if (admin != address(0)) {
             deployer = admin;

@@ -2,12 +2,12 @@
 pragma solidity ^0.8.26;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 
 import { BaseScript } from "./Base.s.sol";
 import { DeploymentConfig } from "./DeploymentConfig.s.sol";
 
-import { TransparentProxy } from "../src/TransparentProxy.sol";
 import { StakeManager } from "../src/StakeManager.sol";
 import { StakeVault } from "../src/StakeVault.sol";
 import { VaultFactory } from "../src/VaultFactory.sol";
@@ -84,6 +84,6 @@ contract DeployStakeManagerScript is BaseScript {
         // Deploy StakeManager logic contract
         impl = address(new StakeManager());
         // Create upgradeable proxy
-        proxy = StakeManager(address(new TransparentProxy(impl, initializeData)));
+        proxy = StakeManager(address(new ERC1967Proxy(impl, initializeData)));
     }
 }

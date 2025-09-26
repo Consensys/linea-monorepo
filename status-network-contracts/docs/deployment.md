@@ -14,7 +14,7 @@ MNEMONIC=$YOUR_MNEMONIC forge script scripts/DeployStakeManager.s.sol --rpc-url 
 $ cast storage $STAKE_MANAGER_PROXY_ADDRESS 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc --rpc-url $RPC_SN_SEPOLIA
 ```
 
-2.2 Then, ABI encode the constructor arguments for `TransparentProxy`:
+2.2 Then, ABI encode the constructor arguments for `StakeManagerProxy`:
 
 ```sh
 $ cast calldata "initialize(address,address)" $OWNER_ADDRESS $SNT_ADDRESS

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import { IStakeManagerProxy } from "./IStakeManagerProxy.sol";
+import { IStakeManager } from "./IStakeManager.sol";
 
 /**
  * @title IStakeVault
@@ -24,12 +24,12 @@ interface IStakeVault {
 
     /**
      * @notice The stake manager proxy associated with the vault
-     * @return IStakeManagerProxy The stake manager proxy instance
+     * @return IStakeManager The stake manager proxy instance
      */
-    function stakeManager() external view returns (IStakeManagerProxy);
+    function stakeManager() external view returns (IStakeManager);
 
     /**
-     * @notice Registers the vault with the stake manager
+     * @notice Registers the vault with the stake manager proxy
      */
     function register() external;
 

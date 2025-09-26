@@ -12,7 +12,6 @@ import { DeploymentConfig } from "../script/DeploymentConfig.s.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { IStakeManager } from "../src/interfaces/IStakeManager.sol";
-import { IStakeManagerProxy } from "../src/interfaces/IStakeManagerProxy.sol";
 import { ITrustedCodehashAccess } from "../src/interfaces/ITrustedCodehashAccess.sol";
 import { StakeManager } from "../src/StakeManager.sol";
 import { StakeMath } from "../src/math/StakeMath.sol";
@@ -205,7 +204,7 @@ contract StakeManagerTest is StakeMath, Test {
 
     function _upgradeStakeManager() internal {
         UpgradeStakeManagerScript upgrade = new UpgradeStakeManagerScript();
-        upgrade.runWithAdminAndProxy(admin, IStakeManagerProxy(address(streamer)));
+        upgrade.runWithAdminAndProxy(admin, address(streamer));
     }
 
     function _setRewards(uint256 amount, uint256 period) internal {

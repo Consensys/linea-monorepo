@@ -5,7 +5,7 @@ pragma solidity 0.8.26;
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IStakeManagerProxy } from "./interfaces/IStakeManagerProxy.sol";
+import { IStakeManager } from "./interfaces/IStakeManager.sol";
 import { IStakeVault } from "./interfaces/IStakeVault.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
@@ -56,7 +56,7 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
     /// @notice Staking token - must be set immutable due to codehash check in StakeManager
     IERC20 public immutable STAKING_TOKEN;
     /// @notice Stake manager proxy contract
-    IStakeManagerProxy public stakeManager;
+    IStakeManager public stakeManager;
     /// @notice Timestamp until the funds are locked
     uint256 public lockUntil;
     /// @notice Total amount deposited into the vault
@@ -106,7 +106,7 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      */
     function initialize(address _owner, address _stakeManager) public initializer {
         _transferOwnership(_owner);
-        stakeManager = IStakeManagerProxy(_stakeManager);
+        stakeManager = IStakeManager(_stakeManager);
     }
 
     /**
