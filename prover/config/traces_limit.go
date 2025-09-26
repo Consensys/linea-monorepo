@@ -43,15 +43,52 @@ type TracesLimits struct {
 	Trm               int `mapstructure:"TRM" validate:"power_of_2" corset:"trm"`
 	Txndata           int `mapstructure:"TXN_DATA" validate:"power_of_2" corset:"txndata"`
 	Wcp               int `mapstructure:"WCP" validate:"power_of_2" corset:"wcp"`
-
-	U128 int `mapstructure:"U128" validate:"power_of_2" corset:":u128"`
-	U20  int `mapstructure:"U20" validate:"power_of_2" corset:":u20"`
-	U32  int `mapstructure:"U32" validate:"power_of_2" corset:":u32"`
-	U36  int `mapstructure:"U36" validate:"power_of_2" corset:":u36"`
-	U64  int `mapstructure:"U64" validate:"power_of_2" corset:":u64"`
-
+	// internal modules
+	ByteShl256    int `mapstructure:"BYTE_SHL256" validate:"power_of_2" corset:"byte_shl256"`
+	ByteShr256    int `mapstructure:"BYTE_SHR256" validate:"power_of_2" corset:"byte_shr256"`
+	ByteSar256    int `mapstructure:"BYTE_SAR256" validate:"power_of_2" corset:"byte_sar256"`
+	BitShl256     int `mapstructure:"BIT_SHL256" validate:"power_of_2" corset:"bit_shl256"`
+	BitShr256     int `mapstructure:"BIT_SHR256" validate:"power_of_2" corset:"bit_shr256"`
+	BitSar256     int `mapstructure:"BIT_SAR256" validate:"power_of_2" corset:"bit_sar256"`
+	FillBytesFrom int `mapstructure:"FILL_BYTES_FROM" validate:"power_of_2" corset:"fill_bytes_from"`
+	Log2          int `mapstructure:"LOG2" validate:"power_of_2" corset:"log2"`
+	Log2U128      int `mapstructure:"LOG2_U128" validate:"power_of_2" corset:"log2_u128"`
+	Log2U64       int `mapstructure:"LOG2_U64" validate:"power_of_2" corset:"log2_u64"`
+	Log2U32       int `mapstructure:"LOG2_U32" validate:"power_of_2" corset:"log2_u32"`
+	Log2U16       int `mapstructure:"LOG2_U16" validate:"power_of_2" corset:"log2_u16"`
+	Log2U8        int `mapstructure:"LOG2_U8" validate:"power_of_2" corset:"log2_u8"`
+	Log2U4        int `mapstructure:"LOG2_U4" validate:"power_of_2" corset:"log2_u4"`
+	Log2U2        int `mapstructure:"LOG2_U2" validate:"power_of_2" corset:"log2_u2"`
+	Log256        int `mapstructure:"LOG256" validate:"power_of_2" corset:"log256"`
+	Log256U128    int `mapstructure:"LOG256_U128" validate:"power_of_2" corset:"log256_u128"`
+	Log256U64     int `mapstructure:"LOG256_U64" validate:"power_of_2" corset:"log256_u64"`
+	Log256U32     int `mapstructure:"LOG256_U32" validate:"power_of_2" corset:"log256_u32"`
+	Log256U16     int `mapstructure:"LOG256_U16" validate:"power_of_2" corset:"log256_u16"`
+	SetByte256    int `mapstructure:"SET_BYTE256" validate:"power_of_2" corset:"set_byte256"`
+	SetByte128    int `mapstructure:"SET_BYTE128" validate:"power_of_2" corset:"set_byte128"`
+	SetByte64     int `mapstructure:"SET_BYTE64" validate:"power_of_2" corset:"set_byte64"`
+	SetByte32     int `mapstructure:"SET_BYTE32" validate:"power_of_2" corset:"set_byte32"`
+	SetByte16     int `mapstructure:"SET_BYTE16" validate:"power_of_2" corset:"set_byte16"`
+	// limitless typing modules
+	U128 int `mapstructure:"U128" validate:"power_of_2" corset:"u128"`
+	U127 int `mapstructure:"U127" validate:"power_of_2" corset:"u127"`
+	U126 int `mapstructure:"U126" validate:"power_of_2" corset:"u126"`
+	U120 int `mapstructure:"U120" validate:"power_of_2" corset:"u120"`
+	U119 int `mapstructure:"U119" validate:"power_of_2" corset:"u119"`
+	U64  int `mapstructure:"U64" validate:"power_of_2" corset:"u64"`
+	U63  int `mapstructure:"U63" validate:"power_of_2" corset:"u63"`
+	U62  int `mapstructure:"U62" validate:"power_of_2" corset:"u62"`
+	U56  int `mapstructure:"U56" validate:"power_of_2" corset:"u56"`
+	U55  int `mapstructure:"U55" validate:"power_of_2" corset:"u55"`
+	U36  int `mapstructure:"U36" validate:"power_of_2" corset:"u36"`
+	U32  int `mapstructure:"U32" validate:"power_of_2" corset:"u32"`
+	U31  int `mapstructure:"U31" validate:"power_of_2" corset:"u31"`
+	U30  int `mapstructure:"U30" validate:"power_of_2" corset:"u30"`
+	U24  int `mapstructure:"U24" validate:"power_of_2" corset:"u24"`
+	U23  int `mapstructure:"U23" validate:"power_of_2" corset:"u23"`
+	U20  int `mapstructure:"U20" validate:"power_of_2" corset:"u20"`
+	// reference tables
 	Binreftable int `mapstructure:"BIN_REFERENCE_TABLE" validate:"power_of_2" corset:"binreftable"`
-	Shfreftable int `mapstructure:"SHF_REFERENCE_TABLE" validate:"power_of_2" corset:"shfreftable"`
 	Instdecoder int `mapstructure:"INSTRUCTION_DECODER" validate:"power_of_2" corset:"instdecoder"`
 
 	PrecompileEcrecoverEffectiveCalls    int `mapstructure:"PRECOMPILE_ECRECOVER_EFFECTIVE_CALLS"`
@@ -73,6 +110,28 @@ type TracesLimits struct {
 	BlockTransactions int `mapstructure:"BLOCK_TRANSACTIONS"`
 
 	ShomeiMerkleProofs int `mapstructure:"SHOMEI_MERKLE_PROOFS"`
+
+	// beta v4.0
+	PrecompileBlsPointEvaluationEffectiveCalls     int `mapstructure:"PRECOMPILE_BLS_POINT_EVALUATION_EFFECTIVE_CALLS"`
+	PrecompilePointEvaluationFailureEffectiveCalls int `mapstructure:"PRECOMPILE_POINT_EVALUATION_FAILURE_EFFECTIVE_CALLS"`
+	PrecompileBlsG1AddEffectiveCalls               int `mapstructure:"PRECOMPILE_BLS_G1_ADD_EFFECTIVE_CALLS"`
+	PrecompileBlsG1MsmEffectiveCalls               int `mapstructure:"PRECOMPILE_BLS_G1_MSM_EFFECTIVE_CALLS"`
+	PrecompileBlsG2AddEffectiveCalls               int `mapstructure:"PRECOMPILE_BLS_G2_ADD_EFFECTIVE_CALLS"`
+	PrecompileBlsG2MsmEffectiveCalls               int `mapstructure:"PRECOMPILE_BLS_G2_MSM_EFFECTIVE_CALLS"`
+	PrecompileBlsPairingCheckMillerLoops           int `mapstructure:"PRECOMPILE_BLS_PAIRING_CHECK_MILLER_LOOPS"`
+	PrecompileBlsFinalExponentiations              int `mapstructure:"PRECOMPILE_BLS_FINAL_EXPONENTIATIONS"`
+	PrecompileBlsMapFpToG1EffectiveCalls           int `mapstructure:"PRECOMPILE_BLS_MAP_FP_TO_G1_EFFECTIVE_CALLS"`
+	PrecompileBlsMapFp2ToG2EffectiveCalls          int `mapstructure:"PRECOMPILE_BLS_MAP_FP2_TO_G2_EFFECTIVE_CALLS"`
+	PrecompileBlsC1MembershipChecks                int `mapstructure:"PRECOMPILE_BLS_C1_MEMBERSHIP_CHECKS"`
+	PrecompileBlsC2MembershipCalls                 int `mapstructure:"PRECOMPILE_BLS_C2_MEMBERSHIP_CALLS"`
+	PrecompileBlsG1MembershipCalls                 int `mapstructure:"PRECOMPILE_BLS_G1_MEMBERSHIP_CALLS"`
+	PrecompileBlsG2MembershipCalls                 int `mapstructure:"PRECOMPILE_BLS_G2_MEMBERSHIP_CALLS"`
+	Bls                                            int `mapstructure:"BLS"`
+	PointEval                                      int `mapstructure:"POINT_EVAL"`
+	BlsData                                        int `mapstructure:"BLS_DATA"`
+	RlpUtils                                       int `mapstructure:"RLP_UTILS"`
+	PowerReferenceTable                            int `mapstructure:"POWER_REFERENCE_TABLE"`
+	BlsReferenceTable                              int `mapstructure:"BLS_REFERENCE_TABLE"`
 }
 
 func (tl *TracesLimits) Checksum() string {
@@ -139,6 +198,65 @@ func (tl *TracesLimits) ScaleUp(by int) {
 	tl.U32 *= by
 	tl.U36 *= by
 	tl.U64 *= by
+
+	// Beta 4.0 internal modules
+	tl.ByteShl256 *= by
+	tl.ByteShr256 *= by
+	tl.ByteSar256 *= by
+	tl.BitShl256 *= by
+	tl.BitShr256 *= by
+	tl.BitSar256 *= by
+	tl.FillBytesFrom *= by
+	tl.Log2 *= by
+	tl.Log2U128 *= by
+	tl.Log2U64 *= by
+	tl.Log2U32 *= by
+	tl.Log2U16 *= by
+	tl.Log2U8 *= by
+	tl.Log2U4 *= by
+	tl.Log2U2 *= by
+	tl.Log256 *= by
+	tl.Log256U128 *= by
+	tl.Log256U64 *= by
+	tl.Log256U32 *= by
+	tl.Log256U16 *= by
+	tl.SetByte256 *= by
+	tl.SetByte128 *= by
+	tl.SetByte64 *= by
+	tl.SetByte32 *= by
+	tl.SetByte16 *= by
+	tl.U23 *= by
+	tl.U24 *= by
+	tl.U30 *= by
+	tl.U31 *= by
+	tl.U55 *= by
+	tl.U56 *= by
+	tl.U62 *= by
+	tl.U63 *= by
+	tl.U119 *= by
+	tl.U120 *= by
+	tl.U126 *= by
+	tl.U127 *= by
+
+	// beta v4.0
+	tl.PrecompileBlsPointEvaluationEffectiveCalls *= by
+	tl.PrecompilePointEvaluationFailureEffectiveCalls *= by
+	tl.PrecompileBlsG1AddEffectiveCalls *= by
+	tl.PrecompileBlsG1MsmEffectiveCalls *= by
+	tl.PrecompileBlsG2AddEffectiveCalls *= by
+	tl.PrecompileBlsG2MsmEffectiveCalls *= by
+	tl.PrecompileBlsPairingCheckMillerLoops *= by
+	tl.PrecompileBlsFinalExponentiations *= by
+	tl.PrecompileBlsMapFpToG1EffectiveCalls *= by
+	tl.PrecompileBlsMapFp2ToG2EffectiveCalls *= by
+	tl.PrecompileBlsC1MembershipChecks *= by
+	tl.PrecompileBlsC2MembershipCalls *= by
+	tl.PrecompileBlsG1MembershipCalls *= by
+	tl.PrecompileBlsG2MembershipCalls *= by
+	tl.Bls *= by
+	tl.PointEval *= by
+	tl.BlsData *= by
+	tl.RlpUtils *= by
 }
 
 func GetTestTracesLimits() *TracesLimits {
@@ -176,7 +294,6 @@ func GetTestTracesLimits() *TracesLimits {
 		Txndata:                              1 << 14,
 		Wcp:                                  1 << 18,
 		Binreftable:                          1 << 20,
-		Shfreftable:                          1 << 12,
 		Instdecoder:                          1 << 9,
 		PrecompileEcrecoverEffectiveCalls:    1 << 9,
 		PrecompileSha2Blocks:                 1 << 9,
@@ -200,6 +317,65 @@ func GetTestTracesLimits() *TracesLimits {
 		U32:                                  1 << 17,
 		U36:                                  1 << 17,
 		U64:                                  1 << 17,
+		// Beta 4.0 internal modules
+		ByteShl256:    131072,
+		ByteShr256:    131072,
+		ByteSar256:    131072,
+		BitShl256:     131072,
+		BitShr256:     131072,
+		BitSar256:     131072,
+		FillBytesFrom: 131072,
+		Log2:          131072,
+		Log2U128:      131072,
+		Log2U64:       131072,
+		Log2U32:       131072,
+		Log2U16:       131072,
+		Log2U8:        131072,
+		Log2U4:        131072,
+		Log2U2:        131072,
+		Log256:        131072,
+		Log256U128:    131072,
+		Log256U64:     131072,
+		Log256U32:     131072,
+		Log256U16:     131072,
+		SetByte256:    131072,
+		SetByte128:    131072,
+		SetByte64:     131072,
+		SetByte32:     131072,
+		SetByte16:     131072,
+		U23:           131072,
+		U24:           131072,
+		U30:           131072,
+		U31:           131072,
+		U55:           131072,
+		U56:           131072,
+		U62:           131072,
+		U63:           131072,
+		U119:          131072,
+		U120:          131072,
+		U126:          131072,
+		U127:          131072,
+		// beta v4.0
+		PrecompileBlsPointEvaluationEffectiveCalls:     0,
+		PrecompilePointEvaluationFailureEffectiveCalls: 0,
+		PrecompileBlsG1AddEffectiveCalls:               0,
+		PrecompileBlsG1MsmEffectiveCalls:               0,
+		PrecompileBlsG2AddEffectiveCalls:               0,
+		PrecompileBlsG2MsmEffectiveCalls:               0,
+		PrecompileBlsPairingCheckMillerLoops:           0,
+		PrecompileBlsFinalExponentiations:              0,
+		PrecompileBlsMapFpToG1EffectiveCalls:           0,
+		PrecompileBlsMapFp2ToG2EffectiveCalls:          0,
+		PrecompileBlsC1MembershipChecks:                0,
+		PrecompileBlsC2MembershipCalls:                 0,
+		PrecompileBlsG1MembershipCalls:                 0,
+		PrecompileBlsG2MembershipCalls:                 0,
+		Bls:                                            0,
+		PointEval:                                      0,
+		BlsData:                                        4096,
+		RlpUtils:                                       131072,
+		PowerReferenceTable:                            16,
+		BlsReferenceTable:                              256,
 	}
 
 	return traceLimits
