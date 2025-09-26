@@ -34,21 +34,5 @@ interface IVaultHub {
         /// 64 bits gap
     }
 
-    struct VaultObligations {
-        /// @notice cumulative value for Lido fees that were settled on the vault
-        uint128 settledLidoFees;
-        /// @notice current unsettled Lido fees amount
-        uint128 unsettledLidoFees;
-        /// @notice current unsettled redemptions amount
-        uint128 redemptions;
-    }
-    
-    function vaultObligations(address _vault) external view returns (VaultObligations memory);
-
-    /// @notice allows anyone to settle any outstanding Lido fees for a vault, sending them to the treasury
-    /// @param _vault vault address
-    /// @dev requires the fresh report
-    function settleLidoFees(address _vault) external;
-
-    function CONNECT_DEPOSIT() external view returns (uint256);
+    function settleVaultObligations(address _vault) external;
 }

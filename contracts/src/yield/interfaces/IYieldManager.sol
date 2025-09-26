@@ -30,13 +30,13 @@ interface IYieldManager {
     bool isOssificationInitiated;
     bool isOssified;
     // Incremented 1:1 with yieldReportedCumulative, because yieldReported becomes user funds
+    // Is only allowed to be decremented by withdraw operations. Any other reduction of vault totalValue must be reported as negativeYield.
     uint256 userFunds;
     uint256 yieldReportedCumulative;
     uint256 pendingPermissionlessUnstake;
     // Required to socialize losses if permanent
     uint256 currentNegativeYield;
     uint256 lstLiabilityPrincipal;
-    uint256 donatedAmount;
   }
 
   /**

@@ -139,6 +139,8 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    */
   function fundYieldProvider(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
     _fundYieldProvider(_yieldProvider, _amount);
+    _getYieldManagerStorage()._userFundsInYieldProvidersTotal += _amount;
+    _getYieldProviderDataStorage(_yieldProvider).userFunds += _amount;
     // emit event?
   }
 
@@ -152,8 +154,6 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!success) {
       revert DelegateCallFailed();
     }
-    _getYieldManagerStorage()._userFundsInYieldProvidersTotal += _amount;
-    _getYieldProviderDataStorage(_yieldProvider).userFunds += _amount;
   }
   
 
@@ -202,8 +202,6 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     }
     (uint256 newYield) = abi.decode(data, (uint256));
     _getYieldManagerStorage()._userFundsInYieldProvidersTotal += newYield;
-    _getYieldProviderDataStorage(_yieldProvider).userFunds += newYield;
-    _getYieldProviderDataStorage(_yieldProvider).yieldReportedCumulative += newYield;
     ILineaNativeYieldExtension(l1MessageService()).reportNativeYield(newYield);
   }
 
@@ -447,7 +445,6 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     uint96 yieldProviderIndex = uint96($._yieldProviders.length) + 1;
     // TODO - ? Need to check for uint96 overflow
     $._yieldProviders.push(_yieldProvider);
-    // $._yieldProviderRegistration[_yieldProvider] = _yieldProviderRegistration;
     $._yieldProviderData[_yieldProvider] = YieldProviderData({
         registration: _yieldProviderRegistration,
         yieldProviderIndex: yieldProviderIndex,
@@ -458,8 +455,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
         yieldReportedCumulative: 0,
         pendingPermissionlessUnstake: 0,
         currentNegativeYield: 0,
-        lstLiabilityPrincipal: 0,
-        donatedAmount: 0
+        lstLiabilityPrincipal: 0
     });
     // TODO - Emit event
   }
@@ -621,6 +617,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   }
 
   // Need donate function here, otherwise YieldManager is unable to assign donations for specific yield providers
+  // Will be reported as new yield for reportYield, so do not modify accounting variables in this fn
   function donate(address _yieldProvider, address _destination) external payable onlyKnownYieldProvider(_yieldProvider) {
     address l1MessageServiceCached = l1MessageService();
     if (_destination == l1MessageServiceCached) {
@@ -632,7 +629,6 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert IllegalDonationAddress();
     }
 
-    _getYieldProviderDataStorage(_yieldProvider).donatedAmount += msg.value;
     // Emit event
   }
 

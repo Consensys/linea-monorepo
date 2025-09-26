@@ -63,24 +63,34 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
     DASHBOARD.rebalanceVaultWithShares(Math256.min(liabilityShares, vaultBalanceShares));
   }
 
-  function _payMaximumPossibleLSTInterest() internal {
+  // Returns how much of _maxAvailableRepaymentETH available, after LST interest payment
+  // @dev Redemption component of obligations, and liability - are decremented in tandem in Lido VaultHub
+  function _payLSTInterest(uint256 _maxAvailableRepaymentETH) internal returns (uint256) {
     IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
-    if ($$.isOssified) return;
+    if ($$.isOssified) return _maxAvailableRepaymentETH;
     uint256 liabilityTotalShares = DASHBOARD.liabilityShares();
-    uint256 liabilityTotalETH = STETH.getPooledEthBySharesRoundUp(liabilityTotalShares);
-    uint256 liabilityPrincipalETH = $$.lstLiabilityPrincipal;
-    uint256 liabilityInterestETH = liabilityTotalETH - liabilityPrincipalETH;
-    uint256 totalValueVaultETH = DASHBOARD.totalValue();
+    if (liabilityTotalShares == 0) return _maxAvailableRepaymentETH;
+    uint256 liabilityInterestETH = STETH.getPooledEthBySharesRoundUp(liabilityTotalShares) - $$.lstLiabilityPrincipal;
+    uint256 lstInterestRepaymentETH = Math256.min(liabilityInterestETH, _maxAvailableRepaymentETH);
     // Do the payment
-    DASHBOARD.rebalanceVaultWithEther(Math256.min(liabilityInterestETH, totalValueVaultETH));
+    DASHBOARD.rebalanceVaultWithEther(lstInterestRepaymentETH);
+    return _maxAvailableRepaymentETH - lstInterestRepaymentETH;
   }
+  
+  // @dev Must consider that this can pay redemptions
+  function _payObligations(uint256 _maxAvailableRepaymentETH) internal returns (uint256) {
+    uint256 beforeVaultBalance = YIELD_PROVIDER.balance;
+    // Unfortunately, there is no function on VaultHub to specify how much obligation we want to repay.
+    VAULT_HUB.settleVaultObligations(YIELD_PROVIDER);
+    uint256 afterVaultBalance = YIELD_PROVIDER.balance;
+    uint256 obligationsPaid = afterVaultBalance - beforeVaultBalance;
 
-  // @dev Omit redemptions, because it will overlap with liabilities
-  function _getCurrentObligationsMinusRedemptions() internal view returns (uint256) {
-    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
-    // yieldProviderOssificationEntrypoint = StakingVault
-    IVaultHub.VaultObligations memory obligations = VAULT_HUB.vaultObligations($$.registration.yieldProviderOssificationEntrypoint);
-    return obligations.unsettledLidoFees + DASHBOARD.nodeOperatorDisbursableFee();
+    if (obligationsPaid > _maxAvailableRepaymentETH) {
+      _getYieldProviderDataStorage(YIELD_PROVIDER).currentNegativeYield += (obligationsPaid - _maxAvailableRepaymentETH);
+      return 0;
+    } else {
+      return _maxAvailableRepaymentETH - obligationsPaid;
+    }
   }
 
   /**
@@ -94,18 +104,55 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
 
   /**
    * @notice Report newly accrued yield, excluding any portion reserved for system obligations.
+   * @dev Note here we have broken our pattern that we handle all state mutation in the YieldManager, we will revisit this
+   * @dev Both `redemptions` and `obligations` can both be reduced permissionlessly via VaultHub.settleObligations(). Then this is accounted within negative yield.
    */
   function reportYield() external returns (uint256 _newYield) {
-    if (_getYieldProviderDataStorage(YIELD_PROVIDER).isOssified) {
+    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
+    if ($$.isOssified) {
       revert OperationNotSupportedDuringOssification(OperationType.ReportYield);
     }
-    _payMaximumPossibleLSTInterest();
-    uint256 liabilityEth = _getCurrentLSTLiabilityETH();
-    uint256 obligationsEth = _getCurrentObligationsMinusRedemptions();
-    // We could cache CONNECT_DEPOSIT = 1 ether, but what if VaulHub contract upgrades and this value changes?
-    uint256 totalVaultEth = DASHBOARD.totalValue() - VAULT_HUB.CONNECT_DEPOSIT();
-    uint256 fundsAvailableForUserWithdrawal = totalVaultEth - obligationsEth - liabilityEth;
-    return fundsAvailableForUserWithdrawal - _getYieldProviderDataStorage(YIELD_PROVIDER).userFunds;
+    // First compute the total yield
+    uint256 lastUserFunds = $$.userFunds;
+    uint256 totalVaultFunds = DASHBOARD.totalValue();
+    uint256 negativeTotalYield;
+    uint256 positiveTotalYield;
+    if (totalVaultFunds > lastUserFunds) {
+      positiveTotalYield = totalVaultFunds - lastUserFunds;
+    } else {
+      negativeTotalYield = lastUserFunds - totalVaultFunds;
+    }
+    if (positiveTotalYield > 0) {
+      positiveTotalYield = _handlePostiveYieldAccounting(positiveTotalYield);
+      // emit event
+      return positiveTotalYield;
+    } else if (negativeTotalYield > 0) {
+      // If prev reportYield had negativeYield, this correctly accounts for both increase and reduction in negativeYield since
+      $$.currentNegativeYield = negativeTotalYield;
+      // emit event
+      return 0;
+    }
+      
+  }
+
+  // TODO - What if we incur redemption, and someone forces the settlement of this...
+
+  function _handlePostiveYieldAccounting(uint256 positiveTotalYield) internal returns (uint256) {
+      IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
+      // First pay negative yield
+      uint256 positiveRemainingYield = positiveTotalYield;
+      uint256 currentNegativeYield = $$.currentNegativeYield;
+      if (currentNegativeYield > 0) {
+        uint256 negativeYieldReduction = Math256.min(currentNegativeYield, positiveRemainingYield);
+        $$.currentNegativeYield -= negativeYieldReduction;
+        positiveRemainingYield -= negativeYieldReduction;
+      }
+      // Then pay liability interest
+      positiveRemainingYield = _payLSTInterest(positiveRemainingYield);
+      positiveRemainingYield = _payObligations(positiveRemainingYield);
+      $$.userFunds += positiveRemainingYield;
+      $$.yieldReportedCumulative += positiveRemainingYield;
+      return positiveRemainingYield;
   }
 
   /**
