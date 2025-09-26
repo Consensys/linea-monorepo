@@ -309,32 +309,25 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @param _yieldProvider          Yield provider address.
    * @param _amount                 Amount to withdraw.
    */
-  function withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
+  function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
     uint256 targetDeficit = getTargetReserveDeficit();
-    uint256 withdrawAmountRemainingAfterFees = _withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(_yieldProvider, _amount, address(this), targetDeficit);
+    _withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(_yieldProvider, _amount, address(this), targetDeficit);
     if (targetDeficit > 0) {
-      ILineaNativeYieldExtension(l1MessageService()).fund{value: Math256.min(targetDeficit, withdrawAmountRemainingAfterFees)}();
+      ILineaNativeYieldExtension(l1MessageService()).fund{value: targetDeficit}();
     }
+
     // Emit event
   }
 
-  function _withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(address _yieldProvider, uint256 _amount, address _recipient, uint256 _targetReserveDeficit) internal returns (uint256) {
-    (bool success, bytes memory data) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction, (_amount, _recipient, _targetReserveDeficit)
-    ));
-    if (!success) {
-      revert DelegateCallFailed();
-    }
-    (uint256 withdrawAmount, uint256 lstLiabilityPrincipalETHPaid) = abi.decode(data, (uint256, uint256));
-    _getYieldManagerStorage()._userFundsInYieldProvidersTotal -= _amount;
-    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
-    $$.userFunds -= _amount;
-    $$.lstLiabilityPrincipal -= lstLiabilityPrincipalETHPaid;
-    _reducePendingPermissionlessUnstake(_yieldProvider, _amount);
-    if (_targetReserveDeficit > _amount) {
+  function _withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(address _yieldProvider, uint256 _amount, address _recipient, uint256 _targetDeficit) internal returns (uint256) {
+    uint256 maxAvailableForRebalance = Math256.safeSub(_amount, _targetDeficit);
+    uint256 withdrawAmount = _amount;
+    if (maxAvailableForRebalance > 0) {
+      withdrawAmount -= _payLSTPrincipal(_yieldProvider, maxAvailableForRebalance);
+    } else {
       _pauseStakingIfNotAlready(_yieldProvider);
     }
-    return withdrawAmount;
+    _withdrawFromYieldProvider(_yieldProvider, withdrawAmount, _recipient);
   }
 
   function _withdrawFromYieldProvider(address _yieldProvider, uint256 _amount, address _recipient) internal {

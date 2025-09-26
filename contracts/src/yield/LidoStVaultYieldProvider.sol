@@ -60,9 +60,9 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
 
   function _payLSTPrincipal(uint256 _maxAvailableRepaymentETH) internal returns (uint256) {
     IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
-    if ($$.isOssified) return _maxAvailableRepaymentETH;
+    if ($$.isOssified) return 0;
     uint256 lstLiabilityPrincipal = $$.lstLiabilityPrincipal;
-    if (lstLiabilityPrincipal == 0) return _maxAvailableRepaymentETH;
+    if (lstLiabilityPrincipal == 0) return 0;
     uint256 rebalanceAmount = Math256.min(lstLiabilityPrincipal, _maxAvailableRepaymentETH);
     DASHBOARD.rebalanceVaultWithShares(rebalanceAmount);
     return rebalanceAmount;
@@ -205,33 +205,6 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
       amountUnstaked += amounts[i];
     }
     return amountUnstaked;
-  }
-
-  /**
-   * @notice Withdraw ETH from a specified yield provider.
-   * @dev If withdrawal reserve is in deficit, will route funds to the bridge.
-   * @dev If fund remaining, will settle any outstanding LST liabilities.
-   * @dev This function will first attempt to pay LST liabilities. However it will reserve '_targetReserveDeficit' out of this. So '_targetReserveDeficit' withdrawal is guaranteed.
-   * @param _amount                 Amount to withdraw.
-   */
-  function withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(uint256 _amount, address _recipient, uint256 _targetReserveDeficit) external returns (uint256 withdrawAmount, uint256 lstLiabilityPrincipalETHPaid) {
-    withdrawAmount = _amount;
-    lstLiabilityPrincipalETHPaid = 0;
-    if (_targetReserveDeficit >= withdrawAmount) {
-      ICommonVaultOperations(_getEntrypointContract()).withdraw(_recipient, withdrawAmount);
-      return (withdrawAmount, lstLiabilityPrincipalETHPaid);
-    } else {
-      uint256 amountAvailableToPayLSTLiability = withdrawAmount - _targetReserveDeficit;
-      uint256 currentLSTLiabilityETH = _getYieldProviderDataStorage(YIELD_PROVIDER).lstLiabilityPrincipal;
-      if (currentLSTLiabilityETH > 0) {
-        lstLiabilityPrincipalETHPaid = Math256.min(amountAvailableToPayLSTLiability, currentLSTLiabilityETH);
-        // If this function call fails, it means another address forced redemption settlement
-        DASHBOARD.rebalanceVaultWithEther(lstLiabilityPrincipalETHPaid);
-        withdrawAmount -= lstLiabilityPrincipalETHPaid;
-      }
-      ICommonVaultOperations(_getEntrypointContract()).withdraw(_recipient, withdrawAmount);
-      return (withdrawAmount, lstLiabilityPrincipalETHPaid);
-    }
   }
 
   function withdrawFromYieldProvider(uint256 _amount, address _recipient) external {
