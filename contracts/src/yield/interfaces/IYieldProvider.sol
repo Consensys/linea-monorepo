@@ -88,4 +88,7 @@ interface IYieldProvider {
   function initiateOssification() external;
 
   function processPendingOssification() external returns (bool);
+
+  // Return LST liability payment made.
+  function payLSTPrincipal(uint256 _maxAvailableRepaymentETH) external returns (uint256);
 }

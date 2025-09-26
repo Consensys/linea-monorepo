@@ -54,6 +54,20 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
     DASHBOARD.rebalanceVaultWithShares(Math256.min(liabilityShares, vaultBalanceShares));
   }
 
+  function payLSTPrincipal(uint256 _maxAvailableRepaymentETH) external returns (uint256) {
+    return _payLSTPrincipal(_maxAvailableRepaymentETH);
+  }
+
+  function _payLSTPrincipal(uint256 _maxAvailableRepaymentETH) internal returns (uint256) {
+    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
+    if ($$.isOssified) return _maxAvailableRepaymentETH;
+    uint256 lstLiabilityPrincipal = $$.lstLiabilityPrincipal;
+    if (lstLiabilityPrincipal == 0) return _maxAvailableRepaymentETH;
+    uint256 rebalanceAmount = Math256.min(lstLiabilityPrincipal, _maxAvailableRepaymentETH);
+    DASHBOARD.rebalanceVaultWithShares(rebalanceAmount);
+    return rebalanceAmount;
+  }
+
   // Returns how much of _maxAvailableRepaymentETH available, after LST interest payment
   // @dev Redemption component of obligations, and liability - are decremented in tandem in Lido VaultHub
   function _payLSTInterest(uint256 _maxAvailableRepaymentETH) internal returns (uint256) {
@@ -86,7 +100,6 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
 
   /**
    * @notice Send ETH to the specified yield strategy.
-   * @dev Will settle any outstanding liabilities to the YieldProvider.
    * @param _amount        The amount of ETH to send.
    */
   function fundYieldProvider(uint256 _amount) external {

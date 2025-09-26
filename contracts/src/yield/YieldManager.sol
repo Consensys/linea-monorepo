@@ -139,8 +139,10 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    */
   function fundYieldProvider(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
     _fundYieldProvider(_yieldProvider, _amount);
-    _getYieldManagerStorage()._userFundsInYieldProvidersTotal += _amount;
-    _getYieldProviderDataStorage(_yieldProvider).userFunds += _amount;
+    uint256 lstPrincipalRepayment = _payLSTPrincipal(_yieldProvider, _amount);
+    uint256 amountRemaining = _amount - lstPrincipalRepayment;
+    _getYieldManagerStorage()._userFundsInYieldProvidersTotal += amountRemaining;
+    _getYieldProviderDataStorage(_yieldProvider).userFunds += amountRemaining;
     // emit event?
   }
 
@@ -155,6 +157,19 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert DelegateCallFailed();
     }
   }
+
+  function _payLSTPrincipal(address _yieldProvider, uint256 _maxAvailableRepaymentETH) internal returns (uint256) {
+    (bool success, bytes memory data) = _yieldProvider.delegatecall(
+      abi.encodeCall(IYieldProvider.payLSTPrincipal, (_maxAvailableRepaymentETH)
+    ));
+    if (!success) {
+      revert DelegateCallFailed();
+    }
+    (uint256 repaymentAmount) = abi.decode(data, (uint256));
+    _getYieldProviderDataStorage(_yieldProvider).lstLiabilityPrincipal -= repaymentAmount;
+    return repaymentAmount;
+  }
+
   
 
   /**
