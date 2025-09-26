@@ -23,10 +23,10 @@ import (
 
 var (
 
-	// numConcurrentWitnessWritingGoroutines governs the goroutine serializing,
+	// numConcurrentWritingGoroutines governs the goroutine serializing,
 	// compressing and writing the  witness. The writing part is also controlled
 	// by a semaphore on top of this.
-	numConcurrentWitnessWritingGoroutines = 12
+	numConcurrentWritingGoroutines = 12
 )
 
 type Metadata struct {
@@ -173,7 +173,7 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 
 	logrus.Info("Saving the witnesses")
 	wg, ctx := errgroup.WithContext(context.Background())
-	wg.SetLimit(numConcurrentWitnessWritingGoroutines)
+	wg.SetLimit(numConcurrentWritingGoroutines)
 
 	for i, witnessGL := range witnessGLs {
 		i := i
@@ -245,16 +245,16 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 		})
 	}
 
+	if err := wg.Wait(); err != nil {
+		return fmt.Errorf("could not save witnesses: %v", err)
+	}
+
 	sharedRandomnessFileName := fmt.Sprintf("%s-%s-commit.bin", metadata.StartBlock, metadata.EndBlock)
 	sharedRandomnessPath := path.Join(cfg.LimitlessParams.SharedRandomnessDir, sharedRandomnessFileName)
 	if err := os.MkdirAll(filepath.Dir(sharedRandomnessPath), 0o755); err != nil {
 		return err
 	}
 	metadata.SharedRndFile = sharedRandomnessPath
-
-	if err := wg.Wait(); err != nil {
-		return fmt.Errorf("could not save witnesses: %v", err)
-	}
 
 	return nil
 }
