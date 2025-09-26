@@ -65,32 +65,28 @@ func testBlsMap(t *testing.T, withCircuit bool, g group, path string, limits *Li
 
 func TestBlsMapG1NoCircuit(t *testing.T) {
 	limits := &Limits{
-		NbG1MapToInputInstances:   16,
-		NbG1MapToCircuitInstances: 1,
+		NbG1MapToInputInstances: 16,
 	}
 	testBlsMap(t, false, G1, "testdata/bls_g1_map_inputs.csv", limits)
 }
 
 func TestBlsMapG1WithCircuit(t *testing.T) {
 	limits := &Limits{
-		NbG1MapToInputInstances:   16,
-		NbG1MapToCircuitInstances: 1,
+		NbG1MapToInputInstances: 16,
 	}
 	testBlsMap(t, true, G1, "testdata/bls_g1_map_inputs.csv", limits)
 }
 
 func TestBlsMapG2NoCircuit(t *testing.T) {
 	limits := &Limits{
-		NbG2MapToInputInstances:   4,
-		NbG2MapToCircuitInstances: 1,
+		NbG2MapToInputInstances: 4,
 	}
 	testBlsMap(t, false, G2, "testdata/bls_g2_map_inputs.csv", limits)
 }
 
 func TestBlsMapG2WithCircuit(t *testing.T) {
 	limits := &Limits{
-		NbG2MapToInputInstances:   4,
-		NbG2MapToCircuitInstances: 1,
+		NbG2MapToInputInstances: 4,
 	}
 	testBlsMap(t, true, G2, "testdata/bls_g2_map_inputs.csv", limits)
 }

@@ -14,6 +14,17 @@ const (
 	nbRowsPerG2Mul = nbFpLimbs + 3*nbG2Limbs // 1 scalar, 1 point, 1 previous accumulator, 1 next accumulator
 )
 
+func nbRowsPerMul(g group) int {
+	switch g {
+	case G1:
+		return nbRowsPerG1Mul
+	case G2:
+		return nbRowsPerG2Mul
+	default:
+		panic(fmt.Sprintf("unknown group %s for nbRowsPerMul", g.String()))
+	}
+}
+
 type mulInstance[C convertable[T], T element] struct {
 	CurrentAccumulator C                   `gnark:",public"`
 	Scalar             scalarElementWizard `gnark:",public"`

@@ -13,14 +13,10 @@ import (
 
 func testBlsPair(t *testing.T, withCircuit bool) {
 	limits := &Limits{
-		NbMillerLoopInputInstances:     4,
-		NbMillerLoopCircuitInstances:   32,
-		NbFinalExpInputInstances:       4,
-		NbFinalExpCircuitInstances:     32,
-		NbG1MembershipInputInstances:   4,
-		NbG1MembershipCircuitInstances: 32,
-		NbG2MembershipInputInstances:   4,
-		NbG2MembershipCircuitInstances: 32,
+		NbMillerLoopInputInstances:   4,
+		NbFinalExpInputInstances:     4,
+		NbG1MembershipInputInstances: 4,
+		NbG2MembershipInputInstances: 4,
 	}
 	files, err := filepath.Glob("testdata/bls_pairing_inputs-[0-9]*.csv")
 	if err != nil {

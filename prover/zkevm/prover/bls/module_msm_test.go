@@ -75,40 +75,32 @@ func testBlsMsm(t *testing.T, withCircuit bool, g group, path string, limits *Li
 
 func TestBlsG1MsmNoCircuit(t *testing.T) {
 	limits := &Limits{
-		NbG1MulInputInstances:          8,
-		NbG1MulCircuitInstances:        32,
-		NbG1MembershipInputInstances:   8,
-		NbG1MembershipCircuitInstances: 32,
+		NbG1MulInputInstances:        8,
+		NbG1MembershipInputInstances: 8,
 	}
 	testBlsMsm(t, false, G1, "testdata/bls_g1_msm_inputs-[0-9]*.csv", limits)
 }
 
 func TestBlsG1MsmWithCircuit(t *testing.T) {
 	limits := &Limits{
-		NbG1MulInputInstances:          6,
-		NbG1MulCircuitInstances:        200,
-		NbG1MembershipInputInstances:   6,
-		NbG1MembershipCircuitInstances: 300,
+		NbG1MulInputInstances:        6,
+		NbG1MembershipInputInstances: 6,
 	}
 	testBlsMsm(t, true, G1, "testdata/bls_g1_msm_inputs-[0-9]*.csv", limits)
 }
 
 func TestBlsG2MsmNoCircuit(t *testing.T) {
 	limits := &Limits{
-		NbG2MulInputInstances:          8,
-		NbG2MulCircuitInstances:        32,
-		NbG2MembershipInputInstances:   6,
-		NbG2MembershipCircuitInstances: 32,
+		NbG2MulInputInstances:        8,
+		NbG2MembershipInputInstances: 6,
 	}
 	testBlsMsm(t, false, G2, "testdata/bls_g2_msm_inputs-[0-9]*.csv", limits)
 }
 
 func TestBlsG2MsmWithCircuit(t *testing.T) {
 	limits := &Limits{
-		NbG2MulInputInstances:          8,
-		NbG2MulCircuitInstances:        32,
-		NbG2MembershipInputInstances:   6,
-		NbG2MembershipCircuitInstances: 32,
+		NbG2MulInputInstances:        8,
+		NbG2MembershipInputInstances: 6,
 	}
 	testBlsMsm(t, true, G2, "testdata/bls_g2_msm_inputs-[0-9]*.csv", limits)
 }

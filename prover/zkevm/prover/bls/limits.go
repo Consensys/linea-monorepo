@@ -1,158 +1,86 @@
 package bls
 
-import "github.com/consensys/linea-monorepo/prover/utils"
-
 type Limits struct {
-	NbG1AddInputInstances   int
-	NbG1AddCircuitInstances int
+	NbG1AddInputInstances int
+	NbG2AddInputInstances int
 
-	NbG2AddInputInstances   int
-	NbG2AddCircuitInstances int
-
-	NbG1MulInputInstances   int
-	NbG1MulCircuitInstances int
-	NbG2MulInputInstances   int
-	NbG2MulCircuitInstances int
+	NbG1MulInputInstances int
+	NbG2MulInputInstances int
 
 	// Number of inputs per Miller loop circuits. Counted without the last
 	// Miller loop which is done in the final exponentiation part.
 	NbMillerLoopInputInstances int
-	// Number of Miller loop circuits
-	NbMillerLoopCircuitInstances int
 
 	// Number of inputs per final exponentiation circuits
 	NbFinalExpInputInstances int
-	// Number of final exponentiation circuits
-	NbFinalExpCircuitInstances int
 
 	// Number of inputs per G1 subgroup membership circuits
 	NbG1MembershipInputInstances int
-	// Number of G1 subgroup membership circuits
-	NbG1MembershipCircuitInstances int
 
 	// Number of inputs per G2 subgroup membership circuits
 	NbG2MembershipInputInstances int
-	// Number of G2 subgroup membership circuits
-	NbG2MembershipCircuitInstances int
 
-	NbG1MapToInputInstances   int
-	NbG1MapToCircuitInstances int
+	NbG1MapToInputInstances int
+	NbG2MapToInputInstances int
 
-	NbG2MapToInputInstances   int
-	NbG2MapToCircuitInstances int
+	NbC1MembershipInputInstances int
+	NbC2MembershipInputInstances int
 
-	NbC1MembershipInputInstances   int
-	NbC1MembershipCircuitInstances int
-	NbC2MembershipInputInstances   int
-	NbC2MembershipCircuitInstances int
-
-	NbPointEvalInputInstances          int
-	NbPointEvalCircuitInstances        int
-	NbPointEvalFailureInputInstances   int
-	NbPointEvalFailureCircuitInstances int
+	NbPointEvalInputInstances        int
+	NbPointEvalFailureInputInstances int
 }
 
-func (l *Limits) sizeAddIntegration(g group) int {
+func (l *Limits) nbAddInputInstances(g group) int {
 	switch g {
 	case G1:
-		return utils.NextPowerOfTwo(l.NbG1AddInputInstances*nbRowsPerG1Add) * utils.NextPowerOfTwo(l.NbG1AddCircuitInstances)
+		return l.NbG1AddInputInstances
 	case G2:
-		return utils.NextPowerOfTwo(l.NbG2AddInputInstances*nbRowsPerG2Add) * utils.NextPowerOfTwo(l.NbG2AddCircuitInstances)
+		return l.NbG2AddInputInstances
 	default:
-		panic("unknown group for bls add integration size")
+		panic("unknown group for bls add input instances")
 	}
 }
 
-func (l *Limits) sizeMulIntegration(g group) int {
+func (l *Limits) nbMapInputInstances(g group) int {
 	switch g {
 	case G1:
-		return utils.NextPowerOfTwo(l.NbG1MulInputInstances*nbRowsPerG1Mul) * utils.NextPowerOfTwo(l.NbG1MulCircuitInstances)
+		return l.NbG1MapToInputInstances
 	case G2:
-		return utils.NextPowerOfTwo(l.NbG2MulInputInstances*nbRowsPerG2Mul) * utils.NextPowerOfTwo(l.NbG2MulCircuitInstances)
+		return l.NbG2MapToInputInstances
 	default:
-		panic("unknown group for bls mul integration size")
+		panic("unknown group for bls map input instances")
 	}
 }
 
-func (l *Limits) sizeMulUnalignedIntegration(g group) int {
+func (l *Limits) nbMulInputInstances(g group) int {
 	switch g {
 	case G1:
-		return utils.NextPowerOfTwo(l.NbG1MulInputInstances) * utils.NextPowerOfTwo(l.NbG1MulCircuitInstances)
+		return l.NbG1MulInputInstances
 	case G2:
-		return utils.NextPowerOfTwo(l.NbG2MulInputInstances) * utils.NextPowerOfTwo(l.NbG2MulCircuitInstances)
+		return l.NbG2MulInputInstances
 	default:
-		panic("unknown group for bls mul unaligned integration size")
+		panic("unknown group for bls mul input instances")
 	}
 }
 
-func (l *Limits) sizePairUnalignedIntegration() int {
-	return utils.NextPowerOfTwo(
-		max(
-			l.NbMillerLoopInputInstances*l.NbMillerLoopCircuitInstances,
-			l.NbFinalExpInputInstances*l.NbFinalExpCircuitInstances,
-		),
-	)
-}
-
-func (l *Limits) sizePairMillerLoopIntegration() int {
-	return utils.NextPowerOfTwo(l.NbMillerLoopInputInstances*nbRowsPerMillerLoop) * utils.NextPowerOfTwo(l.NbMillerLoopCircuitInstances)
-}
-
-func (l *Limits) sizePairFinalExpIntegration() int {
-	return utils.NextPowerOfTwo(l.NbFinalExpInputInstances*nbRowsPerFinalExp) * utils.NextPowerOfTwo(l.NbFinalExpCircuitInstances)
-}
-
-func (l *Limits) nbAddCircuitInstances(g group) int {
+func (l *Limits) nbCurveMembershipInputInstances(g group) int {
 	switch g {
 	case G1:
-		return l.NbG1AddCircuitInstances
+		return l.NbC1MembershipInputInstances
 	case G2:
-		return l.NbG2AddCircuitInstances
+		return l.NbC2MembershipInputInstances
 	default:
-		panic("unknown group for bls add circuit instances")
+		panic("unknown group for bls curve membership input instances")
 	}
 }
 
-func (l *Limits) nbMulCircuitInstances(g group) int {
+func (l *Limits) nbGroupMembershipInputInstances(g group) int {
 	switch g {
 	case G1:
-		return l.NbG1MulCircuitInstances
+		return l.NbG1MembershipInputInstances
 	case G2:
-		return l.NbG2MulCircuitInstances
+		return l.NbG2MembershipInputInstances
 	default:
-		panic("unknown group for bls mul circuit instances")
-	}
-}
-
-func (l *Limits) nbCurveMembershipCircuitInstances(g group) int {
-	switch g {
-	case G1:
-		return l.NbC1MembershipCircuitInstances
-	case G2:
-		return l.NbC2MembershipCircuitInstances
-	default:
-		panic("unknown group for bls curve membership instances")
-	}
-}
-
-func (l *Limits) nbGroupMembershipCircuitInstances(g group) int {
-	switch g {
-	case G1:
-		return l.NbG1MembershipCircuitInstances
-	case G2:
-		return l.NbG2MembershipCircuitInstances
-	default:
-		panic("unknown group for bls group membership instances")
-	}
-}
-
-func (l *Limits) nbMapCircuitInstances(g group) int {
-	switch g {
-	case G1:
-		return l.NbG1MapToCircuitInstances
-	case G2:
-		return l.NbG2MapToCircuitInstances
-	default:
-		panic("unknown group for bls map circuit instances")
+		panic("unknown group for bls group membership input instances")
 	}
 }

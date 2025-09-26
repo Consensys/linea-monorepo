@@ -14,6 +14,17 @@ const (
 	nbRowsPerG2Add = 3 * nbG2Limbs // 2 for the inputs, 1 for the output
 )
 
+func nbRowsPerAdd(g group) int {
+	switch g {
+	case G1:
+		return nbRowsPerG1Add
+	case G2:
+		return nbRowsPerG2Add
+	default:
+		panic(fmt.Sprintf("unknown group for BLS add circuit: %v", g))
+	}
+}
+
 type addInstance[C convertable[T], T element] struct {
 	InputLeft, InputRight C `gnark:",public"`
 	Res                   C `gnark:",public"`

@@ -13,10 +13,8 @@ import (
 
 func testPointEval(t *testing.T, withCircuit bool) {
 	limits := &Limits{
-		NbPointEvalInputInstances:          2,
-		NbPointEvalCircuitInstances:        25,
-		NbPointEvalFailureInputInstances:   2,
-		NbPointEvalFailureCircuitInstances: 25,
+		NbPointEvalInputInstances:        2,
+		NbPointEvalFailureInputInstances: 2,
 	}
 	files, err := filepath.Glob("testdata/bls_pointeval_inputs-[0-9]*.csv")
 	if err != nil {

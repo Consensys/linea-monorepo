@@ -15,6 +15,17 @@ const (
 	nbRowsPerG2Map = 2*nbFpLimbs + nbG2Limbs // input is Fp2 element and expected output is G2 element
 )
 
+func nbRowsPerMap(g group) int {
+	switch g {
+	case G1:
+		return nbRowsPerG1Map
+	case G2:
+		return nbRowsPerG2Map
+	default:
+		panic("unknown group for nbRowsPerMap")
+	}
+}
+
 type mapInstance[C convertable[T], T element] struct {
 	Input  []baseElementWizard // len==1 for G1, len==2 for G2
 	Mapped C

@@ -42,17 +42,13 @@ type BlsAdd struct {
 	alignedAddGnarkData             *plonk.Alignment
 	alignedCurveMembershipGnarkData *plonk.Alignment
 
-	size int
 	*Limits
 	group
 }
 
 func newAdd(_ *wizard.CompiledIOP, g group, limits *Limits, src *blsAddDataSource) *BlsAdd {
-	size := limits.sizeAddIntegration(g)
-
 	res := &BlsAdd{
 		blsAddDataSource: src,
-		size:             size,
 		Limits:           limits,
 		group:            g,
 	}
@@ -61,13 +57,19 @@ func newAdd(_ *wizard.CompiledIOP, g group, limits *Limits, src *blsAddDataSourc
 }
 
 func (ba *BlsAdd) WithAddCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsAdd {
+	// the gnark circuit takes exactly the same rows as provided by the arithmetization. So
+	// to get the bound on the number of circuits we just need to divide by the size of the
+	// addition circuit input instances
+	maxNbInstances := ba.blsAddDataSource.CsAdd.Size() / nbRowsPerAdd(ba.group)
+	maxNbCircuits := maxNbInstances/ba.Limits.nbAddInputInstances(ba.group) + 1
+
 	toAlignAdd := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_%s_ALIGNMENT", NAME_BLS_ADD, ba.group.String()),
 		Round:              ROUND_NR,
 		DataToCircuitMask:  ba.blsAddDataSource.CsAdd,
 		DataToCircuit:      ba.blsAddDataSource.Limb,
 		Circuit:            newAddCircuit(ba.group, ba.Limits),
-		NbCircuitInstances: ba.Limits.nbAddCircuitInstances(ba.group),
+		NbCircuitInstances: maxNbCircuits,
 		PlonkOptions:       options,
 	}
 	ba.alignedAddGnarkData = plonk.DefineAlignment(comp, toAlignAdd)
@@ -75,13 +77,15 @@ func (ba *BlsAdd) WithAddCircuit(comp *wizard.CompiledIOP, options ...query.Plon
 }
 
 func (ba *BlsAdd) WithCurveMembershipCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsAdd {
+	maxNbCircuits := ba.blsAddDataSource.CsCurveMembership.Size() / ba.Limits.nbCurveMembershipInputInstances(ba.group)
+
 	toAlignCurveMembership := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_%s_CURVE_MEMBERSHIP_ALIGNMENT", NAME_BLS_ADD, ba.group.StringCurve()),
 		Round:              ROUND_NR,
 		DataToCircuitMask:  ba.blsAddDataSource.CsCurveMembership,
 		DataToCircuit:      ba.blsAddDataSource.Limb,
 		Circuit:            newCheckCircuit(ba.group, CURVE, ba.Limits),
-		NbCircuitInstances: ba.Limits.nbCurveMembershipCircuitInstances(ba.group),
+		NbCircuitInstances: maxNbCircuits,
 		PlonkOptions:       options,
 		InputFillerKey:     membershipInputFillerKey(ba.group, CURVE),
 	}

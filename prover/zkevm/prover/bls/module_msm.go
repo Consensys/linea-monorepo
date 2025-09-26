@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
@@ -52,7 +53,7 @@ type BlsMsm struct {
 }
 
 func newMsm(comp *wizard.CompiledIOP, g group, limits *Limits, src *blsMsmDataSource) *BlsMsm {
-	umsm := newUnalignedMsmData(comp, g, limits, src)
+	umsm := newUnalignedMsmData(comp, g, src)
 
 	return &BlsMsm{
 		blsMsmDataSource: src,
@@ -63,13 +64,14 @@ func newMsm(comp *wizard.CompiledIOP, g group, limits *Limits, src *blsMsmDataSo
 }
 
 func (bm *BlsMsm) WithMsmCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsMsm {
+	nbCircuits := bm.maxNbMsmInputs/bm.Limits.nbMulInputInstances(bm.group) + 1
 	toAlignMsm := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_%s_MSM", NAME_BLS_MSM, bm.group.String()),
 		Round:              ROUND_NR,
 		DataToCircuitMask:  bm.unalignedMsmData.GnarkIsActiveMsm,
 		DataToCircuit:      bm.unalignedMsmData.GnarkDataMsm,
 		Circuit:            newMulCircuit(bm.group, bm.Limits),
-		NbCircuitInstances: bm.Limits.nbMulCircuitInstances(bm.group),
+		NbCircuitInstances: nbCircuits,
 		PlonkOptions:       options,
 	}
 
@@ -78,13 +80,18 @@ func (bm *BlsMsm) WithMsmCircuit(comp *wizard.CompiledIOP, options ...query.Plon
 }
 
 func (bm *BlsMsm) WithGroupMembershipCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsMsm {
+	// compute the bound on the number of circuits we need. First we estimate a bound on the number of possible
+	// maximum number of G1/G2 points which could go to the membership circuit.
+	nbInputs := bm.blsMsmDataSource.CsMembership.Size() / nbLimbs(bm.group)
+	// and by knowing how many inputs every circuit takes, we can bound the number of circuits as well
+	nbCircuits := nbInputs/bm.Limits.nbGroupMembershipInputInstances(bm.group) + 1
 	toAlignMembership := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_%s_GROUP_MEMBERSHIP", NAME_BLS_MSM, bm.group.String()),
 		Round:              ROUND_NR,
 		DataToCircuitMask:  bm.blsMsmDataSource.CsMembership,
 		DataToCircuit:      bm.blsMsmDataSource.Limb,
 		Circuit:            newCheckCircuit(bm.group, GROUP, bm.Limits),
-		NbCircuitInstances: bm.Limits.nbGroupMembershipCircuitInstances(bm.group),
+		NbCircuitInstances: nbCircuits,
 		InputFillerKey:     membershipInputFillerKey(bm.group, GROUP),
 		PlonkOptions:       options,
 	}
@@ -120,16 +127,26 @@ type unalignedMsmData struct {
 	GnarkIsActiveMsm ifaces.Column
 	GnarkDataMsm     ifaces.Column
 
-	group group
+	group          group
+	maxNbMsmInputs int
 }
 
-func newUnalignedMsmData(comp *wizard.CompiledIOP, g group, limits *Limits, src *blsMsmDataSource) *unalignedMsmData {
-	createCol1 := createColFn(comp, fmt.Sprintf("UNALIGNED_%s_BLS_MSM", g.String()), limits.sizeMulUnalignedIntegration(g))
-	createCol2 := createColFn(comp, fmt.Sprintf("UNALIGNED_%s_BLS_MSM", g.String()), limits.sizeMulIntegration(g))
+func newUnalignedMsmData(comp *wizard.CompiledIOP, g group, src *blsMsmDataSource) *unalignedMsmData {
+	// obtain the maximum number of rows which are coming from the arithmetization.
+	maxNbRows := max(src.CsMul.Size(), src.IsData.Size(), src.IsRes.Size())
+	// assuming the worst case where there is single long MSM. Then we have
+	// group element and scalar for every input. And we add one to avoid edge
+	// case with 0 size.
+	maxNbMsmInputs := src.CsMul.Size()/(nbLimbs(g)+nbFrLimbs) + 1
+	// and all witness elements for the gnark circuits are expanded as we have interleaved with accumulators
+	maxNbRowsAligned := maxNbMsmInputs * nbRowsPerMul(g)
+
+	createCol1 := createColFn(comp, fmt.Sprintf("UNALIGNED_%s_BLS_MSM", g.String()), utils.NextPowerOfTwo(maxNbMsmInputs))
+	createCol2 := createColFn(comp, fmt.Sprintf("UNALIGNED_%s_BLS_MSM", g.String()), utils.NextPowerOfTwo(maxNbRowsAligned))
 	res := &unalignedMsmData{
 		blsMsmDataSource:   src,
-		IsDataAndCsMul:     comp.InsertCommit(ROUND_NR, ifaces.ColIDf("UNALIGNED_%s_BLS_MSM_SRC_IS_DATA_AND_CS_MSM", g.String()), src.CsMul.Size()),
-		IsResultAndCsMul:   comp.InsertCommit(ROUND_NR, ifaces.ColIDf("UNALIGNED_%s_BLS_MSM_SRC_IS_RESULT_AND_CS_MSM", g.String()), src.CsMul.Size()),
+		IsDataAndCsMul:     comp.InsertCommit(ROUND_NR, ifaces.ColIDf("UNALIGNED_%s_BLS_MSM_SRC_IS_DATA_AND_CS_MSM", g.String()), maxNbRows),
+		IsResultAndCsMul:   comp.InsertCommit(ROUND_NR, ifaces.ColIDf("UNALIGNED_%s_BLS_MSM_SRC_IS_RESULT_AND_CS_MSM", g.String()), maxNbRows),
 		IsActive:           createCol1("IS_ACTIVE"),
 		Point:              make([]ifaces.Column, nbLimbs(g)),
 		CurrentAccumulator: make([]ifaces.Column, nbLimbs(g)),
@@ -139,6 +156,7 @@ func newUnalignedMsmData(comp *wizard.CompiledIOP, g group, limits *Limits, src 
 		GnarkIsActiveMsm:   createCol2("GNARK_IS_ACTIVE_MSM"),
 		GnarkDataMsm:       createCol2("GNARK_DATA_MSM"),
 		group:              g,
+		maxNbMsmInputs:     maxNbMsmInputs,
 	}
 
 	for i := range res.Scalar {

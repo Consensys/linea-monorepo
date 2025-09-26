@@ -52,13 +52,17 @@ func newMap(_ *wizard.CompiledIOP, g group, limits *Limits, src *blsMapDataSourc
 }
 
 func (bm *BlsMap) WithMapCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsMap {
+	// gnark circuits takes the inputs as is. To get the bound on the number of circuits we need
+	// to divide the maximum number of inputs instances with the number of instances per circuit
+	maxNbInstances := bm.blsMapDataSource.CsMap.Size() / nbRowsPerMap(bm.group)
+	maxNbCircuits := maxNbInstances/bm.Limits.nbMapInputInstances(bm.group) + 1
 	toAlign := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_%s_ALIGNMENT", NAME_BLS_MAP, bm.group.String()),
 		Round:              ROUND_NR,
 		DataToCircuitMask:  bm.blsMapDataSource.CsMap,
 		DataToCircuit:      bm.blsMapDataSource.Limb,
 		Circuit:            NewMapCircuit(bm.group, bm.Limits),
-		NbCircuitInstances: bm.Limits.nbMapCircuitInstances(bm.group),
+		NbCircuitInstances: maxNbCircuits,
 		InputFillerKey:     mapToGroupInputFillerKey(bm.group),
 		PlonkOptions:       options,
 	}

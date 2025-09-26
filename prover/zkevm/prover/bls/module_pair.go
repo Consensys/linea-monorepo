@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
@@ -57,7 +58,7 @@ type BlsPair struct {
 }
 
 func newPair(comp *wizard.CompiledIOP, limits *Limits, src *blsPairDataSource) *BlsPair {
-	ucmd := newUnalignedPairData(comp, limits, src)
+	ucmd := newUnalignedPairData(comp, src)
 
 	res := &BlsPair{
 		blsPairDataSource: src,
@@ -69,13 +70,15 @@ func newPair(comp *wizard.CompiledIOP, limits *Limits, src *blsPairDataSource) *
 }
 
 func (bp *BlsPair) WithPairingCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsPair {
+	maxNbMlCircuits := bp.maxNbPairInputs/bp.Limits.NbMillerLoopInputInstances + 1
+	maxNbFeCircuits := bp.maxNbPairInputs/bp.Limits.NbFinalExpInputInstances + 1
 	toAlignMl := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_ML", NAME_BLS_PAIR),
 		Round:              ROUND_NR,
 		DataToCircuitMask:  bp.unalignedPairData.GnarkIsActiveMillerLoop,
 		DataToCircuit:      bp.unalignedPairData.GnarkDataMillerLoop,
 		Circuit:            newMultiMillerLoopMulCircuit(bp.Limits),
-		NbCircuitInstances: bp.Limits.NbMillerLoopCircuitInstances,
+		NbCircuitInstances: maxNbMlCircuits,
 		InputFillerKey:     millerLoopInputFillerKey,
 		PlonkOptions:       options,
 	}
@@ -85,7 +88,7 @@ func (bp *BlsPair) WithPairingCircuit(comp *wizard.CompiledIOP, options ...query
 		DataToCircuitMask:  bp.unalignedPairData.GnarkIsActiveFinalExp,
 		DataToCircuit:      bp.unalignedPairData.GnarkDataFinalExp,
 		Circuit:            newMultiMillerLoopFinalExpCircuit(bp.Limits),
-		NbCircuitInstances: bp.Limits.NbFinalExpCircuitInstances,
+		NbCircuitInstances: maxNbFeCircuits,
 		InputFillerKey:     finalExpInputFillerKey,
 		PlonkOptions:       options,
 	}
@@ -95,13 +98,15 @@ func (bp *BlsPair) WithPairingCircuit(comp *wizard.CompiledIOP, options ...query
 }
 
 func (bp *BlsPair) WithG1MembershipCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsPair {
+	maxNbInputs := bp.unalignedPairData.GnarkIsActiveG1Membership.Size() / nbG1Limbs
+	maxNbCircuits := maxNbInputs/bp.Limits.nbGroupMembershipInputInstances(G1) + 1
 	toAlignG1Ms := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_G1_MEMBERSHIP", NAME_BLS_PAIR),
 		Round:              ROUND_NR,
 		DataToCircuitMask:  bp.unalignedPairData.GnarkIsActiveG1Membership,
 		DataToCircuit:      bp.blsPairDataSource.Limb,
 		Circuit:            newCheckCircuit(G1, GROUP, bp.Limits),
-		NbCircuitInstances: bp.Limits.nbGroupMembershipCircuitInstances(G1),
+		NbCircuitInstances: maxNbCircuits,
 		InputFillerKey:     membershipInputFillerKey(G1, GROUP),
 		PlonkOptions:       options,
 	}
@@ -110,13 +115,15 @@ func (bp *BlsPair) WithG1MembershipCircuit(comp *wizard.CompiledIOP, options ...
 }
 
 func (bp *BlsPair) WithG2MembershipCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsPair {
+	maxNbInputs := bp.unalignedPairData.GnarkIsActiveG2Membership.Size() / nbG2Limbs
+	maxNbCircuits := maxNbInputs/bp.Limits.nbGroupMembershipInputInstances(G2) + 1
 	toAlignG2Ms := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_G2_MEMBERSHIP", NAME_BLS_PAIR),
 		Round:              ROUND_NR,
 		DataToCircuitMask:  bp.unalignedPairData.GnarkIsActiveG2Membership,
 		DataToCircuit:      bp.blsPairDataSource.Limb,
 		Circuit:            newCheckCircuit(G2, GROUP, bp.Limits),
-		NbCircuitInstances: bp.Limits.nbGroupMembershipCircuitInstances(G2),
+		NbCircuitInstances: maxNbCircuits,
 		InputFillerKey:     membershipInputFillerKey(G2, GROUP),
 		PlonkOptions:       options,
 	}
@@ -161,13 +168,18 @@ type unalignedPairData struct {
 
 	GnarkIsActiveFinalExp ifaces.Column
 	GnarkDataFinalExp     ifaces.Column
+
+	maxNbPairInputs int
 }
 
-func newUnalignedPairData(comp *wizard.CompiledIOP, limits *Limits, src *blsPairDataSource) *unalignedPairData {
-	createColFnMembership := createColFn(comp, NAME_BLS_PAIR, src.SuccessBit.Size())
-	createColFnUa := createColFn(comp, NAME_UNALIGNED_PAIR, limits.sizePairUnalignedIntegration())
-	createColFnMl := createColFn(comp, NAME_UNALIGNED_PAIR, limits.sizePairMillerLoopIntegration())
-	createColFnFe := createColFn(comp, NAME_UNALIGNED_PAIR, limits.sizePairFinalExpIntegration())
+func newUnalignedPairData(comp *wizard.CompiledIOP, src *blsPairDataSource) *unalignedPairData {
+	// for bounding the size of the alignment, we assume the worst case inputs where we have many pairing checks with
+	// a single input. A single pairing check input is G1 and G2 element
+	maxNbPairInputs := src.CsPair.Size()/(nbG1Limbs+nbG2Limbs) + 1
+
+	createColFnUa := createColFn(comp, NAME_UNALIGNED_PAIR, utils.NextPowerOfTwo(maxNbPairInputs))
+	createColFnMl := createColFn(comp, NAME_UNALIGNED_PAIR, utils.NextPowerOfTwo(maxNbPairInputs*nbRowsPerMillerLoop))
+	createColFnFe := createColFn(comp, NAME_UNALIGNED_PAIR, utils.NextPowerOfTwo(maxNbPairInputs*nbRowsPerFinalExp))
 	ucmd := &unalignedPairData{
 		blsPairDataSource:         src,
 		IsActive:                  createColFnUa("IS_ACTIVE"),
@@ -178,8 +190,9 @@ func newUnalignedPairData(comp *wizard.CompiledIOP, limits *Limits, src *blsPair
 		GnarkDataMillerLoop:       createColFnMl("GNARK_DATA_ML"),
 		GnarkIsActiveFinalExp:     createColFnFe("GNARK_IS_ACTIVE_FE"),
 		GnarkDataFinalExp:         createColFnFe("GNARK_DATA_FE"),
-		GnarkIsActiveG1Membership: createColFnMembership("GNARK_IS_ACTIVE_G1_MEMBERSHIP"),
-		GnarkIsActiveG2Membership: createColFnMembership("GNARK_IS_ACTIVE_G2_MEMBERSHIP"),
+		GnarkIsActiveG1Membership: comp.InsertCommit(ROUND_NR, ifaces.ColIDf("%s_%s", NAME_BLS_PAIR, "GNARK_IS_ACTIVE_G1_MEMBERSHIP"), max(src.SuccessBit.Size(), src.CsG1Membership.Size())),
+		GnarkIsActiveG2Membership: comp.InsertCommit(ROUND_NR, ifaces.ColIDf("%s_%s", NAME_BLS_PAIR, "GNARK_IS_ACTIVE_G2_MEMBERSHIP"), max(src.SuccessBit.Size(), src.CsG2Membership.Size())),
+		maxNbPairInputs:           maxNbPairInputs,
 	}
 
 	for i := range ucmd.PointG1 {
