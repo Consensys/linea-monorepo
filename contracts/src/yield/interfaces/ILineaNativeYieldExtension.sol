@@ -91,5 +91,5 @@ interface ILineaNativeYieldExtension {
    */
   function setL2YieldRecipient(address _newL2YieldRecipient) external;
 
-  function claimMessageWithProofAndWithdrawLST(IL1MessageService.ClaimMessageWithProofParams calldata _params) external;
+  function claimMessageWithProofAndWithdrawLST(IL1MessageService.ClaimMessageWithProofParams calldata _params, address _yieldProvider) external;
 }

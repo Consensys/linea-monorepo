@@ -203,6 +203,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     (uint256 newYield) = abi.decode(data, (uint256));
     _getYieldManagerStorage()._userFundsInYieldProvidersTotal += newYield;
     ILineaNativeYieldExtension(l1MessageService()).reportNativeYield(newYield);
+    // Emit event here on newYield
   }
 
   /**

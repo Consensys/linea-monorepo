@@ -9,7 +9,7 @@ import { PermissionsManager } from "../security/access/PermissionsManager.sol";
 import { LineaNativeYieldExtension } from "../yield/LineaNativeYieldExtension.sol";
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
 import { MessageHashing } from "../messaging/libraries/MessageHashing.sol";
-
+import { IYieldManager } from "../yield/interfaces/IYieldManager.sol";
 
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
@@ -751,10 +751,16 @@ abstract contract LineaRollupBase is
   }
 
   // TODO - Do we need additional pause type here?
-  function claimMessageWithProofAndWithdrawLST(ClaimMessageWithProofParams calldata _params) external nonReentrant distributeFees(_params.fee, _params.to, _params.data, _params.feeRecipient) {
+  // Any calldata is ignored, we don't have the ETH to do call.value...
+  function claimMessageWithProofAndWithdrawLST(ClaimMessageWithProofParams calldata _params, address _yieldProvider) external nonReentrant distributeFees(_params.fee, _params.to, _params.data, _params.feeRecipient) {
+    // TODO - Consider what pause type
     if (_params.value < address(this).balance) {
       revert LSTWithdrawalRequiresDeficit();
     }
-    _claimMessageWithProof(_params);
+    bytes32 messageLeafHash = _validateAndConsumeMessageProof(_params);
+    IS_WITHDRAW_LST_ALLOWED = true;
+    IYieldManager(yieldManager()).mintLST(_yieldProvider, _params.value, _params.to);
+    IS_WITHDRAW_LST_ALLOWED = false;
+    emit MessageClaimed(messageLeafHash);
   }
 }
