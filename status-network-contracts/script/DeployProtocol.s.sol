@@ -75,6 +75,45 @@ contract DeployProtocolScript is BaseScript {
     }
 
     /**
+     * @dev Deploys protocol for test use and returns core contract instances.
+     * @param stakingToken The address of the staking token to be used in the StakeManager and VaultFactory.
+     * @return karma The deployed Karma contract instance.
+     * @return metadataGenerator The deployed NFT metadata generator contract instance.
+     * @return karmaNFT The deployed KarmaNFT contract instance.
+     * @return stakeManager The deployed StakeManager contract instance.
+     * @return vaultFactory The deployed VaultFactory contract instance.
+     * @return vaultImpl The address of the StakeVault logic contract.
+     * @return deploymentConfig The DeploymentConfig instance used for deployment.
+     */
+    function runForTest(address stakingToken)
+        public
+        returns (
+            Karma karma,
+            INFTMetadataGenerator metadataGenerator,
+            KarmaNFT karmaNFT,
+            StakeManager stakeManager,
+            VaultFactory vaultFactory,
+            address vaultImpl,
+            DeploymentConfig deploymentConfig
+        )
+    {
+        deploymentConfig = new DeploymentConfig(broadcaster);
+        (
+            karma,
+            /* karmaImpl */
+            ,
+            metadataGenerator,
+            karmaNFT,
+            stakeManager,
+            /* stakeManagerImpl */
+            ,
+            vaultFactory,
+            vaultImpl,
+            /* vaultProxyClone */
+        ) = _run(stakingToken);
+    }
+
+    /**
      * @dev Deploys protocol within a broadcast context and returns the instances.
      * @param stakingToken The address of the staking token to be used in the StakeManager and VaultFactory.
      * @return karma The deployed Karma contract instance.
