@@ -105,7 +105,7 @@ interface IYieldManager {
 
   error WithdrawalReserveNotInDeficit();
 
-  error SufficientAvailableFundsToCoverDeficit();
+  error UnstakeRequestPlusAvailableFundsExceedsTargetDeficit();
 
   error LSTWithdrawalNotAllowed();
 

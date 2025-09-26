@@ -84,6 +84,8 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     return _getYieldManagerStorage()._l1MessageService.balance;
   }
 
+  // TODO - Caching of l1MessageService.balance calls...
+
   function getTotalSystemBalance() public view returns (uint256) {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     return $._l1MessageService.balance + address(this).balance + $._userFundsInYieldProvidersTotal;
@@ -117,13 +119,19 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     return Math256.safeSub(effectiveTargetWithdrawalReserve, l1MessageServiceBalance);
   }
 
+  function getMinimumReserveDeficit() public view returns (uint256) {
+    uint256 effectiveMinimumWithdrawalReserve = getEffectiveMinimumWithdrawalReserve();
+    uint256 l1MessageServiceBalance = l1MessageService().balance;
+    return Math256.safeSub(effectiveMinimumWithdrawalReserve, l1MessageServiceBalance);
+  }
+
   /// @notice Returns true if withdrawal reserve balance is below effective required minimum.
   /// @dev We are doing duplicate BALANCE opcode call, but how to remove duplicate call while maintaining readability?
   function isWithdrawalReserveBelowEffectiveMinimum() public view returns (bool) {
       return _getYieldManagerStorage()._l1MessageService.balance < getEffectiveMinimumWithdrawalReserve();
   }
 
-  function _reducePendingPermissionlessUnstake(address _yieldProvider, uint256 _amount) internal {
+  function _reducePendingPermissionlessUnstake(uint256 _amount) internal {
     uint256 pendingPermissionlessUnstake = _getYieldManagerStorage()._pendingPermissionlessUnstake;
     if (pendingPermissionlessUnstake == 0) return;
     _getYieldManagerStorage()._pendingPermissionlessUnstake = Math256.safeSub(pendingPermissionlessUnstake, _amount);
@@ -260,6 +268,9 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
   ) external onlyKnownYieldProvider(_yieldProvider) {
+    if (!isWithdrawalReserveBelowEffectiveMinimum()) {
+      revert WithdrawalReserveNotInDeficit();
+    }
     (bool success, bytes memory data) = _yieldProvider.delegatecall(
       abi.encodeCall(IYieldProvider.unstakePermissionless, (_withdrawalParams, _withdrawalParamsProof)
     ));
@@ -267,10 +278,6 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert DelegateCallFailed();
     }
     (uint256 amountUnstaked) = abi.decode(data, (uint256));
-    
-    // TODO - How about for multiple unstaking. How to be aware of other unstake permissionless? Just iterate through every other entry? Accept this for permissionless?
-
-
     // Only know amountUnstaked at this point, so validate it here
     _validateUnstakePermissionlessAmount(_yieldProvider, amountUnstaked);
     _getYieldManagerStorage()._pendingPermissionlessUnstake += amountUnstaked;
@@ -278,15 +285,10 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   }
 
   function _validateUnstakePermissionlessAmount(address _yieldProvider, uint256 _amountUnstaked) internal {
-    uint256 effectiveMinimumWithdrawalReserve = getEffectiveMinimumWithdrawalReserve();
-    uint256 l1MessageServiceBalance = l1MessageService().balance;
-    if (l1MessageServiceBalance > effectiveMinimumWithdrawalReserve) {
-      revert WithdrawalReserveNotInDeficit();
-    }
-    uint256 targetWithdrawalReserve = getEffectiveTargetWithdrawalReserve();
-    uint256 availableBalanceNotOnL1MessageService = address(this).balance + getAvailableBalanceForWithdraw(_yieldProvider) + _getYieldManagerStorage()._pendingPermissionlessUnstake;
-    if (l1MessageServiceBalance + _amountUnstaked + availableBalanceNotOnL1MessageService > targetWithdrawalReserve) {
-      revert SufficientAvailableFundsToCoverDeficit();
+    uint256 targetDeficit = getTargetReserveDeficit();
+    uint256 availableFundsToSettleTargetDeficit = address(this).balance + getAvailableBalanceForWithdraw(_yieldProvider) + _getYieldManagerStorage()._pendingPermissionlessUnstake;
+    if (availableFundsToSettleTargetDeficit + _amountUnstaked > targetDeficit) {
+      revert UnstakeRequestPlusAvailableFundsExceedsTargetDeficit();
     }
   }
 
@@ -339,7 +341,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     }
     _getYieldManagerStorage()._userFundsInYieldProvidersTotal -= _amount;
     _getYieldProviderDataStorage(_yieldProvider).userFunds -= _amount;
-    _reducePendingPermissionlessUnstake(_yieldProvider, _amount);
+    _reducePendingPermissionlessUnstake(_amount);
   }
 
   /**
@@ -366,31 +368,29 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   /**
    * @notice Permissionlessly rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
    * @dev Only available when the withdrawal is in deficit.
+   * @dev Will rebalance to target
    * @param _yieldProvider          Yield provider address.
    */
   function replenishWithdrawalReserve(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
-    uint256 effectiveMinimumWithdrawalReserve = getEffectiveMinimumWithdrawalReserve();
-    uint256 l1MessageServiceBalance = l1MessageService().balance;
-    if (l1MessageServiceBalance > effectiveMinimumWithdrawalReserve) {
+    if (!isWithdrawalReserveBelowEffectiveMinimum()) {
       revert WithdrawalReserveNotInDeficit();
     }
-    uint256 targetWithdrawalReserve = getEffectiveTargetWithdrawalReserve();
-    uint256 targetDeficit = targetWithdrawalReserve - l1MessageServiceBalance;
+    uint256 remainingTargetDeficit = getTargetReserveDeficit();
     // Try to meet targetDeficit from yieldManager
     uint256 yieldManagerBalance = address(this).balance;
     if (yieldManagerBalance > 0) {
-      uint256 transferAmount = Math256.min(yieldManagerBalance, targetDeficit);
+      uint256 transferAmount = Math256.min(yieldManagerBalance, remainingTargetDeficit);
       ILineaNativeYieldExtension(l1MessageService()).fund{value: transferAmount}();
-      targetDeficit -= transferAmount;
+      remainingTargetDeficit -= transferAmount;
     }
     // Try to meet remaining targetDeficit by yieldProvider withdraw
     uint256 availableYieldProviderWithdrawBalance = getAvailableBalanceForWithdraw(_yieldProvider);
-    if (targetDeficit > 0 && availableYieldProviderWithdrawBalance > 0) {
-      uint256 withdrawAmount = Math256.min(availableYieldProviderWithdrawBalance, targetDeficit);
+    if (remainingTargetDeficit > 0 && availableYieldProviderWithdrawBalance > 0) {
+      uint256 withdrawAmount = Math256.min(availableYieldProviderWithdrawBalance, remainingTargetDeficit);
       _withdrawFromYieldProvider(_yieldProvider, withdrawAmount, l1MessageService());
-      targetDeficit -= withdrawAmount;
+      remainingTargetDeficit -= withdrawAmount;
     }
-    if (targetDeficit > 0) {
+    if (remainingTargetDeficit > 0) {
       _pauseStakingIfNotAlready(_yieldProvider);
     }
     // Emit event
