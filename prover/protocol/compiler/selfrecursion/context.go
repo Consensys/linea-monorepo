@@ -149,6 +149,8 @@ type Columns struct {
 // for the linear hash check for the non SIS rounds
 type Poseidon2MetaData struct {
 	// Contains the number of polynomials for each non SIS round.
+	ToHashSizes []int
+
 	// It provides the "colChunks" for the CheckLinearHash()
 	// for each non SIS round
 	ColChunks []int

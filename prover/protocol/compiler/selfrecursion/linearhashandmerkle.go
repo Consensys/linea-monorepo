@@ -97,6 +97,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 		}
 		ctx.NonSisMetaData.ConcatenatedHashPreimages = make([][blockSize]ifaces.Column, 0, numRoundNonSis)
 		ctx.NonSisMetaData.ColChunks = make([]int, 0, numRoundNonSis)
+		ctx.NonSisMetaData.ToHashSizes = make([]int, 0, numRoundNonSis)
 		nonSisLeavesColumnSize, nonSisPreimageColumnsSize = ctx.registerPoseidon2MetaDataForNonSisRounds(numRoundNonSis, roundQ)
 	}
 
@@ -211,6 +212,8 @@ func (ctx *SelfRecursionCtx) registerPoseidon2MetaDataForNonSisRounds(
 			hashPreimages)
 		preimageSize = append(preimageSize, precompPreimageChunksSize)
 		ctx.NonSisMetaData.ColChunks = append(ctx.NonSisMetaData.ColChunks, colChunks)
+		ctx.NonSisMetaData.ToHashSizes = append(ctx.NonSisMetaData.ToHashSizes, colSize)
+
 	}
 
 	// Next, consider only the non SIS rounds
@@ -259,6 +262,8 @@ func (ctx *SelfRecursionCtx) registerPoseidon2MetaDataForNonSisRounds(
 			}
 			ctx.NonSisMetaData.ConcatenatedHashPreimages = append(ctx.NonSisMetaData.ConcatenatedHashPreimages, hashPreimages)
 			ctx.NonSisMetaData.ColChunks = append(ctx.NonSisMetaData.ColChunks, colChunks)
+			ctx.NonSisMetaData.ToHashSizes = append(ctx.NonSisMetaData.ToHashSizes, colSize)
+
 			preimageSize = append(preimageSize, preimageChunksSize)
 		} else {
 			continue

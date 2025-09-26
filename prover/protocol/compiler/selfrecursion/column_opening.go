@@ -283,7 +283,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			offset       = 0
 			preImageEval ifaces.Accessor
 		)
-		if len(ctx.NonSisMetaData.ColChunks) > 0 {
+		if len(ctx.NonSisMetaData.ToHashSizes) > 0 {
 			ctx.Columns.CollapsedPreimagesNonSis = expr_handle.RandLinCombCol(
 				ctx.Comp,
 				accessors.NewFromCoin(ctx.Coins.Collapse),
@@ -297,10 +297,10 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 				ctx.Columns.CollapsedPreimagesNonSis,
 			)
 
-			for i := range ctx.NonSisMetaData.ColChunks {
+			for i := range ctx.NonSisMetaData.ToHashSizes {
 				// We add the number of polynomials per non SIS round
 				// to the offset
-				offset += ctx.NonSisMetaData.ColChunks[i]
+				offset += ctx.NonSisMetaData.ToHashSizes[i]
 			}
 		}
 		/*
@@ -329,7 +329,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 		}
 
 		// preImageEval := preimageNonSisEval + alpha^offset * preImageSisEval
-		if len(ctx.NonSisMetaData.ColChunks) > 0 && ctx.Columns.ConcatenatedDhQ != nil {
+		if len(ctx.NonSisMetaData.ToHashSizes) > 0 && ctx.Columns.ConcatenatedDhQ != nil {
 			//TODO@yao maybe the bug is here?
 			preImageEvalSymb := symbolic.Add(
 				preImageNonSisEval,
@@ -342,9 +342,9 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 				),
 			)
 			preImageEval = accessors.NewFromExpression(preImageEvalSymb, fmt.Sprintf("PREIMAGE_EVAL_%v", ctx.SelfRecursionCnt))
-		} else if len(ctx.NonSisMetaData.ColChunks) > 0 && ctx.Columns.ConcatenatedDhQ == nil {
+		} else if len(ctx.NonSisMetaData.ToHashSizes) > 0 && ctx.Columns.ConcatenatedDhQ == nil {
 			preImageEval = preImageNonSisEval
-		} else if len(ctx.NonSisMetaData.ColChunks) == 0 && ctx.Columns.ConcatenatedDhQ != nil {
+		} else if len(ctx.NonSisMetaData.ToHashSizes) == 0 && ctx.Columns.ConcatenatedDhQ != nil {
 			preImageEval = preImageSisEval
 		} else {
 			utils.Panic("There are neither SIS nor non SIS round, this should not happen")
