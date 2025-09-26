@@ -2,12 +2,15 @@ package files
 
 import (
 	"compress/gzip"
+	"context"
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strconv"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/sirupsen/logrus"
 )
 
@@ -165,6 +168,92 @@ func (z *ZipFile) Close() error {
 	// Close the file
 	if err := z.f.Close(); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// WaitForFiles waits until all expected files exist or the context is done.
+// It returns nil on success, or ctx.Err() / watcher error otherwise.
+func WaitForFiles(ctx context.Context, files []string, reportMissing bool) error {
+	// Map of expected files
+	expected := make(map[string]bool)
+	dirs := make(map[string]struct{})
+	for _, f := range files {
+		expected[f] = false
+		dirs[filepath.Dir(f)] = struct{}{}
+	}
+
+	// Watcher
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return fmt.Errorf("creating watcher: %w", err)
+	}
+	defer watcher.Close()
+
+	for dir := range dirs {
+		if err := watcher.Add(dir); err != nil {
+			return fmt.Errorf("adding watch on %s: %w", dir, err)
+		}
+	}
+
+	// Initial scan
+	count := 0
+	for f := range expected {
+		if _, err := os.Stat(f); err == nil {
+			expected[f] = true
+			count++
+			logrus.Infof("found:%s", f)
+		}
+	}
+	if count == len(expected) {
+		return nil
+	}
+
+	done := make(chan struct{})
+
+	// Run a simple event loop (watch loop)
+	go func() {
+		defer close(done)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+				if event.Has(fsnotify.Create) || event.Has(fsnotify.Write) {
+					if _, need := expected[event.Name]; need && !expected[event.Name] {
+						expected[event.Name] = true
+						count++
+						logrus.Infof("found:%s", event.Name)
+						if count == len(expected) {
+							return
+						}
+					}
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				logrus.Errorf("watcher error:%v", err)
+			}
+		}
+	}()
+
+	<-done
+
+	// Did we finish because of success or timeout?
+	if ctx.Err() != nil {
+		if reportMissing {
+			for f, ok := range expected {
+				if !ok {
+					logrus.Infof("missing file: %s", f)
+				}
+			}
+		}
+		return ctx.Err()
 	}
 
 	return nil
