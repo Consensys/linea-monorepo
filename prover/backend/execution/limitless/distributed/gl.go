@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"runtime/debug"
 
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
@@ -25,9 +26,17 @@ type GLResponse struct {
 	LPPCommitmeentPath string `json:"lpp_commit_path"`
 }
 
-func RunGL(cfg *config.Config, req *GLRequest) (*GLResponse, error) {
+func RunGL(cfg *config.Config, req *GLRequest) (glResp *GLResponse, err error) {
 
 	logrus.Infof("Initating the GL-prover from witnessGL file path %v", req.WitnessGLPath)
+
+	// Recover wrapper for panics
+	defer func() {
+		if r := recover(); r != nil {
+			logrus.Errorf("[PANIC] GL prover crashed for witness %s: %v\n%s", req.WitnessGLPath, r, debug.Stack())
+			err = fmt.Errorf("panic in GL prover: %v", r)
+		}
+	}()
 
 	witnessGL := &distributed.ModuleWitnessGL{}
 	if err := serialization.LoadFromDisk(req.WitnessGLPath, witnessGL, true); err != nil {
@@ -74,8 +83,9 @@ func RunGL(cfg *config.Config, req *GLRequest) (*GLResponse, error) {
 
 	logrus.Infof("Generated LPP commitment for witness module=%v at index=%d and stored to disk", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
-	return &GLResponse{
+	glResp = &GLResponse{
 		GLProofPath:        proofGLPath,
 		LPPCommitmeentPath: LPPCommitPath,
-	}, nil
+	}
+	return glResp, nil
 }
