@@ -19,68 +19,68 @@ import { Math256 } from "../libraries/Math256.sol";
  */
 contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, IGenericErrors {
   // yieldProvider = StakingVault
-  address immutable yieldProvider;
-  IVaultHub immutable vaultHub;
-  IDashboard immutable dashboard;
-  IStETH immutable steth;
+  address immutable YIELD_PROVIDER;
+  IVaultHub immutable VAULT_HUB;
+  IDashboard immutable DASHBOARD;
+  IStETH immutable STETH;
 
   // @dev _yieldProvider = stakingVault address
   constructor (address _yieldProvider, address _vaultHub, address _dashboard, address _steth) {
     // Do checks
-    yieldProvider = _yieldProvider;
-    vaultHub = IVaultHub(_vaultHub);
-    dashboard = IDashboard(_dashboard);
-    steth = IStETH(_steth);
+    YIELD_PROVIDER = _yieldProvider;
+    VAULT_HUB = IVaultHub(_vaultHub);
+    DASHBOARD = IDashboard(_dashboard);
+    STETH = IStETH(_steth);
   }
 
   function _getEntrypointContract() private view returns (address) {
-    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(yieldProvider);
-    return $$.isOssified ? yieldProvider : address(dashboard);
+    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
+    return $$.isOssified ? YIELD_PROVIDER : address(DASHBOARD);
   }
 
   function _getStakingVault() private view returns (address) {
-    return yieldProvider;
+    return YIELD_PROVIDER;
   }
 
   function _getCurrentLSTLiabilityETH() internal view returns (uint256) {
-    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(yieldProvider);
+    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
     if ($$.isOssified) return 0;
-    uint256 liabilityShares = dashboard.liabilityShares();
+    uint256 liabilityShares = DASHBOARD.liabilityShares();
     // Use `roundUp` variant to be conservative
-    uint256 liabilityEth = IStETH(dashboard.STETH()).getPooledEthBySharesRoundUp(liabilityShares);
+    uint256 liabilityEth = IStETH(DASHBOARD.STETH()).getPooledEthBySharesRoundUp(liabilityShares);
     return liabilityEth;
   }
 
   // Will settle as much LST liability as possible. Will return amount of liabilityEth remaining
   function _payMaximumPossibleLSTLiability() internal {
-    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(yieldProvider);
+    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
     if ($$.isOssified) return;
 
-    uint256 vaultBalanceEth = dashboard.totalValue();
-    uint256 vaultBalanceShares = steth.getSharesByPooledEth(vaultBalanceEth);
-    uint256 liabilityShares = dashboard.liabilityShares();
+    uint256 vaultBalanceEth = DASHBOARD.totalValue();
+    uint256 vaultBalanceShares = STETH.getSharesByPooledEth(vaultBalanceEth);
+    uint256 liabilityShares = DASHBOARD.liabilityShares();
     // Do the payment
-    dashboard.rebalanceVaultWithShares(Math256.min(liabilityShares, vaultBalanceShares));
+    DASHBOARD.rebalanceVaultWithShares(Math256.min(liabilityShares, vaultBalanceShares));
   }
 
   function _payMaximumPossibleLSTInterest() internal {
-    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(yieldProvider);
+    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
     if ($$.isOssified) return;
-    uint256 liabilityTotalShares = dashboard.liabilityShares();
-    uint256 liabilityTotalETH = steth.getPooledEthBySharesRoundUp(liabilityTotalShares);
+    uint256 liabilityTotalShares = DASHBOARD.liabilityShares();
+    uint256 liabilityTotalETH = STETH.getPooledEthBySharesRoundUp(liabilityTotalShares);
     uint256 liabilityPrincipalETH = $$.lstLiabilityPrincipal;
     uint256 liabilityInterestETH = liabilityTotalETH - liabilityPrincipalETH;
-    uint256 totalValueVaultETH = dashboard.totalValue();
+    uint256 totalValueVaultETH = DASHBOARD.totalValue();
     // Do the payment
-    dashboard.rebalanceVaultWithEther(Math256.min(liabilityInterestETH, totalValueVaultETH));
+    DASHBOARD.rebalanceVaultWithEther(Math256.min(liabilityInterestETH, totalValueVaultETH));
   }
 
   // @dev Omit redemptions, because it will overlap with liabilities
   function _getCurrentObligationsMinusRedemptions() internal view returns (uint256) {
-    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(yieldProvider);
+    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
     // yieldProviderOssificationEntrypoint = StakingVault
-    IVaultHub.VaultObligations memory obligations = vaultHub.vaultObligations($$.registration.yieldProviderOssificationEntrypoint);
-    return obligations.unsettledLidoFees + dashboard.nodeOperatorDisbursableFee();
+    IVaultHub.VaultObligations memory obligations = VAULT_HUB.vaultObligations($$.registration.yieldProviderOssificationEntrypoint);
+    return obligations.unsettledLidoFees + DASHBOARD.nodeOperatorDisbursableFee();
   }
 
   /**
@@ -96,16 +96,16 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
    * @notice Report newly accrued yield, excluding any portion reserved for system obligations.
    */
   function reportYield() external returns (uint256 _newYield) {
-    if (_getYieldProviderDataStorage(yieldProvider).isOssified) {
+    if (_getYieldProviderDataStorage(YIELD_PROVIDER).isOssified) {
       revert OperationNotSupportedDuringOssification(OperationType.ReportYield);
     }
     _payMaximumPossibleLSTInterest();
     uint256 liabilityEth = _getCurrentLSTLiabilityETH();
     uint256 obligationsEth = _getCurrentObligationsMinusRedemptions();
     // We could cache CONNECT_DEPOSIT = 1 ether, but what if VaulHub contract upgrades and this value changes?
-    uint256 totalVaultEth = dashboard.totalValue() - vaultHub.CONNECT_DEPOSIT();
+    uint256 totalVaultEth = DASHBOARD.totalValue() - VAULT_HUB.CONNECT_DEPOSIT();
     uint256 fundsAvailableForUserWithdrawal = totalVaultEth - obligationsEth - liabilityEth;
-    return fundsAvailableForUserWithdrawal - _getYieldProviderDataStorage(yieldProvider).userFunds;
+    return fundsAvailableForUserWithdrawal - _getYieldProviderDataStorage(YIELD_PROVIDER).userFunds;
   }
 
   /**
@@ -173,7 +173,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
       uint256 currentLSTLiabilityETH = _getCurrentLSTLiabilityETH();
       if (currentLSTLiabilityETH > 0) {
         uint256 LSTLiabilityPrincipalETHPaid = Math256.min(amountAvailableToPayLSTLiability, currentLSTLiabilityETH);
-        dashboard.rebalanceVaultWithEther(LSTLiabilityPrincipalETHPaid);
+        DASHBOARD.rebalanceVaultWithEther(LSTLiabilityPrincipalETHPaid);
         withdrawAmount -= LSTLiabilityPrincipalETHPaid;
       }
       ICommonVaultOperations(_getEntrypointContract()).withdraw(_recipient, withdrawAmount);
@@ -211,7 +211,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
   }
 
   function mintLST(uint256 _amount, address _recipient) external {
-    dashboard.mintStETH(_recipient, _amount);
+    DASHBOARD.mintStETH(_recipient, _amount);
   }
 
   // TODO - Role
@@ -221,15 +221,15 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
     
     // Lido implementation handles Lido fee payment, and revert on fresh report
     // This will fail if any existing liabilities or obligations
-    dashboard.voluntaryDisconnect();
+    DASHBOARD.voluntaryDisconnect();
   }
 
   // TODO - Role
   // Returns true if ossified after function call is done
   function processPendingOssification() external returns (bool) {
     // Give ownership to YieldManager
-    dashboard.abandonDashboard(address(this));
-    IStakingVault vault = IStakingVault(yieldProvider);
+    DASHBOARD.abandonDashboard(address(this));
+    IStakingVault vault = IStakingVault(YIELD_PROVIDER);
     vault.acceptOwnership();
     vault.ossify();
     return true;
