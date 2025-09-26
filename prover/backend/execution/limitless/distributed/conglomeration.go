@@ -3,6 +3,7 @@ package distributed
 import (
 	"context"
 	"fmt"
+	"os"
 	"runtime/debug"
 	"time"
 
@@ -24,7 +25,7 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (*execution.Response, e
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Errorf("[PANIC] Conglomerator crashed for conflation request %s:%s\n%s", req.StartBlock, req.EndBlock, debug.Stack())
-
+			return
 		}
 	}()
 
@@ -41,12 +42,23 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (*execution.Response, e
 }
 
 func runSharedRandomness(cfg *config.Config, req *Metadata) error {
+
+	// Incase the prev process was interrupted, rm any corrupted file if exists
+	_ = os.Remove(req.SharedRndFile)
+
 	// Set timeout for all gl subproofs
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.LimitlessParams.GLSubproofsTimeout)*time.Second)
 	defer cancel()
 
-	msg := fmt.Sprintf("Waiting and scanning for %d LPP commitments from GL provers with configured timeout:%d sec to generate shared randomness", req.NumGL, cfg.LimitlessParams.GLSubproofsTimeout)
-	err := files.WaitForAllFilesAtPath(ctx, req.GLCommitFiles, true, msg)
+	// Important: Though only GL commit files are required to generate shared randomness, we want to always
+	// ensure that both GL proof files and GL commit files always exist. This is for the conglomerator to verify atomicity.
+	// We dont want a case where GL proof files have arrived but commit files have not arrived due to a crash or vice-versa.
+	filesToWatch := make([]string, 0, 2*req.NumGL)
+	filesToWatch = append(filesToWatch, req.GLProofFiles...)
+	filesToWatch = append(filesToWatch, req.GLCommitFiles...)
+
+	msg := fmt.Sprintf("Scanning for %d GL proof files and %d LPP commitments from GL provers with configured timeout:%d sec to generate shared randomness", req.NumGL, req.NumGL, cfg.LimitlessParams.GLSubproofsTimeout)
+	err := files.WaitForAllFilesAtPath(ctx, filesToWatch, true, msg)
 	if err != nil {
 		return fmt.Errorf("error waiting for all gl-lpp commit files: %w", err)
 	}
