@@ -234,7 +234,7 @@ port-forward-restart-all-linea:
 	$(MAKE) port-forward-linea
 
 wait-all-running:
-	@uptime_arg="$${uptime:-10s}"; \
+	@uptime_arg="$${uptime:-30s}"; \
 	echo "Waiting for all pods in default namespace to be running for at least $$uptime_arg since last restart..."; \
 	uptime_seconds=0; \
 	case "$$uptime_arg" in \

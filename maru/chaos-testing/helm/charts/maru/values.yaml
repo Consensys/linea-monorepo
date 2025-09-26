@@ -119,15 +119,15 @@ configFiles:
     <Configuration status="INFO" monitorInterval="2">
     <Appenders>
       <Console name="Console" target="SYSTEM_OUT">
-        <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS}{UTC} | %-5level | %c{1} | %msg %throwable%n" />
+        <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS}{UTC} | %-5level | %c{1} | %msg | %t %throwable%n" />
       </Console>
     </Appenders>
     <Loggers>
-     <Logger name="org.hyperledger.besu" level="INFO"/>
+      <Logger name="org.hyperledger.besu" level="INFO"/>
       <Logger name="tech.pegasys.teku" level="INFO"/>
       <Logger name="maru" level="INFO"/>
       <Logger name="maru.syncing" level="DEBUG"/>
-      <Logger name="clients" level="DEBUG"/>
+      <Logger name="maru.clients" level="TRACE"/>
       <Root level="INFO">
         <AppenderRef ref="Console"/>
       </Root>
