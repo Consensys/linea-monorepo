@@ -221,6 +221,7 @@ type LimitlessParams struct {
 	CommitsDir          string `mapstructure:"commits_dir"`
 	SharedRandomnessDir string `mapstructure:"shared_rnd_dir"`
 	GLSubproofsTimeout  int    `mapstructure:"gl_subproofs_timeout"`
+	LPPSubproofsTimeout int    `mapstructure:"lpp_subproofs_timeout"`
 }
 
 type Execution struct {
