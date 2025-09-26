@@ -173,9 +173,12 @@ func (z *ZipFile) Close() error {
 	return nil
 }
 
-// WaitForFiles waits until all expected files exist or the context is done.
+// WaitForAllFilesAtPath waits until all expected files exist or the context is done.
 // It returns nil on success, or ctx.Err() / watcher error otherwise.
-func WaitForFiles(ctx context.Context, files []string, reportMissing bool) error {
+func WaitForAllFilesAtPath(ctx context.Context, files []string, reportMissing bool, msg string) error {
+
+	logrus.Infoln(msg)
+
 	// Map of expected files
 	expected := make(map[string]bool)
 	dirs := make(map[string]struct{})
@@ -198,12 +201,13 @@ func WaitForFiles(ctx context.Context, files []string, reportMissing bool) error
 	}
 
 	// Initial scan
-	count := 0
+	total, count := len(files), 0
 	for f := range expected {
 		if _, err := os.Stat(f); err == nil {
 			expected[f] = true
 			count++
 			logrus.Infof("found:%s", f)
+			logrus.Infof("remaining files:%d", total-count)
 		}
 	}
 	if count == len(expected) {
@@ -228,7 +232,9 @@ func WaitForFiles(ctx context.Context, files []string, reportMissing bool) error
 						expected[event.Name] = true
 						count++
 						logrus.Infof("found:%s", event.Name)
+						logrus.Infof("remaining files:%d", total-count)
 						if count == len(expected) {
+							logrus.Infof("All %d files have arrived", total)
 							return
 						}
 					}

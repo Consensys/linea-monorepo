@@ -215,12 +215,12 @@ type Prometheus struct {
 }
 
 type LimitlessParams struct {
-	MetadataDir   string `mapstructure:"metadata_dir"`
-	WitnessGLDir  string `mapstructure:"witness_gl_dir"`
-	WitnessLPPDir string `mapstructure:"witness_lp_dir"`
-	ProofsGLDir   string `mapstructure:"proofs_gl_dir"`
-	CommitsGLDir  string `mapstructure:"commits_gl_dir"`
-	ProofsLPPDir  string `mapstructure:"proofs_lp_dir"`
+	MetadataDir         string `mapstructure:"metadata_dir"`
+	WitnessDir          string `mapstructure:"witness_dir"`
+	SubproofsDir        string `mapstructure:"subproofs_dir"`
+	CommitsDir          string `mapstructure:"commits_dir"`
+	SharedRandomnessDir string `mapstructure:"shared_rnd_dir"`
+	GLSubproofsTimeout  int    `mapstructure:"gl_subproofs_timeout"`
 }
 
 type Execution struct {
