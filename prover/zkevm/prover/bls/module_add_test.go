@@ -25,10 +25,9 @@ func testBlsAdd(t *testing.T, withCircuit bool, g group, path string, limits *Li
 		t.Fatal("failed to create csv trace", err)
 	}
 	var blsAdd *BlsAdd
-	var blsAddSource *blsAddDataSource
 	cmp := wizard.Compile(
 		func(b *wizard.Builder) {
-			blsAddSource = &blsAddDataSource{
+			blsAddSource := &blsAddDataSource{
 				CsAdd:             ct.GetCommit(b, "CIRCUIT_SELECTOR_"+g.String()+"_ADD"),
 				Limb:              ct.GetCommit(b, "LIMB"),
 				Index:             ct.GetCommit(b, "INDEX"),

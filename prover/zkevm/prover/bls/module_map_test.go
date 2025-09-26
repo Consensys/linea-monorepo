@@ -31,10 +31,9 @@ func testBlsMap(t *testing.T, withCircuit bool, g group, path string, limits *Li
 		mapString = "MAP_FP2_TO_G2"
 	}
 	var blsMap *BlsMap
-	var blsMapSource *blsMapDataSource
 	cmp := wizard.Compile(
 		func(b *wizard.Builder) {
-			blsMapSource = &blsMapDataSource{
+			blsMapSource := &blsMapDataSource{
 				ID:      ct.GetCommit(b, "ID"),
 				CsMap:   ct.GetCommit(b, "CIRCUIT_SELECTOR_"+mapString),
 				Index:   ct.GetCommit(b, "INDEX"),
