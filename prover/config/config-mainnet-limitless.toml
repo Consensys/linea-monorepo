@@ -10,8 +10,17 @@ retry_delays = [0, 1]
 prover_mode = "limitless"
 conflated_traces_dir = "/home/ubuntu/test_mainnet/traces/conflated"
 requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/execution"
-limitless_with_debug = true
-ignore_compatibility_check = false
+limitless_with_debug = false 
+ignore_compatibility_check = true
+
+[limitless_params]
+metadata_dir = "/tmp/exec-limitless/metadata"
+witness_dir = "/tmp/exec-limitless/witness"
+subproofs_dir = "/tmp/exec-limitless/subproofs"
+commits_dir = "/tmp/exec-limitless/commits"
+shared_rnd_dir = "/tmp/exec-limitless/commit"
+gl_subproofs_timeout = 1200 # seconds 
+
 
 [blob_decompression]
 prover_mode = "full"
