@@ -71,12 +71,6 @@ interface ILineaNativeYieldExtension {
   function fund() external payable;
 
   /**
-   * @notice Permissionlessly donate ETH to this contract.
-   * @dev Keeps track of ETH sent via this function for donation reporting purposes.
-   */
-  function fundPermissionless() external payable;
-
-  /**
    * @notice Report native yield earned for L2 distribution by emitting a synthetic `MessageSent` event.
    * @dev Callable only by the registered YieldManager.
    * @param _amount The net earned yield.

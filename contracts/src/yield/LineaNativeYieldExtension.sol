@@ -31,7 +31,6 @@ abstract contract LineaNativeYieldExtension is LineaRollupPauseManager, ILineaNa
   struct LineaNativeYieldExtensionStorage {    
       address _yieldManager;
       address _l2YieldRecipient;
-      uint256 _permissionlessDonationTotal;
   }
 
   // keccak256(abi.encode(uint256(keccak256("linea.storage.LineaNativeYieldExtensionStorage")) - 1)) & ~bytes32(uint256(0xff))
@@ -53,12 +52,6 @@ abstract contract LineaNativeYieldExtension is LineaRollupPauseManager, ILineaNa
   function l2YieldRecipient() public view returns (address) {
       LineaNativeYieldExtensionStorage storage $ = _getLineaNativeYieldExtensionStorage();
       return $._l2YieldRecipient;
-  }
-
-  /// @notice The total ETH received through fundPermissionless().
-  function permissionlessDonationTotal() public view returns (uint256) {
-      LineaNativeYieldExtensionStorage storage $ = _getLineaNativeYieldExtensionStorage();
-      return $._permissionlessDonationTotal;
   }
 
   function isWithdrawLSTAllowed() external view returns (bool) {
@@ -91,16 +84,6 @@ abstract contract LineaNativeYieldExtension is LineaRollupPauseManager, ILineaNa
    */
   function fund() external payable whenTypeAndGeneralNotPaused(PauseType.FUNDING) onlyRole(FUNDER_ROLE) {
     emit FundingReceived(msg.sender, msg.value);
-  }
-
-  /**
-   * @notice Permissionlessly donate ETH to this contract.
-   * @dev Keeps track of ETH sent via this function for donation reporting purposes.
-   */
-  function fundPermissionless() external payable {
-    emit PermissionlessDonationReceived(msg.sender, msg.value);
-    LineaNativeYieldExtensionStorage storage $ = _getLineaNativeYieldExtensionStorage();
-    $._permissionlessDonationTotal += msg.value;
   }
 
   /**

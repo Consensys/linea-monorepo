@@ -138,6 +138,11 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @param _amount        The amount of ETH to send.
    */
   function fundYieldProvider(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
+    _fundYieldProvider(_yieldProvider, _amount);
+    // emit event?
+  }
+
+  function _fundYieldProvider(address _yieldProvider, uint256 _amount) internal {
     if (isWithdrawalReserveBelowEffectiveMinimum()) {
         revert InsufficientWithdrawalReserve();
     }
@@ -149,8 +154,8 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     }
     _getYieldManagerStorage()._userFundsInYieldProvidersTotal += _amount;
     _getYieldProviderDataStorage(_yieldProvider).userFunds += _amount;
-    // emit event?
   }
+  
 
   /**
    * @notice Receive ETH from the withdrawal reserve.
@@ -186,14 +191,11 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   /**
    * @notice Report newly accrued yield, excluding any portion reserved for system obligations.
    * @dev YIELD_REPORTER_ROLE is required to execute.
-   * @dev Since the YieldManager is unaware of donations received via the L1MessageService or L2MessageService,
-   *      the `_reserveDonations` parameter is required to ensure accurate yield accounting.
    * @param _yieldProvider      Yield provider address.
-   * @param _totalReserveDonations   Total amount of donations received on the L1MessageService or L2MessageService.
    */
-  function reportYield(address _yieldProvider, uint256 _totalReserveDonations) external onlyKnownYieldProvider(_yieldProvider) {
+  function reportYield(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
     (bool success, bytes memory data) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.reportYield, (_totalReserveDonations)
+      abi.encodeCall(IYieldProvider.reportYield, ()
     ));
     if (!success) {
       revert DelegateCallFailed();
@@ -272,7 +274,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     }
   }
 
-  function getAvailableBalanceForWithdraw(address _yieldProvider) public returns (uint256) {
+  function getAvailableBalanceForWithdraw(address _yieldProvider) public onlyKnownYieldProvider(_yieldProvider) returns (uint256) {
     (bool success, bytes memory data) = _yieldProvider.delegatecall(
       abi.encodeCall(IYieldProvider.getAvailableBalanceForWithdraw, ()
     ));
@@ -355,7 +357,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @dev Only available when the withdrawal is in deficit.
    * @param _yieldProvider          Yield provider address.
    */
-  function replenishWithdrawalReserve(address _yieldProvider) external {
+  function replenishWithdrawalReserve(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
     uint256 effectiveMinimumWithdrawalReserve = getEffectiveMinimumWithdrawalReserve();
     uint256 l1MessageServiceBalance = l1MessageService().balance;
     if (l1MessageServiceBalance > effectiveMinimumWithdrawalReserve) {
@@ -456,12 +458,13 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
         yieldReportedCumulative: 0,
         pendingPermissionlessUnstake: 0,
         currentNegativeYield: 0,
-        lstLiabilityPrincipal: 0
+        lstLiabilityPrincipal: 0,
+        donatedAmount: 0
     });
     // TODO - Emit event
   }
 
-  function removeYieldProvider(address _yieldProvider) external onlyRole(YIELD_PROVIDER_SETTER)  {
+  function removeYieldProvider(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) onlyRole(YIELD_PROVIDER_SETTER)  {
     if (_yieldProvider == address(0)) {
       revert ZeroAddressNotAllowed();
     }
@@ -496,7 +499,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     delete $._yieldProviderData[_yieldProvider];
   }
 
-  function mintLST(address _yieldProvider, uint256 _amount, address _recipient) external {
+  function mintLST(address _yieldProvider, uint256 _amount, address _recipient) external onlyKnownYieldProvider(_yieldProvider) {
     if (!ILineaNativeYieldExtension(l1MessageService()).isWithdrawLSTAllowed()) {
       revert LSTWithdrawalNotAllowed();
     }
@@ -582,7 +585,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   }
 
   // TODO - Role
-  function initiateOssification(address _yieldProvider) external {
+  function initiateOssification(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
     YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
     if ($$.isOssified) {
       revert AlreadyOssified();
@@ -597,7 +600,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   }
 
   // TODO - Role
-  function processPendingOssification(address _yieldProvider) external {
+  function processPendingOssification(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
     YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
     if (!$$.isOssificationInitiated) {
       revert OssificationNotInitiated();
@@ -615,6 +618,22 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (isOssified) {
       $$.isOssificationInitiated = true;
     }
+  }
+
+  // Need donate function here, otherwise YieldManager is unable to assign donations for specific yield providers
+  function donate(address _yieldProvider, address _destination) external payable onlyKnownYieldProvider(_yieldProvider) {
+    address l1MessageServiceCached = l1MessageService();
+    if (_destination == l1MessageServiceCached) {
+      ILineaNativeYieldExtension(l1MessageServiceCached).fund{value: msg.value}();
+    } else if (_destination == _yieldProvider) {
+      _fundYieldProvider(_yieldProvider, msg.value);
+    } else if (_destination == address(this)) {
+    } else {
+      revert IllegalDonationAddress();
+    }
+
+    _getYieldProviderDataStorage(_yieldProvider).donatedAmount += msg.value;
+    // Emit event
   }
 
   // TODO - How about undo-initiate

@@ -36,6 +36,7 @@ interface IYieldManager {
     // Required to socialize losses if permanent
     uint256 currentNegativeYield;
     uint256 lstLiabilityPrincipal;
+    uint256 donatedAmount;
   }
 
   /**
@@ -115,6 +116,8 @@ interface IYieldManager {
 
   error MintLSTDisabledDuringOssification();
 
+  error IllegalDonationAddress();
+
   /**
    * @notice Send ETH to the specified yield strategy.
    * @dev YIELD_PROVIDER_FUNDER_ROLE is required to execute.
@@ -142,12 +145,9 @@ interface IYieldManager {
   /**
    * @notice Report newly accrued yield, excluding any portion reserved for system obligations.
    * @dev YIELD_REPORTER_ROLE is required to execute.
-   * @dev Since the YieldManager is unaware of donations received via the L1MessageService or L2MessageService,
-   *      the `_reserveDonations` parameter is required to ensure accurate yield accounting.
    * @param _yieldProvider      Yield provider address.
-   * @param _totalReserveDonations   Total amount of donations received on the L1MessageService or L2MessageService.
    */
-  function reportYield(address _yieldProvider, uint256 _totalReserveDonations) external;
+  function reportYield(address _yieldProvider) external;
 
   /**
    * @notice Request beacon chain withdrawal from specified yield provider.
@@ -245,4 +245,6 @@ interface IYieldManager {
   function initiateOssification(address _yieldProvider) external;
 
   function processPendingOssification(address _yieldProvider) external;
+
+  function donate(address _yieldProvider, address _destination) external payable;
 }

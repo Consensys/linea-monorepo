@@ -94,11 +94,8 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
 
   /**
    * @notice Report newly accrued yield, excluding any portion reserved for system obligations.
-   * @dev Since the YieldManager is unaware of donations received via the L1MessageService or L2MessageService,
-   *      the `_reserveDonations` parameter is required to ensure accurate yield accounting.
-   * @param _totalReserveDonations   Total amount of donations received on the L1MessageService or L2MessageService.
    */
-  function reportYield(uint256 _totalReserveDonations) external returns (uint256 _newYield) {
+  function reportYield() external returns (uint256 _newYield) {
     if (_getYieldProviderDataStorage(yieldProvider).isOssified) {
       revert OperationNotSupportedDuringOssification(OperationType.ReportYield);
     }
