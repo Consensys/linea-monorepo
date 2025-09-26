@@ -36,7 +36,7 @@ func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
 	if ctx.Columns.ConcatenatedDhQ != nil {
 		ctx.RegistersSisPreimageLimbs()
 	}
-	ctx.CollapsingPhase() // TODO@yao fix this for vortex with ... both sis and non sis ...
+	ctx.CollapsingPhase()
 	// The fold phase is only needed if there are non-zero
 	// number of SIS rounds
 	if ctx.Columns.ConcatenatedDhQ != nil {
@@ -51,7 +51,6 @@ func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
 func (ctx *SelfRecursionCtx) RegistersSisPreimageLimbs() {
 	wholes := ctx.Columns.WholePreimagesSis
 	sisParams := ctx.VortexCtx.SisParams
-
 	limbs := make([]ifaces.Column, len(wholes))
 	round := wholes[0].Round()
 	limbSize := wholes[0].Size() * sisParams.NumLimbs()
@@ -330,7 +329,6 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 
 		// preImageEval := preimageNonSisEval + alpha^offset * preImageSisEval
 		if len(ctx.NonSisMetaData.ToHashSizes) > 0 && ctx.Columns.ConcatenatedDhQ != nil {
-			//TODO@yao maybe the bug is here?
 			preImageEvalSymb := symbolic.Add(
 				preImageNonSisEval,
 				symbolic.Mul(
@@ -390,6 +388,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 		// since some of the Ah and Dh can be nil, we compactify the slice by
 		// only retaining the non-nil elements before sending it to the
 		// linear combination operator.
+		// TODO@yao maybe the bug is here
 		nonNilAh := []ifaces.Column{}
 		for _, ah := range ctx.Columns.Ah {
 			if ah != nil {
