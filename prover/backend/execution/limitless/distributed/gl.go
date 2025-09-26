@@ -22,13 +22,13 @@ type GLRequest struct {
 }
 
 type GLResponse struct {
-	GLProofPath        string `json:"gl_proof_path"`
-	LPPCommitmeentPath string `json:"lpp_commit_path"`
+	GLProofPath        string `json:"glProofPath"`
+	LPPCommitmeentPath string `json:"lppCommitPath"`
 }
 
 func RunGL(cfg *config.Config, req *GLRequest) (glResp *GLResponse, err error) {
 
-	logrus.Infof("Initating the GL-prover from witnessGL file path %v", req.WitnessGLPath)
+	logrus.Infof("Starting GL-prover from witnessGL file path %v", req.WitnessGLPath)
 
 	// Recover wrapper for panics
 	defer func() {
@@ -45,9 +45,9 @@ func RunGL(cfg *config.Config, req *GLRequest) (glResp *GLResponse, err error) {
 
 	var (
 		glProofFile   = fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-proof.bin", req.StartBlock, req.EndBlock, req.SegID, witnessGL.ModuleIndex)
-		proofGLPath   = path.Join(cfg.LimitlessParams.ProofsGLDir, string(witnessGL.ModuleName), glProofFile)
-		LPPCommitFile = fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-commit.bin", req.StartBlock, req.EndBlock, req.SegID, witnessGL.ModuleIndex)
-		LPPCommitPath = path.Join(cfg.LimitlessParams.CommitsGLDir, string(witnessGL.ModuleName), LPPCommitFile)
+		proofGLPath   = path.Join(cfg.LimitlessParams.SubproofsDir, "GL", string(witnessGL.ModuleName), glProofFile)
+		LPPCommitFile = fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-lpp-commit.bin", req.StartBlock, req.EndBlock, req.SegID, witnessGL.ModuleIndex)
+		LPPCommitPath = path.Join(cfg.LimitlessParams.CommitsDir, string(witnessGL.ModuleName), LPPCommitFile)
 	)
 
 	// Incase the prev. process was interrupted, we clear the previous corrupted files (if it exists)
@@ -77,7 +77,7 @@ func RunGL(cfg *config.Config, req *GLRequest) (glResp *GLResponse, err error) {
 	logrus.Infof("Generated GL proof for witness module=%v at index=%d and stored to disk", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
 	_lppCommit := distributed.GetLppCommitmentFromRuntime(run)
-	if err := serialization.StoreToDisk(LPPCommitPath, _lppCommit, false); err != nil {
+	if err := serialization.StoreToDisk(LPPCommitPath, _lppCommit, true); err != nil {
 		return nil, fmt.Errorf("could not store GL proof: %w", err)
 	}
 
