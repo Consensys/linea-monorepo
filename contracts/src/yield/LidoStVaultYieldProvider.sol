@@ -17,38 +17,31 @@ import { IStakingVault } from "./interfaces/vendor/lido-vault/IStakingVault.sol"
  * @custom:security-contact security-report@linea.build
  */
 contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, IGenericErrors {
+  // yieldProvider = StakingVault
   address immutable yieldProvider;
+  IVaultHub immutable vaultHub;
+  IDashboard immutable dashboard;
 
   // @dev _yieldProvider = stakingVault address
-  constructor (address _yieldProvider) {
+  constructor (address _yieldProvider, address _vaultHub, address _dashboard) {
     // Do checks
     yieldProvider = _yieldProvider;
+    vaultHub = IVaultHub(_vaultHub);
+    dashboard = IDashboard(_dashboard);
   }
-
 
   function _getEntrypointContract() private view returns (address) {
     IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(yieldProvider);
-    return $$.isOssified ? $$.registration.yieldProviderOssificationEntrypoint : $$.registration.yieldProviderEntrypoint;
+    return $$.isOssified ? yieldProvider : address(dashboard);
   }
 
   function _getStakingVault() private view returns (address) {
     return yieldProvider;
   }
 
-  function _getVaultHub() private view returns (address) {
-    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(yieldProvider);
-    IDashboard dashboard = IDashboard($$.registration.yieldProviderEntrypoint);
-    return dashboard.VAULT_HUB();
-  }
-
-  function _getDashboard() private view returns (address) {
-    return _getYieldProviderDataStorage(yieldProvider).registration.yieldProviderEntrypoint;
-  }
-
   function _getCurrentLSTLiabilityETH() internal view returns (uint256) {
     IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(yieldProvider);
     if ($$.isOssified) return 0;
-    IDashboard dashboard = IDashboard($$.registration.yieldProviderEntrypoint);
     uint256 liabilityShares = dashboard.liabilityShares();
     // Use `roundUp` variant to be conservative
     uint256 liabilityEth = IStETH(dashboard.STETH()).getPooledEthBySharesRoundUp(liabilityShares);
@@ -60,8 +53,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
     IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(yieldProvider);
     if ($$.isOssified) return 0;
 
-    uint256 vaultBalanceEth = _getStakingVault().balance;
-    IDashboard dashboard = IDashboard(_getDashboard());
+    uint256 vaultBalanceEth = yieldProvider.balance;
     IStETH steth = IStETH(dashboard.STETH());
     uint256 vaultBalanceShares = steth.getSharesByPooledEth(vaultBalanceEth);
     uint256 liabilityShares = dashboard.liabilityShares();
@@ -70,12 +62,14 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
     dashboard.rebalanceVaultWithShares(liabilitySharesPaid);
   }
 
+  function _payMaximumPossibleLSTInterest() internal {
+    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(yieldProvider);
+    if ($$.isOssified) return;
+  }
 
   // @dev Omit redemptions, because it will overlap with liabilities
   function _getCurrentObligationsMinusRedemptions() internal view returns (uint256) {
     IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(yieldProvider);
-    IDashboard dashboard = IDashboard($$.registration.yieldProviderEntrypoint);
-    IVaultHub vaultHub = IVaultHub(dashboard.VAULT_HUB());
     // yieldProviderOssificationEntrypoint = StakingVault
     IVaultHub.VaultObligations memory obligations = vaultHub.vaultObligations($$.registration.yieldProviderOssificationEntrypoint);
     return obligations.unsettledLidoFees + dashboard.nodeOperatorDisbursableFee();
@@ -104,7 +98,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
     uint256 liabilityEth = _getCurrentLSTLiabilityETH();
     uint256 obligationsEth = _getCurrentObligationsMinusRedemptions();
     // We could cache CONNECT_DEPOSIT = 1 ether, but what if VaulHub contract upgrades and this value changes?
-    uint256 totalVaultEth = IDashboard(_getDashboard()).totalValue() - IVaultHub(_getVaultHub()).CONNECT_DEPOSIT();
+    uint256 totalVaultEth = dashboard.totalValue() - vaultHub.CONNECT_DEPOSIT();
     uint256 fundsAvailableForUserWithdrawal = totalVaultEth - obligationsEth - liabilityEth;
     return fundsAvailableForUserWithdrawal - _getYieldProviderDataStorage(yieldProvider).userFunds;
   }
@@ -174,7 +168,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
       uint256 currentLSTLiabilityETH = _getCurrentLSTLiabilityETH();
       if (currentLSTLiabilityETH > 0) {
         uint256 LSTLiabilityETHPaid = currentLSTLiabilityETH > amountAvailableToPayLSTLiability ? amountAvailableToPayLSTLiability : currentLSTLiabilityETH;
-        IDashboard(_getDashboard()).rebalanceVaultWithEther(LSTLiabilityETHPaid);
+        dashboard.rebalanceVaultWithEther(LSTLiabilityETHPaid);
         withdrawAmount -= LSTLiabilityETHPaid;
       }
       ICommonVaultOperations(_getEntrypointContract()).withdraw(_recipient, withdrawAmount);
@@ -212,13 +206,12 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
   }
 
   function mintLST(uint256 _amount, address _recipient) external {
-    IDashboard(_getDashboard()).mintStETH(_recipient, _amount);
+    dashboard.mintStETH(_recipient, _amount);
   }
 
   // TODO - Role
   // @dev Requires fresh report
   function initiateOssification() external {
-    IDashboard dashboard = IDashboard(_getDashboard());
     _payMaximumPossibleLSTLiability();
     
     // Lido implementation handles Lido fee payment, and revert on fresh report
@@ -229,10 +222,9 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
   // TODO - Role
   // Returns true if ossified after function call is done
   function processPendingOssification() external returns (bool) {
-    IDashboard dashboard = IDashboard(_getDashboard());
     // Give ownership to YieldManager
     dashboard.abandonDashboard(address(this));
-    IStakingVault vault = IStakingVault(_getStakingVault());
+    IStakingVault vault = IStakingVault(yieldProvider);
     vault.acceptOwnership();
     vault.ossify();
     return true;
