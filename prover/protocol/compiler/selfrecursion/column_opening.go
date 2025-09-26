@@ -36,13 +36,12 @@ func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
 	if ctx.Columns.ConcatenatedDhQ != nil {
 		ctx.RegistersSisPreimageLimbs()
 	}
-	ctx.CollapsingPhase()
+	ctx.CollapsingPhase() // TODO@yao fix this for vortex with ... both sis and non sis ...
 	// The fold phase is only needed if there are non-zero
 	// number of SIS rounds
 	if ctx.Columns.ConcatenatedDhQ != nil {
-		ctx.FoldPhase()
+		ctx.FoldPhase() // TODO@yao fix this for vortex with a single round
 	}
-
 }
 
 // Registers the preimage limbs for the SIS rounds.
@@ -58,6 +57,7 @@ func (ctx *SelfRecursionCtx) RegistersSisPreimageLimbs() {
 	limbSize := wholes[0].Size() * sisParams.NumLimbs()
 
 	for i := range limbs {
+
 		limbs[i] = ctx.Comp.InsertCommit(
 			round,
 			ctx.limbExpandedPreimageName(wholes[i].GetColID()),
@@ -283,7 +283,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			offset       = 0
 			preImageEval ifaces.Accessor
 		)
-		if len(ctx.Poseidon2MetaData.ColChunks) > 0 {
+		if len(ctx.NonSisMetaData.ColChunks) > 0 {
 			ctx.Columns.CollapsedPreimagesNonSis = expr_handle.RandLinCombCol(
 				ctx.Comp,
 				accessors.NewFromCoin(ctx.Coins.Collapse),
@@ -297,10 +297,10 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 				ctx.Columns.CollapsedPreimagesNonSis,
 			)
 
-			for i := range ctx.Poseidon2MetaData.ColChunks {
+			for i := range ctx.NonSisMetaData.ColChunks {
 				// We add the number of polynomials per non SIS round
 				// to the offset
-				offset += ctx.Poseidon2MetaData.ColChunks[i]
+				offset += ctx.NonSisMetaData.ColChunks[i]
 			}
 		}
 		/*
@@ -317,7 +317,6 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 		// We only compute the preImageSisEval if there are any SIS rounds
 		// and the concatenated DhQ is not nil
 		if ctx.Columns.ConcatenatedDhQ != nil {
-			fmt.Printf("sis here\n")
 			preImageSisEval = functionals.EvalCoeffBivariate(
 				ctx.Comp,
 				ctx.constencyUalphaQPreimageRight(),
@@ -330,9 +329,8 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 		}
 
 		// preImageEval := preimageNonSisEval + alpha^offset * preImageSisEval
-		if len(ctx.Poseidon2MetaData.ColChunks) > 0 && ctx.Columns.ConcatenatedDhQ != nil {
-			fmt.Printf("nonsis here\n")
-
+		if len(ctx.NonSisMetaData.ColChunks) > 0 && ctx.Columns.ConcatenatedDhQ != nil {
+			//TODO@yao maybe the bug is here?
 			preImageEvalSymb := symbolic.Add(
 				preImageNonSisEval,
 				symbolic.Mul(
@@ -344,9 +342,9 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 				),
 			)
 			preImageEval = accessors.NewFromExpression(preImageEvalSymb, fmt.Sprintf("PREIMAGE_EVAL_%v", ctx.SelfRecursionCnt))
-		} else if len(ctx.Poseidon2MetaData.ColChunks) > 0 && ctx.Columns.ConcatenatedDhQ == nil {
+		} else if len(ctx.NonSisMetaData.ColChunks) > 0 && ctx.Columns.ConcatenatedDhQ == nil {
 			preImageEval = preImageNonSisEval
-		} else if len(ctx.Poseidon2MetaData.ColChunks) == 0 && ctx.Columns.ConcatenatedDhQ != nil {
+		} else if len(ctx.NonSisMetaData.ColChunks) == 0 && ctx.Columns.ConcatenatedDhQ != nil {
 			preImageEval = preImageSisEval
 		} else {
 			utils.Panic("There are neither SIS nor non SIS round, this should not happen")
@@ -356,7 +354,6 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			UAlphaQEval:  uAlphaQEval,
 			PreImageEval: preImageEval,
 		})
-
 	}
 
 	// The below code is only executed only if there are non-zero SIS rounds
@@ -381,6 +378,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 		if ctx.Columns.DhQCollapse.Size() != sisDeg {
 			utils.Panic("the size of DhQ (%v) collapse must equal to the SIS modulus degree (%v)", ctx.Columns.DhQCollapse.Size(), sisDeg)
 		}
+
 		//
 		// Merging the SIS keys
 		//
@@ -435,7 +433,6 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			SisKey:  ctx.SisKey(),
 		})
 	}
-
 }
 
 type FoldPhaseProverAction struct {
@@ -490,7 +487,7 @@ func (a *FoldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRun
 	yDual := poly.EvaluateUnivariateGnarkMixed(api, edual, rfold)
 	yActual := poly.EvaluateUnivariateGnarkMixed(api, dcollapse, rfold)
 
-	one := field.One()
+	one := fext.One()
 	xN := gnarkutil.Exp(api, rfold, a.Degree)
 	xNminus1 := api.Sub(xN, one)
 	xNplus1 := api.Add(xN, one)

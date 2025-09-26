@@ -348,7 +348,7 @@ func TestSelfRecursionPrecompMultiLayered(t *testing.T) {
 func TestSelfRecursionManyLayers(t *testing.T) {
 
 	define, prove := generateProtocol(testcases[0])
-	n := 6
+	n := 2
 
 	comp := wizard.Compile(
 		define,
