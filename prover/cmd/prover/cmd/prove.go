@@ -116,12 +116,7 @@ func handleGLJob(cfg *config.Config, args ProverArgs) error {
 		EndBlock:      eb,
 		SegID:         segID,
 	}
-	resp, err := distributed.RunGL(cfg, req)
-	if err != nil {
-		return fmt.Errorf("GL phase failed: %w", err)
-	}
-
-	return writeResponse(args.Output, resp)
+	return distributed.RunGL(cfg, req)
 }
 
 func handleConglomerationJob(cfg *config.Config, args ProverArgs) error {
