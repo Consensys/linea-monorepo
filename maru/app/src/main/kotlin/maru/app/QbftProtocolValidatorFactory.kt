@@ -13,7 +13,6 @@ import maru.config.QbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
-import maru.consensus.NewBlockHandler
 import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.ProtocolFactory
@@ -46,7 +45,6 @@ class QbftProtocolValidatorFactory(
   private val metricsFacade: MetricsFacade,
   private val allowEmptyBlocks: Boolean,
   private val syncStatusProvider: SyncStatusProvider,
-  private val metadataCacheUpdaterHandlerEntry: Pair<String, NewBlockHandler<*>>,
   private val forksSchedule: ForksSchedule,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
@@ -79,7 +77,7 @@ class QbftProtocolValidatorFactory(
         )
       }
     val blockImportHandlers =
-      NewBlockHandlerMultiplexer(elFollowersNewBlockHandlerMap + metadataCacheUpdaterHandlerEntry)
+      NewBlockHandlerMultiplexer(elFollowersNewBlockHandlerMap)
     val sealedBlockHandlers =
       mutableMapOf(
         "beacon block handlers" to SealedBeaconBlockHandlerAdapter(blockImportHandlers),

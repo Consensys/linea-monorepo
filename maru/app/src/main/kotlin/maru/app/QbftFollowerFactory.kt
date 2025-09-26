@@ -10,7 +10,6 @@ package maru.app
 
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
-import maru.consensus.NewBlockHandler
 import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.ProtocolFactory
 import maru.consensus.StaticValidatorProvider
@@ -38,7 +37,6 @@ class QbftFollowerFactory(
   private val followerELNodeEngineApiWeb3JClients: Map<String, Web3JClient>,
   private val metricsFacade: MetricsFacade,
   private val allowEmptyBlocks: Boolean,
-  private val metadataCacheUpdaterHandlerEntry: Pair<String, NewBlockHandler<*>>,
   private val finalizationStateProvider: FinalizationProvider,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
@@ -70,7 +68,7 @@ class QbftFollowerFactory(
         )
       }
     val callAndForgetNewBlockHandler =
-      NewBlockHandlerMultiplexer(elFollowersNewBlockHandlerMap + metadataCacheUpdaterHandlerEntry)
+      NewBlockHandlerMultiplexer(elFollowersNewBlockHandlerMap)
 
     val validatorProvider = StaticValidatorProvider(validators = qbftConsensusConfig.validatorSet)
     val stateTransition = StateTransitionImpl(validatorProvider)

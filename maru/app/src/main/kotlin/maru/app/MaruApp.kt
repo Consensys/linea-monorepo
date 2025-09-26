@@ -12,11 +12,8 @@ import io.vertx.core.Vertx
 import java.time.Clock
 import maru.api.ApiServer
 import maru.config.MaruConfig
-import maru.consensus.ElBlockMetadata
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
-import maru.consensus.LatestElBlockMetadataCache
-import maru.consensus.NewBlockHandler
 import maru.consensus.NextBlockTimestampProviderImpl
 import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
@@ -38,7 +35,6 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
-import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class MaruApp(
   val config: MaruConfig,
@@ -52,7 +48,6 @@ class MaruApp(
   private val metricsFacade: MetricsFacade,
   private val beaconChain: BeaconChain,
   private val metricsSystem: MetricsSystem,
-  private val lastElBlockMetadataCache: LatestElBlockMetadataCache,
   private val validatorELNodeEthJsonRpcClient: Web3JClient,
   private val validatorELNodeEngineApiWeb3JClient: Web3JClient,
   private val apiServer: ApiServer,
@@ -65,15 +60,6 @@ class MaruApp(
     if (config.qbft == null) {
       log.info("Qbft options are not defined. Maru is running in follower-only node")
     }
-
-    metricsFacade.createGauge(
-      category = MaruMetricsCategory.METADATA,
-      name = "el.block.height",
-      description = "Latest EL block height",
-      measurementSupplier = {
-        lastElBlockMetadataCache.getLatestBlockMetadata().blockNumber.toLong()
-      },
-    )
 
     metricsFacade.createGauge(
       category = MaruMetricsCategory.METADATA,
@@ -98,12 +84,6 @@ class MaruApp(
 
   fun p2pPort(): UInt = p2pNetwork.port
 
-  private val metadataProviderCacheUpdater =
-    NewBlockHandler<Unit> { beaconBlock ->
-      val elBlockMetadata = ElBlockMetadata.fromBeaconBlock(beaconBlock)
-      lastElBlockMetadataCache.updateLatestBlockMetadata(elBlockMetadata)
-      SafeFuture.completedFuture(Unit)
-    }
   private val nextTargetBlockTimestampProvider =
     NextBlockTimestampProviderImpl(
       clock = clock,
@@ -179,7 +159,6 @@ class MaruApp(
     clock: Clock,
     beaconChain: BeaconChain,
   ): Protocol {
-    val metadataCacheUpdaterHandlerEntry = "latest block metadata updater" to metadataProviderCacheUpdater
     val qbftFactory =
       if (config.qbft != null) {
         QbftProtocolValidatorFactory(
@@ -196,7 +175,6 @@ class MaruApp(
           metricsFacade = metricsFacade,
           allowEmptyBlocks = config.allowEmptyBlocks,
           syncStatusProvider = syncStatusProvider,
-          metadataCacheUpdaterHandlerEntry = metadataCacheUpdaterHandlerEntry,
           forksSchedule = beaconGenesisConfig,
         )
       } else {
@@ -207,7 +185,6 @@ class MaruApp(
           followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
           metricsFacade = metricsFacade,
           allowEmptyBlocks = config.allowEmptyBlocks,
-          metadataCacheUpdaterHandlerEntry = metadataCacheUpdaterHandlerEntry,
           finalizationStateProvider = finalizationProvider,
         )
       }
