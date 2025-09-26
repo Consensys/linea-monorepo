@@ -45,8 +45,9 @@ func Prove(args ProverArgs) error {
 		jobAggregation       = strings.Contains(args.Input, "getZkAggregatedProof")
 
 		// Limitless prover jobs
-		jobBootstrap = strings.Contains(args.Input, "getZkProof") && strings.EqualFold(args.Phase, "bootstrap")
-		jobGL        = strings.EqualFold(args.Phase, "gl") && strings.Contains(args.Input, "wit.bin")
+		jobBootstrap      = strings.Contains(args.Input, "getZkProof") && strings.EqualFold(args.Phase, "bootstrap")
+		jobGL             = strings.Contains(args.Input, "wit.bin") && strings.EqualFold(args.Phase, "gl")
+		jobConglomeration = strings.Contains(args.Input, "metadata-getZkProof") && strings.EqualFold(args.Phase, "conglomeration")
 	)
 
 	// Handle job type
@@ -55,6 +56,8 @@ func Prove(args ProverArgs) error {
 		return handleBootstrapJob(cfg, args)
 	case jobGL:
 		return handleGLJob(cfg, args)
+	case jobConglomeration:
+		return handleConglomerationJob(cfg, args)
 	case jobExecution:
 		return handleExecutionJob(cfg, args)
 	case jobBlobDecompression:
@@ -119,6 +122,24 @@ func handleGLJob(cfg *config.Config, args ProverArgs) error {
 	}
 
 	return writeResponse(args.Output, resp)
+}
+
+func handleConglomerationJob(cfg *config.Config, args ProverArgs) error {
+	if cfg.Execution.ProverMode != config.ProverModeLimitless {
+		return fmt.Errorf("--phase flag can be invoked only in the %v mode", config.ProverModeLimitless)
+	}
+
+	req := &distributed.Metadata{}
+	if err := readRequest(args.Input, req); err != nil {
+		return fmt.Errorf("could not read the input file (%v): %w", args.Input, err)
+	}
+
+	_, err := distributed.RunConglomerator(cfg, req)
+	if err != nil {
+		return fmt.Errorf("error while running the conglomerator: %w", err)
+	}
+
+	return nil
 }
 
 // handleExecutionJob processes an execution job
