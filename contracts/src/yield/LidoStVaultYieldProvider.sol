@@ -17,27 +17,36 @@ import { IStakingVault } from "./interfaces/vendor/lido-vault/IStakingVault.sol"
  * @custom:security-contact security-report@linea.build
  */
 contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, IGenericErrors {
-  function _getEntrypointContract(address _yieldProvider) private view returns (address) {
-    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+  address immutable yieldProvider;
+
+  // @dev _yieldProvider = stakingVault address
+  constructor (address _yieldProvider) {
+    // Do checks
+    yieldProvider = _yieldProvider;
+  }
+
+
+  function _getEntrypointContract() private view returns (address) {
+    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(yieldProvider);
     return $$.isOssified ? $$.registration.yieldProviderOssificationEntrypoint : $$.registration.yieldProviderEntrypoint;
   }
 
-  function _getStakingVault(address _yieldProvider) private view returns (address) {
-    return _getYieldProviderDataStorage(_yieldProvider).registration.yieldProviderOssificationEntrypoint;
+  function _getStakingVault() private view returns (address) {
+    return yieldProvider;
   }
 
-  function _getVaultHub(address _yieldProvider) private view returns (address) {
-    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+  function _getVaultHub() private view returns (address) {
+    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(yieldProvider);
     IDashboard dashboard = IDashboard($$.registration.yieldProviderEntrypoint);
     return dashboard.VAULT_HUB();
   }
 
-  function _getDashboard(address _yieldProvider) private view returns (address) {
-    return _getYieldProviderDataStorage(_yieldProvider).registration.yieldProviderEntrypoint;
+  function _getDashboard() private view returns (address) {
+    return _getYieldProviderDataStorage(yieldProvider).registration.yieldProviderEntrypoint;
   }
 
-  function _getCurrentLSTLiabilityETH(address _yieldProvider) internal view returns (uint256) {
-    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+  function _getCurrentLSTLiabilityETH() internal view returns (uint256) {
+    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(yieldProvider);
     if ($$.isOssified) return 0;
     IDashboard dashboard = IDashboard($$.registration.yieldProviderEntrypoint);
     uint256 liabilityShares = dashboard.liabilityShares();
@@ -47,12 +56,12 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
   }
 
   // Will settle as much LST liability as possible. Will return amount of liabilityEth remaining
-  function _payMaximumPossibleLSTLiability(address _yieldProvider) internal returns (uint256) {
-    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+  function _payMaximumPossibleLSTLiability() internal returns (uint256) {
+    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(yieldProvider);
     if ($$.isOssified) return 0;
 
-    uint256 vaultBalanceEth = _getStakingVault(_yieldProvider).balance;
-    IDashboard dashboard = IDashboard(_getDashboard(_yieldProvider));
+    uint256 vaultBalanceEth = _getStakingVault().balance;
+    IDashboard dashboard = IDashboard(_getDashboard());
     IStETH steth = IStETH(dashboard.STETH());
     uint256 vaultBalanceShares = steth.getSharesByPooledEth(vaultBalanceEth);
     uint256 liabilityShares = dashboard.liabilityShares();
@@ -63,8 +72,8 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
 
 
   // @dev Omit redemptions, because it will overlap with liabilities
-  function _getCurrentObligationsMinusRedemptions(address _yieldProvider) internal view returns (uint256) {
-    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+  function _getCurrentObligationsMinusRedemptions() internal view returns (uint256) {
+    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(yieldProvider);
     IDashboard dashboard = IDashboard($$.registration.yieldProviderEntrypoint);
     IVaultHub vaultHub = IVaultHub(dashboard.VAULT_HUB());
     // yieldProviderOssificationEntrypoint = StakingVault
@@ -77,8 +86,8 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
    * @dev Will settle any outstanding liabilities to the YieldProvider.
    * @param _amount        The amount of ETH to send.
    */
-  function fundYieldProvider(address _yieldProvider, uint256 _amount) external {
-    ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).fund{value: _amount}();
+  function fundYieldProvider(uint256 _amount) external {
+    ICommonVaultOperations(_getEntrypointContract()).fund{value: _amount}();
   }
 
   /**
@@ -87,24 +96,25 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
    *      the `_reserveDonations` parameter is required to ensure accurate yield accounting.
    * @param _totalReserveDonations   Total amount of donations received on the L1MessageService or L2MessageService.
    */
-  function reportYield(address _yieldProvider, uint256 _totalReserveDonations) external returns (uint256 _newYield) {
-    if (_getYieldProviderDataStorage(_yieldProvider).isOssified) {
+  function reportYield(uint256 _totalReserveDonations) external returns (uint256 _newYield) {
+    if (_getYieldProviderDataStorage(yieldProvider).isOssified) {
       revert OperationNotSupportedDuringOssification(OperationType.ReportYield);
     }
-    _payMaximumPossibleLSTLiability(_yieldProvider);
-    uint256 liabilityEth = _getCurrentLSTLiabilityETH(_yieldProvider);
-    uint256 obligationsEth = _getCurrentObligationsMinusRedemptions(_yieldProvider);
-    uint256 totalVaultEth = IDashboard(_getDashboard(_yieldProvider)).totalValue();
+    _payMaximumPossibleLSTLiability();
+    uint256 liabilityEth = _getCurrentLSTLiabilityETH();
+    uint256 obligationsEth = _getCurrentObligationsMinusRedemptions();
+    // We could cache CONNECT_DEPOSIT = 1 ether, but what if VaulHub contract upgrades and this value changes?
+    uint256 totalVaultEth = IDashboard(_getDashboard()).totalValue() - IVaultHub(_getVaultHub()).CONNECT_DEPOSIT();
     uint256 fundsAvailableForUserWithdrawal = totalVaultEth - obligationsEth - liabilityEth;
-    return fundsAvailableForUserWithdrawal - _getYieldProviderDataStorage(_yieldProvider).userFunds;
+    return fundsAvailableForUserWithdrawal - _getYieldProviderDataStorage(yieldProvider).userFunds;
   }
 
   /**
    * @notice Request beacon chain withdrawal.
    * @param _withdrawalParams   Provider-specific withdrawal parameters.
    */
-  function unstake(address _yieldProvider, bytes memory _withdrawalParams) external {
-    _unstake(_yieldProvider, _withdrawalParams);
+  function unstake(bytes memory _withdrawalParams) external {
+    _unstake(_withdrawalParams);
   }
 
   /**
@@ -124,12 +134,11 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
    * @param _withdrawalParamsProof  Merkle proof of _withdrawalParams to be verified against EIP-4788 beacon chain root.
    */
   function unstakePermissionless(
-    address _yieldProvider,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
   ) external returns (uint256) {
     // TODO - Verify _withdrawalParamsProof
-    uint256 amountUnstaked = _unstake(_yieldProvider, _withdrawalParams);
+    uint256 amountUnstaked = _unstake(_withdrawalParams);
     return amountUnstaked;
   }
 
@@ -137,10 +146,10 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
    * @notice Request beacon chain withdrawal.
    * @param _withdrawalParams   Provider-specific withdrawal parameters.
    */
-  function _unstake(address _yieldProvider, bytes memory _withdrawalParams) internal returns (uint256) {
+  function _unstake(bytes memory _withdrawalParams) internal returns (uint256) {
     (bytes memory pubkeys, uint64[] memory amounts, address refundRecipient) = abi.decode(_withdrawalParams, (bytes, uint64[], address));
     // Lido StakingVault.sol will handle the param validation
-    ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).triggerValidatorWithdrawals(pubkeys, amounts, refundRecipient);
+    ICommonVaultOperations(_getEntrypointContract()).triggerValidatorWithdrawals(pubkeys, amounts, refundRecipient);
     uint256 amountUnstaked;
     for (uint256 i = 0; i < amounts.length; i++) {
       amountUnstaked += amounts[i];
@@ -155,41 +164,41 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
    * @dev This function will first attempt to pay LST liabilities. However it will reserve '_targetReserveDeficit' out of this. So '_targetReserveDeficit' withdrawal is guaranteed.
    * @param _amount                 Amount to withdraw.
    */
-  function withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(address _yieldProvider, uint256 _amount, address _recipient, uint256 _targetReserveDeficit) external returns (uint256) {
+  function withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(uint256 _amount, address _recipient, uint256 _targetReserveDeficit) external returns (uint256) {
     uint256 withdrawAmount = _amount;
     if (_targetReserveDeficit >= withdrawAmount) {
-      ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).withdraw(_recipient, withdrawAmount);
+      ICommonVaultOperations(_getEntrypointContract()).withdraw(_recipient, withdrawAmount);
       return withdrawAmount;
     } else {
       uint256 amountAvailableToPayLSTLiability = withdrawAmount - _targetReserveDeficit;
-      uint256 currentLSTLiabilityETH = _getCurrentLSTLiabilityETH(_yieldProvider);
+      uint256 currentLSTLiabilityETH = _getCurrentLSTLiabilityETH();
       if (currentLSTLiabilityETH > 0) {
         uint256 LSTLiabilityETHPaid = currentLSTLiabilityETH > amountAvailableToPayLSTLiability ? amountAvailableToPayLSTLiability : currentLSTLiabilityETH;
-        IDashboard(_getDashboard(_yieldProvider)).rebalanceVaultWithEther(LSTLiabilityETHPaid);
+        IDashboard(_getDashboard()).rebalanceVaultWithEther(LSTLiabilityETHPaid);
         withdrawAmount -= LSTLiabilityETHPaid;
       }
-      ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).withdraw(_recipient, withdrawAmount);
+      ICommonVaultOperations(_getEntrypointContract()).withdraw(_recipient, withdrawAmount);
       return withdrawAmount;
     }
   }
 
-  function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount, address _recipient) external {
-    ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).withdraw(_recipient, _amount);
+  function withdrawFromYieldProvider(uint256 _amount, address _recipient) external {
+    ICommonVaultOperations(_getEntrypointContract()).withdraw(_recipient, _amount);
   }
 
   /**
    * @notice Pauses beacon chain deposits for specified yield provier.
    */
-  function pauseStaking(address _yieldProvider) external {
-    ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).pauseBeaconChainDeposits();
+  function pauseStaking() external {
+    ICommonVaultOperations(_getEntrypointContract()).pauseBeaconChainDeposits();
   }
 
   /**
    * @notice Unpauses beacon chain deposits for specified yield provier.
    * @dev Will revert if the withdrawal reserve is in deficit, or there is an existing LST liability.
    */
-  function unpauseStaking(address _yieldProvider) external {
-    ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).resumeBeaconChainDeposits();
+  function unpauseStaking() external {
+    ICommonVaultOperations(_getEntrypointContract()).resumeBeaconChainDeposits();
   }
 
   function validateAdditionToYieldManager(IYieldManager.YieldProviderRegistration calldata _yieldProviderRegistration) external pure {
@@ -198,19 +207,19 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
     }
   }
 
-  function getAvailableBalanceForWithdraw(address _yieldProvider) external view returns (uint256) {
-    return _getStakingVault(_yieldProvider).balance;
+  function getAvailableBalanceForWithdraw() external view returns (uint256) {
+    return _getStakingVault().balance;
   }
 
-  function mintLST(address _yieldProvider, uint256 _amount, address _recipient) external {
-    IDashboard(_getDashboard(_yieldProvider)).mintStETH(_recipient, _amount);
+  function mintLST(uint256 _amount, address _recipient) external {
+    IDashboard(_getDashboard()).mintStETH(_recipient, _amount);
   }
 
   // TODO - Role
   // @dev Requires fresh report
-  function initiateOssification(address _yieldProvider) external {
-    IDashboard dashboard = IDashboard(_getDashboard(_yieldProvider));
-    _payMaximumPossibleLSTLiability(_yieldProvider);
+  function initiateOssification() external {
+    IDashboard dashboard = IDashboard(_getDashboard());
+    _payMaximumPossibleLSTLiability();
     
     // Lido implementation handles Lido fee payment, and revert on fresh report
     // This will fail if any existing liabilities or obligations
@@ -219,11 +228,11 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
 
   // TODO - Role
   // Returns true if ossified after function call is done
-  function processPendingOssification(address _yieldProvider) external returns (bool) {
-    IDashboard dashboard = IDashboard(_getDashboard(_yieldProvider));
+  function processPendingOssification() external returns (bool) {
+    IDashboard dashboard = IDashboard(_getDashboard());
     // Give ownership to YieldManager
     dashboard.abandonDashboard(address(this));
-    IStakingVault vault = IStakingVault(_getStakingVault(_yieldProvider));
+    IStakingVault vault = IStakingVault(_getStakingVault());
     vault.acceptOwnership();
     vault.ossify();
     return true;

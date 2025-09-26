@@ -23,7 +23,7 @@ interface IYieldProvider {
    * @dev Will settle any outstanding liabilities to the YieldProvider.
    * @param _amount        The amount of ETH to send.
    */
-  function fundYieldProvider(address _yieldProvider, uint256 _amount) external;
+  function fundYieldProvider(uint256 _amount) external;
 
   /**
    * @notice Report newly accrued yield, excluding any portion reserved for system obligations.
@@ -31,13 +31,13 @@ interface IYieldProvider {
    *      the `_reserveDonations` parameter is required to ensure accurate yield accounting.
    * @param _totalReserveDonations   Total amount of donations received on the L1MessageService or L2MessageService.
    */
-  function reportYield(address _yieldProvider, uint256 _totalReserveDonations) external returns (uint256);
+  function reportYield(uint256 _totalReserveDonations) external returns (uint256);
 
   /**
    * @notice Request beacon chain withdrawal.
    * @param _withdrawalParams   Provider-specific withdrawal parameters.
    */
-  function unstake(address _yieldProvider, bytes memory _withdrawalParams) external;
+  function unstake(bytes memory _withdrawalParams) external;
 
   /**
    * @notice Permissionlessly request beacon chain withdrawal.
@@ -56,7 +56,6 @@ interface IYieldProvider {
    * @param _withdrawalParamsProof  Merkle proof of _withdrawalParams to be verified against EIP-4788 beacon chain root.
    */
   function unstakePermissionless(
-    address _yieldProvider,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
   ) external returns (uint256);
@@ -67,29 +66,29 @@ interface IYieldProvider {
    * @dev If fund remaining, will settle any outstanding LST liabilities.
    * @param _amount                 Amount to withdraw.
    */
-  function withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(address _yieldProvider, uint256 _amount, address _recipient, uint256 _targetReserveDeficit) external returns (uint256);
+  function withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(uint256 _amount, address _recipient, uint256 _targetReserveDeficit) external returns (uint256);
 
-  function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount, address _recipient) external;
+  function withdrawFromYieldProvider(uint256 _amount, address _recipient) external;
 
   /**
    * @notice Pauses beacon chain deposits for specified yield provier.
    */
-  function pauseStaking(address _yieldProvider) external;
+  function pauseStaking() external;
 
   /**
    * @notice Unpauses beacon chain deposits for specified yield provier.
    * @dev Will revert if the withdrawal reserve is in deficit, or there is an existing LST liability.
    */
-  function unpauseStaking(address _yieldProvider) external;
+  function unpauseStaking() external;
 
   function validateAdditionToYieldManager(IYieldManager.YieldProviderRegistration calldata _yieldProviderRegistration) external;
 
   // Get current ETH balance on the YieldProvider available for withdraw
-  function getAvailableBalanceForWithdraw(address _yieldProvider) external view returns (uint256);
+  function getAvailableBalanceForWithdraw() external view returns (uint256);
 
-  function mintLST(address _yieldProvider, uint256 _amount, address _recipient) external;
+  function mintLST(uint256 _amount, address _recipient) external;
 
-  function initiateOssification(address _yieldProvider) external;
+  function initiateOssification() external;
 
-  function processPendingOssification(address _yieldProvider) external returns (bool);
+  function processPendingOssification() external returns (bool);
 }

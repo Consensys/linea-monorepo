@@ -49,4 +49,6 @@ interface IVaultHub {
     /// @param _vault vault address
     /// @dev requires the fresh report
     function settleLidoFees(address _vault) external;
+
+    function CONNECT_DEPOSIT() external view returns (uint256);
 }

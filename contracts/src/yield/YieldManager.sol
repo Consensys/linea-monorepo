@@ -142,7 +142,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
         revert InsufficientWithdrawalReserve();
     }
     (bool success,) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.fundYieldProvider, (_yieldProvider, _amount)
+      abi.encodeCall(IYieldProvider.fundYieldProvider, (_amount)
     ));
     if (!success) {
       revert DelegateCallFailed();
@@ -193,7 +193,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    */
   function reportYield(address _yieldProvider, uint256 _totalReserveDonations) external onlyKnownYieldProvider(_yieldProvider) {
     (bool success, bytes memory data) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.reportYield, (_yieldProvider, _totalReserveDonations)
+      abi.encodeCall(IYieldProvider.reportYield, (_totalReserveDonations)
     ));
     if (!success) {
       revert DelegateCallFailed();
@@ -213,7 +213,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    */
   function unstake(address _yieldProvider, bytes memory _withdrawalParams) external onlyKnownYieldProvider(_yieldProvider) {
     (bool success,) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.unstake, (_yieldProvider, _withdrawalParams)
+      abi.encodeCall(IYieldProvider.unstake, (_withdrawalParams)
     ));
     if (!success) {
       revert DelegateCallFailed();
@@ -245,7 +245,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     bytes calldata _withdrawalParamsProof
   ) external onlyKnownYieldProvider(_yieldProvider) {
     (bool success, bytes memory data) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, _withdrawalParams, _withdrawalParamsProof)
+      abi.encodeCall(IYieldProvider.unstakePermissionless, (_withdrawalParams, _withdrawalParamsProof)
     ));
     if (!success) {
       revert DelegateCallFailed();
@@ -274,7 +274,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
 
   function getAvailableBalanceForWithdraw(address _yieldProvider) public returns (uint256) {
     (bool success, bytes memory data) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.getAvailableBalanceForWithdraw, (_yieldProvider)
+      abi.encodeCall(IYieldProvider.getAvailableBalanceForWithdraw, ()
     ));
     if (!success) {
       revert DelegateCallFailed();
@@ -303,7 +303,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
 
   function _withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(address _yieldProvider, uint256 _amount, address _recipient, uint256 _targetReserveDeficit) internal returns (uint256) {
     (bool success, bytes memory data) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction, (_yieldProvider, _amount, _recipient, _targetReserveDeficit)
+      abi.encodeCall(IYieldProvider.withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction, (_amount, _recipient, _targetReserveDeficit)
     ));
     if (!success) {
       revert DelegateCallFailed();
@@ -317,7 +317,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
 
   function _withdrawFromYieldProvider(address _yieldProvider, uint256 _amount, address _recipient) internal {
     (bool success,) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.withdrawFromYieldProvider, (_yieldProvider, _amount, _recipient)
+      abi.encodeCall(IYieldProvider.withdrawFromYieldProvider, (_amount, _recipient)
     ));
     if (!success) {
       revert DelegateCallFailed();
@@ -343,7 +343,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     uint256 availableYieldProviderWithdrawBalance = getAvailableBalanceForWithdraw(_yieldProvider);
     uint256 targetDeficit = getTargetReserveDeficit();
     (bool success,) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction, (_yieldProvider, availableYieldProviderWithdrawBalance, l1MessageService(), targetDeficit)
+      abi.encodeCall(IYieldProvider.withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction, (availableYieldProviderWithdrawBalance, l1MessageService(), targetDeficit)
     ));
     if (!success) {
       revert DelegateCallFailed();
@@ -396,7 +396,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   
   function _pauseStaking(address _yieldProvider) internal {
     (bool success,) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.pauseStaking, (_yieldProvider)
+      abi.encodeCall(IYieldProvider.pauseStaking, ()
     ));
     if (!success) {
       revert DelegateCallFailed();
@@ -420,7 +420,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
         revert InsufficientWithdrawalReserve();
     }
     (bool success,) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.pauseStaking, (_yieldProvider)
+      abi.encodeCall(IYieldProvider.pauseStaking, ()
     ));
     if (!success) {
       revert DelegateCallFailed();
@@ -509,7 +509,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       _pauseStaking(_yieldProvider);
     }
     (bool success,) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.mintLST, (_yieldProvider, _amount, _recipient)
+      abi.encodeCall(IYieldProvider.mintLST, (_amount, _recipient)
     ));
     if (!success) {
       revert DelegateCallFailed();
@@ -589,7 +589,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert AlreadyOssified();
     }
     (bool success,) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.initiateOssification, (_yieldProvider)
+      abi.encodeCall(IYieldProvider.initiateOssification, ()
     ));
     if (!success) {
       revert DelegateCallFailed();
@@ -607,7 +607,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert AlreadyOssified();
     }
     (bool success, bytes memory data) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.processPendingOssification, (_yieldProvider)
+      abi.encodeCall(IYieldProvider.processPendingOssification, ()
     ));
     if (!success) {
       revert DelegateCallFailed();
