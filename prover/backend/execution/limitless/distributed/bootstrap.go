@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"runtime/debug"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
@@ -38,6 +39,13 @@ func RunBootstrapper(cfg *config.Config, req *execution.Request, metadata *Metad
 
 	// Set MonitorParams before any proving happens
 	profiling.SetMonitorParams(cfg)
+
+	// Recover wrapper for panics
+	defer func() {
+		if r := recover(); r != nil {
+			logrus.Errorf("[PANIC] Bootstrapper crashed for req file %s-%s: \n%s", metadata.StartBlock, metadata.EndBlock, debug.Stack())
+		}
+	}()
 
 	// Setting the issue handler to exit on unsatisfied constraint but not limit overflow.
 	exit.SetIssueHandlingMode(exit.ExitOnUnsatisfiedConstraint)
@@ -163,7 +171,7 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 			default:
 
 				fileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-wit.bin", metadata.StartBlock, metadata.EndBlock, i, witnessGL.ModuleIndex)
-				filePath := path.Join(config.WitnessGLDirPrefix, string(witnessGL.ModuleName), fileName)
+				filePath := path.Join(cfg.LimitlessParams.WitnessGLDir, string(witnessGL.ModuleName), fileName)
 
 				// Clean up any prev. witness file before starting. This helps addressing the situation
 				// where a previous process have been interrupted.
@@ -187,7 +195,7 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 			default:
 
 				fileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-lpp-wit.bin", metadata.StartBlock, metadata.EndBlock, i, witnessLPP.ModuleIndex)
-				filePath := path.Join(config.WitnessLPPDirPrefix, string(witnessLPP.ModuleName[0]), fileName)
+				filePath := path.Join(cfg.LimitlessParams.WitnessLPPDir, string(witnessLPP.ModuleName[0]), fileName)
 
 				// Clean up any prev. witness file before starting. This helps addressing the situation
 				// where a previous process have been interrupted.
