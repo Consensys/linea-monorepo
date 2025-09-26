@@ -10,6 +10,7 @@ import { IDashboard } from "./interfaces/vendor/lido-vault/IDashboard.sol";
 import { IStETH } from "./interfaces/vendor/lido-vault/IStETH.sol";
 import { IVaultHub } from "./interfaces/vendor/lido-vault/IVaultHub.sol";
 import { IStakingVault } from "./interfaces/vendor/lido-vault/IStakingVault.sol";
+import { Math256 } from "../libraries/Math256.sol";
 
 /**
  * @title Contract to handle native yield operations with Lido Staking Vault.
@@ -21,13 +22,15 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
   address immutable yieldProvider;
   IVaultHub immutable vaultHub;
   IDashboard immutable dashboard;
+  IStETH immutable steth;
 
   // @dev _yieldProvider = stakingVault address
-  constructor (address _yieldProvider, address _vaultHub, address _dashboard) {
+  constructor (address _yieldProvider, address _vaultHub, address _dashboard, address _steth) {
     // Do checks
     yieldProvider = _yieldProvider;
     vaultHub = IVaultHub(_vaultHub);
     dashboard = IDashboard(_dashboard);
+    steth = IStETH(_steth);
   }
 
   function _getEntrypointContract() private view returns (address) {
@@ -49,22 +52,27 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
   }
 
   // Will settle as much LST liability as possible. Will return amount of liabilityEth remaining
-  function _payMaximumPossibleLSTLiability() internal returns (uint256) {
+  function _payMaximumPossibleLSTLiability() internal {
     IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(yieldProvider);
-    if ($$.isOssified) return 0;
+    if ($$.isOssified) return;
 
-    uint256 vaultBalanceEth = yieldProvider.balance;
-    IStETH steth = IStETH(dashboard.STETH());
+    uint256 vaultBalanceEth = dashboard.totalValue();
     uint256 vaultBalanceShares = steth.getSharesByPooledEth(vaultBalanceEth);
     uint256 liabilityShares = dashboard.liabilityShares();
-    uint256 liabilitySharesPaid = liabilityShares < vaultBalanceShares ? liabilityShares : vaultBalanceShares;
     // Do the payment
-    dashboard.rebalanceVaultWithShares(liabilitySharesPaid);
+    dashboard.rebalanceVaultWithShares(Math256.min(liabilityShares, vaultBalanceShares));
   }
 
   function _payMaximumPossibleLSTInterest() internal {
     IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(yieldProvider);
     if ($$.isOssified) return;
+    uint256 liabilityTotalShares = dashboard.liabilityShares();
+    uint256 liabilityTotalETH = steth.getPooledEthBySharesRoundUp(liabilityTotalShares);
+    uint256 liabilityPrincipalETH = $$.lstLiabilityPrincipal;
+    uint256 liabilityInterestETH = liabilityTotalETH - liabilityPrincipalETH;
+    uint256 totalValueVaultETH = dashboard.totalValue();
+    // Do the payment
+    dashboard.rebalanceVaultWithEther(Math256.min(liabilityInterestETH, totalValueVaultETH));
   }
 
   // @dev Omit redemptions, because it will overlap with liabilities
@@ -94,7 +102,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
     if (_getYieldProviderDataStorage(yieldProvider).isOssified) {
       revert OperationNotSupportedDuringOssification(OperationType.ReportYield);
     }
-    _payMaximumPossibleLSTLiability();
+    _payMaximumPossibleLSTInterest();
     uint256 liabilityEth = _getCurrentLSTLiabilityETH();
     uint256 obligationsEth = _getCurrentObligationsMinusRedemptions();
     // We could cache CONNECT_DEPOSIT = 1 ether, but what if VaulHub contract upgrades and this value changes?
@@ -167,9 +175,9 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
       uint256 amountAvailableToPayLSTLiability = withdrawAmount - _targetReserveDeficit;
       uint256 currentLSTLiabilityETH = _getCurrentLSTLiabilityETH();
       if (currentLSTLiabilityETH > 0) {
-        uint256 LSTLiabilityETHPaid = currentLSTLiabilityETH > amountAvailableToPayLSTLiability ? amountAvailableToPayLSTLiability : currentLSTLiabilityETH;
-        dashboard.rebalanceVaultWithEther(LSTLiabilityETHPaid);
-        withdrawAmount -= LSTLiabilityETHPaid;
+        uint256 LSTLiabilityPrincipalETHPaid = Math256.min(amountAvailableToPayLSTLiability, currentLSTLiabilityETH);
+        dashboard.rebalanceVaultWithEther(LSTLiabilityPrincipalETHPaid);
+        withdrawAmount -= LSTLiabilityPrincipalETHPaid;
       }
       ICommonVaultOperations(_getEntrypointContract()).withdraw(_recipient, withdrawAmount);
       return withdrawAmount;

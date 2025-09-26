@@ -7,6 +7,7 @@ import { IYieldProvider } from "./interfaces/IYieldProvider.sol";
 import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
 import { ILineaNativeYieldExtension } from "./interfaces/ILineaNativeYieldExtension.sol";
 import { YieldManagerPauseManager } from "../security/pausing/YieldManagerPauseManager.sol";
+import { Math256 } from "../libraries/Math256.sol";
 
 /**
  * @title Contract to handle native yield operations.
@@ -101,19 +102,19 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   function getEffectiveMinimumWithdrawalReserve() public view returns (uint256) {
       uint256 minimumWithdrawalReserveAmountCached = _getYieldManagerStorage()._minimumWithdrawalReserveAmount;
       uint256 minWithdrawalReserveByPercentage = getMinimumWithdrawalReserveByPercentage();
-      return minWithdrawalReserveByPercentage > minimumWithdrawalReserveAmountCached ? minWithdrawalReserveByPercentage : minimumWithdrawalReserveAmountCached;
+      return Math256.min(minimumWithdrawalReserveAmountCached, minWithdrawalReserveByPercentage);
   }
 
   function getEffectiveTargetWithdrawalReserve() public view returns (uint256) {
       uint256 targetWithdrawalReserveAmountCached = _getYieldManagerStorage()._targetWithdrawalReserveAmount;
       uint256 targetWithdrawalReserveByPercentage = getTargetWithdrawalReserveByPercentage();
-      return targetWithdrawalReserveByPercentage > targetWithdrawalReserveAmountCached ? targetWithdrawalReserveByPercentage : targetWithdrawalReserveAmountCached;
+      return Math256.min(targetWithdrawalReserveAmountCached, targetWithdrawalReserveByPercentage);
   }
 
   function getTargetReserveDeficit() public view returns (uint256) {
     uint256 effectiveTargetWithdrawalReserve = getEffectiveTargetWithdrawalReserve();
     uint256 l1MessageServiceBalance = l1MessageService().balance;
-    return effectiveTargetWithdrawalReserve > l1MessageServiceBalance ? effectiveTargetWithdrawalReserve - l1MessageServiceBalance : 0;
+    return Math256.safeSub(effectiveTargetWithdrawalReserve, l1MessageServiceBalance);
   }
 
   /// @notice Returns true if withdrawal reserve balance is below effective required minimum.
@@ -125,8 +126,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   function _reducePendingPermissionlessUnstake(address _yieldProvider, uint256 _amount) internal {
     uint256 pendingPermissionlessUnstake = _getYieldProviderDataStorage(_yieldProvider).pendingPermissionlessUnstake;
     if (pendingPermissionlessUnstake == 0) return;
-    uint256 reducedPendingPermissionlessUnstake = pendingPermissionlessUnstake > _amount ? pendingPermissionlessUnstake - _amount : 0;
-    _getYieldProviderDataStorage(_yieldProvider).pendingPermissionlessUnstake = reducedPendingPermissionlessUnstake;
+    _getYieldProviderDataStorage(_yieldProvider).pendingPermissionlessUnstake = Math256.safeSub(pendingPermissionlessUnstake, _amount);
   }
 
   /**
@@ -295,8 +295,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     uint256 targetDeficit = getTargetReserveDeficit();
     uint256 withdrawAmountRemainingAfterFees = _withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(_yieldProvider, _amount, address(this), targetDeficit);
     if (targetDeficit > 0) {
-      uint256 reserveTransferAmount = targetDeficit > withdrawAmountRemainingAfterFees ? withdrawAmountRemainingAfterFees : targetDeficit;
-      ILineaNativeYieldExtension(l1MessageService()).fund{value: reserveTransferAmount}();
+      ILineaNativeYieldExtension(l1MessageService()).fund{value: Math256.min(targetDeficit, withdrawAmountRemainingAfterFees)}();
     }
     // Emit event
   }
@@ -336,7 +335,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     // Try to meet targetRebalanceAmount from yieldManager
     uint256 yieldManagerBalance = address(this).balance;
     if (yieldManagerBalance > 0) {
-      uint256 transferAmount = targetRebalanceAmount > yieldManagerBalance ? yieldManagerBalance : targetRebalanceAmount;
+      uint256 transferAmount = Math256.min(yieldManagerBalance, targetRebalanceAmount);
       ILineaNativeYieldExtension(l1MessageService()).fund{value: transferAmount}();
       targetRebalanceAmount -= transferAmount;
     }
@@ -367,14 +366,14 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     // Try to meet targetDeficit from yieldManager
     uint256 yieldManagerBalance = address(this).balance;
     if (yieldManagerBalance > 0) {
-      uint256 transferAmount = targetDeficit > yieldManagerBalance ? yieldManagerBalance : targetDeficit;
+      uint256 transferAmount = Math256.min(yieldManagerBalance, targetDeficit);
       ILineaNativeYieldExtension(l1MessageService()).fund{value: transferAmount}();
       targetDeficit -= transferAmount;
     }
     // Try to meet remaining targetDeficit by yieldProvider withdraw
     uint256 availableYieldProviderWithdrawBalance = getAvailableBalanceForWithdraw(_yieldProvider);
     if (targetDeficit > 0 && availableYieldProviderWithdrawBalance > 0) {
-      uint256 withdrawAmount = targetDeficit > availableYieldProviderWithdrawBalance ? availableYieldProviderWithdrawBalance : targetDeficit;
+      uint256 withdrawAmount = Math256.min(availableYieldProviderWithdrawBalance, targetDeficit);
       _withdrawFromYieldProvider(_yieldProvider, withdrawAmount, l1MessageService());
       targetDeficit -= withdrawAmount;
     }
