@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"runtime/debug"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
@@ -33,6 +34,13 @@ type Metadata struct {
 	EndBlock   string `json:"endBlock"`
 	NumGL      int    `json:"numGL"`
 	NumLPP     int    `json:"numLPP"`
+
+	GLProofFiles  []string `json:"glProofFiles"`
+	GLCommitFiles []string `json:"glCommitFiles"`
+
+	SharedRndFile string `json:"sharedRndFile"`
+
+	LPPProofFiles []string `json:"lppProofFiles"`
 }
 
 func RunBootstrapper(cfg *config.Config, req *execution.Request, metadata *Metadata) (*Metadata, error) {
@@ -43,7 +51,7 @@ func RunBootstrapper(cfg *config.Config, req *execution.Request, metadata *Metad
 	// Recover wrapper for panics
 	defer func() {
 		if r := recover(); r != nil {
-			logrus.Errorf("[PANIC] Bootstrapper crashed for req file %s-%s: \n%s", metadata.StartBlock, metadata.EndBlock, debug.Stack())
+			logrus.Errorf("[PANIC] Bootstrapper crashed for conflation request %s-%s: \n%s", metadata.StartBlock, metadata.EndBlock, debug.Stack())
 		}
 	}()
 
@@ -64,19 +72,16 @@ func RunBootstrapper(cfg *config.Config, req *execution.Request, metadata *Metad
 
 	logrus.Info("Starting to run the bootstrapper")
 
-	numGL, numLPP, err := initBootstrap(cfg, witness.ZkEVM, metadata)
+	err := initBootstrap(cfg, witness.ZkEVM, metadata)
 	if err != nil {
 		return nil, fmt.Errorf("error during bootstrap:%s", err.Error())
 	}
 
-	metadata.NumGL = numGL
-	metadata.NumLPP = numLPP
-
-	logrus.Infof("Bootstrapper generated %d GLs and %d LPPs", numGL, numLPP)
+	logrus.Infof("Bootstrapper finished successfully and generated %d GL modules and %d LPP modules", metadata.NumGL, metadata.NumLPP)
 	return metadata, nil
 }
 
-func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Metadata) (numGL, numLPP int, err error) {
+func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Metadata) error {
 
 	// TODO: This call will goaway once we implement `mmap` optimization in the controller process
 	// By this way, we ensure the static prover assets are loaded into memory only once and it is passed as `memfd`
@@ -158,6 +163,13 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 		assets.DistWizard.BlueprintLPPs,
 	)
 
+	// Populate the metadata fields
+	metadata.NumGL = len(witnessGLs)
+	metadata.NumLPP = len(witnessLPPs)
+	metadata.GLProofFiles = make([]string, len(witnessGLs))
+	metadata.GLCommitFiles = make([]string, len(witnessGLs))
+	metadata.LPPProofFiles = make([]string, len(witnessLPPs))
+
 	logrus.Info("Saving the witnesses")
 	wg, ctx := errgroup.WithContext(context.Background())
 	wg.SetLimit(numConcurrentWitnessWritingGoroutines)
@@ -170,16 +182,31 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 				return ctx.Err()
 			default:
 
-				fileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-wit.bin", metadata.StartBlock, metadata.EndBlock, i, witnessGL.ModuleIndex)
-				filePath := path.Join(cfg.LimitlessParams.WitnessGLDir, string(witnessGL.ModuleName), fileName)
+				witnessGLFileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-wit.bin", metadata.StartBlock, metadata.EndBlock, i, witnessGL.ModuleIndex)
+				witnessGLPath := path.Join(cfg.LimitlessParams.WitnessDir, "GL", string(witnessGL.ModuleName), witnessGLFileName)
 
 				// Clean up any prev. witness file before starting. This helps addressing the situation
 				// where a previous process have been interrupted.
-				_ = os.Remove(filePath)
-
-				if err := serialization.StoreToDisk(filePath, *witnessGL, true); err != nil {
+				_ = os.Remove(witnessGLPath)
+				if err := serialization.StoreToDisk(witnessGLPath, *witnessGL, true); err != nil {
 					return fmt.Errorf("could not save witnessGL: %w", err)
 				}
+
+				glProofFileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-proof.bin", metadata.StartBlock, metadata.EndBlock, i, witnessGLs[i].ModuleIndex)
+				glProofPath := path.Join(cfg.LimitlessParams.SubproofsDir, "GL", string(witnessGL.ModuleName), glProofFileName)
+				if err := os.MkdirAll(filepath.Dir(glProofPath), 0o755); err != nil {
+					return err
+				}
+
+				glCommitFileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-lpp-commit.bin", metadata.StartBlock, metadata.EndBlock, i, witnessGLs[i].ModuleIndex)
+				glCommitPath := path.Join(cfg.LimitlessParams.CommitsDir, string(witnessGL.ModuleName), glCommitFileName)
+				if err := os.MkdirAll(filepath.Dir(glCommitPath), 0o755); err != nil {
+					return err
+				}
+
+				metadata.GLProofFiles[i] = glProofPath
+				metadata.GLCommitFiles[i] = glCommitPath
+
 				witnessGL = nil
 				return nil
 			}
@@ -194,27 +221,41 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 				return ctx.Err()
 			default:
 
-				fileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-lpp-wit.bin", metadata.StartBlock, metadata.EndBlock, i, witnessLPP.ModuleIndex)
-				filePath := path.Join(cfg.LimitlessParams.WitnessLPPDir, string(witnessLPP.ModuleName[0]), fileName)
+				witnessLPPFileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-lpp-wit.bin", metadata.StartBlock, metadata.EndBlock, i, witnessLPP.ModuleIndex)
+				witnessLPPPath := path.Join(cfg.LimitlessParams.WitnessDir, "LPP", string(witnessLPP.ModuleName[0]), witnessLPPFileName)
 
 				// Clean up any prev. witness file before starting. This helps addressing the situation
 				// where a previous process have been interrupted.
-				_ = os.Remove(filePath)
-				if err := serialization.StoreToDisk(filePath, *witnessLPP, true); err != nil {
+				_ = os.Remove(witnessLPPPath)
+				if err := serialization.StoreToDisk(witnessLPPPath, *witnessLPP, true); err != nil {
 					return fmt.Errorf("could not save witnessLPP: %w", err)
 				}
 
+				lppProofFileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-lpp-proof.bin", metadata.StartBlock, metadata.EndBlock, i, witnessLPPs[i].ModuleIndex)
+				lppProofPath := path.Join(cfg.LimitlessParams.SubproofsDir, "LPP", string(witnessLPP.ModuleName[0]), lppProofFileName)
+				if err := os.MkdirAll(filepath.Dir(lppProofPath), 0o755); err != nil {
+					return err
+				}
+
+				metadata.LPPProofFiles[i] = lppProofPath
 				witnessLPP = nil
 				return nil
 			}
 		})
 	}
 
+	sharedRandomnessFileName := fmt.Sprintf("%s-%s-commit.bin", metadata.StartBlock, metadata.EndBlock)
+	sharedRandomnessPath := path.Join(cfg.LimitlessParams.SharedRandomnessDir, sharedRandomnessFileName)
+	if err := os.MkdirAll(filepath.Dir(sharedRandomnessPath), 0o755); err != nil {
+		return err
+	}
+	metadata.SharedRndFile = sharedRandomnessPath
+
 	if err := wg.Wait(); err != nil {
-		return 0, 0, fmt.Errorf("could not save witnesses: %v", err)
+		return fmt.Errorf("could not save witnesses: %v", err)
 	}
 
-	return len(witnessGLs), len(witnessLPPs), nil
+	return nil
 }
 
 // loadStaticProverAssetsFromDisk: Loads static prover assets from disk into memory for every proof request
