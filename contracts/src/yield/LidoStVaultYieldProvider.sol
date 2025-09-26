@@ -155,7 +155,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
    * @dev This function will first attempt to pay LST liabilities. However it will reserve '_targetReserveDeficit' out of this. So '_targetReserveDeficit' withdrawal is guaranteed.
    * @param _amount                 Amount to withdraw.
    */
-  function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount, uint256 _targetReserveDeficit, address _recipient) external returns (uint256) {
+  function withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(address _yieldProvider, uint256 _amount, address _recipient, uint256 _targetReserveDeficit) external returns (uint256) {
     uint256 withdrawAmount = _amount;
     if (_targetReserveDeficit >= withdrawAmount) {
       ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).withdraw(_recipient, withdrawAmount);
@@ -171,6 +171,10 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
       ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).withdraw(_recipient, withdrawAmount);
       return withdrawAmount;
     }
+  }
+
+  function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount, address _recipient) external {
+    ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).withdraw(_recipient, _amount);
   }
 
   /**
@@ -205,10 +209,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
   // TODO - Role
   // @dev Requires fresh report
   function initiateOssification(address _yieldProvider) external {
-    IVaultHub vaultHub = IVaultHub(_getVaultHub(_yieldProvider));
-    address vault = _getStakingVault(_yieldProvider);
     IDashboard dashboard = IDashboard(_getDashboard(_yieldProvider));
-
     _payMaximumPossibleLSTLiability(_yieldProvider);
     
     // Lido implementation handles Lido fee payment, and revert on fresh report

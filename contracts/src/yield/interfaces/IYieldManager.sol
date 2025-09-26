@@ -188,7 +188,7 @@ interface IYieldManager {
    * @param _yieldProvider          Yield provider address.
    * @param _amount                 Amount to withdraw.
    */
-  function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external;
+  function withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(address _yieldProvider, uint256 _amount) external;
 
   /**
    * @notice Rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.

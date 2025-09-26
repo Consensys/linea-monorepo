@@ -67,7 +67,9 @@ interface IYieldProvider {
    * @dev If fund remaining, will settle any outstanding LST liabilities.
    * @param _amount                 Amount to withdraw.
    */
-  function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount, uint256 _targetReserveDeficit, address _recipient) external returns (uint256);
+  function withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(address _yieldProvider, uint256 _amount, address _recipient, uint256 _targetReserveDeficit) external returns (uint256);
+
+  function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount, address _recipient) external;
 
   /**
    * @notice Pauses beacon chain deposits for specified yield provier.

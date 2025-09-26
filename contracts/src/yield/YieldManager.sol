@@ -291,9 +291,9 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @param _yieldProvider          Yield provider address.
    * @param _amount                 Amount to withdraw.
    */
-  function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
+  function withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
     uint256 targetDeficit = getTargetReserveDeficit();
-    uint256 withdrawAmountRemainingAfterFees = _withdrawFromYieldProvider(_yieldProvider, _amount, targetDeficit, address(this));
+    uint256 withdrawAmountRemainingAfterFees = _withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(_yieldProvider, _amount, address(this), targetDeficit);
     if (targetDeficit > 0) {
       uint256 reserveTransferAmount = targetDeficit > withdrawAmountRemainingAfterFees ? withdrawAmountRemainingAfterFees : targetDeficit;
       ILineaNativeYieldExtension(l1MessageService()).fund{value: reserveTransferAmount}();
@@ -301,9 +301,9 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     // Emit event
   }
 
-  function _withdrawFromYieldProvider(address _yieldProvider, uint256 _amount, uint256 _targetReserveDeficit, address _recipient) internal returns (uint256) {
+  function _withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(address _yieldProvider, uint256 _amount, address _recipient, uint256 _targetReserveDeficit) internal returns (uint256) {
     (bool success, bytes memory data) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.withdrawFromYieldProvider, (_yieldProvider, _amount, _targetReserveDeficit, _recipient)
+      abi.encodeCall(IYieldProvider.withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction, (_yieldProvider, _amount, _recipient, _targetReserveDeficit)
     ));
     if (!success) {
       revert DelegateCallFailed();
@@ -313,6 +313,15 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     _getYieldProviderDataStorage(_yieldProvider).userFunds -= _amount;
     _reducePendingPermissionlessUnstake(_yieldProvider, _amount);
     return withdrawAmountRemainingAfterFees;
+  }
+
+  function _withdrawFromYieldProvider(address _yieldProvider, uint256 _amount, address _recipient) internal {
+    (bool success,) = _yieldProvider.delegatecall(
+      abi.encodeCall(IYieldProvider.withdrawFromYieldProvider, (_yieldProvider, _amount, _recipient)
+    ));
+    if (!success) {
+      revert DelegateCallFailed();
+    }
   }
 
   /**
@@ -334,7 +343,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     uint256 availableYieldProviderWithdrawBalance = getAvailableBalanceForWithdraw(_yieldProvider);
     uint256 targetDeficit = getTargetReserveDeficit();
     (bool success,) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.withdrawFromYieldProvider, (_yieldProvider, availableYieldProviderWithdrawBalance, targetDeficit, l1MessageService())
+      abi.encodeCall(IYieldProvider.withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction, (_yieldProvider, availableYieldProviderWithdrawBalance, l1MessageService(), targetDeficit)
     ));
     if (!success) {
       revert DelegateCallFailed();
@@ -366,7 +375,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     uint256 availableYieldProviderWithdrawBalance = getAvailableBalanceForWithdraw(_yieldProvider);
     if (targetDeficit > 0 && availableYieldProviderWithdrawBalance > 0) {
       uint256 withdrawAmount = targetDeficit > availableYieldProviderWithdrawBalance ? availableYieldProviderWithdrawBalance : targetDeficit;
-      _withdrawFromYieldProvider(_yieldProvider, withdrawAmount, targetDeficit, l1MessageService());
+      _withdrawFromYieldProvider(_yieldProvider, withdrawAmount, l1MessageService());
       targetDeficit -= withdrawAmount;
     }
     // Emit event
