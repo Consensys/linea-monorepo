@@ -19,7 +19,8 @@ witness_dir = "/tmp/exec-limitless/witness"
 subproofs_dir = "/tmp/exec-limitless/subproofs"
 commits_dir = "/tmp/exec-limitless/commits"
 shared_rnd_dir = "/tmp/exec-limitless/commit"
-gl_subproofs_timeout = 1200 # seconds 
+gl_subproofs_timeout = 1200 # seconds
+lpp_subproofs_timeout = 120 # seconds  
 
 
 [blob_decompression]
