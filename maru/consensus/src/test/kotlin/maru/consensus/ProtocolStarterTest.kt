@@ -12,8 +12,6 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
-import kotlin.random.Random
-import kotlin.random.nextULong
 import kotlin.time.Duration.Companion.seconds
 import maru.consensus.ForkSpec
 import maru.core.Protocol
@@ -307,11 +305,4 @@ class ProtocolStarterTest {
     assertThat(protocol2.started).isTrue()
     assertThat(protocol1.started).isFalse()
   }
-
-  fun randomBlockMetadata(timestamp: Long): ElBlockMetadata =
-    ElBlockMetadata(
-      Random.nextULong(),
-      blockHash = Random.nextBytes(32),
-      unixTimestampSeconds = timestamp,
-    )
 }

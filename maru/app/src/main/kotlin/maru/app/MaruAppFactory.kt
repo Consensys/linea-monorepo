@@ -35,9 +35,7 @@ import maru.consensus.ForkIdHashProvider
 import maru.consensus.ForkIdHashProviderImpl
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForksSchedule
-import maru.consensus.LatestElBlockMetadataCache
 import maru.consensus.StaticValidatorProvider
-import maru.consensus.Web3jMetadataProvider
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.InstantFinalizationProvider
 import maru.core.SealedBeaconBlock
@@ -156,9 +154,6 @@ class MaruAppFactory {
         apiEndpointConfig = config.validatorElNode.ethApiEndpoint,
         log = LogManager.getLogger("maru.clients.el.ethapi"),
       )
-    val asyncMetadataProvider = Web3jMetadataProvider(ethereumJsonRpcClient.eth1Web3j)
-    val latestElBlockMetadataCache =
-      LatestElBlockMetadataCache(asyncMetadataProvider.getLatestBlockMetadata())
     val statusMessageFactory = StatusMessageFactory(kvDatabase, forkIdHashProvider)
 
     val engineApiWeb3jClient =
@@ -260,7 +255,6 @@ class MaruAppFactory {
         vertx = vertx,
         beaconChain = kvDatabase,
         metricsSystem = besuMetricsSystemAdapter,
-        lastElBlockMetadataCache = latestElBlockMetadataCache,
         validatorELNodeEthJsonRpcClient = ethereumJsonRpcClient,
         validatorELNodeEngineApiWeb3JClient = engineApiWeb3jClient,
         apiServer = apiServer,
