@@ -5,7 +5,7 @@ set -euo pipefail
 MAX_PARALLEL=${1:-4}
 
 # Set your absolute paths
-WITNESS_DIR="/tmp/witness/GL"
+WITNESS_DIR="/tmp/exec-limitless/witness/GL"
 RESPONSES_DIR="/tmp/responses"
 LOG_BASE="/home/ubuntu/linea-monorepo/prover/backend/execution/limitless/logs/mainnet/gl"
 CONFIG="/home/ubuntu/linea-monorepo/prover/config/config-mainnet-limitless.toml"
@@ -38,7 +38,9 @@ run_proof() {
     echo "[INFO] Claimed $infile -> processing $inprogress"
 
     # Build the command
-    local out_file="$RESPONSES_DIR/${base}-subProof.json"
+    # local out_file="$RESPONSES_DIR/${base}-subProof.json"
+    
+    local out_file="/dev/null"
     local cmd=(
         "$PROVER" prove
         --phase=gl
