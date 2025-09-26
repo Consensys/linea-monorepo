@@ -229,7 +229,10 @@ class JsonRpcExecutionLayerManagerTest {
         executionLayerManager.newPayload(executionPayload).get()
       }
 
-    assertThat(exception).cause().hasMessage("engine_newPayload request failed! fork=null Cause: Unexpected error!")
+    assertThat(exception).cause().hasMessage(
+      "engine_newPayload request failed: " +
+        "elBlockNumber=${executionPayload.blockNumber} fork=null Cause: Unexpected error!",
+    )
   }
 
   @Test
