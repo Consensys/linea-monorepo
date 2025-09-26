@@ -124,9 +124,9 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   }
 
   function _reducePendingPermissionlessUnstake(address _yieldProvider, uint256 _amount) internal {
-    uint256 pendingPermissionlessUnstake = _getYieldProviderDataStorage(_yieldProvider).pendingPermissionlessUnstake;
+    uint256 pendingPermissionlessUnstake = _getYieldManagerStorage()._pendingPermissionlessUnstake;
     if (pendingPermissionlessUnstake == 0) return;
-    _getYieldProviderDataStorage(_yieldProvider).pendingPermissionlessUnstake = Math256.safeSub(pendingPermissionlessUnstake, _amount);
+    _getYieldManagerStorage()._pendingPermissionlessUnstake = Math256.safeSub(pendingPermissionlessUnstake, _amount);
   }
 
   /**
@@ -251,10 +251,13 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert DelegateCallFailed();
     }
     (uint256 amountUnstaked) = abi.decode(data, (uint256));
+    
     // TODO - How about for multiple unstaking. How to be aware of other unstake permissionless? Just iterate through every other entry? Accept this for permissionless?
+
+
     // Only know amountUnstaked at this point, so validate it here
     _validateUnstakePermissionlessAmount(_yieldProvider, amountUnstaked);
-    _getYieldProviderDataStorage(_yieldProvider).pendingPermissionlessUnstake += amountUnstaked;
+    _getYieldManagerStorage()._pendingPermissionlessUnstake += amountUnstaked;
     // TODO emit event
   }
 
@@ -265,8 +268,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert WithdrawalReserveNotInDeficit();
     }
     uint256 targetWithdrawalReserve = getEffectiveTargetWithdrawalReserve();
-    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
-    uint256 availableBalanceNotOnL1MessageService = address(this).balance + getAvailableBalanceForWithdraw(_yieldProvider) + $$.pendingPermissionlessUnstake;
+    uint256 availableBalanceNotOnL1MessageService = address(this).balance + getAvailableBalanceForWithdraw(_yieldProvider) + _getYieldManagerStorage()._pendingPermissionlessUnstake;
     if (l1MessageServiceBalance + _amountUnstaked + availableBalanceNotOnL1MessageService > targetWithdrawalReserve) {
       revert SufficientAvailableFundsToCoverDeficit();
     }
@@ -307,11 +309,16 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!success) {
       revert DelegateCallFailed();
     }
-    (uint256 withdrawAmountRemainingAfterFees) = abi.decode(data, (uint256));
+    (uint256 withdrawAmount, uint256 lstLiabilityPrincipalETHPaid) = abi.decode(data, (uint256, uint256));
     _getYieldManagerStorage()._userFundsInYieldProvidersTotal -= _amount;
-    _getYieldProviderDataStorage(_yieldProvider).userFunds -= _amount;
+    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    $$.userFunds -= _amount;
+    $$.lstLiabilityPrincipal -= lstLiabilityPrincipalETHPaid;
     _reducePendingPermissionlessUnstake(_yieldProvider, _amount);
-    return withdrawAmountRemainingAfterFees;
+    if (_targetReserveDeficit > _amount) {
+      _pauseStakingIfNotAlready(_yieldProvider);
+    }
+    return withdrawAmount;
   }
 
   function _withdrawFromYieldProvider(address _yieldProvider, uint256 _amount, address _recipient) internal {
@@ -321,6 +328,9 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!success) {
       revert DelegateCallFailed();
     }
+    _getYieldManagerStorage()._userFundsInYieldProvidersTotal -= _amount;
+    _getYieldProviderDataStorage(_yieldProvider).userFunds -= _amount;
+    _reducePendingPermissionlessUnstake(_yieldProvider, _amount);
   }
 
   /**
@@ -339,14 +349,8 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       ILineaNativeYieldExtension(l1MessageService()).fund{value: transferAmount}();
       targetRebalanceAmount -= transferAmount;
     }
-    uint256 availableYieldProviderWithdrawBalance = getAvailableBalanceForWithdraw(_yieldProvider);
     uint256 targetDeficit = getTargetReserveDeficit();
-    (bool success,) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction, (availableYieldProviderWithdrawBalance, l1MessageService(), targetDeficit)
-    ));
-    if (!success) {
-      revert DelegateCallFailed();
-    }
+    _withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(_yieldProvider, targetRebalanceAmount, l1MessageService(), targetDeficit);
     // Emit event
   }
 
@@ -377,6 +381,9 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       _withdrawFromYieldProvider(_yieldProvider, withdrawAmount, l1MessageService());
       targetDeficit -= withdrawAmount;
     }
+    if (targetDeficit > 0) {
+      _pauseStakingIfNotAlready(_yieldProvider);
+    }
     // Emit event
   }
 
@@ -403,6 +410,12 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     _getYieldProviderDataStorage(_yieldProvider).isStakingPaused = true;
   }
 
+  function _pauseStakingIfNotAlready(address _yieldProvider) internal {
+    if (!_getYieldProviderDataStorage(_yieldProvider).isStakingPaused) {
+      _pauseStaking(_yieldProvider);
+    }
+  }
+
   /**
    * @notice Unpauses beacon chain deposits for specified yield provier.
    * @dev STAKING_UNPAUSER_ROLE is required to execute.
@@ -418,14 +431,18 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (isWithdrawalReserveBelowEffectiveMinimum()) {
         revert InsufficientWithdrawalReserve();
     }
+    _unpauseStaking(_yieldProvider);
+    // emit Event
+  }
+
+  function _unpauseStaking(address _yieldProvider) internal {
     (bool success,) = _yieldProvider.delegatecall(
       abi.encodeCall(IYieldProvider.pauseStaking, ()
     ));
     if (!success) {
       revert DelegateCallFailed();
     }
-    $$.isStakingPaused = false;
-    // emit Event
+    _getYieldProviderDataStorage(_yieldProvider).isStakingPaused = false;
   }
 
   function addYieldProvider(address _yieldProvider, YieldProviderRegistration calldata _yieldProviderRegistration) external onlyRole(YIELD_PROVIDER_SETTER) {
@@ -453,7 +470,6 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
         isOssified: false,
         userFunds: 0,
         yieldReportedCumulative: 0,
-        pendingPermissionlessUnstake: 0,
         currentNegativeYield: 0,
         lstLiabilityPrincipal: 0
     });
@@ -503,9 +519,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if ($$.isOssificationInitiated || $$.isOssified) {
       revert MintLSTDisabledDuringOssification();
     }
-    if (!$$.isStakingPaused) {
-      _pauseStaking(_yieldProvider);
-    }
+    _pauseStakingIfNotAlready(_yieldProvider);
     (bool success,) = _yieldProvider.delegatecall(
       abi.encodeCall(IYieldProvider.mintLST, (_amount, _recipient)
     ));
@@ -596,6 +610,20 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   }
 
   // TODO - Role
+  function undoInitiateOssification(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
+    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    if (!$$.isOssificationInitiated) {
+      revert OssificationNotInitiated();
+    }
+    if ($$.isOssified) {
+      revert AlreadyOssified();
+    }
+    if (_getYieldProviderDataStorage(_yieldProvider).isStakingPaused) {
+      _unpauseStaking(_yieldProvider);
+    }
+    $$.isOssificationInitiated = false;
+  }
+
   function processPendingOssification(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
     YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
     if (!$$.isOssificationInitiated) {
@@ -632,5 +660,11 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     // Emit event
   }
 
-  // TODO - How about undo-initiate
+  // In Lido Vault it is possible to permissionlessly settle obligations, a variable that changes in 1:1 tandem with liabilities
+  // Therefore we must have a function to reconcile obligations that were settled externally.
+  function reconcileExternalLSTPrincipalSettlement(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
+    // Do not touch userFund state, this will be accounted for as negative yield in the next reportYield run
+    _getYieldProviderDataStorage(_yieldProvider).lstLiabilityPrincipal -= _amount;
+    // Emit event
+  }
 }

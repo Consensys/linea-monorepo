@@ -42,15 +42,6 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
     return YIELD_PROVIDER;
   }
 
-  function _getCurrentLSTLiabilityETH() internal view returns (uint256) {
-    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
-    if ($$.isOssified) return 0;
-    uint256 liabilityShares = DASHBOARD.liabilityShares();
-    // Use `roundUp` variant to be conservative
-    uint256 liabilityEth = IStETH(DASHBOARD.STETH()).getPooledEthBySharesRoundUp(liabilityShares);
-    return liabilityEth;
-  }
-
   // Will settle as much LST liability as possible. Will return amount of liabilityEth remaining
   function _payMaximumPossibleLSTLiability() internal {
     IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
@@ -210,21 +201,23 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
    * @dev This function will first attempt to pay LST liabilities. However it will reserve '_targetReserveDeficit' out of this. So '_targetReserveDeficit' withdrawal is guaranteed.
    * @param _amount                 Amount to withdraw.
    */
-  function withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(uint256 _amount, address _recipient, uint256 _targetReserveDeficit) external returns (uint256) {
-    uint256 withdrawAmount = _amount;
+  function withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(uint256 _amount, address _recipient, uint256 _targetReserveDeficit) external returns (uint256 withdrawAmount, uint256 lstLiabilityPrincipalETHPaid) {
+    withdrawAmount = _amount;
+    lstLiabilityPrincipalETHPaid = 0;
     if (_targetReserveDeficit >= withdrawAmount) {
       ICommonVaultOperations(_getEntrypointContract()).withdraw(_recipient, withdrawAmount);
-      return withdrawAmount;
+      return (withdrawAmount, lstLiabilityPrincipalETHPaid);
     } else {
       uint256 amountAvailableToPayLSTLiability = withdrawAmount - _targetReserveDeficit;
-      uint256 currentLSTLiabilityETH = _getCurrentLSTLiabilityETH();
+      uint256 currentLSTLiabilityETH = _getYieldProviderDataStorage(YIELD_PROVIDER).lstLiabilityPrincipal;
       if (currentLSTLiabilityETH > 0) {
-        uint256 LSTLiabilityPrincipalETHPaid = Math256.min(amountAvailableToPayLSTLiability, currentLSTLiabilityETH);
-        DASHBOARD.rebalanceVaultWithEther(LSTLiabilityPrincipalETHPaid);
-        withdrawAmount -= LSTLiabilityPrincipalETHPaid;
+        lstLiabilityPrincipalETHPaid = Math256.min(amountAvailableToPayLSTLiability, currentLSTLiabilityETH);
+        // If this function call fails, it means another address forced redemption settlement
+        DASHBOARD.rebalanceVaultWithEther(lstLiabilityPrincipalETHPaid);
+        withdrawAmount -= lstLiabilityPrincipalETHPaid;
       }
       ICommonVaultOperations(_getEntrypointContract()).withdraw(_recipient, withdrawAmount);
-      return withdrawAmount;
+      return (withdrawAmount, lstLiabilityPrincipalETHPaid);
     }
   }
 

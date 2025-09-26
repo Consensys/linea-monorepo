@@ -20,6 +20,7 @@ abstract contract YieldManagerStorageLayout {
     uint256 _minimumWithdrawalReserveAmount;
     address[] _yieldProviders;
     uint256 _userFundsInYieldProvidersTotal;
+    uint256 _pendingPermissionlessUnstake;
     mapping(address yieldProvider => IYieldManager.YieldProviderData) _yieldProviderData;
   }
 

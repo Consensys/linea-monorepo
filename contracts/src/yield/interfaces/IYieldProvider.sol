@@ -63,7 +63,7 @@ interface IYieldProvider {
    * @dev If fund remaining, will settle any outstanding LST liabilities.
    * @param _amount                 Amount to withdraw.
    */
-  function withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(uint256 _amount, address _recipient, uint256 _targetReserveDeficit) external returns (uint256);
+  function withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(uint256 _amount, address _recipient, uint256 _targetReserveDeficit) external returns (uint256 withdrawAmount, uint256 lstLiabilityPrincipalETHPaid);
 
   function withdrawFromYieldProvider(uint256 _amount, address _recipient) external;
 

@@ -33,7 +33,6 @@ interface IYieldManager {
     // Is only allowed to be decremented by withdraw operations. Any other reduction of vault totalValue must be reported as negativeYield.
     uint256 userFunds;
     uint256 yieldReportedCumulative;
-    uint256 pendingPermissionlessUnstake;
     // Required to socialize losses if permanent
     uint256 currentNegativeYield;
     uint256 lstLiabilityPrincipal;
