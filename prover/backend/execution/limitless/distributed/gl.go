@@ -21,12 +21,7 @@ type GLRequest struct {
 	SegID         int
 }
 
-type GLResponse struct {
-	GLProofPath        string `json:"glProofPath"`
-	LPPCommitmeentPath string `json:"lppCommitPath"`
-}
-
-func RunGL(cfg *config.Config, req *GLRequest) (glResp *GLResponse, err error) {
+func RunGL(cfg *config.Config, req *GLRequest) error {
 
 	logrus.Infof("Starting GL-prover from witnessGL file path %v", req.WitnessGLPath)
 
@@ -34,13 +29,13 @@ func RunGL(cfg *config.Config, req *GLRequest) (glResp *GLResponse, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Errorf("[PANIC] GL prover crashed for witness %s: %v\n%s", req.WitnessGLPath, r, debug.Stack())
-			err = fmt.Errorf("panic in GL prover: %v", r)
+			return
 		}
 	}()
 
 	witnessGL := &distributed.ModuleWitnessGL{}
 	if err := serialization.LoadFromDisk(req.WitnessGLPath, witnessGL, true); err != nil {
-		return nil, fmt.Errorf("could not load witness: %w", err)
+		return fmt.Errorf("could not load witness: %w", err)
 	}
 
 	var (
@@ -60,7 +55,7 @@ func RunGL(cfg *config.Config, req *GLRequest) (glResp *GLResponse, err error) {
 	// `mmap` optimization in the respective GL worker controller
 	compiledGL, err := zkevm.LoadCompiledGL(cfg, witnessGL.ModuleName)
 	if err != nil {
-		return nil, fmt.Errorf("could not load compiled GL: %w", err)
+		return fmt.Errorf("could not load compiled GL: %w", err)
 	}
 
 	logrus.Infof("Loaded the compiled GL for witness module=%v at index=%d", witnessGL.ModuleName, witnessGL.ModuleIndex)
@@ -71,21 +66,17 @@ func RunGL(cfg *config.Config, req *GLRequest) (glResp *GLResponse, err error) {
 
 	_proofGL := recursion.ExtractWitness(run)
 	if err := serialization.StoreToDisk(proofGLPath, _proofGL, true); err != nil {
-		return nil, fmt.Errorf("could not store GL proof: %w", err)
+		return fmt.Errorf("could not store GL proof: %w", err)
 	}
 
 	logrus.Infof("Generated GL proof for witness module=%v at index=%d and stored to disk", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
 	_lppCommit := distributed.GetLppCommitmentFromRuntime(run)
 	if err := serialization.StoreToDisk(LPPCommitPath, _lppCommit, true); err != nil {
-		return nil, fmt.Errorf("could not store GL proof: %w", err)
+		return fmt.Errorf("could not store GL proof: %w", err)
 	}
 
 	logrus.Infof("Generated LPP commitment for witness module=%v at index=%d and stored to disk", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
-	glResp = &GLResponse{
-		GLProofPath:        proofGLPath,
-		LPPCommitmeentPath: LPPCommitPath,
-	}
-	return glResp, nil
+	return nil
 }
