@@ -522,8 +522,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
         userFunds: 0,
         yieldReportedCumulative: 0,
         currentNegativeYield: 0,
-        lstLiabilityPrincipal: 0,
-        lstLiabilityShares: 0
+        lstLiabilityPrincipal: 0
     });
     emit YieldProviderAdded(
       _yieldProvider,
@@ -730,14 +729,5 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     }
 
     emit DonationProcessed(_yieldProvider, msg.sender, _destination, msg.value);
-  }
-
-  // In Lido Vault it is possible to permissionlessly settle obligations, a variable that changes in 1:1 tandem with liabilities
-  // Therefore we must have a function to reconcile obligations that were settled externally.
-  // If liability was settled by another entity, then we prioritize settlement of LST Principal over Interest.
-  function reconcileExternalLSTPrincipalSettlement(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
-    // Do not touch userFund state, this will be accounted for as negative yield in the next reportYield run
-    _getYieldProviderDataStorage(_yieldProvider).lstLiabilityPrincipal -= _amount;
-    emit ExternalLSTPrincipalReconciled(_yieldProvider, msg.sender, _amount);
   }
 }

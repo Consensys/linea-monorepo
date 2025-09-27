@@ -46,10 +46,10 @@ abstract contract YieldManagerStorageLayout {
     // Is only allowed to be decremented by withdraw operations. Any other reduction of vault totalValue must be reported as negativeYield.
     uint256 userFunds;
     uint256 yieldReportedCumulative;
+    // Timing of below operations is highly specific to the yield provider, so we will mutate their state in the YieldProvider contract
     // Required to socialize losses if permanent
     uint256 currentNegativeYield;
     uint256 lstLiabilityPrincipal;
-    uint256 lstLiabilityShares;
   }
 
   // keccak256(abi.encode(uint256(keccak256("linea.storage.YieldManagerStorage")) - 1)) & ~bytes32(uint256(0xff))
