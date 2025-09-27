@@ -1,43 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.30;
 
+import { YieldManagerStorageLayout } from "../YieldManagerStorageLayout.sol";
+
 /**
  * @title Contract to handle native yield operations.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
 interface IYieldManager {
-  enum YieldProviderType {
-      LIDO_STVAULT
-  }
-
-  // TODO - YieldProvider and YieldManager share the same storage, so take out?
-
-  /**
-   * @notice Supporting data for compressed calldata submission including compressed data.
-   * @dev finalStateRootHash is used to set state root at the end of the data.
-   */
-  struct YieldProviderRegistration {
-    YieldProviderType yieldProviderType;
-    address yieldProviderEntrypoint;
-    address yieldProviderOssificationEntrypoint;
-  }
-
-  struct YieldProviderData {
-    YieldProviderRegistration registration;
-    uint96 yieldProviderIndex;
-    bool isStakingPaused;
-    bool isOssificationInitiated;
-    bool isOssified;
-    // Incremented 1:1 with yieldReportedCumulative, because yieldReported becomes user funds
-    // Is only allowed to be decremented by withdraw operations. Any other reduction of vault totalValue must be reported as negativeYield.
-    uint256 userFunds;
-    uint256 yieldReportedCumulative;
-    // Required to socialize losses if permanent
-    uint256 currentNegativeYield;
-    uint256 lstLiabilityPrincipal;
-  }
-
   /**
    * @notice Emitted when minimumWithdrawalReservePercentageBps is set.
    * @param oldMinimumWithdrawalReservePercentageBps The previous minimumWithdrawalReservePercentageBps.
@@ -154,7 +125,7 @@ interface IYieldManager {
   event YieldProviderAdded(
     address indexed yieldProvider,
     address indexed caller,
-    YieldProviderType yieldProviderType,
+    YieldManagerStorageLayout.YieldProviderType yieldProviderType,
     address yieldProviderEntrypoint,
     address yieldProviderOssificationEntrypoint
   );

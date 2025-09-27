@@ -522,7 +522,8 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
         userFunds: 0,
         yieldReportedCumulative: 0,
         currentNegativeYield: 0,
-        lstLiabilityPrincipal: 0
+        lstLiabilityPrincipal: 0,
+        lstLiabilityShares: 0
     });
     emit YieldProviderAdded(
       _yieldProvider,

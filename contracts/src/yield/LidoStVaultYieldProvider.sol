@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import { YieldManagerStorageLayout } from "./YieldManagerStorageLayout.sol";
-import { IYieldManager } from "./interfaces/IYieldManager.sol";
 import { IYieldProvider } from "./interfaces/IYieldProvider.sol";
 import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
 import { ICommonVaultOperations } from "./interfaces/vendor/lido-vault/ICommonVaultOperations.sol";
@@ -34,7 +33,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
   }
 
   function _getEntrypointContract() private view returns (address) {
-    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
+    YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
     return $$.isOssified ? YIELD_PROVIDER : address(DASHBOARD);
   }
 
@@ -45,7 +44,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
   // Will settle as much LST liability as possible. Will return amount of liabilityEth remaining
   // @dev - we consider principal to be paid before interest. Reason being that Lido doesn't distinguish between the two, so we can choose which is more convenient for us as long as we remain consistent.
   function _payMaximumPossibleLSTLiability() internal {
-    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
+    YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
     if ($$.isOssified) return;
 
     uint256 vaultBalanceEth = DASHBOARD.totalValue();
@@ -67,7 +66,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
   }
 
   function _payLSTPrincipal(uint256 _maxAvailableRepaymentETH) internal returns (uint256) {
-    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
+    YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
     if ($$.isOssified) return 0;
     uint256 lstLiabilityPrincipal = $$.lstLiabilityPrincipal;
     if (lstLiabilityPrincipal == 0) return 0;
@@ -79,7 +78,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
   // Returns how much of _maxAvailableRepaymentETH available, after LST interest payment
   // @dev Redemption component of obligations, and liability - are decremented in tandem in Lido VaultHub
   function _payLSTInterest(uint256 _maxAvailableRepaymentETH) internal returns (uint256) {
-    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
+    YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
     if ($$.isOssified) return _maxAvailableRepaymentETH;
     uint256 liabilityTotalShares = DASHBOARD.liabilityShares();
     if (liabilityTotalShares == 0) return _maxAvailableRepaymentETH;
@@ -120,7 +119,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
    * @dev Both `redemptions` and `obligations` can both be reduced permissionlessly via VaultHub.settleObligations(). Then this is accounted within negative yield.
    */
   function reportYield() external returns (uint256 _newYield) {
-    IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
+    YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
     if ($$.isOssified) {
       revert OperationNotSupportedDuringOssification(OperationType.ReportYield);
     }
@@ -150,7 +149,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
   // TODO - What if we incur redemption, and someone forces the settlement of this...
 
   function _handlePostiveYieldAccounting(uint256 positiveTotalYield) internal returns (uint256) {
-      IYieldManager.YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
+      YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
       // First pay negative yield
       uint256 positiveRemainingYield = positiveTotalYield;
       uint256 currentNegativeYield = $$.currentNegativeYield;
@@ -236,8 +235,8 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
     ICommonVaultOperations(_getEntrypointContract()).resumeBeaconChainDeposits();
   }
 
-  function validateAdditionToYieldManager(IYieldManager.YieldProviderRegistration calldata _yieldProviderRegistration) external pure {
-    if (_yieldProviderRegistration.yieldProviderType != IYieldManager.YieldProviderType.LIDO_STVAULT) {
+  function validateAdditionToYieldManager(YieldProviderRegistration calldata _yieldProviderRegistration) external pure {
+    if (_yieldProviderRegistration.yieldProviderType != YieldProviderType.LIDO_STVAULT) {
       revert IncorrectYieldProviderType();
     }
   }

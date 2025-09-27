@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.30;
 
-import { IYieldManager } from "./interfaces/IYieldManager.sol";
-
 /**
  * @title Contract to handle shared storage of YieldManager and YieldProvider contracts
  * @author ConsenSys Software Inc.
@@ -21,7 +19,37 @@ abstract contract YieldManagerStorageLayout {
     address[] _yieldProviders;
     uint256 _userFundsInYieldProvidersTotal;
     uint256 _pendingPermissionlessUnstake;
-    mapping(address yieldProvider => IYieldManager.YieldProviderData) _yieldProviderData;
+    mapping(address yieldProvider => YieldProviderData) _yieldProviderData;
+  }
+
+  enum YieldProviderType {
+      LIDO_STVAULT
+  }
+
+  /**
+   * @notice Supporting data for compressed calldata submission including compressed data.
+   * @dev finalStateRootHash is used to set state root at the end of the data.
+   */
+  struct YieldProviderRegistration {
+    YieldProviderType yieldProviderType;
+    address yieldProviderEntrypoint;
+    address yieldProviderOssificationEntrypoint;
+  }
+
+  struct YieldProviderData {
+    YieldProviderRegistration registration;
+    uint96 yieldProviderIndex;
+    bool isStakingPaused;
+    bool isOssificationInitiated;
+    bool isOssified;
+    // Incremented 1:1 with yieldReportedCumulative, because yieldReported becomes user funds
+    // Is only allowed to be decremented by withdraw operations. Any other reduction of vault totalValue must be reported as negativeYield.
+    uint256 userFunds;
+    uint256 yieldReportedCumulative;
+    // Required to socialize losses if permanent
+    uint256 currentNegativeYield;
+    uint256 lstLiabilityPrincipal;
+    uint256 lstLiabilityShares;
   }
 
   // keccak256(abi.encode(uint256(keccak256("linea.storage.YieldManagerStorage")) - 1)) & ~bytes32(uint256(0xff))
@@ -33,7 +61,7 @@ abstract contract YieldManagerStorageLayout {
       }
   }
 
-  function _getYieldProviderDataStorage(address _yieldProvider) internal view returns (IYieldManager.YieldProviderData storage) {
+  function _getYieldProviderDataStorage(address _yieldProvider) internal view returns (YieldProviderData storage) {
     YieldManagerStorage storage $$ = _getYieldManagerStorage();
     return $$._yieldProviderData[_yieldProvider];
   }

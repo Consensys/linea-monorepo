@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.30;
 
-import { IYieldManager } from "./IYieldManager.sol";
+import { YieldManagerStorageLayout } from "../YieldManagerStorageLayout.sol";
 
 /**
  * @title Contract that will the YieldManager will delegatecall, to handle provider-specific yield operations.
@@ -85,7 +85,7 @@ interface IYieldProvider {
    * @notice Validate the supplied registration before it is added to the yield manager.
    * @param _yieldProviderRegistration Supplied registration data for the yield provider.
    */
-  function validateAdditionToYieldManager(IYieldManager.YieldProviderRegistration calldata _yieldProviderRegistration) external;
+  function validateAdditionToYieldManager(YieldManagerStorageLayout.YieldProviderRegistration calldata _yieldProviderRegistration) external;
 
   /**
    * @notice Get the ETH balance held by the yield provider that can be withdrawn immediately.
