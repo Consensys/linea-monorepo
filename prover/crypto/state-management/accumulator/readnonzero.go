@@ -39,7 +39,7 @@ func (p *ProverState[K, V]) ReadNonZeroAndProve(key K) ReadNonZeroTrace[K, V] {
 
 	tuple := p.Data.MustGet(i)
 
-	if hash(p.Config(), key) != hash(p.Config(), tuple.Key) {
+	if Hash(p.Config(), key) != Hash(p.Config(), tuple.Key) {
 		utils.Panic("sanity-check : the key mismatched")
 	}
 
@@ -107,7 +107,7 @@ func (trace ReadNonZeroTrace[K, V]) DeferMerkleChecks(
 }
 
 func (trace ReadNonZeroTrace[K, V]) HKey(cfg *smt.Config) Bytes32 {
-	return hash(cfg, trace.Key)
+	return Hash(cfg, trace.Key)
 }
 
 func (trace ReadNonZeroTrace[K, V]) RWInt() int {

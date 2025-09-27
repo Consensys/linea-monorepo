@@ -34,6 +34,9 @@ type Response struct {
 	// Initial root hash before executing the conflated block
 	ParentStateRootHash string `json:"parentStateRootHash"`
 
+	// Block hash of the parent block
+	ParentBlockHash types.FullBytes32 `json:"parentBlockHash"`
+
 	// Boolean flag indicating whether the parent root hash mismatches what we
 	// found in the shomei proof for the first block. This field is only set
 	// when the config field `tolerate_parent_state_root_hash_mismatch` is set
