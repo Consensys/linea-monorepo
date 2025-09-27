@@ -1310,9 +1310,8 @@ func weightOfGroupOfQBModules(comp *wizard.CompiledIOP, group []*QueryBasedModul
 // inclusion compiler understanding which parts of the S columns to use
 // to compute the M columns.
 type LPPSegmentBoundaryCalculator struct {
-	Disc     *StandardModuleDiscoverer
-	LPPArity int
-	Cached   map[*wizard.ProverRuntime]map[ifaces.ColID][2]int
+	Disc   *StandardModuleDiscoverer
+	Cached map[*wizard.ProverRuntime]map[ifaces.ColID][2]int
 }
 
 func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRuntime, col column.Natural) (int, int) {
@@ -1331,13 +1330,7 @@ func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRunt
 			continue
 		}
 
-		var (
-			lppModuleID = i / ls.LPPArity
-			s0          = lppModuleID * ls.LPPArity
-			s1          = min(len(moduleNames), s0+ls.LPPArity)
-		)
-
-		nbSegment = NbSegmentOfModule(run, ls.Disc, moduleNames[s0:s1])
+		nbSegment = NbSegmentOfModule(run, ls.Disc, moduleNames[i])
 	}
 
 	// NewLen correspond to the sum of the size of all the segments that will be
@@ -1394,4 +1387,14 @@ func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRunt
 
 	utils.Panic("start=%v, stop=%v, nbSegment=%v, newSize=%v, newLen=%v, col=%v", start, stop, nbSegment, sizeOfSegment, newLen, col.ID)
 	return -1, -1 // Unreachable
+}
+
+// IndexOf returns the module index for a given module name
+func (disc *StandardModuleDiscoverer) IndexOf(moduleName ModuleName) int {
+	for i := range disc.Modules {
+		if disc.Modules[i].ModuleName == moduleName {
+			return i
+		}
+	}
+	panic("module not found")
 }

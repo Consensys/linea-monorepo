@@ -27,9 +27,6 @@ const (
 	// the value is empirical and corresponds to the lowest value that works.
 	fixedNbRowPlonkCircuit   = 1 << 20
 	fixedNbRowExternalHasher = 1 << 17
-	verifyingKeyPublicInput  = "VERIFYING_KEY"
-	verifyingKey2PublicInput = "VERIFYING_KEY_2"
-	lppMerkleRootPublicInput = "LPP_COLUMNS_MERKLE_ROOTS"
 
 	// initialCompilerSize sets the target number of rows of the first invokation
 	// of [compiler.Arcane] of the pre-recursion pass of [CompileSegment]. It is
@@ -54,9 +51,9 @@ type RecursedSegmentCompilation struct {
 	ModuleGL *ModuleGL
 	// ModuleLPP is optional and is set if the segment is a LPP segment.
 	ModuleLPP *ModuleLPP
-	// ModuleDefault is optional and is set if the segment is default module
-	// segment.
-	DefaultModule *DefaultModule
+	// HierarchicalConglomeration is optional and is set if the segment is a
+	// conglomerated segment.
+	HierarchicalConglomeration *ConglomerationHierarchical
 	// RecursionComp is the compiled IOP of the recursed wizard.
 	RecursionComp *wizard.CompiledIOP
 	// Recursion is the wizard construction context of the recursed wizard.
@@ -87,10 +84,11 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		numActualLppRound = len(m.ModuleNames())
 		isLPP = true
 		subscript = fmt.Sprintf("%v", m.ModuleNames())
-	case *DefaultModule:
+	case *ConglomerationHierarchical:
 		modIOP = m.Wiop
-		res.DefaultModule = m
-		subscript = "default-module"
+		res.HierarchicalConglomeration = m
+		subscript = "hierarchical-conglomeration"
+
 	default:
 		utils.Panic("unexpected type: %T", mod)
 	}
@@ -325,14 +323,6 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *wizard.ProverRuntime
 		proverStep = r.ModuleGL.GetMainProverStep(m)
 		moduleName = m.ModuleName
 		moduleIndex = m.ModuleIndex
-	case nil:
-		if r.DefaultModule == nil {
-			utils.Panic("witness is nil but module is not default")
-		}
-		comp = r.DefaultModule.Wiop
-		proverStep = r.DefaultModule.Assign
-		moduleName = "default-module"
-		moduleIndex = 0
 	default:
 		utils.Panic("unexpected type")
 	}

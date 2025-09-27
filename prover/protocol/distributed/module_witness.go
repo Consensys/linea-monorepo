@@ -29,7 +29,9 @@ var (
 // to perform the segmentation.
 type ModuleSegmentationBlueprint struct {
 	// ModuleName indicates the name of the module
-	ModuleNames []ModuleName
+	ModuleName ModuleName
+	// ModuleIndex is the integer index of the module
+	ModuleIndex int
 	// ReceivedValuesGlobalRoots stores the list of the root column for the
 	// [ModuleGL.ReceivedValuesGlobalAccs] for each received value.
 	ReceivedValuesGlobalAccsRoots []ifaces.ColID
@@ -50,7 +52,7 @@ type ModuleSegmentationBlueprint struct {
 	NextN0SelectorConstSizes [][]int
 	// LPPColumnSets stores the list of the columns that are used for the
 	// LPP segments.
-	LPPColumnSets [][]ifaces.ColID
+	LPPColumnSets []ifaces.ColID
 }
 
 // ModuleWitnessGL is a structure collecting the witness of a module. And
@@ -58,15 +60,12 @@ type ModuleSegmentationBlueprint struct {
 type ModuleWitnessGL struct {
 	// ModuleName indicates the name of the module
 	ModuleName ModuleName
-	// IsLPP indicates if the current instance of [ModuleWitness] is for
-	// an LPP segment. In the contrary case, it is understood to be for
-	// a GL segment.
-	IsLPP bool
-	// ModuleIndex indicates the vertical split of the current module
+	// ModuleIndex indicates the ID of the module in the module list
 	ModuleIndex int
-	// IsFirst, IsLast indicates if the module is the first or the last
-	// segment of the module. When [ModuleIndex] == 0, [IsFirst] is true.
-	IsFirst, IsLast bool
+	// SegmentModuleIndex indicates the vertical split of the current module
+	SegmentModuleIndex int
+	// SegmentCount counts the number of segments for each modules
+	TotalSegmentCount []int
 	// Columns maps the column id to their witness values
 	Columns map[ifaces.ColID]smartvectors.SmartVector
 	// ReceivedValuesGlobal stores the received values (for the global
@@ -79,9 +78,12 @@ type ModuleWitnessGL struct {
 // can be for a group of modules.
 type ModuleWitnessLPP struct {
 	// ModuleName indicates the name of the module
-	ModuleName []ModuleName
+	ModuleName ModuleName
 	// ModuleIndex indicates the vertical split of the current module
 	ModuleIndex int
+	// SegmentCount counts the total number of segments for each modules and is
+	// used to populate the [targetNbSegment] public input.
+	TotalSegmentCount []int
 	// InitialFiatShamirState is the initial FiatShamir state to set at
 	// round 1.
 	InitialFiatShamirState field.Element
@@ -106,15 +108,23 @@ func SegmentRuntime(
 
 	logger := logrus.WithField("type", "module-segmentation-stats")
 
+	// Since the total segment count is (forcibly) the same for each module,
+	// we need to compute it before generating all the witnesses.
+	totalSegmentCount := make([]int, len(disc.Modules))
+
+	for i := range disc.Modules {
+		totalSegmentCount[i] = NbSegmentOfModule(runtime, disc, disc.Modules[i].ModuleName)
+	}
+
 	for i := range blueprintGLs {
 
-		wGL := SegmentModuleGL(runtime, disc, &blueprintGLs[i])
+		wGL := segmentModuleGL(runtime, disc, &blueprintGLs[i], totalSegmentCount)
 		witnessesGL = append(witnessesGL, wGL...)
 
 		// Expectedly, the blueprintGLs[i] is for the disc.Module[i] as the
 		// blueprintGLs list is constructed from them in the same order.  We
 		// sanity-check this assumption to ensure the line-up is correct.
-		if blueprintGLs[i].ModuleNames[0] != disc.Modules[i].ModuleName {
+		if blueprintGLs[i].ModuleName != disc.Modules[i].ModuleName {
 			utils.Panic("blueprintGLs[i].ModuleNames[0] != disc.Modules[i].Name")
 		}
 
@@ -129,14 +139,14 @@ func SegmentRuntime(
 			}
 		}
 
-		logger = logger.WithField(string(blueprintGLs[i].ModuleNames[0]), map[string]any{
+		logger = logger.WithField(string(blueprintGLs[i].ModuleName[0]), map[string]any{
 			"qbm-stats":   loggableQbmStats,
 			"nb-segments": len(wGL),
 		})
 	}
 
 	for i := range blueprintLPPs {
-		wLPP := SegmentModuleLPP(runtime, disc, &blueprintLPPs[i])
+		wLPP := segmentModuleLPP(runtime, disc, &blueprintLPPs[i], totalSegmentCount)
 		witnessesLPP = append(witnessesLPP, wLPP...)
 	}
 
@@ -146,12 +156,17 @@ func SegmentRuntime(
 }
 
 // SegmentModule produces the list of the [ModuleWitness] for a given module
-func SegmentModuleGL(runtime *wizard.ProverRuntime, disc *StandardModuleDiscoverer, blueprintGL *ModuleSegmentationBlueprint) (witnessesGL []*ModuleWitnessGL) {
+func segmentModuleGL(
+	runtime *wizard.ProverRuntime,
+	disc *StandardModuleDiscoverer,
+	blueprintGL *ModuleSegmentationBlueprint,
+	totalNbSegment []int,
+) (witnessesGL []*ModuleWitnessGL) {
 
 	var (
-		moduleName           = blueprintGL.ModuleNames[0]
+		moduleName           = blueprintGL.ModuleName
 		cols                 = runtime.Spec.Columns.AllKeys()
-		nbSegmentModule      = NbSegmentOfModule(runtime, disc, []ModuleName{moduleName})
+		nbSegmentModule      = totalNbSegment[blueprintGL.ModuleIndex]
 		receivedValuesGlobal = make([]field.Element, len(blueprintGL.ReceivedValuesGlobalAccsRoots))
 	)
 
@@ -162,8 +177,6 @@ func SegmentModuleGL(runtime *wizard.ProverRuntime, disc *StandardModuleDiscover
 		moduleWitnessGL := &ModuleWitnessGL{
 			ModuleName:           moduleName,
 			ModuleIndex:          moduleIndex,
-			IsFirst:              moduleIndex == 0,
-			IsLast:               moduleIndex == nbSegmentModule-1,
 			Columns:              make(map[ifaces.ColID]smartvectors.SmartVector),
 			ReceivedValuesGlobal: receivedValuesGlobal,
 		}
@@ -187,32 +200,33 @@ func SegmentModuleGL(runtime *wizard.ProverRuntime, disc *StandardModuleDiscover
 	return witnessesGL
 }
 
-// SegmentModuleLPP produces the list of the [ModuleWitness] for a given module
-func SegmentModuleLPP(runtime *wizard.ProverRuntime, disc *StandardModuleDiscoverer, moduleLPP *ModuleSegmentationBlueprint) (witnessesLPP []*ModuleWitnessLPP) {
+// segmentModuleLPP produces the list of the [ModuleWitness] for a given module
+func segmentModuleLPP(
+	runtime *wizard.ProverRuntime,
+	disc *StandardModuleDiscoverer,
+	moduleLPP *ModuleSegmentationBlueprint,
+	totalNbSegment []int,
+) (witnessesLPP []*ModuleWitnessLPP) {
 
 	var (
 		cols          = runtime.Spec.Columns.AllKeys()
 		n0            = make([]int, len(moduleLPP.NextN0SelectorRoots))
-		moduleNameSet = make(map[ModuleName]struct{})
 		columnsLPPSet = make(map[ifaces.ColID]struct{})
 	)
 
-	for moduleIndex, moduleName := range moduleLPP.ModuleNames {
-		moduleNameSet[moduleName] = struct{}{}
-		for _, col := range moduleLPP.LPPColumnSets[moduleIndex] {
-			columnsLPPSet[col] = struct{}{}
-		}
+	for _, col := range moduleLPP.LPPColumnSets {
+		columnsLPPSet[col] = struct{}{}
 	}
 
 	var (
-		nbSegmentModule = NbSegmentOfModule(runtime, disc, moduleLPP.ModuleNames)
+		nbSegmentModule = NbSegmentOfModule(runtime, disc, moduleLPP.ModuleName)
 		witnessesLPPs   = make([]*ModuleWitnessLPP, nbSegmentModule)
 	)
 
 	for segment := range witnessesLPPs {
 
 		moduleWitnessLPP := &ModuleWitnessLPP{
-			ModuleName:  moduleLPP.ModuleNames,
+			ModuleName:  moduleLPP.ModuleName,
 			ModuleIndex: segment,
 			Columns:     make(map[ifaces.ColID]smartvectors.SmartVector),
 			N0Values:    n0,
@@ -241,17 +255,12 @@ var (
 )
 
 // NbSegmentOfModule returns the number of segments for a given module
-func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc *StandardModuleDiscoverer, moduleName []ModuleName) (nbSegment int) {
+func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc *StandardModuleDiscoverer, moduleName ModuleName) (nbSegment int) {
 
 	var (
 		cols            = runtime.Spec.Columns.AllKeys()
 		nbSegmentModule = -1
-		moduleSet       = map[ModuleName]struct{}{}
 	)
-
-	for _, mn := range moduleName {
-		moduleSet[mn] = struct{}{}
-	}
 
 	for _, col := range cols {
 
@@ -265,7 +274,7 @@ func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc *StandardModuleDiscov
 			utils.Panic("one column does not belong to any module: %v, disc: %v, mn: %v", col.GetColID(), disc.ColumnsToModule, mn)
 		}
 
-		if _, ok := moduleSet[mn]; !ok {
+		if mn != moduleName {
 			continue
 		}
 
@@ -431,7 +440,8 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc *StandardModuleDiscover
 func (moduleGL *ModuleGL) Blueprint() ModuleSegmentationBlueprint {
 
 	blueprintGL := ModuleSegmentationBlueprint{
-		ModuleNames:                       []ModuleName{moduleGL.DefinitionInput.ModuleName},
+		ModuleIndex:                       moduleGL.Disc.IndexOf(moduleGL.DefinitionInput.ModuleName),
+		ModuleName:                        moduleGL.DefinitionInput.ModuleName,
 		ReceivedValuesGlobalAccsRoots:     make([]ifaces.ColID, len(moduleGL.SentValuesGlobal)),
 		ReceivedValuesGlobalAccsPositions: make([]int, len(moduleGL.SentValuesGlobal)),
 	}
@@ -456,22 +466,19 @@ func (moduleLPP *ModuleLPP) Blueprint() ModuleSegmentationBlueprint {
 
 	hornerParts := moduleLPP.Horner.Parts
 	numHornerPart := len(moduleLPP.Horner.Parts)
-	numSubmodule := len(moduleLPP.ModuleNames())
 
 	res := ModuleSegmentationBlueprint{
-		ModuleNames:              moduleLPP.ModuleNames(),
+		ModuleName:               moduleLPP.ModuleNames(),
 		NextN0SelectorRoots:      make([][]ifaces.ColID, numHornerPart),
 		NextN0SelectorIsConsts:   make([][]bool, numHornerPart),
 		NextN0SelectorConsts:     make([][]field.Element, numHornerPart),
 		NextN0SelectorConstSizes: make([][]int, numHornerPart),
-		LPPColumnSets:            make([][]ifaces.ColID, numSubmodule),
+		LPPColumnSets:            []ifaces.ColID{},
 	}
 
-	for i, di := range moduleLPP.DefinitionInputs {
-		res.LPPColumnSets[i] = make([]ifaces.ColID, len(di.ColumnsLPP))
-		for j := range di.ColumnsLPP {
-			res.LPPColumnSets[i][j] = di.ColumnsLPP[j].GetColID()
-		}
+	res.LPPColumnSets = make([]ifaces.ColID, len(moduleLPP.DefinitionInputs.ColumnsLPP))
+	for j := range moduleLPP.DefinitionInputs.ColumnsLPP {
+		res.LPPColumnSets[j] = moduleLPP.DefinitionInputs.ColumnsLPP[j].GetColID()
 	}
 
 	for i := range hornerParts {
