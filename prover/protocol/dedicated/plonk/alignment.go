@@ -399,8 +399,8 @@ func (a *Alignment) assignCircData(run *wizard.ProverRuntime) {
 
 			if nbActualData >= nbInputsPadded*maxNbInstances {
 				exit.OnLimitOverflow(
-					nbActualData+1,
 					nbInputsPadded*maxNbInstances,
+					nbActualData+1,
 					fmt.Errorf("max number of instances exceeded for circuit: %v", a.Name),
 				)
 			}
