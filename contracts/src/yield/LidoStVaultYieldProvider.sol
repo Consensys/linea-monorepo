@@ -173,6 +173,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
    */
   function unstake(bytes memory _withdrawalParams) external {
     _unstake(_withdrawalParams);
+    // TODO - Emit event
   }
 
   /**
@@ -197,6 +198,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
   ) external returns (uint256) {
     // TODO - Verify _withdrawalParamsProof
     uint256 amountUnstaked = _unstake(_withdrawalParams);
+    // TODO - Emit event
     return amountUnstaked;
   }
 
